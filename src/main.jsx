@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { supabase } from './supabase'
 import './styles.css'
-import Suppliers from '.src/Suppliers'
+import Suppliers from './Suppliers'
 
 const SECTIONS = [
   { id: 'dashboard', label: 'Дашборд' },
