@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { supabase } from './supabase'
 import './styles.css'
+import Suppliers from './Suppliers'
 
 const SECTIONS = [
   { id: 'dashboard', label: 'Дашборд' },
@@ -484,53 +485,7 @@ function Expenses() {
   return <Placeholder title="Расходы" />
 }
 
-function Suppliers() {
-  const [suppliers, setSuppliers] = useState([])
-  const [name, setName] = useState('')
 
-  useEffect(() => { load() }, [])
-
-  async function load() {
-    const { data } = await supabase.from('suppliers').select('*').order('name')
-    setSuppliers(data || [])
-  }
-
-  async function addSupplier() {
-    if (!name.trim()) return
-    await supabase.from('suppliers').insert({ name })
-    setName('')
-    load()
-  }
-
-  return (
-    <>
-      <div className="topbar">
-        <div>
-          <h2>Поставщики</h2>
-          <p>Список поставщиков. Долги и транзакции будут следующим шагом.</p>
-        </div>
-      </div>
-      <div className="card">
-        <div className="form-grid">
-          <label>Название поставщика
-            <input value={name} onChange={e => setName(e.target.value)} />
-          </label>
-        </div>
-        <br />
-        <button className="primary" onClick={addSupplier}>Добавить поставщика</button>
-      </div>
-      <br />
-      <div className="card">
-        <h3>Поставщики</h3>
-        <table>
-          <tbody>
-            {suppliers.map(s => <tr key={s.id}><td>{s.name}</td></tr>)}
-          </tbody>
-        </table>
-      </div>
-    </>
-  )
-}
 
 function Salaries() { return <Placeholder title="Зарплаты" /> }
 function Recipes() { return <Placeholder title="Тех. карты" /> }
