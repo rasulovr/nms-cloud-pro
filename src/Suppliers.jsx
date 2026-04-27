@@ -11,7 +11,9 @@ export default function Suppliers() {
   const [amount, setAmount] = useState('')
   const [selectedSupplier, setSelectedSupplier] = useState('')
 
-  useEffect(() => { load() }, [])
+  useEffect(() => {
+    load()
+  }, [])
 
   async function load() {
     const { data: suppliersData } = await supabase.from('suppliers').select('*')
@@ -56,51 +58,97 @@ export default function Suppliers() {
 
   function getDebt(id) {
     const tx = transactions.filter(t => t.supplier_id === id)
+
     let debt = 0
+
     tx.forEach(t => {
       if (t.type === 'purchase') debt += t.amount
       if (t.type === 'payment') debt -= t.amount
     })
+
     return debt
   }
 
-  return <div>OK</div>
+  return (
+    <>
+      <div className="topbar">
+        <div>
+          <h2>Поставщики</h2>
+          <p>Закупки, оплаты и долги</p>
+        </div>
+      </div>
 
-      <input value={name} onChange={e => setName(e.target.value)} placeholder="Новый поставщик"/>
-      <button onClick={addSupplier}>Добавить</button>
+      <div className="card">
+        <h3>Добавить поставщика</h3>
+        <input
+          value={name}
+          onChange={e => setName(e.target.value)}
+          placeholder="Название"
+        />
+        <br /><br />
+        <button className="primary" onClick={addSupplier}>
+          Добавить
+        </button>
+      </div>
 
-      <br /><br />
+      <br />
 
-      <select value={selectedSupplier} onChange={e => setSelectedSupplier(e.target.value)}>
-        <option value="">Выбери поставщика</option>
-        {suppliers.map(s => (
-          <option key={s.id} value={s.id}>{s.name}</option>
-        ))}
-      </select>
+      <div className="card">
+        <h3>Операции</h3>
 
-      <input value={amount} onChange={e => setAmount(e.target.value)} placeholder="Сумма"/>
-
-      <button onClick={addPurchase}>Закупка</button>
-      <button onClick={addPayment}>Оплата</button>
-
-      <br /><br />
-
-      <table>
-        <thead>
-          <tr>
-            <th>Поставщик</th>
-            <th>Долг</th>
-          </tr>
-        </thead>
-        <tbody>
+        <select
+          value={selectedSupplier}
+          onChange={e => setSelectedSupplier(e.target.value)}
+        >
+          <option value="">Выбери поставщика</option>
           {suppliers.map(s => (
-            <tr key={s.id}>
-              <td>{s.name}</td>
-              <td>{fmt(getDebt(s.id))}</td>
-            </tr>
+            <option key={s.id} value={s.id}>
+              {s.name}
+            </option>
           ))}
-        </tbody>
-      </table>
+        </select>
+
+        <br /><br />
+
+        <input
+          value={amount}
+          onChange={e => setAmount(e.target.value)}
+          placeholder="Сумма"
+        />
+
+        <br /><br />
+
+        <button className="primary" onClick={addPurchase}>
+          Закупка
+        </button>
+
+        <button className="ghost" onClick={addPayment}>
+          Оплата
+        </button>
+      </div>
+
+      <br />
+
+      <div className="card">
+        <h3>Поставщики</h3>
+
+        <table>
+          <thead>
+            <tr>
+              <th>Название</th>
+              <th>Долг</th>
+            </tr>
+          </thead>
+          <tbody>
+            {suppliers.map(s => (
+              <tr key={s.id}>
+                <td>{s.name}</td>
+                <td>{fmt(getDebt(s.id))}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </>
   )
 }
