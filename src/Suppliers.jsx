@@ -64,9 +64,7 @@ export default function Suppliers() {
     return debt
   }
 
-  return (
-    <>
-      <h2>Поставщики</h2>
+  return <div>OK</div>
 
       <input value={name} onChange={e => setName(e.target.value)} placeholder="Новый поставщик"/>
       <button onClick={addSupplier}>Добавить</button>
