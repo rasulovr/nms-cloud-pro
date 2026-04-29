@@ -113,19 +113,11 @@ const employeeGroupName = (emp) => emp?.branches?.name || 'Менеджеры'
 const staffGroupOptions = (branches) => [{ id: STAFF_GROUP_MANAGERS, name: 'Менеджеры' }, ...branches]
 const positionGroup = (position) => {
   const p = String(position || '').toLowerCase()
-  if (p.includes('менедж') || p.includes('управ') || p.includes('директор') || p.includes('админ') || p.includes('закуп') || p.includes('smm') || p.includes('шеф-бар') || p.includes('шеф бар') || p.includes('шеф-повар') || p.includes('шеф повар') || p.includes('brand') || p.includes('manager') || p.includes('director') || p.includes('admin')) return 'Менеджеры'
+  if (p.includes('менедж') || p.includes('закуп') || p.includes('smm') || p.includes('шеф-бар') || p.includes('шеф-повар')) return 'Менеджеры'
   if (p.includes('бар') || p.includes('сервис') || p.includes('servis') || p.includes('service')) return 'Бар'
   if (p.includes('повар') || p.includes('кух') || p.includes('chef')) return 'Повар'
   if (p.includes('стю') || p.includes('стью') || p.includes('stew')) return 'Стьюарт'
   return 'Другое'
-}
-const isManagerStaff = (emp) => {
-  const position = String(emp?.position || '').toLowerCase()
-  const groupName = String(emp?.branches?.name || '').toLowerCase()
-  return employeeGroupId(emp) === STAFF_GROUP_MANAGERS
-    || groupName.includes('менедж')
-    || positionGroup(position) === 'Менеджеры'
-    || ['owner', 'ceo', 'coo', 'cfo', 'управ', 'директор', 'админ', 'закуп', 'smm', 'шеф'].some(x => position.includes(x))
 }
 const matchesStaffGroup = (emp, groupId) => groupId === 'all' || employeeGroupId(emp) === groupId
 const matchesPositionGroup = (emp, group) => group === 'all' || positionGroup(emp?.position) === group
@@ -300,21 +292,12 @@ function ResponsiveAndSettingsStyles() {
       border-color: var(--accent);
     }
     .blurred-money {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      min-width: 72px;
-      height: 24px;
-      padding: 0 10px;
-      border-radius: 999px;
-      background: rgba(23,37,29,.12);
-      color: transparent;
-      text-shadow: 0 0 8px rgba(23,37,29,.65);
-      filter: blur(2.2px);
+      display: inline-block;
+      min-width: 54px;
+      filter: blur(3px);
       user-select: none;
-      pointer-events: none;
-      font-weight: 900;
-      letter-spacing: .12em;
+      opacity: .8;
+      font-weight: 800;
     }
     .cell-value {
       display: inline-block;
@@ -2246,38 +2229,14 @@ function Attendance({ t }) {
   const [transferForm, setTransferForm] = useState({ employee_id: '', branch_id: STAFF_GROUP_MANAGERS, start_date: todayISO(), position: '', monthly_salary: '', comment: '' })
 
   useEffect(() => { if (!employeeForm.branch_id) setEmployeeForm(f => ({ ...f, branch_id: STAFF_GROUP_MANAGERS })) }, [branches])
-  async function loadSalaryPrivacyProfile() {
-    const { data: rpcData, error: rpcError } = await supabase.rpc('rms_current_salary_privacy')
-    if (!rpcError && rpcData) {
-      setSalaryPrivacyProfile(rpcData)
-      return
-    }
-
-    const { data } = await supabase.auth.getUser()
-    const userId = data?.user?.id
-    const email = data?.user?.email || ''
-    const loginName = String(email).split('@')[0]
-    if (!userId) return setSalaryPrivacyProfile(null)
-
-    const { data: profById } = await supabase
-      .from('user_profiles')
-      .select('id, email, login_name, role, hide_manager_salary')
-      .eq('id', userId)
-      .maybeSingle()
-
-    if (profById) return setSalaryPrivacyProfile(profById)
-
-    const { data: profByLogin } = await supabase
-      .from('user_profiles')
-      .select('id, email, login_name, role, hide_manager_salary')
-      .or(`email.eq.${email},login_name.eq.${loginName}`)
-      .maybeSingle()
-
-    setSalaryPrivacyProfile(profByLogin || null)
-  }
-
-  useEffect(() => { loadSalaryPrivacyProfile() }, [])
-  useEffect(() => { loadSalaryPrivacyProfile() }, [year, month, branchId, positionFilter])
+  useEffect(() => {
+    supabase.auth.getUser().then(async ({ data }) => {
+      const userId = data?.user?.id
+      if (!userId) return
+      const { data: prof } = await supabase.from('user_profiles').select('id, role, hide_manager_salary').eq('id', userId).maybeSingle()
+      setSalaryPrivacyProfile(prof || null)
+    })
+  }, [])
 
   useEffect(() => { load() }, [year, month, branchId, positionFilter])
 
@@ -2614,8 +2573,8 @@ function Salaries({ t }) {
   const dim = daysInMonth(year, month)
   const monthEnd = `${year}-${String(month).padStart(2, '0')}-${String(dim).padStart(2, '0')}`
   const isMonthClosingDay = todayISO() === monthEnd
-  const shouldHideManagerSalaries = Boolean(salaryPrivacyProfile?.hide_manager_salary)
-  const isManagerRow = (row) => isManagerStaff(row?.employees)
+  const shouldHideManagerSalaries = Boolean(salaryPrivacyProfile?.hide_manager_salary) && salaryPrivacyProfile?.role !== 'admin'
+  const isManagerRow = (row) => employeeGroupId(row?.employees) === STAFF_GROUP_MANAGERS || positionGroup(row?.employees?.position) === 'Менеджеры'
   const canSeeSalaryValue = (row) => !(shouldHideManagerSalaries && isManagerRow(row))
   const maskedMoney = <span className="blurred-money">•••••</span>
   const moneyCell = (row, value, className = '') => canSeeSalaryValue(row) ? <span className={className}>{fmt(value)}</span> : maskedMoney
@@ -2913,9 +2872,7 @@ function Salaries({ t }) {
           <div className="metric"><span>Выплачено за месяц</span><strong>{fmt(totals.payments)}</strong></div>
           <div className="metric"><span>Итоговый баланс</span><strong className={totals.balance >= 0 ? '' : 'bad'}>{fmt(totals.balance)}</strong></div>
         </div>
-        {shouldHideManagerSalaries
-          ? <p className="hint">Зарплаты менеджерского состава скрыты для текущего пользователя: суммы заменены на замутнённые значения.</p>
-          : <p className="hint">Маскировка зарплат менеджеров для текущего пользователя выключена.</p>}
+        {shouldHideManagerSalaries && <p className="hint">Зарплаты менеджерского состава скрыты для текущего пользователя.</p>}
         {message && <p className={`hint ${message === t('saved') || message.includes('Файл') ? 'good' : 'bad'}`}>{message}</p>}
       </div>
 
@@ -3939,7 +3896,7 @@ function Settings({ session, t, theme, setTheme }) {
         {settingsTab === 'users' && <>
           <div className="card span-2"><h3>Пользователи</h3><p className="hint">Добавление пользователей и права доступа.</p></div>
           <div className="card span-2"><div className="card-head"><h3>Добавить пользователя</h3></div><p className="hint">Пользователь входит по login. Система создаёт внутренний email вида login@rms.local.az, поэтому email-рассылка не используется.</p><div className="form-grid compact"><label><span>Login</span><input value={newUser.login} onChange={e => setNewUser({...newUser, login: e.target.value})} placeholder="nigar" /></label><label><span>Временный пароль</span><input type="password" value={newUser.password} onChange={e => setNewUser({...newUser, password: e.target.value})} /></label><label><span>Имя</span><input value={newUser.full_name} onChange={e => setNewUser({...newUser, full_name: e.target.value})} /></label></div><button className="small" onClick={addUser}>+ Добавить пользователя</button>{msg && <p className="hint good">{msg}</p>}</div>
-          <div className="card span-2"><div className="card-head"><h3>Права доступа</h3></div><p className="hint">По каждому разделу: нет доступа / readonly / editor. Для маскировки зарплат менеджеров нужен столбец user_profiles.hide_manager_salary. Для входа созданных пользователей выполните SQL-файл исправления login-пользователей и функцию create_rms_login_user.</p><div className="table-wrap"><table><thead><tr><th>Пользователь</th><th>Login</th><th>Активен</th><th>Зарплаты</th><th>Разделы</th></tr></thead><tbody>{users.map(u => <tr key={u.id}><td><b>{u.full_name || u.login_name || u.id}</b></td><td><span className="hint">{u.login_name || (u.email || '').split('@')[0] || u.id}</span></td><td><select value={String(u.is_active !== false)} onChange={e => updateUser(u.id, { is_active: e.target.value === 'true' })}><option value="true">Да</option><option value="false">Нет</option></select></td><td><label className="checkbox-row"><input type="checkbox" checked={Boolean(u.hide_manager_salary)} onChange={e => updateUser(u.id, { hide_manager_salary: e.target.checked })} /> Скрыть зарплаты менеджеров</label></td><td><div className="permission-grid">{editableSections.map(sec => <React.Fragment key={`${u.id}-${sec.id}`}><b>{t(sec.key)}</b><select value={getPermission(u.id, sec.id)} onChange={e => updatePermission(u.id, sec.id, e.target.value)}><option value="none">Нет доступа</option><option value="read">Readonly</option><option value="edit">Editor</option></select></React.Fragment>)}</div></td></tr>)}</tbody></table></div></div>
+          <div className="card span-2"><div className="card-head"><h3>Права доступа</h3></div><p className="hint">По каждому разделу: нет доступа / readonly / editor. Для маскировки зарплат менеджеров нужен столбец user_profiles.hide_manager_salary. Для входа созданных пользователей выполните SQL-файл исправления login-пользователей и функцию create_rms_login_user.</p><div className="table-wrap"><table><thead><tr><th>Пользователь</th><th>Login</th><th>Активен</th><th>Зарплаты</th><th>Разделы</th></tr></thead><tbody>{users.map(u => <tr key={u.id}><td><b>{u.full_name || u.login_name || u.id}</b></td><td><span className="hint">{u.login_name || (u.email || '').split('@')[0] || u.id}</span></td><td><select value={String(u.is_active !== false)} onChange={e => updateUser(u.id, { is_active: e.target.value === 'true' })}><option value="true">Да</option><option value="false">Нет</option></select></td><td><label className="checkbox-row"><input type="checkbox" checked={Boolean(u.hide_manager_salary)} onChange={e => updateUser(u.id, { hide_manager_salary: e.target.checked })} /> Скрыть менеджеров</label></td><td><div className="permission-grid">{editableSections.map(sec => <React.Fragment key={`${u.id}-${sec.id}`}><b>{t(sec.key)}</b><select value={getPermission(u.id, sec.id)} onChange={e => updatePermission(u.id, sec.id, e.target.value)}><option value="none">Нет доступа</option><option value="read">Readonly</option><option value="edit">Editor</option></select></React.Fragment>)}</div></td></tr>)}</tbody></table></div></div>
         </>}
 
         {settingsTab === 'voen' && <div className="card span-2"><div className="card-head"><h3>Наши VOEN / юрлица</h3></div><p className="hint">Используются в разделе “Поставщики”.</p><div className="form-grid compact"><label><span>Имя / компания</span><input value={legalForm.name} onChange={e => setLegalForm({...legalForm, name: e.target.value})} placeholder="Ruslan Rasulov" /></label><label><span>VOEN</span><input value={legalForm.voen} onChange={e => setLegalForm({...legalForm, voen: e.target.value})} /></label></div><button className="small" onClick={addLegalEntity}>+ Добавить VOEN</button>{msg && <p className="hint good">{msg}</p>}<div className="table-wrap" style={{marginTop:12}}><table><thead><tr><th>Имя / компания</th><th>VOEN</th><th>Активен</th></tr></thead><tbody>{legalEntities.map(le => <tr key={le.id}><td><input defaultValue={le.name} onBlur={e => updateLegalEntity(le.id, { name: e.target.value.trim() })} /></td><td><input defaultValue={le.voen} onBlur={e => updateLegalEntity(le.id, { voen: e.target.value.trim() })} /></td><td><select defaultValue={String(le.is_active !== false)} onChange={e => updateLegalEntity(le.id, { is_active: e.target.value === 'true' })}><option value="true">Да</option><option value="false">Нет</option></select></td></tr>)}{!legalEntities.length && <tr><td colSpan="3" className="hint">—</td></tr>}</tbody></table></div></div>}
