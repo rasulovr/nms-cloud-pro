@@ -7,7 +7,7 @@ const I18N = {
   ru: {
     system_title:'RMS', system_short_title:'RMS', system_subtitle:'Выручка · Финансы · Персонал · Поставщики', dashboard_tab:'Дашборд', pos_tab:'POS / Продажи',
     brand_subtitle:'Restaurant Management System', language_label:'Язык интерфейса', login_label:'Login', password_label:'Пароль',
-    login_button:'Войти', login_hint:'Вход по внутреннему login. Допустим вход по логину без домена.', login_error:'Неверный логин или пароль', show_password:'Показать пароль',
+    login_button:'Войти', login_hint:'Вход по внутреннему login. Допустим вход по логину без домена.', login_error:'Неверный логин или пароль', login_progress:'Вход в RMS...', user_disabled:'Пользователь отключён', user_not_found:'Пользователь не найден или пароль неверный. Создайте пользователя заново в Настройки → Пользователи.', press_enter_hint:'Можно нажать Enter после заполнения login и password.', show_password:'Показать пароль',
     logout:'Выйти', revenue_tab:'Выручка', finance_tab:'Финансы ресторанов', reports_tab:'Отчёты', recipes_tab:'Тех. карты', salaries_tab:'Зарплаты',
     attendance_tab:'Посещаемость', advances_tab:'Авансы', suppliers_tab:'Поставщики', debts_payments_tab:'Долги и оплаты', settings_tab:'Настройки',
     revenue_subtitle:'Ввод выручки и расходов за выбранную дату по филиалу', finance_subtitle:'Аналитика по филиалу, месяцу, выручке и расходам',
@@ -30,7 +30,7 @@ const I18N = {
   az: {
     system_title:'RMS', system_short_title:'RMS', system_subtitle:'Dövriyyə · Maliyyə · Personal · Təchizatçılar', dashboard_tab:'Dashboard', pos_tab:'POS / Satış',
     brand_subtitle:'Restaurant Management System', language_label:'İnterfeys dili', login_label:'Login', password_label:'Parol',
-    login_button:'Daxil ol', login_hint:'Daxili login ilə giriş. Domen yazmadan login istifadə etmək olar.', login_error:'Login və ya parol yanlışdır', show_password:'Parolu göstər',
+    login_button:'Daxil ol', login_hint:'Daxili login ilə giriş. Domen yazmadan login istifadə etmək olar.', login_error:'Login və ya parol yanlışdır', login_progress:'RMS-ə giriş...', user_disabled:'İstifadəçi deaktiv edilib', user_not_found:'İstifadəçi tapılmadı və ya parol yanlışdır. İstifadəçini Ayarlar → İstifadəçilər bölməsində yenidən yaradın.', press_enter_hint:'Login və parolu doldurduqdan sonra Enter düyməsini basa bilərsiniz.', show_password:'Parolu göstər',
     logout:'Çıxış', revenue_tab:'Dövriyyə', finance_tab:'Restoran maliyyəsi', reports_tab:'Hesabatlar', recipes_tab:'Tex. kartlar', salaries_tab:'Maaşlar',
     attendance_tab:'Davamiyyət', advances_tab:'Avanslar', suppliers_tab:'Təchizatçılar', debts_payments_tab:'Borclar və ödənişlər', settings_tab:'Ayarlar',
     revenue_subtitle:'Seçilmiş tarix və filial üzrə dövriyyə və xərclər', finance_subtitle:'Filial, ay, dövriyyə və xərclər üzrə analitika',
@@ -1112,7 +1112,7 @@ function App() {
   }
 
   if (loading) return <div className="login-screen"><div className="login-card">{t('loading')}</div></div>
-  if (!session) return <Login lang={lang} setLang={setLang} t={t} />
+  if (!session) return <Login key={lang} lang={lang} setLang={setLang} t={t} />
 
   return (
     <div className={`app theme-${theme || 'classic'}`}>
@@ -1145,7 +1145,7 @@ function App() {
         {!canReadAccess(currentAccess) && <section className="card"><h3>{t('permission_denied')}</h3><p className="hint">Этот раздел скрыт для текущего пользователя.</p></section>}
         {canReadAccess(currentAccess) && currentAccess === 'read' && <div className="readonly-banner">Режим просмотра: редактирование этого раздела отключено.</div>}
         {canReadAccess(currentAccess) && section === 'dashboard' && <Dashboard t={t} />}
-        {canReadAccess(currentAccess) && section === 'pos' && <POSLite t={t} />}
+        {canReadAccess(currentAccess) && section === 'pos' && <POSAdminCenter t={t} lang={lang} isAdmin={isAdmin || accessRank(sectionAccess('pos')) >= accessRank('admin')} />}
         {canReadAccess(currentAccess) && section === 'revenue' && <Revenue t={t} />}
         {canReadAccess(currentAccess) && section === 'finance' && <Finance t={t} lang={lang} />}
         {canReadAccess(currentAccess) && section === 'reports' && <Reports t={t} />}
@@ -1159,6 +1159,173 @@ function App() {
   )
 }
 
+
+
+function POSAdminCenter({ lang = 'ru', isAdmin = false }) {
+  const L = useMemo(() => ({
+    ru: {
+      title: 'POS Cloud', subtitle: 'Администрирование отдельного продукта RMS POS Cloud: отчёты, кассовые смены, терминалы, кассиры, товары, настройки и синхронизация.',
+      overview: 'Обзор', reports: 'Отчёты', shifts: 'Кассовые смены', terminals: 'Терминалы', cashiers: 'Кассиры', products: 'Товары POS', settings: 'Настройки POS', sync: 'Синхронизация', logs: 'Журнал операций',
+      refresh: 'Обновить', addTerminal: '+ Терминал', addCashier: '+ Кассир', addProduct: '+ Товар', save: 'Сохранить', active: 'Активен', inactive: 'Отключён', enable: 'Включить', disable: 'Отключить',
+      dateFrom: 'С даты', dateTo: 'По дату', branch: 'Филиал', allBranches: 'Все филиалы', revenue: 'POS выручка', closedChecks: 'Закрытые чеки', openChecks: 'Открытые чеки', avgCheck: 'Средний чек', cash: 'Наличные', card: 'Карта / банк',
+      terminalCode: 'Код терминала', terminalName: 'Название терминала', branchName: 'Филиал', status: 'Статус', checks: 'Чеки', amount: 'Сумма', cashier: 'Кассир', role: 'Роль', pin: 'PIN', table: 'Стол', payment: 'Оплата', date: 'Дата', total: 'Итого',
+      productName: 'Название товара', category: 'Категория', price: 'Цена', productHint: 'Товары добавляются в справочник меню POS. Названия блюд и товаров не переводятся.',
+      shiftsHint: 'Кассовые смены будут управляться из RMS POS Cloud. Здесь будет контроль открытия/закрытия смен, наличных, расхождений и ответственного кассира.',
+      syncHint: 'Контроль синхронизации POS Cloud → основная RMS: закрытые чеки, выручка, наличные/банк, повторная отправка и сверка с daily_revenue_entries.',
+      settingsHint: 'Настройки POS Cloud: service charge, структура столов, поведение оплаты, режим терминалов и будущий конструктор интерфейса POS.',
+      constructor: 'Конструктор интерфейса', constructorHint: 'Только администратор: порядок блоков, колонок и подразделов. Пока подготовлено как безопасный слой настроек, без изменения расчётной логики.',
+      adminOnly: 'Доступно только администратору', noData: 'Нет данных', loading: 'Загрузка...', tableSettings: 'Столы терминала', addTable: '+ Стол', servicePercent: 'Service charge %', operationLogHint: 'Здесь будет журнал действий POS: вход кассира, открытие/закрытие смены, отмена чека, изменение товара и повторная синхронизация.',
+      cashShift: 'Кассовая смена', openShift: 'Открыть смену', closeShift: 'Закрыть смену', expectedCash: 'Ожидаемая касса', countedCash: 'Сверка / на руках', difference: 'Расхождение'
+    },
+    az: {
+      title: 'POS Cloud', subtitle: 'Ayrı məhsul olan RMS POS Cloud-un idarə edilməsi: hesabatlar, kassa növbələri, terminallar, kassirlər, mallar, ayarlar və sinxronizasiya.',
+      overview: 'İcmal', reports: 'Hesabatlar', shifts: 'Kassa növbələri', terminals: 'Terminallar', cashiers: 'Kassirlər', products: 'POS malları', settings: 'POS ayarları', sync: 'Sinxronizasiya', logs: 'Əməliyyat jurnalı',
+      refresh: 'Yenilə', addTerminal: '+ Terminal', addCashier: '+ Kassir', addProduct: '+ Mal', save: 'Yadda saxla', active: 'Aktiv', inactive: 'Deaktiv', enable: 'Aktiv et', disable: 'Deaktiv et',
+      dateFrom: 'Başlanğıc tarix', dateTo: 'Son tarix', branch: 'Filial', allBranches: 'Bütün filiallar', revenue: 'POS dövriyyəsi', closedChecks: 'Bağlanmış çeklər', openChecks: 'Açıq çeklər', avgCheck: 'Orta çek', cash: 'Nağd', card: 'Kart / bank',
+      terminalCode: 'Terminal kodu', terminalName: 'Terminal adı', branchName: 'Filial', status: 'Status', checks: 'Çeklər', amount: 'Məbləğ', cashier: 'Kassir', role: 'Rol', pin: 'PIN', table: 'Masa', payment: 'Ödəniş', date: 'Tarix', total: 'Cəmi',
+      productName: 'Malın adı', category: 'Kateqoriya', price: 'Qiymət', productHint: 'Mallar POS menyu məlumat bazasına əlavə olunur. Yemək və mal adları tərcümə edilmir.',
+      shiftsHint: 'Kassa növbələri RMS POS Cloud tərəfindən idarə olunacaq. Burada növbənin açılması/bağlanması, nağd pul, fərqlər və məsul kassir nəzarətdə olacaq.',
+      syncHint: 'POS Cloud → əsas RMS sinxronizasiyasına nəzarət: bağlanmış çeklər, dövriyyə, nağd/bank, təkrar göndərmə və daily_revenue_entries ilə yoxlama.',
+      settingsHint: 'POS Cloud ayarları: service charge, masa strukturu, ödəniş davranışı, terminal rejimləri və gələcək POS interfeys konstruktoru.',
+      constructor: 'İnterfeys konstruktoru', constructorHint: 'Yalnız administrator: blokların, sütunların və alt bölmələrin ardıcıllığı. Hələlik hesablama məntiqinə toxunmadan təhlükəsiz ayar qatı kimi hazırlanır.',
+      adminOnly: 'Yalnız administrator üçün', noData: 'Məlumat yoxdur', loading: 'Yüklənir...', tableSettings: 'Terminal masaları', addTable: '+ Masa', servicePercent: 'Service charge %', operationLogHint: 'Burada POS əməliyyat jurnalı olacaq: kassir girişi, növbənin açılması/bağlanması, çekin ləğvi, mal dəyişikliyi və təkrar sinxronizasiya.',
+      cashShift: 'Kassa növbəsi', openShift: 'Növbəni aç', closeShift: 'Növbəni bağla', expectedCash: 'Gözlənilən kassa', countedCash: 'Sayım / əldə olan', difference: 'Fərq'
+    }
+  }), [])
+  const tx = L[lang] || L.ru
+  const branches = useBranches()
+  const [tab, setTab] = useState('overview')
+  const [dateFrom, setDateFrom] = useState(todayISO())
+  const [dateTo, setDateTo] = useState(todayISO())
+  const [branchId, setBranchId] = useState('')
+  const [terminals, setTerminals] = useState([])
+  const [cashiers, setCashiers] = useState([])
+  const [orders, setOrders] = useState([])
+  const [products, setProducts] = useState([])
+  const [message, setMessage] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [productForm, setProductForm] = useState({ name: '', category: '', price: '' })
+
+  const tabs = [
+    ['overview', tx.overview], ['reports', tx.reports], ['shifts', tx.shifts], ['terminals', tx.terminals], ['cashiers', tx.cashiers], ['products', tx.products], ['settings', tx.settings], ['sync', tx.sync], ['logs', tx.logs]
+  ]
+
+  useEffect(() => { load() }, [dateFrom, dateTo, branchId])
+
+  async function safeSelect(table, queryBuilder) {
+    try {
+      const res = await queryBuilder(supabase.from(table))
+      if (res.error) throw res.error
+      return res.data || []
+    } catch (e) {
+      console.warn(`POS admin: ${table}`, e)
+      return []
+    }
+  }
+
+  async function load() {
+    setBusy(true)
+    setMessage('')
+    const fromIso = `${dateFrom}T00:00:00`
+    const toDate = new Date(`${dateTo}T00:00:00`)
+    toDate.setDate(toDate.getDate() + 1)
+    const toIso = toDate.toISOString()
+    try {
+      const terminalRows = await safeSelect('pos_terminals', q => q.select('*').order('terminal_code', { ascending: true }))
+      const cashierRows = await safeSelect('pos_users', q => q.select('*').order('full_name', { ascending: true }))
+      const productRows = await safeSelect('menu_items', q => q.select('*').limit(500))
+      let orderQuery = supabase.from('pos_orders').select('*').gte('opened_at', fromIso).lt('opened_at', toIso).order('opened_at', { ascending: false }).limit(300)
+      if (branchId) orderQuery = orderQuery.eq('branch_id', branchId)
+      const orderRes = await orderQuery
+      if (orderRes.error) throw orderRes.error
+      setTerminals(terminalRows)
+      setCashiers(cashierRows)
+      setProducts(productRows)
+      setOrders(orderRes.data || [])
+    } catch (e) {
+      setMessage(e.message || String(e))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const filteredTerminals = useMemo(() => branchId ? terminals.filter(t => String(t.branch_id || '') === String(branchId)) : terminals, [terminals, branchId])
+  const filteredCashiers = useMemo(() => branchId ? cashiers.filter(c => String(c.branch_id || '') === String(branchId)) : cashiers, [cashiers, branchId])
+  const summary = useMemo(() => {
+    const closed = orders.filter(o => o.status === 'closed')
+    const open = orders.filter(o => ['open', 'saved'].includes(o.status))
+    const revenue = closed.reduce((s, o) => s + parseNum(o.total_amount || o.paid_amount), 0)
+    const cash = closed.filter(o => String(o.payment_method || '').toLowerCase() === 'cash').reduce((s, o) => s + parseNum(o.total_amount || o.paid_amount), 0)
+    const card = revenue - cash
+    return { revenue, closed: closed.length, open: open.length, avg: closed.length ? revenue / closed.length : 0, cash, card }
+  }, [orders])
+
+  async function toggleTerminal(row) {
+    if (!isAdmin) return setMessage(tx.adminOnly)
+    const { error } = await supabase.from('pos_terminals').update({ is_active: !row.is_active, updated_at: new Date().toISOString() }).eq('id', row.id)
+    if (error) setMessage(error.message)
+    await load()
+  }
+
+  async function addTerminal() {
+    if (!isAdmin) return setMessage(tx.adminOnly)
+    const code = prompt(tx.terminalCode)
+    if (!code) return
+    const branch = branches.find(b => String(b.id) === String(branchId)) || branches[0]
+    const { error } = await supabase.from('pos_terminals').insert({ terminal_code: code.trim(), name: code.trim(), branch_id: branch?.id || null, branch_name: branch?.name || null, is_active: true, settings: { service_percent: 10, tables: [{ id: 'T01', name: 'Стол 1', zone: 'Зал', seats: 2 }, { id: 'TAKEAWAY', name: 'Take Away', zone: 'Касса', seats: 0 }] } })
+    if (error) setMessage(error.message)
+    await load()
+  }
+
+  async function addCashier() {
+    if (!isAdmin) return setMessage(tx.adminOnly)
+    const fullName = prompt(tx.cashier)
+    if (!fullName) return
+    const pin = prompt(tx.pin)
+    if (!pin) return
+    const branch = branches.find(b => String(b.id) === String(branchId)) || branches[0]
+    const { error } = await supabase.from('pos_users').insert({ full_name: fullName.trim(), pin_code: pin.trim(), role: 'cashier', branch_id: branch?.id || null, is_active: true })
+    if (error) setMessage(error.message)
+    await load()
+  }
+
+  async function addProduct() {
+    if (!isAdmin) return setMessage(tx.adminOnly)
+    if (!productForm.name.trim()) return
+    const { error } = await supabase.from('menu_items').insert({ name: productForm.name.trim(), category: productForm.category.trim() || 'POS', price: parseNum(productForm.price) })
+    if (error) setMessage(error.message)
+    else setProductForm({ name: '', category: '', price: '' })
+    await load()
+  }
+
+  const branchName = (id) => branches.find(b => String(b.id) === String(id))?.name || '—'
+  const terminalName = (id) => terminals.find(t => String(t.id) === String(id))?.terminal_code || '—'
+  const cashierName = (id) => cashiers.find(c => String(c.id) === String(id))?.full_name || '—'
+
+  return <section>
+    <section className="topbar"><div><h2>{tx.title}</h2><p>{tx.subtitle}</p></div><button className="ghost small" onClick={load}>{busy ? tx.loading : tx.refresh}</button></section>
+    <div className="settings-tabs">{tabs.map(([id, label]) => <button key={id} className={tab === id ? 'active' : ''} onClick={() => setTab(id)}>{label}</button>)}</div>
+    <div className="card"><div className="form-grid compact"><label><span>{tx.dateFrom}</span><input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} /></label><label><span>{tx.dateTo}</span><input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} /></label><label><span>{tx.branch}</span><select value={branchId} onChange={e => setBranchId(e.target.value)}><option value="">{tx.allBranches}</option>{branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label></div>{message && <p className="bad">{message}</p>}</div>
+
+    {tab === 'overview' && <><div className="grid"><Metric label={tx.revenue} value={`${fmt(summary.revenue)} AZN`} /><Metric label={tx.closedChecks} value={summary.closed} /><Metric label={tx.openChecks} value={summary.open} /><Metric label={tx.avgCheck} value={`${fmt(summary.avg)} AZN`} /></div><div className="grid"><div className="card"><h3>{tx.cash}</h3><p className="big-number">{fmt(summary.cash)} AZN</p></div><div className="card"><h3>{tx.card}</h3><p className="big-number">{fmt(summary.card)} AZN</p></div></div></>}
+
+    {(tab === 'reports' || tab === 'overview') && <div className="card"><h3>{tx.reports}</h3><div className="table-wrap"><table><thead><tr><th>{tx.date}</th><th>{tx.branch}</th><th>{tx.terminalCode}</th><th>{tx.cashier}</th><th>{tx.table}</th><th>{tx.status}</th><th>{tx.payment}</th><th>{tx.total}</th></tr></thead><tbody>{orders.slice(0, tab === 'overview' ? 10 : 100).map(o => <tr key={o.id}><td>{formatDT(o.closed_at || o.opened_at || o.created_at)}</td><td>{branchName(o.branch_id)}</td><td>{terminalName(o.terminal_id)}</td><td>{cashierName(o.user_id)}</td><td>{o.table_name || o.table_id || '—'}</td><td>{o.status || '—'}</td><td>{o.payment_method || '—'}</td><td>{fmt(o.total_amount || o.paid_amount)}</td></tr>)}{!orders.length && <tr><td colSpan="8" className="hint">{tx.noData}</td></tr>}</tbody></table></div></div>}
+
+    {tab === 'terminals' && <div className="card"><div className="card-head"><h3>{tx.terminals}</h3><button onClick={addTerminal}>{tx.addTerminal}</button></div><div className="table-wrap"><table><thead><tr><th>{tx.terminalCode}</th><th>{tx.terminalName}</th><th>{tx.branch}</th><th>{tx.status}</th><th></th></tr></thead><tbody>{filteredTerminals.map(row => <tr key={row.id}><td>{row.terminal_code}</td><td>{row.name || '—'}</td><td>{branchName(row.branch_id) || row.branch_name}</td><td>{row.is_active ? tx.active : tx.inactive}</td><td><button className="ghost small" onClick={() => toggleTerminal(row)}>{row.is_active ? tx.disable : tx.enable}</button></td></tr>)}{!filteredTerminals.length && <tr><td colSpan="5" className="hint">{tx.noData}</td></tr>}</tbody></table></div></div>}
+
+    {tab === 'cashiers' && <div className="card"><div className="card-head"><h3>{tx.cashiers}</h3><button onClick={addCashier}>{tx.addCashier}</button></div><div className="table-wrap"><table><thead><tr><th>{tx.cashier}</th><th>{tx.role}</th><th>{tx.branch}</th><th>{tx.status}</th></tr></thead><tbody>{filteredCashiers.map(row => <tr key={row.id}><td>{row.full_name}</td><td>{row.role}</td><td>{branchName(row.branch_id)}</td><td>{row.is_active ? tx.active : tx.inactive}</td></tr>)}{!filteredCashiers.length && <tr><td colSpan="4" className="hint">{tx.noData}</td></tr>}</tbody></table></div></div>}
+
+    {tab === 'products' && <div className="card"><div className="card-head"><div><h3>{tx.products}</h3><p className="hint">{tx.productHint}</p></div></div><div className="form-grid compact"><label><span>{tx.productName}</span><input value={productForm.name} onChange={e => setProductForm(f => ({ ...f, name: e.target.value }))} /></label><label><span>{tx.category}</span><input value={productForm.category} onChange={e => setProductForm(f => ({ ...f, category: e.target.value }))} /></label><label><span>{tx.price}</span><input inputMode="decimal" value={productForm.price} onChange={e => setProductForm(f => ({ ...f, price: e.target.value }))} /></label><label><span>&nbsp;</span><button onClick={addProduct}>{tx.addProduct}</button></label></div><div className="table-wrap"><table><thead><tr><th>{tx.productName}</th><th>{tx.category}</th><th>{tx.price}</th></tr></thead><tbody>{products.slice(0, 200).map(p => <tr key={p.id}><td>{p.name || p.title || p.product_name}</td><td>{p.category || p.category_name || p.type || '—'}</td><td>{fmt(p.price || p.sale_price || p.selling_price || 0)}</td></tr>)}{!products.length && <tr><td colSpan="3" className="hint">{tx.noData}</td></tr>}</tbody></table></div></div>}
+
+    {tab === 'shifts' && <div className="card"><h3>{tx.cashShift}</h3><p className="hint">{tx.shiftsHint}</p><div className="grid"><Metric label={tx.expectedCash} value={`${fmt(summary.cash)} AZN`} /><Metric label={tx.countedCash} value="0.00 AZN" /><Metric label={tx.difference} value={`${fmt(0 - summary.cash)} AZN`} /></div><div className="action-row"><button disabled={!isAdmin}>{tx.openShift}</button><button disabled={!isAdmin}>{tx.closeShift}</button></div></div>}
+
+    {tab === 'settings' && <div className="card"><h3>{tx.settings}</h3><p className="hint">{tx.settingsHint}</p><div className="table-wrap"><table><thead><tr><th>{tx.terminalCode}</th><th>{tx.servicePercent}</th><th>{tx.tableSettings}</th></tr></thead><tbody>{filteredTerminals.map(t => <tr key={t.id}><td>{t.terminal_code}</td><td>{parseNum(t.settings?.service_percent || 10)}%</td><td>{Array.isArray(t.settings?.tables) ? t.settings.tables.length : 0}</td></tr>)}</tbody></table></div><div className="notice"><b>{tx.constructor}</b><p className="hint">{isAdmin ? tx.constructorHint : tx.adminOnly}</p></div></div>}
+
+    {tab === 'sync' && <div className="card"><h3>{tx.sync}</h3><p className="hint">{tx.syncHint}</p><div className="grid"><Metric label={tx.closedChecks} value={summary.closed} /><Metric label={tx.revenue} value={`${fmt(summary.revenue)} AZN`} /><Metric label={tx.cash} value={`${fmt(summary.cash)} AZN`} /><Metric label={tx.card} value={`${fmt(summary.card)} AZN`} /></div></div>}
+
+    {tab === 'logs' && <div className="card"><h3>{tx.logs}</h3><p className="hint">{tx.operationLogHint}</p></div>}
+  </section>
+}
 
 function posItemType(item) {
   const category = normalizeExpenseText(item?.category || item?.name || '')
@@ -2124,7 +2291,7 @@ function Login({ lang, setLang, t }) {
 
   async function signIn() {
     setError('')
-    const stopProgress = startGlobalProgress('Вход в RMS...')
+    const stopProgress = startGlobalProgress(t('login_progress'))
     try {
     const rawLogin = String(login || '').trim()
     const rawPassword = String(password || '')
@@ -2141,7 +2308,7 @@ function Login({ lang, setLang, t }) {
       : null
 
     if (internalUser) {
-      if (internalUser.is_active === false) { stopProgress(); return setError('Пользователь отключён') }
+      if (internalUser.is_active === false) { stopProgress(); return setError(t('user_disabled')) }
       if (String(internalUser.password || '') !== rawPassword) { stopProgress(); return setError(t('login_error')) }
 
       const loginName = internalUser.login || normalizedLogin
@@ -2160,7 +2327,7 @@ function Login({ lang, setLang, t }) {
     }
 
     if (!rawLogin.includes('@') || /@(rms|nms)\.local\.az$/i.test(rawLogin) || /@rms\.internal$/i.test(rawLogin)) {
-      stopProgress(); return setError('Пользователь не найден или пароль неверный. Создайте пользователя заново в Настройки → Пользователи.')
+      stopProgress(); return setError(t('user_not_found'))
     }
 
     const { error } = await supabase.auth.signInWithPassword({ email: rawLogin.toLowerCase(), password: rawPassword })
@@ -2177,22 +2344,24 @@ function Login({ lang, setLang, t }) {
     }
   }
 
-  return <div className="login-screen theme-executive">
+  return <div className="login-screen theme-executive" key={`login-${lang}`}>
     <ThemeStyles />
     <ResponsiveAndSettingsStyles />
     <GlobalProgressOverlay />
-    <div className="login-card">
-    <ProductLogo login />
-    <h1 className="login-title">{t('system_title')}</h1>
-    <p className="login-subtitle">{t('brand_subtitle')}</p>
-    <p>{t('login_hint')}</p>
-    <label><span>{t('language_label')}</span><select value={lang} onChange={e => setLang(e.target.value)}><option value="ru">Русский</option><option value="az">Azərbaycan</option></select></label>
-    <label><span>{t('login_label')}</span><input value={login} onChange={e => setLogin(e.target.value)} placeholder="" autoComplete="username" /></label>
-    <label><span>{t('password_label')}</span><input type={showPassword ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} autoComplete="current-password" /></label>
-    <label className="checkbox-row"><input type="checkbox" checked={showPassword} onChange={e => setShowPassword(e.target.checked)} /> {t('show_password')}</label>
-    {error && <p className="bad">{error}</p>}
-    <button className="primary" onClick={signIn}>{t('login_button')}</button>
-  </div></div>
+    <form className="login-card" onSubmit={(e) => { e.preventDefault(); signIn() }}>
+      <ProductLogo login />
+      <h1 className="login-title">{t('system_title')}</h1>
+      <p className="login-subtitle">{t('brand_subtitle')}</p>
+      <p>{t('login_hint')}</p>
+      <label><span>{t('language_label')}</span><select value={lang} onChange={e => setLang(e.target.value)}><option value="ru">Русский</option><option value="az">Azərbaycan</option></select></label>
+      <label><span>{t('login_label')}</span><input value={login} onChange={e => setLogin(e.target.value)} placeholder="" autoComplete="username" autoFocus /></label>
+      <label><span>{t('password_label')}</span><input type={showPassword ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} autoComplete="current-password" /></label>
+      <label className="checkbox-row"><input type="checkbox" checked={showPassword} onChange={e => setShowPassword(e.target.checked)} /> {t('show_password')}</label>
+      <p className="hint">{t('press_enter_hint')}</p>
+      {error && <p className="bad">{error}</p>}
+      <button className="primary" type="submit">{t('login_button')}</button>
+    </form>
+  </div>
 }
 
 function useBranches() {
