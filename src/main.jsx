@@ -24,7 +24,7 @@ const I18N = {
     revenue_plan_progress:'Выполнение плана выручки', profit_plan_progress:'Выполнение плана прибыли', module_coming:'Раздел будет добавлен следующим этапом.',
     settings_subtitle:'Пользователи, права доступа и режимы работы', users_management:'Пользователи', add_user:'+ Пользователь',
     role:'Роль', sections_access:'Доступ к разделам', access_mode:'Режим', administrator:'Администратор', employee:'Сотрудник',
-    read_only:'Только чтение', edit_mode:'Изменение', permission_denied:'Нет доступа к этому разделу', new_expense:'Новая статья', save:'Сохранить', saved:'Сохранено', loading:'Загрузка...', profile:'Профиль текущего пользователя', full_name:'Имя', create_admin:'Создать admin-профиль',
+    read_only:'Только чтение', edit_mode:'Изменение', permission_denied:'Нет доступа к этому разделу', new_expense:'Новая статья', save:'Сохранить', saved:'Сохранено', loading:'Загрузка...', profile:'Профиль текущего пользователя', full_name:'Имя', create_admin:'Создать admin-профиль', suppliers_subtitle:'Поставщики, поступления, оплаты, товары и долги. VOEN / юрлица теперь находятся в разделе “Настройки”.', supplier_opening_debt_title:'Долг поставщику за предыдущий период', supplier_opening_debt_hint:'Используйте при запуске программы с нуля, чтобы перенести старый долг в баланс поставщика.', supplier:'Поставщик', select_supplier:'Выберите поставщика', debt_date:'Дата долга', debt_amount:'Сумма долга', invoice_mark:'Фактура / отметка', add_debt:'+ Добавить долг', supplier_purchases_title:'Поступления от поставщика', supplier_purchases_hint:'Сначала заполняется шапка фактуры. Товары добавляются строками ниже.', our_voen:'Наш VOEN', branch:'Филиал', purchase_date:'Дата поступления', invoice_number:'Номер фактуры', purchase_items_title:'Товары в поступлении', purchase_items_hint:'Если товара нет, сначала добавьте его ниже в блоке “Товары”.', add_item_row:'+ Строка товара', type:'Тип', product:'Товар', purchase_qty:'Кол-во закупа', purchase_unit:'Ед. закупа', unit_price:'Цена за ед.', invoice_total:'Итого по фактуре', save_purchase:'+ Сохранить поступление', supplier_payment_title:'Оплата поставщику', supplier_payment_hint:'Укажите сумму оплаты, номера счёт-фактур и комментарий.', payment_date:'Дата оплаты', payment_amount:'Сумма оплаты', invoice_notes:'Отметки / номера счёт-фактур', save_payment:'+ Сохранить оплату', contractors:'Контрагенты', contractors_hint:'Условия оплаты и лимиты используются в Dashboard для проблемных долгов.', contractor_name:'Имя контрагента', supplier_voen:'VOEN поставщика', contact:'Контакт', phone:'Телефон', info:'Информация', payment_term_days:'Срок оплаты, дней', credit_limit:'Кредитный лимит', opening_debt_previous:'Долг за предыдущий период', opening_debt_date:'Дата стартового долга', opening_debt_comment:'Комментарий к стартовому долгу', add_supplier:'+ Добавить поставщика', products_title:'Товары', products_hint:'Товар создаётся один раз и потом выбирается в поступлении и в техкарте.', base_unit_recipe:'Базовая ед. для техкарты', add_product:'+ Добавить товар', latest_purchases:'Последние поступления', latest_purchases_hint:'Сначала открывается просмотр накладной. Редактирование и удаление доступны внутри накладной.', invoice:'Фактура', sum:'Сумма', status:'Статус', cancelled:'Отменено', active:'Активно', close:'Закрыть', view:'Просмотр', invoice_word:'Накладная', no_number:'без номера', created:'Создано', updated:'Изменено', done:'Готово', edit:'Редактировать', delete:'Удалить', quantity:'Кол-во', unit:'Ед.', price:'Цена', items_not_found:'Товары не найдены', supplier_opening_debt_short:'Долг за предыдущий период', starting_debt:'Стартовый долг', receipt:'Поступление', payment:'Оплата', no_purchase:'нет закупки', first_price:'первая цена', enter_supplier_name:'Введите имя контрагента', supplier_saved_debt_added:'Поставщик сохранён, стартовый долг добавлен', enter_product:'Введите товар', select_supplier_and_voen:'Выберите поставщика и VOEN', check_product_qty_unit_price:'Проверьте товар, количество, единицу и цену', add_at_least_one_item:'Добавьте хотя бы один товар в поступление', delete_purchase_confirm:'Удалить поступление? Оно будет зачёркнуто и не будет учитываться в финансах.', select_supplier_msg:'Выберите поставщика', enter_debt_amount:'Введите сумму долга', adding_opening_debt:'Добавление стартового долга...', opening_debt_added:'Стартовый долг поставщику добавлен', select_supplier_and_payment_amount:'Выберите поставщика и сумму оплаты', saving_supplier:'Сохранение поставщика...', saving_product:'Сохранение товара...', select_product_error:'Выберите товар из списка. Если товара нет, сначала добавьте его в блоке “Товары”.',
     months:['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь']
   },
   az: {
@@ -47,7 +47,7 @@ const I18N = {
     revenue_plan_progress:'Dövriyyə planının icrası', profit_plan_progress:'Mənfəət planının icrası', module_coming:'Bölmə növbəti mərhələdə əlavə olunacaq.',
     settings_subtitle:'İstifadəçilər, giriş hüquqları və rejimlər', users_management:'İstifadəçilər', add_user:'+ İstifadəçi',
     role:'Rol', sections_access:'Bölmələrə giriş', access_mode:'Rejim', administrator:'Administrator', employee:'Əməkdaş',
-    read_only:'Yalnız oxuma', edit_mode:'Dəyişiklik', permission_denied:'Bu bölməyə giriş yoxdur', new_expense:'Yeni xərc maddəsi', save:'Yadda saxla', saved:'Saxlanıldı', loading:'Yüklənir...', profile:'Cari istifadəçi profili', full_name:'Ad', create_admin:'Admin profil yarat',
+    read_only:'Yalnız oxuma', edit_mode:'Dəyişiklik', permission_denied:'Bu bölməyə giriş yoxdur', new_expense:'Yeni xərc maddəsi', save:'Yadda saxla', saved:'Saxlanıldı', loading:'Yüklənir...', profile:'Cari istifadəçi profili', full_name:'Ad', create_admin:'Admin profil yarat', suppliers_subtitle:'Təchizatçılar, daxilolmalar, ödənişlər, mallar və borclar. VÖEN / hüquqi şəxslər artıq “Ayarlar” bölməsindədir.', supplier_opening_debt_title:'Əvvəlki dövrdən təchizatçı borcu', supplier_opening_debt_hint:'Proqramı sıfırdan başladıqda köhnə borcu təchizatçının balansına köçürmək üçün istifadə edin.', supplier:'Təchizatçı', select_supplier:'Təchizatçı seçin', debt_date:'Borc tarixi', debt_amount:'Borc məbləği', invoice_mark:'Faktura / qeyd', add_debt:'+ Borc əlavə et', supplier_purchases_title:'Təchizatçıdan daxilolmalar', supplier_purchases_hint:'Əvvəl fakturanın başlığı doldurulur. Mallar aşağıda sətirlərlə əlavə olunur.', our_voen:'Bizim VÖEN', branch:'Filial', purchase_date:'Daxilolma tarixi', invoice_number:'Faktura nömrəsi', purchase_items_title:'Daxilolmadakı mallar', purchase_items_hint:'Mal siyahıda yoxdursa, əvvəl aşağıdakı “Mallar” blokunda əlavə edin.', add_item_row:'+ Mal sətri', type:'Tip', product:'Mal', purchase_qty:'Alış miqdarı', purchase_unit:'Alış vahidi', unit_price:'Vahid qiyməti', invoice_total:'Faktura üzrə cəmi', save_purchase:'+ Daxilolmanı yadda saxla', supplier_payment_title:'Təchizatçıya ödəniş', supplier_payment_hint:'Ödəniş məbləğini, faktura nömrələrini və şərhi qeyd edin.', payment_date:'Ödəniş tarixi', payment_amount:'Ödəniş məbləği', invoice_notes:'Qeydlər / faktura nömrələri', save_payment:'+ Ödənişi yadda saxla', contractors:'Kontragentlər', contractors_hint:'Ödəniş şərtləri və limitlər Dashboard-da problemli borclar üçün istifadə olunur.', contractor_name:'Kontragent adı', supplier_voen:'Təchizatçı VÖEN-i', contact:'Əlaqə şəxsi', phone:'Telefon', info:'Məlumat', payment_term_days:'Ödəniş müddəti, gün', credit_limit:'Kredit limiti', opening_debt_previous:'Əvvəlki dövr borcu', opening_debt_date:'Başlanğıc borc tarixi', opening_debt_comment:'Başlanğıc borc şərhi', add_supplier:'+ Təchizatçı əlavə et', products_title:'Mallar', products_hint:'Mal bir dəfə yaradılır, sonra daxilolmada və tex. kartda seçilir.', base_unit_recipe:'Tex. kart üçün baza vahidi', add_product:'+ Mal əlavə et', latest_purchases:'Son daxilolmalar', latest_purchases_hint:'Əvvəl fakturaya baxış açılır. Redaktə və silmə fakturanın içində mümkündür.', invoice:'Faktura', sum:'Məbləğ', status:'Status', cancelled:'Ləğv edilib', active:'Aktiv', close:'Bağla', view:'Baxış', invoice_word:'Qaimə', no_number:'nömrəsiz', created:'Yaradılıb', updated:'Dəyişdirilib', done:'Hazır', edit:'Redaktə et', delete:'Sil', quantity:'Miqdar', unit:'Vahid', price:'Qiymət', items_not_found:'Mallar tapılmadı', supplier_opening_debt_short:'Əvvəlki dövr borcu', starting_debt:'Başlanğıc borc', receipt:'Daxilolma', payment:'Ödəniş', no_purchase:'alış yoxdur', first_price:'ilk qiymət', enter_supplier_name:'Kontragent adını daxil edin', supplier_saved_debt_added:'Təchizatçı saxlanıldı, başlanğıc borc əlavə olundu', enter_product:'Mal daxil edin', select_supplier_and_voen:'Təchizatçı və VÖEN seçin', check_product_qty_unit_price:'Malı, miqdarı, vahidi və qiyməti yoxlayın', add_at_least_one_item:'Daxilolmaya ən azı bir mal əlavə edin', delete_purchase_confirm:'Daxilolma silinsin? Üstündən xətt çəkiləcək və maliyyədə nəzərə alınmayacaq.', select_supplier_msg:'Təchizatçı seçin', enter_debt_amount:'Borc məbləğini daxil edin', adding_opening_debt:'Başlanğıc borc əlavə olunur...', opening_debt_added:'Təchizatçıya başlanğıc borc əlavə olundu', select_supplier_and_payment_amount:'Təchizatçı və ödəniş məbləğini seçin', saving_supplier:'Təchizatçı saxlanılır...', saving_product:'Mal saxlanılır...', select_product_error:'Siyahıdan mal seçin. Mal yoxdursa, əvvəl “Mallar” blokunda əlavə edin.',
     months:['Yanvar','Fevral','Mart','Aprel','May','İyun','İyul','Avqust','Sentyabr','Oktyabr','Noyabr','Dekabr']
   }
 }
@@ -6997,7 +6997,7 @@ function Suppliers({ t }) {
         setProfiles(ws.user_profiles || [])
         return
       }
-      setMessage(error?.message || 'Нет доступа к поставщикам')
+      setMessage(error?.message || t('permission_denied'))
     }
 
     const [{ data: le }, { data: sup }, { data: prod }, { data: bal }, { data: pur }, { data: pay }, { data: opening }, { data: prof }] = await Promise.all([
@@ -7068,8 +7068,8 @@ function Suppliers({ t }) {
     rows.sort((a, b) => String(b.date).localeCompare(String(a.date)))
     const current = rows[0]
     const previous = rows[1]
-    if (!current) return { label: 'нет закупки', className: 'hint' }
-    if (!previous || !previous.price) return { label: `${fmt(current.price)} · первая цена`, className: 'hint' }
+    if (!current) return { label: t('no_purchase'), className: 'hint' }
+    if (!previous || !previous.price) return { label: `${fmt(current.price)} · ${t('first_price')}`, className: 'hint' }
     const diff = current.price - previous.price
     const pctChange = previous.price ? diff / previous.price * 100 : 0
     const sign = diff > 0 ? '+' : ''
@@ -7084,14 +7084,14 @@ function Suppliers({ t }) {
   }
   async function ensureProduct(row) {
     if (row.product_id) return products.find(p => p.id === row.product_id)
-    throw new Error('Выберите товар из списка. Если товара нет, сначала добавьте его в блоке “Товары”.')
+    throw new Error(t('select_product_error'))
   }
 
   async function addSupplier() {
     setMessage('')
-    if (!supplierForm.name.trim()) return setMessage('Введите имя контрагента')
+    if (!supplierForm.name.trim()) return setMessage(t('enter_supplier_name'))
     const openingAmount = parseNum(supplierForm.opening_debt_amount)
-    const stopProgress = startGlobalProgress('Сохранение поставщика...')
+    const stopProgress = startGlobalProgress(t('saving_supplier'))
     try {
       const { data: createdSupplier, error } = await supabase.from('suppliers').insert({
         name: supplierForm.name.trim(), voen: supplierForm.voen.trim() || null,
@@ -7107,15 +7107,15 @@ function Suppliers({ t }) {
           p_supplier_id: createdSupplier.id,
           p_debt_date: supplierForm.opening_debt_date || todayISO(),
           p_amount: openingAmount,
-          p_invoice_notes: 'Стартовый долг',
-          p_comment: supplierForm.opening_debt_comment?.trim() || 'Долг за предыдущий период'
+          p_invoice_notes: t('starting_debt'),
+          p_comment: supplierForm.opening_debt_comment?.trim() || t('supplier_opening_debt_short')
         })
         if (debtError) throw debtError
       }
 
       setSupplierForm({ name: '', voen: '', contact_person: '', phone: '', info: '', payment_term_days: '', credit_limit: '', opening_debt_amount: '', opening_debt_date: todayISO(), opening_debt_comment: '' })
       await load()
-      setMessage(openingAmount > 0 ? 'Поставщик сохранён, стартовый долг добавлен' : t('saved'))
+      setMessage(openingAmount > 0 ? t('supplier_saved_debt_added') : t('saved'))
     } catch (e) {
       setMessage(e.message || String(e))
     } finally {
@@ -7129,8 +7129,8 @@ function Suppliers({ t }) {
   }
   async function addProductFromForm() {
     setMessage('')
-    if (!productForm.name.trim()) return setMessage('Введите товар')
-    const stopProgress = startGlobalProgress('Сохранение товара...')
+    if (!productForm.name.trim()) return setMessage(t('enter_product'))
+    const stopProgress = startGlobalProgress(t('saving_product'))
     const { error } = await supabase.from('supplier_products').insert({ name: productForm.name.trim(), category: productForm.category, base_unit: productForm.base_unit })
     stopProgress()
     if (error) return setMessage(error.message)
@@ -7141,7 +7141,7 @@ function Suppliers({ t }) {
   async function addPurchase() {
     setMessage('')
     try {
-      if (!purchaseForm.supplier_id || !purchaseForm.legal_entity_id) throw new Error('Выберите поставщика и VOEN')
+      if (!purchaseForm.supplier_id || !purchaseForm.legal_entity_id) throw new Error(t('select_supplier_and_voen'))
       const prepared = []
       for (const row of lineRows) {
         const hasData = row.product_id || parseNum(row.quantity) || parseNum(row.unit_price)
@@ -7151,10 +7151,10 @@ function Suppliers({ t }) {
         const unitPrice = parseNum(row.unit_price)
         const total = quantity * unitPrice
         const baseQty = convertToBase(quantity, row.unit, product?.base_unit)
-        if (!product?.id || !quantity || !unitPrice || !baseQty) throw new Error('Проверьте товар, количество, единицу и цену')
+        if (!product?.id || !quantity || !unitPrice || !baseQty) throw new Error(t('check_product_qty_unit_price'))
         prepared.push({ row, product, quantity, unitPrice, total, baseQty })
       }
-      if (!prepared.length) throw new Error('Добавьте хотя бы один товар в поступление')
+      if (!prepared.length) throw new Error(t('add_at_least_one_item'))
       const totalAmount = prepared.reduce((s, r) => s + r.total, 0)
       const { data: purchase, error } = await supabase.from('supplier_purchases').insert({
         supplier_id: purchaseForm.supplier_id, legal_entity_id: purchaseForm.legal_entity_id,
@@ -7197,7 +7197,7 @@ function Suppliers({ t }) {
     await recalcPurchaseTotal(purchaseId); await load(); setMessage(t('saved'))
   }
   async function softDeletePurchase(id) {
-    if (!window.confirm('Удалить поступление? Оно будет зачёркнуто и не будет учитываться в финансах.')) return
+    if (!window.confirm(t('delete_purchase_confirm'))) return
     const { data: authData } = await supabase.auth.getUser()
     const { error } = await supabase.from('supplier_purchases').update({
       deleted_at: new Date().toISOString(),
@@ -7208,10 +7208,10 @@ function Suppliers({ t }) {
   function startPayment(supplierId) { setPaymentForm({ supplier_id: supplierId, payment_date: todayISO(), amount: '', invoice_notes: '', comment: '' }) }
   async function addOpeningDebt() {
     setMessage('')
-    if (!openingDebtForm.supplier_id) return setMessage('Выберите поставщика')
+    if (!openingDebtForm.supplier_id) return setMessage(t('select_supplier_msg'))
     const amount = parseNum(openingDebtForm.amount)
-    if (!amount) return setMessage('Введите сумму долга')
-    const stopProgress = startGlobalProgress('Добавление стартового долга...')
+    if (!amount) return setMessage(t('enter_debt_amount'))
+    const stopProgress = startGlobalProgress(t('adding_opening_debt'))
     try {
       const { error } = await supabase.rpc('rms_add_supplier_opening_debt', {
         p_supplier_id: openingDebtForm.supplier_id,
@@ -7223,7 +7223,7 @@ function Suppliers({ t }) {
       if (error) throw error
       setOpeningDebtForm({ supplier_id: openingDebtForm.supplier_id, debt_date: todayISO(), amount: '', invoice_notes: '', comment: '' })
       await load()
-      setMessage('Стартовый долг поставщику добавлен')
+      setMessage(t('opening_debt_added'))
     } catch (e) {
       setMessage(e.message)
     } finally {
@@ -7233,7 +7233,7 @@ function Suppliers({ t }) {
 
   async function savePayment() {
     const amount = parseNum(paymentForm.amount)
-    if (!paymentForm.supplier_id || !amount) return setMessage('Выберите поставщика и сумму оплаты')
+    if (!paymentForm.supplier_id || !amount) return setMessage(t('select_supplier_and_payment_amount'))
     const { error } = await supabase.from('supplier_payments').insert({
       supplier_id: paymentForm.supplier_id, payment_date: paymentForm.payment_date || todayISO(), amount,
       invoice_notes: paymentForm.invoice_notes.trim() || null, comment: paymentForm.comment.trim() || null
@@ -7245,9 +7245,9 @@ function Suppliers({ t }) {
 
   const purchaseTotal = lineRows.reduce((s, r) => s + lineTotal(r), 0)
   function allTransactions() {
-    const openingDebtRows = openingDebts.map(d => ({ id: `od-${d.id}`, type: 'Долг за предыдущий период', date: d.debt_date, supplier_id: d.supplier_id, supplier: d.suppliers?.name || suppliers.find(s => s.id === d.supplier_id)?.name || '—', invoice: d.invoice_notes || 'Стартовый долг', amount: parseNum(d.amount), comment: d.comment || '', legal: '—' }))
-    const purchaseRows = purchases.map(p => ({ id: `p-${p.id}`, type: 'Поступление', date: p.purchase_date, supplier_id: p.supplier_id, supplier: p.suppliers?.name || suppliers.find(s => s.id === p.supplier_id)?.name || '—', invoice: p.invoice_number || '—', amount: parseNum(p.total_amount), comment: p.comment || '', legal: p.legal_entities?.name || '—' }))
-    const paymentRows = payments.map(p => ({ id: `pay-${p.id}`, type: 'Оплата', date: p.payment_date, supplier_id: p.supplier_id, supplier: p.suppliers?.name || suppliers.find(s => s.id === p.supplier_id)?.name || '—', invoice: p.invoice_notes || '—', amount: -parseNum(p.amount), comment: p.comment || '', legal: '—' }))
+    const openingDebtRows = openingDebts.map(d => ({ id: `od-${d.id}`, type: t('supplier_opening_debt_short'), date: d.debt_date, supplier_id: d.supplier_id, supplier: d.suppliers?.name || suppliers.find(s => s.id === d.supplier_id)?.name || '—', invoice: d.invoice_notes || t('starting_debt'), amount: parseNum(d.amount), comment: d.comment || '', legal: '—' }))
+    const purchaseRows = purchases.map(p => ({ id: `p-${p.id}`, type: t('receipt'), date: p.purchase_date, supplier_id: p.supplier_id, supplier: p.suppliers?.name || suppliers.find(s => s.id === p.supplier_id)?.name || '—', invoice: p.invoice_number || '—', amount: parseNum(p.total_amount), comment: p.comment || '', legal: p.legal_entities?.name || '—' }))
+    const paymentRows = payments.map(p => ({ id: `pay-${p.id}`, type: t('payment'), date: p.payment_date, supplier_id: p.supplier_id, supplier: p.suppliers?.name || suppliers.find(s => s.id === p.supplier_id)?.name || '—', invoice: p.invoice_notes || '—', amount: -parseNum(p.amount), comment: p.comment || '', legal: '—' }))
     return [...openingDebtRows, ...purchaseRows, ...paymentRows].sort((a,b) => new Date(b.date) - new Date(a.date))
   }
   function periodOk(dateStr) {
@@ -7266,87 +7266,87 @@ function Suppliers({ t }) {
   }
 
   return <section>
-    <section className="topbar"><div><h2>{t('suppliers_tab')}</h2><p>Поставщики, поступления, оплаты, товары и долги. VOEN / юрлица теперь находятся в разделе “Настройки”.</p></div></section>
+    <section className="topbar"><div><h2>{t('suppliers_tab')}</h2><p>{t('suppliers_subtitle')}</p></div></section>
     <section className="grid">
       <div className="card span-2 supplier-opening-debt-card">
-        <div className="card-head"><div><h3>Долг поставщику за предыдущий период</h3><p className="hint">Используйте при запуске программы с нуля, чтобы перенести старый долг в баланс поставщика.</p></div></div>
+        <div className="card-head"><div><h3>{t('supplier_opening_debt_title')}</h3><p className="hint">{t('supplier_opening_debt_hint')}</p></div></div>
         <div className="form-grid compact">
-          <label><span>Поставщик</span><select value={openingDebtForm.supplier_id} onChange={e => setOpeningDebtForm({...openingDebtForm, supplier_id: e.target.value})}><option value="">Выберите поставщика</option>{suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
-          <label><span>Дата долга</span><input type="date" value={openingDebtForm.debt_date} onChange={e => setOpeningDebtForm({...openingDebtForm, debt_date: e.target.value})} /></label>
-          <label><span>Сумма долга</span><input inputMode="decimal" value={openingDebtForm.amount} onChange={e => setOpeningDebtForm({...openingDebtForm, amount: e.target.value})} /></label>
-          <label><span>Фактура / отметка</span><input value={openingDebtForm.invoice_notes} onChange={e => setOpeningDebtForm({...openingDebtForm, invoice_notes: e.target.value})} /></label>
-          <label><span>Комментарий</span><input value={openingDebtForm.comment} onChange={e => setOpeningDebtForm({...openingDebtForm, comment: e.target.value})} /></label>
-        </div><button className="small primary" onClick={addOpeningDebt}>+ Добавить долг</button>
+          <label><span>{t('supplier')}</span><select value={openingDebtForm.supplier_id} onChange={e => setOpeningDebtForm({...openingDebtForm, supplier_id: e.target.value})}><option value="">{t('select_supplier')}</option>{suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
+          <label><span>{t('debt_date')}</span><input type="date" value={openingDebtForm.debt_date} onChange={e => setOpeningDebtForm({...openingDebtForm, debt_date: e.target.value})} /></label>
+          <label><span>{t('debt_amount')}</span><input inputMode="decimal" value={openingDebtForm.amount} onChange={e => setOpeningDebtForm({...openingDebtForm, amount: e.target.value})} /></label>
+          <label><span>{t('invoice_mark')}</span><input value={openingDebtForm.invoice_notes} onChange={e => setOpeningDebtForm({...openingDebtForm, invoice_notes: e.target.value})} /></label>
+          <label><span>{t('comment')}</span><input value={openingDebtForm.comment} onChange={e => setOpeningDebtForm({...openingDebtForm, comment: e.target.value})} /></label>
+        </div><button className="small primary" onClick={addOpeningDebt}>{t('add_debt')}</button>
       </div>
 
       <div className="card span-2">
-        <div className="card-head"><div><h3>Поступления от поставщика</h3><p className="hint">Сначала заполняется шапка фактуры. Товары добавляются строками ниже.</p></div></div>
+        <div className="card-head"><div><h3>{t('supplier_purchases_title')}</h3><p className="hint">{t('supplier_purchases_hint')}</p></div></div>
         <div className="form-grid compact">
-          <label><span>Поставщик</span><select value={purchaseForm.supplier_id} onChange={e => setPurchaseForm({...purchaseForm, supplier_id: e.target.value})}>{suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
-          <label><span>Наш VOEN</span><select value={purchaseForm.legal_entity_id} onChange={e => setPurchaseForm({...purchaseForm, legal_entity_id: e.target.value})}>{legalEntities.map(le => <option key={le.id} value={le.id}>{le.name} · {le.voen}</option>)}</select></label>
-          <label><span>Филиал</span><select value={purchaseForm.branch_id} onChange={e => setPurchaseForm({...purchaseForm, branch_id: e.target.value})}>{branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label>
-          <label><span>Дата поступления</span><input type="date" value={purchaseForm.purchase_date} onChange={e => setPurchaseForm({...purchaseForm, purchase_date: e.target.value})} /></label>
-          <label><span>Номер фактуры</span><input value={purchaseForm.invoice_number} onChange={e => setPurchaseForm({...purchaseForm, invoice_number: e.target.value})} /></label>
-          <label><span>Комментарий</span><input value={purchaseForm.comment} onChange={e => setPurchaseForm({...purchaseForm, comment: e.target.value})} /></label>
+          <label><span>{t('supplier')}</span><select value={purchaseForm.supplier_id} onChange={e => setPurchaseForm({...purchaseForm, supplier_id: e.target.value})}>{suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
+          <label><span>{t('our_voen')}</span><select value={purchaseForm.legal_entity_id} onChange={e => setPurchaseForm({...purchaseForm, legal_entity_id: e.target.value})}>{legalEntities.map(le => <option key={le.id} value={le.id}>{le.name} · {le.voen}</option>)}</select></label>
+          <label><span>{t('branch')}</span><select value={purchaseForm.branch_id} onChange={e => setPurchaseForm({...purchaseForm, branch_id: e.target.value})}>{branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label>
+          <label><span>{t('purchase_date')}</span><input type="date" value={purchaseForm.purchase_date} onChange={e => setPurchaseForm({...purchaseForm, purchase_date: e.target.value})} /></label>
+          <label><span>{t('invoice_number')}</span><input value={purchaseForm.invoice_number} onChange={e => setPurchaseForm({...purchaseForm, invoice_number: e.target.value})} /></label>
+          <label><span>{t('comment')}</span><input value={purchaseForm.comment} onChange={e => setPurchaseForm({...purchaseForm, comment: e.target.value})} /></label>
         </div><br />
-        <div className="card-head"><div><h3>Товары в поступлении</h3><p className="hint">Если товара нет, сначала добавьте его ниже в блоке “Товары”.</p></div><button className="small" onClick={() => setLineRows(rows => [...rows, { ...emptyLine }])}>+ Строка товара</button></div>
-        <div className="table-wrap"><table><thead><tr><th>Тип</th><th>Товар</th><th>Кол-во закупа</th><th>Ед. закупа</th><th>Цена за ед.</th><th>Сумма</th><th></th></tr></thead><tbody>{lineRows.map((row, idx) => <tr key={idx}>
+        <div className="card-head"><div><h3>{t('purchase_items_title')}</h3><p className="hint">{t('purchase_items_hint')}</p></div><button className="small" onClick={() => setLineRows(rows => [...rows, { ...emptyLine }])}>{t('add_item_row')}</button></div>
+        <div className="table-wrap"><table><thead><tr><th>{t('type')}</th><th>{t('product')}</th><th>{t('purchase_qty')}</th><th>{t('purchase_unit')}</th><th>{t('unit_price')}</th><th>{t('sum')}</th><th></th></tr></thead><tbody>{lineRows.map((row, idx) => <tr key={idx}>
           <td><select value={row.category} onChange={e => updateLine(idx, { category: e.target.value })}>{PRODUCT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select></td>
-          <td style={{minWidth:260}}><select value={row.product_id || ''} onChange={e => selectProductForLine(idx, e.target.value)}><option value="">Выберите товар</option>{productOptionsForRow(row).map(p => <option key={p.id} value={p.id}>{productLabel(p)}</option>)}</select></td>
+          <td style={{minWidth:260}}><select value={row.product_id || ''} onChange={e => selectProductForLine(idx, e.target.value)}><option value="">{t('product')}</option>{productOptionsForRow(row).map(p => <option key={p.id} value={p.id}>{productLabel(p)}</option>)}</select></td>
           <td><input inputMode="decimal" value={row.quantity} onChange={e => updateLine(idx, { quantity: e.target.value })} /></td>
           <td><select value={row.unit} onChange={e => updateLine(idx, { unit: e.target.value })}>{PURCHASE_UNITS.map(u => <option key={u.value} value={u.value}>{u.label}</option>)}</select></td>
           <td><input inputMode="decimal" value={row.unit_price} onChange={e => updateLine(idx, { unit_price: e.target.value })} /></td>
           <td><strong>{fmt(lineTotal(row))}</strong></td>
           <td><button className="remove" onClick={() => setLineRows(rows => rows.length === 1 ? [{ ...emptyLine }] : rows.filter((_, i) => i !== idx))}>×</button></td>
         </tr>)}</tbody></table></div>
-        <p className="hint">Итого по фактуре: <strong>{fmt(purchaseTotal)}</strong> AZN.</p><button className="small primary" onClick={addPurchase}>+ Сохранить поступление</button>{message && <p className={`hint ${message === t('saved') ? 'good' : 'bad'}`}>{message}</p>}
+        <p className="hint">{t('invoice_total')}: <strong>{fmt(purchaseTotal)}</strong> AZN.</p><button className="small primary" onClick={addPurchase}>{t('save_purchase')}</button>{message && <p className={`hint ${message === t('saved') ? 'good' : 'bad'}`}>{message}</p>}
       </div>
 
       <div className="card span-2">
-        <div className="card-head"><div><h3>Оплата поставщику</h3><p className="hint">Укажите сумму оплаты, номера счёт-фактур и комментарий.</p></div></div>
+        <div className="card-head"><div><h3>{t('supplier_payment_title')}</h3><p className="hint">{t('supplier_payment_hint')}</p></div></div>
         <div className="form-grid compact">
-          <label><span>Поставщик</span><select value={paymentForm.supplier_id} onChange={e => setPaymentForm({...paymentForm, supplier_id: e.target.value})}><option value="">Выберите поставщика</option>{suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
-          <label><span>Дата оплаты</span><input type="date" value={paymentForm.payment_date} onChange={e => setPaymentForm({...paymentForm, payment_date: e.target.value})} /></label>
-          <label><span>Сумма оплаты</span><input inputMode="decimal" value={paymentForm.amount} onChange={e => setPaymentForm({...paymentForm, amount: e.target.value})} /></label>
-          <label><span>Отметки / номера счёт-фактур</span><input value={paymentForm.invoice_notes} onChange={e => setPaymentForm({...paymentForm, invoice_notes: e.target.value})} /></label>
-          <label><span>Комментарий</span><input value={paymentForm.comment} onChange={e => setPaymentForm({...paymentForm, comment: e.target.value})} /></label>
-        </div><button className="small primary" onClick={savePayment}>+ Сохранить оплату</button>
+          <label><span>{t('supplier')}</span><select value={paymentForm.supplier_id} onChange={e => setPaymentForm({...paymentForm, supplier_id: e.target.value})}><option value="">{t('select_supplier')}</option>{suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
+          <label><span>{t('payment_date')}</span><input type="date" value={paymentForm.payment_date} onChange={e => setPaymentForm({...paymentForm, payment_date: e.target.value})} /></label>
+          <label><span>{t('payment_amount')}</span><input inputMode="decimal" value={paymentForm.amount} onChange={e => setPaymentForm({...paymentForm, amount: e.target.value})} /></label>
+          <label><span>{t('invoice_notes')}</span><input value={paymentForm.invoice_notes} onChange={e => setPaymentForm({...paymentForm, invoice_notes: e.target.value})} /></label>
+          <label><span>{t('comment')}</span><input value={paymentForm.comment} onChange={e => setPaymentForm({...paymentForm, comment: e.target.value})} /></label>
+        </div><button className="small primary" onClick={savePayment}>{t('save_payment')}</button>
       </div>
 
 
 
       <div className="card span-2">
-        <div className="card-head"><div><h3>Контрагенты</h3><p className="hint">Условия оплаты и лимиты используются в Dashboard для проблемных долгов.</p></div></div>
+        <div className="card-head"><div><h3>{t('contractors')}</h3><p className="hint">{t('contractors_hint')}</p></div></div>
         <div className="form-grid compact">
-          <label><span>Имя контрагента</span><input value={supplierForm.name} onChange={e => setSupplierForm({...supplierForm, name: e.target.value})} /></label>
-          <label><span>VOEN поставщика</span><input value={supplierForm.voen} onChange={e => setSupplierForm({...supplierForm, voen: e.target.value})} /></label>
-          <label><span>Контакт</span><input value={supplierForm.contact_person} onChange={e => setSupplierForm({...supplierForm, contact_person: e.target.value})} /></label>
-          <label><span>Телефон</span><input value={supplierForm.phone} onChange={e => setSupplierForm({...supplierForm, phone: e.target.value})} /></label>
-          <label><span>Информация</span><input value={supplierForm.info} onChange={e => setSupplierForm({...supplierForm, info: e.target.value})} /></label>
-          <label><span>Срок оплаты, дней</span><input inputMode="numeric" value={supplierForm.payment_term_days} onChange={e => setSupplierForm({...supplierForm, payment_term_days: e.target.value})} /></label>
-          <label><span>Кредитный лимит</span><input inputMode="decimal" value={supplierForm.credit_limit} onChange={e => setSupplierForm({...supplierForm, credit_limit: e.target.value})} /></label>
-          <label><span>Долг за предыдущий период</span><input inputMode="decimal" value={supplierForm.opening_debt_amount} onChange={e => setSupplierForm({...supplierForm, opening_debt_amount: e.target.value})} placeholder="0.00" /></label>
-          <label><span>Дата стартового долга</span><input type="date" value={supplierForm.opening_debt_date} onChange={e => setSupplierForm({...supplierForm, opening_debt_date: e.target.value})} /></label>
-          <label><span>Комментарий к стартовому долгу</span><input value={supplierForm.opening_debt_comment} onChange={e => setSupplierForm({...supplierForm, opening_debt_comment: e.target.value})} placeholder="Например: остаток на 01.05" /></label>
-        </div><button className="small" onClick={addSupplier}>+ Добавить поставщика</button>
+          <label><span>{t('contractor_name')}</span><input value={supplierForm.name} onChange={e => setSupplierForm({...supplierForm, name: e.target.value})} /></label>
+          <label><span>{t('supplier_voen')}</span><input value={supplierForm.voen} onChange={e => setSupplierForm({...supplierForm, voen: e.target.value})} /></label>
+          <label><span>{t('contact')}</span><input value={supplierForm.contact_person} onChange={e => setSupplierForm({...supplierForm, contact_person: e.target.value})} /></label>
+          <label><span>{t('phone')}</span><input value={supplierForm.phone} onChange={e => setSupplierForm({...supplierForm, phone: e.target.value})} /></label>
+          <label><span>{t('info')}</span><input value={supplierForm.info} onChange={e => setSupplierForm({...supplierForm, info: e.target.value})} /></label>
+          <label><span>{t('payment_term_days')}</span><input inputMode="numeric" value={supplierForm.payment_term_days} onChange={e => setSupplierForm({...supplierForm, payment_term_days: e.target.value})} /></label>
+          <label><span>{t('credit_limit')}</span><input inputMode="decimal" value={supplierForm.credit_limit} onChange={e => setSupplierForm({...supplierForm, credit_limit: e.target.value})} /></label>
+          <label><span>{t('opening_debt_previous')}</span><input inputMode="decimal" value={supplierForm.opening_debt_amount} onChange={e => setSupplierForm({...supplierForm, opening_debt_amount: e.target.value})} placeholder="0.00" /></label>
+          <label><span>{t('opening_debt_date')}</span><input type="date" value={supplierForm.opening_debt_date} onChange={e => setSupplierForm({...supplierForm, opening_debt_date: e.target.value})} /></label>
+          <label><span>{t('opening_debt_comment')}</span><input value={supplierForm.opening_debt_comment} onChange={e => setSupplierForm({...supplierForm, opening_debt_comment: e.target.value})} placeholder={t('opening_debt_comment')} /></label>
+        </div><button className="small" onClick={addSupplier}>{t('add_supplier')}</button>
       </div>
 
       <div className="card span-2">
-        <div className="card-head"><div><h3>Товары</h3><p className="hint">Товар создаётся один раз и потом выбирается в поступлении и в техкарте.</p></div></div>
-        <div className="form-grid compact"><label><span>Товар</span><input value={productForm.name} onChange={e => setProductForm({...productForm, name: e.target.value})} /></label><label><span>Тип</span><select value={productForm.category} onChange={e => setProductForm({...productForm, category: e.target.value})}>{PRODUCT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select></label><label><span>Базовая ед. для техкарты</span><select value={productForm.base_unit} onChange={e => setProductForm({...productForm, base_unit: e.target.value})}>{BASE_UNITS.map(u => <option key={u.value} value={u.value}>{u.label}</option>)}</select></label></div><button className="small" onClick={addProductFromForm}>+ Добавить товар</button>
+        <div className="card-head"><div><h3>{t('products_title')}</h3><p className="hint">{t('products_hint')}</p></div></div>
+        <div className="form-grid compact"><label><span>{t('product')}</span><input value={productForm.name} onChange={e => setProductForm({...productForm, name: e.target.value})} /></label><label><span>{t('type')}</span><select value={productForm.category} onChange={e => setProductForm({...productForm, category: e.target.value})}>{PRODUCT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select></label><label><span>{t('base_unit_recipe')}</span><select value={productForm.base_unit} onChange={e => setProductForm({...productForm, base_unit: e.target.value})}>{BASE_UNITS.map(u => <option key={u.value} value={u.value}>{u.label}</option>)}</select></label></div><button className="small" onClick={addProductFromForm}>{t('add_product')}</button>
       </div>
 
      <div className="card span-2">
         <div className="card-head">
           <div>
-            <h3>Последние поступления</h3>
-            <p className="hint">Сначала открывается просмотр накладной. Редактирование и удаление доступны внутри накладной.</p>
+            <h3>{t('latest_purchases')}</h3>
+            <p className="hint">{t('latest_purchases_hint')}</p>
           </div>
         </div>
         <div className="table-wrap">
           <table>
             <thead>
-              <tr><th>Дата</th><th>Фактура</th><th>Поставщик</th><th>Наш VOEN</th><th>Филиал</th><th>Сумма</th><th>Статус</th><th></th></tr>
+              <tr><th>{t('date')}</th><th>{t('invoice')}</th><th>{t('supplier')}</th><th>{t('our_voen')}</th><th>{t('branch')}</th><th>{t('sum')}</th><th>{t('status')}</th><th></th></tr>
             </thead>
             <tbody>
               {purchases.slice(0, 50).map(p => (
@@ -7358,8 +7358,8 @@ function Suppliers({ t }) {
                     <td>{p.legal_entities?.voen}</td>
                     <td>{p.branches?.name || '—'}</td>
                     <td><strong>{fmt(p.total_amount)}</strong></td>
-                    <td>{p.deleted_at ? <span className="bad">Отменено</span> : <span className="good">Активно</span>}</td>
-                    <td><button className="ghost small" onClick={() => { setViewPurchaseId(viewPurchaseId === p.id ? '' : p.id); setEditingPurchaseId('') }}>{viewPurchaseId === p.id ? 'Закрыть' : 'Просмотр'}</button></td>
+                    <td>{p.deleted_at ? <span className="bad">{t('cancelled')}</span> : <span className="good">{t('active')}</span>}</td>
+                    <td><button className="ghost small" onClick={() => { setViewPurchaseId(viewPurchaseId === p.id ? '' : p.id); setEditingPurchaseId('') }}>{viewPurchaseId === p.id ? t('close') : t('view')}</button></td>
                   </tr>
                   {viewPurchaseId === p.id && (
                     <tr>
@@ -7367,28 +7367,28 @@ function Suppliers({ t }) {
                         <div className="invoice-view">
                           <div className="card-head">
                             <div>
-                              <h3>Накладная {p.invoice_number || 'без номера'}</h3>
+                              <h3>{t('invoice_word')} {p.invoice_number || t('no_number')}</h3>
                               <p className="hint">
-                                Создано: {p.created_at ? new Date(p.created_at).toLocaleString() : '—'} · {userName(p.created_by)}
-                                {' '} | Изменено: {p.updated_at ? new Date(p.updated_at).toLocaleString() : '—'} · {userName(p.updated_by)}
-                                {p.deleted_at ? <> | Отменено: {new Date(p.deleted_at).toLocaleString()} · {userName(p.deleted_by)}</> : null}
+                                {t('created')}: {p.created_at ? new Date(p.created_at).toLocaleString() : '—'} · {userName(p.created_by)}
+                                {' '} | {t('updated')}: {p.updated_at ? new Date(p.updated_at).toLocaleString() : '—'} · {userName(p.updated_by)}
+                                {p.deleted_at ? <> | {t('cancelled')}: {new Date(p.deleted_at).toLocaleString()} · {userName(p.deleted_by)}</> : null}
                               </p>
                             </div>
                             {!p.deleted_at && <div className="row-actions">
-                              <button className="ghost small" onClick={() => setEditingPurchaseId(editingPurchaseId === p.id ? '' : p.id)}>{editingPurchaseId === p.id ? 'Готово' : 'Редактировать'}</button>
-                              <button className="remove" onClick={() => softDeletePurchase(p.id)}>Удалить</button>
+                              <button className="ghost small" onClick={() => setEditingPurchaseId(editingPurchaseId === p.id ? '' : p.id)}>{editingPurchaseId === p.id ? t('done') : t('edit')}</button>
+                              <button className="remove" onClick={() => softDeletePurchase(p.id)}>{t('delete')}</button>
                             </div>}
                           </div>
 
                           <div className="form-grid compact">
                             <label><span>Дата</span>{editingPurchaseId === p.id && !p.deleted_at ? <input type="date" defaultValue={p.purchase_date} onBlur={e => updatePurchase(p.id, { purchase_date: e.target.value })} /> : <strong>{p.purchase_date}</strong>}</label>
                             <label><span>Фактура</span>{editingPurchaseId === p.id && !p.deleted_at ? <input defaultValue={p.invoice_number || ''} onBlur={e => updatePurchase(p.id, { invoice_number: e.target.value.trim() || null })} /> : <strong>{p.invoice_number || '—'}</strong>}</label>
-                            <label><span>Филиал</span>{editingPurchaseId === p.id && !p.deleted_at ? <select defaultValue={p.branch_id || ''} onBlur={e => updatePurchase(p.id, { branch_id: e.target.value || null })}><option value="">—</option>{branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select> : <strong>{p.branches?.name || '—'}</strong>}</label>
+                            <label><span>{t('branch')}</span>{editingPurchaseId === p.id && !p.deleted_at ? <select defaultValue={p.branch_id || ''} onBlur={e => updatePurchase(p.id, { branch_id: e.target.value || null })}><option value="">—</option>{branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select> : <strong>{p.branches?.name || '—'}</strong>}</label>
                           </div>
 
                           <div className="table-wrap">
                             <table>
-                              <thead><tr><th>Тип</th><th>Товар</th><th>Кол-во</th><th>Ед.</th><th>Цена</th><th>Сумма</th></tr></thead>
+                              <thead><tr><th>{t('type')}</th><th>{t('product')}</th><th>{t('quantity')}</th><th>{t('unit')}</th><th>{t('price')}</th><th>{t('sum')}</th></tr></thead>
                               <tbody>
                                 {(p.supplier_purchase_items || []).map(i => (
                                   <tr key={i.id}>
@@ -7400,7 +7400,7 @@ function Suppliers({ t }) {
                                     <td><strong>{fmt(i.total_amount)}</strong></td>
                                   </tr>
                                 ))}
-                                {!(p.supplier_purchase_items || []).length && <tr><td colSpan="6" className="hint">Товары не найдены</td></tr>}
+                                {!(p.supplier_purchase_items || []).length && <tr><td colSpan="6" className="hint">{t('items_not_found')}</td></tr>}
                               </tbody>
                             </table>
                           </div>
