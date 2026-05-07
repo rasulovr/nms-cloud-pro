@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { supabase } from './supabase'
 import './styles.css'
@@ -4001,6 +4001,41 @@ function Finance({ t, lang }) {
   const [breakdown, setBreakdown] = useState([])
   const [aiRows, setAiRows] = useState([])
   const [showAllAiRows, setShowAllAiRows] = useState(false)
+  const financeLoadSeqRef = useRef(0)
+
+  function financeIsLatestLoad(seq) {
+    return seq === financeLoadSeqRef.current
+  }
+
+  function financeNormalizeStats(base, previous) {
+    const revenue = parseNum(base?.revenue)
+    const expenses = parseNum(base?.expenses)
+    const salary = parseNum(base?.salary)
+    const serviceCost = parseNum(base?.serviceCost)
+    const tax = revenue * (TAX_RATE / 100)
+    const net = revenue - expenses - salary - serviceCost - tax
+    const d = new Date(Number(year), Number(month) - 1, 1)
+    const currentMonth = now.getFullYear() === d.getFullYear() && now.getMonth() === d.getMonth()
+    const passed = currentMonth ? now.getDate() : daysInMonth(year, month)
+    const avg = passed ? revenue / passed : 0
+    const forecastRevenue = avg * daysInMonth(year, month)
+    const costRate = revenue > 0 ? (expenses + salary + serviceCost) / revenue : 0
+    const forecastProfit = forecastRevenue - (forecastRevenue * costRate) - (forecastRevenue * TAX_RATE / 100)
+    return {
+      ...base,
+      previous,
+      revenue,
+      expenses,
+      salary,
+      serviceCost,
+      tax,
+      gross: revenue,
+      net,
+      avg,
+      forecastRevenue,
+      forecastProfit
+    }
+  }
 
   function financeExpenseGroupName(name) {
     const value = normalizeExpenseText(name)
@@ -4585,6 +4620,7 @@ function Finance({ t, lang }) {
   }
 
   async function load() {
+    const loadSeq = ++financeLoadSeqRef.current
     if (branchId !== ALL_BRANCHES && !branchId) return
 
     const monthDate = monthStart(year, month)
@@ -4593,12 +4629,14 @@ function Finance({ t, lang }) {
     setAiRows([])
 
     const current = await calcFor(branchId, year, month)
+    if (!financeIsLatestLoad(loadSeq)) return
     const pm = prevMonth(year, month)
     const previous = await calcFor(branchId, pm.year, pm.month)
+    if (!financeIsLatestLoad(loadSeq)) return
 
     // Update the main finance cards immediately.
-    // If expense breakdown / AI analytics fails below, the selected branch figures still change.
-    setStats({ ...current, previous })
+    // Guard prevents an older async load from overwriting the selected branch.
+    setStats(financeNormalizeStats(current, previous))
 
     const start = monthDate
     const end = new Date(Number(year), Number(month), 1).toISOString().slice(0, 10)
@@ -4609,9 +4647,17 @@ function Finance({ t, lang }) {
     let salaryPaymentQuery = supabase.from('salary_payments').select('employee_id, branch_id, amount').eq('salary_month', monthDate).or('is_cancelled.is.null,is_cancelled.eq.false')
 
     const [{ data: expenseRowsRaw }, { data: purchaseRows }, { data: employeeRows }, { data: salaryPeriodRows }, { data: salaryPaymentRows }] = await Promise.all([expQuery, purQuery, empQuery, salaryPeriodQuery, salaryPaymentQuery])
+    if (!financeIsLatestLoad(loadSeq)) return
     const rows = financeFilterRowsByBranch(expenseRowsRaw || [], branchId)
     const revenueShares = await financeRevenueSharesForMonth(year, month)
-    const activeSupplierShare = branchId === ALL_BRANCHES ? 1 : (revenueShares.map.get(branchId) || 0)
+    if (!financeIsLatestLoad(loadSeq)) return
+    const selectedBranchForShare = financeSelectedBranchObject(branchId)
+    const activeSupplierShare = branchId === ALL_BRANCHES ? 1 : (
+      revenueShares.map.get(branchId) ||
+      revenueShares.map.get(selectedBranchForShare?.id) ||
+      revenueShares.map.get(selectedBranchForShare?.name) ||
+      0
+    )
     const allocatedSupplierTotals = financeAllocatedSupplierTotals(purchaseRows || [], activeSupplierShare)
     const allocatedSupplierExpenseTotal = allocatedSupplierTotals.food + allocatedSupplierTotals.packaging + allocatedSupplierTotals.household + allocatedSupplierTotals.other
 
@@ -4670,10 +4716,12 @@ function Finance({ t, lang }) {
       net: parseNum(current.net) - extraDsmf - salaryOverride - allocatedSupplierExpenseTotal,
       forecastProfit: parseNum(current.forecastProfit) - allocatedSupplierExpenseTotal - Math.max(0, salaryOverride) - extraDsmf
     }
-    setStats({ ...currentForFinance, previous })
+    if (!financeIsLatestLoad(loadSeq)) return
+    setStats(financeNormalizeStats(currentForFinance, previous))
 
     if (currentForFinance.serviceCost > 0) expenseRows.push({ name: 'Service charge персоналу', amount: currentForFinance.serviceCost })
     if (currentForFinance.tax > 0) expenseRows.push({ name: `Налог %`, amount: currentForFinance.tax })
+    if (!financeIsLatestLoad(loadSeq)) return
     setBreakdown(expenseRows.sort((a, b) => b.amount - a.amount))
 
     if (branchId === ALL_BRANCHES) {
@@ -4688,6 +4736,7 @@ function Finance({ t, lang }) {
       const branchAiRows = []
       for (const branch of branches) {
         const branchStats = await calcFor(branch.id, year, month)
+        if (!financeIsLatestLoad(loadSeq)) return
         const branchExpenseMap = new Map()
         ;(rows || []).filter(r => r.branch_id === branch.id).forEach(r => {
           const name = r.expense_categories?.name || r.custom_category || t('new_expense')
@@ -4702,7 +4751,7 @@ function Finance({ t, lang }) {
           const group = financeExpenseGroupName(name)
           if (group === 'food_market' || group === 'packaging' || group === 'household') branchExpenseMap.delete(name)
         })
-        const branchSupplierShare = revenueShares.map.get(branch.id) || 0
+        const branchSupplierShare = revenueShares.map.get(branch.id) || revenueShares.map.get(branch.name) || 0
         const branchSupplierTotals = financeAllocatedSupplierTotals(purchaseRows || [], branchSupplierShare)
         const branchSupplierExpenseTotal = branchSupplierTotals.food + branchSupplierTotals.packaging + branchSupplierTotals.household + branchSupplierTotals.other
         const branchFoodCost = branchSupplierTotals.food + branchDirectFoodCost
@@ -4736,6 +4785,7 @@ function Finance({ t, lang }) {
       }
 
       const combinedRows = [...networkAiRows, ...branchAiRows]
+      if (!financeIsLatestLoad(loadSeq)) return
       setAiRows(combinedRows.length ? combinedRows : [{
         branchName: 'Вся сеть',
         indicator: 'Данные не распознаны',
@@ -4753,6 +4803,7 @@ function Finance({ t, lang }) {
         purchaseRows: purchaseRows || [],
         employeeRows: employeeRows || []
       })
+      if (!financeIsLatestLoad(loadSeq)) return
       setAiRows(singleRows.length ? singleRows : [{
         branchName: branches.find(b => b.id === branchId)?.name || 'Филиал',
         indicator: 'Данные не распознаны',
@@ -4800,7 +4851,7 @@ function Finance({ t, lang }) {
         <div className="card">
           <h3>{t('current_result')}</h3>
           <Metric label={t('gross_profit')} value={fmt(stats.gross)} />
-          <Metric label={t('total_expenses')} value={fmt(stats.expenses + stats.salary + stats.tax)} />
+          <Metric label={t('total_expenses')} value={fmt(stats.expenses + stats.salary + stats.serviceCost + stats.tax)} />
           <Metric label="Операционные расходы" value={fmt(stats.expenses)} />
           <Metric label="Зарплаты" value={fmt(stats.salary)} />
         <Metric label="Service charge персоналу" value={fmt(stats.serviceCost)} />
@@ -4810,7 +4861,7 @@ function Finance({ t, lang }) {
         <div className="card"><h3>{t('net_profit')}</h3><div className="big-number">{fmt(stats.net)}</div><p className={`hint ${stats.net >= 0 ? 'good' : 'bad'}`}>{stats.net >= 0 ? t('profitable') : t('loss')}</p></div>
         <div className="card"><h3>{t('forecast')}</h3><Metric label={t('forecast_revenue')} value={fmt(stats.forecastRevenue)} /><Metric label={t('forecast_profit')} value={fmt(stats.forecastProfit)} /><Metric label={t('avg_daily_revenue')} value={fmt(stats.avg)} /></div>
         <div className="card"><h3>{t('comparison')}</h3><Metric label={t('prev_month_revenue')} value={fmt(stats.previous?.revenue)} /><Metric label={t('revenue_change_pct')} value={pct(revChange)} /><Metric label={t('profit_change_pct')} value={pct(profitChange)} /></div>
-        <div className="card"><h3>{t('margins')}</h3><Metric label={t('expense_pct')} value={pct(stats.revenue ? (stats.expenses + stats.salary + stats.tax) / stats.revenue * 100 : 0)} /><Metric label={t('net_margin')} value={pct(stats.revenue ? stats.net / stats.revenue * 100 : 0)} /></div>
+        <div className="card"><h3>{t('margins')}</h3><Metric label={t('expense_pct')} value={pct(stats.revenue ? (stats.expenses + stats.salary + stats.serviceCost + stats.tax) / stats.revenue * 100 : 0)} /><Metric label={t('net_margin')} value={pct(stats.revenue ? stats.net / stats.revenue * 100 : 0)} /></div>
 
         <div className="card span-2">
           <div className="card-head"><h3>{t('expense_breakdown')}</h3></div>
