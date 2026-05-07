@@ -764,367 +764,553 @@ function posItemType(item) {
 
 function POSLite({ t }) {
   const branches = useBranches()
-  const [tab, setTab] = useState('overview')
+  const halls = ['Основной зал', 'Терраса', 'VIP']
+  const tableCells = useMemo(() => ([
+    ...Array.from({ length: 12 }, (_, i) => ({ id: `T${i + 1}`, label: `Стол ${i + 1}`, defaultMode: 'hall' })),
+    { id: 'TA', label: 'С собой', defaultMode: 'takeaway' },
+    { id: 'DL', label: 'Доставка', defaultMode: 'delivery' },
+    { id: 'BAR', label: 'Бар', defaultMode: 'hall' },
+    { id: 'VIP', label: 'VIP', defaultMode: 'hall' }
+  ]), [])
+
+  const POS_CASHIER_KEY = 'rms_pos_cashier_session_v1'
   const [branchId, setBranchId] = useState('')
-  const [dateFrom, setDateFrom] = useState(todayISO())
-  const [dateTo, setDateTo] = useState(todayISO())
-  const [terminals, setTerminals] = useState([])
-  const [cashiers, setCashiers] = useState([])
+  const [date, setDate] = useState(todayISO())
+  const [menuItems, setMenuItems] = useState([])
   const [orders, setOrders] = useState([])
-  const [dashboard, setDashboard] = useState(null)
-  const [selectedTerminalId, setSelectedTerminalId] = useState('')
+  const [search, setSearch] = useState('')
+  const [selectedTable, setSelectedTable] = useState('T1')
+  const [draftOrders, setDraftOrders] = useState({})
+  const [paymentMethod, setPaymentMethod] = useState('cash')
+  const [menuRoot, setMenuRoot] = useState('root')
+  const [menuTypeFilter, setMenuTypeFilter] = useState('all')
+  const [categoryFilter, setCategoryFilter] = useState('all')
   const [message, setMessage] = useState('')
   const [loading, setLoading] = useState(false)
+  const [cashierNameInput, setCashierNameInput] = useState('')
+  const [cashierPin, setCashierPin] = useState('')
+  const [cashierSession, setCashierSession] = useState(null)
 
   useEffect(() => {
-    if (!branchId && branches[0]?.id) setBranchId(branches[0].id)
-  }, [branches, branchId])
+    try {
+      const saved = JSON.parse(localStorage.getItem(POS_CASHIER_KEY) || 'null')
+      if (saved?.name && saved?.pin) setCashierSession(saved)
+    } catch (_e) {}
+  }, [])
 
-  useEffect(() => {
-    loadAll()
-  }, [branchId, dateFrom, dateTo])
+  useEffect(() => { if (!branchId && branches[0]) setBranchId(branches[0].id) }, [branches, branchId])
+  useEffect(() => { loadBase() }, [branchId, date])
 
-  const selectedBranch = branches.find(b => b.id === branchId) || null
-  const selectedTerminal = terminals.find(t => t.id === selectedTerminalId) || terminals[0] || null
-  const terminalTables = Array.isArray(selectedTerminal?.settings?.tables) ? selectedTerminal.settings.tables : []
-  const summary = dashboard?.summary || buildLocalSummary(orders)
-  const reportTerminals = dashboard?.terminals || []
-  const reportCashiers = dashboard?.cashiers || []
+  const menuWithType = useMemo(() => (menuItems || []).map(item => ({ ...item, pos_type: posItemType(item) })), [menuItems])
+  const menuRoots = useMemo(() => ([
+    { id: 'Кухня', label: 'Еда' },
+    { id: 'Бар', label: 'Напитки' }
+  ]), [])
 
-  function nextDateExclusive(value) {
-    const d = new Date(`${value || todayISO()}T00:00:00`)
-    d.setDate(d.getDate() + 1)
-    return d.toISOString()
+  const visibleCategories = useMemo(() => {
+    if (menuTypeFilter === 'all') return []
+    const set = new Set(menuWithType
+      .filter(item => item.pos_type === menuTypeFilter)
+      .map(item => item.category || 'Без категории'))
+    return Array.from(set).filter(Boolean).sort((a, b) => String(a).localeCompare(String(b), 'ru'))
+  }, [menuWithType, menuTypeFilter])
+
+  const filteredMenu = useMemo(() => {
+    const q = normalizeSalesKey(search)
+    return menuWithType
+      .filter(item => menuTypeFilter === 'all' || item.pos_type === menuTypeFilter)
+      .filter(item => categoryFilter === 'all' || (item.category || 'Без категории') === categoryFilter)
+      .filter(item => !q || normalizeSalesKey(item.name).includes(q) || normalizeSalesKey(item.category).includes(q))
+      .slice(0, 300)
+  }, [menuWithType, search, menuTypeFilter, categoryFilter])
+
+  const currentDraft = draftOrders[selectedTable] || { table_name: selectedTable, customer_name: '', guests: 1, hall_name: halls[0], order_mode: 'hall', payment_method: paymentMethod, items: [] }
+  const items = currentDraft.items || []
+  const subtotal = items.reduce((s, item) => s + parseNum(item.qty) * parseNum(item.price), 0)
+  const totalQty = items.reduce((s, item) => s + parseNum(item.qty), 0)
+
+  function setCurrentDraft(patchOrFn) {
+    setDraftOrders(prev => {
+      const current = prev[selectedTable] || { table_name: selectedTable, customer_name: '', guests: 1, hall_name: halls[0], order_mode: 'hall', payment_method: paymentMethod, items: [] }
+      const next = typeof patchOrFn === 'function' ? patchOrFn(current) : { ...current, ...patchOrFn }
+      return { ...prev, [selectedTable]: next }
+    })
   }
 
-  function startDateISO(value) {
-    return new Date(`${value || todayISO()}T00:00:00`).toISOString()
+  function selectTable(table) {
+    setSelectedTable(table.id)
+    setDraftOrders(prev => {
+      if (prev[table.id]) return prev
+      const orderMode = table.defaultMode || 'hall'
+      return {
+        ...prev,
+        [table.id]: {
+          table_name: table.label,
+          customer_name: '',
+          guests: 1,
+          hall_name: halls[0],
+          order_mode: orderMode,
+          payment_method: paymentMethod,
+          items: []
+        }
+      }
+    })
   }
 
-  function buildLocalSummary(rows) {
-    const closed = (rows || []).filter(r => r.status === 'closed')
-    const open = (rows || []).filter(r => ['open', 'saved'].includes(r.status))
-    const revenue = closed.reduce((s, r) => s + parseNum(r.total_amount || r.paid_amount), 0)
-    const cashRevenue = closed.filter(r => (r.payment_method || '').toLowerCase() === 'cash').reduce((s, r) => s + parseNum(r.total_amount || r.paid_amount), 0)
-    const cardRevenue = closed.filter(r => ['card','bank','terminal'].includes((r.payment_method || '').toLowerCase())).reduce((s, r) => s + parseNum(r.total_amount || r.paid_amount), 0)
-    return {
-      revenue,
-      closed_checks: closed.length,
-      open_checks: open.length,
-      avg_check: closed.length ? revenue / closed.length : 0,
-      cash_revenue: cashRevenue,
-      card_revenue: cardRevenue
+  function handlePinDigit(digit) {
+    setCashierPin(prev => (prev + String(digit)).slice(0, 4))
+  }
+
+  function clearPin() { setCashierPin('') }
+  function backspacePin() { setCashierPin(prev => prev.slice(0, -1)) }
+
+  function unlockPos() {
+    if ((cashierNameInput || '').trim().length < 2) return setMessage('Укажи имя сотрудника / кассира')
+    if (cashierPin.length !== 4) return setMessage('PIN-код должен состоять из 4 цифр')
+    const session = { name: cashierNameInput.trim(), pin: cashierPin, opened_at: new Date().toISOString() }
+    setCashierSession(session)
+    try { localStorage.setItem(POS_CASHIER_KEY, JSON.stringify(session)) } catch (_e) {}
+    setCashierPin('')
+    setMessage('')
+  }
+
+  function logoutPos() {
+    setCashierSession(null)
+    setCashierPin('')
+    try { localStorage.removeItem(POS_CASHIER_KEY) } catch (_e) {}
+  }
+
+  async function currentUserMeta() {
+    try {
+      if (getInternalSessionStorage()?.rms_internal) {
+        const localUser = getRmsLocalUser()
+        return { user_id: null, user_email: localUser?.email || localUser?.login_name || 'rms.internal' }
+      }
+      const { data } = await supabase.auth.getUser()
+      return { user_id: data?.user?.id || null, user_email: data?.user?.email || null }
+    } catch (_e) {
+      return { user_id: null, user_email: null }
     }
   }
 
-  async function loadAll() {
+  async function loadBase() {
+    setMessage('')
+    const [{ data: menu, error: menuError }, { data: orderRows, error: orderError }] = await Promise.all([
+      supabase.from('menu_items').select('id,name,category,sale_price,is_active').eq('is_active', true).order('category').order('name'),
+      branchId
+        ? supabase.from('pos_orders').select('*, pos_order_items(*)').eq('branch_id', branchId).eq('order_date', date).order('created_at', { ascending: false }).limit(25)
+        : Promise.resolve({ data: [], error: null })
+    ])
+    if (menuError) setMessage(menuError.message)
+    setMenuItems(menu || [])
+    if (orderError && String(orderError.message || '').includes('pos_orders')) {
+      setMessage('Для POS-кассы нужно один раз выполнить SQL-файл rms_pos_lite_tables_v2.sql в Supabase.')
+      setOrders([])
+    } else if (orderError) {
+      setMessage(orderError.message)
+      setOrders([])
+    } else {
+      setOrders(orderRows || [])
+    }
+  }
+
+  function addMenuItemToOrder(item) {
+    setCurrentDraft(current => {
+      const existing = (current.items || []).find(x => String(x.menu_item_id) === String(item.id))
+      const nextItems = existing
+        ? current.items.map(x => String(x.menu_item_id) === String(item.id) ? { ...x, qty: parseNum(x.qty) + 1 } : x)
+        : [...(current.items || []), {
+            menu_item_id: item.id,
+            name: item.name,
+            category: item.category || null,
+            item_type: item.pos_type || posItemType(item),
+            qty: 1,
+            price: parseNum(item.sale_price)
+          }]
+      return { ...current, items: nextItems }
+    })
+  }
+
+  function updateItem(index, patch) {
+    setCurrentDraft(current => ({
+      ...current,
+      items: (current.items || []).map((item, i) => i === index ? { ...item, ...patch } : item).filter(item => parseNum(item.qty) > 0)
+    }))
+  }
+
+  function clearCurrentOrder() {
+    if (!window.confirm('Очистить текущий заказ?')) return
+    setDraftOrders(prev => ({
+      ...prev,
+      [selectedTable]: {
+        ...(prev[selectedTable] || {}),
+        table_name: prev[selectedTable]?.table_name || selectedTable,
+        customer_name: '',
+        guests: 1,
+        hall_name: halls[0],
+        order_mode: prev[selectedTable]?.order_mode || 'hall',
+        payment_method: prev[selectedTable]?.payment_method || paymentMethod,
+        items: []
+      }
+    }))
+  }
+
+  function goBackMenu() {
+    if (categoryFilter !== 'all') {
+      setCategoryFilter('all')
+      return
+    }
+    if (menuTypeFilter !== 'all') {
+      setMenuTypeFilter('all')
+      setMenuRoot('root')
+      return
+    }
+    setMenuRoot('root')
+  }
+
+  function openMenuRoot(rootId) {
+    setMenuRoot(rootId)
+    setMenuTypeFilter(rootId)
+    setCategoryFilter('all')
+  }
+
+  function printHtmlDocument(title, rows, footerHtml = '') {
+    const html = `<!doctype html><html><head><meta charset="utf-8"><title>${title}</title><style>
+      body{font-family:Arial,sans-serif;padding:18px;color:#111}
+      h1{font-size:22px;margin:0 0 6px}
+      .meta{font-size:13px;color:#555;margin-bottom:12px}
+      table{width:100%;border-collapse:collapse;font-size:13px}
+      th,td{border-bottom:1px solid #ddd;padding:8px;text-align:left;vertical-align:top}
+      .right{text-align:right}.sum{font-size:22px;font-weight:800;margin-top:12px}
+      .section{margin-top:18px}
+    </style></head><body>${rows}${footerHtml}</body></html>`
+    const w = window.open('', '_blank', 'width=900,height=700')
+    if (!w) return
+    w.document.open()
+    w.document.write(html)
+    w.document.close()
+    w.focus()
+    w.print()
+  }
+
+  function currentOrderMetaLine() {
+    const modeLabel = currentDraft.order_mode === 'takeaway' ? 'С собой' : currentDraft.order_mode === 'delivery' ? 'Доставка' : 'Зал'
+    return `${branches.find(b => String(b.id) === String(branchId))?.name || ''} · ${date} · ${selectedTable} · ${modeLabel} · гостей: ${currentDraft.guests || 1}${currentDraft.hall_name && currentDraft.order_mode === 'hall' ? ` · ${currentDraft.hall_name}` : ''}${cashierSession?.name ? ` · кассир: ${cashierSession.name}` : ''}`
+  }
+
+  function precheckOrder() {
+    if (!items.length) return setMessage('Заказ пуст')
+    const rows = `
+      <h1>Пречек</h1>
+      <div class="meta">${currentOrderMetaLine()}</div>
+      <table><thead><tr><th>Позиция</th><th>Тип</th><th class="right">Кол-во</th><th class="right">Цена</th><th class="right">Сумма</th></tr></thead><tbody>
+      ${items.map(item => `<tr><td>${item.name}</td><td>${item.item_type}</td><td class="right">${fmt(item.qty)}</td><td class="right">${fmt(item.price)}</td><td class="right">${fmt(parseNum(item.qty) * parseNum(item.price))}</td></tr>`).join('')}
+      </tbody></table>`
+    const footer = `<div class="sum">Итого: ${fmt(subtotal)} AZN</div>`
+    printHtmlDocument('Пречек', rows, footer)
+  }
+
+  function printByType(type) {
+    const typeLabel = type === 'Бар' ? 'Печать в бар' : 'Печать на кухню'
+    const filtered = items.filter(item => item.item_type === type)
+    if (!filtered.length) return setMessage(type === 'Бар' ? 'В заказе нет напитков / барных позиций' : 'В заказе нет кухонных позиций')
+    const rows = `
+      <h1>${typeLabel}</h1>
+      <div class="meta">${currentOrderMetaLine()}</div>
+      <table><thead><tr><th>Позиция</th><th class="right">Кол-во</th><th class="right">Комментарий</th></tr></thead><tbody>
+      ${filtered.map(item => `<tr><td>${item.name}</td><td class="right">${fmt(item.qty)}</td><td class="right">—</td></tr>`).join('')}
+      </tbody></table>`
+    printHtmlDocument(typeLabel, rows)
+  }
+
+  function splitCheckPreview() {
+    if (!items.length) return setMessage('Заказ пуст')
+    const left = []
+    const right = []
+    items.forEach((item, idx) => (idx % 2 === 0 ? left : right).push(item))
+    const sumBlock = part => part.reduce((s, item) => s + parseNum(item.qty) * parseNum(item.price), 0)
+    const partHtml = (title, part) => `<div class="section"><h1>${title}</h1><table><thead><tr><th>Позиция</th><th class="right">Кол-во</th><th class="right">Цена</th><th class="right">Сумма</th></tr></thead><tbody>${part.map(item => `<tr><td>${item.name}</td><td class="right">${fmt(item.qty)}</td><td class="right">${fmt(item.price)}</td><td class="right">${fmt(parseNum(item.qty) * parseNum(item.price))}</td></tr>`).join('')}</tbody></table><div class="sum">${fmt(sumBlock(part))} AZN</div></div>`
+    printHtmlDocument('Разделение чека', `<div class="meta">${currentOrderMetaLine()}</div>${partHtml('Часть 1', left)}${partHtml('Часть 2', right)}`)
+  }
+
+  async function recalcDailyRevenueFromPos(activeBranchId, activeDate) {
+    const { data: entries } = await supabase
+      .from('daily_revenue_entries')
+      .select('cash_amount,bank_amount,wolt_amount')
+      .eq('branch_id', activeBranchId)
+      .eq('revenue_date', activeDate)
+      .is('deleted_at', null)
+
+    const totals = (entries || []).reduce((acc, row) => {
+      acc.cash_amount += parseNum(row.cash_amount)
+      acc.bank_amount += parseNum(row.bank_amount)
+      acc.wolt_amount += parseNum(row.wolt_amount)
+      return acc
+    }, { cash_amount: 0, bank_amount: 0, wolt_amount: 0 })
+
+    await supabase.from('daily_revenue').upsert({
+      branch_id: activeBranchId,
+      revenue_date: activeDate,
+      cash_amount: totals.cash_amount,
+      bank_amount: totals.bank_amount,
+      wolt_amount: totals.wolt_amount
+    }, { onConflict: 'branch_id,revenue_date' })
+  }
+
+  async function closeOrder() {
+    if (!branchId) return setMessage('Выберите филиал')
+    if (!items.length) return setMessage('Добавьте позиции в заказ')
     setLoading(true)
     setMessage('')
     try {
-      const [terminalRes, cashierRes] = await Promise.all([
-        supabase.from('pos_terminals').select('*').order('terminal_code', { ascending: true }),
-        supabase.from('pos_users').select('*').order('full_name', { ascending: true })
-      ])
-
-      if (terminalRes.error) throw terminalRes.error
-      if (cashierRes.error) throw cashierRes.error
-
-      const terminalRows = terminalRes.data || []
-      const cashierRows = cashierRes.data || []
-      setTerminals(terminalRows)
-      setCashiers(cashierRows)
-      if (!selectedTerminalId && terminalRows[0]?.id) setSelectedTerminalId(terminalRows[0].id)
-
-      let dashboardData = null
-      const dashRes = await supabase.rpc('rms_pos_admin_dashboard', {
-        p_date_from: dateFrom,
-        p_date_to: dateTo,
-        p_branch_id: branchId || null
-      })
-      if (!dashRes.error) dashboardData = dashRes.data || null
-      setDashboard(dashboardData)
-
-      const reportRes = await supabase
-        .from('rms_pos_order_report')
-        .select('*')
-        .gte('opened_at', startDateISO(dateFrom))
-        .lt('opened_at', nextDateExclusive(dateTo))
-        .order('opened_at', { ascending: false })
-        .limit(150)
-
-      if (!reportRes.error) {
-        const filtered = branchId ? (reportRes.data || []).filter(r => r.branch_id === branchId) : (reportRes.data || [])
-        setOrders(filtered)
-      } else {
-        const fallbackRes = await supabase
-          .from('pos_orders')
-          .select('*')
-          .gte('opened_at', startDateISO(dateFrom))
-          .lt('opened_at', nextDateExclusive(dateTo))
-          .order('opened_at', { ascending: false })
-          .limit(150)
-        if (fallbackRes.error) throw fallbackRes.error
-        setOrders(branchId ? (fallbackRes.data || []).filter(r => r.branch_id === branchId) : (fallbackRes.data || []))
+      const user = await currentUserMeta()
+      const activePayment = currentDraft.payment_method || paymentMethod || 'cash'
+      const revenuePayload = {
+        branch_id: branchId,
+        revenue_date: date,
+        cash_amount: activePayment === 'cash' ? subtotal : 0,
+        bank_amount: activePayment === 'bank' ? subtotal : 0,
+        wolt_amount: activePayment === 'wolt' ? subtotal : 0,
+        comment: `POS · ${currentDraft.table_name || selectedTable} · ${fmt(totalQty)} шт. · кассир ${cashierSession?.name || '—'}`,
+        created_by: user.user_id,
+        updated_by: user.user_id
       }
+
+      const { data: order, error: orderError } = await supabase.from('pos_orders').insert({
+        branch_id: branchId,
+        order_date: date,
+        table_name: currentDraft.table_name || selectedTable || null,
+        customer_name: currentDraft.customer_name || null,
+        payment_method: activePayment,
+        total_amount: subtotal,
+        status: 'closed',
+        closed_at: new Date().toISOString(),
+        hall_name: currentDraft.hall_name || null,
+        guest_count: parseNum(currentDraft.guests || 1),
+        order_mode: currentDraft.order_mode || 'hall',
+        cashier_name: cashierSession?.name || null,
+        created_by: user.user_id,
+        updated_by: user.user_id
+      }).select('*').single()
+      if (orderError) throw orderError
+
+      const orderItems = items.map(item => ({
+        order_id: order.id,
+        menu_item_id: item.menu_item_id,
+        item_name: item.name,
+        item_category: item.category || null,
+        item_type: item.item_type || 'Кухня',
+        quantity: parseNum(item.qty),
+        unit_price: parseNum(item.price),
+        total_amount: parseNum(item.qty) * parseNum(item.price)
+      }))
+      const { error: itemsError } = await supabase.from('pos_order_items').insert(orderItems)
+      if (itemsError) throw itemsError
+
+      const { error: revenueError } = await supabase.from('daily_revenue_entries').insert(revenuePayload)
+      if (revenueError) throw revenueError
+      await recalcDailyRevenueFromPos(branchId, date)
+
+      setDraftOrders(prev => ({
+        ...prev,
+        [selectedTable]: {
+          table_name: currentDraft.table_name || selectedTable,
+          customer_name: '',
+          guests: 1,
+          hall_name: halls[0],
+          order_mode: currentDraft.order_mode || 'hall',
+          payment_method: activePayment,
+          items: []
+        }
+      }))
+      await loadBase()
+      setMessage('Чек закрыт. Продажа отправлена в RMS.')
     } catch (error) {
-      setMessage(error?.message || 'Не удалось загрузить POS Cloud данные. Проверь SQL patch rms_main_pos_admin_center_v2.sql')
+      setMessage(error?.message || 'Не удалось закрыть чек')
     } finally {
       setLoading(false)
     }
   }
 
-  async function addTerminal() {
-    const terminalCode = prompt('Код терминала, например cloud-preview-002')
-    if (!terminalCode) return
-    const branch = selectedBranch || branches[0]
-    const { error } = await supabase.from('pos_terminals').insert({
-      terminal_code: terminalCode.trim(),
-      name: terminalCode.trim(),
-      branch_id: branch?.id || null,
-      branch_name: branch?.name || null,
-      is_active: true,
-      settings: {
-        service_percent: 10,
-        tables: [
-          { id: 'T01', name: 'Стол 1', zone: 'Зал', seats: 2 },
-          { id: 'T02', name: 'Стол 2', zone: 'Зал', seats: 2 },
-          { id: 'TAKEAWAY', name: 'Take Away', zone: 'Касса', seats: 0 }
-        ]
-      }
-    })
-    if (error) return setMessage(error.message)
-    setMessage('Терминал добавлен')
-    await loadAll()
+  function tableDraftSummary(tableId) {
+    const draft = draftOrders[tableId]
+    const draftItems = draft?.items || []
+    const qty = draftItems.reduce((s, item) => s + parseNum(item.qty), 0)
+    const total = draftItems.reduce((s, item) => s + parseNum(item.qty) * parseNum(item.price), 0)
+    return { qty, total, count: draftItems.length, mode: draft?.order_mode || 'hall', guests: draft?.guests || 1 }
   }
 
-  async function updateTerminal(row, patch) {
-    const { error } = await supabase.from('pos_terminals').update({ ...patch, updated_at: new Date().toISOString() }).eq('id', row.id)
-    if (error) return setMessage(error.message)
-    await loadAll()
+  if (!cashierSession) {
+    return (
+      <section>
+        <section className="topbar">
+          <div>
+            <h2>POS / Касса</h2>
+            <p>Вход в POS-кассу: сотрудник вводит своё имя и 4-значный PIN-код.</p>
+          </div>
+        </section>
+        {message && <p className="hint bad">{message}</p>}
+        <div className="card" style={{maxWidth:520, margin:'20px auto'}}>
+          <h3>Вход в POS</h3>
+          <div className="form-grid compact">
+            <label><span>Сотрудник / кассир</span><input value={cashierNameInput} onChange={e => setCashierNameInput(e.target.value)} placeholder="Например, Murad" /></label>
+            <label><span>PIN-код</span><input value={'•'.repeat(cashierPin.length)} readOnly placeholder="4 цифры" /></label>
+          </div>
+          <div style={{display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:10, marginTop:14}}>
+            {[1,2,3,4,5,6,7,8,9,'C',0,'⌫'].map(key => <button key={key} onClick={() => key === 'C' ? clearPin() : key === '⌫' ? backspacePin() : handlePinDigit(key)} style={{padding:'18px 12px', fontSize:22, fontWeight:800, borderRadius:14, border:'1px solid #d7dfd9', background:'#fff'}}>{key}</button>)}
+          </div>
+          <button className="primary" style={{width:'100%', marginTop:14}} onClick={unlockPos}>Войти в POS</button>
+        </div>
+      </section>
+    )
   }
-
-  async function toggleTerminal(row) {
-    await updateTerminal(row, { is_active: !row.is_active })
-  }
-
-  async function addCashier() {
-    const fullName = prompt('Имя кассира')
-    if (!fullName) return
-    const pin = prompt('PIN кассира')
-    if (!pin) return
-    const branch = selectedBranch || branches[0]
-    const terminal = selectedTerminal || terminals[0]
-    const { error } = await supabase.from('pos_users').insert({
-      full_name: fullName.trim(),
-      pin_code: pin.trim(),
-      role: 'cashier',
-      branch_id: branch?.id || null,
-      terminal_id: terminal?.id || null,
-      is_active: true
-    })
-    if (error) return setMessage(error.message)
-    setMessage('Кассир добавлен')
-    await loadAll()
-  }
-
-  async function updateCashier(row, patch) {
-    const { error } = await supabase.from('pos_users').update({ ...patch, updated_at: new Date().toISOString() }).eq('id', row.id)
-    if (error) return setMessage(error.message)
-    await loadAll()
-  }
-
-  async function saveTerminalTables(nextTables) {
-    if (!selectedTerminal) return
-    const nextSettings = { ...(selectedTerminal.settings || {}), tables: nextTables }
-    const { error } = await supabase.from('pos_terminals').update({ settings: nextSettings, updated_at: new Date().toISOString() }).eq('id', selectedTerminal.id)
-    if (error) return setMessage(error.message)
-    setMessage('Схема столов сохранена')
-    await loadAll()
-  }
-
-  function addTableToTerminal() {
-    if (!selectedTerminal) return setMessage('Выберите терминал')
-    const id = prompt('ID стола, например T10')
-    if (!id) return
-    const name = prompt('Название стола', `Стол ${id.replace(/\D/g, '') || id}`) || id
-    const zone = prompt('Зона', 'Зал') || 'Зал'
-    const seats = parseNum(prompt('Количество мест', '2') || 2)
-    saveTerminalTables([...terminalTables, { id: id.trim(), name: name.trim(), zone: zone.trim(), seats }])
-  }
-
-  function updateTerminalTable(index, patch) {
-    const next = terminalTables.map((table, i) => i === index ? { ...table, ...patch } : table)
-    saveTerminalTables(next)
-  }
-
-  function deleteTerminalTable(index) {
-    if (!confirm('Удалить стол из настроек терминала?')) return
-    saveTerminalTables(terminalTables.filter((_, i) => i !== index))
-  }
-
-  async function reopenOrder(row) {
-    if (!row?.id) return
-    const { error } = await supabase.from('pos_orders').update({ status: 'open', closed_at: null, updated_at: new Date().toISOString() }).eq('id', row.id)
-    if (error) return setMessage(error.message)
-    setMessage('Чек снова открыт')
-    await loadAll()
-  }
-
-  async function cancelOrder(row) {
-    if (!row?.id || !confirm('Отменить POS-чек?')) return
-    const { error } = await supabase.from('pos_orders').update({ status: 'cancelled', cancelled_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq('id', row.id)
-    if (error) return setMessage(error.message)
-    setMessage('Чек отменён')
-    await loadAll()
-  }
-
-  async function syncClosedOrdersToRevenue() {
-    setMessage('Синхронизация будет включена после проверки структуры daily_revenue_entries в основной RMS. Сейчас закрытие чека уже должно писать выручку из POS Cloud через pos_close_order.')
-  }
-
-  const branchNameById = (id) => branches.find(b => b.id === id)?.name || '—'
-  const terminalNameById = (id) => terminals.find(t => t.id === id)?.terminal_code || '—'
-  const cashierNameById = (id) => cashiers.find(u => u.id === id)?.full_name || '—'
 
   return (
     <section>
       <section className="topbar">
         <div>
-          <h2>POS Cloud</h2>
-          <p>Администрирование отдельной кассы RMS POS Cloud: терминалы, кассиры, столы, чеки, отчёты и синхронизация с RMS.</p>
+          <h2>POS / Касса</h2>
+          <p>Кассир: <b>{cashierSession.name}</b> · Стиль работы: столы → заказ → категории → позиции → пречек / чек.</p>
         </div>
-        <div className="action-row">
-          <button className="ghost small" onClick={loadAll}>{loading ? 'Загрузка...' : 'Обновить'}</button>
+        <div style={{display:'flex', gap:8, alignItems:'center'}}>
+          <button className="ghost" onClick={logoutPos}>Выйти</button>
         </div>
       </section>
 
-      {message && <p className={`hint ${message.includes('добавлен') || message.includes('сохран') || message.includes('открыт') ? 'good' : 'bad'}`}>{message}</p>}
+      {message && <p className={`hint ${message.includes('закрыт') || message.includes('отправлена') ? 'good' : 'bad'}`}>{message}</p>}
 
-      <div className="settings-tabs">
-        <button className={tab === 'overview' ? 'active' : ''} onClick={() => setTab('overview')}>Обзор</button>
-        <button className={tab === 'terminals' ? 'active' : ''} onClick={() => setTab('terminals')}>Терминалы</button>
-        <button className={tab === 'cashiers' ? 'active' : ''} onClick={() => setTab('cashiers')}>Кассиры</button>
-        <button className={tab === 'tables' ? 'active' : ''} onClick={() => setTab('tables')}>Столы</button>
-        <button className={tab === 'checks' ? 'active' : ''} onClick={() => setTab('checks')}>Чеки</button>
-        <button className={tab === 'reports' ? 'active' : ''} onClick={() => setTab('reports')}>Отчёты</button>
-        <button className={tab === 'sync' ? 'active' : ''} onClick={() => setTab('sync')}>Синхронизация</button>
-      </div>
-
-      <div className="card">
-        <h3>Фильтр POS Cloud</h3>
-        <div className="form-grid compact">
-          <label><span>С даты</span><input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} /></label>
-          <label><span>По дату</span><input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} /></label>
-          <label><span>Филиал</span><select value={branchId} onChange={e => setBranchId(e.target.value)}><option value="">Все филиалы</option>{branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label>
-        </div>
-      </div>
-
-      {tab === 'overview' && <>
-        <div className="mini-grid">
-          <div className="metric"><span>POS выручка</span><strong>{fmt(summary.revenue)} AZN</strong></div>
-          <div className="metric"><span>Закрытые чеки</span><strong>{summary.closed_checks || 0}</strong></div>
-          <div className="metric"><span>Открытые чеки</span><strong>{summary.open_checks || 0}</strong></div>
-          <div className="metric"><span>Средний чек</span><strong>{fmt(summary.avg_check)} AZN</strong></div>
-        </div>
-        <div className="grid two">
-          <div className="card"><h3>Оплата наличными</h3><p className="big-number">{fmt(summary.cash_revenue)} AZN</p></div>
-          <div className="card"><h3>Оплата картой / банком</h3><p className="big-number">{fmt(summary.card_revenue)} AZN</p></div>
-        </div>
+      <div style={{display:'grid', gridTemplateColumns:'1.1fr 1fr 1.25fr', gap:14}}>
         <div className="card">
-          <h3>Терминалы за период</h3>
-          <div className="table-wrap"><table><thead><tr><th>Терминал</th><th>Филиал</th><th>Статус</th><th>Выручка</th><th>Закрытые чеки</th><th>Открытые</th></tr></thead><tbody>
-            {reportTerminals.map(row => <tr key={row.id}><td>{row.terminal_code}</td><td>{row.branch_name}</td><td>{row.is_active ? 'Активен' : 'Отключён'}</td><td>{fmt(row.revenue)}</td><td>{row.closed_checks}</td><td>{row.open_checks}</td></tr>)}
-            {!reportTerminals.length && <tr><td colSpan="6" className="hint">Нет данных по терминалам.</td></tr>}
-          </tbody></table></div>
+          <div className="card-head"><div><h3>Текущий заказ</h3><p className="hint">Стол / режим обслуживания / посетители / заказ</p></div></div>
+          <div className="form-grid compact">
+            <label><span>Филиал</span><select value={branchId} onChange={e => setBranchId(e.target.value)}>{branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label>
+            <label><span>Дата</span><input type="date" value={date} onChange={e => setDate(e.target.value)} /></label>
+            <label><span>Стол</span><input value={currentDraft.table_name || selectedTable} onChange={e => setCurrentDraft({ table_name: e.target.value })} /></label>
+            <label><span>Посетители</span><input inputMode="numeric" value={currentDraft.guests || 1} onChange={e => setCurrentDraft({ guests: Math.max(1, parseInt(e.target.value || '1', 10) || 1) })} /></label>
+            <label><span>Режим</span><select value={currentDraft.order_mode || 'hall'} onChange={e => setCurrentDraft({ order_mode: e.target.value })}><option value="hall">Зал</option><option value="takeaway">С собой</option><option value="delivery">Доставка</option></select></label>
+            <label><span>Зал</span><select value={currentDraft.hall_name || halls[0]} onChange={e => setCurrentDraft({ hall_name: e.target.value })} disabled={(currentDraft.order_mode || 'hall') !== 'hall'}>{halls.map(h => <option key={h} value={h}>{h}</option>)}</select></label>
+            <label><span>Оплата</span><select value={currentDraft.payment_method || paymentMethod} onChange={e => { setPaymentMethod(e.target.value); setCurrentDraft({ payment_method: e.target.value }) }}><option value="cash">Наличные</option><option value="bank">Банк</option><option value="wolt">Wolt / доставка</option></select></label>
+            <label><span>Комментарий / гость</span><input value={currentDraft.customer_name || ''} onChange={e => setCurrentDraft({ customer_name: e.target.value })} placeholder="Необязательно" /></label>
+          </div>
+
+          <div className="table-wrap" style={{maxHeight:430, overflow:'auto', marginTop:12}}>
+            <table>
+              <thead><tr><th>Позиция</th><th>Тип</th><th>Кол-во</th><th>Цена</th><th>Сумма</th><th></th></tr></thead>
+              <tbody>
+                {items.map((item, idx) => <tr key={`${item.menu_item_id}-${idx}`}>
+                  <td><b>{item.name}</b></td>
+                  <td>{item.item_type}</td>
+                  <td><input style={{width:64}} inputMode="decimal" value={item.qty} onChange={e => updateItem(idx, { qty: e.target.value })} /></td>
+                  <td><input style={{width:78}} inputMode="decimal" value={item.price} onChange={e => updateItem(idx, { price: e.target.value })} /></td>
+                  <td><b>{fmt(parseNum(item.qty) * parseNum(item.price))}</b></td>
+                  <td><button className="danger small" onClick={() => updateItem(idx, { qty: 0 })}>×</button></td>
+                </tr>)}
+                {!items.length && <tr><td colSpan="6" className="hint">Заказ пуст. Выбери стол и позиции из меню.</td></tr>}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="mini-grid" style={{marginTop:10}}>
+            <div className="metric"><span>Позиций</span><strong>{items.length}</strong></div>
+            <div className="metric"><span>Количество</span><strong>{fmt(totalQty)}</strong></div>
+            <div className="metric"><span>Итого</span><strong>{fmt(subtotal)} AZN</strong></div>
+          </div>
+
+          <div style={{display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:8, marginTop:12}}>
+            <button className="ghost" onClick={() => printByType('Кухня')}>Печать на кухню</button>
+            <button className="ghost" onClick={() => printByType('Бар')}>Печать в бар</button>
+            <button className="ghost" onClick={goBackMenu}>Вернуться</button>
+            <button className="danger" onClick={clearCurrentOrder}>Отмена</button>
+            <button className="ghost" onClick={precheckOrder}>Пречек</button>
+            <button className="ghost" onClick={splitCheckPreview}>Разделить чек</button>
+          </div>
+          <button className="primary" disabled={loading || !items.length} onClick={closeOrder} style={{marginTop:10, width:'100%'}}>{loading ? 'Сохранение...' : 'Чек'}</button>
         </div>
-      </>}
 
-      {tab === 'terminals' && <div className="card">
-        <div className="card-head"><h3>Управление терминалами</h3><button onClick={addTerminal}>+ Терминал</button></div>
-        <div className="table-wrap"><table><thead><tr><th>Код</th><th>Название</th><th>Филиал</th><th>Активен</th><th>Service %</th><th></th></tr></thead><tbody>
-          {terminals.map(row => <tr key={row.id}>
-            <td><b>{row.terminal_code}</b></td>
-            <td><input defaultValue={row.name || ''} onBlur={e => updateTerminal(row, { name: e.target.value })} /></td>
-            <td><select value={row.branch_id || ''} onChange={e => { const b = branches.find(x => x.id === e.target.value); updateTerminal(row, { branch_id: b?.id || null, branch_name: b?.name || null }) }}><option value="">—</option>{branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></td>
-            <td>{row.is_active ? 'Да' : 'Нет'}</td>
-            <td><input style={{width:80}} defaultValue={row.settings?.service_percent ?? 10} onBlur={e => updateTerminal(row, { settings: { ...(row.settings || {}), service_percent: parseNum(e.target.value) } })} /></td>
-            <td><button className="ghost small" onClick={() => toggleTerminal(row)}>{row.is_active ? 'Отключить' : 'Включить'}</button></td>
-          </tr>)}
-          {!terminals.length && <tr><td colSpan="6" className="hint">Терминалы пока не созданы.</td></tr>}
-        </tbody></table></div>
-      </div>}
-
-      {tab === 'cashiers' && <div className="card">
-        <div className="card-head"><h3>Кассиры POS</h3><button onClick={addCashier}>+ Кассир</button></div>
-        <div className="table-wrap"><table><thead><tr><th>Имя</th><th>Роль</th><th>Филиал</th><th>Терминал</th><th>PIN</th><th>Активен</th><th>Выручка</th><th></th></tr></thead><tbody>
-          {cashiers.map(row => {
-            const stat = reportCashiers.find(x => x.id === row.id) || {}
-            return <tr key={row.id}>
-              <td><input defaultValue={row.full_name || ''} onBlur={e => updateCashier(row, { full_name: e.target.value })} /></td>
-              <td><select value={row.role || 'cashier'} onChange={e => updateCashier(row, { role: e.target.value })}><option value="cashier">cashier</option><option value="manager">manager</option><option value="admin">admin</option></select></td>
-              <td><select value={row.branch_id || ''} onChange={e => updateCashier(row, { branch_id: e.target.value || null })}><option value="">—</option>{branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></td>
-              <td><select value={row.terminal_id || ''} onChange={e => updateCashier(row, { terminal_id: e.target.value || null })}><option value="">Любой</option>{terminals.map(t => <option key={t.id} value={t.id}>{t.terminal_code}</option>)}</select></td>
-              <td><input style={{width:80}} defaultValue={row.pin_code || ''} onBlur={e => updateCashier(row, { pin_code: e.target.value })} /></td>
-              <td>{row.is_active ? 'Да' : 'Нет'}</td>
-              <td>{fmt(stat.revenue || 0)}</td>
-              <td><button className="ghost small" onClick={() => updateCashier(row, { is_active: !row.is_active })}>{row.is_active ? 'Отключить' : 'Включить'}</button></td>
-            </tr>
-          })}
-          {!cashiers.length && <tr><td colSpan="8" className="hint">Кассиры пока не созданы.</td></tr>}
-        </tbody></table></div>
-      </div>}
-
-      {tab === 'tables' && <div className="card">
-        <div className="card-head"><h3>Столы терминала</h3><button onClick={addTableToTerminal}>+ Стол</button></div>
-        <div className="form-grid compact"><label><span>Терминал</span><select value={selectedTerminalId} onChange={e => setSelectedTerminalId(e.target.value)}>{terminals.map(t => <option key={t.id} value={t.id}>{t.terminal_code}</option>)}</select></label></div>
-        <div className="table-wrap"><table><thead><tr><th>ID</th><th>Название</th><th>Зона</th><th>Мест</th><th></th></tr></thead><tbody>
-          {terminalTables.map((row, index) => <tr key={`${row.id}-${index}`}>
-            <td><input defaultValue={row.id || ''} onBlur={e => updateTerminalTable(index, { id: e.target.value })} /></td>
-            <td><input defaultValue={row.name || ''} onBlur={e => updateTerminalTable(index, { name: e.target.value })} /></td>
-            <td><input defaultValue={row.zone || 'Зал'} onBlur={e => updateTerminalTable(index, { zone: e.target.value })} /></td>
-            <td><input style={{width:80}} defaultValue={row.seats || 0} onBlur={e => updateTerminalTable(index, { seats: parseNum(e.target.value) })} /></td>
-            <td><button className="danger small" onClick={() => deleteTerminalTable(index)}>Удалить</button></td>
-          </tr>)}
-          {!terminalTables.length && <tr><td colSpan="5" className="hint">У выбранного терминала нет настроенных столов.</td></tr>}
-        </tbody></table></div>
-      </div>}
-
-      {(tab === 'checks' || tab === 'reports') && <div className="card">
-        <h3>{tab === 'checks' ? 'POS чеки' : 'Отчёт по POS Cloud'}</h3>
-        <div className="table-wrap"><table><thead><tr><th>Дата</th><th>Филиал</th><th>Терминал</th><th>Кассир</th><th>Стол</th><th>Статус</th><th>Оплата</th><th>Сумма</th><th></th></tr></thead><tbody>
-          {orders.map(row => <tr key={row.id}>
-            <td>{formatDT(row.closed_at || row.opened_at || row.created_at)}</td>
-            <td>{row.branch_name || branchNameById(row.branch_id)}</td>
-            <td>{row.terminal_code || terminalNameById(row.terminal_id)}</td>
-            <td>{row.cashier_name || cashierNameById(row.user_id)}</td>
-            <td>{row.table_name || row.table_id || '—'}</td>
-            <td>{row.status}</td>
-            <td>{row.payment_method || '—'}</td>
-            <td><b>{fmt(row.total_amount || row.paid_amount)}</b></td>
-            <td style={{display:'flex', gap:6}}><button className="ghost small" onClick={() => reopenOrder(row)}>Открыть</button><button className="danger small" onClick={() => cancelOrder(row)}>Отмена</button></td>
-          </tr>)}
-          {!orders.length && <tr><td colSpan="9" className="hint">Нет POS-чеков за выбранный период.</td></tr>}
-        </tbody></table></div>
-      </div>}
-
-      {tab === 'sync' && <div className="card">
-        <h3>Синхронизация POS Cloud → RMS</h3>
-        <p className="hint">Этот экран нужен для контроля закрытых чеков, которые должны попадать в выручку RMS. Кассовое приложение остаётся отдельным cloud-продуктом, а здесь — управление и отчётность.</p>
-        <div className="mini-grid">
-          <div className="metric"><span>Закрытые чеки</span><strong>{summary.closed_checks || 0}</strong></div>
-          <div className="metric"><span>Открытые чеки</span><strong>{summary.open_checks || 0}</strong></div>
-          <div className="metric"><span>POS сумма</span><strong>{fmt(summary.revenue)} AZN</strong></div>
-          <div className="metric"><span>Статус</span><strong>Контроль</strong></div>
+        <div className="card">
+          <h3>Столы / ячейки</h3>
+          <div style={{display:'grid', gridTemplateColumns:'repeat(2, minmax(120px, 1fr))', gap:10}}>
+            {tableCells.map(table => {
+              const summary = tableDraftSummary(table.id)
+              const active = selectedTable === table.id
+              const isBusy = summary.count > 0
+              return <button key={table.id} onClick={() => selectTable(table)} style={{border: active ? '2px solid #1f6f43' : '1px solid #d7dfd9', background: active ? '#eef7f0' : isBusy ? '#fff8e7' : '#fff', borderRadius:14, padding:'12px 10px', textAlign:'left', cursor:'pointer', minHeight:92}}>
+                <div style={{fontWeight:800, marginBottom:6}}>{table.label}</div>
+                <div className="hint">позиций: {summary.count}</div>
+                <div className="hint">посетители: {summary.guests}</div>
+                <div className="hint">режим: {summary.mode === 'takeaway' ? 'с собой' : summary.mode === 'delivery' ? 'доставка' : 'зал'}</div>
+                <div style={{fontWeight:700, marginTop:6}}>{fmt(summary.total)} AZN</div>
+              </button>
+            })}
+          </div>
         </div>
-        <div className="action-row" style={{marginTop:12}}>
-          <button className="ghost" onClick={syncClosedOrdersToRevenue}>Проверить синхронизацию</button>
-          <button className="ghost" onClick={loadAll}>Обновить отчёт</button>
+
+        <div className="card">
+          <div className="card-head">
+            <div><h3>Меню</h3><p className="hint">Сначала выбери Еда или Напитки, затем категорию и позицию.</p></div>
+          </div>
+          <div className="form-grid compact">
+            <label><span>Поиск</span><input value={search} onChange={e => setSearch(e.target.value)} placeholder="Поиск по меню" /></label>
+          </div>
+
+          <div style={{display:'flex', gap:8, marginTop:10, flexWrap:'wrap'}}>
+            <button className={menuTypeFilter === 'all' ? 'active' : ''} onClick={() => { setMenuRoot('root'); setMenuTypeFilter('all'); setCategoryFilter('all') }}>Корень</button>
+            {menuRoots.map(root => <button key={root.id} className={menuTypeFilter === root.id && categoryFilter === 'all' ? 'active' : ''} onClick={() => openMenuRoot(root.id)}>{root.label}</button>)}
+            {menuTypeFilter !== 'all' && <button className={categoryFilter === 'all' ? 'active' : ''} onClick={() => setCategoryFilter('all')}>Категории</button>}
+          </div>
+
+          {menuTypeFilter === 'all' && (
+            <div style={{display:'grid', gridTemplateColumns:'repeat(2, minmax(150px, 1fr))', gap:10, marginTop:12}}>
+              {menuRoots.map(root => <button key={root.id} onClick={() => openMenuRoot(root.id)} style={{border:'1px solid #d7dfd9', background:'#f8fafc', borderRadius:14, padding:'26px 12px', minHeight:118, fontSize:20, fontWeight:800}}>{root.label}</button>)}
+            </div>
+          )}
+
+          {menuTypeFilter !== 'all' && categoryFilter === 'all' && (
+            <div style={{display:'grid', gridTemplateColumns:'repeat(2, minmax(150px, 1fr))', gap:10, marginTop:12}}>
+              {visibleCategories.map(cat => <button key={cat} onClick={() => setCategoryFilter(cat)} style={{border:'1px solid #d7dfd9', background:'#eef2f7', borderRadius:14, padding:'20px 12px', minHeight:92, fontSize:18, fontWeight:700}}>{cat}</button>)}
+              {!visibleCategories.length && <div className="hint">Нет категорий.</div>}
+            </div>
+          )}
+
+          {menuTypeFilter !== 'all' && categoryFilter !== 'all' && (
+            <div style={{display:'grid', gridTemplateColumns:'repeat(2, minmax(170px, 1fr))', gap:10, marginTop:12, maxHeight:520, overflow:'auto'}}>
+              {filteredMenu.map(item => <button key={item.id} onClick={() => addMenuItemToOrder(item)} style={{border:'1px solid #d7dfd9', background:'#fff', borderRadius:14, padding:'12px 12px', textAlign:'left', minHeight:104}}>
+                <div style={{fontSize:12, color:'#6b7280', marginBottom:6}}>{item.pos_type} · {item.category || 'Без категории'}</div>
+                <div style={{fontWeight:800, lineHeight:1.25, minHeight:36}}>{item.name}</div>
+                <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:10}}>
+                  <span style={{fontWeight:800}}>{fmt(item.sale_price)} AZN</span>
+                  <span className="hint">+</span>
+                </div>
+              </button>)}
+              {!filteredMenu.length && <div className="hint">Нет позиций для выбранной категории.</div>}
+            </div>
+          )}
         </div>
-        <p className="hint">Следующий этап: добавить таблицу sync-log и сверку POS total vs daily_revenue_entries по филиалу и дню.</p>
-      </div>}
+      </div>
+
+      <div className="card" style={{marginTop:14}}>
+        <h3>Закрытые чеки за выбранную дату</h3>
+        <div className="table-wrap">
+          <table>
+            <thead><tr><th>Время</th><th>Стол</th><th>Оплата</th><th>Сумма</th><th>Позиции</th><th>Статус</th></tr></thead>
+            <tbody>
+              {orders.map(order => <tr key={order.id}>
+                <td>{formatDT(order.closed_at || order.created_at)}</td>
+                <td>{order.table_name || '—'}</td>
+                <td>{order.payment_method}</td>
+                <td><b>{fmt(order.total_amount)}</b></td>
+                <td>{(order.pos_order_items || []).slice(0, 4).map(i => i.item_name).join(', ')}{(order.pos_order_items || []).length > 4 ? '…' : ''}</td>
+                <td>{order.status}</td>
+              </tr>)}
+              {!orders.length && <tr><td colSpan="6" className="hint">Чеков пока нет.</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </section>
   )
 }
+
 
 function SalaryWorkspace({ t, isAdmin = false }) {
   const [salaryTab, setSalaryTab] = useState('employees')
@@ -6768,8 +6954,9 @@ function Suppliers({ t }) {
   const [balances, setBalances] = useState([])
   const [purchases, setPurchases] = useState([])
   const [payments, setPayments] = useState([])
+  const [openingDebts, setOpeningDebts] = useState([])
   const [profiles, setProfiles] = useState([])
-  const [supplierForm, setSupplierForm] = useState({ name: '', voen: '', contact_person: '', phone: '', info: '', payment_term_days: '', credit_limit: '' })
+  const [supplierForm, setSupplierForm] = useState({ name: '', voen: '', contact_person: '', phone: '', info: '', payment_term_days: '', credit_limit: '', opening_debt_amount: '', opening_debt_date: todayISO(), opening_debt_comment: '' })
   const [productForm, setProductForm] = useState({ name: '', category: PRODUCT_CATEGORIES[0], base_unit: 'g' })
   const [purchaseForm, setPurchaseForm] = useState({ supplier_id: '', legal_entity_id: '', branch_id: '', purchase_date: todayISO(), invoice_number: '', comment: '' })
   const emptyLine = { category: PRODUCT_CATEGORIES[0], product_id: '', base_unit: 'g', quantity: '1', unit: 'kg', unit_price: '' }
@@ -6806,19 +6993,21 @@ function Suppliers({ t }) {
         setBalances(ws.supplier_balances || [])
         setPurchases(ws.supplier_purchases || [])
         setPayments(ws.supplier_payments || [])
+        setOpeningDebts(ws.supplier_opening_debts || [])
         setProfiles(ws.user_profiles || [])
         return
       }
       setMessage(error?.message || 'Нет доступа к поставщикам')
     }
 
-    const [{ data: le }, { data: sup }, { data: prod }, { data: bal }, { data: pur }, { data: pay }, { data: prof }] = await Promise.all([
+    const [{ data: le }, { data: sup }, { data: prod }, { data: bal }, { data: pur }, { data: pay }, { data: opening }, { data: prof }] = await Promise.all([
       supabase.from('legal_entities').select('*').eq('is_active', true).order('name'),
       supabase.from('suppliers').select('*').eq('is_active', true).order('name'),
       supabase.from('supplier_products').select('*').eq('is_active', true).order('category').order('name'),
       supabase.from('supplier_balances_v2').select('*').order('supplier_name'),
       supabase.from('supplier_purchases').select('*, suppliers(name), legal_entities(name,voen), branches(name), supplier_purchase_items(*, supplier_products(name,base_unit,category))').is('deleted_at', null).order('purchase_date', { ascending: false }).order('created_at', { ascending: false }).limit(500),
       supabase.from('supplier_payments').select('*, suppliers(name)').order('payment_date', { ascending: false }).order('created_at', { ascending: false }).limit(500),
+      supabase.from('supplier_opening_debts').select('*, suppliers(name)').eq('is_active', true).order('debt_date', { ascending: false }).order('created_at', { ascending: false }).limit(500),
       supabase.from('user_profiles').select('id, full_name')
     ])
     setLegalEntities(le || [])
@@ -6827,6 +7016,7 @@ function Suppliers({ t }) {
     setBalances(bal || [])
     setPurchases(pur || [])
     setPayments(pay || [])
+    setOpeningDebts(opening || [])
     setProfiles(prof || [])
   }
 
@@ -6900,16 +7090,37 @@ function Suppliers({ t }) {
   async function addSupplier() {
     setMessage('')
     if (!supplierForm.name.trim()) return setMessage('Введите имя контрагента')
-    const { error } = await supabase.from('suppliers').insert({
-      name: supplierForm.name.trim(), voen: supplierForm.voen.trim() || null,
-      contact_person: supplierForm.contact_person.trim() || null, phone: supplierForm.phone.trim() || null,
-      info: supplierForm.info.trim() || null,
-      payment_term_days: parseNum(supplierForm.payment_term_days) || null,
-      credit_limit: parseNum(supplierForm.credit_limit) || 0
-    })
-    if (error) return setMessage(error.message)
-    setSupplierForm({ name: '', voen: '', contact_person: '', phone: '', info: '', payment_term_days: '', credit_limit: '' })
-    await load(); setMessage(t('saved'))
+    const openingAmount = parseNum(supplierForm.opening_debt_amount)
+    const stopProgress = startGlobalProgress('Сохранение поставщика...')
+    try {
+      const { data: createdSupplier, error } = await supabase.from('suppliers').insert({
+        name: supplierForm.name.trim(), voen: supplierForm.voen.trim() || null,
+        contact_person: supplierForm.contact_person.trim() || null, phone: supplierForm.phone.trim() || null,
+        info: supplierForm.info.trim() || null,
+        payment_term_days: parseNum(supplierForm.payment_term_days) || null,
+        credit_limit: parseNum(supplierForm.credit_limit) || 0
+      }).select('*').single()
+      if (error) throw error
+
+      if (openingAmount > 0 && createdSupplier?.id) {
+        const { error: debtError } = await supabase.rpc('rms_add_supplier_opening_debt', {
+          p_supplier_id: createdSupplier.id,
+          p_debt_date: supplierForm.opening_debt_date || todayISO(),
+          p_amount: openingAmount,
+          p_invoice_notes: 'Стартовый долг',
+          p_comment: supplierForm.opening_debt_comment?.trim() || 'Долг за предыдущий период'
+        })
+        if (debtError) throw debtError
+      }
+
+      setSupplierForm({ name: '', voen: '', contact_person: '', phone: '', info: '', payment_term_days: '', credit_limit: '', opening_debt_amount: '', opening_debt_date: todayISO(), opening_debt_comment: '' })
+      await load()
+      setMessage(openingAmount > 0 ? 'Поставщик сохранён, стартовый долг добавлен' : t('saved'))
+    } catch (e) {
+      setMessage(e.message || String(e))
+    } finally {
+      stopProgress()
+    }
   }
   async function updateSupplier(id, patch) {
     setMessage('')
@@ -7034,9 +7245,10 @@ function Suppliers({ t }) {
 
   const purchaseTotal = lineRows.reduce((s, r) => s + lineTotal(r), 0)
   function allTransactions() {
+    const openingDebtRows = openingDebts.map(d => ({ id: `od-${d.id}`, type: 'Долг за предыдущий период', date: d.debt_date, supplier_id: d.supplier_id, supplier: d.suppliers?.name || suppliers.find(s => s.id === d.supplier_id)?.name || '—', invoice: d.invoice_notes || 'Стартовый долг', amount: parseNum(d.amount), comment: d.comment || '', legal: '—' }))
     const purchaseRows = purchases.map(p => ({ id: `p-${p.id}`, type: 'Поступление', date: p.purchase_date, supplier_id: p.supplier_id, supplier: p.suppliers?.name || suppliers.find(s => s.id === p.supplier_id)?.name || '—', invoice: p.invoice_number || '—', amount: parseNum(p.total_amount), comment: p.comment || '', legal: p.legal_entities?.name || '—' }))
     const paymentRows = payments.map(p => ({ id: `pay-${p.id}`, type: 'Оплата', date: p.payment_date, supplier_id: p.supplier_id, supplier: p.suppliers?.name || suppliers.find(s => s.id === p.supplier_id)?.name || '—', invoice: p.invoice_notes || '—', amount: -parseNum(p.amount), comment: p.comment || '', legal: '—' }))
-    return [...purchaseRows, ...paymentRows].sort((a,b) => new Date(b.date) - new Date(a.date))
+    return [...openingDebtRows, ...purchaseRows, ...paymentRows].sort((a,b) => new Date(b.date) - new Date(a.date))
   }
   function periodOk(dateStr) {
     if (transactionPeriod === 'all') return true
@@ -7113,6 +7325,9 @@ function Suppliers({ t }) {
           <label><span>Информация</span><input value={supplierForm.info} onChange={e => setSupplierForm({...supplierForm, info: e.target.value})} /></label>
           <label><span>Срок оплаты, дней</span><input inputMode="numeric" value={supplierForm.payment_term_days} onChange={e => setSupplierForm({...supplierForm, payment_term_days: e.target.value})} /></label>
           <label><span>Кредитный лимит</span><input inputMode="decimal" value={supplierForm.credit_limit} onChange={e => setSupplierForm({...supplierForm, credit_limit: e.target.value})} /></label>
+          <label><span>Долг за предыдущий период</span><input inputMode="decimal" value={supplierForm.opening_debt_amount} onChange={e => setSupplierForm({...supplierForm, opening_debt_amount: e.target.value})} placeholder="0.00" /></label>
+          <label><span>Дата стартового долга</span><input type="date" value={supplierForm.opening_debt_date} onChange={e => setSupplierForm({...supplierForm, opening_debt_date: e.target.value})} /></label>
+          <label><span>Комментарий к стартовому долгу</span><input value={supplierForm.opening_debt_comment} onChange={e => setSupplierForm({...supplierForm, opening_debt_comment: e.target.value})} placeholder="Например: остаток на 01.05" /></label>
         </div><button className="small" onClick={addSupplier}>+ Добавить поставщика</button>
       </div>
 
