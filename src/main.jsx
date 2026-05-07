@@ -4060,30 +4060,53 @@ function Finance({ t, lang }) {
     const endDate = new Date(Number(y), Number(m), 1).toISOString().slice(0, 10)
     let rows = []
 
-    const { data: dailyRows, error: dailyError } = await supabase
-      .from('daily_revenue')
-      .select('branch_id,cash_amount,bank_amount,wolt_amount,total_revenue,revenue_date,deleted_at')
-      .gte('revenue_date', monthDate)
-      .lt('revenue_date', endDate)
-      .is('deleted_at', null)
+    // Primary source: the original stable RMS monthly aggregate.
+    // This was the working logic before the POS/translation changes.
+    const { data: monthlyRows, error: monthlyError } = await supabase
+      .from('monthly_branch_revenue')
+      .select('branch_id,total_revenue')
+      .eq('month', monthDate)
 
-    if (!dailyError && (dailyRows || []).length) {
-      rows = dailyRows || []
+    if (!monthlyError && Array.isArray(monthlyRows) && monthlyRows.length) {
+      rows = monthlyRows.map(r => ({
+        branch_id: r.branch_id,
+        total_revenue: parseNum(r.total_revenue)
+      }))
     } else {
-      const { data: entryRows } = await supabase
-        .from('daily_revenue_entries')
-        .select('branch_id,cash_amount,bank_amount,wolt_amount,revenue_date,deleted_at')
+      // Fallback 1: daily aggregate table.
+      const { data: dailyRows, error: dailyError } = await supabase
+        .from('daily_revenue')
+        .select('branch_id,cash_amount,bank_amount,wolt_amount,total_revenue,revenue_date,deleted_at')
         .gte('revenue_date', monthDate)
         .lt('revenue_date', endDate)
         .is('deleted_at', null)
-      rows = entryRows || dailyRows || []
+
+      if (!dailyError && Array.isArray(dailyRows) && dailyRows.length) {
+        rows = dailyRows.map(r => ({
+          branch_id: r.branch_id,
+          total_revenue: parseNum(r.total_revenue) || parseNum(r.cash_amount) + parseNum(r.bank_amount) + parseNum(r.wolt_amount)
+        }))
+      } else {
+        // Fallback 2: revenue entry rows.
+        const { data: entryRows } = await supabase
+          .from('daily_revenue_entries')
+          .select('branch_id,cash_amount,bank_amount,wolt_amount,revenue_date,deleted_at')
+          .gte('revenue_date', monthDate)
+          .lt('revenue_date', endDate)
+          .is('deleted_at', null)
+
+        rows = (entryRows || []).map(r => ({
+          branch_id: r.branch_id,
+          total_revenue: parseNum(r.cash_amount) + parseNum(r.bank_amount) + parseNum(r.wolt_amount)
+        }))
+      }
     }
 
     const branchTotals = new Map()
     rows.forEach(r => {
-      const total = parseNum(r.total_revenue) || parseNum(r.cash_amount) + parseNum(r.bank_amount) + parseNum(r.wolt_amount)
-      branchTotals.set(r.branch_id, (branchTotals.get(r.branch_id) || 0) + total)
+      branchTotals.set(r.branch_id, (branchTotals.get(r.branch_id) || 0) + parseNum(r.total_revenue))
     })
+
     const total = Array.from(branchTotals.values()).reduce((s, v) => s + parseNum(v), 0)
     const map = new Map()
     branchTotals.forEach((value, key) => map.set(key, total > 0 ? parseNum(value) / total : 0))
@@ -4432,61 +4455,98 @@ function Finance({ t, lang }) {
     const monthDate = monthStart(y, m)
     const endDate = new Date(Number(y), Number(m), 1).toISOString().slice(0, 10)
 
-    const [dailyRes, entryRes, expRes, advRes, salRes, svcRes] = await Promise.all([
-      supabase
+    let revenue = 0
+    let expenses = 0
+    let salary = 0
+    let serviceCost = 0
+    let cash = 0
+    let bank = 0
+    let wolt = 0
+
+    // 1) Primary source: original stable monthly RMS views.
+    // These views were used when the finance section worked correctly.
+    let revQuery = supabase.from('monthly_branch_revenue').select('*').eq('month', monthDate)
+    let expQuery = supabase.from('monthly_branch_expenses').select('*').eq('month', monthDate)
+    let salQuery = supabase.from('monthly_branch_salary').select('*').eq('month', monthDate)
+    let svcQuery = supabase.from('monthly_branch_service_charge_cost').select('*').eq('month', monthDate)
+
+    if (selectedBranchId !== ALL_BRANCHES) {
+      revQuery = revQuery.eq('branch_id', selectedBranchId)
+      expQuery = expQuery.eq('branch_id', selectedBranchId)
+      salQuery = salQuery.eq('branch_id', selectedBranchId)
+      svcQuery = svcQuery.eq('branch_id', selectedBranchId)
+    }
+
+    const [revMonthly, expMonthly, salMonthly, svcMonthly] = await Promise.all([revQuery, expQuery, salQuery, svcQuery])
+
+    const monthlyRevenueRows = !revMonthly.error ? (revMonthly.data || []) : []
+    const monthlyExpenseRows = !expMonthly.error ? (expMonthly.data || []) : []
+    const monthlySalaryRows = !salMonthly.error ? (salMonthly.data || []) : []
+    const monthlyServiceRows = !svcMonthly.error ? (svcMonthly.data || []) : []
+
+    if (monthlyRevenueRows.length) {
+      revenue = monthlyRevenueRows.reduce((s, r) => s + parseNum(r.total_revenue), 0)
+      cash = monthlyRevenueRows.reduce((s, r) => s + parseNum(r.cash_amount), 0)
+      bank = monthlyRevenueRows.reduce((s, r) => s + parseNum(r.bank_amount), 0)
+      wolt = monthlyRevenueRows.reduce((s, r) => s + parseNum(r.wolt_amount), 0)
+    }
+
+    if (monthlyExpenseRows.length) expenses = monthlyExpenseRows.reduce((s, r) => s + parseNum(r.total_expenses), 0)
+    if (monthlySalaryRows.length) salary = monthlySalaryRows.reduce((s, r) => s + parseNum(r.total_salary), 0)
+    if (monthlyServiceRows.length) serviceCost = monthlyServiceRows.reduce((s, r) => s + parseNum(r.staff_cost_amount), 0)
+
+    // 2) Fallback for revenue only: daily aggregate / entry rows.
+    // Used only when monthly_branch_revenue is empty or unavailable.
+    if (revenue <= 0) {
+      let dailyQuery = supabase
         .from('daily_revenue')
-        .select('branch_id,branch_name,cash_amount,bank_amount,wolt_amount,total_revenue,revenue_date,deleted_at,branches(name)')
+        .select('branch_id,cash_amount,bank_amount,wolt_amount,total_revenue,revenue_date,deleted_at')
         .gte('revenue_date', monthDate)
         .lt('revenue_date', endDate)
-        .is('deleted_at', null),
-      supabase
-        .from('daily_revenue_entries')
-        .select('branch_id,branch_name,cash_amount,bank_amount,wolt_amount,revenue_date,deleted_at,branches(name)')
-        .gte('revenue_date', monthDate)
-        .lt('revenue_date', endDate)
-        .is('deleted_at', null),
-      supabase
+        .is('deleted_at', null)
+
+      if (selectedBranchId !== ALL_BRANCHES) dailyQuery = dailyQuery.eq('branch_id', selectedBranchId)
+
+      const { data: dailyRows, error: dailyError } = await dailyQuery
+
+      let revenueRows = []
+      if (!dailyError && Array.isArray(dailyRows) && dailyRows.length) {
+        revenueRows = dailyRows
+      } else {
+        let entryQuery = supabase
+          .from('daily_revenue_entries')
+          .select('branch_id,cash_amount,bank_amount,wolt_amount,revenue_date,deleted_at')
+          .gte('revenue_date', monthDate)
+          .lt('revenue_date', endDate)
+          .is('deleted_at', null)
+
+        if (selectedBranchId !== ALL_BRANCHES) entryQuery = entryQuery.eq('branch_id', selectedBranchId)
+        const { data: entryRows } = await entryQuery
+        revenueRows = entryRows || []
+      }
+
+      cash = revenueRows.reduce((s, r) => s + parseNum(r.cash_amount), 0)
+      bank = revenueRows.reduce((s, r) => s + parseNum(r.bank_amount), 0)
+      wolt = revenueRows.reduce((s, r) => s + parseNum(r.wolt_amount), 0)
+      revenue = revenueRows.reduce((s, r) => {
+        const total = parseNum(r.total_revenue)
+        return s + (total || parseNum(r.cash_amount) + parseNum(r.bank_amount) + parseNum(r.wolt_amount))
+      }, 0)
+    }
+
+    // 3) Fallback for expenses only: daily expenses.
+    if (expenses <= 0) {
+      let dailyExpenseQuery = supabase
         .from('daily_expenses')
         .select('branch_id,amount,expense_date,deleted_at')
         .gte('expense_date', monthDate)
         .lt('expense_date', endDate)
-        .is('deleted_at', null),
-      supabase
-        .from('salary_advances')
-        .select('branch_id,amount,advance_date,is_cancelled')
-        .gte('advance_date', monthDate)
-        .lt('advance_date', endDate)
-        .or('is_cancelled.is.null,is_cancelled.eq.false'),
-      supabase
-        .from('monthly_branch_salary')
-        .select('*')
-        .eq('month', monthDate),
-      supabase
-        .from('monthly_branch_service_charge_cost')
-        .select('*')
-        .eq('month', monthDate)
-    ])
+        .is('deleted_at', null)
 
-    const dailyRowsRaw = (!dailyRes.error && (dailyRes.data || []).length) ? (dailyRes.data || []) : []
-    const entryRowsRaw = (!entryRes.error && (entryRes.data || []).length) ? (entryRes.data || []) : []
-    const revenueSourceRows = dailyRowsRaw.length ? dailyRowsRaw : entryRowsRaw
-    const revRows = financeFilterRowsByBranch(revenueSourceRows, selectedBranchId)
-    const expRows = financeFilterRowsByBranch(expRes.data || [], selectedBranchId)
-    const advRows = financeFilterRowsByBranch(advRes.data || [], selectedBranchId)
-    const salRows = financeFilterRowsByBranch(salRes.data || [], selectedBranchId)
-    const svcRows = financeFilterRowsByBranch(svcRes.data || [], selectedBranchId)
-
-    const cash = revRows.reduce((s, r) => s + parseNum(r.cash_amount), 0)
-    const bank = revRows.reduce((s, r) => s + parseNum(r.bank_amount), 0)
-    const wolt = revRows.reduce((s, r) => s + parseNum(r.wolt_amount), 0)
-    const revenue = revRows.reduce((s, r) => {
-      const total = parseNum(r.total_revenue)
-      return s + (total || parseNum(r.cash_amount) + parseNum(r.bank_amount) + parseNum(r.wolt_amount))
-    }, 0)
-
-    const expenses = expRows.reduce((s, r) => s + parseNum(r.amount), 0) + advRows.reduce((s, r) => s + parseNum(r.amount), 0)
-    const salary = salRows.reduce((s, r) => s + parseNum(r.total_salary), 0)
-    const serviceCost = svcRows.reduce((s, r) => s + parseNum(r.staff_cost_amount), 0)
+      if (selectedBranchId !== ALL_BRANCHES) dailyExpenseQuery = dailyExpenseQuery.eq('branch_id', selectedBranchId)
+      const { data: dailyExpenses } = await dailyExpenseQuery
+      expenses = (dailyExpenses || []).reduce((s, r) => s + parseNum(r.amount), 0)
+    }
 
     const tax = revenue * (TAX_RATE / 100)
     const net = revenue - expenses - salary - serviceCost - tax
