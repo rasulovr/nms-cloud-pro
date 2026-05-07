@@ -4463,66 +4463,84 @@ function Finance({ t, lang }) {
     let bank = 0
     let wolt = 0
 
-    // 1) Primary source: original stable monthly RMS views.
-    // These views were used when the finance section worked correctly.
-    let revQuery = supabase.from('monthly_branch_revenue').select('*').eq('month', monthDate)
-    let expQuery = supabase.from('monthly_branch_expenses').select('*').eq('month', monthDate)
-    let salQuery = supabase.from('monthly_branch_salary').select('*').eq('month', monthDate)
-    let svcQuery = supabase.from('monthly_branch_service_charge_cost').select('*').eq('month', monthDate)
-
-    if (selectedBranchId !== ALL_BRANCHES) {
-      revQuery = revQuery.eq('branch_id', selectedBranchId)
-      expQuery = expQuery.eq('branch_id', selectedBranchId)
-      salQuery = salQuery.eq('branch_id', selectedBranchId)
-      svcQuery = svcQuery.eq('branch_id', selectedBranchId)
+    function filterForSelected(rows) {
+      return selectedBranchId === ALL_BRANCHES ? (rows || []) : financeFilterRowsByBranch(rows || [], selectedBranchId)
     }
 
-    const [revMonthly, expMonthly, salMonthly, svcMonthly] = await Promise.all([revQuery, expQuery, salQuery, svcQuery])
-
-    const monthlyRevenueRows = !revMonthly.error ? (revMonthly.data || []) : []
-    const monthlyExpenseRows = !expMonthly.error ? (expMonthly.data || []) : []
-    const monthlySalaryRows = !salMonthly.error ? (salMonthly.data || []) : []
-    const monthlyServiceRows = !svcMonthly.error ? (svcMonthly.data || []) : []
-
-    if (monthlyRevenueRows.length) {
-      revenue = monthlyRevenueRows.reduce((s, r) => s + parseNum(r.total_revenue), 0)
-      cash = monthlyRevenueRows.reduce((s, r) => s + parseNum(r.cash_amount), 0)
-      bank = monthlyRevenueRows.reduce((s, r) => s + parseNum(r.bank_amount), 0)
-      wolt = monthlyRevenueRows.reduce((s, r) => s + parseNum(r.wolt_amount), 0)
+    async function safeSelect(table, columns = '*') {
+      try {
+        const { data, error } = await supabase.from(table).select(columns).eq('month', monthDate)
+        if (error) {
+          console.warn(`Finance monthly source ${table} failed:`, error)
+          return []
+        }
+        return Array.isArray(data) ? data : []
+      } catch (error) {
+        console.warn(`Finance monthly source ${table} crashed:`, error)
+        return []
+      }
     }
 
-    if (monthlyExpenseRows.length) expenses = monthlyExpenseRows.reduce((s, r) => s + parseNum(r.total_expenses), 0)
-    if (monthlySalaryRows.length) salary = monthlySalaryRows.reduce((s, r) => s + parseNum(r.total_salary), 0)
-    if (monthlyServiceRows.length) serviceCost = monthlyServiceRows.reduce((s, r) => s + parseNum(r.staff_cost_amount), 0)
+    // Primary source: stable RMS monthly aggregates.
+    // Important: fetch the whole month and filter locally by branch_id / branch_name.
+    // This avoids a common bug where Supabase eq('branch_id', value) fails because
+    // different views may expose branch as id, name, or nested branches.name.
+    const [revAll, expAll, salAll, svcAll] = await Promise.all([
+      safeSelect('monthly_branch_revenue'),
+      safeSelect('monthly_branch_expenses'),
+      safeSelect('monthly_branch_salary'),
+      safeSelect('monthly_branch_service_charge_cost')
+    ])
 
-    // 2) Fallback for revenue only: daily aggregate / entry rows.
-    // Used only when monthly_branch_revenue is empty or unavailable.
+    const revRows = filterForSelected(revAll)
+    const expRows = filterForSelected(expAll)
+    const salRows = filterForSelected(salAll)
+    const svcRows = filterForSelected(svcAll)
+
+    if (revRows.length) {
+      revenue = revRows.reduce((s, r) => s + parseNum(r.total_revenue ?? r.revenue ?? r.amount), 0)
+      cash = revRows.reduce((s, r) => s + parseNum(r.cash_amount ?? r.cash), 0)
+      bank = revRows.reduce((s, r) => s + parseNum(r.bank_amount ?? r.bank), 0)
+      wolt = revRows.reduce((s, r) => s + parseNum(r.wolt_amount ?? r.wolt), 0)
+    }
+
+    if (expRows.length) expenses = expRows.reduce((s, r) => s + parseNum(r.total_expenses ?? r.expenses ?? r.amount), 0)
+    if (salRows.length) salary = salRows.reduce((s, r) => s + parseNum(r.total_salary ?? r.salary ?? r.amount), 0)
+    if (svcRows.length) serviceCost = svcRows.reduce((s, r) => s + parseNum(r.staff_cost_amount ?? r.service_cost ?? r.amount), 0)
+
+    // Fallback for revenue: daily aggregate / entry rows.
+    // Also fetch all and filter locally; never keep network totals for a selected branch.
     if (revenue <= 0) {
-      let dailyQuery = supabase
-        .from('daily_revenue')
-        .select('branch_id,cash_amount,bank_amount,wolt_amount,total_revenue,revenue_date,deleted_at')
-        .gte('revenue_date', monthDate)
-        .lt('revenue_date', endDate)
-        .is('deleted_at', null)
-
-      if (selectedBranchId !== ALL_BRANCHES) dailyQuery = dailyQuery.eq('branch_id', selectedBranchId)
-
-      const { data: dailyRows, error: dailyError } = await dailyQuery
-
       let revenueRows = []
-      if (!dailyError && Array.isArray(dailyRows) && dailyRows.length) {
-        revenueRows = dailyRows
-      } else {
-        let entryQuery = supabase
-          .from('daily_revenue_entries')
-          .select('branch_id,cash_amount,bank_amount,wolt_amount,revenue_date,deleted_at')
+
+      try {
+        const { data: dailyRows, error: dailyError } = await supabase
+          .from('daily_revenue')
+          .select('branch_id,branch_name,cash_amount,bank_amount,wolt_amount,total_revenue,revenue_date,deleted_at')
           .gte('revenue_date', monthDate)
           .lt('revenue_date', endDate)
           .is('deleted_at', null)
 
-        if (selectedBranchId !== ALL_BRANCHES) entryQuery = entryQuery.eq('branch_id', selectedBranchId)
-        const { data: entryRows } = await entryQuery
-        revenueRows = entryRows || []
+        if (!dailyError && Array.isArray(dailyRows) && dailyRows.length) {
+          revenueRows = filterForSelected(dailyRows)
+        }
+      } catch (error) {
+        console.warn('Finance daily_revenue fallback failed:', error)
+      }
+
+      if (!revenueRows.length) {
+        try {
+          const { data: entryRows, error: entryError } = await supabase
+            .from('daily_revenue_entries')
+            .select('branch_id,branch_name,cash_amount,bank_amount,wolt_amount,revenue_date,deleted_at')
+            .gte('revenue_date', monthDate)
+            .lt('revenue_date', endDate)
+            .is('deleted_at', null)
+
+          if (!entryError && Array.isArray(entryRows)) revenueRows = filterForSelected(entryRows)
+        } catch (error) {
+          console.warn('Finance daily_revenue_entries fallback failed:', error)
+        }
       }
 
       cash = revenueRows.reduce((s, r) => s + parseNum(r.cash_amount), 0)
@@ -4534,26 +4552,30 @@ function Finance({ t, lang }) {
       }, 0)
     }
 
-    // 3) Fallback for expenses only: daily expenses.
+    // Fallback for operating expenses.
     if (expenses <= 0) {
-      let dailyExpenseQuery = supabase
-        .from('daily_expenses')
-        .select('branch_id,amount,expense_date,deleted_at')
-        .gte('expense_date', monthDate)
-        .lt('expense_date', endDate)
-        .is('deleted_at', null)
+      try {
+        const { data: dailyExpenses, error: dailyExpenseError } = await supabase
+          .from('daily_expenses')
+          .select('branch_id,branch_name,amount,expense_date,deleted_at')
+          .gte('expense_date', monthDate)
+          .lt('expense_date', endDate)
+          .is('deleted_at', null)
 
-      if (selectedBranchId !== ALL_BRANCHES) dailyExpenseQuery = dailyExpenseQuery.eq('branch_id', selectedBranchId)
-      const { data: dailyExpenses } = await dailyExpenseQuery
-      expenses = (dailyExpenses || []).reduce((s, r) => s + parseNum(r.amount), 0)
+        if (!dailyExpenseError && Array.isArray(dailyExpenses)) {
+          expenses = filterForSelected(dailyExpenses).reduce((s, r) => s + parseNum(r.amount), 0)
+        }
+      } catch (error) {
+        console.warn('Finance daily_expenses fallback failed:', error)
+      }
     }
 
     const tax = revenue * (TAX_RATE / 100)
     const net = revenue - expenses - salary - serviceCost - tax
 
     const d = new Date(Number(y), Number(m) - 1, 1)
-    const current = now.getFullYear() === d.getFullYear() && now.getMonth() === d.getMonth()
-    const passed = current ? now.getDate() : daysInMonth(y, m)
+    const currentMonth = now.getFullYear() === d.getFullYear() && now.getMonth() === d.getMonth()
+    const passed = currentMonth ? now.getDate() : daysInMonth(y, m)
     const avg = passed ? revenue / passed : 0
     const forecastRevenue = avg * daysInMonth(y, m)
     const costRate = revenue > 0 ? (expenses + salary + serviceCost) / revenue : 0
@@ -4567,9 +4589,17 @@ function Finance({ t, lang }) {
 
     const monthDate = monthStart(year, month)
 
+    setBreakdown([])
+    setAiRows([])
+
     const current = await calcFor(branchId, year, month)
     const pm = prevMonth(year, month)
     const previous = await calcFor(branchId, pm.year, pm.month)
+
+    // Update the main finance cards immediately.
+    // If expense breakdown / AI analytics fails below, the selected branch figures still change.
+    setStats({ ...current, previous })
+
     const start = monthDate
     const end = new Date(Number(year), Number(month), 1).toISOString().slice(0, 10)
     let expQuery = supabase.from('daily_expenses').select('branch_id, amount, custom_category, expense_categories(name)').gte('expense_date', start).lt('expense_date', end).is('deleted_at', null)
