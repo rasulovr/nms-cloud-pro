@@ -24,7 +24,7 @@ const I18N = {
     revenue_plan_progress:'Выполнение плана выручки', profit_plan_progress:'Выполнение плана прибыли', module_coming:'Раздел будет добавлен следующим этапом.',
     settings_subtitle:'Пользователи, права доступа и режимы работы', users_management:'Пользователи', add_user:'+ Пользователь',
     role:'Роль', sections_access:'Доступ к разделам', access_mode:'Режим', administrator:'Администратор', employee:'Сотрудник',
-    read_only:'Только чтение', edit_mode:'Изменение', permission_denied:'Нет доступа к этому разделу', new_expense:'Новая статья', save:'Сохранить', saved:'Сохранено', loading:'Загрузка...', profile:'Профиль текущего пользователя', full_name:'Имя', create_admin:'Создать admin-профиль', suppliers_subtitle:'Поставщики, поступления, оплаты, товары и долги. VOEN / юрлица теперь находятся в разделе “Настройки”.', supplier_opening_debt_title:'Долг поставщику за предыдущий период', supplier_opening_debt_hint:'Используйте при запуске программы с нуля, чтобы перенести старый долг в баланс поставщика.', supplier:'Поставщик', select_supplier:'Выберите поставщика', debt_date:'Дата долга', debt_amount:'Сумма долга', invoice_mark:'Фактура / отметка', add_debt:'+ Добавить долг', supplier_purchases_title:'Поступления от поставщика', supplier_purchases_hint:'Сначала заполняется шапка фактуры. Товары добавляются строками ниже.', our_voen:'Наш VOEN', branch:'Филиал', purchase_date:'Дата поступления', invoice_number:'Номер фактуры', purchase_items_title:'Товары в поступлении', purchase_items_hint:'Если товара нет, сначала добавьте его ниже в блоке “Товары”.', add_item_row:'+ Строка товара', type:'Тип', product:'Товар', purchase_qty:'Кол-во закупа', purchase_unit:'Ед. закупа', unit_price:'Цена за ед.', invoice_total:'Итого по фактуре', save_purchase:'+ Сохранить поступление', supplier_payment_title:'Оплата поставщику', supplier_payment_hint:'Укажите сумму оплаты, номера счёт-фактур и комментарий.', payment_date:'Дата оплаты', payment_amount:'Сумма оплаты', invoice_notes:'Отметки / номера счёт-фактур', save_payment:'+ Сохранить оплату', contractors:'Контрагенты', contractors_hint:'Условия оплаты и лимиты используются в Dashboard для проблемных долгов.', contractor_name:'Имя контрагента', supplier_voen:'VOEN поставщика', contact:'Контакт', phone:'Телефон', info:'Информация', payment_term_days:'Срок оплаты, дней', credit_limit:'Кредитный лимит', opening_debt_previous:'Долг за предыдущий период', opening_debt_date:'Дата стартового долга', opening_debt_comment:'Комментарий к стартовому долгу', add_supplier:'+ Добавить поставщика', products_title:'Товары', products_hint:'Товар создаётся один раз и потом выбирается в поступлении и в техкарте.', base_unit_recipe:'Базовая ед. для техкарты', add_product:'+ Добавить товар', latest_purchases:'Последние поступления', latest_purchases_hint:'Сначала открывается просмотр накладной. Редактирование и удаление доступны внутри накладной.', invoice:'Фактура', sum:'Сумма', status:'Статус', cancelled:'Отменено', active:'Активно', close:'Закрыть', view:'Просмотр', invoice_word:'Накладная', no_number:'без номера', created:'Создано', updated:'Изменено', done:'Готово', edit:'Редактировать', delete:'Удалить', quantity:'Кол-во', unit:'Ед.', price:'Цена', items_not_found:'Товары не найдены', supplier_opening_debt_short:'Долг за предыдущий период', starting_debt:'Стартовый долг', receipt:'Поступление', payment:'Оплата', no_purchase:'нет закупки', first_price:'первая цена', enter_supplier_name:'Введите имя контрагента', supplier_saved_debt_added:'Поставщик сохранён, стартовый долг добавлен', enter_product:'Введите товар', select_supplier_and_voen:'Выберите поставщика и VOEN', check_product_qty_unit_price:'Проверьте товар, количество, единицу и цену', add_at_least_one_item:'Добавьте хотя бы один товар в поступление', delete_purchase_confirm:'Удалить поступление? Оно будет зачёркнуто и не будет учитываться в финансах.', select_supplier_msg:'Выберите поставщика', enter_debt_amount:'Введите сумму долга', adding_opening_debt:'Добавление стартового долга...', opening_debt_added:'Стартовый долг поставщику добавлен', select_supplier_and_payment_amount:'Выберите поставщика и сумму оплаты', saving_supplier:'Сохранение поставщика...', saving_product:'Сохранение товара...', select_product_error:'Выберите товар из списка. Если товара нет, сначала добавьте его в блоке “Товары”.',
+    read_only:'Только чтение', edit_mode:'Изменение', permission_denied:'Нет доступа к этому разделу', new_expense:'Новая статья', save:'Сохранить', saved:'Сохранено', loading:'Загрузка...', profile:'Профиль текущего пользователя', full_name:'Имя', create_admin:'Создать admin-профиль', suppliers_subtitle:'Поставщики, поступления, оплаты, товары и долги. VOEN / юрлица теперь находятся в разделе “Настройки”.', supplier_opening_debt_title:'Долг поставщику за предыдущий период', supplier_opening_debt_hint:'Используйте при запуске программы с нуля, чтобы перенести старый долг в баланс поставщика.', supplier:'Поставщик', select_supplier:'Выберите поставщика', debt_date:'Дата долга', debt_amount:'Сумма долга', invoice_mark:'Фактура / отметка', add_debt:'+ Добавить долг', supplier_purchases_title:'Поступления от поставщика', supplier_purchases_hint:'Сначала заполняется шапка фактуры. Товары добавляются строками ниже.', our_voen:'Наш VOEN', branch:'Филиал', purchase_date:'Дата поступления', invoice_number:'Номер фактуры', purchase_items_title:'Товары в поступлении', purchase_items_hint:'Если товара нет, сначала добавьте его ниже в блоке “Товары”.', add_item_row:'+ Строка товара', type:'Тип', product:'Товар', purchase_qty:'Кол-во закупа', purchase_unit:'Ед. закупа', unit_price:'Цена за ед.', invoice_total:'Итого по фактуре', save_purchase:'+ Сохранить поступление', supplier_payment_title:'Оплата поставщику', supplier_payment_hint:'Укажите сумму оплаты, номера счёт-фактур и комментарий.', payment_date:'Дата оплаты', payment_amount:'Сумма оплаты', invoice_notes:'Отметки / номера счёт-фактур', save_payment:'+ Сохранить оплату', contractors:'Контрагенты', contractors_hint:'Условия оплаты и лимиты используются в Dashboard для проблемных долгов.', contractor_name:'Имя контрагента', supplier_voen:'VOEN поставщика', contact:'Контакт', phone:'Телефон', info:'Информация', payment_term_days:'Срок оплаты, дней', credit_limit:'Кредитный лимит', opening_debt_previous:'Долг за предыдущий период', opening_debt_date:'Дата стартового долга', opening_debt_comment:'Комментарий к стартовому долгу', add_supplier:'+ Добавить поставщика', products_title:'Товары', products_hint:'Товар создаётся один раз и потом выбирается в поступлении и в техкарте.', base_unit_recipe:'Базовая ед. для техкарты', add_product:'+ Добавить товар', latest_purchases:'Последние поступления', latest_purchases_hint:'Сначала открывается просмотр накладной. Редактирование и удаление доступны внутри накладной.', invoice:'Фактура', sum:'Сумма', status:'Статус', cancelled:'Отменено', active:'Активно', close:'Закрыть', view:'Просмотр', invoice_word:'Накладная', no_number:'без номера', created:'Создано', updated:'Изменено', done:'Готово', edit:'Редактировать', delete:'Удалить', quantity:'Кол-во', unit:'Ед.', price:'Цена', items_not_found:'Товары не найдены', supplier_opening_debt_short:'Долг за предыдущий период', starting_debt:'Стартовый долг', receipt:'Поступление', payment:'Оплата', no_purchase:'нет закупки', first_price:'первая цена', enter_supplier_name:'Введите имя контрагента', supplier_saved_debt_added:'Поставщик сохранён, стартовый долг добавлен', enter_product:'Введите товар', select_supplier_and_voen:'Выберите поставщика и VOEN', check_product_qty_unit_price:'Проверьте товар, количество, единицу и цену', add_at_least_one_item:'Добавьте хотя бы один товар в поступление', delete_purchase_confirm:'Удалить поступление? Оно будет зачёркнуто и не будет учитываться в финансах.', select_supplier_msg:'Выберите поставщика', enter_debt_amount:'Введите сумму долга', adding_opening_debt:'Добавление стартового долга...', opening_debt_added:'Стартовый долг поставщику добавлен', select_supplier_and_payment_amount:'Выберите поставщика и сумму оплаты', saving_supplier:'Сохранение поставщика...', saving_product:'Сохранение товара...', select_product_error:'Выберите товар из списка. Если товара нет, сначала добавьте его в блоке “Товары”.', recipes_subtitle:'Техкарты блюд. Товар выбирается из справочника поставщиков, а себестоимость берётся по последней закупке.', recipe_cost:'Себестоимость', recipe_cost_hint:'Себестоимость выбранного блюда', sale_price:'Цена продажи', sale_price_hint:'Цена в меню', food_cost_target:'Цель', gross_profit_formula:'Цена − себестоимость', recipe_composition:'Состав техкарты', selected_dish:'Выбранное блюдо', not_selected:'не выбрано', recipe_ready_hint:'Готовая техкарта отображается под ключевыми показателями, а редактирование открывается только по кнопке «Редактировать».', print_blocked:'Браузер заблокировал окно печати', edit_recipe:'Редактировать', add_ingredient:'+ ингредиент', all_ingredients_added:'Все ингредиенты добавлены', save_recipe:'Сохранить техкарту', product_category:'Категория товара', select_dish:'Выбрать блюдо', choose_dish:'Выберите блюдо', new_ingredient:'Новый ингредиент', choose_product:'Выберите товар', all_products_added:'Все товары уже добавлены', category:'Категория', usage_qty:'Кол-во использования', unit_short:'Ед.', waste_percent:'Потери %', price_per_unit:'Цена за 1 ед.', no_ingredients_recipe:'Пока нет ингредиентов в техкарте выбранного блюда.', recipe_example_hint:'Пример: Cappuccino = молоко 200 ml + кофе 18 g. Цена берётся из последней закупки товара у поставщика.', recipes_loading:'Загрузка тех. карт...', dishes_menu_items:'Блюда / позиции меню', dish_once_hint:'Блюдо создаётся один раз, затем выбирается в техкарте.', dish_name:'Название блюда', target_food_cost:'Целевой food cost %', add_dish:'+ Добавить блюдо', dish:'Блюдо', target_food_cost_short:'Цель food cost', products_ingredients:'Товары / ингредиенты', unified_products_hint:'Это единый справочник. Эти же товары используются в закупках поставщиков и в техкартах.', product_name:'Название товара', base_usage_unit:'Базовая ед. использования', add_product_button:'+ Добавить товар', base_unit:'Базовая ед.', price_change:'Цена / изменение', no_purchase:'нет закупки', unit_piece:'ед.', no_ingredients:'Нет ингредиентов', dish_not_selected:'Блюдо не выбрано', generated:'Сформировано', purchase_price_latest_hint:'Цена закупки берётся из последней закупки товара у поставщика.', enter_product_name:'Введите название товара', enter_dish_name:'Введите название блюда', choose_dish_first:'Сначала выберите блюдо', all_category_products_added:'В этой категории все товары уже добавлены в техкарту. Измените количество в существующей строке или выберите другую категорию.', no_new_products_category:'В выбранной категории нет новых товаров для добавления.', ingredient_already_exists:'Этот ингредиент уже есть в техкарте. Измените количество в существующей строке.', ingredient_duplicate_change:'Этот ингредиент уже есть в техкарте. Выберите другой товар или измените существующую строку.',
     months:['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь']
   },
   az: {
@@ -47,7 +47,7 @@ const I18N = {
     revenue_plan_progress:'Dövriyyə planının icrası', profit_plan_progress:'Mənfəət planının icrası', module_coming:'Bölmə növbəti mərhələdə əlavə olunacaq.',
     settings_subtitle:'İstifadəçilər, giriş hüquqları və rejimlər', users_management:'İstifadəçilər', add_user:'+ İstifadəçi',
     role:'Rol', sections_access:'Bölmələrə giriş', access_mode:'Rejim', administrator:'Administrator', employee:'Əməkdaş',
-    read_only:'Yalnız oxuma', edit_mode:'Dəyişiklik', permission_denied:'Bu bölməyə giriş yoxdur', new_expense:'Yeni xərc maddəsi', save:'Yadda saxla', saved:'Saxlanıldı', loading:'Yüklənir...', profile:'Cari istifadəçi profili', full_name:'Ad', create_admin:'Admin profil yarat', suppliers_subtitle:'Təchizatçılar, daxilolmalar, ödənişlər, mallar və borclar. VÖEN / hüquqi şəxslər artıq “Ayarlar” bölməsindədir.', supplier_opening_debt_title:'Əvvəlki dövrdən təchizatçı borcu', supplier_opening_debt_hint:'Proqramı sıfırdan başladıqda köhnə borcu təchizatçının balansına köçürmək üçün istifadə edin.', supplier:'Təchizatçı', select_supplier:'Təchizatçı seçin', debt_date:'Borc tarixi', debt_amount:'Borc məbləği', invoice_mark:'Faktura / qeyd', add_debt:'+ Borc əlavə et', supplier_purchases_title:'Təchizatçıdan daxilolmalar', supplier_purchases_hint:'Əvvəl fakturanın başlığı doldurulur. Mallar aşağıda sətirlərlə əlavə olunur.', our_voen:'Bizim VÖEN', branch:'Filial', purchase_date:'Daxilolma tarixi', invoice_number:'Faktura nömrəsi', purchase_items_title:'Daxilolmadakı mallar', purchase_items_hint:'Mal siyahıda yoxdursa, əvvəl aşağıdakı “Mallar” blokunda əlavə edin.', add_item_row:'+ Mal sətri', type:'Tip', product:'Mal', purchase_qty:'Alış miqdarı', purchase_unit:'Alış vahidi', unit_price:'Vahid qiyməti', invoice_total:'Faktura üzrə cəmi', save_purchase:'+ Daxilolmanı yadda saxla', supplier_payment_title:'Təchizatçıya ödəniş', supplier_payment_hint:'Ödəniş məbləğini, faktura nömrələrini və şərhi qeyd edin.', payment_date:'Ödəniş tarixi', payment_amount:'Ödəniş məbləği', invoice_notes:'Qeydlər / faktura nömrələri', save_payment:'+ Ödənişi yadda saxla', contractors:'Kontragentlər', contractors_hint:'Ödəniş şərtləri və limitlər Dashboard-da problemli borclar üçün istifadə olunur.', contractor_name:'Kontragent adı', supplier_voen:'Təchizatçı VÖEN-i', contact:'Əlaqə şəxsi', phone:'Telefon', info:'Məlumat', payment_term_days:'Ödəniş müddəti, gün', credit_limit:'Kredit limiti', opening_debt_previous:'Əvvəlki dövr borcu', opening_debt_date:'Başlanğıc borc tarixi', opening_debt_comment:'Başlanğıc borc şərhi', add_supplier:'+ Təchizatçı əlavə et', products_title:'Mallar', products_hint:'Mal bir dəfə yaradılır, sonra daxilolmada və tex. kartda seçilir.', base_unit_recipe:'Tex. kart üçün baza vahidi', add_product:'+ Mal əlavə et', latest_purchases:'Son daxilolmalar', latest_purchases_hint:'Əvvəl fakturaya baxış açılır. Redaktə və silmə fakturanın içində mümkündür.', invoice:'Faktura', sum:'Məbləğ', status:'Status', cancelled:'Ləğv edilib', active:'Aktiv', close:'Bağla', view:'Baxış', invoice_word:'Qaimə', no_number:'nömrəsiz', created:'Yaradılıb', updated:'Dəyişdirilib', done:'Hazır', edit:'Redaktə et', delete:'Sil', quantity:'Miqdar', unit:'Vahid', price:'Qiymət', items_not_found:'Mallar tapılmadı', supplier_opening_debt_short:'Əvvəlki dövr borcu', starting_debt:'Başlanğıc borc', receipt:'Daxilolma', payment:'Ödəniş', no_purchase:'alış yoxdur', first_price:'ilk qiymət', enter_supplier_name:'Kontragent adını daxil edin', supplier_saved_debt_added:'Təchizatçı saxlanıldı, başlanğıc borc əlavə olundu', enter_product:'Mal daxil edin', select_supplier_and_voen:'Təchizatçı və VÖEN seçin', check_product_qty_unit_price:'Malı, miqdarı, vahidi və qiyməti yoxlayın', add_at_least_one_item:'Daxilolmaya ən azı bir mal əlavə edin', delete_purchase_confirm:'Daxilolma silinsin? Üstündən xətt çəkiləcək və maliyyədə nəzərə alınmayacaq.', select_supplier_msg:'Təchizatçı seçin', enter_debt_amount:'Borc məbləğini daxil edin', adding_opening_debt:'Başlanğıc borc əlavə olunur...', opening_debt_added:'Təchizatçıya başlanğıc borc əlavə olundu', select_supplier_and_payment_amount:'Təchizatçı və ödəniş məbləğini seçin', saving_supplier:'Təchizatçı saxlanılır...', saving_product:'Mal saxlanılır...', select_product_error:'Siyahıdan mal seçin. Mal yoxdursa, əvvəl “Mallar” blokunda əlavə edin.',
+    read_only:'Yalnız oxuma', edit_mode:'Dəyişiklik', permission_denied:'Bu bölməyə giriş yoxdur', new_expense:'Yeni xərc maddəsi', save:'Yadda saxla', saved:'Saxlanıldı', loading:'Yüklənir...', profile:'Cari istifadəçi profili', full_name:'Ad', create_admin:'Admin profil yarat', suppliers_subtitle:'Təchizatçılar, daxilolmalar, ödənişlər, mallar və borclar. VÖEN / hüquqi şəxslər artıq “Ayarlar” bölməsindədir.', supplier_opening_debt_title:'Əvvəlki dövrdən təchizatçı borcu', supplier_opening_debt_hint:'Proqramı sıfırdan başladıqda köhnə borcu təchizatçının balansına köçürmək üçün istifadə edin.', supplier:'Təchizatçı', select_supplier:'Təchizatçı seçin', debt_date:'Borc tarixi', debt_amount:'Borc məbləği', invoice_mark:'Faktura / qeyd', add_debt:'+ Borc əlavə et', supplier_purchases_title:'Təchizatçıdan daxilolmalar', supplier_purchases_hint:'Əvvəl fakturanın başlığı doldurulur. Mallar aşağıda sətirlərlə əlavə olunur.', our_voen:'Bizim VÖEN', branch:'Filial', purchase_date:'Daxilolma tarixi', invoice_number:'Faktura nömrəsi', purchase_items_title:'Daxilolmadakı mallar', purchase_items_hint:'Mal siyahıda yoxdursa, əvvəl aşağıdakı “Mallar” blokunda əlavə edin.', add_item_row:'+ Mal sətri', type:'Tip', product:'Mal', purchase_qty:'Alış miqdarı', purchase_unit:'Alış vahidi', unit_price:'Vahid qiyməti', invoice_total:'Faktura üzrə cəmi', save_purchase:'+ Daxilolmanı yadda saxla', supplier_payment_title:'Təchizatçıya ödəniş', supplier_payment_hint:'Ödəniş məbləğini, faktura nömrələrini və şərhi qeyd edin.', payment_date:'Ödəniş tarixi', payment_amount:'Ödəniş məbləği', invoice_notes:'Qeydlər / faktura nömrələri', save_payment:'+ Ödənişi yadda saxla', contractors:'Kontragentlər', contractors_hint:'Ödəniş şərtləri və limitlər Dashboard-da problemli borclar üçün istifadə olunur.', contractor_name:'Kontragent adı', supplier_voen:'Təchizatçı VÖEN-i', contact:'Əlaqə şəxsi', phone:'Telefon', info:'Məlumat', payment_term_days:'Ödəniş müddəti, gün', credit_limit:'Kredit limiti', opening_debt_previous:'Əvvəlki dövr borcu', opening_debt_date:'Başlanğıc borc tarixi', opening_debt_comment:'Başlanğıc borc şərhi', add_supplier:'+ Təchizatçı əlavə et', products_title:'Mallar', products_hint:'Mal bir dəfə yaradılır, sonra daxilolmada və tex. kartda seçilir.', base_unit_recipe:'Tex. kart üçün baza vahidi', add_product:'+ Mal əlavə et', latest_purchases:'Son daxilolmalar', latest_purchases_hint:'Əvvəl fakturaya baxış açılır. Redaktə və silmə fakturanın içində mümkündür.', invoice:'Faktura', sum:'Məbləğ', status:'Status', cancelled:'Ləğv edilib', active:'Aktiv', close:'Bağla', view:'Baxış', invoice_word:'Qaimə', no_number:'nömrəsiz', created:'Yaradılıb', updated:'Dəyişdirilib', done:'Hazır', edit:'Redaktə et', delete:'Sil', quantity:'Miqdar', unit:'Vahid', price:'Qiymət', items_not_found:'Mallar tapılmadı', supplier_opening_debt_short:'Əvvəlki dövr borcu', starting_debt:'Başlanğıc borc', receipt:'Daxilolma', payment:'Ödəniş', no_purchase:'alış yoxdur', first_price:'ilk qiymət', enter_supplier_name:'Kontragent adını daxil edin', supplier_saved_debt_added:'Təchizatçı saxlanıldı, başlanğıc borc əlavə olundu', enter_product:'Mal daxil edin', select_supplier_and_voen:'Təchizatçı və VÖEN seçin', check_product_qty_unit_price:'Malı, miqdarı, vahidi və qiyməti yoxlayın', add_at_least_one_item:'Daxilolmaya ən azı bir mal əlavə edin', delete_purchase_confirm:'Daxilolma silinsin? Üstündən xətt çəkiləcək və maliyyədə nəzərə alınmayacaq.', select_supplier_msg:'Təchizatçı seçin', enter_debt_amount:'Borc məbləğini daxil edin', adding_opening_debt:'Başlanğıc borc əlavə olunur...', opening_debt_added:'Təchizatçıya başlanğıc borc əlavə olundu', select_supplier_and_payment_amount:'Təchizatçı və ödəniş məbləğini seçin', saving_supplier:'Təchizatçı saxlanılır...', saving_product:'Mal saxlanılır...', select_product_error:'Siyahıdan mal seçin. Mal yoxdursa, əvvəl “Mallar” blokunda əlavə edin.', recipes_subtitle:'Yeməklərin tex. kartları. Mal təchizatçı kataloqundan seçilir, maya dəyəri isə son alış qiymətinə əsasən götürülür.', recipe_cost:'Maya dəyəri', recipe_cost_hint:'Seçilmiş yeməyin maya dəyəri', sale_price:'Satış qiyməti', sale_price_hint:'Menyudakı qiymət', food_cost_target:'Hədəf', gross_profit_formula:'Qiymət − maya dəyəri', recipe_composition:'Tex. kartın tərkibi', selected_dish:'Seçilmiş yemək', not_selected:'seçilməyib', recipe_ready_hint:'Hazır tex. kart əsas göstəricilərin altında göstərilir, redaktə yalnız «Redaktə et» düyməsi ilə açılır.', print_blocked:'Brauzer çap pəncərəsini blokladı', edit_recipe:'Redaktə et', add_ingredient:'+ inqrediyent', all_ingredients_added:'Bütün inqrediyentlər əlavə olunub', save_recipe:'Tex. kartı yadda saxla', product_category:'Mal kateqoriyası', select_dish:'Yemək seç', choose_dish:'Yemək seçin', new_ingredient:'Yeni inqrediyent', choose_product:'Mal seçin', all_products_added:'Bütün mallar artıq əlavə olunub', category:'Kateqoriya', usage_qty:'İstifadə miqdarı', unit_short:'Vahid', waste_percent:'İtki %', price_per_unit:'1 vahid qiyməti', no_ingredients_recipe:'Seçilmiş yeməyin tex. kartında hələ inqrediyent yoxdur.', recipe_example_hint:'Nümunə: Cappuccino = süd 200 ml + qəhvə 18 g. Qiymət təchizatçıdan son alışa əsasən götürülür.', recipes_loading:'Tex. kartlar yüklənir...', dishes_menu_items:'Yeməklər / menyu pozisiyaları', dish_once_hint:'Yemək bir dəfə yaradılır, sonra tex. kartda seçilir.', dish_name:'Yeməyin adı', target_food_cost:'Hədəf food cost %', add_dish:'+ Yemək əlavə et', dish:'Yemək', target_food_cost_short:'Hədəf food cost', products_ingredients:'Mallar / inqrediyentlər', unified_products_hint:'Bu vahid kataloqdur. Eyni mallar təchizatçı alışlarında və tex. kartlarda istifadə olunur.', product_name:'Malın adı', base_usage_unit:'İstifadə üçün baza vahidi', add_product_button:'+ Mal əlavə et', base_unit:'Baza vahidi', price_change:'Qiymət / dəyişiklik', no_purchase:'alış yoxdur', unit_piece:'vahid', no_ingredients:'İnqrediyent yoxdur', dish_not_selected:'Yemək seçilməyib', generated:'Formalaşdırılıb', purchase_price_latest_hint:'Alış qiyməti təchizatçıdan son alışa əsasən götürülür.', enter_product_name:'Malın adını daxil edin', enter_dish_name:'Yeməyin adını daxil edin', choose_dish_first:'Əvvəl yemək seçin', all_category_products_added:'Bu kateqoriyada bütün mallar artıq tex. karta əlavə olunub. Mövcud sətirdə miqdarı dəyişin və ya başqa kateqoriya seçin.', no_new_products_category:'Seçilmiş kateqoriyada əlavə ediləcək yeni mal yoxdur.', ingredient_already_exists:'Bu inqrediyent artıq tex. kartda var. Mövcud sətirdə miqdarı dəyişin.', ingredient_duplicate_change:'Bu inqrediyent artıq tex. kartda var. Başqa mal seçin və ya mövcud sətri dəyişin.',
     months:['Yanvar','Fevral','Mart','Aprel','May','İyun','İyul','Avqust','Sentyabr','Oktyabr','Noyabr','Dekabr']
   }
 }
@@ -745,7 +745,7 @@ function App() {
         {canReadAccess(currentAccess) && section === 'revenue' && <Revenue t={t} />}
         {canReadAccess(currentAccess) && section === 'finance' && <Finance t={t} lang={lang} />}
         {canReadAccess(currentAccess) && section === 'reports' && <Reports t={t} />}
-        {canReadAccess(currentAccess) && section === 'recipes' && <Recipes t={t} />}
+        {canReadAccess(currentAccess) && section === 'recipes' && <Recipes t={t} lang={lang} />}
         {canReadAccess(currentAccess) && section === 'salaries' && <SalaryWorkspace t={t} isAdmin={isAdmin || accessRank(sectionAccess('salaries')) >= accessRank('admin')} />}
         {canReadAccess(currentAccess) && section === 'suppliers' && <Suppliers t={t} />}
         {canReadAccess(currentAccess) && section === 'debts' && <DebtsPayments t={t} />}
@@ -4139,7 +4139,7 @@ function convertToBase(quantity, fromUnit, baseUnit) {
   return q
 }
 
-function Recipes({ t }) {
+function Recipes({ t, lang = 'ru' }) {
   const [products, setProducts] = useState([])
   const [costs, setCosts] = useState([])
   const [menuItems, setMenuItems] = useState([])
@@ -4172,7 +4172,7 @@ function Recipes({ t }) {
 
   useEffect(() => {
     const allowedCategories = menuCategoriesForProductCategory(selectedCategory)
-    const matchingMenuItems = menuItems.filter(item => allowedCategories.includes(item.category || 'Прочее'))
+    const matchingMenuItems = menuItems.filter(item => allowedCategories.includes(item.category || 'Other'))
     if (matchingMenuItems.length && !matchingMenuItems.some(item => item.id === selectedMenuId)) {
       setSelectedMenuId(matchingMenuItems[0].id)
     }
@@ -4273,7 +4273,7 @@ function Recipes({ t }) {
     !recipeItems.some(r => String(r.id) !== String(row.id) && String(r.product_id) === String(p.id))
   )
   const allowedMenuCategories = menuCategoriesForProductCategory(selectedCategory)
-  const filteredMenuItems = menuItems.filter(item => allowedMenuCategories.includes(item.category || 'Прочее'))
+  const filteredMenuItems = menuItems.filter(item => allowedMenuCategories.includes(item.category || 'Other'))
   const selectedMenu = menuItems.find(i => i.id === selectedMenuId)
   const recipeCost = recipeItems.reduce((sum, row) => sum + lineCost(row), 0)
   const salePrice = parseNum(selectedMenu?.sale_price)
@@ -4282,7 +4282,7 @@ function Recipes({ t }) {
 
   async function addProduct() {
     setMessage('')
-    if (!productForm.name.trim()) return setMessage('Введите название товара')
+    if (!productForm.name.trim()) return setMessage(t('enter_product_name'))
     const { data, error } = await supabase.from('supplier_products').insert({
       name: productForm.name.trim(),
       category: productForm.category,
@@ -4312,7 +4312,7 @@ function Recipes({ t }) {
 
   async function addMenuItem() {
     setMessage('')
-    if (!menuForm.name.trim()) return setMessage('Введите название блюда')
+    if (!menuForm.name.trim()) return setMessage(t('enter_dish_name'))
     const { data, error } = await supabase.from('menu_items').insert({
       name: menuForm.name.trim(),
       category: menuForm.category || null,
@@ -4343,15 +4343,15 @@ function Recipes({ t }) {
 
   async function addRecipeItem() {
     setMessage('')
-    if (!selectedMenuId) return setMessage('Сначала выберите блюдо')
+    if (!selectedMenuId) return setMessage(t('choose_dish_first'))
     if (!availableProductsForRecipe.length) {
       setRecipeEditMode(true)
-      return setMessage('В этой категории все товары уже добавлены в техкарту. Измените количество в существующей строке или выберите другую категорию.')
+      return setMessage(t('all_category_products_added'))
     }
     const productIdToAdd = (!selectedProductId || selectedProductAlreadyInRecipe) ? availableProductsForRecipe[0]?.id : selectedProductId
     if (!productIdToAdd) {
       setRecipeEditMode(true)
-      return setMessage('В выбранной категории нет новых товаров для добавления.')
+      return setMessage(t('no_new_products_category'))
     }
 
     const existing = recipeItems.find(r =>
@@ -4360,7 +4360,7 @@ function Recipes({ t }) {
     )
     if (existing) {
       setRecipeEditMode(true)
-      setMessage('Этот ингредиент уже есть в техкарте. Измените количество в существующей строке.')
+      setMessage(t('ingredient_already_exists'))
       return
     }
 
@@ -4375,7 +4375,7 @@ function Recipes({ t }) {
       if (String(error.message || '').includes('recipe_items_menu_product_unique') || String(error.message || '').includes('duplicate key')) {
         await loadRecipeItems()
         setRecipeEditMode(true)
-        return setMessage('Этот ингредиент уже есть в техкарте. Измените количество в существующей строке.')
+        return setMessage(t('ingredient_already_exists'))
       }
       return setMessage(error.message)
     }
@@ -4399,14 +4399,14 @@ function Recipes({ t }) {
         String(r.product_id) === String(patch.product_id)
       )
       if (duplicate) {
-        return setMessage('Этот ингредиент уже есть в техкарте. Выберите другой товар или измените существующую строку.')
+        return setMessage(t('ingredient_duplicate_change'))
       }
     }
 
     const { error } = await supabase.from('recipe_items').update(patch).eq('id', id)
     if (error) {
       if (String(error.message || '').includes('recipe_items_menu_product_unique') || String(error.message || '').includes('duplicate key')) {
-        return setMessage('Этот ингредиент уже есть в техкарте. Выберите другой товар или измените существующую строку.')
+        return setMessage(t('ingredient_duplicate_change'))
       }
       setMessage(error.message)
     }
@@ -4434,16 +4434,16 @@ function Recipes({ t }) {
         <td class="num">${fmt(row.quantity)}</td>
         <td>${escapeHtml(unitLabel(product?.base_unit))}</td>
         <td class="num">${fmt(row.waste_percent)}</td>
-        <td class="num">${cost ? `${fmt(cost.price_per_base_unit)} / ${escapeHtml(cost.base_unit)}` : 'нет закупки'}</td>
+        <td class="num">${cost ? `${fmt(cost.price_per_base_unit)} / ${escapeHtml(cost.base_unit)}` : escapeHtml(t('no_purchase'))}</td>
         <td class="num strong">${fmt(lineCost(row))}</td>
       </tr>`
     }).join('')
-    const generatedAt = new Date().toLocaleString()
+    const generatedAt = new Date().toLocaleString(lang === 'az' ? 'az-AZ' : 'ru-RU')
     return `<!doctype html>
 <html>
 <head>
 <meta charset="utf-8" />
-<title>Техкарта — ${escapeHtml(selectedMenu?.name || 'блюдо')}</title>
+<title>${escapeHtml(t('recipes_tab'))} — ${escapeHtml(selectedMenu?.name || t('dish').toLowerCase())}</title>
 <style>
   @page { size: A4 portrait; margin: 12mm; }
   * { box-sizing: border-box; }
@@ -4482,7 +4482,7 @@ function Recipes({ t }) {
 <body>
   <div class="page">
     <div class="actionbar">
-      <button onclick="window.print()">PDF/Print</button>
+      <button onclick="window.print()">${escapeHtml(lang === 'az' ? 'PDF/Çap' : 'PDF/Print')}</button>
     </div>
     <div class="sheet">
       <div class="header">
@@ -4491,22 +4491,22 @@ function Recipes({ t }) {
             <div class="mark"><span>R</span><span>M</span><span>S</span></div>
             <div class="brandtext"><strong>RMS</strong><small>Restaurant Management System</small></div>
           </div>
-          <h1>${escapeHtml(selectedMenu?.name || 'Блюдо не выбрано')}</h1>
-          <div class="meta">Категория: ${escapeHtml(selectedMenu?.category || '—')} · Сформировано: ${escapeHtml(generatedAt)}</div>
+          <h1>${escapeHtml(selectedMenu?.name || t('dish_not_selected'))}</h1>
+          <div class="meta">${escapeHtml(t('category'))}: ${escapeHtml(selectedMenu?.category || '—')} · ${escapeHtml(t('generated'))}: ${escapeHtml(generatedAt)}</div>
         </div>
       </div>
       <div class="kpis">
-        <div class="kpi"><span>Себестоимость</span><strong>${fmt(recipeCost)}</strong></div>
-        <div class="kpi"><span>Цена продажи</span><strong>${fmt(salePrice)}</strong></div>
+        <div class="kpi"><span>${escapeHtml(t('recipe_cost'))}</span><strong>${fmt(recipeCost)}</strong></div>
+        <div class="kpi"><span>${escapeHtml(t('sale_price'))}</span><strong>${fmt(salePrice)}</strong></div>
         <div class="kpi"><span>Food cost</span><strong>${pct(foodCostPercent)}</strong></div>
-        <div class="kpi"><span>Валовая прибыль</span><strong>${fmt(grossProfit)}</strong></div>
+        <div class="kpi"><span>${escapeHtml(t('gross_profit'))}</span><strong>${fmt(grossProfit)}</strong></div>
       </div>
       <table>
-        <thead><tr><th>Категория</th><th>Товар / ингредиент</th><th class="num">Кол-во</th><th>Ед.</th><th class="num">Потери %</th><th class="num">Цена за ед.</th><th class="num">Себестоимость</th></tr></thead>
-        <tbody>${rowsHtml || '<tr><td colspan="7">Нет ингредиентов</td></tr>'}</tbody>
+        <thead><tr><th>${escapeHtml(t('category'))}</th><th>${escapeHtml(t('product'))} / ${escapeHtml(t('new_ingredient').replace('+ ', ''))}</th><th class="num">${escapeHtml(t('quantity'))}</th><th>${escapeHtml(t('unit_short'))}</th><th class="num">${escapeHtml(t('waste_percent'))}</th><th class="num">${escapeHtml(t('price_per_unit'))}</th><th class="num">${escapeHtml(t('recipe_cost'))}</th></tr></thead>
+        <tbody>${rowsHtml || `<tr><td colspan="7">${escapeHtml(t('no_ingredients'))}</td></tr>`}</tbody>
       </table>
       <div class="footer">
-        <span>Цена закупки берётся из последней закупки товара у поставщика.</span>
+        <span>${escapeHtml(t('purchase_price_latest_hint'))}</span>
         
       </div>
       
@@ -4518,7 +4518,7 @@ function Recipes({ t }) {
 
   function openTechCardWindow(autoPrint = false) {
     const win = window.open('', '_blank', 'width=980,height=760')
-    if (!win) return setMessage('Браузер заблокировал окно печати')
+    if (!win) return setMessage(t('print_blocked'))
     win.document.open()
     win.document.write(buildTechCardHtml())
     win.document.close()
@@ -4537,9 +4537,9 @@ function Recipes({ t }) {
 
   function recipeProductPriceInfo(productId) {
     const cost = productCost(productId)
-    if (!cost) return { label: 'нет закупки', className: 'hint' }
+    if (!cost) return { label: t('no_purchase'), className: 'hint' }
     return {
-      label: `${fmt(cost.price_per_base_unit)} / ${cost.base_unit || 'ед.'}`,
+      label: `${fmt(cost.price_per_base_unit)} / ${cost.base_unit || t('unit_piece')}`,
       className: 'hint'
     }
   }
@@ -4550,45 +4550,45 @@ function Recipes({ t }) {
       <section className="topbar">
         <div>
           <h2>{t('recipes_tab')}</h2>
-          <p>Техкарты блюд. Товар выбирается из справочника поставщиков, а себестоимость берётся по последней закупке.</p>
+          <p>{t('recipes_subtitle')}</p>
         </div>
       </section>
 
       <section className="grid">
-        <div className="card"><h3>Себестоимость</h3><div className="big-number">{fmt(recipeCost)}</div><p className="hint">Себестоимость выбранного блюда</p></div>
-        <div className="card"><h3>Цена продажи</h3><div className="big-number">{fmt(salePrice)}</div><p className="hint">Цена в меню</p></div>
-        <div className="card"><h3>Food cost</h3><div className={`big-number ${foodCostPercent <= parseNum(selectedMenu?.target_food_cost_percent || 30) ? 'good' : 'bad'}`}>{pct(foodCostPercent)}</div><p className="hint">Цель: {fmt(selectedMenu?.target_food_cost_percent || 30)}%</p></div>
-        <div className="card"><h3>Валовая прибыль</h3><div className={`big-number ${grossProfit >= 0 ? 'good' : 'bad'}`}>{fmt(grossProfit)}</div><p className="hint">Цена − себестоимость</p></div>
+        <div className="card"><h3>{t('recipe_cost')}</h3><div className="big-number">{fmt(recipeCost)}</div><p className="hint">{t('recipe_cost_hint')}</p></div>
+        <div className="card"><h3>{t('sale_price')}</h3><div className="big-number">{fmt(salePrice)}</div><p className="hint">{t('sale_price_hint')}</p></div>
+        <div className="card"><h3>Food cost</h3><div className={`big-number ${foodCostPercent <= parseNum(selectedMenu?.target_food_cost_percent || 30) ? 'good' : 'bad'}`}>{pct(foodCostPercent)}</div><p className="hint">{t('food_cost_target')}: {fmt(selectedMenu?.target_food_cost_percent || 30)}%</p></div>
+        <div className="card"><h3>{t('gross_profit')}</h3><div className={`big-number ${grossProfit >= 0 ? 'good' : 'bad'}`}>{fmt(grossProfit)}</div><p className="hint">{t('gross_profit_formula')}</p></div>
 
         <div className="card recipe-sheet" style={{ gridColumn: '1 / -1' }}>
           <div className="card-head recipe-sheet-head">
             <div>
-              <h3>Состав техкарты</h3>
-              <p className="hint">Выбранное блюдо: <strong>{selectedMenu?.name || 'не выбрано'}</strong>. Готовая техкарта отображается под ключевыми показателями, а редактирование открывается только по кнопке «Редактировать».</p>
+              <h3>{t('recipe_composition')}</h3>
+              <p className="hint">{t('selected_dish')}: <strong>{selectedMenu?.name || t('not_selected')}</strong>. {t('recipe_ready_hint')}</p>
             </div>
             <div className="row-actions">
-              {!recipeEditMode && recipeItems.length > 0 && <button className="ghost small" onClick={printTechCard}>PDF/Print</button>}
-              {!recipeEditMode && recipeItems.length > 0 && <button className="ghost small" onClick={() => setRecipeEditMode(true)}>Редактировать</button>}
-              {(recipeEditMode || recipeItems.length === 0) && <button className="small" disabled={!availableProductsForRecipe.length} onClick={addRecipeItem}>{availableProductsForRecipe.length ? '+ ингредиент' : 'Все ингредиенты добавлены'}</button>}
-              {recipeEditMode && <button className="primary small" onClick={() => { setRecipeEditMode(false); setMessage(t('saved')) }}>Сохранить техкарту</button>}
+              {!recipeEditMode && recipeItems.length > 0 && <button className="ghost small" onClick={printTechCard}>{lang === 'az' ? 'PDF/Çap' : 'PDF/Print'}</button>}
+              {!recipeEditMode && recipeItems.length > 0 && <button className="ghost small" onClick={() => setRecipeEditMode(true)}>{t('edit_recipe')}</button>}
+              {(recipeEditMode || recipeItems.length === 0) && <button className="small" disabled={!availableProductsForRecipe.length} onClick={addRecipeItem}>{availableProductsForRecipe.length ? t('add_ingredient') : t('all_ingredients_added')}</button>}
+              {recipeEditMode && <button className="primary small" onClick={() => { setRecipeEditMode(false); setMessage(t('saved')) }}>{t('save_recipe')}</button>}
             </div>
           </div>
 
           <div className="form-grid compact recipe-sheet-filters">
-            <label><span>Категория товара</span>
+            <label><span>{t('product_category')}</span>
               <select value={selectedCategory} onChange={e => setSelectedCategory(e.target.value)}>
                 {PRODUCT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
             </label>
-            <label><span>Выбрать блюдо</span>
+            <label><span>{t('select_dish')}</span>
               <select value={selectedMenuId} onChange={e => setSelectedMenuId(e.target.value)}>
-                <option value="">Выберите блюдо</option>
+                <option value="">{t('choose_dish')}</option>
                 {filteredMenuItems.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
               </select>
             </label>
-            <label><span>Новый ингредиент</span>
+            <label><span>{t('new_ingredient')}</span>
               <select value={selectedProductId} onChange={e => setSelectedProductId(e.target.value)} disabled={!availableProductsForRecipe.length}>
-                <option value="">{availableProductsForRecipe.length ? 'Выберите товар' : 'Все товары уже добавлены'}</option>
+                <option value="">{availableProductsForRecipe.length ? t('choose_product') : t('all_products_added')}</option>
                 {availableProductsForRecipe.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
               </select>
             </label>
@@ -4598,13 +4598,13 @@ function Recipes({ t }) {
             <table>
               <thead>
                 <tr>
-                  <th>Категория</th>
-                  <th>Товар</th>
-                  <th>Кол-во использования</th>
-                  <th>Ед.</th>
-                  <th>Потери %</th>
-                  <th>Цена за 1 ед.</th>
-                  <th>Себестоимость</th>
+                  <th>{t('category')}</th>
+                  <th>{t('product')}</th>
+                  <th>{t('usage_qty')}</th>
+                  <th>{t('unit_short')}</th>
+                  <th>{t('waste_percent')}</th>
+                  <th>{t('price_per_unit')}</th>
+                  <th>{t('recipe_cost')}</th>
                   <th></th>
                 </tr>
               </thead>
@@ -4627,38 +4627,38 @@ function Recipes({ t }) {
                       <td>{recipeEditMode ? <input inputMode="decimal" defaultValue={row.quantity} onBlur={e => updateRecipeItem(row.id, { quantity: parseNum(e.target.value) })} placeholder="18 / 200" /> : <span className="cell-value">{fmt(row.quantity)}</span>}</td>
                       <td>{unitLabel(product?.base_unit)}</td>
                       <td>{recipeEditMode ? <input inputMode="decimal" defaultValue={row.waste_percent} onBlur={e => updateRecipeItem(row.id, { waste_percent: parseNum(e.target.value) })} /> : <span className="cell-value">{fmt(row.waste_percent)}</span>}</td>
-                      <td>{cost ? `${fmt(cost.price_per_base_unit)} / ${cost.base_unit}` : 'нет закупки'}</td>
+                      <td>{cost ? `${fmt(cost.price_per_base_unit)} / ${cost.base_unit}` : t('no_purchase')}</td>
                       <td><strong>{fmt(lineCost(row))}</strong></td>
                       <td>{recipeEditMode ? <button className="remove" onClick={() => deleteRecipeItem(row.id)}>×</button> : <span className="hint">—</span>}</td>
                     </tr>
                   )
                 })}
-                {!recipeItems.length && <tr><td colSpan="8" className="hint">Пока нет ингредиентов в техкарте выбранного блюда.</td></tr>}
+                {!recipeItems.length && <tr><td colSpan="8" className="hint">{t('no_ingredients_recipe')}</td></tr>}
               </tbody>
             </table>
           </div>
-          <p className="hint recipe-sheet-note">Пример: Cappuccino = молоко 200 ml + кофе 18 g. Цена берётся из последней закупки товара у поставщика.</p>
-          {recipesLoading && <p className="hint">Загрузка тех. карт...</p>}
+          <p className="hint recipe-sheet-note">{t('recipe_example_hint')}</p>
+          {recipesLoading && <p className="hint">{t('recipes_loading')}</p>}
           {message && <p className={`hint ${message === t('saved') ? 'good' : 'bad'}`}>{message}</p>}
         </div>
 
         <div className="card span-2">
-          <div className="card-head"><div><h3>Блюда / позиции меню</h3><p className="hint">Блюдо создаётся один раз, затем выбирается в техкарте.</p></div></div>
+          <div className="card-head"><div><h3>{t('dishes_menu_items')}</h3><p className="hint">{t('dish_once_hint')}</p></div></div>
           <div className="form-grid compact">
-            <label><span>Название блюда</span><input value={menuForm.name} onChange={e => setMenuForm({...menuForm, name: e.target.value})} placeholder="Cappuccino / Chicken Bowl" /></label>
-            <label><span>Категория</span><select value={menuForm.category} onChange={e => setMenuForm({...menuForm, category: e.target.value})}>{MENU_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select></label>
-            <label><span>Цена продажи</span><input inputMode="decimal" value={menuForm.sale_price} onChange={e => setMenuForm({...menuForm, sale_price: e.target.value})} /></label>
-            <label><span>Целевой food cost %</span><input inputMode="decimal" value={menuForm.target_food_cost_percent} onChange={e => setMenuForm({...menuForm, target_food_cost_percent: e.target.value})} /></label>
+            <label><span>{t('dish_name')}</span><input value={menuForm.name} onChange={e => setMenuForm({...menuForm, name: e.target.value})} placeholder="Cappuccino / Chicken Bowl" /></label>
+            <label><span>{t('category')}</span><select value={menuForm.category} onChange={e => setMenuForm({...menuForm, category: e.target.value})}>{MENU_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select></label>
+            <label><span>{t('sale_price')}</span><input inputMode="decimal" value={menuForm.sale_price} onChange={e => setMenuForm({...menuForm, sale_price: e.target.value})} /></label>
+            <label><span>{t('target_food_cost')}</span><input inputMode="decimal" value={menuForm.target_food_cost_percent} onChange={e => setMenuForm({...menuForm, target_food_cost_percent: e.target.value})} /></label>
           </div>
-          <button className="small" onClick={addMenuItem}>+ Добавить блюдо</button><br /><br />
+          <button className="small" onClick={addMenuItem}>{t('add_dish')}</button><br /><br />
           <div className="table-wrap">
             <table>
-              <thead><tr><th>Блюдо</th><th>Категория</th><th>Цена</th><th>Цель food cost</th><th></th></tr></thead>
+              <thead><tr><th>{t('dish')}</th><th>{t('category')}</th><th>{t('price')}</th><th>{t('target_food_cost_short')}</th><th></th></tr></thead>
               <tbody>
                 {menuItems.map(item => (
                   <tr key={item.id}>
                     <td><button className={selectedMenuId === item.id ? 'primary small' : 'ghost small'} onClick={() => setSelectedMenuId(item.id)}>{item.name}</button></td>
-                    <td><select value={item.category || 'Прочее'} onChange={e => updateMenuItem(item.id, { category: e.target.value })}>{MENU_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select></td>
+                    <td><select value={item.category || 'Other'} onChange={e => updateMenuItem(item.id, { category: e.target.value })}>{MENU_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select></td>
                     <td><input inputMode="decimal" defaultValue={item.sale_price} onBlur={e => updateMenuItem(item.id, { sale_price: parseNum(e.target.value) })} /></td>
                     <td><input inputMode="decimal" defaultValue={item.target_food_cost_percent} onBlur={e => updateMenuItem(item.id, { target_food_cost_percent: parseNum(e.target.value) })} /></td>
                     <td><button className="remove" onClick={() => deactivateMenuItem(item.id)}>×</button></td>
@@ -4671,22 +4671,22 @@ function Recipes({ t }) {
         </div>
 
         <div className="card span-2">
-          <div className="card-head"><div><h3>Товары / ингредиенты</h3><p className="hint">Это единый справочник. Эти же товары используются в закупках поставщиков и в техкартах.</p></div></div>
+          <div className="card-head"><div><h3>{t('products_ingredients')}</h3><p className="hint">{t('unified_products_hint')}</p></div></div>
           <div className="form-grid compact">
-            <label><span>Название товара</span><input value={productForm.name} onChange={e => setProductForm({...productForm, name: e.target.value})} placeholder="Молоко / Кофе / Сыр" /></label>
-            <label><span>Тип</span><select value={productForm.category} onChange={e => setProductForm({...productForm, category: e.target.value})}>{PRODUCT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select></label>
-            <label><span>Базовая ед. использования</span><select value={productForm.base_unit} onChange={e => setProductForm({...productForm, base_unit: e.target.value})}>{BASE_UNITS.map(u => <option key={u.value} value={u.value}>{u.label}</option>)}</select></label>
+            <label><span>{t('product_name')}</span><input value={productForm.name} onChange={e => setProductForm({...productForm, name: e.target.value})} placeholder="Молоко / Кофе / Сыр" /></label>
+            <label><span>{t('type')}</span><select value={productForm.category} onChange={e => setProductForm({...productForm, category: e.target.value})}>{PRODUCT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select></label>
+            <label><span>{t('base_usage_unit')}</span><select value={productForm.base_unit} onChange={e => setProductForm({...productForm, base_unit: e.target.value})}>{BASE_UNITS.map(u => <option key={u.value} value={u.value}>{u.label}</option>)}</select></label>
           </div>
-          <button className="small" onClick={addProduct}>+ Добавить товар</button><br /><br />
+          <button className="small" onClick={addProduct}>{t('add_product_button')}</button><br /><br />
           <div className="table-wrap">
             <table>
-              <thead><tr><th>Категория</th><th>Товар</th><th>Базовая ед.</th><th>Цена / изменение</th><th></th></tr></thead>
+              <thead><tr><th>{t('category')}</th><th>{t('product')}</th><th>{t('base_unit')}</th><th>{t('price_change')}</th><th></th></tr></thead>
               <tbody>
                 {products.map(item => {
                   const cost = productCost(item.id)
                   return (
                     <tr key={item.id}>
-                      <td><select value={item.category || 'Прочее'} onChange={e => updateProduct(item.id, { category: e.target.value })}>{PRODUCT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select></td>
+                      <td><select value={item.category || 'Other'} onChange={e => updateProduct(item.id, { category: e.target.value })}>{PRODUCT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select></td>
                       <td><input defaultValue={item.name} onBlur={e => updateProduct(item.id, { name: e.target.value.trim() })} /></td>
                       <td><select value={item.base_unit || 'g'} onChange={e => updateProduct(item.id, { base_unit: e.target.value })}>{BASE_UNITS.map(u => <option key={u.value} value={u.value}>{u.label}</option>)}</select></td>
                       <td><span className={recipeProductPriceInfo(item.id).className}>{recipeProductPriceInfo(item.id).label}</span></td>
