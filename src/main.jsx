@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { supabase } from './supabase'
 import './styles.css'
@@ -7,7 +7,7 @@ const I18N = {
   ru: {
     system_title:'RMS', system_short_title:'RMS', system_subtitle:'Выручка · Финансы · Персонал · Поставщики', dashboard_tab:'Дашборд', pos_tab:'POS / Продажи',
     brand_subtitle:'Restaurant Management System', language_label:'Язык интерфейса', login_label:'Login', password_label:'Пароль',
-    login_button:'Войти', login_hint:'Вход по внутреннему login. Допустим вход по логину без домена.', login_error:'Неверный логин или пароль', login_progress:'Вход в RMS...', user_disabled:'Пользователь отключён', user_not_found:'Пользователь не найден или пароль неверный. Создайте пользователя заново в Настройки → Пользователи.', press_enter_hint:'Можно нажать Enter после заполнения login и password.', show_password:'Показать пароль',
+    login_button:'Войти', login_hint:'Вход по внутреннему login. Допустим вход по логину без домена.', login_error:'Неверный логин или пароль', show_password:'Показать пароль',
     logout:'Выйти', revenue_tab:'Выручка', finance_tab:'Финансы ресторанов', reports_tab:'Отчёты', recipes_tab:'Тех. карты', salaries_tab:'Зарплаты',
     attendance_tab:'Посещаемость', advances_tab:'Авансы', suppliers_tab:'Поставщики', debts_payments_tab:'Долги и оплаты', settings_tab:'Настройки',
     revenue_subtitle:'Ввод выручки и расходов за выбранную дату по филиалу', finance_subtitle:'Аналитика по филиалу, месяцу, выручке и расходам',
@@ -24,13 +24,13 @@ const I18N = {
     revenue_plan_progress:'Выполнение плана выручки', profit_plan_progress:'Выполнение плана прибыли', module_coming:'Раздел будет добавлен следующим этапом.',
     settings_subtitle:'Пользователи, права доступа и режимы работы', users_management:'Пользователи', add_user:'+ Пользователь',
     role:'Роль', sections_access:'Доступ к разделам', access_mode:'Режим', administrator:'Администратор', employee:'Сотрудник',
-    read_only:'Только чтение', edit_mode:'Изменение', permission_denied:'Нет доступа к этому разделу', new_expense:'Новая статья', save:'Сохранить', saved:'Сохранено', loading:'Загрузка...', profile:'Профиль текущего пользователя', full_name:'Имя', create_admin:'Создать admin-профиль', suppliers_subtitle:'Поставщики, поступления, оплаты, товары и долги. VOEN / юрлица теперь находятся в разделе “Настройки”.', supplier_opening_debt_title:'Долг поставщику за предыдущий период', supplier_opening_debt_hint:'Используйте при запуске программы с нуля, чтобы перенести старый долг в баланс поставщика.', supplier:'Поставщик', select_supplier:'Выберите поставщика', debt_date:'Дата долга', debt_amount:'Сумма долга', invoice_mark:'Фактура / отметка', add_debt:'+ Добавить долг', supplier_purchases_title:'Поступления от поставщика', supplier_purchases_hint:'Сначала заполняется шапка фактуры. Товары добавляются строками ниже.', our_voen:'Наш VOEN', branch:'Филиал', purchase_date:'Дата поступления', invoice_number:'Номер фактуры', purchase_items_title:'Товары в поступлении', purchase_items_hint:'Если товара нет, сначала добавьте его ниже в блоке “Товары”.', add_item_row:'+ Строка товара', type:'Тип', product:'Товар', purchase_qty:'Кол-во закупа', purchase_unit:'Ед. закупа', unit_price:'Цена за ед.', invoice_total:'Итого по фактуре', save_purchase:'+ Сохранить поступление', supplier_payment_title:'Оплата поставщику', supplier_payment_hint:'Укажите сумму оплаты, номера счёт-фактур и комментарий.', payment_date:'Дата оплаты', payment_amount:'Сумма оплаты', invoice_notes:'Отметки / номера счёт-фактур', save_payment:'+ Сохранить оплату', contractors:'Контрагенты', contractors_hint:'Условия оплаты и лимиты используются в Dashboard для проблемных долгов.', contractor_name:'Имя контрагента', supplier_voen:'VOEN поставщика', contact:'Контакт', phone:'Телефон', info:'Информация', payment_term_days:'Срок оплаты, дней', credit_limit:'Кредитный лимит', opening_debt_previous:'Долг за предыдущий период', opening_debt_date:'Дата стартового долга', opening_debt_comment:'Комментарий к стартовому долгу', add_supplier:'+ Добавить поставщика', products_title:'Товары', products_hint:'Товар создаётся один раз и потом выбирается в поступлении и в техкарте.', base_unit_recipe:'Базовая ед. для техкарты', add_product:'+ Добавить товар', latest_purchases:'Последние поступления', latest_purchases_hint:'Сначала открывается просмотр накладной. Редактирование и удаление доступны внутри накладной.', invoice:'Фактура', sum:'Сумма', status:'Статус', cancelled:'Отменено', active:'Активно', close:'Закрыть', view:'Просмотр', invoice_word:'Накладная', no_number:'без номера', created:'Создано', updated:'Изменено', done:'Готово', edit:'Редактировать', delete:'Удалить', quantity:'Кол-во', unit:'Ед.', price:'Цена', items_not_found:'Товары не найдены', supplier_opening_debt_short:'Долг за предыдущий период', starting_debt:'Стартовый долг', receipt:'Поступление', payment:'Оплата', no_purchase:'нет закупки', first_price:'первая цена', enter_supplier_name:'Введите имя контрагента', supplier_saved_debt_added:'Поставщик сохранён, стартовый долг добавлен', enter_product:'Введите товар', select_supplier_and_voen:'Выберите поставщика и VOEN', check_product_qty_unit_price:'Проверьте товар, количество, единицу и цену', add_at_least_one_item:'Добавьте хотя бы один товар в поступление', delete_purchase_confirm:'Удалить поступление? Оно будет зачёркнуто и не будет учитываться в финансах.', select_supplier_msg:'Выберите поставщика', enter_debt_amount:'Введите сумму долга', adding_opening_debt:'Добавление стартового долга...', opening_debt_added:'Стартовый долг поставщику добавлен', select_supplier_and_payment_amount:'Выберите поставщика и сумму оплаты', saving_supplier:'Сохранение поставщика...', saving_product:'Сохранение товара...', select_product_error:'Выберите товар из списка. Если товара нет, сначала добавьте его в блоке “Товары”.', recipes_subtitle:'Техкарты блюд. Товар выбирается из справочника поставщиков, а себестоимость берётся по последней закупке.', recipe_cost:'Себестоимость', recipe_cost_hint:'Себестоимость выбранного блюда', sale_price:'Цена продажи', sale_price_hint:'Цена в меню', food_cost_target:'Цель', gross_profit_formula:'Цена − себестоимость', recipe_composition:'Состав техкарты', selected_dish:'Выбранное блюдо', not_selected:'не выбрано', recipe_ready_hint:'Готовая техкарта отображается под ключевыми показателями, а редактирование открывается только по кнопке «Редактировать».', print_blocked:'Браузер заблокировал окно печати', edit_recipe:'Редактировать', add_ingredient:'+ ингредиент', all_ingredients_added:'Все ингредиенты добавлены', save_recipe:'Сохранить техкарту', product_category:'Категория товара', select_dish:'Выбрать блюдо', choose_dish:'Выберите блюдо', new_ingredient:'Новый ингредиент', choose_product:'Выберите товар', all_products_added:'Все товары уже добавлены', category:'Категория', usage_qty:'Кол-во использования', unit_short:'Ед.', waste_percent:'Потери %', price_per_unit:'Цена за 1 ед.', no_ingredients_recipe:'Пока нет ингредиентов в техкарте выбранного блюда.', recipe_example_hint:'Пример: Cappuccino = молоко 200 ml + кофе 18 g. Цена берётся из последней закупки товара у поставщика.', recipes_loading:'Загрузка тех. карт...', dishes_menu_items:'Блюда / позиции меню', dish_once_hint:'Блюдо создаётся один раз, затем выбирается в техкарте.', dish_name:'Название блюда', target_food_cost:'Целевой food cost %', add_dish:'+ Добавить блюдо', dish:'Блюдо', target_food_cost_short:'Цель food cost', products_ingredients:'Товары / ингредиенты', unified_products_hint:'Это единый справочник. Эти же товары используются в закупках поставщиков и в техкартах.', product_name:'Название товара', base_usage_unit:'Базовая ед. использования', add_product_button:'+ Добавить товар', base_unit:'Базовая ед.', price_change:'Цена / изменение', unit_piece:'ед.', no_ingredients:'Нет ингредиентов', dish_not_selected:'Блюдо не выбрано', generated:'Сформировано', purchase_price_latest_hint:'Цена закупки берётся из последней закупки товара у поставщика.', enter_product_name:'Введите название товара', enter_dish_name:'Введите название блюда', choose_dish_first:'Сначала выберите блюдо', all_category_products_added:'В этой категории все товары уже добавлены в техкарту. Измените количество в существующей строке или выберите другую категорию.', no_new_products_category:'В выбранной категории нет новых товаров для добавления.', ingredient_already_exists:'Этот ингредиент уже есть в техкарте. Измените количество в существующей строке.', ingredient_duplicate_change:'Этот ингредиент уже есть в техкарте. Выберите другой товар или измените существующую строку.',
+    read_only:'Только чтение', edit_mode:'Изменение', permission_denied:'Нет доступа к этому разделу', new_expense:'Новая статья', save:'Сохранить', saved:'Сохранено', loading:'Загрузка...', profile:'Профиль текущего пользователя', full_name:'Имя', create_admin:'Создать admin-профиль',
     months:['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь']
   },
   az: {
     system_title:'RMS', system_short_title:'RMS', system_subtitle:'Dövriyyə · Maliyyə · Personal · Təchizatçılar', dashboard_tab:'Dashboard', pos_tab:'POS / Satış',
     brand_subtitle:'Restaurant Management System', language_label:'İnterfeys dili', login_label:'Login', password_label:'Parol',
-    login_button:'Daxil ol', login_hint:'Daxili login ilə giriş. Domen yazmadan login istifadə etmək olar.', login_error:'Login və ya parol yanlışdır', login_progress:'RMS-ə giriş...', user_disabled:'İstifadəçi deaktiv edilib', user_not_found:'İstifadəçi tapılmadı və ya parol yanlışdır. İstifadəçini Ayarlar → İstifadəçilər bölməsində yenidən yaradın.', press_enter_hint:'Login və parolu doldurduqdan sonra Enter düyməsini basa bilərsiniz.', show_password:'Parolu göstər',
+    login_button:'Daxil ol', login_hint:'Daxili login ilə giriş. Domen yazmadan login istifadə etmək olar.', login_error:'Login və ya parol yanlışdır', show_password:'Parolu göstər',
     logout:'Çıxış', revenue_tab:'Dövriyyə', finance_tab:'Restoran maliyyəsi', reports_tab:'Hesabatlar', recipes_tab:'Tex. kartlar', salaries_tab:'Maaşlar',
     attendance_tab:'Davamiyyət', advances_tab:'Avanslar', suppliers_tab:'Təchizatçılar', debts_payments_tab:'Borclar və ödənişlər', settings_tab:'Ayarlar',
     revenue_subtitle:'Seçilmiş tarix və filial üzrə dövriyyə və xərclər', finance_subtitle:'Filial, ay, dövriyyə və xərclər üzrə analitika',
@@ -47,402 +47,9 @@ const I18N = {
     revenue_plan_progress:'Dövriyyə planının icrası', profit_plan_progress:'Mənfəət planının icrası', module_coming:'Bölmə növbəti mərhələdə əlavə olunacaq.',
     settings_subtitle:'İstifadəçilər, giriş hüquqları və rejimlər', users_management:'İstifadəçilər', add_user:'+ İstifadəçi',
     role:'Rol', sections_access:'Bölmələrə giriş', access_mode:'Rejim', administrator:'Administrator', employee:'Əməkdaş',
-    read_only:'Yalnız oxuma', edit_mode:'Dəyişiklik', permission_denied:'Bu bölməyə giriş yoxdur', new_expense:'Yeni xərc maddəsi', save:'Yadda saxla', saved:'Saxlanıldı', loading:'Yüklənir...', profile:'Cari istifadəçi profili', full_name:'Ad', create_admin:'Admin profil yarat', suppliers_subtitle:'Təchizatçılar, daxilolmalar, ödənişlər, mallar və borclar. VÖEN / hüquqi şəxslər artıq “Ayarlar” bölməsindədir.', supplier_opening_debt_title:'Əvvəlki dövrdən təchizatçı borcu', supplier_opening_debt_hint:'Proqramı sıfırdan başladıqda köhnə borcu təchizatçının balansına köçürmək üçün istifadə edin.', supplier:'Təchizatçı', select_supplier:'Təchizatçı seçin', debt_date:'Borc tarixi', debt_amount:'Borc məbləği', invoice_mark:'Faktura / qeyd', add_debt:'+ Borc əlavə et', supplier_purchases_title:'Təchizatçıdan daxilolmalar', supplier_purchases_hint:'Əvvəl fakturanın başlığı doldurulur. Mallar aşağıda sətirlərlə əlavə olunur.', our_voen:'Bizim VÖEN', branch:'Filial', purchase_date:'Daxilolma tarixi', invoice_number:'Faktura nömrəsi', purchase_items_title:'Daxilolmadakı mallar', purchase_items_hint:'Mal siyahıda yoxdursa, əvvəl aşağıdakı “Mallar” blokunda əlavə edin.', add_item_row:'+ Mal sətri', type:'Tip', product:'Mal', purchase_qty:'Alış miqdarı', purchase_unit:'Alış vahidi', unit_price:'Vahid qiyməti', invoice_total:'Faktura üzrə cəmi', save_purchase:'+ Daxilolmanı yadda saxla', supplier_payment_title:'Təchizatçıya ödəniş', supplier_payment_hint:'Ödəniş məbləğini, faktura nömrələrini və şərhi qeyd edin.', payment_date:'Ödəniş tarixi', payment_amount:'Ödəniş məbləği', invoice_notes:'Qeydlər / faktura nömrələri', save_payment:'+ Ödənişi yadda saxla', contractors:'Kontragentlər', contractors_hint:'Ödəniş şərtləri və limitlər Dashboard-da problemli borclar üçün istifadə olunur.', contractor_name:'Kontragent adı', supplier_voen:'Təchizatçı VÖEN-i', contact:'Əlaqə şəxsi', phone:'Telefon', info:'Məlumat', payment_term_days:'Ödəniş müddəti, gün', credit_limit:'Kredit limiti', opening_debt_previous:'Əvvəlki dövr borcu', opening_debt_date:'Başlanğıc borc tarixi', opening_debt_comment:'Başlanğıc borc şərhi', add_supplier:'+ Təchizatçı əlavə et', products_title:'Mallar', products_hint:'Mal bir dəfə yaradılır, sonra daxilolmada və tex. kartda seçilir.', base_unit_recipe:'Tex. kart üçün baza vahidi', add_product:'+ Mal əlavə et', latest_purchases:'Son daxilolmalar', latest_purchases_hint:'Əvvəl fakturaya baxış açılır. Redaktə və silmə fakturanın içində mümkündür.', invoice:'Faktura', sum:'Məbləğ', status:'Status', cancelled:'Ləğv edilib', active:'Aktiv', close:'Bağla', view:'Baxış', invoice_word:'Qaimə', no_number:'nömrəsiz', created:'Yaradılıb', updated:'Dəyişdirilib', done:'Hazır', edit:'Redaktə et', delete:'Sil', quantity:'Miqdar', unit:'Vahid', price:'Qiymət', items_not_found:'Mallar tapılmadı', supplier_opening_debt_short:'Əvvəlki dövr borcu', starting_debt:'Başlanğıc borc', receipt:'Daxilolma', payment:'Ödəniş', no_purchase:'alış yoxdur', first_price:'ilk qiymət', enter_supplier_name:'Kontragent adını daxil edin', supplier_saved_debt_added:'Təchizatçı saxlanıldı, başlanğıc borc əlavə olundu', enter_product:'Mal daxil edin', select_supplier_and_voen:'Təchizatçı və VÖEN seçin', check_product_qty_unit_price:'Malı, miqdarı, vahidi və qiyməti yoxlayın', add_at_least_one_item:'Daxilolmaya ən azı bir mal əlavə edin', delete_purchase_confirm:'Daxilolma silinsin? Üstündən xətt çəkiləcək və maliyyədə nəzərə alınmayacaq.', select_supplier_msg:'Təchizatçı seçin', enter_debt_amount:'Borc məbləğini daxil edin', adding_opening_debt:'Başlanğıc borc əlavə olunur...', opening_debt_added:'Təchizatçıya başlanğıc borc əlavə olundu', select_supplier_and_payment_amount:'Təchizatçı və ödəniş məbləğini seçin', saving_supplier:'Təchizatçı saxlanılır...', saving_product:'Mal saxlanılır...', select_product_error:'Siyahıdan mal seçin. Mal yoxdursa, əvvəl “Mallar” blokunda əlavə edin.', recipes_subtitle:'Yeməklərin tex. kartları. Mal təchizatçı kataloqundan seçilir, maya dəyəri isə son alış qiymətinə əsasən götürülür.', recipe_cost:'Maya dəyəri', recipe_cost_hint:'Seçilmiş yeməyin maya dəyəri', sale_price:'Satış qiyməti', sale_price_hint:'Menyudakı qiymət', food_cost_target:'Hədəf', gross_profit_formula:'Qiymət − maya dəyəri', recipe_composition:'Tex. kartın tərkibi', selected_dish:'Seçilmiş yemək', not_selected:'seçilməyib', recipe_ready_hint:'Hazır tex. kart əsas göstəricilərin altında göstərilir, redaktə yalnız «Redaktə et» düyməsi ilə açılır.', print_blocked:'Brauzer çap pəncərəsini blokladı', edit_recipe:'Redaktə et', add_ingredient:'+ inqrediyent', all_ingredients_added:'Bütün inqrediyentlər əlavə olunub', save_recipe:'Tex. kartı yadda saxla', product_category:'Mal kateqoriyası', select_dish:'Yemək seç', choose_dish:'Yemək seçin', new_ingredient:'Yeni inqrediyent', choose_product:'Mal seçin', all_products_added:'Bütün mallar artıq əlavə olunub', category:'Kateqoriya', usage_qty:'İstifadə miqdarı', unit_short:'Vahid', waste_percent:'İtki %', price_per_unit:'1 vahid qiyməti', no_ingredients_recipe:'Seçilmiş yeməyin tex. kartında hələ inqrediyent yoxdur.', recipe_example_hint:'Nümunə: Cappuccino = süd 200 ml + qəhvə 18 g. Qiymət təchizatçıdan son alışa əsasən götürülür.', recipes_loading:'Tex. kartlar yüklənir...', dishes_menu_items:'Yeməklər / menyu pozisiyaları', dish_once_hint:'Yemək bir dəfə yaradılır, sonra tex. kartda seçilir.', dish_name:'Yeməyin adı', target_food_cost:'Hədəf food cost %', add_dish:'+ Yemək əlavə et', dish:'Yemək', target_food_cost_short:'Hədəf food cost', products_ingredients:'Mallar / inqrediyentlər', unified_products_hint:'Bu vahid kataloqdur. Eyni mallar təchizatçı alışlarında və tex. kartlarda istifadə olunur.', product_name:'Malın adı', base_usage_unit:'İstifadə üçün baza vahidi', add_product_button:'+ Mal əlavə et', base_unit:'Baza vahidi', price_change:'Qiymət / dəyişiklik', unit_piece:'vahid', no_ingredients:'İnqrediyent yoxdur', dish_not_selected:'Yemək seçilməyib', generated:'Formalaşdırılıb', purchase_price_latest_hint:'Alış qiyməti təchizatçıdan son alışa əsasən götürülür.', enter_product_name:'Malın adını daxil edin', enter_dish_name:'Yeməyin adını daxil edin', choose_dish_first:'Əvvəl yemək seçin', all_category_products_added:'Bu kateqoriyada bütün mallar artıq tex. karta əlavə olunub. Mövcud sətirdə miqdarı dəyişin və ya başqa kateqoriya seçin.', no_new_products_category:'Seçilmiş kateqoriyada əlavə ediləcək yeni mal yoxdur.', ingredient_already_exists:'Bu inqrediyent artıq tex. kartda var. Mövcud sətirdə miqdarı dəyişin.', ingredient_duplicate_change:'Bu inqrediyent artıq tex. kartda var. Başqa mal seçin və ya mövcud sətri dəyişin.',
+    read_only:'Yalnız oxuma', edit_mode:'Dəyişiklik', permission_denied:'Bu bölməyə giriş yoxdur', new_expense:'Yeni xərc maddəsi', save:'Yadda saxla', saved:'Saxlanıldı', loading:'Yüklənir...', profile:'Cari istifadəçi profili', full_name:'Ad', create_admin:'Admin profil yarat',
     months:['Yanvar','Fevral','Mart','Aprel','May','İyun','İyul','Avqust','Sentyabr','Oktyabr','Noyabr','Dekabr']
   }
-}
-
-
-
-const UI_AZ_TEXT = {
-"Финансовое состояние сети": "Şəbəkənin maliyyə vəziyyəti",
-"Выручка, расходы, прибыль, прогноз, динамика и долги поставщикам по всей сети.": "Bütün şəbəkə üzrə dövriyyə, xərclər, mənfəət, proqnoz, dinamika və təchizatçı borcları.",
-"Выручка сети": "Şəbəkə dövriyyəsi",
-"Расходы сети": "Şəbəkə xərcləri",
-"включая зарплаты, service charge и налог 8%": "maaşlar, service charge və 8% vergi daxil olmaqla",
-"Чистая прибыль": "Xalis mənfəət",
-"Прогноз прибыли": "Mənfəət proqnozu",
-"прогноз до конца месяца": "ayın sonuna qədər proqnoz",
-"Проблемные долги": "Problemli borclar",
-"просрочка или превышение лимита": "gecikmə və ya limitin aşılması",
-"Выручка по филиалам": "Filiallar üzrə dövriyyə",
-"Сравнение филиалов за выбранный месяц": "Seçilmiş ay üzrə filialların müqayisəsi",
-"Прибыль по филиалам": "Filiallar üzrə mənfəət",
-"После расходов, зарплат, service charge и налога": "Xərclər, maaşlar, service charge və vergidən sonra",
-"Сводка по филиалам": "Filiallar üzrə xülasə",
-"Филиал": "Filial",
-"Выручка": "Dövriyyə",
-"Расходы": "Xərclər",
-"Зарплаты": "Maaşlar",
-"Налог": "Vergi",
-"Прибыль": "Mənfəət",
-"Маржа": "Marja",
-"Проблемные долги поставщикам": "Təchizatçılar üzrə problemli borclar",
-"Только превышение лимита или просроченные фактуры": "Yalnız limit aşımı və ya gecikmiş fakturalar",
-"Проблемных долгов нет. Обычные долги смотри в разделе “Поставщики”.": "Problemli borc yoxdur. Adi borcları “Təchizatçılar” bölməsində izləyin.",
-"Краткий вывод": "Qısa nəticə",
-"Сеть сейчас показывает прибыль": "Şəbəkə hazırda mənfəət göstərir",
-"Прогноз до конца месяца": "Ay sonuna qədər proqnoz",
-"выручки": "dövriyyə",
-"прибыли": "mənfəət",
-"Динамика сравнивается с прошлым календарным месяцем. Если нужен “аналогичный период” строго день-в-день, следующим шагом добавим сравнение текущего периода с тем же количеством дней прошлого месяца.": "Dinamika əvvəlki təqvim ayı ilə müqayisə olunur. Əgər ciddi günbəgün “analoji dövr” lazımdırsa, növbəti mərhələdə cari dövrü keçən ayın eyni sayda günü ilə müqayisə edəcəyik.",
-"к прошлому месяцу": "keçən aya nisbətən",
-"Кнопка “Добавить” создаёт строку выручки ниже. Любые изменения фиксируются в журнале операций.": "“Əlavə et” düyməsi aşağıda dövriyyə sətri yaradır. Bütün dəyişikliklər əməliyyat jurnalında qeyd olunur.",
-"Добавить": "Əlavə et",
-"Service Charge Общий": "Ümumi service charge",
-"Service Charge Персонал": "Personal service charge",
-"Итого": "Cəmi",
-"Service персоналу": "Personal üçün service",
-"Статус": "Status",
-"Пока нет добавлений": "Hələ əlavə yoxdur",
-"Изменения суммы, статьи и комментария фиксируются ниже. Отмена перечёркивает строку и исключает её из расчётов.": "Məbləğ, maddə və şərh dəyişiklikləri aşağıda qeyd olunur. Ləğv edilmiş sətir üstündən xətt çəkilir və hesablamadan çıxarılır.",
-"+ Добавить": "+ Əlavə et",
-"Приходы за выбранную дату": "Seçilmiş tarix üzrə mədaxillər",
-"Деньги извне: возврат подотчёта, пополнение кассы, личное внесение, прочие наличные поступления. Отмена перечёркивает строку и исключает её из кассы.": "Kənardan daxil olan pullar: avans qalığının qaytarılması, kassanın artırılması, şəxsi mədaxil və digər nağd daxilolmalar. Ləğv edilmiş sətir üstündən xətt çəkilir və kassadan çıxarılır.",
-"Сумма прихода": "Mədaxil məbləği",
-"Источник": "Mənbə",
-"Например: возврат, пополнение кассы": "Məsələn: qaytarma, kassanın artırılması",
-"Итого приходов за дату": "Tarix üzrə mədaxillər cəmi",
-"Касса за день": "Günlük kassa",
-"Только наличные: касса на начало + наличная выручка + приходы − расходы. Стартовая касса берётся автоматически, но её можно ввести вручную только после включения галочки.": "Yalnız nağd: başlanğıc kassa + nağd dövriyyə + mədaxillər − xərclər. Başlanğıc kassa avtomatik götürülür, ancaq işarəni aktiv etdikdən sonra əl ilə daxil edilə bilər.",
-"Касса на начало дня": "Günün əvvəlində kassa",
-"Ввести стартовую кассу вручную": "Başlanğıc kassasını əl ilə daxil et",
-"Касса конец дня": "Günün sonunda kassa",
-"Сверка / на руках": "Üzləşmə / əldə olan",
-"Расхождение": "Fərq",
-"Сохранить кассу": "Kassanı yadda saxla",
-"Выручка за дату": "Tarix üzrə dövriyyə",
-"Расходы за дату": "Tarix üzrə xərclər",
-"Приходы за дату — не выручка": "Tarix üzrə mədaxillər — dövriyyə deyil",
-"Service charge внутри выручки": "Dövriyyə daxilində service charge",
-"Расход персоналу по service charge": "Service charge üzrə personal xərci",
-"Наличные за дату": "Tarix üzrə nağd",
-"Банк за дату": "Tarix üzrə bank",
-"Wolt за дату": "Tarix üzrə Wolt",
-"Выручка месяца": "Ay üzrə dövriyyə",
-"Расходы месяца": "Ay üzrə xərclər",
-"Приходы месяца — не выручка": "Ay üzrə mədaxillər — dövriyyə deyil",
-"Service charge месяца": "Ay üzrə service charge",
-"Журнал подтверждённых операций": "Təsdiqlənmiş əməliyyatlar jurnalı",
-"Каждое создание, изменение и отмена по выбранной дате фиксируется с временем и пользователем.": "Seçilmiş tarix üzrə hər yaradılma, dəyişiklik və ləğv vaxt və istifadəçi ilə qeyd olunur.",
-"Время": "Vaxt",
-"Пользователь": "İstifadəçi",
-"Раздел": "Bölmə",
-"Действие": "Əməliyyat",
-"Поле": "Sahə",
-"Было": "Əvvəl",
-"Стало": "Sonra",
-"Пока нет операций": "Hələ əməliyyat yoxdur",
-"Общие финансы по всем ресторанам за выбранный месяц": "Seçilmiş ay üzrə bütün restoranların ümumi maliyyəsi",
-"Общие финансы по всем ресторанам": "Bütün restoranlar üzrə ümumi maliyyə",
-"Налог 8% считается автоматически от выручки. В общем режиме налог считается по каждому ресторану и суммируется.": "8% vergi dövriyyədən avtomatik hesablanır. Ümumi rejimdə vergi hər restoran üzrə hesablanır və cəmlənir.",
-"Операционные расходы": "Əməliyyat xərcləri",
-"Service charge персоналу": "Personal üçün service charge",
-"Налог 8%": "8% vergi",
-"Филиал прибыльный": "Filial mənfəətlə işləyir",
-"Филиал сработал в минус": "Filial zərərlə işləyib",
-"Филиал зərərlə işləyir": "Filial zərərlə işləyir",
-"Ay sonu proqnozu": "Ay sonu proqnozu",
-"Gözlənilən dövriyyə": "Gözlənilən dövriyyə",
-"Gözlənilən mənfəət": "Gözlənilən mənfəət",
-"Orta gündəlik dövriyyə": "Orta gündəlik dövriyyə",
-"Müqayisə": "Müqayisə",
-"Keçən ayın dövriyyəsi": "Keçən ayın dövriyyəsi",
-"Dövriyyə dəyişikliyi": "Dövriyyə dəyişikliyi",
-"Mənfəət dəyişikliyi": "Mənfəət dəyişikliyi",
-"Marjalar": "Marjalar",
-"Xərclər %": "Xərclər %",
-"Xalis mənfəət marjası": "Xalis mənfəət marjası",
-"Xərclər maddələr üzrə": "Xərclər maddələr üzrə",
-"Xərc maddəsi": "Xərc maddəsi",
-"Məbləğ": "Məbləğ",
-"в том числе менеджеры": "o cümlədən menecerlər",
-"DSMF": "DSMF",
-"Аренда": "İcarə",
-"Food Cost / закупки и базар": "Food Cost / alışlar və bazar",
-"Налог %": "Vergi %",
-"Прочее": "Digər",
-"Коммунальные": "Kommunal",
-"Такси": "Taksi",
-"Упаковка": "Qablaşdırma",
-"Хозтовары": "Təsərrüfat malları",
-"ИИ-аналитика и отклонения": "AI analitika və kənarlaşmalar",
-"Референсы: food cost ≤ 35%, зарплаты ≤ 25%, аренда ≤ 12%, коммунальные ≤ 5%, упаковка ≤ 4%, маркетинг ≤ 5%. Проверка идёт по выбранному месяцу.": "Referenslər: food cost ≤ 35%, maaşlar ≤ 25%, icarə ≤ 12%, kommunal ≤ 5%, qablaşdırma ≤ 4%, marketinq ≤ 5%. Yoxlama seçilmiş ay üzrə aparılır.",
-"Показатель": "Göstərici",
-"Факт": "Fakt",
-"Норма": "Norma",
-"Отклонение": "Kənarlaşma",
-"Рекомендация": "Tövsiyə",
-"Вся сеть": "Bütün şəbəkə",
-"Фонд зарплаты": "Maaş fondu",
-"Общие расходы выше выручки": "Ümumi xərclər dövriyyədən yüksəkdir",
-"Чистый убыток месяца": "Ay üzrə xalis zərər",
-"Штат: Менеджеры": "Ştat: Menecerlər",
-"Штат: Повар": "Ştat: Aşpaz",
-"Сверить график смен с фактической выручкой, переработки и количество сотрудников по должностям.": "Növbə qrafikini faktiki dövriyyə, əlavə iş saatları və vəzifələr üzrə əməkdaş sayı ilə yoxlayın.",
-"Филиал сработал в минус. Проверь аренду, зарплаты, закупки и корректность загрузки выручки.": "Filial mənfi nəticə göstərib. İcarə, maaşlar, alışlar və dövriyyənin düzgün yüklənməsini yoxlayın.",
-"Проверь показатели месяца и причины убытка. Сигнал показывается даже при неполных данных по расходам.": "Ay göstəricilərini və zərərin səbəblərini yoxlayın. Xərc məlumatları natamam olsa da, siqnal göstərilir.",
-"Проверить необходимость количества сотрудников этой должности относительно оборота и сменности.": "Bu vəzifə üzrə əməkdaş sayının dövriyyəyə və növbəliliyə uyğunluğunu yoxlayın.",
-"Показать все отклонения": "Bütün kənarlaşmaları göstər",
-"Сначала показываются топ-5 критичных сигналов.": "Əvvəlcə top-5 kritik siqnal göstərilir.",
-"Долги и оплаты": "Borclar və ödənişlər",
-"Балансы поставщиков, контроль лимитов, просрочек, поступления и оплаты.": "Təchizatçı balansları, limitlərə, gecikmələrə, mədaxil və ödənişlərə nəzarət.",
-"Поставщики и долги": "Təchizatçılar və borclar",
-"Разделено по вашим VOEN / юрлицам из настроек. В каждой группе сначала показаны 5 поставщиков.": "Ayarlar bölməsindəki VOEN / hüquqi şəxslərə görə bölünüb. Hər qrupda əvvəlcə 5 təchizatçı göstərilir.",
-"Поставщик": "Təchizatçı",
-"Долг": "Borc",
-"Условия": "Şərtlər",
-"Нет поставщиков по этому VOEN": "Bu VOEN üzrə təchizatçı yoxdur",
-"Баланс поставщика": "Təchizatçı balansı",
-"Поиск поставщика, поиск по E-qaimə / фактуре, приход/долг, оплата и остаток.": "Təchizatçı axtarışı, E-qaimə / faktura üzrə axtarış, mədaxil/borc, ödəniş və qalıq.",
-"Поиск поставщика": "Təchizatçı axtarışı",
-"Название или VOEN": "Ad və ya VOEN",
-"Все найденные / все поставщики": "Tapılanların hamısı / bütün təchizatçılar",
-"Поиск E-qaimə / фактуры": "E-qaimə / faktura axtarışı",
-"Номер фактуры": "Faktura nömrəsi",
-"Приход / долг": "Mədaxil / borc",
-"Оплата": "Ödəniş",
-"Остаток": "Qalıq",
-"Операция": "Əməliyyat",
-"Операции не найдены.": "Əməliyyat tapılmadı.",
-"Показать": "Göstər",
-"Пред.": "Əvvəlki",
-"След.": "Növbəti",
-"Страница": "Səhifə",
-"всего": "cəmi",
-"Долга нет": "Borc yoxdur",
-"Последние поступления и оплаты": "Son mədaxil və ödənişlər",
-"Последние 10 операций по всем поставщикам.": "Bütün təchizatçılar üzrə son 10 əməliyyat.",
-"Тип": "Tip",
-"Фактура/отметки": "Faktura/qeydlər",
-"Сумма": "Məbləğ",
-"Настройки интерфейса и филиалов": "İnterfeys və filial ayarları",
-"Пользователи": "İstifadəçilər",
-"Наши VOEN / юрлица": "Bizim VOEN / hüquqi şəxslər",
-"Бэкап и очистка данных": "Backup və məlumatların təmizlənməsi",
-"Импорт данных": "Məlumat importu",
-"Тема интерфейса и service charge филиалов.": "İnterfeys mövzusu və filiallar üzrə service charge.",
-"Интерфейс": "İnterfeys",
-"Добавлен новый светлый Dashboard-вариант, визуально ближе к присланным референсам.": "Göndərilən referenslərə vizual olaraq daha yaxın yeni açıq Dashboard variantı əlavə edilib.",
-"Вид интерфейса": "İnterfeys görünüşü",
-"Лого стартовой страницы": "Başlanğıc səhifəsinin loqosu",
-"Теперь можно самостоятельно загрузить логотип без правки кода. Сохраняется в Supabase, а локально используется как быстрый кэш.": "Artıq kodu dəyişmədən loqonu özünüz yükləyə bilərsiniz. Supabase-də saxlanılır, lokalda isə sürətli keş kimi istifadə olunur.",
-"Предпросмотр лого": "Loqonun önizləməsi",
-"Предпросмотр": "Önizləmə",
-"Файл будет автоматически сжат под стартовую страницу. Лучше использовать PNG/SVG на прозрачном фоне.": "Fayl başlanğıc səhifəsi üçün avtomatik sıxılacaq. Şəffaf fonda PNG/SVG istifadə etmək daha yaxşıdır.",
-"Выбрать файл": "Fayl seç",
-"Сохранить лого": "Loqonu yadda saxla",
-"Удалить лого": "Loqonu sil",
-"Статьи расходов": "Xərc maddələri",
-"Добавление и редактирование названий статей, которые используются в “Расходы за выбранную дату”.": "“Seçilmiş tarixin xərcləri” bölməsində istifadə olunan maddə adlarının əlavə edilməsi və redaktəsi.",
-"+ Добавить статью": "+ Maddə əlavə et",
-"Новая статья расходов": "Yeni xərc maddəsi",
-"Например: Ремонт, Базар, Упаковка": "Məsələn: Təmir, Bazar, Qablaşdırma",
-"Название статьи": "Maddənin adı",
-"Активна": "Aktivdir",
-"Да": "Bəli",
-"Нет": "Xeyr",
-"Статей расходов пока нет.": "Hələ xərc maddəsi yoxdur.",
-"Настройка service charge филиала": "Filial üzrə service charge ayarı",
-"Выберите филиал и один раз включите service charge. В разделе “Выручка” сумма для персонала будет считаться автоматически в конце строки.": "Filialı seçin və service charge funksiyasını bir dəfə aktiv edin. “Dövriyyə” bölməsində personal üçün məbləğ sətrin sonunda avtomatik hesablanacaq.",
-"Учитывать service charge": "Service charge nəzərə alınsın",
-"Service charge % в счёте": "Hesabda service charge %",
-"% затрат персоналу от базы": "Bazadan personal xərci %",
-"Единый раздел персонала: сотрудники, посещаемость, авансы и DSMF в одном месте.": "Vahid personal bölməsi: əməkdaşlar, davamiyyət, avanslar və DSMF bir yerdə.",
-"Сотрудники": "Əməkdaşlar",
-"Зарплатный лист": "Maaş cədvəli",
-"Посещения": "Davamiyyət",
-"Авансы": "Avanslar",
-"Начисленные зарплаты, авансы и остатки по сотрудникам, филиалам и общей сумме.": "Əməkdaşlar, filiallar və ümumi məbləğ üzrə hesablanmış maaşlar, avanslar və qalıqlar.",
-"Филиал / группа": "Filial / qrup",
-"Все филиалы и менеджеры": "Bütün filiallar və menecerlər",
-"Позиция": "Pozisiya",
-"Все позиции": "Bütün vəzifələr",
-"Начислено": "Hesablanıb",
-"Удержания": "Tutulmalar",
-"Долг на начало": "Başlanğıc borcu",
-"Выплачено за месяц": "Ay ərzində ödənilib",
-"Итоговый баланс": "Yekun balans",
-"Маскировка зарплат менеджеров для текущего пользователя выключена.": "Cari istifadəçi üçün menecer maaşlarının gizlədilməsi söndürülüb.",
-"Очистка остатков по зарплатам": "Maaş qalıqlarının təmizlənməsi",
-"Используй, если нужно начать зарплатный учёт с чистого листа. Обнуляет долги и переплаты до выбранного месяца, не удаляя сотрудников и текущие авансы.": "Maaş uçotunu sıfırdan başlamaq lazımdırsa istifadə edin. Seçilmiş aydan əvvəlki borc və artıq ödənişləri sıfırlayır, əməkdaşları və cari avansları silmir.",
-"Обнулить остатки до выбранного месяца": "Seçilmiş aya qədər qalıqları sıfırla",
-"Выбранный стартовый месяц": "Seçilmiş başlanğıc ayı",
-"После операции колонка “Долг на начало” и старые остатки перестанут влиять на “К оплате”.": "Əməliyyatdan sonra “Başlanğıc borcu” sütunu və köhnə qalıqlar “Ödəniləcək” məbləğə təsir etməyəcək.",
-"Сотр.": "Əməkdaş",
-"Выплачено": "Ödənilib",
-"К оплате": "Ödəniləcək",
-"Менеджеры": "Menecerlər",
-"Выплата зарплаты за выбранный месяц": "Seçilmiş ay üzrə maaş ödənişi",
-"Например, зарплату за апрель можно выплатить 1 или 2 мая — она всё равно закроет апрель. Остаток прошлого месяца можно сначала внести вручную через галочку, а оплату этого остатка — отдельной галочкой. Эти суммы не попадают в авансы текущего месяца.": "Məsələn, aprel maaşını 1 və ya 2 mayda ödəmək olar — yenə də aprel ayını bağlayacaq. Keçən ayın qalığını əvvəlcə işarə ilə əl ilə daxil etmək, bu qalığın ödənişini isə ayrıca işarə ilə qeyd etmək olar. Bu məbləğlər cari ayın avanslarına düşmür.",
-"Сотрудник": "Əməkdaş",
-"Дата выплаты": "Ödəniş tarixi",
-"Оплата зарплаты выбранного месяца": "Seçilmiş ayın maaş ödənişi",
-"Способ": "Üsul",
-"Наличные": "Nağd",
-"Ввести долг / остаток зарплаты прошлого месяца вручную": "Keçən ayın maaş borcu / qalığını əl ilə daxil et",
-"Используется при запуске программы с нуля, если долг уже существовал до начала учёта.": "Proqram sıfırdan işə salınanda, uçot başlamazdan əvvəl borc artıq mövcud idisə istifadə olunur.",
-"Оплатить долг / остаток зарплаты прошлого месяца": "Keçən ayın maaş borcu / qalığını ödə",
-"Эта сумма закрывает прошлый месяц и не попадает в авансы текущего месяца.": "Bu məbləğ keçən ayı bağlayır və cari ayın avanslarına düşmür.",
-"Например: закрытие зарплаты за апрель": "Məsələn: aprel maaşının bağlanması",
-"+ Сохранить операцию": "+ Əməliyyatı yadda saxla",
-"Итого к оплате": "Ödəniləcək cəmi",
-"Долг / остаток прошлого месяца": "Keçən ayın borcu / qalığı",
-"Текущий остаток месяца": "Cari ayın qalığı",
-"Уже оплачено наличными": "Artıq nağd ödənilib",
-"Уже оплачено банком": "Artıq bankla ödənilib",
-"Уже оплачено всего": "Artıq ödənilib cəmi",
-"Отчёты зарплат за выбранный день": "Seçilmiş gün üzrə maaş hesabatları",
-"Единый отчёт по выплатам зарплаты, оплате остатков прошлого месяца и авансам за выбранную дату.": "Seçilmiş tarix üzrə maaş ödənişləri, keçən ay qalıqlarının ödənişi və avanslar üzrə vahid hesabat.",
-"Выбрать день отчёта": "Hesabat gününü seç",
-"Дата": "Tarix",
-"Выплаты зарплаты": "Maaş ödənişləri",
-"Всего движение": "Hərəkət cəmi",
-"Оплата остатка прошлого месяца": "Keçən ay qalığının ödənişi",
-"Оплата выбранного месяца": "Seçilmiş ayın ödənişi",
-"Остаток прошлого месяца": "Keçən ayın qalığı",
-"Выплаты": "Ödənişlər",
-"сотрудников": "əməkdaş",
-"Должность": "Vəzifə",
-"Ставка": "Stavka",
-"Дни": "Günlər",
-"Инфо": "Məlumat",
-"Активный": "Aktiv",
-"Итого к оплате по филиалу": "Filial üzrə ödəniləcək cəmi",
-"Показать всех": "Hamısını göstər",
-"Общая сумма к оплате": "Ödəniləcək ümumi məbləğ",
-"Архив уволенных сотрудников": "İşdən çıxmış əməkdaşların arxivi",
-"Уволенные сотрудники остаются в архиве. Их можно редактировать через карточку сотрудника.": "İşdən çıxmış əməkdaşlar arxivdə qalır. Onları əməkdaş kartı vasitəsilə redaktə etmək olar.",
-"Дата приёма": "İşə qəbul tarixi",
-"Дата увольнения": "İşdən çıxma tarixi",
-"Архив пуст.": "Arxiv boşdur.",
-"Журнал выплат зарплаты за выбранный месяц": "Seçilmiş ay üzrə maaş ödənişləri jurnalı",
-"Выплат за выбранный месяц пока нет.": "Seçilmiş ay üzrə hələ ödəniş yoxdur.",
-"Добавление сотрудников и перевод между филиалами.": "Əməkdaşların əlavə edilməsi və filiallar arasında transferi.",
-"Период и филиал": "Dövr və filial",
-"Клик по ячейке: пусто → 1 → 0 → пусто.": "Xanaya klik: boş → 1 → 0 → boş.",
-"Пересчитать зарплаты": "Maaşları yenidən hesabla",
-"Формула дневной ставки": "Günlük stavka formulu",
-"Месячная ставка / 26": "Aylıq stavka / 26",
-"Итого рабочих дней": "İş günləri cəmi",
-"Расчётная зарплата": "Hesablanmış maaş",
-"Добавить сотрудника": "Əməkdaş əlavə et",
-"После добавления сотрудник сразу появляется в разделах “Зарплаты” и “Авансы”.": "Əlavə edildikdən sonra əməkdaş dərhal “Maaşlar” və “Avanslar” bölmələrində görünür.",
-"И.Ф.О.": "S.A.A.",
-"Месячная ставка": "Aylıq stavka",
-"Дневная ставка": "Günlük stavka",
-"+ Добавить сотрудника": "+ Əməkdaş əlavə et",
-"Перевод сотрудника": "Əməkdaşın transferi",
-"Закрывает старое назначение и создаёт новое. Так сохраняется история филиалов и зарплатного фонда.": "Köhnə təyinatı bağlayır və yenisini yaradır. Beləliklə filial və maaş fondu tarixi qorunur.",
-"Новый филиал / группа": "Yeni filial / qrup",
-"Дата перевода": "Transfer tarixi",
-"Мес. ставка": "Aylıq stavka",
-"Причина перевода": "Transfer səbəbi",
-"Перевести сотрудника": "Əməkdaşı transfer et",
-"Отчёты": "Hesabatlar",
-"Импорт продаж AIKO по филиалам, общая сводка и AI-аналитика ассортимента.": "Filiallar üzrə AIKO satış importu, ümumi xülasə və assortiment üzrə AI analitika.",
-"Отчёт по продажам": "Satış hesabatı",
-"Импорт": "Import",
-"Общая таблица продаж": "Ümumi satış cədvəli",
-"В общем режиме продажи агрегируются по всей сети без разбивки по филиалам. Себестоимость считается только из техкарт. Если техкарта пока не заполнена, себестоимость остаётся 0.": "Ümumi rejimdə satışlar filiallara bölünmədən bütün şəbəkə üzrə aqreqasiya olunur. Maya dəyəri yalnız tex. kartlardan hesablanır. Tex. kart hələ doldurulmayıbsa, maya dəyəri 0 qalır.",
-"Месяц": "Ay",
-"Все месяцы": "Bütün aylar",
-"Все филиалы": "Bütün filiallar",
-"Бар + Кухня": "Bar + Mətbəx",
-"Себестоимость": "Maya dəyəri",
-"Валовая прибыль": "Brüt mənfəət",
-"Кол-во": "Miqdar",
-"Категория": "Kateqoriya",
-"Переименовать": "Adını dəyiş",
-"ИИ-поиск по продажам": "Satışlar üzrə AI axtarış",
-"Пример: “Покажи продажи пиццы за этот месяц и за год”. Поиск учитывает текущие фильтры филиала и Бар/Кухня.": "Məsələn: “Bu ay və il üzrə pizza satışlarını göstər”. Axtarış filial və Bar/Mətbəx üzrə cari filtrləri nəzərə alır.",
-"Скрытые позиции": "Gizlədilmiş pozisiyalar",
-"Запрос": "Sorğu",
-"Покажи продажи пиццы за этот месяц / за год": "Bu ay / il üzrə pizza satışlarını göstər",
-"Экспорт PDF": "PDF ixrac et",
-"С ценами": "Qiymətlərlə",
-"Топ продаж по выручке": "Dövriyyəyə görə top satışlar",
-"Топ продаж по количеству": "Miqdara görə top satışlar",
-"Топ аутсайдеров": "Top autsayderlər",
-"Топ высокомаржинальных товаров": "Yüksək marjalı malların topu",
-"Топ низкомаржинальных товаров": "Aşağı marjalı malların topu",
-"Компактный TOP-блок без внутреннего скролла. На экране максимум 10 позиций. Полный TOP всегда ограничен 30 позициями.": "Daxili skroll olmayan kompakt TOP bloku. Ekranda maksimum 10 pozisiya göstərilir. Tam TOP həmişə 30 pozisiya ilə məhdudlaşır.",
-"Показать TOP": "TOP göstər",
-"Кол-во / цена": "Miqdar / qiymət",
-"цена": "qiymət",
-"Показать все позиции": "Bütün pozisiyaları göstər",
-"Показать до 30": "30-a qədər göstər",
-"Нет данных": "Məlumat yoxdur",
-"Скрыть": "Gizlət",
-"Техкарты блюд. Товар выбирается из справочника поставщиков, а себестоимость берётся по последней закупке.": "Yeməklərin tex. kartları. Mal təchizatçı kataloqundan seçilir, maya dəyəri isə son alış qiymətindən götürülür.",
-"Себестоимость выбранного блюда": "Seçilmiş yeməyin maya dəyəri",
-"Цена в меню": "Menyudakı satış qiyməti",
-"Цель": "Hədəf",
-"Цена − себестоимость": "Qiymət − maya dəyəri",
-"Готовая техкарта отображается под ключевыми показателями, а редактирование открывается только по кнопке «Редактировать».": "Hazır tex. kart əsas göstəricilərin altında göstərilir, redaktə isə yalnız “Redaktə et” düyməsi ilə açılır.",
-"+ ингредиент": "+ inqrediyent",
-"Категория товара": "Mal kateqoriyası",
-"Выбрать блюдо": "Yemək seç",
-"Новый ингредиент": "Yeni inqrediyent",
-"Кол-во использования": "İstifadə miqdarı",
-"Ед.": "Vahid",
-"Потери %": "İtki %",
-"Цена за 1 ед.": "1 vahid qiyməti",
-"Пока нет ингредиентов в техкарте выбранного блюда.": "Seçilmiş yeməyin tex. kartında hələ inqrediyent yoxdur.",
-"Пример: Cappuccino = молоко 200 ml + кофе 18 g. Цена берётся из последней закупки товара у поставщика.": "Nümunə: Cappuccino = süd 200 ml + qəhvə 18 g. Qiymət təchizatçıdan son alışdan götürülür.",
-"Блюда / позиции меню": "Yeməklər / menyu pozisiyaları",
-"Блюдо создаётся один раз, затем выбирается в техкарте.": "Yemək bir dəfə yaradılır, sonra tex. kartda seçilir.",
-"Название блюда": "Yeməyin adı",
-"Цена продажи": "Satış qiyməti",
-"Целевой food cost %": "Hədəf food cost %",
-"+ Добавить блюдо": "+ Yemək əlavə et",
-"Блюдо": "Yemək"
-}
-
-function translateVisibleText(value, lang) {
-  const original = String(value ?? '')
-  if (lang !== 'az') return original
-  let next = original
-  const direct = UI_AZ_TEXT[next.trim()]
-  if (direct && next.trim() === next) return direct
-  Object.keys(UI_AZ_TEXT)
-    .sort((a, b) => b.length - a.length)
-    .forEach((key) => {
-      if (!key || !next.includes(key)) return
-      next = next.split(key).join(UI_AZ_TEXT[key])
-    })
-  return next
-}
-
-function applyRuntimeUiTranslation(lang) {
-  if (typeof document === 'undefined') return
-  const skipTags = new Set(['SCRIPT', 'STYLE', 'NOSCRIPT'])
-  const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT)
-  const textNodes = []
-  while (walker.nextNode()) textNodes.push(walker.currentNode)
-  textNodes.forEach((node) => {
-    const parent = node.parentElement
-    if (!parent || skipTags.has(parent.tagName)) return
-    if (parent.closest('[data-rms-no-auto-translate="true"]')) return
-    if (node.__rmsOriginalText === undefined) node.__rmsOriginalText = node.nodeValue
-    const base = node.__rmsOriginalText
-    const translated = translateVisibleText(base, lang)
-    if (node.nodeValue !== translated) node.nodeValue = translated
-  })
-
-  const attrs = ['placeholder', 'title', 'aria-label', 'alt']
-  document.querySelectorAll('*').forEach((el) => {
-    if (skipTags.has(el.tagName)) return
-    if (el.closest('[data-rms-no-auto-translate="true"]')) return
-    attrs.forEach((attr) => {
-      if (!el.hasAttribute(attr)) return
-      const dataAttr = `data-rms-original-${attr}`
-      if (!el.hasAttribute(dataAttr)) el.setAttribute(dataAttr, el.getAttribute(attr) || '')
-      const base = el.getAttribute(dataAttr) || ''
-      const translated = translateVisibleText(base, lang)
-      if (el.getAttribute(attr) !== translated) el.setAttribute(attr, translated)
-    })
-  })
 }
 
 const SECTIONS = [
@@ -971,17 +578,6 @@ function App() {
 
   useEffect(() => { document.documentElement.lang = lang }, [lang])
 
-  useEffect(() => {
-    const run = () => applyRuntimeUiTranslation(lang)
-    run()
-    const observer = new MutationObserver(() => {
-      window.clearTimeout(window.__rmsUiTranslateTimer)
-      window.__rmsUiTranslateTimer = window.setTimeout(run, 30)
-    })
-    observer.observe(document.body, { childList: true, subtree: true, characterData: true, attributes: true })
-    return () => observer.disconnect()
-  }, [lang, section, loading])
-
   const setTheme = (value) => {
     const next = value || 'classic'
     localStorage.setItem('rms_theme', next)
@@ -1112,7 +708,7 @@ function App() {
   }
 
   if (loading) return <div className="login-screen"><div className="login-card">{t('loading')}</div></div>
-  if (!session) return <Login key={lang} lang={lang} setLang={setLang} t={t} />
+  if (!session) return <Login lang={lang} setLang={setLang} t={t} />
 
   return (
     <div className={`app theme-${theme || 'classic'}`}>
@@ -1145,11 +741,11 @@ function App() {
         {!canReadAccess(currentAccess) && <section className="card"><h3>{t('permission_denied')}</h3><p className="hint">Этот раздел скрыт для текущего пользователя.</p></section>}
         {canReadAccess(currentAccess) && currentAccess === 'read' && <div className="readonly-banner">Режим просмотра: редактирование этого раздела отключено.</div>}
         {canReadAccess(currentAccess) && section === 'dashboard' && <Dashboard t={t} />}
-        {canReadAccess(currentAccess) && section === 'pos' && <POSAdminCenter t={t} lang={lang} isAdmin={isAdmin || accessRank(sectionAccess('pos')) >= accessRank('admin')} />}
+        {canReadAccess(currentAccess) && section === 'pos' && <POSLite t={t} />}
         {canReadAccess(currentAccess) && section === 'revenue' && <Revenue t={t} />}
         {canReadAccess(currentAccess) && section === 'finance' && <Finance t={t} lang={lang} />}
         {canReadAccess(currentAccess) && section === 'reports' && <Reports t={t} />}
-        {canReadAccess(currentAccess) && section === 'recipes' && <Recipes t={t} lang={lang} />}
+        {canReadAccess(currentAccess) && section === 'recipes' && <Recipes t={t} />}
         {canReadAccess(currentAccess) && section === 'salaries' && <SalaryWorkspace t={t} isAdmin={isAdmin || accessRank(sectionAccess('salaries')) >= accessRank('admin')} />}
         {canReadAccess(currentAccess) && section === 'suppliers' && <Suppliers t={t} />}
         {canReadAccess(currentAccess) && section === 'debts' && <DebtsPayments t={t} />}
@@ -1159,173 +755,6 @@ function App() {
   )
 }
 
-
-
-function POSAdminCenter({ lang = 'ru', isAdmin = false }) {
-  const L = useMemo(() => ({
-    ru: {
-      title: 'POS Cloud', subtitle: 'Администрирование отдельного продукта RMS POS Cloud: отчёты, кассовые смены, терминалы, кассиры, товары, настройки и синхронизация.',
-      overview: 'Обзор', reports: 'Отчёты', shifts: 'Кассовые смены', terminals: 'Терминалы', cashiers: 'Кассиры', products: 'Товары POS', settings: 'Настройки POS', sync: 'Синхронизация', logs: 'Журнал операций',
-      refresh: 'Обновить', addTerminal: '+ Терминал', addCashier: '+ Кассир', addProduct: '+ Товар', save: 'Сохранить', active: 'Активен', inactive: 'Отключён', enable: 'Включить', disable: 'Отключить',
-      dateFrom: 'С даты', dateTo: 'По дату', branch: 'Филиал', allBranches: 'Все филиалы', revenue: 'POS выручка', closedChecks: 'Закрытые чеки', openChecks: 'Открытые чеки', avgCheck: 'Средний чек', cash: 'Наличные', card: 'Карта / банк',
-      terminalCode: 'Код терминала', terminalName: 'Название терминала', branchName: 'Филиал', status: 'Статус', checks: 'Чеки', amount: 'Сумма', cashier: 'Кассир', role: 'Роль', pin: 'PIN', table: 'Стол', payment: 'Оплата', date: 'Дата', total: 'Итого',
-      productName: 'Название товара', category: 'Категория', price: 'Цена', productHint: 'Товары добавляются в справочник меню POS. Названия блюд и товаров не переводятся.',
-      shiftsHint: 'Кассовые смены будут управляться из RMS POS Cloud. Здесь будет контроль открытия/закрытия смен, наличных, расхождений и ответственного кассира.',
-      syncHint: 'Контроль синхронизации POS Cloud → основная RMS: закрытые чеки, выручка, наличные/банк, повторная отправка и сверка с daily_revenue_entries.',
-      settingsHint: 'Настройки POS Cloud: service charge, структура столов, поведение оплаты, режим терминалов и будущий конструктор интерфейса POS.',
-      constructor: 'Конструктор интерфейса', constructorHint: 'Только администратор: порядок блоков, колонок и подразделов. Пока подготовлено как безопасный слой настроек, без изменения расчётной логики.',
-      adminOnly: 'Доступно только администратору', noData: 'Нет данных', loading: 'Загрузка...', tableSettings: 'Столы терминала', addTable: '+ Стол', servicePercent: 'Service charge %', operationLogHint: 'Здесь будет журнал действий POS: вход кассира, открытие/закрытие смены, отмена чека, изменение товара и повторная синхронизация.',
-      cashShift: 'Кассовая смена', openShift: 'Открыть смену', closeShift: 'Закрыть смену', expectedCash: 'Ожидаемая касса', countedCash: 'Сверка / на руках', difference: 'Расхождение'
-    },
-    az: {
-      title: 'POS Cloud', subtitle: 'Ayrı məhsul olan RMS POS Cloud-un idarə edilməsi: hesabatlar, kassa növbələri, terminallar, kassirlər, mallar, ayarlar və sinxronizasiya.',
-      overview: 'İcmal', reports: 'Hesabatlar', shifts: 'Kassa növbələri', terminals: 'Terminallar', cashiers: 'Kassirlər', products: 'POS malları', settings: 'POS ayarları', sync: 'Sinxronizasiya', logs: 'Əməliyyat jurnalı',
-      refresh: 'Yenilə', addTerminal: '+ Terminal', addCashier: '+ Kassir', addProduct: '+ Mal', save: 'Yadda saxla', active: 'Aktiv', inactive: 'Deaktiv', enable: 'Aktiv et', disable: 'Deaktiv et',
-      dateFrom: 'Başlanğıc tarix', dateTo: 'Son tarix', branch: 'Filial', allBranches: 'Bütün filiallar', revenue: 'POS dövriyyəsi', closedChecks: 'Bağlanmış çeklər', openChecks: 'Açıq çeklər', avgCheck: 'Orta çek', cash: 'Nağd', card: 'Kart / bank',
-      terminalCode: 'Terminal kodu', terminalName: 'Terminal adı', branchName: 'Filial', status: 'Status', checks: 'Çeklər', amount: 'Məbləğ', cashier: 'Kassir', role: 'Rol', pin: 'PIN', table: 'Masa', payment: 'Ödəniş', date: 'Tarix', total: 'Cəmi',
-      productName: 'Malın adı', category: 'Kateqoriya', price: 'Qiymət', productHint: 'Mallar POS menyu məlumat bazasına əlavə olunur. Yemək və mal adları tərcümə edilmir.',
-      shiftsHint: 'Kassa növbələri RMS POS Cloud tərəfindən idarə olunacaq. Burada növbənin açılması/bağlanması, nağd pul, fərqlər və məsul kassir nəzarətdə olacaq.',
-      syncHint: 'POS Cloud → əsas RMS sinxronizasiyasına nəzarət: bağlanmış çeklər, dövriyyə, nağd/bank, təkrar göndərmə və daily_revenue_entries ilə yoxlama.',
-      settingsHint: 'POS Cloud ayarları: service charge, masa strukturu, ödəniş davranışı, terminal rejimləri və gələcək POS interfeys konstruktoru.',
-      constructor: 'İnterfeys konstruktoru', constructorHint: 'Yalnız administrator: blokların, sütunların və alt bölmələrin ardıcıllığı. Hələlik hesablama məntiqinə toxunmadan təhlükəsiz ayar qatı kimi hazırlanır.',
-      adminOnly: 'Yalnız administrator üçün', noData: 'Məlumat yoxdur', loading: 'Yüklənir...', tableSettings: 'Terminal masaları', addTable: '+ Masa', servicePercent: 'Service charge %', operationLogHint: 'Burada POS əməliyyat jurnalı olacaq: kassir girişi, növbənin açılması/bağlanması, çekin ləğvi, mal dəyişikliyi və təkrar sinxronizasiya.',
-      cashShift: 'Kassa növbəsi', openShift: 'Növbəni aç', closeShift: 'Növbəni bağla', expectedCash: 'Gözlənilən kassa', countedCash: 'Sayım / əldə olan', difference: 'Fərq'
-    }
-  }), [])
-  const tx = L[lang] || L.ru
-  const branches = useBranches()
-  const [tab, setTab] = useState('overview')
-  const [dateFrom, setDateFrom] = useState(todayISO())
-  const [dateTo, setDateTo] = useState(todayISO())
-  const [branchId, setBranchId] = useState('')
-  const [terminals, setTerminals] = useState([])
-  const [cashiers, setCashiers] = useState([])
-  const [orders, setOrders] = useState([])
-  const [products, setProducts] = useState([])
-  const [message, setMessage] = useState('')
-  const [busy, setBusy] = useState(false)
-  const [productForm, setProductForm] = useState({ name: '', category: '', price: '' })
-
-  const tabs = [
-    ['overview', tx.overview], ['reports', tx.reports], ['shifts', tx.shifts], ['terminals', tx.terminals], ['cashiers', tx.cashiers], ['products', tx.products], ['settings', tx.settings], ['sync', tx.sync], ['logs', tx.logs]
-  ]
-
-  useEffect(() => { load() }, [dateFrom, dateTo, branchId])
-
-  async function safeSelect(table, queryBuilder) {
-    try {
-      const res = await queryBuilder(supabase.from(table))
-      if (res.error) throw res.error
-      return res.data || []
-    } catch (e) {
-      console.warn(`POS admin: ${table}`, e)
-      return []
-    }
-  }
-
-  async function load() {
-    setBusy(true)
-    setMessage('')
-    const fromIso = `${dateFrom}T00:00:00`
-    const toDate = new Date(`${dateTo}T00:00:00`)
-    toDate.setDate(toDate.getDate() + 1)
-    const toIso = toDate.toISOString()
-    try {
-      const terminalRows = await safeSelect('pos_terminals', q => q.select('*').order('terminal_code', { ascending: true }))
-      const cashierRows = await safeSelect('pos_users', q => q.select('*').order('full_name', { ascending: true }))
-      const productRows = await safeSelect('menu_items', q => q.select('*').limit(500))
-      let orderQuery = supabase.from('pos_orders').select('*').gte('opened_at', fromIso).lt('opened_at', toIso).order('opened_at', { ascending: false }).limit(300)
-      if (branchId) orderQuery = orderQuery.eq('branch_id', branchId)
-      const orderRes = await orderQuery
-      if (orderRes.error) throw orderRes.error
-      setTerminals(terminalRows)
-      setCashiers(cashierRows)
-      setProducts(productRows)
-      setOrders(orderRes.data || [])
-    } catch (e) {
-      setMessage(e.message || String(e))
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  const filteredTerminals = useMemo(() => branchId ? terminals.filter(t => String(t.branch_id || '') === String(branchId)) : terminals, [terminals, branchId])
-  const filteredCashiers = useMemo(() => branchId ? cashiers.filter(c => String(c.branch_id || '') === String(branchId)) : cashiers, [cashiers, branchId])
-  const summary = useMemo(() => {
-    const closed = orders.filter(o => o.status === 'closed')
-    const open = orders.filter(o => ['open', 'saved'].includes(o.status))
-    const revenue = closed.reduce((s, o) => s + parseNum(o.total_amount || o.paid_amount), 0)
-    const cash = closed.filter(o => String(o.payment_method || '').toLowerCase() === 'cash').reduce((s, o) => s + parseNum(o.total_amount || o.paid_amount), 0)
-    const card = revenue - cash
-    return { revenue, closed: closed.length, open: open.length, avg: closed.length ? revenue / closed.length : 0, cash, card }
-  }, [orders])
-
-  async function toggleTerminal(row) {
-    if (!isAdmin) return setMessage(tx.adminOnly)
-    const { error } = await supabase.from('pos_terminals').update({ is_active: !row.is_active, updated_at: new Date().toISOString() }).eq('id', row.id)
-    if (error) setMessage(error.message)
-    await load()
-  }
-
-  async function addTerminal() {
-    if (!isAdmin) return setMessage(tx.adminOnly)
-    const code = prompt(tx.terminalCode)
-    if (!code) return
-    const branch = branches.find(b => String(b.id) === String(branchId)) || branches[0]
-    const { error } = await supabase.from('pos_terminals').insert({ terminal_code: code.trim(), name: code.trim(), branch_id: branch?.id || null, branch_name: branch?.name || null, is_active: true, settings: { service_percent: 10, tables: [{ id: 'T01', name: 'Стол 1', zone: 'Зал', seats: 2 }, { id: 'TAKEAWAY', name: 'Take Away', zone: 'Касса', seats: 0 }] } })
-    if (error) setMessage(error.message)
-    await load()
-  }
-
-  async function addCashier() {
-    if (!isAdmin) return setMessage(tx.adminOnly)
-    const fullName = prompt(tx.cashier)
-    if (!fullName) return
-    const pin = prompt(tx.pin)
-    if (!pin) return
-    const branch = branches.find(b => String(b.id) === String(branchId)) || branches[0]
-    const { error } = await supabase.from('pos_users').insert({ full_name: fullName.trim(), pin_code: pin.trim(), role: 'cashier', branch_id: branch?.id || null, is_active: true })
-    if (error) setMessage(error.message)
-    await load()
-  }
-
-  async function addProduct() {
-    if (!isAdmin) return setMessage(tx.adminOnly)
-    if (!productForm.name.trim()) return
-    const { error } = await supabase.from('menu_items').insert({ name: productForm.name.trim(), category: productForm.category.trim() || 'POS', price: parseNum(productForm.price) })
-    if (error) setMessage(error.message)
-    else setProductForm({ name: '', category: '', price: '' })
-    await load()
-  }
-
-  const branchName = (id) => branches.find(b => String(b.id) === String(id))?.name || '—'
-  const terminalName = (id) => terminals.find(t => String(t.id) === String(id))?.terminal_code || '—'
-  const cashierName = (id) => cashiers.find(c => String(c.id) === String(id))?.full_name || '—'
-
-  return <section>
-    <section className="topbar"><div><h2>{tx.title}</h2><p>{tx.subtitle}</p></div><button className="ghost small" onClick={load}>{busy ? tx.loading : tx.refresh}</button></section>
-    <div className="settings-tabs">{tabs.map(([id, label]) => <button key={id} className={tab === id ? 'active' : ''} onClick={() => setTab(id)}>{label}</button>)}</div>
-    <div className="card"><div className="form-grid compact"><label><span>{tx.dateFrom}</span><input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} /></label><label><span>{tx.dateTo}</span><input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} /></label><label><span>{tx.branch}</span><select value={branchId} onChange={e => setBranchId(e.target.value)}><option value="">{tx.allBranches}</option>{branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label></div>{message && <p className="bad">{message}</p>}</div>
-
-    {tab === 'overview' && <><div className="grid"><Metric label={tx.revenue} value={`${fmt(summary.revenue)} AZN`} /><Metric label={tx.closedChecks} value={summary.closed} /><Metric label={tx.openChecks} value={summary.open} /><Metric label={tx.avgCheck} value={`${fmt(summary.avg)} AZN`} /></div><div className="grid"><div className="card"><h3>{tx.cash}</h3><p className="big-number">{fmt(summary.cash)} AZN</p></div><div className="card"><h3>{tx.card}</h3><p className="big-number">{fmt(summary.card)} AZN</p></div></div></>}
-
-    {(tab === 'reports' || tab === 'overview') && <div className="card"><h3>{tx.reports}</h3><div className="table-wrap"><table><thead><tr><th>{tx.date}</th><th>{tx.branch}</th><th>{tx.terminalCode}</th><th>{tx.cashier}</th><th>{tx.table}</th><th>{tx.status}</th><th>{tx.payment}</th><th>{tx.total}</th></tr></thead><tbody>{orders.slice(0, tab === 'overview' ? 10 : 100).map(o => <tr key={o.id}><td>{formatDT(o.closed_at || o.opened_at || o.created_at)}</td><td>{branchName(o.branch_id)}</td><td>{terminalName(o.terminal_id)}</td><td>{cashierName(o.user_id)}</td><td>{o.table_name || o.table_id || '—'}</td><td>{o.status || '—'}</td><td>{o.payment_method || '—'}</td><td>{fmt(o.total_amount || o.paid_amount)}</td></tr>)}{!orders.length && <tr><td colSpan="8" className="hint">{tx.noData}</td></tr>}</tbody></table></div></div>}
-
-    {tab === 'terminals' && <div className="card"><div className="card-head"><h3>{tx.terminals}</h3><button onClick={addTerminal}>{tx.addTerminal}</button></div><div className="table-wrap"><table><thead><tr><th>{tx.terminalCode}</th><th>{tx.terminalName}</th><th>{tx.branch}</th><th>{tx.status}</th><th></th></tr></thead><tbody>{filteredTerminals.map(row => <tr key={row.id}><td>{row.terminal_code}</td><td>{row.name || '—'}</td><td>{branchName(row.branch_id) || row.branch_name}</td><td>{row.is_active ? tx.active : tx.inactive}</td><td><button className="ghost small" onClick={() => toggleTerminal(row)}>{row.is_active ? tx.disable : tx.enable}</button></td></tr>)}{!filteredTerminals.length && <tr><td colSpan="5" className="hint">{tx.noData}</td></tr>}</tbody></table></div></div>}
-
-    {tab === 'cashiers' && <div className="card"><div className="card-head"><h3>{tx.cashiers}</h3><button onClick={addCashier}>{tx.addCashier}</button></div><div className="table-wrap"><table><thead><tr><th>{tx.cashier}</th><th>{tx.role}</th><th>{tx.branch}</th><th>{tx.status}</th></tr></thead><tbody>{filteredCashiers.map(row => <tr key={row.id}><td>{row.full_name}</td><td>{row.role}</td><td>{branchName(row.branch_id)}</td><td>{row.is_active ? tx.active : tx.inactive}</td></tr>)}{!filteredCashiers.length && <tr><td colSpan="4" className="hint">{tx.noData}</td></tr>}</tbody></table></div></div>}
-
-    {tab === 'products' && <div className="card"><div className="card-head"><div><h3>{tx.products}</h3><p className="hint">{tx.productHint}</p></div></div><div className="form-grid compact"><label><span>{tx.productName}</span><input value={productForm.name} onChange={e => setProductForm(f => ({ ...f, name: e.target.value }))} /></label><label><span>{tx.category}</span><input value={productForm.category} onChange={e => setProductForm(f => ({ ...f, category: e.target.value }))} /></label><label><span>{tx.price}</span><input inputMode="decimal" value={productForm.price} onChange={e => setProductForm(f => ({ ...f, price: e.target.value }))} /></label><label><span>&nbsp;</span><button onClick={addProduct}>{tx.addProduct}</button></label></div><div className="table-wrap"><table><thead><tr><th>{tx.productName}</th><th>{tx.category}</th><th>{tx.price}</th></tr></thead><tbody>{products.slice(0, 200).map(p => <tr key={p.id}><td>{p.name || p.title || p.product_name}</td><td>{p.category || p.category_name || p.type || '—'}</td><td>{fmt(p.price || p.sale_price || p.selling_price || 0)}</td></tr>)}{!products.length && <tr><td colSpan="3" className="hint">{tx.noData}</td></tr>}</tbody></table></div></div>}
-
-    {tab === 'shifts' && <div className="card"><h3>{tx.cashShift}</h3><p className="hint">{tx.shiftsHint}</p><div className="grid"><Metric label={tx.expectedCash} value={`${fmt(summary.cash)} AZN`} /><Metric label={tx.countedCash} value="0.00 AZN" /><Metric label={tx.difference} value={`${fmt(0 - summary.cash)} AZN`} /></div><div className="action-row"><button disabled={!isAdmin}>{tx.openShift}</button><button disabled={!isAdmin}>{tx.closeShift}</button></div></div>}
-
-    {tab === 'settings' && <div className="card"><h3>{tx.settings}</h3><p className="hint">{tx.settingsHint}</p><div className="table-wrap"><table><thead><tr><th>{tx.terminalCode}</th><th>{tx.servicePercent}</th><th>{tx.tableSettings}</th></tr></thead><tbody>{filteredTerminals.map(t => <tr key={t.id}><td>{t.terminal_code}</td><td>{parseNum(t.settings?.service_percent || 10)}%</td><td>{Array.isArray(t.settings?.tables) ? t.settings.tables.length : 0}</td></tr>)}</tbody></table></div><div className="notice"><b>{tx.constructor}</b><p className="hint">{isAdmin ? tx.constructorHint : tx.adminOnly}</p></div></div>}
-
-    {tab === 'sync' && <div className="card"><h3>{tx.sync}</h3><p className="hint">{tx.syncHint}</p><div className="grid"><Metric label={tx.closedChecks} value={summary.closed} /><Metric label={tx.revenue} value={`${fmt(summary.revenue)} AZN`} /><Metric label={tx.cash} value={`${fmt(summary.cash)} AZN`} /><Metric label={tx.card} value={`${fmt(summary.card)} AZN`} /></div></div>}
-
-    {tab === 'logs' && <div className="card"><h3>{tx.logs}</h3><p className="hint">{tx.operationLogHint}</p></div>}
-  </section>
-}
 
 function posItemType(item) {
   const category = normalizeExpenseText(item?.category || item?.name || '')
@@ -2291,7 +1720,7 @@ function Login({ lang, setLang, t }) {
 
   async function signIn() {
     setError('')
-    const stopProgress = startGlobalProgress(t('login_progress'))
+    const stopProgress = startGlobalProgress('Вход в RMS...')
     try {
     const rawLogin = String(login || '').trim()
     const rawPassword = String(password || '')
@@ -2308,7 +1737,7 @@ function Login({ lang, setLang, t }) {
       : null
 
     if (internalUser) {
-      if (internalUser.is_active === false) { stopProgress(); return setError(t('user_disabled')) }
+      if (internalUser.is_active === false) { stopProgress(); return setError('Пользователь отключён') }
       if (String(internalUser.password || '') !== rawPassword) { stopProgress(); return setError(t('login_error')) }
 
       const loginName = internalUser.login || normalizedLogin
@@ -2327,7 +1756,7 @@ function Login({ lang, setLang, t }) {
     }
 
     if (!rawLogin.includes('@') || /@(rms|nms)\.local\.az$/i.test(rawLogin) || /@rms\.internal$/i.test(rawLogin)) {
-      stopProgress(); return setError(t('user_not_found'))
+      stopProgress(); return setError('Пользователь не найден или пароль неверный. Создайте пользователя заново в Настройки → Пользователи.')
     }
 
     const { error } = await supabase.auth.signInWithPassword({ email: rawLogin.toLowerCase(), password: rawPassword })
@@ -2344,24 +1773,29 @@ function Login({ lang, setLang, t }) {
     }
   }
 
-  return <div className="login-screen theme-executive" key={`login-${lang}`}>
+  function handleLoginKeyDown(e) {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      signIn()
+    }
+  }
+
+  return <div className="login-screen theme-executive">
     <ThemeStyles />
     <ResponsiveAndSettingsStyles />
     <GlobalProgressOverlay />
-    <form className="login-card" onSubmit={(e) => { e.preventDefault(); signIn() }}>
-      <ProductLogo login />
-      <h1 className="login-title">{t('system_title')}</h1>
-      <p className="login-subtitle">{t('brand_subtitle')}</p>
-      <p>{t('login_hint')}</p>
-      <label><span>{t('language_label')}</span><select value={lang} onChange={e => setLang(e.target.value)}><option value="ru">Русский</option><option value="az">Azərbaycan</option></select></label>
-      <label><span>{t('login_label')}</span><input value={login} onChange={e => setLogin(e.target.value)} placeholder="" autoComplete="username" autoFocus /></label>
-      <label><span>{t('password_label')}</span><input type={showPassword ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} autoComplete="current-password" /></label>
-      <label className="checkbox-row"><input type="checkbox" checked={showPassword} onChange={e => setShowPassword(e.target.checked)} /> {t('show_password')}</label>
-      <p className="hint">{t('press_enter_hint')}</p>
-      {error && <p className="bad">{error}</p>}
-      <button className="primary" type="submit">{t('login_button')}</button>
-    </form>
-  </div>
+    <div className="login-card">
+    <ProductLogo login />
+    <h1 className="login-title">{t('system_title')}</h1>
+    <p className="login-subtitle">{t('brand_subtitle')}</p>
+    <p>{t('login_hint')}</p>
+    <label><span>{t('language_label')}</span><select value={lang} onChange={e => setLang(e.target.value)}><option value="ru">Русский</option><option value="az">Azərbaycan</option></select></label>
+    <label><span>{t('login_label')}</span><input value={login} onChange={e => setLogin(e.target.value)} onKeyDown={handleLoginKeyDown} placeholder="" autoComplete="username" /></label>
+    <label><span>{t('password_label')}</span><input type={showPassword ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} onKeyDown={handleLoginKeyDown} autoComplete="current-password" /></label>
+    <label className="checkbox-row"><input type="checkbox" checked={showPassword} onChange={e => setShowPassword(e.target.checked)} /> {t('show_password')}</label>
+    {error && <p className="bad">{error}</p>}
+    <button className="primary" onClick={signIn}>{t('login_button')}</button>
+  </div></div>
 }
 
 function useBranches() {
@@ -3807,56 +3241,14 @@ function Dashboard({ t }) {
   const [year, setYear] = useState(now.getFullYear())
   const [month, setMonth] = useState(now.getMonth() + 1)
   const [data, setData] = useState(null)
-  const [message, setMessage] = useState('')
 
   useEffect(() => { load() }, [year, month, branches.length])
 
-  async function dashboardBranches() {
-    if (branches.length) return branches
-    const { data } = await supabase.from('branches').select('id,name,is_active').eq('is_active', true).order('name')
-    return data || []
-  }
-
-  async function loadRevenueRows(start, end) {
-    const { data: dailyRows, error: dailyError } = await supabase
-      .from('daily_revenue')
-      .select('branch_id,cash_amount,bank_amount,wolt_amount,total_revenue,revenue_date,deleted_at')
-      .gte('revenue_date', start)
-      .lt('revenue_date', end)
-      .is('deleted_at', null)
-
-    if (!dailyError && (dailyRows || []).length) return dailyRows || []
-
-    const { data: entryRows, error: entryError } = await supabase
-      .from('daily_revenue_entries')
-      .select('branch_id,cash_amount,bank_amount,wolt_amount,revenue_date,deleted_at')
-      .gte('revenue_date', start)
-      .lt('revenue_date', end)
-      .is('deleted_at', null)
-
-    if (entryError) {
-      console.warn('Dashboard revenue fallback error:', entryError)
-      return dailyRows || []
-    }
-
-    return entryRows || []
-  }
-
-  function revenueAmount(row) {
-    const total = parseNum(row?.total_revenue)
-    if (total) return total
-    return parseNum(row?.cash_amount) + parseNum(row?.bank_amount) + parseNum(row?.wolt_amount)
-  }
-
   async function calcMonth(y, m) {
     const monthDate = monthStart(y, m)
-    const endDate = new Date(Number(y), Number(m), 1).toISOString().slice(0, 10)
-    const activeBranches = await dashboardBranches()
-
     const [
-      revRows,
-      { data: expRows, error: expError },
-      { data: advanceRows },
+      { data: revRows },
+      { data: expRows },
       { data: salRows },
       { data: svcRows },
       supplierResult,
@@ -3864,9 +3256,8 @@ function Dashboard({ t }) {
       purchasesResult,
       paymentsResult
     ] = await Promise.all([
-      loadRevenueRows(monthDate, endDate),
-      supabase.from('daily_expenses').select('branch_id,amount,expense_date,deleted_at').gte('expense_date', monthDate).lt('expense_date', endDate).is('deleted_at', null),
-      supabase.from('salary_advances').select('branch_id,amount,advance_date,is_cancelled').gte('advance_date', monthDate).lt('advance_date', endDate).or('is_cancelled.is.null,is_cancelled.eq.false'),
+      supabase.from('monthly_branch_revenue').select('*').eq('month', monthDate),
+      supabase.from('monthly_branch_expenses').select('*').eq('month', monthDate),
       supabase.from('monthly_branch_salary').select('*').eq('month', monthDate),
       supabase.from('monthly_branch_service_charge_cost').select('*').eq('month', monthDate),
       supabase.from('supplier_balances_v2').select('*'),
@@ -3874,8 +3265,6 @@ function Dashboard({ t }) {
       supabase.from('supplier_purchases').select('id,supplier_id,purchase_date,invoice_number,total_amount,deleted_at').is('deleted_at', null),
       supabase.from('supplier_payments').select('supplier_id,amount')
     ])
-
-    if (expError) console.warn('Dashboard expenses error:', expError)
 
     const suppliersRaw = suppliersResult?.data || []
     const purchasesRaw = purchasesResult?.data || []
@@ -3891,38 +3280,40 @@ function Dashboard({ t }) {
       }))
     }
 
-    const revenueByBranch = new Map()
-    ;(revRows || []).forEach(r => revenueByBranch.set(r.branch_id, (revenueByBranch.get(r.branch_id) || 0) + revenueAmount(r)))
-
-    const expByBranch = new Map()
-    ;(expRows || []).forEach(r => expByBranch.set(r.branch_id, (expByBranch.get(r.branch_id) || 0) + parseNum(r.amount)))
-    ;(advanceRows || []).forEach(r => expByBranch.set(r.branch_id, (expByBranch.get(r.branch_id) || 0) + parseNum(r.amount)))
-
+    const balanceMap = new Map((supplierRows || []).map(r => [r.supplier_id, parseNum(r.balance)]))
+    const enrichedSupplierRows = suppliersRaw.map(s => {
+      const purchaseTotal = purchasesRaw
+        .filter(p => p.supplier_id === s.id)
+        .reduce((sum, p) => sum + parseNum(p.total_amount), 0)
+      const paymentTotal = paymentsRaw
+        .filter(p => p.supplier_id === s.id)
+        .reduce((sum, p) => sum + parseNum(p.amount), 0)
+      const balance = balanceMap.has(s.id) ? balanceMap.get(s.id) : purchaseTotal - paymentTotal
+      return {
+        supplier_id: s.id,
+        supplier_name: s.name,
+        balance,
+        payment_term_days: s.payment_term_days,
+        credit_limit: s.credit_limit
+      }
+    })
+    const revByBranch = new Map((revRows || []).map(r => [r.branch_id, r]))
+    const expByBranch = new Map((expRows || []).map(r => [r.branch_id, r]))
     const salByBranch = new Map((salRows || []).map(r => [r.branch_id, r]))
     const svcByBranch = new Map((svcRows || []).map(r => [r.branch_id, r]))
-
-    const branchRows = activeBranches.map(b => {
-      const revenue = parseNum(revenueByBranch.get(b.id))
-      const expenses = parseNum(expByBranch.get(b.id))
+    const branchRows = branches.map(b => {
+      const rev = revByBranch.get(b.id) || {}
+      const revenue = parseNum(rev.total_revenue)
+      const expenses = parseNum(expByBranch.get(b.id)?.total_expenses)
       const salary = parseNum(salByBranch.get(b.id)?.total_salary)
       const serviceCost = parseNum(svcByBranch.get(b.id)?.staff_cost_amount)
       const tax = revenue * TAX_RATE / 100
       const net = revenue - expenses - salary - serviceCost - tax
       return { id: b.id, name: b.name, revenue, expenses, salary, serviceCost, tax, totalExpenses: expenses + salary + serviceCost + tax, net, margin: revenue ? net / revenue * 100 : 0 }
     })
-
     const revenue = branchRows.reduce((s, r) => s + r.revenue, 0)
     const expenses = branchRows.reduce((s, r) => s + r.totalExpenses, 0)
     const net = branchRows.reduce((s, r) => s + r.net, 0)
-
-    const balanceMap = new Map((supplierRows || []).map(r => [r.supplier_id, parseNum(r.balance)]))
-    const enrichedSupplierRows = suppliersRaw.map(s => {
-      const purchaseTotal = purchasesRaw.filter(p => p.supplier_id === s.id).reduce((sum, p) => sum + parseNum(p.total_amount), 0)
-      const paymentTotal = paymentsRaw.filter(p => p.supplier_id === s.id).reduce((sum, p) => sum + parseNum(p.amount), 0)
-      const balance = balanceMap.has(s.id) ? balanceMap.get(s.id) : purchaseTotal - paymentTotal
-      return { supplier_id: s.id, supplier_name: s.name, balance, payment_term_days: s.payment_term_days, credit_limit: s.credit_limit }
-    })
-
     const todayForDebts = new Date()
     const supplierDebtRowsRaw = (enrichedSupplierRows || [])
       .map(r => {
@@ -3941,7 +3332,14 @@ function Dashboard({ t }) {
           overLimit > 0 ? `превышение лимита: +${fmt(overLimit)} AZN` : '',
           overdueInvoices.length ? `просрочка: ${overdueInvoices.join(', ')}` : ''
         ].filter(Boolean).join(' · ')
-        return { id: r.supplier_id || r.supplier_name, name: r.supplier_name || 'Поставщик', value: balance, overLimit, overdueCount: overdueInvoices.length, reason }
+        return {
+          id: r.supplier_id || r.supplier_name,
+          name: r.supplier_name || 'Поставщик',
+          value: balance,
+          overLimit,
+          overdueCount: overdueInvoices.length,
+          reason
+        }
       })
       .filter(r => r.value > 0 && (r.overLimit > 0 || r.overdueCount > 0))
 
@@ -3950,9 +3348,14 @@ function Dashboard({ t }) {
       const key = r.id || r.name
       const prev = supplierRiskMap.get(key)
       if (!prev) supplierRiskMap.set(key, r)
-      else supplierRiskMap.set(key, { ...prev, value: Math.max(prev.value, r.value), overLimit: Math.max(prev.overLimit, r.overLimit), overdueCount: prev.overdueCount + r.overdueCount, reason: [prev.reason, r.reason].filter(Boolean).join(' · ') })
+      else supplierRiskMap.set(key, {
+        ...prev,
+        value: Math.max(prev.value, r.value),
+        overLimit: Math.max(prev.overLimit, r.overLimit),
+        overdueCount: prev.overdueCount + r.overdueCount,
+        reason: [prev.reason, r.reason].filter(Boolean).join(' · ')
+      })
     })
-
     const supplierDebtRows = Array.from(supplierRiskMap.values()).sort((a,b) => b.value - a.value)
     const supplierDebt = supplierDebtRows.reduce((s, r) => s + r.value, 0)
     const d = new Date(Number(y), Number(m) - 1, 1)
@@ -3966,24 +3369,17 @@ function Dashboard({ t }) {
   }
 
   async function load() {
-    setMessage('')
-    try {
-      const current = await calcMonth(year, month)
-      const pm = prevMonth(year, month)
-      const previous = await calcMonth(pm.year, pm.month)
-      setData({ ...current, previous })
-    } catch (error) {
-      console.error('Dashboard load error:', error)
-      setMessage(error.message || String(error))
-      setData({ revenue: 0, expenses: 0, net: 0, supplierDebt: 0, supplierDebtRows: [], branchRows: [], forecastRevenue: 0, forecastProfit: 0, previous: {} })
-    }
+    const current = await calcMonth(year, month)
+    const pm = prevMonth(year, month)
+    const previous = await calcMonth(pm.year, pm.month)
+    setData({ ...current, previous })
   }
 
   if (!data) return <div className="module-placeholder">{t('loading')}</div>
   const revenueChange = data.previous?.revenue ? (data.revenue - data.previous.revenue) / data.previous.revenue * 100 : 0
   const profitChange = data.previous?.net ? (data.net - data.previous.net) / Math.abs(data.previous.net) * 100 : 0
   return <section id="dashboardPage">
-    <section className="topbar dashboard-hero"><div><h2>Финансовое состояние сети</h2><p>Выручка, расходы, прибыль, прогноз, динамика и долги поставщикам по всей сети.</p>{message ? <p className="bad">{message}</p> : null}</div><div className="form-grid compact dashboard-period"><label><span>{t('year')}</span><select value={year} onChange={e => setYear(Number(e.target.value))}>{defaultYears().map(y => <option key={y} value={y}>{y}</option>)}</select></label><label><span>{t('month')}</span><select value={month} onChange={e => setMonth(Number(e.target.value))}>{I18N.ru.months.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}</select></label></div></section>
+    <section className="topbar dashboard-hero"><div><h2>Финансовое состояние сети</h2><p>Выручка, расходы, прибыль, прогноз, динамика и долги поставщикам по всей сети.</p></div><div className="form-grid compact dashboard-period"><label><span>{t('year')}</span><select value={year} onChange={e => setYear(Number(e.target.value))}>{defaultYears().map(y => <option key={y} value={y}>{y}</option>)}</select></label><label><span>{t('month')}</span><select value={month} onChange={e => setMonth(Number(e.target.value))}>{I18N.ru.months.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}</select></label></div></section>
     <section className="dashboard-kpi-grid"><div className="dash-kpi"><span>Выручка сети</span><strong>{fmt(data.revenue)}</strong><em className={revenueChange >= 0 ? 'good' : 'bad'}>{revenueChange >= 0 ? '▲' : '▼'} {pct(Math.abs(revenueChange))} к прошлому месяцу</em></div><div className="dash-kpi"><span>Расходы сети</span><strong>{fmt(data.expenses)}</strong><em>включая зарплаты, service charge и налог 8%</em></div><div className="dash-kpi"><span>Чистая прибыль</span><strong className={data.net >= 0 ? 'good' : 'bad'}>{fmt(data.net)}</strong><em className={profitChange >= 0 ? 'good' : 'bad'}>{profitChange >= 0 ? '▲' : '▼'} {pct(Math.abs(profitChange))} к прошлому месяцу</em></div><div className="dash-kpi"><span>Прогноз прибыли</span><strong className={data.forecastProfit >= 0 ? 'good' : 'bad'}>{fmt(data.forecastProfit)}</strong><em>прогноз до конца месяца</em></div><div className="dash-kpi danger-kpi"><span>Проблемные долги</span><strong>{fmt(data.supplierDebt)}</strong><em>просрочка или превышение лимита</em></div></section>
     <section className="grid dashboard-grid"><MiniBarChart rows={data.branchRows.filter(r => r.revenue || r.net).sort((a,b) => b.revenue - a.revenue)} valueKey="revenue" title="Выручка по филиалам" subtitle="Сравнение филиалов за выбранный месяц" showShare /><MiniBarChart rows={data.branchRows.filter(r => r.revenue || r.net).sort((a,b) => b.net - a.net)} valueKey="net" title="Прибыль по филиалам" subtitle="После расходов, зарплат, service charge и налога" showShare /><div className="card span-2"><div className="card-head"><h3>Сводка по филиалам</h3></div><div className="table-wrap"><table className="dashboard-table"><thead><tr><th>Филиал</th><th>Выручка</th><th>Расходы</th><th>Зарплаты</th><th>Service</th><th>Налог</th><th>Прибыль</th><th>Маржа</th></tr></thead><tbody>{data.branchRows.map(r => <tr key={r.id} className={r.net < 0 ? 'risk-row' : ''}><td><b>{r.name}</b></td><td>{fmt(r.revenue)}</td><td>{fmt(r.expenses)}</td><td>{fmt(r.salary)}</td><td>{fmt(r.serviceCost)}</td><td>{fmt(r.tax)}</td><td className={r.net >= 0 ? 'good' : 'bad'}><b>{fmt(r.net)}</b></td><td>{pct(r.margin)}</td></tr>)}</tbody></table></div></div><div className="card"><div className="card-head"><h3>Проблемные долги поставщикам</h3><p className="hint">Только превышение лимита или просроченные фактуры</p></div>{data.supplierDebtRows?.length ? <div className="supplier-risk-summary"><div className="metric"><span>Проблемная сумма</span><strong className="bad">{fmt(data.supplierDebt)} AZN</strong></div><div className="supplier-risk-list">{data.supplierDebtRows.slice(0, 8).map(r => <div key={r.id || r.name} className="supplier-risk-row"><b title={r.name}>{r.name}</b><span>{fmt(r.value)} AZN</span><em>{r.reason || 'требует проверки'}</em></div>)}</div></div> : <div className="supplier-risk-empty"><p className="hint">Проблемных долгов нет. Обычные долги смотри в разделе “Поставщики”.</p></div>}</div><div className="card span-2 dashboard-insight"><h3>Краткий вывод</h3><p>Сеть сейчас показывает <b className={data.net >= 0 ? 'good' : 'bad'}>{data.net >= 0 ? 'прибыль' : 'убыток'} {fmt(data.net)} AZN</b>. Прогноз до конца месяца: <b>{fmt(data.forecastRevenue)} AZN выручки</b> и <b className={data.forecastProfit >= 0 ? 'good' : 'bad'}>{fmt(data.forecastProfit)} AZN прибыли</b>.</p><p className="hint">Динамика сравнивается с прошлым календарным месяцем. Если нужен “аналогичный период” строго день-в-день, следующим шагом добавим сравнение текущего периода с тем же количеством дней прошлого месяца.</p></div></section>
   </section>
@@ -4001,41 +3397,6 @@ function Finance({ t, lang }) {
   const [breakdown, setBreakdown] = useState([])
   const [aiRows, setAiRows] = useState([])
   const [showAllAiRows, setShowAllAiRows] = useState(false)
-  const financeLoadSeqRef = useRef(0)
-
-  function financeIsLatestLoad(seq) {
-    return seq === financeLoadSeqRef.current
-  }
-
-  function financeNormalizeStats(base, previous) {
-    const revenue = parseNum(base?.revenue)
-    const expenses = parseNum(base?.expenses)
-    const salary = parseNum(base?.salary)
-    const serviceCost = parseNum(base?.serviceCost)
-    const tax = revenue * (TAX_RATE / 100)
-    const net = revenue - expenses - salary - serviceCost - tax
-    const d = new Date(Number(year), Number(month) - 1, 1)
-    const currentMonth = now.getFullYear() === d.getFullYear() && now.getMonth() === d.getMonth()
-    const passed = currentMonth ? now.getDate() : daysInMonth(year, month)
-    const avg = passed ? revenue / passed : 0
-    const forecastRevenue = avg * daysInMonth(year, month)
-    const costRate = revenue > 0 ? (expenses + salary + serviceCost) / revenue : 0
-    const forecastProfit = forecastRevenue - (forecastRevenue * costRate) - (forecastRevenue * TAX_RATE / 100)
-    return {
-      ...base,
-      previous,
-      revenue,
-      expenses,
-      salary,
-      serviceCost,
-      tax,
-      gross: revenue,
-      net,
-      avg,
-      forecastRevenue,
-      forecastProfit
-    }
-  }
 
   function financeExpenseGroupName(name) {
     const value = normalizeExpenseText(name)
@@ -4092,59 +3453,10 @@ function Finance({ t, lang }) {
 
   async function financeRevenueSharesForMonth(y, m) {
     const monthDate = monthStart(y, m)
-    const endDate = new Date(Number(y), Number(m), 1).toISOString().slice(0, 10)
-    let rows = []
-
-    // Primary source: the original stable RMS monthly aggregate.
-    // This was the working logic before the POS/translation changes.
-    const { data: monthlyRows, error: monthlyError } = await supabase
-      .from('monthly_branch_revenue')
-      .select('branch_id,total_revenue')
-      .eq('month', monthDate)
-
-    if (!monthlyError && Array.isArray(monthlyRows) && monthlyRows.length) {
-      rows = monthlyRows.map(r => ({
-        branch_id: r.branch_id,
-        total_revenue: parseNum(r.total_revenue)
-      }))
-    } else {
-      // Fallback 1: daily aggregate table.
-      const { data: dailyRows, error: dailyError } = await supabase
-        .from('daily_revenue')
-        .select('branch_id,cash_amount,bank_amount,wolt_amount,total_revenue,revenue_date,deleted_at')
-        .gte('revenue_date', monthDate)
-        .lt('revenue_date', endDate)
-        .is('deleted_at', null)
-
-      if (!dailyError && Array.isArray(dailyRows) && dailyRows.length) {
-        rows = dailyRows.map(r => ({
-          branch_id: r.branch_id,
-          total_revenue: parseNum(r.total_revenue) || parseNum(r.cash_amount) + parseNum(r.bank_amount) + parseNum(r.wolt_amount)
-        }))
-      } else {
-        // Fallback 2: revenue entry rows.
-        const { data: entryRows } = await supabase
-          .from('daily_revenue_entries')
-          .select('branch_id,cash_amount,bank_amount,wolt_amount,revenue_date,deleted_at')
-          .gte('revenue_date', monthDate)
-          .lt('revenue_date', endDate)
-          .is('deleted_at', null)
-
-        rows = (entryRows || []).map(r => ({
-          branch_id: r.branch_id,
-          total_revenue: parseNum(r.cash_amount) + parseNum(r.bank_amount) + parseNum(r.wolt_amount)
-        }))
-      }
-    }
-
-    const branchTotals = new Map()
-    rows.forEach(r => {
-      branchTotals.set(r.branch_id, (branchTotals.get(r.branch_id) || 0) + parseNum(r.total_revenue))
-    })
-
-    const total = Array.from(branchTotals.values()).reduce((s, v) => s + parseNum(v), 0)
+    const { data } = await supabase.from('monthly_branch_revenue').select('branch_id,total_revenue').eq('month', monthDate)
+    const total = (data || []).reduce((s, r) => s + parseNum(r.total_revenue), 0)
     const map = new Map()
-    branchTotals.forEach((value, key) => map.set(key, total > 0 ? parseNum(value) / total : 0))
+    ;(data || []).forEach(r => map.set(r.branch_id, total > 0 ? parseNum(r.total_revenue) / total : 0))
     return { total, map }
   }
 
@@ -4464,134 +3776,37 @@ function Finance({ t, lang }) {
     return map
   }
 
-  function financeSelectedBranchObject(selectedBranchId = branchId) {
-    if (!selectedBranchId || selectedBranchId === ALL_BRANCHES) return null
-    return branches.find(b => String(b.id) === String(selectedBranchId) || String(b.name) === String(selectedBranchId)) || null
-  }
-
-  function financeRowMatchesBranch(row, selectedBranchId = branchId) {
-    if (!selectedBranchId || selectedBranchId === ALL_BRANCHES) return true
-    const selected = financeSelectedBranchObject(selectedBranchId)
-    const allowed = new Set([
-      String(selectedBranchId),
-      selected?.id != null ? String(selected.id) : '',
-      selected?.name != null ? String(selected.name) : ''
-    ].filter(Boolean))
-
-    return allowed.has(String(row?.branch_id || '')) || allowed.has(String(row?.branch_name || '')) || allowed.has(String(row?.branches?.name || ''))
-  }
-
-  function financeFilterRowsByBranch(rows, selectedBranchId = branchId) {
-    return (rows || []).filter(row => financeRowMatchesBranch(row, selectedBranchId))
-  }
-
   async function calcFor(branch, y, m) {
-    const selectedBranchId = branch || ALL_BRANCHES
     const monthDate = monthStart(y, m)
-    const endDate = new Date(Number(y), Number(m), 1).toISOString().slice(0, 10)
 
-    const scopeRows = (rows) => {
-      const list = Array.isArray(rows) ? rows : []
-      if (selectedBranchId === ALL_BRANCHES) return list
-      return financeFilterRowsByBranch(list, selectedBranchId)
+    let revQuery = supabase.from('monthly_branch_revenue').select('*').eq('month', monthDate)
+    let expQuery = supabase.from('monthly_branch_expenses').select('*').eq('month', monthDate)
+    let salQuery = supabase.from('monthly_branch_salary').select('*').eq('month', monthDate)
+    let svcQuery = supabase.from('monthly_branch_service_charge_cost').select('*').eq('month', monthDate)
+
+    if (branch !== ALL_BRANCHES) {
+      revQuery = revQuery.eq('branch_id', branch)
+      expQuery = expQuery.eq('branch_id', branch)
+      salQuery = salQuery.eq('branch_id', branch)
+      svcQuery = svcQuery.eq('branch_id', branch)
     }
 
-    const sumRows = (rows, keys) => (rows || []).reduce((sum, row) => {
-      for (const key of keys) {
-        const value = parseNum(row?.[key])
-        if (value) return sum + value
-      }
-      return sum
-    }, 0)
+    const [{ data: revRows }, { data: expRows }, { data: salRows }, { data: svcRows }] = await Promise.all([revQuery, expQuery, salQuery, svcQuery])
 
-    const [revRes, expRes, salRes, svcRes] = await Promise.all([
-      supabase.from('monthly_branch_revenue').select('*').eq('month', monthDate),
-      supabase.from('monthly_branch_expenses').select('*').eq('month', monthDate),
-      supabase.from('monthly_branch_salary').select('*').eq('month', monthDate),
-      supabase.from('monthly_branch_service_charge_cost').select('*').eq('month', monthDate)
-    ])
-
-    if (revRes.error) console.warn('Finance monthly_branch_revenue failed:', revRes.error)
-    if (expRes.error) console.warn('Finance monthly_branch_expenses failed:', expRes.error)
-    if (salRes.error) console.warn('Finance monthly_branch_salary failed:', salRes.error)
-    if (svcRes.error) console.warn('Finance monthly_branch_service_charge_cost failed:', svcRes.error)
-
-    let revRows = scopeRows(revRes.data)
-    let expRows = scopeRows(expRes.data)
-    let salRows = scopeRows(salRes.data)
-    let svcRows = scopeRows(svcRes.data)
-
-    let revenue = sumRows(revRows, ['total_revenue', 'revenue', 'amount'])
-    let expenses = sumRows(expRows, ['total_expenses', 'expenses', 'amount'])
-    let salary = sumRows(salRows, ['total_salary', 'salary', 'amount'])
-    let serviceCost = sumRows(svcRows, ['staff_cost_amount', 'service_cost', 'amount'])
-    let cash = sumRows(revRows, ['cash_amount', 'cash'])
-    let bank = sumRows(revRows, ['bank_amount', 'bank'])
-    let wolt = sumRows(revRows, ['wolt_amount', 'wolt'])
-
-    // Deep fallback: read daily rows WITHOUT server-side branch filter, then filter locally.
-    // This is necessary because older RMS tables sometimes store branch_id as UUID,
-    // while imported/legacy rows may contain a branch code/name like BC1.
-    if (revenue <= 0) {
-      try {
-        const { data: dailyRows, error: dailyError } = await supabase
-          .from('daily_revenue')
-          .select('branch_id,branch_name,cash_amount,bank_amount,wolt_amount,total_revenue,revenue_date,deleted_at')
-          .gte('revenue_date', monthDate)
-          .lt('revenue_date', endDate)
-          .is('deleted_at', null)
-
-        const scopedDailyRows = !dailyError && Array.isArray(dailyRows) ? scopeRows(dailyRows) : []
-
-        if (scopedDailyRows.length) {
-          cash = scopedDailyRows.reduce((s, r) => s + parseNum(r.cash_amount), 0)
-          bank = scopedDailyRows.reduce((s, r) => s + parseNum(r.bank_amount), 0)
-          wolt = scopedDailyRows.reduce((s, r) => s + parseNum(r.wolt_amount), 0)
-          revenue = scopedDailyRows.reduce((s, r) => {
-            const total = parseNum(r.total_revenue)
-            return s + (total || parseNum(r.cash_amount) + parseNum(r.bank_amount) + parseNum(r.wolt_amount))
-          }, 0)
-        } else {
-          const { data: entryRows, error: entryError } = await supabase
-            .from('daily_revenue_entries')
-            .select('branch_id,branch_name,cash_amount,bank_amount,wolt_amount,revenue_date,deleted_at')
-            .gte('revenue_date', monthDate)
-            .lt('revenue_date', endDate)
-            .is('deleted_at', null)
-
-          const scopedEntryRows = !entryError && Array.isArray(entryRows) ? scopeRows(entryRows) : []
-          cash = scopedEntryRows.reduce((s, r) => s + parseNum(r.cash_amount), 0)
-          bank = scopedEntryRows.reduce((s, r) => s + parseNum(r.bank_amount), 0)
-          wolt = scopedEntryRows.reduce((s, r) => s + parseNum(r.wolt_amount), 0)
-          revenue = cash + bank + wolt
-        }
-      } catch (error) {
-        console.warn('Finance revenue fallback failed:', error)
-      }
-    }
-
-    if (expenses <= 0) {
-      try {
-        const { data: dailyExpenses, error: dailyExpenseError } = await supabase
-          .from('daily_expenses')
-          .select('branch_id,branch_name,amount,expense_date,deleted_at')
-          .gte('expense_date', monthDate)
-          .lt('expense_date', endDate)
-          .is('deleted_at', null)
-
-        const scopedDailyExpenses = !dailyExpenseError && Array.isArray(dailyExpenses) ? scopeRows(dailyExpenses) : []
-        expenses = scopedDailyExpenses.reduce((s, r) => s + parseNum(r.amount), 0)
-      } catch (error) {
-        console.warn('Finance daily_expenses fallback failed:', error)
-      }
-    }
+    const revenue = (revRows || []).reduce((s, r) => s + parseNum(r.total_revenue), 0)
+    const expenses = (expRows || []).reduce((s, r) => s + parseNum(r.total_expenses), 0)
+    const salary = (salRows || []).reduce((s, r) => s + parseNum(r.total_salary), 0)
+    const serviceCost = (svcRows || []).reduce((s, r) => s + parseNum(r.staff_cost_amount), 0)
+    const cash = (revRows || []).reduce((s, r) => s + parseNum(r.cash_amount), 0)
+    const bank = (revRows || []).reduce((s, r) => s + parseNum(r.bank_amount), 0)
+    const wolt = (revRows || []).reduce((s, r) => s + parseNum(r.wolt_amount), 0)
 
     const tax = revenue * (TAX_RATE / 100)
     const net = revenue - expenses - salary - serviceCost - tax
 
     const d = new Date(Number(y), Number(m) - 1, 1)
-    const currentMonth = now.getFullYear() === d.getFullYear() && now.getMonth() === d.getMonth()
-    const passed = currentMonth ? now.getDate() : daysInMonth(y, m)
+    const current = now.getFullYear() === d.getFullYear() && now.getMonth() === d.getMonth()
+    const passed = current ? now.getDate() : daysInMonth(y, m)
     const avg = passed ? revenue / passed : 0
     const forecastRevenue = avg * daysInMonth(y, m)
     const costRate = revenue > 0 ? (expenses + salary + serviceCost) / revenue : 0
@@ -4601,24 +3816,13 @@ function Finance({ t, lang }) {
   }
 
   async function load() {
-    const loadSeq = ++financeLoadSeqRef.current
     if (branchId !== ALL_BRANCHES && !branchId) return
 
     const monthDate = monthStart(year, month)
 
-    setBreakdown([])
-    setAiRows([])
-
     const current = await calcFor(branchId, year, month)
-    if (!financeIsLatestLoad(loadSeq)) return
     const pm = prevMonth(year, month)
     const previous = await calcFor(branchId, pm.year, pm.month)
-    if (!financeIsLatestLoad(loadSeq)) return
-
-    // Update the main finance cards immediately.
-    // Guard prevents an older async load from overwriting the selected branch.
-    setStats(financeNormalizeStats(current, previous))
-
     const start = monthDate
     const end = new Date(Number(year), Number(month), 1).toISOString().slice(0, 10)
     let expQuery = supabase.from('daily_expenses').select('branch_id, amount, custom_category, expense_categories(name)').gte('expense_date', start).lt('expense_date', end).is('deleted_at', null)
@@ -4627,18 +3831,13 @@ function Finance({ t, lang }) {
     let salaryPeriodQuery = supabase.from('salary_periods').select('employee_id, branch_id, salary_gross, salary_net, final_balance, payroll_payments').eq('salary_month', monthDate)
     let salaryPaymentQuery = supabase.from('salary_payments').select('employee_id, branch_id, amount').eq('salary_month', monthDate).or('is_cancelled.is.null,is_cancelled.eq.false')
 
-    const [{ data: expenseRowsRaw }, { data: purchaseRows }, { data: employeeRows }, { data: salaryPeriodRows }, { data: salaryPaymentRows }] = await Promise.all([expQuery, purQuery, empQuery, salaryPeriodQuery, salaryPaymentQuery])
-    if (!financeIsLatestLoad(loadSeq)) return
-    const rows = financeFilterRowsByBranch(expenseRowsRaw || [], branchId)
+    if (branchId !== ALL_BRANCHES) {
+      expQuery = expQuery.eq('branch_id', branchId)
+    }
+
+    const [{ data: rows }, { data: purchaseRows }, { data: employeeRows }, { data: salaryPeriodRows }, { data: salaryPaymentRows }] = await Promise.all([expQuery, purQuery, empQuery, salaryPeriodQuery, salaryPaymentQuery])
     const revenueShares = await financeRevenueSharesForMonth(year, month)
-    if (!financeIsLatestLoad(loadSeq)) return
-    const selectedBranchForShare = financeSelectedBranchObject(branchId)
-    const activeSupplierShare = branchId === ALL_BRANCHES ? 1 : (
-      revenueShares.map.get(branchId) ||
-      revenueShares.map.get(selectedBranchForShare?.id) ||
-      revenueShares.map.get(selectedBranchForShare?.name) ||
-      0
-    )
+    const activeSupplierShare = branchId === ALL_BRANCHES ? 1 : (revenueShares.map.get(branchId) || 0)
     const allocatedSupplierTotals = financeAllocatedSupplierTotals(purchaseRows || [], activeSupplierShare)
     const allocatedSupplierExpenseTotal = allocatedSupplierTotals.food + allocatedSupplierTotals.packaging + allocatedSupplierTotals.household + allocatedSupplierTotals.other
 
@@ -4697,12 +3896,10 @@ function Finance({ t, lang }) {
       net: parseNum(current.net) - extraDsmf - salaryOverride - allocatedSupplierExpenseTotal,
       forecastProfit: parseNum(current.forecastProfit) - allocatedSupplierExpenseTotal - Math.max(0, salaryOverride) - extraDsmf
     }
-    if (!financeIsLatestLoad(loadSeq)) return
-    setStats(financeNormalizeStats(currentForFinance, previous))
+    setStats({ ...currentForFinance, previous })
 
     if (currentForFinance.serviceCost > 0) expenseRows.push({ name: 'Service charge персоналу', amount: currentForFinance.serviceCost })
     if (currentForFinance.tax > 0) expenseRows.push({ name: `Налог %`, amount: currentForFinance.tax })
-    if (!financeIsLatestLoad(loadSeq)) return
     setBreakdown(expenseRows.sort((a, b) => b.amount - a.amount))
 
     if (branchId === ALL_BRANCHES) {
@@ -4717,7 +3914,6 @@ function Finance({ t, lang }) {
       const branchAiRows = []
       for (const branch of branches) {
         const branchStats = await calcFor(branch.id, year, month)
-        if (!financeIsLatestLoad(loadSeq)) return
         const branchExpenseMap = new Map()
         ;(rows || []).filter(r => r.branch_id === branch.id).forEach(r => {
           const name = r.expense_categories?.name || r.custom_category || t('new_expense')
@@ -4732,7 +3928,7 @@ function Finance({ t, lang }) {
           const group = financeExpenseGroupName(name)
           if (group === 'food_market' || group === 'packaging' || group === 'household') branchExpenseMap.delete(name)
         })
-        const branchSupplierShare = revenueShares.map.get(branch.id) || revenueShares.map.get(branch.name) || 0
+        const branchSupplierShare = revenueShares.map.get(branch.id) || 0
         const branchSupplierTotals = financeAllocatedSupplierTotals(purchaseRows || [], branchSupplierShare)
         const branchSupplierExpenseTotal = branchSupplierTotals.food + branchSupplierTotals.packaging + branchSupplierTotals.household + branchSupplierTotals.other
         const branchFoodCost = branchSupplierTotals.food + branchDirectFoodCost
@@ -4766,7 +3962,6 @@ function Finance({ t, lang }) {
       }
 
       const combinedRows = [...networkAiRows, ...branchAiRows]
-      if (!financeIsLatestLoad(loadSeq)) return
       setAiRows(combinedRows.length ? combinedRows : [{
         branchName: 'Вся сеть',
         indicator: 'Данные не распознаны',
@@ -4784,7 +3979,6 @@ function Finance({ t, lang }) {
         purchaseRows: purchaseRows || [],
         employeeRows: employeeRows || []
       })
-      if (!financeIsLatestLoad(loadSeq)) return
       setAiRows(singleRows.length ? singleRows : [{
         branchName: branches.find(b => b.id === branchId)?.name || 'Филиал',
         indicator: 'Данные не распознаны',
@@ -4832,7 +4026,7 @@ function Finance({ t, lang }) {
         <div className="card">
           <h3>{t('current_result')}</h3>
           <Metric label={t('gross_profit')} value={fmt(stats.gross)} />
-          <Metric label={t('total_expenses')} value={fmt(stats.expenses + stats.salary + stats.serviceCost + stats.tax)} />
+          <Metric label={t('total_expenses')} value={fmt(stats.expenses + stats.salary + stats.tax)} />
           <Metric label="Операционные расходы" value={fmt(stats.expenses)} />
           <Metric label="Зарплаты" value={fmt(stats.salary)} />
         <Metric label="Service charge персоналу" value={fmt(stats.serviceCost)} />
@@ -4842,7 +4036,7 @@ function Finance({ t, lang }) {
         <div className="card"><h3>{t('net_profit')}</h3><div className="big-number">{fmt(stats.net)}</div><p className={`hint ${stats.net >= 0 ? 'good' : 'bad'}`}>{stats.net >= 0 ? t('profitable') : t('loss')}</p></div>
         <div className="card"><h3>{t('forecast')}</h3><Metric label={t('forecast_revenue')} value={fmt(stats.forecastRevenue)} /><Metric label={t('forecast_profit')} value={fmt(stats.forecastProfit)} /><Metric label={t('avg_daily_revenue')} value={fmt(stats.avg)} /></div>
         <div className="card"><h3>{t('comparison')}</h3><Metric label={t('prev_month_revenue')} value={fmt(stats.previous?.revenue)} /><Metric label={t('revenue_change_pct')} value={pct(revChange)} /><Metric label={t('profit_change_pct')} value={pct(profitChange)} /></div>
-        <div className="card"><h3>{t('margins')}</h3><Metric label={t('expense_pct')} value={pct(stats.revenue ? (stats.expenses + stats.salary + stats.serviceCost + stats.tax) / stats.revenue * 100 : 0)} /><Metric label={t('net_margin')} value={pct(stats.revenue ? stats.net / stats.revenue * 100 : 0)} /></div>
+        <div className="card"><h3>{t('margins')}</h3><Metric label={t('expense_pct')} value={pct(stats.revenue ? (stats.expenses + stats.salary + stats.tax) / stats.revenue * 100 : 0)} /><Metric label={t('net_margin')} value={pct(stats.revenue ? stats.net / stats.revenue * 100 : 0)} /></div>
 
         <div className="card span-2">
           <div className="card-head"><h3>{t('expense_breakdown')}</h3></div>
@@ -4952,7 +4146,7 @@ function convertToBase(quantity, fromUnit, baseUnit) {
   return q
 }
 
-function Recipes({ t, lang = 'ru' }) {
+function Recipes({ t }) {
   const [products, setProducts] = useState([])
   const [costs, setCosts] = useState([])
   const [menuItems, setMenuItems] = useState([])
@@ -4985,7 +4179,7 @@ function Recipes({ t, lang = 'ru' }) {
 
   useEffect(() => {
     const allowedCategories = menuCategoriesForProductCategory(selectedCategory)
-    const matchingMenuItems = menuItems.filter(item => allowedCategories.includes(item.category || 'Other'))
+    const matchingMenuItems = menuItems.filter(item => allowedCategories.includes(item.category || 'Прочее'))
     if (matchingMenuItems.length && !matchingMenuItems.some(item => item.id === selectedMenuId)) {
       setSelectedMenuId(matchingMenuItems[0].id)
     }
@@ -5086,7 +4280,7 @@ function Recipes({ t, lang = 'ru' }) {
     !recipeItems.some(r => String(r.id) !== String(row.id) && String(r.product_id) === String(p.id))
   )
   const allowedMenuCategories = menuCategoriesForProductCategory(selectedCategory)
-  const filteredMenuItems = menuItems.filter(item => allowedMenuCategories.includes(item.category || 'Other'))
+  const filteredMenuItems = menuItems.filter(item => allowedMenuCategories.includes(item.category || 'Прочее'))
   const selectedMenu = menuItems.find(i => i.id === selectedMenuId)
   const recipeCost = recipeItems.reduce((sum, row) => sum + lineCost(row), 0)
   const salePrice = parseNum(selectedMenu?.sale_price)
@@ -5095,7 +4289,7 @@ function Recipes({ t, lang = 'ru' }) {
 
   async function addProduct() {
     setMessage('')
-    if (!productForm.name.trim()) return setMessage(t('enter_product_name'))
+    if (!productForm.name.trim()) return setMessage('Введите название товара')
     const { data, error } = await supabase.from('supplier_products').insert({
       name: productForm.name.trim(),
       category: productForm.category,
@@ -5125,7 +4319,7 @@ function Recipes({ t, lang = 'ru' }) {
 
   async function addMenuItem() {
     setMessage('')
-    if (!menuForm.name.trim()) return setMessage(t('enter_dish_name'))
+    if (!menuForm.name.trim()) return setMessage('Введите название блюда')
     const { data, error } = await supabase.from('menu_items').insert({
       name: menuForm.name.trim(),
       category: menuForm.category || null,
@@ -5156,15 +4350,15 @@ function Recipes({ t, lang = 'ru' }) {
 
   async function addRecipeItem() {
     setMessage('')
-    if (!selectedMenuId) return setMessage(t('choose_dish_first'))
+    if (!selectedMenuId) return setMessage('Сначала выберите блюдо')
     if (!availableProductsForRecipe.length) {
       setRecipeEditMode(true)
-      return setMessage(t('all_category_products_added'))
+      return setMessage('В этой категории все товары уже добавлены в техкарту. Измените количество в существующей строке или выберите другую категорию.')
     }
     const productIdToAdd = (!selectedProductId || selectedProductAlreadyInRecipe) ? availableProductsForRecipe[0]?.id : selectedProductId
     if (!productIdToAdd) {
       setRecipeEditMode(true)
-      return setMessage(t('no_new_products_category'))
+      return setMessage('В выбранной категории нет новых товаров для добавления.')
     }
 
     const existing = recipeItems.find(r =>
@@ -5173,7 +4367,7 @@ function Recipes({ t, lang = 'ru' }) {
     )
     if (existing) {
       setRecipeEditMode(true)
-      setMessage(t('ingredient_already_exists'))
+      setMessage('Этот ингредиент уже есть в техкарте. Измените количество в существующей строке.')
       return
     }
 
@@ -5188,7 +4382,7 @@ function Recipes({ t, lang = 'ru' }) {
       if (String(error.message || '').includes('recipe_items_menu_product_unique') || String(error.message || '').includes('duplicate key')) {
         await loadRecipeItems()
         setRecipeEditMode(true)
-        return setMessage(t('ingredient_already_exists'))
+        return setMessage('Этот ингредиент уже есть в техкарте. Измените количество в существующей строке.')
       }
       return setMessage(error.message)
     }
@@ -5212,14 +4406,14 @@ function Recipes({ t, lang = 'ru' }) {
         String(r.product_id) === String(patch.product_id)
       )
       if (duplicate) {
-        return setMessage(t('ingredient_duplicate_change'))
+        return setMessage('Этот ингредиент уже есть в техкарте. Выберите другой товар или измените существующую строку.')
       }
     }
 
     const { error } = await supabase.from('recipe_items').update(patch).eq('id', id)
     if (error) {
       if (String(error.message || '').includes('recipe_items_menu_product_unique') || String(error.message || '').includes('duplicate key')) {
-        return setMessage(t('ingredient_duplicate_change'))
+        return setMessage('Этот ингредиент уже есть в техкарте. Выберите другой товар или измените существующую строку.')
       }
       setMessage(error.message)
     }
@@ -5247,16 +4441,16 @@ function Recipes({ t, lang = 'ru' }) {
         <td class="num">${fmt(row.quantity)}</td>
         <td>${escapeHtml(unitLabel(product?.base_unit))}</td>
         <td class="num">${fmt(row.waste_percent)}</td>
-        <td class="num">${cost ? `${fmt(cost.price_per_base_unit)} / ${escapeHtml(cost.base_unit)}` : escapeHtml(t('no_purchase'))}</td>
+        <td class="num">${cost ? `${fmt(cost.price_per_base_unit)} / ${escapeHtml(cost.base_unit)}` : 'нет закупки'}</td>
         <td class="num strong">${fmt(lineCost(row))}</td>
       </tr>`
     }).join('')
-    const generatedAt = new Date().toLocaleString(lang === 'az' ? 'az-AZ' : 'ru-RU')
+    const generatedAt = new Date().toLocaleString()
     return `<!doctype html>
 <html>
 <head>
 <meta charset="utf-8" />
-<title>${escapeHtml(t('recipes_tab'))} — ${escapeHtml(selectedMenu?.name || t('dish').toLowerCase())}</title>
+<title>Техкарта — ${escapeHtml(selectedMenu?.name || 'блюдо')}</title>
 <style>
   @page { size: A4 portrait; margin: 12mm; }
   * { box-sizing: border-box; }
@@ -5295,7 +4489,7 @@ function Recipes({ t, lang = 'ru' }) {
 <body>
   <div class="page">
     <div class="actionbar">
-      <button onclick="window.print()">${escapeHtml(lang === 'az' ? 'PDF/Çap' : 'PDF/Print')}</button>
+      <button onclick="window.print()">PDF/Print</button>
     </div>
     <div class="sheet">
       <div class="header">
@@ -5304,22 +4498,22 @@ function Recipes({ t, lang = 'ru' }) {
             <div class="mark"><span>R</span><span>M</span><span>S</span></div>
             <div class="brandtext"><strong>RMS</strong><small>Restaurant Management System</small></div>
           </div>
-          <h1>${escapeHtml(selectedMenu?.name || t('dish_not_selected'))}</h1>
-          <div class="meta">${escapeHtml(t('category'))}: ${escapeHtml(selectedMenu?.category || '—')} · ${escapeHtml(t('generated'))}: ${escapeHtml(generatedAt)}</div>
+          <h1>${escapeHtml(selectedMenu?.name || 'Блюдо не выбрано')}</h1>
+          <div class="meta">Категория: ${escapeHtml(selectedMenu?.category || '—')} · Сформировано: ${escapeHtml(generatedAt)}</div>
         </div>
       </div>
       <div class="kpis">
-        <div class="kpi"><span>${escapeHtml(t('recipe_cost'))}</span><strong>${fmt(recipeCost)}</strong></div>
-        <div class="kpi"><span>${escapeHtml(t('sale_price'))}</span><strong>${fmt(salePrice)}</strong></div>
+        <div class="kpi"><span>Себестоимость</span><strong>${fmt(recipeCost)}</strong></div>
+        <div class="kpi"><span>Цена продажи</span><strong>${fmt(salePrice)}</strong></div>
         <div class="kpi"><span>Food cost</span><strong>${pct(foodCostPercent)}</strong></div>
-        <div class="kpi"><span>${escapeHtml(t('gross_profit'))}</span><strong>${fmt(grossProfit)}</strong></div>
+        <div class="kpi"><span>Валовая прибыль</span><strong>${fmt(grossProfit)}</strong></div>
       </div>
       <table>
-        <thead><tr><th>${escapeHtml(t('category'))}</th><th>${escapeHtml(t('product'))} / ${escapeHtml(t('new_ingredient').replace('+ ', ''))}</th><th class="num">${escapeHtml(t('quantity'))}</th><th>${escapeHtml(t('unit_short'))}</th><th class="num">${escapeHtml(t('waste_percent'))}</th><th class="num">${escapeHtml(t('price_per_unit'))}</th><th class="num">${escapeHtml(t('recipe_cost'))}</th></tr></thead>
-        <tbody>${rowsHtml || `<tr><td colspan="7">${escapeHtml(t('no_ingredients'))}</td></tr>`}</tbody>
+        <thead><tr><th>Категория</th><th>Товар / ингредиент</th><th class="num">Кол-во</th><th>Ед.</th><th class="num">Потери %</th><th class="num">Цена за ед.</th><th class="num">Себестоимость</th></tr></thead>
+        <tbody>${rowsHtml || '<tr><td colspan="7">Нет ингредиентов</td></tr>'}</tbody>
       </table>
       <div class="footer">
-        <span>${escapeHtml(t('purchase_price_latest_hint'))}</span>
+        <span>Цена закупки берётся из последней закупки товара у поставщика.</span>
         
       </div>
       
@@ -5331,7 +4525,7 @@ function Recipes({ t, lang = 'ru' }) {
 
   function openTechCardWindow(autoPrint = false) {
     const win = window.open('', '_blank', 'width=980,height=760')
-    if (!win) return setMessage(t('print_blocked'))
+    if (!win) return setMessage('Браузер заблокировал окно печати')
     win.document.open()
     win.document.write(buildTechCardHtml())
     win.document.close()
@@ -5350,9 +4544,9 @@ function Recipes({ t, lang = 'ru' }) {
 
   function recipeProductPriceInfo(productId) {
     const cost = productCost(productId)
-    if (!cost) return { label: t('no_purchase'), className: 'hint' }
+    if (!cost) return { label: 'нет закупки', className: 'hint' }
     return {
-      label: `${fmt(cost.price_per_base_unit)} / ${cost.base_unit || t('unit_piece')}`,
+      label: `${fmt(cost.price_per_base_unit)} / ${cost.base_unit || 'ед.'}`,
       className: 'hint'
     }
   }
@@ -5363,45 +4557,45 @@ function Recipes({ t, lang = 'ru' }) {
       <section className="topbar">
         <div>
           <h2>{t('recipes_tab')}</h2>
-          <p>{t('recipes_subtitle')}</p>
+          <p>Техкарты блюд. Товар выбирается из справочника поставщиков, а себестоимость берётся по последней закупке.</p>
         </div>
       </section>
 
       <section className="grid">
-        <div className="card"><h3>{t('recipe_cost')}</h3><div className="big-number">{fmt(recipeCost)}</div><p className="hint">{t('recipe_cost_hint')}</p></div>
-        <div className="card"><h3>{t('sale_price')}</h3><div className="big-number">{fmt(salePrice)}</div><p className="hint">{t('sale_price_hint')}</p></div>
-        <div className="card"><h3>Food cost</h3><div className={`big-number ${foodCostPercent <= parseNum(selectedMenu?.target_food_cost_percent || 30) ? 'good' : 'bad'}`}>{pct(foodCostPercent)}</div><p className="hint">{t('food_cost_target')}: {fmt(selectedMenu?.target_food_cost_percent || 30)}%</p></div>
-        <div className="card"><h3>{t('gross_profit')}</h3><div className={`big-number ${grossProfit >= 0 ? 'good' : 'bad'}`}>{fmt(grossProfit)}</div><p className="hint">{t('gross_profit_formula')}</p></div>
+        <div className="card"><h3>Себестоимость</h3><div className="big-number">{fmt(recipeCost)}</div><p className="hint">Себестоимость выбранного блюда</p></div>
+        <div className="card"><h3>Цена продажи</h3><div className="big-number">{fmt(salePrice)}</div><p className="hint">Цена в меню</p></div>
+        <div className="card"><h3>Food cost</h3><div className={`big-number ${foodCostPercent <= parseNum(selectedMenu?.target_food_cost_percent || 30) ? 'good' : 'bad'}`}>{pct(foodCostPercent)}</div><p className="hint">Цель: {fmt(selectedMenu?.target_food_cost_percent || 30)}%</p></div>
+        <div className="card"><h3>Валовая прибыль</h3><div className={`big-number ${grossProfit >= 0 ? 'good' : 'bad'}`}>{fmt(grossProfit)}</div><p className="hint">Цена − себестоимость</p></div>
 
         <div className="card recipe-sheet" style={{ gridColumn: '1 / -1' }}>
           <div className="card-head recipe-sheet-head">
             <div>
-              <h3>{t('recipe_composition')}</h3>
-              <p className="hint">{t('selected_dish')}: <strong>{selectedMenu?.name || t('not_selected')}</strong>. {t('recipe_ready_hint')}</p>
+              <h3>Состав техкарты</h3>
+              <p className="hint">Выбранное блюдо: <strong>{selectedMenu?.name || 'не выбрано'}</strong>. Готовая техкарта отображается под ключевыми показателями, а редактирование открывается только по кнопке «Редактировать».</p>
             </div>
             <div className="row-actions">
-              {!recipeEditMode && recipeItems.length > 0 && <button className="ghost small" onClick={printTechCard}>{lang === 'az' ? 'PDF/Çap' : 'PDF/Print'}</button>}
-              {!recipeEditMode && recipeItems.length > 0 && <button className="ghost small" onClick={() => setRecipeEditMode(true)}>{t('edit_recipe')}</button>}
-              {(recipeEditMode || recipeItems.length === 0) && <button className="small" disabled={!availableProductsForRecipe.length} onClick={addRecipeItem}>{availableProductsForRecipe.length ? t('add_ingredient') : t('all_ingredients_added')}</button>}
-              {recipeEditMode && <button className="primary small" onClick={() => { setRecipeEditMode(false); setMessage(t('saved')) }}>{t('save_recipe')}</button>}
+              {!recipeEditMode && recipeItems.length > 0 && <button className="ghost small" onClick={printTechCard}>PDF/Print</button>}
+              {!recipeEditMode && recipeItems.length > 0 && <button className="ghost small" onClick={() => setRecipeEditMode(true)}>Редактировать</button>}
+              {(recipeEditMode || recipeItems.length === 0) && <button className="small" disabled={!availableProductsForRecipe.length} onClick={addRecipeItem}>{availableProductsForRecipe.length ? '+ ингредиент' : 'Все ингредиенты добавлены'}</button>}
+              {recipeEditMode && <button className="primary small" onClick={() => { setRecipeEditMode(false); setMessage(t('saved')) }}>Сохранить техкарту</button>}
             </div>
           </div>
 
           <div className="form-grid compact recipe-sheet-filters">
-            <label><span>{t('product_category')}</span>
+            <label><span>Категория товара</span>
               <select value={selectedCategory} onChange={e => setSelectedCategory(e.target.value)}>
                 {PRODUCT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
             </label>
-            <label><span>{t('select_dish')}</span>
+            <label><span>Выбрать блюдо</span>
               <select value={selectedMenuId} onChange={e => setSelectedMenuId(e.target.value)}>
-                <option value="">{t('choose_dish')}</option>
+                <option value="">Выберите блюдо</option>
                 {filteredMenuItems.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
               </select>
             </label>
-            <label><span>{t('new_ingredient')}</span>
+            <label><span>Новый ингредиент</span>
               <select value={selectedProductId} onChange={e => setSelectedProductId(e.target.value)} disabled={!availableProductsForRecipe.length}>
-                <option value="">{availableProductsForRecipe.length ? t('choose_product') : t('all_products_added')}</option>
+                <option value="">{availableProductsForRecipe.length ? 'Выберите товар' : 'Все товары уже добавлены'}</option>
                 {availableProductsForRecipe.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
               </select>
             </label>
@@ -5411,13 +4605,13 @@ function Recipes({ t, lang = 'ru' }) {
             <table>
               <thead>
                 <tr>
-                  <th>{t('category')}</th>
-                  <th>{t('product')}</th>
-                  <th>{t('usage_qty')}</th>
-                  <th>{t('unit_short')}</th>
-                  <th>{t('waste_percent')}</th>
-                  <th>{t('price_per_unit')}</th>
-                  <th>{t('recipe_cost')}</th>
+                  <th>Категория</th>
+                  <th>Товар</th>
+                  <th>Кол-во использования</th>
+                  <th>Ед.</th>
+                  <th>Потери %</th>
+                  <th>Цена за 1 ед.</th>
+                  <th>Себестоимость</th>
                   <th></th>
                 </tr>
               </thead>
@@ -5440,38 +4634,38 @@ function Recipes({ t, lang = 'ru' }) {
                       <td>{recipeEditMode ? <input inputMode="decimal" defaultValue={row.quantity} onBlur={e => updateRecipeItem(row.id, { quantity: parseNum(e.target.value) })} placeholder="18 / 200" /> : <span className="cell-value">{fmt(row.quantity)}</span>}</td>
                       <td>{unitLabel(product?.base_unit)}</td>
                       <td>{recipeEditMode ? <input inputMode="decimal" defaultValue={row.waste_percent} onBlur={e => updateRecipeItem(row.id, { waste_percent: parseNum(e.target.value) })} /> : <span className="cell-value">{fmt(row.waste_percent)}</span>}</td>
-                      <td>{cost ? `${fmt(cost.price_per_base_unit)} / ${cost.base_unit}` : t('no_purchase')}</td>
+                      <td>{cost ? `${fmt(cost.price_per_base_unit)} / ${cost.base_unit}` : 'нет закупки'}</td>
                       <td><strong>{fmt(lineCost(row))}</strong></td>
                       <td>{recipeEditMode ? <button className="remove" onClick={() => deleteRecipeItem(row.id)}>×</button> : <span className="hint">—</span>}</td>
                     </tr>
                   )
                 })}
-                {!recipeItems.length && <tr><td colSpan="8" className="hint">{t('no_ingredients_recipe')}</td></tr>}
+                {!recipeItems.length && <tr><td colSpan="8" className="hint">Пока нет ингредиентов в техкарте выбранного блюда.</td></tr>}
               </tbody>
             </table>
           </div>
-          <p className="hint recipe-sheet-note">{t('recipe_example_hint')}</p>
-          {recipesLoading && <p className="hint">{t('recipes_loading')}</p>}
+          <p className="hint recipe-sheet-note">Пример: Cappuccino = молоко 200 ml + кофе 18 g. Цена берётся из последней закупки товара у поставщика.</p>
+          {recipesLoading && <p className="hint">Загрузка тех. карт...</p>}
           {message && <p className={`hint ${message === t('saved') ? 'good' : 'bad'}`}>{message}</p>}
         </div>
 
         <div className="card span-2">
-          <div className="card-head"><div><h3>{t('dishes_menu_items')}</h3><p className="hint">{t('dish_once_hint')}</p></div></div>
+          <div className="card-head"><div><h3>Блюда / позиции меню</h3><p className="hint">Блюдо создаётся один раз, затем выбирается в техкарте.</p></div></div>
           <div className="form-grid compact">
-            <label><span>{t('dish_name')}</span><input value={menuForm.name} onChange={e => setMenuForm({...menuForm, name: e.target.value})} placeholder="Cappuccino / Chicken Bowl" /></label>
-            <label><span>{t('category')}</span><select value={menuForm.category} onChange={e => setMenuForm({...menuForm, category: e.target.value})}>{MENU_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select></label>
-            <label><span>{t('sale_price')}</span><input inputMode="decimal" value={menuForm.sale_price} onChange={e => setMenuForm({...menuForm, sale_price: e.target.value})} /></label>
-            <label><span>{t('target_food_cost')}</span><input inputMode="decimal" value={menuForm.target_food_cost_percent} onChange={e => setMenuForm({...menuForm, target_food_cost_percent: e.target.value})} /></label>
+            <label><span>Название блюда</span><input value={menuForm.name} onChange={e => setMenuForm({...menuForm, name: e.target.value})} placeholder="Cappuccino / Chicken Bowl" /></label>
+            <label><span>Категория</span><select value={menuForm.category} onChange={e => setMenuForm({...menuForm, category: e.target.value})}>{MENU_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select></label>
+            <label><span>Цена продажи</span><input inputMode="decimal" value={menuForm.sale_price} onChange={e => setMenuForm({...menuForm, sale_price: e.target.value})} /></label>
+            <label><span>Целевой food cost %</span><input inputMode="decimal" value={menuForm.target_food_cost_percent} onChange={e => setMenuForm({...menuForm, target_food_cost_percent: e.target.value})} /></label>
           </div>
-          <button className="small" onClick={addMenuItem}>{t('add_dish')}</button><br /><br />
+          <button className="small" onClick={addMenuItem}>+ Добавить блюдо</button><br /><br />
           <div className="table-wrap">
             <table>
-              <thead><tr><th>{t('dish')}</th><th>{t('category')}</th><th>{t('price')}</th><th>{t('target_food_cost_short')}</th><th></th></tr></thead>
+              <thead><tr><th>Блюдо</th><th>Категория</th><th>Цена</th><th>Цель food cost</th><th></th></tr></thead>
               <tbody>
                 {menuItems.map(item => (
                   <tr key={item.id}>
                     <td><button className={selectedMenuId === item.id ? 'primary small' : 'ghost small'} onClick={() => setSelectedMenuId(item.id)}>{item.name}</button></td>
-                    <td><select value={item.category || 'Other'} onChange={e => updateMenuItem(item.id, { category: e.target.value })}>{MENU_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select></td>
+                    <td><select value={item.category || 'Прочее'} onChange={e => updateMenuItem(item.id, { category: e.target.value })}>{MENU_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select></td>
                     <td><input inputMode="decimal" defaultValue={item.sale_price} onBlur={e => updateMenuItem(item.id, { sale_price: parseNum(e.target.value) })} /></td>
                     <td><input inputMode="decimal" defaultValue={item.target_food_cost_percent} onBlur={e => updateMenuItem(item.id, { target_food_cost_percent: parseNum(e.target.value) })} /></td>
                     <td><button className="remove" onClick={() => deactivateMenuItem(item.id)}>×</button></td>
@@ -5484,22 +4678,22 @@ function Recipes({ t, lang = 'ru' }) {
         </div>
 
         <div className="card span-2">
-          <div className="card-head"><div><h3>{t('products_ingredients')}</h3><p className="hint">{t('unified_products_hint')}</p></div></div>
+          <div className="card-head"><div><h3>Товары / ингредиенты</h3><p className="hint">Это единый справочник. Эти же товары используются в закупках поставщиков и в техкартах.</p></div></div>
           <div className="form-grid compact">
-            <label><span>{t('product_name')}</span><input value={productForm.name} onChange={e => setProductForm({...productForm, name: e.target.value})} placeholder="Молоко / Кофе / Сыр" /></label>
-            <label><span>{t('type')}</span><select value={productForm.category} onChange={e => setProductForm({...productForm, category: e.target.value})}>{PRODUCT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select></label>
-            <label><span>{t('base_usage_unit')}</span><select value={productForm.base_unit} onChange={e => setProductForm({...productForm, base_unit: e.target.value})}>{BASE_UNITS.map(u => <option key={u.value} value={u.value}>{u.label}</option>)}</select></label>
+            <label><span>Название товара</span><input value={productForm.name} onChange={e => setProductForm({...productForm, name: e.target.value})} placeholder="Молоко / Кофе / Сыр" /></label>
+            <label><span>Тип</span><select value={productForm.category} onChange={e => setProductForm({...productForm, category: e.target.value})}>{PRODUCT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select></label>
+            <label><span>Базовая ед. использования</span><select value={productForm.base_unit} onChange={e => setProductForm({...productForm, base_unit: e.target.value})}>{BASE_UNITS.map(u => <option key={u.value} value={u.value}>{u.label}</option>)}</select></label>
           </div>
-          <button className="small" onClick={addProduct}>{t('add_product_button')}</button><br /><br />
+          <button className="small" onClick={addProduct}>+ Добавить товар</button><br /><br />
           <div className="table-wrap">
             <table>
-              <thead><tr><th>{t('category')}</th><th>{t('product')}</th><th>{t('base_unit')}</th><th>{t('price_change')}</th><th></th></tr></thead>
+              <thead><tr><th>Категория</th><th>Товар</th><th>Базовая ед.</th><th>Цена / изменение</th><th></th></tr></thead>
               <tbody>
                 {products.map(item => {
                   const cost = productCost(item.id)
                   return (
                     <tr key={item.id}>
-                      <td><select value={item.category || 'Other'} onChange={e => updateProduct(item.id, { category: e.target.value })}>{PRODUCT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select></td>
+                      <td><select value={item.category || 'Прочее'} onChange={e => updateProduct(item.id, { category: e.target.value })}>{PRODUCT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select></td>
                       <td><input defaultValue={item.name} onBlur={e => updateProduct(item.id, { name: e.target.value.trim() })} /></td>
                       <td><select value={item.base_unit || 'g'} onChange={e => updateProduct(item.id, { base_unit: e.target.value })}>{BASE_UNITS.map(u => <option key={u.value} value={u.value}>{u.label}</option>)}</select></td>
                       <td><span className={recipeProductPriceInfo(item.id).className}>{recipeProductPriceInfo(item.id).label}</span></td>
@@ -7810,7 +7004,7 @@ function Suppliers({ t }) {
         setProfiles(ws.user_profiles || [])
         return
       }
-      setMessage(error?.message || t('permission_denied'))
+      setMessage(error?.message || 'Нет доступа к поставщикам')
     }
 
     const [{ data: le }, { data: sup }, { data: prod }, { data: bal }, { data: pur }, { data: pay }, { data: opening }, { data: prof }] = await Promise.all([
@@ -7881,8 +7075,8 @@ function Suppliers({ t }) {
     rows.sort((a, b) => String(b.date).localeCompare(String(a.date)))
     const current = rows[0]
     const previous = rows[1]
-    if (!current) return { label: t('no_purchase'), className: 'hint' }
-    if (!previous || !previous.price) return { label: `${fmt(current.price)} · ${t('first_price')}`, className: 'hint' }
+    if (!current) return { label: 'нет закупки', className: 'hint' }
+    if (!previous || !previous.price) return { label: `${fmt(current.price)} · первая цена`, className: 'hint' }
     const diff = current.price - previous.price
     const pctChange = previous.price ? diff / previous.price * 100 : 0
     const sign = diff > 0 ? '+' : ''
@@ -7897,14 +7091,14 @@ function Suppliers({ t }) {
   }
   async function ensureProduct(row) {
     if (row.product_id) return products.find(p => p.id === row.product_id)
-    throw new Error(t('select_product_error'))
+    throw new Error('Выберите товар из списка. Если товара нет, сначала добавьте его в блоке “Товары”.')
   }
 
   async function addSupplier() {
     setMessage('')
-    if (!supplierForm.name.trim()) return setMessage(t('enter_supplier_name'))
+    if (!supplierForm.name.trim()) return setMessage('Введите имя контрагента')
     const openingAmount = parseNum(supplierForm.opening_debt_amount)
-    const stopProgress = startGlobalProgress(t('saving_supplier'))
+    const stopProgress = startGlobalProgress('Сохранение поставщика...')
     try {
       const { data: createdSupplier, error } = await supabase.from('suppliers').insert({
         name: supplierForm.name.trim(), voen: supplierForm.voen.trim() || null,
@@ -7920,15 +7114,15 @@ function Suppliers({ t }) {
           p_supplier_id: createdSupplier.id,
           p_debt_date: supplierForm.opening_debt_date || todayISO(),
           p_amount: openingAmount,
-          p_invoice_notes: t('starting_debt'),
-          p_comment: supplierForm.opening_debt_comment?.trim() || t('supplier_opening_debt_short')
+          p_invoice_notes: 'Стартовый долг',
+          p_comment: supplierForm.opening_debt_comment?.trim() || 'Долг за предыдущий период'
         })
         if (debtError) throw debtError
       }
 
       setSupplierForm({ name: '', voen: '', contact_person: '', phone: '', info: '', payment_term_days: '', credit_limit: '', opening_debt_amount: '', opening_debt_date: todayISO(), opening_debt_comment: '' })
       await load()
-      setMessage(openingAmount > 0 ? t('supplier_saved_debt_added') : t('saved'))
+      setMessage(openingAmount > 0 ? 'Поставщик сохранён, стартовый долг добавлен' : t('saved'))
     } catch (e) {
       setMessage(e.message || String(e))
     } finally {
@@ -7942,8 +7136,8 @@ function Suppliers({ t }) {
   }
   async function addProductFromForm() {
     setMessage('')
-    if (!productForm.name.trim()) return setMessage(t('enter_product'))
-    const stopProgress = startGlobalProgress(t('saving_product'))
+    if (!productForm.name.trim()) return setMessage('Введите товар')
+    const stopProgress = startGlobalProgress('Сохранение товара...')
     const { error } = await supabase.from('supplier_products').insert({ name: productForm.name.trim(), category: productForm.category, base_unit: productForm.base_unit })
     stopProgress()
     if (error) return setMessage(error.message)
@@ -7954,7 +7148,7 @@ function Suppliers({ t }) {
   async function addPurchase() {
     setMessage('')
     try {
-      if (!purchaseForm.supplier_id || !purchaseForm.legal_entity_id) throw new Error(t('select_supplier_and_voen'))
+      if (!purchaseForm.supplier_id || !purchaseForm.legal_entity_id) throw new Error('Выберите поставщика и VOEN')
       const prepared = []
       for (const row of lineRows) {
         const hasData = row.product_id || parseNum(row.quantity) || parseNum(row.unit_price)
@@ -7964,10 +7158,10 @@ function Suppliers({ t }) {
         const unitPrice = parseNum(row.unit_price)
         const total = quantity * unitPrice
         const baseQty = convertToBase(quantity, row.unit, product?.base_unit)
-        if (!product?.id || !quantity || !unitPrice || !baseQty) throw new Error(t('check_product_qty_unit_price'))
+        if (!product?.id || !quantity || !unitPrice || !baseQty) throw new Error('Проверьте товар, количество, единицу и цену')
         prepared.push({ row, product, quantity, unitPrice, total, baseQty })
       }
-      if (!prepared.length) throw new Error(t('add_at_least_one_item'))
+      if (!prepared.length) throw new Error('Добавьте хотя бы один товар в поступление')
       const totalAmount = prepared.reduce((s, r) => s + r.total, 0)
       const { data: purchase, error } = await supabase.from('supplier_purchases').insert({
         supplier_id: purchaseForm.supplier_id, legal_entity_id: purchaseForm.legal_entity_id,
@@ -8010,7 +7204,7 @@ function Suppliers({ t }) {
     await recalcPurchaseTotal(purchaseId); await load(); setMessage(t('saved'))
   }
   async function softDeletePurchase(id) {
-    if (!window.confirm(t('delete_purchase_confirm'))) return
+    if (!window.confirm('Удалить поступление? Оно будет зачёркнуто и не будет учитываться в финансах.')) return
     const { data: authData } = await supabase.auth.getUser()
     const { error } = await supabase.from('supplier_purchases').update({
       deleted_at: new Date().toISOString(),
@@ -8021,10 +7215,10 @@ function Suppliers({ t }) {
   function startPayment(supplierId) { setPaymentForm({ supplier_id: supplierId, payment_date: todayISO(), amount: '', invoice_notes: '', comment: '' }) }
   async function addOpeningDebt() {
     setMessage('')
-    if (!openingDebtForm.supplier_id) return setMessage(t('select_supplier_msg'))
+    if (!openingDebtForm.supplier_id) return setMessage('Выберите поставщика')
     const amount = parseNum(openingDebtForm.amount)
-    if (!amount) return setMessage(t('enter_debt_amount'))
-    const stopProgress = startGlobalProgress(t('adding_opening_debt'))
+    if (!amount) return setMessage('Введите сумму долга')
+    const stopProgress = startGlobalProgress('Добавление стартового долга...')
     try {
       const { error } = await supabase.rpc('rms_add_supplier_opening_debt', {
         p_supplier_id: openingDebtForm.supplier_id,
@@ -8036,7 +7230,7 @@ function Suppliers({ t }) {
       if (error) throw error
       setOpeningDebtForm({ supplier_id: openingDebtForm.supplier_id, debt_date: todayISO(), amount: '', invoice_notes: '', comment: '' })
       await load()
-      setMessage(t('opening_debt_added'))
+      setMessage('Стартовый долг поставщику добавлен')
     } catch (e) {
       setMessage(e.message)
     } finally {
@@ -8046,7 +7240,7 @@ function Suppliers({ t }) {
 
   async function savePayment() {
     const amount = parseNum(paymentForm.amount)
-    if (!paymentForm.supplier_id || !amount) return setMessage(t('select_supplier_and_payment_amount'))
+    if (!paymentForm.supplier_id || !amount) return setMessage('Выберите поставщика и сумму оплаты')
     const { error } = await supabase.from('supplier_payments').insert({
       supplier_id: paymentForm.supplier_id, payment_date: paymentForm.payment_date || todayISO(), amount,
       invoice_notes: paymentForm.invoice_notes.trim() || null, comment: paymentForm.comment.trim() || null
@@ -8058,9 +7252,9 @@ function Suppliers({ t }) {
 
   const purchaseTotal = lineRows.reduce((s, r) => s + lineTotal(r), 0)
   function allTransactions() {
-    const openingDebtRows = openingDebts.map(d => ({ id: `od-${d.id}`, type: t('supplier_opening_debt_short'), date: d.debt_date, supplier_id: d.supplier_id, supplier: d.suppliers?.name || suppliers.find(s => s.id === d.supplier_id)?.name || '—', invoice: d.invoice_notes || t('starting_debt'), amount: parseNum(d.amount), comment: d.comment || '', legal: '—' }))
-    const purchaseRows = purchases.map(p => ({ id: `p-${p.id}`, type: t('receipt'), date: p.purchase_date, supplier_id: p.supplier_id, supplier: p.suppliers?.name || suppliers.find(s => s.id === p.supplier_id)?.name || '—', invoice: p.invoice_number || '—', amount: parseNum(p.total_amount), comment: p.comment || '', legal: p.legal_entities?.name || '—' }))
-    const paymentRows = payments.map(p => ({ id: `pay-${p.id}`, type: t('payment'), date: p.payment_date, supplier_id: p.supplier_id, supplier: p.suppliers?.name || suppliers.find(s => s.id === p.supplier_id)?.name || '—', invoice: p.invoice_notes || '—', amount: -parseNum(p.amount), comment: p.comment || '', legal: '—' }))
+    const openingDebtRows = openingDebts.map(d => ({ id: `od-${d.id}`, type: 'Долг за предыдущий период', date: d.debt_date, supplier_id: d.supplier_id, supplier: d.suppliers?.name || suppliers.find(s => s.id === d.supplier_id)?.name || '—', invoice: d.invoice_notes || 'Стартовый долг', amount: parseNum(d.amount), comment: d.comment || '', legal: '—' }))
+    const purchaseRows = purchases.map(p => ({ id: `p-${p.id}`, type: 'Поступление', date: p.purchase_date, supplier_id: p.supplier_id, supplier: p.suppliers?.name || suppliers.find(s => s.id === p.supplier_id)?.name || '—', invoice: p.invoice_number || '—', amount: parseNum(p.total_amount), comment: p.comment || '', legal: p.legal_entities?.name || '—' }))
+    const paymentRows = payments.map(p => ({ id: `pay-${p.id}`, type: 'Оплата', date: p.payment_date, supplier_id: p.supplier_id, supplier: p.suppliers?.name || suppliers.find(s => s.id === p.supplier_id)?.name || '—', invoice: p.invoice_notes || '—', amount: -parseNum(p.amount), comment: p.comment || '', legal: '—' }))
     return [...openingDebtRows, ...purchaseRows, ...paymentRows].sort((a,b) => new Date(b.date) - new Date(a.date))
   }
   function periodOk(dateStr) {
@@ -8079,87 +7273,87 @@ function Suppliers({ t }) {
   }
 
   return <section>
-    <section className="topbar"><div><h2>{t('suppliers_tab')}</h2><p>{t('suppliers_subtitle')}</p></div></section>
+    <section className="topbar"><div><h2>{t('suppliers_tab')}</h2><p>Поставщики, поступления, оплаты, товары и долги. VOEN / юрлица теперь находятся в разделе “Настройки”.</p></div></section>
     <section className="grid">
       <div className="card span-2 supplier-opening-debt-card">
-        <div className="card-head"><div><h3>{t('supplier_opening_debt_title')}</h3><p className="hint">{t('supplier_opening_debt_hint')}</p></div></div>
+        <div className="card-head"><div><h3>Долг поставщику за предыдущий период</h3><p className="hint">Используйте при запуске программы с нуля, чтобы перенести старый долг в баланс поставщика.</p></div></div>
         <div className="form-grid compact">
-          <label><span>{t('supplier')}</span><select value={openingDebtForm.supplier_id} onChange={e => setOpeningDebtForm({...openingDebtForm, supplier_id: e.target.value})}><option value="">{t('select_supplier')}</option>{suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
-          <label><span>{t('debt_date')}</span><input type="date" value={openingDebtForm.debt_date} onChange={e => setOpeningDebtForm({...openingDebtForm, debt_date: e.target.value})} /></label>
-          <label><span>{t('debt_amount')}</span><input inputMode="decimal" value={openingDebtForm.amount} onChange={e => setOpeningDebtForm({...openingDebtForm, amount: e.target.value})} /></label>
-          <label><span>{t('invoice_mark')}</span><input value={openingDebtForm.invoice_notes} onChange={e => setOpeningDebtForm({...openingDebtForm, invoice_notes: e.target.value})} /></label>
-          <label><span>{t('comment')}</span><input value={openingDebtForm.comment} onChange={e => setOpeningDebtForm({...openingDebtForm, comment: e.target.value})} /></label>
-        </div><button className="small primary" onClick={addOpeningDebt}>{t('add_debt')}</button>
+          <label><span>Поставщик</span><select value={openingDebtForm.supplier_id} onChange={e => setOpeningDebtForm({...openingDebtForm, supplier_id: e.target.value})}><option value="">Выберите поставщика</option>{suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
+          <label><span>Дата долга</span><input type="date" value={openingDebtForm.debt_date} onChange={e => setOpeningDebtForm({...openingDebtForm, debt_date: e.target.value})} /></label>
+          <label><span>Сумма долга</span><input inputMode="decimal" value={openingDebtForm.amount} onChange={e => setOpeningDebtForm({...openingDebtForm, amount: e.target.value})} /></label>
+          <label><span>Фактура / отметка</span><input value={openingDebtForm.invoice_notes} onChange={e => setOpeningDebtForm({...openingDebtForm, invoice_notes: e.target.value})} /></label>
+          <label><span>Комментарий</span><input value={openingDebtForm.comment} onChange={e => setOpeningDebtForm({...openingDebtForm, comment: e.target.value})} /></label>
+        </div><button className="small primary" onClick={addOpeningDebt}>+ Добавить долг</button>
       </div>
 
       <div className="card span-2">
-        <div className="card-head"><div><h3>{t('supplier_purchases_title')}</h3><p className="hint">{t('supplier_purchases_hint')}</p></div></div>
+        <div className="card-head"><div><h3>Поступления от поставщика</h3><p className="hint">Сначала заполняется шапка фактуры. Товары добавляются строками ниже.</p></div></div>
         <div className="form-grid compact">
-          <label><span>{t('supplier')}</span><select value={purchaseForm.supplier_id} onChange={e => setPurchaseForm({...purchaseForm, supplier_id: e.target.value})}>{suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
-          <label><span>{t('our_voen')}</span><select value={purchaseForm.legal_entity_id} onChange={e => setPurchaseForm({...purchaseForm, legal_entity_id: e.target.value})}>{legalEntities.map(le => <option key={le.id} value={le.id}>{le.name} · {le.voen}</option>)}</select></label>
-          <label><span>{t('branch')}</span><select value={purchaseForm.branch_id} onChange={e => setPurchaseForm({...purchaseForm, branch_id: e.target.value})}>{branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label>
-          <label><span>{t('purchase_date')}</span><input type="date" value={purchaseForm.purchase_date} onChange={e => setPurchaseForm({...purchaseForm, purchase_date: e.target.value})} /></label>
-          <label><span>{t('invoice_number')}</span><input value={purchaseForm.invoice_number} onChange={e => setPurchaseForm({...purchaseForm, invoice_number: e.target.value})} /></label>
-          <label><span>{t('comment')}</span><input value={purchaseForm.comment} onChange={e => setPurchaseForm({...purchaseForm, comment: e.target.value})} /></label>
+          <label><span>Поставщик</span><select value={purchaseForm.supplier_id} onChange={e => setPurchaseForm({...purchaseForm, supplier_id: e.target.value})}>{suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
+          <label><span>Наш VOEN</span><select value={purchaseForm.legal_entity_id} onChange={e => setPurchaseForm({...purchaseForm, legal_entity_id: e.target.value})}>{legalEntities.map(le => <option key={le.id} value={le.id}>{le.name} · {le.voen}</option>)}</select></label>
+          <label><span>Филиал</span><select value={purchaseForm.branch_id} onChange={e => setPurchaseForm({...purchaseForm, branch_id: e.target.value})}>{branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label>
+          <label><span>Дата поступления</span><input type="date" value={purchaseForm.purchase_date} onChange={e => setPurchaseForm({...purchaseForm, purchase_date: e.target.value})} /></label>
+          <label><span>Номер фактуры</span><input value={purchaseForm.invoice_number} onChange={e => setPurchaseForm({...purchaseForm, invoice_number: e.target.value})} /></label>
+          <label><span>Комментарий</span><input value={purchaseForm.comment} onChange={e => setPurchaseForm({...purchaseForm, comment: e.target.value})} /></label>
         </div><br />
-        <div className="card-head"><div><h3>{t('purchase_items_title')}</h3><p className="hint">{t('purchase_items_hint')}</p></div><button className="small" onClick={() => setLineRows(rows => [...rows, { ...emptyLine }])}>{t('add_item_row')}</button></div>
-        <div className="table-wrap"><table><thead><tr><th>{t('type')}</th><th>{t('product')}</th><th>{t('purchase_qty')}</th><th>{t('purchase_unit')}</th><th>{t('unit_price')}</th><th>{t('sum')}</th><th></th></tr></thead><tbody>{lineRows.map((row, idx) => <tr key={idx}>
+        <div className="card-head"><div><h3>Товары в поступлении</h3><p className="hint">Если товара нет, сначала добавьте его ниже в блоке “Товары”.</p></div><button className="small" onClick={() => setLineRows(rows => [...rows, { ...emptyLine }])}>+ Строка товара</button></div>
+        <div className="table-wrap"><table><thead><tr><th>Тип</th><th>Товар</th><th>Кол-во закупа</th><th>Ед. закупа</th><th>Цена за ед.</th><th>Сумма</th><th></th></tr></thead><tbody>{lineRows.map((row, idx) => <tr key={idx}>
           <td><select value={row.category} onChange={e => updateLine(idx, { category: e.target.value })}>{PRODUCT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select></td>
-          <td style={{minWidth:260}}><select value={row.product_id || ''} onChange={e => selectProductForLine(idx, e.target.value)}><option value="">{t('product')}</option>{productOptionsForRow(row).map(p => <option key={p.id} value={p.id}>{productLabel(p)}</option>)}</select></td>
+          <td style={{minWidth:260}}><select value={row.product_id || ''} onChange={e => selectProductForLine(idx, e.target.value)}><option value="">Выберите товар</option>{productOptionsForRow(row).map(p => <option key={p.id} value={p.id}>{productLabel(p)}</option>)}</select></td>
           <td><input inputMode="decimal" value={row.quantity} onChange={e => updateLine(idx, { quantity: e.target.value })} /></td>
           <td><select value={row.unit} onChange={e => updateLine(idx, { unit: e.target.value })}>{PURCHASE_UNITS.map(u => <option key={u.value} value={u.value}>{u.label}</option>)}</select></td>
           <td><input inputMode="decimal" value={row.unit_price} onChange={e => updateLine(idx, { unit_price: e.target.value })} /></td>
           <td><strong>{fmt(lineTotal(row))}</strong></td>
           <td><button className="remove" onClick={() => setLineRows(rows => rows.length === 1 ? [{ ...emptyLine }] : rows.filter((_, i) => i !== idx))}>×</button></td>
         </tr>)}</tbody></table></div>
-        <p className="hint">{t('invoice_total')}: <strong>{fmt(purchaseTotal)}</strong> AZN.</p><button className="small primary" onClick={addPurchase}>{t('save_purchase')}</button>{message && <p className={`hint ${message === t('saved') ? 'good' : 'bad'}`}>{message}</p>}
+        <p className="hint">Итого по фактуре: <strong>{fmt(purchaseTotal)}</strong> AZN.</p><button className="small primary" onClick={addPurchase}>+ Сохранить поступление</button>{message && <p className={`hint ${message === t('saved') ? 'good' : 'bad'}`}>{message}</p>}
       </div>
 
       <div className="card span-2">
-        <div className="card-head"><div><h3>{t('supplier_payment_title')}</h3><p className="hint">{t('supplier_payment_hint')}</p></div></div>
+        <div className="card-head"><div><h3>Оплата поставщику</h3><p className="hint">Укажите сумму оплаты, номера счёт-фактур и комментарий.</p></div></div>
         <div className="form-grid compact">
-          <label><span>{t('supplier')}</span><select value={paymentForm.supplier_id} onChange={e => setPaymentForm({...paymentForm, supplier_id: e.target.value})}><option value="">{t('select_supplier')}</option>{suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
-          <label><span>{t('payment_date')}</span><input type="date" value={paymentForm.payment_date} onChange={e => setPaymentForm({...paymentForm, payment_date: e.target.value})} /></label>
-          <label><span>{t('payment_amount')}</span><input inputMode="decimal" value={paymentForm.amount} onChange={e => setPaymentForm({...paymentForm, amount: e.target.value})} /></label>
-          <label><span>{t('invoice_notes')}</span><input value={paymentForm.invoice_notes} onChange={e => setPaymentForm({...paymentForm, invoice_notes: e.target.value})} /></label>
-          <label><span>{t('comment')}</span><input value={paymentForm.comment} onChange={e => setPaymentForm({...paymentForm, comment: e.target.value})} /></label>
-        </div><button className="small primary" onClick={savePayment}>{t('save_payment')}</button>
+          <label><span>Поставщик</span><select value={paymentForm.supplier_id} onChange={e => setPaymentForm({...paymentForm, supplier_id: e.target.value})}><option value="">Выберите поставщика</option>{suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
+          <label><span>Дата оплаты</span><input type="date" value={paymentForm.payment_date} onChange={e => setPaymentForm({...paymentForm, payment_date: e.target.value})} /></label>
+          <label><span>Сумма оплаты</span><input inputMode="decimal" value={paymentForm.amount} onChange={e => setPaymentForm({...paymentForm, amount: e.target.value})} /></label>
+          <label><span>Отметки / номера счёт-фактур</span><input value={paymentForm.invoice_notes} onChange={e => setPaymentForm({...paymentForm, invoice_notes: e.target.value})} /></label>
+          <label><span>Комментарий</span><input value={paymentForm.comment} onChange={e => setPaymentForm({...paymentForm, comment: e.target.value})} /></label>
+        </div><button className="small primary" onClick={savePayment}>+ Сохранить оплату</button>
       </div>
 
 
 
       <div className="card span-2">
-        <div className="card-head"><div><h3>{t('contractors')}</h3><p className="hint">{t('contractors_hint')}</p></div></div>
+        <div className="card-head"><div><h3>Контрагенты</h3><p className="hint">Условия оплаты и лимиты используются в Dashboard для проблемных долгов.</p></div></div>
         <div className="form-grid compact">
-          <label><span>{t('contractor_name')}</span><input value={supplierForm.name} onChange={e => setSupplierForm({...supplierForm, name: e.target.value})} /></label>
-          <label><span>{t('supplier_voen')}</span><input value={supplierForm.voen} onChange={e => setSupplierForm({...supplierForm, voen: e.target.value})} /></label>
-          <label><span>{t('contact')}</span><input value={supplierForm.contact_person} onChange={e => setSupplierForm({...supplierForm, contact_person: e.target.value})} /></label>
-          <label><span>{t('phone')}</span><input value={supplierForm.phone} onChange={e => setSupplierForm({...supplierForm, phone: e.target.value})} /></label>
-          <label><span>{t('info')}</span><input value={supplierForm.info} onChange={e => setSupplierForm({...supplierForm, info: e.target.value})} /></label>
-          <label><span>{t('payment_term_days')}</span><input inputMode="numeric" value={supplierForm.payment_term_days} onChange={e => setSupplierForm({...supplierForm, payment_term_days: e.target.value})} /></label>
-          <label><span>{t('credit_limit')}</span><input inputMode="decimal" value={supplierForm.credit_limit} onChange={e => setSupplierForm({...supplierForm, credit_limit: e.target.value})} /></label>
-          <label><span>{t('opening_debt_previous')}</span><input inputMode="decimal" value={supplierForm.opening_debt_amount} onChange={e => setSupplierForm({...supplierForm, opening_debt_amount: e.target.value})} placeholder="0.00" /></label>
-          <label><span>{t('opening_debt_date')}</span><input type="date" value={supplierForm.opening_debt_date} onChange={e => setSupplierForm({...supplierForm, opening_debt_date: e.target.value})} /></label>
-          <label><span>{t('opening_debt_comment')}</span><input value={supplierForm.opening_debt_comment} onChange={e => setSupplierForm({...supplierForm, opening_debt_comment: e.target.value})} placeholder={t('opening_debt_comment')} /></label>
-        </div><button className="small" onClick={addSupplier}>{t('add_supplier')}</button>
+          <label><span>Имя контрагента</span><input value={supplierForm.name} onChange={e => setSupplierForm({...supplierForm, name: e.target.value})} /></label>
+          <label><span>VOEN поставщика</span><input value={supplierForm.voen} onChange={e => setSupplierForm({...supplierForm, voen: e.target.value})} /></label>
+          <label><span>Контакт</span><input value={supplierForm.contact_person} onChange={e => setSupplierForm({...supplierForm, contact_person: e.target.value})} /></label>
+          <label><span>Телефон</span><input value={supplierForm.phone} onChange={e => setSupplierForm({...supplierForm, phone: e.target.value})} /></label>
+          <label><span>Информация</span><input value={supplierForm.info} onChange={e => setSupplierForm({...supplierForm, info: e.target.value})} /></label>
+          <label><span>Срок оплаты, дней</span><input inputMode="numeric" value={supplierForm.payment_term_days} onChange={e => setSupplierForm({...supplierForm, payment_term_days: e.target.value})} /></label>
+          <label><span>Кредитный лимит</span><input inputMode="decimal" value={supplierForm.credit_limit} onChange={e => setSupplierForm({...supplierForm, credit_limit: e.target.value})} /></label>
+          <label><span>Долг за предыдущий период</span><input inputMode="decimal" value={supplierForm.opening_debt_amount} onChange={e => setSupplierForm({...supplierForm, opening_debt_amount: e.target.value})} placeholder="0.00" /></label>
+          <label><span>Дата стартового долга</span><input type="date" value={supplierForm.opening_debt_date} onChange={e => setSupplierForm({...supplierForm, opening_debt_date: e.target.value})} /></label>
+          <label><span>Комментарий к стартовому долгу</span><input value={supplierForm.opening_debt_comment} onChange={e => setSupplierForm({...supplierForm, opening_debt_comment: e.target.value})} placeholder="Например: остаток на 01.05" /></label>
+        </div><button className="small" onClick={addSupplier}>+ Добавить поставщика</button>
       </div>
 
       <div className="card span-2">
-        <div className="card-head"><div><h3>{t('products_title')}</h3><p className="hint">{t('products_hint')}</p></div></div>
-        <div className="form-grid compact"><label><span>{t('product')}</span><input value={productForm.name} onChange={e => setProductForm({...productForm, name: e.target.value})} /></label><label><span>{t('type')}</span><select value={productForm.category} onChange={e => setProductForm({...productForm, category: e.target.value})}>{PRODUCT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select></label><label><span>{t('base_unit_recipe')}</span><select value={productForm.base_unit} onChange={e => setProductForm({...productForm, base_unit: e.target.value})}>{BASE_UNITS.map(u => <option key={u.value} value={u.value}>{u.label}</option>)}</select></label></div><button className="small" onClick={addProductFromForm}>{t('add_product')}</button>
+        <div className="card-head"><div><h3>Товары</h3><p className="hint">Товар создаётся один раз и потом выбирается в поступлении и в техкарте.</p></div></div>
+        <div className="form-grid compact"><label><span>Товар</span><input value={productForm.name} onChange={e => setProductForm({...productForm, name: e.target.value})} /></label><label><span>Тип</span><select value={productForm.category} onChange={e => setProductForm({...productForm, category: e.target.value})}>{PRODUCT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select></label><label><span>Базовая ед. для техкарты</span><select value={productForm.base_unit} onChange={e => setProductForm({...productForm, base_unit: e.target.value})}>{BASE_UNITS.map(u => <option key={u.value} value={u.value}>{u.label}</option>)}</select></label></div><button className="small" onClick={addProductFromForm}>+ Добавить товар</button>
       </div>
 
      <div className="card span-2">
         <div className="card-head">
           <div>
-            <h3>{t('latest_purchases')}</h3>
-            <p className="hint">{t('latest_purchases_hint')}</p>
+            <h3>Последние поступления</h3>
+            <p className="hint">Сначала открывается просмотр накладной. Редактирование и удаление доступны внутри накладной.</p>
           </div>
         </div>
         <div className="table-wrap">
           <table>
             <thead>
-              <tr><th>{t('date')}</th><th>{t('invoice')}</th><th>{t('supplier')}</th><th>{t('our_voen')}</th><th>{t('branch')}</th><th>{t('sum')}</th><th>{t('status')}</th><th></th></tr>
+              <tr><th>Дата</th><th>Фактура</th><th>Поставщик</th><th>Наш VOEN</th><th>Филиал</th><th>Сумма</th><th>Статус</th><th></th></tr>
             </thead>
             <tbody>
               {purchases.slice(0, 50).map(p => (
@@ -8171,8 +7365,8 @@ function Suppliers({ t }) {
                     <td>{p.legal_entities?.voen}</td>
                     <td>{p.branches?.name || '—'}</td>
                     <td><strong>{fmt(p.total_amount)}</strong></td>
-                    <td>{p.deleted_at ? <span className="bad">{t('cancelled')}</span> : <span className="good">{t('active')}</span>}</td>
-                    <td><button className="ghost small" onClick={() => { setViewPurchaseId(viewPurchaseId === p.id ? '' : p.id); setEditingPurchaseId('') }}>{viewPurchaseId === p.id ? t('close') : t('view')}</button></td>
+                    <td>{p.deleted_at ? <span className="bad">Отменено</span> : <span className="good">Активно</span>}</td>
+                    <td><button className="ghost small" onClick={() => { setViewPurchaseId(viewPurchaseId === p.id ? '' : p.id); setEditingPurchaseId('') }}>{viewPurchaseId === p.id ? 'Закрыть' : 'Просмотр'}</button></td>
                   </tr>
                   {viewPurchaseId === p.id && (
                     <tr>
@@ -8180,28 +7374,28 @@ function Suppliers({ t }) {
                         <div className="invoice-view">
                           <div className="card-head">
                             <div>
-                              <h3>{t('invoice_word')} {p.invoice_number || t('no_number')}</h3>
+                              <h3>Накладная {p.invoice_number || 'без номера'}</h3>
                               <p className="hint">
-                                {t('created')}: {p.created_at ? new Date(p.created_at).toLocaleString() : '—'} · {userName(p.created_by)}
-                                {' '} | {t('updated')}: {p.updated_at ? new Date(p.updated_at).toLocaleString() : '—'} · {userName(p.updated_by)}
-                                {p.deleted_at ? <> | {t('cancelled')}: {new Date(p.deleted_at).toLocaleString()} · {userName(p.deleted_by)}</> : null}
+                                Создано: {p.created_at ? new Date(p.created_at).toLocaleString() : '—'} · {userName(p.created_by)}
+                                {' '} | Изменено: {p.updated_at ? new Date(p.updated_at).toLocaleString() : '—'} · {userName(p.updated_by)}
+                                {p.deleted_at ? <> | Отменено: {new Date(p.deleted_at).toLocaleString()} · {userName(p.deleted_by)}</> : null}
                               </p>
                             </div>
                             {!p.deleted_at && <div className="row-actions">
-                              <button className="ghost small" onClick={() => setEditingPurchaseId(editingPurchaseId === p.id ? '' : p.id)}>{editingPurchaseId === p.id ? t('done') : t('edit')}</button>
-                              <button className="remove" onClick={() => softDeletePurchase(p.id)}>{t('delete')}</button>
+                              <button className="ghost small" onClick={() => setEditingPurchaseId(editingPurchaseId === p.id ? '' : p.id)}>{editingPurchaseId === p.id ? 'Готово' : 'Редактировать'}</button>
+                              <button className="remove" onClick={() => softDeletePurchase(p.id)}>Удалить</button>
                             </div>}
                           </div>
 
                           <div className="form-grid compact">
                             <label><span>Дата</span>{editingPurchaseId === p.id && !p.deleted_at ? <input type="date" defaultValue={p.purchase_date} onBlur={e => updatePurchase(p.id, { purchase_date: e.target.value })} /> : <strong>{p.purchase_date}</strong>}</label>
                             <label><span>Фактура</span>{editingPurchaseId === p.id && !p.deleted_at ? <input defaultValue={p.invoice_number || ''} onBlur={e => updatePurchase(p.id, { invoice_number: e.target.value.trim() || null })} /> : <strong>{p.invoice_number || '—'}</strong>}</label>
-                            <label><span>{t('branch')}</span>{editingPurchaseId === p.id && !p.deleted_at ? <select defaultValue={p.branch_id || ''} onBlur={e => updatePurchase(p.id, { branch_id: e.target.value || null })}><option value="">—</option>{branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select> : <strong>{p.branches?.name || '—'}</strong>}</label>
+                            <label><span>Филиал</span>{editingPurchaseId === p.id && !p.deleted_at ? <select defaultValue={p.branch_id || ''} onBlur={e => updatePurchase(p.id, { branch_id: e.target.value || null })}><option value="">—</option>{branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select> : <strong>{p.branches?.name || '—'}</strong>}</label>
                           </div>
 
                           <div className="table-wrap">
                             <table>
-                              <thead><tr><th>{t('type')}</th><th>{t('product')}</th><th>{t('quantity')}</th><th>{t('unit')}</th><th>{t('price')}</th><th>{t('sum')}</th></tr></thead>
+                              <thead><tr><th>Тип</th><th>Товар</th><th>Кол-во</th><th>Ед.</th><th>Цена</th><th>Сумма</th></tr></thead>
                               <tbody>
                                 {(p.supplier_purchase_items || []).map(i => (
                                   <tr key={i.id}>
@@ -8213,7 +7407,7 @@ function Suppliers({ t }) {
                                     <td><strong>{fmt(i.total_amount)}</strong></td>
                                   </tr>
                                 ))}
-                                {!(p.supplier_purchase_items || []).length && <tr><td colSpan="6" className="hint">{t('items_not_found')}</td></tr>}
+                                {!(p.supplier_purchase_items || []).length && <tr><td colSpan="6" className="hint">Товары не найдены</td></tr>}
                               </tbody>
                             </table>
                           </div>
