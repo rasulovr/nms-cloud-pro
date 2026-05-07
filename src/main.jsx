@@ -4406,53 +4406,87 @@ function Finance({ t, lang }) {
     return map
   }
 
+  function financeSelectedBranchObject(selectedBranchId = branchId) {
+    if (!selectedBranchId || selectedBranchId === ALL_BRANCHES) return null
+    return branches.find(b => String(b.id) === String(selectedBranchId) || String(b.name) === String(selectedBranchId)) || null
+  }
+
+  function financeRowMatchesBranch(row, selectedBranchId = branchId) {
+    if (!selectedBranchId || selectedBranchId === ALL_BRANCHES) return true
+    const selected = financeSelectedBranchObject(selectedBranchId)
+    const allowed = new Set([
+      String(selectedBranchId),
+      selected?.id != null ? String(selected.id) : '',
+      selected?.name != null ? String(selected.name) : ''
+    ].filter(Boolean))
+
+    return allowed.has(String(row?.branch_id || '')) || allowed.has(String(row?.branch_name || '')) || allowed.has(String(row?.branches?.name || ''))
+  }
+
+  function financeFilterRowsByBranch(rows, selectedBranchId = branchId) {
+    return (rows || []).filter(row => financeRowMatchesBranch(row, selectedBranchId))
+  }
+
   async function calcFor(branch, y, m) {
+    const selectedBranchId = branch || ALL_BRANCHES
     const monthDate = monthStart(y, m)
     const endDate = new Date(Number(y), Number(m), 1).toISOString().slice(0, 10)
 
-    let revRows = []
-    let revQuery = supabase
-      .from('daily_revenue')
-      .select('branch_id,cash_amount,bank_amount,wolt_amount,total_revenue,revenue_date,deleted_at')
-      .gte('revenue_date', monthDate)
-      .lt('revenue_date', endDate)
-      .is('deleted_at', null)
+    const [dailyRes, entryRes, expRes, advRes, salRes, svcRes] = await Promise.all([
+      supabase
+        .from('daily_revenue')
+        .select('branch_id,branch_name,cash_amount,bank_amount,wolt_amount,total_revenue,revenue_date,deleted_at,branches(name)')
+        .gte('revenue_date', monthDate)
+        .lt('revenue_date', endDate)
+        .is('deleted_at', null),
+      supabase
+        .from('daily_revenue_entries')
+        .select('branch_id,branch_name,cash_amount,bank_amount,wolt_amount,revenue_date,deleted_at,branches(name)')
+        .gte('revenue_date', monthDate)
+        .lt('revenue_date', endDate)
+        .is('deleted_at', null),
+      supabase
+        .from('daily_expenses')
+        .select('branch_id,amount,expense_date,deleted_at')
+        .gte('expense_date', monthDate)
+        .lt('expense_date', endDate)
+        .is('deleted_at', null),
+      supabase
+        .from('salary_advances')
+        .select('branch_id,amount,advance_date,is_cancelled')
+        .gte('advance_date', monthDate)
+        .lt('advance_date', endDate)
+        .or('is_cancelled.is.null,is_cancelled.eq.false'),
+      supabase
+        .from('monthly_branch_salary')
+        .select('*')
+        .eq('month', monthDate),
+      supabase
+        .from('monthly_branch_service_charge_cost')
+        .select('*')
+        .eq('month', monthDate)
+    ])
 
-    let entryQuery = supabase
-      .from('daily_revenue_entries')
-      .select('branch_id,cash_amount,bank_amount,wolt_amount,revenue_date,deleted_at')
-      .gte('revenue_date', monthDate)
-      .lt('revenue_date', endDate)
-      .is('deleted_at', null)
+    const dailyRowsRaw = (!dailyRes.error && (dailyRes.data || []).length) ? (dailyRes.data || []) : []
+    const entryRowsRaw = (!entryRes.error && (entryRes.data || []).length) ? (entryRes.data || []) : []
+    const revenueSourceRows = dailyRowsRaw.length ? dailyRowsRaw : entryRowsRaw
+    const revRows = financeFilterRowsByBranch(revenueSourceRows, selectedBranchId)
+    const expRows = financeFilterRowsByBranch(expRes.data || [], selectedBranchId)
+    const advRows = financeFilterRowsByBranch(advRes.data || [], selectedBranchId)
+    const salRows = financeFilterRowsByBranch(salRes.data || [], selectedBranchId)
+    const svcRows = financeFilterRowsByBranch(svcRes.data || [], selectedBranchId)
 
-    let expQuery = supabase.from('daily_expenses').select('branch_id,amount').gte('expense_date', monthDate).lt('expense_date', endDate).is('deleted_at', null)
-    let advQuery = supabase.from('salary_advances').select('branch_id,amount').gte('advance_date', monthDate).lt('advance_date', endDate).or('is_cancelled.is.null,is_cancelled.eq.false')
-    let salQuery = supabase.from('monthly_branch_salary').select('*').eq('month', monthDate)
-    let svcQuery = supabase.from('monthly_branch_service_charge_cost').select('*').eq('month', monthDate)
-
-    if (branch !== ALL_BRANCHES) {
-      revQuery = revQuery.eq('branch_id', branch)
-      entryQuery = entryQuery.eq('branch_id', branch)
-      expQuery = expQuery.eq('branch_id', branch)
-      advQuery = advQuery.eq('branch_id', branch)
-      salQuery = salQuery.eq('branch_id', branch)
-      svcQuery = svcQuery.eq('branch_id', branch)
-    }
-
-    const [{ data: dailyRows, error: dailyError }, { data: entryRows }, { data: expRows }, { data: advRows }, { data: salRows }, { data: svcRows }] = await Promise.all([revQuery, entryQuery, expQuery, advQuery, salQuery, svcQuery])
-    revRows = (!dailyError && (dailyRows || []).length) ? (dailyRows || []) : (entryRows || dailyRows || [])
-
-    const cash = (revRows || []).reduce((s, r) => s + parseNum(r.cash_amount), 0)
-    const bank = (revRows || []).reduce((s, r) => s + parseNum(r.bank_amount), 0)
-    const wolt = (revRows || []).reduce((s, r) => s + parseNum(r.wolt_amount), 0)
-    const revenue = (revRows || []).reduce((s, r) => {
+    const cash = revRows.reduce((s, r) => s + parseNum(r.cash_amount), 0)
+    const bank = revRows.reduce((s, r) => s + parseNum(r.bank_amount), 0)
+    const wolt = revRows.reduce((s, r) => s + parseNum(r.wolt_amount), 0)
+    const revenue = revRows.reduce((s, r) => {
       const total = parseNum(r.total_revenue)
       return s + (total || parseNum(r.cash_amount) + parseNum(r.bank_amount) + parseNum(r.wolt_amount))
     }, 0)
 
-    const expenses = (expRows || []).reduce((s, r) => s + parseNum(r.amount), 0) + (advRows || []).reduce((s, r) => s + parseNum(r.amount), 0)
-    const salary = (salRows || []).reduce((s, r) => s + parseNum(r.total_salary), 0)
-    const serviceCost = (svcRows || []).reduce((s, r) => s + parseNum(r.staff_cost_amount), 0)
+    const expenses = expRows.reduce((s, r) => s + parseNum(r.amount), 0) + advRows.reduce((s, r) => s + parseNum(r.amount), 0)
+    const salary = salRows.reduce((s, r) => s + parseNum(r.total_salary), 0)
+    const serviceCost = svcRows.reduce((s, r) => s + parseNum(r.staff_cost_amount), 0)
 
     const tax = revenue * (TAX_RATE / 100)
     const net = revenue - expenses - salary - serviceCost - tax
@@ -4484,11 +4518,8 @@ function Finance({ t, lang }) {
     let salaryPeriodQuery = supabase.from('salary_periods').select('employee_id, branch_id, salary_gross, salary_net, final_balance, payroll_payments').eq('salary_month', monthDate)
     let salaryPaymentQuery = supabase.from('salary_payments').select('employee_id, branch_id, amount').eq('salary_month', monthDate).or('is_cancelled.is.null,is_cancelled.eq.false')
 
-    if (branchId !== ALL_BRANCHES) {
-      expQuery = expQuery.eq('branch_id', branchId)
-    }
-
-    const [{ data: rows }, { data: purchaseRows }, { data: employeeRows }, { data: salaryPeriodRows }, { data: salaryPaymentRows }] = await Promise.all([expQuery, purQuery, empQuery, salaryPeriodQuery, salaryPaymentQuery])
+    const [{ data: expenseRowsRaw }, { data: purchaseRows }, { data: employeeRows }, { data: salaryPeriodRows }, { data: salaryPaymentRows }] = await Promise.all([expQuery, purQuery, empQuery, salaryPeriodQuery, salaryPaymentQuery])
+    const rows = financeFilterRowsByBranch(expenseRowsRaw || [], branchId)
     const revenueShares = await financeRevenueSharesForMonth(year, month)
     const activeSupplierShare = branchId === ALL_BRANCHES ? 1 : (revenueShares.map.get(branchId) || 0)
     const allocatedSupplierTotals = financeAllocatedSupplierTotals(purchaseRows || [], activeSupplierShare)
