@@ -3807,14 +3807,56 @@ function Dashboard({ t }) {
   const [year, setYear] = useState(now.getFullYear())
   const [month, setMonth] = useState(now.getMonth() + 1)
   const [data, setData] = useState(null)
+  const [message, setMessage] = useState('')
 
   useEffect(() => { load() }, [year, month, branches.length])
 
+  async function dashboardBranches() {
+    if (branches.length) return branches
+    const { data } = await supabase.from('branches').select('id,name,is_active').eq('is_active', true).order('name')
+    return data || []
+  }
+
+  async function loadRevenueRows(start, end) {
+    const { data: dailyRows, error: dailyError } = await supabase
+      .from('daily_revenue')
+      .select('branch_id,cash_amount,bank_amount,wolt_amount,total_revenue,revenue_date,deleted_at')
+      .gte('revenue_date', start)
+      .lt('revenue_date', end)
+      .is('deleted_at', null)
+
+    if (!dailyError && (dailyRows || []).length) return dailyRows || []
+
+    const { data: entryRows, error: entryError } = await supabase
+      .from('daily_revenue_entries')
+      .select('branch_id,cash_amount,bank_amount,wolt_amount,revenue_date,deleted_at')
+      .gte('revenue_date', start)
+      .lt('revenue_date', end)
+      .is('deleted_at', null)
+
+    if (entryError) {
+      console.warn('Dashboard revenue fallback error:', entryError)
+      return dailyRows || []
+    }
+
+    return entryRows || []
+  }
+
+  function revenueAmount(row) {
+    const total = parseNum(row?.total_revenue)
+    if (total) return total
+    return parseNum(row?.cash_amount) + parseNum(row?.bank_amount) + parseNum(row?.wolt_amount)
+  }
+
   async function calcMonth(y, m) {
     const monthDate = monthStart(y, m)
+    const endDate = new Date(Number(y), Number(m), 1).toISOString().slice(0, 10)
+    const activeBranches = await dashboardBranches()
+
     const [
-      { data: revRows },
-      { data: expRows },
+      revRows,
+      { data: expRows, error: expError },
+      { data: advanceRows },
       { data: salRows },
       { data: svcRows },
       supplierResult,
@@ -3822,8 +3864,9 @@ function Dashboard({ t }) {
       purchasesResult,
       paymentsResult
     ] = await Promise.all([
-      supabase.from('monthly_branch_revenue').select('*').eq('month', monthDate),
-      supabase.from('monthly_branch_expenses').select('*').eq('month', monthDate),
+      loadRevenueRows(monthDate, endDate),
+      supabase.from('daily_expenses').select('branch_id,amount,expense_date,deleted_at').gte('expense_date', monthDate).lt('expense_date', endDate).is('deleted_at', null),
+      supabase.from('salary_advances').select('branch_id,amount,advance_date,is_cancelled').gte('advance_date', monthDate).lt('advance_date', endDate).or('is_cancelled.is.null,is_cancelled.eq.false'),
       supabase.from('monthly_branch_salary').select('*').eq('month', monthDate),
       supabase.from('monthly_branch_service_charge_cost').select('*').eq('month', monthDate),
       supabase.from('supplier_balances_v2').select('*'),
@@ -3831,6 +3874,8 @@ function Dashboard({ t }) {
       supabase.from('supplier_purchases').select('id,supplier_id,purchase_date,invoice_number,total_amount,deleted_at').is('deleted_at', null),
       supabase.from('supplier_payments').select('supplier_id,amount')
     ])
+
+    if (expError) console.warn('Dashboard expenses error:', expError)
 
     const suppliersRaw = suppliersResult?.data || []
     const purchasesRaw = purchasesResult?.data || []
@@ -3846,40 +3891,38 @@ function Dashboard({ t }) {
       }))
     }
 
-    const balanceMap = new Map((supplierRows || []).map(r => [r.supplier_id, parseNum(r.balance)]))
-    const enrichedSupplierRows = suppliersRaw.map(s => {
-      const purchaseTotal = purchasesRaw
-        .filter(p => p.supplier_id === s.id)
-        .reduce((sum, p) => sum + parseNum(p.total_amount), 0)
-      const paymentTotal = paymentsRaw
-        .filter(p => p.supplier_id === s.id)
-        .reduce((sum, p) => sum + parseNum(p.amount), 0)
-      const balance = balanceMap.has(s.id) ? balanceMap.get(s.id) : purchaseTotal - paymentTotal
-      return {
-        supplier_id: s.id,
-        supplier_name: s.name,
-        balance,
-        payment_term_days: s.payment_term_days,
-        credit_limit: s.credit_limit
-      }
-    })
-    const revByBranch = new Map((revRows || []).map(r => [r.branch_id, r]))
-    const expByBranch = new Map((expRows || []).map(r => [r.branch_id, r]))
+    const revenueByBranch = new Map()
+    ;(revRows || []).forEach(r => revenueByBranch.set(r.branch_id, (revenueByBranch.get(r.branch_id) || 0) + revenueAmount(r)))
+
+    const expByBranch = new Map()
+    ;(expRows || []).forEach(r => expByBranch.set(r.branch_id, (expByBranch.get(r.branch_id) || 0) + parseNum(r.amount)))
+    ;(advanceRows || []).forEach(r => expByBranch.set(r.branch_id, (expByBranch.get(r.branch_id) || 0) + parseNum(r.amount)))
+
     const salByBranch = new Map((salRows || []).map(r => [r.branch_id, r]))
     const svcByBranch = new Map((svcRows || []).map(r => [r.branch_id, r]))
-    const branchRows = branches.map(b => {
-      const rev = revByBranch.get(b.id) || {}
-      const revenue = parseNum(rev.total_revenue)
-      const expenses = parseNum(expByBranch.get(b.id)?.total_expenses)
+
+    const branchRows = activeBranches.map(b => {
+      const revenue = parseNum(revenueByBranch.get(b.id))
+      const expenses = parseNum(expByBranch.get(b.id))
       const salary = parseNum(salByBranch.get(b.id)?.total_salary)
       const serviceCost = parseNum(svcByBranch.get(b.id)?.staff_cost_amount)
       const tax = revenue * TAX_RATE / 100
       const net = revenue - expenses - salary - serviceCost - tax
       return { id: b.id, name: b.name, revenue, expenses, salary, serviceCost, tax, totalExpenses: expenses + salary + serviceCost + tax, net, margin: revenue ? net / revenue * 100 : 0 }
     })
+
     const revenue = branchRows.reduce((s, r) => s + r.revenue, 0)
     const expenses = branchRows.reduce((s, r) => s + r.totalExpenses, 0)
     const net = branchRows.reduce((s, r) => s + r.net, 0)
+
+    const balanceMap = new Map((supplierRows || []).map(r => [r.supplier_id, parseNum(r.balance)]))
+    const enrichedSupplierRows = suppliersRaw.map(s => {
+      const purchaseTotal = purchasesRaw.filter(p => p.supplier_id === s.id).reduce((sum, p) => sum + parseNum(p.total_amount), 0)
+      const paymentTotal = paymentsRaw.filter(p => p.supplier_id === s.id).reduce((sum, p) => sum + parseNum(p.amount), 0)
+      const balance = balanceMap.has(s.id) ? balanceMap.get(s.id) : purchaseTotal - paymentTotal
+      return { supplier_id: s.id, supplier_name: s.name, balance, payment_term_days: s.payment_term_days, credit_limit: s.credit_limit }
+    })
+
     const todayForDebts = new Date()
     const supplierDebtRowsRaw = (enrichedSupplierRows || [])
       .map(r => {
@@ -3898,14 +3941,7 @@ function Dashboard({ t }) {
           overLimit > 0 ? `превышение лимита: +${fmt(overLimit)} AZN` : '',
           overdueInvoices.length ? `просрочка: ${overdueInvoices.join(', ')}` : ''
         ].filter(Boolean).join(' · ')
-        return {
-          id: r.supplier_id || r.supplier_name,
-          name: r.supplier_name || 'Поставщик',
-          value: balance,
-          overLimit,
-          overdueCount: overdueInvoices.length,
-          reason
-        }
+        return { id: r.supplier_id || r.supplier_name, name: r.supplier_name || 'Поставщик', value: balance, overLimit, overdueCount: overdueInvoices.length, reason }
       })
       .filter(r => r.value > 0 && (r.overLimit > 0 || r.overdueCount > 0))
 
@@ -3914,14 +3950,9 @@ function Dashboard({ t }) {
       const key = r.id || r.name
       const prev = supplierRiskMap.get(key)
       if (!prev) supplierRiskMap.set(key, r)
-      else supplierRiskMap.set(key, {
-        ...prev,
-        value: Math.max(prev.value, r.value),
-        overLimit: Math.max(prev.overLimit, r.overLimit),
-        overdueCount: prev.overdueCount + r.overdueCount,
-        reason: [prev.reason, r.reason].filter(Boolean).join(' · ')
-      })
+      else supplierRiskMap.set(key, { ...prev, value: Math.max(prev.value, r.value), overLimit: Math.max(prev.overLimit, r.overLimit), overdueCount: prev.overdueCount + r.overdueCount, reason: [prev.reason, r.reason].filter(Boolean).join(' · ') })
     })
+
     const supplierDebtRows = Array.from(supplierRiskMap.values()).sort((a,b) => b.value - a.value)
     const supplierDebt = supplierDebtRows.reduce((s, r) => s + r.value, 0)
     const d = new Date(Number(y), Number(m) - 1, 1)
@@ -3935,17 +3966,24 @@ function Dashboard({ t }) {
   }
 
   async function load() {
-    const current = await calcMonth(year, month)
-    const pm = prevMonth(year, month)
-    const previous = await calcMonth(pm.year, pm.month)
-    setData({ ...current, previous })
+    setMessage('')
+    try {
+      const current = await calcMonth(year, month)
+      const pm = prevMonth(year, month)
+      const previous = await calcMonth(pm.year, pm.month)
+      setData({ ...current, previous })
+    } catch (error) {
+      console.error('Dashboard load error:', error)
+      setMessage(error.message || String(error))
+      setData({ revenue: 0, expenses: 0, net: 0, supplierDebt: 0, supplierDebtRows: [], branchRows: [], forecastRevenue: 0, forecastProfit: 0, previous: {} })
+    }
   }
 
   if (!data) return <div className="module-placeholder">{t('loading')}</div>
   const revenueChange = data.previous?.revenue ? (data.revenue - data.previous.revenue) / data.previous.revenue * 100 : 0
   const profitChange = data.previous?.net ? (data.net - data.previous.net) / Math.abs(data.previous.net) * 100 : 0
   return <section id="dashboardPage">
-    <section className="topbar dashboard-hero"><div><h2>Финансовое состояние сети</h2><p>Выручка, расходы, прибыль, прогноз, динамика и долги поставщикам по всей сети.</p></div><div className="form-grid compact dashboard-period"><label><span>{t('year')}</span><select value={year} onChange={e => setYear(Number(e.target.value))}>{defaultYears().map(y => <option key={y} value={y}>{y}</option>)}</select></label><label><span>{t('month')}</span><select value={month} onChange={e => setMonth(Number(e.target.value))}>{I18N.ru.months.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}</select></label></div></section>
+    <section className="topbar dashboard-hero"><div><h2>Финансовое состояние сети</h2><p>Выручка, расходы, прибыль, прогноз, динамика и долги поставщикам по всей сети.</p>{message ? <p className="bad">{message}</p> : null}</div><div className="form-grid compact dashboard-period"><label><span>{t('year')}</span><select value={year} onChange={e => setYear(Number(e.target.value))}>{defaultYears().map(y => <option key={y} value={y}>{y}</option>)}</select></label><label><span>{t('month')}</span><select value={month} onChange={e => setMonth(Number(e.target.value))}>{I18N.ru.months.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}</select></label></div></section>
     <section className="dashboard-kpi-grid"><div className="dash-kpi"><span>Выручка сети</span><strong>{fmt(data.revenue)}</strong><em className={revenueChange >= 0 ? 'good' : 'bad'}>{revenueChange >= 0 ? '▲' : '▼'} {pct(Math.abs(revenueChange))} к прошлому месяцу</em></div><div className="dash-kpi"><span>Расходы сети</span><strong>{fmt(data.expenses)}</strong><em>включая зарплаты, service charge и налог 8%</em></div><div className="dash-kpi"><span>Чистая прибыль</span><strong className={data.net >= 0 ? 'good' : 'bad'}>{fmt(data.net)}</strong><em className={profitChange >= 0 ? 'good' : 'bad'}>{profitChange >= 0 ? '▲' : '▼'} {pct(Math.abs(profitChange))} к прошлому месяцу</em></div><div className="dash-kpi"><span>Прогноз прибыли</span><strong className={data.forecastProfit >= 0 ? 'good' : 'bad'}>{fmt(data.forecastProfit)}</strong><em>прогноз до конца месяца</em></div><div className="dash-kpi danger-kpi"><span>Проблемные долги</span><strong>{fmt(data.supplierDebt)}</strong><em>просрочка или превышение лимита</em></div></section>
     <section className="grid dashboard-grid"><MiniBarChart rows={data.branchRows.filter(r => r.revenue || r.net).sort((a,b) => b.revenue - a.revenue)} valueKey="revenue" title="Выручка по филиалам" subtitle="Сравнение филиалов за выбранный месяц" showShare /><MiniBarChart rows={data.branchRows.filter(r => r.revenue || r.net).sort((a,b) => b.net - a.net)} valueKey="net" title="Прибыль по филиалам" subtitle="После расходов, зарплат, service charge и налога" showShare /><div className="card span-2"><div className="card-head"><h3>Сводка по филиалам</h3></div><div className="table-wrap"><table className="dashboard-table"><thead><tr><th>Филиал</th><th>Выручка</th><th>Расходы</th><th>Зарплаты</th><th>Service</th><th>Налог</th><th>Прибыль</th><th>Маржа</th></tr></thead><tbody>{data.branchRows.map(r => <tr key={r.id} className={r.net < 0 ? 'risk-row' : ''}><td><b>{r.name}</b></td><td>{fmt(r.revenue)}</td><td>{fmt(r.expenses)}</td><td>{fmt(r.salary)}</td><td>{fmt(r.serviceCost)}</td><td>{fmt(r.tax)}</td><td className={r.net >= 0 ? 'good' : 'bad'}><b>{fmt(r.net)}</b></td><td>{pct(r.margin)}</td></tr>)}</tbody></table></div></div><div className="card"><div className="card-head"><h3>Проблемные долги поставщикам</h3><p className="hint">Только превышение лимита или просроченные фактуры</p></div>{data.supplierDebtRows?.length ? <div className="supplier-risk-summary"><div className="metric"><span>Проблемная сумма</span><strong className="bad">{fmt(data.supplierDebt)} AZN</strong></div><div className="supplier-risk-list">{data.supplierDebtRows.slice(0, 8).map(r => <div key={r.id || r.name} className="supplier-risk-row"><b title={r.name}>{r.name}</b><span>{fmt(r.value)} AZN</span><em>{r.reason || 'требует проверки'}</em></div>)}</div></div> : <div className="supplier-risk-empty"><p className="hint">Проблемных долгов нет. Обычные долги смотри в разделе “Поставщики”.</p></div>}</div><div className="card span-2 dashboard-insight"><h3>Краткий вывод</h3><p>Сеть сейчас показывает <b className={data.net >= 0 ? 'good' : 'bad'}>{data.net >= 0 ? 'прибыль' : 'убыток'} {fmt(data.net)} AZN</b>. Прогноз до конца месяца: <b>{fmt(data.forecastRevenue)} AZN выручки</b> и <b className={data.forecastProfit >= 0 ? 'good' : 'bad'}>{fmt(data.forecastProfit)} AZN прибыли</b>.</p><p className="hint">Динамика сравнивается с прошлым календарным месяцем. Если нужен “аналогичный период” строго день-в-день, следующим шагом добавим сравнение текущего периода с тем же количеством дней прошлого месяца.</p></div></section>
   </section>
@@ -4019,10 +4057,36 @@ function Finance({ t, lang }) {
 
   async function financeRevenueSharesForMonth(y, m) {
     const monthDate = monthStart(y, m)
-    const { data } = await supabase.from('monthly_branch_revenue').select('branch_id,total_revenue').eq('month', monthDate)
-    const total = (data || []).reduce((s, r) => s + parseNum(r.total_revenue), 0)
+    const endDate = new Date(Number(y), Number(m), 1).toISOString().slice(0, 10)
+    let rows = []
+
+    const { data: dailyRows, error: dailyError } = await supabase
+      .from('daily_revenue')
+      .select('branch_id,cash_amount,bank_amount,wolt_amount,total_revenue,revenue_date,deleted_at')
+      .gte('revenue_date', monthDate)
+      .lt('revenue_date', endDate)
+      .is('deleted_at', null)
+
+    if (!dailyError && (dailyRows || []).length) {
+      rows = dailyRows || []
+    } else {
+      const { data: entryRows } = await supabase
+        .from('daily_revenue_entries')
+        .select('branch_id,cash_amount,bank_amount,wolt_amount,revenue_date,deleted_at')
+        .gte('revenue_date', monthDate)
+        .lt('revenue_date', endDate)
+        .is('deleted_at', null)
+      rows = entryRows || dailyRows || []
+    }
+
+    const branchTotals = new Map()
+    rows.forEach(r => {
+      const total = parseNum(r.total_revenue) || parseNum(r.cash_amount) + parseNum(r.bank_amount) + parseNum(r.wolt_amount)
+      branchTotals.set(r.branch_id, (branchTotals.get(r.branch_id) || 0) + total)
+    })
+    const total = Array.from(branchTotals.values()).reduce((s, v) => s + parseNum(v), 0)
     const map = new Map()
-    ;(data || []).forEach(r => map.set(r.branch_id, total > 0 ? parseNum(r.total_revenue) / total : 0))
+    branchTotals.forEach((value, key) => map.set(key, total > 0 ? parseNum(value) / total : 0))
     return { total, map }
   }
 
@@ -4344,28 +4408,51 @@ function Finance({ t, lang }) {
 
   async function calcFor(branch, y, m) {
     const monthDate = monthStart(y, m)
+    const endDate = new Date(Number(y), Number(m), 1).toISOString().slice(0, 10)
 
-    let revQuery = supabase.from('monthly_branch_revenue').select('*').eq('month', monthDate)
-    let expQuery = supabase.from('monthly_branch_expenses').select('*').eq('month', monthDate)
+    let revRows = []
+    let revQuery = supabase
+      .from('daily_revenue')
+      .select('branch_id,cash_amount,bank_amount,wolt_amount,total_revenue,revenue_date,deleted_at')
+      .gte('revenue_date', monthDate)
+      .lt('revenue_date', endDate)
+      .is('deleted_at', null)
+
+    let entryQuery = supabase
+      .from('daily_revenue_entries')
+      .select('branch_id,cash_amount,bank_amount,wolt_amount,revenue_date,deleted_at')
+      .gte('revenue_date', monthDate)
+      .lt('revenue_date', endDate)
+      .is('deleted_at', null)
+
+    let expQuery = supabase.from('daily_expenses').select('branch_id,amount').gte('expense_date', monthDate).lt('expense_date', endDate).is('deleted_at', null)
+    let advQuery = supabase.from('salary_advances').select('branch_id,amount').gte('advance_date', monthDate).lt('advance_date', endDate).or('is_cancelled.is.null,is_cancelled.eq.false')
     let salQuery = supabase.from('monthly_branch_salary').select('*').eq('month', monthDate)
     let svcQuery = supabase.from('monthly_branch_service_charge_cost').select('*').eq('month', monthDate)
 
     if (branch !== ALL_BRANCHES) {
       revQuery = revQuery.eq('branch_id', branch)
+      entryQuery = entryQuery.eq('branch_id', branch)
       expQuery = expQuery.eq('branch_id', branch)
+      advQuery = advQuery.eq('branch_id', branch)
       salQuery = salQuery.eq('branch_id', branch)
       svcQuery = svcQuery.eq('branch_id', branch)
     }
 
-    const [{ data: revRows }, { data: expRows }, { data: salRows }, { data: svcRows }] = await Promise.all([revQuery, expQuery, salQuery, svcQuery])
+    const [{ data: dailyRows, error: dailyError }, { data: entryRows }, { data: expRows }, { data: advRows }, { data: salRows }, { data: svcRows }] = await Promise.all([revQuery, entryQuery, expQuery, advQuery, salQuery, svcQuery])
+    revRows = (!dailyError && (dailyRows || []).length) ? (dailyRows || []) : (entryRows || dailyRows || [])
 
-    const revenue = (revRows || []).reduce((s, r) => s + parseNum(r.total_revenue), 0)
-    const expenses = (expRows || []).reduce((s, r) => s + parseNum(r.total_expenses), 0)
-    const salary = (salRows || []).reduce((s, r) => s + parseNum(r.total_salary), 0)
-    const serviceCost = (svcRows || []).reduce((s, r) => s + parseNum(r.staff_cost_amount), 0)
     const cash = (revRows || []).reduce((s, r) => s + parseNum(r.cash_amount), 0)
     const bank = (revRows || []).reduce((s, r) => s + parseNum(r.bank_amount), 0)
     const wolt = (revRows || []).reduce((s, r) => s + parseNum(r.wolt_amount), 0)
+    const revenue = (revRows || []).reduce((s, r) => {
+      const total = parseNum(r.total_revenue)
+      return s + (total || parseNum(r.cash_amount) + parseNum(r.bank_amount) + parseNum(r.wolt_amount))
+    }, 0)
+
+    const expenses = (expRows || []).reduce((s, r) => s + parseNum(r.amount), 0) + (advRows || []).reduce((s, r) => s + parseNum(r.amount), 0)
+    const salary = (salRows || []).reduce((s, r) => s + parseNum(r.total_salary), 0)
+    const serviceCost = (svcRows || []).reduce((s, r) => s + parseNum(r.staff_cost_amount), 0)
 
     const tax = revenue * (TAX_RATE / 100)
     const net = revenue - expenses - salary - serviceCost - tax
