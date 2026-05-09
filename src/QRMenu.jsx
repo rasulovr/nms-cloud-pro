@@ -35,7 +35,13 @@ const FALLBACK_PRODUCTS = [
 ]
 
 function getParam(name, fallback) {
-  const params = new URLSearchParams(window.location.search)
+  const rawParams =
+    window.location.search ||
+    (window.location.hash.includes('?')
+      ? '?' + window.location.hash.split('?')[1]
+      : '')
+
+  const params = new URLSearchParams(rawParams)
   return params.get(name) || fallback
 }
 

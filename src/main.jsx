@@ -569,7 +569,9 @@ async function fetchRmsRecipesWorkspace() {
 
 
 function App() {
-  const isQRMenu = window.location.pathname.startsWith('/qr-menu')
+  const isQRMenu =
+    window.location.pathname.startsWith('/qr-menu') ||
+    window.location.hash.startsWith('#/qr-menu')
 
   if (isQRMenu) {
     return <QRMenu />
