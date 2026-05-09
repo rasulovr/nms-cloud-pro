@@ -1,18 +1,11 @@
-QR Menu working files
+Заменить в src:
+1) main.jsx
+2) QRMenu.jsx
+3) QRMenu.css
 
-Replace in src:
-1) src/main.jsx
-2) src/QRMenu.jsx
-3) src/QRMenu.css
-
-Then commit and push:
-git add src/main.jsx src/QRMenu.jsx src/QRMenu.css
-git commit -m "Enable QR Menu"
-git push origin main
-
-Test URL:
+После push/deploy открыть:
 https://project-83si4.vercel.app/?qr=menu&branch=BC1&table=1
 
-Alternative URLs also supported after rewrite:
-https://project-83si4.vercel.app/#/qr-menu?branch=BC1&table=1
-https://project-83si4.vercel.app/qr-menu?branch=BC1&table=1
+Если будет пустой экран:
+- открыть DevTools -> Console и прислать красную ошибку.
+- проверить, что в GitHub действительно обновились src/main.jsx, src/QRMenu.jsx, src/QRMenu.css.
