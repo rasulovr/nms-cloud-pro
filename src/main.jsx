@@ -4625,74 +4625,58 @@ function Recipes({ t }) {
 
             <div className="table-wrap">
               <table>
-                <thead><tr><th>Тип</th><th>Компонент</th><th>Кол-во</th><th>Ед.</th><th>Цена за 1 ед.</th><th>Потери %</th><th>Себестоимость</th><th></th></tr></thead>
+                <thead><tr><th>Тип</th><th>Компонент</th><th>Кол-во</th><th>Цена/ед.</th><th>Потери</th><th>Себес.</th><th></th></tr></thead>
                 <tbody>
                   {selectedSemiItems.map(item => (
                     <tr key={item.id}>
                       <td>{item.component_type === 'semi' ? 'Полуфабрикат' : item.component_type === 'manual' ? 'Вручную' : 'Закупка'}</td>
                       <td>
-                        <div className="semi-value-block">
-                          <div className="semi-main-value">{item.item_name}</div>
-                          {item.component_type === 'manual' && (
-                            <button className="tiny-link" onClick={() => {
-                              const next = window.prompt('Название ингредиента', item.item_name || '')
-                              if (next !== null) updateSemiLine(item.id, { item_name: next })
-                            }}>Изменить</button>
-                          )}
-                        </div>
+                        <div className="semi-main-value semi-name">{item.item_name}</div>
                       </td>
-
                       <td>
-                        <div className="semi-value-block">
-                          <div className="semi-main-value">{fmt(item.qty)}</div>
-                          <button className="tiny-link" onClick={() => {
-                            const next = window.prompt('Количество', item.qty || 0)
-                            if (next !== null) updateSemiLine(item.id, { qty: next })
-                          }}>Изменить</button>
-                        </div>
+                        <b>{fmt(item.qty)} {item.unit || 'g'}</b>
                       </td>
-
                       <td>
-                        <div className="semi-value-block">
-                          <div className="semi-main-value">{item.unit || 'g'}</div>
-                          <button className="tiny-link" onClick={() => {
-                            const next = window.prompt('Единица (g/kg/ml/l/pcs)', item.unit || 'g')
-                            if (next !== null) updateSemiLine(item.id, { unit: next })
-                          }}>Изменить</button>
-                        </div>
+                        {item.component_type === 'manual'
+                          ? <span>{fmt(item.manual_unit_cost || 0)}</span>
+                          : <span className="hint">закупка</span>}
                       </td>
-
+                      <td>{fmt(item.waste_percent || 0)}%</td>
+                      <td><b>{fmt(componentCost(item))}</b></td>
                       <td>
-                        <div className="semi-value-block">
-                          <div className="semi-main-value">
-                            {item.component_type === 'manual'
-                              ? `${fmt(item.manual_unit_cost || 0)} AZN`
-                              : 'из закупки'}
-                          </div>
+                        <button className="tiny-action" onClick={() => {
+                          const name = item.component_type === 'manual'
+                            ? window.prompt('Название ингредиента', item.item_name || '')
+                            : item.item_name
+                          if (name === null) return
 
-                          {item.component_type === 'manual' && (
-                            <button className="tiny-link" onClick={() => {
-                              const next = window.prompt('Цена за 1 ед.', item.manual_unit_cost || 0)
-                              if (next !== null) updateSemiLine(item.id, { manual_unit_cost: next })
-                            }}>Изменить</button>
-                          )}
-                        </div>
-                      </td>
+                          const qty = window.prompt('Количество', item.qty || 0)
+                          if (qty === null) return
 
-                      <td>
-                        <div className="semi-value-block">
-                          <div className="semi-main-value">{fmt(item.waste_percent || 0)}%</div>
-                          <button className="tiny-link" onClick={() => {
-                            const next = window.prompt('Потери %', item.waste_percent || 0)
-                            if (next !== null) updateSemiLine(item.id, { waste_percent: next })
-                          }}>Изменить</button>
-                        </div>
+                          const unit = window.prompt('Единица (g/kg/ml/l/pcs)', item.unit || 'g')
+                          if (unit === null) return
+
+                          let manualUnitCost = item.manual_unit_cost
+                          if (item.component_type === 'manual') {
+                            manualUnitCost = window.prompt('Цена за 1 ед.', item.manual_unit_cost || 0)
+                            if (manualUnitCost === null) return
+                          }
+
+                          const waste = window.prompt('Потери %', item.waste_percent || 0)
+                          if (waste === null) return
+
+                          updateSemiLine(item.id, {
+                            item_name: item.component_type === 'manual' ? name : item.item_name,
+                            qty,
+                            unit,
+                            manual_unit_cost: item.component_type === 'manual' ? manualUnitCost : item.manual_unit_cost,
+                            waste_percent: waste
+                          })
+                        }}>Изменить</button>
                       </td>
-                      <td><b>{fmt(componentCost(item))} AZN</b></td>
-                      <td><button className="small danger" onClick={() => deleteSemiLine(item.id)}>Удалить</button></td>
                     </tr>
                   ))}
-                  {!selectedSemiItems.length && <tr><td colSpan="8" className="hint">Состав пока пустой. Добавь ингредиенты ниже.</td></tr>}
+                  {!selectedSemiItems.length && <tr><td colSpan="7" className="hint">Состав пока пустой. Добавь ингредиенты ниже.</td></tr>}
                 </tbody>
               </table>
             </div>
@@ -4855,7 +4839,7 @@ function SemiFinishedInlineStyles() {
         min-width: 0;
       }
       .semifinished-layout {
-        grid-template-columns: minmax(280px, .9fr) minmax(300px, .9fr) minmax(520px, 1.4fr);
+        grid-template-columns: minmax(260px, .8fr) minmax(290px, .8fr) minmax(620px, 1.7fr);
         align-items: start;
       }
       .semi-composition-card {
@@ -4874,41 +4858,79 @@ function SemiFinishedInlineStyles() {
         vertical-align: middle;
       }
 
-      .semi-value-block {
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-      }
-
       .semi-main-value {
-        font-size: 14px;
-        font-weight: 600;
+        font-size: 13px;
+        font-weight: 700;
         color: #1f2937;
         word-break: break-word;
-        line-height: 1.35;
+        line-height: 1.25;
       }
 
-      .tiny-link {
-        border: none;
-        background: transparent;
-        color: #64748b;
-        font-size: 11px;
-        padding: 0;
-        cursor: pointer;
-        text-align: left;
+      .semi-name {
+        max-width: 150px;
       }
 
-      .tiny-link:hover {
+      .tiny-action {
+        border: 0;
+        border-radius: 999px;
+        background: #eef2f7;
         color: #0f172a;
-        text-decoration: underline;
+        font-size: 11px;
+        font-weight: 800;
+        padding: 7px 9px;
+        cursor: pointer;
+        white-space: nowrap;
+      }
+
+      .semi-composition-card .table-wrap {
+        overflow-x: visible;
       }
 
       .semi-composition-card table {
-        min-width: 100%;
+        width: 100%;
+        min-width: 0;
+        table-layout: fixed;
       }
 
+      .semi-composition-card th,
       .semi-composition-card td {
-        min-width: 90px;
+        padding: 8px 6px;
+        font-size: 12px;
+      }
+
+      .semi-composition-card th:nth-child(1),
+      .semi-composition-card td:nth-child(1) {
+        width: 64px;
+      }
+
+      .semi-composition-card th:nth-child(2),
+      .semi-composition-card td:nth-child(2) {
+        width: 34%;
+      }
+
+      .semi-composition-card th:nth-child(3),
+      .semi-composition-card td:nth-child(3) {
+        width: 70px;
+      }
+
+      .semi-composition-card th:nth-child(4),
+      .semi-composition-card td:nth-child(4) {
+        width: 70px;
+      }
+
+      .semi-composition-card th:nth-child(5),
+      .semi-composition-card td:nth-child(5) {
+        width: 62px;
+      }
+
+      .semi-composition-card th:nth-child(6),
+      .semi-composition-card td:nth-child(6) {
+        width: 68px;
+      }
+
+      .semi-composition-card th:nth-child(7),
+      .semi-composition-card td:nth-child(7) {
+        width: 78px;
       }
       @media (max-width: 1180px) {
         .semifinished-layout {
