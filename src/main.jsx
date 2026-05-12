@@ -4194,6 +4194,8 @@ function Recipes({ t }) {
   const [finalItems, setFinalItems] = useState([])
   const [selectedSemiId, setSelectedSemiId] = useState('')
   const [selectedSemiItemId, setSelectedSemiItemId] = useState('')
+  const [semiEditModalOpen, setSemiEditModalOpen] = useState(false)
+  const [semiEditDraft, setSemiEditDraft] = useState([])
   const [semiSearch, setSemiSearch] = useState('')
   const [selectedMenuId, setSelectedMenuId] = useState('')
   const [message, setMessage] = useState('')
@@ -4478,61 +4480,47 @@ function Recipes({ t }) {
     setMessage('Ингредиент полуфабриката обновлён')
   }
 
-  async function editSelectedSemiLine() {
+  function openSemiIngredientsEditor() {
     if (!selectedSemiItems.length) {
       setMessage('В составе пока нет ингредиентов')
       return
     }
 
-    const selectedIndex = selectedSemiItems.findIndex(row => String(row.id) === String(selectedSemiItemId))
-    const listText = selectedSemiItems
-      .map((row, index) => `${index + 1}. ${row.item_name} — ${fmt(row.qty)} ${row.unit || 'g'}`)
-      .join('\n')
+    setSemiEditDraft(selectedSemiItems.map(item => ({
+      id: item.id,
+      component_type: item.component_type,
+      item_name: item.item_name || '',
+      qty: String(item.qty ?? ''),
+      unit: item.unit || 'g',
+      manual_unit_cost: item.component_type === 'manual' ? String(item.manual_unit_cost ?? '') : '',
+      waste_percent: String(item.waste_percent ?? 0)
+    })))
 
-    const choice = window.prompt(
-      `Выберите ингредиент для редактирования:\n\n${listText}`,
-      selectedIndex >= 0 ? String(selectedIndex + 1) : '1'
-    )
+    setSemiEditModalOpen(true)
+  }
 
-    if (choice === null) return
+  function updateSemiEditDraft(id, patch) {
+    setSemiEditDraft(prev => prev.map(row => String(row.id) === String(id) ? { ...row, ...patch } : row))
+  }
 
-    const choiceIndex = Number(choice) - 1
-    const item = selectedSemiItems[choiceIndex]
-
-    if (!item) {
-      setMessage('Неверный номер ингредиента')
-      return
+  async function saveSemiIngredientsEditor() {
+    for (const row of semiEditDraft) {
+      await updateSemiLine(row.id, {
+        item_name: row.component_type === 'manual' ? row.item_name : undefined,
+        qty: row.qty,
+        unit: row.unit,
+        manual_unit_cost: row.component_type === 'manual' ? row.manual_unit_cost : undefined,
+        waste_percent: row.waste_percent
+      })
     }
 
-    setSelectedSemiItemId(item.id)
+    setSemiEditModalOpen(false)
+    await loadSemiData()
+    setMessage('Состав полуфабриката обновлён')
+  }
 
-    const name = item.component_type === 'manual'
-      ? window.prompt('Название ингредиента', item.item_name || '')
-      : item.item_name
-    if (name === null) return
-
-    const qty = window.prompt('Количество', item.qty || 0)
-    if (qty === null) return
-
-    const unit = window.prompt('Единица (g/kg/ml/l/pcs)', item.unit || 'g')
-    if (unit === null) return
-
-    let manualUnitCost = item.manual_unit_cost
-    if (item.component_type === 'manual') {
-      manualUnitCost = window.prompt('Цена за 1 ед.', item.manual_unit_cost || 0)
-      if (manualUnitCost === null) return
-    }
-
-    const waste = window.prompt('Потери %', item.waste_percent || 0)
-    if (waste === null) return
-
-    await updateSemiLine(item.id, {
-      item_name: item.component_type === 'manual' ? name : item.item_name,
-      qty,
-      unit,
-      manual_unit_cost: item.component_type === 'manual' ? manualUnitCost : item.manual_unit_cost,
-      waste_percent: waste
-    })
+  async function editSelectedSemiLine() {
+    openSemiIngredientsEditor()
   }
 
 
@@ -4702,7 +4690,7 @@ function Recipes({ t }) {
 
           <div className="card semi-composition-card">
             <h3>Состав выбранного полуфабриката</h3>
-            <p className="hint">Нажмите “Изменить выбранный ингредиент” и выберите нужную строку из списка.</p>
+            <p className="hint">Нажмите “Редактировать состав”, чтобы изменить все ингредиенты в одном окне.</p>
 
             <div className="table-wrap">
               <table>
@@ -4729,7 +4717,7 @@ function Recipes({ t }) {
               </table>
             </div>
             <div className="actions-row semi-table-actions">
-              <button className="small primary" onClick={editSelectedSemiLine}>Изменить выбранный ингредиент</button>
+              <button className="small primary" onClick={openSemiIngredientsEditor}>Редактировать состав</button>
             </div>
           </div>
 
@@ -4837,6 +4825,44 @@ function Recipes({ t }) {
           </div>
         </section>
       )}
+      {semiEditModalOpen && (
+        <div className="semi-modal-backdrop">
+          <div className="semi-modal-card">
+            <div className="semi-modal-head">
+              <div>
+                <h3>Редактировать состав полуфабриката</h3>
+                <p className="hint">Все ингредиенты редактируются в одном окне.</p>
+              </div>
+              <button className="small" onClick={() => setSemiEditModalOpen(false)}>Закрыть</button>
+            </div>
+
+            <div className="semi-modal-table-wrap">
+              <table className="semi-modal-table">
+                <thead>
+                  <tr><th>Ингредиент</th><th>Кол-во</th><th>Ед.</th><th>Цена / ед.</th><th>Потери %</th></tr>
+                </thead>
+                <tbody>
+                  {semiEditDraft.map(row => (
+                    <tr key={row.id}>
+                      <td>{row.component_type === 'manual' ? <input value={row.item_name} onChange={e => updateSemiEditDraft(row.id, { item_name: e.target.value })} /> : <b>{row.item_name}</b>}</td>
+                      <td><input value={row.qty} onChange={e => updateSemiEditDraft(row.id, { qty: e.target.value })} /></td>
+                      <td><select value={row.unit} onChange={e => updateSemiEditDraft(row.id, { unit: e.target.value })}><option value="g">g</option><option value="kg">kg</option><option value="ml">ml</option><option value="l">l</option><option value="pcs">pcs</option></select></td>
+                      <td>{row.component_type === 'manual' ? <input value={row.manual_unit_cost} onChange={e => updateSemiEditDraft(row.id, { manual_unit_cost: e.target.value })} /> : <span className="hint">из закупки</span>}</td>
+                      <td><input value={row.waste_percent} onChange={e => updateSemiEditDraft(row.id, { waste_percent: e.target.value })} /></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="semi-modal-actions">
+              <button className="small" onClick={() => setSemiEditModalOpen(false)}>Отмена</button>
+              <button className="small primary" onClick={saveSemiIngredientsEditor}>Сохранить изменения</button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </section>
   )
 }
@@ -5057,6 +5083,78 @@ function SemiFinishedInlineStyles() {
       }
       .semi-row.selected td {
         background: #eef2f7 !important;
+      }
+
+
+      .semi-modal-backdrop {
+        position: fixed;
+        inset: 0;
+        z-index: 2000;
+        background: rgba(15, 23, 42, 0.48);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+      }
+      .semi-modal-card {
+        width: min(980px, 96vw);
+        max-height: 88vh;
+        overflow: hidden;
+        background: #fff;
+        border-radius: 24px;
+        box-shadow: 0 24px 80px rgba(15, 23, 42, 0.28);
+        padding: 22px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+      .semi-modal-head {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 18px;
+      }
+      .semi-modal-table-wrap {
+        overflow: auto;
+        border: 1px solid #e5e7eb;
+        border-radius: 16px;
+      }
+      .semi-modal-table {
+        width: 100%;
+        border-collapse: collapse;
+        table-layout: fixed;
+      }
+      .semi-modal-table th,
+      .semi-modal-table td {
+        padding: 10px;
+        border-bottom: 1px solid #edf0f4;
+        vertical-align: middle;
+      }
+      .semi-modal-table th {
+        background: #f1f5f9;
+        text-align: left;
+        font-size: 12px;
+        color: #475569;
+      }
+      .semi-modal-table input,
+      .semi-modal-table select {
+        width: 100%;
+        min-width: 0;
+      }
+      .semi-modal-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+      @media (max-width: 760px) {
+        .semi-modal-card {
+          width: 100%;
+          padding: 16px;
+        }
+        .semi-modal-table {
+          min-width: 720px;
+        }
       }
 
     `}</style>
