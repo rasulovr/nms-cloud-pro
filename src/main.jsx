@@ -1929,6 +1929,12 @@ function Revenue({ t }) {
     return [...ids]
   }
 
+
+  async function revenueDistributionForDate(targetDate) {
+    const { revenueByBranch, totalRevenue } = await revenueDistributionForDate(targetDate)
+    return { revenueByBranch, totalRevenue }
+  }
+
   async function distributeBazarExpense({ sourceExpense, nextExpense, user }) {
     const targetDate = nextExpense.expense_date || date
     const amount = parseNum(nextExpense.amount)
@@ -2014,6 +2020,64 @@ function Revenue({ t }) {
     return inserted || []
   }
 
+
+  async function recalcExistingBazarExpenseForDate(targetDate) {
+    if (!targetDate) return
+
+    const { data: existingRows, error } = await supabase
+      .from('daily_expenses')
+      .select('id, branch_id, expense_date, category_id, custom_category, amount, comment, expense_categories(name)')
+      .eq('expense_date', targetDate)
+      .is('deleted_at', null)
+
+    if (error) throw error
+
+    const bazarRows = (existingRows || []).filter(row => {
+      const categoryName = row.expense_categories?.name || ''
+      return isBazarExpenseName(row.custom_category) || isBazarExpenseName(categoryName)
+    })
+
+    if (!bazarRows.length) return
+
+    const totalBazar = bazarRows.reduce((sum, row) => sum + parseNum(row.amount), 0)
+    if (totalBazar <= 0) return
+
+    const { revenueByBranch, totalRevenue } = await revenueDistributionForDate(targetDate)
+    if (totalRevenue <= 0 || !revenueByBranch.length) return
+
+    const user = await currentUserMeta()
+    const bazarCategoryId = bazarRows.find(row => row.category_id)?.category_id || null
+
+    const rows = revenueByBranch.map(row => {
+      const share = row.revenue / totalRevenue
+      return {
+        branch_id: row.branch_id,
+        expense_date: targetDate,
+        category_id: bazarCategoryId,
+        custom_category: bazarCategoryId ? null : 'Базар',
+        amount: Number((totalBazar * share).toFixed(2)),
+        comment: `Автоперераспределение Базар · доля выручки ${pct(share * 100)} · выручка филиала ${fmt(row.revenue)} AZN`,
+        created_by: user.user_id,
+        updated_by: user.user_id,
+        deleted_at: null,
+        deleted_by: null
+      }
+    })
+
+    const distributedTotal = rows.reduce((sum, row) => sum + parseNum(row.amount), 0)
+    const diff = Number((totalBazar - distributedTotal).toFixed(2))
+    if (rows.length && diff !== 0) rows[0].amount = Number((parseNum(rows[0].amount) + diff).toFixed(2))
+
+    const idsToDelete = bazarRows.map(row => row.id)
+    if (idsToDelete.length) {
+      const { error: deleteError } = await supabase.from('daily_expenses').delete().in('id', idsToDelete)
+      if (deleteError) throw deleteError
+    }
+
+    const { error: insertError } = await supabase.from('daily_expenses').insert(rows)
+    if (insertError) throw insertError
+  }
+
   async function recalcDailyRevenueAggregate(activeBranchId = branchId, activeDate = date) {
     if (!activeBranchId) return
     const { data: rows } = await supabase.from('daily_revenue_entries').select('cash_amount, bank_amount, wolt_amount').eq('branch_id', activeBranchId).eq('revenue_date', activeDate).is('deleted_at', null)
@@ -2022,6 +2086,7 @@ function Revenue({ t }) {
     const wolt = (rows || []).reduce((s, r) => s + parseNum(r.wolt_amount), 0)
     const user = await currentUserMeta()
     await supabase.from('daily_revenue').upsert({ branch_id: activeBranchId, revenue_date: activeDate, cash_amount: cash, bank_amount: bank, wolt_amount: wolt, comment: 'Автосумма из строк выручки', updated_by: user.user_id, deleted_at: null, deleted_by: null }, { onConflict: 'branch_id,revenue_date' })
+    await recalcExistingBazarExpenseForDate(activeDate)
   }
 
   function expenseGroupName(name) {
@@ -4718,7 +4783,79 @@ function Recipes({ t }) {
             </div>
             <div className="actions-row semi-table-actions">
               <button className="small primary" onClick={openSemiIngredientsEditor}>Редактировать состав</button>
-            </div>
+              {semiEditModalOpen && (
+              <div className="semi-inline-editor">
+                <div className="semi-modal-head">
+                  <div>
+                    <h3>Редактировать состав полуфабриката</h3>
+                    <p className="hint">Все ингредиенты редактируются в одном окне.</p>
+                  </div>
+                  <button className="small" onClick={() => setSemiEditModalOpen(false)}>Закрыть</button>
+                </div>
+
+                <div className="semi-modal-table-wrap">
+                  <table className="semi-modal-table">
+                    <thead>
+                      <tr><th>Ингредиент</th><th>Кол-во</th><th>Ед.</th><th>Цена / ед.</th><th>Потери %</th></tr>
+                    </thead>
+                    <tbody>
+                      {semiEditDraft.map(row => (
+                        <tr key={row.id}>
+                          <td>{row.component_type === 'manual' ? <input value={row.item_name} onChange={e => updateSemiEditDraft(row.id, { item_name: e.target.value })} /> : <b>{row.item_name}</b>}</td>
+                          <td><input value={row.qty} onChange={e => updateSemiEditDraft(row.id, { qty: e.target.value })} /></td>
+                          <td><select value={row.unit} onChange={e => updateSemiEditDraft(row.id, { unit: e.target.value })}><option value="g">g</option><option value="kg">kg</option><option value="ml">ml</option><option value="l">l</option><option value="pcs">pcs</option></select></td>
+                          <td>{row.component_type === 'manual' ? <input value={row.manual_unit_cost} onChange={e => updateSemiEditDraft(row.id, { manual_unit_cost: e.target.value })} /> : <span className="hint">из закупки</span>}</td>
+                          <td><input value={row.waste_percent} onChange={e => updateSemiEditDraft(row.id, { waste_percent: e.target.value })} /></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="semi-modal-actions">
+                  <button className="small" onClick={() => setSemiEditModalOpen(false)}>Отмена</button>
+                  <button className="small primary" onClick={saveSemiIngredientsEditor}>Сохранить изменения</button>
+                </div>
+              </div>
+            )}
+
+          </div>
+            {semiEditModalOpen && (
+              <div className="semi-inline-editor">
+                <div className="semi-modal-head">
+                  <div>
+                    <h3>Редактировать состав полуфабриката</h3>
+                    <p className="hint">Все ингредиенты редактируются в одном окне.</p>
+                  </div>
+                  <button className="small" onClick={() => setSemiEditModalOpen(false)}>Закрыть</button>
+                </div>
+
+                <div className="semi-modal-table-wrap">
+                  <table className="semi-modal-table">
+                    <thead>
+                      <tr><th>Ингредиент</th><th>Кол-во</th><th>Ед.</th><th>Цена / ед.</th><th>Потери %</th></tr>
+                    </thead>
+                    <tbody>
+                      {semiEditDraft.map(row => (
+                        <tr key={row.id}>
+                          <td>{row.component_type === 'manual' ? <input value={row.item_name} onChange={e => updateSemiEditDraft(row.id, { item_name: e.target.value })} /> : <b>{row.item_name}</b>}</td>
+                          <td><input value={row.qty} onChange={e => updateSemiEditDraft(row.id, { qty: e.target.value })} /></td>
+                          <td><select value={row.unit} onChange={e => updateSemiEditDraft(row.id, { unit: e.target.value })}><option value="g">g</option><option value="kg">kg</option><option value="ml">ml</option><option value="l">l</option><option value="pcs">pcs</option></select></td>
+                          <td>{row.component_type === 'manual' ? <input value={row.manual_unit_cost} onChange={e => updateSemiEditDraft(row.id, { manual_unit_cost: e.target.value })} /> : <span className="hint">из закупки</span>}</td>
+                          <td><input value={row.waste_percent} onChange={e => updateSemiEditDraft(row.id, { waste_percent: e.target.value })} /></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="semi-modal-actions">
+                  <button className="small" onClick={() => setSemiEditModalOpen(false)}>Отмена</button>
+                  <button className="small primary" onClick={saveSemiIngredientsEditor}>Сохранить изменения</button>
+                </div>
+              </div>
+            )}
+
           </div>
 
           <div className="card semi-add-card span-2">
@@ -4824,43 +4961,6 @@ function Recipes({ t }) {
             </div>
           </div>
         </section>
-      )}
-      {semiEditModalOpen && (
-        <div className="semi-modal-backdrop">
-          <div className="semi-modal-card">
-            <div className="semi-modal-head">
-              <div>
-                <h3>Редактировать состав полуфабриката</h3>
-                <p className="hint">Все ингредиенты редактируются в одном окне.</p>
-              </div>
-              <button className="small" onClick={() => setSemiEditModalOpen(false)}>Закрыть</button>
-            </div>
-
-            <div className="semi-modal-table-wrap">
-              <table className="semi-modal-table">
-                <thead>
-                  <tr><th>Ингредиент</th><th>Кол-во</th><th>Ед.</th><th>Цена / ед.</th><th>Потери %</th></tr>
-                </thead>
-                <tbody>
-                  {semiEditDraft.map(row => (
-                    <tr key={row.id}>
-                      <td>{row.component_type === 'manual' ? <input value={row.item_name} onChange={e => updateSemiEditDraft(row.id, { item_name: e.target.value })} /> : <b>{row.item_name}</b>}</td>
-                      <td><input value={row.qty} onChange={e => updateSemiEditDraft(row.id, { qty: e.target.value })} /></td>
-                      <td><select value={row.unit} onChange={e => updateSemiEditDraft(row.id, { unit: e.target.value })}><option value="g">g</option><option value="kg">kg</option><option value="ml">ml</option><option value="l">l</option><option value="pcs">pcs</option></select></td>
-                      <td>{row.component_type === 'manual' ? <input value={row.manual_unit_cost} onChange={e => updateSemiEditDraft(row.id, { manual_unit_cost: e.target.value })} /> : <span className="hint">из закупки</span>}</td>
-                      <td><input value={row.waste_percent} onChange={e => updateSemiEditDraft(row.id, { waste_percent: e.target.value })} /></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            <div className="semi-modal-actions">
-              <button className="small" onClick={() => setSemiEditModalOpen(false)}>Отмена</button>
-              <button className="small primary" onClick={saveSemiIngredientsEditor}>Сохранить изменения</button>
-            </div>
-          </div>
-        </div>
       )}
 
     </section>
@@ -5155,6 +5255,29 @@ function SemiFinishedInlineStyles() {
         .semi-modal-table {
           min-width: 720px;
         }
+      }
+
+
+      .semi-modal-backdrop {
+        position: static !important;
+        inset: auto !important;
+        z-index: auto !important;
+        background: transparent !important;
+        display: block !important;
+        padding: 0 !important;
+      }
+      .semi-inline-editor {
+        margin-top: 16px;
+        padding: 16px;
+        border: 1px solid #e5e7eb;
+        border-radius: 20px;
+        background: #f8fafc;
+      }
+      .semi-inline-editor .semi-modal-table-wrap {
+        max-height: 420px;
+      }
+      .semi-inline-editor .semi-modal-head {
+        margin-bottom: 12px;
       }
 
     `}</style>
