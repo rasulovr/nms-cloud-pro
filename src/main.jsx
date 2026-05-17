@@ -182,12 +182,14 @@ const rmsFinancePurchaseTotalsByGroup = (rows = []) => (rows || []).reduce((tota
 }, { food: 0, packaging: 0, household: 0, other: 0 })
 
 const rmsFinanceAllocatedSupplierTotals = (purchaseRows = [], share = 1) => {
-  const totals = rmsFinancePurchaseTotalsByGroup(purchaseRows || [])
+  // Пока не делим поставщиков на кухня / бар / хозтовары / упаковку.
+  // Вся сумма приходов поставщиков входит в FoodCost как “Поставщики”.
+  const total = (purchaseRows || []).reduce((sum, p) => sum + parseNum(p.total_amount), 0)
   return {
-    food: parseNum(totals.food) * parseNum(share),
-    packaging: parseNum(totals.packaging) * parseNum(share),
-    household: parseNum(totals.household) * parseNum(share),
-    other: parseNum(totals.other) * parseNum(share)
+    food: total * parseNum(share),
+    packaging: 0,
+    household: 0,
+    other: 0
   }
 }
 
@@ -4232,9 +4234,7 @@ function Finance({ t, lang, onGoToExpense }) {
 
         const supplierRows = []
         ;(purchaseRows || []).forEach(p => {
-          const totals = rmsFinancePurchaseTotalsByGroup([p])
-          const nestedItems = p.supplier_purchase_items || []
-          const foodTotal = parseNum(totals.food) || (!nestedItems.length ? parseNum(p.total_amount) : 0)
+          const foodTotal = parseNum(p.total_amount)
           if (foodTotal <= 0) return
 
           if (branchId === ALL_BRANCHES) {
@@ -4246,7 +4246,7 @@ function Finance({ t, lang, onGoToExpense }) {
               name: 'Food Cost / Поставщики',
               amountValue: foodTotal,
               amount: foodTotal,
-              comment: p.invoice_number ? `Поступление поставщика · фактура ${p.invoice_number}` : 'Поступление поставщика',
+              comment: p.invoice_number ? `Поставщики · фактура ${p.invoice_number}` : 'Поставщики',
               created_at: p.purchase_date,
               isSupplierPurchase: true
             })
@@ -4266,7 +4266,7 @@ function Finance({ t, lang, onGoToExpense }) {
             name: 'Food Cost / Поставщики',
             amountValue: allocated,
             amount: allocated,
-            comment: `${p.invoice_number ? `Поступление поставщика · фактура ${p.invoice_number}` : 'Поступление поставщика'} · доля выручки ${pct(share * 100)}`,
+            comment: `${p.invoice_number ? `Поставщики · фактура ${p.invoice_number}` : 'Поставщики'} · доля выручки ${pct(share * 100)}`,
             created_at: p.purchase_date,
             isSupplierPurchase: true
           })
