@@ -4212,7 +4212,7 @@ function Finance({ t, lang, onGoToExpense }) {
         const grouped = new Map()
         rows.forEach(row => {
           const source = isBazarExpenseName(row.name) ? 'Базар' : row.name
-          const key = `${row.expense_date}__${source}__${row.comment || ''}`
+          const key = `${row.expense_date}__${source}`
           const current = grouped.get(key) || {
             id: `group-${key}`,
             branch_id: '',
@@ -4221,7 +4221,7 @@ function Finance({ t, lang, onGoToExpense }) {
             name: source,
             amountValue: 0,
             amount: 0,
-            comment: row.comment || '',
+            comment: source === 'Базар' ? 'Общая сумма Базара за день' : 'Общая сумма за день',
             created_at: row.expense_date,
             isGroupedFoodCost: true
           }
@@ -9731,9 +9731,14 @@ function DebtsPayments({ t }) {
   const [invoiceSearch, setInvoiceSearch] = useState('')
   const [ledgerPageSize, setLedgerPageSize] = useState(10)
   const [ledgerPage, setLedgerPage] = useState(1)
-  const [commonOpsDate, setCommonOpsDate] = useState('')
+  const [commonOpsDate, setCommonOpsDate] = useState(todayISO())
+  const [commonOpsPeriod, setCommonOpsPeriod] = useState('month')
+  const [commonOpsDateFrom, setCommonOpsDateFrom] = useState(monthStart(new Date().getFullYear(), new Date().getMonth() + 1))
+  const [commonOpsDateTo, setCommonOpsDateTo] = useState(todayISO())
   const [commonOpsSupplierId, setCommonOpsSupplierId] = useState('all')
   const [commonOpsType, setCommonOpsType] = useState('all')
+  const [commonOpsPageSize, setCommonOpsPageSize] = useState(20)
+  const [commonOpsPage, setCommonOpsPage] = useState(1)
   const [transactionPageSize, setTransactionPageSize] = useState(10)
   const [transactionPage, setTransactionPage] = useState(1)
   const [transactionLogs, setTransactionLogs] = useState([])
@@ -10199,6 +10204,32 @@ function DebtsPayments({ t }) {
   ].sort((a, b) => new Date(b.purchase_date || b.created_at || 0) - new Date(a.purchase_date || a.created_at || 0))
   const filteredPayments = payments.filter(p => (!activeSupplierId || p.supplier_id === activeSupplierId) && (!activeLegalEntityId || p.legal_entity_id === activeLegalEntityId) && periodOk(p.payment_date))
   const visibleTransactionLogs = transactionLogs.filter(l => (!activeSupplierId || l.supplier_id === activeSupplierId) && (!activeLegalEntityId || l.legal_entity_id === activeLegalEntityId)).slice(0, 30)
+  function commonOpsDateInPeriod(dateStr) {
+    if (!dateStr) return false
+    const d = new Date(dateStr)
+    const anchor = new Date(commonOpsDate || todayISO())
+    if (commonOpsPeriod === 'day') return dateStr === (commonOpsDate || todayISO())
+    if (commonOpsPeriod === 'week') {
+      const a = new Date(anchor)
+      const day = a.getDay() || 7
+      const start = new Date(a)
+      start.setDate(a.getDate() - day + 1)
+      start.setHours(0, 0, 0, 0)
+      const end = new Date(start)
+      end.setDate(start.getDate() + 7)
+      return d >= start && d < end
+    }
+    if (commonOpsPeriod === 'month') return d.getFullYear() === anchor.getFullYear() && d.getMonth() === anchor.getMonth()
+    if (commonOpsPeriod === 'range') {
+      const from = commonOpsDateFrom ? new Date(commonOpsDateFrom) : null
+      const to = commonOpsDateTo ? new Date(commonOpsDateTo) : null
+      if (from) from.setHours(0, 0, 0, 0)
+      if (to) to.setHours(23, 59, 59, 999)
+      return (!from || d >= from) && (!to || d <= to)
+    }
+    return true
+  }
+
   const commonOpsAll = [
     ...openingDebts
       .filter(d => d.is_active !== false)
@@ -10245,12 +10276,22 @@ function DebtsPayments({ t }) {
     }))
   ]
 
-  const lastOps = commonOpsAll
-    .filter(r => !commonOpsDate || r.date === commonOpsDate)
+  const filteredCommonOps = commonOpsAll
+    .filter(r => commonOpsDateInPeriod(r.date))
     .filter(r => commonOpsSupplierId === 'all' || r.supplier_id === commonOpsSupplierId)
     .filter(r => commonOpsType === 'all' || r.type_key === commonOpsType)
     .sort((a,b) => new Date(b.date) - new Date(a.date))
-    .slice(0, 100)
+
+  const commonOpsTotals = filteredCommonOps.reduce((acc, r) => {
+    acc.debit += parseNum(r.debit)
+    acc.credit += parseNum(r.credit)
+    acc.balance = acc.debit - acc.credit
+    return acc
+  }, { debit: 0, credit: 0, balance: 0 })
+
+  const commonOpsTotalPages = Math.max(1, Math.ceil(filteredCommonOps.length / parseNum(commonOpsPageSize || 20)))
+  const safeCommonOpsPage = Math.min(Math.max(1, parseNum(commonOpsPage) || 1), commonOpsTotalPages)
+  const lastOps = filteredCommonOps.slice((safeCommonOpsPage - 1) * parseNum(commonOpsPageSize || 20), safeCommonOpsPage * parseNum(commonOpsPageSize || 20))
 
   const productPriceRows = useMemo(() => {
     const rowsByProduct = new Map()
@@ -10441,12 +10482,27 @@ function DebtsPayments({ t }) {
 
       <div className="card span-2"><div className="card-head"><div><h3>Общий список: приход и оплаты</h3><p className="hint">Фильтруемый журнал операций: стартовый долг, приход по накладным и оплаты.</p></div></div>
         <div className="form-grid compact">
-          <label><span>Дата</span><input type="date" value={commonOpsDate} onChange={e => setCommonOpsDate(e.target.value)} /></label>
-          <label><span>Поставщик</span><select value={commonOpsSupplierId} onChange={e => setCommonOpsSupplierId(e.target.value)}><option value="all">Все поставщики</option>{suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
-          <label><span>Операция</span><select value={commonOpsType} onChange={e => setCommonOpsType(e.target.value)}><option value="all">Все операции</option><option value="opening">Стартовый долг</option><option value="purchase">Приход</option><option value="payment">Оплата</option></select></label>
-          <label><span>&nbsp;</span><button className="ghost small" onClick={() => { setCommonOpsDate(''); setCommonOpsSupplierId('all'); setCommonOpsType('all') }}>Сбросить</button></label>
+          <label><span>Период</span><select value={commonOpsPeriod} onChange={e => { setCommonOpsPeriod(e.target.value); setCommonOpsPage(1) }}><option value="day">День</option><option value="week">Неделя</option><option value="month">Месяц</option><option value="range">Диапазон дат</option><option value="all">Весь период</option></select></label>
+          {commonOpsPeriod !== 'range' && commonOpsPeriod !== 'all' && <label><span>Дата периода</span><input type="date" value={commonOpsDate} onChange={e => { setCommonOpsDate(e.target.value); setCommonOpsPage(1) }} /></label>}
+          {commonOpsPeriod === 'range' && <label><span>С</span><input type="date" value={commonOpsDateFrom} onChange={e => { setCommonOpsDateFrom(e.target.value); setCommonOpsPage(1) }} /></label>}
+          {commonOpsPeriod === 'range' && <label><span>По</span><input type="date" value={commonOpsDateTo} onChange={e => { setCommonOpsDateTo(e.target.value); setCommonOpsPage(1) }} /></label>}
+          <label><span>Поставщик</span><select value={commonOpsSupplierId} onChange={e => { setCommonOpsSupplierId(e.target.value); setCommonOpsPage(1) }}><option value="all">Все поставщики</option>{suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
+          <label><span>Операция</span><select value={commonOpsType} onChange={e => { setCommonOpsType(e.target.value); setCommonOpsPage(1) }}><option value="all">Все операции</option><option value="opening">Стартовый долг</option><option value="purchase">Приход</option><option value="payment">Оплата</option></select></label>
+          <label><span>&nbsp;</span><button className="ghost small" onClick={() => { setCommonOpsPeriod('month'); setCommonOpsDate(todayISO()); setCommonOpsDateFrom(monthStart(new Date().getFullYear(), new Date().getMonth() + 1)); setCommonOpsDateTo(todayISO()); setCommonOpsSupplierId('all'); setCommonOpsType('all'); setCommonOpsPage(1) }}>Сбросить</button></label>
         </div>
-        <div className="table-wrap"><table><thead><tr><th>Дата</th><th>Поставщик</th><th>Операция</th><th>Фактура/отметки</th><th>Приход / долг</th><th>Оплата</th><th>Комментарий</th></tr></thead><tbody>{lastOps.map(r => <tr key={r.id}><td>{r.date}</td><td>{r.supplier}</td><td><b>{r.type}</b></td><td>{r.invoice}</td><td className={r.debit > 0 ? 'bad' : 'hint'}>{r.debit > 0 ? fmt(r.debit) : '—'}</td><td className={r.credit > 0 ? 'good' : 'hint'}>{r.credit > 0 ? fmt(r.credit) : '—'}</td><td>{r.comment || '—'}</td></tr>)}{!lastOps.length && <tr><td colSpan="7" className="hint">—</td></tr>}</tbody></table></div></div>
+        <div className="mini-grid">
+          <div className="metric"><span>Итого приход / долг</span><strong>{fmt(commonOpsTotals.debit)}</strong></div>
+          <div className="metric"><span>Итого оплат</span><strong>{fmt(commonOpsTotals.credit)}</strong></div>
+          <div className="metric"><span>Баланс</span><strong className={commonOpsTotals.balance > 0 ? 'bad' : commonOpsTotals.balance < 0 ? 'good' : 'hint'}>{fmt(commonOpsTotals.balance)}</strong></div>
+        </div>
+        <div className="table-wrap"><table><thead><tr><th>Дата</th><th>Поставщик</th><th>Операция</th><th>Фактура/отметки</th><th>Приход / долг</th><th>Оплата</th><th>Комментарий</th></tr></thead><tbody>{lastOps.map(r => <tr key={r.id}><td>{r.date}</td><td>{r.supplier}</td><td><b>{r.type}</b></td><td>{r.invoice}</td><td className={r.debit > 0 ? 'bad' : 'hint'}>{r.debit > 0 ? fmt(r.debit) : '—'}</td><td className={r.credit > 0 ? 'good' : 'hint'}>{r.credit > 0 ? fmt(r.credit) : '—'}</td><td>{r.comment || '—'}</td></tr>)}{!lastOps.length && <tr><td colSpan="7" className="hint">—</td></tr>}</tbody></table></div>
+        <div className="action-row" style={{margin:'12px 0'}}>
+          <label style={{display:'flex',alignItems:'center',gap:8}}><span className="hint">Показать</span><select value={commonOpsPageSize} onChange={e => { setCommonOpsPageSize(Number(e.target.value)); setCommonOpsPage(1) }}><option value={20}>20</option><option value={30}>30</option><option value={50}>50</option></select></label>
+          <button className="ghost small" disabled={safeCommonOpsPage <= 1} onClick={() => setCommonOpsPage(p => Math.max(1, parseNum(p) - 1))}>← Пред.</button>
+          <span className="hint">Страница {safeCommonOpsPage} / {commonOpsTotalPages} · всего {filteredCommonOps.length}</span>
+          <button className="ghost small" disabled={safeCommonOpsPage >= commonOpsTotalPages} onClick={() => setCommonOpsPage(p => Math.min(commonOpsTotalPages, parseNum(p) + 1))}>След. →</button>
+        </div>
+      </div>
     </section>
   </section>
 }
