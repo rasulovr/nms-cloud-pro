@@ -4208,6 +4208,30 @@ function Finance({ t, lang, onGoToExpense }) {
         }))
         .filter(row => financeExpenseMatchesBreakdown(row.name, selectedName))
 
+      if (selectedName === 'Food Cost / закупки и базар' && branchId === ALL_BRANCHES) {
+        const grouped = new Map()
+        rows.forEach(row => {
+          const source = isBazarExpenseName(row.name) ? 'Базар' : row.name
+          const key = `${row.expense_date}__${source}__${row.comment || ''}`
+          const current = grouped.get(key) || {
+            id: `group-${key}`,
+            branch_id: '',
+            branchName: 'Все филиалы',
+            expense_date: row.expense_date,
+            name: source,
+            amountValue: 0,
+            amount: 0,
+            comment: row.comment || '',
+            created_at: row.expense_date,
+            isGroupedFoodCost: true
+          }
+          current.amountValue += parseNum(row.amountValue)
+          current.amount = current.amountValue
+          grouped.set(key, current)
+        })
+        rows = Array.from(grouped.values())
+      }
+
       if (selectedName === 'Food Cost / закупки и базар') {
         const { data: revenueRows } = await supabase
           .from('daily_revenue')
@@ -9707,6 +9731,9 @@ function DebtsPayments({ t }) {
   const [invoiceSearch, setInvoiceSearch] = useState('')
   const [ledgerPageSize, setLedgerPageSize] = useState(10)
   const [ledgerPage, setLedgerPage] = useState(1)
+  const [commonOpsDate, setCommonOpsDate] = useState('')
+  const [commonOpsSupplierId, setCommonOpsSupplierId] = useState('all')
+  const [commonOpsType, setCommonOpsType] = useState('all')
   const [transactionPageSize, setTransactionPageSize] = useState(10)
   const [transactionPage, setTransactionPage] = useState(1)
   const [transactionLogs, setTransactionLogs] = useState([])
@@ -10172,14 +10199,16 @@ function DebtsPayments({ t }) {
   ].sort((a, b) => new Date(b.purchase_date || b.created_at || 0) - new Date(a.purchase_date || a.created_at || 0))
   const filteredPayments = payments.filter(p => (!activeSupplierId || p.supplier_id === activeSupplierId) && (!activeLegalEntityId || p.legal_entity_id === activeLegalEntityId) && periodOk(p.payment_date))
   const visibleTransactionLogs = transactionLogs.filter(l => (!activeSupplierId || l.supplier_id === activeSupplierId) && (!activeLegalEntityId || l.legal_entity_id === activeLegalEntityId)).slice(0, 30)
-  const lastOps = [
+  const commonOpsAll = [
     ...openingDebts
       .filter(d => d.is_active !== false)
       .map(d => ({
         id: `od-${d.id}`,
         date: d.debt_date,
+        supplier_id: d.supplier_id,
         supplier: d.suppliers?.name || suppliers.find(s => s.id === d.supplier_id)?.name || '—',
         type: 'Стартовый долг',
+        type_key: 'opening',
         invoice: d.invoice_notes || '—',
         debit: parseNum(d.amount),
         credit: 0,
@@ -10191,8 +10220,10 @@ function DebtsPayments({ t }) {
       .map(p => ({
         id: `p-${p.id}`,
         date: p.purchase_date,
+        supplier_id: p.supplier_id,
         supplier: p.suppliers?.name || suppliers.find(s => s.id === p.supplier_id)?.name || '—',
         type: 'Приход',
+        type_key: 'purchase',
         invoice: p.invoice_number || '—',
         debit: parseNum(p.total_amount),
         credit: 0,
@@ -10202,15 +10233,24 @@ function DebtsPayments({ t }) {
     ...payments.map(p => ({
       id: `pay-${p.id}`,
       date: p.payment_date,
+      supplier_id: p.supplier_id,
       supplier: p.suppliers?.name || suppliers.find(s => s.id === p.supplier_id)?.name || '—',
       type: 'Оплата',
+      type_key: 'payment',
       invoice: p.invoice_notes || '—',
       debit: 0,
       credit: parseNum(p.amount),
       amount: -parseNum(p.amount),
       comment: `${p.legal_entities?.name || 'VOEN не указан'}${p.comment ? ' · ' + p.comment : ''}`
     }))
-  ].sort((a,b) => new Date(b.date) - new Date(a.date)).slice(0, 30)
+  ]
+
+  const lastOps = commonOpsAll
+    .filter(r => !commonOpsDate || r.date === commonOpsDate)
+    .filter(r => commonOpsSupplierId === 'all' || r.supplier_id === commonOpsSupplierId)
+    .filter(r => commonOpsType === 'all' || r.type_key === commonOpsType)
+    .sort((a,b) => new Date(b.date) - new Date(a.date))
+    .slice(0, 100)
 
   const productPriceRows = useMemo(() => {
     const rowsByProduct = new Map()
@@ -10399,7 +10439,14 @@ function DebtsPayments({ t }) {
 
 
 
-      <div className="card span-2"><div className="card-head"><div><h3>Общий список: приход и оплаты</h3><p className="hint">Последние 30 операций по всем поставщикам: стартовый долг, приход по накладным и оплаты.</p></div></div><div className="table-wrap"><table><thead><tr><th>Дата</th><th>Поставщик</th><th>Операция</th><th>Фактура/отметки</th><th>Приход / долг</th><th>Оплата</th><th>Комментарий</th></tr></thead><tbody>{lastOps.map(r => <tr key={r.id}><td>{r.date}</td><td>{r.supplier}</td><td><b>{r.type}</b></td><td>{r.invoice}</td><td className={r.debit > 0 ? 'bad' : 'hint'}>{r.debit > 0 ? fmt(r.debit) : '—'}</td><td className={r.credit > 0 ? 'good' : 'hint'}>{r.credit > 0 ? fmt(r.credit) : '—'}</td><td>{r.comment || '—'}</td></tr>)}{!lastOps.length && <tr><td colSpan="7" className="hint">—</td></tr>}</tbody></table></div></div>
+      <div className="card span-2"><div className="card-head"><div><h3>Общий список: приход и оплаты</h3><p className="hint">Фильтруемый журнал операций: стартовый долг, приход по накладным и оплаты.</p></div></div>
+        <div className="form-grid compact">
+          <label><span>Дата</span><input type="date" value={commonOpsDate} onChange={e => setCommonOpsDate(e.target.value)} /></label>
+          <label><span>Поставщик</span><select value={commonOpsSupplierId} onChange={e => setCommonOpsSupplierId(e.target.value)}><option value="all">Все поставщики</option>{suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
+          <label><span>Операция</span><select value={commonOpsType} onChange={e => setCommonOpsType(e.target.value)}><option value="all">Все операции</option><option value="opening">Стартовый долг</option><option value="purchase">Приход</option><option value="payment">Оплата</option></select></label>
+          <label><span>&nbsp;</span><button className="ghost small" onClick={() => { setCommonOpsDate(''); setCommonOpsSupplierId('all'); setCommonOpsType('all') }}>Сбросить</button></label>
+        </div>
+        <div className="table-wrap"><table><thead><tr><th>Дата</th><th>Поставщик</th><th>Операция</th><th>Фактура/отметки</th><th>Приход / долг</th><th>Оплата</th><th>Комментарий</th></tr></thead><tbody>{lastOps.map(r => <tr key={r.id}><td>{r.date}</td><td>{r.supplier}</td><td><b>{r.type}</b></td><td>{r.invoice}</td><td className={r.debit > 0 ? 'bad' : 'hint'}>{r.debit > 0 ? fmt(r.debit) : '—'}</td><td className={r.credit > 0 ? 'good' : 'hint'}>{r.credit > 0 ? fmt(r.credit) : '—'}</td><td>{r.comment || '—'}</td></tr>)}{!lastOps.length && <tr><td colSpan="7" className="hint">—</td></tr>}</tbody></table></div></div>
     </section>
   </section>
 }
