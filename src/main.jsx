@@ -5,8 +5,6 @@ import './styles.css'
 import QRMenu from './QRMenu'
 import './QRMenu.css'
 import RMSQRMenuAdmin from './RMSQRMenuAdmin'
-import RMSLoyalty from './RMSLoyalty'
-import RMSLoyaltyPOSScan from './RMSLoyaltyPOSScan'
 
 const I18N = {
   ru: {
@@ -14,7 +12,7 @@ const I18N = {
     brand_subtitle:'Restaurant Management System', language_label:'Язык интерфейса', login_label:'Login', password_label:'Пароль',
     login_button:'Войти', login_hint:'Вход по внутреннему login. Допустим вход по логину без домена.', login_error:'Неверный логин или пароль', show_password:'Показать пароль',
     logout:'Выйти', revenue_tab:'Выручка', finance_tab:'Финансы ресторанов', reports_tab:'Отчёты', recipes_tab:'Тех. карты', salaries_tab:'Зарплаты',
-    attendance_tab:'Посещаемость', advances_tab:'Авансы', suppliers_tab:'Поставщики', debts_payments_tab:'Долги и оплаты', qr_menu_tab:'QR Menu', loyalty_tab:'Loyalty', loyalty_pos_scan_tab:'Loyalty POS Scan', settings_tab:'Настройки',
+    attendance_tab:'Посещаемость', advances_tab:'Авансы', suppliers_tab:'Поставщики', debts_payments_tab:'Долги и оплаты', qr_menu_tab:'QR Menu', settings_tab:'Настройки',
     revenue_subtitle:'Ввод выручки и расходов за выбранную дату по филиалу', finance_subtitle:'Аналитика по филиалу, месяцу, выручке и расходам',
     period_branch:'Период и филиал', branch_select:'Филиал', date:'Дата', daily_revenue_title:'Выручка за выбранную дату',
     cash:'Наличными', bank:'Банк', wolt:'Wolt', revenue_summary:'Сводка выручки', total_revenue:'Общая выручка',
@@ -37,7 +35,7 @@ const I18N = {
     brand_subtitle:'Restaurant Management System', language_label:'İnterfeys dili', login_label:'Login', password_label:'Parol',
     login_button:'Daxil ol', login_hint:'Daxili login ilə giriş. Domen yazmadan login istifadə etmək olar.', login_error:'Login və ya parol yanlışdır', show_password:'Parolu göstər',
     logout:'Çıxış', revenue_tab:'Dövriyyə', finance_tab:'Restoran maliyyəsi', reports_tab:'Hesabatlar', recipes_tab:'Tex. kartlar', salaries_tab:'Maaşlar',
-    attendance_tab:'Davamiyyət', advances_tab:'Avanslar', suppliers_tab:'Təchizatçılar', debts_payments_tab:'Borclar və ödənişlər', qr_menu_tab:'QR Menu', loyalty_tab:'Loyalty', loyalty_pos_scan_tab:'Loyalty POS Scan', settings_tab:'Ayarlar',
+    attendance_tab:'Davamiyyət', advances_tab:'Avanslar', suppliers_tab:'Təchizatçılar', debts_payments_tab:'Borclar və ödənişlər', qr_menu_tab:'QR Menu', settings_tab:'Ayarlar',
     revenue_subtitle:'Seçilmiş tarix və filial üzrə dövriyyə və xərclər', finance_subtitle:'Filial, ay, dövriyyə və xərclər üzrə analitika',
     period_branch:'Dövr və filial', branch_select:'Filial', date:'Tarix', daily_revenue_title:'Seçilmiş tarixin dövriyyəsi',
     cash:'Nağd', bank:'Bank', wolt:'Wolt', revenue_summary:'Dövriyyə xülasəsi', total_revenue:'Ümumi dövriyyə',
@@ -67,8 +65,6 @@ const SECTIONS = [
   { id: 'suppliers', key: 'suppliers_tab' },
   { id: 'debts', key: 'debts_payments_tab' },
   { id: 'qrmenu', key: 'qr_menu_tab' },
-  { id: 'loyalty', key: 'loyalty_tab' },
-  { id: 'loyalty_pos_scan', key: 'loyalty_pos_scan_tab' },
   { id: 'settings', key: 'settings_tab' }
 ]
 
@@ -856,13 +852,6 @@ function App() {
   const currentAccess = sectionAccess(section)
 
   useEffect(() => {
-    const urlToken = new URLSearchParams(window.location.search).get('loyalty_scan_token')
-    if (urlToken && section !== 'loyalty_pos_scan') {
-      setSection('loyalty_pos_scan')
-    }
-  }, [section])
-
-  useEffect(() => {
     if (!visibleSections.length) return
     if (!canReadAccess(sectionAccess(section))) setSection(visibleSections[0].id)
   }, [permissions, profile, section])
@@ -933,8 +922,6 @@ function App() {
         {canReadAccess(currentAccess) && section === 'suppliers' && <Suppliers t={t} />}
         {canReadAccess(currentAccess) && section === 'debts' && <DebtsPayments t={t} />}
         {canReadAccess(currentAccess) && section === 'qrmenu' && <RMSQRMenuAdmin t={t} />}
-        {canReadAccess(currentAccess) && section === 'loyalty' && <RMSLoyalty />}
-        {canReadAccess(currentAccess) && section === 'loyalty_pos_scan' && <RMSLoyaltyPOSScan />}
         {canReadAccess(currentAccess) && section === 'settings' && <Settings session={session} t={t} theme={theme} setTheme={setTheme} />}
       </main>
     </div>
@@ -961,6 +948,55 @@ function POSLite({ t }) {
 
   const POS_CASHIER_KEY = 'rms_pos_cashier_session_v1'
   const [branchId, setBranchId] = useState('')
+
+
+  async function syncSupplierPurchaseFoodCost(purchase, totalAmount, userId = null) {
+    try {
+      if (!purchase?.purchase_date || !totalAmount) return
+
+      const expenseDate = purchase.purchase_date
+
+      const { revenueByBranch, totalRevenue } = await revenueDistributionForDate(expenseDate)
+      if (!totalRevenue || !revenueByBranch?.length) return
+
+      const commentBase = `Автоматически распределено из поступления поставщика${purchase.invoice_number ? ` · фактура ${purchase.invoice_number}` : ''}`
+
+      // удаляем старые распределения этого поступления
+      await supabase
+        .from('daily_expenses')
+        .delete()
+        .eq('comment', `SUPPLIER_PURCHASE_${purchase.id}`)
+
+      const rows = revenueByBranch.map(row => {
+        const share = row.revenue / totalRevenue
+        return {
+          branch_id: row.branch_id,
+          expense_date: expenseDate,
+          category_id: null,
+          custom_category: 'FoodCost / Поставщики',
+          amount: Number((totalAmount * share).toFixed(2)),
+          comment: `SUPPLIER_PURCHASE_${purchase.id}`,
+          note: `${commentBase} · доля выручки ${pct(share * 100)} · выручка филиала ${fmt(row.revenue)} AZN`,
+          created_by: userId,
+          updated_by: userId,
+          deleted_at: null,
+          deleted_by: null
+        }
+      })
+
+      const distributedTotal = rows.reduce((s, r) => s + parseNum(r.amount), 0)
+      const diff = Number((totalAmount - distributedTotal).toFixed(2))
+      if (rows.length && diff !== 0) {
+        rows[0].amount = Number((parseNum(rows[0].amount) + diff).toFixed(2))
+      }
+
+      const { error } = await supabase.from('daily_expenses').insert(rows)
+      if (error) console.warn('supplier food cost distribution error', error)
+    } catch (e) {
+      console.warn('supplier distribution failed', e)
+    }
+  }
+
   const [date, setDate] = useState(todayISO())
   const [menuItems, setMenuItems] = useState([])
   const [orders, setOrders] = useState([])
@@ -9307,6 +9343,10 @@ function Suppliers({ t }) {
       }))
       const { error: itemError } = await supabase.from('supplier_purchase_items').insert(items)
       if (itemError) throw itemError
+
+      const { data: authData } = await supabase.auth.getUser()
+      await syncSupplierPurchaseFoodCost(purchase, totalAmount, authData?.user?.id || null)
+
       await load(); setLineRows([{ ...emptyLine }]); setPurchaseForm(f => ({ ...f, invoice_number: '', comment: '' })); setMessage(t('saved'))
     } catch (e) { setMessage(e.message) }
   }
@@ -9314,6 +9354,17 @@ function Suppliers({ t }) {
     const { data } = await supabase.from('supplier_purchase_items').select('total_amount').eq('purchase_id', purchaseId)
     const total = (data || []).reduce((s, i) => s + parseNum(i.total_amount), 0)
     await supabase.from('supplier_purchases').update({ total_amount: total }).eq('id', purchaseId)
+
+    const { data: purchase } = await supabase
+      .from('supplier_purchases')
+      .select('*')
+      .eq('id', purchaseId)
+      .single()
+
+    const { data: authData } = await supabase.auth.getUser()
+    if (purchase) {
+      await syncSupplierPurchaseFoodCost(purchase, total, authData?.user?.id || null)
+    }
   }
   async function updatePurchase(id, patch) {
     const { data: authData } = await supabase.auth.getUser()
@@ -9364,6 +9415,12 @@ function Suppliers({ t }) {
       deleted_at: new Date().toISOString(),
       deleted_by: authData?.user?.id || null
     }).eq('id', id)
+
+    await supabase
+      .from('daily_expenses')
+      .delete()
+      .eq('comment', `SUPPLIER_PURCHASE_${id}`)
+
     if (error) setMessage(error.message); else { await load(); setMessage(t('saved')) }
   }
   function startPayment(supplierId, legalEntityId = '') { setPaymentForm({ supplier_id: supplierId, legal_entity_id: legalEntityId || legalEntities[0]?.id || '', payment_date: todayISO(), amount: '', invoice_notes: '', comment: '' }) }
