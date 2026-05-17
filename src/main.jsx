@@ -4136,6 +4136,11 @@ function Finance({ t, lang, onGoToExpense }) {
   const [aiRows, setAiRows] = useState([])
   const [showAllAiRows, setShowAllAiRows] = useState(false)
   const [expenseDetail, setExpenseDetail] = useState({ name: '', rows: [], total: 0, loading: false, error: '' })
+  const [expenseDetailArticleFilter, setExpenseDetailArticleFilter] = useState('all')
+  const [expenseDetailPeriod, setExpenseDetailPeriod] = useState('month')
+  const [expenseDetailDate, setExpenseDetailDate] = useState(todayISO())
+  const [expenseDetailDateFrom, setExpenseDetailDateFrom] = useState(monthStart(new Date().getFullYear(), new Date().getMonth() + 1))
+  const [expenseDetailDateTo, setExpenseDetailDateTo] = useState(todayISO())
 
   function financeExpenseGroupName(name) {
     const value = normalizeExpenseText(name)
@@ -4176,9 +4181,47 @@ function Finance({ t, lang, onGoToExpense }) {
     return financeExpenseGroupName(rowName) === targetGroup
   }
 
+  function expenseDetailDateInPeriod(dateStr) {
+    if (!dateStr) return false
+    const d = new Date(dateStr)
+    const anchor = new Date(expenseDetailDate || todayISO())
+    if (expenseDetailPeriod === 'day') return dateStr === (expenseDetailDate || todayISO())
+    if (expenseDetailPeriod === 'week') {
+      const a = new Date(anchor)
+      const day = a.getDay() || 7
+      const start = new Date(a)
+      start.setDate(a.getDate() - day + 1)
+      start.setHours(0, 0, 0, 0)
+      const end = new Date(start)
+      end.setDate(start.getDate() + 7)
+      return d >= start && d < end
+    }
+    if (expenseDetailPeriod === 'month') return d.getFullYear() === anchor.getFullYear() && d.getMonth() === anchor.getMonth()
+    if (expenseDetailPeriod === 'range') {
+      const from = expenseDetailDateFrom ? new Date(expenseDetailDateFrom) : null
+      const to = expenseDetailDateTo ? new Date(expenseDetailDateTo) : null
+      if (from) from.setHours(0, 0, 0, 0)
+      if (to) to.setHours(23, 59, 59, 999)
+      return (!from || d >= from) && (!to || d <= to)
+    }
+    return true
+  }
+
+  const filteredExpenseDetailRows = (expenseDetail.rows || [])
+    .filter(row => expenseDetailArticleFilter === 'all' || String(row.name || '') === expenseDetailArticleFilter)
+    .filter(row => expenseDetailDateInPeriod(row.expense_date))
+
+  const filteredExpenseDetailTotal = filteredExpenseDetailRows.reduce((sum, row) => sum + parseNum(row.amountValue), 0)
+  const expenseDetailArticleOptions = Array.from(new Set((expenseDetail.rows || []).map(row => row.name).filter(Boolean)))
+
   async function openExpenseBreakdownDetails(item) {
     const selectedName = item?.name || ''
     if (!selectedName) return
+    setExpenseDetailArticleFilter('all')
+    setExpenseDetailPeriod('month')
+    setExpenseDetailDate(monthStart(year, month))
+    setExpenseDetailDateFrom(monthStart(year, month))
+    setExpenseDetailDateTo(new Date(Number(year), Number(month), 0).toISOString().slice(0, 10))
     setExpenseDetail({ name: selectedName, rows: [], total: 0, loading: true, error: '' })
 
     try {
@@ -4978,16 +5021,22 @@ function Finance({ t, lang, onGoToExpense }) {
           {expenseDetail.error && <p className="hint bad">{expenseDetail.error}</p>}
           {!expenseDetail.loading && !expenseDetail.error && <>
             <div className="form-grid compact">
-              <label><span>Итого по найденным строкам</span><input value={fmt(expenseDetail.total)} readOnly /></label>
-              <label><span>Количество строк</span><input value={expenseDetail.rows.length} readOnly /></label>
+              <label><span>Статья / источник</span><select value={expenseDetailArticleFilter} onChange={e => setExpenseDetailArticleFilter(e.target.value)}><option value="all">Все статьи</option>{expenseDetailArticleOptions.map(name => <option key={name} value={name}>{name}</option>)}</select></label>
+              <label><span>Период</span><select value={expenseDetailPeriod} onChange={e => setExpenseDetailPeriod(e.target.value)}><option value="day">День</option><option value="week">Неделя</option><option value="month">Месяц</option><option value="range">Диапазон дат</option><option value="all">Весь период</option></select></label>
+              {expenseDetailPeriod !== 'range' && expenseDetailPeriod !== 'all' && <label><span>Дата периода</span><input type="date" value={expenseDetailDate} onChange={e => setExpenseDetailDate(e.target.value)} /></label>}
+              {expenseDetailPeriod === 'range' && <label><span>С</span><input type="date" value={expenseDetailDateFrom} onChange={e => setExpenseDetailDateFrom(e.target.value)} /></label>}
+              {expenseDetailPeriod === 'range' && <label><span>По</span><input type="date" value={expenseDetailDateTo} onChange={e => setExpenseDetailDateTo(e.target.value)} /></label>}
+              <label><span>Итого по выборке</span><input value={fmt(filteredExpenseDetailTotal)} readOnly /></label>
+              <label><span>Количество строк</span><input value={filteredExpenseDetailRows.length} readOnly /></label>
             </div>
             <div className="table-wrap" style={{marginTop: 12}}>
               <table>
                 <thead><tr><th>Дата</th><th>Филиал</th><th>Статья</th><th>Сумма</th><th>Комментарий</th><th>Создано</th><th>Действие</th></tr></thead>
                 <tbody>
-                  {expenseDetail.rows.map(row => <tr key={row.id}><td>{row.expense_date}</td><td>{row.branchName}</td><td>{row.name}</td><td><b>{fmt(row.amountValue)}</b></td><td>{row.comment || '—'}</td><td>{row.created_at ? new Date(row.created_at).toLocaleString('ru-RU') : '—'}</td><td>{row.isSupplierPurchase ? <span className="hint">Поставщики</span> : <button className="small" onClick={() => onGoToExpense?.(row)}>Перейти</button>}</td></tr>)}
-                  {!expenseDetail.rows.length && <tr><td colSpan="7" className="hint">По этой статье за выбранный месяц прямых строк расхода не найдено. Если статья расчётная, она могла быть сформирована автоматически из зарплат, DSMF, налога или закупок поставщиков.</td></tr>}
+                  {filteredExpenseDetailRows.map(row => <tr key={row.id}><td>{row.expense_date}</td><td>{row.branchName}</td><td>{row.name}</td><td><b>{fmt(row.amountValue)}</b></td><td>{row.comment || '—'}</td><td>{row.created_at ? new Date(row.created_at).toLocaleString('ru-RU') : '—'}</td><td>{row.isSupplierPurchase || row.isGroupedFoodCost ? <span className="hint">{row.isSupplierPurchase ? 'Поставщики' : 'Сводная строка'}</span> : <button className="small" onClick={() => onGoToExpense?.(row)}>Перейти</button>}</td></tr>)}
+                  {!filteredExpenseDetailRows.length && <tr><td colSpan="7" className="hint">Нет строк по выбранной статье.</td></tr>}
                 </tbody>
+                <tfoot><tr><td colSpan="3"><b>Итого</b></td><td><b>{fmt(filteredExpenseDetailTotal)}</b></td><td colSpan="3" className="hint">{filteredExpenseDetailRows.length} строк</td></tr></tfoot>
               </table>
             </div>
           </>}
