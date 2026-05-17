@@ -10355,7 +10355,8 @@ function DebtsPayments({ t }) {
         debit: parseNum(d.amount),
         credit: 0,
         amount: parseNum(d.amount),
-        comment: `${d.legal_entities?.name || 'VOEN не указан'}${d.comment ? ' · ' + d.comment : ''}`
+        comment: `${d.legal_entities?.name || 'VOEN не указан'}${d.comment ? ' · ' + d.comment : ''}`,
+        source: d
       })),
     ...purchases
       .filter(p => !p.deleted_at)
@@ -10370,7 +10371,8 @@ function DebtsPayments({ t }) {
         debit: parseNum(p.total_amount),
         credit: 0,
         amount: parseNum(p.total_amount),
-        comment: `${p.legal_entities?.name || 'VOEN не указан'}${p.comment ? ' · ' + p.comment : ''}`
+        comment: `${p.legal_entities?.name || 'VOEN не указан'}${p.comment ? ' · ' + p.comment : ''}`,
+        source: p
       })),
     ...payments.map(p => ({
       id: `pay-${p.id}`,
@@ -10383,7 +10385,8 @@ function DebtsPayments({ t }) {
       debit: 0,
       credit: parseNum(p.amount),
       amount: -parseNum(p.amount),
-      comment: `${p.legal_entities?.name || 'VOEN не указан'}${p.comment ? ' · ' + p.comment : ''}`
+      comment: `${p.legal_entities?.name || 'VOEN не указан'}${p.comment ? ' · ' + p.comment : ''}`,
+      source: p
     }))
   ]
 
@@ -10532,6 +10535,35 @@ function DebtsPayments({ t }) {
   const ledgerDebtClass = ledgerTotals.balance > 0 ? 'bad' : ledgerTotals.balance < 0 ? 'good' : 'neutral'
   const ledgerDebtText = ledgerTotals.balance > 0 ? 'Долг поставщику' : ledgerTotals.balance < 0 ? 'Поставщик должен нам' : 'Долга нет'
 
+  function handleCommonOperationAction(row) {
+    if (!row?.source) return
+    const source = row.source
+
+    if (row.type_key === 'purchase') {
+      openTransactions(source.supplier_id, 'purchases', source.legal_entity_id || '')
+      startEditPurchaseTransaction(source)
+      return
+    }
+
+    if (row.type_key === 'payment') {
+      openTransactions(source.supplier_id, 'payments', source.legal_entity_id || '')
+      startEditSupplierPayment(source)
+      return
+    }
+
+    if (row.type_key === 'opening') {
+      openTransactions(source.supplier_id, 'purchases', source.legal_entity_id || '')
+      startEditOpeningDebt({
+        ...source,
+        id: `opening-${source.id}`,
+        purchase_date: source.debt_date,
+        total_amount: source.amount,
+        invoice_number: source.invoice_notes || '',
+        supplier_purchase_items: []
+      })
+    }
+  }
+
   function printSupplierLedger() {
     const supplierName = ledgerSupplierId === 'all' ? 'Все поставщики' : suppliers.find(s => s.id === ledgerSupplierId)?.name || 'Поставщик'
     const filters = `${normalizedLedgerSearch ? 'Поиск поставщика: ' + ledgerSearch + ' · ' : ''}${normalizedInvoiceSearch ? 'E-qaimə: ' + invoiceSearch : ''}`
@@ -10606,7 +10638,7 @@ function DebtsPayments({ t }) {
           <div className="metric"><span>Итого оплат</span><strong>{fmt(commonOpsTotals.credit)}</strong></div>
           <div className="metric"><span>Баланс</span><strong className={commonOpsTotals.balance > 0 ? 'bad' : commonOpsTotals.balance < 0 ? 'good' : 'hint'}>{fmt(commonOpsTotals.balance)}</strong></div>
         </div>
-        <div className="table-wrap"><table><thead><tr><th>Дата</th><th>Поставщик</th><th>Операция</th><th>Фактура/отметки</th><th>Приход / долг</th><th>Оплата</th><th>Комментарий</th><th>Действие</th></tr></thead><tbody>{lastOps.map(r => <tr key={r.id}><td>{r.date}</td><td>{r.supplier}</td><td><b>{r.type}</b></td><td>{r.invoice}</td><td className={r.debit > 0 ? 'bad' : 'hint'}>{r.debit > 0 ? fmt(r.debit) : '—'}</td><td className={r.credit > 0 ? 'good' : 'hint'}>{r.credit > 0 ? fmt(r.credit) : '—'}</td><td>{r.comment || '—'}</td><td>{r.type_key === 'purchase' ? <button className="small" onClick={() => openPurchaseView(r.id.replace('p-', ''))}>Открыть</button> : r.type_key === 'payment' ? <button className="small" onClick={() => startEditPayment(r.id.replace('pay-', ''))}>Редактировать</button> : r.type_key === 'opening' ? <button className="small" onClick={() => startEditOpeningDebt(r.id.replace('od-', ''))}>Редактировать</button> : '—'}</td></tr>)}{!lastOps.length && <tr><td colSpan="7" className="hint">—</td></tr>}</tbody></table></div>
+        <div className="table-wrap"><table><thead><tr><th>Дата</th><th>Поставщик</th><th>Операция</th><th>Фактура/отметки</th><th>Приход / долг</th><th>Оплата</th><th>Комментарий</th><th>Действие</th></tr></thead><tbody>{lastOps.map(r => <tr key={r.id}><td>{r.date}</td><td>{r.supplier}</td><td><b>{r.type}</b></td><td>{r.invoice}</td><td className={r.debit > 0 ? 'bad' : 'hint'}>{r.debit > 0 ? fmt(r.debit) : '—'}</td><td className={r.credit > 0 ? 'good' : 'hint'}>{r.credit > 0 ? fmt(r.credit) : '—'}</td><td>{r.comment || '—'}</td><td>{r.type_key === 'purchase' || r.type_key === 'payment' || r.type_key === 'opening' ? <button className="small" onClick={() => handleCommonOperationAction(r)}>Редактировать</button> : '—'}</td></tr>)}{!lastOps.length && <tr><td colSpan="8" className="hint">—</td></tr>}</tbody></table></div>
         <div className="action-row" style={{margin:'12px 0'}}>
           <label style={{display:'flex',alignItems:'center',gap:8}}><span className="hint">Показать</span><select value={commonOpsPageSize} onChange={e => { setCommonOpsPageSize(Number(e.target.value)); setCommonOpsPage(1) }}><option value={20}>20</option><option value={30}>30</option><option value={50}>50</option></select></label>
           <button className="ghost small" disabled={safeCommonOpsPage <= 1} onClick={() => setCommonOpsPage(p => Math.max(1, parseNum(p) - 1))}>← Пред.</button>
