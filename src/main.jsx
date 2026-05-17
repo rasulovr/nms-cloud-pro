@@ -10173,10 +10173,44 @@ function DebtsPayments({ t }) {
   const filteredPayments = payments.filter(p => (!activeSupplierId || p.supplier_id === activeSupplierId) && (!activeLegalEntityId || p.legal_entity_id === activeLegalEntityId) && periodOk(p.payment_date))
   const visibleTransactionLogs = transactionLogs.filter(l => (!activeSupplierId || l.supplier_id === activeSupplierId) && (!activeLegalEntityId || l.legal_entity_id === activeLegalEntityId)).slice(0, 30)
   const lastOps = [
-    ...openingDebts.map(d => ({ id: `od-${d.id}`, date: d.debt_date, supplier: d.suppliers?.name || suppliers.find(s => s.id === d.supplier_id)?.name || '—', type: 'Стартовый долг', invoice: d.invoice_notes || '—', amount: parseNum(d.amount), comment: `${d.legal_entities?.name || 'VOEN не указан'}${d.comment ? ' · ' + d.comment : ''}` })),
-    ...purchases.map(p => ({ id: `p-${p.id}`, date: p.purchase_date, supplier: p.suppliers?.name || suppliers.find(s => s.id === p.supplier_id)?.name || '—', type: 'Поступление', invoice: p.invoice_number || '—', amount: parseNum(p.total_amount), comment: `${p.legal_entities?.name || 'VOEN не указан'}${p.comment ? ' · ' + p.comment : ''}` })),
-    ...payments.map(p => ({ id: `pay-${p.id}`, date: p.payment_date, supplier: p.suppliers?.name || suppliers.find(s => s.id === p.supplier_id)?.name || '—', type: 'Оплата', invoice: p.invoice_notes || '—', amount: -parseNum(p.amount), comment: `${p.legal_entities?.name || 'VOEN не указан'}${p.comment ? ' · ' + p.comment : ''}` }))
-  ].sort((a,b) => new Date(b.date) - new Date(a.date)).slice(0, 10)
+    ...openingDebts
+      .filter(d => d.is_active !== false)
+      .map(d => ({
+        id: `od-${d.id}`,
+        date: d.debt_date,
+        supplier: d.suppliers?.name || suppliers.find(s => s.id === d.supplier_id)?.name || '—',
+        type: 'Стартовый долг',
+        invoice: d.invoice_notes || '—',
+        debit: parseNum(d.amount),
+        credit: 0,
+        amount: parseNum(d.amount),
+        comment: `${d.legal_entities?.name || 'VOEN не указан'}${d.comment ? ' · ' + d.comment : ''}`
+      })),
+    ...purchases
+      .filter(p => !p.deleted_at)
+      .map(p => ({
+        id: `p-${p.id}`,
+        date: p.purchase_date,
+        supplier: p.suppliers?.name || suppliers.find(s => s.id === p.supplier_id)?.name || '—',
+        type: 'Приход',
+        invoice: p.invoice_number || '—',
+        debit: parseNum(p.total_amount),
+        credit: 0,
+        amount: parseNum(p.total_amount),
+        comment: `${p.legal_entities?.name || 'VOEN не указан'}${p.comment ? ' · ' + p.comment : ''}`
+      })),
+    ...payments.map(p => ({
+      id: `pay-${p.id}`,
+      date: p.payment_date,
+      supplier: p.suppliers?.name || suppliers.find(s => s.id === p.supplier_id)?.name || '—',
+      type: 'Оплата',
+      invoice: p.invoice_notes || '—',
+      debit: 0,
+      credit: parseNum(p.amount),
+      amount: -parseNum(p.amount),
+      comment: `${p.legal_entities?.name || 'VOEN не указан'}${p.comment ? ' · ' + p.comment : ''}`
+    }))
+  ].sort((a,b) => new Date(b.date) - new Date(a.date)).slice(0, 30)
 
   const productPriceRows = useMemo(() => {
     const rowsByProduct = new Map()
@@ -10365,7 +10399,7 @@ function DebtsPayments({ t }) {
 
 
 
-      {!activeSupplierId && <div className="card span-2"><div className="card-head"><div><h3>Последние поступления и оплаты</h3><p className="hint">Последние 10 операций по всем поставщикам.</p></div></div><div className="table-wrap"><table><thead><tr><th>Дата</th><th>Поставщик</th><th>Тип</th><th>Фактура/отметки</th><th>Сумма</th><th>Комментарий</th></tr></thead><tbody>{lastOps.map(r => <tr key={r.id}><td>{r.date}</td><td>{r.supplier}</td><td>{r.type}</td><td>{r.invoice}</td><td className={r.amount >= 0 ? 'bad' : 'good'}>{fmt(Math.abs(r.amount))}</td><td>{r.comment || '—'}</td></tr>)}{!lastOps.length && <tr><td colSpan="6" className="hint">—</td></tr>}</tbody></table></div></div>}
+      <div className="card span-2"><div className="card-head"><div><h3>Общий список: приход и оплаты</h3><p className="hint">Последние 30 операций по всем поставщикам: стартовый долг, приход по накладным и оплаты.</p></div></div><div className="table-wrap"><table><thead><tr><th>Дата</th><th>Поставщик</th><th>Операция</th><th>Фактура/отметки</th><th>Приход / долг</th><th>Оплата</th><th>Комментарий</th></tr></thead><tbody>{lastOps.map(r => <tr key={r.id}><td>{r.date}</td><td>{r.supplier}</td><td><b>{r.type}</b></td><td>{r.invoice}</td><td className={r.debit > 0 ? 'bad' : 'hint'}>{r.debit > 0 ? fmt(r.debit) : '—'}</td><td className={r.credit > 0 ? 'good' : 'hint'}>{r.credit > 0 ? fmt(r.credit) : '—'}</td><td>{r.comment || '—'}</td></tr>)}{!lastOps.length && <tr><td colSpan="7" className="hint">—</td></tr>}</tbody></table></div></div>
     </section>
   </section>
 }
