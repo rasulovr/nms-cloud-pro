@@ -9254,6 +9254,68 @@ function Suppliers({ t }) {
   const [expandedEntities, setExpandedEntities] = useState({})
   const [message, setMessage] = useState('')
 
+
+  async function revenueDistributionForSupplierDate(expenseDate) {
+    const { data } = await supabase
+      .from('daily_revenue')
+      .select('branch_id,cash_amount,bank_amount,wolt_amount')
+      .eq('revenue_date', expenseDate)
+
+    const revenueByBranch = (data || [])
+      .map(r => ({
+        branch_id: r.branch_id,
+        revenue: parseNum(r.cash_amount) + parseNum(r.bank_amount) + parseNum(r.wolt_amount)
+      }))
+      .filter(r => r.branch_id && r.revenue > 0)
+
+    const totalRevenue = revenueByBranch.reduce((s, r) => s + parseNum(r.revenue), 0)
+    return { revenueByBranch, totalRevenue }
+  }
+
+  async function syncSupplierPurchaseFoodCost(purchase, totalAmount, userId = null) {
+    try {
+      if (!purchase?.id || !purchase?.purchase_date) return
+
+      const amount = parseNum(totalAmount)
+
+      await supabase
+        .from('daily_expenses')
+        .delete()
+        .eq('comment', `SUPPLIER_PURCHASE_${purchase.id}`)
+
+      if (!amount) return
+
+      const { revenueByBranch, totalRevenue } = await revenueDistributionForSupplierDate(purchase.purchase_date)
+      if (!totalRevenue || !revenueByBranch.length) return
+
+      const rows = revenueByBranch.map(row => {
+        const share = row.revenue / totalRevenue
+        return {
+          branch_id: row.branch_id,
+          expense_date: purchase.purchase_date,
+          category_id: null,
+          custom_category: 'FoodCost / Поставщики',
+          amount: Number((amount * share).toFixed(2)),
+          comment: `SUPPLIER_PURCHASE_${purchase.id}`,
+          note: `Автоматически распределено из поступления поставщика${purchase.invoice_number ? ` · фактура ${purchase.invoice_number}` : ''} · доля выручки ${pct(share * 100)} · выручка филиала ${fmt(row.revenue)} AZN`,
+          created_by: userId,
+          updated_by: userId
+        }
+      })
+
+      const distributed = rows.reduce((sum, r) => sum + parseNum(r.amount), 0)
+      const diff = Number((amount - distributed).toFixed(2))
+      if (rows.length && diff !== 0) {
+        rows[0].amount = Number((parseNum(rows[0].amount) + diff).toFixed(2))
+      }
+
+      const { error } = await supabase.from('daily_expenses').insert(rows)
+      if (error) console.warn('supplier food cost distribution error', error)
+    } catch (e) {
+      console.warn('syncSupplierPurchaseFoodCost failed', e)
+    }
+  }
+
   useEffect(() => { load() }, [])
   useEffect(() => {
     if (!purchaseForm.supplier_id && suppliers[0]) setPurchaseForm(f => ({ ...f, supplier_id: suppliers[0].id }))
