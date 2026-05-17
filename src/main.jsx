@@ -3402,6 +3402,7 @@ async function rmsCalculateNetworkForecastForMonth(y, m, scopeBranchId = 'all') 
   const articleNameForExpense = (row) => {
     const raw = row?.expense_categories?.name || row?.custom_category || 'Прочее'
     const group = rmsFinanceExpenseGroupName(raw)
+    if (isDsmfExpenseName(raw)) return 'DSMF'
     if (group === 'food_market') return 'Food Cost / закупки и базар'
     if (group === 'packaging') return 'Take away / packaging'
     if (group === 'household') return 'Хозтовары'
@@ -3418,8 +3419,8 @@ async function rmsCalculateNetworkForecastForMonth(y, m, scopeBranchId = 'all') 
       if (String(row?.comment || '').startsWith('SUPPLIER_PURCHASE_')) return
       const name = row?.expense_categories?.name || row?.custom_category || ''
       const group = rmsFinanceExpenseGroupName(name)
-      if (isSalaryExpenseName(name) || isDsmfExpenseName(name) || group === 'rent') return
-      addArticle(map, articleNameForExpense(row), row.amount)
+      if (isSalaryExpenseName(name) || group === 'rent') return
+      addArticle(map, isDsmfExpenseName(name) ? 'DSMF' : articleNameForExpense(row), row.amount)
     })
     const supplierTotals = rmsFinanceAllocatedSupplierTotals(purchaseRows || [], supplierShare)
     if (supplierTotals.food > 0) addArticle(map, 'Food Cost / закупки и базар', supplierTotals.food)
@@ -4167,6 +4168,7 @@ function Finance({ t, lang, onGoToExpense }) {
 
   function financeExpenseMatchesBreakdown(rowName, breakdownName) {
     if (String(rowName || '') === String(breakdownName || '')) return true
+    if (breakdownName === 'DSMF' && isDsmfExpenseName(rowName)) return true
     const targetGroup = financeDetailGroupForBreakdownName(breakdownName)
     if (!targetGroup || targetGroup === 'other') return false
     return financeExpenseGroupName(rowName) === targetGroup
@@ -4231,7 +4233,8 @@ function Finance({ t, lang, onGoToExpense }) {
         const supplierRows = []
         ;(purchaseRows || []).forEach(p => {
           const totals = rmsFinancePurchaseTotalsByGroup([p])
-          const foodTotal = parseNum(totals.food)
+          const nestedItems = p.supplier_purchase_items || []
+          const foodTotal = parseNum(totals.food) || (!nestedItems.length ? parseNum(p.total_amount) : 0)
           if (foodTotal <= 0) return
 
           if (branchId === ALL_BRANCHES) {
