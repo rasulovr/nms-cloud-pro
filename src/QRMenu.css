@@ -884,3 +884,42 @@
 .qr-bonus-pay-box.muted button{
   margin-top:10px;
 }
+
+
+/* v7 payment lock and paid summary */
+.qr-payment-message.success{
+  border-color:rgba(22,163,74,.25);
+  background:#f0fdf4;
+  color:#14532d;
+}
+.qr-paid-summary{
+  display:grid;
+  gap:10px;
+  padding:16px;
+  border-radius:20px;
+  background:#f0fdf4;
+  border:1px solid rgba(22,163,74,.25);
+}
+.qr-paid-summary div{
+  display:flex;
+  justify-content:space-between;
+  gap:14px;
+  align-items:center;
+}
+.qr-paid-summary span{
+  color:#166534;
+  font-weight:850;
+}
+.qr-paid-summary b{
+  color:#111827;
+  font-weight:950;
+}
+.qr-paid-summary button{
+  margin-top:6px;
+  background:#111827;
+  color:#fff;
+}
+.qr-payment-box button:disabled{
+  opacity:.45;
+  cursor:not-allowed;
+}
