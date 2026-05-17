@@ -39,6 +39,8 @@ export default function QRMenu() {
   const [info, setInfo] = useState(null)
   const [photo, setPhoto] = useState(null)
   const [payChoice, setPayChoice] = useState(false)
+  const [paymentDone, setPaymentDone] = useState(false)
+  const [paymentSummary, setPaymentSummary] = useState(null)
   const [ads, setAds] = useState([])
   const [activeAd, setActiveAd] = useState(null)
 
@@ -178,6 +180,8 @@ export default function QRMenu() {
         qty: 1, price: p.price, total: p.price, status: 'draft'
       })
     }
+    setPaymentDone(false)
+    setPaymentSummary(null)
     loadCart()
   }
 
@@ -185,6 +189,8 @@ export default function QRMenu() {
     const qty = Number(item.qty || 0) + delta
     if (qty <= 0) await supabase.from('rms_qr_live_cart').delete().eq('id', item.id)
     else await supabase.from('rms_qr_live_cart').update({ qty, total: qty * Number(item.price || 0), updated_at: new Date().toISOString() }).eq('id', item.id)
+    setPaymentDone(false)
+    setPaymentSummary(null)
     loadCart()
   }
 
@@ -381,6 +387,11 @@ export default function QRMenu() {
   }
 
   async function simulateQrPayment(useBonus = false) {
+    if (paymentDone) {
+      setBillPaymentMessage('Оплата уже засчитана. Повторная операция заблокирована.')
+      return
+    }
+
     setBillPaymentMessage('')
 
     if (!loyaltyClient) {
@@ -491,6 +502,14 @@ export default function QRMenu() {
     }
 
     setLoyaltyClient(updated)
+    setPaymentDone(true)
+    setPaymentSummary({
+      total,
+      redeemAmount,
+      netPaidAmount,
+      cashback,
+      newBalance: Number(updated.bonus_balance || 0)
+    })
     setBillPaymentMessage(`Оплата засчитана. Списано бонусов: ${fmt(redeemAmount)} AZN. Остаток к оплате: ${fmt(netPaidAmount)} AZN. Cashback: ${fmt(cashback)} AZN. Новый баланс: ${fmt(updated.bonus_balance)} AZN.`)
   }
 
@@ -514,6 +533,13 @@ export default function QRMenu() {
     if (error) return alert('Вы уже оценили это блюдо сегодня.')
     localStorage.setItem(key, '1')
     loadRatings()
+  }
+
+  function resetPaymentState() {
+    setPaymentDone(false)
+    setPaymentSummary(null)
+    setBillPaymentMessage('')
+    setPayChoice(false)
   }
 
   const categories = useMemo(() => ['All', ...new Set(products.map(p => p.category).filter(Boolean))], [products])
@@ -589,24 +615,33 @@ export default function QRMenu() {
       {!visibleBillItems.length ? <div className="qr-empty"><h3>Открытого счёта пока нет</h3><p>Если заказ собран в корзине, он появится здесь после добавления позиций.</p></div> : <>
         <div className="qr-bill-list">{visibleBillItems.map(i => <div className="qr-bill-item" key={i.id || i.product_id}><div><b>{i.product_name}</b><p>{i.category || ''}</p></div><div className="qr-bill-price"><span>{fmt(i.qty)} × {fmt(i.price)}</span><b>{fmt(i.total)} AZN</b></div></div>)}</div>
         <div className="qr-bill-total"><div className="qr-grand-total"><span>Total</span><b>{fmt(visibleBillTotal)} AZN</b></div></div>
-        <div className="qr-payment-box">{!payChoice ? <button onClick={() => setPayChoice(true)}>Оплатить</button> : <>
-          <h3>Выберите способ оплаты</h3>
+        <div className="qr-payment-box">{!payChoice ? <button onClick={() => setPayChoice(true)} disabled={paymentDone}>Оплатить</button> : <>
+          <h3>{paymentDone ? 'Оплата завершена' : 'Выберите способ оплаты'}</h3>
 
-          {billPaymentMessage ? <div className="qr-payment-message">{billPaymentMessage}</div> : null}
+          {billPaymentMessage ? <div className={`qr-payment-message ${paymentDone ? 'success' : ''}`}>{billPaymentMessage}</div> : null}
 
-          {loyaltyClient && loyaltyStep === 'verified' ? <div className="qr-bonus-pay-box">
-            <div><span>Баланс бонусов</span><b>{fmt(loyaltyBalance)} AZN</b></div>
-            <div><span>Доступно к списанию</span><b>{fmt(qrRedeemMax)} AZN</b></div>
-            <div><span>Сумма счёта</span><b>{fmt(visibleBillTotal)} AZN</b></div>
-            <div><span>К оплате после бонусов</span><b>{fmt(qrNetPayAfterBonus)} AZN</b></div>
-            <button onClick={() => simulateQrPayment(true)} disabled={qrRedeemMax <= 0}>Списать бонусы и оплатить остаток</button>
-          </div> : <div className="qr-bonus-pay-box muted">
-            Войдите в Loyalty через OTP, чтобы списать бонусы.
-            <button onClick={() => setScreen('loyalty')}>Войти в Loyalty</button>
-          </div>}
+          {paymentDone && paymentSummary ? <div className="qr-paid-summary">
+            <div><span>Сумма счёта</span><b>{fmt(paymentSummary.total)} AZN</b></div>
+            <div><span>Списано бонусов</span><b>{fmt(paymentSummary.redeemAmount)} AZN</b></div>
+            <div><span>Оплачено</span><b>{fmt(paymentSummary.netPaidAmount)} AZN</b></div>
+            <div><span>Начислено cashback</span><b>{fmt(paymentSummary.cashback)} AZN</b></div>
+            <div><span>Новый баланс</span><b>{fmt(paymentSummary.newBalance)} AZN</b></div>
+            <button onClick={resetPaymentState}>Новая операция</button>
+          </div> : <>
+            {loyaltyClient && loyaltyStep === 'verified' ? <div className="qr-bonus-pay-box">
+              <div><span>Баланс бонусов</span><b>{fmt(loyaltyBalance)} AZN</b></div>
+              <div><span>Доступно к списанию</span><b>{fmt(qrRedeemMax)} AZN</b></div>
+              <div><span>Сумма счёта</span><b>{fmt(visibleBillTotal)} AZN</b></div>
+              <div><span>К оплате после бонусов</span><b>{fmt(qrNetPayAfterBonus)} AZN</b></div>
+              <button onClick={() => simulateQrPayment(true)} disabled={qrRedeemMax <= 0 || paymentDone}>Списать бонусы и оплатить остаток</button>
+            </div> : <div className="qr-bonus-pay-box muted">
+              Войдите в Loyalty через OTP, чтобы списать бонусы.
+              <button onClick={() => setScreen('loyalty')}>Войти в Loyalty</button>
+            </div>}
 
-          <button onClick={() => simulateQrPayment(false)}>Оплатить без списания · начислить cashback</button>
-          <button>Apple Pay</button><button>Google Pay</button><button>Банковская карта</button>
+            <button onClick={() => simulateQrPayment(false)} disabled={paymentDone}>Оплатить без списания · начислить cashback</button>
+            <button disabled={paymentDone}>Apple Pay</button><button disabled={paymentDone}>Google Pay</button><button disabled={paymentDone}>Банковская карта</button>
+          </>}
         </>}</div>
       </>}
     </section>}
