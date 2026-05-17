@@ -93,7 +93,7 @@ const isBazarExpenseName = (value) => {
 
 const isDsmfExpenseName = (value) => {
   const name = normalizeExpenseText(value)
-  return name.includes('dsmf') || name.includes('дсмф') || name.includes('соц') || name.includes('sosial') || name.includes('social')
+  return name.includes('dsmf') || name.includes('dmsf') || name.includes('дсмф') || name.includes('дмсф') || name.includes('соц') || name.includes('sosial') || name.includes('social')
 }
 const isSalaryExpenseName = (value) => {
   const name = normalizeExpenseText(value)
@@ -3415,6 +3415,7 @@ async function rmsCalculateNetworkForecastForMonth(y, m, scopeBranchId = 'all') 
   const buildArticleMap = (expenseRows = [], purchaseRows = [], supplierShare = 1) => {
     const map = new Map()
     ;(expenseRows || []).forEach(row => {
+      if (String(row?.comment || '').startsWith('SUPPLIER_PURCHASE_')) return
       const name = row?.expense_categories?.name || row?.custom_category || ''
       const group = rmsFinanceExpenseGroupName(name)
       if (isSalaryExpenseName(name) || isDsmfExpenseName(name) || group === 'rent') return
@@ -4193,7 +4194,8 @@ function Finance({ t, lang, onGoToExpense }) {
       const { data, error } = await query
       if (error) throw error
 
-      const rows = (data || [])
+      let rows = (data || [])
+        .filter(row => !String(row?.comment || '').startsWith('SUPPLIER_PURCHASE_'))
         .map(row => ({
           ...row,
           name: financeExpenseRowName(row),
@@ -4201,6 +4203,74 @@ function Finance({ t, lang, onGoToExpense }) {
           amountValue: parseNum(row.amount)
         }))
         .filter(row => financeExpenseMatchesBreakdown(row.name, selectedName))
+
+      if (selectedName === 'Food Cost / закупки и базар') {
+        const { data: revenueRows } = await supabase
+          .from('daily_revenue')
+          .select('branch_id,cash_amount,bank_amount,wolt_amount')
+          .gte('revenue_date', start)
+          .lt('revenue_date', end)
+
+        const revenueMap = new Map()
+        ;(revenueRows || []).forEach(r => {
+          const amount = parseNum(r.cash_amount) + parseNum(r.bank_amount) + parseNum(r.wolt_amount)
+          revenueMap.set(r.branch_id, parseNum(revenueMap.get(r.branch_id)) + amount)
+        })
+        const totalRevenue = Array.from(revenueMap.values()).reduce((s, v) => s + parseNum(v), 0)
+
+        const { data: purchaseRows, error: purchaseError } = await supabase
+          .from('supplier_purchases')
+          .select('id, purchase_date, invoice_number, total_amount, supplier_purchase_items(total_amount, supplier_products(name, category))')
+          .gte('purchase_date', start)
+          .lt('purchase_date', end)
+          .is('deleted_at', null)
+          .order('purchase_date', { ascending: true })
+
+        if (purchaseError) throw purchaseError
+
+        const supplierRows = []
+        ;(purchaseRows || []).forEach(p => {
+          const totals = rmsFinancePurchaseTotalsByGroup([p])
+          const foodTotal = parseNum(totals.food)
+          if (foodTotal <= 0) return
+
+          if (branchId === ALL_BRANCHES) {
+            supplierRows.push({
+              id: `supplier-${p.id}`,
+              branch_id: '',
+              branchName: 'Все филиалы',
+              expense_date: p.purchase_date,
+              name: 'Food Cost / Поставщики',
+              amountValue: foodTotal,
+              amount: foodTotal,
+              comment: p.invoice_number ? `Поступление поставщика · фактура ${p.invoice_number}` : 'Поступление поставщика',
+              created_at: p.purchase_date,
+              isSupplierPurchase: true
+            })
+            return
+          }
+
+          const branchRevenue = parseNum(revenueMap.get(branchId))
+          const share = totalRevenue > 0 ? branchRevenue / totalRevenue : 0
+          const allocated = Number((foodTotal * share).toFixed(2))
+          if (allocated <= 0) return
+
+          supplierRows.push({
+            id: `supplier-${p.id}-${branchId}`,
+            branch_id: branchId,
+            branchName: financeBranchNameById(branchId),
+            expense_date: p.purchase_date,
+            name: 'Food Cost / Поставщики',
+            amountValue: allocated,
+            amount: allocated,
+            comment: `${p.invoice_number ? `Поступление поставщика · фактура ${p.invoice_number}` : 'Поступление поставщика'} · доля выручки ${pct(share * 100)}`,
+            created_at: p.purchase_date,
+            isSupplierPurchase: true
+          })
+        })
+
+        rows = [...rows, ...supplierRows].sort((a, b) => String(a.expense_date).localeCompare(String(b.expense_date)))
+      }
 
       const total = rows.reduce((sum, row) => sum + parseNum(row.amountValue), 0)
       setExpenseDetail({ name: selectedName, rows, total, loading: false, error: '' })
@@ -4884,7 +4954,7 @@ function Finance({ t, lang, onGoToExpense }) {
               <table>
                 <thead><tr><th>Дата</th><th>Филиал</th><th>Статья</th><th>Сумма</th><th>Комментарий</th><th>Создано</th><th>Действие</th></tr></thead>
                 <tbody>
-                  {expenseDetail.rows.map(row => <tr key={row.id}><td>{row.expense_date}</td><td>{row.branchName}</td><td>{row.name}</td><td><b>{fmt(row.amountValue)}</b></td><td>{row.comment || '—'}</td><td>{row.created_at ? new Date(row.created_at).toLocaleString('ru-RU') : '—'}</td><td><button className="small" onClick={() => onGoToExpense?.(row)}>Перейти</button></td></tr>)}
+                  {expenseDetail.rows.map(row => <tr key={row.id}><td>{row.expense_date}</td><td>{row.branchName}</td><td>{row.name}</td><td><b>{fmt(row.amountValue)}</b></td><td>{row.comment || '—'}</td><td>{row.created_at ? new Date(row.created_at).toLocaleString('ru-RU') : '—'}</td><td>{row.isSupplierPurchase ? <span className="hint">Поставщики</span> : <button className="small" onClick={() => onGoToExpense?.(row)}>Перейти</button>}</td></tr>)}
                   {!expenseDetail.rows.length && <tr><td colSpan="7" className="hint">По этой статье за выбранный месяц прямых строк расхода не найдено. Если статья расчётная, она могла быть сформирована автоматически из зарплат, DSMF, налога или закупок поставщиков.</td></tr>}
                 </tbody>
               </table>
