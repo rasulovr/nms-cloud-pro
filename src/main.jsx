@@ -4694,7 +4694,7 @@ function Finance({ t, lang, onGoToExpense }) {
     const previous = await calcFor(branchId, pm.year, pm.month)
     const start = monthDate
     const end = new Date(Number(year), Number(month), 1).toISOString().slice(0, 10)
-    let expQuery = supabase.from('daily_expenses').select('branch_id, amount, custom_category, expense_categories(name)').gte('expense_date', start).lt('expense_date', end).is('deleted_at', null)
+    let expQuery = supabase.from('daily_expenses').select('branch_id, amount, comment, custom_category, expense_categories(name)').gte('expense_date', start).lt('expense_date', end).is('deleted_at', null)
     let purQuery = supabase.from('supplier_purchases').select('branch_id, total_amount, supplier_purchase_items(total_amount, supplier_products(name,category))').gte('purchase_date', start).lt('purchase_date', end).is('deleted_at', null)
     let empQuery = supabase.from('employees').select('id, branch_id, position, monthly_salary').eq('is_active', true)
     let salaryPeriodQuery = supabase.from('salary_periods').select('employee_id, branch_id, salary_gross, salary_net, final_balance, payroll_payments').eq('salary_month', monthDate)
@@ -4710,11 +4710,13 @@ function Finance({ t, lang, onGoToExpense }) {
     const allocatedSupplierTotals = financeAllocatedSupplierTotals(purchaseRows || [], activeSupplierShare)
     const allocatedSupplierExpenseTotal = allocatedSupplierTotals.food + allocatedSupplierTotals.packaging + allocatedSupplierTotals.household + allocatedSupplierTotals.other
 
-    const rawExpenseRows = (rows || []).map(r => ({
-      branch_id: r.branch_id,
-      name: r.expense_categories?.name || r.custom_category || t('new_expense'),
-      amount: parseNum(r.amount)
-    }))
+    const rawExpenseRows = (rows || [])
+      .filter(r => !String(r?.comment || '').startsWith('SUPPLIER_PURCHASE_'))
+      .map(r => ({
+        branch_id: r.branch_id,
+        name: r.expense_categories?.name || r.custom_category || t('new_expense'),
+        amount: parseNum(r.amount)
+      }))
     const directMarketFoodCost = financeExpenseGroupTotal(rawExpenseRows, 'food_market')
     const directPackagingCost = financeExpenseGroupTotal(rawExpenseRows, 'packaging')
     const directHouseholdCost = financeExpenseGroupTotal(rawExpenseRows, 'household')
@@ -4722,7 +4724,11 @@ function Finance({ t, lang, onGoToExpense }) {
     const map = new Map()
     for (const r of rawExpenseRows) {
       const group = financeExpenseGroupName(r.name)
-      if (group === 'food_market' || group === 'packaging' || group === 'household' || isDsmfExpenseName(r.name) || isSalaryExpenseName(r.name)) continue
+      if (isDsmfExpenseName(r.name)) {
+        map.set('DSMF', (map.get('DSMF') || 0) + parseNum(r.amount))
+        continue
+      }
+      if (group === 'food_market' || group === 'packaging' || group === 'household' || isSalaryExpenseName(r.name)) continue
       map.set(r.name, (map.get(r.name) || 0) + parseNum(r.amount))
     }
 
@@ -4737,10 +4743,8 @@ function Finance({ t, lang, onGoToExpense }) {
     const payrollDetails = financePayrollDetailsForScope(employeeRows || [], salaryPeriodRows || [], branchId, revenueShares.map)
     const calculatedDsmfByBranch = financeDsmfForEmployees(employeeRows || [], salaryPeriodRows || [], revenueShares.map)
     const calculatedDsmfTotal = parseNum(payrollDetails.totalDsmf)
-    if (calculatedDsmfTotal > 0) {
-      map.set('DSMF', calculatedDsmfTotal)
-    }
-
+    // В фактической таблице “Расходы по статьям” DSMF берётся только из ручных расходов daily_expenses.
+    // Расчётный DSMF из зарплат используется только в прогнозе.
     const directSalaryTotal = parseNum(payrollDetails.totalSalary) || parseNum(current.salary)
     if (directSalaryTotal > 0) {
       map.set('Зарплаты', {
@@ -4756,13 +4760,13 @@ function Finance({ t, lang, onGoToExpense }) {
         ? { name, amount: parseNum(value.amount), note: value.note || '' }
         : { name, amount: parseNum(value), note: '' }
     ))
-    const extraDsmf = calculatedDsmfTotal
+    const extraDsmf = 0
     const salaryOverride = directSalaryTotal - parseNum(current.salary)
     let currentForFinance = {
       ...current,
       salary: directSalaryTotal,
-      expenses: parseNum(current.expenses) + extraDsmf + allocatedSupplierExpenseTotal,
-      net: parseNum(current.net) - extraDsmf - salaryOverride - allocatedSupplierExpenseTotal,
+      expenses: parseNum(current.expenses) + allocatedSupplierExpenseTotal,
+      net: parseNum(current.net) - salaryOverride - allocatedSupplierExpenseTotal,
       forecastProfit: parseNum(current.forecastProfit)
     }
     if (branchId === ALL_BRANCHES) {
