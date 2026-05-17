@@ -1039,3 +1039,26 @@
   .qr-bonus-grid,.qr-paid-grid{grid-template-columns:1fr}
   .qr-bonus-main,.qr-paid-total{align-items:flex-start;flex-direction:column}
 }
+
+
+/* v10 partial bonus payment */
+.qr-payment-message.pending{
+  border-color:rgba(245,158,11,.25);
+  background:#fffbeb;
+  color:#78350f;
+}
+.qr-paid-summary.pending{
+  border-color:rgba(245,158,11,.26);
+  box-shadow:0 16px 40px rgba(245,158,11,.08);
+}
+.qr-paid-summary.pending .qr-paid-total{
+  border-bottom-color:rgba(245,158,11,.22);
+}
+.qr-paid-summary.pending .qr-paid-total span,
+.qr-paid-summary.pending .qr-paid-grid span{
+  color:#92400e;
+}
+.qr-paid-summary.pending .qr-paid-grid div{
+  background:#fffbeb;
+  border-color:rgba(245,158,11,.18);
+}
