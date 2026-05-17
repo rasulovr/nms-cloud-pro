@@ -388,15 +388,10 @@ export default function QRMenu() {
   }
 
   async function simulateQrPayment(useBonus = false) {
-    if (paymentDone) {
-      setBillPaymentMessage('Счёт уже полностью оплачен. Повторная операция заблокирована.')
-      return
-    }
-
     setBillPaymentMessage('')
 
     if (!loyaltyClient) {
-      setBillPaymentMessage('Для оплаты бонусами или начисления cashback сначала войдите в Loyalty.')
+      setBillPaymentMessage('Для применения бонусов сначала войдите в Loyalty.')
       setScreen('loyalty')
       return
     }
@@ -414,7 +409,6 @@ export default function QRMenu() {
     }
 
     const alreadyRedeemed = Number(paymentSummary?.redeemAmount || 0)
-    const existingNetToPay = Number(paymentSummary?.netPaidAmount || 0)
 
     if (useBonus && (bonusApplied || alreadyRedeemed > 0)) {
       setBillPaymentMessage('Бонусы уже использованы в этом счёте. Повторное списание невозможно.')
@@ -430,6 +424,7 @@ export default function QRMenu() {
       }
 
       const netPaidAmount = Math.max(0, total - redeemAmount)
+      const expectedCashback = Number((netPaidAmount * CASHBACK_PERCENT / 100).toFixed(2))
       const nextBalance = Math.max(0, Number(loyaltyClient.bonus_balance || 0) - redeemAmount)
 
       const { error: redeemError } = await supabase.from('rms_loyalty_transactions').insert({
@@ -490,91 +485,40 @@ export default function QRMenu() {
         redeemAmount,
         netPaidAmount,
         cashback: 0,
+        expectedCashback,
         newBalance: Number(updated.bonus_balance || 0)
       })
-      setBillPaymentMessage(`Бонусы применены. Списано: ${fmt(redeemAmount)} AZN. Остаток к оплате: ${fmt(netPaidAmount)} AZN.`)
+      setBillPaymentMessage(`Бонусы применены. Списано: ${fmt(redeemAmount)} AZN. Остаток к оплате: ${fmt(netPaidAmount)} AZN. Cashback будет начислен только после подтверждения оплаты остатка.`)
       return
     }
 
-    // Оплата остатка / полная оплата без бонусов
     const redeemAmount = alreadyRedeemed
-    const netPaidAmount = bonusApplied || redeemAmount > 0
-      ? Math.max(0, existingNetToPay || total - redeemAmount)
-      : total
+    const netPaidAmount = Number(paymentSummary?.netPaidAmount || Math.max(0, total - redeemAmount))
+    const expectedCashback = Number((netPaidAmount * CASHBACK_PERCENT / 100).toFixed(2))
 
-    const cashback = Number((netPaidAmount * CASHBACK_PERCENT / 100).toFixed(2))
-    const nextBalance = Math.max(0, Number(loyaltyClient.bonus_balance || 0) + cashback)
-    const nextSpent = Number(loyaltyClient.total_spent || 0) + netPaidAmount
-    const nextVisits = Number(loyaltyClient.visits_count || 0) + 1
-
-    if (cashback > 0) {
-      const { error: txError } = await supabase.from('rms_loyalty_transactions').insert({
-        client_id: loyaltyClient.id,
-        client_name: loyaltyClient.name,
-        client_phone: loyaltyClient.phone,
-        type: 'earn',
-        amount: cashback,
-        order_total: netPaidAmount,
+    if (tableNumber) {
+      await supabase.from('rms_qr_waiter_calls').insert({
         branch_id: branchId,
-        branch_name: branchId,
-        comment: redeemAmount > 0
-          ? 'Cashback после оплаты остатка через QR Menu'
-          : 'Cashback после оплаты через QR Menu'
+        table_number: tableNumber,
+        guest_session: guestSession,
+        call_type: 'payment_confirmation',
+        status: 'new',
+        comment: loyaltyClient
+          ? `Подтвердить оплату остатка ${fmt(netPaidAmount)} AZN · Loyalty ${loyaltyClient.phone}`
+          : `Подтвердить оплату остатка ${fmt(netPaidAmount)} AZN`
       })
-
-      if (txError) {
-        setBillPaymentMessage(`Ошибка начисления cashback: ${txError.message}`)
-        return
-      }
     }
 
-    const { error: linkError } = await supabase.from('rms_loyalty_order_links').insert({
-      client_id: loyaltyClient.id,
-      order_source: 'qr_menu',
-      order_id: currentOrderId,
-      branch_id: branchId,
-      table_number: tableNumber || null,
-      payment_method: redeemAmount > 0 ? 'qr_bonus_plus_online_paid' : 'qr_online',
-      order_total: total,
-      redeem_amount: redeemAmount,
-      net_paid_amount: netPaidAmount,
-      cashback_amount: cashback,
-      status: 'paid'
-    })
-
-    if (linkError) {
-      setBillPaymentMessage(`Оплата проведена, но связь с заказом не сохранилась: ${linkError.message}`)
-    }
-
-    const { data: updated, error: updateError } = await supabase
-      .from('rms_loyalty_clients')
-      .update({
-        bonus_balance: nextBalance,
-        total_spent: nextSpent,
-        visits_count: nextVisits,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', loyaltyClient.id)
-      .select('*')
-      .single()
-
-    if (updateError) {
-      setBillPaymentMessage(`Ошибка обновления баланса: ${updateError.message}`)
-      return
-    }
-
-    localStorage.setItem(paidStorageKey, '1')
-    setLoyaltyClient(updated)
-    setPaymentDone(true)
-    setBonusApplied(redeemAmount > 0)
+    setPaymentDone(false)
     setPaymentSummary({
       total,
       redeemAmount,
       netPaidAmount,
-      cashback,
-      newBalance: Number(updated.bonus_balance || 0)
+      cashback: 0,
+      expectedCashback,
+      newBalance: Number(loyaltyClient.bonus_balance || 0)
     })
-    setBillPaymentMessage(`Счёт полностью оплачен. Оплачено: ${fmt(netPaidAmount)} AZN. Cashback: ${fmt(cashback)} AZN. Новый баланс: ${fmt(updated.bonus_balance)} AZN.`)
+    setBillPaymentMessage(`Запрос на подтверждение оплаты отправлен. Остаток к оплате: ${fmt(netPaidAmount)} AZN. Ожидаемый cashback после подтверждения: ${fmt(expectedCashback)} AZN.`)
   }
 
   function logoutLoyalty() {
@@ -619,31 +563,29 @@ export default function QRMenu() {
     const redeemAmount = Number(data.redeem_amount || 0)
     const netPaidAmount = Number(data.net_paid_amount || Math.max(0, total - redeemAmount))
     const cashback = Number(data.cashback_amount || 0)
+    const expectedCashback = Number((netPaidAmount * CASHBACK_PERCENT / 100).toFixed(2))
 
     setPaymentSummary({
       total,
       redeemAmount,
       netPaidAmount,
       cashback,
+      expectedCashback,
       newBalance: Number(loyaltyClient.bonus_balance || 0)
     })
 
-    // Старые тестовые записи могли быть ошибочно сохранены как paid после одного списания бонусов.
-    // Если есть списание, есть остаток к оплате и cashback = 0, считаем это не полной оплатой, а применением бонусов.
-    const looksLikeBonusOnly = redeemAmount > 0 && netPaidAmount > 0 && cashback === 0
-
-    if (data.status === 'paid' && !looksLikeBonusOnly) {
+    if (data.status === 'paid') {
       setPaymentDone(true)
       setBonusApplied(redeemAmount > 0)
       setPayChoice(true)
-      setBillPaymentMessage('Этот счёт уже полностью оплачен. Повторная операция невозможна.')
+      setBillPaymentMessage('Этот счёт полностью оплачен. Повторная операция невозможна.')
       return
     }
 
     setPaymentDone(false)
     setBonusApplied(redeemAmount > 0)
     setPayChoice(true)
-    setBillPaymentMessage(`Бонусы применены. Остаток к оплате: ${fmt(netPaidAmount)} AZN.`)
+    setBillPaymentMessage(`Бонусы применены. Остаток к оплате: ${fmt(netPaidAmount)} AZN. Ожидается подтверждение оплаты.`)
   }
 
   function resetPaymentState() {
@@ -734,8 +676,8 @@ export default function QRMenu() {
         <div className="qr-bill-total"><div className="qr-grand-total"><span>Total</span><b>{fmt(visibleBillTotal)} AZN</b></div></div>
         <div className="qr-payment-box qr-payment-premium">{!payChoice ? <button onClick={() => setPayChoice(true)} disabled={paymentDone}>Оплатить</button> : <>
           <div className="qr-pay-head">
-            <span>{paymentDone ? 'Paid' : bonusApplied ? 'Partially paid' : 'Payment'}</span>
-            <h3>{paymentDone ? 'Оплата завершена' : bonusApplied ? 'Бонусы применены' : 'Выберите способ оплаты'}</h3>
+            <span>{paymentDone ? 'Paid' : bonusApplied ? 'Bonus applied' : 'Payment'}</span>
+            <h3>{paymentDone ? 'Оплата завершена' : bonusApplied ? 'Остаток ожидает оплаты' : 'Выберите способ оплаты'}</h3>
           </div>
 
           {billPaymentMessage ? <div className={`qr-payment-message ${paymentDone ? 'success' : bonusApplied ? 'pending' : ''}`}>{billPaymentMessage}</div> : null}
@@ -749,9 +691,9 @@ export default function QRMenu() {
               <div><span>Сумма счёта</span><b>{fmt(paymentSummary.total)} AZN</b></div>
               <div><span>Списано бонусов</span><b>{fmt(paymentSummary.redeemAmount)} AZN</b></div>
               <div><span>{paymentDone ? 'Оплачено' : 'Осталось оплатить'}</span><b>{fmt(paymentSummary.netPaidAmount)} AZN</b></div>
-              <div><span>Cashback</span><b>{fmt(paymentSummary.cashback)} AZN</b></div>
+              <div><span>{paymentDone ? 'Cashback начислен' : 'Cashback после подтверждения'}</span><b>{fmt(paymentDone ? paymentSummary.cashback : paymentSummary.expectedCashback)} AZN</b></div>
             </div>
-            {!paymentDone ? <button onClick={() => simulateQrPayment(false)}>Оплатить остаток и начислить cashback</button> : <button onClick={resetPaymentState}>Закрыть сводку</button>}
+            {!paymentDone ? <button onClick={() => simulateQrPayment(false)}>Отправить запрос на подтверждение оплаты</button> : <button onClick={resetPaymentState}>Закрыть сводку</button>}
           </div> : <>
             {loyaltyClient && loyaltyStep === 'verified' ? <div className="qr-bonus-pay-box premium">
               <div className="qr-bonus-main">
@@ -763,13 +705,13 @@ export default function QRMenu() {
                 <div><span>Сумма счёта</span><b>{fmt(visibleBillTotal)} AZN</b></div>
                 <div><span>К оплате после бонусов</span><b>{fmt(qrNetPayAfterBonus)} AZN</b></div>
               </div>
-              <button onClick={() => simulateQrPayment(true)} disabled={qrRedeemMax <= 0 || paymentDone || bonusApplied}>Списать бонусы</button>
+              <button onClick={() => simulateQrPayment(true)} disabled={qrRedeemMax <= 0 || paymentDone || bonusApplied}>Применить бонусы</button>
             </div> : <div className="qr-bonus-pay-box premium muted">
               <span>Для списания бонусов нужен вход в Loyalty через OTP.</span>
               <button onClick={() => setScreen('loyalty')}>Войти в Loyalty</button>
             </div>}
 
-            <button onClick={() => simulateQrPayment(false)} disabled={paymentDone}>Оплатить полностью без списания · начислить cashback</button>
+            <button onClick={() => simulateQrPayment(false)} disabled={paymentDone}>Запросить подтверждение оплаты без бонусов</button>
             <button disabled={paymentDone}>Apple Pay</button><button disabled={paymentDone}>Google Pay</button><button disabled={paymentDone}>Банковская карта</button>
           </>}
         </>}</div>
