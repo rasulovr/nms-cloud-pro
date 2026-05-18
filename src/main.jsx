@@ -9322,8 +9322,13 @@ function Advances({ t }) {
   const [profiles, setProfiles] = useState([])
   const [form, setForm] = useState({ employee_id: '', advance_date: todayISO(), amount: '', comment: '' })
   const [message, setMessage] = useState('')
+  const [editAdvanceId, setEditAdvanceId] = useState('')
+  const [editAdvanceForm, setEditAdvanceForm] = useState({ advance_date: '', amount: '', comment: '' })
+  const [advancePageSize, setAdvancePageSize] = useState(10)
+  const [advancePage, setAdvancePage] = useState(1)
 
   useEffect(() => { load() }, [year, month, branchId, positionFilter])
+  useEffect(() => { setAdvancePage(1) }, [year, month, branchId, positionFilter, advancePageSize])
   const formEmployees = employees.filter(e => employeeGroupId(e) === advanceGroupId).filter(e => matchesPositionGroup(e, positionFilter))
   useEffect(() => {
     if (!formEmployees.some(e => e.id === form.employee_id)) setForm(f => ({ ...f, employee_id: formEmployees[0]?.id || '' }))
@@ -9332,13 +9337,25 @@ function Advances({ t }) {
   const monthDate = monthStart(year, month)
   const dim = daysInMonth(year, month)
   const monthEnd = `${year}-${String(month).padStart(2, '0')}-${String(dim).padStart(2, '0')}`
-  const isMonthClosingDay = todayISO() === monthEnd
+
+  async function currentUserMeta() {
+    try {
+      if (getInternalSessionStorage()?.rms_internal) {
+        const localUser = getRmsLocalUser()
+        return { user_id: null, user_email: localUser?.email || localUser?.login_name || 'rms.internal' }
+      }
+      const { data } = await supabase.auth.getUser()
+      return { user_id: data?.user?.id || null, user_email: data?.user?.email || null }
+    } catch (_e) {
+      return { user_id: null, user_email: null }
+    }
+  }
 
   async function load() {
     setMessage('')
     const empQ = supabase.from('employees').select('*, branches(name)').order('branch_id').order('position').order('full_name')
     const advQ = supabase.from('salary_advances').select('*, employees(full_name, position, monthly_salary, branch_id), branches(name)').gte('advance_date', monthDate).lte('advance_date', monthEnd).order('advance_date', { ascending: false }).order('created_at', { ascending: false })
-    const [{ data: emp, error: empError }, { data: adv, error: advError }, { data: prof }] = await Promise.all([empQ, advQ, supabase.from('user_profiles').select('id, full_name')])
+    const [{ data: emp, error: empError }, { data: adv, error: advError }, { data: prof }] = await Promise.all([empQ, advQ, supabase.from('user_profiles').select('id, full_name, email, login_name')])
     if (empError || advError) {
       setMessage(empError?.message || advError?.message)
       return
@@ -9351,13 +9368,13 @@ function Advances({ t }) {
   function userName(id) {
     if (!id) return '—'
     const p = profiles.find(u => u.id === id)
-    return p?.full_name || String(id).slice(0, 8)
+    return p?.full_name || p?.email || p?.login_name || String(id).slice(0, 8)
   }
 
   function advanceStatus(row) {
-    const editable = canEditAdvance(row)
-    if (row.updated_at && row.updated_by) return `Изменено: ${formatDT(row.updated_at)} · ${userName(row.updated_by)}${editable ? '' : ' · закрыто'}`
-    return `Создано: ${formatDT(row.created_at)} · ${userName(row.created_by)}${editable ? '' : ' · закрыто'}`
+    if (row.is_cancelled) return `Отменено: ${formatDT(row.cancelled_at)} · ${userName(row.cancelled_by)}`
+    if (row.updated_at && row.updated_by) return `Изменено: ${formatDT(row.updated_at)} · ${userName(row.updated_by)}`
+    return `Создано: ${formatDT(row.created_at)} · ${userName(row.created_by)}`
   }
 
   async function refreshSalaryForEmployee(employeeId) {
@@ -9392,62 +9409,81 @@ function Advances({ t }) {
     if (!emp) return setMessage('Выберите сотрудника')
     const amount = parseNum(form.amount)
     if (!amount) return setMessage('Введите сумму аванса')
+    const user = await currentUserMeta()
     const { error } = await supabase.from('salary_advances').insert({
       employee_id: emp.id,
       branch_id: emp.branch_id || null,
       advance_date: form.advance_date || todayISO(),
       amount,
-      comment: form.comment || null
+      comment: form.comment || null,
+      created_by: user.user_id,
+      updated_by: user.user_id
     })
     if (error) return setMessage(error.message)
     await refreshSalaryForEmployee(emp.id)
     setForm(f => ({ ...f, amount: '', comment: '' }))
     await load()
-    setMessage('Аванс добавлен и учтён в зарплате')
+    setMessage(t('saved'))
   }
 
-  async function updateAdvance(row, patch) {
+  function startEditAdvance(row) {
+    if (row.is_cancelled) return
+    setEditAdvanceId(row.id)
+    setEditAdvanceForm({
+      advance_date: row.advance_date || todayISO(),
+      amount: String(row.amount ?? ''),
+      comment: row.comment || ''
+    })
+  }
+
+  function cancelEditAdvance() {
+    setEditAdvanceId('')
+    setEditAdvanceForm({ advance_date: '', amount: '', comment: '' })
+  }
+
+  async function saveAdvance(row) {
     setMessage('')
-    if (!canEditAdvance(row)) return setMessage('Аванс можно редактировать только в течение 24 часов после создания')
-    const payload = { ...patch }
-    if ('amount' in payload) payload.amount = parseNum(payload.amount)
+    const amount = parseNum(editAdvanceForm.amount)
+    if (!amount) return setMessage('Введите сумму аванса')
+    const user = await currentUserMeta()
+    const payload = {
+      advance_date: editAdvanceForm.advance_date || row.advance_date,
+      amount,
+      comment: editAdvanceForm.comment || null,
+      updated_at: new Date().toISOString(),
+      updated_by: user.user_id
+    }
     const { error } = await supabase.from('salary_advances').update(payload).eq('id', row.id)
     if (error) return setMessage(error.message)
     await refreshSalaryForEmployee(row.employee_id)
+    cancelEditAdvance()
     await load()
     setMessage(t('saved'))
   }
 
   async function deleteAdvance(row) {
     setMessage('')
-    if (!canEditAdvance(row)) return setMessage('Аванс можно отменить только в течение 24 часов после создания')
+    if (row.is_cancelled) return
     const ok = window.confirm('Отменить этот аванс? Строка останется в журнале перечёркнутой и не будет учитываться в расчётах.')
     if (!ok) return
+    const user = await currentUserMeta()
     const { error } = await supabase.from('salary_advances').update({
       is_cancelled: true,
       cancelled_at: new Date().toISOString(),
+      cancelled_by: user.user_id,
+      updated_at: new Date().toISOString(),
+      updated_by: user.user_id,
       cancel_comment: 'Отменено через журнал авансов'
     }).eq('id', row.id)
     if (error) return setMessage(error.message)
     await refreshSalaryForEmployee(row.employee_id)
     await load()
-    setMessage('Аванс отменён и исключён из расчётов')
+    setMessage(t('saved'))
   }
 
   const displayedEmployees = employees.filter(e => matchesStaffGroup(e, branchId)).filter(e => matchesPositionGroup(e, positionFilter))
   const displayedAdvances = advances.filter(a => matchesStaffGroup({ branch_id: a.branch_id, branches: a.branches }, branchId)).filter(a => matchesPositionGroup(a.employees, positionFilter))
   const activeAdvances = displayedAdvances.filter(a => !a.is_cancelled)
-
-  const totalsByEmployee = displayedEmployees.map(emp => {
-    const empAdvances = activeAdvances.filter(a => a.employee_id === emp.id)
-    return {
-      id: emp.id,
-      branch: employeeGroupName(emp),
-      position: `${positionGroup(emp.position)} · ${emp.position || '—'}`,
-      full_name: emp.full_name,
-      amount: empAdvances.reduce((s, a) => s + parseNum(a.amount), 0)
-    }
-  }).filter(r => r.amount > 0)
 
   const totalAdvance = activeAdvances.reduce((s, r) => s + parseNum(r.amount), 0)
   const branchTotals = staffGroupOptions(branches).map(b => ({
@@ -9457,20 +9493,13 @@ function Advances({ t }) {
     amount: activeAdvances.filter(a => (a.branch_id || STAFF_GROUP_MANAGERS) === b.id).reduce((s, a) => s + parseNum(a.amount), 0)
   })).filter(b => branchId === 'all' ? (b.amount || b.employees) : b.id === branchId)
 
-  return <section>
-    <section className="topbar"><div><h2>{t('advances_tab')}</h2><p>Каждая выплата аванса фиксируется отдельной строкой с датой и комментарием.</p></div></section>
-    <section className="grid">
-      <div className="card span-2">
-        <div className="form-grid compact">
-          <label><span>{t('year')}</span><select value={year} onChange={e => setYear(Number(e.target.value))}>{defaultYears().map(y => <option key={y} value={y}>{y}</option>)}</select></label>
-          <label><span>{t('month')}</span><select value={month} onChange={e => setMonth(Number(e.target.value))}>{I18N.ru.months.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}</select></label>
-          <label><span>Филиал / группа</span><select value={branchId} onChange={e => setBranchId(e.target.value)}><option value="all">Все филиалы и менеджеры</option>{staffGroupOptions(branches).map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label>
-          <label><span>Позиция</span><select value={positionFilter} onChange={e => setPositionFilter(e.target.value)}><option value="all">Все позиции</option>{STAFF_POSITION_GROUPS.map(p => <option key={p} value={p}>{p}</option>)}</select></label>
-        </div>
-        <div className="metric"><span>Итого авансы за месяц</span><strong>{fmt(totalAdvance)}</strong></div>
-        {message && <p className={`hint ${message === t('saved') ? 'save-status' : message.includes('добавлен') || message.includes('удал') ? 'good' : 'bad'}`}>{message}</p>}
-      </div>
+  const advancePageTotal = Math.max(1, Math.ceil(displayedAdvances.length / advancePageSize))
+  const safeAdvancePage = Math.min(advancePage, advancePageTotal)
+  const pagedAdvances = displayedAdvances.slice((safeAdvancePage - 1) * advancePageSize, safeAdvancePage * advancePageSize)
 
+  return <section>
+    <section className="topbar"><div><h2>{t('advances_tab')}</h2><p>Каждая выплата аванса фиксируется отдельной строкой с датой, сотрудником, суммой и комментарием.</p></div></section>
+    <section className="grid">
       <div className="card span-2">
         <h3>Новый аванс</h3>
         <div className="form-grid compact">
@@ -9484,29 +9513,57 @@ function Advances({ t }) {
       </div>
 
       <div className="card span-2">
+        <div className="form-grid compact">
+          <label><span>{t('year')}</span><select value={year} onChange={e => setYear(Number(e.target.value))}>{defaultYears().map(y => <option key={y} value={y}>{y}</option>)}</select></label>
+          <label><span>{t('month')}</span><select value={month} onChange={e => setMonth(Number(e.target.value))}>{I18N.ru.months.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}</select></label>
+          <label><span>Филиал / группа</span><select value={branchId} onChange={e => setBranchId(e.target.value)}><option value="all">Все филиалы и менеджеры</option>{staffGroupOptions(branches).map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label>
+          <label><span>Позиция</span><select value={positionFilter} onChange={e => setPositionFilter(e.target.value)}><option value="all">Все позиции</option>{STAFF_POSITION_GROUPS.map(p => <option key={p} value={p}>{p}</option>)}</select></label>
+        </div>
+        <div className="metric"><span>Итого авансы за месяц</span><strong>{fmt(totalAdvance)}</strong></div>
+        {message && <p className={`hint ${message === t('saved') ? 'save-status' : 'bad'}`}>{message}</p>}
+      </div>
+
+      <div className="card span-2">
+        <div className="card-head"><div><h3>Журнал авансов</h3><p className="hint">По умолчанию строки закрыты от изменений. Для правки нажмите “Редактировать”; изменения фиксируются по времени и пользователю.</p></div></div>
+        <div className="form-grid compact" style={{marginBottom:12}}>
+          <label><span>Строк на странице</span><select value={advancePageSize} onChange={e => { setAdvancePageSize(Number(e.target.value)); setAdvancePage(1) }}><option value={10}>10</option><option value={20}>20</option><option value={30}>30</option><option value={50}>50</option></select></label>
+        </div>
+        <div className="table-wrap"><table>
+          <thead><tr><th>Дата</th><th>Филиал</th><th>Должность</th><th style={{minWidth:220}}>Сотрудник</th><th>Сумма</th><th>Комментарий</th><th>Статус</th><th></th></tr></thead>
+          <tbody>{pagedAdvances.map(a => {
+            const isEditing = editAdvanceId === a.id
+            return <tr key={a.id} className={a.is_cancelled ? 'cancelled-row' : ''}>
+              <td>{isEditing ? <input type="date" value={editAdvanceForm.advance_date} onChange={e => setEditAdvanceForm(f => ({...f, advance_date: e.target.value}))} /> : formatDate(a.advance_date)}</td>
+              <td>{employeeGroupName({ branch_id: a.branch_id, branches: a.branches })}</td>
+              <td>{positionGroup(a.employees?.position)} · {a.employees?.position || '—'}</td>
+              <td>{a.employees?.full_name || '—'}</td>
+              <td>{isEditing ? <input value={editAdvanceForm.amount} onChange={e => setEditAdvanceForm(f => ({...f, amount: e.target.value}))} /> : <strong>{fmt(a.amount)}</strong>}</td>
+              <td>{isEditing ? <input value={editAdvanceForm.comment} onChange={e => setEditAdvanceForm(f => ({...f, comment: e.target.value}))} /> : (a.comment || '—')}</td>
+              <td className="hint" style={{minWidth:220}}>{advanceStatus(a)}</td>
+              <td className="actions-cell">
+                {isEditing ? <>
+                  <button className="small" onClick={() => saveAdvance(a)}>Сохранить</button>
+                  <button className="small ghost" onClick={cancelEditAdvance}>Отмена</button>
+                </> : <>
+                  <button className="small" disabled={a.is_cancelled} onClick={() => startEditAdvance(a)}>Редактировать</button>
+                  <button className="remove" disabled={a.is_cancelled} onClick={() => deleteAdvance(a)}>×</button>
+                </>}
+              </td>
+            </tr>
+          })}{!displayedAdvances.length && <tr><td colSpan="8" className="hint">Авансов за выбранный период нет.</td></tr>}</tbody>
+        </table></div>
+        {displayedAdvances.length > advancePageSize && <div className="pager">
+          <button className="small" disabled={safeAdvancePage <= 1} onClick={() => setAdvancePage(p => Math.max(1, p - 1))}>← Пред.</button>
+          <span className="hint">Страница {safeAdvancePage} / {advancePageTotal}</span>
+          <button className="small" disabled={safeAdvancePage >= advancePageTotal} onClick={() => setAdvancePage(p => Math.min(advancePageTotal, p + 1))}>След. →</button>
+        </div>}
+      </div>
+
+      <div className="card span-2">
         <h3>Сводка авансов по филиалам</h3>
         <div className="table-wrap"><table>
           <thead><tr><th>Филиал / группа</th><th>Сотрудников</th><th>Авансы</th></tr></thead>
           <tbody>{branchTotals.map(b => <tr key={b.id}><td>{b.name}</td><td><strong>{b.employees}</strong></td><td><strong>{fmt(b.amount)}</strong></td></tr>)}{!branchTotals.length && <tr><td colSpan="3" className="hint">Нет авансов за выбранный период.</td></tr>}</tbody>
-        </table></div>
-      </div>
-
-
-      <div className="card span-2">
-        <h3>Журнал авансов</h3>
-        <div className="table-wrap"><table>
-          <thead><tr><th>Дата</th><th>Филиал</th><th>Должность</th><th style={{minWidth:240}}>Сотрудник</th><th>Сумма</th><th>Комментарий</th><th>Статус</th><th></th></tr></thead>
-          <tbody>{displayedAdvances.map(a => {
-            const editable = canEditAdvance(a) && !a.is_cancelled
-            return <tr key={a.id} className={a.is_cancelled ? 'cancelled-row' : (editable ? '' : 'muted-row')}>
-              <td><input type="date" defaultValue={a.advance_date} disabled={!editable} onBlur={e => updateAdvance(a, { advance_date: e.target.value })} /></td>
-              <td>{employeeGroupName({ branch_id: a.branch_id, branches: a.branches })}</td><td>{positionGroup(a.employees?.position)} · {a.employees?.position || '—'}</td><td>{a.employees?.full_name}</td>
-              <td><input defaultValue={a.amount} disabled={!editable} onBlur={e => updateAdvance(a, { amount: e.target.value })} /></td>
-              <td><input defaultValue={a.comment || ''} disabled={!editable} onBlur={e => updateAdvance(a, { comment: e.target.value })} /></td>
-              <td className="hint" style={{minWidth:220}}>{a.is_cancelled ? `Отменено: ${formatDT(a.cancelled_at)} · ${userName(a.cancelled_by)}` : advanceStatus(a)}</td>
-              <td><button className="remove" disabled={!editable || a.is_cancelled} onClick={() => deleteAdvance(a)}>×</button></td>
-            </tr>
-          })}{!advances.length && <tr><td colSpan="8" className="hint">Авансов за выбранный период нет.</td></tr>}</tbody>
         </table></div>
       </div>
     </section>
