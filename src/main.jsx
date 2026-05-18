@@ -9258,6 +9258,8 @@ function Suppliers({ t }) {
   const [activeInfoId, setActiveInfoId] = useState('')
   const [editingPurchaseId, setEditingPurchaseId] = useState('')
   const [viewPurchaseId, setViewPurchaseId] = useState('')
+  const [recentPurchasesPageSize, setRecentPurchasesPageSize] = useState(10)
+  const [recentPurchasesPage, setRecentPurchasesPage] = useState(1)
   const [transactionSupplierId, setTransactionSupplierId] = useState('')
   const [transactionPeriod, setTransactionPeriod] = useState('month')
   const [transactionDate, setTransactionDate] = useState(todayISO())
@@ -9665,6 +9667,10 @@ function Suppliers({ t }) {
   }
   const supplierTransactions = allTransactions().filter(r => (!transactionSupplierId || r.supplier_id === transactionSupplierId) && periodOk(r.date))
   const lastTransactions = allTransactions().slice(0, 10)
+  const recentPurchasesPageSizeNumber = parseNum(recentPurchasesPageSize) || 10
+  const recentPurchasesTotalPages = Math.max(1, Math.ceil((purchases || []).length / recentPurchasesPageSizeNumber))
+  const safeRecentPurchasesPage = Math.min(Math.max(1, parseNum(recentPurchasesPage) || 1), recentPurchasesTotalPages)
+  const recentPurchasesRows = (purchases || []).slice((safeRecentPurchasesPage - 1) * recentPurchasesPageSizeNumber, safeRecentPurchasesPage * recentPurchasesPageSizeNumber)
   function suppliersForLegalEntity(entityId) {
     const ids = new Set(purchases.filter(p => p.legal_entity_id === entityId).map(p => p.supplier_id))
     return suppliers.filter(s => ids.has(s.id))
@@ -9753,6 +9759,13 @@ function Suppliers({ t }) {
             <h3>Последние поступления</h3>
             <p className="hint">Сначала открывается просмотр накладной. Редактирование и удаление доступны внутри накладной.</p>
           </div>
+          <label style={{display:'flex',alignItems:'center',gap:8}}>
+            <span className="hint">Показать</span>
+            <select value={recentPurchasesPageSize} onChange={e => { setRecentPurchasesPageSize(Number(e.target.value)); setRecentPurchasesPage(1) }}>
+              <option value={10}>10</option>
+              <option value={50}>50</option>
+            </select>
+          </label>
         </div>
         <div className="table-wrap">
           <table>
@@ -9760,7 +9773,7 @@ function Suppliers({ t }) {
               <tr><th>Дата</th><th>Фактура</th><th>Поставщик</th><th>Физ. лицо</th><th>Филиал</th><th>Сумма</th><th>Статус</th><th></th></tr>
             </thead>
             <tbody>
-              {purchases.slice(0, 50).map(p => (
+              {recentPurchasesRows.map(p => (
                 <React.Fragment key={p.id}>
                   <tr className={p.deleted_at ? 'cancelled-row' : ''}>
                     <td>{p.purchase_date}</td>
@@ -9824,6 +9837,11 @@ function Suppliers({ t }) {
               {!purchases.length && <tr><td colSpan="8" className="hint">—</td></tr>}
             </tbody>
           </table>
+        </div>
+        <div className="action-row" style={{margin:'12px 0 0'}}>
+          <button className="ghost small" disabled={safeRecentPurchasesPage <= 1} onClick={() => setRecentPurchasesPage(p => Math.max(1, parseNum(p) - 1))}>← Пред.</button>
+          <span className="hint">Страница {safeRecentPurchasesPage} / {recentPurchasesTotalPages} · всего {(purchases || []).length}</span>
+          <button className="ghost small" disabled={safeRecentPurchasesPage >= recentPurchasesTotalPages} onClick={() => setRecentPurchasesPage(p => Math.min(recentPurchasesTotalPages, parseNum(p) + 1))}>След. →</button>
         </div>
       </div>
     </section>
