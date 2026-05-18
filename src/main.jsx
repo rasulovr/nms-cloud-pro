@@ -4051,15 +4051,14 @@ function Dashboard({ t }) {
       const supplierShare = revenueShareMap.get(b.id) || 0
       const supplierTotals = rmsFinanceAllocatedSupplierTotals(purchaseRowsForFinance || [], supplierShare)
       const supplierExtra = supplierTotals.food + supplierTotals.packaging + supplierTotals.household + supplierTotals.other
-      const payrollDetails = rmsFinancePayrollDetailsForScope(employeeRows, b.id, revenueShareMap)
-      const dsmfExtra = parseNum(payrollDetails.totalDsmf)
-      const salary = parseNum(payrollDetails.totalSalary) || baseSalary
-      const salaryOverride = salary - baseSalary
-      const expenses = baseExpenses + supplierExtra + dsmfExtra
+      // Dashboard должен считать факт так же, как “Финансы ресторанов”:
+      // факт зарплат берём из monthly_branch_salary, а расчётный DSMF не добавляем в текущий факт.
+      const salary = baseSalary
+      const expenses = baseExpenses + supplierExtra
       const net = revenue - expenses - salary - serviceCost - tax
       baseTotals.revenue += revenue
-      baseTotals.expenses += baseExpenses
-      baseTotals.salary += baseSalary
+      baseTotals.expenses += expenses
+      baseTotals.salary += salary
       baseTotals.serviceCost += serviceCost
       baseTotals.tax += tax
       return { id: b.id, name: b.name, revenue, expenses, salary, serviceCost, tax, totalExpenses: expenses + salary + serviceCost + tax, net, margin: revenue ? net / revenue * 100 : 0 }
@@ -4989,7 +4988,7 @@ function Finance({ t, lang, onGoToExpense }) {
         <div className="card">
           <h3>{t('current_result')}</h3>
           <Metric label={t('gross_profit')} value={fmt(stats.gross)} />
-          <Metric label={t('total_expenses')} value={fmt(stats.expenses + stats.salary + stats.tax)} />
+          <Metric label={t('total_expenses')} value={fmt(stats.expenses + stats.salary + stats.serviceCost + stats.tax)} />
           <Metric label="Операционные расходы" value={fmt(stats.expenses)} />
           <Metric label="Зарплаты" value={fmt(stats.salary)} />
         <Metric label="Service charge персоналу" value={fmt(stats.serviceCost)} />
@@ -4999,7 +4998,7 @@ function Finance({ t, lang, onGoToExpense }) {
         <div className="card"><h3>{t('net_profit')}</h3><div className="big-number">{fmt(stats.net)}</div><p className={`hint ${stats.net >= 0 ? 'good' : 'bad'}`}>{stats.net >= 0 ? t('profitable') : t('loss')}</p></div>
         <div className="card"><h3>{t('forecast')}</h3><Metric label={t('forecast_revenue')} value={fmt(stats.forecastRevenue)} /><Metric label={t('forecast_profit')} value={fmt(stats.forecastProfit)} /><Metric label={t('avg_daily_revenue')} value={fmt(stats.avg)} /><Metric label="Прогнозная маржа" value={pct(stats.forecastMargin)} /></div>
         <div className="card"><h3>{t('comparison')}</h3><Metric label={t('prev_month_revenue')} value={fmt(stats.previous?.revenue)} /><Metric label={t('revenue_change_pct')} value={pct(revChange)} /><Metric label={t('profit_change_pct')} value={pct(profitChange)} /></div>
-        <div className="card"><h3>{t('margins')}</h3><Metric label={t('expense_pct')} value={pct(stats.revenue ? (stats.expenses + stats.salary + stats.tax) / stats.revenue * 100 : 0)} /><Metric label={t('net_margin')} value={pct(stats.revenue ? stats.net / stats.revenue * 100 : 0)} /></div>
+        <div className="card"><h3>{t('margins')}</h3><Metric label={t('expense_pct')} value={pct(stats.revenue ? (stats.expenses + stats.salary + stats.serviceCost + stats.tax) / stats.revenue * 100 : 0)} /><Metric label={t('net_margin')} value={pct(stats.revenue ? stats.net / stats.revenue * 100 : 0)} /></div>
 
         <div className="card span-2">
           <div className="card-head"><h3>Расчёт прогноза прибыли</h3><p className="hint">Фиксированные расходы учитываются сразу, коммунальные и другие месячные статьи берутся из текущего месяца или из среднего прошлых месяцев.</p></div>
@@ -10632,7 +10631,6 @@ function DebtsPayments({ t }) {
           {commonOpsPeriod === 'range' && <label><span>По</span><input type="date" value={commonOpsDateTo} onChange={e => { setCommonOpsDateTo(e.target.value); setCommonOpsPage(1) }} /></label>}
           <label><span>Поставщик</span><select value={commonOpsSupplierId} onChange={e => { setCommonOpsSupplierId(e.target.value); setCommonOpsPage(1) }}><option value="all">Все поставщики</option>{suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
           <label><span>Операция</span><select value={commonOpsType} onChange={e => { setCommonOpsType(e.target.value); setCommonOpsPage(1) }}><option value="all">Все операции</option><option value="opening">Стартовый долг</option><option value="purchase">Приход</option><option value="payment">Оплата</option></select></label>
-          <label><span>&nbsp;</span><button className="ghost small" onClick={() => { setCommonOpsPeriod('month'); setCommonOpsDate(todayISO()); setCommonOpsDateFrom(monthStart(new Date().getFullYear(), new Date().getMonth() + 1)); setCommonOpsDateTo(todayISO()); setCommonOpsSupplierId('all'); setCommonOpsType('all'); setCommonOpsPage(1) }}>Сбросить</button></label>
         </div>
         <div className="mini-grid">
           <div className="metric"><span>Итого приход / долг</span><strong>{fmt(commonOpsTotals.debit)}</strong></div>
