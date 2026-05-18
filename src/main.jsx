@@ -14,7 +14,7 @@ const I18N = {
     brand_subtitle:'Restaurant Management System', language_label:'Язык интерфейса', login_label:'Login', password_label:'Пароль',
     login_button:'Войти', login_hint:'Вход по внутреннему login. Допустим вход по логину без домена.', login_error:'Неверный логин или пароль', show_password:'Показать пароль',
     logout:'Выйти', revenue_tab:'Выручка', finance_tab:'Финансы ресторанов', reports_tab:'Отчёты', recipes_tab:'Тех. карты', salaries_tab:'Зарплаты',
-    attendance_tab:'Посещаемость', advances_tab:'Авансы', suppliers_tab:'Поставщики', debts_payments_tab:'Долги и оплаты', qr_menu_tab:'QR Menu', loyalty_tab:'Loyalty', loyalty_pos_scan_tab:'Loyalty POS Scan', settings_tab:'Настройки',
+    attendance_tab:'Посещаемость', advances_tab:'Авансы', suppliers_tab:'Поставщики', debts_payments_tab:'Долги и оплаты', qr_menu_tab:'QR Menu', loyalty_tab:'Loyalty', settings_tab:'Настройки',
     revenue_subtitle:'Ввод выручки и расходов за выбранную дату по филиалу', finance_subtitle:'Аналитика по филиалу, месяцу, выручке и расходам',
     period_branch:'Период и филиал', branch_select:'Филиал', date:'Дата', daily_revenue_title:'Выручка за выбранную дату',
     cash:'Наличными', bank:'Банк', wolt:'Wolt', revenue_summary:'Сводка выручки', total_revenue:'Общая выручка',
@@ -37,7 +37,7 @@ const I18N = {
     brand_subtitle:'Restaurant Management System', language_label:'İnterfeys dili', login_label:'Login', password_label:'Parol',
     login_button:'Daxil ol', login_hint:'Daxili login ilə giriş. Domen yazmadan login istifadə etmək olar.', login_error:'Login və ya parol yanlışdır', show_password:'Parolu göstər',
     logout:'Çıxış', revenue_tab:'Dövriyyə', finance_tab:'Restoran maliyyəsi', reports_tab:'Hesabatlar', recipes_tab:'Tex. kartlar', salaries_tab:'Maaşlar',
-    attendance_tab:'Davamiyyət', advances_tab:'Avanslar', suppliers_tab:'Təchizatçılar', debts_payments_tab:'Borclar və ödənişlər', qr_menu_tab:'QR Menu', loyalty_tab:'Loyalty', loyalty_pos_scan_tab:'Loyalty POS Scan', settings_tab:'Ayarlar',
+    attendance_tab:'Davamiyyət', advances_tab:'Avanslar', suppliers_tab:'Təchizatçılar', debts_payments_tab:'Borclar və ödənişlər', qr_menu_tab:'QR Menu', loyalty_tab:'Loyalty', settings_tab:'Ayarlar',
     revenue_subtitle:'Seçilmiş tarix və filial üzrə dövriyyə və xərclər', finance_subtitle:'Filial, ay, dövriyyə və xərclər üzrə analitika',
     period_branch:'Dövr və filial', branch_select:'Filial', date:'Tarix', daily_revenue_title:'Seçilmiş tarixin dövriyyəsi',
     cash:'Nağd', bank:'Bank', wolt:'Wolt', revenue_summary:'Dövriyyə xülasəsi', total_revenue:'Ümumi dövriyyə',
@@ -68,7 +68,6 @@ const SECTIONS = [
   { id: 'debts', key: 'debts_payments_tab' },
   { id: 'qrmenu', key: 'qr_menu_tab' },
   { id: 'loyalty', key: 'loyalty_tab' },
-  { id: 'loyalty_pos_scan', key: 'loyalty_pos_scan_tab' },
   { id: 'settings', key: 'settings_tab' }
 ]
 
@@ -859,8 +858,8 @@ function App() {
 
   useEffect(() => {
     const urlToken = new URLSearchParams(window.location.search).get('loyalty_scan_token')
-    if (urlToken && section !== 'loyalty_pos_scan') {
-      setSection('loyalty_pos_scan')
+    if (urlToken && section !== 'loyalty') {
+      setSection('loyalty')
     }
   }, [section])
 
@@ -935,8 +934,20 @@ function App() {
         {canReadAccess(currentAccess) && section === 'suppliers' && <Suppliers t={t} />}
         {canReadAccess(currentAccess) && section === 'debts' && <DebtsPayments t={t} />}
         {canReadAccess(currentAccess) && section === 'qrmenu' && <RMSQRMenuAdmin t={t} />}
-        {canReadAccess(currentAccess) && section === 'loyalty' && <RMSLoyalty />}
-        {canReadAccess(currentAccess) && section === 'loyalty_pos_scan' && <RMSLoyaltyPOSScan />}
+        {canReadAccess(currentAccess) && section === 'loyalty' && <div className="grid">
+          <div className="card span-2">
+            <RMSLoyalty />
+          </div>
+          <div className="card span-2">
+            <div className="card-head">
+              <div>
+                <h3>Loyalty POS Scan</h3>
+                <p className="hint">Сканирование QR клиента официантом / POS.</p>
+              </div>
+            </div>
+            <RMSLoyaltyPOSScan />
+          </div>
+        </div>}
         {canReadAccess(currentAccess) && section === 'settings' && <Settings session={session} t={t} theme={theme} setTheme={setTheme} />}
       </main>
     </div>
@@ -9860,6 +9871,7 @@ function DebtsPayments({ t }) {
   const [purchaseTransactionEditItems, setPurchaseTransactionEditItems] = useState([])
   const [editingPaymentTransactionId, setEditingPaymentTransactionId] = useState('')
   const [paymentTransactionEditForm, setPaymentTransactionEditForm] = useState({ payment_date: todayISO(), legal_entity_id: '', amount: '', invoice_notes: '', comment: '' })
+  const supplierTransactionPanelRef = useRef(null)
 
   useEffect(() => { load() }, [])
 
@@ -10535,6 +10547,12 @@ function DebtsPayments({ t }) {
   const ledgerDebtClass = ledgerTotals.balance > 0 ? 'bad' : ledgerTotals.balance < 0 ? 'good' : 'neutral'
   const ledgerDebtText = ledgerTotals.balance > 0 ? 'Долг поставщику' : ledgerTotals.balance < 0 ? 'Поставщик должен нам' : 'Долга нет'
 
+  function scrollToSupplierTransactionPanel() {
+    setTimeout(() => {
+      supplierTransactionPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 160)
+  }
+
   function handleCommonOperationAction(row) {
     if (!row?.source) return
     const source = row.source
@@ -10542,12 +10560,14 @@ function DebtsPayments({ t }) {
     if (row.type_key === 'purchase') {
       openTransactions(source.supplier_id, 'purchases', source.legal_entity_id || '')
       startEditPurchaseTransaction(source)
+      scrollToSupplierTransactionPanel()
       return
     }
 
     if (row.type_key === 'payment') {
       openTransactions(source.supplier_id, 'payments', source.legal_entity_id || '')
       startEditSupplierPayment(source)
+      scrollToSupplierTransactionPanel()
       return
     }
 
@@ -10561,6 +10581,7 @@ function DebtsPayments({ t }) {
         invoice_number: source.invoice_notes || '',
         supplier_purchase_items: []
       })
+      scrollToSupplierTransactionPanel()
     }
   }
 
@@ -10582,6 +10603,30 @@ function DebtsPayments({ t }) {
   return <section>
     <section className="topbar"><div><h2>Долги и оплаты</h2><p>Балансы поставщиков, контроль лимитов, просрочек, поступления и оплаты.</p></div></section>
     <section className="grid">
+      <div className="card span-2"><div className="card-head"><div><h3>Общий список: приход и оплаты</h3><p className="hint">Фильтруемый журнал операций: стартовый долг, приход по накладным и оплаты.</p></div></div>
+        <div className="form-grid compact">
+          <label><span>Период</span><select value={commonOpsPeriod} onChange={e => { setCommonOpsPeriod(e.target.value); setCommonOpsPage(1) }}><option value="day">День</option><option value="week">Неделя</option><option value="month">Месяц</option><option value="range">Диапазон дат</option><option value="all">Весь период</option></select></label>
+          {commonOpsPeriod !== 'range' && commonOpsPeriod !== 'all' && <label><span>Дата периода</span><input type="date" value={commonOpsDate} onChange={e => { setCommonOpsDate(e.target.value); setCommonOpsPage(1) }} /></label>}
+          {commonOpsPeriod === 'range' && <label><span>С</span><input type="date" value={commonOpsDateFrom} onChange={e => { setCommonOpsDateFrom(e.target.value); setCommonOpsPage(1) }} /></label>}
+          {commonOpsPeriod === 'range' && <label><span>По</span><input type="date" value={commonOpsDateTo} onChange={e => { setCommonOpsDateTo(e.target.value); setCommonOpsPage(1) }} /></label>}
+          <label><span>Поставщик</span><select value={commonOpsSupplierId} onChange={e => { setCommonOpsSupplierId(e.target.value); setCommonOpsPage(1) }}><option value="all">Все поставщики</option>{suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
+          <label><span>Операция</span><select value={commonOpsType} onChange={e => { setCommonOpsType(e.target.value); setCommonOpsPage(1) }}><option value="all">Все операции</option><option value="opening">Стартовый долг</option><option value="purchase">Приход</option><option value="payment">Оплата</option></select></label>
+          <label><span>&nbsp;</span><button className="ghost small" onClick={() => { setCommonOpsPeriod('month'); setCommonOpsDate(todayISO()); setCommonOpsDateFrom(monthStart(new Date().getFullYear(), new Date().getMonth() + 1)); setCommonOpsDateTo(todayISO()); setCommonOpsSupplierId('all'); setCommonOpsType('all'); setCommonOpsPage(1) }}>Сбросить</button></label>
+        </div>
+        <div className="mini-grid">
+          <div className="metric"><span>Итого приход / долг</span><strong>{fmt(commonOpsTotals.debit)}</strong></div>
+          <div className="metric"><span>Итого оплат</span><strong>{fmt(commonOpsTotals.credit)}</strong></div>
+          <div className="metric"><span>Баланс</span><strong className={commonOpsTotals.balance > 0 ? 'bad' : commonOpsTotals.balance < 0 ? 'good' : 'hint'}>{fmt(commonOpsTotals.balance)}</strong></div>
+        </div>
+        <div className="table-wrap"><table><thead><tr><th>Дата</th><th>Поставщик</th><th>Операция</th><th>Фактура/отметки</th><th>Приход / долг</th><th>Оплата</th><th>Комментарий</th><th>Действие</th></tr></thead><tbody>{lastOps.map(r => <tr key={r.id}><td>{r.date}</td><td>{r.supplier}</td><td><b>{r.type}</b></td><td>{r.invoice}</td><td className={r.debit > 0 ? 'bad' : 'hint'}>{r.debit > 0 ? fmt(r.debit) : '—'}</td><td className={r.credit > 0 ? 'good' : 'hint'}>{r.credit > 0 ? fmt(r.credit) : '—'}</td><td>{r.comment || '—'}</td><td>{r.type_key === 'purchase' || r.type_key === 'payment' || r.type_key === 'opening' ? <button className="small" onClick={() => handleCommonOperationAction(r)}>Редактировать</button> : '—'}</td></tr>)}{!lastOps.length && <tr><td colSpan="8" className="hint">—</td></tr>}</tbody></table></div>
+        <div className="action-row" style={{margin:'12px 0'}}>
+          <label style={{display:'flex',alignItems:'center',gap:8}}><span className="hint">Показать</span><select value={commonOpsPageSize} onChange={e => { setCommonOpsPageSize(Number(e.target.value)); setCommonOpsPage(1) }}><option value={20}>20</option><option value={30}>30</option><option value={50}>50</option></select></label>
+          <button className="ghost small" disabled={safeCommonOpsPage <= 1} onClick={() => setCommonOpsPage(p => Math.max(1, parseNum(p) - 1))}>← Пред.</button>
+          <span className="hint">Страница {safeCommonOpsPage} / {commonOpsTotalPages} · всего {filteredCommonOps.length}</span>
+          <button className="ghost small" disabled={safeCommonOpsPage >= commonOpsTotalPages} onClick={() => setCommonOpsPage(p => Math.min(commonOpsTotalPages, parseNum(p) + 1))}>След. →</button>
+        </div>
+      </div>
+
       <div className="card span-2">
         <div className="card-head"><div><h3>Поставщики и долги</h3><p className="hint">Разделено по вашим VOEN / юрлицам из настроек. В каждой группе сначала показаны 5 поставщиков.</p></div></div>
         {legalEntities.map(le => {
@@ -10590,7 +10635,7 @@ function DebtsPayments({ t }) {
           const entityTotalDebt = debtForLegalEntity(le.id)
           const entityDebtLabel = entityTotalDebt > 0 ? 'Долг' : entityTotalDebt < 0 ? 'Переплата' : 'Долга нет'
           const entityDebtClass = entityTotalDebt > 0 ? 'bad' : entityTotalDebt < 0 ? 'good' : 'hint'
-          return <div key={le.id} className="supplier-entity-group"><div className="supplier-entity-head"><b>{le.name} · {le.voen}</b><div className="action-row" style={{gap:12,alignItems:'center'}}><span>{list.length} поставщиков</span><span className={entityDebtClass}>{entityDebtLabel}: <b>{fmt(Math.abs(entityTotalDebt))} AZN</b></span></div></div><div className="table-wrap"><table className="supplier-compact-table"><thead><tr><th>Поставщик</th><th>Долг</th><th>Условия</th><th>Статус</th><th></th></tr></thead><tbody>{shown.map(s => { const entityBalance = balanceForSupplierLegal(s.id, le.id); const alert = supplierAlert(s, le.id); const risky = alert.overLimit > 0 || alert.overdueCount > 0; return <tr key={`${le.id}-${s.id}`} style={risky ? { background: 'rgba(155,45,45,.08)' } : undefined}><td><b>{s.name}</b><br /><span className="hint">{s.voen || 'VOEN не указан'}</span></td><td><strong className={entityBalance > 0 ? 'bad' : entityBalance < 0 ? 'good' : 'hint'}>{fmt(entityBalance)}</strong></td><td className="hint">{s.payment_term_days ? `${s.payment_term_days} дней` : '—'} · лимит {fmt(s.credit_limit)}</td><td className="hint">{alert.overLimit > 0 && <div className="bad">лимит +{fmt(alert.overLimit)}</div>}{alert.overdueCount > 0 && <div className="bad">просрочено: {alert.overdueCount}</div>}{!risky && <span className="good">ОК</span>}</td><td><button className="small" onClick={() => openTransactions(s.id, 'purchases', le.id)}>Транзакции</button></td></tr>})}{!shown.length && <tr><td colSpan="5" className="hint">Нет поставщиков по этому VOEN</td></tr>}</tbody><tfoot><tr><td><b>Итого по физ. лицу</b></td><td><strong className={entityDebtClass}>{fmt(entityTotalDebt)}</strong></td><td colSpan="3" className="hint">Поступления + стартовый долг − оплаты</td></tr></tfoot></table></div>{list.length > 5 && <button className="ghost small" onClick={() => setExpandedEntities(e => ({...e, [le.id]: !e[le.id]}))}>{expandedEntities[le.id] ? 'Свернуть' : 'Показать всех'}</button>}{activeSupplierId && activeLegalEntityId === le.id && <div className="card supplier-transactions-panel"><div className="card-head"><div><h3>Транзакции: {activeSupplier?.name}</h3><p className="hint">{activeLegalEntityId ? `Физ. лицо: ${legalEntities.find(le => le.id === activeLegalEntityId)?.name || '—'}` : 'Поступления и оплаты показаны отдельно, чтобы не смешивать операции.'}</p></div><button className="ghost small" onClick={() => { setActiveSupplierId(''); setActiveLegalEntityId('') }}>Закрыть</button></div>
+          return <div key={le.id} className="supplier-entity-group"><div className="supplier-entity-head"><b>{le.name} · {le.voen}</b><div className="action-row" style={{gap:12,alignItems:'center'}}><span>{list.length} поставщиков</span><span className={entityDebtClass}>{entityDebtLabel}: <b>{fmt(Math.abs(entityTotalDebt))} AZN</b></span></div></div><div className="table-wrap"><table className="supplier-compact-table"><thead><tr><th>Поставщик</th><th>Долг</th><th>Условия</th><th>Статус</th><th></th></tr></thead><tbody>{shown.map(s => { const entityBalance = balanceForSupplierLegal(s.id, le.id); const alert = supplierAlert(s, le.id); const risky = alert.overLimit > 0 || alert.overdueCount > 0; return <tr key={`${le.id}-${s.id}`} style={risky ? { background: 'rgba(155,45,45,.08)' } : undefined}><td><b>{s.name}</b><br /><span className="hint">{s.voen || 'VOEN не указан'}</span></td><td><strong className={entityBalance > 0 ? 'bad' : entityBalance < 0 ? 'good' : 'hint'}>{fmt(entityBalance)}</strong></td><td className="hint">{s.payment_term_days ? `${s.payment_term_days} дней` : '—'} · лимит {fmt(s.credit_limit)}</td><td className="hint">{alert.overLimit > 0 && <div className="bad">лимит +{fmt(alert.overLimit)}</div>}{alert.overdueCount > 0 && <div className="bad">просрочено: {alert.overdueCount}</div>}{!risky && <span className="good">ОК</span>}</td><td><button className="small" onClick={() => openTransactions(s.id, 'purchases', le.id)}>Транзакции</button></td></tr>})}{!shown.length && <tr><td colSpan="5" className="hint">Нет поставщиков по этому VOEN</td></tr>}</tbody><tfoot><tr><td><b>Итого по физ. лицу</b></td><td><strong className={entityDebtClass}>{fmt(entityTotalDebt)}</strong></td><td colSpan="3" className="hint">Поступления + стартовый долг − оплаты</td></tr></tfoot></table></div>{list.length > 5 && <button className="ghost small" onClick={() => setExpandedEntities(e => ({...e, [le.id]: !e[le.id]}))}>{expandedEntities[le.id] ? 'Свернуть' : 'Показать всех'}</button>}{activeSupplierId && activeLegalEntityId === le.id && <div ref={supplierTransactionPanelRef} className="card supplier-transactions-panel"><div className="card-head"><div><h3>Транзакции: {activeSupplier?.name}</h3><p className="hint">{activeLegalEntityId ? `Физ. лицо: ${legalEntities.find(le => le.id === activeLegalEntityId)?.name || '—'}` : 'Поступления и оплаты показаны отдельно, чтобы не смешивать операции.'}</p></div><button className="ghost small" onClick={() => { setActiveSupplierId(''); setActiveLegalEntityId('') }}>Закрыть</button></div>
         <div className="form-grid compact"><label><span>Тип операций</span><select value={transactionType} onChange={e => { setTransactionType(e.target.value); setDetailPurchaseId(''); setTransactionPage(1) }}><option value="purchases">Поступления</option><option value="payments">Оплаты</option><option value="products">Товары / цены</option></select></label><label><span>Период</span><select value={transactionPeriod} onChange={e => { setTransactionPeriod(e.target.value); setTransactionPage(1) }}><option value="day">За день</option><option value="month">За месяц</option><option value="year">За год</option><option value="all">Весь период</option></select></label>{transactionPeriod !== 'all' && <label><span>Дата периода</span><input type="date" value={transactionDate} onChange={e => { setTransactionDate(e.target.value); setTransactionPage(1) }} /></label>}</div>
         {transactionType === 'purchases' ? <div className="table-wrap"><table><thead><tr><th>Дата</th><th>Фактура</th><th>Физ. лицо</th><th>Филиал</th><th>Сумма</th><th>Комментарий</th><th></th></tr></thead><tbody>{pagedFilteredPurchases.map(p => <React.Fragment key={p.id}><tr className={p.deleted_at ? 'cancelled-row' : ''}><td>{p.purchase_date}</td><td>{p.invoice_number || '—'}</td><td>{p.legal_entities?.name || '—'}<br /><span className="hint">{p.legal_entities?.voen || ''}</span></td><td>{p.row_type === 'opening_debt' ? 'Стартовый долг' : (p.branches?.name || '—')}</td><td><strong className="bad">{fmt(p.total_amount)}</strong></td><td>{p.deleted_at ? 'Удалено / зачёркнуто' : (p.comment || '—')}</td><td>{p.row_type === 'opening_debt' ? <div className="action-row"><button className="small" disabled={Boolean(p.deleted_at)} onClick={() => startEditOpeningDebt(p)}>Ред.</button><button className="small remove" disabled={Boolean(p.deleted_at)} onClick={() => softDeleteOpeningDebt(p)}>Удалить</button></div> : <div className="action-row"><button className="small" onClick={() => setDetailPurchaseId(detailPurchaseId === p.id ? '' : p.id)}>{detailPurchaseId === p.id ? 'Скрыть' : 'Детали'}</button><button className="small" disabled={Boolean(p.deleted_at)} onClick={() => startEditPurchaseTransaction(p)}>Ред.</button><button className="small remove" disabled={Boolean(p.deleted_at)} onClick={() => softDeletePurchaseTransaction(p)}>Удалить</button></div>}</td></tr>{p.row_type === 'purchase' && editingPurchaseTransactionId === String(p.id) && <tr><td colSpan="7"><div className="card" style={{margin:0}}><h4>Редактирование поступления</h4><p className="hint">Сумма накладной пересчитывается автоматически по товарам. Изменения товара, количества, единицы или цены фиксируются в журнале операций.</p><div className="form-grid compact"><label><span>Дата</span><input type="date" value={purchaseTransactionEditForm.purchase_date} onChange={e => setPurchaseTransactionEditForm({...purchaseTransactionEditForm, purchase_date: e.target.value})} /></label><label><span>Фактура</span><input value={purchaseTransactionEditForm.invoice_number} onChange={e => setPurchaseTransactionEditForm({...purchaseTransactionEditForm, invoice_number: e.target.value})} /></label><label><span>Филиал</span><select value={purchaseTransactionEditForm.branch_id} onChange={e => setPurchaseTransactionEditForm({...purchaseTransactionEditForm, branch_id: e.target.value})}><option value="">—</option>{branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label><label><span>Сумма накладной</span><strong>{fmt(getPurchaseEditTotal() || p.total_amount)} AZN</strong></label><label><span>Комментарий</span><input value={purchaseTransactionEditForm.comment} onChange={e => setPurchaseTransactionEditForm({...purchaseTransactionEditForm, comment: e.target.value})} /></label></div><div className="table-wrap"><table><thead><tr><th>Категория</th><th>Товар</th><th>Кол-во</th><th>Ед.</th><th>Цена</th><th>Сумма</th></tr></thead><tbody>{purchaseTransactionEditItems.map(i => { const editProduct = getPurchaseEditProduct(i); return <tr key={i.id}><td>{editProduct?.category || i.supplier_products?.category || '—'}</td><td><select value={i.product_id || ''} onChange={e => updatePurchaseEditItemLocal(i.id, { product_id: e.target.value })}>{products.map(prod => <option key={prod.id} value={prod.id}>{prod.name}</option>)}</select></td><td><input inputMode="decimal" value={i.quantity} onChange={e => updatePurchaseEditItemLocal(i.id, { quantity: e.target.value })} /></td><td><select value={i.unit || 'kg'} onChange={e => updatePurchaseEditItemLocal(i.id, { unit: e.target.value })}>{PURCHASE_UNITS.map(u => <option key={u.value} value={u.value}>{u.label}</option>)}</select></td><td><input inputMode="decimal" value={i.unit_price} onChange={e => updatePurchaseEditItemLocal(i.id, { unit_price: e.target.value })} /></td><td>{fmt(getPurchaseEditItemTotal(i))} AZN</td></tr> })}{!purchaseTransactionEditItems.length && <tr><td colSpan="6" className="hint">Товары не найдены</td></tr>}</tbody></table></div><div className="action-row"><button className="small primary" onClick={() => savePurchaseTransactionEdit(p)}>Сохранить изменения</button><button className="ghost small" onClick={() => { setEditingPurchaseTransactionId(''); setPurchaseTransactionEditItems([]) }}>Отмена</button></div></div></td></tr>}{p.row_type === 'opening_debt' && editingOpeningDebtId === String(p.id).replace('opening-', '') && <tr><td colSpan="7"><div className="card" style={{margin:0}}><h4>Редактирование стартового долга</h4><div className="form-grid compact"><label><span>Дата</span><input type="date" value={openingDebtEditForm.debt_date} onChange={e => setOpeningDebtEditForm({...openingDebtEditForm, debt_date: e.target.value})} /></label><label><span>Сумма</span><input inputMode="decimal" value={openingDebtEditForm.amount} onChange={e => setOpeningDebtEditForm({...openingDebtEditForm, amount: e.target.value})} /></label><label><span>Фактура / отметка</span><input value={openingDebtEditForm.invoice_notes} onChange={e => setOpeningDebtEditForm({...openingDebtEditForm, invoice_notes: e.target.value})} /></label><label><span>Комментарий</span><input value={openingDebtEditForm.comment} onChange={e => setOpeningDebtEditForm({...openingDebtEditForm, comment: e.target.value})} /></label></div><div className="action-row"><button className="small primary" onClick={() => saveOpeningDebtEdit(p)}>Сохранить</button><button className="ghost small" onClick={() => setEditingOpeningDebtId('')}>Отмена</button></div></div></td></tr>}{p.row_type !== 'opening_debt' && detailPurchaseId === p.id && <tr><td colSpan="7"><div className="table-wrap"><table><thead><tr><th>Категория</th><th>Товар</th><th>Кол-во</th><th>Ед.</th><th>Цена</th><th>Сумма</th></tr></thead><tbody>{(p.supplier_purchase_items || []).map(i => <tr key={i.id}><td>{i.supplier_products?.category || '—'}</td><td>{i.supplier_products?.name || '—'}</td><td>{fmt(i.quantity)}</td><td>{i.unit}</td><td>{fmt(i.unit_price)}</td><td>{fmt(i.total_amount)}</td></tr>)}{!(p.supplier_purchase_items || []).length && <tr><td colSpan="6" className="hint">Товары не найдены</td></tr>}</tbody></table></div></td></tr>}</React.Fragment>)}{!purchaseTransactionRows.length && <tr><td colSpan="7" className="hint">Нет поступлений или стартовых долгов за выбранный период</td></tr>}</tbody></table></div> : transactionType === 'products' ? <div><div className="form-grid compact" style={{marginTop:12}}><label><span>Поиск товара</span><input value={productSearch} onChange={e => setProductSearch(e.target.value)} placeholder="Например: молоко, кофе" /></label><label><span>Сортировка</span><select value={productSort} onChange={e => setProductSort(e.target.value)}><option value="name_asc">Наименование A → Z</option><option value="name_desc">Наименование Z → A</option><option value="change_desc">Изменение цены: рост сверху</option><option value="change_asc">Изменение цены: снижение сверху</option><option value="price_desc">Последняя цена: убывание</option><option value="price_asc">Последняя цена: возрастание</option></select></label></div><div className="table-wrap"><table><thead><tr><th>Тип</th><th>Товар</th><th>Последняя цена закупа</th><th>Предыдущая цена закупа</th><th>Разница</th><th>Изменение</th><th>Последняя закупка</th><th>Фактура</th></tr></thead><tbody>{pagedProductPriceRows.map(row => <tr key={row.id}><td>{row.category}</td><td><b>{row.name}</b></td><td>{fmt(row.latest?.price)} / {row.latest?.unit || row.unit}</td><td>{row.previous ? `${fmt(row.previous.price)} / ${row.previous.unit || row.unit}` : '—'}</td><td>{row.changeAmount == null ? <span className="hint">—</span> : <strong className={row.changeAmount > 0 ? 'bad' : row.changeAmount < 0 ? 'good' : ''}>{row.changeAmount > 0 ? '+' : ''}{fmt(row.changeAmount)} AZN</strong>}</td><td>{row.changePct == null ? <span className="hint">—</span> : <strong className={row.changePct > 0 ? 'bad' : row.changePct < 0 ? 'good' : ''}>{row.changePct > 0 ? '+' : ''}{pct(row.changePct)}</strong>}</td><td>{row.latest?.date || '—'}</td><td>{row.latest?.invoice || '—'}</td></tr>)}{!productPriceRows.length && <tr><td colSpan="8" className="hint">Товары не найдены за выбранный период</td></tr>}</tbody></table></div></div> : <div className="table-wrap"><table><thead><tr><th>Дата</th><th>Физ. лицо</th><th>Отметки / фактуры</th><th>Сумма</th><th>Комментарий</th><th>Действие</th></tr></thead><tbody>{pagedFilteredPayments.map(p => <React.Fragment key={p.id}><tr><td>{p.payment_date}</td><td>{p.legal_entities?.name || legalEntities.find(le => le.id === p.legal_entity_id)?.name || '—'}<br /><span className="hint">{p.legal_entities?.voen || legalEntities.find(le => le.id === p.legal_entity_id)?.voen || ''}</span></td><td>{p.invoice_notes || '—'}</td><td><strong className="good">{fmt(p.amount)}</strong></td><td>{p.comment || '—'}</td><td><div className="action-row"><button className="small" onClick={() => startEditSupplierPayment(p)}>Ред.</button><button className="small remove" onClick={() => deleteSupplierPayment(p)}>Удалить</button></div></td></tr>{editingPaymentTransactionId === String(p.id) && <tr><td colSpan="6"><div className="card" style={{margin:0}}><h4>Редактирование оплаты поставщику</h4><p className="hint">Изменение суммы сразу пересчитает долг поставщика по выбранному физ. лицу.</p><div className="form-grid compact"><label><span>Дата оплаты</span><input type="date" value={paymentTransactionEditForm.payment_date} onChange={e => setPaymentTransactionEditForm({...paymentTransactionEditForm, payment_date: e.target.value})} /></label><label><span>Физ. лицо / VOEN</span><select value={paymentTransactionEditForm.legal_entity_id} onChange={e => setPaymentTransactionEditForm({...paymentTransactionEditForm, legal_entity_id: e.target.value})}>{legalEntities.map(le => <option key={le.id} value={le.id}>{le.name} · {le.voen}</option>)}</select></label><label><span>Сумма оплаты</span><input inputMode="decimal" value={paymentTransactionEditForm.amount} onChange={e => setPaymentTransactionEditForm({...paymentTransactionEditForm, amount: e.target.value})} /></label><label><span>Отметки / фактуры</span><input value={paymentTransactionEditForm.invoice_notes} onChange={e => setPaymentTransactionEditForm({...paymentTransactionEditForm, invoice_notes: e.target.value})} /></label><label><span>Комментарий</span><input value={paymentTransactionEditForm.comment} onChange={e => setPaymentTransactionEditForm({...paymentTransactionEditForm, comment: e.target.value})} /></label></div><div className="action-row"><button className="small primary" onClick={() => saveSupplierPaymentEdit(p)}>Сохранить</button><button className="ghost small" onClick={() => setEditingPaymentTransactionId('')}>Отмена</button><button className="small remove" onClick={() => deleteSupplierPayment(p)}>Удалить</button></div></div></td></tr>}</React.Fragment>)}{!filteredPayments.length && <tr><td colSpan="6" className="hint">Нет оплат за выбранный период</td></tr>}</tbody></table></div>}
         <div className="action-row" style={{margin:'12px 0 0'}}><label style={{display:'flex',alignItems:'center',gap:8}}><span className="hint">Показать</span><select value={transactionPageSize} onChange={e => { setTransactionPageSize(Number(e.target.value)); setTransactionPage(1) }}><option value={10}>10</option><option value={25}>25</option><option value={50}>50</option></select></label><button className="ghost small" disabled={safeTransactionPage <= 1} onClick={() => setTransactionPage(p => Math.max(1, parseNum(p) - 1))}>← Пред.</button><span className="hint">Страница {safeTransactionPage} / {transactionTotalPages} · всего {transactionSourceCount}</span><button className="ghost small" disabled={safeTransactionPage >= transactionTotalPages} onClick={() => setTransactionPage(p => Math.min(transactionTotalPages, parseNum(p) + 1))}>След. →</button></div>
@@ -10621,31 +10666,6 @@ function DebtsPayments({ t }) {
         <div className={`hint ${ledgerDebtClass === 'bad' ? 'bad' : ledgerDebtClass === 'good' ? 'good' : ''}`} style={{marginTop:10}}>{ledgerDebtText}: <b>{fmt(ledgerTotals.balance)} AZN</b></div>
       </div>
 
-
-
-      <div className="card span-2"><div className="card-head"><div><h3>Общий список: приход и оплаты</h3><p className="hint">Фильтруемый журнал операций: стартовый долг, приход по накладным и оплаты.</p></div></div>
-        <div className="form-grid compact">
-          <label><span>Период</span><select value={commonOpsPeriod} onChange={e => { setCommonOpsPeriod(e.target.value); setCommonOpsPage(1) }}><option value="day">День</option><option value="week">Неделя</option><option value="month">Месяц</option><option value="range">Диапазон дат</option><option value="all">Весь период</option></select></label>
-          {commonOpsPeriod !== 'range' && commonOpsPeriod !== 'all' && <label><span>Дата периода</span><input type="date" value={commonOpsDate} onChange={e => { setCommonOpsDate(e.target.value); setCommonOpsPage(1) }} /></label>}
-          {commonOpsPeriod === 'range' && <label><span>С</span><input type="date" value={commonOpsDateFrom} onChange={e => { setCommonOpsDateFrom(e.target.value); setCommonOpsPage(1) }} /></label>}
-          {commonOpsPeriod === 'range' && <label><span>По</span><input type="date" value={commonOpsDateTo} onChange={e => { setCommonOpsDateTo(e.target.value); setCommonOpsPage(1) }} /></label>}
-          <label><span>Поставщик</span><select value={commonOpsSupplierId} onChange={e => { setCommonOpsSupplierId(e.target.value); setCommonOpsPage(1) }}><option value="all">Все поставщики</option>{suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
-          <label><span>Операция</span><select value={commonOpsType} onChange={e => { setCommonOpsType(e.target.value); setCommonOpsPage(1) }}><option value="all">Все операции</option><option value="opening">Стартовый долг</option><option value="purchase">Приход</option><option value="payment">Оплата</option></select></label>
-          <label><span>&nbsp;</span><button className="ghost small" onClick={() => { setCommonOpsPeriod('month'); setCommonOpsDate(todayISO()); setCommonOpsDateFrom(monthStart(new Date().getFullYear(), new Date().getMonth() + 1)); setCommonOpsDateTo(todayISO()); setCommonOpsSupplierId('all'); setCommonOpsType('all'); setCommonOpsPage(1) }}>Сбросить</button></label>
-        </div>
-        <div className="mini-grid">
-          <div className="metric"><span>Итого приход / долг</span><strong>{fmt(commonOpsTotals.debit)}</strong></div>
-          <div className="metric"><span>Итого оплат</span><strong>{fmt(commonOpsTotals.credit)}</strong></div>
-          <div className="metric"><span>Баланс</span><strong className={commonOpsTotals.balance > 0 ? 'bad' : commonOpsTotals.balance < 0 ? 'good' : 'hint'}>{fmt(commonOpsTotals.balance)}</strong></div>
-        </div>
-        <div className="table-wrap"><table><thead><tr><th>Дата</th><th>Поставщик</th><th>Операция</th><th>Фактура/отметки</th><th>Приход / долг</th><th>Оплата</th><th>Комментарий</th><th>Действие</th></tr></thead><tbody>{lastOps.map(r => <tr key={r.id}><td>{r.date}</td><td>{r.supplier}</td><td><b>{r.type}</b></td><td>{r.invoice}</td><td className={r.debit > 0 ? 'bad' : 'hint'}>{r.debit > 0 ? fmt(r.debit) : '—'}</td><td className={r.credit > 0 ? 'good' : 'hint'}>{r.credit > 0 ? fmt(r.credit) : '—'}</td><td>{r.comment || '—'}</td><td>{r.type_key === 'purchase' || r.type_key === 'payment' || r.type_key === 'opening' ? <button className="small" onClick={() => handleCommonOperationAction(r)}>Редактировать</button> : '—'}</td></tr>)}{!lastOps.length && <tr><td colSpan="8" className="hint">—</td></tr>}</tbody></table></div>
-        <div className="action-row" style={{margin:'12px 0'}}>
-          <label style={{display:'flex',alignItems:'center',gap:8}}><span className="hint">Показать</span><select value={commonOpsPageSize} onChange={e => { setCommonOpsPageSize(Number(e.target.value)); setCommonOpsPage(1) }}><option value={20}>20</option><option value={30}>30</option><option value={50}>50</option></select></label>
-          <button className="ghost small" disabled={safeCommonOpsPage <= 1} onClick={() => setCommonOpsPage(p => Math.max(1, parseNum(p) - 1))}>← Пред.</button>
-          <span className="hint">Страница {safeCommonOpsPage} / {commonOpsTotalPages} · всего {filteredCommonOps.length}</span>
-          <button className="ghost small" disabled={safeCommonOpsPage >= commonOpsTotalPages} onClick={() => setCommonOpsPage(p => Math.min(commonOpsTotalPages, parseNum(p) + 1))}>След. →</button>
-        </div>
-      </div>
     </section>
   </section>
 }
