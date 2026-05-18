@@ -9533,7 +9533,7 @@ function Advances({ t }) {
           <tbody>{pagedAdvances.map(a => {
             const isEditing = editAdvanceId === a.id
             return <tr key={a.id} className={a.is_cancelled ? 'cancelled-row' : ''}>
-              <td>{isEditing ? <input type="date" value={editAdvanceForm.advance_date} onChange={e => setEditAdvanceForm(f => ({...f, advance_date: e.target.value}))} /> : formatDate(a.advance_date)}</td>
+              <td>{isEditing ? <input type="date" value={editAdvanceForm.advance_date} onChange={e => setEditAdvanceForm(f => ({...f, advance_date: e.target.value}))} /> : String(a.advance_date || '—')}</td>
               <td>{employeeGroupName({ branch_id: a.branch_id, branches: a.branches })}</td>
               <td>{positionGroup(a.employees?.position)} · {a.employees?.position || '—'}</td>
               <td>{a.employees?.full_name || '—'}</td>
