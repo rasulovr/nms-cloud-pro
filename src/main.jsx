@@ -1364,6 +1364,65 @@ function POSLite({ t }) {
     )
   }
 
+
+  async function saveIikoConnection() {
+    setIikoStatus('')
+    const branchId = iikoForm.branch_id || branches[0]?.id
+    if (!branchId) return setIikoStatus('Сначала добавьте филиал в настройках.')
+    if (!String(iikoForm.organization_id || '').trim()) return setIikoStatus('Введите iiko organization_id.')
+
+    setIikoBusy(true)
+    try {
+      const payload = {
+        branch_id: branchId,
+        iiko_organization_id: String(iikoForm.organization_id || '').trim(),
+        iiko_terminal_group_id: String(iikoForm.terminal_group_id || '').trim() || null,
+        sync_enabled: Boolean(iikoForm.sync_enabled),
+        updated_at: new Date().toISOString()
+      }
+      const { error } = await supabase.from('iiko_sync_connections').upsert(payload, { onConflict: 'branch_id' })
+      if (error) throw error
+      setIikoForm({ branch_id: branchId, organization_id: '', terminal_group_id: '', sync_enabled: true })
+      setIikoStatus('Подключение iiko сохранено. Следующий шаг — добавить IIKO_API_LOGIN в Supabase Edge Functions / Vercel Environment.')
+      await load()
+    } catch (e) {
+      setIikoStatus(e.message || String(e))
+    } finally {
+      setIikoBusy(false)
+    }
+  }
+
+  function editIikoConnection(row) {
+    setIikoForm({
+      branch_id: row.branch_id || '',
+      organization_id: row.iiko_organization_id || '',
+      terminal_group_id: row.iiko_terminal_group_id || '',
+      sync_enabled: row.sync_enabled !== false
+    })
+    setSettingsTab('integrations')
+  }
+
+  async function toggleIikoConnection(row) {
+    setIikoStatus('')
+    const { error } = await supabase.from('iiko_sync_connections').update({ sync_enabled: !row.sync_enabled, updated_at: new Date().toISOString() }).eq('id', row.id)
+    if (error) setIikoStatus(error.message); else { setIikoStatus('Статус подключения обновлён'); await load() }
+  }
+
+  async function runIikoSync(row) {
+    setIikoStatus('')
+    setIikoBusy(true)
+    try {
+      const { data, error } = await supabase.functions.invoke('iiko-sync-sales', { body: { connectionId: row.id } })
+      if (error) throw error
+      setIikoStatus(data?.message || 'Синхронизация запущена.')
+      await load()
+    } catch (e) {
+      setIikoStatus((e && e.message) ? e.message : 'Edge Function iiko-sync-sales пока не развернута или вернула ошибку.')
+    } finally {
+      setIikoBusy(false)
+    }
+  }
+
   return (
     <section>
       <SemiFinishedInlineStyles />
@@ -1514,6 +1573,65 @@ function POSLite({ t }) {
 
 function SalaryWorkspace({ t, isAdmin = false }) {
   const [salaryTab, setSalaryTab] = useState('employees')
+
+  async function saveIikoConnection() {
+    setIikoStatus('')
+    const branchId = iikoForm.branch_id || branches[0]?.id
+    if (!branchId) return setIikoStatus('Сначала добавьте филиал в настройках.')
+    if (!String(iikoForm.organization_id || '').trim()) return setIikoStatus('Введите iiko organization_id.')
+
+    setIikoBusy(true)
+    try {
+      const payload = {
+        branch_id: branchId,
+        iiko_organization_id: String(iikoForm.organization_id || '').trim(),
+        iiko_terminal_group_id: String(iikoForm.terminal_group_id || '').trim() || null,
+        sync_enabled: Boolean(iikoForm.sync_enabled),
+        updated_at: new Date().toISOString()
+      }
+      const { error } = await supabase.from('iiko_sync_connections').upsert(payload, { onConflict: 'branch_id' })
+      if (error) throw error
+      setIikoForm({ branch_id: branchId, organization_id: '', terminal_group_id: '', sync_enabled: true })
+      setIikoStatus('Подключение iiko сохранено. Следующий шаг — добавить IIKO_API_LOGIN в Supabase Edge Functions / Vercel Environment.')
+      await load()
+    } catch (e) {
+      setIikoStatus(e.message || String(e))
+    } finally {
+      setIikoBusy(false)
+    }
+  }
+
+  function editIikoConnection(row) {
+    setIikoForm({
+      branch_id: row.branch_id || '',
+      organization_id: row.iiko_organization_id || '',
+      terminal_group_id: row.iiko_terminal_group_id || '',
+      sync_enabled: row.sync_enabled !== false
+    })
+    setSettingsTab('integrations')
+  }
+
+  async function toggleIikoConnection(row) {
+    setIikoStatus('')
+    const { error } = await supabase.from('iiko_sync_connections').update({ sync_enabled: !row.sync_enabled, updated_at: new Date().toISOString() }).eq('id', row.id)
+    if (error) setIikoStatus(error.message); else { setIikoStatus('Статус подключения обновлён'); await load() }
+  }
+
+  async function runIikoSync(row) {
+    setIikoStatus('')
+    setIikoBusy(true)
+    try {
+      const { data, error } = await supabase.functions.invoke('iiko-sync-sales', { body: { connectionId: row.id } })
+      if (error) throw error
+      setIikoStatus(data?.message || 'Синхронизация запущена.')
+      await load()
+    } catch (e) {
+      setIikoStatus((e && e.message) ? e.message : 'Edge Function iiko-sync-sales пока не развернута или вернула ошибку.')
+    } finally {
+      setIikoBusy(false)
+    }
+  }
+
   return (
     <section>
       <section className="topbar">
@@ -5706,6 +5824,65 @@ function Recipes({ t }) {
     setMessage('Шаблон Брауни массы подставлен. Создай полуфабрикат и добавь ингредиенты по списку.')
   }
 
+
+  async function saveIikoConnection() {
+    setIikoStatus('')
+    const branchId = iikoForm.branch_id || branches[0]?.id
+    if (!branchId) return setIikoStatus('Сначала добавьте филиал в настройках.')
+    if (!String(iikoForm.organization_id || '').trim()) return setIikoStatus('Введите iiko organization_id.')
+
+    setIikoBusy(true)
+    try {
+      const payload = {
+        branch_id: branchId,
+        iiko_organization_id: String(iikoForm.organization_id || '').trim(),
+        iiko_terminal_group_id: String(iikoForm.terminal_group_id || '').trim() || null,
+        sync_enabled: Boolean(iikoForm.sync_enabled),
+        updated_at: new Date().toISOString()
+      }
+      const { error } = await supabase.from('iiko_sync_connections').upsert(payload, { onConflict: 'branch_id' })
+      if (error) throw error
+      setIikoForm({ branch_id: branchId, organization_id: '', terminal_group_id: '', sync_enabled: true })
+      setIikoStatus('Подключение iiko сохранено. Следующий шаг — добавить IIKO_API_LOGIN в Supabase Edge Functions / Vercel Environment.')
+      await load()
+    } catch (e) {
+      setIikoStatus(e.message || String(e))
+    } finally {
+      setIikoBusy(false)
+    }
+  }
+
+  function editIikoConnection(row) {
+    setIikoForm({
+      branch_id: row.branch_id || '',
+      organization_id: row.iiko_organization_id || '',
+      terminal_group_id: row.iiko_terminal_group_id || '',
+      sync_enabled: row.sync_enabled !== false
+    })
+    setSettingsTab('integrations')
+  }
+
+  async function toggleIikoConnection(row) {
+    setIikoStatus('')
+    const { error } = await supabase.from('iiko_sync_connections').update({ sync_enabled: !row.sync_enabled, updated_at: new Date().toISOString() }).eq('id', row.id)
+    if (error) setIikoStatus(error.message); else { setIikoStatus('Статус подключения обновлён'); await load() }
+  }
+
+  async function runIikoSync(row) {
+    setIikoStatus('')
+    setIikoBusy(true)
+    try {
+      const { data, error } = await supabase.functions.invoke('iiko-sync-sales', { body: { connectionId: row.id } })
+      if (error) throw error
+      setIikoStatus(data?.message || 'Синхронизация запущена.')
+      await load()
+    } catch (e) {
+      setIikoStatus((e && e.message) ? e.message : 'Edge Function iiko-sync-sales пока не развернута или вернула ошибку.')
+    } finally {
+      setIikoBusy(false)
+    }
+  }
+
   return (
     <section>
       <section className="topbar">
@@ -6833,6 +7010,65 @@ function RecipesLegacy({ t }) {
     return {
       label: `${fmt(cost.price_per_base_unit)} / ${cost.base_unit || 'ед.'}`,
       className: 'hint'
+    }
+  }
+
+
+  async function saveIikoConnection() {
+    setIikoStatus('')
+    const branchId = iikoForm.branch_id || branches[0]?.id
+    if (!branchId) return setIikoStatus('Сначала добавьте филиал в настройках.')
+    if (!String(iikoForm.organization_id || '').trim()) return setIikoStatus('Введите iiko organization_id.')
+
+    setIikoBusy(true)
+    try {
+      const payload = {
+        branch_id: branchId,
+        iiko_organization_id: String(iikoForm.organization_id || '').trim(),
+        iiko_terminal_group_id: String(iikoForm.terminal_group_id || '').trim() || null,
+        sync_enabled: Boolean(iikoForm.sync_enabled),
+        updated_at: new Date().toISOString()
+      }
+      const { error } = await supabase.from('iiko_sync_connections').upsert(payload, { onConflict: 'branch_id' })
+      if (error) throw error
+      setIikoForm({ branch_id: branchId, organization_id: '', terminal_group_id: '', sync_enabled: true })
+      setIikoStatus('Подключение iiko сохранено. Следующий шаг — добавить IIKO_API_LOGIN в Supabase Edge Functions / Vercel Environment.')
+      await load()
+    } catch (e) {
+      setIikoStatus(e.message || String(e))
+    } finally {
+      setIikoBusy(false)
+    }
+  }
+
+  function editIikoConnection(row) {
+    setIikoForm({
+      branch_id: row.branch_id || '',
+      organization_id: row.iiko_organization_id || '',
+      terminal_group_id: row.iiko_terminal_group_id || '',
+      sync_enabled: row.sync_enabled !== false
+    })
+    setSettingsTab('integrations')
+  }
+
+  async function toggleIikoConnection(row) {
+    setIikoStatus('')
+    const { error } = await supabase.from('iiko_sync_connections').update({ sync_enabled: !row.sync_enabled, updated_at: new Date().toISOString() }).eq('id', row.id)
+    if (error) setIikoStatus(error.message); else { setIikoStatus('Статус подключения обновлён'); await load() }
+  }
+
+  async function runIikoSync(row) {
+    setIikoStatus('')
+    setIikoBusy(true)
+    try {
+      const { data, error } = await supabase.functions.invoke('iiko-sync-sales', { body: { connectionId: row.id } })
+      if (error) throw error
+      setIikoStatus(data?.message || 'Синхронизация запущена.')
+      await load()
+    } catch (e) {
+      setIikoStatus((e && e.message) ? e.message : 'Edge Function iiko-sync-sales пока не развернута или вернула ошибку.')
+    } finally {
+      setIikoBusy(false)
     }
   }
 
@@ -12298,6 +12534,11 @@ function Settings({ session, t, theme, setTheme }) {
   const [advanceImportRows, setAdvanceImportRows] = useState([])
   const [advanceImportBusy, setAdvanceImportBusy] = useState(false)
   const [advanceImportReport, setAdvanceImportReport] = useState(null)
+  const [iikoConnections, setIikoConnections] = useState([])
+  const [iikoSyncLogs, setIikoSyncLogs] = useState([])
+  const [iikoForm, setIikoForm] = useState({ branch_id: '', organization_id: '', terminal_group_id: '', sync_enabled: true })
+  const [iikoBusy, setIikoBusy] = useState(false)
+  const [iikoStatus, setIikoStatus] = useState('')
   const [advanceImportYear, setAdvanceImportYear] = useState('2026')
   const [advanceImportMonth, setAdvanceImportMonth] = useState('4')
   const [msg, setMsg] = useState('')
@@ -12343,9 +12584,23 @@ function Settings({ session, t, theme, setTheme }) {
     setPermissions([...(perms || []), ...internalUsers.flatMap(iu => makeInternalPermissionRows(iu.id))])
     setBranches(br || [])
     setExpenseCategories(cats || [])
+
+    try {
+      const [{ data: iikoRows }, { data: iikoLogs }] = await Promise.all([
+        supabase.from('iiko_sync_connections').select('*, branches(name)').order('created_at', { ascending: false }),
+        supabase.from('iiko_sync_logs').select('*').order('created_at', { ascending: false }).limit(10)
+      ])
+      setIikoConnections(iikoRows || [])
+      setIikoSyncLogs(iikoLogs || [])
+    } catch (_e) {
+      setIikoConnections([])
+      setIikoSyncLogs([])
+    }
+
     const rentSettings = await readRmsAppSetting(RMS_BRANCH_RENT_FORECAST_SETTING, {})
     setBranchRentSettings(rentSettings && typeof rentSettings === 'object' ? rentSettings : {})
     if (!serviceBranchId && br?.[0]) setServiceBranchId(br[0].id)
+    if (!iikoForm.branch_id && br?.[0]) setIikoForm(prev => ({ ...prev, branch_id: br[0].id }))
   }
 
   async function addExpenseCategory() {
@@ -13526,6 +13781,65 @@ function Settings({ session, t, theme, setTheme }) {
     }
   }
 
+
+  async function saveIikoConnection() {
+    setIikoStatus('')
+    const branchId = iikoForm.branch_id || branches[0]?.id
+    if (!branchId) return setIikoStatus('Сначала добавьте филиал в настройках.')
+    if (!String(iikoForm.organization_id || '').trim()) return setIikoStatus('Введите iiko organization_id.')
+
+    setIikoBusy(true)
+    try {
+      const payload = {
+        branch_id: branchId,
+        iiko_organization_id: String(iikoForm.organization_id || '').trim(),
+        iiko_terminal_group_id: String(iikoForm.terminal_group_id || '').trim() || null,
+        sync_enabled: Boolean(iikoForm.sync_enabled),
+        updated_at: new Date().toISOString()
+      }
+      const { error } = await supabase.from('iiko_sync_connections').upsert(payload, { onConflict: 'branch_id' })
+      if (error) throw error
+      setIikoForm({ branch_id: branchId, organization_id: '', terminal_group_id: '', sync_enabled: true })
+      setIikoStatus('Подключение iiko сохранено. Следующий шаг — добавить IIKO_API_LOGIN в Supabase Edge Functions / Vercel Environment.')
+      await load()
+    } catch (e) {
+      setIikoStatus(e.message || String(e))
+    } finally {
+      setIikoBusy(false)
+    }
+  }
+
+  function editIikoConnection(row) {
+    setIikoForm({
+      branch_id: row.branch_id || '',
+      organization_id: row.iiko_organization_id || '',
+      terminal_group_id: row.iiko_terminal_group_id || '',
+      sync_enabled: row.sync_enabled !== false
+    })
+    setSettingsTab('integrations')
+  }
+
+  async function toggleIikoConnection(row) {
+    setIikoStatus('')
+    const { error } = await supabase.from('iiko_sync_connections').update({ sync_enabled: !row.sync_enabled, updated_at: new Date().toISOString() }).eq('id', row.id)
+    if (error) setIikoStatus(error.message); else { setIikoStatus('Статус подключения обновлён'); await load() }
+  }
+
+  async function runIikoSync(row) {
+    setIikoStatus('')
+    setIikoBusy(true)
+    try {
+      const { data, error } = await supabase.functions.invoke('iiko-sync-sales', { body: { connectionId: row.id } })
+      if (error) throw error
+      setIikoStatus(data?.message || 'Синхронизация запущена.')
+      await load()
+    } catch (e) {
+      setIikoStatus((e && e.message) ? e.message : 'Edge Function iiko-sync-sales пока не развернута или вернула ошибку.')
+    } finally {
+      setIikoBusy(false)
+    }
+  }
+
   return (
     <section>
       <section className="topbar"><div><h2>{t('settings_tab')}</h2><p>{t('settings_subtitle')}</p></div></section>
@@ -13535,6 +13849,7 @@ function Settings({ session, t, theme, setTheme }) {
         <button className={settingsTab === 'voen' ? 'active' : ''} onClick={() => setSettingsTab('voen')}>Наши VOEN / юрлица</button>
         <button className={settingsTab === 'backup' ? 'active' : ''} onClick={() => setSettingsTab('backup')}>Бэкап и очистка данных</button>
         <button className={settingsTab === 'import' ? 'active' : ''} onClick={() => setSettingsTab('import')}>Импорт данных</button>
+        <button className={settingsTab === 'integrations' ? 'active' : ''} onClick={() => setSettingsTab('integrations')}>Интеграции</button>
       </div>
       <section className="grid">
         {settingsTab === 'branches' && <>
@@ -13612,6 +13927,36 @@ function Settings({ session, t, theme, setTheme }) {
             <button type="button" className="danger" disabled={backupBusy} onClick={clearOperationalData}>Очистить всю операционную информацию</button>
             <p className="hint">Перед очисткой сначала скачай полный бэкап RMS.</p>
             {msg && <p className="hint good">{msg}</p>}
+          </div>
+        </>}
+
+        {settingsTab === 'integrations' && <>
+          <div className="card span-2">
+            <div className="card-head">
+              <div>
+                <h3>Интеграция с iiko</h3>
+                <p className="hint">Первый этап: сохраняем соответствие филиалов RMS с iiko organization / terminal group. Продажи будут загружаться через backend-функцию, без прямого обращения к iiko из браузера.</p>
+              </div>
+              <button className="small primary" disabled={iikoBusy} onClick={saveIikoConnection}>{iikoBusy ? 'Сохранение...' : 'Сохранить подключение'}</button>
+            </div>
+            <div className="form-grid compact">
+              <label><span>Филиал RMS</span><select value={iikoForm.branch_id || branches[0]?.id || ''} onChange={e => setIikoForm(prev => ({ ...prev, branch_id: e.target.value }))}>{branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label>
+              <label><span>iiko organization_id</span><input value={iikoForm.organization_id} onChange={e => setIikoForm(prev => ({ ...prev, organization_id: e.target.value }))} placeholder="ID организации из iikoCloud" /></label>
+              <label><span>iiko terminal_group_id</span><input value={iikoForm.terminal_group_id} onChange={e => setIikoForm(prev => ({ ...prev, terminal_group_id: e.target.value }))} placeholder="Опционально" /></label>
+              <label className="checkbox-row"><input type="checkbox" checked={iikoForm.sync_enabled !== false} onChange={e => setIikoForm(prev => ({ ...prev, sync_enabled: e.target.checked }))} /> Автосинхронизация включена</label>
+            </div>
+            <p className="hint">API login / secret не вводится в интерфейсе RMS. Его нужно хранить в переменных окружения backend-функции, чтобы ключ iiko не попадал во frontend.</p>
+            {iikoStatus && <p className={String(iikoStatus).toLowerCase().includes('ошиб') || String(iikoStatus).toLowerCase().includes('error') ? 'hint bad' : 'hint good'}>{iikoStatus}</p>}
+          </div>
+
+          <div className="card span-2">
+            <div className="card-head"><h3>Подключенные филиалы</h3></div>
+            <div className="table-wrap"><table><thead><tr><th>Филиал</th><th>Organization ID</th><th>Terminal Group ID</th><th>Статус</th><th>Последняя синхронизация</th><th>Действия</th></tr></thead><tbody>{iikoConnections.map(row => <tr key={row.id}><td><b>{row.branches?.name || branches.find(b => b.id === row.branch_id)?.name || row.branch_id}</b></td><td>{row.iiko_organization_id}</td><td>{row.iiko_terminal_group_id || '—'}</td><td>{row.sync_enabled ? 'Активно' : 'Отключено'}</td><td>{row.last_sync_at ? new Date(row.last_sync_at).toLocaleString('ru-RU') : '—'}</td><td><div className="action-row"><button className="small" onClick={() => editIikoConnection(row)}>Редактировать</button><button className="small" onClick={() => toggleIikoConnection(row)}>{row.sync_enabled ? 'Отключить' : 'Включить'}</button><button className="small primary" disabled={iikoBusy} onClick={() => runIikoSync(row)}>Синхронизировать</button></div></td></tr>)}{!iikoConnections.length && <tr><td colSpan="6" className="hint">Подключений пока нет. Сначала выполните SQL-миграцию и сохраните первый филиал.</td></tr>}</tbody></table></div>
+          </div>
+
+          <div className="card span-2">
+            <div className="card-head"><h3>Журнал iiko sync</h3></div>
+            <div className="table-wrap"><table><thead><tr><th>Дата</th><th>Статус</th><th>Период</th><th>Строк</th><th>Сумма</th><th>Комментарий</th></tr></thead><tbody>{iikoSyncLogs.map(log => <tr key={log.id}><td>{log.created_at ? new Date(log.created_at).toLocaleString('ru-RU') : '—'}</td><td>{log.status}</td><td>{log.period_from || '—'} — {log.period_to || '—'}</td><td>{log.rows_count || 0}</td><td>{fmt(log.total_amount || 0)}</td><td>{log.error_message || log.message || '—'}</td></tr>)}{!iikoSyncLogs.length && <tr><td colSpan="6" className="hint">Логов синхронизации пока нет.</td></tr>}</tbody></table></div>
           </div>
         </>}
 
