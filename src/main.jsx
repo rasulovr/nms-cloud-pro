@@ -9525,9 +9525,6 @@ function Advances({ t }) {
 
       <div className="card span-2">
         <div className="card-head"><div><h3>Журнал авансов</h3><p className="hint">По умолчанию строки закрыты от изменений. Для правки нажмите “Редактировать”; изменения фиксируются по времени и пользователю.</p></div></div>
-        <div className="form-grid compact" style={{marginBottom:12}}>
-          <label><span>Строк на странице</span><select value={advancePageSize} onChange={e => { setAdvancePageSize(Number(e.target.value)); setAdvancePage(1) }}><option value={10}>10</option><option value={20}>20</option><option value={30}>30</option><option value={50}>50</option></select></label>
-        </div>
         <div className="table-wrap"><table>
           <thead><tr><th>Дата</th><th>Филиал</th><th>Должность</th><th style={{minWidth:220}}>Сотрудник</th><th>Сумма</th><th>Комментарий</th><th>Статус</th><th></th></tr></thead>
           <tbody>{pagedAdvances.map(a => {
@@ -9552,11 +9549,12 @@ function Advances({ t }) {
             </tr>
           })}{!displayedAdvances.length && <tr><td colSpan="8" className="hint">Авансов за выбранный период нет.</td></tr>}</tbody>
         </table></div>
-        {displayedAdvances.length > advancePageSize && <div className="pager">
+        <div className="pager">
+          <label className="inline-select"><span>Показать</span><select value={advancePageSize} onChange={e => { setAdvancePageSize(Number(e.target.value)); setAdvancePage(1) }}><option value={10}>10</option><option value={20}>20</option><option value={30}>30</option><option value={50}>50</option></select></label>
           <button className="small" disabled={safeAdvancePage <= 1} onClick={() => setAdvancePage(p => Math.max(1, p - 1))}>← Пред.</button>
-          <span className="hint">Страница {safeAdvancePage} / {advancePageTotal}</span>
+          <span className="hint">Страница {safeAdvancePage} / {advancePageTotal} · всего {displayedAdvances.length}</span>
           <button className="small" disabled={safeAdvancePage >= advancePageTotal} onClick={() => setAdvancePage(p => Math.min(advancePageTotal, p + 1))}>След. →</button>
-        </div>}
+        </div>
       </div>
 
       <div className="card span-2">
