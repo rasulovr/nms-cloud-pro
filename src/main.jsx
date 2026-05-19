@@ -9525,7 +9525,7 @@ function Advances({ t }) {
           <label><span>{t('year')}</span><select value={year} onChange={e => setYear(Number(e.target.value))}>{defaultYears().map(y => <option key={y} value={y}>{y}</option>)}</select></label>
           <label><span>{t('month')}</span><select value={month} onChange={e => setMonth(Number(e.target.value))}>{I18N.ru.months.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}</select></label>
           <label><span>Филиал / группа</span><select value={branchId} onChange={e => setBranchId(e.target.value)}><option value="all">Все филиалы и менеджеры</option>{staffGroupOptions(branches).map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label>
-          <label><span>Позиция</span><select value={positionFilter} onChange={e => setPositionFilter(e.target.value)}><option value="all">Все позиции</option>{STAFF_POSITION_GROUPS.map(p => <option key={p} value={p}>{p}</option>)}</select></label>
+          <label><span>Сотрудник</span><select value={employeeFilter} onChange={e => setEmployeeFilter(e.target.value)}><option value="all">Все сотрудники</option>{filterEmployees.map(e => <option key={e.id} value={e.id}>{positionGroup(e.position)} · {e.full_name}</option>)}</select></label>
         </div>
         <div className="metric"><span>Итого авансы за месяц</span><strong>{fmt(totalAdvance)}</strong></div>
         {message && <p className={`hint ${message === t('saved') ? 'save-status' : 'bad'}`}>{message}</p>}
