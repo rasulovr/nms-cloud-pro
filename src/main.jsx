@@ -9654,10 +9654,12 @@ function Suppliers({ t, isAdmin = false }) {
   const [expandedEntities, setExpandedEntities] = useState({})
   const [message, setMessage] = useState('')
   const [paymentMessage, setPaymentMessage] = useState('')
+  const [supplierAdminExpanded, setSupplierAdminExpanded] = useState(false)
 
   const activeSuppliers = useMemo(() => (suppliers || []).filter(s => s.is_active !== false), [suppliers])
   const activeSupplierIds = useMemo(() => new Set(activeSuppliers.map(s => s.id)), [activeSuppliers])
   const supplierAdminRows = isAdmin ? (suppliers || []) : activeSuppliers
+  const visibleSupplierAdminRows = supplierAdminExpanded ? supplierAdminRows : supplierAdminRows.slice(0, 2)
 
   async function revenueDistributionForSupplierDate(expenseDate) {
     const { data } = await supabase
@@ -10182,7 +10184,7 @@ function Suppliers({ t, isAdmin = false }) {
           <table>
             <thead><tr><th>Контрагент</th><th>VOEN</th><th>Условия</th><th>Операции</th><th>Статус</th><th>Действие</th></tr></thead>
             <tbody>
-              {supplierAdminRows.map(s => {
+              {visibleSupplierAdminRows.map(s => {
                 const count = supplierTransactionCount(s.id)
                 const inactive = s.is_active === false
                 return <tr key={s.id} className={inactive ? 'cancelled-row' : ''}>
@@ -10198,6 +10200,13 @@ function Suppliers({ t, isAdmin = false }) {
             </tbody>
           </table>
         </div>
+        {supplierAdminRows.length > 2 && (
+          <div className="action-row" style={{marginTop:10}}>
+            <button className="ghost small" onClick={() => setSupplierAdminExpanded(v => !v)}>
+              {supplierAdminExpanded ? 'Свернуть список' : `Показать ещё · всего ${supplierAdminRows.length}`}
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="card span-2">
@@ -10322,6 +10331,7 @@ function DebtsPayments({ t }) {
   const [detailPurchaseId, setDetailPurchaseId] = useState('')
   const [message, setMessage] = useState('')
   const [ledgerSupplierId, setLedgerSupplierId] = useState('all')
+  const [ledgerLegalEntityId, setLedgerLegalEntityId] = useState('all')
   const [ledgerSearch, setLedgerSearch] = useState('')
   const [invoiceSearch, setInvoiceSearch] = useState('')
   const [ledgerPageSize, setLedgerPageSize] = useState(10)
@@ -11003,21 +11013,39 @@ function DebtsPayments({ t }) {
   ]
     .filter(r => activeSupplierIds.has(r.supplier_id))
     .filter(r => ledgerSupplierId === 'all' || r.supplier_id === ledgerSupplierId)
+    .filter(r => ledgerLegalEntityId === 'all' || r.legal_entity_id === ledgerLegalEntityId)
     .filter(r => !normalizedLedgerSearch || ledgerSupplierIds.has(r.supplier_id) || String(r.suppliers?.name || '').toLowerCase().includes(normalizedLedgerSearch))
     .filter(r => !normalizedInvoiceSearch || String(r.invoice || '').toLowerCase().includes(normalizedInvoiceSearch) || String(r.comment || '').toLowerCase().includes(normalizedInvoiceSearch))
     .sort((a, b) => String(a.transaction_date || '').localeCompare(String(b.transaction_date || '')))
 
-  let runningSupplierBalance = 0
+  const ledgerRunningByEntity = {}
   const supplierLedgerRows = ledgerBaseRows.map(r => {
-    runningSupplierBalance += parseNum(r.debit) - parseNum(r.credit)
-    return { ...r, balance: runningSupplierBalance }
+    const key = `${r.supplier_id || 'none'}::${r.legal_entity_id || 'none'}`
+    ledgerRunningByEntity[key] = parseNum(ledgerRunningByEntity[key]) + parseNum(r.debit) - parseNum(r.credit)
+    return { ...r, balance: ledgerRunningByEntity[key] }
   })
   const ledgerTotals = supplierLedgerRows.reduce((acc, r) => {
     acc.debit += parseNum(r.debit)
     acc.credit += parseNum(r.credit)
-    acc.balance = parseNum(r.balance)
+    acc.balance += parseNum(r.debit) - parseNum(r.credit)
     return acc
   }, { debit: 0, credit: 0, balance: 0 })
+  const ledgerEntityTotalsMap = supplierLedgerRows.reduce((acc, r) => {
+    const key = r.legal_entity_id || 'none'
+    if (!acc[key]) acc[key] = {
+      id: key,
+      name: r.legal_entities?.name || 'Без VOEN',
+      voen: r.legal_entities?.voen || '',
+      debit: 0,
+      credit: 0,
+      balance: 0
+    }
+    acc[key].debit += parseNum(r.debit)
+    acc[key].credit += parseNum(r.credit)
+    acc[key].balance += parseNum(r.debit) - parseNum(r.credit)
+    return acc
+  }, {})
+  const ledgerEntityTotals = Object.values(ledgerEntityTotalsMap)
   const ledgerTotalPages = Math.max(1, Math.ceil(supplierLedgerRows.length / parseNum(ledgerPageSize || 10)))
   const safeLedgerPage = Math.min(Math.max(1, parseNum(ledgerPage) || 1), ledgerTotalPages)
   const pagedSupplierLedgerRows = supplierLedgerRows.slice((safeLedgerPage - 1) * parseNum(ledgerPageSize || 10), safeLedgerPage * parseNum(ledgerPageSize || 10))
@@ -11065,10 +11093,10 @@ function DebtsPayments({ t }) {
   function printSupplierLedger() {
     const supplierName = ledgerSupplierId === 'all' ? 'Все поставщики' : suppliers.find(s => s.id === ledgerSupplierId)?.name || 'Поставщик'
     const filters = `${normalizedLedgerSearch ? 'Поиск поставщика: ' + ledgerSearch + ' · ' : ''}${normalizedInvoiceSearch ? 'E-qaimə: ' + invoiceSearch : ''}`
-    const rowsHtml = supplierLedgerRows.map(r => `<tr><td>${r.transaction_date || ''}</td><td>${r.suppliers?.name || ''}</td><td>${r.invoice || ''}</td><td>${r.comment || ''}</td><td>${fmt(r.debit)}</td><td>${fmt(r.credit)}</td><td>${fmt(r.balance)}</td></tr>`).join('')
+    const rowsHtml = supplierLedgerRows.map(r => `<tr><td>${r.transaction_date || ''}</td><td>${r.suppliers?.name || ''}</td><td>${r.legal_entities?.name || ''}<br>${r.legal_entities?.voen || ''}</td><td>${r.invoice || ''}</td><td>${r.comment || ''}</td><td>${fmt(r.debit)}</td><td>${fmt(r.credit)}</td><td>${fmt(r.balance)}</td></tr>`).join('')
     const debtClass = ledgerTotals.balance > 0 ? 'bad' : ledgerTotals.balance < 0 ? 'good' : 'neutral'
     const debtText = ledgerTotals.balance > 0 ? 'Долг поставщику' : ledgerTotals.balance < 0 ? 'Поставщик должен нам' : 'Долга нет'
-    const html = `<!doctype html><html><head><meta charset="utf-8"><title>Supplier Ledger</title><style>body{font-family:Arial;padding:24px;color:#17251d}h2{margin:0 0 6px}.muted{color:#777;margin-bottom:18px}.summary{display:flex;gap:12px;margin:16px 0}.box{border:1px solid #ddd;border-radius:12px;padding:10px 14px}.box b{display:block;font-size:18px}table{width:100%;border-collapse:collapse}th,td{border-bottom:1px solid #ddd;padding:8px;text-align:left}th{background:#f4eddf}.footer-total{margin-top:18px;border-radius:14px;padding:14px 18px;border:1px solid #ddd;background:#f7f7f7;font-size:16px}.footer-total b{font-size:22px}.bad{color:#b91c1c}.good{color:#15803d}.neutral{color:#6b7280}</style></head><body><h2>Баланс поставщика: ${supplierName}</h2><div class="muted">${filters}</div><div class="summary"><div class="box">Приход / долг<b>${fmt(ledgerTotals.debit)}</b></div><div class="box">Оплата<b>${fmt(ledgerTotals.credit)}</b></div><div class="box">Остаток<b>${fmt(ledgerTotals.balance)}</b></div></div><table><thead><tr><th>Дата</th><th>Поставщик</th><th>E-qaimə</th><th>Операция</th><th>Приход / долг</th><th>Оплата</th><th>Остаток</th></tr></thead><tbody>${rowsHtml}</tbody></table><div class="footer-total ${debtClass}">${debtText}: <b>${fmt(ledgerTotals.balance)} AZN</b></div></body></html>`
+    const html = `<!doctype html><html><head><meta charset="utf-8"><title>Supplier Ledger</title><style>body{font-family:Arial;padding:24px;color:#17251d}h2{margin:0 0 6px}.muted{color:#777;margin-bottom:18px}.summary{display:flex;gap:12px;margin:16px 0}.box{border:1px solid #ddd;border-radius:12px;padding:10px 14px}.box b{display:block;font-size:18px}table{width:100%;border-collapse:collapse}th,td{border-bottom:1px solid #ddd;padding:8px;text-align:left}th{background:#f4eddf}.footer-total{margin-top:18px;border-radius:14px;padding:14px 18px;border:1px solid #ddd;background:#f7f7f7;font-size:16px}.footer-total b{font-size:22px}.bad{color:#b91c1c}.good{color:#15803d}.neutral{color:#6b7280}</style></head><body><h2>Баланс поставщика: ${supplierName}</h2><div class="muted">${filters}</div><div class="summary"><div class="box">Приход / долг<b>${fmt(ledgerTotals.debit)}</b></div><div class="box">Оплата<b>${fmt(ledgerTotals.credit)}</b></div><div class="box">Остаток<b>${fmt(ledgerTotals.balance)}</b></div></div><table><thead><tr><th>Дата</th><th>Поставщик</th><th>Наш VOEN</th><th>E-qaimə</th><th>Операция</th><th>Приход / долг</th><th>Оплата</th><th>Остаток</th></tr></thead><tbody>${rowsHtml}</tbody></table><div class="footer-total ${debtClass}">${debtText}: <b>${fmt(ledgerTotals.balance)} AZN</b></div></body></html>`
     const w = window.open('', '_blank')
     if (!w) return
     w.document.write(html)
@@ -11127,6 +11155,7 @@ function DebtsPayments({ t }) {
         <div className="form-grid compact">
           <label><span>Поиск поставщика</span><input value={ledgerSearch} onChange={e => { setLedgerSearch(e.target.value); setLedgerPage(1) }} placeholder="Название или VOEN" /></label>
           <label><span>Поставщик</span><select value={ledgerSupplierId} onChange={e => { setLedgerSupplierId(e.target.value); setLedgerPage(1) }}><option value="all">Все найденные / все поставщики</option>{searchedSuppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
+          <label><span>Наш VOEN / физ. лицо</span><select value={ledgerLegalEntityId} onChange={e => { setLedgerLegalEntityId(e.target.value); setLedgerPage(1) }}><option value="all">Все VOEN</option>{legalEntities.map(le => <option key={le.id} value={le.id}>{le.name} · {le.voen}</option>)}</select></label>
           <label><span>Поиск E-qaimə / фактуры</span><input value={invoiceSearch} onChange={e => { setInvoiceSearch(e.target.value); setLedgerPage(1) }} placeholder="Номер фактуры" /></label>
         </div>
         <div className="mini-grid">
@@ -11134,7 +11163,15 @@ function DebtsPayments({ t }) {
           <div className="metric"><span>Оплата</span><strong>{fmt(ledgerTotals.credit)}</strong></div>
           <div className="metric"><span>Остаток</span><strong className={ledgerDebtClass === 'bad' ? 'bad' : ledgerDebtClass === 'good' ? 'good' : 'hint'}>{fmt(ledgerTotals.balance)}</strong></div>
         </div>
-        <div className="table-wrap"><table><thead><tr><th>Дата</th><th>Поставщик</th><th>E-qaimə</th><th>Операция</th><th>Приход / долг</th><th>Оплата</th><th>Остаток</th></tr></thead><tbody>{pagedSupplierLedgerRows.map(r => <tr key={r.id}><td>{r.transaction_date}</td><td>{r.suppliers?.name || '—'}</td><td>{r.invoice || '—'}</td><td>{r.comment}</td><td>{fmt(r.debit)}</td><td>{fmt(r.credit)}</td><td className={r.balance > 0 ? 'bad' : r.balance < 0 ? 'good' : 'hint'}><b>{fmt(r.balance)}</b></td></tr>)}{!supplierLedgerRows.length && <tr><td colSpan="7" className="hint">Операции не найдены.</td></tr>}</tbody></table></div>
+        {ledgerEntityTotals.length > 1 && (
+          <div className="table-wrap" style={{margin:'10px 0 14px'}}>
+            <table>
+              <thead><tr><th>Наш VOEN / физ. лицо</th><th>Приход / долг</th><th>Оплата</th><th>Остаток</th></tr></thead>
+              <tbody>{ledgerEntityTotals.map(row => <tr key={row.id}><td><b>{row.name}</b><br /><span className="hint">{row.voen || '—'}</span></td><td>{fmt(row.debit)}</td><td>{fmt(row.credit)}</td><td className={row.balance > 0 ? 'bad' : row.balance < 0 ? 'good' : 'hint'}><b>{fmt(row.balance)}</b></td></tr>)}</tbody>
+            </table>
+          </div>
+        )}
+        <div className="table-wrap"><table><thead><tr><th>Дата</th><th>Поставщик</th><th>Наш VOEN</th><th>E-qaimə</th><th>Операция</th><th>Приход / долг</th><th>Оплата</th><th>Остаток</th></tr></thead><tbody>{pagedSupplierLedgerRows.map(r => <tr key={r.id}><td>{r.transaction_date}</td><td>{r.suppliers?.name || '—'}</td><td>{r.legal_entities?.name || '—'}<br /><span className="hint">{r.legal_entities?.voen || ''}</span></td><td>{r.invoice || '—'}</td><td>{r.comment}</td><td>{fmt(r.debit)}</td><td>{fmt(r.credit)}</td><td className={r.balance > 0 ? 'bad' : r.balance < 0 ? 'good' : 'hint'}><b>{fmt(r.balance)}</b></td></tr>)}{!supplierLedgerRows.length && <tr><td colSpan="8" className="hint">Операции не найдены.</td></tr>}</tbody></table></div>
         <div className="action-row" style={{margin:'12px 0'}}>
           <button className="ghost small" disabled={safeLedgerPage <= 1} onClick={() => setLedgerPage(p => Math.max(1, parseNum(p) - 1))}>← Пред.</button>
           <span className="hint">Страница {safeLedgerPage} / {ledgerTotalPages} · всего {supplierLedgerRows.length}</span>
