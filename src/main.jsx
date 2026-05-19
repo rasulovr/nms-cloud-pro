@@ -9319,6 +9319,8 @@ function Advances({ t }) {
   const [advanceGroupId, setAdvanceGroupId] = useState(STAFF_GROUP_MANAGERS)
   const [employees, setEmployees] = useState([])
   const [advances, setAdvances] = useState([])
+  const [salaryPeriods, setSalaryPeriods] = useState([])
+  const [salaryPayments, setSalaryPayments] = useState([])
   const [profiles, setProfiles] = useState([])
   const [form, setForm] = useState({ employee_id: '', advance_date: todayISO(), amount: '', comment: '' })
   const [message, setMessage] = useState('')
@@ -9359,13 +9361,23 @@ function Advances({ t }) {
     setMessage('')
     const empQ = supabase.from('employees').select('*, branches(name)').order('branch_id').order('position').order('full_name')
     const advQ = supabase.from('salary_advances').select('*, employees(full_name, position, monthly_salary, branch_id), branches(name)').gte('advance_date', monthDate).lte('advance_date', monthEnd).order('advance_date', { ascending: false }).order('created_at', { ascending: false })
-    const [{ data: emp, error: empError }, { data: adv, error: advError }, { data: prof }] = await Promise.all([empQ, advQ, supabase.from('user_profiles').select('id, full_name, email, login_name')])
+    const salQ = supabase.from('salary_periods').select('*').eq('salary_month', monthDate)
+    const payQ = supabase.from('salary_payments').select('*').eq('salary_month', monthDate).or('is_cancelled.is.null,is_cancelled.eq.false')
+    const [
+      { data: emp, error: empError },
+      { data: adv, error: advError },
+      { data: sal },
+      { data: pay },
+      { data: prof }
+    ] = await Promise.all([empQ, advQ, salQ, payQ, supabase.from('user_profiles').select('id, full_name, email, login_name')])
     if (empError || advError) {
       setMessage(empError?.message || advError?.message)
       return
     }
     setEmployees(emp || [])
     setAdvances(adv || [])
+    setSalaryPeriods(sal || [])
+    setSalaryPayments(pay || [])
     setProfiles(prof || [])
   }
 
@@ -9494,6 +9506,19 @@ function Advances({ t }) {
   const activeAdvances = displayedAdvances.filter(a => !a.is_cancelled)
 
   const totalAdvance = activeAdvances.reduce((s, r) => s + parseNum(r.amount), 0)
+  const salaryPeriodByEmployee = new Map((salaryPeriods || []).map(r => [r.employee_id, r]))
+  const activeAdvancesByEmployee = new Map()
+  ;(activeAdvances || []).forEach(a => activeAdvancesByEmployee.set(a.employee_id, parseNum(activeAdvancesByEmployee.get(a.employee_id)) + parseNum(a.amount)))
+  const salaryPaymentsByEmployee = new Map()
+  ;(salaryPayments || []).filter(p => !p.is_cancelled).forEach(p => salaryPaymentsByEmployee.set(p.employee_id, parseNum(salaryPaymentsByEmployee.get(p.employee_id)) + parseNum(p.amount)))
+  const salaryBalance = displayedEmployees.reduce((sum, e) => {
+    const salary = salaryPeriodByEmployee.get(e.id)
+    const gross = salary ? parseNum(salary.salary_gross) : parseNum(e.monthly_salary)
+    const deduction = parseNum(salary?.deduction_amount)
+    const advancesAmount = parseNum(activeAdvancesByEmployee.get(e.id))
+    const paid = parseNum(salaryPaymentsByEmployee.get(e.id))
+    return sum + gross - deduction - advancesAmount - paid
+  }, 0)
   const branchTotals = staffGroupOptions(branches).map(b => ({
     id: b.id,
     name: b.name,
@@ -9521,18 +9546,23 @@ function Advances({ t }) {
       </div>
 
       <div className="card span-2">
+        <h3>Журнал авансов</h3>
+        <p className="hint">По умолчанию строки закрыты от изменений. Для правки нажмите “Редактировать”; изменения фиксируются по времени и пользователю.</p>
         <div className="form-grid compact">
           <label><span>{t('year')}</span><select value={year} onChange={e => setYear(Number(e.target.value))}>{defaultYears().map(y => <option key={y} value={y}>{y}</option>)}</select></label>
           <label><span>{t('month')}</span><select value={month} onChange={e => setMonth(Number(e.target.value))}>{I18N.ru.months.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}</select></label>
           <label><span>Филиал / группа</span><select value={branchId} onChange={e => setBranchId(e.target.value)}><option value="all">Все филиалы и менеджеры</option>{staffGroupOptions(branches).map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label>
           <label><span>Сотрудник</span><select value={employeeFilter} onChange={e => setEmployeeFilter(e.target.value)}><option value="all">Все сотрудники</option>{filterEmployees.map(e => <option key={e.id} value={e.id}>{positionGroup(e.position)} · {e.full_name}</option>)}</select></label>
         </div>
-        <div className="metric"><span>Итого авансы за месяц</span><strong>{fmt(totalAdvance)}</strong></div>
+        <div className="mini-grid" style={{marginTop:12}}>
+          <div className="metric"><span>Итого авансы за месяц</span><strong>{fmt(totalAdvance)}</strong></div>
+          <div className="metric"><span>Остаток по зарплате</span><strong className={salaryBalance < 0 ? 'bad' : ''}>{fmt(salaryBalance)}</strong></div>
+        </div>
         {message && <p className={`hint ${message === t('saved') ? 'save-status' : 'bad'}`}>{message}</p>}
       </div>
 
       <div className="card span-2">
-        <div className="card-head"><div><h3>Журнал авансов</h3><p className="hint">По умолчанию строки закрыты от изменений. Для правки нажмите “Редактировать”; изменения фиксируются по времени и пользователю.</p></div><label style={{display:'flex',alignItems:'center',gap:8}}><span className="hint">Показать</span><select value={advancePageSize} onChange={e => { setAdvancePageSize(Number(e.target.value)); setAdvancePage(1) }}><option value={10}>10</option><option value={20}>20</option><option value={30}>30</option><option value={50}>50</option></select></label></div>
+        <div className="card-head"><div></div><label style={{display:'flex',alignItems:'center',gap:8}}><span className="hint">Показать</span><select value={advancePageSize} onChange={e => { setAdvancePageSize(Number(e.target.value)); setAdvancePage(1) }}><option value={10}>10</option><option value={20}>20</option><option value={30}>30</option><option value={50}>50</option></select></label></div>
         <div className="table-wrap"><table>
           <thead><tr><th>Дата</th><th>Филиал</th><th>Должность</th><th style={{minWidth:220}}>Сотрудник</th><th>Сумма</th><th>Комментарий</th><th>Статус</th><th></th></tr></thead>
           <tbody>{pagedAdvances.map(a => {
