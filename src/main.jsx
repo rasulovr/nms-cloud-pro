@@ -8952,7 +8952,7 @@ function Salaries({ t, view = 'employees', isAdmin = false }) {
           <label><span>{t('year')}</span><select value={year} onChange={e => setYear(Number(e.target.value))}>{defaultYears().map(y => <option key={y} value={y}>{y}</option>)}</select></label>
           <label><span>{t('month')}</span><select value={month} onChange={e => setMonth(Number(e.target.value))}>{I18N.ru.months.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}</select></label>
           <label><span>Филиал / группа</span><select value={branchId} onChange={e => setBranchId(e.target.value)}><option value="all">Все филиалы и менеджеры</option>{staffGroupOptions(branches).map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label>
-          <label><span>Позиция</span><select value={positionFilter} onChange={e => setPositionFilter(e.target.value)}><option value="all">Все позиции</option>{STAFF_POSITION_GROUPS.map(p => <option key={p} value={p}>{p}</option>)}</select></label>
+          <label><span>Сотрудник</span><select value={employeeFilter} onChange={e => setEmployeeFilter(e.target.value)}><option value="all">Все сотрудники</option>{filterEmployees.map(e => <option key={e.id} value={e.id}>{positionGroup(e.position)} · {e.full_name}</option>)}</select></label>
         </div>
         <div className="grid mini-grid">
           <div className="metric"><span>Начислено</span><strong>{fmt(totals.gross)}</strong></div>
@@ -9315,7 +9315,7 @@ function Advances({ t }) {
   const [year, setYear] = useState(current.getFullYear())
   const [month, setMonth] = useState(current.getMonth() + 1)
   const [branchId, setBranchId] = useState('all')
-  const [positionFilter, setPositionFilter] = useState('all')
+  const [employeeFilter, setEmployeeFilter] = useState('all')
   const [advanceGroupId, setAdvanceGroupId] = useState(STAFF_GROUP_MANAGERS)
   const [employees, setEmployees] = useState([])
   const [advances, setAdvances] = useState([])
@@ -9327,12 +9327,16 @@ function Advances({ t }) {
   const [advancePageSize, setAdvancePageSize] = useState(10)
   const [advancePage, setAdvancePage] = useState(1)
 
-  useEffect(() => { load() }, [year, month, branchId, positionFilter])
-  useEffect(() => { setAdvancePage(1) }, [year, month, branchId, positionFilter, advancePageSize])
-  const formEmployees = employees.filter(e => employeeGroupId(e) === advanceGroupId).filter(e => matchesPositionGroup(e, positionFilter))
+  useEffect(() => { load() }, [year, month])
+  useEffect(() => { setAdvancePage(1) }, [year, month, branchId, employeeFilter, advancePageSize])
+  const formEmployees = employees.filter(e => employeeGroupId(e) === advanceGroupId)
+  const filterEmployees = employees.filter(e => matchesStaffGroup(e, branchId))
   useEffect(() => {
     if (!formEmployees.some(e => e.id === form.employee_id)) setForm(f => ({ ...f, employee_id: formEmployees[0]?.id || '' }))
-  }, [advanceGroupId, employees, positionFilter])
+  }, [advanceGroupId, employees])
+  useEffect(() => {
+    if (employeeFilter !== 'all' && !filterEmployees.some(e => e.id === employeeFilter)) setEmployeeFilter('all')
+  }, [branchId, employees, employeeFilter])
 
   const monthDate = monthStart(year, month)
   const dim = daysInMonth(year, month)
@@ -9481,8 +9485,12 @@ function Advances({ t }) {
     setMessage(t('saved'))
   }
 
-  const displayedEmployees = employees.filter(e => matchesStaffGroup(e, branchId)).filter(e => matchesPositionGroup(e, positionFilter))
-  const displayedAdvances = advances.filter(a => matchesStaffGroup({ branch_id: a.branch_id, branches: a.branches }, branchId)).filter(a => matchesPositionGroup(a.employees, positionFilter))
+  const displayedEmployees = employees
+    .filter(e => matchesStaffGroup(e, branchId))
+    .filter(e => employeeFilter === 'all' || e.id === employeeFilter)
+  const displayedAdvances = advances
+    .filter(a => matchesStaffGroup({ branch_id: a.branch_id, branches: a.branches }, branchId))
+    .filter(a => employeeFilter === 'all' || a.employee_id === employeeFilter)
   const activeAdvances = displayedAdvances.filter(a => !a.is_cancelled)
 
   const totalAdvance = activeAdvances.reduce((s, r) => s + parseNum(r.amount), 0)
