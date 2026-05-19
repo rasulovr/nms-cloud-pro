@@ -9638,7 +9638,7 @@ function Suppliers({ t, isAdmin = false }) {
   const [profiles, setProfiles] = useState([])
   const [supplierForm, setSupplierForm] = useState({ name: '', voen: '', contact_person: '', phone: '', info: '', payment_term_days: '', credit_limit: '', opening_debt_amount: '', opening_debt_legal_entity_id: '', opening_debt_date: todayISO(), opening_debt_comment: '' })
   const [productForm, setProductForm] = useState({ name: '', category: PRODUCT_CATEGORIES[0], base_unit: 'g' })
-  const [purchaseForm, setPurchaseForm] = useState({ supplier_id: '', legal_entity_id: '', branch_id: '', purchase_date: todayISO(), invoice_number: '', comment: '' })
+  const [purchaseForm, setPurchaseForm] = useState({ supplier_id: '', legal_entity_id: '', branch_id: '', purchase_date: todayISO(), invoice_number: '', comment: '', amount_only: false, manual_amount: '' })
   const emptyLine = { category: PRODUCT_CATEGORIES[0], product_id: '', base_unit: 'g', quantity: '1', unit: 'kg', unit_price: '' }
   const [lineRows, setLineRows] = useState([emptyLine])
   const [paymentForm, setPaymentForm] = useState({ supplier_id: '', legal_entity_id: '', payment_date: todayISO(), amount: '', invoice_notes: '', comment: '' })
@@ -9933,6 +9933,32 @@ function Suppliers({ t, isAdmin = false }) {
     setMessage('')
     try {
       if (!purchaseForm.supplier_id || !purchaseForm.legal_entity_id) throw new Error('Выберите поставщика и VOEN')
+      const amountOnly = !!purchaseForm.amount_only
+
+      if (amountOnly) {
+        const manualAmount = parseNum(purchaseForm.manual_amount)
+        if (!manualAmount) throw new Error('Введите сумму поставки')
+        const { data: purchase, error } = await supabase.from('supplier_purchases').insert({
+          supplier_id: purchaseForm.supplier_id,
+          legal_entity_id: purchaseForm.legal_entity_id,
+          branch_id: purchaseForm.branch_id || null,
+          purchase_date: purchaseForm.purchase_date,
+          invoice_number: purchaseForm.invoice_number.trim() || null,
+          comment: purchaseForm.comment?.trim() || 'Поступление введено общей суммой без детализации товаров',
+          total_amount: manualAmount
+        }).select('*').single()
+        if (error) throw error
+
+        const { data: authData } = await supabase.auth.getUser()
+        await syncSupplierPurchaseFoodCost(purchase, manualAmount, authData?.user?.id || null)
+
+        await load()
+        setLineRows([{ ...emptyLine }])
+        setPurchaseForm(f => ({ ...f, invoice_number: '', comment: '', manual_amount: '' }))
+        setMessage(t('saved'))
+        return
+      }
+
       const prepared = []
       for (const row of lineRows) {
         const hasData = row.product_id || parseNum(row.quantity) || parseNum(row.unit_price)
@@ -9945,7 +9971,7 @@ function Suppliers({ t, isAdmin = false }) {
         if (!product?.id || !quantity || !unitPrice || !baseQty) throw new Error('Проверьте товар, количество, единицу и цену')
         prepared.push({ row, product, quantity, unitPrice, total, baseQty })
       }
-      if (!prepared.length) throw new Error('Добавьте хотя бы один товар в поступление')
+      if (!prepared.length) throw new Error('Добавьте хотя бы один товар в поступление или включите режим ввода общей суммы')
       const totalAmount = prepared.reduce((s, r) => s + r.total, 0)
       const { data: purchase, error } = await supabase.from('supplier_purchases').insert({
         supplier_id: purchaseForm.supplier_id, legal_entity_id: purchaseForm.legal_entity_id,
@@ -9965,7 +9991,7 @@ function Suppliers({ t, isAdmin = false }) {
       const { data: authData } = await supabase.auth.getUser()
       await syncSupplierPurchaseFoodCost(purchase, totalAmount, authData?.user?.id || null)
 
-      await load(); setLineRows([{ ...emptyLine }]); setPurchaseForm(f => ({ ...f, invoice_number: '', comment: '' })); setMessage(t('saved'))
+      await load(); setLineRows([{ ...emptyLine }]); setPurchaseForm(f => ({ ...f, invoice_number: '', comment: '', manual_amount: '' })); setMessage(t('saved'))
     } catch (e) { setMessage(e.message) }
   }
   async function recalcPurchaseTotal(purchaseId) {
@@ -10082,7 +10108,7 @@ function Suppliers({ t, isAdmin = false }) {
     await load(); setPaymentMessage(t('saved'))
   }
 
-  const purchaseTotal = lineRows.reduce((s, r) => s + lineTotal(r), 0)
+  const purchaseTotal = purchaseForm.amount_only ? parseNum(purchaseForm.manual_amount) : lineRows.reduce((s, r) => s + lineTotal(r), 0)
   function allTransactions() {
     const openingDebtRows = openingDebts.map(d => ({ id: `od-${d.id}`, type: 'Долг за предыдущий период', date: d.debt_date, supplier_id: d.supplier_id, legal_entity_id: d.legal_entity_id || '', supplier: d.suppliers?.name || suppliers.find(s => s.id === d.supplier_id)?.name || '—', invoice: d.invoice_notes || 'Стартовый долг', amount: parseNum(d.amount), comment: d.comment || '', legal: d.legal_entities?.name || legalEntities.find(le => le.id === d.legal_entity_id)?.name || '—' }))
     const purchaseRows = purchases.map(p => ({ id: `p-${p.id}`, type: 'Поступление', date: p.purchase_date, supplier_id: p.supplier_id, legal_entity_id: p.legal_entity_id || '', supplier: p.suppliers?.name || suppliers.find(s => s.id === p.supplier_id)?.name || '—', invoice: p.invoice_number || '—', amount: parseNum(p.total_amount), comment: p.comment || '', legal: p.legal_entities?.name || '—' }))
@@ -10120,10 +10146,15 @@ function Suppliers({ t, isAdmin = false }) {
           <label><span>Филиал</span><select value={purchaseForm.branch_id} onChange={e => setPurchaseForm({...purchaseForm, branch_id: e.target.value})}>{branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label>
           <label><span>Дата поступления</span><input type="date" value={purchaseForm.purchase_date} onChange={e => setPurchaseForm({...purchaseForm, purchase_date: e.target.value})} /></label>
           <label><span>Номер фактуры</span><input value={purchaseForm.invoice_number} onChange={e => setPurchaseForm({...purchaseForm, invoice_number: e.target.value})} /></label>
-          <label><span>Комментарий</span><input value={purchaseForm.comment} onChange={e => setPurchaseForm({...purchaseForm, comment: e.target.value})} /></label>
-        </div><br />
-        <div className="card-head"><div><h3>Товары в поступлении</h3><p className="hint">Если товара нет, сначала добавьте его ниже в блоке “Товары”.</p></div><button className="small" onClick={() => setLineRows(rows => [...rows, { ...emptyLine }])}>+ Строка товара</button></div>
-        <div className="table-wrap"><table><thead><tr><th>Тип</th><th>Товар</th><th>Кол-во закупа</th><th>Ед. закупа</th><th>Цена за ед.</th><th>Сумма</th><th></th></tr></thead><tbody>{lineRows.map((row, idx) => <tr key={idx}>
+          <label><span>Сумма поставки</span><input inputMode="decimal" disabled={!purchaseForm.amount_only} value={purchaseForm.manual_amount} onChange={e => setPurchaseForm({...purchaseForm, manual_amount: e.target.value})} placeholder="0.00" /></label>
+        </div>
+        <label className="checkline" style={{marginTop:10}}>
+          <input type="checkbox" checked={!!purchaseForm.amount_only} onChange={e => setPurchaseForm({...purchaseForm, amount_only: e.target.checked, manual_amount: e.target.checked ? purchaseForm.manual_amount : ''})} />
+          <span>Ввести только общую сумму поставки без товаров</span>
+        </label>
+        <p className="hint">Если включена галочка, строки товаров временно не используются. Если галочка выключена, сумма считается по товарам.</p><br />
+        <div className="card-head"><div><h3>Товары в поступлении</h3><p className="hint">Если товара нет, сначала добавьте его ниже в блоке “Товары”.</p></div><button className="small" disabled={purchaseForm.amount_only} onClick={() => setLineRows(rows => [...rows, { ...emptyLine }])}>+ Строка товара</button></div>
+        <div className="table-wrap"><table><thead><tr><th>Тип</th><th>Товар</th><th>Кол-во закупа</th><th>Ед. закупа</th><th>Цена за ед.</th><th>Сумма</th><th></th></tr></thead><tbody>{purchaseForm.amount_only ? <tr><td colSpan="7" className="hint">Товары отключены: поступление будет сохранено общей суммой.</td></tr> : lineRows.map((row, idx) => <tr key={idx}>
           <td><select value={row.category} onChange={e => updateLine(idx, { category: e.target.value })}>{PRODUCT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select></td>
           <td style={{minWidth:260}}><select value={row.product_id || ''} onChange={e => selectProductForLine(idx, e.target.value)}><option value="">Выберите товар</option>{productOptionsForRow(row).map(p => <option key={p.id} value={p.id}>{productLabel(p)}</option>)}</select></td>
           <td><input inputMode="decimal" value={row.quantity} onChange={e => updateLine(idx, { quantity: e.target.value })} /></td>
