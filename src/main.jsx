@@ -931,7 +931,7 @@ function App() {
         {canReadAccess(currentAccess) && section === 'reports' && <Reports t={t} />}
         {canReadAccess(currentAccess) && section === 'recipes' && <Recipes t={t} />}
         {canReadAccess(currentAccess) && section === 'salaries' && <SalaryWorkspace t={t} isAdmin={isAdmin || accessRank(sectionAccess('salaries')) >= accessRank('admin')} />}
-        {canReadAccess(currentAccess) && section === 'suppliers' && <Suppliers t={t} />}
+        {canReadAccess(currentAccess) && section === 'suppliers' && <Suppliers t={t} isAdmin={isAdmin || accessRank(sectionAccess('suppliers')) >= accessRank('admin')} />}
         {canReadAccess(currentAccess) && section === 'debts' && <DebtsPayments t={t} />}
         {canReadAccess(currentAccess) && section === 'qrmenu' && <RMSQRMenuAdmin t={t} />}
         {canReadAccess(currentAccess) && section === 'loyalty' && <div className="grid">
@@ -5322,6 +5322,8 @@ function Recipes({ t }) {
   const [finalMenuForm, setFinalMenuForm] = useState({ name: '', category: 'Кофе', sale_price: '', target_food_cost_percent: '30' })
   const [finalSearch, setFinalSearch] = useState('')
   const [techCardSearch, setTechCardSearch] = useState('')
+  const [techCardPageSize, setTechCardPageSize] = useState(10)
+  const [techCardPage, setTechCardPage] = useState(1)
   const [message, setMessage] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -5511,6 +5513,10 @@ function Recipes({ t }) {
     if (!q) return true
     return String(m.name || '').toLowerCase().includes(q) || String(m.category || '').toLowerCase().includes(q)
   })
+  const techCardPageSizeNumber = parseNum(techCardPageSize) || 10
+  const techCardTotalPages = Math.max(1, Math.ceil(filteredTechCards.length / techCardPageSizeNumber))
+  const safeTechCardPage = Math.min(Math.max(1, parseNum(techCardPage) || 1), techCardTotalPages)
+  const pagedTechCards = filteredTechCards.slice((safeTechCardPage - 1) * techCardPageSizeNumber, safeTechCardPage * techCardPageSizeNumber)
 
   async function addSemi() {
     setMessage('')
@@ -5948,10 +5954,20 @@ function Recipes({ t }) {
                 <h3>Текущие тех. карты</h3>
                 <p className="hint">Поиск, просмотр, печать и переход к редактированию тех. карты блюда.</p>
               </div>
-              <button className="small primary" onClick={() => setTab('final')}>+ Создать блюдо</button>
+              <div className="action-row" style={{gap:8,alignItems:'center'}}>
+                <label style={{display:'flex',alignItems:'center',gap:8}}>
+                  <span className="hint">Показать</span>
+                  <select value={techCardPageSize} onChange={e => { setTechCardPageSize(Number(e.target.value)); setTechCardPage(1) }}>
+                    <option value={10}>10</option>
+                    <option value={20}>20</option>
+                    <option value={50}>50</option>
+                  </select>
+                </label>
+                <button className="small primary" onClick={() => setTab('final')}>+ Создать блюдо</button>
+              </div>
             </div>
 
-            <label><span>Поиск блюда</span><input value={techCardSearch} onChange={e => setTechCardSearch(e.target.value)} placeholder="Название или категория" /></label>
+            <label><span>Поиск блюда</span><input value={techCardSearch} onChange={e => { setTechCardSearch(e.target.value); setTechCardPage(1) }} placeholder="Название или категория" /></label>
 
             <div className="table-wrap">
               <table>
@@ -5966,7 +5982,7 @@ function Recipes({ t }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredTechCards.map(m => {
+                  {pagedTechCards.map(m => {
                     const rows = finalItems.filter(i => String(i.menu_item_id) === String(m.id))
                     const cost = rows.reduce((sum, item) => sum + componentCost(item), 0)
                     const sale = parseNum(m.sale_price)
@@ -5991,6 +6007,11 @@ function Recipes({ t }) {
                   {!filteredTechCards.length && <tr><td colSpan="6" className="hint">Тех. карты не найдены</td></tr>}
                 </tbody>
               </table>
+            </div>
+            <div className="action-row" style={{margin:'12px 0 0'}}>
+              <button className="ghost small" disabled={safeTechCardPage <= 1} onClick={() => setTechCardPage(p => Math.max(1, parseNum(p) - 1))}>← Пред.</button>
+              <span className="hint">Страница {safeTechCardPage} / {techCardTotalPages} · всего {filteredTechCards.length}</span>
+              <button className="ghost small" disabled={safeTechCardPage >= techCardTotalPages} onClick={() => setTechCardPage(p => Math.min(techCardTotalPages, parseNum(p) + 1))}>След. →</button>
             </div>
 
             {selectedMenu && (
@@ -9605,7 +9626,7 @@ function Advances({ t }) {
   </section>
 }
 
-function Suppliers({ t }) {
+function Suppliers({ t, isAdmin = false }) {
   const branches = useBranches()
   const [legalEntities, setLegalEntities] = useState([])
   const [suppliers, setSuppliers] = useState([])
@@ -9634,6 +9655,9 @@ function Suppliers({ t }) {
   const [message, setMessage] = useState('')
   const [paymentMessage, setPaymentMessage] = useState('')
 
+  const activeSuppliers = useMemo(() => (suppliers || []).filter(s => s.is_active !== false), [suppliers])
+  const activeSupplierIds = useMemo(() => new Set(activeSuppliers.map(s => s.id)), [activeSuppliers])
+  const supplierAdminRows = isAdmin ? (suppliers || []) : activeSuppliers
 
   async function revenueDistributionForSupplierDate(expenseDate) {
     const { data } = await supabase
@@ -9698,15 +9722,15 @@ function Suppliers({ t }) {
 
   useEffect(() => { load() }, [])
   useEffect(() => {
-    if (!purchaseForm.supplier_id && suppliers[0]) setPurchaseForm(f => ({ ...f, supplier_id: suppliers[0].id }))
-    if (!paymentForm.supplier_id && suppliers[0]) setPaymentForm(f => ({ ...f, supplier_id: suppliers[0].id }))
-    if (!openingDebtForm.supplier_id && suppliers[0]) setOpeningDebtForm(f => ({ ...f, supplier_id: suppliers[0].id }))
+    if (!purchaseForm.supplier_id && activeSuppliers[0]) setPurchaseForm(f => ({ ...f, supplier_id: activeSuppliers[0].id }))
+    if (!paymentForm.supplier_id && activeSuppliers[0]) setPaymentForm(f => ({ ...f, supplier_id: activeSuppliers[0].id }))
+    if (!openingDebtForm.supplier_id && activeSuppliers[0]) setOpeningDebtForm(f => ({ ...f, supplier_id: activeSuppliers[0].id }))
     if (!purchaseForm.legal_entity_id && legalEntities[0]) setPurchaseForm(f => ({ ...f, legal_entity_id: legalEntities[0].id }))
     if (!paymentForm.legal_entity_id && legalEntities[0]) setPaymentForm(f => ({ ...f, legal_entity_id: legalEntities[0].id }))
     if (!openingDebtForm.legal_entity_id && legalEntities[0]) setOpeningDebtForm(f => ({ ...f, legal_entity_id: legalEntities[0].id }))
     if (!supplierForm.opening_debt_legal_entity_id && legalEntities[0]) setSupplierForm(f => ({ ...f, opening_debt_legal_entity_id: legalEntities[0].id }))
     if (!purchaseForm.branch_id && branches[0]) setPurchaseForm(f => ({ ...f, branch_id: branches[0].id }))
-  }, [suppliers, legalEntities, branches])
+  }, [activeSuppliers, legalEntities, branches])
 
   async function load() {
     const isInternal = Boolean(getInternalSessionStorage()?.rms_internal)
@@ -9729,7 +9753,7 @@ function Suppliers({ t }) {
 
     const [{ data: le }, { data: sup }, { data: prod }, { data: bal }, { data: pur }, { data: pay }, { data: opening }, { data: prof }] = await Promise.all([
       supabase.from('legal_entities').select('*').eq('is_active', true).order('name'),
-      supabase.from('suppliers').select('*').eq('is_active', true).order('name'),
+      supabase.from('suppliers').select('*').order('name'),
       supabase.from('supplier_products').select('*').eq('is_active', true).order('category').order('name'),
       supabase.from('supplier_balances_v2').select('*').order('supplier_name'),
       supabase.from('supplier_purchases').select('*, suppliers(name), legal_entities(name,voen), branches(name), supplier_purchase_items(*, supplier_products(name,base_unit,category))').order('purchase_date', { ascending: false }).order('created_at', { ascending: false }).limit(500),
@@ -9856,6 +9880,42 @@ function Suppliers({ t }) {
     const { error } = await supabase.from('suppliers').update(patch).eq('id', id)
     if (error) setMessage(error.message); else await load()
   }
+
+  function supplierTransactionCount(supplierId) {
+    return purchases.filter(p => p.supplier_id === supplierId).length + payments.filter(p => p.supplier_id === supplierId).length + openingDebts.filter(d => d.supplier_id === supplierId).length
+  }
+
+  async function deleteOrDeactivateSupplier(supplier) {
+    if (!isAdmin) return setMessage('Удаление или деактивация поставщика доступна только администратору')
+    if (!supplier?.id) return
+    const count = supplierTransactionCount(supplier.id)
+    const actionText = count > 0
+      ? `У поставщика есть связанные операции (${count}). Он будет деактивирован и скрыт из списков. Продолжить?`
+      : 'Поставщик без операций будет удалён полностью. Продолжить?'
+    if (!window.confirm(actionText)) return
+    setMessage('')
+    if (count > 0) {
+      const { error } = await supabase.from('suppliers').update({ is_active: false, updated_at: new Date().toISOString() }).eq('id', supplier.id)
+      if (error) return setMessage(error.message)
+      await load()
+      return setMessage('Поставщик деактивирован')
+    }
+    const { error } = await supabase.from('suppliers').delete().eq('id', supplier.id)
+    if (error) return setMessage(error.message)
+    await load()
+    setMessage('Поставщик удалён')
+  }
+
+  async function activateSupplier(supplier) {
+    if (!isAdmin) return setMessage('Активация поставщика доступна только администратору')
+    if (!supplier?.id) return
+    setMessage('')
+    const { error } = await supabase.from('suppliers').update({ is_active: true, updated_at: new Date().toISOString() }).eq('id', supplier.id)
+    if (error) return setMessage(error.message)
+    await load()
+    setMessage('Поставщик активирован')
+  }
+
   async function addProductFromForm() {
     setMessage('')
     if (!productForm.name.trim()) return setMessage('Введите товар')
@@ -10038,12 +10098,13 @@ function Suppliers({ t }) {
   const supplierTransactions = allTransactions().filter(r => (!transactionSupplierId || r.supplier_id === transactionSupplierId) && periodOk(r.date))
   const lastTransactions = allTransactions().slice(0, 10)
   const recentPurchasesPageSizeNumber = parseNum(recentPurchasesPageSize) || 10
-  const recentPurchasesTotalPages = Math.max(1, Math.ceil((purchases || []).length / recentPurchasesPageSizeNumber))
+  const visiblePurchases = (purchases || []).filter(p => activeSupplierIds.has(p.supplier_id))
+  const recentPurchasesTotalPages = Math.max(1, Math.ceil(visiblePurchases.length / recentPurchasesPageSizeNumber))
   const safeRecentPurchasesPage = Math.min(Math.max(1, parseNum(recentPurchasesPage) || 1), recentPurchasesTotalPages)
-  const recentPurchasesRows = (purchases || []).slice((safeRecentPurchasesPage - 1) * recentPurchasesPageSizeNumber, safeRecentPurchasesPage * recentPurchasesPageSizeNumber)
+  const recentPurchasesRows = visiblePurchases.slice((safeRecentPurchasesPage - 1) * recentPurchasesPageSizeNumber, safeRecentPurchasesPage * recentPurchasesPageSizeNumber)
   function suppliersForLegalEntity(entityId) {
     const ids = new Set(purchases.filter(p => p.legal_entity_id === entityId).map(p => p.supplier_id))
-    return suppliers.filter(s => ids.has(s.id))
+    return activeSuppliers.filter(s => ids.has(s.id))
   }
 
   return <section>
@@ -10052,7 +10113,7 @@ function Suppliers({ t }) {
       <div className="card span-2">
         <div className="card-head"><div><h3>Поступления от поставщика</h3><p className="hint">Сначала заполняется шапка фактуры. Товары добавляются строками ниже.</p></div></div>
         <div className="form-grid compact">
-          <label><span>Поставщик</span><select value={purchaseForm.supplier_id} onChange={e => setPurchaseForm({...purchaseForm, supplier_id: e.target.value})}>{suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
+          <label><span>Поставщик</span><select value={purchaseForm.supplier_id} onChange={e => setPurchaseForm({...purchaseForm, supplier_id: e.target.value})}>{activeSuppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
           <label><span>Наш VOEN</span><select value={purchaseForm.legal_entity_id} onChange={e => setPurchaseForm({...purchaseForm, legal_entity_id: e.target.value})}>{legalEntities.map(le => <option key={le.id} value={le.id}>{le.name} · {le.voen}</option>)}</select></label>
           <label><span>Филиал</span><select value={purchaseForm.branch_id} onChange={e => setPurchaseForm({...purchaseForm, branch_id: e.target.value})}>{branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label>
           <label><span>Дата поступления</span><input type="date" value={purchaseForm.purchase_date} onChange={e => setPurchaseForm({...purchaseForm, purchase_date: e.target.value})} /></label>
@@ -10075,7 +10136,7 @@ function Suppliers({ t }) {
       <div className="card span-2">
         <div className="card-head"><div><h3>Оплата поставщику</h3><p className="hint">Укажите сумму оплаты, номера счёт-фактур и комментарий.</p></div></div>
         <div className="form-grid compact">
-          <label><span>Поставщик</span><select value={paymentForm.supplier_id} onChange={e => setPaymentForm({...paymentForm, supplier_id: e.target.value})}><option value="">Выберите поставщика</option>{suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
+          <label><span>Поставщик</span><select value={paymentForm.supplier_id} onChange={e => setPaymentForm({...paymentForm, supplier_id: e.target.value})}><option value="">Выберите поставщика</option>{activeSuppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
           <label><span>Наш VOEN</span><select value={paymentForm.legal_entity_id} onChange={e => setPaymentForm({...paymentForm, legal_entity_id: e.target.value})}><option value="">Выберите VOEN</option>{legalEntities.map(le => <option key={le.id} value={le.id}>{le.name} · {le.voen}</option>)}</select></label>
           <label><span>Дата оплаты</span><input type="date" value={paymentForm.payment_date} onChange={e => setPaymentForm({...paymentForm, payment_date: e.target.value})} /></label>
           <label><span>Сумма оплаты</span><input inputMode="decimal" value={paymentForm.amount} onChange={e => setPaymentForm({...paymentForm, amount: e.target.value})} /></label>
@@ -10090,7 +10151,7 @@ function Suppliers({ t }) {
       <div className="card span-2 supplier-opening-debt-card">
         <div className="card-head"><div><h3>Долг поставщику за предыдущий период</h3><p className="hint">Используйте при запуске программы с нуля, чтобы перенести старый долг в баланс поставщика.</p></div></div>
         <div className="form-grid compact">
-          <label><span>Поставщик</span><select value={openingDebtForm.supplier_id} onChange={e => setOpeningDebtForm({...openingDebtForm, supplier_id: e.target.value})}><option value="">Выберите поставщика</option>{suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
+          <label><span>Поставщик</span><select value={openingDebtForm.supplier_id} onChange={e => setOpeningDebtForm({...openingDebtForm, supplier_id: e.target.value})}><option value="">Выберите поставщика</option>{activeSuppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
           <label><span>Наш VOEN</span><select value={openingDebtForm.legal_entity_id} onChange={e => setOpeningDebtForm({...openingDebtForm, legal_entity_id: e.target.value})}><option value="">Выберите VOEN</option>{legalEntities.map(le => <option key={le.id} value={le.id}>{le.name} · {le.voen}</option>)}</select></label>
           <label><span>Дата долга</span><input type="date" value={openingDebtForm.debt_date} onChange={e => setOpeningDebtForm({...openingDebtForm, debt_date: e.target.value})} /></label>
           <label><span>Сумма долга</span><input inputMode="decimal" value={openingDebtForm.amount} onChange={e => setOpeningDebtForm({...openingDebtForm, amount: e.target.value})} /></label>
@@ -10117,6 +10178,26 @@ function Suppliers({ t }) {
           <label><span>Дата стартового долга</span><input type="date" value={supplierForm.opening_debt_date} onChange={e => setSupplierForm({...supplierForm, opening_debt_date: e.target.value})} /></label>
           <label><span>Комментарий к стартовому долгу</span><input value={supplierForm.opening_debt_comment} onChange={e => setSupplierForm({...supplierForm, opening_debt_comment: e.target.value})} placeholder="Например: остаток на 01.05" /></label>
         </div><button className="small" onClick={addSupplier}>+ Добавить поставщика</button>
+        <div className="table-wrap" style={{marginTop:12}}>
+          <table>
+            <thead><tr><th>Контрагент</th><th>VOEN</th><th>Условия</th><th>Операции</th><th>Статус</th><th>Действие</th></tr></thead>
+            <tbody>
+              {supplierAdminRows.map(s => {
+                const count = supplierTransactionCount(s.id)
+                const inactive = s.is_active === false
+                return <tr key={s.id} className={inactive ? 'cancelled-row' : ''}>
+                  <td><b>{s.name}</b><br /><span className="hint">{s.contact_person || s.phone || '—'}</span></td>
+                  <td>{s.voen || '—'}</td>
+                  <td className="hint">{s.payment_term_days ? `${s.payment_term_days} дней` : '—'} · лимит {fmt(s.credit_limit)}</td>
+                  <td>{count}</td>
+                  <td>{inactive ? <span className="bad">Деактивирован</span> : <span className="good">Активен</span>}</td>
+                  <td>{isAdmin ? <div className="action-row">{inactive ? <button className="small" onClick={() => activateSupplier(s)}>Активировать</button> : <button className="small danger" onClick={() => deleteOrDeactivateSupplier(s)}>{count > 0 ? 'Деактивировать' : 'Удалить'}</button>}</div> : <span className="hint">Только admin</span>}</td>
+                </tr>
+              })}
+              {!supplierAdminRows.length && <tr><td colSpan="6" className="hint">Поставщики не найдены</td></tr>}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <div className="card span-2">
@@ -10207,13 +10288,13 @@ function Suppliers({ t }) {
                   )}
                 </React.Fragment>
               ))}
-              {!purchases.length && <tr><td colSpan="8" className="hint">—</td></tr>}
+              {!visiblePurchases.length && <tr><td colSpan="8" className="hint">—</td></tr>}
             </tbody>
           </table>
         </div>
         <div className="action-row" style={{margin:'12px 0 0'}}>
           <button className="ghost small" disabled={safeRecentPurchasesPage <= 1} onClick={() => setRecentPurchasesPage(p => Math.max(1, parseNum(p) - 1))}>← Пред.</button>
-          <span className="hint">Страница {safeRecentPurchasesPage} / {recentPurchasesTotalPages} · всего {(purchases || []).length}</span>
+          <span className="hint">Страница {safeRecentPurchasesPage} / {recentPurchasesTotalPages} · всего {visiblePurchases.length}</span>
           <button className="ghost small" disabled={safeRecentPurchasesPage >= recentPurchasesTotalPages} onClick={() => setRecentPurchasesPage(p => Math.min(recentPurchasesTotalPages, parseNum(p) + 1))}>След. →</button>
         </div>
       </div>
@@ -10264,6 +10345,8 @@ function DebtsPayments({ t }) {
   const [editingPaymentTransactionId, setEditingPaymentTransactionId] = useState('')
   const [paymentTransactionEditForm, setPaymentTransactionEditForm] = useState({ payment_date: todayISO(), legal_entity_id: '', amount: '', invoice_notes: '', comment: '' })
   const supplierTransactionPanelRef = useRef(null)
+  const activeSuppliers = useMemo(() => (suppliers || []).filter(s => s.is_active !== false), [suppliers])
+  const activeSupplierIds = useMemo(() => new Set(activeSuppliers.map(s => s.id)), [activeSuppliers])
 
   useEffect(() => { load() }, [])
 
@@ -10317,7 +10400,7 @@ function DebtsPayments({ t }) {
       ...openingDebts.filter(d => d.legal_entity_id === entityId).map(d => d.supplier_id),
       ...payments.filter(p => p.legal_entity_id === entityId).map(p => p.supplier_id)
     ])
-    return suppliers.filter(s => ids.has(s.id))
+    return activeSuppliers.filter(s => ids.has(s.id))
   }
 
   function debtForLegalEntity(entityId) {
@@ -10795,6 +10878,7 @@ function DebtsPayments({ t }) {
   ]
 
   const filteredCommonOps = commonOpsAll
+    .filter(r => activeSupplierIds.has(r.supplier_id))
     .filter(r => commonOpsDateInPeriod(r.date))
     .filter(r => commonOpsSupplierId === 'all' || r.supplier_id === commonOpsSupplierId)
     .filter(r => commonOpsType === 'all' || r.type_key === commonOpsType)
@@ -10871,7 +10955,7 @@ function DebtsPayments({ t }) {
 
   const normalizedLedgerSearch = String(ledgerSearch || '').trim().toLowerCase()
   const normalizedInvoiceSearch = String(invoiceSearch || '').trim().toLowerCase()
-  const searchedSuppliers = suppliers
+  const searchedSuppliers = activeSuppliers
     .filter(s => {
       const haystack = `${s.name || ''} ${s.voen || ''}`.toLowerCase()
       return !normalizedLedgerSearch || haystack.includes(normalizedLedgerSearch)
@@ -10917,6 +11001,7 @@ function DebtsPayments({ t }) {
       credit: parseNum(p.amount)
     }))
   ]
+    .filter(r => activeSupplierIds.has(r.supplier_id))
     .filter(r => ledgerSupplierId === 'all' || r.supplier_id === ledgerSupplierId)
     .filter(r => !normalizedLedgerSearch || ledgerSupplierIds.has(r.supplier_id) || String(r.suppliers?.name || '').toLowerCase().includes(normalizedLedgerSearch))
     .filter(r => !normalizedInvoiceSearch || String(r.invoice || '').toLowerCase().includes(normalizedInvoiceSearch) || String(r.comment || '').toLowerCase().includes(normalizedInvoiceSearch))
@@ -11021,7 +11106,7 @@ function DebtsPayments({ t }) {
           {commonOpsPeriod !== 'range' && commonOpsPeriod !== 'all' && <label><span>Дата периода</span><input type="date" value={commonOpsDate} onChange={e => { setCommonOpsDate(e.target.value); setCommonOpsPage(1) }} /></label>}
           {commonOpsPeriod === 'range' && <label><span>С</span><input type="date" value={commonOpsDateFrom} onChange={e => { setCommonOpsDateFrom(e.target.value); setCommonOpsPage(1) }} /></label>}
           {commonOpsPeriod === 'range' && <label><span>По</span><input type="date" value={commonOpsDateTo} onChange={e => { setCommonOpsDateTo(e.target.value); setCommonOpsPage(1) }} /></label>}
-          <label><span>Поставщик</span><select value={commonOpsSupplierId} onChange={e => { setCommonOpsSupplierId(e.target.value); setCommonOpsPage(1) }}><option value="all">Все поставщики</option>{suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
+          <label><span>Поставщик</span><select value={commonOpsSupplierId} onChange={e => { setCommonOpsSupplierId(e.target.value); setCommonOpsPage(1) }}><option value="all">Все поставщики</option>{activeSuppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
           <label><span>Операция</span><select value={commonOpsType} onChange={e => { setCommonOpsType(e.target.value); setCommonOpsPage(1) }}><option value="all">Все операции</option><option value="opening">Стартовый долг</option><option value="purchase">Приход</option><option value="payment">Оплата</option></select></label>
         </div>
         <div className="mini-grid">
