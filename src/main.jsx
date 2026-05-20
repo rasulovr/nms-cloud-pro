@@ -3588,8 +3588,10 @@ async function rmsCalculateNetworkForecastForMonth(y, m, scopeBranchId = 'all') 
       if (String(row?.comment || '').startsWith('SUPPLIER_PURCHASE_')) return
       const name = row?.expense_categories?.name || row?.custom_category || ''
       const group = rmsFinanceExpenseGroupName(name)
-      if (isSalaryExpenseName(name) || group === 'rent') return
-      addArticle(map, isDsmfExpenseName(name) ? 'DSMF' : articleNameForExpense(row), row.amount)
+      // DSMF ручной/оплаченный из daily_expenses не должен попадать в прогноз.
+      // В прогнозе DSMF считается только как начисленный DSMF по официальным зарплатам сотрудников.
+      if (isSalaryExpenseName(name) || isDsmfExpenseName(name) || group === 'rent') return
+      addArticle(map, articleNameForExpense(row), row.amount)
     })
     const supplierTotals = rmsFinanceAllocatedSupplierTotals(purchaseRows || [], supplierShare)
     if (supplierTotals.food > 0) addArticle(map, 'Food Cost / закупки и базар', supplierTotals.food)
@@ -3810,18 +3812,14 @@ async function rmsCalculateNetworkForecastForMonth(y, m, scopeBranchId = 'all') 
               ? 'fallback: расчёт по официальным зарплатам сотрудников'
               : 'не найдено в зарплатах, расходах и истории'
 
-  const dsmfCurrent = rmsForecastSumSpecialExpenses((currentExpenseRows || []).filter(filterByBranch)).dsmf
-  const dsmfHistory = rmsForecastAverageNonZero(prevMonths.map(pm => rmsForecastSumSpecialExpenses(
-    (historicalExpenseRows || []).filter(r => r.expense_date >= pm.start && r.expense_date < pm.end).filter(filterByBranch)
-  ).dsmf))
-  const dsmfForecast = parseNum(payrollDetails.totalDsmf) || dsmfCurrent || dsmfHistory
-  const dsmfForecastNote = parseNum(payrollDetails.totalDsmf) > 0
-    ? 'фиксированный расчёт по официальным зарплатам сотрудников'
-    : dsmfCurrent > 0
-      ? 'из статьи DSMF за текущий месяц'
-      : dsmfHistory > 0
-        ? 'нет текущего DSMF — среднее прошлых месяцев'
-        : 'не найдено в DSMF, расходах и истории'
+  // DSMF в прогнозе — только начисленный DSMF по официальным зарплатам сотрудников.
+  // Оплаченный DSMF из “Расходы по статьям” остаётся только в фактических расходах и не дублируется в прогнозе.
+  const dsmfForecast = parseNum(payrollDetails.totalDsmf)
+  const dsmfForecastNote = dsmfForecast > 0
+    ? (selectedBranchId === 'all'
+      ? 'общий начисленный DSMF по официальным зарплатам сотрудников'
+      : 'начисленный DSMF выбранного филиала по официальным зарплатам сотрудников, включая распределённую долю менеджеров')
+    : 'начисленный DSMF не найден по официальным зарплатам сотрудников'
 
   const serviceCurrent = (svcRows || []).filter(filterByBranch).reduce((s, r) => s + parseNum(r.staff_cost_amount), 0)
   const serviceRate = revenue > 0 && serviceCurrent > 0 ? serviceCurrent / revenue : (4 / 110)
@@ -3836,7 +3834,21 @@ async function rmsCalculateNetworkForecastForMonth(y, m, scopeBranchId = 'all') 
     { name: `Налог ${TAX_RATE}%`, amount: taxForecast, note: 'от прогнозной выручки' }
   ].filter(row => row.keepVisible || parseNum(row.amount) > 0)
 
-  const forecastExpenseRows = [...articleDetails, ...fixedDetails]
+  const forecastExpenseMap = new Map()
+  ;[...articleDetails, ...fixedDetails].forEach(row => {
+    const key = String(row?.name || 'Прочее').trim() || 'Прочее'
+    const existing = forecastExpenseMap.get(key)
+    if (existing) {
+      forecastExpenseMap.set(key, {
+        ...existing,
+        amount: parseNum(existing.amount) + parseNum(row.amount),
+        note: existing.note === row.note ? existing.note : [existing.note, row.note].filter(Boolean).join(' + ')
+      })
+    } else {
+      forecastExpenseMap.set(key, { ...row, name: key })
+    }
+  })
+  const forecastExpenseRows = [...forecastExpenseMap.values()]
   const forecastExpenses = forecastExpenseRows.reduce((sum, row) => sum + parseNum(row.amount), 0)
   const forecastProfit = forecastRevenue - forecastExpenses
   const forecastMargin = forecastRevenue > 0 ? forecastProfit / forecastRevenue * 100 : 0
