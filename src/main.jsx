@@ -84,6 +84,7 @@ const canReadAccess = (value) => accessRank(value) >= accessRank('read')
 const fmt = (n) => Number(n || 0).toFixed(2)
 const pct = (n) => `${(Number(n) || 0).toFixed(1)}%`
 const parseNum = (v) => Number(String(v ?? '0').replace(',', '.').replace(/\s/g, '')) || 0
+const supplierEntityKey = (supplierId, legalEntityId) => `${supplierId || ''}::${legalEntityId || ''}`
 const normalizeExpenseText = (value) => String(value || '').trim().toLowerCase().replace(/ё/g, 'е').replace(/\s+/g, ' ')
 const isBazarExpenseName = (value) => {
   const name = normalizeExpenseText(value)
@@ -9824,6 +9825,7 @@ function Suppliers({ t, isAdmin = false }) {
   const [purchases, setPurchases] = useState([])
   const [payments, setPayments] = useState([])
   const [openingDebts, setOpeningDebts] = useState([])
+  const [supplierEntityStatuses, setSupplierEntityStatuses] = useState([])
   const [profiles, setProfiles] = useState([])
   const [supplierForm, setSupplierForm] = useState({ name: '', voen: '', contact_person: '', phone: '', info: '', payment_term_days: '', credit_limit: '', opening_debt_amount: '', opening_debt_legal_entity_id: '', opening_debt_date: todayISO(), opening_debt_comment: '' })
   const [productForm, setProductForm] = useState({ name: '', category: PRODUCT_CATEGORIES[0], base_unit: 'g' })
@@ -9848,7 +9850,17 @@ function Suppliers({ t, isAdmin = false }) {
   const [supplierEditForm, setSupplierEditForm] = useState({ name: '', voen: '', contact_person: '', phone: '', info: '', payment_term_days: '', credit_limit: '' })
 
   const activeSuppliers = useMemo(() => (suppliers || []).filter(s => s.is_active !== false), [suppliers])
+  const supplierEntityStatusMap = useMemo(() => new Map((supplierEntityStatuses || []).map(r => [supplierEntityKey(r.supplier_id, r.legal_entity_id), r.is_active !== false])), [supplierEntityStatuses])
+  function isSupplierActiveForLegal(supplierId, legalEntityId) {
+    const supplier = (suppliers || []).find(s => s.id === supplierId)
+    if (!supplier || supplier.is_active === false) return false
+    if (!legalEntityId) return true
+    return supplierEntityStatusMap.get(supplierEntityKey(supplierId, legalEntityId)) !== false
+  }
   const activeSupplierIds = useMemo(() => new Set(activeSuppliers.map(s => s.id)), [activeSuppliers])
+  const activeSuppliersForPurchaseLegal = useMemo(() => activeSuppliers.filter(s => isSupplierActiveForLegal(s.id, purchaseForm.legal_entity_id)), [activeSuppliers, supplierEntityStatusMap, purchaseForm.legal_entity_id])
+  const activeSuppliersForPaymentLegal = useMemo(() => activeSuppliers.filter(s => isSupplierActiveForLegal(s.id, paymentForm.legal_entity_id)), [activeSuppliers, supplierEntityStatusMap, paymentForm.legal_entity_id])
+  const activeSuppliersForOpeningLegal = useMemo(() => activeSuppliers.filter(s => isSupplierActiveForLegal(s.id, openingDebtForm.legal_entity_id)), [activeSuppliers, supplierEntityStatusMap, openingDebtForm.legal_entity_id])
   const supplierAdminRows = isAdmin ? (suppliers || []) : activeSuppliers
   const visibleSupplierAdminRows = supplierAdminExpanded ? supplierAdminRows : supplierAdminRows.slice(0, 2)
 
@@ -9938,13 +9950,15 @@ function Suppliers({ t, isAdmin = false }) {
         setPurchases(ws.supplier_purchases || [])
         setPayments(ws.supplier_payments || [])
         setOpeningDebts(ws.supplier_opening_debts || [])
+        const { data: statusRows } = await supabase.from('supplier_legal_entity_status').select('*')
+        setSupplierEntityStatuses(statusRows || [])
         setProfiles(ws.user_profiles || [])
         return
       }
       setMessage(error?.message || 'Нет доступа к поставщикам')
     }
 
-    const [{ data: le }, { data: sup }, { data: prod }, { data: bal }, { data: pur }, { data: pay }, { data: opening }, { data: prof }] = await Promise.all([
+    const [{ data: le }, { data: sup }, { data: prod }, { data: bal }, { data: pur }, { data: pay }, { data: opening }, { data: statusRows }, { data: prof }] = await Promise.all([
       supabase.from('legal_entities').select('*').eq('is_active', true).order('name'),
       supabase.from('suppliers').select('*').order('name'),
       supabase.from('supplier_products').select('*').eq('is_active', true).order('category').order('name'),
@@ -9952,6 +9966,7 @@ function Suppliers({ t, isAdmin = false }) {
       supabase.from('supplier_purchases').select('*, suppliers(name), legal_entities(name,voen), branches(name), supplier_purchase_items(*, supplier_products(name,base_unit,category))').order('purchase_date', { ascending: false }).order('created_at', { ascending: false }).limit(500),
       supabase.from('supplier_payments').select('*, suppliers(name), legal_entities(name,voen)').order('payment_date', { ascending: false }).order('created_at', { ascending: false }).limit(500),
       supabase.from('supplier_opening_debts').select('*, suppliers(name), legal_entities(name,voen)').eq('is_active', true).order('debt_date', { ascending: false }).order('created_at', { ascending: false }).limit(500),
+      supabase.from('supplier_legal_entity_status').select('*'),
       supabase.from('user_profiles').select('id, full_name')
     ])
     setLegalEntities(le || [])
@@ -9961,7 +9976,7 @@ function Suppliers({ t, isAdmin = false }) {
     setPurchases(pur || [])
     setPayments(pay || [])
     setOpeningDebts(opening || [])
-    setOpeningDebts(opening || [])
+    setSupplierEntityStatuses(statusRows || [])
     setProfiles(prof || [])
   }
 
@@ -10120,6 +10135,44 @@ function Suppliers({ t, isAdmin = false }) {
 
   function supplierTransactionCount(supplierId) {
     return purchases.filter(p => p.supplier_id === supplierId).length + payments.filter(p => p.supplier_id === supplierId).length + openingDebts.filter(d => d.supplier_id === supplierId).length
+  }
+
+  function supplierLegalTransactionCount(supplierId, legalEntityId) {
+    return purchases.filter(p => p.supplier_id === supplierId && p.legal_entity_id === legalEntityId).length
+      + payments.filter(p => p.supplier_id === supplierId && p.legal_entity_id === legalEntityId).length
+      + openingDebts.filter(d => d.supplier_id === supplierId && d.legal_entity_id === legalEntityId).length
+  }
+
+  function supplierLegalRows(supplierId) {
+    const ids = new Set([
+      ...purchases.filter(p => p.supplier_id === supplierId && p.legal_entity_id).map(p => p.legal_entity_id),
+      ...payments.filter(p => p.supplier_id === supplierId && p.legal_entity_id).map(p => p.legal_entity_id),
+      ...openingDebts.filter(d => d.supplier_id === supplierId && d.legal_entity_id).map(d => d.legal_entity_id),
+      ...supplierEntityStatuses.filter(r => r.supplier_id === supplierId && r.legal_entity_id).map(r => r.legal_entity_id)
+    ])
+    return Array.from(ids).map(id => {
+      const le = legalEntities.find(x => x.id === id)
+      const status = supplierEntityStatusMap.get(supplierEntityKey(supplierId, id)) !== false
+      return { id, name: le?.name || '—', voen: le?.voen || '', is_active: status, count: supplierLegalTransactionCount(supplierId, id) }
+    }).sort((a,b) => String(a.name).localeCompare(String(b.name)))
+  }
+
+  async function setSupplierLegalStatus(supplier, legalEntityId, isActive) {
+    if (!isAdmin) return setMessage('Изменение активности по VOEN доступно только администратору')
+    if (!supplier?.id || !legalEntityId) return
+    const le = legalEntities.find(x => x.id === legalEntityId)
+    const label = `${supplier.name} / ${le?.name || 'VOEN'}`
+    const text = isActive ? `Активировать поставщика только для ${le?.name || 'выбранного VOEN'}?` : `Деактивировать поставщика только для ${le?.name || 'выбранного VOEN'}? В других физ. лицах он останется активным.`
+    if (!window.confirm(text)) return
+    const { error } = await supabase.from('supplier_legal_entity_status').upsert({
+      supplier_id: supplier.id,
+      legal_entity_id: legalEntityId,
+      is_active: isActive,
+      updated_at: new Date().toISOString()
+    }, { onConflict: 'supplier_id,legal_entity_id' })
+    if (error) return setMessage(error.message)
+    await load()
+    setMessage(`${label}: ${isActive ? 'активирован' : 'деактивирован'}`)
   }
 
   async function deleteOrDeactivateSupplier(supplier) {
@@ -10361,13 +10414,13 @@ function Suppliers({ t, isAdmin = false }) {
   const supplierTransactions = allTransactions().filter(r => (!transactionSupplierId || r.supplier_id === transactionSupplierId) && periodOk(r.date))
   const lastTransactions = allTransactions().slice(0, 10)
   const recentPurchasesPageSizeNumber = parseNum(recentPurchasesPageSize) || 10
-  const visiblePurchases = (purchases || []).filter(p => activeSupplierIds.has(p.supplier_id))
+  const visiblePurchases = (purchases || []).filter(p => activeSupplierIds.has(p.supplier_id) && isSupplierActiveForLegal(p.supplier_id, p.legal_entity_id))
   const recentPurchasesTotalPages = Math.max(1, Math.ceil(visiblePurchases.length / recentPurchasesPageSizeNumber))
   const safeRecentPurchasesPage = Math.min(Math.max(1, parseNum(recentPurchasesPage) || 1), recentPurchasesTotalPages)
   const recentPurchasesRows = visiblePurchases.slice((safeRecentPurchasesPage - 1) * recentPurchasesPageSizeNumber, safeRecentPurchasesPage * recentPurchasesPageSizeNumber)
   function suppliersForLegalEntity(entityId) {
     const ids = new Set(purchases.filter(p => p.legal_entity_id === entityId).map(p => p.supplier_id))
-    return activeSuppliers.filter(s => ids.has(s.id))
+    return activeSuppliers.filter(s => ids.has(s.id) && isSupplierActiveForLegal(s.id, entityId))
   }
 
   return <section>
@@ -10376,7 +10429,7 @@ function Suppliers({ t, isAdmin = false }) {
       <div className="card span-2">
         <div className="card-head"><div><h3>Поступления от поставщика</h3><p className="hint">Сначала заполняется шапка фактуры. Товары добавляются строками ниже.</p></div></div>
         <div className="form-grid compact">
-          <label><span>Поставщик</span><select value={purchaseForm.supplier_id} onChange={e => setPurchaseForm({...purchaseForm, supplier_id: e.target.value})}>{activeSuppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
+          <label><span>Поставщик</span><select value={purchaseForm.supplier_id} onChange={e => setPurchaseForm({...purchaseForm, supplier_id: e.target.value})}>{activeSuppliersForPurchaseLegal.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
           <label><span>Наш VOEN</span><select value={purchaseForm.legal_entity_id} onChange={e => setPurchaseForm({...purchaseForm, legal_entity_id: e.target.value})}>{legalEntities.map(le => <option key={le.id} value={le.id}>{le.name} · {le.voen}</option>)}</select></label>
           <label><span>Филиал</span><select value={purchaseForm.branch_id} onChange={e => setPurchaseForm({...purchaseForm, branch_id: e.target.value})}>{branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label>
           <label><span>Дата поступления</span><input type="date" value={purchaseForm.purchase_date} onChange={e => setPurchaseForm({...purchaseForm, purchase_date: e.target.value})} /></label>
@@ -10404,7 +10457,7 @@ function Suppliers({ t, isAdmin = false }) {
       <div className="card span-2">
         <div className="card-head"><div><h3>Оплата поставщику</h3><p className="hint">Укажите сумму оплаты, номера счёт-фактур и комментарий.</p></div></div>
         <div className="form-grid compact">
-          <label><span>Поставщик</span><select value={paymentForm.supplier_id} onChange={e => setPaymentForm({...paymentForm, supplier_id: e.target.value})}><option value="">Выберите поставщика</option>{activeSuppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
+          <label><span>Поставщик</span><select value={paymentForm.supplier_id} onChange={e => setPaymentForm({...paymentForm, supplier_id: e.target.value})}><option value="">Выберите поставщика</option>{activeSuppliersForPaymentLegal.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
           <label><span>Наш VOEN</span><select value={paymentForm.legal_entity_id} onChange={e => setPaymentForm({...paymentForm, legal_entity_id: e.target.value})}><option value="">Выберите VOEN</option>{legalEntities.map(le => <option key={le.id} value={le.id}>{le.name} · {le.voen}</option>)}</select></label>
           <label><span>Дата оплаты</span><input type="date" value={paymentForm.payment_date} onChange={e => setPaymentForm({...paymentForm, payment_date: e.target.value})} /></label>
           <label><span>Сумма оплаты</span><input inputMode="decimal" value={paymentForm.amount} onChange={e => setPaymentForm({...paymentForm, amount: e.target.value})} /></label>
@@ -10419,7 +10472,7 @@ function Suppliers({ t, isAdmin = false }) {
       <div className="card span-2 supplier-opening-debt-card">
         <div className="card-head"><div><h3>Долг поставщику за предыдущий период</h3><p className="hint">Используйте при запуске программы с нуля, чтобы перенести старый долг в баланс поставщика.</p></div></div>
         <div className="form-grid compact">
-          <label><span>Поставщик</span><select value={openingDebtForm.supplier_id} onChange={e => setOpeningDebtForm({...openingDebtForm, supplier_id: e.target.value})}><option value="">Выберите поставщика</option>{activeSuppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
+          <label><span>Поставщик</span><select value={openingDebtForm.supplier_id} onChange={e => setOpeningDebtForm({...openingDebtForm, supplier_id: e.target.value})}><option value="">Выберите поставщика</option>{activeSuppliersForOpeningLegal.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
           <label><span>Наш VOEN</span><select value={openingDebtForm.legal_entity_id} onChange={e => setOpeningDebtForm({...openingDebtForm, legal_entity_id: e.target.value})}><option value="">Выберите VOEN</option>{legalEntities.map(le => <option key={le.id} value={le.id}>{le.name} · {le.voen}</option>)}</select></label>
           <label><span>Дата долга</span><input type="date" value={openingDebtForm.debt_date} onChange={e => setOpeningDebtForm({...openingDebtForm, debt_date: e.target.value})} /></label>
           <label><span>Сумма долга</span><input inputMode="decimal" value={openingDebtForm.amount} onChange={e => setOpeningDebtForm({...openingDebtForm, amount: e.target.value})} /></label>
@@ -10467,6 +10520,25 @@ function Suppliers({ t, isAdmin = false }) {
               <label><span>Информация</span><input value={supplierEditForm.info} onChange={e => setSupplierEditForm({...supplierEditForm, info: e.target.value})} /></label>
               <label><span>Срок оплаты, дней</span><input inputMode="numeric" value={supplierEditForm.payment_term_days} onChange={e => setSupplierEditForm({...supplierEditForm, payment_term_days: e.target.value})} /></label>
               <label><span>Кредитный лимит</span><input inputMode="decimal" value={supplierEditForm.credit_limit} onChange={e => setSupplierEditForm({...supplierEditForm, credit_limit: e.target.value})} /></label>
+            </div>
+            <div className="table-wrap" style={{marginTop:12}}>
+              <h4>Активность по нашим VOEN / физ. лицам</h4>
+              <p className="hint">Здесь можно скрыть поставщика только по выбранному физ. лицу. В других VOEN этот же поставщик останется активным.</p>
+              <table>
+                <thead><tr><th>Наш VOEN</th><th>Операции</th><th>Статус</th><th>Действие</th></tr></thead>
+                <tbody>
+                  {supplierLegalRows(selected.id).map(row => <tr key={`${selected.id}-${row.id}`} className={row.is_active ? '' : 'cancelled-row'}>
+                    <td><b>{row.name}</b><br /><span className="hint">{row.voen || 'VOEN не указан'}</span></td>
+                    <td>{row.count}</td>
+                    <td>{row.is_active ? <span className="good">Активен</span> : <span className="bad">Деактивирован</span>}</td>
+                    <td>{row.is_active
+                      ? <button className="small danger" onClick={() => setSupplierLegalStatus(selected, row.id, false)}>Деактивировать по этому VOEN</button>
+                      : <button className="small" onClick={() => setSupplierLegalStatus(selected, row.id, true)}>Активировать по этому VOEN</button>}
+                    </td>
+                  </tr>)}
+                  {!supplierLegalRows(selected.id).length && <tr><td colSpan="4" className="hint">Операций по нашим VOEN пока нет</td></tr>}
+                </tbody>
+              </table>
             </div>
             <div className="action-row" style={{marginTop:10}}>
               <button className="small primary" onClick={() => saveSupplierEdit(selected)}>Сохранить изменения</button>
@@ -10617,6 +10689,7 @@ function DebtsPayments({ t }) {
   const [purchases, setPurchases] = useState([])
   const [payments, setPayments] = useState([])
   const [openingDebts, setOpeningDebts] = useState([])
+  const [supplierEntityStatuses, setSupplierEntityStatuses] = useState([])
   const [activeSupplierId, setActiveSupplierId] = useState('')
   const [activeLegalEntityId, setActiveLegalEntityId] = useState('')
   const [productSearch, setProductSearch] = useState('')
@@ -10653,12 +10726,19 @@ function DebtsPayments({ t }) {
   const [paymentTransactionEditForm, setPaymentTransactionEditForm] = useState({ payment_date: todayISO(), legal_entity_id: '', amount: '', invoice_notes: '', comment: '' })
   const supplierTransactionPanelRef = useRef(null)
   const activeSuppliers = useMemo(() => (suppliers || []).filter(s => s.is_active !== false), [suppliers])
+  const supplierEntityStatusMap = useMemo(() => new Map((supplierEntityStatuses || []).map(r => [supplierEntityKey(r.supplier_id, r.legal_entity_id), r.is_active !== false])), [supplierEntityStatuses])
+  function isSupplierActiveForLegal(supplierId, legalEntityId) {
+    const supplier = (suppliers || []).find(s => s.id === supplierId)
+    if (!supplier || supplier.is_active === false) return false
+    if (!legalEntityId) return true
+    return supplierEntityStatusMap.get(supplierEntityKey(supplierId, legalEntityId)) !== false
+  }
   const activeSupplierIds = useMemo(() => new Set(activeSuppliers.map(s => s.id)), [activeSuppliers])
 
   useEffect(() => { load() }, [])
 
   async function load() {
-    const [{ data: le }, { data: br }, { data: sup }, { data: prod }, { data: bal }, { data: pur }, { data: pay }, { data: opening }, { data: logs }] = await Promise.all([
+    const [{ data: le }, { data: br }, { data: sup }, { data: prod }, { data: bal }, { data: pur }, { data: pay }, { data: opening }, { data: statusRows }, { data: logs }] = await Promise.all([
       supabase.from('legal_entities').select('*').eq('is_active', true).order('name'),
       supabase.from('branches').select('id,name').eq('is_active', true).order('name'),
       supabase.from('suppliers').select('*').eq('is_active', true).order('name'),
@@ -10667,6 +10747,7 @@ function DebtsPayments({ t }) {
       supabase.from('supplier_purchases').select('*, suppliers(name,voen,payment_term_days,credit_limit), legal_entities(name,voen), branches(name), supplier_purchase_items(*, supplier_products(name,category,base_unit))').order('purchase_date', { ascending: false }).order('created_at', { ascending: false }).limit(1000),
       supabase.from('supplier_payments').select('*, suppliers(name,voen), legal_entities(name,voen)').order('payment_date', { ascending: false }).order('created_at', { ascending: false }).limit(1000),
       supabase.from('supplier_opening_debts').select('*, suppliers(name,voen), legal_entities(name,voen)').order('debt_date', { ascending: false }).order('created_at', { ascending: false }).limit(1000),
+      supabase.from('supplier_legal_entity_status').select('*'),
       supabase.from('supplier_transaction_logs').select('*').order('created_at', { ascending: false }).limit(500)
     ])
     setLegalEntities(le || [])
@@ -10677,6 +10758,7 @@ function DebtsPayments({ t }) {
     setPurchases(pur || [])
     setPayments(pay || [])
     setOpeningDebts(opening || [])
+    setSupplierEntityStatuses(statusRows || [])
     setTransactionLogs(logs || [])
   }
 
@@ -10707,18 +10789,18 @@ function DebtsPayments({ t }) {
       ...openingDebts.filter(d => d.legal_entity_id === entityId).map(d => d.supplier_id),
       ...payments.filter(p => p.legal_entity_id === entityId).map(p => p.supplier_id)
     ])
-    return activeSuppliers.filter(s => ids.has(s.id))
+    return activeSuppliers.filter(s => ids.has(s.id) && isSupplierActiveForLegal(s.id, entityId))
   }
 
   function debtForLegalEntity(entityId) {
     const purchaseTotal = purchases
-      .filter(p => p.legal_entity_id === entityId && !p.deleted_at)
+      .filter(p => p.legal_entity_id === entityId && !p.deleted_at && isSupplierActiveForLegal(p.supplier_id, entityId))
       .reduce((sum, p) => sum + parseNum(p.total_amount), 0)
     const openingTotal = openingDebts
-      .filter(d => d.legal_entity_id === entityId && d.is_active !== false)
+      .filter(d => d.legal_entity_id === entityId && d.is_active !== false && isSupplierActiveForLegal(d.supplier_id, entityId))
       .reduce((sum, d) => sum + parseNum(d.amount), 0)
     const paymentTotal = payments
-      .filter(p => p.legal_entity_id === entityId)
+      .filter(p => p.legal_entity_id === entityId && isSupplierActiveForLegal(p.supplier_id, entityId))
       .reduce((sum, p) => sum + parseNum(p.amount), 0)
     return openingTotal + purchaseTotal - paymentTotal
   }
@@ -11091,8 +11173,8 @@ function DebtsPayments({ t }) {
     }
   }
   const activeSupplier = suppliers.find(s => s.id === activeSupplierId)
-  const filteredPurchases = purchases.filter(p => (!activeSupplierId || p.supplier_id === activeSupplierId) && (!activeLegalEntityId || p.legal_entity_id === activeLegalEntityId) && periodOk(p.purchase_date))
-  const filteredOpeningDebts = openingDebts.filter(d => (!activeSupplierId || d.supplier_id === activeSupplierId) && (!activeLegalEntityId || d.legal_entity_id === activeLegalEntityId) && periodOk(d.debt_date))
+  const filteredPurchases = purchases.filter(p => (!activeSupplierId || p.supplier_id === activeSupplierId) && (!activeLegalEntityId || p.legal_entity_id === activeLegalEntityId) && isSupplierActiveForLegal(p.supplier_id, p.legal_entity_id) && periodOk(p.purchase_date))
+  const filteredOpeningDebts = openingDebts.filter(d => (!activeSupplierId || d.supplier_id === activeSupplierId) && (!activeLegalEntityId || d.legal_entity_id === activeLegalEntityId) && isSupplierActiveForLegal(d.supplier_id, d.legal_entity_id) && periodOk(d.debt_date))
   const purchaseTransactionRows = [
     ...filteredOpeningDebts.map(d => ({
       ...d,
@@ -11107,7 +11189,7 @@ function DebtsPayments({ t }) {
     })),
     ...filteredPurchases.map(p => ({ ...p, row_type: 'purchase' }))
   ].sort((a, b) => new Date(b.purchase_date || b.created_at || 0) - new Date(a.purchase_date || a.created_at || 0))
-  const filteredPayments = payments.filter(p => (!activeSupplierId || p.supplier_id === activeSupplierId) && (!activeLegalEntityId || p.legal_entity_id === activeLegalEntityId) && periodOk(p.payment_date))
+  const filteredPayments = payments.filter(p => (!activeSupplierId || p.supplier_id === activeSupplierId) && (!activeLegalEntityId || p.legal_entity_id === activeLegalEntityId) && isSupplierActiveForLegal(p.supplier_id, p.legal_entity_id) && periodOk(p.payment_date))
   const visibleTransactionLogs = transactionLogs.filter(l => (!activeSupplierId || l.supplier_id === activeSupplierId) && (!activeLegalEntityId || l.legal_entity_id === activeLegalEntityId)).slice(0, 30)
   function commonOpsDateInPeriod(dateStr) {
     if (!dateStr) return false
@@ -11185,7 +11267,7 @@ function DebtsPayments({ t }) {
   ]
 
   const filteredCommonOps = commonOpsAll
-    .filter(r => activeSupplierIds.has(r.supplier_id))
+    .filter(r => activeSupplierIds.has(r.supplier_id) && isSupplierActiveForLegal(r.supplier_id, r.legal_entity_id))
     .filter(r => commonOpsDateInPeriod(r.date))
     .filter(r => commonOpsSupplierId === 'all' || r.supplier_id === commonOpsSupplierId)
     .filter(r => commonOpsType === 'all' || r.type_key === commonOpsType)
@@ -11308,7 +11390,7 @@ function DebtsPayments({ t }) {
       credit: parseNum(p.amount)
     }))
   ]
-    .filter(r => activeSupplierIds.has(r.supplier_id))
+    .filter(r => activeSupplierIds.has(r.supplier_id) && isSupplierActiveForLegal(r.supplier_id, r.legal_entity_id))
     .filter(r => ledgerSupplierId === 'all' || r.supplier_id === ledgerSupplierId)
     .filter(r => ledgerLegalEntityId === 'all' || r.legal_entity_id === ledgerLegalEntityId)
     .filter(r => !normalizedLedgerSearch || ledgerSupplierIds.has(r.supplier_id) || String(r.suppliers?.name || '').toLowerCase().includes(normalizedLedgerSearch))
