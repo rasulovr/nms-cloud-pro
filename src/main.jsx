@@ -4125,6 +4125,49 @@ function ThemeStyles() {
     .login-screen.theme-executive {
       background: radial-gradient(circle at top left, rgba(148,163,184,.22), transparent 36%), linear-gradient(180deg, #f8fafc, #eef2f7);
     }
+
+    .finance-daily-revenue-chart {
+      min-height: 280px;
+    }
+    .finance-line-chart-wrap {
+      margin-top: 10px;
+      border-radius: 20px;
+      background: linear-gradient(180deg, rgba(248,250,252,.98), rgba(255,255,255,.98));
+      border: 1px solid rgba(226,232,240,.92);
+      padding: 14px 14px 8px;
+      overflow: hidden;
+    }
+    .finance-line-chart-svg {
+      width: 100%;
+      height: 230px;
+      display: block;
+    }
+    .finance-line-chart-grid { stroke: rgba(148,163,184,.22); stroke-width: 1; }
+    .finance-line-chart-axis { stroke: rgba(100,116,139,.35); stroke-width: 1; }
+    .finance-line-chart-area { fill: rgba(59,130,246,.11); }
+    .finance-line-chart-line { fill: none; stroke: #64748b; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+    .finance-line-chart-point { fill: #111827; stroke: #fff; stroke-width: 2; }
+    .finance-line-chart-label { fill: #64748b; font-size: 11px; font-weight: 600; }
+    .finance-line-chart-value { fill: #111827; font-size: 12px; font-weight: 800; }
+    .finance-line-chart-summary {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 12px;
+    }
+    .finance-line-chart-summary .metric {
+      border-radius: 16px;
+      background: rgba(248,250,252,.92);
+      border: 1px solid rgba(226,232,240,.86);
+      padding: 10px 12px;
+    }
+    .finance-line-chart-summary .metric span { color: #64748b; font-size: 12px; }
+    .finance-line-chart-summary .metric strong { display: block; margin-top: 4px; font-size: 18px; }
+    @media (max-width: 760px) {
+      .finance-line-chart-summary { grid-template-columns: 1fr; }
+      .finance-line-chart-svg { height: 210px; }
+    }
+
     .permission-grid { display: grid; grid-template-columns: minmax(160px, 1fr) 160px; gap: 10px; align-items: center; }
     .permission-grid b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   `}</style>
@@ -4150,6 +4193,60 @@ function MiniBarChart({ rows, valueKey = 'revenue', labelKey = 'name', title, su
         </div>
       })}
       {!rows.length && <p className="hint">Нет данных для графика.</p>}
+    </div>
+  </div>
+}
+
+
+function DailyRevenueLineChart({ rows = [], title = 'Выручка по дням', subtitle = '' }) {
+  const values = rows.map(r => parseNum(r.amount))
+  const max = Math.max(1, ...values)
+  const total = values.reduce((s, v) => s + parseNum(v), 0)
+  const activeDays = values.filter(v => parseNum(v) > 0).length
+  const avg = activeDays ? total / activeDays : 0
+  const best = rows.reduce((top, r) => parseNum(r.amount) > parseNum(top.amount) ? r : top, { day: '—', amount: 0 })
+  const width = 900
+  const height = 230
+  const pad = { left: 54, right: 24, top: 24, bottom: 38 }
+  const chartW = width - pad.left - pad.right
+  const chartH = height - pad.top - pad.bottom
+  const count = Math.max(1, rows.length - 1)
+  const points = rows.map((r, i) => {
+    const x = pad.left + (rows.length <= 1 ? 0 : i / count * chartW)
+    const y = pad.top + chartH - (parseNum(r.amount) / max * chartH)
+    return { ...r, x, y }
+  })
+  const path = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ')
+  const areaPath = points.length ? `${path} L ${points[points.length - 1].x.toFixed(1)} ${pad.top + chartH} L ${points[0].x.toFixed(1)} ${pad.top + chartH} Z` : ''
+  const yTicks = [0, 0.25, 0.5, 0.75, 1]
+  const xTicks = rows.filter((_, i) => i === 0 || i === rows.length - 1 || (i + 1) % 5 === 0)
+
+  return <div className="card span-2 finance-daily-revenue-chart">
+    <div className="card-head"><div><h3>{title}</h3><p className="hint">{subtitle}</p></div></div>
+    <div className="finance-line-chart-wrap">
+      {rows.length ? <svg className="finance-line-chart-svg" viewBox={`0 0 ${width} ${height}`} role="img" aria-label={title}>
+        {yTicks.map(tick => {
+          const y = pad.top + chartH - tick * chartH
+          const label = max * tick
+          return <g key={tick}>
+            <line className="finance-line-chart-grid" x1={pad.left} y1={y} x2={width - pad.right} y2={y} />
+            <text className="finance-line-chart-label" x={pad.left - 10} y={y + 4} textAnchor="end">{label >= 1000 ? `${Math.round(label / 1000)}k` : Math.round(label)}</text>
+          </g>
+        })}
+        <line className="finance-line-chart-axis" x1={pad.left} y1={pad.top + chartH} x2={width - pad.right} y2={pad.top + chartH} />
+        {areaPath && <path className="finance-line-chart-area" d={areaPath} />}
+        {path && <path className="finance-line-chart-line" d={path} />}
+        {points.filter((_, i) => i === 0 || i === points.length - 1 || parseNum(points[i].amount) === parseNum(best.amount)).map(p => <g key={`p-${p.date}-${p.amount}`}>
+          <circle className="finance-line-chart-point" cx={p.x} cy={p.y} r="4.5" />
+          {parseNum(p.amount) > 0 && <text className="finance-line-chart-value" x={p.x} y={Math.max(14, p.y - 10)} textAnchor="middle">{fmt(p.amount)}</text>}
+        </g>)}
+        {xTicks.map(p => <text key={`x-${p.date}`} className="finance-line-chart-label" x={p.x} y={height - 12} textAnchor="middle">{p.day}</text>)}
+      </svg> : <p className="hint">Нет данных по выручке за выбранный месяц.</p>}
+      <div className="finance-line-chart-summary">
+        <div className="metric"><span>Выручка за месяц</span><strong>{fmt(total)} AZN</strong></div>
+        <div className="metric"><span>Средняя выручка / день</span><strong>{fmt(avg)} AZN</strong></div>
+        <div className="metric"><span>Лучший день</span><strong>{best.day !== '—' ? `${best.day} · ${fmt(best.amount)} AZN` : '—'}</strong></div>
+      </div>
     </div>
   </div>
 }
@@ -4337,6 +4434,7 @@ function Finance({ t, lang, onGoToExpense }) {
   const [month, setMonth] = useState(now.getMonth() + 1)
   const [stats, setStats] = useState(null)
   const [breakdown, setBreakdown] = useState([])
+  const [dailyRevenueRows, setDailyRevenueRows] = useState([])
   const [aiRows, setAiRows] = useState([])
   const [showAllAiRows, setShowAllAiRows] = useState(false)
   const [expenseDetail, setExpenseDetail] = useState({ name: '', rows: [], total: 0, loading: false, error: '' })
@@ -4601,6 +4699,35 @@ function Finance({ t, lang, onGoToExpense }) {
     const map = new Map()
     ;(data || []).forEach(r => map.set(r.branch_id, total > 0 ? parseNum(r.total_revenue) / total : 0))
     return { total, map }
+  }
+
+
+
+  async function loadDailyRevenueRowsForChart(y, m, selectedBranchId) {
+    const start = monthStart(y, m)
+    const end = new Date(Number(y), Number(m), 1).toISOString().slice(0, 10)
+    const daysInMonth = new Date(Number(y), Number(m), 0).getDate()
+    let query = supabase
+      .from('daily_revenue')
+      .select('branch_id,revenue_date,cash_amount,bank_amount,wolt_amount')
+      .gte('revenue_date', start)
+      .lt('revenue_date', end)
+      .is('deleted_at', null)
+
+    if (selectedBranchId !== ALL_BRANCHES) query = query.eq('branch_id', selectedBranchId)
+
+    const { data } = await query
+    const map = new Map()
+    ;(data || []).forEach(r => {
+      const amount = parseNum(r.cash_amount) + parseNum(r.bank_amount) + parseNum(r.wolt_amount)
+      map.set(r.revenue_date, parseNum(map.get(r.revenue_date)) + amount)
+    })
+
+    return Array.from({ length: daysInMonth }, (_, idx) => {
+      const day = idx + 1
+      const date = `${y}-${String(m).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+      return { day: String(day), date, amount: parseNum(map.get(date)) }
+    })
   }
 
   function financeSuggestedStaffLimit(position, revenue) {
@@ -4963,6 +5090,8 @@ function Finance({ t, lang, onGoToExpense }) {
     const current = await calcFor(branchId, year, month)
     const pm = prevMonth(year, month)
     const previous = await calcFor(branchId, pm.year, pm.month)
+    const dailyChartRows = await loadDailyRevenueRowsForChart(year, month, branchId)
+    setDailyRevenueRows(dailyChartRows)
     const start = monthDate
     const end = new Date(Number(year), Number(month), 1).toISOString().slice(0, 10)
     let expQuery = supabase.from('daily_expenses').select('branch_id, amount, comment, custom_category, expense_categories(name)').gte('expense_date', start).lt('expense_date', end).is('deleted_at', null)
@@ -5193,6 +5322,12 @@ function Finance({ t, lang, onGoToExpense }) {
         <div className="card"><h3>{t('forecast')}</h3><Metric label={t('forecast_revenue')} value={fmt(stats.forecastRevenue)} /><Metric label={t('forecast_profit')} value={fmt(stats.forecastProfit)} /><Metric label={t('avg_daily_revenue')} value={fmt(stats.avg)} /><Metric label="Прогнозная маржа" value={pct(stats.forecastMargin)} /></div>
         <div className="card"><h3>{t('comparison')}</h3><Metric label={t('prev_month_revenue')} value={fmt(stats.previous?.revenue)} /><Metric label={t('revenue_change_pct')} value={pct(revChange)} /><Metric label={t('profit_change_pct')} value={pct(profitChange)} /></div>
         <div className="card"><h3>{t('margins')}</h3><Metric label={t('expense_pct')} value={pct(stats.revenue ? (stats.expenses + stats.salary + stats.serviceCost + stats.tax) / stats.revenue * 100 : 0)} /><Metric label={t('net_margin')} value={pct(stats.revenue ? stats.net / stats.revenue * 100 : 0)} /></div>
+
+        <DailyRevenueLineChart
+          rows={dailyRevenueRows}
+          title="Выручка по дням за выбранный месяц"
+          subtitle={branchId === ALL_BRANCHES ? 'Суммарная выручка сети по каждому дню месяца' : `Выручка филиала ${financeBranchNameById(branchId)} по каждому дню месяца`}
+        />
 
         <div className="card span-2">
           <div className="card-head"><h3>Расчёт прогноза прибыли</h3><p className="hint">Фиксированные расходы учитываются сразу, коммунальные и другие месячные статьи берутся из текущего месяца или из среднего прошлых месяцев.</p></div>
