@@ -9655,6 +9655,8 @@ function Suppliers({ t, isAdmin = false }) {
   const [message, setMessage] = useState('')
   const [paymentMessage, setPaymentMessage] = useState('')
   const [supplierAdminExpanded, setSupplierAdminExpanded] = useState(false)
+  const [editingSupplierId, setEditingSupplierId] = useState('')
+  const [supplierEditForm, setSupplierEditForm] = useState({ name: '', voen: '', contact_person: '', phone: '', info: '', payment_term_days: '', credit_limit: '' })
 
   const activeSuppliers = useMemo(() => (suppliers || []).filter(s => s.is_active !== false), [suppliers])
   const activeSupplierIds = useMemo(() => new Set(activeSuppliers.map(s => s.id)), [activeSuppliers])
@@ -9881,6 +9883,50 @@ function Suppliers({ t, isAdmin = false }) {
     setMessage('')
     const { error } = await supabase.from('suppliers').update(patch).eq('id', id)
     if (error) setMessage(error.message); else await load()
+  }
+
+  function startEditSupplier(supplier) {
+    if (!isAdmin) return setMessage('Редактирование поставщика доступно только администратору')
+    setMessage('')
+    setEditingSupplierId(supplier.id)
+    setSupplierEditForm({
+      name: supplier.name || '',
+      voen: supplier.voen || '',
+      contact_person: supplier.contact_person || '',
+      phone: supplier.phone || '',
+      info: supplier.info || '',
+      payment_term_days: supplier.payment_term_days || '',
+      credit_limit: supplier.credit_limit ?? ''
+    })
+  }
+
+  function cancelEditSupplier() {
+    setEditingSupplierId('')
+    setSupplierEditForm({ name: '', voen: '', contact_person: '', phone: '', info: '', payment_term_days: '', credit_limit: '' })
+  }
+
+  async function saveSupplierEdit(supplier) {
+    if (!isAdmin) return setMessage('Редактирование поставщика доступно только администратору')
+    if (!supplier?.id) return
+    if (!String(supplierEditForm.name || '').trim()) return setMessage('Введите имя контрагента')
+    setMessage('')
+    const patch = {
+      name: String(supplierEditForm.name || '').trim(),
+      voen: String(supplierEditForm.voen || '').trim() || null,
+      contact_person: String(supplierEditForm.contact_person || '').trim() || null,
+      phone: String(supplierEditForm.phone || '').trim() || null,
+      info: String(supplierEditForm.info || '').trim() || null,
+      payment_term_days: parseNum(supplierEditForm.payment_term_days) || null,
+      credit_limit: parseNum(supplierEditForm.credit_limit) || 0,
+      updated_at: new Date().toISOString()
+    }
+    const stopProgress = startGlobalProgress('Сохранение контрагента...')
+    const { error } = await supabase.from('suppliers').update(patch).eq('id', supplier.id)
+    stopProgress()
+    if (error) return setMessage(error.message)
+    cancelEditSupplier()
+    await load()
+    setMessage(t('saved'))
   }
 
   function supplierTransactionCount(supplierId) {
@@ -10211,6 +10257,37 @@ function Suppliers({ t, isAdmin = false }) {
           <label><span>Дата стартового долга</span><input type="date" value={supplierForm.opening_debt_date} onChange={e => setSupplierForm({...supplierForm, opening_debt_date: e.target.value})} /></label>
           <label><span>Комментарий к стартовому долгу</span><input value={supplierForm.opening_debt_comment} onChange={e => setSupplierForm({...supplierForm, opening_debt_comment: e.target.value})} placeholder="Например: остаток на 01.05" /></label>
         </div><button className="small" onClick={addSupplier}>+ Добавить поставщика</button>
+        {editingSupplierId && (() => {
+          const selected = supplierAdminRows.find(s => s.id === editingSupplierId)
+          if (!selected) return null
+          const count = supplierTransactionCount(selected.id)
+          const inactive = selected.is_active === false
+          return <div className="inline-editor" style={{marginTop:12}}>
+            <div className="card-head">
+              <div>
+                <h4>Редактирование контрагента</h4>
+                <p className="hint">Изменять данные поставщика может только администратор. Деактивация скрывает поставщика из рабочих списков, но сохраняет историю операций.</p>
+              </div>
+              <button className="small ghost" onClick={cancelEditSupplier}>Закрыть</button>
+            </div>
+            <div className="form-grid compact">
+              <label><span>Имя контрагента</span><input value={supplierEditForm.name} onChange={e => setSupplierEditForm({...supplierEditForm, name: e.target.value})} /></label>
+              <label><span>VOEN поставщика</span><input value={supplierEditForm.voen} onChange={e => setSupplierEditForm({...supplierEditForm, voen: e.target.value})} /></label>
+              <label><span>Контакт</span><input value={supplierEditForm.contact_person} onChange={e => setSupplierEditForm({...supplierEditForm, contact_person: e.target.value})} /></label>
+              <label><span>Телефон</span><input value={supplierEditForm.phone} onChange={e => setSupplierEditForm({...supplierEditForm, phone: e.target.value})} /></label>
+              <label><span>Информация</span><input value={supplierEditForm.info} onChange={e => setSupplierEditForm({...supplierEditForm, info: e.target.value})} /></label>
+              <label><span>Срок оплаты, дней</span><input inputMode="numeric" value={supplierEditForm.payment_term_days} onChange={e => setSupplierEditForm({...supplierEditForm, payment_term_days: e.target.value})} /></label>
+              <label><span>Кредитный лимит</span><input inputMode="decimal" value={supplierEditForm.credit_limit} onChange={e => setSupplierEditForm({...supplierEditForm, credit_limit: e.target.value})} /></label>
+            </div>
+            <div className="action-row" style={{marginTop:10}}>
+              <button className="small primary" onClick={() => saveSupplierEdit(selected)}>Сохранить изменения</button>
+              {inactive
+                ? <button className="small" onClick={() => activateSupplier(selected)}>Активировать</button>
+                : <button className="small danger" onClick={() => deleteOrDeactivateSupplier(selected)}>{count > 0 ? 'Деактивировать' : 'Удалить'}</button>}
+              <button className="small ghost" onClick={cancelEditSupplier}>Отмена</button>
+            </div>
+          </div>
+        })()}
         <div className="table-wrap" style={{marginTop:12}}>
           <table>
             <thead><tr><th>Контрагент</th><th>VOEN</th><th>Условия</th><th>Операции</th><th>Статус</th><th>Действие</th></tr></thead>
@@ -10224,7 +10301,7 @@ function Suppliers({ t, isAdmin = false }) {
                   <td className="hint">{s.payment_term_days ? `${s.payment_term_days} дней` : '—'} · лимит {fmt(s.credit_limit)}</td>
                   <td>{count}</td>
                   <td>{inactive ? <span className="bad">Деактивирован</span> : <span className="good">Активен</span>}</td>
-                  <td>{isAdmin ? <div className="action-row">{inactive ? <button className="small" onClick={() => activateSupplier(s)}>Активировать</button> : <button className="small danger" onClick={() => deleteOrDeactivateSupplier(s)}>{count > 0 ? 'Деактивировать' : 'Удалить'}</button>}</div> : <span className="hint">Только admin</span>}</td>
+                  <td>{isAdmin ? <button className="small" onClick={() => startEditSupplier(s)}>Редактировать</button> : <span className="hint">Только admin</span>}</td>
                 </tr>
               })}
               {!supplierAdminRows.length && <tr><td colSpan="6" className="hint">Поставщики не найдены</td></tr>}
