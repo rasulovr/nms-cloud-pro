@@ -10120,63 +10120,90 @@ function Suppliers({ t, isAdmin = false }) {
     if (!supplier?.id) return
     if (!String(supplierEditForm.name || '').trim()) return setMessage('Введите имя контрагента')
     setMessage('')
+
+    const cleanNumberOrNull = (v) => {
+      const raw = String(v ?? '').trim()
+      if (!raw) return null
+      const n = parseNum(raw)
+      return Number.isFinite(n) && n > 0 ? n : null
+    }
+    const cleanMoney = (v) => {
+      const raw = String(v ?? '').trim()
+      if (!raw) return 0
+      const n = parseNum(raw)
+      return Number.isFinite(n) ? n : 0
+    }
+
     const patch = {
       name: String(supplierEditForm.name || '').trim(),
       voen: String(supplierEditForm.voen || '').trim() || null,
       contact_person: String(supplierEditForm.contact_person || '').trim() || null,
       phone: String(supplierEditForm.phone || '').trim() || null,
       info: String(supplierEditForm.info || '').trim() || null,
-      payment_term_days: parseNum(supplierEditForm.payment_term_days) || null,
-      credit_limit: parseNum(supplierEditForm.credit_limit) || 0,
-      updated_at: new Date().toISOString()
+      payment_term_days: cleanNumberOrNull(supplierEditForm.payment_term_days),
+      credit_limit: cleanMoney(supplierEditForm.credit_limit)
     }
+
     const stopProgress = startGlobalProgress('Сохранение контрагента...')
-    let updatedSupplier = null
-    let error = null
+    try {
+      // Важно: сохраняем через отдельную SECURITY DEFINER RPC-функцию.
+      // После включения RLS прямой update из frontend может не сработать, а визуально кажется,
+      // что данные сохранены. RPC возвращает фактически сохранённые значения из базы.
+      const { data, error } = await supabase.rpc('rms_supplier_admin_save', {
+        p_id: supplier.id,
+        p_old_name: supplier.name || '',
+        p_name: patch.name,
+        p_voen: patch.voen,
+        p_contact_person: patch.contact_person,
+        p_phone: patch.phone,
+        p_info: patch.info,
+        p_payment_term_days: patch.payment_term_days,
+        p_credit_limit: patch.credit_limit
+      })
+      if (error) throw error
 
-    // Основной путь: обновление через защищённую RPC-функцию. Это важно после включения RLS,
-    // когда прямой update из frontend может не применяться или блокироваться политиками.
-    const rpcResult = await supabase.rpc('rms_admin_update_supplier', {
-      p_id: supplier.id,
-      p_name: patch.name,
-      p_voen: patch.voen,
-      p_contact_person: patch.contact_person,
-      p_phone: patch.phone,
-      p_info: patch.info,
-      p_payment_term_days: patch.payment_term_days,
-      p_credit_limit: patch.credit_limit
-    })
+      const rows = Array.isArray(data) ? data : (data?.updated_suppliers || data?.rows || [])
+      const updatedRows = Array.isArray(rows) ? rows : []
+      if (!updatedRows.length) throw new Error('Supabase не вернул обновлённую строку поставщика')
 
-    if (!rpcResult.error && rpcResult.data) {
-      updatedSupplier = Array.isArray(rpcResult.data) ? rpcResult.data[0] : rpcResult.data
-    } else {
-      // Fallback для баз, где RPC ещё не создана.
-      const directResult = await supabase
-        .from('suppliers')
-        .update(patch)
-        .eq('id', supplier.id)
-        .select('*')
-        .single()
-      updatedSupplier = directResult.data
-      error = directResult.error || rpcResult.error
+      const updatedById = new Map(updatedRows.map(r => [r.id, r]))
+      const primaryUpdated = updatedById.get(supplier.id) || updatedRows[0]
+
+      setSuppliers(prev => {
+        const merged = (prev || []).map(s => updatedById.has(s.id) ? { ...s, ...updatedById.get(s.id) } : s)
+        const known = new Set(merged.map(s => s.id))
+        updatedRows.forEach(r => { if (!known.has(r.id)) merged.push(r) })
+        return merged.sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')))
+      })
+
+      const applyFreshSupplier = (row) => {
+        const fresh = updatedById.get(row.supplier_id)
+        return fresh ? {
+          ...row,
+          suppliers: {
+            ...(row.suppliers || {}),
+            name: fresh.name,
+            voen: fresh.voen,
+            payment_term_days: fresh.payment_term_days,
+            credit_limit: fresh.credit_limit,
+            is_active: fresh.is_active
+          }
+        } : row
+      }
+      setPurchases(prev => (prev || []).map(applyFreshSupplier))
+      setPayments(prev => (prev || []).map(applyFreshSupplier))
+      setOpeningDebts(prev => (prev || []).map(applyFreshSupplier))
+
+      cancelEditSupplier()
+      notifySuppliersUpdated()
+      await load()
+      notifySuppliersUpdated()
+      setMessage(`Сохранено: ${primaryUpdated.name || patch.name} · срок ${primaryUpdated.payment_term_days || '—'} · лимит ${fmt(primaryUpdated.credit_limit)}`)
+    } catch (e) {
+      setMessage(e.message || String(e))
+    } finally {
+      stopProgress()
     }
-
-    stopProgress()
-    if (error) return setMessage(error.message || 'Не удалось сохранить изменения контрагента')
-
-    // Дополнительная проверка: сразу перечитываем строку из suppliers, чтобы UI не показывал старый лимит/срок.
-    const verifyResult = await supabase.from('suppliers').select('*').eq('id', supplier.id).single()
-    const freshSupplier = verifyResult.data || updatedSupplier || { ...supplier, ...patch }
-
-    setSuppliers(prev => (prev || []).map(s => s.id === supplier.id ? { ...s, ...freshSupplier } : s))
-    setPurchases(prev => (prev || []).map(p => p.supplier_id === supplier.id ? { ...p, suppliers: { ...(p.suppliers || {}), name: freshSupplier.name, voen: freshSupplier.voen, payment_term_days: freshSupplier.payment_term_days, credit_limit: freshSupplier.credit_limit } } : p))
-    setPayments(prev => (prev || []).map(p => p.supplier_id === supplier.id ? { ...p, suppliers: { ...(p.suppliers || {}), name: freshSupplier.name, voen: freshSupplier.voen, payment_term_days: freshSupplier.payment_term_days, credit_limit: freshSupplier.credit_limit } } : p))
-    setOpeningDebts(prev => (prev || []).map(d => d.supplier_id === supplier.id ? { ...d, suppliers: { ...(d.suppliers || {}), name: freshSupplier.name, voen: freshSupplier.voen, payment_term_days: freshSupplier.payment_term_days, credit_limit: freshSupplier.credit_limit } } : d))
-    cancelEditSupplier()
-    notifySuppliersUpdated()
-    await load()
-    notifySuppliersUpdated()
-    setMessage(t('saved'))
   }
 
   function supplierTransactionCount(supplierId) {
