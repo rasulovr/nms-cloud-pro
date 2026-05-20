@@ -319,6 +319,11 @@ const statutoryRestaurantOfficialPayrollCost = (baseValue) => {
   }
 }
 const todayISO = () => new Date().toISOString().slice(0, 10)
+const RMS_SUPPLIERS_UPDATED_EVENT = 'rms:suppliers-updated'
+function notifySuppliersUpdated() {
+  try { window.dispatchEvent(new CustomEvent(RMS_SUPPLIERS_UPDATED_EVENT)) } catch (_) {}
+}
+
 const ADVANCE_EDIT_WINDOW_MS = 7 * 24 * 60 * 60 * 1000
 const EDIT_WINDOW_MS = 7 * 24 * 60 * 60 * 1000
 const canEditAdvance = (row) => row?.created_at ? (Date.now() - new Date(row.created_at).getTime()) <= ADVANCE_EDIT_WINDOW_MS : true
@@ -10076,6 +10081,7 @@ function Suppliers({ t, isAdmin = false }) {
 
       setSupplierForm({ name: '', voen: '', contact_person: '', phone: '', info: '', payment_term_days: '', credit_limit: '', opening_debt_amount: '', opening_debt_legal_entity_id: legalEntities[0]?.id || '', opening_debt_date: todayISO(), opening_debt_comment: '' })
       await load()
+      notifySuppliersUpdated()
       setMessage(openingAmount > 0 ? 'Поставщик сохранён, стартовый долг добавлен' : t('saved'))
     } catch (e) {
       setMessage(e.message || String(e))
@@ -10086,7 +10092,7 @@ function Suppliers({ t, isAdmin = false }) {
   async function updateSupplier(id, patch) {
     setMessage('')
     const { error } = await supabase.from('suppliers').update(patch).eq('id', id)
-    if (error) setMessage(error.message); else await load()
+    if (error) setMessage(error.message); else { setSuppliers(prev => (prev || []).map(s => s.id === id ? { ...s, ...patch } : s)); await load(); notifySuppliersUpdated() }
   }
 
   function startEditSupplier(supplier) {
@@ -10128,8 +10134,10 @@ function Suppliers({ t, isAdmin = false }) {
     const { error } = await supabase.from('suppliers').update(patch).eq('id', supplier.id)
     stopProgress()
     if (error) return setMessage(error.message)
+    setSuppliers(prev => (prev || []).map(s => s.id === supplier.id ? { ...s, ...patch } : s))
     cancelEditSupplier()
     await load()
+    notifySuppliersUpdated()
     setMessage(t('saved'))
   }
 
@@ -10188,11 +10196,13 @@ function Suppliers({ t, isAdmin = false }) {
       const { error } = await supabase.from('suppliers').update({ is_active: false, updated_at: new Date().toISOString() }).eq('id', supplier.id)
       if (error) return setMessage(error.message)
       await load()
+      notifySuppliersUpdated()
       return setMessage('Поставщик деактивирован')
     }
     const { error } = await supabase.from('suppliers').delete().eq('id', supplier.id)
     if (error) return setMessage(error.message)
     await load()
+    notifySuppliersUpdated()
     setMessage('Поставщик удалён')
   }
 
@@ -10203,6 +10213,7 @@ function Suppliers({ t, isAdmin = false }) {
     const { error } = await supabase.from('suppliers').update({ is_active: true, updated_at: new Date().toISOString() }).eq('id', supplier.id)
     if (error) return setMessage(error.message)
     await load()
+    notifySuppliersUpdated()
     setMessage('Поставщик активирован')
   }
 
@@ -10736,6 +10747,11 @@ function DebtsPayments({ t }) {
   const activeSupplierIds = useMemo(() => new Set(activeSuppliers.map(s => s.id)), [activeSuppliers])
 
   useEffect(() => { load() }, [])
+  useEffect(() => {
+    const reloadSuppliers = () => load()
+    window.addEventListener(RMS_SUPPLIERS_UPDATED_EVENT, reloadSuppliers)
+    return () => window.removeEventListener(RMS_SUPPLIERS_UPDATED_EVENT, reloadSuppliers)
+  }, [])
 
   async function load() {
     const [{ data: le }, { data: br }, { data: sup }, { data: prod }, { data: bal }, { data: pur }, { data: pay }, { data: opening }, { data: statusRows }, { data: logs }] = await Promise.all([
