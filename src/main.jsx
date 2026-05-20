@@ -10783,24 +10783,43 @@ function DebtsPayments({ t }) {
     const overdue = termDays > 0 ? purchases.filter(p => p.supplier_id === supplier.id && !p.deleted_at && (!legalEntityId || p.legal_entity_id === legalEntityId) && ((now - new Date(p.purchase_date)) / 86400000) > termDays) : []
     return { overLimit, overdueCount: overdue.length, overdueInvoices: overdue.map(p => p.invoice_number || p.purchase_date).slice(0, 5) }
   }
+  function supplierLegalHasActivityInSelectedMonth(supplierId, entityId) {
+    const anchor = new Date(transactionDate || todayISO())
+    const inMonth = (dateStr) => {
+      if (!dateStr) return false
+      const d = new Date(dateStr)
+      return d.getFullYear() === anchor.getFullYear() && d.getMonth() === anchor.getMonth()
+    }
+    return purchases.some(p => p.supplier_id === supplierId && p.legal_entity_id === entityId && !p.deleted_at && inMonth(p.purchase_date))
+      || openingDebts.some(d => d.supplier_id === supplierId && d.legal_entity_id === entityId && d.is_active !== false && inMonth(d.debt_date))
+      || payments.some(p => p.supplier_id === supplierId && p.legal_entity_id === entityId && inMonth(p.payment_date))
+  }
+
+  function supplierLegalVisibleInDebtList(supplierId, entityId) {
+    if (!isSupplierActiveForLegal(supplierId, entityId)) return false
+    const balance = balanceForSupplierLegal(supplierId, entityId)
+    return Math.abs(balance) > 0.004 || supplierLegalHasActivityInSelectedMonth(supplierId, entityId)
+  }
+
   function suppliersForLegalEntity(entityId) {
     const ids = new Set([
       ...purchases.filter(p => p.legal_entity_id === entityId).map(p => p.supplier_id),
       ...openingDebts.filter(d => d.legal_entity_id === entityId).map(d => d.supplier_id),
       ...payments.filter(p => p.legal_entity_id === entityId).map(p => p.supplier_id)
     ])
-    return activeSuppliers.filter(s => ids.has(s.id) && isSupplierActiveForLegal(s.id, entityId))
+    return activeSuppliers.filter(s => ids.has(s.id) && supplierLegalVisibleInDebtList(s.id, entityId))
   }
 
   function debtForLegalEntity(entityId) {
+    const visibleSupplierIds = new Set(suppliersForLegalEntity(entityId).map(s => s.id))
     const purchaseTotal = purchases
-      .filter(p => p.legal_entity_id === entityId && !p.deleted_at && isSupplierActiveForLegal(p.supplier_id, entityId))
+      .filter(p => p.legal_entity_id === entityId && visibleSupplierIds.has(p.supplier_id) && !p.deleted_at && isSupplierActiveForLegal(p.supplier_id, entityId))
       .reduce((sum, p) => sum + parseNum(p.total_amount), 0)
     const openingTotal = openingDebts
-      .filter(d => d.legal_entity_id === entityId && d.is_active !== false && isSupplierActiveForLegal(d.supplier_id, entityId))
+      .filter(d => d.legal_entity_id === entityId && visibleSupplierIds.has(d.supplier_id) && d.is_active !== false && isSupplierActiveForLegal(d.supplier_id, entityId))
       .reduce((sum, d) => sum + parseNum(d.amount), 0)
     const paymentTotal = payments
-      .filter(p => p.legal_entity_id === entityId && isSupplierActiveForLegal(p.supplier_id, entityId))
+      .filter(p => p.legal_entity_id === entityId && visibleSupplierIds.has(p.supplier_id) && isSupplierActiveForLegal(p.supplier_id, entityId))
       .reduce((sum, p) => sum + parseNum(p.amount), 0)
     return openingTotal + purchaseTotal - paymentTotal
   }
