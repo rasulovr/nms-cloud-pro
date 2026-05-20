@@ -4151,7 +4151,7 @@ function ThemeStyles() {
     .finance-line-chart-value { fill: #111827; font-size: 12px; font-weight: 800; }
     .finance-line-chart-summary {
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-template-columns: repeat(5, minmax(0, 1fr));
       gap: 10px;
       margin-top: 12px;
     }
@@ -4205,9 +4205,26 @@ function DailyRevenueLineChart({ rows = [], title = 'Выручка по дня�
   const activeDays = values.filter(v => parseNum(v) > 0).length
   const avg = activeDays ? total / activeDays : 0
   const best = rows.reduce((top, r) => parseNum(r.amount) > parseNum(top.amount) ? r : top, { day: '—', amount: 0 })
+  const weekdayNames = ['Воскресенье', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота']
+  const weekdayStats = new Map()
+  rows
+    .filter(r => parseNum(r.amount) > 0 && r.date)
+    .forEach(r => {
+      const d = new Date(`${r.date}T12:00:00`)
+      const weekday = Number.isNaN(d.getTime()) ? -1 : d.getDay()
+      if (weekday < 0) return
+      const prev = weekdayStats.get(weekday) || { weekday, name: weekdayNames[weekday], total: 0, count: 0, avg: 0 }
+      prev.total += parseNum(r.amount)
+      prev.count += 1
+      prev.avg = prev.count ? prev.total / prev.count : 0
+      weekdayStats.set(weekday, prev)
+    })
+  const weekdayRows = Array.from(weekdayStats.values()).filter(r => r.count > 0)
+  const bestWeekday = weekdayRows.reduce((top, r) => parseNum(r.avg) > parseNum(top.avg) ? r : top, { name: '—', avg: 0, count: 0 })
+  const worstWeekday = weekdayRows.reduce((low, r) => !low.count || parseNum(r.avg) < parseNum(low.avg) ? r : low, { name: '—', avg: 0, count: 0 })
   const width = 900
   const height = 230
-  const pad = { left: 54, right: 24, top: 24, bottom: 38 }
+  const pad = { left: 54, right: 24, top: 24, bottom: 20 }
   const chartW = width - pad.left - pad.right
   const chartH = height - pad.top - pad.bottom
   const count = Math.max(1, rows.length - 1)
@@ -4219,7 +4236,6 @@ function DailyRevenueLineChart({ rows = [], title = 'Выручка по дня�
   const path = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ')
   const areaPath = points.length ? `${path} L ${points[points.length - 1].x.toFixed(1)} ${pad.top + chartH} L ${points[0].x.toFixed(1)} ${pad.top + chartH} Z` : ''
   const yTicks = [0, 0.25, 0.5, 0.75, 1]
-  const xTicks = rows.filter((_, i) => i === 0 || i === rows.length - 1 || (i + 1) % 5 === 0)
 
   return <div className="card span-2 finance-daily-revenue-chart">
     <div className="card-head"><div><h3>{title}</h3><p className="hint">{subtitle}</p></div></div>
@@ -4240,12 +4256,13 @@ function DailyRevenueLineChart({ rows = [], title = 'Выручка по дня�
           <circle className="finance-line-chart-point" cx={p.x} cy={p.y} r="4.5" />
           {parseNum(p.amount) > 0 && <text className="finance-line-chart-value" x={p.x} y={Math.max(14, p.y - 10)} textAnchor="middle">{fmt(p.amount)}</text>}
         </g>)}
-        {xTicks.map(p => <text key={`x-${p.date}`} className="finance-line-chart-label" x={p.x} y={height - 12} textAnchor="middle">{p.day}</text>)}
       </svg> : <p className="hint">Нет данных по выручке за выбранный месяц.</p>}
       <div className="finance-line-chart-summary">
         <div className="metric"><span>Выручка за месяц</span><strong>{fmt(total)} AZN</strong></div>
         <div className="metric"><span>Средняя выручка / день</span><strong>{fmt(avg)} AZN</strong></div>
         <div className="metric"><span>Лучший день</span><strong>{best.day !== '—' ? `${best.day} · ${fmt(best.amount)} AZN` : '—'}</strong></div>
+        <div className="metric"><span>Лучший день недели</span><strong>{bestWeekday.count ? `${bestWeekday.name} · ${fmt(bestWeekday.avg)} AZN` : '—'}</strong></div>
+        <div className="metric"><span>Худший день недели</span><strong>{worstWeekday.count ? `${worstWeekday.name} · ${fmt(worstWeekday.avg)} AZN` : '—'}</strong></div>
       </div>
     </div>
   </div>
@@ -4586,7 +4603,7 @@ function Finance({ t, lang, onGoToExpense }) {
 
         const revenueMap = new Map()
         ;(revenueRows || []).forEach(r => {
-          const amount = parseNum(r.cash_amount) + parseNum(r.bank_amount) + parseNum(r.wolt_amount)
+          const amount = parseNum(r.cash_amount) + parseNum(r.bank_amount)
           revenueMap.set(r.branch_id, parseNum(revenueMap.get(r.branch_id)) + amount)
         })
         const totalRevenue = Array.from(revenueMap.values()).reduce((s, v) => s + parseNum(v), 0)
@@ -4719,7 +4736,7 @@ function Finance({ t, lang, onGoToExpense }) {
     const { data } = await query
     const map = new Map()
     ;(data || []).forEach(r => {
-      const amount = parseNum(r.cash_amount) + parseNum(r.bank_amount) + parseNum(r.wolt_amount)
+      const amount = parseNum(r.cash_amount) + parseNum(r.bank_amount)
       map.set(r.revenue_date, parseNum(map.get(r.revenue_date)) + amount)
     })
 
@@ -5326,7 +5343,7 @@ function Finance({ t, lang, onGoToExpense }) {
         <DailyRevenueLineChart
           rows={dailyRevenueRows}
           title="Выручка по дням за выбранный месяц"
-          subtitle={branchId === ALL_BRANCHES ? 'Суммарная выручка сети по каждому дню месяца' : `Выручка филиала ${financeBranchNameById(branchId)} по каждому дню месяца`}
+          subtitle={branchId === ALL_BRANCHES ? 'Суммарная выручка сети по дням месяца, без Wolt' : `Выручка филиала ${financeBranchNameById(branchId)} по дням месяца, без Wolt`}
         />
 
         <div className="card span-2">
