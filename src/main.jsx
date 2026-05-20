@@ -3545,7 +3545,7 @@ async function rmsCalculateNetworkForecastForMonth(y, m, scopeBranchId = 'all') 
     supabase.from('monthly_branch_salary').select('branch_id,total_salary,month').gte('month', historyStart).lt('month', historyEnd),
     supabase.from('salary_periods').select('employee_id,branch_id,salary_month,salary_gross,salary_net,final_balance,payroll_payments,employees(id,branch_id,position,is_active,employment_status)').eq('salary_month', monthDate),
     supabase.from('salary_periods').select('employee_id,branch_id,salary_month,salary_gross,salary_net,final_balance,payroll_payments,employees(id,branch_id,position,is_active,employment_status)').gte('salary_month', historyStart).lt('salary_month', historyEnd),
-    supabase.from('branches').select('id,name').eq('is_active', true),
+    supabase.from('branches').select('id,name,service_charge_enabled,service_charge_percent,service_staff_cost_percent').eq('is_active', true),
     readRmsAppSetting(RMS_BRANCH_RENT_FORECAST_SETTING, {})
   ])
 
@@ -3822,15 +3822,40 @@ async function rmsCalculateNetworkForecastForMonth(y, m, scopeBranchId = 'all') 
     : 'начисленный DSMF не найден по официальным зарплатам сотрудников'
 
   const serviceCurrent = (svcRows || []).filter(filterByBranch).reduce((s, r) => s + parseNum(r.staff_cost_amount), 0)
-  const serviceRate = revenue > 0 && serviceCurrent > 0 ? serviceCurrent / revenue : (4 / 110)
-  const serviceForecast = forecastRevenue * serviceRate
+  const branchServiceConfigMap = new Map((branchesRaw || []).map(b => [String(b.id), {
+    enabled: Boolean(b.service_charge_enabled),
+    servicePercent: parseNum(b.service_charge_percent || 10),
+    staffCostPercent: parseNum(b.service_staff_cost_percent || 4)
+  }]))
+  const serviceCurrentByBranchMap = new Map()
+  ;(svcRows || []).forEach(row => {
+    serviceCurrentByBranchMap.set(String(row.branch_id), parseNum(serviceCurrentByBranchMap.get(String(row.branch_id))) + parseNum(row.staff_cost_amount))
+  })
+  const serviceForecastForBranch = (branchId, branchRevenueCurrent = 0) => {
+    const cfg = branchServiceConfigMap.get(String(branchId)) || { enabled: false, servicePercent: 10, staffCostPercent: 4 }
+    if (!cfg.enabled) return 0
+    const branchRevenueForecast = (parseNum(branchRevenueCurrent) / Math.max(1, passed)) * monthDays
+    const actualServiceCurrent = parseNum(serviceCurrentByBranchMap.get(String(branchId)))
+    const actualRate = parseNum(branchRevenueCurrent) > 0 && actualServiceCurrent > 0 ? actualServiceCurrent / parseNum(branchRevenueCurrent) : 0
+    const configuredRate = cfg.staffCostPercent > 0 ? cfg.staffCostPercent / (100 + Math.max(0, cfg.servicePercent)) : 0
+    const rate = actualRate > 0 ? actualRate : configuredRate
+    return branchRevenueForecast * rate
+  }
+  const serviceForecast = selectedBranchId === 'all'
+    ? (revRows || []).reduce((sum, row) => sum + serviceForecastForBranch(row.branch_id, row.total_revenue), 0)
+    : serviceForecastForBranch(selectedBranchId, revenue)
+  const serviceForecastNote = selectedBranchId === 'all'
+    ? 'пропорционально прогнозной выручке только по филиалам, где включён service charge'
+    : (branchServiceConfigMap.get(String(selectedBranchId))?.enabled
+      ? 'пропорционально прогнозной выручке выбранного филиала; service charge включён в настройках филиала'
+      : 'service charge не учитывается: в настройках выбранного филиала галочка выключена')
   const taxForecast = forecastRevenue * TAX_RATE / 100
 
   const fixedDetails = [
     { name: 'Зарплата', amount: salaryForecast, note: salaryForecastNote, keepVisible: true },
     { name: 'Аренда', amount: rentForecast, note: configuredRent > 0 ? 'фиксированная аренда из настроек филиалов' : rentCurrent > 0 ? 'из текущих расходов, так как аренда в настройках не заполнена' : rentHistory > 0 ? 'среднее прошлых месяцев, так как аренда в настройках не заполнена' : 'не заполнена в настройках и нет истории' },
     { name: 'DSMF', amount: dsmfForecast, note: dsmfForecastNote, keepVisible: true },
-    { name: 'Service charge персоналу', amount: serviceForecast, note: 'пропорционально прогнозной выручке' },
+    { name: 'Service charge персоналу', amount: serviceForecast, note: serviceForecastNote },
     { name: `Налог ${TAX_RATE}%`, amount: taxForecast, note: 'от прогнозной выручки' }
   ].filter(row => row.keepVisible || parseNum(row.amount) > 0)
 
