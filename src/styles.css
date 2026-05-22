@@ -1320,3 +1320,101 @@ button:not(.nav):not(.rms-pro-logout):hover{transform:translateY(-1px)!important
   .rms-pro-shell .finance-line-chart-summary .metric-number,
   .finance-line-chart-summary .metric-number{font-size:28px!important;}
 }
+
+
+/* RMS Pro v20 — Restaurant Intelligence debts dashboard */
+.rms-pro-shell .debt-intelligence-panel{
+  display:flex;
+  flex-direction:column;
+  gap:16px;
+  margin:0 0 18px;
+}
+.rms-pro-shell .debt-kpi-grid{
+  display:grid;
+  grid-template-columns:repeat(5,minmax(0,1fr));
+  gap:14px;
+}
+.rms-pro-shell .debt-kpi-card{
+  min-height:104px;
+  border:1px solid rgba(226,232,240,.92);
+  border-radius:18px;
+  background:rgba(255,255,255,.92);
+  box-shadow:0 18px 40px rgba(15,23,42,.055);
+  padding:16px 16px 14px;
+  display:flex;
+  flex-direction:column;
+  justify-content:space-between;
+  position:relative;
+  overflow:hidden;
+}
+.rms-pro-shell .debt-kpi-card:before{
+  content:'';
+  position:absolute;
+  inset:0 auto 0 0;
+  width:4px;
+  background:#2563eb;
+  opacity:.75;
+}
+.rms-pro-shell .debt-kpi-danger:before{background:#ef4444}
+.rms-pro-shell .debt-kpi-success:before{background:#10b981}
+.rms-pro-shell .debt-kpi-info:before{background:#3b82f6}
+.rms-pro-shell .debt-kpi-muted:before{background:#64748b}
+.rms-pro-shell .debt-kpi-label{font-size:12px;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:.03em}
+.rms-pro-shell .debt-kpi-value{font-size:24px;font-weight:900;color:#0f172a;letter-spacing:-.035em;line-height:1.05}
+.rms-pro-shell .debt-kpi-sub{font-size:12px;font-weight:700;color:#64748b;line-height:1.25}
+.rms-pro-shell .debt-kpi-danger .debt-kpi-value{color:#dc2626}
+.rms-pro-shell .debt-kpi-success .debt-kpi-value{color:#059669}
+.rms-pro-shell .debt-kpi-info .debt-kpi-value{color:#2563eb}
+.rms-pro-shell .debt-charts-grid{
+  display:grid;
+  grid-template-columns:1.05fr 1.3fr 1fr;
+  gap:14px;
+}
+.rms-pro-shell .debt-chart-card{
+  min-height:232px;
+  border:1px solid rgba(226,232,240,.92);
+  border-radius:20px;
+  background:linear-gradient(180deg,rgba(255,255,255,.96),rgba(248,250,252,.94));
+  box-shadow:0 20px 44px rgba(15,23,42,.055);
+  padding:16px;
+  overflow:hidden;
+}
+.rms-pro-shell .debt-chart-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px}
+.rms-pro-shell .debt-chart-head h3{margin:0;font-size:16px;font-weight:900;color:#0f172a;letter-spacing:-.02em}
+.rms-pro-shell .debt-chart-head span{font-size:12px;font-weight:700;color:#64748b;white-space:nowrap}
+.rms-pro-shell .debt-donut-layout{position:relative;display:grid;grid-template-columns:136px 1fr;align-items:center;gap:14px;min-height:160px}
+.rms-pro-shell .debt-donut-svg{width:136px;height:136px;transform:rotate(-90deg)}
+.rms-pro-shell .debt-donut-bg{fill:none;stroke:#e2e8f0;stroke-width:14}
+.rms-pro-shell .debt-donut-ok{fill:none;stroke:#10b981;stroke-width:14;stroke-linecap:round}
+.rms-pro-shell .debt-donut-overdue{fill:none;stroke:#ef4444;stroke-width:14;stroke-linecap:round}
+.rms-pro-shell .debt-donut-center{position:absolute;left:0;top:50%;width:136px;transform:translateY(-50%);text-align:center;color:#0f172a}
+.rms-pro-shell .debt-donut-center b{display:block;font-size:18px;font-weight:900;letter-spacing:-.03em}
+.rms-pro-shell .debt-donut-center span{display:block;font-size:11px;font-weight:800;color:#64748b;margin-top:2px}
+.rms-pro-shell .debt-donut-legend{display:flex;flex-direction:column;gap:10px;font-size:12px;font-weight:700;color:#475569}
+.rms-pro-shell .debt-donut-legend div{display:flex;align-items:center;gap:8px;justify-content:space-between;border-bottom:1px solid rgba(226,232,240,.72);padding-bottom:8px}
+.rms-pro-shell .debt-donut-legend b{color:#0f172a;margin-left:auto}
+.rms-pro-shell .risk-dot{width:8px;height:8px;border-radius:999px;display:inline-block;flex:0 0 auto}
+.rms-pro-shell .risk-red{background:#ef4444}.rms-pro-shell .risk-green{background:#10b981}
+.rms-pro-shell .debt-trend-svg{width:100%;height:170px;display:block}
+.rms-pro-shell .debt-trend-grid{stroke:rgba(148,163,184,.25);stroke-width:1;stroke-dasharray:4 4}
+.rms-pro-shell .debt-trend-area{fill:rgba(124,58,237,.11)}
+.rms-pro-shell .debt-trend-line{fill:none;stroke:#7c3aed;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+.rms-pro-shell .debt-trend-label{font-size:10px;font-weight:800;fill:#64748b;text-transform:capitalize}
+.rms-pro-shell .debt-risk-list{display:flex;flex-direction:column;gap:12px;margin-top:8px}
+.rms-pro-shell .debt-risk-row-top{display:flex;justify-content:space-between;gap:12px;font-size:12px;font-weight:800;color:#0f172a;margin-bottom:6px}
+.rms-pro-shell .debt-risk-row-top span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rms-pro-shell .debt-risk-row-top b{color:#dc2626}
+.rms-pro-shell .debt-risk-track{height:8px;border-radius:999px;background:#e2e8f0;overflow:hidden}
+.rms-pro-shell .debt-risk-track i{display:block;height:100%;border-radius:inherit;background:linear-gradient(90deg,#f97316,#ef4444)}
+.rms-pro-shell .debt-empty-note{font-size:13px;font-weight:700;color:#64748b;padding:22px 0;text-align:center}
+
+@media(max-width:1200px){
+  .rms-pro-shell .debt-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .rms-pro-shell .debt-charts-grid{grid-template-columns:1fr}
+}
+@media(max-width:760px){
+  .rms-pro-shell .debt-kpi-grid{grid-template-columns:1fr}
+  .rms-pro-shell .debt-donut-layout{grid-template-columns:1fr;justify-items:center}
+  .rms-pro-shell .debt-donut-center{left:50%;transform:translate(-50%,-50%)}
+  .rms-pro-shell .debt-donut-legend{width:100%}
+}
