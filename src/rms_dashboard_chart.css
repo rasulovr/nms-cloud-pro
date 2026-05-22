@@ -17,9 +17,9 @@
     .finance-line-chart-grid { stroke: rgba(148,163,184,.28); stroke-width: 1; stroke-dasharray: 4 4; }
     .finance-line-chart-axis { stroke: rgba(100,116,139,.36); stroke-width: 1; }
     .finance-line-chart-area { fill: rgba(37,99,235,.13); }
-    .finance-line-chart-line { fill: none; stroke: #1d4ed8; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
-    .finance-line-chart-point { fill: #0f172a; stroke: #fff; stroke-width: 2; }
-    .finance-line-chart-best-point { fill: #1e3a8a; stroke: #fff; stroke-width: 2.4; }
+    .finance-line-chart-line { fill: none; stroke: #2563eb; stroke-width: 2.8; stroke-linecap: round; stroke-linejoin: round; }
+    .finance-line-chart-point { display: none; }
+    .finance-line-chart-best-point { display: none; }
     .finance-line-chart-label { fill: #475569; font-size: 12px; font-weight: 600; }
     .finance-line-chart-x-label { fill: #334155; font-size: 11px; font-weight: 600; }
     .finance-line-chart-value { fill: #0f172a; font-size: 12px; font-weight: 800; }
