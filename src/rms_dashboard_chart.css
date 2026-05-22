@@ -31,26 +31,22 @@
       margin-top: 16px;
     }
     .finance-line-chart-summary .metric {
-      min-height: 96px;
-      border-radius: 18px;
-      background: rgba(248,250,252,.96);
-      border: 1px solid rgba(226,232,240,.9);
-      padding: 14px 16px 12px;
+      min-height: 112px;
+      border-radius: 16px;
+      background: rgba(255,255,255,.78);
+      border: 1px solid rgba(203,213,225,.78);
+      padding: 17px 18px 15px;
       display: flex;
       flex-direction: column;
-      justify-content: space-between;
+      justify-content: flex-start;
     }
-    .finance-line-chart-summary .metric-title { color: #64748b; font-size: 13px; line-height: 1.35; font-weight: 500; }
-    .finance-line-chart-summary .metric-date { margin-top: 8px; color: #0f172a; font-size: 13px; font-weight: 500; }
-    .finance-line-chart-summary .metric-weekday { margin-top: 8px; color: #0f172a; font-size: 13px; font-weight: 800; }
-    .finance-line-chart-summary .metric-amount { display: flex; align-items: flex-end; gap: 6px; margin-top: 10px; line-height: 1; }
-    .finance-line-chart-summary .metric-number { color: #0f172a; font-size: 24px; font-weight: 500; letter-spacing: -.03em; }
-    .finance-line-chart-summary .metric-currency { color: #475569; font-size: 11px; font-weight: 700; line-height: 1.05; padding-bottom: 2px; }
+    .finance-line-chart-summary .metric-title { color: #334155; font-size: 14px; line-height: 1.32; font-weight: 650; margin: 0; }
+    .finance-line-chart-summary .metric-date { margin-top: 6px; color: #0f172a; font-size: 14px; font-weight: 650; }
+    .finance-line-chart-summary .metric-weekday { margin-top: 6px; color: #0f172a; font-size: 14px; font-weight: 850; }
+    .finance-line-chart-summary .metric-amount { display: flex; align-items: flex-end; justify-content: flex-start; gap: 8px; margin-top: 12px; line-height: 1; }
+    .finance-line-chart-summary .metric-number { color: #0f172a; font-size: 25px; font-weight: 850; letter-spacing: -.045em; }
+    .finance-line-chart-summary .metric-currency { color: #475569; font-size: 11px; font-weight: 850; line-height: 1.05; padding-bottom: 2px; margin-left: 2px; }
     @media (max-width: 760px) {
       .finance-line-chart-summary { grid-template-columns: 1fr; }
       .finance-line-chart-svg { height: 230px; }
     }
-/* RMS Pro chart polish v4 */
-.finance-line-chart-summary .metric-title{font-weight:600!important;}
-.finance-line-chart-summary .metric-weekday{font-weight:800!important;}
-.finance-line-chart-summary .metric-currency{font-size:10px!important;}
