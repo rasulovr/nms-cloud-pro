@@ -1171,6 +1171,40 @@ function MarketIntelligence({ t }) {
     await loadCompetitors()
   }
 
+  async function scanCompetitor(competitor) {
+    if (!competitor?.id) return
+    if (!competitor?.menu_url) {
+      setStatus('У конкурента не указана ссылка на меню.')
+      return
+    }
+
+    setStatus(`Сканирование меню: ${competitor.name}...`)
+    setLoading(true)
+
+    try {
+      const { data, error } = await supabase.functions.invoke('scan-competitor-menu', {
+        body: { competitor_id: competitor.id }
+      })
+
+      if (error) {
+        setStatus(`Ошибка сканирования: ${error.message || 'Edge Function вернула ошибку'}`)
+        return
+      }
+
+      if (!data?.ok) {
+        setStatus(`Сканирование не выполнено: ${data?.error || 'неизвестная ошибка'}`)
+        return
+      }
+
+      setStatus(`Сканирование завершено. Найдено: ${data.found || 0}, сохранено: ${data.inserted || 0}.`)
+      await Promise.all([loadCompetitors(), loadMarketItems()])
+    } catch (err) {
+      setStatus(`Ошибка сканирования: ${err?.message || String(err)}`)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const filteredItems = useMemo(() => {
     const q = miNormalizeName(search)
     return marketItems.filter(item => {
@@ -1301,18 +1335,24 @@ function MarketIntelligence({ t }) {
         <h3>Конкуренты</h3>
         <div className="mi-table-wrap">
           <table className="mi-table">
-            <thead><tr><th>Название</th><th>Район</th><th>Сегмент</th><th>Меню</th><th>Статус</th><th>Действие</th></tr></thead>
+            <thead><tr><th>Название</th><th>Район</th><th>Сегмент</th><th>Меню</th><th>Сканер</th><th>Статус</th><th>Действие</th></tr></thead>
             <tbody>
               {competitors.map(c => (
                 <tr key={c.id}>
                   <td><strong>{c.name}</strong>{c.notes ? <div className="mi-muted">{c.notes}</div> : null}</td>
                   <td>{c.area || '—'}</td><td>{c.segment || '—'}</td>
                   <td>{c.menu_url ? <a className="mi-link" href={c.menu_url} target="_blank" rel="noreferrer">Открыть меню</a> : '—'}</td>
+                  <td>
+                    <button className="mi-btn mi-btn-light" disabled={loading || !c.menu_url} onClick={() => scanCompetitor(c)}>Сканировать меню</button>
+                    <div className="mi-muted">{c.last_scan_at ? `Последний скан: ${new Date(c.last_scan_at).toLocaleString()}` : 'Ещё не сканировалось'}</div>
+                    {c.scan_status ? <div className="mi-muted">Статус: {c.scan_status}</div> : null}
+                    {c.scan_error ? <div className="mi-muted">Ошибка: {c.scan_error}</div> : null}
+                  </td>
                   <td><span className="mi-badge">{c.is_active ? 'Активен' : 'Скрыт'}</span></td>
                   <td><button className="mi-btn mi-btn-light" onClick={() => toggleCompetitor(c.id, c.is_active)}>{c.is_active ? 'Скрыть' : 'Вернуть'}</button></td>
                 </tr>
               ))}
-              {!competitors.length ? <tr><td colSpan="6" className="mi-muted">Пока нет конкурентов.</td></tr> : null}
+              {!competitors.length ? <tr><td colSpan="7" className="mi-muted">Пока нет конкурентов.</td></tr> : null}
             </tbody>
           </table>
         </div>
@@ -4591,42 +4631,53 @@ function ThemeStyles() {
       min-height: 280px;
     }
     .finance-line-chart-wrap {
-      margin-top: 10px;
-      border-radius: 20px;
+      margin-top: 16px;
+      border-radius: 22px;
       background: linear-gradient(180deg, rgba(248,250,252,.98), rgba(255,255,255,.98));
-      border: 1px solid rgba(226,232,240,.92);
-      padding: 14px 14px 8px;
+      border: 1px solid rgba(226,232,240,.94);
+      padding: 18px 18px 16px;
       overflow: hidden;
     }
     .finance-line-chart-svg {
       width: 100%;
-      height: 230px;
+      height: 300px;
       display: block;
     }
-    .finance-line-chart-grid { stroke: rgba(148,163,184,.22); stroke-width: 1; }
-    .finance-line-chart-axis { stroke: rgba(100,116,139,.35); stroke-width: 1; }
-    .finance-line-chart-area { fill: rgba(59,130,246,.11); }
-    .finance-line-chart-line { fill: none; stroke: #64748b; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
-    .finance-line-chart-point { fill: #111827; stroke: #fff; stroke-width: 2; }
-    .finance-line-chart-label { fill: #64748b; font-size: 11px; font-weight: 600; }
-    .finance-line-chart-value { fill: #111827; font-size: 12px; font-weight: 800; }
+    .finance-line-chart-grid { stroke: rgba(148,163,184,.28); stroke-width: 1; stroke-dasharray: 4 4; }
+    .finance-line-chart-axis { stroke: rgba(100,116,139,.36); stroke-width: 1; }
+    .finance-line-chart-area { fill: rgba(37,99,235,.13); }
+    .finance-line-chart-line { fill: none; stroke: #1d4ed8; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
+    .finance-line-chart-point { fill: #0f172a; stroke: #fff; stroke-width: 2; }
+    .finance-line-chart-best-point { fill: #1e3a8a; stroke: #fff; stroke-width: 2.4; }
+    .finance-line-chart-label { fill: #475569; font-size: 12px; font-weight: 600; }
+    .finance-line-chart-x-label { fill: #334155; font-size: 11px; font-weight: 600; }
+    .finance-line-chart-value { fill: #0f172a; font-size: 12px; font-weight: 800; }
+    .finance-line-chart-date { fill: #0f172a; font-size: 11px; font-weight: 700; }
     .finance-line-chart-summary {
       display: grid;
       grid-template-columns: repeat(5, minmax(0, 1fr));
-      gap: 10px;
-      margin-top: 12px;
+      gap: 12px;
+      margin-top: 16px;
     }
     .finance-line-chart-summary .metric {
-      border-radius: 16px;
-      background: rgba(248,250,252,.92);
-      border: 1px solid rgba(226,232,240,.86);
-      padding: 10px 12px;
+      min-height: 96px;
+      border-radius: 18px;
+      background: rgba(248,250,252,.96);
+      border: 1px solid rgba(226,232,240,.9);
+      padding: 14px 16px 12px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
     }
-    .finance-line-chart-summary .metric span { color: #64748b; font-size: 12px; }
-    .finance-line-chart-summary .metric strong { display: block; margin-top: 4px; font-size: 18px; }
+    .finance-line-chart-summary .metric-title { color: #64748b; font-size: 13px; line-height: 1.35; }
+    .finance-line-chart-summary .metric-date { margin-top: 8px; color: #0f172a; font-size: 13px; font-weight: 500; }
+    .finance-line-chart-summary .metric-weekday { margin-top: 8px; color: #0f172a; font-size: 13px; font-weight: 800; }
+    .finance-line-chart-summary .metric-amount { display: flex; align-items: flex-end; gap: 6px; margin-top: 10px; line-height: 1; }
+    .finance-line-chart-summary .metric-number { color: #0f172a; font-size: 24px; font-weight: 500; letter-spacing: -.03em; }
+    .finance-line-chart-summary .metric-currency { color: #475569; font-size: 11px; font-weight: 700; line-height: 1.05; padding-bottom: 2px; }
     @media (max-width: 760px) {
       .finance-line-chart-summary { grid-template-columns: 1fr; }
-      .finance-line-chart-svg { height: 210px; }
+      .finance-line-chart-svg { height: 230px; }
     }
 
     .permission-grid { display: grid; grid-template-columns: minmax(160px, 1fr) 160px; gap: 10px; align-items: center; }
@@ -4661,12 +4712,20 @@ function MiniBarChart({ rows, valueKey = 'revenue', labelKey = 'name', title, su
 
 function DailyRevenueLineChart({ rows = [], title = 'Выручка по дням', subtitle = '' }) {
   const values = rows.map(r => parseNum(r.amount))
-  const max = Math.max(1, ...values)
+  const maxRaw = Math.max(1, ...values)
+  const max = Math.ceil(maxRaw / 1000) * 1000
   const total = values.reduce((s, v) => s + parseNum(v), 0)
   const activeDays = values.filter(v => parseNum(v) > 0).length
   const avg = activeDays ? total / activeDays : 0
-  const best = rows.reduce((top, r) => parseNum(r.amount) > parseNum(top.amount) ? r : top, { day: '—', amount: 0 })
+  const best = rows.reduce((top, r) => parseNum(r.amount) > parseNum(top.amount) ? r : top, { day: '—', date: '', amount: 0 })
   const weekdayNames = ['Воскресенье', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота']
+  const monthNamesRu = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря']
+  const formatDayMonth = (row) => {
+    if (!row?.date) return row?.day && row.day !== '—' ? String(row.day) : '—'
+    const d = new Date(`${row.date}T12:00:00`)
+    if (Number.isNaN(d.getTime())) return row?.day && row.day !== '—' ? String(row.day) : '—'
+    return `${d.getDate()} ${monthNamesRu[d.getMonth()]}`
+  }
   const weekdayStats = new Map()
   rows
     .filter(r => parseNum(r.amount) > 0 && r.date)
@@ -4683,9 +4742,9 @@ function DailyRevenueLineChart({ rows = [], title = 'Выручка по дня�
   const weekdayRows = Array.from(weekdayStats.values()).filter(r => r.count > 0)
   const bestWeekday = weekdayRows.reduce((top, r) => parseNum(r.avg) > parseNum(top.avg) ? r : top, { name: '—', avg: 0, count: 0 })
   const worstWeekday = weekdayRows.reduce((low, r) => !low.count || parseNum(r.avg) < parseNum(low.avg) ? r : low, { name: '—', avg: 0, count: 0 })
-  const width = 900
-  const height = 230
-  const pad = { left: 54, right: 24, top: 24, bottom: 20 }
+  const width = 1000
+  const height = 300
+  const pad = { left: 42, right: 10, top: 30, bottom: 34 }
   const chartW = width - pad.left - pad.right
   const chartH = height - pad.top - pad.bottom
   const count = Math.max(1, rows.length - 1)
@@ -4697,11 +4756,19 @@ function DailyRevenueLineChart({ rows = [], title = 'Выручка по дня�
   const path = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ')
   const areaPath = points.length ? `${path} L ${points[points.length - 1].x.toFixed(1)} ${pad.top + chartH} L ${points[0].x.toFixed(1)} ${pad.top + chartH} Z` : ''
   const yTicks = [0, 0.25, 0.5, 0.75, 1]
+  const bestPoint = points.find(p => parseNum(p.amount) === parseNum(best.amount) && parseNum(p.amount) > 0)
+
+  const AmountBlock = ({ value }) => (
+    <div className="metric-amount">
+      <span className="metric-number">{fmt(value)}</span>
+      <span className="metric-currency">AZN</span>
+    </div>
+  )
 
   return <div className="card span-2 finance-daily-revenue-chart">
     <div className="card-head"><div><h3>{title}</h3><p className="hint">{subtitle}</p></div></div>
     <div className="finance-line-chart-wrap">
-      {rows.length ? <svg className="finance-line-chart-svg" viewBox={`0 0 ${width} ${height}`} role="img" aria-label={title}>
+      {rows.length ? <svg className="finance-line-chart-svg" viewBox={`0 0 ${width} ${height}`} role="img" aria-label={title} preserveAspectRatio="none">
         {yTicks.map(tick => {
           const y = pad.top + chartH - tick * chartH
           const label = max * tick
@@ -4713,17 +4780,20 @@ function DailyRevenueLineChart({ rows = [], title = 'Выручка по дня�
         <line className="finance-line-chart-axis" x1={pad.left} y1={pad.top + chartH} x2={width - pad.right} y2={pad.top + chartH} />
         {areaPath && <path className="finance-line-chart-area" d={areaPath} />}
         {path && <path className="finance-line-chart-line" d={path} />}
-        {points.filter((_, i) => i === 0 || i === points.length - 1 || parseNum(points[i].amount) === parseNum(best.amount)).map(p => <g key={`p-${p.date}-${p.amount}`}>
-          <circle className="finance-line-chart-point" cx={p.x} cy={p.y} r="4.5" />
-          {parseNum(p.amount) > 0 && <text className="finance-line-chart-value" x={p.x} y={Math.max(14, p.y - 10)} textAnchor="middle">{fmt(p.amount)}</text>}
-        </g>)}
+        {bestPoint && <g key={`best-${bestPoint.date}-${bestPoint.amount}`}>
+          <circle className="finance-line-chart-best-point" cx={bestPoint.x} cy={bestPoint.y} r="5" />
+          <text className="finance-line-chart-value" x={bestPoint.x} y={Math.max(15, bestPoint.y - 22)} textAnchor="middle">{fmt(bestPoint.amount)}</text>
+          <text className="finance-line-chart-date" x={bestPoint.x} y={Math.max(29, bestPoint.y - 8)} textAnchor="middle">{formatDayMonth(bestPoint)}</text>
+        </g>}
+        {points.filter((_, i) => i === 0 || i === points.length - 1).map(p => <circle key={`endpoint-${p.date}-${p.amount}`} className="finance-line-chart-point" cx={p.x} cy={p.y} r="4.5" />)}
+        {points.map((p, i) => <text key={`x-${p.date || i}`} className="finance-line-chart-x-label" x={p.x} y={height - 9} textAnchor="middle">{p.day}</text>)}
       </svg> : <p className="hint">Нет данных по выручке за выбранный месяц.</p>}
       <div className="finance-line-chart-summary">
-        <div className="metric"><span>Выручка за месяц</span><strong>{fmt(total)} AZN</strong></div>
-        <div className="metric"><span>Средняя выручка / день</span><strong>{fmt(avg)} AZN</strong></div>
-        <div className="metric"><span>Лучший день</span><strong>{best.day !== '—' ? `${best.day} · ${fmt(best.amount)} AZN` : '—'}</strong></div>
-        <div className="metric"><span>Лучший день недели</span><strong>{bestWeekday.count ? `${bestWeekday.name} · ${fmt(bestWeekday.avg)} AZN` : '—'}</strong></div>
-        <div className="metric"><span>Худший день недели</span><strong>{worstWeekday.count ? `${worstWeekday.name} · ${fmt(worstWeekday.avg)} AZN` : '—'}</strong></div>
+        <div className="metric"><div className="metric-title">Выручка за<br />месяц</div><AmountBlock value={total} /></div>
+        <div className="metric"><div className="metric-title">Средняя<br />выручка / день</div><AmountBlock value={avg} /></div>
+        <div className="metric"><div><div className="metric-title"><b style={{color: '#0f172a'}}>Лучший день</b></div><div className="metric-date">{best.day !== '—' ? formatDayMonth(best) : '—'}</div></div><AmountBlock value={best.amount} /></div>
+        <div className="metric"><div><div className="metric-title">Лучший день<br />недели</div><div className="metric-weekday">{bestWeekday.count ? bestWeekday.name : '—'}</div></div><AmountBlock value={bestWeekday.avg} /></div>
+        <div className="metric"><div><div className="metric-title">Худший день<br />недели</div><div className="metric-weekday">{worstWeekday.count ? worstWeekday.name : '—'}</div></div><AmountBlock value={worstWeekday.avg} /></div>
       </div>
     </div>
   </div>
