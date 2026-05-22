@@ -1660,10 +1660,11 @@ function App() {
         <ResponsiveAndSettingsStyles />
         <RMSProInterfaceStyles />
         <RMSProV6Styles />
+        <RMSProV9Styles />
         <GlobalProgressOverlay />
         <div className="rms-pro-topbar">
           <div className="rms-pro-topbar-title">
-            <button className="rms-pro-back" type="button" onClick={() => setSection('dashboard')}>‹</button>
+            <button className="rms-pro-back" type="button" onClick={() => setSection('dashboard')} aria-label="Назад"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M15 6l-6 6 6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg></button>
             <span>{activeTitle}</span>
           </div>
           <div className="rms-pro-topbar-actions">
@@ -16413,6 +16414,126 @@ function Metric({ label, value }) {
 
 function SummaryMetric({ label, value }) {
   return <div className="revenue-summary-row"><span>{label}</span><strong>{value}</strong></div>
+}
+
+
+function RMSProV9Styles() {
+  return <style>{`
+    /* RMS Pro UI v9 — cleaner field rows, balanced header arrow and softer active navigation */
+    .rms-pro-shell .rms-pro-topbar-title{
+      display:flex!important;
+      align-items:center!important;
+      gap:16px!important;
+      min-height:42px!important;
+    }
+    .rms-pro-shell .rms-pro-back{
+      width:38px!important;
+      height:38px!important;
+      min-width:38px!important;
+      border-radius:12px!important;
+      display:inline-flex!important;
+      align-items:center!important;
+      justify-content:center!important;
+      padding:0!important;
+      margin:0!important;
+      color:#10233f!important;
+      background:rgba(255,255,255,.72)!important;
+      border:1px solid rgba(203,213,225,.82)!important;
+      box-shadow:0 10px 24px rgba(15,23,42,.04)!important;
+      line-height:1!important;
+      transform:none!important;
+    }
+    .rms-pro-shell .rms-pro-back svg{
+      width:20px!important;
+      height:20px!important;
+      display:block!important;
+    }
+    .rms-pro-shell .rms-pro-back:hover{
+      background:#fff!important;
+      border-color:rgba(148,163,184,.82)!important;
+      box-shadow:0 14px 30px rgba(15,23,42,.07)!important;
+      transform:none!important;
+    }
+
+    .rms-pro-shell .rms-pro-nav-item:hover,
+    .rms-pro-shell .rms-pro-nav-item.active,
+    .rms-pro-shell .rms-pro-nav-item:focus-visible,
+    .rms-pro-shell .rms-pro-nav-item.nav:hover,
+    .rms-pro-shell .rms-pro-nav-item.nav.active,
+    .rms-pro-shell .rms-pro-nav-item.nav:focus-visible{
+      background:linear-gradient(90deg,rgba(255,255,255,.105),rgba(255,255,255,.055))!important;
+      border-color:rgba(148,163,184,.20)!important;
+      color:#f8fbff!important;
+      box-shadow:none!important;
+      transform:none!important;
+    }
+    .rms-pro-shell .rms-pro-nav-item.active .rms-pro-nav-icon,
+    .rms-pro-shell .rms-pro-nav-item:hover .rms-pro-nav-icon{
+      background:rgba(255,255,255,.075)!important;
+      color:#eaf2ff!important;
+    }
+
+    .rms-pro-shell .card .metric,
+    .rms-pro-shell .module-placeholder .metric,
+    .rms-pro-shell .mini-grid .metric{
+      min-height:44px!important;
+      display:flex!important;
+      align-items:center!important;
+      justify-content:space-between!important;
+      gap:18px!important;
+      padding:11px 0!important;
+      margin:0!important;
+      border:0!important;
+      border-bottom:1px solid rgba(226,232,240,.92)!important;
+      border-radius:0!important;
+      background:transparent!important;
+      box-shadow:none!important;
+    }
+    .rms-pro-shell .card .metric:last-child,
+    .rms-pro-shell .module-placeholder .metric:last-child,
+    .rms-pro-shell .mini-grid .metric:last-child{
+      border-bottom:0!important;
+    }
+    .rms-pro-shell .card .metric span,
+    .rms-pro-shell .module-placeholder .metric span,
+    .rms-pro-shell .mini-grid .metric span{
+      color:#475569!important;
+      font-size:15px!important;
+      line-height:1.35!important;
+      font-weight:560!important;
+      letter-spacing:-.015em!important;
+    }
+    .rms-pro-shell .card .metric strong,
+    .rms-pro-shell .module-placeholder .metric strong,
+    .rms-pro-shell .mini-grid .metric strong{
+      color:#061328!important;
+      font-size:16px!important;
+      line-height:1!important;
+      font-weight:850!important;
+      font-variant-numeric:tabular-nums!important;
+      letter-spacing:-.018em!important;
+      white-space:nowrap!important;
+    }
+    .rms-pro-shell .mini-grid{
+      gap:0!important;
+    }
+    .rms-pro-shell .mini-grid .metric{
+      padding:13px 0!important;
+    }
+
+    .rms-pro-shell .finance-line-chart-summary .metric{
+      border-radius:16px!important;
+      border:1px solid rgba(226,232,240,.92)!important;
+      background:rgba(255,255,255,.78)!important;
+      padding:16px 18px 14px!important;
+      min-height:124px!important;
+      box-shadow:0 12px 26px rgba(15,23,42,.045)!important;
+    }
+    .rms-pro-shell .finance-line-chart-summary .metric span,
+    .rms-pro-shell .finance-line-chart-summary .metric strong{
+      white-space:normal!important;
+    }
+  `}</style>
 }
 
 createRoot(document.getElementById('root')).render(<App />)
