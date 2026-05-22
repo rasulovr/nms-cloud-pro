@@ -1072,3 +1072,16 @@ button:not(.nav):not(.rms-pro-logout):hover{transform:translateY(-1px)!important
 .rms-pro-shell .finance-line-chart-summary .metric strong{white-space:normal!important;}
 @media(max-width:1200px){.rms-pro-shell .finance-line-chart-summary{grid-template-columns:repeat(2,minmax(0,1fr))!important;}.rms-pro-shell .finance-line-chart-summary .metric{min-height:146px!important;}}
 @media(max-width:760px){.rms-pro-shell .finance-line-chart-summary{grid-template-columns:1fr!important;}.rms-pro-shell .finance-line-chart-svg{height:260px!important;}.rms-pro-shell .finance-line-chart-summary .metric{min-height:132px!important;}}
+
+/* RMS Pro chart final overrides: confirmed revenue chart/cards visual */
+.rms-pro-shell .finance-line-chart-svg{height:330px!important;}
+.rms-pro-shell .finance-line-chart-area{fill:url(#financeDailyRevenueGradient)!important;}
+.rms-pro-shell .finance-line-chart-summary .metric{min-height:138px!important;padding:18px 20px 20px!important;display:grid!important;grid-template-rows:auto 1fr auto!important;align-items:start!important;}
+.rms-pro-shell .finance-line-chart-summary .metric-number{font-size:31px!important;font-weight:900!important;color:#071327!important;letter-spacing:-.055em!important;white-space:nowrap!important;}
+.rms-pro-shell .finance-line-chart-summary .metric-currency{font-size:13px!important;font-weight:780!important;color:#475569!important;white-space:nowrap!important;}
+.rms-pro-shell .finance-line-chart-summary .metric-amount{margin-top:18px!important;display:flex!important;align-items:flex-end!important;gap:10px!important;white-space:nowrap!important;}
+.rms-pro-shell .finance-line-chart-summary .metric-title{font-size:15.5px!important;font-weight:850!important;color:#071327!important;line-height:1.22!important;}
+.rms-pro-shell .finance-line-chart-summary .metric-date{color:#16a34a!important;font-weight:850!important;}
+.rms-pro-shell .finance-line-chart-summary .metric-weekday{color:#2563eb!important;font-weight:900!important;}
+.rms-pro-shell .finance-line-chart-summary .metric-worst .metric-weekday,
+.rms-pro-shell .finance-line-chart-summary .metric:nth-child(5) .metric-weekday{color:#dc2626!important;}
