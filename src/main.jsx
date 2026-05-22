@@ -87,20 +87,41 @@ const RMS_PRO_NAV_GROUPS = [
   { title: 'ИНСТРУМЕНТЫ', ids: ['market', 'settings'] }
 ]
 
-const RMS_PRO_SECTION_ICONS = {
-  dashboard: '⌂',
-  revenue: '↗',
-  finance: '◉',
-  reports: '▥',
-  recipes: '▤',
-  salaries: '◇',
-  suppliers: '□',
-  debts: '◌',
-  qrmenu: '⌗',
-  loyalty: '★',
-  market: '▮',
-  settings: '⚙'
+function RmsIcon({ type }) {
+  const common = { width: 20, height: 20, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.9, strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': true }
+  const icons = {
+    dashboard: <svg {...common}><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10.5V20h13v-9.5"/><path d="M9 20v-6h6v6"/></svg>,
+    revenue: <svg {...common}><path d="M4 18V6"/><path d="M4 18h16"/><path d="m7 15 4-4 3 3 5-7"/><path d="M16 7h3v3"/></svg>,
+    finance: <svg {...common}><rect x="3.5" y="5" width="17" height="14" rx="3"/><path d="M7 9h10"/><path d="M8 14h.01"/><path d="M12 14h4"/></svg>,
+    reports: <svg {...common}><path d="M4 19V5"/><path d="M4 19h16"/><rect x="7" y="11" width="2.5" height="5" rx=".6"/><rect x="11" y="8" width="2.5" height="8" rx=".6"/><rect x="15" y="6" width="2.5" height="10" rx=".6"/></svg>,
+    recipes: <svg {...common}><path d="M6 3.8h9.5L19 7.3V20a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 5 20V5.3A1.5 1.5 0 0 1 6.5 3.8Z"/><path d="M15 4v4h4"/><path d="M8 12h8"/><path d="M8 16h6"/></svg>,
+    suppliers: <svg {...common}><path d="M4 8.5 12 4l8 4.5-8 4.5-8-4.5Z"/><path d="M4 13l8 4.5 8-4.5"/><path d="M4 17l8 4.5 8-4.5"/></svg>,
+    debts: <svg {...common}><path d="M4 7h16"/><path d="M6 7V5h12v2"/><rect x="5" y="7" width="14" height="12" rx="2"/><path d="M9 12h6"/><path d="M9 15h4"/></svg>,
+    qrmenu: <svg {...common}><path d="M4 4h6v6H4z"/><path d="M14 4h6v6h-6z"/><path d="M4 14h6v6H4z"/><path d="M14 14h2.5"/><path d="M19 14h1"/><path d="M14 17h6"/><path d="M17 20h3"/><path d="M14 20h.01"/></svg>,
+    loyalty: <svg {...common}><path d="m12 3 2.6 5.3 5.8.8-4.2 4.1 1 5.8-5.2-2.7L6.8 19l1-5.8L3.6 9.1l5.8-.8L12 3Z"/></svg>,
+    market: <svg {...common}><path d="M4 19V5"/><path d="M20 19H4"/><path d="M8 16v-5"/><path d="M12 16V8"/><path d="M16 16v-9"/></svg>,
+    settings: <svg {...common}><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.88-.34 1.7 1.7 0 0 0-1.03 1.56V21a2 2 0 0 1-4 0v-.07a1.7 1.7 0 0 0-1.03-1.56 1.7 1.7 0 0 0-1.88.34l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.56-1.03H3a2 2 0 0 1 0-4h.04A1.7 1.7 0 0 0 4.6 8.94a1.7 1.7 0 0 0-.34-1.88l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.88.34H9a1.7 1.7 0 0 0 1-1.56V3a2 2 0 0 1 4 0v.04a1.7 1.7 0 0 0 1.03 1.56 1.7 1.7 0 0 0 1.88-.34l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.88V9a1.7 1.7 0 0 0 1.56 1H21a2 2 0 0 1 0 4h-.04A1.7 1.7 0 0 0 19.4 15Z"/></svg>
+  }
+  return icons[type] || <svg {...common}><circle cx="12" cy="12" r="3"/></svg>
 }
+
+const RMS_PRO_SECTION_ICONS = {
+  dashboard: <RmsIcon type="dashboard" />,
+  revenue: <RmsIcon type="revenue" />,
+  finance: <RmsIcon type="finance" />,
+  reports: <RmsIcon type="reports" />,
+  recipes: <RmsIcon type="recipes" />,
+  salaries: <RmsIcon type="settings" />,
+  suppliers: <RmsIcon type="suppliers" />,
+  debts: <RmsIcon type="debts" />,
+  qrmenu: <RmsIcon type="qrmenu" />,
+  loyalty: <RmsIcon type="loyalty" />,
+  market: <RmsIcon type="market" />,
+  settings: <RmsIcon type="settings" />
+}
+
+const RmsBellIcon = () => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+const RmsHelpIcon = () => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.7 9a2.7 2.7 0 0 1 5.2 1c0 2-3 2.2-3 4"/><path d="M12 17h.01"/></svg>
 
 function rmsProSectionTitle(section, t) {
   const map = {
@@ -522,6 +543,189 @@ function RMSProInterfaceStyles() {
     .rms-pro-shell .btn {
       border-radius: 12px;
     }
+
+
+
+/* RMS Pro UI v4 — render-match corrections */
+.app.rms-pro-shell{
+  grid-template-columns:232px 1fr!important;
+  font-family:Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif!important;
+  background:#f5f7fb!important;
+}
+.rms-pro-shell .sidebar.rms-pro-sidebar{
+  width:232px!important;
+  min-width:232px!important;
+  height:100vh!important;
+  min-height:100vh!important;
+  overflow:hidden!important;
+  padding:18px 12px 14px!important;
+  background:
+    radial-gradient(circle at 18% 0%,rgba(59,130,246,.30),transparent 30%),
+    linear-gradient(180deg,#071932 0%,#06172d 50%,#041325 100%)!important;
+  box-shadow:16px 0 42px rgba(15,23,42,.16)!important;
+}
+.rms-pro-brand{
+  gap:10px!important;
+  margin-bottom:18px!important;
+  padding:0 8px 14px!important;
+  border-bottom:1px solid rgba(148,163,184,.14)!important;
+}
+.rms-pro-logo{
+  width:43px!important;
+  height:43px!important;
+  border-radius:13px!important;
+  box-shadow:0 12px 28px rgba(37,99,235,.32)!important;
+}
+.rms-pro-brand h1{
+  font-size:22px!important;
+  font-weight:850!important;
+  letter-spacing:-.035em!important;
+}
+.rms-pro-brand p{
+  font-size:9.5px!important;
+  line-height:1.15!important;
+  letter-spacing:.045em!important;
+}
+.rms-pro-nav{
+  gap:13px!important;
+  flex:0 1 auto!important;
+  min-height:0!important;
+}
+.rms-pro-nav-group-title{
+  margin:0 0 6px!important;
+  padding:0 8px!important;
+  color:rgba(203,213,225,.72)!important;
+  font-size:11px!important;
+  font-weight:800!important;
+  letter-spacing:.055em!important;
+}
+.rms-pro-nav-list{
+  gap:5px!important;
+}
+.rms-pro-nav-item{
+  min-height:38px!important;
+  height:38px!important;
+  padding:0 10px!important;
+  border-radius:10px!important;
+  gap:10px!important;
+  color:rgba(241,245,249,.90)!important;
+  font-size:14px!important;
+  font-weight:690!important;
+  line-height:1.05!important;
+  letter-spacing:-.01em!important;
+  background:transparent!important;
+  border-color:transparent!important;
+  box-shadow:none!important;
+  transform:none!important;
+}
+.rms-pro-nav-item:hover{
+  background:rgba(59,130,246,.09)!important;
+  border-color:rgba(96,165,250,.20)!important;
+  color:#dbeafe!important;
+  transform:none!important;
+  box-shadow:none!important;
+}
+.rms-pro-nav-item.active{
+  color:#60a5fa!important;
+  background:rgba(37,99,235,.18)!important;
+  border-color:rgba(96,165,250,.35)!important;
+  box-shadow:inset 3px 0 0 #2563eb!important;
+}
+.rms-pro-nav-icon{
+  width:22px!important;
+  height:22px!important;
+  min-width:22px!important;
+  border-radius:8px!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  background:rgba(255,255,255,.045)!important;
+  color:currentColor!important;
+  font-size:0!important;
+}
+.rms-pro-nav-icon svg{
+  width:18px!important;
+  height:18px!important;
+  display:block!important;
+}
+.rms-pro-sidebar-bottom{
+  margin-top:auto!important;
+  padding-top:10px!important;
+  gap:8px!important;
+  border-top:1px solid rgba(148,163,184,.12)!important;
+}
+.rms-pro-restaurant-select{
+  min-height:42px!important;
+  padding:0 12px!important;
+  border-radius:10px!important;
+  font-size:12px!important;
+  background:rgba(15,23,42,.22)!important;
+}
+.rms-pro-user-card{
+  padding:9px!important;
+  gap:9px!important;
+  border-radius:12px!important;
+  background:rgba(15,23,42,.18)!important;
+}
+.rms-pro-avatar{
+  width:35px!important;
+  height:35px!important;
+}
+.rms-pro-user-name{
+  font-size:12px!important;
+  font-weight:800!important;
+  max-width:130px!important;
+}
+.rms-pro-user-role{
+  font-size:10.5px!important;
+}
+.rms-pro-logout{
+  display:none!important;
+}
+.rms-pro-topbar{
+  height:74px!important;
+  background:rgba(255,255,255,.86)!important;
+}
+.rms-pro-topbar-title{
+  font-size:20px!important;
+  font-weight:800!important;
+  letter-spacing:-.025em!important;
+}
+.rms-pro-topbar-actions{
+  gap:18px!important;
+}
+.rms-pro-top-icon{
+  color:#334155!important;
+  font-size:0!important;
+}
+.rms-pro-top-icon svg{
+  width:22px!important;
+  height:22px!important;
+}
+.rms-pro-top-user{
+  font-size:14px!important;
+  font-weight:750!important;
+}
+.rms-pro-top-avatar{
+  width:38px!important;
+  height:38px!important;
+  font-weight:800!important;
+}
+.rms-pro-content{
+  max-width:none!important;
+  padding:24px 24px 34px!important;
+}
+.rms-pro-shell .topbar h2,
+.rms-pro-shell h2{
+  font-weight:850!important;
+  letter-spacing:-.035em!important;
+}
+.rms-pro-shell .card,
+.rms-pro-shell .finance-line-chart-wrap,
+.rms-pro-shell .table-wrap{
+  border-radius:22px!important;
+  box-shadow:0 16px 44px rgba(15,23,42,.052)!important;
+}
 
     @media (max-width: 960px) {
       .app.rms-pro-shell {
@@ -1465,8 +1669,8 @@ function App() {
             <span>{activeTitle}</span>
           </div>
           <div className="rms-pro-topbar-actions">
-            <button className="rms-pro-top-icon" type="button" aria-label="Notifications">♧</button>
-            <button className="rms-pro-top-icon" type="button" aria-label="Help">?</button>
+            <button className="rms-pro-top-icon" type="button" aria-label="Notifications"><RmsBellIcon /></button>
+            <button className="rms-pro-top-icon" type="button" aria-label="Help"><RmsHelpIcon /></button>
             <div className="rms-pro-top-user">
               <div className="rms-pro-top-avatar">{userInitial}</div>
               <span>{isAdmin ? 'Admin' : userName}</span>
