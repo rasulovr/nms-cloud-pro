@@ -82,9 +82,9 @@ const THEMES = [
 ]
 
 const RMS_PRO_NAV_GROUPS = [
-  { title: 'МЕНЮ', ids: ['dashboard', 'revenue', 'finance', 'recipes', 'suppliers', 'debts', 'qrmenu', 'loyalty'] },
+  { title: 'МЕНЮ', ids: ['dashboard', 'revenue', 'finance', 'recipes', 'salaries', 'suppliers', 'debts'] },
   { title: 'АНАЛИТИКА', ids: ['reports'] },
-  { title: 'ИНСТРУМЕНТЫ', ids: ['market', 'settings'] }
+  { title: 'ИНСТРУМЕНТЫ', ids: ['qrmenu', 'loyalty', 'market', 'settings'] }
 ]
 
 function RmsIcon({ type }) {
@@ -100,6 +100,7 @@ function RmsIcon({ type }) {
     qrmenu: <svg {...common}><path d="M4 4h6v6H4z"/><path d="M14 4h6v6h-6z"/><path d="M4 14h6v6H4z"/><path d="M14 14h2.5"/><path d="M19 14h1"/><path d="M14 17h6"/><path d="M17 20h3"/><path d="M14 20h.01"/></svg>,
     loyalty: <svg {...common}><path d="m12 3 2.6 5.3 5.8.8-4.2 4.1 1 5.8-5.2-2.7L6.8 19l1-5.8L3.6 9.1l5.8-.8L12 3Z"/></svg>,
     market: <svg {...common}><path d="M4 19V5"/><path d="M20 19H4"/><path d="M8 16v-5"/><path d="M12 16V8"/><path d="M16 16v-9"/></svg>,
+    salaries: <svg {...common}><path d="M16 20v-1.5A3.5 3.5 0 0 0 12.5 15h-5A3.5 3.5 0 0 0 4 18.5V20"/><circle cx="10" cy="8" r="3.5"/><path d="M17 8h4"/><path d="M19 6v4"/><path d="M18 14.5h3"/><path d="M18 18h3"/></svg>,
     settings: <svg {...common}><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.88-.34 1.7 1.7 0 0 0-1.03 1.56V21a2 2 0 0 1-4 0v-.07a1.7 1.7 0 0 0-1.03-1.56 1.7 1.7 0 0 0-1.88.34l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.56-1.03H3a2 2 0 0 1 0-4h.04A1.7 1.7 0 0 0 4.6 8.94a1.7 1.7 0 0 0-.34-1.88l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.88.34H9a1.7 1.7 0 0 0 1-1.56V3a2 2 0 0 1 4 0v.04a1.7 1.7 0 0 0 1.03 1.56 1.7 1.7 0 0 0 1.88-.34l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.88V9a1.7 1.7 0 0 0 1.56 1H21a2 2 0 0 1 0 4h-.04A1.7 1.7 0 0 0 19.4 15Z"/></svg>
   }
   return icons[type] || <svg {...common}><circle cx="12" cy="12" r="3"/></svg>
@@ -111,7 +112,7 @@ const RMS_PRO_SECTION_ICONS = {
   finance: <RmsIcon type="finance" />,
   reports: <RmsIcon type="reports" />,
   recipes: <RmsIcon type="recipes" />,
-  salaries: <RmsIcon type="settings" />,
+  salaries: <RmsIcon type="salaries" />,
   suppliers: <RmsIcon type="suppliers" />,
   debts: <RmsIcon type="debts" />,
   qrmenu: <RmsIcon type="qrmenu" />,
@@ -578,7 +579,7 @@ function RMSProInterfaceStyles() {
 }
 .rms-pro-brand h1{
   font-size:22px!important;
-  font-weight:850!important;
+  font-weight:780!important;
   letter-spacing:-.035em!important;
 }
 .rms-pro-brand p{
@@ -717,7 +718,7 @@ function RMSProInterfaceStyles() {
 }
 .rms-pro-shell .topbar h2,
 .rms-pro-shell h2{
-  font-weight:850!important;
+  font-weight:780!important;
   letter-spacing:-.035em!important;
 }
 .rms-pro-shell .card,
@@ -3253,7 +3254,7 @@ function RMSProV6Styles() {
 }
 
 .app.rms-pro-shell{
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif!important;
+  font-family: "Manrope", "Inter", "SF Pro Display", "Segoe UI", -apple-system, BlinkMacSystemFont, Arial, sans-serif!important;
   background:
     radial-gradient(circle at 70% -10%, rgba(59,130,246,.07), transparent 34%),
     linear-gradient(180deg,#f8fafc 0%,#eef4fb 100%)!important;
@@ -3303,7 +3304,7 @@ function RMSProV6Styles() {
 .rms-pro-logo .rms-logo-svg{width:48px!important;height:48px!important;display:block!important;}
 .rms-pro-brand h1{
   font-size:25px!important;
-  font-weight:860!important;
+  font-weight:800!important;
   letter-spacing:-.045em!important;
   line-height:.98!important;
   margin:0!important;
@@ -3360,8 +3361,8 @@ function RMSProV6Styles() {
   transform:none!important;
   font-size:14px!important;
   line-height:1.05!important;
-  font-weight:730!important;
-  letter-spacing:-.018em!important;
+  font-weight:680!important;
+  letter-spacing:-.012em!important;
   text-align:left!important;
   transition:background .16s ease,border-color .16s ease,color .16s ease!important;
 }
@@ -3424,7 +3425,7 @@ function RMSProV6Styles() {
   background:#e5edf7!important;
   color:#07172d!important;
   font-size:16px!important;
-  font-weight:860!important;
+  font-weight:800!important;
   position:relative!important;
 }
 .rms-pro-avatar:after{
@@ -3532,7 +3533,7 @@ function RMSProV6Styles() {
   line-height:1!important;
   letter-spacing:-.06em!important;
   margin:0!important;
-  font-weight:880!important;
+  font-weight:800!important;
 }
 .login-subtitle{
   text-align:center!important;
