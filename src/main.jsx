@@ -4728,24 +4728,42 @@ function Revenue({ t, focusExpense }) {
           <div className="row-actions" style={{marginTop:12}}><button className="small primary" onClick={saveCashRegister}>Сохранить кассу</button></div>
         </div>
 
-        <div className="card span-2"><h3>{t('revenue_summary')}</h3>
-          <Metric label="Выручка за дату" value={fmt(dailyRevenueTotal)} />
-          <Metric label="Расходы за дату" value={fmt(dailyExpenseTotal)} />
-          <Metric label="Приходы за дату — не выручка" value={fmt(dailyInflowTotal)} />
-          <Metric label="Service charge внутри выручки" value={fmt(dailyServiceChargeAmount)} />
-          <Metric label="Расход персоналу по service charge" value={fmt(dailyServiceStaffCost)} />
-          <Metric label="Наличные за дату" value={fmt(dailyCashRevenue)} />
-          <Metric label="Банк за дату" value={fmt(dailyBankRevenue)} />
-          <Metric label="Wolt за дату" value={fmt(dailyWoltRevenue)} />
-          <hr />
-          <Metric label="Выручка месяца" value={fmt(monthStats.revenue)} />
-          <Metric label="Расходы месяца" value={fmt(monthStats.expenses)} />
-          <Metric label="Приходы месяца — не выручка" value={fmt(monthStats.inflows)} />
-          <Metric label="Service charge месяца" value={fmt(monthStats.serviceCharge)} />
-          <Metric label="Расход персоналу по service charge" value={fmt(monthStats.serviceCost)} />
-          <Metric label={t('cash')} value={fmt(monthStats.cash)} />
-          <Metric label={t('bank')} value={fmt(monthStats.bank)} />
-          <Metric label={t('wolt')} value={fmt(monthStats.wolt)} />
+        <div className="card span-2 revenue-summary-card">
+          <div className="revenue-summary-head">
+            <div>
+              <h3>{t('revenue_summary')}</h3>
+              <p className="hint">Краткая финансовая сводка по выбранной дате и месяцу</p>
+            </div>
+            <div className="revenue-summary-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M5 19V10" />
+                <path d="M12 19V5" />
+                <path d="M19 19v-7" />
+              </svg>
+            </div>
+          </div>
+          <div className="revenue-summary-section">
+            <div className="revenue-summary-section-title">За день</div>
+            <SummaryMetric label="Выручка за дату" value={fmt(dailyRevenueTotal)} />
+            <SummaryMetric label="Расходы за дату" value={fmt(dailyExpenseTotal)} />
+            <SummaryMetric label="Приходы за дату — не выручка" value={fmt(dailyInflowTotal)} />
+            <SummaryMetric label="Service charge внутри выручки" value={fmt(dailyServiceChargeAmount)} />
+            <SummaryMetric label="Расход персоналу по service charge" value={fmt(dailyServiceStaffCost)} />
+            <SummaryMetric label="Наличные за дату" value={fmt(dailyCashRevenue)} />
+            <SummaryMetric label="Банк за дату" value={fmt(dailyBankRevenue)} />
+            <SummaryMetric label="Wolt за дату" value={fmt(dailyWoltRevenue)} />
+          </div>
+          <div className="revenue-summary-section revenue-summary-section-month">
+            <div className="revenue-summary-section-title">За месяц</div>
+            <SummaryMetric label="Выручка месяца" value={fmt(monthStats.revenue)} />
+            <SummaryMetric label="Расходы месяца" value={fmt(monthStats.expenses)} />
+            <SummaryMetric label="Приходы месяца — не выручка" value={fmt(monthStats.inflows)} />
+            <SummaryMetric label="Service charge месяца" value={fmt(monthStats.serviceCharge)} />
+            <SummaryMetric label="Расход персоналу по service charge" value={fmt(monthStats.serviceCost)} />
+            <SummaryMetric label={t('cash')} value={fmt(monthStats.cash)} />
+            <SummaryMetric label={t('bank')} value={fmt(monthStats.bank)} />
+            <SummaryMetric label={t('wolt')} value={fmt(monthStats.wolt)} />
+          </div>
         </div>
 
         <div className="card span-2"><h3>Журнал подтверждённых операций</h3><p className="hint">Каждое создание, изменение и отмена по выбранной дате фиксируется с временем и пользователем.</p><div className="table-wrap"><table><thead><tr><th>Время</th><th>Пользователь</th><th>Раздел</th><th>Действие</th><th>Поле</th><th>Было</th><th>Стало</th></tr></thead><tbody>
@@ -16391,6 +16409,10 @@ function MoneyInput({ label, value, onChange, disabled = false }) {
 
 function Metric({ label, value }) {
   return <div className="metric"><span>{label}</span><strong>{value}</strong></div>
+}
+
+function SummaryMetric({ label, value }) {
+  return <div className="revenue-summary-row"><span>{label}</span><strong>{value}</strong></div>
 }
 
 createRoot(document.getElementById('root')).render(<App />)
