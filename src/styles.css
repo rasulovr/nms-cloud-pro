@@ -1153,3 +1153,24 @@ button:not(.nav):not(.rms-pro-logout):hover{transform:translateY(-1px)!important
   padding-bottom:3px!important;
   margin-left:2px!important;
 }
+
+/* v17 — smaller KPI icons only. Keeps confirmed chart/card layout unchanged. */
+.rms-pro-shell .finance-line-chart-summary .metric{
+  grid-template-columns:32px minmax(0,1fr)!important;
+  column-gap:12px!important;
+  row-gap:16px!important;
+}
+.rms-pro-shell .finance-line-chart-summary .finance-kpi-icon{
+  width:28px!important;
+  height:28px!important;
+  flex:0 0 28px!important;
+  border-radius:9px!important;
+  font-size:15px!important;
+  box-shadow:inset 0 0 0 1px rgba(37,99,235,.05)!important;
+}
+.rms-pro-shell .finance-line-chart-summary .metric:nth-child(2) .finance-kpi-icon{
+  font-size:13px!important;
+}
+.rms-pro-shell .finance-line-chart-summary .metric-best-day .finance-kpi-icon{
+  font-size:14px!important;
+}
