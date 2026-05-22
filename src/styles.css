@@ -966,3 +966,94 @@ button:not(.nav):not(.rms-pro-logout):hover{transform:translateY(-1px)!important
 }
 .rms-pro-shell .finance-line-chart-summary .metric span,
 .rms-pro-shell .finance-line-chart-summary .metric strong{white-space:normal!important;}
+
+/* RMS Pro v12 — final revenue chart KPI cards layout */
+.finance-line-chart-summary{
+  display:grid!important;
+  grid-template-columns:repeat(5,minmax(0,1fr))!important;
+  gap:18px!important;
+  margin-top:22px!important;
+}
+.finance-line-chart-summary .metric{
+  min-height:142px!important;
+  border-radius:18px!important;
+  background:rgba(255,255,255,.92)!important;
+  border:1px solid rgba(203,213,225,.82)!important;
+  padding:18px 20px 17px!important;
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:flex-start!important;
+  justify-content:flex-start!important;
+  text-align:left!important;
+  gap:0!important;
+  box-shadow:0 16px 34px rgba(15,23,42,.045)!important;
+}
+.finance-line-chart-summary .metric:hover{
+  transform:none!important;
+  box-shadow:0 16px 34px rgba(15,23,42,.055)!important;
+  border-color:rgba(148,163,184,.55)!important;
+}
+.finance-line-chart-summary .metric:nth-child(3){
+  border-color:rgba(52,211,153,.78)!important;
+  box-shadow:0 0 0 1px rgba(52,211,153,.10),0 16px 34px rgba(15,23,42,.05)!important;
+}
+.finance-line-chart-summary .metric-title{
+  color:#253044!important;
+  font-size:15px!important;
+  line-height:1.25!important;
+  font-weight:720!important;
+  letter-spacing:-.02em!important;
+  margin:0!important;
+  text-align:left!important;
+}
+.finance-line-chart-summary .metric-date{
+  margin-top:8px!important;
+  color:#64748b!important;
+  font-size:14px!important;
+  line-height:1.15!important;
+  font-weight:720!important;
+  text-align:left!important;
+}
+.finance-line-chart-summary .metric-weekday{
+  margin-top:8px!important;
+  color:#0f172a!important;
+  font-size:15px!important;
+  line-height:1.15!important;
+  font-weight:850!important;
+  text-align:left!important;
+}
+.finance-line-chart-summary .metric-amount{
+  display:flex!important;
+  align-items:flex-end!important;
+  justify-content:flex-start!important;
+  gap:9px!important;
+  margin-top:22px!important;
+  line-height:1!important;
+  text-align:left!important;
+}
+.finance-line-chart-summary .metric-number{
+  color:#081328!important;
+  font-size:29px!important;
+  line-height:1!important;
+  font-weight:850!important;
+  letter-spacing:-.055em!important;
+}
+.finance-line-chart-summary .metric:nth-child(3) .metric-number,
+.finance-line-chart-summary .metric:nth-child(3) .metric-date{
+  color:#16a34a!important;
+}
+.finance-line-chart-summary .metric-currency{
+  color:#475569!important;
+  font-size:13px!important;
+  font-weight:760!important;
+  line-height:1!important;
+  padding-bottom:3px!important;
+  margin-left:1px!important;
+}
+@media(max-width:1200px){
+  .finance-line-chart-summary{grid-template-columns:repeat(2,minmax(0,1fr))!important;}
+}
+@media(max-width:760px){
+  .finance-line-chart-summary{grid-template-columns:1fr!important;}
+  .finance-line-chart-summary .metric{min-height:120px!important;}
+}
