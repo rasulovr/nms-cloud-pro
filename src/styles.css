@@ -1,3 +1,4 @@
+@import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap");
 :root{
   --bg:#f5f2ec;--panel:#fffaf2;--ink:#17251d;--muted:#68736b;--line:#e4dccf;
   --accent:#233d2c;--accent2:#c9a96a;--danger:#9b2d2d;
@@ -89,7 +90,7 @@ body{background:var(--rms-bg)!important;color:var(--rms-text)!important;}
   padding:0 4px 18px!important;
   border-bottom:1px solid rgba(148,163,184,.14)!important;
 }
-.rms-pro-brand h1{color:#fff!important;font-size:27px!important;line-height:1!important;margin:0!important;font-weight:850!important;letter-spacing:-.04em!important;}
+.rms-pro-brand h1{color:#fff!important;font-size:27px!important;line-height:1!important;margin:0!important;font-weight:780!important;letter-spacing:-.04em!important;}
 .rms-pro-brand p{color:rgba(226,232,240,.72)!important;font-size:11px!important;text-transform:uppercase!important;letter-spacing:.05em!important;margin:5px 0 0!important;}
 .rms-pro-brand img,.rms-pro-brand svg{filter:drop-shadow(0 10px 22px rgba(37,99,235,.24));}
 
@@ -156,7 +157,7 @@ body{background:var(--rms-bg)!important;color:var(--rms-text)!important;}
 }
 .rms-pro-userbar span{display:block!important;color:#fff!important;font-weight:800!important;font-size:13px!important;max-width:150px!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important;}
 .rms-pro-userbar small{display:block!important;color:rgba(226,232,240,.68)!important;font-size:11px!important;margin-top:2px!important;}
-.rms-pro-avatar{width:38px!important;height:38px!important;border-radius:999px!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;background:#e2e8f0!important;color:#0f172a!important;font-weight:850!important;box-shadow:0 10px 20px rgba(2,6,23,.18)!important;}
+.rms-pro-avatar{width:38px!important;height:38px!important;border-radius:999px!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;background:#e2e8f0!important;color:#0f172a!important;font-weight:780!important;box-shadow:0 10px 20px rgba(2,6,23,.18)!important;}
 .rms-pro-avatar.small{width:36px!important;height:36px!important;background:#334155!important;color:#fff!important;}
 .rms-pro-logout.logout-nav{border:1px solid rgba(148,163,184,.18)!important;background:rgba(15,23,42,.2)!important;color:rgba(241,245,249,.9)!important;border-radius:12px!important;padding:10px 12px!important;font-weight:750!important;}
 
@@ -193,7 +194,7 @@ body{background:var(--rms-bg)!important;color:var(--rms-text)!important;}
 .card-head{gap:14px!important;}
 
 /* KPI / metric polishing */
-.big-number{font-size:34px!important;font-weight:850!important;letter-spacing:-.05em!important;color:#0f172a!important;}
+.big-number{font-size:34px!important;font-weight:780!important;letter-spacing:-.05em!important;color:#0f172a!important;}
 .metric,.Metric{color:#0f172a!important;}
 
 /* Dashboard chart redesign */
@@ -225,7 +226,7 @@ body{background:var(--rms-bg)!important;color:var(--rms-text)!important;}
 .finance-line-chart-best-point{fill:#0f172a!important;stroke:#fff!important;stroke-width:2.5!important;}
 .finance-line-chart-label{fill:#334155!important;font-size:12px!important;font-weight:700!important;}
 .finance-line-chart-x-label{fill:#334155!important;font-size:11px!important;font-weight:650!important;}
-.finance-line-chart-value{fill:#0f172a!important;font-size:12px!important;font-weight:850!important;}
+.finance-line-chart-value{fill:#0f172a!important;font-size:12px!important;font-weight:780!important;}
 .finance-line-chart-date{fill:#0f172a!important;font-size:11px!important;font-weight:700!important;}
 
 .finance-line-chart-summary{
@@ -250,7 +251,7 @@ body{background:var(--rms-bg)!important;color:var(--rms-text)!important;}
 .finance-line-chart-summary .metric:nth-child(3){border-color:rgba(52,211,153,.72)!important;box-shadow:0 0 0 1px rgba(52,211,153,.12),0 18px 36px rgba(15,23,42,.05)!important;}
 .finance-line-chart-summary .metric-title{color:#334155!important;font-size:14px!important;line-height:1.35!important;font-weight:650!important;}
 .finance-line-chart-summary .metric-date{margin-top:7px!important;color:#0f172a!important;font-size:14px!important;font-weight:600!important;}
-.finance-line-chart-summary .metric-weekday{margin-top:7px!important;color:#0f172a!important;font-size:14px!important;font-weight:850!important;}
+.finance-line-chart-summary .metric-weekday{margin-top:7px!important;color:#0f172a!important;font-size:14px!important;font-weight:780!important;}
 .finance-line-chart-summary .metric-amount{display:flex!important;align-items:flex-end!important;justify-content:space-between!important;gap:8px!important;margin-top:16px!important;line-height:1!important;}
 .finance-line-chart-summary .metric-number{color:#0f172a!important;font-size:26px!important;font-weight:500!important;letter-spacing:-.05em!important;}
 .finance-line-chart-summary .metric-currency{color:#475569!important;font-size:11px!important;font-weight:800!important;line-height:1.05!important;padding-bottom:2px!important;margin-left:auto!important;}
@@ -258,7 +259,7 @@ body{background:var(--rms-bg)!important;color:var(--rms-text)!important;}
 /* Bars and tables */
 .dashboard-chart-card .dash-bar-track,.dash-bar-track{height:14px!important;border-radius:999px!important;background:#e2e8f0!important;}
 .dashboard-chart-card .dash-bar,.dash-bar{border-radius:999px!important;background:linear-gradient(90deg,#334155,#64748b)!important;}
-.dash-bar-value span{font-weight:850!important;color:#0f172a!important;}
+.dash-bar-value span{font-weight:780!important;color:#0f172a!important;}
 .table-wrap{border-radius:16px!important;border:1px solid rgba(226,232,240,.9)!important;overflow:hidden!important;background:#fff!important;}
 table th{background:#f8fafc!important;color:#475569!important;font-size:12px!important;font-weight:800!important;}
 table td{border-top:1px solid rgba(226,232,240,.86)!important;color:#334155!important;}
@@ -308,7 +309,7 @@ button:not(.nav):not(.rms-pro-logout):hover{transform:translateY(-1px)!important
 }
 .rms-pro-brand h1{
   font-size:22px!important;
-  font-weight:850!important;
+  font-weight:780!important;
   letter-spacing:-.035em!important;
 }
 .rms-pro-brand p{
@@ -447,7 +448,7 @@ button:not(.nav):not(.rms-pro-logout):hover{transform:translateY(-1px)!important
 }
 .rms-pro-shell .topbar h2,
 .rms-pro-shell h2{
-  font-weight:850!important;
+  font-weight:780!important;
   letter-spacing:-.035em!important;
 }
 .rms-pro-shell .card,
@@ -470,7 +471,7 @@ button:not(.nav):not(.rms-pro-logout):hover{transform:translateY(-1px)!important
 }
 
 .app.rms-pro-shell{
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif!important;
+  font-family: "Manrope", "Inter", "SF Pro Display", "Segoe UI", -apple-system, BlinkMacSystemFont, Arial, sans-serif!important;
   background:
     radial-gradient(circle at 70% -10%, rgba(59,130,246,.07), transparent 34%),
     linear-gradient(180deg,#f8fafc 0%,#eef4fb 100%)!important;
@@ -520,7 +521,7 @@ button:not(.nav):not(.rms-pro-logout):hover{transform:translateY(-1px)!important
 .rms-pro-logo .rms-logo-svg{width:48px!important;height:48px!important;display:block!important;}
 .rms-pro-brand h1{
   font-size:25px!important;
-  font-weight:860!important;
+  font-weight:800!important;
   letter-spacing:-.045em!important;
   line-height:.98!important;
   margin:0!important;
@@ -577,8 +578,8 @@ button:not(.nav):not(.rms-pro-logout):hover{transform:translateY(-1px)!important
   transform:none!important;
   font-size:14px!important;
   line-height:1.05!important;
-  font-weight:730!important;
-  letter-spacing:-.018em!important;
+  font-weight:680!important;
+  letter-spacing:-.012em!important;
   text-align:left!important;
   transition:background .16s ease,border-color .16s ease,color .16s ease!important;
 }
@@ -641,7 +642,7 @@ button:not(.nav):not(.rms-pro-logout):hover{transform:translateY(-1px)!important
   background:#e5edf7!important;
   color:#07172d!important;
   font-size:16px!important;
-  font-weight:860!important;
+  font-weight:800!important;
   position:relative!important;
 }
 .rms-pro-avatar:after{
@@ -749,7 +750,7 @@ button:not(.nav):not(.rms-pro-logout):hover{transform:translateY(-1px)!important
   line-height:1!important;
   letter-spacing:-.06em!important;
   margin:0!important;
-  font-weight:880!important;
+  font-weight:800!important;
 }
 .login-subtitle{
   text-align:center!important;
