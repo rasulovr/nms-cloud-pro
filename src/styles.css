@@ -274,3 +274,185 @@ button:not(.nav):not(.rms-pro-logout):hover{transform:translateY(-1px)!important
   .finance-line-chart-summary{grid-template-columns:1fr!important;}
   .finance-line-chart-svg{height:260px!important;}
 }
+
+
+/* RMS Pro UI v4 — render-match corrections */
+.app.rms-pro-shell{
+  grid-template-columns:232px 1fr!important;
+  font-family:Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif!important;
+  background:#f5f7fb!important;
+}
+.rms-pro-shell .sidebar.rms-pro-sidebar{
+  width:232px!important;
+  min-width:232px!important;
+  height:100vh!important;
+  min-height:100vh!important;
+  overflow:hidden!important;
+  padding:18px 12px 14px!important;
+  background:
+    radial-gradient(circle at 18% 0%,rgba(59,130,246,.30),transparent 30%),
+    linear-gradient(180deg,#071932 0%,#06172d 50%,#041325 100%)!important;
+  box-shadow:16px 0 42px rgba(15,23,42,.16)!important;
+}
+.rms-pro-brand{
+  gap:10px!important;
+  margin-bottom:18px!important;
+  padding:0 8px 14px!important;
+  border-bottom:1px solid rgba(148,163,184,.14)!important;
+}
+.rms-pro-logo{
+  width:43px!important;
+  height:43px!important;
+  border-radius:13px!important;
+  box-shadow:0 12px 28px rgba(37,99,235,.32)!important;
+}
+.rms-pro-brand h1{
+  font-size:22px!important;
+  font-weight:850!important;
+  letter-spacing:-.035em!important;
+}
+.rms-pro-brand p{
+  font-size:9.5px!important;
+  line-height:1.15!important;
+  letter-spacing:.045em!important;
+}
+.rms-pro-nav{
+  gap:13px!important;
+  flex:0 1 auto!important;
+  min-height:0!important;
+}
+.rms-pro-nav-group-title{
+  margin:0 0 6px!important;
+  padding:0 8px!important;
+  color:rgba(203,213,225,.72)!important;
+  font-size:11px!important;
+  font-weight:800!important;
+  letter-spacing:.055em!important;
+}
+.rms-pro-nav-list{
+  gap:5px!important;
+}
+.rms-pro-nav-item{
+  min-height:38px!important;
+  height:38px!important;
+  padding:0 10px!important;
+  border-radius:10px!important;
+  gap:10px!important;
+  color:rgba(241,245,249,.90)!important;
+  font-size:14px!important;
+  font-weight:690!important;
+  line-height:1.05!important;
+  letter-spacing:-.01em!important;
+  background:transparent!important;
+  border-color:transparent!important;
+  box-shadow:none!important;
+  transform:none!important;
+}
+.rms-pro-nav-item:hover{
+  background:rgba(59,130,246,.09)!important;
+  border-color:rgba(96,165,250,.20)!important;
+  color:#dbeafe!important;
+  transform:none!important;
+  box-shadow:none!important;
+}
+.rms-pro-nav-item.active{
+  color:#60a5fa!important;
+  background:rgba(37,99,235,.18)!important;
+  border-color:rgba(96,165,250,.35)!important;
+  box-shadow:inset 3px 0 0 #2563eb!important;
+}
+.rms-pro-nav-icon{
+  width:22px!important;
+  height:22px!important;
+  min-width:22px!important;
+  border-radius:8px!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  background:rgba(255,255,255,.045)!important;
+  color:currentColor!important;
+  font-size:0!important;
+}
+.rms-pro-nav-icon svg{
+  width:18px!important;
+  height:18px!important;
+  display:block!important;
+}
+.rms-pro-sidebar-bottom{
+  margin-top:auto!important;
+  padding-top:10px!important;
+  gap:8px!important;
+  border-top:1px solid rgba(148,163,184,.12)!important;
+}
+.rms-pro-restaurant-select{
+  min-height:42px!important;
+  padding:0 12px!important;
+  border-radius:10px!important;
+  font-size:12px!important;
+  background:rgba(15,23,42,.22)!important;
+}
+.rms-pro-user-card{
+  padding:9px!important;
+  gap:9px!important;
+  border-radius:12px!important;
+  background:rgba(15,23,42,.18)!important;
+}
+.rms-pro-avatar{
+  width:35px!important;
+  height:35px!important;
+}
+.rms-pro-user-name{
+  font-size:12px!important;
+  font-weight:800!important;
+  max-width:130px!important;
+}
+.rms-pro-user-role{
+  font-size:10.5px!important;
+}
+.rms-pro-logout{
+  display:none!important;
+}
+.rms-pro-topbar{
+  height:74px!important;
+  background:rgba(255,255,255,.86)!important;
+}
+.rms-pro-topbar-title{
+  font-size:20px!important;
+  font-weight:800!important;
+  letter-spacing:-.025em!important;
+}
+.rms-pro-topbar-actions{
+  gap:18px!important;
+}
+.rms-pro-top-icon{
+  color:#334155!important;
+  font-size:0!important;
+}
+.rms-pro-top-icon svg{
+  width:22px!important;
+  height:22px!important;
+}
+.rms-pro-top-user{
+  font-size:14px!important;
+  font-weight:750!important;
+}
+.rms-pro-top-avatar{
+  width:38px!important;
+  height:38px!important;
+  font-weight:800!important;
+}
+.rms-pro-content{
+  max-width:none!important;
+  padding:24px 24px 34px!important;
+}
+.rms-pro-shell .topbar h2,
+.rms-pro-shell h2{
+  font-weight:850!important;
+  letter-spacing:-.035em!important;
+}
+.rms-pro-shell .card,
+.rms-pro-shell .finance-line-chart-wrap,
+.rms-pro-shell .table-wrap{
+  border-radius:22px!important;
+  box-shadow:0 16px 44px rgba(15,23,42,.052)!important;
+}
