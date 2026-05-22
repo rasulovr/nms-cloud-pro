@@ -127,3 +127,74 @@
 .finance-line-chart-summary .metric-best-day .finance-kpi-icon{
   font-size:14px!important;
 }
+
+/* v18 — final KPI card layout: icon above title, compact and aligned like confirmed render */
+.finance-line-chart-summary .metric{
+  display:grid!important;
+  grid-template-columns:1fr!important;
+  grid-template-rows:auto auto 1fr!important;
+  row-gap:0!important;
+  min-height:150px!important;
+  padding:18px 22px 20px!important;
+  align-items:start!important;
+}
+.finance-line-chart-summary .finance-kpi-icon{
+  grid-column:1!important;
+  grid-row:1!important;
+  width:36px!important;
+  height:36px!important;
+  flex:0 0 36px!important;
+  border-radius:10px!important;
+  font-size:18px!important;
+  margin:0 0 12px 0!important;
+  align-self:start!important;
+  justify-self:start!important;
+}
+.finance-line-chart-summary .metric:nth-child(2) .finance-kpi-icon{font-size:16px!important;}
+.finance-line-chart-summary .metric-best-day .finance-kpi-icon{font-size:17px!important;}
+.finance-line-chart-summary .metric-copy{
+  grid-column:1!important;
+  grid-row:2!important;
+  align-self:start!important;
+  min-width:0!important;
+}
+.finance-line-chart-summary .metric-title{
+  font-size:16px!important;
+  line-height:1.25!important;
+  font-weight:850!important;
+  letter-spacing:-.025em!important;
+}
+.finance-line-chart-summary .metric-date,
+.finance-line-chart-summary .metric-weekday{
+  margin-top:7px!important;
+  font-size:16px!important;
+  line-height:1.1!important;
+  font-weight:900!important;
+}
+.finance-line-chart-summary .metric-worst .metric-weekday,
+.finance-line-chart-summary .metric:nth-child(5) .metric-weekday{color:#dc2626!important;}
+.finance-line-chart-summary .metric-amount{
+  grid-column:1!important;
+  grid-row:3!important;
+  align-self:end!important;
+  justify-content:flex-start!important;
+  gap:10px!important;
+  margin-top:20px!important;
+  width:100%!important;
+}
+.finance-line-chart-summary .metric-number{
+  font-size:30px!important;
+  line-height:.95!important;
+  font-weight:900!important;
+  letter-spacing:-.055em!important;
+}
+.finance-line-chart-summary .metric-currency{
+  font-size:13px!important;
+  font-weight:780!important;
+  padding-bottom:3px!important;
+  color:#475569!important;
+}
+@media(max-width:1280px){
+  .finance-line-chart-summary .metric{padding:17px 18px 19px!important;min-height:146px!important;}
+  .finance-line-chart-summary .metric-number{font-size:28px!important;}
+}
