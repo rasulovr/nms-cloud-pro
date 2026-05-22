@@ -5843,17 +5843,19 @@ function DailyRevenueLineChart({ rows = [], title = 'Выручка по дня�
         {areaPath && <path className="finance-line-chart-area" d={areaPath} />}
         {path && <path className="finance-line-chart-line" d={path} />}
         {bestPoint && <g key={`best-${bestPoint.date}-${bestPoint.amount}`}>
-          <circle className="finance-line-chart-best-point" cx={bestPoint.x} cy={bestPoint.y} r="5" />
-          <text className="finance-line-chart-value" x={bestPoint.x} y={Math.max(15, bestPoint.y - 22)} textAnchor="middle">{fmt(bestPoint.amount)}</text>
-          <text className="finance-line-chart-date" x={bestPoint.x} y={Math.max(29, bestPoint.y - 8)} textAnchor="middle">{formatDayMonth(bestPoint)}</text>
+          <line className="finance-line-chart-guide" x1={bestPoint.x} y1={Math.max(pad.top, bestPoint.y)} x2={bestPoint.x} y2={pad.top + chartH} />
+          <g className="finance-line-chart-tooltip" transform={`translate(${Math.max(56, Math.min(width - 100, bestPoint.x - 44))}, ${Math.max(2, bestPoint.y - 62)})`}>
+            <rect className="finance-line-chart-tooltip-box" x="0" y="0" width="88" height="46" rx="10" />
+            <text className="finance-line-chart-tooltip-value" x="44" y="19" textAnchor="middle">{fmt(bestPoint.amount)}</text>
+            <text className="finance-line-chart-tooltip-date" x="44" y="36" textAnchor="middle">{formatDayMonth(bestPoint)}</text>
+          </g>
         </g>}
-        {points.filter((_, i) => i === 0 || i === points.length - 1).map(p => <circle key={`endpoint-${p.date}-${p.amount}`} className="finance-line-chart-point" cx={p.x} cy={p.y} r="4.5" />)}
         {points.map((p, i) => <text key={`x-${p.date || i}`} className="finance-line-chart-x-label" x={p.x} y={height - 9} textAnchor="middle">{p.day}</text>)}
       </svg> : <p className="hint">Нет данных по выручке за выбранный месяц.</p>}
       <div className="finance-line-chart-summary">
         <div className="metric"><div className="metric-title">Выручка за<br />месяц</div><AmountBlock value={total} /></div>
         <div className="metric"><div className="metric-title">Средняя<br />выручка / день</div><AmountBlock value={avg} /></div>
-        <div className="metric"><div><div className="metric-title"><b style={{color: '#0f172a'}}>Лучший день</b></div><div className="metric-date">{best.day !== '—' ? formatDayMonth(best) : '—'}</div></div><AmountBlock value={best.amount} /></div>
+        <div className="metric"><div><div className="metric-title">Лучший день</div><div className="metric-date">{best.day !== '—' ? formatDayMonth(best) : '—'}</div></div><AmountBlock value={best.amount} /></div>
         <div className="metric"><div><div className="metric-title">Лучший день<br />недели</div><div className="metric-weekday">{bestWeekday.count ? bestWeekday.name : '—'}</div></div><AmountBlock value={bestWeekday.avg} /></div>
         <div className="metric"><div><div className="metric-title">Худший день<br />недели</div><div className="metric-weekday">{worstWeekday.count ? worstWeekday.name : '—'}</div></div><AmountBlock value={worstWeekday.avg} /></div>
       </div>
@@ -16419,7 +16421,7 @@ function SummaryMetric({ label, value }) {
 
 function RMSProV9Styles() {
   return <style>{`
-    /* RMS Pro UI v9 — cleaner field rows, balanced header arrow and softer active navigation */
+    /* RMS Pro UI v13 — confirmed chart KPI design and clean financial rows */
     .rms-pro-shell .rms-pro-topbar-title{
       display:flex!important;
       align-items:center!important;
@@ -16443,17 +16445,8 @@ function RMSProV9Styles() {
       line-height:1!important;
       transform:none!important;
     }
-    .rms-pro-shell .rms-pro-back svg{
-      width:20px!important;
-      height:20px!important;
-      display:block!important;
-    }
-    .rms-pro-shell .rms-pro-back:hover{
-      background:#fff!important;
-      border-color:rgba(148,163,184,.82)!important;
-      box-shadow:0 14px 30px rgba(15,23,42,.07)!important;
-      transform:none!important;
-    }
+    .rms-pro-shell .rms-pro-back svg{width:20px!important;height:20px!important;display:block!important;}
+    .rms-pro-shell .rms-pro-back:hover{background:#fff!important;border-color:rgba(148,163,184,.82)!important;box-shadow:0 14px 30px rgba(15,23,42,.07)!important;transform:none!important;}
 
     .rms-pro-shell .rms-pro-nav-item:hover,
     .rms-pro-shell .rms-pro-nav-item.active,
@@ -16468,10 +16461,7 @@ function RMSProV9Styles() {
       transform:none!important;
     }
     .rms-pro-shell .rms-pro-nav-item.active .rms-pro-nav-icon,
-    .rms-pro-shell .rms-pro-nav-item:hover .rms-pro-nav-icon{
-      background:rgba(255,255,255,.075)!important;
-      color:#eaf2ff!important;
-    }
+    .rms-pro-shell .rms-pro-nav-item:hover .rms-pro-nav-icon{background:rgba(255,255,255,.075)!important;color:#eaf2ff!important;}
 
     .rms-pro-shell .card .metric,
     .rms-pro-shell .module-placeholder .metric,
@@ -16491,49 +16481,143 @@ function RMSProV9Styles() {
     }
     .rms-pro-shell .card .metric:last-child,
     .rms-pro-shell .module-placeholder .metric:last-child,
-    .rms-pro-shell .mini-grid .metric:last-child{
-      border-bottom:0!important;
-    }
+    .rms-pro-shell .mini-grid .metric:last-child{border-bottom:0!important;}
     .rms-pro-shell .card .metric span,
     .rms-pro-shell .module-placeholder .metric span,
-    .rms-pro-shell .mini-grid .metric span{
-      color:#475569!important;
-      font-size:15px!important;
-      line-height:1.35!important;
-      font-weight:560!important;
-      letter-spacing:-.015em!important;
-    }
+    .rms-pro-shell .mini-grid .metric span{color:#475569!important;font-size:15px!important;line-height:1.35!important;font-weight:560!important;letter-spacing:-.015em!important;}
     .rms-pro-shell .card .metric strong,
     .rms-pro-shell .module-placeholder .metric strong,
-    .rms-pro-shell .mini-grid .metric strong{
-      color:#061328!important;
-      font-size:16px!important;
-      line-height:1!important;
-      font-weight:850!important;
-      font-variant-numeric:tabular-nums!important;
-      letter-spacing:-.018em!important;
-      white-space:nowrap!important;
-    }
-    .rms-pro-shell .mini-grid{
-      gap:0!important;
-    }
-    .rms-pro-shell .mini-grid .metric{
-      padding:13px 0!important;
-    }
+    .rms-pro-shell .mini-grid .metric strong{color:#061328!important;font-size:16px!important;line-height:1!important;font-weight:850!important;font-variant-numeric:tabular-nums!important;letter-spacing:-.018em!important;white-space:nowrap!important;}
+    .rms-pro-shell .mini-grid{gap:0!important;}
+    .rms-pro-shell .mini-grid .metric{padding:13px 0!important;}
 
-    .rms-pro-shell .finance-line-chart-summary .metric{
-      border-radius:16px!important;
+    .rms-pro-shell .finance-line-chart-wrap{
+      padding:28px 30px 30px!important;
+      border-radius:24px!important;
+      background:linear-gradient(180deg,#fff,rgba(255,255,255,.96))!important;
       border:1px solid rgba(226,232,240,.92)!important;
-      background:rgba(255,255,255,.78)!important;
-      padding:16px 18px 14px!important;
-      min-height:124px!important;
-      box-shadow:0 12px 26px rgba(15,23,42,.045)!important;
+      box-shadow:0 20px 44px rgba(15,23,42,.035)!important;
     }
-    .rms-pro-shell .finance-line-chart-summary .metric span,
-    .rms-pro-shell .finance-line-chart-summary .metric strong{
+    .rms-pro-shell .finance-line-chart-svg{height:386px!important;}
+    .rms-pro-shell .finance-line-chart-line{stroke:#2563eb!important;stroke-width:2.4!important;stroke-linecap:round!important;stroke-linejoin:round!important;fill:none!important;}
+    .rms-pro-shell .finance-line-chart-area{fill:rgba(37,99,235,.13)!important;}
+    .rms-pro-shell .finance-line-chart-point,
+    .rms-pro-shell .finance-line-chart-best-point{display:none!important;}
+    .rms-pro-shell .finance-line-chart-grid{stroke:rgba(148,163,184,.28)!important;stroke-width:1!important;stroke-dasharray:4 5!important;}
+    .rms-pro-shell .finance-line-chart-axis{stroke:rgba(148,163,184,.34)!important;stroke-width:1!important;}
+    .rms-pro-shell .finance-line-chart-label{fill:#0f1b33!important;font-size:13px!important;font-weight:780!important;}
+    .rms-pro-shell .finance-line-chart-x-label{fill:#13223a!important;font-size:11.5px!important;font-weight:740!important;}
+    .rms-pro-shell .finance-line-chart-guide{stroke:rgba(148,163,184,.32)!important;stroke-width:1!important;stroke-dasharray:4 5!important;}
+    .rms-pro-shell .finance-line-chart-tooltip-box{fill:#fff!important;stroke:rgba(226,232,240,.98)!important;filter:drop-shadow(0 12px 20px rgba(15,23,42,.12))!important;}
+    .rms-pro-shell .finance-line-chart-tooltip-value{fill:#2563eb!important;font-size:14px!important;font-weight:900!important;letter-spacing:-.025em!important;}
+    .rms-pro-shell .finance-line-chart-tooltip-date{fill:#071327!important;font-size:11px!important;font-weight:800!important;}
+
+    .rms-pro-shell .finance-line-chart-summary{
+      display:grid!important;
+      grid-template-columns:repeat(5,minmax(0,1fr))!important;
+      gap:18px!important;
+      margin-top:24px!important;
+    }
+    .rms-pro-shell .finance-line-chart-summary .metric{
+      position:relative!important;
+      min-height:152px!important;
+      border-radius:18px!important;
+      border:1px solid rgba(203,213,225,.78)!important;
+      background:rgba(255,255,255,.96)!important;
+      padding:56px 20px 22px!important;
+      display:flex!important;
+      flex-direction:column!important;
+      justify-content:flex-start!important;
+      align-items:flex-start!important;
+      text-align:left!important;
+      gap:0!important;
+      box-shadow:0 16px 34px rgba(15,23,42,.045)!important;
+      transition:border-color .18s ease, box-shadow .18s ease!important;
+    }
+    .rms-pro-shell .finance-line-chart-summary .metric:hover{transform:none!important;box-shadow:0 18px 38px rgba(15,23,42,.06)!important;border-color:rgba(148,163,184,.58)!important;}
+    .rms-pro-shell .finance-line-chart-summary .metric::before{
+      position:absolute!important;
+      left:20px!important;
+      top:20px!important;
+      width:32px!important;
+      height:32px!important;
+      border-radius:9px!important;
+      display:flex!important;
+      align-items:center!important;
+      justify-content:center!important;
+      color:#2563eb!important;
+      background:linear-gradient(180deg,#edf4ff,#dfeaff)!important;
+      font-size:17px!important;
+      font-weight:900!important;
+      line-height:1!important;
+    }
+    .rms-pro-shell .finance-line-chart-summary .metric:nth-child(1)::before{content:'↗'!important;}
+    .rms-pro-shell .finance-line-chart-summary .metric:nth-child(2)::before{content:'▣'!important;font-size:15px!important;}
+    .rms-pro-shell .finance-line-chart-summary .metric:nth-child(3)::before{content:'♛'!important;color:#16a34a!important;background:linear-gradient(180deg,#dcfce7,#c8f5d8)!important;font-size:16px!important;}
+    .rms-pro-shell .finance-line-chart-summary .metric:nth-child(4)::before{content:'☆'!important;}
+    .rms-pro-shell .finance-line-chart-summary .metric:nth-child(5)::before{content:'↘'!important;}
+    .rms-pro-shell .finance-line-chart-summary .metric:nth-child(3){border-color:rgba(52,211,153,.78)!important;box-shadow:0 0 0 1px rgba(52,211,153,.11),0 18px 38px rgba(15,23,42,.05)!important;}
+    .rms-pro-shell .finance-line-chart-summary .metric-title{
+      color:#24324a!important;
+      font-size:16px!important;
+      line-height:1.24!important;
+      font-weight:820!important;
+      letter-spacing:-.025em!important;
+      margin:0!important;
+      text-align:left!important;
       white-space:normal!important;
     }
+    .rms-pro-shell .finance-line-chart-summary .metric-date{
+      margin-top:9px!important;
+      color:#16a34a!important;
+      font-size:15px!important;
+      line-height:1.1!important;
+      font-weight:820!important;
+      text-align:left!important;
+    }
+    .rms-pro-shell .finance-line-chart-summary .metric-weekday{
+      margin-top:9px!important;
+      color:#2563eb!important;
+      font-size:16px!important;
+      line-height:1.1!important;
+      font-weight:880!important;
+      text-align:left!important;
+    }
+    .rms-pro-shell .finance-line-chart-summary .metric-amount{
+      display:flex!important;
+      align-items:flex-end!important;
+      justify-content:flex-start!important;
+      gap:10px!important;
+      margin-top:28px!important;
+      line-height:1!important;
+      text-align:left!important;
+      width:100%!important;
+    }
+    .rms-pro-shell .finance-line-chart-summary .metric-number{
+      color:#071327!important;
+      font-size:34px!important;
+      line-height:.96!important;
+      font-weight:900!important;
+      letter-spacing:-.06em!important;
+      font-variant-numeric:tabular-nums!important;
+      white-space:nowrap!important;
+    }
+    .rms-pro-shell .finance-line-chart-summary .metric:nth-child(3) .metric-number{color:#16a34a!important;}
+    .rms-pro-shell .finance-line-chart-summary .metric-currency{
+      color:#475569!important;
+      font-size:14px!important;
+      font-weight:760!important;
+      line-height:1!important;
+      padding-bottom:3px!important;
+      margin-left:2px!important;
+      white-space:nowrap!important;
+    }
+    .rms-pro-shell .finance-line-chart-summary .metric span,
+    .rms-pro-shell .finance-line-chart-summary .metric strong{white-space:normal!important;}
+    @media(max-width:1200px){.rms-pro-shell .finance-line-chart-summary{grid-template-columns:repeat(2,minmax(0,1fr))!important;}.rms-pro-shell .finance-line-chart-summary .metric{min-height:146px!important;}}
+    @media(max-width:760px){.rms-pro-shell .finance-line-chart-summary{grid-template-columns:1fr!important;}.rms-pro-shell .finance-line-chart-svg{height:260px!important;}.rms-pro-shell .finance-line-chart-summary .metric{min-height:132px!important;}}
   `}</style>
+}
 }
 
 createRoot(document.getElementById('root')).render(<App />)
