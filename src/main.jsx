@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { supabase } from './supabase'
 import './styles.css'
-import './rms_dashboard_chart.css'
 import QRMenu from './QRMenu'
 import './QRMenu.css'
 import RMSQRMenuAdmin from './RMSQRMenuAdmin'
@@ -4670,7 +4669,7 @@ function ThemeStyles() {
       flex-direction: column;
       justify-content: space-between;
     }
-    .finance-line-chart-summary .metric-title { color: #64748b; font-size: 13px; line-height: 1.35; font-weight: 500; }
+    .finance-line-chart-summary .metric-title { color: #64748b; font-size: 13px; line-height: 1.35; }
     .finance-line-chart-summary .metric-date { margin-top: 8px; color: #0f172a; font-size: 13px; font-weight: 500; }
     .finance-line-chart-summary .metric-weekday { margin-top: 8px; color: #0f172a; font-size: 13px; font-weight: 800; }
     .finance-line-chart-summary .metric-amount { display: flex; align-items: flex-end; gap: 6px; margin-top: 10px; line-height: 1; }
@@ -4792,7 +4791,7 @@ function DailyRevenueLineChart({ rows = [], title = 'Выручка по дня�
       <div className="finance-line-chart-summary">
         <div className="metric"><div className="metric-title">Выручка за<br />месяц</div><AmountBlock value={total} /></div>
         <div className="metric"><div className="metric-title">Средняя<br />выручка / день</div><AmountBlock value={avg} /></div>
-        <div className="metric"><div><div className="metric-title">Лучший день</div><div className="metric-date">{best.day !== '—' ? formatDayMonth(best) : '—'}</div></div><AmountBlock value={best.amount} /></div>
+        <div className="metric"><div><div className="metric-title"><b style={{color: '#0f172a'}}>Лучший день</b></div><div className="metric-date">{best.day !== '—' ? formatDayMonth(best) : '—'}</div></div><AmountBlock value={best.amount} /></div>
         <div className="metric"><div><div className="metric-title">Лучший день<br />недели</div><div className="metric-weekday">{bestWeekday.count ? bestWeekday.name : '—'}</div></div><AmountBlock value={bestWeekday.avg} /></div>
         <div className="metric"><div><div className="metric-title">Худший день<br />недели</div><div className="metric-weekday">{worstWeekday.count ? worstWeekday.name : '—'}</div></div><AmountBlock value={worstWeekday.avg} /></div>
       </div>
