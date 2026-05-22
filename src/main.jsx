@@ -6061,13 +6061,49 @@ function Dashboard({ t }) {
     return { revenue, expenses, net, supplierDebt, supplierDebtRows, branchRows, forecastRevenue, forecastProfit, forecastDetails: syncedForecast.details || [], forecastExpenses: syncedForecast.forecastExpenses, forecastMargin: syncedForecast.forecastMargin }
   }
 
+  function emptyDashboardData() {
+    return {
+      revenue: 0,
+      expenses: 0,
+      net: 0,
+      supplierDebt: 0,
+      supplierDebtRows: [],
+      branchRows: [],
+      forecastRevenue: 0,
+      forecastProfit: 0,
+      forecastDetails: [],
+      forecastExpenses: 0,
+      forecastMargin: 0,
+      previous: { revenue: 0, expenses: 0, net: 0, supplierDebt: 0, branchRows: [] }
+    }
+  }
+
   async function load() {
-    const current = await calcMonth(year, month)
-    const pm = prevMonth(year, month)
-    const previous = await calcMonth(pm.year, pm.month)
-    const dailyChartRows = await loadDailyRevenueRowsForChart(year, month, '__all__')
-    setDailyRevenueRows(dailyChartRows)
-    setData({ ...current, previous })
+    try {
+      const current = await calcMonth(year, month)
+      const pm = prevMonth(year, month)
+
+      let previous = emptyDashboardData()
+      try {
+        previous = await calcMonth(pm.year, pm.month)
+      } catch (previousError) {
+        console.error('Dashboard previous month load failed:', previousError)
+      }
+
+      let dailyChartRows = []
+      try {
+        dailyChartRows = await loadDailyRevenueRowsForChart(year, month, '__all__')
+      } catch (chartError) {
+        console.error('Dashboard daily chart load failed:', chartError)
+      }
+
+      setDailyRevenueRows(dailyChartRows || [])
+      setData({ ...current, previous })
+    } catch (error) {
+      console.error('Dashboard load failed:', error)
+      setDailyRevenueRows([])
+      setData(emptyDashboardData())
+    }
   }
 
   if (!data) return <div className="module-placeholder">{t('loading')}</div>
