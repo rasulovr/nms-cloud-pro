@@ -1085,3 +1085,71 @@ button:not(.nav):not(.rms-pro-logout):hover{transform:translateY(-1px)!important
 .rms-pro-shell .finance-line-chart-summary .metric-weekday{color:#2563eb!important;font-weight:900!important;}
 .rms-pro-shell .finance-line-chart-summary .metric-worst .metric-weekday,
 .rms-pro-shell .finance-line-chart-summary .metric:nth-child(5) .metric-weekday{color:#dc2626!important;}
+
+/* v16 — KPI card icons alignment fix: keep confirmed chart design, fix only displaced icons */
+.rms-pro-shell .finance-line-chart-summary .metric::before{content:none!important;display:none!important;}
+.rms-pro-shell .finance-line-chart-summary .metric{
+  display:grid!important;
+  grid-template-columns:44px minmax(0,1fr)!important;
+  grid-template-rows:auto 1fr!important;
+  column-gap:14px!important;
+  row-gap:16px!important;
+  align-items:start!important;
+  min-height:138px!important;
+  padding:18px 20px 20px!important;
+}
+.rms-pro-shell .finance-line-chart-summary .finance-kpi-icon{
+  grid-column:1!important;
+  grid-row:1!important;
+  width:40px!important;
+  height:40px!important;
+  border-radius:12px!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  color:#2563eb!important;
+  background:linear-gradient(180deg,#eef4ff,#dfeaff)!important;
+  font-size:20px!important;
+  font-weight:900!important;
+  line-height:1!important;
+  flex:0 0 40px!important;
+  margin:0!important;
+  box-shadow:inset 0 0 0 1px rgba(37,99,235,.05)!important;
+}
+.rms-pro-shell .finance-line-chart-summary .metric-best-day .finance-kpi-icon{
+  color:#16a34a!important;
+  background:linear-gradient(180deg,#dcfce7,#c8f5d8)!important;
+}
+.rms-pro-shell .finance-line-chart-summary .metric-worst .finance-kpi-icon{
+  color:#dc2626!important;
+  background:linear-gradient(180deg,#fff1f2,#fee2e2)!important;
+}
+.rms-pro-shell .finance-line-chart-summary .metric-copy{
+  grid-column:2!important;
+  grid-row:1!important;
+  min-width:0!important;
+  align-self:center!important;
+}
+.rms-pro-shell .finance-line-chart-summary .metric-amount{
+  grid-column:1 / -1!important;
+  grid-row:2!important;
+  align-self:end!important;
+  display:flex!important;
+  align-items:flex-end!important;
+  justify-content:flex-start!important;
+  gap:10px!important;
+  margin-top:0!important;
+  white-space:nowrap!important;
+  width:100%!important;
+}
+.rms-pro-shell .finance-line-chart-summary .metric-number{
+  font-size:31px!important;
+  line-height:.96!important;
+  font-weight:900!important;
+  letter-spacing:-.055em!important;
+}
+.rms-pro-shell .finance-line-chart-summary .metric-currency{
+  font-size:13px!important;
+  padding-bottom:3px!important;
+  margin-left:2px!important;
+}
