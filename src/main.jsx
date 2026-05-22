@@ -5870,11 +5870,31 @@ function DailyRevenueLineChart({ rows = [], title = 'Выручка по дня�
         {points.map((p, i) => <text key={`x-${p.date || i}`} className="finance-line-chart-x-label" x={p.x} y={height - 9} textAnchor="middle">{p.day}</text>)}
       </svg> : <p className="hint">Нет данных по выручке за выбранный месяц.</p>}
       <div className="finance-line-chart-summary">
-        <div className="metric"><div className="metric-title">Выручка за<br />месяц</div><AmountBlock value={total} /></div>
-        <div className="metric"><div className="metric-title">Средняя<br />выручка / день</div><AmountBlock value={avg} /></div>
-        <div className="metric"><div><div className="metric-title">Лучший день</div><div className="metric-date">{best.day !== '—' ? formatDayMonth(best) : '—'}</div></div><AmountBlock value={best.amount} /></div>
-        <div className="metric"><div><div className="metric-title">Лучший день<br />недели</div><div className="metric-weekday">{bestWeekday.count ? bestWeekday.name : '—'}</div></div><AmountBlock value={bestWeekday.avg} /></div>
-        <div className="metric metric-worst"><div><div className="metric-title">Худший день<br />недели</div><div className="metric-weekday">{worstWeekday.count ? worstWeekday.name : '—'}</div></div><AmountBlock value={worstWeekday.avg} /></div>
+        <div className="metric metric-revenue">
+          <span className="finance-kpi-icon" aria-hidden="true">↗</span>
+          <div className="metric-copy"><div className="metric-title">Выручка за<br />месяц</div></div>
+          <AmountBlock value={total} />
+        </div>
+        <div className="metric metric-average">
+          <span className="finance-kpi-icon" aria-hidden="true">▣</span>
+          <div className="metric-copy"><div className="metric-title">Средняя<br />выручка / день</div></div>
+          <AmountBlock value={avg} />
+        </div>
+        <div className="metric metric-best-day">
+          <span className="finance-kpi-icon" aria-hidden="true">♛</span>
+          <div className="metric-copy"><div className="metric-title">Лучший день</div><div className="metric-date">{best.day !== '—' ? formatDayMonth(best) : '—'}</div></div>
+          <AmountBlock value={best.amount} />
+        </div>
+        <div className="metric metric-best-weekday">
+          <span className="finance-kpi-icon" aria-hidden="true">☆</span>
+          <div className="metric-copy"><div className="metric-title">Лучший день<br />недели</div><div className="metric-weekday">{bestWeekday.count ? bestWeekday.name : '—'}</div></div>
+          <AmountBlock value={bestWeekday.avg} />
+        </div>
+        <div className="metric metric-worst">
+          <span className="finance-kpi-icon" aria-hidden="true">↘</span>
+          <div className="metric-copy"><div className="metric-title">Худший день<br />недели</div><div className="metric-weekday">{worstWeekday.count ? worstWeekday.name : '—'}</div></div>
+          <AmountBlock value={worstWeekday.avg} />
+        </div>
       </div>
     </div>
   </div>
