@@ -6969,7 +6969,7 @@ function Finance({ t, lang, onGoToExpense }) {
   ]
 
   return (
-    <section id="financePage" className="finance-intelligence-page finance-style-v22">
+    <section id="financePage" className="finance-intelligence-page">
       <section className="finance-intel-hero">
         <div>
           <h2>{t('finance_tab')}</h2>
