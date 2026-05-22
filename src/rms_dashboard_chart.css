@@ -1,0 +1,52 @@
+.finance-daily-revenue-chart {
+      min-height: 280px;
+    }
+    .finance-line-chart-wrap {
+      margin-top: 16px;
+      border-radius: 22px;
+      background: linear-gradient(180deg, rgba(248,250,252,.98), rgba(255,255,255,.98));
+      border: 1px solid rgba(226,232,240,.94);
+      padding: 18px 18px 16px;
+      overflow: hidden;
+    }
+    .finance-line-chart-svg {
+      width: 100%;
+      height: 300px;
+      display: block;
+    }
+    .finance-line-chart-grid { stroke: rgba(148,163,184,.28); stroke-width: 1; stroke-dasharray: 4 4; }
+    .finance-line-chart-axis { stroke: rgba(100,116,139,.36); stroke-width: 1; }
+    .finance-line-chart-area { fill: rgba(37,99,235,.13); }
+    .finance-line-chart-line { fill: none; stroke: #1d4ed8; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
+    .finance-line-chart-point { fill: #0f172a; stroke: #fff; stroke-width: 2; }
+    .finance-line-chart-best-point { fill: #1e3a8a; stroke: #fff; stroke-width: 2.4; }
+    .finance-line-chart-label { fill: #475569; font-size: 12px; font-weight: 600; }
+    .finance-line-chart-x-label { fill: #334155; font-size: 11px; font-weight: 600; }
+    .finance-line-chart-value { fill: #0f172a; font-size: 12px; font-weight: 800; }
+    .finance-line-chart-date { fill: #0f172a; font-size: 11px; font-weight: 700; }
+    .finance-line-chart-summary {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 16px;
+    }
+    .finance-line-chart-summary .metric {
+      min-height: 96px;
+      border-radius: 18px;
+      background: rgba(248,250,252,.96);
+      border: 1px solid rgba(226,232,240,.9);
+      padding: 14px 16px 12px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    .finance-line-chart-summary .metric-title { color: #64748b; font-size: 13px; line-height: 1.35; }
+    .finance-line-chart-summary .metric-date { margin-top: 8px; color: #0f172a; font-size: 13px; font-weight: 500; }
+    .finance-line-chart-summary .metric-weekday { margin-top: 8px; color: #0f172a; font-size: 13px; font-weight: 800; }
+    .finance-line-chart-summary .metric-amount { display: flex; align-items: flex-end; gap: 6px; margin-top: 10px; line-height: 1; }
+    .finance-line-chart-summary .metric-number { color: #0f172a; font-size: 24px; font-weight: 500; letter-spacing: -.03em; }
+    .finance-line-chart-summary .metric-currency { color: #475569; font-size: 11px; font-weight: 700; line-height: 1.05; padding-bottom: 2px; }
+    @media (max-width: 760px) {
+      .finance-line-chart-summary { grid-template-columns: 1fr; }
+      .finance-line-chart-svg { height: 230px; }
+    }
