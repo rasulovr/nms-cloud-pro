@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { supabase } from './supabase'
 import './styles.css'
+import './rms_dashboard_chart.css'
 import QRMenu from './QRMenu'
 import './QRMenu.css'
 import RMSQRMenuAdmin from './RMSQRMenuAdmin'
@@ -79,6 +80,489 @@ const THEMES = [
   { id: 'dashboard', name: 'Dashboard / Light Pro' },
   { id: 'executive', name: 'Graphite / Soft Pro' }
 ]
+
+const RMS_PRO_NAV_GROUPS = [
+  { title: 'МЕНЮ', ids: ['dashboard', 'revenue', 'finance', 'recipes', 'suppliers', 'debts', 'qrmenu', 'loyalty'] },
+  { title: 'АНАЛИТИКА', ids: ['reports'] },
+  { title: 'ИНСТРУМЕНТЫ', ids: ['market', 'settings'] }
+]
+
+const RMS_PRO_SECTION_ICONS = {
+  dashboard: '⌂',
+  revenue: '↗',
+  finance: '◉',
+  reports: '▥',
+  recipes: '▤',
+  salaries: '◇',
+  suppliers: '□',
+  debts: '◌',
+  qrmenu: '⌗',
+  loyalty: '★',
+  market: '▮',
+  settings: '⚙'
+}
+
+function rmsProSectionTitle(section, t) {
+  const map = {
+    dashboard: t('dashboard_tab'),
+    revenue: t('revenue_tab'),
+    finance: t('finance_tab'),
+    reports: t('reports_tab'),
+    recipes: t('recipes_tab'),
+    salaries: t('salaries_tab'),
+    suppliers: t('suppliers_tab'),
+    debts: t('debts_payments_tab'),
+    qrmenu: t('qr_menu_tab'),
+    loyalty: t('loyalty_tab'),
+    market: t('market_intelligence_tab'),
+    settings: t('settings_tab')
+  }
+  return map[section] || 'RMS Pro'
+}
+
+function RMSProInterfaceStyles() {
+  return <style>{`
+    :root {
+      --rms-pro-sidebar: #07162b;
+      --rms-pro-sidebar-2: #0b1d38;
+      --rms-pro-blue: #2563eb;
+      --rms-pro-line: rgba(226,232,240,.92);
+      --rms-pro-card: rgba(255,255,255,.94);
+      --rms-pro-muted: #64748b;
+      --rms-pro-ink: #0f172a;
+    }
+
+    .app.rms-pro-shell {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 250px 1fr;
+      background: #f5f7fb;
+      color: var(--rms-pro-ink);
+    }
+
+    .rms-pro-shell .sidebar.rms-pro-sidebar {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      width: 250px;
+      padding: 22px 14px 18px;
+      background:
+        radial-gradient(circle at 20% 0%, rgba(59,130,246,.32), transparent 28%),
+        linear-gradient(180deg, #07162b 0%, #08182f 48%, #061426 100%);
+      color: #e5edff;
+      border-right: 1px solid rgba(148,163,184,.16);
+      box-shadow: 16px 0 38px rgba(15,23,42,.18);
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      z-index: 20;
+    }
+
+    .rms-pro-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 30px;
+      padding: 0 8px;
+    }
+
+    .rms-pro-logo {
+      width: 46px;
+      height: 46px;
+      border-radius: 13px;
+      display: grid;
+      place-items: center;
+      color: white;
+      font-weight: 900;
+      letter-spacing: -.04em;
+      background: linear-gradient(135deg, #6366f1, #38bdf8);
+      box-shadow: 0 14px 34px rgba(37,99,235,.34);
+      overflow: hidden;
+    }
+
+    .rms-pro-brand h1 {
+      margin: 0;
+      color: #ffffff;
+      font-size: 24px;
+      line-height: 1;
+      letter-spacing: -.04em;
+    }
+
+    .rms-pro-brand p {
+      margin: 4px 0 0;
+      color: rgba(226,232,240,.72);
+      font-size: 10px;
+      line-height: 1.15;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+    }
+
+    .rms-pro-nav {
+      display: flex;
+      flex-direction: column;
+      gap: 22px;
+      flex: 1;
+    }
+
+    .rms-pro-nav-group-title {
+      margin: 0 0 9px;
+      padding: 0 8px;
+      color: rgba(226,232,240,.62);
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+    }
+
+    .rms-pro-nav-list {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+
+    .rms-pro-nav-item {
+      min-height: 44px;
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border: 1px solid transparent;
+      border-radius: 11px;
+      padding: 0 12px;
+      color: rgba(226,232,240,.92);
+      background: transparent;
+      font-size: 15px;
+      font-weight: 700;
+      text-align: left;
+      cursor: pointer;
+      transition: background .18s ease, border-color .18s ease, color .18s ease, transform .18s ease;
+    }
+
+    .rms-pro-nav-item:hover {
+      background: rgba(255,255,255,.07);
+      border-color: rgba(148,163,184,.20);
+    }
+
+    .rms-pro-nav-item.active {
+      color: #60a5fa;
+      background: linear-gradient(135deg, rgba(37,99,235,.30), rgba(37,99,235,.10));
+      border-color: rgba(96,165,250,.40);
+      box-shadow: inset 3px 0 0 #2563eb;
+    }
+
+    .rms-pro-nav-icon {
+      width: 22px;
+      height: 22px;
+      display: grid;
+      place-items: center;
+      color: currentColor;
+      font-size: 15px;
+      font-weight: 900;
+    }
+
+    .rms-pro-sidebar-bottom {
+      margin-top: 26px;
+      padding-top: 14px;
+      border-top: 1px solid rgba(148,163,184,.15);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .rms-pro-restaurant-select {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      border: 1px solid rgba(148,163,184,.22);
+      border-radius: 11px;
+      padding: 11px 13px;
+      color: #fff;
+      font-size: 13px;
+      font-weight: 800;
+      background: rgba(255,255,255,.04);
+    }
+
+    .rms-pro-user-card {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      border: 1px solid rgba(148,163,184,.14);
+      border-radius: 12px;
+      padding: 11px;
+      background: rgba(255,255,255,.03);
+    }
+
+    .rms-pro-avatar {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      color: #0f172a;
+      background: #e2e8f0;
+      font-weight: 900;
+      position: relative;
+    }
+
+    .rms-pro-avatar::after {
+      content: '';
+      position: absolute;
+      right: 0;
+      bottom: 1px;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #22c55e;
+      border: 2px solid #07162b;
+    }
+
+    .rms-pro-user-name {
+      color: #fff;
+      font-size: 13px;
+      font-weight: 900;
+      line-height: 1.1;
+      max-width: 150px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .rms-pro-user-role {
+      color: rgba(226,232,240,.66);
+      font-size: 11px;
+      margin-top: 3px;
+    }
+
+    .rms-pro-logout {
+      border: 1px solid rgba(148,163,184,.18);
+      border-radius: 11px;
+      background: rgba(255,255,255,.04);
+      color: rgba(226,232,240,.86);
+      font-weight: 800;
+      padding: 10px 12px;
+      cursor: pointer;
+    }
+
+    .rms-pro-shell .main.rms-pro-main {
+      padding: 0;
+      min-width: 0;
+      background: #f6f8fc;
+      overflow-x: hidden;
+    }
+
+    .rms-pro-topbar {
+      height: 74px;
+      padding: 0 28px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(255,255,255,.90);
+      border-bottom: 1px solid rgba(226,232,240,.95);
+      backdrop-filter: blur(18px);
+      position: sticky;
+      top: 0;
+      z-index: 12;
+    }
+
+    .rms-pro-topbar-title {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      color: #0f172a;
+      font-size: 20px;
+      font-weight: 900;
+      letter-spacing: -.03em;
+    }
+
+    .rms-pro-back {
+      width: 32px;
+      height: 32px;
+      display: grid;
+      place-items: center;
+      border: 0;
+      background: transparent;
+      color: #334155;
+      font-size: 30px;
+      line-height: 1;
+      cursor: pointer;
+    }
+
+    .rms-pro-topbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      color: #334155;
+    }
+
+    .rms-pro-top-icon {
+      width: 34px;
+      height: 34px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      border: 0;
+      background: transparent;
+      color: #334155;
+      font-size: 20px;
+    }
+
+    .rms-pro-top-user {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      color: #0f172a;
+      font-weight: 800;
+    }
+
+    .rms-pro-top-avatar {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      color: #fff;
+      background: #334155;
+      font-weight: 900;
+    }
+
+    .rms-pro-content {
+      padding: 24px 24px 34px;
+      max-width: 1580px;
+      margin: 0 auto;
+    }
+
+    .rms-pro-content > .topbar:first-child {
+      margin-top: 0;
+    }
+
+    .rms-pro-shell .card,
+    .rms-pro-shell .finance-line-chart-wrap,
+    .rms-pro-shell .market-intelligence .mi-section,
+    .rms-pro-shell .market-intelligence .mi-card,
+    .rms-pro-shell .table-wrap,
+    .rms-pro-shell .settings-card,
+    .rms-pro-shell .qr-card {
+      background: rgba(255,255,255,.96) !important;
+      border: 1px solid rgba(226,232,240,.95) !important;
+      border-radius: 20px !important;
+      box-shadow: 0 18px 42px rgba(15,23,42,.055) !important;
+    }
+
+    .rms-pro-shell .topbar {
+      background: transparent !important;
+      border: 0 !important;
+      box-shadow: none !important;
+      padding: 0 !important;
+      margin-bottom: 18px !important;
+    }
+
+    .rms-pro-shell .topbar h2,
+    .rms-pro-shell h2 {
+      color: #0f172a;
+      letter-spacing: -.04em;
+      font-weight: 900;
+    }
+
+    .rms-pro-shell .hint,
+    .rms-pro-shell .muted,
+    .rms-pro-shell .subtle {
+      color: #64748b !important;
+    }
+
+    .rms-pro-shell .kpi,
+    .rms-pro-shell .metric,
+    .rms-pro-shell .mini-card {
+      border-radius: 16px !important;
+      border: 1px solid rgba(226,232,240,.9) !important;
+      background: linear-gradient(180deg, #ffffff, #fbfdff) !important;
+    }
+
+    .rms-pro-shell .finance-line-chart-wrap {
+      padding: 26px 26px 24px !important;
+    }
+
+    .rms-pro-shell .finance-line-chart-summary .metric {
+      min-height: 124px !important;
+      padding: 16px 18px 14px !important;
+      justify-content: space-between !important;
+    }
+
+    .rms-pro-shell .finance-line-chart-summary .metric-title {
+      color: #475569 !important;
+      font-weight: 700 !important;
+    }
+
+    .rms-pro-shell .finance-line-chart-summary .metric-number {
+      font-size: 26px !important;
+      color: #0f172a !important;
+    }
+
+    .rms-pro-shell .finance-line-chart-summary .metric-currency {
+      font-size: 10px !important;
+      color: #475569 !important;
+      align-self: flex-end !important;
+    }
+
+    .rms-pro-shell .finance-line-chart-summary .metric:nth-child(3) {
+      border-color: rgba(74,222,128,.65) !important;
+      box-shadow: 0 14px 34px rgba(34,197,94,.10) !important;
+    }
+
+    .rms-pro-shell .finance-line-chart-summary .metric-title b,
+    .rms-pro-shell .finance-line-chart-summary .metric-title strong {
+      font-weight: 700 !important;
+    }
+
+    .rms-pro-shell .finance-line-chart-summary .metric-weekday {
+      font-weight: 800 !important;
+    }
+
+    .rms-pro-shell button:not(.rms-pro-nav-item):not(.rms-pro-back):not(.rms-pro-top-icon):not(.rms-pro-logout),
+    .rms-pro-shell .btn {
+      border-radius: 12px;
+    }
+
+    @media (max-width: 960px) {
+      .app.rms-pro-shell {
+        display: block;
+      }
+      .rms-pro-shell .sidebar.rms-pro-sidebar {
+        position: relative;
+        width: 100%;
+        height: auto;
+        min-height: auto;
+        border-radius: 0 0 20px 20px;
+      }
+      .rms-pro-nav {
+        gap: 12px;
+      }
+      .rms-pro-nav-list {
+        flex-direction: row;
+        overflow-x: auto;
+      }
+      .rms-pro-nav-item {
+        min-width: max-content;
+      }
+      .rms-pro-sidebar-bottom {
+        display: none;
+      }
+      .rms-pro-topbar {
+        padding: 0 16px;
+      }
+      .rms-pro-content {
+        padding: 16px;
+      }
+      .rms-pro-topbar-title {
+        font-size: 17px;
+      }
+      .rms-pro-topbar-actions {
+        gap: 6px;
+      }
+    }
+  `}</style>
+}
+
 const accessRank = (value) => ACCESS_LEVELS.indexOf(value || 'none')
 const canReadAccess = (value) => accessRank(value) >= accessRank('read')
 
@@ -902,34 +1386,95 @@ function App() {
   if (loading) return <div className="login-screen"><div className="login-card">{t('loading')}</div></div>
   if (!session) return <Login lang={lang} setLang={setLang} t={t} />
 
+  const visibleSectionMap = Object.fromEntries(visibleSections.map(s => [s.id, s]))
+  const groupedSections = RMS_PRO_NAV_GROUPS.map(group => ({
+    ...group,
+    sections: group.ids.map(id => visibleSectionMap[id]).filter(Boolean)
+  })).filter(group => group.sections.length)
+  const ungroupedSections = visibleSections.filter(s => !RMS_PRO_NAV_GROUPS.some(group => group.ids.includes(s.id)))
+  const activeTitle = rmsProSectionTitle(section, t)
+  const userName = profile?.full_name || profile?.login_name || session?.user?.email || 'Admin'
+  const userInitial = String(userName || 'A').trim().slice(0, 1).toUpperCase()
+  const renderProNavButton = (s) => (
+    <button
+      key={s.id}
+      className={`rms-pro-nav-item ${section === s.id ? 'active' : ''}`}
+      onClick={() => setSection(s.id)}
+      type="button"
+    >
+      <span className="rms-pro-nav-icon">{RMS_PRO_SECTION_ICONS[s.id] || '•'}</span>
+      <span>{t(s.key)}</span>
+    </button>
+  )
+
   return (
-    <div className={`app theme-${theme || 'classic'}`}>
-      <aside className="sidebar">
-        <div className="brand">
-          <ProductLogo compact />
+    <div className={`app rms-pro-shell theme-${theme || 'classic'}`}>
+      <aside className="sidebar rms-pro-sidebar">
+        <div className="rms-pro-brand">
+          <div className="rms-pro-logo"><ProductLogo compact /></div>
           <div>
             <h1>{t('system_short_title')}</h1>
             <p>{t('brand_subtitle')}</p>
           </div>
         </div>
 
-        <nav className="nav-tabs">
-          {visibleSections.map(s => (
-            <button key={s.id} className={`nav ${section === s.id ? 'active' : ''}`} onClick={() => setSection(s.id)}>{t(s.key)}</button>
+        <nav className="rms-pro-nav">
+          {groupedSections.map(group => (
+            <div key={group.title} className="rms-pro-nav-group">
+              <div className="rms-pro-nav-group-title">{group.title}</div>
+              <div className="rms-pro-nav-list">
+                {group.sections.map(renderProNavButton)}
+              </div>
+            </div>
           ))}
-          <button className="nav logout-nav" onClick={logout}>{t('logout')}</button>
+          {ungroupedSections.length > 0 && (
+            <div className="rms-pro-nav-group">
+              <div className="rms-pro-nav-group-title">ДРУГОЕ</div>
+              <div className="rms-pro-nav-list">
+                {ungroupedSections.map(renderProNavButton)}
+              </div>
+            </div>
+          )}
         </nav>
 
-        <div className="userbar">
-          <span>{profile?.full_name || profile?.login_name || session.user.email}</span>
+        <div className="rms-pro-sidebar-bottom">
+          <div className="rms-pro-restaurant-select">
+            <span>Restoran Demo</span>
+            <span>⌄</span>
+          </div>
+          <div className="rms-pro-user-card">
+            <div className="rms-pro-avatar">{userInitial}</div>
+            <div>
+              <div className="rms-pro-user-name">{userName}</div>
+              <div className="rms-pro-user-role">{isAdmin ? t('administrator') : t('employee')}</div>
+            </div>
+          </div>
+          <button className="rms-pro-logout" onClick={logout} type="button">{t('logout')}</button>
         </div>
       </aside>
 
-      <main className={`main ${currentAccess === 'read' ? 'readonly-mode' : ''}`}>
+      <main className={`main rms-pro-main ${currentAccess === 'read' ? 'readonly-mode' : ''}`}>
         <DashboardStyles />
         <ThemeStyles />
         <ResponsiveAndSettingsStyles />
+        <RMSProInterfaceStyles />
         <GlobalProgressOverlay />
+        <div className="rms-pro-topbar">
+          <div className="rms-pro-topbar-title">
+            <button className="rms-pro-back" type="button" onClick={() => setSection('dashboard')}>‹</button>
+            <span>{activeTitle}</span>
+          </div>
+          <div className="rms-pro-topbar-actions">
+            <button className="rms-pro-top-icon" type="button" aria-label="Notifications">♧</button>
+            <button className="rms-pro-top-icon" type="button" aria-label="Help">?</button>
+            <div className="rms-pro-top-user">
+              <div className="rms-pro-top-avatar">{userInitial}</div>
+              <span>{isAdmin ? 'Admin' : userName}</span>
+              <span>⌄</span>
+            </div>
+          </div>
+        </div>
+        <div className="rms-pro-content">
         {!canReadAccess(currentAccess) && <section className="card"><h3>{t('permission_denied')}</h3><p className="hint">Этот раздел скрыт для текущего пользователя.</p></section>}
         {canReadAccess(currentAccess) && currentAccess === 'read' && <div className="readonly-banner">Режим просмотра: редактирование этого раздела отключено.</div>}
         {canReadAccess(currentAccess) && section === 'dashboard' && <Dashboard t={t} />}
@@ -957,6 +1502,7 @@ function App() {
         </div>}
         {canReadAccess(currentAccess) && section === 'market' && <MarketIntelligence t={t} />}
         {canReadAccess(currentAccess) && section === 'settings' && <Settings session={session} t={t} theme={theme} setTheme={setTheme} />}
+        </div>
       </main>
     </div>
   )
