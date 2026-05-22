@@ -40,7 +40,7 @@
       flex-direction: column;
       justify-content: space-between;
     }
-    .finance-line-chart-summary .metric-title { color: #64748b; font-size: 13px; line-height: 1.35; font-weight: 500; }
+    .finance-line-chart-summary .metric-title { color: #64748b; font-size: 13px; line-height: 1.35; }
     .finance-line-chart-summary .metric-date { margin-top: 8px; color: #0f172a; font-size: 13px; font-weight: 500; }
     .finance-line-chart-summary .metric-weekday { margin-top: 8px; color: #0f172a; font-size: 13px; font-weight: 800; }
     .finance-line-chart-summary .metric-amount { display: flex; align-items: flex-end; gap: 6px; margin-top: 10px; line-height: 1; }
