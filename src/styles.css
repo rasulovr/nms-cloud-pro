@@ -456,3 +456,63 @@ button:not(.nav):not(.rms-pro-logout):hover{transform:translateY(-1px)!important
   border-radius:22px!important;
   box-shadow:0 16px 44px rgba(15,23,42,.052)!important;
 }
+
+
+/* RMS Pro UI redesign v5 — sidebar/content polish */
+.app.rms-pro-shell{
+  background:linear-gradient(180deg,#f7faff 0%,#eef4fb 100%)!important;
+  font-family:Inter,"SF Pro Display",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif!important;
+  color:#0f172a!important;
+}
+.rms-pro-sidebar.sidebar{
+  width:264px!important;flex:0 0 264px!important;height:100vh!important;min-height:100vh!important;
+  overflow:hidden!important;padding:18px 14px 14px!important;gap:0!important;
+  background:radial-gradient(circle at 20% 0%,rgba(69,111,255,.26),transparent 28%),linear-gradient(180deg,#0a1b33 0%,#06182e 58%,#031120 100%)!important;
+  border-right:1px solid rgba(148,163,184,.16)!important;box-shadow:18px 0 50px rgba(15,23,42,.14)!important;
+}
+.rms-pro-brand.brand,.rms-pro-brand{padding:0 6px 14px!important;margin:0 0 12px!important;border-bottom:1px solid rgba(148,163,184,.14)!important;gap:11px!important;}
+.rms-pro-logo{width:46px!important;height:46px!important;min-width:46px!important;border-radius:14px!important;background:linear-gradient(135deg,#5b7cfa 0%,#6ee7f9 100%)!important;box-shadow:0 14px 34px rgba(37,99,235,.30)!important;overflow:hidden!important;display:grid!important;place-items:center!important;}
+.rms-pro-logo .rms-brandmark{width:100%!important;height:100%!important;border-radius:14px!important;background:transparent!important;box-shadow:none!important;border:0!important;display:grid!important;place-items:center!important;}
+.rms-pro-logo .rms-custom-logo{width:62%!important;height:62%!important;object-fit:contain!important;border-radius:0!important;filter:brightness(0) invert(1) opacity(.96)!important;background:transparent!important;}
+.rms-pro-logo .rms-logo-svg{width:100%!important;height:100%!important;display:block!important;}
+.rms-pro-brand h1{font-size:24px!important;font-weight:850!important;letter-spacing:-.045em!important;line-height:.95!important;color:#fff!important;}
+.rms-pro-brand p{font-size:10px!important;line-height:1.08!important;letter-spacing:.055em!important;color:rgba(226,232,240,.72)!important;max-width:150px!important;}
+.rms-pro-nav.nav-tabs,.rms-pro-nav{flex:1 1 auto!important;display:flex!important;flex-direction:column!important;gap:8px!important;min-height:0!important;overflow:hidden!important;}
+.rms-pro-nav-group-title{margin:8px 8px 5px!important;font-size:11px!important;line-height:1!important;font-weight:800!important;color:rgba(203,213,225,.72)!important;letter-spacing:.075em!important;}
+.rms-pro-nav-list{display:flex!important;flex-direction:column!important;gap:4px!important;}
+.rms-pro-nav-item.nav{min-height:35px!important;height:35px!important;padding:0 10px!important;border-radius:11px!important;gap:10px!important;font-size:14px!important;font-weight:700!important;letter-spacing:-.015em!important;background:transparent!important;border:1px solid transparent!important;color:rgba(241,245,249,.92)!important;box-shadow:none!important;transform:none!important;}
+.rms-pro-nav-item.nav:hover{background:rgba(37,99,235,.13)!important;border-color:rgba(96,165,250,.24)!important;transform:none!important;color:#dbeafe!important;box-shadow:none!important;}
+.rms-pro-nav-item.nav.active{background:rgba(37,99,235,.20)!important;border-color:rgba(96,165,250,.38)!important;box-shadow:inset 3px 0 0 #2563eb!important;color:#60a5fa!important;}
+.rms-pro-nav-icon{width:22px!important;height:22px!important;min-width:22px!important;border-radius:7px!important;background:rgba(255,255,255,.045)!important;color:currentColor!important;}
+.rms-pro-nav-icon svg{width:17px!important;height:17px!important;stroke-width:1.85!important;}
+.rms-pro-sidebar-bottom{margin-top:10px!important;padding-top:10px!important;border-top:1px solid rgba(148,163,184,.12)!important;display:grid!important;gap:7px!important;flex:0 0 auto!important;}
+.rms-pro-restaurant-select{display:none!important;}
+.rms-pro-user-card{min-height:48px!important;padding:8px 9px!important;border-radius:13px!important;background:rgba(15,23,42,.24)!important;border:1px solid rgba(148,163,184,.16)!important;display:flex!important;align-items:center!important;gap:9px!important;overflow:hidden!important;}
+.rms-pro-avatar{width:34px!important;height:34px!important;min-width:34px!important;box-shadow:none!important;}
+.rms-pro-user-name{font-size:12px!important;font-weight:800!important;line-height:1.1!important;max-width:160px!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important;color:#fff!important;}
+.rms-pro-user-role{font-size:10.5px!important;line-height:1.1!important;color:rgba(226,232,240,.68)!important;margin-top:3px!important;}
+.rms-pro-logout{display:block!important;width:100%!important;height:34px!important;min-height:34px!important;padding:0 10px!important;border-radius:11px!important;background:rgba(255,255,255,.055)!important;color:rgba(241,245,249,.88)!important;border:1px solid rgba(148,163,184,.14)!important;font-size:12px!important;font-weight:750!important;text-align:left!important;}
+.rms-pro-logout:hover{background:rgba(37,99,235,.12)!important;border-color:rgba(96,165,250,.24)!important;transform:none!important;}
+.rms-pro-main.main{background:radial-gradient(circle at 0% 0%,rgba(219,234,254,.90),transparent 32%),linear-gradient(180deg,#f8fbff 0%,#eef4fa 100%)!important;padding:0 28px 34px!important;}
+.rms-pro-topbar{height:74px!important;margin:0 -28px 30px!important;padding:0 28px!important;background:rgba(255,255,255,.86)!important;backdrop-filter:blur(18px)!important;border-bottom:1px solid rgba(203,213,225,.78)!important;}
+.rms-pro-topbar-title{font-size:21px!important;font-weight:800!important;letter-spacing:-.032em!important;color:#0f172a!important;}
+.rms-pro-back{font-size:34px!important;color:#334155!important;font-weight:300!important;background:transparent!important;box-shadow:none!important;}
+.rms-pro-content{max-width:none!important;}
+.rms-pro-main .topbar h2{font-size:34px!important;font-weight:850!important;letter-spacing:-.05em!important;color:#0f172a!important;}
+.rms-pro-main .topbar p{font-size:16px!important;color:#64748b!important;}
+.rms-pro-main .card,.rms-pro-main .module-placeholder{background:rgba(255,255,255,.90)!important;border:1px solid rgba(203,213,225,.82)!important;border-radius:22px!important;box-shadow:0 18px 54px rgba(15,23,42,.055)!important;}
+.rms-pro-main .big-number{font-size:34px!important;font-weight:800!important;letter-spacing:-.055em!important;color:#111827!important;}
+.rms-pro-main .card h3,.rms-pro-main .card-head h3{font-size:22px!important;font-weight:800!important;letter-spacing:-.035em!important;color:#0f172a!important;}
+.rms-pro-main .hint{color:#64748b!important;font-size:14px!important;}
+@media(max-height:760px){
+  .rms-pro-sidebar.sidebar{padding-top:14px!important;padding-bottom:10px!important;}
+  .rms-pro-brand.brand,.rms-pro-brand{padding-bottom:10px!important;margin-bottom:8px!important;}
+  .rms-pro-logo{width:42px!important;height:42px!important;min-width:42px!important;}
+  .rms-pro-nav{gap:5px!important;}
+  .rms-pro-nav-group-title{margin:6px 8px 4px!important;font-size:10.5px!important;}
+  .rms-pro-nav-list{gap:3px!important;}
+  .rms-pro-nav-item.nav{height:32px!important;min-height:32px!important;font-size:13px!important;}
+  .rms-pro-sidebar-bottom{gap:6px!important;margin-top:7px!important;padding-top:8px!important;}
+  .rms-pro-user-card{min-height:43px!important;padding:7px 8px!important;}
+  .rms-pro-logout{height:31px!important;min-height:31px!important;}
+}
