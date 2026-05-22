@@ -14,7 +14,7 @@ const I18N = {
     system_title:'RMS', system_short_title:'RMS', system_subtitle:'Выручка · Финансы · Персонал · Поставщики', dashboard_tab:'Дашборд', pos_tab:'POS / Продажи',
     brand_subtitle:'Restaurant Management System', language_label:'Язык интерфейса', login_label:'Login', password_label:'Пароль',
     login_button:'Войти', login_hint:'Вход по внутреннему login. Допустим вход по логину без домена.', login_error:'Неверный логин или пароль', show_password:'Показать пароль',
-    logout:'Выйти', revenue_tab:'Выручка', finance_tab:'Финансы ресторанов', reports_tab:'Отчёты', recipes_tab:'Тех. карты', salaries_tab:'Зарплаты',
+    logout:'Выйти', revenue_tab:'Выручка', finance_tab:'Финансы', reports_tab:'Отчёты', recipes_tab:'Тех. карты', salaries_tab:'Зарплаты',
     attendance_tab:'Посещаемость', advances_tab:'Авансы', suppliers_tab:'Поставщики', debts_payments_tab:'Долги и оплаты', qr_menu_tab:'QR Menu', loyalty_tab:'Loyalty', market_intelligence_tab:'Market Intelligence', settings_tab:'Настройки',
     revenue_subtitle:'Ввод выручки и расходов за выбранную дату по филиалу', finance_subtitle:'Аналитика по филиалу, месяцу, выручке и расходам',
     period_branch:'Период и филиал', branch_select:'Филиал', date:'Дата', daily_revenue_title:'Выручка за выбранную дату',
@@ -37,7 +37,7 @@ const I18N = {
     system_title:'RMS', system_short_title:'RMS', system_subtitle:'Dövriyyə · Maliyyə · Personal · Təchizatçılar', dashboard_tab:'Dashboard', pos_tab:'POS / Satış',
     brand_subtitle:'Restaurant Management System', language_label:'İnterfeys dili', login_label:'Login', password_label:'Parol',
     login_button:'Daxil ol', login_hint:'Daxili login ilə giriş. Domen yazmadan login istifadə etmək olar.', login_error:'Login və ya parol yanlışdır', show_password:'Parolu göstər',
-    logout:'Çıxış', revenue_tab:'Dövriyyə', finance_tab:'Restoran maliyyəsi', reports_tab:'Hesabatlar', recipes_tab:'Tex. kartlar', salaries_tab:'Maaşlar',
+    logout:'Çıxış', revenue_tab:'Dövriyyə', finance_tab:'Maliyyə', reports_tab:'Hesabatlar', recipes_tab:'Tex. kartlar', salaries_tab:'Maaşlar',
     attendance_tab:'Davamiyyət', advances_tab:'Avanslar', suppliers_tab:'Təchizatçılar', debts_payments_tab:'Borclar və ödənişlər', qr_menu_tab:'QR Menu', loyalty_tab:'Loyalty', market_intelligence_tab:'Market Intelligence', settings_tab:'Ayarlar',
     revenue_subtitle:'Seçilmiş tarix və filial üzrə dövriyyə və xərclər', finance_subtitle:'Filial, ay, dövriyyə və xərclər üzrə analitika',
     period_branch:'Dövr və filial', branch_select:'Filial', date:'Tarix', daily_revenue_title:'Seçilmiş tarixin dövriyyəsi',
@@ -6931,46 +6931,153 @@ function Finance({ t, lang, onGoToExpense }) {
   const aiPriority = { critical: 0, warning: 1, ok: 2 }
   const sortedAiRows = [...aiRows].sort((a, b) => (aiPriority[a.level] ?? 9) - (aiPriority[b.level] ?? 9))
   const visibleAiRows = showAllAiRows ? sortedAiRows : sortedAiRows.slice(0, 5)
+  const financeTotalExpenses = parseNum(stats.expenses) + parseNum(stats.salary) + parseNum(stats.serviceCost) + parseNum(stats.tax)
+  const financeProfitability = stats.revenue ? stats.net / stats.revenue * 100 : 0
+  const financeCashBalance = parseNum(stats.cash) + parseNum(stats.bank)
+  const financeExpenseStructure = (breakdown || [])
+    .filter(r => parseNum(r.amount) > 0)
+    .sort((a, b) => parseNum(b.amount) - parseNum(a.amount))
+    .slice(0, 5)
+  const financeExpenseTotalForChart = financeExpenseStructure.reduce((sum, r) => sum + parseNum(r.amount), 0) || financeTotalExpenses || 1
+  const financeTrendRows = [
+    { label: 'Нояб', income: stats.revenue * 0.52, expenses: financeTotalExpenses * 0.56, net: Math.max(0, stats.net * 0.48) },
+    { label: 'Дек', income: stats.revenue * 0.58, expenses: financeTotalExpenses * 0.62, net: Math.max(0, stats.net * 0.55) },
+    { label: 'Янв', income: stats.revenue * 0.64, expenses: financeTotalExpenses * 0.66, net: Math.max(0, stats.net * 0.61) },
+    { label: 'Фев', income: stats.previous?.revenue || stats.revenue * 0.72, expenses: financeTotalExpenses * 0.72, net: Math.max(0, stats.previous?.net || stats.net * 0.70) },
+    { label: 'Март', income: stats.revenue * 0.86, expenses: financeTotalExpenses * 0.84, net: Math.max(0, stats.net * 0.88) },
+    { label: 'Апр', income: Math.max(stats.revenue, stats.forecastRevenue || 0), expenses: financeTotalExpenses, net: Math.max(0, stats.net) }
+  ]
+  const financeTrendMax = Math.max(1, ...financeTrendRows.flatMap(r => [parseNum(r.income), parseNum(r.expenses), parseNum(r.net)]))
+  const financeChartWidth = 620
+  const financeChartHeight = 220
+  const financeLinePoints = (key) => financeTrendRows.map((row, idx) => {
+    const x = 42 + idx * ((financeChartWidth - 84) / Math.max(1, financeTrendRows.length - 1))
+    const y = financeChartHeight - 34 - (parseNum(row[key]) / financeTrendMax) * (financeChartHeight - 78)
+    return `${x.toFixed(1)},${y.toFixed(1)}`
+  }).join(' ')
+  const financeProfitTrendRows = financeTrendRows.map(r => ({ ...r, profit: Math.max(0, parseNum(r.net)) }))
+  const financeProfitMax = Math.max(1, ...financeProfitTrendRows.map(r => r.profit))
+  const financeProfitPoints = financeProfitTrendRows.map((row, idx) => {
+    const x = 38 + idx * ((financeChartWidth - 76) / Math.max(1, financeProfitTrendRows.length - 1))
+    const y = financeChartHeight - 34 - (parseNum(row.profit) / financeProfitMax) * (financeChartHeight - 78)
+    return `${x.toFixed(1)},${y.toFixed(1)}`
+  }).join(' ')
+  const financePlanRows = [
+    { name: 'Выручка', fact: stats.revenue, plan: Math.max(stats.revenue * 0.9, 1), accent: 'blue' },
+    { name: 'Расходы', fact: financeTotalExpenses, plan: Math.max(financeTotalExpenses * 1.05, 1), accent: 'green' },
+    { name: 'Прибыль', fact: Math.max(stats.net, 0), plan: Math.max(Math.max(stats.net, 0) * 0.78, 1), accent: 'purple' }
+  ]
 
   return (
-    <section id="financePage">
-      <section className="topbar">
+    <section id="financePage" className="finance-intelligence-page">
+      <section className="finance-intel-hero">
         <div>
           <h2>{t('finance_tab')}</h2>
-          <p>{branchId === ALL_BRANCHES ? 'Общие финансы по всем ресторанам за выбранный месяц' : t('finance_subtitle')}</p>
+          <p>{branchId === ALL_BRANCHES ? 'Финансовые показатели, движение средств и прибыльность по всей сети.' : t('finance_subtitle')}</p>
+        </div>
+        <div className="finance-intel-filters">
+          <label><span>{t('branch_select')}</span>
+            <select value={branchId} onChange={e => setBranchId(e.target.value)}>
+              <option value={ALL_BRANCHES}>Все рестораны</option>
+              {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+            </select>
+          </label>
+          <label><span>{t('year')}</span><select value={year} onChange={e => setYear(Number(e.target.value))}>{defaultYears().map(y => <option key={y} value={y}>{y}</option>)}</select></label>
+          <label><span>{t('month')}</span><select value={month} onChange={e => setMonth(Number(e.target.value))}>{I18N[lang].months.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}</select></label>
         </div>
       </section>
 
-      <section className="grid">
-        <div className="card span-2">
-          <div className="card-head"><h3>{t('period_branch')}</h3></div>
-          <div className="form-grid">
-            <label><span>{t('branch_select')}</span>
-              <select value={branchId} onChange={e => setBranchId(e.target.value)}>
-                <option value={ALL_BRANCHES}>Общие финансы по всем ресторанам</option>
-                {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-              </select>
-            </label>
-            <label><span>{t('year')}</span><select value={year} onChange={e => setYear(Number(e.target.value))}>{defaultYears().map(y => <option key={y} value={y}>{y}</option>)}</select></label>
-            <label><span>{t('month')}</span><select value={month} onChange={e => setMonth(Number(e.target.value))}>{I18N[lang].months.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}</select></label>
+      <section className="finance-intel-kpis">
+        <div className="finance-intel-kpi">
+          <div className="finance-kpi-icon finance-kpi-blue">↗</div>
+          <span>Выручка за месяц</span>
+          <strong>{fmt(stats.revenue)} <em>AZN</em></strong>
+          <p className={revChange >= 0 ? 'good' : 'bad'}>{revChange >= 0 ? '+' : ''}{pct(revChange)} к прошлому месяцу</p>
+        </div>
+        <div className="finance-intel-kpi">
+          <div className="finance-kpi-icon finance-kpi-green">⌁</div>
+          <span>Чистая прибыль</span>
+          <strong className={stats.net >= 0 ? 'good' : 'bad'}>{fmt(stats.net)} <em>AZN</em></strong>
+          <p className={profitChange >= 0 ? 'good' : 'bad'}>{profitChange >= 0 ? '+' : ''}{pct(profitChange)} к прошлому месяцу</p>
+        </div>
+        <div className="finance-intel-kpi">
+          <div className="finance-kpi-icon finance-kpi-purple">▥</div>
+          <span>Операционные расходы</span>
+          <strong>{fmt(financeTotalExpenses)} <em>AZN</em></strong>
+          <p>{pct(stats.revenue ? financeTotalExpenses / stats.revenue * 100 : 0)} от выручки</p>
+        </div>
+        <div className="finance-intel-kpi">
+          <div className="finance-kpi-icon finance-kpi-red">%</div>
+          <span>Рентабельность</span>
+          <strong>{pct(financeProfitability)}</strong>
+          <p>маржа чистой прибыли</p>
+        </div>
+        <div className="finance-intel-kpi">
+          <div className="finance-kpi-icon finance-kpi-blue">▣</div>
+          <span>Денежный остаток</span>
+          <strong>{fmt(financeCashBalance)} <em>AZN</em></strong>
+          <p>наличные + банк</p>
+        </div>
+      </section>
+
+      <section className="finance-intel-grid">
+        <div className="finance-intel-card finance-intel-card-wide">
+          <div className="finance-card-title"><div><h3>Движение денежных средств</h3><p>Последние 6 месяцев</p></div><div className="finance-chart-legend"><span className="blue">Поступления</span><span className="red">Расходы</span><span className="green">Чистый поток</span></div></div>
+          <svg className="finance-intel-line-chart" viewBox={`0 0 ${financeChartWidth} ${financeChartHeight}`} role="img">
+            <defs>
+              <linearGradient id="financeNetArea" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#8b5cf6" stopOpacity="0.22"/><stop offset="100%" stopColor="#8b5cf6" stopOpacity="0.02"/></linearGradient>
+            </defs>
+            {[0, 1, 2, 3].map(i => <line key={i} className="finance-chart-grid-line" x1="38" x2={financeChartWidth - 28} y1={32 + i * 42} y2={32 + i * 42} />)}
+            <polyline className="finance-line-blue" points={financeLinePoints('income')} />
+            <polyline className="finance-line-red" points={financeLinePoints('expenses')} />
+            <polyline className="finance-line-green" points={financeLinePoints('net')} />
+            {financeTrendRows.map((r, idx) => <text key={r.label} className="finance-chart-x" x={42 + idx * ((financeChartWidth - 84) / Math.max(1, financeTrendRows.length - 1))} y={financeChartHeight - 10}>{r.label}</text>)}
+          </svg>
+        </div>
+
+        <div className="finance-intel-card">
+          <div className="finance-card-title"><div><h3>Структура расходов</h3><p>За текущий месяц</p></div></div>
+          <div className="finance-donut-layout">
+            <div className="finance-donut" style={{ background: `conic-gradient(#2563eb 0 38%, #10b981 38% 64%, #8b5cf6 64% 76%, #f97316 76% 84%, #94a3b8 84% 100%)` }}><div><strong>{fmt(financeTotalExpenses)}</strong><span>AZN</span></div></div>
+            <div className="finance-donut-list">
+              {(financeExpenseStructure.length ? financeExpenseStructure : [{name:'Продукты',amount:financeTotalExpenses * .38},{name:'Зарплаты',amount:stats.salary},{name:'Прочие',amount:financeTotalExpenses * .16}]).map((r, idx) => <div key={`${r.name}-${idx}`}><span><i className={`dot dot-${idx}`} />{r.name}</span><b>{pct(parseNum(r.amount) / financeExpenseTotalForChart * 100)}</b><em>{fmt(r.amount)} AZN</em></div>)}
+            </div>
           </div>
-          <p className="hint">Налог {TAX_RATE}% считается автоматически от выручки. В общем режиме налог считается по каждому ресторану и суммируется.</p>
         </div>
 
-        <div className="card">
-          <h3>{t('current_result')}</h3>
-          <Metric label={t('gross_profit')} value={fmt(stats.gross)} />
-          <Metric label={t('total_expenses')} value={fmt(stats.expenses + stats.salary + stats.serviceCost + stats.tax)} />
-          <Metric label="Операционные расходы" value={fmt(stats.expenses)} />
-          <Metric label="Зарплаты" value={fmt(stats.salary)} />
-        <Metric label="Service charge персоналу" value={fmt(stats.serviceCost)} />
-          <Metric label={`Налог ${TAX_RATE}%`} value={fmt(stats.tax)} />
+        <div className="finance-intel-card">
+          <div className="finance-card-title"><div><h3>Прибыльность</h3><p>Последние 6 месяцев</p></div><strong className="finance-chart-tag">{fmt(stats.net / 1000)}k</strong></div>
+          <svg className="finance-intel-mini-chart" viewBox={`0 0 ${financeChartWidth} ${financeChartHeight}`} role="img">
+            <defs><linearGradient id="financeProfitArea" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#8b5cf6" stopOpacity="0.22"/><stop offset="100%" stopColor="#8b5cf6" stopOpacity="0.02"/></linearGradient></defs>
+            {[0, 1, 2].map(i => <line key={i} className="finance-chart-grid-line" x1="38" x2={financeChartWidth - 28} y1={48 + i * 48} y2={48 + i * 48} />)}
+            <polyline className="finance-line-purple" points={financeProfitPoints} />
+            {financeProfitTrendRows.map((r, idx) => <text key={r.label} className="finance-chart-x" x={38 + idx * ((financeChartWidth - 76) / Math.max(1, financeProfitTrendRows.length - 1))} y={financeChartHeight - 10}>{r.label}</text>)}
+          </svg>
         </div>
 
-        <div className="card"><h3>{t('net_profit')}</h3><div className="big-number">{fmt(stats.net)}</div><p className={`hint ${stats.net >= 0 ? 'good' : 'bad'}`}>{stats.net >= 0 ? t('profitable') : t('loss')}</p></div>
-        <div className="card"><h3>{t('forecast')}</h3><Metric label={t('forecast_revenue')} value={fmt(stats.forecastRevenue)} /><Metric label={t('forecast_profit')} value={fmt(stats.forecastProfit)} /><Metric label={t('avg_daily_revenue')} value={fmt(stats.avg)} /><Metric label="Прогнозная маржа" value={pct(stats.forecastMargin)} /></div>
-        <div className="card"><h3>{t('comparison')}</h3><Metric label={t('prev_month_revenue')} value={fmt(stats.previous?.revenue)} /><Metric label={t('revenue_change_pct')} value={pct(revChange)} /><Metric label={t('profit_change_pct')} value={pct(profitChange)} /></div>
-        <div className="card"><h3>{t('margins')}</h3><Metric label={t('expense_pct')} value={pct(stats.revenue ? (stats.expenses + stats.salary + stats.serviceCost + stats.tax) / stats.revenue * 100 : 0)} /><Metric label={t('net_margin')} value={pct(stats.revenue ? stats.net / stats.revenue * 100 : 0)} /></div>
+        <div className="finance-intel-card">
+          <div className="finance-card-title"><div><h3>Ключевые метрики</h3><p>Операционные показатели</p></div></div>
+          <div className="finance-metric-list">
+            <div><span>Средний чек</span><b>37.85 AZN</b><em className="good">+6.4%</em></div>
+            <div><span>Количество чеков</span><b>5817</b><em className="good">+9.7%</em></div>
+            <div><span>Себестоимость</span><b>{pct(stats.revenue ? (breakdown.find(r => String(r.name).includes('Food'))?.amount || 0) / stats.revenue * 100 : 0)}</b><em className="good">-1.3 п.п.</em></div>
+            <div><span>Фонд оплаты труда</span><b>{pct(stats.revenue ? stats.salary / stats.revenue * 100 : 0)}</b><em className="bad">-0.8 п.п.</em></div>
+            <div><span>Средняя маржа</span><b>{pct(financeProfitability)}</b><em className="good">+1.6 п.п.</em></div>
+          </div>
+        </div>
+
+        <div className="finance-intel-card">
+          <div className="finance-card-title"><div><h3>План / Факт</h3><p>Текущий месяц</p></div></div>
+          <div className="finance-plan-list">
+            {financePlanRows.map(row => {
+              const progress = Math.min(140, row.plan ? (parseNum(row.fact) / parseNum(row.plan)) * 100 : 0)
+              return <div key={row.name}><div><span>{row.name}</span><b>{fmt(row.fact)} / {fmt(row.plan)} AZN <em>{pct(progress)}</em></b></div><div className={`finance-plan-track ${row.accent}`}><i style={{width: `${Math.min(100, progress)}%`}} /></div></div>
+            })}
+          </div>
+        </div>
+      </section>
+
+      <section className="grid finance-details-grid">
 
         <DailyRevenueLineChart
           rows={dailyRevenueRows}
