@@ -16618,6 +16618,5 @@ function RMSProV9Styles() {
     @media(max-width:760px){.rms-pro-shell .finance-line-chart-summary{grid-template-columns:1fr!important;}.rms-pro-shell .finance-line-chart-svg{height:260px!important;}.rms-pro-shell .finance-line-chart-summary .metric{min-height:132px!important;}}
   `}</style>
 }
-}
 
 createRoot(document.getElementById('root')).render(<App />)
