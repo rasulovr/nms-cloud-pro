@@ -1658,7 +1658,7 @@ function App() {
         <ThemeStyles />
         <ResponsiveAndSettingsStyles />
         <RMSProInterfaceStyles />
-        <RMSProV5PolishStyles />
+        <RMSProV6Styles />
         <GlobalProgressOverlay />
         <div className="rms-pro-topbar">
           <div className="rms-pro-topbar-title">
@@ -3238,142 +3238,369 @@ function ResponsiveAndSettingsStyles() {
 }
 
 
-function ProductLogo({ compact = false, login = false }) {
-  const [customLogo, setCustomLogo] = useState(() => {
-    try { return localStorage.getItem('rms_custom_logo') || sessionStorage.getItem('rms_custom_logo') || '' } catch (_e) { return '' }
-  })
+function RMSProV6Styles() {
+  return <style>{`
 
-  useEffect(() => {
-    let cancelled = false
-    const syncLogo = () => {
-      try { setCustomLogo(localStorage.getItem('rms_custom_logo') || sessionStorage.getItem('rms_custom_logo') || '') } catch (_e) { setCustomLogo('') }
-    }
-    async function loadCloudLogo() {
-      const cloudLogo = await readRmsAppSetting(RMS_CUSTOM_LOGO_KEY, '')
-      if (cancelled || !cloudLogo) return
-      try {
-        localStorage.setItem('rms_custom_logo', cloudLogo)
-        sessionStorage.setItem('rms_custom_logo', cloudLogo)
-      } catch (_e) {}
-      setCustomLogo(cloudLogo)
-    }
-    syncLogo()
-    loadCloudLogo()
-    window.addEventListener('storage', syncLogo)
-    window.addEventListener('rms-logo-updated', syncLogo)
-    return () => {
-      cancelled = true
-      window.removeEventListener('storage', syncLogo)
-      window.removeEventListener('rms-logo-updated', syncLogo)
-    }
-  }, [])
+/* RMS Pro UI Redesign v6 — final sidebar/login alignment */
+:root{
+  --rms-navy-950:#031225;
+  --rms-navy-900:#06172d;
+  --rms-navy-800:#0b2340;
+  --rms-blue:#2563eb;
+  --rms-blue-soft:rgba(37,99,235,.18);
+  --rms-blue-border:rgba(96,165,250,.35);
+  --rms-gold:#f5b856;
+}
 
-  if (customLogo) {
-    const wrapStyle = login
-      ? { width: 270, maxWidth: '100%', height: 138, margin: '0 auto 16px', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }
-      : compact
-        ? { width: 58, height: 58, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flex: '0 0 auto' }
-        : { width: 140, height: 82, display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }
+.app.rms-pro-shell{
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif!important;
+  background:
+    radial-gradient(circle at 70% -10%, rgba(59,130,246,.07), transparent 34%),
+    linear-gradient(180deg,#f8fafc 0%,#eef4fb 100%)!important;
+}
 
-    const imgStyle = {
-      display: 'block',
-      maxWidth: '100%',
-      maxHeight: '100%',
-      width: 'auto',
-      height: 'auto',
-      objectFit: 'contain'
-    }
+.rms-pro-shell .sidebar.rms-pro-sidebar{
+  width:248px!important;
+  min-width:248px!important;
+  max-width:248px!important;
+  height:100vh!important;
+  min-height:100vh!important;
+  padding:18px 12px 12px!important;
+  overflow:hidden!important;
+  display:flex!important;
+  flex-direction:column!important;
+  gap:0!important;
+  background:
+    radial-gradient(circle at 18% -3%,rgba(59,130,246,.34),transparent 32%),
+    linear-gradient(180deg,#082044 0%,#06172d 48%,#031225 100%)!important;
+  border-right:1px solid rgba(148,163,184,.18)!important;
+  box-shadow:18px 0 52px rgba(15,23,42,.18)!important;
+}
 
-    return <div className={`rms-brandmark ${compact ? 'compact' : ''} ${login ? 'login' : ''}`} style={wrapStyle}>
-      <img src={customLogo} alt="RMS logo" className="rms-custom-logo" style={imgStyle} />
-    </div>
-  }
+.rms-pro-brand{
+  flex:0 0 auto!important;
+  display:flex!important;
+  align-items:center!important;
+  gap:12px!important;
+  padding:0 10px 17px!important;
+  margin:0 0 14px!important;
+  border-bottom:1px solid rgba(148,163,184,.16)!important;
+}
+.rms-pro-logo,
+.rms-brandmark.compact{
+  width:48px!important;
+  height:48px!important;
+  min-width:48px!important;
+  border-radius:16px!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  background:linear-gradient(135deg,rgba(96,165,250,.22),rgba(15,23,42,.18))!important;
+  box-shadow:0 14px 34px rgba(37,99,235,.28)!important;
+  overflow:hidden!important;
+}
+.rms-brandmark.compact .rms-logo-svg,
+.rms-pro-logo .rms-logo-svg{width:48px!important;height:48px!important;display:block!important;}
+.rms-pro-brand h1{
+  font-size:25px!important;
+  font-weight:860!important;
+  letter-spacing:-.045em!important;
+  line-height:.98!important;
+  margin:0!important;
+  color:#fff!important;
+}
+.rms-pro-brand p{
+  font-size:9.8px!important;
+  font-weight:720!important;
+  line-height:1.18!important;
+  letter-spacing:.045em!important;
+  color:rgba(226,232,240,.72)!important;
+  text-transform:uppercase!important;
+  margin:5px 0 0!important;
+}
 
-  return <div className={`rms-brandmark ${compact ? 'compact' : ''} ${login ? 'login' : ''}`}>
-    <svg className="rms-logo-svg" viewBox="0 0 128 128" aria-hidden="true">
-      <defs>
-        <linearGradient id="rmsBg" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#24352b" />
-          <stop offset="100%" stopColor="#0f1b15" />
-        </linearGradient>
-        <linearGradient id="rmsAccent" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#d7c3a0" />
-          <stop offset="100%" stopColor="#f3e7d4" />
-        </linearGradient>
-      </defs>
-      <rect x="8" y="8" width="112" height="112" rx="30" fill="url(#rmsBg)" />
-      <rect x="16" y="16" width="96" height="96" rx="24" fill="none" stroke="rgba(243,231,212,.18)" strokeWidth="1.6" />
-      <text x="64" y="74" textAnchor="middle" fontFamily="Inter, Arial, sans-serif" fontSize="34" fontWeight="900" letterSpacing="3" fill="url(#rmsAccent)">RMS</text>
-      <path d="M31 88h66" fill="none" stroke="rgba(243,231,212,.24)" strokeWidth="2" strokeLinecap="round" />
-    </svg>
-  </div>
+.rms-pro-nav{
+  flex:1 1 auto!important;
+  min-height:0!important;
+  overflow-y:auto!important;
+  overflow-x:hidden!important;
+  padding:0 2px 12px!important;
+  margin:0!important;
+  display:flex!important;
+  flex-direction:column!important;
+  gap:12px!important;
+  scrollbar-width:none!important;
+  -ms-overflow-style:none!important;
+}
+.rms-pro-nav::-webkit-scrollbar{width:0!important;height:0!important;display:none!important;}
+.rms-pro-nav-group{display:flex!important;flex-direction:column!important;gap:6px!important;}
+.rms-pro-nav-group-title{
+  margin:0!important;
+  padding:0 10px!important;
+  font-size:11px!important;
+  font-weight:840!important;
+  letter-spacing:.065em!important;
+  text-transform:uppercase!important;
+  color:rgba(203,213,225,.70)!important;
+}
+.rms-pro-nav-list{display:flex!important;flex-direction:column!important;gap:5px!important;}
+.rms-pro-nav-item{
+  width:100%!important;
+  min-height:38px!important;
+  height:38px!important;
+  padding:0 10px!important;
+  border-radius:11px!important;
+  display:flex!important;
+  align-items:center!important;
+  gap:11px!important;
+  color:rgba(241,245,249,.92)!important;
+  background:transparent!important;
+  border:1px solid transparent!important;
+  box-shadow:none!important;
+  transform:none!important;
+  font-size:14px!important;
+  line-height:1.05!important;
+  font-weight:730!important;
+  letter-spacing:-.018em!important;
+  text-align:left!important;
+  transition:background .16s ease,border-color .16s ease,color .16s ease!important;
+}
+.rms-pro-nav-item:hover{
+  background:rgba(59,130,246,.10)!important;
+  border-color:rgba(96,165,250,.20)!important;
+  color:#dbeafe!important;
+  transform:none!important;
+  box-shadow:none!important;
+}
+.rms-pro-nav-item.active,
+.rms-pro-nav-item:focus-visible{
+  background:rgba(37,99,235,.20)!important;
+  border-color:rgba(96,165,250,.38)!important;
+  color:#8ab4ff!important;
+  box-shadow:inset 3px 0 0 #2563eb, 0 10px 24px rgba(2,6,23,.12)!important;
+  transform:none!important;
+}
+.rms-pro-nav-icon{
+  width:24px!important;
+  height:24px!important;
+  min-width:24px!important;
+  border-radius:8px!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  background:rgba(255,255,255,.055)!important;
+  color:currentColor!important;
+  font-size:0!important;
+}
+.rms-pro-nav-icon svg{width:18px!important;height:18px!important;stroke-width:1.9!important;}
+
+.rms-pro-sidebar-bottom{
+  flex:0 0 auto!important;
+  margin-top:0!important;
+  padding:10px 2px 0!important;
+  display:flex!important;
+  flex-direction:column!important;
+  gap:8px!important;
+  border-top:1px solid rgba(148,163,184,.14)!important;
+  background:linear-gradient(180deg,rgba(3,18,37,0),rgba(3,18,37,.44))!important;
+}
+.rms-pro-restaurant-select{display:none!important;}
+.rms-pro-user-card{
+  min-height:54px!important;
+  padding:9px 10px!important;
+  border-radius:14px!important;
+  border:1px solid rgba(148,163,184,.18)!important;
+  background:rgba(15,23,42,.23)!important;
+  display:flex!important;
+  align-items:center!important;
+  gap:10px!important;
+  overflow:hidden!important;
+}
+.rms-pro-avatar{
+  width:34px!important;
+  height:34px!important;
+  min-width:34px!important;
+  border-radius:999px!important;
+  background:#e5edf7!important;
+  color:#07172d!important;
+  font-size:16px!important;
+  font-weight:860!important;
+  position:relative!important;
+}
+.rms-pro-avatar:after{
+  content:"";
+  position:absolute;
+  right:-1px;
+  bottom:1px;
+  width:10px;
+  height:10px;
+  border-radius:999px;
+  background:#22c55e;
+  border:2px solid #06172d;
+}
+.rms-pro-user-name{
+  font-size:12px!important;
+  font-weight:790!important;
+  color:#fff!important;
+  max-width:150px!important;
+  white-space:nowrap!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+}
+.rms-pro-user-role{
+  font-size:10.5px!important;
+  color:rgba(226,232,240,.66)!important;
+  margin-top:2px!important;
+}
+.rms-pro-logout{
+  min-height:36px!important;
+  height:36px!important;
+  width:100%!important;
+  border-radius:12px!important;
+  border:1px solid rgba(148,163,184,.18)!important;
+  background:rgba(15,23,42,.24)!important;
+  color:rgba(241,245,249,.90)!important;
+  font-size:13px!important;
+  font-weight:760!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  margin:0!important;
+}
+.rms-pro-logout:hover{background:rgba(59,130,246,.10)!important;border-color:rgba(96,165,250,.20)!important;transform:none!important;}
+
+.rms-pro-main.main{
+  background:
+    radial-gradient(circle at 100% 0%,rgba(59,130,246,.08),transparent 32%),
+    linear-gradient(180deg,#ffffff 0%,#f2f6fb 100%)!important;
+  color:#0f172a!important;
+}
+.rms-pro-topbar{
+  background:rgba(255,255,255,.88)!important;
+  border-bottom:1px solid rgba(203,213,225,.72)!important;
+  box-shadow:0 10px 30px rgba(15,23,42,.035)!important;
+}
+.card,.module-placeholder{
+  background:rgba(255,255,255,.94)!important;
+  border:1px solid rgba(203,213,225,.72)!important;
+  box-shadow:0 18px 52px rgba(15,23,42,.055)!important;
+}
+
+/* Login screen aligned with new RMS Pro identity */
+.login-screen.theme-executive{
+  min-height:100vh!important;
+  display:grid!important;
+  place-items:center!important;
+  padding:28px!important;
+  background:
+    radial-gradient(circle at 12% 10%,rgba(37,99,235,.10),transparent 32%),
+    radial-gradient(circle at 90% 90%,rgba(245,184,86,.10),transparent 28%),
+    linear-gradient(135deg,#f8fbff 0%,#eef4fb 100%)!important;
+}
+.login-screen.theme-executive:before{
+  content:"";
+  position:fixed;
+  inset:0;
+  pointer-events:none;
+  background-image:linear-gradient(rgba(15,23,42,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(15,23,42,.035) 1px,transparent 1px);
+  background-size:44px 44px;
+  mask-image:radial-gradient(circle at 50% 40%,black,transparent 72%);
+}
+.login-screen.theme-executive .login-card{
+  width:min(440px,calc(100vw - 40px))!important;
+  border-radius:28px!important;
+  padding:32px!important;
+  background:rgba(255,255,255,.92)!important;
+  border:1px solid rgba(203,213,225,.74)!important;
+  box-shadow:0 28px 80px rgba(15,23,42,.13)!important;
+  backdrop-filter:blur(18px)!important;
+  align-items:stretch!important;
+}
+.rms-brandmark.login{
+  width:106px!important;
+  height:106px!important;
+  margin:0 auto 14px!important;
+  border-radius:28px!important;
+  background:linear-gradient(135deg,#0b2340,#06172d)!important;
+  box-shadow:0 22px 52px rgba(15,23,42,.18)!important;
+}
+.rms-brandmark.login .rms-logo-svg{width:106px!important;height:106px!important;}
+.login-title{
+  text-align:center!important;
+  color:#07172d!important;
+  font-size:42px!important;
+  line-height:1!important;
+  letter-spacing:-.06em!important;
+  margin:0!important;
+  font-weight:880!important;
+}
+.login-subtitle{
+  text-align:center!important;
+  color:#334155!important;
+  text-transform:uppercase!important;
+  font-weight:760!important;
+  letter-spacing:.05em!important;
+  margin:4px 0 16px!important;
+  font-size:12px!important;
+}
+.login-screen.theme-executive .login-card > p:not(.login-subtitle):not(.bad){
+  text-align:center!important;
+  color:#64748b!important;
+  margin:0 0 8px!important;
+}
+.login-screen.theme-executive label{color:#334155!important;font-weight:730!important;font-size:12px!important;}
+.login-screen.theme-executive input,
+.login-screen.theme-executive select{
+  min-height:46px!important;
+  border-radius:13px!important;
+  border:1px solid rgba(203,213,225,.84)!important;
+  background:#fff!important;
+  color:#0f172a!important;
+  box-shadow:0 8px 20px rgba(15,23,42,.035)!important;
+}
+.login-screen.theme-executive .primary{
+  min-height:48px!important;
+  border-radius:14px!important;
+  background:linear-gradient(135deg,#082044,#06172d)!important;
+  color:#fff!important;
+  font-size:15px!important;
+  box-shadow:0 18px 40px rgba(15,23,42,.18)!important;
+}
+.login-screen.theme-executive .primary:hover{transform:none!important;box-shadow:0 18px 40px rgba(15,23,42,.18)!important;}
+
+@media(max-width:900px){
+  .rms-pro-shell .sidebar.rms-pro-sidebar{width:100%!important;max-width:none!important;height:auto!important;min-height:0!important;position:relative!important;}
+  .rms-pro-nav{max-height:55vh!important;}
+}
+
+  `}</style>
 }
 
 
-function RMSProV5PolishStyles() {
-  return <style>{`
-    .app.rms-pro-shell{
-      background:linear-gradient(180deg,#f7faff 0%,#eef4fb 100%)!important;
-      font-family:Inter,"SF Pro Display",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif!important;
-      color:#0f172a!important;
-    }
-    .rms-pro-shell .sidebar.rms-pro-sidebar{
-      width:264px!important;flex:0 0 264px!important;height:100vh!important;min-height:100vh!important;
-      overflow:hidden!important;padding:18px 14px 14px!important;gap:0!important;
-      background:radial-gradient(circle at 20% 0%,rgba(69,111,255,.26),transparent 28%),linear-gradient(180deg,#0a1b33 0%,#06182e 58%,#031120 100%)!important;
-      border-right:1px solid rgba(148,163,184,.16)!important;box-shadow:18px 0 50px rgba(15,23,42,.14)!important;
-    }
-    .rms-pro-brand{padding:0 6px 14px!important;margin:0 0 12px!important;border-bottom:1px solid rgba(148,163,184,.14)!important;gap:11px!important;}
-    .rms-pro-logo{width:46px!important;height:46px!important;min-width:46px!important;border-radius:14px!important;background:linear-gradient(135deg,#5b7cfa 0%,#6ee7f9 100%)!important;box-shadow:0 14px 34px rgba(37,99,235,.30)!important;overflow:hidden!important;display:grid!important;place-items:center!important;}
-    .rms-pro-logo .rms-brandmark{width:100%!important;height:100%!important;border-radius:14px!important;background:transparent!important;box-shadow:none!important;border:0!important;display:grid!important;place-items:center!important;}
-    .rms-pro-logo .rms-custom-logo{width:62%!important;height:62%!important;object-fit:contain!important;border-radius:0!important;filter:brightness(0) invert(1) opacity(.96)!important;background:transparent!important;}
-    .rms-pro-logo .rms-logo-svg{width:100%!important;height:100%!important;display:block!important;}
-    .rms-pro-brand h1{font-size:24px!important;font-weight:850!important;letter-spacing:-.045em!important;line-height:.95!important;color:#fff!important;}
-    .rms-pro-brand p{font-size:10px!important;line-height:1.08!important;letter-spacing:.055em!important;color:rgba(226,232,240,.72)!important;max-width:150px!important;}
-    .rms-pro-nav{flex:1 1 auto!important;display:flex!important;flex-direction:column!important;gap:8px!important;min-height:0!important;overflow:hidden!important;}
-    .rms-pro-nav-group{display:block!important;}
-    .rms-pro-nav-group-title{margin:8px 8px 5px!important;font-size:11px!important;line-height:1!important;font-weight:800!important;color:rgba(203,213,225,.72)!important;letter-spacing:.075em!important;}
-    .rms-pro-nav-list{display:flex!important;flex-direction:column!important;gap:4px!important;}
-    .rms-pro-nav-item.nav{min-height:35px!important;height:35px!important;padding:0 10px!important;border-radius:11px!important;gap:10px!important;font-size:14px!important;font-weight:700!important;letter-spacing:-.015em!important;background:transparent!important;border:1px solid transparent!important;color:rgba(241,245,249,.92)!important;box-shadow:none!important;transform:none!important;}
-    .rms-pro-nav-item.nav:hover{background:rgba(37,99,235,.13)!important;border-color:rgba(96,165,250,.24)!important;transform:none!important;color:#dbeafe!important;box-shadow:none!important;}
-    .rms-pro-nav-item.nav.active{background:rgba(37,99,235,.20)!important;border-color:rgba(96,165,250,.38)!important;box-shadow:inset 3px 0 0 #2563eb!important;color:#60a5fa!important;}
-    .rms-pro-nav-icon{width:22px!important;height:22px!important;min-width:22px!important;border-radius:7px!important;background:rgba(255,255,255,.045)!important;color:currentColor!important;}
-    .rms-pro-nav-icon svg{width:17px!important;height:17px!important;stroke-width:1.85!important;}
-    .rms-pro-sidebar-bottom{margin-top:10px!important;padding-top:10px!important;border-top:1px solid rgba(148,163,184,.12)!important;display:grid!important;gap:7px!important;flex:0 0 auto!important;}
-    .rms-pro-restaurant-select{display:none!important;}
-    .rms-pro-user-card{min-height:48px!important;padding:8px 9px!important;border-radius:13px!important;background:rgba(15,23,42,.24)!important;border:1px solid rgba(148,163,184,.16)!important;display:flex!important;align-items:center!important;gap:9px!important;overflow:hidden!important;}
-    .rms-pro-avatar{width:34px!important;height:34px!important;min-width:34px!important;box-shadow:none!important;}
-    .rms-pro-user-name{font-size:12px!important;font-weight:800!important;line-height:1.1!important;max-width:160px!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important;color:#fff!important;}
-    .rms-pro-user-role{font-size:10.5px!important;line-height:1.1!important;color:rgba(226,232,240,.68)!important;margin-top:3px!important;}
-    .rms-pro-logout{display:block!important;width:100%!important;height:34px!important;min-height:34px!important;padding:0 10px!important;border-radius:11px!important;background:rgba(255,255,255,.055)!important;color:rgba(241,245,249,.88)!important;border:1px solid rgba(148,163,184,.14)!important;font-size:12px!important;font-weight:750!important;text-align:left!important;}
-    .rms-pro-logout:hover{background:rgba(37,99,235,.12)!important;border-color:rgba(96,165,250,.24)!important;transform:none!important;}
-    .rms-pro-main.main{background:radial-gradient(circle at 0% 0%,rgba(219,234,254,.90),transparent 32%),linear-gradient(180deg,#f8fbff 0%,#eef4fa 100%)!important;padding:0 28px 34px!important;}
-    .rms-pro-topbar{height:74px!important;margin:0 -28px 30px!important;padding:0 28px!important;background:rgba(255,255,255,.86)!important;backdrop-filter:blur(18px)!important;border-bottom:1px solid rgba(203,213,225,.78)!important;}
-    .rms-pro-topbar-title{font-size:21px!important;font-weight:800!important;letter-spacing:-.032em!important;color:#0f172a!important;}
-    .rms-pro-back{font-size:34px!important;color:#334155!important;font-weight:300!important;background:transparent!important;box-shadow:none!important;}
-    .rms-pro-top-user span{font-weight:750!important;color:#0f172a!important;}
-    .rms-pro-content{max-width:none!important;}
-    .rms-pro-main .topbar{margin-bottom:24px!important;}
-    .rms-pro-main .topbar h2{font-size:34px!important;font-weight:850!important;letter-spacing:-.05em!important;color:#0f172a!important;}
-    .rms-pro-main .topbar p{font-size:16px!important;color:#64748b!important;}
-    .rms-pro-main .card,.rms-pro-main .module-placeholder{background:rgba(255,255,255,.90)!important;border:1px solid rgba(203,213,225,.82)!important;border-radius:22px!important;box-shadow:0 18px 54px rgba(15,23,42,.055)!important;}
-    .rms-pro-main .big-number{font-size:34px!important;font-weight:800!important;letter-spacing:-.055em!important;color:#111827!important;}
-    .rms-pro-main .card h3,.rms-pro-main .card-head h3{font-size:22px!important;font-weight:800!important;letter-spacing:-.035em!important;color:#0f172a!important;}
-    .rms-pro-main .hint{color:#64748b!important;font-size:14px!important;}
-    .rms-pro-main input,.rms-pro-main select{background:#fff!important;border:1px solid rgba(203,213,225,.88)!important;border-radius:12px!important;box-shadow:0 8px 22px rgba(15,23,42,.035)!important;}
-    @media(max-height:760px){
-      .rms-pro-shell .sidebar.rms-pro-sidebar{padding-top:14px!important;padding-bottom:10px!important;}
-      .rms-pro-brand{padding-bottom:10px!important;margin-bottom:8px!important;}
-      .rms-pro-logo{width:42px!important;height:42px!important;min-width:42px!important;}
-      .rms-pro-nav{gap:5px!important;}
-      .rms-pro-nav-group-title{margin:6px 8px 4px!important;font-size:10.5px!important;}
-      .rms-pro-nav-list{gap:3px!important;}
-      .rms-pro-nav-item.nav{height:32px!important;min-height:32px!important;font-size:13px!important;}
-      .rms-pro-sidebar-bottom{gap:6px!important;margin-top:7px!important;padding-top:8px!important;}
-      .rms-pro-user-card{min-height:43px!important;padding:7px 8px!important;}
-      .rms-pro-logout{height:31px!important;min-height:31px!important;}
-    }
-  `}</style>
+function ProductLogo({ compact = false, login = false }) {
+  return <div className={`rms-brandmark ${compact ? 'compact' : ''} ${login ? 'login' : ''}`}>
+    <svg className="rms-logo-svg" viewBox="0 0 128 128" aria-hidden="true">
+      <defs>
+        <linearGradient id="rmsLogoShell" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#2f6df6" />
+          <stop offset="100%" stopColor="#071a31" />
+        </linearGradient>
+        <linearGradient id="rmsLogoLine" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#f7d38a" />
+          <stop offset="100%" stopColor="#f5b856" />
+        </linearGradient>
+        <filter id="rmsLogoGlow" x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow dx="0" dy="10" stdDeviation="10" floodColor="#2563eb" floodOpacity="0.22" />
+        </filter>
+      </defs>
+      <rect x="10" y="10" width="108" height="108" rx="28" fill="url(#rmsLogoShell)" filter="url(#rmsLogoGlow)" />
+      <path d="M64 22 98 41v46L64 106 30 87V41L64 22Z" fill="rgba(2,6,23,.16)" stroke="url(#rmsLogoLine)" strokeWidth="5" strokeLinejoin="round" />
+      <path d="M46 61c-5.8-2.6-9.5-7.4-9.5-13 0-8.3 8-15 17.8-15 3.5 0 6.8.9 9.5 2.3 2.7-1.4 6-2.3 9.5-2.3C83 33 91 39.7 91 48c0 5.6-3.7 10.4-9.5 13" fill="none" stroke="#fff7e8" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M45 62h38v16c0 7.8-6.4 14-14.2 14h-9.6C51.4 92 45 85.8 45 78V62Z" fill="none" stroke="#fff7e8" strokeWidth="5" strokeLinejoin="round" />
+      <path d="M51 75h26" stroke="url(#rmsLogoLine)" strokeWidth="5" strokeLinecap="round" />
+      <path d="M42 96h44" stroke="url(#rmsLogoLine)" strokeWidth="5" strokeLinecap="round" />
+    </svg>
+  </div>
 }
 
 function normalizeLoginCandidates(login) {
@@ -3471,6 +3698,7 @@ function Login({ lang, setLang, t }) {
   return <div className="login-screen theme-executive">
     <ThemeStyles />
     <ResponsiveAndSettingsStyles />
+    <RMSProV6Styles />
     <GlobalProgressOverlay />
     <div className="login-card">
     <ProductLogo login />
