@@ -12382,6 +12382,75 @@ function Suppliers({ t, isAdmin = false }) {
   </section>
 }
 
+
+function DebtKpiCard({ tone = 'neutral', label, value, sub }) {
+  return <div className={`debt-kpi-card debt-kpi-${tone}`}>
+    <div className="debt-kpi-label">{label}</div>
+    <div className="debt-kpi-value">{value}</div>
+    {sub ? <div className="debt-kpi-sub">{sub}</div> : null}
+  </div>
+}
+
+function DebtDonutChart({ overdue = 0, ok = 0 }) {
+  const total = Math.max(0, parseNum(overdue)) + Math.max(0, parseNum(ok))
+  const overduePct = total ? Math.max(0, Math.min(100, (parseNum(overdue) / total) * 100)) : 0
+  const circumference = 2 * Math.PI * 42
+  const dashOverdue = (overduePct / 100) * circumference
+  const dashOk = circumference - dashOverdue
+  return <div className="debt-chart-card debt-donut-card">
+    <div className="debt-chart-head"><h3>Распределение долгов</h3><span>по статусу</span></div>
+    <div className="debt-donut-layout">
+      <svg viewBox="0 0 120 120" className="debt-donut-svg" aria-hidden="true">
+        <circle cx="60" cy="60" r="42" className="debt-donut-bg" />
+        <circle cx="60" cy="60" r="42" className="debt-donut-ok" strokeDasharray={`${dashOk} ${circumference}`} strokeDashoffset="0" />
+        <circle cx="60" cy="60" r="42" className="debt-donut-overdue" strokeDasharray={`${dashOverdue} ${circumference}`} strokeDashoffset={-dashOk} />
+      </svg>
+      <div className="debt-donut-center"><b>{fmt(total)}</b><span>AZN</span></div>
+      <div className="debt-donut-legend">
+        <div><i className="risk-dot risk-red" />Просрочено <b>{fmt(overdue)}</b></div>
+        <div><i className="risk-dot risk-green" />В срок <b>{fmt(ok)}</b></div>
+      </div>
+    </div>
+  </div>
+}
+
+function DebtTrendChart({ data = [] }) {
+  const width = 520
+  const height = 170
+  const padX = 28
+  const padY = 22
+  const maxValue = Math.max(1, ...data.map(d => parseNum(d.value)))
+  const points = data.map((d, idx) => {
+    const x = padX + (idx / Math.max(1, data.length - 1)) * (width - padX * 2)
+    const y = height - padY - (parseNum(d.value) / maxValue) * (height - padY * 2)
+    return { ...d, x, y }
+  })
+  const path = points.map((p, idx) => `${idx ? 'L' : 'M'} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ')
+  const areaPath = points.length ? `${path} L ${points[points.length - 1].x.toFixed(1)} ${height - padY} L ${points[0].x.toFixed(1)} ${height - padY} Z` : ''
+  return <div className="debt-chart-card debt-trend-card">
+    <div className="debt-chart-head"><h3>Динамика долгов</h3><span>последние месяцы</span></div>
+    <svg viewBox={`0 0 ${width} ${height}`} className="debt-trend-svg" aria-hidden="true">
+      {[0, 0.5, 1].map((v, i) => <line key={i} x1={padX} x2={width - padX} y1={padY + v * (height - padY * 2)} y2={padY + v * (height - padY * 2)} className="debt-trend-grid" />)}
+      <path d={areaPath} className="debt-trend-area" />
+      <path d={path} className="debt-trend-line" />
+      {points.map((p, idx) => <text key={idx} x={p.x} y={height - 5} textAnchor="middle" className="debt-trend-label">{p.label}</text>)}
+    </svg>
+  </div>
+}
+
+function SupplierRiskBars({ data = [] }) {
+  return <div className="debt-chart-card debt-risk-card">
+    <div className="debt-chart-head"><h3>AI Risk Score</h3><span>поставщики с риском</span></div>
+    <div className="debt-risk-list">
+      {data.map(row => <div key={row.name} className="debt-risk-row">
+        <div className="debt-risk-row-top"><span>{row.name}</span><b>{row.risk}</b></div>
+        <div className="debt-risk-track"><i style={{width: `${Math.max(4, Math.min(100, row.risk))}%`}} /></div>
+      </div>)}
+      {!data.length ? <div className="debt-empty-note">Рисковых поставщиков нет.</div> : null}
+    </div>
+  </div>
+}
+
 function DebtsPayments({ t }) {
   const [legalEntities, setLegalEntities] = useState([])
   const [branches, setBranches] = useState([])
@@ -13164,6 +13233,88 @@ function DebtsPayments({ t }) {
   const ledgerDebtClass = ledgerTotals.balance > 0 ? 'bad' : ledgerTotals.balance < 0 ? 'good' : 'neutral'
   const ledgerDebtText = ledgerTotals.balance > 0 ? 'Долг поставщику' : ledgerTotals.balance < 0 ? 'Поставщик должен нам' : 'Долга нет'
 
+
+  const debtIntelligence = useMemo(() => {
+    const supplierDebtRows = []
+    let totalDebt = 0
+    let overdueDebt = 0
+    let overLimitDebt = 0
+    let okSupplierCount = 0
+    let overdueSupplierCount = 0
+    const uniqueSuppliers = new Set()
+
+    legalEntities.forEach(le => {
+      suppliersForLegalEntity(le.id).forEach(s => {
+        const actualSupplier = currentSupplierSnapshot(s)
+        const balance = Math.max(0, balanceForSupplierLegal(actualSupplier.id, le.id))
+        if (balance <= 0.004) return
+        const alert = supplierAlert(actualSupplier, le.id)
+        const limit = parseNum(actualSupplier.credit_limit)
+        const risk = Math.min(100, Math.round((alert.overdueCount * 28) + (alert.overLimit > 0 ? 34 : 0) + (limit > 0 ? Math.min(28, (balance / Math.max(1, limit)) * 18) : 8)))
+        totalDebt += balance
+        uniqueSuppliers.add(actualSupplier.id)
+        if (alert.overdueCount > 0) {
+          overdueSupplierCount += 1
+          overdueDebt += balance
+        } else {
+          okSupplierCount += 1
+        }
+        if (alert.overLimit > 0) overLimitDebt += alert.overLimit
+        supplierDebtRows.push({
+          name: actualSupplier.name || 'Поставщик',
+          balance,
+          overdueCount: alert.overdueCount,
+          overLimit: alert.overLimit,
+          risk
+        })
+      })
+    })
+
+    const debtStatusOk = Math.max(0, totalDebt - overdueDebt)
+    const avgTerm = activeSuppliers.length
+      ? Math.round(activeSuppliers.reduce((sum, s) => sum + parseNum(s.payment_term_days), 0) / activeSuppliers.length)
+      : 0
+    const availableLimit = activeSuppliers.reduce((sum, s) => sum + parseNum(s.credit_limit), 0) - totalDebt
+
+    const now = new Date()
+    const monthKeys = Array.from({ length: 7 }).map((_, i) => {
+      const d = new Date(now.getFullYear(), now.getMonth() - (6 - i), 1)
+      const end = new Date(d.getFullYear(), d.getMonth() + 1, 0)
+      const label = d.toLocaleDateString('ru-RU', { month: 'short' }).replace('.', '')
+      return { label, end }
+    })
+
+    const trend = monthKeys.map(({ label, end }) => {
+      const value = activeSuppliers.reduce((sum, s) => {
+        const supplierId = s.id
+        const purchasesUntil = purchases.filter(p => p.supplier_id === supplierId && !p.deleted_at && new Date(p.purchase_date) <= end).reduce((acc, p) => acc + parseNum(p.total_amount), 0)
+        const openingsUntil = openingDebts.filter(d => d.supplier_id === supplierId && d.is_active !== false && new Date(d.debt_date) <= end).reduce((acc, d) => acc + parseNum(d.amount), 0)
+        const paymentsUntil = payments.filter(p => p.supplier_id === supplierId && new Date(p.payment_date) <= end).reduce((acc, p) => acc + parseNum(p.amount), 0)
+        return sum + Math.max(0, openingsUntil + purchasesUntil - paymentsUntil)
+      }, 0)
+      return { label, value }
+    })
+
+    const riskRows = supplierDebtRows
+      .sort((a, b) => b.risk - a.risk || b.balance - a.balance)
+      .slice(0, 5)
+      .map(r => ({ name: r.name, risk: r.risk }))
+
+    return {
+      totalDebt,
+      supplierCount: uniqueSuppliers.size,
+      overdueDebt,
+      overdueSupplierCount,
+      okSupplierCount,
+      overLimitDebt,
+      avgTerm,
+      availableLimit,
+      debtStatusOk,
+      trend,
+      riskRows
+    }
+  }, [legalEntities, suppliers, purchases, payments, openingDebts, supplierEntityStatuses])
+
   function scrollToSupplierTransactionPanel() {
     setTimeout(() => {
       supplierTransactionPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
@@ -13219,6 +13370,22 @@ function DebtsPayments({ t }) {
 
   return <section>
     <section className="topbar"><div><h2>Долги и оплаты</h2><p>Балансы поставщиков, контроль лимитов, просрочек, поступления и оплаты.</p></div></section>
+
+    <section className="debt-intelligence-panel">
+      <div className="debt-kpi-grid">
+        <DebtKpiCard tone="muted" label="Поставщиков" value={debtIntelligence.supplierCount} sub="с активным балансом" />
+        <DebtKpiCard tone="danger" label="Общий долг" value={`${fmt(debtIntelligence.totalDebt)} AZN`} sub={debtIntelligence.totalDebt ? `+${((debtIntelligence.overdueDebt / Math.max(1, debtIntelligence.totalDebt)) * 100).toFixed(1)}% в риске` : 'долга нет'} />
+        <DebtKpiCard tone="danger" label="Просрочено" value={debtIntelligence.overdueSupplierCount} sub={`${fmt(debtIntelligence.overdueDebt)} AZN`} />
+        <DebtKpiCard tone="success" label="В срок" value={debtIntelligence.okSupplierCount} sub={`${fmt(debtIntelligence.debtStatusOk)} AZN`} />
+        <DebtKpiCard tone="info" label="Средний срок оплаты" value={`${debtIntelligence.avgTerm || 0} дней`} sub={debtIntelligence.availableLimit >= 0 ? `лимит доступен ${fmt(debtIntelligence.availableLimit)} AZN` : `превышение ${fmt(Math.abs(debtIntelligence.availableLimit))} AZN`} />
+      </div>
+      <div className="debt-charts-grid">
+        <DebtDonutChart overdue={debtIntelligence.overdueDebt} ok={debtIntelligence.debtStatusOk} />
+        <DebtTrendChart data={debtIntelligence.trend} />
+        <SupplierRiskBars data={debtIntelligence.riskRows} />
+      </div>
+    </section>
+
     <section className="grid">
       <div className="card span-2">
         <div className="card-head"><div><h3>Поставщики и долги</h3><p className="hint">Разделено по вашим VOEN / юрлицам из настроек. В каждой группе сначала показаны 5 поставщиков.</p></div></div>
