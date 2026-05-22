@@ -198,3 +198,149 @@
   .finance-line-chart-summary .metric{padding:17px 18px 19px!important;min-height:146px!important;}
   .finance-line-chart-summary .metric-number{font-size:28px!important;}
 }
+
+
+/* v19 — final KPI cards icon layout: icon is independent above the title, no inline text collision */
+.rms-pro-shell .finance-line-chart-summary .metric::before,
+.finance-line-chart-summary .metric::before{
+  content:none!important;
+  display:none!important;
+}
+.rms-pro-shell .finance-line-chart-summary .metric,
+.finance-line-chart-summary .metric{
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:flex-start!important;
+  justify-content:flex-start!important;
+  min-height:150px!important;
+  padding:18px 22px 20px!important;
+  gap:0!important;
+  text-align:left!important;
+}
+.rms-pro-shell .finance-line-chart-summary .finance-kpi-icon,
+.finance-line-chart-summary .finance-kpi-icon{
+  order:0!important;
+  width:34px!important;
+  height:34px!important;
+  min-width:34px!important;
+  flex:0 0 34px!important;
+  border-radius:10px!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  margin:0 0 12px 0!important;
+  padding:0!important;
+  color:#2563eb!important;
+  background:linear-gradient(180deg,#eef4ff,#dfeaff)!important;
+  font-size:17px!important;
+  font-weight:900!important;
+  line-height:1!important;
+  box-shadow:inset 0 0 0 1px rgba(37,99,235,.05)!important;
+  transform:none!important;
+}
+.rms-pro-shell .finance-line-chart-summary .metric-average .finance-kpi-icon,
+.finance-line-chart-summary .metric-average .finance-kpi-icon{
+  font-size:15px!important;
+}
+.rms-pro-shell .finance-line-chart-summary .metric-best-day .finance-kpi-icon,
+.finance-line-chart-summary .metric-best-day .finance-kpi-icon{
+  color:#16a34a!important;
+  background:linear-gradient(180deg,#dcfce7,#c8f5d8)!important;
+  font-size:16px!important;
+}
+.rms-pro-shell .finance-line-chart-summary .metric-worst .finance-kpi-icon,
+.finance-line-chart-summary .metric-worst .finance-kpi-icon{
+  color:#dc2626!important;
+  background:linear-gradient(180deg,#fff1f2,#fee2e2)!important;
+}
+.rms-pro-shell .finance-line-chart-summary .metric-copy,
+.finance-line-chart-summary .metric-copy{
+  order:1!important;
+  width:100%!important;
+  min-width:0!important;
+  display:block!important;
+  align-self:stretch!important;
+  margin:0!important;
+  padding:0!important;
+}
+.rms-pro-shell .finance-line-chart-summary .metric-title,
+.finance-line-chart-summary .metric-title{
+  margin:0!important;
+  color:#071327!important;
+  font-size:16px!important;
+  line-height:1.25!important;
+  font-weight:850!important;
+  letter-spacing:-.025em!important;
+  text-align:left!important;
+  white-space:normal!important;
+}
+.rms-pro-shell .finance-line-chart-summary .metric-date,
+.finance-line-chart-summary .metric-date{
+  margin-top:7px!important;
+  color:#16a34a!important;
+  font-size:16px!important;
+  line-height:1.1!important;
+  font-weight:900!important;
+  text-align:left!important;
+}
+.rms-pro-shell .finance-line-chart-summary .metric-weekday,
+.finance-line-chart-summary .metric-weekday{
+  margin-top:7px!important;
+  color:#2563eb!important;
+  font-size:16px!important;
+  line-height:1.1!important;
+  font-weight:900!important;
+  text-align:left!important;
+}
+.rms-pro-shell .finance-line-chart-summary .metric-worst .metric-weekday,
+.rms-pro-shell .finance-line-chart-summary .metric:nth-child(5) .metric-weekday,
+.finance-line-chart-summary .metric-worst .metric-weekday,
+.finance-line-chart-summary .metric:nth-child(5) .metric-weekday{
+  color:#dc2626!important;
+}
+.rms-pro-shell .finance-line-chart-summary .metric-amount,
+.finance-line-chart-summary .metric-amount{
+  order:2!important;
+  width:100%!important;
+  display:flex!important;
+  align-items:flex-end!important;
+  justify-content:flex-start!important;
+  gap:10px!important;
+  margin:0!important;
+  margin-top:auto!important;
+  padding-top:18px!important;
+  line-height:1!important;
+  white-space:nowrap!important;
+}
+.rms-pro-shell .finance-line-chart-summary .metric-number,
+.finance-line-chart-summary .metric-number{
+  color:#071327!important;
+  font-size:30px!important;
+  line-height:.95!important;
+  font-weight:900!important;
+  letter-spacing:-.055em!important;
+  font-variant-numeric:tabular-nums!important;
+  white-space:nowrap!important;
+}
+.rms-pro-shell .finance-line-chart-summary .metric-best-day .metric-number,
+.rms-pro-shell .finance-line-chart-summary .metric:nth-child(3) .metric-number,
+.finance-line-chart-summary .metric-best-day .metric-number,
+.finance-line-chart-summary .metric:nth-child(3) .metric-number{
+  color:#16a34a!important;
+}
+.rms-pro-shell .finance-line-chart-summary .metric-currency,
+.finance-line-chart-summary .metric-currency{
+  color:#475569!important;
+  font-size:13px!important;
+  font-weight:780!important;
+  line-height:1!important;
+  padding-bottom:3px!important;
+  margin-left:1px!important;
+  white-space:nowrap!important;
+}
+@media(max-width:1280px){
+  .rms-pro-shell .finance-line-chart-summary .metric,
+  .finance-line-chart-summary .metric{padding:17px 18px 19px!important;min-height:146px!important;}
+  .rms-pro-shell .finance-line-chart-summary .metric-number,
+  .finance-line-chart-summary .metric-number{font-size:28px!important;}
+}
