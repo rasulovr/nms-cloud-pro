@@ -1655,12 +1655,18 @@ function App() {
         <div className="rms-pro-sidebar-bottom">
           <div className="rms-pro-user-card">
             <div className="rms-pro-avatar">{userInitial}</div>
-            <div>
+            <div className="rms-pro-user-info">
               <div className="rms-pro-user-name">{userName}</div>
               <div className="rms-pro-user-role">{isAdmin ? t('administrator') : t('employee')}</div>
             </div>
+            <button className="rms-pro-account-logout" onClick={logout} type="button" title={t('logout')} aria-label={t('logout')}>
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M14 7V5.5A1.5 1.5 0 0 0 12.5 4h-6A1.5 1.5 0 0 0 5 5.5v13A1.5 1.5 0 0 0 6.5 20h6a1.5 1.5 0 0 0 1.5-1.5V17" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M10 12h9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                <path d="m16 8 4 4-4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
           </div>
-          <button className="rms-pro-logout" onClick={logout} type="button">{t('logout')}</button>
         </div>
       </aside>
 
@@ -5923,6 +5929,7 @@ function Dashboard({ t }) {
     const [
       { data: revRows },
       { data: expRows },
+      dashboardDailyExpensesResult,
       { data: salRows },
       { data: svcRows },
       supplierResult,
@@ -5935,6 +5942,7 @@ function Dashboard({ t }) {
     ] = await Promise.all([
       supabase.from('monthly_branch_revenue').select('*').eq('month', monthDate),
       supabase.from('monthly_branch_expenses').select('*').eq('month', monthDate),
+      supabase.from('daily_expenses').select('branch_id, amount, comment, custom_category, expense_categories(name)').gte('expense_date', monthDate).lt('expense_date', monthEnd).is('deleted_at', null),
       supabase.from('monthly_branch_salary').select('*').eq('month', monthDate),
       supabase.from('monthly_branch_service_charge_cost').select('*').eq('month', monthDate),
       supabase.from('supplier_balances_v2').select('*'),
@@ -5987,6 +5995,18 @@ function Dashboard({ t }) {
     const baseRevenueTotal = (revRows || []).reduce((s, r) => s + parseNum(r.total_revenue), 0)
     const revenueShareMap = new Map()
     ;(revRows || []).forEach(r => revenueShareMap.set(r.branch_id, baseRevenueTotal > 0 ? parseNum(r.total_revenue) / baseRevenueTotal : 0))
+
+    // v43 fix: Dashboard expenses must match Finance.
+    // Finance uses real daily_expenses excluding supplier mirror rows and salary-like manual rows,
+    // then adds allocated supplier purchases, calculated salaries, service charge and 8% tax separately.
+    const dashboardRawExpenseByBranch = new Map()
+    ;(dashboardDailyExpensesResult?.data || []).forEach(r => {
+      const name = r.expense_categories?.name || r.custom_category || t('new_expense')
+      if (String(r?.comment || '').startsWith('SUPPLIER_PURCHASE_')) return
+      if (isSalaryExpenseName(name)) return
+      dashboardRawExpenseByBranch.set(r.branch_id, (dashboardRawExpenseByBranch.get(r.branch_id) || 0) + parseNum(r.amount))
+    })
+
     const dashboardOfficialDays = (() => { try { return JSON.parse(localStorage.getItem('rms_employee_official_days') || '{}') } catch (_e) { return {} } })()
     const dashboardOfficialSalary = (() => { try { return JSON.parse(localStorage.getItem('rms_employee_official_salary') || '{}') } catch (_e) { return {} } })()
     const dashboardDefaultDays = parseNum(localStorage.getItem('rms_dsmf_official_days') || '26') || 26
@@ -6006,7 +6026,8 @@ function Dashboard({ t }) {
     const branchRows = branches.map(b => {
       const rev = revByBranch.get(b.id) || {}
       const revenue = parseNum(rev.total_revenue)
-      const baseExpenses = parseNum(expByBranch.get(b.id)?.total_expenses)
+      const fallbackMonthlyExpenses = parseNum(expByBranch.get(b.id)?.total_expenses)
+      const baseExpenses = dashboardDailyExpensesResult?.data ? parseNum(dashboardRawExpenseByBranch.get(b.id)) : fallbackMonthlyExpenses
       const baseSalary = parseNum(salByBranch.get(b.id)?.total_salary)
       const serviceCost = parseNum(svcByBranch.get(b.id)?.staff_cost_amount)
       const tax = revenue * TAX_RATE / 100
@@ -17192,6 +17213,59 @@ function RMSProV9Styles() {
     }
     .rms-pro-shell .rms-pro-nav-item.active .rms-pro-nav-icon,
     .rms-pro-shell .rms-pro-nav-item:hover .rms-pro-nav-icon{background:rgba(255,255,255,.075)!important;color:#eaf2ff!important;}
+
+    /* v43 account footer compact logout: remove separate exit button, place icon inside user card */
+    .rms-pro-shell .rms-pro-sidebar-bottom{
+      gap:0!important;
+    }
+    .rms-pro-shell .rms-pro-user-card{
+      display:grid!important;
+      grid-template-columns:42px minmax(0,1fr) 38px!important;
+      align-items:center!important;
+      gap:10px!important;
+      min-height:64px!important;
+      padding:11px 12px!important;
+    }
+    .rms-pro-shell .rms-pro-user-info{
+      min-width:0!important;
+    }
+    .rms-pro-shell .rms-pro-user-name{
+      max-width:100%!important;
+      overflow:hidden!important;
+      text-overflow:ellipsis!important;
+      white-space:nowrap!important;
+    }
+    .rms-pro-shell .rms-pro-account-logout{
+      width:38px!important;
+      height:38px!important;
+      min-width:38px!important;
+      border-radius:13px!important;
+      border:1px solid rgba(148,163,184,.18)!important;
+      background:rgba(15,23,42,.18)!important;
+      color:rgba(241,245,249,.92)!important;
+      display:inline-flex!important;
+      align-items:center!important;
+      justify-content:center!important;
+      padding:0!important;
+      margin:0!important;
+      box-shadow:none!important;
+      transform:none!important;
+    }
+    .rms-pro-shell .rms-pro-account-logout svg{
+      width:18px!important;
+      height:18px!important;
+      display:block!important;
+    }
+    .rms-pro-shell .rms-pro-account-logout:hover{
+      background:rgba(239,68,68,.14)!important;
+      border-color:rgba(248,113,113,.26)!important;
+      color:#fecdd3!important;
+      transform:none!important;
+      box-shadow:none!important;
+    }
+    .rms-pro-shell .rms-pro-logout{
+      display:none!important;
+    }
 
     .rms-pro-shell .card .metric,
     .rms-pro-shell .module-placeholder .metric,
