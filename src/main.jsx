@@ -5987,6 +5987,21 @@ function Dashboard({ t }) {
     const baseRevenueTotal = (revRows || []).reduce((s, r) => s + parseNum(r.total_revenue), 0)
     const revenueShareMap = new Map()
     ;(revRows || []).forEach(r => revenueShareMap.set(r.branch_id, baseRevenueTotal > 0 ? parseNum(r.total_revenue) / baseRevenueTotal : 0))
+    const dashboardOfficialDays = (() => { try { return JSON.parse(localStorage.getItem('rms_employee_official_days') || '{}') } catch (_e) { return {} } })()
+    const dashboardOfficialSalary = (() => { try { return JSON.parse(localStorage.getItem('rms_employee_official_salary') || '{}') } catch (_e) { return {} } })()
+    const dashboardDefaultDays = parseNum(localStorage.getItem('rms_dsmf_official_days') || '26') || 26
+    const dashboardDirectSalaryByBranch = new Map()
+    let dashboardManagersSalary = 0
+    ;(employeeRows || []).forEach(e => {
+      const days = parseNum(dashboardOfficialDays[e.id]) || dashboardDefaultDays
+      const officialMonthly = parseNum(dashboardOfficialSalary[e.id]) || parseNum(e.official_salary) || parseNum(e.monthly_official_salary) || parseNum(e.monthly_salary)
+      const salaryBase = officialMonthly > 0 ? officialMonthly / 26 * days : 0
+      if (salaryBase <= 0) return
+      const isManager = !e.branch_id || positionGroup(e.position) === 'Менеджеры'
+      if (isManager) dashboardManagersSalary += salaryBase
+      else dashboardDirectSalaryByBranch.set(e.branch_id, (dashboardDirectSalaryByBranch.get(e.branch_id) || 0) + salaryBase)
+    })
+
     const baseTotals = { revenue: 0, expenses: 0, salary: 0, serviceCost: 0, tax: 0 }
     const branchRows = branches.map(b => {
       const rev = revByBranch.get(b.id) || {}
@@ -5998,9 +6013,10 @@ function Dashboard({ t }) {
       const supplierShare = revenueShareMap.get(b.id) || 0
       const supplierTotals = rmsFinanceAllocatedSupplierTotals(purchaseRowsForFinance || [], supplierShare)
       const supplierExtra = supplierTotals.food + supplierTotals.packaging + supplierTotals.household + supplierTotals.other
-      // Dashboard должен считать факт так же, как “Финансы ресторанов”:
-      // факт зарплат берём из monthly_branch_salary, а расчётный DSMF не добавляем в текущий факт.
-      const salary = baseSalary
+      // Dashboard считает зарплаты той же логикой, что раздел “Финансы”:
+      // прямые сотрудники филиала + распределённая доля менеджеров по доле выручки.
+      const calculatedSalary = parseNum(dashboardDirectSalaryByBranch.get(b.id)) + dashboardManagersSalary * supplierShare
+      const salary = calculatedSalary > 0 ? calculatedSalary : baseSalary
       const expenses = baseExpenses + supplierExtra
       const net = revenue - expenses - salary - serviceCost - tax
       baseTotals.revenue += revenue
@@ -7041,11 +7057,15 @@ function Finance({ t, lang, onGoToExpense }) {
   const profitChange = financePreviousNet ? ((financeNet - financePreviousNet) / Math.abs(financePreviousNet) * 100) : 0
   const financeProfitability = stats.revenue ? financeNet / stats.revenue * 100 : 0
   const financeCashBalance = parseNum(stats.cash) + parseNum(stats.bank)
-  const financeExpenseStructure = (breakdown || [])
+  const financeExpenseRowsAll = (breakdown || [])
     .filter(r => parseNum(r.amount) > 0)
     .sort((a, b) => parseNum(b.amount) - parseNum(a.amount))
-    .slice(0, 5)
-  const financeExpenseTotalForChart = financeExpenseStructure.reduce((sum, r) => sum + parseNum(r.amount), 0) || financeTotalExpenses || 1
+  const financeExpenseStructureBase = financeExpenseRowsAll.slice(0, 5)
+  const financeExpenseOtherAmount = financeExpenseRowsAll.slice(5).reduce((sum, r) => sum + parseNum(r.amount), 0)
+  const financeExpenseStructure = financeExpenseOtherAmount > 0
+    ? [...financeExpenseStructureBase, { name: 'Прочие расходы', amount: financeExpenseOtherAmount }]
+    : financeExpenseStructureBase
+  const financeExpenseTotalForChart = financeTotalExpenses || financeExpenseRowsAll.reduce((sum, r) => sum + parseNum(r.amount), 0) || 1
   const financeTrendRows = [
     { label: 'Нояб', income: stats.revenue * 0.52, expenses: financeTotalExpenses * 0.56, net: Math.max(0, financeNet * 0.48) },
     { label: 'Дек', income: stats.revenue * 0.58, expenses: financeTotalExpenses * 0.62, net: Math.max(0, financeNet * 0.55) },
@@ -7781,13 +7801,15 @@ function Recipes({ t }) {
     const cost = items.reduce((sum, item) => sum + componentCost(item), 0)
     const sale = parseNum(menu?.sale_price)
     const foodCost = sale > 0 ? (cost / sale) * 100 : 0
+    const margin = sale > 0 ? ((sale - cost) / sale) * 100 : 0
     const generatedAt = new Date().toLocaleString()
     const rowsHtml = items.map(item => `<tr>
-      <td>${escapeHtml(finalLineTypeLabel(item))}</td>
-      <td>${escapeHtml(item.item_name || '—')}</td>
+      <td><span class="pill">${escapeHtml(finalLineTypeLabel(item))}</span></td>
+      <td><strong>${escapeHtml(item.item_name || '—')}</strong></td>
       <td class="num">${fmt(item.qty)}</td>
       <td>${escapeHtml(item.unit || '')}</td>
       <td class="num">${fmt(item.waste_percent || 0)}%</td>
+      <td class="num">${fmt(componentCost(item))} AZN</td>
       <td class="num strong">${fmt(componentCost(item))} AZN</td>
     </tr>`).join('')
 
@@ -7797,49 +7819,95 @@ function Recipes({ t }) {
 <meta charset="utf-8" />
 <title>Тех. карта — ${escapeHtml(menu?.name || 'Блюдо')}</title>
 <style>
-  @page { size: A4 portrait; margin: 12mm; }
+  @page { size: A4 portrait; margin: 10mm; }
   * { box-sizing: border-box; }
-  body { font-family: Inter, Arial, sans-serif; color: #17251d; margin: 0; background: #eef2ee; padding: 20px; }
-  .page { max-width: 840px; margin: 0 auto; }
-  .actionbar { display: flex; justify-content: flex-end; gap: 10px; margin-bottom: 12px; }
-  .actionbar button { border: 1px solid #cdd6cf; background: #fff; border-radius: 999px; padding: 10px 14px; font-weight: 800; cursor: pointer; }
-  .sheet { background: #fff; border: 1px solid #d7dfd9; border-radius: 24px; box-shadow: 0 18px 48px rgba(23,37,29,.08); padding: 20px; }
-  h1 { margin: 0 0 6px; font-size: 26px; }
-  .meta { color: #667085; font-size: 11px; margin-bottom: 14px; }
-  .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 14px 0; }
-  .kpi { border: 1px solid #e5ebe6; border-radius: 16px; background: #fafbf9; padding: 10px 12px; }
-  .kpi span { display: block; color: #667085; font-size: 10px; margin-bottom: 5px; text-transform: uppercase; }
-  .kpi strong { font-size: 18px; }
-  table { width: 100%; border-collapse: collapse; }
-  th { text-align: left; color: #667085; font-size: 10px; border-bottom: 1px solid #dde5df; padding: 8px 7px; text-transform: uppercase; }
-  td { border-bottom: 1px solid #edf1ee; padding: 8px 7px; font-size: 12px; }
-  .num { text-align: right; }
-  .strong { font-weight: 800; }
-  .footer { margin-top: 12px; color: #667085; font-size: 11px; }
-  @media print { body { background: #fff; padding: 0; } .actionbar { display: none; } .sheet { box-shadow: none; } }
+  body { margin:0; background:#f4f7fb; color:#0f172a; font-family: Inter, Arial, sans-serif; padding:24px; }
+  .page { max-width: 980px; margin: 0 auto; }
+  .actionbar { display:flex; justify-content:flex-end; gap:10px; margin-bottom:14px; }
+  .actionbar button { border:1px solid #dbe4f0; background:#fff; color:#0f172a; border-radius:14px; padding:11px 16px; font-weight:800; cursor:pointer; box-shadow:0 10px 24px rgba(15,23,42,.06); }
+  .sheet { background:#fff; border:1px solid #dfe7f2; border-radius:28px; box-shadow:0 24px 70px rgba(15,23,42,.10); overflow:hidden; }
+  .hero { padding:28px; display:grid; grid-template-columns: 160px 1fr; gap:22px; border-bottom:1px solid #e8eef6; }
+  .photo { height:140px; border-radius:22px; background:linear-gradient(135deg,#eef5ff,#f8fbff); display:flex; align-items:center; justify-content:center; color:#2563eb; font-size:56px; font-weight:900; border:1px solid #dbe7f6; overflow:hidden; }
+  .photo img { width:100%; height:100%; object-fit:cover; display:block; }
+  h1 { margin:0 0 10px; font-size:34px; line-height:1.05; letter-spacing:-.035em; }
+  .status { display:inline-flex; align-items:center; border-radius:999px; background:#dcfce7; color:#079455; font-weight:900; font-size:12px; padding:7px 12px; margin-left:10px; vertical-align:middle; }
+  .meta { display:flex; flex-wrap:wrap; gap:10px 16px; color:#64748b; font-size:14px; }
+  .meta b { color:#2563eb; background:#eef5ff; border-radius:999px; padding:5px 10px; }
+  .kpis { display:grid; grid-template-columns:repeat(5,1fr); gap:12px; padding:22px 28px; }
+  .kpi { border:1px solid #e2e8f0; border-radius:18px; padding:15px 16px; background:linear-gradient(180deg,#fff,#fbfdff); }
+  .kpi span { display:block; color:#64748b; text-transform:uppercase; letter-spacing:.04em; font-size:11px; font-weight:800; margin-bottom:7px; }
+  .kpi strong { display:block; color:#0f172a; font-size:22px; font-weight:900; }
+  .kpi em { display:block; color:#64748b; font-size:12px; font-style:normal; margin-top:4px; }
+  .tabs { display:flex; gap:26px; padding:0 28px; border-bottom:1px solid #e8eef6; }
+  .tabs span { padding:15px 0; font-weight:900; color:#64748b; }
+  .tabs span:first-child { color:#2563eb; border-bottom:3px solid #2563eb; }
+  .content { padding:0 28px 26px; }
+  table { width:100%; border-collapse:separate; border-spacing:0; }
+  th { text-align:left; color:#64748b; font-size:11px; text-transform:uppercase; letter-spacing:.04em; background:#f8fafc; border-bottom:1px solid #e2e8f0; padding:12px 14px; }
+  td { border-bottom:1px solid #edf2f7; padding:13px 14px; font-size:13px; color:#334155; }
+  .num { text-align:right; white-space:nowrap; }
+  .strong { font-weight:900; color:#0f172a; }
+  .pill { display:inline-flex; border-radius:999px; padding:5px 9px; background:#eef5ff; color:#2563eb; font-size:11px; font-weight:800; }
+  .total { display:flex; justify-content:space-between; align-items:center; padding:16px 14px; font-weight:900; border-bottom:1px solid #edf2f7; }
+  .bottom { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:18px; }
+  .box { border:1px solid #e2e8f0; border-radius:20px; padding:18px; background:#fff; }
+  .box h3 { margin:0 0 12px; font-size:15px; }
+  .footer { color:#64748b; font-size:12px; margin-top:14px; }
+  @media print { body { background:#fff; padding:0; } .actionbar { display:none; } .sheet { box-shadow:none; border-radius:0; border:0; } .page { max-width:none; } }
 </style>
 </head>
 <body>
   <div class="page">
-    <div class="actionbar"><button onclick="window.print()">PDF/Print</button></div>
+    <div class="actionbar"><button onclick="window.print()">Печать / PDF</button></div>
     <div class="sheet">
-      <h1>${escapeHtml(menu?.name || 'Блюдо не выбрано')}</h1>
-      <div class="meta">Категория: ${escapeHtml(menu?.category || '—')} · Сформировано: ${escapeHtml(generatedAt)}</div>
-      <div class="kpis">
-        <div class="kpi"><span>Себестоимость</span><strong>${fmt(cost)} AZN</strong></div>
-        <div class="kpi"><span>Цена продажи</span><strong>${fmt(sale)} AZN</strong></div>
-        <div class="kpi"><span>Food Cost</span><strong>${pct(foodCost)}</strong></div>
-        <div class="kpi"><span>Валовая прибыль</span><strong>${fmt(sale - cost)} AZN</strong></div>
-      </div>
-      <table>
-        <thead><tr><th>Тип</th><th>Компонент</th><th class="num">Кол-во</th><th>Ед.</th><th class="num">Потери</th><th class="num">Себестоимость</th></tr></thead>
-        <tbody>${rowsHtml || '<tr><td colspan="6">Нет компонентов</td></tr>'}</tbody>
-      </table>
-      <div class="footer">Тех. карта сформирована из полуфабрикатов, ингредиентов закупки и ручных компонентов.</div>
+      <section class="hero">
+        <div class="photo">${menu?.image_url || menu?.photo_url ? `<img src="${escapeHtml(menu.image_url || menu.photo_url)}" />` : escapeHtml(String(menu?.name || 'R').slice(0,1).toUpperCase())}</div>
+        <div>
+          <h1>${escapeHtml(menu?.name || 'Блюдо не выбрано')} <span class="status">Активная</span></h1>
+          <div class="meta"><span>Категория: <b>${escapeHtml(menu?.category || 'Без категории')}</b></span><span>ID: ${escapeHtml(menu?.id || '—')}</span><span>Сформировано: ${escapeHtml(generatedAt)}</span></div>
+        </div>
+      </section>
+      <section class="kpis">
+        <div class="kpi"><span>Себестоимость</span><strong>${fmt(cost)} AZN</strong><em>на порцию</em></div>
+        <div class="kpi"><span>Цена продажи</span><strong>${fmt(sale)} AZN</strong><em>на порцию</em></div>
+        <div class="kpi"><span>Food Cost</span><strong>${pct(foodCost)}</strong><em>от цены продажи</em></div>
+        <div class="kpi"><span>Маржа</span><strong>${pct(margin)}</strong><em>валовая маржа</em></div>
+        <div class="kpi"><span>Выход</span><strong>1 порция</strong><em>готовое блюдо</em></div>
+      </section>
+      <div class="tabs"><span>Состав</span><span>Калькуляция</span><span>Пищевая ценность</span><span>Аллергены</span></div>
+      <section class="content">
+        <table>
+          <thead><tr><th>Тип</th><th>Компонент</th><th class="num">Кол-во</th><th>Ед.</th><th class="num">Потери</th><th class="num">Себестоимость</th><th class="num">Итого</th></tr></thead>
+          <tbody>${rowsHtml || '<tr><td colspan="7" style="text-align:center;padding:40px;color:#64748b;">Компоненты пока не добавлены</td></tr>'}</tbody>
+        </table>
+        <div class="total"><span>Итого себестоимость</span><strong>${fmt(cost)} AZN</strong></div>
+        <div class="bottom">
+          <div class="box"><h3>Структура себестоимости</h3><p class="footer">Детализация по группам появится после классификации ингредиентов.</p></div>
+          <div class="box"><h3>История изменений</h3><p class="footer">${escapeHtml(generatedAt)} · Тех. карта сформирована для печати / PDF.</p></div>
+        </div>
+      </section>
     </div>
   </div>
 </body>
 </html>`
+  }
+
+  function exportFinalTechCardCsv(menuId = selectedMenuId) {
+    if (!menuId) return setMessage('Выберите блюдо для экспорта')
+    const menu = menuItems.find(m => String(m.id) === String(menuId))
+    const items = finalItems.filter(i => String(i.menu_item_id) === String(menuId))
+    const header = ['Тип','Компонент','Кол-во','Ед.','Потери %','Себестоимость AZN']
+    const rows = items.map(item => [finalLineTypeLabel(item), item.item_name || '', fmt(item.qty), item.unit || '', fmt(item.waste_percent || 0), fmt(componentCost(item))])
+    const csv = [header, ...rows].map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(';')).join('\n')
+    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `tech-card-${(menu?.name || 'recipe').replace(/[^a-zа-я0-9]+/gi, '-').toLowerCase()}.csv`
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    URL.revokeObjectURL(url)
   }
 
   function printFinalTechCard(menuId = selectedMenuId, autoPrint = true) {
@@ -8215,7 +8283,7 @@ function Recipes({ t }) {
                 <button className="small primary" onClick={() => editFinalTechCard(selectedMenu.id)}>✎ Редактировать</button>
                 <button className="small" onClick={() => printFinalTechCard(selectedMenu.id, true)}>⎙ Печать</button>
                 <button className="small" onClick={() => printFinalTechCard(selectedMenu.id, true)}>⇩ Экспорт в PDF</button>
-                <button className="small">⇧ Экспорт в Excel</button>
+                <button className="small" onClick={() => exportFinalTechCardCsv(selectedMenu.id)}>⇧ Экспорт в Excel</button>
                 <button className="small">↺ История изменений</button>
               </div>
               <button className="tech-detail-close" onClick={() => setTechPreviewOpen(false)}>×</button>
