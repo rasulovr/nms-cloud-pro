@@ -2609,3 +2609,163 @@ button:not(.nav):not(.rms-pro-logout):hover{transform:translateY(-1px)!important
     grid-column: span 12 !important;
   }
 }
+
+/* RMS Pro Dashboard v31 — final KPI distribution like approved render: 4 main cards + 3 compact forecast/support cards */
+.rms-executive-dashboard .dashboard-v29-kpis{
+  display:grid !important;
+  grid-template-columns:repeat(12,minmax(0,1fr)) !important;
+  gap:16px !important;
+  align-items:stretch !important;
+  width:100% !important;
+  margin:22px 0 24px !important;
+}
+
+.rms-executive-dashboard .dashboard-v29-kpis .dash-kpi{
+  grid-column:span 3 !important;
+  min-height:134px !important;
+  padding:18px 20px 17px !important;
+  border-radius:22px !important;
+  display:grid !important;
+  grid-template-columns:46px minmax(0,1fr) !important;
+  gap:14px !important;
+  align-items:start !important;
+  overflow:hidden !important;
+  background:linear-gradient(180deg,rgba(255,255,255,.98),rgba(249,251,255,.94)) !important;
+  border:1px solid rgba(226,232,240,.92) !important;
+  box-shadow:0 18px 45px rgba(15,23,42,.045) !important;
+}
+
+.rms-executive-dashboard .dashboard-v29-kpis .dash-kpi:nth-child(n+5){
+  grid-column:span 4 !important;
+  min-height:112px !important;
+  padding:16px 20px 15px !important;
+  grid-template-columns:44px minmax(0,1fr) !important;
+  gap:14px !important;
+}
+
+.rms-executive-dashboard .dashboard-v29-kpis .dash-kpi:before{
+  top:20px !important;
+  bottom:20px !important;
+  width:4px !important;
+  border-radius:999px !important;
+}
+
+.rms-executive-dashboard .dashboard-v29-kpis .dash-kpi-icon{
+  width:46px !important;
+  height:46px !important;
+  min-width:46px !important;
+  border-radius:15px !important;
+  font-size:20px !important;
+  line-height:1 !important;
+}
+
+.rms-executive-dashboard .dashboard-v29-kpis .dash-kpi:nth-child(n+5) .dash-kpi-icon{
+  width:42px !important;
+  height:42px !important;
+  min-width:42px !important;
+  border-radius:14px !important;
+  font-size:18px !important;
+}
+
+.rms-executive-dashboard .dashboard-v29-kpis .dash-kpi > div{
+  min-width:0 !important;
+  display:flex !important;
+  flex-direction:column !important;
+  justify-content:flex-start !important;
+}
+
+.rms-executive-dashboard .dashboard-v29-kpis .dash-kpi em{
+  min-height:0 !important;
+  margin:1px 0 9px !important;
+  color:#667085 !important;
+  font-size:12px !important;
+  line-height:1.25 !important;
+  font-weight:850 !important;
+  letter-spacing:.035em !important;
+  text-transform:uppercase !important;
+  white-space:normal !important;
+}
+
+.rms-executive-dashboard .dashboard-v29-kpis .dash-kpi:nth-child(n+5) em{
+  font-size:11.6px !important;
+  margin-bottom:8px !important;
+}
+
+.rms-executive-dashboard .dashboard-v29-kpis .dash-kpi strong{
+  display:flex !important;
+  align-items:baseline !important;
+  gap:6px !important;
+  width:100% !important;
+  max-width:100% !important;
+  min-width:0 !important;
+  overflow:visible !important;
+  color:#06142d !important;
+  font-size:clamp(25px,1.42vw,31px) !important;
+  line-height:1.02 !important;
+  font-weight:850 !important;
+  letter-spacing:-.045em !important;
+  white-space:nowrap !important;
+}
+
+.rms-executive-dashboard .dashboard-v29-kpis .dash-kpi:nth-child(n+5) strong{
+  font-size:clamp(23px,1.28vw,29px) !important;
+}
+
+.rms-executive-dashboard .dashboard-v29-kpis .dash-kpi strong small{
+  flex:0 0 auto !important;
+  display:inline-flex !important;
+  align-items:baseline !important;
+  margin-left:2px !important;
+  transform:translateY(-1px) !important;
+  color:#40516c !important;
+  font-size:13px !important;
+  line-height:1 !important;
+  font-weight:850 !important;
+  letter-spacing:.01em !important;
+}
+
+.rms-executive-dashboard .dashboard-v29-kpis .dash-kpi p{
+  margin:10px 0 0 !important;
+  color:#667085 !important;
+  font-size:13px !important;
+  line-height:1.35 !important;
+  font-weight:700 !important;
+  max-width:100% !important;
+}
+
+.rms-executive-dashboard .dashboard-v29-kpis .dash-kpi:nth-child(n+5) p{
+  margin-top:9px !important;
+  font-size:12.6px !important;
+}
+
+.rms-executive-dashboard .dashboard-v29-kpis .dash-kpi p.good,
+.rms-executive-dashboard .dashboard-v29-kpis .dash-kpi p.bad{
+  font-weight:850 !important;
+}
+
+/* prevent any earlier large-screen rule from forcing all 7 KPIs into one row */
+@media (min-width:2100px){
+  .rms-executive-dashboard .dashboard-v29-kpis{
+    grid-template-columns:repeat(12,minmax(0,1fr)) !important;
+  }
+  .rms-executive-dashboard .dashboard-v29-kpis .dash-kpi{
+    grid-column:span 3 !important;
+  }
+  .rms-executive-dashboard .dashboard-v29-kpis .dash-kpi:nth-child(n+5){
+    grid-column:span 4 !important;
+  }
+}
+
+@media (max-width:1280px){
+  .rms-executive-dashboard .dashboard-v29-kpis .dash-kpi,
+  .rms-executive-dashboard .dashboard-v29-kpis .dash-kpi:nth-child(n+5){
+    grid-column:span 6 !important;
+  }
+}
+
+@media (max-width:720px){
+  .rms-executive-dashboard .dashboard-v29-kpis .dash-kpi,
+  .rms-executive-dashboard .dashboard-v29-kpis .dash-kpi:nth-child(n+5){
+    grid-column:span 12 !important;
+  }
+}
