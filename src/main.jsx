@@ -7334,6 +7334,7 @@ function Recipes({ t }) {
   const [finalMenuForm, setFinalMenuForm] = useState({ name: '', category: 'Кофе', sale_price: '', target_food_cost_percent: '30' })
   const [finalSearch, setFinalSearch] = useState('')
   const [techCardSearch, setTechCardSearch] = useState('')
+  const [techCardCategory, setTechCardCategory] = useState('all')
   const [techCardPageSize, setTechCardPageSize] = useState(10)
   const [techCardPage, setTechCardPage] = useState(1)
   const [message, setMessage] = useState('')
@@ -7520,11 +7521,27 @@ function Recipes({ t }) {
     if (!q) return true
     return String(m.name || '').toLowerCase().includes(q) || String(m.category || '').toLowerCase().includes(q)
   })
+  const techCardCategories = Array.from(new Set(menuItems.map(m => String(m.category || 'Без категории').trim() || 'Без категории'))).sort((a, b) => a.localeCompare(b))
+  const techCardCostFor = (menuItemId) => finalItems
+    .filter(i => String(i.menu_item_id) === String(menuItemId))
+    .reduce((sum, item) => sum + componentCost(item), 0)
   const filteredTechCards = menuItems.filter(m => {
     const q = techCardSearch.trim().toLowerCase()
-    if (!q) return true
-    return String(m.name || '').toLowerCase().includes(q) || String(m.category || '').toLowerCase().includes(q)
+    const categoryName = String(m.category || 'Без категории').trim() || 'Без категории'
+    const byCategory = techCardCategory === 'all' || categoryName === techCardCategory
+    const bySearch = !q || String(m.name || '').toLowerCase().includes(q) || String(m.category || '').toLowerCase().includes(q)
+    return byCategory && bySearch
   })
+  const techCardMetricsBase = menuItems.map(m => {
+    const cost = techCardCostFor(m.id)
+    const sale = parseNum(m.sale_price)
+    const foodCost = sale > 0 ? (cost / sale) * 100 : 0
+    const margin = sale > 0 ? 100 - foodCost : 0
+    return { ...m, cost, sale, foodCost, margin }
+  })
+  const techCardPricedItems = techCardMetricsBase.filter(m => m.sale > 0)
+  const techCardAvgFoodCost = techCardPricedItems.length ? techCardPricedItems.reduce((sum, m) => sum + m.foodCost, 0) / techCardPricedItems.length : 0
+  const techCardAvgMargin = techCardPricedItems.length ? techCardPricedItems.reduce((sum, m) => sum + m.margin, 0) / techCardPricedItems.length : 0
   const techCardPageSizeNumber = parseNum(techCardPageSize) || 10
   const techCardTotalPages = Math.max(1, Math.ceil(filteredTechCards.length / techCardPageSizeNumber))
   const safeTechCardPage = Math.min(Math.max(1, parseNum(techCardPage) || 1), techCardTotalPages)
@@ -7959,116 +7976,190 @@ function Recipes({ t }) {
       {message ? <p className="hint">{message}</p> : null}
 
       {tab === 'legacy' && (
-        <section className="grid">
-          <div className="card span-2">
-            <div className="card-head">
+        <section className="tech-modern-page">
+          <div className="tech-kpi-grid">
+            <div className="tech-kpi-card tech-kpi-purple">
+              <div className="tech-kpi-icon">▤</div>
               <div>
-                <h3>Текущие тех. карты</h3>
-                <p className="hint">Поиск, просмотр, печать и переход к редактированию тех. карты блюда.</p>
+                <div className="tech-kpi-label">ВСЕГО ТЕХ. КАРТ</div>
+                <div className="tech-kpi-value">{menuItems.length}</div>
+                <div className="tech-kpi-sub">{filteredTechCards.length} по фильтру</div>
               </div>
-              <div className="action-row" style={{gap:8,alignItems:'center'}}>
-                <label style={{display:'flex',alignItems:'center',gap:8}}>
-                  <span className="hint">Показать</span>
+            </div>
+            <div className="tech-kpi-card tech-kpi-green">
+              <div className="tech-kpi-icon">✓</div>
+              <div>
+                <div className="tech-kpi-label">АКТИВНЫЕ</div>
+                <div className="tech-kpi-value">{menuItems.length}</div>
+                <div className="tech-kpi-sub">позиции меню</div>
+              </div>
+            </div>
+            <div className="tech-kpi-card tech-kpi-orange">
+              <div className="tech-kpi-icon">Ⅱ</div>
+              <div>
+                <div className="tech-kpi-label">КАТЕГОРИИ</div>
+                <div className="tech-kpi-value">{techCardCategories.length}</div>
+                <div className="tech-kpi-sub">группы блюд</div>
+              </div>
+            </div>
+            <div className="tech-kpi-card tech-kpi-blue">
+              <div className="tech-kpi-icon">◔</div>
+              <div>
+                <div className="tech-kpi-label">СР. СЕБЕСТОИМОСТЬ</div>
+                <div className="tech-kpi-value">{pct(techCardAvgFoodCost)}</div>
+                <div className="tech-kpi-sub">по блюдам с ценой</div>
+              </div>
+            </div>
+            <div className="tech-kpi-card tech-kpi-mint">
+              <div className="tech-kpi-icon">%</div>
+              <div>
+                <div className="tech-kpi-label">МАРЖА</div>
+                <div className="tech-kpi-value">{pct(techCardAvgMargin)}</div>
+                <div className="tech-kpi-sub">средняя маржа</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="tech-modern-layout">
+            <div className="tech-modern-main-card">
+              <div className="tech-modern-toolbar">
+                <div className="tech-tabs-clean">
+                  <button className="active">Все тех. карты</button>
+                  <button onClick={() => setTechCardCategory('all')}>Активные</button>
+                  <button>Неактивные</button>
+                </div>
+                <div className="tech-toolbar-actions">
+                  <button className="ghost small">⇩ Экспорт</button>
+                  <button className="ghost small">⇧ Импорт</button>
+                  <button className="small primary" onClick={() => setTab('final')}>+ Новая тех. карта</button>
+                </div>
+              </div>
+
+              <div className="tech-filter-bar">
+                <label>
+                  <span>Категория</span>
+                  <select value={techCardCategory} onChange={e => { setTechCardCategory(e.target.value); setTechCardPage(1) }}>
+                    <option value="all">Все категории</option>
+                    {techCardCategories.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </label>
+                <label className="tech-search-field">
+                  <span>Поиск</span>
+                  <input value={techCardSearch} onChange={e => { setTechCardSearch(e.target.value); setTechCardPage(1) }} placeholder="Поиск по названию или категории..." />
+                </label>
+                <label>
+                  <span>Показать</span>
                   <select value={techCardPageSize} onChange={e => { setTechCardPageSize(Number(e.target.value)); setTechCardPage(1) }}>
                     <option value={10}>10</option>
                     <option value={20}>20</option>
                     <option value={50}>50</option>
                   </select>
                 </label>
-                <button className="small primary" onClick={() => setTab('final')}>+ Создать блюдо</button>
               </div>
-            </div>
 
-            <label><span>Поиск блюда</span><input value={techCardSearch} onChange={e => { setTechCardSearch(e.target.value); setTechCardPage(1) }} placeholder="Название или категория" /></label>
-
-            <div className="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Блюдо</th>
-                    <th>Категория</th>
-                    <th>Компонентов</th>
-                    <th>Себестоимость</th>
-                    <th>Food Cost</th>
-                    <th>Действие</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {pagedTechCards.map(m => {
-                    const rows = finalItems.filter(i => String(i.menu_item_id) === String(m.id))
-                    const cost = rows.reduce((sum, item) => sum + componentCost(item), 0)
-                    const sale = parseNum(m.sale_price)
-                    const fc = sale > 0 ? (cost / sale) * 100 : 0
-                    return (
-                      <tr key={m.id} className={String(selectedMenuId) === String(m.id) ? 'selected-row' : ''}>
-                        <td><b>{m.name}</b></td>
-                        <td>{m.category || '—'}</td>
-                        <td>{rows.length}</td>
-                        <td><b>{fmt(cost)} AZN</b></td>
-                        <td>{sale > 0 ? pct(fc) : '—'}</td>
-                        <td>
-                          <div className="action-row">
-                            <button className="small" onClick={() => viewFinalTechCard(m.id)}>Просмотр</button>
-                            <button className="small" onClick={() => editFinalTechCard(m.id)}>Редактировать</button>
-                            <button className="small" onClick={() => printFinalTechCard(m.id, true)}>Печать</button>
-                          </div>
-                        </td>
-                      </tr>
-                    )
-                  })}
-                  {!filteredTechCards.length && <tr><td colSpan="6" className="hint">Тех. карты не найдены</td></tr>}
-                </tbody>
-              </table>
-            </div>
-            <div className="action-row" style={{margin:'12px 0 0'}}>
-              <button className="ghost small" disabled={safeTechCardPage <= 1} onClick={() => setTechCardPage(p => Math.max(1, parseNum(p) - 1))}>← Пред.</button>
-              <span className="hint">Страница {safeTechCardPage} / {techCardTotalPages} · всего {filteredTechCards.length}</span>
-              <button className="ghost small" disabled={safeTechCardPage >= techCardTotalPages} onClick={() => setTechCardPage(p => Math.min(techCardTotalPages, parseNum(p) + 1))}>След. →</button>
-            </div>
-
-            {selectedMenu && (
-              <div className="card" style={{ marginTop: 14 }}>
-                <div className="card-head">
-                  <div>
-                    <h3>{selectedMenu.name}</h3>
-                    <p className="hint">Просмотр тех. карты выбранного блюда.</p>
-                  </div>
-                  <div className="action-row">
-                    <button className="small" onClick={() => editFinalTechCard(selectedMenu.id)}>Редактировать</button>
-                    <button className="small primary" onClick={() => printFinalTechCard(selectedMenu.id, true)}>Печать</button>
-                  </div>
-                </div>
-                <div className="metric-grid">
-                  <Metric label="Цена продажи" value={`${fmt(selectedMenu.sale_price)} AZN`} />
-                  <Metric label="Себестоимость" value={`${fmt(finalCost)} AZN`} />
-                  <Metric label="Food Cost" value={pct(finalFoodCost)} />
-                  <Metric label="Валовая прибыль" value={`${fmt(finalSalePrice - finalCost)} AZN`} />
-                </div>
-                <div className="table-wrap">
-                  <table>
-                    <thead><tr><th>Тип</th><th>Компонент</th><th>Кол-во</th><th>Потери</th><th>Себестоимость</th></tr></thead>
-                    <tbody>
-                      {selectedFinalItems.map(item => (
-                        <tr key={item.id}>
-                          <td>{finalLineTypeLabel(item)}</td>
-                          <td><b>{item.item_name}</b></td>
-                          <td>{fmt(item.qty)} {item.unit}</td>
-                          <td>{fmt(item.waste_percent)}%</td>
-                          <td><b>{fmt(componentCost(item))} AZN</b></td>
+              <div className="tech-table-wrap">
+                <table className="tech-modern-table">
+                  <thead>
+                    <tr>
+                      <th>Блюдо / Напиток</th>
+                      <th>Категория</th>
+                      <th>Себестоимость</th>
+                      <th>Цена продажи</th>
+                      <th>Маржа</th>
+                      <th>Статус</th>
+                      <th>Действия</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pagedTechCards.map(m => {
+                      const rows = finalItems.filter(i => String(i.menu_item_id) === String(m.id))
+                      const cost = rows.reduce((sum, item) => sum + componentCost(item), 0)
+                      const sale = parseNum(m.sale_price)
+                      const fc = sale > 0 ? (cost / sale) * 100 : 0
+                      const margin = sale > 0 ? 100 - fc : 0
+                      const categoryName = m.category || 'Без категории'
+                      const categoryClass = `tech-category-pill cat-${String(categoryName).toLowerCase().replace(/[^a-zа-яё0-9]+/gi, '-')}`
+                      return (
+                        <tr key={m.id} className={String(selectedMenuId) === String(m.id) ? 'selected-row' : ''}>
+                          <td>
+                            <div className="tech-dish-cell">
+                              <div className="tech-dish-thumb">{String(m.name || '?').slice(0, 1).toUpperCase()}</div>
+                              <div>
+                                <b>{m.name}</b>
+                                <span>{rows.length} компонентов</span>
+                              </div>
+                            </div>
+                          </td>
+                          <td><span className={categoryClass}>{categoryName}</span></td>
+                          <td><b>{fmt(cost)} AZN</b><small>{sale > 0 ? `Food Cost ${pct(fc)}` : 'цена не указана'}</small></td>
+                          <td><b>{fmt(sale)} AZN</b></td>
+                          <td><b className={margin >= 60 ? 'good' : margin >= 40 ? '' : 'bad'}>{sale > 0 ? pct(margin) : '—'}</b></td>
+                          <td><span className="tech-status active">● Активная</span></td>
+                          <td>
+                            <div className="tech-row-actions">
+                              <button className="icon-button" title="Просмотр" onClick={() => viewFinalTechCard(m.id)}>⌕</button>
+                              <button className="icon-button" title="Редактировать" onClick={() => editFinalTechCard(m.id)}>✎</button>
+                              <button className="icon-button" title="Печать" onClick={() => printFinalTechCard(m.id, true)}>⋮</button>
+                            </div>
+                          </td>
                         </tr>
-                      ))}
-                      {!selectedFinalItems.length && <tr><td colSpan="5" className="hint">В тех. карте пока нет компонентов. Нажмите “Редактировать”.</td></tr>}
-                    </tbody>
-                  </table>
+                      )
+                    })}
+                    {!filteredTechCards.length && <tr><td colSpan="7" className="hint">Тех. карты не найдены</td></tr>}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="tech-pagination-row">
+                <span className="hint">Показано {pagedTechCards.length ? ((safeTechCardPage - 1) * techCardPageSizeNumber) + 1 : 0}–{Math.min(safeTechCardPage * techCardPageSizeNumber, filteredTechCards.length)} из {filteredTechCards.length}</span>
+                <div className="tech-pages">
+                  <button className="ghost small" disabled={safeTechCardPage <= 1} onClick={() => setTechCardPage(p => Math.max(1, parseNum(p) - 1))}>‹</button>
+                  <span>{safeTechCardPage}</span>
+                  <button className="ghost small" disabled={safeTechCardPage >= techCardTotalPages} onClick={() => setTechCardPage(p => Math.min(techCardTotalPages, parseNum(p) + 1))}>›</button>
                 </div>
               </div>
-            )}
-          </div>
 
-          <div className="card span-2">
-            <h3>Тех. карты</h3>
-            <p className="hint">Классический модуль тех. карт оставлен для совместимости.</p>
-            <RecipesLegacy t={t} />
+              {selectedMenu && (
+                <div className="tech-preview-card">
+                  <div className="card-head">
+                    <div>
+                      <h3>{selectedMenu.name}</h3>
+                      <p className="hint">Просмотр тех. карты выбранного блюда.</p>
+                    </div>
+                    <div className="action-row">
+                      <button className="small" onClick={() => editFinalTechCard(selectedMenu.id)}>Редактировать</button>
+                      <button className="small primary" onClick={() => printFinalTechCard(selectedMenu.id, true)}>Печать</button>
+                    </div>
+                  </div>
+                  <div className="metric-grid">
+                    <Metric label="Цена продажи" value={`${fmt(selectedMenu.sale_price)} AZN`} />
+                    <Metric label="Себестоимость" value={`${fmt(finalCost)} AZN`} />
+                    <Metric label="Food Cost" value={pct(finalFoodCost)} />
+                    <Metric label="Валовая прибыль" value={`${fmt(finalSalePrice - finalCost)} AZN`} />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <aside className="tech-modern-sidebar">
+              <div className="tech-side-card">
+                <div className="tech-side-title"><h3>Категории</h3><button className="icon-button">+</button></div>
+                <button className={techCardCategory === 'all' ? 'tech-category-row active' : 'tech-category-row'} onClick={() => { setTechCardCategory('all'); setTechCardPage(1) }}>
+                  <span>▦ Все категории</span><b>{menuItems.length}</b>
+                </button>
+                {techCardCategories.map(c => {
+                  const count = menuItems.filter(m => (String(m.category || 'Без категории').trim() || 'Без категории') === c).length
+                  return <button key={c} className={techCardCategory === c ? 'tech-category-row active' : 'tech-category-row'} onClick={() => { setTechCardCategory(c); setTechCardPage(1) }}><span>• {c}</span><b>{count}</b></button>
+                })}
+              </div>
+
+              <div className="tech-side-card">
+                <h3>Быстрые действия</h3>
+                <button className="tech-action-line" onClick={() => setTab('final')}><span>＋</span><div><b>Создать тех. карту</b><small>Добавить новое блюдо</small></div><em>›</em></button>
+                <button className="tech-action-line"><span>⇧</span><div><b>Импорт из Excel</b><small>Загрузить тех. карты</small></div><em>›</em></button>
+                <button className="tech-action-line" onClick={() => setTab('semis')}><span>▧</span><div><b>Полуфабрикаты</b><small>Создать заготовки</small></div><em>›</em></button>
+              </div>
+            </aside>
           </div>
         </section>
       )}
