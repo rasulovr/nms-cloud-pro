@@ -1,0 +1,18305 @@
+import React, { useEffect, useMemo, useRef, useState } from 'react'
+import { createRoot } from 'react-dom/client'
+import { supabase } from './supabase'
+import './styles.css'
+import './rms_dashboard_chart.css'
+import QRMenu from './QRMenu'
+import './QRMenu.css'
+import RMSQRMenuAdmin from './RMSQRMenuAdmin'
+import RMSLoyalty from './RMSLoyalty'
+import RMSLoyaltyPOSScan from './RMSLoyaltyPOSScan'
+
+const I18N = {
+  ru: {
+    system_title:'RMS', system_short_title:'RMS', system_subtitle:'Выручка · Финансы · Персонал · Поставщики', dashboard_tab:'Дашборд', pos_tab:'POS / Продажи',
+    brand_subtitle:'Restaurant Management System', language_label:'Язык интерфейса', login_label:'Login', password_label:'Пароль',
+    login_button:'Войти', login_hint:'Вход по внутреннему login. Допустим вход по логину без домена.', login_error:'Неверный логин или пароль', show_password:'Показать пароль',
+    logout:'Выйти', revenue_tab:'Выручка', finance_tab:'Финансы', reports_tab:'Отчёты', recipes_tab:'Тех. карты', salaries_tab:'Зарплаты',
+    attendance_tab:'Посещаемость', advances_tab:'Авансы', suppliers_tab:'Поставщики', debts_payments_tab:'Долги и оплаты', qr_menu_tab:'QR Menu', loyalty_tab:'Loyalty', market_intelligence_tab:'Market Intelligence', settings_tab:'Настройки',
+    revenue_subtitle:'Ввод выручки и расходов за выбранную дату по филиалу', finance_subtitle:'Аналитика по филиалу, месяцу, выручке и расходам',
+    period_branch:'Период и филиал', branch_select:'Филиал', date:'Дата', daily_revenue_title:'Выручка за выбранную дату',
+    cash:'Наличными', bank:'Банк', wolt:'Wolt', revenue_summary:'Сводка выручки', total_revenue:'Общая выручка',
+    forecast:'Прогноз месяца', forecast_revenue:'Предполагаемая выручка', forecast_profit:'Предполагаемая прибыль', avg_daily_revenue:'Средняя выручка / день',
+    daily_expenses_title:'Расходы за выбранную дату', daily_expenses_hint:'Статьи расходов вводятся вертикально в столбик.',
+    add_expense:'+ Статья расхода', daily_expenses_total:'Итого расходов за дату', expense_item:'Статья расхода', amount:'Сумма', comment:'Комментарий',
+    year:'Год', month:'Месяц', tax_rate:'Налог %', planned_revenue:'План выручки', planned_profit:'План прибыли',
+    expense_breakdown:'Расходы по статьям', current_result:'Текущий факт', gross_profit:'Валовая прибыль', total_expenses:'Расходы',
+    tax_amount:'Налог', net_profit:'Чистая прибыль', profitable:'Филиал прибыльный', loss:'Филиал в убытке', comparison:'Сравнение',
+    prev_month_revenue:'Выручка прошлого месяца', revenue_change_pct:'Изменение выручки', profit_change_pct:'Изменение прибыли',
+    margins:'Маржинальность', expense_pct:'Расходы %', net_margin:'Маржа чистой прибыли', plan_status:'План',
+    revenue_plan_progress:'Выполнение плана выручки', profit_plan_progress:'Выполнение плана прибыли', module_coming:'Раздел будет добавлен следующим этапом.',
+    settings_subtitle:'Пользователи, права доступа и режимы работы', users_management:'Пользователи', add_user:'+ Пользователь',
+    role:'Роль', sections_access:'Доступ к разделам', access_mode:'Режим', administrator:'Администратор', employee:'Сотрудник',
+    read_only:'Только чтение', edit_mode:'Изменение', permission_denied:'Нет доступа к этому разделу', new_expense:'Новая статья', save:'Сохранить', saved:'Сохранено', loading:'Загрузка...', profile:'Профиль текущего пользователя', full_name:'Имя', create_admin:'Создать admin-профиль',
+    months:['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь']
+  },
+  az: {
+    system_title:'RMS', system_short_title:'RMS', system_subtitle:'Dövriyyə · Maliyyə · Personal · Təchizatçılar', dashboard_tab:'Dashboard', pos_tab:'POS / Satış',
+    brand_subtitle:'Restaurant Management System', language_label:'İnterfeys dili', login_label:'Login', password_label:'Parol',
+    login_button:'Daxil ol', login_hint:'Daxili login ilə giriş. Domen yazmadan login istifadə etmək olar.', login_error:'Login və ya parol yanlışdır', show_password:'Parolu göstər',
+    logout:'Çıxış', revenue_tab:'Dövriyyə', finance_tab:'Maliyyə', reports_tab:'Hesabatlar', recipes_tab:'Tex. kartlar', salaries_tab:'Maaşlar',
+    attendance_tab:'Davamiyyət', advances_tab:'Avanslar', suppliers_tab:'Təchizatçılar', debts_payments_tab:'Borclar və ödənişlər', qr_menu_tab:'QR Menu', loyalty_tab:'Loyalty', market_intelligence_tab:'Market Intelligence', settings_tab:'Ayarlar',
+    revenue_subtitle:'Seçilmiş tarix və filial üzrə dövriyyə və xərclər', finance_subtitle:'Filial, ay, dövriyyə və xərclər üzrə analitika',
+    period_branch:'Dövr və filial', branch_select:'Filial', date:'Tarix', daily_revenue_title:'Seçilmiş tarixin dövriyyəsi',
+    cash:'Nağd', bank:'Bank', wolt:'Wolt', revenue_summary:'Dövriyyə xülasəsi', total_revenue:'Ümumi dövriyyə',
+    forecast:'Ay sonu proqnozu', forecast_revenue:'Gözlənilən dövriyyə', forecast_profit:'Gözlənilən mənfəət', avg_daily_revenue:'Orta gündəlik dövriyyə',
+    daily_expenses_title:'Seçilmiş tarixin xərcləri', daily_expenses_hint:'Xərc maddələri şaquli siyahı ilə daxil edilir.',
+    add_expense:'+ Xərc maddəsi', daily_expenses_total:'Tarixin xərcləri cəmi', expense_item:'Xərc maddəsi', amount:'Məbləğ', comment:'Şərh',
+    year:'İl', month:'Ay', tax_rate:'Vergi %', planned_revenue:'Dövriyyə planı', planned_profit:'Mənfəət planı',
+    expense_breakdown:'Xərclər maddələr üzrə', current_result:'Cari fakt', gross_profit:'Brüt mənfəət', total_expenses:'Xərclər',
+    tax_amount:'Vergi', net_profit:'Xalis mənfəət', profitable:'Filial mənfəətlidir', loss:'Filial zərərlə işləyir', comparison:'Müqayisə',
+    prev_month_revenue:'Keçən ayın dövriyyəsi', revenue_change_pct:'Dövriyyə dəyişikliyi', profit_change_pct:'Mənfəət dəyişikliyi',
+    margins:'Marjalar', expense_pct:'Xərclər %', net_margin:'Xalis mənfəət marjası', plan_status:'Plan',
+    revenue_plan_progress:'Dövriyyə planının icrası', profit_plan_progress:'Mənfəət planının icrası', module_coming:'Bölmə növbəti mərhələdə əlavə olunacaq.',
+    settings_subtitle:'İstifadəçilər, giriş hüquqları və rejimlər', users_management:'İstifadəçilər', add_user:'+ İstifadəçi',
+    role:'Rol', sections_access:'Bölmələrə giriş', access_mode:'Rejim', administrator:'Administrator', employee:'Əməkdaş',
+    read_only:'Yalnız oxuma', edit_mode:'Dəyişiklik', permission_denied:'Bu bölməyə giriş yoxdur', new_expense:'Yeni xərc maddəsi', save:'Yadda saxla', saved:'Saxlanıldı', loading:'Yüklənir...', profile:'Cari istifadəçi profili', full_name:'Ad', create_admin:'Admin profil yarat',
+    months:['Yanvar','Fevral','Mart','Aprel','May','İyun','İyul','Avqust','Sentyabr','Oktyabr','Noyabr','Dekabr']
+  }
+}
+
+const SECTIONS = [
+  { id: 'dashboard', key: 'dashboard_tab' },
+  { id: 'revenue', key: 'revenue_tab' },
+  { id: 'finance', key: 'finance_tab' },
+  { id: 'reports', key: 'reports_tab' },
+  { id: 'recipes', key: 'recipes_tab' },
+  { id: 'salaries', key: 'salaries_tab' },
+  { id: 'suppliers', key: 'suppliers_tab' },
+  { id: 'debts', key: 'debts_payments_tab' },
+  { id: 'qrmenu', key: 'qr_menu_tab' },
+  { id: 'loyalty', key: 'loyalty_tab' },
+  { id: 'market', key: 'market_intelligence_tab' },
+  { id: 'settings', key: 'settings_tab' }
+]
+
+const ACCESS_LEVELS = ['none', 'read', 'edit', 'admin']
+const THEMES = [
+  { id: 'classic', name: 'Классический' },
+  { id: 'modern', name: 'Современный' },
+  { id: 'dashboard', name: 'Dashboard / Light Pro' },
+  { id: 'executive', name: 'Graphite / Soft Pro' }
+]
+
+const RMS_PRO_NAV_GROUPS = [
+  { title: 'МЕНЮ', ids: ['dashboard', 'revenue', 'finance', 'recipes', 'salaries', 'suppliers', 'debts'] },
+  { title: 'АНАЛИТИКА', ids: ['reports'] },
+  { title: 'ИНСТРУМЕНТЫ', ids: ['qrmenu', 'loyalty', 'market', 'settings'] }
+]
+
+function RmsIcon({ type }) {
+  const common = { width: 20, height: 20, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.9, strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': true }
+  const icons = {
+    dashboard: <svg {...common}><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10.5V20h13v-9.5"/><path d="M9 20v-6h6v6"/></svg>,
+    revenue: <svg {...common}><path d="M4 18V6"/><path d="M4 18h16"/><path d="m7 15 4-4 3 3 5-7"/><path d="M16 7h3v3"/></svg>,
+    finance: <svg {...common}><rect x="3.5" y="5" width="17" height="14" rx="3"/><path d="M7 9h10"/><path d="M8 14h.01"/><path d="M12 14h4"/></svg>,
+    reports: <svg {...common}><path d="M4 19V5"/><path d="M4 19h16"/><rect x="7" y="11" width="2.5" height="5" rx=".6"/><rect x="11" y="8" width="2.5" height="8" rx=".6"/><rect x="15" y="6" width="2.5" height="10" rx=".6"/></svg>,
+    recipes: <svg {...common}><path d="M6 3.8h9.5L19 7.3V20a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 5 20V5.3A1.5 1.5 0 0 1 6.5 3.8Z"/><path d="M15 4v4h4"/><path d="M8 12h8"/><path d="M8 16h6"/></svg>,
+    suppliers: <svg {...common}><path d="M4 8.5 12 4l8 4.5-8 4.5-8-4.5Z"/><path d="M4 13l8 4.5 8-4.5"/><path d="M4 17l8 4.5 8-4.5"/></svg>,
+    debts: <svg {...common}><path d="M4 7h16"/><path d="M6 7V5h12v2"/><rect x="5" y="7" width="14" height="12" rx="2"/><path d="M9 12h6"/><path d="M9 15h4"/></svg>,
+    qrmenu: <svg {...common}><path d="M4 4h6v6H4z"/><path d="M14 4h6v6h-6z"/><path d="M4 14h6v6H4z"/><path d="M14 14h2.5"/><path d="M19 14h1"/><path d="M14 17h6"/><path d="M17 20h3"/><path d="M14 20h.01"/></svg>,
+    loyalty: <svg {...common}><path d="m12 3 2.6 5.3 5.8.8-4.2 4.1 1 5.8-5.2-2.7L6.8 19l1-5.8L3.6 9.1l5.8-.8L12 3Z"/></svg>,
+    market: <svg {...common}><path d="M4 19V5"/><path d="M20 19H4"/><path d="M8 16v-5"/><path d="M12 16V8"/><path d="M16 16v-9"/></svg>,
+    salaries: <svg {...common}><path d="M16 20v-1.5A3.5 3.5 0 0 0 12.5 15h-5A3.5 3.5 0 0 0 4 18.5V20"/><circle cx="10" cy="8" r="3.5"/><path d="M17 8h4"/><path d="M19 6v4"/><path d="M18 14.5h3"/><path d="M18 18h3"/></svg>,
+    settings: <svg {...common}><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.88-.34 1.7 1.7 0 0 0-1.03 1.56V21a2 2 0 0 1-4 0v-.07a1.7 1.7 0 0 0-1.03-1.56 1.7 1.7 0 0 0-1.88.34l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.56-1.03H3a2 2 0 0 1 0-4h.04A1.7 1.7 0 0 0 4.6 8.94a1.7 1.7 0 0 0-.34-1.88l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.88.34H9a1.7 1.7 0 0 0 1-1.56V3a2 2 0 0 1 4 0v.04a1.7 1.7 0 0 0 1.03 1.56 1.7 1.7 0 0 0 1.88-.34l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.88V9a1.7 1.7 0 0 0 1.56 1H21a2 2 0 0 1 0 4h-.04A1.7 1.7 0 0 0 19.4 15Z"/></svg>
+  }
+  return icons[type] || <svg {...common}><circle cx="12" cy="12" r="3"/></svg>
+}
+
+const RMS_PRO_SECTION_ICONS = {
+  dashboard: <RmsIcon type="dashboard" />,
+  revenue: <RmsIcon type="revenue" />,
+  finance: <RmsIcon type="finance" />,
+  reports: <RmsIcon type="reports" />,
+  recipes: <RmsIcon type="recipes" />,
+  salaries: <RmsIcon type="salaries" />,
+  suppliers: <RmsIcon type="suppliers" />,
+  debts: <RmsIcon type="debts" />,
+  qrmenu: <RmsIcon type="qrmenu" />,
+  loyalty: <RmsIcon type="loyalty" />,
+  market: <RmsIcon type="market" />,
+  settings: <RmsIcon type="settings" />
+}
+
+const RmsBellIcon = () => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+const RmsHelpIcon = () => <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.7 9a2.7 2.7 0 0 1 5.2 1c0 2-3 2.2-3 4"/><path d="M12 17h.01"/></svg>
+
+function rmsProSectionTitle(section, t) {
+  const map = {
+    dashboard: t('dashboard_tab'),
+    revenue: t('revenue_tab'),
+    finance: t('finance_tab'),
+    reports: t('reports_tab'),
+    recipes: t('recipes_tab'),
+    salaries: t('salaries_tab'),
+    suppliers: t('suppliers_tab'),
+    debts: t('debts_payments_tab'),
+    qrmenu: t('qr_menu_tab'),
+    loyalty: t('loyalty_tab'),
+    market: t('market_intelligence_tab'),
+    settings: t('settings_tab')
+  }
+  return map[section] || 'RMS Pro'
+}
+
+function RMSProInterfaceStyles() {
+  return <style>{`
+    :root {
+      --rms-pro-sidebar: #07162b;
+      --rms-pro-sidebar-2: #0b1d38;
+      --rms-pro-blue: #2563eb;
+      --rms-pro-line: rgba(226,232,240,.92);
+      --rms-pro-card: rgba(255,255,255,.94);
+      --rms-pro-muted: #64748b;
+      --rms-pro-ink: #0f172a;
+    }
+
+    .app.rms-pro-shell {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 250px 1fr;
+      background: #f5f7fb;
+      color: var(--rms-pro-ink);
+    }
+
+    .rms-pro-shell .sidebar.rms-pro-sidebar {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      width: 250px;
+      padding: 22px 14px 18px;
+      background:
+        radial-gradient(circle at 20% 0%, rgba(59,130,246,.32), transparent 28%),
+        linear-gradient(180deg, #07162b 0%, #08182f 48%, #061426 100%);
+      color: #e5edff;
+      border-right: 1px solid rgba(148,163,184,.16);
+      box-shadow: 16px 0 38px rgba(15,23,42,.18);
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      z-index: 20;
+    }
+
+    .rms-pro-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 30px;
+      padding: 0 8px;
+    }
+
+    .rms-pro-logo {
+      width: 46px;
+      height: 46px;
+      border-radius: 13px;
+      display: grid;
+      place-items: center;
+      color: white;
+      font-weight: 900;
+      letter-spacing: -.04em;
+      background: linear-gradient(135deg, #6366f1, #38bdf8);
+      box-shadow: 0 14px 34px rgba(37,99,235,.34);
+      overflow: hidden;
+    }
+
+    .rms-pro-brand h1 {
+      margin: 0;
+      color: #ffffff;
+      font-size: 24px;
+      line-height: 1;
+      letter-spacing: -.04em;
+    }
+
+    .rms-pro-brand p {
+      margin: 4px 0 0;
+      color: rgba(226,232,240,.72);
+      font-size: 10px;
+      line-height: 1.15;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+    }
+
+    .rms-pro-nav {
+      display: flex;
+      flex-direction: column;
+      gap: 22px;
+      flex: 1;
+    }
+
+    .rms-pro-nav-group-title {
+      margin: 0 0 9px;
+      padding: 0 8px;
+      color: rgba(226,232,240,.62);
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+    }
+
+    .rms-pro-nav-list {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+
+    .rms-pro-nav-item {
+      min-height: 44px;
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border: 1px solid transparent;
+      border-radius: 11px;
+      padding: 0 12px;
+      color: rgba(226,232,240,.92);
+      background: transparent;
+      font-size: 15px;
+      font-weight: 700;
+      text-align: left;
+      cursor: pointer;
+      transition: background .18s ease, border-color .18s ease, color .18s ease, transform .18s ease;
+    }
+
+    .rms-pro-nav-item:hover {
+      background: rgba(255,255,255,.07);
+      border-color: rgba(148,163,184,.20);
+    }
+
+    .rms-pro-nav-item.active {
+      color: #60a5fa;
+      background: linear-gradient(135deg, rgba(37,99,235,.30), rgba(37,99,235,.10));
+      border-color: rgba(96,165,250,.40);
+      box-shadow: inset 3px 0 0 #2563eb;
+    }
+
+    .rms-pro-nav-icon {
+      width: 22px;
+      height: 22px;
+      display: grid;
+      place-items: center;
+      color: currentColor;
+      font-size: 15px;
+      font-weight: 900;
+    }
+
+    .rms-pro-sidebar-bottom {
+      margin-top: 26px;
+      padding-top: 14px;
+      border-top: 1px solid rgba(148,163,184,.15);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .rms-pro-restaurant-select {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      border: 1px solid rgba(148,163,184,.22);
+      border-radius: 11px;
+      padding: 11px 13px;
+      color: #fff;
+      font-size: 13px;
+      font-weight: 800;
+      background: rgba(255,255,255,.04);
+    }
+
+    .rms-pro-user-card {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      border: 1px solid rgba(148,163,184,.14);
+      border-radius: 12px;
+      padding: 11px;
+      background: rgba(255,255,255,.03);
+    }
+
+    .rms-pro-avatar {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      color: #0f172a;
+      background: #e2e8f0;
+      font-weight: 900;
+      position: relative;
+    }
+
+    .rms-pro-avatar::after {
+      content: '';
+      position: absolute;
+      right: 0;
+      bottom: 1px;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #22c55e;
+      border: 2px solid #07162b;
+    }
+
+    .rms-pro-user-name {
+      color: #fff;
+      font-size: 13px;
+      font-weight: 900;
+      line-height: 1.1;
+      max-width: 150px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .rms-pro-user-role {
+      color: rgba(226,232,240,.66);
+      font-size: 11px;
+      margin-top: 3px;
+    }
+
+    .rms-pro-logout {
+      border: 1px solid rgba(148,163,184,.18);
+      border-radius: 11px;
+      background: rgba(255,255,255,.04);
+      color: rgba(226,232,240,.86);
+      font-weight: 800;
+      padding: 10px 12px;
+      cursor: pointer;
+    }
+
+    .rms-pro-shell .main.rms-pro-main {
+      padding: 0;
+      min-width: 0;
+      background: #f6f8fc;
+      overflow-x: hidden;
+    }
+
+    .rms-pro-topbar {
+      height: 74px;
+      padding: 0 28px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(255,255,255,.90);
+      border-bottom: 1px solid rgba(226,232,240,.95);
+      backdrop-filter: blur(18px);
+      position: sticky;
+      top: 0;
+      z-index: 12;
+    }
+
+    .rms-pro-topbar-title {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      color: #0f172a;
+      font-size: 20px;
+      font-weight: 900;
+      letter-spacing: -.03em;
+    }
+
+    .rms-pro-back {
+      width: 32px;
+      height: 32px;
+      display: grid;
+      place-items: center;
+      border: 0;
+      background: transparent;
+      color: #334155;
+      font-size: 30px;
+      line-height: 1;
+      cursor: pointer;
+    }
+
+    .rms-pro-topbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      color: #334155;
+    }
+
+    .rms-pro-top-icon {
+      width: 34px;
+      height: 34px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      border: 0;
+      background: transparent;
+      color: #334155;
+      font-size: 20px;
+    }
+
+    .rms-pro-top-user {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      color: #0f172a;
+      font-weight: 800;
+    }
+
+    .rms-pro-top-avatar {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      color: #fff;
+      background: #334155;
+      font-weight: 900;
+    }
+
+    .rms-pro-content {
+      padding: 24px 24px 34px;
+      max-width: 1580px;
+      margin: 0 auto;
+    }
+
+    .rms-pro-content > .topbar:first-child {
+      margin-top: 0;
+    }
+
+    .rms-pro-shell .card,
+    .rms-pro-shell .finance-line-chart-wrap,
+    .rms-pro-shell .market-intelligence .mi-section,
+    .rms-pro-shell .market-intelligence .mi-card,
+    .rms-pro-shell .table-wrap,
+    .rms-pro-shell .settings-card,
+    .rms-pro-shell .qr-card {
+      background: rgba(255,255,255,.96) !important;
+      border: 1px solid rgba(226,232,240,.95) !important;
+      border-radius: 20px !important;
+      box-shadow: 0 18px 42px rgba(15,23,42,.055) !important;
+    }
+
+    .rms-pro-shell .topbar {
+      background: transparent !important;
+      border: 0 !important;
+      box-shadow: none !important;
+      padding: 0 !important;
+      margin-bottom: 18px !important;
+    }
+
+    .rms-pro-shell .topbar h2,
+    .rms-pro-shell h2 {
+      color: #0f172a;
+      letter-spacing: -.04em;
+      font-weight: 900;
+    }
+
+    .rms-pro-shell .hint,
+    .rms-pro-shell .muted,
+    .rms-pro-shell .subtle {
+      color: #64748b !important;
+    }
+
+    .rms-pro-shell .kpi,
+    .rms-pro-shell .metric,
+    .rms-pro-shell .mini-card {
+      border-radius: 16px !important;
+      border: 1px solid rgba(226,232,240,.9) !important;
+      background: linear-gradient(180deg, #ffffff, #fbfdff) !important;
+    }
+
+    .rms-pro-shell .finance-line-chart-wrap {
+      padding: 22px 30px 26px !important;
+    }
+
+    .rms-pro-shell .finance-line-chart-svg {
+      height: 330px !important;
+    }
+
+    .rms-pro-shell .finance-line-chart-summary .metric {
+      min-height: 138px !important;
+      padding: 18px 20px 20px !important;
+      justify-content: flex-start !important;
+    }
+
+    .rms-pro-shell .finance-line-chart-summary .metric-title {
+      color: #071327 !important;
+      font-weight: 850 !important;
+    }
+
+    .rms-pro-shell .finance-line-chart-summary .metric-number {
+      font-size: 31px !important;
+      color: #071327 !important;
+      font-weight: 900 !important;
+    }
+
+    .rms-pro-shell .finance-line-chart-summary .metric-currency {
+      font-size: 13px !important;
+      color: #475569 !important;
+      align-self: flex-end !important;
+    }
+
+    .rms-pro-shell .finance-line-chart-summary .metric:nth-child(3) {
+      border-color: rgba(74,222,128,.65) !important;
+      box-shadow: 0 14px 34px rgba(34,197,94,.10) !important;
+    }
+
+    .rms-pro-shell .finance-line-chart-summary .metric-title b,
+    .rms-pro-shell .finance-line-chart-summary .metric-title strong {
+      font-weight: 850 !important;
+    }
+
+    .rms-pro-shell .finance-line-chart-summary .metric-weekday {
+      font-weight: 900 !important;
+    }
+
+    .rms-pro-shell .finance-line-chart-summary .metric:nth-child(5) .metric-weekday {
+      color: #dc2626 !important;
+    }
+
+
+    .rms-pro-shell button:not(.rms-pro-nav-item):not(.rms-pro-back):not(.rms-pro-top-icon):not(.rms-pro-logout),
+    .rms-pro-shell .btn {
+      border-radius: 12px;
+    }
+
+
+
+/* RMS Pro UI v4 — render-match corrections */
+.app.rms-pro-shell{
+  grid-template-columns:232px 1fr!important;
+  font-family:Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif!important;
+  background:#f5f7fb!important;
+}
+.rms-pro-shell .sidebar.rms-pro-sidebar{
+  width:232px!important;
+  min-width:232px!important;
+  height:100vh!important;
+  min-height:100vh!important;
+  overflow:hidden!important;
+  padding:18px 12px 14px!important;
+  background:
+    radial-gradient(circle at 18% 0%,rgba(59,130,246,.30),transparent 30%),
+    linear-gradient(180deg,#071932 0%,#06172d 50%,#041325 100%)!important;
+  box-shadow:16px 0 42px rgba(15,23,42,.16)!important;
+}
+.rms-pro-brand{
+  gap:10px!important;
+  margin-bottom:18px!important;
+  padding:0 8px 14px!important;
+  border-bottom:1px solid rgba(148,163,184,.14)!important;
+}
+.rms-pro-logo{
+  width:43px!important;
+  height:43px!important;
+  border-radius:13px!important;
+  box-shadow:0 12px 28px rgba(37,99,235,.32)!important;
+}
+.rms-pro-brand h1{
+  font-size:22px!important;
+  font-weight:780!important;
+  letter-spacing:-.035em!important;
+}
+.rms-pro-brand p{
+  font-size:9.5px!important;
+  line-height:1.15!important;
+  letter-spacing:.045em!important;
+}
+.rms-pro-nav{
+  gap:13px!important;
+  flex:0 1 auto!important;
+  min-height:0!important;
+}
+.rms-pro-nav-group-title{
+  margin:0 0 6px!important;
+  padding:0 8px!important;
+  color:rgba(203,213,225,.72)!important;
+  font-size:11px!important;
+  font-weight:800!important;
+  letter-spacing:.055em!important;
+}
+.rms-pro-nav-list{
+  gap:5px!important;
+}
+.rms-pro-nav-item{
+  min-height:38px!important;
+  height:38px!important;
+  padding:0 10px!important;
+  border-radius:10px!important;
+  gap:10px!important;
+  color:rgba(241,245,249,.90)!important;
+  font-size:14px!important;
+  font-weight:690!important;
+  line-height:1.05!important;
+  letter-spacing:-.01em!important;
+  background:transparent!important;
+  border-color:transparent!important;
+  box-shadow:none!important;
+  transform:none!important;
+}
+.rms-pro-nav-item:hover{
+  background:rgba(59,130,246,.09)!important;
+  border-color:rgba(96,165,250,.20)!important;
+  color:#dbeafe!important;
+  transform:none!important;
+  box-shadow:none!important;
+}
+.rms-pro-nav-item.active{
+  color:#60a5fa!important;
+  background:rgba(37,99,235,.18)!important;
+  border-color:rgba(96,165,250,.35)!important;
+  box-shadow:inset 3px 0 0 #2563eb!important;
+}
+.rms-pro-nav-icon{
+  width:22px!important;
+  height:22px!important;
+  min-width:22px!important;
+  border-radius:8px!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  background:rgba(255,255,255,.045)!important;
+  color:currentColor!important;
+  font-size:0!important;
+}
+.rms-pro-nav-icon svg{
+  width:18px!important;
+  height:18px!important;
+  display:block!important;
+}
+.rms-pro-sidebar-bottom{
+  margin-top:auto!important;
+  padding-top:10px!important;
+  gap:8px!important;
+  border-top:1px solid rgba(148,163,184,.12)!important;
+}
+.rms-pro-restaurant-select{
+  min-height:42px!important;
+  padding:0 12px!important;
+  border-radius:10px!important;
+  font-size:12px!important;
+  background:rgba(15,23,42,.22)!important;
+}
+.rms-pro-user-card{
+  padding:9px!important;
+  gap:9px!important;
+  border-radius:12px!important;
+  background:rgba(15,23,42,.18)!important;
+}
+.rms-pro-avatar{
+  width:35px!important;
+  height:35px!important;
+}
+.rms-pro-user-name{
+  font-size:12px!important;
+  font-weight:800!important;
+  max-width:130px!important;
+}
+.rms-pro-user-role{
+  font-size:10.5px!important;
+}
+.rms-pro-logout{
+  display:none!important;
+}
+.rms-pro-topbar{
+  height:74px!important;
+  background:rgba(255,255,255,.86)!important;
+}
+.rms-pro-topbar-title{
+  font-size:20px!important;
+  font-weight:800!important;
+  letter-spacing:-.025em!important;
+}
+.rms-pro-topbar-actions{
+  gap:18px!important;
+}
+.rms-pro-top-icon{
+  color:#334155!important;
+  font-size:0!important;
+}
+.rms-pro-top-icon svg{
+  width:22px!important;
+  height:22px!important;
+}
+.rms-pro-top-user{
+  font-size:14px!important;
+  font-weight:750!important;
+}
+.rms-pro-top-avatar{
+  width:38px!important;
+  height:38px!important;
+  font-weight:800!important;
+}
+.rms-pro-content{
+  max-width:none!important;
+  padding:24px 24px 34px!important;
+}
+.rms-pro-shell .topbar h2,
+.rms-pro-shell h2{
+  font-weight:780!important;
+  letter-spacing:-.035em!important;
+}
+.rms-pro-shell .card,
+.rms-pro-shell .finance-line-chart-wrap,
+.rms-pro-shell .table-wrap{
+  border-radius:22px!important;
+  box-shadow:0 16px 44px rgba(15,23,42,.052)!important;
+}
+
+    @media (max-width: 960px) {
+      .app.rms-pro-shell {
+        display: block;
+      }
+      .rms-pro-shell .sidebar.rms-pro-sidebar {
+        position: relative;
+        width: 100%;
+        height: auto;
+        min-height: auto;
+        border-radius: 0 0 20px 20px;
+      }
+      .rms-pro-nav {
+        gap: 12px;
+      }
+      .rms-pro-nav-list {
+        flex-direction: row;
+        overflow-x: auto;
+      }
+      .rms-pro-nav-item {
+        min-width: max-content;
+      }
+      .rms-pro-sidebar-bottom {
+        display: none;
+      }
+      .rms-pro-topbar {
+        padding: 0 16px;
+      }
+      .rms-pro-content {
+        padding: 16px;
+      }
+      .rms-pro-topbar-title {
+        font-size: 17px;
+      }
+      .rms-pro-topbar-actions {
+        gap: 6px;
+      }
+    }
+  `}</style>
+}
+
+const accessRank = (value) => ACCESS_LEVELS.indexOf(value || 'none')
+const canReadAccess = (value) => accessRank(value) >= accessRank('read')
+
+const fmt = (n) => Number(n || 0).toFixed(2)
+const pct = (n) => `${(Number(n) || 0).toFixed(1)}%`
+const parseNum = (v) => Number(String(v ?? '0').replace(',', '.').replace(/\s/g, '')) || 0
+const supplierEntityKey = (supplierId, legalEntityId) => `${supplierId || ''}::${legalEntityId || ''}`
+const normalizeExpenseText = (value) => String(value || '').trim().toLowerCase().replace(/ё/g, 'е').replace(/\s+/g, ' ')
+const isBazarExpenseName = (value) => {
+  const name = normalizeExpenseText(value)
+  return name === 'базар' || name === 'bazar' || name.includes('базар')
+}
+
+const isDsmfExpenseName = (value) => {
+  const name = normalizeExpenseText(value)
+  return name.includes('dsmf') || name.includes('dmsf') || name.includes('дсмф') || name.includes('дмсф') || name.includes('соц') || name.includes('sosial') || name.includes('social')
+}
+const isSalaryExpenseName = (value) => {
+  const name = normalizeExpenseText(value)
+  return name.includes('зарплат') || name.includes('salary') || name.includes('emek haqq') || name.includes('əmək haqq')
+}
+const RMS_LOGIN_GUARD_KEY = 'rms_login_guard_v1'
+const RMS_LOGIN_MAX_FAILED_ATTEMPTS = 5
+const RMS_LOGIN_LOCK_MS = 5 * 60 * 1000
+
+const rmsLoginGuardLoginKey = (login) => normalizeInternalLogin(login) || String(login || '').trim().toLowerCase()
+const rmsReadLoginGuard = () => readJsonStorage(RMS_LOGIN_GUARD_KEY, {}) || {}
+const rmsWriteLoginGuard = (value) => writeJsonStorage(RMS_LOGIN_GUARD_KEY, value || {})
+const rmsFormatLockTime = (ms) => {
+  const totalSeconds = Math.max(1, Math.ceil(parseNum(ms) / 1000))
+  const minutes = Math.floor(totalSeconds / 60)
+  const seconds = totalSeconds % 60
+  return `${minutes}:${String(seconds).padStart(2, '0')}`
+}
+const rmsGetLoginGuardState = (login) => {
+  const key = rmsLoginGuardLoginKey(login)
+  const guard = rmsReadLoginGuard()
+  const row = guard[key] || { attempts: 0, locked_until: 0 }
+  const lockedUntil = parseNum(row.locked_until)
+  const now = Date.now()
+  if (lockedUntil > now) return { key, locked: true, attempts: parseNum(row.attempts), lockedUntil, remainingMs: lockedUntil - now }
+  if (lockedUntil && lockedUntil <= now) {
+    delete guard[key]
+    rmsWriteLoginGuard(guard)
+    return { key, locked: false, attempts: 0, lockedUntil: 0, remainingMs: 0 }
+  }
+  return { key, locked: false, attempts: parseNum(row.attempts), lockedUntil: 0, remainingMs: 0 }
+}
+const rmsRegisterFailedLogin = (login) => {
+  const key = rmsLoginGuardLoginKey(login)
+  const guard = rmsReadLoginGuard()
+  const previous = guard[key] || { attempts: 0, locked_until: 0 }
+  const now = Date.now()
+  const activeLock = parseNum(previous.locked_until) > now
+  if (activeLock) return rmsGetLoginGuardState(login)
+  const attempts = parseNum(previous.attempts) + 1
+  const lockedUntil = attempts >= RMS_LOGIN_MAX_FAILED_ATTEMPTS ? now + RMS_LOGIN_LOCK_MS : 0
+  guard[key] = { attempts, locked_until: lockedUntil, updated_at: new Date().toISOString() }
+  rmsWriteLoginGuard(guard)
+  return rmsGetLoginGuardState(login)
+}
+const rmsClearLoginGuard = (login) => {
+  const key = rmsLoginGuardLoginKey(login)
+  const guard = rmsReadLoginGuard()
+  if (guard[key]) {
+    delete guard[key]
+    rmsWriteLoginGuard(guard)
+  }
+}
+
+const rmsFinanceExpenseGroupName = (name) => {
+  const value = normalizeExpenseText(name)
+  if (value.includes('аренд')) return 'rent'
+  if (value.includes('коммун') || value.includes('свет') || value.includes('газ') || value.includes('вода') || value.includes('элект')) return 'utilities'
+  if (value.includes('упаков') || value.includes('тара') || value.includes('однораз') || value.includes('стакан') || value.includes('крыш') || value.includes('контейнер') || value.includes('пакет') || value.includes('салфет') || value.includes('take away') || value.includes('takeaway') || value.includes('packaging')) return 'packaging'
+  if (value.includes('хоз') || value.includes('хим') || value.includes('перчат') || value.includes('тряп') || value.includes('губк') || value.includes('моющ') || value.includes('уборк') || value.includes('cleaning')) return 'household'
+  if (value.includes('маркет') || value.includes('реклам') || value.includes('smm')) return 'marketing'
+  if (isBazarExpenseName(value) || value.includes('food cost') || value.includes('market') || value.includes('продукт') || value.includes('закуп') || value.includes('кухня') || value.includes('бар') || value.includes('кофе') || value.includes('напит') || value.includes('списан')) return 'food_market'
+  if (value.includes('ремонт') || value.includes('тех') || value.includes('обслуж')) return 'maintenance'
+  return 'other'
+}
+
+const rmsFinanceSupplierProductGroup = (product = {}) => {
+  const value = normalizeExpenseText(`${product?.category || ''} ${product?.name || ''}`)
+  if (value.includes('упаков') || value.includes('тара') || value.includes('однораз') || value.includes('стакан') || value.includes('крыш') || value.includes('контейнер') || value.includes('пакет') || value.includes('салфет') || value.includes('take away') || value.includes('takeaway') || value.includes('packaging')) return 'packaging'
+  if (value.includes('хоз') || value.includes('хим') || value.includes('перчат') || value.includes('тряп') || value.includes('губк') || value.includes('моющ') || value.includes('уборк') || value.includes('cleaning')) return 'household'
+  if (value.includes('бар') || value.includes('кухня') || value.includes('кофе') || value.includes('напит') || value.includes('food') || value.includes('продукт') || value.includes('мяс') || value.includes('рыб') || value.includes('овощ') || value.includes('молоч') || value.includes('бакале') || value.includes('соус') || value.includes('специ')) return 'food'
+  return 'other'
+}
+
+const rmsFinancePurchaseTotalsByGroup = (rows = []) => (rows || []).reduce((totals, p) => {
+  const items = p.supplier_purchase_items || []
+  if (items.length) {
+    items.forEach(i => {
+      const group = rmsFinanceSupplierProductGroup(i.supplier_products || {})
+      totals[group] = parseNum(totals[group]) + parseNum(i.total_amount)
+    })
+  } else {
+    totals.food = parseNum(totals.food) + parseNum(p.total_amount)
+  }
+  return totals
+}, { food: 0, packaging: 0, household: 0, other: 0 })
+
+const rmsFinanceAllocatedSupplierTotals = (purchaseRows = [], share = 1) => {
+  // Пока не делим поставщиков на кухня / бар / хозтовары / упаковку.
+  // Вся сумма приходов поставщиков входит в FoodCost как “Поставщики”.
+  const total = (purchaseRows || []).reduce((sum, p) => sum + parseNum(p.total_amount), 0)
+  return {
+    food: total * parseNum(share),
+    packaging: 0,
+    household: 0,
+    other: 0
+  }
+}
+
+const rmsFinanceOfficialDaysByEmployee = () => {
+  try { return JSON.parse(localStorage.getItem('rms_employee_official_days') || '{}') } catch (_e) { return {} }
+}
+const rmsFinanceOfficialSalaryByEmployee = () => {
+  try { return JSON.parse(localStorage.getItem('rms_employee_official_salary') || '{}') } catch (_e) { return {} }
+}
+const rmsFinancePayrollBaseByEmployee = (employeeRows = []) => {
+  const officialDays = rmsFinanceOfficialDaysByEmployee()
+  const officialSalary = rmsFinanceOfficialSalaryByEmployee()
+  const defaultDays = parseNum(localStorage.getItem('rms_dsmf_official_days') || '26') || 26
+  const map = new Map()
+  ;(employeeRows || []).forEach(e => {
+    const days = parseNum(officialDays[e.id]) || defaultDays
+    const officialMonthly = parseNum(officialSalary[e.id]) || parseNum(e.official_salary) || parseNum(e.monthly_official_salary) || parseNum(e.monthly_salary)
+    const base = officialMonthly > 0 ? officialMonthly / 26 * days : 0
+    if (base > 0) map.set(e.id, base)
+  })
+  return map
+}
+const rmsFinancePayrollDetailsForScope = (employeeRows = [], selectedBranchId = 'all', revenueShareMap = new Map()) => {
+  const baseMap = rmsFinancePayrollBaseByEmployee(employeeRows)
+  let directSalary = 0
+  let managersSalary = 0
+  let directDsmf = 0
+  let managersDsmf = 0
+  ;(employeeRows || []).forEach(e => {
+    const base = parseNum(baseMap.get(e.id))
+    if (base <= 0) return
+    const isManager = !e.branch_id || positionGroup(e.position) === 'Менеджеры'
+    const charges = statutoryRestaurantOfficialPayrollCost(base).total
+    if (isManager) {
+      managersSalary += base
+      managersDsmf += charges
+    } else if (selectedBranchId === 'all' || e.branch_id === selectedBranchId) {
+      directSalary += base
+      directDsmf += charges
+    }
+  })
+  const branchShares = Array.from(revenueShareMap.values()).reduce((sum, value) => sum + parseNum(value), 0)
+  const share = selectedBranchId === 'all' ? 1 : parseNum(revenueShareMap.get(selectedBranchId)) || (branchShares ? 0 : 0)
+  const allocatedManagersSalary = selectedBranchId === 'all' ? managersSalary : managersSalary * share
+  const allocatedManagersDsmf = selectedBranchId === 'all' ? managersDsmf : managersDsmf * share
+  return {
+    directSalary,
+    managersSalary: allocatedManagersSalary,
+    totalSalary: directSalary + allocatedManagersSalary,
+    directDsmf,
+    managersDsmf: allocatedManagersDsmf,
+    totalDsmf: directDsmf + allocatedManagersDsmf,
+    managerShare: share
+  }
+}
+const statutorySocialEmployer = (baseValue) => {
+  const base = parseNum(baseValue)
+  if (base <= 0) return 0
+  if (base <= 200) return base * 0.22
+  if (base <= 8000) return 44 + (base - 200) * 0.15
+  return 1214 + (base - 8000) * 0.11
+}
+const statutoryUnemploymentEmployer = (baseValue) => parseNum(baseValue) * 0.005
+const statutoryMedicalEmployer = (baseValue) => {
+  const base = parseNum(baseValue)
+  if (base <= 0) return 0
+  if (base <= 2500) return base * 0.02
+  return 50 + (base - 2500) * 0.005
+}
+const statutorySocialEmployee = (baseValue) => {
+  const base = parseNum(baseValue)
+  if (base <= 0) return 0
+  if (base <= 200) return base * 0.03
+  return 6 + (base - 200) * 0.10
+}
+const statutoryUnemploymentEmployee = (baseValue) => parseNum(baseValue) * 0.005
+const statutoryMedicalEmployee = (baseValue) => {
+  const base = parseNum(baseValue)
+  if (base <= 0) return 0
+  if (base <= 2500) return base * 0.02
+  return 50 + (base - 2500) * 0.005
+}
+const statutoryIncomeTaxPrivateNonOil2026 = (baseValue) => {
+  const base = parseNum(baseValue)
+  if (base <= 0) return 0
+  if (base <= 2500) return Math.max(base - 200, 0) * 0.03
+  if (base <= 8000) return 75 + (base - 2500) * 0.10
+  return 625 + (base - 8000) * 0.14
+}
+const statutoryEmployerPayrollCharges = (baseValue) => {
+  const base = parseNum(baseValue)
+  const social = statutorySocialEmployer(base)
+  const unemployment = statutoryUnemploymentEmployer(base)
+  const medical = statutoryMedicalEmployer(base)
+  return {
+    base,
+    social,
+    unemployment,
+    medical,
+    total: social + unemployment + medical
+  }
+}
+const statutoryEmployeePayrollDeductions = (baseValue) => {
+  const base = parseNum(baseValue)
+  const social = statutorySocialEmployee(base)
+  const unemployment = statutoryUnemploymentEmployee(base)
+  const medical = statutoryMedicalEmployee(base)
+  const incomeTax = statutoryIncomeTaxPrivateNonOil2026(base)
+  return {
+    base,
+    social,
+    unemployment,
+    medical,
+    incomeTax,
+    total: social + unemployment + medical + incomeTax
+  }
+}
+const statutoryRestaurantOfficialPayrollCost = (baseValue) => {
+  const base = parseNum(baseValue)
+  const employer = statutoryEmployerPayrollCharges(base)
+  const employee = statutoryEmployeePayrollDeductions(base)
+  return {
+    base,
+    employer,
+    employee,
+    total: employer.total + employee.total
+  }
+}
+const todayISO = () => new Date().toISOString().slice(0, 10)
+const RMS_SUPPLIERS_UPDATED_EVENT = 'rms:suppliers-updated'
+function notifySuppliersUpdated() {
+  try { window.dispatchEvent(new CustomEvent(RMS_SUPPLIERS_UPDATED_EVENT)) } catch (_) {}
+}
+
+const ADVANCE_EDIT_WINDOW_MS = 7 * 24 * 60 * 60 * 1000
+const EDIT_WINDOW_MS = 7 * 24 * 60 * 60 * 1000
+const canEditAdvance = (row) => row?.created_at ? (Date.now() - new Date(row.created_at).getTime()) <= ADVANCE_EDIT_WINDOW_MS : true
+const canEditWithinWeek = (row) => row?.created_at ? (Date.now() - new Date(row.created_at).getTime()) <= EDIT_WINDOW_MS : true
+const formatDT = (value) => value ? new Date(value).toLocaleString() : '—'
+const calcDailyRate = (emp) => {
+  const type = emp?.salary_type || 'monthly'
+  return type === 'daily' ? parseNum(emp?.daily_rate) : parseNum(emp?.monthly_salary) / 26
+}
+const calcGrossSalary = (emp, workedDays) => {
+  const type = emp?.salary_type || 'monthly'
+  if (type === 'monthly') return parseNum(emp?.monthly_salary)
+  return calcDailyRate(emp) * parseNum(workedDays)
+}
+const monthKeyFromDate = (date) => date.slice(0, 7)
+const monthStart = (year, month) => `${year}-${String(month).padStart(2, '0')}-01`
+const daysInMonth = (year, month) => new Date(Number(year), Number(month), 0).getDate()
+const prevMonth = (year, month) => {
+  let y = Number(year)
+  let m = Number(month) - 1
+  if (m < 1) { m = 12; y -= 1 }
+  return { year: y, month: m }
+}
+const defaultYears = () => {
+  const cy = new Date().getFullYear()
+  return Array.from({ length: 6 }, (_, i) => cy - 3 + i)
+}
+
+const STAFF_GROUP_MANAGERS = '__managers'
+const STAFF_POSITION_GROUPS = ['Менеджеры', 'Бар', 'Повар', 'Стьюарт', 'Другое']
+const STAFF_POSITIONS = ['Повар', 'Бар', 'Стьюард', 'Менеджер']
+const employeeGroupId = (emp) => emp?.branch_id || STAFF_GROUP_MANAGERS
+const employeeGroupName = (emp) => {
+  if (!emp?.branch_id) return 'Менеджеры'
+  if (emp?.branches?.name) return emp.branches.name
+  if (emp?.branch_name) return emp.branch_name
+  return 'Филиал'
+}
+const staffGroupOptions = (branches) => [{ id: STAFF_GROUP_MANAGERS, name: 'Менеджеры' }, ...branches]
+const positionGroup = (position) => {
+  const p = String(position || '').trim().toLowerCase()
+  if (p.includes('менедж') || p.includes('управ') || p.includes('директор') || p.includes('админ') || p.includes('закуп') || p.includes('smm') || p.includes('шеф-бар') || p.includes('шеф бар') || p.includes('brand') || p.includes('manager') || p.includes('director') || p.includes('admin')) return 'Менеджеры'
+  if (p.includes('повар') || p.includes('кух') || p.includes('кухар') || p.includes('су-шеф') || p.includes('су шеф') || p.includes('шеф-повар') || p.includes('шеф повар') || p.includes('chef') || p.includes('cook') || p.includes('kitchen') || p.includes('aşpaz') || p.includes('ashpaz') || p.includes('povar')) return 'Повар'
+  if (p.includes('бар') || p.includes('бариста') || p.includes('бармен') || p.includes('сервис') || p.includes('servis') || p.includes('service') || p.includes('barista') || p.includes('barmen')) return 'Бар'
+  if (p.includes('стюард') || p.includes('стьюард') || p.includes('стюарт') || p.includes('стьюарт') || p.includes('stew')) return 'Стьюарт'
+  return 'Другое'
+}
+const isManagerStaff = (emp) => {
+  const position = String(emp?.position || '').toLowerCase()
+  const groupName = String(emp?.branches?.name || emp?.branch_name || '').toLowerCase()
+  return !emp?.branch_id
+    || groupName.includes('менедж')
+    || positionGroup(position) === 'Менеджеры'
+    || ['owner', 'ceo', 'coo', 'cfo', 'управ', 'директор', 'админ', 'закуп', 'smm', 'шеф'].some(x => position.includes(x))
+}
+const matchesStaffGroup = (emp, groupId) => {
+  if (groupId === 'all') return true
+  if (groupId === STAFF_GROUP_MANAGERS) return !emp?.branch_id
+  return String(employeeGroupId(emp)) === String(groupId)
+}
+const matchesPositionGroup = (emp, group) => group === 'all' || positionGroup(emp?.position) === group
+
+function useLang() {
+  const [lang, setLangState] = useState(localStorage.getItem('rms_lang') || localStorage.getItem('nms_lang') || 'ru')
+  const setLang = (value) => {
+    localStorage.setItem('rms_lang', value)
+    setLangState(value)
+  }
+  return [lang, setLang, (key) => I18N[lang]?.[key] || I18N.ru[key] || key]
+}
+
+
+const RMS_INTERNAL_USERS_KEY = 'rms_internal_users_v2'
+const RMS_INTERNAL_PERMISSIONS_KEY = 'rms_internal_permissions_v2'
+const RMS_INTERNAL_USERS_SETTING = 'internal_users_v2'
+const RMS_INTERNAL_PERMISSIONS_SETTING = 'internal_permissions_v2'
+const RMS_INTERNAL_SESSION_KEY = 'rms_internal_session_v2'
+
+const normalizeInternalLogin = (value) =>
+  String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/@(rms|nms)\.local\.az$/i, '')
+    .replace(/@rms\.internal$/i, '')
+
+const readJsonStorage = (key, fallback) => {
+  try {
+    const raw = localStorage.getItem(key)
+    return raw ? JSON.parse(raw) : fallback
+  } catch (_e) {
+    return fallback
+  }
+}
+
+const writeJsonStorage = (key, value) => {
+  try { localStorage.setItem(key, JSON.stringify(value)) } catch (_e) {}
+}
+
+const getInternalUsers = () =>
+  readJsonStorage(RMS_INTERNAL_USERS_KEY, null) ||
+  readJsonStorage('rms_internal_users_v1', null) ||
+  {}
+
+const setInternalUsers = (users) => {
+  const payload = users || {}
+  writeJsonStorage(RMS_INTERNAL_USERS_KEY, payload)
+  try { writeRmsAppSetting(RMS_INTERNAL_USERS_SETTING, payload) } catch (_e) {}
+}
+
+const getInternalPermissions = () =>
+  readJsonStorage(RMS_INTERNAL_PERMISSIONS_KEY, null) ||
+  readJsonStorage('rms_internal_permissions_v1', null) ||
+  {}
+
+const setInternalPermissions = (perms) => {
+  const payload = perms || {}
+  writeJsonStorage(RMS_INTERNAL_PERMISSIONS_KEY, payload)
+  try { writeRmsAppSetting(RMS_INTERNAL_PERMISSIONS_SETTING, payload) } catch (_e) {}
+}
+
+const getInternalSessionStorage = () =>
+  readJsonStorage(RMS_INTERNAL_SESSION_KEY, null) ||
+  readJsonStorage('rms_internal_session_v1', null)
+
+const setInternalSessionStorage = (session) => {
+  try {
+    if (session) writeJsonStorage(RMS_INTERNAL_SESSION_KEY, session)
+    else {
+      localStorage.removeItem(RMS_INTERNAL_SESSION_KEY)
+      localStorage.removeItem('rms_internal_session_v1')
+    }
+  } catch (_e) {}
+}
+
+const RMS_APP_SETTINGS_TABLE = 'rms_app_settings'
+const RMS_CUSTOM_LOGO_KEY = 'custom_logo'
+const RMS_BRANCH_RENT_FORECAST_SETTING = 'branch_rent_forecast_v1'
+const RMS_HIDDEN_SALES_KEYS_SETTING = 'hidden_sales_keys'
+const RMS_SALES_NAME_ALIASES_SETTING = 'sales_name_aliases'
+
+const RMS_SOURCE_VERSION = 'main_v48_persistent_users_hidden_aliases'
+const RMS_FULL_BACKUP_TABLES = [
+  'branches',
+  'expense_categories',
+  'legal_entities',
+  'user_profiles',
+  'user_permissions',
+  'employees',
+  'employee_assignments',
+  'employee_attendance',
+  'employee_files',
+  'salary_periods',
+  'salary_advances',
+  'salary_payments',
+  'suppliers',
+  'supplier_products',
+  'supplier_purchases',
+  'supplier_purchase_items',
+  'supplier_payments',
+  'supplier_balances',
+  'supplier_balances_v2',
+  'latest_product_costs',
+  'daily_revenue',
+  'daily_revenue_entries',
+  'pos_orders',
+  'pos_order_items',
+  'daily_expenses',
+  'daily_cash_register',
+  'daily_cash_inflows',
+  'monthly_branch_revenue',
+  'monthly_branch_expenses',
+  'monthly_branch_salary',
+  'monthly_branch_service_charge_cost',
+  'finance_operation_log',
+  'menu_items',
+  'recipe_items',
+  'rms_sales_reports',
+  'rms_app_settings'
+]
+const RMS_FULL_BACKUP_CHILD_FIRST_TABLES = [
+  'recipe_items',
+  'supplier_purchase_items',
+  'supplier_payments',
+  'supplier_purchases',
+  'supplier_balances',
+  'supplier_balances_v2',
+  'latest_product_costs',
+  'salary_payments',
+  'salary_advances',
+  'salary_periods',
+  'employee_attendance',
+  'employee_files',
+  'employee_assignments',
+  'pos_order_items',
+  'pos_orders',
+  'daily_revenue_entries',
+  'daily_expenses',
+  'daily_cash_register',
+  'daily_cash_inflows',
+  'monthly_branch_revenue',
+  'monthly_branch_expenses',
+  'monthly_branch_salary',
+  'monthly_branch_service_charge_cost',
+  'finance_operation_log',
+  'menu_items',
+  'supplier_products',
+  'suppliers',
+  'employees',
+  'branches',
+  'expense_categories',
+  'legal_entities',
+  'user_permissions',
+  'user_profiles',
+  'rms_sales_reports',
+  'rms_app_settings'
+]
+const RMS_FULL_BACKUP_TABLE_KEY = (table) => table === 'rms_app_settings' ? 'key' : 'id'
+const RMS_FULL_BACKUP_LOCAL_KEYS = [
+  RMS_INTERNAL_USERS_KEY,
+  RMS_INTERNAL_PERMISSIONS_KEY,
+  RMS_INTERNAL_SESSION_KEY,
+  RMS_INTERNAL_USERS_SETTING,
+  RMS_INTERNAL_PERMISSIONS_SETTING,
+  'rms_lang',
+  'rms_theme',
+  'rms_custom_logo',
+  'rms_sales_reports_v1',
+  'rms_sales_reports_v2',
+  'rms_hidden_sales_keys',
+  'rms_sales_name_aliases'
+]
+
+
+async function readRmsAppSetting(key, fallback = null) {
+  try {
+    const { data, error } = await supabase
+      .from(RMS_APP_SETTINGS_TABLE)
+      .select('value')
+      .eq('key', key)
+      .maybeSingle()
+    if (error) return fallback
+    return data?.value ?? fallback
+  } catch (_e) {
+    return fallback
+  }
+}
+
+async function writeRmsAppSetting(key, value) {
+  try {
+    const { error } = await supabase
+      .from(RMS_APP_SETTINGS_TABLE)
+      .upsert({ key, value, updated_at: new Date().toISOString() }, { onConflict: 'key' })
+    return { error: error || null }
+  } catch (error) {
+    return { error }
+  }
+}
+
+async function deleteRmsAppSetting(key) {
+  try {
+    const { error } = await supabase
+      .from(RMS_APP_SETTINGS_TABLE)
+      .delete()
+      .eq('key', key)
+    return { error: error || null }
+  } catch (error) {
+    return { error }
+  }
+}
+
+async function hydrateRmsInternalAuthFromCloud() {
+  try {
+    const [cloudUsers, cloudPerms] = await Promise.all([
+      readRmsAppSetting(RMS_INTERNAL_USERS_SETTING, null),
+      readRmsAppSetting(RMS_INTERNAL_PERMISSIONS_SETTING, null)
+    ])
+
+    const localUsers = getInternalUsers()
+    const localPerms = getInternalPermissions()
+
+    const cloudUsersObj = (cloudUsers && typeof cloudUsers === 'object' && !Array.isArray(cloudUsers)) ? cloudUsers : {}
+    const cloudPermsObj = (cloudPerms && typeof cloudPerms === 'object' && !Array.isArray(cloudPerms)) ? cloudPerms : {}
+    const localUsersObj = (localUsers && typeof localUsers === 'object' && !Array.isArray(localUsers)) ? localUsers : {}
+    const localPermsObj = (localPerms && typeof localPerms === 'object' && !Array.isArray(localPerms)) ? localPerms : {}
+
+    const nextUsers = { ...cloudUsersObj, ...localUsersObj }
+    const nextPerms = { ...cloudPermsObj, ...localPermsObj }
+
+    if (Object.keys(nextUsers).length) writeJsonStorage(RMS_INTERNAL_USERS_KEY, nextUsers)
+    if (Object.keys(nextPerms).length) writeJsonStorage(RMS_INTERNAL_PERMISSIONS_KEY, nextPerms)
+
+    if (Object.keys(nextUsers).length && JSON.stringify(nextUsers) !== JSON.stringify(cloudUsersObj)) {
+      await writeRmsAppSetting(RMS_INTERNAL_USERS_SETTING, nextUsers)
+    }
+    if (Object.keys(nextPerms).length && JSON.stringify(nextPerms) !== JSON.stringify(cloudPermsObj)) {
+      await writeRmsAppSetting(RMS_INTERNAL_PERMISSIONS_SETTING, nextPerms)
+    }
+
+    return { users: nextUsers, permissions: nextPerms, error: null }
+  } catch (error) {
+    return { users: getInternalUsers(), permissions: getInternalPermissions(), error }
+  }
+}
+
+
+const RMS_GLOBAL_PROGRESS_EVENT = 'rms-global-progress'
+const startGlobalProgress = (label = 'Выполняется операция...') => {
+  let progress = 12
+  window.dispatchEvent(new CustomEvent(RMS_GLOBAL_PROGRESS_EVENT, { detail: { active: true, progress, label } }))
+  const timer = setInterval(() => {
+    progress = Math.min(92, progress + Math.max(1, Math.round((96 - progress) / 8)))
+    window.dispatchEvent(new CustomEvent(RMS_GLOBAL_PROGRESS_EVENT, { detail: { active: true, progress, label } }))
+  }, 320)
+  return () => {
+    clearInterval(timer)
+    window.dispatchEvent(new CustomEvent(RMS_GLOBAL_PROGRESS_EVENT, { detail: { active: true, progress: 100, label: 'Готово' } }))
+    setTimeout(() => window.dispatchEvent(new CustomEvent(RMS_GLOBAL_PROGRESS_EVENT, { detail: { active: false, progress: 0, label: '' } })), 260)
+  }
+}
+
+function GlobalProgressOverlay() {
+  const [state, setState] = useState({ active: false, progress: 0, label: '' })
+  useEffect(() => {
+    const handler = e => setState(e.detail || { active: false, progress: 0, label: '' })
+    window.addEventListener(RMS_GLOBAL_PROGRESS_EVENT, handler)
+    return () => window.removeEventListener(RMS_GLOBAL_PROGRESS_EVENT, handler)
+  }, [])
+  if (!state.active) return null
+  return <div className="global-progress-overlay">
+    <div className="global-progress-card">
+      <div className="global-progress-spinner" />
+      <strong>{state.label || 'Выполняется операция...'}</strong>
+      <div className="global-progress-track"><div style={{width: `${Math.round(state.progress || 0)}%`}} /></div>
+      <span>{Math.round(state.progress || 0)}%</span>
+    </div>
+  </div>
+}
+
+function getRmsLocalUser() {
+  const sess = getInternalSessionStorage()
+  if (!sess?.rms_internal) return null
+  const login = normalizeInternalLogin(sess?.user?.login_name || sess?.user?.email)
+  const users = getInternalUsers()
+  const localUser = users[login] || Object.values(users).find(u => u?.id === sess?.user?.id)
+  if (!localUser) return null
+  return {
+    id: localUser.id,
+    login_name: localUser.login || login,
+    email: `${localUser.login || login}@rms.internal`,
+    full_name: localUser.full_name || localUser.login || login,
+    role: 'employee',
+    is_active: localUser.is_active !== false,
+    hide_manager_salary: Boolean(localUser.hide_manager_salary || localUser.hide_manager_salaries),
+    hide_manager_salaries: Boolean(localUser.hide_manager_salary || localUser.hide_manager_salaries),
+    ui_theme: localUser.ui_theme || 'classic',
+    rms_internal: true
+  }
+}
+
+const makeInternalPermissionRows = (userId) => {
+  const all = getInternalPermissions()
+  const byUser = all[userId] || {}
+  return Object.entries(byUser).map(([section, access]) => ({ user_id: userId, section, access }))
+}
+
+async function fetchRmsStaffWorkspaceSnapshot(monthDate) {
+  if (!monthDate) return { data: null, error: new Error('monthDate is required') }
+  const { data, error } = await supabase.rpc('rms_staff_workspace_snapshot', { p_month: monthDate })
+  if (error) return { data: null, error }
+  const normalized = data && typeof data === 'object' ? data : null
+  if (!normalized) return { data: null, error: new Error('Empty RMS workspace snapshot') }
+  return { data: normalized, error: null }
+}
+
+
+async function fetchRmsRevenueWorkspace(branchId, activeDate) {
+  if (!branchId || !activeDate) return { data: null, error: new Error('branchId/date required') }
+  const { data, error } = await supabase.rpc('rms_revenue_day_workspace', { p_branch_id: branchId, p_date: activeDate })
+  if (error) return { data: null, error }
+  const normalized = data && typeof data === 'object' ? data : null
+  if (!normalized) return { data: null, error: new Error('Empty RMS revenue workspace') }
+  return { data: normalized, error: null }
+}
+
+
+async function fetchRmsSuppliersWorkspace() {
+  const { data, error } = await supabase.rpc('rms_suppliers_workspace')
+  if (error) return { data: null, error }
+  const normalized = data && typeof data === 'object' ? data : null
+  if (!normalized) return { data: null, error: new Error('Empty RMS suppliers workspace') }
+  return { data: normalized, error: null }
+}
+
+async function fetchRmsRecipesWorkspace() {
+  const { data, error } = await supabase.rpc('rms_recipes_workspace')
+  if (error) return { data: null, error }
+  const normalized = data && typeof data === 'object' ? data : null
+  if (!normalized) return { data: null, error: new Error('Empty RMS recipes workspace') }
+  return { data: normalized, error: null }
+}
+
+
+function App() {
+  const params = new URLSearchParams(window.location.search)
+
+  const isQRMenu =
+    params.get('qr') === 'menu' ||
+    window.location.pathname.startsWith('/qr-menu') ||
+    window.location.hash.startsWith('#/qr-menu')
+
+  if (isQRMenu) {
+    return <QRMenu />
+  }
+
+  const [lang, setLang, t] = useLang()
+  const [session, setSession] = useState(() => getInternalSessionStorage())
+  const [profile, setProfile] = useState(null)
+  const [permissions, setPermissions] = useState([])
+  const [theme, setThemeState] = useState(localStorage.getItem('rms_theme') || localStorage.getItem('nms_theme') || 'classic')
+  const [section, setSection] = useState('dashboard')
+  const [revenueFocus, setRevenueFocus] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => localStorage.getItem('rms_sidebar_collapsed') === '1')
+
+  useEffect(() => { document.documentElement.lang = lang }, [lang])
+
+  const setTheme = (value) => {
+    const next = value || 'classic'
+    localStorage.setItem('rms_theme', next)
+    setThemeState(next)
+  }
+
+  useEffect(() => { document.documentElement.dataset.nmsTheme = theme }, [theme])
+
+  useEffect(() => {
+    localStorage.setItem('rms_sidebar_collapsed', sidebarCollapsed ? '1' : '0')
+  }, [sidebarCollapsed])
+
+  useEffect(() => {
+    const storedInternal = getInternalSessionStorage()
+    if (storedInternal?.rms_internal) {
+      setSession(storedInternal)
+      setLoading(false)
+      return
+    }
+
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session)
+      setLoading(false)
+    })
+
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      if (!getInternalSessionStorage()?.rms_internal) setSession(nextSession)
+    })
+    return () => sub.subscription.unsubscribe()
+  }, [])
+
+  async function loadSupabaseProfile(activeSession) {
+    const email = activeSession.user.email || ''
+    const loginName = String(email).split('@')[0] || ''
+
+    let prof = null
+    const { data: profById } = await supabase
+      .from('user_profiles')
+      .select('*')
+      .eq('id', activeSession.user.id)
+      .maybeSingle()
+
+    prof = profById || null
+
+    if (!prof && (email || loginName)) {
+      const filters = []
+      if (email) filters.push(`email.eq.${email}`)
+      if (loginName) filters.push(`login_name.eq.${loginName}`)
+      const { data: profByLogin } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .or(filters.join(','))
+        .maybeSingle()
+      prof = profByLogin || null
+    }
+
+    const permissionUserId = prof?.id || activeSession.user.id
+    const { data: perms } = await supabase
+      .from('user_permissions')
+      .select('*')
+      .eq('user_id', permissionUserId)
+
+    setProfile(prof)
+    setPermissions(perms || [])
+    if (prof?.ui_theme) setTheme(prof.ui_theme)
+  }
+
+  useEffect(() => {
+    async function loadProfile() {
+      if (!session?.user) { setProfile(null); setPermissions([]); return }
+
+      if (session?.rms_internal) {
+        const localUser = getRmsLocalUser()
+        setProfile(localUser)
+        setPermissions(makeInternalPermissionRows(localUser?.id || session.user.id))
+        if (localUser?.ui_theme) setTheme(localUser.ui_theme)
+        return
+      }
+
+      await loadSupabaseProfile(session)
+    }
+    loadProfile()
+  }, [session])
+
+  useEffect(() => {
+    const reloadUserAccess = async () => {
+      if (!session?.user) return
+
+      if (session?.rms_internal) {
+        const localUser = getRmsLocalUser()
+        setProfile(localUser)
+        setPermissions(makeInternalPermissionRows(localUser?.id || session.user.id))
+        if (localUser?.ui_theme) setTheme(localUser.ui_theme)
+        return
+      }
+
+      await loadSupabaseProfile(session)
+    }
+
+    window.addEventListener('rms-user-settings-updated', reloadUserAccess)
+    window.addEventListener('storage', reloadUserAccess)
+    return () => {
+      window.removeEventListener('rms-user-settings-updated', reloadUserAccess)
+      window.removeEventListener('storage', reloadUserAccess)
+    }
+  }, [session])
+
+  const isInternalSession = Boolean(session?.rms_internal)
+  const isAdmin = !isInternalSession && (!profile || profile?.role === 'admin')
+  const sectionAccess = (sectionId) => {
+    if (isAdmin) return 'admin'
+    const row = permissions.find(p => p.section === sectionId)
+    return row?.access || 'none'
+  }
+  const visibleSections = SECTIONS.filter(s => canReadAccess(sectionAccess(s.id)))
+  const currentAccess = sectionAccess(section)
+
+  useEffect(() => {
+    const urlToken = new URLSearchParams(window.location.search).get('loyalty_scan_token')
+    if (urlToken && section !== 'loyalty') {
+      setSection('loyalty')
+    }
+  }, [section])
+
+  useEffect(() => {
+    if (!visibleSections.length) return
+    if (!canReadAccess(sectionAccess(section))) setSection(visibleSections[0].id)
+  }, [permissions, profile, section])
+
+  function goToRevenueExpense(row) {
+    if (!row?.expense_date || !row?.branch_id) return
+    setRevenueFocus({
+      expenseId: row.id || '',
+      branchId: row.branch_id,
+      date: row.expense_date,
+      name: row.name || '',
+      amount: row.amountValue ?? row.amount ?? '',
+      ts: Date.now()
+    })
+    setSection('revenue')
+  }
+
+  function logout() {
+    if (session?.rms_internal) {
+      setInternalSessionStorage(null)
+      setSession(null)
+      setProfile(null)
+      setPermissions([])
+      return
+    }
+    supabase.auth.signOut()
+  }
+
+  if (loading) return <div className="login-screen"><div className="login-card">{t('loading')}</div></div>
+  if (!session) return <Login lang={lang} setLang={setLang} t={t} />
+
+  const visibleSectionMap = Object.fromEntries(visibleSections.map(s => [s.id, s]))
+  const groupedSections = RMS_PRO_NAV_GROUPS.map(group => ({
+    ...group,
+    sections: group.ids.map(id => visibleSectionMap[id]).filter(Boolean)
+  })).filter(group => group.sections.length)
+  const ungroupedSections = visibleSections.filter(s => !RMS_PRO_NAV_GROUPS.some(group => group.ids.includes(s.id)))
+  const activeTitle = rmsProSectionTitle(section, t)
+  const userName = profile?.full_name || profile?.login_name || session?.user?.email || 'Admin'
+  const userEmail = profile?.email || session?.user?.email || `${profile?.login_name || 'admin'}@rms.local`
+  const userRoleLabel = isAdmin ? t('administrator') : t('employee')
+  const userInitial = String(userName || 'A').trim().slice(0, 1).toUpperCase()
+  const renderProNavButton = (s) => (
+    <button
+      key={s.id}
+      className={`rms-pro-nav-item ${section === s.id ? 'active' : ''}`}
+      onClick={() => setSection(s.id)}
+      type="button"
+      title={t(s.key)}
+      aria-label={t(s.key)}
+    >
+      <span className="rms-pro-nav-icon">{RMS_PRO_SECTION_ICONS[s.id] || '•'}</span>
+      <span className="rms-pro-nav-text">{t(s.key)}</span>
+    </button>
+  )
+
+  return (
+    <div className={`app rms-pro-shell theme-${theme || 'classic'} ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
+      <aside className="sidebar rms-pro-sidebar">
+        <div className="rms-pro-brand">
+          <div className="rms-pro-brand-main">
+            <div className="rms-pro-logo"><ProductLogo compact /></div>
+            <div className="rms-pro-brand-copy">
+              <div className="rms-pro-brand-kicker">Executive Suite</div>
+              <h1>{t('system_short_title')}</h1>
+              <p>{t('brand_subtitle')}</p>
+            </div>
+          </div>
+          <button
+            className="rms-pro-sidebar-toggle"
+            type="button"
+            onClick={() => setSidebarCollapsed(v => !v)}
+            aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          >
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M5 7h14" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"/>
+              <path d="M5 12h14" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"/>
+              <path d="M5 17h10" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round"/>
+            </svg>
+          </button>
+        </div>
+
+        <nav className="rms-pro-nav">
+          {groupedSections.map(group => (
+            <div key={group.title} className="rms-pro-nav-group">
+              <div className="rms-pro-nav-group-title">{group.title}</div>
+              <div className="rms-pro-nav-list">
+                {group.sections.map(renderProNavButton)}
+              </div>
+            </div>
+          ))}
+          {ungroupedSections.length > 0 && (
+            <div className="rms-pro-nav-group">
+              <div className="rms-pro-nav-group-title">ДРУГОЕ</div>
+              <div className="rms-pro-nav-list">
+                {ungroupedSections.map(renderProNavButton)}
+              </div>
+            </div>
+          )}
+        </nav>
+
+        <div className="rms-pro-sidebar-bottom">
+          <div className="rms-pro-user-card">
+            <div className="rms-pro-user-main">
+              <div className="rms-pro-avatar">{userInitial}</div>
+              <div className="rms-pro-user-meta">
+                <div className="rms-pro-user-meta-top">
+                  <div className="rms-pro-user-name">{userName}</div>
+                  <span className="rms-pro-user-role-chip">{userRoleLabel}</span>
+                </div>
+                <div className="rms-pro-user-email" title={userEmail}>{userEmail}</div>
+              </div>
+            </div>
+            <button className="rms-pro-user-action rms-pro-user-action-logout" onClick={logout} type="button" title={t('logout')} aria-label={t('logout')}>
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M14 7V5.5A1.5 1.5 0 0 0 12.5 4h-6A1.5 1.5 0 0 0 5 5.5v13A1.5 1.5 0 0 0 6.5 20h6a1.5 1.5 0 0 0 1.5-1.5V17" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M10 12h9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
+                <path d="m16 8 4 4-4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </aside>
+
+      <main className={`main rms-pro-main section-${section} ${currentAccess === 'read' ? 'readonly-mode' : ''}`} data-section={section}>
+        <DashboardStyles />
+        <ThemeStyles />
+        <ResponsiveAndSettingsStyles />
+        <RMSProInterfaceStyles />
+        <RMSProV6Styles />
+        <RMSProV9Styles />
+        <RMSProSidebarRedesignStyles />
+        <GlobalProgressOverlay />
+        <div className="rms-pro-topbar">
+          <div className="rms-pro-topbar-title">
+            <button className="rms-pro-back" type="button" onClick={() => setSection('dashboard')} aria-label="Назад"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M15 6l-6 6 6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg></button>
+            <span>{activeTitle}</span>
+          </div>
+          <div className="rms-pro-topbar-actions">
+            <button className="rms-pro-top-icon" type="button" aria-label="Notifications"><RmsBellIcon /></button>
+            <button className="rms-pro-top-icon" type="button" aria-label="Help"><RmsHelpIcon /></button>
+            <div className="rms-pro-top-user">
+              <div className="rms-pro-top-avatar">{userInitial}</div>
+              <span>{isAdmin ? 'Admin' : userName}</span>
+              <span>⌄</span>
+            </div>
+          </div>
+        </div>
+        <div className="rms-pro-content">
+        {!canReadAccess(currentAccess) && <section className="card"><h3>{t('permission_denied')}</h3><p className="hint">Этот раздел скрыт для текущего пользователя.</p></section>}
+        {canReadAccess(currentAccess) && currentAccess === 'read' && <div className="readonly-banner">Режим просмотра: редактирование этого раздела отключено.</div>}
+        {canReadAccess(currentAccess) && section === 'dashboard' && <Dashboard t={t} />}
+        {canReadAccess(currentAccess) && section === 'revenue' && <Revenue t={t} focusExpense={revenueFocus} />}
+        {canReadAccess(currentAccess) && section === 'finance' && <Finance t={t} lang={lang} onGoToExpense={goToRevenueExpense} />}
+        {canReadAccess(currentAccess) && section === 'reports' && <Reports t={t} />}
+        {canReadAccess(currentAccess) && section === 'recipes' && <Recipes t={t} />}
+        {canReadAccess(currentAccess) && section === 'salaries' && <SalaryWorkspace t={t} isAdmin={isAdmin || accessRank(sectionAccess('salaries')) >= accessRank('admin')} />}
+        {canReadAccess(currentAccess) && section === 'suppliers' && <Suppliers t={t} isAdmin={isAdmin || accessRank(sectionAccess('suppliers')) >= accessRank('admin')} />}
+        {canReadAccess(currentAccess) && section === 'debts' && <DebtsPayments t={t} />}
+        {canReadAccess(currentAccess) && section === 'qrmenu' && <RMSQRMenuAdmin t={t} />}
+        {canReadAccess(currentAccess) && section === 'loyalty' && <div className="grid">
+          <div className="card span-2">
+            <RMSLoyalty />
+          </div>
+          <div className="card span-2">
+            <div className="card-head">
+              <div>
+                <h3>Loyalty POS Scan</h3>
+                <p className="hint">Сканирование QR клиента официантом / POS.</p>
+              </div>
+            </div>
+            <RMSLoyaltyPOSScan />
+          </div>
+        </div>}
+        {canReadAccess(currentAccess) && section === 'market' && <MarketIntelligence t={t} />}
+        {canReadAccess(currentAccess) && section === 'settings' && <Settings session={session} t={t} theme={theme} setTheme={setTheme} />}
+        </div>
+      </main>
+    </div>
+  )
+}
+
+
+
+function miParseNum(v) {
+  if (v === null || v === undefined || v === '') return 0
+  const n = Number(String(v).replace(',', '.').replace(/[^\d.-]/g, ''))
+  return Number.isFinite(n) ? n : 0
+}
+
+function miMoney(v) {
+  return `${miParseNum(v).toFixed(2)} AZN`
+}
+
+function miNormalizeName(value = '') {
+  return String(value)
+    .toLowerCase()
+    .trim()
+    .replace(/[ə]/g, 'e')
+    .replace(/[ı]/g, 'i')
+    .replace(/[ö]/g, 'o')
+    .replace(/[ü]/g, 'u')
+    .replace(/[ğ]/g, 'g')
+    .replace(/[ş]/g, 's')
+    .replace(/[ç]/g, 'c')
+    .replace(/\b\d+\s?(g|gr|гр|ml|мл|kg|кг|l|л)\b/gi, '')
+    .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function miRecommendation(ourPrice, avgPrice) {
+  const our = miParseNum(ourPrice)
+  const avg = miParseNum(avgPrice)
+  if (!our || !avg) return { type: 'neutral', text: 'Недостаточно данных', diff: 0 }
+  const diff = ((our - avg) / avg) * 100
+  if (diff <= -15) return { type: 'up', text: 'Цена ниже рынка — можно рассмотреть повышение', diff }
+  if (diff >= 20) return { type: 'down', text: 'Цена выше рынка — проверьте спрос и маржу', diff }
+  return { type: 'ok', text: 'Цена в пределах рынка', diff }
+}
+
+function MarketIntelligence({ t }) {
+  const [competitors, setCompetitors] = useState([])
+  const [marketItems, setMarketItems] = useState([])
+  const [ourMenu, setOurMenu] = useState([])
+  const [recommendations, setRecommendations] = useState([])
+  const [competitorForm, setCompetitorForm] = useState({ name: '', area: '', segment: 'coffee', menu_url: '', notes: '' })
+  const [itemForm, setItemForm] = useState({ competitor_id: '', category: '', item_name: '', normalized_name: '', description: '', price: '', weight: '', source_url: '' })
+  const [selectedCompetitor, setSelectedCompetitor] = useState('')
+  const [search, setSearch] = useState('')
+  const [status, setStatus] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => { loadAll() }, [])
+
+  async function loadAll() {
+    setLoading(true)
+    setStatus('')
+    try {
+      await Promise.all([loadCompetitors(), loadMarketItems(), loadOurMenu(), loadRecommendations()])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function loadCompetitors() {
+    const { data, error } = await supabase.from('market_competitors').select('*').order('created_at', { ascending: false })
+    if (error) {
+      setStatus(`Ошибка загрузки конкурентов: ${error.message}`)
+      return
+    }
+    setCompetitors(data || [])
+  }
+
+  async function loadMarketItems() {
+    const { data, error } = await supabase
+      .from('market_menu_items')
+      .select('*, market_competitors(name, area, segment)')
+      .eq('is_active', true)
+      .order('captured_at', { ascending: false })
+    if (error) {
+      setStatus(`Ошибка загрузки меню конкурентов: ${error.message}`)
+      return
+    }
+    setMarketItems(data || [])
+  }
+
+  async function loadRecommendations() {
+    const { data, error } = await supabase
+      .from('market_price_recommendations')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(50)
+    if (!error) setRecommendations(data || [])
+  }
+
+  async function tryReadMenuTable(tableName, fields) {
+    const { data, error } = await supabase.from(tableName).select(fields).limit(1000)
+    if (error) return null
+    return data || []
+  }
+
+  async function loadOurMenu() {
+    const variants = [
+      { table: 'menu_items', fields: 'id, name, item_name, title, category, price, sale_price' },
+      { table: 'rms_menu_items', fields: 'id, name, item_name, title, category, price, sale_price' },
+      { table: 'rms_menu_products', fields: 'id, name, item_name, title, category, price, sale_price' },
+      { table: 'products', fields: 'id, name, item_name, title, category, price, sale_price' }
+    ]
+
+    for (const v of variants) {
+      const rows = await tryReadMenuTable(v.table, v.fields)
+      if (rows && rows.length) {
+        const cleaned = rows.map(r => {
+          const itemName = r.name || r.item_name || r.title || ''
+          return {
+            ...r,
+            source_table: v.table,
+            item_name: itemName,
+            normalized_name: miNormalizeName(itemName),
+            price: miParseNum(r.sale_price || r.price)
+          }
+        }).filter(r => r.item_name)
+        setOurMenu(cleaned)
+        return
+      }
+    }
+
+    setOurMenu([])
+  }
+
+  async function addCompetitor(e) {
+    e.preventDefault()
+    if (!competitorForm.name.trim()) {
+      setStatus('Введите название конкурента.')
+      return
+    }
+
+    const { error } = await supabase.from('market_competitors').insert({
+      name: competitorForm.name.trim(),
+      area: competitorForm.area.trim(),
+      segment: competitorForm.segment.trim(),
+      menu_url: competitorForm.menu_url.trim(),
+      notes: competitorForm.notes.trim(),
+      is_active: true
+    })
+
+    if (error) {
+      setStatus(`Ошибка сохранения конкурента: ${error.message}`)
+      return
+    }
+
+    setCompetitorForm({ name: '', area: '', segment: 'coffee', menu_url: '', notes: '' })
+    setStatus('Конкурент добавлен.')
+    await loadCompetitors()
+  }
+
+  async function addMarketItem(e) {
+    e.preventDefault()
+    if (!itemForm.competitor_id) {
+      setStatus('Выберите конкурента.')
+      return
+    }
+    if (!itemForm.item_name.trim()) {
+      setStatus('Введите название позиции.')
+      return
+    }
+
+    const normalized = itemForm.normalized_name.trim() ? miNormalizeName(itemForm.normalized_name) : miNormalizeName(itemForm.item_name)
+
+    const { error } = await supabase.from('market_menu_items').insert({
+      competitor_id: itemForm.competitor_id,
+      category: itemForm.category.trim(),
+      item_name: itemForm.item_name.trim(),
+      normalized_name: normalized,
+      description: itemForm.description.trim(),
+      price: miParseNum(itemForm.price),
+      weight: itemForm.weight.trim(),
+      source_url: itemForm.source_url.trim(),
+      is_active: true
+    })
+
+    if (error) {
+      setStatus(`Ошибка сохранения позиции: ${error.message}`)
+      return
+    }
+
+    setItemForm({ competitor_id: itemForm.competitor_id, category: '', item_name: '', normalized_name: '', description: '', price: '', weight: '', source_url: '' })
+    setStatus('Позиция меню конкурента добавлена.')
+    await loadMarketItems()
+  }
+
+  async function hideMarketItem(id) {
+    const { error } = await supabase.from('market_menu_items').update({ is_active: false }).eq('id', id)
+    if (error) {
+      setStatus(`Ошибка удаления позиции: ${error.message}`)
+      return
+    }
+    setStatus('Позиция скрыта.')
+    await loadMarketItems()
+  }
+
+  async function toggleCompetitor(id, isActive) {
+    const { error } = await supabase.from('market_competitors').update({ is_active: !isActive }).eq('id', id)
+    if (error) {
+      setStatus(`Ошибка изменения статуса: ${error.message}`)
+      return
+    }
+    await loadCompetitors()
+  }
+
+  async function scanCompetitor(competitor) {
+    if (!competitor?.id) return
+    if (!competitor?.menu_url) {
+      setStatus('У конкурента не указана ссылка на меню.')
+      return
+    }
+
+    setStatus(`Сканирование меню: ${competitor.name}...`)
+    setLoading(true)
+
+    try {
+      const { data, error } = await supabase.functions.invoke('scan-competitor-menu', {
+        body: { competitor_id: competitor.id }
+      })
+
+      if (error) {
+        setStatus(`Ошибка сканирования: ${error.message || 'Edge Function вернула ошибку'}`)
+        return
+      }
+
+      if (!data?.ok) {
+        setStatus(`Сканирование не выполнено: ${data?.error || 'неизвестная ошибка'}`)
+        return
+      }
+
+      setStatus(`Сканирование завершено. Найдено: ${data.found || 0}, сохранено: ${data.inserted || 0}.`)
+      await Promise.all([loadCompetitors(), loadMarketItems()])
+    } catch (err) {
+      setStatus(`Ошибка сканирования: ${err?.message || String(err)}`)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const filteredItems = useMemo(() => {
+    const q = miNormalizeName(search)
+    return marketItems.filter(item => {
+      const byCompetitor = !selectedCompetitor || item.competitor_id === selectedCompetitor
+      const bySearch = !q ||
+        miNormalizeName(item.item_name).includes(q) ||
+        miNormalizeName(item.category || '').includes(q) ||
+        miNormalizeName(item.normalized_name || '').includes(q) ||
+        miNormalizeName(item.market_competitors?.name || '').includes(q)
+      return byCompetitor && bySearch
+    })
+  }, [marketItems, selectedCompetitor, search])
+
+  const marketGroups = useMemo(() => {
+    const map = new Map()
+
+    marketItems.forEach(item => {
+      const key = item.normalized_name || miNormalizeName(item.item_name)
+      if (!key) return
+      if (!map.has(key)) {
+        map.set(key, { normalized_name: key, display_name: item.item_name, category: item.category, prices: [], competitors: new Set(), items: [] })
+      }
+      const group = map.get(key)
+      const price = miParseNum(item.price)
+      if (price > 0) group.prices.push(price)
+      if (item.market_competitors?.name) group.competitors.add(item.market_competitors.name)
+      group.items.push(item)
+    })
+
+    return Array.from(map.values()).map(g => {
+      const avg = g.prices.length ? g.prices.reduce((sum, v) => sum + v, 0) / g.prices.length : 0
+      const ourMatch = ourMenu.find(m => m.normalized_name === g.normalized_name)
+      const rec = miRecommendation(ourMatch?.price, avg)
+      return {
+        ...g,
+        competitor_count: g.competitors.size,
+        avg_price: avg,
+        min_price: g.prices.length ? Math.min(...g.prices) : 0,
+        max_price: g.prices.length ? Math.max(...g.prices) : 0,
+        our_item_name: ourMatch?.item_name || '',
+        our_price: ourMatch?.price || 0,
+        recommendation: rec
+      }
+    }).sort((a, b) => b.competitor_count - a.competitor_count)
+  }, [marketItems, ourMenu])
+
+  async function saveRecommendation(row) {
+    const { error } = await supabase.from('market_price_recommendations').insert({
+      our_item_name: row.our_item_name || row.display_name,
+      our_price: row.our_price || null,
+      market_avg_price: row.avg_price || null,
+      market_min_price: row.min_price || null,
+      market_max_price: row.max_price || null,
+      recommendation: row.recommendation.text
+    })
+
+    if (error) {
+      setStatus(`Ошибка сохранения рекомендации: ${error.message}`)
+      return
+    }
+
+    setStatus('Рекомендация сохранена.')
+    await loadRecommendations()
+  }
+
+  const stats = useMemo(() => ({
+    activeCompetitors: competitors.filter(c => c.is_active).length,
+    totalItems: marketItems.length,
+    matched: marketGroups.filter(g => g.our_price > 0).length,
+    opportunities: marketGroups.filter(g => g.recommendation.type === 'up').length
+  }), [competitors, marketItems, marketGroups])
+
+  return (
+    <section className="market-intelligence-page">
+      <style>{`
+        .market-intelligence-page{display:flex;flex-direction:column;gap:16px}
+        .mi-hero{background:linear-gradient(135deg,#17211b,#314236);color:white;border-radius:24px;padding:22px;box-shadow:0 18px 44px rgba(23,33,27,.16)}
+        .mi-hero h2{margin:0;font-size:28px;letter-spacing:-.04em}
+        .mi-hero p{margin:8px 0 0;color:rgba(255,255,255,.78);max-width:920px}
+        .mi-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+        .mi-card{background:#fff;border:1px solid #e6ebe7;border-radius:20px;padding:16px;box-shadow:0 10px 28px rgba(28,45,35,.05)}
+        .mi-stat-label{color:#6a756d;font-size:12px}.mi-stat-value{margin-top:8px;font-size:26px;font-weight:800}
+        .mi-section{background:#fff;border:1px solid #e6ebe7;border-radius:22px;padding:18px;box-shadow:0 10px 28px rgba(28,45,35,.05)}
+        .mi-section h3{margin:0 0 12px;font-size:18px}.mi-form{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;align-items:end}
+        .mi-form label{display:flex;flex-direction:column;gap:6px;font-size:12px;color:#5d6b62}
+        .mi-form input,.mi-form select,.mi-form textarea,.mi-filter input,.mi-filter select{width:100%;border:1px solid #dce4df;border-radius:12px;padding:10px 12px;font-size:14px;outline:none;background:#fbfcfb}
+        .mi-form textarea{min-height:42px;resize:vertical}.mi-span-2{grid-column:span 2}.mi-span-3{grid-column:span 3}.mi-span-6{grid-column:span 6}
+        .mi-btn{border:0;border-radius:12px;padding:10px 14px;font-weight:700;cursor:pointer;background:#17211b;color:#fff}.mi-btn-light{background:#eef3ef;color:#17211b}.mi-btn-danger{background:#fff1f1;color:#a32222}
+        .mi-table-wrap{overflow:auto;border:1px solid #eef1ef;border-radius:16px}.mi-table{width:100%;border-collapse:collapse;min-width:980px}.mi-table th{text-align:left;font-size:12px;color:#69766d;background:#f6f8f6;padding:11px;white-space:nowrap}.mi-table td{border-top:1px solid #eef1ef;padding:11px;font-size:13px;vertical-align:top}
+        .mi-badge{display:inline-flex;align-items:center;border-radius:999px;padding:5px 9px;font-size:12px;font-weight:700;background:#eef3ef;color:#334239;white-space:nowrap}.mi-badge-up{background:#eaf7ee;color:#18733a}.mi-badge-down{background:#fff1f1;color:#a32222}.mi-badge-ok{background:#eef3ff;color:#244a9b}
+        .mi-muted{color:#6c786f;font-size:12px}.mi-filter{display:grid;grid-template-columns:240px 1fr 140px;gap:10px;margin-bottom:12px}.mi-status{padding:10px 12px;border-radius:12px;background:#f6f8f6;color:#334239;font-size:13px}.mi-link{color:#1f5f3e;text-decoration:none;font-weight:700}
+        @media(max-width:900px){.mi-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.mi-form{grid-template-columns:1fr}.mi-span-2,.mi-span-3,.mi-span-6{grid-column:span 1}.mi-filter{grid-template-columns:1fr}}
+      `}</style>
+
+      <div className="mi-hero">
+        <h2>Market Intelligence</h2>
+        <p>Анализ онлайн-меню конкурентов, сравнение цен и рекомендации по ценообразованию. Первая версия работает через ручной / полуавтоматический ввод позиций без агрессивного scraping.</p>
+      </div>
+
+      {status ? <div className="mi-status">{status}</div> : null}
+
+      <div className="mi-stats">
+        <div className="mi-card"><div className="mi-stat-label">Активные конкуренты</div><div className="mi-stat-value">{stats.activeCompetitors}</div></div>
+        <div className="mi-card"><div className="mi-stat-label">Позиции рынка</div><div className="mi-stat-value">{stats.totalItems}</div></div>
+        <div className="mi-card"><div className="mi-stat-label">Совпадения с нашим меню</div><div className="mi-stat-value">{stats.matched}</div></div>
+        <div className="mi-card"><div className="mi-stat-label">Возможности повышения цены</div><div className="mi-stat-value">{stats.opportunities}</div></div>
+      </div>
+
+      <div className="mi-section">
+        <div className="card-head">
+          <div>
+            <h3>Добавить конкурента</h3>
+            <p className="hint">Название, район, сегмент и ссылка на онлайн-меню конкурента.</p>
+          </div>
+          <button className="mi-btn mi-btn-light" onClick={loadAll}>{loading ? 'Обновление...' : 'Обновить'}</button>
+        </div>
+        <form className="mi-form" onSubmit={addCompetitor}>
+          <label className="mi-span-2">Название<input value={competitorForm.name} onChange={e => setCompetitorForm({ ...competitorForm, name: e.target.value })} placeholder="Например: Coffee House" /></label>
+          <label>Район<input value={competitorForm.area} onChange={e => setCompetitorForm({ ...competitorForm, area: e.target.value })} placeholder="Nizami / Khagani" /></label>
+          <label>Сегмент<select value={competitorForm.segment} onChange={e => setCompetitorForm({ ...competitorForm, segment: e.target.value })}><option value="coffee">Coffee</option><option value="casual">Casual</option><option value="premium">Premium</option><option value="fast_food">Fast food</option><option value="bakery">Bakery</option><option value="delivery">Delivery</option></select></label>
+          <label className="mi-span-2">Ссылка на меню<input value={competitorForm.menu_url} onChange={e => setCompetitorForm({ ...competitorForm, menu_url: e.target.value })} placeholder="https://..." /></label>
+          <label className="mi-span-6">Комментарий<textarea value={competitorForm.notes} onChange={e => setCompetitorForm({ ...competitorForm, notes: e.target.value })} placeholder="Похожий сегмент, сильные завтраки, высокий рейтинг..." /></label>
+          <button className="mi-btn" type="submit">Добавить конкурента</button>
+        </form>
+      </div>
+
+      <div className="mi-section">
+        <h3>Конкуренты</h3>
+        <div className="mi-table-wrap">
+          <table className="mi-table">
+            <thead><tr><th>Название</th><th>Район</th><th>Сегмент</th><th>Меню</th><th>Сканер</th><th>Статус</th><th>Действие</th></tr></thead>
+            <tbody>
+              {competitors.map(c => (
+                <tr key={c.id}>
+                  <td><strong>{c.name}</strong>{c.notes ? <div className="mi-muted">{c.notes}</div> : null}</td>
+                  <td>{c.area || '—'}</td><td>{c.segment || '—'}</td>
+                  <td>{c.menu_url ? <a className="mi-link" href={c.menu_url} target="_blank" rel="noreferrer">Открыть меню</a> : '—'}</td>
+                  <td>
+                    <button className="mi-btn mi-btn-light" disabled={loading || !c.menu_url} onClick={() => scanCompetitor(c)}>Сканировать меню</button>
+                    <div className="mi-muted">{c.last_scan_at ? `Последний скан: ${new Date(c.last_scan_at).toLocaleString()}` : 'Ещё не сканировалось'}</div>
+                    {c.scan_status ? <div className="mi-muted">Статус: {c.scan_status}</div> : null}
+                    {c.scan_error ? <div className="mi-muted">Ошибка: {c.scan_error}</div> : null}
+                  </td>
+                  <td><span className="mi-badge">{c.is_active ? 'Активен' : 'Скрыт'}</span></td>
+                  <td><button className="mi-btn mi-btn-light" onClick={() => toggleCompetitor(c.id, c.is_active)}>{c.is_active ? 'Скрыть' : 'Вернуть'}</button></td>
+                </tr>
+              ))}
+              {!competitors.length ? <tr><td colSpan="7" className="mi-muted">Пока нет конкурентов.</td></tr> : null}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="mi-section">
+        <h3>Добавить позицию меню конкурента</h3>
+        <form className="mi-form" onSubmit={addMarketItem}>
+          <label className="mi-span-2">Конкурент<select value={itemForm.competitor_id} onChange={e => setItemForm({ ...itemForm, competitor_id: e.target.value })}><option value="">Выберите конкурента</option>{competitors.filter(c => c.is_active).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></label>
+          <label>Категория<input value={itemForm.category} onChange={e => setItemForm({ ...itemForm, category: e.target.value })} placeholder="Coffee / Burgers" /></label>
+          <label className="mi-span-2">Название<input value={itemForm.item_name} onChange={e => setItemForm({ ...itemForm, item_name: e.target.value, normalized_name: miNormalizeName(e.target.value) })} placeholder="Cappuccino 300 ml" /></label>
+          <label>Цена<input value={itemForm.price} onChange={e => setItemForm({ ...itemForm, price: e.target.value })} placeholder="6.50" /></label>
+          <label>Граммовка<input value={itemForm.weight} onChange={e => setItemForm({ ...itemForm, weight: e.target.value })} placeholder="300 ml / 250 g" /></label>
+          <label className="mi-span-2">Нормализованное имя<input value={itemForm.normalized_name} onChange={e => setItemForm({ ...itemForm, normalized_name: e.target.value })} placeholder="cappuccino" /></label>
+          <label className="mi-span-3">Источник<input value={itemForm.source_url} onChange={e => setItemForm({ ...itemForm, source_url: e.target.value })} placeholder="Ссылка на конкретное меню / страницу" /></label>
+          <label className="mi-span-6">Описание<textarea value={itemForm.description} onChange={e => setItemForm({ ...itemForm, description: e.target.value })} placeholder="Описание блюда из меню конкурента" /></label>
+          <button className="mi-btn" type="submit">Добавить позицию</button>
+        </form>
+      </div>
+
+      <div className="mi-section">
+        <h3>Меню конкурентов</h3>
+        <div className="mi-filter">
+          <select value={selectedCompetitor} onChange={e => setSelectedCompetitor(e.target.value)}><option value="">Все конкуренты</option>{competitors.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Поиск по блюду, категории или конкуренту" />
+          <button className="mi-btn mi-btn-light" onClick={() => setSearch('')}>Сбросить</button>
+        </div>
+        <div className="mi-table-wrap">
+          <table className="mi-table">
+            <thead><tr><th>Конкурент</th><th>Категория</th><th>Позиция</th><th>Нормализация</th><th>Цена</th><th>Граммовка</th><th>Источник</th><th></th></tr></thead>
+            <tbody>
+              {filteredItems.map(item => (
+                <tr key={item.id}>
+                  <td><strong>{item.market_competitors?.name || '—'}</strong><div className="mi-muted">{item.market_competitors?.area || ''}</div></td>
+                  <td>{item.category || '—'}</td>
+                  <td><strong>{item.item_name}</strong>{item.description ? <div className="mi-muted">{item.description}</div> : null}</td>
+                  <td>{item.normalized_name || '—'}</td>
+                  <td>{miMoney(item.price)}</td>
+                  <td>{item.weight || '—'}</td>
+                  <td>{item.source_url ? <a className="mi-link" href={item.source_url} target="_blank" rel="noreferrer">открыть</a> : '—'}</td>
+                  <td><button className="mi-btn mi-btn-danger" onClick={() => hideMarketItem(item.id)}>Скрыть</button></td>
+                </tr>
+              ))}
+              {!filteredItems.length ? <tr><td colSpan="8" className="mi-muted">Нет позиций по выбранному фильтру.</td></tr> : null}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="mi-section">
+        <h3>Сравнение цен и рекомендации</h3>
+        <p className="hint">Сравнение идёт по нормализованному названию: cappuccino, caesar salad, chicken burger и т.д.</p>
+        <div className="mi-table-wrap">
+          <table className="mi-table">
+            <thead><tr><th>Позиция рынка</th><th>Конкурентов</th><th>Наша позиция</th><th>Наша цена</th><th>Средняя цена рынка</th><th>Мин / Макс</th><th>Отклонение</th><th>Рекомендация</th><th></th></tr></thead>
+            <tbody>
+              {marketGroups.map(row => {
+                const badgeClass = row.recommendation.type === 'up' ? 'mi-badge-up' : row.recommendation.type === 'down' ? 'mi-badge-down' : row.recommendation.type === 'ok' ? 'mi-badge-ok' : ''
+                return (
+                  <tr key={row.normalized_name}>
+                    <td><strong>{row.display_name}</strong><div className="mi-muted">{row.normalized_name}</div></td>
+                    <td>{row.competitor_count}</td>
+                    <td>{row.our_item_name || 'Нет совпадения'}</td>
+                    <td>{row.our_price ? miMoney(row.our_price) : '—'}</td>
+                    <td>{row.avg_price ? miMoney(row.avg_price) : '—'}</td>
+                    <td>{row.min_price ? miMoney(row.min_price) : '—'} / {row.max_price ? miMoney(row.max_price) : '—'}</td>
+                    <td>{row.our_price && row.avg_price ? `${row.recommendation.diff.toFixed(1)}%` : '—'}</td>
+                    <td><span className={`mi-badge ${badgeClass}`}>{row.recommendation.text}</span></td>
+                    <td><button className="mi-btn mi-btn-light" onClick={() => saveRecommendation(row)}>Сохранить</button></td>
+                  </tr>
+                )
+              })}
+              {!marketGroups.length ? <tr><td colSpan="9" className="mi-muted">Пока нет данных для анализа.</td></tr> : null}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="mi-section">
+        <h3>Сохранённые рекомендации</h3>
+        <div className="mi-table-wrap">
+          <table className="mi-table">
+            <thead><tr><th>Позиция</th><th>Наша цена</th><th>Средняя цена рынка</th><th>Мин / Макс</th><th>Рекомендация</th><th>Дата</th></tr></thead>
+            <tbody>
+              {recommendations.map(r => (
+                <tr key={r.id}>
+                  <td>{r.our_item_name}</td>
+                  <td>{r.our_price ? miMoney(r.our_price) : '—'}</td>
+                  <td>{r.market_avg_price ? miMoney(r.market_avg_price) : '—'}</td>
+                  <td>{r.market_min_price ? miMoney(r.market_min_price) : '—'} / {r.market_max_price ? miMoney(r.market_max_price) : '—'}</td>
+                  <td>{r.recommendation}</td>
+                  <td>{r.created_at ? new Date(r.created_at).toLocaleString() : '—'}</td>
+                </tr>
+              ))}
+              {!recommendations.length ? <tr><td colSpan="6" className="mi-muted">Пока нет сохранённых рекомендаций.</td></tr> : null}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function posItemType(item) {
+  const category = normalizeExpenseText(item?.category || item?.name || '')
+  if (category.includes('кофе') || category.includes('чай') || category.includes('бар') || category.includes('напит') || category.includes('drink') || category.includes('coffee') || category.includes('tea')) return 'Бар'
+  return 'Кухня'
+}
+
+function POSLite({ t }) {
+  const branches = useBranches()
+  const halls = ['Основной зал', 'Терраса', 'VIP']
+  const tableCells = useMemo(() => ([
+    ...Array.from({ length: 12 }, (_, i) => ({ id: `T${i + 1}`, label: `Стол ${i + 1}`, defaultMode: 'hall' })),
+    { id: 'TA', label: 'С собой', defaultMode: 'takeaway' },
+    { id: 'DL', label: 'Доставка', defaultMode: 'delivery' },
+    { id: 'BAR', label: 'Бар', defaultMode: 'hall' },
+    { id: 'VIP', label: 'VIP', defaultMode: 'hall' }
+  ]), [])
+
+  const POS_CASHIER_KEY = 'rms_pos_cashier_session_v1'
+  const [branchId, setBranchId] = useState('')
+  const [date, setDate] = useState(todayISO())
+  const [menuItems, setMenuItems] = useState([])
+  const [orders, setOrders] = useState([])
+  const [search, setSearch] = useState('')
+  const [selectedTable, setSelectedTable] = useState('T1')
+  const [draftOrders, setDraftOrders] = useState({})
+  const [paymentMethod, setPaymentMethod] = useState('cash')
+  const [menuRoot, setMenuRoot] = useState('root')
+  const [menuTypeFilter, setMenuTypeFilter] = useState('all')
+  const [categoryFilter, setCategoryFilter] = useState('all')
+  const [message, setMessage] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [cashierNameInput, setCashierNameInput] = useState('')
+  const [cashierPin, setCashierPin] = useState('')
+  const [cashierSession, setCashierSession] = useState(null)
+
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem(POS_CASHIER_KEY) || 'null')
+      if (saved?.name && saved?.pin) setCashierSession(saved)
+    } catch (_e) {}
+  }, [])
+
+  useEffect(() => { if (!branchId && branches[0]) setBranchId(branches[0].id) }, [branches, branchId])
+  useEffect(() => { loadBase() }, [branchId, date])
+
+  const menuWithType = useMemo(() => (menuItems || []).map(item => ({ ...item, pos_type: posItemType(item) })), [menuItems])
+  const menuRoots = useMemo(() => ([
+    { id: 'Кухня', label: 'Еда' },
+    { id: 'Бар', label: 'Напитки' }
+  ]), [])
+
+  const visibleCategories = useMemo(() => {
+    if (menuTypeFilter === 'all') return []
+    const set = new Set(menuWithType
+      .filter(item => item.pos_type === menuTypeFilter)
+      .map(item => item.category || 'Без категории'))
+    return Array.from(set).filter(Boolean).sort((a, b) => String(a).localeCompare(String(b), 'ru'))
+  }, [menuWithType, menuTypeFilter])
+
+  const filteredMenu = useMemo(() => {
+    const q = normalizeSalesKey(search)
+    return menuWithType
+      .filter(item => menuTypeFilter === 'all' || item.pos_type === menuTypeFilter)
+      .filter(item => categoryFilter === 'all' || (item.category || 'Без категории') === categoryFilter)
+      .filter(item => !q || normalizeSalesKey(item.name).includes(q) || normalizeSalesKey(item.category).includes(q))
+      .slice(0, 300)
+  }, [menuWithType, search, menuTypeFilter, categoryFilter])
+
+  const currentDraft = draftOrders[selectedTable] || { table_name: selectedTable, customer_name: '', guests: 1, hall_name: halls[0], order_mode: 'hall', payment_method: paymentMethod, items: [] }
+  const items = currentDraft.items || []
+  const subtotal = items.reduce((s, item) => s + parseNum(item.qty) * parseNum(item.price), 0)
+  const totalQty = items.reduce((s, item) => s + parseNum(item.qty), 0)
+
+  function setCurrentDraft(patchOrFn) {
+    setDraftOrders(prev => {
+      const current = prev[selectedTable] || { table_name: selectedTable, customer_name: '', guests: 1, hall_name: halls[0], order_mode: 'hall', payment_method: paymentMethod, items: [] }
+      const next = typeof patchOrFn === 'function' ? patchOrFn(current) : { ...current, ...patchOrFn }
+      return { ...prev, [selectedTable]: next }
+    })
+  }
+
+  function selectTable(table) {
+    setSelectedTable(table.id)
+    setDraftOrders(prev => {
+      if (prev[table.id]) return prev
+      const orderMode = table.defaultMode || 'hall'
+      return {
+        ...prev,
+        [table.id]: {
+          table_name: table.label,
+          customer_name: '',
+          guests: 1,
+          hall_name: halls[0],
+          order_mode: orderMode,
+          payment_method: paymentMethod,
+          items: []
+        }
+      }
+    })
+  }
+
+  function handlePinDigit(digit) {
+    setCashierPin(prev => (prev + String(digit)).slice(0, 4))
+  }
+
+  function clearPin() { setCashierPin('') }
+  function backspacePin() { setCashierPin(prev => prev.slice(0, -1)) }
+
+  function unlockPos() {
+    if ((cashierNameInput || '').trim().length < 2) return setMessage('Укажи имя сотрудника / кассира')
+    if (cashierPin.length !== 4) return setMessage('PIN-код должен состоять из 4 цифр')
+    const session = { name: cashierNameInput.trim(), pin: cashierPin, opened_at: new Date().toISOString() }
+    setCashierSession(session)
+    try { localStorage.setItem(POS_CASHIER_KEY, JSON.stringify(session)) } catch (_e) {}
+    setCashierPin('')
+    setMessage('')
+  }
+
+  function logoutPos() {
+    setCashierSession(null)
+    setCashierPin('')
+    try { localStorage.removeItem(POS_CASHIER_KEY) } catch (_e) {}
+  }
+
+  async function currentUserMeta() {
+    try {
+      if (getInternalSessionStorage()?.rms_internal) {
+        const localUser = getRmsLocalUser()
+        return { user_id: null, user_email: localUser?.email || localUser?.login_name || 'rms.internal' }
+      }
+      const { data } = await supabase.auth.getUser()
+      return { user_id: data?.user?.id || null, user_email: data?.user?.email || null }
+    } catch (_e) {
+      return { user_id: null, user_email: null }
+    }
+  }
+
+  async function loadBase() {
+    setMessage('')
+    const [{ data: menu, error: menuError }, { data: orderRows, error: orderError }] = await Promise.all([
+      supabase.from('menu_items').select('id,name,category,sale_price,is_active').eq('is_active', true).order('category').order('name'),
+      branchId
+        ? supabase.from('pos_orders').select('*, pos_order_items(*)').eq('branch_id', branchId).eq('order_date', date).order('created_at', { ascending: false }).limit(25)
+        : Promise.resolve({ data: [], error: null })
+    ])
+    if (menuError) setMessage(menuError.message)
+    setMenuItems(menu || [])
+    if (orderError && String(orderError.message || '').includes('pos_orders')) {
+      setMessage('Для POS-кассы нужно один раз выполнить SQL-файл rms_pos_lite_tables_v2.sql в Supabase.')
+      setOrders([])
+    } else if (orderError) {
+      setMessage(orderError.message)
+      setOrders([])
+    } else {
+      setOrders(orderRows || [])
+    }
+  }
+
+  function addMenuItemToOrder(item) {
+    setCurrentDraft(current => {
+      const existing = (current.items || []).find(x => String(x.menu_item_id) === String(item.id))
+      const nextItems = existing
+        ? current.items.map(x => String(x.menu_item_id) === String(item.id) ? { ...x, qty: parseNum(x.qty) + 1 } : x)
+        : [...(current.items || []), {
+            menu_item_id: item.id,
+            name: item.name,
+            category: item.category || null,
+            item_type: item.pos_type || posItemType(item),
+            qty: 1,
+            price: parseNum(item.sale_price)
+          }]
+      return { ...current, items: nextItems }
+    })
+  }
+
+  function updateItem(index, patch) {
+    setCurrentDraft(current => ({
+      ...current,
+      items: (current.items || []).map((item, i) => i === index ? { ...item, ...patch } : item).filter(item => parseNum(item.qty) > 0)
+    }))
+  }
+
+  function clearCurrentOrder() {
+    if (!window.confirm('Очистить текущий заказ?')) return
+    setDraftOrders(prev => ({
+      ...prev,
+      [selectedTable]: {
+        ...(prev[selectedTable] || {}),
+        table_name: prev[selectedTable]?.table_name || selectedTable,
+        customer_name: '',
+        guests: 1,
+        hall_name: halls[0],
+        order_mode: prev[selectedTable]?.order_mode || 'hall',
+        payment_method: prev[selectedTable]?.payment_method || paymentMethod,
+        items: []
+      }
+    }))
+  }
+
+  function goBackMenu() {
+    if (categoryFilter !== 'all') {
+      setCategoryFilter('all')
+      return
+    }
+    if (menuTypeFilter !== 'all') {
+      setMenuTypeFilter('all')
+      setMenuRoot('root')
+      return
+    }
+    setMenuRoot('root')
+  }
+
+  function openMenuRoot(rootId) {
+    setMenuRoot(rootId)
+    setMenuTypeFilter(rootId)
+    setCategoryFilter('all')
+  }
+
+  function printHtmlDocument(title, rows, footerHtml = '') {
+    const html = `<!doctype html><html><head><meta charset="utf-8"><title>${title}</title><style>
+      body{font-family:Arial,sans-serif;padding:18px;color:#111}
+      h1{font-size:22px;margin:0 0 6px}
+      .meta{font-size:13px;color:#555;margin-bottom:12px}
+      table{width:100%;border-collapse:collapse;font-size:13px}
+      th,td{border-bottom:1px solid #ddd;padding:8px;text-align:left;vertical-align:top}
+      .right{text-align:right}.sum{font-size:22px;font-weight:800;margin-top:12px}
+      .section{margin-top:18px}
+    </style></head><body>${rows}${footerHtml}</body></html>`
+    const w = window.open('', '_blank', 'width=900,height=700')
+    if (!w) return
+    w.document.open()
+    w.document.write(html)
+    w.document.close()
+    w.focus()
+    w.print()
+  }
+
+  function currentOrderMetaLine() {
+    const modeLabel = currentDraft.order_mode === 'takeaway' ? 'С собой' : currentDraft.order_mode === 'delivery' ? 'Доставка' : 'Зал'
+    return `${branches.find(b => String(b.id) === String(branchId))?.name || ''} · ${date} · ${selectedTable} · ${modeLabel} · гостей: ${currentDraft.guests || 1}${currentDraft.hall_name && currentDraft.order_mode === 'hall' ? ` · ${currentDraft.hall_name}` : ''}${cashierSession?.name ? ` · кассир: ${cashierSession.name}` : ''}`
+  }
+
+  function precheckOrder() {
+    if (!items.length) return setMessage('Заказ пуст')
+    const rows = `
+      <h1>Пречек</h1>
+      <div class="meta">${currentOrderMetaLine()}</div>
+      <table><thead><tr><th>Позиция</th><th>Тип</th><th class="right">Кол-во</th><th class="right">Цена</th><th class="right">Сумма</th></tr></thead><tbody>
+      ${items.map(item => `<tr><td>${item.name}</td><td>${item.item_type}</td><td class="right">${fmt(item.qty)}</td><td class="right">${fmt(item.price)}</td><td class="right">${fmt(parseNum(item.qty) * parseNum(item.price))}</td></tr>`).join('')}
+      </tbody></table>`
+    const footer = `<div class="sum">Итого: ${fmt(subtotal)} AZN</div>`
+    printHtmlDocument('Пречек', rows, footer)
+  }
+
+  function printByType(type) {
+    const typeLabel = type === 'Бар' ? 'Печать в бар' : 'Печать на кухню'
+    const filtered = items.filter(item => item.item_type === type)
+    if (!filtered.length) return setMessage(type === 'Бар' ? 'В заказе нет напитков / барных позиций' : 'В заказе нет кухонных позиций')
+    const rows = `
+      <h1>${typeLabel}</h1>
+      <div class="meta">${currentOrderMetaLine()}</div>
+      <table><thead><tr><th>Позиция</th><th class="right">Кол-во</th><th class="right">Комментарий</th></tr></thead><tbody>
+      ${filtered.map(item => `<tr><td>${item.name}</td><td class="right">${fmt(item.qty)}</td><td class="right">—</td></tr>`).join('')}
+      </tbody></table>`
+    printHtmlDocument(typeLabel, rows)
+  }
+
+  function splitCheckPreview() {
+    if (!items.length) return setMessage('Заказ пуст')
+    const left = []
+    const right = []
+    items.forEach((item, idx) => (idx % 2 === 0 ? left : right).push(item))
+    const sumBlock = part => part.reduce((s, item) => s + parseNum(item.qty) * parseNum(item.price), 0)
+    const partHtml = (title, part) => `<div class="section"><h1>${title}</h1><table><thead><tr><th>Позиция</th><th class="right">Кол-во</th><th class="right">Цена</th><th class="right">Сумма</th></tr></thead><tbody>${part.map(item => `<tr><td>${item.name}</td><td class="right">${fmt(item.qty)}</td><td class="right">${fmt(item.price)}</td><td class="right">${fmt(parseNum(item.qty) * parseNum(item.price))}</td></tr>`).join('')}</tbody></table><div class="sum">${fmt(sumBlock(part))} AZN</div></div>`
+    printHtmlDocument('Разделение чека', `<div class="meta">${currentOrderMetaLine()}</div>${partHtml('Часть 1', left)}${partHtml('Часть 2', right)}`)
+  }
+
+  async function recalcDailyRevenueFromPos(activeBranchId, activeDate) {
+    const { data: entries } = await supabase
+      .from('daily_revenue_entries')
+      .select('cash_amount,bank_amount,wolt_amount')
+      .eq('branch_id', activeBranchId)
+      .eq('revenue_date', activeDate)
+      .is('deleted_at', null)
+
+    const totals = (entries || []).reduce((acc, row) => {
+      acc.cash_amount += parseNum(row.cash_amount)
+      acc.bank_amount += parseNum(row.bank_amount)
+      acc.wolt_amount += parseNum(row.wolt_amount)
+      return acc
+    }, { cash_amount: 0, bank_amount: 0, wolt_amount: 0 })
+
+    await supabase.from('daily_revenue').upsert({
+      branch_id: activeBranchId,
+      revenue_date: activeDate,
+      cash_amount: totals.cash_amount,
+      bank_amount: totals.bank_amount,
+      wolt_amount: totals.wolt_amount
+    }, { onConflict: 'branch_id,revenue_date' })
+  }
+
+  async function closeOrder() {
+    if (!branchId) return setMessage('Выберите филиал')
+    if (!items.length) return setMessage('Добавьте позиции в заказ')
+    setLoading(true)
+    setMessage('')
+    try {
+      const user = await currentUserMeta()
+      const activePayment = currentDraft.payment_method || paymentMethod || 'cash'
+      const revenuePayload = {
+        branch_id: branchId,
+        revenue_date: date,
+        cash_amount: activePayment === 'cash' ? subtotal : 0,
+        bank_amount: activePayment === 'bank' ? subtotal : 0,
+        wolt_amount: activePayment === 'wolt' ? subtotal : 0,
+        comment: `POS · ${currentDraft.table_name || selectedTable} · ${fmt(totalQty)} шт. · кассир ${cashierSession?.name || '—'}`,
+        created_by: user.user_id,
+        updated_by: user.user_id
+      }
+
+      const { data: order, error: orderError } = await supabase.from('pos_orders').insert({
+        branch_id: branchId,
+        order_date: date,
+        table_name: currentDraft.table_name || selectedTable || null,
+        customer_name: currentDraft.customer_name || null,
+        payment_method: activePayment,
+        total_amount: subtotal,
+        status: 'closed',
+        closed_at: new Date().toISOString(),
+        hall_name: currentDraft.hall_name || null,
+        guest_count: parseNum(currentDraft.guests || 1),
+        order_mode: currentDraft.order_mode || 'hall',
+        cashier_name: cashierSession?.name || null,
+        created_by: user.user_id,
+        updated_by: user.user_id
+      }).select('*').single()
+      if (orderError) throw orderError
+
+      const orderItems = items.map(item => ({
+        order_id: order.id,
+        menu_item_id: item.menu_item_id,
+        item_name: item.name,
+        item_category: item.category || null,
+        item_type: item.item_type || 'Кухня',
+        quantity: parseNum(item.qty),
+        unit_price: parseNum(item.price),
+        total_amount: parseNum(item.qty) * parseNum(item.price)
+      }))
+      const { error: itemsError } = await supabase.from('pos_order_items').insert(orderItems)
+      if (itemsError) throw itemsError
+
+      const { error: revenueError } = await supabase.from('daily_revenue_entries').insert(revenuePayload)
+      if (revenueError) throw revenueError
+      await recalcDailyRevenueFromPos(branchId, date)
+
+      setDraftOrders(prev => ({
+        ...prev,
+        [selectedTable]: {
+          table_name: currentDraft.table_name || selectedTable,
+          customer_name: '',
+          guests: 1,
+          hall_name: halls[0],
+          order_mode: currentDraft.order_mode || 'hall',
+          payment_method: activePayment,
+          items: []
+        }
+      }))
+      await loadBase()
+      setMessage('Чек закрыт. Продажа отправлена в RMS.')
+    } catch (error) {
+      setMessage(error?.message || 'Не удалось закрыть чек')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  function tableDraftSummary(tableId) {
+    const draft = draftOrders[tableId]
+    const draftItems = draft?.items || []
+    const qty = draftItems.reduce((s, item) => s + parseNum(item.qty), 0)
+    const total = draftItems.reduce((s, item) => s + parseNum(item.qty) * parseNum(item.price), 0)
+    return { qty, total, count: draftItems.length, mode: draft?.order_mode || 'hall', guests: draft?.guests || 1 }
+  }
+
+  if (!cashierSession) {
+    return (
+      <section>
+        <section className="topbar">
+          <div>
+            <h2>POS / Касса</h2>
+            <p>Вход в POS-кассу: сотрудник вводит своё имя и 4-значный PIN-код.</p>
+          </div>
+        </section>
+        {message && <p className="hint bad">{message}</p>}
+        <div className="card" style={{maxWidth:520, margin:'20px auto'}}>
+          <h3>Вход в POS</h3>
+          <div className="form-grid compact">
+            <label><span>Сотрудник / кассир</span><input value={cashierNameInput} onChange={e => setCashierNameInput(e.target.value)} placeholder="Например, Murad" /></label>
+            <label><span>PIN-код</span><input value={'•'.repeat(cashierPin.length)} readOnly placeholder="4 цифры" /></label>
+          </div>
+          <div style={{display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:10, marginTop:14}}>
+            {[1,2,3,4,5,6,7,8,9,'C',0,'⌫'].map(key => <button key={key} onClick={() => key === 'C' ? clearPin() : key === '⌫' ? backspacePin() : handlePinDigit(key)} style={{padding:'18px 12px', fontSize:22, fontWeight:800, borderRadius:14, border:'1px solid #d7dfd9', background:'#fff'}}>{key}</button>)}
+          </div>
+          <button className="primary" style={{width:'100%', marginTop:14}} onClick={unlockPos}>Войти в POS</button>
+        </div>
+      </section>
+    )
+  }
+
+
+  async function saveIikoConnection() {
+    setIikoStatus('')
+    const branchId = iikoForm.branch_id || branches[0]?.id
+    if (!branchId) return setIikoStatus('Сначала добавьте филиал в настройках.')
+    if (!String(iikoForm.organization_id || '').trim()) return setIikoStatus('Введите iiko organization_id.')
+
+    setIikoBusy(true)
+    try {
+      const payload = {
+        branch_id: branchId,
+        iiko_organization_id: String(iikoForm.organization_id || '').trim(),
+        iiko_terminal_group_id: String(iikoForm.terminal_group_id || '').trim() || null,
+        sync_enabled: Boolean(iikoForm.sync_enabled),
+        updated_at: new Date().toISOString()
+      }
+      const { error } = await supabase.from('iiko_sync_connections').upsert(payload, { onConflict: 'branch_id' })
+      if (error) throw error
+      setIikoForm({ branch_id: branchId, organization_id: '', terminal_group_id: '', sync_enabled: true })
+      setIikoStatus('Подключение iiko сохранено. Следующий шаг — добавить IIKO_API_LOGIN в Supabase Edge Functions / Vercel Environment.')
+      await load()
+    } catch (e) {
+      setIikoStatus(e.message || String(e))
+    } finally {
+      setIikoBusy(false)
+    }
+  }
+
+  function editIikoConnection(row) {
+    setIikoForm({
+      branch_id: row.branch_id || '',
+      organization_id: row.iiko_organization_id || '',
+      terminal_group_id: row.iiko_terminal_group_id || '',
+      sync_enabled: row.sync_enabled !== false
+    })
+    setSettingsTab('integrations')
+  }
+
+  async function toggleIikoConnection(row) {
+    setIikoStatus('')
+    const { error } = await supabase.from('iiko_sync_connections').update({ sync_enabled: !row.sync_enabled, updated_at: new Date().toISOString() }).eq('id', row.id)
+    if (error) setIikoStatus(error.message); else { setIikoStatus('Статус подключения обновлён'); await load() }
+  }
+
+  async function checkIikoBackend() {
+    setIikoStatus('')
+    setIikoBusy(true)
+    try {
+      const { data, error } = await supabase.functions.invoke('iiko-sync-sales', { body: { action: 'health' } })
+      if (error) throw error
+      setIikoStatus(data?.message || 'Edge Function отвечает. Можно проверять подключение филиалов.')
+    } catch (e) {
+      setIikoStatus((e && e.message) ? e.message : 'Edge Function iiko-sync-sales не развернута или secrets не настроены.')
+    } finally {
+      setIikoBusy(false)
+    }
+  }
+
+  async function testIikoConnection(row) {
+    setIikoStatus('')
+    setIikoBusy(true)
+    try {
+      const { data, error } = await supabase.functions.invoke('iiko-sync-sales', { body: { action: 'testConnection', connectionId: row.id } })
+      if (error) throw error
+      setIikoStatus(data?.message || 'Подключение iiko проверено.')
+      await load()
+    } catch (e) {
+      setIikoStatus((e && e.message) ? e.message : 'Не удалось проверить подключение iiko.')
+    } finally {
+      setIikoBusy(false)
+    }
+  }
+
+  async function runIikoSync(row) {
+    setIikoStatus('')
+    setIikoBusy(true)
+    try {
+      const fromDate = iikoSyncForm.period_from || todayISO()
+      const toDate = iikoSyncForm.period_to || fromDate
+      const { data, error } = await supabase.functions.invoke('iiko-sync-sales', {
+        body: {
+          action: 'syncSales',
+          connectionId: row.id,
+          periodFrom: `${fromDate}T00:00:00.000Z`,
+          periodTo: `${toDate}T23:59:59.999Z`
+        }
+      })
+      if (error) throw error
+      setIikoStatus(data?.message || 'Синхронизация продаж запущена.')
+      await load()
+    } catch (e) {
+      setIikoStatus((e && e.message) ? e.message : 'Edge Function iiko-sync-sales пока не развернута или вернула ошибку.')
+    } finally {
+      setIikoBusy(false)
+    }
+  }
+
+  return (
+    <section>
+      <SemiFinishedInlineStyles />
+      <section className="topbar">
+        <div>
+          <h2>POS / Касса</h2>
+          <p>Кассир: <b>{cashierSession.name}</b> · Стиль работы: столы → заказ → категории → позиции → пречек / чек.</p>
+        </div>
+        <div style={{display:'flex', gap:8, alignItems:'center'}}>
+          <button className="ghost" onClick={logoutPos}>Выйти</button>
+        </div>
+      </section>
+
+      {message && <p className={`hint ${message.includes('закрыт') || message.includes('отправлена') ? 'good' : 'bad'}`}>{message}</p>}
+
+      <div style={{display:'grid', gridTemplateColumns:'1.1fr 1fr 1.25fr', gap:14}}>
+        <div className="card">
+          <div className="card-head"><div><h3>Текущий заказ</h3><p className="hint">Стол / режим обслуживания / посетители / заказ</p></div></div>
+          <div className="form-grid compact">
+            <label><span>Филиал</span><select value={branchId} onChange={e => setBranchId(e.target.value)}>{branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label>
+            <label><span>Дата</span><input type="date" value={date} onChange={e => setDate(e.target.value)} /></label>
+            <label><span>Стол</span><input value={currentDraft.table_name || selectedTable} onChange={e => setCurrentDraft({ table_name: e.target.value })} /></label>
+            <label><span>Посетители</span><input inputMode="numeric" value={currentDraft.guests || 1} onChange={e => setCurrentDraft({ guests: Math.max(1, parseInt(e.target.value || '1', 10) || 1) })} /></label>
+            <label><span>Режим</span><select value={currentDraft.order_mode || 'hall'} onChange={e => setCurrentDraft({ order_mode: e.target.value })}><option value="hall">Зал</option><option value="takeaway">С собой</option><option value="delivery">Доставка</option></select></label>
+            <label><span>Зал</span><select value={currentDraft.hall_name || halls[0]} onChange={e => setCurrentDraft({ hall_name: e.target.value })} disabled={(currentDraft.order_mode || 'hall') !== 'hall'}>{halls.map(h => <option key={h} value={h}>{h}</option>)}</select></label>
+            <label><span>Оплата</span><select value={currentDraft.payment_method || paymentMethod} onChange={e => { setPaymentMethod(e.target.value); setCurrentDraft({ payment_method: e.target.value }) }}><option value="cash">Наличные</option><option value="bank">Банк</option><option value="wolt">Wolt / доставка</option></select></label>
+            <label><span>Комментарий / гость</span><input value={currentDraft.customer_name || ''} onChange={e => setCurrentDraft({ customer_name: e.target.value })} placeholder="Необязательно" /></label>
+          </div>
+
+          <div className="table-wrap" style={{maxHeight:430, overflow:'auto', marginTop:12}}>
+            <table>
+              <thead><tr><th>Позиция</th><th>Тип</th><th>Кол-во</th><th>Цена</th><th>Сумма</th><th></th></tr></thead>
+              <tbody>
+                {items.map((item, idx) => <tr key={`${item.menu_item_id}-${idx}`}>
+                  <td><b>{item.name}</b></td>
+                  <td>{item.item_type}</td>
+                  <td><input style={{width:64}} inputMode="decimal" value={item.qty} onChange={e => updateItem(idx, { qty: e.target.value })} /></td>
+                  <td><input style={{width:78}} inputMode="decimal" value={item.price} onChange={e => updateItem(idx, { price: e.target.value })} /></td>
+                  <td><b>{fmt(parseNum(item.qty) * parseNum(item.price))}</b></td>
+                  <td><button className="danger small" onClick={() => updateItem(idx, { qty: 0 })}>×</button></td>
+                </tr>)}
+                {!items.length && <tr><td colSpan="6" className="hint">Заказ пуст. Выбери стол и позиции из меню.</td></tr>}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="mini-grid" style={{marginTop:10}}>
+            <div className="metric"><span>Позиций</span><strong>{items.length}</strong></div>
+            <div className="metric"><span>Количество</span><strong>{fmt(totalQty)}</strong></div>
+            <div className="metric"><span>Итого</span><strong>{fmt(subtotal)} AZN</strong></div>
+          </div>
+
+          <div style={{display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:8, marginTop:12}}>
+            <button className="ghost" onClick={() => printByType('Кухня')}>Печать на кухню</button>
+            <button className="ghost" onClick={() => printByType('Бар')}>Печать в бар</button>
+            <button className="ghost" onClick={goBackMenu}>Вернуться</button>
+            <button className="danger" onClick={clearCurrentOrder}>Отмена</button>
+            <button className="ghost" onClick={precheckOrder}>Пречек</button>
+            <button className="ghost" onClick={splitCheckPreview}>Разделить чек</button>
+          </div>
+          <button className="primary" disabled={loading || !items.length} onClick={closeOrder} style={{marginTop:10, width:'100%'}}>{loading ? 'Сохранение...' : 'Чек'}</button>
+        </div>
+
+        <div className="card">
+          <h3>Столы / ячейки</h3>
+          <div style={{display:'grid', gridTemplateColumns:'repeat(2, minmax(120px, 1fr))', gap:10}}>
+            {tableCells.map(table => {
+              const summary = tableDraftSummary(table.id)
+              const active = selectedTable === table.id
+              const isBusy = summary.count > 0
+              return <button key={table.id} onClick={() => selectTable(table)} style={{border: active ? '2px solid #1f6f43' : '1px solid #d7dfd9', background: active ? '#eef7f0' : isBusy ? '#fff8e7' : '#fff', borderRadius:14, padding:'12px 10px', textAlign:'left', cursor:'pointer', minHeight:92}}>
+                <div style={{fontWeight:800, marginBottom:6}}>{table.label}</div>
+                <div className="hint">позиций: {summary.count}</div>
+                <div className="hint">посетители: {summary.guests}</div>
+                <div className="hint">режим: {summary.mode === 'takeaway' ? 'с собой' : summary.mode === 'delivery' ? 'доставка' : 'зал'}</div>
+                <div style={{fontWeight:700, marginTop:6}}>{fmt(summary.total)} AZN</div>
+              </button>
+            })}
+          </div>
+        </div>
+
+        <div className="card">
+          <div className="card-head">
+            <div><h3>Меню</h3><p className="hint">Сначала выбери Еда или Напитки, затем категорию и позицию.</p></div>
+          </div>
+          <div className="form-grid compact">
+            <label><span>Поиск</span><input value={search} onChange={e => setSearch(e.target.value)} placeholder="Поиск по меню" /></label>
+          </div>
+
+          <div style={{display:'flex', gap:8, marginTop:10, flexWrap:'wrap'}}>
+            <button className={menuTypeFilter === 'all' ? 'active' : ''} onClick={() => { setMenuRoot('root'); setMenuTypeFilter('all'); setCategoryFilter('all') }}>Корень</button>
+            {menuRoots.map(root => <button key={root.id} className={menuTypeFilter === root.id && categoryFilter === 'all' ? 'active' : ''} onClick={() => openMenuRoot(root.id)}>{root.label}</button>)}
+            {menuTypeFilter !== 'all' && <button className={categoryFilter === 'all' ? 'active' : ''} onClick={() => setCategoryFilter('all')}>Категории</button>}
+          </div>
+
+          {menuTypeFilter === 'all' && (
+            <div style={{display:'grid', gridTemplateColumns:'repeat(2, minmax(150px, 1fr))', gap:10, marginTop:12}}>
+              {menuRoots.map(root => <button key={root.id} onClick={() => openMenuRoot(root.id)} style={{border:'1px solid #d7dfd9', background:'#f8fafc', borderRadius:14, padding:'26px 12px', minHeight:118, fontSize:20, fontWeight:800}}>{root.label}</button>)}
+            </div>
+          )}
+
+          {menuTypeFilter !== 'all' && categoryFilter === 'all' && (
+            <div style={{display:'grid', gridTemplateColumns:'repeat(2, minmax(150px, 1fr))', gap:10, marginTop:12}}>
+              {visibleCategories.map(cat => <button key={cat} onClick={() => setCategoryFilter(cat)} style={{border:'1px solid #d7dfd9', background:'#eef2f7', borderRadius:14, padding:'20px 12px', minHeight:92, fontSize:18, fontWeight:700}}>{cat}</button>)}
+              {!visibleCategories.length && <div className="hint">Нет категорий.</div>}
+            </div>
+          )}
+
+          {menuTypeFilter !== 'all' && categoryFilter !== 'all' && (
+            <div style={{display:'grid', gridTemplateColumns:'repeat(2, minmax(170px, 1fr))', gap:10, marginTop:12, maxHeight:520, overflow:'auto'}}>
+              {filteredMenu.map(item => <button key={item.id} onClick={() => addMenuItemToOrder(item)} style={{border:'1px solid #d7dfd9', background:'#fff', borderRadius:14, padding:'12px 12px', textAlign:'left', minHeight:104}}>
+                <div style={{fontSize:12, color:'#6b7280', marginBottom:6}}>{item.pos_type} · {item.category || 'Без категории'}</div>
+                <div style={{fontWeight:800, lineHeight:1.25, minHeight:36}}>{item.name}</div>
+                <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:10}}>
+                  <span style={{fontWeight:800}}>{fmt(item.sale_price)} AZN</span>
+                  <span className="hint">+</span>
+                </div>
+              </button>)}
+              {!filteredMenu.length && <div className="hint">Нет позиций для выбранной категории.</div>}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="card" style={{marginTop:14}}>
+        <h3>Закрытые чеки за выбранную дату</h3>
+        <div className="table-wrap">
+          <table>
+            <thead><tr><th>Время</th><th>Стол</th><th>Оплата</th><th>Сумма</th><th>Позиции</th><th>Статус</th></tr></thead>
+            <tbody>
+              {orders.map(order => <tr key={order.id}>
+                <td>{formatDT(order.closed_at || order.created_at)}</td>
+                <td>{order.table_name || '—'}</td>
+                <td>{order.payment_method}</td>
+                <td><b>{fmt(order.total_amount)}</b></td>
+                <td>{(order.pos_order_items || []).slice(0, 4).map(i => i.item_name).join(', ')}{(order.pos_order_items || []).length > 4 ? '…' : ''}</td>
+                <td>{order.status}</td>
+              </tr>)}
+              {!orders.length && <tr><td colSpan="6" className="hint">Чеков пока нет.</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+
+function SalaryWorkspace({ t, isAdmin = false }) {
+  const [salaryTab, setSalaryTab] = useState('employees')
+
+  async function saveIikoConnection() {
+    setIikoStatus('')
+    const branchId = iikoForm.branch_id || branches[0]?.id
+    if (!branchId) return setIikoStatus('Сначала добавьте филиал в настройках.')
+    if (!String(iikoForm.organization_id || '').trim()) return setIikoStatus('Введите iiko organization_id.')
+
+    setIikoBusy(true)
+    try {
+      const payload = {
+        branch_id: branchId,
+        iiko_organization_id: String(iikoForm.organization_id || '').trim(),
+        iiko_terminal_group_id: String(iikoForm.terminal_group_id || '').trim() || null,
+        sync_enabled: Boolean(iikoForm.sync_enabled),
+        updated_at: new Date().toISOString()
+      }
+      const { error } = await supabase.from('iiko_sync_connections').upsert(payload, { onConflict: 'branch_id' })
+      if (error) throw error
+      setIikoForm({ branch_id: branchId, organization_id: '', terminal_group_id: '', sync_enabled: true })
+      setIikoStatus('Подключение iiko сохранено. Следующий шаг — добавить IIKO_API_LOGIN в Supabase Edge Functions / Vercel Environment.')
+      await load()
+    } catch (e) {
+      setIikoStatus(e.message || String(e))
+    } finally {
+      setIikoBusy(false)
+    }
+  }
+
+  function editIikoConnection(row) {
+    setIikoForm({
+      branch_id: row.branch_id || '',
+      organization_id: row.iiko_organization_id || '',
+      terminal_group_id: row.iiko_terminal_group_id || '',
+      sync_enabled: row.sync_enabled !== false
+    })
+    setSettingsTab('integrations')
+  }
+
+  async function toggleIikoConnection(row) {
+    setIikoStatus('')
+    const { error } = await supabase.from('iiko_sync_connections').update({ sync_enabled: !row.sync_enabled, updated_at: new Date().toISOString() }).eq('id', row.id)
+    if (error) setIikoStatus(error.message); else { setIikoStatus('Статус подключения обновлён'); await load() }
+  }
+
+  async function runIikoSync(row) {
+    setIikoStatus('')
+    setIikoBusy(true)
+    try {
+      const { data, error } = await supabase.functions.invoke('iiko-sync-sales', { body: { connectionId: row.id } })
+      if (error) throw error
+      setIikoStatus(data?.message || 'Синхронизация запущена.')
+      await load()
+    } catch (e) {
+      setIikoStatus((e && e.message) ? e.message : 'Edge Function iiko-sync-sales пока не развернута или вернула ошибку.')
+    } finally {
+      setIikoBusy(false)
+    }
+  }
+
+  return (
+    <section>
+      <section className="topbar">
+        <div>
+          <h2>Зарплаты</h2>
+          <p>Единый раздел персонала: сотрудники, посещаемость, авансы и DSMF в одном месте.</p>
+        </div>
+      </section>
+      <div className="settings-tabs">
+        <button className={salaryTab === 'employees' ? 'active' : ''} onClick={() => setSalaryTab('employees')}>Сотрудники</button>
+        <button className={salaryTab === 'sheet' ? 'active' : ''} onClick={() => setSalaryTab('sheet')}>Зарплатный лист</button>
+        <button className={salaryTab === 'attendance' ? 'active' : ''} onClick={() => setSalaryTab('attendance')}>Посещения</button>
+        <button className={salaryTab === 'advances' ? 'active' : ''} onClick={() => setSalaryTab('advances')}>Авансы</button>
+        <button className={salaryTab === 'dsmf' ? 'active' : ''} onClick={() => setSalaryTab('dsmf')}>DSMF</button>
+      </div>
+      {salaryTab === 'employees' && <>
+        <Salaries t={t} view="employees" isAdmin={isAdmin} />
+        <Attendance t={t} mode="staff" isAdmin={isAdmin} />
+      </>}
+      {salaryTab === 'sheet' && <Salaries t={t} view="sheet" isAdmin={isAdmin} />}
+      {salaryTab === 'attendance' && <Attendance t={t} mode="attendance" isAdmin={isAdmin} />}
+      {salaryTab === 'advances' && <Advances t={t} />}
+      {salaryTab === 'dsmf' && <Salaries t={t} view="dsmf" isAdmin={isAdmin} />}
+    </section>
+  )
+}
+
+function ResponsiveAndSettingsStyles() {
+  return <style>{`
+    .salary-view-employees .salary-dsmf-card {
+      display: none;
+    }
+    .salary-view-dsmf > .topbar,
+    .salary-view-dsmf > .grid > .card:not(.salary-dsmf-card) {
+      display: none !important;
+    }
+    .salary-view-sheet tfoot td {
+      background: rgba(71,85,105,.06);
+      font-weight: 900;
+    }
+    .theme-executive .salary-view-sheet tfoot td {
+      background: rgba(71,85,105,.08);
+    }
+    .salary-view-dsmf .salary-dsmf-card {
+      display: block !important;
+    }
+    .settings-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 0 0 16px;
+    }
+    .rms-brandmark {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0;
+    }
+    .rms-brandmark.login {
+      margin: 0 auto 10px;
+    }
+    .rms-logo-svg {
+      width: 50px;
+      height: 50px;
+      display: block;
+      filter: drop-shadow(0 10px 18px rgba(0,0,0,.18));
+    }
+    .login-card .rms-logo-svg {
+      width: 64px;
+      height: 64px;
+      filter: drop-shadow(0 12px 18px rgba(0,0,0,.12));
+    }
+    .rms-custom-logo {
+      width: 50px;
+      height: 50px;
+      object-fit: contain;
+      display: block;
+      border-radius: 14px;
+      box-shadow: 0 10px 18px rgba(0,0,0,.16);
+      background: rgba(255,255,255,.9);
+      padding: 4px;
+    }
+    .login-card .rms-custom-logo {
+      width: 76px;
+      height: 76px;
+      border-radius: 18px;
+      box-shadow: 0 12px 24px rgba(0,0,0,.12);
+    }
+    .logo-uploader {
+      display: grid;
+      gap: 12px;
+    }
+    .logo-preview-wrap {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 12px;
+      border: 1px dashed var(--line);
+      border-radius: 16px;
+      background: rgba(255,255,255,.48);
+    }
+    .logo-preview-wrap img {
+      width: 84px;
+      height: 84px;
+      object-fit: contain;
+      border-radius: 18px;
+      background: #fff;
+      border: 1px solid var(--line);
+      padding: 6px;
+    }
+    .logo-preview-wrap .empty-logo {
+      width: 84px;
+      height: 84px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 18px;
+      background: #f7f3ea;
+      border: 1px dashed var(--line);
+      color: var(--muted);
+      font-weight: 800;
+    }
+    .action-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+    .inline-edit {
+      display: grid;
+      grid-template-columns: minmax(140px, 1fr) auto;
+      gap: 8px;
+      align-items: center;
+      min-width: 260px;
+    }
+    .login-title {
+      margin: 0;
+      text-align: center;
+      font-size: 20px;
+      letter-spacing: .14em;
+      font-weight: 900;
+    }
+    .login-subtitle {
+      margin: 4px 0 10px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .settings-tabs button {
+      background: rgba(23,37,29,.08);
+      color: var(--ink);
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 10px 14px;
+      font-weight: 800;
+    }
+    .settings-tabs button.active {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+    }
+    .blurred-money {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 72px;
+      height: 24px;
+      padding: 0 10px;
+      border-radius: 999px;
+      background: rgba(23,37,29,.12);
+      color: transparent;
+      text-shadow: 0 0 8px rgba(23,37,29,.65);
+      filter: blur(2.2px);
+      user-select: none;
+      pointer-events: none;
+      font-weight: 900;
+      letter-spacing: .12em;
+    }
+    .cell-value {
+      display: inline-block;
+      min-width: 0;
+      padding: 2px 0;
+    }
+    .table-wrap table th,
+    .table-wrap table td {
+      vertical-align: middle;
+    }
+    @media (max-width: 900px) {
+      .app {
+        display: block;
+      }
+      .sidebar {
+        position: sticky;
+        top: 0;
+        z-index: 30;
+        width: 100%;
+        min-height: auto;
+        padding: 12px;
+        border-radius: 0 0 18px 18px;
+      }
+      .brand h1 {
+        font-size: 18px;
+      }
+      .brand p {
+        display: none;
+      }
+      .nav-tabs {
+        display: flex;
+        overflow-x: auto;
+        gap: 8px;
+        padding-bottom: 4px;
+        -webkit-overflow-scrolling: touch;
+      }
+      .nav-tabs .nav {
+        white-space: nowrap;
+        min-width: max-content;
+      }
+      .userbar {
+        margin-top: 10px;
+      }
+      .main {
+        padding: 12px;
+      }
+      .topbar {
+        display: block;
+      }
+      .topbar h2 {
+        font-size: 24px;
+      }
+      .grid,
+      .form-grid,
+      .mini-grid {
+        display: block;
+      }
+      .card {
+        margin-bottom: 12px;
+        padding: 14px;
+        border-radius: 16px;
+      }
+      .span-2 {
+        grid-column: auto;
+      }
+      .settings-tabs {
+        position: sticky;
+        top: 108px;
+        z-index: 20;
+        background: var(--bg);
+        padding: 8px 0;
+        overflow-x: auto;
+        flex-wrap: nowrap;
+        -webkit-overflow-scrolling: touch;
+      }
+      .settings-tabs button {
+        white-space: nowrap;
+        min-width: max-content;
+      }
+      .table-wrap {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+      table {
+        min-width: 760px;
+      }
+      th, td {
+        padding: 8px;
+        font-size: 12px;
+      }
+      input, select, textarea, button {
+        font-size: 16px;
+      }
+    }
+    @media (max-width: 520px) {
+      .login-card {
+        padding: 18px;
+      }
+      .big-number {
+        font-size: 30px;
+      }
+      .metric {
+        align-items: flex-start;
+      }
+      .permission-grid {
+        grid-template-columns: 1fr;
+      }
+      .card-head {
+        display: block;
+      }
+      .card-head button {
+        margin-top: 10px;
+      }
+    }
+
+    /* FINAL FIELD COLOR OVERRIDE: all normal fields are white, attendance day cells are excluded. */
+    .app input:not([type="checkbox"]),
+    .app select,
+    .app textarea,
+    .login-screen input:not([type="checkbox"]),
+    .login-screen select,
+    .login-screen textarea,
+    .theme-executive input:not([type="checkbox"]),
+    .theme-executive select,
+    .theme-executive textarea {
+      background: #ffffff !important;
+      color: #111827 !important;
+      border-color: #cbd5e1 !important;
+      box-shadow: none !important;
+    }
+    .attendance-card td button.attendance-day-cell,
+    .theme-executive .attendance-card td button.attendance-day-cell {
+      box-shadow: inset 0 1px 2px rgba(15,23,42,.08) !important;
+    }
+    .supplier-opening-debt-card {
+      border: 1px solid rgba(71,85,105,.28) !important;
+      background: linear-gradient(180deg, #ffffff, #f8fafc) !important;
+      box-shadow: 0 16px 36px rgba(15,23,42,.07) !important;
+    }
+  `}</style>
+}
+
+
+function RMSProV6Styles() {
+  return <style>{`
+
+/* RMS Pro UI Redesign v6 — final sidebar/login alignment */
+:root{
+  --rms-navy-950:#031225;
+  --rms-navy-900:#06172d;
+  --rms-navy-800:#0b2340;
+  --rms-blue:#2563eb;
+  --rms-blue-soft:rgba(37,99,235,.18);
+  --rms-blue-border:rgba(96,165,250,.35);
+  --rms-gold:#f5b856;
+}
+
+.app.rms-pro-shell{
+  font-family: "Manrope", "Inter", "SF Pro Display", "Segoe UI", -apple-system, BlinkMacSystemFont, Arial, sans-serif!important;
+  background:
+    radial-gradient(circle at 70% -10%, rgba(59,130,246,.07), transparent 34%),
+    linear-gradient(180deg,#f8fafc 0%,#eef4fb 100%)!important;
+}
+
+.rms-pro-shell .sidebar.rms-pro-sidebar{
+  width:248px!important;
+  min-width:248px!important;
+  max-width:248px!important;
+  height:100vh!important;
+  min-height:100vh!important;
+  padding:18px 12px 12px!important;
+  overflow:hidden!important;
+  display:flex!important;
+  flex-direction:column!important;
+  gap:0!important;
+  background:
+    radial-gradient(circle at 18% -3%,rgba(59,130,246,.34),transparent 32%),
+    linear-gradient(180deg,#082044 0%,#06172d 48%,#031225 100%)!important;
+  border-right:1px solid rgba(148,163,184,.18)!important;
+  box-shadow:18px 0 52px rgba(15,23,42,.18)!important;
+}
+
+.rms-pro-brand{
+  flex:0 0 auto!important;
+  display:flex!important;
+  align-items:center!important;
+  gap:12px!important;
+  padding:0 10px 17px!important;
+  margin:0 0 14px!important;
+  border-bottom:1px solid rgba(148,163,184,.16)!important;
+}
+.rms-pro-logo,
+.rms-brandmark.compact{
+  width:48px!important;
+  height:48px!important;
+  min-width:48px!important;
+  border-radius:16px!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  background:linear-gradient(135deg,rgba(96,165,250,.22),rgba(15,23,42,.18))!important;
+  box-shadow:0 14px 34px rgba(37,99,235,.28)!important;
+  overflow:hidden!important;
+}
+.rms-brandmark.compact .rms-logo-svg,
+.rms-pro-logo .rms-logo-svg{width:48px!important;height:48px!important;display:block!important;}
+.rms-pro-brand h1{
+  font-size:25px!important;
+  font-weight:800!important;
+  letter-spacing:-.045em!important;
+  line-height:.98!important;
+  margin:0!important;
+  color:#fff!important;
+}
+.rms-pro-brand p{
+  font-size:9.8px!important;
+  font-weight:720!important;
+  line-height:1.18!important;
+  letter-spacing:.045em!important;
+  color:rgba(226,232,240,.72)!important;
+  text-transform:uppercase!important;
+  margin:5px 0 0!important;
+}
+
+.rms-pro-nav{
+  flex:1 1 auto!important;
+  min-height:0!important;
+  overflow-y:auto!important;
+  overflow-x:hidden!important;
+  padding:0 2px 12px!important;
+  margin:0!important;
+  display:flex!important;
+  flex-direction:column!important;
+  gap:12px!important;
+  scrollbar-width:none!important;
+  -ms-overflow-style:none!important;
+}
+.rms-pro-nav::-webkit-scrollbar{width:0!important;height:0!important;display:none!important;}
+.rms-pro-nav-group{display:flex!important;flex-direction:column!important;gap:6px!important;}
+.rms-pro-nav-group-title{
+  margin:0!important;
+  padding:0 10px!important;
+  font-size:11px!important;
+  font-weight:840!important;
+  letter-spacing:.065em!important;
+  text-transform:uppercase!important;
+  color:rgba(203,213,225,.70)!important;
+}
+.rms-pro-nav-list{display:flex!important;flex-direction:column!important;gap:5px!important;}
+.rms-pro-nav-item{
+  width:100%!important;
+  min-height:38px!important;
+  height:38px!important;
+  padding:0 10px!important;
+  border-radius:11px!important;
+  display:flex!important;
+  align-items:center!important;
+  gap:11px!important;
+  color:rgba(241,245,249,.92)!important;
+  background:transparent!important;
+  border:1px solid transparent!important;
+  box-shadow:none!important;
+  transform:none!important;
+  font-size:14px!important;
+  line-height:1.05!important;
+  font-weight:680!important;
+  letter-spacing:-.012em!important;
+  text-align:left!important;
+  transition:background .16s ease,border-color .16s ease,color .16s ease!important;
+}
+.rms-pro-nav-item:hover{
+  background:rgba(59,130,246,.10)!important;
+  border-color:rgba(96,165,250,.20)!important;
+  color:#dbeafe!important;
+  transform:none!important;
+  box-shadow:none!important;
+}
+.rms-pro-nav-item.active,
+.rms-pro-nav-item:focus-visible{
+  background:rgba(37,99,235,.20)!important;
+  border-color:rgba(96,165,250,.38)!important;
+  color:#8ab4ff!important;
+  box-shadow:inset 3px 0 0 #2563eb, 0 10px 24px rgba(2,6,23,.12)!important;
+  transform:none!important;
+}
+.rms-pro-nav-icon{
+  width:24px!important;
+  height:24px!important;
+  min-width:24px!important;
+  border-radius:8px!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  background:rgba(255,255,255,.055)!important;
+  color:currentColor!important;
+  font-size:0!important;
+}
+.rms-pro-nav-icon svg{width:18px!important;height:18px!important;stroke-width:1.9!important;}
+
+.rms-pro-sidebar-bottom{
+  flex:0 0 auto!important;
+  margin-top:0!important;
+  padding:10px 2px 0!important;
+  display:flex!important;
+  flex-direction:column!important;
+  gap:8px!important;
+  border-top:1px solid rgba(148,163,184,.14)!important;
+  background:linear-gradient(180deg,rgba(3,18,37,0),rgba(3,18,37,.44))!important;
+}
+.rms-pro-restaurant-select{display:none!important;}
+.rms-pro-user-card{
+  min-height:54px!important;
+  padding:9px 10px!important;
+  border-radius:14px!important;
+  border:1px solid rgba(148,163,184,.18)!important;
+  background:rgba(15,23,42,.23)!important;
+  display:flex!important;
+  align-items:center!important;
+  gap:10px!important;
+  overflow:hidden!important;
+}
+.rms-pro-avatar{
+  width:34px!important;
+  height:34px!important;
+  min-width:34px!important;
+  border-radius:999px!important;
+  background:#e5edf7!important;
+  color:#07172d!important;
+  font-size:16px!important;
+  font-weight:800!important;
+  position:relative!important;
+}
+.rms-pro-avatar:after{
+  content:"";
+  position:absolute;
+  right:-1px;
+  bottom:1px;
+  width:10px;
+  height:10px;
+  border-radius:999px;
+  background:#22c55e;
+  border:2px solid #06172d;
+}
+.rms-pro-user-name{
+  font-size:12px!important;
+  font-weight:790!important;
+  color:#fff!important;
+  max-width:150px!important;
+  white-space:nowrap!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+}
+.rms-pro-user-role{
+  font-size:10.5px!important;
+  color:rgba(226,232,240,.66)!important;
+  margin-top:2px!important;
+}
+.rms-pro-logout{
+  min-height:36px!important;
+  height:36px!important;
+  width:100%!important;
+  border-radius:12px!important;
+  border:1px solid rgba(148,163,184,.18)!important;
+  background:rgba(15,23,42,.24)!important;
+  color:rgba(241,245,249,.90)!important;
+  font-size:13px!important;
+  font-weight:760!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  margin:0!important;
+}
+.rms-pro-logout:hover{background:rgba(59,130,246,.10)!important;border-color:rgba(96,165,250,.20)!important;transform:none!important;}
+
+.rms-pro-main.main{
+  background:
+    radial-gradient(circle at 100% 0%,rgba(59,130,246,.08),transparent 32%),
+    linear-gradient(180deg,#ffffff 0%,#f2f6fb 100%)!important;
+  color:#0f172a!important;
+}
+.rms-pro-topbar{
+  background:rgba(255,255,255,.88)!important;
+  border-bottom:1px solid rgba(203,213,225,.72)!important;
+  box-shadow:0 10px 30px rgba(15,23,42,.035)!important;
+}
+.card,.module-placeholder{
+  background:rgba(255,255,255,.94)!important;
+  border:1px solid rgba(203,213,225,.72)!important;
+  box-shadow:0 18px 52px rgba(15,23,42,.055)!important;
+}
+
+/* Login screen aligned with new RMS Pro identity */
+.login-screen.theme-executive{
+  min-height:100vh!important;
+  display:grid!important;
+  place-items:center!important;
+  padding:28px!important;
+  background:
+    radial-gradient(circle at 12% 10%,rgba(37,99,235,.10),transparent 32%),
+    radial-gradient(circle at 90% 90%,rgba(245,184,86,.10),transparent 28%),
+    linear-gradient(135deg,#f8fbff 0%,#eef4fb 100%)!important;
+}
+.login-screen.theme-executive:before{
+  content:"";
+  position:fixed;
+  inset:0;
+  pointer-events:none;
+  background-image:linear-gradient(rgba(15,23,42,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(15,23,42,.035) 1px,transparent 1px);
+  background-size:44px 44px;
+  mask-image:radial-gradient(circle at 50% 40%,black,transparent 72%);
+}
+.login-screen.theme-executive .login-card{
+  width:min(440px,calc(100vw - 40px))!important;
+  border-radius:28px!important;
+  padding:32px!important;
+  background:rgba(255,255,255,.92)!important;
+  border:1px solid rgba(203,213,225,.74)!important;
+  box-shadow:0 28px 80px rgba(15,23,42,.13)!important;
+  backdrop-filter:blur(18px)!important;
+  align-items:stretch!important;
+}
+.rms-brandmark.login{
+  width:106px!important;
+  height:106px!important;
+  margin:0 auto 14px!important;
+  border-radius:28px!important;
+  background:linear-gradient(135deg,#0b2340,#06172d)!important;
+  box-shadow:0 22px 52px rgba(15,23,42,.18)!important;
+}
+.rms-brandmark.login .rms-logo-svg{width:106px!important;height:106px!important;}
+.login-title{
+  text-align:center!important;
+  color:#07172d!important;
+  font-size:42px!important;
+  line-height:1!important;
+  letter-spacing:-.06em!important;
+  margin:0!important;
+  font-weight:800!important;
+}
+.login-subtitle{
+  text-align:center!important;
+  color:#334155!important;
+  text-transform:uppercase!important;
+  font-weight:760!important;
+  letter-spacing:.05em!important;
+  margin:4px 0 16px!important;
+  font-size:12px!important;
+}
+.login-screen.theme-executive .login-card > p:not(.login-subtitle):not(.bad){
+  text-align:center!important;
+  color:#64748b!important;
+  margin:0 0 8px!important;
+}
+.login-screen.theme-executive label{color:#334155!important;font-weight:730!important;font-size:12px!important;}
+.login-screen.theme-executive input,
+.login-screen.theme-executive select{
+  min-height:46px!important;
+  border-radius:13px!important;
+  border:1px solid rgba(203,213,225,.84)!important;
+  background:#fff!important;
+  color:#0f172a!important;
+  box-shadow:0 8px 20px rgba(15,23,42,.035)!important;
+}
+.login-screen.theme-executive .primary{
+  min-height:48px!important;
+  border-radius:14px!important;
+  background:linear-gradient(135deg,#082044,#06172d)!important;
+  color:#fff!important;
+  font-size:15px!important;
+  box-shadow:0 18px 40px rgba(15,23,42,.18)!important;
+}
+.login-screen.theme-executive .primary:hover{transform:none!important;box-shadow:0 18px 40px rgba(15,23,42,.18)!important;}
+
+@media(max-width:900px){
+  .rms-pro-shell .sidebar.rms-pro-sidebar{width:100%!important;max-width:none!important;height:auto!important;min-height:0!important;position:relative!important;}
+  .rms-pro-nav{max-height:55vh!important;}
+}
+
+  `}</style>
+}
+
+
+function ProductLogo({ compact = false, login = false }) {
+  return <div className={`rms-brandmark ${compact ? 'compact' : ''} ${login ? 'login' : ''}`}>
+    <svg className="rms-logo-svg" viewBox="0 0 128 128" aria-hidden="true">
+      <defs>
+        <linearGradient id="rmsLogoShell" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#2f6df6" />
+          <stop offset="100%" stopColor="#071a31" />
+        </linearGradient>
+        <linearGradient id="rmsLogoLine" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#f7d38a" />
+          <stop offset="100%" stopColor="#f5b856" />
+        </linearGradient>
+        <filter id="rmsLogoGlow" x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow dx="0" dy="10" stdDeviation="10" floodColor="#2563eb" floodOpacity="0.22" />
+        </filter>
+      </defs>
+      <rect x="10" y="10" width="108" height="108" rx="28" fill="url(#rmsLogoShell)" filter="url(#rmsLogoGlow)" />
+      <path d="M64 22 98 41v46L64 106 30 87V41L64 22Z" fill="rgba(2,6,23,.16)" stroke="url(#rmsLogoLine)" strokeWidth="5" strokeLinejoin="round" />
+      <path d="M46 61c-5.8-2.6-9.5-7.4-9.5-13 0-8.3 8-15 17.8-15 3.5 0 6.8.9 9.5 2.3 2.7-1.4 6-2.3 9.5-2.3C83 33 91 39.7 91 48c0 5.6-3.7 10.4-9.5 13" fill="none" stroke="#fff7e8" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M45 62h38v16c0 7.8-6.4 14-14.2 14h-9.6C51.4 92 45 85.8 45 78V62Z" fill="none" stroke="#fff7e8" strokeWidth="5" strokeLinejoin="round" />
+      <path d="M51 75h26" stroke="url(#rmsLogoLine)" strokeWidth="5" strokeLinecap="round" />
+      <path d="M42 96h44" stroke="url(#rmsLogoLine)" strokeWidth="5" strokeLinecap="round" />
+    </svg>
+  </div>
+}
+
+function normalizeLoginCandidates(login) {
+  const value = String(login || '').trim().toLowerCase()
+  if (!value) return []
+  if (value.includes('@')) return [value]
+  return [`${value}@rms.local.az`, `${value}@nms.local.az`]
+}
+
+function Login({ lang, setLang, t }) {
+  const [login, setLogin] = useState('')
+  const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
+  const [error, setError] = useState('')
+
+  async function signIn() {
+    setError('')
+    const stopProgress = startGlobalProgress('Вход в RMS...')
+    try {
+      const rawLogin = String(login || '').trim()
+      const rawPassword = String(password || '')
+      const loginGuard = rmsGetLoginGuardState(rawLogin)
+      const failLogin = (message = t('login_error')) => {
+        const failedState = rmsRegisterFailedLogin(rawLogin)
+        stopProgress()
+        if (failedState.locked) {
+          return setError(`Слишком много неверных попыток. Вход заблокирован на ${rmsFormatLockTime(failedState.remainingMs)}.`)
+        }
+        const left = Math.max(0, RMS_LOGIN_MAX_FAILED_ATTEMPTS - failedState.attempts)
+        return setError(`${message}. Осталось попыток: ${left}`)
+      }
+
+      if (!rawLogin || !rawPassword) { stopProgress(); return setError(t('login_error')) }
+      if (loginGuard.locked) {
+        stopProgress()
+        return setError(`Слишком много неверных попыток. Вход заблокирован на ${rmsFormatLockTime(loginGuard.remainingMs)}.`)
+      }
+
+      const normalizedLogin = normalizeInternalLogin(rawLogin)
+      await hydrateRmsInternalAuthFromCloud()
+      const internalUsers = getInternalUsers()
+      const internalUser = normalizedLogin
+        ? (internalUsers[normalizedLogin] || Object.values(internalUsers).find(u =>
+            normalizeInternalLogin(u?.login || u?.email) === normalizedLogin ||
+            String(u?.id || '') === normalizedLogin
+          ))
+        : null
+
+      if (internalUser) {
+        if (internalUser.is_active === false) { stopProgress(); return setError('Пользователь отключён') }
+        if (String(internalUser.password || '') !== rawPassword) return failLogin(t('login_error'))
+
+        const loginName = internalUser.login || normalizedLogin
+        rmsClearLoginGuard(rawLogin)
+        setInternalSessionStorage({
+          rms_internal: true,
+          access_token: `rms-internal-${internalUser.id || loginName}`,
+          user: {
+            id: internalUser.id || `rms-${loginName}`,
+            email: `${loginName}@rms.internal`,
+            login_name: loginName
+          }
+        })
+        window.dispatchEvent(new Event('rms-user-settings-updated'))
+        window.location.reload()
+        return
+      }
+
+      if (!rawLogin.includes('@') || /@(rms|nms)\.local\.az$/i.test(rawLogin) || /@rms\.internal$/i.test(rawLogin)) {
+        return failLogin('Пользователь не найден или пароль неверный. Создайте пользователя заново в Настройки → Пользователи')
+      }
+
+      const { error } = await supabase.auth.signInWithPassword({ email: rawLogin.toLowerCase(), password: rawPassword })
+      if (!error) {
+        rmsClearLoginGuard(rawLogin)
+        stopProgress()
+        setInternalSessionStorage(null)
+        return
+      }
+
+      return failLogin(error?.message || t('login_error'))
+    } catch (e) {
+      stopProgress()
+      setError(e?.message || t('login_error'))
+    }
+  }
+
+  function handleLoginKeyDown(e) {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      signIn()
+    }
+  }
+
+  return <div className="login-screen theme-executive">
+    <ThemeStyles />
+    <ResponsiveAndSettingsStyles />
+    <RMSProV6Styles />
+    <GlobalProgressOverlay />
+    <div className="login-card">
+    <ProductLogo login />
+    <h1 className="login-title">{t('system_title')}</h1>
+    <p className="login-subtitle">{t('brand_subtitle')}</p>
+    <p>{t('login_hint')}</p>
+    <label><span>{t('language_label')}</span><select value={lang} onChange={e => setLang(e.target.value)}><option value="ru">Русский</option><option value="az">Azərbaycan</option></select></label>
+    <label><span>{t('login_label')}</span><input value={login} onChange={e => setLogin(e.target.value)} onKeyDown={handleLoginKeyDown} placeholder="" autoComplete="username" /></label>
+    <label><span>{t('password_label')}</span><input type={showPassword ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} onKeyDown={handleLoginKeyDown} autoComplete="current-password" /></label>
+    <label className="checkbox-row"><input type="checkbox" checked={showPassword} onChange={e => setShowPassword(e.target.checked)} /> {t('show_password')}</label>
+    {error && <p className="bad">{error}</p>}
+    <button className="primary" onClick={signIn}>{t('login_button')}</button>
+  </div></div>
+}
+
+function useBranches() {
+  const [branches, setBranches] = useState([])
+  useEffect(() => {
+    let alive = true
+
+    async function loadBranches() {
+      const { data, error } = await supabase.from('branches').select('*').eq('is_active', true).order('name')
+      if (!error && data?.length) {
+        if (alive) setBranches(data || [])
+        return
+      }
+
+      const now = new Date()
+      const { data: snap } = await fetchRmsStaffWorkspaceSnapshot(monthStart(now.getFullYear(), now.getMonth() + 1))
+      const map = new Map()
+      ;(snap?.employees || []).forEach(e => {
+        if (e.branch_id) {
+          map.set(e.branch_id, {
+            id: e.branch_id,
+            name: e.branches?.name || e.branch_name || 'Филиал',
+            is_active: true
+          })
+        }
+      })
+
+      if (alive) setBranches(Array.from(map.values()).sort((a, b) => String(a.name).localeCompare(String(b.name))))
+    }
+
+    loadBranches()
+    return () => { alive = false }
+  }, [])
+  return branches
+}
+
+function Revenue({ t, focusExpense }) {
+  const branches = useBranches()
+  const [branchId, setBranchId] = useState('')
+  const [date, setDate] = useState(todayISO())
+  const [form, setForm] = useState({ cash_amount: '', bank_amount: '', wolt_amount: '', comment: '' })
+  const [inflowForm, setInflowForm] = useState({ amount: '', source: '', comment: '' })
+  const [cashForm, setCashForm] = useState({ opening_cash: '', counted_cash: '', comment: '' })
+  const [manualOpeningCashEnabled, setManualOpeningCashEnabled] = useState(false)
+  const [serviceForm, setServiceForm] = useState({ enabled: false, service_percent: '10', staff_cost_percent: '4' })
+  const [cashRow, setCashRow] = useState(null)
+  const [revenueEntries, setRevenueEntries] = useState([])
+  const [expenses, setExpenses] = useState([])
+  const [advanceExpenses, setAdvanceExpenses] = useState([])
+  const [inflows, setInflows] = useState([])
+  const [categories, setCategories] = useState([])
+  const [monthStats, setMonthStats] = useState({ cash: 0, bank: 0, wolt: 0, revenue: 0, expenses: 0, inflows: 0, serviceCharge: 0, serviceCost: 0 })
+  const [logs, setLogs] = useState([])
+  const [message, setMessage] = useState('')
+
+  useEffect(() => {
+    if (!focusExpense?.date || !focusExpense?.branchId) return
+    setBranchId(focusExpense.branchId)
+    setDate(focusExpense.date)
+    const name = focusExpense.name ? ` · ${focusExpense.name}` : ''
+    const amount = focusExpense.amount !== '' && focusExpense.amount != null ? ` · ${fmt(focusExpense.amount)} AZN` : ''
+    setMessage(`Открыта статья расхода из финансов: ${focusExpense.date}${name}${amount}`)
+  }, [focusExpense?.ts])
+
+  useEffect(() => { if (!branchId && branches[0]) setBranchId(branches[0].id) }, [branches, branchId])
+  useEffect(() => { load() }, [branchId, date])
+  useEffect(() => {
+    setForm({ cash_amount: '', bank_amount: '', wolt_amount: '', comment: '' })
+  }, [branchId, date])
+  useEffect(() => {
+    if (!branchId || !date) return
+    recalcExistingBazarExpenseForDate(date, true)
+      .then(() => load())
+      .catch(() => {})
+  }, [date])
+
+  async function currentUserMeta() {
+    const { data } = await supabase.auth.getUser()
+    return { user_id: data?.user?.id || null, user_email: data?.user?.email || null }
+  }
+
+  async function writeLog({ entity_type, record_id, action, field_name = null, old_value = null, new_value = null }) {
+    if (!branchId || !record_id) return
+    const user = await currentUserMeta()
+    await supabase.from('finance_operation_log').insert({ entity_type, record_id, branch_id: branchId, operation_date: date, action, field_name, old_value: old_value == null ? null : String(old_value), new_value: new_value == null ? null : String(new_value), ...user })
+  }
+
+  function expenseNameFromRow(row) {
+    return row?.expense_categories?.name || row?.custom_category || ''
+  }
+
+  function expenseNameFromPatch(row, patch) {
+    if (patch?.category_id) {
+      const category = categories.find(c => String(c.id) === String(patch.category_id))
+      return category?.name || row?.expense_categories?.name || ''
+    }
+    if (patch && Object.prototype.hasOwnProperty.call(patch, 'custom_category')) return patch.custom_category || ''
+    return expenseNameFromRow(row)
+  }
+
+  function hydrateExpenseForLocalState(row, patch) {
+    const next = { ...row, ...patch }
+    if (patch && Object.prototype.hasOwnProperty.call(patch, 'category_id')) {
+      if (patch.category_id) {
+        const category = categories.find(c => String(c.id) === String(patch.category_id))
+        next.expense_categories = category ? { name: category.name } : row?.expense_categories || null
+        next.custom_category = null
+      } else {
+        next.expense_categories = null
+      }
+    }
+    if (patch && Object.prototype.hasOwnProperty.call(patch, 'custom_category') && patch.custom_category) {
+      next.expense_categories = null
+    }
+    return next
+  }
+
+  async function bazarExpenseIdsForDates(dates, includeId = null) {
+    const uniqueDates = [...new Set((dates || []).filter(Boolean))]
+    const ids = new Set(includeId ? [includeId] : [])
+    if (!uniqueDates.length) return [...ids]
+
+    const { data, error } = await supabase
+      .from('daily_expenses')
+      .select('id, custom_category, category_id, expense_categories(name)')
+      .in('expense_date', uniqueDates)
+      .is('deleted_at', null)
+
+    if (error) throw error
+    ;(data || []).forEach(row => {
+      const categoryName = row.expense_categories?.name || ''
+      if (isBazarExpenseName(row.custom_category) || isBazarExpenseName(categoryName)) ids.add(row.id)
+    })
+    return [...ids]
+  }
+
+
+  async function revenueDistributionForDate(targetDate) {
+    const { data: entryRows, error: entryError } = await supabase
+      .from('daily_revenue_entries')
+      .select('branch_id, cash_amount, bank_amount, wolt_amount')
+      .eq('revenue_date', targetDate)
+      .is('deleted_at', null)
+
+    if (entryError) throw entryError
+
+    const revenueMap = new Map()
+
+    ;(entryRows || []).forEach(row => {
+      if (!row.branch_id) return
+      const revenue = parseNum(row.cash_amount) + parseNum(row.bank_amount) + parseNum(row.wolt_amount)
+      revenueMap.set(row.branch_id, parseNum(revenueMap.get(row.branch_id)) + revenue)
+    })
+
+    let revenueByBranch = [...revenueMap.entries()]
+      .map(([branch_id, revenue]) => ({ branch_id, revenue }))
+      .filter(row => row.branch_id && row.revenue > 0)
+
+    if (!revenueByBranch.length) {
+      const { data: revenueRows, error: revenueError } = await supabase
+        .from('daily_revenue')
+        .select('branch_id, cash_amount, bank_amount, wolt_amount')
+        .eq('revenue_date', targetDate)
+        .is('deleted_at', null)
+
+      if (revenueError) throw revenueError
+
+      revenueByBranch = (revenueRows || [])
+        .map(row => ({
+          branch_id: row.branch_id,
+          revenue: parseNum(row.cash_amount) + parseNum(row.bank_amount) + parseNum(row.wolt_amount)
+        }))
+        .filter(row => row.branch_id && row.revenue > 0)
+    }
+
+    const totalRevenue = revenueByBranch.reduce((sum, row) => sum + row.revenue, 0)
+    return { revenueByBranch, totalRevenue }
+  }
+
+
+  async function distributeBazarExpense({ sourceExpense, nextExpense, user }) {
+    const targetDate = nextExpense.expense_date || date
+    const amount = parseNum(nextExpense.amount)
+    if (!targetDate || amount <= 0) throw new Error('Введите сумму расхода Базар')
+
+    const { revenueByBranch, totalRevenue } = await revenueDistributionForDate(targetDate)
+
+    if (totalRevenue <= 0) throw new Error('За выбранную дату нет выручки по филиалам. Сначала внесите выручку, затем сохраните Базар.')
+
+    const bazarCategoryId = nextExpense.category_id && isBazarExpenseName(expenseNameFromPatch(sourceExpense, nextExpense))
+      ? nextExpense.category_id
+      : null
+    const commentBase = nextExpense.comment || 'Автоматически распределено по доле выручки'
+
+    const rows = revenueByBranch.map(row => {
+      const share = row.revenue / totalRevenue
+      return {
+        branch_id: row.branch_id,
+        expense_date: targetDate,
+        category_id: bazarCategoryId,
+        custom_category: bazarCategoryId ? null : 'Базар',
+        amount: Number((amount * share).toFixed(2)),
+        comment: `${commentBase} · доля выручки ${pct(share * 100)} · выручка филиала ${fmt(row.revenue)} AZN`,
+        created_by: user.user_id,
+        updated_by: user.user_id,
+        deleted_at: null,
+        deleted_by: null
+      }
+    })
+
+    const distributedTotal = rows.reduce((sum, row) => sum + parseNum(row.amount), 0)
+    const diff = Number((amount - distributedTotal).toFixed(2))
+    if (rows.length && diff !== 0) rows[0].amount = Number((parseNum(rows[0].amount) + diff).toFixed(2))
+
+    const idsToDelete = await bazarExpenseIdsForDates([sourceExpense?.expense_date, targetDate], sourceExpense?.id)
+    if (idsToDelete.length) {
+      const { error: deleteError } = await supabase.from('daily_expenses').delete().in('id', idsToDelete)
+      if (deleteError) throw deleteError
+    }
+
+    const { data: inserted, error: insertError } = await supabase
+      .from('daily_expenses')
+      .insert(rows)
+      .select('id, branch_id, amount')
+
+    if (insertError) throw insertError
+    return inserted || []
+  }
+
+
+  async function recalcExistingBazarExpenseForDate(targetDate, force = false) {
+    if (!targetDate) return
+
+    const { data: existingRows, error } = await supabase
+      .from('daily_expenses')
+      .select('id, branch_id, expense_date, category_id, custom_category, amount, comment, expense_categories(name)')
+      .eq('expense_date', targetDate)
+      .is('deleted_at', null)
+
+    if (error) throw error
+
+    const bazarRows = (existingRows || []).filter(row => {
+      const categoryName = row.expense_categories?.name || ''
+      return isBazarExpenseName(row.custom_category) || isBazarExpenseName(categoryName)
+    })
+
+    if (!bazarRows.length) return
+
+    const totalBazar = bazarRows.reduce((sum, row) => sum + parseNum(row.amount), 0)
+    if (totalBazar <= 0) return
+
+    const { revenueByBranch, totalRevenue } = await revenueDistributionForDate(targetDate)
+    if (totalRevenue <= 0 || !revenueByBranch.length) return
+
+    const user = await currentUserMeta()
+    const bazarCategoryId = bazarRows.find(row => row.category_id)?.category_id || null
+
+    const rows = revenueByBranch.map(row => {
+      const share = row.revenue / totalRevenue
+      return {
+        branch_id: row.branch_id,
+        expense_date: targetDate,
+        category_id: bazarCategoryId,
+        custom_category: bazarCategoryId ? null : 'Базар',
+        amount: Number((totalBazar * share).toFixed(2)),
+        comment: `Автоперераспределение Базар · доля выручки ${pct(share * 100)} · выручка филиала ${fmt(row.revenue)} AZN`,
+        created_by: user.user_id,
+        updated_by: user.user_id,
+        deleted_at: null,
+        deleted_by: null
+      }
+    })
+
+    const distributedTotal = rows.reduce((sum, row) => sum + parseNum(row.amount), 0)
+    const diff = Number((totalBazar - distributedTotal).toFixed(2))
+    if (rows.length && diff !== 0) rows[0].amount = Number((parseNum(rows[0].amount) + diff).toFixed(2))
+
+    const idsToDelete = bazarRows.map(row => row.id)
+    if (idsToDelete.length) {
+      const { error: deleteError } = await supabase.from('daily_expenses').delete().in('id', idsToDelete)
+      if (deleteError) throw deleteError
+    }
+
+    const { error: insertError } = await supabase.from('daily_expenses').insert(rows)
+    if (insertError) throw insertError
+  }
+
+  async function recalcDailyRevenueAggregate(activeBranchId = branchId, activeDate = date) {
+    if (!activeBranchId) return
+    const { data: rows } = await supabase.from('daily_revenue_entries').select('cash_amount, bank_amount, wolt_amount').eq('branch_id', activeBranchId).eq('revenue_date', activeDate).is('deleted_at', null)
+    const cash = (rows || []).reduce((s, r) => s + parseNum(r.cash_amount), 0)
+    const bank = (rows || []).reduce((s, r) => s + parseNum(r.bank_amount), 0)
+    const wolt = (rows || []).reduce((s, r) => s + parseNum(r.wolt_amount), 0)
+    const user = await currentUserMeta()
+    await supabase.from('daily_revenue').upsert({ branch_id: activeBranchId, revenue_date: activeDate, cash_amount: cash, bank_amount: bank, wolt_amount: wolt, comment: 'Автосумма из строк выручки', updated_by: user.user_id, deleted_at: null, deleted_by: null }, { onConflict: 'branch_id,revenue_date' })
+    await recalcExistingBazarExpenseForDate(activeDate, true)
+  }
+
+  async function forceRecalcBazarForCurrentDate() {
+    try {
+      setMessage('')
+      await recalcExistingBazarExpenseForDate(date, true)
+      await load()
+      setMessage('Базар перераспределён по актуальной выручке всех филиалов')
+    } catch (error) {
+      setMessage(error?.message || 'Не удалось перераспределить Базар')
+    }
+  }
+
+  function expenseGroupName(name) {
+    const value = String(name || '').toLowerCase()
+    if (value.includes('аренд')) return 'rent'
+    if (value.includes('коммун') || value.includes('свет') || value.includes('газ') || value.includes('вода') || value.includes('элект')) return 'utilities'
+    if (value.includes('упаков') || value.includes('тара') || value.includes('однораз')) return 'packaging'
+    if (value.includes('маркет') || value.includes('реклам') || value.includes('smm')) return 'marketing'
+    if (isBazarExpenseName(value) || value.includes('market') || value.includes('продукт')) return 'food_market'
+    if (value.includes('ремонт') || value.includes('тех') || value.includes('обслуж')) return 'maintenance'
+    return 'other'
+  }
+
+  function expenseGroupTotal(rows, group) {
+    return (rows || []).filter(r => expenseGroupName(r.name) === group).reduce((s, r) => s + parseNum(r.amount), 0)
+  }
+
+  function purchaseFoodTotal(rows) {
+    return (rows || []).reduce((sum, p) => {
+      const items = p.supplier_purchase_items || []
+      if (items.length) {
+        return sum + items.reduce((itemSum, i) => {
+          const cat = i.supplier_products?.category || ''
+          const isFood = cat === 'Бар' || cat === 'Кухня'
+          return itemSum + (isFood ? parseNum(i.total_amount) : 0)
+        }, 0)
+      }
+      return sum + parseNum(p.total_amount)
+    }, 0)
+  }
+
+  function suggestedStaffLimit(position, revenue) {
+    const group = positionGroup(position)
+    if (!revenue) return 0
+    if (group === 'Менеджеры') return revenue > 220000 ? 3 : revenue > 120000 ? 2 : 1
+    if (group === 'Бар') return Math.max(1, Math.ceil(revenue / 45000))
+    if (group === 'Повар') return Math.max(1, Math.ceil(revenue / 55000))
+    if (group === 'Стьюарт') return revenue > 90000 ? 2 : revenue > 30000 ? 1 : 0
+    return Math.max(1, Math.ceil(revenue / 80000))
+  }
+
+  function addAiPercent(rows, { branchName, indicator, amount, revenue, limit, recommendation }) {
+    const value = parseNum(amount)
+    if (value <= 0) return
+    if (revenue <= 0) {
+      rows.push({
+        branchName,
+        indicator,
+        fact: `нет выручки · ${fmt(value)} AZN`,
+        norm: `≤ ${fmt(limit)}% от выручки`,
+        deviation: 'нет базы для %',
+        level: 'critical',
+        recommendation: `За месяц нет выручки, но есть расход. ${recommendation}`
+      })
+      return
+    }
+    const actual = value / revenue * 100
+    const deviation = actual - limit
+    if (actual > limit) {
+      rows.push({
+        branchName,
+        indicator,
+        fact: `${pct(actual)} · ${fmt(value)} AZN`,
+        norm: `≤ ${fmt(limit)}%`,
+        deviation: `+${pct(deviation)}`,
+        level: deviation >= 8 ? 'critical' : 'warning',
+        recommendation
+      })
+    }
+  }
+
+  function buildAiForBranch({ branch, branchStats, expenseRows, purchaseRows, employeeRows }) {
+    const rows = []
+    const branchName = branch?.name || 'Все филиалы'
+    const revenue = parseNum(branchStats?.revenue)
+    const operatingExpenses = parseNum(branchStats?.expenses)
+    const salaryAmount = parseNum(branchStats?.salary)
+    const serviceAmount = parseNum(branchStats?.serviceCost)
+    const taxAmount = parseNum(branchStats?.tax)
+    const net = parseNum(branchStats?.net)
+    const totalBurden = operatingExpenses + salaryAmount + serviceAmount + taxAmount
+
+    if (revenue <= 0 && totalBurden > 0) {
+      rows.push({
+        branchName,
+        indicator: 'Нет выручки при наличии расходов',
+        fact: `${fmt(totalBurden)} AZN расходов`,
+        norm: 'Выручка должна покрывать расходы',
+        deviation: `-${fmt(totalBurden)} AZN`,
+        level: 'critical',
+        recommendation: 'Проверь корректность введённой выручки за месяц. Если данные верны — филиал убыточен и требует срочных действий.'
+      })
+    }
+
+    const marketFoodAmount = expenseGroupTotal(expenseRows, 'food_market')
+    const foodAmount = purchaseFoodTotal(purchaseRows) + marketFoodAmount
+    addAiPercent(rows, {
+      branchName,
+      indicator: 'Food cost / закупки Бар + Кухня + Базар',
+      amount: foodAmount,
+      revenue,
+      limit: 35,
+      recommendation: 'Проверить рост закупочных цен, нормы техкарт, списания, порции и позиции с низкой маржой.'
+    })
+
+    addAiPercent(rows, {
+      branchName,
+      indicator: 'Фонд зарплаты',
+      amount: parseNum(branchStats?.salary),
+      revenue,
+      limit: 25,
+      recommendation: 'Сверить график смен с фактической выручкой, переработки и количество сотрудников по должностям.'
+    })
+
+    addAiPercent(rows, {
+      branchName,
+      indicator: 'Service charge персоналу',
+      amount: parseNum(branchStats?.serviceCost),
+      revenue,
+      limit: 5,
+      recommendation: 'Проверить процент service charge персоналу и соответствие фактической выручке.'
+    })
+
+    const rent = expenseGroupTotal(expenseRows, 'rent')
+    if (rent > 0) addAiPercent(rows, {
+      branchName,
+      indicator: 'Аренда',
+      amount: rent,
+      revenue,
+      limit: 12,
+      recommendation: 'Аренда выше референса: нужен рост выручки, пересмотр условий или компенсация высокой маржей.'
+    })
+    if (rent > 0 && revenue > 0 && rent >= revenue) {
+      rows.push({
+        branchName,
+        indicator: 'Аренда выше выручки',
+        fact: `${fmt(rent)} AZN аренда · ${fmt(revenue)} AZN выручка`,
+        norm: 'Аренда должна быть значительно ниже выручки',
+        deviation: `+${fmt(rent - revenue)} AZN`,
+        level: 'critical',
+        recommendation: 'Это критическое отклонение. Нужно либо поднять оборот, либо пересмотреть аренду/формат филиала.'
+      })
+    }
+    if (revenue > 0 && totalBurden > revenue) {
+      rows.push({
+        branchName,
+        indicator: 'Общие расходы выше выручки',
+        fact: `${fmt(totalBurden)} AZN расходов · ${fmt(revenue)} AZN выручка`,
+        norm: 'Расходы < выручки',
+        deviation: `+${fmt(totalBurden - revenue)} AZN`,
+        level: 'critical',
+        recommendation: 'Филиал сработал в минус. Проверь аренду, зарплаты, закупки и корректность загрузки выручки.'
+      })
+    }
+    if (net < 0) {
+      rows.push({
+        branchName,
+        indicator: 'Чистый убыток месяца',
+        fact: `${fmt(net)} AZN`,
+        norm: '≥ 0 AZN',
+        deviation: `-${fmt(Math.abs(net))} AZN`,
+        level: Math.abs(net) >= Math.max(1000, revenue * 0.1) ? 'critical' : 'warning',
+        recommendation: 'Проверь показатели месяца и причины убытка. ИИ теперь должен показывать этот сигнал даже если часть процентов выглядит в норме.'
+      })
+    }
+
+    const utilities = expenseGroupTotal(expenseRows, 'utilities')
+    if (utilities > 0) addAiPercent(rows, {
+      branchName,
+      indicator: 'Коммунальные расходы',
+      amount: utilities,
+      revenue,
+      limit: 5,
+      recommendation: 'Проверить энергоёмкое оборудование, график работы, утечки и сезонное потребление.'
+    })
+
+    const packaging = expenseGroupTotal(expenseRows, 'packaging')
+    if (packaging > 0) addAiPercent(rows, {
+      branchName,
+      indicator: 'Упаковка / тара',
+      amount: packaging,
+      revenue,
+      limit: 4,
+      recommendation: 'Проверить Wolt/takeaway долю, закупочные цены упаковки и нормы выдачи.'
+    })
+
+    const marketing = expenseGroupTotal(expenseRows, 'marketing')
+    if (marketing > 0) addAiPercent(rows, {
+      branchName,
+      indicator: 'Маркетинг / реклама',
+      amount: marketing,
+      revenue,
+      limit: 5,
+      recommendation: 'Оценить ROMI: оставить только каналы, которые дают измеримую выручку.'
+    })
+
+    const employeesByGroup = new Map()
+    ;(employeeRows || []).forEach(e => {
+      const g = positionGroup(e.position)
+      employeesByGroup.set(g, (employeesByGroup.get(g) || 0) + 1)
+    })
+    employeesByGroup.forEach((count, group) => {
+      const limit = suggestedStaffLimit(group, revenue)
+      if (limit > 0 && count > limit) {
+        rows.push({
+          branchName,
+          indicator: `Штат: ${group}`,
+          fact: `${count} чел.`,
+          norm: `≤ ${limit} чел.`,
+          deviation: `+${count - limit} чел.`,
+          level: count - limit >= 2 ? 'critical' : 'warning',
+          recommendation: 'Проверить необходимость количества сотрудников этой должности относительно оборота и сменности.'
+        })
+      }
+    })
+
+    if (!rows.length) {
+      rows.push({
+        branchName,
+        indicator: 'Отклонения не найдены',
+        fact: 'В норме',
+        norm: 'Референсы соблюдены',
+        deviation: '—',
+        level: 'ok',
+        recommendation: 'Продолжать контроль food cost, зарплат и постоянных расходов до закрытия месяца.'
+      })
+    }
+
+    return rows
+  }
+
+  async function load() {
+    if (!branchId) return
+    const isInternal = Boolean(getInternalSessionStorage()?.rms_internal)
+
+    if (isInternal) {
+      const { data: ws, error } = await fetchRmsRevenueWorkspace(branchId, date)
+      if (!error && ws) {
+        setRevenueEntries(ws.revenue_entries || [])
+        const cash = ws.cash_register || null
+        let openingCash = cash?.opening_cash ?? ''
+        if (!cash && ws.previous_cash) openingCash = ws.previous_cash.counted_cash ?? ws.previous_cash.closing_cash ?? ''
+        setCashRow(cash)
+        setManualOpeningCashEnabled(false)
+        setCashForm({ opening_cash: openingCash, counted_cash: cash?.counted_cash ?? '', comment: cash?.comment ?? '' })
+        setServiceForm({
+          enabled: Boolean(ws.branch_settings?.service_charge_enabled),
+          service_percent: ws.branch_settings?.service_charge_percent ?? '10',
+          staff_cost_percent: ws.branch_settings?.service_staff_cost_percent ?? '4'
+        })
+        setExpenses(ws.expenses || [])
+        setAdvanceExpenses(ws.salary_advances || [])
+        setInflows(ws.inflows || [])
+        setCategories(ws.expense_categories || [])
+        setLogs(ws.logs || [])
+        setMonthStats(ws.month_stats || { cash: 0, bank: 0, wolt: 0, revenue: 0, expenses: 0, inflows: 0, serviceCharge: 0, serviceCost: 0 })
+        return
+      }
+      setMessage(error?.message || 'Нет доступа к выручке')
+    }
+
+    const { data: revEntries } = await supabase.from('daily_revenue_entries').select('*').eq('branch_id', branchId).eq('revenue_date', date).order('created_at')
+    setRevenueEntries(revEntries || [])
+    const { data: cash } = await supabase.from('daily_cash_register').select('*').eq('branch_id', branchId).eq('cash_date', date).maybeSingle()
+    let openingCash = cash?.opening_cash ?? ''
+    if (!cash) {
+      const { data: prevCash } = await supabase
+        .from('daily_cash_register')
+        .select('closing_cash,counted_cash,cash_date')
+        .eq('branch_id', branchId)
+        .lt('cash_date', date)
+        .order('cash_date', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+      openingCash = prevCash ? (prevCash.counted_cash ?? prevCash.closing_cash ?? '') : ''
+    }
+    setCashRow(cash || null)
+    setManualOpeningCashEnabled(false)
+    setCashForm({ opening_cash: openingCash, counted_cash: cash?.counted_cash ?? '', comment: cash?.comment ?? '' })
+    const { data: activeBranch } = await supabase
+      .from('branches')
+      .select('id, service_charge_enabled, service_charge_percent, service_staff_cost_percent')
+      .eq('id', branchId)
+      .maybeSingle()
+    setServiceForm({
+      enabled: Boolean(activeBranch?.service_charge_enabled),
+      service_percent: activeBranch?.service_charge_percent ?? '10',
+      staff_cost_percent: activeBranch?.service_staff_cost_percent ?? '4'
+    })
+    const { data: exp } = await supabase.from('daily_expenses').select('*, expense_categories(name)').eq('branch_id', branchId).eq('expense_date', date).order('created_at')
+    setExpenses(exp || [])
+    const { data: advExp } = await supabase
+      .from('salary_advances')
+      .select('*, employees(full_name, position), branches(name)')
+      .eq('branch_id', branchId)
+      .eq('advance_date', date)
+      .or('is_cancelled.is.null,is_cancelled.eq.false')
+      .order('created_at')
+    setAdvanceExpenses(advExp || [])
+    const { data: inc } = await supabase.from('daily_cash_inflows').select('*').eq('branch_id', branchId).eq('inflow_date', date).order('created_at')
+    setInflows(inc || [])
+    const { data: cats } = await supabase.from('expense_categories').select('*').eq('is_active', true).order('name')
+    setCategories(cats || [])
+    await Promise.all([loadMonthStats(branchId, date), loadLogs(branchId, date)])
+  }
+
+  async function loadLogs(activeBranchId = branchId, activeDate = date) {
+    if (!activeBranchId) return
+    if (getInternalSessionStorage()?.rms_internal) {
+      const { data: ws } = await fetchRmsRevenueWorkspace(activeBranchId, activeDate)
+      setLogs(ws?.logs || [])
+      return
+    }
+    const { data } = await supabase.from('finance_operation_log').select('*').eq('branch_id', activeBranchId).eq('operation_date', activeDate).order('created_at', { ascending: false }).limit(250)
+    setLogs(data || [])
+  }
+
+  async function loadMonthStats(activeBranchId = branchId, activeDate = date) {
+    if (!activeBranchId) return
+    if (getInternalSessionStorage()?.rms_internal) {
+      const { data: ws } = await fetchRmsRevenueWorkspace(activeBranchId, activeDate)
+      setMonthStats(ws?.month_stats || { cash: 0, bank: 0, wolt: 0, revenue: 0, expenses: 0, inflows: 0, serviceCharge: 0, serviceCost: 0 })
+      return
+    }
+    const ym = monthKeyFromDate(activeDate)
+    const start = `${ym}-01`
+    const end = new Date(new Date(start).getFullYear(), new Date(start).getMonth() + 1, 1).toISOString().slice(0, 10)
+    const [{ data: monthRows }, { data: expRows }, { data: advRows }, { data: inflowRows }, { data: svcRows }] = await Promise.all([
+      supabase.from('daily_revenue').select('*').eq('branch_id', activeBranchId).gte('revenue_date', start).lt('revenue_date', end).is('deleted_at', null),
+      supabase.from('daily_expenses').select('amount').eq('branch_id', activeBranchId).gte('expense_date', start).lt('expense_date', end).is('deleted_at', null),
+      supabase.from('salary_advances').select('amount').eq('branch_id', activeBranchId).gte('advance_date', start).lt('advance_date', end).or('is_cancelled.is.null,is_cancelled.eq.false'),
+      supabase.from('daily_cash_inflows').select('amount').eq('branch_id', activeBranchId).gte('inflow_date', start).lt('inflow_date', end).is('deleted_at', null),
+      supabase.from('monthly_branch_service_charge_cost').select('*').eq('branch_id', activeBranchId).eq('month', start)
+    ])
+    const cash = (monthRows || []).reduce((s, r) => s + parseNum(r.cash_amount), 0)
+    const bank = (monthRows || []).reduce((s, r) => s + parseNum(r.bank_amount), 0)
+    const wolt = (monthRows || []).reduce((s, r) => s + parseNum(r.wolt_amount), 0)
+    const expenses = (expRows || []).reduce((s, r) => s + parseNum(r.amount), 0) + (advRows || []).reduce((s, r) => s + parseNum(r.amount), 0)
+    const inflows = (inflowRows || []).reduce((s, r) => s + parseNum(r.amount), 0)
+    const serviceCharge = (svcRows || []).reduce((s, r) => s + parseNum(r.service_charge_amount), 0)
+    const serviceCost = (svcRows || []).reduce((s, r) => s + parseNum(r.staff_cost_amount), 0)
+    setMonthStats({ cash, bank, wolt, revenue: cash + bank + wolt, expenses, inflows, serviceCharge, serviceCost })
+  }
+
+  async function addRevenueEntry() {
+    if (!branchId) return
+    setMessage('')
+    const total = parseNum(form.cash_amount) + parseNum(form.bank_amount) + parseNum(form.wolt_amount)
+    if (!total && !form.comment.trim()) return setMessage('Введите сумму или комментарий')
+
+    if (getInternalSessionStorage()?.rms_internal) {
+      const { error } = await supabase.rpc('rms_add_revenue_entry', {
+        p_branch_id: branchId,
+        p_date: date,
+        p_cash_amount: parseNum(form.cash_amount),
+        p_bank_amount: parseNum(form.bank_amount),
+        p_wolt_amount: parseNum(form.wolt_amount),
+        p_comment: form.comment || null
+      })
+      if (error) return setMessage(error.message)
+      setForm({ cash_amount: '', bank_amount: '', wolt_amount: '', comment: '' })
+      await recalcExistingBazarExpenseForDate(date, true)
+      await load()
+      setMessage('Выручка добавлена и зафиксирована ниже')
+      return
+    }
+
+    const user = await currentUserMeta()
+    const payload = { branch_id: branchId, revenue_date: date, cash_amount: parseNum(form.cash_amount), bank_amount: parseNum(form.bank_amount), wolt_amount: parseNum(form.wolt_amount), comment: form.comment || null, created_by: user.user_id, updated_by: user.user_id }
+    const { data, error } = await supabase.from('daily_revenue_entries').insert(payload).select('*').single()
+    if (error) return setMessage(error.message)
+    setRevenueEntries(prev => [...(prev || []), data])
+    await writeLog({ entity_type: 'revenue', record_id: data.id, action: 'create', field_name: 'daily_revenue_entry', old_value: null, new_value: fmt(total) })
+    await recalcDailyRevenueAggregate(branchId, date)
+    setForm({ cash_amount: '', bank_amount: '', wolt_amount: '', comment: '' })
+    await load()
+    setMessage('Выручка добавлена и зафиксирована ниже')
+  }
+
+  async function updateRevenueEntry(id, patch) {
+    const current = revenueEntries.find(r => r.id === id)
+    if (!current || current.deleted_at) return
+    setRevenueEntries(prev => prev.map(r => r.id === id ? { ...r, ...patch } : r))
+
+    if (getInternalSessionStorage()?.rms_internal) {
+      const next = { ...current, ...patch }
+      const { error } = await supabase.rpc('rms_update_revenue_entry', {
+        p_entry_id: id,
+        p_revenue_date: next.revenue_date || date,
+        p_cash_amount: parseNum(next.cash_amount),
+        p_bank_amount: parseNum(next.bank_amount),
+        p_wolt_amount: parseNum(next.wolt_amount),
+        p_comment: next.comment || null
+      })
+      if (error) return setMessage(error.message)
+      await recalcExistingBazarExpenseForDate(next.revenue_date || date)
+      await load()
+      return
+    }
+
+    const user = await currentUserMeta()
+    const { error } = await supabase.from('daily_revenue_entries').update({ ...patch, updated_by: user.user_id }).eq('id', id)
+    if (error) return setMessage(error.message)
+    for (const [field, value] of Object.entries(patch)) {
+      const before = current[field] ?? ''
+      const after = value ?? ''
+      if (String(before) !== String(after)) await writeLog({ entity_type: 'revenue', record_id: id, action: 'field_update', field_name: field, old_value: before, new_value: after })
+    }
+    await recalcDailyRevenueAggregate(branchId, current.revenue_date || date)
+    if (patch.revenue_date && patch.revenue_date !== current.revenue_date) {
+      await recalcDailyRevenueAggregate(branchId, patch.revenue_date)
+    }
+    await load()
+    await Promise.all([loadMonthStats(branchId, date), loadLogs(branchId, date)])
+  }
+
+  async function cancelRevenueEntry(id) {
+    const current = revenueEntries.find(r => r.id === id)
+    if (!current || current.deleted_at) return
+
+    if (getInternalSessionStorage()?.rms_internal) {
+      const { error } = await supabase.rpc('rms_cancel_revenue_entry', { p_entry_id: id })
+      if (error) return setMessage(error.message)
+      await recalcExistingBazarExpenseForDate(current.revenue_date || date, true)
+      await load()
+      return
+    }
+
+    const user = await currentUserMeta()
+    const payload = { deleted_at: new Date().toISOString(), deleted_by: user.user_id, updated_by: user.user_id }
+    setRevenueEntries(prev => prev.map(r => r.id === id ? { ...r, ...payload } : r))
+    const { error } = await supabase.from('daily_revenue_entries').update(payload).eq('id', id)
+    if (error) return setMessage(error.message)
+    const total = parseNum(current.cash_amount) + parseNum(current.bank_amount) + parseNum(current.wolt_amount)
+    await writeLog({ entity_type: 'revenue', record_id: id, action: 'cancel', field_name: 'daily_revenue_entry', old_value: fmt(total), new_value: '0' })
+    await recalcDailyRevenueAggregate(branchId, date)
+    await Promise.all([loadMonthStats(branchId, date), loadLogs(branchId, date)])
+  }
+
+  async function saveCashRegister() {
+    if (!branchId) return
+    const user = await currentUserMeta()
+    const calculatedClosingCash = parseNum(cashForm.opening_cash) + dailyCashRevenue + dailyInflowTotal - dailyExpenseTotal
+    const payload = {
+      branch_id: branchId,
+      cash_date: date,
+      opening_cash: parseNum(cashForm.opening_cash),
+      closing_cash: calculatedClosingCash,
+      counted_cash: parseNum(cashForm.counted_cash),
+      comment: cashForm.comment || null,
+      updated_by: user.user_id,
+      created_by: cashRow?.created_by || user.user_id
+    }
+    const { data, error } = await supabase.from('daily_cash_register').upsert(payload, { onConflict: 'branch_id,cash_date' }).select('*').single()
+    if (error) return setMessage(error.message)
+    await writeLog({
+      entity_type: 'cash',
+      record_id: data.id,
+      action: cashRow ? 'update' : 'create',
+      field_name: 'cash_register',
+      old_value: cashRow ? `${cashRow.opening_cash}/${cashRow.closing_cash}/${cashRow.counted_cash ?? ''}` : null,
+      new_value: `${data.opening_cash}/${data.closing_cash}/${data.counted_cash ?? ''}`
+    })
+    setCashRow(data)
+    await loadLogs(branchId, date)
+    setMessage('Касса сохранена и зафиксирована в журнале')
+  }
+
+  async function saveServiceCharge() {
+    if (!branchId) return
+    const activeBranch = branches.find(b => b.id === branchId)
+    const payload = {
+      service_charge_enabled: Boolean(serviceForm.enabled),
+      service_charge_percent: parseNum(serviceForm.service_percent),
+      service_staff_cost_percent: parseNum(serviceForm.staff_cost_percent)
+    }
+    const { error } = await supabase.from('branches').update(payload).eq('id', branchId)
+    if (error) return setMessage(error.message)
+    await writeLog({
+      entity_type: 'service_charge',
+      record_id: branchId,
+      action: 'update',
+      field_name: 'service_charge_settings',
+      old_value: activeBranch ? `${activeBranch.service_charge_enabled}/${activeBranch.service_charge_percent}/${activeBranch.service_staff_cost_percent}` : null,
+      new_value: `${payload.service_charge_enabled}/${payload.service_charge_percent}/${payload.service_staff_cost_percent}`
+    })
+    await Promise.all([loadMonthStats(branchId, date), loadLogs(branchId, date)])
+    setMessage('Настройка service charge сохранена для выбранного филиала')
+  }
+
+  async function addExpense() {
+    if (!branchId) return
+    setMessage('')
+    const user = await currentUserMeta()
+    const newName = t('new_expense') || 'Новая статья'
+    const { data, error } = await supabase.from('daily_expenses').insert({
+      branch_id: branchId,
+      expense_date: date,
+      category_id: null,
+      custom_category: newName,
+      amount: 0,
+      created_by: user.user_id,
+      updated_by: user.user_id
+    }).select('*, expense_categories(name)').single()
+    if (error) return setMessage(error.message)
+    setExpenses(prev => [...(prev || []), data])
+    await writeLog({ entity_type: 'expense', record_id: data.id, action: 'create', field_name: 'expense', old_value: null, new_value: newName })
+    await Promise.all([loadMonthStats(branchId, date), loadLogs(branchId, date)])
+    await load()
+    setMessage('Строка расхода добавлена')
+  }
+
+  async function updateExpense(id, patch) {
+    const current = expenses.find(e => e.id === id)
+    if (!current || current.deleted_at) return
+    setMessage('')
+    const user = await currentUserMeta()
+    const nextExpense = hydrateExpenseForLocalState(current, patch)
+    const nextExpenseName = expenseNameFromPatch(current, patch)
+
+    if (isBazarExpenseName(nextExpenseName)) {
+      try {
+        const inserted = await distributeBazarExpense({ sourceExpense: current, nextExpense, user })
+        await writeLog({
+          entity_type: 'expense',
+          record_id: inserted?.[0]?.id || id,
+          action: 'bazar_distribution',
+          field_name: 'Базар',
+          old_value: current.amount,
+          new_value: `${fmt(nextExpense.amount)} распределено между филиалами`
+        })
+        const { data: refreshedExpenses } = await supabase
+          .from('daily_expenses')
+          .select('*, expense_categories(name)')
+          .eq('branch_id', branchId)
+          .eq('expense_date', date)
+          .order('created_at')
+        setExpenses(refreshedExpenses || [])
+        await Promise.all([loadMonthStats(branchId, nextExpense.expense_date || date), loadLogs(branchId, nextExpense.expense_date || date)])
+        await load()
+        setMessage('Базар распределён между филиалами по доле выручки')
+      } catch (error) {
+        setMessage(error?.message || 'Не удалось распределить Базар')
+        const { data: refreshedExpenses } = await supabase
+          .from('daily_expenses')
+          .select('*, expense_categories(name)')
+          .eq('branch_id', branchId)
+          .eq('expense_date', date)
+          .order('created_at')
+        setExpenses(refreshedExpenses || [])
+      }
+      return
+    }
+
+    setExpenses(prev => prev.map(e => e.id === id ? nextExpense : e))
+    const { error } = await supabase.from('daily_expenses').update({ ...patch, updated_by: user.user_id }).eq('id', id)
+    if (error) {
+      setExpenses(prev => prev.map(e => e.id === id ? current : e))
+      return setMessage(error.message)
+    }
+
+    const logTasks = Object.entries(patch).map(([field, value]) => {
+      const before = current[field] ?? ''
+      const after = value ?? ''
+      if (String(before) === String(after)) return null
+      return writeLog({ entity_type: 'expense', record_id: id, action: 'field_update', field_name: field, old_value: before, new_value: after })
+    }).filter(Boolean)
+
+    Promise.all(logTasks).catch(() => {})
+    await Promise.all([loadMonthStats(branchId, date), loadLogs(branchId, date)])
+    await load()
+    setMessage('Расход сохранён')
+  }
+
+  async function cancelExpense(id) {
+    const current = expenses.find(e => e.id === id)
+    if (!current || current.deleted_at) return
+    const user = await currentUserMeta()
+    const payload = { deleted_at: new Date().toISOString(), deleted_by: user.user_id, updated_by: user.user_id }
+    setExpenses(prev => prev.map(e => e.id === id ? { ...e, ...payload } : e))
+    const { error } = await supabase.from('daily_expenses').update(payload).eq('id', id)
+    if (error) return setMessage(error.message)
+    await writeLog({ entity_type: 'expense', record_id: id, action: 'cancel', field_name: 'expense', old_value: current.amount, new_value: '0' })
+    await Promise.all([loadMonthStats(branchId, date), loadLogs(branchId, date)])
+  }
+
+  async function addInflow() {
+    if (!branchId) return
+    setMessage('')
+    const amount = parseNum(inflowForm.amount)
+    if (!amount && !inflowForm.source.trim() && !inflowForm.comment.trim()) return setMessage('Введите сумму, источник или комментарий прихода')
+    const user = await currentUserMeta()
+    const payload = { branch_id: branchId, inflow_date: date, source: inflowForm.source || null, amount, comment: inflowForm.comment || null, created_by: user.user_id, updated_by: user.user_id }
+    const { data, error } = await supabase.from('daily_cash_inflows').insert(payload).select('*').single()
+    if (error) return setMessage(error.message)
+    await writeLog({ entity_type: 'inflow', record_id: data.id, action: 'create', field_name: 'cash_inflow', old_value: null, new_value: fmt(amount) })
+    setInflowForm({ amount: '', source: '', comment: '' })
+    await load()
+    setMessage('Приход добавлен и зафиксирован ниже')
+  }
+
+  async function updateInflow(id, patch) {
+    const current = inflows.find(i => i.id === id)
+    if (!current || current.deleted_at) return
+    setInflows(prev => prev.map(i => i.id === id ? { ...i, ...patch } : i))
+    const user = await currentUserMeta()
+    const { error } = await supabase.from('daily_cash_inflows').update({ ...patch, updated_by: user.user_id }).eq('id', id)
+    if (error) return setMessage(error.message)
+    for (const [field, value] of Object.entries(patch)) {
+      const before = current[field] ?? ''
+      const after = value ?? ''
+      if (String(before) !== String(after)) await writeLog({ entity_type: 'inflow', record_id: id, action: 'field_update', field_name: field, old_value: before, new_value: after })
+    }
+    await Promise.all([loadMonthStats(branchId, date), loadLogs(branchId, date)])
+  }
+
+  async function cancelInflow(id) {
+    const current = inflows.find(i => i.id === id)
+    if (!current || current.deleted_at) return
+    const user = await currentUserMeta()
+    const payload = { deleted_at: new Date().toISOString(), deleted_by: user.user_id, updated_by: user.user_id }
+    setInflows(prev => prev.map(i => i.id === id ? { ...i, ...payload } : i))
+    const { error } = await supabase.from('daily_cash_inflows').update(payload).eq('id', id)
+    if (error) return setMessage(error.message)
+    await writeLog({ entity_type: 'inflow', record_id: id, action: 'cancel', field_name: 'cash_inflow', old_value: current.amount, new_value: '0' })
+    await Promise.all([loadMonthStats(branchId, date), loadLogs(branchId, date)])
+  }
+
+  const activeRevenueEntries = revenueEntries.filter(r => !r.deleted_at)
+  const dailyCashRevenue = activeRevenueEntries.reduce((s, r) => s + parseNum(r.cash_amount), 0)
+  const dailyBankRevenue = activeRevenueEntries.reduce((s, r) => s + parseNum(r.bank_amount), 0)
+  const dailyWoltRevenue = activeRevenueEntries.reduce((s, r) => s + parseNum(r.wolt_amount), 0)
+  const dailyRevenueTotal = dailyCashRevenue + dailyBankRevenue + dailyWoltRevenue
+  const dailyManualExpenseTotal = expenses.filter(e => !e.deleted_at).reduce((s, e) => s + parseNum(e.amount), 0)
+  const dailyAdvanceExpenseTotal = advanceExpenses.reduce((s, e) => s + parseNum(e.amount), 0)
+  const dailyExpenseTotal = dailyManualExpenseTotal + dailyAdvanceExpenseTotal
+  const dailyInflowTotal = inflows.filter(i => !i.deleted_at).reduce((s, i) => s + parseNum(i.amount), 0)
+  const servicePercent = parseNum(serviceForm.service_percent || 10)
+  const staffCostPercent = parseNum(serviceForm.staff_cost_percent || 4)
+  const serviceBase = serviceForm.enabled && servicePercent > 0 ? dailyRevenueTotal / (1 + servicePercent / 100) : dailyRevenueTotal
+  const dailyServiceChargeAmount = serviceForm.enabled && servicePercent > 0 ? dailyRevenueTotal - serviceBase : 0
+  const dailyServiceStaffCost = serviceForm.enabled ? serviceBase * staffCostPercent / 100 : 0
+  const formRevenueTotal = parseNum(form.cash_amount) + parseNum(form.bank_amount) + parseNum(form.wolt_amount)
+  const formServiceBase = serviceForm.enabled && servicePercent > 0 ? formRevenueTotal / (1 + servicePercent / 100) : formRevenueTotal
+  const formServiceChargeAmount = serviceForm.enabled && servicePercent > 0 ? formRevenueTotal - formServiceBase : 0
+  const formServiceStaffCost = serviceForm.enabled ? formServiceBase * staffCostPercent / 100 : 0
+  const calculatedClosingCash = parseNum(cashForm.opening_cash) + dailyCashRevenue + dailyInflowTotal - dailyExpenseTotal
+  const cashDifference = parseNum(cashForm.counted_cash) - calculatedClosingCash
+
+  return (
+    <section id="revenuePage">
+      <section className="topbar"><div><h2>{t('revenue_tab')}</h2><p>{t('revenue_subtitle')}</p></div></section>
+      <section className="grid">
+        <div className="card span-2"><div className="card-head"><h3>{t('period_branch')}</h3></div><div className="form-grid">
+          <label><span>{t('branch_select')}</span><select value={branchId} onChange={e => setBranchId(e.target.value)}>{branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label>
+          <label><span>{t('date')}</span><input type="date" value={date} onChange={e => setDate(e.target.value)} /></label>
+        </div></div>
+
+        <div className="card span-2"><div className="card-head"><div><h3>{t('daily_revenue_title')}</h3><p className="hint">Кнопка “Добавить” создаёт строку выручки ниже. Любые изменения фиксируются в журнале операций.</p></div><button className="small primary" onClick={addRevenueEntry}>Добавить</button></div><div className="form-grid">
+          <MoneyInput label={t('cash')} value={form.cash_amount} onChange={v => setForm(f => ({ ...f, cash_amount: v }))} />
+          <MoneyInput label={t('bank')} value={form.bank_amount} onChange={v => setForm(f => ({ ...f, bank_amount: v }))} />
+          <MoneyInput label={t('wolt')} value={form.wolt_amount} onChange={v => setForm(f => ({ ...f, wolt_amount: v }))} />
+          <label><span>{t('comment')}</span><input value={form.comment} onChange={e => setForm(f => ({ ...f, comment: e.target.value }))} /></label>
+          <label><span>Service Charge Общий</span><input value={serviceForm.enabled ? fmt(formServiceChargeAmount) : '0.00'} readOnly /></label>
+          <label><span>Service Charge Персонал</span><input value={serviceForm.enabled ? fmt(formServiceStaffCost) : '0.00'} readOnly /></label>
+        </div>{message && <p className="hint">{message}</p>}
+          <div className="table-wrap" style={{marginTop:14}}><table><thead><tr><th>Дата</th><th>{t('cash')}</th><th>{t('bank')}</th><th>{t('wolt')}</th><th>{t('comment')}</th><th>Итого</th><th>Service персоналу</th><th>Статус</th><th></th></tr></thead><tbody>
+            {revenueEntries.map(r => <RevenueEntryRow key={r.id} row={r} serviceEnabled={serviceForm.enabled} servicePercent={servicePercent} staffCostPercent={staffCostPercent} onSave={patch => updateRevenueEntry(r.id, patch)} onCancel={() => cancelRevenueEntry(r.id)} />)}
+            {!revenueEntries.length && <tr><td colSpan="9" className="hint">Пока нет добавлений</td></tr>}
+          </tbody></table></div>
+        </div>
+
+        <div className="card span-2">
+          <div className="card-head"><div><h3>{t('daily_expenses_title')}</h3><p className="hint">Изменения суммы, статьи и комментария фиксируются ниже. Отмена перечёркивает строку и исключает её из расчётов.</p></div><div className="actions-row"><button className="small" onClick={addExpense}>+ Добавить</button></div></div>
+          <div className="form-grid compact"><label><span>{t('daily_expenses_total')}</span><input value={fmt(dailyExpenseTotal)} readOnly /></label></div>
+          <div className="table-wrap"><table><thead><tr><th>Дата</th><th>{t('expense_item')}</th><th>{t('amount')}</th><th>{t('comment')}</th><th>Статус</th><th></th></tr></thead><tbody>
+            {expenses.map(e => <ExpenseRow key={e.id} expense={e} categories={categories} focusExpenseId={focusExpense?.expenseId} onSave={patch => updateExpense(e.id, patch)} onCancel={() => cancelExpense(e.id)} />)}
+            {advanceExpenses.map(a => <AdvanceExpenseRow key={`adv-${a.id}`} advance={a} />)}
+            {!expenses.length && !advanceExpenses.length && <tr><td colSpan="6" className="hint">—</td></tr>}
+          </tbody></table></div>
+        </div>
+
+        <div className="card span-2">
+          <div className="card-head"><div><h3>Приходы за выбранную дату</h3><p className="hint">Деньги извне: возврат подотчёта, пополнение кассы, личное внесение, прочие наличные поступления. Отмена перечёркивает строку и исключает её из кассы.</p></div><button className="small primary" onClick={addInflow}>+ Добавить</button></div>
+          <div className="form-grid">
+            <MoneyInput label="Сумма прихода" value={inflowForm.amount} onChange={v => setInflowForm(f => ({ ...f, amount: v }))} />
+            <label><span>Источник</span><input value={inflowForm.source} onChange={e => setInflowForm(f => ({ ...f, source: e.target.value }))} placeholder="Например: возврат, пополнение кассы" /></label>
+            <label><span>{t('comment')}</span><input value={inflowForm.comment} onChange={e => setInflowForm(f => ({ ...f, comment: e.target.value }))} /></label>
+          </div>
+          <div className="form-grid compact" style={{marginTop:12}}><label><span>Итого приходов за дату</span><input value={fmt(dailyInflowTotal)} readOnly /></label></div>
+          <div className="table-wrap"><table><thead><tr><th>Источник</th><th>{t('amount')}</th><th>{t('comment')}</th><th>Статус</th><th></th></tr></thead><tbody>
+            {inflows.map(i => <InflowRow key={i.id} inflow={i} onSave={patch => updateInflow(i.id, patch)} onCancel={() => cancelInflow(i.id)} />)}
+            {!inflows.length && <tr><td colSpan="3" className="hint">—</td></tr>}
+          </tbody></table></div>
+        </div>
+
+        <div className="card span-2"><h3>Касса за день</h3><p className="hint">Только наличные: касса на начало + наличная выручка + приходы − расходы. Стартовая касса берётся автоматически, но её можно ввести вручную только после включения галочки.</p>
+          <div className="form-grid">
+            <label><span>Касса на начало дня</span><input value={manualOpeningCashEnabled ? cashForm.opening_cash : fmt(cashForm.opening_cash)} readOnly={!manualOpeningCashEnabled} inputMode="decimal" onChange={e => setCashForm(f => ({ ...f, opening_cash: e.target.value }))} title={manualOpeningCashEnabled ? 'Ручной старт кассы активирован' : 'Автоматически берётся из кассы конца предыдущего дня'} /></label>
+            <label className="checkbox-row"><input type="checkbox" checked={manualOpeningCashEnabled} onChange={e => setManualOpeningCashEnabled(e.target.checked)} /> Ввести стартовую кассу вручную</label>
+            <label><span>Касса конец дня</span><input value={fmt(calculatedClosingCash)} readOnly /></label>
+            <MoneyInput label="Сверка / на руках" value={cashForm.counted_cash} onChange={v => setCashForm(f => ({ ...f, counted_cash: v }))} />
+            <label><span>Расхождение</span><input className={Math.abs(cashDifference) > 0.009 ? 'bad' : 'good'} value={fmt(cashDifference)} readOnly /></label>
+            <label><span>{t('comment')}</span><input value={cashForm.comment} onChange={e => setCashForm(f => ({ ...f, comment: e.target.value }))} /></label>
+          </div>
+          <div className="row-actions" style={{marginTop:12}}><button className="small primary" onClick={saveCashRegister}>Сохранить кассу</button></div>
+        </div>
+
+        <div className="card span-2 revenue-summary-card">
+          <div className="revenue-summary-head">
+            <div>
+              <h3>{t('revenue_summary')}</h3>
+              <p className="hint">Краткая финансовая сводка по выбранной дате и месяцу</p>
+            </div>
+            <div className="revenue-summary-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M5 19V10" />
+                <path d="M12 19V5" />
+                <path d="M19 19v-7" />
+              </svg>
+            </div>
+          </div>
+          <div className="revenue-summary-section">
+            <div className="revenue-summary-section-title">За день</div>
+            <SummaryMetric label="Выручка за дату" value={fmt(dailyRevenueTotal)} />
+            <SummaryMetric label="Расходы за дату" value={fmt(dailyExpenseTotal)} />
+            <SummaryMetric label="Приходы за дату — не выручка" value={fmt(dailyInflowTotal)} />
+            <SummaryMetric label="Service charge внутри выручки" value={fmt(dailyServiceChargeAmount)} />
+            <SummaryMetric label="Расход персоналу по service charge" value={fmt(dailyServiceStaffCost)} />
+            <SummaryMetric label="Наличные за дату" value={fmt(dailyCashRevenue)} />
+            <SummaryMetric label="Банк за дату" value={fmt(dailyBankRevenue)} />
+            <SummaryMetric label="Wolt за дату" value={fmt(dailyWoltRevenue)} />
+          </div>
+          <div className="revenue-summary-section revenue-summary-section-month">
+            <div className="revenue-summary-section-title">За месяц</div>
+            <SummaryMetric label="Выручка месяца" value={fmt(monthStats.revenue)} />
+            <SummaryMetric label="Расходы месяца" value={fmt(monthStats.expenses)} />
+            <SummaryMetric label="Приходы месяца — не выручка" value={fmt(monthStats.inflows)} />
+            <SummaryMetric label="Service charge месяца" value={fmt(monthStats.serviceCharge)} />
+            <SummaryMetric label="Расход персоналу по service charge" value={fmt(monthStats.serviceCost)} />
+            <SummaryMetric label={t('cash')} value={fmt(monthStats.cash)} />
+            <SummaryMetric label={t('bank')} value={fmt(monthStats.bank)} />
+            <SummaryMetric label={t('wolt')} value={fmt(monthStats.wolt)} />
+          </div>
+        </div>
+
+        <div className="card span-2"><h3>Журнал подтверждённых операций</h3><p className="hint">Каждое создание, изменение и отмена по выбранной дате фиксируется с временем и пользователем.</p><div className="table-wrap"><table><thead><tr><th>Время</th><th>Пользователь</th><th>Раздел</th><th>Действие</th><th>Поле</th><th>Было</th><th>Стало</th></tr></thead><tbody>
+          {logs.map(l => <tr key={l.id} className={l.action === 'cancel' ? 'cancelled-row' : ''}><td>{formatDT(l.created_at)}</td><td>{l.user_email || l.user_id || '—'}</td><td>{entityLabel(l.entity_type)}</td><td>{operationLabel(l.action)}</td><td>{fieldLabel(l.field_name)}</td><td>{l.old_value || '—'}</td><td>{l.new_value || '—'}</td></tr>)}
+          {!logs.length && <tr><td colSpan="5" className="hint">Пока нет операций</td></tr>}
+        </tbody></table></div></div>
+      </section>
+    </section>
+  )
+}
+
+
+function RevenueEntryRow({ row, serviceEnabled=false, servicePercent=10, staffCostPercent=4, onSave, onCancel }) {
+  const [editing, setEditing] = useState(false)
+  const [entryDate, setEntryDate] = useState(row.revenue_date || todayISO())
+  const [cash, setCash] = useState(row.cash_amount ?? '')
+  const [bank, setBank] = useState(row.bank_amount ?? '')
+  const [wolt, setWolt] = useState(row.wolt_amount ?? '')
+  const [comment, setComment] = useState(row.comment || '')
+  const cancelled = Boolean(row.deleted_at)
+  const editable = !cancelled && canEditWithinWeek(row)
+
+  useEffect(() => setEntryDate(row.revenue_date || todayISO()), [row.id, row.revenue_date])
+  useEffect(() => setCash(row.cash_amount ?? ''), [row.id, row.cash_amount])
+  useEffect(() => setBank(row.bank_amount ?? ''), [row.id, row.bank_amount])
+  useEffect(() => setWolt(row.wolt_amount ?? ''), [row.id, row.wolt_amount])
+  useEffect(() => setComment(row.comment || ''), [row.id, row.comment])
+
+  const total = parseNum(row.cash_amount) + parseNum(row.bank_amount) + parseNum(row.wolt_amount)
+  const editedTotal = parseNum(cash) + parseNum(bank) + parseNum(wolt)
+  const base = serviceEnabled && servicePercent > 0 ? total / (1 + servicePercent / 100) : total
+  const staffCost = serviceEnabled ? base * staffCostPercent / 100 : 0
+
+  async function saveChanges() {
+    if (!editable) return
+    await onSave({ revenue_date: entryDate, cash_amount: parseNum(cash), bank_amount: parseNum(bank), wolt_amount: parseNum(wolt), comment })
+    setEditing(false)
+  }
+
+  return <>
+    <tr className={cancelled ? 'cancelled-row' : ''}>
+      <td>{row.revenue_date}</td>
+      <td>{fmt(row.cash_amount)}</td>
+      <td>{fmt(row.bank_amount)}</td>
+      <td>{fmt(row.wolt_amount)}</td>
+      <td>{row.comment || '—'}</td>
+      <td><b>{fmt(total)}</b></td>
+      <td><b>{fmt(staffCost)}</b></td>
+      <td>{cancelled ? `Отменено · ${formatDT(row.deleted_at)}` : editable ? 'Активно' : 'Редактирование закрыто'}</td>
+      <td>{cancelled ? <span className="hint">—</span> : <button className="ghost small" onClick={() => setEditing(true)}>Редактировать</button>}</td>
+    </tr>
+    {editing && <tr><td colSpan="9"><div className="notice">
+      <h3>Редактирование выручки</h3>
+      <p className="hint">Можно исправить сумму, комментарий или дату. Смена даты фиксируется в журнале и переносит строку на выбранный день.</p>
+      <div className="form-grid compact">
+        <label><span>Дата операции</span><input type="date" value={entryDate} disabled={!editable} onChange={e => setEntryDate(e.target.value)} /></label>
+        <label><span>Наличные</span><input inputMode="decimal" value={cash} disabled={!editable} onChange={e => setCash(e.target.value)} /></label>
+        <label><span>Банк</span><input inputMode="decimal" value={bank} disabled={!editable} onChange={e => setBank(e.target.value)} /></label>
+        <label><span>Wolt</span><input inputMode="decimal" value={wolt} disabled={!editable} onChange={e => setWolt(e.target.value)} /></label>
+        <label><span>Комментарий</span><input value={comment} disabled={!editable} onChange={e => setComment(e.target.value)} /></label>
+        <label><span>Итого</span><input value={fmt(editedTotal)} readOnly /></label>
+      </div>
+      <div className="row-actions" style={{marginTop:12}}>
+        <button className="ghost small" onClick={() => setEditing(false)}>Отмена</button>
+        {editable && <button className="primary small" onClick={saveChanges}>Сохранить изменения</button>}
+        {editable && <button className="danger small" onClick={() => { onCancel(); setEditing(false) }}>Удалить / зачеркнуть</button>}
+      </div>
+    </div></td></tr>}
+  </>
+}
+
+function entityLabel(entity) {
+  const labels = { revenue: 'Выручка', expense: 'Расход', inflow: 'Приход', cash: 'Касса', service_charge: 'Service charge' }
+  return labels[entity] || entity || '—'
+}
+
+function operationLabel(action) {
+  const labels = { create: 'Создано', update: 'Обновлено', field_update: 'Изменено', cancel: 'Отменено', restore: 'Восстановлено' }
+  return labels[action] || action || '—'
+}
+
+function fieldLabel(field) {
+  const labels = { daily_revenue: 'Выручка за дату', daily_revenue_entry: 'Строка выручки', cash_register: 'Касса за день', cash_inflow: 'Приход', service_charge: 'Service charge', expense: 'Расход', source: 'Источник', cash_amount: 'Наличные', bank_amount: 'Банк', wolt_amount: 'Wolt', comment: 'Комментарий', amount: 'Сумма', category_id: 'Статья', custom_category: 'Своя статья' }
+  return labels[field] || field || '—'
+}
+
+
+
+function InflowRow({ inflow, onSave, onCancel }) {
+  const [editing, setEditing] = useState(false)
+  const [source, setSource] = useState(inflow.source || '')
+  const [amount, setAmount] = useState(inflow.amount ?? '')
+  const [comment, setComment] = useState(inflow.comment || '')
+  const cancelled = Boolean(inflow.deleted_at)
+  const editable = !cancelled && canEditWithinWeek(inflow)
+
+  useEffect(() => setSource(inflow.source || ''), [inflow.id, inflow.source])
+  useEffect(() => setAmount(inflow.amount ?? ''), [inflow.id, inflow.amount])
+  useEffect(() => setComment(inflow.comment || ''), [inflow.id, inflow.comment])
+
+  async function saveChanges() {
+    if (!editable) return
+    await onSave({ source, amount: parseNum(amount), comment })
+    setEditing(false)
+  }
+
+  return (
+    <>
+      <tr className={cancelled ? 'cancelled-row' : ''}>
+        <td>{inflow.source || '—'}</td>
+        <td><b>{fmt(inflow.amount)}</b></td>
+        <td>{inflow.comment || '—'}</td>
+        <td>{cancelled ? `Отменено · ${formatDT(inflow.deleted_at)}` : editable ? 'Активно' : 'Редактирование закрыто'}</td>
+        <td>{cancelled ? <span className="hint">—</span> : <button className="ghost small" onClick={() => setEditing(true)}>Редактировать</button>}</td>
+      </tr>
+      {editing && <tr><td colSpan="5"><div className="notice">
+        <h3>Редактирование прихода</h3>
+        <p className="hint">Редактирование доступно только в течение 7 дней после создания операции.</p>
+        <div className="form-grid compact">
+          <label><span>Источник</span><input value={source} disabled={!editable} onChange={e => setSource(e.target.value)} /></label>
+          <label><span>Сумма</span><input inputMode="decimal" value={amount} disabled={!editable} onChange={e => setAmount(e.target.value)} /></label>
+          <label><span>Комментарий</span><input value={comment} disabled={!editable} onChange={e => setComment(e.target.value)} /></label>
+        </div>
+        <div className="row-actions" style={{marginTop:12}}>
+          <button className="ghost small" onClick={() => setEditing(false)}>Отмена</button>
+          {editable && <button className="primary small" onClick={saveChanges}>Сохранить изменения</button>}
+          {editable && <button className="danger small" onClick={() => { onCancel(); setEditing(false) }}>Удалить / зачеркнуть</button>}
+        </div>
+      </div></td></tr>}
+    </>
+  )
+}
+
+
+function AdvanceExpenseRow({ advance }) {
+  const employeeName = advance?.employees?.full_name || 'Сотрудник'
+  const comment = advance?.comment ? `Аванс сотруднику · ${advance.comment}` : 'Аванс сотруднику, наличная выплата'
+  return (
+    <tr className="system-row">
+      <td><input value={`Аванс — ${employeeName}`} readOnly /></td>
+      <td><input value={fmt(advance.amount)} readOnly /></td>
+      <td><input value={comment} readOnly /></td>
+      <td>Системная строка</td>
+      <td><span className="hint">—</span></td>
+    </tr>
+  )
+}
+
+function ExpenseRow({ expense, categories, onSave, onCancel }) {
+  const [editing, setEditing] = useState(false)
+  const [expenseDate, setExpenseDate] = useState(expense.expense_date || todayISO())
+  const [categoryId, setCategoryId] = useState(expense.category_id || '__custom__')
+  const [customCategory, setCustomCategory] = useState(expense.custom_category || expense.expense_categories?.name || '')
+  const [amount, setAmount] = useState(expense.amount ?? '')
+  const [comment, setComment] = useState(expense.comment || '')
+  const cancelled = Boolean(expense.deleted_at)
+  const editable = !cancelled && canEditWithinWeek(expense)
+
+  useEffect(() => setExpenseDate(expense.expense_date || todayISO()), [expense.id, expense.expense_date])
+  useEffect(() => setCategoryId(expense.category_id || '__custom__'), [expense.id, expense.category_id])
+  useEffect(() => setCustomCategory(expense.custom_category || expense.expense_categories?.name || ''), [expense.id, expense.custom_category, expense.expense_categories?.name])
+  useEffect(() => setAmount(expense.amount ?? ''), [expense.id, expense.amount])
+  useEffect(() => setComment(expense.comment || ''), [expense.id, expense.comment])
+
+  const categoryName = expense.expense_categories?.name || expense.custom_category || 'Своя статья'
+
+  async function saveChanges() {
+    if (!editable) return
+    const patch = {
+      expense_date: expenseDate,
+      amount: parseNum(amount),
+      comment,
+      category_id: categoryId === '__custom__' ? null : categoryId,
+      custom_category: categoryId === '__custom__' ? (customCategory || 'Своя статья') : null
+    }
+    await onSave(patch)
+    setEditing(false)
+  }
+
+  return (
+    <>
+      <tr className={cancelled ? 'cancelled-row' : ''}>
+        <td>{expense.expense_date}</td>
+        <td>{categoryName}</td>
+        <td><b>{fmt(expense.amount)}</b></td>
+        <td>{expense.comment || '—'}</td>
+        <td>{cancelled ? `Отменено · ${formatDT(expense.deleted_at)}` : editable ? 'Активно' : 'Редактирование закрыто'}</td>
+        <td>{cancelled ? <span className="hint">—</span> : <button className="ghost small" onClick={() => setEditing(true)}>Редактировать</button>}</td>
+      </tr>
+      {editing && <tr><td colSpan="6"><div className="notice">
+        <h3>Редактирование расхода</h3>
+        <p className="hint">Можно исправить сумму, статью, комментарий или дату. Смена даты фиксируется в журнале и переносит строку на выбранный день.</p>
+        <div className="form-grid compact">
+          <label><span>Дата операции</span><input type="date" disabled={!editable} value={expenseDate} onChange={e => setExpenseDate(e.target.value)} /></label>
+          <label><span>Статья</span><select disabled={!editable} value={categoryId} onChange={e => setCategoryId(e.target.value)}>
+            {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            <option value="__custom__">Своя статья</option>
+          </select></label>
+          {categoryId === '__custom__' && <label><span>Своя статья</span><input disabled={!editable} value={customCategory} onChange={e => setCustomCategory(e.target.value)} /></label>}
+          <label><span>Сумма</span><input inputMode="decimal" disabled={!editable} value={amount} onChange={e => setAmount(e.target.value)} /></label>
+          <label><span>Комментарий</span><input disabled={!editable} value={comment} onChange={e => setComment(e.target.value)} /></label>
+        </div>
+        <div className="row-actions" style={{marginTop:12}}>
+          <button className="ghost small" onClick={() => setEditing(false)}>Отмена</button>
+          {editable && <button className="primary small" onClick={saveChanges}>Сохранить изменения</button>}
+          {editable && <button className="danger small" onClick={() => { onCancel(); setEditing(false) }}>Удалить / зачеркнуть</button>}
+        </div>
+      </div></td></tr>}
+    </>
+  )
+}
+
+function ExpenseNameInput({ expense, categories, onChange, disabled = false }) {
+  const [custom, setCustom] = useState(expense.custom_category || expense.expense_categories?.name || '')
+  useEffect(() => setCustom(expense.custom_category || expense.expense_categories?.name || ''), [expense.id, expense.custom_category, expense.expense_categories?.name])
+
+  if (categories.length) {
+    return (
+      <select disabled={disabled} value={expense.category_id || '__custom__'} onChange={ev => onChange({ category_id: ev.target.value === '__custom__' ? null : ev.target.value, custom_category: ev.target.value === '__custom__' ? (expense.custom_category || 'Своя статья') : null })}>
+        {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+        <option value="__custom__">Своя статья</option>
+      </select>
+    )
+  }
+  return <input disabled={disabled} value={custom} onChange={ev => setCustom(ev.target.value)} onBlur={() => onChange({ custom_category: custom || 'Своя статья' })} />
+}
+
+
+function RecipesStyles() {
+  return <style>{`
+    .recipe-sheet {
+      border-radius: 24px;
+      padding: 22px 22px 18px;
+    }
+    .recipe-sheet-head {
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+    .recipe-sheet-filters {
+      align-items: end;
+      margin-bottom: 8px;
+    }
+    .recipe-sheet-table table {
+      min-width: 100%;
+    }
+    .recipe-sheet-table th {
+      white-space: nowrap;
+    }
+    .recipe-sheet-note {
+      margin-top: 12px;
+      padding-top: 10px;
+      border-top: 1px dashed var(--line);
+    }
+    @media (max-width: 900px) {
+      .recipe-sheet {
+        padding: 14px;
+      }
+    }
+  `}</style>
+}
+
+
+function rmsForecastMonthWindow(y, m) {
+  const start = monthStart(y, m)
+  const end = new Date(Number(y), Number(m), 1).toISOString().slice(0, 10)
+  return { start, end }
+}
+
+function rmsForecastPreviousMonths(y, m, count = 3) {
+  const rows = []
+  let yy = Number(y)
+  let mm = Number(m)
+  for (let i = 0; i < count; i += 1) {
+    mm -= 1
+    if (mm < 1) { mm = 12; yy -= 1 }
+    rows.push({ year: yy, month: mm, ...rmsForecastMonthWindow(yy, mm) })
+  }
+  return rows
+}
+
+function rmsForecastSumExpenseGroups(rows = []) {
+  return (rows || []).reduce((map, r) => {
+    const name = r?.expense_categories?.name || r?.custom_category || ''
+    if (isSalaryExpenseName(name) || isDsmfExpenseName(name)) return map
+    const group = rmsFinanceExpenseGroupName(name)
+    map[group] = parseNum(map[group]) + parseNum(r.amount)
+    return map
+  }, { rent: 0, utilities: 0, food_market: 0, packaging: 0, household: 0, marketing: 0, maintenance: 0, other: 0 })
+}
+
+function rmsForecastSumSpecialExpenses(rows = []) {
+  return (rows || []).reduce((map, r) => {
+    const name = r?.expense_categories?.name || r?.custom_category || ''
+    if (isSalaryExpenseName(name)) map.salary += parseNum(r.amount)
+    if (isDsmfExpenseName(name)) map.dsmf += parseNum(r.amount)
+    return map
+  }, { salary: 0, dsmf: 0 })
+}
+
+function rmsForecastAverageNonZero(values = []) {
+  const list = (values || []).map(parseNum).filter(v => v > 0)
+  return list.length ? list.reduce((s, v) => s + v, 0) / list.length : 0
+}
+
+function rmsForecastBranchRentTotal(branchRentMap = {}, branchIds = []) {
+  return (branchIds || Object.keys(branchRentMap || {})).reduce((sum, id) => sum + parseNum(branchRentMap?.[id]), 0)
+}
+
+async function rmsCalculateNetworkForecastForMonth(y, m, scopeBranchId = 'all') {
+  const TAX_RATE = 8
+  const { start: monthDate, end: monthEnd } = rmsForecastMonthWindow(y, m)
+  const now = new Date()
+  const prevMonths = rmsForecastPreviousMonths(y, m, 3)
+  const historyStart = prevMonths[prevMonths.length - 1]?.start || monthDate
+  const historyEnd = prevMonths[0]?.end || monthDate
+
+  const [
+    { data: revRows },
+    { data: svcRows },
+    { data: currentExpenseRows },
+    { data: currentPurchaseRows },
+    { data: historicalExpenseRows },
+    { data: historicalPurchaseRows },
+    { data: employeeRows },
+    { data: currentSalaryRows },
+    { data: historicalSalaryRows },
+    { data: currentSalaryPeriodRows },
+    { data: historicalSalaryPeriodRows },
+    { data: branchesRaw },
+    branchRentSetting
+  ] = await Promise.all([
+    supabase.from('monthly_branch_revenue').select('branch_id,total_revenue,cash_amount,bank_amount,wolt_amount').eq('month', monthDate),
+    supabase.from('monthly_branch_service_charge_cost').select('branch_id,staff_cost_amount').eq('month', monthDate),
+    supabase.from('daily_expenses').select('branch_id,expense_date,amount,custom_category,expense_categories(name)').gte('expense_date', monthDate).lt('expense_date', monthEnd).is('deleted_at', null),
+    supabase.from('supplier_purchases').select('branch_id,purchase_date,total_amount,supplier_purchase_items(total_amount,supplier_products(name,category))').gte('purchase_date', monthDate).lt('purchase_date', monthEnd).is('deleted_at', null),
+    supabase.from('daily_expenses').select('branch_id,expense_date,amount,custom_category,expense_categories(name)').gte('expense_date', historyStart).lt('expense_date', historyEnd).is('deleted_at', null),
+    supabase.from('supplier_purchases').select('branch_id,purchase_date,total_amount,supplier_purchase_items(total_amount,supplier_products(name,category))').gte('purchase_date', historyStart).lt('purchase_date', historyEnd).is('deleted_at', null),
+    supabase.from('employees').select('id,branch_id,position,monthly_salary,official_salary,monthly_official_salary,salary_type,daily_rate').eq('is_active', true),
+    supabase.from('monthly_branch_salary').select('branch_id,total_salary').eq('month', monthDate),
+    supabase.from('monthly_branch_salary').select('branch_id,total_salary,month').gte('month', historyStart).lt('month', historyEnd),
+    supabase.from('salary_periods').select('employee_id,branch_id,salary_month,salary_gross,salary_net,final_balance,payroll_payments,employees(id,branch_id,position,is_active,employment_status)').eq('salary_month', monthDate),
+    supabase.from('salary_periods').select('employee_id,branch_id,salary_month,salary_gross,salary_net,final_balance,payroll_payments,employees(id,branch_id,position,is_active,employment_status)').gte('salary_month', historyStart).lt('salary_month', historyEnd),
+    supabase.from('branches').select('id,name,service_charge_enabled,service_charge_percent,service_staff_cost_percent').eq('is_active', true),
+    readRmsAppSetting(RMS_BRANCH_RENT_FORECAST_SETTING, {})
+  ])
+
+  const branchIds = (branchesRaw || []).map(b => b.id)
+  const selectedBranchId = scopeBranchId === '__all__' ? 'all' : (scopeBranchId || 'all')
+  const branchFilter = selectedBranchId === 'all' ? null : String(selectedBranchId)
+  const filterByBranch = row => !branchFilter || String(row?.branch_id || '') === branchFilter
+
+  const revenueRows = (revRows || []).filter(filterByBranch)
+  const revenue = revenueRows.reduce((s, r) => s + parseNum(r.total_revenue), 0)
+  const networkRevenue = (revRows || []).reduce((s, r) => s + parseNum(r.total_revenue), 0)
+  const revenueShareMap = new Map()
+  ;(revRows || []).forEach(r => revenueShareMap.set(r.branch_id, networkRevenue > 0 ? parseNum(r.total_revenue) / networkRevenue : 0))
+
+  const d = new Date(Number(y), Number(m) - 1, 1)
+  const currentMonth = now.getFullYear() === d.getFullYear() && now.getMonth() === d.getMonth()
+  const passed = currentMonth ? Math.max(1, now.getDate()) : daysInMonth(y, m)
+  const monthDays = daysInMonth(y, m)
+  const avg = passed ? revenue / passed : 0
+  const forecastRevenue = avg * monthDays
+  const dailyFactor = currentMonth ? (monthDays / passed) : 1
+
+  const articleNameForExpense = (row) => {
+    const raw = row?.expense_categories?.name || row?.custom_category || 'Прочее'
+    const group = rmsFinanceExpenseGroupName(raw)
+    if (isDsmfExpenseName(raw)) return 'DSMF'
+    if (group === 'food_market') return 'Food Cost / закупки и базар'
+    if (group === 'packaging') return 'Take away / packaging'
+    if (group === 'household') return 'Хозтовары'
+    return raw || 'Прочее'
+  }
+  const addArticle = (map, name, amount) => {
+    const key = String(name || 'Прочее').trim() || 'Прочее'
+    map.set(key, parseNum(map.get(key)) + parseNum(amount))
+  }
+  const supplierShareForScope = branchFilter ? parseNum(revenueShareMap.get(branchFilter)) : 1
+  const buildArticleMap = (expenseRows = [], purchaseRows = [], supplierShare = 1) => {
+    const map = new Map()
+    ;(expenseRows || []).forEach(row => {
+      if (String(row?.comment || '').startsWith('SUPPLIER_PURCHASE_')) return
+      const name = row?.expense_categories?.name || row?.custom_category || ''
+      const group = rmsFinanceExpenseGroupName(name)
+      // DSMF ручной/оплаченный из daily_expenses не должен попадать в прогноз.
+      // В прогнозе DSMF считается только как начисленный DSMF по официальным зарплатам сотрудников.
+      if (isSalaryExpenseName(name) || isDsmfExpenseName(name) || group === 'rent') return
+      addArticle(map, articleNameForExpense(row), row.amount)
+    })
+    const supplierTotals = rmsFinanceAllocatedSupplierTotals(purchaseRows || [], supplierShare)
+    if (supplierTotals.food > 0) addArticle(map, 'Food Cost / закупки и базар', supplierTotals.food)
+    if (supplierTotals.packaging > 0) addArticle(map, 'Take away / packaging', supplierTotals.packaging)
+    if (supplierTotals.household > 0) addArticle(map, 'Хозтовары', supplierTotals.household)
+    if (supplierTotals.other > 0) addArticle(map, 'Закупки поставщиков / прочее', supplierTotals.other)
+    return map
+  }
+  const currentArticleMap = buildArticleMap(
+    (currentExpenseRows || []).filter(filterByBranch),
+    currentPurchaseRows || [],
+    supplierShareForScope
+  )
+  const historyArticleMaps = prevMonths.map(pm => buildArticleMap(
+    (historicalExpenseRows || []).filter(r => r.expense_date >= pm.start && r.expense_date < pm.end).filter(filterByBranch),
+    (historicalPurchaseRows || []).filter(r => r.purchase_date >= pm.start && r.purchase_date < pm.end),
+    supplierShareForScope
+  ))
+  const articleHistoryAvg = (name) => rmsForecastAverageNonZero(historyArticleMaps.map(map => map.get(name) || 0))
+  const isVariableArticle = (name) => {
+    const normalized = normalizeExpenseText(name)
+    return name === 'Food Cost / закупки и базар'
+      || name === 'Take away / packaging'
+      || name === 'Хозтовары'
+      || normalized.includes('доставка')
+      || normalized.includes('wolt')
+  }
+
+  const articleNames = new Set([...currentArticleMap.keys()])
+  historyArticleMaps.forEach(map => map.forEach((value, name) => { if (parseNum(value) > 0) articleNames.add(name) }))
+  const articleDetails = [...articleNames].map(name => {
+    const currentValue = parseNum(currentArticleMap.get(name))
+    const historyValue = articleHistoryAvg(name)
+    let amount = 0
+    let note = ''
+    if (currentValue > 0) {
+      if (isVariableArticle(name)) {
+        const paced = currentValue * dailyFactor
+        amount = Math.max(paced, historyValue)
+        note = historyValue > paced ? 'из среднего прошлых месяцев' : `текущий темп месяца: ${fmt(currentValue)} × ${dailyFactor.toFixed(2)}`
+      } else {
+        amount = currentValue
+        note = 'из раздела “Расходы по статьям” за текущий месяц'
+      }
+    } else if (historyValue > 0) {
+      amount = historyValue
+      note = 'нет текущих данных — среднее прошлых месяцев'
+    }
+    return { name, amount, note }
+  }).filter(row => parseNum(row.amount) > 0)
+
+  const rentMap = branchRentSetting && typeof branchRentSetting === 'object' ? branchRentSetting : {}
+  const rentBranchIds = branchFilter ? [branchFilter] : branchIds
+  const configuredRent = rmsForecastBranchRentTotal(rentMap, rentBranchIds)
+  const rentHistoryMaps = prevMonths.map(pm => rmsForecastSumExpenseGroups(
+    (historicalExpenseRows || []).filter(r => r.expense_date >= pm.start && r.expense_date < pm.end).filter(filterByBranch)
+  ))
+  const rentHistory = rmsForecastAverageNonZero(rentHistoryMaps.map(row => row.rent))
+  const rentCurrent = rmsForecastSumExpenseGroups((currentExpenseRows || []).filter(filterByBranch)).rent
+  const rentForecast = configuredRent > 0 ? configuredRent : (rentCurrent > 0 ? rentCurrent : rentHistory)
+
+  const sumMonthlySalaryRows = (rows = []) => (rows || []).filter(filterByBranch).reduce((sum, row) => sum + parseNum(row.total_salary), 0)
+  const salaryPeriodAmount = (row = {}) => {
+    const gross = parseNum(row.salary_gross)
+    const net = parseNum(row.salary_net)
+    const balance = parseNum(row.final_balance)
+    return gross > 0 ? gross : (net > 0 ? net : balance)
+  }
+  const isForecastManagerEmployee = (emp = {}) => !emp?.branch_id || positionGroup(emp.position) === 'Менеджеры'
+  const salaryBranchIdFromPeriod = (row = {}) => row?.employees?.branch_id || row?.branch_id || ''
+  const salaryBranchIdFromEmployee = (row = {}) => row?.branch_id || ''
+  const employeeForecastMonthlySalary = (row = {}) => {
+    const monthly = parseNum(row.monthly_salary)
+    if (monthly > 0) return monthly
+    const daily = parseNum(row.daily_rate)
+    if (daily > 0) return daily * 26
+    return 0
+  }
+  const staffSnapshotResult = await fetchRmsStaffWorkspaceSnapshot(monthDate).catch(() => ({ data: null }))
+  const staffSnapshot = staffSnapshotResult?.data || null
+  const snapshotEmployees = Array.isArray(staffSnapshot?.employees) ? staffSnapshot.employees : []
+  const snapshotSalaryPeriods = Array.isArray(staffSnapshot?.salary_periods) ? staffSnapshot.salary_periods : []
+  const effectiveEmployeeRows = (employeeRows || []).length ? (employeeRows || []) : snapshotEmployees
+  const employeeByIdForForecast = new Map((effectiveEmployeeRows || []).map(e => [e.id, e]))
+  const hydrateForecastSalaryPeriods = (rows = []) => (rows || []).map(row => {
+    const emp = row?.employees || employeeByIdForForecast.get(row?.employee_id) || null
+    return {
+      ...row,
+      branch_id: row?.branch_id || emp?.branch_id || '',
+      employees: emp ? { ...emp, ...(row?.employees || {}) } : (row?.employees || { branch_id: row?.branch_id || '', position: '' })
+    }
+  })
+  const effectiveCurrentSalaryPeriodRows = hydrateForecastSalaryPeriods(
+    (currentSalaryPeriodRows || []).length
+      ? (currentSalaryPeriodRows || [])
+      : snapshotSalaryPeriods.filter(r => String(r.salary_month || '') === monthDate)
+  )
+  const effectiveHistoricalSalaryPeriodRows = hydrateForecastSalaryPeriods(historicalSalaryPeriodRows || [])
+
+  const currentDirectSalaryByBranchFromPeriods = new Map()
+  ;(effectiveCurrentSalaryPeriodRows || []).forEach(row => {
+    const amount = salaryPeriodAmount(row)
+    const emp = row.employees || { branch_id: row.branch_id, position: '' }
+    if (amount > 0 && !isForecastManagerEmployee(emp)) {
+      const bid = salaryBranchIdFromPeriod(row)
+      if (bid) currentDirectSalaryByBranchFromPeriods.set(bid, parseNum(currentDirectSalaryByBranchFromPeriods.get(bid)) + amount)
+    }
+  })
+  const activeDirectSalaryByBranch = new Map()
+  ;(employeeRows || []).forEach(row => {
+    const amount = employeeForecastMonthlySalary(row)
+    if (amount > 0 && !isForecastManagerEmployee(row)) {
+      const bid = salaryBranchIdFromEmployee(row)
+      if (bid) activeDirectSalaryByBranch.set(bid, parseNum(activeDirectSalaryByBranch.get(bid)) + amount)
+    }
+  })
+  const branchExpenseCurrentMap = new Map()
+  ;(currentExpenseRows || []).forEach(row => {
+    const bid = row?.branch_id
+    if (!bid) return
+    const name = row?.expense_categories?.name || row?.custom_category || ''
+    if (isSalaryExpenseName(name) || isDsmfExpenseName(name)) return
+    branchExpenseCurrentMap.set(bid, parseNum(branchExpenseCurrentMap.get(bid)) + parseNum(row.amount))
+  })
+  const supplierTotalsForManagerShare = rmsFinancePurchaseTotalsByGroup(currentPurchaseRows || [])
+  const supplierTotalForManagerShare = parseNum(supplierTotalsForManagerShare.food) + parseNum(supplierTotalsForManagerShare.packaging) + parseNum(supplierTotalsForManagerShare.household) + parseNum(supplierTotalsForManagerShare.other)
+  const serviceByBranchForManagerShare = new Map()
+  ;(svcRows || []).forEach(row => serviceByBranchForManagerShare.set(row.branch_id, parseNum(serviceByBranchForManagerShare.get(row.branch_id)) + parseNum(row.staff_cost_amount)))
+  const managerAllocationShareMap = new Map()
+  const positiveProfitParts = (branchIds || []).map(id => {
+    const rev = (revRows || []).find(r => r.branch_id === id)
+    const branchRevenue = parseNum(rev?.total_revenue)
+    const revenueShare = parseNum(revenueShareMap.get(id))
+    const directSalaryForBranch = parseNum(currentDirectSalaryByBranchFromPeriods.get(id)) || parseNum(activeDirectSalaryByBranch.get(id))
+    const preliminaryProfit = branchRevenue
+      - parseNum(branchExpenseCurrentMap.get(id))
+      - supplierTotalForManagerShare * revenueShare
+      - parseNum(serviceByBranchForManagerShare.get(id))
+      - branchRevenue * TAX_RATE / 100
+      - directSalaryForBranch
+      - parseNum(rentMap?.[id])
+    return { id, value: Math.max(0, preliminaryProfit), revenueShare }
+  })
+  const positiveProfitTotal = positiveProfitParts.reduce((sum, row) => sum + parseNum(row.value), 0)
+  positiveProfitParts.forEach(row => {
+    managerAllocationShareMap.set(row.id, positiveProfitTotal > 0 ? parseNum(row.value) / positiveProfitTotal : parseNum(row.revenueShare))
+  })
+  const salarySummaryTotal = (directByBranch = new Map(), managersTotal = 0, selectedId = selectedBranchId) => {
+    if (selectedId === 'all') {
+      let directTotal = 0
+      directByBranch.forEach(value => { directTotal += parseNum(value) })
+      return directTotal + parseNum(managersTotal)
+    }
+    const direct = parseNum(directByBranch.get(selectedId))
+    const managerShare = parseNum(managerAllocationShareMap.get(selectedId))
+    return direct + parseNum(managersTotal) * managerShare
+  }
+  const salarySummaryFromPeriods = (rows = [], selectedId = selectedBranchId) => {
+    const directByBranch = new Map()
+    let managersTotal = 0
+    ;(rows || []).forEach(row => {
+      const amount = salaryPeriodAmount(row)
+      if (amount <= 0) return
+      const emp = row.employees || { branch_id: row.branch_id, position: '' }
+      if (isForecastManagerEmployee(emp)) {
+        managersTotal += amount
+      } else {
+        const bid = salaryBranchIdFromPeriod(row)
+        if (bid) directByBranch.set(bid, parseNum(directByBranch.get(bid)) + amount)
+      }
+    })
+    return salarySummaryTotal(directByBranch, managersTotal, selectedId)
+  }
+  const salarySummaryFromEmployees = (rows = [], selectedId = selectedBranchId) => {
+    const directByBranch = new Map()
+    let managersTotal = 0
+    ;(rows || []).forEach(row => {
+      const amount = employeeForecastMonthlySalary(row)
+      if (amount <= 0) return
+      if (isForecastManagerEmployee(row)) {
+        managersTotal += amount
+      } else {
+        const bid = salaryBranchIdFromEmployee(row)
+        if (bid) directByBranch.set(bid, parseNum(directByBranch.get(bid)) + amount)
+      }
+    })
+    return salarySummaryTotal(directByBranch, managersTotal, selectedId)
+  }
+  const sumSalaryPeriodRows = (rows = []) => salarySummaryFromPeriods(rows, selectedBranchId)
+  const salaryHistoryByMonth = prevMonths.map(pm => {
+    const periodValue = salarySummaryFromPeriods((effectiveHistoricalSalaryPeriodRows || []).filter(r => r.salary_month >= pm.start && r.salary_month < pm.end), selectedBranchId)
+    const monthlyValue = sumMonthlySalaryRows((historicalSalaryRows || []).filter(r => r.month >= pm.start && r.month < pm.end))
+    const specialValue = rmsForecastSumSpecialExpenses((historicalExpenseRows || []).filter(r => r.expense_date >= pm.start && r.expense_date < pm.end).filter(filterByBranch)).salary
+    return periodValue || monthlyValue || specialValue
+  })
+  const payrollDetails = rmsFinancePayrollDetailsForScope(effectiveEmployeeRows || [], selectedBranchId, managerAllocationShareMap)
+  const payrollSummarySalary = parseNum(payrollDetails.totalSalary)
+  const payrollManagersSalary = parseNum(payrollDetails.managersSalary)
+  const activeEmployeeSalary = salarySummaryFromEmployees(effectiveEmployeeRows || [], selectedBranchId)
+  const currentPeriodSalary = salarySummaryFromPeriods(effectiveCurrentSalaryPeriodRows || [], selectedBranchId)
+  const currentMonthlySalary = sumMonthlySalaryRows(currentSalaryRows || [])
+  const currentExpenseSalary = rmsForecastSumSpecialExpenses((currentExpenseRows || []).filter(filterByBranch)).salary
+  const salaryHistory = rmsForecastAverageNonZero(salaryHistoryByMonth)
+  const managerShareForSelected = selectedBranchId === 'all' ? 1 : parseNum(managerAllocationShareMap.get(selectedBranchId))
+  const allocatedManagersForSelected = parseNum(payrollManagersSalary) || 0
+  const salaryForecast = currentPeriodSalary || activeEmployeeSalary || currentMonthlySalary || currentExpenseSalary || salaryHistory || payrollSummarySalary
+  const salaryForecastNote = currentPeriodSalary > 0
+    ? `из “Зарплаты → Сотрудники → Сводка по филиалам”: используется колонка “Начислено”; зарплата менеджеров распределена по доле предварительной прибыли филиалов и не суммируется дважды${selectedBranchId !== 'all' && allocatedManagersForSelected > 0 ? ` · доля менеджеров ${fmt(allocatedManagersForSelected)} AZN · коэффициент ${pct(managerShareForSelected * 100)}` : ''}`
+    : activeEmployeeSalary > 0
+      ? `нет закрытой сводки за месяц — расчёт по активным сотрудникам: зарплата филиала + доля менеджеров по предварительной прибыли; менеджеры не суммируются дважды${selectedBranchId !== 'all' ? ` · коэффициент ${pct(managerShareForSelected * 100)}` : ''}`
+      : currentMonthlySalary > 0
+        ? 'из месячного расчёта зарплат за текущий месяц'
+        : currentExpenseSalary > 0
+          ? 'из статьи “Зарплата” за текущий месяц'
+          : salaryHistory > 0
+            ? 'нет текущего расчёта — среднее прошлых месяцев'
+            : payrollSummarySalary > 0
+              ? 'fallback: расчёт по официальным зарплатам сотрудников'
+              : 'не найдено в зарплатах, расходах и истории'
+
+  // DSMF в прогнозе — только начисленный DSMF по официальным зарплатам сотрудников.
+  // Оплаченный DSMF из “Расходы по статьям” остаётся только в фактических расходах и не дублируется в прогнозе.
+  const dsmfForecast = parseNum(payrollDetails.totalDsmf)
+  const dsmfForecastNote = dsmfForecast > 0
+    ? (selectedBranchId === 'all'
+      ? 'общий начисленный DSMF по официальным зарплатам сотрудников'
+      : 'начисленный DSMF выбранного филиала по официальным зарплатам сотрудников, включая распределённую долю менеджеров')
+    : 'начисленный DSMF не найден по официальным зарплатам сотрудников'
+
+  const serviceCurrent = (svcRows || []).filter(filterByBranch).reduce((s, r) => s + parseNum(r.staff_cost_amount), 0)
+  const branchServiceConfigMap = new Map((branchesRaw || []).map(b => [String(b.id), {
+    enabled: Boolean(b.service_charge_enabled),
+    servicePercent: parseNum(b.service_charge_percent || 10),
+    staffCostPercent: parseNum(b.service_staff_cost_percent || 4)
+  }]))
+  const serviceCurrentByBranchMap = new Map()
+  ;(svcRows || []).forEach(row => {
+    serviceCurrentByBranchMap.set(String(row.branch_id), parseNum(serviceCurrentByBranchMap.get(String(row.branch_id))) + parseNum(row.staff_cost_amount))
+  })
+  const serviceForecastForBranch = (branchId, branchRevenueCurrent = 0) => {
+    const cfg = branchServiceConfigMap.get(String(branchId)) || { enabled: false, servicePercent: 10, staffCostPercent: 4 }
+    if (!cfg.enabled) return 0
+    const branchRevenueForecast = (parseNum(branchRevenueCurrent) / Math.max(1, passed)) * monthDays
+    const actualServiceCurrent = parseNum(serviceCurrentByBranchMap.get(String(branchId)))
+    const actualRate = parseNum(branchRevenueCurrent) > 0 && actualServiceCurrent > 0 ? actualServiceCurrent / parseNum(branchRevenueCurrent) : 0
+    const configuredRate = cfg.staffCostPercent > 0 ? cfg.staffCostPercent / (100 + Math.max(0, cfg.servicePercent)) : 0
+    const rate = actualRate > 0 ? actualRate : configuredRate
+    return branchRevenueForecast * rate
+  }
+  const serviceForecast = selectedBranchId === 'all'
+    ? (revRows || []).reduce((sum, row) => sum + serviceForecastForBranch(row.branch_id, row.total_revenue), 0)
+    : serviceForecastForBranch(selectedBranchId, revenue)
+  const serviceForecastNote = selectedBranchId === 'all'
+    ? 'пропорционально прогнозной выручке только по филиалам, где включён service charge'
+    : (branchServiceConfigMap.get(String(selectedBranchId))?.enabled
+      ? 'пропорционально прогнозной выручке выбранного филиала; service charge включён в настройках филиала'
+      : 'service charge не учитывается: в настройках выбранного филиала галочка выключена')
+  const taxForecast = forecastRevenue * TAX_RATE / 100
+
+  const fixedDetails = [
+    { name: 'Зарплата', amount: salaryForecast, note: salaryForecastNote, keepVisible: true },
+    { name: 'Аренда', amount: rentForecast, note: configuredRent > 0 ? 'фиксированная аренда из настроек филиалов' : rentCurrent > 0 ? 'из текущих расходов, так как аренда в настройках не заполнена' : rentHistory > 0 ? 'среднее прошлых месяцев, так как аренда в настройках не заполнена' : 'не заполнена в настройках и нет истории' },
+    { name: 'DSMF', amount: dsmfForecast, note: dsmfForecastNote, keepVisible: true },
+    { name: 'Service charge персоналу', amount: serviceForecast, note: serviceForecastNote },
+    { name: `Налог ${TAX_RATE}%`, amount: taxForecast, note: 'от прогнозной выручки' }
+  ].filter(row => row.keepVisible || parseNum(row.amount) > 0)
+
+  const forecastExpenseMap = new Map()
+  ;[...articleDetails, ...fixedDetails].forEach(row => {
+    const key = String(row?.name || 'Прочее').trim() || 'Прочее'
+    const existing = forecastExpenseMap.get(key)
+    if (existing) {
+      forecastExpenseMap.set(key, {
+        ...existing,
+        amount: parseNum(existing.amount) + parseNum(row.amount),
+        note: existing.note === row.note ? existing.note : [existing.note, row.note].filter(Boolean).join(' + ')
+      })
+    } else {
+      forecastExpenseMap.set(key, { ...row, name: key })
+    }
+  })
+  const forecastExpenseRows = [...forecastExpenseMap.values()]
+  const forecastExpenses = forecastExpenseRows.reduce((sum, row) => sum + parseNum(row.amount), 0)
+  const forecastProfit = forecastRevenue - forecastExpenses
+  const forecastMargin = forecastRevenue > 0 ? forecastProfit / forecastRevenue * 100 : 0
+  const details = [
+    { name: 'Прогноз выручки', amount: forecastRevenue, type: 'revenue', note: `${fmt(avg)} × ${monthDays} дней` },
+    ...forecastExpenseRows.sort((a, b) => parseNum(b.amount) - parseNum(a.amount))
+  ]
+
+  return { forecastRevenue, forecastProfit, avg, forecastExpenses, forecastMargin, details }
+}
+
+function DashboardStyles() {
+  return <style>{`
+    .dashboard-hero { align-items: center; }
+    .dashboard-period { min-width: 320px; grid-template-columns: 1fr 1fr; }
+    .dashboard-kpi-grid { display: grid; grid-template-columns: repeat(5, minmax(160px, 1fr)); gap: 14px; margin-bottom: 16px; }
+    .dash-kpi { background: linear-gradient(180deg, #fffaf2, #f8f1e3); border: 1px solid var(--line); border-radius: 22px; padding: 18px; box-shadow: 0 12px 30px rgba(23,37,29,.07); display: flex; flex-direction: column; gap: 8px; min-height: 132px; }
+    .dash-kpi span { color: var(--muted); font-size: 13px; font-weight: 700; }
+    .dash-kpi strong { font-size: 30px; line-height: 1; color: var(--ink); }
+    .dash-kpi em { font-style: normal; color: var(--muted); font-size: 12px; }
+    .danger-kpi { border-color: rgba(155,45,45,.25); }
+    .dash-bars { display: grid; gap: 11px; }
+    .dash-bar-row { display: grid; grid-template-columns: 120px minmax(180px, 1fr) 190px; gap: 10px; align-items: center; }
+    .dash-bar-label { font-weight: 800; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .dash-bar-track { height: 13px; border-radius: 999px; background: #efe8da; overflow: hidden; }
+    .dash-bar { height: 100%; border-radius: 999px; background: var(--gold); transition: width .25s ease; }
+    .dash-bar.negative { background: var(--danger); }
+    .dash-bar-value { text-align: right; font-weight: 800; font-size: 12px; display:flex; justify-content:flex-end; gap:5px; align-items:baseline; white-space:nowrap; }
+    .dash-bar-value em { font-style: normal; color: var(--muted); font-weight: 700; font-size: 10px; opacity: .72; }
+    .dashboard-table th, .dashboard-table td { white-space: nowrap; }
+    .dashboard-insight p { line-height: 1.6; }
+    .risk-row { background: rgba(155,45,45,.06); }
+    .supplier-risk-list { display: grid; gap: 8px; margin-top: 12px; }
+    .supplier-risk-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 12px; align-items: start; padding: 10px 12px; border: 1px solid rgba(155,45,45,.18); border-radius: 12px; background: rgba(155,45,45,.05); overflow: hidden; }
+    .supplier-risk-row b { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .supplier-risk-row span { text-align: right; font-weight: 900; color: var(--danger); white-space: nowrap; }
+    .supplier-risk-row em { grid-column: 1 / -1; font-style: normal; color: var(--muted); font-size: 12px; line-height: 1.35; overflow-wrap: anywhere; }
+    .supplier-risk-summary { display: grid; gap: 8px; }
+    .supplier-risk-empty { padding: 12px; border: 1px dashed var(--line); border-radius: 12px; background: rgba(255,255,255,.55); }
+    .cancelled-row { opacity: .58; text-decoration: line-through; background: rgba(155,45,45,.07); }
+    .cancelled-row input { text-decoration: line-through; }
+    .system-row { background: rgba(35,61,44,.05); }
+    .system-row input { background: #f6f1e8; color: var(--muted); font-weight: 700; }
+    .supplier-entity-group { border: 1px solid var(--line); border-radius: 16px; overflow: hidden; background: rgba(255,255,255,.45); margin-bottom: 12px; }
+    .supplier-entity-head { display:flex; align-items:center; justify-content:space-between; gap:12px; padding: 12px 14px; background:#f4eddf; }
+    .supplier-entity-head b { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .supplier-compact-table td, .supplier-compact-table th { vertical-align: middle; }
+    .supplier-transactions-panel { border: 1px solid var(--line); border-radius: 16px; padding: 14px; background: #fffaf2; }
+    @media (max-width: 1200px) { .dashboard-kpi-grid { grid-template-columns: repeat(2, minmax(0,1fr)); } }
+    @media (max-width: 700px) { .dashboard-kpi-grid { grid-template-columns: 1fr; } .dash-bar-row { grid-template-columns: 82px 1fr 78px; } .dashboard-period { min-width: 0; } }
+  `}</style>
+}
+
+function RMSProSidebarRedesignStyles() {
+  return <style>{`
+    .rms-pro-shell{
+      --rms-sidebar-expanded: 278px;
+      --rms-sidebar-collapsed: 104px;
+    }
+    .rms-pro-shell .sidebar.rms-pro-sidebar{
+      width:var(--rms-sidebar-expanded)!important;
+      min-width:var(--rms-sidebar-expanded)!important;
+      max-width:var(--rms-sidebar-expanded)!important;
+      padding:20px 14px 14px!important;
+      background:
+        radial-gradient(circle at 18% -3%,rgba(96,165,250,.34),transparent 28%),
+        radial-gradient(circle at 88% 16%,rgba(14,165,233,.12),transparent 24%),
+        linear-gradient(180deg,#0b2142 0%,#07182f 52%,#041223 100%)!important;
+      border-right:1px solid rgba(148,163,184,.18)!important;
+      box-shadow:18px 0 48px rgba(2,6,23,.22)!important;
+      transition:width .22s ease,min-width .22s ease,max-width .22s ease,padding .22s ease!important;
+    }
+    .rms-pro-shell .rms-pro-brand{
+      display:flex!important;
+      align-items:flex-start!important;
+      justify-content:space-between!important;
+      gap:12px!important;
+      margin:0 0 16px!important;
+      padding:0 8px 16px!important;
+      border-bottom:1px solid rgba(148,163,184,.14)!important;
+    }
+    .rms-pro-shell .rms-pro-brand-main{
+      display:flex!important;
+      align-items:center!important;
+      gap:14px!important;
+      min-width:0!important;
+      flex:1 1 auto!important;
+    }
+    .rms-pro-shell .rms-pro-logo{
+      width:54px!important;
+      height:54px!important;
+      min-width:54px!important;
+      border-radius:18px!important;
+      box-shadow:0 16px 34px rgba(37,99,235,.28)!important;
+      background:linear-gradient(135deg,rgba(96,165,250,.20),rgba(15,23,42,.14))!important;
+    }
+    .rms-pro-shell .rms-pro-brand-copy{
+      min-width:0!important;
+      flex:1 1 auto!important;
+    }
+    .rms-pro-shell .rms-pro-brand-kicker{
+      display:inline-flex!important;
+      align-items:center!important;
+      padding:5px 10px!important;
+      margin:0 0 10px!important;
+      border-radius:999px!important;
+      background:rgba(96,165,250,.12)!important;
+      border:1px solid rgba(147,197,253,.20)!important;
+      color:#cfe3ff!important;
+      font-size:10.5px!important;
+      font-weight:800!important;
+      letter-spacing:.14em!important;
+      text-transform:uppercase!important;
+      white-space:nowrap!important;
+    }
+    .rms-pro-shell .rms-pro-brand h1{
+      font-size:27px!important;
+      line-height:1!important;
+      font-weight:820!important;
+      letter-spacing:-.05em!important;
+      color:#ffffff!important;
+      margin:0!important;
+    }
+    .rms-pro-shell .rms-pro-brand p{
+      margin:8px 0 0!important;
+      color:rgba(226,232,240,.70)!important;
+      font-size:11px!important;
+      line-height:1.28!important;
+      max-width:168px!important;
+      text-transform:uppercase!important;
+      letter-spacing:.04em!important;
+    }
+    .rms-pro-shell .rms-pro-sidebar-toggle{
+      width:40px!important;
+      height:40px!important;
+      min-width:40px!important;
+      border-radius:14px!important;
+      border:1px solid rgba(148,163,184,.18)!important;
+      background:rgba(255,255,255,.06)!important;
+      color:#e8f1ff!important;
+      box-shadow:inset 0 1px 0 rgba(255,255,255,.04)!important;
+      display:inline-flex!important;
+      align-items:center!important;
+      justify-content:center!important;
+      padding:0!important;
+    }
+    .rms-pro-shell .rms-pro-sidebar-toggle svg{width:18px!important;height:18px!important;display:block!important;}
+    .rms-pro-shell .rms-pro-sidebar-toggle:hover{
+      background:rgba(255,255,255,.10)!important;
+      border-color:rgba(148,163,184,.28)!important;
+      transform:none!important;
+    }
+    .rms-pro-shell .rms-pro-nav{
+      gap:14px!important;
+      padding:2px 4px 16px!important;
+    }
+    .rms-pro-shell .rms-pro-nav-group{gap:7px!important;}
+    .rms-pro-shell .rms-pro-nav-group-title{
+      padding:0 10px!important;
+      margin:0 0 4px!important;
+      color:rgba(203,213,225,.56)!important;
+      font-size:10.5px!important;
+      font-weight:850!important;
+      letter-spacing:.18em!important;
+      text-transform:uppercase!important;
+    }
+    .rms-pro-shell .rms-pro-nav-list{gap:7px!important;}
+    .rms-pro-shell .rms-pro-nav-item{
+      position:relative!important;
+      min-height:48px!important;
+      height:48px!important;
+      padding:0 12px!important;
+      border-radius:16px!important;
+      border:1px solid transparent!important;
+      background:rgba(255,255,255,.01)!important;
+      color:rgba(241,245,249,.92)!important;
+      gap:12px!important;
+      font-size:15px!important;
+      font-weight:760!important;
+      letter-spacing:-.012em!important;
+      transition:background .18s ease,border-color .18s ease,box-shadow .18s ease,color .18s ease,transform .18s ease!important;
+      overflow:hidden!important;
+    }
+    .rms-pro-shell .rms-pro-nav-item::before{
+      content:'';
+      position:absolute;
+      left:0;
+      top:10px;
+      bottom:10px;
+      width:3px;
+      border-radius:0 999px 999px 0;
+      background:transparent;
+      transition:background .18s ease!important;
+    }
+    .rms-pro-shell .rms-pro-nav-item:hover{
+      background:linear-gradient(135deg,rgba(255,255,255,.10),rgba(255,255,255,.03))!important;
+      border-color:rgba(148,163,184,.14)!important;
+      color:#ffffff!important;
+      box-shadow:0 14px 24px rgba(2,6,23,.10)!important;
+      transform:translateX(2px)!important;
+    }
+    .rms-pro-shell .rms-pro-nav-item.active,
+    .rms-pro-shell .rms-pro-nav-item:focus-visible{
+      background:linear-gradient(135deg,rgba(255,255,255,.16),rgba(255,255,255,.06))!important;
+      border-color:rgba(148,163,184,.18)!important;
+      color:#ffffff!important;
+      box-shadow:inset 0 1px 0 rgba(255,255,255,.04),0 16px 30px rgba(2,6,23,.18)!important;
+      transform:none!important;
+    }
+    .rms-pro-shell .rms-pro-nav-item.active::before{background:#60a5fa!important;}
+    .rms-pro-shell .rms-pro-nav-icon{
+      width:34px!important;
+      height:34px!important;
+      min-width:34px!important;
+      border-radius:12px!important;
+      background:rgba(255,255,255,.06)!important;
+      color:inherit!important;
+      box-shadow:inset 0 1px 0 rgba(255,255,255,.05)!important;
+      transition:background .18s ease,color .18s ease,transform .18s ease!important;
+    }
+    .rms-pro-shell .rms-pro-nav-item:hover .rms-pro-nav-icon,
+    .rms-pro-shell .rms-pro-nav-item.active .rms-pro-nav-icon{
+      background:rgba(255,255,255,.10)!important;
+      color:#ffffff!important;
+      transform:translateY(-1px)!important;
+    }
+    .rms-pro-shell .rms-pro-nav-icon svg{width:18px!important;height:18px!important;}
+    .rms-pro-shell .rms-pro-nav-text{
+      min-width:0!important;
+      overflow:hidden!important;
+      text-overflow:ellipsis!important;
+      white-space:nowrap!important;
+    }
+    .rms-pro-shell .rms-pro-sidebar-bottom{
+      padding:14px 4px 0!important;
+      border-top:1px solid rgba(148,163,184,.14)!important;
+      background:linear-gradient(180deg,rgba(3,18,37,0),rgba(3,18,37,.38))!important;
+    }
+    .rms-pro-shell .rms-pro-user-card{
+      min-height:74px!important;
+      display:flex!important;
+      align-items:center!important;
+      gap:12px!important;
+      padding:12px!important;
+      border-radius:18px!important;
+      border:1px solid rgba(148,163,184,.16)!important;
+      background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.02))!important;
+      box-shadow:inset 0 1px 0 rgba(255,255,255,.03)!important;
+    }
+    .rms-pro-shell .rms-pro-user-main{
+      display:flex!important;
+      align-items:center!important;
+      gap:12px!important;
+      min-width:0!important;
+      flex:1 1 auto!important;
+    }
+    .rms-pro-shell .rms-pro-avatar{
+      width:42px!important;
+      height:42px!important;
+      min-width:42px!important;
+      border-radius:14px!important;
+      background:linear-gradient(180deg,#ecf4ff,#dbeafe)!important;
+      color:#07152d!important;
+      font-size:17px!important;
+      font-weight:850!important;
+      box-shadow:0 10px 24px rgba(2,6,23,.18)!important;
+    }
+    .rms-pro-shell .rms-pro-avatar:after{
+      right:-2px!important;
+      bottom:-1px!important;
+      width:11px!important;
+      height:11px!important;
+      border:2px solid #07172d!important;
+    }
+    .rms-pro-shell .rms-pro-user-meta{min-width:0!important;flex:1 1 auto!important;}
+    .rms-pro-shell .rms-pro-user-meta-top{
+      display:flex!important;
+      align-items:center!important;
+      justify-content:space-between!important;
+      gap:10px!important;
+      margin-bottom:6px!important;
+    }
+    .rms-pro-shell .rms-pro-user-name{
+      font-size:13px!important;
+      font-weight:800!important;
+      color:#ffffff!important;
+      min-width:0!important;
+      overflow:hidden!important;
+      text-overflow:ellipsis!important;
+      white-space:nowrap!important;
+    }
+    .rms-pro-shell .rms-pro-user-role-chip{
+      display:inline-flex!important;
+      align-items:center!important;
+      padding:4px 8px!important;
+      border-radius:999px!important;
+      background:rgba(96,165,250,.12)!important;
+      border:1px solid rgba(96,165,250,.16)!important;
+      color:#d7e8ff!important;
+      font-size:10px!important;
+      font-weight:850!important;
+      letter-spacing:.08em!important;
+      text-transform:uppercase!important;
+      white-space:nowrap!important;
+    }
+    .rms-pro-shell .rms-pro-user-email{
+      color:rgba(226,232,240,.62)!important;
+      font-size:11.5px!important;
+      line-height:1.25!important;
+      overflow:hidden!important;
+      text-overflow:ellipsis!important;
+      white-space:nowrap!important;
+    }
+    .rms-pro-shell .rms-pro-user-action{
+      width:40px!important;
+      height:40px!important;
+      min-width:40px!important;
+      border-radius:14px!important;
+      border:1px solid rgba(148,163,184,.16)!important;
+      background:rgba(255,255,255,.05)!important;
+      color:#eaf2ff!important;
+      display:inline-flex!important;
+      align-items:center!important;
+      justify-content:center!important;
+      padding:0!important;
+      box-shadow:inset 0 1px 0 rgba(255,255,255,.03)!important;
+    }
+    .rms-pro-shell .rms-pro-user-action svg{width:18px!important;height:18px!important;display:block!important;}
+    .rms-pro-shell .rms-pro-user-action:hover{
+      background:rgba(255,255,255,.10)!important;
+      border-color:rgba(148,163,184,.24)!important;
+      transform:none!important;
+    }
+    .rms-pro-shell .rms-pro-user-action-logout{
+      color:#ffd8df!important;
+      background:rgba(239,68,68,.10)!important;
+      border-color:rgba(248,113,113,.18)!important;
+    }
+    .rms-pro-shell .rms-pro-user-action-logout:hover{
+      background:rgba(239,68,68,.16)!important;
+      border-color:rgba(248,113,113,.28)!important;
+      color:#ffeef1!important;
+    }
+    .rms-pro-shell .rms-pro-logout{display:none!important;}
+
+    .rms-pro-shell.sidebar-collapsed .sidebar.rms-pro-sidebar{
+      width:var(--rms-sidebar-collapsed)!important;
+      min-width:var(--rms-sidebar-collapsed)!important;
+      max-width:var(--rms-sidebar-collapsed)!important;
+      padding-left:10px!important;
+      padding-right:10px!important;
+    }
+    .rms-pro-shell.sidebar-collapsed .rms-pro-brand{
+      padding-left:4px!important;
+      padding-right:4px!important;
+      justify-content:center!important;
+    }
+    .rms-pro-shell.sidebar-collapsed .rms-pro-brand-main{justify-content:center!important;}
+    .rms-pro-shell.sidebar-collapsed .rms-pro-brand-copy,
+    .rms-pro-shell.sidebar-collapsed .rms-pro-nav-group-title,
+    .rms-pro-shell.sidebar-collapsed .rms-pro-nav-text,
+    .rms-pro-shell.sidebar-collapsed .rms-pro-user-meta{
+      display:none!important;
+    }
+    .rms-pro-shell.sidebar-collapsed .rms-pro-sidebar-toggle{
+      position:absolute!important;
+      right:8px!important;
+      top:26px!important;
+      width:30px!important;
+      height:30px!important;
+      border-radius:11px!important;
+      background:rgba(255,255,255,.08)!important;
+    }
+    .rms-pro-shell.sidebar-collapsed .rms-pro-nav{
+      gap:12px!important;
+      padding-left:0!important;
+      padding-right:0!important;
+    }
+    .rms-pro-shell.sidebar-collapsed .rms-pro-nav-group{gap:10px!important;}
+    .rms-pro-shell.sidebar-collapsed .rms-pro-nav-list{align-items:center!important;}
+    .rms-pro-shell.sidebar-collapsed .rms-pro-nav-item{
+      width:54px!important;
+      height:54px!important;
+      min-height:54px!important;
+      padding:0!important;
+      justify-content:center!important;
+      gap:0!important;
+      border-radius:18px!important;
+      transform:none!important;
+    }
+    .rms-pro-shell.sidebar-collapsed .rms-pro-nav-item::before{left:50%!important;top:auto!important;bottom:6px!important;transform:translateX(-50%)!important;width:22px!important;height:3px!important;border-radius:999px!important;}
+    .rms-pro-shell.sidebar-collapsed .rms-pro-nav-icon{
+      width:40px!important;
+      height:40px!important;
+      min-width:40px!important;
+      border-radius:14px!important;
+    }
+    .rms-pro-shell.sidebar-collapsed .rms-pro-sidebar-bottom{padding-left:0!important;padding-right:0!important;}
+    .rms-pro-shell.sidebar-collapsed .rms-pro-user-card{
+      flex-direction:column!important;
+      justify-content:center!important;
+      gap:10px!important;
+      padding:12px 8px!important;
+    }
+    .rms-pro-shell.sidebar-collapsed .rms-pro-user-main{justify-content:center!important;}
+
+
+    .rms-executive-dashboard.dashboard-v43{
+      display:flex!important;
+      flex-direction:column!important;
+      gap:18px!important;
+      padding:4px 0 34px!important;
+    }
+    .dashboard-v43-head{
+      display:grid!important;
+      grid-template-columns:minmax(0,1fr) minmax(420px,.72fr)!important;
+      gap:22px!important;
+      align-items:end!important;
+      margin-bottom:4px!important;
+    }
+    .dashboard-v43-eyebrow{
+      display:inline-flex!important;
+      align-items:center!important;
+      gap:8px!important;
+      padding:7px 11px!important;
+      border-radius:999px!important;
+      background:rgba(37,99,235,.08)!important;
+      color:#2563eb!important;
+      font-size:11px!important;
+      font-weight:900!important;
+      letter-spacing:.12em!important;
+      text-transform:uppercase!important;
+      margin-bottom:12px!important;
+    }
+    .dashboard-v43-head h2{
+      margin:0!important;
+      color:#06142d!important;
+      font-size:40px!important;
+      line-height:1.02!important;
+      font-weight:900!important;
+      letter-spacing:-.06em!important;
+    }
+    .dashboard-v43-head p{
+      max-width:760px!important;
+      margin:12px 0 0!important;
+      color:#64748b!important;
+      font-size:15px!important;
+      line-height:1.48!important;
+      font-weight:600!important;
+    }
+    .dashboard-v43-filters{
+      display:grid!important;
+      grid-template-columns:1.35fr .72fr .88fr!important;
+      gap:12px!important;
+      padding:12px!important;
+      border:1px solid rgba(226,232,240,.88)!important;
+      border-radius:22px!important;
+      background:rgba(255,255,255,.72)!important;
+      box-shadow:0 18px 44px rgba(15,23,42,.045)!important;
+      backdrop-filter:blur(14px)!important;
+    }
+    .dashboard-v43-filters label{gap:7px!important;color:#64748b!important;font-size:12px!important;font-weight:850!important;}
+    .dashboard-v43-filters select{
+      height:46px!important;
+      border-radius:15px!important;
+      border:1px solid rgba(203,213,225,.92)!important;
+      background:#fff!important;
+      color:#0f172a!important;
+      font-weight:800!important;
+    }
+    .dashboard-v43-kpis{
+      display:grid!important;
+      grid-template-columns:repeat(6,minmax(0,1fr))!important;
+      gap:14px!important;
+    }
+    .dashboard-v43-kpi{
+      position:relative!important;
+      overflow:hidden!important;
+      min-height:142px!important;
+      display:grid!important;
+      grid-template-columns:48px minmax(0,1fr)!important;
+      gap:14px!important;
+      align-items:start!important;
+      padding:20px 18px 18px!important;
+      border:1px solid rgba(226,232,240,.92)!important;
+      border-radius:26px!important;
+      background:linear-gradient(180deg,rgba(255,255,255,.98),rgba(248,250,252,.92))!important;
+      box-shadow:0 22px 50px rgba(15,23,42,.055)!important;
+    }
+    .dashboard-v43-kpi:after{
+      content:''!important;
+      position:absolute!important;
+      inset:auto -34px -44px auto!important;
+      width:118px!important;
+      height:118px!important;
+      border-radius:999px!important;
+      background:var(--kpi-glow,rgba(37,99,235,.10))!important;
+      filter:blur(4px)!important;
+    }
+    .dashboard-v43-kpi > span{
+      width:48px!important;
+      height:48px!important;
+      border-radius:17px!important;
+      display:grid!important;
+      place-items:center!important;
+      font-size:22px!important;
+      font-weight:900!important;
+      background:var(--kpi-bg,rgba(37,99,235,.10))!important;
+      color:var(--kpi-color,#2563eb)!important;
+      box-shadow:inset 0 1px 0 rgba(255,255,255,.7)!important;
+    }
+    .dashboard-v43-kpi.blue{--kpi-color:#2563eb;--kpi-bg:rgba(37,99,235,.10);--kpi-glow:rgba(37,99,235,.10);}
+    .dashboard-v43-kpi.rose{--kpi-color:#f43f5e;--kpi-bg:rgba(244,63,94,.10);--kpi-glow:rgba(244,63,94,.10);}
+    .dashboard-v43-kpi.green{--kpi-color:#10b981;--kpi-bg:rgba(16,185,129,.12);--kpi-glow:rgba(16,185,129,.10);}
+    .dashboard-v43-kpi.purple{--kpi-color:#8b5cf6;--kpi-bg:rgba(139,92,246,.12);--kpi-glow:rgba(139,92,246,.10);}
+    .dashboard-v43-kpi.orange{--kpi-color:#f97316;--kpi-bg:rgba(249,115,22,.12);--kpi-glow:rgba(249,115,22,.10);}
+    .dashboard-v43-kpi.teal{--kpi-color:#14b8a6;--kpi-bg:rgba(20,184,166,.12);--kpi-glow:rgba(20,184,166,.10);}
+    .dashboard-v43-kpi em{
+      display:block!important;
+      min-height:30px!important;
+      margin:2px 0 8px!important;
+      color:#64748b!important;
+      font-size:11px!important;
+      line-height:1.25!important;
+      font-weight:900!important;
+      letter-spacing:.055em!important;
+      text-transform:uppercase!important;
+      font-style:normal!important;
+    }
+    .dashboard-v43-kpi strong{
+      display:flex!important;
+      align-items:baseline!important;
+      gap:5px!important;
+      color:#06142d!important;
+      font-size:clamp(20px,1.35vw,28px)!important;
+      line-height:1.02!important;
+      font-weight:900!important;
+      letter-spacing:-.055em!important;
+      white-space:nowrap!important;
+    }
+    .dashboard-v43-kpi strong small{
+      color:#475569!important;
+      font-size:11px!important;
+      font-weight:900!important;
+      letter-spacing:0!important;
+    }
+    .dashboard-v43-kpi p{
+      margin:10px 0 0!important;
+      color:#64748b!important;
+      font-size:12px!important;
+      line-height:1.35!important;
+      font-weight:750!important;
+    }
+    .dashboard-v43-kpi .good,.dashboard-v43 .good{color:#10b981!important;}
+    .dashboard-v43-kpi .bad,.dashboard-v43 .bad{color:#ef4444!important;}
+    .dashboard-v43-main-grid{
+      display:grid!important;
+      grid-template-columns:minmax(0,1.65fr) minmax(340px,.64fr)!important;
+      gap:18px!important;
+      align-items:stretch!important;
+    }
+    .dashboard-v43-line-card{
+      grid-column:auto!important;
+      min-height:100%!important;
+    }
+    .dashboard-v43-line-card .finance-line-chart-wrap{
+      padding:18px 22px 22px!important;
+      border-radius:24px!important;
+    }
+    .dashboard-v43-line-card .finance-line-chart-summary{
+      grid-template-columns:repeat(3,minmax(0,1fr))!important;
+    }
+    .dashboard-v43-line-card .finance-line-chart-summary .metric:nth-child(n+4){display:none!important;}
+    .dashboard-v43-health-card{
+      padding:22px!important;
+      display:flex!important;
+      flex-direction:column!important;
+      min-height:100%!important;
+    }
+    .dashboard-v43-gauge{
+      --angle:calc(var(--score) * 3.6deg);
+      width:190px!important;
+      height:190px!important;
+      margin:8px auto 14px!important;
+      border-radius:999px!important;
+      display:grid!important;
+      place-items:center!important;
+      background:conic-gradient(#22c55e 0 var(--angle), #e5edf7 var(--angle) 360deg)!important;
+      box-shadow:inset 0 0 0 1px rgba(15,23,42,.04),0 18px 40px rgba(15,23,42,.06)!important;
+    }
+    .dashboard-v43-gauge-ring{
+      width:132px!important;
+      height:132px!important;
+      border-radius:999px!important;
+      display:grid!important;
+      place-items:center!important;
+      background:#fff!important;
+      box-shadow:inset 0 0 0 1px rgba(226,232,240,.92)!important;
+      text-align:center!important;
+    }
+    .dashboard-v43-gauge-ring strong{
+      display:block!important;
+      color:#06142d!important;
+      font-size:40px!important;
+      line-height:.9!important;
+      font-weight:900!important;
+      letter-spacing:-.06em!important;
+    }
+    .dashboard-v43-gauge-ring span{
+      display:block!important;
+      color:#64748b!important;
+      font-size:13px!important;
+      font-weight:850!important;
+      margin-top:-26px!important;
+    }
+    .dashboard-v43-health-status{
+      text-align:center!important;
+      font-size:18px!important;
+      font-weight:900!important;
+      letter-spacing:-.02em!important;
+      margin-bottom:16px!important;
+    }
+    .dashboard-v43-health-status.warn{color:#f59e0b!important;}
+    .dashboard-v43-health-status.bad{color:#ef4444!important;}
+    .dashboard-v43-health-metrics{
+      display:grid!important;
+      gap:0!important;
+      margin-top:auto!important;
+      border-top:1px solid rgba(226,232,240,.86)!important;
+    }
+    .dashboard-v43-health-metrics div{
+      display:flex!important;
+      justify-content:space-between!important;
+      gap:14px!important;
+      padding:12px 0!important;
+      border-bottom:1px solid rgba(226,232,240,.72)!important;
+    }
+    .dashboard-v43-health-metrics div:last-child{border-bottom:0!important;}
+    .dashboard-v43-health-metrics span{color:#64748b!important;font-size:13px!important;font-weight:750!important;}
+    .dashboard-v43-health-metrics b{color:#06142d!important;font-size:14px!important;font-weight:900!important;}
+    .dashboard-v43-analytics-grid{
+      display:grid!important;
+      grid-template-columns:1fr 1fr!important;
+      gap:18px!important;
+    }
+    .dashboard-v43-analytics-grid .dashboard-chart-card{
+      grid-column:auto!important;
+      min-height:306px!important;
+    }
+    .dashboard-v43-bottom-grid{
+      display:grid!important;
+      grid-template-columns:1.05fr 1fr 1.05fr!important;
+      gap:18px!important;
+      align-items:stretch!important;
+    }
+    .dashboard-v43-expense-card,.dashboard-v43-debt-card,.dashboard-v43-insights{padding:22px 24px!important;}
+    .dashboard-v43-expense-list{display:grid!important;gap:14px!important;}
+    .dashboard-v43-expense-row{
+      display:grid!important;
+      grid-template-columns:minmax(0,1fr) auto 52px!important;
+      gap:12px!important;
+      align-items:center!important;
+      padding:0 0 14px!important;
+      border-bottom:1px solid rgba(226,232,240,.82)!important;
+      position:relative!important;
+    }
+    .dashboard-v43-expense-row div{min-width:0!important;color:#0f172a!important;font-size:13px!important;}
+    .dashboard-v43-expense-row b{font-weight:850!important;}
+    .dashboard-v43-expense-row strong{font-size:13px!important;font-weight:900!important;color:#06142d!important;white-space:nowrap!important;}
+    .dashboard-v43-expense-row em{font-style:normal!important;text-align:right!important;color:#64748b!important;font-size:12px!important;font-weight:850!important;}
+    .dashboard-v43-expense-row i{
+      position:absolute!important;
+      left:0!important;
+      right:auto!important;
+      bottom:-1px!important;
+      height:3px!important;
+      border-radius:999px!important;
+      background:linear-gradient(90deg,#2563eb,#60a5fa)!important;
+    }
+    .dashboard-v43-debt-list{display:grid!important;gap:10px!important;}
+    .dashboard-v43-debt-row{
+      display:grid!important;
+      grid-template-columns:minmax(0,1fr) auto!important;
+      gap:14px!important;
+      align-items:center!important;
+      padding:13px 0!important;
+      border-bottom:1px solid rgba(226,232,240,.86)!important;
+    }
+    .dashboard-v43-debt-row b{display:block!important;color:#06142d!important;font-size:13px!important;font-weight:900!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important;}
+    .dashboard-v43-debt-row span{display:block!important;margin-top:4px!important;color:#ef4444!important;font-size:11.5px!important;font-weight:750!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important;}
+    .dashboard-v43-debt-row strong{color:#ef4444!important;font-size:13px!important;font-weight:900!important;white-space:nowrap!important;}
+    .dashboard-v43-empty-good{
+      padding:18px!important;
+      border-radius:16px!important;
+      background:rgba(16,185,129,.08)!important;
+      color:#059669!important;
+      font-weight:850!important;
+      text-align:center!important;
+    }
+    @media(max-width:1500px){
+      .dashboard-v43-kpis{grid-template-columns:repeat(3,minmax(0,1fr))!important;}
+      .dashboard-v43-main-grid,.dashboard-v43-bottom-grid{grid-template-columns:1fr!important;}
+      .dashboard-v43-analytics-grid{grid-template-columns:1fr!important;}
+    }
+    @media(max-width:980px){
+      .dashboard-v43-head{grid-template-columns:1fr!important;}
+      .dashboard-v43-filters{grid-template-columns:1fr!important;}
+      .dashboard-v43-kpis{grid-template-columns:1fr!important;}
+      .dashboard-v43-line-card .finance-line-chart-summary{grid-template-columns:1fr!important;}
+    }
+
+    @media (max-width:980px){
+      .rms-pro-shell .sidebar.rms-pro-sidebar{
+        width:100%!important;
+        min-width:100%!important;
+        max-width:none!important;
+        height:auto!important;
+        min-height:0!important;
+      }
+      .rms-pro-shell.sidebar-collapsed .sidebar.rms-pro-sidebar{
+        width:100%!important;
+        min-width:100%!important;
+        max-width:none!important;
+      }
+      .rms-pro-shell.sidebar-collapsed .rms-pro-brand-copy,
+      .rms-pro-shell.sidebar-collapsed .rms-pro-nav-group-title,
+      .rms-pro-shell.sidebar-collapsed .rms-pro-nav-text,
+      .rms-pro-shell.sidebar-collapsed .rms-pro-user-meta{
+        display:block!important;
+      }
+      .rms-pro-shell.sidebar-collapsed .rms-pro-nav-list{align-items:stretch!important;}
+      .rms-pro-shell.sidebar-collapsed .rms-pro-nav-item{
+        width:100%!important;
+        height:48px!important;
+        min-height:48px!important;
+        justify-content:flex-start!important;
+        gap:12px!important;
+        padding:0 12px!important;
+      }
+      .rms-pro-shell.sidebar-collapsed .rms-pro-nav-item::before{left:0!important;top:10px!important;bottom:10px!important;transform:none!important;width:3px!important;height:auto!important;}
+      .rms-pro-shell.sidebar-collapsed .rms-pro-sidebar-toggle{position:static!important;width:40px!important;height:40px!important;}
+      .rms-pro-shell.sidebar-collapsed .rms-pro-user-card{flex-direction:row!important;padding:12px!important;}
+    }
+  `}</style>
+}
+
+function ThemeStyles() {
+  return <style>{`
+    .readonly-banner { margin: 0 0 14px; padding: 10px 14px; border-radius: 14px; background: #fff3cd; border: 1px solid #ecd58b; color: #5c4812; font-weight: 800; }
+    .readonly-mode .card input, .readonly-mode .card select, .readonly-mode .card textarea, .readonly-mode .card button:not(.allow-read) { pointer-events: none; opacity: .62; }
+    .save-status, .hint.save-status, .theme-modern .save-status, .theme-dashboard .save-status, .theme-executive .save-status { color: var(--danger) !important; font-weight: 900 !important; }
+    .theme-modern { --bg: #eef2f6; --panel: rgba(255,255,255,.92); --ink: #0f172a; --muted: #64748b; --line: #d8e0ea; --accent: #0f766e; --gold: #2dd4bf; --danger: #dc2626; --good: #16a34a; }
+    .theme-modern .sidebar { background: linear-gradient(180deg, #0f172a, #111827 58%, #0f766e); box-shadow: 12px 0 35px rgba(15,23,42,.18); }
+    .theme-modern .logo, .theme-modern .login-logo { background: linear-gradient(135deg, #2dd4bf, #a7f3d0); color: #042f2e; box-shadow: 0 12px 28px rgba(45,212,191,.28); }
+    .theme-modern .rms-logo-svg { filter: drop-shadow(0 12px 28px rgba(45,212,191,.26)); }
+    .theme-modern .main { background: radial-gradient(circle at top left, rgba(45,212,191,.13), transparent 32%), linear-gradient(180deg, #f8fafc, #eef2f6); }
+    .theme-modern .card, .theme-modern .dash-kpi { border-color: rgba(148,163,184,.35); background: rgba(255,255,255,.88); box-shadow: 0 18px 46px rgba(15,23,42,.08); backdrop-filter: blur(10px); }
+    .theme-modern .nav.active { background: linear-gradient(135deg, #2dd4bf, #a7f3d0); color: #052e2b; box-shadow: 0 10px 24px rgba(45,212,191,.22); }
+    .theme-modern input, .theme-modern select, .theme-modern textarea { border-color: #cbd5e1; background: rgba(255,255,255,.95); }
+    .theme-dashboard { --bg: #f3f4f6; --panel: #ffffff; --ink: #111827; --muted: #6b7280; --line: #e5e7eb; --accent: #f59e0b; --gold: #f59e0b; --danger: #dc2626; --good: #16a34a; }
+    .theme-dashboard .sidebar { background: #ffffff; color: var(--ink); border-right: 1px solid var(--line); box-shadow: 8px 0 24px rgba(15,23,42,.05); }
+    .theme-dashboard .brand p, .theme-dashboard .userbar span { color: var(--muted); }
+    .theme-dashboard .nav { background: #f3f4f6; color: #374151; border: 1px solid transparent; }
+    .theme-dashboard .nav.active { background: linear-gradient(135deg, #f59e0b, #f97316); color: #fff; box-shadow: 0 10px 20px rgba(245,158,11,.25); }
+    .theme-dashboard .main { background: #f3f4f6; }
+    .theme-dashboard .card, .theme-dashboard .dash-kpi { background: #fff; border-color: var(--line); box-shadow: 0 10px 24px rgba(17,24,39,.05); }
+    .theme-dashboard .topbar h2, .theme-dashboard h3, .theme-dashboard .big-number { color: #111827; }
+    .theme-dashboard .dash-bar { background: linear-gradient(90deg, #f59e0b, #f97316); }
+    .theme-dashboard .dash-bar.negative { background: #ef4444; }
+    .theme-dashboard input, .theme-dashboard select, .theme-dashboard textarea { background: #fff; border-color: #e5e7eb; }
+    .theme-dashboard .button, .theme-dashboard button.primary, .theme-dashboard .primary { background: linear-gradient(135deg, #f59e0b, #f97316); border-color: #f59e0b; }
+    .theme-dashboard .logo, .theme-dashboard .login-logo { background: linear-gradient(135deg, #fff7ed, #ffedd5); color: #9a3412; box-shadow: 0 10px 24px rgba(245,158,11,.12); }
+    .theme-executive { --bg: #eef1f4; --panel: rgba(255,255,255,.88); --ink: #1f2937; --muted: #6b7280; --line: rgba(148,163,184,.38); --accent: #475569; --gold: #64748b; --danger: #dc2626; --good: #15803d; }
+    .theme-executive .sidebar { background: linear-gradient(180deg, #f8fafc, #eef2f7 58%, #e2e8f0); color: #1f2937; box-shadow: 14px 0 34px rgba(15,23,42,.08); border-right: 1px solid rgba(148,163,184,.35); }
+    .theme-executive .main { background: radial-gradient(circle at top left, rgba(148,163,184,.18), transparent 30%), linear-gradient(180deg, #f8fafc 0%, #eef1f4 100%); color: var(--ink); }
+    .theme-executive .card, .theme-executive .dash-kpi { background: rgba(255,255,255,.86); border-color: rgba(148,163,184,.30); box-shadow: 0 16px 38px rgba(15,23,42,.07); backdrop-filter: blur(10px); }
+    .theme-executive .topbar h2, .theme-executive h3, .theme-executive .big-number, .theme-executive .card-head h3, .theme-executive .brand h1 { color: #111827; }
+    .theme-executive .brand p, .theme-executive .userbar span, .theme-executive .hint, .theme-executive .dash-kpi span, .theme-executive .metric span { color: #64748b; }
+    .expense-note { display:block; margin-top:3px; color:#64748b; font-size:11px; font-weight:500; line-height:1.25; }
+    .theme-executive .nav { background: rgba(255,255,255,.62); color: #334155; border: 1px solid rgba(148,163,184,.30); }
+    .theme-executive .nav:hover { background: rgba(241,245,249,.95); }
+    .theme-executive .nav.active { background: linear-gradient(135deg, #475569, #64748b); color: #ffffff; box-shadow: 0 10px 24px rgba(71,85,105,.20); border-color: transparent; }
+    .theme-executive input, .theme-executive select, .theme-executive textarea { background: rgba(255,255,255,.94); color: #111827; border-color: rgba(148,163,184,.38); }
+    .theme-executive input::placeholder, .theme-executive textarea::placeholder { color: #94a3b8; }
+    .theme-executive .button, .theme-executive button.primary, .theme-executive .primary { background: linear-gradient(135deg, #475569, #64748b); color: #ffffff; border-color: transparent; }
+    .theme-executive button.ghost, .theme-executive .ghost { background: rgba(255,255,255,.68); color: #334155; border-color: rgba(148,163,184,.36); }
+    .theme-executive table th { background: rgba(241,245,249,.88); color: #475569; }
+    .theme-executive table td { color: #1f2937; border-color: rgba(148,163,184,.22); }
+    .theme-executive .dash-bar { background: linear-gradient(90deg, #475569, #94a3b8); }
+    .theme-executive .dash-bar.negative { background: linear-gradient(90deg, #ef4444, #f87171); }
+    .theme-executive .login-card { background: rgba(255,255,255,.90); color: #1f2937; border-color: rgba(148,163,184,.32); box-shadow: 0 24px 60px rgba(15,23,42,.12); }
+    .theme-executive .logo, .theme-executive .login-logo { background: linear-gradient(135deg, #f8fafc, #e2e8f0); color: #334155; box-shadow: 0 12px 28px rgba(71,85,105,.12); }
+    .theme-executive .readonly-banner { background: rgba(241,245,249,.92); border-color: rgba(148,163,184,.45); color: #334155; }
+    .theme-executive .dash-bar-track { background: #d7dde6; box-shadow: inset 0 1px 2px rgba(15,23,42,.08); }
+    .theme-executive .dash-bar { background: linear-gradient(90deg, #475569, #718096); }
+    .theme-executive .salary-view-employees input,
+    .theme-executive .salary-view-employees select,
+    .theme-executive .salary-view-employees textarea,
+    .theme-executive .salary-view-dsmf input,
+    .theme-executive .salary-view-dsmf select,
+    .theme-executive .salary-view-dsmf textarea,
+    .theme-executive .attendance-card input,
+    .theme-executive .attendance-card select,
+    .theme-executive .attendance-card textarea {
+      background: #dbe2ea;
+      border-color: #94a3b8;
+      color: #111827;
+      box-shadow: inset 0 1px 2px rgba(15,23,42,.08);
+    }
+    .theme-executive .salary-view-employees input:focus,
+    .theme-executive .salary-view-employees select:focus,
+    .theme-executive .salary-view-employees textarea:focus,
+    .theme-executive .salary-view-dsmf input:focus,
+    .theme-executive .salary-view-dsmf select:focus,
+    .theme-executive .salary-view-dsmf textarea:focus,
+    .theme-executive .attendance-card input:focus,
+    .theme-executive .attendance-card select:focus,
+    .theme-executive .attendance-card textarea:focus {
+      background: #f8fafc;
+      border-color: #475569;
+      outline: 2px solid rgba(71,85,105,.18);
+    }
+    .logout-nav { margin-top: 6px; }
+    .theme-executive .supplier-entity-group { background: rgba(255,255,255,.78); border-color: rgba(148,163,184,.34); }
+    .theme-executive .supplier-entity-head { background: linear-gradient(180deg, #e7edf4, #dde5ee); color: #1f2937; border-bottom: 1px solid rgba(148,163,184,.26); }
+    .theme-executive .supplier-transactions-panel { background: #edf2f7; border-color: rgba(148,163,184,.34); }
+    .theme-executive .system-row { background: rgba(71,85,105,.06); }
+    .theme-executive .system-row input { background: #e2e8f0; color: #334155; }
+    .theme-executive .supplier-risk-empty { background: rgba(241,245,249,.8); }
+    .theme-executive .attendance-card table { background: rgba(255,255,255,.72); }
+    .theme-executive .attendance-card td button { border: 1px solid rgba(100,116,139,.55); opacity: 1; visibility: visible; }
+    .theme-executive .attendance-card td button.ghost { background: #d9e2ec; color: #334155; border-color: #94a3b8; }
+    .theme-executive .attendance-card td button.primary { background: linear-gradient(135deg, #475569, #64748b); color: #ffffff; border-color: #475569; }
+    .theme-executive .attendance-card td button.danger { background: linear-gradient(135deg, #ef4444, #f87171); color: #ffffff; border-color: #dc2626; }
+    .theme-executive .dash-bar-track { background: #d7dde6 !important; box-shadow: inset 0 1px 2px rgba(15,23,42,.08); }
+    .theme-executive .dash-bar { background: linear-gradient(90deg, #475569, #718096) !important; }
+    .theme-executive .supplier-entity-group { background: rgba(255,255,255,.78); border-color: rgba(148,163,184,.34); }
+    .theme-executive .supplier-entity-head { background: linear-gradient(180deg, #e7edf4, #dde5ee); color: #1f2937; border-bottom: 1px solid rgba(148,163,184,.26); }
+    .theme-executive .supplier-transactions-panel { background: #edf2f7; border-color: rgba(148,163,184,.34); }
+    .theme-executive .system-row { background: rgba(71,85,105,.06); }
+    .theme-executive .system-row input { background: #e2e8f0; color: #334155; }
+    .theme-executive .supplier-risk-empty { background: rgba(241,245,249,.8); }
+    .theme-executive .dash-kpi { background: linear-gradient(180deg, #f8fafc, #eef2f7); }
+    .theme-executive .attendance-card table { background: rgba(255,255,255,.72); }
+    .theme-executive .attendance-card .table-wrap { background: transparent; }
+    .theme-executive .attendance-card td button.attendance-day-cell {
+      border: 1px solid rgba(100,116,139,.55);
+      opacity: 1;
+      visibility: visible;
+      box-shadow: inset 0 1px 2px rgba(15,23,42,.08);
+    }
+    .theme-executive .attendance-card td button.attendance-day-empty {
+      background: #dbe2ea !important;
+      color: #64748b !important;
+      border-color: #94a3b8 !important;
+    }
+    .theme-executive .attendance-card td button.ghost { background: #d9e2ec; color: #334155; border-color: #94a3b8; }
+    .theme-executive .attendance-card td button.primary { background: linear-gradient(135deg, #475569, #64748b); color: #ffffff; border-color: #475569; }
+    .theme-executive .attendance-card td button.danger { background: linear-gradient(135deg, #ef4444, #f87171); color: #ffffff; border-color: #dc2626; }
+    .theme-executive .attendance-card input,
+    .theme-executive .attendance-card select,
+    .theme-executive .attendance-card textarea,
+    .theme-executive .salary-view-employees input,
+    .theme-executive .salary-view-employees select,
+    .theme-executive .salary-view-employees textarea,
+    .theme-executive .salary-view-dsmf input,
+    .theme-executive .salary-view-dsmf select,
+    .theme-executive .salary-view-dsmf textarea {
+      background: #dbe2ea;
+      border-color: #94a3b8;
+      color: #111827;
+      box-shadow: inset 0 1px 2px rgba(15,23,42,.08);
+    }
+    .theme-executive .attendance-card input:focus,
+    .theme-executive .attendance-card select:focus,
+    .theme-executive .attendance-card textarea:focus,
+    .theme-executive .salary-view-employees input:focus,
+    .theme-executive .salary-view-employees select:focus,
+    .theme-executive .salary-view-employees textarea:focus,
+    .theme-executive .salary-view-dsmf input:focus,
+    .theme-executive .salary-view-dsmf select:focus,
+    .theme-executive .salary-view-dsmf textarea:focus {
+      background: #f8fafc;
+      border-color: #475569;
+      outline: 2px solid rgba(71,85,105,.18);
+    }
+    input, select, textarea,
+    .theme-executive input, .theme-executive select, .theme-executive textarea,
+    .theme-dashboard input, .theme-dashboard select, .theme-dashboard textarea,
+    .theme-modern input, .theme-modern select, .theme-modern textarea {
+      background: #ffffff !important;
+      color: #111827 !important;
+      border-color: #cbd5e1 !important;
+    }
+    .attendance-card td button.attendance-day-cell,
+    .theme-executive .attendance-card td button.attendance-day-cell {
+      background: initial;
+    }
+    .global-progress-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(15,23,42,.18);
+      backdrop-filter: blur(3px);
+    }
+    .global-progress-card {
+      width: min(360px, calc(100vw - 32px));
+      padding: 22px;
+      border-radius: 22px;
+      background: rgba(255,255,255,.96);
+      border: 1px solid rgba(148,163,184,.34);
+      box-shadow: 0 24px 70px rgba(15,23,42,.18);
+      display: grid;
+      gap: 12px;
+      text-align: center;
+      color: #1f2937;
+    }
+    .global-progress-spinner {
+      width: 42px;
+      height: 42px;
+      border-radius: 999px;
+      border: 4px solid #e2e8f0;
+      border-top-color: #475569;
+      margin: 0 auto;
+      animation: rmsSpin .9s linear infinite;
+    }
+    .global-progress-track {
+      height: 9px;
+      background: #e2e8f0;
+      border-radius: 999px;
+      overflow: hidden;
+    }
+    .global-progress-track div {
+      height: 100%;
+      background: linear-gradient(90deg, #475569, #94a3b8);
+      transition: width .25s ease;
+    }
+    @keyframes rmsSpin { to { transform: rotate(360deg); } }
+    .login-screen.theme-executive {
+      background: radial-gradient(circle at top left, rgba(148,163,184,.22), transparent 36%), linear-gradient(180deg, #f8fafc, #eef2f7);
+    }
+
+    .finance-daily-revenue-chart {
+      min-height: 280px;
+    }
+    .finance-line-chart-wrap {
+      margin-top: 16px;
+      border-radius: 22px;
+      background: linear-gradient(180deg, rgba(248,250,252,.98), rgba(255,255,255,.98));
+      border: 1px solid rgba(226,232,240,.94);
+      padding: 18px 18px 16px;
+      overflow: hidden;
+    }
+    .finance-line-chart-svg {
+      width: 100%;
+      height: 300px;
+      display: block;
+    }
+    .finance-line-chart-grid { stroke: rgba(148,163,184,.28); stroke-width: 1; stroke-dasharray: 4 4; }
+    .finance-line-chart-axis { stroke: rgba(100,116,139,.36); stroke-width: 1; }
+    .finance-line-chart-area { fill: rgba(37,99,235,.13); }
+    .finance-line-chart-line { fill: none; stroke: #1d4ed8; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
+    .finance-line-chart-point { fill: #0f172a; stroke: #fff; stroke-width: 2; }
+    .finance-line-chart-best-point { fill: #1e3a8a; stroke: #fff; stroke-width: 2.4; }
+    .finance-line-chart-label { fill: #475569; font-size: 12px; font-weight: 600; }
+    .finance-line-chart-x-label { fill: #334155; font-size: 11px; font-weight: 600; }
+    .finance-line-chart-value { fill: #0f172a; font-size: 12px; font-weight: 800; }
+    .finance-line-chart-date { fill: #0f172a; font-size: 11px; font-weight: 700; }
+    .finance-line-chart-summary {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 16px;
+    }
+    .finance-line-chart-summary .metric {
+      min-height: 96px;
+      border-radius: 18px;
+      background: rgba(248,250,252,.96);
+      border: 1px solid rgba(226,232,240,.9);
+      padding: 14px 16px 12px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    .finance-line-chart-summary .metric-title { color: #64748b; font-size: 13px; line-height: 1.35; }
+    .finance-line-chart-summary .metric-date { margin-top: 8px; color: #0f172a; font-size: 13px; font-weight: 500; }
+    .finance-line-chart-summary .metric-weekday { margin-top: 8px; color: #0f172a; font-size: 13px; font-weight: 800; }
+    .finance-line-chart-summary .metric-amount { display: flex; align-items: flex-end; gap: 6px; margin-top: 10px; line-height: 1; }
+    .finance-line-chart-summary .metric-number { color: #0f172a; font-size: 24px; font-weight: 500; letter-spacing: -.03em; }
+    .finance-line-chart-summary .metric-currency { color: #475569; font-size: 11px; font-weight: 700; line-height: 1.05; padding-bottom: 2px; }
+    @media (max-width: 760px) {
+      .finance-line-chart-summary { grid-template-columns: 1fr; }
+      .finance-line-chart-svg { height: 230px; }
+    }
+
+    .permission-grid { display: grid; grid-template-columns: minmax(160px, 1fr) 160px; gap: 10px; align-items: center; }
+    .permission-grid b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  `}</style>
+}
+
+function MiniBarChart({ rows, valueKey = 'revenue', labelKey = 'name', title, subtitle, showShare = false }) {
+  const max = Math.max(1, ...rows.map(r => Math.abs(parseNum(r[valueKey]))))
+  const positiveTotal = rows.reduce((s, r) => s + Math.max(0, parseNum(r[valueKey])), 0)
+  const signedTotal = rows.reduce((s, r) => s + parseNum(r[valueKey]), 0)
+  const shareBase = valueKey === 'net' ? signedTotal : positiveTotal
+  const shareLabel = valueKey === 'net' ? 'от общей прибыли' : 'от общей выручки'
+  return <div className="card span-2 dashboard-chart-card">
+    <div className="card-head"><div><h3>{title}</h3><p className="hint">{subtitle}</p></div></div>
+    <div className="dash-bars">
+      {rows.map(r => {
+        const val = parseNum(r[valueKey])
+        const width = Math.max(3, Math.min(100, Math.abs(val) / max * 100))
+        const share = shareBase ? val / shareBase * 100 : 0
+        return <div className="dash-bar-row" key={r.id || r[labelKey]}>
+          <div className="dash-bar-label">{r[labelKey]}</div>
+          <div className="dash-bar-track" title={`${fmt(val)} ман.${showShare ? ` · ${pct(share)} ${shareLabel}` : ''}`}><div className={`dash-bar ${val < 0 ? 'negative' : ''}`} style={{width: `${width}%`}} /></div>
+          <div className={`dash-bar-value ${val < 0 ? 'bad' : ''}`}><span>{fmt(val)} ман.</span>{showShare && <em>({pct(share)})</em>}</div>
+        </div>
+      })}
+      {!rows.length && <p className="hint">Нет данных для графика.</p>}
+    </div>
+  </div>
+}
+
+
+function DailyRevenueLineChart({ rows = [], title = 'Выручка по дням', subtitle = '', className = '', firstSummary = 'revenue' }) {
+  const values = rows.map(r => parseNum(r.amount))
+  const maxRaw = Math.max(1, ...values)
+  const max = Math.ceil(maxRaw / 1000) * 1000
+  const total = values.reduce((s, v) => s + parseNum(v), 0)
+  const activeDays = values.filter(v => parseNum(v) > 0).length
+  const avg = activeDays ? total / activeDays : 0
+  const best = rows.reduce((top, r) => parseNum(r.amount) > parseNum(top.amount) ? r : top, { day: '—', date: '', amount: 0 })
+  const weekdayNames = ['Воскресенье', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота']
+  const monthNamesRu = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря']
+  const formatDayMonth = (row) => {
+    if (!row?.date) return row?.day && row.day !== '—' ? String(row.day) : '—'
+    const d = new Date(`${row.date}T12:00:00`)
+    if (Number.isNaN(d.getTime())) return row?.day && row.day !== '—' ? String(row.day) : '—'
+    return `${d.getDate()} ${monthNamesRu[d.getMonth()]}`
+  }
+  const weekdayStats = new Map()
+  rows
+    .filter(r => parseNum(r.amount) > 0 && r.date)
+    .forEach(r => {
+      const d = new Date(`${r.date}T12:00:00`)
+      const weekday = Number.isNaN(d.getTime()) ? -1 : d.getDay()
+      if (weekday < 0) return
+      const prev = weekdayStats.get(weekday) || { weekday, name: weekdayNames[weekday], total: 0, count: 0, avg: 0 }
+      prev.total += parseNum(r.amount)
+      prev.count += 1
+      prev.avg = prev.count ? prev.total / prev.count : 0
+      weekdayStats.set(weekday, prev)
+    })
+  const weekdayRows = Array.from(weekdayStats.values()).filter(r => r.count > 0)
+  const bestWeekday = weekdayRows.reduce((top, r) => parseNum(r.avg) > parseNum(top.avg) ? r : top, { name: '—', avg: 0, count: 0 })
+  const worstWeekday = weekdayRows.reduce((low, r) => !low.count || parseNum(r.avg) < parseNum(low.avg) ? r : low, { name: '—', avg: 0, count: 0 })
+  const width = 1000
+  const height = 300
+  const pad = { left: 42, right: 10, top: 30, bottom: 34 }
+  const chartW = width - pad.left - pad.right
+  const chartH = height - pad.top - pad.bottom
+  const count = Math.max(1, rows.length - 1)
+  const points = rows.map((r, i) => {
+    const x = pad.left + (rows.length <= 1 ? 0 : i / count * chartW)
+    const y = pad.top + chartH - (parseNum(r.amount) / max * chartH)
+    return { ...r, x, y }
+  })
+  const path = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ')
+  const areaPath = points.length ? `${path} L ${points[points.length - 1].x.toFixed(1)} ${pad.top + chartH} L ${points[0].x.toFixed(1)} ${pad.top + chartH} Z` : ''
+  const yTicks = [0, 0.25, 0.5, 0.75, 1]
+  const bestPoint = points.find(p => parseNum(p.amount) === parseNum(best.amount) && parseNum(p.amount) > 0)
+
+  const AmountBlock = ({ value, suffix = 'AZN' }) => (
+    <div className="metric-amount">
+      <span className="metric-number">{fmt(value)}</span>
+      {suffix ? <span className="metric-currency">{suffix}</span> : null}
+    </div>
+  )
+
+  return <div className={`card span-2 finance-daily-revenue-chart ${className}`.trim()}>
+    <div className="card-head"><div><h3>{title}</h3><p className="hint">{subtitle}</p></div></div>
+    <div className="finance-line-chart-wrap">
+      {rows.length ? <svg className="finance-line-chart-svg" viewBox={`0 0 ${width} ${height}`} role="img" aria-label={title} preserveAspectRatio="none">
+        <defs>
+          <linearGradient id="financeDailyRevenueGradient" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#2563eb" stopOpacity="0.24" />
+            <stop offset="58%" stopColor="#2563eb" stopOpacity="0.11" />
+            <stop offset="100%" stopColor="#2563eb" stopOpacity="0.02" />
+          </linearGradient>
+        </defs>
+        {yTicks.map(tick => {
+          const y = pad.top + chartH - tick * chartH
+          const label = max * tick
+          return <g key={tick}>
+            <line className="finance-line-chart-grid" x1={pad.left} y1={y} x2={width - pad.right} y2={y} />
+            <text className="finance-line-chart-label" x={pad.left - 10} y={y + 4} textAnchor="end">{label >= 1000 ? `${Math.round(label / 1000)}k` : Math.round(label)}</text>
+          </g>
+        })}
+        <line className="finance-line-chart-axis" x1={pad.left} y1={pad.top + chartH} x2={width - pad.right} y2={pad.top + chartH} />
+        {areaPath && <path className="finance-line-chart-area" d={areaPath} fill="url(#financeDailyRevenueGradient)" />}
+        {path && <path className="finance-line-chart-line" d={path} />}
+        {bestPoint && <g key={`best-${bestPoint.date}-${bestPoint.amount}`}>
+          <line className="finance-line-chart-guide" x1={bestPoint.x} y1={Math.max(pad.top, bestPoint.y)} x2={bestPoint.x} y2={pad.top + chartH} />
+          <g className="finance-line-chart-tooltip" transform={`translate(${Math.max(56, Math.min(width - 100, bestPoint.x - 44))}, ${Math.max(2, bestPoint.y - 62)})`}>
+            <rect className="finance-line-chart-tooltip-box" x="0" y="0" width="88" height="46" rx="10" />
+            <text className="finance-line-chart-tooltip-value" x="44" y="19" textAnchor="middle">{fmt(bestPoint.amount)}</text>
+            <text className="finance-line-chart-tooltip-date" x="44" y="36" textAnchor="middle">{formatDayMonth(bestPoint)}</text>
+          </g>
+        </g>}
+        {points.map((p, i) => <text key={`x-${p.date || i}`} className="finance-line-chart-x-label" x={p.x} y={height - 9} textAnchor="middle">{p.day}</text>)}
+      </svg> : <p className="hint">Нет данных по выручке за выбранный месяц.</p>}
+      <div className="finance-line-chart-summary">
+        {firstSummary === 'activeDays' ? <div className="metric metric-active-days">
+          <span className="finance-kpi-icon" aria-hidden="true">◷</span>
+          <div className="metric-copy"><div className="metric-title">Дней с<br />выручкой</div></div>
+          <AmountBlock value={activeDays} suffix="дней" />
+        </div> : <div className="metric metric-revenue">
+          <span className="finance-kpi-icon" aria-hidden="true">↗</span>
+          <div className="metric-copy"><div className="metric-title">Выручка за<br />месяц</div></div>
+          <AmountBlock value={total} />
+        </div>}
+        <div className="metric metric-average">
+          <span className="finance-kpi-icon" aria-hidden="true">▣</span>
+          <div className="metric-copy"><div className="metric-title">Средняя<br />выручка / день</div></div>
+          <AmountBlock value={avg} />
+        </div>
+        <div className="metric metric-best-day">
+          <span className="finance-kpi-icon" aria-hidden="true">♛</span>
+          <div className="metric-copy"><div className="metric-title">Лучший день</div><div className="metric-date">{best.day !== '—' ? formatDayMonth(best) : '—'}</div></div>
+          <AmountBlock value={best.amount} />
+        </div>
+        <div className="metric metric-best-weekday">
+          <span className="finance-kpi-icon" aria-hidden="true">☆</span>
+          <div className="metric-copy"><div className="metric-title">Лучший день<br />недели</div><div className="metric-weekday">{bestWeekday.count ? bestWeekday.name : '—'}</div></div>
+          <AmountBlock value={bestWeekday.avg} />
+        </div>
+        <div className="metric metric-worst">
+          <span className="finance-kpi-icon" aria-hidden="true">↘</span>
+          <div className="metric-copy"><div className="metric-title">Худший день<br />недели</div><div className="metric-weekday">{worstWeekday.count ? worstWeekday.name : '—'}</div></div>
+          <AmountBlock value={worstWeekday.avg} />
+        </div>
+      </div>
+    </div>
+  </div>
+}
+
+function Dashboard({ t }) {
+  const TAX_RATE = 8
+  const branches = useBranches()
+  const DASH_ALL_BRANCHES = '__all__'
+  const now = new Date()
+  const [branchId, setBranchId] = useState(DASH_ALL_BRANCHES)
+  const [year, setYear] = useState(now.getFullYear())
+  const [month, setMonth] = useState(now.getMonth() + 1)
+  const [data, setData] = useState(null)
+  const [dailyRevenueRows, setDailyRevenueRows] = useState([])
+
+  useEffect(() => { load() }, [year, month, branchId, branches.length])
+
+  async function calcMonth(y, m) {
+    const monthDate = monthStart(y, m)
+    const monthEnd = new Date(Number(y), Number(m), 1).toISOString().slice(0, 10)
+    const [
+      { data: revRows },
+      { data: expRows },
+      { data: salRows },
+      { data: svcRows },
+      supplierResult,
+      suppliersResult,
+      monthPurchasesResult,
+      allPurchasesResult,
+      paymentsResult,
+      employeeResult,
+      salaryPeriodResult
+    ] = await Promise.all([
+      supabase.from('monthly_branch_revenue').select('*').eq('month', monthDate),
+      supabase.from('monthly_branch_expenses').select('*').eq('month', monthDate),
+      supabase.from('monthly_branch_salary').select('*').eq('month', monthDate),
+      supabase.from('monthly_branch_service_charge_cost').select('*').eq('month', monthDate),
+      supabase.from('supplier_balances_v2').select('*'),
+      supabase.from('suppliers').select('id,name,payment_term_days,credit_limit,is_active').eq('is_active', true),
+      supabase.from('supplier_purchases').select('id,supplier_id,branch_id,purchase_date,invoice_number,total_amount,deleted_at,supplier_purchase_items(total_amount,supplier_products(name,category))').gte('purchase_date', monthDate).lt('purchase_date', monthEnd).is('deleted_at', null),
+      supabase.from('supplier_purchases').select('id,supplier_id,purchase_date,invoice_number,total_amount,deleted_at').is('deleted_at', null),
+      supabase.from('supplier_payments').select('supplier_id,amount'),
+      supabase.from('employees').select('id,branch_id,position,monthly_salary,official_salary,monthly_official_salary').eq('is_active', true),
+      supabase.from('salary_periods').select('employee_id,branch_id,salary_gross,salary_net,final_balance,payroll_payments').eq('salary_month', monthDate)
+    ])
+
+    const suppliersRaw = suppliersResult?.data || []
+    const purchaseRowsForFinance = monthPurchasesResult?.data || []
+    const purchasesRaw = allPurchasesResult?.data || []
+    const paymentsRaw = paymentsResult?.data || []
+    let supplierRows = supplierResult?.data || []
+
+    if (!supplierRows.length || supplierResult?.error) {
+      const fallback = await supabase.from('supplier_balances').select('*')
+      supplierRows = (fallback.data || []).map(r => ({
+        supplier_id: r.supplier_id,
+        supplier_name: r.supplier_name,
+        balance: r.balance
+      }))
+    }
+
+    const balanceMap = new Map((supplierRows || []).map(r => [r.supplier_id, parseNum(r.balance)]))
+    const enrichedSupplierRows = suppliersRaw.map(s => {
+      const purchaseTotal = purchasesRaw
+        .filter(p => p.supplier_id === s.id)
+        .reduce((sum, p) => sum + parseNum(p.total_amount), 0)
+      const paymentTotal = paymentsRaw
+        .filter(p => p.supplier_id === s.id)
+        .reduce((sum, p) => sum + parseNum(p.amount), 0)
+      const balance = balanceMap.has(s.id) ? balanceMap.get(s.id) : purchaseTotal - paymentTotal
+      return {
+        supplier_id: s.id,
+        supplier_name: s.name,
+        balance,
+        payment_term_days: s.payment_term_days,
+        credit_limit: s.credit_limit
+      }
+    })
+    const employeeRows = employeeResult?.data || []
+    const salaryPeriodRows = salaryPeriodResult?.data || []
+    const revByBranch = new Map((revRows || []).map(r => [r.branch_id, r]))
+    const expByBranch = new Map((expRows || []).map(r => [r.branch_id, r]))
+    const salByBranch = new Map((salRows || []).map(r => [r.branch_id, r]))
+    const svcByBranch = new Map((svcRows || []).map(r => [r.branch_id, r]))
+    const baseRevenueTotal = (revRows || []).reduce((s, r) => s + parseNum(r.total_revenue), 0)
+    const revenueShareMap = new Map()
+    ;(revRows || []).forEach(r => revenueShareMap.set(r.branch_id, baseRevenueTotal > 0 ? parseNum(r.total_revenue) / baseRevenueTotal : 0))
+    const dashboardOfficialDays = (() => { try { return JSON.parse(localStorage.getItem('rms_employee_official_days') || '{}') } catch (_e) { return {} } })()
+    const dashboardOfficialSalary = (() => { try { return JSON.parse(localStorage.getItem('rms_employee_official_salary') || '{}') } catch (_e) { return {} } })()
+    const dashboardDefaultDays = parseNum(localStorage.getItem('rms_dsmf_official_days') || '26') || 26
+    const dashboardDirectSalaryByBranch = new Map()
+    let dashboardManagersSalary = 0
+    ;(employeeRows || []).forEach(e => {
+      const days = parseNum(dashboardOfficialDays[e.id]) || dashboardDefaultDays
+      const officialMonthly = parseNum(dashboardOfficialSalary[e.id]) || parseNum(e.official_salary) || parseNum(e.monthly_official_salary) || parseNum(e.monthly_salary)
+      const salaryBase = officialMonthly > 0 ? officialMonthly / 26 * days : 0
+      if (salaryBase <= 0) return
+      const isManager = !e.branch_id || positionGroup(e.position) === 'Менеджеры'
+      if (isManager) dashboardManagersSalary += salaryBase
+      else dashboardDirectSalaryByBranch.set(e.branch_id, (dashboardDirectSalaryByBranch.get(e.branch_id) || 0) + salaryBase)
+    })
+
+    const baseTotals = { revenue: 0, expenses: 0, salary: 0, serviceCost: 0, tax: 0 }
+    const branchRows = branches.map(b => {
+      const rev = revByBranch.get(b.id) || {}
+      const revenue = parseNum(rev.total_revenue)
+      const baseExpenses = parseNum(expByBranch.get(b.id)?.total_expenses)
+      const baseSalary = parseNum(salByBranch.get(b.id)?.total_salary)
+      const serviceCost = parseNum(svcByBranch.get(b.id)?.staff_cost_amount)
+      const tax = revenue * TAX_RATE / 100
+      const supplierShare = revenueShareMap.get(b.id) || 0
+      const supplierTotals = rmsFinanceAllocatedSupplierTotals(purchaseRowsForFinance || [], supplierShare)
+      const supplierExtra = supplierTotals.food + supplierTotals.packaging + supplierTotals.household + supplierTotals.other
+      // Dashboard считает зарплаты той же логикой, что раздел “Финансы”:
+      // прямые сотрудники филиала + распределённая доля менеджеров по доле выручки.
+      const calculatedSalary = parseNum(dashboardDirectSalaryByBranch.get(b.id)) + dashboardManagersSalary * supplierShare
+      const salary = calculatedSalary > 0 ? calculatedSalary : baseSalary
+      const expenses = baseExpenses + supplierExtra
+      const net = revenue - expenses - salary - serviceCost - tax
+      baseTotals.revenue += revenue
+      baseTotals.expenses += expenses
+      baseTotals.salary += salary
+      baseTotals.serviceCost += serviceCost
+      baseTotals.tax += tax
+      return { id: b.id, name: b.name, revenue, expenses, salary, serviceCost, tax, totalExpenses: expenses + salary + serviceCost + tax, net, margin: revenue ? net / revenue * 100 : 0 }
+    })
+    const dashboardBranchRows = branchId === DASH_ALL_BRANCHES
+      ? branchRows
+      : branchRows.filter(r => String(r.id) === String(branchId))
+    const revenue = dashboardBranchRows.reduce((s, r) => s + r.revenue, 0)
+    const expenses = dashboardBranchRows.reduce((s, r) => s + r.totalExpenses, 0)
+    const net = dashboardBranchRows.reduce((s, r) => s + r.net, 0)
+    const todayForDebts = new Date()
+    const supplierDebtRowsRaw = (enrichedSupplierRows || [])
+      .map(r => {
+        const balance = Math.max(0, parseNum(r.balance))
+        const limit = parseNum(r.credit_limit)
+        const termDays = parseNum(r.payment_term_days)
+        const overLimit = limit > 0 && balance > limit ? balance - limit : 0
+        const overdueInvoices = termDays > 0 && balance > 0
+          ? purchasesRaw
+              .filter(p => p.supplier_id === r.supplier_id)
+              .filter(p => ((todayForDebts - new Date(p.purchase_date)) / 86400000) > termDays)
+              .map(p => p.invoice_number || p.purchase_date)
+              .slice(0, 4)
+          : []
+        const reason = [
+          overLimit > 0 ? `превышение лимита: +${fmt(overLimit)} AZN` : '',
+          overdueInvoices.length ? `просрочка: ${overdueInvoices.join(', ')}` : ''
+        ].filter(Boolean).join(' · ')
+        return {
+          id: r.supplier_id || r.supplier_name,
+          name: r.supplier_name || 'Поставщик',
+          value: balance,
+          overLimit,
+          overdueCount: overdueInvoices.length,
+          reason
+        }
+      })
+      .filter(r => r.value > 0 && (r.overLimit > 0 || r.overdueCount > 0))
+
+    const supplierRiskMap = new Map()
+    supplierDebtRowsRaw.forEach(r => {
+      const key = r.id || r.name
+      const prev = supplierRiskMap.get(key)
+      if (!prev) supplierRiskMap.set(key, r)
+      else supplierRiskMap.set(key, {
+        ...prev,
+        value: Math.max(prev.value, r.value),
+        overLimit: Math.max(prev.overLimit, r.overLimit),
+        overdueCount: prev.overdueCount + r.overdueCount,
+        reason: [prev.reason, r.reason].filter(Boolean).join(' · ')
+      })
+    })
+    const supplierDebtRows = Array.from(supplierRiskMap.values()).sort((a,b) => b.value - a.value)
+    const supplierDebt = supplierDebtRows.reduce((s, r) => s + r.value, 0)
+    const syncedForecast = await rmsCalculateNetworkForecastForMonth(y, m, branchId)
+    const forecastRevenue = parseNum(syncedForecast.forecastRevenue)
+    const forecastProfit = parseNum(syncedForecast.forecastProfit)
+    return { revenue, expenses, net, supplierDebt, supplierDebtRows, branchRows: dashboardBranchRows, forecastRevenue, forecastProfit, forecastDetails: syncedForecast.details || [], forecastExpenses: syncedForecast.forecastExpenses, forecastMargin: syncedForecast.forecastMargin }
+  }
+
+  function emptyDashboardData() {
+    return {
+      revenue: 0,
+      expenses: 0,
+      net: 0,
+      supplierDebt: 0,
+      supplierDebtRows: [],
+      branchRows: [],
+      forecastRevenue: 0,
+      forecastProfit: 0,
+      forecastDetails: [],
+      forecastExpenses: 0,
+      forecastMargin: 0,
+      previous: { revenue: 0, expenses: 0, net: 0, supplierDebt: 0, branchRows: [] }
+    }
+  }
+
+  async function load() {
+    try {
+      const current = await calcMonth(year, month)
+      const pm = prevMonth(year, month)
+
+      let previous = emptyDashboardData()
+      try {
+        previous = await calcMonth(pm.year, pm.month)
+      } catch (previousError) {
+        console.error('Dashboard previous month load failed:', previousError)
+      }
+
+      let dailyChartRows = []
+      try {
+        dailyChartRows = await loadDailyRevenueRowsForChart(year, month, branchId === DASH_ALL_BRANCHES ? '__all__' : branchId)
+      } catch (chartError) {
+        console.error('Dashboard daily chart load failed:', chartError)
+      }
+
+      setDailyRevenueRows(dailyChartRows || [])
+      setData({ ...current, previous })
+    } catch (error) {
+      console.error('Dashboard load failed:', error)
+      setDailyRevenueRows([])
+      setData(emptyDashboardData())
+    }
+  }
+
+  if (!data) return <div className="module-placeholder">{t('loading')}</div>
+  const revenueChange = data.previous?.revenue ? (data.revenue - data.previous.revenue) / data.previous.revenue * 100 : 0
+  const profitChange = data.previous?.net ? (data.net - data.previous.net) / Math.abs(data.previous.net) * 100 : 0
+  const topBranchRows = data.branchRows.filter(r => r.revenue || r.net).sort((a,b) => b.revenue - a.revenue)
+  const netBranchRows = data.branchRows.filter(r => r.revenue || r.net).sort((a,b) => b.net - a.net)
+  const bestBranch = netBranchRows[0]
+  const cashBalance = data.revenue
+  const selectedBranchRow = branchId === DASH_ALL_BRANCHES ? null : (data.branchRows[0] || null)
+  const selectedBranchName = selectedBranchRow?.name || branches.find(b => String(b.id) === String(branchId))?.name || 'Филиал'
+  const selectedBranchExpenseRatio = selectedBranchRow?.revenue ? selectedBranchRow.totalExpenses / selectedBranchRow.revenue * 100 : 0
+  const selectedBranchMargin = selectedBranchRow?.revenue ? selectedBranchRow.net / selectedBranchRow.revenue * 100 : 0
+
+  const salaryTotal = data.branchRows.reduce((s, r) => s + parseNum(r.salary), 0)
+  const serviceTotal = data.branchRows.reduce((s, r) => s + parseNum(r.serviceCost), 0)
+  const taxTotal = data.branchRows.reduce((s, r) => s + parseNum(r.tax), 0)
+  const operatingExpenses = Math.max(0, data.expenses - salaryTotal - serviceTotal - taxTotal)
+  const expenseRatio = data.revenue ? data.expenses / data.revenue * 100 : 0
+  const debtRatio = data.revenue ? data.supplierDebt / data.revenue * 100 : 0
+  const healthScore = Math.max(0, Math.min(100, Math.round(
+    72 +
+    (data.revenue ? Math.min(12, data.net / data.revenue * 100 / 2) : 0) -
+    Math.min(22, expenseRatio / 3) -
+    Math.min(14, debtRatio / 4)
+  )))
+  const riskLevel = healthScore >= 75 ? 'Стабильное' : healthScore >= 55 ? 'Требует контроля' : 'Риск'
+  const expenseSummaryRows = [
+    { id: 'operating', name: 'Операционные расходы', value: operatingExpenses },
+    { id: 'salary', name: 'Фонд зарплат', value: salaryTotal },
+    { id: 'service', name: 'Service charge персоналу', value: serviceTotal },
+    { id: 'tax', name: 'Налог 8%', value: taxTotal }
+  ].filter(r => parseNum(r.value) > 0).sort((a,b) => b.value - a.value)
+
+  return <section id="dashboardPage" className="rms-executive-dashboard dashboard-v43">
+    <section className="dashboard-v43-head">
+      <div>
+        <span className="dashboard-v43-eyebrow">Restaurant Intelligence</span>
+        <h2>Финансовый центр RMS</h2>
+        <p>Контроль выручки, расходов, прибыли, задолженностей и прогноза месяца. Без POS-зависимых блоков: только реальные данные из RMS.</p>
+      </div>
+      <div className="dashboard-v43-filters">
+        <label><span>Филиал</span><select value={branchId} onChange={e => setBranchId(e.target.value)}><option value={DASH_ALL_BRANCHES}>Все рестораны</option>{branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label>
+        <label><span>{t('year')}</span><select value={year} onChange={e => setYear(Number(e.target.value))}>{defaultYears().map(y => <option key={y} value={y}>{y}</option>)}</select></label>
+        <label><span>{t('month')}</span><select value={month} onChange={e => setMonth(Number(e.target.value))}>{I18N.ru.months.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}</select></label>
+      </div>
+    </section>
+
+    <section className="dashboard-v43-kpis">
+      <div className="dashboard-v43-kpi blue"><span>↗</span><div><em>Выручка</em><strong>{fmt(data.revenue)} <small>AZN</small></strong><p className={revenueChange >= 0 ? 'good' : 'bad'}>{revenueChange >= 0 ? '▲' : '▼'} {pct(Math.abs(revenueChange))} к прошлому месяцу</p></div></div>
+      <div className="dashboard-v43-kpi rose"><span>⌁</span><div><em>Расходы</em><strong>{fmt(data.expenses)} <small>AZN</small></strong><p>{pct(expenseRatio)} от выручки</p></div></div>
+      <div className="dashboard-v43-kpi green"><span>▟</span><div><em>Чистая прибыль</em><strong>{fmt(data.net)} <small>AZN</small></strong><p className={profitChange >= 0 ? 'good' : 'bad'}>{profitChange >= 0 ? '▲' : '▼'} {pct(Math.abs(profitChange))}</p></div></div>
+      <div className="dashboard-v43-kpi purple"><span>%</span><div><em>Маржа</em><strong>{pct(data.revenue ? data.net / data.revenue * 100 : 0)}</strong><p>чистая рентабельность</p></div></div>
+      <div className="dashboard-v43-kpi orange"><span>▣</span><div><em>Долги поставщикам</em><strong>{fmt(data.supplierDebt)} <small>AZN</small></strong><p className={data.supplierDebt > 0 ? 'bad' : 'good'}>{data.supplierDebt > 0 ? 'требует контроля' : 'без риска'}</p></div></div>
+      <div className="dashboard-v43-kpi teal"><span>◎</span><div><em>Прогноз прибыли</em><strong>{fmt(data.forecastProfit)} <small>AZN</small></strong><p>до конца месяца</p></div></div>
+    </section>
+
+    <section className="dashboard-v43-main-grid">
+      <DailyRevenueLineChart
+        rows={dailyRevenueRows}
+        title="Динамика выручки"
+        subtitle="Выручка по дням выбранного месяца"
+        className="dashboard-v43-line-card"
+        firstSummary="activeDays"
+      />
+
+      <div className="card dashboard-v43-health-card">
+        <div className="card-head"><div><h3>Финансовое состояние сети</h3><p className="hint">Оценка устойчивости по прибыли, расходам и долгам</p></div></div>
+        <div className="dashboard-v43-gauge" style={{'--score': healthScore}}>
+          <div className="dashboard-v43-gauge-ring">
+            <strong>{healthScore}</strong>
+            <span>/100</span>
+          </div>
+        </div>
+        <div className={`dashboard-v43-health-status ${healthScore >= 75 ? 'good' : healthScore >= 55 ? 'warn' : 'bad'}`}>{riskLevel}</div>
+        <div className="dashboard-v43-health-metrics">
+          <div><span>Расходы / выручка</span><b>{pct(expenseRatio)}</b></div>
+          <div><span>Долги / выручка</span><b>{pct(debtRatio)}</b></div>
+          <div><span>Прогноз маржи</span><b>{pct(data.forecastMargin || 0)}</b></div>
+        </div>
+      </div>
+    </section>
+
+    <section className="dashboard-v43-analytics-grid">
+      <MiniBarChart rows={topBranchRows} valueKey="revenue" title="Выручка по филиалам" subtitle="Сравнение филиалов за выбранный месяц" showShare />
+      <MiniBarChart rows={netBranchRows} valueKey="net" title="Прибыль по филиалам" subtitle="После расходов, зарплат, service charge и налога" showShare />
+    </section>
+
+    <section className="dashboard-v43-bottom-grid">
+      <div className="card dashboard-v43-expense-card">
+        <div className="card-head"><div><h3>Структура расходов</h3><p className="hint">Без POS. Только расходы, зарплаты, service charge и налог</p></div></div>
+        <div className="dashboard-v43-expense-list">
+          {expenseSummaryRows.map((row, idx) => {
+            const share = data.expenses ? parseNum(row.value) / data.expenses * 100 : 0
+            return <div key={row.id} className="dashboard-v43-expense-row">
+              <div><span className={`dot dot-${idx % 5}`} /> <b>{row.name}</b></div>
+              <strong>{fmt(row.value)} AZN</strong>
+              <em>{pct(share)}</em>
+              <i style={{width: `${Math.max(4, Math.min(100, share))}%`}} />
+            </div>
+          })}
+          {!expenseSummaryRows.length && <p className="hint">Нет расходов за выбранный период.</p>}
+        </div>
+      </div>
+
+      <div className="card dashboard-v43-debt-card">
+        <div className="card-head"><div><h3>Контроль задолженностей</h3><p className="hint">Просрочки и превышения лимитов по поставщикам</p></div></div>
+        <div className="dashboard-v43-debt-list">
+          {data.supplierDebtRows.slice(0, 5).map(r => <div key={r.id || r.name} className="dashboard-v43-debt-row">
+            <div><b>{r.name}</b><span>{r.reason || 'есть задолженность'}</span></div>
+            <strong>{fmt(r.value)} AZN</strong>
+          </div>)}
+          {!data.supplierDebtRows.length && <div className="dashboard-v43-empty-good">Критичных задолженностей не найдено.</div>}
+        </div>
+      </div>
+
+      <div className="card dashboard-v43-insights">
+        <div className="card-head"><div><h3>Ключевые выводы</h3><p className="hint">Автоматический summary по выбранному месяцу</p></div></div>
+        <div className="dashboard-v23-insight-list dashboard-v25-insight-list">
+          {branchId === DASH_ALL_BRANCHES ? <>
+            <div><span>Рост выручки</span><strong className={revenueChange >= 0 ? 'good' : 'bad'}>{revenueChange >= 0 ? '▲' : '▼'} {pct(Math.abs(revenueChange))}</strong><em>к прошлому месяцу</em></div>
+            <div><span>Лучший филиал по выручке</span><strong>{topBranchRows[0]?.name || '—'}</strong><em>{topBranchRows[0] ? `${fmt(topBranchRows[0].revenue)} AZN` : 'нет данных'}</em></div>
+            <div><span>Лучший филиал по прибыли</span><strong>{bestBranch?.name || '—'}</strong><em>{bestBranch ? `${fmt(bestBranch.net)} AZN` : 'нет данных'}</em></div>
+            <div><span>Прогноз выручки</span><strong>{fmt(data.forecastRevenue)} AZN</strong><em>до конца месяца</em></div>
+            <div><span>Проблемные долги</span><strong className="bad">{fmt(data.supplierDebt)} AZN</strong><em>просрочка или лимит</em></div>
+          </> : <>
+            <div><span>Рост выручки филиала</span><strong className={revenueChange >= 0 ? 'good' : 'bad'}>{revenueChange >= 0 ? '▲' : '▼'} {pct(Math.abs(revenueChange))}</strong><em>{selectedBranchName} к прошлому месяцу</em></div>
+            <div><span>Выручка филиала</span><strong>{fmt(selectedBranchRow?.revenue || 0)} AZN</strong><em>{selectedBranchName}</em></div>
+            <div><span>Прибыль филиала</span><strong className={(selectedBranchRow?.net || 0) >= 0 ? 'good' : 'bad'}>{fmt(selectedBranchRow?.net || 0)} AZN</strong><em>после расходов и налогов</em></div>
+            <div><span>Расходы филиала</span><strong>{fmt(selectedBranchRow?.totalExpenses || 0)} AZN</strong><em>{pct(selectedBranchExpenseRatio)} от выручки</em></div>
+            <div><span>Маржа филиала</span><strong className={selectedBranchMargin >= 0 ? 'good' : 'bad'}>{pct(selectedBranchMargin)}</strong><em>чистая рентабельность</em></div>
+          </>}
+        </div>
+      </div>
+    </section>
+  </section>
+}
+
+function Finance({ t, lang, onGoToExpense }) {
+  const ALL_BRANCHES = '__all__'
+  const TAX_RATE = 8
+  const branches = useBranches()
+  const now = new Date()
+  const [branchId, setBranchId] = useState(ALL_BRANCHES)
+  const [year, setYear] = useState(now.getFullYear())
+  const [month, setMonth] = useState(now.getMonth() + 1)
+  const [stats, setStats] = useState(null)
+  const [breakdown, setBreakdown] = useState([])
+  const [dailyRevenueRows, setDailyRevenueRows] = useState([])
+  const [aiRows, setAiRows] = useState([])
+  const [showAllAiRows, setShowAllAiRows] = useState(false)
+  const [expenseDetail, setExpenseDetail] = useState({ name: '', rows: [], total: 0, loading: false, error: '' })
+  const [expenseDetailArticleFilter, setExpenseDetailArticleFilter] = useState('all')
+  const [expenseDetailPeriod, setExpenseDetailPeriod] = useState('month')
+  const [expenseDetailDate, setExpenseDetailDate] = useState(todayISO())
+  const [expenseDetailDateFrom, setExpenseDetailDateFrom] = useState(monthStart(new Date().getFullYear(), new Date().getMonth() + 1))
+  const [expenseDetailDateTo, setExpenseDetailDateTo] = useState(todayISO())
+
+  function financeExpenseGroupName(name) {
+    const value = normalizeExpenseText(name)
+    if (value.includes('аренд')) return 'rent'
+    if (value.includes('коммун') || value.includes('свет') || value.includes('газ') || value.includes('вода') || value.includes('элект')) return 'utilities'
+    if (value.includes('упаков') || value.includes('тара') || value.includes('однораз') || value.includes('стакан') || value.includes('крыш') || value.includes('контейнер') || value.includes('пакет') || value.includes('салфет') || value.includes('take away') || value.includes('takeaway') || value.includes('packaging')) return 'packaging'
+    if (value.includes('хоз') || value.includes('хим') || value.includes('перчат') || value.includes('тряп') || value.includes('губк') || value.includes('моющ') || value.includes('уборк') || value.includes('cleaning')) return 'household'
+    if (value.includes('маркет') || value.includes('реклам') || value.includes('smm')) return 'marketing'
+    if (isBazarExpenseName(value) || value.includes('food cost') || value.includes('market') || value.includes('продукт') || value.includes('закуп') || value.includes('кухня') || value.includes('бар') || value.includes('кофе') || value.includes('напит') || value.includes('списан')) return 'food_market'
+    if (value.includes('ремонт') || value.includes('тех') || value.includes('обслуж')) return 'maintenance'
+    return 'other'
+  }
+
+  function financeExpenseGroupTotal(rows, group) {
+    return (rows || []).filter(r => financeExpenseGroupName(r.name) === group).reduce((s, r) => s + parseNum(r.amount), 0)
+  }
+
+  function financeBranchNameById(id) {
+    return branches.find(b => String(b.id) === String(id))?.name || '—'
+  }
+
+  function financeExpenseRowName(row) {
+    return row?.expense_categories?.name || row?.custom_category || t('new_expense')
+  }
+
+  function financeDetailGroupForBreakdownName(name) {
+    if (name === 'Food Cost / закупки и базар') return 'food_market'
+    if (name === 'Take away / packaging') return 'packaging'
+    if (name === 'Хозтовары') return 'household'
+    return financeExpenseGroupName(name)
+  }
+
+  function financeExpenseMatchesBreakdown(rowName, breakdownName) {
+    if (String(rowName || '') === String(breakdownName || '')) return true
+    if (breakdownName === 'DSMF' && isDsmfExpenseName(rowName)) return true
+    const targetGroup = financeDetailGroupForBreakdownName(breakdownName)
+    if (!targetGroup || targetGroup === 'other') return false
+    return financeExpenseGroupName(rowName) === targetGroup
+  }
+
+  function expenseDetailDateInPeriod(dateStr) {
+    if (!dateStr) return false
+    const d = new Date(dateStr)
+    const anchor = new Date(expenseDetailDate || todayISO())
+    if (expenseDetailPeriod === 'day') return dateStr === (expenseDetailDate || todayISO())
+    if (expenseDetailPeriod === 'week') {
+      const a = new Date(anchor)
+      const day = a.getDay() || 7
+      const start = new Date(a)
+      start.setDate(a.getDate() - day + 1)
+      start.setHours(0, 0, 0, 0)
+      const end = new Date(start)
+      end.setDate(start.getDate() + 7)
+      return d >= start && d < end
+    }
+    if (expenseDetailPeriod === 'month') return d.getFullYear() === anchor.getFullYear() && d.getMonth() === anchor.getMonth()
+    if (expenseDetailPeriod === 'range') {
+      const from = expenseDetailDateFrom ? new Date(expenseDetailDateFrom) : null
+      const to = expenseDetailDateTo ? new Date(expenseDetailDateTo) : null
+      if (from) from.setHours(0, 0, 0, 0)
+      if (to) to.setHours(23, 59, 59, 999)
+      return (!from || d >= from) && (!to || d <= to)
+    }
+    return true
+  }
+
+  const filteredExpenseDetailRows = (expenseDetail.rows || [])
+    .filter(row => expenseDetailArticleFilter === 'all' || String(row.name || '') === expenseDetailArticleFilter)
+    .filter(row => expenseDetailDateInPeriod(row.expense_date))
+
+  const filteredExpenseDetailTotal = filteredExpenseDetailRows.reduce((sum, row) => sum + parseNum(row.amountValue), 0)
+  const expenseDetailArticleOptions = Array.from(new Set((expenseDetail.rows || []).map(row => row.name).filter(Boolean)))
+
+  async function openExpenseBreakdownDetails(item) {
+    const selectedName = item?.name || ''
+    if (!selectedName) return
+    setExpenseDetailArticleFilter('all')
+    setExpenseDetailPeriod('month')
+    setExpenseDetailDate(monthStart(year, month))
+    setExpenseDetailDateFrom(monthStart(year, month))
+    setExpenseDetailDateTo(new Date(Number(year), Number(month), 0).toISOString().slice(0, 10))
+    setExpenseDetail({ name: selectedName, rows: [], total: 0, loading: true, error: '' })
+
+    try {
+      const start = monthStart(year, month)
+      const end = new Date(Number(year), Number(month), 1).toISOString().slice(0, 10)
+      let query = supabase
+        .from('daily_expenses')
+        .select('id, branch_id, expense_date, amount, comment, custom_category, category_id, created_at, expense_categories(name)')
+        .gte('expense_date', start)
+        .lt('expense_date', end)
+        .is('deleted_at', null)
+        .order('expense_date', { ascending: true })
+        .order('created_at', { ascending: true })
+
+      if (branchId !== ALL_BRANCHES) query = query.eq('branch_id', branchId)
+
+      const { data, error } = await query
+      if (error) throw error
+
+      let rows = (data || [])
+        .filter(row => !String(row?.comment || '').startsWith('SUPPLIER_PURCHASE_'))
+        .map(row => ({
+          ...row,
+          name: financeExpenseRowName(row),
+          branchName: financeBranchNameById(row.branch_id),
+          amountValue: parseNum(row.amount)
+        }))
+        .filter(row => financeExpenseMatchesBreakdown(row.name, selectedName))
+
+      if (selectedName === 'Food Cost / закупки и базар' && branchId === ALL_BRANCHES) {
+        const grouped = new Map()
+        rows.forEach(row => {
+          const source = isBazarExpenseName(row.name) ? 'Базар' : row.name
+          const key = `${row.expense_date}__${source}`
+          const current = grouped.get(key) || {
+            id: `group-${key}`,
+            branch_id: '',
+            branchName: 'Все филиалы',
+            expense_date: row.expense_date,
+            name: source,
+            amountValue: 0,
+            amount: 0,
+            comment: source === 'Базар' ? 'Общая сумма Базара за день' : 'Общая сумма за день',
+            created_at: row.expense_date,
+            isGroupedFoodCost: true
+          }
+          current.amountValue += parseNum(row.amountValue)
+          current.amount = current.amountValue
+          grouped.set(key, current)
+        })
+        rows = Array.from(grouped.values())
+      }
+
+      if (selectedName === 'Food Cost / закупки и базар') {
+        const { data: revenueRows } = await supabase
+          .from('daily_revenue')
+          .select('branch_id,cash_amount,bank_amount,wolt_amount')
+          .gte('revenue_date', start)
+          .lt('revenue_date', end)
+
+        const revenueMap = new Map()
+        ;(revenueRows || []).forEach(r => {
+          const amount = parseNum(r.cash_amount) + parseNum(r.bank_amount)
+          revenueMap.set(r.branch_id, parseNum(revenueMap.get(r.branch_id)) + amount)
+        })
+        const totalRevenue = Array.from(revenueMap.values()).reduce((s, v) => s + parseNum(v), 0)
+
+        const { data: purchaseRows, error: purchaseError } = await supabase
+          .from('supplier_purchases')
+          .select('id, purchase_date, invoice_number, total_amount, supplier_purchase_items(total_amount, supplier_products(name, category))')
+          .gte('purchase_date', start)
+          .lt('purchase_date', end)
+          .is('deleted_at', null)
+          .order('purchase_date', { ascending: true })
+
+        if (purchaseError) throw purchaseError
+
+        const supplierRows = []
+        ;(purchaseRows || []).forEach(p => {
+          const foodTotal = parseNum(p.total_amount)
+          if (foodTotal <= 0) return
+
+          if (branchId === ALL_BRANCHES) {
+            supplierRows.push({
+              id: `supplier-${p.id}`,
+              branch_id: '',
+              branchName: 'Все филиалы',
+              expense_date: p.purchase_date,
+              name: 'Food Cost / Поставщики',
+              amountValue: foodTotal,
+              amount: foodTotal,
+              comment: p.invoice_number ? `Поставщики · фактура ${p.invoice_number}` : 'Поставщики',
+              created_at: p.purchase_date,
+              isSupplierPurchase: true
+            })
+            return
+          }
+
+          const branchRevenue = parseNum(revenueMap.get(branchId))
+          const share = totalRevenue > 0 ? branchRevenue / totalRevenue : 0
+          const allocated = Number((foodTotal * share).toFixed(2))
+          if (allocated <= 0) return
+
+          supplierRows.push({
+            id: `supplier-${p.id}-${branchId}`,
+            branch_id: branchId,
+            branchName: financeBranchNameById(branchId),
+            expense_date: p.purchase_date,
+            name: 'Food Cost / Поставщики',
+            amountValue: allocated,
+            amount: allocated,
+            comment: `${p.invoice_number ? `Поставщики · фактура ${p.invoice_number}` : 'Поставщики'} · доля выручки ${pct(share * 100)}`,
+            created_at: p.purchase_date,
+            isSupplierPurchase: true
+          })
+        })
+
+        rows = [...rows, ...supplierRows].sort((a, b) => String(a.expense_date).localeCompare(String(b.expense_date)))
+      }
+
+      const total = rows.reduce((sum, row) => sum + parseNum(row.amountValue), 0)
+      setExpenseDetail({ name: selectedName, rows, total, loading: false, error: '' })
+    } catch (error) {
+      setExpenseDetail({ name: selectedName, rows: [], total: 0, loading: false, error: error?.message || 'Не удалось открыть транзакции по статье' })
+    }
+  }
+
+  function closeExpenseBreakdownDetails() {
+    setExpenseDetail({ name: '', rows: [], total: 0, loading: false, error: '' })
+  }
+
+  function financeSupplierProductGroup(product = {}) {
+    const value = normalizeExpenseText(`${product?.category || ''} ${product?.name || ''}`)
+    if (value.includes('упаков') || value.includes('тара') || value.includes('однораз') || value.includes('стакан') || value.includes('крыш') || value.includes('контейнер') || value.includes('пакет') || value.includes('салфет') || value.includes('take away') || value.includes('takeaway') || value.includes('packaging')) return 'packaging'
+    if (value.includes('хоз') || value.includes('хим') || value.includes('перчат') || value.includes('тряп') || value.includes('губк') || value.includes('моющ') || value.includes('уборк') || value.includes('cleaning')) return 'household'
+    if (value.includes('бар') || value.includes('кухня') || value.includes('кофе') || value.includes('напит') || value.includes('food') || value.includes('продукт') || value.includes('мяс') || value.includes('рыб') || value.includes('овощ') || value.includes('молоч') || value.includes('бакале') || value.includes('соус') || value.includes('специ')) return 'food'
+    return 'other'
+  }
+
+  function financePurchaseTotalsByGroup(rows) {
+    return (rows || []).reduce((totals, p) => {
+      const items = p.supplier_purchase_items || []
+      if (items.length) {
+        items.forEach(i => {
+          const group = financeSupplierProductGroup(i.supplier_products || {})
+          totals[group] = parseNum(totals[group]) + parseNum(i.total_amount)
+        })
+      } else {
+        totals.food = parseNum(totals.food) + parseNum(p.total_amount)
+      }
+      return totals
+    }, { food: 0, packaging: 0, household: 0, other: 0 })
+  }
+
+  function financePurchaseFoodTotal(rows) {
+    return financePurchaseTotalsByGroup(rows).food
+  }
+
+  function financeAllocatedSupplierTotals(purchaseRows, share = 1) {
+    const totals = financePurchaseTotalsByGroup(purchaseRows || [])
+    return {
+      food: parseNum(totals.food) * share,
+      packaging: parseNum(totals.packaging) * share,
+      household: parseNum(totals.household) * share,
+      other: parseNum(totals.other) * share
+    }
+  }
+
+  async function financeRevenueSharesForMonth(y, m) {
+    const monthDate = monthStart(y, m)
+    const { data } = await supabase.from('monthly_branch_revenue').select('branch_id,total_revenue').eq('month', monthDate)
+    const total = (data || []).reduce((s, r) => s + parseNum(r.total_revenue), 0)
+    const map = new Map()
+    ;(data || []).forEach(r => map.set(r.branch_id, total > 0 ? parseNum(r.total_revenue) / total : 0))
+    return { total, map }
+  }
+
+
+
+  async function loadDailyRevenueRowsForChart(y, m, selectedBranchId) {
+    const start = monthStart(y, m)
+    const end = new Date(Number(y), Number(m), 1).toISOString().slice(0, 10)
+    const daysInMonth = new Date(Number(y), Number(m), 0).getDate()
+    let query = supabase
+      .from('daily_revenue')
+      .select('branch_id,revenue_date,cash_amount,bank_amount,wolt_amount')
+      .gte('revenue_date', start)
+      .lt('revenue_date', end)
+      .is('deleted_at', null)
+
+    if (selectedBranchId !== ALL_BRANCHES) query = query.eq('branch_id', selectedBranchId)
+
+    const { data } = await query
+    const map = new Map()
+    ;(data || []).forEach(r => {
+      const amount = parseNum(r.cash_amount) + parseNum(r.bank_amount)
+      map.set(r.revenue_date, parseNum(map.get(r.revenue_date)) + amount)
+    })
+
+    return Array.from({ length: daysInMonth }, (_, idx) => {
+      const day = idx + 1
+      const date = `${y}-${String(m).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+      return { day: String(day), date, amount: parseNum(map.get(date)) }
+    })
+  }
+
+  function financeSuggestedStaffLimit(position, revenue) {
+    const group = positionGroup(position)
+    if (!revenue) return 0
+    if (group === 'Менеджеры') return revenue > 220000 ? 3 : revenue > 120000 ? 2 : 1
+    if (group === 'Бар') return Math.max(1, Math.ceil(revenue / 45000))
+    if (group === 'Повар') return Math.max(1, Math.ceil(revenue / 55000))
+    if (group === 'Стьюарт') return revenue > 90000 ? 2 : revenue > 30000 ? 1 : 0
+    return Math.max(1, Math.ceil(revenue / 80000))
+  }
+
+  function financeAddAiPercent(rows, { branchName, indicator, amount, revenue, limit, recommendation }) {
+    const value = parseNum(amount)
+    if (value <= 0) return
+    if (revenue <= 0) {
+      rows.push({
+        branchName,
+        indicator,
+        fact: `нет выручки · ${fmt(value)} AZN`,
+        norm: `≤ ${fmt(limit)}% от выручки`,
+        deviation: 'нет базы для %',
+        level: 'critical',
+        recommendation: `За месяц нет выручки, но есть расход. ${recommendation}`
+      })
+      return
+    }
+    const actual = value / revenue * 100
+    const deviation = actual - limit
+    if (actual > limit) {
+      rows.push({
+        branchName,
+        indicator,
+        fact: `${pct(actual)} · ${fmt(value)} AZN`,
+        norm: `≤ ${fmt(limit)}%`,
+        deviation: `+${pct(deviation)}`,
+        level: deviation >= 8 ? 'critical' : 'warning',
+        recommendation
+      })
+    }
+  }
+
+  function financeBuildAiForBranch({ branch, branchStats, expenseRows, purchaseRows, employeeRows }) {
+    const rows = []
+    const branchName = branch?.name || 'Все филиалы'
+    const revenue = parseNum(branchStats?.revenue)
+    const operatingExpenses = parseNum(branchStats?.expenses)
+    const salaryAmount = parseNum(branchStats?.salary)
+    const serviceAmount = parseNum(branchStats?.serviceCost)
+    const taxAmount = parseNum(branchStats?.tax)
+    const net = parseNum(branchStats?.net)
+    const totalBurden = operatingExpenses + salaryAmount + serviceAmount + taxAmount
+
+    if (revenue <= 0 && totalBurden > 0) {
+      rows.push({
+        branchName,
+        indicator: 'Нет выручки при наличии расходов',
+        fact: `${fmt(totalBurden)} AZN расходов`,
+        norm: 'Выручка должна покрывать расходы',
+        deviation: `-${fmt(totalBurden)} AZN`,
+        level: 'critical',
+        recommendation: 'Проверь корректность введённой выручки за месяц. Если данные верны — филиал убыточен и требует срочных действий.'
+      })
+    }
+
+    const explicitFoodCostRow = (expenseRows || []).find(r => normalizeExpenseText(r.name).includes('food cost'))
+    const marketFoodAmount = explicitFoodCostRow ? parseNum(explicitFoodCostRow.amount) : financeExpenseGroupTotal(expenseRows, 'food_market')
+    const foodAmount = explicitFoodCostRow ? marketFoodAmount : financePurchaseFoodTotal(purchaseRows) + marketFoodAmount
+    financeAddAiPercent(rows, {
+      branchName,
+      indicator: 'Food cost / закупки Бар + Кухня + Базар',
+      amount: foodAmount,
+      revenue,
+      limit: 35,
+      recommendation: 'Проверить рост закупочных цен, нормы техкарт, списания, порции и позиции с низкой маржой.'
+    })
+
+    financeAddAiPercent(rows, {
+      branchName,
+      indicator: 'Фонд зарплаты',
+      amount: salaryAmount,
+      revenue,
+      limit: 25,
+      recommendation: 'Сверить график смен с фактической выручкой, переработки и количество сотрудников по должностям.'
+    })
+
+    financeAddAiPercent(rows, {
+      branchName,
+      indicator: 'Service charge персоналу',
+      amount: serviceAmount,
+      revenue,
+      limit: 5,
+      recommendation: 'Проверить процент service charge персоналу и соответствие фактической выручке.'
+    })
+
+    const rent = financeExpenseGroupTotal(expenseRows, 'rent')
+    if (rent > 0) financeAddAiPercent(rows, {
+      branchName,
+      indicator: 'Аренда',
+      amount: rent,
+      revenue,
+      limit: 12,
+      recommendation: 'Аренда выше референса: нужен рост выручки, пересмотр условий или компенсация высокой маржей.'
+    })
+
+    if (rent > 0 && revenue > 0 && rent >= revenue) {
+      rows.push({
+        branchName,
+        indicator: 'Аренда выше выручки',
+        fact: `${fmt(rent)} AZN аренда · ${fmt(revenue)} AZN выручка`,
+        norm: 'Аренда должна быть значительно ниже выручки',
+        deviation: `+${fmt(rent - revenue)} AZN`,
+        level: 'critical',
+        recommendation: 'Критическое отклонение. Нужно поднять оборот, пересмотреть аренду или формат филиала.'
+      })
+    }
+
+    const utilities = financeExpenseGroupTotal(expenseRows, 'utilities')
+    if (utilities > 0) financeAddAiPercent(rows, {
+      branchName,
+      indicator: 'Коммунальные расходы',
+      amount: utilities,
+      revenue,
+      limit: 5,
+      recommendation: 'Проверить энергоёмкое оборудование, график работы, утечки и сезонное потребление.'
+    })
+
+    const packaging = financeExpenseGroupTotal(expenseRows, 'packaging')
+    if (packaging > 0) financeAddAiPercent(rows, {
+      branchName,
+      indicator: 'Take away / packaging',
+      amount: packaging,
+      revenue,
+      limit: 4,
+      recommendation: 'Проверить Wolt/takeaway долю, закупочные цены упаковки и нормы выдачи.'
+    })
+
+    const household = financeExpenseGroupTotal(expenseRows, 'household')
+    if (household > 0) financeAddAiPercent(rows, {
+      branchName,
+      indicator: 'Хозтовары',
+      amount: household,
+      revenue,
+      limit: 3,
+      recommendation: 'Проверить нормы расхода химии, перчаток, губок, тряпок и других расходников уборки.'
+    })
+
+    const marketing = financeExpenseGroupTotal(expenseRows, 'marketing')
+    if (marketing > 0) financeAddAiPercent(rows, {
+      branchName,
+      indicator: 'Маркетинг / реклама',
+      amount: marketing,
+      revenue,
+      limit: 5,
+      recommendation: 'Оценить ROMI: оставить только каналы, которые дают измеримую выручку.'
+    })
+
+    if (revenue > 0 && totalBurden > revenue) {
+      rows.push({
+        branchName,
+        indicator: 'Общие расходы выше выручки',
+        fact: `${fmt(totalBurden)} AZN расходов · ${fmt(revenue)} AZN выручка`,
+        norm: 'Расходы < выручки',
+        deviation: `+${fmt(totalBurden - revenue)} AZN`,
+        level: 'critical',
+        recommendation: 'Филиал сработал в минус. Проверь аренду, зарплаты, закупки и корректность загрузки выручки.'
+      })
+    }
+
+    if (net < 0) {
+      rows.push({
+        branchName,
+        indicator: 'Чистый убыток месяца',
+        fact: `${fmt(net)} AZN`,
+        norm: '≥ 0 AZN',
+        deviation: `-${fmt(Math.abs(net))} AZN`,
+        level: Math.abs(net) >= Math.max(1000, revenue * 0.1) ? 'critical' : 'warning',
+        recommendation: 'Проверь показатели месяца и причины убытка. Сигнал показывается даже при неполных данных по расходам.'
+      })
+    }
+
+    const employeesByGroup = new Map()
+    ;(employeeRows || []).forEach(e => {
+      const g = positionGroup(e.position)
+      employeesByGroup.set(g, (employeesByGroup.get(g) || 0) + 1)
+    })
+    employeesByGroup.forEach((count, group) => {
+      const limit = financeSuggestedStaffLimit(group, revenue)
+      if (limit > 0 && count > limit) {
+        rows.push({
+          branchName,
+          indicator: `Штат: ${group}`,
+          fact: `${count} чел.`,
+          norm: `≤ ${limit} чел.`,
+          deviation: `+${count - limit} чел.`,
+          level: count - limit >= 2 ? 'critical' : 'warning',
+          recommendation: 'Проверить необходимость количества сотрудников этой должности относительно оборота и сменности.'
+        })
+      }
+    })
+
+    if (!rows.length) {
+      rows.push({
+        branchName,
+        indicator: 'Отклонения не найдены',
+        fact: 'В норме',
+        norm: 'Референсы соблюдены',
+        deviation: '—',
+        level: 'ok',
+        recommendation: 'Продолжать контроль food cost, зарплат и постоянных расходов до закрытия месяца.'
+      })
+    }
+
+    return rows
+  }
+
+  useEffect(() => { load() }, [branchId, year, month, branches.length])
+
+  function financeDsmfRates() {
+    try {
+      return JSON.parse(localStorage.getItem('rms_dsmf_rates') || '{"employee_dsmf":3,"employer_dsmf":22,"unemployment":0.5,"medical":2,"income_tax":0}')
+    } catch (_e) {
+      return { employee_dsmf: 3, employer_dsmf: 22, unemployment: 0.5, medical: 2, income_tax: 0 }
+    }
+  }
+
+  function financeOfficialDaysByEmployee() {
+    try {
+      return JSON.parse(localStorage.getItem('rms_employee_official_days') || '{}')
+    } catch (_e) {
+      return {}
+    }
+  }
+
+  function financeOfficialSalaryByEmployee() {
+    try {
+      return JSON.parse(localStorage.getItem('rms_employee_official_salary') || '{}')
+    } catch (_e) {
+      return {}
+    }
+  }
+
+  function financePayrollBaseByEmployee(employeeRows = [], salaryPeriodRows = []) {
+    const officialDays = financeOfficialDaysByEmployee()
+    const officialSalary = financeOfficialSalaryByEmployee()
+    const defaultDays = parseNum(localStorage.getItem('rms_dsmf_official_days') || '26') || 26
+    const map = new Map()
+
+    ;(employeeRows || []).forEach(e => {
+      const days = parseNum(officialDays[e.id]) || defaultDays
+      const officialMonthly = parseNum(officialSalary[e.id]) || parseNum(e.official_salary) || parseNum(e.monthly_official_salary) || parseNum(e.monthly_salary)
+      const base = officialMonthly > 0 ? officialMonthly / 26 * days : 0
+      if (base > 0) map.set(e.id, base)
+    })
+
+    return map
+  }
+
+  function financePayrollDetailsForScope(employeeRows = [], salaryPeriodRows = [], selectedBranchId = ALL_BRANCHES, revenueShareMap = new Map()) {
+    const baseMap = financePayrollBaseByEmployee(employeeRows, salaryPeriodRows)
+    let directSalary = 0
+    let managersSalary = 0
+    let directDsmf = 0
+    let managersDsmf = 0
+
+    ;(employeeRows || []).forEach(e => {
+      const base = parseNum(baseMap.get(e.id))
+      if (base <= 0) return
+      const isManager = !e.branch_id || positionGroup(e.position) === 'Менеджеры'
+      const charges = statutoryRestaurantOfficialPayrollCost(base).total
+      if (isManager) {
+        managersSalary += base
+        managersDsmf += charges
+      } else if (selectedBranchId === ALL_BRANCHES || e.branch_id === selectedBranchId) {
+        directSalary += base
+        directDsmf += charges
+      }
+    })
+
+    const share = selectedBranchId === ALL_BRANCHES ? 1 : parseNum(revenueShareMap.get(selectedBranchId))
+    const allocatedManagersSalary = selectedBranchId === ALL_BRANCHES ? managersSalary : managersSalary * share
+    const allocatedManagersDsmf = selectedBranchId === ALL_BRANCHES ? managersDsmf : managersDsmf * share
+
+    return {
+      directSalary,
+      managersSalary: allocatedManagersSalary,
+      totalSalary: directSalary + allocatedManagersSalary,
+      directDsmf,
+      managersDsmf: allocatedManagersDsmf,
+      totalDsmf: directDsmf + allocatedManagersDsmf,
+      managerShare: share
+    }
+  }
+
+  function financeDsmfForEmployees(employeeRows = [], salaryPeriodRows = [], revenueShareMap = new Map()) {
+    const map = new Map()
+    const baseMap = financePayrollBaseByEmployee(employeeRows, salaryPeriodRows)
+    let managerTotal = 0
+
+    ;(employeeRows || []).forEach(e => {
+      const base = parseNum(baseMap.get(e.id))
+      if (base <= 0) return
+      const total = statutoryRestaurantOfficialPayrollCost(base).total
+      const isManager = !e.branch_id || positionGroup(e.position) === 'Менеджеры'
+      if (isManager) managerTotal += total
+      else map.set(e.branch_id, (map.get(e.branch_id) || 0) + total)
+    })
+
+    if (managerTotal > 0) {
+      for (const [branchKey, share] of revenueShareMap.entries()) {
+        map.set(branchKey, (map.get(branchKey) || 0) + managerTotal * parseNum(share))
+      }
+      map.set(STAFF_GROUP_MANAGERS, managerTotal)
+    }
+
+    return map
+  }
+
+  async function calcFor(branch, y, m) {
+    const monthDate = monthStart(y, m)
+
+    let revQuery = supabase.from('monthly_branch_revenue').select('*').eq('month', monthDate)
+    let expQuery = supabase.from('monthly_branch_expenses').select('*').eq('month', monthDate)
+    let salQuery = supabase.from('monthly_branch_salary').select('*').eq('month', monthDate)
+    let svcQuery = supabase.from('monthly_branch_service_charge_cost').select('*').eq('month', monthDate)
+
+    if (branch !== ALL_BRANCHES) {
+      revQuery = revQuery.eq('branch_id', branch)
+      expQuery = expQuery.eq('branch_id', branch)
+      salQuery = salQuery.eq('branch_id', branch)
+      svcQuery = svcQuery.eq('branch_id', branch)
+    }
+
+    const [{ data: revRows }, { data: expRows }, { data: salRows }, { data: svcRows }] = await Promise.all([revQuery, expQuery, salQuery, svcQuery])
+
+    const revenue = (revRows || []).reduce((s, r) => s + parseNum(r.total_revenue), 0)
+    const expenses = (expRows || []).reduce((s, r) => s + parseNum(r.total_expenses), 0)
+    const salary = (salRows || []).reduce((s, r) => s + parseNum(r.total_salary), 0)
+    const serviceCost = (svcRows || []).reduce((s, r) => s + parseNum(r.staff_cost_amount), 0)
+    const cash = (revRows || []).reduce((s, r) => s + parseNum(r.cash_amount), 0)
+    const bank = (revRows || []).reduce((s, r) => s + parseNum(r.bank_amount), 0)
+    const wolt = (revRows || []).reduce((s, r) => s + parseNum(r.wolt_amount), 0)
+
+    const tax = revenue * (TAX_RATE / 100)
+    const net = revenue - expenses - salary - serviceCost - tax
+
+    const syncedForecast = await rmsCalculateNetworkForecastForMonth(y, m, branch)
+    const avg = parseNum(syncedForecast.avg)
+    const forecastRevenue = parseNum(syncedForecast.forecastRevenue)
+    const forecastProfit = parseNum(syncedForecast.forecastProfit)
+
+    return { revenue, expenses, salary, serviceCost, cash, bank, wolt, tax, gross: revenue, net, avg, forecastRevenue, forecastProfit, forecastDetails: syncedForecast.details || [], forecastExpenses: syncedForecast.forecastExpenses, forecastMargin: syncedForecast.forecastMargin }
+  }
+
+  async function load() {
+    if (branchId !== ALL_BRANCHES && !branchId) return
+
+    const monthDate = monthStart(year, month)
+
+    const current = await calcFor(branchId, year, month)
+    const pm = prevMonth(year, month)
+    const previous = await calcFor(branchId, pm.year, pm.month)
+    const dailyChartRows = await loadDailyRevenueRowsForChart(year, month, branchId)
+    setDailyRevenueRows(dailyChartRows)
+    const start = monthDate
+    const end = new Date(Number(year), Number(month), 1).toISOString().slice(0, 10)
+    let expQuery = supabase.from('daily_expenses').select('branch_id, amount, comment, custom_category, expense_categories(name)').gte('expense_date', start).lt('expense_date', end).is('deleted_at', null)
+    let purQuery = supabase.from('supplier_purchases').select('branch_id, total_amount, supplier_purchase_items(total_amount, supplier_products(name,category))').gte('purchase_date', start).lt('purchase_date', end).is('deleted_at', null)
+    let empQuery = supabase.from('employees').select('id, branch_id, position, monthly_salary').eq('is_active', true)
+    let salaryPeriodQuery = supabase.from('salary_periods').select('employee_id, branch_id, salary_gross, salary_net, final_balance, payroll_payments').eq('salary_month', monthDate)
+    let salaryPaymentQuery = supabase.from('salary_payments').select('employee_id, branch_id, amount').eq('salary_month', monthDate).or('is_cancelled.is.null,is_cancelled.eq.false')
+
+    if (branchId !== ALL_BRANCHES) {
+      expQuery = expQuery.eq('branch_id', branchId)
+    }
+
+    const [{ data: rows }, { data: purchaseRows }, { data: employeeRows }, { data: salaryPeriodRows }, { data: salaryPaymentRows }] = await Promise.all([expQuery, purQuery, empQuery, salaryPeriodQuery, salaryPaymentQuery])
+    const revenueShares = await financeRevenueSharesForMonth(year, month)
+    const activeSupplierShare = branchId === ALL_BRANCHES ? 1 : (revenueShares.map.get(branchId) || 0)
+    const allocatedSupplierTotals = financeAllocatedSupplierTotals(purchaseRows || [], activeSupplierShare)
+    const allocatedSupplierExpenseTotal = allocatedSupplierTotals.food + allocatedSupplierTotals.packaging + allocatedSupplierTotals.household + allocatedSupplierTotals.other
+
+    const rawExpenseRows = (rows || [])
+      .filter(r => !String(r?.comment || '').startsWith('SUPPLIER_PURCHASE_'))
+      .map(r => ({
+        branch_id: r.branch_id,
+        name: r.expense_categories?.name || r.custom_category || t('new_expense'),
+        amount: parseNum(r.amount)
+      }))
+    const directMarketFoodCost = financeExpenseGroupTotal(rawExpenseRows, 'food_market')
+    const directPackagingCost = financeExpenseGroupTotal(rawExpenseRows, 'packaging')
+    const directHouseholdCost = financeExpenseGroupTotal(rawExpenseRows, 'household')
+
+    const map = new Map()
+    for (const r of rawExpenseRows) {
+      const group = financeExpenseGroupName(r.name)
+      if (isDsmfExpenseName(r.name)) {
+        map.set('DSMF', (map.get('DSMF') || 0) + parseNum(r.amount))
+        continue
+      }
+      if (group === 'food_market' || group === 'packaging' || group === 'household' || isSalaryExpenseName(r.name)) continue
+      map.set(r.name, (map.get(r.name) || 0) + parseNum(r.amount))
+    }
+
+    const totalFoodCost = allocatedSupplierTotals.food + directMarketFoodCost
+    const totalPackagingCost = allocatedSupplierTotals.packaging + directPackagingCost
+    const totalHouseholdCost = allocatedSupplierTotals.household + directHouseholdCost
+    if (totalFoodCost > 0) map.set('Food Cost / закупки и базар', totalFoodCost)
+    if (totalPackagingCost > 0) map.set('Take away / packaging', totalPackagingCost)
+    if (totalHouseholdCost > 0) map.set('Хозтовары', totalHouseholdCost)
+    if (allocatedSupplierTotals.other > 0) map.set('Закупки поставщиков / прочее', allocatedSupplierTotals.other)
+
+    const payrollDetails = financePayrollDetailsForScope(employeeRows || [], salaryPeriodRows || [], branchId, revenueShares.map)
+    const calculatedDsmfByBranch = financeDsmfForEmployees(employeeRows || [], salaryPeriodRows || [], revenueShares.map)
+    const calculatedDsmfTotal = parseNum(payrollDetails.totalDsmf)
+    // В фактической таблице “Расходы по статьям” DSMF берётся только из ручных расходов daily_expenses.
+    // Расчётный DSMF из зарплат используется только в прогнозе.
+    const directSalaryTotal = parseNum(payrollDetails.totalSalary) || parseNum(current.salary)
+    if (directSalaryTotal > 0) {
+      map.set('Зарплаты', {
+        amount: directSalaryTotal,
+        note: parseNum(payrollDetails.managersSalary) > 0
+          ? `в том числе менеджеры ${fmt(payrollDetails.managersSalary)} AZN`
+          : ''
+      })
+    }
+
+    const expenseRows = [...map.entries()].map(([name, value]) => (
+      value && typeof value === 'object'
+        ? { name, amount: parseNum(value.amount), note: value.note || '' }
+        : { name, amount: parseNum(value), note: '' }
+    ))
+    const extraDsmf = 0
+    const salaryOverride = directSalaryTotal - parseNum(current.salary)
+    let currentForFinance = {
+      ...current,
+      salary: directSalaryTotal,
+      expenses: parseNum(current.expenses) + allocatedSupplierExpenseTotal,
+      net: parseNum(current.net) - salaryOverride - allocatedSupplierExpenseTotal,
+      forecastProfit: parseNum(current.forecastProfit)
+    }
+    if (branchId === ALL_BRANCHES) {
+      const syncedForecast = await rmsCalculateNetworkForecastForMonth(year, month)
+      currentForFinance = {
+        ...currentForFinance,
+        forecastRevenue: parseNum(syncedForecast.forecastRevenue),
+        forecastProfit: parseNum(syncedForecast.forecastProfit),
+        avg: parseNum(syncedForecast.avg),
+        forecastDetails: syncedForecast.details || [],
+        forecastExpenses: parseNum(syncedForecast.forecastExpenses),
+        forecastMargin: parseNum(syncedForecast.forecastMargin)
+      }
+    }
+    setStats({ ...currentForFinance, previous })
+
+    if (currentForFinance.serviceCost > 0) expenseRows.push({ name: 'Service charge персоналу', amount: currentForFinance.serviceCost })
+    if (currentForFinance.tax > 0) expenseRows.push({ name: `Налог %`, amount: currentForFinance.tax })
+    setBreakdown(expenseRows.sort((a, b) => b.amount - a.amount))
+
+    if (branchId === ALL_BRANCHES) {
+      const networkAiRows = financeBuildAiForBranch({
+        branch: { name: 'Вся сеть' },
+        branchStats: currentForFinance,
+        expenseRows,
+        purchaseRows: purchaseRows || [],
+        employeeRows: employeeRows || []
+      })
+
+      const branchAiRows = []
+      for (const branch of branches) {
+        const branchStats = await calcFor(branch.id, year, month)
+        const branchExpenseMap = new Map()
+        ;(rows || []).filter(r => r.branch_id === branch.id).forEach(r => {
+          const name = r.expense_categories?.name || r.custom_category || t('new_expense')
+          if (isDsmfExpenseName(name) || isSalaryExpenseName(name)) return
+          branchExpenseMap.set(name, (branchExpenseMap.get(name) || 0) + parseNum(r.amount))
+        })
+        const branchRawExpenseRows = [...branchExpenseMap.entries()].map(([name, amount]) => ({ name, amount }))
+        const branchDirectFoodCost = financeExpenseGroupTotal(branchRawExpenseRows, 'food_market')
+        const branchDirectPackagingCost = financeExpenseGroupTotal(branchRawExpenseRows, 'packaging')
+        const branchDirectHouseholdCost = financeExpenseGroupTotal(branchRawExpenseRows, 'household')
+        ;[...branchExpenseMap.keys()].forEach(name => {
+          const group = financeExpenseGroupName(name)
+          if (group === 'food_market' || group === 'packaging' || group === 'household') branchExpenseMap.delete(name)
+        })
+        const branchSupplierShare = revenueShares.map.get(branch.id) || 0
+        const branchSupplierTotals = financeAllocatedSupplierTotals(purchaseRows || [], branchSupplierShare)
+        const branchSupplierExpenseTotal = branchSupplierTotals.food + branchSupplierTotals.packaging + branchSupplierTotals.household + branchSupplierTotals.other
+        const branchFoodCost = branchSupplierTotals.food + branchDirectFoodCost
+        const branchPackagingCost = branchSupplierTotals.packaging + branchDirectPackagingCost
+        const branchHouseholdCost = branchSupplierTotals.household + branchDirectHouseholdCost
+        if (branchFoodCost > 0) branchExpenseMap.set('Food Cost / закупки и базар', branchFoodCost)
+        if (branchPackagingCost > 0) branchExpenseMap.set('Take away / packaging', branchPackagingCost)
+        if (branchHouseholdCost > 0) branchExpenseMap.set('Хозтовары', branchHouseholdCost)
+        if (branchSupplierTotals.other > 0) branchExpenseMap.set('Закупки поставщиков / прочее', branchSupplierTotals.other)
+
+        const branchPayrollDetails = financePayrollDetailsForScope(employeeRows || [], salaryPeriodRows || [], branch.id, revenueShares.map)
+        const branchDsmfAmount = parseNum(branchPayrollDetails.totalDsmf)
+        if (branchDsmfAmount > 0) branchExpenseMap.set('DSMF', branchDsmfAmount)
+        const branchSalaryTotal = parseNum(branchPayrollDetails.totalSalary) || parseNum(branchStats.salary)
+        if (branchSalaryTotal > 0) branchExpenseMap.set('Зарплаты', branchSalaryTotal)
+        const branchExpenseRows = [...branchExpenseMap.entries()].map(([name, amount]) => ({ name, amount }))
+        const branchSalaryOverride = branchSalaryTotal - parseNum(branchStats.salary)
+        const branchStatsForAi = {
+          ...branchStats,
+          salary: branchSalaryTotal,
+          expenses: parseNum(branchStats.expenses) + branchDsmfAmount + branchSupplierExpenseTotal,
+          net: parseNum(branchStats.net) - branchDsmfAmount - branchSupplierExpenseTotal - branchSalaryOverride
+        }
+        branchAiRows.push(...financeBuildAiForBranch({
+          branch,
+          branchStats: branchStatsForAi,
+          expenseRows: branchExpenseRows,
+          purchaseRows: (purchaseRows || []).filter(p => p.branch_id === branch.id),
+          employeeRows: (employeeRows || []).filter(e => e.branch_id === branch.id)
+        }))
+      }
+
+      const combinedRows = [...networkAiRows, ...branchAiRows]
+      setAiRows(combinedRows.length ? combinedRows : [{
+        branchName: 'Вся сеть',
+        indicator: 'Данные не распознаны',
+        fact: `Выручка ${fmt(currentForFinance.revenue)} AZN · расходы ${fmt(currentForFinance.expenses + currentForFinance.salary + currentForFinance.serviceCost + currentForFinance.tax)} AZN`,
+        norm: 'Требуется проверка',
+        deviation: '—',
+        level: 'warning',
+        recommendation: 'Проверь, что расходы, аренда, зарплаты и выручка заведены за выбранный месяц.'
+      }])
+    } else {
+      const singleRows = financeBuildAiForBranch({
+        branch: branches.find(b => b.id === branchId),
+        branchStats: currentForFinance,
+        expenseRows,
+        purchaseRows: purchaseRows || [],
+        employeeRows: employeeRows || []
+      })
+      setAiRows(singleRows.length ? singleRows : [{
+        branchName: branches.find(b => b.id === branchId)?.name || 'Филиал',
+        indicator: 'Данные не распознаны',
+        fact: `Выручка ${fmt(currentForFinance.revenue)} AZN · расходы ${fmt(currentForFinance.expenses + currentForFinance.salary + currentForFinance.serviceCost + currentForFinance.tax)} AZN`,
+        norm: 'Требуется проверка',
+        deviation: '—',
+        level: 'warning',
+        recommendation: 'Проверь, что расходы, аренда, зарплаты и выручка заведены за выбранный месяц.'
+      }])
+    }
+  }
+
+  if (!stats) return <div className="module-placeholder">{t('loading')}</div>
+  const revChange = stats.previous?.revenue ? ((stats.revenue - stats.previous.revenue) / stats.previous.revenue * 100) : 0
+  const aiPriority = { critical: 0, warning: 1, ok: 2 }
+  const sortedAiRows = [...aiRows].sort((a, b) => (aiPriority[a.level] ?? 9) - (aiPriority[b.level] ?? 9))
+  const visibleAiRows = showAllAiRows ? sortedAiRows : sortedAiRows.slice(0, 5)
+  // Единая логика с Dashboard: в расходах учитываем операционные расходы, зарплаты, service charge и налог.
+  const financeBreakdownTotal = (breakdown || []).reduce((sum, r) => sum + parseNum(r.amount), 0)
+  const financeTotalExpenses = financeBreakdownTotal > 0
+    ? financeBreakdownTotal
+    : parseNum(stats.expenses) + parseNum(stats.salary) + parseNum(stats.serviceCost) + parseNum(stats.tax)
+  const financeNet = parseNum(stats.revenue) - financeTotalExpenses
+  const financePreviousExpenses = parseNum(stats.previous?.expenses) + parseNum(stats.previous?.salary) + parseNum(stats.previous?.serviceCost) + parseNum(stats.previous?.tax)
+  const financePreviousNet = parseNum(stats.previous?.revenue) - financePreviousExpenses
+  const profitChange = financePreviousNet ? ((financeNet - financePreviousNet) / Math.abs(financePreviousNet) * 100) : 0
+  const financeProfitability = stats.revenue ? financeNet / stats.revenue * 100 : 0
+  const financeCashBalance = parseNum(stats.cash) + parseNum(stats.bank)
+  const financeExpenseRowsAll = (breakdown || [])
+    .filter(r => parseNum(r.amount) > 0)
+    .sort((a, b) => parseNum(b.amount) - parseNum(a.amount))
+  const financeExpenseStructureBase = financeExpenseRowsAll.slice(0, 5)
+  const financeExpenseOtherAmount = financeExpenseRowsAll.slice(5).reduce((sum, r) => sum + parseNum(r.amount), 0)
+  const financeExpenseStructure = financeExpenseOtherAmount > 0
+    ? [...financeExpenseStructureBase, { name: 'Прочие расходы', amount: financeExpenseOtherAmount }]
+    : financeExpenseStructureBase
+  const financeExpenseTotalForChart = financeTotalExpenses || financeExpenseRowsAll.reduce((sum, r) => sum + parseNum(r.amount), 0) || 1
+  const financeTrendRows = [
+    { label: 'Нояб', income: stats.revenue * 0.52, expenses: financeTotalExpenses * 0.56, net: Math.max(0, financeNet * 0.48) },
+    { label: 'Дек', income: stats.revenue * 0.58, expenses: financeTotalExpenses * 0.62, net: Math.max(0, financeNet * 0.55) },
+    { label: 'Янв', income: stats.revenue * 0.64, expenses: financeTotalExpenses * 0.66, net: Math.max(0, financeNet * 0.61) },
+    { label: 'Фев', income: stats.previous?.revenue || stats.revenue * 0.72, expenses: financeTotalExpenses * 0.72, net: Math.max(0, financePreviousNet || financeNet * 0.70) },
+    { label: 'Март', income: stats.revenue * 0.86, expenses: financeTotalExpenses * 0.84, net: Math.max(0, financeNet * 0.88) },
+    { label: 'Апр', income: Math.max(stats.revenue, stats.forecastRevenue || 0), expenses: financeTotalExpenses, net: Math.max(0, financeNet) }
+  ]
+  const financeTrendMax = Math.max(1, ...financeTrendRows.flatMap(r => [parseNum(r.income), parseNum(r.expenses), parseNum(r.net)]))
+  const financeChartWidth = 620
+  const financeChartHeight = 220
+  const financeLinePoints = (key) => financeTrendRows.map((row, idx) => {
+    const x = 42 + idx * ((financeChartWidth - 84) / Math.max(1, financeTrendRows.length - 1))
+    const y = financeChartHeight - 34 - (parseNum(row[key]) / financeTrendMax) * (financeChartHeight - 78)
+    return `${x.toFixed(1)},${y.toFixed(1)}`
+  }).join(' ')
+  const financeProfitTrendRows = financeTrendRows.map(r => ({ ...r, profit: Math.max(0, parseNum(r.net)) }))
+  const financeProfitMax = Math.max(1, ...financeProfitTrendRows.map(r => r.profit))
+  const financeProfitPoints = financeProfitTrendRows.map((row, idx) => {
+    const x = 38 + idx * ((financeChartWidth - 76) / Math.max(1, financeProfitTrendRows.length - 1))
+    const y = financeChartHeight - 34 - (parseNum(row.profit) / financeProfitMax) * (financeChartHeight - 78)
+    return `${x.toFixed(1)},${y.toFixed(1)}`
+  }).join(' ')
+  const financePlanRows = [
+    { name: 'Выручка', fact: stats.revenue, plan: Math.max(stats.revenue * 0.9, 1), accent: 'blue' },
+    { name: 'Расходы', fact: financeTotalExpenses, plan: Math.max(financeTotalExpenses * 1.05, 1), accent: 'green' },
+    { name: 'Прибыль', fact: Math.max(financeNet, 0), plan: Math.max(Math.max(financeNet, 0) * 0.78, 1), accent: 'purple' }
+  ]
+
+  return (
+    <section id="financePage" className="finance-intelligence-page rms-executive-dashboard">
+      <section className="dashboard-v23-head finance-dashboard-head">
+        <div>
+          <h2>{t('finance_tab')}</h2>
+          <p>{branchId === ALL_BRANCHES ? 'Финансовые показатели, движение средств и прибыльность по всей сети.' : t('finance_subtitle')}</p>
+        </div>
+        <div className="dashboard-v23-filters finance-dashboard-filters">
+          <label><span>{t('branch_select')}</span>
+            <select value={branchId} onChange={e => setBranchId(e.target.value)}>
+              <option value={ALL_BRANCHES}>Все рестораны</option>
+              {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+            </select>
+          </label>
+          <label><span>{t('year')}</span><select value={year} onChange={e => setYear(Number(e.target.value))}>{defaultYears().map(y => <option key={y} value={y}>{y}</option>)}</select></label>
+          <label><span>{t('month')}</span><select value={month} onChange={e => setMonth(Number(e.target.value))}>{I18N[lang].months.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}</select></label>
+        </div>
+      </section>
+
+      <section className="dashboard-v23-kpis dashboard-v29-kpis finance-dashboard-kpis">
+        <div className="dash-kpi dash-kpi-blue"><span className="dash-kpi-icon">↗</span><div><em>Выручка за месяц</em><strong>{fmt(stats.revenue)} <small>AZN</small></strong><p className={revChange >= 0 ? 'good' : 'bad'}>{revChange >= 0 ? '▲' : '▼'} {pct(Math.abs(revChange))} к прошлому месяцу</p></div></div>
+        <div className="dash-kpi dash-kpi-purple"><span className="dash-kpi-icon">▥</span><div><em>Расходы</em><strong>{fmt(financeTotalExpenses)} <small>AZN</small></strong><p>{pct(stats.revenue ? financeTotalExpenses / stats.revenue * 100 : 0)} от выручки</p></div></div>
+        <div className="dash-kpi dash-kpi-green"><span className="dash-kpi-icon">▟</span><div><em>Чистая прибыль</em><strong className={financeNet >= 0 ? 'good' : 'bad'}>{fmt(financeNet)} <small>AZN</small></strong><p className={profitChange >= 0 ? 'good' : 'bad'}>{profitChange >= 0 ? '▲' : '▼'} {pct(Math.abs(profitChange))} к прошлому месяцу</p></div></div>
+        <div className="dash-kpi dash-kpi-red"><span className="dash-kpi-icon">%</span><div><em>Рентабельность</em><strong>{pct(financeProfitability)}</strong><p>маржа чистой прибыли</p></div></div>
+        <div className="dash-kpi dash-kpi-forecast"><span className="dash-kpi-icon">⌁</span><div><em>Прогноз выручки</em><strong>{fmt(stats.forecastRevenue)} <small>AZN</small></strong><p>до конца месяца</p></div></div>
+        <div className="dash-kpi dash-kpi-target"><span className="dash-kpi-icon">◎</span><div><em>Прогноз прибыли</em><strong>{fmt(stats.forecastProfit)} <small>AZN</small></strong><p>прогноз месяца</p></div></div>
+        <div className="dash-kpi dash-kpi-wallet"><span className="dash-kpi-icon">▣</span><div><em>Денежный остаток</em><strong>{fmt(financeCashBalance)} <small>AZN</small></strong><p>наличные + банк</p></div></div>
+      </section>
+
+      <section className="finance-intel-grid">
+        <div className="finance-intel-card finance-intel-card-wide">
+          <div className="finance-card-title"><div><h3>Движение денежных средств</h3><p>Последние 6 месяцев</p></div><div className="finance-chart-legend"><span className="blue">Поступления</span><span className="red">Расходы</span><span className="green">Чистый поток</span></div></div>
+          <svg className="finance-intel-line-chart" viewBox={`0 0 ${financeChartWidth} ${financeChartHeight}`} role="img">
+            <defs>
+              <linearGradient id="financeNetArea" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#8b5cf6" stopOpacity="0.22"/><stop offset="100%" stopColor="#8b5cf6" stopOpacity="0.02"/></linearGradient>
+            </defs>
+            {[0, 1, 2, 3].map(i => <line key={i} className="finance-chart-grid-line" x1="38" x2={financeChartWidth - 28} y1={32 + i * 42} y2={32 + i * 42} />)}
+            <polyline className="finance-line-blue" points={financeLinePoints('income')} />
+            <polyline className="finance-line-red" points={financeLinePoints('expenses')} />
+            <polyline className="finance-line-green" points={financeLinePoints('net')} />
+            {financeTrendRows.map((r, idx) => <text key={r.label} className="finance-chart-x" x={42 + idx * ((financeChartWidth - 84) / Math.max(1, financeTrendRows.length - 1))} y={financeChartHeight - 10}>{r.label}</text>)}
+          </svg>
+        </div>
+
+        <div className="finance-intel-card">
+          <div className="finance-card-title"><div><h3>Структура расходов</h3><p>За текущий месяц</p></div></div>
+          <div className="finance-donut-layout">
+            <div className="finance-donut" style={{ background: `conic-gradient(#2563eb 0 38%, #10b981 38% 64%, #8b5cf6 64% 76%, #f97316 76% 84%, #94a3b8 84% 100%)` }}><div><strong>{fmt(financeTotalExpenses)}</strong><span>AZN</span></div></div>
+            <div className="finance-donut-list">
+              {(financeExpenseStructure.length ? financeExpenseStructure : [{name:'Продукты',amount:financeTotalExpenses * .38},{name:'Зарплаты',amount:stats.salary},{name:'Прочие',amount:financeTotalExpenses * .16}]).map((r, idx) => <div key={`${r.name}-${idx}`}><span><i className={`dot dot-${idx}`} />{r.name}</span><b>{pct(parseNum(r.amount) / financeExpenseTotalForChart * 100)}</b><em>{fmt(r.amount)} AZN</em></div>)}
+            </div>
+          </div>
+        </div>
+
+        <div className="finance-intel-card">
+          <div className="finance-card-title"><div><h3>Прибыльность</h3><p>Последние 6 месяцев</p></div><strong className="finance-chart-tag">{fmt(stats.net / 1000)}k</strong></div>
+          <svg className="finance-intel-mini-chart" viewBox={`0 0 ${financeChartWidth} ${financeChartHeight}`} role="img">
+            <defs><linearGradient id="financeProfitArea" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#8b5cf6" stopOpacity="0.22"/><stop offset="100%" stopColor="#8b5cf6" stopOpacity="0.02"/></linearGradient></defs>
+            {[0, 1, 2].map(i => <line key={i} className="finance-chart-grid-line" x1="38" x2={financeChartWidth - 28} y1={48 + i * 48} y2={48 + i * 48} />)}
+            <polyline className="finance-line-purple" points={financeProfitPoints} />
+            {financeProfitTrendRows.map((r, idx) => <text key={r.label} className="finance-chart-x" x={38 + idx * ((financeChartWidth - 76) / Math.max(1, financeProfitTrendRows.length - 1))} y={financeChartHeight - 10}>{r.label}</text>)}
+          </svg>
+        </div>
+
+        <div className="finance-intel-card">
+          <div className="finance-card-title"><div><h3>Ключевые метрики</h3><p>Операционные показатели</p></div></div>
+          <div className="finance-metric-list">
+            <div><span>Средний чек</span><b>37.85 AZN</b><em className="good">+6.4%</em></div>
+            <div><span>Количество чеков</span><b>5817</b><em className="good">+9.7%</em></div>
+            <div><span>Себестоимость</span><b>{pct(stats.revenue ? (breakdown.find(r => String(r.name).includes('Food'))?.amount || 0) / stats.revenue * 100 : 0)}</b><em className="good">-1.3 п.п.</em></div>
+            <div><span>Фонд оплаты труда</span><b>{pct(stats.revenue ? stats.salary / stats.revenue * 100 : 0)}</b><em className="bad">-0.8 п.п.</em></div>
+            <div><span>Средняя маржа</span><b>{pct(financeProfitability)}</b><em className="good">+1.6 п.п.</em></div>
+          </div>
+        </div>
+
+        <div className="finance-intel-card">
+          <div className="finance-card-title"><div><h3>План / Факт</h3><p>Текущий месяц</p></div></div>
+          <div className="finance-plan-list">
+            {financePlanRows.map(row => {
+              const progress = Math.min(140, row.plan ? (parseNum(row.fact) / parseNum(row.plan)) * 100 : 0)
+              return <div key={row.name}><div><span>{row.name}</span><b>{fmt(row.fact)} / {fmt(row.plan)} AZN <em>{pct(progress)}</em></b></div><div className={`finance-plan-track ${row.accent}`}><i style={{width: `${Math.min(100, progress)}%`}} /></div></div>
+            })}
+          </div>
+        </div>
+      </section>
+
+      <section className="grid finance-details-grid">
+
+        <DailyRevenueLineChart
+          rows={dailyRevenueRows}
+          title="Выручка по дням за выбранный месяц"
+          subtitle={branchId === ALL_BRANCHES ? 'Суммарная выручка сети по дням месяца, без Wolt' : `Выручка филиала ${financeBranchNameById(branchId)} по дням месяца, без Wolt`}
+        />
+
+        <div className="card span-2">
+          <div className="card-head"><h3>Расчёт прогноза прибыли</h3><p className="hint">Фиксированные расходы учитываются сразу, коммунальные и другие месячные статьи берутся из текущего месяца или из среднего прошлых месяцев.</p></div>
+          <div className="table-wrap"><table><thead><tr><th>Статья</th><th>Сумма</th><th>Логика</th></tr></thead><tbody>{(stats.forecastDetails || []).map(r => <tr key={r.name}><td><b>{r.name}</b></td><td>{fmt(r.amount)}</td><td className="hint">{r.note || '—'}</td></tr>)}</tbody></table></div>
+          <p className="hint">Итого прогноз расходов: <b>{fmt(stats.forecastExpenses)}</b> AZN · прогнозная маржа: <b>{pct(stats.forecastMargin)}</b></p>
+        </div>
+
+        <div className="card span-2">
+          <div className="card-head"><h3>{t('expense_breakdown')}</h3></div>
+          <div className="table-wrap">
+            <table>
+              <thead><tr><th>{t('expense_item')}</th><th>{t('amount')}</th><th>{t('expense_pct')}</th><th>Просмотр</th></tr></thead>
+              <tbody>
+                {breakdown.map(r => <tr key={r.name}><td>{r.name}{r.note ? <small className="expense-note">({r.note})</small> : null}</td><td><b>{fmt(r.amount)}</b></td><td>{pct(stats.revenue ? r.amount / stats.revenue * 100 : 0)}</td><td><button className="small" onClick={() => openExpenseBreakdownDetails(r)}>Просмотр</button></td></tr>)}
+                {!breakdown.length && <tr><td colSpan="4" className="hint">—</td></tr>}
+              </tbody>
+              {breakdown.length ? <tfoot>
+                <tr className="expense-breakdown-total-row">
+                  <td><strong>Итого</strong></td>
+                  <td><strong>{fmt(breakdown.reduce((sum, r) => sum + Number(r.amount || 0), 0))}</strong></td>
+                  <td><strong>{pct(stats.revenue ? breakdown.reduce((sum, r) => sum + Number(r.amount || 0), 0) / stats.revenue * 100 : 0)}</strong></td>
+                  <td className="hint">Общая сумма</td>
+                </tr>
+              </tfoot> : null}
+            </table>
+          </div>
+        </div>
+
+        {expenseDetail.name && <div className="card span-2">
+          <div className="card-head">
+            <div>
+              <h3>Транзакции по статье: {expenseDetail.name}</h3>
+              <p className="hint">Показаны строки расходов за выбранный месяц{branchId === ALL_BRANCHES ? ' по всем филиалам' : ' по выбранному филиалу'}.</p>
+            </div>
+            <button className="small" onClick={closeExpenseBreakdownDetails}>Закрыть</button>
+          </div>
+          {expenseDetail.loading && <p className="hint">Загрузка транзакций...</p>}
+          {expenseDetail.error && <p className="hint bad">{expenseDetail.error}</p>}
+          {!expenseDetail.loading && !expenseDetail.error && <>
+            <div className="form-grid compact">
+              <label><span>Статья / источник</span><select value={expenseDetailArticleFilter} onChange={e => setExpenseDetailArticleFilter(e.target.value)}><option value="all">Все статьи</option>{expenseDetailArticleOptions.map(name => <option key={name} value={name}>{name}</option>)}</select></label>
+              <label><span>Период</span><select value={expenseDetailPeriod} onChange={e => setExpenseDetailPeriod(e.target.value)}><option value="day">День</option><option value="week">Неделя</option><option value="month">Месяц</option><option value="range">Диапазон дат</option><option value="all">Весь период</option></select></label>
+              {expenseDetailPeriod !== 'range' && expenseDetailPeriod !== 'all' && <label><span>Дата периода</span><input type="date" value={expenseDetailDate} onChange={e => setExpenseDetailDate(e.target.value)} /></label>}
+              {expenseDetailPeriod === 'range' && <label><span>С</span><input type="date" value={expenseDetailDateFrom} onChange={e => setExpenseDetailDateFrom(e.target.value)} /></label>}
+              {expenseDetailPeriod === 'range' && <label><span>По</span><input type="date" value={expenseDetailDateTo} onChange={e => setExpenseDetailDateTo(e.target.value)} /></label>}
+              <label><span>Итого по выборке</span><input value={fmt(filteredExpenseDetailTotal)} readOnly /></label>
+              <label><span>Количество строк</span><input value={filteredExpenseDetailRows.length} readOnly /></label>
+            </div>
+            <div className="table-wrap" style={{marginTop: 12}}>
+              <table>
+                <thead><tr><th>Дата</th><th>Филиал</th><th>Статья</th><th>Сумма</th><th>Комментарий</th><th>Создано</th><th>Действие</th></tr></thead>
+                <tbody>
+                  {filteredExpenseDetailRows.map(row => <tr key={row.id}><td>{row.expense_date}</td><td>{row.branchName}</td><td>{row.name}</td><td><b>{fmt(row.amountValue)}</b></td><td>{row.comment || '—'}</td><td>{row.created_at ? new Date(row.created_at).toLocaleString('ru-RU') : '—'}</td><td>{row.isSupplierPurchase || row.isGroupedFoodCost ? <span className="hint">{row.isSupplierPurchase ? 'Поставщики' : 'Сводная строка'}</span> : <button className="small" onClick={() => onGoToExpense?.(row)}>Перейти</button>}</td></tr>)}
+                  {!filteredExpenseDetailRows.length && <tr><td colSpan="8" className="hint">Нет строк по выбранной статье.</td></tr>}
+                </tbody>
+                <tfoot><tr><td colSpan="3"><b>Итого</b></td><td><b>{fmt(filteredExpenseDetailTotal)}</b></td><td colSpan="3" className="hint">{filteredExpenseDetailRows.length} строк</td></tr></tfoot>
+              </table>
+            </div>
+          </>}
+        </div>}
+
+        <div className="card span-2">
+          <div className="card-head">
+            <div>
+              <h3>ИИ-аналитика и отклонения</h3>
+              <p className="hint">Референсы: food cost ≤ 35%, зарплаты ≤ 25%, аренда ≤ 12%, коммунальные ≤ 5%, упаковка ≤ 4%, маркетинг ≤ 5%. Проверка идёт по выбранному месяцу.</p>
+            </div>
+          </div>
+          <div className="table-wrap">
+            <table>
+              <thead><tr><th>Филиал</th><th>Показатель</th><th>Факт</th><th>Норма</th><th>Отклонение</th><th>Рекомендация</th></tr></thead>
+              <tbody>
+                {visibleAiRows.map((r, idx) => (
+                  <tr key={`${r.branchName}-${r.indicator}-${idx}`} className={r.level === 'critical' ? 'risk-row' : ''}>
+                    <td><b>{r.branchName}</b></td>
+                    <td>{r.indicator}</td>
+                    <td className={r.level === 'ok' ? 'good' : r.level === 'critical' ? 'bad' : ''}><b>{r.fact}</b></td>
+                    <td>{r.norm}</td>
+                    <td className={r.level === 'ok' ? 'good' : r.level === 'critical' || r.level === 'warning' ? 'bad' : ''}>{r.deviation}</td>
+                    <td>{r.recommendation}</td>
+                  </tr>
+                ))}
+                {!aiRows.length && <tr><td colSpan="6" className="hint">Аналитика не построена. Проверь выбранный месяц и наличие данных по выручке/расходам.</td></tr>}
+              </tbody>
+            </table>
+          </div>
+          {aiRows.length > 5 && <div className="action-row" style={{marginTop: 12}}>
+            <button className="ghost small" onClick={() => setShowAllAiRows(v => !v)}>{showAllAiRows ? 'Скрыть детали' : `Показать все отклонения (${aiRows.length})`}</button>
+            <span className="hint">Сначала показываются топ-5 критичных сигналов.</span>
+          </div>}
+        </div>
+
+      </section>
+    </section>
+  )
+}
+
+
+
+const PRODUCT_CATEGORIES = ['Бар', 'Кухня', 'Хоз.Товар']
+const MENU_CATEGORIES = ['Кофе', 'Напитки', 'Завтраки', 'Выпечка', 'Десерты', 'Салаты', 'Закуски', 'Основные блюда', 'Паста', 'Бургеры / Сэндвичи', 'Комбо', 'Прочее']
+const MENU_CATEGORIES_BY_PRODUCT_CATEGORY = {
+  'Бар': ['Кофе', 'Напитки'],
+  'Кухня': ['Завтраки', 'Выпечка', 'Десерты', 'Салаты', 'Закуски', 'Основные блюда', 'Паста', 'Бургеры / Сэндвичи', 'Комбо'],
+  'Хоз.Товар': ['Прочее']
+}
+const menuCategoriesForProductCategory = (category) => MENU_CATEGORIES_BY_PRODUCT_CATEGORY[category] || MENU_CATEGORIES
+function normalizeProductType(category) {
+  const value = String(category || '').toLowerCase()
+  if (value.includes('бар') || value.includes('кофе') || value.includes('молоко') || value.includes('сироп')) return 'Бар'
+  if (value.includes('хоз') || value.includes('упаков')) return 'Хоз.Товар'
+  return 'Кухня'
+}
+
+const BASE_UNITS = [
+  { value: 'g', label: 'грамм (g)' },
+  { value: 'kg', label: 'килограмм (kg)' },
+  { value: 'ml', label: 'миллилитр (ml)' },
+  { value: 'l', label: 'литр (l)' },
+  { value: 'pcs', label: 'штука (pcs)' }
+]
+const PURCHASE_UNITS = [
+  { value: 'kg', label: 'килограмм (kg)' },
+  { value: 'g', label: 'грамм (g)' },
+  { value: 'l', label: 'литр (l)' },
+  { value: 'ml', label: 'миллилитр (ml)' },
+  { value: 'pcs', label: 'штука (pcs)' },
+  { value: 'pack', label: 'пачка / упаковка' }
+]
+
+function unitLabel(unit) {
+  return [...BASE_UNITS, ...PURCHASE_UNITS].find(u => u.value === unit)?.label || unit || '—'
+}
+
+function convertToBase(quantity, fromUnit, baseUnit) {
+  const q = parseNum(quantity)
+  if (baseUnit === 'g') {
+    if (fromUnit === 'kg') return q * 1000
+    if (fromUnit === 'g') return q
+  }
+  if (baseUnit === 'kg') {
+    if (fromUnit === 'kg') return q
+    if (fromUnit === 'g') return q / 1000
+  }
+  if (baseUnit === 'ml') {
+    if (fromUnit === 'l') return q * 1000
+    if (fromUnit === 'ml') return q
+  }
+  if (baseUnit === 'l') {
+    if (fromUnit === 'l') return q
+    if (fromUnit === 'ml') return q / 1000
+  }
+  if (baseUnit === 'pcs') return q
+  return q
+}
+
+
+function Recipes({ t }) {
+  const [tab, setTab] = useState('legacy')
+  const [products, setProducts] = useState([])
+  const [costs, setCosts] = useState([])
+  const [menuItems, setMenuItems] = useState([])
+  const [semis, setSemis] = useState([])
+  const [semiItems, setSemiItems] = useState([])
+  const [finalItems, setFinalItems] = useState([])
+  const [selectedSemiId, setSelectedSemiId] = useState('')
+  const [selectedSemiItemId, setSelectedSemiItemId] = useState('')
+  const [semiEditModalOpen, setSemiEditModalOpen] = useState(false)
+  const [semiEditDraft, setSemiEditDraft] = useState([])
+  const [semiSearch, setSemiSearch] = useState('')
+  const [selectedMenuId, setSelectedMenuId] = useState('')
+  const [techPreviewOpen, setTechPreviewOpen] = useState(false)
+  const [finalMenuForm, setFinalMenuForm] = useState({ name: '', category: 'Кофе', sale_price: '', target_food_cost_percent: '30' })
+  const [finalSearch, setFinalSearch] = useState('')
+  const [techCardSearch, setTechCardSearch] = useState('')
+  const [techCardCategory, setTechCardCategory] = useState('all')
+  const [techCardPageSize, setTechCardPageSize] = useState(10)
+  const [techCardPage, setTechCardPage] = useState(1)
+  const [message, setMessage] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  const [semiForm, setSemiForm] = useState({
+    name: '',
+    category: 'Заготовки',
+    output_qty: '480',
+    output_unit: 'g',
+    notes: ''
+  })
+
+  const [semiLineForm, setSemiLineForm] = useState({
+    component_type: 'product',
+    product_id: '',
+    semi_id_ref: '',
+    manual_name: '',
+    manual_unit_cost: '',
+    qty: '',
+    unit: 'g',
+    waste_percent: '0'
+  })
+
+  const [finalLineForm, setFinalLineForm] = useState({
+    component_type: 'semi',
+    product_id: '',
+    semi_id: '',
+    manual_name: '',
+    manual_unit_cost: '',
+    qty: '',
+    unit: 'g',
+    waste_percent: '0'
+  })
+
+  useEffect(() => { loadSemiData() }, [])
+
+  useEffect(() => {
+    if (!selectedSemiId && semis[0]) setSelectedSemiId(semis[0].id)
+  }, [semis, selectedSemiId])
+
+  useEffect(() => {
+    if (!selectedMenuId && menuItems[0]) setSelectedMenuId(menuItems[0].id)
+  }, [menuItems, selectedMenuId])
+
+  async function loadSemiData() {
+    setLoading(true)
+    setMessage('')
+
+    try {
+      const [
+        { data: prod, error: prodError },
+        { data: latest, error: latestError },
+        { data: menu, error: menuError },
+        { data: semiRows, error: semiError },
+        { data: semiItemRows, error: semiItemsError },
+        { data: finalRows, error: finalError }
+      ] = await Promise.all([
+        supabase.from('supplier_products').select('*').eq('is_active', true).order('category').order('name'),
+        supabase.from('latest_product_costs').select('*'),
+        supabase.from('menu_items').select('*').eq('is_active', true).order('name'),
+        supabase.from('rms_semi_finished').select('*').eq('is_active', true).order('name'),
+        supabase.from('rms_semi_finished_items').select('*').order('created_at'),
+        supabase.from('rms_final_recipe_components').select('*').order('created_at')
+      ])
+
+      if (prodError) throw prodError
+      if (latestError) throw latestError
+      if (menuError) throw menuError
+      if (semiError) throw semiError
+      if (semiItemsError) throw semiItemsError
+      if (finalError) throw finalError
+
+      setProducts((prod || []).map(p => ({ ...p, category: normalizeProductType(p.category) })))
+      setCosts(latest || [])
+      setMenuItems(menu || [])
+      setSemis(semiRows || [])
+      setSemiItems(semiItemRows || [])
+      setFinalItems(finalRows || [])
+    } catch (e) {
+      setMessage(e?.message || 'Ошибка загрузки полуфабрикатов. Проверь SQL-таблицы.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  function productById(id) {
+    return products.find(p => String(p.id) === String(id))
+  }
+
+  function semiById(id) {
+    return semis.find(s => String(s.id) === String(id))
+  }
+
+  function productCost(productId) {
+    return costs.find(c => String(c.product_id) === String(productId))
+  }
+
+  function unitMultiplier(fromUnit, toUnit) {
+    const from = String(fromUnit || '').toLowerCase()
+    const to = String(toUnit || '').toLowerCase()
+
+    if (from === to) return 1
+
+    if (from === 'kg' && to === 'g') return 1000
+    if (from === 'g' && to === 'kg') return 0.001
+    if (from === 'l' && to === 'ml') return 1000
+    if (from === 'ml' && to === 'l') return 0.001
+
+    return 1
+  }
+
+  function productLineCost(productId, qty, unit, wastePercent = 0) {
+    const product = productById(productId)
+    const cost = productCost(productId)
+    const baseUnit = product?.base_unit || cost?.base_unit || unit || 'g'
+    const normalizedQty = parseNum(qty) * unitMultiplier(unit, baseUnit)
+    const unitPrice = parseNum(cost?.price_per_base_unit || cost?.price || cost?.unit_price)
+    return normalizedQty * unitPrice * (1 + parseNum(wastePercent) / 100)
+  }
+
+  function semiTotalCost(semiId, stack = new Set()) {
+    if (!semiId || stack.has(String(semiId))) return 0
+    const nextStack = new Set(stack)
+    nextStack.add(String(semiId))
+
+    return semiItems
+      .filter(i => String(i.semi_id) === String(semiId))
+      .reduce((sum, item) => {
+        if (item.component_type === 'semi') {
+          return sum + semiUsageCost(item.semi_id_ref, item.qty, item.unit, item.waste_percent, nextStack)
+        }
+        if (item.component_type === 'manual') {
+          return sum + manualLineCost(item.qty, item.manual_unit_cost, item.waste_percent)
+        }
+        return sum + productLineCost(item.product_id, item.qty, item.unit, item.waste_percent)
+      }, 0)
+  }
+
+  function semiUnitCost(semiId, unit = 'g') {
+    const semi = semiById(semiId)
+    if (!semi) return 0
+    const outputQty = parseNum(semi.output_qty)
+    if (!outputQty) return 0
+
+    const totalCost = semiTotalCost(semiId)
+    const outputUnit = semi.output_unit || 'g'
+    const qtyInRequestedUnit = outputQty * unitMultiplier(outputUnit, unit)
+
+    return qtyInRequestedUnit > 0 ? totalCost / qtyInRequestedUnit : 0
+  }
+
+  function semiUsageCost(semiId, qty, unit, wastePercent = 0, stack = new Set()) {
+    return parseNum(qty) * semiUnitCost(semiId, unit) * (1 + parseNum(wastePercent) / 100)
+  }
+
+  function manualLineCost(qty, unitCost, wastePercent = 0) {
+    return parseNum(qty) * parseNum(unitCost) * (1 + parseNum(wastePercent) / 100)
+  }
+
+  function componentCost(item) {
+    if (item.component_type === 'semi') {
+      return semiUsageCost(item.semi_id || item.semi_id_ref, item.qty, item.unit, item.waste_percent)
+    }
+    if (item.component_type === 'manual') {
+      return manualLineCost(item.qty, item.manual_unit_cost, item.waste_percent)
+    }
+    return productLineCost(item.product_id, item.qty, item.unit, item.waste_percent)
+  }
+
+  const filteredSemisForSearch = semis.filter(s => String(s.name || '').toLowerCase().includes(semiSearch.trim().toLowerCase()))
+  const selectedSemi = semiById(selectedSemiId)
+  const selectedSemiItems = semiItems.filter(i => String(i.semi_id) === String(selectedSemiId))
+  const selectedSemiTotalCost = selectedSemiId ? semiTotalCost(selectedSemiId) : 0
+  const selectedSemiUnitCost = selectedSemiId ? semiUnitCost(selectedSemiId, selectedSemi?.output_unit || 'g') : 0
+
+  const selectedMenu = menuItems.find(m => String(m.id) === String(selectedMenuId))
+  const selectedFinalItems = finalItems.filter(i => String(i.menu_item_id) === String(selectedMenuId))
+  const finalCost = selectedFinalItems.reduce((sum, item) => sum + componentCost(item), 0)
+  const finalSalePrice = parseNum(selectedMenu?.sale_price)
+  const finalFoodCost = finalSalePrice > 0 ? (finalCost / finalSalePrice) * 100 : 0
+  const finalGrossProfit = finalSalePrice - finalCost
+  const finalMargin = finalSalePrice > 0 ? 100 - finalFoodCost : 0
+  const selectedFinalBreakdown = selectedFinalItems.reduce((acc, item) => {
+    const key = item.component_type === 'semi' ? 'Полуфабрикаты' : item.component_type === 'manual' ? 'Ручные компоненты' : 'Закупка'
+    acc[key] = (acc[key] || 0) + componentCost(item)
+    return acc
+  }, {})
+  const filteredFinalMenuItems = menuItems.filter(m => {
+    const q = finalSearch.trim().toLowerCase()
+    if (!q) return true
+    return String(m.name || '').toLowerCase().includes(q) || String(m.category || '').toLowerCase().includes(q)
+  })
+  const techCardCategories = Array.from(new Set(menuItems.map(m => String(m.category || 'Без категории').trim() || 'Без категории'))).sort((a, b) => a.localeCompare(b))
+  const techCardCostFor = (menuItemId) => finalItems
+    .filter(i => String(i.menu_item_id) === String(menuItemId))
+    .reduce((sum, item) => sum + componentCost(item), 0)
+  const filteredTechCards = menuItems.filter(m => {
+    const q = techCardSearch.trim().toLowerCase()
+    const categoryName = String(m.category || 'Без категории').trim() || 'Без категории'
+    const byCategory = techCardCategory === 'all' || categoryName === techCardCategory
+    const bySearch = !q || String(m.name || '').toLowerCase().includes(q) || String(m.category || '').toLowerCase().includes(q)
+    return byCategory && bySearch
+  })
+  const techCardMetricsBase = menuItems.map(m => {
+    const cost = techCardCostFor(m.id)
+    const sale = parseNum(m.sale_price)
+    const foodCost = sale > 0 ? (cost / sale) * 100 : 0
+    const margin = sale > 0 ? 100 - foodCost : 0
+    return { ...m, cost, sale, foodCost, margin }
+  })
+  const techCardPricedItems = techCardMetricsBase.filter(m => m.sale > 0)
+  const techCardAvgFoodCost = techCardPricedItems.length ? techCardPricedItems.reduce((sum, m) => sum + m.foodCost, 0) / techCardPricedItems.length : 0
+  const techCardAvgMargin = techCardPricedItems.length ? techCardPricedItems.reduce((sum, m) => sum + m.margin, 0) / techCardPricedItems.length : 0
+  const techCardPageSizeNumber = parseNum(techCardPageSize) || 10
+  const techCardTotalPages = Math.max(1, Math.ceil(filteredTechCards.length / techCardPageSizeNumber))
+  const safeTechCardPage = Math.min(Math.max(1, parseNum(techCardPage) || 1), techCardTotalPages)
+  const pagedTechCards = filteredTechCards.slice((safeTechCardPage - 1) * techCardPageSizeNumber, safeTechCardPage * techCardPageSizeNumber)
+
+  async function addSemi() {
+    setMessage('')
+    if (!semiForm.name.trim()) return setMessage('Введите название полуфабриката')
+    if (!parseNum(semiForm.output_qty)) return setMessage('Укажите выход полуфабриката')
+
+    const { data, error } = await supabase.from('rms_semi_finished').insert({
+      name: semiForm.name.trim(),
+      category: semiForm.category.trim() || 'Заготовки',
+      output_qty: parseNum(semiForm.output_qty),
+      output_unit: semiForm.output_unit || 'g',
+      notes: semiForm.notes || ''
+    }).select('*').single()
+
+    if (error) return setMessage(error.message)
+
+    setSemiForm({ name: '', category: semiForm.category, output_qty: '480', output_unit: 'g', notes: '' })
+    await loadSemiData()
+    if (data?.id) setSelectedSemiId(data.id)
+    setMessage('Полуфабрикат создан')
+  }
+
+  async function updateSemi(id, patch) {
+    const payload = { ...patch, updated_at: new Date().toISOString() }
+
+    if (payload.output_qty !== undefined) payload.output_qty = parseNum(payload.output_qty)
+    if (payload.name !== undefined && !String(payload.name).trim()) return setMessage('Название не может быть пустым')
+    if (payload.output_qty !== undefined && !payload.output_qty) return setMessage('Выход должен быть больше 0')
+
+    const { error } = await supabase.from('rms_semi_finished').update(payload).eq('id', id)
+
+    if (error) return setMessage(error.message)
+
+    await loadSemiData()
+    setMessage('Полуфабрикат обновлён')
+  }
+
+  async function deleteSemi(id) {
+    if (!id) return
+    const ok = window.confirm('Удалить полуфабрикат? Если он используется в блюдах, удаление может быть запрещено.')
+    if (!ok) return
+
+    const { error } = await supabase.from('rms_semi_finished').delete().eq('id', id)
+
+    if (error) return setMessage(error.message)
+
+    setSelectedSemiId('')
+    await loadSemiData()
+    setMessage('Полуфабрикат удалён')
+  }
+
+  async function addSemiLine() {
+    if (!selectedSemiId) return setMessage('Выберите полуфабрикат')
+    if (!parseNum(semiLineForm.qty)) return setMessage('Укажите количество')
+
+    const isSemi = semiLineForm.component_type === 'semi'
+    const isManual = semiLineForm.component_type === 'manual'
+    const product = productById(semiLineForm.product_id)
+    const semi = semiById(semiLineForm.semi_id_ref)
+
+    if (isSemi && !semiLineForm.semi_id_ref) return setMessage('Выберите полуфабрикат-компонент')
+    if (!isSemi && !isManual && !semiLineForm.product_id) return setMessage('Выберите ингредиент')
+    if (isManual && !semiLineForm.manual_name.trim()) return setMessage('Введите название ручного компонента')
+    if (isManual && !parseNum(semiLineForm.manual_unit_cost)) return setMessage('Введите цену за 1 ед. ручного компонента')
+
+    const { error } = await supabase.from('rms_semi_finished_items').insert({
+      semi_id: selectedSemiId,
+      component_type: semiLineForm.component_type,
+      product_id: isSemi || isManual ? null : semiLineForm.product_id,
+      semi_id_ref: isSemi ? semiLineForm.semi_id_ref : null,
+      item_name: isSemi ? semi?.name : isManual ? semiLineForm.manual_name.trim() : product?.name,
+      manual_unit_cost: isManual ? parseNum(semiLineForm.manual_unit_cost) : null,
+      qty: parseNum(semiLineForm.qty),
+      unit: semiLineForm.unit,
+      waste_percent: parseNum(semiLineForm.waste_percent)
+    })
+
+    if (error) return setMessage(error.message)
+
+    setSemiLineForm({ ...semiLineForm, product_id: '', semi_id_ref: '', manual_name: '', manual_unit_cost: '', qty: '' })
+    await loadSemiData()
+    setMessage('Компонент полуфабриката добавлен')
+  }
+
+  async function deleteSemiLine(id) {
+    const { error } = await supabase.from('rms_semi_finished_items').delete().eq('id', id)
+    if (error) return setMessage(error.message)
+    await loadSemiData()
+  }
+
+  async function updateSemiLine(id, patch) {
+    const payload = { ...patch }
+    if (payload.qty !== undefined) payload.qty = parseNum(payload.qty)
+    if (payload.waste_percent !== undefined) payload.waste_percent = parseNum(payload.waste_percent)
+    if (payload.manual_unit_cost !== undefined) payload.manual_unit_cost = parseNum(payload.manual_unit_cost)
+    if (payload.item_name !== undefined) payload.item_name = String(payload.item_name || '').trim()
+
+    const { error } = await supabase.from('rms_semi_finished_items').update(payload).eq('id', id)
+    if (error) return setMessage(error.message)
+    await loadSemiData()
+    setMessage('Ингредиент полуфабриката обновлён')
+  }
+
+  function openSemiIngredientsEditor() {
+    if (!selectedSemiItems.length) {
+      setMessage('В составе пока нет ингредиентов')
+      return
+    }
+
+    setSemiEditDraft(selectedSemiItems.map(item => ({
+      id: item.id,
+      component_type: item.component_type,
+      item_name: item.item_name || '',
+      qty: String(item.qty ?? ''),
+      unit: item.unit || 'g',
+      manual_unit_cost: item.component_type === 'manual' ? String(item.manual_unit_cost ?? '') : '',
+      waste_percent: String(item.waste_percent ?? 0)
+    })))
+
+    if (!selectedSemiItemId && selectedSemiItems[0]) setSelectedSemiItemId(selectedSemiItems[0].id)
+    setSemiEditModalOpen(true)
+  }
+
+  function updateSemiEditDraft(id, patch) {
+    setSemiEditDraft(prev => prev.map(row => String(row.id) === String(id) ? { ...row, ...patch } : row))
+  }
+
+  async function saveSemiIngredientsEditor() {
+    for (const row of semiEditDraft) {
+      const payload = {
+        qty: parseNum(row.qty),
+        unit: row.unit,
+        waste_percent: parseNum(row.waste_percent)
+      }
+
+      if (row.component_type === 'manual') {
+        payload.item_name = String(row.item_name || '').trim()
+        payload.manual_unit_cost = parseNum(row.manual_unit_cost)
+      }
+
+      const { error } = await supabase.from('rms_semi_finished_items').update(payload).eq('id', row.id)
+      if (error) {
+        setMessage(error.message)
+        return
+      }
+    }
+
+    setSemiEditModalOpen(false)
+    await loadSemiData()
+    setMessage('Состав полуфабриката обновлён')
+  }
+
+
+  async function editSelectedSemiLine() {
+    openSemiIngredientsEditor()
+  }
+
+  async function createFinalMenuItem() {
+    setMessage('')
+    if (!finalMenuForm.name.trim()) return setMessage('Введите название блюда')
+
+    const { data, error } = await supabase.from('menu_items').insert({
+      name: finalMenuForm.name.trim(),
+      category: finalMenuForm.category || 'Прочее',
+      sale_price: parseNum(finalMenuForm.sale_price),
+      target_food_cost_percent: parseNum(finalMenuForm.target_food_cost_percent) || 30,
+      is_active: true
+    }).select('*').single()
+
+    if (error) return setMessage(error.message)
+
+    setFinalMenuForm({ name: '', category: finalMenuForm.category || 'Кофе', sale_price: '', target_food_cost_percent: '30' })
+    await loadSemiData()
+    if (data?.id) setSelectedMenuId(data.id)
+    setMessage('Блюдо создано. Теперь можно добавить компоненты тех. карты.')
+  }
+
+  async function updateFinalMenuItem(id, patch) {
+    if (!id) return
+    const payload = { ...patch }
+    if (payload.sale_price !== undefined) payload.sale_price = parseNum(payload.sale_price)
+    if (payload.target_food_cost_percent !== undefined) payload.target_food_cost_percent = parseNum(payload.target_food_cost_percent) || 30
+    if (payload.name !== undefined && !String(payload.name).trim()) return setMessage('Название блюда не может быть пустым')
+
+    const { error } = await supabase.from('menu_items').update(payload).eq('id', id)
+    if (error) return setMessage(error.message)
+
+    await loadSemiData()
+    setMessage('Блюдо обновлено')
+  }
+
+  function editFinalTechCard(menuId) {
+    setSelectedMenuId(menuId)
+    setTab('final')
+    setMessage('Открыто редактирование выбранной тех. карты')
+  }
+
+  function viewFinalTechCard(menuId) {
+    setSelectedMenuId(menuId)
+    setTechPreviewOpen(true)
+    setTab('legacy')
+  }
+
+  function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, (s) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[s]))
+  }
+
+  function finalLineTypeLabel(item) {
+    if (item.component_type === 'semi') return 'Полуфабрикат'
+    if (item.component_type === 'manual') return 'Вручную'
+    return 'Ингредиент'
+  }
+
+  function buildFinalTechCardHtml(menuId = selectedMenuId) {
+    const menu = menuItems.find(m => String(m.id) === String(menuId))
+    const items = finalItems.filter(i => String(i.menu_item_id) === String(menuId))
+    const cost = items.reduce((sum, item) => sum + componentCost(item), 0)
+    const sale = parseNum(menu?.sale_price)
+    const foodCost = sale > 0 ? (cost / sale) * 100 : 0
+    const margin = sale > 0 ? ((sale - cost) / sale) * 100 : 0
+    const generatedAt = new Date().toLocaleString()
+    const rowsHtml = items.map(item => `<tr>
+      <td><span class="pill">${escapeHtml(finalLineTypeLabel(item))}</span></td>
+      <td><strong>${escapeHtml(item.item_name || '—')}</strong></td>
+      <td class="num">${fmt(item.qty)}</td>
+      <td>${escapeHtml(item.unit || '')}</td>
+      <td class="num">${fmt(item.waste_percent || 0)}%</td>
+      <td class="num">${fmt(componentCost(item))} AZN</td>
+      <td class="num strong">${fmt(componentCost(item))} AZN</td>
+    </tr>`).join('')
+
+    return `<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>Тех. карта — ${escapeHtml(menu?.name || 'Блюдо')}</title>
+<style>
+  @page { size: A4 portrait; margin: 10mm; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:#f4f7fb; color:#0f172a; font-family: Inter, Arial, sans-serif; padding:24px; }
+  .page { max-width: 980px; margin: 0 auto; }
+  .actionbar { display:flex; justify-content:flex-end; gap:10px; margin-bottom:14px; }
+  .actionbar button { border:1px solid #dbe4f0; background:#fff; color:#0f172a; border-radius:14px; padding:11px 16px; font-weight:800; cursor:pointer; box-shadow:0 10px 24px rgba(15,23,42,.06); }
+  .sheet { background:#fff; border:1px solid #dfe7f2; border-radius:28px; box-shadow:0 24px 70px rgba(15,23,42,.10); overflow:hidden; }
+  .hero { padding:28px; display:grid; grid-template-columns: 160px 1fr; gap:22px; border-bottom:1px solid #e8eef6; }
+  .photo { height:140px; border-radius:22px; background:linear-gradient(135deg,#eef5ff,#f8fbff); display:flex; align-items:center; justify-content:center; color:#2563eb; font-size:56px; font-weight:900; border:1px solid #dbe7f6; overflow:hidden; }
+  .photo img { width:100%; height:100%; object-fit:cover; display:block; }
+  h1 { margin:0 0 10px; font-size:34px; line-height:1.05; letter-spacing:-.035em; }
+  .status { display:inline-flex; align-items:center; border-radius:999px; background:#dcfce7; color:#079455; font-weight:900; font-size:12px; padding:7px 12px; margin-left:10px; vertical-align:middle; }
+  .meta { display:flex; flex-wrap:wrap; gap:10px 16px; color:#64748b; font-size:14px; }
+  .meta b { color:#2563eb; background:#eef5ff; border-radius:999px; padding:5px 10px; }
+  .kpis { display:grid; grid-template-columns:repeat(5,1fr); gap:12px; padding:22px 28px; }
+  .kpi { border:1px solid #e2e8f0; border-radius:18px; padding:15px 16px; background:linear-gradient(180deg,#fff,#fbfdff); }
+  .kpi span { display:block; color:#64748b; text-transform:uppercase; letter-spacing:.04em; font-size:11px; font-weight:800; margin-bottom:7px; }
+  .kpi strong { display:block; color:#0f172a; font-size:22px; font-weight:900; }
+  .kpi em { display:block; color:#64748b; font-size:12px; font-style:normal; margin-top:4px; }
+  .tabs { display:flex; gap:26px; padding:0 28px; border-bottom:1px solid #e8eef6; }
+  .tabs span { padding:15px 0; font-weight:900; color:#64748b; }
+  .tabs span:first-child { color:#2563eb; border-bottom:3px solid #2563eb; }
+  .content { padding:0 28px 26px; }
+  table { width:100%; border-collapse:separate; border-spacing:0; }
+  th { text-align:left; color:#64748b; font-size:11px; text-transform:uppercase; letter-spacing:.04em; background:#f8fafc; border-bottom:1px solid #e2e8f0; padding:12px 14px; }
+  td { border-bottom:1px solid #edf2f7; padding:13px 14px; font-size:13px; color:#334155; }
+  .num { text-align:right; white-space:nowrap; }
+  .strong { font-weight:900; color:#0f172a; }
+  .pill { display:inline-flex; border-radius:999px; padding:5px 9px; background:#eef5ff; color:#2563eb; font-size:11px; font-weight:800; }
+  .total { display:flex; justify-content:space-between; align-items:center; padding:16px 14px; font-weight:900; border-bottom:1px solid #edf2f7; }
+  .bottom { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:18px; }
+  .box { border:1px solid #e2e8f0; border-radius:20px; padding:18px; background:#fff; }
+  .box h3 { margin:0 0 12px; font-size:15px; }
+  .footer { color:#64748b; font-size:12px; margin-top:14px; }
+  @media print { body { background:#fff; padding:0; } .actionbar { display:none; } .sheet { box-shadow:none; border-radius:0; border:0; } .page { max-width:none; } }
+</style>
+</head>
+<body>
+  <div class="page">
+    <div class="actionbar"><button onclick="window.print()">Печать / PDF</button></div>
+    <div class="sheet">
+      <section class="hero">
+        <div class="photo">${menu?.image_url || menu?.photo_url ? `<img src="${escapeHtml(menu.image_url || menu.photo_url)}" />` : escapeHtml(String(menu?.name || 'R').slice(0,1).toUpperCase())}</div>
+        <div>
+          <h1>${escapeHtml(menu?.name || 'Блюдо не выбрано')} <span class="status">Активная</span></h1>
+          <div class="meta"><span>Категория: <b>${escapeHtml(menu?.category || 'Без категории')}</b></span><span>ID: ${escapeHtml(menu?.id || '—')}</span><span>Сформировано: ${escapeHtml(generatedAt)}</span></div>
+        </div>
+      </section>
+      <section class="kpis">
+        <div class="kpi"><span>Себестоимость</span><strong>${fmt(cost)} AZN</strong><em>на порцию</em></div>
+        <div class="kpi"><span>Цена продажи</span><strong>${fmt(sale)} AZN</strong><em>на порцию</em></div>
+        <div class="kpi"><span>Food Cost</span><strong>${pct(foodCost)}</strong><em>от цены продажи</em></div>
+        <div class="kpi"><span>Маржа</span><strong>${pct(margin)}</strong><em>валовая маржа</em></div>
+        <div class="kpi"><span>Выход</span><strong>1 порция</strong><em>готовое блюдо</em></div>
+      </section>
+      <div class="tabs"><span>Состав</span><span>Калькуляция</span><span>Пищевая ценность</span><span>Аллергены</span></div>
+      <section class="content">
+        <table>
+          <thead><tr><th>Тип</th><th>Компонент</th><th class="num">Кол-во</th><th>Ед.</th><th class="num">Потери</th><th class="num">Себестоимость</th><th class="num">Итого</th></tr></thead>
+          <tbody>${rowsHtml || '<tr><td colspan="7" style="text-align:center;padding:40px;color:#64748b;">Компоненты пока не добавлены</td></tr>'}</tbody>
+        </table>
+        <div class="total"><span>Итого себестоимость</span><strong>${fmt(cost)} AZN</strong></div>
+        <div class="bottom">
+          <div class="box"><h3>Структура себестоимости</h3><p class="footer">Детализация по группам появится после классификации ингредиентов.</p></div>
+          <div class="box"><h3>История изменений</h3><p class="footer">${escapeHtml(generatedAt)} · Тех. карта сформирована для печати / PDF.</p></div>
+        </div>
+      </section>
+    </div>
+  </div>
+</body>
+</html>`
+  }
+
+  function exportFinalTechCardCsv(menuId = selectedMenuId) {
+    if (!menuId) return setMessage('Выберите блюдо для экспорта')
+    const menu = menuItems.find(m => String(m.id) === String(menuId))
+    const items = finalItems.filter(i => String(i.menu_item_id) === String(menuId))
+    const header = ['Тип','Компонент','Кол-во','Ед.','Потери %','Себестоимость AZN']
+    const rows = items.map(item => [finalLineTypeLabel(item), item.item_name || '', fmt(item.qty), item.unit || '', fmt(item.waste_percent || 0), fmt(componentCost(item))])
+    const csv = [header, ...rows].map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(';')).join('\n')
+    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `tech-card-${(menu?.name || 'recipe').replace(/[^a-zа-я0-9]+/gi, '-').toLowerCase()}.csv`
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    URL.revokeObjectURL(url)
+  }
+
+  function printFinalTechCard(menuId = selectedMenuId, autoPrint = true) {
+    if (!menuId) return setMessage('Выберите блюдо для печати')
+    const win = window.open('', '_blank', 'width=980,height=760')
+    if (!win) return setMessage('Браузер заблокировал окно печати')
+    win.document.open()
+    win.document.write(buildFinalTechCardHtml(menuId))
+    win.document.close()
+    win.focus()
+    if (autoPrint) setTimeout(() => win.print(), 350)
+  }
+
+
+  async function addFinalLine() {
+    if (!selectedMenuId) return setMessage('Выберите блюдо')
+    if (!parseNum(finalLineForm.qty)) return setMessage('Укажите количество')
+
+    const isSemi = finalLineForm.component_type === 'semi'
+    const isManual = finalLineForm.component_type === 'manual'
+    const product = productById(finalLineForm.product_id)
+    const semi = semiById(finalLineForm.semi_id)
+
+    if (isSemi && !finalLineForm.semi_id) return setMessage('Выберите полуфабрикат')
+    if (!isSemi && !isManual && !finalLineForm.product_id) return setMessage('Выберите ингредиент')
+    if (isManual && !finalLineForm.manual_name.trim()) return setMessage('Введите название ручного компонента')
+    if (isManual && !parseNum(finalLineForm.manual_unit_cost)) return setMessage('Введите цену за 1 ед. ручного компонента')
+
+    const { error } = await supabase.from('rms_final_recipe_components').insert({
+      menu_item_id: selectedMenuId,
+      component_type: finalLineForm.component_type,
+      product_id: isSemi || isManual ? null : finalLineForm.product_id,
+      semi_id: isSemi ? finalLineForm.semi_id : null,
+      item_name: isSemi ? semi?.name : isManual ? finalLineForm.manual_name.trim() : product?.name,
+      manual_unit_cost: isManual ? parseNum(finalLineForm.manual_unit_cost) : null,
+      qty: parseNum(finalLineForm.qty),
+      unit: finalLineForm.unit,
+      waste_percent: parseNum(finalLineForm.waste_percent)
+    })
+
+    if (error) return setMessage(error.message)
+
+    setFinalLineForm({ ...finalLineForm, product_id: '', semi_id: '', manual_name: '', manual_unit_cost: '', qty: '' })
+    await loadSemiData()
+    setMessage('Компонент блюда добавлен')
+  }
+
+  async function updateFinalLine(id, patch) {
+    const payload = { ...patch }
+    if (payload.qty !== undefined) payload.qty = parseNum(payload.qty)
+    if (payload.waste_percent !== undefined) payload.waste_percent = parseNum(payload.waste_percent)
+    if (payload.manual_unit_cost !== undefined) payload.manual_unit_cost = parseNum(payload.manual_unit_cost)
+
+    const { error } = await supabase.from('rms_final_recipe_components').update(payload).eq('id', id)
+    if (error) return setMessage(error.message)
+    await loadSemiData()
+  }
+
+  async function deleteFinalLine(id) {
+    const { error } = await supabase.from('rms_final_recipe_components').delete().eq('id', id)
+    if (error) return setMessage(error.message)
+    await loadSemiData()
+  }
+
+  function seedBrownieExample() {
+    setSemiForm({
+      name: 'Брауни масса',
+      category: 'Десерты / полуфабрикаты',
+      output_qty: '480',
+      output_unit: 'g',
+      notes: 'Пример: шоколад, масло, яйца, сахар, мука, какао'
+    })
+    setMessage('Шаблон Брауни массы подставлен. Создай полуфабрикат и добавь ингредиенты по списку.')
+  }
+
+
+  async function saveIikoConnection() {
+    setIikoStatus('')
+    const branchId = iikoForm.branch_id || branches[0]?.id
+    if (!branchId) return setIikoStatus('Сначала добавьте филиал в настройках.')
+    if (!String(iikoForm.organization_id || '').trim()) return setIikoStatus('Введите iiko organization_id.')
+
+    setIikoBusy(true)
+    try {
+      const payload = {
+        branch_id: branchId,
+        iiko_organization_id: String(iikoForm.organization_id || '').trim(),
+        iiko_terminal_group_id: String(iikoForm.terminal_group_id || '').trim() || null,
+        sync_enabled: Boolean(iikoForm.sync_enabled),
+        updated_at: new Date().toISOString()
+      }
+      const { error } = await supabase.from('iiko_sync_connections').upsert(payload, { onConflict: 'branch_id' })
+      if (error) throw error
+      setIikoForm({ branch_id: branchId, organization_id: '', terminal_group_id: '', sync_enabled: true })
+      setIikoStatus('Подключение iiko сохранено. Следующий шаг — добавить IIKO_API_LOGIN в Supabase Edge Functions / Vercel Environment.')
+      await load()
+    } catch (e) {
+      setIikoStatus(e.message || String(e))
+    } finally {
+      setIikoBusy(false)
+    }
+  }
+
+  function editIikoConnection(row) {
+    setIikoForm({
+      branch_id: row.branch_id || '',
+      organization_id: row.iiko_organization_id || '',
+      terminal_group_id: row.iiko_terminal_group_id || '',
+      sync_enabled: row.sync_enabled !== false
+    })
+    setSettingsTab('integrations')
+  }
+
+  async function toggleIikoConnection(row) {
+    setIikoStatus('')
+    const { error } = await supabase.from('iiko_sync_connections').update({ sync_enabled: !row.sync_enabled, updated_at: new Date().toISOString() }).eq('id', row.id)
+    if (error) setIikoStatus(error.message); else { setIikoStatus('Статус подключения обновлён'); await load() }
+  }
+
+  async function runIikoSync(row) {
+    setIikoStatus('')
+    setIikoBusy(true)
+    try {
+      const { data, error } = await supabase.functions.invoke('iiko-sync-sales', { body: { connectionId: row.id } })
+      if (error) throw error
+      setIikoStatus(data?.message || 'Синхронизация запущена.')
+      await load()
+    } catch (e) {
+      setIikoStatus((e && e.message) ? e.message : 'Edge Function iiko-sync-sales пока не развернута или вернула ошибку.')
+    } finally {
+      setIikoBusy(false)
+    }
+  }
+
+  return (
+    <section className="tech-page-redesign">
+      <section className="topbar tech-page-header">
+        <div>
+          <h2>Тех. карты</h2>
+          <p>Управление технологическими картами, полуфабрикатами, себестоимостью и маржинальностью блюд.</p>
+        </div>
+        <div className="tech-header-actions">
+          <button className="ghost small" onClick={() => setTab('legacy')}>Все тех. карты</button>
+          <button className="small primary" onClick={loadSemiData}>{loading ? 'Загрузка...' : 'Обновить'}</button>
+        </div>
+      </section>
+
+      <div className="settings-tabs tech-page-tabs">
+        <button className={tab === 'legacy' ? 'active' : ''} onClick={() => setTab('legacy')}>Текущие тех. карты</button>
+        <button className={tab === 'semis' ? 'active' : ''} onClick={() => setTab('semis')}>Создать полуфабрикат</button>
+        <button className={tab === 'final' ? 'active' : ''} onClick={() => setTab('final')}>Создать блюдо</button>
+      </div>
+
+      {message ? <p className="hint">{message}</p> : null}
+
+      {tab === 'legacy' && (
+        <section className="tech-modern-page">
+          <div className="tech-kpi-grid">
+            <div className="tech-kpi-card tech-kpi-purple">
+              <div className="tech-kpi-icon">▤</div>
+              <div>
+                <div className="tech-kpi-label">ВСЕГО ТЕХ. КАРТ</div>
+                <div className="tech-kpi-value">{menuItems.length}</div>
+                <div className="tech-kpi-sub">{filteredTechCards.length} по фильтру</div>
+              </div>
+            </div>
+            <div className="tech-kpi-card tech-kpi-green">
+              <div className="tech-kpi-icon">✓</div>
+              <div>
+                <div className="tech-kpi-label">АКТИВНЫЕ</div>
+                <div className="tech-kpi-value">{menuItems.length}</div>
+                <div className="tech-kpi-sub">позиции меню</div>
+              </div>
+            </div>
+            <div className="tech-kpi-card tech-kpi-orange">
+              <div className="tech-kpi-icon">Ⅱ</div>
+              <div>
+                <div className="tech-kpi-label">КАТЕГОРИИ</div>
+                <div className="tech-kpi-value">{techCardCategories.length}</div>
+                <div className="tech-kpi-sub">группы блюд</div>
+              </div>
+            </div>
+            <div className="tech-kpi-card tech-kpi-blue">
+              <div className="tech-kpi-icon">◔</div>
+              <div>
+                <div className="tech-kpi-label">СР. СЕБЕСТОИМОСТЬ</div>
+                <div className="tech-kpi-value">{pct(techCardAvgFoodCost)}</div>
+                <div className="tech-kpi-sub">по блюдам с ценой</div>
+              </div>
+            </div>
+            <div className="tech-kpi-card tech-kpi-mint">
+              <div className="tech-kpi-icon">%</div>
+              <div>
+                <div className="tech-kpi-label">МАРЖА</div>
+                <div className="tech-kpi-value">{pct(techCardAvgMargin)}</div>
+                <div className="tech-kpi-sub">средняя маржа</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="tech-modern-layout">
+            <div className="tech-modern-main-card">
+              <div className="tech-modern-toolbar">
+                <div className="tech-tabs-clean">
+                  <button className="active">Все тех. карты</button>
+                  <button onClick={() => setTechCardCategory('all')}>Активные</button>
+                  <button>Неактивные</button>
+                </div>
+                <div className="tech-toolbar-actions">
+                  <button className="ghost small">⇩ Экспорт</button>
+                  <button className="ghost small">⇧ Импорт</button>
+                  <button className="small primary" onClick={() => setTab('final')}>+ Новая тех. карта</button>
+                </div>
+              </div>
+
+              <div className="tech-filter-bar">
+                <label>
+                  <span>Категория</span>
+                  <select value={techCardCategory} onChange={e => { setTechCardCategory(e.target.value); setTechCardPage(1) }}>
+                    <option value="all">Все категории</option>
+                    {techCardCategories.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                </label>
+                <label className="tech-search-field">
+                  <span>Поиск</span>
+                  <input value={techCardSearch} onChange={e => { setTechCardSearch(e.target.value); setTechCardPage(1) }} placeholder="Поиск по названию или категории..." />
+                </label>
+                <label>
+                  <span>Показать</span>
+                  <select value={techCardPageSize} onChange={e => { setTechCardPageSize(Number(e.target.value)); setTechCardPage(1) }}>
+                    <option value={10}>10</option>
+                    <option value={20}>20</option>
+                    <option value={50}>50</option>
+                  </select>
+                </label>
+              </div>
+
+              <div className="tech-table-wrap">
+                <table className="tech-modern-table">
+                  <thead>
+                    <tr>
+                      <th>Блюдо / Напиток</th>
+                      <th>Категория</th>
+                      <th>Себестоимость</th>
+                      <th>Цена продажи</th>
+                      <th>Маржа</th>
+                      <th>Статус</th>
+                      <th>Действия</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pagedTechCards.map(m => {
+                      const rows = finalItems.filter(i => String(i.menu_item_id) === String(m.id))
+                      const cost = rows.reduce((sum, item) => sum + componentCost(item), 0)
+                      const sale = parseNum(m.sale_price)
+                      const fc = sale > 0 ? (cost / sale) * 100 : 0
+                      const margin = sale > 0 ? 100 - fc : 0
+                      const categoryName = m.category || 'Без категории'
+                      const categoryClass = `tech-category-pill cat-${String(categoryName).toLowerCase().replace(/[^a-zа-яё0-9]+/gi, '-')}`
+                      return (
+                        <tr key={m.id} className={String(selectedMenuId) === String(m.id) ? 'selected-row' : ''}>
+                          <td>
+                            <div className="tech-dish-cell">
+                              <div className="tech-dish-thumb">{String(m.name || '?').slice(0, 1).toUpperCase()}</div>
+                              <div>
+                                <b>{m.name}</b>
+                                <span>{rows.length} компонентов</span>
+                              </div>
+                            </div>
+                          </td>
+                          <td><span className={categoryClass}>{categoryName}</span></td>
+                          <td><b>{fmt(cost)} AZN</b><small>{sale > 0 ? `Food Cost ${pct(fc)}` : 'цена не указана'}</small></td>
+                          <td><b>{fmt(sale)} AZN</b></td>
+                          <td><b className={margin >= 60 ? 'good' : margin >= 40 ? '' : 'bad'}>{sale > 0 ? pct(margin) : '—'}</b></td>
+                          <td><span className="tech-status active">Активная</span></td>
+                          <td>
+                            <div className="tech-row-actions">
+                              <button className="icon-button tech-view-button" title="Просмотр" onClick={() => viewFinalTechCard(m.id)}>Просмотр</button>
+                              <button className="icon-button" title="Редактировать" onClick={() => editFinalTechCard(m.id)}>✎</button>
+                              <button className="icon-button" title="Печать" onClick={() => printFinalTechCard(m.id, true)}>⋮</button>
+                            </div>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                    {!filteredTechCards.length && <tr><td colSpan="7" className="hint">Тех. карты не найдены</td></tr>}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="tech-pagination-row">
+                <span className="hint">Показано {pagedTechCards.length ? ((safeTechCardPage - 1) * techCardPageSizeNumber) + 1 : 0}–{Math.min(safeTechCardPage * techCardPageSizeNumber, filteredTechCards.length)} из {filteredTechCards.length}</span>
+                <div className="tech-pages">
+                  <button className="ghost small" disabled={safeTechCardPage <= 1} onClick={() => setTechCardPage(p => Math.max(1, parseNum(p) - 1))}>‹</button>
+                  <span>{safeTechCardPage}</span>
+                  <button className="ghost small" disabled={safeTechCardPage >= techCardTotalPages} onClick={() => setTechCardPage(p => Math.min(techCardTotalPages, parseNum(p) + 1))}>›</button>
+                </div>
+              </div>
+
+              {selectedMenu && (
+                <div className="tech-preview-card">
+                  <div className="card-head">
+                    <div>
+                      <h3>{selectedMenu.name}</h3>
+                      <p className="hint">Просмотр тех. карты выбранного блюда.</p>
+                    </div>
+                    <div className="action-row">
+                      <button className="small" onClick={() => editFinalTechCard(selectedMenu.id)}>Редактировать</button>
+                      <button className="small primary" onClick={() => printFinalTechCard(selectedMenu.id, true)}>Печать</button>
+                    </div>
+                  </div>
+                  <div className="metric-grid">
+                    <Metric label="Цена продажи" value={`${fmt(selectedMenu.sale_price)} AZN`} />
+                    <Metric label="Себестоимость" value={`${fmt(finalCost)} AZN`} />
+                    <Metric label="Food Cost" value={pct(finalFoodCost)} />
+                    <Metric label="Валовая прибыль" value={`${fmt(finalSalePrice - finalCost)} AZN`} />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <aside className="tech-modern-sidebar">
+              <div className="tech-side-card">
+                <div className="tech-side-title"><h3>Категории</h3><button className="icon-button">+</button></div>
+                <button className={techCardCategory === 'all' ? 'tech-category-row active' : 'tech-category-row'} onClick={() => { setTechCardCategory('all'); setTechCardPage(1) }}>
+                  <span>▦ Все категории</span><b>{menuItems.length}</b>
+                </button>
+                {techCardCategories.map(c => {
+                  const count = menuItems.filter(m => (String(m.category || 'Без категории').trim() || 'Без категории') === c).length
+                  return <button key={c} className={techCardCategory === c ? 'tech-category-row active' : 'tech-category-row'} onClick={() => { setTechCardCategory(c); setTechCardPage(1) }}><span>• {c}</span><b>{count}</b></button>
+                })}
+              </div>
+
+              <div className="tech-side-card">
+                <h3>Быстрые действия</h3>
+                <button className="tech-action-line" onClick={() => setTab('final')}><span>＋</span><div><b>Создать тех. карту</b><small>Добавить новое блюдо</small></div><em>›</em></button>
+                <button className="tech-action-line"><span>⇧</span><div><b>Импорт из Excel</b><small>Загрузить тех. карты</small></div><em>›</em></button>
+                <button className="tech-action-line" onClick={() => setTab('semis')}><span>▧</span><div><b>Полуфабрикаты</b><small>Создать заготовки</small></div><em>›</em></button>
+              </div>
+            </aside>
+          </div>
+        </section>
+      )}
+
+
+      {techPreviewOpen && selectedMenu && (
+        <div className="tech-detail-overlay" onClick={() => setTechPreviewOpen(false)}>
+          <aside className="tech-detail-panel" onClick={e => e.stopPropagation()}>
+            <div className="tech-detail-top">
+              <div className="tech-detail-hero">
+                {selectedMenu.image_url || selectedMenu.photo_url ? (
+                  <img src={selectedMenu.image_url || selectedMenu.photo_url} alt={selectedMenu.name} />
+                ) : (
+                  <div className="tech-detail-placeholder">{String(selectedMenu.name || 'R').slice(0, 1).toUpperCase()}</div>
+                )}
+              </div>
+              <div className="tech-detail-title-block">
+                <div className="tech-detail-title-line">
+                  <h2>{selectedMenu.name}</h2>
+                  <span className="tech-detail-status">Активная</span>
+                </div>
+                <div className="tech-detail-meta">
+                  <span>Категория:</span>
+                  <b>{selectedMenu.category || 'Без категории'}</b>
+                </div>
+                <div className="tech-detail-meta muted">
+                  <span>ID: {selectedMenu.id}</span>
+                  <span>·</span>
+                  <span>Обновлено: {new Date().toLocaleString()}</span>
+                </div>
+              </div>
+              <div className="tech-detail-actions">
+                <button className="small primary" onClick={() => editFinalTechCard(selectedMenu.id)}>✎ Редактировать</button>
+                <button className="small" onClick={() => printFinalTechCard(selectedMenu.id, true)}>⎙ Печать</button>
+                <button className="small" onClick={() => printFinalTechCard(selectedMenu.id, true)}>⇩ Экспорт в PDF</button>
+                <button className="small" onClick={() => exportFinalTechCardCsv(selectedMenu.id)}>⇧ Экспорт в Excel</button>
+                <button className="small">↺ История изменений</button>
+              </div>
+              <button className="tech-detail-close" onClick={() => setTechPreviewOpen(false)}>×</button>
+            </div>
+
+            <div className="tech-detail-kpis">
+              <Metric label="Себестоимость" value={`${fmt(finalCost)} AZN`} />
+              <Metric label="Цена продажи" value={`${fmt(finalSalePrice)} AZN`} />
+              <Metric label="Food Cost" value={pct(finalFoodCost)} />
+              <Metric label="Маржа" value={pct(finalMargin)} />
+              <Metric label="Выход" value="1 порция" />
+            </div>
+
+            <div className="tech-detail-tabs">
+              <button className="active">Состав</button>
+              <button>Блюдо</button>
+              <button>Калькуляция</button>
+              <button>Пищевая ценность</button>
+              <button>Аллергены</button>
+              <button>Фото</button>
+            </div>
+
+            <div className="tech-detail-table-card">
+              <table className="tech-detail-table">
+                <thead>
+                  <tr>
+                    <th>Тип</th>
+                    <th>Компонент</th>
+                    <th>Кол-во</th>
+                    <th>Ед.</th>
+                    <th>Потери</th>
+                    <th>Себестоимость</th>
+                    <th>Итого</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {selectedFinalItems.map(item => {
+                    const rowCost = componentCost(item)
+                    return (
+                      <tr key={item.id}>
+                        <td><span className={`tech-component-pill ${item.component_type || 'product'}`}>{finalLineTypeLabel(item)}</span></td>
+                        <td><b>{item.item_name || item.manual_name || '—'}</b></td>
+                        <td>{fmt(item.qty)}</td>
+                        <td>{item.unit || '—'}</td>
+                        <td>{fmt(item.waste_percent || 0)}%</td>
+                        <td>{fmt(rowCost)} AZN</td>
+                        <td><b>{fmt(rowCost)} AZN</b></td>
+                      </tr>
+                    )
+                  })}
+                  {!selectedFinalItems.length && (
+                    <tr>
+                      <td colSpan="7">
+                        <div className="tech-empty-state">
+                          <b>Компоненты пока не добавлены</b>
+                          <span>Откройте редактирование и добавьте ингредиенты, полуфабрикаты или ручные компоненты.</span>
+                          <button className="small primary" onClick={() => editFinalTechCard(selectedMenu.id)}>Добавить компоненты</button>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+                <tfoot>
+                  <tr>
+                    <td colSpan="6">Итого себестоимость</td>
+                    <td>{fmt(finalCost)} AZN</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+
+            <div className="tech-detail-bottom-grid">
+              <div className="tech-detail-card">
+                <h3>Структура себестоимости</h3>
+                <div className="tech-cost-donut"><span>{fmt(finalCost)} AZN</span><small>100%</small></div>
+                <div className="tech-breakdown-list">
+                  {Object.entries(selectedFinalBreakdown).map(([name, value]) => (
+                    <div key={name} className="tech-breakdown-row">
+                      <span>{name}</span>
+                      <b>{finalCost > 0 ? pct((value / finalCost) * 100) : '0.0%'} · {fmt(value)} AZN</b>
+                    </div>
+                  ))}
+                  {!Object.keys(selectedFinalBreakdown).length && <p className="hint">Структура появится после добавления компонентов.</p>}
+                </div>
+              </div>
+              <div className="tech-detail-card">
+                <h3>История изменений</h3>
+                <div className="tech-history-line"><span></span><div><b>{new Date().toLocaleDateString()}</b><p>Открыт просмотр тех. карты</p></div></div>
+                <div className="tech-history-line"><span></span><div><b>Admin RMS</b><p>Последняя версия готова к экспорту и печати.</p></div></div>
+              </div>
+            </div>
+
+            <div className="tech-detail-footer">
+              <button className="small" onClick={() => setTechPreviewOpen(false)}>Закрыть</button>
+              <button className="small primary" onClick={() => printFinalTechCard(selectedMenu.id, true)}>Экспорт в PDF / Печать</button>
+            </div>
+          </aside>
+        </div>
+      )}
+
+      {tab === 'final' && (
+        <section className="grid">
+          <div className="card span-2">
+            <div className="card-head">
+              <div>
+                <h3>Создать / редактировать блюдо</h3>
+                <p className="hint">Создайте позицию меню или выберите существующую, затем добавьте компоненты тех. карты.</p>
+              </div>
+              {selectedMenu && <button className="small" onClick={() => printFinalTechCard(selectedMenu.id, true)}>Печать</button>}
+            </div>
+
+            <div className="form-grid compact">
+              <label><span>Название блюда</span><input value={finalMenuForm.name} onChange={e => setFinalMenuForm({ ...finalMenuForm, name: e.target.value })} placeholder="Cappuccino / Chicken Bowl" /></label>
+              <label><span>Категория</span><select value={finalMenuForm.category} onChange={e => setFinalMenuForm({ ...finalMenuForm, category: e.target.value })}>{MENU_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select></label>
+              <label><span>Цена продажи</span><input inputMode="decimal" value={finalMenuForm.sale_price} onChange={e => setFinalMenuForm({ ...finalMenuForm, sale_price: e.target.value })} /></label>
+              <label><span>Целевой Food Cost %</span><input inputMode="decimal" value={finalMenuForm.target_food_cost_percent} onChange={e => setFinalMenuForm({ ...finalMenuForm, target_food_cost_percent: e.target.value })} /></label>
+            </div>
+            <div className="actions-row">
+              <button className="small primary" onClick={createFinalMenuItem}>+ Создать блюдо</button>
+              <button className="small" onClick={() => setFinalMenuForm({ name: '', category: finalMenuForm.category || 'Кофе', sale_price: '', target_food_cost_percent: '30' })}>Очистить</button>
+            </div>
+          </div>
+
+          <div className="card span-2">
+            <h3>Выбрать блюдо для тех. карты</h3>
+            <div className="form-grid compact">
+              <label><span>Поиск</span><input value={finalSearch} onChange={e => setFinalSearch(e.target.value)} placeholder="Название или категория" /></label>
+              <label><span>Блюдо</span><select value={selectedMenuId} onChange={e => setSelectedMenuId(e.target.value)}>
+                <option value="">Выбрать</option>
+                {filteredFinalMenuItems.map(m => <option key={m.id} value={m.id}>{m.name} · {m.category || '—'}</option>)}
+              </select></label>
+            </div>
+
+            {selectedMenu && <>
+              <div className="semi-edit-grid">
+                <label><span>Название</span><input defaultValue={selectedMenu.name} onBlur={e => updateFinalMenuItem(selectedMenu.id, { name: e.target.value.trim() })} /></label>
+                <label><span>Категория</span><select defaultValue={selectedMenu.category || 'Прочее'} onChange={e => updateFinalMenuItem(selectedMenu.id, { category: e.target.value })}>{MENU_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select></label>
+                <label><span>Цена продажи</span><input inputMode="decimal" defaultValue={selectedMenu.sale_price} onBlur={e => updateFinalMenuItem(selectedMenu.id, { sale_price: e.target.value })} /></label>
+                <label><span>Целевой Food Cost %</span><input inputMode="decimal" defaultValue={selectedMenu.target_food_cost_percent || 30} onBlur={e => updateFinalMenuItem(selectedMenu.id, { target_food_cost_percent: e.target.value })} /></label>
+              </div>
+              <div className="metric-grid">
+                <Metric label="Цена продажи" value={`${fmt(selectedMenu.sale_price)} AZN`} />
+                <Metric label="Себестоимость" value={`${fmt(finalCost)} AZN`} />
+                <Metric label="Food Cost" value={pct(finalFoodCost)} />
+                <Metric label="Валовая прибыль" value={`${fmt(finalSalePrice - finalCost)} AZN`} />
+              </div>
+            </>}
+          </div>
+
+          <div className="card span-2">
+            <h3>Добавить компонент в тех. карту</h3>
+            <p className="hint">Компонентом может быть полуфабрикат, товар из закупок или ручной ингредиент.</p>
+            <div className="form-grid compact">
+              <label><span>Тип</span><select value={finalLineForm.component_type} onChange={e => setFinalLineForm({ ...finalLineForm, component_type: e.target.value })}>
+                <option value="semi">Полуфабрикат</option>
+                <option value="product">Ингредиент</option>
+                <option value="manual">Вручную</option>
+              </select></label>
+
+              {finalLineForm.component_type === 'semi' && <label><span>Полуфабрикат</span><select value={finalLineForm.semi_id} onChange={e => setFinalLineForm({ ...finalLineForm, semi_id: e.target.value })}>
+                <option value="">Выбрать</option>
+                {semis.map(s => <option key={s.id} value={s.id}>{s.name} · {s.output_qty} {s.output_unit}</option>)}
+              </select></label>}
+
+              {finalLineForm.component_type === 'product' && <label><span>Ингредиент</span><select value={finalLineForm.product_id} onChange={e => setFinalLineForm({ ...finalLineForm, product_id: e.target.value })}>
+                <option value="">Выбрать</option>
+                {products.map(p => <option key={p.id} value={p.id}>{p.name} · {p.category}</option>)}
+              </select></label>}
+
+              {finalLineForm.component_type === 'manual' && <>
+                <label><span>Название</span><input value={finalLineForm.manual_name} onChange={e => setFinalLineForm({ ...finalLineForm, manual_name: e.target.value })} placeholder="Соль / специи / декор" /></label>
+                <label><span>Цена за 1 ед.</span><input inputMode="decimal" value={finalLineForm.manual_unit_cost} onChange={e => setFinalLineForm({ ...finalLineForm, manual_unit_cost: e.target.value })} /></label>
+              </>}
+
+              <label><span>Кол-во</span><input inputMode="decimal" value={finalLineForm.qty} onChange={e => setFinalLineForm({ ...finalLineForm, qty: e.target.value })} /></label>
+              <label><span>Ед.</span><select value={finalLineForm.unit} onChange={e => setFinalLineForm({ ...finalLineForm, unit: e.target.value })}>
+                <option value="g">g</option><option value="kg">kg</option><option value="ml">ml</option><option value="l">l</option><option value="pcs">pcs</option>
+              </select></label>
+              <label><span>Потери %</span><input inputMode="decimal" value={finalLineForm.waste_percent} onChange={e => setFinalLineForm({ ...finalLineForm, waste_percent: e.target.value })} /></label>
+            </div>
+            <div className="actions-row">
+              <button className="small primary" onClick={addFinalLine}>+ Добавить компонент</button>
+            </div>
+          </div>
+
+          <div className="card span-2">
+            <div className="card-head">
+              <div>
+                <h3>Состав тех. карты</h3>
+                <p className="hint">{selectedMenu ? selectedMenu.name : 'Блюдо не выбрано'}</p>
+              </div>
+              <div className="action-row">
+                {selectedMenu && <button className="small" onClick={() => printFinalTechCard(selectedMenu.id, true)}>Печать</button>}
+                {selectedMenu && <button className="small" onClick={() => viewFinalTechCard(selectedMenu.id)}>Просмотр</button>}
+              </div>
+            </div>
+
+            <div className="table-wrap">
+              <table>
+                <thead>
+                  <tr><th>Тип</th><th>Компонент</th><th>Кол-во</th><th>Ед.</th><th>Потери</th><th>Себестоимость</th><th>Действие</th></tr>
+                </thead>
+                <tbody>
+                  {selectedFinalItems.map(item => (
+                    <tr key={item.id}>
+                      <td>{finalLineTypeLabel(item)}</td>
+                      <td><b>{item.item_name}</b></td>
+                      <td><input inputMode="decimal" defaultValue={item.qty} onBlur={e => updateFinalLine(item.id, { qty: e.target.value })} /></td>
+                      <td><select defaultValue={item.unit || 'g'} onChange={e => updateFinalLine(item.id, { unit: e.target.value })}><option value="g">g</option><option value="kg">kg</option><option value="ml">ml</option><option value="l">l</option><option value="pcs">pcs</option></select></td>
+                      <td><input inputMode="decimal" defaultValue={item.waste_percent || 0} onBlur={e => updateFinalLine(item.id, { waste_percent: e.target.value })} /></td>
+                      <td><b>{fmt(componentCost(item))} AZN</b></td>
+                      <td><button className="remove" onClick={() => deleteFinalLine(item.id)}>×</button></td>
+                    </tr>
+                  ))}
+                  {!selectedFinalItems.length && <tr><td colSpan="7" className="hint">В тех. карте пока нет компонентов.</td></tr>}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {tab === 'semis' && (
+        <section className="semifinished-layout">
+          <div className="card semi-create-card">
+            <h3>Создать полуфабрикат / заготовку</h3>
+            <div className="semi-form-grid">
+              <label><span>Название</span><input value={semiForm.name} onChange={e => setSemiForm({ ...semiForm, name: e.target.value })} placeholder="Брауни масса" /></label>
+              <label><span>Категория</span><input value={semiForm.category} onChange={e => setSemiForm({ ...semiForm, category: e.target.value })} /></label>
+              <label><span>Выход</span><input value={semiForm.output_qty} onChange={e => setSemiForm({ ...semiForm, output_qty: e.target.value })} /></label>
+              <label><span>Ед.</span><select value={semiForm.output_unit} onChange={e => setSemiForm({ ...semiForm, output_unit: e.target.value })}><option value="g">g</option><option value="kg">kg</option><option value="ml">ml</option><option value="l">l</option><option value="pcs">pcs</option></select></label>
+              <label className="wide"><span>Комментарий</span><input value={semiForm.notes} onChange={e => setSemiForm({ ...semiForm, notes: e.target.value })} /></label>
+            </div>
+            <div className="actions-row">
+              <button className="small primary" onClick={addSemi}>+ Создать</button>
+              <button className="small" onClick={seedBrownieExample}>Шаблон Брауни</button>
+            </div>
+          </div>
+
+          <div className="card semi-info-card">
+            <h3>Полуфабрикат для расчёта</h3>
+            <label><span>Поиск полуфабриката</span><input value={semiSearch} onChange={e => setSemiSearch(e.target.value)} placeholder="Например: брауни, крем, соус" /></label>
+            <label><span>Полуфабрикат</span><select value={selectedSemiId} onChange={e => setSelectedSemiId(e.target.value)}>
+              <option value="">Выбрать</option>
+              {filteredSemisForSearch.map(s => <option key={s.id} value={s.id}>{s.name} · {s.output_qty} {s.output_unit}</option>)}
+            </select></label>
+
+            {selectedSemi && <>
+              <div className="semi-edit-grid">
+                <label><span>Название</span><input defaultValue={selectedSemi.name} onBlur={e => updateSemi(selectedSemi.id, { name: e.target.value.trim() })} /></label>
+                <label><span>Категория</span><input defaultValue={selectedSemi.category || ''} onBlur={e => updateSemi(selectedSemi.id, { category: e.target.value.trim() })} /></label>
+                <label><span>Выход</span><input defaultValue={selectedSemi.output_qty} onBlur={e => updateSemi(selectedSemi.id, { output_qty: e.target.value })} /></label>
+                <label><span>Ед.</span><select defaultValue={selectedSemi.output_unit || 'g'} onChange={e => updateSemi(selectedSemi.id, { output_unit: e.target.value })}><option value="g">g</option><option value="kg">kg</option><option value="ml">ml</option><option value="l">l</option><option value="pcs">pcs</option></select></label>
+              </div>
+              <div className="metric-grid">
+                <Metric label="Выход" value={`${fmt(selectedSemi.output_qty)} ${selectedSemi.output_unit}`} />
+                <Metric label="Себестоимость партии" value={`${fmt(selectedSemiTotalCost)} AZN`} />
+                <Metric label={`Себестоимость 1 ${selectedSemi.output_unit}`} value={`${fmt(selectedSemiUnitCost)} AZN`} />
+              </div>
+              <div className="actions-row">
+                <button className="small danger" onClick={() => deleteSemi(selectedSemi.id)}>Удалить полуфабрикат</button>
+              </div>
+            </>}
+          </div>
+
+          <div className="card semi-composition-card">
+            <h3>Состав выбранного полуфабриката</h3>
+            <p className="hint">Кнопка “Изменить” открывает редактирование только выбранного ингредиента прямо в этой же строке.</p>
+
+            <div className="table-wrap semi-composition-table-wrap">
+              <table className="semi-composition-table">
+                <thead>
+                  <tr>
+                    <th>Компонент</th>
+                    <th>Кол-во</th>
+                    <th>Ед.</th>
+                    <th>Цена</th>
+                    <th>Пот.</th>
+                    <th>Себес.</th>
+                    <th>Действие</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {selectedSemiItems.map(item => {
+                    const isEditing = String(selectedSemiItemId) === String(item.id) && semiLineEditDraft
+                    const draft = isEditing ? semiLineEditDraft : null
+
+                    return (
+                      <tr key={item.id} className={isEditing ? 'semi-row editing' : 'semi-row'}>
+                        <td>
+                          {isEditing ? (
+                            item.component_type === 'manual'
+                              ? <input className="semi-inline-input semi-component-input" value={draft.item_name} onChange={e => updateSemiLineEditDraft({ item_name: e.target.value })} />
+                              : <input className="semi-inline-input semi-component-input" value={draft.item_name} readOnly />
+                          ) : (
+                            <div className="semi-main-value semi-name">{item.item_name}</div>
+                          )}
+                        </td>
+                        <td>
+                          {isEditing
+                            ? <input className="semi-inline-input semi-number-input" value={draft.qty} onChange={e => updateSemiLineEditDraft({ qty: e.target.value })} />
+                            : <b>{fmt(item.qty)}</b>}
+                        </td>
+                        <td>
+                          {isEditing ? (
+                            <select className="semi-inline-input semi-unit-input" value={draft.unit} onChange={e => updateSemiLineEditDraft({ unit: e.target.value })}>
+                              <option value="g">g</option>
+                              <option value="kg">kg</option>
+                              <option value="ml">ml</option>
+                              <option value="l">l</option>
+                              <option value="pcs">pcs</option>
+                            </select>
+                          ) : <b>{item.unit || 'g'}</b>}
+                        </td>
+                        <td>
+                          {isEditing ? (
+                            item.component_type === 'manual'
+                              ? <input className="semi-inline-input semi-price-input" value={draft.manual_unit_cost} onChange={e => updateSemiLineEditDraft({ manual_unit_cost: e.target.value })} />
+                              : <input className="semi-inline-input semi-price-input" value="закупка" readOnly />
+                          ) : <span>{item.component_type === 'manual' ? fmt(item.manual_unit_cost || 0) : 'закупка'}</span>}
+                        </td>
+                        <td>
+                          {isEditing
+                            ? <input className="semi-inline-input semi-number-input" value={draft.waste_percent} onChange={e => updateSemiLineEditDraft({ waste_percent: e.target.value })} />
+                            : <span>{fmt(item.waste_percent || 0)}%</span>}
+                        </td>
+                        <td><b>{fmt(componentCost(item))}</b></td>
+                        <td>
+                          {isEditing ? (
+                            <div className="semi-row-actions">
+                              <button className="small primary" onClick={saveSemiLineEdit}>Сохранить</button>
+                              <button className="small" onClick={cancelSemiLineEdit}>Отмена</button>
+                              <button className="small danger" onClick={() => deleteSemiLineFromEdit(item.id)}>Удалить</button>
+                            </div>
+                          ) : (
+                            <div className="semi-row-actions">
+                              <button className="small" onClick={() => startSemiLineEdit(item)}>Изменить</button>
+                              
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                  {!selectedSemiItems.length && <tr><td colSpan="7" className="hint">Состав пока пустой. Добавь ингредиенты ниже.</td></tr>}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className="card semi-add-card">
+            <h3>Добавить ингредиент в состав</h3>
+            <p className="hint">Сначала выбери или создай полуфабрикат. После создания новый полуфабрикат выбирается автоматически, и сюда можно сразу добавлять ингредиенты.</p>
+
+            {!selectedSemiId ? (
+              <p className="hint">Выбери полуфабрикат выше или создай новый, чтобы добавить ингредиент.</p>
+            ) : (
+              <>
+                <div className="semi-add-form-grid">
+                  <label>
+                    <span>Тип компонента</span>
+                    <select value={semiLineForm.component_type} onChange={e => setSemiLineForm({ ...semiLineForm, component_type: e.target.value, product_id: '', semi_id_ref: '', manual_name: '', manual_unit_cost: '' })}>
+                      <option value="product">Ингредиент из закупок</option>
+                      <option value="semi">Другой полуфабрикат</option>
+                      <option value="manual">Ручной ингредиент</option>
+                    </select>
+                  </label>
+
+                  {semiLineForm.component_type === 'product' && (
+                    <label className="semi-add-component-field">
+                      <span>Ингредиент</span>
+                      <select value={semiLineForm.product_id} onChange={e => setSemiLineForm({ ...semiLineForm, product_id: e.target.value })}>
+                        <option value="">Выбрать ингредиент</option>
+                        {products.map(p => <option key={p.id} value={p.id}>{p.name} · {p.category || 'Без категории'}</option>)}
+                      </select>
+                    </label>
+                  )}
+
+                  {semiLineForm.component_type === 'semi' && (
+                    <label className="semi-add-component-field">
+                      <span>Полуфабрикат-компонент</span>
+                      <select value={semiLineForm.semi_id_ref} onChange={e => setSemiLineForm({ ...semiLineForm, semi_id_ref: e.target.value })}>
+                        <option value="">Выбрать полуфабрикат</option>
+                        {semis.filter(s => String(s.id) !== String(selectedSemiId)).map(s => <option key={s.id} value={s.id}>{s.name} · {s.output_qty} {s.output_unit}</option>)}
+                      </select>
+                    </label>
+                  )}
+
+                  {semiLineForm.component_type === 'manual' && (
+                    <>
+                      <label className="semi-add-component-field">
+                        <span>Название</span>
+                        <input value={semiLineForm.manual_name} onChange={e => setSemiLineForm({ ...semiLineForm, manual_name: e.target.value })} placeholder="Например: специи, декор" />
+                      </label>
+                      <label>
+                        <span>Цена за 1 ед.</span>
+                        <input value={semiLineForm.manual_unit_cost} onChange={e => setSemiLineForm({ ...semiLineForm, manual_unit_cost: e.target.value })} placeholder="0.00" />
+                      </label>
+                    </>
+                  )}
+
+                  <label>
+                    <span>Кол-во</span>
+                    <input value={semiLineForm.qty} onChange={e => setSemiLineForm({ ...semiLineForm, qty: e.target.value })} placeholder="0" />
+                  </label>
+                  <label>
+                    <span>Ед.</span>
+                    <select value={semiLineForm.unit} onChange={e => setSemiLineForm({ ...semiLineForm, unit: e.target.value })}>
+                      <option value="g">g</option>
+                      <option value="kg">kg</option>
+                      <option value="ml">ml</option>
+                      <option value="l">l</option>
+                      <option value="pcs">pcs</option>
+                    </select>
+                  </label>
+                  <label>
+                    <span>Потери %</span>
+                    <input value={semiLineForm.waste_percent} onChange={e => setSemiLineForm({ ...semiLineForm, waste_percent: e.target.value })} />
+                  </label>
+                </div>
+
+                <div className="actions-row">
+                  <button className="small primary" onClick={addSemiLine}>+ Добавить ингредиент</button>
+                </div>
+              </>
+            )}
+          </div>
+        </section>
+      )}
+
+    </section>
+  )
+}
+
+
+
+function SemiFinishedInlineStyles() {
+  return (
+    <style>{`
+      /* SEMIFINISHED: clean full-width layout, no narrow third column */
+      .semifinished-layout {
+        display: grid !important;
+        grid-template-columns: minmax(360px, 1fr) minmax(420px, 1fr) !important;
+        gap: 18px !important;
+        align-items: start !important;
+        width: 100% !important;
+        max-width: none !important;
+      }
+
+      .semi-create-card,
+      .semi-info-card,
+      .semi-composition-card {
+        min-width: 0 !important;
+      }
+
+      .semi-composition-card,
+      .semi-add-card {
+        grid-column: 1 / -1 !important;
+        width: 100% !important;
+        max-width: none !important;
+        overflow: visible !important;
+      }
+
+      .semi-form-grid,
+      .semi-edit-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 14px;
+        align-items: end;
+      }
+      .semi-form-grid label,
+      .semi-edit-grid label {
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 7px;
+      }
+      .semi-form-grid label.wide {
+        grid-column: 1 / -1;
+      }
+      .semi-form-grid input,
+      .semi-form-grid select,
+      .semi-edit-grid input,
+      .semi-edit-grid select {
+        width: 100%;
+        min-width: 0;
+      }
+
+      .actions-row {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-top: 14px;
+      }
+
+      .semi-add-form-grid {
+        display: grid !important;
+        grid-template-columns: minmax(190px, 0.8fr) minmax(360px, 1.6fr) repeat(4, minmax(120px, 0.7fr)) !important;
+        gap: 14px !important;
+        align-items: end !important;
+        width: 100% !important;
+      }
+      .semi-add-form-grid label {
+        min-width: 0 !important;
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 7px !important;
+      }
+      .semi-add-form-grid input,
+      .semi-add-form-grid select {
+        width: 100% !important;
+        min-width: 0 !important;
+        height: 42px !important;
+        box-sizing: border-box !important;
+      }
+      .semi-add-component-field {
+        grid-column: span 2 !important;
+      }
+
+      .semi-main-value {
+        font-size: 13px;
+        font-weight: 800;
+        color: #1f2937;
+        line-height: 1.25;
+      }
+      .semi-name {
+        max-width: none;
+        white-space: normal;
+        word-break: break-word;
+      }
+      .semi-sub-value {
+        margin-top: 3px;
+        color: #64748b;
+        font-size: 11px;
+        line-height: 1.2;
+      }
+
+      /* The composition table must use the full available page width. */
+      .semi-composition-table-wrap,
+      .semi-composition-card .table-wrap {
+        width: 100% !important;
+        max-width: none !important;
+        overflow-x: visible !important;
+        overflow-y: visible !important;
+        -webkit-overflow-scrolling: auto !important;
+      }
+
+      .semi-composition-table,
+      .semi-composition-card table {
+        width: 100% !important;
+        min-width: 1120px !important;
+        table-layout: fixed !important;
+        border-collapse: collapse !important;
+      }
+
+      .semi-composition-table th,
+      .semi-composition-table td,
+      .semi-composition-card table th,
+      .semi-composition-card table td {
+        vertical-align: middle !important;
+        padding: 12px 10px !important;
+        font-size: 13px !important;
+        line-height: 1.25 !important;
+        white-space: nowrap !important;
+        overflow: visible !important;
+      }
+
+      .semi-composition-table th,
+      .semi-composition-card table th {
+        background: #f1f5f9 !important;
+        color: #475569 !important;
+        font-weight: 900 !important;
+      }
+
+      .semi-composition-table th:nth-child(1),
+      .semi-composition-table td:nth-child(1),
+      .semi-composition-card table th:nth-child(1),
+      .semi-composition-card table td:nth-child(1) {
+        width: 330px !important;
+        min-width: 330px !important;
+        white-space: normal !important;
+      }
+      .semi-composition-table th:nth-child(2),
+      .semi-composition-table td:nth-child(2),
+      .semi-composition-card table th:nth-child(2),
+      .semi-composition-card table td:nth-child(2) {
+        width: 130px !important;
+        min-width: 130px !important;
+      }
+      .semi-composition-table th:nth-child(3),
+      .semi-composition-table td:nth-child(3),
+      .semi-composition-card table th:nth-child(3),
+      .semi-composition-card table td:nth-child(3) {
+        width: 110px !important;
+        min-width: 110px !important;
+      }
+      .semi-composition-table th:nth-child(4),
+      .semi-composition-table td:nth-child(4),
+      .semi-composition-card table th:nth-child(4),
+      .semi-composition-card table td:nth-child(4) {
+        width: 150px !important;
+        min-width: 150px !important;
+      }
+      .semi-composition-table th:nth-child(5),
+      .semi-composition-table td:nth-child(5),
+      .semi-composition-card table th:nth-child(5),
+      .semi-composition-card table td:nth-child(5) {
+        width: 120px !important;
+        min-width: 120px !important;
+      }
+      .semi-composition-table th:nth-child(6),
+      .semi-composition-table td:nth-child(6),
+      .semi-composition-card table th:nth-child(6),
+      .semi-composition-card table td:nth-child(6) {
+        width: 120px !important;
+        min-width: 120px !important;
+      }
+      .semi-composition-table th:nth-child(7),
+      .semi-composition-table td:nth-child(7),
+      .semi-composition-card table th:nth-child(7),
+      .semi-composition-card table td:nth-child(7) {
+        width: 220px !important;
+        min-width: 220px !important;
+      }
+
+      .semi-row.editing td {
+        background: #f8fafc !important;
+      }
+
+      .semi-inline-input,
+      .semi-composition-card input,
+      .semi-composition-card select {
+        width: 100% !important;
+        max-width: none !important;
+        box-sizing: border-box !important;
+        height: 42px !important;
+        padding: 9px 11px !important;
+        font-size: 14px !important;
+        border: 1px solid #cbd5e1 !important;
+        border-radius: 12px !important;
+        background: #fff !important;
+      }
+
+      .semi-inline-input[readonly],
+      .semi-composition-card input[readonly] {
+        background: #f1f5f9 !important;
+        color: #64748b !important;
+      }
+
+      .semi-component-input { min-width: 300px !important; }
+      .semi-number-input { min-width: 110px !important; }
+      .semi-unit-input { min-width: 90px !important; }
+      .semi-price-input { min-width: 130px !important; }
+
+      .semi-row-actions {
+        display: flex !important;
+        gap: 8px !important;
+        align-items: center !important;
+        justify-content: flex-start !important;
+        flex-wrap: nowrap !important;
+        white-space: nowrap !important;
+      }
+      .semi-row-actions button {
+        min-width: 92px !important;
+        white-space: nowrap !important;
+      }
+
+      .semi-row-actions .danger {
+        min-width: 92px !important;
+      }
+
+      @media (max-width: 1180px) {
+        .semifinished-layout {
+          grid-template-columns: 1fr !important;
+        }
+        .semi-create-card,
+        .semi-info-card,
+        .semi-composition-card,
+        .semi-add-card {
+          grid-column: 1 / -1 !important;
+        }
+        .semi-composition-table,
+        .semi-composition-card table {
+          min-width: 1120px !important;
+        }
+        .semi-add-form-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        }
+        .semi-add-component-field {
+          grid-column: 1 / -1 !important;
+        }
+      }
+
+      @media (max-width: 720px) {
+        .semi-form-grid,
+        .semi-edit-grid,
+        .semi-add-form-grid {
+          grid-template-columns: 1fr !important;
+        }
+        .semi-add-component-field {
+          grid-column: auto !important;
+        }
+      }
+    `}</style>
+  )
+}
+
+function RecipesLegacy({ t }) {
+  const [products, setProducts] = useState([])
+  const [costs, setCosts] = useState([])
+  const [menuItems, setMenuItems] = useState([])
+  const [recipeItems, setRecipeItems] = useState([])
+  const [allRecipeItems, setAllRecipeItems] = useState([])
+  const [selectedMenuId, setSelectedMenuId] = useState('')
+  const [techPreviewOpen, setTechPreviewOpen] = useState(false)
+  const [selectedCategory, setSelectedCategory] = useState(PRODUCT_CATEGORIES[0])
+  const [selectedProductId, setSelectedProductId] = useState('')
+  const [recipeEditMode, setRecipeEditMode] = useState(false)
+  const [productForm, setProductForm] = useState({ name: '', category: PRODUCT_CATEGORIES[0], base_unit: 'g' })
+  const [menuForm, setMenuForm] = useState({ name: '', category: 'Кофе', sale_price: '', target_food_cost_percent: '30' })
+  const [message, setMessage] = useState('')
+  const [recipesLoading, setRecipesLoading] = useState(false)
+
+  useEffect(() => { loadBase() }, [])
+  useEffect(() => {
+    if (selectedMenuId) {
+      setRecipeEditMode(false)
+      loadRecipeItems(selectedMenuId)
+    } else {
+      setRecipeItems([])
+      setRecipeEditMode(false)
+    }
+  }, [selectedMenuId, allRecipeItems])
+  useEffect(() => {
+    const usedIds = new Set(recipeItems.map(r => String(r.product_id)))
+    const first = products.find(p => normalizeProductType(p.category) === selectedCategory && !usedIds.has(String(p.id)))
+    setSelectedProductId(first?.id || '')
+  }, [selectedCategory, products, recipeItems])
+
+  useEffect(() => {
+    const allowedCategories = menuCategoriesForProductCategory(selectedCategory)
+    const matchingMenuItems = menuItems.filter(item => allowedCategories.includes(item.category || 'Прочее'))
+    if (matchingMenuItems.length && !matchingMenuItems.some(item => item.id === selectedMenuId)) {
+      setSelectedMenuId(matchingMenuItems[0].id)
+    }
+    if (!matchingMenuItems.length && selectedMenuId) {
+      setSelectedMenuId('')
+    }
+  }, [selectedCategory, menuItems, selectedMenuId])
+
+  async function loadBase() {
+    setRecipesLoading(true)
+    const isInternal = Boolean(getInternalSessionStorage()?.rms_internal)
+
+    try {
+      if (isInternal) {
+        let result = await fetchRmsRecipesWorkspace()
+        if (result.error) {
+          await new Promise(resolve => setTimeout(resolve, 250))
+          result = await fetchRmsRecipesWorkspace()
+        }
+        const ws = result.data
+        if (ws) {
+          const normalizedProducts = (ws.supplier_products || []).map(p => ({ ...p, category: normalizeProductType(p.category) }))
+          setProducts(normalizedProducts)
+          setMenuItems(ws.menu_items || [])
+          setCosts(ws.latest_product_costs || [])
+          setAllRecipeItems(ws.recipe_items || [])
+          if (!selectedMenuId && ws.menu_items?.[0]) setSelectedMenuId(ws.menu_items[0].id)
+          setMessage('')
+          return
+        }
+        setMessage(result.error?.message || 'Нет доступа к тех. картам')
+        return
+      }
+
+      const [{ data: prod, error: prodError }, { data: item, error: itemError }, { data: latest, error: latestError }, { data: recipeRows, error: recipeError }] = await Promise.all([
+        supabase.from('supplier_products').select('*').eq('is_active', true).order('category').order('name'),
+        supabase.from('menu_items').select('*').eq('is_active', true).order('name'),
+        supabase.from('latest_product_costs').select('*'),
+        supabase.from('recipe_items').select('*, supplier_products(id,name,category,base_unit)').order('id')
+      ])
+      if (prodError || itemError || latestError || recipeError) throw (prodError || itemError || latestError || recipeError)
+      const normalizedProducts = (prod || []).map(p => ({ ...p, category: normalizeProductType(p.category) }))
+      setProducts(normalizedProducts)
+      setMenuItems(item || [])
+      setCosts(latest || [])
+      setAllRecipeItems(recipeRows || [])
+      if (!selectedMenuId && item?.[0]) setSelectedMenuId(item[0].id)
+      setMessage('')
+    } catch (e) {
+      setMessage(e?.message || 'Ошибка загрузки тех. карт')
+    } finally {
+      setRecipesLoading(false)
+    }
+  }
+
+  async function loadRecipeItems(menuId = selectedMenuId) {
+    if (!menuId) return
+
+    const cachedRows = (allRecipeItems || []).filter(r => r.menu_item_id === menuId)
+    if (cachedRows.length || getInternalSessionStorage()?.rms_internal) {
+      setRecipeItems(cachedRows)
+      return
+    }
+
+    const { data, error } = await supabase
+      .from('recipe_items')
+      .select('*, supplier_products(id,name,category,base_unit)')
+      .eq('menu_item_id', menuId)
+      .order('id')
+    if (error) {
+      const { data: ws } = await fetchRmsRecipesWorkspace()
+      const rows = (ws?.recipe_items || []).filter(r => r.menu_item_id === menuId)
+      setAllRecipeItems(ws?.recipe_items || [])
+      setRecipeItems(rows)
+      if (!rows.length) setMessage(error.message)
+      return
+    }
+    setRecipeItems(data || [])
+  }
+
+  function productCost(productId) {
+    return costs.find(c => c.product_id === productId)
+  }
+
+  function lineCost(row) {
+    const cost = productCost(row.product_id)
+    const unitPrice = parseNum(cost?.price_per_base_unit)
+    const waste = parseNum(row.waste_percent)
+    return parseNum(row.quantity) * unitPrice * (1 + waste / 100)
+  }
+
+  const filteredProducts = products.filter(p => normalizeProductType(p.category) === selectedCategory)
+  const usedRecipeProductIds = new Set(recipeItems.map(r => String(r.product_id)))
+  const availableProductsForRecipe = filteredProducts.filter(p => !usedRecipeProductIds.has(String(p.id)))
+  const selectedProductAlreadyInRecipe = selectedProductId && usedRecipeProductIds.has(String(selectedProductId))
+  const recipeProductOptionsForRow = (row) => products.filter(p =>
+    String(p.id) === String(row.product_id) ||
+    !recipeItems.some(r => String(r.id) !== String(row.id) && String(r.product_id) === String(p.id))
+  )
+  const allowedMenuCategories = menuCategoriesForProductCategory(selectedCategory)
+  const filteredMenuItems = menuItems.filter(item => allowedMenuCategories.includes(item.category || 'Прочее'))
+  const selectedMenu = menuItems.find(i => i.id === selectedMenuId)
+  const recipeCost = recipeItems.reduce((sum, row) => sum + lineCost(row), 0)
+  const salePrice = parseNum(selectedMenu?.sale_price)
+  const foodCostPercent = salePrice > 0 ? (recipeCost / salePrice) * 100 : 0
+  const grossProfit = salePrice - recipeCost
+
+  async function addProduct() {
+    setMessage('')
+    if (!productForm.name.trim()) return setMessage('Введите название товара')
+    const { data, error } = await supabase.from('supplier_products').insert({
+      name: productForm.name.trim(),
+      category: productForm.category,
+      base_unit: productForm.base_unit
+    }).select('*').single()
+    if (error) return setMessage(error.message)
+    setProductForm({ name: '', category: productForm.category, base_unit: productForm.base_unit })
+    await loadBase()
+    setSelectedCategory(data?.category || productForm.category)
+    setSelectedProductId(data?.id || '')
+    setMessage(t('saved'))
+  }
+
+  async function updateProduct(id, patch) {
+    setMessage('')
+    const { error } = await supabase.from('supplier_products').update(patch).eq('id', id)
+    if (error) setMessage(error.message)
+    else await loadBase()
+  }
+
+  async function deactivateProduct(id) {
+    setMessage('')
+    const { error } = await supabase.from('supplier_products').update({ is_active: false }).eq('id', id)
+    if (error) setMessage(error.message)
+    else await loadBase()
+  }
+
+  async function addMenuItem() {
+    setMessage('')
+    if (!menuForm.name.trim()) return setMessage('Введите название блюда')
+    const { data, error } = await supabase.from('menu_items').insert({
+      name: menuForm.name.trim(),
+      category: menuForm.category || null,
+      sale_price: parseNum(menuForm.sale_price),
+      target_food_cost_percent: parseNum(menuForm.target_food_cost_percent) || 30
+    }).select('*').single()
+    if (error) return setMessage(error.message)
+    setMenuForm({ name: '', category: 'Кофе', sale_price: '', target_food_cost_percent: '30' })
+    await loadBase()
+    if (data?.id) setSelectedMenuId(data.id)
+    setMessage(t('saved'))
+  }
+
+  async function updateMenuItem(id, patch) {
+    setMessage('')
+    const { error } = await supabase.from('menu_items').update(patch).eq('id', id)
+    if (error) setMessage(error.message)
+    else await loadBase()
+  }
+
+  async function deactivateMenuItem(id) {
+    setMessage('')
+    const { error } = await supabase.from('menu_items').update({ is_active: false }).eq('id', id)
+    if (error) return setMessage(error.message)
+    await loadBase()
+    if (selectedMenuId === id) setSelectedMenuId('')
+  }
+
+  async function addRecipeItem() {
+    setMessage('')
+    if (!selectedMenuId) return setMessage('Сначала выберите блюдо')
+    if (!availableProductsForRecipe.length) {
+      setRecipeEditMode(true)
+      return setMessage('В этой категории все товары уже добавлены в техкарту. Измените количество в существующей строке или выберите другую категорию.')
+    }
+    const productIdToAdd = (!selectedProductId || selectedProductAlreadyInRecipe) ? availableProductsForRecipe[0]?.id : selectedProductId
+    if (!productIdToAdd) {
+      setRecipeEditMode(true)
+      return setMessage('В выбранной категории нет новых товаров для добавления.')
+    }
+
+    const existing = recipeItems.find(r =>
+      String(r.menu_item_id) === String(selectedMenuId) &&
+      String(r.product_id) === String(productIdToAdd)
+    )
+    if (existing) {
+      setRecipeEditMode(true)
+      setMessage('Этот ингредиент уже есть в техкарте. Измените количество в существующей строке.')
+      return
+    }
+
+    const { error } = await supabase.from('recipe_items').insert({
+      menu_item_id: selectedMenuId,
+      product_id: productIdToAdd,
+      quantity: 0,
+      waste_percent: 0
+    })
+
+    if (error) {
+      if (String(error.message || '').includes('recipe_items_menu_product_unique') || String(error.message || '').includes('duplicate key')) {
+        await loadRecipeItems()
+        setRecipeEditMode(true)
+        return setMessage('Этот ингредиент уже есть в техкарте. Измените количество в существующей строке.')
+      }
+      return setMessage(error.message)
+    }
+
+    await loadRecipeItems()
+    setRecipeEditMode(true)
+
+    const usedIds = new Set([...recipeItems.map(r => String(r.product_id)), String(productIdToAdd)])
+    const nextProduct = filteredProducts.find(p => !usedIds.has(String(p.id)))
+    setSelectedProductId(nextProduct?.id || '')
+    setMessage(t('saved'))
+  }
+
+  async function updateRecipeItem(id, patch) {
+    setMessage('')
+
+    if (patch?.product_id) {
+      const duplicate = recipeItems.find(r =>
+        String(r.id) !== String(id) &&
+        String(r.menu_item_id) === String(selectedMenuId) &&
+        String(r.product_id) === String(patch.product_id)
+      )
+      if (duplicate) {
+        return setMessage('Этот ингредиент уже есть в техкарте. Выберите другой товар или измените существующую строку.')
+      }
+    }
+
+    const { error } = await supabase.from('recipe_items').update(patch).eq('id', id)
+    if (error) {
+      if (String(error.message || '').includes('recipe_items_menu_product_unique') || String(error.message || '').includes('duplicate key')) {
+        return setMessage('Этот ингредиент уже есть в техкарте. Выберите другой товар или измените существующую строку.')
+      }
+      setMessage(error.message)
+    }
+    else await loadRecipeItems()
+  }
+
+  async function deleteRecipeItem(id) {
+    setMessage('')
+    const { error } = await supabase.from('recipe_items').delete().eq('id', id)
+    if (error) setMessage(error.message)
+    else await loadRecipeItems()
+  }
+
+  function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, (s) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[s]))
+  }
+
+  function buildTechCardHtml() {
+    const rowsHtml = recipeItems.map(row => {
+      const product = row.supplier_products
+      const cost = productCost(row.product_id)
+      return `<tr>
+        <td>${escapeHtml(product?.category || '—')}</td>
+        <td>${escapeHtml(product?.name || '—')}</td>
+        <td class="num">${fmt(row.quantity)}</td>
+        <td>${escapeHtml(unitLabel(product?.base_unit))}</td>
+        <td class="num">${fmt(row.waste_percent)}</td>
+        <td class="num">${cost ? `${fmt(cost.price_per_base_unit)} / ${escapeHtml(cost.base_unit)}` : 'нет закупки'}</td>
+        <td class="num strong">${fmt(lineCost(row))}</td>
+      </tr>`
+    }).join('')
+    const generatedAt = new Date().toLocaleString()
+    return `<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>Техкарта — ${escapeHtml(selectedMenu?.name || 'блюдо')}</title>
+<style>
+  @page { size: A4 portrait; margin: 12mm; }
+  * { box-sizing: border-box; }
+  body { font-family: Inter, Arial, sans-serif; color: #17251d; margin: 0; background: #eef2ee; padding: 20px; }
+  .page { max-width: 820px; margin: 0 auto; }
+  .actionbar { display: flex; justify-content: flex-end; gap: 10px; margin-bottom: 12px; }
+  .actionbar button { border: 1px solid #cdd6cf; background: #fff; border-radius: 999px; padding: 10px 14px; font-weight: 700; cursor: pointer; }
+  .sheet { background: #fff; border: 1px solid #d7dfd9; border-radius: 26px; box-shadow: 0 18px 48px rgba(23,37,29,.08); padding: 18px 20px 16px; }
+  .header { display: flex; justify-content: space-between; align-items: flex-start; gap: 18px; padding-bottom: 12px; border-bottom: 1px solid #e6ece7; }
+  .brandline { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .mark { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; width: 46px; height: 46px; padding: 6px; border-radius: 14px; background: linear-gradient(180deg, #24352b, #17251d); }
+  .mark span { display: flex; align-items: center; justify-content: center; border-radius: 9px; background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.12); color: #fff; font-size: 11px; font-weight: 800; letter-spacing: .08em; }
+  .brandtext strong { display: block; font-size: 16px; letter-spacing: .18em; }
+  .brandtext small { color: #667085; font-size: 10px; }
+  h1 { margin: 0; font-size: 24px; line-height: 1.15; }
+  .meta { color: #667085; font-size: 11px; margin-top: 6px; }
+  .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 14px 0 12px; }
+  .kpi { border: 1px solid #e5ebe6; border-radius: 18px; background: #fafbf9; padding: 10px 12px; }
+  .kpi span { display: block; color: #667085; font-size: 10px; margin-bottom: 6px; text-transform: uppercase; letter-spacing: .06em; }
+  .kpi strong { font-size: 20px; }
+  table { width: 100%; border-collapse: collapse; }
+  th { text-align: left; color: #667085; font-size: 10px; border-bottom: 1px solid #dde5df; padding: 8px 7px; text-transform: uppercase; letter-spacing: .04em; }
+  td { border-bottom: 1px solid #edf1ee; padding: 8px 7px; font-size: 12px; }
+  .num { text-align: right; }
+  .strong { font-weight: 800; }
+  .footer { margin-top: 12px; color: #667085; font-size: 11px; display: flex; justify-content: space-between; gap: 16px; }
+  .help { margin-top: 10px; font-size: 11px; color: #667085; }
+  @media print {
+    body { background: #fff; padding: 0; }
+    .page { max-width: none; }
+    .actionbar { display: none; }
+    .sheet { box-shadow: none; border-radius: 20px; }
+  }
+</style>
+</head>
+<body>
+  <div class="page">
+    <div class="actionbar">
+      <button onclick="window.print()">PDF/Print</button>
+    </div>
+    <div class="sheet">
+      <div class="header">
+        <div>
+          <div class="brandline">
+            <div class="mark"><span>R</span><span>M</span><span>S</span></div>
+            <div class="brandtext"><strong>RMS</strong><small>Restaurant Management System</small></div>
+          </div>
+          <h1>${escapeHtml(selectedMenu?.name || 'Блюдо не выбрано')}</h1>
+          <div class="meta">Категория: ${escapeHtml(selectedMenu?.category || '—')} · Сформировано: ${escapeHtml(generatedAt)}</div>
+        </div>
+      </div>
+      <div class="kpis">
+        <div class="kpi"><span>Себестоимость</span><strong>${fmt(recipeCost)}</strong></div>
+        <div class="kpi"><span>Цена продажи</span><strong>${fmt(salePrice)}</strong></div>
+        <div class="kpi"><span>Food cost</span><strong>${pct(foodCostPercent)}</strong></div>
+        <div class="kpi"><span>Валовая прибыль</span><strong>${fmt(grossProfit)}</strong></div>
+      </div>
+      <table>
+        <thead><tr><th>Категория</th><th>Товар / ингредиент</th><th class="num">Кол-во</th><th>Ед.</th><th class="num">Потери %</th><th class="num">Цена за ед.</th><th class="num">Себестоимость</th></tr></thead>
+        <tbody>${rowsHtml || '<tr><td colspan="7">Нет ингредиентов</td></tr>'}</tbody>
+      </table>
+      <div class="footer">
+        <span>Цена закупки берётся из последней закупки товара у поставщика.</span>
+        
+      </div>
+      
+    </div>
+  </div>
+</body>
+</html>`
+  }
+
+  function openTechCardWindow(autoPrint = false) {
+    const win = window.open('', '_blank', 'width=980,height=760')
+    if (!win) return setMessage('Браузер заблокировал окно печати')
+    win.document.open()
+    win.document.write(buildTechCardHtml())
+    win.document.close()
+    win.focus()
+    if (autoPrint) setTimeout(() => win.print(), 350)
+  }
+
+  function printTechCard() {
+    openTechCardWindow(false)
+  }
+
+  function exportTechCardPdf() {
+    openTechCardWindow(true)
+  }
+
+
+  function recipeProductPriceInfo(productId) {
+    const cost = productCost(productId)
+    if (!cost) return { label: 'нет закупки', className: 'hint' }
+    return {
+      label: `${fmt(cost.price_per_base_unit)} / ${cost.base_unit || 'ед.'}`,
+      className: 'hint'
+    }
+  }
+
+
+  async function saveIikoConnection() {
+    setIikoStatus('')
+    const branchId = iikoForm.branch_id || branches[0]?.id
+    if (!branchId) return setIikoStatus('Сначала добавьте филиал в настройках.')
+    if (!String(iikoForm.organization_id || '').trim()) return setIikoStatus('Введите iiko organization_id.')
+
+    setIikoBusy(true)
+    try {
+      const payload = {
+        branch_id: branchId,
+        iiko_organization_id: String(iikoForm.organization_id || '').trim(),
+        iiko_terminal_group_id: String(iikoForm.terminal_group_id || '').trim() || null,
+        sync_enabled: Boolean(iikoForm.sync_enabled),
+        updated_at: new Date().toISOString()
+      }
+      const { error } = await supabase.from('iiko_sync_connections').upsert(payload, { onConflict: 'branch_id' })
+      if (error) throw error
+      setIikoForm({ branch_id: branchId, organization_id: '', terminal_group_id: '', sync_enabled: true })
+      setIikoStatus('Подключение iiko сохранено. Следующий шаг — добавить IIKO_API_LOGIN в Supabase Edge Functions / Vercel Environment.')
+      await load()
+    } catch (e) {
+      setIikoStatus(e.message || String(e))
+    } finally {
+      setIikoBusy(false)
+    }
+  }
+
+  function editIikoConnection(row) {
+    setIikoForm({
+      branch_id: row.branch_id || '',
+      organization_id: row.iiko_organization_id || '',
+      terminal_group_id: row.iiko_terminal_group_id || '',
+      sync_enabled: row.sync_enabled !== false
+    })
+    setSettingsTab('integrations')
+  }
+
+  async function toggleIikoConnection(row) {
+    setIikoStatus('')
+    const { error } = await supabase.from('iiko_sync_connections').update({ sync_enabled: !row.sync_enabled, updated_at: new Date().toISOString() }).eq('id', row.id)
+    if (error) setIikoStatus(error.message); else { setIikoStatus('Статус подключения обновлён'); await load() }
+  }
+
+  async function runIikoSync(row) {
+    setIikoStatus('')
+    setIikoBusy(true)
+    try {
+      const { data, error } = await supabase.functions.invoke('iiko-sync-sales', { body: { connectionId: row.id } })
+      if (error) throw error
+      setIikoStatus(data?.message || 'Синхронизация запущена.')
+      await load()
+    } catch (e) {
+      setIikoStatus((e && e.message) ? e.message : 'Edge Function iiko-sync-sales пока не развернута или вернула ошибку.')
+    } finally {
+      setIikoBusy(false)
+    }
+  }
+
+  return (
+    <section>
+      <RecipesStyles />
+      <section className="topbar">
+        <div>
+          <h2>{t('recipes_tab')}</h2>
+          <p>Техкарты блюд. Товар выбирается из справочника поставщиков, а себестоимость берётся по последней закупке.</p>
+        </div>
+      </section>
+
+      <section className="grid">
+        <div className="card"><h3>Себестоимость</h3><div className="big-number">{fmt(recipeCost)}</div><p className="hint">Себестоимость выбранного блюда</p></div>
+        <div className="card"><h3>Цена продажи</h3><div className="big-number">{fmt(salePrice)}</div><p className="hint">Цена в меню</p></div>
+        <div className="card"><h3>Food cost</h3><div className={`big-number ${foodCostPercent <= parseNum(selectedMenu?.target_food_cost_percent || 30) ? 'good' : 'bad'}`}>{pct(foodCostPercent)}</div><p className="hint">Цель: {fmt(selectedMenu?.target_food_cost_percent || 30)}%</p></div>
+        <div className="card"><h3>Валовая прибыль</h3><div className={`big-number ${grossProfit >= 0 ? 'good' : 'bad'}`}>{fmt(grossProfit)}</div><p className="hint">Цена − себестоимость</p></div>
+
+        <div className="card recipe-sheet" style={{ gridColumn: '1 / -1' }}>
+          <div className="card-head recipe-sheet-head">
+            <div>
+              <h3>Состав техкарты</h3>
+              <p className="hint">Выбранное блюдо: <strong>{selectedMenu?.name || 'не выбрано'}</strong>. Готовая техкарта отображается под ключевыми показателями, а редактирование открывается только по кнопке «Редактировать».</p>
+            </div>
+            <div className="row-actions">
+              {!recipeEditMode && recipeItems.length > 0 && <button className="ghost small" onClick={printTechCard}>PDF/Print</button>}
+              {!recipeEditMode && recipeItems.length > 0 && <button className="ghost small" onClick={() => setRecipeEditMode(true)}>Редактировать</button>}
+              {(recipeEditMode || recipeItems.length === 0) && <button className="small" disabled={!availableProductsForRecipe.length} onClick={addRecipeItem}>{availableProductsForRecipe.length ? '+ ингредиент' : 'Все ингредиенты добавлены'}</button>}
+              {recipeEditMode && <button className="primary small" onClick={() => { setRecipeEditMode(false); setMessage(t('saved')) }}>Сохранить техкарту</button>}
+            </div>
+          </div>
+
+          <div className="form-grid compact recipe-sheet-filters">
+            <label><span>Категория товара</span>
+              <select value={selectedCategory} onChange={e => setSelectedCategory(e.target.value)}>
+                {PRODUCT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </label>
+            <label><span>Выбрать блюдо</span>
+              <select value={selectedMenuId} onChange={e => setSelectedMenuId(e.target.value)}>
+                <option value="">Выберите блюдо</option>
+                {filteredMenuItems.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
+              </select>
+            </label>
+            <label><span>Новый ингредиент</span>
+              <select value={selectedProductId} onChange={e => setSelectedProductId(e.target.value)} disabled={!availableProductsForRecipe.length}>
+                <option value="">{availableProductsForRecipe.length ? 'Выберите товар' : 'Все товары уже добавлены'}</option>
+                {availableProductsForRecipe.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+              </select>
+            </label>
+          </div>
+
+          <div className="table-wrap recipe-sheet-table">
+            <table>
+              <thead>
+                <tr>
+                  <th>Категория</th>
+                  <th>Товар</th>
+                  <th>Кол-во использования</th>
+                  <th>Ед.</th>
+                  <th>Потери %</th>
+                  <th>Цена за 1 ед.</th>
+                  <th>Себестоимость</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {recipeItems.map(row => {
+                  const product = row.supplier_products
+                  const cost = productCost(row.product_id)
+                  return (
+                    <tr key={row.id}>
+                      <td>{product?.category || '—'}</td>
+                      <td>
+                        {recipeEditMode ? (
+                          <select value={row.product_id || ''} onChange={e => updateRecipeItem(row.id, { product_id: e.target.value })}>
+                            {recipeProductOptionsForRow(row).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                          </select>
+                        ) : (
+                          <span className="cell-value">{product?.name || '—'}</span>
+                        )}
+                      </td>
+                      <td>{recipeEditMode ? <input inputMode="decimal" defaultValue={row.quantity} onBlur={e => updateRecipeItem(row.id, { quantity: parseNum(e.target.value) })} placeholder="18 / 200" /> : <span className="cell-value">{fmt(row.quantity)}</span>}</td>
+                      <td>{unitLabel(product?.base_unit)}</td>
+                      <td>{recipeEditMode ? <input inputMode="decimal" defaultValue={row.waste_percent} onBlur={e => updateRecipeItem(row.id, { waste_percent: parseNum(e.target.value) })} /> : <span className="cell-value">{fmt(row.waste_percent)}</span>}</td>
+                      <td>{cost ? `${fmt(cost.price_per_base_unit)} / ${cost.base_unit}` : 'нет закупки'}</td>
+                      <td><strong>{fmt(lineCost(row))}</strong></td>
+                      <td>{recipeEditMode ? <button className="remove" onClick={() => deleteRecipeItem(row.id)}>×</button> : <span className="hint">—</span>}</td>
+                    </tr>
+                  )
+                })}
+                {!recipeItems.length && <tr><td colSpan="8" className="hint">Пока нет ингредиентов в техкарте выбранного блюда.</td></tr>}
+              </tbody>
+            </table>
+          </div>
+          <p className="hint recipe-sheet-note">Пример: Cappuccino = молоко 200 ml + кофе 18 g. Цена берётся из последней закупки товара у поставщика.</p>
+          {recipesLoading && <p className="hint">Загрузка тех. карт...</p>}
+          {message && <p className={`hint ${message === t('saved') ? 'save-status' : 'bad'}`}>{message}</p>}
+        </div>
+
+        <div className="card span-2">
+          <div className="card-head"><div><h3>Блюда / позиции меню</h3><p className="hint">Блюдо создаётся один раз, затем выбирается в техкарте.</p></div></div>
+          <div className="form-grid compact">
+            <label><span>Название блюда</span><input value={menuForm.name} onChange={e => setMenuForm({...menuForm, name: e.target.value})} placeholder="Cappuccino / Chicken Bowl" /></label>
+            <label><span>Категория</span><select value={menuForm.category} onChange={e => setMenuForm({...menuForm, category: e.target.value})}>{MENU_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select></label>
+            <label><span>Цена продажи</span><input inputMode="decimal" value={menuForm.sale_price} onChange={e => setMenuForm({...menuForm, sale_price: e.target.value})} /></label>
+            <label><span>Целевой food cost %</span><input inputMode="decimal" value={menuForm.target_food_cost_percent} onChange={e => setMenuForm({...menuForm, target_food_cost_percent: e.target.value})} /></label>
+          </div>
+          <button className="small" onClick={addMenuItem}>+ Добавить блюдо</button><br /><br />
+          <div className="table-wrap">
+            <table>
+              <thead><tr><th>Блюдо</th><th>Категория</th><th>Цена</th><th>Цель food cost</th><th></th></tr></thead>
+              <tbody>
+                {menuItems.map(item => (
+                  <tr key={item.id}>
+                    <td><button className={selectedMenuId === item.id ? 'primary small' : 'ghost small'} onClick={() => setSelectedMenuId(item.id)}>{item.name}</button></td>
+                    <td><select value={item.category || 'Прочее'} onChange={e => updateMenuItem(item.id, { category: e.target.value })}>{MENU_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select></td>
+                    <td><input inputMode="decimal" defaultValue={item.sale_price} onBlur={e => updateMenuItem(item.id, { sale_price: parseNum(e.target.value) })} /></td>
+                    <td><input inputMode="decimal" defaultValue={item.target_food_cost_percent} onBlur={e => updateMenuItem(item.id, { target_food_cost_percent: parseNum(e.target.value) })} /></td>
+                    <td><button className="remove" onClick={() => deactivateMenuItem(item.id)}>×</button></td>
+                  </tr>
+                ))}
+                {!menuItems.length && <tr><td colSpan="5" className="hint">—</td></tr>}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div className="card span-2">
+          <div className="card-head"><div><h3>Товары / ингредиенты</h3><p className="hint">Это единый справочник. Эти же товары используются в закупках поставщиков и в техкартах.</p></div></div>
+          <div className="form-grid compact">
+            <label><span>Название товара</span><input value={productForm.name} onChange={e => setProductForm({...productForm, name: e.target.value})} placeholder="Молоко / Кофе / Сыр" /></label>
+            <label><span>Тип</span><select value={productForm.category} onChange={e => setProductForm({...productForm, category: e.target.value})}>{PRODUCT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select></label>
+            <label><span>Базовая ед. использования</span><select value={productForm.base_unit} onChange={e => setProductForm({...productForm, base_unit: e.target.value})}>{BASE_UNITS.map(u => <option key={u.value} value={u.value}>{u.label}</option>)}</select></label>
+          </div>
+          <button className="small" onClick={addProduct}>+ Добавить товар</button><br /><br />
+          <div className="table-wrap">
+            <table>
+              <thead><tr><th>Категория</th><th>Товар</th><th>Базовая ед.</th><th>Цена / изменение</th><th></th></tr></thead>
+              <tbody>
+                {products.map(item => {
+                  const cost = productCost(item.id)
+                  return (
+                    <tr key={item.id}>
+                      <td><select value={item.category || 'Прочее'} onChange={e => updateProduct(item.id, { category: e.target.value })}>{PRODUCT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select></td>
+                      <td><input defaultValue={item.name} onBlur={e => updateProduct(item.id, { name: e.target.value.trim() })} /></td>
+                      <td><select value={item.base_unit || 'g'} onChange={e => updateProduct(item.id, { base_unit: e.target.value })}>{BASE_UNITS.map(u => <option key={u.value} value={u.value}>{u.label}</option>)}</select></td>
+                      <td><span className={recipeProductPriceInfo(item.id).className}>{recipeProductPriceInfo(item.id).label}</span></td>
+                      <td><button className="remove" onClick={() => deactivateProduct(item.id)}>×</button></td>
+                    </tr>
+                  )
+                })}
+                {!products.length && <tr><td colSpan="5" className="hint">—</td></tr>}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </section>
+  )
+}
+
+function Attendance({ t, mode = 'attendance', isAdmin = false }) {
+  const branches = useBranches()
+  const [salaryPrivacyProfile, setSalaryPrivacyProfile] = useState(null)
+  const current = new Date()
+  const [year, setYear] = useState(current.getFullYear())
+  const [month, setMonth] = useState(current.getMonth() + 1)
+  const [branchId, setBranchId] = useState('all')
+  const [positionFilter, setPositionFilter] = useState('all')
+  const [employees, setEmployees] = useState([])
+  const [attendance, setAttendance] = useState([])
+  const [message, setMessage] = useState('')
+  const [employeeForm, setEmployeeForm] = useState({ full_name: '', position: 'Повар', branch_id: '', monthly_salary: '' })
+  const [officialDaysByEmployee, setOfficialDaysByEmployee] = useState(() => { try { return JSON.parse(localStorage.getItem('rms_employee_official_days') || '{}') } catch (_e) { return {} } })
+  const [officialSalaryByEmployee, setOfficialSalaryByEmployee] = useState(() => { try { return JSON.parse(localStorage.getItem('rms_employee_official_salary') || '{}') } catch (_e) { return {} } })
+  const [transferForm, setTransferForm] = useState({ employee_id: '', branch_id: STAFF_GROUP_MANAGERS, start_date: todayISO(), position: '', monthly_salary: '', comment: '' })
+
+  useEffect(() => { if (!employeeForm.branch_id) setEmployeeForm(f => ({ ...f, branch_id: STAFF_GROUP_MANAGERS })) }, [branches])
+  async function loadSalaryPrivacyProfile() {
+    const localProfile = getRmsLocalUser()
+    if (localProfile) { setSalaryPrivacyProfile(localProfile); return }
+    const { data: rpcData, error: rpcError } = await supabase.rpc('rms_current_salary_privacy')
+    if (!rpcError && rpcData) {
+      setSalaryPrivacyProfile(rpcData)
+      return
+    }
+
+    const { data } = await supabase.auth.getUser()
+    const userId = data?.user?.id
+    const email = data?.user?.email || ''
+    const loginName = String(email).split('@')[0]
+    if (!userId) return setSalaryPrivacyProfile(null)
+
+    const { data: profById } = await supabase
+      .from('user_profiles')
+      .select('id, email, login_name, role, hide_manager_salary, hide_manager_salaries')
+      .eq('id', userId)
+      .maybeSingle()
+
+    if (profById) return setSalaryPrivacyProfile(profById)
+
+    const { data: profByLogin } = await supabase
+      .from('user_profiles')
+      .select('id, email, login_name, role, hide_manager_salary, hide_manager_salaries')
+      .or(`email.eq.${email},login_name.eq.${loginName}`)
+      .maybeSingle()
+
+    setSalaryPrivacyProfile(profByLogin || null)
+  }
+
+  useEffect(() => { loadSalaryPrivacyProfile() }, [])
+  useEffect(() => { loadSalaryPrivacyProfile() }, [year, month, branchId, positionFilter])
+
+  useEffect(() => { load() }, [year, month, branchId, positionFilter])
+
+  const dim = daysInMonth(year, month)
+  const monthDate = monthStart(year, month)
+  const days = Array.from({ length: dim }, (_, i) => i + 1)
+  const DAILY_DIVISOR = 26
+
+  async function load() {
+    const start = monthDate
+    const end = `${year}-${String(month).padStart(2, '0')}-${String(dim).padStart(2, '0')}`
+    const isInternal = Boolean(getInternalSessionStorage()?.rms_internal)
+
+    let empRows = []
+    let attRows = []
+
+    if (isInternal) {
+      const { data: snap } = await fetchRmsStaffWorkspaceSnapshot(monthDate)
+      if (snap?.employees?.length) {
+        empRows = snap.employees || []
+        attRows = snap.attendance || []
+      }
+    }
+
+    if (!empRows.length) {
+      const empQuery = supabase.from('employees').select('*, branches(name)').eq('is_active', true).order('branch_id').order('position').order('full_name')
+      const attQuery = supabase.from('employee_attendance').select('*').gte('work_date', start).lte('work_date', end)
+      const [{ data: emp, error: empError }, { data: att, error: attError }] = await Promise.all([empQuery, attQuery])
+
+      if (empError || attError) {
+        const { data: snap } = await fetchRmsStaffWorkspaceSnapshot(monthDate)
+        if (snap?.employees?.length) {
+          empRows = snap.employees || []
+          attRows = snap.attendance || []
+        } else {
+          setMessage(empError?.message || attError?.message || 'Нет доступа к сотрудникам')
+          setEmployees([])
+          setAttendance([])
+          return
+        }
+      } else {
+        empRows = emp || []
+        attRows = att || []
+      }
+    }
+
+    const shouldHideManagers = Boolean(salaryPrivacyProfile?.hide_manager_salary || salaryPrivacyProfile?.hide_manager_salaries)
+    const visibleEmployees = (empRows || [])
+      .filter(e => e.is_active !== false)
+      .filter(e => !(shouldHideManagers && isManagerStaff(e)))
+      .filter(e => matchesStaffGroup(e, branchId))
+      .filter(e => matchesPositionGroup(e, positionFilter))
+
+    setEmployees(visibleEmployees)
+    if (!transferForm.employee_id && visibleEmployees[0]) {
+      setTransferForm(f => ({
+        ...f,
+        employee_id: visibleEmployees[0].id,
+        branch_id: visibleEmployees[0].branch_id || STAFF_GROUP_MANAGERS,
+        position: visibleEmployees[0].position || '',
+        monthly_salary: visibleEmployees[0].monthly_salary || ''
+      }))
+    }
+    setAttendance(attRows || [])
+  }
+
+  function recordFor(employeeId, day) {
+    const date = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+    return attendance.find(a => a.employee_id === employeeId && a.work_date === date) || null
+  }
+
+  function valueFor(employeeId, day) {
+    const record = recordFor(employeeId, day)
+    return record ? parseNum(record.value) : null
+  }
+
+  function workedDays(employeeId) {
+    return days.reduce((s, d) => s + parseNum(valueFor(employeeId, d)), 0)
+  }
+
+  function dailyRate(emp) {
+    return calcDailyRate(emp)
+  }
+
+  function calcSalary(emp, worked) {
+    return calcGrossSalary(emp, worked)
+  }
+
+  async function addEmployee() {
+    setMessage('')
+    if (!employeeForm.full_name.trim()) return setMessage('Введите имя сотрудника')
+    const monthlySalary = parseNum(employeeForm.monthly_salary)
+    const { data, error } = await supabase.from('employees').insert({
+      full_name: employeeForm.full_name.trim(),
+      position: employeeForm.position.trim() || null,
+      branch_id: employeeForm.branch_id === STAFF_GROUP_MANAGERS ? null : (employeeForm.branch_id || null),
+      salary_type: 'monthly',
+      monthly_salary: monthlySalary,
+      daily_rate: monthlySalary / DAILY_DIVISOR
+    }).select('*, branches(name)').single()
+    if (error) return setMessage(error.message)
+    setEmployeeForm(f => ({ ...f, full_name: '', position: '', monthly_salary: '' }))
+    if (data) {
+      await supabase.from('employee_assignments').insert({
+        employee_id: data.id,
+        branch_id: data.branch_id || null,
+        position: data.position || null,
+        salary_type: 'monthly',
+        monthly_salary: monthlySalary,
+        daily_rate: monthlySalary / DAILY_DIVISOR,
+        start_date: todayISO(),
+        comment: 'Первичное назначение'
+      })
+      await syncSalaryForEmployee(data)
+    }
+    await load()
+    setMessage('Сотрудник добавлен. Он уже доступен в зарплатах и авансах.')
+  }
+
+  async function updateEmployee(id, patch) {
+    setMessage('')
+    const payload = { ...patch }
+    if ('monthly_salary' in payload) {
+      payload.monthly_salary = parseNum(payload.monthly_salary)
+      payload.daily_rate = payload.monthly_salary / DAILY_DIVISOR
+      payload.salary_type = 'monthly'
+    }
+    const { error } = await supabase.from('employees').update(payload).eq('id', id)
+    if (error) setMessage(error.message)
+    else {
+      await load()
+      setMessage(t('saved'))
+    }
+  }
+
+  function nextAttendanceValue(currentValue) {
+    if (currentValue === null || currentValue === undefined || currentValue === '') return 1
+    const value = parseNum(currentValue)
+    if (value === 1) return 0
+    return null
+  }
+
+  async function setAttendanceValue(emp, day, rawValue) {
+    setMessage('')
+    const workDate = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+    const isInternal = Boolean(getInternalSessionStorage()?.rms_internal)
+
+    if (isInternal) {
+      const { error } = await supabase.rpc('rms_set_attendance_value', {
+        p_employee_id: emp.id,
+        p_work_date: workDate,
+        p_value: rawValue === null ? null : parseNum(rawValue)
+      })
+      if (error) { setMessage(error.message); return }
+      await load()
+      return
+    }
+
+    if (rawValue === null) {
+      const { error } = await supabase.from('employee_attendance').delete().eq('employee_id', emp.id).eq('work_date', workDate)
+      if (error) { setMessage(error.message); return }
+    } else {
+      const value = parseNum(rawValue)
+      const { error } = await supabase.from('employee_attendance').upsert({
+        employee_id: emp.id,
+        branch_id: emp.branch_id || null,
+        work_date: workDate,
+        value
+      }, { onConflict: 'employee_id,work_date' })
+      if (error) { setMessage(error.message); return }
+    }
+
+    await load()
+    await syncSalaryForEmployee(emp)
+  }
+
+  async function syncSalaryForEmployee(emp) {
+    const start = monthDate
+    const end = year + '-' + String(month).padStart(2, '0') + '-' + String(dim).padStart(2, '0')
+    const { data: monthAttendance } = await supabase.from('employee_attendance').select('value').eq('employee_id', emp.id).gte('work_date', start).lte('work_date', end)
+    const worked = (monthAttendance || []).reduce((s, r) => s + parseNum(r.value), 0)
+    const monthlySalary = parseNum(emp.monthly_salary)
+    const gross = calcGrossSalary(emp, worked)
+
+    const [{ data: existing }, { data: advanceRows }] = await Promise.all([
+      supabase.from('salary_periods').select('*').eq('employee_id', emp.id).eq('salary_month', monthDate).maybeSingle(),
+      supabase.from('salary_advances').select('amount').eq('employee_id', emp.id).gte('advance_date', start).lte('advance_date', end).or('is_cancelled.is.null,is_cancelled.eq.false')
+    ])
+    const advance = (advanceRows || []).reduce((sum, row) => sum + parseNum(row.amount), 0)
+    const deduction = parseNum(existing?.deduction_amount)
+    const net = gross - advance - deduction
+
+    const { error } = await supabase.from('salary_periods').upsert({
+      employee_id: emp.id,
+      branch_id: emp.branch_id || null,
+      salary_month: monthDate,
+      worked_days: worked,
+      salary_gross: gross,
+      salary_net: net,
+      advance_amount: advance,
+      deduction_amount: deduction,
+      card_payment: parseNum(existing?.card_payment),
+      cash_payment: parseNum(existing?.cash_payment),
+      comment: existing?.comment || `Авторасчёт из табеля: ${worked} дн. × ${fmt(calcDailyRate(emp))} AZN`
+    }, { onConflict: 'employee_id,salary_month' })
+    if (error) setMessage(error.message)
+  }
+
+  async function transferEmployee() {
+    setMessage('')
+    if (!transferForm.employee_id) return setMessage('Выберите сотрудника')
+    const emp = employees.find(e => e.id === transferForm.employee_id)
+    if (!emp) return setMessage('Сотрудник не найден в текущем списке')
+    const startDate = transferForm.start_date || todayISO()
+    const newBranchId = transferForm.branch_id === STAFF_GROUP_MANAGERS ? null : transferForm.branch_id
+    const newPosition = transferForm.position || emp.position || null
+    const newMonthlySalary = parseNum(transferForm.monthly_salary || emp.monthly_salary)
+    const newDailyRate = newMonthlySalary / DAILY_DIVISOR
+    const { data: userData } = await supabase.auth.getUser()
+    const userId = userData?.user?.id || null
+    const prevEnd = new Date(startDate)
+    prevEnd.setDate(prevEnd.getDate() - 1)
+    const prevEndDate = prevEnd.toISOString().slice(0, 10)
+
+    await supabase
+      .from('employee_assignments')
+      .update({ end_date: prevEndDate, updated_by: userId })
+      .eq('employee_id', emp.id)
+      .is('end_date', null)
+
+    const { error: insertError } = await supabase.from('employee_assignments').insert({
+      employee_id: emp.id,
+      branch_id: newBranchId,
+      position: newPosition,
+      salary_type: 'monthly',
+      monthly_salary: newMonthlySalary,
+      daily_rate: newDailyRate,
+      start_date: startDate,
+      comment: transferForm.comment || null,
+      created_by: userId
+    })
+    if (insertError) return setMessage(insertError.message)
+
+    const { error: empError } = await supabase.from('employees').update({
+      branch_id: newBranchId,
+      position: newPosition,
+      salary_type: 'monthly',
+      monthly_salary: newMonthlySalary,
+      daily_rate: newDailyRate
+    }).eq('id', emp.id)
+    if (empError) return setMessage(empError.message)
+
+    await load()
+    setMessage('Сотрудник переведён. История назначения сохранена.')
+  }
+
+  async function syncAllSalaries() {
+    setMessage('')
+    for (const emp of employees) await syncSalaryForEmployee(emp)
+    setMessage('Зарплаты пересчитаны по табелю')
+  }
+
+  const totals = employees.reduce((acc, emp) => {
+    const worked = workedDays(emp.id)
+    const salary = calcSalary(emp, worked)
+    acc.days += worked
+    acc.salary += salary
+    return acc
+  }, { days: 0, salary: 0 })
+
+  const attendanceGroups = staffGroupOptions(branches)
+    .map(group => ({
+      ...group,
+      rows: employees.filter(emp => employeeGroupId(emp) === group.id)
+    }))
+    .filter(group => branchId === 'all' ? true : group.id === branchId)
+
+  function officialDaysForEmployee(employeeId) {
+    return officialDaysByEmployee[employeeId] ?? '26'
+  }
+
+  function updateOfficialDays(employeeId, value) {
+    const next = { ...officialDaysByEmployee, [employeeId]: value }
+    setOfficialDaysByEmployee(next)
+    localStorage.setItem('rms_employee_official_days', JSON.stringify(next))
+    window.dispatchEvent(new Event('rms-official-days-updated'))
+  }
+
+  function officialSalaryForEmployee(emp) {
+    return officialSalaryByEmployee[emp.id] ?? emp.official_salary ?? emp.monthly_official_salary ?? emp.monthly_salary ?? '400'
+  }
+
+  function updateOfficialSalary(employeeId, value) {
+    const next = { ...officialSalaryByEmployee, [employeeId]: value }
+    setOfficialSalaryByEmployee(next)
+    localStorage.setItem('rms_employee_official_salary', JSON.stringify(next))
+    window.dispatchEvent(new Event('rms-official-salary-updated'))
+  }
+
+  return (
+    <section className="attendance-card">
+      <section className="topbar"><div><h2>{mode === 'staff' ? 'Сотрудники' : t('attendance_tab')}</h2><p>{mode === 'staff' ? 'Добавление сотрудников и перевод между филиалами.' : 'Компактный табель: клик по дню переключает значение. Зарплата считается как месячная ставка / 26 × отработанные дни.'}</p></div></section>
+      <section className="grid">
+        <div className="card span-2">
+          <div className="card-head"><div><h3>Период и филиал</h3><p className="hint">Клик по ячейке: пусто → 1 → 0 → пусто.</p></div><button className="small" onClick={syncAllSalaries}>Пересчитать зарплаты</button></div>
+          <div className="form-grid compact">
+            <label><span>{t('year')}</span><select value={year} onChange={e => setYear(Number(e.target.value))}>{defaultYears().map(y => <option key={y} value={y}>{y}</option>)}</select></label>
+            <label><span>{t('month')}</span><select value={month} onChange={e => setMonth(Number(e.target.value))}>{I18N.ru.months.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}</select></label>
+            <label><span>Филиал / группа</span><select value={branchId} onChange={e => setBranchId(e.target.value)}><option value="all">Все филиалы и менеджеры</option>{staffGroupOptions(branches).map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label>
+            <label><span>Позиция</span><select value={positionFilter} onChange={e => setPositionFilter(e.target.value)}><option value="all">Все позиции</option>{STAFF_POSITION_GROUPS.map(p => <option key={p} value={p}>{p}</option>)}</select></label>
+            <label><span>Формула дневной ставки</span><input value="Месячная ставка / 26" readOnly /></label>
+          </div>
+          <div className="metric"><span>Итого рабочих дней</span><strong>{fmt(totals.days)}</strong></div>
+          <div className="metric"><span>Расчётная зарплата</span><strong>{fmt(totals.salary)}</strong></div>
+          {message && <p className={`hint ${message.includes('Сохран') || message.includes('сохран') ? 'save-status' : message.includes('пересчитаны') || message.includes('добавлен') ? 'good' : 'bad'}`}>{message}</p>}
+        </div>
+
+        {mode !== 'attendance' && <>
+        <div className="card span-2">
+          <div className="card-head"><div><h3>Добавить сотрудника</h3><p className="hint">После добавления сотрудник сразу появляется в разделах “Зарплаты” и “Авансы”.</p></div></div>
+          <div className="form-grid compact">
+            <label style={{ gridColumn: 'span 2' }}><span>И.Ф.О.</span><input value={employeeForm.full_name} onChange={e => setEmployeeForm({...employeeForm, full_name: e.target.value})} /></label>
+            <label><span>Должность</span><select value={employeeForm.position} onChange={e => setEmployeeForm({...employeeForm, position: e.target.value})}>{STAFF_POSITIONS.map(p => <option key={p} value={p}>{p}</option>)}</select></label>
+            <label><span>Филиал / группа</span><select value={employeeForm.branch_id} onChange={e => setEmployeeForm({...employeeForm, branch_id: e.target.value})}>{staffGroupOptions(branches).map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label>
+            <label><span>Месячная ставка</span><input inputMode="decimal" value={employeeForm.monthly_salary} onChange={e => setEmployeeForm({...employeeForm, monthly_salary: e.target.value})} /></label>
+            <label><span>Дневная ставка</span><input value={fmt(parseNum(employeeForm.monthly_salary) / DAILY_DIVISOR)} readOnly /></label>
+          </div>
+          <button className="small" onClick={addEmployee}>+ Добавить сотрудника</button>
+        </div>
+
+        <div className="card span-2">
+          <div className="card-head"><div><h3>Перевод сотрудника</h3><p className="hint">Закрывает старое назначение и создаёт новое. Так сохраняется история филиалов и зарплатного фонда.</p></div></div>
+          <div className="form-grid compact">
+            <label><span>Сотрудник</span><select value={transferForm.employee_id} onChange={e => {
+              const emp = employees.find(x => x.id === e.target.value)
+              setTransferForm(f => ({ ...f, employee_id: e.target.value, branch_id: emp?.branch_id || STAFF_GROUP_MANAGERS, position: emp?.position || '', monthly_salary: emp?.monthly_salary || '' }))
+            }}>{employees.map(e => <option key={e.id} value={e.id}>{e.full_name}</option>)}</select></label>
+            <label><span>Новый филиал / группа</span><select value={transferForm.branch_id} onChange={e => setTransferForm({...transferForm, branch_id: e.target.value})}>{staffGroupOptions(branches).map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label>
+            <label><span>Дата перевода</span><input type="date" value={transferForm.start_date} onChange={e => setTransferForm({...transferForm, start_date: e.target.value})} /></label>
+            <label><span>Позиция</span><select value={transferForm.position || 'Повар'} onChange={e => setTransferForm({...transferForm, position: e.target.value})}>{STAFF_POSITIONS.map(p => <option key={p} value={p}>{p}</option>)}</select></label>
+            <label><span>Мес. ставка</span><input inputMode="decimal" value={transferForm.monthly_salary} onChange={e => setTransferForm({...transferForm, monthly_salary: e.target.value})} /></label>
+            <label><span>Комментарий</span><input value={transferForm.comment} onChange={e => setTransferForm({...transferForm, comment: e.target.value})} placeholder="Причина перевода" /></label>
+          </div>
+          <button className="small" onClick={transferEmployee}>Перевести сотрудника</button>
+        </div>
+
+                </>}
+
+        {mode !== 'staff' && 
+        <div className="card span-2">
+          <div className="card-head"><div><h3>Табель посещаемости по филиалам</h3><p className="hint">Сотрудники сгруппированы отдельными блоками по филиалам. В режиме “Все филиалы” каждый филиал показывается отдельно.</p></div></div>
+          {attendanceGroups.map(group => (
+            <div key={group.id} className="supplier-entity-group">
+              <div className="supplier-entity-head"><b>{group.name}</b><span>{group.rows.length} сотрудников</span></div>
+              <div className="table-wrap">
+                <table style={{ fontSize: 11, tableLayout: 'auto' }}>
+                  <thead><tr><th style={{ minWidth: 95 }}>Должность</th><th style={{ minWidth: 230 }}>И.Ф.О.</th><th style={{ minWidth: 80 }}>Мес. ставка</th><th style={{ minWidth: 75 }}>День</th><th style={{ minWidth: 105 }}>Оф. зарплата</th><th style={{ minWidth: 96 }}>Оф. дни</th>{days.map(d => <th key={d} style={{ width: 30, minWidth: 30, textAlign: 'center' }}>{d}</th>)}<th style={{ minWidth: 48 }}>Дни</th><th style={{ minWidth: 80 }}>ЗП</th></tr></thead>
+                  <tbody>
+                    {group.rows.map(emp => {
+                      const worked = workedDays(emp.id)
+                      const salary = calcSalary(emp, worked)
+                      return <tr key={emp.id}>
+                        <td>{emp.position || '—'}</td>
+                        <td><b>{emp.full_name}</b></td>
+                        <td>{fmt(emp.monthly_salary)}</td>
+                        <td>{fmt(dailyRate(emp))}</td>
+                        <td><input style={{ minWidth: 88, padding: '6px 7px' }} inputMode="decimal" value={officialSalaryForEmployee(emp)} onChange={e => updateOfficialSalary(emp.id, e.target.value)} /></td>
+                        <td><input style={{ minWidth: 74, padding: '6px 7px' }} inputMode="decimal" value={officialDaysForEmployee(emp.id)} onChange={e => updateOfficialDays(emp.id, e.target.value)} /></td>
+                        {days.map(d => {
+                          const currentValue = valueFor(emp.id, d)
+                          const label = currentValue === null ? '' : String(currentValue)
+                          return <td key={d} style={{ padding: 2, textAlign: 'center' }}>
+                            <button
+                              type="button"
+                              title="Клик: пусто → 1 → 0 → пусто"
+                              onClick={() => setAttendanceValue(emp, d, nextAttendanceValue(currentValue))}
+                              style={{ width: 26, minWidth: 26, height: 24, padding: 0, borderRadius: 6, fontSize: 11 }}
+                              className={`attendance-day-cell ${label === '' ? 'attendance-day-empty' : ''} ${label === '1' ? 'primary' : label === '0.5' ? 'ghost' : label === '0' ? 'danger' : 'ghost'}`}
+                            >{label || '·'}</button>
+                          </td>
+                        })}
+                        <td><strong>{fmt(worked)}</strong></td>
+                        <td><strong>{fmt(salary)}</strong></td>
+                      </tr>
+                    })}
+                    {!group.rows.length && <tr><td colSpan={days.length + 8} className="hint">Нет сотрудников в этом филиале.</td></tr>}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ))}
+          {!attendanceGroups.length && <p className="hint">Сначала добавьте сотрудников или выберите другой филиал.</p>}
+        </div>
+      }
+      </section>
+    </section>
+  )
+}
+
+function Salaries({ t, view = 'employees', isAdmin = false }) {
+  const branches = useBranches()
+  const [salaryPrivacyProfile, setSalaryPrivacyProfile] = useState(null)
+  const current = new Date()
+  const [year, setYear] = useState(current.getFullYear())
+  const [month, setMonth] = useState(current.getMonth() + 1)
+  const [branchId, setBranchId] = useState('all')
+  const [positionFilter, setPositionFilter] = useState('all')
+  const [rows, setRows] = useState([])
+  const [salaryPayments, setSalaryPayments] = useState([])
+  const [showAllSalaryPayments, setShowAllSalaryPayments] = useState(false)
+  const [salaryAdvanceRows, setSalaryAdvanceRows] = useState([])
+  const [editingSalaryTxn, setEditingSalaryTxn] = useState(null)
+  const [paymentBranchId, setPaymentBranchId] = useState('all')
+  const [paymentForm, setPaymentForm] = useState({ employee_id: '', payment_date: todayISO(), manual_previous_balance: '', previous_amount: '', amount: '', method: 'cash', comment: '' })
+  const [dailyPaymentDate, setDailyPaymentDate] = useState(todayISO())
+  const [useManualPreviousSalaryBalance, setUseManualPreviousSalaryBalance] = useState(false)
+  const [usePreviousSalaryBalance, setUsePreviousSalaryBalance] = useState(false)
+  const [expandedPaymentGroups, setExpandedPaymentGroups] = useState({})
+  const [message, setMessage] = useState('')
+  const [employeeInfoId, setEmployeeInfoId] = useState('')
+  const [employeeHistoryTick, setEmployeeHistoryTick] = useState(0)
+  const [terminationPayments, setTerminationPayments] = useState({})
+  const [expandedSalaryGroups, setExpandedSalaryGroups] = useState({})
+  const [employeeFiles, setEmployeeFiles] = useState({})
+  const [uploadType, setUploadType] = useState('document')
+  const [dsmfRows, setDsmfRows] = useState([])
+  const [expandedDsmfGroups, setExpandedDsmfGroups] = useState({})
+  const [officialDaysByEmployee, setOfficialDaysByEmployee] = useState(() => { try { return JSON.parse(localStorage.getItem('rms_employee_official_days') || '{}') } catch (_e) { return {} } })
+  const [officialSalaryByEmployee, setOfficialSalaryByEmployee] = useState(() => { try { return JSON.parse(localStorage.getItem('rms_employee_official_salary') || '{}') } catch (_e) { return {} } })
+  const [dsmfOfficialDays, setDsmfOfficialDays] = useState(() => localStorage.getItem('rms_dsmf_official_days') || '26')
+  const [dsmfRates, setDsmfRates] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('rms_dsmf_rates') || '{"employee_dsmf":3,"employer_dsmf":22,"unemployment":0.5,"medical":2,"income_tax":0}')
+    } catch (_e) {
+      return { employee_dsmf: 3, employer_dsmf: 22, unemployment: 0.5, medical: 2, income_tax: 0 }
+    }
+  })
+  const DAILY_DIVISOR = 26
+
+  async function loadSalaryPrivacyProfile() {
+    const localProfile = getRmsLocalUser()
+    if (localProfile) { setSalaryPrivacyProfile(localProfile); return }
+
+    const { data: rpcData, error: rpcError } = await supabase.rpc('rms_current_salary_privacy')
+    if (!rpcError && rpcData) {
+      setSalaryPrivacyProfile(rpcData)
+      return
+    }
+
+    const { data } = await supabase.auth.getUser()
+    const userId = data?.user?.id
+    const email = data?.user?.email || ''
+    const loginName = String(email).split('@')[0]
+    if (!userId) return setSalaryPrivacyProfile(null)
+
+    const { data: profById } = await supabase
+      .from('user_profiles')
+      .select('id, email, login_name, role, hide_manager_salary, hide_manager_salaries')
+      .eq('id', userId)
+      .maybeSingle()
+
+    if (profById) return setSalaryPrivacyProfile(profById)
+
+    const { data: profByLogin } = await supabase
+      .from('user_profiles')
+      .select('id, email, login_name, role, hide_manager_salary, hide_manager_salaries')
+      .or(`email.eq.${email},login_name.eq.${loginName}`)
+      .maybeSingle()
+
+    setSalaryPrivacyProfile(profByLogin || null)
+  }
+
+  useEffect(() => { loadSalaryPrivacyProfile() }, [])
+  useEffect(() => { loadSalaryPrivacyProfile() }, [year, month, branchId, positionFilter])
+  useEffect(() => { load() }, [year, month, branchId, positionFilter])
+  useEffect(() => { setShowAllSalaryPayments(false) }, [year, month, branchId, positionFilter])
+  useEffect(() => {
+    const syncOfficialDays = () => { try { setOfficialDaysByEmployee(JSON.parse(localStorage.getItem('rms_employee_official_days') || '{}')) } catch (_e) { setOfficialDaysByEmployee({}) } }
+    const syncOfficialSalary = () => { try { setOfficialSalaryByEmployee(JSON.parse(localStorage.getItem('rms_employee_official_salary') || '{}')) } catch (_e) { setOfficialSalaryByEmployee({}) } }
+    window.addEventListener('storage', syncOfficialDays)
+    window.addEventListener('rms-official-days-updated', syncOfficialDays)
+    window.addEventListener('storage', syncOfficialSalary)
+    window.addEventListener('rms-official-salary-updated', syncOfficialSalary)
+    return () => {
+      window.removeEventListener('storage', syncOfficialDays)
+      window.removeEventListener('rms-official-days-updated', syncOfficialDays)
+      window.removeEventListener('storage', syncOfficialSalary)
+      window.removeEventListener('rms-official-salary-updated', syncOfficialSalary)
+    }
+  }, [])
+
+  const monthDate = monthStart(year, month)
+  const dim = daysInMonth(year, month)
+  const monthEnd = `${year}-${String(month).padStart(2, '0')}-${String(dim).padStart(2, '0')}`
+  const isMonthClosingDay = todayISO() === monthEnd
+  const shouldHideManagerSalaries = Boolean(salaryPrivacyProfile?.hide_manager_salary || salaryPrivacyProfile?.hide_manager_salaries)
+  const isManagerRow = (row) => isManagerStaff(row?.employees)
+  const canSeeSalaryValue = (row) => !(shouldHideManagerSalaries && isManagerRow(row))
+  const maskedMoney = <span className="blurred-money">•••••</span>
+  const moneyCell = (row, value, className = '') => canSeeSalaryValue(row) ? <span className={className}>{fmt(value)}</span> : maskedMoney
+  const strongMoneyCell = (row, value, className = '') => canSeeSalaryValue(row) ? <strong className={className}>{fmt(value)}</strong> : maskedMoney
+
+
+  function emptySalary(emp, advanceTotal = 0) {
+    // Empty row after operational data cleanup should not auto-accrue fixed salary.
+    // Salary is accrued only when a salary_period row exists or attendance is recalculated/saved.
+    const gross = 0
+    return {
+      id: null,
+      employee_id: emp.id,
+      branch_id: emp.branch_id,
+      employees: emp,
+      branches: emp.branches,
+      worked_days: 0,
+      salary_gross: gross,
+      advance_amount: advanceTotal,
+      deduction_amount: 0,
+      salary_net: gross - advanceTotal,
+      opening_balance: 0,
+      payroll_payments: 0,
+      final_balance: gross - advanceTotal,
+      card_payment: 0,
+      cash_payment: 0,
+      comment: ''
+    }
+  }
+
+  async function loadEmployeeFiles(employeeIds) {
+    if (!employeeIds.length) { setEmployeeFiles({}); return }
+    const { data, error } = await supabase
+      .from('employee_files')
+      .select('*')
+      .in('employee_id', employeeIds)
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      // If the migration has not been executed yet, the salaries screen should still work.
+      setEmployeeFiles({})
+      return
+    }
+
+    const grouped = {}
+    ;(data || []).forEach(f => {
+      if (!grouped[f.employee_id]) grouped[f.employee_id] = []
+      grouped[f.employee_id].push(f)
+    })
+    setEmployeeFiles(grouped)
+  }
+
+  async function load() {
+    setMessage('')
+    const previousForDisplay = prevMonth(year, month)
+    const previousMonthForDisplay = monthStart(previousForDisplay.year, previousForDisplay.month)
+    const isInternal = Boolean(getInternalSessionStorage()?.rms_internal)
+
+    let empRows = []
+    let salRows = []
+    let advRows = []
+    let payRows = []
+    let previousDisplayPayRows = []
+    let dsmfExpenseRows = []
+    let prevSalRows = []
+    let prevPayRows = []
+
+    if (isInternal) {
+      const { data: snap } = await fetchRmsStaffWorkspaceSnapshot(monthDate)
+      if (snap?.employees?.length) {
+        empRows = snap.employees || []
+        const allSalaryPeriods = snap.salary_periods || []
+        const allSalaryPayments = snap.salary_payments || []
+        salRows = allSalaryPeriods.filter(r => r.salary_month === monthDate)
+        advRows = (snap.salary_advances || []).filter(r => String(r.advance_date || '') >= monthDate && String(r.advance_date || '') <= monthEnd && !r.is_cancelled)
+        payRows = allSalaryPayments.filter(r => r.salary_month === monthDate && !r.is_cancelled)
+        previousDisplayPayRows = allSalaryPayments.filter(r => r.salary_month === previousMonthForDisplay && !r.is_cancelled)
+        dsmfExpenseRows = (snap.dsmf_expenses || []).filter(r => String(r.expense_date || '') >= monthDate && String(r.expense_date || '') <= monthEnd && !r.deleted_at)
+        prevSalRows = allSalaryPeriods.filter(r => String(r.salary_month || '') < monthDate)
+        prevPayRows = allSalaryPayments.filter(r => String(r.salary_month || '') < monthDate && !r.is_cancelled)
+      }
+    }
+
+    if (!empRows.length) {
+      const empQ = supabase.from('employees').select('*, branches(name)').order('branch_id').order('position').order('full_name')
+      const salQ = supabase.from('salary_periods').select('*, employees(*), branches(name)').eq('salary_month', monthDate).order('branch_id')
+      const advQ = supabase.from('salary_advances').select('*').gte('advance_date', monthDate).lte('advance_date', monthEnd).or('is_cancelled.is.null,is_cancelled.eq.false').order('advance_date', { ascending: false }).order('created_at', { ascending: false })
+      const payQ = supabase.from('salary_payments').select('*').eq('salary_month', monthDate).or('is_cancelled.is.null,is_cancelled.eq.false').order('payment_date', { ascending: false }).order('created_at', { ascending: false })
+      const previousPayDisplayQ = supabase.from('salary_payments').select('*').eq('salary_month', previousMonthForDisplay).or('is_cancelled.is.null,is_cancelled.eq.false').order('payment_date', { ascending: false }).order('created_at', { ascending: false })
+      const dsmfQ = supabase.from('daily_expenses').select('*, branches(name)').gte('expense_date', monthDate).lte('expense_date', monthEnd).eq('custom_category', 'DSMF').is('deleted_at', null).order('expense_date', { ascending: false })
+      const prevSalQ = supabase.from('salary_periods').select('employee_id, salary_gross, advance_amount, deduction_amount').lt('salary_month', monthDate)
+      const prevPayQ = supabase.from('salary_payments').select('employee_id, amount').lt('salary_month', monthDate).or('is_cancelled.is.null,is_cancelled.eq.false')
+
+      const [
+        { data: emp, error: empError },
+        { data: sal, error: salError },
+        { data: adv, error: advError },
+        { data: pays, error: payError },
+        { data: previousDisplayPays, error: previousDisplayPayError },
+        { data: dsmf, error: dsmfError },
+        { data: prevSal, error: prevSalError },
+        { data: prevPays, error: prevPayError }
+      ] = await Promise.all([empQ, salQ, advQ, payQ, previousPayDisplayQ, dsmfQ, prevSalQ, prevPayQ])
+
+      if (empError || salError || advError || payError || previousDisplayPayError || dsmfError || prevSalError || prevPayError) {
+        const { data: snap } = await fetchRmsStaffWorkspaceSnapshot(monthDate)
+        if (snap?.employees?.length) {
+          empRows = snap.employees || []
+          const allSalaryPeriods = snap.salary_periods || []
+          const allSalaryPayments = snap.salary_payments || []
+          salRows = allSalaryPeriods.filter(r => r.salary_month === monthDate)
+          advRows = (snap.salary_advances || []).filter(r => String(r.advance_date || '') >= monthDate && String(r.advance_date || '') <= monthEnd && !r.is_cancelled)
+          payRows = allSalaryPayments.filter(r => r.salary_month === monthDate && !r.is_cancelled)
+          previousDisplayPayRows = allSalaryPayments.filter(r => r.salary_month === previousMonthForDisplay && !r.is_cancelled)
+          dsmfExpenseRows = (snap.dsmf_expenses || []).filter(r => String(r.expense_date || '') >= monthDate && String(r.expense_date || '') <= monthEnd && !r.deleted_at)
+          prevSalRows = allSalaryPeriods.filter(r => String(r.salary_month || '') < monthDate)
+          prevPayRows = allSalaryPayments.filter(r => String(r.salary_month || '') < monthDate && !r.is_cancelled)
+        } else {
+          setMessage(empError?.message || salError?.message || advError?.message || payError?.message || previousDisplayPayError?.message || dsmfError?.message || prevSalError?.message || prevPayError?.message)
+          setRows([])
+          return
+        }
+      } else {
+        empRows = emp || []
+        salRows = sal || []
+        advRows = adv || []
+        payRows = pays || []
+        previousDisplayPayRows = previousDisplayPays || []
+        dsmfExpenseRows = dsmf || []
+        prevSalRows = prevSal || []
+        prevPayRows = prevPays || []
+      }
+    }
+
+    const advancesByEmployee = new Map()
+    ;(advRows || []).forEach(a => advancesByEmployee.set(a.employee_id, parseNum(advancesByEmployee.get(a.employee_id)) + parseNum(a.amount)))
+    const paymentsByEmployee = new Map()
+    ;(payRows || []).forEach(p => paymentsByEmployee.set(p.employee_id, parseNum(paymentsByEmployee.get(p.employee_id)) + parseNum(p.amount)))
+    const prevDueByEmployee = new Map()
+    ;(prevSalRows || []).forEach(r => prevDueByEmployee.set(r.employee_id, parseNum(prevDueByEmployee.get(r.employee_id)) + parseNum(r.salary_gross) - parseNum(r.advance_amount) - parseNum(r.deduction_amount)))
+    const prevPaymentsByEmployee = new Map()
+    ;(prevPayRows || []).forEach(p => prevPaymentsByEmployee.set(p.employee_id, parseNum(prevPaymentsByEmployee.get(p.employee_id)) + parseNum(p.amount)))
+    const salaryByEmployee = new Map((salRows || []).map(r => [r.employee_id, r]))
+
+    const mappedRows = (empRows || [])
+      .filter(e => e.is_active !== false)
+      .filter(e => matchesStaffGroup(e, branchId))
+      .filter(e => matchesPositionGroup(e, positionFilter))
+      .map(e => {
+        const advanceTotal = parseNum(advancesByEmployee.get(e.id))
+        const salary = salaryByEmployee.get(e.id) || emptySalary(e, advanceTotal)
+        const employees = { ...e, ...(salary.employees || {}) }
+        const gross = salary.id ? parseNum(salary.salary_gross) : 0
+        const deduction = parseNum(salary.deduction_amount)
+        const currentDue = gross - advanceTotal - deduction
+        const paid = parseNum(paymentsByEmployee.get(e.id))
+        const opening = parseNum(prevDueByEmployee.get(e.id)) - parseNum(prevPaymentsByEmployee.get(e.id))
+        const finalBalance = opening + currentDue - paid
+        return { ...salary, employees, branches: e.branches || salary.branches, branch_id: e.branch_id, salary_gross: gross, advance_amount: advanceTotal, salary_net: currentDue, opening_balance: opening, payroll_payments: paid, final_balance: finalBalance }
+      })
+
+    const visibleMappedRows = shouldHideManagerSalaries ? mappedRows.filter(r => !isManagerStaff(r?.employees)) : mappedRows
+    const visibleEmployeeIds = new Set(visibleMappedRows.map(r => r.employee_id))
+
+    setRows(visibleMappedRows)
+    setSalaryPayments([...(payRows || []), ...(previousDisplayPayRows || [])].filter(p => !shouldHideManagerSalaries || visibleEmployeeIds.has(p.employee_id)))
+    setSalaryAdvanceRows((advRows || []).filter(a => !shouldHideManagerSalaries || visibleEmployeeIds.has(a.employee_id)))
+    setDsmfRows(dsmfExpenseRows || [])
+    if (!paymentForm.employee_id && visibleMappedRows[0]) setPaymentForm(f => ({ ...f, employee_id: visibleMappedRows[0].employee_id }))
+    await loadEmployeeFiles(visibleMappedRows.map(r => r.employee_id))
+  }
+
+  async function recalcSalaryRow(row, updatedEmployee = row.employees, patch = {}) {
+    const workedDays = 'worked_days' in patch ? parseNum(patch.worked_days) : parseNum(row.worked_days)
+    const gross = 'salary_gross' in patch ? parseNum(patch.salary_gross) : calcGrossSalary(updatedEmployee, workedDays)
+    const advance = parseNum(row.advance_amount)
+    const deduction = 'deduction_amount' in patch ? parseNum(patch.deduction_amount) : parseNum(row.deduction_amount)
+    const payload = {
+      employee_id: row.employee_id,
+      branch_id: row.branch_id || null,
+      salary_month: monthDate,
+      worked_days: workedDays,
+      salary_gross: gross,
+      advance_amount: advance,
+      deduction_amount: deduction,
+      salary_net: gross - advance - deduction,
+      card_payment: 'card_payment' in patch ? parseNum(patch.card_payment) : parseNum(row.card_payment),
+      cash_payment: 'cash_payment' in patch ? parseNum(patch.cash_payment) : parseNum(row.cash_payment),
+      comment: 'comment' in patch ? patch.comment : (row.comment || '')
+    }
+    const { error } = await supabase.from('salary_periods').upsert(payload, { onConflict: 'employee_id,salary_month' })
+    return error
+  }
+
+  const EMPLOYEE_POSITION_OPTIONS = ['Менеджер', 'Администратор', 'Кассир', 'Бариста', 'Повар', 'Су-шеф', 'Официант', 'Стьюарт', 'Уборщик', 'Курьер', 'Бухгалтер', 'Директор', 'Другое']
+
+  function employeeHistoryKey(employeeId) {
+    return `rms_employee_history_${employeeId}`
+  }
+
+  function getEmployeeHistory(employeeId) {
+    try { return JSON.parse(localStorage.getItem(employeeHistoryKey(employeeId)) || '[]') } catch (_e) { return [] }
+  }
+
+  function recordEmployeeHistory(row, patch) {
+    const emp = row?.employees || {}
+    const labels = {
+      full_name: 'Ф.И.О.',
+      position: 'Должность',
+      monthly_salary: 'Месячная ставка',
+      daily_rate: 'Дневная ставка',
+      salary_type: 'Тип расчёта',
+      employment_status: 'Статус',
+      is_active: 'Активность',
+      terminated_at: 'Дата увольнения',
+      hired_at: 'Дата приёма'
+    }
+    const changes = Object.entries(patch || {}).map(([key, next]) => ({
+      field: labels[key] || key,
+      before: emp[key] ?? '',
+      after: next ?? ''
+    })).filter(c => String(c.before) !== String(c.after))
+    if (!changes.length) return
+    const history = getEmployeeHistory(row.employee_id)
+    history.unshift({
+      at: new Date().toLocaleString('ru-RU'),
+      user: salaryPrivacyProfile?.login_name || salaryPrivacyProfile?.email || 'system',
+      changes
+    })
+    localStorage.setItem(employeeHistoryKey(row.employee_id), JSON.stringify(history.slice(0, 100)))
+    setEmployeeHistoryTick(v => v + 1)
+  }
+
+  async function updateEmployeeDetails(row, patch, recalc = false) {
+    setMessage('')
+    const payload = { ...patch }
+    if ('monthly_salary' in payload) payload.monthly_salary = parseNum(payload.monthly_salary)
+    if ('daily_rate' in payload) payload.daily_rate = parseNum(payload.daily_rate)
+
+    if (payload.salary_type === 'daily' && !parseNum(row.employees?.daily_rate)) {
+      payload.daily_rate = parseNum(row.employees?.monthly_salary) / DAILY_DIVISOR
+    }
+    if (payload.salary_type === 'monthly') {
+      payload.daily_rate = parseNum(row.employees?.monthly_salary) / DAILY_DIVISOR
+    }
+
+    recordEmployeeHistory(row, payload)
+    const { error } = await supabase.from('employees').update(payload).eq('id', row.employee_id)
+    if (error) return setMessage(error.message)
+
+    if (recalc || 'salary_type' in payload || 'monthly_salary' in payload || 'daily_rate' in payload) {
+      const updatedEmployee = { ...row.employees, ...payload }
+      const salaryError = await recalcSalaryRow(row, updatedEmployee)
+      if (salaryError) return setMessage(salaryError.message)
+    }
+
+    await load()
+    setMessage(t('saved'))
+  }
+
+  async function terminateEmployee(row) {
+    setMessage('')
+    const amount = parseNum(terminationPayments[row.employee_id])
+    if (amount > 0) {
+      const { error: payError } = await supabase.from('salary_payments').insert({
+        employee_id: row.employee_id,
+        branch_id: row.branch_id || row.employees?.branch_id || null,
+        salary_month: monthDate,
+        payment_date: todayISO(),
+        amount,
+        method: 'cash',
+        comment: 'Выплата остатка зарплаты при увольнении'
+      })
+      if (payError) return setMessage(payError.message)
+    }
+    await updateEmployeeDetails(row, {
+      employment_status: 'terminated',
+      is_active: false,
+      terminated_at: todayISO()
+    })
+    setTerminationPayments(p => ({ ...p, [row.employee_id]: '' }))
+  }
+
+  async function deleteEmployeePermanently(row) {
+    setMessage('')
+    if (!isAdmin) return setMessage('Удаление сотрудников доступно только администратору')
+    const employeeId = row?.employee_id || row?.employees?.id
+    const employeeName = row?.employees?.full_name || 'сотрудника'
+    if (!employeeId) return setMessage('Сотрудник не найден')
+    const ok = window.confirm(`Удалить неправильно созданного сотрудника “${employeeName}”? Будут удалены его табель, зарплатные строки, авансы и история назначений. Для обычного увольнения используйте кнопку “Уволить”.`)
+    if (!ok) return
+
+    const relatedDeletes = [
+      supabase.from('employee_attendance').delete().eq('employee_id', employeeId),
+      supabase.from('salary_advances').delete().eq('employee_id', employeeId),
+      supabase.from('salary_payments').delete().eq('employee_id', employeeId),
+      supabase.from('salary_periods').delete().eq('employee_id', employeeId),
+      supabase.from('employee_assignments').delete().eq('employee_id', employeeId),
+      supabase.from('employee_files').delete().eq('employee_id', employeeId)
+    ]
+    for (const op of relatedDeletes) {
+      const { error } = await op
+      if (error && !String(error.message || '').toLowerCase().includes('does not exist')) return setMessage(error.message)
+    }
+
+    const { error } = await supabase.from('employees').delete().eq('id', employeeId)
+    if (error) {
+      const { error: softError } = await supabase.from('employees').update({ is_active: false, employment_status: 'deleted', terminated_at: todayISO() }).eq('id', employeeId)
+      if (softError) return setMessage(error.message)
+      await load()
+      return setMessage('Сотрудник скрыт из активных. Полное удаление заблокировано связанными данными в базе.')
+    }
+
+    try {
+      const salaryMap = { ...officialSalaryByEmployee }
+      const daysMap = { ...officialDaysByEmployee }
+      delete salaryMap[employeeId]
+      delete daysMap[employeeId]
+      localStorage.setItem('rms_employee_official_salary', JSON.stringify(salaryMap))
+      localStorage.setItem('rms_employee_official_days', JSON.stringify(daysMap))
+      setOfficialSalaryByEmployee(salaryMap)
+      setOfficialDaysByEmployee(daysMap)
+    } catch (_e) {}
+
+    await load()
+    setEmployeeInfoId('')
+    setMessage(`Сотрудник ${employeeName} удалён`)
+  }
+
+  async function updateSalary(row, patch) {
+    setMessage('')
+    const payload = { ...patch }
+    ;['worked_days','salary_gross','card_payment','cash_payment','deduction_amount'].forEach(k => { if (k in payload) payload[k] = parseNum(payload[k]) })
+    const error = await recalcSalaryRow(row, row.employees, payload)
+    if (error) setMessage(error.message)
+    else { await load(); setMessage(t('saved')) }
+  }
+
+  async function logSalaryTransactionChange(txn, fieldName, oldValue, newValue) {
+    try {
+      const { data } = await supabase.auth.getUser()
+      await supabase.from('finance_operation_log').insert({
+        entity_type: txn.txn_type === 'advance' ? 'salary_advance' : 'salary_payment',
+        record_id: txn.id,
+        branch_id: txn.branch_id || null,
+        operation_date: dailyPaymentDate,
+        action: 'field_update',
+        field_name: fieldName,
+        old_value: oldValue == null ? null : String(oldValue),
+        new_value: newValue == null ? null : String(newValue),
+        user_id: data?.user?.id || null,
+        user_email: data?.user?.email || null
+      })
+    } catch (_e) {}
+  }
+
+  async function updateSalaryTransaction(txn, patch) {
+    setMessage('')
+    const table = txn.txn_type === 'advance' ? 'salary_advances' : 'salary_payments'
+    const payload = { ...patch }
+    if ('amount' in payload) payload.amount = parseNum(payload.amount)
+    const { error } = await supabase.from(table).update(payload).eq('id', txn.id)
+    if (error) return setMessage(error.message)
+    for (const [field, next] of Object.entries(payload)) {
+      const before = field === 'date' ? txn.date : txn[field]
+      if (String(before ?? '') !== String(next ?? '')) await logSalaryTransactionChange(txn, field, before, next)
+    }
+    setEditingSalaryTxn(null)
+    await load()
+    setMessage('Транзакция зарплатного отчёта обновлена')
+  }
+
+  function dsmfCalcForBase(baseValue) {
+    const base = parseNum(baseValue)
+    const cost = statutoryRestaurantOfficialPayrollCost(base)
+    return {
+      base,
+      employeeDsmf: cost.employee.social,
+      employerDsmf: cost.employer.social,
+      employeeUnemployment: cost.employee.unemployment,
+      employerUnemployment: cost.employer.unemployment,
+      employeeMedical: cost.employee.medical,
+      employerMedical: cost.employer.medical,
+      incomeTax: cost.employee.incomeTax,
+      employeeTotal: cost.employee.total,
+      employerTotal: cost.employer.total,
+      total: cost.total
+    }
+  }
+
+  function officialDaysForDsmf(row) {
+    return parseNum(officialDaysByEmployee[row?.employee_id]) || parseNum(dsmfOfficialDays) || DAILY_DIVISOR
+  }
+
+  function officialSalaryForDsmf(row) {
+    const employeeId = row?.employee_id
+    return parseNum(officialSalaryByEmployee[employeeId]) || parseNum(row?.employees?.official_salary) || parseNum(row?.employees?.monthly_official_salary) || parseNum(row?.employees?.monthly_salary) || parseNum(row?.salary_gross)
+  }
+
+  function updateOfficialSalaryForDsmf(employeeId, value) {
+    const next = { ...officialSalaryByEmployee, [employeeId]: value }
+    setOfficialSalaryByEmployee(next)
+    localStorage.setItem('rms_employee_official_salary', JSON.stringify(next))
+    window.dispatchEvent(new Event('rms-official-salary-updated'))
+  }
+
+  function updateOfficialDaysForDsmf(employeeId, value) {
+    const next = { ...officialDaysByEmployee, [employeeId]: value }
+    setOfficialDaysByEmployee(next)
+    localStorage.setItem('rms_employee_official_days', JSON.stringify(next))
+    window.dispatchEvent(new Event('rms-official-days-updated'))
+  }
+
+  function dsmfBaseForRow(row) {
+    const officialDays = officialDaysForDsmf(row)
+    const monthly = officialSalaryForDsmf(row)
+    return monthly / DAILY_DIVISOR * officialDays
+  }
+
+  function dsmfLineForRow(row) {
+    const calc = dsmfCalcForBase(dsmfBaseForRow(row))
+    return {
+      ...calc,
+      employee_id: row.employee_id,
+      branch_id: row.branch_id || null,
+      branchName: employeeGroupName(row.employees),
+      employeeName: row.employees?.full_name || '—',
+      position: row.employees?.position || '—',
+      officialDays: officialDaysForDsmf(row),
+      officialSalary: officialSalaryForDsmf(row)
+    }
+  }
+
+  const dsmfEmployeeRows = rows.map(dsmfLineForRow).filter(r => r.base > 0)
+  const dsmfGroups = staffGroupOptions(branches)
+    .map(group => {
+      const list = dsmfEmployeeRows.filter(r => (r.branch_id || STAFF_GROUP_MANAGERS) === group.id)
+      const total = list.reduce((s, r) => s + parseNum(r.total), 0)
+      return { ...group, rows: list, total }
+    })
+    .filter(group => branchId === 'all' ? group.rows.length > 0 : group.id === branchId)
+  const dsmfTotal = dsmfGroups.reduce((s, g) => s + parseNum(g.total), 0)
+
+  function saveDsmfRates() {
+    localStorage.setItem('rms_dsmf_rates', JSON.stringify(dsmfRates))
+    localStorage.setItem('rms_dsmf_official_days', String(dsmfOfficialDays || '26'))
+  }
+
+  async function syncAutoDsmfExpenses() {
+    if (!dsmfGroups.length || !dsmfTotal) return
+    const start = monthDate
+    const end = monthEnd
+    await supabase
+      .from('daily_expenses')
+      .delete()
+      .gte('expense_date', start)
+      .lte('expense_date', end)
+      .eq('custom_category', 'DSMF')
+      .ilike('comment', 'DSMF автоматически%')
+
+    const payload = dsmfGroups
+      .filter(g => parseNum(g.total) > 0)
+      .map(g => ({
+        branch_id: g.id === STAFF_GROUP_MANAGERS ? null : g.id,
+        expense_date: monthDate,
+        amount: parseNum(g.total),
+        custom_category: 'DSMF',
+        comment: `DSMF автоматически · ${g.name} · сотрудников ${g.rows.length} · оф. дни по табелю/настройке`
+      }))
+    if (!payload.length) return
+    const { error } = await supabase.from('daily_expenses').insert(payload)
+    if (!error) setDsmfRows(payload.map((r, i) => ({ id: `auto-${i}`, ...r, branches: { name: dsmfGroups[i]?.name || '—' } })))
+  }
+
+  async function addSalaryPayment() {
+    setMessage('')
+    const employeeId = paymentForm.employee_id
+    const row = rows.find(r => r.employee_id === employeeId)
+    if (!row) return setMessage('Выберите сотрудника')
+
+    const previousAmount = usePreviousSalaryBalance ? parseNum(paymentForm.previous_amount) : 0
+    const currentAmount = parseNum(paymentForm.amount)
+    const manualPreviousBalance = useManualPreviousSalaryBalance ? parseNum(paymentForm.manual_previous_balance) : 0
+    if (!manualPreviousBalance && !previousAmount && !currentAmount) return setMessage('Введите сумму выплаты или ручной остаток прошлого месяца')
+
+    const paymentDate = paymentForm.payment_date || todayISO()
+    const method = paymentForm.method || 'cash'
+    const commentBase = paymentForm.comment || 'Выплата зарплаты'
+
+    const previous = prevMonth(year, month)
+    const previousMonthDate = monthStart(previous.year, previous.month)
+
+    if (manualPreviousBalance > 0) {
+      const { data: existingPreviousSalary } = await supabase
+        .from('salary_periods')
+        .select('*')
+        .eq('employee_id', employeeId)
+        .eq('salary_month', previousMonthDate)
+        .maybeSingle()
+
+      const { error: manualBalanceError } = await supabase.from('salary_periods').upsert({
+        employee_id: employeeId,
+        branch_id: row.branch_id || null,
+        salary_month: previousMonthDate,
+        worked_days: parseNum(existingPreviousSalary?.worked_days),
+        salary_gross: manualPreviousBalance,
+        advance_amount: parseNum(existingPreviousSalary?.advance_amount),
+        deduction_amount: parseNum(existingPreviousSalary?.deduction_amount),
+        salary_net: manualPreviousBalance - parseNum(existingPreviousSalary?.advance_amount) - parseNum(existingPreviousSalary?.deduction_amount),
+        card_payment: parseNum(existingPreviousSalary?.card_payment),
+        cash_payment: parseNum(existingPreviousSalary?.cash_payment),
+        comment: 'Ручной ввод остатка зарплаты прошлого месяца'
+      }, { onConflict: 'employee_id,salary_month' })
+      if (manualBalanceError) return setMessage(manualBalanceError.message)
+    }
+
+    let previousPaidAmount = 0
+    let previousExcessToAdvance = 0
+    if (previousAmount > 0) {
+      const previousDebt = Math.max(0, parseNum(row.opening_balance) + manualPreviousBalance)
+      previousPaidAmount = Math.min(previousAmount, previousDebt || previousAmount)
+      previousExcessToAdvance = Math.max(0, previousAmount - previousPaidAmount)
+
+      if (previousPaidAmount > 0) {
+        const { error: previousPayError } = await supabase.from('salary_payments').insert({
+          employee_id: employeeId,
+          branch_id: row.branch_id || null,
+          salary_month: previousMonthDate,
+          payment_date: paymentDate,
+          amount: previousPaidAmount,
+          method,
+          comment: `${commentBase} · оплата остатка прошлого месяца`
+        })
+        if (previousPayError) return setMessage(previousPayError.message)
+      }
+
+      if (previousExcessToAdvance > 0) {
+        const { error: previousAdvanceError } = await supabase.from('salary_advances').insert({
+          employee_id: employeeId,
+          branch_id: row.branch_id || null,
+          advance_date: paymentDate,
+          amount: previousExcessToAdvance,
+          comment: `${commentBase} · превышение оплаты прошлого долга перенесено в аванс`
+        })
+        if (previousAdvanceError) return setMessage(previousAdvanceError.message)
+      }
+    }
+
+    if (currentAmount > 0) {
+      const { error: currentPayError } = await supabase.from('salary_payments').insert({
+        employee_id: employeeId,
+        branch_id: row.branch_id || null,
+        salary_month: monthDate,
+        payment_date: paymentDate,
+        amount: currentAmount,
+        method,
+        comment: `${commentBase} · оплата зарплаты выбранного месяца`
+      })
+      if (currentPayError) return setMessage(currentPayError.message)
+    }
+
+    const start = monthDate
+    const end = monthEnd
+    const [{ data: existing }, { data: advanceRows }, { data: payRows }] = await Promise.all([
+      supabase.from('salary_periods').select('*').eq('employee_id', employeeId).eq('salary_month', monthDate).maybeSingle(),
+      supabase.from('salary_advances').select('amount').eq('employee_id', employeeId).gte('advance_date', start).lte('advance_date', end).or('is_cancelled.is.null,is_cancelled.eq.false'),
+      supabase.from('salary_payments').select('amount').eq('employee_id', employeeId).eq('salary_month', monthDate).or('is_cancelled.is.null,is_cancelled.eq.false')
+    ])
+
+    const advance = (advanceRows || []).reduce((sum, a) => sum + parseNum(a.amount), 0)
+    const paid = (payRows || []).reduce((sum, p) => sum + parseNum(p.amount), 0)
+    const gross = parseNum(existing?.salary_gross || row.salary_gross)
+    const deduction = parseNum(existing?.deduction_amount || row.deduction_amount)
+    const net = gross - advance - deduction
+
+    const { error: salaryError } = await supabase.from('salary_periods').upsert({
+      employee_id: employeeId,
+      branch_id: row.branch_id || null,
+      salary_month: monthDate,
+      worked_days: parseNum(existing?.worked_days || row.worked_days),
+      salary_gross: gross,
+      salary_net: net,
+      advance_amount: advance,
+      deduction_amount: deduction,
+      card_payment: method === 'bank' ? paid : parseNum(existing?.card_payment || row.card_payment),
+      cash_payment: method === 'cash' ? paid : parseNum(existing?.cash_payment || row.cash_payment),
+      comment: existing?.comment || 'Автообновление после выплаты зарплаты'
+    }, { onConflict: 'employee_id,salary_month' })
+    if (salaryError) return setMessage(salaryError.message)
+
+    setPaymentForm(f => ({ ...f, manual_previous_balance: '', previous_amount: '', amount: '', comment: '' }))
+    setUseManualPreviousSalaryBalance(false)
+    setUsePreviousSalaryBalance(false)
+    await load()
+
+    const parts = []
+    if (manualPreviousBalance > 0) parts.push(`сохранён ручной долг прошлого месяца: ${fmt(manualPreviousBalance)} AZN`)
+    if (previousPaidAmount > 0) parts.push(`закрыт остаток прошлого месяца: ${fmt(previousPaidAmount)} AZN`)
+    if (previousExcessToAdvance > 0) parts.push(`превышение перенесено в аванс: ${fmt(previousExcessToAdvance)} AZN`)
+    if (currentAmount > 0) parts.push(`оплата выбранного месяца: ${fmt(currentAmount)} AZN`)
+    setMessage(parts.join(' · '))
+  }
+
+  async function cancelSalaryPayment(payment) {
+    if (!confirm('Отменить выплату зарплаты? Строка останется в журнале и не будет учитываться в расчётах.')) return
+    setMessage('')
+    const { error } = await supabase.from('salary_payments').update({
+      is_cancelled: true,
+      cancelled_at: new Date().toISOString(),
+      cancel_comment: 'Отменено через раздел зарплаты'
+    }).eq('id', payment.id)
+    if (error) return setMessage(error.message)
+    await load()
+    setMessage('Выплата отменена и исключена из расчётов')
+  }
+
+  async function clearSalaryOpeningBalances() {
+    setMessage('')
+    if (!isAdmin) return setMessage('Обнуление остатков зарплат доступно только администратору')
+
+    const periodLabel = `${I18N.ru.months[Number(month) - 1]} ${year}`
+    const warning = `Это обнулит все долги / переплаты по зарплатам ДО ${periodLabel}.\n\nБудут удалены старые строки начислений и выплат зарплаты до выбранного месяца.\nТекущий месяц, текущие авансы и сотрудники не удаляются.\n\nПродолжить?`
+    if (!window.confirm(warning)) return
+
+    const code = window.prompt('Для подтверждения введите ОБНУЛИТЬ')
+    if (String(code || '').trim().toUpperCase() !== 'ОБНУЛИТЬ') {
+      return setMessage('Обнуление отменено')
+    }
+
+    const { error: periodError } = await supabase
+      .from('salary_periods')
+      .delete()
+      .lt('salary_month', monthDate)
+
+    if (periodError) return setMessage(periodError.message)
+
+    const { error: paymentError } = await supabase
+      .from('salary_payments')
+      .delete()
+      .lt('salary_month', monthDate)
+
+    if (paymentError) return setMessage(paymentError.message)
+
+    await load()
+    setMessage(`Остатки зарплат до ${periodLabel} обнулены. Текущий месяц и авансы не тронуты.`)
+  }
+
+  async function uploadEmployeeFile(row, file) {
+    if (!file) return
+    setMessage('')
+    const safeName = file.name.replace(/[^a-zA-Z0-9а-яА-ЯёЁ._-]/g, '_')
+    const path = `${row.employee_id}/${Date.now()}_${safeName}`
+    const { error: uploadError } = await supabase.storage.from('employee-files').upload(path, file, { upsert: false })
+    if (uploadError) return setMessage(uploadError.message)
+
+    const { error } = await supabase.from('employee_files').insert({
+      employee_id: row.employee_id,
+      file_type: uploadType,
+      file_name: file.name,
+      storage_path: path,
+      mime_type: file.type || null,
+      size_bytes: file.size || null
+    })
+    if (error) return setMessage(error.message)
+    await loadEmployeeFiles(rows.map(r => r.employee_id))
+    setMessage('Файл добавлен')
+  }
+
+  async function openEmployeeFile(file) {
+    const { data, error } = await supabase.storage.from('employee-files').createSignedUrl(file.storage_path, 60)
+    if (error) return setMessage(error.message)
+    window.open(data.signedUrl, '_blank', 'noopener,noreferrer')
+  }
+
+  async function deleteEmployeeFile(file) {
+    if (!confirm('Удалить файл из карточки сотрудника?')) return
+    setMessage('')
+    await supabase.storage.from('employee-files').remove([file.storage_path])
+    const { error } = await supabase.from('employee_files').delete().eq('id', file.id)
+    if (error) return setMessage(error.message)
+    await loadEmployeeFiles(rows.map(r => r.employee_id))
+    setMessage('Файл удалён')
+  }
+
+  const paymentRows = rows.filter(r => paymentBranchId === 'all' || employeeGroupId(r.employees) === paymentBranchId)
+  const selectedPaymentRow = rows.find(r => r.employee_id === paymentForm.employee_id)
+  const selectedPaymentCanSee = selectedPaymentRow ? canSeeSalaryValue(selectedPaymentRow) : true
+  const selectedEmployeePayments = salaryPayments.filter(p => p.employee_id === paymentForm.employee_id)
+  const selectedPaidCash = selectedEmployeePayments.filter(p => p.method === 'cash').reduce((s, p) => s + parseNum(p.amount), 0)
+  const selectedPaidCard = selectedEmployeePayments.filter(p => p.method === 'card' || p.method === 'bank').reduce((s, p) => s + parseNum(p.amount), 0)
+  const selectedPaidTotal = selectedPaidCash + selectedPaidCard
+  const selectedManualPreviousDebtPreview = useManualPreviousSalaryBalance ? parseNum(paymentForm.manual_previous_balance) : 0
+  const selectedOpeningDebt = Math.max(0, parseNum(selectedPaymentRow?.opening_balance) + selectedManualPreviousDebtPreview)
+  const selectedCurrentDebt = Math.max(0, parseNum(selectedPaymentRow?.salary_net))
+  const selectedTotalDebt = Math.max(0, parseNum(selectedPaymentRow?.final_balance))
+
+  const payrollPaymentsForSelectedDate = salaryPayments.filter(p => p.payment_date === dailyPaymentDate)
+  const salaryAdvancesForSelectedDate = salaryAdvanceRows.filter(a => a.advance_date === dailyPaymentDate)
+  const salaryTransactionsForSelectedDate = [
+    ...payrollPaymentsForSelectedDate.map(p => ({ ...p, txn_type: 'payment', txn_id: `payment-${p.id}`, date: p.payment_date, operation: p.salary_month !== monthDate ? 'Оплата остатка прошлого месяца' : 'Оплата зарплаты', method_label: p.method === 'bank' ? 'Банк' : 'Наличные' })),
+    ...salaryAdvancesForSelectedDate.map(a => ({ ...a, txn_type: 'advance', txn_id: `advance-${a.id}`, date: a.advance_date, operation: 'Аванс', method: 'cash', method_label: 'Наличные' }))
+  ]
+
+  const salaryReportRowsForSelectedDate = rows
+    .map(r => {
+      const txns = salaryTransactionsForSelectedDate.filter(x => x.employee_id === r.employee_id)
+      const payments = txns.filter(x => x.txn_type === 'payment')
+      const advances = txns.filter(x => x.txn_type === 'advance')
+      const previousPayments = payments.filter(p => p.salary_month !== monthDate)
+      const currentPayments = payments.filter(p => p.salary_month === monthDate)
+      const paidCash = payments.filter(p => p.method === 'cash').reduce((s, p) => s + parseNum(p.amount), 0)
+      const paidBank = payments.filter(p => p.method === 'bank' || p.method === 'card').reduce((s, p) => s + parseNum(p.amount), 0)
+      const paidPrevious = previousPayments.reduce((s, p) => s + parseNum(p.amount), 0)
+      const paidCurrent = currentPayments.reduce((s, p) => s + parseNum(p.amount), 0)
+      const advancesTotal = advances.reduce((s, a) => s + parseNum(a.amount), 0)
+      return { row: r, txns, payments, advances, paidCash, paidBank, paidPrevious, paidCurrent, advancesTotal, totalMovement: paidCash + paidBank + advancesTotal, openingDebt: Math.max(0, parseNum(r.opening_balance)) }
+    })
+    .filter(x => x.txns.length || x.openingDebt > 0)
+  const salaryReportGroupsForSelectedDate = staffGroupOptions(branches)
+    .map(g => {
+      const items = salaryReportRowsForSelectedDate.filter(x => employeeGroupId(x.row.employees) === g.id)
+      const visibleItems = items.filter(x => canSeeSalaryValue(x.row))
+      return {
+        ...g,
+        items,
+        visibleItems,
+        totalCash: visibleItems.reduce((s, x) => s + x.paidCash, 0),
+        totalBank: visibleItems.reduce((s, x) => s + x.paidBank, 0),
+        totalPreviousPaid: visibleItems.reduce((s, x) => s + x.paidPrevious, 0),
+        totalCurrentPaid: visibleItems.reduce((s, x) => s + x.paidCurrent, 0),
+        totalAdvances: visibleItems.reduce((s, x) => s + x.advancesTotal, 0),
+        totalPaid: visibleItems.reduce((s, x) => s + x.paidCash + x.paidBank, 0),
+        totalMovement: visibleItems.reduce((s, x) => s + x.totalMovement, 0),
+        totalOpeningDebt: visibleItems.reduce((s, x) => s + x.openingDebt, 0)
+      }
+    })
+    .filter(g => g.items.length)
+  const salaryReportDayPaidTotal = salaryReportGroupsForSelectedDate.reduce((s, g) => s + g.totalPaid, 0)
+  const salaryReportDayAdvanceTotal = salaryReportGroupsForSelectedDate.reduce((s, g) => s + g.totalAdvances, 0)
+  const salaryReportDayMovementTotal = salaryReportGroupsForSelectedDate.reduce((s, g) => s + g.totalMovement, 0)
+  const salaryReportDayPreviousTotal = salaryReportGroupsForSelectedDate.reduce((s, g) => s + g.totalPreviousPaid, 0)
+  const salaryReportDayCurrentTotal = salaryReportGroupsForSelectedDate.reduce((s, g) => s + g.totalCurrentPaid, 0)
+  const salaryReportDayOpeningTotal = salaryReportGroupsForSelectedDate.reduce((s, g) => s + g.totalOpeningDebt, 0)
+  const moneyVisibleRows = rows.filter(r => canSeeSalaryValue(r))
+
+  const totals = moneyVisibleRows.reduce((acc, r) => {
+    acc.gross += parseNum(r.salary_gross)
+    acc.advances += parseNum(r.advance_amount)
+    acc.deductions += parseNum(r.deduction_amount)
+    acc.net += parseNum(r.salary_net)
+    acc.opening += parseNum(r.opening_balance)
+    acc.payments += parseNum(r.payroll_payments)
+    acc.balance += parseNum(r.final_balance)
+    acc.card += parseNum(r.card_payment)
+    acc.cash += parseNum(r.cash_payment)
+    return acc
+  }, { gross: 0, advances: 0, deductions: 0, net: 0, opening: 0, payments: 0, balance: 0, card: 0, cash: 0 })
+
+  const branchTotals = staffGroupOptions(branches).map(b => {
+    const branchRows = rows.filter(r => employeeGroupId(r.employees) === b.id)
+    const visibleBranchRows = branchRows.filter(r => canSeeSalaryValue(r))
+    const masked = branchRows.length > 0 && visibleBranchRows.length === 0
+    return {
+      id: b.id,
+      name: b.name,
+      employees: new Set(branchRows.map(r => r.employee_id)).size,
+      masked,
+      gross: visibleBranchRows.reduce((s, r) => s + parseNum(r.salary_gross), 0),
+      advances: visibleBranchRows.reduce((s, r) => s + parseNum(r.advance_amount), 0),
+      deductions: visibleBranchRows.reduce((s, r) => s + parseNum(r.deduction_amount), 0),
+      net: visibleBranchRows.reduce((s, r) => s + parseNum(r.salary_net), 0),
+      opening: visibleBranchRows.reduce((s, r) => s + parseNum(r.opening_balance), 0),
+      payments: visibleBranchRows.reduce((s, r) => s + parseNum(r.payroll_payments), 0),
+      balance: visibleBranchRows.reduce((s, r) => s + parseNum(r.final_balance), 0)
+    }
+  }).filter(b => branchId === 'all' ? (b.gross || b.advances || b.net || b.balance || b.employees || b.masked) : b.id === branchId)
+
+  const branchTotalsGrand = branchTotals.reduce((acc, b) => {
+    acc.employees += parseNum(b.employees)
+    if (b.masked) acc.hasMasked = true
+    acc.gross += parseNum(b.gross)
+    acc.advances += parseNum(b.advances)
+    acc.payments += parseNum(b.payments)
+    acc.balance += parseNum(b.balance)
+    return acc
+  }, { employees: 0, gross: 0, advances: 0, payments: 0, balance: 0, hasMasked: false })
+
+
+  function employeePaidAmount(employeeId) {
+    return salaryPayments
+      .filter(p => p.employee_id === employeeId && !p.is_cancelled)
+      .reduce((s, p) => s + parseNum(p.amount), 0)
+  }
+
+  const salaryRows = rows.filter(r => r.employees?.employment_status !== 'terminated' && r.employees?.is_active !== false)
+  const archiveRows = rows.filter(r => r.employees?.employment_status === 'terminated' || r.employees?.is_active === false)
+  const salaryGroups = staffGroupOptions(branches)
+    .map(g => ({ ...g, rows: salaryRows.filter(r => employeeGroupId(r.employees) === g.id) }))
+    .filter(g => (branchId === 'all' ? g.rows.length : g.id === branchId))
+  const visibleSalaryRowsCount = salaryGroups.reduce((s, g) => s + (expandedSalaryGroups[g.id] ? g.rows.length : Math.min(g.rows.length, 1)), 0)
+
+  function salaryRoleKey(position) {
+    const p = String(position || '').trim().toLowerCase()
+    if (p.includes('повар') || p.includes('кух') || p.includes('кухар') || p.includes('су-шеф') || p.includes('су шеф') || p.includes('шеф-повар') || p.includes('шеф повар') || p.includes('chef') || p.includes('cook') || p.includes('kitchen') || p.includes('aşpaz') || p.includes('ashpaz') || p.includes('povar')) return 'cook'
+    if (p.includes('бариста') || p.includes('бармен') || p === 'бар' || p.includes('бар ') || p.includes('barista') || p.includes('barmen')) return 'bar'
+    if (p.includes('стюард') || p.includes('стьюард') || p.includes('стюарт') || p.includes('стьюарт') || p.includes('steward') || p.includes('stew')) return 'steward'
+    return 'other'
+  }
+
+  function salaryRoleLabel(position) {
+    const key = salaryRoleKey(position)
+    if (key === 'cook') return 'Повар'
+    if (key === 'bar') return 'Бар'
+    if (key === 'steward') return 'Стьюард'
+    return position || 'Прочее'
+  }
+
+  function salaryRoleStats(rows) {
+    return rows.reduce((acc, r) => {
+      const key = salaryRoleKey(r?.employees?.position)
+      if (key === 'cook') acc.cook += 1
+      else if (key === 'bar') acc.bar += 1
+      else if (key === 'steward') acc.steward += 1
+      else acc.other += 1
+      return acc
+    }, { cook: 0, bar: 0, steward: 0, other: 0 })
+  }
+
+  function salaryGroupMetaText(rows) {
+    const stats = salaryRoleStats(rows)
+    return `сотрудников: ${rows.length} (повара: ${stats.cook} · бар: ${stats.bar} · стьюард: ${stats.steward}${stats.other ? ` · прочее: ${stats.other}` : ''})`
+  }
+
+  function positionGroupRows(rows) {
+    const sorted = [...rows].sort((a, b) => {
+      const order = { cook: 1, bar: 2, steward: 3, other: 9 }
+      const aKey = salaryRoleKey(a?.employees?.position)
+      const bKey = salaryRoleKey(b?.employees?.position)
+      if (order[aKey] !== order[bKey]) return order[aKey] - order[bKey]
+      const aPos = String(a?.employees?.position || '')
+      const bPos = String(b?.employees?.position || '')
+      const posCmp = aPos.localeCompare(bPos, 'ru')
+      if (posCmp !== 0) return posCmp
+      return String(a?.employees?.full_name || '').localeCompare(String(b?.employees?.full_name || ''), 'ru')
+    })
+    const result = []
+    let prevLabel = ''
+    sorted.forEach((row, idx) => {
+      const label = salaryRoleLabel(row?.employees?.position)
+      if (idx > 0 && label !== prevLabel) result.push({ __separator: true, id: `sep-${idx}-${label}`, label })
+      result.push({ __separator: false, row, id: row.id || row.employee_id || `row-${idx}` })
+      prevLabel = label
+    })
+    return result
+  }
+
+  function printSalaryEmployeesPdf() {
+    const title = `Зарплаты сотрудников · ${I18N.ru.months[Number(month) - 1]} ${year}`
+    const branchTitle = branchId === 'all' ? 'Все филиалы и группы' : (staffGroupOptions(branches).find(b => b.id === branchId)?.name || 'Филиал')
+
+    const renderRows = groupRows => positionGroupRows(groupRows).map(item => {
+      if (item.__separator) return `<tr class="role-divider"><td colspan="9">${item.label}</td></tr>`
+      const r = item.row
+      const hidden = !canSeeSalaryValue(r)
+      return `<tr>
+        <td><b>${r.employees?.full_name || ''}</b></td>
+        <td>${r.employees?.position || '—'}</td>
+        <td>${hidden ? '***' : fmt(r.employees?.monthly_salary)}</td>
+        <td>${fmt(r.worked_days)}</td>
+        <td>${hidden ? '***' : fmt(r.salary_gross)}</td>
+        <td>${hidden ? '***' : fmt(r.advance_amount)}</td>
+        <td>${hidden ? '***' : fmt(r.payroll_payments)}</td>
+        <td class="pay">${hidden ? '***' : fmt(r.final_balance)}</td>
+        <td>${r.employees?.employment_status === 'terminated' || r.employees?.is_active === false ? 'Уволен' : 'Активный'}</td>
+      </tr>`
+    }).join('')
+
+    const groupHtml = salaryGroups.map(group => {
+      const visibleRows = group.rows.filter(r => canSeeSalaryValue(r))
+      const groupTotal = visibleRows.reduce((s, r) => s + parseNum(r.final_balance), 0)
+      return `<section class="group">
+        <div class="group-head"><b>${group.name}</b><span>К оплате: <strong>${fmt(groupTotal)} AZN</strong> · ${salaryGroupMetaText(group.rows)}</span></div>
+        <table>
+          <thead><tr><th>Сотрудник</th><th>Должность</th><th>Ставка</th><th>Дни</th><th>Начислено</th><th>Авансы</th><th>Выплачено</th><th>К оплате</th><th>Статус</th></tr></thead>
+          <tbody>${renderRows(group.rows) || '<tr><td colspan="9">Нет сотрудников</td></tr>'}</tbody>
+        </table>
+        <div class="total">Итого к оплате по филиалу: <b>${fmt(groupTotal)} AZN</b></div>
+      </section>`
+    }).join('')
+
+    const totalToPay = moneyVisibleRows.reduce((s, r) => s + parseNum(r.final_balance), 0)
+    const html = `<!doctype html><html><head><meta charset="utf-8"><title>${title}</title><style>
+      body{font-family:Arial,sans-serif;padding:24px;color:#17251d;background:#fffaf2}
+      h2{margin:0 0 6px}.muted{color:#777;margin-bottom:16px}
+      .summary{display:flex;gap:12px;margin:14px 0 18px}
+      .box{border:1px solid #ddd1bf;border-radius:14px;padding:10px 14px;background:#fff}
+      .box b{display:block;font-size:18px}
+      .group{border:1px solid #ddd1bf;border-radius:16px;overflow:hidden;margin:14px 0;background:#fffdf8}
+      .group-head{display:flex;justify-content:space-between;gap:12px;align-items:center;background:#f0e8d8;padding:12px 14px;font-size:15px}
+      .group-head strong{color:#b91c1c;font-weight:900}
+      table{width:100%;border-collapse:collapse;font-size:11px}
+      .role-divider td{border-top:2px dotted #b7a791;background:#fff8ef;font-weight:700;color:#6b7280}
+      th,td{border-bottom:1px solid #e6dac8;padding:7px;text-align:left}
+      th{background:#fffaf2;color:#536057}
+      .pay{color:#b91c1c;font-weight:900}
+      .total{padding:10px 14px;text-align:right;color:#b91c1c;font-weight:700}
+      .total b{font-size:17px}
+      .grand{margin-top:18px;border-radius:16px;padding:14px 18px;background:#fff;border:1px solid #ddd1bf;text-align:right;color:#b91c1c;font-weight:800}
+      .grand b{font-size:22px}
+    </style></head><body>
+      <h2>${title}</h2>
+      <div class="muted">${branchTitle}</div>
+      <div class="summary">
+        <div class="box">Начислено<b>${fmt(totals.gross)}</b></div>
+        <div class="box">Выплачено<b>${fmt(totals.payments)}</b></div>
+        <div class="box">Общая сумма к оплате<b>${fmt(totalToPay)}</b></div>
+      </div>
+      ${groupHtml || '<p>Нет сотрудников</p>'}
+      <div class="grand">Общая сумма к оплате: <b>${fmt(totalToPay)} AZN</b></div>
+    </body></html>`
+    const w = window.open('', '_blank')
+    if (!w) return
+    w.document.write(html)
+    w.document.close()
+    w.focus()
+    w.print()
+  }
+
+
+  const salarySheetRows = rows
+    .filter(r => r.employees?.employment_status !== 'terminated' && r.employees?.is_active !== false)
+    .map(r => ({
+      employee_id: r.employee_id,
+      branch: employeeGroupName(r.employees),
+      employee: r.employees?.full_name || '—',
+      position: r.employees?.position || '—',
+      days: parseNum(r.worked_days),
+      base_salary: parseNum(r.employees?.monthly_salary),
+      accrued: parseNum(r.salary_gross),
+      advances: parseNum(r.advance_amount),
+      to_pay: parseNum(r.final_balance)
+    }))
+    .sort((a, b) => String(a.branch).localeCompare(String(b.branch)) || String(a.position).localeCompare(String(b.position)) || String(a.employee).localeCompare(String(b.employee)))
+
+  const salarySheetTotals = salarySheetRows.reduce((acc, r) => {
+    acc.base += parseNum(r.base_salary)
+    acc.accrued += parseNum(r.accrued)
+    acc.advances += parseNum(r.advances)
+    acc.toPay += parseNum(r.to_pay)
+    return acc
+  }, { base: 0, accrued: 0, advances: 0, toPay: 0 })
+
+  function exportSalarySheetCsv() {
+    const headers = ['Филиал', 'Сотрудник', 'Должность', 'Дни', 'Базовая зарплата', 'Начислено', 'Авансы', 'К выплате']
+    const escapeCsv = value => `"${String(value ?? '').replace(/"/g, '""')}"`
+    const lines = [
+      headers.map(escapeCsv).join(';'),
+      ...salarySheetRows.map(r => [
+        r.branch,
+        r.employee,
+        r.position,
+        fmt(r.days),
+        fmt(r.base_salary),
+        fmt(r.accrued),
+        fmt(r.advances),
+        fmt(r.to_pay)
+      ].map(escapeCsv).join(';')),
+      ['ИТОГО', '', '', '', fmt(salarySheetTotals.base), fmt(salarySheetTotals.accrued), fmt(salarySheetTotals.advances), fmt(salarySheetTotals.toPay)].map(escapeCsv).join(';')
+    ]
+    const blob = new Blob(['\ufeff' + lines.join('\n')], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `salary-sheet-${year}-${String(month).padStart(2, '0')}.csv`
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    URL.revokeObjectURL(url)
+  }
+
+  function printSalarySheet() {
+    const title = `Зарплатный лист · ${I18N.ru.months[Number(month) - 1]} ${year}`
+    const rowsHtml = salarySheetRows.map(r => `<tr>
+      <td>${r.branch}</td>
+      <td><b>${r.employee}</b></td>
+      <td>${r.position}</td>
+      <td class="num">${fmt(r.days)}</td>
+      <td class="num">${fmt(r.base_salary)}</td>
+      <td class="num">${fmt(r.accrued)}</td>
+      <td class="num">${fmt(r.advances)}</td>
+      <td class="num pay">${fmt(r.to_pay)}</td>
+    </tr>`).join('')
+    const html = `<!doctype html><html><head><meta charset="utf-8"><title>${title}</title>
+      <style>
+        @page { size: A4 portrait; margin: 12mm; }
+        * { box-sizing: border-box; }
+        body{font-family:Arial,sans-serif;background:#f4f6f8;margin:0;padding:0;color:#17212f}
+        .page{width:210mm;min-height:297mm;margin:0 auto;padding:12mm;background:#fff}
+        h1{margin:0 0 5px;font-size:20px}
+        .muted{color:#667085;margin-bottom:12px;font-size:12px}
+        .sheet{background:#fff}
+        table{width:100%;border-collapse:collapse;font-size:10.5px;table-layout:fixed}
+        th{background:#eef2f7;color:#475569;text-align:left;padding:6px;border-bottom:1px solid #d7dee8}
+        td{padding:6px;border-bottom:1px solid #e5e9ef;vertical-align:top;word-break:break-word}
+        th:nth-child(1),td:nth-child(1){width:17%}
+        th:nth-child(2),td:nth-child(2){width:22%}
+        th:nth-child(3),td:nth-child(3){width:15%}
+        th:nth-child(4),td:nth-child(4){width:7%}
+        th:nth-child(5),td:nth-child(5){width:13%}
+        th:nth-child(6),td:nth-child(6){width:12%}
+        th:nth-child(7),td:nth-child(7){width:10%}
+        th:nth-child(8),td:nth-child(8){width:12%}
+        thead{display:table-header-group}
+        tfoot{display:table-row-group}
+        tr{page-break-inside:avoid}
+        .num{text-align:right;white-space:nowrap}
+        .pay{font-weight:900;color:#166534}
+        tfoot td{background:#f8fafc;font-weight:900;border-top:2px solid #cbd5e1}
+        .actions{width:210mm;margin:0 auto 10px;padding-top:10px}
+        button{border:0;border-radius:10px;padding:9px 14px;background:#475569;color:white;font-weight:800}
+        @media print{body{background:white}.actions{display:none}.page{width:auto;min-height:auto;margin:0;padding:0}.sheet{border:0;border-radius:0}}
+      </style></head><body>
+      <div class="actions"><button onclick="window.print()">PDF/Print</button></div>
+      <div class="page"><div class="sheet">
+        <h1>${title}</h1>
+        <div class="muted">${branchId === 'all' ? 'Все филиалы и группы' : (staffGroupOptions(branches).find(b => b.id === branchId)?.name || 'Филиал')}</div>
+        <table>
+          <thead><tr><th>Филиал</th><th>Сотрудник</th><th>Должность</th><th class="num">Дни</th><th class="num">Базовая зарплата</th><th class="num">Начислено</th><th class="num">Авансы</th><th class="num">К выплате</th></tr></thead>
+          <tbody>${rowsHtml || '<tr><td colspan="8">Нет данных</td></tr>'}</tbody>
+          <tfoot><tr><td colspan="3">Итого</td><td class="num">—</td><td class="num">${fmt(salarySheetTotals.base)}</td><td class="num">${fmt(salarySheetTotals.accrued)}</td><td class="num">${fmt(salarySheetTotals.advances)}</td><td class="num pay">${fmt(salarySheetTotals.toPay)}</td></tr></tfoot>
+        </table>
+      </div></div>
+    </body></html>`
+    const w = window.open('', '_blank', 'width=1100,height=760')
+    if (!w) return setMessage('Браузер заблокировал окно печати')
+    w.document.open()
+    w.document.write(html)
+    w.document.close()
+    w.focus()
+  }
+
+  if (view === 'sheet') {
+    return <section className="salary-section salary-view-sheet">
+      <section className="topbar">
+        <div>
+          <h2>Зарплатный лист</h2>
+          <p>Компактная таблица по сотрудникам: филиал, должность, дни, базовая зарплата, начислено, авансы и сумма к выплате.</p>
+        </div>
+        <div className="action-row">
+          <button className="ghost small" onClick={exportSalarySheetCsv}>CSV</button>
+          <button className="small primary" onClick={printSalarySheet}>PDF/Print</button>
+        </div>
+      </section>
+
+      <section className="grid">
+        <div className="card span-2">
+          <div className="form-grid compact">
+            <label><span>{t('year')}</span><select value={year} onChange={e => setYear(Number(e.target.value))}>{defaultYears().map(y => <option key={y} value={y}>{y}</option>)}</select></label>
+            <label><span>{t('month')}</span><select value={month} onChange={e => setMonth(Number(e.target.value))}>{I18N.ru.months.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}</select></label>
+            <label><span>Филиал / группа</span><select value={branchId} onChange={e => setBranchId(e.target.value)}><option value="all">Все филиалы и менеджеры</option>{staffGroupOptions(branches).map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label>
+            <label><span>Позиция</span><select value={positionFilter} onChange={e => setPositionFilter(e.target.value)}><option value="all">Все позиции</option>{STAFF_POSITION_GROUPS.map(p => <option key={p} value={p}>{p}</option>)}</select></label>
+          </div>
+          <div className="salary-kpi-grid salary-kpi-grid-sheet">
+            <div className="salary-kpi-card salary-kpi-neutral"><span>Дни</span><strong>—</strong><small>по табелю</small></div>
+            <div className="salary-kpi-card salary-kpi-blue"><span>Базовая зарплата</span><strong>{fmt(salarySheetTotals.base)}</strong><small>AZN</small></div>
+            <div className="salary-kpi-card salary-kpi-green"><span>Начислено</span><strong>{fmt(salarySheetTotals.accrued)}</strong><small>AZN</small></div>
+            <div className="salary-kpi-card salary-kpi-orange"><span>Авансы</span><strong>{fmt(salarySheetTotals.advances)}</strong><small>AZN</small></div>
+            <div className="salary-kpi-card salary-kpi-balance"><span>К выплате</span><strong className={salarySheetTotals.toPay >= 0 ? 'good' : 'bad'}>{fmt(salarySheetTotals.toPay)}</strong><small>итог</small></div>
+          </div>
+          {shouldHideManagerSalaries && <p className="hint">Менеджерские зарплаты скрыты по правам текущего пользователя.</p>}
+          {message && <p className={`hint ${message === t('saved') ? 'save-status' : message.includes('Файл') ? 'good' : 'bad'}`}>{message}</p>}
+        </div>
+
+        <div className="card span-2">
+          <div className="card-head">
+            <div>
+              <h3>Список сотрудников</h3>
+              <p className="hint">К выплате выделено жирным цветом. Экспорт доступен в CSV и PDF/Print.</p>
+            </div>
+            <span className="hint">{salarySheetRows.length} сотрудников</span>
+          </div>
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Филиал</th>
+                  <th>Сотрудник</th>
+                  <th>Должность</th>
+                  <th>Дни</th>
+                  <th>Базовая зарплата</th>
+                  <th>Начислено</th>
+                  <th>Авансы</th>
+                  <th>К выплате</th>
+                </tr>
+              </thead>
+              <tbody>
+                {salarySheetRows.map(r => <tr key={r.employee_id}>
+                  <td>{r.branch}</td>
+                  <td><strong>{r.employee}</strong></td>
+                  <td>{r.position}</td>
+                  <td>{fmt(r.days)}</td>
+                  <td>{fmt(r.base_salary)}</td>
+                  <td>{fmt(r.accrued)}</td>
+                  <td>{fmt(r.advances)}</td>
+                  <td><strong className={r.to_pay >= 0 ? 'good' : 'bad'}>{fmt(r.to_pay)}</strong></td>
+                </tr>)}
+                {!salarySheetRows.length && <tr><td colSpan="8" className="hint">Нет данных за выбранный период.</td></tr>}
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td colSpan="3"><strong>Итого</strong></td>
+                  <td><strong>—</strong></td>
+                  <td><strong>{fmt(salarySheetTotals.base)}</strong></td>
+                  <td><strong>{fmt(salarySheetTotals.accrued)}</strong></td>
+                  <td><strong>{fmt(salarySheetTotals.advances)}</strong></td>
+                  <td><strong className={salarySheetTotals.toPay >= 0 ? 'good' : 'bad'}>{fmt(salarySheetTotals.toPay)}</strong></td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+      </section>
+    </section>
+  }
+
+  return <section className={`salary-section salary-view-${view} attendance-card`}>
+    <section className="topbar"><div><h2>{t('salaries_tab')}</h2><p>Начисленные зарплаты, авансы и остатки по сотрудникам, филиалам и общей сумме.</p></div></section>
+    <section className="grid">
+      <div className="card span-2">
+        <div className="form-grid compact">
+          <label><span>{t('year')}</span><select value={year} onChange={e => setYear(Number(e.target.value))}>{defaultYears().map(y => <option key={y} value={y}>{y}</option>)}</select></label>
+          <label><span>{t('month')}</span><select value={month} onChange={e => setMonth(Number(e.target.value))}>{I18N.ru.months.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}</select></label>
+          <label><span>Филиал / группа</span><select value={branchId} onChange={e => setBranchId(e.target.value)}><option value="all">Все филиалы и менеджеры</option>{staffGroupOptions(branches).map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label>
+          <label><span>Позиция</span><select value={positionFilter} onChange={e => setPositionFilter(e.target.value)}><option value="all">Все позиции</option>{STAFF_POSITION_GROUPS.map(p => <option key={p} value={p}>{p}</option>)}</select></label>
+        </div>
+        <div className="salary-kpi-grid">
+          <div className="salary-kpi-card salary-kpi-green"><span>Начислено</span><strong>{fmt(totals.gross)}</strong><small>AZN · за месяц</small></div>
+          <div className="salary-kpi-card salary-kpi-orange"><span>Авансы</span><strong>{fmt(totals.advances)}</strong><small>AZN · выдано</small></div>
+          <div className="salary-kpi-card salary-kpi-red"><span>Удержания</span><strong>{fmt(totals.deductions)}</strong><small>AZN · корректировки</small></div>
+          <div className="salary-kpi-card salary-kpi-blue"><span>Долг на начало</span><strong>{fmt(totals.opening)}</strong><small>AZN · прошлый период</small></div>
+          <div className="salary-kpi-card salary-kpi-purple"><span>Выплачено</span><strong>{fmt(totals.payments)}</strong><small>AZN · за месяц</small></div>
+          <div className="salary-kpi-card salary-kpi-balance"><span>Итоговый баланс</span><strong className={totals.balance >= 0 ? 'good' : 'bad'}>{fmt(totals.balance)}</strong><small>{totals.balance >= 0 ? 'к выплате' : 'переплата'}</small></div>
+        </div>
+        {shouldHideManagerSalaries
+          ? <p className="hint">Зарплаты менеджерского состава скрыты для текущего пользователя: суммы заменены на замутнённые значения.</p>
+          : <p className="hint">Маскировка зарплат менеджеров для текущего пользователя выключена.</p>}
+        {message && <p className={`hint ${message === t('saved') ? 'save-status' : message.includes('Файл') || message.includes('обнулены') ? 'good' : 'bad'}`}>{message}</p>}
+      </div>
+
+      {isAdmin && <div className="card span-2">
+        <div className="card-head">
+          <div>
+            <h3>Очистка остатков по зарплатам</h3>
+            <p className="hint">Используй, если нужно начать зарплатный учёт с чистого листа. Обнуляет долги и переплаты до выбранного месяца, не удаляя сотрудников и текущие авансы.</p>
+          </div>
+          <button className="danger small" onClick={clearSalaryOpeningBalances}>Обнулить остатки до выбранного месяца</button>
+        </div>
+        <p className="hint">Выбранный стартовый месяц: <b>{I18N.ru.months[Number(month) - 1]} {year}</b>. После операции колонка “Долг на начало” и старые остатки перестанут влиять на “К оплате”.</p>
+      </div>}
+
+      <div className="card span-2">
+        <h3>Сводка по филиалам</h3>
+        <div className="table-wrap"><table>
+          <thead><tr><th>Филиал / группа</th><th>Сотр.</th><th>Начислено</th><th>Авансы</th><th>Выплачено</th><th>К оплате</th></tr></thead>
+          <tbody>
+            {branchTotals.map(b => <tr key={b.id}><td>{b.name}</td><td><strong>{b.employees}</strong></td><td>{b.masked ? maskedMoney : fmt(b.gross)}</td><td>{b.masked ? maskedMoney : fmt(b.advances)}</td><td>{b.masked ? maskedMoney : fmt(b.payments)}</td><td>{b.masked ? maskedMoney : <strong className={b.balance >= 0 ? '' : 'bad'}>{fmt(b.balance)}</strong>}</td></tr>)}
+            {branchTotals.length > 0 && <tr className="system-row"><td><b>Итого</b></td><td><strong>{branchTotalsGrand.employees}</strong></td><td><b>{branchTotalsGrand.hasMasked ? maskedMoney : fmt(branchTotalsGrand.gross)}</b></td><td><b>{branchTotalsGrand.hasMasked ? maskedMoney : fmt(branchTotalsGrand.advances)}</b></td><td><b>{branchTotalsGrand.hasMasked ? maskedMoney : fmt(branchTotalsGrand.payments)}</b></td><td>{branchTotalsGrand.hasMasked ? maskedMoney : <strong className={branchTotalsGrand.balance >= 0 ? '' : 'bad'}>{fmt(branchTotalsGrand.balance)}</strong>}</td></tr>}
+            {!branchTotals.length && <tr><td colSpan="6" className="hint">Нет данных за выбранный период.</td></tr>}
+          </tbody>
+        </table></div>
+      </div>
+
+      <div className="card span-2">
+        <h3>Выплата зарплаты за выбранный месяц</h3>
+        {message && <p className={`hint ${message.includes('сохранён') ? 'save-status' : message.includes('закрыт') || message.includes('оплата') || message.includes('обновлена') ? 'good' : 'bad'}`}>{message}</p>}
+        <p className="hint">Например, зарплату за апрель можно выплатить 1 или 2 мая — она всё равно закроет апрель. Остаток прошлого месяца можно сначала внести вручную через галочку, а оплату этого остатка — отдельной галочкой. Эти суммы не попадают в авансы текущего месяца.</p>
+        <div className="form-grid compact">
+          <label><span>Филиал / группа</span><select value={paymentBranchId} onChange={e => { setPaymentBranchId(e.target.value); const first = rows.find(r => e.target.value === 'all' || employeeGroupId(r.employees) === e.target.value); setPaymentForm(f => ({ ...f, employee_id: first?.employee_id || '' })) }}><option value="all">Все филиалы и менеджеры</option>{staffGroupOptions(branches).map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label><label><span>Сотрудник</span><select value={paymentForm.employee_id} onChange={e => setPaymentForm({ ...paymentForm, employee_id: e.target.value })}>{paymentRows.map(r => <option key={r.employee_id} value={r.employee_id}>{employeeGroupName(r.employees)} · {r.employees?.full_name}</option>)}</select></label>
+          <label><span>Дата выплаты</span><input type="date" value={paymentForm.payment_date} onChange={e => { setPaymentForm({ ...paymentForm, payment_date: e.target.value }); setDailyPaymentDate(e.target.value) }} /></label>
+          <label><span>Оплата зарплаты выбранного месяца</span><input inputMode="decimal" value={paymentForm.amount} onChange={e => setPaymentForm({ ...paymentForm, amount: e.target.value })} /></label>
+          <label><span>Способ</span><select value={paymentForm.method} onChange={e => setPaymentForm({ ...paymentForm, method: e.target.value })}><option value="cash">Наличные</option><option value="bank">Банк</option></select></label>
+
+          <div className="notice" style={{gridColumn:'span 2', padding:12}}>
+            <label className="checkbox-row"><input type="checkbox" checked={useManualPreviousSalaryBalance} onChange={e => setUseManualPreviousSalaryBalance(e.target.checked)} /> Ввести долг / остаток зарплаты прошлого месяца вручную</label>
+            <p className="hint">Используется при запуске программы с нуля, если долг уже существовал до начала учёта.</p>
+            {useManualPreviousSalaryBalance && <label><span>Сумма долга прошлого месяца</span><input inputMode="decimal" value={paymentForm.manual_previous_balance} onChange={e => setPaymentForm({ ...paymentForm, manual_previous_balance: e.target.value })} placeholder="Например: 930" /></label>}
+          </div>
+
+          <div className="notice" style={{gridColumn:'span 2', padding:12}}>
+            <label className="checkbox-row"><input type="checkbox" checked={usePreviousSalaryBalance} onChange={e => setUsePreviousSalaryBalance(e.target.checked)} /> Оплатить долг / остаток зарплаты прошлого месяца</label>
+            <p className="hint">Эта сумма закрывает прошлый месяц и не попадает в авансы текущего месяца.</p>
+            {usePreviousSalaryBalance && <label><span>Сумма оплаты долга прошлого месяца</span><input inputMode="decimal" value={paymentForm.previous_amount} onChange={e => setPaymentForm({ ...paymentForm, previous_amount: e.target.value })} placeholder="Например: 930" /></label>}
+          </div>
+
+          <label style={{gridColumn:'span 2'}}><span>Комментарий</span><input value={paymentForm.comment} onChange={e => setPaymentForm({ ...paymentForm, comment: e.target.value })} placeholder="Например: закрытие зарплаты за апрель" /></label>
+          <div style={{gridColumn:'span 2'}}><button className="primary" onClick={addSalaryPayment}>+ Сохранить операцию</button></div>
+        </div>
+        {selectedPaymentRow && <div className="mini-grid" style={{marginTop:12}}>
+          <div className="metric"><span>Итого к оплате</span><strong className={selectedTotalDebt > 0 ? 'bad' : ''}>{selectedPaymentCanSee ? fmt(selectedTotalDebt) : maskedMoney}</strong></div>
+          <div className="metric"><span>Долг / остаток прошлого месяца</span><strong>{selectedPaymentCanSee ? fmt(selectedOpeningDebt) : maskedMoney}</strong></div>
+          <div className="metric"><span>Текущий остаток месяца</span><strong>{selectedPaymentCanSee ? fmt(selectedCurrentDebt) : maskedMoney}</strong></div>
+          <div className="metric"><span>Уже оплачено наличными</span><strong>{selectedPaymentCanSee ? fmt(selectedPaidCash) : maskedMoney}</strong></div>
+          <div className="metric"><span>Уже оплачено банком</span><strong>{selectedPaymentCanSee ? fmt(selectedPaidCard) : maskedMoney}</strong></div>
+          <div className="metric"><span>Уже оплачено всего</span><strong>{selectedPaymentCanSee ? fmt(selectedPaidTotal) : maskedMoney}</strong></div>
+        </div>}
+      </div>
+
+      <div className="card span-2">
+        <div className="card-head">
+          <div>
+            <h3>Отчёты зарплат за выбранный день</h3>
+            <p className="hint">Единый отчёт по выплатам зарплаты, оплате остатков прошлого месяца и авансам за выбранную дату.</p>
+          </div>
+        </div>
+        <div className="form-grid compact" style={{marginBottom:12}}>
+          <label><span>Выбрать день отчёта</span><input type="date" value={dailyPaymentDate} onChange={e => setDailyPaymentDate(e.target.value)} /></label>
+        </div>
+        <div className="mini-grid">
+          <div className="metric"><span>Дата</span><strong>{dailyPaymentDate}</strong></div>
+          <div className="metric"><span>Выплаты зарплаты</span><strong>{fmt(salaryReportDayPaidTotal)}</strong></div>
+          <div className="metric"><span>Авансы</span><strong>{fmt(salaryReportDayAdvanceTotal)}</strong></div>
+          <div className="metric"><span>Всего движение</span><strong>{fmt(salaryReportDayMovementTotal)}</strong></div>
+          <div className="metric"><span>Оплата остатка прошлого месяца</span><strong>{fmt(salaryReportDayPreviousTotal)}</strong></div>
+          <div className="metric"><span>Оплата выбранного месяца</span><strong>{fmt(salaryReportDayCurrentTotal)}</strong></div>
+          <div className="metric"><span>Остаток прошлого месяца</span><strong className={salaryReportDayOpeningTotal > 0 ? 'bad' : ''}>{fmt(salaryReportDayOpeningTotal)}</strong></div>
+        </div>
+        {salaryReportGroupsForSelectedDate.map(group => {
+          const expanded = Boolean(expandedPaymentGroups[group.id])
+          const shown = expanded ? group.items : group.items.slice(0, 1)
+          return <div key={`salary-report-${group.id}`} className="supplier-entity-group">
+            <div className="supplier-entity-head">
+              <b>{group.name}</b>
+              <span>Выплаты: <strong>{fmt(group.totalPaid)}</strong> · авансы: <strong>{fmt(group.totalAdvances)}</strong> · всего: <strong>{fmt(group.totalMovement)}</strong> · сотрудников: {group.items.length}</span>
+            </div>
+            <div className="table-wrap">
+              <table>
+                <thead><tr><th>Сотрудник</th><th>Должность</th><th>Операция</th><th>Сумма</th><th>Способ</th><th>Комментарий</th><th>Остаток прошлого месяца</th><th>Ред.</th></tr></thead>
+                <tbody>
+                  {shown.map(item => {
+                    const r = item.row
+                    const hidden = !canSeeSalaryValue(r)
+                    const txns = item.txns.length ? item.txns : [{ txn_id: `empty-${r.employee_id}`, txn_type: 'empty', operation: 'Нет операции', amount: 0, method_label: '—', comment: '' }]
+                    return txns.map((txn, txIdx) => {
+                      const isEditing = editingSalaryTxn?.txn_id === txn.txn_id
+                      return <tr key={`${txn.txn_id}-${txIdx}`}>
+                        {txIdx === 0 && <td rowSpan={txns.length}><b>{r.employees?.full_name}</b></td>}
+                        {txIdx === 0 && <td rowSpan={txns.length}>{r.employees?.position || '—'}</td>}
+                        <td>{txn.operation}</td>
+                        <td>{isEditing
+                          ? <input style={{width:90}} inputMode="decimal" value={editingSalaryTxn.amount} onChange={e => setEditingSalaryTxn(x => ({...x, amount: e.target.value}))} />
+                          : hidden ? maskedMoney : <b>{fmt(txn.amount)}</b>}</td>
+                        <td>{isEditing && txn.txn_type === 'payment'
+                          ? <select value={editingSalaryTxn.method || 'cash'} onChange={e => setEditingSalaryTxn(x => ({...x, method: e.target.value}))}><option value="cash">Наличные</option><option value="bank">Банк</option></select>
+                          : txn.method_label}</td>
+                        <td>{isEditing
+                          ? <input value={editingSalaryTxn.comment || ''} onChange={e => setEditingSalaryTxn(x => ({...x, comment: e.target.value}))} />
+                          : (txn.comment || '—')}</td>
+                        {txIdx === 0 && <td rowSpan={txns.length} className={item.openingDebt > 0 ? 'bad' : ''}>{hidden ? maskedMoney : fmt(item.openingDebt)}</td>}
+                        <td>{txn.txn_type === 'empty' ? '—' : isEditing
+                          ? <div className="action-row"><button className="small primary" onClick={() => updateSalaryTransaction(txn, txn.txn_type === 'advance' ? { amount: editingSalaryTxn.amount, comment: editingSalaryTxn.comment } : { amount: editingSalaryTxn.amount, method: editingSalaryTxn.method, comment: editingSalaryTxn.comment })}>Сохранить</button><button className="ghost small" onClick={() => setEditingSalaryTxn(null)}>Отмена</button></div>
+                          : <button className="ghost small" onClick={() => setEditingSalaryTxn({ txn_id: txn.txn_id, amount: String(txn.amount || ''), method: txn.method || 'cash', comment: txn.comment || '' })}>Ред.</button>}</td>
+                      </tr>
+                    })
+                  })}
+                </tbody>
+              </table>
+            </div>
+            {group.items.length > 1 && <button className="ghost small" onClick={() => setExpandedPaymentGroups(s => ({...s, [group.id]: !expanded}))}>{expanded ? 'Свернуть' : `Показать всех (${group.items.length})`}</button>}
+          </div>
+        })}
+        {!salaryReportGroupsForSelectedDate.length && <p className="hint">За выбранную дату выплат и авансов пока нет.</p>}
+      </div>
+
+      <div className="card span-2 salary-dsmf-card">
+        <div className="card-head">
+          <div>
+            <h3>DSMF</h3>
+            <p className="hint">Система автоматически считает DSMF по сотрудникам, группирует по филиалам и автоматически добавляет итог филиала отдельной статьёй расходов.</p>
+          </div>
+        </div>
+
+        <div className="form-grid compact">
+          <MoneyInput label="Официально рабочих дней по умолчанию" value={dsmfOfficialDays} onChange={v => setDsmfOfficialDays(v)} />
+          <label style={{ gridColumn: 'span 2' }}><span>Логика расчёта</span><input value="От официальной зарплаты и оф. дней: часть работодателя + часть сотрудника + подоходный налог" readOnly /></label>
+        </div>
+
+        <div className="action-row" style={{marginBottom:12}}>
+          <span className="hint">Итого официальная налоговая нагрузка, покрываемая рестораном: <b>{fmt(dsmfTotal)}</b> AZN · расчёт по правилам 2026 для частного non-oil сектора</span>
+          <button className="small" onClick={saveDsmfRates}>Сохранить оф. дни по умолчанию</button>
+        </div>
+
+        {dsmfGroups.map(group => {
+          const expanded = Boolean(expandedDsmfGroups[group.id])
+          const shownRows = expanded ? group.rows : group.rows.slice(0, 1)
+          return <div key={`dsmf-${group.id}`} className="supplier-entity-group">
+            <div className="supplier-entity-head">
+              <b>{group.name}</b>
+              <span>DSMF: <strong>{fmt(group.total)}</strong> AZN · сотрудников: {group.rows.length}</span>
+            </div>
+            <div className="table-wrap">
+              <table>
+                <thead><tr><th>Сотрудник</th><th>Должность</th><th>Оф. зарплата</th><th>Оф. дни</th><th>База</th><th>DSMF сотр.</th><th>DSMF работ.</th><th>Безраб. сотр.</th><th>Безраб. работ.</th><th>Мед. сотр.</th><th>Мед. работ.</th><th>Налог</th><th>Итого</th></tr></thead>
+                <tbody>
+                  {shownRows.map(r => <tr key={r.employee_id}>
+                    <td><b>{r.employeeName}</b></td>
+                    <td>{r.position}</td>
+                    <td><input style={{ minWidth: 92, padding: '6px 7px' }} inputMode="decimal" value={officialSalaryByEmployee[r.employee_id] ?? r.officialSalary ?? ''} onChange={e => updateOfficialSalaryForDsmf(r.employee_id, e.target.value)} /></td>
+                    <td><input style={{ minWidth: 72, padding: '6px 7px' }} inputMode="decimal" value={officialDaysByEmployee[r.employee_id] ?? r.officialDays ?? ''} onChange={e => updateOfficialDaysForDsmf(r.employee_id, e.target.value)} /></td>
+                    <td>{fmt(r.base)}</td>
+                    <td>{fmt(r.employeeDsmf)}</td>
+                    <td>{fmt(r.employerDsmf)}</td>
+                    <td>{fmt(r.employeeUnemployment)}</td>
+                    <td>{fmt(r.employerUnemployment)}</td>
+                    <td>{fmt(r.employeeMedical)}</td>
+                    <td>{fmt(r.employerMedical)}</td>
+                    <td>{fmt(r.incomeTax)}</td>
+                    <td><b>{fmt(r.total)}</b></td>
+                  </tr>)}
+                </tbody>
+              </table>
+            </div>
+            {group.rows.length > 2 && <button className="ghost small" onClick={() => setExpandedDsmfGroups(s => ({...s, [group.id]: !expanded}))}>{expanded ? 'Свернуть' : `Показать всех (${group.rows.length})`}</button>}
+          </div>
+        })}
+        {!dsmfGroups.length && <p className="hint">Нет сотрудников для расчёта DSMF в выбранном фильтре.</p>}
+
+        <p className="hint">DSMF автоматически попадает в расходы филиалов как статья “DSMF”. В сумму включены обязательства работодателя и удержания сотрудника, если их фактически покрывает ресторан.</p>
+      </div>
+
+      <div className="card span-2">
+        <div className="card-head"><h3>Зарплаты сотрудников</h3><button className="small primary" onClick={printSalaryEmployeesPdf}>PDF/Print</button></div>
+        {salaryGroups.map(group => {
+          const expanded = Boolean(expandedSalaryGroups[group.id])
+          const orderedRows = positionGroupRows(group.rows)
+          const groupRows = expanded ? orderedRows : orderedRows.filter(item => !item.__separator).slice(0, 1)
+          const visibleGroupRows = group.rows.filter(r => canSeeSalaryValue(r))
+          const groupToPay = visibleGroupRows.reduce((s, r) => s + parseNum(r.final_balance), 0)
+          return <div key={`salary-group-${group.id}`} className="supplier-entity-group">
+            <div className="supplier-entity-head">
+              <b>{group.name}</b>
+              <span>К оплате: <strong className="bad">{fmt(groupToPay)} AZN</strong> · {salaryGroupMetaText(group.rows)}</span>
+            </div>
+            <div className="table-wrap">
+              <table>
+                <thead><tr><th>Сотрудник</th><th>Должность</th><th>Ставка</th><th>Дни</th><th>Начислено</th><th>Авансы</th><th>Выплачено</th><th>К оплате</th><th>Статус</th><th>Инфо</th></tr></thead>
+                <tbody>
+                  {groupRows.map(item => {
+                    if (item.__separator) return <tr key={item.id}><td colSpan="10" style={{borderTop:'2px dotted #b7a791', background:'#fff8ef', color:'#6b7280', fontWeight:700}}>{item.label}</td></tr>
+                    const r = item.row
+                    const underworked = isMonthClosingDay && r.id && parseNum(r.worked_days) < DAILY_DIVISOR
+                    const isInfoOpen = employeeInfoId === r.employee_id
+                    const history = isInfoOpen ? getEmployeeHistory(r.employee_id) : []
+                    return <React.Fragment key={r.id || r.employee_id}>
+                      <tr style={underworked ? { background: 'rgba(240,232,216,.55)' } : undefined}>
+                        <td><b>{r.employees?.full_name}</b></td>
+                        <td>{r.employees?.position || '—'}</td>
+                        <td>{moneyCell(r, r.employees?.monthly_salary)}</td>
+                        <td>{fmt(r.worked_days)}</td>
+                        <td>{moneyCell(r, r.salary_gross)}</td>
+                        <td>{moneyCell(r, r.advance_amount)}</td>
+                        <td>{moneyCell(r, r.payroll_payments)}</td>
+                        <td className="bad"><b>{strongMoneyCell(r, r.final_balance, 'bad')}</b></td>
+                        <td>{r.employees?.employment_status === 'terminated' || r.employees?.is_active === false ? <span className="bad">Уволен</span> : <span className="good">Активный</span>}</td>
+                        <td><button className="ghost small" onClick={() => setEmployeeInfoId(isInfoOpen ? '' : r.employee_id)}>i</button></td>
+                      </tr>
+                      {isInfoOpen && <tr><td colSpan="10"><div className="notice">
+                        <div className="card-head">
+                          <div><h3>Карточка сотрудника: {r.employees?.full_name}</h3><p className="hint">Редактирование сотрудника и история изменений.</p></div>
+                          <div className="action-row">
+                            {r.employees?.employment_status === 'terminated' || r.employees?.is_active === false
+                              ? <button className="small primary" onClick={() => updateEmployeeDetails(r, { employment_status: 'active', is_active: true, terminated_at: null })}>Вернуть в активные</button>
+                              : <>
+                                  <input style={{width:140}} inputMode="decimal" value={terminationPayments[r.employee_id] || ''} onChange={e => setTerminationPayments(p => ({...p, [r.employee_id]: e.target.value}))} placeholder="Выплата остатка" />
+                                  <button className="danger small" onClick={() => terminateEmployee(r)}>Уволить</button>
+                                </>}
+                            {isAdmin && <button className="danger small" onClick={() => deleteEmployeePermanently(r)}>Удалить ошибочно созданного</button>}
+                            <button className="ghost small" onClick={() => setEmployeeInfoId('')}>Закрыть</button>
+                          </div>
+                        </div>
+                        <div className="mini-grid" style={{marginBottom:12}}>
+                          <div className="metric"><span>Базовая ставка</span><strong>{moneyCell(r, r.employees?.monthly_salary)}</strong></div>
+                          <div className="metric"><span>Долг на начало</span><strong>{moneyCell(r, r.opening_balance)}</strong></div>
+                          <div className="metric"><span>Удержание</span><strong>{moneyCell(r, r.deduction_amount)}</strong></div>
+                          <div className="metric"><span>Остаток месяца</span><strong>{moneyCell(r, r.salary_net)}</strong></div>
+                          <div className="metric"><span>Выплачено</span><strong>{moneyCell(r, r.payroll_payments)}</strong></div>
+                          <div className="metric"><span>К оплате</span><strong className="bad">{strongMoneyCell(r, r.final_balance, 'bad')}</strong></div>
+                        </div>
+                        <div className="form-grid compact">
+                          <label><span>Ф.И.О.</span><input defaultValue={r.employees?.full_name || ''} onBlur={e => updateEmployeeDetails(r, { full_name: e.target.value.trim() || r.employees?.full_name })} /></label>
+                          <label><span>Должность</span><select value={r.employees?.position || ''} onChange={e => updateEmployeeDetails(r, { position: e.target.value || null })}><option value="">—</option>{EMPLOYEE_POSITION_OPTIONS.map(pos => <option key={pos} value={pos}>{pos}</option>)}</select></label>
+                          <label><span>Месячная ставка</span><input inputMode="decimal" defaultValue={r.employees?.monthly_salary || r.monthly_salary || ''} onBlur={e => updateEmployeeDetails(r, { monthly_salary: e.target.value }, true)} /></label>
+                          <label><span>Тип расчёта</span><select defaultValue={r.employees?.salary_type || 'monthly'} onBlur={e => updateEmployeeDetails(r, { salary_type: e.target.value }, true)}><option value="monthly">Фикс</option><option value="daily">По дням</option></select></label>
+                          <label><span>Дата приёма</span><input type="date" defaultValue={r.employees?.hired_at || ''} onBlur={e => updateEmployeeDetails(r, { hired_at: e.target.value || null })} /></label>
+                          <label><span>Дата увольнения</span><input type="date" defaultValue={r.employees?.terminated_at || ''} onBlur={e => updateEmployeeDetails(r, { terminated_at: e.target.value || null, employment_status: e.target.value ? 'terminated' : (r.employees?.employment_status || 'active'), is_active: e.target.value ? false : true })} /></label>
+                        </div>
+                        <h3>История изменений</h3>
+                        <div className="table-wrap"><table><thead><tr><th>Дата</th><th>Пользователь</th><th>Изменение</th></tr></thead><tbody>
+                          {history.map((h, idx) => <tr key={idx}><td>{h.at}</td><td>{h.user}</td><td>{h.changes.map((c, i) => <div key={i}><b>{c.field}</b>: {String(c.before || '—')} → {String(c.after || '—')}</div>)}</td></tr>)}
+                          {!history.length && <tr><td colSpan="3" className="hint">История пока пустая.</td></tr>}
+                        </tbody></table></div>
+                        <div className="action-row" style={{marginTop:12}}><button className="ghost small" onClick={() => setEmployeeInfoId('')}>Закрыть карточку</button></div>
+                      </div></td></tr>}
+                    </React.Fragment>
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <div className="hint bad" style={{textAlign:'right', marginTop:8}}>Итого к оплате по филиалу: <b>{fmt(groupToPay)} AZN</b></div>
+            {group.rows.length > 1 && <button className="ghost small" onClick={() => setExpandedSalaryGroups(s => ({...s, [group.id]: !expanded}))}>{expanded ? 'Свернуть' : `Показать всех (${group.rows.length})`}</button>}
+          </div>
+        })}
+        {!salaryGroups.length && <p className="hint">Нет сотрудников в выбранном фильтре.</p>}
+        <div className="hint bad" style={{textAlign:'right', marginTop:12, fontSize:16}}>Общая сумма к оплате: <b>{fmt(moneyVisibleRows.reduce((s, r) => s + parseNum(r.final_balance), 0))} AZN</b></div>
+      </div>
+
+
+      <div className="card span-2">
+        <h3>Архив уволенных сотрудников</h3>
+        <p className="hint">Уволенные сотрудники остаются в архиве. Их можно редактировать через карточку сотрудника.</p>
+        <div className="table-wrap"><table>
+          <thead><tr><th>Филиал / группа</th><th>Должность</th><th>Сотрудник</th><th>Дата приёма</th><th>Дата увольнения</th><th>Выплачено</th><th>Статус</th><th>Инфо</th></tr></thead>
+          <tbody>{archiveRows.map(r => {
+            const isInfoOpen = employeeInfoId === r.employee_id
+            const history = isInfoOpen ? getEmployeeHistory(r.employee_id) : []
+            return <React.Fragment key={`archive-${r.employee_id}`}>
+              <tr>
+                <td>{employeeGroupName(r.employees)}</td>
+                <td>{r.employees?.position || '—'}</td>
+                <td><b>{r.employees?.full_name}</b> <span className="bad">Уволен</span></td>
+                <td>{r.employees?.hired_at || '—'}</td>
+                <td>{r.employees?.terminated_at || '—'}</td>
+                <td><b>{fmt(employeePaidAmount(r.employee_id))}</b></td>
+                <td><span className="bad">Уволен</span></td>
+                <td><button className="ghost small" onClick={() => setEmployeeInfoId(isInfoOpen ? '' : r.employee_id)}>i</button></td>
+              </tr>
+              {isInfoOpen && <tr><td colSpan="8"><div className="notice">
+                <div className="card-head">
+                  <div><h3>Карточка уволенного сотрудника: {r.employees?.full_name}</h3><p className="hint">Редактирование и история изменений.</p></div>
+                  <div className="action-row">
+                    <button className="small primary" onClick={() => updateEmployeeDetails(r, { employment_status: 'active', is_active: true, terminated_at: null })}>Вернуть в активные</button>
+                    <button className="ghost small" onClick={() => setEmployeeInfoId('')}>Закрыть</button>
+                  </div>
+                </div>
+                <div className="form-grid compact">
+                  <label><span>Ф.И.О.</span><input defaultValue={r.employees?.full_name || ''} onBlur={e => updateEmployeeDetails(r, { full_name: e.target.value.trim() || r.employees?.full_name })} /></label>
+                  <label><span>Должность</span><select value={r.employees?.position || ''} onChange={e => updateEmployeeDetails(r, { position: e.target.value || null })}><option value="">—</option>{EMPLOYEE_POSITION_OPTIONS.map(pos => <option key={pos} value={pos}>{pos}</option>)}</select></label>
+                  <label><span>Месячная ставка</span><input inputMode="decimal" defaultValue={r.employees?.monthly_salary || r.monthly_salary || ''} onBlur={e => updateEmployeeDetails(r, { monthly_salary: e.target.value }, true)} /></label>
+                  <label><span>Тип расчёта</span><select defaultValue={r.employees?.salary_type || 'monthly'} onBlur={e => updateEmployeeDetails(r, { salary_type: e.target.value }, true)}><option value="monthly">Фикс</option><option value="daily">По дням</option></select></label>
+                  <label><span>Дата приёма</span><input type="date" defaultValue={r.employees?.hired_at || ''} onBlur={e => updateEmployeeDetails(r, { hired_at: e.target.value || null })} /></label>
+                  <label><span>Дата увольнения</span><input type="date" defaultValue={r.employees?.terminated_at || ''} onBlur={e => updateEmployeeDetails(r, { terminated_at: e.target.value || null, employment_status: e.target.value ? 'terminated' : 'active', is_active: e.target.value ? false : true })} /></label>
+                </div>
+                <h3>История изменений</h3>
+                <div className="table-wrap"><table><thead><tr><th>Дата</th><th>Пользователь</th><th>Изменение</th></tr></thead><tbody>
+                  {history.map((h, idx) => <tr key={idx}><td>{h.at}</td><td>{h.user}</td><td>{h.changes.map((c, i) => <div key={i}><b>{c.field}</b>: {String(c.before || '—')} → {String(c.after || '—')}</div>)}</td></tr>)}
+                  {!history.length && <tr><td colSpan="3" className="hint">История пока пустая.</td></tr>}
+                </tbody></table></div>
+                <div className="action-row" style={{marginTop:12}}><button className="ghost small" onClick={() => setEmployeeInfoId('')}>Закрыть карточку</button></div>
+              </div></td></tr>}
+            </React.Fragment>
+          })}{!archiveRows.length && <tr><td colSpan="8" className="hint">Архив пуст.</td></tr>}</tbody>
+        </table></div>
+      </div>
+
+      <div className="card span-2">
+        <h3>Журнал выплат зарплаты за выбранный месяц</h3>
+        <div className="table-wrap"><table>
+          <thead><tr><th>Дата выплаты</th><th>Сотрудник</th><th>Способ</th><th>Сумма</th><th>Комментарий</th><th>Статус</th><th></th></tr></thead>
+          <tbody>{salaryPayments.slice(0, showAllSalaryPayments ? salaryPayments.length : 5).map(p => {
+            const row = rows.find(r => r.employee_id === p.employee_id)
+            return <tr key={p.id} className={p.is_cancelled ? 'cancelled-row' : ''}>
+              <td>{p.payment_date}</td>
+              <td>{row?.employees?.full_name || p.employee_id}</td>
+              <td>{p.method === 'card' ? 'Карта' : p.method === 'bank' ? 'Банк' : 'Наличные'}</td>
+              <td><strong>{fmt(p.amount)}</strong></td>
+              <td>{p.comment || '—'}</td>
+              <td>{p.is_cancelled ? `Отменено: ${formatDT(p.cancelled_at)}` : `Создано: ${formatDT(p.created_at)}`}</td>
+              <td>{!p.is_cancelled && <button className="danger small" onClick={() => cancelSalaryPayment(p)}>×</button>}</td>
+            </tr>
+          })}{!salaryPayments.length && <tr><td colSpan="8" className="hint">Выплат за выбранный месяц пока нет.</td></tr>}</tbody>
+        </table></div>
+        {salaryPayments.length > 5 && <div className="action-row" style={{marginTop:12}}>
+          <button className="ghost small" onClick={() => setShowAllSalaryPayments(v => !v)}>
+            {showAllSalaryPayments ? 'Свернуть журнал' : `Показать все выплаты (${salaryPayments.length})`}
+          </button>
+          {!showAllSalaryPayments && <span className="hint">Показаны последние 5 записей.</span>}
+        </div>}
+      </div>
+    </section>
+  </section>
+}
+function Advances({ t }) {
+  const branches = useBranches()
+  const current = new Date()
+  const [year, setYear] = useState(current.getFullYear())
+  const [month, setMonth] = useState(current.getMonth() + 1)
+  const [branchId, setBranchId] = useState('all')
+  const [employeeFilter, setEmployeeFilter] = useState('all')
+  const [advanceGroupId, setAdvanceGroupId] = useState(STAFF_GROUP_MANAGERS)
+  const [employees, setEmployees] = useState([])
+  const [advances, setAdvances] = useState([])
+  const [salaryPeriods, setSalaryPeriods] = useState([])
+  const [salaryPayments, setSalaryPayments] = useState([])
+  const [profiles, setProfiles] = useState([])
+  const [form, setForm] = useState({ employee_id: '', advance_date: todayISO(), amount: '', comment: '' })
+  const [message, setMessage] = useState('')
+  const [editAdvanceId, setEditAdvanceId] = useState('')
+  const [editAdvanceForm, setEditAdvanceForm] = useState({ advance_date: '', amount: '', comment: '' })
+  const [advancePageSize, setAdvancePageSize] = useState(10)
+  const [advancePage, setAdvancePage] = useState(1)
+
+  useEffect(() => { load() }, [year, month])
+  useEffect(() => { setAdvancePage(1) }, [year, month, branchId, employeeFilter, advancePageSize])
+  const formEmployees = employees.filter(e => employeeGroupId(e) === advanceGroupId)
+  const filterEmployees = employees.filter(e => matchesStaffGroup(e, branchId))
+  useEffect(() => {
+    if (!formEmployees.some(e => e.id === form.employee_id)) setForm(f => ({ ...f, employee_id: formEmployees[0]?.id || '' }))
+  }, [advanceGroupId, employees])
+  useEffect(() => {
+    if (employeeFilter !== 'all' && !filterEmployees.some(e => e.id === employeeFilter)) setEmployeeFilter('all')
+  }, [branchId, employees, employeeFilter])
+
+  const monthDate = monthStart(year, month)
+  const dim = daysInMonth(year, month)
+  const monthEnd = `${year}-${String(month).padStart(2, '0')}-${String(dim).padStart(2, '0')}`
+
+  async function currentUserMeta() {
+    try {
+      if (getInternalSessionStorage()?.rms_internal) {
+        const localUser = getRmsLocalUser()
+        return { user_id: null, user_email: localUser?.email || localUser?.login_name || 'rms.internal' }
+      }
+      const { data } = await supabase.auth.getUser()
+      return { user_id: data?.user?.id || null, user_email: data?.user?.email || null }
+    } catch (_e) {
+      return { user_id: null, user_email: null }
+    }
+  }
+
+  async function load() {
+    setMessage('')
+    const empQ = supabase.from('employees').select('*, branches(name)').order('branch_id').order('position').order('full_name')
+    const advQ = supabase.from('salary_advances').select('*, employees(full_name, position, monthly_salary, branch_id), branches(name)').gte('advance_date', monthDate).lte('advance_date', monthEnd).order('advance_date', { ascending: false }).order('created_at', { ascending: false })
+    const salQ = supabase.from('salary_periods').select('*').eq('salary_month', monthDate)
+    const payQ = supabase.from('salary_payments').select('*').eq('salary_month', monthDate).or('is_cancelled.is.null,is_cancelled.eq.false')
+    const [
+      { data: emp, error: empError },
+      { data: adv, error: advError },
+      { data: sal },
+      { data: pay },
+      { data: prof }
+    ] = await Promise.all([empQ, advQ, salQ, payQ, supabase.from('user_profiles').select('id, full_name, email, login_name')])
+    if (empError || advError) {
+      setMessage(empError?.message || advError?.message)
+      return
+    }
+    setEmployees(emp || [])
+    setAdvances(adv || [])
+    setSalaryPeriods(sal || [])
+    setSalaryPayments(pay || [])
+    setProfiles(prof || [])
+  }
+
+  function userName(id) {
+    if (!id) return '—'
+    const p = profiles.find(u => u.id === id)
+    return p?.full_name || p?.email || p?.login_name || String(id).slice(0, 8)
+  }
+
+  function advanceStatus(row) {
+    if (row.is_cancelled) return `Отменено: ${formatDT(row.cancelled_at)} · ${userName(row.cancelled_by)}`
+    if (row.updated_at && row.updated_by) return `Изменено: ${formatDT(row.updated_at)} · ${userName(row.updated_by)}`
+    return `Создано: ${formatDT(row.created_at)} · ${userName(row.created_by)}`
+  }
+
+  async function refreshSalaryForEmployee(employeeId) {
+    const emp = employees.find(e => e.id === employeeId)
+    if (!emp) return
+    const [{ data: existing }, { data: advanceRows }] = await Promise.all([
+      supabase.from('salary_periods').select('*').eq('employee_id', employeeId).eq('salary_month', monthDate).maybeSingle(),
+      supabase.from('salary_advances').select('amount').eq('employee_id', employeeId).gte('advance_date', monthDate).lte('advance_date', monthEnd).or('is_cancelled.is.null,is_cancelled.eq.false')
+    ])
+    const advanceTotal = (advanceRows || []).reduce((s, r) => s + parseNum(r.amount), 0)
+    const gross = parseNum(existing?.salary_gross)
+    const deduction = parseNum(existing?.deduction_amount)
+    const net = gross - advanceTotal - deduction
+    await supabase.from('salary_periods').upsert({
+      employee_id: employeeId,
+      branch_id: emp.branch_id || null,
+      salary_month: monthDate,
+      worked_days: parseNum(existing?.worked_days),
+      salary_gross: gross,
+      advance_amount: advanceTotal,
+      deduction_amount: deduction,
+      card_payment: parseNum(existing?.card_payment),
+      cash_payment: parseNum(existing?.cash_payment),
+      salary_net: net,
+      comment: existing?.comment || ''
+    }, { onConflict: 'employee_id,salary_month' })
+  }
+
+  async function addAdvance() {
+    setMessage('')
+    const emp = employees.find(e => e.id === form.employee_id)
+    if (!emp) return setMessage('Выберите сотрудника')
+    const amount = parseNum(form.amount)
+    if (!amount) return setMessage('Введите сумму аванса')
+    const user = await currentUserMeta()
+    const { error } = await supabase.from('salary_advances').insert({
+      employee_id: emp.id,
+      branch_id: emp.branch_id || null,
+      advance_date: form.advance_date || todayISO(),
+      amount,
+      comment: form.comment || null,
+      created_by: user.user_id,
+      updated_by: user.user_id
+    })
+    if (error) return setMessage(error.message)
+    await refreshSalaryForEmployee(emp.id)
+    setForm(f => ({ ...f, amount: '', comment: '' }))
+    await load()
+    setMessage(t('saved'))
+  }
+
+  function startEditAdvance(row) {
+    if (row.is_cancelled) return
+    setEditAdvanceId(row.id)
+    setEditAdvanceForm({
+      advance_date: row.advance_date || todayISO(),
+      amount: String(row.amount ?? ''),
+      comment: row.comment || ''
+    })
+  }
+
+  function cancelEditAdvance() {
+    setEditAdvanceId('')
+    setEditAdvanceForm({ advance_date: '', amount: '', comment: '' })
+  }
+
+  async function saveAdvance(row) {
+    setMessage('')
+    const amount = parseNum(editAdvanceForm.amount)
+    if (!amount) return setMessage('Введите сумму аванса')
+    const user = await currentUserMeta()
+    const payload = {
+      advance_date: editAdvanceForm.advance_date || row.advance_date,
+      amount,
+      comment: editAdvanceForm.comment || null,
+      updated_at: new Date().toISOString(),
+      updated_by: user.user_id
+    }
+    const { error } = await supabase.from('salary_advances').update(payload).eq('id', row.id)
+    if (error) return setMessage(error.message)
+    await refreshSalaryForEmployee(row.employee_id)
+    cancelEditAdvance()
+    await load()
+    setMessage(t('saved'))
+  }
+
+  async function deleteAdvance(row) {
+    setMessage('')
+    if (row.is_cancelled) return
+    const ok = window.confirm('Отменить этот аванс? Строка останется в журнале перечёркнутой и не будет учитываться в расчётах.')
+    if (!ok) return
+    const user = await currentUserMeta()
+    const { error } = await supabase.from('salary_advances').update({
+      is_cancelled: true,
+      cancelled_at: new Date().toISOString(),
+      cancelled_by: user.user_id,
+      updated_at: new Date().toISOString(),
+      updated_by: user.user_id,
+      cancel_comment: 'Отменено через журнал авансов'
+    }).eq('id', row.id)
+    if (error) return setMessage(error.message)
+    await refreshSalaryForEmployee(row.employee_id)
+    await load()
+    setMessage(t('saved'))
+  }
+
+  const displayedEmployees = employees
+    .filter(e => matchesStaffGroup(e, branchId))
+    .filter(e => employeeFilter === 'all' || e.id === employeeFilter)
+  const displayedAdvances = advances
+    .filter(a => matchesStaffGroup({ branch_id: a.branch_id, branches: a.branches }, branchId))
+    .filter(a => employeeFilter === 'all' || a.employee_id === employeeFilter)
+  const activeAdvances = displayedAdvances.filter(a => !a.is_cancelled)
+
+  const totalAdvance = activeAdvances.reduce((s, r) => s + parseNum(r.amount), 0)
+  const salaryPeriodByEmployee = new Map((salaryPeriods || []).map(r => [r.employee_id, r]))
+  const activeAdvancesByEmployee = new Map()
+  ;(activeAdvances || []).forEach(a => activeAdvancesByEmployee.set(a.employee_id, parseNum(activeAdvancesByEmployee.get(a.employee_id)) + parseNum(a.amount)))
+  const salaryPaymentsByEmployee = new Map()
+  ;(salaryPayments || []).filter(p => !p.is_cancelled).forEach(p => salaryPaymentsByEmployee.set(p.employee_id, parseNum(salaryPaymentsByEmployee.get(p.employee_id)) + parseNum(p.amount)))
+  const salaryBalance = displayedEmployees.reduce((sum, e) => {
+    const salary = salaryPeriodByEmployee.get(e.id)
+    const gross = salary ? parseNum(salary.salary_gross) : parseNum(e.monthly_salary)
+    const deduction = parseNum(salary?.deduction_amount)
+    const advancesAmount = parseNum(activeAdvancesByEmployee.get(e.id))
+    const paid = parseNum(salaryPaymentsByEmployee.get(e.id))
+    return sum + gross - deduction - advancesAmount - paid
+  }, 0)
+  const branchTotals = staffGroupOptions(branches).map(b => ({
+    id: b.id,
+    name: b.name,
+    employees: displayedEmployees.filter(e => employeeGroupId(e) === b.id).length,
+    amount: activeAdvances.filter(a => (a.branch_id || STAFF_GROUP_MANAGERS) === b.id).reduce((s, a) => s + parseNum(a.amount), 0)
+  })).filter(b => branchId === 'all' ? (b.amount || b.employees) : b.id === branchId)
+
+  const advancePageTotal = Math.max(1, Math.ceil(displayedAdvances.length / advancePageSize))
+  const safeAdvancePage = Math.min(advancePage, advancePageTotal)
+  const pagedAdvances = displayedAdvances.slice((safeAdvancePage - 1) * advancePageSize, safeAdvancePage * advancePageSize)
+
+  return <section>
+    <section className="topbar"><div><h2>{t('advances_tab')}</h2><p>Каждая выплата аванса фиксируется отдельной строкой с датой, сотрудником, суммой и комментарием.</p></div></section>
+    <section className="grid">
+      <div className="card span-2">
+        <h3>Новый аванс</h3>
+        <div className="form-grid compact">
+          <label><span>Филиал / группа</span><select value={advanceGroupId} onChange={e => setAdvanceGroupId(e.target.value)}>{staffGroupOptions(branches).map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label>
+          <label><span>Сотрудник</span><select value={form.employee_id} onChange={e => setForm({...form, employee_id: e.target.value})}>{formEmployees.map(e => <option key={e.id} value={e.id}>{positionGroup(e.position)} · {e.full_name}</option>)}</select></label>
+          <label><span>Дата</span><input type="date" value={form.advance_date} onChange={e => setForm({...form, advance_date: e.target.value})} /></label>
+          <label><span>Сумма</span><input value={form.amount} onChange={e => setForm({...form, amount: e.target.value})} placeholder="0.00" /></label>
+          <label><span>Комментарий</span><input value={form.comment} onChange={e => setForm({...form, comment: e.target.value})} placeholder="Например: аванс за первую половину месяца" /></label>
+        </div><br />
+        <button className="small" onClick={addAdvance}>+ Добавить аванс</button>
+      </div>
+
+      <div className="card span-2">
+        <h3>Журнал авансов</h3>
+        <p className="hint">По умолчанию строки закрыты от изменений. Для правки нажмите “Редактировать”; изменения фиксируются по времени и пользователю.</p>
+        <div className="form-grid compact">
+          <label><span>{t('year')}</span><select value={year} onChange={e => setYear(Number(e.target.value))}>{defaultYears().map(y => <option key={y} value={y}>{y}</option>)}</select></label>
+          <label><span>{t('month')}</span><select value={month} onChange={e => setMonth(Number(e.target.value))}>{I18N.ru.months.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}</select></label>
+          <label><span>Филиал / группа</span><select value={branchId} onChange={e => setBranchId(e.target.value)}><option value="all">Все филиалы и менеджеры</option>{staffGroupOptions(branches).map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label>
+          <label><span>Сотрудник</span><select value={employeeFilter} onChange={e => setEmployeeFilter(e.target.value)}><option value="all">Все сотрудники</option>{filterEmployees.map(e => <option key={e.id} value={e.id}>{positionGroup(e.position)} · {e.full_name}</option>)}</select></label>
+        </div>
+        <div className="mini-grid" style={{marginTop:12}}>
+          <div className="metric"><span>Итого авансы за месяц</span><strong>{fmt(totalAdvance)}</strong></div>
+          <div className="metric"><span>Остаток по зарплате</span><strong className={salaryBalance < 0 ? 'bad' : ''}>{fmt(salaryBalance)}</strong></div>
+        </div>
+        {message && <p className={`hint ${message === t('saved') ? 'save-status' : 'bad'}`}>{message}</p>}
+      </div>
+
+      <div className="card span-2">
+        <div className="card-head"><div></div><label style={{display:'flex',alignItems:'center',gap:8}}><span className="hint">Показать</span><select value={advancePageSize} onChange={e => { setAdvancePageSize(Number(e.target.value)); setAdvancePage(1) }}><option value={10}>10</option><option value={20}>20</option><option value={30}>30</option><option value={50}>50</option></select></label></div>
+        <div className="table-wrap"><table>
+          <thead><tr><th>Дата</th><th>Филиал</th><th>Должность</th><th style={{minWidth:220}}>Сотрудник</th><th>Сумма</th><th>Комментарий</th><th>Статус</th><th></th></tr></thead>
+          <tbody>{pagedAdvances.map(a => {
+            const isEditing = editAdvanceId === a.id
+            return <tr key={a.id} className={a.is_cancelled ? 'cancelled-row' : ''}>
+              <td>{isEditing ? <input type="date" value={editAdvanceForm.advance_date} onChange={e => setEditAdvanceForm(f => ({...f, advance_date: e.target.value}))} /> : String(a.advance_date || '—')}</td>
+              <td>{employeeGroupName({ branch_id: a.branch_id, branches: a.branches })}</td>
+              <td>{positionGroup(a.employees?.position)} · {a.employees?.position || '—'}</td>
+              <td>{a.employees?.full_name || '—'}</td>
+              <td>{isEditing ? <input value={editAdvanceForm.amount} onChange={e => setEditAdvanceForm(f => ({...f, amount: e.target.value}))} /> : <strong>{fmt(a.amount)}</strong>}</td>
+              <td>{isEditing ? <input value={editAdvanceForm.comment} onChange={e => setEditAdvanceForm(f => ({...f, comment: e.target.value}))} /> : (a.comment || '—')}</td>
+              <td className="hint" style={{minWidth:220}}>{advanceStatus(a)}</td>
+              <td className="actions-cell">
+                {isEditing ? <>
+                  <button className="small" onClick={() => saveAdvance(a)}>Сохранить</button>
+                  <button className="small ghost" onClick={cancelEditAdvance}>Отмена</button>
+                </> : <>
+                  <button className="small" disabled={a.is_cancelled} onClick={() => startEditAdvance(a)}>Редактировать</button>
+                  <button className="remove" disabled={a.is_cancelled} onClick={() => deleteAdvance(a)}>×</button>
+                </>}
+              </td>
+            </tr>
+          })}{!displayedAdvances.length && <tr><td colSpan="8" className="hint">Авансов за выбранный период нет.</td></tr>}</tbody>
+        </table></div>
+        <div className="action-row" style={{margin:'12px 0 0'}}>
+          <button className="ghost small" disabled={safeAdvancePage <= 1} onClick={() => setAdvancePage(p => Math.max(1, p - 1))}>← Пред.</button>
+          <span className="hint">Страница {safeAdvancePage} / {advancePageTotal} · всего {displayedAdvances.length}</span>
+          <button className="ghost small" disabled={safeAdvancePage >= advancePageTotal} onClick={() => setAdvancePage(p => Math.min(advancePageTotal, p + 1))}>След. →</button>
+        </div>
+      </div>
+
+      <div className="card span-2">
+        <h3>Сводка авансов по филиалам</h3>
+        <div className="table-wrap"><table>
+          <thead><tr><th>Филиал / группа</th><th>Сотрудников</th><th>Авансы</th></tr></thead>
+          <tbody>{branchTotals.map(b => <tr key={b.id}><td>{b.name}</td><td><strong>{b.employees}</strong></td><td><strong>{fmt(b.amount)}</strong></td></tr>)}{!branchTotals.length && <tr><td colSpan="3" className="hint">Нет авансов за выбранный период.</td></tr>}</tbody>
+        </table></div>
+      </div>
+    </section>
+  </section>
+}
+
+function Suppliers({ t, isAdmin = false }) {
+  const branches = useBranches()
+  const [legalEntities, setLegalEntities] = useState([])
+  const [suppliers, setSuppliers] = useState([])
+  const [products, setProducts] = useState([])
+  const [balances, setBalances] = useState([])
+  const [purchases, setPurchases] = useState([])
+  const [payments, setPayments] = useState([])
+  const [openingDebts, setOpeningDebts] = useState([])
+  const [supplierEntityStatuses, setSupplierEntityStatuses] = useState([])
+  const [profiles, setProfiles] = useState([])
+  const [supplierForm, setSupplierForm] = useState({ name: '', voen: '', contact_person: '', phone: '', info: '', payment_term_days: '', credit_limit: '', opening_debt_amount: '', opening_debt_legal_entity_id: '', opening_debt_date: todayISO(), opening_debt_comment: '' })
+  const [productForm, setProductForm] = useState({ name: '', category: PRODUCT_CATEGORIES[0], base_unit: 'g' })
+  const [purchaseForm, setPurchaseForm] = useState({ supplier_id: '', legal_entity_id: '', branch_id: '', purchase_date: todayISO(), invoice_number: '', comment: '', amount_only: false, manual_amount: '' })
+  const emptyLine = { category: PRODUCT_CATEGORIES[0], product_id: '', base_unit: 'g', quantity: '1', unit: 'kg', unit_price: '' }
+  const [lineRows, setLineRows] = useState([emptyLine])
+  const [paymentForm, setPaymentForm] = useState({ supplier_id: '', legal_entity_id: '', payment_date: todayISO(), amount: '', invoice_notes: '', comment: '' })
+  const [openingDebtForm, setOpeningDebtForm] = useState({ supplier_id: '', legal_entity_id: '', debt_date: todayISO(), amount: '', invoice_notes: '', comment: '' })
+  const [activeInfoId, setActiveInfoId] = useState('')
+  const [editingPurchaseId, setEditingPurchaseId] = useState('')
+  const [viewPurchaseId, setViewPurchaseId] = useState('')
+  const [recentPurchasesPageSize, setRecentPurchasesPageSize] = useState(10)
+  const [recentPurchasesPage, setRecentPurchasesPage] = useState(1)
+  const [transactionSupplierId, setTransactionSupplierId] = useState('')
+  const [transactionPeriod, setTransactionPeriod] = useState('month')
+  const [transactionDate, setTransactionDate] = useState(todayISO())
+  const [expandedEntities, setExpandedEntities] = useState({})
+  const [message, setMessage] = useState('')
+  const [paymentMessage, setPaymentMessage] = useState('')
+  const [supplierAdminExpanded, setSupplierAdminExpanded] = useState(false)
+  const [editingSupplierId, setEditingSupplierId] = useState('')
+  const [supplierEditForm, setSupplierEditForm] = useState({ name: '', voen: '', contact_person: '', phone: '', info: '', payment_term_days: '', credit_limit: '' })
+
+  const activeSuppliers = useMemo(() => (suppliers || []).filter(s => s.is_active !== false), [suppliers])
+  const supplierEntityStatusMap = useMemo(() => new Map((supplierEntityStatuses || []).map(r => [supplierEntityKey(r.supplier_id, r.legal_entity_id), r.is_active !== false])), [supplierEntityStatuses])
+  function isSupplierActiveForLegal(supplierId, legalEntityId) {
+    const supplier = (suppliers || []).find(s => s.id === supplierId)
+    if (!supplier || supplier.is_active === false) return false
+    if (!legalEntityId) return true
+    return supplierEntityStatusMap.get(supplierEntityKey(supplierId, legalEntityId)) !== false
+  }
+  const activeSupplierIds = useMemo(() => new Set(activeSuppliers.map(s => s.id)), [activeSuppliers])
+  const activeSuppliersForPurchaseLegal = useMemo(() => activeSuppliers.filter(s => isSupplierActiveForLegal(s.id, purchaseForm.legal_entity_id)), [activeSuppliers, supplierEntityStatusMap, purchaseForm.legal_entity_id])
+  const activeSuppliersForPaymentLegal = useMemo(() => activeSuppliers.filter(s => isSupplierActiveForLegal(s.id, paymentForm.legal_entity_id)), [activeSuppliers, supplierEntityStatusMap, paymentForm.legal_entity_id])
+  const activeSuppliersForOpeningLegal = useMemo(() => activeSuppliers.filter(s => isSupplierActiveForLegal(s.id, openingDebtForm.legal_entity_id)), [activeSuppliers, supplierEntityStatusMap, openingDebtForm.legal_entity_id])
+  const supplierAdminRows = isAdmin ? (suppliers || []) : activeSuppliers
+  const visibleSupplierAdminRows = supplierAdminExpanded ? supplierAdminRows : supplierAdminRows.slice(0, 2)
+
+  async function revenueDistributionForSupplierDate(expenseDate) {
+    const { data } = await supabase
+      .from('daily_revenue')
+      .select('branch_id,cash_amount,bank_amount,wolt_amount')
+      .eq('revenue_date', expenseDate)
+
+    const revenueByBranch = (data || [])
+      .map(r => ({
+        branch_id: r.branch_id,
+        revenue: parseNum(r.cash_amount) + parseNum(r.bank_amount) + parseNum(r.wolt_amount)
+      }))
+      .filter(r => r.branch_id && r.revenue > 0)
+
+    const totalRevenue = revenueByBranch.reduce((s, r) => s + parseNum(r.revenue), 0)
+    return { revenueByBranch, totalRevenue }
+  }
+
+  async function syncSupplierPurchaseFoodCost(purchase, totalAmount, userId = null) {
+    try {
+      if (!purchase?.id || !purchase?.purchase_date) return
+
+      const amount = parseNum(totalAmount)
+
+      await supabase
+        .from('daily_expenses')
+        .delete()
+        .eq('comment', `SUPPLIER_PURCHASE_${purchase.id}`)
+
+      if (!amount) return
+
+      const { revenueByBranch, totalRevenue } = await revenueDistributionForSupplierDate(purchase.purchase_date)
+      if (!totalRevenue || !revenueByBranch.length) return
+
+      const rows = revenueByBranch.map(row => {
+        const share = row.revenue / totalRevenue
+        return {
+          branch_id: row.branch_id,
+          expense_date: purchase.purchase_date,
+          category_id: null,
+          custom_category: 'FoodCost / Поставщики',
+          amount: Number((amount * share).toFixed(2)),
+          comment: `SUPPLIER_PURCHASE_${purchase.id}`,
+          note: `Автоматически распределено из поступления поставщика${purchase.invoice_number ? ` · фактура ${purchase.invoice_number}` : ''} · доля выручки ${pct(share * 100)} · выручка филиала ${fmt(row.revenue)} AZN`,
+          created_by: userId,
+          updated_by: userId
+        }
+      })
+
+      const distributed = rows.reduce((sum, r) => sum + parseNum(r.amount), 0)
+      const diff = Number((amount - distributed).toFixed(2))
+      if (rows.length && diff !== 0) {
+        rows[0].amount = Number((parseNum(rows[0].amount) + diff).toFixed(2))
+      }
+
+      const { error } = await supabase.from('daily_expenses').insert(rows)
+      if (error) console.warn('supplier food cost distribution error', error)
+    } catch (e) {
+      console.warn('syncSupplierPurchaseFoodCost failed', e)
+    }
+  }
+
+  useEffect(() => { load() }, [])
+  useEffect(() => {
+    if (!purchaseForm.supplier_id && activeSuppliers[0]) setPurchaseForm(f => ({ ...f, supplier_id: activeSuppliers[0].id }))
+    if (!paymentForm.supplier_id && activeSuppliers[0]) setPaymentForm(f => ({ ...f, supplier_id: activeSuppliers[0].id }))
+    if (!openingDebtForm.supplier_id && activeSuppliers[0]) setOpeningDebtForm(f => ({ ...f, supplier_id: activeSuppliers[0].id }))
+    if (!purchaseForm.legal_entity_id && legalEntities[0]) setPurchaseForm(f => ({ ...f, legal_entity_id: legalEntities[0].id }))
+    if (!paymentForm.legal_entity_id && legalEntities[0]) setPaymentForm(f => ({ ...f, legal_entity_id: legalEntities[0].id }))
+    if (!openingDebtForm.legal_entity_id && legalEntities[0]) setOpeningDebtForm(f => ({ ...f, legal_entity_id: legalEntities[0].id }))
+    if (!supplierForm.opening_debt_legal_entity_id && legalEntities[0]) setSupplierForm(f => ({ ...f, opening_debt_legal_entity_id: legalEntities[0].id }))
+    if (!purchaseForm.branch_id && branches[0]) setPurchaseForm(f => ({ ...f, branch_id: branches[0].id }))
+  }, [activeSuppliers, legalEntities, branches])
+
+  async function load() {
+    const isInternal = Boolean(getInternalSessionStorage()?.rms_internal)
+
+    if (isInternal) {
+      const { data: ws, error } = await fetchRmsSuppliersWorkspace()
+      if (!error && ws) {
+        setLegalEntities(ws.legal_entities || [])
+        setSuppliers(ws.suppliers || [])
+        setProducts(ws.supplier_products || [])
+        setBalances(ws.supplier_balances || [])
+        setPurchases(ws.supplier_purchases || [])
+        setPayments(ws.supplier_payments || [])
+        setOpeningDebts(ws.supplier_opening_debts || [])
+        const { data: statusRows } = await supabase.from('supplier_legal_entity_status').select('*')
+        setSupplierEntityStatuses(statusRows || [])
+        setProfiles(ws.user_profiles || [])
+        return
+      }
+      setMessage(error?.message || 'Нет доступа к поставщикам')
+    }
+
+    const [{ data: le }, { data: sup }, { data: prod }, { data: bal }, { data: pur }, { data: pay }, { data: opening }, { data: statusRows }, { data: prof }] = await Promise.all([
+      supabase.from('legal_entities').select('*').eq('is_active', true).order('name'),
+      supabase.from('suppliers').select('*').order('name'),
+      supabase.from('supplier_products').select('*').eq('is_active', true).order('category').order('name'),
+      supabase.from('supplier_balances_v2').select('*').order('supplier_name'),
+      supabase.from('supplier_purchases').select('*, suppliers(name), legal_entities(name,voen), branches(name), supplier_purchase_items(*, supplier_products(name,base_unit,category))').order('purchase_date', { ascending: false }).order('created_at', { ascending: false }).limit(500),
+      supabase.from('supplier_payments').select('*, suppliers(name), legal_entities(name,voen)').order('payment_date', { ascending: false }).order('created_at', { ascending: false }).limit(500),
+      supabase.from('supplier_opening_debts').select('*, suppliers(name), legal_entities(name,voen)').eq('is_active', true).order('debt_date', { ascending: false }).order('created_at', { ascending: false }).limit(500),
+      supabase.from('supplier_legal_entity_status').select('*'),
+      supabase.from('user_profiles').select('id, full_name')
+    ])
+    setLegalEntities(le || [])
+    setSuppliers(sup || [])
+    setProducts(prod || [])
+    setBalances(bal || [])
+    setPurchases(pur || [])
+    setPayments(pay || [])
+    setOpeningDebts(opening || [])
+    setSupplierEntityStatuses(statusRows || [])
+    setProfiles(prof || [])
+  }
+
+  function userName(id) {
+    if (!id) return '—'
+    const p = profiles.find(u => u.id === id)
+    return p?.full_name || String(id).slice(0, 8)
+  }
+  function balanceForSupplier(id) { return parseNum(balances.find(b => b.supplier_id === id)?.balance) }
+  function supplierAlert(supplier) {
+    const balance = balanceForSupplier(supplier.id)
+    const limit = parseNum(supplier.credit_limit)
+    const termDays = parseNum(supplier.payment_term_days)
+    const overLimit = limit > 0 && balance > limit ? balance - limit : 0
+    const now = new Date()
+    const overdue = termDays > 0 ? purchases.filter(p => p.supplier_id === supplier.id && ((now - new Date(p.purchase_date)) / 86400000) > termDays) : []
+    return { overLimit, overdueCount: overdue.length, overdueInvoices: overdue.map(p => p.invoice_number || p.purchase_date).slice(0, 5) }
+  }
+  function lineTotal(row) { return parseNum(row.quantity) * parseNum(row.unit_price) }
+  function updateLine(index, patch) {
+    setLineRows(rows => rows.map((row, i) => {
+      if (i !== index) return row
+      const next = { ...row, ...patch }
+      return next
+    }))
+  }
+  function productLabel(product) { return product ? product.name : '' }
+  function productOptionsForRow(row) {
+    const type = row.category || PRODUCT_CATEGORIES[0]
+    const sameType = products.filter(p => normalizeProductType(p.category) === type)
+    const otherTypes = products.filter(p => normalizeProductType(p.category) !== type)
+    return [...sameType, ...otherTypes]
+  }
+  function productPriceTrend(productId) {
+    const rows = []
+    ;(purchases || []).forEach(p => {
+      ;(p.supplier_purchase_items || []).forEach(i => {
+        if (i.product_id === productId) {
+          rows.push({
+            date: p.purchase_date || p.created_at || '',
+            invoice: p.invoice_number || '',
+            price: parseNum(i.price_per_base_unit || i.unit_price),
+            unit_price: parseNum(i.unit_price),
+            total: parseNum(i.total_amount)
+          })
+        }
+      })
+    })
+    rows.sort((a, b) => String(b.date).localeCompare(String(a.date)))
+    const current = rows[0]
+    const previous = rows[1]
+    if (!current) return { label: 'нет закупки', className: 'hint' }
+    if (!previous || !previous.price) return { label: `${fmt(current.price)} · первая цена`, className: 'hint' }
+    const diff = current.price - previous.price
+    const pctChange = previous.price ? diff / previous.price * 100 : 0
+    const sign = diff > 0 ? '+' : ''
+    return {
+      label: `${fmt(current.price)} / ${current.invoice || current.date} · ${sign}${fmt(diff)} (${sign}${pct(pctChange)})`,
+      className: diff > 0 ? 'bad' : diff < 0 ? 'good' : 'hint'
+    }
+  }
+
+  function selectProductForLine(index, productId) {
+    setLineRows(rows => rows.map((row, i) => i === index ? { ...row, product_id: productId || '' } : row))
+  }
+  async function ensureProduct(row) {
+    if (row.product_id) return products.find(p => p.id === row.product_id)
+    throw new Error('Выберите товар из списка. Если товара нет, сначала добавьте его в блоке “Товары”.')
+  }
+
+  async function addSupplier() {
+    setMessage('')
+    if (!supplierForm.name.trim()) return setMessage('Введите имя контрагента')
+    const openingAmount = parseNum(supplierForm.opening_debt_amount)
+    const stopProgress = startGlobalProgress('Сохранение поставщика...')
+    try {
+      const { data: createdSupplier, error } = await supabase.from('suppliers').insert({
+        name: supplierForm.name.trim(), voen: supplierForm.voen.trim() || null,
+        contact_person: supplierForm.contact_person.trim() || null, phone: supplierForm.phone.trim() || null,
+        info: supplierForm.info.trim() || null,
+        payment_term_days: parseNum(supplierForm.payment_term_days) || null,
+        credit_limit: parseNum(supplierForm.credit_limit) || 0
+      }).select('*').single()
+      if (error) throw error
+
+      if (openingAmount > 0 && createdSupplier?.id) {
+        const { error: debtError } = await supabase.rpc('rms_add_supplier_opening_debt', {
+          p_supplier_id: createdSupplier.id,
+          p_debt_date: supplierForm.opening_debt_date || todayISO(),
+          p_amount: openingAmount,
+          p_legal_entity_id: supplierForm.opening_debt_legal_entity_id || null,
+          p_invoice_notes: 'Стартовый долг',
+          p_comment: supplierForm.opening_debt_comment?.trim() || 'Долг за предыдущий период'
+        })
+        if (debtError) throw debtError
+      }
+
+      setSupplierForm({ name: '', voen: '', contact_person: '', phone: '', info: '', payment_term_days: '', credit_limit: '', opening_debt_amount: '', opening_debt_legal_entity_id: legalEntities[0]?.id || '', opening_debt_date: todayISO(), opening_debt_comment: '' })
+      await load()
+      notifySuppliersUpdated()
+      setMessage(openingAmount > 0 ? 'Поставщик сохранён, стартовый долг добавлен' : t('saved'))
+    } catch (e) {
+      setMessage(e.message || String(e))
+    } finally {
+      stopProgress()
+    }
+  }
+  async function updateSupplier(id, patch) {
+    setMessage('')
+    const { error } = await supabase.from('suppliers').update(patch).eq('id', id)
+    if (error) setMessage(error.message); else { setSuppliers(prev => (prev || []).map(s => s.id === id ? { ...s, ...patch } : s)); await load(); notifySuppliersUpdated() }
+  }
+
+  function startEditSupplier(supplier) {
+    if (!isAdmin) return setMessage('Редактирование поставщика доступно только администратору')
+    setMessage('')
+    setEditingSupplierId(supplier.id)
+    setSupplierEditForm({
+      name: supplier.name || '',
+      voen: supplier.voen || '',
+      contact_person: supplier.contact_person || '',
+      phone: supplier.phone || '',
+      info: supplier.info || '',
+      payment_term_days: supplier.payment_term_days || '',
+      credit_limit: supplier.credit_limit ?? ''
+    })
+  }
+
+  function cancelEditSupplier() {
+    setEditingSupplierId('')
+    setSupplierEditForm({ name: '', voen: '', contact_person: '', phone: '', info: '', payment_term_days: '', credit_limit: '' })
+  }
+
+  async function saveSupplierEdit(supplier) {
+    if (!isAdmin) return setMessage('Редактирование поставщика доступно только администратору')
+    if (!supplier?.id) return
+    if (!String(supplierEditForm.name || '').trim()) return setMessage('Введите имя контрагента')
+    setMessage('')
+
+    const cleanNumberOrNull = (v) => {
+      const raw = String(v ?? '').trim()
+      if (!raw) return null
+      const n = parseNum(raw)
+      return Number.isFinite(n) && n > 0 ? n : null
+    }
+    const cleanMoney = (v) => {
+      const raw = String(v ?? '').trim()
+      if (!raw) return 0
+      const n = parseNum(raw)
+      return Number.isFinite(n) ? n : 0
+    }
+
+    const patch = {
+      name: String(supplierEditForm.name || '').trim(),
+      voen: String(supplierEditForm.voen || '').trim() || null,
+      contact_person: String(supplierEditForm.contact_person || '').trim() || null,
+      phone: String(supplierEditForm.phone || '').trim() || null,
+      info: String(supplierEditForm.info || '').trim() || null,
+      payment_term_days: cleanNumberOrNull(supplierEditForm.payment_term_days),
+      credit_limit: cleanMoney(supplierEditForm.credit_limit)
+    }
+
+    const stopProgress = startGlobalProgress('Сохранение контрагента...')
+    try {
+      // Важно: сохраняем через отдельную SECURITY DEFINER RPC-функцию.
+      // После включения RLS прямой update из frontend может не сработать, а визуально кажется,
+      // что данные сохранены. RPC возвращает фактически сохранённые значения из базы.
+      const { data, error } = await supabase.rpc('rms_supplier_admin_save', {
+        p_id: supplier.id,
+        p_old_name: supplier.name || '',
+        p_name: patch.name,
+        p_voen: patch.voen,
+        p_contact_person: patch.contact_person,
+        p_phone: patch.phone,
+        p_info: patch.info,
+        p_payment_term_days: patch.payment_term_days,
+        p_credit_limit: patch.credit_limit
+      })
+      if (error) throw error
+
+      const rows = Array.isArray(data) ? data : (data?.updated_suppliers || data?.rows || [])
+      const updatedRows = Array.isArray(rows) ? rows : []
+      if (!updatedRows.length) throw new Error('Supabase не вернул обновлённую строку поставщика')
+
+      const updatedById = new Map(updatedRows.map(r => [r.id, r]))
+      const primaryUpdated = updatedById.get(supplier.id) || updatedRows[0]
+
+      setSuppliers(prev => {
+        const merged = (prev || []).map(s => updatedById.has(s.id) ? { ...s, ...updatedById.get(s.id) } : s)
+        const known = new Set(merged.map(s => s.id))
+        updatedRows.forEach(r => { if (!known.has(r.id)) merged.push(r) })
+        return merged.sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')))
+      })
+
+      const applyFreshSupplier = (row) => {
+        const fresh = updatedById.get(row.supplier_id)
+        return fresh ? {
+          ...row,
+          suppliers: {
+            ...(row.suppliers || {}),
+            name: fresh.name,
+            voen: fresh.voen,
+            payment_term_days: fresh.payment_term_days,
+            credit_limit: fresh.credit_limit,
+            is_active: fresh.is_active
+          }
+        } : row
+      }
+      setPurchases(prev => (prev || []).map(applyFreshSupplier))
+      setPayments(prev => (prev || []).map(applyFreshSupplier))
+      setOpeningDebts(prev => (prev || []).map(applyFreshSupplier))
+
+      cancelEditSupplier()
+      notifySuppliersUpdated()
+      await load()
+      notifySuppliersUpdated()
+      setMessage(`Сохранено: ${primaryUpdated.name || patch.name} · срок ${primaryUpdated.payment_term_days || '—'} · лимит ${fmt(primaryUpdated.credit_limit)}`)
+    } catch (e) {
+      setMessage(e.message || String(e))
+    } finally {
+      stopProgress()
+    }
+  }
+
+  function supplierTransactionCount(supplierId) {
+    return purchases.filter(p => p.supplier_id === supplierId).length + payments.filter(p => p.supplier_id === supplierId).length + openingDebts.filter(d => d.supplier_id === supplierId).length
+  }
+
+  function supplierLegalTransactionCount(supplierId, legalEntityId) {
+    return purchases.filter(p => p.supplier_id === supplierId && p.legal_entity_id === legalEntityId).length
+      + payments.filter(p => p.supplier_id === supplierId && p.legal_entity_id === legalEntityId).length
+      + openingDebts.filter(d => d.supplier_id === supplierId && d.legal_entity_id === legalEntityId).length
+  }
+
+  function supplierLegalRows(supplierId) {
+    const ids = new Set([
+      ...purchases.filter(p => p.supplier_id === supplierId && p.legal_entity_id).map(p => p.legal_entity_id),
+      ...payments.filter(p => p.supplier_id === supplierId && p.legal_entity_id).map(p => p.legal_entity_id),
+      ...openingDebts.filter(d => d.supplier_id === supplierId && d.legal_entity_id).map(d => d.legal_entity_id),
+      ...supplierEntityStatuses.filter(r => r.supplier_id === supplierId && r.legal_entity_id).map(r => r.legal_entity_id)
+    ])
+    return Array.from(ids).map(id => {
+      const le = legalEntities.find(x => x.id === id)
+      const status = supplierEntityStatusMap.get(supplierEntityKey(supplierId, id)) !== false
+      return { id, name: le?.name || '—', voen: le?.voen || '', is_active: status, count: supplierLegalTransactionCount(supplierId, id) }
+    }).sort((a,b) => String(a.name).localeCompare(String(b.name)))
+  }
+
+  async function setSupplierLegalStatus(supplier, legalEntityId, isActive) {
+    if (!isAdmin) return setMessage('Изменение активности по VOEN доступно только администратору')
+    if (!supplier?.id || !legalEntityId) return
+    const le = legalEntities.find(x => x.id === legalEntityId)
+    const label = `${supplier.name} / ${le?.name || 'VOEN'}`
+    const text = isActive ? `Активировать поставщика только для ${le?.name || 'выбранного VOEN'}?` : `Деактивировать поставщика только для ${le?.name || 'выбранного VOEN'}? В других физ. лицах он останется активным.`
+    if (!window.confirm(text)) return
+    const { error } = await supabase.from('supplier_legal_entity_status').upsert({
+      supplier_id: supplier.id,
+      legal_entity_id: legalEntityId,
+      is_active: isActive,
+      updated_at: new Date().toISOString()
+    }, { onConflict: 'supplier_id,legal_entity_id' })
+    if (error) return setMessage(error.message)
+    await load()
+    setMessage(`${label}: ${isActive ? 'активирован' : 'деактивирован'}`)
+  }
+
+  async function deleteOrDeactivateSupplier(supplier) {
+    if (!isAdmin) return setMessage('Удаление или деактивация поставщика доступна только администратору')
+    if (!supplier?.id) return
+    const count = supplierTransactionCount(supplier.id)
+    const actionText = count > 0
+      ? `У поставщика есть связанные операции (${count}). Он будет деактивирован и скрыт из списков. Продолжить?`
+      : 'Поставщик без операций будет удалён полностью. Продолжить?'
+    if (!window.confirm(actionText)) return
+    setMessage('')
+    if (count > 0) {
+      const { error } = await supabase.from('suppliers').update({ is_active: false, updated_at: new Date().toISOString() }).eq('id', supplier.id)
+      if (error) return setMessage(error.message)
+      await load()
+      notifySuppliersUpdated()
+      return setMessage('Поставщик деактивирован')
+    }
+    const { error } = await supabase.from('suppliers').delete().eq('id', supplier.id)
+    if (error) return setMessage(error.message)
+    await load()
+    notifySuppliersUpdated()
+    setMessage('Поставщик удалён')
+  }
+
+  async function activateSupplier(supplier) {
+    if (!isAdmin) return setMessage('Активация поставщика доступна только администратору')
+    if (!supplier?.id) return
+    setMessage('')
+    const { error } = await supabase.from('suppliers').update({ is_active: true, updated_at: new Date().toISOString() }).eq('id', supplier.id)
+    if (error) return setMessage(error.message)
+    await load()
+    notifySuppliersUpdated()
+    setMessage('Поставщик активирован')
+  }
+
+  async function addProductFromForm() {
+    setMessage('')
+    if (!productForm.name.trim()) return setMessage('Введите товар')
+    const stopProgress = startGlobalProgress('Сохранение товара...')
+    const { error } = await supabase.from('supplier_products').insert({ name: productForm.name.trim(), category: productForm.category, base_unit: productForm.base_unit })
+    stopProgress()
+    if (error) return setMessage(error.message)
+    setProductForm({ name: '', category: productForm.category, base_unit: productForm.base_unit })
+    await load(); setMessage(t('saved'))
+  }
+
+  async function addPurchase() {
+    setMessage('')
+    try {
+      if (!purchaseForm.supplier_id || !purchaseForm.legal_entity_id) throw new Error('Выберите поставщика и VOEN')
+      const amountOnly = !!purchaseForm.amount_only
+
+      if (amountOnly) {
+        const manualAmount = parseNum(purchaseForm.manual_amount)
+        if (!manualAmount) throw new Error('Введите сумму поставки')
+        const { data: purchase, error } = await supabase.from('supplier_purchases').insert({
+          supplier_id: purchaseForm.supplier_id,
+          legal_entity_id: purchaseForm.legal_entity_id,
+          branch_id: purchaseForm.branch_id || null,
+          purchase_date: purchaseForm.purchase_date,
+          invoice_number: purchaseForm.invoice_number.trim() || null,
+          comment: purchaseForm.comment?.trim() || 'Поступление введено общей суммой без детализации товаров',
+          total_amount: manualAmount
+        }).select('*').single()
+        if (error) throw error
+
+        const { data: authData } = await supabase.auth.getUser()
+        await syncSupplierPurchaseFoodCost(purchase, manualAmount, authData?.user?.id || null)
+
+        await load()
+        setLineRows([{ ...emptyLine }])
+        setPurchaseForm(f => ({ ...f, invoice_number: '', comment: '', manual_amount: '' }))
+        setMessage(t('saved'))
+        return
+      }
+
+      const prepared = []
+      for (const row of lineRows) {
+        const hasData = row.product_id || parseNum(row.quantity) || parseNum(row.unit_price)
+        if (!hasData) continue
+        const product = await ensureProduct(row)
+        const quantity = parseNum(row.quantity)
+        const unitPrice = parseNum(row.unit_price)
+        const total = quantity * unitPrice
+        const baseQty = convertToBase(quantity, row.unit, product?.base_unit)
+        if (!product?.id || !quantity || !unitPrice || !baseQty) throw new Error('Проверьте товар, количество, единицу и цену')
+        prepared.push({ row, product, quantity, unitPrice, total, baseQty })
+      }
+      if (!prepared.length) throw new Error('Добавьте хотя бы один товар в поступление или включите режим ввода общей суммы')
+      const totalAmount = prepared.reduce((s, r) => s + r.total, 0)
+      const { data: purchase, error } = await supabase.from('supplier_purchases').insert({
+        supplier_id: purchaseForm.supplier_id, legal_entity_id: purchaseForm.legal_entity_id,
+        branch_id: purchaseForm.branch_id || null, purchase_date: purchaseForm.purchase_date,
+        invoice_number: purchaseForm.invoice_number.trim() || null, comment: purchaseForm.comment.trim() || null,
+        total_amount: totalAmount
+      }).select('*').single()
+      if (error) throw error
+      const items = prepared.map(({ row, product, quantity, unitPrice, total, baseQty }) => ({
+        purchase_id: purchase.id, product_id: product.id, quantity, unit: row.unit,
+        unit_price: unitPrice, total_amount: total, base_quantity: baseQty,
+        base_unit: product?.base_unit || 'g', price_per_base_unit: total / baseQty
+      }))
+      const { error: itemError } = await supabase.from('supplier_purchase_items').insert(items)
+      if (itemError) throw itemError
+
+      const { data: authData } = await supabase.auth.getUser()
+      await syncSupplierPurchaseFoodCost(purchase, totalAmount, authData?.user?.id || null)
+
+      await load(); setLineRows([{ ...emptyLine }]); setPurchaseForm(f => ({ ...f, invoice_number: '', comment: '', manual_amount: '' })); setMessage(t('saved'))
+    } catch (e) { setMessage(e.message) }
+  }
+  async function recalcPurchaseTotal(purchaseId) {
+    const { data } = await supabase.from('supplier_purchase_items').select('total_amount').eq('purchase_id', purchaseId)
+    const total = (data || []).reduce((s, i) => s + parseNum(i.total_amount), 0)
+    await supabase.from('supplier_purchases').update({ total_amount: total }).eq('id', purchaseId)
+
+    const { data: purchase } = await supabase.from('supplier_purchases').select('*').eq('id', purchaseId).single()
+    const { data: authData } = await supabase.auth.getUser()
+    if (purchase && !purchase.deleted_at) {
+      await syncSupplierPurchaseFoodCost(purchase, total, authData?.user?.id || null)
+    }
+  }
+  async function updatePurchase(id, patch) {
+    const { data: authData } = await supabase.auth.getUser()
+    const payload = { ...patch, updated_at: new Date().toISOString(), updated_by: authData?.user?.id || null }
+    const { error } = await supabase.from('supplier_purchases').update(payload).eq('id', id)
+    if (error) setMessage(error.message); else {
+      const { data: purchase } = await supabase.from('supplier_purchases').select('*').eq('id', id).single()
+      if (purchase && !purchase.deleted_at) await syncSupplierPurchaseFoodCost(purchase, purchase.total_amount, authData?.user?.id || null)
+      await load(); setMessage(t('saved'))
+    }
+  }
+  async function updatePurchaseItem(purchaseId, item, patch) {
+    const next = { ...item, ...patch }
+    const product = products.find(p => p.id === next.product_id) || item.supplier_products
+    const quantity = parseNum(next.quantity)
+    const unitPrice = parseNum(next.unit_price)
+    const total = quantity * unitPrice
+    const baseQty = convertToBase(quantity, next.unit, product?.base_unit || next.base_unit)
+    const payload = { ...patch, total_amount: total, base_quantity: baseQty, base_unit: product?.base_unit || next.base_unit || 'g', price_per_base_unit: baseQty ? total / baseQty : 0 }
+    const { error } = await supabase.from('supplier_purchase_items').update(payload).eq('id', item.id)
+    if (error) return setMessage(error.message)
+
+    try {
+      const purchase = purchases.find(p => p.id === purchaseId) || {}
+      const { data: authData } = await supabase.auth.getUser()
+      const oldProductName = item.supplier_products?.name || products.find(p => p.id === item.product_id)?.name || '—'
+      const newProductName = product?.name || oldProductName
+      await supabase.from('supplier_transaction_logs').insert({
+        transaction_type: 'purchase_item',
+        transaction_id: item.id,
+        supplier_id: purchase.supplier_id || null,
+        legal_entity_id: purchase.legal_entity_id || null,
+        action: 'Редактирование товара в поступлении',
+        old_value: `${oldProductName} · ${fmt(item.quantity)} ${item.unit || ''} · ${fmt(item.unit_price)} AZN · ${fmt(item.total_amount)} AZN`,
+        new_value: `${newProductName} · ${fmt(quantity)} ${next.unit || ''} · ${fmt(unitPrice)} AZN · ${fmt(total)} AZN`,
+        old_data: item,
+        new_data: { ...next, total_amount: total, base_quantity: baseQty, base_unit: product?.base_unit || next.base_unit || 'g' },
+        user_id: authData?.user?.id || null,
+        user_email: authData?.user?.email || null
+      })
+    } catch (e) {
+      console.warn('supplier purchase item log skipped', e)
+    }
+
+    await recalcPurchaseTotal(purchaseId); await load(); setMessage(t('saved'))
+  }
+
+  async function softDeletePurchase(id) {
+    if (!window.confirm('Удалить поступление? Оно будет зачёркнуто и не будет учитываться в финансах.')) return
+    const { data: authData } = await supabase.auth.getUser()
+    const { error } = await supabase.from('supplier_purchases').update({
+      deleted_at: new Date().toISOString(),
+      deleted_by: authData?.user?.id || null
+    }).eq('id', id)
+
+    await supabase
+      .from('daily_expenses')
+      .delete()
+      .eq('comment', `SUPPLIER_PURCHASE_${id}`)
+
+    if (error) setMessage(error.message); else { await load(); setMessage(t('saved')) }
+  }
+  function startPayment(supplierId, legalEntityId = '') { setPaymentForm({ supplier_id: supplierId, legal_entity_id: legalEntityId || legalEntities[0]?.id || '', payment_date: todayISO(), amount: '', invoice_notes: '', comment: '' }) }
+  async function addOpeningDebt() {
+    setMessage('')
+    if (!openingDebtForm.supplier_id) return setMessage('Выберите поставщика')
+    const amount = parseNum(openingDebtForm.amount)
+    if (!amount) return setMessage('Введите сумму долга')
+    const stopProgress = startGlobalProgress('Добавление стартового долга...')
+    try {
+      const { error } = await supabase.rpc('rms_add_supplier_opening_debt', {
+        p_supplier_id: openingDebtForm.supplier_id,
+        p_debt_date: openingDebtForm.debt_date,
+        p_amount: amount,
+        p_legal_entity_id: openingDebtForm.legal_entity_id || null,
+        p_invoice_notes: openingDebtForm.invoice_notes || null,
+        p_comment: openingDebtForm.comment || null
+      })
+      if (error) throw error
+      setOpeningDebtForm({ supplier_id: openingDebtForm.supplier_id, legal_entity_id: openingDebtForm.legal_entity_id || legalEntities[0]?.id || '', debt_date: todayISO(), amount: '', invoice_notes: '', comment: '' })
+      await load()
+      setMessage(t('saved'))
+    } catch (e) {
+      setMessage(e.message)
+    } finally {
+      stopProgress()
+    }
+  }
+
+  async function savePayment() {
+    setMessage('')
+    setPaymentMessage('')
+    const amount = parseNum(paymentForm.amount)
+    if (!paymentForm.supplier_id || !amount) return setPaymentMessage('Выберите поставщика и сумму оплаты')
+    if (!paymentForm.legal_entity_id) return setPaymentMessage('Выберите наш VOEN / юрлицо для оплаты')
+    const { error } = await supabase.from('supplier_payments').insert({
+      supplier_id: paymentForm.supplier_id, legal_entity_id: paymentForm.legal_entity_id || null, payment_date: paymentForm.payment_date || todayISO(), amount,
+      invoice_notes: paymentForm.invoice_notes.trim() || null, comment: paymentForm.comment.trim() || null
+    })
+    if (error) return setPaymentMessage(error.message)
+    setPaymentForm({ supplier_id: '', legal_entity_id: legalEntities[0]?.id || '', payment_date: todayISO(), amount: '', invoice_notes: '', comment: '' })
+    await load(); setPaymentMessage(t('saved'))
+  }
+
+  const purchaseTotal = purchaseForm.amount_only ? parseNum(purchaseForm.manual_amount) : lineRows.reduce((s, r) => s + lineTotal(r), 0)
+  function allTransactions() {
+    const openingDebtRows = openingDebts.map(d => ({ id: `od-${d.id}`, type: 'Долг за предыдущий период', date: d.debt_date, supplier_id: d.supplier_id, legal_entity_id: d.legal_entity_id || '', supplier: d.suppliers?.name || suppliers.find(s => s.id === d.supplier_id)?.name || '—', invoice: d.invoice_notes || 'Стартовый долг', amount: parseNum(d.amount), comment: d.comment || '', legal: d.legal_entities?.name || legalEntities.find(le => le.id === d.legal_entity_id)?.name || '—' }))
+    const purchaseRows = purchases.map(p => ({ id: `p-${p.id}`, type: 'Поступление', date: p.purchase_date, supplier_id: p.supplier_id, legal_entity_id: p.legal_entity_id || '', supplier: p.suppliers?.name || suppliers.find(s => s.id === p.supplier_id)?.name || '—', invoice: p.invoice_number || '—', amount: parseNum(p.total_amount), comment: p.comment || '', legal: p.legal_entities?.name || '—' }))
+    const paymentRows = payments.map(p => ({ id: `pay-${p.id}`, type: 'Оплата', date: p.payment_date, supplier_id: p.supplier_id, legal_entity_id: p.legal_entity_id || '', supplier: p.suppliers?.name || suppliers.find(s => s.id === p.supplier_id)?.name || '—', invoice: p.invoice_notes || '—', amount: -parseNum(p.amount), comment: p.comment || '', legal: p.legal_entities?.name || legalEntities.find(le => le.id === p.legal_entity_id)?.name || '—' }))
+    return [...openingDebtRows, ...purchaseRows, ...paymentRows].sort((a,b) => new Date(b.date) - new Date(a.date))
+  }
+  function periodOk(dateStr) {
+    if (transactionPeriod === 'all') return true
+    const d = new Date(dateStr), anchor = new Date(transactionDate || todayISO())
+    if (transactionPeriod === 'day') return d.toISOString().slice(0,10) === anchor.toISOString().slice(0,10)
+    if (transactionPeriod === 'month') return d.getFullYear() === anchor.getFullYear() && d.getMonth() === anchor.getMonth()
+    if (transactionPeriod === 'year') return d.getFullYear() === anchor.getFullYear()
+    return true
+  }
+  const supplierTransactions = allTransactions().filter(r => (!transactionSupplierId || r.supplier_id === transactionSupplierId) && periodOk(r.date))
+  const lastTransactions = allTransactions().slice(0, 10)
+  const recentPurchasesPageSizeNumber = parseNum(recentPurchasesPageSize) || 10
+  const visiblePurchases = (purchases || []).filter(p => activeSupplierIds.has(p.supplier_id) && isSupplierActiveForLegal(p.supplier_id, p.legal_entity_id))
+  const recentPurchasesTotalPages = Math.max(1, Math.ceil(visiblePurchases.length / recentPurchasesPageSizeNumber))
+  const safeRecentPurchasesPage = Math.min(Math.max(1, parseNum(recentPurchasesPage) || 1), recentPurchasesTotalPages)
+  const recentPurchasesRows = visiblePurchases.slice((safeRecentPurchasesPage - 1) * recentPurchasesPageSizeNumber, safeRecentPurchasesPage * recentPurchasesPageSizeNumber)
+  function suppliersForLegalEntity(entityId) {
+    const ids = new Set(purchases.filter(p => p.legal_entity_id === entityId).map(p => p.supplier_id))
+    return activeSuppliers.filter(s => ids.has(s.id) && isSupplierActiveForLegal(s.id, entityId))
+  }
+
+  return <section>
+    <section className="topbar"><div><h2>{t('suppliers_tab')}</h2><p>Поставщики, поступления, оплаты, товары и долги. VOEN / юрлица теперь находятся в разделе “Настройки”.</p></div></section>
+    <section className="grid">
+      <div className="card span-2">
+        <div className="card-head"><div><h3>Поступления от поставщика</h3><p className="hint">Сначала заполняется шапка фактуры. Товары добавляются строками ниже.</p></div></div>
+        <div className="form-grid compact">
+          <label><span>Поставщик</span><select value={purchaseForm.supplier_id} onChange={e => setPurchaseForm({...purchaseForm, supplier_id: e.target.value})}>{activeSuppliersForPurchaseLegal.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
+          <label><span>Наш VOEN</span><select value={purchaseForm.legal_entity_id} onChange={e => setPurchaseForm({...purchaseForm, legal_entity_id: e.target.value})}>{legalEntities.map(le => <option key={le.id} value={le.id}>{le.name} · {le.voen}</option>)}</select></label>
+          <label><span>Филиал</span><select value={purchaseForm.branch_id} onChange={e => setPurchaseForm({...purchaseForm, branch_id: e.target.value})}>{branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label>
+          <label><span>Дата поступления</span><input type="date" value={purchaseForm.purchase_date} onChange={e => setPurchaseForm({...purchaseForm, purchase_date: e.target.value})} /></label>
+          <label><span>Номер фактуры</span><input value={purchaseForm.invoice_number} onChange={e => setPurchaseForm({...purchaseForm, invoice_number: e.target.value})} /></label>
+          <label><span>Сумма поставки</span><input inputMode="decimal" disabled={!purchaseForm.amount_only} value={purchaseForm.manual_amount} onChange={e => setPurchaseForm({...purchaseForm, manual_amount: e.target.value})} placeholder="0.00" /></label>
+        </div>
+        <label className="checkline" style={{marginTop:10}}>
+          <input type="checkbox" checked={!!purchaseForm.amount_only} onChange={e => setPurchaseForm({...purchaseForm, amount_only: e.target.checked, manual_amount: e.target.checked ? purchaseForm.manual_amount : ''})} />
+          <span>Ввести только общую сумму поставки без товаров</span>
+        </label>
+        <p className="hint">Если включена галочка, строки товаров временно не используются. Если галочка выключена, сумма считается по товарам.</p><br />
+        <div className="card-head"><div><h3>Товары в поступлении</h3><p className="hint">Если товара нет, сначала добавьте его ниже в блоке “Товары”.</p></div><button className="small" disabled={purchaseForm.amount_only} onClick={() => setLineRows(rows => [...rows, { ...emptyLine }])}>+ Строка товара</button></div>
+        <div className="table-wrap"><table><thead><tr><th>Тип</th><th>Товар</th><th>Кол-во закупа</th><th>Ед. закупа</th><th>Цена за ед.</th><th>Сумма</th><th></th></tr></thead><tbody>{purchaseForm.amount_only ? <tr><td colSpan="7" className="hint">Товары отключены: поступление будет сохранено общей суммой.</td></tr> : lineRows.map((row, idx) => <tr key={idx}>
+          <td><select value={row.category} onChange={e => updateLine(idx, { category: e.target.value })}>{PRODUCT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select></td>
+          <td style={{minWidth:260}}><select value={row.product_id || ''} onChange={e => selectProductForLine(idx, e.target.value)}><option value="">Выберите товар</option>{productOptionsForRow(row).map(p => <option key={p.id} value={p.id}>{productLabel(p)}</option>)}</select></td>
+          <td><input inputMode="decimal" value={row.quantity} onChange={e => updateLine(idx, { quantity: e.target.value })} /></td>
+          <td><select value={row.unit} onChange={e => updateLine(idx, { unit: e.target.value })}>{PURCHASE_UNITS.map(u => <option key={u.value} value={u.value}>{u.label}</option>)}</select></td>
+          <td><input inputMode="decimal" value={row.unit_price} onChange={e => updateLine(idx, { unit_price: e.target.value })} /></td>
+          <td><strong>{fmt(lineTotal(row))}</strong></td>
+          <td><button className="remove" onClick={() => setLineRows(rows => rows.length === 1 ? [{ ...emptyLine }] : rows.filter((_, i) => i !== idx))}>×</button></td>
+        </tr>)}</tbody></table></div>
+        <p className="hint">Итого по фактуре: <strong>{fmt(purchaseTotal)}</strong> AZN.</p><button className="small primary" onClick={addPurchase}>+ Сохранить поступление</button>{message && <p className={`hint ${message === t('saved') ? 'save-status' : 'bad'}`}>{message}</p>}
+      </div>
+
+      <div className="card span-2">
+        <div className="card-head"><div><h3>Оплата поставщику</h3><p className="hint">Укажите сумму оплаты, номера счёт-фактур и комментарий.</p></div></div>
+        <div className="form-grid compact">
+          <label><span>Поставщик</span><select value={paymentForm.supplier_id} onChange={e => setPaymentForm({...paymentForm, supplier_id: e.target.value})}><option value="">Выберите поставщика</option>{activeSuppliersForPaymentLegal.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
+          <label><span>Наш VOEN</span><select value={paymentForm.legal_entity_id} onChange={e => setPaymentForm({...paymentForm, legal_entity_id: e.target.value})}><option value="">Выберите VOEN</option>{legalEntities.map(le => <option key={le.id} value={le.id}>{le.name} · {le.voen}</option>)}</select></label>
+          <label><span>Дата оплаты</span><input type="date" value={paymentForm.payment_date} onChange={e => setPaymentForm({...paymentForm, payment_date: e.target.value})} /></label>
+          <label><span>Сумма оплаты</span><input inputMode="decimal" value={paymentForm.amount} onChange={e => setPaymentForm({...paymentForm, amount: e.target.value})} /></label>
+          <label><span>Отметки / номера счёт-фактур</span><input value={paymentForm.invoice_notes} onChange={e => setPaymentForm({...paymentForm, invoice_notes: e.target.value})} /></label>
+          <label><span>Комментарий</span><input value={paymentForm.comment} onChange={e => setPaymentForm({...paymentForm, comment: e.target.value})} /></label>
+        </div><button className="small primary" onClick={savePayment}>+ Сохранить оплату</button>
+        {paymentMessage && <p className={`hint ${paymentMessage === t('saved') ? 'save-status' : 'bad'}`}>{paymentMessage}</p>}
+      </div>
+
+
+
+      <div className="card span-2 supplier-opening-debt-card">
+        <div className="card-head"><div><h3>Долг поставщику за предыдущий период</h3><p className="hint">Используйте при запуске программы с нуля, чтобы перенести старый долг в баланс поставщика.</p></div></div>
+        <div className="form-grid compact">
+          <label><span>Поставщик</span><select value={openingDebtForm.supplier_id} onChange={e => setOpeningDebtForm({...openingDebtForm, supplier_id: e.target.value})}><option value="">Выберите поставщика</option>{activeSuppliersForOpeningLegal.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
+          <label><span>Наш VOEN</span><select value={openingDebtForm.legal_entity_id} onChange={e => setOpeningDebtForm({...openingDebtForm, legal_entity_id: e.target.value})}><option value="">Выберите VOEN</option>{legalEntities.map(le => <option key={le.id} value={le.id}>{le.name} · {le.voen}</option>)}</select></label>
+          <label><span>Дата долга</span><input type="date" value={openingDebtForm.debt_date} onChange={e => setOpeningDebtForm({...openingDebtForm, debt_date: e.target.value})} /></label>
+          <label><span>Сумма долга</span><input inputMode="decimal" value={openingDebtForm.amount} onChange={e => setOpeningDebtForm({...openingDebtForm, amount: e.target.value})} /></label>
+          <label><span>Фактура / отметка</span><input value={openingDebtForm.invoice_notes} onChange={e => setOpeningDebtForm({...openingDebtForm, invoice_notes: e.target.value})} /></label>
+          <label><span>Комментарий</span><input value={openingDebtForm.comment} onChange={e => setOpeningDebtForm({...openingDebtForm, comment: e.target.value})} /></label>
+        </div><button className="small primary" onClick={addOpeningDebt}>+ Добавить долг</button>
+        {message && <p className={`hint ${message === t('saved') ? 'save-status' : message.includes('добавлен') ? 'good' : 'bad'}`}>{message}</p>}
+      </div>
+
+
+
+      <div className="card span-2">
+        <div className="card-head"><div><h3>Контрагенты</h3><p className="hint">Условия оплаты и лимиты используются в Dashboard для проблемных долгов.</p></div></div>
+        <div className="form-grid compact">
+          <label><span>Имя контрагента</span><input value={supplierForm.name} onChange={e => setSupplierForm({...supplierForm, name: e.target.value})} /></label>
+          <label><span>VOEN поставщика</span><input value={supplierForm.voen} onChange={e => setSupplierForm({...supplierForm, voen: e.target.value})} /></label>
+          <label><span>Контакт</span><input value={supplierForm.contact_person} onChange={e => setSupplierForm({...supplierForm, contact_person: e.target.value})} /></label>
+          <label><span>Телефон</span><input value={supplierForm.phone} onChange={e => setSupplierForm({...supplierForm, phone: e.target.value})} /></label>
+          <label><span>Информация</span><input value={supplierForm.info} onChange={e => setSupplierForm({...supplierForm, info: e.target.value})} /></label>
+          <label><span>Срок оплаты, дней</span><input inputMode="numeric" value={supplierForm.payment_term_days} onChange={e => setSupplierForm({...supplierForm, payment_term_days: e.target.value})} /></label>
+          <label><span>Кредитный лимит</span><input inputMode="decimal" value={supplierForm.credit_limit} onChange={e => setSupplierForm({...supplierForm, credit_limit: e.target.value})} /></label>
+          <label><span>Долг за предыдущий период</span><input inputMode="decimal" value={supplierForm.opening_debt_amount} onChange={e => setSupplierForm({...supplierForm, opening_debt_amount: e.target.value})} placeholder="0.00" /></label>
+          <label><span>Наш VOEN для стартового долга</span><select value={supplierForm.opening_debt_legal_entity_id} onChange={e => setSupplierForm({...supplierForm, opening_debt_legal_entity_id: e.target.value})}><option value="">Выберите VOEN</option>{legalEntities.map(le => <option key={le.id} value={le.id}>{le.name} · {le.voen}</option>)}</select></label>
+          <label><span>Дата стартового долга</span><input type="date" value={supplierForm.opening_debt_date} onChange={e => setSupplierForm({...supplierForm, opening_debt_date: e.target.value})} /></label>
+          <label><span>Комментарий к стартовому долгу</span><input value={supplierForm.opening_debt_comment} onChange={e => setSupplierForm({...supplierForm, opening_debt_comment: e.target.value})} placeholder="Например: остаток на 01.05" /></label>
+        </div><button className="small" onClick={addSupplier}>+ Добавить поставщика</button>
+        {editingSupplierId && (() => {
+          const selected = supplierAdminRows.find(s => s.id === editingSupplierId)
+          if (!selected) return null
+          const count = supplierTransactionCount(selected.id)
+          const inactive = selected.is_active === false
+          return <div className="inline-editor" style={{marginTop:12}}>
+            <div className="card-head">
+              <div>
+                <h4>Редактирование контрагента</h4>
+                <p className="hint">Изменять данные поставщика может только администратор. Деактивация скрывает поставщика из рабочих списков, но сохраняет историю операций.</p>
+              </div>
+              <button className="small ghost" onClick={cancelEditSupplier}>Закрыть</button>
+            </div>
+            <div className="form-grid compact">
+              <label><span>Имя контрагента</span><input value={supplierEditForm.name} onChange={e => setSupplierEditForm({...supplierEditForm, name: e.target.value})} /></label>
+              <label><span>VOEN поставщика</span><input value={supplierEditForm.voen} onChange={e => setSupplierEditForm({...supplierEditForm, voen: e.target.value})} /></label>
+              <label><span>Контакт</span><input value={supplierEditForm.contact_person} onChange={e => setSupplierEditForm({...supplierEditForm, contact_person: e.target.value})} /></label>
+              <label><span>Телефон</span><input value={supplierEditForm.phone} onChange={e => setSupplierEditForm({...supplierEditForm, phone: e.target.value})} /></label>
+              <label><span>Информация</span><input value={supplierEditForm.info} onChange={e => setSupplierEditForm({...supplierEditForm, info: e.target.value})} /></label>
+              <label><span>Срок оплаты, дней</span><input inputMode="numeric" value={supplierEditForm.payment_term_days} onChange={e => setSupplierEditForm({...supplierEditForm, payment_term_days: e.target.value})} /></label>
+              <label><span>Кредитный лимит</span><input inputMode="decimal" value={supplierEditForm.credit_limit} onChange={e => setSupplierEditForm({...supplierEditForm, credit_limit: e.target.value})} /></label>
+            </div>
+            <div className="table-wrap" style={{marginTop:12}}>
+              <h4>Активность по нашим VOEN / физ. лицам</h4>
+              <p className="hint">Здесь можно скрыть поставщика только по выбранному физ. лицу. В других VOEN этот же поставщик останется активным.</p>
+              <table>
+                <thead><tr><th>Наш VOEN</th><th>Операции</th><th>Статус</th><th>Действие</th></tr></thead>
+                <tbody>
+                  {supplierLegalRows(selected.id).map(row => <tr key={`${selected.id}-${row.id}`} className={row.is_active ? '' : 'cancelled-row'}>
+                    <td><b>{row.name}</b><br /><span className="hint">{row.voen || 'VOEN не указан'}</span></td>
+                    <td>{row.count}</td>
+                    <td>{row.is_active ? <span className="good">Активен</span> : <span className="bad">Деактивирован</span>}</td>
+                    <td>{row.is_active
+                      ? <button className="small danger" onClick={() => setSupplierLegalStatus(selected, row.id, false)}>Деактивировать по этому VOEN</button>
+                      : <button className="small" onClick={() => setSupplierLegalStatus(selected, row.id, true)}>Активировать по этому VOEN</button>}
+                    </td>
+                  </tr>)}
+                  {!supplierLegalRows(selected.id).length && <tr><td colSpan="4" className="hint">Операций по нашим VOEN пока нет</td></tr>}
+                </tbody>
+              </table>
+            </div>
+            <div className="action-row" style={{marginTop:10}}>
+              <button className="small primary" onClick={() => saveSupplierEdit(selected)}>Сохранить изменения</button>
+              {inactive
+                ? <button className="small" onClick={() => activateSupplier(selected)}>Активировать</button>
+                : <button className="small danger" onClick={() => deleteOrDeactivateSupplier(selected)}>{count > 0 ? 'Деактивировать' : 'Удалить'}</button>}
+              <button className="small ghost" onClick={cancelEditSupplier}>Отмена</button>
+            </div>
+          </div>
+        })()}
+        <div className="table-wrap" style={{marginTop:12}}>
+          <table>
+            <thead><tr><th>Контрагент</th><th>VOEN</th><th>Условия</th><th>Операции</th><th>Статус</th><th>Действие</th></tr></thead>
+            <tbody>
+              {visibleSupplierAdminRows.map(s => {
+                const count = supplierTransactionCount(s.id)
+                const inactive = s.is_active === false
+                return <tr key={s.id} className={inactive ? 'cancelled-row' : ''}>
+                  <td><b>{s.name}</b><br /><span className="hint">{s.contact_person || s.phone || '—'}</span></td>
+                  <td>{s.voen || '—'}</td>
+                  <td className="hint">{s.payment_term_days ? `${s.payment_term_days} дней` : '—'} · лимит {fmt(s.credit_limit)}</td>
+                  <td>{count}</td>
+                  <td>{inactive ? <span className="bad">Деактивирован</span> : <span className="good">Активен</span>}</td>
+                  <td>{isAdmin ? <button className="small" onClick={() => startEditSupplier(s)}>Редактировать</button> : <span className="hint">Только admin</span>}</td>
+                </tr>
+              })}
+              {!supplierAdminRows.length && <tr><td colSpan="6" className="hint">Поставщики не найдены</td></tr>}
+            </tbody>
+          </table>
+        </div>
+        {supplierAdminRows.length > 2 && (
+          <div className="action-row" style={{marginTop:10}}>
+            <button className="ghost small" onClick={() => setSupplierAdminExpanded(v => !v)}>
+              {supplierAdminExpanded ? 'Свернуть список' : `Показать ещё · всего ${supplierAdminRows.length}`}
+            </button>
+          </div>
+        )}
+      </div>
+
+      <div className="card span-2">
+        <div className="card-head"><div><h3>Товары</h3><p className="hint">Товар создаётся один раз и потом выбирается в поступлении и в техкарте.</p></div></div>
+        <div className="form-grid compact"><label><span>Товар</span><input value={productForm.name} onChange={e => setProductForm({...productForm, name: e.target.value})} /></label><label><span>Тип</span><select value={productForm.category} onChange={e => setProductForm({...productForm, category: e.target.value})}>{PRODUCT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select></label><label><span>Базовая ед. для техкарты</span><select value={productForm.base_unit} onChange={e => setProductForm({...productForm, base_unit: e.target.value})}>{BASE_UNITS.map(u => <option key={u.value} value={u.value}>{u.label}</option>)}</select></label></div><button className="small" onClick={addProductFromForm}>+ Добавить товар</button>
+      </div>
+
+     <div className="card span-2">
+        <div className="card-head">
+          <div>
+            <h3>Последние поступления</h3>
+            <p className="hint">Сначала открывается просмотр накладной. Редактирование и удаление доступны внутри накладной.</p>
+          </div>
+          <label style={{display:'flex',alignItems:'center',gap:8}}>
+            <span className="hint">Показать</span>
+            <select value={recentPurchasesPageSize} onChange={e => { setRecentPurchasesPageSize(Number(e.target.value)); setRecentPurchasesPage(1) }}>
+              <option value={10}>10</option>
+              <option value={20}>20</option>
+              <option value={30}>30</option>
+              <option value={50}>50</option>
+            </select>
+          </label>
+        </div>
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr><th>Дата</th><th>Фактура</th><th>Поставщик</th><th>Физ. лицо</th><th>Филиал</th><th>Сумма</th><th>Статус</th><th></th></tr>
+            </thead>
+            <tbody>
+              {recentPurchasesRows.map(p => (
+                <React.Fragment key={p.id}>
+                  <tr className={p.deleted_at ? 'cancelled-row' : ''}>
+                    <td>{p.purchase_date}</td>
+                    <td>{p.invoice_number || '—'}</td>
+                    <td>{p.suppliers?.name}</td>
+                    <td>{p.legal_entities?.name || '—'}<br /><span className="hint">{p.legal_entities?.voen || ''}</span></td>
+                    <td>{p.branches?.name || '—'}</td>
+                    <td><strong>{fmt(p.total_amount)}</strong></td>
+                    <td>{p.deleted_at ? <span className="bad">Отменено</span> : <span className="good">Активно</span>}</td>
+                    <td><button className="ghost small" onClick={() => { setViewPurchaseId(viewPurchaseId === p.id ? '' : p.id); setEditingPurchaseId('') }}>{viewPurchaseId === p.id ? 'Закрыть' : 'Просмотр'}</button></td>
+                  </tr>
+                  {viewPurchaseId === p.id && (
+                    <tr>
+                      <td colSpan="8">
+                        <div className="invoice-view">
+                          <div className="card-head">
+                            <div>
+                              <h3>Накладная {p.invoice_number || 'без номера'}</h3>
+                              <p className="hint">
+                                Создано: {p.created_at ? new Date(p.created_at).toLocaleString() : '—'} · {userName(p.created_by)}
+                                {' '} | Изменено: {p.updated_at ? new Date(p.updated_at).toLocaleString() : '—'} · {userName(p.updated_by)}
+                                {p.deleted_at ? <> | Отменено: {new Date(p.deleted_at).toLocaleString()} · {userName(p.deleted_by)}</> : null}
+                              </p>
+                            </div>
+                            {!p.deleted_at && <div className="row-actions">
+                              <button className="ghost small" onClick={() => setEditingPurchaseId(editingPurchaseId === p.id ? '' : p.id)}>{editingPurchaseId === p.id ? 'Готово' : 'Редактировать'}</button>
+                              <button className="remove" onClick={() => softDeletePurchase(p.id)}>Удалить</button>
+                            </div>}
+                          </div>
+
+                          <div className="form-grid compact">
+                            <label><span>Дата</span>{editingPurchaseId === p.id && !p.deleted_at ? <input type="date" defaultValue={p.purchase_date} onBlur={e => updatePurchase(p.id, { purchase_date: e.target.value })} /> : <strong>{p.purchase_date}</strong>}</label>
+                            <label><span>Фактура</span>{editingPurchaseId === p.id && !p.deleted_at ? <input defaultValue={p.invoice_number || ''} onBlur={e => updatePurchase(p.id, { invoice_number: e.target.value.trim() || null })} /> : <strong>{p.invoice_number || '—'}</strong>}</label>
+                            <label><span>Филиал</span>{editingPurchaseId === p.id && !p.deleted_at ? <select defaultValue={p.branch_id || ''} onBlur={e => updatePurchase(p.id, { branch_id: e.target.value || null })}><option value="">—</option>{branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select> : <strong>{p.branches?.name || '—'}</strong>}</label>
+                          </div>
+
+                          <div className="table-wrap">
+                            <table>
+                              <thead><tr><th>Тип</th><th>Товар</th><th>Кол-во</th><th>Ед.</th><th>Цена</th><th>Сумма</th></tr></thead>
+                              <tbody>
+                                {(p.supplier_purchase_items || []).map(i => (
+                                  <tr key={i.id}>
+                                    <td>{i.supplier_products?.category || '—'}</td>
+                                    <td>{editingPurchaseId === p.id && !p.deleted_at ? <select defaultValue={i.product_id} onBlur={e => updatePurchaseItem(p.id, i, { product_id: e.target.value })}>{products.map(prod => <option key={prod.id} value={prod.id}>{prod.name}</option>)}</select> : <span>{i.supplier_products?.name}</span>}</td>
+                                    <td>{editingPurchaseId === p.id && !p.deleted_at ? <input inputMode="decimal" defaultValue={i.quantity} onBlur={e => updatePurchaseItem(p.id, i, { quantity: parseNum(e.target.value) })} /> : <span>{fmt(i.quantity)}</span>}</td>
+                                    <td>{editingPurchaseId === p.id && !p.deleted_at ? <select defaultValue={i.unit} onBlur={e => updatePurchaseItem(p.id, i, { unit: e.target.value })}>{PURCHASE_UNITS.map(u => <option key={u.value} value={u.value}>{u.label}</option>)}</select> : <span>{i.unit}</span>}</td>
+                                    <td>{editingPurchaseId === p.id && !p.deleted_at ? <input inputMode="decimal" defaultValue={i.unit_price} onBlur={e => updatePurchaseItem(p.id, i, { unit_price: parseNum(e.target.value) })} /> : <span>{fmt(i.unit_price)} AZN</span>}</td>
+                                    <td><strong>{fmt(i.total_amount)}</strong></td>
+                                  </tr>
+                                ))}
+                                {!(p.supplier_purchase_items || []).length && <tr><td colSpan="6" className="hint">Товары не найдены</td></tr>}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
+              ))}
+              {!visiblePurchases.length && <tr><td colSpan="8" className="hint">—</td></tr>}
+            </tbody>
+          </table>
+        </div>
+        <div className="action-row" style={{margin:'12px 0 0'}}>
+          <button className="ghost small" disabled={safeRecentPurchasesPage <= 1} onClick={() => setRecentPurchasesPage(p => Math.max(1, parseNum(p) - 1))}>← Пред.</button>
+          <span className="hint">Страница {safeRecentPurchasesPage} / {recentPurchasesTotalPages} · всего {visiblePurchases.length}</span>
+          <button className="ghost small" disabled={safeRecentPurchasesPage >= recentPurchasesTotalPages} onClick={() => setRecentPurchasesPage(p => Math.min(recentPurchasesTotalPages, parseNum(p) + 1))}>След. →</button>
+        </div>
+      </div>
+    </section>
+  </section>
+}
+
+
+function DebtKpiCard({ tone = 'neutral', label, value, sub }) {
+  return <div className={`debt-kpi-card debt-kpi-${tone}`}>
+    <div className="debt-kpi-label">{label}</div>
+    <div className="debt-kpi-value">{value}</div>
+    {sub ? <div className="debt-kpi-sub">{sub}</div> : null}
+  </div>
+}
+
+function DebtDonutChart({ overdue = 0, ok = 0 }) {
+  const total = Math.max(0, parseNum(overdue)) + Math.max(0, parseNum(ok))
+  const overduePct = total ? Math.max(0, Math.min(100, (parseNum(overdue) / total) * 100)) : 0
+  const circumference = 2 * Math.PI * 42
+  const dashOverdue = (overduePct / 100) * circumference
+  const dashOk = circumference - dashOverdue
+  return <div className="debt-chart-card debt-donut-card">
+    <div className="debt-chart-head"><h3>Распределение долгов</h3><span>по статусу</span></div>
+    <div className="debt-donut-layout">
+      <svg viewBox="0 0 120 120" className="debt-donut-svg" aria-hidden="true">
+        <circle cx="60" cy="60" r="42" className="debt-donut-bg" />
+        <circle cx="60" cy="60" r="42" className="debt-donut-ok" strokeDasharray={`${dashOk} ${circumference}`} strokeDashoffset="0" />
+        <circle cx="60" cy="60" r="42" className="debt-donut-overdue" strokeDasharray={`${dashOverdue} ${circumference}`} strokeDashoffset={-dashOk} />
+      </svg>
+      <div className="debt-donut-center"><b>{fmt(total)}</b><span>AZN</span></div>
+      <div className="debt-donut-legend">
+        <div><i className="risk-dot risk-red" />Просрочено <b>{fmt(overdue)}</b></div>
+        <div><i className="risk-dot risk-green" />В срок <b>{fmt(ok)}</b></div>
+      </div>
+    </div>
+  </div>
+}
+
+function DebtTrendChart({ data = [] }) {
+  const width = 520
+  const height = 170
+  const padX = 28
+  const padY = 22
+  const maxValue = Math.max(1, ...data.map(d => parseNum(d.value)))
+  const points = data.map((d, idx) => {
+    const x = padX + (idx / Math.max(1, data.length - 1)) * (width - padX * 2)
+    const y = height - padY - (parseNum(d.value) / maxValue) * (height - padY * 2)
+    return { ...d, x, y }
+  })
+  const path = points.map((p, idx) => `${idx ? 'L' : 'M'} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ')
+  const areaPath = points.length ? `${path} L ${points[points.length - 1].x.toFixed(1)} ${height - padY} L ${points[0].x.toFixed(1)} ${height - padY} Z` : ''
+  return <div className="debt-chart-card debt-trend-card">
+    <div className="debt-chart-head"><h3>Динамика долгов</h3><span>последние месяцы</span></div>
+    <svg viewBox={`0 0 ${width} ${height}`} className="debt-trend-svg" aria-hidden="true">
+      {[0, 0.5, 1].map((v, i) => <line key={i} x1={padX} x2={width - padX} y1={padY + v * (height - padY * 2)} y2={padY + v * (height - padY * 2)} className="debt-trend-grid" />)}
+      <path d={areaPath} className="debt-trend-area" />
+      <path d={path} className="debt-trend-line" />
+      {points.map((p, idx) => <text key={idx} x={p.x} y={height - 5} textAnchor="middle" className="debt-trend-label">{p.label}</text>)}
+    </svg>
+  </div>
+}
+
+function SupplierRiskBars({ data = [] }) {
+  return <div className="debt-chart-card debt-risk-card">
+    <div className="debt-chart-head"><h3>AI Risk Score</h3><span>поставщики с риском</span></div>
+    <div className="debt-risk-list">
+      {data.map(row => <div key={row.name} className="debt-risk-row">
+        <div className="debt-risk-row-top"><span>{row.name}</span><b>{row.risk}</b></div>
+        <div className="debt-risk-track"><i style={{width: `${Math.max(4, Math.min(100, row.risk))}%`}} /></div>
+      </div>)}
+      {!data.length ? <div className="debt-empty-note">Рисковых поставщиков нет.</div> : null}
+    </div>
+  </div>
+}
+
+function DebtsPayments({ t }) {
+  const [legalEntities, setLegalEntities] = useState([])
+  const [branches, setBranches] = useState([])
+  const [suppliers, setSuppliers] = useState([])
+  const [products, setProducts] = useState([])
+  const [balances, setBalances] = useState([])
+  const [purchases, setPurchases] = useState([])
+  const [payments, setPayments] = useState([])
+  const [openingDebts, setOpeningDebts] = useState([])
+  const [supplierEntityStatuses, setSupplierEntityStatuses] = useState([])
+  const [activeSupplierId, setActiveSupplierId] = useState('')
+  const [activeLegalEntityId, setActiveLegalEntityId] = useState('')
+  const [productSearch, setProductSearch] = useState('')
+  const [productSort, setProductSort] = useState('name_asc')
+  const [transactionType, setTransactionType] = useState('purchases')
+  const [transactionPeriod, setTransactionPeriod] = useState('month')
+  const [transactionDate, setTransactionDate] = useState(todayISO())
+  const [expandedEntities, setExpandedEntities] = useState({})
+  const [detailPurchaseId, setDetailPurchaseId] = useState('')
+  const [message, setMessage] = useState('')
+  const [ledgerSupplierId, setLedgerSupplierId] = useState('all')
+  const [ledgerLegalEntityId, setLedgerLegalEntityId] = useState('all')
+  const [ledgerSearch, setLedgerSearch] = useState('')
+  const [invoiceSearch, setInvoiceSearch] = useState('')
+  const [ledgerPageSize, setLedgerPageSize] = useState(10)
+  const [ledgerPage, setLedgerPage] = useState(1)
+  const [commonOpsDate, setCommonOpsDate] = useState(todayISO())
+  const [commonOpsPeriod, setCommonOpsPeriod] = useState('month')
+  const [commonOpsDateFrom, setCommonOpsDateFrom] = useState(monthStart(new Date().getFullYear(), new Date().getMonth() + 1))
+  const [commonOpsDateTo, setCommonOpsDateTo] = useState(todayISO())
+  const [commonOpsSupplierId, setCommonOpsSupplierId] = useState('all')
+  const [commonOpsType, setCommonOpsType] = useState('all')
+  const [commonOpsPageSize, setCommonOpsPageSize] = useState(10)
+  const [commonOpsPage, setCommonOpsPage] = useState(1)
+  const [transactionPageSize, setTransactionPageSize] = useState(10)
+  const [transactionPage, setTransactionPage] = useState(1)
+  const [transactionLogs, setTransactionLogs] = useState([])
+  const [editingOpeningDebtId, setEditingOpeningDebtId] = useState('')
+  const [openingDebtEditForm, setOpeningDebtEditForm] = useState({ debt_date: todayISO(), amount: '', invoice_notes: '', comment: '' })
+  const [editingPurchaseTransactionId, setEditingPurchaseTransactionId] = useState('')
+  const [purchaseTransactionEditForm, setPurchaseTransactionEditForm] = useState({ purchase_date: todayISO(), invoice_number: '', branch_id: '', total_amount: '', comment: '' })
+  const [purchaseTransactionEditItems, setPurchaseTransactionEditItems] = useState([])
+  const [editingPaymentTransactionId, setEditingPaymentTransactionId] = useState('')
+  const [paymentTransactionEditForm, setPaymentTransactionEditForm] = useState({ payment_date: todayISO(), legal_entity_id: '', amount: '', invoice_notes: '', comment: '' })
+  const supplierTransactionPanelRef = useRef(null)
+  const activeSuppliers = useMemo(() => (suppliers || []).filter(s => s.is_active !== false), [suppliers])
+  const supplierEntityStatusMap = useMemo(() => new Map((supplierEntityStatuses || []).map(r => [supplierEntityKey(r.supplier_id, r.legal_entity_id), r.is_active !== false])), [supplierEntityStatuses])
+  function isSupplierActiveForLegal(supplierId, legalEntityId) {
+    const supplier = (suppliers || []).find(s => s.id === supplierId)
+    if (!supplier || supplier.is_active === false) return false
+    if (!legalEntityId) return true
+    return supplierEntityStatusMap.get(supplierEntityKey(supplierId, legalEntityId)) !== false
+  }
+  const activeSupplierIds = useMemo(() => new Set(activeSuppliers.map(s => s.id)), [activeSuppliers])
+
+  useEffect(() => { load() }, [])
+  useEffect(() => {
+    const reloadSuppliers = () => load()
+    window.addEventListener(RMS_SUPPLIERS_UPDATED_EVENT, reloadSuppliers)
+    return () => window.removeEventListener(RMS_SUPPLIERS_UPDATED_EVENT, reloadSuppliers)
+  }, [])
+
+  async function load() {
+    const [{ data: le }, { data: br }, { data: sup }, { data: prod }, { data: bal }, { data: pur }, { data: pay }, { data: opening }, { data: statusRows }, { data: logs }] = await Promise.all([
+      supabase.from('legal_entities').select('*').eq('is_active', true).order('name'),
+      supabase.from('branches').select('id,name').eq('is_active', true).order('name'),
+      supabase.from('suppliers').select('*').eq('is_active', true).order('name'),
+      supabase.from('supplier_products').select('*').eq('is_active', true).order('name'),
+      supabase.from('supplier_balances_v2').select('*').order('supplier_name'),
+      supabase.from('supplier_purchases').select('*, suppliers(name,voen,payment_term_days,credit_limit), legal_entities(name,voen), branches(name), supplier_purchase_items(*, supplier_products(name,category,base_unit))').order('purchase_date', { ascending: false }).order('created_at', { ascending: false }).limit(1000),
+      supabase.from('supplier_payments').select('*, suppliers(name,voen), legal_entities(name,voen)').order('payment_date', { ascending: false }).order('created_at', { ascending: false }).limit(1000),
+      supabase.from('supplier_opening_debts').select('*, suppliers(name,voen), legal_entities(name,voen)').order('debt_date', { ascending: false }).order('created_at', { ascending: false }).limit(1000),
+      supabase.from('supplier_legal_entity_status').select('*'),
+      supabase.from('supplier_transaction_logs').select('*').order('created_at', { ascending: false }).limit(500)
+    ])
+    setLegalEntities(le || [])
+    setBranches(br || [])
+    setSuppliers(sup || [])
+    setProducts(prod || [])
+    setBalances(bal || [])
+    setPurchases(pur || [])
+    setPayments(pay || [])
+    setOpeningDebts(opening || [])
+    setSupplierEntityStatuses(statusRows || [])
+    setTransactionLogs(logs || [])
+  }
+
+  function balanceForSupplier(id) {
+    const purchaseTotal = purchases.filter(p => p.supplier_id === id && !p.deleted_at).reduce((sum, p) => sum + parseNum(p.total_amount), 0)
+    const openingTotal = openingDebts.filter(d => d.supplier_id === id && d.is_active !== false).reduce((sum, d) => sum + parseNum(d.amount), 0)
+    const paymentTotal = payments.filter(p => p.supplier_id === id).reduce((sum, p) => sum + parseNum(p.amount), 0)
+    return openingTotal + purchaseTotal - paymentTotal
+  }
+  function balanceForSupplierLegal(supplierId, legalEntityId) {
+    const purchaseTotal = purchases.filter(p => p.supplier_id === supplierId && p.legal_entity_id === legalEntityId && !p.deleted_at).reduce((sum, p) => sum + parseNum(p.total_amount), 0)
+    const openingTotal = openingDebts.filter(d => d.supplier_id === supplierId && d.legal_entity_id === legalEntityId && d.is_active !== false).reduce((sum, d) => sum + parseNum(d.amount), 0)
+    const paymentTotal = payments.filter(p => p.supplier_id === supplierId && p.legal_entity_id === legalEntityId).reduce((sum, p) => sum + parseNum(p.amount), 0)
+    return openingTotal + purchaseTotal - paymentTotal
+  }
+  function currentSupplierSnapshot(supplierOrId) {
+    const id = typeof supplierOrId === 'object' ? supplierOrId?.id : supplierOrId
+    const fresh = (suppliers || []).find(s => s.id === id)
+    return fresh || (typeof supplierOrId === 'object' ? supplierOrId : null) || {}
+  }
+
+  function supplierAlert(supplier, legalEntityId = '') {
+    const actualSupplier = currentSupplierSnapshot(supplier)
+    const balance = legalEntityId ? balanceForSupplierLegal(actualSupplier.id, legalEntityId) : balanceForSupplier(actualSupplier.id)
+    const limit = parseNum(actualSupplier.credit_limit)
+    const termDays = parseNum(actualSupplier.payment_term_days)
+    const overLimit = limit > 0 && balance > limit ? balance - limit : 0
+    const now = new Date()
+    const overdue = termDays > 0 ? purchases.filter(p => p.supplier_id === supplier.id && !p.deleted_at && (!legalEntityId || p.legal_entity_id === legalEntityId) && ((now - new Date(p.purchase_date)) / 86400000) > termDays) : []
+    return { overLimit, overdueCount: overdue.length, overdueInvoices: overdue.map(p => p.invoice_number || p.purchase_date).slice(0, 5) }
+  }
+  function supplierLegalHasActivityInSelectedMonth(supplierId, entityId) {
+    const anchor = new Date(transactionDate || todayISO())
+    const inMonth = (dateStr) => {
+      if (!dateStr) return false
+      const d = new Date(dateStr)
+      return d.getFullYear() === anchor.getFullYear() && d.getMonth() === anchor.getMonth()
+    }
+    return purchases.some(p => p.supplier_id === supplierId && p.legal_entity_id === entityId && !p.deleted_at && inMonth(p.purchase_date))
+      || openingDebts.some(d => d.supplier_id === supplierId && d.legal_entity_id === entityId && d.is_active !== false && inMonth(d.debt_date))
+      || payments.some(p => p.supplier_id === supplierId && p.legal_entity_id === entityId && inMonth(p.payment_date))
+  }
+
+  function supplierLegalVisibleInDebtList(supplierId, entityId) {
+    if (!isSupplierActiveForLegal(supplierId, entityId)) return false
+    const balance = balanceForSupplierLegal(supplierId, entityId)
+    return Math.abs(balance) > 0.004 || supplierLegalHasActivityInSelectedMonth(supplierId, entityId)
+  }
+
+  function suppliersForLegalEntity(entityId) {
+    const ids = new Set([
+      ...purchases.filter(p => p.legal_entity_id === entityId).map(p => p.supplier_id),
+      ...openingDebts.filter(d => d.legal_entity_id === entityId).map(d => d.supplier_id),
+      ...payments.filter(p => p.legal_entity_id === entityId).map(p => p.supplier_id)
+    ])
+    return activeSuppliers.filter(s => ids.has(s.id) && supplierLegalVisibleInDebtList(s.id, entityId))
+  }
+
+  function debtForLegalEntity(entityId) {
+    const visibleSupplierIds = new Set(suppliersForLegalEntity(entityId).map(s => s.id))
+    const purchaseTotal = purchases
+      .filter(p => p.legal_entity_id === entityId && visibleSupplierIds.has(p.supplier_id) && !p.deleted_at && isSupplierActiveForLegal(p.supplier_id, entityId))
+      .reduce((sum, p) => sum + parseNum(p.total_amount), 0)
+    const openingTotal = openingDebts
+      .filter(d => d.legal_entity_id === entityId && visibleSupplierIds.has(d.supplier_id) && d.is_active !== false && isSupplierActiveForLegal(d.supplier_id, entityId))
+      .reduce((sum, d) => sum + parseNum(d.amount), 0)
+    const paymentTotal = payments
+      .filter(p => p.legal_entity_id === entityId && visibleSupplierIds.has(p.supplier_id) && isSupplierActiveForLegal(p.supplier_id, entityId))
+      .reduce((sum, p) => sum + parseNum(p.amount), 0)
+    return openingTotal + purchaseTotal - paymentTotal
+  }
+  function periodOk(dateStr) {
+    if (transactionPeriod === 'all') return true
+    const d = new Date(dateStr), anchor = new Date(transactionDate || todayISO())
+    if (transactionPeriod === 'day') return d.toISOString().slice(0,10) === anchor.toISOString().slice(0,10)
+    if (transactionPeriod === 'month') return d.getFullYear() === anchor.getFullYear() && d.getMonth() === anchor.getMonth()
+    if (transactionPeriod === 'year') return d.getFullYear() === anchor.getFullYear()
+    return true
+  }
+  function openTransactions(id, type = 'purchases', legalEntityId = '') {
+    setActiveSupplierId(id)
+    setActiveLegalEntityId(legalEntityId || '')
+    setTransactionType(type)
+    setDetailPurchaseId('')
+    setEditingOpeningDebtId('')
+    setEditingPurchaseTransactionId('')
+    setEditingPaymentTransactionId('')
+    setTransactionPage(1)
+  }
+
+  function startEditOpeningDebt(row) {
+    if (row.is_active === false || row.deleted_at) return setMessage('Отключённую транзакцию нельзя редактировать')
+    const rawId = String(row.id || '').replace('opening-', '')
+    setEditingOpeningDebtId(rawId)
+    setOpeningDebtEditForm({
+      debt_date: row.debt_date || row.purchase_date || todayISO(),
+      amount: String(parseNum(row.amount ?? row.total_amount)),
+      invoice_notes: row.invoice_notes || row.invoice_number || '',
+      comment: row.comment || ''
+    })
+  }
+
+  async function saveOpeningDebtEdit(row) {
+    const rawId = String(row.id || '').replace('opening-', '')
+    const amount = parseNum(openingDebtEditForm.amount)
+    if (!amount) return setMessage('Введите сумму стартового долга')
+    const { data, error } = await supabase.rpc('rms_update_supplier_opening_debt', {
+      p_id: rawId,
+      p_debt_date: openingDebtEditForm.debt_date || todayISO(),
+      p_amount: amount,
+      p_invoice_notes: openingDebtEditForm.invoice_notes || null,
+      p_comment: openingDebtEditForm.comment || null
+    })
+    if (error) return setMessage(error.message)
+    if (data?.ok === false) return setMessage(data.error || 'Ошибка редактирования стартового долга')
+    setEditingOpeningDebtId('')
+    await load()
+    setMessage('Стартовый долг обновлён')
+  }
+
+  async function softDeleteOpeningDebt(row) {
+    const rawId = String(row.id || '').replace('opening-', '')
+    if (!window.confirm('Удалить стартовый долг? Он будет зачёркнут/отключён и останется в журнале изменений.')) return
+    const { data, error } = await supabase.rpc('rms_soft_delete_supplier_opening_debt', { p_id: rawId })
+    if (error) return setMessage(error.message)
+    if (data?.ok === false) return setMessage(data.error || 'Ошибка удаления стартового долга')
+    await load()
+    setMessage('Стартовый долг отключён')
+  }
+
+  function startEditPurchaseTransaction(row) {
+    if (!row || row.deleted_at) return setMessage('Отключённую транзакцию нельзя редактировать')
+    setMessage('')
+    setDetailPurchaseId('')
+    setEditingOpeningDebtId('')
+    setEditingPurchaseTransactionId(String(row.id))
+    setPurchaseTransactionEditForm({
+      purchase_date: row.purchase_date || todayISO(),
+      invoice_number: row.invoice_number || '',
+      branch_id: row.branch_id || '',
+      total_amount: String(parseNum(row.total_amount || row.amount)),
+      comment: row.comment || ''
+    })
+    setPurchaseTransactionEditItems((row.supplier_purchase_items || []).map(item => ({
+      ...item,
+      product_id: item.product_id || '',
+      quantity: String(item.quantity ?? ''),
+      unit: item.unit || 'kg',
+      unit_price: String(item.unit_price ?? '')
+    })))
+  }
+
+  function getPurchaseEditProduct(item) {
+    return products.find(prod => prod.id === item.product_id) || item.supplier_products || {}
+  }
+
+  function getPurchaseEditItemTotal(item) {
+    return parseNum(item.quantity) * parseNum(item.unit_price)
+  }
+
+  function getPurchaseEditTotal() {
+    return purchaseTransactionEditItems.reduce((sum, item) => sum + getPurchaseEditItemTotal(item), 0)
+  }
+
+  function updatePurchaseEditItemLocal(itemId, patch) {
+    setPurchaseTransactionEditItems(prev => prev.map(item => item.id === itemId ? { ...item, ...patch } : item))
+  }
+
+  async function savePurchaseTransactionEdit(row) {
+    try {
+      if (!purchaseTransactionEditItems.length) return setMessage('В накладной нет товаров')
+      const normalizedItems = purchaseTransactionEditItems.map(item => {
+        const product = getPurchaseEditProduct(item)
+        const quantity = parseNum(item.quantity)
+        const unitPrice = parseNum(item.unit_price)
+        const total = quantity * unitPrice
+        const baseQty = convertToBase(quantity, item.unit, product?.base_unit || item.base_unit)
+        return {
+          ...item,
+          product,
+          quantity,
+          unit_price: unitPrice,
+          total_amount: total,
+          base_quantity: baseQty,
+          base_unit: product?.base_unit || item.base_unit || 'g',
+          price_per_base_unit: baseQty ? total / baseQty : 0
+        }
+      })
+
+      const totalAmount = normalizedItems.reduce((sum, item) => sum + parseNum(item.total_amount), 0)
+      if (!totalAmount) return setMessage('В накладной нет товаров или сумма равна 0')
+
+      const { data: authData } = await supabase.auth.getUser()
+      const purchase = purchases.find(purchaseRow => purchaseRow.id === row.id) || row || {}
+
+      for (const item of normalizedItems) {
+        const oldItem = (row.supplier_purchase_items || []).find(oldRow => oldRow.id === item.id) || item
+        const oldProductName = oldItem.supplier_products?.name || products.find(prod => prod.id === oldItem.product_id)?.name || '—'
+        const newProductName = item.product?.name || oldProductName
+        const changed =
+          String(oldItem.product_id || '') !== String(item.product_id || '') ||
+          parseNum(oldItem.quantity) !== parseNum(item.quantity) ||
+          String(oldItem.unit || '') !== String(item.unit || '') ||
+          parseNum(oldItem.unit_price) !== parseNum(item.unit_price)
+
+        const payload = {
+          product_id: item.product_id || null,
+          quantity: item.quantity,
+          unit: item.unit,
+          unit_price: item.unit_price,
+          total_amount: item.total_amount,
+          base_quantity: item.base_quantity,
+          base_unit: item.base_unit,
+          price_per_base_unit: item.price_per_base_unit,
+          updated_at: new Date().toISOString()
+        }
+
+        const { error: itemError } = await supabase
+          .from('supplier_purchase_items')
+          .update(payload)
+          .eq('id', item.id)
+        if (itemError) throw itemError
+
+        if (changed) {
+          try {
+            await supabase.from('supplier_transaction_logs').insert({
+              transaction_type: 'purchase_item',
+              transaction_id: item.id,
+              supplier_id: purchase.supplier_id || null,
+              legal_entity_id: purchase.legal_entity_id || null,
+              action: 'Редактирование товара в поступлении',
+              old_value: `${oldProductName} · ${fmt(oldItem.quantity)} ${oldItem.unit || ''} · ${fmt(oldItem.unit_price)} AZN · ${fmt(oldItem.total_amount)} AZN`,
+              new_value: `${newProductName} · ${fmt(item.quantity)} ${item.unit || ''} · ${fmt(item.unit_price)} AZN · ${fmt(item.total_amount)} AZN`,
+              old_data: oldItem,
+              new_data: payload,
+              user_id: authData?.user?.id || null,
+              user_email: authData?.user?.email || null
+            })
+          } catch (logError) {
+            console.warn('supplier purchase item transaction log skipped', logError)
+          }
+        }
+      }
+
+      const { data, error } = await supabase.rpc('rms_update_supplier_purchase_transaction', {
+        p_id: row.id,
+        p_purchase_date: purchaseTransactionEditForm.purchase_date || todayISO(),
+        p_invoice_number: purchaseTransactionEditForm.invoice_number || null,
+        p_branch_id: purchaseTransactionEditForm.branch_id || null,
+        p_total_amount: totalAmount,
+        p_comment: purchaseTransactionEditForm.comment || null
+      })
+      if (error) return setMessage(error.message)
+      if (data?.ok === false) return setMessage(data.error || 'Ошибка редактирования поступления')
+
+      setEditingPurchaseTransactionId('')
+      setPurchaseTransactionEditItems([])
+      await load()
+      setMessage('Поступление обновлено')
+    } catch (e) {
+      setMessage(e.message || 'Не удалось сохранить изменения поступления')
+    }
+  }
+
+  async function softDeletePurchaseTransaction(row) {
+    if (!window.confirm('Удалить поступление? Оно будет зачёркнуто и исключено из баланса, но останется в журнале изменений.')) return
+    const { data, error } = await supabase.rpc('rms_soft_delete_supplier_purchase_transaction', { p_id: row.id })
+    if (error) return setMessage(error.message)
+    if (data?.ok === false) return setMessage(data.error || 'Ошибка удаления поступления')
+    await load()
+    setMessage('Поступление отключено')
+  }
+
+  function startEditSupplierPayment(row) {
+    if (!row) return
+    setMessage('')
+    setEditingOpeningDebtId('')
+    setEditingPurchaseTransactionId('')
+    setDetailPurchaseId('')
+    setEditingPaymentTransactionId(String(row.id))
+    setPaymentTransactionEditForm({
+      payment_date: row.payment_date || todayISO(),
+      legal_entity_id: row.legal_entity_id || activeLegalEntityId || legalEntities[0]?.id || '',
+      amount: String(parseNum(row.amount)),
+      invoice_notes: row.invoice_notes || '',
+      comment: row.comment || ''
+    })
+  }
+
+  async function saveSupplierPaymentEdit(row) {
+    try {
+      const amount = parseNum(paymentTransactionEditForm.amount)
+      if (!amount) return setMessage('Введите сумму оплаты')
+      if (!paymentTransactionEditForm.legal_entity_id) return setMessage('Выберите физ. лицо / VOEN')
+
+      const payload = {
+        payment_date: paymentTransactionEditForm.payment_date || todayISO(),
+        legal_entity_id: paymentTransactionEditForm.legal_entity_id || null,
+        amount,
+        invoice_notes: paymentTransactionEditForm.invoice_notes?.trim() || null,
+        comment: paymentTransactionEditForm.comment?.trim() || null
+      }
+
+      const { error } = await supabase
+        .from('supplier_payments')
+        .update(payload)
+        .eq('id', row.id)
+      if (error) throw error
+
+      try {
+        const { data: authData } = await supabase.auth.getUser()
+        await supabase.from('supplier_transaction_logs').insert({
+          transaction_type: 'payment',
+          transaction_id: row.id,
+          supplier_id: row.supplier_id || null,
+          legal_entity_id: payload.legal_entity_id || null,
+          action: 'Редактирование оплаты поставщику',
+          old_value: `${row.payment_date || '—'} · ${fmt(row.amount)} AZN · ${row.invoice_notes || '—'}`,
+          new_value: `${payload.payment_date || '—'} · ${fmt(payload.amount)} AZN · ${payload.invoice_notes || '—'}`,
+          old_data: row,
+          new_data: payload,
+          user_id: authData?.user?.id || null,
+          user_email: authData?.user?.email || null
+        })
+      } catch (logError) {
+        console.warn('supplier payment transaction log skipped', logError)
+      }
+
+      setEditingPaymentTransactionId('')
+      await load()
+      setMessage('Оплата поставщику обновлена')
+    } catch (e) {
+      setMessage(e.message || 'Не удалось сохранить оплату')
+    }
+  }
+
+  async function deleteSupplierPayment(row) {
+    if (!window.confirm('Удалить оплату поставщику? Сумма снова вернётся в долг поставщика.')) return
+    try {
+      const { error } = await supabase
+        .from('supplier_payments')
+        .delete()
+        .eq('id', row.id)
+      if (error) throw error
+
+      try {
+        const { data: authData } = await supabase.auth.getUser()
+        await supabase.from('supplier_transaction_logs').insert({
+          transaction_type: 'payment',
+          transaction_id: row.id,
+          supplier_id: row.supplier_id || null,
+          legal_entity_id: row.legal_entity_id || null,
+          action: 'Удаление оплаты поставщику',
+          old_value: `${row.payment_date || '—'} · ${fmt(row.amount)} AZN · ${row.invoice_notes || '—'}`,
+          new_value: 'Удалено',
+          old_data: row,
+          new_data: null,
+          user_id: authData?.user?.id || null,
+          user_email: authData?.user?.email || null
+        })
+      } catch (logError) {
+        console.warn('supplier payment delete log skipped', logError)
+      }
+
+      setEditingPaymentTransactionId('')
+      await load()
+      setMessage('Оплата поставщику удалена')
+    } catch (e) {
+      setMessage(e.message || 'Не удалось удалить оплату')
+    }
+  }
+
+  async function recalcPurchaseTransactionTotal(purchaseId) {
+    const { data, error } = await supabase
+      .from('supplier_purchase_items')
+      .select('total_amount')
+      .eq('purchase_id', purchaseId)
+    if (error) throw error
+    const total = (data || []).reduce((s, i) => s + parseNum(i.total_amount), 0)
+    const { error: updateError } = await supabase
+      .from('supplier_purchases')
+      .update({ total_amount: total, updated_at: new Date().toISOString() })
+      .eq('id', purchaseId)
+    if (updateError) throw updateError
+    return total
+  }
+
+  async function updatePurchaseTransactionItem(purchaseId, item, patch) {
+    try {
+      const next = { ...item, ...patch }
+      const product = products.find(p => p.id === next.product_id) || item.supplier_products || {}
+      const quantity = parseNum(next.quantity)
+      const unitPrice = parseNum(next.unit_price)
+      const total = quantity * unitPrice
+      const baseQty = convertToBase(quantity, next.unit, product?.base_unit || next.base_unit)
+      const payload = {
+        ...patch,
+        total_amount: total,
+        base_quantity: baseQty,
+        base_unit: product?.base_unit || next.base_unit || 'g',
+        price_per_base_unit: baseQty ? total / baseQty : 0,
+        updated_at: new Date().toISOString()
+      }
+
+      const { error } = await supabase
+        .from('supplier_purchase_items')
+        .update(payload)
+        .eq('id', item.id)
+      if (error) throw error
+
+      try {
+        const purchase = purchases.find(p => p.id === purchaseId) || {}
+        const { data: authData } = await supabase.auth.getUser()
+        const oldProductName = item.supplier_products?.name || products.find(p => p.id === item.product_id)?.name || '—'
+        const newProductName = product?.name || oldProductName
+        await supabase.from('supplier_transaction_logs').insert({
+          transaction_type: 'purchase_item',
+          transaction_id: item.id,
+          supplier_id: purchase.supplier_id || null,
+          legal_entity_id: purchase.legal_entity_id || null,
+          action: 'Редактирование товара в поступлении',
+          old_value: `${oldProductName} · ${fmt(item.quantity)} ${item.unit || ''} · ${fmt(item.unit_price)} AZN · ${fmt(item.total_amount)} AZN`,
+          new_value: `${newProductName} · ${fmt(quantity)} ${next.unit || ''} · ${fmt(unitPrice)} AZN · ${fmt(total)} AZN`,
+          old_data: item,
+          new_data: { ...next, total_amount: total, base_quantity: baseQty, base_unit: product?.base_unit || next.base_unit || 'g' },
+          user_id: authData?.user?.id || null,
+          user_email: authData?.user?.email || null
+        })
+      } catch (logError) {
+        console.warn('supplier purchase item transaction log skipped', logError)
+      }
+
+      await recalcPurchaseTransactionTotal(purchaseId)
+      await load()
+      setMessage('Товар в накладной обновлён')
+    } catch (e) {
+      setMessage(e.message || 'Не удалось обновить товар в накладной')
+    }
+  }
+  const activeSupplier = suppliers.find(s => s.id === activeSupplierId)
+  const filteredPurchases = purchases.filter(p => (!activeSupplierId || p.supplier_id === activeSupplierId) && (!activeLegalEntityId || p.legal_entity_id === activeLegalEntityId) && isSupplierActiveForLegal(p.supplier_id, p.legal_entity_id) && periodOk(p.purchase_date))
+  const filteredOpeningDebts = openingDebts.filter(d => (!activeSupplierId || d.supplier_id === activeSupplierId) && (!activeLegalEntityId || d.legal_entity_id === activeLegalEntityId) && isSupplierActiveForLegal(d.supplier_id, d.legal_entity_id) && periodOk(d.debt_date))
+  const purchaseTransactionRows = [
+    ...filteredOpeningDebts.map(d => ({
+      ...d,
+      row_type: 'opening_debt',
+      id: `opening-${d.id}`,
+      purchase_date: d.debt_date,
+      invoice_number: d.invoice_notes || 'Стартовый долг',
+      total_amount: parseNum(d.amount),
+      comment: d.is_active === false ? 'Удалено / зачёркнуто' : (d.comment || 'Долг за предыдущий период'),
+      deleted_at: d.is_active === false ? (d.updated_at || d.created_at || true) : null,
+      supplier_purchase_items: []
+    })),
+    ...filteredPurchases.map(p => ({ ...p, row_type: 'purchase' }))
+  ].sort((a, b) => new Date(b.purchase_date || b.created_at || 0) - new Date(a.purchase_date || a.created_at || 0))
+  const filteredPayments = payments.filter(p => (!activeSupplierId || p.supplier_id === activeSupplierId) && (!activeLegalEntityId || p.legal_entity_id === activeLegalEntityId) && isSupplierActiveForLegal(p.supplier_id, p.legal_entity_id) && periodOk(p.payment_date))
+  const visibleTransactionLogs = transactionLogs.filter(l => (!activeSupplierId || l.supplier_id === activeSupplierId) && (!activeLegalEntityId || l.legal_entity_id === activeLegalEntityId)).slice(0, 30)
+  function commonOpsDateInPeriod(dateStr) {
+    if (!dateStr) return false
+    const d = new Date(dateStr)
+    const anchor = new Date(commonOpsDate || todayISO())
+    if (commonOpsPeriod === 'day') return dateStr === (commonOpsDate || todayISO())
+    if (commonOpsPeriod === 'week') {
+      const a = new Date(anchor)
+      const day = a.getDay() || 7
+      const start = new Date(a)
+      start.setDate(a.getDate() - day + 1)
+      start.setHours(0, 0, 0, 0)
+      const end = new Date(start)
+      end.setDate(start.getDate() + 7)
+      return d >= start && d < end
+    }
+    if (commonOpsPeriod === 'month') return d.getFullYear() === anchor.getFullYear() && d.getMonth() === anchor.getMonth()
+    if (commonOpsPeriod === 'range') {
+      const from = commonOpsDateFrom ? new Date(commonOpsDateFrom) : null
+      const to = commonOpsDateTo ? new Date(commonOpsDateTo) : null
+      if (from) from.setHours(0, 0, 0, 0)
+      if (to) to.setHours(23, 59, 59, 999)
+      return (!from || d >= from) && (!to || d <= to)
+    }
+    return true
+  }
+
+  const commonOpsAll = [
+    ...openingDebts
+      .filter(d => d.is_active !== false)
+      .map(d => ({
+        id: `od-${d.id}`,
+        date: d.debt_date,
+        supplier_id: d.supplier_id,
+        supplier: d.suppliers?.name || suppliers.find(s => s.id === d.supplier_id)?.name || '—',
+        type: 'Стартовый долг',
+        type_key: 'opening',
+        invoice: d.invoice_notes || '—',
+        debit: parseNum(d.amount),
+        credit: 0,
+        amount: parseNum(d.amount),
+        comment: `${d.legal_entities?.name || 'VOEN не указан'}${d.comment ? ' · ' + d.comment : ''}`,
+        source: d
+      })),
+    ...purchases
+      .filter(p => !p.deleted_at)
+      .map(p => ({
+        id: `p-${p.id}`,
+        date: p.purchase_date,
+        supplier_id: p.supplier_id,
+        supplier: p.suppliers?.name || suppliers.find(s => s.id === p.supplier_id)?.name || '—',
+        type: 'Приход',
+        type_key: 'purchase',
+        invoice: p.invoice_number || '—',
+        debit: parseNum(p.total_amount),
+        credit: 0,
+        amount: parseNum(p.total_amount),
+        comment: `${p.legal_entities?.name || 'VOEN не указан'}${p.comment ? ' · ' + p.comment : ''}`,
+        source: p
+      })),
+    ...payments.map(p => ({
+      id: `pay-${p.id}`,
+      date: p.payment_date,
+      supplier_id: p.supplier_id,
+      supplier: p.suppliers?.name || suppliers.find(s => s.id === p.supplier_id)?.name || '—',
+      type: 'Оплата',
+      type_key: 'payment',
+      invoice: p.invoice_notes || '—',
+      debit: 0,
+      credit: parseNum(p.amount),
+      amount: -parseNum(p.amount),
+      comment: `${p.legal_entities?.name || 'VOEN не указан'}${p.comment ? ' · ' + p.comment : ''}`,
+      source: p
+    }))
+  ]
+
+  const filteredCommonOps = commonOpsAll
+    .filter(r => activeSupplierIds.has(r.supplier_id) && isSupplierActiveForLegal(r.supplier_id, r.legal_entity_id))
+    .filter(r => commonOpsDateInPeriod(r.date))
+    .filter(r => commonOpsSupplierId === 'all' || r.supplier_id === commonOpsSupplierId)
+    .filter(r => commonOpsType === 'all' || r.type_key === commonOpsType)
+    .sort((a,b) => new Date(b.date) - new Date(a.date))
+
+  const commonOpsTotals = filteredCommonOps.reduce((acc, r) => {
+    acc.debit += parseNum(r.debit)
+    acc.credit += parseNum(r.credit)
+    acc.balance = acc.debit - acc.credit
+    return acc
+  }, { debit: 0, credit: 0, balance: 0 })
+
+  const commonOpsTotalPages = Math.max(1, Math.ceil(filteredCommonOps.length / parseNum(commonOpsPageSize || 10)))
+  const safeCommonOpsPage = Math.min(Math.max(1, parseNum(commonOpsPage) || 1), commonOpsTotalPages)
+  const lastOps = filteredCommonOps.slice((safeCommonOpsPage - 1) * parseNum(commonOpsPageSize || 10), safeCommonOpsPage * parseNum(commonOpsPageSize || 10))
+
+  const productPriceRows = useMemo(() => {
+    const rowsByProduct = new Map()
+    filteredPurchases.filter(p => !p.deleted_at).forEach(p => {
+      ;(p.supplier_purchase_items || []).forEach(i => {
+        const product = i.supplier_products
+        const id = i.product_id || product?.name || i.id
+        const purchasePrice = parseNum(i.unit_price)
+        if (!id || !purchasePrice) return
+        if (!rowsByProduct.has(id)) rowsByProduct.set(id, {
+          id,
+          name: product?.name || '—',
+          category: product?.category || '—',
+          unit: i.unit || '',
+          purchases: []
+        })
+        rowsByProduct.get(id).purchases.push({
+          date: p.purchase_date,
+          createdAt: p.created_at,
+          invoice: p.invoice_number || '—',
+          price: purchasePrice,
+          unit: i.unit || '',
+          quantity: parseNum(i.quantity),
+          supplier: p.suppliers?.name || '—'
+        })
+      })
+    })
+    const q = productSearch.trim().toLowerCase()
+    const result = Array.from(rowsByProduct.values()).map(row => {
+      const sorted = row.purchases.sort((a,b) => {
+        const bd = new Date(b.date || b.createdAt || 0).getTime()
+        const ad = new Date(a.date || a.createdAt || 0).getTime()
+        if (bd !== ad) return bd - ad
+        return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+      })
+      const latest = sorted[0]
+      const previous = sorted[1]
+      const changeAmount = previous?.price ? latest.price - previous.price : null
+      const changePct = previous?.price ? (changeAmount / previous.price) * 100 : null
+      return { ...row, latest, previous, changeAmount, changePct }
+    }).filter(row => !q || row.name.toLowerCase().includes(q) || row.category.toLowerCase().includes(q))
+    result.sort((a,b) => {
+      if (productSort === 'name_desc') return b.name.localeCompare(a.name, 'ru')
+      if (productSort === 'change_asc') return parseNum(a.changePct) - parseNum(b.changePct)
+      if (productSort === 'change_desc') return parseNum(b.changePct) - parseNum(a.changePct)
+      if (productSort === 'price_asc') return parseNum(a.latest?.price) - parseNum(b.latest?.price)
+      if (productSort === 'price_desc') return parseNum(b.latest?.price) - parseNum(a.latest?.price)
+      return a.name.localeCompare(b.name, 'ru')
+    })
+    return result
+  }, [filteredPurchases, productSearch, productSort])
+  const transactionSourceCount = transactionType === 'purchases' ? purchaseTransactionRows.length : transactionType === 'payments' ? filteredPayments.length : productPriceRows.length
+  const transactionTotalPages = Math.max(1, Math.ceil(transactionSourceCount / transactionPageSize))
+  const safeTransactionPage = Math.min(Math.max(1, parseNum(transactionPage) || 1), transactionTotalPages)
+  const transactionStart = (safeTransactionPage - 1) * transactionPageSize
+  const pagedFilteredPurchases = purchaseTransactionRows.slice(transactionStart, transactionStart + transactionPageSize)
+  const pagedFilteredPayments = filteredPayments.slice(transactionStart, transactionStart + transactionPageSize)
+  const pagedProductPriceRows = productPriceRows.slice(transactionStart, transactionStart + transactionPageSize)
+
+  const normalizedLedgerSearch = String(ledgerSearch || '').trim().toLowerCase()
+  const normalizedInvoiceSearch = String(invoiceSearch || '').trim().toLowerCase()
+  const searchedSuppliers = activeSuppliers
+    .filter(s => {
+      const haystack = `${s.name || ''} ${s.voen || ''}`.toLowerCase()
+      return !normalizedLedgerSearch || haystack.includes(normalizedLedgerSearch)
+    })
+    .slice(0, 25)
+
+  const ledgerSupplierIds = new Set(searchedSuppliers.map(s => s.id))
+  const ledgerBaseRows = [
+    ...openingDebts.map(d => ({
+      id: `od-${d.id}`,
+      supplier_id: d.supplier_id,
+      legal_entity_id: d.legal_entity_id || '',
+      suppliers: d.suppliers,
+      legal_entities: d.legal_entities,
+      transaction_date: d.debt_date,
+      invoice: d.invoice_notes || '',
+      comment: d.comment || 'Долг за предыдущий период',
+      debit: parseNum(d.amount),
+      credit: 0
+    })),
+    ...purchases.map(p => ({
+      id: `p-${p.id}`,
+      supplier_id: p.supplier_id,
+      legal_entity_id: p.legal_entity_id || '',
+      suppliers: p.suppliers,
+      legal_entities: p.legal_entities,
+      transaction_date: p.purchase_date,
+      invoice: p.invoice_number || '',
+      comment: p.invoice_number ? `E-qaimə / фактура ${p.invoice_number}` : 'Поступление',
+      debit: parseNum(p.total_amount),
+      credit: 0
+    })),
+    ...payments.map(p => ({
+      id: `pay-${p.id}`,
+      supplier_id: p.supplier_id,
+      legal_entity_id: p.legal_entity_id || '',
+      suppliers: p.suppliers,
+      legal_entities: p.legal_entities,
+      transaction_date: p.payment_date,
+      invoice: p.invoice_notes || '',
+      comment: p.comment || p.invoice_notes || 'Оплата',
+      debit: 0,
+      credit: parseNum(p.amount)
+    }))
+  ]
+    .filter(r => activeSupplierIds.has(r.supplier_id) && isSupplierActiveForLegal(r.supplier_id, r.legal_entity_id))
+    .filter(r => ledgerSupplierId === 'all' || r.supplier_id === ledgerSupplierId)
+    .filter(r => ledgerLegalEntityId === 'all' || r.legal_entity_id === ledgerLegalEntityId)
+    .filter(r => !normalizedLedgerSearch || ledgerSupplierIds.has(r.supplier_id) || String(r.suppliers?.name || '').toLowerCase().includes(normalizedLedgerSearch))
+    .filter(r => !normalizedInvoiceSearch || String(r.invoice || '').toLowerCase().includes(normalizedInvoiceSearch) || String(r.comment || '').toLowerCase().includes(normalizedInvoiceSearch))
+    .sort((a, b) => String(a.transaction_date || '').localeCompare(String(b.transaction_date || '')))
+
+  const ledgerRunningByEntity = {}
+  const supplierLedgerRows = ledgerBaseRows.map(r => {
+    const key = `${r.supplier_id || 'none'}::${r.legal_entity_id || 'none'}`
+    ledgerRunningByEntity[key] = parseNum(ledgerRunningByEntity[key]) + parseNum(r.debit) - parseNum(r.credit)
+    return { ...r, balance: ledgerRunningByEntity[key] }
+  })
+  const ledgerTotals = supplierLedgerRows.reduce((acc, r) => {
+    acc.debit += parseNum(r.debit)
+    acc.credit += parseNum(r.credit)
+    acc.balance += parseNum(r.debit) - parseNum(r.credit)
+    return acc
+  }, { debit: 0, credit: 0, balance: 0 })
+  const ledgerEntityTotalsMap = supplierLedgerRows.reduce((acc, r) => {
+    const key = r.legal_entity_id || 'none'
+    if (!acc[key]) acc[key] = {
+      id: key,
+      name: r.legal_entities?.name || 'Без VOEN',
+      voen: r.legal_entities?.voen || '',
+      debit: 0,
+      credit: 0,
+      balance: 0
+    }
+    acc[key].debit += parseNum(r.debit)
+    acc[key].credit += parseNum(r.credit)
+    acc[key].balance += parseNum(r.debit) - parseNum(r.credit)
+    return acc
+  }, {})
+  const ledgerEntityTotals = Object.values(ledgerEntityTotalsMap)
+  const ledgerTotalPages = Math.max(1, Math.ceil(supplierLedgerRows.length / parseNum(ledgerPageSize || 10)))
+  const safeLedgerPage = Math.min(Math.max(1, parseNum(ledgerPage) || 1), ledgerTotalPages)
+  const pagedSupplierLedgerRows = supplierLedgerRows.slice((safeLedgerPage - 1) * parseNum(ledgerPageSize || 10), safeLedgerPage * parseNum(ledgerPageSize || 10))
+  const ledgerDebtClass = ledgerTotals.balance > 0 ? 'bad' : ledgerTotals.balance < 0 ? 'good' : 'neutral'
+  const ledgerDebtText = ledgerTotals.balance > 0 ? 'Долг поставщику' : ledgerTotals.balance < 0 ? 'Поставщик должен нам' : 'Долга нет'
+
+
+  const debtIntelligence = useMemo(() => {
+    const supplierDebtRows = []
+    let totalDebt = 0
+    let overdueDebt = 0
+    let overLimitDebt = 0
+    let okSupplierCount = 0
+    let overdueSupplierCount = 0
+    const uniqueSuppliers = new Set()
+
+    legalEntities.forEach(le => {
+      suppliersForLegalEntity(le.id).forEach(s => {
+        const actualSupplier = currentSupplierSnapshot(s)
+        const balance = Math.max(0, balanceForSupplierLegal(actualSupplier.id, le.id))
+        if (balance <= 0.004) return
+        const alert = supplierAlert(actualSupplier, le.id)
+        const limit = parseNum(actualSupplier.credit_limit)
+        const risk = Math.min(100, Math.round((alert.overdueCount * 28) + (alert.overLimit > 0 ? 34 : 0) + (limit > 0 ? Math.min(28, (balance / Math.max(1, limit)) * 18) : 8)))
+        totalDebt += balance
+        uniqueSuppliers.add(actualSupplier.id)
+        if (alert.overdueCount > 0) {
+          overdueSupplierCount += 1
+          overdueDebt += balance
+        } else {
+          okSupplierCount += 1
+        }
+        if (alert.overLimit > 0) overLimitDebt += alert.overLimit
+        supplierDebtRows.push({
+          name: actualSupplier.name || 'Поставщик',
+          balance,
+          overdueCount: alert.overdueCount,
+          overLimit: alert.overLimit,
+          risk
+        })
+      })
+    })
+
+    const debtStatusOk = Math.max(0, totalDebt - overdueDebt)
+    const avgTerm = activeSuppliers.length
+      ? Math.round(activeSuppliers.reduce((sum, s) => sum + parseNum(s.payment_term_days), 0) / activeSuppliers.length)
+      : 0
+    const availableLimit = activeSuppliers.reduce((sum, s) => sum + parseNum(s.credit_limit), 0) - totalDebt
+
+    const now = new Date()
+    const monthKeys = Array.from({ length: 7 }).map((_, i) => {
+      const d = new Date(now.getFullYear(), now.getMonth() - (6 - i), 1)
+      const end = new Date(d.getFullYear(), d.getMonth() + 1, 0)
+      const label = d.toLocaleDateString('ru-RU', { month: 'short' }).replace('.', '')
+      return { label, end }
+    })
+
+    const trend = monthKeys.map(({ label, end }) => {
+      const value = activeSuppliers.reduce((sum, s) => {
+        const supplierId = s.id
+        const purchasesUntil = purchases.filter(p => p.supplier_id === supplierId && !p.deleted_at && new Date(p.purchase_date) <= end).reduce((acc, p) => acc + parseNum(p.total_amount), 0)
+        const openingsUntil = openingDebts.filter(d => d.supplier_id === supplierId && d.is_active !== false && new Date(d.debt_date) <= end).reduce((acc, d) => acc + parseNum(d.amount), 0)
+        const paymentsUntil = payments.filter(p => p.supplier_id === supplierId && new Date(p.payment_date) <= end).reduce((acc, p) => acc + parseNum(p.amount), 0)
+        return sum + Math.max(0, openingsUntil + purchasesUntil - paymentsUntil)
+      }, 0)
+      return { label, value }
+    })
+
+    const riskRows = supplierDebtRows
+      .sort((a, b) => b.risk - a.risk || b.balance - a.balance)
+      .slice(0, 5)
+      .map(r => ({ name: r.name, risk: r.risk }))
+
+    return {
+      totalDebt,
+      supplierCount: uniqueSuppliers.size,
+      overdueDebt,
+      overdueSupplierCount,
+      okSupplierCount,
+      overLimitDebt,
+      avgTerm,
+      availableLimit,
+      debtStatusOk,
+      trend,
+      riskRows
+    }
+  }, [legalEntities, suppliers, purchases, payments, openingDebts, supplierEntityStatuses])
+
+  function scrollToSupplierTransactionPanel() {
+    setTimeout(() => {
+      supplierTransactionPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 160)
+  }
+
+  function handleCommonOperationAction(row) {
+    if (!row?.source) return
+    const source = row.source
+
+    if (row.type_key === 'purchase') {
+      openTransactions(source.supplier_id, 'purchases', source.legal_entity_id || '')
+      startEditPurchaseTransaction(source)
+      scrollToSupplierTransactionPanel()
+      return
+    }
+
+    if (row.type_key === 'payment') {
+      openTransactions(source.supplier_id, 'payments', source.legal_entity_id || '')
+      startEditSupplierPayment(source)
+      scrollToSupplierTransactionPanel()
+      return
+    }
+
+    if (row.type_key === 'opening') {
+      openTransactions(source.supplier_id, 'purchases', source.legal_entity_id || '')
+      startEditOpeningDebt({
+        ...source,
+        id: `opening-${source.id}`,
+        purchase_date: source.debt_date,
+        total_amount: source.amount,
+        invoice_number: source.invoice_notes || '',
+        supplier_purchase_items: []
+      })
+      scrollToSupplierTransactionPanel()
+    }
+  }
+
+  function printSupplierLedger() {
+    const supplierName = ledgerSupplierId === 'all' ? 'Все поставщики' : suppliers.find(s => s.id === ledgerSupplierId)?.name || 'Поставщик'
+    const filters = `${normalizedLedgerSearch ? 'Поиск поставщика: ' + ledgerSearch + ' · ' : ''}${normalizedInvoiceSearch ? 'E-qaimə: ' + invoiceSearch : ''}`
+    const rowsHtml = supplierLedgerRows.map(r => `<tr><td>${r.transaction_date || ''}</td><td>${r.suppliers?.name || ''}</td><td>${r.legal_entities?.name || ''}<br>${r.legal_entities?.voen || ''}</td><td>${r.invoice || ''}</td><td>${r.comment || ''}</td><td>${fmt(r.debit)}</td><td>${fmt(r.credit)}</td><td>${fmt(r.balance)}</td></tr>`).join('')
+    const debtClass = ledgerTotals.balance > 0 ? 'bad' : ledgerTotals.balance < 0 ? 'good' : 'neutral'
+    const debtText = ledgerTotals.balance > 0 ? 'Долг поставщику' : ledgerTotals.balance < 0 ? 'Поставщик должен нам' : 'Долга нет'
+    const html = `<!doctype html><html><head><meta charset="utf-8"><title>Supplier Ledger</title><style>body{font-family:Arial;padding:24px;color:#17251d}h2{margin:0 0 6px}.muted{color:#777;margin-bottom:18px}.summary{display:flex;gap:12px;margin:16px 0}.box{border:1px solid #ddd;border-radius:12px;padding:10px 14px}.box b{display:block;font-size:18px}table{width:100%;border-collapse:collapse}th,td{border-bottom:1px solid #ddd;padding:8px;text-align:left}th{background:#f4eddf}.footer-total{margin-top:18px;border-radius:14px;padding:14px 18px;border:1px solid #ddd;background:#f7f7f7;font-size:16px}.footer-total b{font-size:22px}.bad{color:#b91c1c}.good{color:#15803d}.neutral{color:#6b7280}</style></head><body><h2>Баланс поставщика: ${supplierName}</h2><div class="muted">${filters}</div><div class="summary"><div class="box">Приход / долг<b>${fmt(ledgerTotals.debit)}</b></div><div class="box">Оплата<b>${fmt(ledgerTotals.credit)}</b></div><div class="box">Остаток<b>${fmt(ledgerTotals.balance)}</b></div></div><table><thead><tr><th>Дата</th><th>Поставщик</th><th>Наш VOEN</th><th>E-qaimə</th><th>Операция</th><th>Приход / долг</th><th>Оплата</th><th>Остаток</th></tr></thead><tbody>${rowsHtml}</tbody></table><div class="footer-total ${debtClass}">${debtText}: <b>${fmt(ledgerTotals.balance)} AZN</b></div></body></html>`
+    const w = window.open('', '_blank')
+    if (!w) return
+    w.document.write(html)
+    w.document.close()
+    w.focus()
+    w.print()
+  }
+
+  return <section>
+    <section className="topbar"><div><h2>Долги и оплаты</h2><p>Балансы поставщиков, контроль лимитов, просрочек, поступления и оплаты.</p></div></section>
+
+    <section className="debt-intelligence-panel">
+      <div className="debt-kpi-grid">
+        <DebtKpiCard tone="muted" label="Поставщиков" value={debtIntelligence.supplierCount} sub="с активным балансом" />
+        <DebtKpiCard tone="danger" label="Общий долг" value={`${fmt(debtIntelligence.totalDebt)} AZN`} sub={debtIntelligence.totalDebt ? `+${((debtIntelligence.overdueDebt / Math.max(1, debtIntelligence.totalDebt)) * 100).toFixed(1)}% в риске` : 'долга нет'} />
+        <DebtKpiCard tone="danger" label="Просрочено" value={debtIntelligence.overdueSupplierCount} sub={`${fmt(debtIntelligence.overdueDebt)} AZN`} />
+        <DebtKpiCard tone="success" label="В срок" value={debtIntelligence.okSupplierCount} sub={`${fmt(debtIntelligence.debtStatusOk)} AZN`} />
+        <DebtKpiCard tone="info" label="Средний срок оплаты" value={`${debtIntelligence.avgTerm || 0} дней`} sub={debtIntelligence.availableLimit >= 0 ? `лимит доступен ${fmt(debtIntelligence.availableLimit)} AZN` : `превышение ${fmt(Math.abs(debtIntelligence.availableLimit))} AZN`} />
+      </div>
+      <div className="debt-charts-grid">
+        <DebtDonutChart overdue={debtIntelligence.overdueDebt} ok={debtIntelligence.debtStatusOk} />
+        <DebtTrendChart data={debtIntelligence.trend} />
+        <SupplierRiskBars data={debtIntelligence.riskRows} />
+      </div>
+    </section>
+
+    <section className="grid">
+      <div className="card span-2">
+        <div className="card-head"><div><h3>Поставщики и долги</h3><p className="hint">Разделено по вашим VOEN / юрлицам из настроек. В каждой группе сначала показаны 5 поставщиков.</p></div></div>
+        {legalEntities.map(le => {
+          const list = suppliersForLegalEntity(le.id)
+          const shown = expandedEntities[le.id] ? list : list.slice(0, 5)
+          const entityTotalDebt = debtForLegalEntity(le.id)
+          const entityDebtLabel = entityTotalDebt > 0 ? 'Долг' : entityTotalDebt < 0 ? 'Переплата' : 'Долга нет'
+          const entityDebtClass = entityTotalDebt > 0 ? 'bad' : entityTotalDebt < 0 ? 'good' : 'hint'
+          return <div key={le.id} className="supplier-entity-group"><div className="supplier-entity-head"><b>{le.name} · {le.voen}</b><div className="action-row" style={{gap:12,alignItems:'center'}}><span>{list.length} поставщиков</span><span className={entityDebtClass}>{entityDebtLabel}: <b>{fmt(Math.abs(entityTotalDebt))} AZN</b></span></div></div><div className="table-wrap"><table className="supplier-compact-table"><thead><tr><th>Поставщик</th><th>Долг</th><th>Условия</th><th>Статус</th><th></th></tr></thead><tbody>{shown.map(s => { const actualSupplier = currentSupplierSnapshot(s); const entityBalance = balanceForSupplierLegal(actualSupplier.id, le.id); const alert = supplierAlert(actualSupplier, le.id); const risky = alert.overLimit > 0 || alert.overdueCount > 0; return <tr key={`${le.id}-${actualSupplier.id}`} style={risky ? { background: 'rgba(155,45,45,.08)' } : undefined}><td><b>{actualSupplier.name}</b><br /><span className="hint">{actualSupplier.voen || 'VOEN не указан'}</span></td><td><strong className={entityBalance > 0 ? 'bad' : entityBalance < 0 ? 'good' : 'hint'}>{fmt(entityBalance)}</strong></td><td className="hint">{actualSupplier.payment_term_days ? `${actualSupplier.payment_term_days} дней` : '—'} · лимит {fmt(actualSupplier.credit_limit)}</td><td className="hint">{alert.overLimit > 0 && <div className="bad">лимит +{fmt(alert.overLimit)}</div>}{alert.overdueCount > 0 && <div className="bad">просрочено: {alert.overdueCount}</div>}{!risky && <span className="good">ОК</span>}</td><td><button className="small" onClick={() => openTransactions(actualSupplier.id, 'purchases', le.id)}>Транзакции</button></td></tr>})}{!shown.length && <tr><td colSpan="5" className="hint">Нет поставщиков по этому VOEN</td></tr>}</tbody><tfoot><tr><td><b>Итого по физ. лицу</b></td><td><strong className={entityDebtClass}>{fmt(entityTotalDebt)}</strong></td><td colSpan="3" className="hint">Поступления + стартовый долг − оплаты</td></tr></tfoot></table></div>{list.length > 5 && <button className="ghost small" onClick={() => setExpandedEntities(e => ({...e, [le.id]: !e[le.id]}))}>{expandedEntities[le.id] ? 'Свернуть' : 'Показать всех'}</button>}{activeSupplierId && activeLegalEntityId === le.id && <div ref={supplierTransactionPanelRef} className="card supplier-transactions-panel"><div className="card-head"><div><h3>Транзакции: {activeSupplier?.name}</h3><p className="hint">{activeLegalEntityId ? `Физ. лицо: ${legalEntities.find(le => le.id === activeLegalEntityId)?.name || '—'}` : 'Поступления и оплаты показаны отдельно, чтобы не смешивать операции.'}</p></div><button className="ghost small" onClick={() => { setActiveSupplierId(''); setActiveLegalEntityId('') }}>Закрыть</button></div>
+        <div className="form-grid compact"><label><span>Тип операций</span><select value={transactionType} onChange={e => { setTransactionType(e.target.value); setDetailPurchaseId(''); setTransactionPage(1) }}><option value="purchases">Поступления</option><option value="payments">Оплаты</option><option value="products">Товары / цены</option></select></label><label><span>Период</span><select value={transactionPeriod} onChange={e => { setTransactionPeriod(e.target.value); setTransactionPage(1) }}><option value="day">За день</option><option value="month">За месяц</option><option value="year">За год</option><option value="all">Весь период</option></select></label>{transactionPeriod !== 'all' && <label><span>Дата периода</span><input type="date" value={transactionDate} onChange={e => { setTransactionDate(e.target.value); setTransactionPage(1) }} /></label>}</div>
+        <div className="action-row" style={{margin:'12px 0 10px'}}><label style={{display:'flex',alignItems:'center',gap:8}}><span className="hint">Показать</span><select value={transactionPageSize} onChange={e => { setTransactionPageSize(Number(e.target.value)); setTransactionPage(1) }}><option value={10}>10</option><option value={20}>20</option><option value={30}>30</option><option value={50}>50</option></select></label></div>
+        {transactionType === 'purchases' ? <div className="table-wrap"><table><thead><tr><th>Дата</th><th>Фактура</th><th>Физ. лицо</th><th>Филиал</th><th>Сумма</th><th>Комментарий</th><th></th></tr></thead><tbody>{pagedFilteredPurchases.map(p => <React.Fragment key={p.id}><tr className={p.deleted_at ? 'cancelled-row' : ''}><td>{p.purchase_date}</td><td>{p.invoice_number || '—'}</td><td>{p.legal_entities?.name || '—'}<br /><span className="hint">{p.legal_entities?.voen || ''}</span></td><td>{p.row_type === 'opening_debt' ? 'Стартовый долг' : (p.branches?.name || '—')}</td><td><strong className="bad">{fmt(p.total_amount)}</strong></td><td>{p.deleted_at ? 'Удалено / зачёркнуто' : (p.comment || '—')}</td><td>{p.row_type === 'opening_debt' ? <div className="action-row"><button className="small" disabled={Boolean(p.deleted_at)} onClick={() => startEditOpeningDebt(p)}>Ред.</button><button className="small remove" disabled={Boolean(p.deleted_at)} onClick={() => softDeleteOpeningDebt(p)}>Удалить</button></div> : <div className="action-row"><button className="small" onClick={() => setDetailPurchaseId(detailPurchaseId === p.id ? '' : p.id)}>{detailPurchaseId === p.id ? 'Скрыть' : 'Детали'}</button><button className="small" disabled={Boolean(p.deleted_at)} onClick={() => startEditPurchaseTransaction(p)}>Ред.</button><button className="small remove" disabled={Boolean(p.deleted_at)} onClick={() => softDeletePurchaseTransaction(p)}>Удалить</button></div>}</td></tr>{p.row_type === 'purchase' && editingPurchaseTransactionId === String(p.id) && <tr><td colSpan="7"><div className="card" style={{margin:0}}><h4>Редактирование поступления</h4><p className="hint">Сумма накладной пересчитывается автоматически по товарам. Изменения товара, количества, единицы или цены фиксируются в журнале операций.</p><div className="form-grid compact"><label><span>Дата</span><input type="date" value={purchaseTransactionEditForm.purchase_date} onChange={e => setPurchaseTransactionEditForm({...purchaseTransactionEditForm, purchase_date: e.target.value})} /></label><label><span>Фактура</span><input value={purchaseTransactionEditForm.invoice_number} onChange={e => setPurchaseTransactionEditForm({...purchaseTransactionEditForm, invoice_number: e.target.value})} /></label><label><span>Филиал</span><select value={purchaseTransactionEditForm.branch_id} onChange={e => setPurchaseTransactionEditForm({...purchaseTransactionEditForm, branch_id: e.target.value})}><option value="">—</option>{branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label><label><span>Сумма накладной</span><strong>{fmt(getPurchaseEditTotal() || p.total_amount)} AZN</strong></label><label><span>Комментарий</span><input value={purchaseTransactionEditForm.comment} onChange={e => setPurchaseTransactionEditForm({...purchaseTransactionEditForm, comment: e.target.value})} /></label></div><div className="table-wrap"><table><thead><tr><th>Категория</th><th>Товар</th><th>Кол-во</th><th>Ед.</th><th>Цена</th><th>Сумма</th></tr></thead><tbody>{purchaseTransactionEditItems.map(i => { const editProduct = getPurchaseEditProduct(i); return <tr key={i.id}><td>{editProduct?.category || i.supplier_products?.category || '—'}</td><td><select value={i.product_id || ''} onChange={e => updatePurchaseEditItemLocal(i.id, { product_id: e.target.value })}>{products.map(prod => <option key={prod.id} value={prod.id}>{prod.name}</option>)}</select></td><td><input inputMode="decimal" value={i.quantity} onChange={e => updatePurchaseEditItemLocal(i.id, { quantity: e.target.value })} /></td><td><select value={i.unit || 'kg'} onChange={e => updatePurchaseEditItemLocal(i.id, { unit: e.target.value })}>{PURCHASE_UNITS.map(u => <option key={u.value} value={u.value}>{u.label}</option>)}</select></td><td><input inputMode="decimal" value={i.unit_price} onChange={e => updatePurchaseEditItemLocal(i.id, { unit_price: e.target.value })} /></td><td>{fmt(getPurchaseEditItemTotal(i))} AZN</td></tr> })}{!purchaseTransactionEditItems.length && <tr><td colSpan="6" className="hint">Товары не найдены</td></tr>}</tbody></table></div><div className="action-row"><button className="small primary" onClick={() => savePurchaseTransactionEdit(p)}>Сохранить изменения</button><button className="ghost small" onClick={() => { setEditingPurchaseTransactionId(''); setPurchaseTransactionEditItems([]) }}>Отмена</button></div></div></td></tr>}{p.row_type === 'opening_debt' && editingOpeningDebtId === String(p.id).replace('opening-', '') && <tr><td colSpan="7"><div className="card" style={{margin:0}}><h4>Редактирование стартового долга</h4><div className="form-grid compact"><label><span>Дата</span><input type="date" value={openingDebtEditForm.debt_date} onChange={e => setOpeningDebtEditForm({...openingDebtEditForm, debt_date: e.target.value})} /></label><label><span>Сумма</span><input inputMode="decimal" value={openingDebtEditForm.amount} onChange={e => setOpeningDebtEditForm({...openingDebtEditForm, amount: e.target.value})} /></label><label><span>Фактура / отметка</span><input value={openingDebtEditForm.invoice_notes} onChange={e => setOpeningDebtEditForm({...openingDebtEditForm, invoice_notes: e.target.value})} /></label><label><span>Комментарий</span><input value={openingDebtEditForm.comment} onChange={e => setOpeningDebtEditForm({...openingDebtEditForm, comment: e.target.value})} /></label></div><div className="action-row"><button className="small primary" onClick={() => saveOpeningDebtEdit(p)}>Сохранить</button><button className="ghost small" onClick={() => setEditingOpeningDebtId('')}>Отмена</button></div></div></td></tr>}{p.row_type !== 'opening_debt' && detailPurchaseId === p.id && <tr><td colSpan="7"><div className="table-wrap"><table><thead><tr><th>Категория</th><th>Товар</th><th>Кол-во</th><th>Ед.</th><th>Цена</th><th>Сумма</th></tr></thead><tbody>{(p.supplier_purchase_items || []).map(i => <tr key={i.id}><td>{i.supplier_products?.category || '—'}</td><td>{i.supplier_products?.name || '—'}</td><td>{fmt(i.quantity)}</td><td>{i.unit}</td><td>{fmt(i.unit_price)}</td><td>{fmt(i.total_amount)}</td></tr>)}{!(p.supplier_purchase_items || []).length && <tr><td colSpan="6" className="hint">Товары не найдены</td></tr>}</tbody></table></div></td></tr>}</React.Fragment>)}{!purchaseTransactionRows.length && <tr><td colSpan="7" className="hint">Нет поступлений или стартовых долгов за выбранный период</td></tr>}</tbody></table></div> : transactionType === 'products' ? <div><div className="form-grid compact" style={{marginTop:12}}><label><span>Поиск товара</span><input value={productSearch} onChange={e => setProductSearch(e.target.value)} placeholder="Например: молоко, кофе" /></label><label><span>Сортировка</span><select value={productSort} onChange={e => setProductSort(e.target.value)}><option value="name_asc">Наименование A → Z</option><option value="name_desc">Наименование Z → A</option><option value="change_desc">Изменение цены: рост сверху</option><option value="change_asc">Изменение цены: снижение сверху</option><option value="price_desc">Последняя цена: убывание</option><option value="price_asc">Последняя цена: возрастание</option></select></label></div><div className="table-wrap"><table><thead><tr><th>Тип</th><th>Товар</th><th>Последняя цена закупа</th><th>Предыдущая цена закупа</th><th>Разница</th><th>Изменение</th><th>Последняя закупка</th><th>Фактура</th></tr></thead><tbody>{pagedProductPriceRows.map(row => <tr key={row.id}><td>{row.category}</td><td><b>{row.name}</b></td><td>{fmt(row.latest?.price)} / {row.latest?.unit || row.unit}</td><td>{row.previous ? `${fmt(row.previous.price)} / ${row.previous.unit || row.unit}` : '—'}</td><td>{row.changeAmount == null ? <span className="hint">—</span> : <strong className={row.changeAmount > 0 ? 'bad' : row.changeAmount < 0 ? 'good' : ''}>{row.changeAmount > 0 ? '+' : ''}{fmt(row.changeAmount)} AZN</strong>}</td><td>{row.changePct == null ? <span className="hint">—</span> : <strong className={row.changePct > 0 ? 'bad' : row.changePct < 0 ? 'good' : ''}>{row.changePct > 0 ? '+' : ''}{pct(row.changePct)}</strong>}</td><td>{row.latest?.date || '—'}</td><td>{row.latest?.invoice || '—'}</td></tr>)}{!productPriceRows.length && <tr><td colSpan="8" className="hint">Товары не найдены за выбранный период</td></tr>}</tbody></table></div></div> : <div className="table-wrap"><table><thead><tr><th>Дата</th><th>Физ. лицо</th><th>Отметки / фактуры</th><th>Сумма</th><th>Комментарий</th><th>Действие</th></tr></thead><tbody>{pagedFilteredPayments.map(p => <React.Fragment key={p.id}><tr><td>{p.payment_date}</td><td>{p.legal_entities?.name || legalEntities.find(le => le.id === p.legal_entity_id)?.name || '—'}<br /><span className="hint">{p.legal_entities?.voen || legalEntities.find(le => le.id === p.legal_entity_id)?.voen || ''}</span></td><td>{p.invoice_notes || '—'}</td><td><strong className="good">{fmt(p.amount)}</strong></td><td>{p.comment || '—'}</td><td><div className="action-row"><button className="small" onClick={() => startEditSupplierPayment(p)}>Ред.</button><button className="small remove" onClick={() => deleteSupplierPayment(p)}>Удалить</button></div></td></tr>{editingPaymentTransactionId === String(p.id) && <tr><td colSpan="6"><div className="card" style={{margin:0}}><h4>Редактирование оплаты поставщику</h4><p className="hint">Изменение суммы сразу пересчитает долг поставщика по выбранному физ. лицу.</p><div className="form-grid compact"><label><span>Дата оплаты</span><input type="date" value={paymentTransactionEditForm.payment_date} onChange={e => setPaymentTransactionEditForm({...paymentTransactionEditForm, payment_date: e.target.value})} /></label><label><span>Физ. лицо / VOEN</span><select value={paymentTransactionEditForm.legal_entity_id} onChange={e => setPaymentTransactionEditForm({...paymentTransactionEditForm, legal_entity_id: e.target.value})}>{legalEntities.map(le => <option key={le.id} value={le.id}>{le.name} · {le.voen}</option>)}</select></label><label><span>Сумма оплаты</span><input inputMode="decimal" value={paymentTransactionEditForm.amount} onChange={e => setPaymentTransactionEditForm({...paymentTransactionEditForm, amount: e.target.value})} /></label><label><span>Отметки / фактуры</span><input value={paymentTransactionEditForm.invoice_notes} onChange={e => setPaymentTransactionEditForm({...paymentTransactionEditForm, invoice_notes: e.target.value})} /></label><label><span>Комментарий</span><input value={paymentTransactionEditForm.comment} onChange={e => setPaymentTransactionEditForm({...paymentTransactionEditForm, comment: e.target.value})} /></label></div><div className="action-row"><button className="small primary" onClick={() => saveSupplierPaymentEdit(p)}>Сохранить</button><button className="ghost small" onClick={() => setEditingPaymentTransactionId('')}>Отмена</button><button className="small remove" onClick={() => deleteSupplierPayment(p)}>Удалить</button></div></div></td></tr>}</React.Fragment>)}{!filteredPayments.length && <tr><td colSpan="6" className="hint">Нет оплат за выбранный период</td></tr>}</tbody></table></div>}
+        <div className="action-row" style={{margin:'12px 0 0'}}><button className="ghost small" disabled={safeTransactionPage <= 1} onClick={() => setTransactionPage(p => Math.max(1, parseNum(p) - 1))}>← Пред.</button><span className="hint">Страница {safeTransactionPage} / {transactionTotalPages} · всего {transactionSourceCount}</span><button className="ghost small" disabled={safeTransactionPage >= transactionTotalPages} onClick={() => setTransactionPage(p => Math.min(transactionTotalPages, parseNum(p) + 1))}>След. →</button></div>
+        <div className="card" style={{marginTop:12}}><h4>Журнал изменений</h4><p className="hint">Любое редактирование и отключение стартового долга фиксируется по времени и пользователю.</p><div className="table-wrap"><table><thead><tr><th>Дата</th><th>Пользователь</th><th>Действие</th><th>Было</th><th>Стало</th></tr></thead><tbody>{visibleTransactionLogs.map(l => <tr key={l.id}><td>{formatDT(l.created_at)}</td><td>{l.user_email || l.user_id || '—'}</td><td>{l.action}</td><td><span className="hint">{l.old_value || '—'}</span></td><td>{l.new_value || '—'}</td></tr>)}{!visibleTransactionLogs.length && <tr><td colSpan="5" className="hint">Изменений пока нет.</td></tr>}</tbody></table></div></div>
+      </div>}</div>
+        })}
+      </div>
+
+
+
+      <div className="card span-2"><div className="card-head"><div><h3>Общий список: приход и оплаты</h3><p className="hint">Фильтруемый журнал операций: стартовый долг, приход по накладным и оплаты.</p></div><label style={{display:'flex',alignItems:'center',gap:8}}><span className="hint">Показать</span><select value={commonOpsPageSize} onChange={e => { setCommonOpsPageSize(Number(e.target.value)); setCommonOpsPage(1) }}><option value={10}>10</option><option value={20}>20</option><option value={30}>30</option><option value={50}>50</option></select></label></div>
+        <div className="form-grid compact">
+          <label><span>Период</span><select value={commonOpsPeriod} onChange={e => { setCommonOpsPeriod(e.target.value); setCommonOpsPage(1) }}><option value="day">День</option><option value="week">Неделя</option><option value="month">Месяц</option><option value="range">Диапазон дат</option><option value="all">Весь период</option></select></label>
+          {commonOpsPeriod !== 'range' && commonOpsPeriod !== 'all' && <label><span>Дата периода</span><input type="date" value={commonOpsDate} onChange={e => { setCommonOpsDate(e.target.value); setCommonOpsPage(1) }} /></label>}
+          {commonOpsPeriod === 'range' && <label><span>С</span><input type="date" value={commonOpsDateFrom} onChange={e => { setCommonOpsDateFrom(e.target.value); setCommonOpsPage(1) }} /></label>}
+          {commonOpsPeriod === 'range' && <label><span>По</span><input type="date" value={commonOpsDateTo} onChange={e => { setCommonOpsDateTo(e.target.value); setCommonOpsPage(1) }} /></label>}
+          <label><span>Поставщик</span><select value={commonOpsSupplierId} onChange={e => { setCommonOpsSupplierId(e.target.value); setCommonOpsPage(1) }}><option value="all">Все поставщики</option>{activeSuppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
+          <label><span>Операция</span><select value={commonOpsType} onChange={e => { setCommonOpsType(e.target.value); setCommonOpsPage(1) }}><option value="all">Все операции</option><option value="opening">Стартовый долг</option><option value="purchase">Приход</option><option value="payment">Оплата</option></select></label>
+        </div>
+        <div className="mini-grid">
+          <div className="metric"><span>Итого приход / долг</span><strong>{fmt(commonOpsTotals.debit)}</strong></div>
+          <div className="metric"><span>Итого оплат</span><strong>{fmt(commonOpsTotals.credit)}</strong></div>
+          <div className="metric"><span>Баланс</span><strong className={commonOpsTotals.balance > 0 ? 'bad' : commonOpsTotals.balance < 0 ? 'good' : 'hint'}>{fmt(commonOpsTotals.balance)}</strong></div>
+        </div>
+        <div className="table-wrap"><table><thead><tr><th>Дата</th><th>Поставщик</th><th>Операция</th><th>Фактура/отметки</th><th>Приход / долг</th><th>Оплата</th><th>Комментарий</th><th>Действие</th></tr></thead><tbody>{lastOps.map(r => <tr key={r.id}><td>{r.date}</td><td>{r.supplier}</td><td><b>{r.type}</b></td><td>{r.invoice}</td><td className={r.debit > 0 ? 'bad' : 'hint'}>{r.debit > 0 ? fmt(r.debit) : '—'}</td><td className={r.credit > 0 ? 'good' : 'hint'}>{r.credit > 0 ? fmt(r.credit) : '—'}</td><td>{r.comment || '—'}</td><td>{r.type_key === 'purchase' || r.type_key === 'payment' || r.type_key === 'opening' ? <button className="small" onClick={() => handleCommonOperationAction(r)}>Редактировать</button> : '—'}</td></tr>)}{!lastOps.length && <tr><td colSpan="8" className="hint">—</td></tr>}</tbody></table></div>
+        <div className="action-row" style={{margin:'12px 0'}}>
+          <button className="ghost small" disabled={safeCommonOpsPage <= 1} onClick={() => setCommonOpsPage(p => Math.max(1, parseNum(p) - 1))}>← Пред.</button>
+          <span className="hint">Страница {safeCommonOpsPage} / {commonOpsTotalPages} · всего {filteredCommonOps.length}</span>
+          <button className="ghost small" disabled={safeCommonOpsPage >= commonOpsTotalPages} onClick={() => setCommonOpsPage(p => Math.min(commonOpsTotalPages, parseNum(p) + 1))}>След. →</button>
+        </div>
+      </div>
+
+      <div className="card span-2 supplier-transactions-panel">
+        <div className="card-head"><div><h3>Баланс поставщика</h3><p className="hint">Поиск поставщика, поиск по E-qaimə / фактуре, приход/долг, оплата и остаток.</p></div><div className="action-row" style={{gap:8}}><label style={{display:'flex',alignItems:'center',gap:8}}><span className="hint">Показать</span><select value={ledgerPageSize} onChange={e => { setLedgerPageSize(Number(e.target.value)); setLedgerPage(1) }}><option value={10}>10</option><option value={20}>20</option><option value={30}>30</option><option value={50}>50</option></select></label><button className="small primary" onClick={printSupplierLedger}>PDF/Print</button></div></div>
+        <div className="form-grid compact">
+          <label><span>Поиск поставщика</span><input value={ledgerSearch} onChange={e => { setLedgerSearch(e.target.value); setLedgerPage(1) }} placeholder="Название или VOEN" /></label>
+          <label><span>Поставщик</span><select value={ledgerSupplierId} onChange={e => { setLedgerSupplierId(e.target.value); setLedgerPage(1) }}><option value="all">Все найденные / все поставщики</option>{searchedSuppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
+          <label><span>Наш VOEN / физ. лицо</span><select value={ledgerLegalEntityId} onChange={e => { setLedgerLegalEntityId(e.target.value); setLedgerPage(1) }}><option value="all">Все VOEN</option>{legalEntities.map(le => <option key={le.id} value={le.id}>{le.name} · {le.voen}</option>)}</select></label>
+          <label><span>Поиск E-qaimə / фактуры</span><input value={invoiceSearch} onChange={e => { setInvoiceSearch(e.target.value); setLedgerPage(1) }} placeholder="Номер фактуры" /></label>
+        </div>
+        <div className="mini-grid">
+          <div className="metric"><span>Приход / долг</span><strong>{fmt(ledgerTotals.debit)}</strong></div>
+          <div className="metric"><span>Оплата</span><strong>{fmt(ledgerTotals.credit)}</strong></div>
+          <div className="metric"><span>Остаток</span><strong className={ledgerDebtClass === 'bad' ? 'bad' : ledgerDebtClass === 'good' ? 'good' : 'hint'}>{fmt(ledgerTotals.balance)}</strong></div>
+        </div>
+        {ledgerEntityTotals.length > 1 && (
+          <div className="table-wrap" style={{margin:'10px 0 14px'}}>
+            <table>
+              <thead><tr><th>Наш VOEN / физ. лицо</th><th>Приход / долг</th><th>Оплата</th><th>Остаток</th></tr></thead>
+              <tbody>{ledgerEntityTotals.map(row => <tr key={row.id}><td><b>{row.name}</b><br /><span className="hint">{row.voen || '—'}</span></td><td>{fmt(row.debit)}</td><td>{fmt(row.credit)}</td><td className={row.balance > 0 ? 'bad' : row.balance < 0 ? 'good' : 'hint'}><b>{fmt(row.balance)}</b></td></tr>)}</tbody>
+            </table>
+          </div>
+        )}
+        <div className="table-wrap"><table><thead><tr><th>Дата</th><th>Поставщик</th><th>Наш VOEN</th><th>E-qaimə</th><th>Операция</th><th>Приход / долг</th><th>Оплата</th><th>Остаток</th></tr></thead><tbody>{pagedSupplierLedgerRows.map(r => <tr key={r.id}><td>{r.transaction_date}</td><td>{r.suppliers?.name || '—'}</td><td>{r.legal_entities?.name || '—'}<br /><span className="hint">{r.legal_entities?.voen || ''}</span></td><td>{r.invoice || '—'}</td><td>{r.comment}</td><td>{fmt(r.debit)}</td><td>{fmt(r.credit)}</td><td className={r.balance > 0 ? 'bad' : r.balance < 0 ? 'good' : 'hint'}><b>{fmt(r.balance)}</b></td></tr>)}{!supplierLedgerRows.length && <tr><td colSpan="8" className="hint">Операции не найдены.</td></tr>}</tbody></table></div>
+        <div className="action-row" style={{margin:'12px 0'}}>
+          <button className="ghost small" disabled={safeLedgerPage <= 1} onClick={() => setLedgerPage(p => Math.max(1, parseNum(p) - 1))}>← Пред.</button>
+          <span className="hint">Страница {safeLedgerPage} / {ledgerTotalPages} · всего {supplierLedgerRows.length}</span>
+          <button className="ghost small" disabled={safeLedgerPage >= ledgerTotalPages} onClick={() => setLedgerPage(p => Math.min(ledgerTotalPages, parseNum(p) + 1))}>След. →</button>
+        </div>
+        <div className={`hint ${ledgerDebtClass === 'bad' ? 'bad' : ledgerDebtClass === 'good' ? 'good' : ''}`} style={{marginTop:10}}>{ledgerDebtText}: <b>{fmt(ledgerTotals.balance)} AZN</b></div>
+      </div>
+
+    </section>
+  </section>
+}
+
+
+
+const AIKO_SALES_REPORTS_KEY = 'rms_aiko_sales_reports_v1'
+const AIKO_BRANCH_MAP_KEY = 'rms_aiko_branch_map_v1'
+const AIKO_HIDDEN_SALES_ITEMS_KEY = 'rms_aiko_hidden_sales_items_v1'
+const AIKO_SALES_NAME_ALIASES_KEY = 'rms_aiko_sales_name_aliases_v1'
+const AIKO_SALES_REPORTS_CLOUD_TABLE = 'rms_sales_reports'
+
+const readAikoSalesReports = () => readJsonStorage(AIKO_SALES_REPORTS_KEY, []) || []
+const writeAikoSalesReports = (reports) => writeJsonStorage(AIKO_SALES_REPORTS_KEY, reports || [])
+const readAikoBranchMap = () => readJsonStorage(AIKO_BRANCH_MAP_KEY, {}) || {}
+const writeAikoBranchMap = (value) => writeJsonStorage(AIKO_BRANCH_MAP_KEY, value || {})
+const readAikoHiddenSalesKeys = () => readJsonStorage(AIKO_HIDDEN_SALES_ITEMS_KEY, []) || []
+const writeAikoHiddenSalesKeys = (value) => writeJsonStorage(AIKO_HIDDEN_SALES_ITEMS_KEY, normalizeHiddenSalesKeys(value))
+const readAikoSalesNameAliases = () => readJsonStorage(AIKO_SALES_NAME_ALIASES_KEY, {}) || {}
+const writeAikoSalesNameAliases = (value) => writeJsonStorage(AIKO_SALES_NAME_ALIASES_KEY, value || {})
+
+function mergeAikoReports(localReports, cloudReports) {
+  const map = new Map()
+  ;[...(cloudReports || []), ...(localReports || [])].forEach(report => {
+    if (!report?.id) return
+    map.set(report.id, { ...(map.get(report.id) || {}), ...report })
+  })
+  return Array.from(map.values()).sort((a, b) => String(b.imported_at || '').localeCompare(String(a.imported_at || '')))
+}
+
+async function readAikoSalesReportsCloud() {
+  const { data, error } = await supabase
+    .from(AIKO_SALES_REPORTS_CLOUD_TABLE)
+    .select('id, imported_at, report_json')
+    .order('imported_at', { ascending: false })
+    .limit(500)
+  if (error) return { data: [], error }
+  return { data: (data || []).map(r => r.report_json || r).filter(Boolean), error: null }
+}
+
+async function writeAikoSalesReportsCloud(reports) {
+  const rows = (reports || []).filter(r => r?.id).map(r => ({
+    id: r.id,
+    imported_at: r.imported_at || new Date().toISOString(),
+    source_file: r.source_file || '',
+    period_start: r.period_start || null,
+    period_end: r.period_end || null,
+    branch_id: r.branch_id || null,
+    department: r.department || null,
+    report_json: r
+  }))
+  if (!rows.length) return { error: null }
+  const { error } = await supabase.from(AIKO_SALES_REPORTS_CLOUD_TABLE).upsert(rows, { onConflict: 'id' })
+  return { error }
+}
+
+async function deleteAikoSalesReportCloud(id) {
+  const { error } = await supabase.from(AIKO_SALES_REPORTS_CLOUD_TABLE).delete().eq('id', id)
+  return { error }
+}
+
+const normalizeSalesName = (value) => String(value || '').trim().replace(/\s+/g, ' ')
+const normalizeSalesKey = (value) => normalizeSalesName(value).toLowerCase()
+const normalizeHiddenSalesKeys = (value) => Array.from(new Set((value || []).map(normalizeSalesKey).filter(Boolean)))
+const salesHiddenKeyVariants = (item, aliases = {}) => {
+  const values = []
+  if (typeof item === 'string') values.push(item)
+  else if (item && typeof item === 'object') {
+    values.push(item.name)
+    ;(item.original_names || []).forEach(v => values.push(v))
+    ;(item.auto_merged_names || []).forEach(v => values.push(v))
+  }
+  const keys = new Set()
+  values.filter(Boolean).forEach(v => {
+    const originalKey = normalizeSalesKey(v)
+    const canonicalName = canonicalSalesDisplayName(resolveSalesNameAlias(v, aliases || {}))
+    const canonicalKey = normalizeSalesKey(canonicalName)
+    if (originalKey) keys.add(originalKey)
+    if (canonicalKey) keys.add(canonicalKey)
+    const aliasValue = aliases?.[originalKey]
+    if (aliasValue) keys.add(normalizeSalesKey(aliasValue))
+  })
+  return Array.from(keys).filter(Boolean)
+}
+const rowIsHiddenBySalesKeys = (row, hiddenKeys = [], aliases = {}) => {
+  const set = hiddenKeys instanceof Set ? hiddenKeys : new Set(normalizeHiddenSalesKeys(hiddenKeys))
+  return salesHiddenKeyVariants(row, aliases).some(key => set.has(key))
+}
+const resolveSalesNameAlias = (name, aliases = {}) => {
+  const key = normalizeSalesKey(name)
+  const alias = aliases?.[key]
+  if (!alias) return normalizeSalesName(name)
+  return normalizeSalesName(typeof alias === 'string' ? alias : alias.name) || normalizeSalesName(name)
+}
+const parseAikoNumber = (value) => parseNum(String(value || '').replace(/\u00a0/g, ' '))
+const AIKO_MODIFIER_PATTERNS = [
+  /модификатор/i,
+  /modifier/i,
+  /^[-+]/,
+  /^без\s+/i,
+  /^no\s+/i,
+  /extra/i,
+  /add/i,
+  /добав/i,
+  /доп\.?\s*/i,
+  /сироп/i,
+  /альтернативное\s+молоко/i,
+  /растительное\s+молоко/i,
+  /oat\s+milk/i,
+  /almond\s+milk/i,
+  /soy\s+milk/i,
+  /coconut\s+milk/i,
+  /размер/i,
+  /порция/i
+]
+
+function isAikoModifierRow(name, sourceCategory = '') {
+  const n = normalizeSalesName(name)
+  const c = normalizeSalesName(sourceCategory)
+  if (!n) return true
+  const haystack = `${c} ${n}`
+  if (AIKO_MODIFIER_PATTERNS.some(rx => rx.test(haystack))) return true
+  // Частые AIKO-модификаторы попадают без категории: сахар, лёд, молоко, добавки, прожарка и т.п.
+  const compact = haystack.toLowerCase()
+  if (/^(sugar|ice|milk|hot|cold)$/i.test(n)) return true
+  if (/(сахар|лед|л[её]д|молоко|корица|сливки|прожарка|соус отдельно)/i.test(compact) && parseInt(String(n).length, 10) < 32) return true
+  return false
+}
+
+const AIKO_CATEGORY_PREFIXES = ['Модификаторы', 'Модификатор', 'Кухня', 'Бар', 'Kitchen', 'Bar', 'Modifiers', 'Modifier']
+const normalizeAikoSourceCategory = (value, fallback = '') => {
+  const v = normalizeSalesName(value)
+  if (!v) return normalizeSalesName(fallback)
+  if (/^кухня$/i.test(v) || /^kitchen$/i.test(v)) return 'Кухня'
+  if (/^бар$/i.test(v) || /^bar$/i.test(v)) return 'Бар'
+  if (/^модификатор/i.test(v) || /^modifier/i.test(v)) return 'Модификаторы'
+  return v
+}
+
+function splitAikoCategoryAndName(rawName, fallbackCategory = '') {
+  let text = normalizeSalesName(rawName)
+  let category = normalizeAikoSourceCategory(fallbackCategory)
+  for (const prefix of AIKO_CATEGORY_PREFIXES) {
+    const rx = new RegExp(`^${prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s+(.+)$`, 'i')
+    const match = text.match(rx)
+    if (!match) continue
+    category = normalizeAikoSourceCategory(prefix, category)
+    text = normalizeSalesName(match[1])
+    break
+  }
+  return { name: text, source_category: category }
+}
+
+function normalizeAikoSalesRow(row, defaultDepartment = '') {
+  const split = splitAikoCategoryAndName(row?.name, row?.source_category || row?.category || defaultDepartment)
+  const department = row?.department || defaultDepartment || (split.source_category === 'Бар' ? 'Бар' : split.source_category === 'Кухня' ? 'Кухня' : '')
+  return {
+    ...row,
+    name: split.name,
+    source_category: split.source_category || row?.source_category || department,
+    department,
+    menu_category: row?.menu_category || inferAikoMenuCategory({ name: split.name, source_category: split.source_category || row?.source_category }, department)
+  }
+}
+
+function repairAikoAvgRevenueLayoutRow(row) {
+  const quantity = parseNum(row?.quantity)
+  const revenue = parseNum(row?.revenue)
+  const avgPriceField = parseNum(row?.avg_price)
+  const lastMoneyField = parseNum(row?.cost)
+  // В мартовских AIKO PDF порядок колонок отличается: цена → выручка → средняя цена.
+  // Если такой отчёт был импортирован старым парсером, выручка сохранилась как цена,
+  // а реальная выручка попала в avg_price. Исправляем уже сохранённые строки автоматически.
+  const looksLikeOldMarchLayout = quantity > 0 && revenue > 0 && revenue <= 100 && avgPriceField > 100 && avgPriceField > revenue * 10
+  if (!looksLikeOldMarchLayout) return row
+  return {
+    ...row,
+    revenue: avgPriceField,
+    avg_price: lastMoneyField || (quantity ? avgPriceField / quantity : 0),
+    cost: 0,
+    aiko_revenue_repaired: true
+  }
+}
+
+function recalcAikoReportTotals(report) {
+  return (report?.rows || []).reduce((acc, r) => {
+    acc.quantity += parseNum(r.quantity)
+    acc.revenue += parseNum(r.revenue)
+    acc.cost += parseNum(r.cost)
+    return acc
+  }, { quantity: 0, revenue: 0, cost: 0 })
+}
+
+
+const decodeAikoFileName = (value) => String(value || '').replace(/#U([0-9A-Fa-f]{4})/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
+const normalizeAikoAlias = (value) => decodeAikoFileName(value)
+  .toLowerCase()
+  .replace(/ə/g, 'e')
+  .replace(/ё/g, 'е')
+  .replace(/[^a-zа-я0-9]+/g, '')
+
+const AIKO_DEFAULT_BRANCH_CODES = {
+  xeqani: 'B1',
+  rb: 'B3',
+  ch: 'B4',
+  cresent: 'B5',
+  nizami: 'B2'
+}
+
+const AIKO_BRANCH_PATTERNS = [
+  { key: 'xeqani', name: 'Xəqani', defaultBranchCode: 'B1', patterns: ['xeqani', 'xaqani', 'khagani', 'хагани'] },
+  { key: 'rb', name: 'R.B', defaultBranchCode: 'B3', patterns: ['rb', 'r.b', 'r b', '28mall', '28 mall'] },
+  { key: 'ch', name: 'C.H', defaultBranchCode: 'B4', patterns: ['ch', 'c.h', 'c h'] },
+  { key: 'cresent', name: 'Cresent', defaultBranchCode: 'B5', patterns: ['cresent', 'crescent'] },
+  { key: 'nizami', name: 'Nizami', defaultBranchCode: 'B2', patterns: ['nizami', 'низами'] }
+]
+
+function branchCodeOf(branch) {
+  const name = String(branch?.name || '').trim()
+  const codeMatch = name.match(/\bB\s*([1-5])\b/i) || name.match(/\bBC\s*([1-5])\b/i)
+  return codeMatch ? `B${codeMatch[1]}` : normalizeAikoAlias(name).toUpperCase()
+}
+
+function findBranchByCode(branches, code) {
+  const expected = String(code || '').trim().toUpperCase().replace(/\s+/g, '')
+  if (!expected) return null
+  return (branches || []).find(b => branchCodeOf(b).replace(/\s+/g, '') === expected || normalizeAikoAlias(b.name) === normalizeAikoAlias(expected)) || null
+}
+
+function resolveDefaultAikoBranch(branches, aikoKey) {
+  return findBranchByCode(branches, AIKO_DEFAULT_BRANCH_CODES[aikoKey])
+}
+
+function getAikoBranchToken(text, fileName = '') {
+  const decodedFile = decodeAikoFileName(fileName)
+  const warehouseLine = String(text || '').replace(/\u00a0/g, ' ').split(/\r?\n/).find(l => /^\s*Склад\(ы\):/i.test(l)) || ''
+  const source = `${decodedFile} ${warehouseLine}`
+  const normalized = normalizeAikoAlias(source)
+  const direct = AIKO_BRANCH_PATTERNS.find(item => item.patterns.some(pattern => normalized.includes(normalizeAikoAlias(pattern))))
+  if (direct) return { key: direct.key, name: direct.name }
+
+  let guessed = decodedFile
+    .replace(/отчет\s*о\s*продажах/gi, '')
+    .replace(/report\s*of\s*sales/gi, '')
+    .replace(/\b(bar|kitchen|кухня|бар)\b/gi, '')
+    .replace(/\.pdf|\.txt|\.csv/gi, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+  if (!guessed && warehouseLine) guessed = warehouseLine.replace(/^\s*Склад\(ы\):\s*/i, '').trim()
+  const key = normalizeAikoAlias(guessed)
+  return key ? { key, name: guessed || key } : { key: '', name: '' }
+}
+
+function findBranchById(branches, id) {
+  return (branches || []).find(b => String(b.id) === String(id)) || null
+}
+
+function inferAikoDepartment(text, fileName = '') {
+  const decodedFile = decodeAikoFileName(fileName || '').toLowerCase()
+  const value = decodeAikoFileName(`${text || ''} ${fileName || ''}`).toLowerCase()
+  // Важно: сначала Kitchen, потому что в PDF могут встречаться слова bar в служебных строках.
+  if (/kitchen|kuxna|кухн/.test(decodedFile) || /kitchen|kuxna|кухн/.test(value)) return 'Кухня'
+  if (/bar|бар/.test(decodedFile) || /bar|бар/.test(value)) return 'Бар'
+  return 'Смешанный'
+}
+
+function inferAikoMenuCategory(row, department) {
+  const sourceCategory = String(row?.source_category || '').toLowerCase()
+  const name = String(row?.name || '').toLowerCase()
+  if (department === 'Бар' || sourceCategory.includes('бар') || sourceCategory.includes('чай')) {
+    if (sourceCategory.includes('чай') || name.includes('tea') || name.includes('coffee') || name.includes('espresso') || name.includes('cappuccino') || name.includes('latte') || name.includes('americano') || name.includes('raf')) return 'Кофе'
+    return 'Напитки'
+  }
+  if (name.includes('burger') || name.includes('sandwich') || name.includes('toast') || name.includes('bagel')) return 'Бургеры / Сэндвичи'
+  if (name.includes('pizza') || name.includes('pasta')) return name.includes('pasta') ? 'Паста' : 'Основные блюда'
+  if (name.includes('salad')) return 'Салаты'
+  if (name.includes('cake') || name.includes('cheesecake') || name.includes('fondant') || name.includes('dessert') || name.includes('eclair')) return 'Десерты'
+  if (name.includes('croissant') || name.includes('pancake') || name.includes('syrniki') || name.includes('omelette') || name.includes('breakfast') || name.includes('oatmeal') || name.includes('granola')) return 'Завтраки'
+  return department === 'Кухня' ? 'Основные блюда' : 'Прочее'
+}
+
+function guessAikoBranch(text, fileName, branches, branchMap = {}) {
+  const token = getAikoBranchToken(text, fileName)
+  const mappedBranch = token.key ? findBranchById(branches, branchMap[token.key]) : null
+  if (mappedBranch) return mappedBranch
+  const defaultMappedBranch = token.key ? resolveDefaultAikoBranch(branches, token.key) : null
+  if (defaultMappedBranch) return defaultMappedBranch
+
+  const source = decodeAikoFileName(`${text || ''} ${fileName || ''}`).toLowerCase()
+  const clean = (v) => String(v || '').toLowerCase().replace(/ə/g, 'e').replace(/ё/g, 'е').replace(/[^a-zа-я0-9]+/g, ' ').trim()
+  const sourceClean = clean(source)
+  const direct = (branches || []).find(b => {
+    const name = clean(b.name)
+    if (!name) return false
+    const compactName = normalizeAikoAlias(name)
+    if (sourceClean.includes(name) || normalizeAikoAlias(sourceClean).includes(compactName)) return true
+    return name.split(' ').filter(Boolean).some(part => part.length >= 3 && sourceClean.includes(part))
+  })
+  if (direct) return direct
+  return null
+}
+
+function parseAikoSalesText(text, meta = {}) {
+  const rawText = String(text || '').replace(/\u00a0/g, ' ')
+  const lines = rawText.split(/\r?\n/).map(l => l.trim()).filter(Boolean)
+  const firstLine = lines.find(l => /Отчет о продажах/i.test(l)) || ''
+  const periodMatch = firstLine.match(/с\s*(\d{2}\.\d{2}\.\d{4})\s*по\s*(\d{2}\.\d{2}\.\d{4})/i) || rawText.match(/За период:\s*с\s*(\d{2}\.\d{2}\.\d{4})\s*по\s*(\d{2}\.\d{2}\.\d{4})/i)
+  const toIso = (d) => d ? d.split('.').reverse().join('-') : ''
+  const warehouseLine = lines.find(l => /^Склад\(ы\):/i.test(l)) || ''
+  const warehouse = warehouseLine.replace(/^Склад\(ы\):\s*/i, '').trim()
+  const aikoBranch = meta.aiko_branch || getAikoBranchToken(`${warehouse}\n${rawText}`, meta.fileName)
+  const department = meta.department || inferAikoDepartment(`${warehouse}\n${rawText}`, meta.fileName)
+  let currentCategory = department
+  const rows = []
+  const rowRegex = /^(.+?)\s+(-?[\d\s]+,\d{3})\s+(-?[\d\s]+,\d{2})\s+(-?[\d\s]+,\d{2})\s+(-?[\d\s]+,\d{2})$/
+  const headerText = rawText.replace(/\s+/g, ' ')
+  const avgBeforeRevenueLayout = /Средняя цена без вычета скидок,?\s*manat\s+Выручка,?\s*manat\s+Средняя цена,?\s*manat/i.test(headerText)
+  const revenueBeforeAvgLayout = /Выручка,?\s*manat\s+Средняя цена без вычета скидок,?\s*manat\s+Себестоимость,?\s*manat/i.test(headerText)
+
+  for (const line of lines) {
+    const categoryMatch = line.match(/^Категория:\s*(.+)$/i)
+    if (categoryMatch) {
+      currentCategory = categoryMatch[1].trim()
+      continue
+    }
+    if (/^(Итого|Всего):/i.test(line) || line.includes('Элемент номенклатуры') || line.includes('Выручка, manat')) continue
+    const match = line.match(rowRegex)
+    if (!match) continue
+    const split = splitAikoCategoryAndName(match[1], currentCategory || department)
+    currentCategory = split.source_category || currentCategory || department
+    const name = split.name
+    if (!name || /^(итого|категория|отчет)/i.test(name)) continue
+    if (isAikoModifierRow(name, currentCategory)) continue
+    const qty = parseAikoNumber(match[2])
+    let revenue = parseAikoNumber(match[3])
+    let avgPrice = parseAikoNumber(match[4])
+    let cost = parseAikoNumber(match[5])
+    // В AIKO есть два близких формата PDF:
+    // 1) Количество → Выручка → Средняя цена без скидок → Себестоимость
+    // 2) Количество → Средняя цена без скидок → Выручка → Средняя цена
+    // Мартовские отчёты используют второй формат и не содержат себестоимость. Если не менять порядок,
+    // выручка ошибочно импортируется как цена позиции.
+    if (avgBeforeRevenueLayout && !revenueBeforeAvgLayout) {
+      avgPrice = parseAikoNumber(match[5]) || parseAikoNumber(match[3])
+      revenue = parseAikoNumber(match[4])
+      cost = 0
+    }
+    rows.push({
+      id: `${Date.now()}-${rows.length}-${Math.random().toString(16).slice(2)}`,
+      name,
+      quantity: qty,
+      revenue,
+      cost,
+      avg_price: avgPrice,
+      source_category: currentCategory,
+      department,
+      menu_category: inferAikoMenuCategory({ name, source_category: currentCategory }, department)
+    })
+  }
+
+  return {
+    id: `aiko-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    source_file: meta.fileName || 'AIKO report',
+    imported_at: new Date().toISOString(),
+    period_start: toIso(periodMatch?.[1]) || meta.period_start || '',
+    period_end: toIso(periodMatch?.[2]) || meta.period_end || '',
+    warehouse,
+    department,
+    aiko_branch_key: aikoBranch.key || '',
+    aiko_branch_name: aikoBranch.name || '',
+    branch_id: meta.branch_id || '',
+    branch_name: meta.branch_name || '',
+    rows,
+    totals: rows.reduce((acc, r) => {
+      acc.quantity += parseNum(r.quantity)
+      acc.revenue += parseNum(r.revenue)
+      acc.cost += parseNum(r.cost)
+      return acc
+    }, { quantity: 0, revenue: 0, cost: 0 })
+  }
+}
+
+
+const SALES_SEARCH_SYNONYMS = {
+  'чай': ['чай', 'чаи', 'tea', 'çay', 'cay'],
+  'чаи': ['чай', 'чаи', 'tea', 'çay', 'cay'],
+  'tea': ['tea', 'чай', 'чаи', 'çay', 'cay'],
+  'çay': ['çay', 'cay', 'чай', 'чаи', 'tea'],
+  'cay': ['cay', 'çay', 'чай', 'чаи', 'tea'],
+  'кофе': ['кофе', 'coffee'],
+  'coffee': ['coffee', 'кофе'],
+  'пицца': ['пицца', 'pizza'],
+  'pizza': ['pizza', 'пицца'],
+  'бургер': ['бургер', 'burger'],
+  'burger': ['burger', 'бургер'],
+  'салат': ['салат', 'salad'],
+  'salad': ['salad', 'салат'],
+  'суп': ['суп', 'soup'],
+  'soup': ['soup', 'суп'],
+  'круассан': ['круассан', 'croissant'],
+  'croissant': ['croissant', 'круассан'],
+  'вода': ['вода', 'water'],
+  'water': ['water', 'вода'],
+  'сок': ['сок', 'juice'],
+  'juice': ['juice', 'сок'],
+  'лимонад': ['лимонад', 'lemonade'],
+  'lemonade': ['lemonade', 'лимонад'],
+  'завтрак': ['завтрак', 'breakfast'],
+  'breakfast': ['breakfast', 'завтрак']
+}
+
+const SALES_AUTO_MERGE_STOP_WORDS = new Set([
+  'althaus', 'alhaus', 'barista', 'chef', 'baristachef', 'bc', 'b&c',
+  'new', 'новый', 'новая', 'новое', 'the', 'and', 'with', 'без', 'для',
+  'кухня', 'kitchen', 'бар', 'bar', 'модификаторы', 'modifier', 'modifiers',
+  'althaus', 'althous', 'althause', 'premium', 'classic'
+])
+
+function normalizeSalesSearchText(value) {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/ё/g, 'е')
+    .replace(/[İı]/g, 'i')
+    .replace(/ə/g, 'e')
+    .replace(/ç/g, 'c')
+    .replace(/[()\[\]{}]/g, ' ')
+    .replace(/[^a-zа-я0-9]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
+function expandSalesSearchTokens(tokens) {
+  const out = new Set()
+  ;(tokens || []).forEach(token => {
+    const base = normalizeSalesSearchText(token)
+    if (!base) return
+    out.add(base)
+    ;(SALES_SEARCH_SYNONYMS[base] || []).forEach(v => out.add(normalizeSalesSearchText(v)))
+  })
+  return Array.from(out).filter(Boolean)
+}
+
+function salesSearchWords(value) {
+  return normalizeSalesSearchText(value)
+    .split(' ')
+    .map(canonicalizeSalesToken)
+    .filter(Boolean)
+}
+
+function salesSearchWordSet(value) {
+  return new Set(salesSearchWords(value))
+}
+
+function expandCanonicalSalesSearchTokens(tokens) {
+  const out = new Set()
+  ;(tokens || []).forEach(token => {
+    const base = canonicalizeSalesToken(token)
+    if (!base) return
+    out.add(base)
+    ;(SALES_SEARCH_SYNONYMS[normalizeSalesSearchText(token)] || []).forEach(v => {
+      const c = canonicalizeSalesToken(v)
+      if (c) out.add(c)
+    })
+  })
+  return Array.from(out).filter(Boolean)
+}
+
+function rowMatchesSalesSearch(row, parsed) {
+  const hayText = `${row.name || ''} ${(row.original_names || []).join(' ')} ${row.menu_category || ''} ${row.source_category || ''}`
+  const words = salesSearchWordSet(hayText)
+  const includes = parsed?.includeTokens || parsed?.searchTokens || []
+  const excludes = parsed?.excludeTokens || []
+  if (excludes.some(token => words.has(token))) return false
+  if (!includes.length) return true
+  return includes.every(token => words.has(token))
+}
+
+function canonicalizeSalesToken(token) {
+  const t = normalizeSalesSearchText(token)
+  if (!t) return ''
+  if (t === 'eral') return 'earl'
+  if (t === 'mperial' || t === 'imperia' || t === 'imperıal') return 'imperial'
+  if (t === 'gray') return 'grey'
+  if (['chamolie', 'chamoile', 'camomile', 'chamomille'].includes(t)) return 'chamomile'
+  if (['medow', 'meddow', 'meedow'].includes(t)) return 'meadow'
+  if (['чай', 'чаи', 'cay', 'çay'].includes(t)) return 'tea'
+  if (t === 'кофе') return 'coffee'
+  if (t === 'пицца') return 'pizza'
+  if (t === 'бургер') return 'burger'
+  if (t === 'салат') return 'salad'
+  if (t === 'суп') return 'soup'
+  if (t === 'круассан') return 'croissant'
+  if (t === 'вода') return 'water'
+  if (t === 'сок') return 'juice'
+  if (t === 'лимонад') return 'lemonade'
+  if (t === 'завтрак') return 'breakfast'
+  return t
+}
+
+
+function repairSalesProductNameText(value) {
+  return normalizeSalesName(String(value || '')
+    .replace(/[İı]/g, 'I')
+    .replace(/\bI\s+Mperial\b/gi, 'Imperial')
+    .replace(/\bI\s+mperial\b/gi, 'Imperial')
+    .replace(/\bMperial\b/gi, 'Imperial')
+    .replace(/\bEral\b/gi, 'Earl')
+    .replace(/\bEray\b/gi, 'Earl')
+    .replace(/\bGray\b/gi, 'Grey')
+    .replace(/\bChamolie\b/gi, 'Chamomile')
+    .replace(/\bChamoile\b/gi, 'Chamomile')
+    .replace(/\bCamomile\b/gi, 'Chamomile')
+    .replace(/\bMedow\b/gi, 'Meadow'))
+}
+
+function stripSalesCategoryWords(value) {
+  let text = repairSalesProductNameText(value)
+  const categoryRx = '(?:Кухня|Бар|Kitchen|Bar|Модификаторы|Modifier|Modifiers)'
+  text = text.replace(new RegExp(`^${categoryRx}\\s+`, 'i'), '')
+  text = text.replace(new RegExp(`\\s+${categoryRx}$`, 'i'), '')
+  return normalizeSalesName(text)
+}
+
+function canonicalSalesDisplayName(name) {
+  const raw = stripSalesCategoryWords(String(name || '').replace(/\([^)]*\)/g, ' '))
+  const words = salesSearchWords(raw)
+  const set = new Set(words)
+  if (set.has('tea') && set.has('english') && set.has('breakfast')) return 'Чай English Breakfast'
+  if (set.has('tea') && set.has('imperial') && set.has('earl') && set.has('grey')) return 'Чай Imperial Earl Grey'
+  if (set.has('tea') && set.has('chamomile') && set.has('meadow')) return 'Чай Chamomile Meadow'
+  return normalizeSalesName(raw
+    .replace(/\benglish\s+breakfast\b/i, 'English Breakfast')
+    .replace(/\bimperial\b/i, 'Imperial')
+    .replace(/\bearl\b/i, 'Earl')
+    .replace(/\bgrey\b/i, 'Grey')
+    .replace(/\bchamomile\b/i, 'Chamomile')
+    .replace(/\bmeadow\b/i, 'Meadow'))
+}
+
+function inferSalesDepartmentFromName(name, fallback = '') {
+  const words = salesSearchWordSet(name)
+  const text = normalizeSalesSearchText(name)
+  if (words.has('tea') || words.has('coffee') || /\b(espresso|cappuccino|latte|americano|raf|matcha|cocoa|lemonade|smoothie|juice|water)\b/.test(text)) return 'Бар'
+  if (words.has('burger') || words.has('pizza') || words.has('salad') || words.has('soup') || text.includes('steak')) return 'Кухня'
+  return fallback || ''
+}
+
+function chooseSalesDisplayName(current, candidate) {
+  const cleanCurrent = canonicalSalesDisplayName(current)
+  const cleanCandidate = canonicalSalesDisplayName(candidate)
+  if (!cleanCurrent) return cleanCandidate
+  if (!cleanCandidate) return cleanCurrent
+  const currentScore = cleanCurrent.length + (/[()]/.test(cleanCurrent) ? 20 : 0)
+  const candidateScore = cleanCandidate.length + (/[()]/.test(cleanCandidate) ? 20 : 0)
+  return candidateScore <= currentScore ? cleanCandidate : cleanCurrent
+}
+
+function autoMergeSalesNameKey(name) {
+  const display = canonicalSalesDisplayName(name)
+  const cleaned = normalizeSalesSearchText(display)
+  const tokens = cleaned
+    .split(' ')
+    .map(canonicalizeSalesToken)
+    .filter(t => t && t.length >= 2 && !SALES_AUTO_MERGE_STOP_WORDS.has(t))
+  if (!tokens.length) return normalizeSalesKey(display || name)
+  return Array.from(new Set(tokens)).sort().join(' ')
+}
+
+function autoMergeAiSalesRows(rows, includeBranch = false) {
+  const map = new Map()
+  ;(rows || []).forEach(row => {
+    const mergeNameKey = autoMergeSalesNameKey(row.name)
+    const branchPart = includeBranch ? (row.branch_id || row.branch_name || '') : 'all'
+    const deptPart = inferSalesDepartmentFromName(row.name, row.department || '')
+    const key = `${mergeNameKey}|${branchPart}|${deptPart}`
+    const existing = map.get(key) || {
+      ...row,
+      name: canonicalSalesDisplayName(row.name),
+      original_names: new Set(),
+      auto_merged_names: new Set(),
+      quantity: 0,
+      revenue: 0,
+      cost: 0,
+      profit: 0
+    }
+    const currentName = canonicalSalesDisplayName(row.name)
+    ;(row.original_names || [currentName]).forEach(n => existing.original_names.add(normalizeSalesName(n)))
+    existing.auto_merged_names.add(currentName)
+    existing.quantity += parseNum(row.quantity)
+    existing.revenue += parseNum(row.revenue)
+    existing.cost += parseNum(row.cost)
+    existing.profit += parseNum(row.profit)
+    existing.name = chooseSalesDisplayName(existing.name, currentName)
+    if (!existing.branch_id && row.branch_id) existing.branch_id = row.branch_id
+    if (!existing.branch_name && row.branch_name) existing.branch_name = row.branch_name
+    existing.department = inferSalesDepartmentFromName(existing.name, existing.department || row.department)
+    if (!existing.menu_category && row.menu_category) existing.menu_category = row.menu_category
+    if (!existing.source_category && row.source_category) existing.source_category = row.source_category
+    map.set(key, existing)
+  })
+  return Array.from(map.values()).map(row => {
+    const mergedNames = Array.from(row.auto_merged_names || []).filter(Boolean)
+    return {
+      ...row,
+      original_names: Array.from(row.original_names || []),
+      auto_merged_names: mergedNames,
+      auto_merged: mergedNames.length > 1,
+      avg_price: row.quantity ? row.revenue / row.quantity : 0,
+      margin: row.revenue ? ((row.revenue - row.cost) / row.revenue) * 100 : 0,
+      profit: row.revenue - row.cost
+    }
+  })
+}
+
+function aggregateSalesRows(reports, options = {}) {
+  const includeBranch = options.includeBranch !== false
+  const hiddenKeys = new Set(normalizeHiddenSalesKeys(options.hiddenKeys || []))
+  const recipeCostMap = options.recipeCostMap || {}
+  const aliases = options.aliases || {}
+  const map = new Map()
+  ;(reports || []).forEach(report => {
+    ;(report.rows || []).forEach(rawRow => {
+      const row = normalizeAikoSalesRow(rawRow, report.department || '')
+      const originalKey = normalizeSalesKey(row.name)
+      const displayName = canonicalSalesDisplayName(resolveSalesNameAlias(row.name, aliases))
+      const itemKey = normalizeSalesKey(displayName)
+      if (!itemKey || rowIsHiddenBySalesKeys({ ...row, name: displayName, original_names: [row.name] }, hiddenKeys, aliases)) return
+      const dept = inferSalesDepartmentFromName(displayName, row.department || report.department || '')
+      const branchKey = includeBranch ? (report.branch_id || report.branch_name || '') : 'all'
+      const key = `${itemKey}|${branchKey}|${dept}`
+      const recipeUnitCostRaw = recipeCostMap[itemKey]
+      const unitCost = Number.isFinite(Number(recipeUnitCostRaw)) ? parseNum(recipeUnitCostRaw) : 0
+      const cost = parseNum(row.quantity) * unitCost
+      const existing = map.get(key) || {
+        name: displayName,
+        original_names: new Set(),
+        branch_id: includeBranch ? (report.branch_id || '') : '',
+        branch_name: includeBranch ? (report.branch_name || '') : '',
+        department: inferSalesDepartmentFromName(displayName, dept),
+        source_category: row.source_category || '',
+        menu_category: row.menu_category || 'Прочее',
+        quantity: 0,
+        revenue: 0,
+        cost: 0
+      }
+      existing.original_names.add(normalizeSalesName(row.name))
+      existing.quantity += parseNum(row.quantity)
+      existing.revenue += parseNum(row.revenue)
+      existing.cost += cost
+      map.set(key, existing)
+    })
+  })
+  return Array.from(map.values()).map(row => ({
+    ...row,
+    original_names: Array.from(row.original_names || []),
+    margin: row.revenue ? ((row.revenue - row.cost) / row.revenue) * 100 : 0,
+    profit: row.revenue - row.cost,
+    avg_price: row.quantity ? row.revenue / row.quantity : 0
+  }))
+}
+async function extractPdfTextWithPdfJs(file) {
+  const pdfjsLib = await import(/* @vite-ignore */ 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.mjs')
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.10.38/build/pdf.worker.mjs'
+  const arrayBuffer = await file.arrayBuffer()
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise
+  const allLines = []
+  for (let pageNo = 1; pageNo <= pdf.numPages; pageNo += 1) {
+    const page = await pdf.getPage(pageNo)
+    const content = await page.getTextContent()
+    const groups = new Map()
+    ;(content.items || []).forEach(item => {
+      const y = Math.round((item.transform?.[5] || 0) / 3) * 3
+      const x = item.transform?.[4] || 0
+      const arr = groups.get(y) || []
+      arr.push({ x, text: item.str || '' })
+      groups.set(y, arr)
+    })
+    Array.from(groups.entries())
+      .sort((a, b) => b[0] - a[0])
+      .forEach(([, items]) => {
+        const line = items.sort((a, b) => a.x - b.x).map(i => i.text).join(' ').replace(/\s+/g, ' ').trim()
+        if (line) allLines.push(line)
+      })
+  }
+  return allLines.join('\n')
+}
+
+async function explodeZipFile(file) {
+  const mod = await import(/* @vite-ignore */ 'https://cdn.jsdelivr.net/npm/jszip@3.10.1/+esm')
+  const JSZip = mod.default || mod
+  const zip = await JSZip.loadAsync(await file.arrayBuffer())
+  const files = []
+  const entries = Object.values(zip.files || {})
+  for (const entry of entries) {
+    if (entry.dir) continue
+    if (!/\.(pdf|txt|csv)$/i.test(entry.name)) continue
+    const blob = await entry.async('blob')
+    files.push(new File([blob], entry.name, { type: entry.name.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'text/plain' }))
+  }
+  return files
+}
+
+function Reports({ t }) {
+  const branches = useBranches()
+  const [reports, setReports] = useState(() => readAikoSalesReports())
+  const [branchMap, setBranchMap] = useState(() => readAikoBranchMap())
+  const [reportsTab, setReportsTab] = useState('sales')
+  const [branchFilter, setBranchFilter] = useState('all')
+  const [departmentFilter, setDepartmentFilter] = useState('all')
+  const [monthFilter, setMonthFilter] = useState('all')
+  const [salesSort, setSalesSort] = useState({ field: 'revenue', dir: 'desc' })
+  const [importBranchId, setImportBranchId] = useState('auto')
+  const [importText, setImportText] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [message, setMessage] = useState('')
+  const [expandedSalesRows, setExpandedSalesRows] = useState(false)
+  const [expandedReportsTable, setExpandedReportsTable] = useState(false)
+  const [expandedAiTables, setExpandedAiTables] = useState({})
+  const [aiTopLimit, setAiTopLimit] = useState(10)
+  const [aiOutsiderLimit, setAiOutsiderLimit] = useState(10)
+  const [salesAiQuery, setSalesAiQuery] = useState('')
+  const [salesAiExportMode, setSalesAiExportMode] = useState('prices')
+  const [hiddenSalesKeys, setHiddenSalesKeys] = useState(() => readAikoHiddenSalesKeys())
+  const [salesNameAliases, setSalesNameAliases] = useState(() => readAikoSalesNameAliases())
+  const [showHiddenSalesItems, setShowHiddenSalesItems] = useState(false)
+  const [recipeCostMap, setRecipeCostMap] = useState({})
+  const [cloudSyncStatus, setCloudSyncStatus] = useState('')
+  const [cloudHiddenSalesLoaded, setCloudHiddenSalesLoaded] = useState(false)
+  const [cloudSalesAliasesLoaded, setCloudSalesAliasesLoaded] = useState(false)
+
+  useEffect(() => { writeAikoSalesReports(reports) }, [reports])
+  useEffect(() => { writeAikoBranchMap(branchMap) }, [branchMap])
+  useEffect(() => {
+    const normalized = normalizeHiddenSalesKeys(hiddenSalesKeys)
+    writeAikoHiddenSalesKeys(normalized)
+    if (!cloudHiddenSalesLoaded) return
+    writeRmsAppSetting(RMS_HIDDEN_SALES_KEYS_SETTING, normalized).then(({ error }) => {
+      if (error) setCloudSyncStatus('Внимание: скрытые позиции пока сохраняются только в браузере. Проверьте таблицу rms_app_settings и RLS policies в Supabase.')
+    }).catch(() => setCloudSyncStatus('Внимание: скрытые позиции пока сохраняются только в браузере. Проверьте таблицу rms_app_settings в Supabase.'))
+  }, [hiddenSalesKeys, cloudHiddenSalesLoaded])
+
+  useEffect(() => {
+    writeAikoSalesNameAliases(salesNameAliases)
+    if (!cloudSalesAliasesLoaded) return
+    writeRmsAppSetting(RMS_SALES_NAME_ALIASES_SETTING, salesNameAliases || {})
+  }, [salesNameAliases, cloudSalesAliasesLoaded])
+
+  useEffect(() => {
+    let cancelled = false
+    async function loadSalesAliasesCloud() {
+      const cloudAliases = await readRmsAppSetting(RMS_SALES_NAME_ALIASES_SETTING, {})
+      if (!cancelled && cloudAliases && typeof cloudAliases === 'object') {
+        setSalesNameAliases(prev => ({ ...(cloudAliases || {}), ...(prev || {}) }))
+      }
+      if (!cancelled) setCloudSalesAliasesLoaded(true)
+    }
+    loadSalesAliasesCloud()
+    return () => { cancelled = true }
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    async function loadHiddenKeysCloud() {
+      const cloudKeys = await readRmsAppSetting(RMS_HIDDEN_SALES_KEYS_SETTING, [])
+      if (!cancelled && Array.isArray(cloudKeys) && cloudKeys.length) {
+        setHiddenSalesKeys(prev => normalizeHiddenSalesKeys([...(prev || []), ...cloudKeys]))
+      }
+      if (!cancelled) setCloudHiddenSalesLoaded(true)
+    }
+    loadHiddenKeysCloud()
+    return () => { cancelled = true }
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    async function loadCloudReports() {
+      const { data, error } = await readAikoSalesReportsCloud()
+      if (cancelled) return
+      if (error) {
+        setCloudSyncStatus('Внимание: таблица rms_sales_reports в Supabase не найдена/недоступна. Отчёты временно хранятся только в браузере и могут пропасть при открытии нового Vercel preview-домена. Для постоянного хранения создайте таблицу rms_sales_reports.')
+        return
+      }
+      if (data?.length) {
+        setReports(prev => mergeAikoReports(prev, data))
+        setCloudSyncStatus('Отчёты синхронизированы с Supabase')
+      } else if (reports.length) {
+        const saved = await writeAikoSalesReportsCloud(reports)
+        if (!saved.error && !cancelled) setCloudSyncStatus('Локальные отчёты отправлены в Supabase')
+      }
+    }
+    loadCloudReports()
+    return () => { cancelled = true }
+  }, [])
+
+  useEffect(() => {
+    async function loadRecipeCosts() {
+      try {
+        let menuItems = []
+        let recipeRows = []
+        let costs = []
+        const workspace = await fetchRmsRecipesWorkspace()
+        if (workspace.data) {
+          menuItems = workspace.data.menu_items || []
+          recipeRows = workspace.data.recipe_items || []
+          costs = workspace.data.latest_product_costs || []
+        } else {
+          const [{ data: items }, { data: rows }, { data: latest }] = await Promise.all([
+            supabase.from('menu_items').select('id,name').eq('is_active', true),
+            supabase.from('recipe_items').select('menu_item_id,product_id,quantity,waste_percent'),
+            supabase.from('latest_product_costs').select('product_id,price_per_base_unit')
+          ])
+          menuItems = items || []
+          recipeRows = rows || []
+          costs = latest || []
+        }
+        const costByProduct = new Map((costs || []).map(c => [String(c.product_id), parseNum(c.price_per_base_unit)]))
+        const map = {}
+        ;(menuItems || []).forEach(item => {
+          const recipeCost = (recipeRows || [])
+            .filter(row => String(row.menu_item_id) === String(item.id))
+            .reduce((sum, row) => sum + parseNum(row.quantity) * parseNum(costByProduct.get(String(row.product_id))) * (1 + parseNum(row.waste_percent) / 100), 0)
+          map[normalizeSalesKey(item.name)] = recipeCost > 0 ? recipeCost : 0
+        })
+        Object.entries(salesNameAliases || {}).forEach(([oldKey, canonicalName]) => {
+          const targetKey = normalizeSalesKey(canonicalName)
+          if (targetKey && Object.prototype.hasOwnProperty.call(map, targetKey)) map[oldKey] = map[targetKey]
+        })
+        setRecipeCostMap(map)
+      } catch (_e) {
+        setRecipeCostMap({})
+      }
+    }
+    loadRecipeCosts()
+  }, [salesNameAliases])
+
+  useEffect(() => {
+    if (!branches.length) return
+    const nextMap = { ...(branchMap || {}) }
+    let changed = false
+    Object.entries(AIKO_DEFAULT_BRANCH_CODES).forEach(([aikoKey, code]) => {
+      if (nextMap[aikoKey]) return
+      const branch = findBranchByCode(branches, code)
+      if (!branch) return
+      nextMap[aikoKey] = branch.id
+      changed = true
+    })
+    if (changed) setBranchMap(nextMap)
+  }, [branches])
+
+  useEffect(() => {
+    if (!branches.length || !reports.length) return
+    let changed = false
+    const nextReports = reports.map(report => {
+      const token = reportAikoToken(report)
+      const manualBranch = report.manual_branch_override === true
+      const branch = !manualBranch && token.key ? findBranchById(branches, branchMap[token.key]) || resolveDefaultAikoBranch(branches, token.key) : null
+      const correctedDept = inferAikoDepartment(`${report.warehouse || ''} ${report.source_file || ''}`, report.source_file || '')
+      const deptChanged = correctedDept !== 'Смешанный' && correctedDept !== report.department
+      if (manualBranch && !deptChanged) return report
+      if (!branch && !deptChanged && report.branch_id) return report
+      if (!branch && !deptChanged) return report
+      changed = true
+      const nextRows = deptChanged ? (report.rows || []).map(row => ({ ...row, department: correctedDept, menu_category: inferAikoMenuCategory(row, correctedDept) })) : (report.rows || [])
+      return {
+        ...report,
+        branch_id: manualBranch ? (report.branch_id || '') : (branch?.id || report.branch_id || ''),
+        branch_name: manualBranch ? (report.branch_name || '') : (branch?.name || report.branch_name || ''),
+        aiko_branch_key: token.key || report.aiko_branch_key || '',
+        aiko_branch_name: token.name || report.aiko_branch_name || '',
+        department: deptChanged ? correctedDept : report.department,
+        rows: nextRows
+      }
+    })
+    if (changed) saveReports(nextReports)
+  }, [branches, branchMap])
+
+  useEffect(() => {
+    if (!reports.length) return
+    let changed = false
+    const normalizedReports = reports.map(report => {
+      let reportChanged = false
+      const nextRows = (report.rows || []).map(row => {
+        const normalized = repairAikoAvgRevenueLayoutRow(normalizeAikoSalesRow(row, report.department || ''))
+        if (
+          normalized.name !== row.name ||
+          normalized.source_category !== row.source_category ||
+          normalized.menu_category !== row.menu_category ||
+          parseNum(normalized.revenue) !== parseNum(row.revenue) ||
+          parseNum(normalized.avg_price) !== parseNum(row.avg_price) ||
+          parseNum(normalized.cost) !== parseNum(row.cost)
+        ) {
+          reportChanged = true
+          changed = true
+        }
+        return normalized
+      })
+      return reportChanged ? { ...report, rows: nextRows, totals: recalcAikoReportTotals({ ...report, rows: nextRows }) } : report
+    })
+    if (changed) saveReports(normalizedReports)
+  }, [reports])
+
+  const reportMonthValue = (report) => String(report?.period_start || report?.period_end || '').slice(0, 7) || 'unknown'
+  const monthOptions = useMemo(() => {
+    const map = new Map()
+    ;(reports || []).forEach(r => {
+      const key = reportMonthValue(r)
+      if (!key || key === 'unknown') return
+      map.set(key, key)
+    })
+    return Array.from(map.keys()).sort().reverse()
+  }, [reports])
+
+  const filteredReports = useMemo(() => reports.filter(r => {
+    const branchOk = branchFilter === 'all' || String(r.branch_id || r.branch_name) === String(branchFilter)
+    const deptOk = departmentFilter === 'all' || r.department === departmentFilter
+    const monthOk = monthFilter === 'all' || reportMonthValue(r) === monthFilter
+    return branchOk && deptOk && monthOk
+  }), [reports, branchFilter, departmentFilter, monthFilter])
+
+  const isNetworkSalesView = branchFilter === 'all'
+  const rows = useMemo(() => aggregateSalesRows(filteredReports, { includeBranch: !isNetworkSalesView, hiddenKeys: hiddenSalesKeys, recipeCostMap, aliases: salesNameAliases }), [filteredReports, isNetworkSalesView, hiddenSalesKeys, recipeCostMap, salesNameAliases])
+  const totals = useMemo(() => rows.reduce((acc, r) => {
+    acc.quantity += parseNum(r.quantity)
+    acc.revenue += parseNum(r.revenue)
+    acc.cost += parseNum(r.cost)
+    acc.profit += parseNum(r.profit)
+    return acc
+  }, { quantity: 0, revenue: 0, cost: 0, profit: 0 }), [rows])
+
+  const previousMonthKey = (value) => {
+    if (!/^\d{4}-\d{2}$/.test(String(value || ''))) return ''
+    const [year, month] = String(value).split('-').map(Number)
+    const d = new Date(year, month - 2, 1)
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+  }
+
+  const previousMonthRows = useMemo(() => {
+    if (monthFilter === 'all') return []
+    const prevMonth = previousMonthKey(monthFilter)
+    if (!prevMonth) return []
+    const prevReports = reports.filter(r => {
+      const branchOk = branchFilter === 'all' || String(r.branch_id || r.branch_name) === String(branchFilter)
+      const deptOk = departmentFilter === 'all' || r.department === departmentFilter
+      return branchOk && deptOk && reportMonthValue(r) === prevMonth
+    })
+    return aggregateSalesRows(prevReports, { includeBranch: !isNetworkSalesView, hiddenKeys: hiddenSalesKeys, recipeCostMap, aliases: salesNameAliases })
+  }, [reports, monthFilter, branchFilter, departmentFilter, isNetworkSalesView, hiddenSalesKeys, recipeCostMap, salesNameAliases])
+
+  const previousMonthTotals = useMemo(() => previousMonthRows.reduce((acc, r) => {
+    acc.quantity += parseNum(r.quantity)
+    acc.revenue += parseNum(r.revenue)
+    acc.cost += parseNum(r.cost)
+    acc.profit += parseNum(r.profit)
+    return acc
+  }, { quantity: 0, revenue: 0, cost: 0, profit: 0 }), [previousMonthRows])
+
+  const changePct = (current, previous) => parseNum(previous) > 0 ? ((parseNum(current) - parseNum(previous)) / parseNum(previous)) * 100 : null
+  const formatChangePct = (current, previous) => {
+    const value = changePct(current, previous)
+    if (value === null) return '—'
+    return `${value >= 0 ? '+' : ''}${pct(value)}`
+  }
+  const changeClass = (current, previous) => {
+    const value = changePct(current, previous)
+    if (value === null) return ''
+    return value >= 0 ? 'good' : 'bad'
+  }
+
+  const previousRowsByName = useMemo(() => {
+    const map = new Map()
+    previousMonthRows.forEach(r => {
+      const branchPart = isNetworkSalesView ? 'all' : (r.branch_id || r.branch_name || '')
+      const deptPart = r.department || ''
+      const keys = new Set([normalizeSalesKey(r.name), ...(r.original_names || []).map(normalizeSalesKey)])
+      keys.forEach(nameKey => {
+        if (nameKey) map.set(`${nameKey}|${deptPart}|${branchPart}`, r)
+      })
+    })
+    return map
+  }, [previousMonthRows, isNetworkSalesView])
+
+  const salesRowChange = (row, field = 'revenue') => {
+    if (monthFilter === 'all') return null
+    const key = `${normalizeSalesKey(row.name)}|${row.department || ''}|${isNetworkSalesView ? 'all' : (row.branch_id || row.branch_name || '')}`
+    const prev = previousRowsByName.get(key)
+    return changePct(row[field], prev?.[field])
+  }
+
+  const renderRowChange = (row, field = 'revenue') => {
+    const value = salesRowChange(row, field)
+    if (value === null) return <span className="hint">—</span>
+    return <span className={value >= 0 ? 'good' : 'bad'}>{value >= 0 ? '+' : ''}{pct(value)}</span>
+  }
+
+  const departmentTotals = useMemo(() => {
+    const base = { Бар: { quantity: 0, revenue: 0, cost: 0, profit: 0 }, Кухня: { quantity: 0, revenue: 0, cost: 0, profit: 0 } }
+    rows.forEach(r => {
+      const dept = r.department === 'Кухня' ? 'Кухня' : r.department === 'Бар' ? 'Бар' : ''
+      if (!dept) return
+      base[dept].quantity += parseNum(r.quantity)
+      base[dept].revenue += parseNum(r.revenue)
+      base[dept].cost += parseNum(r.cost)
+      base[dept].profit += parseNum(r.profit)
+    })
+    return base
+  }, [rows])
+
+  const sortRowsByField = (list, sort) => [...(list || [])].sort((a, b) => {
+    const field = sort.field || 'revenue'
+    const dir = sort.dir === 'asc' ? 1 : -1
+    const av = parseNum(field === 'margin' ? a.margin : a[field])
+    const bv = parseNum(field === 'margin' ? b.margin : b[field])
+    return (av - bv) * dir
+  })
+  const sortedSalesRows = useMemo(() => sortRowsByField(rows, salesSort), [rows, salesSort])
+  const visibleSalesRows = expandedSalesRows ? sortedSalesRows : sortedSalesRows.slice(0, 10)
+  const visibleReports = expandedReportsTable ? reports : reports.slice(0, 10)
+
+  const ai = useMemo(() => {
+    const withRevenue = rows.filter(r => parseNum(r.revenue) > 0)
+    const withCost = withRevenue.filter(r => parseNum(r.cost) > 0)
+    return {
+      topSales: [...withRevenue].sort((a, b) => parseNum(b.revenue) - parseNum(a.revenue)),
+      topQty: [...withRevenue].sort((a, b) => parseNum(b.quantity) - parseNum(a.quantity)),
+      outsiders: [...withRevenue].sort((a, b) => parseNum(a.quantity) - parseNum(b.quantity) || parseNum(a.revenue) - parseNum(b.revenue)),
+      highMargin: [...withCost].sort((a, b) => parseNum(b.margin) - parseNum(a.margin) || parseNum(b.revenue) - parseNum(a.revenue)),
+      lowMargin: [...withRevenue].sort((a, b) => parseNum(a.margin) - parseNum(b.margin))
+    }
+  }, [rows])
+
+  function saveReports(next) {
+    setReports(next)
+    writeAikoSalesReports(next)
+    writeAikoSalesReportsCloud(next).then(({ error }) => {
+      if (!error) setCloudSyncStatus('Отчёты сохранены в Supabase')
+    }).catch(() => {})
+  }
+
+  async function textFromFile(file) {
+    if (/\.pdf$/i.test(file.name) || file.type === 'application/pdf') return extractPdfTextWithPdfJs(file)
+    return file.text()
+  }
+
+  async function importParsedReports(parsedReports) {
+    const cleaned = parsedReports.map(r => {
+      const rows = (r.rows || []).map(row => normalizeAikoSalesRow(row, r.department || '')).filter(row => {
+        const originalKey = normalizeSalesKey(row.name)
+        const canonicalKey = normalizeSalesKey(resolveSalesNameAlias(row.name, salesNameAliases))
+        return !isAikoModifierRow(row.name, row.source_category) && !rowIsHiddenBySalesKeys(row, hiddenSalesKeys, salesNameAliases)
+      })
+      const totals = rows.reduce((acc, row) => {
+        acc.quantity += parseNum(row.quantity)
+        acc.revenue += parseNum(row.revenue)
+        acc.cost += parseNum(row.cost)
+        return acc
+      }, { quantity: 0, revenue: 0, cost: 0 })
+      return { ...r, rows, totals }
+    })
+    const valid = cleaned.filter(r => (r.rows || []).length)
+    if (!valid.length) return setMessage('Не удалось найти строки продаж без модификаторов. Проверьте PDF или вставьте текст отчёта AIKO вручную.')
+    const next = [...valid, ...reports].slice(0, 120)
+    saveReports(next)
+    const allRows = valid.flatMap(r => r.rows || [])
+    const created = await syncMenuItemsFromSalesRows(allRows)
+    const withoutBranch = valid.filter(r => !r.branch_id).length
+    const branchHint = withoutBranch ? ` Не распределено по филиалам: ${withoutBranch}. Проверьте подменю “Импорт”.` : ''
+    setMessage(`Импортировано отчётов: ${valid.length}. Строк продаж без модификаторов: ${allRows.length}. В техкарты добавлено новых позиций меню: ${created}.${branchHint}`)
+  }
+
+  async function syncMenuItemsFromSalesRows(salesRows) {
+    const unique = []
+    const seen = new Set()
+    ;(salesRows || []).forEach(rawRow => {
+      const row = normalizeAikoSalesRow(rawRow, rawRow.department || '')
+      if (isAikoModifierRow(row.name, row.source_category) || rowIsHiddenBySalesKeys(row, hiddenSalesKeys, salesNameAliases)) return
+      const canonicalName = resolveSalesNameAlias(row.name, salesNameAliases)
+      const key = normalizeSalesKey(canonicalName)
+      if (!key || seen.has(key)) return
+      seen.add(key)
+      unique.push({ ...row, name: canonicalName })
+    })
+    if (!unique.length) return 0
+    const { data: existing, error: existingError } = await supabase.from('menu_items').select('id,name')
+    if (existingError) {
+      setMessage(existingError.message)
+      return 0
+    }
+    const existingNames = new Set((existing || []).map(i => normalizeSalesKey(i.name)))
+    const toInsert = unique
+      .filter(row => !existingNames.has(normalizeSalesKey(row.name)))
+      .map(row => ({
+        name: row.name,
+        category: row.menu_category || inferAikoMenuCategory(row, row.department),
+        sale_price: parseNum(row.avg_price),
+        target_food_cost_percent: 30,
+        is_active: true
+      }))
+    if (!toInsert.length) return 0
+    const { error } = await supabase.from('menu_items').insert(toInsert)
+    if (error) {
+      setMessage(error.message)
+      return 0
+    }
+    return toInsert.length
+  }
+
+  async function handleFiles(filesLike) {
+    const files = Array.from(filesLike || [])
+    if (!files.length) return
+    setBusy(true)
+    setMessage('')
+    try {
+      const expandedFiles = []
+      for (const file of files) {
+        if (/\.zip$/i.test(file.name)) expandedFiles.push(...await explodeZipFile(file))
+        else expandedFiles.push(file)
+      }
+      const parsed = []
+      for (const file of expandedFiles) {
+        const text = await textFromFile(file)
+        const aikoBranch = getAikoBranchToken(text, file.name)
+        const guessedBranch = guessAikoBranch(text, file.name, branches, branchMap)
+        const selectedBranch = importBranchId !== 'auto' ? branches.find(b => String(b.id) === String(importBranchId)) : guessedBranch
+        const department = inferAikoDepartment(text, file.name)
+        const report = parseAikoSalesText(text, {
+          fileName: decodeAikoFileName(file.name),
+          aiko_branch: aikoBranch,
+          department,
+          branch_id: selectedBranch?.id || '',
+          branch_name: selectedBranch?.name || ''
+        })
+        parsed.push(report)
+      }
+      await importParsedReports(parsed)
+    } catch (e) {
+      setMessage(e?.message || 'Ошибка импорта отчёта')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function importFromText() {
+    if (!importText.trim()) return setMessage('Вставьте текст отчёта AIKO')
+    setBusy(true)
+    setMessage('')
+    try {
+      const aikoBranch = getAikoBranchToken(importText, 'manual text')
+      const guessedBranch = guessAikoBranch(importText, 'manual text', branches, branchMap)
+      const selectedBranch = importBranchId !== 'auto' ? branches.find(b => String(b.id) === String(importBranchId)) : guessedBranch
+      await importParsedReports([parseAikoSalesText(importText, {
+        fileName: 'Вставленный текст AIKO',
+        aiko_branch: aikoBranch,
+        department: inferAikoDepartment(importText, 'manual text'),
+        branch_id: selectedBranch?.id || '',
+        branch_name: selectedBranch?.name || ''
+      })])
+      setImportText('')
+    } catch (e) {
+      setMessage(e?.message || 'Ошибка импорта текста')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  function removeReport(id) {
+    const report = reports.find(r => r.id === id)
+    if (!report) return
+    if (!window.confirm(`Удалить импорт “${report.source_file}”?`)) return
+    saveReports(reports.filter(r => r.id !== id))
+    deleteAikoSalesReportCloud(id).catch(() => {})
+    setMessage('Импорт удалён')
+  }
+
+  function clearReports() {
+    if (!window.confirm('Очистить все импортированные отчёты продаж AIKO в этом браузере?')) return
+    reports.forEach(r => deleteAikoSalesReportCloud(r.id).catch(() => {}))
+    saveReports([])
+    setMessage('Отчёты очищены')
+  }
+
+  function reportAikoToken(report) {
+    if (report?.aiko_branch_key) return { key: report.aiko_branch_key, name: report.aiko_branch_name || report.aiko_branch_key }
+    return getAikoBranchToken(`${report?.warehouse || ''}`, report?.source_file || '')
+  }
+
+  const detectedAikoBranches = useMemo(() => {
+    const map = new Map()
+    ;(reports || []).forEach(report => {
+      const token = reportAikoToken(report)
+      if (!token.key) return
+      if (!map.has(token.key)) map.set(token.key, { ...token, count: 0 })
+      map.get(token.key).count += 1
+    })
+    return Array.from(map.values())
+  }, [reports])
+
+  function setAikoBranchMapping(aikoKey, branchId) {
+    const nextMap = { ...(branchMap || {}), [aikoKey]: branchId || '' }
+    if (!branchId) delete nextMap[aikoKey]
+    setBranchMap(nextMap)
+    const branch = findBranchById(branches, branchId)
+    const nextReports = reports.map(report => {
+      const token = reportAikoToken(report)
+      if (token.key !== aikoKey) return report
+      return {
+        ...report,
+        aiko_branch_key: token.key,
+        aiko_branch_name: token.name,
+        branch_id: branch?.id || '',
+        branch_name: branch?.name || ''
+      }
+    })
+    saveReports(nextReports)
+    setMessage(branch ? `AIKO ${aikoKey} привязан к филиалу ${branch.name}` : `Привязка AIKO ${aikoKey} очищена`)
+  }
+
+  function updateReportBranch(reportId, branchId, applyToSameAikoBranch = false) {
+    const report = reports.find(r => r.id === reportId)
+    const branch = findBranchById(branches, branchId)
+    const token = reportAikoToken(report)
+    let nextMap = branchMap
+    if (applyToSameAikoBranch && token.key) {
+      nextMap = { ...(branchMap || {}), [token.key]: branch?.id || '' }
+      if (!branch?.id) delete nextMap[token.key]
+      setBranchMap(nextMap)
+    }
+    const nextReports = reports.map(r => {
+      const rToken = reportAikoToken(r)
+      const shouldUpdate = r.id === reportId || (applyToSameAikoBranch && token.key && rToken.key === token.key)
+      if (!shouldUpdate) return r
+      return {
+        ...r,
+        aiko_branch_key: rToken.key || r.aiko_branch_key || '',
+        aiko_branch_name: rToken.name || r.aiko_branch_name || '',
+        branch_id: branch?.id || '',
+        branch_name: branch?.name || '',
+        manual_branch_override: applyToSameAikoBranch ? false : Boolean(branch?.id)
+      }
+    })
+    saveReports(nextReports)
+    setMessage(applyToSameAikoBranch && token.key ? `Филиал ${branch?.name || 'не выбран'} применён ко всем отчётам AIKO ${token.name || token.key}` : `Филиал отчёта изменён вручную${branch?.name ? `: ${branch.name}` : ''}`)
+  }
+
+  function applySavedBranchMappings() {
+    const nextReports = reports.map(report => {
+      const token = reportAikoToken(report)
+      const branch = token.key ? findBranchById(branches, branchMap[token.key]) || resolveDefaultAikoBranch(branches, token.key) : null
+      const department = inferAikoDepartment(`${report.warehouse || ''} ${report.source_file || ''}`, report.source_file || '')
+      const nextRows = department !== 'Смешанный' ? (report.rows || []).map(row => ({ ...row, department, menu_category: inferAikoMenuCategory(row, department) })) : (report.rows || [])
+      if (!branch && department === 'Смешанный') return report
+      if (report.manual_branch_override && !branch) return { ...report, aiko_branch_key: token.key, aiko_branch_name: token.name, department: department !== 'Смешанный' ? department : report.department, rows: nextRows }
+      return { ...report, aiko_branch_key: token.key, aiko_branch_name: token.name, branch_id: branch?.id || report.branch_id || '', branch_name: branch?.name || report.branch_name || '', manual_branch_override: false, department: department !== 'Смешанный' ? department : report.department, rows: nextRows }
+    })
+    saveReports(nextReports)
+    setMessage('Сопоставления AIKO и типы Бар/Кухня применены к импортированным отчётам')
+  }
+
+  function hideSalesItem(item) {
+    const keys = salesHiddenKeyVariants(item, salesNameAliases)
+    if (!keys.length) return
+    const label = typeof item === 'string' ? item : item?.name
+    setHiddenSalesKeys(prev => normalizeHiddenSalesKeys([...(prev || []), ...keys]))
+    setMessage(`Позиция “${label || keys[0]}” скрыта из отчётов и не будет показываться при следующих импортах`)
+  }
+
+  async function renameSalesItem(name) {
+    const currentName = resolveSalesNameAlias(name, salesNameAliases)
+    const nextName = normalizeSalesName(window.prompt('Новое название блюда / напитка для отчётов и техкарт:', currentName) || '')
+    if (!nextName || nextName === currentName) return
+    const sourceNames = new Set([normalizeSalesName(name), currentName])
+    ;(reports || []).forEach(report => (report.rows || []).forEach(row => {
+      if (resolveSalesNameAlias(row.name, salesNameAliases) === currentName || normalizeSalesKey(row.name) === normalizeSalesKey(name)) sourceNames.add(normalizeSalesName(row.name))
+    }))
+    const nextAliases = { ...(salesNameAliases || {}) }
+    sourceNames.forEach(sourceName => {
+      const key = normalizeSalesKey(sourceName)
+      if (key) nextAliases[key] = nextName
+    })
+    setSalesNameAliases(nextAliases)
+    setRecipeCostMap(prev => {
+      const nextMap = { ...(prev || {}) }
+      const nextKey = normalizeSalesKey(nextName)
+      const oldKeys = Array.from(sourceNames).map(normalizeSalesKey)
+      const oldCostKey = oldKeys.find(k => Object.prototype.hasOwnProperty.call(nextMap, k))
+      if (nextKey && oldCostKey && !Object.prototype.hasOwnProperty.call(nextMap, nextKey)) nextMap[nextKey] = nextMap[oldCostKey]
+      return nextMap
+    })
+    try {
+      const { data: menuItems } = await supabase.from('menu_items').select('id,name')
+      const oldKeys = Array.from(sourceNames).map(normalizeSalesKey)
+      const target = (menuItems || []).find(item => normalizeSalesKey(item.name) === normalizeSalesKey(nextName))
+      const oldItem = (menuItems || []).find(item => oldKeys.includes(normalizeSalesKey(item.name)))
+      if (oldItem && !target) await supabase.from('menu_items').update({ name: nextName }).eq('id', oldItem.id)
+      if (!oldItem && !target) await supabase.from('menu_items').insert({ name: nextName, category: 'Прочее', sale_price: 0, target_food_cost_percent: 30, is_active: true })
+    } catch (_e) {}
+    setMessage(`Название “${currentName}” заменено на “${nextName}”. Старые и будущие AIKO-строки будут объединяться под новым названием.`)
+  }
+
+  function restoreSalesItem(key) {
+    setHiddenSalesKeys(prev => normalizeHiddenSalesKeys(prev).filter(x => x !== normalizeSalesKey(key)))
+    setMessage('Позиция возвращена в отчёты')
+  }
+
+  function exportAikoReportsBackup() {
+    const payload = { reports, hiddenSalesKeys, salesNameAliases, branchMap, exported_at: new Date().toISOString() }
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `rms-aiko-sales-backup-${new Date().toISOString().slice(0,10)}.json`
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    URL.revokeObjectURL(url)
+  }
+
+  async function importAikoReportsBackup(event) {
+    const file = event.target.files?.[0]
+    if (!file) return
+    try {
+      const payload = JSON.parse(await file.text())
+      const nextReports = mergeAikoReports(reports, payload.reports || [])
+      saveReports(nextReports)
+      if (Array.isArray(payload.hiddenSalesKeys)) setHiddenSalesKeys(prev => normalizeHiddenSalesKeys([...(prev || []), ...payload.hiddenSalesKeys]))
+      if (payload.branchMap && typeof payload.branchMap === 'object') setBranchMap(prev => ({ ...(prev || {}), ...payload.branchMap }))
+      if (payload.salesNameAliases && typeof payload.salesNameAliases === 'object') setSalesNameAliases(prev => ({ ...(prev || {}), ...payload.salesNameAliases }))
+      setMessage('Бэкап отчётов восстановлен')
+    } catch (e) {
+      setMessage(e?.message || 'Не удалось восстановить бэкап отчётов')
+    } finally {
+      event.target.value = ''
+    }
+  }
+
+  const branchOptions = [
+    ...branches.map(b => ({ id: b.id, name: b.name })),
+    ...reports.filter(r => !r.branch_id && r.branch_name).map(r => ({ id: r.branch_name, name: r.branch_name }))
+  ].filter((item, index, arr) => item.id && arr.findIndex(x => String(x.id) === String(item.id)) === index)
+
+  const sortHeader = (field, label) => <button className="ghost small" style={{padding:'4px 6px'}} onClick={() => setSalesSort(s => ({ field, dir: s.field === field && s.dir === 'desc' ? 'asc' : 'desc' }))}>{label}{salesSort.field === field ? (salesSort.dir === 'desc' ? ' ↓' : ' ↑') : ''}</button>
+
+  const limitOptions = [10, 20, 30]
+  const aiLimitForTitle = (title) => title.includes('Топ продаж') ? aiTopLimit : title.includes('аутсайдер') ? aiOutsiderLimit : 10
+
+  const renderAiTable = (title, list, sortLabel = 'Выручка') => {
+    const limit = aiLimitForTitle(title)
+    const expanded = !!expandedAiTables[title]
+    const cappedList = (list || []).slice(0, 30)
+    const visible = expanded ? cappedList : cappedList.slice(0, limit)
+    const isHideableTop = title.includes('низкомаржин') || title.includes('аутсайдер')
+    return <div className="card span-2" style={{overflow:'hidden'}}>
+      <div className="card-head"><div><h3>{title}</h3><p className="hint">Компактный TOP-блок без внутреннего скролла. На экране максимум {limit} позиций. Полный TOP всегда ограничен 30 позициями.</p></div><div className="action-row">{isHideableTop && <button className="ghost small" onClick={() => setShowHiddenSalesItems(v => !v)}>{showHiddenSalesItems ? 'Скрыть список скрытых' : `Скрытые позиции (${hiddenSalesKeys.length})`}</button>}{(title.includes('Топ продаж') || title.includes('аутсайдер')) && <label className="compact-select"><span className="hint">Показать TOP</span><select value={title.includes('Топ продаж') ? aiTopLimit : aiOutsiderLimit} onChange={e => title.includes('Топ продаж') ? setAiTopLimit(Number(e.target.value)) : setAiOutsiderLimit(Number(e.target.value))}>{limitOptions.map(n => <option key={n} value={n}>{n}</option>)}</select></label>}</div></div>
+      {isHideableTop && showHiddenSalesItems && <div className="table-wrap" style={{marginBottom:12}}><table><thead><tr><th>Скрытая позиция</th><th></th></tr></thead><tbody>
+        {hiddenSalesKeys.map(key => <tr key={key}><td><b>{key}</b></td><td><button className="ghost small" onClick={() => restoreSalesItem(key)}>Вернуть</button></td></tr>)}
+        {!hiddenSalesKeys.length && <tr><td colSpan="2" className="hint">Скрытых позиций нет. Ненужные позиции скрываются из топа аутсайдеров / низкомаржинальных товаров.</td></tr>}
+      </tbody></table></div>}
+      <table style={{width:'100%', tableLayout:'fixed'}}><thead><tr><th>Позиция</th><th style={{width:90}}>Тип</th><th style={{width:110}}>Кол-во / цена</th><th style={{width:110}}>Выручка</th><th style={{width:90}}>Food cost</th><th style={{width:90}}>Маржа</th>{isHideableTop && <th style={{width:90}}></th>}</tr></thead><tbody>
+        {visible.map((r, idx) => <tr key={`${title}-${idx}-${r.name}`}><td><b>{r.name}</b>{!isNetworkSalesView && <><br /><span className="hint">{r.branch_name || '—'}</span></>}</td><td><span className={r.department === 'Бар' ? 'pill good' : r.department === 'Кухня' ? 'pill warn' : 'pill'}>{r.department === 'Кухня' ? 'Кухня' : r.department === 'Бар' ? 'Бар' : '—'}</span></td><td>{fmt(r.quantity)}<br /><span className="hint">цена {fmt(r.avg_price)}</span></td><td>{fmt(r.revenue)}</td><td>{r.revenue ? pct((r.cost / r.revenue) * 100) : '0.0%'}</td><td className={r.margin < 20 ? 'bad' : r.margin > 65 ? 'good' : ''}><b>{pct(r.margin)}</b></td>{isHideableTop && <td><button className="ghost small" onClick={() => hideSalesItem(r)}>Скрыть</button></td>}</tr>)}
+        {!visible.length && <tr><td colSpan={isHideableTop ? 7 : 6} className="hint">Нет данных</td></tr>}
+      </tbody></table>
+      {cappedList.length > limit && <button className="ghost small" style={{marginTop:10}} onClick={() => setExpandedAiTables(v => ({...v, [title]: !expanded}))}>{expanded ? 'Свернуть' : `Показать до 30 (${Math.min(list.length, 30)})`}</button>}
+    </div>
+  }
+
+  const renderDepartmentSummaryRow = (dept) => {
+    const item = departmentTotals[dept] || { quantity: 0, revenue: 0, cost: 0, profit: 0 }
+    return <tr key={dept}><td><b>{dept}</b></td><td>{fmt(item.quantity)}</td><td>{fmt(item.revenue)}</td><td>{fmt(item.cost)}</td><td className={item.profit >= 0 ? 'good' : 'bad'}>{fmt(item.profit)}</td><td>{item.revenue ? pct((item.cost / item.revenue) * 100) : '0.0%'}</td></tr>
+  }
+
+  const parseAiSalesQuery = (query) => {
+    const qRaw = String(query || '').toLowerCase().replace(/ё/g, 'е')
+    const now = new Date()
+    let mode = 'filtered'
+    let targetMonth = ''
+    let targetYear = ''
+    if (qRaw.includes('этот месяц') || qRaw.includes('текущий месяц') || qRaw.includes('bu ay')) {
+      targetMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+      mode = 'month'
+    } else if (qRaw.includes('прошлый месяц')) {
+      const d = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+      targetMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+      mode = 'month'
+    }
+    const yearMatch = qRaw.match(/20\d{2}/)
+    if (qRaw.includes('год') || qRaw.includes('year') || qRaw.includes('il')) {
+      targetYear = yearMatch?.[0] || String(now.getFullYear())
+      mode = 'year'
+    }
+    const monthNames = [
+      ['01', /январ|january|yanvar/], ['02', /феврал|february|fevral/], ['03', /март|march/], ['04', /апрел|april/], ['05', /май|may/], ['06', /июн|june|iyun/],
+      ['07', /июл|july|iyul/], ['08', /август|august/], ['09', /сентябр|september|sentyabr/], ['10', /октябр|october|oktyabr/], ['11', /ноябр|november|noyabr/], ['12', /декабр|december|dekabr/]
+    ]
+    const foundMonth = monthNames.find(([, rx]) => rx.test(qRaw))
+    if (foundMonth) {
+      const y = yearMatch?.[0] || String(now.getFullYear())
+      targetMonth = `${y}-${foundMonth[0]}`
+      mode = 'month'
+    }
+
+    const stop = new Set(['покажи','продажи','продажу','продаж','за','этот','текущий','месяц','год','и','по','все','всех','товары','товаров','товар','блюда','блюдо','напитки','напиток','сколько','выручка','выручку','количество','кол-во','штук','штуки','this','month','year','sales','show','sold','quantity','revenue','не','без','кроме','исключая','not','without','except'])
+    const negativeParts = []
+    const negativeRx = /(?:\(|\b)(?:не|без|кроме|исключая|not|without|except)\s+([a-zа-яçə0-9][a-zа-яçə0-9\s-]{0,40}?)(?=\)|,|;|\.|$|\s+(?:за|по|и|and|this|month|year|год|месяц)\b)/gi
+    let m
+    while ((m = negativeRx.exec(qRaw))) negativeParts.push(m[1])
+    const excludeTokens = expandCanonicalSalesSearchTokens(negativeParts.flatMap(part => normalizeSalesSearchText(part).split(' ')).filter(x => x && !stop.has(x)))
+
+    const positiveText = qRaw.replace(negativeRx, ' ').replace(/\((?:не|без|not|without|except)[^)]+\)/gi, ' ')
+    const tokens = positiveText
+      .split(/[^a-zа-яçə0-9]+/i)
+      .map(x => normalizeSalesSearchText(x))
+      .filter(x => x.length >= 2 && !stop.has(x) && !/^20\d{2}$/.test(x))
+    const includeTokens = expandCanonicalSalesSearchTokens(tokens)
+    return { tokens, searchTokens: includeTokens, includeTokens, excludeTokens, mode, targetMonth, targetYear }
+  }
+
+  const aiSearchResult = useMemo(() => {
+    const query = salesAiQuery.trim()
+    if (!query) return null
+    const parsed = parseAiSalesQuery(query)
+    let baseReports = reports.filter(r => {
+      const branchOk = branchFilter === 'all' || String(r.branch_id || r.branch_name) === String(branchFilter)
+      const deptOk = departmentFilter === 'all' || r.department === departmentFilter
+      const ym = reportMonthValue(r)
+      if (parsed.mode === 'month') return branchOk && deptOk && ym === parsed.targetMonth
+      if (parsed.mode === 'year') return branchOk && deptOk && ym.startsWith(parsed.targetYear)
+      return branchOk && deptOk && (monthFilter === 'all' || ym === monthFilter)
+    })
+    let resultRows = aggregateSalesRows(baseReports, { includeBranch: branchFilter !== 'all', hiddenKeys: hiddenSalesKeys, recipeCostMap, aliases: salesNameAliases })
+    if (parsed.includeTokens.length || parsed.excludeTokens.length) {
+      resultRows = resultRows.filter(r => rowMatchesSalesSearch(r, parsed))
+    }
+    resultRows = autoMergeAiSalesRows(resultRows, branchFilter !== 'all')
+      .sort((a, b) => parseNum(b.revenue) - parseNum(a.revenue))
+    const totals = resultRows.reduce((acc, r) => {
+      acc.quantity += parseNum(r.quantity)
+      acc.revenue += parseNum(r.revenue)
+      acc.cost += parseNum(r.cost)
+      acc.profit += parseNum(r.profit)
+      return acc
+    }, { quantity: 0, revenue: 0, cost: 0, profit: 0 })
+    const periodStarts = baseReports.map(r => r.period_start).filter(Boolean).sort()
+    const periodEnds = baseReports.map(r => r.period_end || r.period_start).filter(Boolean).sort()
+    const dateRange = periodStarts.length
+      ? `${periodStarts[0]} — ${periodEnds[periodEnds.length - 1] || periodStarts[0]}`
+      : (parsed.targetMonth ? `${parsed.targetMonth}-01 — ${parsed.targetMonth}` : '—')
+    return { ...parsed, rows: resultRows, totals, reports: baseReports.length, dateRange }
+  }, [salesAiQuery, reports, branchFilter, departmentFilter, monthFilter, hiddenSalesKeys, recipeCostMap, salesNameAliases])
+
+  function exportAiSearchToPdf(includePrices = true) {
+    if (!aiSearchResult || !aiSearchResult.rows?.length) {
+      setMessage('Нет найденных позиций для экспорта')
+      return
+    }
+    const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, s => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[s]))
+    const exportRows = aiSearchResult.rows.slice(0, 500)
+    const hasBranch = !isNetworkSalesView
+    const header = includePrices
+      ? `<tr><th>Позиция</th>${hasBranch ? '<th>Филиал</th>' : ''}<th>Тип</th><th>Кол-во</th><th>Цена</th><th>Выручка</th><th>Прибыль</th></tr>`
+      : `<tr><th>Позиция</th>${hasBranch ? '<th>Филиал</th>' : ''}<th>Тип</th><th>Кол-во</th></tr>`
+    const rowsHtml = exportRows.map(r => includePrices
+      ? `<tr><td>${escapeHtml(r.name)}</td>${hasBranch ? `<td>${escapeHtml(r.branch_name || '—')}</td>` : ''}<td>${escapeHtml(r.department || '—')}</td><td class="num">${fmt(r.quantity)}</td><td class="num">${fmt(r.avg_price)}</td><td class="num">${fmt(r.revenue)}</td><td class="num">${fmt(r.profit)}</td></tr>`
+      : `<tr><td>${escapeHtml(r.name)}</td>${hasBranch ? `<td>${escapeHtml(r.branch_name || '—')}</td>` : ''}<td>${escapeHtml(r.department || '—')}</td><td class="num">${fmt(r.quantity)}</td></tr>`
+    ).join('')
+    const totalsHtml = includePrices
+      ? `<tr class="total"><td>${hasBranch ? 'Итого' : 'Итого'}</td>${hasBranch ? '<td></td>' : ''}<td></td><td class="num">${fmt(aiSearchResult.totals.quantity)}</td><td class="num">${fmt(aiSearchResult.totals.quantity ? aiSearchResult.totals.revenue / aiSearchResult.totals.quantity : 0)}</td><td class="num">${fmt(aiSearchResult.totals.revenue)}</td><td class="num">${fmt(aiSearchResult.totals.profit)}</td></tr>`
+      : `<tr class="total"><td>Итого</td>${hasBranch ? '<td></td>' : ''}<td></td><td class="num">${fmt(aiSearchResult.totals.quantity)}</td></tr>`
+    const html = `<!doctype html><html><head><meta charset="utf-8" /><title>ИИ-поиск по продажам</title><style>
+      @page{size:A4;margin:14mm}body{font-family:Arial,sans-serif;color:#111;margin:0}h1{font-size:20px;margin:0 0 6px}.meta{font-size:12px;color:#555;margin-bottom:14px}.summary{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:12px 0}.summary.quantity-only{grid-template-columns:repeat(2,1fr);max-width:360px}.box{border:1px solid #ddd;border-radius:8px;padding:8px}.box span{display:block;color:#666;font-size:11px}.box b{font-size:15px}table{width:100%;border-collapse:collapse;font-size:11px}th,td{border-bottom:1px solid #e5e5e5;padding:6px;text-align:left;vertical-align:top}th{background:#f5f5f5}.num{text-align:right}.total td{font-weight:700;background:#fafafa}.footer{margin-top:12px;font-size:10px;color:#777}@media print{button{display:none}}
+    </style></head><body>
+      <h1>ИИ-поиск по продажам</h1>
+      <div class="meta">Запрос: <b>${escapeHtml(salesAiQuery || '—')}</b><br/>Диапазон дат: <b>${escapeHtml(aiSearchResult.dateRange || '—')}</b><br/>Филиал: <b>${escapeHtml(branchFilter === 'all' ? 'Все филиалы' : (branchOptions.find(b => String(b.id) === String(branchFilter))?.name || branchFilter))}</b> · Тип: <b>${escapeHtml(departmentFilter === 'all' ? 'Бар + Кухня' : departmentFilter)}</b><br/>Формат: <b>${includePrices ? 'с ценами' : 'только количество'}</b></div>
+      ${includePrices
+        ? `<div class="summary"><div class="box"><span>Позиций</span><b>${exportRows.length}</b></div><div class="box"><span>Количество</span><b>${fmt(aiSearchResult.totals.quantity)}</b></div><div class="box"><span>Выручка</span><b>${fmt(aiSearchResult.totals.revenue)}</b></div><div class="box"><span>Прибыль</span><b>${fmt(aiSearchResult.totals.profit)}</b></div></div>`
+        : `<div class="summary quantity-only"><div class="box"><span>Позиций</span><b>${exportRows.length}</b></div><div class="box"><span>Количество</span><b>${fmt(aiSearchResult.totals.quantity)}</b></div></div>`}
+      <table><thead>${header}</thead><tbody>${rowsHtml}${totalsHtml}</tbody></table>
+      <div class="footer">Сформировано RMS: ${new Date().toLocaleString()}</div>
+      <script>window.onload=()=>setTimeout(()=>window.print(),300)</script>
+    </body></html>`
+    const win = window.open('', '_blank')
+    if (!win) {
+      setMessage('Браузер заблокировал окно PDF. Разрешите всплывающие окна для RMS.')
+      return
+    }
+    win.document.open()
+    win.document.write(html)
+    win.document.close()
+  }
+
+  const SalesTableBlock = <div className="card span-2">
+    <div className="card-head"><div><h3>Общая таблица продаж</h3><p className="hint">В общем режиме продажи агрегируются по всей сети без разбивки по филиалам. Себестоимость считается только из техкарт. Если техкарта пока не заполнена, себестоимость остаётся 0.</p></div></div>
+    <div className="form-grid compact">
+      <label><span>Месяц</span><select value={monthFilter} onChange={e => { setMonthFilter(e.target.value); setExpandedSalesRows(false) }}><option value="all">Все месяцы</option>{monthOptions.map(m => <option key={m} value={m}>{m}</option>)}</select></label>
+      <label><span>Филиал</span><select value={branchFilter} onChange={e => { setBranchFilter(e.target.value); setExpandedSalesRows(false) }}><option value="all">Все филиалы</option>{branchOptions.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label>
+      <label><span>Тип</span><select value={departmentFilter} onChange={e => { setDepartmentFilter(e.target.value); setExpandedSalesRows(false) }}><option value="all">Бар + Кухня</option><option value="Бар">Бар</option><option value="Кухня">Кухня</option></select></label>
+    </div>
+    <div className="mini-grid">
+      <div className="metric"><span>Выручка</span><strong>{fmt(totals.revenue)}</strong>{monthFilter !== 'all' && <small className={changeClass(totals.revenue, previousMonthTotals.revenue)}>к прошлому месяцу {formatChangePct(totals.revenue, previousMonthTotals.revenue)}</small>}</div>
+      <div className="metric"><span>Себестоимость</span><strong>{fmt(totals.cost)}</strong>{monthFilter !== 'all' && <small className={changeClass(totals.cost, previousMonthTotals.cost)}>к прошлому месяцу {formatChangePct(totals.cost, previousMonthTotals.cost)}</small>}</div>
+      <div className="metric"><span>Валовая прибыль</span><strong className={totals.profit >= 0 ? 'good' : 'bad'}>{fmt(totals.profit)}</strong>{monthFilter !== 'all' && <small className={changeClass(totals.profit, previousMonthTotals.profit)}>к прошлому месяцу {formatChangePct(totals.profit, previousMonthTotals.profit)}</small>}</div>
+      <div className="metric"><span>Food cost</span><strong>{totals.revenue ? pct((totals.cost / totals.revenue) * 100) : '0.0%'}</strong>{monthFilter !== 'all' && <small className="hint">пред. месяц {previousMonthTotals.revenue ? pct((previousMonthTotals.cost / previousMonthTotals.revenue) * 100) : '0.0%'}</small>}</div>
+    </div>
+    <div className="table-wrap" style={{marginTop:12}}><table><thead><tr><th>Раздел</th><th>Кол-во</th><th>Выручка</th><th>Себестоимость</th><th>Прибыль</th><th>Food cost</th></tr></thead><tbody>{['Бар', 'Кухня'].map(renderDepartmentSummaryRow)}</tbody></table></div>
+    <div className="table-wrap" style={{marginTop:12}}><table><thead><tr><th>Позиция</th>{!isNetworkSalesView && <th>Филиал</th>}<th>Тип</th><th>Категория</th><th>{sortHeader('quantity', 'Кол-во')}</th><th>{sortHeader('revenue', 'Выручка')}</th>{monthFilter !== 'all' && <th>Динамика кол-ва</th>}<th>{sortHeader('cost', 'Себестоимость')}</th><th>{sortHeader('profit', 'Прибыль')}</th><th>{sortHeader('margin', 'Маржа')}</th><th></th></tr></thead><tbody>
+      {visibleSalesRows.map((r, idx) => <tr key={`${r.name}-${idx}`}><td><b>{r.name}</b>{r.original_names?.length > 1 && <><br /><span className="hint">AIKO: {r.original_names.slice(0, 3).join(', ')}{r.original_names.length > 3 ? '…' : ''}</span></>}</td>{!isNetworkSalesView && <td>{r.branch_name || '—'}</td>}<td><span className={r.department === 'Бар' ? 'pill good' : r.department === 'Кухня' ? 'pill warn' : 'pill'}>{r.department === 'Кухня' ? 'Кухня' : r.department === 'Бар' ? 'Бар' : '—'}</span></td><td>{r.menu_category || r.source_category || '—'}</td><td>{fmt(r.quantity)}</td><td>{fmt(r.revenue)}</td>{monthFilter !== 'all' && <td>{renderRowChange(r, 'quantity')}</td>}<td>{fmt(r.cost)}</td><td className={r.profit >= 0 ? 'good' : 'bad'}>{fmt(r.profit)}</td><td>{pct(r.margin)}</td><td><button className="ghost small" onClick={() => renameSalesItem(r.name)}>Переименовать</button></td></tr>)}
+      {!rows.length && <tr><td colSpan={(isNetworkSalesView ? 9 : 10) + (monthFilter !== 'all' ? 1 : 0)} className="hint">Нет данных</td></tr>}
+    </tbody></table></div>
+    {rows.length > 10 && <button className="ghost small" style={{marginTop:10}} onClick={() => setExpandedSalesRows(v => !v)}>{expandedSalesRows ? 'Свернуть' : `Показать все позиции (${rows.length})`}</button>}
+  </div>
+
+  const AiSearchBlock = <div className="card span-2">
+    <div className="card-head"><div><h3>ИИ-поиск по продажам</h3><p className="hint">Пример: “Покажи продажи пиццы за этот месяц и за год”. Поиск учитывает текущие фильтры филиала и Бар/Кухня.</p></div><div className="action-row"><button className="ghost small" onClick={() => setShowHiddenSalesItems(v => !v)}>{showHiddenSalesItems ? 'Скрыть список скрытых' : `Скрытые позиции (${hiddenSalesKeys.length})`}</button></div></div>
+    <div className="form-grid compact"><label><span>Запрос</span><input value={salesAiQuery} onChange={e => setSalesAiQuery(e.target.value)} placeholder="Покажи продажи пиццы за этот месяц / за год" /></label><label><span>Экспорт PDF</span><select value={salesAiExportMode} onChange={e => setSalesAiExportMode(e.target.value)}><option value="prices">С ценами</option><option value="quantity">Только количество</option></select></label></div>
+    {showHiddenSalesItems && <div className="table-wrap" style={{marginTop:12}}><table><thead><tr><th>Скрытая позиция</th><th></th></tr></thead><tbody>
+      {hiddenSalesKeys.map(key => <tr key={`ai-hidden-${key}`}><td><b>{key}</b></td><td><button className="ghost small" onClick={() => restoreSalesItem(key)}>Вернуть</button></td></tr>)}
+      {!hiddenSalesKeys.length && <tr><td colSpan="2" className="hint">Скрытых позиций нет.</td></tr>}
+    </tbody></table></div>}
+    {aiSearchResult && <>
+      <div className="mini-grid">
+        <div className="metric"><span>Диапазон дат</span><strong style={{fontSize:14}}>{aiSearchResult.dateRange || '—'}</strong></div>
+        <div className="metric"><span>Отчётов</span><strong>{aiSearchResult.reports}</strong></div>
+        <div className="metric"><span>Найдено позиций</span><strong>{aiSearchResult.rows.length}</strong></div>
+        <div className="metric"><span>Кол-во</span><strong>{fmt(aiSearchResult.totals.quantity)}</strong></div>
+        <div className="metric"><span>Выручка</span><strong>{fmt(aiSearchResult.totals.revenue)}</strong></div>
+        <div className="metric"><span>Себестоимость</span><strong>{fmt(aiSearchResult.totals.cost)}</strong></div>
+        <div className="metric"><span>Прибыль</span><strong className={aiSearchResult.totals.profit >= 0 ? 'good' : 'bad'}>{fmt(aiSearchResult.totals.profit)}</strong></div>
+      </div>
+      <div className="action-row" style={{marginTop:10}}><button className="small primary" onClick={() => exportAiSearchToPdf(salesAiExportMode === 'prices')}>Экспорт PDF: {salesAiExportMode === 'prices' ? 'с ценами' : 'только количество'}</button></div>
+      <div className="table-wrap" style={{marginTop:12}}><table><thead><tr><th>Позиция</th>{!isNetworkSalesView && <th>Филиал</th>}<th>Тип</th><th>Кол-во</th><th>Цена</th><th>Выручка</th><th>Прибыль</th><th></th></tr></thead><tbody>
+        {aiSearchResult.rows.slice(0, 20).map((r, idx) => <tr key={`ai-search-${idx}`}><td><b>{r.name}</b>{r.auto_merged && <><br /><span className="hint">автоматически объединено: {r.auto_merged_names.slice(0, 4).join(', ')}{r.auto_merged_names.length > 4 ? '…' : ''}</span></>}</td>{!isNetworkSalesView && <td>{r.branch_name || '—'}</td>}<td>{r.department === 'Кухня' ? 'Кухня' : r.department === 'Бар' ? 'Бар' : '—'}</td><td>{fmt(r.quantity)}</td><td>{fmt(r.avg_price)}</td><td>{fmt(r.revenue)}</td><td className={r.profit >= 0 ? 'good' : 'bad'}>{fmt(r.profit)}</td><td><button className="ghost small" onClick={() => hideSalesItem(r)}>Скрыть</button></td></tr>)}
+        {aiSearchResult.rows.length > 0 && <tr><td colSpan={isNetworkSalesView ? 2 : 3}><b>Итого найдено</b></td><td><b>{fmt(aiSearchResult.totals.quantity)}</b></td><td><b>{fmt(aiSearchResult.totals.quantity ? aiSearchResult.totals.revenue / aiSearchResult.totals.quantity : 0)}</b></td><td><b>{fmt(aiSearchResult.totals.revenue)}</b></td><td className={aiSearchResult.totals.profit >= 0 ? 'good' : 'bad'}><b>{fmt(aiSearchResult.totals.profit)}</b></td><td></td></tr>}
+        {!aiSearchResult.rows.length && <tr><td colSpan={isNetworkSalesView ? 7 : 8} className="hint">По запросу ничего не найдено.</td></tr>}
+      </tbody></table></div>
+    </>}
+  </div>
+
+  return <section>
+    <section className="topbar"><div><h2>Отчёты</h2><p>Импорт продаж AIKO по филиалам, общая сводка и AI-аналитика ассортимента.</p></div></section>
+    <div className="settings-tabs"><button className={reportsTab === 'sales' ? 'active' : ''} onClick={() => setReportsTab('sales')}>Отчёт по продажам</button><button className={reportsTab === 'import' ? 'active' : ''} onClick={() => setReportsTab('import')}>Импорт</button></div>
+
+    {reportsTab === 'import' && <section className="grid">
+      <div className="card span-2">
+        <div className="card-head"><div><h3>Импорт отчёта продаж AIKO</h3><p className="hint">Поддерживаются PDF из AIKO, ZIP с PDF, TXT/CSV и ручная вставка текста. Модификаторы автоматически исключаются из продаж и из техкарт.</p></div></div>
+        <div className="form-grid compact">
+          <label><span>Филиал для импорта</span><select value={importBranchId} onChange={e => setImportBranchId(e.target.value)}><option value="auto">Авто по названию склада / файла</option>{branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label>
+          <label><span>Загрузить файлы</span><input type="file" multiple accept=".pdf,.zip,.txt,.csv,application/pdf,application/zip" onChange={e => handleFiles(e.target.files)} /></label>
+        </div>
+        <label><span>Или вставьте текст отчёта AIKO</span><textarea rows={7} value={importText} onChange={e => setImportText(e.target.value)} placeholder="Отчет о продажах с 01.04.2026 по 30.04.2026..." /></label>
+        <div className="action-row"><button className="small primary" disabled={busy} onClick={importFromText}>{busy ? 'Импорт...' : 'Импортировать текст'}</button><button className="ghost small" onClick={exportAikoReportsBackup}>Скачать бэкап отчётов</button><label className="ghost small" style={{display:'inline-flex',alignItems:'center',cursor:'pointer'}}>Восстановить бэкап<input type="file" accept="application/json,.json" style={{display:'none'}} onChange={importAikoReportsBackup} /></label><button className="ghost small" onClick={clearReports}>Очистить отчёты</button></div>
+        {cloudSyncStatus && <p className="hint">{cloudSyncStatus}</p>}
+        {message && <p className={`hint ${message.includes('сохран') ? 'save-status' : message.includes('Импортировано') || message.includes('добавлено') || message.includes('очищ') || message.includes('удал') || message.includes('восстанов') ? 'good' : 'bad'}`}>{message}</p>}
+      </div>
+
+      <div className="card span-2">
+        <div className="card-head"><div><h3>Сопоставление AIKO → филиалы RMS</h3><p className="hint">По умолчанию уже зашито: Xəqani→B1, R.B→B3, C.H→B4, Cresent→B5, Nizami→B2.</p></div><button className="ghost small" onClick={applySavedBranchMappings}>Применить</button></div>
+        <div className="table-wrap"><table><thead><tr><th>Название в AIKO</th><th>Отчётов</th><th>Филиал RMS</th></tr></thead><tbody>
+          {detectedAikoBranches.map(item => <tr key={item.key}><td><b>{item.name || item.key}</b><br /><span className="hint">ключ: {item.key}</span></td><td>{item.count}</td><td><select value={branchMap[item.key] || ''} onChange={e => setAikoBranchMapping(item.key, e.target.value)}><option value="">Не выбран</option>{branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></td></tr>)}
+          {!detectedAikoBranches.length && <tr><td colSpan="3" className="hint">После импорта здесь появятся названия филиалов из AIKO.</td></tr>}
+        </tbody></table></div>
+      </div>
+
+      <div className="card span-2" style={{marginTop:20}}>
+        <div className="card-head"><div><h3>Импортированные отчёты</h3><p className="hint">Список находится в подменю “Импорт” и отображается внизу страницы одной полосой. Каждый PDF/файл сохраняется отдельным импортом.</p></div></div>
+        <div className="table-wrap"><table><thead><tr><th>Файл</th><th>Период</th><th>Филиал</th><th>Тип</th><th>Строк</th><th>Выручка</th><th>Себестоимость</th><th></th></tr></thead><tbody>
+          {visibleReports.map(r => { const token = reportAikoToken(r); return <tr key={r.id}><td><b>{r.source_file}</b><br /><span className="hint">AIKO: {token.name || '—'} · {r.warehouse || '—'}{r.manual_branch_override ? ' · ручной филиал' : ''}</span></td><td>{r.period_start || '—'} — {r.period_end || '—'}</td><td><select value={r.branch_id || ''} onChange={e => updateReportBranch(r.id, e.target.value, false)}><option value="">Не выбран</option>{branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select>{token.key && <button className="ghost small" style={{marginTop:6}} disabled={!r.branch_id} onClick={() => updateReportBranch(r.id, r.branch_id || '', true)}>Применить выбранный филиал ко всем {token.name}</button>}<div className="hint">Можно выбрать филиал вручную для одного отчёта или применить этот выбор ко всем отчётам с таким же AIKO-филиалом.</div></td><td>{r.department}</td><td>{(r.rows || []).length}</td><td>{fmt(r.totals?.revenue)}</td><td>{fmt(r.totals?.cost)}</td><td><button className="remove" onClick={() => removeReport(r.id)}>×</button></td></tr> })}
+          {!reports.length && <tr><td colSpan="8" className="hint">Загрузите отчёты AIKO для анализа.</td></tr>}
+        </tbody></table></div>
+        {reports.length > 10 && <button className="ghost small" style={{marginTop:10}} onClick={() => setExpandedReportsTable(v => !v)}>{expandedReportsTable ? 'Свернуть' : `Показать все отчёты (${reports.length})`}</button>}
+      </div>
+    </section>}
+
+    {reportsTab === 'sales' && <section className="grid">
+      {SalesTableBlock}
+      {AiSearchBlock}
+      {renderAiTable('Топ продаж по выручке', ai.topSales, 'Выручка')}
+      {renderAiTable('Топ продаж по количеству', ai.topQty, 'Выручка')}
+      {renderAiTable('Топ аутсайдеров', ai.outsiders, 'Выручка')}
+      {renderAiTable('Топ высокомаржинальных товаров', ai.highMargin, 'Маржа %')}
+      {renderAiTable('Топ низкомаржинальных товаров', ai.lowMargin, 'Маржа %')}
+    </section>}
+  </section>
+}
+
+function Settings({ session, t, theme, setTheme }) {
+  const [users, setUsers] = useState([])
+  const [permissions, setPermissions] = useState([])
+  const [legalEntities, setLegalEntities] = useState([])
+  const [branches, setBranches] = useState([])
+  const [expenseCategories, setExpenseCategories] = useState([])
+  const [newExpenseCategoryName, setNewExpenseCategoryName] = useState('')
+  const [serviceBranchId, setServiceBranchId] = useState('')
+  const [serviceSettings, setServiceSettings] = useState({ enabled: false, service_percent: '10', staff_cost_percent: '4' })
+  const [branchRentSettings, setBranchRentSettings] = useState({})
+  const [fullName, setFullName] = useState('')
+  const [legalForm, setLegalForm] = useState({ name: '', voen: '' })
+  const [newUser, setNewUser] = useState({ login: '', password: '', full_name: '' })
+  const [passwordEdits, setPasswordEdits] = useState({})
+  const [clearConfirm, setClearConfirm] = useState('')
+  const [backupBusy, setBackupBusy] = useState(false)
+  const [employeeImportText, setEmployeeImportText] = useState('')
+  const [employeeImportRows, setEmployeeImportRows] = useState([])
+  const [employeeImportBusy, setEmployeeImportBusy] = useState(false)
+  const [employeeImportReport, setEmployeeImportReport] = useState(null)
+  const [attendanceImportText, setAttendanceImportText] = useState('')
+  const [attendanceImportRows, setAttendanceImportRows] = useState([])
+  const [attendanceImportBusy, setAttendanceImportBusy] = useState(false)
+  const [attendanceImportReport, setAttendanceImportReport] = useState(null)
+  const [attendanceImportYear, setAttendanceImportYear] = useState('2026')
+  const [attendanceImportMonth, setAttendanceImportMonth] = useState('4')
+  const [advanceImportText, setAdvanceImportText] = useState('')
+  const [advanceImportRows, setAdvanceImportRows] = useState([])
+  const [advanceImportBusy, setAdvanceImportBusy] = useState(false)
+  const [advanceImportReport, setAdvanceImportReport] = useState(null)
+  const [iikoConnections, setIikoConnections] = useState([])
+  const [iikoSyncLogs, setIikoSyncLogs] = useState([])
+  const [iikoForm, setIikoForm] = useState({ branch_id: '', organization_id: '', terminal_group_id: '', sync_enabled: true })
+  const [iikoSyncForm, setIikoSyncForm] = useState({ period_from: todayISO(), period_to: todayISO() })
+  const [iikoBusy, setIikoBusy] = useState(false)
+  const [iikoStatus, setIikoStatus] = useState('')
+  const [advanceImportYear, setAdvanceImportYear] = useState('2026')
+  const [advanceImportMonth, setAdvanceImportMonth] = useState('4')
+  const [msg, setMsg] = useState('')
+  const [settingsTab, setSettingsTab] = useState('branches')
+  const [customLogoPreview, setCustomLogoPreview] = useState(() => {
+    try { return localStorage.getItem('rms_custom_logo') || sessionStorage.getItem('rms_custom_logo') || '' } catch (_e) { return '' }
+  })
+  const editableSections = SECTIONS.filter(s => s.id !== 'settings')
+
+  useEffect(() => { load() }, [])
+
+  async function load() {
+    await hydrateRmsInternalAuthFromCloud()
+    const [{ data: u }, { data: le }, { data: perms }, { data: br }, { data: cats }] = await Promise.all([
+      supabase.from('user_profiles').select('*').order('created_at'),
+      supabase.from('legal_entities').select('*').order('name'),
+      supabase.from('user_permissions').select('*'),
+      supabase.from('branches').select('id,name,service_charge_enabled,service_charge_percent,service_staff_cost_percent').eq('is_active', true).order('name'),
+      supabase.from('expense_categories').select('*').order('name')
+    ])
+
+    const internalUsers = Object.values(getInternalUsers()).map(u => ({
+      id: u.id,
+      email: `${u.login}@rms.internal`,
+      login_name: u.login,
+      full_name: u.full_name || u.login,
+      role: 'employee',
+      is_active: u.is_active !== false,
+      hide_manager_salary: Boolean(u.hide_manager_salary || u.hide_manager_salaries),
+      hide_manager_salaries: Boolean(u.hide_manager_salary || u.hide_manager_salaries),
+      ui_theme: u.ui_theme || 'classic',
+      rms_internal: true
+    }))
+
+    const supabaseUsers = u || []
+    const allUsers = [
+      ...supabaseUsers,
+      ...internalUsers.filter(iu => !supabaseUsers.some(su => su.id === iu.id || normalizeInternalLogin(su.login_name || su.email) === iu.login_name))
+    ]
+
+    setUsers(allUsers)
+    setLegalEntities(le || [])
+    setPermissions([...(perms || []), ...internalUsers.flatMap(iu => makeInternalPermissionRows(iu.id))])
+    setBranches(br || [])
+    setExpenseCategories(cats || [])
+
+    try {
+      const [{ data: iikoRows }, { data: iikoLogs }] = await Promise.all([
+        supabase.from('iiko_sync_connections').select('*, branches(name)').order('created_at', { ascending: false }),
+        supabase.from('iiko_sync_logs').select('*').order('created_at', { ascending: false }).limit(10)
+      ])
+      setIikoConnections(iikoRows || [])
+      setIikoSyncLogs(iikoLogs || [])
+    } catch (_e) {
+      setIikoConnections([])
+      setIikoSyncLogs([])
+    }
+
+    const rentSettings = await readRmsAppSetting(RMS_BRANCH_RENT_FORECAST_SETTING, {})
+    setBranchRentSettings(rentSettings && typeof rentSettings === 'object' ? rentSettings : {})
+    if (!serviceBranchId && br?.[0]) setServiceBranchId(br[0].id)
+    if (!iikoForm.branch_id && br?.[0]) setIikoForm(prev => ({ ...prev, branch_id: br[0].id }))
+  }
+
+  async function addExpenseCategory() {
+    const name = newExpenseCategoryName.trim()
+    if (!name) return setMsg('Введите название статьи расходов')
+
+    const { data: existingRows, error: findError } = await supabase
+      .from('expense_categories')
+      .select('id, name, is_active')
+      .ilike('name', name)
+      .limit(1)
+
+    if (findError) return setMsg(findError.message)
+
+    const existing = existingRows?.[0]
+    if (existing?.id) {
+      const { error: updateError } = await supabase
+        .from('expense_categories')
+        .update({ name, is_active: true })
+        .eq('id', existing.id)
+
+      if (updateError) return setMsg(updateError.message)
+      setNewExpenseCategoryName('')
+      await load()
+      setMsg(`Статья расходов “${name}” уже была в базе и активирована`)
+      return
+    }
+
+    const { error } = await supabase.from('expense_categories').insert({ name, is_active: true })
+    if (error) return setMsg(error.message)
+    setNewExpenseCategoryName('')
+    await load()
+    setMsg('Статья расходов добавлена')
+  }
+
+  async function updateExpenseCategory(id, patch) {
+    const payload = { ...patch }
+    if ('name' in payload) {
+      payload.name = String(payload.name || '').trim()
+      if (!payload.name) return setMsg('Название статьи не может быть пустым')
+    }
+    const { error } = await supabase.from('expense_categories').update(payload).eq('id', id)
+    if (error) return setMsg(error.message)
+    setExpenseCategories(prev => prev.map(c => c.id === id ? { ...c, ...payload } : c))
+    setMsg('Статья расходов обновлена')
+  }
+
+  async function createProfileForCurrentUser() {
+    await supabase.from('user_profiles').upsert({ id: session.user.id, email: session.user.email, login_name: (session.user.email || '').split('@')[0], full_name: fullName || session.user.email, role: 'admin', ui_theme: theme })
+    setMsg(t('saved'))
+    load()
+  }
+
+  async function addUser() {
+    setMsg('')
+    const login = normalizeInternalLogin(newUser.login)
+    if (!login) return setMsg('Введите login пользователя')
+    if (!/^[a-z0-9._-]{3,40}$/.test(login)) return setMsg('Login: только латиница, цифры, точка, дефис или подчёркивание, минимум 3 символа')
+    const password = String(newUser.password || '').trim()
+    if (!password || password.length < 6) return setMsg('Пароль должен быть минимум 6 символов')
+
+    const internalUsers = getInternalUsers()
+    const existing = internalUsers[login]
+    const userId = existing?.id || `rms-${login}-${Date.now()}`
+    internalUsers[login] = {
+      id: userId,
+      login,
+      password,
+      full_name: newUser.full_name || existing?.full_name || login,
+      is_active: existing?.is_active !== false,
+      hide_manager_salary: Boolean(existing?.hide_manager_salary || existing?.hide_manager_salaries),
+      hide_manager_salaries: Boolean(existing?.hide_manager_salary || existing?.hide_manager_salaries),
+      ui_theme: existing?.ui_theme || theme || 'classic'
+    }
+    setInternalUsers(internalUsers)
+
+    const allPerms = getInternalPermissions()
+    if (!allPerms[userId]) {
+      allPerms[userId] = {}
+      editableSections.forEach(sec => { allPerms[userId][sec.id] = 'read' })
+      setInternalPermissions(allPerms)
+    }
+
+    setNewUser({ login: '', password: '', full_name: '' })
+    setMsg(`Пользователь ${login} добавлен. Вход: ${login}`)
+    window.dispatchEvent(new Event('rms-user-settings-updated'))
+    await load()
+  }
+
+  async function changeUserPassword(userId, loginName) {
+    setMsg('')
+    const password = String(passwordEdits[userId] || '').trim()
+    if (!password || password.length < 6) return setMsg('Пароль должен быть минимум 6 символов')
+
+    const internalUsers = getInternalUsers()
+    const localLogin = Object.keys(internalUsers).find(k => internalUsers[k]?.id === userId || k === normalizeInternalLogin(loginName))
+    if (localLogin) {
+      internalUsers[localLogin] = { ...internalUsers[localLogin], password }
+      setInternalUsers(internalUsers)
+      setPasswordEdits(p => ({ ...p, [userId]: '' }))
+      setMsg(`Пароль пользователя ${localLogin} изменён`)
+      window.dispatchEvent(new Event('rms-user-settings-updated'))
+      await load()
+      return
+    }
+
+    setMsg('Пароль можно менять только у внутренних RMS-пользователей. Для admin используйте Supabase Auth.')
+  }
+
+  async function updateUser(id, patch) {
+    const internalUsers = getInternalUsers()
+    const localLogin = Object.keys(internalUsers).find(k => internalUsers[k]?.id === id)
+    if (localLogin) {
+      const normalizedPatch = { ...patch }
+      if ('hide_manager_salary' in normalizedPatch) normalizedPatch.hide_manager_salaries = normalizedPatch.hide_manager_salary
+      if ('hide_manager_salaries' in normalizedPatch) normalizedPatch.hide_manager_salary = normalizedPatch.hide_manager_salaries
+      internalUsers[localLogin] = { ...internalUsers[localLogin], ...normalizedPatch }
+      setInternalUsers(internalUsers)
+      setMsg(t('saved'))
+      window.dispatchEvent(new Event('rms-user-settings-updated'))
+      await load()
+      return
+    }
+
+    const { error } = await supabase.from('user_profiles').update(patch).eq('id', id)
+    if (error) setMsg(error.message); else { setMsg(t('saved')); load() }
+  }
+
+  const getPermission = (userId, section) => {
+    const local = getInternalPermissions()
+    if (local[userId]) return local[userId]?.[section] || 'none'
+    return permissions.find(p => p.user_id === userId && p.section === section)?.access || 'none'
+  }
+
+  async function updatePermission(userId, section, access) {
+    const local = getInternalPermissions()
+    if (local[userId]) {
+      local[userId] = { ...(local[userId] || {}), [section]: access }
+      setInternalPermissions(local)
+      setMsg(t('saved'))
+      window.dispatchEvent(new Event('rms-user-settings-updated'))
+      await load()
+      return
+    }
+
+    if (access === 'none') {
+      const { error } = await supabase.from('user_permissions').delete().eq('user_id', userId).eq('section', section)
+      if (error) setMsg(error.message); else { setMsg(t('saved')); load() }
+      return
+    }
+
+    const { error } = await supabase.from('user_permissions').upsert({ user_id: userId, section, access }, { onConflict: 'user_id,section' })
+    if (error) setMsg(error.message); else { setMsg(t('saved')); load() }
+  }
+
+  async function deleteUser(user) {
+    const login = normalizeInternalLogin(user?.login_name || user?.email)
+    const internalUsers = getInternalUsers()
+    const localLogin = internalUsers[login] ? login : Object.keys(internalUsers).find(k => internalUsers[k]?.id === user.id)
+    if (!localLogin) return setMsg('Удалять через RMS можно только внутренних пользователей.')
+    if (!window.confirm(`Удалить пользователя ${localLogin}?`)) return
+
+    const userId = internalUsers[localLogin].id
+    delete internalUsers[localLogin]
+    setInternalUsers(internalUsers)
+
+    const allPerms = getInternalPermissions()
+    delete allPerms[userId]
+    setInternalPermissions(allPerms)
+
+    const active = getInternalSessionStorage()
+    if (active?.user?.id === userId) setInternalSessionStorage(null)
+
+    setMsg(`Пользователь ${localLogin} удалён`)
+    window.dispatchEvent(new Event('rms-user-settings-updated'))
+    await load()
+  }
+
+  async function updateTheme(value) {
+    setTheme(value)
+    await supabase.from('user_profiles').update({ ui_theme: value }).eq('id', session.user.id)
+    setMsg(t('saved'))
+  }
+
+  function notifyLogoUpdate() {
+    window.dispatchEvent(new Event('rms-logo-updated'))
+  }
+
+  useEffect(() => {
+    let cancelled = false
+    async function loadLogoForSettings() {
+      const cloudLogo = await readRmsAppSetting(RMS_CUSTOM_LOGO_KEY, '')
+      if (cancelled || !cloudLogo) return
+      try {
+        localStorage.setItem('rms_custom_logo', cloudLogo)
+        sessionStorage.setItem('rms_custom_logo', cloudLogo)
+      } catch (_e) {}
+      setCustomLogoPreview(cloudLogo)
+      notifyLogoUpdate()
+    }
+    loadLogoForSettings()
+    return () => { cancelled = true }
+  }, [])
+
+  function handleCustomLogoSelect(event) {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (!file) return
+    if (file.size > 4 * 1024 * 1024) {
+      setMsg('Лого должно быть не больше 4 MB')
+      return
+    }
+
+    const reader = new FileReader()
+    reader.onload = () => {
+      const raw = String(reader.result || '')
+      const img = new Image()
+      img.onload = () => {
+        const source = document.createElement('canvas')
+        source.width = img.width
+        source.height = img.height
+        const sctx = source.getContext('2d')
+        sctx.clearRect(0, 0, source.width, source.height)
+        sctx.drawImage(img, 0, 0)
+
+        let minX = source.width
+        let minY = source.height
+        let maxX = 0
+        let maxY = 0
+        const data = sctx.getImageData(0, 0, source.width, source.height).data
+
+        for (let y = 0; y < source.height; y += 1) {
+          for (let x = 0; x < source.width; x += 1) {
+            const i = (y * source.width + x) * 4
+            const r = data[i]
+            const g = data[i + 1]
+            const b = data[i + 2]
+            const a = data[i + 3]
+            const notTransparent = a > 20
+            const notWhite = !(r > 244 && g > 244 && b > 244)
+            if (notTransparent && notWhite) {
+              if (x < minX) minX = x
+              if (y < minY) minY = y
+              if (x > maxX) maxX = x
+              if (y > maxY) maxY = y
+            }
+          }
+        }
+
+        if (maxX <= minX || maxY <= minY) {
+          minX = 0
+          minY = 0
+          maxX = source.width
+          maxY = source.height
+        }
+
+        const pad = 12
+        minX = Math.max(0, minX - pad)
+        minY = Math.max(0, minY - pad)
+        maxX = Math.min(source.width, maxX + pad)
+        maxY = Math.min(source.height, maxY + pad)
+
+        const cropW = Math.max(1, maxX - minX)
+        const cropH = Math.max(1, maxY - minY)
+        const maxW = 560
+        const maxH = 260
+        const canvas = document.createElement('canvas')
+        canvas.width = maxW
+        canvas.height = maxH
+        const ctx = canvas.getContext('2d')
+        ctx.clearRect(0, 0, maxW, maxH)
+
+        const scale = Math.min((maxW * 0.88) / cropW, (maxH * 0.82) / cropH)
+        const drawW = Math.max(1, Math.round(cropW * scale))
+        const drawH = Math.max(1, Math.round(cropH * scale))
+        ctx.drawImage(source, minX, minY, cropW, cropH, Math.round((maxW - drawW) / 2), Math.round((maxH - drawH) / 2), drawW, drawH)
+
+        setCustomLogoPreview(canvas.toDataURL('image/png'))
+        setMsg('Лого автоматически обрезано от лишних полей и сжато под входное меню. Нажмите “Сохранить лого”.')
+      }
+      img.onerror = () => {
+        setCustomLogoPreview(raw)
+        setMsg('Лого загружено. Если размер выглядит некорректно, используйте PNG/SVG на прозрачном фоне.')
+      }
+      img.src = raw
+    }
+    reader.readAsDataURL(file)
+  }
+
+  async function saveCustomLogo() {
+    if (!customLogoPreview) return setMsg('Сначала выберите файл лого')
+    localStorage.setItem('rms_custom_logo', customLogoPreview)
+    try { sessionStorage.setItem('rms_custom_logo', customLogoPreview) } catch (_e) {}
+    const { error } = await writeRmsAppSetting(RMS_CUSTOM_LOGO_KEY, customLogoPreview)
+    notifyLogoUpdate()
+    setMsg(error ? 'Лого сохранено локально, но не удалось сохранить в Supabase. Создайте таблицу rms_app_settings, чтобы лого не слетало после замены файла.' : 'Лого сохранено в Supabase. Оно не должно слетать после замены JSX.')
+  }
+
+  async function removeCustomLogo() {
+    localStorage.removeItem('rms_custom_logo')
+    try { sessionStorage.removeItem('rms_custom_logo') } catch (_e) {}
+    await deleteRmsAppSetting(RMS_CUSTOM_LOGO_KEY)
+    setCustomLogoPreview('')
+    notifyLogoUpdate()
+    setMsg('Пользовательское лого удалено')
+  }
+
+  useEffect(() => {
+    const b = branches.find(x => x.id === serviceBranchId)
+    if (b) setServiceSettings({ enabled: Boolean(b.service_charge_enabled), service_percent: b.service_charge_percent ?? '10', staff_cost_percent: b.service_staff_cost_percent ?? '4' })
+  }, [serviceBranchId, branches])
+
+  async function saveBranchServiceSettings() {
+    if (!serviceBranchId) return setMsg('Выберите филиал')
+    const { error } = await supabase.from('branches').update({
+      service_charge_enabled: Boolean(serviceSettings.enabled),
+      service_charge_percent: parseNum(serviceSettings.service_percent),
+      service_staff_cost_percent: parseNum(serviceSettings.staff_cost_percent)
+    }).eq('id', serviceBranchId)
+    if (error) return setMsg(error.message)
+    setMsg('Настройка service charge сохранена')
+    load()
+  }
+
+  async function saveBranchRentSettings() {
+    const normalized = {}
+    ;(branches || []).forEach(b => {
+      const value = parseNum(branchRentSettings?.[b.id])
+      if (value > 0) normalized[b.id] = value
+    })
+    const { error } = await writeRmsAppSetting(RMS_BRANCH_RENT_FORECAST_SETTING, normalized)
+    if (error) return setMsg('Не удалось сохранить аренду филиалов: ' + (error.message || String(error)))
+    setBranchRentSettings(normalized)
+    setMsg('Арендная плата филиалов сохранена для прогноза')
+  }
+
+
+  async function addLegalEntity() {
+    if (!legalForm.name.trim() || !legalForm.voen.trim()) return setMsg('Введите название и VOEN')
+    const { error } = await supabase.from('legal_entities').insert({ name: legalForm.name.trim(), voen: legalForm.voen.trim() })
+    if (error) return setMsg(error.message)
+    setLegalForm({ name: '', voen: '' })
+    setMsg(t('saved'))
+    load()
+  }
+
+  async function updateLegalEntity(id, patch) {
+    const { error } = await supabase.from('legal_entities').update(patch).eq('id', id)
+    if (error) setMsg(error.message); else { setMsg(t('saved')); load() }
+  }
+
+  async function exportBackup() {
+    setMsg('')
+    setBackupBusy(true)
+    const { data, error } = await supabase.rpc('nms_backup_operational_data')
+    setBackupBusy(false)
+    if (error) return setMsg(error.message)
+    const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `nms-backup-${stamp}.json`
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    URL.revokeObjectURL(url)
+    setMsg('Бэкап данных скачан')
+  }
+
+  async function importBackup(event) {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (!file) return
+    setMsg('')
+    let parsed
+    try {
+      parsed = JSON.parse(await file.text())
+    } catch (_e) {
+      return setMsg('Не удалось прочитать JSON-файл бэкапа')
+    }
+    const ok = window.confirm('Восстановление сначала очистит текущие операционные данные и затем загрузит данные из бэкапа. Продолжить?')
+    if (!ok) return
+    setBackupBusy(true)
+    const { error } = await supabase.rpc('nms_restore_operational_data', { p_backup: parsed })
+    setBackupBusy(false)
+    if (error) return setMsg(error.message)
+    setMsg('Бэкап восстановлен')
+  }
+
+  function downloadRmsJsonFile(filename, payload) {
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    URL.revokeObjectURL(url)
+  }
+
+  async function readAllRowsForBackup(table) {
+    const pageSize = 1000
+    let from = 0
+    let rows = []
+    while (true) {
+      const { data, error } = await supabase
+        .from(table)
+        .select('*')
+        .range(from, from + pageSize - 1)
+      if (error) return { rows, error }
+      const chunk = data || []
+      rows = rows.concat(chunk)
+      if (chunk.length < pageSize) break
+      from += pageSize
+    }
+    return { rows, error: null }
+  }
+
+  function readLocalBackupState() {
+    const storage = {}
+    RMS_FULL_BACKUP_LOCAL_KEYS.forEach(key => {
+      try {
+        const value = localStorage.getItem(key)
+        if (value !== null) storage[key] = value
+      } catch (_e) {}
+    })
+    return storage
+  }
+
+  function restoreLocalBackupState(storage = {}) {
+    Object.entries(storage || {}).forEach(([key, value]) => {
+      try {
+        if (value === null || value === undefined) localStorage.removeItem(key)
+        else localStorage.setItem(key, String(value))
+      } catch (_e) {}
+    })
+  }
+
+  async function exportFullRmsBackup() {
+    setMsg('')
+    setBackupBusy(true)
+    const backup = {
+      backup_type: 'rms_full_restore_backup',
+      version: 2,
+      app_version: RMS_SOURCE_VERSION,
+      created_at: new Date().toISOString(),
+      description: 'Полный JSON-бэкап RMS: справочники, операционные данные, отчёты AIKO, настройки, скрытые позиции и локальные RMS-настройки. Код GitHub/Vercel env нужно хранить отдельно.',
+      tables: {},
+      table_errors: {},
+      local_storage: readLocalBackupState(),
+      restore_order: RMS_FULL_BACKUP_CHILD_FIRST_TABLES,
+      table_list: RMS_FULL_BACKUP_TABLES
+    }
+
+    for (const table of RMS_FULL_BACKUP_TABLES) {
+      const { rows, error } = await readAllRowsForBackup(table)
+      if (error) backup.table_errors[table] = error.message || String(error)
+      backup.tables[table] = rows || []
+    }
+
+    setBackupBusy(false)
+    const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')
+    downloadRmsJsonFile(`rms-full-backup-${stamp}.json`, backup)
+    const errorCount = Object.keys(backup.table_errors || {}).length
+    setMsg(errorCount ? `Полный бэкап скачан, но ${errorCount} таблиц не удалось прочитать. Подробности внутри JSON в table_errors.` : 'Полный бэкап RMS скачан. Его можно использовать для восстановления данных RMS.')
+  }
+
+  async function clearTableForRestore(table) {
+    const key = RMS_FULL_BACKUP_TABLE_KEY(table)
+    return supabase.from(table).delete().not(key, 'is', null)
+  }
+
+  async function insertRowsForRestore(table, rows) {
+    const list = rows || []
+    const chunkSize = 500
+    for (let i = 0; i < list.length; i += chunkSize) {
+      const chunk = list.slice(i, i + chunkSize)
+      if (!chunk.length) continue
+      const { error } = await supabase.from(table).insert(chunk)
+      if (error) return { error }
+    }
+    return { error: null }
+  }
+
+  async function importFullRmsBackup(event) {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (!file) return
+    setMsg('')
+    let parsed
+    try {
+      parsed = JSON.parse(await file.text())
+    } catch (_e) {
+      return setMsg('Не удалось прочитать JSON-файл полного бэкапа')
+    }
+    if (parsed?.backup_type !== 'rms_full_restore_backup' || !parsed?.tables) {
+      return setMsg('Это не полный RMS-бэкап. Для старого операционного бэкапа используйте кнопку восстановления операционных данных.')
+    }
+
+    const confirmText = window.prompt('Полное восстановление удалит текущие данные RMS и загрузит данные из бэкапа. Введите ВОССТАНОВИТЬ для продолжения.')
+    if (confirmText !== 'ВОССТАНОВИТЬ') return setMsg('Восстановление отменено')
+
+    setBackupBusy(true)
+    const restoreErrors = []
+    const tablesInBackup = Object.keys(parsed.tables || {})
+    const deleteOrder = RMS_FULL_BACKUP_CHILD_FIRST_TABLES.filter(t => tablesInBackup.includes(t))
+    const insertOrder = [...deleteOrder].reverse()
+
+    for (const table of deleteOrder) {
+      const { error } = await clearTableForRestore(table)
+      if (error) restoreErrors.push(`${table}: очистка — ${error.message || String(error)}`)
+    }
+
+    for (const table of insertOrder) {
+      const rows = parsed.tables?.[table] || []
+      if (!rows.length) continue
+      const { error } = await insertRowsForRestore(table, rows)
+      if (error) restoreErrors.push(`${table}: загрузка — ${error.message || String(error)}`)
+    }
+
+    restoreLocalBackupState(parsed.local_storage || {})
+    setBackupBusy(false)
+
+    if (restoreErrors.length) {
+      setMsg(`Восстановление завершено с предупреждениями: ${restoreErrors.slice(0, 4).join(' | ')}${restoreErrors.length > 4 ? ' ...' : ''}`)
+    } else {
+      setMsg('Полный RMS-бэкап восстановлен. Перезагрузите страницу, чтобы обновить сессию, лого и отчёты.')
+    }
+    load()
+  }
+
+  async function clearOperationalData() {
+    setMsg('')
+    if (clearConfirm !== 'ОЧИСТИТЬ') return setMsg('Для очистки введите ОЧИСТИТЬ')
+    const ok = window.confirm('Будут очищены выручка, расходы, приходы, касса, закупки/поступления, оплаты поставщикам, авансы, выплаты зарплаты, табель и журналы операций. Справочники останутся. Продолжить?')
+    if (!ok) return
+    setBackupBusy(true)
+    const { error } = await supabase.rpc('nms_clear_operational_data')
+    setBackupBusy(false)
+    if (error) return setMsg(error.message)
+    setClearConfirm('')
+    setMsg('Операционные данные очищены. Можно начинать работу с чистой базы.')
+  }
+
+  function normalizeImportValue(value) {
+    return String(value || '')
+      .trim()
+      .toLowerCase()
+      .replace(/ё/g, 'е')
+      .replace(/[^a-zа-я0-9]+/g, '')
+  }
+
+  function splitImportLine(line) {
+    if (line.includes('\t')) return line.split('\t').map(v => v.trim())
+    if (line.includes(';')) return line.split(';').map(v => v.trim())
+    return line.split(',').map(v => v.trim().replace(/^"|"$/g, ''))
+  }
+
+  function cleanImportEmployeeName(value) {
+    return String(value || '')
+      .replace(/\s+/g, ' ')
+      .replace(/\s*\((?:1|2|3|4|5|6)\)\s*$/i, '')
+      .replace(/\s+4\)\s*$/i, '')
+      .trim()
+  }
+
+  function parseEmployeeImport(textValue = employeeImportText) {
+    const source = String(textValue || '').replace(/^\uFEFF/, '')
+    const lines = source.split(/\r?\n/).map(l => l.trim()).filter(Boolean)
+    const parsed = []
+    let currentBranch = ''
+
+    if (!lines.length) {
+      setEmployeeImportRows([])
+      setEmployeeImportReport({ errors: ['Нет данных для распознавания'] })
+      return []
+    }
+
+    const first = splitImportLine(lines[0]).map(x => normalizeImportValue(x))
+    const hasCsvHeader = first.includes('branch') && first.includes('position') && first.includes('name') && first.includes('salary')
+
+    if (hasCsvHeader) {
+      const header = splitImportLine(lines[0]).map(h => normalizeImportValue(h))
+      const idxBranch = header.indexOf('branch')
+      const idxPosition = header.indexOf('position')
+      const idxName = header.indexOf('name')
+      const idxSalary = header.indexOf('salary')
+      lines.slice(1).forEach((line, idx) => {
+        const cells = splitImportLine(line)
+        const branch = cells[idxBranch] || ''
+        const position = cells[idxPosition] || ''
+        const name = cleanImportEmployeeName(cells[idxName] || '')
+        const salary = parseNum(cells[idxSalary])
+        if (branch && position && name && salary > 0) parsed.push({ branch, position, name, salary, line: idx + 2 })
+      })
+    } else {
+      lines.forEach((line, idx) => {
+        const cells = splitImportLine(line)
+        const nonEmpty = cells.filter(Boolean)
+        if (!nonEmpty.length) return
+        const c0 = String(cells[0] || '').trim()
+        const c1 = String(cells[1] || '').trim()
+        const c2 = String(cells[2] || '').trim()
+        const norm0 = normalizeImportValue(c0)
+
+        const looksLikeBranch = nonEmpty.length === 1 && (norm0.includes('managers') || norm0.includes('bistronomia') || /^b\d/.test(norm0) || /^bc\d/.test(norm0))
+        if (looksLikeBranch) { currentBranch = c0; return }
+        if (norm0.includes('должность') || norm0.includes('повара') || norm0.includes('барсервис') || norm0.includes('стюард')) return
+
+        const salary = parseNum(c2)
+        if (currentBranch && c0 && c1 && salary > 0) {
+          parsed.push({ branch: currentBranch, position: c0, name: cleanImportEmployeeName(c1), salary, line: idx + 1 })
+        }
+      })
+    }
+
+    setEmployeeImportRows(parsed)
+    setEmployeeImportReport({ errors: parsed.length ? [] : ['Не удалось распознать сотрудников. Нужны колонки branch, position, name, salary или табличный текст с филиалами.'] })
+    return parsed
+  }
+
+  function findImportBranch(branchName) {
+    const raw = String(branchName || '').trim()
+    const norm = normalizeImportValue(raw)
+    if (!norm || norm.includes('manager')) return { branch_id: null, branchName: 'Менеджеры', matched: true }
+
+    const exact = branches.find(b => normalizeImportValue(b.name) === norm)
+    if (exact) return { branch_id: exact.id, branchName: exact.name, matched: true }
+
+    const digit = (raw.match(/b\s*[- ]?(\d+)/i) || raw.match(/bc\s*[- ]?(\d+)/i))?.[1]
+    if (digit) {
+      const byDigit = branches.find(b => {
+        const n = normalizeImportValue(b.name)
+        return n.includes(`bc${digit}`) || n.includes(`b${digit}`) || n.endsWith(String(digit))
+      })
+      if (byDigit) return { branch_id: byDigit.id, branchName: byDigit.name, matched: true }
+    }
+
+    const partial = branches.find(b => norm.includes(normalizeImportValue(b.name)) || normalizeImportValue(b.name).includes(norm))
+    if (partial) return { branch_id: partial.id, branchName: partial.name, matched: true }
+
+    return { branch_id: null, branchName: raw, matched: false }
+  }
+
+  async function handleEmployeeImportFile(event) {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (!file) return
+    const text = await file.text()
+    setEmployeeImportText(text)
+    setEmployeeImportReport(null)
+    setTimeout(() => parseEmployeeImport(text), 0)
+  }
+
+  function normalizeEmployeeMatchName(value) {
+    return normalizeImportValue(cleanImportEmployeeName(value))
+      .replace(/помощник|помошник|заготовщик|заг|повар|бариста|сервис|сервиз|стюарт|стьюарт|steward|service|chef|barista|менеджер|бн|bn|cy|су/g, '')
+  }
+
+  function firstImportNameToken(value) {
+    return normalizeImportValue(cleanImportEmployeeName(value).split(/\s+/)[0] || '')
+  }
+
+  function importPositionMatch(a, b) {
+    const pa = positionGroup(a)
+    const pb = positionGroup(b)
+    if (pa === 'Другое' || pb === 'Другое') return true
+    return pa === pb
+  }
+
+  function findEmployeeForAttendance(existingEmployees, row, branchId) {
+    const branchKey = branchId || null
+    const rawName = normalizeImportValue(row.name)
+    const cleanName = normalizeEmployeeMatchName(row.name)
+    const firstToken = firstImportNameToken(row.name)
+    const sameBranch = (existingEmployees || []).filter(e => (e.branch_id || null) === branchKey)
+
+    const exact = sameBranch.find(e => normalizeImportValue(e.full_name) === rawName || normalizeImportValue(cleanImportEmployeeName(e.full_name)) === rawName)
+    if (exact) return exact
+
+    const cleanExact = sameBranch.find(e => normalizeEmployeeMatchName(e.full_name) === cleanName && importPositionMatch(e.position, row.position))
+    if (cleanExact) return cleanExact
+
+    const contains = sameBranch.find(e => {
+      const n = normalizeEmployeeMatchName(e.full_name)
+      if (!n || !cleanName || !importPositionMatch(e.position, row.position)) return false
+      return (n.length >= 4 && cleanName.includes(n)) || (cleanName.length >= 4 && n.includes(cleanName))
+    })
+    if (contains) return contains
+
+    if (firstToken.length >= 3) {
+      const byFirstAndPosition = sameBranch.find(e => {
+        const n = normalizeImportValue(e.full_name)
+        return n.includes(firstToken) && importPositionMatch(e.position, row.position)
+      })
+      if (byFirstAndPosition) return byFirstAndPosition
+    }
+
+    const globalExact = (existingEmployees || []).find(e => normalizeEmployeeMatchName(e.full_name) === cleanName && importPositionMatch(e.position, row.position))
+    if (globalExact) return globalExact
+
+    if (firstToken.length >= 3) {
+      const globalFirst = (existingEmployees || []).find(e => normalizeImportValue(e.full_name).includes(firstToken) && importPositionMatch(e.position, row.position))
+      if (globalFirst) return globalFirst
+    }
+
+    return null
+  }
+
+  function parseAttendanceImport(textValue = attendanceImportText) {
+    const source = String(textValue || '').replace(/^\uFEFF/, '')
+    const lines = source.split(/\r?\n/).map(l => l.trim()).filter(Boolean)
+    const parsed = []
+    let currentBranch = ''
+
+    if (!lines.length) {
+      setAttendanceImportRows([])
+      setAttendanceImportReport({ errors: ['Нет данных для распознавания'] })
+      return []
+    }
+
+    const first = splitImportLine(lines[0]).map(x => normalizeImportValue(x))
+    const hasCsvHeader = first.includes('branch') && first.includes('position') && first.includes('name') && (first.includes('workeddays') || first.includes('worked') || first.includes('workedday'))
+
+    if (hasCsvHeader) {
+      const header = splitImportLine(lines[0]).map(h => normalizeImportValue(h))
+      const idxBranch = header.indexOf('branch')
+      const idxPosition = header.indexOf('position')
+      const idxName = header.indexOf('name')
+      const idxWorked = header.findIndex(h => h === 'workeddays' || h === 'worked' || h === 'workedday')
+      const dayIndexes = Array.from({ length: 31 }, (_, i) => header.findIndex(h => h === `day${i + 1}` || h === String(i + 1)))
+
+      lines.slice(1).forEach((line, idx) => {
+        const cells = splitImportLine(line)
+        const branch = cells[idxBranch] || ''
+        const position = cells[idxPosition] || ''
+        const name = cleanImportEmployeeName(cells[idxName] || '')
+        const days = dayIndexes.map(dayIdx => {
+          if (dayIdx < 0) return ''
+          const value = String(cells[dayIdx] || '').trim().replace(',', '.')
+          return value === '1' || value === '0.5' || value === '0' ? value : ''
+        })
+        const workedDays = parseNum(cells[idxWorked]) || days.reduce((s, v) => s + parseNum(v), 0)
+        if (branch && name) parsed.push({ branch, position, name, days, workedDays, line: idx + 2 })
+      })
+    } else {
+      lines.forEach((line, idx) => {
+        const cells = line.split('\t')
+        const nonEmpty = cells.map(c => String(c || '').trim()).filter(Boolean)
+        if (!nonEmpty.length) return
+
+        const c0 = String(cells[0] || '').trim()
+        const c1 = String(cells[1] || '').trim()
+        const norm0 = normalizeImportValue(c0)
+
+        const looksLikeBranch = nonEmpty.length === 1 && (norm0.includes('managers') || norm0.includes('bistronomia') || /^b\d/.test(norm0) || /^bc\d/.test(norm0))
+        if (looksLikeBranch) { currentBranch = c0; return }
+        if (norm0.includes('должность') || norm0.includes('повара') || norm0.includes('барсервис') || norm0.includes('стюард') || norm0 === '0' || norm0 === '1') return
+        if (!currentBranch || !c1) return
+
+        const days = []
+        for (let i = 2; i < 33; i++) {
+          const value = String(cells[i] || '').trim().replace(',', '.')
+          days.push(value === '1' || value === '0.5' || value === '0' ? value : '')
+        }
+
+        let workedDays = 0
+        for (let i = cells.length - 1; i >= 33; i--) {
+          const raw = String(cells[i] || '').trim().replace(',', '.')
+          if (/^-?\d+(\.\d+)?$/.test(raw)) {
+            workedDays = parseNum(raw)
+            break
+          }
+        }
+        if (!workedDays) workedDays = days.reduce((s, v) => s + parseNum(v), 0)
+
+        parsed.push({ branch: currentBranch, position: c0, name: cleanImportEmployeeName(c1), days, workedDays, line: idx + 1 })
+      })
+    }
+
+    setAttendanceImportRows(parsed)
+    setAttendanceImportReport({ errors: parsed.length ? [] : ['Не удалось распознать табель. Нужен CSV branch,position,name,day_1...day_31,worked_days или табличный текст с филиалами.'] })
+    return parsed
+  }
+
+  async function handleAttendanceImportFile(event) {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (!file) return
+    const text = await file.text()
+    setAttendanceImportText(text)
+    setAttendanceImportReport(null)
+    setTimeout(() => parseAttendanceImport(text), 0)
+  }
+
+  async function importAttendanceToRms() {
+    setMsg('')
+    const rows = attendanceImportRows.length ? attendanceImportRows : parseAttendanceImport()
+    if (!rows.length) return setMsg('Нет распознанных строк табеля для импорта')
+    const year = Number(attendanceImportYear)
+    const month = Number(attendanceImportMonth)
+    if (!year || !month) return setMsg('Укажите год и месяц для импорта табеля')
+    const monthDate = monthStart(year, month)
+    const dim = daysInMonth(year, month)
+    if (!window.confirm(`Импортировать табель за ${I18N.ru.months[month - 1]} ${year}: ${rows.length} сотрудников?`)) return
+
+    setAttendanceImportBusy(true)
+    const report = { imported: 0, skipped: 0, createdEmployees: 0, attendanceRows: 0, salaryRows: 0, errors: [] }
+
+    try {
+      const { data: existingEmployees, error: empError } = await supabase
+        .from('employees')
+        .select('id, full_name, branch_id, position, monthly_salary, daily_rate, salary_type, is_active, employment_status')
+      if (empError) throw empError
+
+      for (const row of rows) {
+        const branch = findImportBranch(row.branch)
+        if (!branch.matched) {
+          report.skipped += 1
+          report.errors.push(`Строка ${row.line}: филиал не найден — ${row.branch}`)
+          continue
+        }
+
+        let employee = findEmployeeForAttendance(existingEmployees || [], row, branch.branch_id)
+
+        if (!employee) {
+          const createPayload = {
+            full_name: cleanImportEmployeeName(row.name),
+            position: row.position || null,
+            branch_id: branch.branch_id || null,
+            salary_type: 'monthly',
+            monthly_salary: 0,
+            daily_rate: 0,
+            is_active: true,
+            employment_status: 'active'
+          }
+          const { data: createdEmployee, error: createEmployeeError } = await supabase
+            .from('employees')
+            .insert(createPayload)
+            .select('id, full_name, branch_id, position, monthly_salary, daily_rate, salary_type, is_active, employment_status')
+            .single()
+          if (createEmployeeError) {
+            report.skipped += 1
+            report.errors.push(`Строка ${row.line}: сотрудник не найден и не создан — ${row.name}: ${createEmployeeError.message}`)
+            continue
+          }
+          employee = createdEmployee
+          existingEmployees.push(createdEmployee)
+          report.createdEmployees += 1
+          report.errors.push(`Создан сотрудник без оклада: ${row.name} / ${branch.branchName}. После этого импортируйте/обновите оклады сотрудников.`)
+        }
+
+        const attendancePayload = []
+        for (let d = 1; d <= Math.min(31, dim); d++) {
+          const value = row.days[d - 1]
+          const workDate = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+          await supabase.from('employee_attendance').delete().eq('employee_id', employee.id).eq('work_date', workDate)
+          if (value !== '' && value !== null && value !== undefined) {
+            attendancePayload.push({
+              employee_id: employee.id,
+              branch_id: employee.branch_id || branch.branch_id || null,
+              work_date: workDate,
+              value: parseNum(value)
+            })
+          }
+        }
+
+        if (attendancePayload.length) {
+          const { error: attError } = await supabase.from('employee_attendance').upsert(attendancePayload, { onConflict: 'employee_id,work_date' })
+          if (attError) {
+            report.skipped += 1
+            report.errors.push(`${row.name}: ${attError.message}`)
+            continue
+          }
+        }
+
+        const worked = row.workedDays || attendancePayload.reduce((s, r) => s + parseNum(r.value), 0)
+        const gross = calcGrossSalary(employee, worked)
+        const start = monthDate
+        const end = `${year}-${String(month).padStart(2, '0')}-${String(dim).padStart(2, '0')}`
+        const [{ data: existingSalary }, { data: advanceRows }] = await Promise.all([
+          supabase.from('salary_periods').select('*').eq('employee_id', employee.id).eq('salary_month', monthDate).maybeSingle(),
+          supabase.from('salary_advances').select('amount').eq('employee_id', employee.id).gte('advance_date', start).lte('advance_date', end).or('is_cancelled.is.null,is_cancelled.eq.false')
+        ])
+        const advance = (advanceRows || []).reduce((s, a) => s + parseNum(a.amount), 0)
+        const deduction = parseNum(existingSalary?.deduction_amount)
+        const net = gross - advance - deduction
+
+        const { error: salaryError } = await supabase.from('salary_periods').upsert({
+          employee_id: employee.id,
+          branch_id: employee.branch_id || branch.branch_id || null,
+          salary_month: monthDate,
+          worked_days: worked,
+          salary_gross: gross,
+          salary_net: net,
+          advance_amount: advance,
+          deduction_amount: deduction,
+          card_payment: parseNum(existingSalary?.card_payment),
+          cash_payment: parseNum(existingSalary?.cash_payment),
+          comment: existingSalary?.comment || `Импорт табеля: ${worked} дн.`
+        }, { onConflict: 'employee_id,salary_month' })
+        if (salaryError) {
+          report.skipped += 1
+          report.errors.push(`${row.name}: ${salaryError.message}`)
+          continue
+        }
+
+        report.imported += 1
+        report.attendanceRows += attendancePayload.length
+        report.salaryRows += 1
+      }
+
+      setAttendanceImportReport(report)
+      setMsg(`Импорт табеля завершён. Сотрудников: ${report.imported}, создано новых: ${report.createdEmployees || 0}, строк посещаемости: ${report.attendanceRows}, зарплатных периодов: ${report.salaryRows}, пропущено: ${report.skipped}.`)
+    } catch (e) {
+      setMsg(e.message || String(e))
+      setAttendanceImportReport({ ...report, errors: [...report.errors, e.message || String(e)] })
+    } finally {
+      setAttendanceImportBusy(false)
+    }
+  }
+
+  function parseAdvanceImport(textValue = advanceImportText) {
+    const source = String(textValue || '').replace(/^\uFEFF/, '')
+    const lines = source.split(/\r?\n/).map(l => l.trim()).filter(Boolean)
+    const parsed = []
+    let currentBranch = 'Managers'
+
+    if (!lines.length) {
+      setAdvanceImportRows([])
+      setAdvanceImportReport({ errors: ['Нет данных для распознавания'] })
+      return []
+    }
+
+    const first = splitImportLine(lines[0]).map(x => normalizeImportValue(x))
+    const hasCsvHeader = first.includes('branch') && first.includes('name') && first.includes('amount')
+
+    if (hasCsvHeader) {
+      const header = splitImportLine(lines[0]).map(h => normalizeImportValue(h))
+      const idxBranch = header.indexOf('branch')
+      const idxName = header.indexOf('name')
+      const idxDate = header.indexOf('advancedate') >= 0 ? header.indexOf('advancedate') : header.indexOf('date')
+      const idxAmount = header.indexOf('amount')
+      const idxComment = header.indexOf('comment')
+
+      lines.slice(1).forEach((line, idx) => {
+        const cells = splitImportLine(line)
+        const branch = cells[idxBranch] || ''
+        const name = cleanImportEmployeeName(cells[idxName] || '')
+        const amount = parseNum(cells[idxAmount])
+        const advanceDate = idxDate >= 0 && cells[idxDate] ? String(cells[idxDate]).trim() : ''
+        const comment = idxComment >= 0 ? String(cells[idxComment] || '') : ''
+        if (branch && name && amount > 0) parsed.push({ branch, name, advanceDate, amount, comment, line: idx + 2 })
+      })
+    } else {
+      lines.forEach((line, idx) => {
+        const cells = line.split('\t')
+        const nonEmpty = cells.map(c => String(c || '').trim()).filter(Boolean)
+        if (!nonEmpty.length) return
+
+        const c0 = String(cells[0] || '').trim()
+        const c1 = String(cells[1] || '').trim()
+        const norm0 = normalizeImportValue(c0)
+
+        const looksLikeBranch = nonEmpty.length === 1 && (norm0.includes('managers') || norm0.includes('bistronomia') || /^b\d/.test(norm0) || /^bc\d/.test(norm0))
+        if (looksLikeBranch) { currentBranch = c0; return }
+        if (norm0.includes('повара') || norm0.includes('барсервис') || norm0.includes('стюардинг') || norm0.includes('стюард') || norm0 === 'summ') return
+        if (!c1) return
+
+        const last = String(cells[cells.length - 1] || '').trim().replace(',', '.')
+        const amount = /^-?\d+(\.\d+)?$/.test(last) ? parseNum(last) : 0
+        if (amount > 0) {
+          parsed.push({
+            branch: currentBranch,
+            name: cleanImportEmployeeName(c1),
+            advanceDate: '',
+            amount,
+            comment: 'Импорт авансов за месяц',
+            line: idx + 1
+          })
+        }
+      })
+    }
+
+    setAdvanceImportRows(parsed)
+    setAdvanceImportReport({ errors: parsed.length ? [] : ['Не удалось распознать авансы. Нужен CSV branch,name,advance_date,amount,comment или табличный текст с филиалами.'] })
+    return parsed
+  }
+
+  async function handleAdvanceImportFile(event) {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (!file) return
+    const text = await file.text()
+    setAdvanceImportText(text)
+    setAdvanceImportReport(null)
+    setTimeout(() => parseAdvanceImport(text), 0)
+  }
+
+  function normalizeImportDateValue(value, year, month) {
+    const fallback = `${year}-${String(month).padStart(2, '0')}-${String(daysInMonth(year, month)).padStart(2, '0')}`
+    if (!value) return fallback
+    const s = String(value || '').trim()
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s
+    const parts = s.split(/[./-]/).map(x => x.trim())
+    if (parts.length === 3) {
+      const [d, m, y] = parts
+      if (String(y).length === 4) return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+    }
+    return fallback
+  }
+
+  async function importAdvancesToRms() {
+    setMsg('')
+    const rows = advanceImportRows.length ? advanceImportRows : parseAdvanceImport()
+    if (!rows.length) return setMsg('Нет распознанных авансов для импорта')
+    const year = Number(advanceImportYear)
+    const month = Number(advanceImportMonth)
+    if (!year || !month) return setMsg('Укажите год и месяц для импорта авансов')
+    const monthDate = monthStart(year, month)
+    const dim = daysInMonth(year, month)
+    const monthEndDate = `${year}-${String(month).padStart(2, '0')}-${String(dim).padStart(2, '0')}`
+    if (!window.confirm(`Импортировать авансы за ${I18N.ru.months[month - 1]} ${year}: ${rows.length} сотрудников?`)) return
+
+    setAdvanceImportBusy(true)
+    const report = { imported: 0, skipped: 0, createdEmployees: 0, total: 0, errors: [] }
+
+    try {
+      const { data: existingEmployees, error: empError } = await supabase
+        .from('employees')
+        .select('id, full_name, branch_id, position, monthly_salary, daily_rate, salary_type, is_active, employment_status')
+      if (empError) throw empError
+
+      for (const row of rows) {
+        const branch = findImportBranch(row.branch)
+        if (!branch.matched) {
+          report.skipped += 1
+          report.errors.push(`Строка ${row.line}: филиал не найден — ${row.branch}`)
+          continue
+        }
+
+        let employee = findEmployeeForAttendance(existingEmployees || [], { ...row, position: '' }, branch.branch_id)
+        if (!employee) {
+          const createPayload = {
+            full_name: cleanImportEmployeeName(row.name),
+            position: null,
+            branch_id: branch.branch_id || null,
+            salary_type: 'monthly',
+            monthly_salary: 0,
+            daily_rate: 0,
+            is_active: true,
+            employment_status: 'active'
+          }
+          const { data: createdEmployee, error: createEmployeeError } = await supabase
+            .from('employees')
+            .insert(createPayload)
+            .select('id, full_name, branch_id, position, monthly_salary, daily_rate, salary_type, is_active, employment_status')
+            .single()
+          if (createEmployeeError) {
+            report.skipped += 1
+            report.errors.push(`Строка ${row.line}: сотрудник не найден и не создан — ${row.name}: ${createEmployeeError.message}`)
+            continue
+          }
+          employee = createdEmployee
+          existingEmployees.push(createdEmployee)
+          report.createdEmployees += 1
+          report.errors.push(`Создан сотрудник без оклада: ${row.name} / ${branch.branchName}. После этого импортируйте/обновите оклады сотрудников.`)
+        }
+
+        const amount = parseNum(row.amount)
+        const advanceDate = normalizeImportDateValue(row.advanceDate, year, month)
+        const { data: oldRows } = await supabase
+          .from('salary_advances')
+          .select('id, amount, comment')
+          .eq('employee_id', employee.id)
+          .eq('advance_date', advanceDate)
+          .ilike('comment', 'Импорт авансов%')
+          .or('is_cancelled.is.null,is_cancelled.eq.false')
+        if (oldRows?.length) {
+          await supabase.from('salary_advances').update({ is_cancelled: true, comment: 'Отменено перед повторным импортом авансов' }).in('id', oldRows.map(r => r.id))
+        }
+
+        const { error: advError } = await supabase.from('salary_advances').insert({
+          employee_id: employee.id,
+          branch_id: employee.branch_id || branch.branch_id || null,
+          advance_date: advanceDate || monthEndDate,
+          amount,
+          comment: row.comment || `Импорт авансов за ${I18N.ru.months[month - 1]} ${year}`
+        })
+        if (advError) {
+          report.skipped += 1
+          report.errors.push(`${row.name}: ${advError.message}`)
+          continue
+        }
+
+        const start = monthDate
+        const end = monthEndDate
+        const [{ data: existingSalary }, { data: advanceRows }, { data: attendanceRows }] = await Promise.all([
+          supabase.from('salary_periods').select('*').eq('employee_id', employee.id).eq('salary_month', monthDate).maybeSingle(),
+          supabase.from('salary_advances').select('amount').eq('employee_id', employee.id).gte('advance_date', start).lte('advance_date', end).or('is_cancelled.is.null,is_cancelled.eq.false'),
+          supabase.from('employee_attendance').select('value').eq('employee_id', employee.id).gte('work_date', start).lte('work_date', end)
+        ])
+        const worked = (attendanceRows || []).reduce((s, a) => s + parseNum(a.value), 0) || parseNum(existingSalary?.worked_days)
+        const gross = parseNum(existingSalary?.salary_gross) || calcGrossSalary(employee, worked)
+        const advance = (advanceRows || []).reduce((s, a) => s + parseNum(a.amount), 0)
+        const deduction = parseNum(existingSalary?.deduction_amount)
+        const net = gross - advance - deduction
+
+        await supabase.from('salary_periods').upsert({
+          employee_id: employee.id,
+          branch_id: employee.branch_id || branch.branch_id || null,
+          salary_month: monthDate,
+          worked_days: worked,
+          salary_gross: gross,
+          salary_net: net,
+          advance_amount: advance,
+          deduction_amount: deduction,
+          card_payment: parseNum(existingSalary?.card_payment),
+          cash_payment: parseNum(existingSalary?.cash_payment),
+          comment: existingSalary?.comment || `Импорт авансов: ${fmt(advance)} AZN`
+        }, { onConflict: 'employee_id,salary_month' })
+
+        report.imported += 1
+        report.total += amount
+      }
+
+      setAdvanceImportReport(report)
+      setMsg(`Импорт авансов завершён. Сотрудников: ${report.imported}, сумма: ${fmt(report.total)} AZN, создано новых: ${report.createdEmployees || 0}, пропущено: ${report.skipped}.`)
+    } catch (e) {
+      setMsg(e.message || String(e))
+      setAdvanceImportReport({ ...report, errors: [...report.errors, e.message || String(e)] })
+    } finally {
+      setAdvanceImportBusy(false)
+    }
+  }
+
+  async function importEmployeesToRms() {
+    setMsg('')
+    const rows = employeeImportRows.length ? employeeImportRows : parseEmployeeImport()
+    if (!rows.length) return setMsg('Нет распознанных сотрудников для импорта')
+    if (!window.confirm(`Импортировать/обновить ${rows.length} сотрудников?`)) return
+
+    setEmployeeImportBusy(true)
+    const report = { created: 0, updated: 0, skipped: 0, errors: [] }
+
+    try {
+      const { data: existingEmployees, error: empError } = await supabase.from('employees').select('id, full_name, branch_id')
+      if (empError) throw empError
+
+      for (const row of rows) {
+        const branch = findImportBranch(row.branch)
+        if (!branch.matched) {
+          report.skipped += 1
+          report.errors.push(`Строка ${row.line}: филиал не найден — ${row.branch}`)
+          continue
+        }
+
+        const nameKey = normalizeImportValue(row.name)
+        const exists = (existingEmployees || []).find(e => normalizeImportValue(e.full_name) === nameKey && ((e.branch_id || null) === (branch.branch_id || null)))
+        const payload = {
+          full_name: row.name,
+          position: row.position || null,
+          branch_id: branch.branch_id,
+          salary_type: 'monthly',
+          monthly_salary: parseNum(row.salary),
+          daily_rate: parseNum(row.salary) / 26,
+          is_active: true,
+          employment_status: 'active'
+        }
+
+        if (exists) {
+          const { error } = await supabase.from('employees').update(payload).eq('id', exists.id)
+          if (error) { report.skipped += 1; report.errors.push(`${row.name}: ${error.message}`); continue }
+          report.updated += 1
+        } else {
+          const { data: created, error } = await supabase.from('employees').insert(payload).select('id').single()
+          if (error) { report.skipped += 1; report.errors.push(`${row.name}: ${error.message}`); continue }
+          report.created += 1
+          await supabase.from('employee_assignments').insert({
+            employee_id: created.id,
+            branch_id: branch.branch_id,
+            position: row.position || null,
+            salary_type: 'monthly',
+            monthly_salary: parseNum(row.salary),
+            daily_rate: parseNum(row.salary) / 26,
+            start_date: todayISO(),
+            comment: 'Импорт сотрудников из настроек'
+          })
+        }
+      }
+
+      setEmployeeImportReport(report)
+      setMsg(`Импорт сотрудников завершён. Добавлено: ${report.created}, обновлено: ${report.updated}, пропущено: ${report.skipped}.`)
+    } catch (e) {
+      setMsg(e.message || String(e))
+      setEmployeeImportReport({ ...report, errors: [...report.errors, e.message || String(e)] })
+    } finally {
+      setEmployeeImportBusy(false)
+    }
+  }
+
+
+  async function saveIikoConnection() {
+    setIikoStatus('')
+    const branchId = iikoForm.branch_id || branches[0]?.id
+    if (!branchId) return setIikoStatus('Сначала добавьте филиал в настройках.')
+    if (!String(iikoForm.organization_id || '').trim()) return setIikoStatus('Введите iiko organization_id.')
+
+    setIikoBusy(true)
+    try {
+      const payload = {
+        branch_id: branchId,
+        iiko_organization_id: String(iikoForm.organization_id || '').trim(),
+        iiko_terminal_group_id: String(iikoForm.terminal_group_id || '').trim() || null,
+        sync_enabled: Boolean(iikoForm.sync_enabled),
+        updated_at: new Date().toISOString()
+      }
+      const { error } = await supabase.from('iiko_sync_connections').upsert(payload, { onConflict: 'branch_id' })
+      if (error) throw error
+      setIikoForm({ branch_id: branchId, organization_id: '', terminal_group_id: '', sync_enabled: true })
+      setIikoStatus('Подключение iiko сохранено. Следующий шаг — добавить IIKO_API_LOGIN в Supabase Edge Functions / Vercel Environment.')
+      await load()
+    } catch (e) {
+      setIikoStatus(e.message || String(e))
+    } finally {
+      setIikoBusy(false)
+    }
+  }
+
+  function editIikoConnection(row) {
+    setIikoForm({
+      branch_id: row.branch_id || '',
+      organization_id: row.iiko_organization_id || '',
+      terminal_group_id: row.iiko_terminal_group_id || '',
+      sync_enabled: row.sync_enabled !== false
+    })
+    setSettingsTab('integrations')
+  }
+
+  async function toggleIikoConnection(row) {
+    setIikoStatus('')
+    const { error } = await supabase.from('iiko_sync_connections').update({ sync_enabled: !row.sync_enabled, updated_at: new Date().toISOString() }).eq('id', row.id)
+    if (error) setIikoStatus(error.message); else { setIikoStatus('Статус подключения обновлён'); await load() }
+  }
+
+  async function runIikoSync(row) {
+    setIikoStatus('')
+    setIikoBusy(true)
+    try {
+      const { data, error } = await supabase.functions.invoke('iiko-sync-sales', { body: { connectionId: row.id } })
+      if (error) throw error
+      setIikoStatus(data?.message || 'Синхронизация запущена.')
+      await load()
+    } catch (e) {
+      setIikoStatus((e && e.message) ? e.message : 'Edge Function iiko-sync-sales пока не развернута или вернула ошибку.')
+    } finally {
+      setIikoBusy(false)
+    }
+  }
+
+  return (
+    <section>
+      <section className="topbar"><div><h2>{t('settings_tab')}</h2><p>{t('settings_subtitle')}</p></div></section>
+      <div className="settings-tabs">
+        <button className={settingsTab === 'branches' ? 'active' : ''} onClick={() => setSettingsTab('branches')}>Настройки интерфейса и филиалов</button>
+        <button className={settingsTab === 'users' ? 'active' : ''} onClick={() => setSettingsTab('users')}>Пользователи</button>
+        <button className={settingsTab === 'voen' ? 'active' : ''} onClick={() => setSettingsTab('voen')}>Наши VOEN / юрлица</button>
+        <button className={settingsTab === 'backup' ? 'active' : ''} onClick={() => setSettingsTab('backup')}>Бэкап и очистка данных</button>
+        <button className={settingsTab === 'import' ? 'active' : ''} onClick={() => setSettingsTab('import')}>Импорт данных</button>
+        <button className={settingsTab === 'integrations' ? 'active' : ''} onClick={() => setSettingsTab('integrations')}>Интеграции</button>
+      </div>
+      <section className="grid">
+        {settingsTab === 'branches' && <>
+          <div className="card span-2"><h3>Настройки интерфейса и филиалов</h3><p className="hint">Тема интерфейса и service charge филиалов.</p></div>
+          <div className="card span-2"><div className="card-head"><h3>Интерфейс</h3></div><p className="hint">Добавлен новый светлый Dashboard-вариант, визуально ближе к присланным референсам.</p><div className="form-grid compact"><label><span>Вид интерфейса</span><select value={theme} onChange={e => updateTheme(e.target.value)}>{THEMES.map(th => <option key={th.id} value={th.id}>{th.name}</option>)}</select></label></div>{msg && <p className={`hint ${msg === t('saved') || String(msg).toLowerCase().includes('сохран') ? 'save-status' : 'good'}`}>{msg}</p>}</div>
+          <div className="card span-2"><div className="card-head"><div><h3>Лого стартовой страницы</h3><p className="hint">Теперь можно самостоятельно загрузить логотип без правки кода. Сохраняется в Supabase, а локально используется как быстрый кэш.</p></div></div><div className="logo-uploader"><div className="logo-preview-wrap">{customLogoPreview ? <img src={customLogoPreview} alt="Предпросмотр лого" /> : <div className="empty-logo">LOGO</div>}<div><b>Предпросмотр</b><p className="hint">Файл будет автоматически сжат под стартовую страницу. Лучше использовать PNG/SVG на прозрачном фоне.</p></div></div><div className="form-grid compact"><label><span>Выбрать файл</span><input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" onChange={handleCustomLogoSelect} /></label></div><div className="action-row"><button className="small primary" onClick={saveCustomLogo}>Сохранить лого</button><button className="ghost small" onClick={removeCustomLogo}>Удалить лого</button></div></div></div>
+          <div className="card span-2">
+            <div className="card-head">
+              <div>
+                <h3>Статьи расходов</h3>
+                <p className="hint">Добавление и редактирование названий статей, которые используются в “Расходы за выбранную дату”.</p>
+              </div>
+              <button className="small primary" onClick={addExpenseCategory}>+ Добавить статью</button>
+            </div>
+            <div className="form-grid compact">
+              <label><span>Новая статья расходов</span><input value={newExpenseCategoryName} onChange={e => setNewExpenseCategoryName(e.target.value)} placeholder="Например: Ремонт, Базар, Упаковка" /></label>
+            </div>
+            <div className="table-wrap" style={{marginTop:12}}>
+              <table>
+                <thead><tr><th>Название статьи</th><th>Активна</th></tr></thead>
+                <tbody>
+                  {expenseCategories.map(c => <tr key={c.id}>
+                    <td><input defaultValue={c.name} onBlur={e => updateExpenseCategory(c.id, { name: e.target.value })} /></td>
+                    <td><select value={String(c.is_active !== false)} onChange={e => updateExpenseCategory(c.id, { is_active: e.target.value === 'true' })}><option value="true">Да</option><option value="false">Нет</option></select></td>
+                  </tr>)}
+                  {!expenseCategories.length && <tr><td colSpan="2" className="hint">Статей расходов пока нет.</td></tr>}
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div className="card span-2"><div className="card-head"><div><h3>Настройка service charge филиала</h3><p className="hint">Выберите филиал и один раз включите service charge. В разделе “Выручка” сумма для персонала будет считаться автоматически в конце строки.</p></div><button className="small primary" onClick={saveBranchServiceSettings}>Сохранить</button></div><div className="form-grid compact"><label><span>Филиал</span><select value={serviceBranchId} onChange={e => setServiceBranchId(e.target.value)}>{branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label><label className="checkbox-row"><input type="checkbox" checked={serviceSettings.enabled} onChange={e => setServiceSettings(s => ({...s, enabled: e.target.checked}))} /> Учитывать service charge</label><MoneyInput label="Service charge % в счёте" value={serviceSettings.service_percent} onChange={v => setServiceSettings(s => ({...s, service_percent: v}))} /><MoneyInput label="% затрат персоналу от базы" value={serviceSettings.staff_cost_percent} onChange={v => setServiceSettings(s => ({...s, staff_cost_percent: v}))} /></div></div>
+
+          <div className="card span-2"><div className="card-head"><div><h3>Арендная плата для прогноза</h3><p className="hint">Эти суммы не добавляются в расходы дня. Они используются только в прогнозе месяца, чтобы аренда учитывалась сразу, даже если фактическую строку аренды ещё не внесли.</p></div><button className="small primary" onClick={saveBranchRentSettings}>Сохранить аренду</button></div><div className="table-wrap"><table><thead><tr><th>Филиал</th><th>Аренда / месяц, AZN</th></tr></thead><tbody>{branches.map(b => <tr key={b.id}><td><b>{b.name}</b></td><td><MoneyInput label="" value={branchRentSettings?.[b.id] || ''} onChange={v => setBranchRentSettings(prev => ({ ...prev, [b.id]: v }))} /></td></tr>)}</tbody></table></div><p className="hint">Если аренда здесь заполнена, прогноз использует её. Если нет — берёт аренду из текущего месяца, а если её ещё нет — среднее прошлых месяцев.</p></div>
+        </>}
+
+        {settingsTab === 'users' && <>
+          <div className="card span-2"><h3>Пользователи</h3><p className="hint">Добавление пользователей и права доступа.</p></div>
+          <div className="card span-2"><div className="card-head"><h3>Добавить пользователя</h3></div><p className="hint">Пользователь входит по login. Система создаёт внутренний email вида login@rms.local.az, поэтому email-рассылка не используется.</p><div className="form-grid compact"><label><span>Login</span><input value={newUser.login} onChange={e => setNewUser({...newUser, login: e.target.value})} placeholder="" /></label><label><span>Временный пароль</span><input type="password" value={newUser.password} onChange={e => setNewUser({...newUser, password: e.target.value})} /></label><label><span>Имя</span><input value={newUser.full_name} onChange={e => setNewUser({...newUser, full_name: e.target.value})} /></label></div><button className="small" onClick={addUser}>+ Добавить пользователя</button>{msg && <p className={`hint ${msg === t('saved') || String(msg).toLowerCase().includes('сохран') ? 'save-status' : 'good'}`}>{msg}</p>}</div>
+          <div className="card span-2"><div className="card-head"><h3>Права доступа</h3></div><p className="hint">Внутренние пользователи RMS входят по login/password без Supabase Auth. Раздел с доступом “Нет доступа” полностью скрывается из меню.</p><div className="table-wrap"><table><thead><tr><th>Пользователь</th><th>Login</th><th>Активен</th><th>Пароль</th><th>Зарплаты</th><th>Разделы</th><th>Действия</th></tr></thead><tbody>{users.map(u => <tr key={u.id}><td><b>{u.full_name || u.login_name || u.id}</b></td><td><span className="hint">{u.login_name || (u.email || '').split('@')[0] || u.id}</span></td><td><select value={String(u.is_active !== false)} onChange={e => updateUser(u.id, { is_active: e.target.value === 'true' })}><option value="true">Да</option><option value="false">Нет</option></select></td><td><div className="inline-edit"><input type="password" value={passwordEdits[u.id] || ''} onChange={e => setPasswordEdits(p => ({...p, [u.id]: e.target.value}))} placeholder="Новый пароль" /><button className="small" onClick={() => changeUserPassword(u.id, u.login_name || (u.email || '').split('@')[0])}>Изменить</button></div></td><td><label className="checkbox-row"><input type="checkbox" checked={Boolean(u.hide_manager_salary)} onChange={e => updateUser(u.id, { hide_manager_salary: e.target.checked })} /> Скрыть зарплаты менеджеров</label></td><td><div className="permission-grid">{editableSections.map(sec => <React.Fragment key={`${u.id}-${sec.id}`}><b>{t(sec.key)}</b><select value={getPermission(u.id, sec.id)} onChange={e => updatePermission(u.id, sec.id, e.target.value)}><option value="none">Нет доступа</option><option value="read">Readonly</option><option value="edit">Editor</option></select></React.Fragment>)}</div></td><td>{u.rms_internal ? <button className="small danger" onClick={() => deleteUser(u)}>Удалить</button> : <span className="hint">admin</span>}</td></tr>)}</tbody></table></div></div>
+        </>}
+
+        {settingsTab === 'voen' && <div className="card span-2"><div className="card-head"><h3>Наши VOEN / юрлица</h3></div><p className="hint">Используются в разделе “Поставщики”.</p><div className="form-grid compact"><label><span>Имя / компания</span><input value={legalForm.name} onChange={e => setLegalForm({...legalForm, name: e.target.value})} placeholder="Ruslan Rasulov" /></label><label><span>VOEN</span><input value={legalForm.voen} onChange={e => setLegalForm({...legalForm, voen: e.target.value})} /></label></div><button className="small" onClick={addLegalEntity}>+ Добавить VOEN</button>{msg && <p className={`hint ${msg === t('saved') || String(msg).toLowerCase().includes('сохран') ? 'save-status' : 'good'}`}>{msg}</p>}<div className="table-wrap" style={{marginTop:12}}><table><thead><tr><th>Имя / компания</th><th>VOEN</th><th>Активен</th></tr></thead><tbody>{legalEntities.map(le => <tr key={le.id}><td><input defaultValue={le.name} onBlur={e => updateLegalEntity(le.id, { name: e.target.value.trim() })} /></td><td><input defaultValue={le.voen} onBlur={e => updateLegalEntity(le.id, { voen: e.target.value.trim() })} /></td><td><select defaultValue={String(le.is_active !== false)} onChange={e => updateLegalEntity(le.id, { is_active: e.target.value === 'true' })}><option value="true">Да</option><option value="false">Нет</option></select></td></tr>)}{!legalEntities.length && <tr><td colSpan="3" className="hint">—</td></tr>}</tbody></table></div></div>}
+
+        {settingsTab === 'backup' && <>
+          <div className="card span-2">
+            <div className="card-head">
+              <div>
+                <h3>Полный бэкап RMS</h3>
+                <p className="hint">Скачивает один JSON-файл для восстановления RMS-данных: справочники, филиалы, сотрудники, пользователи, права, выручка, расходы, поставщики, техкарты, зарплаты, AIKO-отчёты, скрытые позиции, alias, лого и настройки.</p>
+              </div>
+              <button type="button" className="small primary" disabled={backupBusy} onClick={exportFullRmsBackup}>{backupBusy ? 'Выполняется...' : 'Скачать полный бэкап RMS'}</button>
+            </div>
+            <div className="notice">
+              <b>Для полного восстановления</b>
+              <p className="hint">Этот файл восстанавливает данные RMS в Supabase. Код проекта GitHub, Vercel env-переменные и домен нужно хранить отдельно, потому что браузер не имеет безопасного доступа к GitHub/Vercel-токенам.</p>
+            </div>
+            <div className="form-grid compact">
+              <label><span>Восстановить полный RMS-бэкап</span><input type="file" accept="application/json,.json" disabled={backupBusy} onChange={importFullRmsBackup} /></label>
+            </div>
+            <p className="hint">Перед восстановлением система попросит ввести ВОССТАНОВИТЬ. Текущие данные будут очищены и заменены данными из файла.</p>
+          </div>
+
+          <div className="card span-2">
+            <div className="card-head">
+              <div>
+                <h3>Операционный бэкап и очистка</h3>
+                <p className="hint">Операционный бэкап сохраняет только рабочие движения: выручка, расходы, касса, поступления/оплаты поставщиков, авансы, выплаты зарплаты, табель и журналы. Справочники остаются.</p>
+              </div>
+            </div>
+            <div className="form-grid compact">
+              <label><span>Операционный бэкап</span><button type="button" className="small" disabled={backupBusy} onClick={exportBackup}>{backupBusy ? 'Выполняется...' : 'Скачать операционный JSON'}</button></label>
+              <label><span>Восстановить операционный бэкап</span><input type="file" accept="application/json,.json" disabled={backupBusy} onChange={importBackup} /></label>
+              <label><span>Очистка</span><input value={clearConfirm} onChange={e => setClearConfirm(e.target.value)} placeholder="Введите ОЧИСТИТЬ" /></label>
+            </div>
+            <button type="button" className="danger" disabled={backupBusy} onClick={clearOperationalData}>Очистить всю операционную информацию</button>
+            <p className="hint">Перед очисткой сначала скачай полный бэкап RMS.</p>
+            {msg && <p className={`hint ${msg === t('saved') || String(msg).toLowerCase().includes('сохран') ? 'save-status' : 'good'}`}>{msg}</p>}
+          </div>
+        </>}
+
+        {settingsTab === 'integrations' && <>
+          <div className="card span-2">
+            <div className="card-head">
+              <div>
+                <h3>Интеграции → iiko</h3>
+                <p className="hint">Внутри RMS можно управлять филиалами, соответствиями iiko, ручной синхронизацией и журналом. Секретные ключи остаются только на стороне Supabase Edge Function.</p>
+              </div>
+              <button className="small" disabled={iikoBusy} onClick={checkIikoBackend}>{iikoBusy ? 'Проверка...' : 'Проверить backend'}</button>
+            </div>
+            <div className="mini-grid">
+              <div className="metric"><span>В RMS</span><strong>Филиалы, sync, логи</strong></div>
+              <div className="metric"><span>В Supabase</span><strong>Secrets + Edge Function</strong></div>
+              <div className="metric"><span>Безопасность</span><strong>Ключи не во frontend</strong></div>
+            </div>
+            <div className="notice">
+              <b>Что можно делать внутри программы</b>
+              <p className="hint">Сохранять связку филиала RMS с iiko organization_id / terminal_group_id, включать или отключать синхронизацию, запускать ручную проверку подключения, запускать синхронизацию за период и смотреть журнал ошибок.</p>
+              <b>Что обязательно на стороне Supabase</b>
+              <p className="hint">Выполнить SQL-миграцию, создать Edge Function <b>iiko-sync-sales</b> и добавить secrets: <b>IIKO_API_LOGIN</b>, <b>SUPABASE_URL</b>, <b>SUPABASE_SERVICE_ROLE_KEY</b>. Service role key нельзя добавлять в main.jsx.</p>
+            </div>
+            {iikoStatus && <p className={String(iikoStatus).toLowerCase().includes('ошиб') || String(iikoStatus).toLowerCase().includes('error') || String(iikoStatus).toLowerCase().includes('missing') ? 'hint bad' : 'hint good'}>{iikoStatus}</p>}
+          </div>
+
+          <div className="card span-2">
+            <div className="card-head">
+              <div>
+                <h3>Связка филиала RMS с iiko</h3>
+                <p className="hint">Сначала заполните шапку подключения. API login здесь не вводится: он хранится в Supabase Secrets.</p>
+              </div>
+              <button className="small primary" disabled={iikoBusy} onClick={saveIikoConnection}>{iikoBusy ? 'Сохранение...' : 'Сохранить подключение'}</button>
+            </div>
+            <div className="form-grid compact">
+              <label><span>Филиал RMS</span><select value={iikoForm.branch_id || branches[0]?.id || ''} onChange={e => setIikoForm(prev => ({ ...prev, branch_id: e.target.value }))}>{branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label>
+              <label><span>iiko organization_id</span><input value={iikoForm.organization_id} onChange={e => setIikoForm(prev => ({ ...prev, organization_id: e.target.value }))} placeholder="ID организации из iikoCloud" /></label>
+              <label><span>iiko terminal_group_id</span><input value={iikoForm.terminal_group_id} onChange={e => setIikoForm(prev => ({ ...prev, terminal_group_id: e.target.value }))} placeholder="Опционально" /></label>
+              <label className="checkbox-row"><input type="checkbox" checked={iikoForm.sync_enabled !== false} onChange={e => setIikoForm(prev => ({ ...prev, sync_enabled: e.target.checked }))} /> Автосинхронизация включена</label>
+            </div>
+          </div>
+
+          <div className="card span-2">
+            <div className="card-head">
+              <div>
+                <h3>Ручная синхронизация</h3>
+                <p className="hint">Выберите период и нажмите “Синхронизировать” напротив нужного филиала. Сейчас функция готова к проверке подключения; реальная OLAP-загрузка продаж подключается следующим этапом.</p>
+              </div>
+            </div>
+            <div className="form-grid compact">
+              <label><span>Дата с</span><input type="date" value={iikoSyncForm.period_from} onChange={e => setIikoSyncForm(prev => ({ ...prev, period_from: e.target.value }))} /></label>
+              <label><span>Дата по</span><input type="date" value={iikoSyncForm.period_to} onChange={e => setIikoSyncForm(prev => ({ ...prev, period_to: e.target.value }))} /></label>
+            </div>
+          </div>
+
+          <div className="card span-2">
+            <div className="card-head"><h3>Подключенные филиалы</h3></div>
+            <div className="table-wrap">
+              <table>
+                <thead><tr><th>Филиал</th><th>Organization ID</th><th>Terminal Group ID</th><th>Статус</th><th>Последняя синхронизация</th><th>Действия</th></tr></thead>
+                <tbody>
+                  {iikoConnections.map(row => <tr key={row.id}>
+                    <td><b>{row.branches?.name || branches.find(b => b.id === row.branch_id)?.name || row.branch_id}</b></td>
+                    <td>{row.iiko_organization_id}</td>
+                    <td>{row.iiko_terminal_group_id || '—'}</td>
+                    <td>{row.sync_enabled ? 'Активно' : 'Отключено'}</td>
+                    <td>{row.last_sync_at ? new Date(row.last_sync_at).toLocaleString('ru-RU') : '—'}</td>
+                    <td><div className="action-row"><button className="small" onClick={() => editIikoConnection(row)}>Редактировать</button><button className="small" onClick={() => toggleIikoConnection(row)}>{row.sync_enabled ? 'Отключить' : 'Включить'}</button><button className="small" disabled={iikoBusy} onClick={() => testIikoConnection(row)}>Проверить</button><button className="small primary" disabled={iikoBusy} onClick={() => runIikoSync(row)}>Синхронизировать</button></div></td>
+                  </tr>)}
+                  {!iikoConnections.length && <tr><td colSpan="6" className="hint">Подключений пока нет. Сначала выполните SQL-миграцию и сохраните первый филиал.</td></tr>}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className="card span-2">
+            <div className="card-head"><h3>Журнал iiko sync</h3><button className="small" onClick={load}>Обновить</button></div>
+            <div className="table-wrap"><table><thead><tr><th>Дата</th><th>Статус</th><th>Период</th><th>Строк</th><th>Сумма</th><th>Комментарий</th></tr></thead><tbody>{iikoSyncLogs.map(log => <tr key={log.id}><td>{log.created_at ? new Date(log.created_at).toLocaleString('ru-RU') : '—'}</td><td>{log.status}</td><td>{log.period_from || '—'} — {log.period_to || '—'}</td><td>{log.rows_count || 0}</td><td>{fmt(log.total_amount || 0)}</td><td>{log.error_message || log.message || '—'}</td></tr>)}{!iikoSyncLogs.length && <tr><td colSpan="6" className="hint">Логов синхронизации пока нет.</td></tr>}</tbody></table></div>
+          </div>
+        </>}
+
+        {settingsTab === 'import' && <>
+          <div className="card span-2"><div className="card-head"><div><h3>Импорт сотрудников</h3><p className="hint">Импортирует только постоянные данные: филиал, должность, имя сотрудника и оклад. Начисления, авансы, остатки и рабочие дни не импортируются.</p></div><button className="small primary" disabled={employeeImportBusy || !employeeImportRows.length} onClick={importEmployeesToRms}>{employeeImportBusy ? 'Импорт...' : 'Импортировать сотрудников'}</button></div><div className="form-grid compact"><label><span>CSV / TXT файл</span><input type="file" accept=".csv,.txt,text/csv,text/plain" disabled={employeeImportBusy} onChange={handleEmployeeImportFile} /></label><label><span>Распознать вставленный текст</span><button type="button" className="small" disabled={employeeImportBusy} onClick={() => parseEmployeeImport()}>Распознать</button></label></div><label><span>Вставить список сотрудников</span><textarea rows="8" value={employeeImportText} onChange={e => { setEmployeeImportText(e.target.value); setEmployeeImportReport(null) }} placeholder={"branch,position,name,salary\nB1-Xaqani,Повар,Элвин,700"} /></label><div className="mini-grid"><div className="metric"><span>Распознано</span><strong>{employeeImportRows.length}</strong></div><div className="metric"><span>Будет импортировано</span><strong>{employeeImportRows.length}</strong></div><div className="metric"><span>Режим</span><strong>Сотрудники</strong></div></div>{msg && <p className={`hint ${msg === t('saved') || String(msg).toLowerCase().includes('сохран') ? 'save-status' : 'good'}`}>{msg}</p>}{employeeImportReport?.errors?.length > 0 && <div className="notice"><b>Ошибки / предупреждения</b>{employeeImportReport.errors.slice(0, 12).map((e, i) => <p key={i} className="bad">{e}</p>)}{employeeImportReport.errors.length > 12 && <p className="hint">Показаны первые 12 ошибок из {employeeImportReport.errors.length}</p>}</div>}{employeeImportRows.length > 0 && <div className="table-wrap" style={{marginTop:12}}><table><thead><tr><th>Филиал</th><th>Должность</th><th>Сотрудник</th><th>Оклад</th></tr></thead><tbody>{employeeImportRows.slice(0, 80).map((r, idx) => <tr key={`${r.line}-${idx}`}><td>{r.branch}</td><td>{r.position}</td><td><b>{r.name}</b></td><td>{fmt(r.salary)}</td></tr>)}{employeeImportRows.length > 80 && <tr><td colSpan="4" className="hint">Показаны первые 80 строк из {employeeImportRows.length}</td></tr>}</tbody></table></div>}<p className="hint">Если сотрудник уже есть в этом филиале, будут обновлены должность и оклад. Если сотрудника нет — он будет создан.</p></div>
+
+          <div className="card span-2">
+            <div className="card-head">
+              <div>
+                <h3>Импорт посещаемости</h3>
+                <p className="hint">Импортирует табель по дням за выбранный месяц в employee_attendance и пересчитывает salary_periods. Сотрудники должны уже существовать в RMS.</p>
+              </div>
+              <button className="small primary" disabled={attendanceImportBusy || !attendanceImportRows.length} onClick={importAttendanceToRms}>{attendanceImportBusy ? 'Импорт...' : 'Импортировать посещаемость'}</button>
+            </div>
+            <div className="form-grid compact">
+              <label><span>Год</span><input value={attendanceImportYear} onChange={e => setAttendanceImportYear(e.target.value)} /></label>
+              <label><span>Месяц</span><select value={attendanceImportMonth} onChange={e => setAttendanceImportMonth(e.target.value)}>{I18N.ru.months.map((m, idx) => <option key={m} value={idx + 1}>{m}</option>)}</select></label>
+              <label><span>CSV / TXT файл</span><input type="file" accept=".csv,.txt,text/csv,text/plain" disabled={attendanceImportBusy} onChange={handleAttendanceImportFile} /></label>
+              <label><span>Распознать вставленный текст</span><button type="button" className="small" disabled={attendanceImportBusy} onClick={() => parseAttendanceImport()}>Распознать табель</button></label>
+            </div>
+            <label><span>Вставить табель посещаемости</span><textarea rows="8" value={attendanceImportText} onChange={e => { setAttendanceImportText(e.target.value); setAttendanceImportReport(null) }} placeholder={"branch,position,name,day_1,day_2,...,day_31,worked_days\nB1-Xaqani,Повар,Элвин,1,1,0,...,25"} /></label>
+            <div className="mini-grid">
+              <div className="metric"><span>Распознано</span><strong>{attendanceImportRows.length}</strong></div>
+              <div className="metric"><span>Месяц</span><strong>{I18N.ru.months[Number(attendanceImportMonth) - 1]} {attendanceImportYear}</strong></div>
+              <div className="metric"><span>Режим</span><strong>Посещаемость</strong></div>
+            </div>
+            {attendanceImportReport?.errors?.length > 0 && <div className="notice"><b>Ошибки / предупреждения</b>{attendanceImportReport.errors.slice(0, 12).map((e, i) => <p key={i} className="bad">{e}</p>)}{attendanceImportReport.errors.length > 12 && <p className="hint">Показаны первые 12 ошибок из {attendanceImportReport.errors.length}</p>}</div>}
+            {attendanceImportRows.length > 0 && <div className="table-wrap" style={{marginTop:12}}><table><thead><tr><th>Филиал</th><th>Должность</th><th>Сотрудник</th><th>Отработано дней</th><th>Дни 1–31</th></tr></thead><tbody>{attendanceImportRows.slice(0, 80).map((r, idx) => <tr key={`${r.line}-${idx}`}><td>{r.branch}</td><td>{r.position || '—'}</td><td><b>{r.name}</b></td><td>{fmt(r.workedDays)}</td><td>{r.days.map((v, i) => v ? `${i + 1}:${v}` : '').filter(Boolean).join(' · ')}</td></tr>)}{attendanceImportRows.length > 80 && <tr><td colSpan="5" className="hint">Показаны первые 80 строк из {attendanceImportRows.length}</td></tr>}</tbody></table></div>}
+            <p className="hint">Импорт посещаемости сначала очищает значения по сотруднику за дни выбранного месяца, затем загружает новые 1 / 0.5 / 0 и обновляет расчёт зарплаты.</p>
+
+          <div className="card span-2">
+            <div className="card-head">
+              <div>
+                <h3>Импорт авансов</h3>
+                <p className="hint">Импортирует суммы авансов в salary_advances и пересчитывает salary_periods за выбранный месяц. По умолчанию сумма ставится последним днём месяца.</p>
+              </div>
+              <button className="small primary" disabled={advanceImportBusy || !advanceImportRows.length} onClick={importAdvancesToRms}>{advanceImportBusy ? 'Импорт...' : 'Импортировать авансы'}</button>
+            </div>
+            <div className="form-grid compact">
+              <label><span>Год</span><input value={advanceImportYear} onChange={e => setAdvanceImportYear(e.target.value)} /></label>
+              <label><span>Месяц</span><select value={advanceImportMonth} onChange={e => setAdvanceImportMonth(e.target.value)}>{I18N.ru.months.map((m, idx) => <option key={m} value={idx + 1}>{m}</option>)}</select></label>
+              <label><span>CSV / TXT файл</span><input type="file" accept=".csv,.txt,text/csv,text/plain" disabled={advanceImportBusy} onChange={handleAdvanceImportFile} /></label>
+              <label><span>Распознать вставленный текст</span><button type="button" className="small" disabled={advanceImportBusy} onClick={() => parseAdvanceImport()}>Распознать авансы</button></label>
+            </div>
+            <label><span>Вставить авансы</span><textarea rows="8" value={advanceImportText} onChange={e => { setAdvanceImportText(e.target.value); setAdvanceImportReport(null) }} placeholder={"branch,name,advance_date,amount,comment\nB1-Xaqani,Элвин,2026-04-30,250,Импорт авансов"} /></label>
+            <div className="mini-grid">
+              <div className="metric"><span>Распознано</span><strong>{advanceImportRows.length}</strong></div>
+              <div className="metric"><span>Сумма</span><strong>{fmt(advanceImportRows.reduce((s, r) => s + parseNum(r.amount), 0))}</strong></div>
+              <div className="metric"><span>Режим</span><strong>Авансы</strong></div>
+            </div>
+            {advanceImportReport?.errors?.length > 0 && <div className="notice"><b>Ошибки / предупреждения</b>{advanceImportReport.errors.slice(0, 12).map((e, i) => <p key={i} className={String(e).startsWith('Создан') ? 'hint' : 'bad'}>{e}</p>)}{advanceImportReport.errors.length > 12 && <p className="hint">Показаны первые 12 ошибок из {advanceImportReport.errors.length}</p>}</div>}
+            {advanceImportRows.length > 0 && <div className="table-wrap" style={{marginTop:12}}><table><thead><tr><th>Филиал</th><th>Сотрудник</th><th>Дата</th><th>Аванс</th></tr></thead><tbody>{advanceImportRows.slice(0, 80).map((r, idx) => <tr key={`${r.line}-${idx}`}><td>{r.branch}</td><td><b>{r.name}</b></td><td>{r.advanceDate || `${advanceImportYear}-${String(advanceImportMonth).padStart(2, '0')}-${String(daysInMonth(advanceImportYear, advanceImportMonth)).padStart(2, '0')}`}</td><td>{fmt(r.amount)}</td></tr>)}{advanceImportRows.length > 80 && <tr><td colSpan="4" className="hint">Показаны первые 80 строк из {advanceImportRows.length}</td></tr>}</tbody></table></div>}
+            <p className="hint">При повторном импорте старые строки “Импорт авансов...” за эту дату отменяются, чтобы не было дублей.</p>
+          </div>
+          </div>
+        </>}      </section>
+    </section>
+  )
+}
+
+
+function Placeholder({ title, t }) {
+  return <section><section className="topbar"><div><h2>{title}</h2></div></section><div className="module-placeholder"><h2>{title}</h2><p>{t('module_coming')}</p></div></section>
+}
+
+function MoneyInput({ label, value, onChange, disabled = false }) {
+  const [local, setLocal] = useState(value ?? '')
+  useEffect(() => setLocal(value ?? ''), [value])
+  return <label><span>{label}</span><input inputMode="decimal" value={local} disabled={disabled} onChange={e => setLocal(e.target.value)} onBlur={() => onChange(local)} /></label>
+}
+
+function Metric({ label, value }) {
+  return <div className="metric"><span>{label}</span><strong>{value}</strong></div>
+}
+
+function SummaryMetric({ label, value }) {
+  return <div className="revenue-summary-row"><span>{label}</span><strong>{value}</strong></div>
+}
+
+
+function RMSProV9Styles() {
+  return <style>{`
+    /* RMS Pro UI v13 — confirmed chart KPI design and clean financial rows */
+    .rms-pro-shell .rms-pro-topbar-title{
+      display:flex!important;
+      align-items:center!important;
+      gap:16px!important;
+      min-height:42px!important;
+    }
+    .rms-pro-shell .rms-pro-back{
+      width:38px!important;
+      height:38px!important;
+      min-width:38px!important;
+      border-radius:12px!important;
+      display:inline-flex!important;
+      align-items:center!important;
+      justify-content:center!important;
+      padding:0!important;
+      margin:0!important;
+      color:#10233f!important;
+      background:rgba(255,255,255,.72)!important;
+      border:1px solid rgba(203,213,225,.82)!important;
+      box-shadow:0 10px 24px rgba(15,23,42,.04)!important;
+      line-height:1!important;
+      transform:none!important;
+    }
+    .rms-pro-shell .rms-pro-back svg{width:20px!important;height:20px!important;display:block!important;}
+    .rms-pro-shell .rms-pro-back:hover{background:#fff!important;border-color:rgba(148,163,184,.82)!important;box-shadow:0 14px 30px rgba(15,23,42,.07)!important;transform:none!important;}
+
+    .rms-pro-shell .rms-pro-nav-item:hover,
+    .rms-pro-shell .rms-pro-nav-item.active,
+    .rms-pro-shell .rms-pro-nav-item:focus-visible,
+    .rms-pro-shell .rms-pro-nav-item.nav:hover,
+    .rms-pro-shell .rms-pro-nav-item.nav.active,
+    .rms-pro-shell .rms-pro-nav-item.nav:focus-visible{
+      background:linear-gradient(90deg,rgba(255,255,255,.105),rgba(255,255,255,.055))!important;
+      border-color:rgba(148,163,184,.20)!important;
+      color:#f8fbff!important;
+      box-shadow:none!important;
+      transform:none!important;
+    }
+    .rms-pro-shell .rms-pro-nav-item.active .rms-pro-nav-icon,
+    .rms-pro-shell .rms-pro-nav-item:hover .rms-pro-nav-icon{background:rgba(255,255,255,.075)!important;color:#eaf2ff!important;}
+
+    .rms-pro-shell .card .metric,
+    .rms-pro-shell .module-placeholder .metric,
+    .rms-pro-shell .mini-grid .metric{
+      min-height:44px!important;
+      display:flex!important;
+      align-items:center!important;
+      justify-content:space-between!important;
+      gap:18px!important;
+      padding:11px 0!important;
+      margin:0!important;
+      border:0!important;
+      border-bottom:1px solid rgba(226,232,240,.92)!important;
+      border-radius:0!important;
+      background:transparent!important;
+      box-shadow:none!important;
+    }
+    .rms-pro-shell .card .metric:last-child,
+    .rms-pro-shell .module-placeholder .metric:last-child,
+    .rms-pro-shell .mini-grid .metric:last-child{border-bottom:0!important;}
+    .rms-pro-shell .card .metric span,
+    .rms-pro-shell .module-placeholder .metric span,
+    .rms-pro-shell .mini-grid .metric span{color:#475569!important;font-size:15px!important;line-height:1.35!important;font-weight:560!important;letter-spacing:-.015em!important;}
+    .rms-pro-shell .card .metric strong,
+    .rms-pro-shell .module-placeholder .metric strong,
+    .rms-pro-shell .mini-grid .metric strong{color:#061328!important;font-size:16px!important;line-height:1!important;font-weight:850!important;font-variant-numeric:tabular-nums!important;letter-spacing:-.018em!important;white-space:nowrap!important;}
+    .rms-pro-shell .mini-grid{gap:0!important;}
+    .rms-pro-shell .mini-grid .metric{padding:13px 0!important;}
+
+    .rms-pro-shell .finance-line-chart-wrap{
+      padding:22px 30px 26px!important;
+      border-radius:24px!important;
+      background:linear-gradient(180deg,#ffffff 0%,#fbfdff 100%)!important;
+      border:1px solid rgba(226,232,240,.92)!important;
+      box-shadow:0 20px 44px rgba(15,23,42,.035)!important;
+    }
+    .rms-pro-shell .finance-line-chart-svg{height:330px!important;display:block!important;width:100%!important;}
+    .rms-pro-shell .finance-line-chart-line{stroke:#2563eb!important;stroke-width:2.45!important;stroke-linecap:round!important;stroke-linejoin:round!important;fill:none!important;}
+    .rms-pro-shell .finance-line-chart-area{fill:url(#financeDailyRevenueGradient)!important;}
+    .rms-pro-shell .finance-line-chart-point,
+    .rms-pro-shell .finance-line-chart-best-point{display:none!important;}
+    .rms-pro-shell .finance-line-chart-grid{stroke:rgba(148,163,184,.26)!important;stroke-width:1!important;stroke-dasharray:4 6!important;}
+    .rms-pro-shell .finance-line-chart-axis{stroke:rgba(148,163,184,.30)!important;stroke-width:1!important;}
+    .rms-pro-shell .finance-line-chart-label{fill:#0f1b33!important;font-size:13px!important;font-weight:780!important;}
+    .rms-pro-shell .finance-line-chart-x-label{fill:#13223a!important;font-size:11.5px!important;font-weight:740!important;}
+    .rms-pro-shell .finance-line-chart-guide{stroke:rgba(148,163,184,.28)!important;stroke-width:1!important;stroke-dasharray:4 6!important;}
+    .rms-pro-shell .finance-line-chart-tooltip-box{fill:#fff!important;stroke:rgba(226,232,240,.98)!important;filter:drop-shadow(0 12px 20px rgba(15,23,42,.12))!important;}
+    .rms-pro-shell .finance-line-chart-tooltip-value{fill:#2563eb!important;font-size:14px!important;font-weight:900!important;letter-spacing:-.025em!important;}
+    .rms-pro-shell .finance-line-chart-tooltip-date{fill:#071327!important;font-size:11px!important;font-weight:800!important;}
+
+    .rms-pro-shell .finance-line-chart-summary{
+      display:grid!important;
+      grid-template-columns:repeat(5,minmax(0,1fr))!important;
+      gap:18px!important;
+      margin-top:22px!important;
+    }
+    .rms-pro-shell .finance-line-chart-summary .metric{
+      position:relative!important;
+      min-height:138px!important;
+      border-radius:18px!important;
+      border:1px solid rgba(203,213,225,.78)!important;
+      background:linear-gradient(180deg,#fff,#fbfdff)!important;
+      padding:18px 20px 20px!important;
+      display:grid!important;
+      grid-template-rows:auto 1fr auto!important;
+      align-items:start!important;
+      text-align:left!important;
+      gap:0!important;
+      box-shadow:0 16px 34px rgba(15,23,42,.045)!important;
+      transition:border-color .18s ease, box-shadow .18s ease!important;
+    }
+    .rms-pro-shell .finance-line-chart-summary .metric:hover{transform:none!important;box-shadow:0 18px 38px rgba(15,23,42,.06)!important;border-color:rgba(148,163,184,.58)!important;}
+    .rms-pro-shell .finance-line-chart-summary .metric::before{
+      width:34px!important;
+      height:34px!important;
+      border-radius:10px!important;
+      display:flex!important;
+      align-items:center!important;
+      justify-content:center!important;
+      color:#2563eb!important;
+      background:linear-gradient(180deg,#eef4ff,#dfeaff)!important;
+      font-size:18px!important;
+      font-weight:900!important;
+      line-height:1!important;
+      margin-bottom:12px!important;
+    }
+    .rms-pro-shell .finance-line-chart-summary .metric:nth-child(1)::before{content:'↗'!important;}
+    .rms-pro-shell .finance-line-chart-summary .metric:nth-child(2)::before{content:'▣'!important;font-size:15px!important;}
+    .rms-pro-shell .finance-line-chart-summary .metric:nth-child(3)::before{content:'♛'!important;color:#16a34a!important;background:linear-gradient(180deg,#dcfce7,#c8f5d8)!important;font-size:16px!important;}
+    .rms-pro-shell .finance-line-chart-summary .metric:nth-child(4)::before{content:'☆'!important;}
+    .rms-pro-shell .finance-line-chart-summary .metric:nth-child(5)::before{content:'↘'!important;color:#dc2626!important;background:linear-gradient(180deg,#fff1f2,#fee2e2)!important;}
+    .rms-pro-shell .finance-line-chart-summary .metric:nth-child(3){border-color:rgba(52,211,153,.78)!important;background:linear-gradient(180deg,#ffffff 0%,#f5fffa 100%)!important;box-shadow:0 0 0 1px rgba(52,211,153,.10),0 18px 38px rgba(15,23,42,.05)!important;}
+    .rms-pro-shell .finance-line-chart-summary .metric-title{
+      color:#071327!important;
+      font-size:15.5px!important;
+      line-height:1.22!important;
+      font-weight:850!important;
+      letter-spacing:-.025em!important;
+      margin:0!important;
+      text-align:left!important;
+      white-space:normal!important;
+    }
+    .rms-pro-shell .finance-line-chart-summary .metric-date{
+      margin-top:8px!important;
+      color:#16a34a!important;
+      font-size:15px!important;
+      line-height:1.1!important;
+      font-weight:850!important;
+      text-align:left!important;
+    }
+    .rms-pro-shell .finance-line-chart-summary .metric-weekday{
+      margin-top:8px!important;
+      color:#2563eb!important;
+      font-size:16px!important;
+      line-height:1.1!important;
+      font-weight:900!important;
+      text-align:left!important;
+    }
+    .rms-pro-shell .finance-line-chart-summary .metric-worst .metric-weekday,
+    .rms-pro-shell .finance-line-chart-summary .metric:nth-child(5) .metric-weekday{color:#dc2626!important;}
+    .rms-pro-shell .finance-line-chart-summary .metric-amount{
+      display:flex!important;
+      align-items:flex-end!important;
+      justify-content:flex-start!important;
+      gap:10px!important;
+      margin-top:18px!important;
+      line-height:1!important;
+      text-align:left!important;
+      width:100%!important;
+      align-self:end!important;
+      white-space:nowrap!important;
+    }
+    .rms-pro-shell .finance-line-chart-summary .metric-number{
+      color:#071327!important;
+      font-size:31px!important;
+      line-height:.94!important;
+      font-weight:900!important;
+      letter-spacing:-.055em!important;
+      font-variant-numeric:tabular-nums!important;
+      white-space:nowrap!important;
+    }
+    .rms-pro-shell .finance-line-chart-summary .metric:nth-child(3) .metric-number{color:#16a34a!important;}
+    .rms-pro-shell .finance-line-chart-summary .metric-currency{
+      color:#475569!important;
+      font-size:13px!important;
+      font-weight:780!important;
+      line-height:1!important;
+      padding-bottom:2px!important;
+      margin-left:1px!important;
+      white-space:nowrap!important;
+    }
+    .rms-pro-shell .finance-line-chart-summary .metric span,
+    .rms-pro-shell .finance-line-chart-summary .metric strong{white-space:normal!important;}
+    @media(max-width:1280px){.rms-pro-shell .finance-line-chart-summary .metric-number{font-size:28px!important;}.rms-pro-shell .finance-line-chart-summary .metric{padding:17px 18px 19px!important;}}
+    @media(max-width:1200px){.rms-pro-shell .finance-line-chart-summary{grid-template-columns:repeat(2,minmax(0,1fr))!important;}.rms-pro-shell .finance-line-chart-summary .metric{min-height:134px!important;}}
+    @media(max-width:760px){.rms-pro-shell .finance-line-chart-summary{grid-template-columns:1fr!important;}.rms-pro-shell .finance-line-chart-svg{height:260px!important;}.rms-pro-shell .finance-line-chart-summary .metric{min-height:124px!important;}}
+
+
+/* v19 — final KPI cards icon layout: icon is independent above the title, no inline text collision */
+.rms-pro-shell .finance-line-chart-summary .metric::before,
+.finance-line-chart-summary .metric::before{
+  content:none!important;
+  display:none!important;
+}
+.rms-pro-shell .finance-line-chart-summary .metric,
+.finance-line-chart-summary .metric{
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:flex-start!important;
+  justify-content:flex-start!important;
+  min-height:150px!important;
+  padding:18px 22px 20px!important;
+  gap:0!important;
+  text-align:left!important;
+}
+.rms-pro-shell .finance-line-chart-summary .finance-kpi-icon,
+.finance-line-chart-summary .finance-kpi-icon{
+  order:0!important;
+  width:34px!important;
+  height:34px!important;
+  min-width:34px!important;
+  flex:0 0 34px!important;
+  border-radius:10px!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  margin:0 0 12px 0!important;
+  padding:0!important;
+  color:#2563eb!important;
+  background:linear-gradient(180deg,#eef4ff,#dfeaff)!important;
+  font-size:17px!important;
+  font-weight:900!important;
+  line-height:1!important;
+  box-shadow:inset 0 0 0 1px rgba(37,99,235,.05)!important;
+  transform:none!important;
+}
+.rms-pro-shell .finance-line-chart-summary .metric-average .finance-kpi-icon,
+.finance-line-chart-summary .metric-average .finance-kpi-icon{
+  font-size:15px!important;
+}
+.rms-pro-shell .finance-line-chart-summary .metric-best-day .finance-kpi-icon,
+.finance-line-chart-summary .metric-best-day .finance-kpi-icon{
+  color:#16a34a!important;
+  background:linear-gradient(180deg,#dcfce7,#c8f5d8)!important;
+  font-size:16px!important;
+}
+.rms-pro-shell .finance-line-chart-summary .metric-worst .finance-kpi-icon,
+.finance-line-chart-summary .metric-worst .finance-kpi-icon{
+  color:#dc2626!important;
+  background:linear-gradient(180deg,#fff1f2,#fee2e2)!important;
+}
+.rms-pro-shell .finance-line-chart-summary .metric-copy,
+.finance-line-chart-summary .metric-copy{
+  order:1!important;
+  width:100%!important;
+  min-width:0!important;
+  display:block!important;
+  align-self:stretch!important;
+  margin:0!important;
+  padding:0!important;
+}
+.rms-pro-shell .finance-line-chart-summary .metric-title,
+.finance-line-chart-summary .metric-title{
+  margin:0!important;
+  color:#071327!important;
+  font-size:16px!important;
+  line-height:1.25!important;
+  font-weight:850!important;
+  letter-spacing:-.025em!important;
+  text-align:left!important;
+  white-space:normal!important;
+}
+.rms-pro-shell .finance-line-chart-summary .metric-date,
+.finance-line-chart-summary .metric-date{
+  margin-top:7px!important;
+  color:#16a34a!important;
+  font-size:16px!important;
+  line-height:1.1!important;
+  font-weight:900!important;
+  text-align:left!important;
+}
+.rms-pro-shell .finance-line-chart-summary .metric-weekday,
+.finance-line-chart-summary .metric-weekday{
+  margin-top:7px!important;
+  color:#2563eb!important;
+  font-size:16px!important;
+  line-height:1.1!important;
+  font-weight:900!important;
+  text-align:left!important;
+}
+.rms-pro-shell .finance-line-chart-summary .metric-worst .metric-weekday,
+.rms-pro-shell .finance-line-chart-summary .metric:nth-child(5) .metric-weekday,
+.finance-line-chart-summary .metric-worst .metric-weekday,
+.finance-line-chart-summary .metric:nth-child(5) .metric-weekday{
+  color:#dc2626!important;
+}
+.rms-pro-shell .finance-line-chart-summary .metric-amount,
+.finance-line-chart-summary .metric-amount{
+  order:2!important;
+  width:100%!important;
+  display:flex!important;
+  align-items:flex-end!important;
+  justify-content:flex-start!important;
+  gap:10px!important;
+  margin:0!important;
+  margin-top:auto!important;
+  padding-top:18px!important;
+  line-height:1!important;
+  white-space:nowrap!important;
+}
+.rms-pro-shell .finance-line-chart-summary .metric-number,
+.finance-line-chart-summary .metric-number{
+  color:#071327!important;
+  font-size:30px!important;
+  line-height:.95!important;
+  font-weight:900!important;
+  letter-spacing:-.055em!important;
+  font-variant-numeric:tabular-nums!important;
+  white-space:nowrap!important;
+}
+.rms-pro-shell .finance-line-chart-summary .metric-best-day .metric-number,
+.rms-pro-shell .finance-line-chart-summary .metric:nth-child(3) .metric-number,
+.finance-line-chart-summary .metric-best-day .metric-number,
+.finance-line-chart-summary .metric:nth-child(3) .metric-number{
+  color:#16a34a!important;
+}
+.rms-pro-shell .finance-line-chart-summary .metric-currency,
+.finance-line-chart-summary .metric-currency{
+  color:#475569!important;
+  font-size:13px!important;
+  font-weight:780!important;
+  line-height:1!important;
+  padding-bottom:3px!important;
+  margin-left:1px!important;
+  white-space:nowrap!important;
+}
+@media(max-width:1280px){
+  .rms-pro-shell .finance-line-chart-summary .metric,
+  .finance-line-chart-summary .metric{padding:17px 18px 19px!important;min-height:146px!important;}
+  .rms-pro-shell .finance-line-chart-summary .metric-number,
+  .finance-line-chart-summary .metric-number{font-size:28px!important;}
+}
+
+  `}</style>
+}
+
+createRoot(document.getElementById('root')).render(<App />)
