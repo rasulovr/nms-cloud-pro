@@ -2480,3 +2480,132 @@ button:not(.nav):not(.rms-pro-logout):hover{transform:translateY(-1px)!important
     grid-template-columns: 1fr;
   }
 }
+
+/* RMS Pro Dashboard v30 — distribute 7 KPI cards properly across real production width */
+.rms-executive-dashboard .dashboard-v29-kpis {
+  display: grid !important;
+  grid-template-columns: repeat(12, minmax(0, 1fr)) !important;
+  gap: 16px !important;
+  align-items: stretch !important;
+  width: 100% !important;
+  margin: 22px 0 24px !important;
+}
+
+.rms-executive-dashboard .dashboard-v29-kpis .dash-kpi {
+  grid-column: span 3 !important;
+  min-height: 154px !important;
+  padding: 20px 20px 18px !important;
+  border-radius: 24px !important;
+  display: grid !important;
+  grid-template-columns: 46px minmax(0, 1fr) !important;
+  gap: 15px !important;
+  align-items: start !important;
+  overflow: hidden !important;
+}
+
+.rms-executive-dashboard .dashboard-v29-kpis .dash-kpi:nth-child(n+5) {
+  grid-column: span 4 !important;
+}
+
+.rms-executive-dashboard .dashboard-v29-kpis .dash-kpi:before {
+  top: 24px !important;
+  bottom: 24px !important;
+  width: 4px !important;
+  border-radius: 99px !important;
+}
+
+.rms-executive-dashboard .dashboard-v29-kpis .dash-kpi-icon {
+  width: 46px !important;
+  height: 46px !important;
+  min-width: 46px !important;
+  border-radius: 16px !important;
+  font-size: 20px !important;
+  line-height: 1 !important;
+}
+
+.rms-executive-dashboard .dashboard-v29-kpis .dash-kpi > div {
+  min-width: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: flex-start !important;
+}
+
+.rms-executive-dashboard .dashboard-v29-kpis .dash-kpi em {
+  min-height: 0 !important;
+  margin: 1px 0 10px !important;
+  color: #667085 !important;
+  font-size: 12px !important;
+  line-height: 1.25 !important;
+  font-weight: 850 !important;
+  letter-spacing: .035em !important;
+  text-transform: uppercase !important;
+  white-space: normal !important;
+}
+
+.rms-executive-dashboard .dashboard-v29-kpis .dash-kpi strong {
+  display: flex !important;
+  align-items: baseline !important;
+  gap: 6px !important;
+  color: #06142d !important;
+  font-size: clamp(25px, 1.55vw, 32px) !important;
+  line-height: 1.02 !important;
+  font-weight: 850 !important;
+  letter-spacing: -0.045em !important;
+  white-space: nowrap !important;
+  max-width: 100% !important;
+  overflow: visible !important;
+}
+
+.rms-executive-dashboard .dashboard-v29-kpis .dash-kpi strong small {
+  flex: 0 0 auto !important;
+  display: inline-flex !important;
+  align-items: baseline !important;
+  margin-left: 2px !important;
+  transform: translateY(-1px) !important;
+  color: #40516c !important;
+  font-size: 13px !important;
+  line-height: 1 !important;
+  font-weight: 850 !important;
+  letter-spacing: .01em !important;
+}
+
+.rms-executive-dashboard .dashboard-v29-kpis .dash-kpi p {
+  margin: 12px 0 0 !important;
+  color: #667085 !important;
+  font-size: 13px !important;
+  line-height: 1.35 !important;
+  font-weight: 700 !important;
+  max-width: 100% !important;
+}
+
+.rms-executive-dashboard .dashboard-v29-kpis .dash-kpi p.good,
+.rms-executive-dashboard .dashboard-v29-kpis .dash-kpi p.bad {
+  font-weight: 850 !important;
+}
+
+@media (min-width: 2100px) {
+  .rms-executive-dashboard .dashboard-v29-kpis {
+    grid-template-columns: repeat(7, minmax(0, 1fr)) !important;
+  }
+  .rms-executive-dashboard .dashboard-v29-kpis .dash-kpi,
+  .rms-executive-dashboard .dashboard-v29-kpis .dash-kpi:nth-child(n+5) {
+    grid-column: span 1 !important;
+  }
+  .rms-executive-dashboard .dashboard-v29-kpis .dash-kpi strong {
+    font-size: clamp(22px, 1.2vw, 27px) !important;
+  }
+}
+
+@media (max-width: 1280px) {
+  .rms-executive-dashboard .dashboard-v29-kpis .dash-kpi,
+  .rms-executive-dashboard .dashboard-v29-kpis .dash-kpi:nth-child(n+5) {
+    grid-column: span 6 !important;
+  }
+}
+
+@media (max-width: 720px) {
+  .rms-executive-dashboard .dashboard-v29-kpis .dash-kpi,
+  .rms-executive-dashboard .dashboard-v29-kpis .dash-kpi:nth-child(n+5) {
+    grid-column: span 12 !important;
+  }
+}
