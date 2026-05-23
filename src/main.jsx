@@ -6135,7 +6135,7 @@ function Dashboard({ t }) {
     <section className="dashboard-v23-kpis">
       <div className="dash-kpi dash-kpi-blue"><span className="dash-kpi-icon">↗</span><div><em>Выручка за месяц</em><strong>{fmt(data.revenue)} <small>AZN</small></strong><p className={revenueChange >= 0 ? 'good' : 'bad'}>{revenueChange >= 0 ? '▲' : '▼'} {pct(Math.abs(revenueChange))} к прошлому месяцу</p></div></div>
       <div className="dash-kpi dash-kpi-green"><span className="dash-kpi-icon">▟</span><div><em>Чистая прибыль</em><strong>{fmt(data.net)} <small>AZN</small></strong><p className={profitChange >= 0 ? 'good' : 'bad'}>{profitChange >= 0 ? '▲' : '▼'} {pct(Math.abs(profitChange))} к прошлому месяцу</p></div></div>
-      <div className="dash-kpi dash-kpi-purple"><span className="dash-kpi-icon">▥</span><div><em>Операционные расходы</em><strong>{fmt(data.expenses)} <small>AZN</small></strong><p>{data.revenue ? pct(data.expenses / data.revenue * 100) : '0.0%'} от выручки</p></div></div>
+      <div className="dash-kpi dash-kpi-purple"><span className="dash-kpi-icon">▥</span><div><em>Расходы</em><strong>{fmt(data.expenses)} <small>AZN</small></strong><p>{data.revenue ? pct(data.expenses / data.revenue * 100) : '0.0%'} от выручки</p></div></div>
       <div className="dash-kpi dash-kpi-red"><span className="dash-kpi-icon">%</span><div><em>Рентабельность</em><strong>{pct(data.revenue ? data.net / data.revenue * 100 : 0)}</strong><p>маржа чистой прибыли</p></div></div>
       <div className="dash-kpi dash-kpi-wallet"><span className="dash-kpi-icon">▣</span><div><em>Денежный остаток</em><strong>{fmt(cashBalance)} <small>AZN</small></strong><p>наличные + банк</p></div></div>
     </section>
@@ -15337,6 +15337,29 @@ function Settings({ session, t, theme, setTheme }) {
   async function addExpenseCategory() {
     const name = newExpenseCategoryName.trim()
     if (!name) return setMsg('Введите название статьи расходов')
+
+    const { data: existingRows, error: findError } = await supabase
+      .from('expense_categories')
+      .select('id, name, is_active')
+      .ilike('name', name)
+      .limit(1)
+
+    if (findError) return setMsg(findError.message)
+
+    const existing = existingRows?.[0]
+    if (existing?.id) {
+      const { error: updateError } = await supabase
+        .from('expense_categories')
+        .update({ name, is_active: true })
+        .eq('id', existing.id)
+
+      if (updateError) return setMsg(updateError.message)
+      setNewExpenseCategoryName('')
+      await load()
+      setMsg(`Статья расходов “${name}” уже была в базе и активирована`)
+      return
+    }
+
     const { error } = await supabase.from('expense_categories').insert({ name, is_active: true })
     if (error) return setMsg(error.message)
     setNewExpenseCategoryName('')
