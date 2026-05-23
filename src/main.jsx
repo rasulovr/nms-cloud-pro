@@ -7339,6 +7339,7 @@ function Recipes({ t }) {
   const [semiEditDraft, setSemiEditDraft] = useState([])
   const [semiSearch, setSemiSearch] = useState('')
   const [selectedMenuId, setSelectedMenuId] = useState('')
+  const [techPreviewOpen, setTechPreviewOpen] = useState(false)
   const [finalMenuForm, setFinalMenuForm] = useState({ name: '', category: 'Кофе', sale_price: '', target_food_cost_percent: '30' })
   const [finalSearch, setFinalSearch] = useState('')
   const [techCardSearch, setTechCardSearch] = useState('')
@@ -7524,6 +7525,13 @@ function Recipes({ t }) {
   const finalCost = selectedFinalItems.reduce((sum, item) => sum + componentCost(item), 0)
   const finalSalePrice = parseNum(selectedMenu?.sale_price)
   const finalFoodCost = finalSalePrice > 0 ? (finalCost / finalSalePrice) * 100 : 0
+  const finalGrossProfit = finalSalePrice - finalCost
+  const finalMargin = finalSalePrice > 0 ? 100 - finalFoodCost : 0
+  const selectedFinalBreakdown = selectedFinalItems.reduce((acc, item) => {
+    const key = item.component_type === 'semi' ? 'Полуфабрикаты' : item.component_type === 'manual' ? 'Ручные компоненты' : 'Закупка'
+    acc[key] = (acc[key] || 0) + componentCost(item)
+    return acc
+  }, {})
   const filteredFinalMenuItems = menuItems.filter(m => {
     const q = finalSearch.trim().toLowerCase()
     if (!q) return true
@@ -7753,6 +7761,7 @@ function Recipes({ t }) {
 
   function viewFinalTechCard(menuId) {
     setSelectedMenuId(menuId)
+    setTechPreviewOpen(true)
     setTab('legacy')
   }
 
@@ -8173,6 +8182,138 @@ function Recipes({ t }) {
             </aside>
           </div>
         </section>
+      )}
+
+
+      {techPreviewOpen && selectedMenu && (
+        <div className="tech-detail-overlay" onClick={() => setTechPreviewOpen(false)}>
+          <aside className="tech-detail-panel" onClick={e => e.stopPropagation()}>
+            <div className="tech-detail-top">
+              <div className="tech-detail-hero">
+                {selectedMenu.image_url || selectedMenu.photo_url ? (
+                  <img src={selectedMenu.image_url || selectedMenu.photo_url} alt={selectedMenu.name} />
+                ) : (
+                  <div className="tech-detail-placeholder">{String(selectedMenu.name || 'R').slice(0, 1).toUpperCase()}</div>
+                )}
+              </div>
+              <div className="tech-detail-title-block">
+                <div className="tech-detail-title-line">
+                  <h2>{selectedMenu.name}</h2>
+                  <span className="tech-detail-status">Активная</span>
+                </div>
+                <div className="tech-detail-meta">
+                  <span>Категория:</span>
+                  <b>{selectedMenu.category || 'Без категории'}</b>
+                </div>
+                <div className="tech-detail-meta muted">
+                  <span>ID: {selectedMenu.id}</span>
+                  <span>·</span>
+                  <span>Обновлено: {new Date().toLocaleString()}</span>
+                </div>
+              </div>
+              <div className="tech-detail-actions">
+                <button className="small primary" onClick={() => editFinalTechCard(selectedMenu.id)}>✎ Редактировать</button>
+                <button className="small" onClick={() => printFinalTechCard(selectedMenu.id, true)}>⎙ Печать</button>
+                <button className="small" onClick={() => printFinalTechCard(selectedMenu.id, true)}>⇩ Экспорт в PDF</button>
+                <button className="small">⇧ Экспорт в Excel</button>
+                <button className="small">↺ История изменений</button>
+              </div>
+              <button className="tech-detail-close" onClick={() => setTechPreviewOpen(false)}>×</button>
+            </div>
+
+            <div className="tech-detail-kpis">
+              <Metric label="Себестоимость" value={`${fmt(finalCost)} AZN`} />
+              <Metric label="Цена продажи" value={`${fmt(finalSalePrice)} AZN`} />
+              <Metric label="Food Cost" value={pct(finalFoodCost)} />
+              <Metric label="Маржа" value={pct(finalMargin)} />
+              <Metric label="Выход" value="1 порция" />
+            </div>
+
+            <div className="tech-detail-tabs">
+              <button className="active">Состав</button>
+              <button>Блюдо</button>
+              <button>Калькуляция</button>
+              <button>Пищевая ценность</button>
+              <button>Аллергены</button>
+              <button>Фото</button>
+            </div>
+
+            <div className="tech-detail-table-card">
+              <table className="tech-detail-table">
+                <thead>
+                  <tr>
+                    <th>Тип</th>
+                    <th>Компонент</th>
+                    <th>Кол-во</th>
+                    <th>Ед.</th>
+                    <th>Потери</th>
+                    <th>Себестоимость</th>
+                    <th>Итого</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {selectedFinalItems.map(item => {
+                    const rowCost = componentCost(item)
+                    return (
+                      <tr key={item.id}>
+                        <td><span className={`tech-component-pill ${item.component_type || 'product'}`}>{finalLineTypeLabel(item)}</span></td>
+                        <td><b>{item.item_name || item.manual_name || '—'}</b></td>
+                        <td>{fmt(item.qty)}</td>
+                        <td>{item.unit || '—'}</td>
+                        <td>{fmt(item.waste_percent || 0)}%</td>
+                        <td>{fmt(rowCost)} AZN</td>
+                        <td><b>{fmt(rowCost)} AZN</b></td>
+                      </tr>
+                    )
+                  })}
+                  {!selectedFinalItems.length && (
+                    <tr>
+                      <td colSpan="7">
+                        <div className="tech-empty-state">
+                          <b>Компоненты пока не добавлены</b>
+                          <span>Откройте редактирование и добавьте ингредиенты, полуфабрикаты или ручные компоненты.</span>
+                          <button className="small primary" onClick={() => editFinalTechCard(selectedMenu.id)}>Добавить компоненты</button>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+                <tfoot>
+                  <tr>
+                    <td colSpan="6">Итого себестоимость</td>
+                    <td>{fmt(finalCost)} AZN</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+
+            <div className="tech-detail-bottom-grid">
+              <div className="tech-detail-card">
+                <h3>Структура себестоимости</h3>
+                <div className="tech-cost-donut"><span>{fmt(finalCost)} AZN</span><small>100%</small></div>
+                <div className="tech-breakdown-list">
+                  {Object.entries(selectedFinalBreakdown).map(([name, value]) => (
+                    <div key={name} className="tech-breakdown-row">
+                      <span>{name}</span>
+                      <b>{finalCost > 0 ? pct((value / finalCost) * 100) : '0.0%'} · {fmt(value)} AZN</b>
+                    </div>
+                  ))}
+                  {!Object.keys(selectedFinalBreakdown).length && <p className="hint">Структура появится после добавления компонентов.</p>}
+                </div>
+              </div>
+              <div className="tech-detail-card">
+                <h3>История изменений</h3>
+                <div className="tech-history-line"><span></span><div><b>{new Date().toLocaleDateString()}</b><p>Открыт просмотр тех. карты</p></div></div>
+                <div className="tech-history-line"><span></span><div><b>Admin RMS</b><p>Последняя версия готова к экспорту и печати.</p></div></div>
+              </div>
+            </div>
+
+            <div className="tech-detail-footer">
+              <button className="small" onClick={() => setTechPreviewOpen(false)}>Закрыть</button>
+              <button className="small primary" onClick={() => printFinalTechCard(selectedMenu.id, true)}>Экспорт в PDF / Печать</button>
+            </div>
+          </aside>
+        </div>
       )}
 
       {tab === 'final' && (
@@ -8789,6 +8930,7 @@ function RecipesLegacy({ t }) {
   const [recipeItems, setRecipeItems] = useState([])
   const [allRecipeItems, setAllRecipeItems] = useState([])
   const [selectedMenuId, setSelectedMenuId] = useState('')
+  const [techPreviewOpen, setTechPreviewOpen] = useState(false)
   const [selectedCategory, setSelectedCategory] = useState(PRODUCT_CATEGORIES[0])
   const [selectedProductId, setSelectedProductId] = useState('')
   const [recipeEditMode, setRecipeEditMode] = useState(false)
