@@ -6036,7 +6036,7 @@ function Dashboard({ t }) {
       const supplierExtra = supplierTotals.food + supplierTotals.packaging + supplierTotals.household + supplierTotals.other
       // Dashboard считает зарплаты той же логикой, что раздел “Финансы”:
       // прямые сотрудники филиала + распределённая доля менеджеров по доле выручки.
-      const calculatedSalary = parseNum(dashboardDirectSalaryByBranch.get(b.id)) + dashboardManagersSalary * supplierShare
+      const calculatedSalary = parseNum(rmsFinancePayrollDetailsForScope(employeeRows || [], b.id, revenueShareMap).totalSalary)
       const salary = calculatedSalary > 0 ? calculatedSalary : baseSalary
       const expenses = baseExpenses + supplierExtra
       const net = revenue - expenses - salary - serviceCost - tax
@@ -6882,7 +6882,7 @@ function Finance({ t, lang, onGoToExpense }) {
     const end = new Date(Number(year), Number(month), 1).toISOString().slice(0, 10)
     let expQuery = supabase.from('daily_expenses').select('branch_id, amount, comment, custom_category, expense_categories(name)').gte('expense_date', start).lt('expense_date', end).is('deleted_at', null)
     let purQuery = supabase.from('supplier_purchases').select('branch_id, total_amount, supplier_purchase_items(total_amount, supplier_products(name,category))').gte('purchase_date', start).lt('purchase_date', end).is('deleted_at', null)
-    let empQuery = supabase.from('employees').select('id, branch_id, position, monthly_salary').eq('is_active', true)
+    let empQuery = supabase.from('employees').select('id, branch_id, position, monthly_salary, official_salary, monthly_official_salary').eq('is_active', true)
     let salaryPeriodQuery = supabase.from('salary_periods').select('employee_id, branch_id, salary_gross, salary_net, final_balance, payroll_payments').eq('salary_month', monthDate)
     let salaryPaymentQuery = supabase.from('salary_payments').select('employee_id, branch_id, amount').eq('salary_month', monthDate).or('is_cancelled.is.null,is_cancelled.eq.false')
 
@@ -17265,6 +17265,56 @@ function RMSProV9Styles() {
     }
     .rms-pro-shell .rms-pro-logout{
       display:none!important;
+    }
+
+    /* v43 menu typography polish: premium sidebar font and symmetric account logout icon */
+    .rms-pro-shell .sidebar.rms-pro-sidebar,
+    .rms-pro-shell .rms-pro-brand,
+    .rms-pro-shell .rms-pro-nav,
+    .rms-pro-shell .rms-pro-user-card{
+      font-family:"Manrope", "Inter", "SF Pro Display", "Segoe UI", -apple-system, BlinkMacSystemFont, Arial, sans-serif!important;
+      -webkit-font-smoothing:antialiased!important;
+      text-rendering:geometricPrecision!important;
+    }
+    .rms-pro-shell .rms-pro-nav-item{
+      font-family:"Manrope", "Inter", "SF Pro Display", "Segoe UI", -apple-system, BlinkMacSystemFont, Arial, sans-serif!important;
+      font-size:14.5px!important;
+      line-height:1.05!important;
+      font-weight:820!important;
+      letter-spacing:-.025em!important;
+    }
+    .rms-pro-shell .rms-pro-nav-group-title{
+      font-family:"Manrope", "Inter", "SF Pro Display", "Segoe UI", -apple-system, BlinkMacSystemFont, Arial, sans-serif!important;
+      font-size:10.8px!important;
+      font-weight:850!important;
+      letter-spacing:.105em!important;
+      color:rgba(203,213,225,.72)!important;
+    }
+    .rms-pro-shell .rms-pro-brand h1{
+      font-family:"Manrope", "Inter", "SF Pro Display", "Segoe UI", -apple-system, BlinkMacSystemFont, Arial, sans-serif!important;
+      font-weight:850!important;
+      letter-spacing:-.055em!important;
+    }
+    .rms-pro-shell .rms-pro-brand p{
+      font-family:"Manrope", "Inter", "SF Pro Display", "Segoe UI", -apple-system, BlinkMacSystemFont, Arial, sans-serif!important;
+      font-weight:780!important;
+      letter-spacing:.045em!important;
+    }
+    .rms-pro-shell .rms-pro-user-name{
+      font-family:"Manrope", "Inter", "SF Pro Display", "Segoe UI", -apple-system, BlinkMacSystemFont, Arial, sans-serif!important;
+      font-size:13.2px!important;
+      font-weight:850!important;
+      letter-spacing:-.025em!important;
+    }
+    .rms-pro-shell .rms-pro-user-role{
+      font-family:"Manrope", "Inter", "SF Pro Display", "Segoe UI", -apple-system, BlinkMacSystemFont, Arial, sans-serif!important;
+      font-size:11px!important;
+      font-weight:650!important;
+      letter-spacing:-.01em!important;
+    }
+    .rms-pro-shell .rms-pro-account-logout{
+      justify-self:end!important;
+      align-self:center!important;
     }
 
     .rms-pro-shell .card .metric,
