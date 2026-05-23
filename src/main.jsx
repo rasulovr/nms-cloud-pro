@@ -7184,6 +7184,14 @@ function Finance({ t, lang, onGoToExpense }) {
                 {breakdown.map(r => <tr key={r.name}><td>{r.name}{r.note ? <small className="expense-note">({r.note})</small> : null}</td><td><b>{fmt(r.amount)}</b></td><td>{pct(stats.revenue ? r.amount / stats.revenue * 100 : 0)}</td><td><button className="small" onClick={() => openExpenseBreakdownDetails(r)}>Просмотр</button></td></tr>)}
                 {!breakdown.length && <tr><td colSpan="4" className="hint">—</td></tr>}
               </tbody>
+              {breakdown.length ? <tfoot>
+                <tr className="expense-breakdown-total-row">
+                  <td><strong>Итого</strong></td>
+                  <td><strong>{fmt(breakdown.reduce((sum, r) => sum + Number(r.amount || 0), 0))}</strong></td>
+                  <td><strong>{pct(stats.revenue ? breakdown.reduce((sum, r) => sum + Number(r.amount || 0), 0) / stats.revenue * 100 : 0)}</strong></td>
+                  <td className="hint">Общая сумма</td>
+                </tr>
+              </tfoot> : null}
             </table>
           </div>
         </div>
