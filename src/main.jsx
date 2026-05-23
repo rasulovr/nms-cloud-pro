@@ -11008,12 +11008,12 @@ function Salaries({ t, view = 'employees', isAdmin = false }) {
             <label><span>Филиал / группа</span><select value={branchId} onChange={e => setBranchId(e.target.value)}><option value="all">Все филиалы и менеджеры</option>{staffGroupOptions(branches).map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label>
             <label><span>Позиция</span><select value={positionFilter} onChange={e => setPositionFilter(e.target.value)}><option value="all">Все позиции</option>{STAFF_POSITION_GROUPS.map(p => <option key={p} value={p}>{p}</option>)}</select></label>
           </div>
-          <div className="grid mini-grid">
-            <div className="metric"><span>Дни</span><strong>—</strong></div>
-            <div className="metric"><span>Базовая зарплата</span><strong>{fmt(salarySheetTotals.base)}</strong></div>
-            <div className="metric"><span>Начислено</span><strong>{fmt(salarySheetTotals.accrued)}</strong></div>
-            <div className="metric"><span>Авансы</span><strong>{fmt(salarySheetTotals.advances)}</strong></div>
-            <div className="metric"><span>К выплате</span><strong className={salarySheetTotals.toPay >= 0 ? 'good' : 'bad'}>{fmt(salarySheetTotals.toPay)}</strong></div>
+          <div className="salary-kpi-grid salary-kpi-grid-sheet">
+            <div className="salary-kpi-card salary-kpi-neutral"><span>Дни</span><strong>—</strong><small>по табелю</small></div>
+            <div className="salary-kpi-card salary-kpi-blue"><span>Базовая зарплата</span><strong>{fmt(salarySheetTotals.base)}</strong><small>AZN</small></div>
+            <div className="salary-kpi-card salary-kpi-green"><span>Начислено</span><strong>{fmt(salarySheetTotals.accrued)}</strong><small>AZN</small></div>
+            <div className="salary-kpi-card salary-kpi-orange"><span>Авансы</span><strong>{fmt(salarySheetTotals.advances)}</strong><small>AZN</small></div>
+            <div className="salary-kpi-card salary-kpi-balance"><span>К выплате</span><strong className={salarySheetTotals.toPay >= 0 ? 'good' : 'bad'}>{fmt(salarySheetTotals.toPay)}</strong><small>итог</small></div>
           </div>
           {shouldHideManagerSalaries && <p className="hint">Менеджерские зарплаты скрыты по правам текущего пользователя.</p>}
           {message && <p className={`hint ${message === t('saved') ? 'save-status' : message.includes('Файл') ? 'good' : 'bad'}`}>{message}</p>}
@@ -11081,13 +11081,13 @@ function Salaries({ t, view = 'employees', isAdmin = false }) {
           <label><span>Филиал / группа</span><select value={branchId} onChange={e => setBranchId(e.target.value)}><option value="all">Все филиалы и менеджеры</option>{staffGroupOptions(branches).map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label>
           <label><span>Позиция</span><select value={positionFilter} onChange={e => setPositionFilter(e.target.value)}><option value="all">Все позиции</option>{STAFF_POSITION_GROUPS.map(p => <option key={p} value={p}>{p}</option>)}</select></label>
         </div>
-        <div className="grid mini-grid">
-          <div className="metric"><span>Начислено</span><strong>{fmt(totals.gross)}</strong></div>
-          <div className="metric"><span>Авансы</span><strong>{fmt(totals.advances)}</strong></div>
-          <div className="metric"><span>Удержания</span><strong>{fmt(totals.deductions)}</strong></div>
-          <div className="metric"><span>Долг на начало</span><strong>{fmt(totals.opening)}</strong></div>
-          <div className="metric"><span>Выплачено за месяц</span><strong>{fmt(totals.payments)}</strong></div>
-          <div className="metric"><span>Итоговый баланс</span><strong className={totals.balance >= 0 ? '' : 'bad'}>{fmt(totals.balance)}</strong></div>
+        <div className="salary-kpi-grid">
+          <div className="salary-kpi-card salary-kpi-green"><span>Начислено</span><strong>{fmt(totals.gross)}</strong><small>AZN · за месяц</small></div>
+          <div className="salary-kpi-card salary-kpi-orange"><span>Авансы</span><strong>{fmt(totals.advances)}</strong><small>AZN · выдано</small></div>
+          <div className="salary-kpi-card salary-kpi-red"><span>Удержания</span><strong>{fmt(totals.deductions)}</strong><small>AZN · корректировки</small></div>
+          <div className="salary-kpi-card salary-kpi-blue"><span>Долг на начало</span><strong>{fmt(totals.opening)}</strong><small>AZN · прошлый период</small></div>
+          <div className="salary-kpi-card salary-kpi-purple"><span>Выплачено</span><strong>{fmt(totals.payments)}</strong><small>AZN · за месяц</small></div>
+          <div className="salary-kpi-card salary-kpi-balance"><span>Итоговый баланс</span><strong className={totals.balance >= 0 ? 'good' : 'bad'}>{fmt(totals.balance)}</strong><small>{totals.balance >= 0 ? 'к выплате' : 'переплата'}</small></div>
         </div>
         {shouldHideManagerSalaries
           ? <p className="hint">Зарплаты менеджерского состава скрыты для текущего пользователя: суммы заменены на замутнённые значения.</p>
