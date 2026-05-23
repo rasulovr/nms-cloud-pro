@@ -6060,7 +6060,7 @@ function Dashboard({ t }) {
     })
     const supplierDebtRows = Array.from(supplierRiskMap.values()).sort((a,b) => b.value - a.value)
     const supplierDebt = supplierDebtRows.reduce((s, r) => s + r.value, 0)
-    const syncedForecast = await rmsCalculateNetworkForecastForMonth(y, m)
+    const syncedForecast = await rmsCalculateNetworkForecastForMonth(y, m, branchId)
     const forecastRevenue = parseNum(syncedForecast.forecastRevenue)
     const forecastProfit = parseNum(syncedForecast.forecastProfit)
     return { revenue, expenses, net, supplierDebt, supplierDebtRows, branchRows: dashboardBranchRows, forecastRevenue, forecastProfit, forecastDetails: syncedForecast.details || [], forecastExpenses: syncedForecast.forecastExpenses, forecastMargin: syncedForecast.forecastMargin }
@@ -6118,6 +6118,10 @@ function Dashboard({ t }) {
   const netBranchRows = data.branchRows.filter(r => r.revenue || r.net).sort((a,b) => b.net - a.net)
   const bestBranch = netBranchRows[0]
   const cashBalance = data.revenue
+  const selectedBranchRow = branchId === DASH_ALL_BRANCHES ? null : (data.branchRows[0] || null)
+  const selectedBranchName = selectedBranchRow?.name || branches.find(b => String(b.id) === String(branchId))?.name || 'Филиал'
+  const selectedBranchExpenseRatio = selectedBranchRow?.revenue ? selectedBranchRow.totalExpenses / selectedBranchRow.revenue * 100 : 0
+  const selectedBranchMargin = selectedBranchRow?.revenue ? selectedBranchRow.net / selectedBranchRow.revenue * 100 : 0
 
   return <section id="dashboardPage" className="rms-executive-dashboard">
     <section className="dashboard-v23-head">
@@ -6137,9 +6141,9 @@ function Dashboard({ t }) {
       <div className="dash-kpi dash-kpi-purple"><span className="dash-kpi-icon">▥</span><div><em>Расходы</em><strong>{fmt(data.expenses)} <small>AZN</small></strong><p>{data.revenue ? pct(data.expenses / data.revenue * 100) : '0.0%'} от выручки</p></div></div>
       <div className="dash-kpi dash-kpi-green"><span className="dash-kpi-icon">▟</span><div><em>Чистая прибыль</em><strong>{fmt(data.net)} <small>AZN</small></strong><p className={profitChange >= 0 ? 'good' : 'bad'}>{profitChange >= 0 ? '▲' : '▼'} {pct(Math.abs(profitChange))} к прошлому месяцу</p></div></div>
       <div className="dash-kpi dash-kpi-red"><span className="dash-kpi-icon">%</span><div><em>Рентабельность</em><strong>{pct(data.revenue ? data.net / data.revenue * 100 : 0)}</strong><p>маржа чистой прибыли</p></div></div>
-      <div className="dash-kpi dash-kpi-wallet"><span className="dash-kpi-icon">▣</span><div><em>Денежный остаток</em><strong>{fmt(cashBalance)} <small>AZN</small></strong><p>наличные + банк</p></div></div>
       <div className="dash-kpi dash-kpi-forecast"><span className="dash-kpi-icon">⌁</span><div><em>Прогноз выручки</em><strong>{fmt(data.forecastRevenue)} <small>AZN</small></strong><p>до конца месяца</p></div></div>
       <div className="dash-kpi dash-kpi-target"><span className="dash-kpi-icon">◎</span><div><em>Прогноз прибыли</em><strong>{fmt(data.forecastProfit)} <small>AZN</small></strong><p>прогноз месяца</p></div></div>
+      <div className="dash-kpi dash-kpi-wallet"><span className="dash-kpi-icon">▣</span><div><em>Денежный остаток</em><strong>{fmt(cashBalance)} <small>AZN</small></strong><p>наличные + банк</p></div></div>
     </section>
 
     <section className="dashboard-v25-layout">
@@ -6150,11 +6154,19 @@ function Dashboard({ t }) {
       <div className="card dashboard-v23-insights dashboard-v25-insights">
         <div className="card-head"><div><h3>Ключевые выводы</h3><p className="hint">Автоматический summary по выбранному месяцу</p></div></div>
         <div className="dashboard-v23-insight-list dashboard-v25-insight-list">
-          <div><span>Рост выручки</span><strong className={revenueChange >= 0 ? 'good' : 'bad'}>{revenueChange >= 0 ? '▲' : '▼'} {pct(Math.abs(revenueChange))}</strong><em>к прошлому месяцу</em></div>
-          <div><span>Лучший филиал по выручке</span><strong>{topBranchRows[0]?.name || '—'}</strong><em>{topBranchRows[0] ? `${fmt(topBranchRows[0].revenue)} AZN` : 'нет данных'}</em></div>
-          <div><span>Лучший филиал по прибыли</span><strong>{bestBranch?.name || '—'}</strong><em>{bestBranch ? `${fmt(bestBranch.net)} AZN` : 'нет данных'}</em></div>
-          <div><span>Прогноз прибыли</span><strong className={data.forecastProfit >= 0 ? 'good' : 'bad'}>{fmt(data.forecastProfit)} AZN</strong><em>с учётом расходов</em></div>
-          <div><span>Проблемные долги</span><strong className="bad">{fmt(data.supplierDebt)} AZN</strong><em>просрочка или лимит</em></div>
+          {branchId === DASH_ALL_BRANCHES ? <>
+            <div><span>Рост выручки</span><strong className={revenueChange >= 0 ? 'good' : 'bad'}>{revenueChange >= 0 ? '▲' : '▼'} {pct(Math.abs(revenueChange))}</strong><em>к прошлому месяцу</em></div>
+            <div><span>Лучший филиал по выручке</span><strong>{topBranchRows[0]?.name || '—'}</strong><em>{topBranchRows[0] ? `${fmt(topBranchRows[0].revenue)} AZN` : 'нет данных'}</em></div>
+            <div><span>Лучший филиал по прибыли</span><strong>{bestBranch?.name || '—'}</strong><em>{bestBranch ? `${fmt(bestBranch.net)} AZN` : 'нет данных'}</em></div>
+            <div><span>Прогноз прибыли</span><strong className={data.forecastProfit >= 0 ? 'good' : 'bad'}>{fmt(data.forecastProfit)} AZN</strong><em>с учётом расходов</em></div>
+            <div><span>Проблемные долги</span><strong className="bad">{fmt(data.supplierDebt)} AZN</strong><em>просрочка или лимит</em></div>
+          </> : <>
+            <div><span>Рост выручки филиала</span><strong className={revenueChange >= 0 ? 'good' : 'bad'}>{revenueChange >= 0 ? '▲' : '▼'} {pct(Math.abs(revenueChange))}</strong><em>{selectedBranchName} к прошлому месяцу</em></div>
+            <div><span>Выручка филиала</span><strong>{fmt(selectedBranchRow?.revenue || 0)} AZN</strong><em>{selectedBranchName}</em></div>
+            <div><span>Прибыль филиала</span><strong className={(selectedBranchRow?.net || 0) >= 0 ? 'good' : 'bad'}>{fmt(selectedBranchRow?.net || 0)} AZN</strong><em>после расходов и налогов</em></div>
+            <div><span>Расходы филиала</span><strong>{fmt(selectedBranchRow?.totalExpenses || 0)} AZN</strong><em>{pct(selectedBranchExpenseRatio)} от выручки</em></div>
+            <div><span>Маржа филиала</span><strong className={selectedBranchMargin >= 0 ? 'good' : 'bad'}>{pct(selectedBranchMargin)}</strong><em>чистая рентабельность</em></div>
+          </>}
         </div>
       </div>
     </section>
@@ -7087,9 +7099,9 @@ function Finance({ t, lang, onGoToExpense }) {
         <div className="dash-kpi dash-kpi-purple"><span className="dash-kpi-icon">▥</span><div><em>Расходы</em><strong>{fmt(financeTotalExpenses)} <small>AZN</small></strong><p>{pct(stats.revenue ? financeTotalExpenses / stats.revenue * 100 : 0)} от выручки</p></div></div>
         <div className="dash-kpi dash-kpi-green"><span className="dash-kpi-icon">▟</span><div><em>Чистая прибыль</em><strong className={financeNet >= 0 ? 'good' : 'bad'}>{fmt(financeNet)} <small>AZN</small></strong><p className={profitChange >= 0 ? 'good' : 'bad'}>{profitChange >= 0 ? '▲' : '▼'} {pct(Math.abs(profitChange))} к прошлому месяцу</p></div></div>
         <div className="dash-kpi dash-kpi-red"><span className="dash-kpi-icon">%</span><div><em>Рентабельность</em><strong>{pct(financeProfitability)}</strong><p>маржа чистой прибыли</p></div></div>
-        <div className="dash-kpi dash-kpi-wallet"><span className="dash-kpi-icon">▣</span><div><em>Денежный остаток</em><strong>{fmt(financeCashBalance)} <small>AZN</small></strong><p>наличные + банк</p></div></div>
         <div className="dash-kpi dash-kpi-forecast"><span className="dash-kpi-icon">⌁</span><div><em>Прогноз выручки</em><strong>{fmt(stats.forecastRevenue)} <small>AZN</small></strong><p>до конца месяца</p></div></div>
         <div className="dash-kpi dash-kpi-target"><span className="dash-kpi-icon">◎</span><div><em>Прогноз прибыли</em><strong>{fmt(stats.forecastProfit)} <small>AZN</small></strong><p>прогноз месяца</p></div></div>
+        <div className="dash-kpi dash-kpi-wallet"><span className="dash-kpi-icon">▣</span><div><em>Денежный остаток</em><strong>{fmt(financeCashBalance)} <small>AZN</small></strong><p>наличные + банк</p></div></div>
       </section>
 
       <section className="finance-intel-grid">
