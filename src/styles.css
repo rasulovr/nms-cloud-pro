@@ -2246,3 +2246,91 @@ button:not(.nav):not(.rms-pro-logout):hover{transform:translateY(-1px)!important
     font-size: 9.8px;
   }
 }
+
+/* v28 — Dashboard + Finance unified KPI style */
+.dashboard-v23-kpis,
+.finance-intel-kpis {
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 12px;
+  align-items: stretch;
+}
+.rms-executive-dashboard .dash-kpi,
+.finance-intel-kpi {
+  min-height: 126px;
+  padding: 18px 16px 16px;
+  border-radius: 22px;
+}
+.rms-executive-dashboard .dash-kpi {
+  grid-template-columns: 38px minmax(0, 1fr);
+  gap: 12px;
+}
+.rms-executive-dashboard .dash-kpi-icon,
+.finance-kpi-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  font-size: 18px;
+}
+.rms-executive-dashboard .dash-kpi em,
+.finance-intel-kpi span {
+  font-size: 11px;
+  line-height: 1.28;
+  margin-bottom: 8px;
+  min-height: 28px;
+}
+.rms-executive-dashboard .dash-kpi strong,
+.finance-intel-kpi strong {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  flex-wrap: nowrap;
+  min-width: 0;
+  font-size: clamp(18px, 1.45vw, 25px);
+  letter-spacing: -0.04em;
+  white-space: nowrap;
+}
+.rms-executive-dashboard .dash-kpi strong small,
+.finance-intel-kpi strong em {
+  display: inline-flex;
+  align-items: baseline;
+  flex: 0 0 auto;
+  margin-left: 2px;
+  font-size: 11px;
+  line-height: 1;
+  letter-spacing: 0;
+}
+.rms-executive-dashboard .dash-kpi p,
+.finance-intel-kpi p {
+  margin-top: 10px;
+  font-size: 11.5px;
+  line-height: 1.35;
+}
+.rms-executive-dashboard .dash-kpi-forecast:before,
+.finance-intel-kpi:nth-child(6):before { background: #f59e0b; }
+.rms-executive-dashboard .dash-kpi-forecast .dash-kpi-icon,
+.finance-intel-kpi:nth-child(6) .finance-kpi-icon {
+  background: rgba(245, 158, 11, .13);
+  color: #f59e0b;
+}
+.rms-executive-dashboard .dash-kpi-target:before,
+.finance-intel-kpi:nth-child(7):before { background: #14b8a6; }
+.rms-executive-dashboard .dash-kpi-target .dash-kpi-icon,
+.finance-intel-kpi:nth-child(7) .finance-kpi-icon {
+  background: rgba(20, 184, 166, .13);
+  color: #14b8a6;
+}
+.finance-kpi-orange { background: rgba(245, 158, 11, .13); color: #f59e0b; }
+.finance-kpi-teal { background: rgba(20, 184, 166, .13); color: #14b8a6; }
+
+@media (max-width: 1500px) {
+  .dashboard-v23-kpis,
+  .finance-intel-kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+@media (max-width: 1100px) {
+  .dashboard-v23-kpis,
+  .finance-intel-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 700px) {
+  .dashboard-v23-kpis,
+  .finance-intel-kpis { grid-template-columns: 1fr; }
+}
