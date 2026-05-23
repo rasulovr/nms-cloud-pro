@@ -1677,7 +1677,7 @@ function App() {
         <RMSProInterfaceStyles />
         <RMSProV6Styles />
         <RMSProV9Styles />
-        <RMSProSidebarTypographyHardOverride />
+        <RMSProSidebarSatoshiStyles />
         <GlobalProgressOverlay />
         <div className="rms-pro-topbar">
           <div className="rms-pro-topbar-title">
@@ -5508,119 +5508,143 @@ function DashboardStyles() {
 }
 
 
-function RMSProSidebarTypographyHardOverride() {
+
+function RMSProSidebarSatoshiStyles() {
   return <style>{`
-    /* v43 — sidebar premium typography hard override.
-       Scope: left menu only. No Dashboard/Finance layout or logic changes. */
-    .rms-pro-shell .sidebar.rms-pro-sidebar,
-    .rms-pro-shell .rms-pro-sidebar *,
-    .rms-pro-shell .rms-pro-nav-item,
-    .rms-pro-shell .rms-pro-nav-item span,
-    .rms-pro-shell .rms-pro-brand,
-    .rms-pro-shell .rms-pro-user-card {
-      font-family: Inter, "SF Pro Display", "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, Arial, sans-serif !important;
-      -webkit-font-smoothing: antialiased !important;
-      -moz-osx-font-smoothing: grayscale !important;
-      text-rendering: geometricPrecision !important;
-    }
+/* RMS Pro v43 — Satoshi premium sidebar typography
+   Scope: LEFT MENU ONLY. Does not change Dashboard / Finance / right content. */
 
-    .rms-pro-shell .rms-pro-brand h1 {
-      font-family: Inter, "SF Pro Display", "Segoe UI", system-ui, sans-serif !important;
-      font-size: 26px !important;
-      line-height: 1 !important;
-      font-weight: 820 !important;
-      letter-spacing: -0.055em !important;
-      color: #ffffff !important;
-      text-shadow: none !important;
-    }
+@import url("https://api.fontshare.com/v2/css?f[]=satoshi@400,500,600,700,800,900&display=swap");
 
-    .rms-pro-shell .rms-pro-brand p {
-      font-family: Inter, "SF Pro Display", "Segoe UI", system-ui, sans-serif !important;
-      font-size: 10.5px !important;
-      line-height: 1.22 !important;
-      font-weight: 680 !important;
-      letter-spacing: .045em !important;
-      color: rgba(226,232,240,.70) !important;
-      text-transform: uppercase !important;
-      text-shadow: none !important;
-    }
+.rms-pro-shell .sidebar.rms-pro-sidebar,
+.rms-pro-shell .sidebar.rms-pro-sidebar *,
+.rms-pro-shell .rms-pro-brand,
+.rms-pro-shell .rms-pro-brand *,
+.rms-pro-shell .rms-pro-nav,
+.rms-pro-shell .rms-pro-nav *,
+.rms-pro-shell .rms-pro-sidebar-bottom,
+.rms-pro-shell .rms-pro-sidebar-bottom * {
+  font-family: "Satoshi", Inter, "SF Pro Display", "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, Arial, sans-serif !important;
+  -webkit-font-smoothing: antialiased !important;
+  -moz-osx-font-smoothing: grayscale !important;
+  text-rendering: geometricPrecision !important;
+}
 
-    .rms-pro-shell .rms-pro-nav-group-title {
-      font-family: Inter, "SF Pro Display", "Segoe UI", system-ui, sans-serif !important;
-      font-size: 11px !important;
-      line-height: 1.2 !important;
-      font-weight: 720 !important;
-      letter-spacing: .125em !important;
-      color: rgba(203,213,225,.62) !important;
-      text-transform: uppercase !important;
-      text-shadow: none !important;
-    }
+/* Brand */
+.rms-pro-shell .rms-pro-brand h1 {
+  font-family: "Satoshi", Inter, system-ui, sans-serif !important;
+  font-size: 26px !important;
+  line-height: 0.98 !important;
+  font-weight: 800 !important;
+  letter-spacing: -0.055em !important;
+  color: #ffffff !important;
+  text-shadow: none !important;
+}
 
-    .rms-pro-shell .rms-pro-nav-item,
-    .rms-pro-shell .rms-pro-nav-item.nav {
-      font-family: Inter, "SF Pro Display", "Segoe UI", system-ui, sans-serif !important;
-      font-size: 15px !important;
-      line-height: 1 !important;
-      font-weight: 650 !important;
-      letter-spacing: -0.018em !important;
-      color: rgba(241,245,249,.90) !important;
-      text-shadow: none !important;
-    }
+.rms-pro-shell .rms-pro-brand p {
+  font-family: "Satoshi", Inter, system-ui, sans-serif !important;
+  font-size: 10.5px !important;
+  line-height: 1.22 !important;
+  font-weight: 600 !important;
+  letter-spacing: .05em !important;
+  color: rgba(226,232,240,.70) !important;
+  text-transform: uppercase !important;
+  text-shadow: none !important;
+}
 
-    .rms-pro-shell .rms-pro-nav-item > span:not(.rms-pro-nav-icon),
-    .rms-pro-shell .rms-pro-nav-text {
-      font-family: Inter, "SF Pro Display", "Segoe UI", system-ui, sans-serif !important;
-      font-size: 15px !important;
-      line-height: 1 !important;
-      font-weight: 650 !important;
-      letter-spacing: -0.018em !important;
-      color: inherit !important;
-      text-shadow: none !important;
-    }
+/* Section labels: МЕНЮ / АНАЛИТИКА / ИНСТРУМЕНТЫ */
+.rms-pro-shell .rms-pro-nav-group-title {
+  font-family: "Satoshi", Inter, system-ui, sans-serif !important;
+  font-size: 11px !important;
+  line-height: 1.2 !important;
+  font-weight: 600 !important;
+  letter-spacing: .135em !important;
+  color: rgba(203,213,225,.62) !important;
+  text-transform: uppercase !important;
+  text-shadow: none !important;
+}
 
-    .rms-pro-shell .rms-pro-nav-item.active,
-    .rms-pro-shell .rms-pro-nav-item.nav.active,
-    .rms-pro-shell .rms-pro-nav-item.active > span:not(.rms-pro-nav-icon),
-    .rms-pro-shell .rms-pro-nav-item.active .rms-pro-nav-text {
-      font-weight: 760 !important;
-      letter-spacing: -0.02em !important;
-      color: #ffffff !important;
-    }
+/* Menu items */
+.rms-pro-shell .rms-pro-nav-item,
+.rms-pro-shell .rms-pro-nav-item.nav {
+  font-family: "Satoshi", Inter, system-ui, sans-serif !important;
+  font-size: 15.5px !important;
+  line-height: 1 !important;
+  font-weight: 600 !important;
+  letter-spacing: -0.018em !important;
+  color: rgba(241,245,249,.90) !important;
+  text-shadow: none !important;
+}
 
-    .rms-pro-shell .rms-pro-nav-item:hover,
-    .rms-pro-shell .rms-pro-nav-item:hover > span:not(.rms-pro-nav-icon),
-    .rms-pro-shell .rms-pro-nav-item:hover .rms-pro-nav-text {
-      color: #ffffff !important;
-      font-weight: 720 !important;
-    }
+.rms-pro-shell .rms-pro-nav-item > span:not(.rms-pro-nav-icon),
+.rms-pro-shell .rms-pro-nav-text {
+  font-family: "Satoshi", Inter, system-ui, sans-serif !important;
+  font-size: 15.5px !important;
+  line-height: 1 !important;
+  font-weight: 600 !important;
+  letter-spacing: -0.018em !important;
+  color: inherit !important;
+  text-shadow: none !important;
+}
 
-    .rms-pro-shell .rms-pro-user-name {
-      font-family: Inter, "SF Pro Display", "Segoe UI", system-ui, sans-serif !important;
-      font-size: 13px !important;
-      line-height: 1.1 !important;
-      font-weight: 720 !important;
-      letter-spacing: -0.018em !important;
-      color: #ffffff !important;
-      text-shadow: none !important;
-    }
+.rms-pro-shell .rms-pro-nav-item.active,
+.rms-pro-shell .rms-pro-nav-item.nav.active,
+.rms-pro-shell .rms-pro-nav-item.active > span:not(.rms-pro-nav-icon),
+.rms-pro-shell .rms-pro-nav-item.active .rms-pro-nav-text {
+  font-weight: 720 !important;
+  letter-spacing: -0.022em !important;
+  color: #ffffff !important;
+}
 
-    .rms-pro-shell .rms-pro-user-role {
-      font-family: Inter, "SF Pro Display", "Segoe UI", system-ui, sans-serif !important;
-      font-size: 11px !important;
-      line-height: 1.15 !important;
-      font-weight: 560 !important;
-      letter-spacing: -0.006em !important;
-      color: rgba(226,232,240,.66) !important;
-      text-shadow: none !important;
-    }
+.rms-pro-shell .rms-pro-nav-item:hover,
+.rms-pro-shell .rms-pro-nav-item:hover > span:not(.rms-pro-nav-icon),
+.rms-pro-shell .rms-pro-nav-item:hover .rms-pro-nav-text {
+  color: #ffffff !important;
+  font-weight: 680 !important;
+}
 
-    .rms-pro-shell .rms-pro-nav-icon {
-      font-weight: 600 !important;
-    }
+/* Account block */
+.rms-pro-shell .rms-pro-user-name {
+  font-family: "Satoshi", Inter, system-ui, sans-serif !important;
+  font-size: 13px !important;
+  line-height: 1.1 !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.018em !important;
+  color: #ffffff !important;
+  text-shadow: none !important;
+}
 
-    .rms-pro-shell .rms-pro-nav-icon svg {
-      stroke-width: 1.85 !important;
-    }
+.rms-pro-shell .rms-pro-user-role {
+  font-family: "Satoshi", Inter, system-ui, sans-serif !important;
+  font-size: 11px !important;
+  line-height: 1.15 !important;
+  font-weight: 500 !important;
+  letter-spacing: -0.006em !important;
+  color: rgba(226,232,240,.66) !important;
+  text-shadow: none !important;
+}
+
+/* Icons feel lighter with Satoshi */
+.rms-pro-shell .rms-pro-nav-icon {
+  font-weight: 600 !important;
+}
+
+.rms-pro-shell .rms-pro-nav-icon svg {
+  stroke-width: 1.82 !important;
+}
+
+/* Compact logout icon alignment inside account card */
+.rms-pro-shell .rms-pro-user-card {
+  display: grid !important;
+  grid-template-columns: 42px minmax(0, 1fr) 38px !important;
+  align-items: center !important;
+  gap: 10px !important;
+}
+
+.rms-pro-shell .rms-pro-account-logout {
+  justify-self: end !important;
+  align-self: center !important;
+}
   `}</style>
 }
 
