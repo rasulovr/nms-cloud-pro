@@ -1664,7 +1664,7 @@ function App() {
         </div>
       </aside>
 
-      <main className={`main rms-pro-main ${currentAccess === 'read' ? 'readonly-mode' : ''}`}>
+      <main className={`main rms-pro-main section-${section} ${currentAccess === 'read' ? 'readonly-mode' : ''}`} data-section={section}>
         <DashboardStyles />
         <ThemeStyles />
         <ResponsiveAndSettingsStyles />
