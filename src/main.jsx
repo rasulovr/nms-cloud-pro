@@ -7326,7 +7326,7 @@ function convertToBase(quantity, fromUnit, baseUnit) {
 
 
 function Recipes({ t }) {
-  const [tab, setTab] = useState('semis')
+  const [tab, setTab] = useState('legacy')
   const [products, setProducts] = useState([])
   const [costs, setCosts] = useState([])
   const [menuItems, setMenuItems] = useState([])
@@ -7979,9 +7979,9 @@ function Recipes({ t }) {
       </section>
 
       <div className="settings-tabs tech-page-tabs">
+        <button className={tab === 'legacy' ? 'active' : ''} onClick={() => setTab('legacy')}>Текущие тех. карты</button>
         <button className={tab === 'semis' ? 'active' : ''} onClick={() => setTab('semis')}>Создать полуфабрикат</button>
         <button className={tab === 'final' ? 'active' : ''} onClick={() => setTab('final')}>Создать блюдо</button>
-        <button className={tab === 'legacy' ? 'active' : ''} onClick={() => setTab('legacy')}>Текущие тех. карты</button>
       </div>
 
       {message ? <p className="hint">{message}</p> : null}
@@ -8105,10 +8105,10 @@ function Recipes({ t }) {
                           <td><b>{fmt(cost)} AZN</b><small>{sale > 0 ? `Food Cost ${pct(fc)}` : 'цена не указана'}</small></td>
                           <td><b>{fmt(sale)} AZN</b></td>
                           <td><b className={margin >= 60 ? 'good' : margin >= 40 ? '' : 'bad'}>{sale > 0 ? pct(margin) : '—'}</b></td>
-                          <td><span className="tech-status active">● Активная</span></td>
+                          <td><span className="tech-status active">Активная</span></td>
                           <td>
                             <div className="tech-row-actions">
-                              <button className="icon-button" title="Просмотр" onClick={() => viewFinalTechCard(m.id)}>⌕</button>
+                              <button className="icon-button tech-view-button" title="Просмотр" onClick={() => viewFinalTechCard(m.id)}>Просмотр</button>
                               <button className="icon-button" title="Редактировать" onClick={() => editFinalTechCard(m.id)}>✎</button>
                               <button className="icon-button" title="Печать" onClick={() => printFinalTechCard(m.id, true)}>⋮</button>
                             </div>
