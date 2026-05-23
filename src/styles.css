@@ -3626,3 +3626,100 @@ button:not(.nav):not(.rms-pro-logout):hover{transform:translateY(-1px)!important
   .tech-page-redesign .semi-form-grid .wide,
   .tech-page-redesign .semi-add-component-field{grid-column:auto!important;}
 }
+
+
+/* Tech card detail slide-over v40 */
+.tech-detail-overlay{
+  position:fixed;
+  inset:0;
+  z-index:1200;
+  background:rgba(15,23,42,.46);
+  backdrop-filter:blur(8px);
+  display:flex;
+  justify-content:flex-end;
+}
+.tech-detail-panel{
+  width:min(1040px,72vw);
+  height:100vh;
+  background:#fff;
+  box-shadow:-30px 0 70px rgba(15,23,42,.20);
+  overflow:auto;
+  padding:32px 34px;
+  animation:techSlideIn .18s ease-out;
+}
+@keyframes techSlideIn{from{transform:translateX(36px);opacity:.8}to{transform:translateX(0);opacity:1}}
+.tech-detail-top{
+  position:relative;
+  display:grid;
+  grid-template-columns:220px 1fr 190px;
+  gap:28px;
+  align-items:start;
+  margin-bottom:26px;
+}
+.tech-detail-hero,
+.tech-detail-hero img,
+.tech-detail-placeholder{
+  width:220px;
+  height:150px;
+  border-radius:24px;
+}
+.tech-detail-hero img{object-fit:cover;display:block;box-shadow:0 16px 35px rgba(15,23,42,.12)}
+.tech-detail-placeholder{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:linear-gradient(135deg,#eaf2ff,#f7fbff);
+  color:#2563eb;
+  font-size:56px;
+  font-weight:900;
+  border:1px solid #dbe6f5;
+}
+.tech-detail-title-line{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:4px}
+.tech-detail-title-line h2{margin:0;font-size:30px;line-height:1.15;color:#07152d;font-weight:900}
+.tech-detail-status{padding:6px 12px;border-radius:999px;background:#dcfce7;color:#059669;font-size:12px;font-weight:800}
+.tech-detail-meta{display:flex;gap:8px;align-items:center;margin-top:14px;color:#64748b;font-size:14px}
+.tech-detail-meta b{padding:5px 10px;border-radius:999px;background:#eff6ff;color:#2563eb;font-size:13px}
+.tech-detail-meta.muted{gap:10px;color:#6b7280;font-size:13px}
+.tech-detail-actions{display:flex;flex-direction:column;gap:10px}
+.tech-detail-actions .small{width:100%;justify-content:flex-start;height:40px;border-radius:12px}
+.tech-detail-close{position:absolute;right:-10px;top:-12px;border:0;background:transparent;font-size:26px;color:#64748b;cursor:pointer}
+.tech-detail-kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin-bottom:20px}
+.tech-detail-kpis .metric{border-radius:18px;background:#fff;border:1px solid #e5eaf3;box-shadow:0 8px 24px rgba(15,23,42,.04);padding:16px}
+.tech-detail-kpis .metric span{font-size:12px;text-transform:uppercase;color:#64748b;font-weight:800;letter-spacing:.04em}
+.tech-detail-kpis .metric b{font-size:20px;color:#07152d}
+.tech-detail-tabs{display:flex;gap:28px;border:1px solid #e5eaf3;border-bottom:0;border-radius:18px 18px 0 0;padding:0 18px;background:#fff}
+.tech-detail-tabs button{height:52px;border:0;background:transparent;font-weight:800;color:#52627a;cursor:pointer;position:relative}
+.tech-detail-tabs button.active{color:#2563eb}
+.tech-detail-tabs button.active::after{content:"";position:absolute;left:0;right:0;bottom:0;height:3px;background:#2563eb;border-radius:6px}
+.tech-detail-table-card{border:1px solid #e5eaf3;border-radius:0 0 18px 18px;overflow:hidden;background:#fff;margin-bottom:18px}
+.tech-detail-table{width:100%;border-collapse:collapse;font-size:13px;color:#172033}
+.tech-detail-table th{background:#f8fafc;color:#64748b;font-size:11px;text-transform:uppercase;letter-spacing:.04em;text-align:left;padding:14px 16px;border-bottom:1px solid #e5eaf3}
+.tech-detail-table td{padding:13px 16px;border-bottom:1px solid #edf1f7;vertical-align:middle}
+.tech-detail-table tfoot td{font-weight:900;background:#fbfdff;color:#07152d;border-bottom:0}
+.tech-component-pill{display:inline-flex;align-items:center;padding:5px 10px;border-radius:999px;font-size:12px;font-weight:800;background:#eef2ff;color:#4f46e5}
+.tech-component-pill.product{background:#f1f5f9;color:#475569}
+.tech-component-pill.manual{background:#eaf3ff;color:#2563eb}
+.tech-component-pill.semi{background:#f3e8ff;color:#7c3aed}
+.tech-empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:34px;color:#64748b;text-align:center}
+.tech-empty-state b{color:#07152d;font-size:16px}
+.tech-detail-bottom-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}
+.tech-detail-card{border:1px solid #e5eaf3;border-radius:20px;background:#fff;padding:20px;box-shadow:0 10px 30px rgba(15,23,42,.04)}
+.tech-detail-card h3{margin:0 0 16px;font-size:16px;color:#07152d}
+.tech-cost-donut{width:150px;height:150px;border-radius:50%;margin:0 auto 14px;background:conic-gradient(#2563eb 0 45%,#22c55e 45% 72%,#f59e0b 72% 86%,#94a3b8 86% 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative;color:#07152d;font-weight:900}
+.tech-cost-donut::after{content:"";position:absolute;inset:28px;background:#fff;border-radius:50%}
+.tech-cost-donut span,.tech-cost-donut small{position:relative;z-index:1}
+.tech-cost-donut small{font-size:12px;color:#64748b;margin-top:4px}
+.tech-breakdown-row{display:flex;justify-content:space-between;gap:12px;border-top:1px solid #edf1f7;padding:10px 0;color:#64748b}
+.tech-breakdown-row b{color:#07152d}
+.tech-history-line{display:grid;grid-template-columns:10px 1fr;gap:12px;padding:10px 0;border-top:1px solid #edf1f7}
+.tech-history-line span{width:8px;height:8px;background:#2563eb;border-radius:50%;margin-top:6px}
+.tech-history-line b{color:#07152d;font-size:13px}
+.tech-history-line p{margin:4px 0 0;color:#64748b;font-size:13px}
+.tech-detail-footer{display:flex;justify-content:space-between;gap:12px;padding-top:14px;border-top:1px solid #e5eaf3}
+@media (max-width:1100px){
+  .tech-detail-panel{width:100vw;padding:24px}
+  .tech-detail-top{grid-template-columns:1fr}
+  .tech-detail-hero,.tech-detail-hero img,.tech-detail-placeholder{width:100%;height:220px}
+  .tech-detail-actions{display:grid;grid-template-columns:repeat(2,1fr)}
+  .tech-detail-kpis,.tech-detail-bottom-grid{grid-template-columns:1fr}
+}
