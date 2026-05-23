@@ -7958,16 +7958,19 @@ function Recipes({ t }) {
   }
 
   return (
-    <section>
-      <section className="topbar">
+    <section className="tech-page-redesign">
+      <section className="topbar tech-page-header">
         <div>
           <h2>Тех. карты</h2>
-          <p>Сначала создаём полуфабрикаты из ингредиентов. Потом создаём блюдо из полуфабрикатов и дополнительных ингредиентов.</p>
+          <p>Управление технологическими картами, полуфабрикатами, себестоимостью и маржинальностью блюд.</p>
         </div>
-        <button className="small primary" onClick={loadSemiData}>{loading ? 'Загрузка...' : 'Обновить'}</button>
+        <div className="tech-header-actions">
+          <button className="ghost small" onClick={() => setTab('legacy')}>Все тех. карты</button>
+          <button className="small primary" onClick={loadSemiData}>{loading ? 'Загрузка...' : 'Обновить'}</button>
+        </div>
       </section>
 
-      <div className="settings-tabs">
+      <div className="settings-tabs tech-page-tabs">
         <button className={tab === 'semis' ? 'active' : ''} onClick={() => setTab('semis')}>Создать полуфабрикат</button>
         <button className={tab === 'final' ? 'active' : ''} onClick={() => setTab('final')}>Создать блюдо</button>
         <button className={tab === 'legacy' ? 'active' : ''} onClick={() => setTab('legacy')}>Текущие тех. карты</button>
