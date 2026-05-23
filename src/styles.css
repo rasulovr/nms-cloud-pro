@@ -3093,3 +3093,136 @@ button:not(.nav):not(.rms-pro-logout):hover{transform:translateY(-1px)!important
 .tech-modern-layout{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:18px;align-items:start}.tech-modern-main-card,.tech-side-card,.tech-preview-card{background:#fff;border:1px solid #e6ebf3;border-radius:22px;box-shadow:0 16px 44px rgba(15,23,42,.04)}.tech-modern-main-card{overflow:hidden}.tech-preview-card{margin:16px;padding:18px}.tech-modern-toolbar{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:18px 22px;border-bottom:1px solid #edf1f6}.tech-tabs-clean{display:flex;gap:22px;align-items:center}.tech-tabs-clean button{background:transparent;border:0;border-radius:0;padding:10px 0;color:#64748b;font-weight:800;position:relative}.tech-tabs-clean button.active{color:#2563eb}.tech-tabs-clean button.active::after{content:"";position:absolute;left:0;right:0;bottom:-19px;height:2px;background:#2563eb;border-radius:99px}.tech-toolbar-actions{display:flex;gap:10px;align-items:center}.tech-filter-bar{display:grid;grid-template-columns:220px minmax(260px,1fr) 140px;gap:14px;padding:18px 22px;border-bottom:1px solid #edf1f6}.tech-filter-bar label span{font-size:12px;color:#64748b;font-weight:800}.tech-filter-bar input,.tech-filter-bar select{height:42px;background:#f8fafc;border:1px solid #dfe6ef;border-radius:14px;font-weight:700;color:#0f172a}.tech-table-wrap{overflow:auto}.tech-modern-table{width:100%;border-collapse:collapse;min-width:980px}.tech-modern-table th{background:#fbfcfe;color:#64748b;font-size:12px;text-transform:none;letter-spacing:0;font-weight:800;padding:14px 22px;border-bottom:1px solid #edf1f6}.tech-modern-table td{padding:14px 22px;border-bottom:1px solid #edf1f6;vertical-align:middle;color:#0f172a;font-size:14px}.tech-modern-table td small{display:block;margin-top:4px;color:#64748b;font-weight:700}.tech-dish-cell{display:flex;align-items:center;gap:12px;min-width:220px}.tech-dish-cell b{display:block;font-size:14px}.tech-dish-cell span{display:block;font-size:12px;color:#64748b;margin-top:4px}.tech-dish-thumb{width:46px;height:46px;border-radius:14px;background:linear-gradient(135deg,#eaf2ff,#f8fbff);color:#2563eb;display:flex;align-items:center;justify-content:center;font-weight:900;box-shadow:inset 0 0 0 1px rgba(37,99,235,.12)}.tech-category-pill{display:inline-flex;align-items:center;border-radius:999px;padding:6px 10px;background:#eef4ff;color:#2563eb;font-size:12px;font-weight:800}.tech-status{display:inline-flex;align-items:center;border-radius:999px;padding:6px 10px;font-size:12px;font-weight:800}.tech-status.active{background:#dcfce7;color:#047857}.tech-row-actions{display:flex;gap:8px}.icon-button{width:36px;height:36px;border-radius:12px;border:1px solid #dfe6ef;background:#fff;color:#334155;display:inline-flex;align-items:center;justify-content:center;font-weight:900;padding:0}.icon-button:hover{background:#f8fafc;border-color:#cbd5e1}.tech-pagination-row{display:flex;justify-content:space-between;align-items:center;padding:16px 22px}.tech-pages{display:flex;align-items:center;gap:10px}.tech-pages span{min-width:36px;height:36px;border-radius:12px;background:#2563eb;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:900}.tech-modern-sidebar{display:flex;flex-direction:column;gap:18px}.tech-side-card{padding:18px}.tech-side-title{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}.tech-side-card h3,.tech-side-title h3{margin:0;font-size:18px;color:#0f172a}.tech-category-row{width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;background:#fff;border:0;border-bottom:1px solid #edf1f6;border-radius:0;padding:12px 0;color:#0f172a;text-align:left}.tech-category-row span{font-weight:800}.tech-category-row b{font-weight:900;color:#64748b}.tech-category-row.active span{color:#2563eb}.tech-action-line{width:100%;display:grid;grid-template-columns:40px 1fr 18px;align-items:center;gap:12px;background:#fff;border:0;border-bottom:1px solid #edf1f6;border-radius:0;padding:14px 0;text-align:left;color:#0f172a}.tech-action-line span{width:40px;height:40px;border-radius:13px;background:#eef4ff;color:#2563eb;display:flex;align-items:center;justify-content:center;font-weight:900}.tech-action-line b{display:block;font-size:14px}.tech-action-line small{display:block;color:#64748b;margin-top:3px}.tech-action-line em{font-style:normal;color:#94a3b8;font-weight:900}
 @media(max-width:1400px){.tech-kpi-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.tech-modern-layout{grid-template-columns:1fr}.tech-modern-sidebar{grid-template-columns:1fr 1fr;display:grid}}
 @media(max-width:900px){.tech-kpi-grid{grid-template-columns:1fr}.tech-filter-bar{grid-template-columns:1fr}.tech-modern-toolbar{flex-direction:column;align-items:stretch}.tech-toolbar-actions{flex-wrap:wrap}.tech-modern-sidebar{display:flex}}
+
+/* Tech Cards redesign v36 — applies to all tabs, including create semis/final */
+.tech-page-redesign{
+  --tech-ink:#0f172a;
+  --tech-muted:#64748b;
+  --tech-line:#e2e8f0;
+  --tech-soft:#f8fafc;
+  --tech-blue:#2563eb;
+  --tech-green:#10b981;
+  padding-bottom:32px;
+}
+.tech-page-redesign .tech-page-header{
+  align-items:flex-start;
+  margin-bottom:22px;
+}
+.tech-page-redesign .tech-page-header h2{
+  font-size:38px;
+  letter-spacing:-.04em;
+  color:var(--tech-ink);
+  line-height:1.05;
+}
+.tech-page-redesign .tech-page-header p{
+  font-size:16px;
+  color:var(--tech-muted);
+  max-width:760px;
+}
+.tech-header-actions{
+  display:flex;
+  gap:10px;
+  align-items:center;
+}
+.tech-page-tabs{
+  display:flex;
+  gap:10px;
+  margin:0 0 22px;
+  padding:6px;
+  background:rgba(255,255,255,.72);
+  border:1px solid var(--tech-line);
+  border-radius:18px;
+  width:max-content;
+  box-shadow:0 10px 30px rgba(15,23,42,.04);
+}
+.tech-page-redesign .settings-tabs button,
+.tech-page-tabs button{
+  border-radius:14px !important;
+  padding:12px 18px !important;
+  background:transparent !important;
+  border:0 !important;
+  color:#475569 !important;
+  font-weight:800 !important;
+  box-shadow:none !important;
+}
+.tech-page-redesign .settings-tabs button.active,
+.tech-page-tabs button.active{
+  background:#0f2747 !important;
+  color:#fff !important;
+}
+.tech-page-redesign .card,
+.tech-page-redesign .module-placeholder{
+  background:linear-gradient(180deg,#fff,rgba(255,255,255,.92));
+  border:1px solid var(--tech-line);
+  border-radius:28px;
+  box-shadow:0 18px 55px rgba(15,23,42,.06);
+  padding:26px 28px;
+}
+.tech-page-redesign .card h3,
+.tech-page-redesign .card-head h3{
+  font-size:24px;
+  letter-spacing:-.03em;
+  color:var(--tech-ink);
+}
+.tech-page-redesign label{
+  color:var(--tech-muted);
+  font-weight:800;
+  letter-spacing:.01em;
+}
+.tech-page-redesign input,
+.tech-page-redesign select,
+.tech-page-redesign textarea{
+  min-height:48px;
+  border-radius:16px;
+  border:1px solid #dbe3ee;
+  background:#fff;
+  color:var(--tech-ink);
+  font-weight:700;
+  box-shadow:0 1px 0 rgba(15,23,42,.02);
+}
+.tech-page-redesign input:focus,
+.tech-page-redesign select:focus,
+.tech-page-redesign textarea:focus{
+  outline:none;
+  border-color:#93c5fd;
+  box-shadow:0 0 0 4px rgba(37,99,235,.10);
+}
+.tech-page-redesign .primary{
+  background:#2563eb !important;
+  color:#fff !important;
+  box-shadow:0 14px 28px rgba(37,99,235,.18);
+}
+.tech-page-redesign .ghost{
+  background:#f8fafc !important;
+  color:#0f172a !important;
+  border:1px solid #e2e8f0 !important;
+}
+.tech-page-redesign table{
+  border-collapse:separate;
+  border-spacing:0;
+  overflow:hidden;
+}
+.tech-page-redesign th{
+  background:#f8fafc;
+  color:#64748b;
+  font-weight:900;
+  text-transform:none;
+  border-bottom:1px solid #e2e8f0;
+}
+.tech-page-redesign td{
+  background:#fff;
+  border-bottom:1px solid #eef2f7;
+  color:#0f172a;
+}
+.tech-page-redesign tr:hover td{
+  background:#fbfdff;
+}
+.tech-page-redesign .hint{
+  color:#64748b;
+}
+@media(max-width:900px){
+  .tech-page-tabs{width:100%;overflow:auto;scrollbar-width:none;}
+  .tech-page-tabs::-webkit-scrollbar{display:none;}
+  .tech-page-redesign .tech-page-header{gap:16px;}
+  .tech-header-actions{width:100%;justify-content:flex-start;flex-wrap:wrap;}
+}
