@@ -3421,3 +3421,208 @@ button:not(.nav):not(.rms-pro-logout):hover{transform:translateY(-1px)!important
   .salary-section .salary-kpi-grid,
   .salary-section .salary-kpi-grid-sheet{grid-template-columns:1fr !important;}
 }
+
+
+/* === v39 Tech Cards final layout polish === */
+.tech-page-redesign .topbar.tech-page-header{
+  align-items:flex-start;
+  gap:18px;
+  margin-bottom:18px;
+}
+.tech-page-redesign .topbar.tech-page-header h2{
+  font-size:38px;
+  line-height:1.05;
+  letter-spacing:-.04em;
+}
+.tech-page-redesign .topbar.tech-page-header p{
+  max-width:760px;
+  font-size:16px;
+  line-height:1.45;
+}
+.tech-page-tabs{
+  order:0;
+  display:inline-flex;
+  width:auto;
+  padding:6px;
+  background:rgba(255,255,255,.82);
+  border:1px solid rgba(215,223,235,.96);
+  border-radius:18px;
+  box-shadow:0 16px 40px rgba(15,23,42,.04);
+  margin-bottom:22px;
+}
+.tech-page-tabs button{
+  border-radius:14px!important;
+  padding:14px 22px!important;
+  min-height:46px;
+  font-weight:850!important;
+  color:#334155!important;
+  background:transparent!important;
+  border:0!important;
+}
+.tech-page-tabs button.active{
+  background:#132842!important;
+  color:#fff!important;
+  box-shadow:0 12px 28px rgba(19,40,66,.18);
+}
+.tech-modern-layout{
+  display:block!important;
+  grid-template-columns:1fr!important;
+}
+.tech-modern-sidebar{
+  display:none!important;
+}
+.tech-modern-main-card{
+  width:100%!important;
+}
+.tech-filter-bar{
+  grid-template-columns:280px minmax(360px,1fr) 150px!important;
+}
+.tech-modern-table{
+  min-width:1120px!important;
+}
+.tech-status.active{
+  background:#dcfce7;
+  color:#047857;
+  padding:7px 12px;
+}
+.tech-row-actions{
+  align-items:center;
+}
+.tech-view-button{
+  width:auto!important;
+  min-width:86px;
+  padding:0 13px!important;
+  font-size:12px;
+  border-radius:12px;
+}
+.tech-preview-card{
+  margin:18px 22px 22px!important;
+  padding:22px!important;
+  border-radius:22px!important;
+  background:linear-gradient(180deg,#ffffff,#fbfdff)!important;
+  box-shadow:0 18px 45px rgba(15,23,42,.05)!important;
+}
+.tech-preview-card .metric-grid,
+.tech-page-redesign .metric-grid{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:14px;
+}
+.tech-preview-card .metric,
+.tech-page-redesign .metric-grid .metric{
+  background:#f8fafc;
+  border:1px solid #e6ebf3;
+  border-radius:18px;
+  padding:16px 18px;
+  min-height:88px;
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+  justify-content:center;
+}
+.tech-preview-card .metric span,
+.tech-page-redesign .metric-grid .metric span{
+  font-size:12px;
+  color:#64748b;
+  font-weight:800;
+  text-transform:uppercase;
+  letter-spacing:.03em;
+}
+.tech-preview-card .metric strong,
+.tech-page-redesign .metric-grid .metric strong{
+  font-size:22px;
+  color:#0f172a;
+  margin-top:8px;
+}
+.tech-page-redesign .grid,
+.tech-page-redesign .semifinished-layout{
+  display:grid!important;
+  grid-template-columns:1fr!important;
+  gap:18px!important;
+}
+.tech-page-redesign .grid > .card,
+.tech-page-redesign .semifinished-layout > .card{
+  background:#fff!important;
+  border:1px solid #e6ebf3!important;
+  border-radius:24px!important;
+  box-shadow:0 18px 45px rgba(15,23,42,.045)!important;
+  padding:24px!important;
+}
+.tech-page-redesign .grid > .card h3,
+.tech-page-redesign .semifinished-layout > .card h3{
+  font-size:22px;
+  letter-spacing:-.03em;
+  margin-top:0;
+}
+.tech-page-redesign .form-grid.compact,
+.tech-page-redesign .semi-form-grid,
+.tech-page-redesign .semi-edit-grid,
+.tech-page-redesign .semi-add-form-grid{
+  display:grid!important;
+  grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  gap:16px!important;
+}
+.tech-page-redesign .semi-form-grid .wide,
+.tech-page-redesign .semi-add-component-field{
+  grid-column:span 2;
+}
+.tech-page-redesign label span{
+  color:#64748b;
+  font-weight:850;
+  font-size:12px;
+  margin-bottom:7px;
+}
+.tech-page-redesign input,
+.tech-page-redesign select,
+.tech-page-redesign textarea{
+  min-height:46px;
+  background:#fbfdff!important;
+  border:1px solid #dfe6ef!important;
+  border-radius:14px!important;
+  font-weight:750;
+  color:#0f172a!important;
+  box-shadow:none!important;
+}
+.tech-page-redesign .actions-row,
+.tech-page-redesign .action-row{
+  display:flex;
+  gap:10px;
+  align-items:center;
+  flex-wrap:wrap;
+  margin-top:16px;
+}
+.tech-page-redesign .table-wrap table{
+  border-collapse:separate!important;
+  border-spacing:0!important;
+}
+.tech-page-redesign .table-wrap th{
+  background:#fbfcfe!important;
+  color:#64748b!important;
+  font-size:12px!important;
+  font-weight:850!important;
+  padding:14px 16px!important;
+}
+.tech-page-redesign .table-wrap td{
+  padding:14px 16px!important;
+  border-bottom:1px solid #edf1f6!important;
+}
+.tech-page-redesign .semi-composition-table-wrap,
+.tech-page-redesign .table-wrap{
+  border:1px solid #edf1f6;
+  border-radius:18px;
+  overflow:auto;
+  background:#fff;
+}
+@media(max-width:1100px){
+  .tech-filter-bar,
+  .tech-page-redesign .form-grid.compact,
+  .tech-page-redesign .semi-form-grid,
+  .tech-page-redesign .semi-edit-grid,
+  .tech-page-redesign .semi-add-form-grid,
+  .tech-preview-card .metric-grid,
+  .tech-page-redesign .metric-grid{
+    grid-template-columns:1fr!important;
+  }
+  .tech-page-redesign .semi-form-grid .wide,
+  .tech-page-redesign .semi-add-component-field{grid-column:auto!important;}
+}
