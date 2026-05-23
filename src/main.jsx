@@ -6138,6 +6138,8 @@ function Dashboard({ t }) {
       <div className="dash-kpi dash-kpi-purple"><span className="dash-kpi-icon">▥</span><div><em>Расходы</em><strong>{fmt(data.expenses)} <small>AZN</small></strong><p>{data.revenue ? pct(data.expenses / data.revenue * 100) : '0.0%'} от выручки</p></div></div>
       <div className="dash-kpi dash-kpi-red"><span className="dash-kpi-icon">%</span><div><em>Рентабельность</em><strong>{pct(data.revenue ? data.net / data.revenue * 100 : 0)}</strong><p>маржа чистой прибыли</p></div></div>
       <div className="dash-kpi dash-kpi-wallet"><span className="dash-kpi-icon">▣</span><div><em>Денежный остаток</em><strong>{fmt(cashBalance)} <small>AZN</small></strong><p>наличные + банк</p></div></div>
+      <div className="dash-kpi dash-kpi-forecast"><span className="dash-kpi-icon">⌁</span><div><em>Прогноз выручки</em><strong>{fmt(data.forecastRevenue)} <small>AZN</small></strong><p>до конца месяца</p></div></div>
+      <div className="dash-kpi dash-kpi-target"><span className="dash-kpi-icon">◎</span><div><em>Прогноз прибыли</em><strong>{fmt(data.forecastProfit)} <small>AZN</small></strong><p>прогноз месяца</p></div></div>
     </section>
 
     <section className="dashboard-v25-layout">
@@ -7013,12 +7015,15 @@ function Finance({ t, lang, onGoToExpense }) {
 
   if (!stats) return <div className="module-placeholder">{t('loading')}</div>
   const revChange = stats.previous?.revenue ? ((stats.revenue - stats.previous.revenue) / stats.previous.revenue * 100) : 0
-  const profitChange = stats.previous?.net ? ((stats.net - stats.previous.net) / Math.abs(stats.previous.net) * 100) : 0
   const aiPriority = { critical: 0, warning: 1, ok: 2 }
   const sortedAiRows = [...aiRows].sort((a, b) => (aiPriority[a.level] ?? 9) - (aiPriority[b.level] ?? 9))
   const visibleAiRows = showAllAiRows ? sortedAiRows : sortedAiRows.slice(0, 5)
-  const financeTotalExpenses = parseNum(stats.expenses) + parseNum(stats.salary) + parseNum(stats.serviceCost) + parseNum(stats.tax)
-  const financeProfitability = stats.revenue ? stats.net / stats.revenue * 100 : 0
+  // Единая логика с Dashboard: stats.expenses уже содержит общий расходный факт.
+  const financeTotalExpenses = parseNum(stats.expenses)
+  const financeNet = parseNum(stats.revenue) - financeTotalExpenses
+  const financePreviousNet = parseNum(stats.previous?.revenue) - parseNum(stats.previous?.expenses)
+  const profitChange = financePreviousNet ? ((financeNet - financePreviousNet) / Math.abs(financePreviousNet) * 100) : 0
+  const financeProfitability = stats.revenue ? financeNet / stats.revenue * 100 : 0
   const financeCashBalance = parseNum(stats.cash) + parseNum(stats.bank)
   const financeExpenseStructure = (breakdown || [])
     .filter(r => parseNum(r.amount) > 0)
@@ -7026,12 +7031,12 @@ function Finance({ t, lang, onGoToExpense }) {
     .slice(0, 5)
   const financeExpenseTotalForChart = financeExpenseStructure.reduce((sum, r) => sum + parseNum(r.amount), 0) || financeTotalExpenses || 1
   const financeTrendRows = [
-    { label: 'Нояб', income: stats.revenue * 0.52, expenses: financeTotalExpenses * 0.56, net: Math.max(0, stats.net * 0.48) },
-    { label: 'Дек', income: stats.revenue * 0.58, expenses: financeTotalExpenses * 0.62, net: Math.max(0, stats.net * 0.55) },
-    { label: 'Янв', income: stats.revenue * 0.64, expenses: financeTotalExpenses * 0.66, net: Math.max(0, stats.net * 0.61) },
-    { label: 'Фев', income: stats.previous?.revenue || stats.revenue * 0.72, expenses: financeTotalExpenses * 0.72, net: Math.max(0, stats.previous?.net || stats.net * 0.70) },
-    { label: 'Март', income: stats.revenue * 0.86, expenses: financeTotalExpenses * 0.84, net: Math.max(0, stats.net * 0.88) },
-    { label: 'Апр', income: Math.max(stats.revenue, stats.forecastRevenue || 0), expenses: financeTotalExpenses, net: Math.max(0, stats.net) }
+    { label: 'Нояб', income: stats.revenue * 0.52, expenses: financeTotalExpenses * 0.56, net: Math.max(0, financeNet * 0.48) },
+    { label: 'Дек', income: stats.revenue * 0.58, expenses: financeTotalExpenses * 0.62, net: Math.max(0, financeNet * 0.55) },
+    { label: 'Янв', income: stats.revenue * 0.64, expenses: financeTotalExpenses * 0.66, net: Math.max(0, financeNet * 0.61) },
+    { label: 'Фев', income: stats.previous?.revenue || stats.revenue * 0.72, expenses: financeTotalExpenses * 0.72, net: Math.max(0, financePreviousNet || financeNet * 0.70) },
+    { label: 'Март', income: stats.revenue * 0.86, expenses: financeTotalExpenses * 0.84, net: Math.max(0, financeNet * 0.88) },
+    { label: 'Апр', income: Math.max(stats.revenue, stats.forecastRevenue || 0), expenses: financeTotalExpenses, net: Math.max(0, financeNet) }
   ]
   const financeTrendMax = Math.max(1, ...financeTrendRows.flatMap(r => [parseNum(r.income), parseNum(r.expenses), parseNum(r.net)]))
   const financeChartWidth = 620
@@ -7051,7 +7056,7 @@ function Finance({ t, lang, onGoToExpense }) {
   const financePlanRows = [
     { name: 'Выручка', fact: stats.revenue, plan: Math.max(stats.revenue * 0.9, 1), accent: 'blue' },
     { name: 'Расходы', fact: financeTotalExpenses, plan: Math.max(financeTotalExpenses * 1.05, 1), accent: 'green' },
-    { name: 'Прибыль', fact: Math.max(stats.net, 0), plan: Math.max(Math.max(stats.net, 0) * 0.78, 1), accent: 'purple' }
+    { name: 'Прибыль', fact: Math.max(financeNet, 0), plan: Math.max(Math.max(financeNet, 0) * 0.78, 1), accent: 'purple' }
   ]
 
   return (
@@ -7083,12 +7088,12 @@ function Finance({ t, lang, onGoToExpense }) {
         <div className="finance-intel-kpi">
           <div className="finance-kpi-icon finance-kpi-green">⌁</div>
           <span>Чистая прибыль</span>
-          <strong className={stats.net >= 0 ? 'good' : 'bad'}>{fmt(stats.net)} <em>AZN</em></strong>
+          <strong className={financeNet >= 0 ? 'good' : 'bad'}>{fmt(financeNet)} <em>AZN</em></strong>
           <p className={profitChange >= 0 ? 'good' : 'bad'}>{profitChange >= 0 ? '+' : ''}{pct(profitChange)} к прошлому месяцу</p>
         </div>
         <div className="finance-intel-kpi">
           <div className="finance-kpi-icon finance-kpi-purple">▥</div>
-          <span>Операционные расходы</span>
+          <span>Расходы</span>
           <strong>{fmt(financeTotalExpenses)} <em>AZN</em></strong>
           <p>{pct(stats.revenue ? financeTotalExpenses / stats.revenue * 100 : 0)} от выручки</p>
         </div>
@@ -7103,6 +7108,18 @@ function Finance({ t, lang, onGoToExpense }) {
           <span>Денежный остаток</span>
           <strong>{fmt(financeCashBalance)} <em>AZN</em></strong>
           <p>наличные + банк</p>
+        </div>
+        <div className="finance-intel-kpi">
+          <div className="finance-kpi-icon finance-kpi-orange">⌁</div>
+          <span>Прогноз выручки</span>
+          <strong>{fmt(stats.forecastRevenue)} <em>AZN</em></strong>
+          <p>до конца месяца</p>
+        </div>
+        <div className="finance-intel-kpi">
+          <div className="finance-kpi-icon finance-kpi-teal">◎</div>
+          <span>Прогноз прибыли</span>
+          <strong>{fmt(stats.forecastProfit)} <em>AZN</em></strong>
+          <p>прогноз месяца</p>
         </div>
       </section>
 
