@@ -14855,6 +14855,8 @@ function Reports({ t }) {
   const [cloudHiddenSalesLoaded, setCloudHiddenSalesLoaded] = useState(false)
   const [cloudSalesAliasesLoaded, setCloudSalesAliasesLoaded] = useState(false)
   const [rmsRevenueReport, setRmsRevenueReport] = useState({ loading: false, error: '', rows: [], totals: { cash: 0, bank: 0, wolt: 0, revenue: 0 } })
+  const [rmsExpensesReport, setRmsExpensesReport] = useState({ loading: false, error: '', rows: [], totals: { amount: 0, transactions: 0, categories: 0 }, byCategory: [], byBranch: [] })
+  const [rmsSuppliersReport, setRmsSuppliersReport] = useState({ loading: false, error: '', rows: [], totals: { purchases: 0, payments: 0, balance: 0, suppliers: 0 }, purchases: [], payments: [] })
 
   useEffect(() => { writeAikoSalesReports(reports) }, [reports])
   useEffect(() => { writeAikoBranchMap(branchMap) }, [branchMap])
@@ -15011,6 +15013,147 @@ function Reports({ t }) {
       setRmsRevenueReport({ loading: false, error: '', rows, totals })
     } catch (error) {
       setRmsRevenueReport({ loading: false, error: error?.message || 'Не удалось загрузить выручку RMS', rows: [], totals: { cash: 0, bank: 0, wolt: 0, revenue: 0 } })
+    }
+  }
+
+
+  useEffect(() => {
+    if (reportsTab !== 'expenses') return
+    loadRmsExpensesReport()
+  }, [reportsTab, branchFilter, monthFilter, branches.length])
+
+  useEffect(() => {
+    if (reportsTab !== 'suppliers') return
+    loadRmsSuppliersReport()
+  }, [reportsTab, branchFilter, monthFilter, branches.length])
+
+  async function loadRmsExpensesReport() {
+    setRmsExpensesReport(prev => ({ ...prev, loading: true, error: '' }))
+    try {
+      let query = supabase
+        .from('daily_expenses')
+        .select('id,branch_id,expense_date,amount,comment,custom_category,expense_categories(name)')
+        .is('deleted_at', null)
+
+      if (branchFilter !== 'all') query = query.eq('branch_id', branchFilter)
+      if (/^\d{4}-\d{2}$/.test(String(monthFilter || ''))) {
+        const start = `${monthFilter}-01`
+        const end = new Date(Number(monthFilter.slice(0, 4)), Number(monthFilter.slice(5, 7)), 1).toISOString().slice(0, 10)
+        query = query.gte('expense_date', start).lt('expense_date', end)
+      }
+
+      const { data, error } = await query.order('expense_date', { ascending: false })
+      if (error) throw error
+
+      const branchNameById = new Map((branches || []).map(b => [String(b.id), b.name]))
+      const rows = (data || []).map(row => ({
+        ...row,
+        branch_name: branchNameById.get(String(row.branch_id)) || row.branch_id || '—',
+        category_name: row?.expense_categories?.name || row?.custom_category || 'Прочее',
+        amount: parseNum(row.amount)
+      }))
+
+      const byCategoryMap = new Map()
+      const byBranchMap = new Map()
+      rows.forEach(row => {
+        const cat = row.category_name || 'Прочее'
+        const prevCat = byCategoryMap.get(cat) || { name: cat, amount: 0, transactions: 0 }
+        prevCat.amount += parseNum(row.amount)
+        prevCat.transactions += 1
+        byCategoryMap.set(cat, prevCat)
+
+        const branch = row.branch_name || '—'
+        const prevBranch = byBranchMap.get(branch) || { name: branch, amount: 0, transactions: 0 }
+        prevBranch.amount += parseNum(row.amount)
+        prevBranch.transactions += 1
+        byBranchMap.set(branch, prevBranch)
+      })
+
+      const byCategory = Array.from(byCategoryMap.values()).sort((a, b) => b.amount - a.amount)
+      const byBranch = Array.from(byBranchMap.values()).sort((a, b) => b.amount - a.amount)
+      const totals = {
+        amount: rows.reduce((sum, row) => sum + parseNum(row.amount), 0),
+        transactions: rows.length,
+        categories: byCategory.length
+      }
+      setRmsExpensesReport({ loading: false, error: '', rows, totals, byCategory, byBranch })
+    } catch (error) {
+      setRmsExpensesReport({ loading: false, error: error?.message || 'Не удалось загрузить расходы RMS', rows: [], totals: { amount: 0, transactions: 0, categories: 0 }, byCategory: [], byBranch: [] })
+    }
+  }
+
+  async function loadRmsSuppliersReport() {
+    setRmsSuppliersReport(prev => ({ ...prev, loading: true, error: '' }))
+    try {
+      let purchasesQuery = supabase
+        .from('supplier_purchases')
+        .select('id,supplier_id,branch_id,purchase_date,invoice_number,total_amount,comment')
+        .is('deleted_at', null)
+      let paymentsQuery = supabase
+        .from('supplier_payments')
+        .select('id,supplier_id,payment_date,amount,invoice_notes,comment')
+      if (branchFilter !== 'all') {
+        purchasesQuery = purchasesQuery.eq('branch_id', branchFilter)
+      }
+      if (/^\d{4}-\d{2}$/.test(String(monthFilter || ''))) {
+        const start = `${monthFilter}-01`
+        const end = new Date(Number(monthFilter.slice(0, 4)), Number(monthFilter.slice(5, 7)), 1).toISOString().slice(0, 10)
+        purchasesQuery = purchasesQuery.gte('purchase_date', start).lt('purchase_date', end)
+        paymentsQuery = paymentsQuery.gte('payment_date', start).lt('payment_date', end)
+      }
+
+      const [suppliersRes, balancesRes, purchasesRes, paymentsRes] = await Promise.all([
+        supabase.from('suppliers').select('id,name,payment_term_days,credit_limit,is_active').eq('is_active', true).order('name'),
+        supabase.from('supplier_balances_v2').select('*'),
+        purchasesQuery.order('purchase_date', { ascending: false }),
+        paymentsQuery.order('payment_date', { ascending: false })
+      ])
+      let balanceRows = balancesRes.data || []
+      if (!balanceRows.length || balancesRes.error) {
+        const fallback = await supabase.from('supplier_balances').select('*')
+        balanceRows = (fallback.data || []).map(r => ({ supplier_id: r.supplier_id, balance: r.balance, supplier_name: r.supplier_name }))
+      }
+      const suppliers = suppliersRes.data || []
+      const purchases = (purchasesRes.data || []).map(row => ({ ...row, total_amount: parseNum(row.total_amount) }))
+      const payments = (paymentsRes.data || []).map(row => ({ ...row, amount: parseNum(row.amount) }))
+      const balanceMap = new Map()
+      balanceRows.forEach(r => {
+        const key = String(r.supplier_id || '')
+        balanceMap.set(key, (balanceMap.get(key) || 0) + parseNum(r.balance))
+      })
+
+      const rows = suppliers.map(s => {
+        const supplierPurchases = purchases.filter(p => String(p.supplier_id) === String(s.id))
+        const supplierPayments = payments.filter(p => String(p.supplier_id) === String(s.id))
+        const purchasesAmount = supplierPurchases.reduce((sum, p) => sum + parseNum(p.total_amount), 0)
+        const paymentsAmount = supplierPayments.reduce((sum, p) => sum + parseNum(p.amount), 0)
+        const balance = parseNum(balanceMap.get(String(s.id)))
+        const lastPurchase = supplierPurchases[0]?.purchase_date || ''
+        return {
+          supplier_id: s.id,
+          supplier_name: s.name,
+          payment_term_days: parseNum(s.payment_term_days),
+          credit_limit: parseNum(s.credit_limit),
+          purchases: purchasesAmount,
+          payments: paymentsAmount,
+          balance,
+          purchase_count: supplierPurchases.length,
+          payment_count: supplierPayments.length,
+          last_purchase: lastPurchase
+        }
+      }).filter(r => r.purchases > 0 || r.payments > 0 || r.balance > 0)
+        .sort((a,b) => b.balance - a.balance)
+
+      const totals = {
+        purchases: rows.reduce((sum, r) => sum + parseNum(r.purchases), 0),
+        payments: rows.reduce((sum, r) => sum + parseNum(r.payments), 0),
+        balance: rows.reduce((sum, r) => sum + parseNum(r.balance), 0),
+        suppliers: rows.length
+      }
+
+      setRmsSuppliersReport({ loading: false, error: '', rows, totals, purchases, payments })
+    } catch (error) {
+      setRmsSuppliersReport({ loading: false, error: error?.message || 'Не удалось загрузить отчёт по поставщикам', rows: [], totals: { purchases: 0, payments: 0, balance: 0, suppliers: 0 }, purchases: [], payments: [] })
     }
   }
 
@@ -15846,6 +15989,116 @@ function Reports({ t }) {
   </section>
 
 
+  const ReportsExpensesView = <section className="reports-v43-module-grid reports-v43-revenue-grid">
+    <div className="reports-v43-module-card reports-v43-wide reports-v43-revenue-card">
+      <div className="reports-v43-card-head reports-v43-revenue-head">
+        <div>
+          <h3>Отчёт по расходам RMS</h3>
+          <p>Данные берутся из таблицы daily_expenses. Ниже — общая сумма, разбивка по статьям и журнал транзакций.</p>
+        </div>
+        <div className="reports-v43-revenue-actions">
+          <button className={monthFilter === currentMonthKey ? 'small primary' : 'small ghost'} type="button" onClick={() => setMonthFilter(currentMonthKey)}>Текущий месяц</button>
+          <button className="small ghost" type="button" onClick={loadRmsExpensesReport}>Обновить</button>
+        </div>
+      </div>
+
+      <div className="reports-v43-mini-kpis">
+        <div><span>Итого расходов</span><strong>{fmt(rmsExpensesReport.totals.amount)}</strong><em>по текущему фильтру</em></div>
+        <div><span>Транзакций</span><strong>{fmt(rmsExpensesReport.totals.transactions)}</strong><em>строк расходов</em></div>
+        <div><span>Статей</span><strong>{fmt(rmsExpensesReport.totals.categories)}</strong><em>уникальные категории</em></div>
+        <div><span>Филиал</span><strong>{selectedBranchLabel}</strong><em>текущий фильтр</em></div>
+        <div><span>Период</span><strong>{selectedMonthLabel}</strong><em>текущий фильтр</em></div>
+        <div><span>Средний расход</span><strong>{fmt(rmsExpensesReport.totals.transactions ? rmsExpensesReport.totals.amount / rmsExpensesReport.totals.transactions : 0)}</strong><em>на транзакцию</em></div>
+      </div>
+
+      {rmsExpensesReport.loading && <div className="reports-v43-empty-state"><b>Загрузка расходов...</b><span>Идёт чтение daily_expenses.</span></div>}
+      {rmsExpensesReport.error && <div className="reports-v43-empty-state"><b>Ошибка загрузки</b><span>{rmsExpensesReport.error}</span></div>}
+      {!rmsExpensesReport.loading && !rmsExpensesReport.error && <>
+        <div className="reports-v43-grid reports-v43-expenses-grid">
+          <div className="reports-v43-card">
+            <div className="reports-v43-card-head"><div><h3>Расходы по статьям</h3><p>Сумма и количество транзакций по каждой категории.</p></div></div>
+            <div className="reports-v43-table-wrap"><table>
+              <thead><tr><th>Статья</th><th>Транзакций</th><th>Сумма</th><th>% от общего</th></tr></thead>
+              <tbody>
+                {rmsExpensesReport.byCategory.slice(0, 20).map(row => <tr key={row.name}><td><b>{row.name}</b></td><td>{fmt(row.transactions)}</td><td>{fmt(row.amount)}</td><td>{rmsExpensesReport.totals.amount ? pct(row.amount / rmsExpensesReport.totals.amount * 100) : '0.0%'}</td></tr>)}
+                {!rmsExpensesReport.byCategory.length && <tr><td colSpan="4" className="hint">Нет данных по расходам за выбранный фильтр.</td></tr>}
+              </tbody>
+            </table></div>
+          </div>
+          <div className="reports-v43-card">
+            <div className="reports-v43-card-head"><div><h3>Расходы по филиалам</h3><p>Сводка по филиалам внутри текущего периода.</p></div></div>
+            <div className="reports-v43-table-wrap"><table>
+              <thead><tr><th>Филиал</th><th>Транзакций</th><th>Сумма</th></tr></thead>
+              <tbody>
+                {rmsExpensesReport.byBranch.slice(0, 20).map(row => <tr key={row.name}><td><b>{row.name}</b></td><td>{fmt(row.transactions)}</td><td>{fmt(row.amount)}</td></tr>)}
+                {!rmsExpensesReport.byBranch.length && <tr><td colSpan="3" className="hint">Нет данных.</td></tr>}
+              </tbody>
+            </table></div>
+          </div>
+        </div>
+
+        <div className="reports-v43-card" style={{ marginTop: 14 }}>
+          <div className="reports-v43-card-head"><div><h3>Журнал расходов</h3><p>Построчная детализация из daily_expenses.</p></div></div>
+          <div className="reports-v43-table-wrap"><table>
+            <thead><tr><th>Дата</th><th>Филиал</th><th>Статья</th><th>Комментарий</th><th>Сумма</th></tr></thead>
+            <tbody>
+              {rmsExpensesReport.rows.slice(0, 120).map(row => <tr key={row.id}><td>{row.expense_date || '—'}</td><td><b>{row.branch_name || '—'}</b></td><td>{row.category_name || '—'}</td><td>{row.comment || '—'}</td><td><b>{fmt(row.amount)}</b></td></tr>)}
+              {!rmsExpensesReport.rows.length && <tr><td colSpan="5" className="hint">Нет данных по расходам за выбранный фильтр.</td></tr>}
+            </tbody>
+          </table></div>
+        </div>
+      </>}
+    </div>
+  </section>
+
+  const ReportsSuppliersView = <section className="reports-v43-module-grid reports-v43-revenue-grid">
+    <div className="reports-v43-module-card reports-v43-wide reports-v43-revenue-card">
+      <div className="reports-v43-card-head reports-v43-revenue-head">
+        <div>
+          <h3>Отчёт по поставщикам</h3>
+          <p>Сводка по закупкам, оплатам и текущему балансу поставщиков на основе supplier_purchases, supplier_payments и supplier_balances.</p>
+        </div>
+        <div className="reports-v43-revenue-actions">
+          <button className={monthFilter === currentMonthKey ? 'small primary' : 'small ghost'} type="button" onClick={() => setMonthFilter(currentMonthKey)}>Текущий месяц</button>
+          <button className="small ghost" type="button" onClick={loadRmsSuppliersReport}>Обновить</button>
+        </div>
+      </div>
+
+      <div className="reports-v43-mini-kpis">
+        <div><span>Поставщиков</span><strong>{fmt(rmsSuppliersReport.totals.suppliers)}</strong><em>с активностью / балансом</em></div>
+        <div><span>Закупки</span><strong>{fmt(rmsSuppliersReport.totals.purchases)}</strong><em>за период</em></div>
+        <div><span>Оплаты</span><strong>{fmt(rmsSuppliersReport.totals.payments)}</strong><em>за период</em></div>
+        <div><span>Текущий баланс</span><strong>{fmt(rmsSuppliersReport.totals.balance)}</strong><em>общий долг</em></div>
+        <div><span>Филиал</span><strong>{selectedBranchLabel}</strong><em>текущий фильтр</em></div>
+        <div><span>Период</span><strong>{selectedMonthLabel}</strong><em>текущий фильтр</em></div>
+      </div>
+
+      {rmsSuppliersReport.loading && <div className="reports-v43-empty-state"><b>Загрузка поставщиков...</b><span>Идёт чтение supplier_purchases / supplier_payments / supplier_balances.</span></div>}
+      {rmsSuppliersReport.error && <div className="reports-v43-empty-state"><b>Ошибка загрузки</b><span>{rmsSuppliersReport.error}</span></div>}
+      {!rmsSuppliersReport.loading && !rmsSuppliersReport.error && <>
+        <div className="reports-v43-card">
+          <div className="reports-v43-card-head"><div><h3>Сводка по поставщикам</h3><p>Закупки и оплаты за выбранный период + текущий баланс.</p></div></div>
+          <div className="reports-v43-table-wrap"><table>
+            <thead><tr><th>Поставщик</th><th>Закупки</th><th>Оплаты</th><th>Баланс</th><th>Последняя закупка</th><th>Срок оплаты</th><th>Кредитный лимит</th></tr></thead>
+            <tbody>
+              {rmsSuppliersReport.rows.slice(0, 120).map(row => <tr key={row.supplier_id}>
+                <td><b>{row.supplier_name || '—'}</b></td>
+                <td>{fmt(row.purchases)}</td>
+                <td>{fmt(row.payments)}</td>
+                <td className={row.balance > 0 ? 'bad' : 'good'}><b>{fmt(row.balance)}</b></td>
+                <td>{row.last_purchase || '—'}</td>
+                <td>{row.payment_term_days ? `${fmt(row.payment_term_days)} дн.` : '—'}</td>
+                <td>{row.credit_limit ? fmt(row.credit_limit) : '—'}</td>
+              </tr>)}
+              {!rmsSuppliersReport.rows.length && <tr><td colSpan="7" className="hint">Нет данных по поставщикам за выбранный фильтр.</td></tr>}
+            </tbody>
+          </table></div>
+        </div>
+      </>}
+    </div>
+  </section>
+
+
   const ReportsOverview = <section className="reports-v43-grid">
     <div className="reports-v43-card reports-v43-chart-card">
       <div className="reports-v43-card-head">
@@ -15987,11 +16240,11 @@ function Reports({ t }) {
     {reportsTab === 'sales' && SalesReportView}
     {reportsTab === 'import' && ImportReportView}
     {reportsTab === 'revenue' && ReportsRevenueView}
-    {reportsTab === 'expenses' && <ReportModulePlaceholder title="Отчёт по расходам" description="Общие расходы, динамика, структура по филиалам и периодам." />}
+    {reportsTab === 'expenses' && ReportsExpensesView}
     {reportsTab === 'categories' && <ReportModulePlaceholder title="Расходы по статьям" description="Детализация каждой статьи с drill-down до транзакций." />}
     {reportsTab === 'purchases' && <ReportModulePlaceholder title="Отчёт по закупкам" description="Закупки поставщиков по периодам, филиалам, категориям и фактурам." />}
     {reportsTab === 'products' && <ReportModulePlaceholder title="Отчёт по товарам" description="Движение товаров, закупочные цены, последние цены и объём закупок." />}
-    {reportsTab === 'suppliers' && <ReportModulePlaceholder title="Отчёт по поставщикам" description="Закупки, оплаты, баланс, просрочки и VOEN-группировка." />}
+    {reportsTab === 'suppliers' && ReportsSuppliersView}
     {reportsTab === 'bazar' && <ReportModulePlaceholder title="Отчёт по базару" description="Базар, автоматическое распределение по филиалам и влияние на Food Cost." />}
     {reportsTab === 'export' && <ReportModulePlaceholder title="Экспорт отчётов" description="PDF, печать, CSV/Excel и сохранение выбранного среза." />}
   </section>
@@ -16277,6 +16530,17 @@ function ReportsV43Styles() {
 .reports-v43-revenue-table td:nth-child(6) {
   width: 16.75% !important;
   text-align: right !important;
+}
+
+
+.reports-v43-expenses-grid {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+}
+
+@media (max-width: 1200px) {
+  .reports-v43-expenses-grid {
+    grid-template-columns: 1fr !important;
+  }
 }
 
 @media (max-width: 1500px) {
