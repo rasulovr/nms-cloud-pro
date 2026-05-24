@@ -16015,22 +16015,22 @@ function Reports({ t }) {
       {!rmsExpensesReport.loading && !rmsExpensesReport.error && <>
         <div className="reports-v43-grid reports-v43-expenses-grid">
           <div className="reports-v43-card">
-            <div className="reports-v43-card-head"><div><h3>Расходы по статьям</h3><p>Сумма и количество транзакций по каждой категории.</p></div></div>
+            <div className="reports-v43-card-head"><div><h3>Расходы по статьям</h3><p>Сумма расходов по каждой категории.</p></div></div>
             <div className="reports-v43-table-wrap"><table>
-              <thead><tr><th>Статья</th><th>Транзакций</th><th>Сумма</th><th>% от общего</th></tr></thead>
+              <thead><tr><th>Статья</th><th>Сумма</th><th>% от общего</th></tr></thead>
               <tbody>
-                {rmsExpensesReport.byCategory.slice(0, 20).map(row => <tr key={row.name}><td><b>{row.name}</b></td><td>{fmt(row.transactions)}</td><td>{fmt(row.amount)}</td><td>{rmsExpensesReport.totals.amount ? pct(row.amount / rmsExpensesReport.totals.amount * 100) : '0.0%'}</td></tr>)}
-                {!rmsExpensesReport.byCategory.length && <tr><td colSpan="4" className="hint">Нет данных по расходам за выбранный фильтр.</td></tr>}
+                {rmsExpensesReport.byCategory.slice(0, 20).map(row => <tr key={row.name}><td><b>{row.name}</b></td><td>{fmt(row.amount)}</td><td>{rmsExpensesReport.totals.amount ? pct(row.amount / rmsExpensesReport.totals.amount * 100) : '0.0%'}</td></tr>)}
+                {!rmsExpensesReport.byCategory.length && <tr><td colSpan="3" className="hint">Нет данных по расходам за выбранный фильтр.</td></tr>}
               </tbody>
             </table></div>
           </div>
           <div className="reports-v43-card">
             <div className="reports-v43-card-head"><div><h3>Расходы по филиалам</h3><p>Сводка по филиалам внутри текущего периода.</p></div></div>
             <div className="reports-v43-table-wrap"><table>
-              <thead><tr><th>Филиал</th><th>Транзакций</th><th>Сумма</th></tr></thead>
+              <thead><tr><th>Филиал</th><th>Сумма</th></tr></thead>
               <tbody>
-                {rmsExpensesReport.byBranch.slice(0, 20).map(row => <tr key={row.name}><td><b>{row.name}</b></td><td>{fmt(row.transactions)}</td><td>{fmt(row.amount)}</td></tr>)}
-                {!rmsExpensesReport.byBranch.length && <tr><td colSpan="3" className="hint">Нет данных.</td></tr>}
+                {rmsExpensesReport.byBranch.slice(0, 20).map(row => <tr key={row.name}><td><b>{row.name}</b></td><td>{fmt(row.amount)}</td></tr>)}
+                {!rmsExpensesReport.byBranch.length && <tr><td colSpan="2" className="hint">Нет данных.</td></tr>}
               </tbody>
             </table></div>
           </div>
