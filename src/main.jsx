@@ -16002,9 +16002,8 @@ function Reports({ t }) {
         </div>
       </div>
 
-      <div className="reports-v43-mini-kpis">
+      <div className="reports-v43-mini-kpis reports-v43-expenses-kpis">
         <div><span>Итого расходов</span><strong>{fmt(rmsExpensesReport.totals.amount)}</strong><em>по текущему фильтру</em></div>
-        <div><span>Транзакций</span><strong>{fmt(rmsExpensesReport.totals.transactions)}</strong><em>строк расходов</em></div>
         <div><span>Статей</span><strong>{fmt(rmsExpensesReport.totals.categories)}</strong><em>уникальные категории</em></div>
         <div><span>Филиал</span><strong>{selectedBranchLabel}</strong><em>текущий фильтр</em></div>
         <div><span>Период</span><strong>{selectedMonthLabel}</strong><em>текущий фильтр</em></div>
@@ -16541,6 +16540,11 @@ function ReportsV43Styles() {
   .reports-v43-expenses-grid {
     grid-template-columns: 1fr !important;
   }
+}
+
+
+.reports-v43-expenses-kpis {
+  grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
 }
 
 @media (max-width: 1500px) {
