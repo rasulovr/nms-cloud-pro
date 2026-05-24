@@ -15784,8 +15784,8 @@ function Reports({ t }) {
     </div>
   </section>
 
-  const ReportsRevenueView = <section className="reports-v43-module-grid">
-    <div className="reports-v43-module-card reports-v43-wide">
+  const ReportsRevenueView = <section className="reports-v43-module-grid reports-v43-revenue-grid">
+    <div className="reports-v43-module-card reports-v43-wide reports-v43-revenue-card">
       <div className="reports-v43-card-head reports-v43-revenue-head">
         <div>
           <h3>Отчёт по выручке RMS</h3>
@@ -15973,7 +15973,7 @@ function Reports({ t }) {
     </section>
 
     <section className="reports-v43-filterbar">
-      <label><span>Период</span><select value={monthFilter} onChange={e => setMonthFilter(e.target.value)}><option value="all">Все месяцы</option>{monthOptions.map(m => <option key={m} value={m}>{m}</option>)}</select></label>
+      <label><span>Период</span><select value={monthFilter} onChange={e => setMonthFilter(e.target.value)}><option value="all">Все месяцы</option>{!monthOptions.includes(currentMonthKey) && <option value={currentMonthKey}>Текущий месяц · {currentMonthLabel}</option>}{monthOptions.map(m => <option key={m} value={m}>{m}</option>)}</select></label>
       <label><span>Филиал</span><select value={branchFilter} onChange={e => setBranchFilter(e.target.value)}><option value="all">Все филиалы</option>{branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label>
       <label><span>Тип</span><select value={departmentFilter} onChange={e => setDepartmentFilter(e.target.value)}><option value="all">Все</option><option value="Бар">Бар</option><option value="Кухня">Кухня</option><option value="Смешанный">Смешанный</option></select></label>
       <div className="reports-v43-filter-actions"><button className="ghost small" type="button">Обновить</button><button className="ghost small" type="button">Экспорт</button><button className="small primary" type="button" onClick={() => window.print()}>Печать</button></div>
@@ -16205,6 +16205,99 @@ function ReportsV43Styles() {
 .reports-v43-revenue-table th:nth-child(6),
 .reports-v43-revenue-table td:nth-child(6) {
   padding-right: 18px;
+}
+
+
+.reports-v43-revenue-grid {
+  grid-template-columns: 1fr !important;
+  width: 100% !important;
+}
+
+.reports-v43-module-card.reports-v43-wide,
+.reports-v43-revenue-card {
+  grid-column: 1 / -1 !important;
+  width: 100% !important;
+  max-width: none !important;
+}
+
+.reports-v43-revenue-card {
+  padding: 22px 24px !important;
+}
+
+.reports-v43-revenue-card .reports-v43-mini-kpis {
+  grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
+}
+
+.reports-v43-revenue-head {
+  align-items: flex-start !important;
+}
+
+.reports-v43-revenue-actions {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  flex-wrap: nowrap !important;
+  justify-content: flex-end !important;
+  min-width: max-content !important;
+}
+
+.reports-v43-revenue-table-wrap {
+  width: 100% !important;
+  overflow-x: visible !important;
+}
+
+.reports-v43-revenue-table {
+  width: 100% !important;
+  min-width: 0 !important;
+  table-layout: fixed !important;
+}
+
+.reports-v43-revenue-table th,
+.reports-v43-revenue-table td {
+  white-space: nowrap !important;
+}
+
+.reports-v43-revenue-table th:nth-child(1),
+.reports-v43-revenue-table td:nth-child(1) {
+  width: 15% !important;
+}
+
+.reports-v43-revenue-table th:nth-child(2),
+.reports-v43-revenue-table td:nth-child(2) {
+  width: 18% !important;
+}
+
+.reports-v43-revenue-table th:nth-child(3),
+.reports-v43-revenue-table td:nth-child(3),
+.reports-v43-revenue-table th:nth-child(4),
+.reports-v43-revenue-table td:nth-child(4),
+.reports-v43-revenue-table th:nth-child(5),
+.reports-v43-revenue-table td:nth-child(5),
+.reports-v43-revenue-table th:nth-child(6),
+.reports-v43-revenue-table td:nth-child(6) {
+  width: 16.75% !important;
+  text-align: right !important;
+}
+
+@media (max-width: 1500px) {
+  .reports-v43-revenue-card .reports-v43-mini-kpis {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 900px) {
+  .reports-v43-revenue-head {
+    flex-direction: column !important;
+  }
+
+  .reports-v43-revenue-actions {
+    justify-content: flex-start !important;
+    flex-wrap: wrap !important;
+  }
+
+  .reports-v43-revenue-card .reports-v43-mini-kpis {
+    grid-template-columns: 1fr !important;
+  }
 }
 
 @media (max-width:1400px){.reports-v43-kpi-row{grid-template-columns:repeat(3,minmax(0,1fr))}.reports-v43-grid,.reports-v43-sales-view,.reports-v43-import-grid,.reports-v43-module-grid,.reports-v43-ai-grid{grid-template-columns:1fr}.reports-v43-ai-grid > .card{grid-column:1 / -1 !important}}
