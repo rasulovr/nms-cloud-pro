@@ -6377,7 +6377,7 @@ function Dashboard({ t }) {
     </section>
 
     <section className="dashboard-v23-kpis dashboard-v29-kpis">
-      <div className="dash-kpi dash-kpi-blue"><span className="dash-kpi-icon">↗</span><div><em>Выручка за месяц</em><strong>{fmt(data.revenue)} <small>AZN</small></strong><p className={revenueChange >= 0 ? 'good' : 'bad'}>{revenueChange >= 0 ? '▲' : '▼'} {pct(Math.abs(revenueChange))} {revenueCompareLabel}</p></div></div>
+      <div className="dash-kpi dash-kpi-blue"><span className="dash-kpi-icon">↗</span><div><em>Выручка за месяц</em><strong>{fmt(data.revenue)} <small>AZN</small></strong><p className={revenueChange >= 0 ? 'good' : 'bad'}>{revenueChange >= 0 ? '▲' : '▼'} {pct(Math.abs(revenueChange))}</p></div></div>
       <div className="dash-kpi dash-kpi-purple"><span className="dash-kpi-icon">▥</span><div><em>Расходы</em><strong>{fmt(data.expenses)} <small>AZN</small></strong><p>{data.revenue ? pct(data.expenses / data.revenue * 100) : '0.0%'} от выручки</p></div></div>
       <div className="dash-kpi dash-kpi-green"><span className="dash-kpi-icon">▟</span><div><em>Чистая прибыль</em><strong>{fmt(data.net)} <small>AZN</small></strong><p className={profitChange >= 0 ? 'good' : 'bad'}>{profitChange >= 0 ? '▲' : '▼'} {pct(Math.abs(profitChange))} к прошлому месяцу</p></div></div>
       <div className="dash-kpi dash-kpi-red"><span className="dash-kpi-icon">%</span><div><em>Рентабельность</em><strong>{pct(data.revenue ? data.net / data.revenue * 100 : 0)}</strong><p>маржа чистой прибыли</p></div></div>
@@ -6395,7 +6395,7 @@ function Dashboard({ t }) {
         <div className="card-head"><div><h3>Ключевые выводы</h3><p className="hint">Автоматический summary по выбранному месяцу</p></div></div>
         <div className="dashboard-v23-insight-list dashboard-v25-insight-list">
           {branchId === DASH_ALL_BRANCHES ? <>
-            <div><span>Рост выручки</span><strong className={revenueChange >= 0 ? 'good' : 'bad'}>{revenueChange >= 0 ? '▲' : '▼'} {pct(Math.abs(revenueChange))}</strong><em>{revenueCompareLabel}</em></div>
+            <div><span>Рост выручки</span><strong className={revenueChange >= 0 ? 'good' : 'bad'}>{revenueChange >= 0 ? '▲' : '▼'} {pct(Math.abs(revenueChange))}</strong><em>сравнение периода</em></div>
             <div><span>Лучший филиал по выручке</span><strong>{topBranchRows[0]?.name || '—'}</strong><em>{topBranchRows[0] ? `${fmt(topBranchRows[0].revenue)} AZN` : 'нет данных'}</em></div>
             <div><span>Лучший филиал по прибыли</span><strong>{bestBranch?.name || '—'}</strong><em>{bestBranch ? `${fmt(bestBranch.net)} AZN` : 'нет данных'}</em></div>
             <div><span>Прогноз прибыли</span><strong className={data.forecastProfit >= 0 ? 'good' : 'bad'}>{fmt(data.forecastProfit)} AZN</strong><em>с учётом расходов</em></div>
@@ -7339,7 +7339,7 @@ function Finance({ t, lang, onGoToExpense }) {
       </section>
 
       <section className="dashboard-v23-kpis dashboard-v29-kpis finance-dashboard-kpis">
-        <div className="dash-kpi dash-kpi-blue"><span className="dash-kpi-icon">↗</span><div><em>Выручка за месяц</em><strong>{fmt(stats.revenue)} <small>AZN</small></strong><p className={revChange >= 0 ? 'good' : 'bad'}>{revChange >= 0 ? '▲' : '▼'} {pct(Math.abs(revChange))} к прошлому месяцу</p></div></div>
+        <div className="dash-kpi dash-kpi-blue"><span className="dash-kpi-icon">↗</span><div><em>Выручка за месяц</em><strong>{fmt(stats.revenue)} <small>AZN</small></strong><p className={revChange >= 0 ? 'good' : 'bad'}>{revChange >= 0 ? '▲' : '▼'} {pct(Math.abs(revChange))}</p></div></div>
         <div className="dash-kpi dash-kpi-purple"><span className="dash-kpi-icon">▥</span><div><em>Расходы</em><strong>{fmt(financeTotalExpenses)} <small>AZN</small></strong><p>{pct(stats.revenue ? financeTotalExpenses / stats.revenue * 100 : 0)} от выручки</p></div></div>
         <div className="dash-kpi dash-kpi-green"><span className="dash-kpi-icon">▟</span><div><em>Чистая прибыль</em><strong className={financeNet >= 0 ? 'good' : 'bad'}>{fmt(financeNet)} <small>AZN</small></strong><p className={profitChange >= 0 ? 'good' : 'bad'}>{profitChange >= 0 ? '▲' : '▼'} {pct(Math.abs(profitChange))} к прошлому месяцу</p></div></div>
         <div className="dash-kpi dash-kpi-red"><span className="dash-kpi-icon">%</span><div><em>Рентабельность</em><strong>{pct(financeProfitability)}</strong><p>маржа чистой прибыли</p></div></div>
@@ -15889,9 +15889,9 @@ function Reports({ t }) {
       <label><span>Тип</span><select value={departmentFilter} onChange={e => { setDepartmentFilter(e.target.value); setExpandedSalesRows(false) }}><option value="all">Бар + Кухня</option><option value="Бар">Бар</option><option value="Кухня">Кухня</option></select></label>
     </div>
     <div className="mini-grid">
-      <div className="metric"><span>Выручка</span><strong>{fmt(totals.revenue)}</strong>{monthFilter !== 'all' && <small className={changeClass(totals.revenue, previousMonthTotals.revenue)}>к прошлому месяцу {formatChangePct(totals.revenue, previousMonthTotals.revenue)}</small>}</div>
-      <div className="metric"><span>Себестоимость</span><strong>{fmt(totals.cost)}</strong>{monthFilter !== 'all' && <small className={changeClass(totals.cost, previousMonthTotals.cost)}>к прошлому месяцу {formatChangePct(totals.cost, previousMonthTotals.cost)}</small>}</div>
-      <div className="metric"><span>Валовая прибыль</span><strong className={totals.profit >= 0 ? 'good' : 'bad'}>{fmt(totals.profit)}</strong>{monthFilter !== 'all' && <small className={changeClass(totals.profit, previousMonthTotals.profit)}>к прошлому месяцу {formatChangePct(totals.profit, previousMonthTotals.profit)}</small>}</div>
+      <div className="metric"><span>Выручка</span><strong>{fmt(totals.revenue)}</strong>{monthFilter !== 'all' && <small className={changeClass(totals.revenue, previousMonthTotals.revenue)}>{formatChangePct(totals.revenue, previousMonthTotals.revenue)}</small>}</div>
+      <div className="metric"><span>Себестоимость</span><strong>{fmt(totals.cost)}</strong>{monthFilter !== 'all' && <small className={changeClass(totals.cost, previousMonthTotals.cost)}>{formatChangePct(totals.cost, previousMonthTotals.cost)}</small>}</div>
+      <div className="metric"><span>Валовая прибыль</span><strong className={totals.profit >= 0 ? 'good' : 'bad'}>{fmt(totals.profit)}</strong>{monthFilter !== 'all' && <small className={changeClass(totals.profit, previousMonthTotals.profit)}>{formatChangePct(totals.profit, previousMonthTotals.profit)}</small>}</div>
       <div className="metric"><span>Food cost</span><strong>{totals.revenue ? pct((totals.cost / totals.revenue) * 100) : '0.0%'}</strong>{monthFilter !== 'all' && <small className="hint">пред. месяц {previousMonthTotals.revenue ? pct((previousMonthTotals.cost / previousMonthTotals.revenue) * 100) : '0.0%'}</small>}</div>
     </div>
     <div className="table-wrap" style={{marginTop:12}}><table><thead><tr><th>Раздел</th><th>Кол-во</th><th>Выручка</th><th>Себестоимость</th><th>Прибыль</th><th>Food cost</th></tr></thead><tbody>{['Бар', 'Кухня'].map(renderDepartmentSummaryRow)}</tbody></table></div>
