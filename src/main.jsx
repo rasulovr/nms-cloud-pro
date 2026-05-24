@@ -15732,6 +15732,8 @@ function Reports({ t }) {
   const salesKpiTabs = ['overview', 'sales']
   const showSalesKpis = salesKpiTabs.includes(reportsTab)
 
+  const currentMonthKey = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`
+  const currentMonthLabel = currentMonthKey
   const selectedMonthLabel = monthFilter === 'all' ? 'Все месяцы' : monthFilter
   const selectedBranchLabel = branchFilter === 'all' ? 'Все филиалы' : (branches.find(b => String(b.id) === String(branchFilter))?.name || 'Выбранный филиал')
   const selectedTypeLabel = departmentFilter === 'all' ? 'Все' : departmentFilter
@@ -15784,12 +15786,15 @@ function Reports({ t }) {
 
   const ReportsRevenueView = <section className="reports-v43-module-grid">
     <div className="reports-v43-module-card reports-v43-wide">
-      <div className="reports-v43-card-head">
+      <div className="reports-v43-card-head reports-v43-revenue-head">
         <div>
           <h3>Отчёт по выручке RMS</h3>
           <p>Данные берутся из раздела “Выручка” / таблицы daily_revenue, а не из AIKO Sales import.</p>
         </div>
-        <button className="small ghost" type="button" onClick={loadRmsRevenueReport}>Обновить</button>
+        <div className="reports-v43-revenue-actions">
+          <button className={monthFilter === currentMonthKey ? 'small primary' : 'small ghost'} type="button" onClick={() => setMonthFilter(currentMonthKey)}>Текущий месяц</button>
+          <button className="small ghost" type="button" onClick={loadRmsRevenueReport}>Обновить</button>
+        </div>
       </div>
 
       <div className="reports-v43-mini-kpis">
@@ -15803,8 +15808,8 @@ function Reports({ t }) {
 
       {rmsRevenueReport.loading && <div className="reports-v43-empty-state"><b>Загрузка выручки...</b><span>Идёт чтение daily_revenue.</span></div>}
       {rmsRevenueReport.error && <div className="reports-v43-empty-state"><b>Ошибка загрузки</b><span>{rmsRevenueReport.error}</span></div>}
-      {!rmsRevenueReport.loading && !rmsRevenueReport.error && <div className="reports-v43-table-wrap">
-        <table>
+      {!rmsRevenueReport.loading && !rmsRevenueReport.error && <div className="reports-v43-table-wrap reports-v43-revenue-table-wrap">
+        <table className="reports-v43-revenue-table">
           <thead>
             <tr>
               <th>Дата</th>
@@ -16147,6 +16152,61 @@ function ReportsV43Styles() {
 .reports-v43-schema-list div:last-child { border-bottom:0; }
 .reports-v43-schema-list span { color:#071327; font-size:13px; font-weight:850; }
 .reports-v43-schema-list em { color:#94a3b8; font-size:12px; font-style:normal; font-weight:700; text-align:right; }
+
+.reports-v43-revenue-head {
+  align-items: flex-start;
+}
+
+.reports-v43-revenue-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.reports-v43-revenue-table-wrap {
+  overflow-x: visible !important;
+}
+
+.reports-v43-revenue-table {
+  width: 100% !important;
+  min-width: 0 !important;
+  table-layout: fixed !important;
+}
+
+.reports-v43-revenue-table th,
+.reports-v43-revenue-table td {
+  white-space: nowrap;
+}
+
+.reports-v43-revenue-table th:nth-child(1),
+.reports-v43-revenue-table td:nth-child(1) {
+  width: 15%;
+}
+
+.reports-v43-revenue-table th:nth-child(2),
+.reports-v43-revenue-table td:nth-child(2) {
+  width: 18%;
+}
+
+.reports-v43-revenue-table th:nth-child(3),
+.reports-v43-revenue-table td:nth-child(3),
+.reports-v43-revenue-table th:nth-child(4),
+.reports-v43-revenue-table td:nth-child(4),
+.reports-v43-revenue-table th:nth-child(5),
+.reports-v43-revenue-table td:nth-child(5),
+.reports-v43-revenue-table th:nth-child(6),
+.reports-v43-revenue-table td:nth-child(6) {
+  width: 16.75%;
+  text-align: right;
+}
+
+.reports-v43-revenue-table th:nth-child(6),
+.reports-v43-revenue-table td:nth-child(6) {
+  padding-right: 18px;
+}
+
 @media (max-width:1400px){.reports-v43-kpi-row{grid-template-columns:repeat(3,minmax(0,1fr))}.reports-v43-grid,.reports-v43-sales-view,.reports-v43-import-grid,.reports-v43-module-grid,.reports-v43-ai-grid{grid-template-columns:1fr}.reports-v43-ai-grid > .card{grid-column:1 / -1 !important}}
 @media (max-width:900px){.reports-v43-selector{grid-template-columns:1fr}.reports-v43-hero{align-items:flex-start;flex-direction:column}.reports-v43-filterbar{grid-template-columns:1fr}.reports-v43-filter-actions{justify-content:flex-start}.reports-v43-kpi-row,.reports-v43-mini-kpis{grid-template-columns:1fr}.reports-v43-quick-list{grid-template-columns:1fr}}
 
