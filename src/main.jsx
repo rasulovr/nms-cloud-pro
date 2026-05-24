@@ -15674,6 +15674,10 @@ function Reports({ t }) {
     { id: 'import', label: 'Импорт', icon: '⇧' }
   ]
 
+  const activeReportTab = reportTabs.find(tab => tab.id === reportsTab) || reportTabs[0]
+  const salesKpiTabs = ['overview', 'sales']
+  const showSalesKpis = salesKpiTabs.includes(reportsTab)
+
   const selectedMonthLabel = monthFilter === 'all' ? 'Все месяцы' : monthFilter
   const selectedBranchLabel = branchFilter === 'all' ? 'Все филиалы' : (branches.find(b => String(b.id) === String(branchFilter))?.name || 'Выбранный филиал')
   const selectedTypeLabel = departmentFilter === 'all' ? 'Все' : departmentFilter
@@ -15849,8 +15853,20 @@ function Reports({ t }) {
       </div>
     </section>
 
-    <section className="reports-v43-tabs">
-      {reportTabs.map(tab => <button key={tab.id} className={reportsTab === tab.id ? 'active' : ''} onClick={() => setReportsTab(tab.id)} type="button"><span>{tab.icon}</span>{tab.label}</button>)}
+    <section className="reports-v43-selector">
+      <div className="reports-v43-selector-current">
+        <span>{activeReportTab.icon}</span>
+        <div>
+          <small>Тип отчёта</small>
+          <strong>{activeReportTab.label}</strong>
+        </div>
+      </div>
+      <label>
+        <span>Открыть раздел</span>
+        <select value={reportsTab} onChange={e => setReportsTab(e.target.value)}>
+          {reportTabs.map(tab => <option key={tab.id} value={tab.id}>{tab.label}</option>)}
+        </select>
+      </label>
     </section>
 
     <section className="reports-v43-filterbar">
@@ -15860,9 +15876,9 @@ function Reports({ t }) {
       <div className="reports-v43-filter-actions"><button className="ghost small" type="button">Обновить</button><button className="ghost small" type="button">Экспорт</button><button className="small primary" type="button" onClick={() => window.print()}>Печать</button></div>
     </section>
 
-    <section className="reports-v43-kpi-row">
+    {showSalesKpis && <section className="reports-v43-kpi-row">
       {reportKpis.map(item => <ReportsKpiCard key={item.title} item={item} />)}
-    </section>
+    </section>}
 
     {reportsTab === 'overview' && ReportsOverview}
     {reportsTab === 'sales' && SalesReportView}
@@ -15889,6 +15905,87 @@ function ReportsV43Styles() {
 .reports-v43-hero h2 { margin:0; color:#071327; font-size:36px; line-height:1; font-weight:900; letter-spacing:-.055em; }
 .reports-v43-hero p { margin:10px 0 0; color:#64748b; font-size:15px; line-height:1.45; font-weight:600; }
 .reports-v43-actions { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+
+.reports-v43-selector {
+  display: grid;
+  grid-template-columns: minmax(240px, 360px) minmax(260px, 420px);
+  gap: 12px;
+  align-items: stretch;
+  padding: 12px;
+  border: 1px solid rgba(226,232,240,.92);
+  border-radius: 20px;
+  background: rgba(255,255,255,.92);
+  box-shadow: 0 18px 42px rgba(15,23,42,.04);
+}
+
+.reports-v43-selector-current {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 54px;
+  padding: 10px 14px;
+  border-radius: 16px;
+  background: linear-gradient(135deg,#2563eb,#1d4ed8);
+  color: #ffffff;
+  box-shadow: 0 16px 30px rgba(37,99,235,.18);
+}
+
+.reports-v43-selector-current > span {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  background: rgba(255,255,255,.16);
+  font-size: 16px;
+  font-weight: 900;
+}
+
+.reports-v43-selector-current small {
+  display: block;
+  color: rgba(255,255,255,.70);
+  font-size: 11px;
+  line-height: 1;
+  font-weight: 750;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.reports-v43-selector-current strong {
+  display: block;
+  margin-top: 5px;
+  color: #ffffff;
+  font-size: 17px;
+  line-height: 1;
+  font-weight: 900;
+  letter-spacing: -0.025em;
+}
+
+.reports-v43-selector label {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin: 0;
+}
+
+.reports-v43-selector label > span {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.reports-v43-selector select {
+  height: 54px;
+  border-radius: 16px;
+  border: 1px solid rgba(203,213,225,.92);
+  background: #ffffff;
+  color: #0f172a;
+  font-size: 15px;
+  font-weight: 850;
+  padding: 0 14px;
+}
+
+
 .reports-v43-tabs { display:flex; align-items:center; gap:8px; padding:8px; border:1px solid rgba(226,232,240,.92); border-radius:18px; background:rgba(255,255,255,.92); box-shadow:0 18px 42px rgba(15,23,42,.04); overflow-x:auto; }
 .reports-v43-tabs button { height:42px; border-radius:13px; border:1px solid rgba(226,232,240,.88); background:#fff; color:#0f172a; display:inline-flex; align-items:center; gap:8px; padding:0 15px; font-size:13px; font-weight:850; white-space:nowrap; box-shadow:0 10px 22px rgba(15,23,42,.035); }
 .reports-v43-tabs button span { width:22px; height:22px; display:grid; place-items:center; border-radius:8px; color:#2563eb; background:#eff6ff; font-size:13px; }
@@ -15953,7 +16050,7 @@ function ReportsV43Styles() {
 .reports-v43-schema-list span { color:#071327; font-size:13px; font-weight:850; }
 .reports-v43-schema-list em { color:#94a3b8; font-size:12px; font-style:normal; font-weight:700; text-align:right; }
 @media (max-width:1400px){.reports-v43-kpi-row{grid-template-columns:repeat(3,minmax(0,1fr))}.reports-v43-grid,.reports-v43-sales-view,.reports-v43-import-grid,.reports-v43-module-grid,.reports-v43-ai-grid{grid-template-columns:1fr}.reports-v43-ai-grid > .card{grid-column:1 / -1 !important}}
-@media (max-width:900px){.reports-v43-hero{align-items:flex-start;flex-direction:column}.reports-v43-filterbar{grid-template-columns:1fr}.reports-v43-filter-actions{justify-content:flex-start}.reports-v43-kpi-row,.reports-v43-mini-kpis{grid-template-columns:1fr}.reports-v43-quick-list{grid-template-columns:1fr}}
+@media (max-width:900px){.reports-v43-selector{grid-template-columns:1fr}.reports-v43-hero{align-items:flex-start;flex-direction:column}.reports-v43-filterbar{grid-template-columns:1fr}.reports-v43-filter-actions{justify-content:flex-start}.reports-v43-kpi-row,.reports-v43-mini-kpis{grid-template-columns:1fr}.reports-v43-quick-list{grid-template-columns:1fr}}
 
   `}</style>
 }
