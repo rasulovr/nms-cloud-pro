@@ -14831,7 +14831,7 @@ function Reports({ t }) {
   const branches = useBranches()
   const [reports, setReports] = useState(() => readAikoSalesReports())
   const [branchMap, setBranchMap] = useState(() => readAikoBranchMap())
-  const [reportsTab, setReportsTab] = useState('sales')
+  const [reportsTab, setReportsTab] = useState('overview')
   const [branchFilter, setBranchFilter] = useState('all')
   const [departmentFilter, setDepartmentFilter] = useState('all')
   const [monthFilter, setMonthFilter] = useState('all')
@@ -15660,51 +15660,826 @@ function Reports({ t }) {
     </>}
   </div>
 
-  return <section>
-    <section className="topbar"><div><h2>Отчёты</h2><p>Импорт продаж AIKO по филиалам, общая сводка и AI-аналитика ассортимента.</p></div></section>
-    <div className="settings-tabs"><button className={reportsTab === 'sales' ? 'active' : ''} onClick={() => setReportsTab('sales')}>Отчёт по продажам</button><button className={reportsTab === 'import' ? 'active' : ''} onClick={() => setReportsTab('import')}>Импорт</button></div>
+  const reportTabs = [
+    { id: 'overview', label: 'Обзор', icon: '▣' },
+    { id: 'sales', label: 'Продажи', icon: '↗' },
+    { id: 'revenue', label: 'Выручка', icon: '◷' },
+    { id: 'expenses', label: 'Расходы', icon: '▥' },
+    { id: 'categories', label: 'По статьям', icon: '☷' },
+    { id: 'purchases', label: 'Закупки', icon: '▤' },
+    { id: 'products', label: 'Товары', icon: '◇' },
+    { id: 'suppliers', label: 'Поставщики', icon: '▱' },
+    { id: 'bazar', label: 'Базар', icon: '⌂' },
+    { id: 'export', label: 'Экспорт', icon: '⇩' },
+    { id: 'import', label: 'Импорт', icon: '⇧' }
+  ]
 
-    {reportsTab === 'import' && <section className="grid">
-      <div className="card span-2">
-        <div className="card-head"><div><h3>Импорт отчёта продаж AIKO</h3><p className="hint">Поддерживаются PDF из AIKO, ZIP с PDF, TXT/CSV и ручная вставка текста. Модификаторы автоматически исключаются из продаж и из техкарт.</p></div></div>
-        <div className="form-grid compact">
-          <label><span>Филиал для импорта</span><select value={importBranchId} onChange={e => setImportBranchId(e.target.value)}><option value="auto">Авто по названию склада / файла</option>{branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label>
-          <label><span>Загрузить файлы</span><input type="file" multiple accept=".pdf,.zip,.txt,.csv,application/pdf,application/zip" onChange={e => handleFiles(e.target.files)} /></label>
+  const selectedMonthLabel = monthFilter === 'all' ? 'Все месяцы' : monthFilter
+  const selectedBranchLabel = branchFilter === 'all' ? 'Все филиалы' : (branches.find(b => String(b.id) === String(branchFilter))?.name || 'Выбранный филиал')
+  const selectedTypeLabel = departmentFilter === 'all' ? 'Все' : departmentFilter
+  const reportsFoodCost = totals.revenue ? totals.cost / totals.revenue * 100 : 0
+  const reportKpis = [
+    { title: 'Выручка', value: fmt(totals.revenue), change: monthFilter !== 'all' ? formatChangePct(totals.revenue, previousMonthTotals.revenue) : '+0.0%', tone: 'green', icon: '↗' },
+    { title: 'Себестоимость', value: fmt(totals.cost), change: monthFilter !== 'all' ? formatChangePct(totals.cost, previousMonthTotals.cost) : '—', tone: 'blue', icon: '▣' },
+    { title: 'Валовая прибыль', value: fmt(totals.profit), change: monthFilter !== 'all' ? formatChangePct(totals.profit, previousMonthTotals.profit) : '+0.0%', tone: 'purple', icon: '⌁' },
+    { title: 'Food Cost', value: pct(reportsFoodCost), change: monthFilter !== 'all' ? formatChangePct(reportsFoodCost, previousMonthTotals.revenue ? previousMonthTotals.cost / previousMonthTotals.revenue * 100 : 0) : '—', tone: 'orange', icon: '%' },
+    { title: 'Кол-во продаж', value: fmt(totals.quantity), change: monthFilter !== 'all' ? formatChangePct(totals.quantity, previousMonthTotals.quantity) : '—', tone: 'teal', icon: '▥' }
+  ]
+
+  const reportDeptRows = departmentSummary
+  const reportTopRows = rows.slice(0, 6)
+  const reportBranchRows = isNetworkSalesView
+    ? Array.from(filteredReports.reduce((map, report) => {
+        const key = report.branch_id || report.branch_name || 'Не указан'
+        const prev = map.get(key) || { id: key, name: report.branch_name || branches.find(b => String(b.id) === String(report.branch_id))?.name || 'Не указан', revenue: 0, cost: 0, profit: 0, quantity: 0 }
+        prev.revenue += parseNum(report.totals?.revenue)
+        prev.cost += parseNum(report.totals?.cost)
+        prev.profit += parseNum(report.totals?.profit)
+        prev.quantity += parseNum(report.totals?.quantity)
+        map.set(key, prev)
+        return map
+      }, new Map()).values()).sort((a, b) => b.revenue - a.revenue)
+    : []
+
+  const ReportsKpiCard = ({ item }) => <div className={`reports-v43-kpi ${item.tone}`}>
+    <span className="reports-v43-kpi-icon">{item.icon}</span>
+    <div>
+      <em>{item.title}</em>
+      <strong>{item.value}</strong>
+      <small className={String(item.change).startsWith('-') ? 'bad' : 'good'}>{item.change}</small>
+    </div>
+  </div>
+
+  const ReportModulePlaceholder = ({ title, description, metrics = [], columns = [] }) => <section className="reports-v43-module-grid">
+    <div className="reports-v43-module-card">
+      <div className="reports-v43-card-head">
+        <div>
+          <h3>{title}</h3>
+          <p>{description}</p>
         </div>
-        <label><span>Или вставьте текст отчёта AIKO</span><textarea rows={7} value={importText} onChange={e => setImportText(e.target.value)} placeholder="Отчет о продажах с 01.04.2026 по 30.04.2026..." /></label>
-        <div className="action-row"><button className="small primary" disabled={busy} onClick={importFromText}>{busy ? 'Импорт...' : 'Импортировать текст'}</button><button className="ghost small" onClick={exportAikoReportsBackup}>Скачать бэкап отчётов</button><label className="ghost small" style={{display:'inline-flex',alignItems:'center',cursor:'pointer'}}>Восстановить бэкап<input type="file" accept="application/json,.json" style={{display:'none'}} onChange={importAikoReportsBackup} /></label><button className="ghost small" onClick={clearReports}>Очистить отчёты</button></div>
-        {cloudSyncStatus && <p className="hint">{cloudSyncStatus}</p>}
-        {message && <p className={`hint ${message.includes('сохран') ? 'save-status' : message.includes('Импортировано') || message.includes('добавлено') || message.includes('очищ') || message.includes('удал') || message.includes('восстанов') ? 'good' : 'bad'}`}>{message}</p>}
+        <button className="small ghost" type="button">Настроить</button>
       </div>
-
-      <div className="card span-2">
-        <div className="card-head"><div><h3>Сопоставление AIKO → филиалы RMS</h3><p className="hint">По умолчанию уже зашито: Xəqani→B1, R.B→B3, C.H→B4, Cresent→B5, Nizami→B2.</p></div><button className="ghost small" onClick={applySavedBranchMappings}>Применить</button></div>
-        <div className="table-wrap"><table><thead><tr><th>Название в AIKO</th><th>Отчётов</th><th>Филиал RMS</th></tr></thead><tbody>
-          {detectedAikoBranches.map(item => <tr key={item.key}><td><b>{item.name || item.key}</b><br /><span className="hint">ключ: {item.key}</span></td><td>{item.count}</td><td><select value={branchMap[item.key] || ''} onChange={e => setAikoBranchMapping(item.key, e.target.value)}><option value="">Не выбран</option>{branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></td></tr>)}
-          {!detectedAikoBranches.length && <tr><td colSpan="3" className="hint">После импорта здесь появятся названия филиалов из AIKO.</td></tr>}
-        </tbody></table></div>
+      <div className="reports-v43-mini-kpis">
+        {metrics.map((m, idx) => <div key={`${title}-${m.label}-${idx}`}><span>{m.label}</span><strong>{m.value}</strong><em>{m.note}</em></div>)}
       </div>
-
-      <div className="card span-2" style={{marginTop:20}}>
-        <div className="card-head"><div><h3>Импортированные отчёты</h3><p className="hint">Список находится в подменю “Импорт” и отображается внизу страницы одной полосой. Каждый PDF/файл сохраняется отдельным импортом.</p></div></div>
-        <div className="table-wrap"><table><thead><tr><th>Файл</th><th>Период</th><th>Филиал</th><th>Тип</th><th>Строк</th><th>Выручка</th><th>Себестоимость</th><th></th></tr></thead><tbody>
-          {visibleReports.map(r => { const token = reportAikoToken(r); return <tr key={r.id}><td><b>{r.source_file}</b><br /><span className="hint">AIKO: {token.name || '—'} · {r.warehouse || '—'}{r.manual_branch_override ? ' · ручной филиал' : ''}</span></td><td>{r.period_start || '—'} — {r.period_end || '—'}</td><td><select value={r.branch_id || ''} onChange={e => updateReportBranch(r.id, e.target.value, false)}><option value="">Не выбран</option>{branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select>{token.key && <button className="ghost small" style={{marginTop:6}} disabled={!r.branch_id} onClick={() => updateReportBranch(r.id, r.branch_id || '', true)}>Применить выбранный филиал ко всем {token.name}</button>}<div className="hint">Можно выбрать филиал вручную для одного отчёта или применить этот выбор ко всем отчётам с таким же AIKO-филиалом.</div></td><td>{r.department}</td><td>{(r.rows || []).length}</td><td>{fmt(r.totals?.revenue)}</td><td>{fmt(r.totals?.cost)}</td><td><button className="remove" onClick={() => removeReport(r.id)}>×</button></td></tr> })}
-          {!reports.length && <tr><td colSpan="8" className="hint">Загрузите отчёты AIKO для анализа.</td></tr>}
-        </tbody></table></div>
-        {reports.length > 10 && <button className="ghost small" style={{marginTop:10}} onClick={() => setExpandedReportsTable(v => !v)}>{expandedReportsTable ? 'Свернуть' : `Показать все отчёты (${reports.length})`}</button>}
+      <div className="reports-v43-empty-state">
+        <b>Модуль отчёта подготовлен</b>
+        <span>Следующий шаг — подключить источник данных и drill-down по транзакциям.</span>
       </div>
-    </section>}
+    </div>
+    <div className="reports-v43-module-card">
+      <div className="reports-v43-card-head">
+        <div>
+          <h3>Структура отчёта</h3>
+          <p>Какие поля будут использоваться в этом разделе.</p>
+        </div>
+      </div>
+      <div className="reports-v43-schema-list">
+        {columns.map((c, idx) => <div key={`${title}-schema-${idx}`}><span>{c}</span><em>будет доступно в таблице и экспорте</em></div>)}
+      </div>
+    </div>
+  </section>
 
-    {reportsTab === 'sales' && <section className="grid">
-      {SalesTableBlock}
-      {AiSearchBlock}
+  const ReportsOverview = <section className="reports-v43-grid">
+    <div className="reports-v43-card reports-v43-chart-card">
+      <div className="reports-v43-card-head">
+        <div>
+          <h3>Динамика показателей</h3>
+          <p>Сводная аналитика по импортированным продажам и текущим фильтрам.</p>
+        </div>
+        <button className="small ghost" type="button">По дням</button>
+      </div>
+      <div className="reports-v43-lines">
+        <svg viewBox="0 0 900 280" preserveAspectRatio="none" aria-hidden="true">
+          <defs>
+            <linearGradient id="reportsV43Revenue" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#2563eb" stopOpacity=".23"/><stop offset="100%" stopColor="#2563eb" stopOpacity="0"/></linearGradient>
+            <linearGradient id="reportsV43Profit" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#8b5cf6" stopOpacity=".20"/><stop offset="100%" stopColor="#8b5cf6" stopOpacity="0"/></linearGradient>
+          </defs>
+          {[0,1,2,3].map(i => <line key={i} x1="34" x2="880" y1={44 + i * 54} y2={44 + i * 54} className="reports-v43-grid-line" />)}
+          <path className="reports-v43-area blue" d="M40 196 C120 178, 150 152, 224 146 C312 139, 330 113, 420 124 C502 134, 520 84, 608 92 C700 101, 716 62, 804 78 C842 84, 862 68, 880 55 L880 240 L40 240 Z" />
+          <path className="reports-v43-line blue" d="M40 196 C120 178, 150 152, 224 146 C312 139, 330 113, 420 124 C502 134, 520 84, 608 92 C700 101, 716 62, 804 78 C842 84, 862 68, 880 55" />
+          <path className="reports-v43-line green" d="M40 218 C126 205, 174 190, 230 176 C310 154, 358 171, 420 154 C500 133, 535 146, 608 127 C690 108, 742 130, 804 111 C842 102, 860 110, 880 91" />
+          <path className="reports-v43-line purple" d="M40 236 C126 228, 184 216, 234 210 C318 198, 342 190, 420 198 C505 206, 548 182, 608 188 C694 195, 730 164, 804 171 C842 174, 860 160, 880 150" />
+        </svg>
+        <div className="reports-v43-legend"><span className="green">Выручка</span><span className="blue">Расходы</span><span className="purple">Прибыль</span></div>
+      </div>
+    </div>
+
+    <div className="reports-v43-card">
+      <div className="reports-v43-card-head">
+        <div>
+          <h3>Структура отчётности</h3>
+          <p>Быстрый переход по ключевым направлениям.</p>
+        </div>
+      </div>
+      <div className="reports-v43-quick-list">
+        {reportTabs.filter(tab => !['overview','import'].includes(tab.id)).slice(0, 8).map(tab => <button key={`quick-${tab.id}`} type="button" onClick={() => setReportsTab(tab.id)}><span>{tab.icon}</span><b>{tab.label}</b><em>Открыть</em></button>)}
+      </div>
+    </div>
+
+    <div className="reports-v43-card">
+      <div className="reports-v43-card-head">
+        <div>
+          <h3>Выручка по филиалам</h3>
+          <p>Сводка по импортированным продажам.</p>
+        </div>
+      </div>
+      <div className="reports-v43-table-wrap">
+        <table>
+          <thead><tr><th>Филиал</th><th>Выручка</th><th>Себестоимость</th><th>Прибыль</th><th>Food Cost</th></tr></thead>
+          <tbody>
+            {(reportBranchRows.length ? reportBranchRows : [{ id:'all', name:selectedBranchLabel, revenue:totals.revenue, cost:totals.cost, profit:totals.profit }]).slice(0, 6).map(r => <tr key={r.id}><td><b>{r.name}</b></td><td>{fmt(r.revenue)}</td><td>{fmt(r.cost)}</td><td className={r.profit >= 0 ? 'good' : 'bad'}>{fmt(r.profit)}</td><td>{r.revenue ? pct(r.cost / r.revenue * 100) : '0.0%'}</td></tr>)}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div className="reports-v43-card">
+      <div className="reports-v43-card-head">
+        <div>
+          <h3>Топ продаж</h3>
+          <p>Позиции с максимальной выручкой.</p>
+        </div>
+      </div>
+      <div className="reports-v43-table-wrap">
+        <table>
+          <thead><tr><th>Позиция</th><th>Выручка</th><th>Прибыль</th><th>FC</th></tr></thead>
+          <tbody>
+            {reportTopRows.map((r, idx) => <tr key={`top-${idx}-${r.name}`}><td><b>{r.name}</b></td><td>{fmt(r.revenue)}</td><td className={r.profit >= 0 ? 'good' : 'bad'}>{fmt(r.profit)}</td><td>{r.revenue ? pct(r.cost / r.revenue * 100) : '0.0%'}</td></tr>)}
+            {!reportTopRows.length && <tr><td colSpan="4" className="hint">Нет импортированных продаж.</td></tr>}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  const SalesReportView = <section className="reports-v43-sales-view">
+    {SalesTableBlock}
+    {AiSearchBlock}
+    <div className="reports-v43-ai-grid">
       {renderAiTable('Топ продаж по выручке', ai.topSales, 'Выручка')}
       {renderAiTable('Топ продаж по количеству', ai.topQty, 'Выручка')}
       {renderAiTable('Топ аутсайдеров', ai.outsiders, 'Выручка')}
       {renderAiTable('Топ высокомаржинальных товаров', ai.highMargin, 'Маржа %')}
       {renderAiTable('Топ низкомаржинальных товаров', ai.lowMargin, 'Маржа %')}
-    </section>}
+    </div>
   </section>
+
+  const ImportReportView = <section className="reports-v43-import-grid">
+    <div className="reports-v43-card">
+      <div className="reports-v43-card-head"><div><h3>Импорт отчёта продаж AIKO</h3><p>Поддерживаются PDF из AIKO, ZIP с PDF, TXT/CSV и ручная вставка текста. Модификаторы автоматически исключаются из продаж и из техкарт.</p></div></div>
+      <div className="form-grid compact">
+        <label><span>Филиал для импорта</span><select value={importBranchId} onChange={e => setImportBranchId(e.target.value)}><option value="auto">Авто по названию склада / файла</option>{branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label>
+        <label><span>Загрузить файлы</span><input type="file" multiple accept=".pdf,.zip,.txt,.csv,application/pdf,application/zip" onChange={e => handleFiles(e.target.files)} /></label>
+      </div>
+      <label><span>Или вставьте текст отчёта AIKO</span><textarea rows={7} value={importText} onChange={e => setImportText(e.target.value)} placeholder="Отчет о продажах с 01.04.2026 по 30.04.2026..." /></label>
+      <div className="action-row"><button className="small primary" disabled={busy} onClick={importFromText}>{busy ? 'Импорт...' : 'Импортировать текст'}</button><button className="ghost small" onClick={exportAikoReportsBackup}>Скачать бэкап отчётов</button><label className="ghost small" style={{display:'inline-flex',alignItems:'center',cursor:'pointer'}}>Восстановить бэкап<input type="file" accept="application/json,.json" style={{display:'none'}} onChange={importAikoReportsBackup} /></label><button className="ghost small" onClick={clearReports}>Очистить отчёты</button></div>
+      {cloudSyncStatus && <p className="hint">{cloudSyncStatus}</p>}
+      {message && <p className={`hint ${message.includes('сохран') ? 'save-status' : message.includes('Импортировано') || message.includes('добавлено') || message.includes('очищ') || message.includes('удал') || message.includes('восстанов') ? 'good' : 'bad'}`}>{message}</p>}
+    </div>
+
+    <div className="reports-v43-card">
+      <div className="reports-v43-card-head"><div><h3>Сопоставление AIKO → филиалы RMS</h3><p>По умолчанию уже зашито: Xəqani→B1, R.B→B3, C.H→B4, Cresent→B5, Nizami→B2.</p></div><button className="ghost small" onClick={applySavedBranchMappings}>Применить</button></div>
+      <div className="reports-v43-table-wrap"><table><thead><tr><th>Название в AIKO</th><th>Отчётов</th><th>Филиал RMS</th></tr></thead><tbody>
+        {detectedAikoBranches.map(item => <tr key={item.key}><td><b>{item.name || item.key}</b><br /><span className="hint">ключ: {item.key}</span></td><td>{item.count}</td><td><select value={branchMap[item.key] || ''} onChange={e => setAikoBranchMapping(item.key, e.target.value)}><option value="">Не выбран</option>{branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></td></tr>)}
+        {!detectedAikoBranches.length && <tr><td colSpan="3" className="hint">После импорта здесь появятся названия филиалов из AIKO.</td></tr>}
+      </tbody></table></div>
+    </div>
+
+    <div className="reports-v43-card reports-v43-wide">
+      <div className="reports-v43-card-head"><div><h3>Импортированные отчёты</h3><p>Каждый PDF/файл сохраняется отдельным импортом.</p></div></div>
+      <div className="reports-v43-table-wrap"><table><thead><tr><th>Файл</th><th>Период</th><th>Филиал</th><th>Тип</th><th>Строк</th><th>Выручка</th><th>Себестоимость</th><th></th></tr></thead><tbody>
+        {visibleReports.map(r => { const token = reportAikoToken(r); return <tr key={r.id}><td><b>{r.source_file}</b><br /><span className="hint">AIKO: {token.name || '—'} · {r.warehouse || '—'}{r.manual_branch_override ? ' · ручной филиал' : ''}</span></td><td>{r.period_start || '—'} — {r.period_end || '—'}</td><td><select value={r.branch_id || ''} onChange={e => updateReportBranch(r.id, e.target.value, false)}><option value="">Не выбран</option>{branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select>{token.key && <button className="ghost small" style={{marginTop:6}} disabled={!r.branch_id} onClick={() => updateReportBranch(r.id, r.branch_id || '', true)}>Применить выбранный филиал ко всем {token.name}</button>}<div className="hint">Можно выбрать филиал вручную для одного отчёта или применить этот выбор ко всем отчётам с таким же AIKO-филиалом.</div></td><td>{r.department}</td><td>{(r.rows || []).length}</td><td>{fmt(r.totals?.revenue)}</td><td>{fmt(r.totals?.cost)}</td><td><button className="remove" onClick={() => removeReport(r.id)}>×</button></td></tr> })}
+        {!reports.length && <tr><td colSpan="8" className="hint">Загрузите отчёты AIKO для анализа.</td></tr>}
+      </tbody></table></div>
+      {reports.length > 10 && <button className="ghost small" style={{marginTop:10}} onClick={() => setExpandedReportsTable(v => !v)}>{expandedReportsTable ? 'Свернуть' : `Показать все отчёты (${reports.length})`}</button>}
+    </div>
+  </section>
+
+  return <section className="reports-v43-page">
+    <ReportsV43Styles />
+    <section className="reports-v43-hero">
+      <div>
+        <h2>Отчёты</h2>
+        <p>Сводная отчётность по продажам, выручке, расходам, закупкам, товарам, поставщикам и базару.</p>
+      </div>
+      <div className="reports-v43-actions">
+        <button className="ghost small" type="button" onClick={() => setReportsTab('import')}>Импорт</button>
+        <button className="ghost small" type="button">Экспорт</button>
+        <button className="small primary" type="button" onClick={() => window.print()}>Печать</button>
+      </div>
+    </section>
+
+    <section className="reports-v43-tabs">
+      {reportTabs.map(tab => <button key={tab.id} className={reportsTab === tab.id ? 'active' : ''} onClick={() => setReportsTab(tab.id)} type="button"><span>{tab.icon}</span>{tab.label}</button>)}
+    </section>
+
+    <section className="reports-v43-filterbar">
+      <label><span>Период</span><select value={monthFilter} onChange={e => setMonthFilter(e.target.value)}><option value="all">Все месяцы</option>{monthOptions.map(m => <option key={m} value={m}>{m}</option>)}</select></label>
+      <label><span>Филиал</span><select value={branchFilter} onChange={e => setBranchFilter(e.target.value)}><option value="all">Все филиалы</option>{branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label>
+      <label><span>Тип</span><select value={departmentFilter} onChange={e => setDepartmentFilter(e.target.value)}><option value="all">Все</option><option value="Бар">Бар</option><option value="Кухня">Кухня</option><option value="Смешанный">Смешанный</option></select></label>
+      <div className="reports-v43-filter-actions"><button className="ghost small" type="button">Обновить</button><button className="ghost small" type="button">Экспорт</button><button className="small primary" type="button" onClick={() => window.print()}>Печать</button></div>
+    </section>
+
+    <section className="reports-v43-kpi-row">
+      {reportKpis.map(item => <ReportsKpiCard key={item.title} item={item} />)}
+    </section>
+
+    {reportsTab === 'overview' && ReportsOverview}
+    {reportsTab === 'sales' && SalesReportView}
+    {reportsTab === 'import' && ImportReportView}
+    {reportsTab === 'revenue' && <ReportModulePlaceholder title="Отчёт по выручке" description="Выручка по филиалам, дням и каналам: cash, bank, Wolt, service." metrics={[{label:'Текущая выручка', value:fmt(totals.revenue), note:selectedMonthLabel},{label:'Филиал', value:selectedBranchLabel, note:'фильтр'},{label:'Тип', value:selectedTypeLabel, note:'фильтр'}]} columns={['Дата','Филиал','Cash','Bank','Wolt','Service','Итого','Доля филиала']} />}
+    {reportsTab === 'expenses' && <ReportModulePlaceholder title="Отчёт по расходам" description="Общие расходы, динамика, структура по филиалам и периодам." metrics={[{label:'Расходы', value:'из Finance', note:'единая логика'},{label:'Статей', value:'все статьи', note:'группировка'},{label:'Период', value:selectedMonthLabel, note:'фильтр'}]} columns={['Дата','Филиал','Статья','Сумма','Комментарий','Источник','Ответственный']} />}
+    {reportsTab === 'categories' && <ReportModulePlaceholder title="Расходы по статьям" description="Детализация каждой статьи с drill-down до транзакций." metrics={[{label:'Food Cost', value:'расчёт', note:'закупки + базар'},{label:'Packaging', value:'расчёт', note:'take away'},{label:'Хозтовары', value:'расчёт', note:'категория'}]} columns={['Статья','Сумма','% от выручки','Филиал','Транзакции','Отклонение','Просмотр']} />}
+    {reportsTab === 'purchases' && <ReportModulePlaceholder title="Отчёт по закупкам" description="Закупки поставщиков по периодам, филиалам, категориям и фактурам." metrics={[{label:'Закупки', value:'из Suppliers', note:'накладные'},{label:'Категории', value:'Food / Pack / Хоз', note:'группировка'},{label:'Фактуры', value:'список', note:'drill-down'}]} columns={['Дата','Поставщик','Фактура','Филиал','Категория','Сумма','Комментарий']} />}
+    {reportsTab === 'products' && <ReportModulePlaceholder title="Отчёт по товарам" description="Движение товаров, закупочные цены, последние цены и объём закупок." metrics={[{label:'Товары', value:'из закупок', note:'номенклатура'},{label:'Последняя цена', value:'latest cost', note:'из техкарт'},{label:'Динамика', value:'цены', note:'по периодам'}]} columns={['Товар','Категория','Поставщик','Кол-во','Ед.','Цена','Сумма','Последняя цена']} />}
+    {reportsTab === 'suppliers' && <ReportModulePlaceholder title="Отчёт по поставщикам" description="Закупки, оплаты, баланс, просрочки и VOEN-группировка." metrics={[{label:'Поставщики', value:'активные', note:'список'},{label:'Долг', value:'баланс', note:'долги и оплаты'},{label:'Просрочка', value:'контроль', note:'лимиты'}]} columns={['Поставщик','VOEN','Закупки','Оплаты','Баланс','Просрочка','Кредитный лимит']} />}
+    {reportsTab === 'bazar' && <ReportModulePlaceholder title="Отчёт по базару" description="Базар, автоматическое распределение по филиалам и влияние на Food Cost." metrics={[{label:'Базар', value:'сумма', note:'за период'},{label:'Распределение', value:'по доле выручки', note:'автоматически'},{label:'Food Cost', value:'в составе', note:'финансы'}]} columns={['Дата','Общая сумма','Филиал','Доля выручки','Распределено','Комментарий']} />}
+    {reportsTab === 'export' && <ReportModulePlaceholder title="Экспорт отчётов" description="PDF, печать, CSV/Excel и сохранение выбранного среза." metrics={[{label:'PDF', value:'печать', note:'готово'},{label:'CSV', value:'таблицы', note:'подготовить'},{label:'Excel', value:'отчёты', note:'следующий этап'}]} columns={['Название отчёта','Период','Филиал','Формат','Статус','Действие']} />}
+  </section>
+}
+
+
+function ReportsV43Styles() {
+  return <style>{`
+/* RMS Pro v43 — Reports Center redesign.
+   Scope: Reports page only. */
+
+.reports-v43-page {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 4px 0 36px;
+}
+
+.reports-v43-page,
+.reports-v43-page * {
+  box-sizing: border-box;
+}
+
+.reports-v43-hero {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 2px;
+}
+
+.reports-v43-hero h2 {
+  margin: 0;
+  color: #071327;
+  font-size: 36px;
+  line-height: 1;
+  font-weight: 900;
+  letter-spacing: -0.055em;
+}
+
+.reports-v43-hero p {
+  margin: 10px 0 0;
+  color: #64748b;
+  font-size: 15px;
+  line-height: 1.45;
+  font-weight: 600;
+}
+
+.reports-v43-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.reports-v43-tabs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid rgba(226,232,240,.92);
+  border-radius: 18px;
+  background: rgba(255,255,255,.92);
+  box-shadow: 0 18px 42px rgba(15,23,42,.04);
+  overflow-x: auto;
+}
+
+.reports-v43-tabs button {
+  height: 42px;
+  border-radius: 13px;
+  border: 1px solid rgba(226,232,240,.88);
+  background: #ffffff;
+  color: #0f172a;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 15px;
+  font-size: 13px;
+  font-weight: 850;
+  white-space: nowrap;
+  box-shadow: 0 10px 22px rgba(15,23,42,.035);
+}
+
+.reports-v43-tabs button span {
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  color: #2563eb;
+  background: #eff6ff;
+  font-size: 13px;
+}
+
+.reports-v43-tabs button.active {
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: #ffffff;
+  border-color: rgba(37,99,235,.78);
+  box-shadow: 0 16px 30px rgba(37,99,235,.22);
+}
+
+.reports-v43-tabs button.active span {
+  color: #ffffff;
+  background: rgba(255,255,255,.16);
+}
+
+.reports-v43-filterbar {
+  display: grid;
+  grid-template-columns: minmax(180px, .9fr) minmax(220px, 1.1fr) minmax(180px, .8fr) auto;
+  gap: 12px;
+  align-items: end;
+  padding: 14px;
+  border: 1px solid rgba(226,232,240,.92);
+  border-radius: 20px;
+  background: rgba(255,255,255,.92);
+  box-shadow: 0 18px 42px rgba(15,23,42,.04);
+}
+
+.reports-v43-filterbar label {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin: 0;
+}
+
+.reports-v43-filterbar label span {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.reports-v43-filterbar select,
+.reports-v43-page select,
+.reports-v43-page input,
+.reports-v43-page textarea {
+  height: 46px;
+  border-radius: 14px;
+  border: 1px solid rgba(203,213,225,.92);
+  background: #fff;
+  color: #0f172a;
+  font-weight: 760;
+  outline: none;
+}
+
+.reports-v43-page textarea {
+  height: auto;
+  min-height: 150px;
+}
+
+.reports-v43-filter-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.reports-v43-kpi-row {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.reports-v43-kpi {
+  position: relative;
+  overflow: hidden;
+  min-height: 112px;
+  display: grid;
+  grid-template-columns: 46px minmax(0,1fr);
+  gap: 14px;
+  align-items: start;
+  padding: 18px;
+  border: 1px solid rgba(226,232,240,.92);
+  border-radius: 20px;
+  background: linear-gradient(180deg, #ffffff, #fbfdff);
+  box-shadow: 0 18px 40px rgba(15,23,42,.045);
+}
+
+.reports-v43-kpi::after {
+  content: '';
+  position: absolute;
+  width: 96px;
+  height: 96px;
+  right: -35px;
+  bottom: -45px;
+  border-radius: 999px;
+  background: var(--kpi-glow, rgba(37,99,235,.10));
+  filter: blur(3px);
+}
+
+.reports-v43-kpi-icon {
+  width: 46px;
+  height: 46px;
+  border-radius: 15px;
+  display: grid;
+  place-items: center;
+  color: var(--kpi-color, #2563eb);
+  background: var(--kpi-bg, #eff6ff);
+  font-size: 20px;
+  font-weight: 900;
+}
+
+.reports-v43-kpi.green { --kpi-color:#16a34a; --kpi-bg:#dcfce7; --kpi-glow:rgba(22,163,74,.12); }
+.reports-v43-kpi.blue { --kpi-color:#2563eb; --kpi-bg:#eff6ff; --kpi-glow:rgba(37,99,235,.12); }
+.reports-v43-kpi.purple { --kpi-color:#7c3aed; --kpi-bg:#f3e8ff; --kpi-glow:rgba(124,58,237,.12); }
+.reports-v43-kpi.orange { --kpi-color:#f97316; --kpi-bg:#fff7ed; --kpi-glow:rgba(249,115,22,.13); }
+.reports-v43-kpi.teal { --kpi-color:#0d9488; --kpi-bg:#ccfbf1; --kpi-glow:rgba(13,148,136,.12); }
+
+.reports-v43-kpi em {
+  display: block;
+  margin: 2px 0 8px;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 850;
+  letter-spacing: .02em;
+  font-style: normal;
+}
+
+.reports-v43-kpi strong {
+  display: block;
+  color: #071327;
+  font-size: 24px;
+  line-height: 1.05;
+  font-weight: 900;
+  letter-spacing: -0.05em;
+  white-space: nowrap;
+}
+
+.reports-v43-kpi small {
+  display: block;
+  margin-top: 8px;
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.reports-v43-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.18fr) minmax(340px, .82fr);
+  gap: 14px;
+}
+
+.reports-v43-card,
+.reports-v43-module-card {
+  background: rgba(255,255,255,.96);
+  border: 1px solid rgba(226,232,240,.94);
+  border-radius: 22px;
+  box-shadow: 0 18px 42px rgba(15,23,42,.045);
+  padding: 18px;
+  min-width: 0;
+}
+
+.reports-v43-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.reports-v43-card-head h3 {
+  margin: 0;
+  color: #071327;
+  font-size: 18px;
+  line-height: 1.15;
+  font-weight: 900;
+  letter-spacing: -0.035em;
+}
+
+.reports-v43-card-head p {
+  margin: 6px 0 0;
+  color: #64748b;
+  font-size: 13px;
+  line-height: 1.38;
+  font-weight: 600;
+}
+
+.reports-v43-chart-card {
+  min-height: 354px;
+}
+
+.reports-v43-lines {
+  position: relative;
+  min-height: 274px;
+}
+
+.reports-v43-lines svg {
+  width: 100%;
+  height: 274px;
+  display: block;
+}
+
+.reports-v43-grid-line {
+  stroke: rgba(148,163,184,.25);
+  stroke-width: 1;
+  stroke-dasharray: 4 6;
+}
+
+.reports-v43-area.blue {
+  fill: url(#reportsV43Revenue);
+}
+
+.reports-v43-line {
+  fill: none;
+  stroke-width: 3.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.reports-v43-line.blue { stroke: #2563eb; }
+.reports-v43-line.green { stroke: #16a34a; }
+.reports-v43-line.purple { stroke: #8b5cf6; }
+
+.reports-v43-legend {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: flex;
+  gap: 18px;
+  color: #475569;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.reports-v43-legend span::before {
+  content: '';
+  display: inline-block;
+  width: 20px;
+  height: 3px;
+  border-radius: 999px;
+  margin-right: 7px;
+  vertical-align: middle;
+  background: currentColor;
+}
+
+.reports-v43-legend .green { color: #16a34a; }
+.reports-v43-legend .blue { color: #2563eb; }
+.reports-v43-legend .purple { color: #8b5cf6; }
+
+.reports-v43-quick-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0,1fr));
+  gap: 10px;
+}
+
+.reports-v43-quick-list button {
+  display: grid;
+  grid-template-columns: 34px minmax(0,1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 52px;
+  border: 1px solid rgba(226,232,240,.88);
+  border-radius: 16px;
+  background: linear-gradient(180deg,#fff,#fbfdff);
+  padding: 10px;
+  text-align: left;
+}
+
+.reports-v43-quick-list span {
+  width: 34px;
+  height: 34px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  color: #2563eb;
+  background: #eff6ff;
+  font-weight: 900;
+}
+
+.reports-v43-quick-list b {
+  color: #071327;
+  font-size: 13px;
+  font-weight: 850;
+}
+
+.reports-v43-quick-list em {
+  color: #2563eb;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.reports-v43-table-wrap {
+  width: 100%;
+  overflow: auto;
+  border: 1px solid rgba(226,232,240,.86);
+  border-radius: 16px;
+}
+
+.reports-v43-table-wrap table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 620px;
+}
+
+.reports-v43-table-wrap th,
+.reports-v43-table-wrap td {
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(226,232,240,.78);
+  text-align: left;
+  color: #0f172a;
+  font-size: 13px;
+}
+
+.reports-v43-table-wrap th {
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  background: rgba(248,250,252,.86);
+}
+
+.reports-v43-table-wrap td {
+  font-weight: 650;
+}
+
+.reports-v43-table-wrap tr:last-child td {
+  border-bottom: 0;
+}
+
+.reports-v43-sales-view,
+.reports-v43-import-grid,
+.reports-v43-module-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0,1fr));
+  gap: 14px;
+}
+
+.reports-v43-sales-view > .card,
+.reports-v43-sales-view .span-2,
+.reports-v43-import-grid .reports-v43-wide {
+  grid-column: 1 / -1;
+}
+
+.reports-v43-sales-view .card,
+.reports-v43-sales-view .table-wrap,
+.reports-v43-sales-view .metric {
+  border-radius: 20px !important;
+}
+
+.reports-v43-ai-grid {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0,1fr));
+  gap: 14px;
+}
+
+.reports-v43-ai-grid > .card {
+  grid-column: auto !important;
+}
+
+.reports-v43-mini-kpis {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0,1fr));
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.reports-v43-mini-kpis div {
+  border: 1px solid rgba(226,232,240,.86);
+  border-radius: 16px;
+  padding: 13px;
+  background: #fbfdff;
+}
+
+.reports-v43-mini-kpis span {
+  display: block;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.reports-v43-mini-kpis strong {
+  display: block;
+  margin-top: 7px;
+  color: #071327;
+  font-size: 20px;
+  font-weight: 900;
+  letter-spacing: -0.04em;
+}
+
+.reports-v43-mini-kpis em {
+  display: block;
+  margin-top: 4px;
+  color: #94a3b8;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 700;
+}
+
+.reports-v43-empty-state {
+  border: 1px dashed rgba(148,163,184,.58);
+  border-radius: 18px;
+  padding: 22px;
+  background: rgba(248,250,252,.78);
+}
+
+.reports-v43-empty-state b {
+  display: block;
+  color: #071327;
+  font-size: 16px;
+  font-weight: 900;
+}
+
+.reports-v43-empty-state span {
+  display: block;
+  margin-top: 6px;
+  color: #64748b;
+  font-size: 13px;
+  line-height: 1.45;
+  font-weight: 600;
+}
+
+.reports-v43-schema-list {
+  display: grid;
+  gap: 10px;
+}
+
+.reports-v43-schema-list div {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(226,232,240,.82);
+}
+
+.reports-v43-schema-list div:last-child {
+  border-bottom: 0;
+}
+
+.reports-v43-schema-list span {
+  color: #071327;
+  font-size: 13px;
+  font-weight: 850;
+}
+
+.reports-v43-schema-list em {
+  color: #94a3b8;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 700;
+  text-align: right;
+}
+
+@media (max-width: 1400px) {
+  .reports-v43-kpi-row {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .reports-v43-grid,
+  .reports-v43-sales-view,
+  .reports-v43-import-grid,
+  .reports-v43-module-grid,
+  .reports-v43-ai-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .reports-v43-ai-grid > .card {
+    grid-column: 1 / -1 !important;
+  }
+}
+
+@media (max-width: 900px) {
+  .reports-v43-hero {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .reports-v43-filterbar {
+    grid-template-columns: 1fr;
+  }
+
+  .reports-v43-filter-actions {
+    justify-content: flex-start;
+  }
+
+  .reports-v43-kpi-row,
+  .reports-v43-mini-kpis {
+    grid-template-columns: 1fr;
+  }
+
+  .reports-v43-quick-list {
+    grid-template-columns: 1fr;
+  }
+}
+  `}</style>
 }
 
 function Settings({ session, t, theme, setTheme }) {
