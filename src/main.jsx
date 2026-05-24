@@ -15682,7 +15682,7 @@ function Reports({ t }) {
     const cappedList = (list || []).slice(0, 30)
     const visible = expanded ? cappedList : cappedList.slice(0, limit)
     const isHideableTop = title.includes('низкомаржин') || title.includes('аутсайдер')
-    return <div className="card span-2" style={{overflow:'hidden'}}>
+    return <div className="card span-2 reports-ai-top-card" style={{overflow:'hidden'}}>
       <div className="card-head"><div><h3>{title}</h3><p className="hint">Компактный TOP-блок без внутреннего скролла. На экране максимум {limit} позиций. Полный TOP всегда ограничен 30 позициями.</p></div><div className="action-row">{isHideableTop && <button className="ghost small" onClick={() => setShowHiddenSalesItems(v => !v)}>{showHiddenSalesItems ? 'Скрыть список скрытых' : `Скрытые позиции (${hiddenSalesKeys.length})`}</button>}{(title.includes('Топ продаж') || title.includes('аутсайдер')) && <label className="compact-select"><span className="hint">Показать TOP</span><select value={title.includes('Топ продаж') ? aiTopLimit : aiOutsiderLimit} onChange={e => title.includes('Топ продаж') ? setAiTopLimit(Number(e.target.value)) : setAiOutsiderLimit(Number(e.target.value))}>{limitOptions.map(n => <option key={n} value={n}>{n}</option>)}</select></label>}</div></div>
       {isHideableTop && showHiddenSalesItems && <div className="table-wrap" style={{marginBottom:12}}><table><thead><tr><th>Скрытая позиция</th><th></th></tr></thead><tbody>
         {hiddenSalesKeys.map(key => <tr key={key}><td><b>{key}</b></td><td><button className="ghost small" onClick={() => restoreSalesItem(key)}>Вернуть</button></td></tr>)}
@@ -16659,6 +16659,27 @@ function ReportsV43Styles() {
   justify-content: center !important;
   min-width: 54px !important;
   white-space: nowrap !important;
+}
+
+
+.reports-v43-ai-grid {
+  grid-template-columns: 1fr !important;
+}
+
+.reports-v43-ai-grid > .reports-ai-top-card,
+.reports-ai-top-card {
+  grid-column: 1 / -1 !important;
+  width: 100% !important;
+  max-width: none !important;
+}
+
+.reports-ai-top-card .reports-ai-top-table {
+  width: 100% !important;
+  min-width: 0 !important;
+}
+
+.reports-ai-top-card .reports-ai-product-cell {
+  min-width: 260px !important;
 }
 
 @media (max-width:1400px){.reports-v43-kpi-row{grid-template-columns:repeat(3,minmax(0,1fr))}.reports-v43-grid,.reports-v43-sales-view,.reports-v43-import-grid,.reports-v43-module-grid,.reports-v43-ai-grid{grid-template-columns:1fr}.reports-v43-ai-grid > .card{grid-column:1 / -1 !important}}
