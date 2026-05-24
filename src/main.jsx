@@ -14593,15 +14593,25 @@ function expandCanonicalSalesSearchTokens(tokens) {
 }
 
 function rowMatchesSalesSearch(row, parsed) {
-  const hayText = `${row.name || ''} ${(row.original_names || []).join(' ')} ${row.menu_category || ''} ${row.source_category || ''}`
+  const hayText = `${row.name || ''} ${(row.original_names || []).join(' ')} ${(row.auto_merged_names ? Array.from(row.auto_merged_names).join(' ') : '')} ${row.menu_category || ''} ${row.source_category || ''} ${row.department || ''}`
+  const hayNormalized = normalizeSalesSearchText(hayText)
   const words = salesSearchWordSet(hayText)
-  const includes = parsed?.includeTokens || parsed?.searchTokens || []
+  const rawTokens = (parsed?.tokens && parsed.tokens.length ? parsed.tokens : parsed?.searchTokens || []).filter(Boolean)
   const excludes = parsed?.excludeTokens || []
-  if (excludes.some(token => words.has(token))) return false
-  if (!includes.length) return true
-  return includes.every(token => words.has(token))
-}
 
+  const excluded = excludes.some(token => {
+    const variants = expandCanonicalSalesSearchTokens([token])
+    return variants.some(v => words.has(v) || hayNormalized.includes(v))
+  })
+  if (excluded) return false
+
+  if (!rawTokens.length) return true
+
+  return rawTokens.every(token => {
+    const variants = expandCanonicalSalesSearchTokens([token])
+    return variants.some(v => words.has(v) || hayNormalized.includes(v))
+  })
+}
 function canonicalizeSalesToken(token) {
   const t = normalizeSalesSearchText(token)
   if (!t) return ''
@@ -15678,8 +15688,8 @@ function Reports({ t }) {
         {hiddenSalesKeys.map(key => <tr key={key}><td><b>{key}</b></td><td><button className="ghost small" onClick={() => restoreSalesItem(key)}>Вернуть</button></td></tr>)}
         {!hiddenSalesKeys.length && <tr><td colSpan="2" className="hint">Скрытых позиций нет. Ненужные позиции скрываются из топа аутсайдеров / низкомаржинальных товаров.</td></tr>}
       </tbody></table></div>}
-      <table style={{width:'100%', tableLayout:'fixed'}}><thead><tr><th>Позиция</th><th style={{width:90}}>Тип</th><th style={{width:110}}>Кол-во / цена</th><th style={{width:110}}>Выручка</th><th style={{width:90}}>Food cost</th><th style={{width:90}}>Маржа</th>{isHideableTop && <th style={{width:90}}></th>}</tr></thead><tbody>
-        {visible.map((r, idx) => <tr key={`${title}-${idx}-${r.name}`}><td><b>{r.name}</b>{!isNetworkSalesView && <><br /><span className="hint">{r.branch_name || '—'}</span></>}</td><td><span className={r.department === 'Бар' ? 'pill good' : r.department === 'Кухня' ? 'pill warn' : 'pill'}>{r.department === 'Кухня' ? 'Кухня' : r.department === 'Бар' ? 'Бар' : '—'}</span></td><td>{fmt(r.quantity)}<br /><span className="hint">цена {fmt(r.avg_price)}</span></td><td>{fmt(r.revenue)}</td><td>{r.revenue ? pct((r.cost / r.revenue) * 100) : '0.0%'}</td><td className={r.margin < 20 ? 'bad' : r.margin > 65 ? 'good' : ''}><b>{pct(r.margin)}</b></td>{isHideableTop && <td><button className="ghost small" onClick={() => hideSalesItem(r)}>Скрыть</button></td>}</tr>)}
+      <table className="reports-ai-top-table" style={{width:'100%'}}><thead><tr><th>Позиция</th><th style={{width:96}}>Тип</th><th style={{width:130}}>Кол-во / цена</th><th style={{width:120}}>Выручка</th><th style={{width:100}}>Food cost</th><th style={{width:100}}>Маржа</th>{isHideableTop && <th style={{width:90}}></th>}</tr></thead><tbody>
+        {visible.map((r, idx) => <tr key={`${title}-${idx}-${r.name}`}><td className="reports-ai-product-cell"><b>{r.name}</b>{r.menu_category && <span className="reports-ai-product-meta">{r.menu_category}</span>}{!isNetworkSalesView && <span className="reports-ai-product-meta">{r.branch_name || '—'}</span>}</td><td><span className={r.department === 'Бар' ? 'pill good' : r.department === 'Кухня' ? 'pill warn' : 'pill'}>{r.department === 'Кухня' ? 'Кухня' : r.department === 'Бар' ? 'Бар' : '—'}</span></td><td>{fmt(r.quantity)}<br /><span className="hint">цена {fmt(r.avg_price)}</span></td><td>{fmt(r.revenue)}</td><td>{r.revenue ? pct((r.cost / r.revenue) * 100) : '0.0%'}</td><td className={r.margin < 20 ? 'bad' : r.margin > 65 ? 'good' : ''}><b>{pct(r.margin)}</b></td>{isHideableTop && <td><button className="ghost small" onClick={() => hideSalesItem(r)}>Скрыть</button></td>}</tr>)}
         {!visible.length && <tr><td colSpan={isHideableTop ? 7 : 6} className="hint">Нет данных</td></tr>}
       </tbody></table>
       {cappedList.length > limit && <button className="ghost small" style={{marginTop:10}} onClick={() => setExpandedAiTables(v => ({...v, [title]: !expanded}))}>{expanded ? 'Свернуть' : `Показать до 30 (${Math.min(list.length, 30)})`}</button>}
@@ -16604,6 +16614,51 @@ function ReportsV43Styles() {
   .reports-v43-revenue-card .reports-v43-mini-kpis {
     grid-template-columns: 1fr !important;
   }
+}
+
+
+.reports-ai-top-table {
+  table-layout: auto !important;
+  border-collapse: collapse !important;
+}
+
+.reports-ai-top-table th,
+.reports-ai-top-table td {
+  vertical-align: top !important;
+}
+
+.reports-ai-product-cell {
+  min-width: 190px !important;
+  overflow: visible !important;
+}
+
+.reports-ai-product-cell b {
+  display: block !important;
+  color: #0f172a !important;
+  font-size: 13.5px !important;
+  line-height: 1.25 !important;
+  font-weight: 850 !important;
+  white-space: normal !important;
+  overflow-wrap: anywhere !important;
+}
+
+.reports-ai-product-meta {
+  display: block !important;
+  margin-top: 5px !important;
+  color: #64748b !important;
+  font-size: 11.5px !important;
+  line-height: 1.2 !important;
+  font-weight: 700 !important;
+  white-space: normal !important;
+}
+
+.reports-ai-top-table .pill {
+  position: static !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-width: 54px !important;
+  white-space: nowrap !important;
 }
 
 @media (max-width:1400px){.reports-v43-kpi-row{grid-template-columns:repeat(3,minmax(0,1fr))}.reports-v43-grid,.reports-v43-sales-view,.reports-v43-import-grid,.reports-v43-module-grid,.reports-v43-ai-grid{grid-template-columns:1fr}.reports-v43-ai-grid > .card{grid-column:1 / -1 !important}}
