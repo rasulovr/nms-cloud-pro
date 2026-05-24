@@ -16013,24 +16013,24 @@ function Reports({ t }) {
       {rmsExpensesReport.loading && <div className="reports-v43-empty-state"><b>Загрузка расходов...</b><span>Идёт чтение daily_expenses.</span></div>}
       {rmsExpensesReport.error && <div className="reports-v43-empty-state"><b>Ошибка загрузки</b><span>{rmsExpensesReport.error}</span></div>}
       {!rmsExpensesReport.loading && !rmsExpensesReport.error && <>
-        <div className="reports-v43-grid reports-v43-expenses-grid">
-          <div className="reports-v43-card">
-            <div className="reports-v43-card-head"><div><h3>Расходы по статьям</h3><p>Сумма расходов по каждой категории.</p></div></div>
+        <div className="reports-v43-expenses-stack">
+          <div className="reports-v43-card reports-v43-expense-wide-card">
+            <div className="reports-v43-card-head"><div><h3>Расходы по статьям</h3><p>Сумма и количество транзакций по каждой категории.</p></div></div>
             <div className="reports-v43-table-wrap"><table>
-              <thead><tr><th>Статья</th><th>Сумма</th><th>% от общего</th></tr></thead>
+              <thead><tr><th>Статья</th><th>Транзакций</th><th>Сумма</th><th>% от общего</th></tr></thead>
               <tbody>
-                {rmsExpensesReport.byCategory.slice(0, 20).map(row => <tr key={row.name}><td><b>{row.name}</b></td><td>{fmt(row.amount)}</td><td>{rmsExpensesReport.totals.amount ? pct(row.amount / rmsExpensesReport.totals.amount * 100) : '0.0%'}</td></tr>)}
-                {!rmsExpensesReport.byCategory.length && <tr><td colSpan="3" className="hint">Нет данных по расходам за выбранный фильтр.</td></tr>}
+                {rmsExpensesReport.byCategory.slice(0, 20).map(row => <tr key={row.name}><td><b>{row.name}</b></td><td>{fmt(row.transactions)}</td><td>{fmt(row.amount)}</td><td>{rmsExpensesReport.totals.amount ? pct(row.amount / rmsExpensesReport.totals.amount * 100) : '0.0%'}</td></tr>)}
+                {!rmsExpensesReport.byCategory.length && <tr><td colSpan="4" className="hint">Нет данных по расходам за выбранный фильтр.</td></tr>}
               </tbody>
             </table></div>
           </div>
-          <div className="reports-v43-card">
+          <div className="reports-v43-card reports-v43-expense-wide-card">
             <div className="reports-v43-card-head"><div><h3>Расходы по филиалам</h3><p>Сводка по филиалам внутри текущего периода.</p></div></div>
             <div className="reports-v43-table-wrap"><table>
-              <thead><tr><th>Филиал</th><th>Сумма</th></tr></thead>
+              <thead><tr><th>Филиал</th><th>Транзакций</th><th>Сумма</th></tr></thead>
               <tbody>
-                {rmsExpensesReport.byBranch.slice(0, 20).map(row => <tr key={row.name}><td><b>{row.name}</b></td><td>{fmt(row.amount)}</td></tr>)}
-                {!rmsExpensesReport.byBranch.length && <tr><td colSpan="2" className="hint">Нет данных.</td></tr>}
+                {rmsExpensesReport.byBranch.slice(0, 20).map(row => <tr key={row.name}><td><b>{row.name}</b></td><td>{fmt(row.transactions)}</td><td>{fmt(row.amount)}</td></tr>)}
+                {!rmsExpensesReport.byBranch.length && <tr><td colSpan="3" className="hint">Нет данных.</td></tr>}
               </tbody>
             </table></div>
           </div>
@@ -16545,6 +16545,44 @@ function ReportsV43Styles() {
 
 .reports-v43-expenses-kpis {
   grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+}
+
+
+.reports-v43-expenses-stack {
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  gap: 14px !important;
+  width: 100% !important;
+}
+
+.reports-v43-expense-wide-card {
+  width: 100% !important;
+  max-width: none !important;
+}
+
+.reports-v43-expense-wide-card .reports-v43-table-wrap {
+  overflow-x: visible !important;
+}
+
+.reports-v43-expense-wide-card table {
+  width: 100% !important;
+  min-width: 0 !important;
+  table-layout: fixed !important;
+}
+
+.reports-v43-expense-wide-card th,
+.reports-v43-expense-wide-card td {
+  white-space: nowrap !important;
+}
+
+.reports-v43-expense-wide-card th:first-child,
+.reports-v43-expense-wide-card td:first-child {
+  width: 46% !important;
+}
+
+.reports-v43-expense-wide-card th:not(:first-child),
+.reports-v43-expense-wide-card td:not(:first-child) {
+  text-align: right !important;
 }
 
 @media (max-width: 1500px) {
