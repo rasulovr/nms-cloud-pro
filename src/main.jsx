@@ -6381,7 +6381,7 @@ function Dashboard({ t }) {
     </section>
 
     <section className="dashboard-v23-kpis dashboard-v29-kpis">
-      <div className="dash-kpi dash-kpi-blue"><span className="dash-kpi-icon">↗</span><div><em>Выручка за месяц</em><strong>{fmt(data.revenue)} <small>AZN</small></strong><p className={`dash-trend-value ${revenueChange >= 0 ? 'good' : 'bad'}`} title={revenueCompareTooltip}>{revenueChange >= 0 ? '▲' : '▼'} {pct(Math.abs(revenueChange))}</p></div></div>
+      <div className="dash-kpi dash-kpi-blue"><span className="dash-kpi-icon">↗</span><div><em>Выручка за месяц</em><strong>{fmt(data.revenue)} <small>AZN</small></strong><p className="dash-trend-value" style={{ color: revenueChange >= 0 ? '#10b981' : '#ef4444', fontWeight: 900 }} title={revenueCompareTooltip}>{revenueChange >= 0 ? '▲' : '▼'} {pct(Math.abs(revenueChange))}</p></div></div>
       <div className="dash-kpi dash-kpi-purple"><span className="dash-kpi-icon">▥</span><div><em>Расходы</em><strong>{fmt(data.expenses)} <small>AZN</small></strong><p>{data.revenue ? pct(data.expenses / data.revenue * 100) : '0.0%'} от выручки</p></div></div>
       <div className="dash-kpi dash-kpi-green"><span className="dash-kpi-icon">▟</span><div><em>Чистая прибыль</em><strong>{fmt(data.net)} <small>AZN</small></strong><p className={profitChange >= 0 ? 'good' : 'bad'}>{profitChange >= 0 ? '▲' : '▼'} {pct(Math.abs(profitChange))}</p></div></div>
       <div className="dash-kpi dash-kpi-red"><span className="dash-kpi-icon">%</span><div><em>Рентабельность</em><strong>{pct(data.revenue ? data.net / data.revenue * 100 : 0)}</strong><p>маржа чистой прибыли</p></div></div>
@@ -7403,7 +7403,7 @@ function Finance({ t, lang, onGoToExpense }) {
       </section>
 
       <section className="dashboard-v23-kpis dashboard-v29-kpis finance-dashboard-kpis">
-        <div className="dash-kpi dash-kpi-blue"><span className="dash-kpi-icon">↗</span><div><em>Выручка за месяц</em><strong>{fmt(stats.revenue)} <small>AZN</small></strong><p className={`dash-trend-value ${revChange >= 0 ? 'good' : 'bad'}`} title={financeRevenueCompareTooltip}>{revChange >= 0 ? '▲' : '▼'} {pct(Math.abs(revChange))}</p></div></div>
+        <div className="dash-kpi dash-kpi-blue"><span className="dash-kpi-icon">↗</span><div><em>Выручка за месяц</em><strong>{fmt(stats.revenue)} <small>AZN</small></strong><p className="dash-trend-value" style={{ color: revChange >= 0 ? '#10b981' : '#ef4444', fontWeight: 900 }} title={financeRevenueCompareTooltip}>{revChange >= 0 ? '▲' : '▼'} {pct(Math.abs(revChange))}</p></div></div>
         <div className="dash-kpi dash-kpi-purple"><span className="dash-kpi-icon">▥</span><div><em>Расходы</em><strong>{fmt(financeTotalExpenses)} <small>AZN</small></strong><p>{pct(stats.revenue ? financeTotalExpenses / stats.revenue * 100 : 0)} от выручки</p></div></div>
         <div className="dash-kpi dash-kpi-green"><span className="dash-kpi-icon">▟</span><div><em>Чистая прибыль</em><strong className={financeNet >= 0 ? 'good' : 'bad'}>{fmt(financeNet)} <small>AZN</small></strong><p className={profitChange >= 0 ? 'good' : 'bad'}>{profitChange >= 0 ? '▲' : '▼'} {pct(Math.abs(profitChange))}</p></div></div>
         <div className="dash-kpi dash-kpi-red"><span className="dash-kpi-icon">%</span><div><em>Рентабельность</em><strong>{pct(financeProfitability)}</strong><p>маржа чистой прибыли</p></div></div>
