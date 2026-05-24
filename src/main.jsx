@@ -6301,7 +6301,8 @@ function Dashboard({ t }) {
       let comparison = {
         currentRevenue: current.revenue,
         previousRevenue: previous.revenue,
-        revenueLabel: 'к прошлому месяцу'
+        revenueLabel: 'месяц-к-месяцу',
+        revenueTooltip: `Сравнение с предыдущим месяцем: ${fmt(current.revenue)} AZN против ${fmt(previous.revenue)} AZN`
       }
 
       const today = new Date()
@@ -6320,7 +6321,8 @@ function Dashboard({ t }) {
           comparison = {
             currentRevenue: currentMtdRevenue,
             previousRevenue: previousMtdRevenue,
-            revenueLabel: `день-к-дню · 1-${currentDay}`
+            revenueLabel: `день-к-дню · 1-${currentDay}`,
+            revenueTooltip: `День-к-дню: 1-${currentDay} текущего месяца против 1-${currentDay} предыдущего месяца. Предыдущий период: ${fmt(previousMtdRevenue)} AZN`
           }
 
           previous = {
@@ -6351,7 +6353,8 @@ function Dashboard({ t }) {
   if (!data) return <div className="module-placeholder">{t('loading')}</div>
   const revenueCompareCurrent = parseNum(data.comparison?.currentRevenue ?? data.revenue)
   const revenueComparePrevious = parseNum(data.comparison?.previousRevenue ?? data.previous?.revenue)
-  const revenueCompareLabel = data.comparison?.revenueLabel || 'к прошлому месяцу'
+  const revenueCompareLabel = data.comparison?.revenueLabel || 'месяц-к-месяцу'
+  const revenueCompareTooltip = data.comparison?.revenueTooltip || `Сравнение: ${fmt(revenueCompareCurrent)} AZN против ${fmt(revenueComparePrevious)} AZN`
   const revenueChange = revenueComparePrevious ? (revenueCompareCurrent - revenueComparePrevious) / revenueComparePrevious * 100 : 0
   const profitChange = data.previous?.net ? (data.net - data.previous.net) / Math.abs(data.previous.net) * 100 : 0
   const topBranchRows = data.branchRows.filter(r => r.revenue || r.net).sort((a,b) => b.revenue - a.revenue)
@@ -6377,9 +6380,9 @@ function Dashboard({ t }) {
     </section>
 
     <section className="dashboard-v23-kpis dashboard-v29-kpis">
-      <div className="dash-kpi dash-kpi-blue"><span className="dash-kpi-icon">↗</span><div><em>Выручка за месяц</em><strong>{fmt(data.revenue)} <small>AZN</small></strong><p className={revenueChange >= 0 ? 'good' : 'bad'}>{revenueChange >= 0 ? '▲' : '▼'} {pct(Math.abs(revenueChange))}</p></div></div>
+      <div className="dash-kpi dash-kpi-blue"><span className="dash-kpi-icon">↗</span><div><em>Выручка за месяц</em><strong>{fmt(data.revenue)} <small>AZN</small></strong><p className={revenueChange >= 0 ? 'good' : 'bad'} title={revenueCompareTooltip}>{revenueChange >= 0 ? '▲' : '▼'} {pct(Math.abs(revenueChange))}</p></div></div>
       <div className="dash-kpi dash-kpi-purple"><span className="dash-kpi-icon">▥</span><div><em>Расходы</em><strong>{fmt(data.expenses)} <small>AZN</small></strong><p>{data.revenue ? pct(data.expenses / data.revenue * 100) : '0.0%'} от выручки</p></div></div>
-      <div className="dash-kpi dash-kpi-green"><span className="dash-kpi-icon">▟</span><div><em>Чистая прибыль</em><strong>{fmt(data.net)} <small>AZN</small></strong><p className={profitChange >= 0 ? 'good' : 'bad'}>{profitChange >= 0 ? '▲' : '▼'} {pct(Math.abs(profitChange))} к прошлому месяцу</p></div></div>
+      <div className="dash-kpi dash-kpi-green"><span className="dash-kpi-icon">▟</span><div><em>Чистая прибыль</em><strong>{fmt(data.net)} <small>AZN</small></strong><p className={profitChange >= 0 ? 'good' : 'bad'}>{profitChange >= 0 ? '▲' : '▼'} {pct(Math.abs(profitChange))}</p></div></div>
       <div className="dash-kpi dash-kpi-red"><span className="dash-kpi-icon">%</span><div><em>Рентабельность</em><strong>{pct(data.revenue ? data.net / data.revenue * 100 : 0)}</strong><p>маржа чистой прибыли</p></div></div>
       <div className="dash-kpi dash-kpi-forecast"><span className="dash-kpi-icon">⌁</span><div><em>Прогноз выручки</em><strong>{fmt(data.forecastRevenue)} <small>AZN</small></strong><p>до конца месяца</p></div></div>
       <div className="dash-kpi dash-kpi-target"><span className="dash-kpi-icon">◎</span><div><em>Прогноз прибыли</em><strong>{fmt(data.forecastProfit)} <small>AZN</small></strong><p>прогноз месяца</p></div></div>
@@ -7071,6 +7074,30 @@ function Finance({ t, lang, onGoToExpense }) {
     return { revenue, expenses, salary, serviceCost, cash, bank, wolt, tax, gross: revenue, net, avg, forecastRevenue, forecastProfit, forecastDetails: syncedForecast.details || [], forecastExpenses: syncedForecast.forecastExpenses, forecastMargin: syncedForecast.forecastMargin }
   }
 
+
+  async function calcFinanceRevenueUntilDay(y, m, dayLimit) {
+    const daysInMonth = new Date(Number(y), Number(m), 0).getDate()
+    const safeDay = Math.max(1, Math.min(Number(dayLimit) || daysInMonth, daysInMonth))
+    const start = monthStart(y, m)
+    const end = new Date(Number(y), Number(m) - 1, safeDay + 1).toISOString().slice(0, 10)
+
+    let query = supabase
+      .from('daily_revenue')
+      .select('branch_id,cash_amount,bank_amount,wolt_amount')
+      .gte('revenue_date', start)
+      .lt('revenue_date', end)
+      .is('deleted_at', null)
+
+    if (branchId !== ALL_BRANCHES) query = query.eq('branch_id', branchId)
+
+    const { data, error } = await query
+    if (error) throw error
+
+    return (data || []).reduce((sum, row) => {
+      return sum + parseNum(row.cash_amount) + parseNum(row.bank_amount) + parseNum(row.wolt_amount)
+    }, 0)
+  }
+
   async function load() {
     if (branchId !== ALL_BRANCHES && !branchId) return
 
@@ -7170,7 +7197,40 @@ function Finance({ t, lang, onGoToExpense }) {
         forecastMargin: parseNum(syncedForecast.forecastMargin)
       }
     }
-    setStats({ ...currentForFinance, previous })
+    let financeComparison = {
+      currentRevenue: currentForFinance.revenue,
+      previousRevenue: previous.revenue,
+      revenueLabel: 'месяц-к-месяцу',
+      revenueTooltip: `Сравнение с предыдущим месяцем: ${fmt(currentForFinance.revenue)} AZN против ${fmt(previous.revenue)} AZN`
+    }
+
+    const today = new Date()
+    const isCurrentSelectedMonth = Number(year) === today.getFullYear() && Number(month) === today.getMonth() + 1
+    const daysInSelectedMonth = new Date(Number(year), Number(month), 0).getDate()
+    const currentDay = today.getDate()
+    const shouldCompareDayToDay = isCurrentSelectedMonth && currentDay < daysInSelectedMonth
+
+    if (shouldCompareDayToDay) {
+      try {
+        const [currentMtdRevenue, previousMtdRevenue] = await Promise.all([
+          calcFinanceRevenueUntilDay(year, month, currentDay),
+          calcFinanceRevenueUntilDay(pm.year, pm.month, currentDay)
+        ])
+
+        financeComparison = {
+          currentRevenue: currentMtdRevenue,
+          previousRevenue: previousMtdRevenue,
+          revenueLabel: `день-к-дню · 1-${currentDay}`,
+          revenueTooltip: `День-к-дню: 1-${currentDay} текущего месяца против 1-${currentDay} предыдущего месяца. Предыдущий период: ${fmt(previousMtdRevenue)} AZN`
+        }
+
+        previous.revenue = previousMtdRevenue
+      } catch (comparisonError) {
+        console.error('Finance day-to-day revenue comparison failed:', comparisonError)
+      }
+    }
+
+    setStats({ ...currentForFinance, previous, comparison: financeComparison })
 
     if (currentForFinance.serviceCost > 0) expenseRows.push({ name: 'Service charge персоналу', amount: currentForFinance.serviceCost })
     if (currentForFinance.tax > 0) expenseRows.push({ name: `Налог %`, amount: currentForFinance.tax })
@@ -7266,7 +7326,10 @@ function Finance({ t, lang, onGoToExpense }) {
   }
 
   if (!stats) return <div className="module-placeholder">{t('loading')}</div>
-  const revChange = stats.previous?.revenue ? ((stats.revenue - stats.previous.revenue) / stats.previous.revenue * 100) : 0
+  const financeRevenueCompareCurrent = parseNum(stats.comparison?.currentRevenue ?? stats.revenue)
+  const financeRevenueComparePrevious = parseNum(stats.comparison?.previousRevenue ?? stats.previous?.revenue)
+  const financeRevenueCompareTooltip = stats.comparison?.revenueTooltip || `Сравнение: ${fmt(financeRevenueCompareCurrent)} AZN против ${fmt(financeRevenueComparePrevious)} AZN`
+  const revChange = financeRevenueComparePrevious ? ((financeRevenueCompareCurrent - financeRevenueComparePrevious) / financeRevenueComparePrevious * 100) : 0
   const aiPriority = { critical: 0, warning: 1, ok: 2 }
   const sortedAiRows = [...aiRows].sort((a, b) => (aiPriority[a.level] ?? 9) - (aiPriority[b.level] ?? 9))
   const visibleAiRows = showAllAiRows ? sortedAiRows : sortedAiRows.slice(0, 5)
@@ -7339,9 +7402,9 @@ function Finance({ t, lang, onGoToExpense }) {
       </section>
 
       <section className="dashboard-v23-kpis dashboard-v29-kpis finance-dashboard-kpis">
-        <div className="dash-kpi dash-kpi-blue"><span className="dash-kpi-icon">↗</span><div><em>Выручка за месяц</em><strong>{fmt(stats.revenue)} <small>AZN</small></strong><p className={revChange >= 0 ? 'good' : 'bad'}>{revChange >= 0 ? '▲' : '▼'} {pct(Math.abs(revChange))}</p></div></div>
+        <div className="dash-kpi dash-kpi-blue"><span className="dash-kpi-icon">↗</span><div><em>Выручка за месяц</em><strong>{fmt(stats.revenue)} <small>AZN</small></strong><p className={revChange >= 0 ? 'good' : 'bad'} title={financeRevenueCompareTooltip}>{revChange >= 0 ? '▲' : '▼'} {pct(Math.abs(revChange))}</p></div></div>
         <div className="dash-kpi dash-kpi-purple"><span className="dash-kpi-icon">▥</span><div><em>Расходы</em><strong>{fmt(financeTotalExpenses)} <small>AZN</small></strong><p>{pct(stats.revenue ? financeTotalExpenses / stats.revenue * 100 : 0)} от выручки</p></div></div>
-        <div className="dash-kpi dash-kpi-green"><span className="dash-kpi-icon">▟</span><div><em>Чистая прибыль</em><strong className={financeNet >= 0 ? 'good' : 'bad'}>{fmt(financeNet)} <small>AZN</small></strong><p className={profitChange >= 0 ? 'good' : 'bad'}>{profitChange >= 0 ? '▲' : '▼'} {pct(Math.abs(profitChange))} к прошлому месяцу</p></div></div>
+        <div className="dash-kpi dash-kpi-green"><span className="dash-kpi-icon">▟</span><div><em>Чистая прибыль</em><strong className={financeNet >= 0 ? 'good' : 'bad'}>{fmt(financeNet)} <small>AZN</small></strong><p className={profitChange >= 0 ? 'good' : 'bad'}>{profitChange >= 0 ? '▲' : '▼'} {pct(Math.abs(profitChange))}</p></div></div>
         <div className="dash-kpi dash-kpi-red"><span className="dash-kpi-icon">%</span><div><em>Рентабельность</em><strong>{pct(financeProfitability)}</strong><p>маржа чистой прибыли</p></div></div>
         <div className="dash-kpi dash-kpi-forecast"><span className="dash-kpi-icon">⌁</span><div><em>Прогноз выручки</em><strong>{fmt(stats.forecastRevenue)} <small>AZN</small></strong><p>до конца месяца</p></div></div>
         <div className="dash-kpi dash-kpi-target"><span className="dash-kpi-icon">◎</span><div><em>Прогноз прибыли</em><strong>{fmt(stats.forecastProfit)} <small>AZN</small></strong><p>прогноз месяца</p></div></div>
