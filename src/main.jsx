@@ -6245,6 +6245,29 @@ function Dashboard({ t }) {
     return { revenue, expenses, net, supplierDebt, supplierDebtRows, branchRows: dashboardBranchRows, forecastRevenue, forecastProfit, forecastDetails: syncedForecast.details || [], forecastExpenses: syncedForecast.forecastExpenses, forecastMargin: syncedForecast.forecastMargin }
   }
 
+  async function calcDashboardRevenueUntilDay(y, m, dayLimit) {
+    const daysInMonth = new Date(Number(y), Number(m), 0).getDate()
+    const safeDay = Math.max(1, Math.min(Number(dayLimit) || daysInMonth, daysInMonth))
+    const start = monthStart(y, m)
+    const end = new Date(Number(y), Number(m) - 1, safeDay + 1).toISOString().slice(0, 10)
+
+    let query = supabase
+      .from('daily_revenue')
+      .select('branch_id,cash_amount,bank_amount,wolt_amount')
+      .gte('revenue_date', start)
+      .lt('revenue_date', end)
+      .is('deleted_at', null)
+
+    if (branchId !== DASH_ALL_BRANCHES) query = query.eq('branch_id', branchId)
+
+    const { data, error } = await query
+    if (error) throw error
+
+    return (data || []).reduce((sum, row) => {
+      return sum + parseNum(row.cash_amount) + parseNum(row.bank_amount) + parseNum(row.wolt_amount)
+    }, 0)
+  }
+
   function emptyDashboardData() {
     return {
       revenue: 0,
@@ -6258,7 +6281,8 @@ function Dashboard({ t }) {
       forecastDetails: [],
       forecastExpenses: 0,
       forecastMargin: 0,
-      previous: { revenue: 0, expenses: 0, net: 0, supplierDebt: 0, branchRows: [] }
+      previous: { revenue: 0, expenses: 0, net: 0, supplierDebt: 0, branchRows: [] },
+      comparison: { currentRevenue: 0, previousRevenue: 0, revenueLabel: 'к прошлому месяцу' }
     }
   }
 
@@ -6274,6 +6298,40 @@ function Dashboard({ t }) {
         console.error('Dashboard previous month load failed:', previousError)
       }
 
+      let comparison = {
+        currentRevenue: current.revenue,
+        previousRevenue: previous.revenue,
+        revenueLabel: 'к прошлому месяцу'
+      }
+
+      const today = new Date()
+      const isCurrentSelectedMonth = Number(year) === today.getFullYear() && Number(month) === today.getMonth() + 1
+      const daysInSelectedMonth = new Date(Number(year), Number(month), 0).getDate()
+      const currentDay = today.getDate()
+      const shouldCompareDayToDay = isCurrentSelectedMonth && currentDay < daysInSelectedMonth
+
+      if (shouldCompareDayToDay) {
+        try {
+          const [currentMtdRevenue, previousMtdRevenue] = await Promise.all([
+            calcDashboardRevenueUntilDay(year, month, currentDay),
+            calcDashboardRevenueUntilDay(pm.year, pm.month, currentDay)
+          ])
+
+          comparison = {
+            currentRevenue: currentMtdRevenue,
+            previousRevenue: previousMtdRevenue,
+            revenueLabel: `день-к-дню · 1-${currentDay}`
+          }
+
+          previous = {
+            ...previous,
+            revenue: previousMtdRevenue
+          }
+        } catch (comparisonError) {
+          console.error('Dashboard day-to-day revenue comparison failed:', comparisonError)
+        }
+      }
+
       let dailyChartRows = []
       try {
         dailyChartRows = await loadDailyRevenueRowsForChart(year, month, branchId === DASH_ALL_BRANCHES ? '__all__' : branchId)
@@ -6282,7 +6340,7 @@ function Dashboard({ t }) {
       }
 
       setDailyRevenueRows(dailyChartRows || [])
-      setData({ ...current, previous })
+      setData({ ...current, previous, comparison })
     } catch (error) {
       console.error('Dashboard load failed:', error)
       setDailyRevenueRows([])
@@ -6291,7 +6349,10 @@ function Dashboard({ t }) {
   }
 
   if (!data) return <div className="module-placeholder">{t('loading')}</div>
-  const revenueChange = data.previous?.revenue ? (data.revenue - data.previous.revenue) / data.previous.revenue * 100 : 0
+  const revenueCompareCurrent = parseNum(data.comparison?.currentRevenue ?? data.revenue)
+  const revenueComparePrevious = parseNum(data.comparison?.previousRevenue ?? data.previous?.revenue)
+  const revenueCompareLabel = data.comparison?.revenueLabel || 'к прошлому месяцу'
+  const revenueChange = revenueComparePrevious ? (revenueCompareCurrent - revenueComparePrevious) / revenueComparePrevious * 100 : 0
   const profitChange = data.previous?.net ? (data.net - data.previous.net) / Math.abs(data.previous.net) * 100 : 0
   const topBranchRows = data.branchRows.filter(r => r.revenue || r.net).sort((a,b) => b.revenue - a.revenue)
   const netBranchRows = data.branchRows.filter(r => r.revenue || r.net).sort((a,b) => b.net - a.net)
@@ -6316,7 +6377,7 @@ function Dashboard({ t }) {
     </section>
 
     <section className="dashboard-v23-kpis dashboard-v29-kpis">
-      <div className="dash-kpi dash-kpi-blue"><span className="dash-kpi-icon">↗</span><div><em>Выручка за месяц</em><strong>{fmt(data.revenue)} <small>AZN</small></strong><p className={revenueChange >= 0 ? 'good' : 'bad'}>{revenueChange >= 0 ? '▲' : '▼'} {pct(Math.abs(revenueChange))} к прошлому месяцу</p></div></div>
+      <div className="dash-kpi dash-kpi-blue"><span className="dash-kpi-icon">↗</span><div><em>Выручка за месяц</em><strong>{fmt(data.revenue)} <small>AZN</small></strong><p className={revenueChange >= 0 ? 'good' : 'bad'}>{revenueChange >= 0 ? '▲' : '▼'} {pct(Math.abs(revenueChange))} {revenueCompareLabel}</p></div></div>
       <div className="dash-kpi dash-kpi-purple"><span className="dash-kpi-icon">▥</span><div><em>Расходы</em><strong>{fmt(data.expenses)} <small>AZN</small></strong><p>{data.revenue ? pct(data.expenses / data.revenue * 100) : '0.0%'} от выручки</p></div></div>
       <div className="dash-kpi dash-kpi-green"><span className="dash-kpi-icon">▟</span><div><em>Чистая прибыль</em><strong>{fmt(data.net)} <small>AZN</small></strong><p className={profitChange >= 0 ? 'good' : 'bad'}>{profitChange >= 0 ? '▲' : '▼'} {pct(Math.abs(profitChange))} к прошлому месяцу</p></div></div>
       <div className="dash-kpi dash-kpi-red"><span className="dash-kpi-icon">%</span><div><em>Рентабельность</em><strong>{pct(data.revenue ? data.net / data.revenue * 100 : 0)}</strong><p>маржа чистой прибыли</p></div></div>
@@ -6334,7 +6395,7 @@ function Dashboard({ t }) {
         <div className="card-head"><div><h3>Ключевые выводы</h3><p className="hint">Автоматический summary по выбранному месяцу</p></div></div>
         <div className="dashboard-v23-insight-list dashboard-v25-insight-list">
           {branchId === DASH_ALL_BRANCHES ? <>
-            <div><span>Рост выручки</span><strong className={revenueChange >= 0 ? 'good' : 'bad'}>{revenueChange >= 0 ? '▲' : '▼'} {pct(Math.abs(revenueChange))}</strong><em>к прошлому месяцу</em></div>
+            <div><span>Рост выручки</span><strong className={revenueChange >= 0 ? 'good' : 'bad'}>{revenueChange >= 0 ? '▲' : '▼'} {pct(Math.abs(revenueChange))}</strong><em>{revenueCompareLabel}</em></div>
             <div><span>Лучший филиал по выручке</span><strong>{topBranchRows[0]?.name || '—'}</strong><em>{topBranchRows[0] ? `${fmt(topBranchRows[0].revenue)} AZN` : 'нет данных'}</em></div>
             <div><span>Лучший филиал по прибыли</span><strong>{bestBranch?.name || '—'}</strong><em>{bestBranch ? `${fmt(bestBranch.net)} AZN` : 'нет данных'}</em></div>
             <div><span>Прогноз прибыли</span><strong className={data.forecastProfit >= 0 ? 'good' : 'bad'}>{fmt(data.forecastProfit)} AZN</strong><em>с учётом расходов</em></div>
