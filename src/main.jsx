@@ -14854,6 +14854,7 @@ function Reports({ t }) {
   const [cloudSyncStatus, setCloudSyncStatus] = useState('')
   const [cloudHiddenSalesLoaded, setCloudHiddenSalesLoaded] = useState(false)
   const [cloudSalesAliasesLoaded, setCloudSalesAliasesLoaded] = useState(false)
+  const [rmsRevenueReport, setRmsRevenueReport] = useState({ loading: false, error: '', rows: [], totals: { cash: 0, bank: 0, wolt: 0, revenue: 0 } })
 
   useEffect(() => { writeAikoSalesReports(reports) }, [reports])
   useEffect(() => { writeAikoBranchMap(branchMap) }, [branchMap])
@@ -14959,6 +14960,59 @@ function Reports({ t }) {
     }
     loadRecipeCosts()
   }, [salesNameAliases])
+
+  useEffect(() => {
+    if (reportsTab !== 'revenue') return
+    loadRmsRevenueReport()
+  }, [reportsTab, branchFilter, monthFilter, branches.length])
+
+  async function loadRmsRevenueReport() {
+    setRmsRevenueReport(prev => ({ ...prev, loading: true, error: '' }))
+    try {
+      let query = supabase
+        .from('daily_revenue')
+        .select('branch_id,revenue_date,cash_amount,bank_amount,wolt_amount')
+        .is('deleted_at', null)
+
+      if (branchFilter !== 'all') query = query.eq('branch_id', branchFilter)
+
+      if (/^\d{4}-\d{2}$/.test(String(monthFilter || ''))) {
+        const start = `${monthFilter}-01`
+        const end = new Date(Number(monthFilter.slice(0, 4)), Number(monthFilter.slice(5, 7)), 1).toISOString().slice(0, 10)
+        query = query.gte('revenue_date', start).lt('revenue_date', end)
+      }
+
+      const { data, error } = await query.order('revenue_date', { ascending: false })
+      if (error) throw error
+
+      const branchNameById = new Map((branches || []).map(b => [String(b.id), b.name]))
+      const rows = (data || []).map(row => {
+        const cash = parseNum(row.cash_amount)
+        const bank = parseNum(row.bank_amount)
+        const wolt = parseNum(row.wolt_amount)
+        return {
+          ...row,
+          branch_name: branchNameById.get(String(row.branch_id)) || row.branch_id || '—',
+          cash,
+          bank,
+          wolt,
+          revenue: cash + bank + wolt
+        }
+      })
+
+      const totals = rows.reduce((acc, row) => {
+        acc.cash += parseNum(row.cash)
+        acc.bank += parseNum(row.bank)
+        acc.wolt += parseNum(row.wolt)
+        acc.revenue += parseNum(row.revenue)
+        return acc
+      }, { cash: 0, bank: 0, wolt: 0, revenue: 0 })
+
+      setRmsRevenueReport({ loading: false, error: '', rows, totals })
+    } catch (error) {
+      setRmsRevenueReport({ loading: false, error: error?.message || 'Не удалось загрузить выручку RMS', rows: [], totals: { cash: 0, bank: 0, wolt: 0, revenue: 0 } })
+    }
+  }
 
   useEffect(() => {
     if (!branches.length) return
@@ -15713,35 +15767,79 @@ function Reports({ t }) {
     </div>
   </div>
 
-  const ReportModulePlaceholder = ({ title, description, metrics = [], columns = [] }) => <section className="reports-v43-module-grid">
-    <div className="reports-v43-module-card">
+  const ReportModulePlaceholder = ({ title, description }) => <section className="reports-v43-module-grid">
+    <div className="reports-v43-module-card reports-v43-wide">
       <div className="reports-v43-card-head">
         <div>
           <h3>{title}</h3>
           <p>{description}</p>
         </div>
-        <button className="small ghost" type="button">Настроить</button>
-      </div>
-      <div className="reports-v43-mini-kpis">
-        {metrics.map((m, idx) => <div key={`${title}-${m.label}-${idx}`}><span>{m.label}</span><strong>{m.value}</strong><em>{m.note}</em></div>)}
       </div>
       <div className="reports-v43-empty-state">
-        <b>Модуль отчёта подготовлен</b>
-        <span>Следующий шаг — подключить источник данных и drill-down по транзакциям.</span>
-      </div>
-    </div>
-    <div className="reports-v43-module-card">
-      <div className="reports-v43-card-head">
-        <div>
-          <h3>Структура отчёта</h3>
-          <p>Какие поля будут использоваться в этом разделе.</p>
-        </div>
-      </div>
-      <div className="reports-v43-schema-list">
-        {columns.map((c, idx) => <div key={`${title}-schema-${idx}`}><span>{c}</span><em>будет доступно в таблице и экспорте</em></div>)}
+        <b>Источник данных ещё не подключён к этой вкладке</b>
+        <span>Этот раздел уже добавлен в структуру Reports. Следующий шаг — подключить реальные данные RMS и таблицу детализации.</span>
       </div>
     </div>
   </section>
+
+  const ReportsRevenueView = <section className="reports-v43-module-grid">
+    <div className="reports-v43-module-card reports-v43-wide">
+      <div className="reports-v43-card-head">
+        <div>
+          <h3>Отчёт по выручке RMS</h3>
+          <p>Данные берутся из раздела “Выручка” / таблицы daily_revenue, а не из AIKO Sales import.</p>
+        </div>
+        <button className="small ghost" type="button" onClick={loadRmsRevenueReport}>Обновить</button>
+      </div>
+
+      <div className="reports-v43-mini-kpis">
+        <div><span>Итого выручка</span><strong>{fmt(rmsRevenueReport.totals.revenue)}</strong><em>cash + bank + wolt</em></div>
+        <div><span>Cash</span><strong>{fmt(rmsRevenueReport.totals.cash)}</strong><em>наличные</em></div>
+        <div><span>Bank</span><strong>{fmt(rmsRevenueReport.totals.bank)}</strong><em>карта / банк</em></div>
+        <div><span>Wolt</span><strong>{fmt(rmsRevenueReport.totals.wolt)}</strong><em>агрегатор</em></div>
+        <div><span>Филиал</span><strong>{selectedBranchLabel}</strong><em>текущий фильтр</em></div>
+        <div><span>Период</span><strong>{selectedMonthLabel}</strong><em>текущий фильтр</em></div>
+      </div>
+
+      {rmsRevenueReport.loading && <div className="reports-v43-empty-state"><b>Загрузка выручки...</b><span>Идёт чтение daily_revenue.</span></div>}
+      {rmsRevenueReport.error && <div className="reports-v43-empty-state"><b>Ошибка загрузки</b><span>{rmsRevenueReport.error}</span></div>}
+      {!rmsRevenueReport.loading && !rmsRevenueReport.error && <div className="reports-v43-table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Дата</th>
+              <th>Филиал</th>
+              <th>Cash</th>
+              <th>Bank</th>
+              <th>Wolt</th>
+              <th>Итого</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rmsRevenueReport.rows.slice(0, 80).map((row, idx) => <tr key={`${row.revenue_date}-${row.branch_id}-${idx}`}>
+              <td>{row.revenue_date || '—'}</td>
+              <td><b>{row.branch_name || '—'}</b></td>
+              <td>{fmt(row.cash)}</td>
+              <td>{fmt(row.bank)}</td>
+              <td>{fmt(row.wolt)}</td>
+              <td><b>{fmt(row.revenue)}</b></td>
+            </tr>)}
+            {!rmsRevenueReport.rows.length && <tr><td colSpan="6" className="hint">Нет данных в RMS Revenue по выбранному фильтру.</td></tr>}
+          </tbody>
+          {rmsRevenueReport.rows.length ? <tfoot>
+            <tr>
+              <td colSpan="2"><b>Итого</b></td>
+              <td><b>{fmt(rmsRevenueReport.totals.cash)}</b></td>
+              <td><b>{fmt(rmsRevenueReport.totals.bank)}</b></td>
+              <td><b>{fmt(rmsRevenueReport.totals.wolt)}</b></td>
+              <td><b>{fmt(rmsRevenueReport.totals.revenue)}</b></td>
+            </tr>
+          </tfoot> : null}
+        </table>
+      </div>}
+    </div>
+  </section>
+
 
   const ReportsOverview = <section className="reports-v43-grid">
     <div className="reports-v43-card reports-v43-chart-card">
@@ -15883,14 +15981,14 @@ function Reports({ t }) {
     {reportsTab === 'overview' && ReportsOverview}
     {reportsTab === 'sales' && SalesReportView}
     {reportsTab === 'import' && ImportReportView}
-    {reportsTab === 'revenue' && <ReportModulePlaceholder title="Отчёт по выручке" description="Выручка по филиалам, дням и каналам: cash, bank, Wolt, service." metrics={[{label:'Текущая выручка', value:fmt(totals.revenue), note:selectedMonthLabel},{label:'Филиал', value:selectedBranchLabel, note:'фильтр'},{label:'Тип', value:selectedTypeLabel, note:'фильтр'}]} columns={['Дата','Филиал','Cash','Bank','Wolt','Service','Итого','Доля филиала']} />}
-    {reportsTab === 'expenses' && <ReportModulePlaceholder title="Отчёт по расходам" description="Общие расходы, динамика, структура по филиалам и периодам." metrics={[{label:'Расходы', value:'из Finance', note:'единая логика'},{label:'Статей', value:'все статьи', note:'группировка'},{label:'Период', value:selectedMonthLabel, note:'фильтр'}]} columns={['Дата','Филиал','Статья','Сумма','Комментарий','Источник','Ответственный']} />}
-    {reportsTab === 'categories' && <ReportModulePlaceholder title="Расходы по статьям" description="Детализация каждой статьи с drill-down до транзакций." metrics={[{label:'Food Cost', value:'расчёт', note:'закупки + базар'},{label:'Packaging', value:'расчёт', note:'take away'},{label:'Хозтовары', value:'расчёт', note:'категория'}]} columns={['Статья','Сумма','% от выручки','Филиал','Транзакции','Отклонение','Просмотр']} />}
-    {reportsTab === 'purchases' && <ReportModulePlaceholder title="Отчёт по закупкам" description="Закупки поставщиков по периодам, филиалам, категориям и фактурам." metrics={[{label:'Закупки', value:'из Suppliers', note:'накладные'},{label:'Категории', value:'Food / Pack / Хоз', note:'группировка'},{label:'Фактуры', value:'список', note:'drill-down'}]} columns={['Дата','Поставщик','Фактура','Филиал','Категория','Сумма','Комментарий']} />}
-    {reportsTab === 'products' && <ReportModulePlaceholder title="Отчёт по товарам" description="Движение товаров, закупочные цены, последние цены и объём закупок." metrics={[{label:'Товары', value:'из закупок', note:'номенклатура'},{label:'Последняя цена', value:'latest cost', note:'из техкарт'},{label:'Динамика', value:'цены', note:'по периодам'}]} columns={['Товар','Категория','Поставщик','Кол-во','Ед.','Цена','Сумма','Последняя цена']} />}
-    {reportsTab === 'suppliers' && <ReportModulePlaceholder title="Отчёт по поставщикам" description="Закупки, оплаты, баланс, просрочки и VOEN-группировка." metrics={[{label:'Поставщики', value:'активные', note:'список'},{label:'Долг', value:'баланс', note:'долги и оплаты'},{label:'Просрочка', value:'контроль', note:'лимиты'}]} columns={['Поставщик','VOEN','Закупки','Оплаты','Баланс','Просрочка','Кредитный лимит']} />}
-    {reportsTab === 'bazar' && <ReportModulePlaceholder title="Отчёт по базару" description="Базар, автоматическое распределение по филиалам и влияние на Food Cost." metrics={[{label:'Базар', value:'сумма', note:'за период'},{label:'Распределение', value:'по доле выручки', note:'автоматически'},{label:'Food Cost', value:'в составе', note:'финансы'}]} columns={['Дата','Общая сумма','Филиал','Доля выручки','Распределено','Комментарий']} />}
-    {reportsTab === 'export' && <ReportModulePlaceholder title="Экспорт отчётов" description="PDF, печать, CSV/Excel и сохранение выбранного среза." metrics={[{label:'PDF', value:'печать', note:'готово'},{label:'CSV', value:'таблицы', note:'подготовить'},{label:'Excel', value:'отчёты', note:'следующий этап'}]} columns={['Название отчёта','Период','Филиал','Формат','Статус','Действие']} />}
+    {reportsTab === 'revenue' && ReportsRevenueView}
+    {reportsTab === 'expenses' && <ReportModulePlaceholder title="Отчёт по расходам" description="Общие расходы, динамика, структура по филиалам и периодам." />}
+    {reportsTab === 'categories' && <ReportModulePlaceholder title="Расходы по статьям" description="Детализация каждой статьи с drill-down до транзакций." />}
+    {reportsTab === 'purchases' && <ReportModulePlaceholder title="Отчёт по закупкам" description="Закупки поставщиков по периодам, филиалам, категориям и фактурам." />}
+    {reportsTab === 'products' && <ReportModulePlaceholder title="Отчёт по товарам" description="Движение товаров, закупочные цены, последние цены и объём закупок." />}
+    {reportsTab === 'suppliers' && <ReportModulePlaceholder title="Отчёт по поставщикам" description="Закупки, оплаты, баланс, просрочки и VOEN-группировка." />}
+    {reportsTab === 'bazar' && <ReportModulePlaceholder title="Отчёт по базару" description="Базар, автоматическое распределение по филиалам и влияние на Food Cost." />}
+    {reportsTab === 'export' && <ReportModulePlaceholder title="Экспорт отчётов" description="PDF, печать, CSV/Excel и сохранение выбранного среза." />}
   </section>
 }
 
