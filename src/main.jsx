@@ -12255,7 +12255,7 @@ function Suppliers({ t, isAdmin = false }) {
   const [purchaseForm, setPurchaseForm] = useState({ supplier_id: '', legal_entity_id: '', branch_id: '', purchase_date: todayISO(), invoice_number: '', e_invoice_number: '', e_invoice_date: '', e_invoice_amount: '', comment: '', amount_only: false, manual_amount: '' })
   const emptyLine = { category: PRODUCT_CATEGORIES[0], product_id: '', base_unit: 'g', quantity: '1', unit: 'kg', unit_price: '' }
   const [lineRows, setLineRows] = useState([emptyLine])
-  const [paymentForm, setPaymentForm] = useState({ supplier_id: '', legal_entity_id: '', payment_date: todayISO(), amount: '', invoice_notes: '', comment: '', e_invoice_id: '' })
+  const [paymentForm, setPaymentForm] = useState({ supplier_id: '', legal_entity_id: '', payment_date: todayISO(), amount: '', invoice_notes: '', comment: '', e_invoice_id: '', selected_e_invoice_ids: [] })
   const [openingDebtForm, setOpeningDebtForm] = useState({ supplier_id: '', legal_entity_id: '', debt_date: todayISO(), amount: '', invoice_notes: '', comment: '' })
   const [eInvoices, setEInvoices] = useState([])
   const [eInvoiceLinks, setEInvoiceLinks] = useState([])
@@ -12897,17 +12897,40 @@ function Suppliers({ t, isAdmin = false }) {
     const amount = parseNum(paymentForm.amount)
     if (!paymentForm.supplier_id || !amount) return setPaymentMessage('Выберите поставщика и сумму оплаты')
     if (!paymentForm.legal_entity_id) return setPaymentMessage('Выберите наш VOEN / юрлицо для оплаты')
-    const { error } = await supabase.from('supplier_payments').insert({
-      supplier_id: paymentForm.supplier_id, legal_entity_id: paymentForm.legal_entity_id || null, payment_date: paymentForm.payment_date || todayISO(), amount,
-      invoice_notes: paymentForm.invoice_notes.trim() || null, comment: paymentForm.comment.trim() || null,
-      e_invoice_id: paymentForm.e_invoice_id || null
-    })
-    if (error) return setPaymentMessage(error.message)
-    if (paymentForm.e_invoice_id) {
-      const inv = eInvoices.find(row => row.id === paymentForm.e_invoice_id)
-      await supabase.from('supplier_e_invoices').update({ paid_amount: parseNum(inv?.paid_amount) + amount, updated_at: new Date().toISOString() }).eq('id', paymentForm.e_invoice_id)
+    const selectedIds = paymentForm.selected_e_invoice_ids || []
+    const selectedRealInvoices = supplierEInvoiceOptions.filter(inv => selectedIds.includes(inv.e_invoice_id || inv.number) && inv.e_invoice_id)
+    const selectedLegacyInvoices = supplierEInvoiceOptions.filter(inv => selectedIds.includes(inv.e_invoice_id || inv.number) && !inv.e_invoice_id)
+
+    if (selectedRealInvoices.length > 1) {
+      for (const inv of selectedRealInvoices) {
+        const payAmount = parseNum(inv.amount)
+        const { error } = await supabase.from('supplier_payments').insert({
+          supplier_id: inv.supplier_id,
+          legal_entity_id: inv.legal_entity_id || null,
+          payment_date: paymentForm.payment_date || todayISO(),
+          amount: payAmount,
+          invoice_notes: inv.number || null,
+          comment: paymentForm.comment.trim() || null,
+          e_invoice_id: inv.e_invoice_id
+        })
+        if (error) return setPaymentMessage(error.message)
+        const dbInv = eInvoices.find(row => row.id === inv.e_invoice_id)
+        await supabase.from('supplier_e_invoices').update({ paid_amount: parseNum(dbInv?.paid_amount) + payAmount, updated_at: new Date().toISOString() }).eq('id', inv.e_invoice_id)
+      }
+    } else {
+      const { error } = await supabase.from('supplier_payments').insert({
+        supplier_id: paymentForm.supplier_id, legal_entity_id: paymentForm.legal_entity_id || null, payment_date: paymentForm.payment_date || todayISO(), amount,
+        invoice_notes: paymentForm.invoice_notes.trim() || null, comment: paymentForm.comment.trim() || null,
+        e_invoice_id: paymentForm.e_invoice_id || selectedRealInvoices[0]?.e_invoice_id || null
+      })
+      if (error) return setPaymentMessage(error.message)
+      const updateInvoiceId = paymentForm.e_invoice_id || selectedRealInvoices[0]?.e_invoice_id
+      if (updateInvoiceId) {
+        const inv = eInvoices.find(row => row.id === updateInvoiceId)
+        await supabase.from('supplier_e_invoices').update({ paid_amount: parseNum(inv?.paid_amount) + amount, updated_at: new Date().toISOString() }).eq('id', updateInvoiceId)
+      }
     }
-    setPaymentForm({ supplier_id: '', legal_entity_id: legalEntities[0]?.id || '', payment_date: todayISO(), amount: '', invoice_notes: '', comment: '', e_invoice_id: '' })
+    setPaymentForm({ supplier_id: '', legal_entity_id: legalEntities[0]?.id || '', payment_date: todayISO(), amount: '', invoice_notes: '', comment: '', e_invoice_id: '', selected_e_invoice_ids: [] })
     await load(); setPaymentMessage(t('saved'))
   }
 
@@ -13019,6 +13042,31 @@ function Suppliers({ t, isAdmin = false }) {
     (!paymentForm.legal_entity_id || String(inv.legal_entity_id) === String(paymentForm.legal_entity_id))
   )
 
+
+  const selectedPaymentEInvoices = supplierEInvoiceOptions.filter(inv => (paymentForm.selected_e_invoice_ids || []).includes(inv.e_invoice_id || inv.number))
+  const selectedPaymentTotal = selectedPaymentEInvoices.reduce((sum, inv) => sum + parseNum(inv.amount), 0)
+
+  function togglePaymentEInvoice(inv) {
+    const key = inv.e_invoice_id || inv.number
+    const current = paymentForm.selected_e_invoice_ids || []
+    const nextIds = current.includes(key) ? current.filter(id => id !== key) : [...current, key]
+    const selected = supplierEInvoiceOptions.filter(row => nextIds.includes(row.e_invoice_id || row.number))
+    const selectedTotal = selected.reduce((sum, row) => sum + parseNum(row.amount), 0)
+    setPaymentForm(f => ({
+      ...f,
+      selected_e_invoice_ids: nextIds,
+      supplier_id: selected[0]?.supplier_id || f.supplier_id,
+      legal_entity_id: selected[0]?.legal_entity_id || f.legal_entity_id,
+      invoice_notes: selected.map(row => row.number).filter(Boolean).join(', '),
+      amount: selected.length ? String(selectedTotal.toFixed(2)) : '',
+      e_invoice_id: selected.length === 1 ? (selected[0]?.e_invoice_id || '') : ''
+    }))
+  }
+
+  function clearPaymentEInvoices() {
+    setPaymentForm(f => ({ ...f, selected_e_invoice_ids: [], invoice_notes: '', amount: '', e_invoice_id: '' }))
+  }
+
   function applyPaymentEInvoice(number) {
     const inv = supplierEInvoiceOptions.find(x => x.number === number)
     setPaymentForm(f => ({
@@ -13027,7 +13075,8 @@ function Suppliers({ t, isAdmin = false }) {
       legal_entity_id: inv?.legal_entity_id || f.legal_entity_id,
       invoice_notes: number,
       amount: inv?.amount ? String(inv.amount) : f.amount,
-      e_invoice_id: inv?.e_invoice_id || ''
+      e_invoice_id: inv?.e_invoice_id || '',
+      selected_e_invoice_ids: inv ? [inv.e_invoice_id || inv.number] : []
     }))
   }
 
@@ -13292,10 +13341,36 @@ function Suppliers({ t, isAdmin = false }) {
           <label><span>Наш VOEN</span><select value={paymentForm.legal_entity_id} onChange={e => setPaymentForm({...paymentForm, legal_entity_id: e.target.value})}><option value="">Выберите VOEN</option>{legalEntities.map(le => <option key={le.id} value={le.id}>{le.name} · {le.voen}</option>)}</select></label>
           <label><span>Дата оплаты</span><input type="date" value={paymentForm.payment_date} onChange={e => setPaymentForm({...paymentForm, payment_date: e.target.value})} /></label>
           <label><span>Сумма оплаты</span><input inputMode="decimal" value={paymentForm.amount} onChange={e => setPaymentForm({...paymentForm, amount: e.target.value})} /></label>
-          <label><span>Оплата по e-qaimə</span><select value={paymentForm.invoice_notes} onChange={e => applyPaymentEInvoice(e.target.value)}><option value="">Выберите e-qaimə / накладную</option>{filteredPaymentEInvoices.map(inv => <option key={inv.purchase_id} value={inv.number}>{inv.number} · {inv.supplier} · {fmt(inv.amount)} AZN · {inv.status}</option>)}</select></label>
+          <label><span>Оплата по e-qaimə</span><select value={paymentForm.invoice_notes} onChange={e => applyPaymentEInvoice(e.target.value)}><option value="">Быстрый выбор одной e-qaimə</option>{filteredPaymentEInvoices.map(inv => <option key={inv.e_invoice_id || inv.purchase_id || inv.number} value={inv.number}>{inv.number} · {inv.supplier} · {fmt(inv.amount)} AZN · {inv.status}</option>)}</select></label>
           <label><span>Отметки / номера счёт-фактур</span><input value={paymentForm.invoice_notes} onChange={e => setPaymentForm({...paymentForm, invoice_notes: e.target.value})} /></label>
           <label><span>Комментарий</span><input value={paymentForm.comment} onChange={e => setPaymentForm({...paymentForm, comment: e.target.value})} /></label>
-        </div><button className="small primary" onClick={savePayment}>+ Сохранить оплату</button>
+        </div>
+        <div className="supplier-payment-multi">
+          <div className="card-head suppliers-v43-card-head">
+            <div><h3>Выбор нескольких e-qaimə</h3><p className="hint">Отметьте несколько электронных накладных — сумма оплаты и номера подтянутся автоматически.</p></div>
+            {(paymentForm.selected_e_invoice_ids || []).length > 0 && <button className="ghost small" onClick={clearPaymentEInvoices}>Очистить выбор</button>}
+          </div>
+          <div className="supplier-payment-multi-list">
+            {filteredPaymentEInvoices.map(inv => {
+              const key = inv.e_invoice_id || inv.number
+              const checked = (paymentForm.selected_e_invoice_ids || []).includes(key)
+              return <label key={key} className={`supplier-payment-invoice-row ${checked ? 'active' : ''}`}>
+                <input type="checkbox" checked={checked} onChange={() => togglePaymentEInvoice(inv)} />
+                <span>
+                  <b>{inv.number}</b>
+                  <small>{inv.supplier} · {inv.date || '—'} · {inv.status}</small>
+                </span>
+                <strong>{fmt(inv.amount)} AZN</strong>
+              </label>
+            })}
+            {!filteredPaymentEInvoices.length && <p className="hint">Нет неоплаченных e-qaimə по выбранному поставщику / VOEN.</p>}
+          </div>
+          {(paymentForm.selected_e_invoice_ids || []).length > 0 && <div className="supplier-payment-total">
+            <span>Выбрано: <b>{(paymentForm.selected_e_invoice_ids || []).length}</b></span>
+            <strong>Итого к оплате: {fmt(selectedPaymentTotal)} AZN</strong>
+          </div>}
+        </div>
+        <button className="small primary" onClick={savePayment}>+ Сохранить оплату</button>
         {paymentMessage && <p className={`hint ${paymentMessage === t('saved') ? 'save-status' : 'bad'}`}>{paymentMessage}</p>}
       </div>
 
@@ -17273,6 +17348,86 @@ function SupplierV43Styles() {
 
 .supplier-single-einvoice-card .card-head {
   margin-bottom: 12px !important;
+}
+
+
+
+.supplier-payment-multi {
+  margin: 14px 0 14px !important;
+  padding: 14px !important;
+  border: 1px solid rgba(226,232,240,.92) !important;
+  border-radius: 18px !important;
+  background: rgba(248,250,252,.72) !important;
+}
+
+.supplier-payment-multi-list {
+  display: grid !important;
+  gap: 8px !important;
+  max-height: 260px !important;
+  overflow: auto !important;
+  padding-right: 4px !important;
+}
+
+.supplier-payment-invoice-row {
+  display: grid !important;
+  grid-template-columns: 18px minmax(0,1fr) auto !important;
+  align-items: center !important;
+  gap: 10px !important;
+  padding: 10px 12px !important;
+  border: 1px solid rgba(226,232,240,.92) !important;
+  border-radius: 14px !important;
+  background: #ffffff !important;
+  cursor: pointer !important;
+}
+
+.supplier-payment-invoice-row.active {
+  border-color: rgba(37,99,235,.46) !important;
+  background: rgba(239,246,255,.92) !important;
+}
+
+.supplier-payment-invoice-row input {
+  width: 16px !important;
+  height: 16px !important;
+  min-width: 16px !important;
+  accent-color: #2563eb !important;
+}
+
+.supplier-payment-invoice-row b {
+  display: block !important;
+  color: #0f172a !important;
+  font-size: 13px !important;
+  font-weight: 900 !important;
+}
+
+.supplier-payment-invoice-row small {
+  display: block !important;
+  margin-top: 3px !important;
+  color: #64748b !important;
+  font-size: 12px !important;
+  font-weight: 650 !important;
+}
+
+.supplier-payment-invoice-row strong {
+  color: #0f172a !important;
+  font-size: 13px !important;
+  font-weight: 900 !important;
+  white-space: nowrap !important;
+}
+
+.supplier-payment-total {
+  display: flex !important;
+  justify-content: space-between !important;
+  gap: 12px !important;
+  margin-top: 12px !important;
+  padding: 12px 14px !important;
+  border-radius: 14px !important;
+  background: #eff6ff !important;
+  color: #1d4ed8 !important;
+}
+
+.supplier-payment-total strong,
+.supplier-payment-total b {
+  font-weight: 900 !important;
 }
 
   `}</style>
