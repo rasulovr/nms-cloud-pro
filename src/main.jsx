@@ -12262,6 +12262,7 @@ function Suppliers({ t, isAdmin = false }) {
   const [eInvoiceForm, setEInvoiceForm] = useState({ supplier_id: '', legal_entity_id: '', branch_id: '', invoice_number: '', invoice_date: todayISO(), period_start: monthStart(new Date().getFullYear(), new Date().getMonth() + 1), period_end: todayISO(), amount: '', payment_term_days: '', payment_due_date: '', note: '' })
   const [selectedEInvoiceId, setSelectedEInvoiceId] = useState('')
   const [eInvoiceMessage, setEInvoiceMessage] = useState('')
+  const [singleEInvoiceDrafts, setSingleEInvoiceDrafts] = useState({})
   const [activeInfoId, setActiveInfoId] = useState('')
   const [editingPurchaseId, setEditingPurchaseId] = useState('')
   const [viewPurchaseId, setViewPurchaseId] = useState('')
@@ -13104,6 +13105,92 @@ function Suppliers({ t, isAdmin = false }) {
   }
 
 
+
+  function purchaseEInvoiceLinks(purchaseId) {
+    return (eInvoiceLinks || []).filter(link => String(link.purchase_id) === String(purchaseId))
+  }
+
+  function purchaseLinkedEInvoices(purchaseId) {
+    const links = purchaseEInvoiceLinks(purchaseId)
+    return links.map(link => {
+      const inv = eInvoices.find(row => String(row.id) === String(link.e_invoice_id))
+      return inv ? { ...inv, link } : null
+    }).filter(Boolean)
+  }
+
+  function singleEInvoiceDraft(purchase) {
+    const existing = singleEInvoiceDrafts[purchase.id] || {}
+    const supplier = suppliers.find(s => String(s.id) === String(purchase.supplier_id))
+    const termDays = parseNum(existing.payment_term_days || supplier?.payment_term_days)
+    const invoiceDate = existing.invoice_date || todayISO()
+    const due = existing.payment_due_date || (termDays ? new Date(new Date(invoiceDate).getTime() + termDays * 86400000).toISOString().slice(0, 10) : '')
+    return {
+      invoice_number: existing.invoice_number || '',
+      invoice_date: invoiceDate,
+      amount: existing.amount ?? String(parseNum(purchase.total_amount || 0)),
+      payment_term_days: existing.payment_term_days ?? (termDays ? String(termDays) : ''),
+      payment_due_date: due,
+      note: existing.note || ''
+    }
+  }
+
+  function updateSingleEInvoiceDraft(purchaseId, patch) {
+    setSingleEInvoiceDrafts(prev => ({
+      ...prev,
+      [purchaseId]: {
+        ...(prev[purchaseId] || {}),
+        ...patch
+      }
+    }))
+  }
+
+  async function createSingleEInvoiceForPurchase(purchase) {
+    setEInvoiceMessage('')
+    try {
+      const draft = singleEInvoiceDraft(purchase)
+      const amount = parseNum(draft.amount)
+      if (!draft.invoice_number.trim()) throw new Error('Введите номер e-qaimə')
+      if (!amount) throw new Error('Введите сумму e-qaimə')
+      const { data: authData } = await supabase.auth.getUser()
+      const { data: inv, error } = await supabase.from('supplier_e_invoices').insert({
+        supplier_id: purchase.supplier_id,
+        legal_entity_id: purchase.legal_entity_id || null,
+        branch_id: purchase.branch_id || null,
+        invoice_number: draft.invoice_number.trim(),
+        invoice_date: draft.invoice_date || todayISO(),
+        period_start: purchase.purchase_date || null,
+        period_end: purchase.purchase_date || null,
+        amount,
+        payment_term_days: parseNum(draft.payment_term_days) || null,
+        payment_due_date: draft.payment_due_date || null,
+        note: draft.note?.trim() || null,
+        status: Math.abs(amount - parseNum(purchase.total_amount)) <= 0.02 ? 'matched' : 'mismatch',
+        created_by: authData?.user?.id || null
+      }).select('*').single()
+      if (error) throw error
+
+      const { error: linkError } = await supabase.from('supplier_e_invoice_purchase_links').insert({
+        e_invoice_id: inv.id,
+        purchase_id: purchase.id,
+        linked_amount: parseNum(purchase.total_amount),
+        created_by: authData?.user?.id || null
+      })
+      if (linkError) throw linkError
+
+      setSingleEInvoiceDrafts(prev => {
+        const next = { ...prev }
+        delete next[purchase.id]
+        return next
+      })
+      await load()
+      setSelectedEInvoiceId(inv.id)
+      setEInvoiceMessage('e-qaimə добавлена к поступлению')
+    } catch (error) {
+      setEInvoiceMessage(error?.message || 'Не удалось добавить e-qaimə к поступлению')
+    }
+  }
+
+
   const supplierReconciliationRows = (visiblePurchases || []).map(p => ({ ...p, reconciliation: supplierPurchaseReconciliation(p) }))
   const supplierWaitingEInvoice = supplierReconciliationRows.filter(p => p.reconciliation.status === 'Ожидает e-qaimə').length
   const supplierMatchedEInvoice = supplierReconciliationRows.filter(p => p.reconciliation.status === 'Сверено').length
@@ -13429,11 +13516,41 @@ function Suppliers({ t, isAdmin = false }) {
                           </div>
                           <div className="supplier-reconcile-preview">
                             <div><span>Физический приход</span><strong>{fmt(supplierPurchaseReconciliation(p).physicalAmount)} AZN</strong></div>
-                            <div><span>e-qaimə</span><strong>{supplierPurchaseReconciliation(p).eInvoiceNumber || 'ожидается'}</strong></div>
-                            <div><span>Сумма e-qaimə</span><strong>{supplierPurchaseReconciliation(p).eAmount ? `${fmt(supplierPurchaseReconciliation(p).eAmount)} AZN` : '—'}</strong></div>
-                            <div><span>Расхождение</span><strong className={Math.abs(supplierPurchaseReconciliation(p).diff) > 0.02 ? 'bad' : 'good'}>{supplierPurchaseReconciliation(p).eAmount ? fmt(supplierPurchaseReconciliation(p).diff) : '—'}</strong></div>
-                            <div><span>Статус сверки</span><strong className={supplierPurchaseReconciliation(p).tone === 'bad' ? 'bad' : supplierPurchaseReconciliation(p).tone === 'good' ? 'good' : 'warn'}>{supplierPurchaseReconciliation(p).status}</strong></div>
+                            <div><span>e-qaimə</span><strong>{purchaseLinkedEInvoices(p.id)[0]?.invoice_number || supplierPurchaseReconciliation(p).eInvoiceNumber || 'ожидается'}</strong></div>
+                            <div><span>Сумма e-qaimə</span><strong>{purchaseLinkedEInvoices(p.id)[0] ? `${fmt(purchaseLinkedEInvoices(p.id)[0].amount)} AZN` : supplierPurchaseReconciliation(p).eAmount ? `${fmt(supplierPurchaseReconciliation(p).eAmount)} AZN` : '—'}</strong></div>
+                            <div><span>Расхождение</span><strong className={Math.abs((purchaseLinkedEInvoices(p.id)[0] ? parseNum(purchaseLinkedEInvoices(p.id)[0].amount) - parseNum(p.total_amount) : supplierPurchaseReconciliation(p).diff)) > 0.02 ? 'bad' : 'good'}>{purchaseLinkedEInvoices(p.id)[0] ? fmt(parseNum(purchaseLinkedEInvoices(p.id)[0].amount) - parseNum(p.total_amount)) : supplierPurchaseReconciliation(p).eAmount ? fmt(supplierPurchaseReconciliation(p).diff) : '—'}</strong></div>
+                            <div><span>Статус сверки</span><strong className={purchaseLinkedEInvoices(p.id)[0] ? (Math.abs(parseNum(purchaseLinkedEInvoices(p.id)[0].amount) - parseNum(p.total_amount)) > 0.02 ? 'bad' : 'good') : supplierPurchaseReconciliation(p).tone === 'bad' ? 'bad' : supplierPurchaseReconciliation(p).tone === 'good' ? 'good' : 'warn'}>{purchaseLinkedEInvoices(p.id)[0] ? (Math.abs(parseNum(purchaseLinkedEInvoices(p.id)[0].amount) - parseNum(p.total_amount)) > 0.02 ? 'Расхождение' : 'Сверено') : supplierPurchaseReconciliation(p).status}</strong></div>
                           </div>
+
+                          {!purchaseLinkedEInvoices(p.id).length && !p.deleted_at && <div className="supplier-single-einvoice-card">
+                            <div className="card-head suppliers-v43-card-head">
+                              <div><h3>Добавить e-qaimə к этому приходу</h3><p className="hint">Используйте, если электронная накладная пришла позже и относится только к этой физической поставке.</p></div>
+                              <span className="suppliers-v43-badge">e-qaimə</span>
+                            </div>
+                            <div className="form-grid compact">
+                              <label><span>№ e-qaimə</span><input value={singleEInvoiceDraft(p).invoice_number} onChange={e => updateSingleEInvoiceDraft(p.id, { invoice_number: e.target.value })} /></label>
+                              <label><span>Дата e-qaimə</span><input type="date" value={singleEInvoiceDraft(p).invoice_date} onChange={e => updateSingleEInvoiceDraft(p.id, { invoice_date: e.target.value })} /></label>
+                              <label><span>Сумма e-qaimə</span><input inputMode="decimal" value={singleEInvoiceDraft(p).amount} onChange={e => updateSingleEInvoiceDraft(p.id, { amount: e.target.value })} /></label>
+                              <label><span>Срок оплаты, дней</span><input inputMode="numeric" value={singleEInvoiceDraft(p).payment_term_days} onChange={e => updateSingleEInvoiceDraft(p.id, { payment_term_days: e.target.value })} /></label>
+                              <label><span>Оплатить до</span><input type="date" value={singleEInvoiceDraft(p).payment_due_date} onChange={e => updateSingleEInvoiceDraft(p.id, { payment_due_date: e.target.value })} /></label>
+                              <label><span>Комментарий</span><input value={singleEInvoiceDraft(p).note} onChange={e => updateSingleEInvoiceDraft(p.id, { note: e.target.value })} /></label>
+                            </div>
+                            <div className="supplier-reconcile-preview">
+                              <div><span>Физический приход</span><strong>{fmt(p.total_amount)} AZN</strong></div>
+                              <div><span>e-qaimə</span><strong>{fmt(singleEInvoiceDraft(p).amount)} AZN</strong></div>
+                              <div><span>Расхождение</span><strong className={Math.abs(parseNum(singleEInvoiceDraft(p).amount) - parseNum(p.total_amount)) > 0.02 ? 'bad' : 'good'}>{fmt(parseNum(singleEInvoiceDraft(p).amount) - parseNum(p.total_amount))}</strong></div>
+                              <div><span>Статус</span><strong className={Math.abs(parseNum(singleEInvoiceDraft(p).amount) - parseNum(p.total_amount)) > 0.02 ? 'bad' : 'good'}>{Math.abs(parseNum(singleEInvoiceDraft(p).amount) - parseNum(p.total_amount)) > 0.02 ? 'Расхождение' : 'Сверено'}</strong></div>
+                            </div>
+                            <button className="small primary" onClick={() => createSingleEInvoiceForPurchase(p)}>+ Добавить e-qaimə к поступлению</button>
+                            {eInvoiceMessage && <p className={`hint ${eInvoiceMessage.includes('добавлена') ? 'save-status' : 'bad'}`}>{eInvoiceMessage}</p>}
+                          </div>}
+
+                          {purchaseLinkedEInvoices(p.id).length > 0 && <div className="supplier-single-einvoice-card">
+                            <div className="card-head suppliers-v43-card-head"><div><h3>Связанные e-qaimə</h3><p className="hint">Эти электронные накладные уже связаны с текущим физическим приходом.</p></div></div>
+                            <div className="table-wrap"><table><thead><tr><th>Дата</th><th>№ e-qaimə</th><th>Сумма</th><th>Оплачено</th><th>Остаток</th></tr></thead><tbody>
+                              {purchaseLinkedEInvoices(p.id).map(inv => <tr key={inv.id}><td>{inv.invoice_date}</td><td><b>{inv.invoice_number}</b></td><td>{fmt(inv.amount)}</td><td>{fmt(inv.paid_amount)}</td><td>{fmt(Math.max(0, parseNum(inv.amount) - parseNum(inv.paid_amount)))}</td></tr>)}
+                            </tbody></table></div>
+                          </div>}
 
                           <div className="table-wrap">
                             <table>
@@ -17185,6 +17302,20 @@ function SupplierV43Styles() {
 
 .supplier-einvoice-card .supplier-reconcile-preview { margin-top: 14px !important; }
 .supplier-einvoice-candidates { margin-top: 12px !important; }
+
+
+.supplier-single-einvoice-card {
+  margin: 16px 0 !important;
+  padding: 16px !important;
+  border: 1px solid rgba(226,232,240,.92) !important;
+  border-radius: 18px !important;
+  background: rgba(248,250,252,.72) !important;
+}
+
+.supplier-single-einvoice-card .card-head {
+  margin-bottom: 12px !important;
+}
+
   `}</style>
 }
 
