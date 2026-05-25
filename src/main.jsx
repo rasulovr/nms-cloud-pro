@@ -13082,6 +13082,22 @@ function Suppliers({ t, isAdmin = false }) {
   }
 
 
+
+  function highlightSupplierMatch(value, query) {
+    const textValue = String(value || '')
+    const needle = String(query || '').trim()
+    if (!needle) return textValue || '—'
+    const lower = textValue.toLowerCase()
+    const needleLower = needle.toLowerCase()
+    const index = lower.indexOf(needleLower)
+    if (index < 0) return textValue || '—'
+    return <>
+      {textValue.slice(0, index)}
+      <mark className="supplier-search-highlight">{textValue.slice(index, index + needle.length)}</mark>
+      {textValue.slice(index + needle.length)}
+    </>
+  }
+
   const recentPurchasesPageSizeNumber = parseNum(recentPurchasesPageSize) || 10
   const visiblePurchases = (purchases || []).filter(p => activeSupplierIds.has(p.supplier_id) && isSupplierActiveForLegal(p.supplier_id, p.legal_entity_id))
 
@@ -13540,8 +13556,7 @@ function Suppliers({ t, isAdmin = false }) {
           </label>
         </div>
         <div className="supplier-journal-filterbar">
-          <label><span>Дата с</span><input type="date" value={purchaseJournalFilters.date_from} onChange={e => { setPurchaseJournalFilters(f => ({...f, date_from: e.target.value})); setRecentPurchasesPage(1) }} /></label>
-          <label><span>Дата по</span><input type="date" value={purchaseJournalFilters.date_to} onChange={e => { setPurchaseJournalFilters(f => ({...f, date_to: e.target.value})); setRecentPurchasesPage(1) }} /></label>
+          <label className="supplier-journal-period"><span>Период</span><div className="supplier-period-control"><input type="date" value={purchaseJournalFilters.date_from} onChange={e => { setPurchaseJournalFilters(f => ({...f, date_from: e.target.value})); setRecentPurchasesPage(1) }} /><em>—</em><input type="date" value={purchaseJournalFilters.date_to} onChange={e => { setPurchaseJournalFilters(f => ({...f, date_to: e.target.value})); setRecentPurchasesPage(1) }} /></div></label>
           <label><span>Поставщик</span><select value={purchaseJournalFilters.supplier_id} onChange={e => { setPurchaseJournalFilters(f => ({...f, supplier_id: e.target.value})); setRecentPurchasesPage(1) }}><option value="">Все поставщики</option>{activeSuppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
           <label><span>Физ. лицо / VOEN</span><select value={purchaseJournalFilters.legal_entity_id} onChange={e => { setPurchaseJournalFilters(f => ({...f, legal_entity_id: e.target.value})); setRecentPurchasesPage(1) }}><option value="">Все юрлица</option>{legalEntities.map(le => <option key={le.id} value={le.id}>{le.name} · {le.voen}</option>)}</select></label>
           <label><span>Поиск e-qaimə</span><input value={purchaseJournalFilters.e_invoice} onChange={e => { setPurchaseJournalFilters(f => ({...f, e_invoice: e.target.value})); setRecentPurchasesPage(1) }} placeholder="№ e-qaimə" /></label>
@@ -13559,7 +13574,7 @@ function Suppliers({ t, isAdmin = false }) {
                 <React.Fragment key={p.id}>
                   <tr className={p.deleted_at ? 'cancelled-row' : ''}>
                     <td>{p.purchase_date}</td>
-                    <td>{p.invoice_number || '—'}<br /><span className="hint">e-qaimə: {purchaseLinkedEInvoices(p.id)[0]?.invoice_number || supplierPurchaseReconciliation(p).eInvoiceNumber || 'ожидается'}</span></td>
+                    <td>{highlightSupplierMatch(p.invoice_number || '—', purchaseJournalFilters.invoice)}<br /><span className="hint">e-qaimə: {highlightSupplierMatch(purchaseLinkedEInvoices(p.id)[0]?.invoice_number || supplierPurchaseReconciliation(p).eInvoiceNumber || 'ожидается', purchaseJournalFilters.e_invoice)}</span></td>
                     <td>{p.suppliers?.name}</td>
                     <td>{p.legal_entities?.name || '—'}<br /><span className="hint">{p.legal_entities?.voen || ''}</span></td>
                     <td>{p.branches?.name || '—'}</td>
@@ -17539,6 +17554,53 @@ function SupplierV43Styles() {
   .supplier-journal-filterbar {
     grid-template-columns: 1fr !important;
   }
+}
+
+
+
+.supplier-journal-filterbar {
+  grid-template-columns: minmax(310px, 1.35fr) repeat(4, minmax(150px, 1fr)) auto 90px !important;
+}
+
+.supplier-journal-period {
+  min-width: 310px !important;
+}
+
+.supplier-period-control {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) 16px minmax(0, 1fr) !important;
+  align-items: center !important;
+  gap: 8px !important;
+  height: 42px !important;
+  border: 1px solid rgba(203,213,225,.92) !important;
+  border-radius: 13px !important;
+  background: #fff !important;
+  padding: 0 10px !important;
+}
+
+.supplier-period-control input {
+  height: 38px !important;
+  border: 0 !important;
+  border-radius: 10px !important;
+  padding: 0 !important;
+  background: transparent !important;
+  min-width: 0 !important;
+}
+
+.supplier-period-control em {
+  color: #94a3b8 !important;
+  font-style: normal !important;
+  font-weight: 900 !important;
+  text-align: center !important;
+}
+
+.supplier-search-highlight {
+  display: inline !important;
+  padding: 1px 2px !important;
+  border-radius: 4px !important;
+  background: #fef08a !important;
+  color: #0f172a !important;
+  font-weight: 900 !important;
 }
 
   `}</style>
