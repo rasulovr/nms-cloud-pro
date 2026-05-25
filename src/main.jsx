@@ -13400,8 +13400,8 @@ function Suppliers({ t, isAdmin = false }) {
           <div><span>Статус</span><strong>{purchaseForm.e_invoice_amount ? (Math.abs(parseNum(purchaseForm.e_invoice_amount) - parseNum(purchaseForm.amount_only ? purchaseForm.manual_amount : purchaseTotal)) <= 0.02 ? 'Сверено' : 'Расхождение') : 'Ожидает e-qaimə'}</strong></div>
         </div>
 
-        <div className="card-head"><div><h3>Товары в поступлении</h3><p className="hint">Если товара нет, сначала добавьте его ниже в блоке “Товары”.</p></div><button className="small" disabled={purchaseForm.amount_only} onClick={() => setLineRows(rows => [...rows, { ...emptyLine }])}>+ Строка товара</button></div>
-        <div className="table-wrap"><table><thead><tr><th>Тип</th><th>Товар</th><th>Кол-во закупа</th><th>Ед. закупа</th><th>Цена за ед.</th><th>Сумма</th><th></th></tr></thead><tbody>{purchaseForm.amount_only ? <tr><td colSpan="7" className="hint">Товары отключены: поступление будет сохранено общей суммой.</td></tr> : lineRows.map((row, idx) => <tr key={idx}>
+        <div className="card-head suppliers-purchase-items-head"><div><h3>Товары в поступлении</h3><p className="hint">Если товара нет, сначала добавьте его ниже в блоке “Товары”.</p></div><button className="small" disabled={purchaseForm.amount_only} onClick={() => setLineRows(rows => [...rows, { ...emptyLine }])}>+ Строка товара</button></div>
+        <div className="table-wrap suppliers-purchase-items-wrap"><table className="suppliers-purchase-items-table"><thead><tr><th>Тип</th><th>Товар</th><th>Кол-во закупа</th><th>Ед. закупа</th><th>Цена за ед.</th><th>Сумма</th><th></th></tr></thead><tbody>{purchaseForm.amount_only ? <tr><td colSpan="7" className="hint">Товары отключены: поступление будет сохранено общей суммой.</td></tr> : lineRows.map((row, idx) => <tr key={idx}>
           <td><select value={row.category} onChange={e => updateLine(idx, { category: e.target.value })}>{PRODUCT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select></td>
           <td style={{minWidth:260}}><select value={row.product_id || ''} onChange={e => selectProductForLine(idx, e.target.value)}><option value="">Выберите товар</option>{productOptionsForRow(row).map(p => <option key={p.id} value={p.id}>{productLabel(p)}</option>)}</select></td>
           <td><input inputMode="decimal" value={row.quantity} onChange={e => updateLine(idx, { quantity: e.target.value })} /></td>
@@ -17762,6 +17762,165 @@ function SupplierV43Styles() {
 
 .supplier-einvoice-auto-terms {
   margin: 8px 0 12px !important;
+}
+
+
+
+/* v43 supplier professional compact form density */
+.suppliers-v43-page {
+  font-family: "Inter Tight", "Inter", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+  font-variation-settings: "wght" 650 !important;
+}
+
+.suppliers-v43-page .card h3,
+.suppliers-v43-page h2 {
+  font-family: "Inter Tight", "Inter", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+  letter-spacing: -0.045em !important;
+}
+
+.suppliers-v43-page .hint,
+.suppliers-v43-page label > span,
+.suppliers-v43-page table th,
+.suppliers-v43-page table td,
+.suppliers-v43-page input,
+.suppliers-v43-page select,
+.suppliers-v43-page textarea,
+.suppliers-v43-page button {
+  font-family: "Inter", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+}
+
+.suppliers-purchase-items-head {
+  margin-top: 6px !important;
+}
+
+.suppliers-purchase-items-head h3 {
+  font-size: 18px !important;
+  letter-spacing: -0.035em !important;
+}
+
+.suppliers-purchase-items-head .hint {
+  font-size: 13px !important;
+  line-height: 1.35 !important;
+}
+
+.suppliers-purchase-items-head .small {
+  height: 38px !important;
+  padding: 0 14px !important;
+  border-radius: 13px !important;
+  font-size: 13px !important;
+  font-weight: 850 !important;
+}
+
+.suppliers-purchase-items-wrap {
+  border-radius: 16px !important;
+  box-shadow: none !important;
+}
+
+.suppliers-purchase-items-table {
+  table-layout: fixed !important;
+  width: 100% !important;
+  min-width: 0 !important;
+}
+
+.suppliers-purchase-items-table th {
+  height: 42px !important;
+  padding: 10px 12px !important;
+  font-size: 10.5px !important;
+  letter-spacing: .055em !important;
+  line-height: 1.1 !important;
+}
+
+.suppliers-purchase-items-table td {
+  padding: 10px 12px !important;
+  vertical-align: middle !important;
+  font-size: 12.5px !important;
+  line-height: 1.25 !important;
+}
+
+.suppliers-purchase-items-table th:nth-child(1),
+.suppliers-purchase-items-table td:nth-child(1) {
+  width: 13% !important;
+}
+
+.suppliers-purchase-items-table th:nth-child(2),
+.suppliers-purchase-items-table td:nth-child(2) {
+  width: 26% !important;
+}
+
+.suppliers-purchase-items-table th:nth-child(3),
+.suppliers-purchase-items-table td:nth-child(3) {
+  width: 17% !important;
+}
+
+.suppliers-purchase-items-table th:nth-child(4),
+.suppliers-purchase-items-table td:nth-child(4) {
+  width: 17% !important;
+}
+
+.suppliers-purchase-items-table th:nth-child(5),
+.suppliers-purchase-items-table td:nth-child(5) {
+  width: 17% !important;
+}
+
+.suppliers-purchase-items-table th:nth-child(6),
+.suppliers-purchase-items-table td:nth-child(6) {
+  width: 8% !important;
+  text-align: right !important;
+}
+
+.suppliers-purchase-items-table th:nth-child(7),
+.suppliers-purchase-items-table td:nth-child(7) {
+  width: 52px !important;
+  text-align: center !important;
+}
+
+.suppliers-purchase-items-table select,
+.suppliers-purchase-items-table input {
+  height: 38px !important;
+  min-height: 38px !important;
+  padding: 0 12px !important;
+  border-radius: 12px !important;
+  font-size: 13px !important;
+  line-height: 1 !important;
+  font-weight: 750 !important;
+  letter-spacing: -0.01em !important;
+}
+
+.suppliers-purchase-items-table strong {
+  font-size: 13px !important;
+  font-weight: 850 !important;
+}
+
+.suppliers-purchase-items-table .remove {
+  width: 34px !important;
+  height: 34px !important;
+  min-width: 34px !important;
+  border-radius: 12px !important;
+  font-size: 15px !important;
+  line-height: 1 !important;
+}
+
+.suppliers-v43-page .form-grid.compact input,
+.suppliers-v43-page .form-grid.compact select {
+  height: 42px !important;
+  border-radius: 13px !important;
+  font-size: 13.5px !important;
+  font-weight: 760 !important;
+}
+
+.suppliers-v43-page .form-grid.compact label > span {
+  font-size: 11.5px !important;
+  margin-bottom: 6px !important;
+}
+
+@media (max-width: 1200px) {
+  .suppliers-purchase-items-table {
+    min-width: 980px !important;
+  }
+
+  .suppliers-purchase-items-wrap {
+    overflow-x: auto !important;
+  }
 }
 
   `}</style>
