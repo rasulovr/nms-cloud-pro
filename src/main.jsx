@@ -12255,8 +12255,13 @@ function Suppliers({ t, isAdmin = false }) {
   const [purchaseForm, setPurchaseForm] = useState({ supplier_id: '', legal_entity_id: '', branch_id: '', purchase_date: todayISO(), invoice_number: '', e_invoice_number: '', e_invoice_date: '', e_invoice_amount: '', comment: '', amount_only: false, manual_amount: '' })
   const emptyLine = { category: PRODUCT_CATEGORIES[0], product_id: '', base_unit: 'g', quantity: '1', unit: 'kg', unit_price: '' }
   const [lineRows, setLineRows] = useState([emptyLine])
-  const [paymentForm, setPaymentForm] = useState({ supplier_id: '', legal_entity_id: '', payment_date: todayISO(), amount: '', invoice_notes: '', comment: '' })
+  const [paymentForm, setPaymentForm] = useState({ supplier_id: '', legal_entity_id: '', payment_date: todayISO(), amount: '', invoice_notes: '', comment: '', e_invoice_id: '' })
   const [openingDebtForm, setOpeningDebtForm] = useState({ supplier_id: '', legal_entity_id: '', debt_date: todayISO(), amount: '', invoice_notes: '', comment: '' })
+  const [eInvoices, setEInvoices] = useState([])
+  const [eInvoiceLinks, setEInvoiceLinks] = useState([])
+  const [eInvoiceForm, setEInvoiceForm] = useState({ supplier_id: '', legal_entity_id: '', branch_id: '', invoice_number: '', invoice_date: todayISO(), period_start: monthStart(new Date().getFullYear(), new Date().getMonth() + 1), period_end: todayISO(), amount: '', payment_term_days: '', payment_due_date: '', note: '' })
+  const [selectedEInvoiceId, setSelectedEInvoiceId] = useState('')
+  const [eInvoiceMessage, setEInvoiceMessage] = useState('')
   const [activeInfoId, setActiveInfoId] = useState('')
   const [editingPurchaseId, setEditingPurchaseId] = useState('')
   const [viewPurchaseId, setViewPurchaseId] = useState('')
@@ -12373,24 +12378,32 @@ function Suppliers({ t, isAdmin = false }) {
         setPurchases(ws.supplier_purchases || [])
         setPayments(ws.supplier_payments || [])
         setOpeningDebts(ws.supplier_opening_debts || [])
-        const { data: statusRows } = await supabase.from('supplier_legal_entity_status').select('*')
+        const [{ data: statusRows }, { data: eInv }, { data: eLinks }] = await Promise.all([
+          supabase.from('supplier_legal_entity_status').select('*'),
+          supabase.from('supplier_e_invoices').select('*, suppliers(name), legal_entities(name,voen), branches(name)').is('deleted_at', null).order('invoice_date', { ascending: false }).limit(500),
+          supabase.from('supplier_e_invoice_purchase_links').select('*, supplier_purchases(id,invoice_number,purchase_date,total_amount,branch_id,branches(name))')
+        ])
         setSupplierEntityStatuses(statusRows || [])
+        setEInvoices(eInv || [])
+        setEInvoiceLinks(eLinks || [])
         setProfiles(ws.user_profiles || [])
         return
       }
       setMessage(error?.message || 'Нет доступа к поставщикам')
     }
 
-    const [{ data: le }, { data: sup }, { data: prod }, { data: bal }, { data: pur }, { data: pay }, { data: opening }, { data: statusRows }, { data: prof }] = await Promise.all([
+    const [{ data: le }, { data: sup }, { data: prod }, { data: bal }, { data: pur }, { data: pay }, { data: opening }, { data: statusRows }, { data: prof }, { data: eInv }, { data: eLinks }] = await Promise.all([
       supabase.from('legal_entities').select('*').eq('is_active', true).order('name'),
       supabase.from('suppliers').select('*').order('name'),
       supabase.from('supplier_products').select('*').eq('is_active', true).order('category').order('name'),
       supabase.from('supplier_balances_v2').select('*').order('supplier_name'),
       supabase.from('supplier_purchases').select('*, suppliers(name), legal_entities(name,voen), branches(name), supplier_purchase_items(*, supplier_products(name,base_unit,category))').order('purchase_date', { ascending: false }).order('created_at', { ascending: false }).limit(500),
-      supabase.from('supplier_payments').select('*, suppliers(name), legal_entities(name,voen)').order('payment_date', { ascending: false }).order('created_at', { ascending: false }).limit(500),
+      supabase.from('supplier_payments').select('*, suppliers(name), legal_entities(name,voen), supplier_e_invoices(invoice_number)').order('payment_date', { ascending: false }).order('created_at', { ascending: false }).limit(500),
       supabase.from('supplier_opening_debts').select('*, suppliers(name), legal_entities(name,voen)').eq('is_active', true).order('debt_date', { ascending: false }).order('created_at', { ascending: false }).limit(500),
       supabase.from('supplier_legal_entity_status').select('*'),
-      supabase.from('user_profiles').select('id, full_name')
+      supabase.from('user_profiles').select('id, full_name'),
+      supabase.from('supplier_e_invoices').select('*, suppliers(name), legal_entities(name,voen), branches(name)').is('deleted_at', null).order('invoice_date', { ascending: false }).limit(500),
+      supabase.from('supplier_e_invoice_purchase_links').select('*, supplier_purchases(id,invoice_number,purchase_date,total_amount,branch_id,branches(name))')
     ])
     setLegalEntities(le || [])
     setSuppliers(sup || [])
@@ -12400,6 +12413,8 @@ function Suppliers({ t, isAdmin = false }) {
     setPayments(pay || [])
     setOpeningDebts(opening || [])
     setSupplierEntityStatuses(statusRows || [])
+    setEInvoices(eInv || [])
+    setEInvoiceLinks(eLinks || [])
     setProfiles(prof || [])
   }
 
@@ -12883,10 +12898,15 @@ function Suppliers({ t, isAdmin = false }) {
     if (!paymentForm.legal_entity_id) return setPaymentMessage('Выберите наш VOEN / юрлицо для оплаты')
     const { error } = await supabase.from('supplier_payments').insert({
       supplier_id: paymentForm.supplier_id, legal_entity_id: paymentForm.legal_entity_id || null, payment_date: paymentForm.payment_date || todayISO(), amount,
-      invoice_notes: paymentForm.invoice_notes.trim() || null, comment: paymentForm.comment.trim() || null
+      invoice_notes: paymentForm.invoice_notes.trim() || null, comment: paymentForm.comment.trim() || null,
+      e_invoice_id: paymentForm.e_invoice_id || null
     })
     if (error) return setPaymentMessage(error.message)
-    setPaymentForm({ supplier_id: '', legal_entity_id: legalEntities[0]?.id || '', payment_date: todayISO(), amount: '', invoice_notes: '', comment: '' })
+    if (paymentForm.e_invoice_id) {
+      const inv = eInvoices.find(row => row.id === paymentForm.e_invoice_id)
+      await supabase.from('supplier_e_invoices').update({ paid_amount: parseNum(inv?.paid_amount) + amount, updated_at: new Date().toISOString() }).eq('id', paymentForm.e_invoice_id)
+    }
+    setPaymentForm({ supplier_id: '', legal_entity_id: legalEntities[0]?.id || '', payment_date: todayISO(), amount: '', invoice_notes: '', comment: '', e_invoice_id: '' })
     await load(); setPaymentMessage(t('saved'))
   }
 
@@ -12955,12 +12975,13 @@ function Suppliers({ t, isAdmin = false }) {
     return { ...meta, physicalAmount, eAmount, diff, status, tone }
   }
 
-  const supplierEInvoiceOptions = (purchases || [])
+  const legacySupplierEInvoiceOptions = (purchases || [])
     .filter(p => activeSupplierIds.has(p.supplier_id) && isSupplierActiveForLegal(p.supplier_id, p.legal_entity_id) && !p.deleted_at)
     .map(p => {
       const rec = supplierPurchaseReconciliation(p)
       return {
         purchase_id: p.id,
+        e_invoice_id: '',
         supplier_id: p.supplier_id,
         legal_entity_id: p.legal_entity_id,
         number: rec.eInvoiceNumber || p.invoice_number || '',
@@ -12975,6 +12996,23 @@ function Suppliers({ t, isAdmin = false }) {
     })
     .filter(x => x.number)
 
+  const realSupplierEInvoiceOptions = (eInvoices || []).map(inv => ({
+    purchase_id: '',
+    e_invoice_id: inv.id,
+    supplier_id: inv.supplier_id,
+    legal_entity_id: inv.legal_entity_id,
+    number: inv.invoice_number || '',
+    date: inv.invoice_date || '',
+    amount: Math.max(0, parseNum(inv.amount) - parseNum(inv.paid_amount)),
+    physicalAmount: 0,
+    supplier: inv.suppliers?.name || suppliers.find(s => s.id === inv.supplier_id)?.name || '—',
+    branch: inv.branches?.name || '—',
+    status: parseNum(inv.paid_amount) >= parseNum(inv.amount) ? 'Оплачена' : 'К оплате',
+    diff: 0
+  })).filter(x => x.number && x.amount > 0)
+
+  const supplierEInvoiceOptions = [...realSupplierEInvoiceOptions, ...legacySupplierEInvoiceOptions]
+
   const filteredPaymentEInvoices = supplierEInvoiceOptions.filter(inv =>
     (!paymentForm.supplier_id || String(inv.supplier_id) === String(paymentForm.supplier_id)) &&
     (!paymentForm.legal_entity_id || String(inv.legal_entity_id) === String(paymentForm.legal_entity_id))
@@ -12987,7 +13025,8 @@ function Suppliers({ t, isAdmin = false }) {
       supplier_id: inv?.supplier_id || f.supplier_id,
       legal_entity_id: inv?.legal_entity_id || f.legal_entity_id,
       invoice_notes: number,
-      amount: inv?.amount ? String(inv.amount) : f.amount
+      amount: inv?.amount ? String(inv.amount) : f.amount,
+      e_invoice_id: inv?.e_invoice_id || ''
     }))
   }
 
@@ -13001,6 +13040,69 @@ function Suppliers({ t, isAdmin = false }) {
     const ids = new Set(purchases.filter(p => p.legal_entity_id === entityId).map(p => p.supplier_id))
     return activeSuppliers.filter(s => ids.has(s.id) && isSupplierActiveForLegal(s.id, entityId))
   }
+
+
+  const selectedEInvoice = eInvoices.find(inv => inv.id === selectedEInvoiceId) || null
+  const selectedEInvoiceLinks = selectedEInvoiceId ? eInvoiceLinks.filter(l => l.e_invoice_id === selectedEInvoiceId) : []
+  const selectedEInvoicePhysicalTotal = selectedEInvoiceLinks.reduce((sum, link) => sum + parseNum(link.linked_amount || link.supplier_purchases?.total_amount), 0)
+  const selectedEInvoiceDiff = selectedEInvoice ? parseNum(selectedEInvoice.amount) - selectedEInvoicePhysicalTotal : 0
+  const eInvoiceCandidatePurchases = (visiblePurchases || []).filter(p => {
+    if (!eInvoiceForm.supplier_id || String(p.supplier_id) !== String(eInvoiceForm.supplier_id)) return false
+    if (eInvoiceForm.legal_entity_id && String(p.legal_entity_id) !== String(eInvoiceForm.legal_entity_id)) return false
+    if (eInvoiceForm.branch_id && String(p.branch_id) !== String(eInvoiceForm.branch_id)) return false
+    if (eInvoiceForm.period_start && String(p.purchase_date || '') < eInvoiceForm.period_start) return false
+    if (eInvoiceForm.period_end && String(p.purchase_date || '') > eInvoiceForm.period_end) return false
+    if (p.deleted_at) return false
+    return true
+  })
+  const eInvoiceCandidateTotal = eInvoiceCandidatePurchases.reduce((sum, p) => sum + parseNum(p.total_amount), 0)
+  const eInvoiceFormDiff = parseNum(eInvoiceForm.amount) - eInvoiceCandidateTotal
+
+  function setEInvoiceSupplierDefaults(supplierId) {
+    const supplier = suppliers.find(s => String(s.id) === String(supplierId))
+    const termDays = parseNum(supplier?.payment_term_days)
+    const invoiceDate = eInvoiceForm.invoice_date || todayISO()
+    const dueDate = termDays ? new Date(new Date(invoiceDate).getTime() + termDays * 86400000).toISOString().slice(0, 10) : ''
+    setEInvoiceForm(f => ({ ...f, supplier_id: supplierId, payment_term_days: termDays ? String(termDays) : f.payment_term_days, payment_due_date: dueDate || f.payment_due_date }))
+  }
+
+  async function saveEInvoiceWithLinks() {
+    setEInvoiceMessage('')
+    try {
+      if (!eInvoiceForm.supplier_id || !eInvoiceForm.legal_entity_id) throw new Error('Выберите поставщика и VOEN')
+      if (!eInvoiceForm.invoice_number.trim()) throw new Error('Введите номер e-qaimə')
+      const amount = parseNum(eInvoiceForm.amount)
+      if (!amount) throw new Error('Введите сумму e-qaimə')
+      if (!eInvoiceCandidatePurchases.length) throw new Error('Нет физических приходов за выбранный период')
+      const { data: authData } = await supabase.auth.getUser()
+      const { data: inv, error } = await supabase.from('supplier_e_invoices').insert({
+        supplier_id: eInvoiceForm.supplier_id,
+        legal_entity_id: eInvoiceForm.legal_entity_id,
+        branch_id: eInvoiceForm.branch_id || null,
+        invoice_number: eInvoiceForm.invoice_number.trim(),
+        invoice_date: eInvoiceForm.invoice_date,
+        period_start: eInvoiceForm.period_start || null,
+        period_end: eInvoiceForm.period_end || null,
+        amount,
+        payment_term_days: parseNum(eInvoiceForm.payment_term_days) || null,
+        payment_due_date: eInvoiceForm.payment_due_date || null,
+        note: eInvoiceForm.note?.trim() || null,
+        status: Math.abs(amount - eInvoiceCandidateTotal) <= 0.02 ? 'matched' : 'mismatch',
+        created_by: authData?.user?.id || null
+      }).select('*').single()
+      if (error) throw error
+      const links = eInvoiceCandidatePurchases.map(p => ({ e_invoice_id: inv.id, purchase_id: p.id, linked_amount: parseNum(p.total_amount), created_by: authData?.user?.id || null }))
+      const { error: linkError } = await supabase.from('supplier_e_invoice_purchase_links').insert(links)
+      if (linkError) throw linkError
+      await load()
+      setSelectedEInvoiceId(inv.id)
+      setEInvoiceForm(f => ({ ...f, invoice_number: '', amount: '', note: '' }))
+      setEInvoiceMessage('e-qaimə сохранена и привязана к приходам')
+    } catch (error) {
+      setEInvoiceMessage(error?.message || 'Не удалось сохранить e-qaimə')
+    }
+  }
+
 
   const supplierReconciliationRows = (visiblePurchases || []).map(p => ({ ...p, reconciliation: supplierPurchaseReconciliation(p) }))
   const supplierWaitingEInvoice = supplierReconciliationRows.filter(p => p.reconciliation.status === 'Ожидает e-qaimə').length
@@ -13088,6 +13190,53 @@ function Suppliers({ t, isAdmin = false }) {
           <td><button className="remove" onClick={() => setLineRows(rows => rows.length === 1 ? [{ ...emptyLine }] : rows.filter((_, i) => i !== idx))}>×</button></td>
         </tr>)}</tbody></table></div>
         <p className="hint">Итого по фактуре: <strong>{fmt(purchaseTotal)}</strong> AZN.</p><button className="small primary" onClick={addPurchase}>+ Сохранить поступление</button>{message && <p className={`hint ${message === t('saved') ? 'save-status' : 'bad'}`}>{message}</p>}
+      </div>
+
+      <div className="card span-2 supplier-einvoice-card">
+        <div className="card-head suppliers-v43-card-head">
+          <div><h3>e-qaimə / Сверка периода</h3><p className="hint">Создайте одну электронную накладную и привяжите к ней несколько физических приходов за выбранный период.</p></div>
+          <span className="suppliers-v43-badge">Сверка</span>
+        </div>
+        <div className="form-grid compact">
+          <label><span>Поставщик</span><select value={eInvoiceForm.supplier_id} onChange={e => setEInvoiceSupplierDefaults(e.target.value)}><option value="">Выберите поставщика</option>{activeSuppliersForPaymentLegal.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
+          <label><span>Наш VOEN</span><select value={eInvoiceForm.legal_entity_id} onChange={e => setEInvoiceForm({...eInvoiceForm, legal_entity_id: e.target.value})}><option value="">Выберите VOEN</option>{legalEntities.map(le => <option key={le.id} value={le.id}>{le.name} · {le.voen}</option>)}</select></label>
+          <label><span>Филиал</span><select value={eInvoiceForm.branch_id} onChange={e => setEInvoiceForm({...eInvoiceForm, branch_id: e.target.value})}><option value="">Все филиалы</option>{branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label>
+          <label><span>Период с</span><input type="date" value={eInvoiceForm.period_start} onChange={e => setEInvoiceForm({...eInvoiceForm, period_start: e.target.value})} /></label>
+          <label><span>Период по</span><input type="date" value={eInvoiceForm.period_end} onChange={e => setEInvoiceForm({...eInvoiceForm, period_end: e.target.value})} /></label>
+          <label><span>№ e-qaimə</span><input value={eInvoiceForm.invoice_number} onChange={e => setEInvoiceForm({...eInvoiceForm, invoice_number: e.target.value})} /></label>
+          <label><span>Дата e-qaimə</span><input type="date" value={eInvoiceForm.invoice_date} onChange={e => setEInvoiceForm({...eInvoiceForm, invoice_date: e.target.value})} /></label>
+          <label><span>Сумма e-qaimə</span><input inputMode="decimal" value={eInvoiceForm.amount} onChange={e => setEInvoiceForm({...eInvoiceForm, amount: e.target.value})} /></label>
+          <label><span>Срок оплаты, дней</span><input inputMode="numeric" value={eInvoiceForm.payment_term_days} onChange={e => setEInvoiceForm({...eInvoiceForm, payment_term_days: e.target.value})} /></label>
+          <label><span>Оплатить до</span><input type="date" value={eInvoiceForm.payment_due_date} onChange={e => setEInvoiceForm({...eInvoiceForm, payment_due_date: e.target.value})} /></label>
+        </div>
+        <div className="supplier-reconcile-preview">
+          <div><span>Физические приходы</span><strong>{fmt(eInvoiceCandidateTotal)} AZN</strong></div>
+          <div><span>e-qaimə</span><strong>{eInvoiceForm.amount ? `${fmt(eInvoiceForm.amount)} AZN` : '—'}</strong></div>
+          <div><span>Расхождение</span><strong className={Math.abs(eInvoiceFormDiff) > 0.02 ? 'bad' : 'good'}>{eInvoiceForm.amount ? fmt(eInvoiceFormDiff) : '—'}</strong></div>
+          <div><span>Статус</span><strong className={eInvoiceForm.amount ? (Math.abs(eInvoiceFormDiff) <= 0.02 ? 'good' : 'bad') : 'warn'}>{eInvoiceForm.amount ? (Math.abs(eInvoiceFormDiff) <= 0.02 ? 'Сверено' : 'Расхождение') : 'Ожидает сумму'}</strong></div>
+        </div>
+        <div className="table-wrap supplier-einvoice-candidates"><table><thead><tr><th>Дата</th><th>Филиал</th><th>Приходная накладная</th><th>Сумма</th></tr></thead><tbody>
+          {eInvoiceCandidatePurchases.slice(0, 80).map(p => <tr key={p.id}><td>{p.purchase_date}</td><td>{p.branches?.name || '—'}</td><td>{p.invoice_number || '—'}</td><td><b>{fmt(p.total_amount)}</b></td></tr>)}
+          {!eInvoiceCandidatePurchases.length && <tr><td colSpan="4" className="hint">Выберите поставщика, VOEN и период — здесь появятся физические приходы для привязки.</td></tr>}
+        </tbody></table></div>
+        <button className="small primary" style={{marginTop:12}} onClick={saveEInvoiceWithLinks}>+ Сохранить e-qaimə и связать приходы</button>
+        {eInvoiceMessage && <p className={`hint ${eInvoiceMessage.includes('сохран') ? 'save-status' : 'bad'}`}>{eInvoiceMessage}</p>}
+
+        <div className="card-head" style={{marginTop:18}}><div><h3>Журнал e-qaimə</h3><p className="hint">Электронные накладные, связанные физические приходы, оплата и расхождения.</p></div></div>
+        <div className="table-wrap"><table><thead><tr><th>Дата</th><th>№ e-qaimə</th><th>Поставщик</th><th>Период</th><th>Сумма</th><th>Оплачено</th><th>Статус</th><th></th></tr></thead><tbody>
+          {eInvoices.map(inv => {
+            const links = eInvoiceLinks.filter(l => l.e_invoice_id === inv.id)
+            const physicalTotal = links.reduce((sum, l) => sum + parseNum(l.linked_amount || l.supplier_purchases?.total_amount), 0)
+            const diff = parseNum(inv.amount) - physicalTotal
+            const paid = parseNum(inv.paid_amount)
+            const status = paid >= parseNum(inv.amount) ? 'Оплачена' : Math.abs(diff) <= 0.02 ? 'Сверена' : 'Расхождение'
+            return <React.Fragment key={inv.id}>
+              <tr><td>{inv.invoice_date}</td><td><b>{inv.invoice_number}</b></td><td>{inv.suppliers?.name || '—'}</td><td>{inv.period_start || '—'} — {inv.period_end || '—'}</td><td>{fmt(inv.amount)}</td><td>{fmt(inv.paid_amount)}</td><td><span className={status === 'Расхождение' ? 'bad' : 'good'}>{status}</span></td><td><button className="ghost small" onClick={() => setSelectedEInvoiceId(selectedEInvoiceId === inv.id ? '' : inv.id)}>{selectedEInvoiceId === inv.id ? 'Скрыть' : 'Детали'}</button></td></tr>
+              {selectedEInvoiceId === inv.id && <tr><td colSpan="8"><div className="supplier-reconcile-preview"><div><span>Физические приходы</span><strong>{fmt(physicalTotal)} AZN</strong></div><div><span>e-qaimə</span><strong>{fmt(inv.amount)} AZN</strong></div><div><span>Расхождение</span><strong className={Math.abs(diff) > 0.02 ? 'bad' : 'good'}>{fmt(diff)}</strong></div><div><span>Остаток к оплате</span><strong>{fmt(Math.max(0, parseNum(inv.amount) - paid))} AZN</strong></div></div></td></tr>}
+            </React.Fragment>
+          })}
+          {!eInvoices.length && <tr><td colSpan="8" className="hint">Пока нет сохранённых e-qaimə.</td></tr>}
+        </tbody></table></div>
       </div>
 
       <div className="card span-2">
@@ -17033,6 +17182,9 @@ function SupplierV43Styles() {
   }
 }
 
+
+.supplier-einvoice-card .supplier-reconcile-preview { margin-top: 14px !important; }
+.supplier-einvoice-candidates { margin-top: 12px !important; }
   `}</style>
 }
 
