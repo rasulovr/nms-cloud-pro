@@ -12268,6 +12268,7 @@ function Suppliers({ t, isAdmin = false }) {
   const [viewPurchaseId, setViewPurchaseId] = useState('')
   const [recentPurchasesPageSize, setRecentPurchasesPageSize] = useState(10)
   const [recentPurchasesPage, setRecentPurchasesPage] = useState(1)
+  const [purchaseJournalFilters, setPurchaseJournalFilters] = useState({ date_from: '', date_to: '', supplier_id: '', legal_entity_id: '', e_invoice: '', invoice: '' })
   const [transactionSupplierId, setTransactionSupplierId] = useState('')
   const [transactionPeriod, setTransactionPeriod] = useState('month')
   const [transactionDate, setTransactionDate] = useState(todayISO())
@@ -13083,9 +13084,41 @@ function Suppliers({ t, isAdmin = false }) {
 
   const recentPurchasesPageSizeNumber = parseNum(recentPurchasesPageSize) || 10
   const visiblePurchases = (purchases || []).filter(p => activeSupplierIds.has(p.supplier_id) && isSupplierActiveForLegal(p.supplier_id, p.legal_entity_id))
-  const recentPurchasesTotalPages = Math.max(1, Math.ceil(visiblePurchases.length / recentPurchasesPageSizeNumber))
+
+  function purchaseJournalSearchText(p) {
+    const linkedInvoices = typeof purchaseLinkedEInvoices === 'function' ? purchaseLinkedEInvoices(p.id) : []
+    const rec = supplierPurchaseReconciliation(p)
+    return [
+      p.invoice_number,
+      p.suppliers?.name,
+      p.legal_entities?.name,
+      p.legal_entities?.voen,
+      p.branches?.name,
+      rec.eInvoiceNumber,
+      ...linkedInvoices.map(inv => inv.invoice_number)
+    ].filter(Boolean).join(' ').toLowerCase()
+  }
+
+  const filteredPurchases = visiblePurchases.filter(p => {
+    const f = purchaseJournalFilters || {}
+    if (f.date_from && String(p.purchase_date || '') < f.date_from) return false
+    if (f.date_to && String(p.purchase_date || '') > f.date_to) return false
+    if (f.supplier_id && String(p.supplier_id) !== String(f.supplier_id)) return false
+    if (f.legal_entity_id && String(p.legal_entity_id || '') !== String(f.legal_entity_id)) return false
+    if (f.invoice && !String(p.invoice_number || '').toLowerCase().includes(String(f.invoice).toLowerCase().trim())) return false
+    if (f.e_invoice) {
+      const needle = String(f.e_invoice).toLowerCase().trim()
+      const linked = typeof purchaseLinkedEInvoices === 'function' ? purchaseLinkedEInvoices(p.id) : []
+      const rec = supplierPurchaseReconciliation(p)
+      const eText = [rec.eInvoiceNumber, ...linked.map(inv => inv.invoice_number)].filter(Boolean).join(' ').toLowerCase()
+      if (!eText.includes(needle)) return false
+    }
+    return true
+  })
+
+  const recentPurchasesTotalPages = Math.max(1, Math.ceil(filteredPurchases.length / recentPurchasesPageSizeNumber))
   const safeRecentPurchasesPage = Math.min(Math.max(1, parseNum(recentPurchasesPage) || 1), recentPurchasesTotalPages)
-  const recentPurchasesRows = visiblePurchases.slice((safeRecentPurchasesPage - 1) * recentPurchasesPageSizeNumber, safeRecentPurchasesPage * recentPurchasesPageSizeNumber)
+  const recentPurchasesRows = filteredPurchases.slice((safeRecentPurchasesPage - 1) * recentPurchasesPageSizeNumber, safeRecentPurchasesPage * recentPurchasesPageSizeNumber)
   function suppliersForLegalEntity(entityId) {
     const ids = new Set(purchases.filter(p => p.legal_entity_id === entityId).map(p => p.supplier_id))
     return activeSuppliers.filter(s => ids.has(s.id) && isSupplierActiveForLegal(s.id, entityId))
@@ -13505,6 +13538,16 @@ function Suppliers({ t, isAdmin = false }) {
               <option value={50}>50</option>
             </select>
           </label>
+        </div>
+        <div className="supplier-journal-filterbar">
+          <label><span>Дата с</span><input type="date" value={purchaseJournalFilters.date_from} onChange={e => { setPurchaseJournalFilters(f => ({...f, date_from: e.target.value})); setRecentPurchasesPage(1) }} /></label>
+          <label><span>Дата по</span><input type="date" value={purchaseJournalFilters.date_to} onChange={e => { setPurchaseJournalFilters(f => ({...f, date_to: e.target.value})); setRecentPurchasesPage(1) }} /></label>
+          <label><span>Поставщик</span><select value={purchaseJournalFilters.supplier_id} onChange={e => { setPurchaseJournalFilters(f => ({...f, supplier_id: e.target.value})); setRecentPurchasesPage(1) }}><option value="">Все поставщики</option>{activeSuppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
+          <label><span>Физ. лицо / VOEN</span><select value={purchaseJournalFilters.legal_entity_id} onChange={e => { setPurchaseJournalFilters(f => ({...f, legal_entity_id: e.target.value})); setRecentPurchasesPage(1) }}><option value="">Все юрлица</option>{legalEntities.map(le => <option key={le.id} value={le.id}>{le.name} · {le.voen}</option>)}</select></label>
+          <label><span>Поиск e-qaimə</span><input value={purchaseJournalFilters.e_invoice} onChange={e => { setPurchaseJournalFilters(f => ({...f, e_invoice: e.target.value})); setRecentPurchasesPage(1) }} placeholder="№ e-qaimə" /></label>
+          <label><span>Поиск накладной</span><input value={purchaseJournalFilters.invoice} onChange={e => { setPurchaseJournalFilters(f => ({...f, invoice: e.target.value})); setRecentPurchasesPage(1) }} placeholder="№ прихода" /></label>
+          <button className="ghost small" type="button" onClick={() => { setPurchaseJournalFilters({ date_from: '', date_to: '', supplier_id: '', legal_entity_id: '', e_invoice: '', invoice: '' }); setRecentPurchasesPage(1) }}>Сбросить</button>
+          <div className="supplier-journal-filter-summary"><b>{filteredPurchases.length}</b><span>найдено</span></div>
         </div>
         <div className="table-wrap">
           <table>
@@ -17428,6 +17471,74 @@ function SupplierV43Styles() {
 .supplier-payment-total strong,
 .supplier-payment-total b {
   font-weight: 900 !important;
+}
+
+
+
+.supplier-journal-filterbar {
+  display: grid !important;
+  grid-template-columns: repeat(6, minmax(150px, 1fr)) auto 90px !important;
+  gap: 10px !important;
+  align-items: end !important;
+  margin: 14px 0 16px !important;
+  padding: 14px !important;
+  border: 1px solid rgba(226,232,240,.92) !important;
+  border-radius: 18px !important;
+  background: rgba(248,250,252,.72) !important;
+}
+
+.supplier-journal-filterbar label {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 7px !important;
+  margin: 0 !important;
+}
+
+.supplier-journal-filterbar label span {
+  color: #64748b !important;
+  font-size: 12px !important;
+  font-weight: 850 !important;
+}
+
+.supplier-journal-filterbar input,
+.supplier-journal-filterbar select {
+  height: 42px !important;
+  border-radius: 13px !important;
+}
+
+.supplier-journal-filter-summary {
+  height: 42px !important;
+  border-radius: 13px !important;
+  background: #eff6ff !important;
+  color: #1d4ed8 !important;
+  display: grid !important;
+  place-items: center !important;
+  align-content: center !important;
+  line-height: 1 !important;
+}
+
+.supplier-journal-filter-summary b {
+  font-size: 15px !important;
+  font-weight: 900 !important;
+}
+
+.supplier-journal-filter-summary span {
+  display: block !important;
+  margin-top: 3px !important;
+  font-size: 10px !important;
+  font-weight: 800 !important;
+}
+
+@media (max-width: 1500px) {
+  .supplier-journal-filterbar {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 900px) {
+  .supplier-journal-filterbar {
+    grid-template-columns: 1fr !important;
+  }
 }
 
   `}</style>
