@@ -13002,11 +13002,53 @@ function Suppliers({ t, isAdmin = false }) {
     return activeSuppliers.filter(s => ids.has(s.id) && isSupplierActiveForLegal(s.id, entityId))
   }
 
-  return <section>
-    <section className="topbar"><div><h2>{t('suppliers_tab')}</h2><p>Поставщики, поступления, оплаты, товары и долги. VOEN / юрлица теперь находятся в разделе “Настройки”.</p></div></section>
-    <section className="grid">
+  const supplierReconciliationRows = (visiblePurchases || []).map(p => ({ ...p, reconciliation: supplierPurchaseReconciliation(p) }))
+  const supplierWaitingEInvoice = supplierReconciliationRows.filter(p => p.reconciliation.status === 'Ожидает e-qaimə').length
+  const supplierMatchedEInvoice = supplierReconciliationRows.filter(p => p.reconciliation.status === 'Сверено').length
+  const supplierMismatchEInvoice = supplierReconciliationRows.filter(p => p.reconciliation.status === 'Расхождение').length
+  const supplierPurchasesAmount = (visiblePurchases || []).filter(p => !p.deleted_at).reduce((sum, p) => sum + parseNum(p.total_amount), 0)
+  const supplierPaymentsAmount = (payments || []).reduce((sum, p) => sum + parseNum(p.amount), 0)
+  const supplierBalanceAmount = (balances || []).reduce((sum, b) => sum + Math.max(0, parseNum(b.balance)), 0)
+  const supplierKpiCards = [
+    { label: 'Активные поставщики', value: fmt(activeSuppliers.length), note: 'доступны для выбранных VOEN', tone: 'blue', icon: '▱' },
+    { label: 'Поступления', value: fmt(supplierPurchasesAmount), note: 'по видимым накладным', tone: 'green', icon: '↘' },
+    { label: 'Оплаты', value: fmt(supplierPaymentsAmount), note: 'банковские / кассовые платежи', tone: 'purple', icon: '⇄' },
+    { label: 'Долг поставщикам', value: fmt(supplierBalanceAmount), note: 'текущий открытый баланс', tone: supplierBalanceAmount > 0 ? 'orange' : 'green', icon: '₼' },
+    { label: 'Ожидают e-qaimə', value: fmt(supplierWaitingEInvoice), note: 'нужна электронная накладная', tone: supplierWaitingEInvoice ? 'orange' : 'blue', icon: '⌁' },
+    { label: 'Расхождения', value: fmt(supplierMismatchEInvoice), note: 'требуют сверки суммы', tone: supplierMismatchEInvoice ? 'red' : 'green', icon: '!' }
+  ]
+
+  return <section className="suppliers-v43-page">
+    <SupplierV43Styles />
+    <section className="suppliers-v43-hero">
+      <div>
+        <h2>{t('suppliers_tab')}</h2>
+        <p>Поставщики, физические поступления, e-qaimə, сверка сумм, оплаты, сроки и лимиты.</p>
+      </div>
+      <div className="suppliers-v43-hero-actions">
+        <button className="ghost small" type="button">Экспорт</button>
+        <button className="ghost small" type="button">Печать</button>
+      </div>
+    </section>
+
+    <section className="suppliers-v43-workflow">
+      <div className="active"><span>1</span><b>Приход товара</b><em>физическая накладная</em></div>
+      <div><span>2</span><b>e-qaimə</b><em>можно добавить позже</em></div>
+      <div><span>3</span><b>Сверка</b><em>сумма прихода vs e-qaimə</em></div>
+      <div><span>4</span><b>Оплата</b><em>по e-qaimə / фактуре</em></div>
+      <div><span>5</span><b>Долги</b><em>сроки и лимиты</em></div>
+    </section>
+
+    <section className="suppliers-v43-kpi-row">
+      {supplierKpiCards.map(card => <div key={card.label} className={`suppliers-v43-kpi ${card.tone}`}>
+        <span>{card.icon}</span>
+        <div><em>{card.label}</em><strong>{card.value}</strong><small>{card.note}</small></div>
+      </div>)}
+    </section>
+
+    <section className="grid suppliers-v43-grid">
       <div className="card span-2">
-        <div className="card-head"><div><h3>Поступления от поставщика</h3><p className="hint">Сначала заполняется шапка фактуры. Товары добавляются строками ниже.</p></div></div>
+        <div className="card-head suppliers-v43-card-head"><div><h3>Новый приход товара</h3><p className="hint">Физическое поступление товара. e-qaimə можно добавить сразу или позже.</p></div><span className="suppliers-v43-badge">Приход</span></div>
         <div className="form-grid compact">
           <label><span>Поставщик</span><select value={purchaseForm.supplier_id} onChange={e => setPurchaseForm({...purchaseForm, supplier_id: e.target.value})}>{activeSuppliersForPurchaseLegal.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
           <label><span>Наш VOEN</span><select value={purchaseForm.legal_entity_id} onChange={e => setPurchaseForm({...purchaseForm, legal_entity_id: e.target.value})}>{legalEntities.map(le => <option key={le.id} value={le.id}>{le.name} · {le.voen}</option>)}</select></label>
@@ -13049,7 +13091,7 @@ function Suppliers({ t, isAdmin = false }) {
       </div>
 
       <div className="card span-2">
-        <div className="card-head"><div><h3>Оплата поставщику</h3><p className="hint">Укажите сумму оплаты, номера счёт-фактур и комментарий.</p></div></div>
+        <div className="card-head suppliers-v43-card-head"><div><h3>Оплата поставщику</h3><p className="hint">Оплата привязывается к e-qaimə / фактуре и влияет на баланс поставщика.</p></div><span className="suppliers-v43-badge">Оплата</span></div>
         <div className="form-grid compact">
           <label><span>Поставщик</span><select value={paymentForm.supplier_id} onChange={e => setPaymentForm({...paymentForm, supplier_id: e.target.value})}><option value="">Выберите поставщика</option>{activeSuppliersForPaymentLegal.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
           <label><span>Наш VOEN</span><select value={paymentForm.legal_entity_id} onChange={e => setPaymentForm({...paymentForm, legal_entity_id: e.target.value})}><option value="">Выберите VOEN</option>{legalEntities.map(le => <option key={le.id} value={le.id}>{le.name} · {le.voen}</option>)}</select></label>
@@ -13065,7 +13107,7 @@ function Suppliers({ t, isAdmin = false }) {
 
 
       <div className="card span-2 supplier-opening-debt-card">
-        <div className="card-head"><div><h3>Долг поставщику за предыдущий период</h3><p className="hint">Используйте при запуске программы с нуля, чтобы перенести старый долг в баланс поставщика.</p></div></div>
+        <div className="card-head suppliers-v43-card-head"><div><h3>Долг за предыдущий период</h3><p className="hint">Стартовый баланс поставщика при запуске RMS с уже существующими долгами.</p></div><span className="suppliers-v43-badge">Баланс</span></div>
         <div className="form-grid compact">
           <label><span>Поставщик</span><select value={openingDebtForm.supplier_id} onChange={e => setOpeningDebtForm({...openingDebtForm, supplier_id: e.target.value})}><option value="">Выберите поставщика</option>{activeSuppliersForOpeningLegal.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
           <label><span>Наш VOEN</span><select value={openingDebtForm.legal_entity_id} onChange={e => setOpeningDebtForm({...openingDebtForm, legal_entity_id: e.target.value})}><option value="">Выберите VOEN</option>{legalEntities.map(le => <option key={le.id} value={le.id}>{le.name} · {le.voen}</option>)}</select></label>
@@ -13181,8 +13223,8 @@ function Suppliers({ t, isAdmin = false }) {
      <div className="card span-2">
         <div className="card-head">
           <div>
-            <h3>Последние поступления</h3>
-            <p className="hint">Сначала открывается просмотр накладной. Редактирование и удаление доступны внутри накладной.</p>
+            <h3>Журнал поступлений и сверки</h3>
+            <p className="hint">Физические накладные, e-qaimə, статусы сверки, расхождения и просмотр деталей.</p>
           </div>
           <label style={{display:'flex',alignItems:'center',gap:8}}>
             <span className="hint">Показать</span>
@@ -16684,6 +16726,310 @@ function SupplierTotalOnlyCheckboxStyles() {
 @media (max-width: 1100px) {
   .supplier-reconcile-preview {
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+  `}</style>
+}
+
+
+function SupplierV43Styles() {
+  return <style>{`
+
+/* v43 Suppliers redesign */
+.suppliers-v43-page {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 4px 0 36px;
+}
+
+.suppliers-v43-page,
+.suppliers-v43-page * {
+  box-sizing: border-box;
+}
+
+.suppliers-v43-hero {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 2px;
+}
+
+.suppliers-v43-hero h2 {
+  margin: 0;
+  color: #071327;
+  font-size: 38px;
+  line-height: 1;
+  font-weight: 900;
+  letter-spacing: -0.055em;
+}
+
+.suppliers-v43-hero p {
+  margin: 10px 0 0;
+  color: #64748b;
+  font-size: 15px;
+  line-height: 1.45;
+  font-weight: 600;
+}
+
+.suppliers-v43-hero-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.suppliers-v43-workflow {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid rgba(226,232,240,.92);
+  border-radius: 22px;
+  background: rgba(255,255,255,.92);
+  box-shadow: 0 18px 42px rgba(15,23,42,.04);
+}
+
+.suppliers-v43-workflow > div {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  grid-template-areas: "num title" "num note";
+  align-items: center;
+  column-gap: 10px;
+  min-height: 64px;
+  padding: 12px;
+  border: 1px solid rgba(226,232,240,.88);
+  border-radius: 16px;
+  background: linear-gradient(180deg,#fff,#fbfdff);
+}
+
+.suppliers-v43-workflow > div.active {
+  border-color: rgba(37,99,235,.38);
+  background: linear-gradient(135deg, rgba(37,99,235,.10), rgba(255,255,255,.96));
+}
+
+.suppliers-v43-workflow span {
+  grid-area: num;
+  width: 34px;
+  height: 34px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  background: #eff6ff;
+  color: #2563eb;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.suppliers-v43-workflow b {
+  grid-area: title;
+  color: #0f172a;
+  font-size: 13px;
+  line-height: 1.1;
+  font-weight: 900;
+}
+
+.suppliers-v43-workflow em {
+  grid-area: note;
+  color: #64748b;
+  font-size: 11.5px;
+  line-height: 1.25;
+  font-style: normal;
+  font-weight: 650;
+}
+
+.suppliers-v43-kpi-row {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.suppliers-v43-kpi {
+  position: relative;
+  overflow: hidden;
+  min-height: 112px;
+  display: grid;
+  grid-template-columns: 46px minmax(0,1fr);
+  gap: 13px;
+  align-items: start;
+  padding: 17px;
+  border: 1px solid rgba(226,232,240,.92);
+  border-radius: 20px;
+  background: linear-gradient(180deg,#fff,#fbfdff);
+  box-shadow: 0 18px 40px rgba(15,23,42,.045);
+}
+
+.suppliers-v43-kpi::after {
+  content: '';
+  position: absolute;
+  width: 88px;
+  height: 88px;
+  right: -32px;
+  bottom: -42px;
+  border-radius: 999px;
+  background: var(--supplier-kpi-glow, rgba(37,99,235,.10));
+}
+
+.suppliers-v43-kpi > span {
+  width: 46px;
+  height: 46px;
+  border-radius: 15px;
+  display: grid;
+  place-items: center;
+  color: var(--supplier-kpi-color, #2563eb);
+  background: var(--supplier-kpi-bg, #eff6ff);
+  font-size: 19px;
+  font-weight: 900;
+}
+
+.suppliers-v43-kpi.blue { --supplier-kpi-color:#2563eb; --supplier-kpi-bg:#eff6ff; --supplier-kpi-glow:rgba(37,99,235,.12); }
+.suppliers-v43-kpi.green { --supplier-kpi-color:#16a34a; --supplier-kpi-bg:#dcfce7; --supplier-kpi-glow:rgba(22,163,74,.12); }
+.suppliers-v43-kpi.purple { --supplier-kpi-color:#7c3aed; --supplier-kpi-bg:#f3e8ff; --supplier-kpi-glow:rgba(124,58,237,.12); }
+.suppliers-v43-kpi.orange { --supplier-kpi-color:#f97316; --supplier-kpi-bg:#fff7ed; --supplier-kpi-glow:rgba(249,115,22,.13); }
+.suppliers-v43-kpi.red { --supplier-kpi-color:#ef4444; --supplier-kpi-bg:#fee2e2; --supplier-kpi-glow:rgba(239,68,68,.13); }
+
+.suppliers-v43-kpi em {
+  display: block;
+  margin: 2px 0 8px;
+  color: #64748b;
+  font-size: 11.5px;
+  line-height: 1.2;
+  font-weight: 850;
+  letter-spacing: .01em;
+  font-style: normal;
+}
+
+.suppliers-v43-kpi strong {
+  display: block;
+  color: #071327;
+  font-size: 22px;
+  line-height: 1.05;
+  font-weight: 900;
+  letter-spacing: -0.045em;
+  white-space: nowrap;
+}
+
+.suppliers-v43-kpi small {
+  display: block;
+  margin-top: 8px;
+  color: #94a3b8;
+  font-size: 11.5px;
+  line-height: 1.25;
+  font-weight: 750;
+}
+
+.suppliers-v43-grid {
+  gap: 16px !important;
+}
+
+.suppliers-v43-page .card {
+  border: 1px solid rgba(226,232,240,.94) !important;
+  border-radius: 24px !important;
+  background: rgba(255,255,255,.96) !important;
+  box-shadow: 0 18px 42px rgba(15,23,42,.045) !important;
+  padding: 22px !important;
+}
+
+.suppliers-v43-card-head {
+  align-items: flex-start !important;
+}
+
+.suppliers-v43-page .card h3 {
+  color: #071327 !important;
+  font-size: 20px !important;
+  line-height: 1.15 !important;
+  font-weight: 900 !important;
+  letter-spacing: -0.035em !important;
+}
+
+.suppliers-v43-page .hint {
+  color: #64748b !important;
+  font-weight: 600 !important;
+}
+
+.suppliers-v43-badge {
+  display: inline-flex;
+  align-items: center;
+  height: 34px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #2563eb;
+  font-size: 12px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.suppliers-v43-page .form-grid.compact {
+  gap: 12px !important;
+}
+
+.suppliers-v43-page label > span {
+  color: #64748b !important;
+  font-size: 12px !important;
+  font-weight: 850 !important;
+}
+
+.suppliers-v43-page input,
+.suppliers-v43-page select,
+.suppliers-v43-page textarea {
+  height: 46px !important;
+  border-radius: 14px !important;
+  border: 1px solid rgba(203,213,225,.92) !important;
+  background: #fff !important;
+  color: #0f172a !important;
+  font-weight: 760 !important;
+  outline: none !important;
+}
+
+.suppliers-v43-page .table-wrap {
+  border: 1px solid rgba(226,232,240,.86) !important;
+  border-radius: 18px !important;
+  overflow: auto !important;
+}
+
+.suppliers-v43-page table th {
+  color: #64748b !important;
+  font-size: 11px !important;
+  font-weight: 900 !important;
+  letter-spacing: .04em !important;
+  text-transform: uppercase !important;
+  background: rgba(248,250,252,.88) !important;
+}
+
+.suppliers-v43-page table td {
+  color: #0f172a !important;
+  font-size: 13px !important;
+  font-weight: 650 !important;
+}
+
+.suppliers-v43-page .small.primary {
+  background: linear-gradient(135deg,#2563eb,#1d4ed8) !important;
+  color: #fff !important;
+  border-color: rgba(37,99,235,.75) !important;
+  box-shadow: 0 14px 28px rgba(37,99,235,.18) !important;
+}
+
+@media (max-width: 1500px) {
+  .suppliers-v43-kpi-row {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .suppliers-v43-workflow {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .suppliers-v43-hero {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .suppliers-v43-kpi-row,
+  .suppliers-v43-workflow {
+    grid-template-columns: 1fr;
   }
 }
 
