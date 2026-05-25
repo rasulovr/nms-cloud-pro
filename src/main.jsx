@@ -13192,9 +13192,15 @@ function Suppliers({ t, isAdmin = false }) {
 
 
   const supplierReconciliationRows = (visiblePurchases || []).map(p => ({ ...p, reconciliation: supplierPurchaseReconciliation(p) }))
-  const supplierWaitingEInvoice = supplierReconciliationRows.filter(p => p.reconciliation.status === 'Ожидает e-qaimə').length
-  const supplierMatchedEInvoice = supplierReconciliationRows.filter(p => p.reconciliation.status === 'Сверено').length
-  const supplierMismatchEInvoice = supplierReconciliationRows.filter(p => p.reconciliation.status === 'Расхождение').length
+  const supplierWaitingEInvoice = supplierReconciliationRows.filter(p => !purchaseLinkedEInvoices(p.id).length && p.reconciliation.status === 'Ожидает e-qaimə').length
+  const supplierMatchedEInvoice = supplierReconciliationRows.filter(p => {
+    const inv = purchaseLinkedEInvoices(p.id)[0]
+    return inv ? Math.abs(parseNum(inv.amount) - parseNum(p.total_amount)) <= 0.02 : p.reconciliation.status === 'Сверено'
+  }).length
+  const supplierMismatchEInvoice = supplierReconciliationRows.filter(p => {
+    const inv = purchaseLinkedEInvoices(p.id)[0]
+    return inv ? Math.abs(parseNum(inv.amount) - parseNum(p.total_amount)) > 0.02 : p.reconciliation.status === 'Расхождение'
+  }).length
   const supplierPurchasesAmount = (visiblePurchases || []).filter(p => !p.deleted_at).reduce((sum, p) => sum + parseNum(p.total_amount), 0)
   const supplierPaymentsAmount = (payments || []).reduce((sum, p) => sum + parseNum(p.amount), 0)
   const supplierBalanceAmount = (balances || []).reduce((sum, b) => sum + Math.max(0, parseNum(b.balance)), 0)
@@ -13222,7 +13228,7 @@ function Suppliers({ t, isAdmin = false }) {
 
     <section className="suppliers-v43-workflow">
       <div className="active"><span>1</span><b>Приход товара</b><em>физическая накладная</em></div>
-      <div><span>2</span><b>e-qaimə</b><em>можно добавить позже</em></div>
+      <div><span>2</span><b>e-qaimə</b><em>добавляется внутри накладной</em></div>
       <div><span>3</span><b>Сверка</b><em>сумма прихода vs e-qaimə</em></div>
       <div><span>4</span><b>Оплата</b><em>по e-qaimə / фактуре</em></div>
       <div><span>5</span><b>Долги</b><em>сроки и лимиты</em></div>
@@ -13277,53 +13283,6 @@ function Suppliers({ t, isAdmin = false }) {
           <td><button className="remove" onClick={() => setLineRows(rows => rows.length === 1 ? [{ ...emptyLine }] : rows.filter((_, i) => i !== idx))}>×</button></td>
         </tr>)}</tbody></table></div>
         <p className="hint">Итого по фактуре: <strong>{fmt(purchaseTotal)}</strong> AZN.</p><button className="small primary" onClick={addPurchase}>+ Сохранить поступление</button>{message && <p className={`hint ${message === t('saved') ? 'save-status' : 'bad'}`}>{message}</p>}
-      </div>
-
-      <div className="card span-2 supplier-einvoice-card">
-        <div className="card-head suppliers-v43-card-head">
-          <div><h3>e-qaimə / Сверка периода</h3><p className="hint">Создайте одну электронную накладную и привяжите к ней несколько физических приходов за выбранный период.</p></div>
-          <span className="suppliers-v43-badge">Сверка</span>
-        </div>
-        <div className="form-grid compact">
-          <label><span>Поставщик</span><select value={eInvoiceForm.supplier_id} onChange={e => setEInvoiceSupplierDefaults(e.target.value)}><option value="">Выберите поставщика</option>{activeSuppliersForPaymentLegal.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
-          <label><span>Наш VOEN</span><select value={eInvoiceForm.legal_entity_id} onChange={e => setEInvoiceForm({...eInvoiceForm, legal_entity_id: e.target.value})}><option value="">Выберите VOEN</option>{legalEntities.map(le => <option key={le.id} value={le.id}>{le.name} · {le.voen}</option>)}</select></label>
-          <label><span>Филиал</span><select value={eInvoiceForm.branch_id} onChange={e => setEInvoiceForm({...eInvoiceForm, branch_id: e.target.value})}><option value="">Все филиалы</option>{branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label>
-          <label><span>Период с</span><input type="date" value={eInvoiceForm.period_start} onChange={e => setEInvoiceForm({...eInvoiceForm, period_start: e.target.value})} /></label>
-          <label><span>Период по</span><input type="date" value={eInvoiceForm.period_end} onChange={e => setEInvoiceForm({...eInvoiceForm, period_end: e.target.value})} /></label>
-          <label><span>№ e-qaimə</span><input value={eInvoiceForm.invoice_number} onChange={e => setEInvoiceForm({...eInvoiceForm, invoice_number: e.target.value})} /></label>
-          <label><span>Дата e-qaimə</span><input type="date" value={eInvoiceForm.invoice_date} onChange={e => setEInvoiceForm({...eInvoiceForm, invoice_date: e.target.value})} /></label>
-          <label><span>Сумма e-qaimə</span><input inputMode="decimal" value={eInvoiceForm.amount} onChange={e => setEInvoiceForm({...eInvoiceForm, amount: e.target.value})} /></label>
-          <label><span>Срок оплаты, дней</span><input inputMode="numeric" value={eInvoiceForm.payment_term_days} onChange={e => setEInvoiceForm({...eInvoiceForm, payment_term_days: e.target.value})} /></label>
-          <label><span>Оплатить до</span><input type="date" value={eInvoiceForm.payment_due_date} onChange={e => setEInvoiceForm({...eInvoiceForm, payment_due_date: e.target.value})} /></label>
-        </div>
-        <div className="supplier-reconcile-preview">
-          <div><span>Физические приходы</span><strong>{fmt(eInvoiceCandidateTotal)} AZN</strong></div>
-          <div><span>e-qaimə</span><strong>{eInvoiceForm.amount ? `${fmt(eInvoiceForm.amount)} AZN` : '—'}</strong></div>
-          <div><span>Расхождение</span><strong className={Math.abs(eInvoiceFormDiff) > 0.02 ? 'bad' : 'good'}>{eInvoiceForm.amount ? fmt(eInvoiceFormDiff) : '—'}</strong></div>
-          <div><span>Статус</span><strong className={eInvoiceForm.amount ? (Math.abs(eInvoiceFormDiff) <= 0.02 ? 'good' : 'bad') : 'warn'}>{eInvoiceForm.amount ? (Math.abs(eInvoiceFormDiff) <= 0.02 ? 'Сверено' : 'Расхождение') : 'Ожидает сумму'}</strong></div>
-        </div>
-        <div className="table-wrap supplier-einvoice-candidates"><table><thead><tr><th>Дата</th><th>Филиал</th><th>Приходная накладная</th><th>Сумма</th></tr></thead><tbody>
-          {eInvoiceCandidatePurchases.slice(0, 80).map(p => <tr key={p.id}><td>{p.purchase_date}</td><td>{p.branches?.name || '—'}</td><td>{p.invoice_number || '—'}</td><td><b>{fmt(p.total_amount)}</b></td></tr>)}
-          {!eInvoiceCandidatePurchases.length && <tr><td colSpan="4" className="hint">Выберите поставщика, VOEN и период — здесь появятся физические приходы для привязки.</td></tr>}
-        </tbody></table></div>
-        <button className="small primary" style={{marginTop:12}} onClick={saveEInvoiceWithLinks}>+ Сохранить e-qaimə и связать приходы</button>
-        {eInvoiceMessage && <p className={`hint ${eInvoiceMessage.includes('сохран') ? 'save-status' : 'bad'}`}>{eInvoiceMessage}</p>}
-
-        <div className="card-head" style={{marginTop:18}}><div><h3>Журнал e-qaimə</h3><p className="hint">Электронные накладные, связанные физические приходы, оплата и расхождения.</p></div></div>
-        <div className="table-wrap"><table><thead><tr><th>Дата</th><th>№ e-qaimə</th><th>Поставщик</th><th>Период</th><th>Сумма</th><th>Оплачено</th><th>Статус</th><th></th></tr></thead><tbody>
-          {eInvoices.map(inv => {
-            const links = eInvoiceLinks.filter(l => l.e_invoice_id === inv.id)
-            const physicalTotal = links.reduce((sum, l) => sum + parseNum(l.linked_amount || l.supplier_purchases?.total_amount), 0)
-            const diff = parseNum(inv.amount) - physicalTotal
-            const paid = parseNum(inv.paid_amount)
-            const status = paid >= parseNum(inv.amount) ? 'Оплачена' : Math.abs(diff) <= 0.02 ? 'Сверена' : 'Расхождение'
-            return <React.Fragment key={inv.id}>
-              <tr><td>{inv.invoice_date}</td><td><b>{inv.invoice_number}</b></td><td>{inv.suppliers?.name || '—'}</td><td>{inv.period_start || '—'} — {inv.period_end || '—'}</td><td>{fmt(inv.amount)}</td><td>{fmt(inv.paid_amount)}</td><td><span className={status === 'Расхождение' ? 'bad' : 'good'}>{status}</span></td><td><button className="ghost small" onClick={() => setSelectedEInvoiceId(selectedEInvoiceId === inv.id ? '' : inv.id)}>{selectedEInvoiceId === inv.id ? 'Скрыть' : 'Детали'}</button></td></tr>
-              {selectedEInvoiceId === inv.id && <tr><td colSpan="8"><div className="supplier-reconcile-preview"><div><span>Физические приходы</span><strong>{fmt(physicalTotal)} AZN</strong></div><div><span>e-qaimə</span><strong>{fmt(inv.amount)} AZN</strong></div><div><span>Расхождение</span><strong className={Math.abs(diff) > 0.02 ? 'bad' : 'good'}>{fmt(diff)}</strong></div><div><span>Остаток к оплате</span><strong>{fmt(Math.max(0, parseNum(inv.amount) - paid))} AZN</strong></div></div></td></tr>}
-            </React.Fragment>
-          })}
-          {!eInvoices.length && <tr><td colSpan="8" className="hint">Пока нет сохранённых e-qaimə.</td></tr>}
-        </tbody></table></div>
       </div>
 
       <div className="card span-2">
@@ -13482,12 +13441,12 @@ function Suppliers({ t, isAdmin = false }) {
                 <React.Fragment key={p.id}>
                   <tr className={p.deleted_at ? 'cancelled-row' : ''}>
                     <td>{p.purchase_date}</td>
-                    <td>{p.invoice_number || '—'}<br /><span className="hint">e-qaimə: {supplierPurchaseReconciliation(p).eInvoiceNumber || 'ожидается'}</span></td>
+                    <td>{p.invoice_number || '—'}<br /><span className="hint">e-qaimə: {purchaseLinkedEInvoices(p.id)[0]?.invoice_number || supplierPurchaseReconciliation(p).eInvoiceNumber || 'ожидается'}</span></td>
                     <td>{p.suppliers?.name}</td>
                     <td>{p.legal_entities?.name || '—'}<br /><span className="hint">{p.legal_entities?.voen || ''}</span></td>
                     <td>{p.branches?.name || '—'}</td>
-                    <td><strong>{fmt(p.total_amount)}</strong>{supplierPurchaseReconciliation(p).eAmount ? <><br /><span className={Math.abs(supplierPurchaseReconciliation(p).diff) > 0.02 ? 'bad' : 'good'}>diff {fmt(supplierPurchaseReconciliation(p).diff)}</span></> : null}</td>
-                    <td>{p.deleted_at ? <span className="bad">Отменено</span> : <span className={supplierPurchaseReconciliation(p).tone === 'bad' ? 'bad' : supplierPurchaseReconciliation(p).tone === 'good' ? 'good' : 'warn'}>{supplierPurchaseReconciliation(p).status}</span>}</td>
+                    <td><strong>{fmt(p.total_amount)}</strong>{purchaseLinkedEInvoices(p.id)[0] ? <><br /><span className={Math.abs(parseNum(purchaseLinkedEInvoices(p.id)[0].amount) - parseNum(p.total_amount)) > 0.02 ? 'bad' : 'good'}>diff {fmt(parseNum(purchaseLinkedEInvoices(p.id)[0].amount) - parseNum(p.total_amount))}</span></> : supplierPurchaseReconciliation(p).eAmount ? <><br /><span className={Math.abs(supplierPurchaseReconciliation(p).diff) > 0.02 ? 'bad' : 'good'}>diff {fmt(supplierPurchaseReconciliation(p).diff)}</span></> : null}</td>
+                    <td>{p.deleted_at ? <span className="bad">Отменено</span> : purchaseLinkedEInvoices(p.id)[0] ? <span className={Math.abs(parseNum(purchaseLinkedEInvoices(p.id)[0].amount) - parseNum(p.total_amount)) > 0.02 ? 'bad' : 'good'}>{Math.abs(parseNum(purchaseLinkedEInvoices(p.id)[0].amount) - parseNum(p.total_amount)) > 0.02 ? 'Расхождение' : 'Сверено'}</span> : <span className={supplierPurchaseReconciliation(p).tone === 'bad' ? 'bad' : supplierPurchaseReconciliation(p).tone === 'good' ? 'good' : 'warn'}>{supplierPurchaseReconciliation(p).status}</span>}</td>
                     <td><button className="ghost small" onClick={() => { setViewPurchaseId(viewPurchaseId === p.id ? '' : p.id); setEditingPurchaseId('') }}>{viewPurchaseId === p.id ? 'Закрыть' : 'Просмотр'}</button></td>
                   </tr>
                   {viewPurchaseId === p.id && (
