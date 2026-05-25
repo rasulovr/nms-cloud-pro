@@ -12269,6 +12269,7 @@ function Suppliers({ t, isAdmin = false }) {
   const [recentPurchasesPageSize, setRecentPurchasesPageSize] = useState(10)
   const [recentPurchasesPage, setRecentPurchasesPage] = useState(1)
   const [purchaseJournalFilters, setPurchaseJournalFilters] = useState({ date_from: '', date_to: '', supplier_id: '', legal_entity_id: '', e_invoice: '', invoice: '' })
+  const [journalPeriodMode, setJournalPeriodMode] = useState('all')
   const [transactionSupplierId, setTransactionSupplierId] = useState('')
   const [transactionPeriod, setTransactionPeriod] = useState('month')
   const [transactionDate, setTransactionDate] = useState(todayISO())
@@ -13083,6 +13084,32 @@ function Suppliers({ t, isAdmin = false }) {
 
 
 
+  function setJournalQuickPeriod(mode) {
+    const today = new Date()
+    const to = today.toISOString().slice(0, 10)
+    let from = ''
+    if (mode === 'today') from = to
+    if (mode === '7d') from = new Date(today.getTime() - 6 * 86400000).toISOString().slice(0, 10)
+    if (mode === 'month') from = monthStart(today.getFullYear(), today.getMonth() + 1)
+    if (mode === 'all') {
+      from = ''
+    }
+    setJournalPeriodMode(mode)
+    setPurchaseJournalFilters(f => ({ ...f, date_from: from, date_to: mode === 'all' ? '' : to }))
+    setRecentPurchasesPage(1)
+  }
+
+  function journalPeriodLabel() {
+    if (journalPeriodMode === 'today') return 'Сегодня'
+    if (journalPeriodMode === '7d') return 'Последние 7 дней'
+    if (journalPeriodMode === 'month') return 'Текущий месяц'
+    if (journalPeriodMode === 'custom') {
+      if (purchaseJournalFilters.date_from || purchaseJournalFilters.date_to) return `${purchaseJournalFilters.date_from || '...'} — ${purchaseJournalFilters.date_to || '...'}`
+      return 'Custom период'
+    }
+    return 'Все даты'
+  }
+
   function highlightSupplierMatch(value, query) {
     const textValue = String(value || '')
     const needle = String(query || '').trim()
@@ -13301,7 +13328,9 @@ function Suppliers({ t, isAdmin = false }) {
   }).length
   const supplierPurchasesAmount = (visiblePurchases || []).filter(p => !p.deleted_at).reduce((sum, p) => sum + parseNum(p.total_amount), 0)
   const supplierPaymentsAmount = (payments || []).reduce((sum, p) => sum + parseNum(p.amount), 0)
-  const supplierBalanceAmount = (balances || []).reduce((sum, b) => sum + Math.max(0, parseNum(b.balance)), 0)
+  const supplierEInvoiceDebtAmount = (eInvoices || []).filter(inv => !inv.deleted_at).reduce((sum, inv) => sum + Math.max(0, parseNum(inv.amount) - parseNum(inv.paid_amount)), 0)
+  const supplierLegacyBalanceAmount = (balances || []).reduce((sum, b) => sum + Math.max(0, parseNum(b.balance)), 0)
+  const supplierBalanceAmount = eInvoices?.length ? supplierEInvoiceDebtAmount : supplierLegacyBalanceAmount
   const supplierKpiCards = [
     { label: 'Активные поставщики', value: fmt(activeSuppliers.length), note: 'доступны для выбранных VOEN', tone: 'blue', icon: '▱' },
     { label: 'Поступления', value: fmt(supplierPurchasesAmount), note: 'по видимым накладным', tone: 'green', icon: '↘' },
@@ -13556,12 +13585,28 @@ function Suppliers({ t, isAdmin = false }) {
           </label>
         </div>
         <div className="supplier-journal-filterbar">
-          <label className="supplier-journal-period"><span>Период</span><div className="supplier-period-control"><input type="date" value={purchaseJournalFilters.date_from} onChange={e => { setPurchaseJournalFilters(f => ({...f, date_from: e.target.value})); setRecentPurchasesPage(1) }} /><em>—</em><input type="date" value={purchaseJournalFilters.date_to} onChange={e => { setPurchaseJournalFilters(f => ({...f, date_to: e.target.value})); setRecentPurchasesPage(1) }} /></div></label>
+          <div className="supplier-journal-period-modern">
+            <span>Период</span>
+            <div className="supplier-period-pills">
+              <button type="button" className={journalPeriodMode === 'today' ? 'active' : ''} onClick={() => setJournalQuickPeriod('today')}>Сегодня</button>
+              <button type="button" className={journalPeriodMode === '7d' ? 'active' : ''} onClick={() => setJournalQuickPeriod('7d')}>7 дней</button>
+              <button type="button" className={journalPeriodMode === 'month' ? 'active' : ''} onClick={() => setJournalQuickPeriod('month')}>Месяц</button>
+              <button type="button" className={journalPeriodMode === 'all' ? 'active' : ''} onClick={() => setJournalQuickPeriod('all')}>Все</button>
+            </div>
+            <details className="supplier-custom-period" open={journalPeriodMode === 'custom'}>
+              <summary>{journalPeriodLabel()}</summary>
+              <div>
+                <input type="date" value={purchaseJournalFilters.date_from} onChange={e => { setJournalPeriodMode('custom'); setPurchaseJournalFilters(f => ({...f, date_from: e.target.value})); setRecentPurchasesPage(1) }} />
+                <em>—</em>
+                <input type="date" value={purchaseJournalFilters.date_to} onChange={e => { setJournalPeriodMode('custom'); setPurchaseJournalFilters(f => ({...f, date_to: e.target.value})); setRecentPurchasesPage(1) }} />
+              </div>
+            </details>
+          </div>
           <label><span>Поставщик</span><select value={purchaseJournalFilters.supplier_id} onChange={e => { setPurchaseJournalFilters(f => ({...f, supplier_id: e.target.value})); setRecentPurchasesPage(1) }}><option value="">Все поставщики</option>{activeSuppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
           <label><span>Физ. лицо / VOEN</span><select value={purchaseJournalFilters.legal_entity_id} onChange={e => { setPurchaseJournalFilters(f => ({...f, legal_entity_id: e.target.value})); setRecentPurchasesPage(1) }}><option value="">Все юрлица</option>{legalEntities.map(le => <option key={le.id} value={le.id}>{le.name} · {le.voen}</option>)}</select></label>
           <label><span>Поиск e-qaimə</span><input value={purchaseJournalFilters.e_invoice} onChange={e => { setPurchaseJournalFilters(f => ({...f, e_invoice: e.target.value})); setRecentPurchasesPage(1) }} placeholder="№ e-qaimə" /></label>
           <label><span>Поиск накладной</span><input value={purchaseJournalFilters.invoice} onChange={e => { setPurchaseJournalFilters(f => ({...f, invoice: e.target.value})); setRecentPurchasesPage(1) }} placeholder="№ прихода" /></label>
-          <button className="ghost small" type="button" onClick={() => { setPurchaseJournalFilters({ date_from: '', date_to: '', supplier_id: '', legal_entity_id: '', e_invoice: '', invoice: '' }); setRecentPurchasesPage(1) }}>Сбросить</button>
+          <button className="ghost small" type="button" onClick={() => { setPurchaseJournalFilters({ date_from: '', date_to: '', supplier_id: '', legal_entity_id: '', e_invoice: '', invoice: '' }); setJournalPeriodMode('all'); setRecentPurchasesPage(1) }}>Сбросить</button>
           <div className="supplier-journal-filter-summary"><b>{filteredPurchases.length}</b><span>найдено</span></div>
         </div>
         <div className="table-wrap">
@@ -17601,6 +17646,116 @@ function SupplierV43Styles() {
   background: #fef08a !important;
   color: #0f172a !important;
   font-weight: 900 !important;
+}
+
+
+
+.supplier-journal-filterbar {
+  grid-template-columns: minmax(420px, 1.55fr) repeat(4, minmax(150px, 1fr)) auto 90px !important;
+  align-items: end !important;
+}
+
+.supplier-journal-period-modern {
+  display: grid !important;
+  gap: 8px !important;
+  min-width: 420px !important;
+}
+
+.supplier-journal-period-modern > span {
+  color: #64748b !important;
+  font-size: 12px !important;
+  font-weight: 850 !important;
+}
+
+.supplier-period-pills {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 6px !important;
+  padding: 5px !important;
+  border: 1px solid rgba(203,213,225,.92) !important;
+  border-radius: 15px !important;
+  background: #ffffff !important;
+}
+
+.supplier-period-pills button {
+  height: 34px !important;
+  border: 0 !important;
+  border-radius: 11px !important;
+  background: transparent !important;
+  color: #64748b !important;
+  font-size: 12px !important;
+  font-weight: 900 !important;
+  cursor: pointer !important;
+}
+
+.supplier-period-pills button.active {
+  background: linear-gradient(135deg,#2563eb,#1d4ed8) !important;
+  color: #ffffff !important;
+  box-shadow: 0 10px 20px rgba(37,99,235,.18) !important;
+}
+
+.supplier-custom-period {
+  border: 1px solid rgba(226,232,240,.92) !important;
+  border-radius: 14px !important;
+  background: rgba(248,250,252,.74) !important;
+  overflow: hidden !important;
+}
+
+.supplier-custom-period summary {
+  list-style: none !important;
+  cursor: pointer !important;
+  padding: 9px 12px !important;
+  color: #475569 !important;
+  font-size: 12px !important;
+  font-weight: 850 !important;
+}
+
+.supplier-custom-period summary::-webkit-details-marker {
+  display: none !important;
+}
+
+.supplier-custom-period summary::after {
+  content: 'изменить даты' !important;
+  float: right !important;
+  color: #2563eb !important;
+  font-size: 11px !important;
+  font-weight: 900 !important;
+}
+
+.supplier-custom-period > div {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) 16px minmax(0, 1fr) !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding: 0 10px 10px !important;
+}
+
+.supplier-custom-period input {
+  height: 38px !important;
+  border-radius: 11px !important;
+  background: #ffffff !important;
+}
+
+.supplier-custom-period em {
+  color: #94a3b8 !important;
+  font-style: normal !important;
+  font-weight: 900 !important;
+  text-align: center !important;
+}
+
+@media (max-width: 1500px) {
+  .supplier-journal-filterbar {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+  .supplier-journal-period-modern {
+    min-width: 0 !important;
+  }
+}
+
+@media (max-width: 900px) {
+  .supplier-journal-filterbar {
+    grid-template-columns: 1fr !important;
+  }
 }
 
   `}</style>
