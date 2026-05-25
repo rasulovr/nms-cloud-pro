@@ -12252,7 +12252,7 @@ function Suppliers({ t, isAdmin = false }) {
   const [profiles, setProfiles] = useState([])
   const [supplierForm, setSupplierForm] = useState({ name: '', voen: '', contact_person: '', phone: '', info: '', payment_term_days: '', credit_limit: '', opening_debt_amount: '', opening_debt_legal_entity_id: '', opening_debt_date: todayISO(), opening_debt_comment: '' })
   const [productForm, setProductForm] = useState({ name: '', category: PRODUCT_CATEGORIES[0], base_unit: 'g' })
-  const [purchaseForm, setPurchaseForm] = useState({ supplier_id: '', legal_entity_id: '', branch_id: '', purchase_date: todayISO(), invoice_number: '', comment: '', amount_only: false, manual_amount: '' })
+  const [purchaseForm, setPurchaseForm] = useState({ supplier_id: '', legal_entity_id: '', branch_id: '', purchase_date: todayISO(), invoice_number: '', e_invoice_number: '', e_invoice_date: '', e_invoice_amount: '', comment: '', amount_only: false, manual_amount: '' })
   const emptyLine = { category: PRODUCT_CATEGORIES[0], product_id: '', base_unit: 'g', quantity: '1', unit: 'kg', unit_price: '' }
   const [lineRows, setLineRows] = useState([emptyLine])
   const [paymentForm, setPaymentForm] = useState({ supplier_id: '', legal_entity_id: '', payment_date: todayISO(), amount: '', invoice_notes: '', comment: '' })
@@ -12726,7 +12726,7 @@ function Suppliers({ t, isAdmin = false }) {
           branch_id: purchaseForm.branch_id || null,
           purchase_date: purchaseForm.purchase_date,
           invoice_number: purchaseForm.invoice_number.trim() || null,
-          comment: purchaseForm.comment?.trim() || 'Поступление введено общей суммой без детализации товаров',
+          comment: supplierCommentWithMeta(purchaseForm.comment?.trim() || 'Поступление введено общей суммой без детализации товаров', { eInvoiceNumber: purchaseForm.e_invoice_number, eInvoiceDate: purchaseForm.e_invoice_date, eInvoiceAmount: purchaseForm.e_invoice_amount }),
           total_amount: manualAmount
         }).select('*').single()
         if (error) throw error
@@ -12736,7 +12736,7 @@ function Suppliers({ t, isAdmin = false }) {
 
         await load()
         setLineRows([{ ...emptyLine }])
-        setPurchaseForm(f => ({ ...f, invoice_number: '', comment: '', manual_amount: '' }))
+        setPurchaseForm(f => ({ ...f, invoice_number: '', e_invoice_number: '', e_invoice_date: '', e_invoice_amount: '', comment: '', manual_amount: '' }))
         setMessage(t('saved'))
         return
       }
@@ -12758,7 +12758,7 @@ function Suppliers({ t, isAdmin = false }) {
       const { data: purchase, error } = await supabase.from('supplier_purchases').insert({
         supplier_id: purchaseForm.supplier_id, legal_entity_id: purchaseForm.legal_entity_id,
         branch_id: purchaseForm.branch_id || null, purchase_date: purchaseForm.purchase_date,
-        invoice_number: purchaseForm.invoice_number.trim() || null, comment: purchaseForm.comment.trim() || null,
+        invoice_number: purchaseForm.invoice_number.trim() || null, comment: supplierCommentWithMeta(purchaseForm.comment.trim() || null, { eInvoiceNumber: purchaseForm.e_invoice_number, eInvoiceDate: purchaseForm.e_invoice_date, eInvoiceAmount: purchaseForm.e_invoice_amount }),
         total_amount: totalAmount
       }).select('*').single()
       if (error) throw error
@@ -12773,7 +12773,7 @@ function Suppliers({ t, isAdmin = false }) {
       const { data: authData } = await supabase.auth.getUser()
       await syncSupplierPurchaseFoodCost(purchase, totalAmount, authData?.user?.id || null)
 
-      await load(); setLineRows([{ ...emptyLine }]); setPurchaseForm(f => ({ ...f, invoice_number: '', comment: '', manual_amount: '' })); setMessage(t('saved'))
+      await load(); setLineRows([{ ...emptyLine }]); setPurchaseForm(f => ({ ...f, invoice_number: '', e_invoice_number: '', e_invoice_date: '', e_invoice_amount: '', comment: '', manual_amount: '' })); setMessage(t('saved'))
     } catch (e) { setMessage(e.message) }
   }
   async function recalcPurchaseTotal(purchaseId) {
@@ -12907,6 +12907,91 @@ function Suppliers({ t, isAdmin = false }) {
   }
   const supplierTransactions = allTransactions().filter(r => (!transactionSupplierId || r.supplier_id === transactionSupplierId) && periodOk(r.date))
   const lastTransactions = allTransactions().slice(0, 10)
+
+  function supplierMetaFromComment(comment) {
+    const raw = String(comment || '')
+    const match = raw.match(/RMS_SUPPLIER_META:({.*?})\s*(?:\n|$)/)
+    if (!match) return { eInvoiceNumber: '', eInvoiceDate: '', eInvoiceAmount: 0, cleanComment: raw }
+    try {
+      const meta = JSON.parse(match[1])
+      return {
+        eInvoiceNumber: meta.eInvoiceNumber || '',
+        eInvoiceDate: meta.eInvoiceDate || '',
+        eInvoiceAmount: parseNum(meta.eInvoiceAmount),
+        cleanComment: raw.replace(match[0], '').trim()
+      }
+    } catch (_e) {
+      return { eInvoiceNumber: '', eInvoiceDate: '', eInvoiceAmount: 0, cleanComment: raw.replace(match[0], '').trim() }
+    }
+  }
+
+  function supplierCommentWithMeta(comment, meta) {
+    const clean = String(comment || '').replace(/RMS_SUPPLIER_META:({.*?})\s*(?:\n|$)/, '').trim()
+    const payload = {
+      eInvoiceNumber: String(meta?.eInvoiceNumber || '').trim(),
+      eInvoiceDate: String(meta?.eInvoiceDate || '').trim(),
+      eInvoiceAmount: parseNum(meta?.eInvoiceAmount)
+    }
+    const hasMeta = payload.eInvoiceNumber || payload.eInvoiceDate || payload.eInvoiceAmount
+    return `${hasMeta ? `RMS_SUPPLIER_META:${JSON.stringify(payload)}\n` : ''}${clean}`.trim() || null
+  }
+
+  function supplierPurchaseReconciliation(purchase) {
+    const meta = supplierMetaFromComment(purchase?.comment)
+    const physicalAmount = parseNum(purchase?.total_amount)
+    const eAmount = parseNum(meta.eInvoiceAmount)
+    const diff = eAmount ? eAmount - physicalAmount : 0
+    let status = 'Ожидает e-qaimə'
+    let tone = 'warn'
+    if (meta.eInvoiceNumber || eAmount) {
+      if (Math.abs(diff) <= 0.02) {
+        status = 'Сверено'
+        tone = 'good'
+      } else {
+        status = 'Расхождение'
+        tone = 'bad'
+      }
+    }
+    return { ...meta, physicalAmount, eAmount, diff, status, tone }
+  }
+
+  const supplierEInvoiceOptions = (purchases || [])
+    .filter(p => activeSupplierIds.has(p.supplier_id) && isSupplierActiveForLegal(p.supplier_id, p.legal_entity_id) && !p.deleted_at)
+    .map(p => {
+      const rec = supplierPurchaseReconciliation(p)
+      return {
+        purchase_id: p.id,
+        supplier_id: p.supplier_id,
+        legal_entity_id: p.legal_entity_id,
+        number: rec.eInvoiceNumber || p.invoice_number || '',
+        date: rec.eInvoiceDate || p.purchase_date || '',
+        amount: rec.eAmount || parseNum(p.total_amount),
+        physicalAmount: parseNum(p.total_amount),
+        supplier: p.suppliers?.name || suppliers.find(s => s.id === p.supplier_id)?.name || '—',
+        branch: p.branches?.name || '—',
+        status: rec.status,
+        diff: rec.diff
+      }
+    })
+    .filter(x => x.number)
+
+  const filteredPaymentEInvoices = supplierEInvoiceOptions.filter(inv =>
+    (!paymentForm.supplier_id || String(inv.supplier_id) === String(paymentForm.supplier_id)) &&
+    (!paymentForm.legal_entity_id || String(inv.legal_entity_id) === String(paymentForm.legal_entity_id))
+  )
+
+  function applyPaymentEInvoice(number) {
+    const inv = supplierEInvoiceOptions.find(x => x.number === number)
+    setPaymentForm(f => ({
+      ...f,
+      supplier_id: inv?.supplier_id || f.supplier_id,
+      legal_entity_id: inv?.legal_entity_id || f.legal_entity_id,
+      invoice_notes: number,
+      amount: inv?.amount ? String(inv.amount) : f.amount
+    }))
+  }
+
+
   const recentPurchasesPageSizeNumber = parseNum(recentPurchasesPageSize) || 10
   const visiblePurchases = (purchases || []).filter(p => activeSupplierIds.has(p.supplier_id) && isSupplierActiveForLegal(p.supplier_id, p.legal_entity_id))
   const recentPurchasesTotalPages = Math.max(1, Math.ceil(visiblePurchases.length / recentPurchasesPageSizeNumber))
@@ -12927,14 +13012,29 @@ function Suppliers({ t, isAdmin = false }) {
           <label><span>Наш VOEN</span><select value={purchaseForm.legal_entity_id} onChange={e => setPurchaseForm({...purchaseForm, legal_entity_id: e.target.value})}>{legalEntities.map(le => <option key={le.id} value={le.id}>{le.name} · {le.voen}</option>)}</select></label>
           <label><span>Филиал</span><select value={purchaseForm.branch_id} onChange={e => setPurchaseForm({...purchaseForm, branch_id: e.target.value})}>{branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label>
           <label><span>Дата поступления</span><input type="date" value={purchaseForm.purchase_date} onChange={e => setPurchaseForm({...purchaseForm, purchase_date: e.target.value})} /></label>
-          <label><span>Номер фактуры</span><input value={purchaseForm.invoice_number} onChange={e => setPurchaseForm({...purchaseForm, invoice_number: e.target.value})} /></label>
+          <label><span>№ приходной накладной</span><input value={purchaseForm.invoice_number} onChange={e => setPurchaseForm({...purchaseForm, invoice_number: e.target.value})} placeholder="Бумажная / физическая накладная" /></label>
           <label><span>Сумма поставки</span><input inputMode="decimal" disabled={!purchaseForm.amount_only} value={purchaseForm.manual_amount} onChange={e => setPurchaseForm({...purchaseForm, manual_amount: e.target.value})} placeholder="0.00" /></label>
+          <label><span>№ e-qaimə</span><input value={purchaseForm.e_invoice_number} onChange={e => setPurchaseForm({...purchaseForm, e_invoice_number: e.target.value})} placeholder="Можно добавить позже" /></label>
+          <label><span>Дата e-qaimə</span><input type="date" value={purchaseForm.e_invoice_date} onChange={e => setPurchaseForm({...purchaseForm, e_invoice_date: e.target.value})} /></label>
+          <label><span>Сумма e-qaimə</span><input inputMode="decimal" value={purchaseForm.e_invoice_amount} onChange={e => setPurchaseForm({...purchaseForm, e_invoice_amount: e.target.value})} placeholder="0.00" /></label>
         </div>
-        <label className="checkline" style={{marginTop:10}}>
-          <input type="checkbox" checked={!!purchaseForm.amount_only} onChange={e => setPurchaseForm({...purchaseForm, amount_only: e.target.checked, manual_amount: e.target.checked ? purchaseForm.manual_amount : ''})} />
-          <span><span className="supplier-total-only-text"><b>Ввести только общую сумму поставки без товаров</b></span></span>
-        </label>
-        <p className="hint">Если включена галочка, строки товаров временно не используются. Если галочка выключена, сумма считается по товарам.</p><br />
+        <div className="supplier-amount-only-block">
+          <label className="supplier-amount-only-check">
+            <input type="checkbox" checked={!!purchaseForm.amount_only} onChange={e => setPurchaseForm({...purchaseForm, amount_only: e.target.checked, manual_amount: e.target.checked ? purchaseForm.manual_amount : ''})} />
+            <span className="supplier-amount-only-box" aria-hidden="true">{purchaseForm.amount_only ? '✓' : ''}</span>
+            <span className="supplier-amount-only-copy">
+              <b>Ввести только общую сумму поставки без товаров</b>
+              <small>Если включена галочка, строки товаров временно не используются. Если галочка выключена, сумма считается по товарам.</small>
+            </span>
+          </label>
+        </div>
+        <div className="supplier-reconcile-preview">
+          <div><span>Приходная накладная</span><strong>{fmt(purchaseForm.amount_only ? parseNum(purchaseForm.manual_amount) : purchaseTotal)} AZN</strong></div>
+          <div><span>e-qaimə</span><strong>{purchaseForm.e_invoice_amount ? `${fmt(purchaseForm.e_invoice_amount)} AZN` : 'ожидается'}</strong></div>
+          <div><span>Расхождение</span><strong className={purchaseForm.e_invoice_amount && Math.abs(parseNum(purchaseForm.e_invoice_amount) - parseNum(purchaseForm.amount_only ? purchaseForm.manual_amount : purchaseTotal)) > 0.02 ? 'bad' : 'good'}>{purchaseForm.e_invoice_amount ? fmt(parseNum(purchaseForm.e_invoice_amount) - parseNum(purchaseForm.amount_only ? purchaseForm.manual_amount : purchaseTotal)) : '—'}</strong></div>
+          <div><span>Статус</span><strong>{purchaseForm.e_invoice_amount ? (Math.abs(parseNum(purchaseForm.e_invoice_amount) - parseNum(purchaseForm.amount_only ? purchaseForm.manual_amount : purchaseTotal)) <= 0.02 ? 'Сверено' : 'Расхождение') : 'Ожидает e-qaimə'}</strong></div>
+        </div>
+
         <div className="card-head"><div><h3>Товары в поступлении</h3><p className="hint">Если товара нет, сначала добавьте его ниже в блоке “Товары”.</p></div><button className="small" disabled={purchaseForm.amount_only} onClick={() => setLineRows(rows => [...rows, { ...emptyLine }])}>+ Строка товара</button></div>
         <div className="table-wrap"><table><thead><tr><th>Тип</th><th>Товар</th><th>Кол-во закупа</th><th>Ед. закупа</th><th>Цена за ед.</th><th>Сумма</th><th></th></tr></thead><tbody>{purchaseForm.amount_only ? <tr><td colSpan="7" className="hint">Товары отключены: поступление будет сохранено общей суммой.</td></tr> : lineRows.map((row, idx) => <tr key={idx}>
           <td><select value={row.category} onChange={e => updateLine(idx, { category: e.target.value })}>{PRODUCT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select></td>
@@ -12955,6 +13055,7 @@ function Suppliers({ t, isAdmin = false }) {
           <label><span>Наш VOEN</span><select value={paymentForm.legal_entity_id} onChange={e => setPaymentForm({...paymentForm, legal_entity_id: e.target.value})}><option value="">Выберите VOEN</option>{legalEntities.map(le => <option key={le.id} value={le.id}>{le.name} · {le.voen}</option>)}</select></label>
           <label><span>Дата оплаты</span><input type="date" value={paymentForm.payment_date} onChange={e => setPaymentForm({...paymentForm, payment_date: e.target.value})} /></label>
           <label><span>Сумма оплаты</span><input inputMode="decimal" value={paymentForm.amount} onChange={e => setPaymentForm({...paymentForm, amount: e.target.value})} /></label>
+          <label><span>Оплата по e-qaimə</span><select value={paymentForm.invoice_notes} onChange={e => applyPaymentEInvoice(e.target.value)}><option value="">Выберите e-qaimə / накладную</option>{filteredPaymentEInvoices.map(inv => <option key={inv.purchase_id} value={inv.number}>{inv.number} · {inv.supplier} · {fmt(inv.amount)} AZN · {inv.status}</option>)}</select></label>
           <label><span>Отметки / номера счёт-фактур</span><input value={paymentForm.invoice_notes} onChange={e => setPaymentForm({...paymentForm, invoice_notes: e.target.value})} /></label>
           <label><span>Комментарий</span><input value={paymentForm.comment} onChange={e => setPaymentForm({...paymentForm, comment: e.target.value})} /></label>
         </div><button className="small primary" onClick={savePayment}>+ Сохранить оплату</button>
@@ -13103,12 +13204,12 @@ function Suppliers({ t, isAdmin = false }) {
                 <React.Fragment key={p.id}>
                   <tr className={p.deleted_at ? 'cancelled-row' : ''}>
                     <td>{p.purchase_date}</td>
-                    <td>{p.invoice_number || '—'}</td>
+                    <td>{p.invoice_number || '—'}<br /><span className="hint">e-qaimə: {supplierPurchaseReconciliation(p).eInvoiceNumber || 'ожидается'}</span></td>
                     <td>{p.suppliers?.name}</td>
                     <td>{p.legal_entities?.name || '—'}<br /><span className="hint">{p.legal_entities?.voen || ''}</span></td>
                     <td>{p.branches?.name || '—'}</td>
-                    <td><strong>{fmt(p.total_amount)}</strong></td>
-                    <td>{p.deleted_at ? <span className="bad">Отменено</span> : <span className="good">Активно</span>}</td>
+                    <td><strong>{fmt(p.total_amount)}</strong>{supplierPurchaseReconciliation(p).eAmount ? <><br /><span className={Math.abs(supplierPurchaseReconciliation(p).diff) > 0.02 ? 'bad' : 'good'}>diff {fmt(supplierPurchaseReconciliation(p).diff)}</span></> : null}</td>
+                    <td>{p.deleted_at ? <span className="bad">Отменено</span> : <span className={supplierPurchaseReconciliation(p).tone === 'bad' ? 'bad' : supplierPurchaseReconciliation(p).tone === 'good' ? 'good' : 'warn'}>{supplierPurchaseReconciliation(p).status}</span>}</td>
                     <td><button className="ghost small" onClick={() => { setViewPurchaseId(viewPurchaseId === p.id ? '' : p.id); setEditingPurchaseId('') }}>{viewPurchaseId === p.id ? 'Закрыть' : 'Просмотр'}</button></td>
                   </tr>
                   {viewPurchaseId === p.id && (
@@ -13132,8 +13233,15 @@ function Suppliers({ t, isAdmin = false }) {
 
                           <div className="form-grid compact">
                             <label><span>Дата</span>{editingPurchaseId === p.id && !p.deleted_at ? <input type="date" defaultValue={p.purchase_date} onBlur={e => updatePurchase(p.id, { purchase_date: e.target.value })} /> : <strong>{p.purchase_date}</strong>}</label>
-                            <label><span>Фактура</span>{editingPurchaseId === p.id && !p.deleted_at ? <input defaultValue={p.invoice_number || ''} onBlur={e => updatePurchase(p.id, { invoice_number: e.target.value.trim() || null })} /> : <strong>{p.invoice_number || '—'}</strong>}</label>
+                            <label><span>Приходная накладная</span>{editingPurchaseId === p.id && !p.deleted_at ? <input defaultValue={p.invoice_number || ''} onBlur={e => updatePurchase(p.id, { invoice_number: e.target.value.trim() || null })} /> : <strong>{p.invoice_number || '—'}</strong>}</label>
                             <label><span>Филиал</span>{editingPurchaseId === p.id && !p.deleted_at ? <select defaultValue={p.branch_id || ''} onBlur={e => updatePurchase(p.id, { branch_id: e.target.value || null })}><option value="">—</option>{branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select> : <strong>{p.branches?.name || '—'}</strong>}</label>
+                          </div>
+                          <div className="supplier-reconcile-preview">
+                            <div><span>Физический приход</span><strong>{fmt(supplierPurchaseReconciliation(p).physicalAmount)} AZN</strong></div>
+                            <div><span>e-qaimə</span><strong>{supplierPurchaseReconciliation(p).eInvoiceNumber || 'ожидается'}</strong></div>
+                            <div><span>Сумма e-qaimə</span><strong>{supplierPurchaseReconciliation(p).eAmount ? `${fmt(supplierPurchaseReconciliation(p).eAmount)} AZN` : '—'}</strong></div>
+                            <div><span>Расхождение</span><strong className={Math.abs(supplierPurchaseReconciliation(p).diff) > 0.02 ? 'bad' : 'good'}>{supplierPurchaseReconciliation(p).eAmount ? fmt(supplierPurchaseReconciliation(p).diff) : '—'}</strong></div>
+                            <div><span>Статус сверки</span><strong className={supplierPurchaseReconciliation(p).tone === 'bad' ? 'bad' : supplierPurchaseReconciliation(p).tone === 'good' ? 'good' : 'warn'}>{supplierPurchaseReconciliation(p).status}</strong></div>
                           </div>
 
                           <div className="table-wrap">
@@ -16455,6 +16563,128 @@ function SupplierTotalOnlyCheckboxStyles() {
   font-size: 13px !important;
   line-height: 1.35 !important;
   font-weight: 500 !important;
+}
+
+
+
+/* v43 supplier amount-only compact checkbox */
+.supplier-amount-only-block {
+  margin-top: 12px !important;
+  margin-bottom: 18px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+}
+
+.supplier-amount-only-check {
+  display: inline-grid !important;
+  grid-template-columns: 18px minmax(0, 1fr) !important;
+  align-items: start !important;
+  column-gap: 10px !important;
+  width: auto !important;
+  max-width: 760px !important;
+  min-height: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  cursor: pointer !important;
+}
+
+.supplier-amount-only-check input[type="checkbox"] {
+  position: absolute !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  width: 1px !important;
+  height: 1px !important;
+}
+
+.supplier-amount-only-box {
+  width: 18px !important;
+  height: 18px !important;
+  min-width: 18px !important;
+  min-height: 18px !important;
+  max-width: 18px !important;
+  max-height: 18px !important;
+  display: grid !important;
+  place-items: center !important;
+  border-radius: 5px !important;
+  border: 1.5px solid #94a3b8 !important;
+  background: #ffffff !important;
+  color: #ffffff !important;
+  font-size: 13px !important;
+  line-height: 1 !important;
+  font-weight: 900 !important;
+  box-shadow: none !important;
+}
+
+.supplier-amount-only-check input[type="checkbox"]:checked + .supplier-amount-only-box {
+  background: #2563eb !important;
+  border-color: #2563eb !important;
+  color: #ffffff !important;
+}
+
+.supplier-amount-only-copy {
+  display: grid !important;
+  gap: 4px !important;
+  padding-top: 0 !important;
+}
+
+.supplier-amount-only-copy b {
+  color: #475569 !important;
+  font-size: 13.5px !important;
+  line-height: 1.25 !important;
+  font-weight: 850 !important;
+}
+
+.supplier-amount-only-copy small {
+  color: #64748b !important;
+  font-size: 13px !important;
+  line-height: 1.35 !important;
+  font-weight: 500 !important;
+}
+
+
+
+.supplier-reconcile-preview {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 10px !important;
+  margin: 14px 0 18px !important;
+}
+
+.supplier-reconcile-preview > div {
+  border: 1px solid rgba(226,232,240,.92) !important;
+  border-radius: 14px !important;
+  background: #fbfdff !important;
+  padding: 12px 14px !important;
+}
+
+.supplier-reconcile-preview span {
+  display: block !important;
+  color: #64748b !important;
+  font-size: 11.5px !important;
+  font-weight: 800 !important;
+  margin-bottom: 6px !important;
+}
+
+.supplier-reconcile-preview strong {
+  display: block !important;
+  color: #0f172a !important;
+  font-size: 14px !important;
+  font-weight: 900 !important;
+  line-height: 1.2 !important;
+}
+
+.supplier-reconcile-preview strong.good { color: #10b981 !important; }
+.supplier-reconcile-preview strong.bad { color: #ef4444 !important; }
+.supplier-reconcile-preview strong.warn { color: #f59e0b !important; }
+
+@media (max-width: 1100px) {
+  .supplier-reconcile-preview {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
 }
 
   `}</style>
