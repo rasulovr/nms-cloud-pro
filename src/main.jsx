@@ -1678,6 +1678,7 @@ function App() {
         <RMSProV6Styles />
         <RMSProV9Styles />
         <DashboardTrendColorStyles />
+        <SupplierTotalOnlyCheckboxStyles />
         <RMSProSidebarSatoshiStyles />
         <GlobalProgressOverlay />
         <div className="rms-pro-topbar">
@@ -2089,7 +2090,7 @@ function MarketIntelligence({ t }) {
           <button className="mi-btn mi-btn-light" onClick={loadAll}>{loading ? 'Обновление...' : 'Обновить'}</button>
         </div>
         <form className="mi-form" onSubmit={addCompetitor}>
-          <label className="mi-span-2">Название<input value={competitorForm.name} onChange={e => setCompetitorForm({ ...competitorForm, name: e.target.value })} placeholder="Например: Coffee House" /></label>
+          <label className="mi-span-2 supplier-total-only-row">Название<input className="supplier-total-only-checkbox" value={competitorForm.name} onChange={e => setCompetitorForm({ ...competitorForm, name: e.target.value })} placeholder="Например: Coffee House" /></label>
           <label>Район<input value={competitorForm.area} onChange={e => setCompetitorForm({ ...competitorForm, area: e.target.value })} placeholder="Nizami / Khagani" /></label>
           <label>Сегмент<select value={competitorForm.segment} onChange={e => setCompetitorForm({ ...competitorForm, segment: e.target.value })}><option value="coffee">Coffee</option><option value="casual">Casual</option><option value="premium">Premium</option><option value="fast_food">Fast food</option><option value="bakery">Bakery</option><option value="delivery">Delivery</option></select></label>
           <label className="mi-span-2">Ссылка на меню<input value={competitorForm.menu_url} onChange={e => setCompetitorForm({ ...competitorForm, menu_url: e.target.value })} placeholder="https://..." /></label>
@@ -12931,7 +12932,7 @@ function Suppliers({ t, isAdmin = false }) {
         </div>
         <label className="checkline" style={{marginTop:10}}>
           <input type="checkbox" checked={!!purchaseForm.amount_only} onChange={e => setPurchaseForm({...purchaseForm, amount_only: e.target.checked, manual_amount: e.target.checked ? purchaseForm.manual_amount : ''})} />
-          <span>Ввести только общую сумму поставки без товаров</span>
+          <span><span className="supplier-total-only-text"><b>Ввести только общую сумму поставки без товаров</b></span></span>
         </label>
         <p className="hint">Если включена галочка, строки товаров временно не используются. Если галочка выключена, сумма считается по товарам.</p><br />
         <div className="card-head"><div><h3>Товары в поступлении</h3><p className="hint">Если товара нет, сначала добавьте его ниже в блоке “Товары”.</p></div><button className="small" disabled={purchaseForm.amount_only} onClick={() => setLineRows(rows => [...rows, { ...emptyLine }])}>+ Строка товара</button></div>
@@ -16400,6 +16401,60 @@ function DashboardTrendColorStyles() {
 .finance-dashboard-kpis .dash-trend-value.bad {
   color: #ef4444 !important;
   font-weight: 900 !important;
+}
+
+  `}</style>
+}
+
+
+function SupplierTotalOnlyCheckboxStyles() {
+  return <style>{`
+
+/* v43 supplier purchase: compact total-only checkbox */
+.supplier-total-only-row,
+.suppliers-total-only-row {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  min-height: 36px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+}
+
+.supplier-total-only-row input[type="checkbox"],
+.suppliers-total-only-row input[type="checkbox"],
+.supplier-total-only-checkbox {
+  width: 18px !important;
+  height: 18px !important;
+  min-width: 18px !important;
+  max-width: 18px !important;
+  min-height: 18px !important;
+  max-height: 18px !important;
+  transform: none !important;
+  scale: 1 !important;
+  accent-color: #2563eb !important;
+  box-shadow: none !important;
+  margin: 0 !important;
+}
+
+.supplier-total-only-text {
+  display: grid !important;
+  gap: 3px !important;
+}
+
+.supplier-total-only-text b {
+  color: #475569 !important;
+  font-size: 13px !important;
+  line-height: 1.25 !important;
+  font-weight: 800 !important;
+}
+
+.supplier-total-only-text span {
+  color: #64748b !important;
+  font-size: 13px !important;
+  line-height: 1.35 !important;
+  font-weight: 500 !important;
 }
 
   `}</style>
