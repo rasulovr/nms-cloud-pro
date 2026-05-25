@@ -13668,10 +13668,9 @@ function Suppliers({ t, isAdmin = false }) {
                               <label><span>№ e-qaimə</span><input value={singleEInvoiceDraft(p).invoice_number} onChange={e => updateSingleEInvoiceDraft(p.id, { invoice_number: e.target.value })} /></label>
                               <label><span>Дата e-qaimə</span><input type="date" value={singleEInvoiceDraft(p).invoice_date} onChange={e => updateSingleEInvoiceDraft(p.id, { invoice_date: e.target.value })} /></label>
                               <label><span>Сумма e-qaimə</span><input inputMode="decimal" value={singleEInvoiceDraft(p).amount} onChange={e => updateSingleEInvoiceDraft(p.id, { amount: e.target.value })} /></label>
-                              <label><span>Срок оплаты, дней</span><input inputMode="numeric" value={singleEInvoiceDraft(p).payment_term_days} onChange={e => updateSingleEInvoiceDraft(p.id, { payment_term_days: e.target.value })} /></label>
-                              <label><span>Оплатить до</span><input type="date" value={singleEInvoiceDraft(p).payment_due_date} onChange={e => updateSingleEInvoiceDraft(p.id, { payment_due_date: e.target.value })} /></label>
                               <label><span>Комментарий</span><input value={singleEInvoiceDraft(p).note} onChange={e => updateSingleEInvoiceDraft(p.id, { note: e.target.value })} /></label>
                             </div>
+                            <p className="hint supplier-einvoice-auto-terms">Срок оплаты рассчитывается автоматически по настройкам поставщика.</p>
                             <div className="supplier-reconcile-preview">
                               <div><span>Физический приход</span><strong>{fmt(p.total_amount)} AZN</strong></div>
                               <div><span>e-qaimə</span><strong>{fmt(singleEInvoiceDraft(p).amount)} AZN</strong></div>
@@ -17756,6 +17755,12 @@ function SupplierV43Styles() {
   .supplier-journal-filterbar {
     grid-template-columns: 1fr !important;
   }
+}
+
+
+
+.supplier-einvoice-auto-terms {
+  margin: 8px 0 12px !important;
 }
 
   `}</style>
