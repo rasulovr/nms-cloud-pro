@@ -2517,13 +2517,14 @@ function POSLite({ t }) {
       return acc
     }, { cash_amount: 0, bank_amount: 0, wolt_amount: 0 })
 
-    await supabase.from('daily_revenue').upsert({
-      branch_id: activeBranchId,
-      revenue_date: activeDate,
-      cash_amount: totals.cash_amount,
-      bank_amount: totals.bank_amount,
-      wolt_amount: totals.wolt_amount
-    }, { onConflict: 'branch_id,revenue_date' })
+    await supabase.rpc('rms_revenue_create_secure', {
+      p_revenue_date: activeDate,
+      p_branch_id: activeBranchId,
+      p_cash_amount: totals.cash_amount,
+      p_bank_amount: totals.bank_amount,
+      p_wolt_amount: totals.wolt_amount,
+      p_comment: 'POS auto revenue sync'
+    })
   }
 
   async function closeOrder() {
@@ -4028,7 +4029,14 @@ function Revenue({ t, focusExpense }) {
     const bank = (rows || []).reduce((s, r) => s + parseNum(r.bank_amount), 0)
     const wolt = (rows || []).reduce((s, r) => s + parseNum(r.wolt_amount), 0)
     const user = await currentUserMeta()
-    await supabase.from('daily_revenue').upsert({ branch_id: activeBranchId, revenue_date: activeDate, cash_amount: cash, bank_amount: bank, wolt_amount: wolt, comment: 'Автосумма из строк выручки', updated_by: user.user_id, deleted_at: null, deleted_by: null }, { onConflict: 'branch_id,revenue_date' })
+    await supabase.rpc('rms_revenue_create_secure', {
+      p_revenue_date: activeDate,
+      p_branch_id: activeBranchId,
+      p_cash_amount: cash,
+      p_bank_amount: bank,
+      p_wolt_amount: wolt,
+      p_comment: 'Автосумма из строк выручки'
+    })
     await recalcExistingBazarExpenseForDate(activeDate, true)
   }
 
