@@ -3937,7 +3937,11 @@ function Revenue({ t, focusExpense }) {
         category_id: bazarCategoryId,
         custom_category: bazarCategoryId ? null : 'Базар',
         amount: Number((amount * share).toFixed(2)),
-        comment: `${commentBase} · доля выручки ${pct(share * 100)} · выручка филиала ${fmt(row.revenue)} AZN`
+        comment: `${commentBase} · доля выручки ${pct(share * 100)} · выручка филиала ${fmt(row.revenue)} AZN`,
+        created_by: user.user_id,
+        updated_by: user.user_id,
+        deleted_at: null,
+        deleted_by: null
       }
     })
 
@@ -3945,14 +3949,23 @@ function Revenue({ t, focusExpense }) {
     const diff = Number((amount - distributedTotal).toFixed(2))
     if (rows.length && diff !== 0) rows[0].amount = Number((parseNum(rows[0].amount) + diff).toFixed(2))
 
-    const idsToVoid = await bazarExpenseIdsForDates([sourceExpense?.expense_date, targetDate], sourceExpense?.id)
+    const idsToDelete = await bazarExpenseIdsForDates([sourceExpense?.expense_date, targetDate], sourceExpense?.id)
+    if (idsToDelete.length) {
+      for (const expenseId of idsToDelete) {
+        const { error: deleteError } = await supabase.rpc('rms_expense_cancel_secure', {
+          p_id: expenseId,
+          p_reason: 'Автоматическая замена при перераспределении Базар'
+        })
+        if (deleteError) throw deleteError
+      }
+    }
 
-    const { data, error } = await supabase.rpc('rms_expense_replace_many_secure', {
-      p_ids_to_void: idsToVoid,
+    const { data: inserted, error: insertError } = await supabase.rpc('rms_expense_bulk_create_secure', {
       p_rows: rows
     })
-    if (error) throw error
-    return data || []
+
+    if (insertError) throw insertError
+    return inserted || []
   }
 
 
@@ -3980,6 +3993,7 @@ function Revenue({ t, focusExpense }) {
     const { revenueByBranch, totalRevenue } = await revenueDistributionForDate(targetDate)
     if (totalRevenue <= 0 || !revenueByBranch.length) return
 
+    const user = await currentUserMeta()
     const bazarCategoryId = bazarRows.find(row => row.category_id)?.category_id || null
 
     const rows = revenueByBranch.map(row => {
@@ -3990,7 +4004,11 @@ function Revenue({ t, focusExpense }) {
         category_id: bazarCategoryId,
         custom_category: bazarCategoryId ? null : 'Базар',
         amount: Number((totalBazar * share).toFixed(2)),
-        comment: `Автоперераспределение Базар · доля выручки ${pct(share * 100)} · выручка филиала ${fmt(row.revenue)} AZN`
+        comment: `Автоперераспределение Базар · доля выручки ${pct(share * 100)} · выручка филиала ${fmt(row.revenue)} AZN`,
+        created_by: user.user_id,
+        updated_by: user.user_id,
+        deleted_at: null,
+        deleted_by: null
       }
     })
 
@@ -3998,11 +4016,21 @@ function Revenue({ t, focusExpense }) {
     const diff = Number((totalBazar - distributedTotal).toFixed(2))
     if (rows.length && diff !== 0) rows[0].amount = Number((parseNum(rows[0].amount) + diff).toFixed(2))
 
-    const { error: replaceError } = await supabase.rpc('rms_expense_replace_many_secure', {
-      p_ids_to_void: bazarRows.map(row => row.id),
+    const idsToDelete = bazarRows.map(row => row.id)
+    if (idsToDelete.length) {
+      for (const expenseId of idsToDelete) {
+        const { error: deleteError } = await supabase.rpc('rms_expense_cancel_secure', {
+          p_id: expenseId,
+          p_reason: 'Автоматическая замена при перераспределении Базар'
+        })
+        if (deleteError) throw deleteError
+      }
+    }
+
+    const { error: insertError } = await supabase.rpc('rms_expense_bulk_create_secure', {
       p_rows: rows
     })
-    if (replaceError) throw replaceError
+    if (insertError) throw insertError
   }
 
   async function recalcDailyRevenueAggregate(activeBranchId = branchId, activeDate = date) {
@@ -4522,51 +4550,28 @@ function Revenue({ t, focusExpense }) {
     setMessage('Настройка service charge сохранена для выбранного филиала')
   }
 
-
-  async function createExpenseSecure(payload, selectColumns = '*, expense_categories(name)') {
-    const { data: newId, error } = await supabase.rpc('rms_expense_create_secure', {
-      p_expense_date: payload.expense_date,
-      p_branch_id: payload.branch_id,
-      p_category_id: payload.category_id || null,
-      p_custom_category: payload.custom_category || null,
-      p_amount: parseNum(payload.amount),
-      p_comment: payload.comment || null
-    })
-    if (error) throw error
-
-    if (!selectColumns) return { id: newId, ...payload }
-
-    const { data: row, error: fetchError } = await supabase
-      .from('daily_expenses')
-      .select(selectColumns)
-      .eq('id', newId)
-      .maybeSingle()
-    if (fetchError) throw fetchError
-    return row || { id: newId, ...payload }
-  }
-
   async function addExpense() {
     if (!branchId) return
     setMessage('')
+    const user = await currentUserMeta()
     const newName = t('new_expense') || 'Новая статья'
-
-    try {
-      const data = await createExpenseSecure({
-        branch_id: branchId,
-        expense_date: date,
-        category_id: null,
-        custom_category: newName,
-        amount: 0,
-        comment: null
-      })
-      setExpenses(prev => [...(prev || []), data])
-      await writeLog({ entity_type: 'expense', record_id: data.id, action: 'create', field_name: 'expense', old_value: null, new_value: newName })
-      await Promise.all([loadMonthStats(branchId, date), loadLogs(branchId, date)])
-      await load()
-      setMessage('Строка расхода добавлена')
-    } catch (error) {
-      setMessage(error?.message || 'Не удалось добавить расход')
-    }
+    const { data: createdId, error } = await supabase.rpc('rms_expense_create_secure', {
+      p_expense_date: date,
+      p_branch_id: branchId,
+      p_category_id: null,
+      p_custom_category: newName,
+      p_amount: 0,
+      p_comment: null
+    })
+    const { data } = createdId
+      ? await supabase.from('daily_expenses').select('*, expense_categories(name)').eq('id', createdId).single()
+      : { data: null }
+    if (error) return setMessage(error.message)
+    setExpenses(prev => [...(prev || []), data])
+    await writeLog({ entity_type: 'expense', record_id: data.id, action: 'create', field_name: 'expense', old_value: null, new_value: newName })
+    await Promise.all([loadMonthStats(branchId, date), loadLogs(branchId, date)])
+    await load()
+    setMessage('Строка расхода добавлена')
   }
 
   async function updateExpense(id, patch) {
@@ -4614,12 +4619,7 @@ function Revenue({ t, focusExpense }) {
     setExpenses(prev => prev.map(e => e.id === id ? nextExpense : e))
     const { error } = await supabase.rpc('rms_expense_update_secure', {
       p_id: id,
-      p_expense_date: nextExpense.expense_date || current.expense_date,
-      p_branch_id: nextExpense.branch_id || current.branch_id,
-      p_category_id: nextExpense.category_id || null,
-      p_custom_category: nextExpense.custom_category || null,
-      p_amount: parseNum(nextExpense.amount),
-      p_comment: nextExpense.comment || null
+      p_patch: patch
     })
     if (error) {
       setExpenses(prev => prev.map(e => e.id === id ? current : e))
@@ -4645,9 +4645,9 @@ function Revenue({ t, focusExpense }) {
     const user = await currentUserMeta()
     const payload = { deleted_at: new Date().toISOString(), deleted_by: user.user_id, updated_by: user.user_id }
     setExpenses(prev => prev.map(e => e.id === id ? { ...e, ...payload } : e))
-    const { error } = await supabase.rpc('rms_expense_void_secure', {
+    const { error } = await supabase.rpc('rms_expense_cancel_secure', {
       p_id: id,
-      p_reason: 'cancel_from_ui'
+      p_reason: 'Отменено из интерфейса RMS'
     })
     if (error) return setMessage(error.message)
     await writeLog({ entity_type: 'expense', record_id: id, action: 'cancel', field_name: 'expense', old_value: current.amount, new_value: '0' })
@@ -10933,6 +10933,20 @@ function Salaries({ t, view = 'employees', isAdmin = false }) {
     if (!dsmfGroups.length || !dsmfTotal) return
     const start = monthDate
     const end = monthEnd
+    const { data: existingDsmfRows } = await supabase
+      .from('daily_expenses')
+      .select('id')
+      .gte('expense_date', start)
+      .lte('expense_date', end)
+      .eq('custom_category', 'DSMF')
+      .ilike('comment', 'DSMF автоматически%')
+      .is('deleted_at', null)
+    for (const row of existingDsmfRows || []) {
+      await supabase.rpc('rms_expense_cancel_secure', {
+        p_id: row.id,
+        p_reason: 'Автоматическая замена DSMF'
+      })
+    }
 
     const payload = dsmfGroups
       .filter(g => parseNum(g.total) > 0)
@@ -10944,21 +10958,9 @@ function Salaries({ t, view = 'employees', isAdmin = false }) {
         comment: `DSMF автоматически · ${g.name} · сотрудников ${g.rows.length} · оф. дни по табелю/настройке`
       }))
     if (!payload.length) return
-
-    const { data: existingRows } = await supabase
-      .from('daily_expenses')
-      .select('id')
-      .gte('expense_date', start)
-      .lte('expense_date', end)
-      .eq('custom_category', 'DSMF')
-      .ilike('comment', 'DSMF автоматически%')
-      .is('deleted_at', null)
-
-    const { error } = await supabase.rpc('rms_expense_replace_many_secure', {
-      p_ids_to_void: (existingRows || []).map(row => row.id),
+    const { error } = await supabase.rpc('rms_expense_bulk_create_secure', {
       p_rows: payload
     })
-
     if (!error) setDsmfRows(payload.map((r, i) => ({ id: `auto-${i}`, ...r, branches: { name: dsmfGroups[i]?.name || '—' } })))
   }
 
@@ -12353,21 +12355,12 @@ function Suppliers({ t, isAdmin = false }) {
 
       const amount = parseNum(totalAmount)
 
-      const { data: existingRows } = await supabase
+      await supabase
         .from('daily_expenses')
-        .select('id')
+        .delete()
         .eq('comment', `SUPPLIER_PURCHASE_${purchase.id}`)
-        .is('deleted_at', null)
 
-      if (!amount) {
-        if ((existingRows || []).length) {
-          await supabase.rpc('rms_expense_replace_many_secure', {
-            p_ids_to_void: existingRows.map(row => row.id),
-            p_rows: []
-          })
-        }
-        return
-      }
+      if (!amount) return
 
       const { revenueByBranch, totalRevenue } = await revenueDistributionForSupplierDate(purchase.purchase_date)
       if (!totalRevenue || !revenueByBranch.length) return
@@ -12380,7 +12373,10 @@ function Suppliers({ t, isAdmin = false }) {
           category_id: null,
           custom_category: 'FoodCost / Поставщики',
           amount: Number((amount * share).toFixed(2)),
-          comment: `SUPPLIER_PURCHASE_${purchase.id} · Автоматически распределено из поступления поставщика${purchase.invoice_number ? ` · фактура ${purchase.invoice_number}` : ''} · доля выручки ${pct(share * 100)} · выручка филиала ${fmt(row.revenue)} AZN`
+          comment: `SUPPLIER_PURCHASE_${purchase.id}`,
+          note: `Автоматически распределено из поступления поставщика${purchase.invoice_number ? ` · фактура ${purchase.invoice_number}` : ''} · доля выручки ${pct(share * 100)} · выручка филиала ${fmt(row.revenue)} AZN`,
+          created_by: userId,
+          updated_by: userId
         }
       })
 
@@ -12390,8 +12386,7 @@ function Suppliers({ t, isAdmin = false }) {
         rows[0].amount = Number((parseNum(rows[0].amount) + diff).toFixed(2))
       }
 
-      const { error } = await supabase.rpc('rms_expense_replace_many_secure', {
-        p_ids_to_void: (existingRows || []).map(row => row.id),
+      const { error } = await supabase.rpc('rms_expense_bulk_create_secure', {
         p_rows: rows
       })
       if (error) console.warn('supplier food cost distribution error', error)
