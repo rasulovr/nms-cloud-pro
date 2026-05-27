@@ -1,3 +1,4 @@
+// RMS v56.1 Supplier Enterprise Hardened - Supplier writes via secure RPC only
 /* RMS v55 Supplier Secure RPC - supplier ledger foundation */
 /* RMS v43 SUPPLIERS FINAL CLEAN SINGLE E-QAIME FORM - no payment term fields inside purchase e-qaime block */
 import React, { useEffect, useMemo, useRef, useState } from 'react'
@@ -13285,6 +13286,29 @@ function Suppliers({ t, isAdmin = false }) {
     await load(); setMessage(t('saved'))
   }
 
+  async function callSupplierRpc(name, args, okMessage = t('saved'), messageSetter = setMessage) {
+    const { data, error } = await supabase.rpc(name, args)
+    if (error) {
+      const msg = error.message || 'Supplier secure RPC error'
+      messageSetter(msg)
+      throw error
+    }
+    await load()
+    messageSetter(okMessage)
+    return data
+  }
+
+  function normalizeSupplierPurchaseItems(rows = []) {
+    return rows
+      .filter(row => row?.product_id && parseNum(row.quantity) > 0 && parseNum(row.unit_price) > 0)
+      .map(row => ({
+        product_id: row.product_id,
+        quantity: parseNum(row.quantity),
+        unit: row.unit || 'kg',
+        unit_price: parseNum(row.unit_price)
+      }))
+  }
+
   async function addPurchase() {
     setMessage('')
     try {
@@ -13294,24 +13318,18 @@ function Suppliers({ t, isAdmin = false }) {
       if (amountOnly) {
         const manualAmount = parseNum(purchaseForm.manual_amount)
         if (!manualAmount) throw new Error('Введите сумму поставки')
-        const { data: purchase, error } = await supabase.from('supplier_purchases').insert({
-          supplier_id: purchaseForm.supplier_id,
-          legal_entity_id: purchaseForm.legal_entity_id,
-          branch_id: purchaseForm.branch_id || null,
-          purchase_date: purchaseForm.purchase_date,
-          invoice_number: purchaseForm.invoice_number.trim() || null,
-          comment: supplierCommentWithMeta(purchaseForm.comment?.trim() || 'Поступление введено общей суммой без детализации товаров', { eInvoiceNumber: purchaseForm.e_invoice_number, eInvoiceDate: purchaseForm.e_invoice_date, eInvoiceAmount: purchaseForm.e_invoice_amount }),
-          total_amount: manualAmount
-        }).select('*').single()
-        if (error) throw error
-
-        const { data: authData } = await supabase.auth.getUser()
-        await syncSupplierPurchaseFoodCost(purchase, manualAmount, authData?.user?.id || null)
-
-        await load()
+        await callSupplierRpc('rms_supplier_purchase_create_secure', {
+          p_supplier_id: purchaseForm.supplier_id,
+          p_legal_entity_id: purchaseForm.legal_entity_id,
+          p_branch_id: purchaseForm.branch_id || null,
+          p_purchase_date: purchaseForm.purchase_date || todayISO(),
+          p_invoice_number: purchaseForm.invoice_number.trim() || null,
+          p_comment: supplierCommentWithMeta(purchaseForm.comment?.trim() || 'Поступление введено общей суммой без детализации товаров', { eInvoiceNumber: purchaseForm.e_invoice_number, eInvoiceDate: purchaseForm.e_invoice_date, eInvoiceAmount: purchaseForm.e_invoice_amount }),
+          p_items: [],
+          p_manual_amount: manualAmount
+        })
         setLineRows([{ ...emptyLine }])
         setPurchaseForm(f => ({ ...f, invoice_number: '', e_invoice_number: '', e_invoice_date: '', e_invoice_amount: '', comment: '', manual_amount: '' }))
-        setMessage(t('saved'))
         return
       }
 
@@ -13322,116 +13340,96 @@ function Suppliers({ t, isAdmin = false }) {
         const product = await ensureProduct(row)
         const quantity = parseNum(row.quantity)
         const unitPrice = parseNum(row.unit_price)
-        const total = quantity * unitPrice
         const baseQty = convertToBase(quantity, row.unit, product?.base_unit)
         if (!product?.id || !quantity || !unitPrice || !baseQty) throw new Error('Проверьте товар, количество, единицу и цену')
-        prepared.push({ row, product, quantity, unitPrice, total, baseQty })
+        prepared.push({ product_id: product.id, quantity, unit: row.unit || 'kg', unit_price: unitPrice })
       }
       if (!prepared.length) throw new Error('Добавьте хотя бы один товар в поступление или включите режим ввода общей суммы')
-      const totalAmount = prepared.reduce((s, r) => s + r.total, 0)
-      const { data: purchase, error } = await supabase.from('supplier_purchases').insert({
-        supplier_id: purchaseForm.supplier_id, legal_entity_id: purchaseForm.legal_entity_id,
-        branch_id: purchaseForm.branch_id || null, purchase_date: purchaseForm.purchase_date,
-        invoice_number: purchaseForm.invoice_number.trim() || null, comment: supplierCommentWithMeta(purchaseForm.comment.trim() || null, { eInvoiceNumber: purchaseForm.e_invoice_number, eInvoiceDate: purchaseForm.e_invoice_date, eInvoiceAmount: purchaseForm.e_invoice_amount }),
-        total_amount: totalAmount
-      }).select('*').single()
-      if (error) throw error
-      const items = prepared.map(({ row, product, quantity, unitPrice, total, baseQty }) => ({
-        purchase_id: purchase.id, product_id: product.id, quantity, unit: row.unit,
-        unit_price: unitPrice, total_amount: total, base_quantity: baseQty,
-        base_unit: product?.base_unit || 'g', price_per_base_unit: total / baseQty
-      }))
-      const { error: itemError } = Promise.all((items || []).map(row => supabase.rpc('rms_supplier_purchase_item_create_secure', {
-      p_purchase_id: row.purchase_id,
-      p_product_id: row.product_id,
-      p_quantity: row.quantity,
-      p_unit: row.unit,
-      p_unit_price: row.unit_price,
-      p_total_amount: row.total_amount,
-      p_base_quantity: row.base_quantity || null,
-      p_base_unit: row.base_unit || null,
-      p_price_per_base_unit: row.price_per_base_unit || null
-    })))
-      if (itemError) throw itemError
 
-      const { data: authData } = await supabase.auth.getUser()
-      await syncSupplierPurchaseFoodCost(purchase, totalAmount, authData?.user?.id || null)
-
-      await load(); setLineRows([{ ...emptyLine }]); setPurchaseForm(f => ({ ...f, invoice_number: '', e_invoice_number: '', e_invoice_date: '', e_invoice_amount: '', comment: '', manual_amount: '' })); setMessage(t('saved'))
+      await callSupplierRpc('rms_supplier_purchase_create_secure', {
+        p_supplier_id: purchaseForm.supplier_id,
+        p_legal_entity_id: purchaseForm.legal_entity_id,
+        p_branch_id: purchaseForm.branch_id || null,
+        p_purchase_date: purchaseForm.purchase_date || todayISO(),
+        p_invoice_number: purchaseForm.invoice_number.trim() || null,
+        p_comment: supplierCommentWithMeta(purchaseForm.comment.trim() || null, { eInvoiceNumber: purchaseForm.e_invoice_number, eInvoiceDate: purchaseForm.e_invoice_date, eInvoiceAmount: purchaseForm.e_invoice_amount }),
+        p_items: prepared,
+        p_manual_amount: null
+      })
+      setLineRows([{ ...emptyLine }])
+      setPurchaseForm(f => ({ ...f, invoice_number: '', e_invoice_number: '', e_invoice_date: '', e_invoice_amount: '', comment: '', manual_amount: '' }))
     } catch (e) { setMessage(e.message) }
   }
+
   async function recalcPurchaseTotal(purchaseId) {
-    const { data } = await supabase.from('supplier_purchase_items').select('total_amount').eq('purchase_id', purchaseId)
-    const total = (data || []).reduce((s, i) => s + parseNum(i.total_amount), 0)
-    await supabase.from('supplier_purchases').update({ total_amount: total }).eq('id', purchaseId)
-
-    const { data: purchase } = await supabase.from('supplier_purchases').select('*').eq('id', purchaseId).single()
-    const { data: authData } = await supabase.auth.getUser()
-    if (purchase && !purchase.deleted_at) {
-      await syncSupplierPurchaseFoodCost(purchase, total, authData?.user?.id || null)
-    }
+    const current = purchases.find(p => p.id === purchaseId)
+    if (!current) return 0
+    const items = normalizeSupplierPurchaseItems(current.supplier_purchase_items || [])
+    if (!items.length) return parseNum(current.total_amount)
+    await callSupplierRpc('rms_supplier_purchase_update_secure', {
+      p_purchase_id: purchaseId,
+      p_supplier_id: current.supplier_id,
+      p_legal_entity_id: current.legal_entity_id || null,
+      p_branch_id: current.branch_id || null,
+      p_purchase_date: current.purchase_date,
+      p_invoice_number: current.invoice_number || null,
+      p_comment: current.comment || null,
+      p_items: items,
+      p_manual_amount: null
+    })
+    return items.reduce((sum, item) => sum + parseNum(item.quantity) * parseNum(item.unit_price), 0)
   }
+
   async function updatePurchase(id, patch) {
-    const { data: authData } = await supabase.auth.getUser()
-    const payload = { ...patch, updated_at: new Date().toISOString(), updated_by: authData?.user?.id || null }
-    const { error } = await supabase.from('supplier_purchases').update(payload).eq('id', id)
-    if (error) setMessage(error.message); else {
-      const { data: purchase } = await supabase.from('supplier_purchases').select('*').eq('id', id).single()
-      if (purchase && !purchase.deleted_at) await syncSupplierPurchaseFoodCost(purchase, purchase.total_amount, authData?.user?.id || null)
-      await load(); setMessage(t('saved'))
-    }
-  }
-  async function updatePurchaseItem(purchaseId, item, patch) {
-    const next = { ...item, ...patch }
-    const product = products.find(p => p.id === next.product_id) || item.supplier_products
-    const quantity = parseNum(next.quantity)
-    const unitPrice = parseNum(next.unit_price)
-    const total = quantity * unitPrice
-    const baseQty = convertToBase(quantity, next.unit, product?.base_unit || next.base_unit)
-    const payload = { ...patch, total_amount: total, base_quantity: baseQty, base_unit: product?.base_unit || next.base_unit || 'g', price_per_base_unit: baseQty ? total / baseQty : 0 }
-    const { error } = await supabase.from('supplier_purchase_items').update(payload).eq('id', item.id)
-    if (error) return setMessage(error.message)
-
+    const current = purchases.find(p => p.id === id)
+    if (!current) return setMessage('Поступление не найдено')
     try {
-      const purchase = purchases.find(p => p.id === purchaseId) || {}
-      const { data: authData } = await supabase.auth.getUser()
-      const oldProductName = item.supplier_products?.name || products.find(p => p.id === item.product_id)?.name || '—'
-      const newProductName = product?.name || oldProductName
-      await supabase.from('supplier_transaction_logs').insert({
-        transaction_type: 'purchase_item',
-        transaction_id: item.id,
-        supplier_id: purchase.supplier_id || null,
-        legal_entity_id: purchase.legal_entity_id || null,
-        action: 'Редактирование товара в поступлении',
-        old_value: `${oldProductName} · ${fmt(item.quantity)} ${item.unit || ''} · ${fmt(item.unit_price)} AZN · ${fmt(item.total_amount)} AZN`,
-        new_value: `${newProductName} · ${fmt(quantity)} ${next.unit || ''} · ${fmt(unitPrice)} AZN · ${fmt(total)} AZN`,
-        old_data: item,
-        new_data: { ...next, total_amount: total, base_quantity: baseQty, base_unit: product?.base_unit || next.base_unit || 'g' },
-        user_id: authData?.user?.id || null,
-        user_email: authData?.user?.email || null
+      await callSupplierRpc('rms_supplier_purchase_update_secure', {
+        p_purchase_id: id,
+        p_supplier_id: patch.supplier_id ?? current.supplier_id,
+        p_legal_entity_id: patch.legal_entity_id ?? current.legal_entity_id ?? null,
+        p_branch_id: patch.branch_id ?? current.branch_id ?? null,
+        p_purchase_date: patch.purchase_date ?? current.purchase_date,
+        p_invoice_number: patch.invoice_number ?? current.invoice_number ?? null,
+        p_comment: patch.comment ?? current.comment ?? null,
+        p_items: null,
+        p_manual_amount: null
       })
-    } catch (e) {
-      console.warn('supplier purchase item log skipped', e)
-    }
-
-    await recalcPurchaseTotal(purchaseId); await load(); setMessage(t('saved'))
+    } catch (e) { setMessage(e.message) }
   }
+
+  async function updatePurchaseItem(purchaseId, item, patch) {
+    const current = purchases.find(p => p.id === purchaseId)
+    if (!current) return setMessage('Поступление не найдено')
+    const nextRows = (current.supplier_purchase_items || []).map(row => row.id === item.id ? { ...row, ...patch } : row)
+    const items = normalizeSupplierPurchaseItems(nextRows)
+    if (!items.length) return setMessage('В накладной должен остаться хотя бы один товар')
+    try {
+      await callSupplierRpc('rms_supplier_purchase_update_secure', {
+        p_purchase_id: purchaseId,
+        p_supplier_id: current.supplier_id,
+        p_legal_entity_id: current.legal_entity_id || null,
+        p_branch_id: current.branch_id || null,
+        p_purchase_date: current.purchase_date,
+        p_invoice_number: current.invoice_number || null,
+        p_comment: current.comment || null,
+        p_items: items,
+        p_manual_amount: null
+      })
+    } catch (e) { setMessage(e.message) }
+  }
+
 
   async function softDeletePurchase(id) {
     if (!window.confirm('Удалить поступление? Оно будет зачёркнуто и не будет учитываться в финансах.')) return
-    const { data: authData } = await supabase.auth.getUser()
-    const { error } = await supabase.from('supplier_purchases').update({
-      deleted_at: new Date().toISOString(),
-      deleted_by: authData?.user?.id || null
-    }).eq('id', id)
-
-    await supabase
-      .from('daily_expenses')
-      .delete()
-      .eq('comment', `SUPPLIER_PURCHASE_${id}`)
-
-    if (error) setMessage(error.message); else { await load(); setMessage(t('saved')) }
+    try {
+      await callSupplierRpc('rms_supplier_purchase_cancel_secure', {
+        p_purchase_id: id,
+        p_reason: 'Cancelled from RMS UI'
+      })
+    } catch (e) { setMessage(e.message) }
   }
+
   function startPayment(supplierId, legalEntityId = '') { setPaymentForm({ supplier_id: supplierId, legal_entity_id: legalEntityId || legalEntities[0]?.id || '', payment_date: todayISO(), amount: '', invoice_notes: '', comment: '' }) }
   async function addOpeningDebt() {
     setMessage('')
@@ -13467,40 +13465,44 @@ function Suppliers({ t, isAdmin = false }) {
     if (!paymentForm.legal_entity_id) return setPaymentMessage('Выберите наш VOEN / юрлицо для оплаты')
     const selectedIds = paymentForm.selected_e_invoice_ids || []
     const selectedRealInvoices = supplierEInvoiceOptions.filter(inv => selectedIds.includes(inv.e_invoice_id || inv.number) && inv.e_invoice_id)
-    const selectedLegacyInvoices = supplierEInvoiceOptions.filter(inv => selectedIds.includes(inv.e_invoice_id || inv.number) && !inv.e_invoice_id)
 
-    if (selectedRealInvoices.length > 1) {
-      for (const inv of selectedRealInvoices) {
-        const payAmount = parseNum(inv.amount)
-        const { error } = await supabase.from('supplier_payments').insert({
-          supplier_id: inv.supplier_id,
-          legal_entity_id: inv.legal_entity_id || null,
-          payment_date: paymentForm.payment_date || todayISO(),
-          amount: payAmount,
-          invoice_notes: inv.number || null,
-          comment: paymentForm.comment.trim() || null,
-          e_invoice_id: inv.e_invoice_id
-        })
-        if (error) return setPaymentMessage(error.message)
-        const dbInv = eInvoices.find(row => row.id === inv.e_invoice_id)
-        await supabase.from('supplier_e_invoices').update({ paid_amount: parseNum(dbInv?.paid_amount) + payAmount, updated_at: new Date().toISOString() }).eq('id', inv.e_invoice_id)
+    try {
+      if (selectedRealInvoices.length > 1) {
+        for (const inv of selectedRealInvoices) {
+          const payAmount = parseNum(inv.amount)
+          await callSupplierRpc('rms_supplier_payment_create_secure', {
+            p_supplier_id: inv.supplier_id,
+            p_legal_entity_id: inv.legal_entity_id || paymentForm.legal_entity_id || null,
+            p_payment_date: paymentForm.payment_date || todayISO(),
+            p_amount: payAmount,
+            p_invoice_notes: inv.number || null,
+            p_comment: paymentForm.comment.trim() || null,
+            p_e_invoice_id: inv.e_invoice_id
+          }, t('saved'), setPaymentMessage)
+          const dbInv = eInvoices.find(row => row.id === inv.e_invoice_id)
+          await supabase.from('supplier_e_invoices').update({ paid_amount: parseNum(dbInv?.paid_amount) + payAmount, updated_at: new Date().toISOString() }).eq('id', inv.e_invoice_id)
+        }
+      } else {
+        const updateInvoiceId = paymentForm.e_invoice_id || selectedRealInvoices[0]?.e_invoice_id || null
+        await callSupplierRpc('rms_supplier_payment_create_secure', {
+          p_supplier_id: paymentForm.supplier_id,
+          p_legal_entity_id: paymentForm.legal_entity_id || null,
+          p_payment_date: paymentForm.payment_date || todayISO(),
+          p_amount: amount,
+          p_invoice_notes: paymentForm.invoice_notes.trim() || null,
+          p_comment: paymentForm.comment.trim() || null,
+          p_e_invoice_id: updateInvoiceId
+        }, t('saved'), setPaymentMessage)
+        if (updateInvoiceId) {
+          const inv = eInvoices.find(row => row.id === updateInvoiceId)
+          await supabase.from('supplier_e_invoices').update({ paid_amount: parseNum(inv?.paid_amount) + amount, updated_at: new Date().toISOString() }).eq('id', updateInvoiceId)
+        }
       }
-    } else {
-      const { error } = await supabase.from('supplier_payments').insert({
-        supplier_id: paymentForm.supplier_id, legal_entity_id: paymentForm.legal_entity_id || null, payment_date: paymentForm.payment_date || todayISO(), amount,
-        invoice_notes: paymentForm.invoice_notes.trim() || null, comment: paymentForm.comment.trim() || null,
-        e_invoice_id: paymentForm.e_invoice_id || selectedRealInvoices[0]?.e_invoice_id || null
-      })
-      if (error) return setPaymentMessage(error.message)
-      const updateInvoiceId = paymentForm.e_invoice_id || selectedRealInvoices[0]?.e_invoice_id
-      if (updateInvoiceId) {
-        const inv = eInvoices.find(row => row.id === updateInvoiceId)
-        await supabase.from('supplier_e_invoices').update({ paid_amount: parseNum(inv?.paid_amount) + amount, updated_at: new Date().toISOString() }).eq('id', updateInvoiceId)
-      }
-    }
-    setPaymentForm({ supplier_id: '', legal_entity_id: legalEntities[0]?.id || '', payment_date: todayISO(), amount: '', invoice_notes: '', comment: '', e_invoice_id: '', selected_e_invoice_ids: [] })
-    await load(); setPaymentMessage(t('saved'))
+      setPaymentForm({ supplier_id: '', legal_entity_id: legalEntities[0]?.id || '', payment_date: todayISO(), amount: '', invoice_notes: '', comment: '', e_invoice_id: '', selected_e_invoice_ids: [] })
+      await load(); setPaymentMessage(t('saved'))
+    } catch (e) { setPaymentMessage(e.message) }
   }
+
 
   const purchaseTotal = purchaseForm.amount_only ? parseNum(purchaseForm.manual_amount) : lineRows.reduce((s, r) => s + lineTotal(r), 0)
   function allTransactions() {
@@ -14616,107 +14618,41 @@ function DebtsPayments({ t }) {
   async function savePurchaseTransactionEdit(row) {
     try {
       if (!purchaseTransactionEditItems.length) return setMessage('В накладной нет товаров')
-      const normalizedItems = purchaseTransactionEditItems.map(item => {
-        const product = getPurchaseEditProduct(item)
-        const quantity = parseNum(item.quantity)
-        const unitPrice = parseNum(item.unit_price)
-        const total = quantity * unitPrice
-        const baseQty = convertToBase(quantity, item.unit, product?.base_unit || item.base_unit)
-        return {
-          ...item,
-          product,
-          quantity,
-          unit_price: unitPrice,
-          total_amount: total,
-          base_quantity: baseQty,
-          base_unit: product?.base_unit || item.base_unit || 'g',
-          price_per_base_unit: baseQty ? total / baseQty : 0
-        }
-      })
-
-      const totalAmount = normalizedItems.reduce((sum, item) => sum + parseNum(item.total_amount), 0)
+      const items = normalizeSupplierPurchaseItems(purchaseTransactionEditItems)
+      if (!items.length) return setMessage('В накладной нет товаров или сумма равна 0')
+      const totalAmount = items.reduce((sum, item) => sum + parseNum(item.quantity) * parseNum(item.unit_price), 0)
       if (!totalAmount) return setMessage('В накладной нет товаров или сумма равна 0')
 
-      const { data: authData } = await supabase.auth.getUser()
-      const purchase = purchases.find(purchaseRow => purchaseRow.id === row.id) || row || {}
-
-      for (const item of normalizedItems) {
-        const oldItem = (row.supplier_purchase_items || []).find(oldRow => oldRow.id === item.id) || item
-        const oldProductName = oldItem.supplier_products?.name || products.find(prod => prod.id === oldItem.product_id)?.name || '—'
-        const newProductName = item.product?.name || oldProductName
-        const changed =
-          String(oldItem.product_id || '') !== String(item.product_id || '') ||
-          parseNum(oldItem.quantity) !== parseNum(item.quantity) ||
-          String(oldItem.unit || '') !== String(item.unit || '') ||
-          parseNum(oldItem.unit_price) !== parseNum(item.unit_price)
-
-        const payload = {
-          product_id: item.product_id || null,
-          quantity: item.quantity,
-          unit: item.unit,
-          unit_price: item.unit_price,
-          total_amount: item.total_amount,
-          base_quantity: item.base_quantity,
-          base_unit: item.base_unit,
-          price_per_base_unit: item.price_per_base_unit,
-          updated_at: new Date().toISOString()
-        }
-
-        const { error: itemError } = await supabase
-          .from('supplier_purchase_items')
-          .update(payload)
-          .eq('id', item.id)
-        if (itemError) throw itemError
-
-        if (changed) {
-          try {
-            await supabase.from('supplier_transaction_logs').insert({
-              transaction_type: 'purchase_item',
-              transaction_id: item.id,
-              supplier_id: purchase.supplier_id || null,
-              legal_entity_id: purchase.legal_entity_id || null,
-              action: 'Редактирование товара в поступлении',
-              old_value: `${oldProductName} · ${fmt(oldItem.quantity)} ${oldItem.unit || ''} · ${fmt(oldItem.unit_price)} AZN · ${fmt(oldItem.total_amount)} AZN`,
-              new_value: `${newProductName} · ${fmt(item.quantity)} ${item.unit || ''} · ${fmt(item.unit_price)} AZN · ${fmt(item.total_amount)} AZN`,
-              old_data: oldItem,
-              new_data: payload,
-              user_id: authData?.user?.id || null,
-              user_email: authData?.user?.email || null
-            })
-          } catch (logError) {
-            console.warn('supplier purchase item transaction log skipped', logError)
-          }
-        }
-      }
-
-      const { data, error } = await supabase.rpc('rms_update_supplier_purchase_transaction', {
-        p_id: row.id,
+      await callSupplierRpc('rms_supplier_purchase_update_secure', {
+        p_purchase_id: row.id,
+        p_supplier_id: row.supplier_id,
+        p_legal_entity_id: row.legal_entity_id || null,
+        p_branch_id: purchaseTransactionEditForm.branch_id || null,
         p_purchase_date: purchaseTransactionEditForm.purchase_date || todayISO(),
         p_invoice_number: purchaseTransactionEditForm.invoice_number || null,
-        p_branch_id: purchaseTransactionEditForm.branch_id || null,
-        p_total_amount: totalAmount,
-        p_comment: purchaseTransactionEditForm.comment || null
-      })
-      if (error) return setMessage(error.message)
-      if (data?.ok === false) return setMessage(data.error || 'Ошибка редактирования поступления')
+        p_comment: purchaseTransactionEditForm.comment || null,
+        p_items: items,
+        p_manual_amount: null
+      }, 'Поступление обновлено')
 
       setEditingPurchaseTransactionId('')
       setPurchaseTransactionEditItems([])
-      await load()
-      setMessage('Поступление обновлено')
     } catch (e) {
       setMessage(e.message || 'Не удалось сохранить изменения поступления')
     }
   }
 
+
   async function softDeletePurchaseTransaction(row) {
     if (!window.confirm('Удалить поступление? Оно будет зачёркнуто и исключено из баланса, но останется в журнале изменений.')) return
-    const { data, error } = await supabase.rpc('rms_soft_delete_supplier_purchase_transaction', { p_id: row.id })
-    if (error) return setMessage(error.message)
-    if (data?.ok === false) return setMessage(data.error || 'Ошибка удаления поступления')
-    await load()
-    setMessage('Поступление отключено')
+    try {
+      await callSupplierRpc('rms_supplier_purchase_cancel_secure', {
+        p_purchase_id: row.id,
+        p_reason: 'Cancelled from supplier debt ledger'
+      }, 'Поступление отключено')
+    } catch (e) { setMessage(e.message || 'Ошибка удаления поступления') }
   }
+
 
   function startEditSupplierPayment(row) {
     if (!row) return
@@ -14740,150 +14676,81 @@ function DebtsPayments({ t }) {
       if (!amount) return setMessage('Введите сумму оплаты')
       if (!paymentTransactionEditForm.legal_entity_id) return setMessage('Выберите физ. лицо / VOEN')
 
-      const payload = {
-        payment_date: paymentTransactionEditForm.payment_date || todayISO(),
-        legal_entity_id: paymentTransactionEditForm.legal_entity_id || null,
-        amount,
-        invoice_notes: paymentTransactionEditForm.invoice_notes?.trim() || null,
-        comment: paymentTransactionEditForm.comment?.trim() || null
-      }
-
-      const { error } = await supabase
-        .from('supplier_payments')
-        .update(payload)
-        .eq('id', row.id)
-      if (error) throw error
-
-      try {
-        const { data: authData } = await supabase.auth.getUser()
-        await supabase.from('supplier_transaction_logs').insert({
-          transaction_type: 'payment',
-          transaction_id: row.id,
-          supplier_id: row.supplier_id || null,
-          legal_entity_id: payload.legal_entity_id || null,
-          action: 'Редактирование оплаты поставщику',
-          old_value: `${row.payment_date || '—'} · ${fmt(row.amount)} AZN · ${row.invoice_notes || '—'}`,
-          new_value: `${payload.payment_date || '—'} · ${fmt(payload.amount)} AZN · ${payload.invoice_notes || '—'}`,
-          old_data: row,
-          new_data: payload,
-          user_id: authData?.user?.id || null,
-          user_email: authData?.user?.email || null
-        })
-      } catch (logError) {
-        console.warn('supplier payment transaction log skipped', logError)
-      }
+      await callSupplierRpc('rms_supplier_payment_update_secure', {
+        p_payment_id: row.id,
+        p_supplier_id: row.supplier_id,
+        p_legal_entity_id: paymentTransactionEditForm.legal_entity_id || null,
+        p_payment_date: paymentTransactionEditForm.payment_date || todayISO(),
+        p_amount: amount,
+        p_invoice_notes: paymentTransactionEditForm.invoice_notes?.trim() || null,
+        p_comment: paymentTransactionEditForm.comment?.trim() || null,
+        p_e_invoice_id: row.e_invoice_id || null
+      }, 'Оплата поставщику обновлена')
 
       setEditingPaymentTransactionId('')
-      await load()
-      setMessage('Оплата поставщику обновлена')
     } catch (e) {
       setMessage(e.message || 'Не удалось сохранить оплату')
     }
   }
 
+
   async function deleteSupplierPayment(row) {
     if (!window.confirm('Удалить оплату поставщику? Сумма снова вернётся в долг поставщика.')) return
     try {
-      const { error } = await supabase
-        .from('supplier_payments')
-        .delete()
-        .eq('id', row.id)
-      if (error) throw error
-
-      try {
-        const { data: authData } = await supabase.auth.getUser()
-        await supabase.from('supplier_transaction_logs').insert({
-          transaction_type: 'payment',
-          transaction_id: row.id,
-          supplier_id: row.supplier_id || null,
-          legal_entity_id: row.legal_entity_id || null,
-          action: 'Удаление оплаты поставщику',
-          old_value: `${row.payment_date || '—'} · ${fmt(row.amount)} AZN · ${row.invoice_notes || '—'}`,
-          new_value: 'Удалено',
-          old_data: row,
-          new_data: null,
-          user_id: authData?.user?.id || null,
-          user_email: authData?.user?.email || null
-        })
-      } catch (logError) {
-        console.warn('supplier payment delete log skipped', logError)
-      }
-
+      await callSupplierRpc('rms_supplier_payment_cancel_secure', {
+        p_payment_id: row.id,
+        p_reason: 'Cancelled from supplier debt ledger'
+      }, 'Оплата поставщику удалена')
       setEditingPaymentTransactionId('')
-      await load()
-      setMessage('Оплата поставщику удалена')
     } catch (e) {
       setMessage(e.message || 'Не удалось удалить оплату')
     }
   }
 
+
   async function recalcPurchaseTransactionTotal(purchaseId) {
-    const { data, error } = await supabase
-      .from('supplier_purchase_items')
-      .select('total_amount')
-      .eq('purchase_id', purchaseId)
-    if (error) throw error
-    const total = (data || []).reduce((s, i) => s + parseNum(i.total_amount), 0)
-    const { error: updateError } = await supabase
-      .from('supplier_purchases')
-      .update({ total_amount: total, updated_at: new Date().toISOString() })
-      .eq('id', purchaseId)
-    if (updateError) throw updateError
-    return total
+    const current = purchases.find(p => p.id === purchaseId)
+    if (!current) return 0
+    const items = normalizeSupplierPurchaseItems(current.supplier_purchase_items || [])
+    if (!items.length) return parseNum(current.total_amount)
+    await callSupplierRpc('rms_supplier_purchase_update_secure', {
+      p_purchase_id: purchaseId,
+      p_supplier_id: current.supplier_id,
+      p_legal_entity_id: current.legal_entity_id || null,
+      p_branch_id: current.branch_id || null,
+      p_purchase_date: current.purchase_date,
+      p_invoice_number: current.invoice_number || null,
+      p_comment: current.comment || null,
+      p_items: items,
+      p_manual_amount: null
+    })
+    return items.reduce((sum, item) => sum + parseNum(item.quantity) * parseNum(item.unit_price), 0)
   }
+
 
   async function updatePurchaseTransactionItem(purchaseId, item, patch) {
     try {
-      const next = { ...item, ...patch }
-      const product = products.find(p => p.id === next.product_id) || item.supplier_products || {}
-      const quantity = parseNum(next.quantity)
-      const unitPrice = parseNum(next.unit_price)
-      const total = quantity * unitPrice
-      const baseQty = convertToBase(quantity, next.unit, product?.base_unit || next.base_unit)
-      const payload = {
-        ...patch,
-        total_amount: total,
-        base_quantity: baseQty,
-        base_unit: product?.base_unit || next.base_unit || 'g',
-        price_per_base_unit: baseQty ? total / baseQty : 0,
-        updated_at: new Date().toISOString()
-      }
-
-      const { error } = await supabase
-        .from('supplier_purchase_items')
-        .update(payload)
-        .eq('id', item.id)
-      if (error) throw error
-
-      try {
-        const purchase = purchases.find(p => p.id === purchaseId) || {}
-        const { data: authData } = await supabase.auth.getUser()
-        const oldProductName = item.supplier_products?.name || products.find(p => p.id === item.product_id)?.name || '—'
-        const newProductName = product?.name || oldProductName
-        await supabase.from('supplier_transaction_logs').insert({
-          transaction_type: 'purchase_item',
-          transaction_id: item.id,
-          supplier_id: purchase.supplier_id || null,
-          legal_entity_id: purchase.legal_entity_id || null,
-          action: 'Редактирование товара в поступлении',
-          old_value: `${oldProductName} · ${fmt(item.quantity)} ${item.unit || ''} · ${fmt(item.unit_price)} AZN · ${fmt(item.total_amount)} AZN`,
-          new_value: `${newProductName} · ${fmt(quantity)} ${next.unit || ''} · ${fmt(unitPrice)} AZN · ${fmt(total)} AZN`,
-          old_data: item,
-          new_data: { ...next, total_amount: total, base_quantity: baseQty, base_unit: product?.base_unit || next.base_unit || 'g' },
-          user_id: authData?.user?.id || null,
-          user_email: authData?.user?.email || null
-        })
-      } catch (logError) {
-        console.warn('supplier purchase item transaction log skipped', logError)
-      }
-
-      await recalcPurchaseTransactionTotal(purchaseId)
-      await load()
-      setMessage('Товар в накладной обновлён')
+      const current = purchases.find(p => p.id === purchaseId)
+      if (!current) return setMessage('Поступление не найдено')
+      const nextRows = (current.supplier_purchase_items || []).map(row => row.id === item.id ? { ...row, ...patch } : row)
+      const items = normalizeSupplierPurchaseItems(nextRows)
+      if (!items.length) return setMessage('В накладной должен остаться хотя бы один товар')
+      await callSupplierRpc('rms_supplier_purchase_update_secure', {
+        p_purchase_id: purchaseId,
+        p_supplier_id: current.supplier_id,
+        p_legal_entity_id: current.legal_entity_id || null,
+        p_branch_id: current.branch_id || null,
+        p_purchase_date: current.purchase_date,
+        p_invoice_number: current.invoice_number || null,
+        p_comment: current.comment || null,
+        p_items: items,
+        p_manual_amount: null
+      }, 'Товар в накладной обновлён')
     } catch (e) {
       setMessage(e.message || 'Не удалось обновить товар в накладной')
     }
   }
+
   const activeSupplier = suppliers.find(s => s.id === activeSupplierId)
   const filteredPurchases = purchases.filter(p => (!activeSupplierId || p.supplier_id === activeSupplierId) && (!activeLegalEntityId || p.legal_entity_id === activeLegalEntityId) && isSupplierActiveForLegal(p.supplier_id, p.legal_entity_id) && periodOk(p.purchase_date))
   const filteredOpeningDebts = openingDebts.filter(d => (!activeSupplierId || d.supplier_id === activeSupplierId) && (!activeLegalEntityId || d.legal_entity_id === activeLegalEntityId) && isSupplierActiveForLegal(d.supplier_id, d.legal_entity_id) && periodOk(d.debt_date))
