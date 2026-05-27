@@ -1468,6 +1468,8 @@ function SecurityRecoveryCenter() {
   const [message, setMessage] = useState('')
   const [preview, setPreview] = useState(null)
   const [previewLoading, setPreviewLoading] = useState(false)
+  const [compareResult, setCompareResult] = useState(null)
+  const [compareLoading, setCompareLoading] = useState(false)
 
   const loadSnapshots = async () => {
     setLoading(true)
@@ -1497,6 +1499,22 @@ function SecurityRecoveryCenter() {
       setPreviewLoading(false)
     }
   }
+
+  const compareSnapshot = async (id) => {
+    setCompareLoading(true)
+    try {
+      const { data, error } = await supabase.rpc('rms_compare_snapshot_with_current', {
+        p_snapshot_id: id
+      })
+      if (error) throw error
+      setCompareResult(data || null)
+    } catch (e) {
+      alert(e?.message || 'Compare error')
+    } finally {
+      setCompareLoading(false)
+    }
+  }
+
 
   const createSnapshot = async () => {
     setLoading(true)
@@ -1565,9 +1583,15 @@ function SecurityRecoveryCenter() {
                   <td>{s.ledger_rows}</td>
                   <td>{s.event_rows}</td>
                   <td>
-                    <button className="small" onClick={() => previewSnapshot(s.id)}>
-                      Preview
-                    </button>
+                    <div style={{display:'flex',gap:8}}>
+                      <button className="small" onClick={() => previewSnapshot(s.id)}>
+                        Preview
+                      </button>
+
+                      <button className="small" onClick={() => compareSnapshot(s.id)}>
+                        Compare
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -1581,7 +1605,66 @@ function SecurityRecoveryCenter() {
         </div>
       </section>
 
-      {preview && (
+      
+      {compareResult && (
+        <section className="card span-2">
+          <div className="card-head">
+            <div>
+              <h3>Snapshot Compare Result</h3>
+              <p className="hint">
+                Current database vs selected snapshot.
+              </p>
+            </div>
+          </div>
+
+          {compareLoading && <p className="hint">Comparing...</p>}
+
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Entity</th>
+                  <th>Snapshot Rows</th>
+                  <th>Current Rows</th>
+                  <th>Missing From Current</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>daily_revenue</td>
+                  <td>{compareResult.daily_revenue?.snapshot_rows}</td>
+                  <td>{compareResult.daily_revenue?.current_rows}</td>
+                  <td>{(compareResult.daily_revenue?.missing_from_current || []).length}</td>
+                </tr>
+
+                <tr>
+                  <td>daily_expenses</td>
+                  <td>{compareResult.daily_expenses?.snapshot_rows}</td>
+                  <td>{compareResult.daily_expenses?.current_rows}</td>
+                  <td>{(compareResult.daily_expenses?.missing_from_current || []).length}</td>
+                </tr>
+
+                <tr>
+                  <td>finance_ledger</td>
+                  <td>{compareResult.finance_ledger?.snapshot_rows}</td>
+                  <td>{compareResult.finance_ledger?.current_rows}</td>
+                  <td>{(compareResult.finance_ledger?.missing_from_current || []).length}</td>
+                </tr>
+
+                <tr>
+                  <td>erp_events</td>
+                  <td>{compareResult.erp_events?.snapshot_rows}</td>
+                  <td>{compareResult.erp_events?.current_rows}</td>
+                  <td>{(compareResult.erp_events?.missing_from_current || []).length}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
+
+
+{preview && (
         <section className="card span-2">
           <div className="card-head">
             <div>
