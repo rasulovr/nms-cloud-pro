@@ -1623,6 +1623,146 @@ function SecurityRecoveryCenter() {
               </p>
             </div>
           </div>
+
+          <div className="card span-2">
+            <div className="card-head">
+              <div>
+                <h3>Revenue Preview</h3>
+                <p className="hint">Последние строки выручки внутри snapshot.</p>
+              </div>
+            </div>
+            <div className="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Branch</th>
+                    <th>Cash</th>
+                    <th>Bank</th>
+                    <th>Wolt</th>
+                    <th>Deleted</th>
+                    <th>Comment</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(preview.daily_revenue || []).slice(-20).reverse().map((r, idx) => (
+                    <tr key={r.id || idx}>
+                      <td>{r.revenue_date}</td>
+                      <td>{r.branch_id}</td>
+                      <td>{r.cash_amount}</td>
+                      <td>{r.bank_amount}</td>
+                      <td>{r.wolt_amount}</td>
+                      <td>{r.deleted_at ? 'yes' : 'no'}</td>
+                      <td>{r.comment}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className="card span-2">
+            <div className="card-head">
+              <div>
+                <h3>Expenses Preview</h3>
+                <p className="hint">Последние расходы внутри snapshot.</p>
+              </div>
+            </div>
+            <div className="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Branch</th>
+                    <th>Category</th>
+                    <th>Amount</th>
+                    <th>Deleted</th>
+                    <th>Comment</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(preview.daily_expenses || []).slice(-20).reverse().map((r, idx) => (
+                    <tr key={r.id || idx}>
+                      <td>{r.expense_date}</td>
+                      <td>{r.branch_id}</td>
+                      <td>{r.custom_category || r.category_id}</td>
+                      <td>{r.amount}</td>
+                      <td>{r.deleted_at ? 'yes' : 'no'}</td>
+                      <td>{r.comment}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className="card span-2">
+            <div className="card-head">
+              <div>
+                <h3>Finance Ledger Preview</h3>
+                <p className="hint">Последние бухгалтерские записи snapshot.</p>
+              </div>
+            </div>
+            <div className="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Entry</th>
+                    <th>Entity</th>
+                    <th>Debit</th>
+                    <th>Credit</th>
+                    <th>Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(preview.finance_ledger || []).slice(-20).reverse().map((r, idx) => (
+                    <tr key={r.id || idx}>
+                      <td>{r.ledger_date}</td>
+                      <td>{r.entry_type}</td>
+                      <td>{r.entity_type}</td>
+                      <td>{r.debit_amount}</td>
+                      <td>{r.credit_amount}</td>
+                      <td>{r.description}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className="card span-2">
+            <div className="card-head">
+              <div>
+                <h3>ERP Events Preview</h3>
+                <p className="hint">Последние события immutable event log.</p>
+              </div>
+            </div>
+            <div className="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Created</th>
+                    <th>Event</th>
+                    <th>Entity</th>
+                    <th>Source</th>
+                    <th>User</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(preview.erp_events || []).slice(-20).reverse().map((r, idx) => (
+                    <tr key={r.id || idx}>
+                      <td>{String(r.created_at || '').slice(0, 19).replace('T', ' ')}</td>
+                      <td>{r.event_type}</td>
+                      <td>{r.entity_type}</td>
+                      <td>{r.action_source}</td>
+                      <td>{r.user_id}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </section>
       )}
     </section>
