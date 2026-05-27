@@ -1089,6 +1089,37 @@ const matchesPositionGroup = (emp, group) => group === 'all' || positionGroup(em
 
 function useLang() {
   const [lang, setLangState] = useState(localStorage.getItem('rms_lang') || localStorage.getItem('nms_lang') || 'ru')
+
+  const [snapshots, setSnapshots] = useState([])
+  const [snapshotLoading, setSnapshotLoading] = useState(false)
+
+  const loadSnapshots = async () => {
+    try {
+      const { data, error } = await supabase.rpc('rms_list_snapshots')
+      if (error) throw error
+      setSnapshots(data || [])
+    } catch (e) {
+      console.error('loadSnapshots error', e)
+    }
+  }
+
+  const createSnapshot = async () => {
+    try {
+      setSnapshotLoading(true)
+      const { data, error } = await supabase.rpc('rms_create_operational_snapshot', {
+        p_snapshot_type: 'manual_ui'
+      })
+      if (error) throw error
+      alert('Snapshot created: ' + data)
+      await loadSnapshots()
+    } catch (e) {
+      console.error('createSnapshot error', e)
+      alert(e.message || 'Snapshot error')
+    } finally {
+      setSnapshotLoading(false)
+    }
+  }
+
   const setLang = (value) => {
     localStorage.setItem('rms_lang', value)
     setLangState(value)
@@ -12395,7 +12426,7 @@ function Suppliers({ t, isAdmin = false }) {
     }
   }
 
-  useEffect(() => { load() }, [])
+  useEffect(() => { load(); loadSnapshots() }, [])
   useEffect(() => {
     if (!purchaseForm.supplier_id && activeSuppliers[0]) setPurchaseForm(f => ({ ...f, supplier_id: activeSuppliers[0].id }))
     if (!paymentForm.supplier_id && activeSuppliers[0]) setPaymentForm(f => ({ ...f, supplier_id: activeSuppliers[0].id }))
@@ -13889,7 +13920,7 @@ function DebtsPayments({ t }) {
   }
   const activeSupplierIds = useMemo(() => new Set(activeSuppliers.map(s => s.id)), [activeSuppliers])
 
-  useEffect(() => { load() }, [])
+  useEffect(() => { load(); loadSnapshots() }, [])
   useEffect(() => {
     const reloadSuppliers = () => load()
     window.addEventListener(RMS_SUPPLIERS_UPDATED_EVENT, reloadSuppliers)
@@ -18437,7 +18468,7 @@ function Settings({ session, t, theme, setTheme }) {
   })
   const editableSections = SECTIONS.filter(s => s.id !== 'settings')
 
-  useEffect(() => { load() }, [])
+  useEffect(() => { load(); loadSnapshots() }, [])
 
   async function load() {
     await hydrateRmsInternalAuthFromCloud()
