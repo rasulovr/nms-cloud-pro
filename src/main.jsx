@@ -16,7 +16,7 @@ const I18N = {
     brand_subtitle:'Restaurant Management System', language_label:'Язык интерфейса', login_label:'Login', password_label:'Пароль',
     login_button:'Войти', login_hint:'Вход по внутреннему login. Допустим вход по логину без домена.', login_error:'Неверный логин или пароль', show_password:'Показать пароль',
     logout:'Выйти', revenue_tab:'Выручка', finance_tab:'Финансы', reports_tab:'Отчёты', recipes_tab:'Тех. карты', salaries_tab:'Зарплаты',
-    attendance_tab:'Посещаемость', advances_tab:'Авансы', suppliers_tab:'Поставщики', debts_payments_tab:'Долги и оплаты', qr_menu_tab:'QR Menu', loyalty_tab:'Loyalty', market_intelligence_tab:'Market Intelligence', settings_tab:'Настройки',
+    attendance_tab:'Посещаемость', advances_tab:'Авансы', suppliers_tab:'Поставщики', debts_payments_tab:'Долги и оплаты', qr_menu_tab:'QR Menu', loyalty_tab:'Loyalty', market_intelligence_tab:'Market Intelligence', security_recovery_tab:'Security & Recovery', settings_tab:'Настройки', security_recovery_tab:'Security & Recovery',
     revenue_subtitle:'Ввод выручки и расходов за выбранную дату по филиалу', finance_subtitle:'Аналитика по филиалу, месяцу, выручке и расходам',
     period_branch:'Период и филиал', branch_select:'Филиал', date:'Дата', daily_revenue_title:'Выручка за выбранную дату',
     cash:'Наличными', bank:'Банк', wolt:'Wolt', revenue_summary:'Сводка выручки', total_revenue:'Общая выручка',
@@ -39,7 +39,7 @@ const I18N = {
     brand_subtitle:'Restaurant Management System', language_label:'İnterfeys dili', login_label:'Login', password_label:'Parol',
     login_button:'Daxil ol', login_hint:'Daxili login ilə giriş. Domen yazmadan login istifadə etmək olar.', login_error:'Login və ya parol yanlışdır', show_password:'Parolu göstər',
     logout:'Çıxış', revenue_tab:'Dövriyyə', finance_tab:'Maliyyə', reports_tab:'Hesabatlar', recipes_tab:'Tex. kartlar', salaries_tab:'Maaşlar',
-    attendance_tab:'Davamiyyət', advances_tab:'Avanslar', suppliers_tab:'Təchizatçılar', debts_payments_tab:'Borclar və ödənişlər', qr_menu_tab:'QR Menu', loyalty_tab:'Loyalty', market_intelligence_tab:'Market Intelligence', settings_tab:'Ayarlar',
+    attendance_tab:'Davamiyyət', advances_tab:'Avanslar', suppliers_tab:'Təchizatçılar', debts_payments_tab:'Borclar və ödənişlər', qr_menu_tab:'QR Menu', loyalty_tab:'Loyalty', market_intelligence_tab:'Market Intelligence', security_recovery_tab:'Security & Recovery', settings_tab:'Ayarlar',
     revenue_subtitle:'Seçilmiş tarix və filial üzrə dövriyyə və xərclər', finance_subtitle:'Filial, ay, dövriyyə və xərclər üzrə analitika',
     period_branch:'Dövr və filial', branch_select:'Filial', date:'Tarix', daily_revenue_title:'Seçilmiş tarixin dövriyyəsi',
     cash:'Nağd', bank:'Bank', wolt:'Wolt', revenue_summary:'Dövriyyə xülasəsi', total_revenue:'Ümumi dövriyyə',
@@ -71,6 +71,7 @@ const SECTIONS = [
   { id: 'qrmenu', key: 'qr_menu_tab' },
   { id: 'loyalty', key: 'loyalty_tab' },
   { id: 'market', key: 'market_intelligence_tab' },
+  { id: 'security_recovery', key: 'security_recovery_tab' },
   { id: 'settings', key: 'settings_tab' }
 ]
 
@@ -85,7 +86,7 @@ const THEMES = [
 const RMS_PRO_NAV_GROUPS = [
   { title: 'МЕНЮ', ids: ['dashboard', 'revenue', 'finance', 'recipes', 'salaries', 'suppliers', 'debts'] },
   { title: 'АНАЛИТИКА', ids: ['reports'] },
-  { title: 'ИНСТРУМЕНТЫ', ids: ['qrmenu', 'loyalty', 'market', 'settings'] }
+  { title: 'ИНСТРУМЕНТЫ', ids: ['qrmenu', 'loyalty', 'market', 'security_recovery', 'settings'] }
 ]
 
 function RmsIcon({ type }) {
@@ -102,6 +103,7 @@ function RmsIcon({ type }) {
     loyalty: <svg {...common}><path d="m12 3 2.6 5.3 5.8.8-4.2 4.1 1 5.8-5.2-2.7L6.8 19l1-5.8L3.6 9.1l5.8-.8L12 3Z"/></svg>,
     market: <svg {...common}><path d="M4 19V5"/><path d="M20 19H4"/><path d="M8 16v-5"/><path d="M12 16V8"/><path d="M16 16v-9"/></svg>,
     salaries: <svg {...common}><path d="M16 20v-1.5A3.5 3.5 0 0 0 12.5 15h-5A3.5 3.5 0 0 0 4 18.5V20"/><circle cx="10" cy="8" r="3.5"/><path d="M17 8h4"/><path d="M19 6v4"/><path d="M18 14.5h3"/><path d="M18 18h3"/></svg>,
+    security_recovery: <svg {...common}><path d="M12 3 5 6v5c0 4.5 3 8 7 10 4-2 7-5.5 7-10V6l-7-3Z"/><path d="M9 12l2 2 4-4"/></svg>,
     settings: <svg {...common}><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.88-.34 1.7 1.7 0 0 0-1.03 1.56V21a2 2 0 0 1-4 0v-.07a1.7 1.7 0 0 0-1.03-1.56 1.7 1.7 0 0 0-1.88.34l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.56-1.03H3a2 2 0 0 1 0-4h.04A1.7 1.7 0 0 0 4.6 8.94a1.7 1.7 0 0 0-.34-1.88l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.88.34H9a1.7 1.7 0 0 0 1-1.56V3a2 2 0 0 1 4 0v.04a1.7 1.7 0 0 0 1.03 1.56 1.7 1.7 0 0 0 1.88-.34l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.88V9a1.7 1.7 0 0 0 1.56 1H21a2 2 0 0 1 0 4h-.04A1.7 1.7 0 0 0 19.4 15Z"/></svg>
   }
   return icons[type] || <svg {...common}><circle cx="12" cy="12" r="3"/></svg>
@@ -1090,36 +1092,6 @@ const matchesPositionGroup = (emp, group) => group === 'all' || positionGroup(em
 function useLang() {
   const [lang, setLangState] = useState(localStorage.getItem('rms_lang') || localStorage.getItem('nms_lang') || 'ru')
 
-  const [securitySnapshots, setSecuritySnapshots] = useState([])
-  const [securityLoading, setSecurityLoading] = useState(false)
-
-  const loadSecuritySnapshots = async () => {
-    try {
-      const { data, error } = await supabase.rpc('rms_list_snapshots')
-      if (error) throw error
-      setSecuritySnapshots(data || [])
-    } catch (e) {
-      console.error('loadSecuritySnapshots', e)
-    }
-  }
-
-  const createSecuritySnapshot = async () => {
-    try {
-      setSecurityLoading(true)
-      const { data, error } = await supabase.rpc('rms_create_operational_snapshot', {
-        p_snapshot_type: 'manual_ui'
-      })
-      if (error) throw error
-      alert('Snapshot created: ' + data)
-      await loadSecuritySnapshots()
-    } catch (e) {
-      console.error('createSecuritySnapshot', e)
-      alert(e.message || 'Snapshot failed')
-    } finally {
-      setSecurityLoading(false)
-    }
-  }
-
   const [snapshots, setSnapshots] = useState([])
   const [snapshotLoading, setSnapshotLoading] = useState(false)
 
@@ -1488,6 +1460,107 @@ async function fetchRmsRecipesWorkspace() {
 }
 
 
+
+function SecurityRecoveryCenter() {
+  const [snapshots, setSnapshots] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [message, setMessage] = useState('')
+
+  const loadSnapshots = async () => {
+    setLoading(true)
+    setMessage('')
+    try {
+      const { data, error } = await supabase.rpc('rms_list_snapshots')
+      if (error) throw error
+      setSnapshots(data || [])
+    } catch (e) {
+      setMessage(e?.message || 'Не удалось загрузить snapshots')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const createSnapshot = async () => {
+    setLoading(true)
+    setMessage('')
+    try {
+      const { data, error } = await supabase.rpc('rms_create_operational_snapshot', {
+        p_snapshot_type: 'manual_ui'
+      })
+      if (error) throw error
+      setMessage(`Snapshot создан: ${data}`)
+      await loadSnapshots()
+    } catch (e) {
+      setMessage(e?.message || 'Не удалось создать snapshot')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => { loadSnapshots() }, [])
+
+  return (
+    <section className="space-y-6">
+      <section className="topbar">
+        <div>
+          <h2>Security & Recovery Center</h2>
+          <p>Enterprise snapshots, audit recovery and operational protection.</p>
+        </div>
+        <button className="primary" onClick={createSnapshot} disabled={loading}>
+          {loading ? 'Создание...' : 'Create Snapshot'}
+        </button>
+      </section>
+
+      {message ? <p className="hint">{message}</p> : null}
+
+      <section className="card span-2">
+        <div className="card-head">
+          <div>
+            <h3>Operational Snapshots</h3>
+            <p className="hint">Снимки operational data: выручка, расходы, ledger и ERP events.</p>
+          </div>
+          <button className="small" onClick={loadSnapshots} disabled={loading}>Обновить</button>
+        </div>
+
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Created</th>
+                <th>Type</th>
+                <th>Scope</th>
+                <th>Revenue</th>
+                <th>Expenses</th>
+                <th>Ledger</th>
+                <th>Events</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(snapshots || []).map((s) => (
+                <tr key={s.id}>
+                  <td>{String(s.created_at || '').slice(0, 19).replace('T', ' ')}</td>
+                  <td>{s.snapshot_type}</td>
+                  <td>{s.snapshot_scope}</td>
+                  <td>{s.revenue_rows}</td>
+                  <td>{s.expense_rows}</td>
+                  <td>{s.ledger_rows}</td>
+                  <td>{s.event_rows}</td>
+                </tr>
+              ))}
+              {!snapshots?.length && (
+                <tr>
+                  <td colSpan="7" className="hint">Snapshots пока нет.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </section>
+  )
+}
+
+
 function App() {
   const params = new URLSearchParams(window.location.search)
 
@@ -1785,6 +1858,7 @@ function App() {
           </div>
         </div>}
         {canReadAccess(currentAccess) && section === 'market' && <MarketIntelligence t={t} />}
+        {canReadAccess(currentAccess) && section === 'security_recovery' && <SecurityRecoveryCenter />}
         {canReadAccess(currentAccess) && section === 'settings' && <Settings session={session} t={t} theme={theme} setTheme={setTheme} />}
         </div>
       </main>
@@ -20511,56 +20585,3 @@ function RMSProV9Styles() {
 }
 
 createRoot(document.getElementById('root')).render(<App />)
-
-
-      {activeSection === 'security_recovery' && (
-        <div className="space-y-6">
-          <div className="bg-white rounded-2xl border p-6">
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h1 className="text-2xl font-bold">Security & Recovery Center</h1>
-                <p className="text-sm opacity-70">
-                  Enterprise snapshots, audit recovery and operational protection
-                </p>
-              </div>
-
-              <button
-                onClick={createSecuritySnapshot}
-                disabled={securityLoading}
-                className="px-4 py-2 rounded-xl bg-black text-white"
-              >
-                {securityLoading ? 'Creating...' : 'Create Snapshot'}
-              </button>
-            </div>
-
-            <div className="overflow-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b">
-                    <th className="text-left py-2">Created</th>
-                    <th className="text-left py-2">Type</th>
-                    <th className="text-left py-2">Revenue</th>
-                    <th className="text-left py-2">Expenses</th>
-                    <th className="text-left py-2">Ledger</th>
-                    <th className="text-left py-2">Events</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {securitySnapshots.map((s) => (
-                    <tr key={s.id} className="border-b">
-                      <td className="py-2">
-                        {String(s.created_at || '').slice(0,19).replace('T',' ')}
-                      </td>
-                      <td>{s.snapshot_type}</td>
-                      <td>{s.revenue_rows}</td>
-                      <td>{s.expense_rows}</td>
-                      <td>{s.ledger_rows}</td>
-                      <td>{s.event_rows}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      )}
