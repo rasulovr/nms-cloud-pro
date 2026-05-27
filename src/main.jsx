@@ -1461,10 +1461,13 @@ async function fetchRmsRecipesWorkspace() {
 
 
 
+
 function SecurityRecoveryCenter() {
   const [snapshots, setSnapshots] = useState([])
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
+  const [preview, setPreview] = useState(null)
+  const [previewLoading, setPreviewLoading] = useState(false)
 
   const loadSnapshots = async () => {
     setLoading(true)
@@ -1477,6 +1480,21 @@ function SecurityRecoveryCenter() {
       setMessage(e?.message || 'Не удалось загрузить snapshots')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const previewSnapshot = async (id) => {
+    setPreviewLoading(true)
+    try {
+      const { data, error } = await supabase.rpc('rms_get_snapshot_details', {
+        p_snapshot_id: id
+      })
+      if (error) throw error
+      setPreview(data || null)
+    } catch (e) {
+      alert(e?.message || 'Preview error')
+    } finally {
+      setPreviewLoading(false)
     }
   }
 
@@ -1533,6 +1551,7 @@ function SecurityRecoveryCenter() {
                 <th>Expenses</th>
                 <th>Ledger</th>
                 <th>Events</th>
+                <th></th>
               </tr>
             </thead>
             <tbody>
@@ -1545,20 +1564,71 @@ function SecurityRecoveryCenter() {
                   <td>{s.expense_rows}</td>
                   <td>{s.ledger_rows}</td>
                   <td>{s.event_rows}</td>
+                  <td>
+                    <button className="small" onClick={() => previewSnapshot(s.id)}>
+                      Preview
+                    </button>
+                  </td>
                 </tr>
               ))}
               {!snapshots?.length && (
                 <tr>
-                  <td colSpan="7" className="hint">Snapshots пока нет.</td>
+                  <td colSpan="8" className="hint">Snapshots пока нет.</td>
                 </tr>
               )}
             </tbody>
           </table>
         </div>
       </section>
+
+      {preview && (
+        <section className="card span-2">
+          <div className="card-head">
+            <div>
+              <h3>Snapshot Preview</h3>
+              <p className="hint">
+                {preview.snapshot_type} · {String(preview.created_at || '').slice(0,19).replace('T',' ')}
+              </p>
+            </div>
+          </div>
+
+          {previewLoading && <p className="hint">Loading...</p>}
+
+          <div className="grid">
+            <div className="card">
+              <h3>Revenue Rows</h3>
+              <p style={{fontSize:28,fontWeight:800}}>
+                {(preview.daily_revenue || []).length}
+              </p>
+            </div>
+
+            <div className="card">
+              <h3>Expense Rows</h3>
+              <p style={{fontSize:28,fontWeight:800}}>
+                {(preview.daily_expenses || []).length}
+              </p>
+            </div>
+
+            <div className="card">
+              <h3>Ledger Rows</h3>
+              <p style={{fontSize:28,fontWeight:800}}>
+                {(preview.finance_ledger || []).length}
+              </p>
+            </div>
+
+            <div className="card">
+              <h3>ERP Events</h3>
+              <p style={{fontSize:28,fontWeight:800}}>
+                {(preview.erp_events || []).length}
+              </p>
+            </div>
+          </div>
+        </section>
+      )}
     </section>
   )
 }
+
 
 
 function App() {
