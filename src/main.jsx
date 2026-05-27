@@ -1090,6 +1090,36 @@ const matchesPositionGroup = (emp, group) => group === 'all' || positionGroup(em
 function useLang() {
   const [lang, setLangState] = useState(localStorage.getItem('rms_lang') || localStorage.getItem('nms_lang') || 'ru')
 
+  const [securitySnapshots, setSecuritySnapshots] = useState([])
+  const [securityLoading, setSecurityLoading] = useState(false)
+
+  const loadSecuritySnapshots = async () => {
+    try {
+      const { data, error } = await supabase.rpc('rms_list_snapshots')
+      if (error) throw error
+      setSecuritySnapshots(data || [])
+    } catch (e) {
+      console.error('loadSecuritySnapshots', e)
+    }
+  }
+
+  const createSecuritySnapshot = async () => {
+    try {
+      setSecurityLoading(true)
+      const { data, error } = await supabase.rpc('rms_create_operational_snapshot', {
+        p_snapshot_type: 'manual_ui'
+      })
+      if (error) throw error
+      alert('Snapshot created: ' + data)
+      await loadSecuritySnapshots()
+    } catch (e) {
+      console.error('createSecuritySnapshot', e)
+      alert(e.message || 'Snapshot failed')
+    } finally {
+      setSecurityLoading(false)
+    }
+  }
+
   const [snapshots, setSnapshots] = useState([])
   const [snapshotLoading, setSnapshotLoading] = useState(false)
 
@@ -20481,3 +20511,56 @@ function RMSProV9Styles() {
 }
 
 createRoot(document.getElementById('root')).render(<App />)
+
+
+      {activeSection === 'security_recovery' && (
+        <div className="space-y-6">
+          <div className="bg-white rounded-2xl border p-6">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h1 className="text-2xl font-bold">Security & Recovery Center</h1>
+                <p className="text-sm opacity-70">
+                  Enterprise snapshots, audit recovery and operational protection
+                </p>
+              </div>
+
+              <button
+                onClick={createSecuritySnapshot}
+                disabled={securityLoading}
+                className="px-4 py-2 rounded-xl bg-black text-white"
+              >
+                {securityLoading ? 'Creating...' : 'Create Snapshot'}
+              </button>
+            </div>
+
+            <div className="overflow-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left py-2">Created</th>
+                    <th className="text-left py-2">Type</th>
+                    <th className="text-left py-2">Revenue</th>
+                    <th className="text-left py-2">Expenses</th>
+                    <th className="text-left py-2">Ledger</th>
+                    <th className="text-left py-2">Events</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {securitySnapshots.map((s) => (
+                    <tr key={s.id} className="border-b">
+                      <td className="py-2">
+                        {String(s.created_at || '').slice(0,19).replace('T',' ')}
+                      </td>
+                      <td>{s.snapshot_type}</td>
+                      <td>{s.revenue_rows}</td>
+                      <td>{s.expense_rows}</td>
+                      <td>{s.ledger_rows}</td>
+                      <td>{s.event_rows}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
