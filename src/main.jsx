@@ -1,3 +1,4 @@
+/* RMS v55 Supplier Secure RPC - supplier ledger foundation */
 /* RMS v43 SUPPLIERS FINAL CLEAN SINGLE E-QAIME FORM - no payment term fields inside purchase e-qaime block */
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
@@ -13340,7 +13341,17 @@ function Suppliers({ t, isAdmin = false }) {
         unit_price: unitPrice, total_amount: total, base_quantity: baseQty,
         base_unit: product?.base_unit || 'g', price_per_base_unit: total / baseQty
       }))
-      const { error: itemError } = await supabase.from('supplier_purchase_items').insert(items)
+      const { error: itemError } = Promise.all((items || []).map(row => supabase.rpc('rms_supplier_purchase_item_create_secure', {
+      p_purchase_id: row.purchase_id,
+      p_product_id: row.product_id,
+      p_quantity: row.quantity,
+      p_unit: row.unit,
+      p_unit_price: row.unit_price,
+      p_total_amount: row.total_amount,
+      p_base_quantity: row.base_quantity || null,
+      p_base_unit: row.base_unit || null,
+      p_price_per_base_unit: row.price_per_base_unit || null
+    })))
       if (itemError) throw itemError
 
       const { data: authData } = await supabase.auth.getUser()
