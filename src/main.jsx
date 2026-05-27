@@ -12913,7 +12913,7 @@ function Suppliers({ t, isAdmin = false }) {
     }
   }
 
-  useEffect(() => { load(); loadSnapshots() }, [])
+  useEffect(() => { load() }, [])
   useEffect(() => {
     if (!purchaseForm.supplier_id && activeSuppliers[0]) setPurchaseForm(f => ({ ...f, supplier_id: activeSuppliers[0].id }))
     if (!paymentForm.supplier_id && activeSuppliers[0]) setPaymentForm(f => ({ ...f, supplier_id: activeSuppliers[0].id }))
@@ -14418,12 +14418,24 @@ function DebtsPayments({ t }) {
   }
   const activeSupplierIds = useMemo(() => new Set(activeSuppliers.map(s => s.id)), [activeSuppliers])
 
-  useEffect(() => { load(); loadSnapshots() }, [])
+  useEffect(() => { load() }, [])
   useEffect(() => {
     const reloadSuppliers = () => load()
     window.addEventListener(RMS_SUPPLIERS_UPDATED_EVENT, reloadSuppliers)
     return () => window.removeEventListener(RMS_SUPPLIERS_UPDATED_EVENT, reloadSuppliers)
   }, [])
+
+  async function callSupplierRpc(name, args, okMessage = 'Сохранено') {
+    const { data, error } = await supabase.rpc(name, args)
+    if (error) {
+      const msg = error.message || 'Supplier secure RPC error'
+      setMessage(msg)
+      throw error
+    }
+    await load()
+    setMessage(okMessage)
+    return data
+  }
 
   async function load() {
     const [{ data: le }, { data: br }, { data: sup }, { data: prod }, { data: bal }, { data: pur }, { data: pay }, { data: opening }, { data: statusRows }, { data: logs }] = await Promise.all([
