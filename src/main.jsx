@@ -1470,6 +1470,8 @@ function SecurityRecoveryCenter() {
   const [previewLoading, setPreviewLoading] = useState(false)
   const [compareResult, setCompareResult] = useState(null)
   const [compareLoading, setCompareLoading] = useState(false)
+  const [restoreLoading, setRestoreLoading] = useState(false)
+  const [restoreResult, setRestoreResult] = useState(null)
 
   const loadSnapshots = async () => {
     setLoading(true)
@@ -1512,6 +1514,39 @@ function SecurityRecoveryCenter() {
       alert(e?.message || 'Compare error')
     } finally {
       setCompareLoading(false)
+    }
+  }
+
+
+  const restoreMissingSnapshot = async (id) => {
+    const confirmed = window.confirm(
+      'Restore ONLY missing rows from this snapshot? Current data will NOT be deleted.'
+    )
+
+    if (!confirmed) return
+
+    setRestoreLoading(true)
+
+    try {
+      const { data, error } = await supabase.rpc(
+        'rms_restore_snapshot_missing_operational',
+        {
+          p_snapshot_id: id,
+          p_scope: 'operational'
+        }
+      )
+
+      if (error) throw error
+
+      setRestoreResult(data || null)
+
+      alert(
+        `Restore complete. Revenue restored: ${data?.revenue_restored || 0}, Expenses restored: ${data?.expense_restored || 0}`
+      )
+    } catch (e) {
+      alert(e?.message || 'Restore failed')
+    } finally {
+      setRestoreLoading(false)
     }
   }
 
@@ -1591,6 +1626,14 @@ function SecurityRecoveryCenter() {
                       <button className="small" onClick={() => compareSnapshot(s.id)}>
                         Compare
                       </button>
+
+                      <button
+                        className="small"
+                        onClick={() => restoreMissingSnapshot(s.id)}
+                        disabled={restoreLoading}
+                      >
+                        {restoreLoading ? 'Restoring...' : 'Restore Missing'}
+                      </button>
                     </div>
                   </td>
                 </tr>
@@ -1606,7 +1649,52 @@ function SecurityRecoveryCenter() {
       </section>
 
       
-      {compareResult && (
+      
+      {restoreResult && (
+        <section className="card span-2">
+          <div className="card-head">
+            <div>
+              <h3>Restore Result</h3>
+              <p className="hint">
+                Missing rows restored safely without TRUNCATE or DELETE.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid">
+            <div className="card">
+              <h3>Revenue Restored</h3>
+              <p style={{fontSize:28,fontWeight:800}}>
+                {restoreResult.revenue_restored || 0}
+              </p>
+            </div>
+
+            <div className="card">
+              <h3>Expenses Restored</h3>
+              <p style={{fontSize:28,fontWeight:800}}>
+                {restoreResult.expense_restored || 0}
+              </p>
+            </div>
+
+            <div className="card">
+              <h3>Scope</h3>
+              <p style={{fontSize:20,fontWeight:700}}>
+                {restoreResult.scope}
+              </p>
+            </div>
+
+            <div className="card">
+              <h3>Event ID</h3>
+              <p className="hint" style={{wordBreak:'break-all'}}>
+                {restoreResult.event_id}
+              </p>
+            </div>
+          </div>
+        </section>
+      )}
+
+
+{compareResult && (
         <section className="card span-2">
           <div className="card-head">
             <div>
