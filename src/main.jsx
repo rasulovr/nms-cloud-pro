@@ -1478,6 +1478,21 @@ function SecurityRecoveryCenter() {
   const [supplierAuditRows, setSupplierAuditRows] = useState([])
   const [supplierAuditLoading, setSupplierAuditLoading] = useState(false)
   const [showSupplierAuditDetails, setShowSupplierAuditDetails] = useState(false)
+  const [financeFormulaDiagnostics, setFinanceFormulaDiagnostics] = useState([])
+  const [financeForecastDiagnostics, setFinanceForecastDiagnostics] = useState([])
+  const [showFinanceDiagnosticsDetails, setShowFinanceDiagnosticsDetails] = useState(false)
+
+  const loadFinanceDiagnostics = () => {
+    try {
+      const formula = JSON.parse(localStorage.getItem('rms_finance_formula_audit_v78') || '[]')
+      const forecast = JSON.parse(localStorage.getItem('rms_finance_forecast_audit_v78') || '[]')
+      setFinanceFormulaDiagnostics(Array.isArray(formula) ? formula : [])
+      setFinanceForecastDiagnostics(Array.isArray(forecast) ? forecast : [])
+    } catch (_) {
+      setFinanceFormulaDiagnostics([])
+      setFinanceForecastDiagnostics([])
+    }
+  }
 
   const loadSupplierEnterpriseAudit = async () => {
     setSupplierAuditLoading(true)
@@ -1597,7 +1612,7 @@ function SecurityRecoveryCenter() {
     }
   }
 
-  useEffect(() => { loadSnapshots(); loadSupplierEnterpriseAudit() }, [])
+  useEffect(() => { loadSnapshots(); loadSupplierEnterpriseAudit(); loadFinanceDiagnostics() }, [])
 
   return (
     <section className="space-y-6">
@@ -1698,6 +1713,28 @@ function SecurityRecoveryCenter() {
           <div className="metric"><span>Разница</span><strong className={Math.abs(supplierAuditTotals.diff) > 0.01 ? 'bad' : 'good'}>{fmt(supplierAuditTotals.diff)}</strong></div>
         </div>
         {(showSupplierAuditDetails || !supplierAuditOk) && <div className="table-wrap"><table><thead><tr><th>Статус</th><th>Поставщик</th><th>VOEN</th><th>Source</th><th>Ledger</th><th>Diff</th></tr></thead><tbody>{supplierAuditCriticalRows.slice(0, 30).map(r => <tr key={`${r.supplier_id || 'none'}-${r.legal_entity_id || 'none'}`}><td><span className={r.issue_type === 'ok' ? 'good' : 'bad'}>{r.issue_type || 'ok'}</span></td><td>{r.supplier_name || '—'}</td><td>{r.legal_entity_name || '—'}<br /><span className="hint">{r.legal_entity_voen || ''}</span></td><td>{fmt(r.source_balance)}</td><td>{fmt(r.ledger_balance)}</td><td className={Math.abs(parseNum(r.diff)) > 0.01 ? 'bad' : 'good'}><b>{fmt(r.diff)}</b></td></tr>)}{!supplierAuditCriticalRows.length && <tr><td colSpan="6" className="good">Расхождений не найдено</td></tr>}</tbody></table></div>}
+      </section>
+
+      <section className="card span-2 supplier-enterprise-audit-card">
+        <div className="card-head">
+          <div>
+            <h3>Finance diagnostics</h3>
+            <p className="hint">Техническая сверка формулы прибыли и прогноза. В пользовательском разделе “Финансы” скрыта.</p>
+          </div>
+          <div className="action-row">
+            <button className="ghost small" onClick={() => setShowFinanceDiagnosticsDetails(v => !v)}>{showFinanceDiagnosticsDetails ? 'Скрыть детали' : 'Показать детали'}</button>
+            <button className="ghost small" onClick={loadFinanceDiagnostics}>Обновить</button>
+          </div>
+        </div>
+        <div className="mini-grid">
+          <div className="metric"><span>Formula audit</span><strong>{financeFormulaDiagnostics.length ? 'OK' : 'Нет данных'}</strong></div>
+          <div className="metric"><span>Forecast audit</span><strong>{financeForecastDiagnostics.length ? 'OK' : 'Нет данных'}</strong></div>
+          <div className="metric"><span>Статус</span><strong className={(financeFormulaDiagnostics.length || financeForecastDiagnostics.length) ? 'good' : ''}>{(financeFormulaDiagnostics.length || financeForecastDiagnostics.length) ? 'Данные загружены' : 'Откройте Финансы'}</strong></div>
+        </div>
+        {showFinanceDiagnosticsDetails && <>
+          <div className="table-wrap"><table><thead><tr><th colSpan="3">Finance formula audit</th></tr><tr><th>Показатель</th><th>Сумма</th><th>Источник / логика</th></tr></thead><tbody>{financeFormulaDiagnostics.map(row => <tr key={row.name}><td><b>{row.name}</b></td><td className={row.name.includes('Расхождения') || row.name.includes('Контроль') ? (Math.abs(parseNum(row.amount)) > 0.01 ? 'bad' : 'good') : ''}>{fmt(row.amount)}</td><td className="hint">{row.note}</td></tr>)}{!financeFormulaDiagnostics.length && <tr><td colSpan="3" className="hint">Нет данных. Откройте раздел “Финансы”, чтобы обновить расчёт.</td></tr>}</tbody></table></div>
+          <div className="table-wrap"><table><thead><tr><th colSpan="3">Dashboard / Finance forecast parity</th></tr><tr><th>Показатель</th><th>Сумма</th><th>Источник / логика</th></tr></thead><tbody>{financeForecastDiagnostics.map(row => <tr key={row.name}><td><b>{row.name}</b></td><td className={row.name.includes('Контроль') ? (Math.abs(parseNum(row.amount)) > 0.01 ? 'bad' : 'good') : ''}>{fmt(row.amount)}</td><td className="hint">{row.note}</td></tr>)}{!financeForecastDiagnostics.length && <tr><td colSpan="3" className="hint">Нет данных. Откройте раздел “Финансы”, чтобы обновить расчёт.</td></tr>}</tbody></table></div>
+        </>}
       </section>
 
       {restoreResult && (
@@ -7075,6 +7112,7 @@ function Finance({ t, lang, onGoToExpense }) {
   const [aiRows, setAiRows] = useState([])
   const [showAllAiRows, setShowAllAiRows] = useState(false)
   const [financeFormulaAudit, setFinanceFormulaAudit] = useState([])
+  const [financeForecastAudit, setFinanceForecastAudit] = useState([])
   const [expenseDetail, setExpenseDetail] = useState({ name: '', rows: [], total: 0, loading: false, error: '' })
   const [expenseDetailArticleFilter, setExpenseDetailArticleFilter] = useState('all')
   const [expenseDetailPeriod, setExpenseDetailPeriod] = useState('month')
@@ -7857,7 +7895,7 @@ function Finance({ t, lang, onGoToExpense }) {
       net: financeUnifiedNet,
       formulaMode: 'unified_v76'
     }
-    setFinanceFormulaAudit([
+    const financeFormulaAuditRows = [
       { name: 'Выручка', amount: currentForFinance.revenue, note: 'monthly_branch_revenue' },
       { name: 'Операционные расходы', amount: currentForFinance.expenses, note: 'daily_expenses без supplier mirror и salary-like строк + распределённые supplier purchases' },
       { name: 'Зарплаты', amount: currentForFinance.salary, note: 'единая payroll-логика с долей менеджеров' },
@@ -7866,7 +7904,24 @@ function Finance({ t, lang, onGoToExpense }) {
       { name: 'Итого расходов по единой формуле', amount: financeActualExpenseTotal, note: 'сумма статей в “Расходы по статьям”' },
       { name: 'Чистая прибыль', amount: currentForFinance.net, note: 'выручка − все расходы' },
       { name: 'Контроль расхождения legacy/net', amount: financeFormulaDiff, note: Math.abs(financeFormulaDiff) <= 0.01 ? 'OK: формулы совпадают' : 'исправлено единой формулой v76' }
-    ])
+    ]
+    setFinanceFormulaAudit(financeFormulaAuditRows)
+    try { localStorage.setItem('rms_finance_formula_audit_v78', JSON.stringify(financeFormulaAuditRows)) } catch (_) {}
+
+    const forecastRows = currentForFinance.forecastDetails || []
+    const forecastRevenueFromRows = parseNum((forecastRows.find(r => r.type === 'revenue') || {}).amount) || parseNum(currentForFinance.forecastRevenue)
+    const forecastExpenseRows = forecastRows.filter(r => r.type !== 'revenue')
+    const forecastExpenseSum = forecastExpenseRows.reduce((sum, row) => sum + parseNum(row.amount), 0)
+    const forecastProfitByRows = forecastRevenueFromRows - forecastExpenseSum
+    const forecastProfitDiff = forecastProfitByRows - parseNum(currentForFinance.forecastProfit)
+    const financeForecastAuditRows = [
+      { name: 'Прогноз выручки', amount: forecastRevenueFromRows, note: 'единая функция rmsCalculateNetworkForecastForMonth; используется Dashboard и Finance' },
+      { name: 'Прогноз расходов', amount: forecastExpenseSum, note: 'сумма строк в таблице “Расчёт прогноза прибыли”' },
+      { name: 'Прогноз прибыли', amount: forecastProfitByRows, note: 'прогноз выручки − прогноз расходов' },
+      { name: 'Контроль расхождения forecast', amount: forecastProfitDiff, note: Math.abs(forecastProfitDiff) <= 0.01 ? 'OK: Dashboard и Finance используют одну прогнозную базу' : 'проверить детализацию прогноза' }
+    ]
+    setFinanceForecastAudit(financeForecastAuditRows)
+    try { localStorage.setItem('rms_finance_forecast_audit_v78', JSON.stringify(financeForecastAuditRows)) } catch (_) {}
     let financeComparison = {
       currentRevenue: currentForFinance.revenue,
       previousRevenue: previous.revenue,
@@ -8148,16 +8203,6 @@ function Finance({ t, lang, onGoToExpense }) {
           <div className="card-head"><h3>Расчёт прогноза прибыли</h3><p className="hint">Фиксированные расходы учитываются сразу, коммунальные и другие месячные статьи берутся из текущего месяца или из среднего прошлых месяцев.</p></div>
           <div className="table-wrap"><table><thead><tr><th>Статья</th><th>Сумма</th><th>Логика</th></tr></thead><tbody>{(stats.forecastDetails || []).map(r => <tr key={r.name}><td><b>{r.name}</b></td><td>{fmt(r.amount)}</td><td className="hint">{r.note || '—'}</td></tr>)}</tbody></table></div>
           <p className="hint">Итого прогноз расходов: <b>{fmt(stats.forecastExpenses)}</b> AZN · прогнозная маржа: <b>{pct(stats.forecastMargin)}</b></p>
-        </div>
-
-        <div className="card span-2">
-          <div className="card-head">
-            <div>
-              <h3>Контроль единой финансовой формулы</h3>
-              <p className="hint">v76: прибыль считается одинаково — выручка минус операционные расходы, зарплаты, service charge и налог. Используется та же логика, что и в прогнозе.</p>
-            </div>
-          </div>
-          <div className="table-wrap"><table><thead><tr><th>Показатель</th><th>Сумма</th><th>Источник / логика</th></tr></thead><tbody>{financeFormulaAudit.map(row => <tr key={row.name}><td><b>{row.name}</b></td><td className={row.name.includes('Расхождения') || row.name.includes('Контроль') ? (Math.abs(parseNum(row.amount)) > 0.01 ? 'bad' : 'good') : ''}>{fmt(row.amount)}</td><td className="hint">{row.note}</td></tr>)}</tbody></table></div>
         </div>
 
         <div className="card span-2">
