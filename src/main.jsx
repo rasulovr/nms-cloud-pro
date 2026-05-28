@@ -16003,9 +16003,13 @@ function DebtsPayments({ t }) {
   return <section>
     <section className="topbar"><div><h2>Долги и оплаты</h2><p>Балансы поставщиков, контроль лимитов, просрочек, поступления и оплаты.</p></div></section>
 
-    <section className="card span-2 debt-intelligence-panel">
+    <section className="card span-2 supplier-control-center-card">
       <div className="card-head">
-        <div><h3>Сводка по поставщикам</h3><p className="hint">Ключевые показатели без перегрузки: долг, просрочка, лимит и статус риска.</p></div>
+        <div>
+          <h3>Контроль поставщиков</h3>
+          <p className="hint">Основной управленческий обзор: общий долг, просрочка, превышение лимита и рейтинг риска.</p>
+        </div>
+        <div className="action-row" style={{gap:8}}><button className="small" onClick={load}>Обновить</button></div>
       </div>
       <div className="debt-kpi-grid">
         <DebtKpiCard tone="muted" label="Поставщиков" value={debtIntelligence.supplierCount} sub="с активным балансом" />
@@ -16013,29 +16017,13 @@ function DebtsPayments({ t }) {
         <DebtKpiCard tone="danger" label="Просрочено" value={`${fmt(debtIntelligence.overdueDebt)} AZN`} sub={`${debtIntelligence.overdueSupplierCount} поставщиков`} />
         <DebtKpiCard tone="info" label="Лимит" value={debtIntelligence.availableLimit >= 0 ? `${fmt(debtIntelligence.availableLimit)} AZN` : `${fmt(Math.abs(debtIntelligence.availableLimit))} AZN`} sub={debtIntelligence.availableLimit >= 0 ? 'доступный лимит' : 'превышение лимита'} />
       </div>
-    </section>
 
-    <section className="card span-2 supplier-control-center-card">
-      <div className="card-head">
-        <div>
-          <h3>Supplier control center</h3>
-          <p className="hint">Короткий управленческий обзор: просрочка, превышение лимита и рейтинг поставщиков.</p>
-        </div>
-        <div className="action-row" style={{gap:8}}><button className="small" onClick={load}>Обновить</button></div>
-      </div>
-      <div className="mini-grid">
-        <div className="metric"><span>Открытый долг</span><strong>{fmt(supplierAging.totals.total)}</strong></div>
-        <div className="metric"><span>Просрочено</span><strong className={supplierAging.totals.overdue > 0 ? 'bad' : 'good'}>{fmt(supplierAging.totals.overdue)}</strong></div>
-        <div className="metric"><span>Сверх лимита</span><strong className={supplierAging.totals.limitOver > 0 ? 'bad' : 'good'}>{fmt(supplierAging.totals.limitOver)}</strong></div>
-        <div className="metric"><span>Риск</span><strong>{supplierAging.totals.critical} critical · {supplierAging.totals.warning} warning</strong></div>
-      </div>
-
-      <div style={{marginTop:12, display:'grid', gap:12}}>
+      <div style={{marginTop:16, display:'grid', gap:14}}>
         <div className="card soft-card">
           <div className="card-head">
             <div>
               <h4>Просрочка и лимиты</h4>
-              <p className="hint">По дате оплаты и кредитному лимиту. В списке показаны суммы и просроченные фактуры.</p>
+              <p className="hint">По дате оплаты и кредитному лимиту. Показывает сумму просрочки и конкретные просроченные фактуры.</p>
             </div>
             <div className="action-row" style={{gap:8}}>
               <label style={{display:'flex',alignItems:'center',gap:8}}><span className="hint">Фильтр</span><select value={supplierRiskFilter} onChange={e => setSupplierRiskFilter(e.target.value)}><option value="all">Все</option><option value="overdue">Только просрочка</option><option value="limit">Сверх лимита</option><option value="critical">Critical</option><option value="warning">Warning</option></select></label>
@@ -16054,7 +16042,7 @@ function DebtsPayments({ t }) {
           <div className="card-head">
             <div>
               <h4>Рейтинг поставщиков</h4>
-              <p className="hint">Рейтинг риска: долг, просрочка, лимит и количество открытых фактур.</p>
+              <p className="hint">Приоритет поставщиков по риску: долг, просрочка, лимит и количество открытых фактур.</p>
             </div>
             {supplierRatingRows.length > 5 && <button className="ghost small" onClick={() => setSupplierCompactPlanExpanded(v => !v)}>{supplierCompactPlanExpanded ? 'Скрыть' : `Показать все · ${supplierRatingRows.length}`}</button>}
           </div>
@@ -16070,7 +16058,7 @@ function DebtsPayments({ t }) {
 
     <section className="grid">
       <div className="card span-2">
-        <div className="card-head"><div><h3>Поставщики и долги</h3><p className="hint">Разделено по вашим VOEN / юрлицам из настроек. В каждой группе сначала показаны 5 поставщиков.</p></div></div>
+        <div className="card-head"><div><h3>Поставщики и долги</h3><p className="hint">Балансы по вашим VOEN / юрлицам. Для деталей используйте “Транзакции” или “Акт сверки”.</p></div></div>
         {legalEntities.map(le => {
           const list = suppliersForLegalEntity(le.id)
           const shown = expandedEntities[le.id] ? list : list.slice(0, 5)
@@ -16112,7 +16100,7 @@ function DebtsPayments({ t }) {
       </div>
 
       {showSupplierStatementPanel && <div ref={supplierStatementPanelRef} className="card span-2 supplier-transactions-panel">
-        <div className="card-head"><div><h3>Акт сверки</h3><p className="hint">Компактная сверка по выбранному поставщику / VOEN. Открывается кнопкой “Акт сверки” из списка поставщиков или просрочки.</p></div><div className="action-row" style={{gap:8}}><label style={{display:'flex',alignItems:'center',gap:8}}><span className="hint">Показать</span><select value={ledgerPageSize} onChange={e => { setLedgerPageSize(Number(e.target.value)); setLedgerPage(1) }}><option value={10}>10</option><option value={20}>20</option><option value={30}>30</option><option value={50}>50</option></select></label><button className="small primary" onClick={printSupplierLedger}>Акт сверки / PDF</button><button className="small" onClick={exportSupplierStatementCsv}>CSV</button><button className="ghost small" onClick={() => setShowSupplierStatementPanel(false)}>Закрыть</button></div></div>
+        <div className="card-head"><div><h3>Акт сверки</h3><p className="hint">Сверка по выбранному поставщику / VOEN: приход, оплаты и остаток.</p></div><div className="action-row" style={{gap:8}}><label style={{display:'flex',alignItems:'center',gap:8}}><span className="hint">Показать</span><select value={ledgerPageSize} onChange={e => { setLedgerPageSize(Number(e.target.value)); setLedgerPage(1) }}><option value={10}>10</option><option value={20}>20</option><option value={30}>30</option><option value={50}>50</option></select></label><button className="small primary" onClick={printSupplierLedger}>Акт сверки / PDF</button><button className="small" onClick={exportSupplierStatementCsv}>CSV</button><button className="ghost small" onClick={() => setShowSupplierStatementPanel(false)}>Закрыть</button></div></div>
         <div className="form-grid compact">
           <label><span>Поиск поставщика</span><input value={ledgerSearch} onChange={e => { setLedgerSearch(e.target.value); setLedgerPage(1) }} placeholder="Название или VOEN" /></label>
           <label><span>Поставщик</span><select value={ledgerSupplierId} onChange={e => { setLedgerSupplierId(e.target.value); setLedgerPage(1) }}><option value="all">Все найденные / все поставщики</option>{searchedSuppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
