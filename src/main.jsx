@@ -5372,10 +5372,72 @@ function Revenue({ t, focusExpense }) {
   const calculatedClosingCash = parseNum(cashForm.opening_cash) + dailyCashRevenue + dailyInflowTotal - dailyExpenseTotal
   const cashDifference = parseNum(cashForm.counted_cash) - calculatedClosingCash
   const recentRevenueLogs = logs.slice(0, 5)
+  const selectedBranchName = branches.find(b => String(b.id) === String(branchId))?.name || '—'
+  const activeExpenseRows = expenses.filter(e => !e.deleted_at)
+  const activeInflowRows = inflows.filter(i => !i.deleted_at)
+
+  function revenueReportCsvCell(value) {
+    const text = value == null ? '' : String(value)
+    return `"${text.replace(/"/g, '""')}"`
+  }
+
+  function downloadRevenueReportCsv(filename, rows) {
+    const csv = '\ufeff' + rows.map(row => row.map(revenueReportCsvCell).join(';')).join('\n')
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  function exportRevenueDayCsv() {
+    const rows = [
+      ['RMS Revenue day report'],
+      ['Дата', date],
+      ['Филиал', selectedBranchName],
+      [],
+      ['Сводка'],
+      ['Выручка', fmt(dailyRevenueTotal)],
+      ['Наличные', fmt(dailyCashRevenue)],
+      ['Банк', fmt(dailyBankRevenue)],
+      ['Wolt', fmt(dailyWoltRevenue)],
+      ['Расходы', fmt(dailyExpenseTotal)],
+      ['Приходы наличных — не выручка', fmt(dailyInflowTotal)],
+      ['Service charge внутри выручки', fmt(dailyServiceChargeAmount)],
+      ['Service charge персоналу', fmt(dailyServiceStaffCost)],
+      ['Касса конец дня', fmt(calculatedClosingCash)],
+      ['Расхождение кассы', fmt(cashDifference)],
+      [],
+      ['Выручка'],
+      ['Дата', 'Наличные', 'Банк', 'Wolt', 'Комментарий', 'Итого', 'Статус'],
+      ...revenueEntries.map(r => [r.revenue_date, fmt(r.cash_amount), fmt(r.bank_amount), fmt(r.wolt_amount), r.comment || '', fmt(parseNum(r.cash_amount) + parseNum(r.bank_amount) + parseNum(r.wolt_amount)), r.deleted_at ? 'Удалено' : 'Активно']),
+      [],
+      ['Расходы'],
+      ['Дата', 'Статья', 'Сумма', 'Комментарий', 'Статус'],
+      ...expenses.map(e => [e.expense_date, expenseNameFromRow(e) || '', fmt(e.amount), e.comment || '', e.deleted_at ? 'Удалено' : 'Активно']),
+      [],
+      ['Приходы наличных'],
+      ['Дата', 'Источник', 'Сумма', 'Комментарий', 'Статус'],
+      ...inflows.map(i => [i.inflow_date, i.source || '', fmt(i.amount), i.comment || '', i.deleted_at ? 'Удалено' : 'Активно'])
+    ]
+    downloadRevenueReportCsv(`revenue-day-${selectedBranchName.replace(/[^a-zA-Z0-9_-]+/g, '-')}-${date}.csv`, rows)
+  }
+
+  function printRevenueDayReport() {
+    const win = window.open('', '_blank')
+    if (!win) return
+    const revenueRows = revenueEntries.map(r => `<tr class="${r.deleted_at ? 'muted' : ''}"><td>${r.revenue_date}</td><td>${fmt(r.cash_amount)}</td><td>${fmt(r.bank_amount)}</td><td>${fmt(r.wolt_amount)}</td><td>${fmt(parseNum(r.cash_amount) + parseNum(r.bank_amount) + parseNum(r.wolt_amount))}</td><td>${r.comment || ''}</td><td>${r.deleted_at ? 'Удалено' : 'Активно'}</td></tr>`).join('')
+    const expenseRows = expenses.map(e => `<tr class="${e.deleted_at ? 'muted' : ''}"><td>${e.expense_date}</td><td>${expenseNameFromRow(e) || ''}</td><td>${fmt(e.amount)}</td><td>${e.comment || ''}</td><td>${e.deleted_at ? 'Удалено' : 'Активно'}</td></tr>`).join('')
+    const inflowRows = inflows.map(i => `<tr class="${i.deleted_at ? 'muted' : ''}"><td>${i.inflow_date}</td><td>${i.source || ''}</td><td>${fmt(i.amount)}</td><td>${i.comment || ''}</td><td>${i.deleted_at ? 'Удалено' : 'Активно'}</td></tr>`).join('')
+    win.document.write(`<!doctype html><html><head><title>Revenue day report</title><style>body{font-family:Arial,sans-serif;margin:28px;color:#172033}h1{margin:0 0 4px}h2{margin-top:26px}table{width:100%;border-collapse:collapse;margin-top:10px}th,td{border:1px solid #d8dde8;padding:8px;text-align:left;font-size:12px}th{background:#f3f5f8}.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:18px 0}.kpi{border:1px solid #d8dde8;border-radius:12px;padding:12px}.kpi span{display:block;color:#667085;font-size:12px}.kpi b{font-size:18px}.muted{color:#8a93a3;text-decoration:line-through}@media print{button{display:none}}</style></head><body><button onclick="window.print()">Печать</button><h1>Отчёт по выручке за день</h1><div>${selectedBranchName} · ${date}</div><div class="kpis"><div class="kpi"><span>Выручка</span><b>${fmt(dailyRevenueTotal)} AZN</b></div><div class="kpi"><span>Расходы</span><b>${fmt(dailyExpenseTotal)} AZN</b></div><div class="kpi"><span>Приходы наличных</span><b>${fmt(dailyInflowTotal)} AZN</b></div><div class="kpi"><span>Расхождение кассы</span><b>${fmt(cashDifference)} AZN</b></div></div><h2>Выручка</h2><table><thead><tr><th>Дата</th><th>Наличные</th><th>Банк</th><th>Wolt</th><th>Итого</th><th>Комментарий</th><th>Статус</th></tr></thead><tbody>${revenueRows || '<tr><td colspan="7">Нет строк</td></tr>'}</tbody></table><h2>Расходы</h2><table><thead><tr><th>Дата</th><th>Статья</th><th>Сумма</th><th>Комментарий</th><th>Статус</th></tr></thead><tbody>${expenseRows || '<tr><td colspan="5">Нет строк</td></tr>'}</tbody></table><h2>Приходы наличных</h2><table><thead><tr><th>Дата</th><th>Источник</th><th>Сумма</th><th>Комментарий</th><th>Статус</th></tr></thead><tbody>${inflowRows || '<tr><td colspan="5">Нет строк</td></tr>'}</tbody></table></body></html>`)
+    win.document.close()
+  }
 
   return (
     <section id="revenuePage">
-      <section className="topbar"><div><h2>{t('revenue_tab')}</h2><p>{t('revenue_subtitle')}</p></div></section>
+      <section className="topbar"><div><h2>{t('revenue_tab')}</h2><p>{t('revenue_subtitle')}</p></div><div className="action-row" style={{gap:8}}><button className="small" onClick={exportRevenueDayCsv}>CSV отчёт</button><button className="small primary" onClick={printRevenueDayReport}>PDF / печать</button></div></section>
       <section className="grid">
         <div className="card span-2"><div className="card-head"><h3>{t('period_branch')}</h3></div><div className="form-grid">
           <label><span>{t('branch_select')}</span><select value={branchId} onChange={e => setBranchId(e.target.value)}>{branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label>
