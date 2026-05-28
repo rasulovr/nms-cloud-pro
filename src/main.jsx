@@ -1475,6 +1475,32 @@ function SecurityRecoveryCenter() {
   const [compareLoading, setCompareLoading] = useState(false)
   const [restoreLoading, setRestoreLoading] = useState(false)
   const [restoreResult, setRestoreResult] = useState(null)
+  const [supplierAuditRows, setSupplierAuditRows] = useState([])
+  const [supplierAuditLoading, setSupplierAuditLoading] = useState(false)
+  const [showSupplierAuditDetails, setShowSupplierAuditDetails] = useState(false)
+
+  const loadSupplierEnterpriseAudit = async () => {
+    setSupplierAuditLoading(true)
+    try {
+      const { data, error } = await supabase.from('supplier_enterprise_audit_view').select('*')
+      if (error) throw error
+      setSupplierAuditRows(data || [])
+    } catch (e) {
+      setSupplierAuditRows([])
+      setMessage(e?.message || 'Не удалось загрузить supplier audit')
+    } finally {
+      setSupplierAuditLoading(false)
+    }
+  }
+
+  const supplierAuditCriticalRows = (supplierAuditRows || []).filter(r => (r.issue_type || 'ok') !== 'ok' || Math.abs(parseNum(r.diff)) > 0.01)
+  const supplierAuditTotals = (supplierAuditRows || []).reduce((acc, r) => {
+    acc.source += parseNum(r.source_balance)
+    acc.ledger += parseNum(r.ledger_balance)
+    acc.diff += parseNum(r.diff)
+    return acc
+  }, { source: 0, ledger: 0, diff: 0 })
+  const supplierAuditOk = !supplierAuditCriticalRows.length && Math.abs(parseNum(supplierAuditTotals.diff)) <= 0.01
 
   const loadSnapshots = async () => {
     setLoading(true)
@@ -1571,7 +1597,7 @@ function SecurityRecoveryCenter() {
     }
   }
 
-  useEffect(() => { loadSnapshots() }, [])
+  useEffect(() => { loadSnapshots(); loadSupplierEnterpriseAudit() }, [])
 
   return (
     <section className="space-y-6">
@@ -1651,8 +1677,29 @@ function SecurityRecoveryCenter() {
         </div>
       </section>
 
-      
-      
+      <section className="card span-2 supplier-enterprise-audit-card">
+        <div className="card-head">
+          <div>
+            <h3>Supplier ledger audit</h3>
+            <p className="hint">Техническая сверка: стартовый долг + поступления − оплаты против supplier_ledger. Для пользователя скрыто из раздела “Долги и оплаты”.</p>
+          </div>
+          <div className="action-row">
+            <button className="ghost small" onClick={() => setShowSupplierAuditDetails(v => !v)}>{showSupplierAuditDetails ? 'Скрыть детали' : 'Показать детали'}</button>
+            <button className="ghost small" onClick={loadSupplierEnterpriseAudit} disabled={supplierAuditLoading}>{supplierAuditLoading ? 'Обновление...' : 'Обновить'}</button>
+          </div>
+        </div>
+        <div className={supplierAuditOk ? 'enterprise-audit-banner audit-ok' : 'enterprise-audit-banner audit-bad'}>
+          <strong>{supplierAuditOk ? 'Enterprise OK' : 'Требуется проверка'}</strong>
+          <span>{supplierAuditOk ? 'Источник операций и supplier_ledger совпадают.' : 'Найдены расхождения supplier ledger.'}</span>
+        </div>
+        <div className="mini-grid">
+          <div className="metric"><span>Source balance</span><strong>{fmt(supplierAuditTotals.source)}</strong></div>
+          <div className="metric"><span>Ledger balance</span><strong>{fmt(supplierAuditTotals.ledger)}</strong></div>
+          <div className="metric"><span>Разница</span><strong className={Math.abs(supplierAuditTotals.diff) > 0.01 ? 'bad' : 'good'}>{fmt(supplierAuditTotals.diff)}</strong></div>
+        </div>
+        {(showSupplierAuditDetails || !supplierAuditOk) && <div className="table-wrap"><table><thead><tr><th>Статус</th><th>Поставщик</th><th>VOEN</th><th>Source</th><th>Ledger</th><th>Diff</th></tr></thead><tbody>{supplierAuditCriticalRows.slice(0, 30).map(r => <tr key={`${r.supplier_id || 'none'}-${r.legal_entity_id || 'none'}`}><td><span className={r.issue_type === 'ok' ? 'good' : 'bad'}>{r.issue_type || 'ok'}</span></td><td>{r.supplier_name || '—'}</td><td>{r.legal_entity_name || '—'}<br /><span className="hint">{r.legal_entity_voen || ''}</span></td><td>{fmt(r.source_balance)}</td><td>{fmt(r.ledger_balance)}</td><td className={Math.abs(parseNum(r.diff)) > 0.01 ? 'bad' : 'good'}><b>{fmt(r.diff)}</b></td></tr>)}{!supplierAuditCriticalRows.length && <tr><td colSpan="6" className="good">Расхождений не найдено</td></tr>}</tbody></table></div>}
+      </section>
+
       {restoreResult && (
         <section className="card span-2">
           <div className="card-head">
@@ -14400,6 +14447,7 @@ function DebtsPayments({ t }) {
   const [ledgerDocumentTitle, setLedgerDocumentTitle] = useState('Акт сверки взаиморасчётов')
   const [ledgerPageSize, setLedgerPageSize] = useState(10)
   const [ledgerPage, setLedgerPage] = useState(1)
+  const [showSupplierStatementPanel, setShowSupplierStatementPanel] = useState(false)
   const [commonOpsDate, setCommonOpsDate] = useState(todayISO())
   const [commonOpsPeriod, setCommonOpsPeriod] = useState('month')
   const [commonOpsDateFrom, setCommonOpsDateFrom] = useState(monthStart(new Date().getFullYear(), new Date().getMonth() + 1))
@@ -14439,6 +14487,7 @@ function DebtsPayments({ t }) {
   const [editingPaymentTransactionId, setEditingPaymentTransactionId] = useState('')
   const [paymentTransactionEditForm, setPaymentTransactionEditForm] = useState({ payment_date: todayISO(), legal_entity_id: '', amount: '', invoice_notes: '', comment: '' })
   const supplierTransactionPanelRef = useRef(null)
+  const supplierStatementPanelRef = useRef(null)
   const activeSuppliers = useMemo(() => (suppliers || []).filter(s => s.is_active !== false), [suppliers])
   const supplierEntityStatusMap = useMemo(() => new Map((supplierEntityStatuses || []).map(r => [supplierEntityKey(r.supplier_id, r.legal_entity_id), r.is_active !== false])), [supplierEntityStatuses])
   function isSupplierActiveForLegal(supplierId, legalEntityId) {
@@ -15818,10 +15867,28 @@ function DebtsPayments({ t }) {
     setLedgerSearch('')
     setInvoiceSearch('')
     setLedgerPage(1)
+    setShowSupplierStatementPanel(true)
     setActiveSupplierId(row.supplier_id || '')
     setActiveLegalEntityId(row.legal_entity_id || '')
     setTransactionType('payments')
-    scrollToSupplierTransactionPanel()
+    scrollToSupplierStatementPanel()
+  }
+
+  function openSupplierStatement(actualSupplier, legalEntityId) {
+    if (!actualSupplier) return
+    setLedgerSupplierId(actualSupplier.id || 'all')
+    setLedgerLegalEntityId(legalEntityId || 'all')
+    setLedgerSearch('')
+    setInvoiceSearch('')
+    setLedgerPage(1)
+    setShowSupplierStatementPanel(true)
+    scrollToSupplierStatementPanel()
+  }
+
+  function scrollToSupplierStatementPanel() {
+    setTimeout(() => {
+      supplierStatementPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 160)
   }
 
   function scrollToSupplierTransactionPanel() {
@@ -15952,7 +16019,7 @@ function DebtsPayments({ t }) {
       <div className="card-head">
         <div>
           <h3>Supplier control center</h3>
-          <p className="hint">Короткий управленческий обзор: просрочка, превышение лимита и рейтинг поставщиков. Follow-up workflow скрыт из активного UX.</p>
+          <p className="hint">Короткий управленческий обзор: просрочка, превышение лимита и рейтинг поставщиков.</p>
         </div>
         <div className="action-row" style={{gap:8}}><button className="small" onClick={load}>Обновить</button></div>
       </div>
@@ -15963,7 +16030,7 @@ function DebtsPayments({ t }) {
         <div className="metric"><span>Риск</span><strong>{supplierAging.totals.critical} critical · {supplierAging.totals.warning} warning</strong></div>
       </div>
 
-      <div className="grid" style={{marginTop:12}}>
+      <div style={{marginTop:12, display:'grid', gap:12}}>
         <div className="card soft-card">
           <div className="card-head">
             <div>
@@ -16010,7 +16077,7 @@ function DebtsPayments({ t }) {
           const entityTotalDebt = debtForLegalEntity(le.id)
           const entityDebtLabel = entityTotalDebt > 0 ? 'Долг' : entityTotalDebt < 0 ? 'Переплата' : 'Долга нет'
           const entityDebtClass = entityTotalDebt > 0 ? 'bad' : entityTotalDebt < 0 ? 'good' : 'hint'
-          return <div key={le.id} className="supplier-entity-group"><div className="supplier-entity-head"><b>{le.name} · {le.voen}</b><div className="action-row" style={{gap:12,alignItems:'center'}}><span>{list.length} поставщиков</span><span className={entityDebtClass}>{entityDebtLabel}: <b>{fmt(Math.abs(entityTotalDebt))} AZN</b></span></div></div><div className="table-wrap"><table className="supplier-compact-table"><thead><tr><th>Поставщик</th><th>Долг</th><th>Условия</th><th>Статус</th><th></th></tr></thead><tbody>{shown.map(s => { const actualSupplier = currentSupplierSnapshot(s); const entityBalance = balanceForSupplierLegal(actualSupplier.id, le.id); const alert = supplierAlert(actualSupplier, le.id); const risky = alert.overLimit > 0 || alert.overdueCount > 0; return <tr key={`${le.id}-${actualSupplier.id}`} style={risky ? { background: 'rgba(155,45,45,.08)' } : undefined}><td><b>{actualSupplier.name}</b><br /><span className="hint">{actualSupplier.voen || 'VOEN не указан'}</span></td><td><strong className={entityBalance > 0 ? 'bad' : entityBalance < 0 ? 'good' : 'hint'}>{fmt(entityBalance)}</strong></td><td className="hint">{actualSupplier.payment_term_days ? `${actualSupplier.payment_term_days} дней` : '—'} · лимит {fmt(actualSupplier.credit_limit)}</td><td className="hint">{alert.overLimit > 0 && <div className="bad">лимит +{fmt(alert.overLimit)}</div>}{alert.overdueCount > 0 && <div className="bad">просрочено: {alert.overdueCount}</div>}{!risky && <span className="good">ОК</span>}</td><td><button className="small" onClick={() => openTransactions(actualSupplier.id, 'purchases', le.id)}>Транзакции</button></td></tr>})}{!shown.length && <tr><td colSpan="5" className="hint">Нет поставщиков по этому VOEN</td></tr>}</tbody><tfoot><tr><td><b>Итого по физ. лицу</b></td><td><strong className={entityDebtClass}>{fmt(entityTotalDebt)}</strong></td><td colSpan="3" className="hint">Поступления + стартовый долг − оплаты</td></tr></tfoot></table></div>{list.length > 5 && <button className="ghost small" onClick={() => setExpandedEntities(e => ({...e, [le.id]: !e[le.id]}))}>{expandedEntities[le.id] ? 'Свернуть' : 'Показать всех'}</button>}{activeSupplierId && activeLegalEntityId === le.id && <div ref={supplierTransactionPanelRef} className="card supplier-transactions-panel"><div className="card-head"><div><h3>Транзакции: {activeSupplier?.name}</h3><p className="hint">{activeLegalEntityId ? `Физ. лицо: ${legalEntities.find(le => le.id === activeLegalEntityId)?.name || '—'}` : 'Поступления и оплаты показаны отдельно, чтобы не смешивать операции.'}</p></div><button className="ghost small" onClick={() => { setActiveSupplierId(''); setActiveLegalEntityId('') }}>Закрыть</button></div>
+          return <div key={le.id} className="supplier-entity-group"><div className="supplier-entity-head"><b>{le.name} · {le.voen}</b><div className="action-row" style={{gap:12,alignItems:'center'}}><span>{list.length} поставщиков</span><span className={entityDebtClass}>{entityDebtLabel}: <b>{fmt(Math.abs(entityTotalDebt))} AZN</b></span></div></div><div className="table-wrap"><table className="supplier-compact-table"><thead><tr><th>Поставщик</th><th>Долг</th><th>Условия</th><th>Статус</th><th></th></tr></thead><tbody>{shown.map(s => { const actualSupplier = currentSupplierSnapshot(s); const entityBalance = balanceForSupplierLegal(actualSupplier.id, le.id); const alert = supplierAlert(actualSupplier, le.id); const risky = alert.overLimit > 0 || alert.overdueCount > 0; return <tr key={`${le.id}-${actualSupplier.id}`} style={risky ? { background: 'rgba(155,45,45,.08)' } : undefined}><td><b>{actualSupplier.name}</b><br /><span className="hint">{actualSupplier.voen || 'VOEN не указан'}</span></td><td><strong className={entityBalance > 0 ? 'bad' : entityBalance < 0 ? 'good' : 'hint'}>{fmt(entityBalance)}</strong></td><td className="hint">{actualSupplier.payment_term_days ? `${actualSupplier.payment_term_days} дней` : '—'} · лимит {fmt(actualSupplier.credit_limit)}</td><td className="hint">{alert.overLimit > 0 && <div className="bad">лимит +{fmt(alert.overLimit)}</div>}{alert.overdueCount > 0 && <div className="bad">просрочено: {alert.overdueCount}</div>}{!risky && <span className="good">ОК</span>}</td><td><div className="action-row" style={{gap:6}}><button className="small" onClick={() => openTransactions(actualSupplier.id, 'purchases', le.id)}>Транзакции</button><button className="small primary" onClick={() => openSupplierStatement(actualSupplier, le.id)}>Акт сверки</button></div></td></tr>})}{!shown.length && <tr><td colSpan="5" className="hint">Нет поставщиков по этому VOEN</td></tr>}</tbody><tfoot><tr><td><b>Итого по физ. лицу</b></td><td><strong className={entityDebtClass}>{fmt(entityTotalDebt)}</strong></td><td colSpan="3" className="hint">Поступления + стартовый долг − оплаты</td></tr></tfoot></table></div>{list.length > 5 && <button className="ghost small" onClick={() => setExpandedEntities(e => ({...e, [le.id]: !e[le.id]}))}>{expandedEntities[le.id] ? 'Свернуть' : 'Показать всех'}</button>}{activeSupplierId && activeLegalEntityId === le.id && <div ref={supplierTransactionPanelRef} className="card supplier-transactions-panel"><div className="card-head"><div><h3>Транзакции: {activeSupplier?.name}</h3><p className="hint">{activeLegalEntityId ? `Физ. лицо: ${legalEntities.find(le => le.id === activeLegalEntityId)?.name || '—'}` : 'Поступления и оплаты показаны отдельно, чтобы не смешивать операции.'}</p></div><button className="ghost small" onClick={() => { setActiveSupplierId(''); setActiveLegalEntityId('') }}>Закрыть</button></div>
         <div className="form-grid compact"><label><span>Тип операций</span><select value={transactionType} onChange={e => { setTransactionType(e.target.value); setDetailPurchaseId(''); setTransactionPage(1) }}><option value="purchases">Поступления</option><option value="payments">Оплаты</option><option value="products">Товары / цены</option></select></label><label><span>Период</span><select value={transactionPeriod} onChange={e => { setTransactionPeriod(e.target.value); setTransactionPage(1) }}><option value="day">За день</option><option value="month">За месяц</option><option value="year">За год</option><option value="all">Весь период</option></select></label>{transactionPeriod !== 'all' && <label><span>Дата периода</span><input type="date" value={transactionDate} onChange={e => { setTransactionDate(e.target.value); setTransactionPage(1) }} /></label>}</div>
         <div className="action-row" style={{margin:'12px 0 10px'}}><label style={{display:'flex',alignItems:'center',gap:8}}><span className="hint">Показать</span><select value={transactionPageSize} onChange={e => { setTransactionPageSize(Number(e.target.value)); setTransactionPage(1) }}><option value={10}>10</option><option value={20}>20</option><option value={30}>30</option><option value={50}>50</option></select></label></div>
         {transactionType === 'purchases' ? <div className="table-wrap"><table><thead><tr><th>Дата</th><th>Фактура</th><th>Физ. лицо</th><th>Филиал</th><th>Сумма</th><th>Комментарий</th><th></th></tr></thead><tbody>{pagedFilteredPurchases.map(p => <React.Fragment key={p.id}><tr className={p.deleted_at ? 'cancelled-row' : ''}><td>{p.purchase_date}</td><td>{p.invoice_number || '—'}</td><td>{p.legal_entities?.name || '—'}<br /><span className="hint">{p.legal_entities?.voen || ''}</span></td><td>{p.row_type === 'opening_debt' ? 'Стартовый долг' : (p.branches?.name || '—')}</td><td><strong className="bad">{fmt(p.total_amount)}</strong></td><td>{p.deleted_at ? 'Отменено / зачёркнуто' : (p.comment || '—')}</td><td>{p.row_type === 'opening_debt' ? <div className="action-row"><button className="small" disabled={Boolean(p.deleted_at)} onClick={() => startEditOpeningDebt(p)}>Ред.</button><button className="small remove" disabled={Boolean(p.deleted_at)} onClick={() => softDeleteOpeningDebt(p)}>Отменить</button></div> : <div className="action-row"><button className="small" onClick={() => setDetailPurchaseId(detailPurchaseId === p.id ? '' : p.id)}>{detailPurchaseId === p.id ? 'Скрыть' : 'Детали'}</button><button className="small" disabled={Boolean(p.deleted_at)} onClick={() => startEditPurchaseTransaction(p)}>Ред.</button><button className="small remove" disabled={Boolean(p.deleted_at)} onClick={() => softDeletePurchaseTransaction(p)}>Отменить</button></div>}</td></tr>{p.row_type === 'purchase' && editingPurchaseTransactionId === String(p.id) && <tr><td colSpan="7"><div className="card" style={{margin:0}}><h4>Редактирование поступления</h4><p className="hint">Сумма накладной пересчитывается автоматически по товарам. Изменения товара, количества, единицы или цены фиксируются в журнале операций.</p><div className="form-grid compact"><label><span>Дата</span><input type="date" value={purchaseTransactionEditForm.purchase_date} onChange={e => setPurchaseTransactionEditForm({...purchaseTransactionEditForm, purchase_date: e.target.value})} /></label><label><span>Фактура</span><input value={purchaseTransactionEditForm.invoice_number} onChange={e => setPurchaseTransactionEditForm({...purchaseTransactionEditForm, invoice_number: e.target.value})} /></label><label><span>Филиал</span><select value={purchaseTransactionEditForm.branch_id} onChange={e => setPurchaseTransactionEditForm({...purchaseTransactionEditForm, branch_id: e.target.value})}><option value="">—</option>{branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label><label><span>Сумма накладной</span><strong>{fmt(getPurchaseEditTotal() || p.total_amount)} AZN</strong></label><label><span>Комментарий</span><input value={purchaseTransactionEditForm.comment} onChange={e => setPurchaseTransactionEditForm({...purchaseTransactionEditForm, comment: e.target.value})} /></label></div><div className="table-wrap"><table><thead><tr><th>Категория</th><th>Товар</th><th>Кол-во</th><th>Ед.</th><th>Цена</th><th>Сумма</th></tr></thead><tbody>{purchaseTransactionEditItems.map(i => { const editProduct = getPurchaseEditProduct(i); return <tr key={i.id}><td>{editProduct?.category || i.supplier_products?.category || '—'}</td><td><select value={i.product_id || ''} onChange={e => updatePurchaseEditItemLocal(i.id, { product_id: e.target.value })}>{products.map(prod => <option key={prod.id} value={prod.id}>{prod.name}</option>)}</select></td><td><input inputMode="decimal" value={i.quantity} onChange={e => updatePurchaseEditItemLocal(i.id, { quantity: e.target.value })} /></td><td><select value={i.unit || 'kg'} onChange={e => updatePurchaseEditItemLocal(i.id, { unit: e.target.value })}>{PURCHASE_UNITS.map(u => <option key={u.value} value={u.value}>{u.label}</option>)}</select></td><td><input inputMode="decimal" value={i.unit_price} onChange={e => updatePurchaseEditItemLocal(i.id, { unit_price: e.target.value })} /></td><td>{fmt(getPurchaseEditItemTotal(i))} AZN</td></tr> })}{!purchaseTransactionEditItems.length && <tr><td colSpan="6" className="hint">Товары не найдены</td></tr>}</tbody></table></div><div className="action-row"><button className="small primary" onClick={() => savePurchaseTransactionEdit(p)}>Сохранить изменения</button><button className="ghost small" onClick={() => { setEditingPurchaseTransactionId(''); setPurchaseTransactionEditItems([]) }}>Отмена</button></div></div></td></tr>}{p.row_type === 'opening_debt' && editingOpeningDebtId === String(p.id).replace('opening-', '') && <tr><td colSpan="7"><div className="card" style={{margin:0}}><h4>Редактирование стартового долга</h4><div className="form-grid compact"><label><span>Дата</span><input type="date" value={openingDebtEditForm.debt_date} onChange={e => setOpeningDebtEditForm({...openingDebtEditForm, debt_date: e.target.value})} /></label><label><span>Сумма</span><input inputMode="decimal" value={openingDebtEditForm.amount} onChange={e => setOpeningDebtEditForm({...openingDebtEditForm, amount: e.target.value})} /></label><label><span>Фактура / отметка</span><input value={openingDebtEditForm.invoice_notes} onChange={e => setOpeningDebtEditForm({...openingDebtEditForm, invoice_notes: e.target.value})} /></label><label><span>Комментарий</span><input value={openingDebtEditForm.comment} onChange={e => setOpeningDebtEditForm({...openingDebtEditForm, comment: e.target.value})} /></label></div><div className="action-row"><button className="small primary" onClick={() => saveOpeningDebtEdit(p)}>Сохранить</button><button className="ghost small" onClick={() => setEditingOpeningDebtId('')}>Отмена</button></div></div></td></tr>}{p.row_type !== 'opening_debt' && detailPurchaseId === p.id && <tr><td colSpan="7"><div className="table-wrap"><table><thead><tr><th>Категория</th><th>Товар</th><th>Кол-во</th><th>Ед.</th><th>Цена</th><th>Сумма</th></tr></thead><tbody>{(p.supplier_purchase_items || []).map(i => <tr key={i.id}><td>{i.supplier_products?.category || '—'}</td><td>{i.supplier_products?.name || '—'}</td><td>{fmt(i.quantity)}</td><td>{i.unit}</td><td>{fmt(i.unit_price)}</td><td>{fmt(i.total_amount)}</td></tr>)}{!(p.supplier_purchase_items || []).length && <tr><td colSpan="6" className="hint">Товары не найдены</td></tr>}</tbody></table></div></td></tr>}</React.Fragment>)}{!purchaseTransactionRows.length && <tr><td colSpan="7" className="hint">Нет поступлений или стартовых долгов за выбранный период</td></tr>}</tbody></table></div> : transactionType === 'products' ? <div><div className="form-grid compact" style={{marginTop:12}}><label><span>Поиск товара</span><input value={productSearch} onChange={e => setProductSearch(e.target.value)} placeholder="Например: молоко, кофе" /></label><label><span>Сортировка</span><select value={productSort} onChange={e => setProductSort(e.target.value)}><option value="name_asc">Наименование A → Z</option><option value="name_desc">Наименование Z → A</option><option value="change_desc">Изменение цены: рост сверху</option><option value="change_asc">Изменение цены: снижение сверху</option><option value="price_desc">Последняя цена: убывание</option><option value="price_asc">Последняя цена: возрастание</option></select></label></div><div className="table-wrap"><table><thead><tr><th>Тип</th><th>Товар</th><th>Последняя цена закупа</th><th>Предыдущая цена закупа</th><th>Разница</th><th>Изменение</th><th>Последняя закупка</th><th>Фактура</th></tr></thead><tbody>{pagedProductPriceRows.map(row => <tr key={row.id}><td>{row.category}</td><td><b>{row.name}</b></td><td>{fmt(row.latest?.price)} / {row.latest?.unit || row.unit}</td><td>{row.previous ? `${fmt(row.previous.price)} / ${row.previous.unit || row.unit}` : '—'}</td><td>{row.changeAmount == null ? <span className="hint">—</span> : <strong className={row.changeAmount > 0 ? 'bad' : row.changeAmount < 0 ? 'good' : ''}>{row.changeAmount > 0 ? '+' : ''}{fmt(row.changeAmount)} AZN</strong>}</td><td>{row.changePct == null ? <span className="hint">—</span> : <strong className={row.changePct > 0 ? 'bad' : row.changePct < 0 ? 'good' : ''}>{row.changePct > 0 ? '+' : ''}{pct(row.changePct)}</strong>}</td><td>{row.latest?.date || '—'}</td><td>{row.latest?.invoice || '—'}</td></tr>)}{!productPriceRows.length && <tr><td colSpan="8" className="hint">Товары не найдены за выбранный период</td></tr>}</tbody></table></div></div> : <div className="table-wrap"><table><thead><tr><th>Дата</th><th>Физ. лицо</th><th>Отметки / фактуры</th><th>Сумма</th><th>Комментарий</th><th>Действие</th></tr></thead><tbody>{pagedFilteredPayments.map(p => <React.Fragment key={p.id}><tr><td>{p.payment_date}</td><td>{p.legal_entities?.name || legalEntities.find(le => le.id === p.legal_entity_id)?.name || '—'}<br /><span className="hint">{p.legal_entities?.voen || legalEntities.find(le => le.id === p.legal_entity_id)?.voen || ''}</span></td><td>{p.invoice_notes || '—'}</td><td><strong className="good">{fmt(p.amount)}</strong></td><td>{p.comment || '—'}</td><td><div className="action-row"><button className="small" onClick={() => startEditSupplierPayment(p)}>Ред.</button><button className="small remove" onClick={() => deleteSupplierPayment(p)}>Отменить</button></div></td></tr>{editingPaymentTransactionId === String(p.id) && <tr><td colSpan="6"><div className="card" style={{margin:0}}><h4>Редактирование оплаты поставщику</h4><p className="hint">Изменение суммы сразу пересчитает долг поставщика по выбранному физ. лицу.</p><div className="form-grid compact"><label><span>Дата оплаты</span><input type="date" value={paymentTransactionEditForm.payment_date} onChange={e => setPaymentTransactionEditForm({...paymentTransactionEditForm, payment_date: e.target.value})} /></label><label><span>Физ. лицо / VOEN</span><select value={paymentTransactionEditForm.legal_entity_id} onChange={e => setPaymentTransactionEditForm({...paymentTransactionEditForm, legal_entity_id: e.target.value})}>{legalEntities.map(le => <option key={le.id} value={le.id}>{le.name} · {le.voen}</option>)}</select></label><label><span>Сумма оплаты</span><input inputMode="decimal" value={paymentTransactionEditForm.amount} onChange={e => setPaymentTransactionEditForm({...paymentTransactionEditForm, amount: e.target.value})} /></label><label><span>Отметки / фактуры</span><input value={paymentTransactionEditForm.invoice_notes} onChange={e => setPaymentTransactionEditForm({...paymentTransactionEditForm, invoice_notes: e.target.value})} /></label><label><span>Комментарий</span><input value={paymentTransactionEditForm.comment} onChange={e => setPaymentTransactionEditForm({...paymentTransactionEditForm, comment: e.target.value})} /></label></div><div className="action-row"><button className="small primary" onClick={() => saveSupplierPaymentEdit(p)}>Сохранить</button><button className="ghost small" onClick={() => setEditingPaymentTransactionId('')}>Отмена</button><button className="small remove" onClick={() => deleteSupplierPayment(p)}>Отменить</button></div></div></td></tr>}</React.Fragment>)}{!filteredPayments.length && <tr><td colSpan="6" className="hint">Нет оплат за выбранный период</td></tr>}</tbody></table></div>}
@@ -16021,20 +16088,6 @@ function DebtsPayments({ t }) {
       </div>
 
 
-
-      <div className="card span-2 supplier-enterprise-audit-card">
-        <div className="card-head">
-          <div><h3>Enterprise audit: supplier ledger</h3><p className="hint">Сверка источников: стартовый долг + поступления − оплаты против supplier_ledger.</p></div>
-          <div className="action-row"><button className="ghost small" onClick={() => setShowSupplierAuditDetails(v => !v)}>{showSupplierAuditDetails ? 'Скрыть детали' : 'Показать детали'}</button><button className="ghost small" onClick={load}>Обновить</button></div>
-        </div>
-        <div className={supplierAuditOk ? 'enterprise-audit-banner audit-ok' : 'enterprise-audit-banner audit-bad'}><strong>{supplierAuditStatusLabel}</strong><span>{supplierAuditStatusHint}</span></div>
-        <div className="mini-grid">
-          <div className="metric"><span>Source balance</span><strong>{fmt(supplierAuditTotals.source)}</strong></div>
-          <div className="metric"><span>Ledger balance</span><strong>{fmt(supplierAuditTotals.ledger)}</strong></div>
-          <div className="metric"><span>Разница</span><strong className={Math.abs(supplierAuditTotals.diff) > 0.01 ? 'bad' : 'good'}>{fmt(supplierAuditTotals.diff)}</strong></div>
-        </div>
-        {(showSupplierAuditDetails || !supplierAuditOk) && <div className="table-wrap"><table><thead><tr><th>Статус</th><th>Поставщик</th><th>VOEN</th><th>Source</th><th>Ledger</th><th>Diff</th></tr></thead><tbody>{supplierAuditCriticalRows.slice(0, 30).map(r => <tr key={`${r.supplier_id || 'none'}-${r.legal_entity_id || 'none'}`}><td><span className={r.issue_type === 'ok' ? 'good' : 'bad'}>{r.issue_type || 'ok'}</span></td><td>{r.supplier_name || '—'}</td><td>{r.legal_entity_name || '—'}<br /><span className="hint">{r.legal_entity_voen || ''}</span></td><td>{fmt(r.source_balance)}</td><td>{fmt(r.ledger_balance)}</td><td className={Math.abs(parseNum(r.diff)) > 0.01 ? 'bad' : 'good'}><b>{fmt(r.diff)}</b></td></tr>)}{!supplierAuditCriticalRows.length && <tr><td colSpan="6" className="good">Расхождений не найдено</td></tr>}</tbody></table></div>}
-      </div>
 
       <div className="card span-2"><div className="card-head"><div><h3>Общий список: приход и оплаты</h3><p className="hint">Фильтруемый журнал операций: стартовый долг, приход по накладным и оплаты.</p></div><label style={{display:'flex',alignItems:'center',gap:8}}><span className="hint">Показать</span><select value={commonOpsPageSize} onChange={e => { setCommonOpsPageSize(Number(e.target.value)); setCommonOpsPage(1) }}><option value={10}>10</option><option value={20}>20</option><option value={30}>30</option><option value={50}>50</option></select></label></div>
         <div className="form-grid compact">
@@ -16058,8 +16111,8 @@ function DebtsPayments({ t }) {
         </div>
       </div>
 
-      <div className="card span-2 supplier-transactions-panel">
-        <div className="card-head"><div><h3>Баланс поставщика / акт сверки</h3><p className="hint">Период, VOEN, e-qaimə, печать акта сверки и экспорт statement для бухгалтерии.</p></div><div className="action-row" style={{gap:8}}><label style={{display:'flex',alignItems:'center',gap:8}}><span className="hint">Показать</span><select value={ledgerPageSize} onChange={e => { setLedgerPageSize(Number(e.target.value)); setLedgerPage(1) }}><option value={10}>10</option><option value={20}>20</option><option value={30}>30</option><option value={50}>50</option></select></label><button className="small primary" onClick={printSupplierLedger}>Акт сверки / PDF</button><button className="small" onClick={exportSupplierStatementCsv}>CSV</button></div></div>
+      {showSupplierStatementPanel && <div ref={supplierStatementPanelRef} className="card span-2 supplier-transactions-panel">
+        <div className="card-head"><div><h3>Акт сверки</h3><p className="hint">Компактная сверка по выбранному поставщику / VOEN. Открывается кнопкой “Акт сверки” из списка поставщиков или просрочки.</p></div><div className="action-row" style={{gap:8}}><label style={{display:'flex',alignItems:'center',gap:8}}><span className="hint">Показать</span><select value={ledgerPageSize} onChange={e => { setLedgerPageSize(Number(e.target.value)); setLedgerPage(1) }}><option value={10}>10</option><option value={20}>20</option><option value={30}>30</option><option value={50}>50</option></select></label><button className="small primary" onClick={printSupplierLedger}>Акт сверки / PDF</button><button className="small" onClick={exportSupplierStatementCsv}>CSV</button><button className="ghost small" onClick={() => setShowSupplierStatementPanel(false)}>Закрыть</button></div></div>
         <div className="form-grid compact">
           <label><span>Поиск поставщика</span><input value={ledgerSearch} onChange={e => { setLedgerSearch(e.target.value); setLedgerPage(1) }} placeholder="Название или VOEN" /></label>
           <label><span>Поставщик</span><select value={ledgerSupplierId} onChange={e => { setLedgerSupplierId(e.target.value); setLedgerPage(1) }}><option value="all">Все найденные / все поставщики</option>{searchedSuppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
@@ -16090,7 +16143,7 @@ function DebtsPayments({ t }) {
           <button className="ghost small" disabled={safeLedgerPage >= ledgerTotalPages} onClick={() => setLedgerPage(p => Math.min(ledgerTotalPages, parseNum(p) + 1))}>След. →</button>
         </div>
         <div className={`hint ${ledgerDebtClass === 'bad' ? 'bad' : ledgerDebtClass === 'good' ? 'good' : ''}`} style={{marginTop:10}}>{ledgerDebtText}: <b>{fmt(ledgerTotals.balance)} AZN</b></div>
-      </div>
+      </div>}
 
     </section>
   </section>
