@@ -1,5 +1,5 @@
 // RMS v56.1 Supplier Enterprise Hardened - Supplier writes via secure RPC only
-/* RMS v72 Supplier Final Layout Polish - simplified professional supplier UX */
+/* RMS v76 Finance Consistency & Forecast Hardening - unified finance formula audit */
 /* RMS v63 Supplier Payment Calendar - payment calendar, due reminders and follow-up control persistence */
 /* RMS v43 SUPPLIERS FINAL CLEAN SINGLE E-QAIME FORM - no payment term fields inside purchase e-qaime block */
 import React, { useEffect, useMemo, useRef, useState } from 'react'
@@ -7074,6 +7074,7 @@ function Finance({ t, lang, onGoToExpense }) {
   const [dailyRevenueRows, setDailyRevenueRows] = useState([])
   const [aiRows, setAiRows] = useState([])
   const [showAllAiRows, setShowAllAiRows] = useState(false)
+  const [financeFormulaAudit, setFinanceFormulaAudit] = useState([])
   const [expenseDetail, setExpenseDetail] = useState({ name: '', rows: [], total: 0, loading: false, error: '' })
   const [expenseDetailArticleFilter, setExpenseDetailArticleFilter] = useState('all')
   const [expenseDetailPeriod, setExpenseDetailPeriod] = useState('month')
@@ -7816,12 +7817,11 @@ function Finance({ t, lang, onGoToExpense }) {
       })
     }
 
-    const expenseRows = [...map.entries()].map(([name, value]) => (
+    let expenseRows = [...map.entries()].map(([name, value]) => (
       value && typeof value === 'object'
         ? { name, amount: parseNum(value.amount), note: value.note || '' }
         : { name, amount: parseNum(value), note: '' }
     ))
-    const extraDsmf = 0
     const salaryOverride = directSalaryTotal - parseNum(current.salary)
     let currentForFinance = {
       ...current,
@@ -7842,6 +7842,31 @@ function Finance({ t, lang, onGoToExpense }) {
         forecastMargin: parseNum(syncedForecast.forecastMargin)
       }
     }
+
+    const financeActualBreakdownRows = [...expenseRows]
+    if (currentForFinance.serviceCost > 0) financeActualBreakdownRows.push({ name: 'Service charge персоналу', amount: currentForFinance.serviceCost })
+    if (currentForFinance.tax > 0) financeActualBreakdownRows.push({ name: `Налог ${TAX_RATE}%`, amount: currentForFinance.tax })
+    const financeActualExpenseTotal = financeActualBreakdownRows.reduce((sum, row) => sum + parseNum(row.amount), 0)
+    const financeUnifiedNet = parseNum(currentForFinance.revenue) - financeActualExpenseTotal
+    const financeLegacyFormulaTotal = parseNum(currentForFinance.expenses) + parseNum(currentForFinance.salary) + parseNum(currentForFinance.serviceCost) + parseNum(currentForFinance.tax)
+    const financeFormulaDiff = financeUnifiedNet - parseNum(currentForFinance.net)
+    currentForFinance = {
+      ...currentForFinance,
+      expenses: Math.max(0, financeActualExpenseTotal - parseNum(currentForFinance.salary) - parseNum(currentForFinance.serviceCost) - parseNum(currentForFinance.tax)),
+      totalExpenses: financeActualExpenseTotal,
+      net: financeUnifiedNet,
+      formulaMode: 'unified_v76'
+    }
+    setFinanceFormulaAudit([
+      { name: 'Выручка', amount: currentForFinance.revenue, note: 'monthly_branch_revenue' },
+      { name: 'Операционные расходы', amount: currentForFinance.expenses, note: 'daily_expenses без supplier mirror и salary-like строк + распределённые supplier purchases' },
+      { name: 'Зарплаты', amount: currentForFinance.salary, note: 'единая payroll-логика с долей менеджеров' },
+      { name: 'Service charge персоналу', amount: currentForFinance.serviceCost, note: 'monthly_branch_service_charge_cost' },
+      { name: `Налог ${TAX_RATE}%`, amount: currentForFinance.tax, note: '8% от выручки' },
+      { name: 'Итого расходов по единой формуле', amount: financeActualExpenseTotal, note: 'сумма статей в “Расходы по статьям”' },
+      { name: 'Чистая прибыль', amount: currentForFinance.net, note: 'выручка − все расходы' },
+      { name: 'Контроль расхождения legacy/net', amount: financeFormulaDiff, note: Math.abs(financeFormulaDiff) <= 0.01 ? 'OK: формулы совпадают' : 'исправлено единой формулой v76' }
+    ])
     let financeComparison = {
       currentRevenue: currentForFinance.revenue,
       previousRevenue: previous.revenue,
@@ -7876,9 +7901,7 @@ function Finance({ t, lang, onGoToExpense }) {
     }
 
     setStats({ ...currentForFinance, previous, comparison: financeComparison })
-
-    if (currentForFinance.serviceCost > 0) expenseRows.push({ name: 'Service charge персоналу', amount: currentForFinance.serviceCost })
-    if (currentForFinance.tax > 0) expenseRows.push({ name: `Налог %`, amount: currentForFinance.tax })
+    expenseRows = financeActualBreakdownRows
     setBreakdown(expenseRows.sort((a, b) => b.amount - a.amount))
 
     if (branchId === ALL_BRANCHES) {
@@ -8125,6 +8148,16 @@ function Finance({ t, lang, onGoToExpense }) {
           <div className="card-head"><h3>Расчёт прогноза прибыли</h3><p className="hint">Фиксированные расходы учитываются сразу, коммунальные и другие месячные статьи берутся из текущего месяца или из среднего прошлых месяцев.</p></div>
           <div className="table-wrap"><table><thead><tr><th>Статья</th><th>Сумма</th><th>Логика</th></tr></thead><tbody>{(stats.forecastDetails || []).map(r => <tr key={r.name}><td><b>{r.name}</b></td><td>{fmt(r.amount)}</td><td className="hint">{r.note || '—'}</td></tr>)}</tbody></table></div>
           <p className="hint">Итого прогноз расходов: <b>{fmt(stats.forecastExpenses)}</b> AZN · прогнозная маржа: <b>{pct(stats.forecastMargin)}</b></p>
+        </div>
+
+        <div className="card span-2">
+          <div className="card-head">
+            <div>
+              <h3>Контроль единой финансовой формулы</h3>
+              <p className="hint">v76: прибыль считается одинаково — выручка минус операционные расходы, зарплаты, service charge и налог. Используется та же логика, что и в прогнозе.</p>
+            </div>
+          </div>
+          <div className="table-wrap"><table><thead><tr><th>Показатель</th><th>Сумма</th><th>Источник / логика</th></tr></thead><tbody>{financeFormulaAudit.map(row => <tr key={row.name}><td><b>{row.name}</b></td><td className={row.name.includes('Расхождения') || row.name.includes('Контроль') ? (Math.abs(parseNum(row.amount)) > 0.01 ? 'bad' : 'good') : ''}>{fmt(row.amount)}</td><td className="hint">{row.note}</td></tr>)}</tbody></table></div>
         </div>
 
         <div className="card span-2">
