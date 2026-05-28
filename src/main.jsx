@@ -784,8 +784,17 @@ function RMSProInterfaceStyles() {
   
 
 /* v88 Finance & Dashboard Professional Cleanup */
+/* v89 Finance Management Export & Health Pack */
 .finance-pro-kpis { grid-template-columns: repeat(7, minmax(150px, 1fr)); }
 .finance-pro-kpis .dash-kpi em { letter-spacing: .01em; }
+.finance-head-main { display:flex; flex-direction:column; gap:8px; }
+.finance-health-row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:2px; }
+.finance-health-pill { display:inline-flex; align-items:center; gap:6px; padding:6px 10px; border-radius:999px; font-size:12px; font-weight:800; border:1px solid rgba(15,23,42,.10); background:#f8fafc; color:#334155; }
+.finance-health-pill.ok { background:#ecfdf5; color:#047857; border-color:#a7f3d0; }
+.finance-health-pill.warn { background:#fffbeb; color:#92400e; border-color:#fde68a; }
+.finance-health-pill.bad { background:#fef2f2; color:#b91c1c; border-color:#fecaca; }
+.finance-head-actions { display:flex; gap:8px; justify-content:flex-end; align-items:end; flex-wrap:wrap; margin-top:8px; }
+.finance-report-btn { white-space:nowrap; }
 .finance-expense-row.food td:first-child::before,
 .finance-expense-row.salary td:first-child::before,
 .finance-expense-row.rent td:first-child::before,
@@ -8165,13 +8174,90 @@ function Finance({ t, lang, onGoToExpense }) {
     forecastMargin: parseNum(stats.forecastMargin)
   }
 
+  const financeHealthFlags = [
+    { label: 'Убыток', level: 'bad', active: financeMonthSummary.net < 0 },
+    { label: 'Food Cost выше нормы', level: 'warn', active: financeMonthSummary.foodCostPct > 35 },
+    { label: 'Зарплаты выше нормы', level: 'warn', active: financeMonthSummary.salaryPct > 25 },
+    { label: 'Расходы выше выручки', level: 'bad', active: financeMonthSummary.revenue > 0 && financeMonthSummary.expenses > financeMonthSummary.revenue }
+  ].filter(Boolean)
+  const activeFinanceHealthFlags = financeHealthFlags.filter(f => f.active)
+  const financeHealthLevel = activeFinanceHealthFlags.some(f => f.level === 'bad') ? 'bad' : activeFinanceHealthFlags.length ? 'warn' : 'ok'
+  const financeHealthLabel = financeHealthLevel === 'ok' ? 'Финансы месяца: OK' : financeHealthLevel === 'bad' ? 'Финансы месяца: критично' : 'Финансы месяца: внимание'
+
+  function financeCsvCell(value) {
+    return `"${String(value ?? '').replace(/"/g, '""')}"`
+  }
+
+  function downloadFinanceCsv(filename, rows) {
+    const csv = '\ufeff' + rows.map(row => row.map(financeCsvCell).join(';')).join('\n')
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    URL.revokeObjectURL(url)
+  }
+
+  function exportFinanceExpensesCsv() {
+    const rows = [
+      ['Статья', 'Сумма AZN', 'Доля расходов %', 'Доля выручки %'],
+      ...financeExpenseRowsAll.map(r => [
+        r.name,
+        fmt(r.amount),
+        pct(financeTotalExpenses ? parseNum(r.amount) / financeTotalExpenses * 100 : 0),
+        pct(stats.revenue ? parseNum(r.amount) / stats.revenue * 100 : 0)
+      ]),
+      ['Итого', fmt(financeTotalExpenses), pct(100), pct(stats.revenue ? financeTotalExpenses / stats.revenue * 100 : 0)]
+    ]
+    downloadFinanceCsv(`finance-expenses-${year}-${String(month).padStart(2, '0')}.csv`, rows)
+  }
+
+  function exportFinanceMonthlyCsv() {
+    const rows = [
+      ['Раздел', 'Показатель', 'Значение'],
+      ['KPI', 'Выручка', fmt(financeMonthSummary.revenue)],
+      ['KPI', 'Операционные расходы', fmt(financeMonthSummary.expenses)],
+      ['KPI', 'Чистая прибыль', fmt(financeMonthSummary.net)],
+      ['KPI', 'Маржа', pct(financeMonthSummary.margin)],
+      ['KPI', 'Food Cost', pct(financeMonthSummary.foodCostPct)],
+      ['KPI', 'Зарплаты', pct(financeMonthSummary.salaryPct)],
+      ['Прогноз', 'Прогноз выручки', fmt(financeMonthSummary.forecastRevenue)],
+      ['Прогноз', 'Прогноз расходов', fmt(financeMonthSummary.forecastExpenses)],
+      ['Прогноз', 'Прогноз прибыли', fmt(financeMonthSummary.forecastProfit)],
+      ['Структура расходов', '', ''],
+      ...financeExpenseRowsAll.map(r => ['Расходы', r.name, fmt(r.amount)]),
+      ['Отклонения', '', ''],
+      ...sortedAiRows.slice(0, 20).map(r => ['Отклонение', `${r.branchName} · ${r.indicator}`, `${r.fact} · ${r.deviation}`])
+    ]
+    downloadFinanceCsv(`finance-summary-${year}-${String(month).padStart(2, '0')}.csv`, rows)
+  }
+
+  function printFinanceMonthlyReport() {
+    const monthName = I18N[lang]?.months?.[month - 1] || String(month).padStart(2, '0')
+    const expenseRowsHtml = financeExpenseRowsAll.map(r => `<tr><td>${r.name}</td><td>${fmt(r.amount)}</td><td>${pct(financeTotalExpenses ? parseNum(r.amount) / financeTotalExpenses * 100 : 0)}</td></tr>`).join('') || '<tr><td colspan="3">Нет данных</td></tr>'
+    const anomalyRowsHtml = sortedAiRows.slice(0, 10).map(r => `<tr><td>${r.branchName}</td><td>${r.indicator}</td><td>${r.fact}</td><td>${r.deviation}</td><td>${r.recommendation}</td></tr>`).join('') || '<tr><td colspan="5">Отклонения не найдены</td></tr>'
+    const html = `<!doctype html><html><head><meta charset="utf-8"><title>Finance report</title><style>body{font-family:Arial,sans-serif;padding:28px;color:#111827}h1{margin:0 0 6px}p{color:#64748b}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:18px 0}.kpi{border:1px solid #e5e7eb;border-radius:12px;padding:12px}.kpi span{display:block;color:#64748b;font-size:12px}.kpi b{font-size:20px}table{width:100%;border-collapse:collapse;margin-top:10px}th,td{border-bottom:1px solid #e5e7eb;padding:8px;text-align:left}th{background:#f8fafc}.section{margin-top:22px}@media print{button{display:none}}</style></head><body><h1>Финансовый отчёт</h1><p>${monthName} ${year} · ${branchId === ALL_BRANCHES ? 'Все рестораны' : financeBranchNameById(branchId)}</p><div class="grid"><div class="kpi"><span>Выручка</span><b>${fmt(financeMonthSummary.revenue)} AZN</b></div><div class="kpi"><span>Расходы</span><b>${fmt(financeMonthSummary.expenses)} AZN</b></div><div class="kpi"><span>Чистая прибыль</span><b>${fmt(financeMonthSummary.net)} AZN</b></div><div class="kpi"><span>Маржа</span><b>${pct(financeMonthSummary.margin)}</b></div></div><div class="section"><h2>Расходы по статьям</h2><table><thead><tr><th>Статья</th><th>Сумма</th><th>Доля расходов</th></tr></thead><tbody>${expenseRowsHtml}</tbody></table></div><div class="section"><h2>Отклонения</h2><table><thead><tr><th>Филиал</th><th>Показатель</th><th>Факт</th><th>Отклонение</th><th>Рекомендация</th></tr></thead><tbody>${anomalyRowsHtml}</tbody></table></div><script>window.print()</script></body></html>`
+    const win = window.open('', '_blank')
+    if (!win) return
+    win.document.write(html)
+    win.document.close()
+  }
+
   return (
     <section id="financePage" className="finance-intelligence-page rms-executive-dashboard">
       <section className="dashboard-v23-head finance-dashboard-head">
-        <div>
+        <div className="finance-head-main">
           <h2>{t('finance_tab')}</h2>
           <p>{branchId === ALL_BRANCHES ? 'Единая управленческая картина по сети.' : 'Финансовая картина выбранного филиала.'}</p>
+          <div className="finance-health-row">
+            <span className={`finance-health-pill ${financeHealthLevel}`}>{financeHealthLabel}</span>
+            {activeFinanceHealthFlags.slice(0, 3).map(flag => <span key={flag.label} className={`finance-health-pill ${flag.level}`}>{flag.label}</span>)}
+          </div>
         </div>
+        <div>
         <div className="dashboard-v23-filters finance-dashboard-filters">
           <label><span>{t('branch_select')}</span>
             <select value={branchId} onChange={e => setBranchId(e.target.value)}>
@@ -8181,6 +8267,11 @@ function Finance({ t, lang, onGoToExpense }) {
           </label>
           <label><span>{t('year')}</span><select value={year} onChange={e => setYear(Number(e.target.value))}>{defaultYears().map(y => <option key={y} value={y}>{y}</option>)}</select></label>
           <label><span>{t('month')}</span><select value={month} onChange={e => setMonth(Number(e.target.value))}>{I18N[lang].months.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}</select></label>
+        </div>
+        <div className="finance-head-actions">
+          <button className="small finance-report-btn" onClick={exportFinanceMonthlyCsv}>CSV отчёт</button>
+          <button className="small primary finance-report-btn" onClick={printFinanceMonthlyReport}>PDF / печать</button>
+        </div>
         </div>
       </section>
 
@@ -8258,7 +8349,7 @@ function Finance({ t, lang, onGoToExpense }) {
         </div>}
 
         <div className="card span-2">
-          <div className="card-head"><h3>{t('expense_breakdown')}</h3></div>
+          <div className="card-head"><div><h3>{t('expense_breakdown')}</h3><p className="hint">Сортировка по сумме, доля расходов и доля от выручки.</p></div><button className="small" onClick={exportFinanceExpensesCsv}>CSV</button></div>
           <div className="table-wrap">
             <table>
               <thead><tr><th>{t('expense_item')}</th><th>{t('amount')}</th><th>Доля расходов</th><th>Доля выручки</th><th></th></tr></thead>
