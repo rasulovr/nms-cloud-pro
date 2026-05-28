@@ -8118,41 +8118,13 @@ function Finance({ t, lang, onGoToExpense }) {
     ? [...financeExpenseStructureBase, { name: 'Прочие расходы', amount: financeExpenseOtherAmount }]
     : financeExpenseStructureBase
   const financeExpenseTotalForChart = financeTotalExpenses || financeExpenseRowsAll.reduce((sum, r) => sum + parseNum(r.amount), 0) || 1
-  const financeTrendRows = [
-    { label: 'Нояб', income: stats.revenue * 0.52, expenses: financeTotalExpenses * 0.56, net: Math.max(0, financeNet * 0.48) },
-    { label: 'Дек', income: stats.revenue * 0.58, expenses: financeTotalExpenses * 0.62, net: Math.max(0, financeNet * 0.55) },
-    { label: 'Янв', income: stats.revenue * 0.64, expenses: financeTotalExpenses * 0.66, net: Math.max(0, financeNet * 0.61) },
-    { label: 'Фев', income: stats.previous?.revenue || stats.revenue * 0.72, expenses: financeTotalExpenses * 0.72, net: Math.max(0, financePreviousNet || financeNet * 0.70) },
-    { label: 'Март', income: stats.revenue * 0.86, expenses: financeTotalExpenses * 0.84, net: Math.max(0, financeNet * 0.88) },
-    { label: 'Апр', income: Math.max(stats.revenue, stats.forecastRevenue || 0), expenses: financeTotalExpenses, net: Math.max(0, financeNet) }
-  ]
-  const financeTrendMax = Math.max(1, ...financeTrendRows.flatMap(r => [parseNum(r.income), parseNum(r.expenses), parseNum(r.net)]))
-  const financeChartWidth = 620
-  const financeChartHeight = 220
-  const financeLinePoints = (key) => financeTrendRows.map((row, idx) => {
-    const x = 42 + idx * ((financeChartWidth - 84) / Math.max(1, financeTrendRows.length - 1))
-    const y = financeChartHeight - 34 - (parseNum(row[key]) / financeTrendMax) * (financeChartHeight - 78)
-    return `${x.toFixed(1)},${y.toFixed(1)}`
-  }).join(' ')
-  const financeProfitTrendRows = financeTrendRows.map(r => ({ ...r, profit: Math.max(0, parseNum(r.net)) }))
-  const financeProfitMax = Math.max(1, ...financeProfitTrendRows.map(r => r.profit))
-  const financeProfitPoints = financeProfitTrendRows.map((row, idx) => {
-    const x = 38 + idx * ((financeChartWidth - 76) / Math.max(1, financeProfitTrendRows.length - 1))
-    const y = financeChartHeight - 34 - (parseNum(row.profit) / financeProfitMax) * (financeChartHeight - 78)
-    return `${x.toFixed(1)},${y.toFixed(1)}`
-  }).join(' ')
-  const financePlanRows = [
-    { name: 'Выручка', fact: stats.revenue, plan: Math.max(stats.revenue * 0.9, 1), accent: 'blue' },
-    { name: 'Расходы', fact: financeTotalExpenses, plan: Math.max(financeTotalExpenses * 1.05, 1), accent: 'green' },
-    { name: 'Прибыль', fact: Math.max(financeNet, 0), plan: Math.max(Math.max(financeNet, 0) * 0.78, 1), accent: 'purple' }
-  ]
 
   return (
     <section id="financePage" className="finance-intelligence-page rms-executive-dashboard">
       <section className="dashboard-v23-head finance-dashboard-head">
         <div>
           <h2>{t('finance_tab')}</h2>
-          <p>{branchId === ALL_BRANCHES ? 'Финансовые показатели, движение средств и прибыльность по всей сети.' : t('finance_subtitle')}</p>
+          <p>{branchId === ALL_BRANCHES ? 'Финансовые показатели по всей сети.' : t('finance_subtitle')}</p>
         </div>
         <div className="dashboard-v23-filters finance-dashboard-filters">
           <label><span>{t('branch_select')}</span>
@@ -8177,20 +8149,6 @@ function Finance({ t, lang, onGoToExpense }) {
       </section>
 
       <section className="finance-intel-grid">
-        <div className="finance-intel-card finance-intel-card-wide" style={{display:'none'}}>
-          <div className="finance-card-title"><div><h3>Движение денежных средств</h3><p>Модель по выбранному месяцу</p></div><div className="finance-chart-legend"><span className="blue">Поступления</span><span className="red">Расходы</span><span className="green">Чистый поток</span></div></div>
-          <svg className="finance-intel-line-chart" viewBox={`0 0 ${financeChartWidth} ${financeChartHeight}`} role="img">
-            <defs>
-              <linearGradient id="financeNetArea" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#8b5cf6" stopOpacity="0.22"/><stop offset="100%" stopColor="#8b5cf6" stopOpacity="0.02"/></linearGradient>
-            </defs>
-            {[0, 1, 2, 3].map(i => <line key={i} className="finance-chart-grid-line" x1="38" x2={financeChartWidth - 28} y1={32 + i * 42} y2={32 + i * 42} />)}
-            <polyline className="finance-line-blue" points={financeLinePoints('income')} />
-            <polyline className="finance-line-red" points={financeLinePoints('expenses')} />
-            <polyline className="finance-line-green" points={financeLinePoints('net')} />
-            {financeTrendRows.map((r, idx) => <text key={r.label} className="finance-chart-x" x={42 + idx * ((financeChartWidth - 84) / Math.max(1, financeTrendRows.length - 1))} y={financeChartHeight - 10}>{r.label}</text>)}
-          </svg>
-        </div>
-
         <div className="finance-intel-card">
           <div className="finance-card-title"><div><h3>Структура расходов</h3><p>За текущий месяц</p></div></div>
           <div className="finance-donut-layout">
@@ -8199,16 +8157,6 @@ function Finance({ t, lang, onGoToExpense }) {
               {(financeExpenseStructure.length ? financeExpenseStructure : [{name:'Продукты',amount:financeTotalExpenses * .38},{name:'Зарплаты',amount:stats.salary},{name:'Прочие',amount:financeTotalExpenses * .16}]).map((r, idx) => <div key={`${r.name}-${idx}`}><span><i className={`dot dot-${idx}`} />{r.name}</span><b>{pct(parseNum(r.amount) / financeExpenseTotalForChart * 100)}</b><em>{fmt(r.amount)} AZN</em></div>)}
             </div>
           </div>
-        </div>
-
-        <div className="finance-intel-card" style={{display:'none'}}>
-          <div className="finance-card-title"><div><h3>Прибыльность</h3><p>Модель по выбранному месяцу</p></div><strong className="finance-chart-tag">{fmt(financeNet / 1000)}k</strong></div>
-          <svg className="finance-intel-mini-chart" viewBox={`0 0 ${financeChartWidth} ${financeChartHeight}`} role="img">
-            <defs><linearGradient id="financeProfitArea" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#8b5cf6" stopOpacity="0.22"/><stop offset="100%" stopColor="#8b5cf6" stopOpacity="0.02"/></linearGradient></defs>
-            {[0, 1, 2].map(i => <line key={i} className="finance-chart-grid-line" x1="38" x2={financeChartWidth - 28} y1={48 + i * 48} y2={48 + i * 48} />)}
-            <polyline className="finance-line-purple" points={financeProfitPoints} />
-            {financeProfitTrendRows.map((r, idx) => <text key={r.label} className="finance-chart-x" x={38 + idx * ((financeChartWidth - 76) / Math.max(1, financeProfitTrendRows.length - 1))} y={financeChartHeight - 10}>{r.label}</text>)}
-          </svg>
         </div>
 
         <div className="finance-intel-card">
@@ -8223,15 +8171,7 @@ function Finance({ t, lang, onGoToExpense }) {
           </div>
         </div>
 
-        <div className="finance-intel-card" style={{display:'none'}}>
-          <div className="finance-card-title"><div><h3>План / Факт</h3><p>Текущий месяц</p></div></div>
-          <div className="finance-plan-list">
-            {financePlanRows.map(row => {
-              const progress = Math.min(140, row.plan ? (parseNum(row.fact) / parseNum(row.plan)) * 100 : 0)
-              return <div key={row.name}><div><span>{row.name}</span><b>{fmt(row.fact)} / {fmt(row.plan)} AZN <em>{pct(progress)}</em></b></div><div className={`finance-plan-track ${row.accent}`}><i style={{width: `${Math.min(100, progress)}%`}} /></div></div>
-            })}
-          </div>
-        </div>
+
       </section>
 
       <section className="grid finance-details-grid">
