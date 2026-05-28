@@ -1,5 +1,5 @@
 // RMS v56.1 Supplier Enterprise Hardened - Supplier writes via secure RPC only
-/* RMS v76 Finance Consistency & Forecast Hardening - unified finance formula audit */
+/* RMS v81 Finance Real User View - hides synthetic model charts from user finance screen */
 /* RMS v63 Supplier Payment Calendar - payment calendar, due reminders and follow-up control persistence */
 /* RMS v43 SUPPLIERS FINAL CLEAN SINGLE E-QAIME FORM - no payment term fields inside purchase e-qaime block */
 import React, { useEffect, useMemo, useRef, useState } from 'react'
@@ -8099,6 +8099,13 @@ function Finance({ t, lang, onGoToExpense }) {
   const profitChange = financePreviousNet ? ((financeNet - financePreviousNet) / Math.abs(financePreviousNet) * 100) : 0
   const financeProfitability = stats.revenue ? financeNet / stats.revenue * 100 : 0
   const financeCashBalance = parseNum(stats.cash) + parseNum(stats.bank)
+  const financeFoodCostAmount = (breakdown || []).filter(r => financeExpenseGroupName(r.name) === 'food_market' || String(r.name || '').toLowerCase().includes('food cost')).reduce((sum, r) => sum + parseNum(r.amount), 0)
+  const financePackagingAmount = (breakdown || []).filter(r => financeExpenseGroupName(r.name) === 'packaging').reduce((sum, r) => sum + parseNum(r.amount), 0)
+  const financeSalaryPct = stats.revenue ? parseNum(stats.salary) / parseNum(stats.revenue) * 100 : 0
+  const financeFoodCostPct = stats.revenue ? financeFoodCostAmount / parseNum(stats.revenue) * 100 : 0
+  const financeTotalExpensePct = stats.revenue ? financeTotalExpenses / parseNum(stats.revenue) * 100 : 0
+  const financeServicePct = stats.revenue ? parseNum(stats.serviceCost) / parseNum(stats.revenue) * 100 : 0
+  const financeTaxPct = stats.revenue ? parseNum(stats.tax) / parseNum(stats.revenue) * 100 : 0
   const financeExpenseRowsAll = (breakdown || [])
     .filter(r => parseNum(r.amount) > 0)
     .sort((a, b) => parseNum(b.amount) - parseNum(a.amount))
@@ -8167,8 +8174,8 @@ function Finance({ t, lang, onGoToExpense }) {
       </section>
 
       <section className="finance-intel-grid">
-        <div className="finance-intel-card finance-intel-card-wide">
-          <div className="finance-card-title"><div><h3>Движение денежных средств</h3><p>Последние 6 месяцев</p></div><div className="finance-chart-legend"><span className="blue">Поступления</span><span className="red">Расходы</span><span className="green">Чистый поток</span></div></div>
+        <div className="finance-intel-card finance-intel-card-wide" style={{display:'none'}}>
+          <div className="finance-card-title"><div><h3>Движение денежных средств</h3><p>Модель по выбранному месяцу</p></div><div className="finance-chart-legend"><span className="blue">Поступления</span><span className="red">Расходы</span><span className="green">Чистый поток</span></div></div>
           <svg className="finance-intel-line-chart" viewBox={`0 0 ${financeChartWidth} ${financeChartHeight}`} role="img">
             <defs>
               <linearGradient id="financeNetArea" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#8b5cf6" stopOpacity="0.22"/><stop offset="100%" stopColor="#8b5cf6" stopOpacity="0.02"/></linearGradient>
@@ -8191,8 +8198,8 @@ function Finance({ t, lang, onGoToExpense }) {
           </div>
         </div>
 
-        <div className="finance-intel-card">
-          <div className="finance-card-title"><div><h3>Прибыльность</h3><p>Последние 6 месяцев</p></div><strong className="finance-chart-tag">{fmt(stats.net / 1000)}k</strong></div>
+        <div className="finance-intel-card" style={{display:'none'}}>
+          <div className="finance-card-title"><div><h3>Прибыльность</h3><p>Модель по выбранному месяцу</p></div><strong className="finance-chart-tag">{fmt(financeNet / 1000)}k</strong></div>
           <svg className="finance-intel-mini-chart" viewBox={`0 0 ${financeChartWidth} ${financeChartHeight}`} role="img">
             <defs><linearGradient id="financeProfitArea" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#8b5cf6" stopOpacity="0.22"/><stop offset="100%" stopColor="#8b5cf6" stopOpacity="0.02"/></linearGradient></defs>
             {[0, 1, 2].map(i => <line key={i} className="finance-chart-grid-line" x1="38" x2={financeChartWidth - 28} y1={48 + i * 48} y2={48 + i * 48} />)}
@@ -8204,15 +8211,16 @@ function Finance({ t, lang, onGoToExpense }) {
         <div className="finance-intel-card">
           <div className="finance-card-title"><div><h3>Ключевые метрики</h3><p>Операционные показатели</p></div></div>
           <div className="finance-metric-list">
-            <div><span>Средний чек</span><b>37.85 AZN</b><em className="good">+6.4%</em></div>
-            <div><span>Количество чеков</span><b>5817</b><em className="good">+9.7%</em></div>
-            <div><span>Себестоимость</span><b>{pct(stats.revenue ? (breakdown.find(r => String(r.name).includes('Food'))?.amount || 0) / stats.revenue * 100 : 0)}</b><em className="good">-1.3 п.п.</em></div>
-            <div><span>Фонд оплаты труда</span><b>{pct(stats.revenue ? stats.salary / stats.revenue * 100 : 0)}</b><em className="bad">-0.8 п.п.</em></div>
-            <div><span>Средняя маржа</span><b>{pct(financeProfitability)}</b><em className="good">+1.6 п.п.</em></div>
+            <div><span>Food Cost</span><b>{pct(financeFoodCostPct)}</b><em>{fmt(financeFoodCostAmount)} AZN</em></div>
+            <div><span>Фонд оплаты труда</span><b>{pct(financeSalaryPct)}</b><em>{fmt(stats.salary)} AZN</em></div>
+            <div><span>Расходы / выручка</span><b>{pct(financeTotalExpensePct)}</b><em>{fmt(financeTotalExpenses)} AZN</em></div>
+            <div><span>Service charge</span><b>{pct(financeServicePct)}</b><em>{fmt(stats.serviceCost)} AZN</em></div>
+            <div><span>Налог</span><b>{pct(financeTaxPct)}</b><em>{fmt(stats.tax)} AZN</em></div>
+            <div><span>Чистая маржа</span><b>{pct(financeProfitability)}</b><em className={financeProfitability >= 0 ? 'good' : 'bad'}>{fmt(financeNet)} AZN</em></div>
           </div>
         </div>
 
-        <div className="finance-intel-card">
+        <div className="finance-intel-card" style={{display:'none'}}>
           <div className="finance-card-title"><div><h3>План / Факт</h3><p>Текущий месяц</p></div></div>
           <div className="finance-plan-list">
             {financePlanRows.map(row => {
