@@ -8249,9 +8249,9 @@ function Finance({ t, lang, onGoToExpense }) {
           <div className="card-head"><h3>{t('expense_breakdown')}</h3></div>
           <div className="table-wrap">
             <table>
-              <thead><tr><th>{t('expense_item')}</th><th>{t('amount')}</th><th>{t('expense_pct')}</th><th>Просмотр</th></tr></thead>
+              <thead><tr><th>{t('expense_item')}</th><th>{t('amount')}</th><th>{t('expense_pct')}</th><th></th></tr></thead>
               <tbody>
-                {breakdown.map(r => <tr key={r.name}><td>{r.name}{r.note ? <small className="expense-note">({r.note})</small> : null}</td><td><b>{fmt(r.amount)}</b></td><td>{pct(stats.revenue ? r.amount / stats.revenue * 100 : 0)}</td><td><button className="small" onClick={() => openExpenseBreakdownDetails(r)}>Просмотр</button></td></tr>)}
+                {breakdown.map(r => <tr key={r.name}><td>{r.name}{r.note ? <small className="expense-note">({r.note})</small> : null}</td><td><b>{fmt(r.amount)}</b></td><td>{pct(stats.revenue ? r.amount / stats.revenue * 100 : 0)}</td><td><button className="small" onClick={() => openExpenseBreakdownDetails(r)}>Детали</button></td></tr>)}
                 {!breakdown.length && <tr><td colSpan="4" className="hint">—</td></tr>}
               </tbody>
               {breakdown.length ? <tfoot>
@@ -8266,13 +8266,13 @@ function Finance({ t, lang, onGoToExpense }) {
           </div>
         </div>
 
-        {expenseDetail.name && <div className="card span-2">
-          <div className="card-head">
+        {expenseDetail.name && <div className="card span-2 supplier-transactions-panel supplier-modal-panel">
+          <div className="card-head supplier-modal-head">
             <div>
               <h3>Транзакции по статье: {expenseDetail.name}</h3>
-              <p className="hint">Показаны строки расходов за выбранный месяц{branchId === ALL_BRANCHES ? ' по всем филиалам' : ' по выбранному филиалу'}.</p>
+              <p className="hint">Строки расходов за выбранный период{branchId === ALL_BRANCHES ? ' по всем филиалам' : ' по выбранному филиалу'}.</p>
             </div>
-            <button className="small" onClick={closeExpenseBreakdownDetails}>Закрыть</button>
+            <button className="supplier-modal-x" title="Закрыть" aria-label="Закрыть" onClick={closeExpenseBreakdownDetails}>×</button>
           </div>
           {expenseDetail.loading && <p className="hint">Загрузка транзакций...</p>}
           {expenseDetail.error && <p className="hint bad">{expenseDetail.error}</p>}
