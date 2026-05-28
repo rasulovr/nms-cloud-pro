@@ -7171,6 +7171,7 @@ function Finance({ t, lang, onGoToExpense }) {
   const [aiRows, setAiRows] = useState([])
   const [showAllAiRows, setShowAllAiRows] = useState(false)
   const [showFinanceForecastDetails, setShowFinanceForecastDetails] = useState(false)
+  const [showAllFinanceExpenseRows, setShowAllFinanceExpenseRows] = useState(false)
   const [financeFormulaAudit, setFinanceFormulaAudit] = useState([])
   const [financeForecastAudit, setFinanceForecastAudit] = useState([])
   const [expenseDetail, setExpenseDetail] = useState({ name: '', rows: [], total: 0, loading: false, error: '' })
@@ -8183,6 +8184,15 @@ function Finance({ t, lang, onGoToExpense }) {
   const activeFinanceHealthFlags = financeHealthFlags.filter(f => f.active)
   const financeHealthLevel = activeFinanceHealthFlags.some(f => f.level === 'bad') ? 'bad' : activeFinanceHealthFlags.length ? 'warn' : 'ok'
   const financeHealthLabel = financeHealthLevel === 'ok' ? 'Финансы месяца: OK' : financeHealthLevel === 'bad' ? 'Финансы месяца: критично' : 'Финансы месяца: внимание'
+  const financeTopExpenseDrivers = financeExpenseRowsAll.slice(0, 3)
+  const financePrimaryExpenseDriver = financeTopExpenseDrivers[0]
+  const financeExpenseRowsForTable = showAllFinanceExpenseRows ? financeExpenseRowsAll : financeExpenseRowsAll.slice(0, 10)
+  const financeHiddenExpenseRowsCount = Math.max(0, financeExpenseRowsAll.length - financeExpenseRowsForTable.length)
+  const financeCriticalSignals = [
+    ...activeFinanceHealthFlags.map(f => ({ label: f.label, level: f.level, note: 'Финансовый контроль месяца' })),
+    ...sortedAiRows.filter(r => r.level === 'critical' || r.level === 'warning').slice(0, 3).map(r => ({ label: `${r.branchName} · ${r.indicator}`, level: r.level === 'critical' ? 'bad' : 'warn', note: r.recommendation || r.deviation }))
+  ]
+  const financeExecutiveAction = financeCriticalSignals[0]?.note || 'Критичных отклонений не найдено. Продолжайте контроль Food Cost, зарплат и ежедневной выручки.'
 
   function financeCsvCell(value) {
     return `"${String(value ?? '').replace(/"/g, '""')}"`
@@ -8212,7 +8222,7 @@ function Finance({ t, lang, onGoToExpense }) {
       ]),
       ['Итого', fmt(financeTotalExpenses), pct(100), pct(stats.revenue ? financeTotalExpenses / stats.revenue * 100 : 0)]
     ]
-    downloadFinanceCsv(`finance-expenses-${year}-${String(month).padStart(2, '0')}.csv`, rows)
+    downloadFinanceCsv(`finance-expenses-${branchId === ALL_BRANCHES ? 'all' : branchId}-${year}-${String(month).padStart(2, '0')}.csv`, rows)
   }
 
   function exportFinanceMonthlyCsv() {
@@ -8232,14 +8242,15 @@ function Finance({ t, lang, onGoToExpense }) {
       ['Отклонения', '', ''],
       ...sortedAiRows.slice(0, 20).map(r => ['Отклонение', `${r.branchName} · ${r.indicator}`, `${r.fact} · ${r.deviation}`])
     ]
-    downloadFinanceCsv(`finance-summary-${year}-${String(month).padStart(2, '0')}.csv`, rows)
+    downloadFinanceCsv(`finance-summary-${branchId === ALL_BRANCHES ? 'all' : branchId}-${year}-${String(month).padStart(2, '0')}.csv`, rows)
   }
 
   function printFinanceMonthlyReport() {
     const monthName = I18N[lang]?.months?.[month - 1] || String(month).padStart(2, '0')
     const expenseRowsHtml = financeExpenseRowsAll.map(r => `<tr><td>${r.name}</td><td>${fmt(r.amount)}</td><td>${pct(financeTotalExpenses ? parseNum(r.amount) / financeTotalExpenses * 100 : 0)}</td></tr>`).join('') || '<tr><td colspan="3">Нет данных</td></tr>'
     const anomalyRowsHtml = sortedAiRows.slice(0, 10).map(r => `<tr><td>${r.branchName}</td><td>${r.indicator}</td><td>${r.fact}</td><td>${r.deviation}</td><td>${r.recommendation}</td></tr>`).join('') || '<tr><td colspan="5">Отклонения не найдены</td></tr>'
-    const html = `<!doctype html><html><head><meta charset="utf-8"><title>Finance report</title><style>body{font-family:Arial,sans-serif;padding:28px;color:#111827}h1{margin:0 0 6px}p{color:#64748b}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:18px 0}.kpi{border:1px solid #e5e7eb;border-radius:12px;padding:12px}.kpi span{display:block;color:#64748b;font-size:12px}.kpi b{font-size:20px}table{width:100%;border-collapse:collapse;margin-top:10px}th,td{border-bottom:1px solid #e5e7eb;padding:8px;text-align:left}th{background:#f8fafc}.section{margin-top:22px}@media print{button{display:none}}</style></head><body><h1>Финансовый отчёт</h1><p>${monthName} ${year} · ${branchId === ALL_BRANCHES ? 'Все рестораны' : financeBranchNameById(branchId)}</p><div class="grid"><div class="kpi"><span>Выручка</span><b>${fmt(financeMonthSummary.revenue)} AZN</b></div><div class="kpi"><span>Расходы</span><b>${fmt(financeMonthSummary.expenses)} AZN</b></div><div class="kpi"><span>Чистая прибыль</span><b>${fmt(financeMonthSummary.net)} AZN</b></div><div class="kpi"><span>Маржа</span><b>${pct(financeMonthSummary.margin)}</b></div></div><div class="section"><h2>Расходы по статьям</h2><table><thead><tr><th>Статья</th><th>Сумма</th><th>Доля расходов</th></tr></thead><tbody>${expenseRowsHtml}</tbody></table></div><div class="section"><h2>Отклонения</h2><table><thead><tr><th>Филиал</th><th>Показатель</th><th>Факт</th><th>Отклонение</th><th>Рекомендация</th></tr></thead><tbody>${anomalyRowsHtml}</tbody></table></div><script>window.print()</script></body></html>`
+    const driverRowsHtml = financeTopExpenseDrivers.map(r => `<tr><td>${r.name}</td><td>${fmt(r.amount)}</td><td>${pct(financeTotalExpenses ? parseNum(r.amount) / financeTotalExpenses * 100 : 0)}</td></tr>`).join('') || '<tr><td colspan="3">Нет данных</td></tr>'
+    const html = `<!doctype html><html><head><meta charset="utf-8"><title>Finance report</title><style>body{font-family:Arial,sans-serif;padding:28px;color:#111827}h1{margin:0 0 6px}p{color:#64748b}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:18px 0}.kpi{border:1px solid #e5e7eb;border-radius:12px;padding:12px}.kpi span{display:block;color:#64748b;font-size:12px}.kpi b{font-size:20px}.status{display:inline-block;border:1px solid #e5e7eb;border-radius:999px;padding:6px 10px;font-weight:700;margin-top:8px}table{width:100%;border-collapse:collapse;margin-top:10px}th,td{border-bottom:1px solid #e5e7eb;padding:8px;text-align:left}th{background:#f8fafc}.section{margin-top:22px}@media print{button{display:none}}</style></head><body><h1>Финансовый отчёт</h1><p>${monthName} ${year} · ${branchId === ALL_BRANCHES ? 'Все рестораны' : financeBranchNameById(branchId)}</p><span class="status">${financeHealthLabel}</span><div class="grid"><div class="kpi"><span>Выручка</span><b>${fmt(financeMonthSummary.revenue)} AZN</b></div><div class="kpi"><span>Расходы</span><b>${fmt(financeMonthSummary.expenses)} AZN</b></div><div class="kpi"><span>Чистая прибыль</span><b>${fmt(financeMonthSummary.net)} AZN</b></div><div class="kpi"><span>Маржа</span><b>${pct(financeMonthSummary.margin)}</b></div></div><div class="section"><h2>Главные драйверы расходов</h2><table><thead><tr><th>Статья</th><th>Сумма</th><th>Доля расходов</th></tr></thead><tbody>${driverRowsHtml}</tbody></table></div><div class="section"><h2>Расходы по статьям</h2><table><thead><tr><th>Статья</th><th>Сумма</th><th>Доля расходов</th></tr></thead><tbody>${expenseRowsHtml}</tbody></table></div><div class="section"><h2>Отклонения</h2><table><thead><tr><th>Филиал</th><th>Показатель</th><th>Факт</th><th>Отклонение</th><th>Рекомендация</th></tr></thead><tbody>${anomalyRowsHtml}</tbody></table></div><script>window.print()</script></body></html>`
     const win = window.open('', '_blank')
     if (!win) return
     win.document.write(html)
@@ -8283,6 +8294,24 @@ function Finance({ t, lang, onGoToExpense }) {
         <div className="dash-kpi dash-kpi-forecast"><span className="dash-kpi-icon">◌</span><div><em>Food Cost</em><strong>{pct(financeMonthSummary.foodCostPct)}</strong><p>{fmt(financeMonthSummary.foodCostAmount)} AZN</p></div></div>
         <div className="dash-kpi dash-kpi-wallet"><span className="dash-kpi-icon">◍</span><div><em>Зарплаты</em><strong>{pct(financeMonthSummary.salaryPct)}</strong><p>{fmt(financeMonthSummary.salaryAmount)} AZN</p></div></div>
         <div className="dash-kpi dash-kpi-target"><span className="dash-kpi-icon">◎</span><div><em>Прогноз прибыли</em><strong className={financeMonthSummary.forecastProfit >= 0 ? 'good' : 'bad'}>{fmt(financeMonthSummary.forecastProfit)} <small>AZN</small></strong><p>до конца месяца</p></div></div>
+      </section>
+
+      <section className="finance-executive-strip">
+        <div className="finance-exec-card">
+          <span>Главный расход</span>
+          <strong>{financePrimaryExpenseDriver ? financePrimaryExpenseDriver.name : '—'}</strong>
+          <p>{financePrimaryExpenseDriver ? `${fmt(financePrimaryExpenseDriver.amount)} AZN · ${pct(financeTotalExpenses ? parseNum(financePrimaryExpenseDriver.amount) / financeTotalExpenses * 100 : 0)} расходов` : 'Нет расходов за выбранный период'}</p>
+        </div>
+        <div className="finance-exec-card">
+          <span>Контроль нормы</span>
+          <strong className={financeHealthLevel === 'ok' ? 'good' : financeHealthLevel === 'bad' ? 'bad' : ''}>{financeHealthLabel}</strong>
+          <p>{activeFinanceHealthFlags.length ? activeFinanceHealthFlags.map(f => f.label).join(' · ') : 'Ключевые нормы не превышены'}</p>
+        </div>
+        <div className="finance-exec-card">
+          <span>Приоритет действия</span>
+          <strong>{financeCriticalSignals[0]?.label || 'Контроль без срочных действий'}</strong>
+          <p>{financeExecutiveAction}</p>
+        </div>
       </section>
 
       <section className="finance-intel-grid">
@@ -8354,7 +8383,7 @@ function Finance({ t, lang, onGoToExpense }) {
             <table>
               <thead><tr><th>{t('expense_item')}</th><th>{t('amount')}</th><th>Доля расходов</th><th>Доля выручки</th><th></th></tr></thead>
               <tbody>
-                {financeExpenseRowsAll.map(r => {
+                {financeExpenseRowsForTable.map(r => {
                   const group = financeExpenseGroupName(r.name)
                   const rowClass = group === 'food_market' ? 'finance-expense-row food' : group === 'salary' ? 'finance-expense-row salary' : group === 'rent' ? 'finance-expense-row rent' : group === 'tax' ? 'finance-expense-row tax' : 'finance-expense-row'
                   return <tr key={r.name} className={rowClass}><td>{r.name}{r.note ? <small className="expense-note">({r.note})</small> : null}</td><td><b>{fmt(r.amount)}</b></td><td>{pct(financeTotalExpenses ? parseNum(r.amount) / financeTotalExpenses * 100 : 0)}</td><td>{pct(stats.revenue ? parseNum(r.amount) / stats.revenue * 100 : 0)}</td><td className="table-actions"><button className="small" onClick={() => openExpenseBreakdownDetails(r)}>Детали</button></td></tr>
@@ -8372,6 +8401,10 @@ function Finance({ t, lang, onGoToExpense }) {
               </tfoot> : null}
             </table>
           </div>
+          {financeExpenseRowsAll.length > 10 && <div className="action-row" style={{marginTop: 12}}>
+            <span className="hint">{showAllFinanceExpenseRows ? `Показаны все ${financeExpenseRowsAll.length} статей.` : `Показаны топ-10 статей. Скрыто: ${financeHiddenExpenseRowsCount}.`}</span>
+            <button className="ghost small" onClick={() => setShowAllFinanceExpenseRows(v => !v)}>{showAllFinanceExpenseRows ? 'Скрыть' : 'Показать все'}</button>
+          </div>}
         </div>
 
         {expenseDetail.name && <div className="card span-2 supplier-transactions-panel supplier-modal-panel">
@@ -22034,6 +22067,15 @@ function RMSProV9Styles() {
   .rms-pro-shell .finance-line-chart-summary .metric-number,
   .finance-line-chart-summary .metric-number{font-size:28px!important;}
 }
+
+
+.finance-executive-strip{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin:16px 0 18px!important;}
+.finance-exec-card{background:#fff;border:1px solid #e5e7eb;border-radius:18px;padding:16px 18px;box-shadow:0 12px 28px rgba(15,23,42,.06);min-height:118px;}
+.finance-exec-card span{display:block;color:#64748b;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;margin-bottom:7px;}
+.finance-exec-card strong{display:block;color:#0f172a;font-size:18px;line-height:1.15;font-weight:900;letter-spacing:-.02em;margin-bottom:8px;}
+.finance-exec-card p{margin:0;color:#64748b;font-size:13px;line-height:1.45;}
+.finance-exec-card .good{color:#16a34a!important}.finance-exec-card .bad{color:#dc2626!important}
+@media(max-width:980px){.finance-executive-strip{grid-template-columns:1fr!important;}}
 
   `}</style>
 }
