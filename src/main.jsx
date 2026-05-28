@@ -4477,6 +4477,7 @@ function Revenue({ t, focusExpense }) {
   const [monthStats, setMonthStats] = useState({ cash: 0, bank: 0, wolt: 0, revenue: 0, expenses: 0, inflows: 0, serviceCharge: 0, serviceCost: 0 })
   const [logs, setLogs] = useState([])
   const [message, setMessage] = useState('')
+  const [showRevenueLogModal, setShowRevenueLogModal] = useState(false)
 
   useEffect(() => {
     if (!focusExpense?.date || !focusExpense?.branchId) return
@@ -5370,6 +5371,7 @@ function Revenue({ t, focusExpense }) {
   const formServiceStaffCost = serviceForm.enabled ? formServiceBase * staffCostPercent / 100 : 0
   const calculatedClosingCash = parseNum(cashForm.opening_cash) + dailyCashRevenue + dailyInflowTotal - dailyExpenseTotal
   const cashDifference = parseNum(cashForm.counted_cash) - calculatedClosingCash
+  const recentRevenueLogs = logs.slice(0, 5)
 
   return (
     <section id="revenuePage">
@@ -5468,10 +5470,30 @@ function Revenue({ t, focusExpense }) {
           </div>
         </div>
 
-        <div className="card span-2"><h3>Журнал подтверждённых операций</h3><p className="hint">Каждое создание, изменение и отмена по выбранной дате фиксируется с временем и пользователем.</p><div className="table-wrap"><table><thead><tr><th>Время</th><th>Пользователь</th><th>Раздел</th><th>Действие</th><th>Поле</th><th>Было</th><th>Стало</th></tr></thead><tbody>
-          {logs.map(l => <tr key={l.id} className={l.action === 'cancel' ? 'cancelled-row' : ''}><td>{formatDT(l.created_at)}</td><td>{l.user_email || l.user_id || '—'}</td><td>{entityLabel(l.entity_type)}</td><td>{operationLabel(l.action)}</td><td>{fieldLabel(l.field_name)}</td><td>{l.old_value || '—'}</td><td>{l.new_value || '—'}</td></tr>)}
-          {!logs.length && <tr><td colSpan="5" className="hint">Пока нет операций</td></tr>}
-        </tbody></table></div></div>
+        <div className="card span-2">
+          <div className="card-head">
+            <div>
+              <h3>Журнал операций</h3>
+              <p className="hint">Последние 5 действий по выбранной дате. Полный журнал открывается отдельно.</p>
+            </div>
+            {logs.length > 5 && <button className="small" onClick={() => setShowRevenueLogModal(true)}>Все операции · {logs.length}</button>}
+          </div>
+          <div className="table-wrap"><table><thead><tr><th>Время</th><th>Пользователь</th><th>Раздел</th><th>Действие</th><th>Поле</th><th>Было</th><th>Стало</th></tr></thead><tbody>
+            {recentRevenueLogs.map(l => <tr key={l.id} className={l.action === 'cancel' ? 'cancelled-row' : ''}><td>{formatDT(l.created_at)}</td><td>{l.user_email || l.user_id || '—'}</td><td>{entityLabel(l.entity_type)}</td><td>{operationLabel(l.action)}</td><td>{fieldLabel(l.field_name)}</td><td>{l.old_value || '—'}</td><td>{l.new_value || '—'}</td></tr>)}
+            {!recentRevenueLogs.length && <tr><td colSpan="7" className="hint">Пока нет операций</td></tr>}
+          </tbody></table></div>
+        </div>
+
+        {showRevenueLogModal && <div className="card span-2 supplier-transactions-panel supplier-modal-panel revenue-log-modal-panel">
+          <div className="card-head supplier-modal-head">
+            <div><h3>Полный журнал операций</h3><p className="hint">Выбранная дата: {date}. Создание, изменение и удаление фиксируются secure RPC.</p></div>
+            <button className="supplier-modal-x" title="Закрыть" aria-label="Закрыть" onClick={() => setShowRevenueLogModal(false)}>×</button>
+          </div>
+          <div className="table-wrap"><table><thead><tr><th>Время</th><th>Пользователь</th><th>Раздел</th><th>Действие</th><th>Поле</th><th>Было</th><th>Стало</th></tr></thead><tbody>
+            {logs.map(l => <tr key={l.id} className={l.action === 'cancel' ? 'cancelled-row' : ''}><td>{formatDT(l.created_at)}</td><td>{l.user_email || l.user_id || '—'}</td><td>{entityLabel(l.entity_type)}</td><td>{operationLabel(l.action)}</td><td>{fieldLabel(l.field_name)}</td><td>{l.old_value || '—'}</td><td>{l.new_value || '—'}</td></tr>)}
+            {!logs.length && <tr><td colSpan="7" className="hint">Пока нет операций</td></tr>}
+          </tbody></table></div>
+        </div>}
       </section>
     </section>
   )
@@ -6257,6 +6279,7 @@ function DashboardStyles() {
     .supplier-modal-x { flex: 0 0 auto; width: 34px; height: 34px; border-radius: 10px; border: 1px solid rgba(148,163,184,.45); background: rgba(248,250,252,.95); color: #111827; font-size: 22px; line-height: 1; font-weight: 800; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
     .supplier-modal-x:hover { background: #eef2f7; border-color: rgba(100,116,139,.55); }
     .revenue-modal-panel { width: min(920px, calc(100vw - 44px)); }
+    .revenue-log-modal-panel { width: min(1180px, calc(100vw - 44px)); }
     .revenue-modal-body { padding: 18px; margin: 0 !important; }
     .revenue-modal-actions { padding: 0 18px 18px; justify-content: flex-end; }
     .revenue-row-actions { justify-content: flex-end; gap: 6px; flex-wrap: nowrap; }
