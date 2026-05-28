@@ -1,5 +1,5 @@
 // RMS v56.1 Supplier Enterprise Hardened - Supplier writes via secure RPC only
-/* RMS v59 Supplier Documents & Export - supplier statement, print, CSV, period filters */
+/* RMS v60 Supplier Aging & Risk Control - aging buckets, risk register, payment priority */
 /* RMS v43 SUPPLIERS FINAL CLEAN SINGLE E-QAIME FORM - no payment term fields inside purchase e-qaime block */
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
@@ -14412,6 +14412,8 @@ function DebtsPayments({ t }) {
   const [transactionLogs, setTransactionLogs] = useState([])
   const [supplierAuditRows, setSupplierAuditRows] = useState([])
   const [showSupplierAuditDetails, setShowSupplierAuditDetails] = useState(false)
+  const [supplierRiskFilter, setSupplierRiskFilter] = useState('all')
+  const [supplierAgingPageSize, setSupplierAgingPageSize] = useState(10)
   const [editingOpeningDebtId, setEditingOpeningDebtId] = useState('')
   const [openingDebtEditForm, setOpeningDebtEditForm] = useState({ debt_date: todayISO(), amount: '', invoice_notes: '', comment: '' })
   const [editingPurchaseTransactionId, setEditingPurchaseTransactionId] = useState('')
@@ -15146,6 +15148,158 @@ function DebtsPayments({ t }) {
     }
   }, [legalEntities, suppliers, purchases, payments, openingDebts, supplierEntityStatuses])
 
+  const supplierAging = useMemo(() => {
+    const today = new Date(todayISO())
+    today.setHours(0, 0, 0, 0)
+    const entityNames = new Map((legalEntities || []).map(le => [le.id, `${le.name || 'VOEN'}${le.voen ? ' · ' + le.voen : ''}`]))
+    const supplierNames = new Map((suppliers || []).map(s => [s.id, s]))
+    const groups = new Map()
+
+    function ensureGroup(supplierId, legalEntityId) {
+      const key = `${supplierId || 'none'}::${legalEntityId || 'none'}`
+      if (!groups.has(key)) {
+        const supplier = supplierNames.get(supplierId) || {}
+        groups.set(key, {
+          key,
+          supplier_id: supplierId,
+          legal_entity_id: legalEntityId || '',
+          supplier_name: supplier.name || 'Поставщик',
+          legal_entity_name: entityNames.get(legalEntityId) || 'Без VOEN',
+          term_days: parseNum(supplier.payment_term_days),
+          credit_limit: parseNum(supplier.credit_limit),
+          debitRows: [],
+          paymentTotal: 0
+        })
+      }
+      return groups.get(key)
+    }
+
+    ;(openingDebts || []).filter(d => d.is_active !== false && isSupplierActiveForLegal(d.supplier_id, d.legal_entity_id)).forEach(d => {
+      const g = ensureGroup(d.supplier_id, d.legal_entity_id || '')
+      g.debitRows.push({
+        date: d.debt_date || todayISO(),
+        invoice: d.invoice_notes || 'Стартовый долг',
+        amount: parseNum(d.amount),
+        type: 'Стартовый долг'
+      })
+    })
+
+    ;(purchases || []).filter(p => !p.deleted_at && isSupplierActiveForLegal(p.supplier_id, p.legal_entity_id)).forEach(p => {
+      const g = ensureGroup(p.supplier_id, p.legal_entity_id || '')
+      g.debitRows.push({
+        date: p.purchase_date || todayISO(),
+        invoice: p.invoice_number || 'Без фактуры',
+        amount: parseNum(p.total_amount),
+        type: 'Поступление'
+      })
+    })
+
+    ;(payments || []).filter(p => isSupplierActiveForLegal(p.supplier_id, p.legal_entity_id)).forEach(p => {
+      const g = ensureGroup(p.supplier_id, p.legal_entity_id || '')
+      g.paymentTotal += parseNum(p.amount)
+    })
+
+    const rows = []
+    groups.forEach(g => {
+      let remainingPayments = parseNum(g.paymentTotal)
+      const sortedDebits = g.debitRows
+        .filter(r => parseNum(r.amount) > 0)
+        .sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')))
+      const unpaid = []
+      sortedDebits.forEach(row => {
+        const amount = parseNum(row.amount)
+        const covered = Math.min(amount, Math.max(0, remainingPayments))
+        remainingPayments -= covered
+        const openAmount = amount - covered
+        if (openAmount <= 0.004) return
+        const baseDate = new Date(row.date || todayISO())
+        baseDate.setHours(0, 0, 0, 0)
+        const dueDate = new Date(baseDate)
+        dueDate.setDate(baseDate.getDate() + Math.max(0, parseInt(g.term_days || 0, 10)))
+        const ageDays = Math.max(0, Math.floor((today - baseDate) / 86400000))
+        const daysOverdue = Math.max(0, Math.floor((today - dueDate) / 86400000))
+        unpaid.push({ ...row, openAmount, dueDate: dueDate.toISOString().slice(0, 10), ageDays, daysOverdue })
+      })
+
+      const balance = unpaid.reduce((sum, r) => sum + parseNum(r.openAmount), 0)
+      if (balance <= 0.004) return
+      const overdueAmount = unpaid.filter(r => r.daysOverdue > 0).reduce((sum, r) => sum + parseNum(r.openAmount), 0)
+      const maxOverdueDays = unpaid.reduce((max, r) => Math.max(max, parseNum(r.daysOverdue)), 0)
+      const nearestDue = unpaid
+        .slice()
+        .sort((a, b) => String(a.dueDate || '').localeCompare(String(b.dueDate || '')))[0]?.dueDate || ''
+      const oldestInvoice = unpaid
+        .slice()
+        .sort((a, b) => parseNum(b.daysOverdue) - parseNum(a.daysOverdue) || String(a.date || '').localeCompare(String(b.date || '')))[0]
+      const limitOver = g.credit_limit > 0 ? Math.max(0, balance - g.credit_limit) : 0
+      let riskLevel = 'normal'
+      if (maxOverdueDays >= 30 || limitOver > 0) riskLevel = 'critical'
+      else if (maxOverdueDays >= 7 || overdueAmount > 0) riskLevel = 'warning'
+      const riskScore = Math.min(100, Math.round((maxOverdueDays * 1.8) + (overdueAmount / Math.max(1, balance)) * 35 + (limitOver > 0 ? 25 : 0)))
+      rows.push({
+        ...g,
+        balance,
+        overdueAmount,
+        maxOverdueDays,
+        nearestDue,
+        oldestInvoice,
+        limitOver,
+        riskLevel,
+        riskScore,
+        unpaidCount: unpaid.length,
+        unpaid
+      })
+    })
+
+    const filteredRows = rows
+      .filter(r => {
+        if (supplierRiskFilter === 'critical') return r.riskLevel === 'critical'
+        if (supplierRiskFilter === 'warning') return r.riskLevel === 'warning'
+        if (supplierRiskFilter === 'overdue') return r.overdueAmount > 0
+        if (supplierRiskFilter === 'limit') return r.limitOver > 0
+        return true
+      })
+      .sort((a, b) => b.riskScore - a.riskScore || b.overdueAmount - a.overdueAmount || b.balance - a.balance)
+
+    const totals = rows.reduce((acc, r) => {
+      acc.total += parseNum(r.balance)
+      acc.overdue += parseNum(r.overdueAmount)
+      acc.limitOver += parseNum(r.limitOver)
+      acc.critical += r.riskLevel === 'critical' ? 1 : 0
+      acc.warning += r.riskLevel === 'warning' ? 1 : 0
+      acc.normal += r.riskLevel === 'normal' ? 1 : 0
+      return acc
+    }, { total: 0, overdue: 0, limitOver: 0, critical: 0, warning: 0, normal: 0 })
+
+    const buckets = rows.reduce((acc, r) => {
+      r.unpaid.forEach(item => {
+        const v = parseNum(item.openAmount)
+        if (item.daysOverdue <= 0) acc.current += v
+        else if (item.daysOverdue <= 7) acc.d1_7 += v
+        else if (item.daysOverdue <= 30) acc.d8_30 += v
+        else acc.d31_plus += v
+      })
+      return acc
+    }, { current: 0, d1_7: 0, d8_30: 0, d31_plus: 0 })
+
+    return { rows, filteredRows, totals, buckets }
+  }, [legalEntities, suppliers, purchases, payments, openingDebts, supplierEntityStatuses, supplierRiskFilter])
+
+  const pagedSupplierAgingRows = supplierAging.filteredRows.slice(0, parseNum(supplierAgingPageSize || 10))
+
+  function applyAgingRowToStatement(row) {
+    if (!row) return
+    setLedgerSupplierId(row.supplier_id || 'all')
+    setLedgerLegalEntityId(row.legal_entity_id || 'all')
+    setLedgerSearch('')
+    setInvoiceSearch('')
+    setLedgerPage(1)
+    setActiveSupplierId(row.supplier_id || '')
+    setActiveLegalEntityId(row.legal_entity_id || '')
+    setTransactionType('payments')
+    scrollToSupplierTransactionPanel()
+  }
+
   function scrollToSupplierTransactionPanel() {
     setTimeout(() => {
       supplierTransactionPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
@@ -15271,6 +15425,25 @@ function DebtsPayments({ t }) {
         <DebtTrendChart data={debtIntelligence.trend} />
         <SupplierRiskBars data={debtIntelligence.riskRows} />
       </div>
+    </section>
+
+    <section className="card span-2">
+      <div className="card-head"><div><h3>Supplier aging & risk control</h3><p className="hint">FIFO aging по открытым долгам: сроки оплаты, просрочка, превышение лимита и приоритет оплаты.</p></div><div className="action-row" style={{gap:8}}><button className="small" onClick={load}>Обновить</button></div></div>
+      <div className="form-grid compact">
+        <label><span>Фильтр риска</span><select value={supplierRiskFilter} onChange={e => setSupplierRiskFilter(e.target.value)}><option value="all">Все активные долги</option><option value="critical">Критические</option><option value="warning">Предупреждение</option><option value="overdue">Только просроченные</option><option value="limit">Превышение лимита</option></select></label>
+        <label><span>Показать</span><select value={supplierAgingPageSize} onChange={e => setSupplierAgingPageSize(Number(e.target.value))}><option value={5}>5</option><option value={10}>10</option><option value={20}>20</option><option value={50}>50</option></select></label>
+      </div>
+      <div className="mini-grid">
+        <div className="metric"><span>Открытый долг</span><strong>{fmt(supplierAging.totals.total)}</strong></div>
+        <div className="metric"><span>Просрочено</span><strong className={supplierAging.totals.overdue > 0 ? 'bad' : 'good'}>{fmt(supplierAging.totals.overdue)}</strong></div>
+        <div className="metric"><span>Превышение лимита</span><strong className={supplierAging.totals.limitOver > 0 ? 'bad' : 'good'}>{fmt(supplierAging.totals.limitOver)}</strong></div>
+        <div className="metric"><span>Critical / Warning</span><strong>{supplierAging.totals.critical} / {supplierAging.totals.warning}</strong></div>
+      </div>
+      <div className="table-wrap" style={{margin:'10px 0 14px'}}>
+        <table><thead><tr><th>Bucket</th><th>Не просрочено</th><th>1–7 дней</th><th>8–30 дней</th><th>31+ дней</th></tr></thead><tbody><tr><td><b>Сумма</b></td><td>{fmt(supplierAging.buckets.current)}</td><td className={supplierAging.buckets.d1_7 > 0 ? 'bad' : 'hint'}>{fmt(supplierAging.buckets.d1_7)}</td><td className={supplierAging.buckets.d8_30 > 0 ? 'bad' : 'hint'}>{fmt(supplierAging.buckets.d8_30)}</td><td className={supplierAging.buckets.d31_plus > 0 ? 'bad' : 'hint'}><b>{fmt(supplierAging.buckets.d31_plus)}</b></td></tr></tbody></table>
+      </div>
+      <div className="table-wrap"><table><thead><tr><th>Статус</th><th>Поставщик / VOEN</th><th>Баланс</th><th>Просрочено</th><th>Макс. просрочка</th><th>Ближайший срок</th><th>Старый документ</th><th>Действие</th></tr></thead><tbody>{pagedSupplierAgingRows.map(r => <tr key={r.key}><td><span className={r.riskLevel === 'critical' ? 'bad' : r.riskLevel === 'warning' ? 'warn' : 'good'}><b>{r.riskLevel === 'critical' ? 'Critical' : r.riskLevel === 'warning' ? 'Warning' : 'OK'}</b></span><br /><span className="hint">score {r.riskScore}</span></td><td><b>{r.supplier_name}</b><br /><span className="hint">{r.legal_entity_name}</span></td><td><b>{fmt(r.balance)}</b></td><td className={r.overdueAmount > 0 ? 'bad' : 'good'}>{fmt(r.overdueAmount)}</td><td>{r.maxOverdueDays ? `${r.maxOverdueDays} дн.` : '—'}</td><td>{r.nearestDue || '—'}</td><td>{r.oldestInvoice?.invoice || '—'}<br /><span className="hint">{r.oldestInvoice?.type || ''}</span></td><td><button className="small" onClick={() => applyAgingRowToStatement(r)}>Открыть акт</button></td></tr>)}{!pagedSupplierAgingRows.length && <tr><td colSpan="8" className="good">Рисковые долги не найдены</td></tr>}</tbody></table></div>
+      <p className="hint" style={{marginTop:10}}>Расчёт aging использует FIFO: оплаты закрывают самые старые документы первыми. Это контрольный управленческий расчёт, ledger остаётся источником баланса.</p>
     </section>
 
     <section className="grid">
