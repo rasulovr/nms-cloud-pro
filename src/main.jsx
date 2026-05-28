@@ -6098,6 +6098,38 @@ async function rmsCalculateNetworkForecastForMonth(y, m, scopeBranchId = 'all') 
   return { forecastRevenue, forecastProfit, avg, forecastExpenses, forecastMargin, details }
 }
 
+async function rmsFinanceForecastEngine(y, m, scopeBranchId = 'all') {
+  const raw = await rmsCalculateNetworkForecastForMonth(y, m, scopeBranchId)
+  const forecastRevenue = parseNum(raw?.forecastRevenue)
+  const forecastExpenses = parseNum(raw?.forecastExpenses)
+  const forecastProfit = parseNum(raw?.forecastProfit)
+  const details = Array.isArray(raw?.details) ? raw.details : []
+  const revenueRow = details.find(r => r?.type === 'revenue')
+  const forecastRevenueFromDetails = revenueRow ? parseNum(revenueRow.amount) : forecastRevenue
+  const expenseRows = details.filter(r => r?.type !== 'revenue')
+  const forecastExpensesFromDetails = expenseRows.reduce((sum, row) => sum + parseNum(row.amount), 0)
+  const forecastProfitFromDetails = forecastRevenueFromDetails - forecastExpensesFromDetails
+  const normalizedProfit = Math.abs(forecastProfitFromDetails - forecastProfit) <= 0.01 ? forecastProfit : forecastProfitFromDetails
+  const normalizedExpenses = forecastExpensesFromDetails > 0 || expenseRows.length ? forecastExpensesFromDetails : forecastExpenses
+  const normalizedMargin = forecastRevenueFromDetails > 0 ? normalizedProfit / forecastRevenueFromDetails * 100 : 0
+  return {
+    ...raw,
+    forecastRevenue: forecastRevenueFromDetails,
+    forecastExpenses: normalizedExpenses,
+    forecastProfit: normalizedProfit,
+    forecastMargin: normalizedMargin,
+    details,
+    expenseRows,
+    audit: {
+      forecastRevenueFromDetails,
+      forecastExpensesFromDetails,
+      forecastProfitFromDetails,
+      originalForecastProfit: forecastProfit,
+      diff: forecastProfitFromDetails - forecastProfit
+    }
+  }
+}
+
 function DashboardStyles() {
   return <style>{`
     .dashboard-hero { align-items: center; }
@@ -6921,7 +6953,7 @@ function Dashboard({ t }) {
     })
     const supplierDebtRows = Array.from(supplierRiskMap.values()).sort((a,b) => b.value - a.value)
     const supplierDebt = supplierDebtRows.reduce((s, r) => s + r.value, 0)
-    const syncedForecast = await rmsCalculateNetworkForecastForMonth(y, m, branchId)
+    const syncedForecast = await rmsFinanceForecastEngine(y, m, branchId)
     const forecastRevenue = parseNum(syncedForecast.forecastRevenue)
     const forecastProfit = parseNum(syncedForecast.forecastProfit)
     return { revenue, expenses, net, supplierDebt, supplierDebtRows, branchRows: dashboardBranchRows, forecastRevenue, forecastProfit, forecastDetails: syncedForecast.details || [], forecastExpenses: syncedForecast.forecastExpenses, forecastMargin: syncedForecast.forecastMargin }
@@ -7750,7 +7782,7 @@ function Finance({ t, lang, onGoToExpense }) {
     const tax = revenue * (TAX_RATE / 100)
     const net = revenue - expenses - salary - serviceCost - tax
 
-    const syncedForecast = await rmsCalculateNetworkForecastForMonth(y, m, branch)
+    const syncedForecast = await rmsFinanceForecastEngine(y, m, branch)
     const avg = parseNum(syncedForecast.avg)
     const forecastRevenue = parseNum(syncedForecast.forecastRevenue)
     const forecastProfit = parseNum(syncedForecast.forecastProfit)
@@ -7869,7 +7901,7 @@ function Finance({ t, lang, onGoToExpense }) {
       forecastProfit: parseNum(current.forecastProfit)
     }
     if (branchId === ALL_BRANCHES) {
-      const syncedForecast = await rmsCalculateNetworkForecastForMonth(year, month)
+      const syncedForecast = await rmsFinanceForecastEngine(year, month)
       currentForFinance = {
         ...currentForFinance,
         forecastRevenue: parseNum(syncedForecast.forecastRevenue),
@@ -7915,7 +7947,7 @@ function Finance({ t, lang, onGoToExpense }) {
     const forecastProfitByRows = forecastRevenueFromRows - forecastExpenseSum
     const forecastProfitDiff = forecastProfitByRows - parseNum(currentForFinance.forecastProfit)
     const financeForecastAuditRows = [
-      { name: 'Прогноз выручки', amount: forecastRevenueFromRows, note: 'единая функция rmsCalculateNetworkForecastForMonth; используется Dashboard и Finance' },
+      { name: 'Прогноз выручки', amount: forecastRevenueFromRows, note: 'единый forecast engine; используется Dashboard и Finance' },
       { name: 'Прогноз расходов', amount: forecastExpenseSum, note: 'сумма строк в таблице “Расчёт прогноза прибыли”' },
       { name: 'Прогноз прибыли', amount: forecastProfitByRows, note: 'прогноз выручки − прогноз расходов' },
       { name: 'Контроль расхождения forecast', amount: forecastProfitDiff, note: Math.abs(forecastProfitDiff) <= 0.01 ? 'OK: Dashboard и Finance используют одну прогнозную базу' : 'проверить детализацию прогноза' }
