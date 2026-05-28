@@ -5380,7 +5380,7 @@ function Revenue({ t, focusExpense }) {
           <label><span>{t('date')}</span><input type="date" value={date} onChange={e => setDate(e.target.value)} /></label>
         </div></div>
 
-        <div className="card span-2"><div className="card-head"><div><h3>{t('daily_revenue_title')}</h3><p className="hint">Кнопка “Добавить” создаёт строку выручки ниже. Любые изменения фиксируются в журнале операций.</p></div><button className="small primary" onClick={addRevenueEntry}>Добавить</button></div><div className="form-grid">
+        <div className="card span-2"><div className="card-head"><div><h3>{t('daily_revenue_title')}</h3><p className="hint">Ввод выручки за выбранный день. Редактирование и удаление открываются во всплывающем окне.</p></div><button className="small primary" onClick={addRevenueEntry}>Добавить</button></div><div className="form-grid">
           <MoneyInput label={t('cash')} value={form.cash_amount} onChange={v => setForm(f => ({ ...f, cash_amount: v }))} />
           <MoneyInput label={t('bank')} value={form.bank_amount} onChange={v => setForm(f => ({ ...f, bank_amount: v }))} />
           <MoneyInput label={t('wolt')} value={form.wolt_amount} onChange={v => setForm(f => ({ ...f, wolt_amount: v }))} />
@@ -5395,7 +5395,7 @@ function Revenue({ t, focusExpense }) {
         </div>
 
         <div className="card span-2">
-          <div className="card-head"><div><h3>{t('daily_expenses_title')}</h3><p className="hint">Изменения суммы, статьи и комментария фиксируются ниже. Отмена перечёркивает строку и исключает её из расчётов.</p></div><div className="actions-row"><button className="small" onClick={addExpense}>+ Добавить</button></div></div>
+          <div className="card-head"><div><h3>{t('daily_expenses_title')}</h3><p className="hint">Расходы дня. Изменение и удаление выполняются через безопасное окно редактирования.</p></div><div className="actions-row"><button className="small" onClick={addExpense}>+ Добавить</button></div></div>
           <div className="form-grid compact"><label><span>{t('daily_expenses_total')}</span><input value={fmt(dailyExpenseTotal)} readOnly /></label></div>
           <div className="table-wrap"><table><thead><tr><th>Дата</th><th>{t('expense_item')}</th><th>{t('amount')}</th><th>{t('comment')}</th><th>Статус</th><th></th></tr></thead><tbody>
             {expenses.map(e => <ExpenseRow key={e.id} expense={e} categories={categories} focusExpenseId={focusExpense?.expenseId} onSave={patch => updateExpense(e.id, patch)} onCancel={() => cancelExpense(e.id)} />)}
@@ -5405,7 +5405,7 @@ function Revenue({ t, focusExpense }) {
         </div>
 
         <div className="card span-2">
-          <div className="card-head"><div><h3>Приходы за выбранную дату</h3><p className="hint">Деньги извне: возврат подотчёта, пополнение кассы, личное внесение, прочие наличные поступления. Отмена перечёркивает строку и исключает её из кассы.</p></div><button className="small primary" onClick={addInflow}>+ Добавить</button></div>
+          <div className="card-head"><div><h3>Приходы за выбранную дату</h3><p className="hint">Деньги извне: возврат подотчёта, пополнение кассы, личное внесение. Не является выручкой.</p></div><button className="small primary" onClick={addInflow}>+ Добавить</button></div>
           <div className="form-grid">
             <MoneyInput label="Сумма прихода" value={inflowForm.amount} onChange={v => setInflowForm(f => ({ ...f, amount: v }))} />
             <label><span>Источник</span><input value={inflowForm.source} onChange={e => setInflowForm(f => ({ ...f, source: e.target.value }))} placeholder="Например: возврат, пополнение кассы" /></label>
@@ -5505,6 +5505,11 @@ function RevenueEntryRow({ row, serviceEnabled=false, servicePercent=10, staffCo
     setEditing(false)
   }
 
+  const confirmDelete = () => {
+    if (!editable) return
+    if (window.confirm('Удалить строку выручки? Запись будет зачёркнута и исключена из расчётов, но останется в журнале.')) onCancel()
+  }
+
   return <>
     <tr className={cancelled ? 'cancelled-row' : ''}>
       <td>{row.revenue_date}</td>
@@ -5514,13 +5519,15 @@ function RevenueEntryRow({ row, serviceEnabled=false, servicePercent=10, staffCo
       <td>{row.comment || '—'}</td>
       <td><b>{fmt(total)}</b></td>
       <td><b>{fmt(staffCost)}</b></td>
-      <td>{cancelled ? `Отменено · ${formatDT(row.deleted_at)}` : editable ? 'Активно' : 'Редактирование закрыто'}</td>
-      <td>{cancelled ? <span className="hint">—</span> : <button className="ghost small" onClick={() => setEditing(true)}>Редактировать</button>}</td>
+      <td>{cancelled ? `Удалено · ${formatDT(row.deleted_at)}` : editable ? 'Активно' : 'Редактирование закрыто'}</td>
+      <td>{cancelled ? <span className="hint">—</span> : <div className="action-row revenue-row-actions"><button className="ghost small" onClick={() => setEditing(true)}>Изменить</button>{editable && <button className="danger small" onClick={confirmDelete}>Удалить</button>}</div>}</td>
     </tr>
-    {editing && <tr><td colSpan="9"><div className="notice">
-      <h3>Редактирование выручки</h3>
-      <p className="hint">Можно исправить сумму, комментарий или дату. Смена даты фиксируется в журнале и переносит строку на выбранный день.</p>
-      <div className="form-grid compact">
+    {editing && <div className="card supplier-transactions-panel supplier-modal-panel revenue-modal-panel">
+      <div className="card-head supplier-modal-head">
+        <div><h3>Изменение выручки</h3><p className="hint">Дата, суммы и комментарий. Изменения фиксируются в журнале операций.</p></div>
+        <button className="supplier-modal-x" title="Закрыть" aria-label="Закрыть" onClick={() => setEditing(false)}>×</button>
+      </div>
+      <div className="form-grid compact revenue-modal-body">
         <label><span>Дата операции</span><input type="date" value={entryDate} disabled={!editable} onChange={e => setEntryDate(e.target.value)} /></label>
         <label><span>Наличные</span><input inputMode="decimal" value={cash} disabled={!editable} onChange={e => setCash(e.target.value)} /></label>
         <label><span>Банк</span><input inputMode="decimal" value={bank} disabled={!editable} onChange={e => setBank(e.target.value)} /></label>
@@ -5528,12 +5535,12 @@ function RevenueEntryRow({ row, serviceEnabled=false, servicePercent=10, staffCo
         <label><span>Комментарий</span><input value={comment} disabled={!editable} onChange={e => setComment(e.target.value)} /></label>
         <label><span>Итого</span><input value={fmt(editedTotal)} readOnly /></label>
       </div>
-      <div className="row-actions" style={{marginTop:12}}>
-        <button className="ghost small" onClick={() => setEditing(false)}>Отмена</button>
-        {editable && <button className="primary small" onClick={saveChanges}>Сохранить изменения</button>}
-        {editable && <button className="danger small" onClick={() => { onCancel(); setEditing(false) }}>Удалить / зачеркнуть</button>}
+      <div className="row-actions revenue-modal-actions">
+        <button className="ghost small" onClick={() => setEditing(false)}>Закрыть</button>
+        {editable && <button className="primary small" onClick={saveChanges}>Сохранить</button>}
+        {editable && <button className="danger small" onClick={() => { confirmDelete(); setEditing(false) }}>Удалить</button>}
       </div>
-    </div></td></tr>}
+    </div>}
   </>
 }
 
@@ -5572,29 +5579,36 @@ function InflowRow({ inflow, onSave, onCancel }) {
     setEditing(false)
   }
 
+  const confirmDelete = () => {
+    if (!editable) return
+    if (window.confirm('Удалить приход? Запись будет зачёркнута и исключена из расчётов кассы.')) onCancel()
+  }
+
   return (
     <>
       <tr className={cancelled ? 'cancelled-row' : ''}>
         <td>{inflow.source || '—'}</td>
         <td><b>{fmt(inflow.amount)}</b></td>
         <td>{inflow.comment || '—'}</td>
-        <td>{cancelled ? `Отменено · ${formatDT(inflow.deleted_at)}` : editable ? 'Активно' : 'Редактирование закрыто'}</td>
-        <td>{cancelled ? <span className="hint">—</span> : <button className="ghost small" onClick={() => setEditing(true)}>Редактировать</button>}</td>
+        <td>{cancelled ? `Удалено · ${formatDT(inflow.deleted_at)}` : editable ? 'Активно' : 'Редактирование закрыто'}</td>
+        <td>{cancelled ? <span className="hint">—</span> : <div className="action-row revenue-row-actions"><button className="ghost small" onClick={() => setEditing(true)}>Изменить</button>{editable && <button className="danger small" onClick={confirmDelete}>Удалить</button>}</div>}</td>
       </tr>
-      {editing && <tr><td colSpan="5"><div className="notice">
-        <h3>Редактирование прихода</h3>
-        <p className="hint">Редактирование доступно только в течение 7 дней после создания операции.</p>
-        <div className="form-grid compact">
+      {editing && <div className="card supplier-transactions-panel supplier-modal-panel revenue-modal-panel">
+        <div className="card-head supplier-modal-head">
+          <div><h3>Изменение прихода</h3><p className="hint">Приходы не являются выручкой, но участвуют в расчёте кассы.</p></div>
+          <button className="supplier-modal-x" title="Закрыть" aria-label="Закрыть" onClick={() => setEditing(false)}>×</button>
+        </div>
+        <div className="form-grid compact revenue-modal-body">
           <label><span>Источник</span><input value={source} disabled={!editable} onChange={e => setSource(e.target.value)} /></label>
           <label><span>Сумма</span><input inputMode="decimal" value={amount} disabled={!editable} onChange={e => setAmount(e.target.value)} /></label>
           <label><span>Комментарий</span><input value={comment} disabled={!editable} onChange={e => setComment(e.target.value)} /></label>
         </div>
-        <div className="row-actions" style={{marginTop:12}}>
-          <button className="ghost small" onClick={() => setEditing(false)}>Отмена</button>
-          {editable && <button className="primary small" onClick={saveChanges}>Сохранить изменения</button>}
-          {editable && <button className="danger small" onClick={() => { onCancel(); setEditing(false) }}>Удалить / зачеркнуть</button>}
+        <div className="row-actions revenue-modal-actions">
+          <button className="ghost small" onClick={() => setEditing(false)}>Закрыть</button>
+          {editable && <button className="primary small" onClick={saveChanges}>Сохранить</button>}
+          {editable && <button className="danger small" onClick={() => { confirmDelete(); setEditing(false) }}>Удалить</button>}
         </div>
-      </div></td></tr>}
+      </div>}
     </>
   )
 }
@@ -5645,6 +5659,11 @@ function ExpenseRow({ expense, categories, onSave, onCancel }) {
     setEditing(false)
   }
 
+  const confirmDelete = () => {
+    if (!editable) return
+    if (window.confirm('Удалить расход? Запись будет зачёркнута и исключена из расчётов.')) onCancel()
+  }
+
   return (
     <>
       <tr className={cancelled ? 'cancelled-row' : ''}>
@@ -5652,13 +5671,15 @@ function ExpenseRow({ expense, categories, onSave, onCancel }) {
         <td>{categoryName}</td>
         <td><b>{fmt(expense.amount)}</b></td>
         <td>{expense.comment || '—'}</td>
-        <td>{cancelled ? `Отменено · ${formatDT(expense.deleted_at)}` : editable ? 'Активно' : 'Редактирование закрыто'}</td>
-        <td>{cancelled ? <span className="hint">—</span> : <button className="ghost small" onClick={() => setEditing(true)}>Редактировать</button>}</td>
+        <td>{cancelled ? `Удалено · ${formatDT(expense.deleted_at)}` : editable ? 'Активно' : 'Редактирование закрыто'}</td>
+        <td>{cancelled ? <span className="hint">—</span> : <div className="action-row revenue-row-actions"><button className="ghost small" onClick={() => setEditing(true)}>Изменить</button>{editable && <button className="danger small" onClick={confirmDelete}>Удалить</button>}</div>}</td>
       </tr>
-      {editing && <tr><td colSpan="6"><div className="notice">
-        <h3>Редактирование расхода</h3>
-        <p className="hint">Можно исправить сумму, статью, комментарий или дату. Смена даты фиксируется в журнале и переносит строку на выбранный день.</p>
-        <div className="form-grid compact">
+      {editing && <div className="card supplier-transactions-panel supplier-modal-panel revenue-modal-panel">
+        <div className="card-head supplier-modal-head">
+          <div><h3>Изменение расхода</h3><p className="hint">Статья, сумма, дата и комментарий. Изменения фиксируются в журнале операций.</p></div>
+          <button className="supplier-modal-x" title="Закрыть" aria-label="Закрыть" onClick={() => setEditing(false)}>×</button>
+        </div>
+        <div className="form-grid compact revenue-modal-body">
           <label><span>Дата операции</span><input type="date" disabled={!editable} value={expenseDate} onChange={e => setExpenseDate(e.target.value)} /></label>
           <label><span>Статья</span><select disabled={!editable} value={categoryId} onChange={e => setCategoryId(e.target.value)}>
             {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -5668,12 +5689,12 @@ function ExpenseRow({ expense, categories, onSave, onCancel }) {
           <label><span>Сумма</span><input inputMode="decimal" disabled={!editable} value={amount} onChange={e => setAmount(e.target.value)} /></label>
           <label><span>Комментарий</span><input disabled={!editable} value={comment} onChange={e => setComment(e.target.value)} /></label>
         </div>
-        <div className="row-actions" style={{marginTop:12}}>
-          <button className="ghost small" onClick={() => setEditing(false)}>Отмена</button>
-          {editable && <button className="primary small" onClick={saveChanges}>Сохранить изменения</button>}
-          {editable && <button className="danger small" onClick={() => { onCancel(); setEditing(false) }}>Удалить / зачеркнуть</button>}
+        <div className="row-actions revenue-modal-actions">
+          <button className="ghost small" onClick={() => setEditing(false)}>Закрыть</button>
+          {editable && <button className="primary small" onClick={saveChanges}>Сохранить</button>}
+          {editable && <button className="danger small" onClick={() => { confirmDelete(); setEditing(false) }}>Удалить</button>}
         </div>
-      </div></td></tr>}
+      </div>}
     </>
   )
 }
@@ -6235,6 +6256,11 @@ function DashboardStyles() {
     .supplier-modal-head h3 { margin: 0 0 4px; }
     .supplier-modal-x { flex: 0 0 auto; width: 34px; height: 34px; border-radius: 10px; border: 1px solid rgba(148,163,184,.45); background: rgba(248,250,252,.95); color: #111827; font-size: 22px; line-height: 1; font-weight: 800; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
     .supplier-modal-x:hover { background: #eef2f7; border-color: rgba(100,116,139,.55); }
+    .revenue-modal-panel { width: min(920px, calc(100vw - 44px)); }
+    .revenue-modal-body { padding: 18px; margin: 0 !important; }
+    .revenue-modal-actions { padding: 0 18px 18px; justify-content: flex-end; }
+    .revenue-row-actions { justify-content: flex-end; gap: 6px; flex-wrap: nowrap; }
+    .revenue-row-actions .small { white-space: nowrap; }
     .supplier-transactions-panel > .form-grid, .supplier-transactions-panel > .table-wrap, .supplier-transactions-panel > div:not(.supplier-modal-head) { margin-left: 18px; margin-right: 18px; }
     .finance-ai-modal-panel > .table-wrap { margin-top: 14px; margin-bottom: 18px; }
     .finance-ai-compact-card .card-head { align-items: center; }
