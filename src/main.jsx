@@ -1,5 +1,5 @@
 // RMS v56.1 Supplier Enterprise Hardened - Supplier writes via secure RPC only
-/* RMS v61 Supplier Smart Reconciliation - follow-up control board, payment action statuses, supplier risk workflow */
+/* RMS v63 Supplier Payment Calendar - payment calendar, due reminders and follow-up control persistence */
 /* RMS v43 SUPPLIERS FINAL CLEAN SINGLE E-QAIME FORM - no payment term fields inside purchase e-qaime block */
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
@@ -14415,6 +14415,8 @@ function DebtsPayments({ t }) {
   const [supplierRiskFilter, setSupplierRiskFilter] = useState('all')
   const [supplierAgingPageSize, setSupplierAgingPageSize] = useState(10)
   const [supplierControlFilter, setSupplierControlFilter] = useState('active')
+  const [supplierCalendarFilter, setSupplierCalendarFilter] = useState('next7')
+  const [supplierCalendarPageSize, setSupplierCalendarPageSize] = useState(20)
   const [supplierFollowUps, setSupplierFollowUps] = useState(() => readJsonStorage('rms_supplier_followups_v1', {}))
   const [editingOpeningDebtId, setEditingOpeningDebtId] = useState('')
   const [openingDebtEditForm, setOpeningDebtEditForm] = useState({ debt_date: todayISO(), amount: '', invoice_notes: '', comment: '' })
@@ -15418,6 +15420,62 @@ function DebtsPayments({ t }) {
     return acc
   }, { total: 0, overdue: 0, inProgress: 0, waiting: 0, closed: 0, critical: 0 }), [supplierControlRows])
 
+  function supplierCalendarDaysUntil(dateText) {
+    if (!dateText) return null
+    const due = new Date(`${dateText}T00:00:00`)
+    if (Number.isNaN(due.getTime())) return null
+    const today = new Date(`${todayISO()}T00:00:00`)
+    return Math.round((due - today) / 86400000)
+  }
+
+  function supplierCalendarStatusText(days) {
+    if (days === null || days === undefined) return 'Без даты'
+    if (days < 0) return `Просрочено ${Math.abs(days)} дн.`
+    if (days === 0) return 'Сегодня'
+    if (days === 1) return 'Завтра'
+    return `Через ${days} дн.`
+  }
+
+  function supplierCalendarTone(days, row) {
+    if ((row?.controlPriority || row?.riskLevel) === 'critical') return 'bad'
+    if (days !== null && days < 0) return 'bad'
+    if (days !== null && days <= 3) return 'warn'
+    return 'good'
+  }
+
+  const supplierPaymentCalendarRows = useMemo(() => {
+    const rows = (supplierControlRows || []).map(row => {
+      const actionDate = row.followUp?.next_action_date || row.nearestDue || ''
+      const days = supplierCalendarDaysUntil(actionDate)
+      const actionKind = row.followUp?.next_action_date ? 'Follow-up' : row.nearestDue ? 'Срок оплаты' : 'Без даты'
+      return { ...row, actionDate, daysUntil: days, actionKind }
+    }).filter(row => {
+      if (supplierCalendarFilter === 'overdue') return row.daysUntil !== null && row.daysUntil < 0
+      if (supplierCalendarFilter === 'today') return row.daysUntil === 0
+      if (supplierCalendarFilter === 'next7') return row.daysUntil !== null && row.daysUntil <= 7 && row.controlStatus !== 'closed'
+      if (supplierCalendarFilter === 'next30') return row.daysUntil !== null && row.daysUntil <= 30 && row.controlStatus !== 'closed'
+      if (supplierCalendarFilter === 'nodate') return !row.actionDate && row.controlStatus !== 'closed'
+      if (supplierCalendarFilter === 'closed') return row.controlStatus === 'closed'
+      return row.controlStatus !== 'closed'
+    })
+    return rows.sort((a, b) => {
+      const ad = a.daysUntil === null ? 9999 : a.daysUntil
+      const bd = b.daysUntil === null ? 9999 : b.daysUntil
+      return ad - bd || b.riskScore - a.riskScore || b.overdueAmount - a.overdueAmount
+    })
+  }, [supplierControlRows, supplierCalendarFilter])
+
+  const supplierPaymentCalendarSummary = useMemo(() => supplierPaymentCalendarRows.reduce((acc, row) => {
+    acc.amount += parseNum(row.balance)
+    acc.overdue += row.daysUntil !== null && row.daysUntil < 0 ? parseNum(row.balance) : 0
+    acc.today += row.daysUntil === 0 ? 1 : 0
+    acc.next7 += row.daysUntil !== null && row.daysUntil >= 0 && row.daysUntil <= 7 ? 1 : 0
+    acc.noDate += !row.actionDate ? 1 : 0
+    return acc
+  }, { amount: 0, overdue: 0, today: 0, next7: 0, noDate: 0 }), [supplierPaymentCalendarRows])
+
+  const pagedSupplierPaymentCalendarRows = supplierPaymentCalendarRows.slice(0, parseNum(supplierCalendarPageSize || 20))
+
   const pagedSupplierAgingRows = supplierAging.filteredRows.slice(0, parseNum(supplierAgingPageSize || 10))
 
   function applyAgingRowToStatement(row) {
@@ -15580,6 +15638,22 @@ function DebtsPayments({ t }) {
     </section>
 
     <section className="card span-2">
+      <div className="card-head"><div><h3>Supplier payment calendar</h3><p className="hint">Календарь ближайших оплат и follow-up дат: что нужно оплатить, проверить или согласовать в первую очередь.</p></div><div className="action-row" style={{gap:8}}><button className="small" onClick={load}>Обновить</button></div></div>
+      <div className="form-grid compact">
+        <label><span>Период календаря</span><select value={supplierCalendarFilter} onChange={e => setSupplierCalendarFilter(e.target.value)}><option value="next7">Ближайшие 7 дней</option><option value="today">Сегодня</option><option value="overdue">Просроченные</option><option value="next30">Ближайшие 30 дней</option><option value="nodate">Без даты контроля</option><option value="all">Все активные</option><option value="closed">Закрытые</option></select></label>
+        <label><span>Показать</span><select value={supplierCalendarPageSize} onChange={e => setSupplierCalendarPageSize(Number(e.target.value))}><option value={10}>10</option><option value={20}>20</option><option value={50}>50</option></select></label>
+      </div>
+      <div className="mini-grid">
+        <div className="metric"><span>Сумма в календаре</span><strong>{fmt(supplierPaymentCalendarSummary.amount)}</strong></div>
+        <div className="metric"><span>Просрочено</span><strong className={supplierPaymentCalendarSummary.overdue > 0 ? 'bad' : 'good'}>{fmt(supplierPaymentCalendarSummary.overdue)}</strong></div>
+        <div className="metric"><span>Сегодня / 7 дней</span><strong>{supplierPaymentCalendarSummary.today} / {supplierPaymentCalendarSummary.next7}</strong></div>
+        <div className="metric"><span>Без даты</span><strong className={supplierPaymentCalendarSummary.noDate > 0 ? 'warn' : 'good'}>{supplierPaymentCalendarSummary.noDate}</strong></div>
+      </div>
+      <div className="table-wrap"><table><thead><tr><th>Дата</th><th>Статус</th><th>Поставщик / VOEN</th><th>Сумма</th><th>Просрочка</th><th>Комментарий</th><th>Действия</th></tr></thead><tbody>{pagedSupplierPaymentCalendarRows.map(row => <tr key={`calendar-${row.key}`}><td><b>{row.actionDate || '—'}</b><br /><span className="hint">{row.actionKind}</span></td><td><b className={supplierCalendarTone(row.daysUntil, row)}>{supplierCalendarStatusText(row.daysUntil)}</b><br /><span className="hint">{supplierFollowUpStatusText(row.controlStatus)} · {supplierPriorityText(row.controlPriority)}</span></td><td><b>{row.supplier_name}</b><br /><span className="hint">{row.legal_entity_name}</span></td><td><b>{fmt(row.balance)}</b></td><td className={row.overdueAmount > 0 ? 'bad' : 'good'}>{row.maxOverdueDays ? `${row.maxOverdueDays} дн. · ${fmt(row.overdueAmount)}` : '—'}</td><td>{row.followUp?.note || <span className="hint">Комментария нет</span>}</td><td><div className="action-row" style={{gap:6, flexWrap:'wrap'}}><button className="small" onClick={() => updateSupplierFollowUp(row, { status: 'in_progress', priority: row.riskLevel || 'normal' })}>В работу</button><button className="small" onClick={() => promptSupplierNextActionDate(row)}>Дата</button><button className="small" onClick={() => promptSupplierFollowUpNote(row)}>Комментарий</button><button className="small" onClick={() => applyAgingRowToStatement(row)}>Акт</button></div></td></tr>)}{!pagedSupplierPaymentCalendarRows.length && <tr><td colSpan="7" className="good">Нет задач по оплатам для выбранного фильтра.</td></tr>}</tbody></table></div>
+      <p className="hint" style={{marginTop:10}}>Календарь использует даты follow-up из Supabase и ближайшие сроки оплаты из aging. Он не меняет бухгалтерский ledger.</p>
+    </section>
+
+    <section className="card span-2">
       <div className="card-head"><div><h3>Supplier smart reconciliation</h3><p className="hint">Контроль оплат: follow-up, приоритет, статус работы и быстрый переход в акт сверки. Не меняет ledger и бухгалтерский баланс.</p></div><div className="action-row" style={{gap:8}}><button className="small" onClick={load}>Обновить</button></div></div>
       <div className="form-grid compact">
         <label><span>Фильтр контроля</span><select value={supplierControlFilter} onChange={e => setSupplierControlFilter(e.target.value)}><option value="active">Активные follow-up</option><option value="all">Все долги</option><option value="critical">Critical</option><option value="overdue">Просроченные</option><option value="in_progress">В работе</option><option value="waiting">Ожидает</option><option value="closed">Закрыто</option></select></label>
@@ -15591,7 +15665,7 @@ function DebtsPayments({ t }) {
         <div className="metric"><span>В работе / ожидает</span><strong>{supplierControlSummary.inProgress} / {supplierControlSummary.waiting}</strong></div>
       </div>
       <div className="table-wrap"><table><thead><tr><th>Контроль</th><th>Поставщик / VOEN</th><th>Долг</th><th>Просрочка</th><th>Следующее действие</th><th>Комментарий</th><th>Действия</th></tr></thead><tbody>{supplierControlRows.slice(0, 20).map(row => <tr key={row.key}><td><b className={row.controlPriority === 'critical' ? 'bad' : row.controlPriority === 'warning' ? 'warn' : 'good'}>{supplierPriorityText(row.controlPriority)}</b><br /><span className="hint">{supplierFollowUpStatusText(row.controlStatus)}</span></td><td><b>{row.supplier_name}</b><br /><span className="hint">{row.legal_entity_name}</span></td><td><b>{fmt(row.balance)}</b></td><td className={row.overdueAmount > 0 ? 'bad' : 'good'}>{row.maxOverdueDays ? `${row.maxOverdueDays} дн. · ${fmt(row.overdueAmount)}` : '—'}</td><td>{row.followUp?.next_action_date || row.nearestDue || '—'}</td><td>{row.followUp?.note || <span className="hint">Комментария нет</span>}<br />{row.followUp?.updated_at ? <span className="hint">обновлено {formatDT(row.followUp.updated_at)}</span> : null}</td><td><div className="action-row" style={{gap:6, flexWrap:'wrap'}}><button className="small" onClick={() => updateSupplierFollowUp(row, { status: 'in_progress', priority: row.riskLevel || 'normal' })}>В работу</button><button className="small" onClick={() => updateSupplierFollowUp(row, { status: 'waiting' })}>Ожидает</button><button className="small" onClick={() => promptSupplierNextActionDate(row)}>Дата</button><button className="small" onClick={() => promptSupplierFollowUpNote(row)}>Комментарий</button><button className="small" onClick={() => applyAgingRowToStatement(row)}>Акт</button><button className="small remove" onClick={() => updateSupplierFollowUp(row, { status: 'closed' })}>Закрыто</button></div></td></tr>)}{!supplierControlRows.length && <tr><td colSpan="7" className="good">Активных follow-up нет.</td></tr>}</tbody></table></div>
-      <p className="hint" style={{marginTop:10}}>Этот блок — управленческий контроль оплат. Он хранится локально в интерфейсе, не меняет supplier_ledger, поступления, оплаты или акт сверки.</p>
+      <p className="hint" style={{marginTop:10}}>Этот блок — управленческий контроль оплат. После v62 статусы сохраняются в Supabase через secure RPC, localStorage остаётся fallback. Ledger, поступления и оплаты не меняются.</p>
     </section>
 
     <section className="grid">
