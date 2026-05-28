@@ -1506,6 +1506,9 @@ function SecurityRecoveryCenter() {
   const [financeFormulaDiagnostics, setFinanceFormulaDiagnostics] = useState([])
   const [financeForecastDiagnostics, setFinanceForecastDiagnostics] = useState([])
   const [showFinanceDiagnosticsDetails, setShowFinanceDiagnosticsDetails] = useState(false)
+  const [revenueAuditRows, setRevenueAuditRows] = useState([])
+  const [revenueAuditLoading, setRevenueAuditLoading] = useState(false)
+  const [showRevenueAuditDetails, setShowRevenueAuditDetails] = useState(false)
 
   const loadFinanceDiagnostics = () => {
     try {
@@ -1532,6 +1535,33 @@ function SecurityRecoveryCenter() {
       setSupplierAuditLoading(false)
     }
   }
+
+  const loadRevenueDiagnostics = async () => {
+    setRevenueAuditLoading(true)
+    try {
+      const { data, error } = await supabase
+        .from('revenue_enterprise_audit_view')
+        .select('*')
+        .order('audit_date', { ascending: false })
+        .limit(300)
+      if (error) throw error
+      setRevenueAuditRows(data || [])
+    } catch (e) {
+      setRevenueAuditRows([])
+      setMessage(e?.message || 'Не удалось загрузить revenue audit')
+    } finally {
+      setRevenueAuditLoading(false)
+    }
+  }
+
+  const revenueAuditProblemRows = (revenueAuditRows || []).filter(r => (r.status || 'ok') !== 'ok' || Math.abs(parseNum(r.diff)) > 0.01)
+  const revenueAuditTotals = (revenueAuditRows || []).reduce((acc, r) => {
+    acc.source += parseNum(r.source_amount)
+    acc.aggregate += parseNum(r.aggregate_amount)
+    acc.diff += parseNum(r.diff)
+    return acc
+  }, { source: 0, aggregate: 0, diff: 0 })
+  const revenueAuditOk = !revenueAuditProblemRows.length && Math.abs(parseNum(revenueAuditTotals.diff)) <= 0.01
 
   const supplierAuditCriticalRows = (supplierAuditRows || []).filter(r => (r.issue_type || 'ok') !== 'ok' || Math.abs(parseNum(r.diff)) > 0.01)
   const supplierAuditTotals = (supplierAuditRows || []).reduce((acc, r) => {
@@ -1637,7 +1667,7 @@ function SecurityRecoveryCenter() {
     }
   }
 
-  useEffect(() => { loadSnapshots(); loadSupplierEnterpriseAudit(); loadFinanceDiagnostics() }, [])
+  useEffect(() => { loadSnapshots(); loadSupplierEnterpriseAudit(); loadFinanceDiagnostics(); loadRevenueDiagnostics() }, [])
 
   return (
     <section className="space-y-6">
@@ -1760,6 +1790,29 @@ function SecurityRecoveryCenter() {
           <div className="table-wrap"><table><thead><tr><th colSpan="3">Finance formula audit</th></tr><tr><th>Показатель</th><th>Сумма</th><th>Источник / логика</th></tr></thead><tbody>{financeFormulaDiagnostics.map(row => <tr key={row.name}><td><b>{row.name}</b></td><td className={row.name.includes('Расхождения') || row.name.includes('Контроль') ? (Math.abs(parseNum(row.amount)) > 0.01 ? 'bad' : 'good') : ''}>{fmt(row.amount)}</td><td className="hint">{row.note}</td></tr>)}{!financeFormulaDiagnostics.length && <tr><td colSpan="3" className="hint">Нет данных. Откройте раздел “Финансы”, чтобы обновить расчёт.</td></tr>}</tbody></table></div>
           <div className="table-wrap"><table><thead><tr><th colSpan="3">Dashboard / Finance forecast parity</th></tr><tr><th>Показатель</th><th>Сумма</th><th>Источник / логика</th></tr></thead><tbody>{financeForecastDiagnostics.map(row => <tr key={row.name}><td><b>{row.name}</b></td><td className={row.name.includes('Контроль') ? (Math.abs(parseNum(row.amount)) > 0.01 ? 'bad' : 'good') : ''}>{fmt(row.amount)}</td><td className="hint">{row.note}</td></tr>)}{!financeForecastDiagnostics.length && <tr><td colSpan="3" className="hint">Нет данных. Откройте раздел “Финансы”, чтобы обновить расчёт.</td></tr>}</tbody></table></div>
         </>}
+      </section>
+
+      <section className="card span-2 supplier-enterprise-audit-card">
+        <div className="card-head">
+          <div>
+            <h3>Diagnostics Center · Revenue audit</h3>
+            <p className="hint">Техническая сверка: строки выручки против агрегированной daily_revenue.</p>
+          </div>
+          <div className="action-row">
+            <button className="ghost small" onClick={() => setShowRevenueAuditDetails(v => !v)}>{showRevenueAuditDetails ? 'Скрыть детали' : 'Показать детали'}</button>
+            <button className="ghost small" onClick={loadRevenueDiagnostics} disabled={revenueAuditLoading}>{revenueAuditLoading ? 'Обновление...' : 'Обновить'}</button>
+          </div>
+        </div>
+        <div className={revenueAuditOk ? 'enterprise-audit-banner audit-ok' : 'enterprise-audit-banner audit-bad'}>
+          <strong>{revenueAuditOk ? 'Revenue OK' : 'Требуется проверка'}</strong>
+          <span>{revenueAuditOk ? 'Строки выручки и daily_revenue совпадают.' : 'Найдены расхождения агрегированной выручки.'}</span>
+        </div>
+        <div className="mini-grid">
+          <div className="metric"><span>Entries total</span><strong>{fmt(revenueAuditTotals.source)}</strong></div>
+          <div className="metric"><span>Daily revenue</span><strong>{fmt(revenueAuditTotals.aggregate)}</strong></div>
+          <div className="metric"><span>Разница</span><strong className={Math.abs(revenueAuditTotals.diff) > 0.01 ? 'bad' : 'good'}>{fmt(revenueAuditTotals.diff)}</strong></div>
+        </div>
+        {(showRevenueAuditDetails || !revenueAuditOk) && <div className="table-wrap"><table><thead><tr><th>Статус</th><th>Дата</th><th>Филиал</th><th>Entries</th><th>Daily</th><th>Diff</th></tr></thead><tbody>{revenueAuditProblemRows.slice(0, 50).map(r => <tr key={`${r.audit_type || 'revenue'}-${r.branch_id || 'none'}-${r.audit_date || 'none'}`}><td><span className={(r.status || 'ok') === 'ok' ? 'good' : 'bad'}>{r.status || 'ok'}</span></td><td>{r.audit_date || '—'}</td><td>{r.branch_name || '—'}</td><td>{fmt(r.source_amount)}</td><td>{fmt(r.aggregate_amount)}</td><td className={Math.abs(parseNum(r.diff)) > 0.01 ? 'bad' : 'good'}><b>{fmt(r.diff)}</b></td></tr>)}{!revenueAuditProblemRows.length && <tr><td colSpan="6" className="good">Расхождений не найдено</td></tr>}</tbody></table></div>}
       </section>
 
       {restoreResult && (
