@@ -3205,7 +3205,14 @@ function POSLite({ t }) {
       const { error: itemsError } = await supabase.from('pos_order_items').insert(orderItems)
       if (itemsError) throw itemsError
 
-      const { error: revenueError } = await supabase.from('daily_revenue_entries').insert(revenuePayload)
+      const { error: revenueError } = await supabase.rpc('rms_add_revenue_entry', {
+        p_branch_id: branchId,
+        p_date: date,
+        p_cash_amount: revenuePayload.cash_amount,
+        p_bank_amount: revenuePayload.bank_amount,
+        p_wolt_amount: revenuePayload.wolt_amount,
+        p_comment: revenuePayload.comment
+      })
       if (revenueError) throw revenueError
       await recalcDailyRevenueFromPos(branchId, date)
 
@@ -5038,31 +5045,17 @@ function Revenue({ t, focusExpense }) {
     const total = parseNum(form.cash_amount) + parseNum(form.bank_amount) + parseNum(form.wolt_amount)
     if (!total && !form.comment.trim()) return setMessage('Введите сумму или комментарий')
 
-    if (getInternalSessionStorage()?.rms_internal) {
-      const { error } = await supabase.rpc('rms_add_revenue_entry', {
-        p_branch_id: branchId,
-        p_date: date,
-        p_cash_amount: parseNum(form.cash_amount),
-        p_bank_amount: parseNum(form.bank_amount),
-        p_wolt_amount: parseNum(form.wolt_amount),
-        p_comment: form.comment || null
-      })
-      if (error) return setMessage(error.message)
-      setForm({ cash_amount: '', bank_amount: '', wolt_amount: '', comment: '' })
-      await recalcExistingBazarExpenseForDate(date, true)
-      await load()
-      setMessage('Выручка добавлена и зафиксирована ниже')
-      return
-    }
-
-    const user = await currentUserMeta()
-    const payload = { branch_id: branchId, revenue_date: date, cash_amount: parseNum(form.cash_amount), bank_amount: parseNum(form.bank_amount), wolt_amount: parseNum(form.wolt_amount), comment: form.comment || null, created_by: user.user_id, updated_by: user.user_id }
-    const { data, error } = await supabase.from('daily_revenue_entries').insert(payload).select('*').single()
+    const { error } = await supabase.rpc('rms_add_revenue_entry', {
+      p_branch_id: branchId,
+      p_date: date,
+      p_cash_amount: parseNum(form.cash_amount),
+      p_bank_amount: parseNum(form.bank_amount),
+      p_wolt_amount: parseNum(form.wolt_amount),
+      p_comment: form.comment || null
+    })
     if (error) return setMessage(error.message)
-    setRevenueEntries(prev => [...(prev || []), data])
-    await writeLog({ entity_type: 'revenue', record_id: data.id, action: 'create', field_name: 'daily_revenue_entry', old_value: null, new_value: fmt(total) })
-    await recalcDailyRevenueAggregate(branchId, date)
     setForm({ cash_amount: '', bank_amount: '', wolt_amount: '', comment: '' })
+    await recalcExistingBazarExpenseForDate(date, true)
     await load()
     setMessage('Выручка добавлена и зафиксирована ниже')
   }
@@ -5072,33 +5065,19 @@ function Revenue({ t, focusExpense }) {
     if (!current || current.deleted_at) return
     setRevenueEntries(prev => prev.map(r => r.id === id ? { ...r, ...patch } : r))
 
-    if (getInternalSessionStorage()?.rms_internal) {
-      const next = { ...current, ...patch }
-      const { error } = await supabase.rpc('rms_update_revenue_entry', {
-        p_entry_id: id,
-        p_revenue_date: next.revenue_date || date,
-        p_cash_amount: parseNum(next.cash_amount),
-        p_bank_amount: parseNum(next.bank_amount),
-        p_wolt_amount: parseNum(next.wolt_amount),
-        p_comment: next.comment || null
-      })
-      if (error) return setMessage(error.message)
-      await recalcExistingBazarExpenseForDate(next.revenue_date || date)
-      await load()
-      return
-    }
-
-    const user = await currentUserMeta()
-    const { error } = await supabase.from('daily_revenue_entries').update({ ...patch, updated_by: user.user_id }).eq('id', id)
+    const next = { ...current, ...patch }
+    const { error } = await supabase.rpc('rms_update_revenue_entry', {
+      p_entry_id: id,
+      p_revenue_date: next.revenue_date || date,
+      p_cash_amount: parseNum(next.cash_amount),
+      p_bank_amount: parseNum(next.bank_amount),
+      p_wolt_amount: parseNum(next.wolt_amount),
+      p_comment: next.comment || null
+    })
     if (error) return setMessage(error.message)
-    for (const [field, value] of Object.entries(patch)) {
-      const before = current[field] ?? ''
-      const after = value ?? ''
-      if (String(before) !== String(after)) await writeLog({ entity_type: 'revenue', record_id: id, action: 'field_update', field_name: field, old_value: before, new_value: after })
-    }
-    await recalcDailyRevenueAggregate(branchId, current.revenue_date || date)
+    await recalcExistingBazarExpenseForDate(next.revenue_date || date)
     if (patch.revenue_date && patch.revenue_date !== current.revenue_date) {
-      await recalcDailyRevenueAggregate(branchId, patch.revenue_date)
+      await recalcExistingBazarExpenseForDate(current.revenue_date || date)
     }
     await load()
     await Promise.all([loadMonthStats(branchId, date), loadLogs(branchId, date)])
@@ -5108,22 +5087,12 @@ function Revenue({ t, focusExpense }) {
     const current = revenueEntries.find(r => r.id === id)
     if (!current || current.deleted_at) return
 
-    if (getInternalSessionStorage()?.rms_internal) {
-      const { error } = await supabase.rpc('rms_cancel_revenue_entry', { p_entry_id: id })
-      if (error) return setMessage(error.message)
-      await recalcExistingBazarExpenseForDate(current.revenue_date || date, true)
-      await load()
-      return
-    }
-
-    const user = await currentUserMeta()
-    const payload = { deleted_at: new Date().toISOString(), deleted_by: user.user_id, updated_by: user.user_id }
+    const payload = { deleted_at: new Date().toISOString() }
     setRevenueEntries(prev => prev.map(r => r.id === id ? { ...r, ...payload } : r))
-    const { error } = await supabase.from('daily_revenue_entries').update(payload).eq('id', id)
+    const { error } = await supabase.rpc('rms_cancel_revenue_entry', { p_entry_id: id })
     if (error) return setMessage(error.message)
-    const total = parseNum(current.cash_amount) + parseNum(current.bank_amount) + parseNum(current.wolt_amount)
-    await writeLog({ entity_type: 'revenue', record_id: id, action: 'cancel', field_name: 'daily_revenue_entry', old_value: fmt(total), new_value: '0' })
-    await recalcDailyRevenueAggregate(branchId, date)
+    await recalcExistingBazarExpenseForDate(current.revenue_date || date, true)
+    await load()
     await Promise.all([loadMonthStats(branchId, date), loadLogs(branchId, date)])
   }
 
