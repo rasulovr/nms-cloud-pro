@@ -8118,6 +8118,17 @@ function Finance({ t, lang, onGoToExpense }) {
     ? [...financeExpenseStructureBase, { name: 'Прочие расходы', amount: financeExpenseOtherAmount }]
     : financeExpenseStructureBase
   const financeExpenseTotalForChart = financeTotalExpenses || financeExpenseRowsAll.reduce((sum, r) => sum + parseNum(r.amount), 0) || 1
+  const financeExpenseDonutColors = ['#2563eb', '#10b981', '#8b5cf6', '#f97316', '#94a3b8', '#64748b']
+  let financeExpenseDonutCursor = 0
+  const financeExpenseDonutGradient = financeExpenseStructure.length
+    ? `conic-gradient(${financeExpenseStructure.map((r, idx) => {
+        const value = Math.max(0, parseNum(r.amount))
+        const startPct = financeExpenseDonutCursor
+        const endPct = Math.min(100, financeExpenseDonutCursor + (value / financeExpenseTotalForChart * 100))
+        financeExpenseDonutCursor = endPct
+        return `${financeExpenseDonutColors[idx % financeExpenseDonutColors.length]} ${startPct}% ${endPct}%`
+      }).join(', ')})`
+    : 'conic-gradient(#94a3b8 0 100%)'
 
   return (
     <section id="financePage" className="finance-intelligence-page rms-executive-dashboard">
@@ -8152,7 +8163,7 @@ function Finance({ t, lang, onGoToExpense }) {
         <div className="finance-intel-card">
           <div className="finance-card-title"><div><h3>Структура расходов</h3><p>За текущий месяц</p></div></div>
           <div className="finance-donut-layout">
-            <div className="finance-donut" style={{ background: `conic-gradient(#2563eb 0 38%, #10b981 38% 64%, #8b5cf6 64% 76%, #f97316 76% 84%, #94a3b8 84% 100%)` }}><div><strong>{fmt(financeTotalExpenses)}</strong><span>AZN</span></div></div>
+            <div className="finance-donut" style={{ background: financeExpenseDonutGradient }}><div><strong>{fmt(financeTotalExpenses)}</strong><span>AZN</span></div></div>
             <div className="finance-donut-list">
               {(financeExpenseStructure.length ? financeExpenseStructure : [{name:'Продукты',amount:financeTotalExpenses * .38},{name:'Зарплаты',amount:stats.salary},{name:'Прочие',amount:financeTotalExpenses * .16}]).map((r, idx) => <div key={`${r.name}-${idx}`}><span><i className={`dot dot-${idx}`} />{r.name}</span><b>{pct(parseNum(r.amount) / financeExpenseTotalForChart * 100)}</b><em>{fmt(r.amount)} AZN</em></div>)}
             </div>
