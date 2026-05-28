@@ -14400,6 +14400,7 @@ function DebtsPayments({ t }) {
   const [transactionPageSize, setTransactionPageSize] = useState(10)
   const [transactionPage, setTransactionPage] = useState(1)
   const [transactionLogs, setTransactionLogs] = useState([])
+  const [supplierAuditRows, setSupplierAuditRows] = useState([])
   const [editingOpeningDebtId, setEditingOpeningDebtId] = useState('')
   const [openingDebtEditForm, setOpeningDebtEditForm] = useState({ debt_date: todayISO(), amount: '', invoice_notes: '', comment: '' })
   const [editingPurchaseTransactionId, setEditingPurchaseTransactionId] = useState('')
@@ -14438,7 +14439,7 @@ function DebtsPayments({ t }) {
   }
 
   async function load() {
-    const [{ data: le }, { data: br }, { data: sup }, { data: prod }, { data: bal }, { data: pur }, { data: pay }, { data: opening }, { data: statusRows }, { data: logs }] = await Promise.all([
+    const [{ data: le }, { data: br }, { data: sup }, { data: prod }, { data: bal }, { data: pur }, { data: pay }, { data: opening }, { data: statusRows }, { data: logs }, { data: auditRows }] = await Promise.all([
       supabase.from('legal_entities').select('*').eq('is_active', true).order('name'),
       supabase.from('branches').select('id,name').eq('is_active', true).order('name'),
       supabase.from('suppliers').select('*').eq('is_active', true).order('name'),
@@ -14448,7 +14449,8 @@ function DebtsPayments({ t }) {
       supabase.from('supplier_payments').select('*, suppliers(name,voen), legal_entities(name,voen)').order('payment_date', { ascending: false }).order('created_at', { ascending: false }).limit(1000),
       supabase.from('supplier_opening_debts').select('*, suppliers(name,voen), legal_entities(name,voen)').order('debt_date', { ascending: false }).order('created_at', { ascending: false }).limit(1000),
       supabase.from('supplier_legal_entity_status').select('*'),
-      supabase.from('supplier_transaction_logs').select('*').order('created_at', { ascending: false }).limit(500)
+      supabase.from('supplier_transaction_logs').select('*').order('created_at', { ascending: false }).limit(500),
+      supabase.from('supplier_enterprise_consistency_view').select('*').order('severity', { ascending: false }).limit(100)
     ])
     setLegalEntities(le || [])
     setBranches(br || [])
@@ -14460,6 +14462,7 @@ function DebtsPayments({ t }) {
     setOpeningDebts(opening || [])
     setSupplierEntityStatuses(statusRows || [])
     setTransactionLogs(logs || [])
+    setSupplierAuditRows(auditRows || [])
   }
 
   function balanceForSupplier(id) {
@@ -14782,6 +14785,14 @@ function DebtsPayments({ t }) {
   ].sort((a, b) => new Date(b.purchase_date || b.created_at || 0) - new Date(a.purchase_date || a.created_at || 0))
   const filteredPayments = payments.filter(p => (!activeSupplierId || p.supplier_id === activeSupplierId) && (!activeLegalEntityId || p.legal_entity_id === activeLegalEntityId) && isSupplierActiveForLegal(p.supplier_id, p.legal_entity_id) && periodOk(p.payment_date))
   const visibleTransactionLogs = transactionLogs.filter(l => (!activeSupplierId || l.supplier_id === activeSupplierId) && (!activeLegalEntityId || l.legal_entity_id === activeLegalEntityId)).slice(0, 30)
+  const supplierAuditVisibleRows = (supplierAuditRows || []).filter(r => (!activeSupplierId || r.supplier_id === activeSupplierId) && (!activeLegalEntityId || r.legal_entity_id === activeLegalEntityId))
+  const supplierAuditCriticalRows = supplierAuditVisibleRows.filter(r => (r.issue_type || 'ok') !== 'ok' || Math.abs(parseNum(r.diff)) > 0.01)
+  const supplierAuditTotals = supplierAuditVisibleRows.reduce((acc, r) => {
+    acc.source += parseNum(r.source_balance)
+    acc.ledger += parseNum(r.ledger_balance)
+    acc.diff += parseNum(r.diff)
+    return acc
+  }, { source: 0, ledger: 0, diff: 0 })
   function commonOpsDateInPeriod(dateStr) {
     if (!dateStr) return false
     const d = new Date(dateStr)
@@ -15195,6 +15206,19 @@ function DebtsPayments({ t }) {
       </div>
 
 
+
+      <div className="card span-2">
+        <div className="card-head">
+          <div><h3>Enterprise audit: supplier ledger</h3><p className="hint">Сверка источников: стартовый долг + поступления − оплаты против supplier_ledger.</p></div>
+          <button className="ghost small" onClick={load}>Обновить</button>
+        </div>
+        <div className="mini-grid">
+          <div className="metric"><span>Source balance</span><strong>{fmt(supplierAuditTotals.source)}</strong></div>
+          <div className="metric"><span>Ledger balance</span><strong>{fmt(supplierAuditTotals.ledger)}</strong></div>
+          <div className="metric"><span>Разница</span><strong className={Math.abs(supplierAuditTotals.diff) > 0.01 ? 'bad' : 'good'}>{fmt(supplierAuditTotals.diff)}</strong></div>
+        </div>
+        <div className="table-wrap"><table><thead><tr><th>Статус</th><th>Поставщик</th><th>VOEN</th><th>Source</th><th>Ledger</th><th>Diff</th></tr></thead><tbody>{supplierAuditCriticalRows.slice(0, 12).map(r => <tr key={`${r.supplier_id || 'none'}-${r.legal_entity_id || 'none'}`}><td><span className={r.issue_type === 'ok' ? 'good' : 'bad'}>{r.issue_type || 'ok'}</span></td><td>{r.supplier_name || '—'}</td><td>{r.legal_entity_name || '—'}<br /><span className="hint">{r.legal_entity_voen || ''}</span></td><td>{fmt(r.source_balance)}</td><td>{fmt(r.ledger_balance)}</td><td className={Math.abs(parseNum(r.diff)) > 0.01 ? 'bad' : 'good'}><b>{fmt(r.diff)}</b></td></tr>)}{!supplierAuditCriticalRows.length && <tr><td colSpan="6" className="good">Расхождений не найдено</td></tr>}</tbody></table></div>
+      </div>
 
       <div className="card span-2"><div className="card-head"><div><h3>Общий список: приход и оплаты</h3><p className="hint">Фильтруемый журнал операций: стартовый долг, приход по накладным и оплаты.</p></div><label style={{display:'flex',alignItems:'center',gap:8}}><span className="hint">Показать</span><select value={commonOpsPageSize} onChange={e => { setCommonOpsPageSize(Number(e.target.value)); setCommonOpsPage(1) }}><option value={10}>10</option><option value={20}>20</option><option value={30}>30</option><option value={50}>50</option></select></label></div>
         <div className="form-grid compact">
