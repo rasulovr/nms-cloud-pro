@@ -6108,14 +6108,23 @@ function DashboardStyles() {
     .supplier-control-center-card .table-wrap table th:last-child, .supplier-control-center-card .table-wrap table td:last-child { width: 90px; text-align: right; }
     .supplier-compact-table td:last-child { width: 180px; }
     .supplier-compact-table .action-row { justify-content: flex-end; }
-     .supplier-transactions-panel { border: 1px solid var(--line); border-radius: 16px; padding: 14px; background: #fffaf2; }
-    .supplier-modal-panel { position: fixed; z-index: 1200; top: 56px; left: 50%; transform: translateX(-50%); width: min(1180px, calc(100vw - 40px)); max-height: calc(100vh - 96px); overflow: auto; box-shadow: 0 24px 80px rgba(15,23,42,.24); background: var(--panel, #fff); }
-    .supplier-modal-head { position: sticky; top: -14px; z-index: 3; background: inherit; padding-top: 6px; border-bottom: 1px solid rgba(148,163,184,.28); }
-    .supplier-modal-x { width: 36px; height: 36px; border-radius: 999px; border: 1px solid rgba(148,163,184,.45); background: rgba(255,255,255,.92); color: #111827; font-size: 22px; line-height: 1; font-weight: 800; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
-    .supplier-modal-x:hover { background: #f3f4f6; }
-    .supplier-transactions-panel .action-row { display: flex; gap: 6px; flex-wrap: nowrap; align-items: center; justify-content: flex-end; }
-    .supplier-transactions-panel table td:last-child { white-space: nowrap; min-width: 210px; }
-    .supplier-transactions-panel .small { min-height: 34px; }
+     .supplier-transactions-panel { border: 1px solid var(--line); border-radius: 18px; padding: 0; background: var(--panel, #fff); }
+    .supplier-modal-panel { position: fixed; z-index: 1200; top: 28px; left: 50%; transform: translateX(-50%); width: min(1280px, calc(100vw - 44px)); max-height: calc(100vh - 56px); overflow: auto; box-shadow: 0 28px 90px rgba(15,23,42,.28); background: var(--panel, #fff); border-radius: 22px; }
+    .supplier-modal-panel::before { content: ''; position: fixed; inset: -80px -100vw; z-index: -1; background: rgba(15,23,42,.18); backdrop-filter: blur(2px); }
+    .supplier-modal-head { position: sticky; top: 0; z-index: 3; background: rgba(255,255,255,.96); backdrop-filter: blur(12px); padding: 16px 18px; border-bottom: 1px solid rgba(148,163,184,.28); display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+    .supplier-modal-head h3 { margin: 0 0 4px; }
+    .supplier-modal-x { flex: 0 0 auto; width: 34px; height: 34px; border-radius: 10px; border: 1px solid rgba(148,163,184,.45); background: rgba(248,250,252,.95); color: #111827; font-size: 22px; line-height: 1; font-weight: 800; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
+    .supplier-modal-x:hover { background: #eef2f7; border-color: rgba(100,116,139,.55); }
+    .supplier-transactions-panel > .form-grid, .supplier-transactions-panel > .table-wrap, .supplier-transactions-panel > div:not(.supplier-modal-head) { margin-left: 18px; margin-right: 18px; }
+    .supplier-transactions-panel > .table-wrap:last-child { margin-bottom: 18px; }
+    .supplier-transactions-panel .action-row { display: inline-flex; gap: 6px; flex-wrap: nowrap; align-items: center; justify-content: flex-end; white-space: nowrap; }
+    .supplier-transactions-panel table td:last-child, .supplier-transactions-panel table th:last-child { white-space: nowrap; min-width: 230px; text-align: right; }
+    .supplier-transactions-panel .small { min-height: 32px; padding: 7px 12px; border-radius: 11px; font-weight: 800; }
+    .supplier-transactions-panel .small.remove { background: #fff1f2; border-color: #fecdd3; color: #be123c; }
+    .supplier-transactions-panel .small.remove:hover { background: #ffe4e6; }
+    .supplier-transactions-panel .cancelled-row { opacity: .58; background: #fafafa; }
+    .supplier-transactions-panel .cancelled-row td { text-decoration-thickness: 1px; }
+    .supplier-statement-modal .supplier-modal-head { align-items: center; }
     .supplier-control-center-card { padding: 22px; overflow: hidden; }
     .supplier-control-center-card > .card-head { padding-bottom: 12px; border-bottom: 1px solid var(--line); margin-bottom: 14px; }
     .supplier-control-center-card > .card-head h3 { margin-bottom: 4px; }
@@ -14718,7 +14727,7 @@ function DebtsPayments({ t }) {
 
   async function softDeleteOpeningDebt(row) {
     const rawId = String(row.id || '').replace('opening-', '')
-    if (!window.confirm('Удалить стартовый долг из активного баланса? Запись будет зачёркнута и останется в журнале изменений.')) return
+    if (!window.confirm('Удалить стартовый долг из активного баланса? Запись будет зачёркнута, но останется в журнале.')) return
     const reason = askSupplierCancelReason('Удаление стартового долга')
     if (reason === null) return
     const { data, error } = await supabase.rpc('rms_soft_delete_supplier_opening_debt', { p_id: rawId, p_reason: reason })
@@ -14795,7 +14804,7 @@ function DebtsPayments({ t }) {
 
 
   async function softDeletePurchaseTransaction(row) {
-    if (!window.confirm('Удалить поступление из активного баланса? Запись будет зачёркнута и останется в журнале изменений.')) return
+    if (!window.confirm('Удалить поступление из активного баланса? Запись будет зачёркнута, но останется в журнале.')) return
     const reason = askSupplierCancelReason('Удаление поступления поставщика')
     if (reason === null) return
     try {
@@ -14848,7 +14857,7 @@ function DebtsPayments({ t }) {
 
 
   async function deleteSupplierPayment(row) {
-    if (!window.confirm('Удалить оплату из активного баланса? Сумма снова вернётся в долг поставщика, запись останется в журнале.')) return
+    if (!window.confirm('Удалить оплату из активного баланса? Сумма вернётся в долг поставщика, запись останется в журнале.')) return
     const reason = askSupplierCancelReason('Удаление оплаты поставщику')
     if (reason === null) return
     try {
@@ -16131,7 +16140,7 @@ function DebtsPayments({ t }) {
       </div>
 
       {showSupplierStatementPanel && <div ref={supplierStatementPanelRef} className="card span-2 supplier-transactions-panel supplier-modal-panel supplier-statement-modal">
-        <div className="card-head supplier-modal-head"><div><h3>Акт сверки</h3><p className="hint">Приход, оплаты и остаток по выбранному поставщику / VOEN.</p></div><div className="action-row" style={{gap:8}}><label style={{display:'flex',alignItems:'center',gap:8}}><span className="hint">Показать</span><select value={ledgerPageSize} onChange={e => { setLedgerPageSize(Number(e.target.value)); setLedgerPage(1) }}><option value={10}>10</option><option value={20}>20</option><option value={30}>30</option><option value={50}>50</option></select></label><button className="small primary" onClick={printSupplierLedger}>PDF / печать</button><button className="small" onClick={exportSupplierStatementCsv}>CSV</button><button className="supplier-modal-x" title="Закрыть" aria-label="Закрыть" onClick={() => setShowSupplierStatementPanel(false)}>×</button></div></div>
+        <div className="card-head supplier-modal-head"><div><h3>Акт сверки</h3><p className="hint">Операции, оплаты и остаток по выбранному поставщику / VOEN.</p></div><div className="action-row" style={{gap:8}}><label style={{display:'flex',alignItems:'center',gap:8}}><span className="hint">Показать</span><select value={ledgerPageSize} onChange={e => { setLedgerPageSize(Number(e.target.value)); setLedgerPage(1) }}><option value={10}>10</option><option value={20}>20</option><option value={30}>30</option><option value={50}>50</option></select></label><button className="small primary" onClick={printSupplierLedger}>PDF / печать</button><button className="small" onClick={exportSupplierStatementCsv}>CSV</button><button className="supplier-modal-x" title="Закрыть" aria-label="Закрыть" onClick={() => setShowSupplierStatementPanel(false)}>×</button></div></div>
         <div className="form-grid compact">
           <label><span>Поиск поставщика</span><input value={ledgerSearch} onChange={e => { setLedgerSearch(e.target.value); setLedgerPage(1) }} placeholder="Название или VOEN" /></label>
           <label><span>Поставщик</span><select value={ledgerSupplierId} onChange={e => { setLedgerSupplierId(e.target.value); setLedgerPage(1) }}><option value="all">Все найденные / все поставщики</option>{searchedSuppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
