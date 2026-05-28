@@ -14416,6 +14416,8 @@ function DebtsPayments({ t }) {
   const [supplierAgingPageSize, setSupplierAgingPageSize] = useState(10)
   const [supplierControlFilter, setSupplierControlFilter] = useState('active')
   const [supplierAlertsFilter, setSupplierAlertsFilter] = useState('active')
+  const [supplierInsightFilter, setSupplierInsightFilter] = useState('priority')
+  const [supplierInsightBudget, setSupplierInsightBudget] = useState('5000')
   const [supplierCalendarFilter, setSupplierCalendarFilter] = useState('next7')
   const [supplierCalendarPageSize, setSupplierCalendarPageSize] = useState(20)
   const [supplierFollowUps, setSupplierFollowUps] = useState(() => readJsonStorage('rms_supplier_followups_v1', {}))
@@ -15540,6 +15542,77 @@ function DebtsPayments({ t }) {
 
   const pagedSupplierAlertRows = supplierAlertRows.slice(0, 20)
 
+  const supplierPaymentInsightRows = useMemo(() => {
+    const budget = Math.max(0, parseNum(supplierInsightBudget || 0))
+    let remaining = budget
+    const rows = (supplierControlRows || [])
+      .filter(row => parseNum(row.balance) > 0 && row.controlStatus !== 'closed')
+      .map(row => {
+        const balance = parseNum(row.balance)
+        const overdueAmount = parseNum(row.overdueAmount)
+        const limitOver = parseNum(row.limitOver)
+        const nextDueDays = supplierCalendarDaysUntil(row.nearestDue || '')
+        const followDays = supplierCalendarDaysUntil(row.followUp?.next_action_date || '')
+        const hasControlDate = Boolean(row.followUp?.next_action_date || row.nearestDue)
+        const score = Math.round(
+          parseNum(row.riskScore)
+          + Math.min(30, overdueAmount / 500)
+          + Math.min(25, parseNum(row.maxOverdueDays) * 0.8)
+          + Math.min(20, limitOver / 500)
+          + (!hasControlDate ? 8 : 0)
+          + (followDays !== null && followDays < 0 ? 12 : 0)
+          + (nextDueDays !== null && nextDueDays >= 0 && nextDueDays <= 7 ? 6 : 0)
+        )
+        const priority = score >= 75 || row.riskLevel === 'critical' ? 'critical' : score >= 45 || row.riskLevel === 'warning' ? 'high' : 'normal'
+        const suggestedBase = overdueAmount > 0 ? overdueAmount : Math.min(balance, parseNum(row.bucket8_30 || 0) + parseNum(row.bucket31_plus || 0) || balance)
+        const suggestedPayment = Math.min(balance, Math.max(0, suggestedBase))
+        const recommendation = priority === 'critical'
+          ? 'Оплатить или согласовать сегодня'
+          : priority === 'high'
+            ? 'Поставить в план оплаты / follow-up'
+            : 'Держать под контролем'
+        const reasonParts = []
+        if (overdueAmount > 0) reasonParts.push(`просрочено ${fmt(overdueAmount)}`)
+        if (limitOver > 0) reasonParts.push(`лимит +${fmt(limitOver)}`)
+        if (parseNum(row.maxOverdueDays) > 0) reasonParts.push(`${row.maxOverdueDays} дн. просрочки`)
+        if (!hasControlDate) reasonParts.push('нет даты контроля')
+        if (followDays !== null && followDays < 0) reasonParts.push(`follow-up -${Math.abs(followDays)} дн.`)
+        return {
+          ...row,
+          aiScore: score,
+          aiPriority: priority,
+          aiRecommendation: recommendation,
+          aiReason: reasonParts.length ? reasonParts.join(' · ') : 'без критичных факторов',
+          aiSuggestedPayment: suggestedPayment
+        }
+      })
+      .filter(row => {
+        if (supplierInsightFilter === 'critical') return row.aiPriority === 'critical'
+        if (supplierInsightFilter === 'overdue') return parseNum(row.overdueAmount) > 0
+        if (supplierInsightFilter === 'limit') return parseNum(row.limitOver) > 0
+        if (supplierInsightFilter === 'nodate') return !row.followUp?.next_action_date && !row.nearestDue
+        return true
+      })
+      .sort((a, b) => b.aiScore - a.aiScore || parseNum(b.overdueAmount) - parseNum(a.overdueAmount) || parseNum(b.balance) - parseNum(a.balance))
+    return rows.map(row => {
+      const allocated = Math.min(remaining, parseNum(row.aiSuggestedPayment))
+      remaining = Math.max(0, remaining - allocated)
+      return { ...row, aiAllocatedPayment: allocated, aiBudgetRemainingAfter: remaining }
+    })
+  }, [supplierControlRows, supplierInsightFilter, supplierInsightBudget])
+
+  const supplierPaymentInsightSummary = useMemo(() => supplierPaymentInsightRows.reduce((acc, row) => {
+    acc.totalDebt += parseNum(row.balance)
+    acc.overdue += parseNum(row.overdueAmount)
+    acc.suggested += parseNum(row.aiSuggestedPayment)
+    acc.allocated += parseNum(row.aiAllocatedPayment)
+    acc.critical += row.aiPriority === 'critical' ? 1 : 0
+    acc.high += row.aiPriority === 'high' ? 1 : 0
+    return acc
+  }, { totalDebt: 0, overdue: 0, suggested: 0, allocated: 0, critical: 0, high: 0 }), [supplierPaymentInsightRows])
+
+  const pagedSupplierPaymentInsightRows = supplierPaymentInsightRows.slice(0, 15)
+
   const pagedSupplierAgingRows = supplierAging.filteredRows.slice(0, parseNum(supplierAgingPageSize || 10))
 
   function applyAgingRowToStatement(row) {
@@ -15714,6 +15787,22 @@ function DebtsPayments({ t }) {
       </div>
       <div className="table-wrap"><table><thead><tr><th>Alert</th><th>Поставщик / VOEN</th><th>Сумма</th><th>Причина</th><th>Контроль</th><th>Действия</th></tr></thead><tbody>{pagedSupplierAlertRows.map(row => <tr key={`alert-${row.key}`}><td><b className={supplierAlertSeverityClass(row.alertSeverity)}>{supplierAlertSeverityText(row.alertSeverity)}</b><br /><span className="hint">risk score {row.riskScore}</span></td><td><b>{row.supplier_name}</b><br /><span className="hint">{row.legal_entity_name}</span></td><td><b>{fmt(row.balance)}</b><br /><span className={row.overdueAmount > 0 ? 'bad' : 'hint'}>{row.overdueAmount > 0 ? `просрочено ${fmt(row.overdueAmount)}` : 'без просрочки'}</span></td><td>{row.alertReasons.map((reason, idx) => <div key={`${row.key}-reason-${idx}`}>{reason}</div>)}</td><td><b>{supplierFollowUpStatusText(row.controlStatus)}</b><br /><span className="hint">{row.followDate || row.nearestDue || 'дата не назначена'}</span></td><td><div className="action-row" style={{gap:6, flexWrap:'wrap'}}><button className="small" onClick={() => updateSupplierFollowUp(row, { status: 'in_progress', priority: row.alertSeverity === 'critical' ? 'critical' : row.riskLevel || 'normal' })}>В работу</button><button className="small" onClick={() => promptSupplierNextActionDate(row)}>Дата</button><button className="small" onClick={() => promptSupplierFollowUpNote(row)}>Комментарий</button><button className="small" onClick={() => applyAgingRowToStatement(row)}>Акт</button><button className="small remove" onClick={() => updateSupplierFollowUp(row, { status: 'closed' })}>Закрыть alert</button></div></td></tr>)}{!pagedSupplierAlertRows.length && <tr><td colSpan="6" className="good">Активных supplier alerts нет.</td></tr>}</tbody></table></div>
       <p className="hint" style={{marginTop:10}}>Alert-центр использует уже рассчитанные aging/follow-up данные. Он не меняет supplier_ledger, поступления или оплаты.</p>
+    </section>
+
+    <section className="card span-2">
+      <div className="card-head"><div><h3>Supplier AI insights & payment priority</h3><p className="hint">Рекомендованный порядок оплат: риск, просрочка, лимит, follow-up и доступный бюджет. Ledger не меняется.</p></div><div className="action-row" style={{gap:8}}><button className="small" onClick={load}>Обновить</button></div></div>
+      <div className="form-grid compact">
+        <label><span>Фокус</span><select value={supplierInsightFilter} onChange={e => setSupplierInsightFilter(e.target.value)}><option value="priority">Все по приоритету</option><option value="critical">Только Critical</option><option value="overdue">Только просрочки</option><option value="limit">Превышение лимита</option><option value="nodate">Без даты контроля</option></select></label>
+        <label><span>Бюджет на оплату, AZN</span><input inputMode="decimal" value={supplierInsightBudget} onChange={e => setSupplierInsightBudget(e.target.value)} placeholder="Например 5000" /></label>
+      </div>
+      <div className="mini-grid">
+        <div className="metric"><span>Долг в выборке</span><strong>{fmt(supplierPaymentInsightSummary.totalDebt)}</strong></div>
+        <div className="metric"><span>Просрочено</span><strong className={supplierPaymentInsightSummary.overdue > 0 ? 'bad' : 'good'}>{fmt(supplierPaymentInsightSummary.overdue)}</strong></div>
+        <div className="metric"><span>Critical / High</span><strong className={supplierPaymentInsightSummary.critical > 0 ? 'bad' : supplierPaymentInsightSummary.high > 0 ? 'warn' : 'good'}>{supplierPaymentInsightSummary.critical} / {supplierPaymentInsightSummary.high}</strong></div>
+        <div className="metric"><span>Бюджет распределён</span><strong>{fmt(supplierPaymentInsightSummary.allocated)} / {fmt(parseNum(supplierInsightBudget))}</strong></div>
+      </div>
+      <div className="table-wrap"><table><thead><tr><th>Приоритет</th><th>Поставщик / VOEN</th><th>Баланс</th><th>Рекомендация</th><th>Причина</th><th>К оплате</th><th>Действия</th></tr></thead><tbody>{pagedSupplierPaymentInsightRows.map(row => <tr key={`insight-${row.key}`}><td><b className={row.aiPriority === 'critical' ? 'bad' : row.aiPriority === 'high' ? 'warn' : 'good'}>{row.aiPriority === 'critical' ? 'Critical' : row.aiPriority === 'high' ? 'High' : 'Normal'}</b><br /><span className="hint">AI score {row.aiScore}</span></td><td><b>{row.supplier_name}</b><br /><span className="hint">{row.legal_entity_name}</span></td><td><b>{fmt(row.balance)}</b><br /><span className={row.overdueAmount > 0 ? 'bad' : 'hint'}>{row.overdueAmount > 0 ? `просрочено ${fmt(row.overdueAmount)}` : 'активный долг'}</span></td><td>{row.aiRecommendation}<br /><span className="hint">{row.nearestDue ? `ближайший срок ${row.nearestDue}` : 'срок не назначен'}</span></td><td>{row.aiReason}</td><td><b>{fmt(row.aiAllocatedPayment)}</b><br /><span className="hint">рекоменд. {fmt(row.aiSuggestedPayment)}</span></td><td><div className="action-row" style={{gap:6, flexWrap:'wrap'}}><button className="small" onClick={() => updateSupplierFollowUp(row, { status: 'in_progress', priority: row.aiPriority === 'critical' ? 'critical' : row.aiPriority === 'high' ? 'warning' : 'normal' })}>В работу</button><button className="small" onClick={() => promptSupplierNextActionDate(row)}>Дата</button><button className="small" onClick={() => promptSupplierFollowUpNote(row)}>Комментарий</button><button className="small" onClick={() => applyAgingRowToStatement(row)}>Акт</button></div></td></tr>)}{!pagedSupplierPaymentInsightRows.length && <tr><td colSpan="7" className="good">Критичных рекомендаций нет.</td></tr>}</tbody></table></div>
+      <p className="hint" style={{marginTop:10}}>AI insights — управленческая приоритизация. Она не создаёт оплату автоматически и не меняет supplier_ledger.</p>
     </section>
 
     <section className="card span-2">
