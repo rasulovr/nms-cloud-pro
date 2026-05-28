@@ -15802,6 +15802,15 @@ function DebtsPayments({ t }) {
 
   const pagedSupplierAgingRows = supplierAging.filteredRows.slice(0, parseNum(supplierAgingPageSize || 10))
 
+  const supplierOverdueRows = useMemo(() => (supplierAging.rows || [])
+    .filter(row => parseNum(row.overdueAmount) > 0 || parseNum(row.limitOver) > 0)
+    .sort((a, b) => parseNum(b.overdueAmount) - parseNum(a.overdueAmount) || parseNum(b.limitOver) - parseNum(a.limitOver) || parseNum(b.balance) - parseNum(a.balance)), [supplierAging.rows])
+
+  const supplierRatingRows = useMemo(() => (supplierAging.rows || [])
+    .slice()
+    .sort((a, b) => parseNum(b.riskScore) - parseNum(a.riskScore) || parseNum(b.balance) - parseNum(a.balance) || String(a.supplier_name || '').localeCompare(String(b.supplier_name || ''))), [supplierAging.rows])
+
+
   function applyAgingRowToStatement(row) {
     if (!row) return
     setLedgerSupplierId(row.supplier_id || 'all')
@@ -15927,83 +15936,69 @@ function DebtsPayments({ t }) {
   return <section>
     <section className="topbar"><div><h2>Долги и оплаты</h2><p>Балансы поставщиков, контроль лимитов, просрочек, поступления и оплаты.</p></div></section>
 
-    <section className="debt-intelligence-panel">
+    <section className="card span-2 debt-intelligence-panel">
+      <div className="card-head">
+        <div><h3>Сводка по поставщикам</h3><p className="hint">Ключевые показатели без перегрузки: долг, просрочка, лимит и статус риска.</p></div>
+      </div>
       <div className="debt-kpi-grid">
         <DebtKpiCard tone="muted" label="Поставщиков" value={debtIntelligence.supplierCount} sub="с активным балансом" />
-        <DebtKpiCard tone="danger" label="Общий долг" value={`${fmt(debtIntelligence.totalDebt)} AZN`} sub={debtIntelligence.totalDebt ? `+${((debtIntelligence.overdueDebt / Math.max(1, debtIntelligence.totalDebt)) * 100).toFixed(1)}% в риске` : 'долга нет'} />
-        <DebtKpiCard tone="danger" label="Просрочено" value={debtIntelligence.overdueSupplierCount} sub={`${fmt(debtIntelligence.overdueDebt)} AZN`} />
-        <DebtKpiCard tone="success" label="В срок" value={debtIntelligence.okSupplierCount} sub={`${fmt(debtIntelligence.debtStatusOk)} AZN`} />
-        <DebtKpiCard tone="info" label="Средний срок оплаты" value={`${debtIntelligence.avgTerm || 0} дней`} sub={debtIntelligence.availableLimit >= 0 ? `лимит доступен ${fmt(debtIntelligence.availableLimit)} AZN` : `превышение ${fmt(Math.abs(debtIntelligence.availableLimit))} AZN`} />
-      </div>
-      <div className="debt-charts-grid">
-        <DebtDonutChart overdue={debtIntelligence.overdueDebt} ok={debtIntelligence.debtStatusOk} />
-        <DebtTrendChart data={debtIntelligence.trend} />
-        <SupplierRiskBars data={debtIntelligence.riskRows} />
+        <DebtKpiCard tone="danger" label="Общий долг" value={`${fmt(debtIntelligence.totalDebt)} AZN`} sub="открытый баланс" />
+        <DebtKpiCard tone="danger" label="Просрочено" value={`${fmt(debtIntelligence.overdueDebt)} AZN`} sub={`${debtIntelligence.overdueSupplierCount} поставщиков`} />
+        <DebtKpiCard tone="info" label="Лимит" value={debtIntelligence.availableLimit >= 0 ? `${fmt(debtIntelligence.availableLimit)} AZN` : `${fmt(Math.abs(debtIntelligence.availableLimit))} AZN`} sub={debtIntelligence.availableLimit >= 0 ? 'доступный лимит' : 'превышение лимита'} />
       </div>
     </section>
 
-    <section className="card span-2">
+    <section className="card span-2 supplier-control-center-card">
       <div className="card-head">
         <div>
           <h3>Supplier control center</h3>
-          <p className="hint">Единый компактный центр: alerts, payment plan и follow-up calendar внутри одного блока. По умолчанию показывается Top 5, список можно раскрыть.</p>
+          <p className="hint">Короткий управленческий обзор: просрочка, превышение лимита и рейтинг поставщиков. Follow-up workflow скрыт из активного UX.</p>
         </div>
         <div className="action-row" style={{gap:8}}><button className="small" onClick={load}>Обновить</button></div>
       </div>
-      <div className="form-grid compact">
-        <label><span>Контроль</span><select value={supplierControlFilter} onChange={e => setSupplierControlFilter(e.target.value)}><option value="active">Активные</option><option value="all">Все долги</option><option value="critical">Critical</option><option value="overdue">Просроченные</option><option value="in_progress">В работе</option><option value="waiting">Ожидает</option><option value="closed">Закрыто</option></select></label>
-        <label><span>Alerts</span><select value={supplierAlertsFilter} onChange={e => setSupplierAlertsFilter(e.target.value)}><option value="active">Активные alerts</option><option value="critical">Critical</option><option value="warning">Warning</option><option value="overdue">Просрочки</option><option value="today">На сегодня</option><option value="nodate">Без даты контроля</option><option value="limit">Превышение лимита</option><option value="closed">Закрытые</option></select></label>
-        <label><span>Payment plan</span><select value={supplierPaymentPlanMode} onChange={e => setSupplierPaymentPlanMode(e.target.value)}><option value="budgeted">Только покрыто бюджетом</option><option value="full">Полная потребность</option></select></label>
-        <label><span>Follow-up calendar</span><select value={supplierCalendarFilter} onChange={e => setSupplierCalendarFilter(e.target.value)}><option value="next7">Ближайшие 7 дней</option><option value="today">Сегодня</option><option value="overdue">Просроченные</option><option value="next30">Ближайшие 30 дней</option><option value="nodate">Без даты контроля</option><option value="all">Все активные</option><option value="closed">Закрытые</option></select></label>
-      </div>
       <div className="mini-grid">
-        <div className="metric"><span>Открытый долг</span><strong>{fmt(supplierAging.totalOpen)}</strong></div>
-        <div className="metric"><span>Просрочено</span><strong className={supplierAging.totalOverdue > 0 ? 'bad' : 'good'}>{fmt(supplierAging.totalOverdue)}</strong></div>
-        <div className="metric"><span>Critical / Warning</span><strong>{supplierAging.criticalCount} / {supplierAging.warningCount}</strong></div>
-        <div className="metric"><span>Cash gap</span><strong className={supplierCashFlowForecastSummary.gap > 0 ? 'bad' : 'good'}>{fmt(supplierCashFlowForecastSummary.gap)}</strong></div>
-        <div className="metric"><span>В план оплаты</span><strong>{fmt(supplierPaymentPlanSummary.planned)}</strong></div>
-        <div className="metric"><span>Follow-up сегодня / 7 дней</span><strong>{supplierPaymentCalendarSummary.today} / {supplierPaymentCalendarSummary.next7}</strong></div>
-      </div>
-      <div className="table-wrap" style={{margin:'10px 0 14px'}}>
-        <table><thead><tr><th>Bucket aging</th><th>Не просрочено</th><th>1–7 дней</th><th>8–30 дней</th><th>31+ дней</th></tr></thead><tbody><tr><td><b>Сумма</b></td><td>{fmt(supplierAging.buckets.current)}</td><td className={supplierAging.buckets.d1_7 > 0 ? 'bad' : 'hint'}>{fmt(supplierAging.buckets.d1_7)}</td><td className={supplierAging.buckets.d8_30 > 0 ? 'bad' : 'hint'}>{fmt(supplierAging.buckets.d8_30)}</td><td className={supplierAging.buckets.d31_plus > 0 ? 'bad' : 'hint'}><b>{fmt(supplierAging.buckets.d31_plus)}</b></td></tr></tbody></table>
+        <div className="metric"><span>Открытый долг</span><strong>{fmt(supplierAging.totals.total)}</strong></div>
+        <div className="metric"><span>Просрочено</span><strong className={supplierAging.totals.overdue > 0 ? 'bad' : 'good'}>{fmt(supplierAging.totals.overdue)}</strong></div>
+        <div className="metric"><span>Сверх лимита</span><strong className={supplierAging.totals.limitOver > 0 ? 'bad' : 'good'}>{fmt(supplierAging.totals.limitOver)}</strong></div>
+        <div className="metric"><span>Риск</span><strong>{supplierAging.totals.critical} critical · {supplierAging.totals.warning} warning</strong></div>
       </div>
 
-      <div className="card soft-card" style={{marginTop:12}}>
-        <div className="card-head"><div><h4>Top alerts</h4><p className="hint">Первые 5 активных alert-ов. Раскрытие показывает весь текущий список.</p></div>{pagedSupplierAlertRows.length > 5 && <button className="ghost small" onClick={() => setSupplierCompactAlertsExpanded(v => !v)}>{supplierCompactAlertsExpanded ? 'Скрыть' : `Показать все · ${pagedSupplierAlertRows.length}`}</button>}</div>
-        <div className="table-wrap">
-          <table>
-            <thead><tr><th>Alert</th><th>Поставщик / VOEN</th><th>Сумма</th><th>Причина</th><th>Контроль</th><th>Действия</th></tr></thead>
-            <tbody>{(supplierCompactAlertsExpanded ? pagedSupplierAlertRows : pagedSupplierAlertRows.slice(0, 5)).map(row => <tr key={`compact-alert-${row.key}`}><td><b className={supplierAlertSeverityClass(row.alertSeverity)}>{supplierAlertSeverityText(row.alertSeverity)}</b><br /><span className="hint">score {row.riskScore}</span></td><td><b>{row.supplier_name}</b><br /><span className="hint">{row.legal_entity_name}</span></td><td><b>{fmt(row.balance)}</b><br /><span className={row.overdueAmount > 0 ? 'bad' : 'hint'}>{row.overdueAmount > 0 ? `просрочено ${fmt(row.overdueAmount)}` : 'без просрочки'}</span></td><td>{row.alertReasons.slice(0, 2).map((reason, idx) => <div key={`${row.key}-compact-reason-${idx}`}>{reason}</div>)}</td><td><b>{supplierFollowUpStatusText(row.controlStatus)}</b><br /><span className="hint">{row.followDate || row.nearestDue || 'дата не назначена'}</span></td><td><div className="action-row" style={{gap:6, flexWrap:'wrap'}}><button className="small" onClick={() => updateSupplierFollowUp(row, { status: 'in_progress', priority: row.alertSeverity === 'critical' ? 'critical' : row.riskLevel || 'normal' })}>В работу</button><button className="small" onClick={() => promptSupplierNextActionDate(row)}>Дата</button><button className="small" onClick={() => promptSupplierFollowUpNote(row)}>Комментарий</button><button className="small" onClick={() => applyAgingRowToStatement(row)}>Акт</button><button className="small remove" onClick={() => updateSupplierFollowUp(row, { status: 'closed' })}>Закрыть</button></div></td></tr>)}{!pagedSupplierAlertRows.length && <tr><td colSpan="6" className="good">Активных supplier alerts нет.</td></tr>}</tbody>
-          </table>
+      <div className="grid" style={{marginTop:12}}>
+        <div className="card soft-card">
+          <div className="card-head">
+            <div>
+              <h4>Просрочка и лимиты</h4>
+              <p className="hint">По дате оплаты и кредитному лимиту. В списке показаны суммы и просроченные фактуры.</p>
+            </div>
+            <div className="action-row" style={{gap:8}}>
+              <label style={{display:'flex',alignItems:'center',gap:8}}><span className="hint">Фильтр</span><select value={supplierRiskFilter} onChange={e => setSupplierRiskFilter(e.target.value)}><option value="all">Все</option><option value="overdue">Только просрочка</option><option value="limit">Сверх лимита</option><option value="critical">Critical</option><option value="warning">Warning</option></select></label>
+              {supplierOverdueRows.length > 5 && <button className="ghost small" onClick={() => setSupplierCompactAlertsExpanded(v => !v)}>{supplierCompactAlertsExpanded ? 'Скрыть' : `Показать все · ${supplierOverdueRows.length}`}</button>}
+            </div>
+          </div>
+          <div className="table-wrap">
+            <table>
+              <thead><tr><th>Поставщик / VOEN</th><th>Остаток</th><th>Просрочено</th><th>Сверх лимита</th><th>Фактуры</th><th>Действие</th></tr></thead>
+              <tbody>{(supplierCompactAlertsExpanded ? supplierOverdueRows : supplierOverdueRows.slice(0, 5)).map(row => <tr key={`overdue-${row.key}`}><td><b>{row.supplier_name}</b><br /><span className="hint">{row.legal_entity_name}</span></td><td><b>{fmt(row.balance)}</b></td><td className={row.overdueAmount > 0 ? 'bad' : 'hint'}><b>{fmt(row.overdueAmount)}</b><br /><span>{row.maxOverdueDays > 0 ? `${row.maxOverdueDays} дн.` : 'нет'}</span></td><td className={row.limitOver > 0 ? 'bad' : 'hint'}>{row.limitOver > 0 ? fmt(row.limitOver) : '—'}</td><td>{(row.unpaid || []).filter(inv => parseNum(inv.daysOverdue) > 0).slice(0, 4).map(inv => <div key={`${row.key}-${inv.invoice}-${inv.date}`}>{inv.invoice || 'Без фактуры'} · {fmt(inv.openAmount)} · {inv.daysOverdue} дн.</div>)}{!(row.unpaid || []).some(inv => parseNum(inv.daysOverdue) > 0) && <span className="hint">Просроченных фактур нет</span>}</td><td><button className="small" onClick={() => applyAgingRowToStatement(row)}>Акт</button></td></tr>)}{!supplierOverdueRows.length && <tr><td colSpan="6" className="good">Просрочек и превышения лимитов нет.</td></tr>}</tbody>
+            </table>
+          </div>
         </div>
-      </div>
 
-      <div className="card soft-card" style={{marginTop:12}}>
-        <div className="card-head"><div><h4>Payment plan</h4><p className="hint">План оплат из cash-flow forecast. По умолчанию Top 5.</p></div>{pagedSupplierPaymentPlanRows.length > 5 && <button className="ghost small" onClick={() => setSupplierCompactPlanExpanded(v => !v)}>{supplierCompactPlanExpanded ? 'Скрыть' : `Показать все · ${pagedSupplierPaymentPlanRows.length}`}</button>}</div>
-        <div className="table-wrap">
-          <table>
-            <thead><tr><th>#</th><th>Дата / статус</th><th>Поставщик / VOEN</th><th>Приоритет</th><th>Требуется</th><th>К оплате</th><th>Действия</th></tr></thead>
-            <tbody>{(supplierCompactPlanExpanded ? pagedSupplierPaymentPlanRows : pagedSupplierPaymentPlanRows.slice(0, 5)).map(row => <tr key={`compact-plan-${row.key}`}><td>{row.paymentPlanOrder}</td><td><b>{row.paymentPlanDate || '—'}</b><br /><span className={supplierPaymentPlanStatusClass(row.paymentPlanStatus)}>{supplierPaymentPlanStatusText(row.paymentPlanStatus)}</span></td><td><b>{row.supplier_name}</b><br /><span className="hint">{row.legal_entity_name}</span></td><td><b className={row.forecastPriority === 'critical' ? 'bad' : row.forecastPriority === 'high' ? 'warn' : 'good'}>{row.forecastPriority === 'critical' ? 'Critical' : row.forecastPriority === 'high' ? 'High' : row.forecastPriority === 'warning' ? 'Warning' : 'Normal'}</b><br /><span className="hint">{row.forecastBucket}</span></td><td><b>{fmt(row.paymentPlanRequiredAmount)}</b><br /><span className={row.paymentPlanGapAmount > 0 ? 'bad' : 'good'}>{row.paymentPlanGapAmount > 0 ? `gap ${fmt(row.paymentPlanGapAmount)}` : 'покрыто'}</span></td><td><b>{fmt(row.paymentPlanAmount)}</b><br /><span className="hint">остаток бюджета {fmt(row.forecastBudgetRemainingAfter)}</span></td><td><div className="action-row" style={{gap:6, flexWrap:'wrap'}}><button className="small" onClick={() => updateSupplierFollowUp(row, { status: 'in_progress', priority: row.forecastPriority === 'critical' ? 'critical' : row.forecastPriority === 'high' ? 'warning' : row.riskLevel || 'normal', next_action_date: row.paymentPlanDate })}>В работу</button><button className="small" onClick={() => promptSupplierNextActionDate(row)}>Дата</button><button className="small" onClick={() => promptSupplierFollowUpNote(row)}>Комментарий</button><button className="small" onClick={() => applyAgingRowToStatement(row)}>Акт</button></div></td></tr>)}{!pagedSupplierPaymentPlanRows.length && <tr><td colSpan="7" className="good">План оплат пуст для текущего сценария и бюджета.</td></tr>}</tbody>
-          </table>
+        <div className="card soft-card">
+          <div className="card-head">
+            <div>
+              <h4>Рейтинг поставщиков</h4>
+              <p className="hint">Рейтинг риска: долг, просрочка, лимит и количество открытых фактур.</p>
+            </div>
+            {supplierRatingRows.length > 5 && <button className="ghost small" onClick={() => setSupplierCompactPlanExpanded(v => !v)}>{supplierCompactPlanExpanded ? 'Скрыть' : `Показать все · ${supplierRatingRows.length}`}</button>}
+          </div>
+          <div className="table-wrap">
+            <table>
+              <thead><tr><th>#</th><th>Поставщик / VOEN</th><th>Статус</th><th>Долг</th><th>Просрочка</th><th>Фактуры</th><th>Акт</th></tr></thead>
+              <tbody>{(supplierCompactPlanExpanded ? supplierRatingRows : supplierRatingRows.slice(0, 5)).map((row, idx) => <tr key={`rating-${row.key}`}><td>{idx + 1}</td><td><b>{row.supplier_name}</b><br /><span className="hint">{row.legal_entity_name}</span></td><td><b className={row.riskLevel === 'critical' ? 'bad' : row.riskLevel === 'warning' ? 'warn' : 'good'}>{row.riskLevel === 'critical' ? 'Critical' : row.riskLevel === 'warning' ? 'Warning' : 'OK'}</b><br /><span className="hint">score {row.riskScore}</span></td><td><b>{fmt(row.balance)}</b></td><td className={row.overdueAmount > 0 ? 'bad' : 'hint'}>{fmt(row.overdueAmount)}</td><td>{row.unpaidCount}</td><td><button className="small" onClick={() => applyAgingRowToStatement(row)}>Акт</button></td></tr>)}{!supplierRatingRows.length && <tr><td colSpan="7" className="hint">Нет активных долгов для рейтинга.</td></tr>}</tbody>
+            </table>
+          </div>
         </div>
       </div>
-
-      <div className="card soft-card" style={{marginTop:12}}>
-        <div className="card-head"><div><h4>Follow-up calendar</h4><p className="hint">Календарь контроля оплат теперь находится внутри Supplier control center. По умолчанию Top 5.</p></div>{pagedSupplierPaymentCalendarRows.length > 5 && <button className="ghost small" onClick={() => setSupplierCompactFollowUpExpanded(v => !v)}>{supplierCompactFollowUpExpanded ? 'Скрыть' : `Показать все · ${pagedSupplierPaymentCalendarRows.length}`}</button>}</div>
-        <div className="mini-grid">
-          <div className="metric"><span>Сумма в календаре</span><strong>{fmt(supplierPaymentCalendarSummary.amount)}</strong></div>
-          <div className="metric"><span>Просрочено</span><strong className={supplierPaymentCalendarSummary.overdue > 0 ? 'bad' : 'good'}>{fmt(supplierPaymentCalendarSummary.overdue)}</strong></div>
-          <div className="metric"><span>Без даты</span><strong className={supplierPaymentCalendarSummary.noDate > 0 ? 'warn' : 'good'}>{supplierPaymentCalendarSummary.noDate}</strong></div>
-          <div className="metric"><span>В работе / ожидает</span><strong>{supplierControlSummary.inProgress} / {supplierControlSummary.waiting}</strong></div>
-        </div>
-        <div className="table-wrap">
-          <table>
-            <thead><tr><th>Дата / тип</th><th>Статус</th><th>Поставщик / VOEN</th><th>Сумма</th><th>Просрочка</th><th>Комментарий</th><th>Действия</th></tr></thead>
-            <tbody>{(supplierCompactFollowUpExpanded ? pagedSupplierPaymentCalendarRows : pagedSupplierPaymentCalendarRows.slice(0, 5)).map(row => <tr key={`compact-calendar-${row.key}`}><td><b>{row.actionDate || '—'}</b><br /><span className="hint">{row.actionKind}</span></td><td><b className={supplierCalendarTone(row.daysUntil, row)}>{supplierCalendarStatusText(row.daysUntil)}</b><br /><span className="hint">{supplierFollowUpStatusText(row.controlStatus)} · {supplierPriorityText(row.controlPriority)}</span></td><td><b>{row.supplier_name}</b><br /><span className="hint">{row.legal_entity_name}</span></td><td><b>{fmt(row.balance)}</b></td><td className={row.overdueAmount > 0 ? 'bad' : 'good'}>{row.maxOverdueDays ? `${row.maxOverdueDays} дн. · ${fmt(row.overdueAmount)}` : '—'}</td><td>{row.followUp?.note || <span className="hint">Комментария нет</span>}</td><td><div className="action-row" style={{gap:6, flexWrap:'wrap'}}><button className="small" onClick={() => updateSupplierFollowUp(row, { status: 'in_progress', priority: row.riskLevel || 'normal' })}>В работу</button><button className="small" onClick={() => updateSupplierFollowUp(row, { status: 'waiting' })}>Ожидает</button><button className="small" onClick={() => promptSupplierNextActionDate(row)}>Дата</button><button className="small" onClick={() => promptSupplierFollowUpNote(row)}>Комментарий</button><button className="small" onClick={() => applyAgingRowToStatement(row)}>Акт</button><button className="small remove" onClick={() => updateSupplierFollowUp(row, { status: 'closed' })}>Закрыто</button></div></td></tr>)}{!pagedSupplierPaymentCalendarRows.length && <tr><td colSpan="7" className="good">Нет задач по оплатам для выбранного фильтра.</td></tr>}</tbody>
-          </table>
-        </div>
-      </div>
-      <p className="hint" style={{marginTop:10}}>Aging, alerts, payment plan и follow-up calendar объединены в один control center. Ledger, поступления и оплаты не меняются.</p>
     </section>
 
     <section className="grid">
