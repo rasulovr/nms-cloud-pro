@@ -14454,7 +14454,7 @@ function DebtsPayments({ t }) {
   }
 
   async function load() {
-    const [{ data: le }, { data: br }, { data: sup }, { data: prod }, { data: bal }, { data: pur }, { data: pay }, { data: opening }, { data: statusRows }, { data: logs }, { data: auditRows }] = await Promise.all([
+    const [{ data: le }, { data: br }, { data: sup }, { data: prod }, { data: bal }, { data: pur }, { data: pay }, { data: opening }, { data: statusRows }, { data: logs }, { data: auditRows }, { data: followUpsCloud }] = await Promise.all([
       supabase.from('legal_entities').select('*').eq('is_active', true).order('name'),
       supabase.from('branches').select('id,name').eq('is_active', true).order('name'),
       supabase.from('suppliers').select('*').eq('is_active', true).order('name'),
@@ -14465,7 +14465,8 @@ function DebtsPayments({ t }) {
       supabase.from('supplier_opening_debts').select('*, suppliers(name,voen), legal_entities(name,voen)').order('debt_date', { ascending: false }).order('created_at', { ascending: false }).limit(1000),
       supabase.from('supplier_legal_entity_status').select('*'),
       supabase.from('supplier_transaction_logs').select('*').order('created_at', { ascending: false }).limit(500),
-      supabase.from('supplier_enterprise_consistency_view').select('*').order('severity', { ascending: false }).limit(100)
+      supabase.from('supplier_enterprise_consistency_view').select('*').order('severity', { ascending: false }).limit(100),
+      supabase.from('supplier_followups').select('*').order('updated_at', { ascending: false }).limit(1000)
     ])
     setLegalEntities(le || [])
     setBranches(br || [])
@@ -14478,6 +14479,22 @@ function DebtsPayments({ t }) {
     setSupplierEntityStatuses(statusRows || [])
     setTransactionLogs(logs || [])
     setSupplierAuditRows(auditRows || [])
+    if (Array.isArray(followUpsCloud)) {
+      const nextFollowUps = {}
+      followUpsCloud.forEach(row => {
+        const key = row.followup_key || supplierEntityKey(row.supplier_id, row.legal_entity_id)
+        nextFollowUps[key] = {
+          ...row,
+          key,
+          priority: row.priority || 'normal',
+          status: row.status || 'new',
+          note: row.note || '',
+          next_action_date: row.next_action_date || ''
+        }
+      })
+      setSupplierFollowUps(nextFollowUps)
+      writeJsonStorage('rms_supplier_followups_v1', nextFollowUps)
+    }
   }
 
   function balanceForSupplier(id) {
@@ -15311,7 +15328,7 @@ function DebtsPayments({ t }) {
     writeJsonStorage('rms_supplier_followups_v1', next)
   }
 
-  function updateSupplierFollowUp(row, patch = {}) {
+  async function updateSupplierFollowUp(row, patch = {}) {
     if (!row) return
     const key = supplierFollowUpKey(row)
     const current = supplierFollowUpMap[key] || {}
@@ -15319,6 +15336,7 @@ function DebtsPayments({ t }) {
     const nextRow = {
       ...current,
       key,
+      followup_key: key,
       supplier_id: row.supplier_id || '',
       legal_entity_id: row.legal_entity_id || '',
       supplier_name: row.supplier_name || current.supplier_name || 'Поставщик',
@@ -15335,6 +15353,23 @@ function DebtsPayments({ t }) {
     if (nextRow.status === 'closed' && !nextRow.closed_at) nextRow.closed_at = now
     if (nextRow.status !== 'closed') delete nextRow.closed_at
     saveSupplierFollowUps({ ...supplierFollowUpMap, [key]: nextRow })
+    try {
+      await supabase.rpc('rms_supplier_followup_upsert_secure', {
+        p_supplier_id: nextRow.supplier_id || null,
+        p_legal_entity_id: nextRow.legal_entity_id || null,
+        p_status: nextRow.status,
+        p_priority: nextRow.priority,
+        p_note: nextRow.note,
+        p_next_action_date: nextRow.next_action_date || null,
+        p_balance_snapshot: nextRow.balance_snapshot,
+        p_overdue_snapshot: nextRow.overdue_snapshot,
+        p_max_overdue_days_snapshot: nextRow.max_overdue_days_snapshot
+      })
+      setMessage('Follow-up сохранён в Supabase')
+    } catch (err) {
+      console.warn('Supplier follow-up cloud save failed, local fallback kept', err)
+      setMessage('Follow-up сохранён локально. Проверь SQL v62, если нужна синхронизация между пользователями.')
+    }
   }
 
   function promptSupplierFollowUpNote(row) {
