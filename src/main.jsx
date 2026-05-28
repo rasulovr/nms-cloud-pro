@@ -5375,6 +5375,11 @@ function Revenue({ t, focusExpense }) {
   const selectedBranchName = branches.find(b => String(b.id) === String(branchId))?.name || '—'
   const activeExpenseRows = expenses.filter(e => !e.deleted_at)
   const activeInflowRows = inflows.filter(i => !i.deleted_at)
+  const revenueDayNet = dailyRevenueTotal - dailyExpenseTotal
+  const revenueExpenseRatio = dailyRevenueTotal > 0 ? dailyExpenseTotal / dailyRevenueTotal * 100 : 0
+  const revenueCashDiffAbs = Math.abs(cashDifference)
+  const revenueDayHealthClass = dailyRevenueTotal <= 0 ? 'muted' : revenueCashDiffAbs > 0.009 ? 'warn' : dailyExpenseTotal > dailyRevenueTotal ? 'bad' : 'good'
+  const revenueDayHealthLabel = dailyRevenueTotal <= 0 ? 'Нет выручки' : revenueCashDiffAbs > 0.009 ? 'Касса: расхождение' : dailyExpenseTotal > dailyRevenueTotal ? 'Расходы выше выручки' : 'День OK'
 
   function revenueReportCsvCell(value) {
     const text = value == null ? '' : String(value)
@@ -5437,12 +5442,21 @@ function Revenue({ t, focusExpense }) {
 
   return (
     <section id="revenuePage">
-      <section className="topbar"><div><h2>{t('revenue_tab')}</h2><p>{t('revenue_subtitle')}</p></div><div className="action-row" style={{gap:8}}><button className="small" onClick={exportRevenueDayCsv}>CSV отчёт</button><button className="small primary" onClick={printRevenueDayReport}>PDF / печать</button></div></section>
+      <section className="topbar"><div><h2>{t('revenue_tab')}</h2><p>{t('revenue_subtitle')}</p></div><div className="action-row revenue-top-actions" style={{gap:8}}><span className={`revenue-day-status-chip ${revenueDayHealthClass}`}>{revenueDayHealthLabel}</span><button className="small" onClick={exportRevenueDayCsv}>CSV отчёт</button><button className="small primary" onClick={printRevenueDayReport}>PDF / печать</button></div></section>
       <section className="grid">
         <div className="card span-2"><div className="card-head"><h3>{t('period_branch')}</h3></div><div className="form-grid">
           <label><span>{t('branch_select')}</span><select value={branchId} onChange={e => setBranchId(e.target.value)}>{branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label>
           <label><span>{t('date')}</span><input type="date" value={date} onChange={e => setDate(e.target.value)} /></label>
         </div></div>
+
+        <div className="card span-2 revenue-day-kpi-card">
+          <div className="revenue-day-kpi-grid">
+            <div className="revenue-day-kpi"><span>Выручка дня</span><strong>{fmt(dailyRevenueTotal)} AZN</strong><small>Нал. {fmt(dailyCashRevenue)} · Банк {fmt(dailyBankRevenue)} · Wolt {fmt(dailyWoltRevenue)}</small></div>
+            <div className="revenue-day-kpi"><span>Расходы дня</span><strong>{fmt(dailyExpenseTotal)} AZN</strong><small>{dailyRevenueTotal > 0 ? `${fmt(revenueExpenseRatio)}% от выручки` : 'Нет выручки для расчёта %'}</small></div>
+            <div className="revenue-day-kpi"><span>Операционный итог</span><strong className={revenueDayNet >= 0 ? 'good-text' : 'bad-text'}>{fmt(revenueDayNet)} AZN</strong><small>Выручка − расходы за дату</small></div>
+            <div className="revenue-day-kpi"><span>Касса</span><strong className={revenueCashDiffAbs > 0.009 ? 'bad-text' : 'good-text'}>{fmt(cashDifference)} AZN</strong><small>Расхождение по наличным</small></div>
+          </div>
+        </div>
 
         <div className="card span-2"><div className="card-head"><div><h3>{t('daily_revenue_title')}</h3><p className="hint">Ввод выручки за выбранный день. Редактирование и удаление открываются во всплывающем окне.</p></div><button className="small primary" onClick={addRevenueEntry}>Добавить</button></div><div className="form-grid">
           <MoneyInput label={t('cash')} value={form.cash_amount} onChange={v => setForm(f => ({ ...f, cash_amount: v }))} />
@@ -22213,6 +22227,23 @@ function RMSProV9Styles() {
 .finance-exec-card p{margin:0;color:#64748b;font-size:13px;line-height:1.45;}
 .finance-exec-card .good{color:#16a34a!important}.finance-exec-card .bad{color:#dc2626!important}
 @media(max-width:980px){.finance-executive-strip{grid-template-columns:1fr!important;}}
+
+
+.revenue-top-actions{align-items:center;flex-wrap:wrap;justify-content:flex-end;}
+.revenue-day-status-chip{display:inline-flex;align-items:center;justify-content:center;border-radius:999px;padding:7px 11px;font-size:12px;font-weight:900;border:1px solid #e5e7eb;background:#f8fafc;color:#475569;white-space:nowrap;}
+.revenue-day-status-chip.good{background:#ecfdf5;border-color:#bbf7d0;color:#047857;}
+.revenue-day-status-chip.warn{background:#fffbeb;border-color:#fde68a;color:#b45309;}
+.revenue-day-status-chip.bad{background:#fef2f2;border-color:#fecaca;color:#b91c1c;}
+.revenue-day-status-chip.muted{background:#f8fafc;border-color:#e2e8f0;color:#64748b;}
+.revenue-day-kpi-card{padding:16px!important;}
+.revenue-day-kpi-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;}
+.revenue-day-kpi{border:1px solid #e5e7eb;background:#fff;border-radius:16px;padding:14px 15px;box-shadow:0 10px 24px rgba(15,23,42,.04);min-height:98px;}
+.revenue-day-kpi span{display:block;color:#64748b;font-size:12px;font-weight:850;text-transform:uppercase;letter-spacing:.035em;margin-bottom:7px;}
+.revenue-day-kpi strong{display:block;color:#0f172a;font-size:22px;line-height:1.1;font-weight:950;letter-spacing:-.035em;margin-bottom:6px;}
+.revenue-day-kpi small{display:block;color:#64748b;font-size:12px;line-height:1.35;}
+.good-text{color:#16a34a!important;}.bad-text{color:#dc2626!important;}
+@media(max-width:1180px){.revenue-day-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
+@media(max-width:720px){.revenue-day-kpi-grid{grid-template-columns:1fr;}.revenue-top-actions{justify-content:flex-start;}}
 
   `}</style>
 }
