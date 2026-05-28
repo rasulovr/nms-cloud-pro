@@ -14422,6 +14422,9 @@ function DebtsPayments({ t }) {
   const [supplierCashFlowHorizon, setSupplierCashFlowHorizon] = useState('30')
   const [supplierCashFlowBudget, setSupplierCashFlowBudget] = useState('10000')
   const [supplierCashFlowScenario, setSupplierCashFlowScenario] = useState('balanced')
+  const [supplierPaymentPlanMode, setSupplierPaymentPlanMode] = useState('budgeted')
+  const [supplierPaymentPlanGroup, setSupplierPaymentPlanGroup] = useState('date')
+  const [supplierPaymentPlanShowGaps, setSupplierPaymentPlanShowGaps] = useState(false)
   const [supplierCalendarFilter, setSupplierCalendarFilter] = useState('next7')
   const [supplierCalendarPageSize, setSupplierCalendarPageSize] = useState(20)
   const [supplierFollowUps, setSupplierFollowUps] = useState(() => readJsonStorage('rms_supplier_followups_v1', {}))
@@ -15699,6 +15702,101 @@ function DebtsPayments({ t }) {
 
   const pagedSupplierCashFlowForecastRows = supplierCashFlowForecastRows.slice(0, 20)
 
+  function supplierPaymentPlanDate(row) {
+    if (!row) return todayISO()
+    if (row.forecastBucket === 'overdue') return todayISO()
+    if (row.forecastBucket === 'nodate') return supplierForecastDateFromDays(7)
+    return row.forecastDueDate || row.followUp?.next_action_date || row.nearestDue || supplierForecastDateFromDays(7)
+  }
+
+  const supplierPaymentPlanRows = useMemo(() => {
+    const sourceRows = supplierCashFlowForecastRows || []
+    const rows = sourceRows.map((row, index) => {
+      const requiredAmount = parseNum(row.forecastScenarioAmount)
+      const budgetedAmount = parseNum(row.forecastPlannedPayment)
+      const planAmount = supplierPaymentPlanMode === 'required' ? requiredAmount : budgetedAmount
+      const gapAmount = Math.max(0, requiredAmount - budgetedAmount)
+      const planDate = supplierPaymentPlanDate(row)
+      const planStatus = planAmount <= 0 && gapAmount > 0 ? 'gap' : gapAmount > 0 ? 'partial' : 'covered'
+      const planGroupKey = supplierPaymentPlanGroup === 'priority' ? row.forecastPriority : planDate
+      return {
+        ...row,
+        paymentPlanOrder: index + 1,
+        paymentPlanDate: planDate,
+        paymentPlanAmount: planAmount,
+        paymentPlanRequiredAmount: requiredAmount,
+        paymentPlanGapAmount: gapAmount,
+        paymentPlanStatus: planStatus,
+        paymentPlanGroupKey: planGroupKey
+      }
+    }).filter(row => supplierPaymentPlanShowGaps ? parseNum(row.paymentPlanRequiredAmount) > 0 : parseNum(row.paymentPlanAmount) > 0)
+    return rows.sort((a, b) => String(a.paymentPlanDate || '').localeCompare(String(b.paymentPlanDate || '')) || (parseNum(a.paymentPlanOrder) - parseNum(b.paymentPlanOrder)))
+  }, [supplierCashFlowForecastRows, supplierPaymentPlanMode, supplierPaymentPlanGroup, supplierPaymentPlanShowGaps])
+
+  const supplierPaymentPlanSummary = useMemo(() => supplierPaymentPlanRows.reduce((acc, row) => {
+    acc.rows += 1
+    acc.required += parseNum(row.paymentPlanRequiredAmount)
+    acc.planned += parseNum(row.paymentPlanAmount)
+    acc.gap += parseNum(row.paymentPlanGapAmount)
+    acc.critical += row.forecastPriority === 'critical' ? 1 : 0
+    acc.partial += row.paymentPlanStatus === 'partial' || row.paymentPlanStatus === 'gap' ? 1 : 0
+    return acc
+  }, { rows: 0, required: 0, planned: 0, gap: 0, critical: 0, partial: 0 }), [supplierPaymentPlanRows])
+
+  const supplierPaymentPlanGroupedRows = useMemo(() => {
+    const groups = new Map()
+    for (const row of supplierPaymentPlanRows) {
+      const key = row.paymentPlanGroupKey || 'Без группы'
+      if (!groups.has(key)) groups.set(key, { key, amount: 0, required: 0, rows: [] })
+      const group = groups.get(key)
+      group.amount += parseNum(row.paymentPlanAmount)
+      group.required += parseNum(row.paymentPlanRequiredAmount)
+      group.rows.push(row)
+    }
+    return Array.from(groups.values()).sort((a, b) => String(a.key).localeCompare(String(b.key)))
+  }, [supplierPaymentPlanRows])
+
+  const pagedSupplierPaymentPlanRows = supplierPaymentPlanRows.slice(0, 25)
+
+  function supplierPaymentPlanStatusText(status) {
+    if (status === 'covered') return 'В бюджете'
+    if (status === 'partial') return 'Частично'
+    if (status === 'gap') return 'Не покрыто'
+    return 'План'
+  }
+
+  function supplierPaymentPlanStatusClass(status) {
+    if (status === 'covered') return 'good'
+    if (status === 'partial') return 'warn'
+    return 'bad'
+  }
+
+  function supplierPaymentPlanCsv() {
+    const header = ['№', 'Плановая дата', 'Приоритет', 'Поставщик', 'VOEN', 'Требуется', 'Планируется', 'Gap', 'Статус', 'Комментарий']
+    const lines = [header, ...supplierPaymentPlanRows.map(row => [
+      row.paymentPlanOrder,
+      row.paymentPlanDate || '',
+      row.forecastPriority || '',
+      row.supplier_name || '',
+      row.legal_entity_name || '',
+      parseNum(row.paymentPlanRequiredAmount).toFixed(2),
+      parseNum(row.paymentPlanAmount).toFixed(2),
+      parseNum(row.paymentPlanGapAmount).toFixed(2),
+      supplierPaymentPlanStatusText(row.paymentPlanStatus),
+      row.followUp?.note || ''
+    ])]
+    const csv = '\ufeff' + lines.map(cols => cols.map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(';')).join('\n')
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `supplier-payment-plan-${todayISO()}.csv`
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    URL.revokeObjectURL(url)
+  }
+
   const pagedSupplierAgingRows = supplierAging.filteredRows.slice(0, parseNum(supplierAgingPageSize || 10))
 
   function applyAgingRowToStatement(row) {
@@ -15912,6 +16010,30 @@ function DebtsPayments({ t }) {
       </div>
       <div className="table-wrap"><table><thead><tr><th>Приоритет</th><th>Поставщик / VOEN</th><th>Срок</th><th>Баланс</th><th>Сценарий</th><th>В бюджет</th><th>Действия</th></tr></thead><tbody>{pagedSupplierCashFlowForecastRows.map(row => <tr key={`cashflow-${row.key}`}><td><b className={row.forecastPriority === 'critical' ? 'bad' : row.forecastPriority === 'high' ? 'warn' : 'good'}>{row.forecastPriority === 'critical' ? 'Critical' : row.forecastPriority === 'high' ? 'High' : row.forecastPriority === 'warning' ? 'Warning' : 'Normal'}</b><br /><span className="hint">{row.forecastBucket === 'overdue' ? 'просрочено' : row.forecastBucket === 'nodate' ? 'без даты' : row.forecastBucket}</span></td><td><b>{row.supplier_name}</b><br /><span className="hint">{row.legal_entity_name}</span></td><td><b>{row.forecastDueDate || '—'}</b><br /><span className={row.forecastDaysUntil !== null && row.forecastDaysUntil < 0 ? 'bad' : row.forecastDaysUntil !== null && row.forecastDaysUntil <= 7 ? 'warn' : 'hint'}>{supplierCalendarStatusText(row.forecastDaysUntil)}</span></td><td><b>{fmt(row.balance)}</b><br /><span className={row.overdueAmount > 0 ? 'bad' : 'hint'}>{row.overdueAmount > 0 ? `просрочено ${fmt(row.overdueAmount)}` : 'активный долг'}</span></td><td><b>{fmt(row.forecastScenarioAmount)}</b><br /><span className="hint">по выбранному сценарию</span></td><td><b>{fmt(row.forecastPlannedPayment)}</b><br /><span className={row.forecastScenarioAmount > row.forecastPlannedPayment ? 'bad' : 'good'}>{row.forecastScenarioAmount > row.forecastPlannedPayment ? `gap ${fmt(row.forecastScenarioAmount - row.forecastPlannedPayment)}` : 'закрыто бюджетом'}</span></td><td><div className="action-row" style={{gap:6, flexWrap:'wrap'}}><button className="small" onClick={() => updateSupplierFollowUp(row, { status: 'in_progress', priority: row.forecastPriority === 'critical' ? 'critical' : row.forecastPriority === 'high' ? 'warning' : row.riskLevel || 'normal' })}>В работу</button><button className="small" onClick={() => promptSupplierNextActionDate(row)}>Дата</button><button className="small" onClick={() => promptSupplierFollowUpNote(row)}>Комментарий</button><button className="small" onClick={() => applyAgingRowToStatement(row)}>Акт</button></div></td></tr>)}{!pagedSupplierCashFlowForecastRows.length && <tr><td colSpan="7" className="good">Нет платежей в выбранном горизонте.</td></tr>}</tbody></table></div>
       <p className="hint" style={{marginTop:10}}>Cash flow forecast — управленческая модель. Она не создаёт оплату автоматически и не меняет supplier_ledger.</p>
+    </section>
+
+    <section className="card span-2">
+      <div className="card-head"><div><h3>Supplier payment plan builder</h3><p className="hint">Формирует управленческий план оплат из cash-flow forecast: дата, приоритет, сумма в бюджет и gap. Оплаты автоматически не создаются.</p></div><div className="action-row" style={{gap:8}}><button className="small" onClick={supplierPaymentPlanCsv}>CSV</button><button className="small" onClick={load}>Обновить</button></div></div>
+      <div className="form-grid compact">
+        <label><span>Режим плана</span><select value={supplierPaymentPlanMode} onChange={e => setSupplierPaymentPlanMode(e.target.value)}><option value="budgeted">Только то, что покрыто бюджетом</option><option value="required">Полная потребность по сценарию</option></select></label>
+        <label><span>Группировка</span><select value={supplierPaymentPlanGroup} onChange={e => setSupplierPaymentPlanGroup(e.target.value)}><option value="date">По датам оплаты</option><option value="priority">По приоритету</option></select></label>
+        <label><span>Gap-строки</span><select value={supplierPaymentPlanShowGaps ? 'yes' : 'no'} onChange={e => setSupplierPaymentPlanShowGaps(e.target.value === 'yes')}><option value="no">Скрывать непокрытые</option><option value="yes">Показывать gap</option></select></label>
+      </div>
+      <div className="mini-grid">
+        <div className="metric"><span>Строк в плане</span><strong>{supplierPaymentPlanSummary.rows}</strong></div>
+        <div className="metric"><span>Требуется</span><strong>{fmt(supplierPaymentPlanSummary.required)}</strong></div>
+        <div className="metric"><span>В план оплаты</span><strong>{fmt(supplierPaymentPlanSummary.planned)}</strong></div>
+        <div className="metric"><span>Gap</span><strong className={supplierPaymentPlanSummary.gap > 0 ? 'bad' : 'good'}>{fmt(supplierPaymentPlanSummary.gap)}</strong></div>
+      </div>
+      <div className="mini-grid">
+        <div className="metric"><span>Critical строк</span><strong className={supplierPaymentPlanSummary.critical > 0 ? 'bad' : 'good'}>{supplierPaymentPlanSummary.critical}</strong></div>
+        <div className="metric"><span>Частично / gap</span><strong className={supplierPaymentPlanSummary.partial > 0 ? 'warn' : 'good'}>{supplierPaymentPlanSummary.partial}</strong></div>
+        <div className="metric"><span>Групп</span><strong>{supplierPaymentPlanGroupedRows.length}</strong></div>
+        <div className="metric"><span>Бюджет forecast</span><strong>{fmt(parseNum(supplierCashFlowBudget))}</strong></div>
+      </div>
+      <div className="table-wrap"><table><thead><tr><th>№</th><th>Дата / статус</th><th>Поставщик / VOEN</th><th>Приоритет</th><th>Требуется</th><th>К оплате</th><th>Действия</th></tr></thead><tbody>{pagedSupplierPaymentPlanRows.map(row => <tr key={`payment-plan-${row.key}`}><td>{row.paymentPlanOrder}</td><td><b>{row.paymentPlanDate || '—'}</b><br /><span className={supplierPaymentPlanStatusClass(row.paymentPlanStatus)}>{supplierPaymentPlanStatusText(row.paymentPlanStatus)}</span></td><td><b>{row.supplier_name}</b><br /><span className="hint">{row.legal_entity_name}</span></td><td><b className={row.forecastPriority === 'critical' ? 'bad' : row.forecastPriority === 'high' ? 'warn' : 'good'}>{row.forecastPriority === 'critical' ? 'Critical' : row.forecastPriority === 'high' ? 'High' : row.forecastPriority === 'warning' ? 'Warning' : 'Normal'}</b><br /><span className="hint">{row.forecastBucket}</span></td><td><b>{fmt(row.paymentPlanRequiredAmount)}</b><br /><span className={row.paymentPlanGapAmount > 0 ? 'bad' : 'good'}>{row.paymentPlanGapAmount > 0 ? `gap ${fmt(row.paymentPlanGapAmount)}` : 'покрыто'}</span></td><td><b>{fmt(row.paymentPlanAmount)}</b><br /><span className="hint">остаток бюджета {fmt(row.forecastBudgetRemainingAfter)}</span></td><td><div className="action-row" style={{gap:6, flexWrap:'wrap'}}><button className="small" onClick={() => updateSupplierFollowUp(row, { status: 'in_progress', priority: row.forecastPriority === 'critical' ? 'critical' : row.forecastPriority === 'high' ? 'warning' : row.riskLevel || 'normal', next_action_date: row.paymentPlanDate })}>В работу</button><button className="small" onClick={() => promptSupplierNextActionDate(row)}>Дата</button><button className="small" onClick={() => promptSupplierFollowUpNote(row)}>Комментарий</button><button className="small" onClick={() => applyAgingRowToStatement(row)}>Акт</button></div></td></tr>)}{!pagedSupplierPaymentPlanRows.length && <tr><td colSpan="7" className="good">План оплат пуст для текущего сценария и бюджета.</td></tr>}</tbody></table></div>
+      <div className="table-wrap" style={{marginTop:12}}><table><thead><tr><th>{supplierPaymentPlanGroup === 'priority' ? 'Приоритет' : 'Дата'}</th><th>Строк</th><th>Требуется</th><th>В план</th><th>Gap</th></tr></thead><tbody>{supplierPaymentPlanGroupedRows.map(group => <tr key={`plan-group-${group.key}`}><td><b>{group.key}</b></td><td>{group.rows.length}</td><td>{fmt(group.required)}</td><td>{fmt(group.amount)}</td><td className={group.required > group.amount ? 'bad' : 'good'}>{fmt(Math.max(0, group.required - group.amount))}</td></tr>)}{!supplierPaymentPlanGroupedRows.length && <tr><td colSpan="5" className="hint">Группировка пуста.</td></tr>}</tbody></table></div>
+      <p className="hint" style={{marginTop:10}}>Payment plan builder — планирование. Он не создаёт платежи, не меняет supplier_ledger и не редактирует накладные.</p>
     </section>
 
     <section className="card span-2">
