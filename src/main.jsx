@@ -1,5 +1,5 @@
 // RMS v56.1 Supplier Enterprise Hardened - Supplier writes via secure RPC only
-/* RMS v58 Supplier UX + Enterprise Controls - final audit, cancel reasons, safe supplier flow */
+/* RMS v59 Supplier Documents & Export - supplier statement, print, CSV, period filters */
 /* RMS v43 SUPPLIERS FINAL CLEAN SINGLE E-QAIME FORM - no payment term fields inside purchase e-qaime block */
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
@@ -14394,6 +14394,9 @@ function DebtsPayments({ t }) {
   const [ledgerLegalEntityId, setLedgerLegalEntityId] = useState('all')
   const [ledgerSearch, setLedgerSearch] = useState('')
   const [invoiceSearch, setInvoiceSearch] = useState('')
+  const [ledgerDateFrom, setLedgerDateFrom] = useState(monthStart(new Date().getFullYear(), new Date().getMonth() + 1))
+  const [ledgerDateTo, setLedgerDateTo] = useState(todayISO())
+  const [ledgerDocumentTitle, setLedgerDocumentTitle] = useState('Акт сверки взаиморасчётов')
   const [ledgerPageSize, setLedgerPageSize] = useState(10)
   const [ledgerPage, setLedgerPage] = useState(1)
   const [commonOpsDate, setCommonOpsDate] = useState(todayISO())
@@ -15021,6 +15024,8 @@ function DebtsPayments({ t }) {
     .filter(r => activeSupplierIds.has(r.supplier_id) && isSupplierActiveForLegal(r.supplier_id, r.legal_entity_id))
     .filter(r => ledgerSupplierId === 'all' || r.supplier_id === ledgerSupplierId)
     .filter(r => ledgerLegalEntityId === 'all' || r.legal_entity_id === ledgerLegalEntityId)
+    .filter(r => !ledgerDateFrom || String(r.transaction_date || '') >= ledgerDateFrom)
+    .filter(r => !ledgerDateTo || String(r.transaction_date || '') <= ledgerDateTo)
     .filter(r => !normalizedLedgerSearch || ledgerSupplierIds.has(r.supplier_id) || String(r.suppliers?.name || '').toLowerCase().includes(normalizedLedgerSearch))
     .filter(r => !normalizedInvoiceSearch || String(r.invoice || '').toLowerCase().includes(normalizedInvoiceSearch) || String(r.comment || '').toLowerCase().includes(normalizedInvoiceSearch))
     .sort((a, b) => String(a.transaction_date || '').localeCompare(String(b.transaction_date || '')))
@@ -15179,13 +15184,69 @@ function DebtsPayments({ t }) {
     }
   }
 
-  function printSupplierLedger() {
+  function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[ch]))
+  }
+
+  function ledgerPeriodLabel() {
+    const from = ledgerDateFrom || 'начало'
+    const to = ledgerDateTo || 'сегодня'
+    return `${from} — ${to}`
+  }
+
+  function supplierStatementMeta() {
     const supplierName = ledgerSupplierId === 'all' ? 'Все поставщики' : suppliers.find(s => s.id === ledgerSupplierId)?.name || 'Поставщик'
-    const filters = `${normalizedLedgerSearch ? 'Поиск поставщика: ' + ledgerSearch + ' · ' : ''}${normalizedInvoiceSearch ? 'E-qaimə: ' + invoiceSearch : ''}`
-    const rowsHtml = supplierLedgerRows.map(r => `<tr><td>${r.transaction_date || ''}</td><td>${r.suppliers?.name || ''}</td><td>${r.legal_entities?.name || ''}<br>${r.legal_entities?.voen || ''}</td><td>${r.invoice || ''}</td><td>${r.comment || ''}</td><td>${fmt(r.debit)}</td><td>${fmt(r.credit)}</td><td>${fmt(r.balance)}</td></tr>`).join('')
+    const legalEntity = ledgerLegalEntityId === 'all' ? 'Все VOEN' : legalEntities.find(le => le.id === ledgerLegalEntityId)
+    const legalEntityText = typeof legalEntity === 'string' ? legalEntity : `${legalEntity?.name || 'VOEN'}${legalEntity?.voen ? ' · ' + legalEntity.voen : ''}`
+    const filterParts = [
+      `Период: ${ledgerPeriodLabel()}`,
+      normalizedLedgerSearch ? `Поиск поставщика: ${ledgerSearch}` : '',
+      normalizedInvoiceSearch ? `E-qaimə / фактура: ${invoiceSearch}` : '',
+      `Наш VOEN: ${legalEntityText}`
+    ].filter(Boolean)
+    return { supplierName, legalEntityText, filters: filterParts.join(' · ') }
+  }
+
+  function exportSupplierStatementCsv() {
+    const { supplierName, filters } = supplierStatementMeta()
+    const header = ['Дата','Поставщик','Наш VOEN','VOEN','E-qaimə / фактура','Операция','Приход / долг','Оплата','Остаток']
+    const rows = supplierLedgerRows.map(r => [
+      r.transaction_date || '',
+      r.suppliers?.name || '',
+      r.legal_entities?.name || '',
+      r.legal_entities?.voen || '',
+      r.invoice || '',
+      r.comment || '',
+      fmt(r.debit),
+      fmt(r.credit),
+      fmt(r.balance)
+    ])
+    const csv = [
+      [ledgerDocumentTitle, supplierName, filters],
+      [],
+      header,
+      ...rows,
+      [],
+      ['Итого', '', '', '', '', '', fmt(ledgerTotals.debit), fmt(ledgerTotals.credit), fmt(ledgerTotals.balance)]
+    ].map(row => row.map(v => `"${String(v ?? '').replace(/"/g, '""')}"`).join(';')).join('\n')
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `supplier_statement_${todayISO()}.csv`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }
+
+  function printSupplierLedger() {
+    const { supplierName, filters } = supplierStatementMeta()
+    const rowsHtml = supplierLedgerRows.map(r => `<tr><td>${escapeHtml(r.transaction_date || '')}</td><td>${escapeHtml(r.suppliers?.name || '')}</td><td>${escapeHtml(r.legal_entities?.name || '')}<br><span>${escapeHtml(r.legal_entities?.voen || '')}</span></td><td>${escapeHtml(r.invoice || '')}</td><td>${escapeHtml(r.comment || '')}</td><td class="num debit">${fmt(r.debit)}</td><td class="num credit">${fmt(r.credit)}</td><td class="num balance">${fmt(r.balance)}</td></tr>`).join('')
     const debtClass = ledgerTotals.balance > 0 ? 'bad' : ledgerTotals.balance < 0 ? 'good' : 'neutral'
     const debtText = ledgerTotals.balance > 0 ? 'Долг поставщику' : ledgerTotals.balance < 0 ? 'Поставщик должен нам' : 'Долга нет'
-    const html = `<!doctype html><html><head><meta charset="utf-8"><title>Supplier Ledger</title><style>body{font-family:Arial;padding:24px;color:#17251d}h2{margin:0 0 6px}.muted{color:#777;margin-bottom:18px}.summary{display:flex;gap:12px;margin:16px 0}.box{border:1px solid #ddd;border-radius:12px;padding:10px 14px}.box b{display:block;font-size:18px}table{width:100%;border-collapse:collapse}th,td{border-bottom:1px solid #ddd;padding:8px;text-align:left}th{background:#f4eddf}.footer-total{margin-top:18px;border-radius:14px;padding:14px 18px;border:1px solid #ddd;background:#f7f7f7;font-size:16px}.footer-total b{font-size:22px}.bad{color:#b91c1c}.good{color:#15803d}.neutral{color:#6b7280}</style></head><body><h2>Баланс поставщика: ${supplierName}</h2><div class="muted">${filters}</div><div class="summary"><div class="box">Приход / долг<b>${fmt(ledgerTotals.debit)}</b></div><div class="box">Оплата<b>${fmt(ledgerTotals.credit)}</b></div><div class="box">Остаток<b>${fmt(ledgerTotals.balance)}</b></div></div><table><thead><tr><th>Дата</th><th>Поставщик</th><th>Наш VOEN</th><th>E-qaimə</th><th>Операция</th><th>Приход / долг</th><th>Оплата</th><th>Остаток</th></tr></thead><tbody>${rowsHtml}</tbody></table><div class="footer-total ${debtClass}">${debtText}: <b>${fmt(ledgerTotals.balance)} AZN</b></div></body></html>`
+    const generatedAt = new Date().toLocaleString('ru-RU')
+    const html = `<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(ledgerDocumentTitle)}</title><style>@page{size:A4;margin:16mm}body{font-family:Arial,Helvetica,sans-serif;color:#17251d;margin:0}.doc{padding:8px 0}.top{display:flex;justify-content:space-between;gap:20px;border-bottom:2px solid #17251d;padding-bottom:14px;margin-bottom:18px}.brand{font-size:22px;font-weight:800;letter-spacing:.08em}.title{font-size:20px;font-weight:800;margin:0 0 6px}.muted{color:#6b7280;font-size:12px;line-height:1.45}.summary{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:16px 0}.box{border:1px solid #d6d3cc;border-radius:12px;padding:10px 14px;background:#faf8f2}.box span{display:block;color:#6b7280;font-size:12px}.box b{display:block;font-size:20px;margin-top:3px}table{width:100%;border-collapse:collapse;font-size:11px}th,td{border-bottom:1px solid #e5e0d8;padding:7px 6px;text-align:left;vertical-align:top}th{background:#f4eddf;color:#17251d;font-size:10px;text-transform:uppercase;letter-spacing:.04em}.num{text-align:right;white-space:nowrap}.debit{color:#991b1b}.credit{color:#166534}.balance{font-weight:700}.footer-total{margin-top:18px;border-radius:14px;padding:14px 18px;border:1px solid #d6d3cc;background:#f7f7f7;font-size:16px;text-align:right}.footer-total b{font-size:24px}.bad{color:#b91c1c}.good{color:#15803d}.neutral{color:#6b7280}.signatures{display:grid;grid-template-columns:1fr 1fr;gap:60px;margin-top:42px}.sig{border-top:1px solid #17251d;padding-top:8px;color:#6b7280;font-size:12px}@media print{button{display:none}.doc{padding:0}}</style></head><body><div class="doc"><div class="top"><div><div class="brand">RMS</div><p class="muted">Supplier statement · Generated ${escapeHtml(generatedAt)}</p></div><div style="text-align:right"><h1 class="title">${escapeHtml(ledgerDocumentTitle)}</h1><div><b>${escapeHtml(supplierName)}</b></div><p class="muted">${escapeHtml(filters)}</p></div></div><div class="summary"><div class="box"><span>Приход / долг</span><b>${fmt(ledgerTotals.debit)} AZN</b></div><div class="box"><span>Оплата</span><b>${fmt(ledgerTotals.credit)} AZN</b></div><div class="box"><span>Остаток</span><b class="${debtClass}">${fmt(ledgerTotals.balance)} AZN</b></div></div><table><thead><tr><th>Дата</th><th>Поставщик</th><th>Наш VOEN</th><th>E-qaimə</th><th>Операция</th><th>Приход / долг</th><th>Оплата</th><th>Остаток</th></tr></thead><tbody>${rowsHtml || '<tr><td colspan="8">Операции не найдены.</td></tr>'}</tbody></table><div class="footer-total ${debtClass}">${debtText}: <b>${fmt(ledgerTotals.balance)} AZN</b></div><div class="signatures"><div class="sig">RMS / бухгалтерия</div><div class="sig">Поставщик</div></div></div></body></html>`
     const w = window.open('', '_blank')
     if (!w) return
     w.document.write(html)
@@ -15270,18 +15331,22 @@ function DebtsPayments({ t }) {
       </div>
 
       <div className="card span-2 supplier-transactions-panel">
-        <div className="card-head"><div><h3>Баланс поставщика</h3><p className="hint">Поиск поставщика, поиск по E-qaimə / фактуре, приход/долг, оплата и остаток.</p></div><div className="action-row" style={{gap:8}}><label style={{display:'flex',alignItems:'center',gap:8}}><span className="hint">Показать</span><select value={ledgerPageSize} onChange={e => { setLedgerPageSize(Number(e.target.value)); setLedgerPage(1) }}><option value={10}>10</option><option value={20}>20</option><option value={30}>30</option><option value={50}>50</option></select></label><button className="small primary" onClick={printSupplierLedger}>PDF/Print</button></div></div>
+        <div className="card-head"><div><h3>Баланс поставщика / акт сверки</h3><p className="hint">Период, VOEN, e-qaimə, печать акта сверки и экспорт statement для бухгалтерии.</p></div><div className="action-row" style={{gap:8}}><label style={{display:'flex',alignItems:'center',gap:8}}><span className="hint">Показать</span><select value={ledgerPageSize} onChange={e => { setLedgerPageSize(Number(e.target.value)); setLedgerPage(1) }}><option value={10}>10</option><option value={20}>20</option><option value={30}>30</option><option value={50}>50</option></select></label><button className="small primary" onClick={printSupplierLedger}>Акт сверки / PDF</button><button className="small" onClick={exportSupplierStatementCsv}>CSV</button></div></div>
         <div className="form-grid compact">
           <label><span>Поиск поставщика</span><input value={ledgerSearch} onChange={e => { setLedgerSearch(e.target.value); setLedgerPage(1) }} placeholder="Название или VOEN" /></label>
           <label><span>Поставщик</span><select value={ledgerSupplierId} onChange={e => { setLedgerSupplierId(e.target.value); setLedgerPage(1) }}><option value="all">Все найденные / все поставщики</option>{searchedSuppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
           <label><span>Наш VOEN / физ. лицо</span><select value={ledgerLegalEntityId} onChange={e => { setLedgerLegalEntityId(e.target.value); setLedgerPage(1) }}><option value="all">Все VOEN</option>{legalEntities.map(le => <option key={le.id} value={le.id}>{le.name} · {le.voen}</option>)}</select></label>
           <label><span>Поиск E-qaimə / фактуры</span><input value={invoiceSearch} onChange={e => { setInvoiceSearch(e.target.value); setLedgerPage(1) }} placeholder="Номер фактуры" /></label>
+          <label><span>Период с</span><input type="date" value={ledgerDateFrom} onChange={e => { setLedgerDateFrom(e.target.value); setLedgerPage(1) }} /></label>
+          <label><span>Период по</span><input type="date" value={ledgerDateTo} onChange={e => { setLedgerDateTo(e.target.value); setLedgerPage(1) }} /></label>
+          <label><span>Название документа</span><input value={ledgerDocumentTitle} onChange={e => setLedgerDocumentTitle(e.target.value)} placeholder="Акт сверки взаиморасчётов" /></label>
         </div>
         <div className="mini-grid">
           <div className="metric"><span>Приход / долг</span><strong>{fmt(ledgerTotals.debit)}</strong></div>
           <div className="metric"><span>Оплата</span><strong>{fmt(ledgerTotals.credit)}</strong></div>
           <div className="metric"><span>Остаток</span><strong className={ledgerDebtClass === 'bad' ? 'bad' : ledgerDebtClass === 'good' ? 'good' : 'hint'}>{fmt(ledgerTotals.balance)}</strong></div>
         </div>
+        <div className="hint" style={{margin:'8px 0 12px'}}>Документ: <b>{ledgerDocumentTitle}</b> · период <b>{ledgerPeriodLabel()}</b> · строк: <b>{supplierLedgerRows.length}</b></div>
         {ledgerEntityTotals.length > 1 && (
           <div className="table-wrap" style={{margin:'10px 0 14px'}}>
             <table>
