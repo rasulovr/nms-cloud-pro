@@ -6185,6 +6185,8 @@ function DashboardStyles() {
     .supplier-modal-x { flex: 0 0 auto; width: 34px; height: 34px; border-radius: 10px; border: 1px solid rgba(148,163,184,.45); background: rgba(248,250,252,.95); color: #111827; font-size: 22px; line-height: 1; font-weight: 800; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
     .supplier-modal-x:hover { background: #eef2f7; border-color: rgba(100,116,139,.55); }
     .supplier-transactions-panel > .form-grid, .supplier-transactions-panel > .table-wrap, .supplier-transactions-panel > div:not(.supplier-modal-head) { margin-left: 18px; margin-right: 18px; }
+    .finance-ai-modal-panel > .table-wrap { margin-top: 14px; margin-bottom: 18px; }
+    .finance-ai-compact-card .card-head { align-items: center; }
     .supplier-transactions-panel > .table-wrap:last-child { margin-bottom: 18px; }
     .supplier-transactions-panel .action-row { display: inline-flex; gap: 6px; flex-wrap: nowrap; align-items: center; justify-content: flex-end; white-space: nowrap; }
     .supplier-transactions-panel table td:last-child, .supplier-transactions-panel table th:last-child { white-space: nowrap; min-width: 230px; text-align: right; }
@@ -8087,7 +8089,7 @@ function Finance({ t, lang, onGoToExpense }) {
   const revChange = financeRevenueComparePrevious ? ((financeRevenueCompareCurrent - financeRevenueComparePrevious) / financeRevenueComparePrevious * 100) : 0
   const aiPriority = { critical: 0, warning: 1, ok: 2 }
   const sortedAiRows = [...aiRows].sort((a, b) => (aiPriority[a.level] ?? 9) - (aiPriority[b.level] ?? 9))
-  const visibleAiRows = showAllAiRows ? sortedAiRows : sortedAiRows.slice(0, 5)
+  const visibleAiRows = sortedAiRows.slice(0, 5)
   // Единая логика с Dashboard: в расходах учитываем операционные расходы, зарплаты, service charge и налог.
   const financeBreakdownTotal = (breakdown || []).reduce((sum, r) => sum + parseNum(r.amount), 0)
   const financeTotalExpenses = financeBreakdownTotal > 0
@@ -8299,19 +8301,51 @@ function Finance({ t, lang, onGoToExpense }) {
           </>}
         </div>}
 
-        <div className="card span-2">
+        <div className="card span-2 finance-ai-compact-card">
           <div className="card-head">
             <div>
-              <h3>ИИ-аналитика и отклонения</h3>
-              <p className="hint">Референсы: food cost ≤ 35%, зарплаты ≤ 25%, аренда ≤ 12%, коммунальные ≤ 5%, упаковка ≤ 4%, маркетинг ≤ 5%. Проверка идёт по выбранному месяцу.</p>
+              <h3>Отклонения месяца</h3>
+              <p className="hint">Короткий управленческий список. Полная аналитика открывается отдельно.</p>
             </div>
+            <button className="small" onClick={() => setShowAllAiRows(true)}>Открыть аналитику</button>
+          </div>
+          <div className="table-wrap">
+            <table>
+              <thead><tr><th>Филиал</th><th>Показатель</th><th>Факт</th><th>Отклонение</th><th>Рекомендация</th></tr></thead>
+              <tbody>
+                {visibleAiRows.map((r, idx) => (
+                  <tr key={`${r.branchName}-${r.indicator}-${idx}`} className={r.level === 'critical' ? 'risk-row' : ''}>
+                    <td><b>{r.branchName}</b></td>
+                    <td>{r.indicator}</td>
+                    <td className={r.level === 'ok' ? 'good' : r.level === 'critical' ? 'bad' : ''}><b>{r.fact}</b></td>
+                    <td className={r.level === 'ok' ? 'good' : r.level === 'critical' || r.level === 'warning' ? 'bad' : ''}>{r.deviation}</td>
+                    <td>{r.recommendation}</td>
+                  </tr>
+                ))}
+                {!aiRows.length && <tr><td colSpan="5" className="hint">Отклонения не найдены.</td></tr>}
+              </tbody>
+            </table>
+          </div>
+          {aiRows.length > 5 && <div className="action-row" style={{marginTop: 12}}>
+            <span className="hint">Показаны топ-5 сигналов из {aiRows.length}.</span>
+            <button className="ghost small" onClick={() => setShowAllAiRows(true)}>Показать все</button>
+          </div>}
+        </div>
+
+        {showAllAiRows && <div className="card span-2 supplier-transactions-panel supplier-modal-panel finance-ai-modal-panel">
+          <div className="card-head supplier-modal-head">
+            <div>
+              <h3>ИИ-аналитика и отклонения</h3>
+              <p className="hint">Референсы: food cost ≤ 35%, зарплаты ≤ 25%, аренда ≤ 12%, коммунальные ≤ 5%, упаковка ≤ 4%, маркетинг ≤ 5%.</p>
+            </div>
+            <button className="supplier-modal-x" title="Закрыть" aria-label="Закрыть" onClick={() => setShowAllAiRows(false)}>×</button>
           </div>
           <div className="table-wrap">
             <table>
               <thead><tr><th>Филиал</th><th>Показатель</th><th>Факт</th><th>Норма</th><th>Отклонение</th><th>Рекомендация</th></tr></thead>
               <tbody>
-                {visibleAiRows.map((r, idx) => (
-                  <tr key={`${r.branchName}-${r.indicator}-${idx}`} className={r.level === 'critical' ? 'risk-row' : ''}>
+                {sortedAiRows.map((r, idx) => (
+                  <tr key={`${r.branchName}-${r.indicator}-modal-${idx}`} className={r.level === 'critical' ? 'risk-row' : ''}>
                     <td><b>{r.branchName}</b></td>
                     <td>{r.indicator}</td>
                     <td className={r.level === 'ok' ? 'good' : r.level === 'critical' ? 'bad' : ''}><b>{r.fact}</b></td>
@@ -8320,15 +8354,11 @@ function Finance({ t, lang, onGoToExpense }) {
                     <td>{r.recommendation}</td>
                   </tr>
                 ))}
-                {!aiRows.length && <tr><td colSpan="6" className="hint">Аналитика не построена. Проверь выбранный месяц и наличие данных по выручке/расходам.</td></tr>}
+                {!sortedAiRows.length && <tr><td colSpan="6" className="hint">Аналитика не построена. Проверь выбранный месяц и наличие данных по выручке/расходам.</td></tr>}
               </tbody>
             </table>
           </div>
-          {aiRows.length > 5 && <div className="action-row" style={{marginTop: 12}}>
-            <button className="ghost small" onClick={() => setShowAllAiRows(v => !v)}>{showAllAiRows ? 'Скрыть детали' : `Показать все отклонения (${aiRows.length})`}</button>
-            <span className="hint">Сначала показываются топ-5 критичных сигналов.</span>
-          </div>}
-        </div>
+        </div>}
 
       </section>
     </section>
