@@ -5256,11 +5256,16 @@ function Revenue({ t, focusExpense }) {
     setMessage('')
     const amount = parseNum(inflowForm.amount)
     if (!amount && !inflowForm.source.trim() && !inflowForm.comment.trim()) return setMessage('Введите сумму, источник или комментарий прихода')
-    const user = await currentUserMeta()
-    const payload = { branch_id: branchId, inflow_date: date, source: inflowForm.source || null, amount, comment: inflowForm.comment || null, created_by: user.user_id, updated_by: user.user_id }
-    const { data, error } = await supabase.from('daily_cash_inflows').insert(payload).select('*').single()
+
+    const { data, error } = await supabase.rpc('rms_cash_inflow_create_secure', {
+      p_branch_id: branchId,
+      p_inflow_date: date,
+      p_amount: amount,
+      p_source: inflowForm.source || null,
+      p_comment: inflowForm.comment || null
+    })
+
     if (error) return setMessage(error.message)
-    await writeLog({ entity_type: 'inflow', record_id: data.id, action: 'create', field_name: 'cash_inflow', old_value: null, new_value: fmt(amount) })
     setInflowForm({ amount: '', source: '', comment: '' })
     await load()
     setMessage('Приход добавлен и зафиксирован ниже')
@@ -5270,27 +5275,44 @@ function Revenue({ t, focusExpense }) {
     const current = inflows.find(i => i.id === id)
     if (!current || current.deleted_at) return
     setInflows(prev => prev.map(i => i.id === id ? { ...i, ...patch } : i))
-    const user = await currentUserMeta()
-    const { error } = await supabase.from('daily_cash_inflows').update({ ...patch, updated_by: user.user_id }).eq('id', id)
-    if (error) return setMessage(error.message)
-    for (const [field, value] of Object.entries(patch)) {
-      const before = current[field] ?? ''
-      const after = value ?? ''
-      if (String(before) !== String(after)) await writeLog({ entity_type: 'inflow', record_id: id, action: 'field_update', field_name: field, old_value: before, new_value: after })
+
+    const next = { ...current, ...patch }
+    const { error } = await supabase.rpc('rms_cash_inflow_update_secure', {
+      p_id: id,
+      p_inflow_date: next.inflow_date || date,
+      p_amount: parseNum(next.amount),
+      p_source: next.source || null,
+      p_comment: next.comment || null
+    })
+
+    if (error) {
+      setInflows(prev => prev.map(i => i.id === id ? current : i))
+      return setMessage(error.message)
     }
+
     await Promise.all([loadMonthStats(branchId, date), loadLogs(branchId, date)])
+    await load()
   }
 
   async function cancelInflow(id) {
     const current = inflows.find(i => i.id === id)
     if (!current || current.deleted_at) return
-    const user = await currentUserMeta()
-    const payload = { deleted_at: new Date().toISOString(), deleted_by: user.user_id, updated_by: user.user_id }
+
+    const payload = { deleted_at: new Date().toISOString() }
     setInflows(prev => prev.map(i => i.id === id ? { ...i, ...payload } : i))
-    const { error } = await supabase.from('daily_cash_inflows').update(payload).eq('id', id)
-    if (error) return setMessage(error.message)
-    await writeLog({ entity_type: 'inflow', record_id: id, action: 'cancel', field_name: 'cash_inflow', old_value: current.amount, new_value: '0' })
+
+    const { error } = await supabase.rpc('rms_cash_inflow_cancel_secure', {
+      p_id: id,
+      p_reason: 'Удалено из интерфейса RMS'
+    })
+
+    if (error) {
+      setInflows(prev => prev.map(i => i.id === id ? current : i))
+      return setMessage(error.message)
+    }
+
     await Promise.all([loadMonthStats(branchId, date), loadLogs(branchId, date)])
+    await load()
   }
 
   const activeRevenueEntries = revenueEntries.filter(r => !r.deleted_at)
