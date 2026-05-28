@@ -7145,6 +7145,7 @@ function Finance({ t, lang, onGoToExpense }) {
   const [dailyRevenueRows, setDailyRevenueRows] = useState([])
   const [aiRows, setAiRows] = useState([])
   const [showAllAiRows, setShowAllAiRows] = useState(false)
+  const [showFinanceForecastDetails, setShowFinanceForecastDetails] = useState(false)
   const [financeFormulaAudit, setFinanceFormulaAudit] = useState([])
   const [financeForecastAudit, setFinanceForecastAudit] = useState([])
   const [expenseDetail, setExpenseDetail] = useState({ name: '', rows: [], total: 0, loading: false, error: '' })
@@ -8241,11 +8242,34 @@ function Finance({ t, lang, onGoToExpense }) {
           subtitle={branchId === ALL_BRANCHES ? 'Суммарная выручка сети по дням месяца, без Wolt' : `Выручка филиала ${financeBranchNameById(branchId)} по дням месяца, без Wolt`}
         />
 
-        <div className="card span-2">
-          <div className="card-head"><h3>Расчёт прогноза прибыли</h3><p className="hint">Фиксированные расходы учитываются сразу, коммунальные и другие месячные статьи берутся из текущего месяца или из среднего прошлых месяцев.</p></div>
-          <div className="table-wrap"><table><thead><tr><th>Статья</th><th>Сумма</th><th>Логика</th></tr></thead><tbody>{(stats.forecastDetails || []).map(r => <tr key={r.name}><td><b>{r.name}</b></td><td>{fmt(r.amount)}</td><td className="hint">{r.note || '—'}</td></tr>)}</tbody></table></div>
-          <p className="hint">Итого прогноз расходов: <b>{fmt(stats.forecastExpenses)}</b> AZN · прогнозная маржа: <b>{pct(stats.forecastMargin)}</b></p>
+        <div className="card span-2 finance-forecast-compact-card">
+          <div className="card-head">
+            <div>
+              <h3>Прогноз месяца</h3>
+              <p className="hint">Короткая сводка. Детальный расчёт открывается отдельно.</p>
+            </div>
+            <button className="small" onClick={() => setShowFinanceForecastDetails(true)}>Детали прогноза</button>
+          </div>
+          <div className="kpi-row finance-forecast-summary-row">
+            <div className="metric"><span>Прогноз выручки</span><strong>{fmt(stats.forecastRevenue)}</strong><em>AZN</em></div>
+            <div className="metric"><span>Прогноз расходов</span><strong>{fmt(stats.forecastExpenses)}</strong><em>AZN</em></div>
+            <div className="metric"><span>Прогноз прибыли</span><strong className={stats.forecastProfit >= 0 ? 'good' : 'bad'}>{fmt(stats.forecastProfit)}</strong><em>AZN</em></div>
+            <div className="metric"><span>Прогнозная маржа</span><strong>{pct(stats.forecastMargin)}</strong><em>margin</em></div>
+          </div>
+          <p className="hint">Формула: прогноз выручки − прогноз расходов. Подробная детализация доступна по кнопке.</p>
         </div>
+
+        {showFinanceForecastDetails && <div className="card span-2 supplier-transactions-panel supplier-modal-panel finance-forecast-modal-panel">
+          <div className="card-head supplier-modal-head">
+            <div>
+              <h3>Детали прогноза прибыли</h3>
+              <p className="hint">Фиксированные расходы учитываются сразу, коммунальные и другие месячные статьи берутся из текущего месяца или из среднего прошлых месяцев.</p>
+            </div>
+            <button className="supplier-modal-x" title="Закрыть" aria-label="Закрыть" onClick={() => setShowFinanceForecastDetails(false)}>×</button>
+          </div>
+          <div className="table-wrap"><table><thead><tr><th>Статья</th><th>Сумма</th><th>Логика</th></tr></thead><tbody>{(stats.forecastDetails || []).map(r => <tr key={r.name}><td><b>{r.name}</b></td><td>{fmt(r.amount)}</td><td className="hint">{r.note || '—'}</td></tr>)}{!(stats.forecastDetails || []).length && <tr><td colSpan="3" className="hint">Детализация прогноза отсутствует.</td></tr>}</tbody></table></div>
+          <p className="hint">Итого прогноз расходов: <b>{fmt(stats.forecastExpenses)}</b> AZN · прогнозная маржа: <b>{pct(stats.forecastMargin)}</b></p>
+        </div>}
 
         <div className="card span-2">
           <div className="card-head"><h3>{t('expense_breakdown')}</h3></div>
