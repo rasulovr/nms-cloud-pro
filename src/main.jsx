@@ -7102,7 +7102,7 @@ function Dashboard({ t }) {
       <div className="dash-kpi dash-kpi-red"><span className="dash-kpi-icon">%</span><div><em>Рентабельность</em><strong>{pct(data.revenue ? data.net / data.revenue * 100 : 0)}</strong><p>маржа чистой прибыли</p></div></div>
       <div className="dash-kpi dash-kpi-forecast"><span className="dash-kpi-icon">⌁</span><div><em>Прогноз выручки</em><strong>{fmt(data.forecastRevenue)} <small>AZN</small></strong><p>до конца месяца</p></div></div>
       <div className="dash-kpi dash-kpi-target"><span className="dash-kpi-icon">◎</span><div><em>Прогноз прибыли</em><strong>{fmt(data.forecastProfit)} <small>AZN</small></strong><p>прогноз месяца</p></div></div>
-      <div className="dash-kpi dash-kpi-wallet"><span className="dash-kpi-icon">▣</span><div><em>Денежный остаток</em><strong>{fmt(cashBalance)} <small>AZN</small></strong><p>наличные + банк</p></div></div>
+      <div className="dash-kpi dash-kpi-wallet"><span className="dash-kpi-icon">▣</span><div><em>Оплаченная выручка</em><strong>{fmt(cashBalance)} <small>AZN</small></strong><p>наличные + банк за период</p></div></div>
     </section>
 
     <section className="dashboard-v25-layout">
@@ -8101,7 +8101,7 @@ function Finance({ t, lang, onGoToExpense }) {
   const financePreviousNet = parseNum(stats.previous?.revenue) - financePreviousExpenses
   const profitChange = financePreviousNet ? ((financeNet - financePreviousNet) / Math.abs(financePreviousNet) * 100) : 0
   const financeProfitability = stats.revenue ? financeNet / stats.revenue * 100 : 0
-  const financeCashBalance = parseNum(stats.cash) + parseNum(stats.bank)
+  const financePaidRevenue = parseNum(stats.cash) + parseNum(stats.bank)
   const financeFoodCostAmount = (breakdown || []).filter(r => financeExpenseGroupName(r.name) === 'food_market' || String(r.name || '').toLowerCase().includes('food cost')).reduce((sum, r) => sum + parseNum(r.amount), 0)
   const financePackagingAmount = (breakdown || []).filter(r => financeExpenseGroupName(r.name) === 'packaging').reduce((sum, r) => sum + parseNum(r.amount), 0)
   const financeSalaryPct = stats.revenue ? parseNum(stats.salary) / parseNum(stats.revenue) * 100 : 0
@@ -8156,7 +8156,7 @@ function Finance({ t, lang, onGoToExpense }) {
         <div className="dash-kpi dash-kpi-red"><span className="dash-kpi-icon">%</span><div><em>Рентабельность</em><strong>{pct(financeProfitability)}</strong><p>маржа чистой прибыли</p></div></div>
         <div className="dash-kpi dash-kpi-forecast"><span className="dash-kpi-icon">⌁</span><div><em>Прогноз выручки</em><strong>{fmt(stats.forecastRevenue)} <small>AZN</small></strong><p>до конца месяца</p></div></div>
         <div className="dash-kpi dash-kpi-target"><span className="dash-kpi-icon">◎</span><div><em>Прогноз прибыли</em><strong>{fmt(stats.forecastProfit)} <small>AZN</small></strong><p>прогноз месяца</p></div></div>
-        <div className="dash-kpi dash-kpi-wallet"><span className="dash-kpi-icon">▣</span><div><em>Денежный остаток</em><strong>{fmt(financeCashBalance)} <small>AZN</small></strong><p>наличные + банк</p></div></div>
+        <div className="dash-kpi dash-kpi-wallet"><span className="dash-kpi-icon">▣</span><div><em>Оплаченная выручка</em><strong>{fmt(financePaidRevenue)} <small>AZN</small></strong><p>наличные + банк за месяц</p></div></div>
       </section>
 
       <section className="finance-intel-grid">
