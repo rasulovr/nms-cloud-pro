@@ -781,7 +781,23 @@ function RMSProInterfaceStyles() {
         gap: 6px;
       }
     }
-  `}</style>
+  
+
+/* v88 Finance & Dashboard Professional Cleanup */
+.finance-pro-kpis { grid-template-columns: repeat(7, minmax(150px, 1fr)); }
+.finance-pro-kpis .dash-kpi em { letter-spacing: .01em; }
+.finance-expense-row.food td:first-child::before,
+.finance-expense-row.salary td:first-child::before,
+.finance-expense-row.rent td:first-child::before,
+.finance-expense-row.tax td:first-child::before { content: ''; display:inline-block; width:7px; height:7px; border-radius:999px; margin-right:8px; vertical-align:middle; }
+.finance-expense-row.food td:first-child::before { background:#10b981; }
+.finance-expense-row.salary td:first-child::before { background:#8b5cf6; }
+.finance-expense-row.rent td:first-child::before { background:#f97316; }
+.finance-expense-row.tax td:first-child::before { background:#ef4444; }
+.table-actions { text-align:right; white-space:nowrap; }
+@media (max-width: 1320px) { .finance-pro-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 760px) { .finance-pro-kpis { grid-template-columns: 1fr; } }
+`}</style>
 }
 
 const accessRank = (value) => ACCESS_LEVELS.indexOf(value || 'none')
@@ -1695,8 +1711,8 @@ function SecurityRecoveryCenter() {
       <section className="card span-2 supplier-enterprise-audit-card">
         <div className="card-head">
           <div>
-            <h3>Supplier ledger audit</h3>
-            <p className="hint">Техническая сверка: стартовый долг + поступления − оплаты против supplier_ledger. Для пользователя скрыто из раздела “Долги и оплаты”.</p>
+            <h3>Diagnostics Center · Supplier audit</h3>
+            <p className="hint">Техническая сверка: стартовый долг + поступления − оплаты против supplier_ledger.</p>
           </div>
           <div className="action-row">
             <button className="ghost small" onClick={() => setShowSupplierAuditDetails(v => !v)}>{showSupplierAuditDetails ? 'Скрыть детали' : 'Показать детали'}</button>
@@ -1718,8 +1734,8 @@ function SecurityRecoveryCenter() {
       <section className="card span-2 supplier-enterprise-audit-card">
         <div className="card-head">
           <div>
-            <h3>Finance diagnostics</h3>
-            <p className="hint">Техническая сверка формулы прибыли и прогноза. В пользовательском разделе “Финансы” скрыта.</p>
+            <h3>Diagnostics Center · Finance audit</h3>
+            <p className="hint">Техническая сверка формулы прибыли и прогноза Dashboard / Finance.</p>
           </div>
           <div className="action-row">
             <button className="ghost small" onClick={() => setShowFinanceDiagnosticsDetails(v => !v)}>{showFinanceDiagnosticsDetails ? 'Скрыть детали' : 'Показать детали'}</button>
@@ -8129,13 +8145,32 @@ function Finance({ t, lang, onGoToExpense }) {
         return `${financeExpenseDonutColors[idx % financeExpenseDonutColors.length]} ${startPct}% ${endPct}%`
       }).join(', ')})`
     : 'conic-gradient(#94a3b8 0 100%)'
+  const financeMonthSummary = {
+    revenue: parseNum(stats.revenue),
+    paidRevenue: financePaidRevenue,
+    expenses: financeTotalExpenses,
+    net: financeNet,
+    margin: financeProfitability,
+    foodCostAmount: financeFoodCostAmount,
+    foodCostPct: financeFoodCostPct,
+    salaryAmount: parseNum(stats.salary),
+    salaryPct: financeSalaryPct,
+    serviceAmount: parseNum(stats.serviceCost),
+    servicePct: financeServicePct,
+    taxAmount: parseNum(stats.tax),
+    taxPct: financeTaxPct,
+    forecastRevenue: parseNum(stats.forecastRevenue),
+    forecastExpenses: parseNum(stats.forecastExpenses),
+    forecastProfit: parseNum(stats.forecastProfit),
+    forecastMargin: parseNum(stats.forecastMargin)
+  }
 
   return (
     <section id="financePage" className="finance-intelligence-page rms-executive-dashboard">
       <section className="dashboard-v23-head finance-dashboard-head">
         <div>
           <h2>{t('finance_tab')}</h2>
-          <p>{branchId === ALL_BRANCHES ? 'Финансовые показатели по всей сети.' : t('finance_subtitle')}</p>
+          <p>{branchId === ALL_BRANCHES ? 'Единая управленческая картина по сети.' : 'Финансовая картина выбранного филиала.'}</p>
         </div>
         <div className="dashboard-v23-filters finance-dashboard-filters">
           <label><span>{t('branch_select')}</span>
@@ -8149,14 +8184,14 @@ function Finance({ t, lang, onGoToExpense }) {
         </div>
       </section>
 
-      <section className="dashboard-v23-kpis dashboard-v29-kpis finance-dashboard-kpis">
-        <div className="dash-kpi dash-kpi-blue"><span className="dash-kpi-icon">↗</span><div><em>Выручка за месяц</em><strong>{fmt(stats.revenue)} <small>AZN</small></strong><p className="dash-trend-value" style={{ color: revChange >= 0 ? '#10b981' : '#ef4444', fontWeight: 900 }} title={financeRevenueCompareTooltip}>{revChange >= 0 ? '▲' : '▼'} {pct(Math.abs(revChange))}</p></div></div>
-        <div className="dash-kpi dash-kpi-purple"><span className="dash-kpi-icon">▥</span><div><em>Расходы</em><strong>{fmt(financeTotalExpenses)} <small>AZN</small></strong><p>{pct(stats.revenue ? financeTotalExpenses / stats.revenue * 100 : 0)} от выручки</p></div></div>
-        <div className="dash-kpi dash-kpi-green"><span className="dash-kpi-icon">▟</span><div><em>Чистая прибыль</em><strong className={financeNet >= 0 ? 'good' : 'bad'}>{fmt(financeNet)} <small>AZN</small></strong><p className={profitChange >= 0 ? 'good' : 'bad'}>{profitChange >= 0 ? '▲' : '▼'} {pct(Math.abs(profitChange))}</p></div></div>
-        <div className="dash-kpi dash-kpi-red"><span className="dash-kpi-icon">%</span><div><em>Рентабельность</em><strong>{pct(financeProfitability)}</strong><p>маржа чистой прибыли</p></div></div>
-        <div className="dash-kpi dash-kpi-forecast"><span className="dash-kpi-icon">⌁</span><div><em>Прогноз выручки</em><strong>{fmt(stats.forecastRevenue)} <small>AZN</small></strong><p>до конца месяца</p></div></div>
-        <div className="dash-kpi dash-kpi-target"><span className="dash-kpi-icon">◎</span><div><em>Прогноз прибыли</em><strong>{fmt(stats.forecastProfit)} <small>AZN</small></strong><p>прогноз месяца</p></div></div>
-        <div className="dash-kpi dash-kpi-wallet"><span className="dash-kpi-icon">▣</span><div><em>Оплаченная выручка</em><strong>{fmt(financePaidRevenue)} <small>AZN</small></strong><p>наличные + банк за месяц</p></div></div>
+      <section className="dashboard-v23-kpis dashboard-v29-kpis finance-dashboard-kpis finance-pro-kpis">
+        <div className="dash-kpi dash-kpi-blue"><span className="dash-kpi-icon">↗</span><div><em>Выручка</em><strong>{fmt(financeMonthSummary.revenue)} <small>AZN</small></strong><p className="dash-trend-value" style={{ color: revChange >= 0 ? '#10b981' : '#ef4444', fontWeight: 900 }} title={financeRevenueCompareTooltip}>{revChange >= 0 ? '▲' : '▼'} {pct(Math.abs(revChange))}</p></div></div>
+        <div className="dash-kpi dash-kpi-purple"><span className="dash-kpi-icon">▥</span><div><em>Операционные расходы</em><strong>{fmt(financeMonthSummary.expenses)} <small>AZN</small></strong><p>{pct(financeMonthSummary.revenue ? financeMonthSummary.expenses / financeMonthSummary.revenue * 100 : 0)} от выручки</p></div></div>
+        <div className="dash-kpi dash-kpi-green"><span className="dash-kpi-icon">▟</span><div><em>Чистая прибыль</em><strong className={financeMonthSummary.net >= 0 ? 'good' : 'bad'}>{fmt(financeMonthSummary.net)} <small>AZN</small></strong><p className={profitChange >= 0 ? 'good' : 'bad'}>{profitChange >= 0 ? '▲' : '▼'} {pct(Math.abs(profitChange))}</p></div></div>
+        <div className="dash-kpi dash-kpi-red"><span className="dash-kpi-icon">%</span><div><em>Маржа</em><strong>{pct(financeMonthSummary.margin)}</strong><p>чистая прибыль / выручка</p></div></div>
+        <div className="dash-kpi dash-kpi-forecast"><span className="dash-kpi-icon">◌</span><div><em>Food Cost</em><strong>{pct(financeMonthSummary.foodCostPct)}</strong><p>{fmt(financeMonthSummary.foodCostAmount)} AZN</p></div></div>
+        <div className="dash-kpi dash-kpi-wallet"><span className="dash-kpi-icon">◍</span><div><em>Зарплаты</em><strong>{pct(financeMonthSummary.salaryPct)}</strong><p>{fmt(financeMonthSummary.salaryAmount)} AZN</p></div></div>
+        <div className="dash-kpi dash-kpi-target"><span className="dash-kpi-icon">◎</span><div><em>Прогноз прибыли</em><strong className={financeMonthSummary.forecastProfit >= 0 ? 'good' : 'bad'}>{fmt(financeMonthSummary.forecastProfit)} <small>AZN</small></strong><p>до конца месяца</p></div></div>
       </section>
 
       <section className="finance-intel-grid">
@@ -8175,7 +8210,7 @@ function Finance({ t, lang, onGoToExpense }) {
           <div className="finance-metric-list">
             <div><span>Food Cost</span><b>{pct(financeFoodCostPct)}</b><em>{fmt(financeFoodCostAmount)} AZN</em></div>
             <div><span>Фонд оплаты труда</span><b>{pct(financeSalaryPct)}</b><em>{fmt(stats.salary)} AZN</em></div>
-            <div><span>Расходы / выручка</span><b>{pct(financeTotalExpensePct)}</b><em>{fmt(financeTotalExpenses)} AZN</em></div>
+            <div><span>Операционные расходы</span><b>{pct(financeTotalExpensePct)}</b><em>{fmt(financeTotalExpenses)} AZN</em></div>
             <div><span>Service charge</span><b>{pct(financeServicePct)}</b><em>{fmt(stats.serviceCost)} AZN</em></div>
             <div><span>Налог</span><b>{pct(financeTaxPct)}</b><em>{fmt(stats.tax)} AZN</em></div>
             <div><span>Чистая маржа</span><b>{pct(financeProfitability)}</b><em className={financeProfitability >= 0 ? 'good' : 'bad'}>{fmt(financeNet)} AZN</em></div>
@@ -8226,16 +8261,21 @@ function Finance({ t, lang, onGoToExpense }) {
           <div className="card-head"><h3>{t('expense_breakdown')}</h3></div>
           <div className="table-wrap">
             <table>
-              <thead><tr><th>{t('expense_item')}</th><th>{t('amount')}</th><th>{t('expense_pct')}</th><th></th></tr></thead>
+              <thead><tr><th>{t('expense_item')}</th><th>{t('amount')}</th><th>Доля расходов</th><th>Доля выручки</th><th></th></tr></thead>
               <tbody>
-                {breakdown.map(r => <tr key={r.name}><td>{r.name}{r.note ? <small className="expense-note">({r.note})</small> : null}</td><td><b>{fmt(r.amount)}</b></td><td>{pct(stats.revenue ? r.amount / stats.revenue * 100 : 0)}</td><td><button className="small" onClick={() => openExpenseBreakdownDetails(r)}>Детали</button></td></tr>)}
-                {!breakdown.length && <tr><td colSpan="4" className="hint">—</td></tr>}
+                {financeExpenseRowsAll.map(r => {
+                  const group = financeExpenseGroupName(r.name)
+                  const rowClass = group === 'food_market' ? 'finance-expense-row food' : group === 'salary' ? 'finance-expense-row salary' : group === 'rent' ? 'finance-expense-row rent' : group === 'tax' ? 'finance-expense-row tax' : 'finance-expense-row'
+                  return <tr key={r.name} className={rowClass}><td>{r.name}{r.note ? <small className="expense-note">({r.note})</small> : null}</td><td><b>{fmt(r.amount)}</b></td><td>{pct(financeTotalExpenses ? parseNum(r.amount) / financeTotalExpenses * 100 : 0)}</td><td>{pct(stats.revenue ? parseNum(r.amount) / stats.revenue * 100 : 0)}</td><td className="table-actions"><button className="small" onClick={() => openExpenseBreakdownDetails(r)}>Детали</button></td></tr>
+                })}
+                {!financeExpenseRowsAll.length && <tr><td colSpan="5" className="hint">—</td></tr>}
               </tbody>
-              {breakdown.length ? <tfoot>
+              {financeExpenseRowsAll.length ? <tfoot>
                 <tr className="expense-breakdown-total-row">
                   <td><strong>Итого</strong></td>
-                  <td><strong>{fmt(breakdown.reduce((sum, r) => sum + Number(r.amount || 0), 0))}</strong></td>
-                  <td><strong>{pct(stats.revenue ? breakdown.reduce((sum, r) => sum + Number(r.amount || 0), 0) / stats.revenue * 100 : 0)}</strong></td>
+                  <td><strong>{fmt(financeExpenseRowsAll.reduce((sum, r) => sum + Number(r.amount || 0), 0))}</strong></td>
+                  <td><strong>{pct(100)}</strong></td>
+                  <td><strong>{pct(stats.revenue ? financeExpenseRowsAll.reduce((sum, r) => sum + Number(r.amount || 0), 0) / stats.revenue * 100 : 0)}</strong></td>
                   <td className="hint">Общая сумма</td>
                 </tr>
               </tfoot> : null}
