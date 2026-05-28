@@ -1,5 +1,5 @@
 // RMS v56.1 Supplier Enterprise Hardened - Supplier writes via secure RPC only
-/* RMS v68 Supplier Section UX Optimization - compact control center, top-2 lists and merged supplier blocks */
+/* RMS v72 Supplier Final Layout Polish - simplified professional supplier UX */
 /* RMS v63 Supplier Payment Calendar - payment calendar, due reminders and follow-up control persistence */
 /* RMS v43 SUPPLIERS FINAL CLEAN SINGLE E-QAIME FORM - no payment term fields inside purchase e-qaime block */
 import React, { useEffect, useMemo, useRef, useState } from 'react'
@@ -6109,8 +6109,26 @@ function DashboardStyles() {
     .supplier-compact-table td:last-child { width: 180px; }
     .supplier-compact-table .action-row { justify-content: flex-end; }
     .supplier-transactions-panel { border: 1px solid var(--line); border-radius: 16px; padding: 14px; background: #fffaf2; }
-    @media (max-width: 1200px) { .dashboard-kpi-grid { grid-template-columns: repeat(2, minmax(0,1fr)); } }
-    @media (max-width: 700px) { .dashboard-kpi-grid { grid-template-columns: 1fr; } .dash-bar-row { grid-template-columns: 82px 1fr 78px; } .dashboard-period { min-width: 0; } }
+    .supplier-control-center-card { padding: 22px; overflow: hidden; }
+    .supplier-control-center-card > .card-head { padding-bottom: 12px; border-bottom: 1px solid var(--line); margin-bottom: 14px; }
+    .supplier-control-center-card > .card-head h3 { margin-bottom: 4px; }
+    .debt-kpi-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 14px 0 18px; }
+    .debt-kpi-card { border: 1px solid var(--line); border-radius: 16px; padding: 14px 16px; background: rgba(255,255,255,.72); min-width: 0; }
+    .debt-kpi-label { color: var(--muted); font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; }
+    .debt-kpi-value { font-size: 22px; font-weight: 900; margin-top: 6px; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .debt-kpi-sub { margin-top: 4px; color: var(--muted); font-size: 12px; }
+    .debt-kpi-danger .debt-kpi-value { color: var(--danger); }
+    .debt-kpi-info .debt-kpi-value { color: var(--olive); }
+    .supplier-control-center-card .soft-card { border-radius: 18px; padding: 16px; box-shadow: none; background: rgba(255,255,255,.62); }
+    .supplier-control-center-card .soft-card + .soft-card { margin-top: 0; }
+    .supplier-control-center-card .soft-card .card-head { gap: 12px; align-items: flex-start; }
+    .supplier-control-center-card .soft-card h4 { margin: 0 0 4px; font-size: 18px; }
+    .supplier-control-center-card .table-wrap { border-radius: 14px; overflow: auto; border: 1px solid var(--line); background: rgba(255,255,255,.7); }
+    .supplier-control-center-card .table-wrap table { margin: 0; }
+    .supplier-control-center-card .table-wrap th { white-space: nowrap; }
+    .supplier-control-center-card .table-wrap td { vertical-align: top; }
+    @media (max-width: 1200px) { .dashboard-kpi-grid { grid-template-columns: repeat(2, minmax(0,1fr)); } .debt-kpi-grid { grid-template-columns: repeat(2, minmax(0,1fr)); } }
+    @media (max-width: 700px) { .dashboard-kpi-grid { grid-template-columns: 1fr; } .debt-kpi-grid { grid-template-columns: 1fr; } .dash-bar-row { grid-template-columns: 82px 1fr 78px; } .dashboard-period { min-width: 0; } }
   `}</style>
 }
 
@@ -16007,13 +16025,13 @@ function DebtsPayments({ t }) {
   }
 
   return <section>
-    <section className="topbar"><div><h2>Поставщики: долги и оплаты</h2><p>Краткий контроль долга, просрочек, лимитов, операций и актов сверки.</p></div></section>
+    <section className="topbar"><div><h2>Поставщики: долги и оплаты</h2><p>Основной контроль: долг, просрочка, лимиты, журнал операций и акт сверки.</p></div></section>
 
     <section className="card span-2 supplier-control-center-card">
       <div className="card-head">
         <div>
           <h3>Контроль поставщиков</h3>
-          <p className="hint">Долг, просрочка, лимиты и рейтинг риска в одном рабочем блоке.</p>
+          <p className="hint">Ключевые отклонения по поставщикам. Детали открываются через акт сверки.</p>
         </div>
         <div className="action-row" style={{gap:8}}><button className="small" onClick={load}>Обновить</button></div>
       </div>
@@ -16029,7 +16047,7 @@ function DebtsPayments({ t }) {
           <div className="card-head">
             <div>
               <h4>Просрочка и лимиты</h4>
-              <p className="hint">По дате оплаты и кредитному лимиту. Показывает сумму просрочки и конкретные просроченные фактуры.</p>
+              <p className="hint">Сумма просрочки, превышение лимита и конкретные фактуры.</p>
             </div>
             <div className="action-row" style={{gap:8}}>
               <label style={{display:'flex',alignItems:'center',gap:8}}><span className="hint">Фильтр</span><select value={supplierRiskFilter} onChange={e => setSupplierRiskFilter(e.target.value)}><option value="all">Все</option><option value="overdue">Только просрочка</option><option value="limit">Сверх лимита</option><option value="critical">Critical</option><option value="warning">Warning</option></select></label>
@@ -16048,7 +16066,7 @@ function DebtsPayments({ t }) {
           <div className="card-head">
             <div>
               <h4>Рейтинг поставщиков</h4>
-              <p className="hint">Приоритет поставщиков по риску: долг, просрочка, лимит и количество открытых фактур.</p>
+              <p className="hint">Рейтинг риска по долгу, просрочке, лимиту и открытым фактурам.</p>
             </div>
             {supplierRatingRows.length > 5 && <button className="ghost small" onClick={() => setSupplierCompactPlanExpanded(v => !v)}>{supplierCompactPlanExpanded ? 'Скрыть' : `Показать все · ${supplierRatingRows.length}`}</button>}
           </div>
@@ -16083,7 +16101,7 @@ function DebtsPayments({ t }) {
 
 
 
-      <div className="card span-2"><div className="card-head"><div><h3>Журнал долгов и оплат</h3><p className="hint">Стартовый долг, поступления по накладным и оплаты в одном фильтруемом журнале.</p></div><label style={{display:'flex',alignItems:'center',gap:8}}><span className="hint">Показать</span><select value={commonOpsPageSize} onChange={e => { setCommonOpsPageSize(Number(e.target.value)); setCommonOpsPage(1) }}><option value={10}>10</option><option value={20}>20</option><option value={30}>30</option><option value={50}>50</option></select></label></div>
+      <div className="card span-2"><div className="card-head"><div><h3>Журнал долгов и оплат</h3><p className="hint">Стартовый долг, поступления и оплаты в одном журнале.</p></div><label style={{display:'flex',alignItems:'center',gap:8}}><span className="hint">Показать</span><select value={commonOpsPageSize} onChange={e => { setCommonOpsPageSize(Number(e.target.value)); setCommonOpsPage(1) }}><option value={10}>10</option><option value={20}>20</option><option value={30}>30</option><option value={50}>50</option></select></label></div>
         <div className="form-grid compact">
           <label><span>Период</span><select value={commonOpsPeriod} onChange={e => { setCommonOpsPeriod(e.target.value); setCommonOpsPage(1) }}><option value="day">День</option><option value="week">Неделя</option><option value="month">Месяц</option><option value="range">Диапазон дат</option><option value="all">Весь период</option></select></label>
           {commonOpsPeriod !== 'range' && commonOpsPeriod !== 'all' && <label><span>Дата периода</span><input type="date" value={commonOpsDate} onChange={e => { setCommonOpsDate(e.target.value); setCommonOpsPage(1) }} /></label>}
