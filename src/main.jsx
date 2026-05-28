@@ -5165,7 +5165,6 @@ function Revenue({ t, focusExpense }) {
       : { data: null }
     if (error) return setMessage(error.message)
     setExpenses(prev => [...(prev || []), data])
-    await writeLog({ entity_type: 'expense', record_id: data.id, action: 'create', field_name: 'expense', old_value: null, new_value: newName })
     await Promise.all([loadMonthStats(branchId, date), loadLogs(branchId, date)])
     await load()
     setMessage('Строка расхода добавлена')
@@ -5182,14 +5181,6 @@ function Revenue({ t, focusExpense }) {
     if (isBazarExpenseName(nextExpenseName)) {
       try {
         const inserted = await distributeBazarExpense({ sourceExpense: current, nextExpense, user })
-        await writeLog({
-          entity_type: 'expense',
-          record_id: inserted?.[0]?.id || id,
-          action: 'bazar_distribution',
-          field_name: 'Базар',
-          old_value: current.amount,
-          new_value: `${fmt(nextExpense.amount)} распределено между филиалами`
-        })
         const { data: refreshedExpenses } = await supabase
           .from('daily_expenses')
           .select('*, expense_categories(name)')
@@ -5223,14 +5214,6 @@ function Revenue({ t, focusExpense }) {
       return setMessage(error.message)
     }
 
-    const logTasks = Object.entries(patch).map(([field, value]) => {
-      const before = current[field] ?? ''
-      const after = value ?? ''
-      if (String(before) === String(after)) return null
-      return writeLog({ entity_type: 'expense', record_id: id, action: 'field_update', field_name: field, old_value: before, new_value: after })
-    }).filter(Boolean)
-
-    Promise.all(logTasks).catch(() => {})
     await Promise.all([loadMonthStats(branchId, date), loadLogs(branchId, date)])
     await load()
     setMessage('Расход сохранён')
@@ -5247,7 +5230,6 @@ function Revenue({ t, focusExpense }) {
       p_reason: 'Отменено из интерфейса RMS'
     })
     if (error) return setMessage(error.message)
-    await writeLog({ entity_type: 'expense', record_id: id, action: 'cancel', field_name: 'expense', old_value: current.amount, new_value: '0' })
     await Promise.all([loadMonthStats(branchId, date), loadLogs(branchId, date)])
   }
 
