@@ -14415,6 +14415,7 @@ function DebtsPayments({ t }) {
   const [supplierRiskFilter, setSupplierRiskFilter] = useState('all')
   const [supplierAgingPageSize, setSupplierAgingPageSize] = useState(10)
   const [supplierControlFilter, setSupplierControlFilter] = useState('active')
+  const [supplierAlertsFilter, setSupplierAlertsFilter] = useState('active')
   const [supplierCalendarFilter, setSupplierCalendarFilter] = useState('next7')
   const [supplierCalendarPageSize, setSupplierCalendarPageSize] = useState(20)
   const [supplierFollowUps, setSupplierFollowUps] = useState(() => readJsonStorage('rms_supplier_followups_v1', {}))
@@ -15476,6 +15477,69 @@ function DebtsPayments({ t }) {
 
   const pagedSupplierPaymentCalendarRows = supplierPaymentCalendarRows.slice(0, parseNum(supplierCalendarPageSize || 20))
 
+  function supplierAlertSeverityText(value) {
+    if (value === 'critical') return 'Critical'
+    if (value === 'warning') return 'Warning'
+    return 'Info'
+  }
+
+  function supplierAlertSeverityClass(value) {
+    if (value === 'critical') return 'bad'
+    if (value === 'warning') return 'warn'
+    return 'good'
+  }
+
+  const supplierAlertRows = useMemo(() => {
+    const rows = (supplierControlRows || []).map(row => {
+      const followDate = row.followUp?.next_action_date || ''
+      const followDays = supplierCalendarDaysUntil(followDate)
+      const reasons = []
+      if (row.riskLevel === 'critical') reasons.push('critical risk')
+      if (parseNum(row.limitOver) > 0) reasons.push(`лимит превышен на ${fmt(row.limitOver)}`)
+      if (parseNum(row.overdueAmount) > 0) reasons.push(`просрочено ${fmt(row.overdueAmount)}`)
+      if (parseNum(row.maxOverdueDays) >= 30) reasons.push(`макс. просрочка ${row.maxOverdueDays} дн.`)
+      if (followDays !== null && followDays < 0) reasons.push(`follow-up просрочен на ${Math.abs(followDays)} дн.`)
+      if (followDays === 0) reasons.push('follow-up сегодня')
+      if (!followDate && row.controlStatus !== 'closed') reasons.push('нет даты контроля')
+
+      let severity = 'info'
+      if (row.riskLevel === 'critical' || parseNum(row.limitOver) > 0 || parseNum(row.maxOverdueDays) >= 30 || (followDays !== null && followDays < 0)) severity = 'critical'
+      else if (row.riskLevel === 'warning' || parseNum(row.overdueAmount) > 0 || followDays === 0 || !followDate) severity = 'warning'
+
+      return {
+        ...row,
+        alertSeverity: severity,
+        alertReasons: reasons.length ? reasons : ['контроль без критичных замечаний'],
+        followDays,
+        followDate
+      }
+    }).filter(row => {
+      if (supplierAlertsFilter === 'critical') return row.alertSeverity === 'critical'
+      if (supplierAlertsFilter === 'warning') return row.alertSeverity === 'warning'
+      if (supplierAlertsFilter === 'overdue') return parseNum(row.overdueAmount) > 0 || (row.followDays !== null && row.followDays < 0)
+      if (supplierAlertsFilter === 'today') return row.followDays === 0
+      if (supplierAlertsFilter === 'nodate') return !row.followDate && row.controlStatus !== 'closed'
+      if (supplierAlertsFilter === 'limit') return parseNum(row.limitOver) > 0
+      if (supplierAlertsFilter === 'closed') return row.controlStatus === 'closed'
+      return row.controlStatus !== 'closed'
+    })
+    const severityWeight = { critical: 3, warning: 2, info: 1 }
+    return rows.sort((a, b) => (severityWeight[b.alertSeverity] || 0) - (severityWeight[a.alertSeverity] || 0) || b.riskScore - a.riskScore || b.overdueAmount - a.overdueAmount)
+  }, [supplierControlRows, supplierAlertsFilter])
+
+  const supplierAlertSummary = useMemo(() => supplierAlertRows.reduce((acc, row) => {
+    acc.total += 1
+    acc.amount += parseNum(row.balance)
+    acc.critical += row.alertSeverity === 'critical' ? 1 : 0
+    acc.warning += row.alertSeverity === 'warning' ? 1 : 0
+    acc.overdueAmount += parseNum(row.overdueAmount)
+    acc.noDate += !row.followDate && row.controlStatus !== 'closed' ? 1 : 0
+    acc.today += row.followDays === 0 ? 1 : 0
+    return acc
+  }, { total: 0, amount: 0, critical: 0, warning: 0, overdueAmount: 0, noDate: 0, today: 0 }), [supplierAlertRows])
+
+  const pagedSupplierAlertRows = supplierAlertRows.slice(0, 20)
+
   const pagedSupplierAgingRows = supplierAging.filteredRows.slice(0, parseNum(supplierAgingPageSize || 10))
 
   function applyAgingRowToStatement(row) {
@@ -15635,6 +15699,21 @@ function DebtsPayments({ t }) {
       </div>
       <div className="table-wrap"><table><thead><tr><th>Статус</th><th>Поставщик / VOEN</th><th>Баланс</th><th>Просрочено</th><th>Макс. просрочка</th><th>Ближайший срок</th><th>Старый документ</th><th>Действие</th></tr></thead><tbody>{pagedSupplierAgingRows.map(r => <tr key={r.key}><td><span className={r.riskLevel === 'critical' ? 'bad' : r.riskLevel === 'warning' ? 'warn' : 'good'}><b>{r.riskLevel === 'critical' ? 'Critical' : r.riskLevel === 'warning' ? 'Warning' : 'OK'}</b></span><br /><span className="hint">score {r.riskScore}</span></td><td><b>{r.supplier_name}</b><br /><span className="hint">{r.legal_entity_name}</span></td><td><b>{fmt(r.balance)}</b></td><td className={r.overdueAmount > 0 ? 'bad' : 'good'}>{fmt(r.overdueAmount)}</td><td>{r.maxOverdueDays ? `${r.maxOverdueDays} дн.` : '—'}</td><td>{r.nearestDue || '—'}</td><td>{r.oldestInvoice?.invoice || '—'}<br /><span className="hint">{r.oldestInvoice?.type || ''}</span></td><td><button className="small" onClick={() => applyAgingRowToStatement(r)}>Открыть акт</button></td></tr>)}{!pagedSupplierAgingRows.length && <tr><td colSpan="8" className="good">Рисковые долги не найдены</td></tr>}</tbody></table></div>
       <p className="hint" style={{marginTop:10}}>Расчёт aging использует FIFO: оплаты закрывают самые старые документы первыми. Это контрольный управленческий расчёт, ledger остаётся источником баланса.</p>
+    </section>
+
+    <section className="card span-2">
+      <div className="card-head"><div><h3>Supplier alerts <span className={supplierAlertSummary.critical > 0 ? 'bad' : supplierAlertSummary.warning > 0 ? 'warn' : 'good'}>· {supplierAlertSummary.critical + supplierAlertSummary.warning}</span></h3><p className="hint">Центр предупреждений по поставщикам: просрочки, превышение лимитов, follow-up на сегодня и долги без даты контроля.</p></div><div className="action-row" style={{gap:8}}><button className="small" onClick={load}>Обновить</button></div></div>
+      <div className="form-grid compact">
+        <label><span>Фильтр alerts</span><select value={supplierAlertsFilter} onChange={e => setSupplierAlertsFilter(e.target.value)}><option value="active">Активные alerts</option><option value="critical">Только Critical</option><option value="warning">Только Warning</option><option value="overdue">Просрочки</option><option value="today">На сегодня</option><option value="nodate">Без даты контроля</option><option value="limit">Превышение лимита</option><option value="closed">Закрытые</option></select></label>
+      </div>
+      <div className="mini-grid">
+        <div className="metric"><span>Alerts</span><strong>{supplierAlertSummary.total}</strong></div>
+        <div className="metric"><span>Critical / Warning</span><strong className={supplierAlertSummary.critical > 0 ? 'bad' : supplierAlertSummary.warning > 0 ? 'warn' : 'good'}>{supplierAlertSummary.critical} / {supplierAlertSummary.warning}</strong></div>
+        <div className="metric"><span>Сумма под контролем</span><strong>{fmt(supplierAlertSummary.amount)}</strong></div>
+        <div className="metric"><span>Сегодня / без даты</span><strong className={supplierAlertSummary.noDate > 0 ? 'warn' : 'good'}>{supplierAlertSummary.today} / {supplierAlertSummary.noDate}</strong></div>
+      </div>
+      <div className="table-wrap"><table><thead><tr><th>Alert</th><th>Поставщик / VOEN</th><th>Сумма</th><th>Причина</th><th>Контроль</th><th>Действия</th></tr></thead><tbody>{pagedSupplierAlertRows.map(row => <tr key={`alert-${row.key}`}><td><b className={supplierAlertSeverityClass(row.alertSeverity)}>{supplierAlertSeverityText(row.alertSeverity)}</b><br /><span className="hint">risk score {row.riskScore}</span></td><td><b>{row.supplier_name}</b><br /><span className="hint">{row.legal_entity_name}</span></td><td><b>{fmt(row.balance)}</b><br /><span className={row.overdueAmount > 0 ? 'bad' : 'hint'}>{row.overdueAmount > 0 ? `просрочено ${fmt(row.overdueAmount)}` : 'без просрочки'}</span></td><td>{row.alertReasons.map((reason, idx) => <div key={`${row.key}-reason-${idx}`}>{reason}</div>)}</td><td><b>{supplierFollowUpStatusText(row.controlStatus)}</b><br /><span className="hint">{row.followDate || row.nearestDue || 'дата не назначена'}</span></td><td><div className="action-row" style={{gap:6, flexWrap:'wrap'}}><button className="small" onClick={() => updateSupplierFollowUp(row, { status: 'in_progress', priority: row.alertSeverity === 'critical' ? 'critical' : row.riskLevel || 'normal' })}>В работу</button><button className="small" onClick={() => promptSupplierNextActionDate(row)}>Дата</button><button className="small" onClick={() => promptSupplierFollowUpNote(row)}>Комментарий</button><button className="small" onClick={() => applyAgingRowToStatement(row)}>Акт</button><button className="small remove" onClick={() => updateSupplierFollowUp(row, { status: 'closed' })}>Закрыть alert</button></div></td></tr>)}{!pagedSupplierAlertRows.length && <tr><td colSpan="6" className="good">Активных supplier alerts нет.</td></tr>}</tbody></table></div>
+      <p className="hint" style={{marginTop:10}}>Alert-центр использует уже рассчитанные aging/follow-up данные. Он не меняет supplier_ledger, поступления или оплаты.</p>
     </section>
 
     <section className="card span-2">
