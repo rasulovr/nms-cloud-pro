@@ -1,5 +1,5 @@
 // RMS v56.1 Supplier Enterprise Hardened - Supplier writes via secure RPC only
-/* RMS v60 Supplier Aging & Risk Control - aging buckets, risk register, payment priority */
+/* RMS v61 Supplier Smart Reconciliation - follow-up control board, payment action statuses, supplier risk workflow */
 /* RMS v43 SUPPLIERS FINAL CLEAN SINGLE E-QAIME FORM - no payment term fields inside purchase e-qaime block */
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
@@ -14414,6 +14414,8 @@ function DebtsPayments({ t }) {
   const [showSupplierAuditDetails, setShowSupplierAuditDetails] = useState(false)
   const [supplierRiskFilter, setSupplierRiskFilter] = useState('all')
   const [supplierAgingPageSize, setSupplierAgingPageSize] = useState(10)
+  const [supplierControlFilter, setSupplierControlFilter] = useState('active')
+  const [supplierFollowUps, setSupplierFollowUps] = useState(() => readJsonStorage('rms_supplier_followups_v1', {}))
   const [editingOpeningDebtId, setEditingOpeningDebtId] = useState('')
   const [openingDebtEditForm, setOpeningDebtEditForm] = useState({ debt_date: todayISO(), amount: '', invoice_notes: '', comment: '' })
   const [editingPurchaseTransactionId, setEditingPurchaseTransactionId] = useState('')
@@ -15285,6 +15287,102 @@ function DebtsPayments({ t }) {
     return { rows, filteredRows, totals, buckets }
   }, [legalEntities, suppliers, purchases, payments, openingDebts, supplierEntityStatuses, supplierRiskFilter])
 
+  const supplierFollowUpMap = useMemo(() => supplierFollowUps || {}, [supplierFollowUps])
+
+  function supplierFollowUpKey(row) {
+    return `${row?.supplier_id || 'none'}::${row?.legal_entity_id || 'none'}`
+  }
+
+  function supplierFollowUpStatusText(value) {
+    if (value === 'in_progress') return 'В работе'
+    if (value === 'waiting') return 'Ожидает'
+    if (value === 'closed') return 'Закрыто'
+    return 'Новый'
+  }
+
+  function supplierPriorityText(value) {
+    if (value === 'critical') return 'Critical'
+    if (value === 'warning') return 'Warning'
+    return 'Normal'
+  }
+
+  function saveSupplierFollowUps(next) {
+    setSupplierFollowUps(next)
+    writeJsonStorage('rms_supplier_followups_v1', next)
+  }
+
+  function updateSupplierFollowUp(row, patch = {}) {
+    if (!row) return
+    const key = supplierFollowUpKey(row)
+    const current = supplierFollowUpMap[key] || {}
+    const now = new Date().toISOString()
+    const nextRow = {
+      ...current,
+      key,
+      supplier_id: row.supplier_id || '',
+      legal_entity_id: row.legal_entity_id || '',
+      supplier_name: row.supplier_name || current.supplier_name || 'Поставщик',
+      legal_entity_name: row.legal_entity_name || current.legal_entity_name || 'Без VOEN',
+      priority: patch.priority || current.priority || row.riskLevel || 'normal',
+      status: patch.status || current.status || 'in_progress',
+      note: patch.note !== undefined ? patch.note : current.note || '',
+      next_action_date: patch.next_action_date !== undefined ? patch.next_action_date : current.next_action_date || '',
+      balance_snapshot: parseNum(row.balance),
+      overdue_snapshot: parseNum(row.overdueAmount),
+      max_overdue_days_snapshot: parseNum(row.maxOverdueDays),
+      updated_at: now
+    }
+    if (nextRow.status === 'closed' && !nextRow.closed_at) nextRow.closed_at = now
+    if (nextRow.status !== 'closed') delete nextRow.closed_at
+    saveSupplierFollowUps({ ...supplierFollowUpMap, [key]: nextRow })
+  }
+
+  function promptSupplierFollowUpNote(row) {
+    if (!row) return
+    const current = supplierFollowUpMap[supplierFollowUpKey(row)] || {}
+    const value = window.prompt('Комментарий по контролю оплаты / follow-up', current.note || '')
+    if (value === null) return
+    updateSupplierFollowUp(row, { note: value, status: current.status || 'in_progress' })
+  }
+
+  function promptSupplierNextActionDate(row) {
+    if (!row) return
+    const current = supplierFollowUpMap[supplierFollowUpKey(row)] || {}
+    const value = window.prompt('Следующая дата контроля в формате YYYY-MM-DD', current.next_action_date || todayISO())
+    if (value === null) return
+    updateSupplierFollowUp(row, { next_action_date: value, status: current.status || 'in_progress' })
+  }
+
+  const supplierControlRows = useMemo(() => {
+    const rows = (supplierAging.rows || []).map(row => {
+      const followUp = supplierFollowUpMap[supplierFollowUpKey(row)] || {}
+      const status = followUp.status || 'new'
+      return { ...row, followUp, controlStatus: status, controlPriority: followUp.priority || row.riskLevel || 'normal' }
+    }).filter(row => {
+      if (supplierControlFilter === 'critical') return row.riskLevel === 'critical'
+      if (supplierControlFilter === 'overdue') return row.overdueAmount > 0
+      if (supplierControlFilter === 'in_progress') return row.controlStatus === 'in_progress'
+      if (supplierControlFilter === 'waiting') return row.controlStatus === 'waiting'
+      if (supplierControlFilter === 'closed') return row.controlStatus === 'closed'
+      if (supplierControlFilter === 'active') return row.controlStatus !== 'closed'
+      return true
+    })
+    return rows.sort((a, b) => {
+      const statusWeight = { in_progress: 4, waiting: 3, new: 2, closed: 1 }
+      return (statusWeight[b.controlStatus] || 0) - (statusWeight[a.controlStatus] || 0) || b.riskScore - a.riskScore || b.overdueAmount - a.overdueAmount
+    })
+  }, [supplierAging.rows, supplierFollowUpMap, supplierControlFilter])
+
+  const supplierControlSummary = useMemo(() => supplierControlRows.reduce((acc, row) => {
+    acc.total += parseNum(row.balance)
+    acc.overdue += parseNum(row.overdueAmount)
+    acc.inProgress += row.controlStatus === 'in_progress' ? 1 : 0
+    acc.waiting += row.controlStatus === 'waiting' ? 1 : 0
+    acc.closed += row.controlStatus === 'closed' ? 1 : 0
+    acc.critical += row.riskLevel === 'critical' ? 1 : 0
+    return acc
+  }, { total: 0, overdue: 0, inProgress: 0, waiting: 0, closed: 0, critical: 0 }), [supplierControlRows])
+
   const pagedSupplierAgingRows = supplierAging.filteredRows.slice(0, parseNum(supplierAgingPageSize || 10))
 
   function applyAgingRowToStatement(row) {
@@ -15444,6 +15542,21 @@ function DebtsPayments({ t }) {
       </div>
       <div className="table-wrap"><table><thead><tr><th>Статус</th><th>Поставщик / VOEN</th><th>Баланс</th><th>Просрочено</th><th>Макс. просрочка</th><th>Ближайший срок</th><th>Старый документ</th><th>Действие</th></tr></thead><tbody>{pagedSupplierAgingRows.map(r => <tr key={r.key}><td><span className={r.riskLevel === 'critical' ? 'bad' : r.riskLevel === 'warning' ? 'warn' : 'good'}><b>{r.riskLevel === 'critical' ? 'Critical' : r.riskLevel === 'warning' ? 'Warning' : 'OK'}</b></span><br /><span className="hint">score {r.riskScore}</span></td><td><b>{r.supplier_name}</b><br /><span className="hint">{r.legal_entity_name}</span></td><td><b>{fmt(r.balance)}</b></td><td className={r.overdueAmount > 0 ? 'bad' : 'good'}>{fmt(r.overdueAmount)}</td><td>{r.maxOverdueDays ? `${r.maxOverdueDays} дн.` : '—'}</td><td>{r.nearestDue || '—'}</td><td>{r.oldestInvoice?.invoice || '—'}<br /><span className="hint">{r.oldestInvoice?.type || ''}</span></td><td><button className="small" onClick={() => applyAgingRowToStatement(r)}>Открыть акт</button></td></tr>)}{!pagedSupplierAgingRows.length && <tr><td colSpan="8" className="good">Рисковые долги не найдены</td></tr>}</tbody></table></div>
       <p className="hint" style={{marginTop:10}}>Расчёт aging использует FIFO: оплаты закрывают самые старые документы первыми. Это контрольный управленческий расчёт, ledger остаётся источником баланса.</p>
+    </section>
+
+    <section className="card span-2">
+      <div className="card-head"><div><h3>Supplier smart reconciliation</h3><p className="hint">Контроль оплат: follow-up, приоритет, статус работы и быстрый переход в акт сверки. Не меняет ledger и бухгалтерский баланс.</p></div><div className="action-row" style={{gap:8}}><button className="small" onClick={load}>Обновить</button></div></div>
+      <div className="form-grid compact">
+        <label><span>Фильтр контроля</span><select value={supplierControlFilter} onChange={e => setSupplierControlFilter(e.target.value)}><option value="active">Активные follow-up</option><option value="all">Все долги</option><option value="critical">Critical</option><option value="overdue">Просроченные</option><option value="in_progress">В работе</option><option value="waiting">Ожидает</option><option value="closed">Закрыто</option></select></label>
+      </div>
+      <div className="mini-grid">
+        <div className="metric"><span>В контроле</span><strong>{supplierControlRows.length}</strong></div>
+        <div className="metric"><span>Сумма в контроле</span><strong>{fmt(supplierControlSummary.total)}</strong></div>
+        <div className="metric"><span>Просрочено</span><strong className={supplierControlSummary.overdue > 0 ? 'bad' : 'good'}>{fmt(supplierControlSummary.overdue)}</strong></div>
+        <div className="metric"><span>В работе / ожидает</span><strong>{supplierControlSummary.inProgress} / {supplierControlSummary.waiting}</strong></div>
+      </div>
+      <div className="table-wrap"><table><thead><tr><th>Контроль</th><th>Поставщик / VOEN</th><th>Долг</th><th>Просрочка</th><th>Следующее действие</th><th>Комментарий</th><th>Действия</th></tr></thead><tbody>{supplierControlRows.slice(0, 20).map(row => <tr key={row.key}><td><b className={row.controlPriority === 'critical' ? 'bad' : row.controlPriority === 'warning' ? 'warn' : 'good'}>{supplierPriorityText(row.controlPriority)}</b><br /><span className="hint">{supplierFollowUpStatusText(row.controlStatus)}</span></td><td><b>{row.supplier_name}</b><br /><span className="hint">{row.legal_entity_name}</span></td><td><b>{fmt(row.balance)}</b></td><td className={row.overdueAmount > 0 ? 'bad' : 'good'}>{row.maxOverdueDays ? `${row.maxOverdueDays} дн. · ${fmt(row.overdueAmount)}` : '—'}</td><td>{row.followUp?.next_action_date || row.nearestDue || '—'}</td><td>{row.followUp?.note || <span className="hint">Комментария нет</span>}<br />{row.followUp?.updated_at ? <span className="hint">обновлено {formatDT(row.followUp.updated_at)}</span> : null}</td><td><div className="action-row" style={{gap:6, flexWrap:'wrap'}}><button className="small" onClick={() => updateSupplierFollowUp(row, { status: 'in_progress', priority: row.riskLevel || 'normal' })}>В работу</button><button className="small" onClick={() => updateSupplierFollowUp(row, { status: 'waiting' })}>Ожидает</button><button className="small" onClick={() => promptSupplierNextActionDate(row)}>Дата</button><button className="small" onClick={() => promptSupplierFollowUpNote(row)}>Комментарий</button><button className="small" onClick={() => applyAgingRowToStatement(row)}>Акт</button><button className="small remove" onClick={() => updateSupplierFollowUp(row, { status: 'closed' })}>Закрыто</button></div></td></tr>)}{!supplierControlRows.length && <tr><td colSpan="7" className="good">Активных follow-up нет.</td></tr>}</tbody></table></div>
+      <p className="hint" style={{marginTop:10}}>Этот блок — управленческий контроль оплат. Он хранится локально в интерфейсе, не меняет supplier_ledger, поступления, оплаты или акт сверки.</p>
     </section>
 
     <section className="grid">
