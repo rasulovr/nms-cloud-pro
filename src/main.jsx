@@ -1,4 +1,5 @@
 // RMS v56.1 Supplier Enterprise Hardened - Supplier writes via secure RPC only
+/* RMS v66 Supplier Cash Flow Forecast - supplier payment forecast and cash planning layer */
 /* RMS v63 Supplier Payment Calendar - payment calendar, due reminders and follow-up control persistence */
 /* RMS v43 SUPPLIERS FINAL CLEAN SINGLE E-QAIME FORM - no payment term fields inside purchase e-qaime block */
 import React, { useEffect, useMemo, useRef, useState } from 'react'
@@ -14418,6 +14419,9 @@ function DebtsPayments({ t }) {
   const [supplierAlertsFilter, setSupplierAlertsFilter] = useState('active')
   const [supplierInsightFilter, setSupplierInsightFilter] = useState('priority')
   const [supplierInsightBudget, setSupplierInsightBudget] = useState('5000')
+  const [supplierCashFlowHorizon, setSupplierCashFlowHorizon] = useState('30')
+  const [supplierCashFlowBudget, setSupplierCashFlowBudget] = useState('10000')
+  const [supplierCashFlowScenario, setSupplierCashFlowScenario] = useState('balanced')
   const [supplierCalendarFilter, setSupplierCalendarFilter] = useState('next7')
   const [supplierCalendarPageSize, setSupplierCalendarPageSize] = useState(20)
   const [supplierFollowUps, setSupplierFollowUps] = useState(() => readJsonStorage('rms_supplier_followups_v1', {}))
@@ -15613,6 +15617,88 @@ function DebtsPayments({ t }) {
 
   const pagedSupplierPaymentInsightRows = supplierPaymentInsightRows.slice(0, 15)
 
+
+  function supplierForecastDateFromDays(days) {
+    const d = new Date(`${todayISO()}T00:00:00`)
+    d.setDate(d.getDate() + Math.max(0, parseNum(days)))
+    return d.toISOString().slice(0, 10)
+  }
+
+  const supplierCashFlowForecastRows = useMemo(() => {
+    const horizon = Math.max(7, parseNum(supplierCashFlowHorizon || 30))
+    const budget = Math.max(0, parseNum(supplierCashFlowBudget || 0))
+    let remaining = budget
+    const severityWeight = { critical: 4, high: 3, warning: 2, normal: 1 }
+    const rows = (supplierControlRows || [])
+      .filter(row => parseNum(row.balance) > 0 && row.controlStatus !== 'closed')
+      .map(row => {
+        const balance = parseNum(row.balance)
+        const overdueAmount = parseNum(row.overdueAmount)
+        const dueDate = row.nearestDue || row.followUp?.next_action_date || supplierForecastDateFromDays(30)
+        const daysUntil = supplierCalendarDaysUntil(dueDate)
+        const inHorizon = daysUntil === null || daysUntil <= horizon
+        const next7 = daysUntil !== null && daysUntil >= 0 && daysUntil <= 7
+        const next14 = daysUntil !== null && daysUntil >= 0 && daysUntil <= 14
+        const next30 = daysUntil !== null && daysUntil >= 0 && daysUntil <= 30
+        let scenarioAmount = 0
+        if (supplierCashFlowScenario === 'minimal') {
+          scenarioAmount = overdueAmount > 0 ? overdueAmount : next7 ? Math.min(balance, balance * 0.35) : 0
+        } else if (supplierCashFlowScenario === 'aggressive') {
+          scenarioAmount = inHorizon ? balance : 0
+        } else {
+          scenarioAmount = overdueAmount > 0
+            ? Math.min(balance, overdueAmount)
+            : next7
+              ? Math.min(balance, balance * 0.65)
+              : next14
+                ? Math.min(balance, balance * 0.45)
+                : next30
+                  ? Math.min(balance, balance * 0.25)
+                  : 0
+        }
+        const priority = row.riskLevel === 'critical' || overdueAmount > 0 || parseNum(row.limitOver) > 0
+          ? 'critical'
+          : next7
+            ? 'high'
+            : row.riskLevel === 'warning' || next14
+              ? 'warning'
+              : 'normal'
+        return {
+          ...row,
+          forecastDueDate: dueDate,
+          forecastDaysUntil: daysUntil,
+          forecastPriority: priority,
+          forecastScenarioAmount: Math.min(balance, Math.max(0, scenarioAmount)),
+          forecastBucket: daysUntil === null ? 'nodate' : daysUntil < 0 ? 'overdue' : daysUntil <= 7 ? 'next7' : daysUntil <= 14 ? 'next14' : daysUntil <= 30 ? 'next30' : 'later'
+        }
+      })
+      .filter(row => row.forecastBucket === 'overdue' || row.forecastDaysUntil === null || row.forecastDaysUntil <= horizon)
+      .sort((a, b) => (severityWeight[b.forecastPriority] || 0) - (severityWeight[a.forecastPriority] || 0) || parseNum(a.forecastDaysUntil ?? 9999) - parseNum(b.forecastDaysUntil ?? 9999) || parseNum(b.forecastScenarioAmount) - parseNum(a.forecastScenarioAmount))
+    return rows.map(row => {
+      const planned = Math.min(remaining, parseNum(row.forecastScenarioAmount))
+      remaining = Math.max(0, remaining - planned)
+      return { ...row, forecastPlannedPayment: planned, forecastBudgetRemainingAfter: remaining }
+    })
+  }, [supplierControlRows, supplierCashFlowHorizon, supplierCashFlowBudget, supplierCashFlowScenario])
+
+  const supplierCashFlowForecastSummary = useMemo(() => supplierCashFlowForecastRows.reduce((acc, row) => {
+    const balance = parseNum(row.balance)
+    const scenarioAmount = parseNum(row.forecastScenarioAmount)
+    const planned = parseNum(row.forecastPlannedPayment)
+    acc.totalDebt += balance
+    acc.required += scenarioAmount
+    acc.planned += planned
+    acc.gap += Math.max(0, scenarioAmount - planned)
+    acc.overdue += row.forecastBucket === 'overdue' ? scenarioAmount : 0
+    acc.next7 += row.forecastBucket === 'next7' ? scenarioAmount : 0
+    acc.next14 += row.forecastBucket === 'next14' ? scenarioAmount : 0
+    acc.next30 += row.forecastBucket === 'next30' ? scenarioAmount : 0
+    acc.critical += row.forecastPriority === 'critical' ? 1 : 0
+    return acc
+  }, { totalDebt: 0, required: 0, planned: 0, gap: 0, overdue: 0, next7: 0, next14: 0, next30: 0, critical: 0 }), [supplierCashFlowForecastRows])
+
+  const pagedSupplierCashFlowForecastRows = supplierCashFlowForecastRows.slice(0, 20)
+
   const pagedSupplierAgingRows = supplierAging.filteredRows.slice(0, parseNum(supplierAgingPageSize || 10))
 
   function applyAgingRowToStatement(row) {
@@ -15803,6 +15889,29 @@ function DebtsPayments({ t }) {
       </div>
       <div className="table-wrap"><table><thead><tr><th>Приоритет</th><th>Поставщик / VOEN</th><th>Баланс</th><th>Рекомендация</th><th>Причина</th><th>К оплате</th><th>Действия</th></tr></thead><tbody>{pagedSupplierPaymentInsightRows.map(row => <tr key={`insight-${row.key}`}><td><b className={row.aiPriority === 'critical' ? 'bad' : row.aiPriority === 'high' ? 'warn' : 'good'}>{row.aiPriority === 'critical' ? 'Critical' : row.aiPriority === 'high' ? 'High' : 'Normal'}</b><br /><span className="hint">AI score {row.aiScore}</span></td><td><b>{row.supplier_name}</b><br /><span className="hint">{row.legal_entity_name}</span></td><td><b>{fmt(row.balance)}</b><br /><span className={row.overdueAmount > 0 ? 'bad' : 'hint'}>{row.overdueAmount > 0 ? `просрочено ${fmt(row.overdueAmount)}` : 'активный долг'}</span></td><td>{row.aiRecommendation}<br /><span className="hint">{row.nearestDue ? `ближайший срок ${row.nearestDue}` : 'срок не назначен'}</span></td><td>{row.aiReason}</td><td><b>{fmt(row.aiAllocatedPayment)}</b><br /><span className="hint">рекоменд. {fmt(row.aiSuggestedPayment)}</span></td><td><div className="action-row" style={{gap:6, flexWrap:'wrap'}}><button className="small" onClick={() => updateSupplierFollowUp(row, { status: 'in_progress', priority: row.aiPriority === 'critical' ? 'critical' : row.aiPriority === 'high' ? 'warning' : 'normal' })}>В работу</button><button className="small" onClick={() => promptSupplierNextActionDate(row)}>Дата</button><button className="small" onClick={() => promptSupplierFollowUpNote(row)}>Комментарий</button><button className="small" onClick={() => applyAgingRowToStatement(row)}>Акт</button></div></td></tr>)}{!pagedSupplierPaymentInsightRows.length && <tr><td colSpan="7" className="good">Критичных рекомендаций нет.</td></tr>}</tbody></table></div>
       <p className="hint" style={{marginTop:10}}>AI insights — управленческая приоритизация. Она не создаёт оплату автоматически и не меняет supplier_ledger.</p>
+    </section>
+
+    <section className="card span-2">
+      <div className="card-head"><div><h3>Supplier cash flow forecast</h3><p className="hint">Прогноз нагрузки на cash-flow по поставщикам: просрочки, ближайшие сроки и сценарий планируемой оплаты. Ledger не меняется.</p></div><div className="action-row" style={{gap:8}}><button className="small" onClick={load}>Обновить</button></div></div>
+      <div className="form-grid compact">
+        <label><span>Горизонт прогноза</span><select value={supplierCashFlowHorizon} onChange={e => setSupplierCashFlowHorizon(e.target.value)}><option value="7">7 дней</option><option value="14">14 дней</option><option value="30">30 дней</option><option value="60">60 дней</option></select></label>
+        <label><span>Сценарий оплаты</span><select value={supplierCashFlowScenario} onChange={e => setSupplierCashFlowScenario(e.target.value)}><option value="minimal">Минимальный: только критичное</option><option value="balanced">Сбалансированный</option><option value="aggressive">Закрыть всё в горизонте</option></select></label>
+        <label><span>Доступный бюджет, AZN</span><input inputMode="decimal" value={supplierCashFlowBudget} onChange={e => setSupplierCashFlowBudget(e.target.value)} placeholder="Например 10000" /></label>
+      </div>
+      <div className="mini-grid">
+        <div className="metric"><span>Требуется по сценарию</span><strong>{fmt(supplierCashFlowForecastSummary.required)}</strong></div>
+        <div className="metric"><span>Планируется оплатить</span><strong>{fmt(supplierCashFlowForecastSummary.planned)} / {fmt(parseNum(supplierCashFlowBudget))}</strong></div>
+        <div className="metric"><span>Cash gap</span><strong className={supplierCashFlowForecastSummary.gap > 0 ? 'bad' : 'good'}>{fmt(supplierCashFlowForecastSummary.gap)}</strong></div>
+        <div className="metric"><span>Critical</span><strong className={supplierCashFlowForecastSummary.critical > 0 ? 'bad' : 'good'}>{supplierCashFlowForecastSummary.critical}</strong></div>
+      </div>
+      <div className="mini-grid">
+        <div className="metric"><span>Просрочено</span><strong className={supplierCashFlowForecastSummary.overdue > 0 ? 'bad' : 'good'}>{fmt(supplierCashFlowForecastSummary.overdue)}</strong></div>
+        <div className="metric"><span>0–7 дней</span><strong>{fmt(supplierCashFlowForecastSummary.next7)}</strong></div>
+        <div className="metric"><span>8–14 дней</span><strong>{fmt(supplierCashFlowForecastSummary.next14)}</strong></div>
+        <div className="metric"><span>15–30 дней</span><strong>{fmt(supplierCashFlowForecastSummary.next30)}</strong></div>
+      </div>
+      <div className="table-wrap"><table><thead><tr><th>Приоритет</th><th>Поставщик / VOEN</th><th>Срок</th><th>Баланс</th><th>Сценарий</th><th>В бюджет</th><th>Действия</th></tr></thead><tbody>{pagedSupplierCashFlowForecastRows.map(row => <tr key={`cashflow-${row.key}`}><td><b className={row.forecastPriority === 'critical' ? 'bad' : row.forecastPriority === 'high' ? 'warn' : 'good'}>{row.forecastPriority === 'critical' ? 'Critical' : row.forecastPriority === 'high' ? 'High' : row.forecastPriority === 'warning' ? 'Warning' : 'Normal'}</b><br /><span className="hint">{row.forecastBucket === 'overdue' ? 'просрочено' : row.forecastBucket === 'nodate' ? 'без даты' : row.forecastBucket}</span></td><td><b>{row.supplier_name}</b><br /><span className="hint">{row.legal_entity_name}</span></td><td><b>{row.forecastDueDate || '—'}</b><br /><span className={row.forecastDaysUntil !== null && row.forecastDaysUntil < 0 ? 'bad' : row.forecastDaysUntil !== null && row.forecastDaysUntil <= 7 ? 'warn' : 'hint'}>{supplierCalendarStatusText(row.forecastDaysUntil)}</span></td><td><b>{fmt(row.balance)}</b><br /><span className={row.overdueAmount > 0 ? 'bad' : 'hint'}>{row.overdueAmount > 0 ? `просрочено ${fmt(row.overdueAmount)}` : 'активный долг'}</span></td><td><b>{fmt(row.forecastScenarioAmount)}</b><br /><span className="hint">по выбранному сценарию</span></td><td><b>{fmt(row.forecastPlannedPayment)}</b><br /><span className={row.forecastScenarioAmount > row.forecastPlannedPayment ? 'bad' : 'good'}>{row.forecastScenarioAmount > row.forecastPlannedPayment ? `gap ${fmt(row.forecastScenarioAmount - row.forecastPlannedPayment)}` : 'закрыто бюджетом'}</span></td><td><div className="action-row" style={{gap:6, flexWrap:'wrap'}}><button className="small" onClick={() => updateSupplierFollowUp(row, { status: 'in_progress', priority: row.forecastPriority === 'critical' ? 'critical' : row.forecastPriority === 'high' ? 'warning' : row.riskLevel || 'normal' })}>В работу</button><button className="small" onClick={() => promptSupplierNextActionDate(row)}>Дата</button><button className="small" onClick={() => promptSupplierFollowUpNote(row)}>Комментарий</button><button className="small" onClick={() => applyAgingRowToStatement(row)}>Акт</button></div></td></tr>)}{!pagedSupplierCashFlowForecastRows.length && <tr><td colSpan="7" className="good">Нет платежей в выбранном горизонте.</td></tr>}</tbody></table></div>
+      <p className="hint" style={{marginTop:10}}>Cash flow forecast — управленческая модель. Она не создаёт оплату автоматически и не меняет supplier_ledger.</p>
     </section>
 
     <section className="card span-2">
