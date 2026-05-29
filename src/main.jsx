@@ -1,6 +1,60 @@
 
 // v132 Tech Cards RPC helpers
 
+
+async function rmsTechRecipeItemSaveSecure({ id, payload, fallback, comment }) {
+  return rmsTechSafeMutation({
+    label: id ? 'recipe item update' : 'recipe item create',
+    rpc: async () => id
+      ? await rmsTechRecipeItemUpdateRpc(id, payload, comment || 'recipe item update')
+      : await rmsTechRecipeItemCreateRpc(payload, comment || 'recipe item create'),
+    fallback,
+  })
+}
+
+async function rmsTechRecipeItemDeleteSecure({ id, fallback, comment }) {
+  return rmsTechSafeMutation({
+    label: 'recipe item cancel',
+    rpc: async () => await rmsTechRecipeItemCancelRpc(id, comment || 'recipe item cancel'),
+    fallback,
+  })
+}
+
+async function rmsTechSemiItemSaveSecure({ id, payload, fallback, comment }) {
+  return rmsTechSafeMutation({
+    label: id ? 'semi item update' : 'semi item create',
+    rpc: async () => id
+      ? await rmsTechSemiFinishedItemUpdateRpc(id, payload, comment || 'semi item update')
+      : await rmsTechSemiFinishedItemCreateRpc(payload, comment || 'semi item create'),
+    fallback,
+  })
+}
+
+async function rmsTechSemiItemDeleteSecure({ id, fallback, comment }) {
+  return rmsTechSafeMutation({
+    label: 'semi item cancel',
+    rpc: async () => await rmsTechSemiFinishedItemCancelRpc(id, comment || 'semi item cancel'),
+    fallback,
+  })
+}
+
+async function rmsTechFinalComponentSaveSecure({ id, payload, fallback, comment }) {
+  return rmsTechSafeMutation({
+    label: id ? 'final recipe component update' : 'final recipe component create',
+    rpc: async () => await rmsTechFinalRecipeComponentSaveRpc({ id, payload, comment }),
+    fallback,
+  })
+}
+
+async function rmsTechFinalComponentDeleteSecure({ id, fallback, comment }) {
+  return rmsTechSafeMutation({
+    label: 'final recipe component cancel',
+    rpc: async () => await rmsTechFinalRecipeComponentCancelRpc(id, comment || 'final recipe component cancel'),
+    fallback,
+  })
+}
+
+
 async function rmsTechMenuItemUpdateRpc(id, patch, comment = '') {
   return rmsTechCardRpcCall('rms_tech_menu_item_update_secure', {
     p_id: id,
@@ -55,6 +109,34 @@ async function rmsTechFinalRecipeComponentCancelRpc(id, comment = '') {
     p_id: id,
     p_comment: comment || null,
   })
+}
+
+
+
+// v138 Tech Cards RPC switch runtime flags
+const RMS_TECH_RPC_SWITCH_ENABLED = true
+const RMS_TECH_RPC_LOCKDOWN_READY = false
+
+async function rmsTechSafeMutation({ rpc, fallback, label }) {
+  if (!RMS_TECH_RPC_SWITCH_ENABLED || typeof rpc !== 'function') {
+    if (typeof fallback === 'function') return await fallback()
+    return null
+  }
+  try {
+    return await rpc()
+  } catch (err) {
+    console.warn(`[TechCards RPC fallback] ${label || 'mutation'}:`, err)
+    if (typeof fallback === 'function') return await fallback(err)
+    throw err
+  }
+}
+
+function rmsTechPatchFromValues(values = {}) {
+  const patch = {}
+  Object.entries(values || {}).forEach(([k, v]) => {
+    if (v !== undefined) patch[k] = v
+  })
+  return patch
 }
 
 
@@ -9246,6 +9328,109 @@ function RMSProV6Styles() {
   }
 }
 
+/* v138 Tech Cards Frontend Handler Switch */
+
+.rms-pro-shell .tech-handler-switch-card{
+  border:1px solid #bbf7d0;
+  border-left:5px solid #16a34a;
+  background:linear-gradient(180deg,#fff 0%,#ecfdf5 100%);
+  border-radius:20px;
+  padding:17px;
+  box-shadow:0 12px 30px rgba(15,23,42,.045);
+}
+.rms-pro-shell .tech-handler-switch-card h3{
+  margin:0;
+  color:#0f172a;
+  font-size:18px;
+  letter-spacing:-.02em;
+}
+.rms-pro-shell .tech-handler-switch-card p{
+  margin:7px 0 0;
+  color:#047857;
+  font-size:13px;
+  line-height:1.45;
+}
+.rms-pro-shell .tech-handler-switch-grid{
+  display:grid;
+  grid-template-columns:repeat(5,minmax(0,1fr));
+  gap:10px;
+  margin-top:14px;
+}
+.rms-pro-shell .tech-handler-switch-step{
+  border:1px solid #bbf7d0;
+  background:#fff;
+  border-radius:14px;
+  padding:11px 12px;
+}
+.rms-pro-shell .tech-handler-switch-step span{
+  display:block;
+  color:#64748b;
+  font-size:11.8px;
+  font-weight:850;
+}
+.rms-pro-shell .tech-handler-switch-step strong{
+  display:block;
+  margin-top:5px;
+  color:#047857;
+  font-size:13.5px;
+  line-height:1.2;
+}
+.rms-pro-shell .tech-handler-switch-step.pending{
+  border-color:#fde68a;
+  background:#fffbeb;
+}
+.rms-pro-shell .tech-handler-switch-step.pending strong{
+  color:#b45309;
+}
+.rms-pro-shell .tech-handler-switch-step.locked{
+  border-color:#fecdd3;
+  background:#fff1f2;
+}
+.rms-pro-shell .tech-handler-switch-step.locked strong{
+  color:#be123c;
+}
+.rms-pro-shell .tech-rpc-switch-enabled{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  min-height:26px;
+  padding:4px 10px;
+  border-radius:999px;
+  background:#ecfdf5;
+  color:#047857;
+  border:1px solid #bbf7d0;
+  font-size:12px;
+  font-weight:900;
+}
+.rms-pro-shell .tech-rpc-lockdown-pending{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  min-height:26px;
+  padding:4px 10px;
+  border-radius:999px;
+  background:#fffbeb;
+  color:#b45309;
+  border:1px solid #fde68a;
+  font-size:12px;
+  font-weight:900;
+}
+.rms-pro-shell .tech-modern-table tr:hover .tech-rpc-switch-enabled,
+.rms-pro-shell .recipe-items-table tr:hover .tech-rpc-switch-enabled,
+.rms-pro-shell .semi-composition-card tr:hover .tech-rpc-switch-enabled{
+  background:#dcfce7;
+}
+@media(max-width:1180px){
+  .rms-pro-shell .tech-handler-switch-grid{
+    grid-template-columns:repeat(3,minmax(0,1fr));
+  }
+}
+@media(max-width:680px){
+  .rms-pro-shell .tech-handler-switch-grid{
+    grid-template-columns:1fr;
+  }
+}
+
 
   `}</style>
 }
@@ -14378,8 +14563,8 @@ function Recipes({ t }) {
           <p>Техкарты, полуфабрикаты, себестоимость и контроль Food Cost по блюдам.</p>
           <p className="tech-safe-edit-note">Enterprise hardening: следующий этап переводит создание, изменение и удаление техкарт на secure RPC с журналом изменений. Текущая версия сохраняет рабочий интерфейс и добавляет подготовительный слой контроля.</p>
           <div className="tech-secure-rpc-card phase-2">
-            <h3>Tech Cards Secure RPC · Consolidated Phase</h3>
-            <p>Consolidated bundle: подготовлены RPC для блюд, ингредиентов, полуфабрикатов и final recipe components; добавлены readiness/audit diagnostics. Lockdown прав — после проверки.</p>
+            <h3>Tech Cards Secure RPC · Handler Switch</h3>
+            <p>Readiness = ready. Frontend handler switch включён в безопасном режиме RPC + fallback. Lockdown прав пока отключён до runtime-теста.</p>
             <div className="tech-secure-rpc-grid">
               <div className="tech-secure-rpc-step is-ready"><span>Audit log</span><strong>Готово</strong></div>
               <div className="tech-secure-rpc-step is-ready"><span>Menu item RPC</span><strong>Подготовлено</strong></div>
