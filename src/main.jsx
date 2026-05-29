@@ -4321,6 +4321,154 @@ function RMSProV6Styles() {
   .rms-pro-shell .revenue-modal-actions{padding:10px 14px 14px;flex-wrap:wrap;justify-content:flex-start;}
 }
 
+/* v103 RMS Full UX Polish Bundle */
+.rms-pro-shell .topbar,
+.rms-pro-shell .card-head{
+  border-radius: 18px;
+}
+.rms-pro-shell .topbar{
+  padding: 18px 20px;
+}
+.rms-pro-shell .topbar h2{
+  font-size: clamp(22px, 2vw, 30px);
+  line-height: 1.12;
+  margin-bottom: 4px;
+}
+.rms-pro-shell .topbar p,
+.rms-pro-shell .card-head p,
+.rms-pro-shell .hint{
+  line-height: 1.38;
+}
+.rms-pro-shell .card{
+  border-color: rgba(226,232,240,.92);
+  box-shadow: 0 12px 34px rgba(15,23,42,.045);
+}
+.rms-pro-shell .card:hover{
+  box-shadow: 0 14px 38px rgba(15,23,42,.06);
+}
+.rms-pro-shell .soft-card,
+.rms-pro-shell .kpi-card,
+.rms-pro-shell .finance-exec-card,
+.rms-pro-shell .revenue-day-kpi > div{
+  border-radius: 16px;
+  border-color: rgba(226,232,240,.92);
+}
+.rms-pro-shell .table-wrap{
+  border-radius: 16px;
+  border-color: rgba(226,232,240,.92);
+}
+.rms-pro-shell table th{
+  font-size: 12px;
+  letter-spacing: .01em;
+  color: #475569;
+  background: #f8fafc;
+}
+.rms-pro-shell table td{
+  font-size: 14px;
+}
+.rms-pro-shell table th,
+.rms-pro-shell table td{
+  padding: 11px 12px;
+}
+.rms-pro-shell table tbody tr:hover{
+  background: rgba(248,250,252,.75);
+}
+.rms-pro-shell .action-row{
+  gap: 8px;
+}
+.rms-pro-shell button,
+.rms-pro-shell .btn,
+.rms-pro-shell .small{
+  transition: background .16s ease, border-color .16s ease, box-shadow .16s ease, transform .08s ease;
+}
+.rms-pro-shell button:active,
+.rms-pro-shell .btn:active,
+.rms-pro-shell .small:active{
+  transform: translateY(1px);
+}
+.rms-pro-shell button.small,
+.rms-pro-shell .small{
+  min-height: 34px;
+  padding: 7px 12px;
+  border-radius: 11px;
+}
+.rms-pro-shell button.primary,
+.rms-pro-shell .primary{
+  box-shadow: 0 8px 18px rgba(37,99,235,.14);
+}
+.rms-pro-shell button.remove,
+.rms-pro-shell .small.remove,
+.rms-pro-shell .danger{
+  background: #fff1f2;
+  border-color: #fecdd3;
+  color: #be123c;
+}
+.rms-pro-shell button.remove:hover,
+.rms-pro-shell .small.remove:hover,
+.rms-pro-shell .danger:hover{
+  background: #ffe4e6;
+  border-color: #fda4af;
+}
+.rms-pro-shell input,
+.rms-pro-shell select,
+.rms-pro-shell textarea{
+  border-radius: 13px;
+  border-color: rgba(203,213,225,.95);
+}
+.rms-pro-shell input:focus,
+.rms-pro-shell select:focus,
+.rms-pro-shell textarea:focus{
+  outline: none;
+  border-color: rgba(59,130,246,.75);
+  box-shadow: 0 0 0 4px rgba(59,130,246,.10);
+}
+.rms-pro-shell .supplier-modal-panel{
+  background: #fff;
+}
+.rms-pro-shell .supplier-modal-head{
+  min-height: 70px;
+}
+.rms-pro-shell .supplier-modal-head p{
+  margin-top: 4px;
+}
+.rms-pro-shell .supplier-modal-panel .table-wrap{
+  margin-top: 14px;
+}
+.rms-pro-shell .supplier-modal-panel table th,
+.rms-pro-shell .supplier-modal-panel table td{
+  padding: 10px 12px;
+}
+.rms-pro-shell .supplier-modal-panel .form-grid{
+  padding-top: 16px;
+}
+.rms-pro-shell .finance-report-actions,
+.rms-pro-shell .revenue-top-actions{
+  align-items: center;
+  flex-wrap: wrap;
+}
+.rms-pro-shell .finance-report-actions button,
+.rms-pro-shell .revenue-top-actions button{
+  min-height: 36px;
+}
+.rms-pro-shell .badge,
+.rms-pro-shell .status-pill{
+  border-radius: 999px;
+}
+.rms-pro-shell .diagnostics-card,
+.rms-pro-shell .security-diagnostics-card{
+  background: #fff;
+  border-left-width: 3px;
+}
+@media(max-width:780px){
+  .rms-pro-shell .topbar{padding:16px;}
+  .rms-pro-shell .card{border-radius:16px;}
+  .rms-pro-shell table th,
+  .rms-pro-shell table td{padding:10px 10px;}
+  .rms-pro-shell .action-row{gap:6px;}
+  .rms-pro-shell button.small,
+  .rms-pro-shell .small{padding:7px 10px;}
+}
+
 
   `}</style>
 }
@@ -12809,7 +12957,7 @@ function Salaries({ t, view = 'employees', isAdmin = false }) {
             </div>
             <div className="table-wrap">
               <table>
-                <thead><tr><th>Сотрудник</th><th>Должность</th><th>Операция</th><th>Сумма</th><th>Способ</th><th>Комментарий</th><th>Остаток прошлого месяца</th><th>Ред.</th></tr></thead>
+                <thead><tr><th>Сотрудник</th><th>Должность</th><th>Операция</th><th>Сумма</th><th>Способ</th><th>Комментарий</th><th>Остаток прошлого месяца</th><th>Изменить</th></tr></thead>
                 <tbody>
                   {shown.map(item => {
                     const r = item.row
@@ -12833,7 +12981,7 @@ function Salaries({ t, view = 'employees', isAdmin = false }) {
                         {txIdx === 0 && <td rowSpan={txns.length} className={item.openingDebt > 0 ? 'bad' : ''}>{hidden ? maskedMoney : fmt(item.openingDebt)}</td>}
                         <td>{txn.txn_type === 'empty' ? '—' : isEditing
                           ? <div className="action-row"><button className="small primary" onClick={() => updateSalaryTransaction(txn, txn.txn_type === 'advance' ? { amount: editingSalaryTxn.amount, comment: editingSalaryTxn.comment } : { amount: editingSalaryTxn.amount, method: editingSalaryTxn.method, comment: editingSalaryTxn.comment })}>Сохранить</button><button className="ghost small" onClick={() => setEditingSalaryTxn(null)}>Отмена</button></div>
-                          : <button className="ghost small" onClick={() => setEditingSalaryTxn({ txn_id: txn.txn_id, amount: String(txn.amount || ''), method: txn.method || 'cash', comment: txn.comment || '' })}>Ред.</button>}</td>
+                          : <button className="ghost small" onClick={() => setEditingSalaryTxn({ txn_id: txn.txn_id, amount: String(txn.amount || ''), method: txn.method || 'cash', comment: txn.comment || '' })}>Изменить</button>}</td>
                       </tr>
                     })
                   })}
