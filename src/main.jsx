@@ -5384,6 +5384,362 @@ function RMSProV6Styles() {
   }
 }
 
+/* v109 RMS Final Layout & Interaction Polish Bundle */
+
+/* Global visual consistency */
+.rms-pro-shell{
+  --rms-shadow-soft: 0 10px 30px rgba(15,23,42,.045);
+  --rms-shadow-modal: 0 24px 72px rgba(15,23,42,.16);
+}
+.rms-pro-shell .card,
+.rms-pro-shell .topbar,
+.rms-pro-shell .soft-card,
+.rms-pro-shell .kpi-card{
+  box-shadow: var(--rms-shadow-soft);
+}
+
+/* Reduce top/bottom overload */
+.rms-pro-shell .topbar{
+  padding-top: 16px;
+  padding-bottom: 16px;
+}
+.rms-pro-shell .card{
+  padding-top: 18px;
+  padding-bottom: 18px;
+}
+.rms-pro-shell .card-head{
+  padding-bottom: 10px;
+}
+
+/* More stable two-column cards */
+.rms-pro-shell .span-2{
+  min-width: 0;
+}
+.rms-pro-shell .grid,
+.rms-pro-shell .cards-grid,
+.rms-pro-shell .form-grid{
+  min-width: 0;
+}
+
+/* Action bars: professional and predictable */
+.rms-pro-shell .action-row{
+  align-items: center;
+}
+.rms-pro-shell .action-row button{
+  white-space: nowrap;
+}
+.rms-pro-shell .topbar .action-row,
+.rms-pro-shell .card-head .action-row{
+  justify-content: flex-end;
+}
+.rms-pro-shell .table-wrap .action-row{
+  min-width: max-content;
+}
+
+/* Smaller technical helper text */
+.rms-pro-shell .hint,
+.rms-pro-shell small{
+  font-size: 13px;
+}
+.rms-pro-shell p.hint{
+  margin-bottom: 0;
+}
+
+/* Tables: final density pass */
+.rms-pro-shell .table-wrap{
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.rms-pro-shell .table-wrap th{
+  user-select: none;
+}
+.rms-pro-shell .table-wrap td,
+.rms-pro-shell .table-wrap th{
+  line-height: 1.34;
+}
+.rms-pro-shell .table-wrap td:first-child b{
+  letter-spacing: -.01em;
+}
+.rms-pro-shell .table-wrap .small{
+  min-height: 31px;
+}
+
+/* Deleted / cancelled rows should be clear but not ugly */
+.rms-pro-shell tr[style*="line-through"],
+.rms-pro-shell .deleted-row,
+.rms-pro-shell .cancelled-row{
+  opacity: .62;
+  background: #f8fafc !important;
+}
+.rms-pro-shell tr[style*="line-through"] td,
+.rms-pro-shell .deleted-row td,
+.rms-pro-shell .cancelled-row td{
+  color: #64748b;
+}
+
+/* Modal final pass */
+.rms-pro-shell .supplier-modal-panel{
+  box-shadow: var(--rms-shadow-modal);
+  animation: rmsModalIn .12s ease-out;
+}
+@keyframes rmsModalIn{
+  from{opacity:.86; transform: translateX(-50%) translateY(6px);}
+  to{opacity:1; transform: translateX(-50%) translateY(0);}
+}
+.rms-pro-shell .supplier-modal-panel::before{
+  animation: rmsBackdropIn .12s ease-out;
+}
+@keyframes rmsBackdropIn{
+  from{opacity:0;}
+  to{opacity:1;}
+}
+.rms-pro-shell .supplier-modal-head{
+  min-height: 64px;
+}
+.rms-pro-shell .supplier-modal-panel .card-head{
+  border-bottom: 1px solid rgba(226,232,240,.7);
+}
+.rms-pro-shell .supplier-modal-panel .table-wrap{
+  border-radius: 14px;
+}
+
+/* Forms inside modals and cards */
+.rms-pro-shell .supplier-modal-panel input,
+.rms-pro-shell .supplier-modal-panel select,
+.rms-pro-shell .supplier-modal-panel textarea{
+  min-height: 40px;
+}
+.rms-pro-shell .form-grid .action-row{
+  align-self: end;
+}
+
+/* Export and print buttons: less dominant */
+.rms-pro-shell .finance-report-actions button,
+.rms-pro-shell .revenue-top-actions button,
+.rms-pro-shell .export-actions button,
+.rms-pro-shell .report-actions button{
+  min-width: 72px;
+}
+
+/* Better mobile behavior */
+@media(max-width:900px){
+  .rms-pro-shell .topbar .action-row,
+  .rms-pro-shell .card-head .action-row{
+    justify-content: flex-start;
+  }
+  .rms-pro-shell .topbar{
+    gap: 12px;
+  }
+}
+@media(max-width:620px){
+  .rms-pro-shell .card{
+    padding: 14px;
+  }
+  .rms-pro-shell .topbar{
+    padding: 14px;
+  }
+  .rms-pro-shell .supplier-modal-panel{
+    border-radius: 16px;
+  }
+  .rms-pro-shell .supplier-modal-panel .table-wrap table{
+    min-width: 720px;
+  }
+  .rms-pro-shell .action-row button{
+    min-height: 34px;
+  }
+}
+
+/* Avoid heavy animation in reduced motion mode */
+@media (prefers-reduced-motion: reduce){
+  .rms-pro-shell .supplier-modal-panel,
+  .rms-pro-shell .supplier-modal-panel::before{
+    animation: none !important;
+  }
+}
+
+/* v110 RMS Modal Clarity & Action Footer Bundle */
+
+/* Make modal feel like a real window, not a floating page section */
+.rms-pro-shell .supplier-modal-panel{
+  top: 36px;
+  width: min(1080px, calc(100vw - 72px));
+  max-height: calc(100vh - 72px);
+  background: #ffffff;
+  border: 1px solid rgba(203,213,225,.95);
+  box-shadow: 0 28px 86px rgba(15,23,42,.22);
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+.rms-pro-shell .revenue-modal-panel{
+  width: min(860px, calc(100vw - 72px));
+}
+.rms-pro-shell .revenue-log-modal-panel,
+.rms-pro-shell .finance-ai-modal-panel,
+.rms-pro-shell .finance-forecast-modal-panel{
+  width: min(1080px, calc(100vw - 72px));
+}
+
+/* Light, visible backdrop: not dark, but clearly separates page and popup */
+.rms-pro-shell .supplier-modal-panel::before{
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: rgba(241,245,249,.86);
+  backdrop-filter: blur(7px) saturate(1.05);
+}
+
+/* Cleaner modal header */
+.rms-pro-shell .supplier-modal-head{
+  min-height: 72px;
+  padding: 18px 20px;
+  background: rgba(255,255,255,.99);
+  border-bottom: 1px solid rgba(226,232,240,.96);
+  box-shadow: 0 8px 22px rgba(15,23,42,.045);
+}
+.rms-pro-shell .supplier-modal-head h3{
+  font-size: 22px;
+  line-height: 1.15;
+}
+.rms-pro-shell .supplier-modal-head p{
+  margin-top: 6px;
+  max-width: 760px;
+}
+
+/* X button more like a desktop window close control */
+.rms-pro-shell .supplier-modal-x{
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  min-height: 40px;
+  border-radius: 13px;
+  background: #ffffff;
+  border: 1px solid rgba(203,213,225,.95);
+  box-shadow: 0 8px 20px rgba(15,23,42,.08);
+}
+.rms-pro-shell .supplier-modal-x:hover{
+  background: #f1f5f9;
+  border-color: rgba(148,163,184,.95);
+}
+
+/* Modal body spacing */
+.rms-pro-shell .supplier-modal-panel > .form-grid,
+.rms-pro-shell .supplier-modal-panel > .table-wrap,
+.rms-pro-shell .supplier-modal-panel > div:not(.supplier-modal-head){
+  margin-left: 24px;
+  margin-right: 24px;
+}
+.rms-pro-shell .revenue-modal-body{
+  padding: 22px 24px;
+  background: #fff;
+}
+
+/* Form layout inside modal: less stretched, more readable */
+.rms-pro-shell .revenue-modal-panel .form-grid,
+.rms-pro-shell .supplier-modal-panel .form-grid{
+  display: grid;
+  grid-template-columns: repeat(3, minmax(180px, 1fr));
+  gap: 16px 18px;
+  align-items: end;
+}
+.rms-pro-shell .revenue-modal-panel textarea,
+.rms-pro-shell .supplier-modal-panel textarea{
+  min-height: 48px;
+}
+.rms-pro-shell .revenue-modal-panel input,
+.rms-pro-shell .revenue-modal-panel select,
+.rms-pro-shell .revenue-modal-panel textarea,
+.rms-pro-shell .supplier-modal-panel input,
+.rms-pro-shell .supplier-modal-panel select,
+.rms-pro-shell .supplier-modal-panel textarea{
+  background: #fff;
+}
+
+/* Sticky bottom actions so Save/Delete never disappear below scroll */
+.rms-pro-shell .revenue-modal-actions,
+.rms-pro-shell .supplier-modal-panel > .action-row:last-child{
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  padding: 14px 24px 18px;
+  background: linear-gradient(180deg, rgba(255,255,255,.72) 0%, #fff 38%, #fff 100%);
+  border-top: 1px solid rgba(226,232,240,.95);
+  justify-content: flex-end;
+  box-shadow: 0 -10px 24px rgba(15,23,42,.045);
+}
+.rms-pro-shell .revenue-modal-actions button,
+.rms-pro-shell .supplier-modal-panel > .action-row:last-child button{
+  min-width: 96px;
+}
+
+/* Prevent underlying page from visually competing with modal */
+.rms-pro-shell .supplier-modal-panel ~ .card,
+.rms-pro-shell .supplier-modal-panel ~ .soft-card{
+  opacity: .96;
+}
+
+/* Modal tables */
+.rms-pro-shell .supplier-modal-panel .table-wrap{
+  margin-top: 16px;
+  margin-bottom: 18px;
+  border-radius: 16px;
+  max-width: calc(100% - 48px);
+}
+.rms-pro-shell .supplier-modal-panel .table-wrap table{
+  min-width: 820px;
+}
+.rms-pro-shell .supplier-modal-panel .table-wrap th,
+.rms-pro-shell .supplier-modal-panel .table-wrap td{
+  padding: 10px 12px;
+}
+
+/* Mobile / narrow screen modal tuning */
+@media(max-width:980px){
+  .rms-pro-shell .supplier-modal-panel,
+  .rms-pro-shell .revenue-modal-panel,
+  .rms-pro-shell .revenue-log-modal-panel,
+  .rms-pro-shell .finance-ai-modal-panel,
+  .rms-pro-shell .finance-forecast-modal-panel{
+    top: 14px;
+    width: calc(100vw - 22px);
+    max-height: calc(100vh - 28px);
+    border-radius: 18px;
+  }
+  .rms-pro-shell .revenue-modal-panel .form-grid,
+  .rms-pro-shell .supplier-modal-panel .form-grid{
+    grid-template-columns: repeat(2, minmax(180px, 1fr));
+  }
+  .rms-pro-shell .supplier-modal-panel > .form-grid,
+  .rms-pro-shell .supplier-modal-panel > .table-wrap,
+  .rms-pro-shell .supplier-modal-panel > div:not(.supplier-modal-head){
+    margin-left: 16px;
+    margin-right: 16px;
+  }
+  .rms-pro-shell .supplier-modal-panel .table-wrap{
+    max-width: calc(100% - 32px);
+  }
+}
+@media(max-width:620px){
+  .rms-pro-shell .revenue-modal-panel .form-grid,
+  .rms-pro-shell .supplier-modal-panel .form-grid{
+    grid-template-columns: 1fr;
+  }
+  .rms-pro-shell .supplier-modal-head{
+    padding: 14px 15px;
+  }
+  .rms-pro-shell .supplier-modal-head h3{
+    font-size: 19px;
+  }
+  .rms-pro-shell .revenue-modal-actions,
+  .rms-pro-shell .supplier-modal-panel > .action-row:last-child{
+    padding: 12px 15px 15px;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+}
+
 
   `}</style>
 }
