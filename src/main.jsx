@@ -5843,6 +5843,56 @@ function RMSProV6Styles() {
   }
 }
 
+/* v112 RMS Hard Fixed Modal Footer */
+
+/* Force edit modal footers to be visible on screen */
+.rms-pro-shell .revenue-modal-panel{
+  position: fixed !important;
+}
+.rms-pro-shell .revenue-modal-panel .revenue-modal-body{
+  padding-bottom: 120px !important;
+}
+.rms-pro-shell .revenue-modal-panel .revenue-modal-actions{
+  position: fixed !important;
+  left: 50% !important;
+  transform: translateX(-50%);
+  bottom: 18px !important;
+  z-index: 1305 !important;
+  width: min(820px, calc(100vw - 64px));
+  display: flex !important;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 12px 18px 14px !important;
+  background: rgba(255,255,255,.98) !important;
+  border: 1px solid rgba(226,232,240,.96);
+  border-radius: 16px;
+  box-shadow: 0 16px 40px rgba(15,23,42,.14);
+}
+.rms-pro-shell .revenue-modal-panel .revenue-modal-actions button{
+  min-width: 96px;
+}
+@media(max-width:980px){
+  .rms-pro-shell .revenue-modal-panel .revenue-modal-actions{
+    width: calc(100vw - 22px);
+    bottom: 10px !important;
+  }
+  .rms-pro-shell .revenue-modal-panel .revenue-modal-body{
+    padding-bottom: 132px !important;
+  }
+}
+@media(max-width:620px){
+  .rms-pro-shell .revenue-modal-panel .revenue-modal-actions{
+    justify-content: flex-start;
+    gap: 8px;
+    padding: 10px 12px 12px !important;
+  }
+  .rms-pro-shell .revenue-modal-panel .revenue-modal-actions button{
+    min-width: 88px;
+  }
+}
+
 
   `}</style>
 }
