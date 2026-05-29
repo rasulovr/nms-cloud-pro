@@ -5740,6 +5740,109 @@ function RMSProV6Styles() {
   }
 }
 
+/* v111 RMS Modal Footer Visibility Fix */
+
+/* Core modal layout: fixed header + scrollable body + always-visible footer */
+.rms-pro-shell .supplier-modal-panel{
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.rms-pro-shell .supplier-modal-head{
+  flex: 0 0 auto;
+}
+.rms-pro-shell .revenue-modal-body{
+  flex: 1 1 auto;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-bottom: 104px !important; /* reserve space for footer buttons */
+}
+
+/* Catch all likely footer/action wrappers inside modals */
+.rms-pro-shell .supplier-modal-panel .revenue-modal-actions,
+.rms-pro-shell .supplier-modal-panel .modal-actions,
+.rms-pro-shell .supplier-modal-panel .edit-actions,
+.rms-pro-shell .supplier-modal-panel .popup-actions,
+.rms-pro-shell .supplier-modal-panel .form-actions,
+.rms-pro-shell .supplier-modal-panel > .action-row:last-child{
+  position: sticky !important;
+  bottom: 0 !important;
+  left: 0;
+  right: 0;
+  z-index: 9;
+  display: flex !important;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 14px 24px 18px !important;
+  margin: 0 !important;
+  background: linear-gradient(180deg, rgba(255,255,255,.72) 0%, rgba(255,255,255,.97) 24%, #ffffff 100%) !important;
+  border-top: 1px solid rgba(226,232,240,.96);
+  box-shadow: 0 -12px 26px rgba(15,23,42,.05);
+}
+
+/* Buttons in footer must stay visible and usable */
+.rms-pro-shell .supplier-modal-panel .revenue-modal-actions button,
+.rms-pro-shell .supplier-modal-panel .modal-actions button,
+.rms-pro-shell .supplier-modal-panel .edit-actions button,
+.rms-pro-shell .supplier-modal-panel .popup-actions button,
+.rms-pro-shell .supplier-modal-panel .form-actions button,
+.rms-pro-shell .supplier-modal-panel > .action-row:last-child button{
+  min-width: 96px;
+  min-height: 38px;
+  white-space: nowrap;
+}
+
+/* Make modal slightly shorter so footer fits better in viewport */
+.rms-pro-shell .supplier-modal-panel{
+  top: 24px;
+  max-height: calc(100vh - 48px);
+}
+.rms-pro-shell .revenue-modal-panel{
+  width: min(820px, calc(100vw - 64px));
+}
+
+/* Tighter modal form so footer doesn't get pushed out */
+.rms-pro-shell .revenue-modal-panel .form-grid,
+.rms-pro-shell .supplier-modal-panel .form-grid{
+  gap: 14px 16px;
+}
+.rms-pro-shell .revenue-modal-panel textarea,
+.rms-pro-shell .supplier-modal-panel textarea{
+  min-height: 44px;
+}
+
+/* Make body container visually stop before footer */
+.rms-pro-shell .supplier-modal-panel .table-wrap:last-child,
+.rms-pro-shell .supplier-modal-panel .form-grid:last-child{
+  margin-bottom: 10px;
+}
+
+@media(max-width:980px){
+  .rms-pro-shell .supplier-modal-panel{
+    top: 10px;
+    max-height: calc(100vh - 20px);
+  }
+  .rms-pro-shell .revenue-modal-body{
+    padding-bottom: 112px !important;
+  }
+}
+@media(max-width:620px){
+  .rms-pro-shell .supplier-modal-panel .revenue-modal-actions,
+  .rms-pro-shell .supplier-modal-panel .modal-actions,
+  .rms-pro-shell .supplier-modal-panel .edit-actions,
+  .rms-pro-shell .supplier-modal-panel .popup-actions,
+  .rms-pro-shell .supplier-modal-panel .form-actions,
+  .rms-pro-shell .supplier-modal-panel > .action-row:last-child{
+    justify-content: flex-start;
+    padding: 12px 14px 14px !important;
+  }
+  .rms-pro-shell .revenue-modal-body{
+    padding-bottom: 122px !important;
+  }
+}
+
 
   `}</style>
 }
