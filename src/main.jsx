@@ -7465,6 +7465,189 @@ function RMSProV6Styles() {
   }
 }
 
+/* v125 Dashboard Business Signals & Navigation Pack */
+
+/* Dashboard executive layout */
+.rms-pro-shell .dashboard-root,
+.rms-pro-shell .dashboard-section{
+  min-width:0;
+}
+.rms-pro-shell .dashboard-executive-card,
+.rms-pro-shell .executive-summary-card{
+  position:relative;
+  overflow:hidden;
+}
+.rms-pro-shell .dashboard-executive-card::before,
+.rms-pro-shell .executive-summary-card::before{
+  content:'';
+  position:absolute;
+  inset:0 0 auto 0;
+  height:4px;
+  background:linear-gradient(90deg,#2563eb,#22c55e,#f59e0b);
+  opacity:.72;
+}
+
+/* Business signal cards */
+.rms-pro-shell .business-signal-grid{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:12px;
+}
+.rms-pro-shell .business-signal-card{
+  border:1px solid rgba(226,232,240,.96);
+  background:#fff;
+  border-radius:16px;
+  padding:14px 15px;
+  box-shadow:0 8px 22px rgba(15,23,42,.035);
+}
+.rms-pro-shell .business-signal-card strong{
+  display:block;
+  margin-top:4px;
+  color:#0f172a;
+  font-size:18px;
+  line-height:1.16;
+  font-variant-numeric:tabular-nums;
+}
+.rms-pro-shell .business-signal-card span{
+  color:#64748b;
+  font-size:12.5px;
+  font-weight:850;
+}
+.rms-pro-shell .business-signal-card p{
+  margin:8px 0 0;
+  color:#64748b;
+  font-size:13px;
+  line-height:1.4;
+}
+.rms-pro-shell .business-signal-card.good{
+  border-color:#bbf7d0;
+  background:linear-gradient(180deg,#fff 0%,#ecfdf5 100%);
+}
+.rms-pro-shell .business-signal-card.warn{
+  border-color:#fde68a;
+  background:linear-gradient(180deg,#fff 0%,#fffbeb 100%);
+}
+.rms-pro-shell .business-signal-card.bad{
+  border-color:#fecdd3;
+  background:linear-gradient(180deg,#fff 0%,#fff1f2 100%);
+}
+
+/* Executive quick navigation */
+.rms-pro-shell .executive-nav,
+.rms-pro-shell .dashboard-quick-actions{
+  display:flex;
+  align-items:center;
+  flex-wrap:wrap;
+  gap:8px;
+}
+.rms-pro-shell .executive-nav button,
+.rms-pro-shell .dashboard-quick-actions button{
+  min-height:34px;
+  border-radius:10px;
+  font-weight:850;
+  background:#fff;
+  border:1px solid rgba(203,213,225,.95);
+  color:#334155;
+}
+.rms-pro-shell .executive-nav button:hover,
+.rms-pro-shell .dashboard-quick-actions button:hover{
+  background:#f8fafc;
+  border-color:rgba(148,163,184,.95);
+}
+
+/* Dashboard tables as compact director summaries */
+.rms-pro-shell .dashboard-executive-card .table-wrap,
+.rms-pro-shell .executive-summary-card .table-wrap,
+.rms-pro-shell .dashboard-card .table-wrap{
+  border-radius:15px;
+}
+.rms-pro-shell .dashboard-executive-card .table-wrap th,
+.rms-pro-shell .dashboard-executive-card .table-wrap td,
+.rms-pro-shell .executive-summary-card .table-wrap th,
+.rms-pro-shell .executive-summary-card .table-wrap td,
+.rms-pro-shell .dashboard-card .table-wrap th,
+.rms-pro-shell .dashboard-card .table-wrap td{
+  padding:9px 11px;
+}
+.rms-pro-shell .dashboard-card .table-wrap td:last-child,
+.rms-pro-shell .dashboard-card .table-wrap th:last-child{
+  text-align:right;
+}
+
+/* Dashboard status pills */
+.rms-pro-shell .dashboard-status-pill,
+.rms-pro-shell .executive-status-pill{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  min-height:26px;
+  padding:4px 10px;
+  border-radius:999px;
+  font-size:12px;
+  font-weight:850;
+  border:1px solid rgba(226,232,240,.96);
+  background:#fff;
+}
+.rms-pro-shell .dashboard-status-pill.good,
+.rms-pro-shell .executive-status-pill.good{
+  background:#ecfdf5;
+  border-color:#bbf7d0;
+  color:#047857;
+}
+.rms-pro-shell .dashboard-status-pill.warn,
+.rms-pro-shell .executive-status-pill.warn{
+  background:#fffbeb;
+  border-color:#fde68a;
+  color:#b45309;
+}
+.rms-pro-shell .dashboard-status-pill.bad,
+.rms-pro-shell .executive-status-pill.bad{
+  background:#fff1f2;
+  border-color:#fecdd3;
+  color:#be123c;
+}
+
+/* Make dashboard less technical */
+.rms-pro-shell .dashboard-technical-note,
+.rms-pro-shell .dashboard-muted-note{
+  color:#64748b;
+  font-size:12.5px;
+  line-height:1.45;
+  padding:10px 12px;
+  border:1px dashed rgba(203,213,225,.9);
+  border-radius:14px;
+  background:#f8fafc;
+}
+
+/* Dashboard cards rhythm */
+.rms-pro-shell .dashboard-executive-card + .card,
+.rms-pro-shell .executive-summary-card + .card{
+  margin-top:14px;
+}
+.rms-pro-shell .dashboard-card .card-head{
+  margin-bottom:10px;
+}
+
+/* Responsive dashboard */
+@media(max-width:1100px){
+  .rms-pro-shell .business-signal-grid{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+}
+@media(max-width:720px){
+  .rms-pro-shell .business-signal-grid{
+    grid-template-columns:1fr;
+  }
+  .rms-pro-shell .executive-nav,
+  .rms-pro-shell .dashboard-quick-actions{
+    align-items:stretch;
+  }
+  .rms-pro-shell .executive-nav button,
+  .rms-pro-shell .dashboard-quick-actions button{
+    flex:1 1 auto;
+  }
+}
+
 
   `}</style>
 }
@@ -11626,17 +11809,17 @@ function Finance({ t, lang, onGoToExpense }) {
 
       <section className="finance-executive-strip">
         <div className="finance-exec-card">
-          <span>Главный расход</span>
+          <span>Ключевой расход</span>
           <strong>{financePrimaryExpenseDriver ? financePrimaryExpenseDriver.name : '—'}</strong>
           <p>{financePrimaryExpenseDriver ? `${fmt(financePrimaryExpenseDriver.amount)} AZN · ${pct(financeTotalExpenses ? parseNum(financePrimaryExpenseDriver.amount) / financeTotalExpenses * 100 : 0)} расходов` : 'Нет расходов за выбранный период'}</p>
         </div>
         <div className="finance-exec-card">
-          <span>Контроль нормы</span>
+          <span>Контроль показателей</span>
           <strong className={financeHealthLevel === 'ok' ? 'good' : financeHealthLevel === 'bad' ? 'bad' : ''}>{financeHealthLabel}</strong>
           <p>{activeFinanceHealthFlags.length ? activeFinanceHealthFlags.map(f => f.label).join(' · ') : 'Ключевые нормы не превышены'}</p>
         </div>
         <div className="finance-exec-card">
-          <span>Приоритет действия</span>
+          <span>Главный сигнал</span>
           <strong>{financeCriticalSignals[0]?.label || 'Контроль без срочных действий'}</strong>
           <p>{financeExecutiveAction}</p>
         </div>
