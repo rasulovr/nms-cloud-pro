@@ -6063,6 +6063,66 @@ function RMSProV6Styles() {
   }
 }
 
+/* v115 Revenue Modal Header Buttons Visibility Fix */
+
+/* Force revenue edit actions to live in the header */
+.rms-pro-shell .revenue-modal-panel .supplier-modal-head{
+  display:flex !important;
+  align-items:center !important;
+  justify-content:space-between !important;
+  gap:14px !important;
+}
+.rms-pro-shell .revenue-modal-panel .supplier-modal-head > div:first-child{
+  min-width:0;
+  flex:1 1 auto;
+}
+.rms-pro-shell .revenue-modal-panel .modal-head-actions{
+  flex:0 0 auto;
+  display:inline-flex !important;
+  align-items:center !important;
+  justify-content:flex-end !important;
+  gap:8px !important;
+  flex-wrap:nowrap !important;
+}
+.rms-pro-shell .revenue-modal-panel .modal-head-actions button.small{
+  min-width:88px;
+  min-height:36px;
+  padding:7px 12px;
+}
+.rms-pro-shell .revenue-modal-panel .modal-head-actions .supplier-modal-x{
+  min-width:40px !important;
+  width:40px !important;
+  height:40px !important;
+  margin-left:4px;
+}
+
+/* Old bottom footer must not reserve space or appear */
+.rms-pro-shell .revenue-modal-panel .revenue-modal-actions{
+  display:none !important;
+}
+.rms-pro-shell .revenue-modal-panel .revenue-modal-body{
+  padding-bottom:24px !important;
+}
+
+/* On narrower screens, keep actions visible below title, not below form */
+@media(max-width:760px){
+  .rms-pro-shell .revenue-modal-panel .supplier-modal-head{
+    align-items:flex-start !important;
+  }
+  .rms-pro-shell .revenue-modal-panel .modal-head-actions{
+    flex-wrap:wrap !important;
+  }
+}
+@media(max-width:560px){
+  .rms-pro-shell .revenue-modal-panel .supplier-modal-head{
+    display:block !important;
+  }
+  .rms-pro-shell .revenue-modal-panel .modal-head-actions{
+    margin-top:12px;
+    justify-content:flex-start !important;
+  }
+}
+
 
   `}</style>
 }
@@ -7390,9 +7450,14 @@ function RevenueEntryRow({ row, serviceEnabled=false, servicePercent=10, staffCo
     </tr>
     {editing && <div className="card supplier-transactions-panel supplier-modal-panel revenue-modal-panel">
       <div className="card-head supplier-modal-head">
-        <div><h3>Изменение выручки</h3><p className="hint">Дата, суммы и комментарий. Изменения фиксируются в журнале операций.</p></div>
-        <button className="supplier-modal-x" title="Закрыть" aria-label="Закрыть" onClick={() => setEditing(false)}>×</button>
-      </div>
+          <div><h3>Изменение выручки</h3><p className="hint">Дата, суммы и комментарий. Изменения фиксируются в журнале операций.</p></div>
+          <div className="action-row modal-head-actions">
+            <button className="ghost small" onClick={() => setEditing(false)}>Закрыть</button>
+            {editable && <button className="primary small" onClick={saveChanges}>Сохранить</button>}
+            {editable && <button className="danger small" onClick={() => { confirmDelete(); setEditing(false) }}>Удалить</button>}
+            <button className="supplier-modal-x" title="Закрыть" aria-label="Закрыть" onClick={() => setEditing(false)}>×</button>
+          </div>
+        </div>
       <div className="form-grid compact revenue-modal-body">
         <label><span>Дата операции</span><input type="date" value={entryDate} disabled={!editable} onChange={e => setEntryDate(e.target.value)} /></label>
         <label><span>Наличные</span><input inputMode="decimal" value={cash} disabled={!editable} onChange={e => setCash(e.target.value)} /></label>
@@ -7458,7 +7523,12 @@ function InflowRow({ inflow, onSave, onCancel }) {
       {editing && <div className="card supplier-transactions-panel supplier-modal-panel revenue-modal-panel">
         <div className="card-head supplier-modal-head">
           <div><h3>Изменение прихода</h3><p className="hint">Приходы не являются выручкой, но участвуют в расчёте кассы.</p></div>
-          <button className="supplier-modal-x" title="Закрыть" aria-label="Закрыть" onClick={() => setEditing(false)}>×</button>
+          <div className="action-row modal-head-actions">
+            <button className="ghost small" onClick={() => setEditing(false)}>Закрыть</button>
+            {editable && <button className="primary small" onClick={saveChanges}>Сохранить</button>}
+            {editable && <button className="danger small" onClick={() => { confirmDelete(); setEditing(false) }}>Удалить</button>}
+            <button className="supplier-modal-x" title="Закрыть" aria-label="Закрыть" onClick={() => setEditing(false)}>×</button>
+          </div>
         </div>
         <div className="form-grid compact revenue-modal-body">
           <label><span>Источник</span><input value={source} disabled={!editable} onChange={e => setSource(e.target.value)} /></label>
