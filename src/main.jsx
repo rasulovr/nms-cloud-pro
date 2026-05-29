@@ -9431,6 +9431,119 @@ function RMSProV6Styles() {
   }
 }
 
+/* v139 Tech Cards Permission Lockdown Prep */
+
+.rms-pro-shell .tech-lockdown-prep-card{
+  border:1px solid #fde68a;
+  border-left:5px solid #f59e0b;
+  background:linear-gradient(180deg,#fff 0%,#fffbeb 100%);
+  border-radius:20px;
+  padding:17px;
+  box-shadow:0 12px 30px rgba(15,23,42,.045);
+}
+.rms-pro-shell .tech-lockdown-prep-card h3{
+  margin:0;
+  color:#0f172a;
+  font-size:18px;
+  letter-spacing:-.02em;
+}
+.rms-pro-shell .tech-lockdown-prep-card p{
+  margin:7px 0 0;
+  color:#92400e;
+  font-size:13px;
+  line-height:1.45;
+}
+.rms-pro-shell .tech-lockdown-grid{
+  display:grid;
+  grid-template-columns:repeat(5,minmax(0,1fr));
+  gap:10px;
+  margin-top:14px;
+}
+.rms-pro-shell .tech-lockdown-step{
+  border:1px solid #fde68a;
+  background:#fff;
+  border-radius:14px;
+  padding:11px 12px;
+}
+.rms-pro-shell .tech-lockdown-step span{
+  display:block;
+  color:#64748b;
+  font-size:11.8px;
+  font-weight:850;
+}
+.rms-pro-shell .tech-lockdown-step strong{
+  display:block;
+  margin-top:5px;
+  color:#b45309;
+  font-size:13.5px;
+  line-height:1.2;
+}
+.rms-pro-shell .tech-lockdown-step.ready{
+  border-color:#bbf7d0;
+  background:#ecfdf5;
+}
+.rms-pro-shell .tech-lockdown-step.ready strong{
+  color:#047857;
+}
+.rms-pro-shell .tech-lockdown-step.blocked{
+  border-color:#fecdd3;
+  background:#fff1f2;
+}
+.rms-pro-shell .tech-lockdown-step.blocked strong{
+  color:#be123c;
+}
+.rms-pro-shell .tech-lockdown-status-chip{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  min-height:26px;
+  padding:4px 10px;
+  border-radius:999px;
+  border:1px solid #fde68a;
+  background:#fffbeb;
+  color:#b45309;
+  font-size:12px;
+  font-weight:900;
+}
+.rms-pro-shell .tech-lockdown-status-chip.ready{
+  border-color:#bbf7d0;
+  background:#ecfdf5;
+  color:#047857;
+}
+.rms-pro-shell .tech-lockdown-status-chip.blocked{
+  border-color:#fecdd3;
+  background:#fff1f2;
+  color:#be123c;
+}
+.rms-pro-shell .tech-lockdown-table td,
+.rms-pro-shell .tech-lockdown-table th{
+  padding:9px 11px;
+}
+.rms-pro-shell .tech-lockdown-table td:nth-child(n+2),
+.rms-pro-shell .tech-lockdown-table th:nth-child(n+2){
+  text-align:center;
+}
+.rms-pro-shell .tech-lockdown-note{
+  margin-top:12px;
+  border:1px dashed rgba(180,83,9,.45);
+  background:#fffbeb;
+  color:#92400e;
+  border-radius:14px;
+  padding:11px 12px;
+  font-size:13px;
+  line-height:1.45;
+}
+@media(max-width:1180px){
+  .rms-pro-shell .tech-lockdown-grid{
+    grid-template-columns:repeat(3,minmax(0,1fr));
+  }
+}
+@media(max-width:680px){
+  .rms-pro-shell .tech-lockdown-grid{
+    grid-template-columns:1fr;
+  }
+}
+
 
   `}</style>
 }
@@ -14563,8 +14676,8 @@ function Recipes({ t }) {
           <p>Техкарты, полуфабрикаты, себестоимость и контроль Food Cost по блюдам.</p>
           <p className="tech-safe-edit-note">Enterprise hardening: следующий этап переводит создание, изменение и удаление техкарт на secure RPC с журналом изменений. Текущая версия сохраняет рабочий интерфейс и добавляет подготовительный слой контроля.</p>
           <div className="tech-secure-rpc-card phase-2">
-            <h3>Tech Cards Secure RPC · Handler Switch</h3>
-            <p>Readiness = ready. Frontend handler switch включён в безопасном режиме RPC + fallback. Lockdown прав пока отключён до runtime-теста.</p>
+            <h3>Tech Cards Secure RPC · Lockdown Prep</h3>
+            <p>Readiness = ready. Подготовлен permission lockdown preflight: сначала проверяем прямые права и audit events, затем отдельно применяем revoke.</p>
             <div className="tech-secure-rpc-grid">
               <div className="tech-secure-rpc-step is-ready"><span>Audit log</span><strong>Готово</strong></div>
               <div className="tech-secure-rpc-step is-ready"><span>Menu item RPC</span><strong>Подготовлено</strong></div>
