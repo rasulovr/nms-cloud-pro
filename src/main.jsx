@@ -7648,6 +7648,337 @@ function RMSProV6Styles() {
   }
 }
 
+/* v126 Dashboard Executive Content Cleanup */
+
+/* Dashboard should read as a director screen */
+.rms-pro-shell .dashboard-executive-card,
+.rms-pro-shell .executive-summary-card,
+.rms-pro-shell .dashboard-card{
+  scroll-margin-top:96px;
+}
+.rms-pro-shell .dashboard-executive-card .card-head,
+.rms-pro-shell .executive-summary-card .card-head{
+  border-bottom:0;
+  padding-bottom:0;
+}
+.rms-pro-shell .dashboard-executive-card .card-head h3,
+.rms-pro-shell .executive-summary-card .card-head h3{
+  font-size:20px;
+}
+.rms-pro-shell .dashboard-executive-card .card-head p,
+.rms-pro-shell .executive-summary-card .card-head p{
+  max-width:760px;
+}
+
+/* Executive KPI cards: stronger numbers, softer labels */
+.rms-pro-shell .dashboard-executive-kpi,
+.rms-pro-shell .executive-summary-kpi{
+  min-height:104px;
+  display:flex;
+  flex-direction:column;
+  justify-content:space-between;
+}
+.rms-pro-shell .dashboard-executive-kpi strong,
+.rms-pro-shell .executive-summary-kpi strong{
+  font-size:clamp(20px,2vw,28px);
+}
+.rms-pro-shell .dashboard-executive-kpi small,
+.rms-pro-shell .executive-summary-kpi small{
+  min-height:16px;
+}
+
+/* Dashboard signal list */
+.rms-pro-shell .dashboard-signal-list{
+  display:grid;
+  gap:10px;
+}
+.rms-pro-shell .dashboard-signal-row{
+  display:grid;
+  grid-template-columns:minmax(160px,1.2fr) minmax(160px,2fr) auto;
+  gap:12px;
+  align-items:center;
+  padding:12px 14px;
+  border:1px solid rgba(226,232,240,.96);
+  border-radius:14px;
+  background:#fff;
+}
+.rms-pro-shell .dashboard-signal-row strong{
+  color:#0f172a;
+}
+.rms-pro-shell .dashboard-signal-row span{
+  color:#64748b;
+  font-size:13px;
+}
+.rms-pro-shell .dashboard-signal-row.good{
+  border-color:#bbf7d0;
+  background:#ecfdf5;
+}
+.rms-pro-shell .dashboard-signal-row.warn{
+  border-color:#fde68a;
+  background:#fffbeb;
+}
+.rms-pro-shell .dashboard-signal-row.bad{
+  border-color:#fecdd3;
+  background:#fff1f2;
+}
+
+/* Make Dashboard tables only supporting content */
+.rms-pro-shell .dashboard-card .table-wrap{
+  margin-top:10px;
+}
+.rms-pro-shell .dashboard-card .table-wrap th{
+  background:#f8fafc;
+}
+.rms-pro-shell .dashboard-card .table-wrap td,
+.rms-pro-shell .dashboard-card .table-wrap th{
+  padding:8px 10px;
+}
+
+/* Hide overly technical helper notes visually, but keep readable when present */
+.rms-pro-shell .dashboard-technical-note,
+.rms-pro-shell .dashboard-muted-note{
+  margin-top:10px;
+  font-size:12px;
+}
+
+/* Better branch comparison style if present */
+.rms-pro-shell .branch-health-card,
+.rms-pro-shell .branch-summary-card{
+  border:1px solid rgba(226,232,240,.96);
+  border-radius:16px;
+  background:#fff;
+  padding:14px;
+}
+.rms-pro-shell .branch-health-card strong,
+.rms-pro-shell .branch-summary-card strong{
+  font-variant-numeric:tabular-nums;
+}
+
+/* Compact Dashboard action chips */
+.rms-pro-shell .dashboard-action-chip,
+.rms-pro-shell .executive-action-chip{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  min-height:30px;
+  padding:6px 11px;
+  border-radius:999px;
+  border:1px solid rgba(203,213,225,.95);
+  background:#fff;
+  color:#334155;
+  font-size:12px;
+  font-weight:850;
+}
+.rms-pro-shell .dashboard-action-chip:hover,
+.rms-pro-shell .executive-action-chip:hover{
+  background:#f8fafc;
+}
+
+/* Dashboard responsive */
+@media(max-width:900px){
+  .rms-pro-shell .dashboard-signal-row{
+    grid-template-columns:1fr;
+    align-items:start;
+  }
+}
+@media(max-width:620px){
+  .rms-pro-shell .dashboard-executive-kpi,
+  .rms-pro-shell .executive-summary-kpi{
+    min-height:auto;
+  }
+}
+
+/* v127 Branch Performance & Dashboard Signals Pack */
+
+/* Branch performance cards */
+.rms-pro-shell .branch-performance-grid{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:12px;
+}
+.rms-pro-shell .branch-performance-card{
+  border:1px solid rgba(226,232,240,.96);
+  background:#fff;
+  border-radius:18px;
+  padding:15px;
+  box-shadow:0 10px 24px rgba(15,23,42,.035);
+}
+.rms-pro-shell .branch-performance-card h4{
+  margin:0;
+  font-size:16px;
+  color:#0f172a;
+}
+.rms-pro-shell .branch-performance-card .hint{
+  margin-top:4px;
+}
+.rms-pro-shell .branch-performance-kpis{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:10px;
+  margin-top:12px;
+}
+.rms-pro-shell .branch-performance-kpi{
+  border:1px solid rgba(226,232,240,.9);
+  background:#f8fafc;
+  border-radius:14px;
+  padding:10px 11px;
+}
+.rms-pro-shell .branch-performance-kpi span{
+  display:block;
+  color:#64748b;
+  font-size:12px;
+  font-weight:850;
+}
+.rms-pro-shell .branch-performance-kpi strong{
+  display:block;
+  margin-top:4px;
+  color:#0f172a;
+  font-size:17px;
+  font-variant-numeric:tabular-nums;
+}
+
+/* Статус филиалов statuses */
+.rms-pro-shell .branch-health-status{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  min-height:26px;
+  padding:4px 10px;
+  border-radius:999px;
+  border:1px solid rgba(226,232,240,.96);
+  background:#fff;
+  font-size:12px;
+  font-weight:850;
+}
+.rms-pro-shell .branch-health-status.good{
+  background:#ecfdf5;
+  border-color:#bbf7d0;
+  color:#047857;
+}
+.rms-pro-shell .branch-health-status.warn{
+  background:#fffbeb;
+  border-color:#fde68a;
+  color:#b45309;
+}
+.rms-pro-shell .branch-health-status.bad{
+  background:#fff1f2;
+  border-color:#fecdd3;
+  color:#be123c;
+}
+
+/* Dashboard problem signals */
+.rms-pro-shell .dashboard-problem-list{
+  display:grid;
+  gap:10px;
+}
+.rms-pro-shell .dashboard-problem-item{
+  display:grid;
+  grid-template-columns:120px minmax(0,1fr) auto;
+  gap:12px;
+  align-items:center;
+  padding:12px 14px;
+  border:1px solid rgba(226,232,240,.96);
+  border-radius:14px;
+  background:#fff;
+}
+.rms-pro-shell .dashboard-problem-item strong{
+  color:#0f172a;
+}
+.rms-pro-shell .dashboard-problem-item span{
+  color:#64748b;
+  font-size:13px;
+}
+.rms-pro-shell .dashboard-problem-item.bad{
+  border-color:#fecdd3;
+  background:#fff1f2;
+}
+.rms-pro-shell .dashboard-problem-item.warn{
+  border-color:#fde68a;
+  background:#fffbeb;
+}
+.rms-pro-shell .dashboard-problem-item.good{
+  border-color:#bbf7d0;
+  background:#ecfdf5;
+}
+
+/* Branch summary table */
+.rms-pro-shell .branch-summary-table td:nth-child(n+2),
+.rms-pro-shell .branch-summary-table th:nth-child(n+2){
+  text-align:right;
+  font-variant-numeric:tabular-nums;
+}
+.rms-pro-shell .branch-summary-table td:first-child,
+.rms-pro-shell .branch-summary-table th:first-child{
+  min-width:150px;
+  text-align:left;
+}
+.rms-pro-shell .branch-summary-table .branch-name{
+  font-weight:850;
+  color:#0f172a;
+}
+.rms-pro-shell .branch-summary-table .branch-subtitle{
+  display:block;
+  color:#64748b;
+  font-size:12px;
+  margin-top:2px;
+}
+
+/* Director screen sections */
+.rms-pro-shell .dashboard-director-section{
+  border:1px solid rgba(226,232,240,.96);
+  border-radius:20px;
+  background:linear-gradient(180deg,#fff 0%,#f8fafc 100%);
+  padding:16px;
+}
+.rms-pro-shell .dashboard-director-section .card-head{
+  border-bottom:0;
+  padding-bottom:0;
+}
+
+/* Quick severity chips */
+.rms-pro-shell .severity-chip{
+  display:inline-flex;
+  align-items:center;
+  min-height:24px;
+  padding:3px 8px;
+  border-radius:999px;
+  font-size:11.5px;
+  font-weight:900;
+  text-transform:uppercase;
+  letter-spacing:.02em;
+}
+.rms-pro-shell .severity-chip.ok{
+  background:#ecfdf5;
+  color:#047857;
+}
+.rms-pro-shell .severity-chip.warn{
+  background:#fffbeb;
+  color:#b45309;
+}
+.rms-pro-shell .severity-chip.critical{
+  background:#fff1f2;
+  color:#be123c;
+}
+
+/* Responsive branch dashboard */
+@media(max-width:1180px){
+  .rms-pro-shell .branch-performance-grid{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+}
+@media(max-width:760px){
+  .rms-pro-shell .branch-performance-grid{
+    grid-template-columns:1fr;
+  }
+  .rms-pro-shell .dashboard-problem-item{
+    grid-template-columns:1fr;
+    align-items:start;
+  }
+  .rms-pro-shell .branch-performance-kpis{
+    grid-template-columns:1fr;
+  }
+}
+
 
   `}</style>
 }
@@ -11694,7 +12025,7 @@ function Finance({ t, lang, onGoToExpense }) {
   ].filter(Boolean)
   const activeFinanceHealthFlags = financeHealthFlags.filter(f => f.active)
   const financeHealthLevel = activeFinanceHealthFlags.some(f => f.level === 'bad') ? 'bad' : activeFinanceHealthFlags.length ? 'warn' : 'ok'
-  const financeHealthLabel = financeHealthLevel === 'ok' ? 'Финансы месяца: OK' : financeHealthLevel === 'bad' ? 'Финансы месяца: критично' : 'Финансы месяца: внимание'
+  const financeHealthLabel = financeHealthLevel === 'ok' ? 'Финансы: OK' : financeHealthLevel === 'bad' ? 'Финансы: критично' : 'Финансы: внимание'
   const financeTopExpenseDrivers = financeExpenseRowsAll.slice(0, 3)
   const financePrimaryExpenseDriver = financeTopExpenseDrivers[0]
   const financeExpenseRowsForTable = showAllFinanceExpenseRows ? financeExpenseRowsAll : financeExpenseRowsAll.slice(0, 10)
@@ -11954,7 +12285,7 @@ function Finance({ t, lang, onGoToExpense }) {
         <div className="card span-2 finance-ai-compact-card">
           <div className="card-head">
             <div>
-              <h3>Отклонения месяца</h3>
+              <h3>Ключевые отклонения</h3>
               <p className="hint">Короткий управленческий список. Полная аналитика открывается отдельно.</p>
             </div>
             <button className="small" onClick={() => setShowAllAiRows(true)}>Аналитика</button>
