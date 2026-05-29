@@ -7,6 +7,21 @@ async function rmsTechCardRpcCall(name, payload = {}) {
   return data
 }
 
+
+async function rmsTechRecipeItemCreateRpc(payload, comment = '') {
+  return rmsTechCardRpcCall('rms_tech_recipe_item_create_secure', {
+    p_payload: payload || {},
+    p_comment: comment || null,
+  })
+}
+
+async function rmsTechSemiFinishedItemCreateRpc(payload, comment = '') {
+  return rmsTechCardRpcCall('rms_tech_semi_finished_item_create_secure', {
+    p_payload: payload || {},
+    p_comment: comment || null,
+  })
+}
+
 async function rmsTechRecipeItemUpdateRpc(id, patch, comment = '') {
   return rmsTechCardRpcCall('rms_tech_recipe_item_update_secure', {
     p_id: id,
@@ -47,6 +62,35 @@ async function rmsTechRpcWithFallback(rpcCall, fallbackCall, label = 'tech rpc')
     if (typeof fallbackCall === 'function') return await fallbackCall(err)
     throw err
   }
+}
+
+
+async function rmsTechSaveRecipeItemWithFallback({ id, payload, fallback, comment }) {
+  return rmsTechRpcWithFallback(
+    async () => id
+      ? await rmsTechRecipeItemUpdateRpc(id, payload, comment || 'recipe item update')
+      : await rmsTechRecipeItemCreateRpc(payload, comment || 'recipe item create'),
+    fallback,
+    id ? 'recipe item update rpc' : 'recipe item create rpc'
+  )
+}
+
+async function rmsTechDeleteRecipeItemWithFallback({ id, fallback, comment }) {
+  return rmsTechRpcWithFallback(
+    async () => await rmsTechRecipeItemCancelRpc(id, comment || 'recipe item cancel'),
+    fallback,
+    'recipe item cancel rpc'
+  )
+}
+
+async function rmsTechSaveSemiFinishedItemWithFallback({ id, payload, fallback, comment }) {
+  return rmsTechRpcWithFallback(
+    async () => id
+      ? await rmsTechSemiFinishedItemUpdateRpc(id, payload, comment || 'semi finished item update')
+      : await rmsTechSemiFinishedItemCreateRpc(payload, comment || 'semi finished item create'),
+    fallback,
+    id ? 'semi finished item update rpc' : 'semi finished item create rpc'
+  )
 }
 
 function rmsBuildTechPatchFromForm(form = {}) {
@@ -8724,6 +8768,88 @@ function RMSProV6Styles() {
   background:#dcfce7!important;
 }
 
+/* v135 Tech Cards Frontend RPC Switch */
+
+/* Show that frontend switch is active */
+.rms-pro-shell .tech-rpc-switch-card{
+  border:1px solid #bbf7d0;
+  border-left:4px solid #16a34a;
+  background:linear-gradient(180deg,#fff 0%,#ecfdf5 100%);
+  border-radius:18px;
+  padding:16px;
+}
+.rms-pro-shell .tech-rpc-switch-card h3{
+  margin:0;
+  color:#0f172a;
+  font-size:17px;
+}
+.rms-pro-shell .tech-rpc-switch-card p{
+  margin:6px 0 0;
+  color:#047857;
+  font-size:13px;
+  line-height:1.45;
+}
+.rms-pro-shell .tech-rpc-switch-grid{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:10px;
+  margin-top:12px;
+}
+.rms-pro-shell .tech-rpc-switch-step{
+  border:1px solid #bbf7d0;
+  background:#fff;
+  border-radius:14px;
+  padding:11px 12px;
+}
+.rms-pro-shell .tech-rpc-switch-step span{
+  display:block;
+  color:#64748b;
+  font-size:12px;
+  font-weight:850;
+}
+.rms-pro-shell .tech-rpc-switch-step strong{
+  display:block;
+  margin-top:5px;
+  color:#047857;
+  font-size:14px;
+}
+.rms-pro-shell .tech-rpc-switch-step.pending{
+  border-color:#fde68a;
+  background:#fffbeb;
+}
+.rms-pro-shell .tech-rpc-switch-step.pending strong{
+  color:#b45309;
+}
+.rms-pro-shell .tech-rpc-action-button,
+.rms-pro-shell button.tech-rpc-action-button{
+  background:#ecfdf5!important;
+  border-color:#bbf7d0!important;
+  color:#047857!important;
+}
+.rms-pro-shell .tech-rpc-fallback-badge{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  min-height:24px;
+  padding:3px 8px;
+  border-radius:999px;
+  background:#fffbeb;
+  color:#b45309;
+  border:1px solid #fde68a;
+  font-size:11.5px;
+  font-weight:900;
+}
+@media(max-width:980px){
+  .rms-pro-shell .tech-rpc-switch-grid{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+}
+@media(max-width:620px){
+  .rms-pro-shell .tech-rpc-switch-grid{
+    grid-template-columns:1fr;
+  }
+}
+
 
   `}</style>
 }
@@ -13856,8 +13982,8 @@ function Recipes({ t }) {
           <p>Техкарты, полуфабрикаты, себестоимость и контроль Food Cost по блюдам.</p>
           <p className="tech-safe-edit-note">Enterprise hardening: следующий этап переводит создание, изменение и удаление техкарт на secure RPC с журналом изменений. Текущая версия сохраняет рабочий интерфейс и добавляет подготовительный слой контроля.</p>
           <div className="tech-secure-rpc-card phase-2">
-            <h3>Tech Cards Secure RPC · Phase 4</h3>
-            <p>Сохранение строк состава подготовлено к работе через RPC с fallback на старый механизм. Прямые права пока не закрываются до полной проверки.</p>
+            <h3>Tech Cards Secure RPC · Phase 5</h3>
+            <p>Frontend helpers для сохранения и удаления строк состава подключены в режиме RPC + fallback. Lockdown прав — только после подтверждения работы на реальной схеме.</p>
             <div className="tech-secure-rpc-grid">
               <div className="tech-secure-rpc-step is-ready"><span>Audit log</span><strong>Готово</strong></div>
               <div className="tech-secure-rpc-step is-ready"><span>Menu item RPC</span><strong>Подготовлено</strong></div>
