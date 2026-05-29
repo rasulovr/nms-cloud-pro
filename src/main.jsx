@@ -5959,6 +5959,110 @@ function RMSProV6Styles() {
   }
 }
 
+/* v114 RMS Modal Header Actions Standardization */
+
+/* Standard modal header action layout across Revenue / Supplier / Finance */
+.rms-pro-shell .supplier-modal-head{
+  gap: 14px;
+}
+.rms-pro-shell .supplier-modal-head > .action-row{
+  flex: 0 0 auto;
+}
+.rms-pro-shell .supplier-modal-head .action-row{
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: nowrap;
+}
+.rms-pro-shell .supplier-modal-head .action-row button.small{
+  min-height: 36px;
+  padding-inline: 12px;
+  white-space: nowrap;
+}
+.rms-pro-shell .supplier-modal-head .action-row .supplier-modal-x{
+  margin-left: 2px;
+}
+
+/* Make statement / transaction modal headers less cramped */
+.rms-pro-shell .supplier-statement-modal .supplier-modal-head,
+.rms-pro-shell .supplier-transactions-panel .supplier-modal-head,
+.rms-pro-shell .finance-ai-modal-panel .supplier-modal-head,
+.rms-pro-shell .finance-forecast-modal-panel .supplier-modal-head{
+  align-items: center;
+}
+.rms-pro-shell .supplier-statement-modal .supplier-modal-head > div:first-child,
+.rms-pro-shell .supplier-transactions-panel .supplier-modal-head > div:first-child,
+.rms-pro-shell .finance-ai-modal-panel .supplier-modal-head > div:first-child,
+.rms-pro-shell .finance-forecast-modal-panel .supplier-modal-head > div:first-child{
+  min-width: 0;
+}
+.rms-pro-shell .supplier-statement-modal .supplier-modal-head h3,
+.rms-pro-shell .supplier-transactions-panel .supplier-modal-head h3,
+.rms-pro-shell .finance-ai-modal-panel .supplier-modal-head h3,
+.rms-pro-shell .finance-forecast-modal-panel .supplier-modal-head h3{
+  margin-bottom: 2px;
+}
+
+/* Compact secondary controls inside modal header */
+.rms-pro-shell .supplier-modal-head label{
+  margin: 0;
+}
+.rms-pro-shell .supplier-modal-head select{
+  min-height: 34px;
+  padding-block: 6px;
+}
+
+/* Remove excessive bottom action behavior from non-revenue modals */
+.rms-pro-shell .supplier-statement-modal > .action-row:last-child,
+.rms-pro-shell .finance-ai-modal-panel > .action-row:last-child,
+.rms-pro-shell .finance-forecast-modal-panel > .action-row:last-child{
+  position: static !important;
+  box-shadow: none !important;
+  border-top: 0 !important;
+  padding: 10px 0 0 !important;
+  background: transparent !important;
+}
+
+/* Modal body max readability */
+.rms-pro-shell .supplier-modal-panel .table-wrap{
+  margin-bottom: 18px;
+}
+.rms-pro-shell .supplier-modal-panel .card-head + .table-wrap{
+  margin-top: 14px;
+}
+
+/* Normalize close-only modal headers */
+.rms-pro-shell .supplier-modal-head > button.supplier-modal-x{
+  flex: 0 0 auto;
+}
+
+/* Better responsive header actions */
+@media(max-width:840px){
+  .rms-pro-shell .supplier-modal-head{
+    align-items: flex-start;
+  }
+  .rms-pro-shell .supplier-modal-head .action-row{
+    flex-wrap: wrap;
+  }
+}
+@media(max-width:620px){
+  .rms-pro-shell .supplier-modal-head{
+    display: block;
+  }
+  .rms-pro-shell .supplier-modal-head > .action-row{
+    margin-top: 12px;
+    justify-content: flex-start;
+  }
+  .rms-pro-shell .supplier-modal-head > button.supplier-modal-x{
+    position: absolute;
+    top: 12px;
+    right: 12px;
+  }
+  .rms-pro-shell .supplier-modal-head h3,
+  .rms-pro-shell .supplier-modal-head p{
+    padding-right: 48px;
+  }
+}
+
 
   `}</style>
 }
@@ -10185,7 +10289,7 @@ function Finance({ t, lang, onGoToExpense }) {
             </div>
             <button className="supplier-modal-x" title="Закрыть" aria-label="Закрыть" onClick={() => setShowFinanceForecastDetails(false)}>×</button>
           </div>
-          <div className="table-wrap"><table><thead><tr><th>Статья</th><th>Сумма</th><th>Логика</th></tr></thead><tbody>{(stats.forecastDetails || []).map(r => <tr key={r.name}><td><b>{r.name}</b></td><td>{fmt(r.amount)}</td><td className="hint">{r.note || '—'}</td></tr>)}{!(stats.forecastDetails || []).length && <tr><td colSpan="3" className="hint">Детализация прогноза отсутствует.</td></tr>}</tbody></table></div>
+          <div className="table-wrap"><table><thead><tr><th>Статья</th><th>Сумма</th><th>Логика</th></tr></thead><tbody>{(stats.forecastDetails || []).map(r => <tr key={r.name}><td><b>{r.name}</b></td><td>{fmt(r.amount)}</td><td className="hint">{r.note || '—'}</td></tr>)}{!(stats.forecastDetails || []).length && <tr><td colSpan="3" className="hint">Просмотрзация прогноза отсутствует.</td></tr>}</tbody></table></div>
           <p className="hint">Итого прогноз расходов: <b>{fmt(stats.forecastExpenses)}</b> AZN · прогнозная маржа: <b>{pct(stats.forecastMargin)}</b></p>
         </div>}
 
@@ -10198,7 +10302,7 @@ function Finance({ t, lang, onGoToExpense }) {
                 {financeExpenseRowsForTable.map(r => {
                   const group = financeExpenseGroupName(r.name)
                   const rowClass = group === 'food_market' ? 'finance-expense-row food' : group === 'salary' ? 'finance-expense-row salary' : group === 'rent' ? 'finance-expense-row rent' : group === 'tax' ? 'finance-expense-row tax' : 'finance-expense-row'
-                  return <tr key={r.name} className={rowClass}><td>{r.name}{r.note ? <small className="expense-note">({r.note})</small> : null}</td><td><b>{fmt(r.amount)}</b></td><td>{pct(financeTotalExpenses ? parseNum(r.amount) / financeTotalExpenses * 100 : 0)}</td><td>{pct(stats.revenue ? parseNum(r.amount) / stats.revenue * 100 : 0)}</td><td className="table-actions"><button className="small" onClick={() => openExpenseBreakdownDetails(r)}>Детали</button></td></tr>
+                  return <tr key={r.name} className={rowClass}><td>{r.name}{r.note ? <small className="expense-note">({r.note})</small> : null}</td><td><b>{fmt(r.amount)}</b></td><td>{pct(financeTotalExpenses ? parseNum(r.amount) / financeTotalExpenses * 100 : 0)}</td><td>{pct(stats.revenue ? parseNum(r.amount) / stats.revenue * 100 : 0)}</td><td className="table-actions"><button className="small" onClick={() => openExpenseBreakdownDetails(r)}>Просмотр</button></td></tr>
                 })}
                 {!financeExpenseRowsAll.length && <tr><td colSpan="5" className="hint">—</td></tr>}
               </tbody>
@@ -10913,7 +11017,7 @@ function Recipes({ t }) {
         </table>
         <div class="total"><span>Итого себестоимость</span><strong>${fmt(cost)} AZN</strong></div>
         <div class="bottom">
-          <div class="box"><h3>Структура себестоимости</h3><p class="footer">Детализация по группам появится после классификации ингредиентов.</p></div>
+          <div class="box"><h3>Структура себестоимости</h3><p class="footer">Просмотрзация по группам появится после классификации ингредиентов.</p></div>
           <div class="box"><h3>История изменений</h3><p class="footer">${escapeHtml(generatedAt)} · Тех. карта сформирована для печати / PDF.</p></div>
         </div>
       </section>
@@ -18112,7 +18216,7 @@ function DebtsPayments({ t }) {
       <div className="card-head">
         <div>
           <h3>Контроль поставщиков</h3>
-          <p className="hint">Ключевые отклонения по поставщикам. Детали открываются через акт сверки.</p>
+          <p className="hint">Ключевые отклонения по поставщикам. Просмотр открываются через акт сверки.</p>
         </div>
         <div className="action-row" style={{gap:8}}><button className="small" onClick={load}>Обновить</button></div>
       </div>
@@ -20363,7 +20467,7 @@ function Reports({ t }) {
     {reportsTab === 'import' && ImportReportView}
     {reportsTab === 'revenue' && ReportsRevenueView}
     {reportsTab === 'expenses' && ReportsExpensesView}
-    {reportsTab === 'categories' && <ReportModulePlaceholder title="Расходы по статьям" description="Детализация каждой статьи с drill-down до транзакций." />}
+    {reportsTab === 'categories' && <ReportModulePlaceholder title="Расходы по статьям" description="Просмотрзация каждой статьи с drill-down до транзакций." />}
     {reportsTab === 'purchases' && <ReportModulePlaceholder title="Отчёт по закупкам" description="Закупки поставщиков по периодам, филиалам, категориям и фактурам." />}
     {reportsTab === 'products' && <ReportModulePlaceholder title="Отчёт по товарам" description="Движение товаров, закупочные цены, последние цены и объём закупок." />}
     {reportsTab === 'suppliers' && ReportsSuppliersView}
