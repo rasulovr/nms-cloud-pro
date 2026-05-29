@@ -7243,6 +7243,100 @@ function RMSProV6Styles() {
   }
 }
 
+/* v123 Menu Profitability Pack */
+
+/* Menu profitability / tech analytics cards */
+.rms-pro-shell .menu-profitability-card,
+.rms-pro-shell .tech-profitability-card{
+  border:1px solid rgba(226,232,240,.96);
+  background:linear-gradient(180deg,#fff 0%,#f8fafc 100%);
+  border-radius:18px;
+  padding:16px;
+}
+.rms-pro-shell .menu-profitability-grid,
+.rms-pro-shell .tech-profitability-grid{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:12px;
+}
+.rms-pro-shell .menu-profitability-kpi,
+.rms-pro-shell .tech-profitability-kpi{
+  border:1px solid rgba(226,232,240,.96);
+  background:#fff;
+  border-radius:16px;
+  padding:13px 15px;
+}
+.rms-pro-shell .menu-profitability-kpi span,
+.rms-pro-shell .tech-profitability-kpi span{
+  display:block;
+  color:#64748b;
+  font-size:12.5px;
+  font-weight:800;
+}
+.rms-pro-shell .menu-profitability-kpi strong,
+.rms-pro-shell .tech-profitability-kpi strong{
+  display:block;
+  margin-top:5px;
+  font-size:20px;
+  line-height:1.15;
+  font-variant-numeric:tabular-nums;
+}
+.rms-pro-shell .profitability-status{
+  display:inline-flex;
+  align-items:center;
+  min-height:26px;
+  padding:4px 10px;
+  border-radius:999px;
+  font-size:12px;
+  font-weight:850;
+  border:1px solid rgba(226,232,240,.96);
+}
+.rms-pro-shell .profitability-status.good{
+  background:#ecfdf5;
+  border-color:#bbf7d0;
+  color:#047857;
+}
+.rms-pro-shell .profitability-status.warn{
+  background:#fffbeb;
+  border-color:#fde68a;
+  color:#b45309;
+}
+.rms-pro-shell .profitability-status.bad{
+  background:#fff1f2;
+  border-color:#fecdd3;
+  color:#be123c;
+}
+.rms-pro-shell .profitability-table td:nth-child(n+3),
+.rms-pro-shell .profitability-table th:nth-child(n+3){
+  text-align:right;
+  font-variant-numeric:tabular-nums;
+}
+.rms-pro-shell .profitability-table td:first-child,
+.rms-pro-shell .profitability-table th:first-child{
+  min-width:220px;
+}
+.rms-pro-shell .profitability-table .action-row{
+  justify-content:flex-end;
+}
+.rms-pro-shell .profitability-note{
+  margin-top:10px;
+  color:#64748b;
+  font-size:13px;
+  line-height:1.45;
+}
+@media(max-width:980px){
+  .rms-pro-shell .menu-profitability-grid,
+  .rms-pro-shell .tech-profitability-grid{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+}
+@media(max-width:620px){
+  .rms-pro-shell .menu-profitability-grid,
+  .rms-pro-shell .tech-profitability-grid{
+    grid-template-columns:1fr;
+  }
+}
+
 
   `}</style>
 }
