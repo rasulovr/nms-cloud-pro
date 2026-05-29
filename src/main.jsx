@@ -1,3 +1,43 @@
+
+// v132 Tech Cards RPC helpers
+async function rmsTechCardRpcCall(name, payload = {}) {
+  if (!supabase?.rpc) throw new Error('Supabase RPC недоступен')
+  const { data, error } = await supabase.rpc(name, payload)
+  if (error) throw error
+  return data
+}
+
+async function rmsTechRecipeItemUpdateRpc(id, patch, comment = '') {
+  return rmsTechCardRpcCall('rms_tech_recipe_item_update_secure', {
+    p_id: id,
+    p_patch: patch || {},
+    p_comment: comment || null,
+  })
+}
+
+async function rmsTechRecipeItemCancelRpc(id, comment = '') {
+  return rmsTechCardRpcCall('rms_tech_recipe_item_cancel_secure', {
+    p_id: id,
+    p_comment: comment || null,
+  })
+}
+
+async function rmsTechSemiFinishedUpdateRpc(id, patch, comment = '') {
+  return rmsTechCardRpcCall('rms_tech_semi_finished_update_secure', {
+    p_id: id,
+    p_patch: patch || {},
+    p_comment: comment || null,
+  })
+}
+
+async function rmsTechSemiFinishedItemUpdateRpc(id, patch, comment = '') {
+  return rmsTechCardRpcCall('rms_tech_semi_finished_item_update_secure', {
+    p_id: id,
+    p_patch: patch || {},
+    p_comment: comment || null,
+  })
+}
+
 // RMS v56.1 Supplier Enterprise Hardened - Supplier writes via secure RPC only
 /* RMS v81 Finance Real User View - hides synthetic model charts from user finance screen */
 /* RMS v63 Supplier Payment Calendar - payment calendar, due reminders and follow-up control persistence */
@@ -8400,6 +8440,98 @@ function RMSProV6Styles() {
 }
 .rms-pro-shell .tech-audit-recent-card .table-wrap{
   margin-top:12px;
+}
+
+/* v132 Tech Cards RPC Wiring Prep */
+
+/* RPC helper / diagnostics visual layer */
+.rms-pro-shell .tech-rpc-wiring-card{
+  border:1px solid #bfdbfe;
+  border-left:4px solid #2563eb;
+  background:linear-gradient(180deg,#fff 0%,#eff6ff 100%);
+  border-radius:18px;
+  padding:16px;
+}
+.rms-pro-shell .tech-rpc-wiring-card h3{
+  margin:0;
+  font-size:17px;
+  color:#0f172a;
+}
+.rms-pro-shell .tech-rpc-wiring-card p{
+  margin:6px 0 0;
+  color:#475569;
+  font-size:13px;
+  line-height:1.45;
+}
+.rms-pro-shell .tech-rpc-wiring-grid{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:10px;
+  margin-top:12px;
+}
+.rms-pro-shell .tech-rpc-wiring-step{
+  border:1px solid rgba(191,219,254,.95);
+  background:#fff;
+  border-radius:14px;
+  padding:11px 12px;
+}
+.rms-pro-shell .tech-rpc-wiring-step span{
+  display:block;
+  color:#64748b;
+  font-size:12px;
+  font-weight:850;
+}
+.rms-pro-shell .tech-rpc-wiring-step strong{
+  display:block;
+  margin-top:5px;
+  color:#1d4ed8;
+  font-size:14px;
+}
+.rms-pro-shell .tech-rpc-wiring-step.ready{
+  background:#ecfdf5;
+  border-color:#bbf7d0;
+}
+.rms-pro-shell .tech-rpc-wiring-step.ready strong{
+  color:#047857;
+}
+.rms-pro-shell .tech-rpc-wiring-step.pending{
+  background:#fffbeb;
+  border-color:#fde68a;
+}
+.rms-pro-shell .tech-rpc-wiring-step.pending strong{
+  color:#b45309;
+}
+
+/* Better visual feedback for tech edit rows */
+.rms-pro-shell .tech-modern-table tr[data-rpc-ready="true"] td{
+  box-shadow:inset 3px 0 0 #bfdbfe;
+}
+.rms-pro-shell .recipe-items-table .rpc-ready,
+.rms-pro-shell .semi-composition-card .rpc-ready{
+  box-shadow:inset 3px 0 0 #bfdbfe;
+}
+
+/* Tech audit actions */
+.rms-pro-shell .tech-audit-action.update{
+  background:#eff6ff;
+  color:#1d4ed8;
+  border-color:#bfdbfe;
+}
+.rms-pro-shell .tech-audit-action.cancel{
+  background:#fff1f2;
+  color:#be123c;
+  border-color:#fecdd3;
+}
+
+@media(max-width:980px){
+  .rms-pro-shell .tech-rpc-wiring-grid{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+}
+@media(max-width:620px){
+  .rms-pro-shell .tech-rpc-wiring-grid{
+    grid-template-columns:1fr;
+  }
 }
 
 
