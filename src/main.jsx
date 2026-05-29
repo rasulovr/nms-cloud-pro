@@ -140,6 +140,31 @@ function rmsTechPatchFromValues(values = {}) {
 }
 
 
+
+// v141 Inventory Foundation helpers
+async function rmsInventoryRpcCall(name, payload = {}) {
+  if (!supabase?.rpc) throw new Error('Supabase RPC недоступен')
+  const { data, error } = await supabase.rpc(name, payload)
+  if (error) throw error
+  return data
+}
+
+async function rmsInventoryMovementCreate(payload = {}) {
+  return rmsInventoryRpcCall('rms_inventory_movement_create_secure', {
+    p_payload: payload || {},
+  })
+}
+
+async function rmsInventorySnapshot() {
+  const { data, error } = await supabase
+    .from('rms_inventory_stock_balance_view')
+    .select('*')
+    .limit(500)
+  if (error) throw error
+  return data || []
+}
+
+
 async function rmsTechCardRpcCall(name, payload = {}) {
   if (!supabase?.rpc) throw new Error('Supabase RPC недоступен')
   const { data, error } = await supabase.rpc(name, payload)
@@ -9633,6 +9658,69 @@ function RMSProV6Styles() {
 @media(max-width:680px){
   .rms-pro-shell .tech-final-hardening-grid{grid-template-columns:1fr;}
 }
+
+/* v141 Inventory / Stock Foundation Starter */
+.rms-pro-shell .inventory-foundation-card{
+  border:1px solid #bfdbfe;
+  border-left:5px solid #2563eb;
+  background:linear-gradient(180deg,#fff 0%,#eff6ff 100%);
+  border-radius:20px;
+  padding:17px;
+  box-shadow:0 12px 30px rgba(15,23,42,.045);
+  margin-top:14px;
+}
+.rms-pro-shell .inventory-foundation-card h3{margin:0;color:#0f172a;font-size:18px;letter-spacing:-.02em;}
+.rms-pro-shell .inventory-foundation-card p{margin:7px 0 0;color:#475569;font-size:13px;line-height:1.45;}
+.rms-pro-shell .inventory-foundation-grid{
+  display:grid;
+  grid-template-columns:repeat(5,minmax(0,1fr));
+  gap:10px;
+  margin-top:14px;
+}
+.rms-pro-shell .inventory-foundation-step{
+  border:1px solid rgba(191,219,254,.95);
+  background:#fff;
+  border-radius:14px;
+  padding:11px 12px;
+}
+.rms-pro-shell .inventory-foundation-step span{display:block;color:#64748b;font-size:11.8px;font-weight:850;}
+.rms-pro-shell .inventory-foundation-step strong{display:block;margin-top:5px;color:#1d4ed8;font-size:13.5px;line-height:1.2;}
+.rms-pro-shell .inventory-foundation-step.ready{border-color:#bbf7d0;background:#ecfdf5;}
+.rms-pro-shell .inventory-foundation-step.ready strong{color:#047857;}
+.rms-pro-shell .inventory-foundation-step.pending{border-color:#fde68a;background:#fffbeb;}
+.rms-pro-shell .inventory-foundation-step.pending strong{color:#b45309;}
+.rms-pro-shell .inventory-status-chip{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  min-height:26px;
+  padding:4px 10px;
+  border-radius:999px;
+  border:1px solid rgba(226,232,240,.96);
+  background:#fff;
+  color:#334155;
+  font-size:12px;
+  font-weight:900;
+}
+.rms-pro-shell .inventory-status-chip.ready{background:#ecfdf5;border-color:#bbf7d0;color:#047857;}
+.rms-pro-shell .inventory-status-chip.pending{background:#fffbeb;border-color:#fde68a;color:#b45309;}
+.rms-pro-shell .inventory-stock-table td:nth-child(n+3),
+.rms-pro-shell .inventory-stock-table th:nth-child(n+3){text-align:right;font-variant-numeric:tabular-nums;}
+.rms-pro-shell .inventory-stock-table td:first-child,
+.rms-pro-shell .inventory-stock-table th:first-child{min-width:220px;text-align:left;}
+.rms-pro-shell .inventory-note{
+  margin-top:12px;
+  border:1px dashed rgba(37,99,235,.35);
+  background:#eff6ff;
+  color:#1d4ed8;
+  border-radius:14px;
+  padding:11px 12px;
+  font-size:13px;
+  line-height:1.45;
+}
+@media(max-width:1180px){.rms-pro-shell .inventory-foundation-grid{grid-template-columns:repeat(3,minmax(0,1fr));}}
+@media(max-width:680px){.rms-pro-shell .inventory-foundation-grid{grid-template-columns:1fr;}}
+@media print{.rms-pro-shell .inventory-foundation-card{display:none!important;}}
 
 
   `}</style>
