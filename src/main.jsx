@@ -38,6 +38,21 @@ async function rmsTechSemiFinishedItemUpdateRpc(id, patch, comment = '') {
   })
 }
 
+async function rmsTechCardsReadinessCheck() {
+  return rmsTechCardRpcCall('rms_tech_cards_rpc_readiness_check', {})
+}
+
+async function rmsTechCardAuditRecent(limit = 50) {
+  const { data, error } = await supabase
+    .from('rms_tech_card_audit_recent')
+    .select('*')
+    .limit(limit)
+  if (error) throw error
+  return data || []
+}
+
+
+
 // RMS v56.1 Supplier Enterprise Hardened - Supplier writes via secure RPC only
 /* RMS v81 Finance Real User View - hides synthetic model charts from user finance screen */
 /* RMS v63 Supplier Payment Calendar - payment calendar, due reminders and follow-up control persistence */
@@ -8534,6 +8549,113 @@ function RMSProV6Styles() {
   }
 }
 
+/* v133 Tech Cards RPC Readiness + Safe Wiring Bundle */
+
+.rms-pro-shell .tech-readiness-card{
+  border:1px solid rgba(226,232,240,.96);
+  border-left:4px solid #2563eb;
+  background:linear-gradient(180deg,#fff 0%,#eff6ff 100%);
+  border-radius:18px;
+  padding:16px;
+}
+.rms-pro-shell .tech-readiness-card h3{
+  margin:0;
+  color:#0f172a;
+  font-size:17px;
+}
+.rms-pro-shell .tech-readiness-card p{
+  margin:6px 0 0;
+  color:#475569;
+  font-size:13px;
+  line-height:1.45;
+}
+.rms-pro-shell .tech-readiness-status{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  min-height:26px;
+  padding:4px 10px;
+  border-radius:999px;
+  border:1px solid rgba(226,232,240,.96);
+  background:#fff;
+  font-size:12px;
+  font-weight:850;
+}
+.rms-pro-shell .tech-readiness-status.ready{
+  background:#ecfdf5;
+  border-color:#bbf7d0;
+  color:#047857;
+}
+.rms-pro-shell .tech-readiness-status.pending{
+  background:#fffbeb;
+  border-color:#fde68a;
+  color:#b45309;
+}
+.rms-pro-shell .tech-readiness-status.error{
+  background:#fff1f2;
+  border-color:#fecdd3;
+  color:#be123c;
+}
+.rms-pro-shell .tech-readiness-table td:nth-child(n+2),
+.rms-pro-shell .tech-readiness-table th:nth-child(n+2){
+  text-align:center;
+}
+.rms-pro-shell .tech-readiness-table td:first-child,
+.rms-pro-shell .tech-readiness-table th:first-child{
+  text-align:left;
+  min-width:190px;
+}
+.rms-pro-shell .tech-safe-wiring-note{
+  margin-top:10px;
+  border:1px dashed rgba(37,99,235,.35);
+  background:#eff6ff;
+  color:#1d4ed8;
+  border-radius:14px;
+  padding:10px 12px;
+  font-size:13px;
+  line-height:1.45;
+}
+.rms-pro-shell .tech-rpc-mode-chip{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  min-height:26px;
+  padding:4px 10px;
+  border-radius:999px;
+  border:1px solid #bfdbfe;
+  background:#eff6ff;
+  color:#1d4ed8;
+  font-size:12px;
+  font-weight:900;
+}
+.rms-pro-shell .tech-audit-recent-list{
+  display:grid;
+  gap:8px;
+}
+.rms-pro-shell .tech-audit-recent-item{
+  display:grid;
+  grid-template-columns:150px 120px minmax(0,1fr);
+  gap:10px;
+  align-items:center;
+  padding:10px 12px;
+  border:1px solid rgba(226,232,240,.96);
+  border-radius:12px;
+  background:#fff;
+  font-size:13px;
+}
+.rms-pro-shell .tech-audit-recent-item b{
+  color:#0f172a;
+}
+.rms-pro-shell .tech-audit-recent-item span{
+  color:#64748b;
+}
+@media(max-width:760px){
+  .rms-pro-shell .tech-audit-recent-item{
+    grid-template-columns:1fr;
+    align-items:start;
+  }
+}
+
 
   `}</style>
 }
@@ -13666,8 +13788,8 @@ function Recipes({ t }) {
           <p>Техкарты, полуфабрикаты, себестоимость и контроль Food Cost по блюдам.</p>
           <p className="tech-safe-edit-note">Enterprise hardening: следующий этап переводит создание, изменение и удаление техкарт на secure RPC с журналом изменений. Текущая версия сохраняет рабочий интерфейс и добавляет подготовительный слой контроля.</p>
           <div className="tech-secure-rpc-card phase-2">
-            <h3>Tech Cards Secure RPC · Phase 2</h3>
-            <p>Подготовлены RPC-слои для блюд, ингредиентов и полуфабрикатов. Прямые права пока не закрываются: сначала проверяем работу редактора и реальные поля схемы.</p>
+            <h3>Tech Cards Secure RPC · Phase 3</h3>
+            <p>RPC-слои и readiness-check подготовлены. Прямые права пока не закрываются: сначала проверяем совместимость таблиц, затем точечно переводим сохранение строк состава.</p>
             <div className="tech-secure-rpc-grid">
               <div className="tech-secure-rpc-step is-ready"><span>Audit log</span><strong>Готово</strong></div>
               <div className="tech-secure-rpc-step is-ready"><span>Menu item RPC</span><strong>Подготовлено</strong></div>
