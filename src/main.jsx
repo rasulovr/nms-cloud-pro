@@ -6123,6 +6123,610 @@ function RMSProV6Styles() {
   }
 }
 
+/* v116 RMS Modal Action Visibility Final */
+.rms-pro-shell .revenue-modal-panel .supplier-modal-head{
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 14px !important;
+}
+.rms-pro-shell .revenue-modal-panel .modal-head-actions{
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: 8px !important;
+  flex-wrap: nowrap !important;
+  flex: 0 0 auto;
+}
+.rms-pro-shell .revenue-modal-panel .modal-head-actions button{
+  white-space: nowrap;
+}
+.rms-pro-shell .revenue-modal-panel .modal-head-actions button.small{
+  min-width: 88px;
+  min-height: 36px;
+}
+.rms-pro-shell .revenue-modal-panel .modal-head-actions .supplier-modal-x{
+  min-width: 40px !important;
+  width: 40px !important;
+  height: 40px !important;
+  margin-left: 4px;
+}
+.rms-pro-shell .revenue-modal-panel .revenue-modal-actions{
+  display: none !important;
+}
+.rms-pro-shell .revenue-modal-panel .revenue-modal-body{
+  padding-bottom: 24px !important;
+}
+.rms-pro-shell .supplier-modal-head .action-row button{
+  white-space: nowrap;
+}
+.rms-pro-shell .supplier-modal-head > div:first-child{
+  min-width: 0;
+}
+.rms-pro-shell .supplier-modal-head h3,
+.rms-pro-shell .supplier-modal-head p{
+  overflow-wrap: anywhere;
+}
+.rms-pro-shell .revenue-modal-panel .form-grid{
+  margin-top: 14px;
+}
+.rms-pro-shell .revenue-modal-panel{
+  width: min(880px, calc(100vw - 64px));
+}
+.rms-pro-shell .revenue-modal-panel .supplier-modal-head p{
+  max-width: 520px;
+}
+.rms-pro-shell .supplier-statement-modal .supplier-modal-head .action-row,
+.rms-pro-shell .supplier-transactions-panel .supplier-modal-head .action-row{
+  gap: 8px;
+}
+@media(max-width:820px){
+  .rms-pro-shell .revenue-modal-panel .supplier-modal-head{
+    align-items: flex-start !important;
+  }
+  .rms-pro-shell .revenue-modal-panel .modal-head-actions{
+    flex-wrap: wrap !important;
+  }
+}
+@media(max-width:560px){
+  .rms-pro-shell .revenue-modal-panel .supplier-modal-head{
+    display: block !important;
+  }
+  .rms-pro-shell .revenue-modal-panel .modal-head-actions{
+    margin-top: 12px;
+    justify-content: flex-start !important;
+  }
+  .rms-pro-shell .revenue-modal-panel .modal-head-actions button.small{
+    min-width: 82px;
+  }
+  .rms-pro-shell .revenue-modal-panel{
+    width: calc(100vw - 16px);
+  }
+}
+
+/* v117 RMS Stable Consolidation Pack */
+
+/* Keep modal actions visible and above all body content */
+.rms-pro-shell .supplier-modal-panel{
+  isolation: isolate;
+}
+.rms-pro-shell .supplier-modal-head{
+  z-index: 30 !important;
+}
+.rms-pro-shell .modal-head-actions{
+  z-index: 31 !important;
+}
+
+/* Do not allow modal body to visually cover header actions */
+.rms-pro-shell .supplier-modal-panel .revenue-modal-body,
+.rms-pro-shell .supplier-modal-panel .form-grid,
+.rms-pro-shell .supplier-modal-panel .table-wrap{
+  position: relative;
+  z-index: 1;
+}
+
+/* Revenue edit modal: header is the only action location */
+.rms-pro-shell .revenue-modal-panel .modal-head-actions{
+  display: inline-flex !important;
+}
+.rms-pro-shell .revenue-modal-panel .revenue-modal-actions{
+  display: none !important;
+  visibility: hidden !important;
+  height: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  overflow: hidden !important;
+}
+
+/* Better header button proportions */
+.rms-pro-shell .modal-head-actions button.small{
+  font-weight: 800;
+  border-radius: 11px;
+}
+.rms-pro-shell .modal-head-actions button.danger,
+.rms-pro-shell .modal-head-actions .danger{
+  background: #fff1f2;
+  border-color: #fecdd3;
+  color: #be123c;
+}
+.rms-pro-shell .modal-head-actions button.danger:hover,
+.rms-pro-shell .modal-head-actions .danger:hover{
+  background: #ffe4e6;
+  border-color: #fda4af;
+}
+
+/* Stable modal width and spacing */
+.rms-pro-shell .revenue-modal-panel{
+  width: min(880px, calc(100vw - 56px));
+}
+.rms-pro-shell .supplier-modal-panel{
+  max-width: calc(100vw - 28px);
+}
+
+/* Make hidden/cancelled rows readable without looking active */
+.rms-pro-shell tr[style*="line-through"] td,
+.rms-pro-shell .deleted-row td,
+.rms-pro-shell .cancelled-row td{
+  text-decoration-thickness: 1px;
+  text-decoration-color: rgba(100,116,139,.75);
+}
+
+/* Final mobile safety */
+@media(max-width:620px){
+  .rms-pro-shell .revenue-modal-panel{
+    width: calc(100vw - 12px);
+  }
+  .rms-pro-shell .modal-head-actions{
+    gap: 7px !important;
+  }
+  .rms-pro-shell .modal-head-actions button.small{
+    min-width: 78px !important;
+    padding-inline: 9px;
+  }
+}
+
+/* v118 RMS Multi-Step Professional Optimization Bundle */
+
+/* 1) App-wide density and rhythm */
+.rms-pro-shell{
+  --rms-gap-sm: 8px;
+  --rms-gap-md: 12px;
+  --rms-gap-lg: 16px;
+  --rms-border: rgba(226,232,240,.94);
+  --rms-shadow-card: 0 10px 28px rgba(15,23,42,.04);
+}
+.rms-pro-shell .topbar{
+  padding: 16px 18px;
+  margin-bottom: 14px;
+}
+.rms-pro-shell .topbar h2{
+  font-size: clamp(22px, 1.8vw, 28px);
+}
+.rms-pro-shell .topbar p{
+  max-width: 900px;
+}
+.rms-pro-shell .card{
+  padding: 16px;
+  box-shadow: var(--rms-shadow-card);
+}
+.rms-pro-shell .card-head{
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+}
+
+/* 2) KPI / summary cards cleanup */
+.rms-pro-shell .kpi-grid,
+.rms-pro-shell .summary-grid,
+.rms-pro-shell .finance-kpi-grid,
+.rms-pro-shell .revenue-day-kpi{
+  gap: 12px;
+}
+.rms-pro-shell .kpi-card,
+.rms-pro-shell .soft-card,
+.rms-pro-shell .finance-exec-card,
+.rms-pro-shell .revenue-day-kpi > div{
+  padding: 13px 15px;
+  border: 1px solid var(--rms-border);
+  box-shadow: none;
+}
+.rms-pro-shell .kpi-card strong,
+.rms-pro-shell .soft-card strong,
+.rms-pro-shell .finance-exec-card strong{
+  font-variant-numeric: tabular-nums;
+}
+
+/* 3) Tables: consistent enterprise density */
+.rms-pro-shell .table-wrap{
+  border: 1px solid var(--rms-border);
+  box-shadow: none;
+}
+.rms-pro-shell .table-wrap th{
+  font-size: 12px;
+  font-weight: 850;
+  color: #475569;
+  background: #f8fafc;
+}
+.rms-pro-shell .table-wrap td{
+  font-size: 14px;
+  color: #334155;
+}
+.rms-pro-shell .table-wrap th,
+.rms-pro-shell .table-wrap td{
+  padding: 10px 12px;
+}
+.rms-pro-shell .table-wrap tbody tr:hover{
+  background: rgba(239,246,255,.46);
+}
+.rms-pro-shell .table-wrap td:last-child .action-row{
+  display: inline-flex;
+  justify-content: flex-end;
+  gap: 6px;
+  flex-wrap: nowrap;
+}
+
+/* 4) Buttons and destructive actions */
+.rms-pro-shell button.small,
+.rms-pro-shell .small{
+  min-height: 32px;
+  padding: 7px 11px;
+  border-radius: 10px;
+  font-weight: 800;
+}
+.rms-pro-shell .action-row button{
+  white-space: nowrap;
+}
+.rms-pro-shell button.primary,
+.rms-pro-shell .primary{
+  box-shadow: 0 8px 18px rgba(37,99,235,.12);
+}
+.rms-pro-shell button.danger,
+.rms-pro-shell button.remove,
+.rms-pro-shell .small.remove,
+.rms-pro-shell .danger{
+  background: #fff1f2;
+  border-color: #fecdd3;
+  color: #be123c;
+}
+.rms-pro-shell button.danger:hover,
+.rms-pro-shell button.remove:hover,
+.rms-pro-shell .small.remove:hover,
+.rms-pro-shell .danger:hover{
+  background: #ffe4e6;
+  border-color: #fda4af;
+}
+
+/* 5) Modal final guard: header actions never hidden */
+.rms-pro-shell .supplier-modal-panel{
+  isolation: isolate;
+  background: #fff;
+}
+.rms-pro-shell .supplier-modal-head{
+  position: sticky;
+  top: 0;
+  z-index: 40 !important;
+  background: rgba(255,255,255,.99);
+}
+.rms-pro-shell .modal-head-actions{
+  z-index: 41 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  flex: 0 0 auto;
+}
+.rms-pro-shell .modal-head-actions button{
+  white-space: nowrap;
+}
+.rms-pro-shell .revenue-modal-panel .revenue-modal-actions{
+  display: none !important;
+  visibility: hidden !important;
+  height: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  overflow: hidden !important;
+}
+.rms-pro-shell .revenue-modal-panel .revenue-modal-body{
+  padding-bottom: 22px !important;
+}
+
+/* 6) Modal body and forms */
+.rms-pro-shell .supplier-modal-panel .form-grid,
+.rms-pro-shell .revenue-modal-panel .form-grid{
+  gap: 14px 16px;
+}
+.rms-pro-shell .supplier-modal-panel input,
+.rms-pro-shell .supplier-modal-panel select,
+.rms-pro-shell .supplier-modal-panel textarea,
+.rms-pro-shell input,
+.rms-pro-shell select,
+.rms-pro-shell textarea{
+  border-color: rgba(203,213,225,.95);
+  background: #fff;
+}
+.rms-pro-shell input:focus,
+.rms-pro-shell select:focus,
+.rms-pro-shell textarea:focus{
+  border-color: rgba(37,99,235,.68);
+  box-shadow: 0 0 0 4px rgba(37,99,235,.10);
+}
+
+/* 7) Empty states and cancelled rows */
+.rms-pro-shell .table-wrap td[colspan],
+.rms-pro-shell .table-wrap td[colSpan]{
+  color: #64748b;
+  background: #f8fafc;
+}
+.rms-pro-shell tr[style*="line-through"],
+.rms-pro-shell .deleted-row,
+.rms-pro-shell .cancelled-row{
+  opacity: .64;
+  background: #f8fafc !important;
+}
+.rms-pro-shell tr[style*="line-through"] td,
+.rms-pro-shell .deleted-row td,
+.rms-pro-shell .cancelled-row td{
+  color: #64748b;
+}
+
+/* 8) Export / report actions */
+.rms-pro-shell .finance-report-actions,
+.rms-pro-shell .revenue-top-actions,
+.rms-pro-shell .export-actions,
+.rms-pro-shell .report-actions{
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.rms-pro-shell .finance-report-actions button,
+.rms-pro-shell .revenue-top-actions button,
+.rms-pro-shell .export-actions button,
+.rms-pro-shell .report-actions button{
+  min-height: 34px;
+  min-width: 68px;
+}
+
+/* 9) Diagnostics stays technical and compact */
+.rms-pro-shell .diagnostics-card,
+.rms-pro-shell .security-diagnostics-card{
+  border-left: 3px solid #64748b;
+  background: linear-gradient(180deg,#fff 0%,#f8fafc 100%);
+}
+.rms-pro-shell .diagnostics-card .card-head,
+.rms-pro-shell .security-diagnostics-card .card-head{
+  margin-bottom: 10px;
+}
+
+/* 10) Responsive hardening */
+@media(max-width:980px){
+  .rms-pro-shell .topbar{
+    display: block;
+  }
+  .rms-pro-shell .topbar .action-row{
+    margin-top: 12px;
+    justify-content: flex-start;
+  }
+  .rms-pro-shell .kpi-grid,
+  .rms-pro-shell .summary-grid,
+  .rms-pro-shell .finance-kpi-grid,
+  .rms-pro-shell .revenue-day-kpi{
+    grid-template-columns: repeat(2, minmax(0,1fr));
+  }
+}
+@media(max-width:640px){
+  .rms-pro-shell .card{
+    padding: 14px;
+  }
+  .rms-pro-shell .kpi-grid,
+  .rms-pro-shell .summary-grid,
+  .rms-pro-shell .finance-kpi-grid,
+  .rms-pro-shell .revenue-day-kpi{
+    grid-template-columns: 1fr;
+  }
+  .rms-pro-shell .supplier-modal-head{
+    display: block;
+  }
+  .rms-pro-shell .modal-head-actions{
+    margin-top: 12px;
+    flex-wrap: wrap !important;
+    justify-content: flex-start !important;
+  }
+  .rms-pro-shell .table-wrap th,
+  .rms-pro-shell .table-wrap td{
+    padding: 9px 10px;
+    font-size: 13px;
+  }
+}
+
+/* 11) Print polish */
+@media print{
+  .rms-pro-shell .rms-pro-sidebar,
+  .rms-pro-shell .rms-pro-topbar,
+  .rms-pro-shell button,
+  .rms-pro-shell .action-row,
+  .rms-pro-shell .supplier-modal-x{
+    display: none !important;
+  }
+  .rms-pro-shell .card,
+  .rms-pro-shell .table-wrap{
+    box-shadow: none !important;
+    border-color: #d1d5db !important;
+  }
+  .rms-pro-shell .supplier-modal-panel{
+    position: static !important;
+    transform: none !important;
+    width: 100% !important;
+    max-height: none !important;
+    overflow: visible !important;
+    box-shadow: none !important;
+  }
+  .rms-pro-shell .supplier-modal-panel::before{
+    display: none !important;
+  }
+}
+
+/* v119 RMS Tables, Forms & Workflow Polish Bundle */
+
+/* 1) Sticky table headers only inside scroll containers */
+.rms-pro-shell .table-wrap{
+  position: relative;
+}
+.rms-pro-shell .table-wrap thead th{
+  position: sticky;
+  top: 0;
+  z-index: 3;
+}
+
+/* 2) Cleaner action columns */
+.rms-pro-shell .table-wrap td:last-child,
+.rms-pro-shell .table-wrap th:last-child{
+  white-space: nowrap;
+}
+.rms-pro-shell .table-wrap td:last-child .action-row{
+  min-width: max-content;
+}
+.rms-pro-shell .table-wrap .action-row button.small{
+  min-width: 72px;
+}
+
+/* 3) Better readable long text in cells */
+.rms-pro-shell .table-wrap td{
+  max-width: 420px;
+}
+.rms-pro-shell .table-wrap td .hint,
+.rms-pro-shell .table-wrap td p{
+  overflow-wrap: anywhere;
+}
+
+/* 4) Compact inline editors */
+.rms-pro-shell .inline-edit,
+.rms-pro-shell .inline-actions{
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.rms-pro-shell .inline-edit input,
+.rms-pro-shell .inline-edit select{
+  min-width: 160px;
+}
+
+/* 5) Better form cards */
+.rms-pro-shell .form-grid.compact{
+  gap: 12px;
+}
+.rms-pro-shell .form-grid.compact input,
+.rms-pro-shell .form-grid.compact select,
+.rms-pro-shell .form-grid.compact textarea{
+  min-height: 40px;
+}
+.rms-pro-shell .form-grid.compact label span{
+  font-size: 12.5px;
+}
+
+/* 6) Section headers and secondary descriptions */
+.rms-pro-shell .card-head h3 + p,
+.rms-pro-shell .topbar h2 + p{
+  color: #64748b;
+}
+.rms-pro-shell .card-head .action-row{
+  gap: 8px;
+}
+
+/* 7) Modal action safety */
+.rms-pro-shell .supplier-modal-panel .modal-head-actions{
+  max-width: 100%;
+}
+.rms-pro-shell .supplier-modal-panel .modal-head-actions button{
+  flex: 0 0 auto;
+}
+.rms-pro-shell .supplier-modal-panel .supplier-modal-head{
+  overflow: visible;
+}
+
+/* 8) Better visual separation behind modal */
+.rms-pro-shell .supplier-modal-panel::before{
+  background: rgba(248,250,252,.90);
+}
+
+/* 9) More consistent status text */
+.rms-pro-shell .status-text,
+.rms-pro-shell .status-cell{
+  font-weight: 800;
+}
+.rms-pro-shell .good,
+.rms-pro-shell .bad,
+.rms-pro-shell .warn{
+  font-variant-numeric: tabular-nums;
+}
+
+/* 10) Export buttons should not dominate */
+.rms-pro-shell .finance-report-actions button,
+.rms-pro-shell .revenue-top-actions button,
+.rms-pro-shell .export-actions button,
+.rms-pro-shell .report-actions button{
+  padding-inline: 12px;
+}
+
+/* 11) Reduce nested-card heaviness */
+.rms-pro-shell .card .card{
+  box-shadow: none;
+  border-color: rgba(226,232,240,.88);
+}
+.rms-pro-shell .supplier-modal-panel .card{
+  background: #fff;
+}
+
+/* 12) Mobile action rows */
+@media(max-width:760px){
+  .rms-pro-shell .table-wrap td:last-child,
+  .rms-pro-shell .table-wrap th:last-child{
+    white-space: normal;
+  }
+  .rms-pro-shell .table-wrap td:last-child .action-row{
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+  .rms-pro-shell .table-wrap .action-row button.small{
+    min-width: auto;
+  }
+  .rms-pro-shell .inline-edit{
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+}
+
+/* 13) Narrow modal header action handling */
+@media(max-width:680px){
+  .rms-pro-shell .supplier-modal-head{
+    display: block !important;
+  }
+  .rms-pro-shell .supplier-modal-head .action-row,
+  .rms-pro-shell .modal-head-actions{
+    margin-top: 12px;
+    justify-content: flex-start !important;
+  }
+  .rms-pro-shell .supplier-modal-head h3,
+  .rms-pro-shell .supplier-modal-head p{
+    padding-right: 0;
+  }
+}
+
+/* 14) Print: keep data tables readable */
+@media print{
+  .rms-pro-shell .table-wrap{
+    overflow: visible !important;
+  }
+  .rms-pro-shell .table-wrap thead th{
+    position: static !important;
+  }
+  .rms-pro-shell .table-wrap td{
+    max-width: none !important;
+  }
+}
+
 
   `}</style>
 }
@@ -10890,7 +11494,7 @@ function Recipes({ t }) {
     setMessage('Ингредиент полуфабриката обновлён')
   }
 
-  function openSemiIngredientsEditor() {
+  function openSemiIngredientsРедактор() {
     if (!selectedSemiItems.length) {
       setMessage('В составе пока нет ингредиентов')
       return
@@ -10914,7 +11518,7 @@ function Recipes({ t }) {
     setSemiEditDraft(prev => prev.map(row => String(row.id) === String(id) ? { ...row, ...patch } : row))
   }
 
-  async function saveSemiIngredientsEditor() {
+  async function saveSemiIngredientsРедактор() {
     for (const row of semiEditDraft) {
       const payload = {
         qty: parseNum(row.qty),
@@ -10941,7 +11545,7 @@ function Recipes({ t }) {
 
 
   async function editSelectedSemiLine() {
-    openSemiIngredientsEditor()
+    openSemiIngredientsРедактор()
   }
 
   async function createFinalMenuItem() {
@@ -23370,7 +23974,7 @@ function Settings({ session, t, theme, setTheme }) {
         {settingsTab === 'users' && <>
           <div className="card span-2"><h3>Пользователи</h3><p className="hint">Добавление пользователей и права доступа.</p></div>
           <div className="card span-2"><div className="card-head"><h3>Добавить пользователя</h3></div><p className="hint">Пользователь входит по login. Система создаёт внутренний email вида login@rms.local.az, поэтому email-рассылка не используется.</p><div className="form-grid compact"><label><span>Login</span><input value={newUser.login} onChange={e => setNewUser({...newUser, login: e.target.value})} placeholder="" /></label><label><span>Временный пароль</span><input type="password" value={newUser.password} onChange={e => setNewUser({...newUser, password: e.target.value})} /></label><label><span>Имя</span><input value={newUser.full_name} onChange={e => setNewUser({...newUser, full_name: e.target.value})} /></label></div><button className="small" onClick={addUser}>+ Добавить пользователя</button>{msg && <p className={`hint ${msg === t('saved') || String(msg).toLowerCase().includes('сохран') ? 'save-status' : 'good'}`}>{msg}</p>}</div>
-          <div className="card span-2"><div className="card-head"><h3>Права доступа</h3></div><p className="hint">Внутренние пользователи RMS входят по login/password без Supabase Auth. Раздел с доступом “Нет доступа” полностью скрывается из меню.</p><div className="table-wrap"><table><thead><tr><th>Пользователь</th><th>Login</th><th>Активен</th><th>Пароль</th><th>Зарплаты</th><th>Разделы</th><th>Действия</th></tr></thead><tbody>{users.map(u => <tr key={u.id}><td><b>{u.full_name || u.login_name || u.id}</b></td><td><span className="hint">{u.login_name || (u.email || '').split('@')[0] || u.id}</span></td><td><select value={String(u.is_active !== false)} onChange={e => updateUser(u.id, { is_active: e.target.value === 'true' })}><option value="true">Да</option><option value="false">Нет</option></select></td><td><div className="inline-edit"><input type="password" value={passwordEdits[u.id] || ''} onChange={e => setPasswordEdits(p => ({...p, [u.id]: e.target.value}))} placeholder="Новый пароль" /><button className="small" onClick={() => changeUserPassword(u.id, u.login_name || (u.email || '').split('@')[0])}>Изменить</button></div></td><td><label className="checkbox-row"><input type="checkbox" checked={Boolean(u.hide_manager_salary)} onChange={e => updateUser(u.id, { hide_manager_salary: e.target.checked })} /> Скрыть зарплаты менеджеров</label></td><td><div className="permission-grid">{editableSections.map(sec => <React.Fragment key={`${u.id}-${sec.id}`}><b>{t(sec.key)}</b><select value={getPermission(u.id, sec.id)} onChange={e => updatePermission(u.id, sec.id, e.target.value)}><option value="none">Нет доступа</option><option value="read">Readonly</option><option value="edit">Editor</option></select></React.Fragment>)}</div></td><td>{u.rms_internal ? <button className="small danger" onClick={() => deleteUser(u)}>Удалить</button> : <span className="hint">admin</span>}</td></tr>)}</tbody></table></div></div>
+          <div className="card span-2"><div className="card-head"><h3>Права доступа</h3></div><p className="hint">Внутренние пользователи RMS входят по login/password без Supabase Auth. Раздел с доступом “Нет доступа” полностью скрывается из меню.</p><div className="table-wrap"><table><thead><tr><th>Пользователь</th><th>Login</th><th>Активен</th><th>Пароль</th><th>Зарплаты</th><th>Разделы</th><th>Действия</th></tr></thead><tbody>{users.map(u => <tr key={u.id}><td><b>{u.full_name || u.login_name || u.id}</b></td><td><span className="hint">{u.login_name || (u.email || '').split('@')[0] || u.id}</span></td><td><select value={String(u.is_active !== false)} onChange={e => updateUser(u.id, { is_active: e.target.value === 'true' })}><option value="true">Да</option><option value="false">Нет</option></select></td><td><div className="inline-edit"><input type="password" value={passwordEdits[u.id] || ''} onChange={e => setPasswordEdits(p => ({...p, [u.id]: e.target.value}))} placeholder="Новый пароль" /><button className="small" onClick={() => changeUserPassword(u.id, u.login_name || (u.email || '').split('@')[0])}>Изменить</button></div></td><td><label className="checkbox-row"><input type="checkbox" checked={Boolean(u.hide_manager_salary)} onChange={e => updateUser(u.id, { hide_manager_salary: e.target.checked })} /> Скрыть зарплаты менеджеров</label></td><td><div className="permission-grid">{editableSections.map(sec => <React.Fragment key={`${u.id}-${sec.id}`}><b>{t(sec.key)}</b><select value={getPermission(u.id, sec.id)} onChange={e => updatePermission(u.id, sec.id, e.target.value)}><option value="none">Нет доступа</option><option value="read">Только просмотр</option><option value="edit">Редактор</option></select></React.Fragment>)}</div></td><td>{u.rms_internal ? <button className="small danger" onClick={() => deleteUser(u)}>Удалить</button> : <span className="hint">admin</span>}</td></tr>)}</tbody></table></div></div>
         </>}
 
         {settingsTab === 'voen' && <div className="card span-2"><div className="card-head"><h3>Наши VOEN / юрлица</h3></div><p className="hint">Используются в разделе “Поставщики”.</p><div className="form-grid compact"><label><span>Имя / компания</span><input value={legalForm.name} onChange={e => setLegalForm({...legalForm, name: e.target.value})} placeholder="Ruslan Rasulov" /></label><label><span>VOEN</span><input value={legalForm.voen} onChange={e => setLegalForm({...legalForm, voen: e.target.value})} /></label></div><button className="small" onClick={addLegalEntity}>+ Добавить VOEN</button>{msg && <p className={`hint ${msg === t('saved') || String(msg).toLowerCase().includes('сохран') ? 'save-status' : 'good'}`}>{msg}</p>}<div className="table-wrap" style={{marginTop:12}}><table><thead><tr><th>Имя / компания</th><th>VOEN</th><th>Активен</th></tr></thead><tbody>{legalEntities.map(le => <tr key={le.id}><td><input defaultValue={le.name} onBlur={e => updateLegalEntity(le.id, { name: e.target.value.trim() })} /></td><td><input defaultValue={le.voen} onBlur={e => updateLegalEntity(le.id, { voen: e.target.value.trim() })} /></td><td><select defaultValue={String(le.is_active !== false)} onChange={e => updateLegalEntity(le.id, { is_active: e.target.value === 'true' })}><option value="true">Да</option><option value="false">Нет</option></select></td></tr>)}{!legalEntities.length && <tr><td colSpan="3" className="hint">—</td></tr>}</tbody></table></div></div>}
