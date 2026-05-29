@@ -15,7 +15,7 @@ import RMSLoyaltyPOSScan from './RMSLoyaltyPOSScan'
 
 const I18N = {
   ru: {
-    system_title:'RMS', system_short_title:'RMS', system_subtitle:'Выручка · Финансы · Персонал · Поставщики', dashboard_tab:'Дашборд', pos_tab:'POS / Продажи',
+    system_title:'RMS', system_short_title:'RMS', system_subtitle:'Выручка · Финансы · Персонал · Поставщики', dashboard_tab:'Dashboard', pos_tab:'POS / Продажи',
     brand_subtitle:'Restaurant Management System', language_label:'Язык интерфейса', login_label:'Login', password_label:'Пароль',
     login_button:'Войти', login_hint:'Вход по внутреннему login. Допустим вход по логину без домена.', login_error:'Неверный логин или пароль', show_password:'Показать пароль',
     logout:'Выйти', revenue_tab:'Выручка', finance_tab:'Финансы', reports_tab:'Отчёты', recipes_tab:'Тех. карты', salaries_tab:'Зарплаты',
@@ -7337,6 +7337,134 @@ function RMSProV6Styles() {
   }
 }
 
+/* v124 Dashboard Executive Pack */
+
+/* Executive dashboard hierarchy */
+.rms-pro-shell .dashboard-executive-card,
+.rms-pro-shell .executive-summary-card{
+  border:1px solid rgba(226,232,240,.96);
+  background:linear-gradient(180deg,#fff 0%,#f8fafc 100%);
+  border-radius:20px;
+  padding:16px;
+  box-shadow:0 10px 28px rgba(15,23,42,.04);
+}
+.rms-pro-shell .dashboard-executive-grid,
+.rms-pro-shell .executive-summary-grid{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:12px;
+}
+.rms-pro-shell .dashboard-executive-kpi,
+.rms-pro-shell .executive-summary-kpi{
+  border:1px solid rgba(226,232,240,.96);
+  background:#fff;
+  border-radius:16px;
+  padding:14px 15px;
+}
+.rms-pro-shell .dashboard-executive-kpi span,
+.rms-pro-shell .executive-summary-kpi span{
+  display:block;
+  color:#64748b;
+  font-size:12.5px;
+  font-weight:850;
+}
+.rms-pro-shell .dashboard-executive-kpi strong,
+.rms-pro-shell .executive-summary-kpi strong{
+  display:block;
+  margin-top:5px;
+  font-size:22px;
+  line-height:1.12;
+  letter-spacing:-.025em;
+  font-variant-numeric:tabular-nums;
+}
+.rms-pro-shell .dashboard-executive-kpi small,
+.rms-pro-shell .executive-summary-kpi small{
+  display:block;
+  margin-top:5px;
+  color:#64748b;
+  font-size:12px;
+}
+
+/* Executive alerts */
+.rms-pro-shell .executive-alert-list{
+  display:grid;
+  gap:10px;
+}
+.rms-pro-shell .executive-alert{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+  padding:12px 14px;
+  border:1px solid rgba(226,232,240,.96);
+  border-radius:14px;
+  background:#fff;
+}
+.rms-pro-shell .executive-alert strong{
+  color:#0f172a;
+}
+.rms-pro-shell .executive-alert p{
+  margin:4px 0 0;
+  color:#64748b;
+  font-size:13px;
+}
+.rms-pro-shell .executive-alert.ok{
+  border-color:#bbf7d0;
+  background:#ecfdf5;
+}
+.rms-pro-shell .executive-alert.warn{
+  border-color:#fde68a;
+  background:#fffbeb;
+}
+.rms-pro-shell .executive-alert.bad{
+  border-color:#fecdd3;
+  background:#fff1f2;
+}
+
+/* Dashboard cards/tables density */
+.rms-pro-shell .dashboard-card .card-head,
+.rms-pro-shell .dashboard-executive-card .card-head{
+  margin-bottom:12px;
+}
+.rms-pro-shell .dashboard-card .table-wrap th,
+.rms-pro-shell .dashboard-card .table-wrap td{
+  padding:9px 11px;
+}
+
+/* Keep dashboard as director screen: not too technical */
+.rms-pro-shell .dashboard-technical-note{
+  color:#64748b;
+  font-size:12.5px;
+  line-height:1.42;
+}
+.rms-pro-shell .dashboard-quick-actions{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  flex-wrap:wrap;
+}
+.rms-pro-shell .dashboard-quick-actions button{
+  min-height:34px;
+  border-radius:10px;
+}
+
+/* Mobile dashboard */
+@media(max-width:980px){
+  .rms-pro-shell .dashboard-executive-grid,
+  .rms-pro-shell .executive-summary-grid{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+}
+@media(max-width:620px){
+  .rms-pro-shell .dashboard-executive-grid,
+  .rms-pro-shell .executive-summary-grid{
+    grid-template-columns:1fr;
+  }
+  .rms-pro-shell .executive-alert{
+    display:block;
+  }
+}
+
 
   `}</style>
 }
@@ -10310,7 +10438,7 @@ function Dashboard({ t }) {
   return <section id="dashboardPage" className="rms-executive-dashboard">
     <section className="dashboard-v23-head">
       <div>
-        <h2>Дашборд</h2>
+        <h2>Dashboard</h2>
         <p>Обзор ключевых показателей вашего бизнеса за выбранный период.</p>
       </div>
       <div className="dashboard-v23-filters">
