@@ -8850,6 +8850,115 @@ function RMSProV6Styles() {
   }
 }
 
+/* v136 Tech Cards Handler Wiring */
+
+/* Handler wiring status block */
+.rms-pro-shell .tech-handler-wiring-card{
+  border:1px solid #bbf7d0;
+  border-left:4px solid #16a34a;
+  background:linear-gradient(180deg,#fff 0%,#ecfdf5 100%);
+  border-radius:18px;
+  padding:16px;
+}
+.rms-pro-shell .tech-handler-wiring-card h3{
+  margin:0;
+  color:#0f172a;
+  font-size:17px;
+}
+.rms-pro-shell .tech-handler-wiring-card p{
+  margin:6px 0 0;
+  color:#047857;
+  font-size:13px;
+  line-height:1.45;
+}
+.rms-pro-shell .tech-handler-grid{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:10px;
+  margin-top:12px;
+}
+.rms-pro-shell .tech-handler-step{
+  border:1px solid #bbf7d0;
+  background:#fff;
+  border-radius:14px;
+  padding:11px 12px;
+}
+.rms-pro-shell .tech-handler-step span{
+  display:block;
+  color:#64748b;
+  font-size:12px;
+  font-weight:850;
+}
+.rms-pro-shell .tech-handler-step strong{
+  display:block;
+  margin-top:5px;
+  color:#047857;
+  font-size:14px;
+}
+.rms-pro-shell .tech-handler-step.pending{
+  border-color:#fde68a;
+  background:#fffbeb;
+}
+.rms-pro-shell .tech-handler-step.pending strong{
+  color:#b45309;
+}
+.rms-pro-shell .tech-handler-step.danger{
+  border-color:#fecdd3;
+  background:#fff1f2;
+}
+.rms-pro-shell .tech-handler-step.danger strong{
+  color:#be123c;
+}
+
+/* Visual confirmation of guarded mode */
+.rms-pro-shell .tech-guarded-mode{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  min-height:26px;
+  padding:4px 10px;
+  border-radius:999px;
+  border:1px solid #bbf7d0;
+  background:#ecfdf5;
+  color:#047857;
+  font-size:12px;
+  font-weight:900;
+}
+.rms-pro-shell .tech-direct-write-count{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  min-height:26px;
+  padding:4px 10px;
+  border-radius:999px;
+  border:1px solid #fde68a;
+  background:#fffbeb;
+  color:#b45309;
+  font-size:12px;
+  font-weight:900;
+}
+
+/* Handler scan table */
+.rms-pro-shell .tech-handler-scan-table td,
+.rms-pro-shell .tech-handler-scan-table th{
+  padding:9px 11px;
+}
+.rms-pro-shell .tech-handler-scan-table td:nth-child(n+2),
+.rms-pro-shell .tech-handler-scan-table th:nth-child(n+2){
+  text-align:center;
+}
+
+@media(max-width:980px){
+  .rms-pro-shell .tech-handler-grid{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+}
+@media(max-width:620px){
+  .rms-pro-shell .tech-handler-grid{
+    grid-template-columns:1fr;
+  }
+}
+
 
   `}</style>
 }
@@ -13982,8 +14091,8 @@ function Recipes({ t }) {
           <p>Техкарты, полуфабрикаты, себестоимость и контроль Food Cost по блюдам.</p>
           <p className="tech-safe-edit-note">Enterprise hardening: следующий этап переводит создание, изменение и удаление техкарт на secure RPC с журналом изменений. Текущая версия сохраняет рабочий интерфейс и добавляет подготовительный слой контроля.</p>
           <div className="tech-secure-rpc-card phase-2">
-            <h3>Tech Cards Secure RPC · Phase 5</h3>
-            <p>Frontend helpers для сохранения и удаления строк состава подключены в режиме RPC + fallback. Lockdown прав — только после подтверждения работы на реальной схеме.</p>
+            <h3>Tech Cards Secure RPC · Phase 6</h3>
+            <p>Handler wiring подготовлен: найдены прямые write-точки и сформирован план точечного подключения RPC + fallback. Lockdown прав — после проверки.</p>
             <div className="tech-secure-rpc-grid">
               <div className="tech-secure-rpc-step is-ready"><span>Audit log</span><strong>Готово</strong></div>
               <div className="tech-secure-rpc-step is-ready"><span>Menu item RPC</span><strong>Подготовлено</strong></div>
