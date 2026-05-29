@@ -1,5 +1,63 @@
 
 // v132 Tech Cards RPC helpers
+
+async function rmsTechMenuItemUpdateRpc(id, patch, comment = '') {
+  return rmsTechCardRpcCall('rms_tech_menu_item_update_secure', {
+    p_id: id,
+    p_patch: patch || {},
+    p_comment: comment || null,
+  })
+}
+
+async function rmsTechMenuItemCreateRpc(payload, comment = '') {
+  return rmsTechCardRpcCall('rms_tech_menu_item_create_secure', {
+    p_payload: payload || {},
+    p_comment: comment || null,
+  })
+}
+
+async function rmsTechMenuItemCancelRpc(id, comment = '') {
+  return rmsTechCardRpcCall('rms_tech_menu_item_cancel_secure', {
+    p_id: id,
+    p_comment: comment || null,
+  })
+}
+
+async function rmsTechSemiFinishedCreateRpc(payload, comment = '') {
+  return rmsTechCardRpcCall('rms_tech_semi_finished_create_secure', {
+    p_payload: payload || {},
+    p_comment: comment || null,
+  })
+}
+
+async function rmsTechSemiFinishedCancelRpc(id, comment = '') {
+  return rmsTechCardRpcCall('rms_tech_semi_finished_cancel_secure', {
+    p_id: id,
+    p_comment: comment || null,
+  })
+}
+
+async function rmsTechSemiFinishedItemCancelRpc(id, comment = '') {
+  return rmsTechCardRpcCall('rms_tech_semi_finished_item_cancel_secure', {
+    p_id: id,
+    p_comment: comment || null,
+  })
+}
+
+async function rmsTechFinalRecipeComponentSaveRpc({ id, payload, comment = '' }) {
+  return id
+    ? rmsTechCardRpcCall('rms_tech_final_recipe_component_update_secure', { p_id: id, p_patch: payload || {}, p_comment: comment || null })
+    : rmsTechCardRpcCall('rms_tech_final_recipe_component_create_secure', { p_payload: payload || {}, p_comment: comment || null })
+}
+
+async function rmsTechFinalRecipeComponentCancelRpc(id, comment = '') {
+  return rmsTechCardRpcCall('rms_tech_final_recipe_component_cancel_secure', {
+    p_id: id,
+    p_comment: comment || null,
+  })
+}
+
+
 async function rmsTechCardRpcCall(name, payload = {}) {
   if (!supabase?.rpc) throw new Error('Supabase RPC недоступен')
   const { data, error } = await supabase.rpc(name, payload)
@@ -8959,6 +9017,235 @@ function RMSProV6Styles() {
   }
 }
 
+/* v137 Tech Cards Hardening Consolidated Bundle */
+
+/* Consolidated hardening command center */
+.rms-pro-shell .tech-hardening-command-card{
+  border:1px solid #bfdbfe;
+  border-left:5px solid #2563eb;
+  background:linear-gradient(180deg,#fff 0%,#eff6ff 100%);
+  border-radius:20px;
+  padding:17px;
+  box-shadow:0 12px 30px rgba(15,23,42,.045);
+}
+.rms-pro-shell .tech-hardening-command-card h3{
+  margin:0;
+  color:#0f172a;
+  font-size:18px;
+  letter-spacing:-.02em;
+}
+.rms-pro-shell .tech-hardening-command-card p{
+  margin:7px 0 0;
+  color:#475569;
+  font-size:13px;
+  line-height:1.45;
+}
+.rms-pro-shell .tech-hardening-grid{
+  display:grid;
+  grid-template-columns:repeat(6,minmax(0,1fr));
+  gap:10px;
+  margin-top:14px;
+}
+.rms-pro-shell .tech-hardening-step{
+  border:1px solid rgba(191,219,254,.95);
+  background:#fff;
+  border-radius:14px;
+  padding:11px 12px;
+}
+.rms-pro-shell .tech-hardening-step span{
+  display:block;
+  color:#64748b;
+  font-size:11.8px;
+  font-weight:850;
+}
+.rms-pro-shell .tech-hardening-step strong{
+  display:block;
+  margin-top:5px;
+  color:#1d4ed8;
+  font-size:13.5px;
+  line-height:1.2;
+}
+.rms-pro-shell .tech-hardening-step.ready{
+  border-color:#bbf7d0;
+  background:#ecfdf5;
+}
+.rms-pro-shell .tech-hardening-step.ready strong{
+  color:#047857;
+}
+.rms-pro-shell .tech-hardening-step.pending{
+  border-color:#fde68a;
+  background:#fffbeb;
+}
+.rms-pro-shell .tech-hardening-step.pending strong{
+  color:#b45309;
+}
+
+/* Tech Cards executive summary */
+.rms-pro-shell .tech-executive-summary{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:12px;
+  margin-top:14px;
+}
+.rms-pro-shell .tech-executive-kpi{
+  border:1px solid rgba(226,232,240,.96);
+  background:#fff;
+  border-radius:16px;
+  padding:13px 15px;
+}
+.rms-pro-shell .tech-executive-kpi span{
+  display:block;
+  color:#64748b;
+  font-size:12.5px;
+  font-weight:850;
+}
+.rms-pro-shell .tech-executive-kpi strong{
+  display:block;
+  margin-top:5px;
+  color:#0f172a;
+  font-size:20px;
+  font-variant-numeric:tabular-nums;
+}
+
+/* RPC status chips */
+.rms-pro-shell .tech-rpc-status-chip{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  min-height:26px;
+  padding:4px 10px;
+  border-radius:999px;
+  border:1px solid rgba(226,232,240,.96);
+  background:#fff;
+  color:#334155;
+  font-size:12px;
+  font-weight:900;
+}
+.rms-pro-shell .tech-rpc-status-chip.ready{
+  background:#ecfdf5;
+  border-color:#bbf7d0;
+  color:#047857;
+}
+.rms-pro-shell .tech-rpc-status-chip.pending{
+  background:#fffbeb;
+  border-color:#fde68a;
+  color:#b45309;
+}
+.rms-pro-shell .tech-rpc-status-chip.locked{
+  background:#fff1f2;
+  border-color:#fecdd3;
+  color:#be123c;
+}
+
+/* Tech cards table final hardening */
+.rms-pro-shell .tech-modern-table td,
+.rms-pro-shell .tech-modern-table th{
+  vertical-align:middle;
+}
+.rms-pro-shell .tech-modern-table td:nth-child(1){
+  min-width:230px;
+}
+.rms-pro-shell .tech-modern-table td:nth-child(7),
+.rms-pro-shell .tech-modern-table th:nth-child(7){
+  min-width:270px;
+  text-align:right;
+}
+.rms-pro-shell .tech-modern-table .tech-row-actions{
+  justify-content:flex-end;
+  gap:6px;
+  flex-wrap:nowrap;
+}
+.rms-pro-shell .tech-modern-table .tech-row-actions button{
+  min-width:78px;
+}
+
+/* Recipe/semi component edit safety */
+.rms-pro-shell .recipe-items-table .editing-row td,
+.rms-pro-shell .semi-composition-card .editing-row td,
+.rms-pro-shell .recipe-items-table tr[data-editing="true"] td,
+.rms-pro-shell .semi-composition-card tr[data-editing="true"] td{
+  background:#eff6ff!important;
+  box-shadow:inset 3px 0 0 #2563eb;
+}
+.rms-pro-shell .recipe-items-table .rpc-ready td,
+.rms-pro-shell .semi-composition-card .rpc-ready td{
+  box-shadow:inset 3px 0 0 #16a34a;
+}
+.rms-pro-shell .recipe-items-table .rpc-fallback td,
+.rms-pro-shell .semi-composition-card .rpc-fallback td{
+  box-shadow:inset 3px 0 0 #f59e0b;
+}
+
+/* Audit and readiness tables */
+.rms-pro-shell .tech-readiness-table,
+.rms-pro-shell .tech-audit-log-table,
+.rms-pro-shell .tech-handler-scan-table{
+  width:100%;
+}
+.rms-pro-shell .tech-readiness-table th,
+.rms-pro-shell .tech-readiness-table td,
+.rms-pro-shell .tech-audit-log-table th,
+.rms-pro-shell .tech-audit-log-table td,
+.rms-pro-shell .tech-handler-scan-table th,
+.rms-pro-shell .tech-handler-scan-table td{
+  padding:9px 11px;
+  border-bottom:1px solid rgba(226,232,240,.78);
+}
+.rms-pro-shell .tech-audit-action.create{
+  background:#ecfdf5;
+  color:#047857;
+  border-color:#bbf7d0;
+}
+.rms-pro-shell .tech-audit-action.update{
+  background:#eff6ff;
+  color:#1d4ed8;
+  border-color:#bfdbfe;
+}
+.rms-pro-shell .tech-audit-action.cancel,
+.rms-pro-shell .tech-audit-action.delete{
+  background:#fff1f2;
+  color:#be123c;
+  border-color:#fecdd3;
+}
+
+/* Tech Cards diagnostics notes */
+.rms-pro-shell .tech-hardening-note{
+  margin-top:12px;
+  border:1px dashed rgba(37,99,235,.35);
+  background:#eff6ff;
+  color:#1d4ed8;
+  border-radius:14px;
+  padding:11px 12px;
+  font-size:13px;
+  line-height:1.45;
+}
+.rms-pro-shell .tech-lockdown-note{
+  margin-top:12px;
+  border:1px dashed rgba(180,83,9,.45);
+  background:#fffbeb;
+  color:#92400e;
+  border-radius:14px;
+  padding:11px 12px;
+  font-size:13px;
+  line-height:1.45;
+}
+
+/* Responsive */
+@media(max-width:1180px){
+  .rms-pro-shell .tech-hardening-grid{
+    grid-template-columns:repeat(3,minmax(0,1fr));
+  }
+  .rms-pro-shell .tech-executive-summary{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+}
+@media(max-width:680px){
+  .rms-pro-shell .tech-hardening-grid,
+  .rms-pro-shell .tech-executive-summary{
+    grid-template-columns:1fr;
+  }
+}
+
 
   `}</style>
 }
@@ -14091,8 +14378,8 @@ function Recipes({ t }) {
           <p>Техкарты, полуфабрикаты, себестоимость и контроль Food Cost по блюдам.</p>
           <p className="tech-safe-edit-note">Enterprise hardening: следующий этап переводит создание, изменение и удаление техкарт на secure RPC с журналом изменений. Текущая версия сохраняет рабочий интерфейс и добавляет подготовительный слой контроля.</p>
           <div className="tech-secure-rpc-card phase-2">
-            <h3>Tech Cards Secure RPC · Phase 6</h3>
-            <p>Handler wiring подготовлен: найдены прямые write-точки и сформирован план точечного подключения RPC + fallback. Lockdown прав — после проверки.</p>
+            <h3>Tech Cards Secure RPC · Consolidated Phase</h3>
+            <p>Consolidated bundle: подготовлены RPC для блюд, ингредиентов, полуфабрикатов и final recipe components; добавлены readiness/audit diagnostics. Lockdown прав — после проверки.</p>
             <div className="tech-secure-rpc-grid">
               <div className="tech-secure-rpc-step is-ready"><span>Audit log</span><strong>Готово</strong></div>
               <div className="tech-secure-rpc-step is-ready"><span>Menu item RPC</span><strong>Подготовлено</strong></div>
