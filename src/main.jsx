@@ -6944,6 +6944,123 @@ function RMSProV6Styles() {
   }
 }
 
+/* v121 Tech Cards Stability & Cost Engine Starter */
+
+/* Tech cards: clearer statuses */
+.rms-pro-shell .tech-status{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-height:26px;
+  padding:4px 10px;
+  border-radius:999px;
+  font-size:12px;
+  font-weight:850;
+  white-space:nowrap;
+}
+.rms-pro-shell .tech-status.active{
+  background:#ecfdf5;
+  color:#047857;
+  border:1px solid #bbf7d0;
+}
+.rms-pro-shell .tech-status.warning{
+  background:#fffbeb;
+  color:#b45309;
+  border:1px solid #fde68a;
+}
+.rms-pro-shell .tech-status.danger{
+  background:#fff1f2;
+  color:#be123c;
+  border:1px solid #fecdd3;
+}
+
+/* Tech card action buttons should be readable, not icon-only */
+.rms-pro-shell .tech-row-actions{
+  display:inline-flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:6px;
+  flex-wrap:nowrap;
+}
+.rms-pro-shell .tech-row-actions .icon-button{
+  width:auto;
+  min-width:76px;
+  height:32px;
+  padding:6px 10px;
+  border-radius:10px;
+  font-size:12px;
+  font-weight:850;
+  line-height:1;
+}
+.rms-pro-shell .tech-row-actions .tech-view-button{
+  min-width:82px;
+}
+.rms-pro-shell .tech-row-actions .tech-edit-button{
+  background:#fff;
+  border-color:rgba(203,213,225,.95);
+  color:#334155;
+}
+.rms-pro-shell .tech-row-actions .tech-print-button{
+  background:#f8fafc;
+  border-color:rgba(203,213,225,.95);
+  color:#334155;
+}
+
+/* Tech cards: keep cost and margin columns readable */
+.rms-pro-shell .tech-modern-table td:nth-child(3),
+.rms-pro-shell .tech-modern-table td:nth-child(4),
+.rms-pro-shell .tech-modern-table td:nth-child(5){
+  font-variant-numeric:tabular-nums;
+  white-space:nowrap;
+}
+.rms-pro-shell .tech-modern-table td:nth-child(7){
+  min-width:250px;
+  text-align:right;
+}
+.rms-pro-shell .tech-modern-table th:nth-child(7){
+  text-align:right;
+}
+
+/* Semi-finished composition: stronger editing state */
+.rms-pro-shell .semi-row.editing td{
+  background:#eff6ff!important;
+  box-shadow:inset 0 1px 0 rgba(59,130,246,.12), inset 0 -1px 0 rgba(59,130,246,.12);
+}
+.rms-pro-shell .semi-row-actions{
+  gap:6px!important;
+}
+.rms-pro-shell .semi-row-actions button{
+  min-width:86px!important;
+}
+
+/* Tech cards: professional empty state */
+.rms-pro-shell .tech-modern-table td.hint,
+.rms-pro-shell .semi-composition-card td.hint{
+  background:#f8fafc;
+  border:1px dashed rgba(203,213,225,.9);
+  color:#64748b;
+}
+
+/* Tech detail panel: lighter modal feel */
+.rms-pro-shell .tech-detail-overlay{
+  background:rgba(248,250,252,.88)!important;
+  backdrop-filter:blur(6px);
+}
+.rms-pro-shell .tech-detail-panel{
+  box-shadow:0 26px 80px rgba(15,23,42,.18)!important;
+  border:1px solid rgba(203,213,225,.9);
+}
+
+/* Mobile tech card table safety */
+@media(max-width:920px){
+  .rms-pro-shell .tech-modern-table{
+    min-width:980px;
+  }
+  .rms-pro-shell .tech-table-wrap{
+    overflow-x:auto;
+  }
+}
+
 
   `}</style>
 }
@@ -12073,7 +12190,7 @@ function Recipes({ t }) {
       <section className="topbar tech-page-header">
         <div>
           <h2>Тех. карты</h2>
-          <p>Управление технологическими картами, полуфабрикатами, себестоимостью и маржинальностью блюд.</p>
+          <p>Техкарты, полуфабрикаты, себестоимость и контроль Food Cost по блюдам.</p>
         </div>
         <div className="tech-header-actions">
           <button className="ghost small" onClick={() => setTab('legacy')}>Все тех. карты</button>
@@ -12191,6 +12308,10 @@ function Recipes({ t }) {
                       const sale = parseNum(m.sale_price)
                       const fc = sale > 0 ? (cost / sale) * 100 : 0
                       const margin = sale > 0 ? 100 - fc : 0
+                      const targetFc = parseNum(m.target_food_cost_percent || 35) || 35
+                      const hasComposition = rows.length > 0
+                      const statusLabel = !hasComposition ? 'Нет состава' : !sale ? 'Нет цены' : fc > targetFc ? 'FC выше нормы' : 'ОК'
+                      const statusClass = !hasComposition || !sale ? 'warning' : fc > targetFc ? 'danger' : 'active'
                       const categoryName = m.category || 'Без категории'
                       const categoryClass = `tech-category-pill cat-${String(categoryName).toLowerCase().replace(/[^a-zа-яё0-9]+/gi, '-')}`
                       return (
@@ -12208,12 +12329,12 @@ function Recipes({ t }) {
                           <td><b>{fmt(cost)} AZN</b><small>{sale > 0 ? `Food Cost ${pct(fc)}` : 'цена не указана'}</small></td>
                           <td><b>{fmt(sale)} AZN</b></td>
                           <td><b className={margin >= 60 ? 'good' : margin >= 40 ? '' : 'bad'}>{sale > 0 ? pct(margin) : '—'}</b></td>
-                          <td><span className="tech-status active">Активная</span></td>
+                          <td><span className={`tech-status ${statusClass}`}>{statusLabel}</span></td>
                           <td>
                             <div className="tech-row-actions">
                               <button className="icon-button tech-view-button" title="Просмотр" onClick={() => viewFinalTechCard(m.id)}>Просмотр</button>
-                              <button className="icon-button" title="Редактировать" onClick={() => editFinalTechCard(m.id)}>✎</button>
-                              <button className="icon-button" title="Печать" onClick={() => printFinalTechCard(m.id, true)}>⋮</button>
+                              <button className="icon-button tech-edit-button" title="Редактировать" onClick={() => editFinalTechCard(m.id)}>Изменить</button>
+                              <button className="icon-button tech-print-button" title="Печать" onClick={() => printFinalTechCard(m.id, true)}>Печать</button>
                             </div>
                           </td>
                         </tr>
