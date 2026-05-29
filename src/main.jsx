@@ -19,7 +19,7 @@ const I18N = {
     brand_subtitle:'Restaurant Management System', language_label:'Язык интерфейса', login_label:'Login', password_label:'Пароль',
     login_button:'Войти', login_hint:'Вход по внутреннему login. Допустим вход по логину без домена.', login_error:'Неверный логин или пароль', show_password:'Показать пароль',
     logout:'Выйти', revenue_tab:'Выручка', finance_tab:'Финансы', reports_tab:'Отчёты', recipes_tab:'Тех. карты', salaries_tab:'Зарплаты',
-    attendance_tab:'Посещаемость', advances_tab:'Авансы', suppliers_tab:'Поставщики', debts_payments_tab:'Долги и оплаты', qr_menu_tab:'QR Menu', loyalty_tab:'Loyalty', market_intelligence_tab:'Market Intelligence', security_recovery_tab:'Security & Recovery', settings_tab:'Настройки',
+    attendance_tab:'Посещаемость', advances_tab:'Авансы', suppliers_tab:'Поставщики', debts_payments_tab:'Долги и оплаты', qr_menu_tab:'QR Menu', loyalty_tab:'Loyalty', market_intelligence_tab:'Market Intelligence', security_recovery_tab:'Безопасность и диагностика', settings_tab:'Настройки',
     revenue_subtitle:'Ввод выручки и расходов за выбранную дату по филиалу', finance_subtitle:'Аналитика по филиалу, месяцу, выручке и расходам',
     period_branch:'Период и филиал', branch_select:'Филиал', date:'Дата', daily_revenue_title:'Выручка за выбранную дату',
     cash:'Наличными', bank:'Банк', wolt:'Wolt', revenue_summary:'Сводка выручки', total_revenue:'Общая выручка',
@@ -42,7 +42,7 @@ const I18N = {
     brand_subtitle:'Restaurant Management System', language_label:'İnterfeys dili', login_label:'Login', password_label:'Parol',
     login_button:'Daxil ol', login_hint:'Daxili login ilə giriş. Domen yazmadan login istifadə etmək olar.', login_error:'Login və ya parol yanlışdır', show_password:'Parolu göstər',
     logout:'Çıxış', revenue_tab:'Dövriyyə', finance_tab:'Maliyyə', reports_tab:'Hesabatlar', recipes_tab:'Tex. kartlar', salaries_tab:'Maaşlar',
-    attendance_tab:'Davamiyyət', advances_tab:'Avanslar', suppliers_tab:'Təchizatçılar', debts_payments_tab:'Borclar və ödənişlər', qr_menu_tab:'QR Menu', loyalty_tab:'Loyalty', market_intelligence_tab:'Market Intelligence', security_recovery_tab:'Security & Recovery', settings_tab:'Ayarlar',
+    attendance_tab:'Davamiyyət', advances_tab:'Avanslar', suppliers_tab:'Təchizatçılar', debts_payments_tab:'Borclar və ödənişlər', qr_menu_tab:'QR Menu', loyalty_tab:'Loyalty', market_intelligence_tab:'Market Intelligence', security_recovery_tab:'Безопасность и диагностика', settings_tab:'Ayarlar',
     revenue_subtitle:'Seçilmiş tarix və filial üzrə dövriyyə və xərclər', finance_subtitle:'Filial, ay, dövriyyə və xərclər üzrə analitika',
     period_branch:'Dövr və filial', branch_select:'Filial', date:'Tarix', daily_revenue_title:'Seçilmiş tarixin dövriyyəsi',
     cash:'Nağd', bank:'Bank', wolt:'Wolt', revenue_summary:'Dövriyyə xülasəsi', total_revenue:'Ümumi dövriyyə',
@@ -3303,7 +3303,7 @@ function POSLite({ t }) {
       <section>
         <section className="topbar">
           <div>
-            <h2>POS / Касса</h2>
+            <h2>POS</h2>
             <p>Вход в POS-кассу: сотрудник вводит своё имя и 4-значный PIN-код.</p>
           </div>
         </section>
@@ -3425,7 +3425,7 @@ function POSLite({ t }) {
       <SemiFinishedInlineStyles />
       <section className="topbar">
         <div>
-          <h2>POS / Касса</h2>
+          <h2>POS</h2>
           <p>Кассир: <b>{cashierSession.name}</b> · Стиль работы: столы → заказ → категории → позиции → пречек / чек.</p>
         </div>
         <div style={{display:'flex', gap:8, alignItems:'center'}}>
@@ -4283,6 +4283,39 @@ function RMSProV6Styles() {
   .rms-pro-shell .sidebar.rms-pro-sidebar{width:100%!important;max-width:none!important;height:auto!important;min-height:0!important;position:relative!important;}
   .rms-pro-nav{max-height:55vh!important;}
 }
+
+/* v101 · RMS professional cleanup bundle */
+.rms-pro-shell .topbar{gap:14px;align-items:flex-start;}
+.rms-pro-shell .topbar h2{letter-spacing:-.03em;}
+.rms-pro-shell .topbar p{max-width:860px;}
+.rms-pro-shell .action-row button.small,
+.rms-pro-shell button.small{min-height:32px;border-radius:10px;font-weight:800;}
+.rms-pro-shell button.primary{box-shadow:0 8px 18px rgba(37,99,235,.16);}
+.rms-pro-shell .card-head{gap:12px;align-items:flex-start;}
+.rms-pro-shell .card-head h3{letter-spacing:-.02em;}
+.rms-pro-shell .table-wrap table th{white-space:nowrap;}
+.rms-pro-shell .table-wrap table td{vertical-align:middle;}
+.rms-pro-shell .table-wrap table td:last-child .action-row,
+.rms-pro-shell .table-wrap table td:last-child{white-space:nowrap;}
+.rms-pro-shell .supplier-modal-backdrop{backdrop-filter:blur(5px);}
+.rms-pro-shell .supplier-modal-panel,
+.rms-pro-shell .finance-ai-modal-panel{max-height:86vh;overflow:auto;border-radius:22px;}
+.rms-pro-shell .supplier-modal-head{position:sticky;top:0;z-index:4;background:rgba(255,255,255,.96);backdrop-filter:blur(10px);border-bottom:1px solid #e5e7eb;margin:-2px -2px 12px;padding:14px 16px;}
+.rms-pro-shell .supplier-modal-x{width:34px;height:34px;border-radius:999px;font-size:20px;line-height:1;}
+.rms-pro-shell .finance-report-actions,
+.rms-pro-shell .revenue-top-actions{gap:8px!important;}
+.rms-pro-shell .finance-report-btn,
+.rms-pro-shell .revenue-top-actions button{min-width:72px;}
+.rms-pro-shell .revenue-day-kpi strong,
+.rms-pro-shell .finance-exec-card strong{font-variant-numeric:tabular-nums;}
+.rms-pro-shell .diagnostics-card,
+.rms-pro-shell .security-diagnostics-card{border-left:4px solid #64748b;}
+@media(max-width:780px){
+  .rms-pro-shell .topbar{display:block;}
+  .rms-pro-shell .topbar .action-row{margin-top:12px;justify-content:flex-start!important;}
+  .rms-pro-shell .table-wrap{overflow-x:auto;}
+}
+
 
   `}</style>
 }
@@ -5430,7 +5463,7 @@ function Revenue({ t, focusExpense }) {
 
   return (
     <section id="revenuePage">
-      <section className="topbar"><div><h2>{t('revenue_tab')}</h2><p>{t('revenue_subtitle')}</p></div><div className="action-row revenue-top-actions" style={{gap:8}}><span className={`revenue-day-status-chip ${revenueDayHealthClass}`}>{revenueDayHealthLabel}</span><button className="small" onClick={exportRevenueDayCsv}>CSV отчёт</button><button className="small primary" onClick={printRevenueDayReport}>PDF / печать</button></div></section>
+      <section className="topbar"><div><h2>{t('revenue_tab')}</h2><p>{t('revenue_subtitle')}</p></div><div className="action-row revenue-top-actions" style={{gap:8}}><span className={`revenue-day-status-chip ${revenueDayHealthClass}`}>{revenueDayHealthLabel}</span><button className="small" onClick={exportRevenueDayCsv}>CSV</button><button className="small primary" onClick={printRevenueDayReport}>PDF / печать</button></div></section>
       <section className="grid">
         <div className="card span-2"><div className="card-head"><h3>{t('period_branch')}</h3></div><div className="form-grid">
           <label><span>{t('branch_select')}</span><select value={branchId} onChange={e => setBranchId(e.target.value)}>{branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label>
@@ -8419,7 +8452,7 @@ function Finance({ t, lang, onGoToExpense }) {
           <label><span>{t('month')}</span><select value={month} onChange={e => setMonth(Number(e.target.value))}>{I18N[lang].months.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}</select></label>
         </div>
         <div className="finance-head-actions">
-          <button className="small finance-report-btn" onClick={exportFinanceMonthlyCsv}>CSV отчёт</button>
+          <button className="small finance-report-btn" onClick={exportFinanceMonthlyCsv}>CSV</button>
           <button className="small primary finance-report-btn" onClick={printFinanceMonthlyReport}>PDF / печать</button>
         </div>
         </div>
@@ -8493,7 +8526,7 @@ function Finance({ t, lang, onGoToExpense }) {
               <h3>Прогноз месяца</h3>
               <p className="hint">Короткая сводка. Детальный расчёт открывается отдельно.</p>
             </div>
-            <button className="small" onClick={() => setShowFinanceForecastDetails(true)}>Детали прогноза</button>
+            <button className="small" onClick={() => setShowFinanceForecastDetails(true)}>Прогноз подробно</button>
           </div>
           <div className="kpi-row finance-forecast-summary-row">
             <div className="metric"><span>Прогноз выручки</span><strong>{fmt(stats.forecastRevenue)}</strong><em>AZN</em></div>
@@ -8507,7 +8540,7 @@ function Finance({ t, lang, onGoToExpense }) {
         {showFinanceForecastDetails && <div className="card span-2 supplier-transactions-panel supplier-modal-panel finance-forecast-modal-panel">
           <div className="card-head supplier-modal-head">
             <div>
-              <h3>Детали прогноза прибыли</h3>
+              <h3>Прогноз подробно прибыли</h3>
               <p className="hint">Фиксированные расходы учитываются сразу, коммунальные и другие месячные статьи берутся из текущего месяца или из среднего прошлых месяцев.</p>
             </div>
             <button className="supplier-modal-x" title="Закрыть" aria-label="Закрыть" onClick={() => setShowFinanceForecastDetails(false)}>×</button>
@@ -8585,7 +8618,7 @@ function Finance({ t, lang, onGoToExpense }) {
               <h3>Отклонения месяца</h3>
               <p className="hint">Короткий управленческий список. Полная аналитика открывается отдельно.</p>
             </div>
-            <button className="small" onClick={() => setShowAllAiRows(true)}>Открыть аналитику</button>
+            <button className="small" onClick={() => setShowAllAiRows(true)}>Аналитика</button>
           </div>
           <div className="table-wrap">
             <table>
@@ -9216,7 +9249,7 @@ function Recipes({ t }) {
 </head>
 <body>
   <div class="page">
-    <div class="actionbar"><button onclick="window.print()">Печать / PDF</button></div>
+    <div class="actionbar"><button onclick="window.print()">PDF / печать</button></div>
     <div class="sheet">
       <section class="hero">
         <div class="photo">${menu?.image_url || menu?.photo_url ? `<img src="${escapeHtml(menu.image_url || menu.photo_url)}" />` : escapeHtml(String(menu?.name || 'R').slice(0,1).toUpperCase())}</div>
@@ -10693,7 +10726,7 @@ function RecipesLegacy({ t }) {
 <body>
   <div class="page">
     <div class="actionbar">
-      <button onclick="window.print()">PDF/Print</button>
+      <button onclick="window.print()">PDF / печать</button>
     </div>
     <div class="sheet">
       <div class="header">
@@ -10837,7 +10870,7 @@ function RecipesLegacy({ t }) {
               <p className="hint">Выбранное блюдо: <strong>{selectedMenu?.name || 'не выбрано'}</strong>. Готовая техкарта отображается под ключевыми показателями, а редактирование открывается только по кнопке «Редактировать».</p>
             </div>
             <div className="row-actions">
-              {!recipeEditMode && recipeItems.length > 0 && <button className="ghost small" onClick={printTechCard}>PDF/Print</button>}
+              {!recipeEditMode && recipeItems.length > 0 && <button className="ghost small" onClick={printTechCard}>PDF / печать</button>}
               {!recipeEditMode && recipeItems.length > 0 && <button className="ghost small" onClick={() => setRecipeEditMode(true)}>Редактировать</button>}
               {(recipeEditMode || recipeItems.length === 0) && <button className="small" disabled={!availableProductsForRecipe.length} onClick={addRecipeItem}>{availableProductsForRecipe.length ? '+ ингредиент' : 'Все ингредиенты добавлены'}</button>}
               {recipeEditMode && <button className="primary small" onClick={() => { setRecipeEditMode(false); setMessage(t('saved')) }}>Сохранить техкарту</button>}
@@ -12553,7 +12586,7 @@ function Salaries({ t, view = 'employees', isAdmin = false }) {
         button{border:0;border-radius:10px;padding:9px 14px;background:#475569;color:white;font-weight:800}
         @media print{body{background:white}.actions{display:none}.page{width:auto;min-height:auto;margin:0;padding:0}.sheet{border:0;border-radius:0}}
       </style></head><body>
-      <div class="actions"><button onclick="window.print()">PDF/Print</button></div>
+      <div class="actions"><button onclick="window.print()">PDF / печать</button></div>
       <div class="page"><div class="sheet">
         <h1>${title}</h1>
         <div class="muted">${branchId === 'all' ? 'Все филиалы и группы' : (staffGroupOptions(branches).find(b => b.id === branchId)?.name || 'Филиал')}</div>
@@ -12581,7 +12614,7 @@ function Salaries({ t, view = 'employees', isAdmin = false }) {
         </div>
         <div className="action-row">
           <button className="ghost small" onClick={exportSalarySheetCsv}>CSV</button>
-          <button className="small primary" onClick={printSalarySheet}>PDF/Print</button>
+          <button className="small primary" onClick={printSalarySheet}>PDF / печать</button>
         </div>
       </section>
 
@@ -12608,7 +12641,7 @@ function Salaries({ t, view = 'employees', isAdmin = false }) {
           <div className="card-head">
             <div>
               <h3>Список сотрудников</h3>
-              <p className="hint">К выплате выделено жирным цветом. Экспорт доступен в CSV и PDF/Print.</p>
+              <p className="hint">К выплате выделено жирным цветом. Экспорт доступен в CSV и PDF / печать.</p>
             </div>
             <span className="hint">{salarySheetRows.length} сотрудников</span>
           </div>
@@ -12861,7 +12894,7 @@ function Salaries({ t, view = 'employees', isAdmin = false }) {
       </div>
 
       <div className="card span-2">
-        <div className="card-head"><h3>Зарплаты сотрудников</h3><button className="small primary" onClick={printSalaryEmployeesPdf}>PDF/Print</button></div>
+        <div className="card-head"><h3>Зарплаты сотрудников</h3><button className="small primary" onClick={printSalaryEmployeesPdf}>PDF / печать</button></div>
         {salaryGroups.map(group => {
           const expanded = Boolean(expandedSalaryGroups[group.id])
           const orderedRows = positionGroupRows(group.rows)
