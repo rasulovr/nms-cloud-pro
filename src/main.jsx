@@ -8241,6 +8241,167 @@ function RMSProV6Styles() {
   }
 }
 
+/* v130 Tech Cards Secure RPC Phase 1 */
+
+/* Tech secure RPC progress banner */
+.rms-pro-shell .tech-secure-rpc-card{
+  border:1px solid #bfdbfe;
+  border-left:4px solid #2563eb;
+  background:linear-gradient(180deg,#fff 0%,#eff6ff 100%);
+  border-radius:18px;
+  padding:15px 16px;
+}
+.rms-pro-shell .tech-secure-rpc-card h3{
+  margin:0;
+  color:#0f172a;
+  font-size:17px;
+}
+.rms-pro-shell .tech-secure-rpc-card p{
+  margin:6px 0 0;
+  color:#475569;
+  font-size:13px;
+  line-height:1.45;
+}
+.rms-pro-shell .tech-secure-rpc-grid{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:10px;
+  margin-top:12px;
+}
+.rms-pro-shell .tech-secure-rpc-step{
+  border:1px solid rgba(191,219,254,.95);
+  background:#fff;
+  border-radius:14px;
+  padding:11px 12px;
+}
+.rms-pro-shell .tech-secure-rpc-step span{
+  display:block;
+  color:#64748b;
+  font-size:12px;
+  font-weight:850;
+}
+.rms-pro-shell .tech-secure-rpc-step strong{
+  display:block;
+  margin-top:5px;
+  color:#1d4ed8;
+  font-size:14px;
+}
+
+/* Tech audit log table */
+.rms-pro-shell .tech-audit-log-table td,
+.rms-pro-shell .tech-audit-log-table th{
+  padding:9px 11px;
+}
+.rms-pro-shell .tech-audit-log-table td:nth-child(1){
+  white-space:nowrap;
+  font-variant-numeric:tabular-nums;
+}
+.rms-pro-shell .tech-audit-log-table td:nth-child(3){
+  min-width:180px;
+}
+.rms-pro-shell .tech-audit-action{
+  display:inline-flex;
+  align-items:center;
+  min-height:24px;
+  padding:3px 8px;
+  border-radius:999px;
+  border:1px solid rgba(226,232,240,.96);
+  background:#f8fafc;
+  color:#334155;
+  font-size:12px;
+  font-weight:850;
+}
+
+/* Tech rows prepared for secure mode */
+.rms-pro-shell .tech-modern-table tr:hover .tech-secure-phase{
+  border-color:#93c5fd;
+  background:#dbeafe;
+}
+
+/* Mobile */
+@media(max-width:980px){
+  .rms-pro-shell .tech-secure-rpc-grid{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+}
+@media(max-width:620px){
+  .rms-pro-shell .tech-secure-rpc-grid{
+    grid-template-columns:1fr;
+  }
+}
+
+/* v131 Tech Cards Secure RPC Phase 2 */
+
+/* Phase 2 status */
+.rms-pro-shell .tech-secure-rpc-card.phase-2{
+  border-left-color:#16a34a;
+  background:linear-gradient(180deg,#fff 0%,#ecfdf5 100%);
+}
+.rms-pro-shell .tech-secure-rpc-card.phase-2 .tech-secure-rpc-step strong{
+  color:#047857;
+}
+.rms-pro-shell .tech-rpc-warning{
+  margin-top:10px;
+  border:1px dashed rgba(180,83,9,.45);
+  background:#fffbeb;
+  color:#92400e;
+  border-radius:14px;
+  padding:10px 12px;
+  font-size:13px;
+  line-height:1.45;
+}
+.rms-pro-shell .tech-rpc-ok{
+  margin-top:10px;
+  border:1px solid #bbf7d0;
+  background:#ecfdf5;
+  color:#047857;
+  border-radius:14px;
+  padding:10px 12px;
+  font-size:13px;
+  line-height:1.45;
+}
+.rms-pro-shell .tech-secure-rpc-step.is-ready{
+  border-color:#bbf7d0;
+  background:#ecfdf5;
+}
+.rms-pro-shell .tech-secure-rpc-step.is-waiting{
+  border-color:#fde68a;
+  background:#fffbeb;
+}
+.rms-pro-shell .tech-secure-rpc-step.is-locked{
+  border-color:#fecdd3;
+  background:#fff1f2;
+}
+
+/* Ingredient safe edit layer */
+.rms-pro-shell .recipe-items-table .editing-row td,
+.rms-pro-shell .semi-composition-card .editing-row td{
+  background:#eff6ff!important;
+  box-shadow:inset 0 1px 0 rgba(59,130,246,.15), inset 0 -1px 0 rgba(59,130,246,.15);
+}
+.rms-pro-shell .recipe-items-table .row-actions,
+.rms-pro-shell .semi-composition-card .row-actions{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  flex-wrap:nowrap;
+}
+.rms-pro-shell .recipe-items-table .row-actions button,
+.rms-pro-shell .semi-composition-card .row-actions button{
+  min-width:76px;
+}
+
+/* Audit event viewer placeholder */
+.rms-pro-shell .tech-audit-recent-card{
+  border:1px solid rgba(226,232,240,.96);
+  background:#fff;
+  border-radius:18px;
+  padding:16px;
+}
+.rms-pro-shell .tech-audit-recent-card .table-wrap{
+  margin-top:12px;
+}
+
 
   `}</style>
 }
@@ -13372,6 +13533,16 @@ function Recipes({ t }) {
           <h2>Тех. карты</h2>
           <p>Техкарты, полуфабрикаты, себестоимость и контроль Food Cost по блюдам.</p>
           <p className="tech-safe-edit-note">Enterprise hardening: следующий этап переводит создание, изменение и удаление техкарт на secure RPC с журналом изменений. Текущая версия сохраняет рабочий интерфейс и добавляет подготовительный слой контроля.</p>
+          <div className="tech-secure-rpc-card phase-2">
+            <h3>Tech Cards Secure RPC · Phase 2</h3>
+            <p>Подготовлены RPC-слои для блюд, ингредиентов и полуфабрикатов. Прямые права пока не закрываются: сначала проверяем работу редактора и реальные поля схемы.</p>
+            <div className="tech-secure-rpc-grid">
+              <div className="tech-secure-rpc-step is-ready"><span>Audit log</span><strong>Готово</strong></div>
+              <div className="tech-secure-rpc-step is-ready"><span>Menu item RPC</span><strong>Подготовлено</strong></div>
+              <div className="tech-secure-rpc-step is-ready"><span>Ingredient RPC</span><strong>Phase 2</strong></div>
+              <div className="tech-secure-rpc-step is-waiting"><span>Permission lockdown</span><strong>После теста</strong></div>
+            </div>
+          </div>
         </div>
         <div className="tech-header-actions">
           <button className="ghost small" onClick={() => setTab('legacy')}>Все тех. карты</button>
