@@ -5152,28 +5152,16 @@ function Revenue({ t, focusExpense }) {
 
   async function saveCashRegister() {
     if (!branchId) return
-    const user = await currentUserMeta()
     const calculatedClosingCash = parseNum(cashForm.opening_cash) + dailyCashRevenue + dailyInflowTotal - dailyExpenseTotal
-    const payload = {
-      branch_id: branchId,
-      cash_date: date,
-      opening_cash: parseNum(cashForm.opening_cash),
-      closing_cash: calculatedClosingCash,
-      counted_cash: parseNum(cashForm.counted_cash),
-      comment: cashForm.comment || null,
-      updated_by: user.user_id,
-      created_by: cashRow?.created_by || user.user_id
-    }
-    const { data, error } = await supabase.from('daily_cash_register').upsert(payload, { onConflict: 'branch_id,cash_date' }).select('*').single()
-    if (error) return setMessage(error.message)
-    await writeLog({
-      entity_type: 'cash',
-      record_id: data.id,
-      action: cashRow ? 'update' : 'create',
-      field_name: 'cash_register',
-      old_value: cashRow ? `${cashRow.opening_cash}/${cashRow.closing_cash}/${cashRow.counted_cash ?? ''}` : null,
-      new_value: `${data.opening_cash}/${data.closing_cash}/${data.counted_cash ?? ''}`
+    const { data, error } = await supabase.rpc('rms_cash_register_save_secure', {
+      p_branch_id: branchId,
+      p_cash_date: date,
+      p_opening_cash: parseNum(cashForm.opening_cash),
+      p_closing_cash: calculatedClosingCash,
+      p_counted_cash: parseNum(cashForm.counted_cash),
+      p_comment: cashForm.comment || null
     })
+    if (error) return setMessage(error.message)
     setCashRow(data)
     await loadLogs(branchId, date)
     setMessage('Касса сохранена и зафиксирована в журнале')
