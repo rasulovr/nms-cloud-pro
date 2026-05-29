@@ -1673,7 +1673,7 @@ function SecurityRecoveryCenter() {
     <section className="space-y-6">
       <section className="topbar">
         <div>
-          <h2>Security & Recovery Center</h2>
+          <h2>Безопасность и диагностика Center</h2>
           <p>Enterprise snapshots, audit recovery and operational protection.</p>
         </div>
         <button className="primary" onClick={createSnapshot} disabled={loading}>
@@ -4469,6 +4469,468 @@ function RMSProV6Styles() {
   .rms-pro-shell .small{padding:7px 10px;}
 }
 
+/* v104 RMS Navigation, Tables & Density Pack */
+.rms-pro-shell{
+  --rms-card-radius: 18px;
+  --rms-control-radius: 12px;
+  --rms-soft-border: rgba(226,232,240,.92);
+}
+.rms-pro-shell .rms-pro-topbar{
+  border-bottom: 1px solid rgba(226,232,240,.85);
+  background: rgba(255,255,255,.88);
+  backdrop-filter: blur(10px);
+}
+.rms-pro-shell .rms-pro-topbar-title h1,
+.rms-pro-shell .topbar h2{
+  letter-spacing: -0.035em;
+}
+.rms-pro-shell .rms-pro-sidebar,
+.rms-pro-shell aside{
+  border-right-color: rgba(226,232,240,.85);
+}
+.rms-pro-shell nav button,
+.rms-pro-shell .sidebar button,
+.rms-pro-shell .rms-pro-sidebar button{
+  border-radius: 12px;
+}
+.rms-pro-shell nav button:hover,
+.rms-pro-shell .sidebar button:hover,
+.rms-pro-shell .rms-pro-sidebar button:hover{
+  background: rgba(248,250,252,.9);
+}
+.rms-pro-shell .card{
+  border-radius: var(--rms-card-radius);
+}
+.rms-pro-shell .card-head{
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(226,232,240,.65);
+  margin-bottom: 14px;
+}
+.rms-pro-shell .card-head h3{
+  font-size: 18px;
+  line-height: 1.2;
+}
+.rms-pro-shell .card-head p{
+  max-width: 920px;
+}
+.rms-pro-shell .kpi-grid,
+.rms-pro-shell .summary-grid,
+.rms-pro-shell .finance-kpi-grid,
+.rms-pro-shell .revenue-day-kpi{
+  gap: 12px;
+}
+.rms-pro-shell .kpi-card,
+.rms-pro-shell .soft-card,
+.rms-pro-shell .finance-exec-card{
+  padding: 14px 16px;
+}
+.rms-pro-shell .kpi-card strong,
+.rms-pro-shell .soft-card strong,
+.rms-pro-shell .finance-exec-card strong{
+  letter-spacing: -0.025em;
+}
+.rms-pro-shell .table-wrap{
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+.rms-pro-shell .table-wrap table{
+  border-collapse: separate;
+  border-spacing: 0;
+}
+.rms-pro-shell .table-wrap thead th{
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: #f8fafc;
+  box-shadow: inset 0 -1px 0 rgba(226,232,240,.95);
+}
+.rms-pro-shell .table-wrap tbody tr:last-child td{
+  border-bottom: 0;
+}
+.rms-pro-shell .table-wrap td:last-child,
+.rms-pro-shell .table-wrap th:last-child{
+  text-align: right;
+}
+.rms-pro-shell .table-wrap td:last-child .action-row,
+.rms-pro-shell .table-wrap td:last-child > div.action-row{
+  justify-content: flex-end;
+}
+.rms-pro-shell .action-row.compact,
+.rms-pro-shell .table-wrap .action-row{
+  gap: 6px;
+  flex-wrap: nowrap;
+}
+.rms-pro-shell .table-wrap .action-row button.small{
+  padding-inline: 10px;
+}
+.rms-pro-shell .muted-action,
+.rms-pro-shell button.ghost,
+.rms-pro-shell .ghost{
+  background: #fff;
+  border-color: rgba(203,213,225,.9);
+}
+.rms-pro-shell button.ghost:hover,
+.rms-pro-shell .ghost:hover{
+  background: #f8fafc;
+}
+.rms-pro-shell .primary{
+  border-color: rgba(37,99,235,.45);
+}
+.rms-pro-shell .good,
+.rms-pro-shell .bad,
+.rms-pro-shell .warn{
+  font-weight: 800;
+}
+.rms-pro-shell .hint{
+  color: #64748b;
+}
+.rms-pro-shell .form-grid{
+  gap: 14px;
+}
+.rms-pro-shell label{
+  font-weight: 700;
+  color: #475569;
+}
+.rms-pro-shell input,
+.rms-pro-shell select,
+.rms-pro-shell textarea{
+  min-height: 42px;
+}
+.rms-pro-shell textarea{
+  resize: vertical;
+}
+.rms-pro-shell .supplier-modal-panel{
+  scrollbar-width: thin;
+}
+.rms-pro-shell .supplier-modal-panel::before{
+  background: rgba(248,250,252,.84);
+}
+.rms-pro-shell .supplier-modal-head{
+  box-shadow: 0 8px 18px rgba(15,23,42,.035);
+}
+.rms-pro-shell .supplier-modal-x{
+  flex-shrink: 0;
+}
+.rms-pro-shell .revenue-modal-actions button,
+.rms-pro-shell .supplier-modal-panel .action-row button{
+  min-width: 88px;
+}
+.rms-pro-shell .finance-report-actions,
+.rms-pro-shell .revenue-top-actions,
+.rms-pro-shell .topbar .action-row{
+  row-gap: 8px;
+}
+.rms-pro-shell .diagnostics-card .card-head,
+.rms-pro-shell .security-diagnostics-card .card-head{
+  margin-bottom: 10px;
+}
+@media(max-width:980px){
+  .rms-pro-shell .kpi-grid,
+  .rms-pro-shell .summary-grid,
+  .rms-pro-shell .finance-kpi-grid,
+  .rms-pro-shell .revenue-day-kpi{
+    grid-template-columns: repeat(2, minmax(0,1fr));
+  }
+  .rms-pro-shell .topbar{
+    gap: 10px;
+  }
+}
+@media(max-width:620px){
+  .rms-pro-shell .kpi-grid,
+  .rms-pro-shell .summary-grid,
+  .rms-pro-shell .finance-kpi-grid,
+  .rms-pro-shell .revenue-day-kpi{
+    grid-template-columns: 1fr;
+  }
+  .rms-pro-shell .table-wrap th,
+  .rms-pro-shell .table-wrap td{
+    font-size: 13px;
+  }
+  .rms-pro-shell .table-wrap .action-row{
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+  .rms-pro-shell .table-wrap td:last-child,
+  .rms-pro-shell .table-wrap th:last-child{
+    text-align: left;
+  }
+  .rms-pro-shell .supplier-modal-panel{
+    width: calc(100vw - 12px);
+    top: 8px;
+    max-height: calc(100vh - 16px);
+  }
+}
+
+/* v105 RMS Consolidated UX & Stability Bundle */
+.rms-pro-shell{
+  --rms-radius-lg: 20px;
+  --rms-radius-md: 14px;
+  --rms-radius-sm: 11px;
+  --rms-border-soft: rgba(226,232,240,.94);
+  --rms-bg-soft: #f8fafc;
+  --rms-text-strong: #0f172a;
+  --rms-text-muted: #64748b;
+}
+
+/* Cleaner page rhythm */
+.rms-pro-shell main,
+.rms-pro-shell .main,
+.rms-pro-shell .content{
+  scroll-behavior: smooth;
+}
+.rms-pro-shell .topbar{
+  margin-bottom: 16px;
+  border: 1px solid var(--rms-border-soft);
+  box-shadow: 0 10px 28px rgba(15,23,42,.045);
+}
+.rms-pro-shell .topbar h2,
+.rms-pro-shell .card-head h3{
+  color: var(--rms-text-strong);
+}
+.rms-pro-shell .topbar p,
+.rms-pro-shell .card-head p,
+.rms-pro-shell .hint{
+  color: var(--rms-text-muted);
+}
+
+/* More professional cards */
+.rms-pro-shell .card{
+  border: 1px solid var(--rms-border-soft);
+  background: rgba(255,255,255,.98);
+}
+.rms-pro-shell .card + .card{
+  margin-top: 14px;
+}
+.rms-pro-shell .soft-card,
+.rms-pro-shell .kpi-card,
+.rms-pro-shell .finance-exec-card{
+  background: linear-gradient(180deg,#fff 0%,#fbfdff 100%);
+}
+
+/* Compact KPI value style */
+.rms-pro-shell .kpi-card strong,
+.rms-pro-shell .soft-card strong,
+.rms-pro-shell .finance-exec-card strong,
+.rms-pro-shell .revenue-day-kpi strong{
+  font-size: clamp(18px, 1.5vw, 24px);
+  line-height: 1.15;
+}
+
+/* Unified controls */
+.rms-pro-shell button,
+.rms-pro-shell .btn{
+  font-family: inherit;
+}
+.rms-pro-shell button:not(.supplier-modal-x),
+.rms-pro-shell .btn,
+.rms-pro-shell .small{
+  border-radius: var(--rms-radius-sm);
+}
+.rms-pro-shell button.primary,
+.rms-pro-shell .primary{
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #fff;
+}
+.rms-pro-shell button.primary:hover,
+.rms-pro-shell .primary:hover{
+  background: #1d4ed8;
+  border-color: #1d4ed8;
+}
+.rms-pro-shell button.ghost,
+.rms-pro-shell .ghost{
+  color: #334155;
+}
+.rms-pro-shell button.remove,
+.rms-pro-shell .small.remove,
+.rms-pro-shell button.danger,
+.rms-pro-shell .danger{
+  font-weight: 800;
+}
+
+/* Forms */
+.rms-pro-shell .form-grid label,
+.rms-pro-shell label{
+  font-size: 13px;
+}
+.rms-pro-shell input,
+.rms-pro-shell select,
+.rms-pro-shell textarea{
+  background: #fff;
+  color: #0f172a;
+}
+.rms-pro-shell input::placeholder,
+.rms-pro-shell textarea::placeholder{
+  color: #94a3b8;
+}
+
+/* Tables: cleaner enterprise density */
+.rms-pro-shell .table-wrap{
+  background: #fff;
+  border: 1px solid var(--rms-border-soft);
+}
+.rms-pro-shell .table-wrap table{
+  width: 100%;
+}
+.rms-pro-shell .table-wrap th{
+  text-transform: none;
+  font-weight: 800;
+}
+.rms-pro-shell .table-wrap td{
+  color: #334155;
+}
+.rms-pro-shell .table-wrap td b,
+.rms-pro-shell .table-wrap td strong{
+  color: #0f172a;
+}
+.rms-pro-shell .table-wrap tbody tr{
+  transition: background .14s ease;
+}
+.rms-pro-shell .table-wrap tbody tr:nth-child(even){
+  background: rgba(248,250,252,.36);
+}
+.rms-pro-shell .table-wrap tbody tr:hover{
+  background: rgba(239,246,255,.50);
+}
+.rms-pro-shell .table-wrap td:last-child{
+  min-width: 124px;
+}
+.rms-pro-shell .table-wrap td:last-child .action-row{
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+/* Modals: final light style */
+.rms-pro-shell .supplier-modal-panel{
+  border-radius: 22px;
+  border: 1px solid rgba(203,213,225,.9);
+  box-shadow: 0 24px 70px rgba(15,23,42,.18);
+}
+.rms-pro-shell .supplier-modal-panel::before{
+  background: rgba(248,250,252,.88);
+  backdrop-filter: blur(5px);
+}
+.rms-pro-shell .supplier-modal-head{
+  background: rgba(255,255,255,.985);
+  border-bottom: 1px solid rgba(226,232,240,.98);
+}
+.rms-pro-shell .supplier-modal-head h3{
+  font-size: 22px;
+  letter-spacing: -.025em;
+}
+.rms-pro-shell .supplier-modal-x{
+  border-radius: 12px;
+  color: #0f172a;
+}
+.rms-pro-shell .supplier-modal-x:hover{
+  background: #eef2ff;
+  border-color: #c7d2fe;
+}
+.rms-pro-shell .supplier-modal-panel .table-wrap{
+  max-width: calc(100% - 36px);
+}
+.rms-pro-shell .supplier-modal-panel .action-row{
+  align-items: center;
+}
+
+/* Revenue / Finance action bars */
+.rms-pro-shell .revenue-top-actions,
+.rms-pro-shell .finance-report-actions,
+.rms-pro-shell .topbar .action-row{
+  gap: 8px;
+}
+.rms-pro-shell .revenue-top-actions button,
+.rms-pro-shell .finance-report-actions button{
+  min-height: 36px;
+  padding-inline: 14px;
+}
+
+/* Diagnostics should look technical but not heavy */
+.rms-pro-shell .diagnostics-card,
+.rms-pro-shell .security-diagnostics-card{
+  background: #fff;
+  border-color: rgba(203,213,225,.92);
+  box-shadow: 0 10px 26px rgba(15,23,42,.035);
+}
+
+/* Better status colors */
+.rms-pro-shell .good{
+  color: #047857;
+}
+.rms-pro-shell .bad{
+  color: #be123c;
+}
+.rms-pro-shell .warn{
+  color: #b45309;
+}
+
+/* Compact helper chips and badges */
+.rms-pro-shell .badge,
+.rms-pro-shell .pill,
+.rms-pro-shell .status-pill{
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 26px;
+  padding: 4px 9px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+/* Prevent horizontal visual breakage */
+.rms-pro-shell .action-row,
+.rms-pro-shell .card-head,
+.rms-pro-shell .topbar{
+  min-width: 0;
+}
+.rms-pro-shell .card-head > div,
+.rms-pro-shell .topbar > div{
+  min-width: 0;
+}
+
+/* Mobile compact pack */
+@media(max-width:980px){
+  .rms-pro-shell .topbar{
+    padding: 16px;
+  }
+  .rms-pro-shell .card{
+    padding: 16px;
+  }
+  .rms-pro-shell .supplier-modal-panel{
+    width: calc(100vw - 20px);
+    top: 10px;
+    max-height: calc(100vh - 20px);
+  }
+}
+@media(max-width:620px){
+  .rms-pro-shell .topbar h2{
+    font-size: 22px;
+  }
+  .rms-pro-shell .card-head{
+    display: block;
+  }
+  .rms-pro-shell .card-head .action-row{
+    margin-top: 10px;
+    justify-content: flex-start;
+  }
+  .rms-pro-shell .table-wrap{
+    margin-left: -2px;
+    margin-right: -2px;
+  }
+  .rms-pro-shell .supplier-modal-head{
+    padding: 13px 14px;
+  }
+  .rms-pro-shell .supplier-modal-head h3{
+    font-size: 19px;
+  }
+  .rms-pro-shell .supplier-modal-panel .table-wrap{
+    max-width: calc(100% - 28px);
+  }
+}
+
 
   `}</style>
 }
@@ -5726,7 +6188,7 @@ function Revenue({ t, focusExpense }) {
               <h3>Журнал операций</h3>
               <p className="hint">Последние 5 действий по выбранной дате. Полный журнал открывается отдельно.</p>
             </div>
-            {logs.length > 5 && <button className="small" onClick={() => setShowRevenueLogModal(true)}>Все операции · {logs.length}</button>}
+            {logs.length > 5 && <button className="small" onClick={() => setShowRevenueLogModal(true)}>Операции · {logs.length}</button>}
           </div>
           <div className="table-wrap"><table><thead><tr><th>Время</th><th>Пользователь</th><th>Раздел</th><th>Действие</th><th>Поле</th><th>Было</th><th>Стало</th></tr></thead><tbody>
             {recentRevenueLogs.map(l => <tr key={l.id} className={l.action === 'cancel' ? 'cancelled-row' : ''}><td>{formatDT(l.created_at)}</td><td>{l.user_email || l.user_id || '—'}</td><td>{entityLabel(l.entity_type)}</td><td>{operationLabel(l.action)}</td><td>{fieldLabel(l.field_name)}</td><td>{l.old_value || '—'}</td><td>{l.new_value || '—'}</td></tr>)}
@@ -12988,7 +13450,7 @@ function Salaries({ t, view = 'employees', isAdmin = false }) {
                 </tbody>
               </table>
             </div>
-            {group.items.length > 1 && <button className="ghost small" onClick={() => setExpandedPaymentGroups(s => ({...s, [group.id]: !expanded}))}>{expanded ? 'Свернуть' : `Показать всех (${group.items.length})`}</button>}
+            {group.items.length > 1 && <button className="ghost small" onClick={() => setExpandedPaymentGroups(s => ({...s, [group.id]: !expanded}))}>{expanded ? 'Скрыть' : `Показать все (${group.items.length})`}</button>}
           </div>
         })}
         {!salaryReportGroupsForSelectedDate.length && <p className="hint">За выбранную дату выплат и авансов пока нет.</p>}
@@ -13042,7 +13504,7 @@ function Salaries({ t, view = 'employees', isAdmin = false }) {
                 </tbody>
               </table>
             </div>
-            {group.rows.length > 2 && <button className="ghost small" onClick={() => setExpandedDsmfGroups(s => ({...s, [group.id]: !expanded}))}>{expanded ? 'Свернуть' : `Показать всех (${group.rows.length})`}</button>}
+            {group.rows.length > 2 && <button className="ghost small" onClick={() => setExpandedDsmfGroups(s => ({...s, [group.id]: !expanded}))}>{expanded ? 'Скрыть' : `Показать все (${group.rows.length})`}</button>}
           </div>
         })}
         {!dsmfGroups.length && <p className="hint">Нет сотрудников для расчёта DSMF в выбранном фильтре.</p>}
@@ -13129,7 +13591,7 @@ function Salaries({ t, view = 'employees', isAdmin = false }) {
               </table>
             </div>
             <div className="hint bad" style={{textAlign:'right', marginTop:8}}>Итого к оплате по филиалу: <b>{fmt(groupToPay)} AZN</b></div>
-            {group.rows.length > 1 && <button className="ghost small" onClick={() => setExpandedSalaryGroups(s => ({...s, [group.id]: !expanded}))}>{expanded ? 'Свернуть' : `Показать всех (${group.rows.length})`}</button>}
+            {group.rows.length > 1 && <button className="ghost small" onClick={() => setExpandedSalaryGroups(s => ({...s, [group.id]: !expanded}))}>{expanded ? 'Скрыть' : `Показать все (${group.rows.length})`}</button>}
           </div>
         })}
         {!salaryGroups.length && <p className="hint">Нет сотрудников в выбранном фильтре.</p>}
@@ -13203,7 +13665,7 @@ function Salaries({ t, view = 'employees', isAdmin = false }) {
         </table></div>
         {salaryPayments.length > 5 && <div className="action-row" style={{marginTop:12}}>
           <button className="ghost small" onClick={() => setShowAllSalaryPayments(v => !v)}>
-            {showAllSalaryPayments ? 'Свернуть журнал' : `Показать все выплаты (${salaryPayments.length})`}
+            {showAllSalaryPayments ? 'Скрыть журнал' : `Показать все выплаты (${salaryPayments.length})`}
           </button>
           {!showAllSalaryPayments && <span className="hint">Показаны последние 5 записей.</span>}
         </div>}
@@ -14802,7 +15264,7 @@ function Suppliers({ t, isAdmin = false }) {
         {supplierAdminRows.length > 2 && (
           <div className="action-row" style={{marginTop:10}}>
             <button className="ghost small" onClick={() => setSupplierAdminExpanded(v => !v)}>
-              {supplierAdminExpanded ? 'Свернуть список' : `Показать ещё · всего ${supplierAdminRows.length}`}
+              {supplierAdminExpanded ? 'Скрыть список' : `Показать ещё · всего ${supplierAdminRows.length}`}
             </button>
           </div>
         )}
@@ -16687,10 +17149,10 @@ function DebtsPayments({ t }) {
           const entityTotalDebt = debtForLegalEntity(le.id)
           const entityDebtLabel = entityTotalDebt > 0 ? 'Долг' : entityTotalDebt < 0 ? 'Переплата' : 'Долга нет'
           const entityDebtClass = entityTotalDebt > 0 ? 'bad' : entityTotalDebt < 0 ? 'good' : 'hint'
-          return <div key={le.id} className="supplier-entity-group"><div className="supplier-entity-head"><b>{le.name} · {le.voen}</b><div className="action-row" style={{gap:12,alignItems:'center'}}><span>{list.length} поставщиков</span><span className={entityDebtClass}>{entityDebtLabel}: <b>{fmt(Math.abs(entityTotalDebt))} AZN</b></span></div></div><div className="table-wrap"><table className="supplier-compact-table"><thead><tr><th>Поставщик</th><th>Долг</th><th>Условия</th><th>Статус</th><th></th></tr></thead><tbody>{shown.map(s => { const actualSupplier = currentSupplierSnapshot(s); const entityBalance = balanceForSupplierLegal(actualSupplier.id, le.id); const alert = supplierAlert(actualSupplier, le.id); const risky = alert.overLimit > 0 || alert.overdueCount > 0; return <tr key={`${le.id}-${actualSupplier.id}`} style={risky ? { background: 'rgba(155,45,45,.08)' } : undefined}><td><b>{actualSupplier.name}</b><br /><span className="hint">{actualSupplier.voen || 'VOEN не указан'}</span></td><td><strong className={entityBalance > 0 ? 'bad' : entityBalance < 0 ? 'good' : 'hint'}>{fmt(entityBalance)}</strong></td><td className="hint">{actualSupplier.payment_term_days ? `${actualSupplier.payment_term_days} дней` : '—'} · лимит {fmt(actualSupplier.credit_limit)}</td><td className="hint">{alert.overLimit > 0 && <div className="bad">лимит +{fmt(alert.overLimit)}</div>}{alert.overdueCount > 0 && <div className="bad">просрочено: {alert.overdueCount}</div>}{!risky && <span className="good">ОК</span>}</td><td><div className="action-row" style={{gap:6}}><button className="small" onClick={() => openTransactions(actualSupplier.id, 'purchases', le.id)}>Транзакции</button><button className="small primary" onClick={() => openSupplierStatement(actualSupplier, le.id)}>Акт</button></div></td></tr>})}{!shown.length && <tr><td colSpan="5" className="hint">Нет поставщиков по этому VOEN</td></tr>}</tbody><tfoot><tr><td><b>Итого по физ. лицу</b></td><td><strong className={entityDebtClass}>{fmt(entityTotalDebt)}</strong></td><td colSpan="3" className="hint">Поступления + стартовый долг − оплаты</td></tr></tfoot></table></div>{list.length > 5 && <button className="ghost small" onClick={() => setExpandedEntities(e => ({...e, [le.id]: !e[le.id]}))}>{expandedEntities[le.id] ? 'Свернуть' : 'Показать всех'}</button>}{activeSupplierId && activeLegalEntityId === le.id && <div ref={supplierTransactionPanelRef} className="card supplier-transactions-panel supplier-modal-panel"><div className="card-head supplier-modal-head"><div><h3>Транзакции: {activeSupplier?.name}</h3><p className="hint">{activeLegalEntityId ? `Физ. лицо: ${legalEntities.find(le => le.id === activeLegalEntityId)?.name || '—'}` : 'Поступления и оплаты показаны отдельно, чтобы не смешивать операции.'}</p></div><button className="supplier-modal-x" title="Закрыть" aria-label="Закрыть" onClick={() => { setActiveSupplierId(''); setActiveLegalEntityId('') }}>×</button></div>
+          return <div key={le.id} className="supplier-entity-group"><div className="supplier-entity-head"><b>{le.name} · {le.voen}</b><div className="action-row" style={{gap:12,alignItems:'center'}}><span>{list.length} поставщиков</span><span className={entityDebtClass}>{entityDebtLabel}: <b>{fmt(Math.abs(entityTotalDebt))} AZN</b></span></div></div><div className="table-wrap"><table className="supplier-compact-table"><thead><tr><th>Поставщик</th><th>Долг</th><th>Условия</th><th>Статус</th><th></th></tr></thead><tbody>{shown.map(s => { const actualSupplier = currentSupplierSnapshot(s); const entityBalance = balanceForSupplierLegal(actualSupplier.id, le.id); const alert = supplierAlert(actualSupplier, le.id); const risky = alert.overLimit > 0 || alert.overdueCount > 0; return <tr key={`${le.id}-${actualSupplier.id}`} style={risky ? { background: 'rgba(155,45,45,.08)' } : undefined}><td><b>{actualSupplier.name}</b><br /><span className="hint">{actualSupplier.voen || 'VOEN не указан'}</span></td><td><strong className={entityBalance > 0 ? 'bad' : entityBalance < 0 ? 'good' : 'hint'}>{fmt(entityBalance)}</strong></td><td className="hint">{actualSupplier.payment_term_days ? `${actualSupplier.payment_term_days} дней` : '—'} · лимит {fmt(actualSupplier.credit_limit)}</td><td className="hint">{alert.overLimit > 0 && <div className="bad">лимит +{fmt(alert.overLimit)}</div>}{alert.overdueCount > 0 && <div className="bad">просрочено: {alert.overdueCount}</div>}{!risky && <span className="good">ОК</span>}</td><td><div className="action-row" style={{gap:6}}><button className="small" onClick={() => openTransactions(actualSupplier.id, 'purchases', le.id)}>Транзакции</button><button className="small primary" onClick={() => openSupplierStatement(actualSupplier, le.id)}>Акт</button></div></td></tr>})}{!shown.length && <tr><td colSpan="5" className="hint">Нет поставщиков по этому VOEN</td></tr>}</tbody><tfoot><tr><td><b>Итого по физ. лицу</b></td><td><strong className={entityDebtClass}>{fmt(entityTotalDebt)}</strong></td><td colSpan="3" className="hint">Поступления + стартовый долг − оплаты</td></tr></tfoot></table></div>{list.length > 5 && <button className="ghost small" onClick={() => setExpandedEntities(e => ({...e, [le.id]: !e[le.id]}))}>{expandedEntities[le.id] ? 'Скрыть' : 'Показать все'}</button>}{activeSupplierId && activeLegalEntityId === le.id && <div ref={supplierTransactionPanelRef} className="card supplier-transactions-panel supplier-modal-panel"><div className="card-head supplier-modal-head"><div><h3>Транзакции: {activeSupplier?.name}</h3><p className="hint">{activeLegalEntityId ? `Физ. лицо: ${legalEntities.find(le => le.id === activeLegalEntityId)?.name || '—'}` : 'Поступления и оплаты показаны отдельно, чтобы не смешивать операции.'}</p></div><button className="supplier-modal-x" title="Закрыть" aria-label="Закрыть" onClick={() => { setActiveSupplierId(''); setActiveLegalEntityId('') }}>×</button></div>
         <div className="form-grid compact"><label><span>Тип операций</span><select value={transactionType} onChange={e => { setTransactionType(e.target.value); setDetailPurchaseId(''); setTransactionPage(1) }}><option value="purchases">Поступления</option><option value="payments">Оплаты</option><option value="products">Товары / цены</option></select></label><label><span>Период</span><select value={transactionPeriod} onChange={e => { setTransactionPeriod(e.target.value); setTransactionPage(1) }}><option value="day">За день</option><option value="month">За месяц</option><option value="year">За год</option><option value="all">Весь период</option></select></label>{transactionPeriod !== 'all' && <label><span>Дата периода</span><input type="date" value={transactionDate} onChange={e => { setTransactionDate(e.target.value); setTransactionPage(1) }} /></label>}</div>
         <div className="action-row" style={{margin:'12px 0 10px'}}><label style={{display:'flex',alignItems:'center',gap:8}}><span className="hint">Показать</span><select value={transactionPageSize} onChange={e => { setTransactionPageSize(Number(e.target.value)); setTransactionPage(1) }}><option value={10}>10</option><option value={20}>20</option><option value={30}>30</option><option value={50}>50</option></select></label></div>
-        {transactionType === 'purchases' ? <div className="table-wrap"><table><thead><tr><th>Дата</th><th>Фактура</th><th>Физ. лицо</th><th>Филиал</th><th>Сумма</th><th>Комментарий</th><th></th></tr></thead><tbody>{pagedFilteredPurchases.map(p => <React.Fragment key={p.id}><tr className={p.deleted_at ? 'cancelled-row' : ''}><td>{p.purchase_date}</td><td>{p.invoice_number || '—'}</td><td>{p.legal_entities?.name || '—'}<br /><span className="hint">{p.legal_entities?.voen || ''}</span></td><td>{p.row_type === 'opening_debt' ? 'Стартовый долг' : (p.branches?.name || '—')}</td><td><strong className="bad">{fmt(p.total_amount)}</strong></td><td>{p.deleted_at ? 'Удалено / зачёркнуто' : (p.comment || '—')}</td><td>{p.row_type === 'opening_debt' ? <div className="action-row"><button className="small" disabled={Boolean(p.deleted_at)} onClick={() => startEditOpeningDebt(p)}>Изменить</button><button className="small remove" disabled={Boolean(p.deleted_at)} onClick={() => softDeleteOpeningDebt(p)}>Удалить</button></div> : <div className="action-row"><button className="small" onClick={() => setDetailPurchaseId(detailPurchaseId === p.id ? '' : p.id)}>{detailPurchaseId === p.id ? 'Скрыть' : 'Просмотр'}</button><button className="small" disabled={Boolean(p.deleted_at)} onClick={() => startEditPurchaseTransaction(p)}>Изменить</button><button className="small remove" disabled={Boolean(p.deleted_at)} onClick={() => softDeletePurchaseTransaction(p)}>Удалить</button></div>}</td></tr>{p.row_type === 'purchase' && editingPurchaseTransactionId === String(p.id) && <tr><td colSpan="7"><div className="card" style={{margin:0}}><h4>Редактирование поступления</h4><p className="hint">Сумма накладной пересчитывается автоматически по товарам. Изменения товара, количества, единицы или цены фиксируются в журнале операций.</p><div className="form-grid compact"><label><span>Дата</span><input type="date" value={purchaseTransactionEditForm.purchase_date} onChange={e => setPurchaseTransactionEditForm({...purchaseTransactionEditForm, purchase_date: e.target.value})} /></label><label><span>Фактура</span><input value={purchaseTransactionEditForm.invoice_number} onChange={e => setPurchaseTransactionEditForm({...purchaseTransactionEditForm, invoice_number: e.target.value})} /></label><label><span>Филиал</span><select value={purchaseTransactionEditForm.branch_id} onChange={e => setPurchaseTransactionEditForm({...purchaseTransactionEditForm, branch_id: e.target.value})}><option value="">—</option>{branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label><label><span>Сумма накладной</span><strong>{fmt(getPurchaseEditTotal() || p.total_amount)} AZN</strong></label><label><span>Комментарий</span><input value={purchaseTransactionEditForm.comment} onChange={e => setPurchaseTransactionEditForm({...purchaseTransactionEditForm, comment: e.target.value})} /></label></div><div className="table-wrap"><table><thead><tr><th>Категория</th><th>Товар</th><th>Кол-во</th><th>Ед.</th><th>Цена</th><th>Сумма</th></tr></thead><tbody>{purchaseTransactionEditItems.map(i => { const editProduct = getPurchaseEditProduct(i); return <tr key={i.id}><td>{editProduct?.category || i.supplier_products?.category || '—'}</td><td><select value={i.product_id || ''} onChange={e => updatePurchaseEditItemLocal(i.id, { product_id: e.target.value })}>{products.map(prod => <option key={prod.id} value={prod.id}>{prod.name}</option>)}</select></td><td><input inputMode="decimal" value={i.quantity} onChange={e => updatePurchaseEditItemLocal(i.id, { quantity: e.target.value })} /></td><td><select value={i.unit || 'kg'} onChange={e => updatePurchaseEditItemLocal(i.id, { unit: e.target.value })}>{PURCHASE_UNITS.map(u => <option key={u.value} value={u.value}>{u.label}</option>)}</select></td><td><input inputMode="decimal" value={i.unit_price} onChange={e => updatePurchaseEditItemLocal(i.id, { unit_price: e.target.value })} /></td><td>{fmt(getPurchaseEditItemTotal(i))} AZN</td></tr> })}{!purchaseTransactionEditItems.length && <tr><td colSpan="6" className="hint">Товары не найдены</td></tr>}</tbody></table></div><div className="action-row"><button className="small primary" onClick={() => savePurchaseTransactionEdit(p)}>Сохранить изменения</button><button className="ghost small" onClick={() => { setEditingPurchaseTransactionId(''); setPurchaseTransactionEditItems([]) }}>Отмена</button></div></div></td></tr>}{p.row_type === 'opening_debt' && editingOpeningDebtId === String(p.id).replace('opening-', '') && <tr><td colSpan="7"><div className="card" style={{margin:0}}><h4>Редактирование стартового долга</h4><div className="form-grid compact"><label><span>Дата</span><input type="date" value={openingDebtEditForm.debt_date} onChange={e => setOpeningDebtEditForm({...openingDebtEditForm, debt_date: e.target.value})} /></label><label><span>Сумма</span><input inputMode="decimal" value={openingDebtEditForm.amount} onChange={e => setOpeningDebtEditForm({...openingDebtEditForm, amount: e.target.value})} /></label><label><span>Фактура / отметка</span><input value={openingDebtEditForm.invoice_notes} onChange={e => setOpeningDebtEditForm({...openingDebtEditForm, invoice_notes: e.target.value})} /></label><label><span>Комментарий</span><input value={openingDebtEditForm.comment} onChange={e => setOpeningDebtEditForm({...openingDebtEditForm, comment: e.target.value})} /></label></div><div className="action-row"><button className="small primary" onClick={() => saveOpeningDebtEdit(p)}>Сохранить</button><button className="ghost small" onClick={() => setEditingOpeningDebtId('')}>Закрыть редактор</button></div></div></td></tr>}{p.row_type !== 'opening_debt' && detailPurchaseId === p.id && <tr><td colSpan="7"><div className="table-wrap"><table><thead><tr><th>Категория</th><th>Товар</th><th>Кол-во</th><th>Ед.</th><th>Цена</th><th>Сумма</th></tr></thead><tbody>{(p.supplier_purchase_items || []).map(i => <tr key={i.id}><td>{i.supplier_products?.category || '—'}</td><td>{i.supplier_products?.name || '—'}</td><td>{fmt(i.quantity)}</td><td>{i.unit}</td><td>{fmt(i.unit_price)}</td><td>{fmt(i.total_amount)}</td></tr>)}{!(p.supplier_purchase_items || []).length && <tr><td colSpan="6" className="hint">Товары не найдены</td></tr>}</tbody></table></div></td></tr>}</React.Fragment>)}{!purchaseTransactionRows.length && <tr><td colSpan="7" className="hint">Нет поступлений или стартовых долгов за выбранный период</td></tr>}</tbody></table></div> : transactionType === 'products' ? <div><div className="form-grid compact" style={{marginTop:12}}><label><span>Поиск товара</span><input value={productSearch} onChange={e => setProductSearch(e.target.value)} placeholder="Например: молоко, кофе" /></label><label><span>Сортировка</span><select value={productSort} onChange={e => setProductSort(e.target.value)}><option value="name_asc">Наименование A → Z</option><option value="name_desc">Наименование Z → A</option><option value="change_desc">Изменение цены: рост сверху</option><option value="change_asc">Изменение цены: снижение сверху</option><option value="price_desc">Последняя цена: убывание</option><option value="price_asc">Последняя цена: возрастание</option></select></label></div><div className="table-wrap"><table><thead><tr><th>Тип</th><th>Товар</th><th>Последняя цена закупа</th><th>Предыдущая цена закупа</th><th>Разница</th><th>Изменение</th><th>Последняя закупка</th><th>Фактура</th></tr></thead><tbody>{pagedProductPriceRows.map(row => <tr key={row.id}><td>{row.category}</td><td><b>{row.name}</b></td><td>{fmt(row.latest?.price)} / {row.latest?.unit || row.unit}</td><td>{row.previous ? `${fmt(row.previous.price)} / ${row.previous.unit || row.unit}` : '—'}</td><td>{row.changeAmount == null ? <span className="hint">—</span> : <strong className={row.changeAmount > 0 ? 'bad' : row.changeAmount < 0 ? 'good' : ''}>{row.changeAmount > 0 ? '+' : ''}{fmt(row.changeAmount)} AZN</strong>}</td><td>{row.changePct == null ? <span className="hint">—</span> : <strong className={row.changePct > 0 ? 'bad' : row.changePct < 0 ? 'good' : ''}>{row.changePct > 0 ? '+' : ''}{pct(row.changePct)}</strong>}</td><td>{row.latest?.date || '—'}</td><td>{row.latest?.invoice || '—'}</td></tr>)}{!productPriceRows.length && <tr><td colSpan="8" className="hint">Товары не найдены за выбранный период</td></tr>}</tbody></table></div></div> : <div className="table-wrap"><table><thead><tr><th>Дата</th><th>Физ. лицо</th><th>Отметки / фактуры</th><th>Сумма</th><th>Комментарий</th><th>Действие</th></tr></thead><tbody>{pagedFilteredPayments.map(p => <React.Fragment key={p.id}><tr><td>{p.payment_date}</td><td>{p.legal_entities?.name || legalEntities.find(le => le.id === p.legal_entity_id)?.name || '—'}<br /><span className="hint">{p.legal_entities?.voen || legalEntities.find(le => le.id === p.legal_entity_id)?.voen || ''}</span></td><td>{p.invoice_notes || '—'}</td><td><strong className="good">{fmt(p.amount)}</strong></td><td>{p.comment || '—'}</td><td><div className="action-row"><button className="small" onClick={() => startEditSupplierPayment(p)}>Изменить</button><button className="small remove" onClick={() => deleteSupplierPayment(p)}>Удалить</button></div></td></tr>{editingPaymentTransactionId === String(p.id) && <tr><td colSpan="6"><div className="card" style={{margin:0}}><h4>Редактирование оплаты поставщику</h4><p className="hint">Изменение суммы сразу пересчитает долг поставщика по выбранному физ. лицу.</p><div className="form-grid compact"><label><span>Дата оплаты</span><input type="date" value={paymentTransactionEditForm.payment_date} onChange={e => setPaymentTransactionEditForm({...paymentTransactionEditForm, payment_date: e.target.value})} /></label><label><span>Физ. лицо / VOEN</span><select value={paymentTransactionEditForm.legal_entity_id} onChange={e => setPaymentTransactionEditForm({...paymentTransactionEditForm, legal_entity_id: e.target.value})}>{legalEntities.map(le => <option key={le.id} value={le.id}>{le.name} · {le.voen}</option>)}</select></label><label><span>Сумма оплаты</span><input inputMode="decimal" value={paymentTransactionEditForm.amount} onChange={e => setPaymentTransactionEditForm({...paymentTransactionEditForm, amount: e.target.value})} /></label><label><span>Отметки / фактуры</span><input value={paymentTransactionEditForm.invoice_notes} onChange={e => setPaymentTransactionEditForm({...paymentTransactionEditForm, invoice_notes: e.target.value})} /></label><label><span>Комментарий</span><input value={paymentTransactionEditForm.comment} onChange={e => setPaymentTransactionEditForm({...paymentTransactionEditForm, comment: e.target.value})} /></label></div><div className="action-row"><button className="small primary" onClick={() => saveSupplierPaymentEdit(p)}>Сохранить</button><button className="ghost small" onClick={() => setEditingPaymentTransactionId('')}>Закрыть редактор</button><button className="small remove" onClick={() => deleteSupplierPayment(p)}>Удалить</button></div></div></td></tr>}</React.Fragment>)}{!filteredPayments.length && <tr><td colSpan="6" className="hint">Нет оплат за выбранный период</td></tr>}</tbody></table></div>}
+        {transactionType === 'purchases' ? <div className="table-wrap"><table><thead><tr><th>Дата</th><th>Фактура</th><th>Физ. лицо</th><th>Филиал</th><th>Сумма</th><th>Комментарий</th><th></th></tr></thead><tbody>{pagedFilteredPurchases.map(p => <React.Fragment key={p.id}><tr className={p.deleted_at ? 'cancelled-row' : ''}><td>{p.purchase_date}</td><td>{p.invoice_number || '—'}</td><td>{p.legal_entities?.name || '—'}<br /><span className="hint">{p.legal_entities?.voen || ''}</span></td><td>{p.row_type === 'opening_debt' ? 'Стартовый долг' : (p.branches?.name || '—')}</td><td><strong className="bad">{fmt(p.total_amount)}</strong></td><td>{p.deleted_at ? 'Удалено / зачёркнуто' : (p.comment || '—')}</td><td>{p.row_type === 'opening_debt' ? <div className="action-row"><button className="small" disabled={Boolean(p.deleted_at)} onClick={() => startEditOpeningDebt(p)}>Изменить</button><button className="small remove" disabled={Boolean(p.deleted_at)} onClick={() => softDeleteOpeningDebt(p)}>Удалить</button></div> : <div className="action-row"><button className="small" onClick={() => setDetailPurchaseId(detailPurchaseId === p.id ? '' : p.id)}>{detailPurchaseId === p.id ? 'Скрыть' : 'Просмотр'}</button><button className="small" disabled={Boolean(p.deleted_at)} onClick={() => startEditPurchaseTransaction(p)}>Изменить</button><button className="small remove" disabled={Boolean(p.deleted_at)} onClick={() => softDeletePurchaseTransaction(p)}>Удалить</button></div>}</td></tr>{p.row_type === 'purchase' && editingPurchaseTransactionId === String(p.id) && <tr><td colSpan="7"><div className="card" style={{margin:0}}><h4>Редактирование поступления</h4><p className="hint">Сумма накладной пересчитывается автоматически по товарам. Изменения товара, количества, единицы или цены фиксируются в журнале операций.</p><div className="form-grid compact"><label><span>Дата</span><input type="date" value={purchaseTransactionEditForm.purchase_date} onChange={e => setPurchaseTransactionEditForm({...purchaseTransactionEditForm, purchase_date: e.target.value})} /></label><label><span>Фактура</span><input value={purchaseTransactionEditForm.invoice_number} onChange={e => setPurchaseTransactionEditForm({...purchaseTransactionEditForm, invoice_number: e.target.value})} /></label><label><span>Филиал</span><select value={purchaseTransactionEditForm.branch_id} onChange={e => setPurchaseTransactionEditForm({...purchaseTransactionEditForm, branch_id: e.target.value})}><option value="">—</option>{branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label><label><span>Сумма накладной</span><strong>{fmt(getPurchaseEditTotal() || p.total_amount)} AZN</strong></label><label><span>Комментарий</span><input value={purchaseTransactionEditForm.comment} onChange={e => setPurchaseTransactionEditForm({...purchaseTransactionEditForm, comment: e.target.value})} /></label></div><div className="table-wrap"><table><thead><tr><th>Категория</th><th>Товар</th><th>Кол-во</th><th>Ед.</th><th>Цена</th><th>Сумма</th></tr></thead><tbody>{purchaseTransactionEditItems.map(i => { const editProduct = getPurchaseEditProduct(i); return <tr key={i.id}><td>{editProduct?.category || i.supplier_products?.category || '—'}</td><td><select value={i.product_id || ''} onChange={e => updatePurchaseEditItemLocal(i.id, { product_id: e.target.value })}>{products.map(prod => <option key={prod.id} value={prod.id}>{prod.name}</option>)}</select></td><td><input inputMode="decimal" value={i.quantity} onChange={e => updatePurchaseEditItemLocal(i.id, { quantity: e.target.value })} /></td><td><select value={i.unit || 'kg'} onChange={e => updatePurchaseEditItemLocal(i.id, { unit: e.target.value })}>{PURCHASE_UNITS.map(u => <option key={u.value} value={u.value}>{u.label}</option>)}</select></td><td><input inputMode="decimal" value={i.unit_price} onChange={e => updatePurchaseEditItemLocal(i.id, { unit_price: e.target.value })} /></td><td>{fmt(getPurchaseEditItemTotal(i))} AZN</td></tr> })}{!purchaseTransactionEditItems.length && <tr><td colSpan="6" className="hint">Товары не найдены</td></tr>}</tbody></table></div><div className="action-row"><button className="small primary" onClick={() => savePurchaseTransactionEdit(p)}>Сохранить изменения</button><button className="ghost small" onClick={() => { setEditingPurchaseTransactionId(''); setPurchaseTransactionEditItems([]) }}>Отмена</button></div></div></td></tr>}{p.row_type === 'opening_debt' && editingOpeningDebtId === String(p.id).replace('opening-', '') && <tr><td colSpan="7"><div className="card" style={{margin:0}}><h4>Редактирование стартового долга</h4><div className="form-grid compact"><label><span>Дата</span><input type="date" value={openingDebtEditForm.debt_date} onChange={e => setOpeningDebtEditForm({...openingDebtEditForm, debt_date: e.target.value})} /></label><label><span>Сумма</span><input inputMode="decimal" value={openingDebtEditForm.amount} onChange={e => setOpeningDebtEditForm({...openingDebtEditForm, amount: e.target.value})} /></label><label><span>Фактура / отметка</span><input value={openingDebtEditForm.invoice_notes} onChange={e => setOpeningDebtEditForm({...openingDebtEditForm, invoice_notes: e.target.value})} /></label><label><span>Комментарий</span><input value={openingDebtEditForm.comment} onChange={e => setOpeningDebtEditForm({...openingDebtEditForm, comment: e.target.value})} /></label></div><div className="action-row"><button className="small primary" onClick={() => saveOpeningDebtEdit(p)}>Сохранить</button><button className="ghost small" onClick={() => setEditingOpeningDebtId('')}>Закрыть</button></div></div></td></tr>}{p.row_type !== 'opening_debt' && detailPurchaseId === p.id && <tr><td colSpan="7"><div className="table-wrap"><table><thead><tr><th>Категория</th><th>Товар</th><th>Кол-во</th><th>Ед.</th><th>Цена</th><th>Сумма</th></tr></thead><tbody>{(p.supplier_purchase_items || []).map(i => <tr key={i.id}><td>{i.supplier_products?.category || '—'}</td><td>{i.supplier_products?.name || '—'}</td><td>{fmt(i.quantity)}</td><td>{i.unit}</td><td>{fmt(i.unit_price)}</td><td>{fmt(i.total_amount)}</td></tr>)}{!(p.supplier_purchase_items || []).length && <tr><td colSpan="6" className="hint">Товары не найдены</td></tr>}</tbody></table></div></td></tr>}</React.Fragment>)}{!purchaseTransactionRows.length && <tr><td colSpan="7" className="hint">Нет поступлений или стартовых долгов за выбранный период</td></tr>}</tbody></table></div> : transactionType === 'products' ? <div><div className="form-grid compact" style={{marginTop:12}}><label><span>Поиск товара</span><input value={productSearch} onChange={e => setProductSearch(e.target.value)} placeholder="Например: молоко, кофе" /></label><label><span>Сортировка</span><select value={productSort} onChange={e => setProductSort(e.target.value)}><option value="name_asc">Наименование A → Z</option><option value="name_desc">Наименование Z → A</option><option value="change_desc">Изменение цены: рост сверху</option><option value="change_asc">Изменение цены: снижение сверху</option><option value="price_desc">Последняя цена: убывание</option><option value="price_asc">Последняя цена: возрастание</option></select></label></div><div className="table-wrap"><table><thead><tr><th>Тип</th><th>Товар</th><th>Последняя цена закупа</th><th>Предыдущая цена закупа</th><th>Разница</th><th>Изменение</th><th>Последняя закупка</th><th>Фактура</th></tr></thead><tbody>{pagedProductPriceRows.map(row => <tr key={row.id}><td>{row.category}</td><td><b>{row.name}</b></td><td>{fmt(row.latest?.price)} / {row.latest?.unit || row.unit}</td><td>{row.previous ? `${fmt(row.previous.price)} / ${row.previous.unit || row.unit}` : '—'}</td><td>{row.changeAmount == null ? <span className="hint">—</span> : <strong className={row.changeAmount > 0 ? 'bad' : row.changeAmount < 0 ? 'good' : ''}>{row.changeAmount > 0 ? '+' : ''}{fmt(row.changeAmount)} AZN</strong>}</td><td>{row.changePct == null ? <span className="hint">—</span> : <strong className={row.changePct > 0 ? 'bad' : row.changePct < 0 ? 'good' : ''}>{row.changePct > 0 ? '+' : ''}{pct(row.changePct)}</strong>}</td><td>{row.latest?.date || '—'}</td><td>{row.latest?.invoice || '—'}</td></tr>)}{!productPriceRows.length && <tr><td colSpan="8" className="hint">Товары не найдены за выбранный период</td></tr>}</tbody></table></div></div> : <div className="table-wrap"><table><thead><tr><th>Дата</th><th>Физ. лицо</th><th>Отметки / фактуры</th><th>Сумма</th><th>Комментарий</th><th>Действие</th></tr></thead><tbody>{pagedFilteredPayments.map(p => <React.Fragment key={p.id}><tr><td>{p.payment_date}</td><td>{p.legal_entities?.name || legalEntities.find(le => le.id === p.legal_entity_id)?.name || '—'}<br /><span className="hint">{p.legal_entities?.voen || legalEntities.find(le => le.id === p.legal_entity_id)?.voen || ''}</span></td><td>{p.invoice_notes || '—'}</td><td><strong className="good">{fmt(p.amount)}</strong></td><td>{p.comment || '—'}</td><td><div className="action-row"><button className="small" onClick={() => startEditSupplierPayment(p)}>Изменить</button><button className="small remove" onClick={() => deleteSupplierPayment(p)}>Удалить</button></div></td></tr>{editingPaymentTransactionId === String(p.id) && <tr><td colSpan="6"><div className="card" style={{margin:0}}><h4>Редактирование оплаты поставщику</h4><p className="hint">Изменение суммы сразу пересчитает долг поставщика по выбранному физ. лицу.</p><div className="form-grid compact"><label><span>Дата оплаты</span><input type="date" value={paymentTransactionEditForm.payment_date} onChange={e => setPaymentTransactionEditForm({...paymentTransactionEditForm, payment_date: e.target.value})} /></label><label><span>Физ. лицо / VOEN</span><select value={paymentTransactionEditForm.legal_entity_id} onChange={e => setPaymentTransactionEditForm({...paymentTransactionEditForm, legal_entity_id: e.target.value})}>{legalEntities.map(le => <option key={le.id} value={le.id}>{le.name} · {le.voen}</option>)}</select></label><label><span>Сумма оплаты</span><input inputMode="decimal" value={paymentTransactionEditForm.amount} onChange={e => setPaymentTransactionEditForm({...paymentTransactionEditForm, amount: e.target.value})} /></label><label><span>Отметки / фактуры</span><input value={paymentTransactionEditForm.invoice_notes} onChange={e => setPaymentTransactionEditForm({...paymentTransactionEditForm, invoice_notes: e.target.value})} /></label><label><span>Комментарий</span><input value={paymentTransactionEditForm.comment} onChange={e => setPaymentTransactionEditForm({...paymentTransactionEditForm, comment: e.target.value})} /></label></div><div className="action-row"><button className="small primary" onClick={() => saveSupplierPaymentEdit(p)}>Сохранить</button><button className="ghost small" onClick={() => setEditingPaymentTransactionId('')}>Закрыть</button><button className="small remove" onClick={() => deleteSupplierPayment(p)}>Удалить</button></div></div></td></tr>}</React.Fragment>)}{!filteredPayments.length && <tr><td colSpan="6" className="hint">Нет оплат за выбранный период</td></tr>}</tbody></table></div>}
         <div className="action-row" style={{margin:'12px 0 0'}}><button className="ghost small" disabled={safeTransactionPage <= 1} onClick={() => setTransactionPage(p => Math.max(1, parseNum(p) - 1))}>← Пред.</button><span className="hint">Страница {safeTransactionPage} / {transactionTotalPages} · всего {transactionSourceCount}</span><button className="ghost small" disabled={safeTransactionPage >= transactionTotalPages} onClick={() => setTransactionPage(p => Math.min(transactionTotalPages, parseNum(p) + 1))}>След. →</button></div>
         <div className="card" style={{marginTop:12}}><h4>Журнал изменений</h4><p className="hint">Любое редактирование и отключение стартового долга фиксируется по времени и пользователю.</p><div className="table-wrap"><table><thead><tr><th>Дата</th><th>Пользователь</th><th>Действие</th><th>Было</th><th>Стало</th></tr></thead><tbody>{visibleTransactionLogs.map(l => <tr key={l.id}><td>{formatDT(l.created_at)}</td><td>{l.user_email || l.user_id || '—'}</td><td>{l.action}</td><td><span className="hint">{l.old_value || '—'}</span></td><td>{l.new_value || '—'}</td></tr>)}{!visibleTransactionLogs.length && <tr><td colSpan="5" className="hint">Изменений пока нет.</td></tr>}</tbody></table></div></div>
       </div>}</div>
@@ -18322,7 +18784,7 @@ function Reports({ t }) {
         {visible.map((r, idx) => <tr key={`${title}-${idx}-${r.name}`}><td className="reports-ai-product-cell"><b>{r.name}</b>{r.menu_category && <span className="reports-ai-product-meta">{r.menu_category}</span>}{!isNetworkSalesView && <span className="reports-ai-product-meta">{r.branch_name || '—'}</span>}</td><td><span className={r.department === 'Бар' ? 'pill good' : r.department === 'Кухня' ? 'pill warn' : 'pill'}>{r.department === 'Кухня' ? 'Кухня' : r.department === 'Бар' ? 'Бар' : '—'}</span></td><td>{fmt(r.quantity)}<br /><span className="hint">цена {fmt(r.avg_price)}</span></td><td>{fmt(r.revenue)}</td><td>{r.revenue ? pct((r.cost / r.revenue) * 100) : '0.0%'}</td><td className={r.margin < 20 ? 'bad' : r.margin > 65 ? 'good' : ''}><b>{pct(r.margin)}</b></td>{isHideableTop && <td><button className="ghost small" onClick={() => hideSalesItem(r)}>Скрыть</button></td>}</tr>)}
         {!visible.length && <tr><td colSpan={isHideableTop ? 7 : 6} className="hint">Нет данных</td></tr>}
       </tbody></table>
-      {cappedList.length > limit && <button className="ghost small" style={{marginTop:10}} onClick={() => setExpandedAiTables(v => ({...v, [title]: !expanded}))}>{expanded ? 'Свернуть' : `Показать до 30 (${Math.min(list.length, 30)})`}</button>}
+      {cappedList.length > limit && <button className="ghost small" style={{marginTop:10}} onClick={() => setExpandedAiTables(v => ({...v, [title]: !expanded}))}>{expanded ? 'Скрыть' : `Показать до 30 (${Math.min(list.length, 30)})`}</button>}
     </div>
   }
 
@@ -18468,7 +18930,7 @@ function Reports({ t }) {
       {visibleSalesRows.map((r, idx) => <tr key={`${r.name}-${idx}`}><td><b>{r.name}</b>{r.original_names?.length > 1 && <><br /><span className="hint">AIKO: {r.original_names.slice(0, 3).join(', ')}{r.original_names.length > 3 ? '…' : ''}</span></>}</td>{!isNetworkSalesView && <td>{r.branch_name || '—'}</td>}<td><span className={r.department === 'Бар' ? 'pill good' : r.department === 'Кухня' ? 'pill warn' : 'pill'}>{r.department === 'Кухня' ? 'Кухня' : r.department === 'Бар' ? 'Бар' : '—'}</span></td><td>{r.menu_category || r.source_category || '—'}</td><td>{fmt(r.quantity)}</td><td>{fmt(r.revenue)}</td>{monthFilter !== 'all' && <td>{renderRowChange(r, 'quantity')}</td>}<td>{fmt(r.cost)}</td><td className={r.profit >= 0 ? 'good' : 'bad'}>{fmt(r.profit)}</td><td>{pct(r.margin)}</td><td><button className="ghost small" onClick={() => renameSalesItem(r.name)}>Переименовать</button></td></tr>)}
       {!rows.length && <tr><td colSpan={(isNetworkSalesView ? 9 : 10) + (monthFilter !== 'all' ? 1 : 0)} className="hint">Нет данных</td></tr>}
     </tbody></table></div>
-    {rows.length > 10 && <button className="ghost small" style={{marginTop:10}} onClick={() => setExpandedSalesRows(v => !v)}>{expandedSalesRows ? 'Свернуть' : `Показать все позиции (${rows.length})`}</button>}
+    {rows.length > 10 && <button className="ghost small" style={{marginTop:10}} onClick={() => setExpandedSalesRows(v => !v)}>{expandedSalesRows ? 'Скрыть' : `Показать все позиции (${rows.length})`}</button>}
   </div>
 
   const AiSearchBlock = <div className="card span-2">
