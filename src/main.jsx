@@ -7979,6 +7979,268 @@ function RMSProV6Styles() {
   }
 }
 
+/* v128 Dashboard + Tech Cards Stability Bundle */
+
+/* Dashboard: cleaner director blocks */
+.rms-pro-shell .dashboard-director-section,
+.rms-pro-shell .dashboard-executive-card,
+.rms-pro-shell .executive-summary-card{
+  box-shadow:0 10px 28px rgba(15,23,42,.04);
+}
+.rms-pro-shell .dashboard-director-section .card-head h3,
+.rms-pro-shell .dashboard-executive-card .card-head h3,
+.rms-pro-shell .executive-summary-card .card-head h3{
+  letter-spacing:-.02em;
+}
+.rms-pro-shell .dashboard-director-section .card-head p,
+.rms-pro-shell .dashboard-executive-card .card-head p,
+.rms-pro-shell .executive-summary-card .card-head p{
+  font-size:13px;
+}
+
+/* Branch performance: more compact cards */
+.rms-pro-shell .branch-performance-card{
+  min-width:0;
+}
+.rms-pro-shell .branch-performance-card h4{
+  letter-spacing:-.015em;
+}
+.rms-pro-shell .branch-performance-kpi strong{
+  word-break:break-word;
+}
+.rms-pro-shell .branch-performance-kpi span{
+  line-height:1.25;
+}
+
+/* Dashboard signals: softer but clearer */
+.rms-pro-shell .dashboard-problem-item,
+.rms-pro-shell .dashboard-signal-row,
+.rms-pro-shell .executive-alert{
+  box-shadow:0 8px 20px rgba(15,23,42,.025);
+}
+.rms-pro-shell .dashboard-problem-item.bad,
+.rms-pro-shell .dashboard-signal-row.bad,
+.rms-pro-shell .executive-alert.bad{
+  box-shadow:0 8px 22px rgba(190,18,60,.045);
+}
+.rms-pro-shell .dashboard-problem-item.warn,
+.rms-pro-shell .dashboard-signal-row.warn,
+.rms-pro-shell .executive-alert.warn{
+  box-shadow:0 8px 22px rgba(180,83,9,.045);
+}
+
+/* Tech cards: menu profitability panel */
+.rms-pro-shell .menu-profitability-card .card-head{
+  border-bottom:0;
+  padding-bottom:0;
+}
+.rms-pro-shell .menu-profitability-grid{
+  margin-top:12px;
+}
+.rms-pro-shell .profitability-table th,
+.rms-pro-shell .profitability-table td{
+  padding:9px 11px;
+}
+.rms-pro-shell .profitability-table td:first-child b{
+  letter-spacing:-.01em;
+}
+.rms-pro-shell .profitability-table td:nth-child(2){
+  text-align:left;
+}
+.rms-pro-shell .profitability-table .profitability-status{
+  white-space:nowrap;
+}
+
+/* Tech cards: stable row actions and statuses */
+.rms-pro-shell .tech-modern-table .tech-row-actions{
+  min-width:max-content;
+}
+.rms-pro-shell .tech-modern-table .tech-status{
+  min-width:82px;
+}
+.rms-pro-shell .tech-modern-table td,
+.rms-pro-shell .tech-modern-table th{
+  vertical-align:middle;
+}
+.rms-pro-shell .tech-modern-table td:nth-child(1){
+  min-width:210px;
+}
+.rms-pro-shell .tech-modern-table td:nth-child(6){
+  min-width:110px;
+}
+
+/* Ingredient composition readability */
+.rms-pro-shell .recipe-items-table,
+.rms-pro-shell .semi-composition-card table{
+  font-size:14px;
+}
+.rms-pro-shell .recipe-items-table input,
+.rms-pro-shell .recipe-items-table select,
+.rms-pro-shell .semi-composition-card input,
+.rms-pro-shell .semi-composition-card select{
+  min-height:38px;
+}
+.rms-pro-shell .semi-row.editing td{
+  border-top:1px solid rgba(59,130,246,.22);
+  border-bottom:1px solid rgba(59,130,246,.22);
+}
+
+/* Tech detail print/export */
+.rms-pro-shell .tech-detail-panel .action-row{
+  gap:8px;
+  flex-wrap:wrap;
+}
+.rms-pro-shell .tech-detail-panel .action-row button{
+  min-height:34px;
+  border-radius:10px;
+}
+
+/* Universal: compact warning/help notes */
+.rms-pro-shell .profitability-note,
+.rms-pro-shell .dashboard-muted-note,
+.rms-pro-shell .dashboard-technical-note{
+  border-radius:12px;
+}
+
+/* Responsive fixes */
+@media(max-width:980px){
+  .rms-pro-shell .profitability-table{
+    min-width:860px;
+  }
+  .rms-pro-shell .menu-profitability-card .table-wrap{
+    overflow-x:auto;
+  }
+}
+@media(max-width:720px){
+  .rms-pro-shell .branch-summary-table{
+    min-width:760px;
+  }
+  .rms-pro-shell .branch-summary-table-wrap,
+  .rms-pro-shell .dashboard-director-section .table-wrap{
+    overflow-x:auto;
+  }
+}
+
+/* v129 Tech Cards Secure RPC & Audit Starter */
+
+/* Tech Cards enterprise audit / diagnostics */
+.rms-pro-shell .tech-audit-card{
+  border:1px solid rgba(226,232,240,.96);
+  border-left:4px solid #64748b;
+  background:linear-gradient(180deg,#fff 0%,#f8fafc 100%);
+  border-radius:18px;
+  padding:16px;
+}
+.rms-pro-shell .tech-audit-grid{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:12px;
+}
+.rms-pro-shell .tech-audit-kpi{
+  border:1px solid rgba(226,232,240,.96);
+  background:#fff;
+  border-radius:16px;
+  padding:13px 15px;
+}
+.rms-pro-shell .tech-audit-kpi span{
+  display:block;
+  color:#64748b;
+  font-size:12.5px;
+  font-weight:850;
+}
+.rms-pro-shell .tech-audit-kpi strong{
+  display:block;
+  margin-top:5px;
+  color:#0f172a;
+  font-size:20px;
+  line-height:1.15;
+  font-variant-numeric:tabular-nums;
+}
+.rms-pro-shell .tech-audit-status{
+  display:inline-flex;
+  align-items:center;
+  min-height:26px;
+  padding:4px 10px;
+  border-radius:999px;
+  border:1px solid rgba(226,232,240,.96);
+  background:#fff;
+  font-size:12px;
+  font-weight:850;
+}
+.rms-pro-shell .tech-audit-status.ok{
+  background:#ecfdf5;
+  border-color:#bbf7d0;
+  color:#047857;
+}
+.rms-pro-shell .tech-audit-status.warn{
+  background:#fffbeb;
+  border-color:#fde68a;
+  color:#b45309;
+}
+.rms-pro-shell .tech-audit-status.bad{
+  background:#fff1f2;
+  border-color:#fecdd3;
+  color:#be123c;
+}
+
+/* Tech cards safe-edit visual layer */
+.rms-pro-shell .tech-safe-edit-note{
+  margin-top:10px;
+  border:1px dashed rgba(203,213,225,.95);
+  border-radius:14px;
+  background:#f8fafc;
+  padding:11px 12px;
+  color:#64748b;
+  font-size:13px;
+  line-height:1.45;
+}
+.rms-pro-shell .tech-modern-table .tech-row-actions button{
+  white-space:nowrap;
+}
+.rms-pro-shell .tech-modern-table .tech-row-actions .danger,
+.rms-pro-shell .tech-modern-table .tech-row-actions .remove{
+  background:#fff1f2;
+  border-color:#fecdd3;
+  color:#be123c;
+}
+
+/* Tech audit table */
+.rms-pro-shell .tech-audit-table td:nth-child(n+2),
+.rms-pro-shell .tech-audit-table th:nth-child(n+2){
+  text-align:right;
+  font-variant-numeric:tabular-nums;
+}
+.rms-pro-shell .tech-audit-table td:first-child,
+.rms-pro-shell .tech-audit-table th:first-child{
+  text-align:left;
+}
+
+/* Secure RPC phase badge */
+.rms-pro-shell .tech-secure-phase{
+  display:inline-flex;
+  align-items:center;
+  gap:7px;
+  min-height:28px;
+  padding:5px 10px;
+  border-radius:999px;
+  border:1px solid #bfdbfe;
+  background:#eff6ff;
+  color:#1d4ed8;
+  font-size:12px;
+  font-weight:900;
+}
+
+@media(max-width:980px){
+  .rms-pro-shell .tech-audit-grid{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+}
+@media(max-width:620px){
+  .rms-pro-shell .tech-audit-grid{
+    grid-template-columns:1fr;
+  }
+}
+
 
   `}</style>
 }
@@ -13109,6 +13371,7 @@ function Recipes({ t }) {
         <div>
           <h2>Тех. карты</h2>
           <p>Техкарты, полуфабрикаты, себестоимость и контроль Food Cost по блюдам.</p>
+          <p className="tech-safe-edit-note">Enterprise hardening: следующий этап переводит создание, изменение и удаление техкарт на secure RPC с журналом изменений. Текущая версия сохраняет рабочий интерфейс и добавляет подготовительный слой контроля.</p>
         </div>
         <div className="tech-header-actions">
           <button className="ghost small" onClick={() => setTab('legacy')}>Все тех. карты</button>
