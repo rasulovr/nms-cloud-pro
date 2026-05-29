@@ -9544,6 +9544,96 @@ function RMSProV6Styles() {
   }
 }
 
+/* v140 Tech Cards Final Hardening Completion */
+.rms-pro-shell .tech-final-hardening-card{
+  border:1px solid #bbf7d0;
+  border-left:5px solid #16a34a;
+  background:linear-gradient(180deg,#fff 0%,#ecfdf5 100%);
+  border-radius:20px;
+  padding:17px;
+  box-shadow:0 12px 30px rgba(15,23,42,.045);
+}
+.rms-pro-shell .tech-final-hardening-card h3{
+  margin:0;
+  color:#0f172a;
+  font-size:18px;
+  letter-spacing:-.02em;
+}
+.rms-pro-shell .tech-final-hardening-card p{
+  margin:7px 0 0;
+  color:#047857;
+  font-size:13px;
+  line-height:1.45;
+}
+.rms-pro-shell .tech-final-hardening-grid{
+  display:grid;
+  grid-template-columns:repeat(5,minmax(0,1fr));
+  gap:10px;
+  margin-top:14px;
+}
+.rms-pro-shell .tech-final-hardening-step{
+  border:1px solid #bbf7d0;
+  background:#fff;
+  border-radius:14px;
+  padding:11px 12px;
+}
+.rms-pro-shell .tech-final-hardening-step span{
+  display:block;
+  color:#64748b;
+  font-size:11.8px;
+  font-weight:850;
+}
+.rms-pro-shell .tech-final-hardening-step strong{
+  display:block;
+  margin-top:5px;
+  color:#047857;
+  font-size:13.5px;
+  line-height:1.2;
+}
+.rms-pro-shell .tech-final-hardening-step.warning{
+  border-color:#fde68a;
+  background:#fffbeb;
+}
+.rms-pro-shell .tech-final-hardening-step.warning strong{
+  color:#b45309;
+}
+.rms-pro-shell .tech-modern-table .tech-row-actions button,
+.rms-pro-shell .recipe-row-actions button,
+.rms-pro-shell .tech-ingredient-actions button,
+.rms-pro-shell .semi-row-actions button{
+  white-space:nowrap;
+}
+.rms-pro-shell .tech-modern-table .tech-row-actions{
+  min-width:max-content;
+}
+.rms-pro-shell .tech-audit-card,
+.rms-pro-shell .tech-readiness-card,
+.rms-pro-shell .tech-lockdown-prep-card,
+.rms-pro-shell .tech-hardening-command-card,
+.rms-pro-shell .tech-handler-switch-card,
+.rms-pro-shell .tech-final-hardening-card{
+  margin-top:14px;
+}
+@media print{
+  .rms-pro-shell .tech-secure-rpc-card,
+  .rms-pro-shell .tech-rpc-wiring-card,
+  .rms-pro-shell .tech-readiness-card,
+  .rms-pro-shell .tech-rpc-switch-card,
+  .rms-pro-shell .tech-handler-wiring-card,
+  .rms-pro-shell .tech-hardening-command-card,
+  .rms-pro-shell .tech-handler-switch-card,
+  .rms-pro-shell .tech-lockdown-prep-card,
+  .rms-pro-shell .tech-final-hardening-card{
+    display:none!important;
+  }
+}
+@media(max-width:1180px){
+  .rms-pro-shell .tech-final-hardening-grid{grid-template-columns:repeat(3,minmax(0,1fr));}
+}
+@media(max-width:680px){
+  .rms-pro-shell .tech-final-hardening-grid{grid-template-columns:1fr;}
+}
+
 
   `}</style>
 }
@@ -14676,8 +14766,8 @@ function Recipes({ t }) {
           <p>Техкарты, полуфабрикаты, себестоимость и контроль Food Cost по блюдам.</p>
           <p className="tech-safe-edit-note">Enterprise hardening: следующий этап переводит создание, изменение и удаление техкарт на secure RPC с журналом изменений. Текущая версия сохраняет рабочий интерфейс и добавляет подготовительный слой контроля.</p>
           <div className="tech-secure-rpc-card phase-2">
-            <h3>Tech Cards Secure RPC · Lockdown Prep</h3>
-            <p>Readiness = ready. Подготовлен permission lockdown preflight: сначала проверяем прямые права и audit events, затем отдельно применяем revoke.</p>
+            <h3>Tech Cards Secure RPC · Final Hardening</h3>
+            <p>Tech Cards hardening завершён на уровне frontend/RPC/audit/readiness. Финальный permission lockdown вынесен отдельным SQL-файлом с rollback.</p>
             <div className="tech-secure-rpc-grid">
               <div className="tech-secure-rpc-step is-ready"><span>Audit log</span><strong>Готово</strong></div>
               <div className="tech-secure-rpc-step is-ready"><span>Menu item RPC</span><strong>Подготовлено</strong></div>
