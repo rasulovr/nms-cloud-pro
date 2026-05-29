@@ -6727,6 +6727,223 @@ function RMSProV6Styles() {
   }
 }
 
+/* v120 RMS Final UX Stabilization Bundle */
+
+/* 1) Stronger visual hierarchy for business sections */
+.rms-pro-shell .topbar,
+.rms-pro-shell .card{
+  border-color: rgba(226,232,240,.96);
+}
+.rms-pro-shell .topbar h2,
+.rms-pro-shell .card-head h3{
+  color: #0f172a;
+}
+.rms-pro-shell .card-head h3{
+  font-weight: 850;
+}
+.rms-pro-shell .card-head p,
+.rms-pro-shell .topbar p{
+  color: #64748b;
+  max-width: 960px;
+}
+
+/* 2) KPI polish */
+.rms-pro-shell .kpi-card,
+.rms-pro-shell .soft-card,
+.rms-pro-shell .finance-exec-card,
+.rms-pro-shell .revenue-day-kpi > div{
+  transition: border-color .16s ease, box-shadow .16s ease, transform .08s ease;
+}
+.rms-pro-shell .kpi-card:hover,
+.rms-pro-shell .soft-card:hover,
+.rms-pro-shell .finance-exec-card:hover,
+.rms-pro-shell .revenue-day-kpi > div:hover{
+  border-color: rgba(203,213,225,.98);
+  box-shadow: 0 10px 24px rgba(15,23,42,.045);
+}
+.rms-pro-shell .kpi-card:active,
+.rms-pro-shell .soft-card:active,
+.rms-pro-shell .finance-exec-card:active{
+  transform: translateY(1px);
+}
+
+/* 3) Tables final pass */
+.rms-pro-shell .table-wrap{
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148,163,184,.65) transparent;
+}
+.rms-pro-shell .table-wrap::-webkit-scrollbar{
+  height: 8px;
+  width: 8px;
+}
+.rms-pro-shell .table-wrap::-webkit-scrollbar-thumb{
+  background: rgba(148,163,184,.55);
+  border-radius: 999px;
+}
+.rms-pro-shell .table-wrap::-webkit-scrollbar-track{
+  background: transparent;
+}
+.rms-pro-shell .table-wrap th,
+.rms-pro-shell .table-wrap td{
+  border-bottom-color: rgba(226,232,240,.78);
+}
+.rms-pro-shell .table-wrap th:first-child,
+.rms-pro-shell .table-wrap td:first-child{
+  padding-left: 14px;
+}
+.rms-pro-shell .table-wrap th:last-child,
+.rms-pro-shell .table-wrap td:last-child{
+  padding-right: 14px;
+}
+
+/* 4) More professional action buttons in tables */
+.rms-pro-shell .table-wrap .action-row button.small{
+  border-radius: 10px;
+  line-height: 1.1;
+}
+.rms-pro-shell .table-wrap .action-row button.small:not(.primary):not(.danger):not(.remove){
+  background: #fff;
+  border-color: rgba(203,213,225,.95);
+  color: #334155;
+}
+.rms-pro-shell .table-wrap .action-row button.small:not(.primary):not(.danger):not(.remove):hover{
+  background: #f8fafc;
+  border-color: rgba(148,163,184,.95);
+}
+
+/* 5) Forms final pass */
+.rms-pro-shell .form-grid label{
+  color: #475569;
+}
+.rms-pro-shell .form-grid input,
+.rms-pro-shell .form-grid select,
+.rms-pro-shell .form-grid textarea{
+  color: #0f172a;
+}
+.rms-pro-shell .form-grid input::placeholder,
+.rms-pro-shell .form-grid textarea::placeholder{
+  color: #94a3b8;
+}
+.rms-pro-shell .checkbox-row{
+  gap: 8px;
+  align-items: center;
+}
+.rms-pro-shell input[type="checkbox"]{
+  accent-color: #2563eb;
+}
+
+/* 6) Modal final polish */
+.rms-pro-shell .supplier-modal-panel{
+  border-radius: 22px;
+}
+.rms-pro-shell .supplier-modal-head{
+  border-top-left-radius: 22px;
+  border-top-right-radius: 22px;
+}
+.rms-pro-shell .supplier-modal-panel .table-wrap{
+  background: #fff;
+}
+.rms-pro-shell .supplier-modal-panel .modal-head-actions button.small{
+  box-shadow: none;
+}
+.rms-pro-shell .supplier-modal-panel .modal-head-actions button.primary{
+  box-shadow: 0 8px 16px rgba(37,99,235,.12);
+}
+.rms-pro-shell .supplier-modal-x{
+  font-size: 22px;
+  font-weight: 850;
+}
+
+/* 7) Revenue / Finance / Supplier report buttons */
+.rms-pro-shell .finance-report-actions,
+.rms-pro-shell .revenue-top-actions,
+.rms-pro-shell .export-actions,
+.rms-pro-shell .report-actions{
+  padding: 2px 0;
+}
+.rms-pro-shell .finance-report-actions button,
+.rms-pro-shell .revenue-top-actions button,
+.rms-pro-shell .export-actions button,
+.rms-pro-shell .report-actions button{
+  border-radius: 10px;
+}
+
+/* 8) Diagnostics and technical sections */
+.rms-pro-shell .diagnostics-card,
+.rms-pro-shell .security-diagnostics-card{
+  color: #334155;
+}
+.rms-pro-shell .diagnostics-card .card-head h3,
+.rms-pro-shell .security-diagnostics-card .card-head h3{
+  color: #0f172a;
+}
+.rms-pro-shell .diagnostics-card .table-wrap,
+.rms-pro-shell .security-diagnostics-card .table-wrap{
+  background: #fff;
+}
+
+/* 9) Navigation polish */
+.rms-pro-shell .rms-pro-topbar{
+  box-shadow: 0 8px 22px rgba(15,23,42,.035);
+}
+.rms-pro-shell .rms-pro-back{
+  border-radius: 12px;
+}
+
+/* 10) Better disabled states */
+.rms-pro-shell button:disabled,
+.rms-pro-shell input:disabled,
+.rms-pro-shell select:disabled,
+.rms-pro-shell textarea:disabled{
+  opacity: .66;
+}
+.rms-pro-shell button:disabled{
+  cursor: not-allowed;
+}
+
+/* 11) Compact mobile behavior */
+@media(max-width:720px){
+  .rms-pro-shell .topbar{
+    padding: 14px;
+  }
+  .rms-pro-shell .card{
+    padding: 14px;
+  }
+  .rms-pro-shell .card-head{
+    margin-bottom: 10px;
+  }
+  .rms-pro-shell .table-wrap th:first-child,
+  .rms-pro-shell .table-wrap td:first-child{
+    padding-left: 10px;
+  }
+  .rms-pro-shell .table-wrap th:last-child,
+  .rms-pro-shell .table-wrap td:last-child{
+    padding-right: 10px;
+  }
+  .rms-pro-shell .supplier-modal-panel{
+    border-radius: 16px;
+  }
+  .rms-pro-shell .supplier-modal-head{
+    border-top-left-radius: 16px;
+    border-top-right-radius: 16px;
+  }
+}
+
+/* 12) Final print/export polish */
+@media print{
+  .rms-pro-shell .card{
+    break-inside: avoid;
+  }
+  .rms-pro-shell .table-wrap{
+    border-radius: 0 !important;
+  }
+  .rms-pro-shell .table-wrap th,
+  .rms-pro-shell .table-wrap td{
+    padding: 7px 8px !important;
+    font-size: 11px !important;
+  }
+}
+
 
   `}</style>
 }
