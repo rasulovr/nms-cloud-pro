@@ -7061,6 +7061,188 @@ function RMSProV6Styles() {
   }
 }
 
+/* v122 Tech Cards Print / Export & Recipe Card UX */
+
+/* Tech card top controls */
+.rms-pro-shell .tech-modern-shell .card-head,
+.rms-pro-shell .tech-card-root .card-head{
+  align-items:flex-start;
+  gap:14px;
+}
+.rms-pro-shell .tech-modern-shell .action-row,
+.rms-pro-shell .tech-card-root .action-row{
+  gap:8px;
+  flex-wrap:wrap;
+}
+
+/* Recipe card preview / detail panel */
+.rms-pro-shell .tech-detail-panel{
+  background:#fff;
+  border-radius:24px;
+}
+.rms-pro-shell .tech-detail-top{
+  border-bottom:1px solid rgba(226,232,240,.96);
+  padding-bottom:16px;
+  margin-bottom:16px;
+}
+.rms-pro-shell .tech-detail-hero{
+  border-radius:20px;
+  overflow:hidden;
+  background:#f8fafc;
+  border:1px solid rgba(226,232,240,.96);
+}
+.rms-pro-shell .tech-detail-hero img{
+  object-fit:cover;
+}
+.rms-pro-shell .tech-detail-placeholder{
+  background:linear-gradient(135deg,#eff6ff 0%,#f8fafc 100%);
+  color:#2563eb;
+}
+
+/* Cost summary chips inside tech cards */
+.rms-pro-shell .tech-cost-chip,
+.rms-pro-shell .recipe-cost-chip{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  min-height:28px;
+  padding:5px 10px;
+  border-radius:999px;
+  border:1px solid rgba(226,232,240,.96);
+  background:#fff;
+  font-size:12px;
+  font-weight:850;
+  color:#334155;
+}
+.rms-pro-shell .tech-cost-chip.good,
+.rms-pro-shell .recipe-cost-chip.good{
+  background:#ecfdf5;
+  border-color:#bbf7d0;
+  color:#047857;
+}
+.rms-pro-shell .tech-cost-chip.warn,
+.rms-pro-shell .recipe-cost-chip.warn{
+  background:#fffbeb;
+  border-color:#fde68a;
+  color:#b45309;
+}
+.rms-pro-shell .tech-cost-chip.bad,
+.rms-pro-shell .recipe-cost-chip.bad{
+  background:#fff1f2;
+  border-color:#fecdd3;
+  color:#be123c;
+}
+
+/* Ingredients / composition tables */
+.rms-pro-shell .recipe-items-table,
+.rms-pro-shell .semi-composition-card table,
+.rms-pro-shell .tech-detail-panel table{
+  width:100%;
+  border-collapse:separate;
+  border-spacing:0;
+}
+.rms-pro-shell .recipe-items-table th,
+.rms-pro-shell .recipe-items-table td,
+.rms-pro-shell .semi-composition-card th,
+.rms-pro-shell .semi-composition-card td,
+.rms-pro-shell .tech-detail-panel table th,
+.rms-pro-shell .tech-detail-panel table td{
+  padding:10px 12px;
+  border-bottom:1px solid rgba(226,232,240,.78);
+}
+.rms-pro-shell .recipe-items-table th,
+.rms-pro-shell .semi-composition-card th,
+.rms-pro-shell .tech-detail-panel table th{
+  background:#f8fafc;
+  color:#475569;
+  font-size:12px;
+  font-weight:850;
+}
+.rms-pro-shell .recipe-items-table td:nth-child(n+3),
+.rms-pro-shell .semi-composition-card td:nth-child(n+3),
+.rms-pro-shell .tech-detail-panel table td:nth-child(n+3){
+  font-variant-numeric:tabular-nums;
+}
+
+/* Edit actions in recipes */
+.rms-pro-shell .recipe-row-actions,
+.rms-pro-shell .tech-ingredient-actions{
+  display:inline-flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:6px;
+  flex-wrap:nowrap;
+}
+.rms-pro-shell .recipe-row-actions button,
+.rms-pro-shell .tech-ingredient-actions button{
+  min-width:78px;
+}
+
+/* Print/export buttons in Tech Cards */
+.rms-pro-shell .tech-print-button,
+.rms-pro-shell .tech-export-button,
+.rms-pro-shell .tech-modern-shell button[title*="Печать"]{
+  border-radius:10px;
+  font-weight:850;
+}
+.rms-pro-shell .tech-modern-shell button[title*="Печать"],
+.rms-pro-shell .tech-print-button{
+  background:#f8fafc;
+  border-color:rgba(203,213,225,.95);
+  color:#334155;
+}
+
+/* Better printed recipe card */
+@media print{
+  .rms-pro-shell .tech-detail-overlay,
+  .rms-pro-shell .tech-detail-panel{
+    position:static!important;
+    inset:auto!important;
+    width:100%!important;
+    max-width:none!important;
+    max-height:none!important;
+    overflow:visible!important;
+    box-shadow:none!important;
+    border:0!important;
+    background:#fff!important;
+  }
+  .rms-pro-shell .tech-detail-overlay{
+    backdrop-filter:none!important;
+  }
+  .rms-pro-shell .tech-detail-hero,
+  .rms-pro-shell .tech-detail-placeholder{
+    max-height:180px!important;
+  }
+  .rms-pro-shell .tech-detail-panel table th,
+  .rms-pro-shell .tech-detail-panel table td{
+    padding:7px 8px!important;
+    font-size:11px!important;
+  }
+  .rms-pro-shell .tech-status,
+  .rms-pro-shell .tech-cost-chip,
+  .rms-pro-shell .recipe-cost-chip{
+    border:1px solid #d1d5db!important;
+    background:#fff!important;
+    color:#111827!important;
+  }
+}
+
+/* Mobile tech card detail */
+@media(max-width:760px){
+  .rms-pro-shell .tech-detail-panel{
+    border-radius:18px;
+  }
+  .rms-pro-shell .recipe-row-actions,
+  .rms-pro-shell .tech-ingredient-actions{
+    flex-wrap:wrap;
+    justify-content:flex-start;
+  }
+  .rms-pro-shell .recipe-row-actions button,
+  .rms-pro-shell .tech-ingredient-actions button{
+    min-width:auto;
+  }
+}
+
 
   `}</style>
 }
