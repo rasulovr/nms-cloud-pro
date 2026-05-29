@@ -1782,13 +1782,13 @@ function SecurityRecoveryCenter() {
           </div>
         </div>
         <div className="mini-grid">
-          <div className="metric"><span>Formula audit</span><strong>{financeFormulaDiagnostics.length ? 'OK' : 'Данных пока нет'}</strong></div>
-          <div className="metric"><span>Forecast audit</span><strong>{financeForecastDiagnostics.length ? 'OK' : 'Данных пока нет'}</strong></div>
+          <div className="metric"><span>Formula audit</span><strong>{financeFormulaDiagnostics.length ? 'OK' : 'Пока нет данных'}</strong></div>
+          <div className="metric"><span>Forecast audit</span><strong>{financeForecastDiagnostics.length ? 'OK' : 'Пока нет данных'}</strong></div>
           <div className="metric"><span>Статус</span><strong className={(financeFormulaDiagnostics.length || financeForecastDiagnostics.length) ? 'good' : ''}>{(financeFormulaDiagnostics.length || financeForecastDiagnostics.length) ? 'Данные загружены' : 'Откройте Финансы'}</strong></div>
         </div>
         {showFinanceDiagnosticsDetails && <>
-          <div className="table-wrap"><table><thead><tr><th colSpan="3">Finance formula audit</th></tr><tr><th>Показатель</th><th>Сумма</th><th>Источник / логика</th></tr></thead><tbody>{financeFormulaDiagnostics.map(row => <tr key={row.name}><td><b>{row.name}</b></td><td className={row.name.includes('Расхождения') || row.name.includes('Контроль') ? (Math.abs(parseNum(row.amount)) > 0.01 ? 'bad' : 'good') : ''}>{fmt(row.amount)}</td><td className="hint">{row.note}</td></tr>)}{!financeFormulaDiagnostics.length && <tr><td colSpan="3" className="hint">Данных пока нет. Откройте раздел “Финансы”, чтобы обновить расчёт.</td></tr>}</tbody></table></div>
-          <div className="table-wrap"><table><thead><tr><th colSpan="3">Dashboard / Finance forecast parity</th></tr><tr><th>Показатель</th><th>Сумма</th><th>Источник / логика</th></tr></thead><tbody>{financeForecastDiagnostics.map(row => <tr key={row.name}><td><b>{row.name}</b></td><td className={row.name.includes('Контроль') ? (Math.abs(parseNum(row.amount)) > 0.01 ? 'bad' : 'good') : ''}>{fmt(row.amount)}</td><td className="hint">{row.note}</td></tr>)}{!financeForecastDiagnostics.length && <tr><td colSpan="3" className="hint">Данных пока нет. Откройте раздел “Финансы”, чтобы обновить расчёт.</td></tr>}</tbody></table></div>
+          <div className="table-wrap"><table><thead><tr><th colSpan="3">Finance formula audit</th></tr><tr><th>Показатель</th><th>Сумма</th><th>Источник / логика</th></tr></thead><tbody>{financeFormulaDiagnostics.map(row => <tr key={row.name}><td><b>{row.name}</b></td><td className={row.name.includes('Расхождения') || row.name.includes('Контроль') ? (Math.abs(parseNum(row.amount)) > 0.01 ? 'bad' : 'good') : ''}>{fmt(row.amount)}</td><td className="hint">{row.note}</td></tr>)}{!financeFormulaDiagnostics.length && <tr><td colSpan="3" className="hint">Пока нет данных. Откройте раздел “Финансы”, чтобы обновить расчёт.</td></tr>}</tbody></table></div>
+          <div className="table-wrap"><table><thead><tr><th colSpan="3">Dashboard / Finance forecast parity</th></tr><tr><th>Показатель</th><th>Сумма</th><th>Источник / логика</th></tr></thead><tbody>{financeForecastDiagnostics.map(row => <tr key={row.name}><td><b>{row.name}</b></td><td className={row.name.includes('Контроль') ? (Math.abs(parseNum(row.amount)) > 0.01 ? 'bad' : 'good') : ''}>{fmt(row.amount)}</td><td className="hint">{row.note}</td></tr>)}{!financeForecastDiagnostics.length && <tr><td colSpan="3" className="hint">Пока нет данных. Откройте раздел “Финансы”, чтобы обновить расчёт.</td></tr>}</tbody></table></div>
         </>}
       </section>
 
@@ -5222,6 +5222,168 @@ function RMSProV6Styles() {
   }
 }
 
+/* v108 RMS Enterprise UI Stabilization Bundle */
+
+/* Page headers: less height, stronger hierarchy */
+.rms-pro-shell .topbar{
+  min-height: auto;
+}
+.rms-pro-shell .topbar h2{
+  margin: 0;
+}
+.rms-pro-shell .topbar p{
+  margin-top: 6px;
+}
+.rms-pro-shell .card-head{
+  min-height: auto;
+}
+.rms-pro-shell .card-head h3{
+  margin-bottom: 3px;
+}
+
+/* Consistent action buttons in all modules */
+.rms-pro-shell .action-row button.small,
+.rms-pro-shell td button.small,
+.rms-pro-shell .table-wrap button.small{
+  min-width: 74px;
+  justify-content: center;
+}
+.rms-pro-shell .action-row button.small.primary,
+.rms-pro-shell td button.small.primary{
+  min-width: 68px;
+}
+.rms-pro-shell .action-row button.small.remove,
+.rms-pro-shell td button.small.remove{
+  min-width: 72px;
+}
+
+/* More controlled wide tables */
+.rms-pro-shell .table-wrap{
+  max-width: 100%;
+}
+.rms-pro-shell .table-wrap table{
+  table-layout: auto;
+}
+.rms-pro-shell .table-wrap th,
+.rms-pro-shell .table-wrap td{
+  vertical-align: middle;
+}
+.rms-pro-shell .table-wrap td .hint{
+  display: inline-block;
+  max-width: 340px;
+}
+.rms-pro-shell .table-wrap td:first-child{
+  min-width: 120px;
+}
+
+/* Cleaner section spacing */
+.rms-pro-shell .card:not(:last-child){
+  margin-bottom: 14px;
+}
+.rms-pro-shell .soft-card + .soft-card{
+  margin-top: 10px;
+}
+
+/* Finance / Revenue / Supplier common summary cards */
+.rms-pro-shell .finance-exec-card,
+.rms-pro-shell .revenue-day-kpi > div,
+.rms-pro-shell .supplier-control-center-card .soft-card{
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.9);
+}
+.rms-pro-shell .finance-exec-card .hint,
+.rms-pro-shell .revenue-day-kpi .hint{
+  margin-top: 4px;
+}
+
+/* Modal table action columns: avoid ugly wrapping */
+.rms-pro-shell .supplier-modal-panel .table-wrap td:last-child,
+.rms-pro-shell .supplier-modal-panel .table-wrap th:last-child{
+  min-width: 210px;
+}
+.rms-pro-shell .supplier-modal-panel .table-wrap td:last-child .action-row{
+  justify-content: flex-end;
+  flex-wrap: nowrap;
+}
+.rms-pro-shell .supplier-modal-panel .table-wrap td:last-child button{
+  white-space: nowrap;
+}
+
+/* Modal close button: clearer hit area */
+.rms-pro-shell .supplier-modal-x{
+  min-width: 38px;
+  min-height: 38px;
+}
+
+/* Forms: tighter vertical rhythm */
+.rms-pro-shell .form-grid{
+  margin-top: 10px;
+}
+.rms-pro-shell .form-grid label{
+  margin-bottom: 0;
+}
+.rms-pro-shell .form-grid input,
+.rms-pro-shell .form-grid select,
+.rms-pro-shell .form-grid textarea{
+  width: 100%;
+}
+
+/* Better neutral helper text */
+.rms-pro-shell .hint.small,
+.rms-pro-shell small.hint{
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+/* Report/print buttons should not dominate */
+.rms-pro-shell .finance-report-actions button,
+.rms-pro-shell .revenue-top-actions button,
+.rms-pro-shell .export-actions button{
+  font-weight: 800;
+}
+
+/* Diagnostics: visually separated from business modules */
+.rms-pro-shell .diagnostics-card,
+.rms-pro-shell .security-diagnostics-card{
+  background: linear-gradient(180deg,#fff 0%,#f8fafc 100%);
+}
+.rms-pro-shell .diagnostics-card .badge,
+.rms-pro-shell .security-diagnostics-card .badge{
+  background: #eef2ff;
+  color: #3730a3;
+}
+
+/* Better low-width tables */
+@media(max-width:760px){
+  .rms-pro-shell .table-wrap td .hint{
+    max-width: 220px;
+  }
+  .rms-pro-shell .action-row button.small,
+  .rms-pro-shell td button.small,
+  .rms-pro-shell .table-wrap button.small{
+    min-width: auto;
+  }
+  .rms-pro-shell .supplier-modal-panel .table-wrap td:last-child .action-row{
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+  .rms-pro-shell .supplier-modal-panel .table-wrap td:last-child,
+  .rms-pro-shell .supplier-modal-panel .table-wrap th:last-child{
+    min-width: 170px;
+  }
+}
+
+/* Final print polish */
+@media print{
+  .rms-pro-shell .topbar,
+  .rms-pro-shell .card-head{
+    border-bottom: 1px solid #d1d5db !important;
+  }
+  .rms-pro-shell .table-wrap th{
+    background: #f3f4f6 !important;
+    color: #111827 !important;
+  }
+}
+
 
   `}</style>
 }
@@ -6479,7 +6641,7 @@ function Revenue({ t, focusExpense }) {
               <h3>Журнал операций</h3>
               <p className="hint">Последние 5 действий по выбранной дате. Полный журнал открывается отдельно.</p>
             </div>
-            {logs.length > 5 && <button className="small" onClick={() => setShowRevenueLogModal(true)}>Операции · {logs.length}</button>}
+            {logs.length > 5 && <button className="small" onClick={() => setShowRevenueLogModal(true)}>Все операции · {logs.length}</button>}
           </div>
           <div className="table-wrap"><table><thead><tr><th>Время</th><th>Пользователь</th><th>Раздел</th><th>Действие</th><th>Поле</th><th>Было</th><th>Стало</th></tr></thead><tbody>
             {recentRevenueLogs.map(l => <tr key={l.id} className={l.action === 'cancel' ? 'cancelled-row' : ''}><td>{formatDT(l.created_at)}</td><td>{l.user_email || l.user_id || '—'}</td><td>{entityLabel(l.entity_type)}</td><td>{operationLabel(l.action)}</td><td>{fieldLabel(l.field_name)}</td><td>{l.old_value || '—'}</td><td>{l.new_value || '—'}</td></tr>)}
@@ -7747,7 +7909,7 @@ function MiniBarChart({ rows, valueKey = 'revenue', labelKey = 'name', title, su
           <div className={`dash-bar-value ${val < 0 ? 'bad' : ''}`}><span>{fmt(val)} ман.</span>{showShare && <em>({pct(share)})</em>}</div>
         </div>
       })}
-      {!rows.length && <p className="hint">Данных пока нет для графика.</p>}
+      {!rows.length && <p className="hint">Пока нет данных для графика.</p>}
     </div>
   </div>
 }
@@ -7839,7 +8001,7 @@ function DailyRevenueLineChart({ rows = [], title = 'Выручка по дня�
           </g>
         </g>}
         {points.map((p, i) => <text key={`x-${p.date || i}`} className="finance-line-chart-x-label" x={p.x} y={height - 9} textAnchor="middle">{p.day}</text>)}
-      </svg> : <p className="hint">Данных пока нет по выручке за выбранный месяц.</p>}
+      </svg> : <p className="hint">Пока нет данных по выручке за выбранный месяц.</p>}
       <div className="finance-line-chart-summary">
         {firstSummary === 'activeDays' ? <div className="metric metric-active-days">
           <span className="finance-kpi-icon" aria-hidden="true">◷</span>
@@ -9329,9 +9491,9 @@ function Finance({ t, lang, onGoToExpense }) {
 
   function printFinanceMonthlyReport() {
     const monthName = I18N[lang]?.months?.[month - 1] || String(month).padStart(2, '0')
-    const expenseRowsHtml = financeExpenseRowsAll.map(r => `<tr><td>${r.name}</td><td>${fmt(r.amount)}</td><td>${pct(financeTotalExpenses ? parseNum(r.amount) / financeTotalExpenses * 100 : 0)}</td></tr>`).join('') || '<tr><td colspan="3">Данных пока нет</td></tr>'
+    const expenseRowsHtml = financeExpenseRowsAll.map(r => `<tr><td>${r.name}</td><td>${fmt(r.amount)}</td><td>${pct(financeTotalExpenses ? parseNum(r.amount) / financeTotalExpenses * 100 : 0)}</td></tr>`).join('') || '<tr><td colspan="3">Пока нет данных</td></tr>'
     const anomalyRowsHtml = sortedAiRows.slice(0, 10).map(r => `<tr><td>${r.branchName}</td><td>${r.indicator}</td><td>${r.fact}</td><td>${r.deviation}</td><td>${r.recommendation}</td></tr>`).join('') || '<tr><td colspan="5">Отклонения не найдены</td></tr>'
-    const driverRowsHtml = financeTopExpenseDrivers.map(r => `<tr><td>${r.name}</td><td>${fmt(r.amount)}</td><td>${pct(financeTotalExpenses ? parseNum(r.amount) / financeTotalExpenses * 100 : 0)}</td></tr>`).join('') || '<tr><td colspan="3">Данных пока нет</td></tr>'
+    const driverRowsHtml = financeTopExpenseDrivers.map(r => `<tr><td>${r.name}</td><td>${fmt(r.amount)}</td><td>${pct(financeTotalExpenses ? parseNum(r.amount) / financeTotalExpenses * 100 : 0)}</td></tr>`).join('') || '<tr><td colspan="3">Пока нет данных</td></tr>'
     const html = `<!doctype html><html><head><meta charset="utf-8"><title>Finance report</title><style>body{font-family:Arial,sans-serif;padding:28px;color:#111827}h1{margin:0 0 6px}p{color:#64748b}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:18px 0}.kpi{border:1px solid #e5e7eb;border-radius:12px;padding:12px}.kpi span{display:block;color:#64748b;font-size:12px}.kpi b{font-size:20px}.status{display:inline-block;border:1px solid #e5e7eb;border-radius:999px;padding:6px 10px;font-weight:700;margin-top:8px}table{width:100%;border-collapse:collapse;margin-top:10px}th,td{border-bottom:1px solid #e5e7eb;padding:8px;text-align:left}th{background:#f8fafc}.section{margin-top:22px}@media print{button{display:none}}</style></head><body><h1>Финансовый отчёт</h1><p>${monthName} ${year} · ${branchId === ALL_BRANCHES ? 'Все рестораны' : financeBranchNameById(branchId)}</p><span class="status">${financeHealthLabel}</span><div class="grid"><div class="kpi"><span>Выручка</span><b>${fmt(financeMonthSummary.revenue)} AZN</b></div><div class="kpi"><span>Расходы</span><b>${fmt(financeMonthSummary.expenses)} AZN</b></div><div class="kpi"><span>Чистая прибыль</span><b>${fmt(financeMonthSummary.net)} AZN</b></div><div class="kpi"><span>Маржа</span><b>${pct(financeMonthSummary.margin)}</b></div></div><div class="section"><h2>Главные драйверы расходов</h2><table><thead><tr><th>Статья</th><th>Сумма</th><th>Доля расходов</th></tr></thead><tbody>${driverRowsHtml}</tbody></table></div><div class="section"><h2>Расходы по статьям</h2><table><thead><tr><th>Статья</th><th>Сумма</th><th>Доля расходов</th></tr></thead><tbody>${expenseRowsHtml}</tbody></table></div><div class="section"><h2>Отклонения</h2><table><thead><tr><th>Филиал</th><th>Показатель</th><th>Факт</th><th>Отклонение</th><th>Рекомендация</th></tr></thead><tbody>${anomalyRowsHtml}</tbody></table></div><script>window.print()</script></body></html>`
     const win = window.open('', '_blank')
     if (!win) return
@@ -13502,7 +13664,7 @@ function Salaries({ t, view = 'employees', isAdmin = false }) {
         <div class="muted">${branchId === 'all' ? 'Все филиалы и группы' : (staffGroupOptions(branches).find(b => b.id === branchId)?.name || 'Филиал')}</div>
         <table>
           <thead><tr><th>Филиал</th><th>Сотрудник</th><th>Должность</th><th class="num">Дни</th><th class="num">Базовая зарплата</th><th class="num">Начислено</th><th class="num">Авансы</th><th class="num">К выплате</th></tr></thead>
-          <tbody>${rowsHtml || '<tr><td colspan="8">Данных пока нет</td></tr>'}</tbody>
+          <tbody>${rowsHtml || '<tr><td colspan="8">Пока нет данных</td></tr>'}</tbody>
           <tfoot><tr><td colspan="3">Итого</td><td class="num">—</td><td class="num">${fmt(salarySheetTotals.base)}</td><td class="num">${fmt(salarySheetTotals.accrued)}</td><td class="num">${fmt(salarySheetTotals.advances)}</td><td class="num pay">${fmt(salarySheetTotals.toPay)}</td></tr></tfoot>
         </table>
       </div></div>
@@ -13580,7 +13742,7 @@ function Salaries({ t, view = 'employees', isAdmin = false }) {
                   <td>{fmt(r.advances)}</td>
                   <td><strong className={r.to_pay >= 0 ? 'good' : 'bad'}>{fmt(r.to_pay)}</strong></td>
                 </tr>)}
-                {!salarySheetRows.length && <tr><td colSpan="8" className="hint">Данных пока нет за выбранный период.</td></tr>}
+                {!salarySheetRows.length && <tr><td colSpan="8" className="hint">Пока нет данных за выбранный период.</td></tr>}
               </tbody>
               <tfoot>
                 <tr>
@@ -13641,7 +13803,7 @@ function Salaries({ t, view = 'employees', isAdmin = false }) {
           <tbody>
             {branchTotals.map(b => <tr key={b.id}><td>{b.name}</td><td><strong>{b.employees}</strong></td><td>{b.masked ? maskedMoney : fmt(b.gross)}</td><td>{b.masked ? maskedMoney : fmt(b.advances)}</td><td>{b.masked ? maskedMoney : fmt(b.payments)}</td><td>{b.masked ? maskedMoney : <strong className={b.balance >= 0 ? '' : 'bad'}>{fmt(b.balance)}</strong>}</td></tr>)}
             {branchTotals.length > 0 && <tr className="system-row"><td><b>Итого</b></td><td><strong>{branchTotalsGrand.employees}</strong></td><td><b>{branchTotalsGrand.hasMasked ? maskedMoney : fmt(branchTotalsGrand.gross)}</b></td><td><b>{branchTotalsGrand.hasMasked ? maskedMoney : fmt(branchTotalsGrand.advances)}</b></td><td><b>{branchTotalsGrand.hasMasked ? maskedMoney : fmt(branchTotalsGrand.payments)}</b></td><td>{branchTotalsGrand.hasMasked ? maskedMoney : <strong className={branchTotalsGrand.balance >= 0 ? '' : 'bad'}>{fmt(branchTotalsGrand.balance)}</strong>}</td></tr>}
-            {!branchTotals.length && <tr><td colSpan="6" className="hint">Данных пока нет за выбранный период.</td></tr>}
+            {!branchTotals.length && <tr><td colSpan="6" className="hint">Пока нет данных за выбранный период.</td></tr>}
           </tbody>
         </table></div>
       </div>
@@ -19073,7 +19235,7 @@ function Reports({ t }) {
       </tbody></table></div>}
       <table className="reports-ai-top-table" style={{width:'100%'}}><thead><tr><th>Позиция</th><th style={{width:96}}>Тип</th><th style={{width:130}}>Кол-во / цена</th><th style={{width:120}}>Выручка</th><th style={{width:100}}>Food cost</th><th style={{width:100}}>Маржа</th>{isHideableTop && <th style={{width:90}}></th>}</tr></thead><tbody>
         {visible.map((r, idx) => <tr key={`${title}-${idx}-${r.name}`}><td className="reports-ai-product-cell"><b>{r.name}</b>{r.menu_category && <span className="reports-ai-product-meta">{r.menu_category}</span>}{!isNetworkSalesView && <span className="reports-ai-product-meta">{r.branch_name || '—'}</span>}</td><td><span className={r.department === 'Бар' ? 'pill good' : r.department === 'Кухня' ? 'pill warn' : 'pill'}>{r.department === 'Кухня' ? 'Кухня' : r.department === 'Бар' ? 'Бар' : '—'}</span></td><td>{fmt(r.quantity)}<br /><span className="hint">цена {fmt(r.avg_price)}</span></td><td>{fmt(r.revenue)}</td><td>{r.revenue ? pct((r.cost / r.revenue) * 100) : '0.0%'}</td><td className={r.margin < 20 ? 'bad' : r.margin > 65 ? 'good' : ''}><b>{pct(r.margin)}</b></td>{isHideableTop && <td><button className="ghost small" onClick={() => hideSalesItem(r)}>Скрыть</button></td>}</tr>)}
-        {!visible.length && <tr><td colSpan={isHideableTop ? 7 : 6} className="hint">Данных пока нет</td></tr>}
+        {!visible.length && <tr><td colSpan={isHideableTop ? 7 : 6} className="hint">Пока нет данных</td></tr>}
       </tbody></table>
       {cappedList.length > limit && <button className="ghost small" style={{marginTop:10}} onClick={() => setExpandedAiTables(v => ({...v, [title]: !expanded}))}>{expanded ? 'Скрыть' : `Показать до 30 (${Math.min(list.length, 30)})`}</button>}
     </div>
@@ -19219,7 +19381,7 @@ function Reports({ t }) {
     <div className="table-wrap" style={{marginTop:12}}><table><thead><tr><th>Раздел</th><th>Кол-во</th><th>Выручка</th><th>Себестоимость</th><th>Прибыль</th><th>Food cost</th></tr></thead><tbody>{['Бар', 'Кухня'].map(renderDepartmentSummaryRow)}</tbody></table></div>
     <div className="table-wrap" style={{marginTop:12}}><table><thead><tr><th>Позиция</th>{!isNetworkSalesView && <th>Филиал</th>}<th>Тип</th><th>Категория</th><th>{sortHeader('quantity', 'Кол-во')}</th><th>{sortHeader('revenue', 'Выручка')}</th>{monthFilter !== 'all' && <th>Динамика кол-ва</th>}<th>{sortHeader('cost', 'Себестоимость')}</th><th>{sortHeader('profit', 'Прибыль')}</th><th>{sortHeader('margin', 'Маржа')}</th><th></th></tr></thead><tbody>
       {visibleSalesRows.map((r, idx) => <tr key={`${r.name}-${idx}`}><td><b>{r.name}</b>{r.original_names?.length > 1 && <><br /><span className="hint">AIKO: {r.original_names.slice(0, 3).join(', ')}{r.original_names.length > 3 ? '…' : ''}</span></>}</td>{!isNetworkSalesView && <td>{r.branch_name || '—'}</td>}<td><span className={r.department === 'Бар' ? 'pill good' : r.department === 'Кухня' ? 'pill warn' : 'pill'}>{r.department === 'Кухня' ? 'Кухня' : r.department === 'Бар' ? 'Бар' : '—'}</span></td><td>{r.menu_category || r.source_category || '—'}</td><td>{fmt(r.quantity)}</td><td>{fmt(r.revenue)}</td>{monthFilter !== 'all' && <td>{renderRowChange(r, 'quantity')}</td>}<td>{fmt(r.cost)}</td><td className={r.profit >= 0 ? 'good' : 'bad'}>{fmt(r.profit)}</td><td>{pct(r.margin)}</td><td><button className="ghost small" onClick={() => renameSalesItem(r.name)}>Переименовать</button></td></tr>)}
-      {!rows.length && <tr><td colSpan={(isNetworkSalesView ? 9 : 10) + (monthFilter !== 'all' ? 1 : 0)} className="hint">Данных пока нет</td></tr>}
+      {!rows.length && <tr><td colSpan={(isNetworkSalesView ? 9 : 10) + (monthFilter !== 'all' ? 1 : 0)} className="hint">Пока нет данных</td></tr>}
     </tbody></table></div>
     {rows.length > 10 && <button className="ghost small" style={{marginTop:10}} onClick={() => setExpandedSalesRows(v => !v)}>{expandedSalesRows ? 'Скрыть' : `Показать все позиции (${rows.length})`}</button>}
   </div>
@@ -19365,7 +19527,7 @@ function Reports({ t }) {
               <td>{fmt(row.wolt)}</td>
               <td><b>{fmt(row.revenue)}</b></td>
             </tr>)}
-            {!rmsRevenueReport.rows.length && <tr><td colSpan="6" className="hint">Данных пока нет в RMS Revenue по выбранному фильтру.</td></tr>}
+            {!rmsRevenueReport.rows.length && <tr><td colSpan="6" className="hint">Пока нет данных в RMS Revenue по выбранному фильтру.</td></tr>}
           </tbody>
           {rmsRevenueReport.rows.length ? <tfoot>
             <tr>
@@ -19413,7 +19575,7 @@ function Reports({ t }) {
               <thead><tr><th>Статья</th><th>Транзакций</th><th>Сумма</th><th>% от общего</th></tr></thead>
               <tbody>
                 {rmsExpensesReport.byCategory.slice(0, 20).map(row => <tr key={row.name}><td><b>{row.name}</b></td><td>{fmt(row.transactions)}</td><td>{fmt(row.amount)}</td><td>{rmsExpensesReport.totals.amount ? pct(row.amount / rmsExpensesReport.totals.amount * 100) : '0.0%'}</td></tr>)}
-                {!rmsExpensesReport.byCategory.length && <tr><td colSpan="4" className="hint">Данных пока нет по расходам за выбранный фильтр.</td></tr>}
+                {!rmsExpensesReport.byCategory.length && <tr><td colSpan="4" className="hint">Пока нет данных по расходам за выбранный фильтр.</td></tr>}
               </tbody>
             </table></div>
           </div>
@@ -19423,7 +19585,7 @@ function Reports({ t }) {
               <thead><tr><th>Филиал</th><th>Транзакций</th><th>Сумма</th></tr></thead>
               <tbody>
                 {rmsExpensesReport.byBranch.slice(0, 20).map(row => <tr key={row.name}><td><b>{row.name}</b></td><td>{fmt(row.transactions)}</td><td>{fmt(row.amount)}</td></tr>)}
-                {!rmsExpensesReport.byBranch.length && <tr><td colSpan="3" className="hint">Данных пока нет.</td></tr>}
+                {!rmsExpensesReport.byBranch.length && <tr><td colSpan="3" className="hint">Пока нет данных.</td></tr>}
               </tbody>
             </table></div>
           </div>
@@ -19435,7 +19597,7 @@ function Reports({ t }) {
             <thead><tr><th>Дата</th><th>Филиал</th><th>Статья</th><th>Комментарий</th><th>Сумма</th></tr></thead>
             <tbody>
               {rmsExpensesReport.rows.slice(0, 120).map(row => <tr key={row.id}><td>{row.expense_date || '—'}</td><td><b>{row.branch_name || '—'}</b></td><td>{row.category_name || '—'}</td><td>{row.comment || '—'}</td><td><b>{fmt(row.amount)}</b></td></tr>)}
-              {!rmsExpensesReport.rows.length && <tr><td colSpan="5" className="hint">Данных пока нет по расходам за выбранный фильтр.</td></tr>}
+              {!rmsExpensesReport.rows.length && <tr><td colSpan="5" className="hint">Пока нет данных по расходам за выбранный фильтр.</td></tr>}
             </tbody>
           </table></div>
         </div>
@@ -19482,7 +19644,7 @@ function Reports({ t }) {
                 <td>{row.payment_term_days ? `${fmt(row.payment_term_days)} дн.` : '—'}</td>
                 <td>{row.credit_limit ? fmt(row.credit_limit) : '—'}</td>
               </tr>)}
-              {!rmsSuppliersReport.rows.length && <tr><td colSpan="7" className="hint">Данных пока нет по поставщикам за выбранный фильтр.</td></tr>}
+              {!rmsSuppliersReport.rows.length && <tr><td colSpan="7" className="hint">Пока нет данных по поставщикам за выбранный фильтр.</td></tr>}
             </tbody>
           </table></div>
         </div>
@@ -21732,7 +21894,7 @@ function Settings({ session, t, theme, setTheme }) {
 
     if (!lines.length) {
       setEmployeeImportRows([])
-      setEmployeeImportReport({ errors: ['Данных пока нет для распознавания'] })
+      setEmployeeImportReport({ errors: ['Пока нет данных для распознавания'] })
       return []
     }
 
@@ -21875,7 +22037,7 @@ function Settings({ session, t, theme, setTheme }) {
 
     if (!lines.length) {
       setAttendanceImportRows([])
-      setAttendanceImportReport({ errors: ['Данных пока нет для распознавания'] })
+      setAttendanceImportReport({ errors: ['Пока нет данных для распознавания'] })
       return []
     }
 
@@ -22088,7 +22250,7 @@ function Settings({ session, t, theme, setTheme }) {
 
     if (!lines.length) {
       setAdvanceImportRows([])
-      setAdvanceImportReport({ errors: ['Данных пока нет для распознавания'] })
+      setAdvanceImportReport({ errors: ['Пока нет данных для распознавания'] })
       return []
     }
 
