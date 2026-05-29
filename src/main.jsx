@@ -4314,6 +4314,11 @@ function RMSProV6Styles() {
   .rms-pro-shell .topbar{display:block;}
   .rms-pro-shell .topbar .action-row{margin-top:12px;justify-content:flex-start!important;}
   .rms-pro-shell .table-wrap{overflow-x:auto;}
+  .rms-pro-shell .supplier-modal-panel{top:12px;width:calc(100vw - 16px);max-height:calc(100vh - 24px);border-radius:18px;}
+  .rms-pro-shell .supplier-modal-head{padding:14px 14px 12px;}
+  .rms-pro-shell .supplier-transactions-panel > .form-grid, .rms-pro-shell .supplier-transactions-panel > .table-wrap, .rms-pro-shell .supplier-transactions-panel > div:not(.supplier-modal-head){margin-left:14px;margin-right:14px;}
+  .rms-pro-shell .revenue-modal-body{padding:14px;}
+  .rms-pro-shell .revenue-modal-actions{padding:10px 14px 14px;flex-wrap:wrap;justify-content:flex-start;}
 }
 
 
@@ -6368,20 +6373,24 @@ function DashboardStyles() {
     .supplier-control-center-card .table-wrap table th:last-child, .supplier-control-center-card .table-wrap table td:last-child { width: 90px; text-align: right; }
     .supplier-compact-table td:last-child { width: 180px; }
     .supplier-compact-table .action-row { justify-content: flex-end; }
-     .supplier-transactions-panel { border: 1px solid var(--line); border-radius: 18px; padding: 0; background: var(--panel, #fff); }
-    .supplier-modal-panel { position: fixed; z-index: 1200; top: 28px; left: 50%; transform: translateX(-50%); width: min(1280px, calc(100vw - 44px)); max-height: calc(100vh - 56px); overflow: auto; box-shadow: 0 28px 90px rgba(15,23,42,.28); background: var(--panel, #fff); border-radius: 22px; }
-    .supplier-modal-panel::before { content: ''; position: fixed; inset: -80px -100vw; z-index: -1; background: rgba(15,23,42,.18); backdrop-filter: blur(2px); }
-    .supplier-modal-head { position: sticky; top: 0; z-index: 3; background: rgba(255,255,255,.96); backdrop-filter: blur(12px); padding: 16px 18px; border-bottom: 1px solid rgba(148,163,184,.28); display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+     .supplier-transactions-panel { border: 1px solid rgba(226,232,240,.92); border-radius: 18px; padding: 0; background: #fff; }
+    .supplier-modal-panel { position: fixed; z-index: 1200; top: 24px; left: 50%; transform: translateX(-50%); width: min(1180px, calc(100vw - 32px)); max-height: calc(100vh - 48px); overflow-y: auto; overflow-x: hidden; box-shadow: 0 20px 56px rgba(15,23,42,.16); background: #fff; border: 1px solid rgba(226,232,240,.95); border-radius: 22px; }
+    .supplier-modal-panel::before { content: ''; position: fixed; inset: 0; z-index: -1; background: rgba(248,250,252,.78); backdrop-filter: blur(4px); }
+    .supplier-modal-head { position: sticky; top: 0; z-index: 3; background: rgba(255,255,255,.98); backdrop-filter: blur(10px); padding: 16px 18px; border-bottom: 1px solid rgba(226,232,240,.95); display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
     .supplier-modal-head h3 { margin: 0 0 4px; }
-    .supplier-modal-x { flex: 0 0 auto; width: 34px; height: 34px; border-radius: 10px; border: 1px solid rgba(148,163,184,.45); background: rgba(248,250,252,.95); color: #111827; font-size: 22px; line-height: 1; font-weight: 800; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
-    .supplier-modal-x:hover { background: #eef2f7; border-color: rgba(100,116,139,.55); }
-    .revenue-modal-panel { width: min(920px, calc(100vw - 44px)); }
-    .revenue-log-modal-panel { width: min(1180px, calc(100vw - 44px)); }
-    .revenue-modal-body { padding: 18px; margin: 0 !important; }
-    .revenue-modal-actions { padding: 0 18px 18px; justify-content: flex-end; }
-    .revenue-row-actions { justify-content: flex-end; gap: 6px; flex-wrap: nowrap; }
+    .supplier-modal-x { flex: 0 0 auto; width: 36px; height: 36px; border-radius: 12px; border: 1px solid rgba(203,213,225,.9); background: #fff; color: #0f172a; font-size: 22px; line-height: 1; font-weight: 800; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(15,23,42,.06); }
+    .supplier-modal-x:hover { background: #f8fafc; border-color: rgba(148,163,184,.9); }
+    .revenue-modal-panel { width: min(940px, calc(100vw - 32px)); }
+    .revenue-log-modal-panel { width: min(1180px, calc(100vw - 32px)); }
+    .revenue-modal-body { padding: 18px; margin: 0 !important; background: #fff; }
+    .revenue-modal-actions { position: sticky; bottom: 0; padding: 12px 18px 18px; justify-content: flex-end; background: linear-gradient(180deg, rgba(255,255,255,0) 0%, rgba(255,255,255,.98) 22%, rgba(255,255,255,.98) 100%); }
+    .revenue-row-actions { justify-content: flex-end; gap: 8px; flex-wrap: nowrap; }
     .revenue-row-actions .small { white-space: nowrap; }
     .supplier-transactions-panel > .form-grid, .supplier-transactions-panel > .table-wrap, .supplier-transactions-panel > div:not(.supplier-modal-head) { margin-left: 18px; margin-right: 18px; }
+    .supplier-transactions-panel > .form-grid { align-items: end; }
+    .supplier-transactions-panel .form-grid input, .supplier-transactions-panel .form-grid select, .supplier-transactions-panel .form-grid textarea { background: #fff; }
+    .supplier-transactions-panel .table-wrap { overflow-x: auto; }
+    .supplier-transactions-panel .action-row button, .revenue-row-actions button { box-shadow: none; }
     .finance-ai-modal-panel > .table-wrap { margin-top: 14px; margin-bottom: 18px; }
     .finance-ai-compact-card .card-head { align-items: center; }
     .supplier-transactions-panel > .table-wrap:last-child { margin-bottom: 18px; }
