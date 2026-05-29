@@ -5893,6 +5893,72 @@ function RMSProV6Styles() {
   }
 }
 
+/* v113 Revenue Modal Structure Hard Fix */
+
+/* Action buttons live in modal header now, always visible */
+.rms-pro-shell .modal-head-actions{
+  flex: 0 0 auto;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: nowrap;
+}
+.rms-pro-shell .modal-head-actions button.small{
+  min-width: 88px;
+  min-height: 36px;
+}
+.rms-pro-shell .modal-head-actions .supplier-modal-x{
+  min-width: 40px;
+  width: 40px;
+  height: 40px;
+  margin-left: 4px;
+}
+
+/* Revenue edit modals no longer need bottom sticky footer reserve */
+.rms-pro-shell .revenue-modal-panel .revenue-modal-body{
+  padding-bottom: 24px !important;
+}
+.rms-pro-shell .revenue-modal-panel .revenue-modal-actions{
+  display: none !important;
+}
+
+/* Keep header readable when action buttons are present */
+.rms-pro-shell .revenue-modal-panel .supplier-modal-head{
+  align-items: center;
+}
+.rms-pro-shell .revenue-modal-panel .supplier-modal-head > div:first-child{
+  min-width: 0;
+}
+.rms-pro-shell .revenue-modal-panel .supplier-modal-head h3,
+.rms-pro-shell .revenue-modal-panel .supplier-modal-head p{
+  max-width: 560px;
+}
+
+/* Better responsive behavior for header buttons */
+@media(max-width:760px){
+  .rms-pro-shell .revenue-modal-panel .supplier-modal-head{
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .rms-pro-shell .modal-head-actions{
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+  .rms-pro-shell .modal-head-actions button.small{
+    min-width: 80px;
+  }
+}
+@media(max-width:560px){
+  .rms-pro-shell .revenue-modal-panel .supplier-modal-head{
+    display: block;
+  }
+  .rms-pro-shell .modal-head-actions{
+    margin-top: 12px;
+    justify-content: flex-start;
+  }
+}
+
 
   `}</style>
 }
@@ -7231,11 +7297,7 @@ function RevenueEntryRow({ row, serviceEnabled=false, servicePercent=10, staffCo
         <label><span>Комментарий</span><input value={comment} disabled={!editable} onChange={e => setComment(e.target.value)} /></label>
         <label><span>Итого</span><input value={fmt(editedTotal)} readOnly /></label>
       </div>
-      <div className="row-actions revenue-modal-actions">
-        <button className="ghost small" onClick={() => setEditing(false)}>Закрыть</button>
-        {editable && <button className="primary small" onClick={saveChanges}>Сохранить</button>}
-        {editable && <button className="danger small" onClick={() => { confirmDelete(); setEditing(false) }}>Удалить</button>}
-      </div>
+
     </div>}
   </>
 }
@@ -7299,11 +7361,7 @@ function InflowRow({ inflow, onSave, onCancel }) {
           <label><span>Сумма</span><input inputMode="decimal" value={amount} disabled={!editable} onChange={e => setAmount(e.target.value)} /></label>
           <label><span>Комментарий</span><input value={comment} disabled={!editable} onChange={e => setComment(e.target.value)} /></label>
         </div>
-        <div className="row-actions revenue-modal-actions">
-          <button className="ghost small" onClick={() => setEditing(false)}>Закрыть</button>
-          {editable && <button className="primary small" onClick={saveChanges}>Сохранить</button>}
-          {editable && <button className="danger small" onClick={() => { confirmDelete(); setEditing(false) }}>Удалить</button>}
-        </div>
+
       </div>}
     </>
   )
@@ -7373,7 +7431,12 @@ function ExpenseRow({ expense, categories, onSave, onCancel }) {
       {editing && <div className="card supplier-transactions-panel supplier-modal-panel revenue-modal-panel">
         <div className="card-head supplier-modal-head">
           <div><h3>Изменение расхода</h3><p className="hint">Статья, сумма, дата и комментарий. Изменения фиксируются в журнале операций.</p></div>
-          <button className="supplier-modal-x" title="Закрыть" aria-label="Закрыть" onClick={() => setEditing(false)}>×</button>
+          <div className="action-row modal-head-actions">
+            <button className="ghost small" onClick={() => setEditing(false)}>Закрыть</button>
+            {editable && <button className="primary small" onClick={saveChanges}>Сохранить</button>}
+            {editable && <button className="danger small" onClick={() => { confirmDelete(); setEditing(false) }}>Удалить</button>}
+            <button className="supplier-modal-x" title="Закрыть" aria-label="Закрыть" onClick={() => setEditing(false)}>×</button>
+          </div>
         </div>
         <div className="form-grid compact revenue-modal-body">
           <label><span>Дата операции</span><input type="date" disabled={!editable} value={expenseDate} onChange={e => setExpenseDate(e.target.value)} /></label>
@@ -7385,11 +7448,7 @@ function ExpenseRow({ expense, categories, onSave, onCancel }) {
           <label><span>Сумма</span><input inputMode="decimal" disabled={!editable} value={amount} onChange={e => setAmount(e.target.value)} /></label>
           <label><span>Комментарий</span><input disabled={!editable} value={comment} onChange={e => setComment(e.target.value)} /></label>
         </div>
-        <div className="row-actions revenue-modal-actions">
-          <button className="ghost small" onClick={() => setEditing(false)}>Закрыть</button>
-          {editable && <button className="primary small" onClick={saveChanges}>Сохранить</button>}
-          {editable && <button className="danger small" onClick={() => { confirmDelete(); setEditing(false) }}>Удалить</button>}
-        </div>
+
       </div>}
     </>
   )
