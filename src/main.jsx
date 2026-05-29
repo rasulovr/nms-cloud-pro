@@ -38,6 +38,25 @@ async function rmsTechSemiFinishedItemUpdateRpc(id, patch, comment = '') {
   })
 }
 
+
+async function rmsTechRpcWithFallback(rpcCall, fallbackCall, label = 'tech rpc') {
+  try {
+    return await rpcCall()
+  } catch (err) {
+    console.warn(`${label} failed, fallback used:`, err)
+    if (typeof fallbackCall === 'function') return await fallbackCall(err)
+    throw err
+  }
+}
+
+function rmsBuildTechPatchFromForm(form = {}) {
+  const patch = {}
+  Object.entries(form || {}).forEach(([key, value]) => {
+    if (value !== undefined) patch[key] = value
+  })
+  return patch
+}
+
 async function rmsTechCardsReadinessCheck() {
   return rmsTechCardRpcCall('rms_tech_cards_rpc_readiness_check', {})
 }
@@ -8656,6 +8675,55 @@ function RMSProV6Styles() {
   }
 }
 
+/* v134 Tech Cards Ingredient Save via RPC */
+
+.rms-pro-shell .tech-rpc-active-note{
+  margin-top:10px;
+  border:1px solid #bbf7d0;
+  background:#ecfdf5;
+  color:#047857;
+  border-radius:14px;
+  padding:10px 12px;
+  font-size:13px;
+  line-height:1.45;
+}
+.rms-pro-shell .tech-rpc-fallback-note{
+  margin-top:10px;
+  border:1px dashed #fde68a;
+  background:#fffbeb;
+  color:#92400e;
+  border-radius:14px;
+  padding:10px 12px;
+  font-size:13px;
+  line-height:1.45;
+}
+.rms-pro-shell .tech-rpc-mode-chip.active{
+  background:#ecfdf5;
+  border-color:#bbf7d0;
+  color:#047857;
+}
+.rms-pro-shell .tech-rpc-mode-chip.fallback{
+  background:#fffbeb;
+  border-color:#fde68a;
+  color:#b45309;
+}
+.rms-pro-shell .recipe-items-table tr.rpc-save-ready td,
+.rms-pro-shell .semi-composition-card tr.rpc-save-ready td{
+  box-shadow:inset 3px 0 0 #22c55e;
+}
+.rms-pro-shell .recipe-items-table tr.rpc-fallback td,
+.rms-pro-shell .semi-composition-card tr.rpc-fallback td{
+  box-shadow:inset 3px 0 0 #f59e0b;
+}
+.rms-pro-shell .tech-rpc-action-button{
+  border-color:#bbf7d0!important;
+  background:#ecfdf5!important;
+  color:#047857!important;
+}
+.rms-pro-shell .tech-rpc-action-button:hover{
+  background:#dcfce7!important;
+}
+
 
   `}</style>
 }
@@ -13788,8 +13856,8 @@ function Recipes({ t }) {
           <p>Техкарты, полуфабрикаты, себестоимость и контроль Food Cost по блюдам.</p>
           <p className="tech-safe-edit-note">Enterprise hardening: следующий этап переводит создание, изменение и удаление техкарт на secure RPC с журналом изменений. Текущая версия сохраняет рабочий интерфейс и добавляет подготовительный слой контроля.</p>
           <div className="tech-secure-rpc-card phase-2">
-            <h3>Tech Cards Secure RPC · Phase 3</h3>
-            <p>RPC-слои и readiness-check подготовлены. Прямые права пока не закрываются: сначала проверяем совместимость таблиц, затем точечно переводим сохранение строк состава.</p>
+            <h3>Tech Cards Secure RPC · Phase 4</h3>
+            <p>Сохранение строк состава подготовлено к работе через RPC с fallback на старый механизм. Прямые права пока не закрываются до полной проверки.</p>
             <div className="tech-secure-rpc-grid">
               <div className="tech-secure-rpc-step is-ready"><span>Audit log</span><strong>Готово</strong></div>
               <div className="tech-secure-rpc-step is-ready"><span>Menu item RPC</span><strong>Подготовлено</strong></div>
