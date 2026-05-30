@@ -149,6 +149,23 @@ async function rmsInventoryRpcCall(name, payload = {}) {
   return data
 }
 
+
+// v152 Inventory supplier backfill helpers
+async function rmsInventorySupplierLinkHealth() {
+  return rmsInventoryRpcCall('rms_inventory_supplier_link_health', {})
+}
+
+async function rmsInventoryBackfillSupplierPurchases(locationId = null, limit = 100) {
+  return rmsInventoryRpcCall('rms_inventory_backfill_supplier_purchase_items', {
+    p_location_id: locationId || null,
+    p_limit: limit || 100,
+  })
+}
+
+async function rmsInventoryBackfillPreview() {
+  return rmsInventoryRpcCall('rms_inventory_supplier_purchase_items_backfill_preview', {})
+}
+
 async function rmsInventoryMovementCreate(payload = {}) {
   return rmsInventoryRpcCall('rms_inventory_movement_create_secure', {
     p_payload: payload || {},
@@ -2411,6 +2428,8 @@ function InventoryModule({ branchId, branchName }) {
     comment: '',
   })
   const [message, setMessage] = React.useState('')
+  const [backfillBusy, setBackfillBusy] = React.useState(false)
+  const [backfillPreview, setBackfillPreview] = React.useState([])
   const [search, setSearch] = React.useState('')
   const [movementFilter, setMovementFilter] = React.useState('all')
 
@@ -2455,6 +2474,37 @@ function InventoryModule({ branchId, branchName }) {
       setMessage(err?.message || 'Не удалось сохранить движение')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const loadBackfillPreview = async () => {
+    setBackfillBusy(true)
+    setMessage('')
+    try {
+      const data = await rmsInventoryBackfillPreview()
+      setBackfillPreview(data || [])
+      setMessage(`Preview готов: ${data?.length || 0} строк`)
+    } catch (err) {
+      console.error('inventory backfill preview error', err)
+      setMessage(err?.message || 'Не удалось получить preview')
+    } finally {
+      setBackfillBusy(false)
+    }
+  }
+
+  const runBackfill = async () => {
+    setBackfillBusy(true)
+    setMessage('')
+    try {
+      const data = await rmsInventoryBackfillSupplierPurchases(form.location_id || null, 100)
+      setMessage(`Backfill выполнен: создано ${data?.created || 0}, пропущено ${data?.already_linked_skipped || 0}`)
+      await loadInventory()
+      await loadBackfillPreview()
+    } catch (err) {
+      console.error('inventory backfill error', err)
+      setMessage(err?.message || 'Не удалось выполнить backfill')
+    } finally {
+      setBackfillBusy(false)
     }
   }
 
@@ -2524,6 +2574,31 @@ function InventoryModule({ branchId, branchName }) {
           <div className="inventory-schema-check-step ready"><span>Backfill RPC</span><strong>Prepared</strong></div>
           <div className="inventory-schema-check-step pending"><span>Auto trigger</span><strong>После теста</strong></div>
         </div>
+      </div>
+
+      <div className="inventory-backfill-card">
+        <h3>Backfill: Поставщики → Склад</h3>
+        <p>Безопасный перенос уже введённых поступлений поставщиков в складские движения. Auto-trigger пока не включён.</p>
+        <div className="action-row" style={{marginTop:12}}>
+          <button className="ghost small" onClick={loadBackfillPreview} disabled={backfillBusy}>{backfillBusy ? 'Проверка…' : 'Preview'}</button>
+          <button className="primary small" onClick={runBackfill} disabled={backfillBusy}>Создать движения</button>
+        </div>
+        {!!backfillPreview.length && (
+          <div className="table-wrap" style={{marginTop:12}}>
+            <table className="inventory-backfill-table">
+              <thead><tr><th>Товар</th><th>Кол-во</th><th>Ед.</th><th>Цена</th><th>Статус</th></tr></thead>
+              <tbody>
+                {backfillPreview.slice(0, 10).map(r => <tr key={r.purchase_item_id}>
+                  <td><b>{r.item_name || 'Без названия'}</b></td>
+                  <td>{fmt(r.quantity)}</td>
+                  <td>{r.unit || 'unit'}</td>
+                  <td>{fmt(r.unit_cost)}</td>
+                  <td>{r.already_linked ? <span className="inventory-link-chip pending">уже связано</span> : r.can_backfill ? <span className="inventory-link-chip">готово</span> : <span className="inventory-writeoff-chip">недостаточно данных</span>}</td>
+                </tr>)}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       <div className="inventory-filter-row">
@@ -10436,6 +10511,38 @@ function RMSProV6Styles() {
   align-items:center;
   gap:8px;
   flex-wrap:wrap;
+}
+
+/* v152 Build-Safe Inventory Backfill UI Prep */
+.rms-pro-shell .inventory-backfill-card{
+  border:1px solid #bbf7d0;
+  border-left:5px solid #16a34a;
+  background:linear-gradient(180deg,#fff 0%,#ecfdf5 100%);
+  border-radius:20px;
+  padding:17px;
+  margin:14px 0;
+  box-shadow:0 12px 30px rgba(15,23,42,.045);
+}
+.rms-pro-shell .inventory-backfill-card h3{
+  margin:0;
+  color:#0f172a;
+  font-size:18px;
+  letter-spacing:-.02em;
+}
+.rms-pro-shell .inventory-backfill-card p{
+  margin:7px 0 0;
+  color:#047857;
+  font-size:13px;
+  line-height:1.45;
+}
+.rms-pro-shell .inventory-backfill-table td:nth-child(n+2),
+.rms-pro-shell .inventory-backfill-table th:nth-child(n+2){
+  text-align:right;
+  font-variant-numeric:tabular-nums;
+}
+.rms-pro-shell .inventory-backfill-table td:last-child,
+.rms-pro-shell .inventory-backfill-table th:last-child{
+  text-align:center;
 }
 
 
