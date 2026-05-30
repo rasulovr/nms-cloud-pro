@@ -2466,6 +2466,7 @@ function InventoryModule({ branchId, branchName }) {
   const [dashboardReport, setDashboardReport] = React.useState(null)
   const [productionReport, setProductionReport] = React.useState(null)
   const [writeOffReport, setWriteOffReport] = React.useState(null)
+  const [operationMode, setOperationMode] = React.useState('manual')
   const [search, setSearch] = React.useState('')
   const [movementFilter, setMovementFilter] = React.useState('all')
 
@@ -2493,6 +2494,22 @@ function InventoryModule({ branchId, branchName }) {
   }, [])
 
   React.useEffect(() => { loadInventory() }, [loadInventory])
+
+  const applyInventoryPreset = (type) => {
+    setOperationMode(type)
+    const map = {
+      purchase: { movement_type: 'purchase', comment: 'Приход на склад' },
+      write_off: { movement_type: 'write_off', comment: 'Списание со склада' },
+      transfer_in: { movement_type: 'transfer_in', comment: 'Перемещение на склад' },
+      transfer_out: { movement_type: 'transfer_out', comment: 'Перемещение со склада' },
+      production_in: { movement_type: 'production_in', comment: 'Производство / выпуск полуфабриката' },
+      production_out: { movement_type: 'production_out', comment: 'Производство / расход ингредиентов' },
+      adjustment_in: { movement_type: 'adjustment_in', comment: 'Положительная корректировка' },
+      adjustment_out: { movement_type: 'adjustment_out', comment: 'Отрицательная корректировка' },
+    }
+    const preset = map[type] || map.adjustment_in
+    setForm(prev => ({ ...prev, movement_type: preset.movement_type, comment: preset.comment }))
+  }
 
   const createMovement = async () => {
     setLoading(true)
@@ -2751,6 +2768,21 @@ function InventoryModule({ branchId, branchName }) {
 
       {message && <div className="inventory-message">{message}</div>}
 
+      <div className="inventory-operations-card">
+        <h3>Операции склада</h3>
+        <p>Быстрый выбор сценария движения. Это не автосписание — операции сохраняются вручную и попадают в журнал склада.</p>
+        <div className="inventory-operations-grid">
+          <button className={operationMode === 'purchase' ? 'active' : ''} onClick={() => applyInventoryPreset('purchase')}>+ Приход</button>
+          <button className={operationMode === 'write_off' ? 'active danger' : 'danger'} onClick={() => applyInventoryPreset('write_off')}>− Списание</button>
+          <button className={operationMode === 'transfer_in' ? 'active' : ''} onClick={() => applyInventoryPreset('transfer_in')}>⇢ Перемещение +</button>
+          <button className={operationMode === 'transfer_out' ? 'active danger' : 'danger'} onClick={() => applyInventoryPreset('transfer_out')}>⇠ Перемещение −</button>
+          <button className={operationMode === 'production_in' ? 'active' : ''} onClick={() => applyInventoryPreset('production_in')}>Производство +</button>
+          <button className={operationMode === 'production_out' ? 'active danger' : 'danger'} onClick={() => applyInventoryPreset('production_out')}>Производство −</button>
+          <button className={operationMode === 'adjustment_in' ? 'active' : ''} onClick={() => applyInventoryPreset('adjustment_in')}>Корректировка +</button>
+          <button className={operationMode === 'adjustment_out' ? 'active danger' : 'danger'} onClick={() => applyInventoryPreset('adjustment_out')}>Корректировка −</button>
+        </div>
+      </div>
+
       <div className="card inventory-form-card">
         <div className="card-head">
           <div>
@@ -2767,9 +2799,16 @@ function InventoryModule({ branchId, branchName }) {
           <label><span>Кол-во</span><input type="number" step="0.001" value={form.quantity} onChange={e => setForm({ ...form, quantity: e.target.value })} /></label>
           <label><span>Цена за ед.</span><input type="number" step="0.01" value={form.unit_cost} onChange={e => setForm({ ...form, unit_cost: e.target.value })} /></label>
           <label className="span-2"><span>Комментарий</span><input value={form.comment} placeholder="Причина / документ / примечание" onChange={e => setForm({ ...form, comment: e.target.value })} /></label>
-          <div className="action-row"><button className="primary small" onClick={createMovement} disabled={loading}>Сохранить</button></div>
+          <div className="action-row"><button className="primary small" onClick={createMovement} disabled={loading}>Сохранить движение</button></div>
         </div>
       </div>
+
+      {negativeRows > 0 && (
+        <div className="inventory-negative-alert">
+          <h3>Есть отрицательные остатки</h3>
+          <p>Найдены позиции с отрицательным остатком. Обычно это означает списание/расход без корректного прихода или неправильную локацию.</p>
+        </div>
+      )}
 
       <div className="card span-2">
         <div className="card-head"><div><h3>Остатки</h3><p className="hint">Расчёт по движениям склада. Отрицательные остатки требуют проверки.</p></div></div>
@@ -10913,6 +10952,87 @@ function RMSProV6Styles() {
 }
 @media(max-width:680px){
   .rms-pro-shell .inventory-consolidated-grid{
+    grid-template-columns:1fr;
+  }
+}
+
+/* v156 Inventory Operations Pack */
+.rms-pro-shell .inventory-operations-card{
+  border:1px solid #bfdbfe;
+  border-left:5px solid #2563eb;
+  background:linear-gradient(180deg,#fff 0%,#eff6ff 100%);
+  border-radius:20px;
+  padding:17px;
+  margin:14px 0;
+  box-shadow:0 12px 30px rgba(15,23,42,.045);
+}
+.rms-pro-shell .inventory-operations-card h3{
+  margin:0;
+  color:#0f172a;
+  font-size:18px;
+  letter-spacing:-.02em;
+}
+.rms-pro-shell .inventory-operations-card p{
+  margin:7px 0 0;
+  color:#1d4ed8;
+  font-size:13px;
+  line-height:1.45;
+}
+.rms-pro-shell .inventory-operations-grid{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:10px;
+  margin-top:14px;
+}
+.rms-pro-shell .inventory-operations-grid button{
+  min-height:42px;
+  border-radius:14px;
+  border:1px solid #bfdbfe;
+  background:#fff;
+  color:#1d4ed8;
+  font-weight:900;
+  cursor:pointer;
+}
+.rms-pro-shell .inventory-operations-grid button.active{
+  background:#ecfdf5;
+  color:#047857;
+  border-color:#bbf7d0;
+}
+.rms-pro-shell .inventory-operations-grid button.danger{
+  color:#be123c;
+  border-color:#fecdd3;
+}
+.rms-pro-shell .inventory-operations-grid button.active.danger{
+  background:#fff1f2;
+  color:#be123c;
+  border-color:#fecdd3;
+}
+.rms-pro-shell .inventory-negative-alert{
+  border:1px solid #fecdd3;
+  border-left:5px solid #e11d48;
+  background:linear-gradient(180deg,#fff 0%,#fff1f2 100%);
+  border-radius:18px;
+  padding:15px 16px;
+  margin:14px 0;
+}
+.rms-pro-shell .inventory-negative-alert h3{
+  margin:0;
+  color:#0f172a;
+  font-size:17px;
+}
+.rms-pro-shell .inventory-negative-alert p{
+  margin:7px 0 0;
+  color:#be123c;
+  font-size:13px;
+  line-height:1.45;
+}
+@media(max-width:980px){
+  .rms-pro-shell .inventory-operations-grid{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+}
+@media(max-width:620px){
+  .rms-pro-shell .inventory-operations-grid{
     grid-template-columns:1fr;
   }
 }
