@@ -2411,6 +2411,8 @@ function InventoryModule({ branchId, branchName }) {
     comment: '',
   })
   const [message, setMessage] = React.useState('')
+  const [search, setSearch] = React.useState('')
+  const [movementFilter, setMovementFilter] = React.useState('all')
 
   const loadInventory = React.useCallback(async () => {
     setLoading(true)
@@ -2456,9 +2458,17 @@ function InventoryModule({ branchId, branchName }) {
     }
   }
 
+  const filteredBalances = balances.filter(r => !search || String(r.item_name || '').toLowerCase().includes(search.toLowerCase()) || String(r.location_name || '').toLowerCase().includes(search.toLowerCase()))
+  const filteredMovements = movements.filter(m => {
+    const q = !search || String(m.item_name || '').toLowerCase().includes(search.toLowerCase()) || String(m.comment || '').toLowerCase().includes(search.toLowerCase())
+    const t = movementFilter === 'all' || m.movement_type === movementFilter
+    return q && t
+  })
   const totalCost = balances.reduce((s, r) => s + parseNum(r.balance_cost), 0)
   const positiveRows = balances.filter(r => parseNum(r.balance_qty) > 0).length
   const negativeRows = balances.filter(r => parseNum(r.balance_qty) < 0).length
+  const writeOffCount = movements.filter(m => m.movement_type === 'write_off').length
+  const purchaseCount = movements.filter(m => m.movement_type === 'purchase').length
 
   return (
     <div className="rms-pro-shell inventory-module-root">
@@ -2481,6 +2491,33 @@ function InventoryModule({ branchId, branchName }) {
           <div className="inventory-action-card"><span>Перемещение</span><strong>transfer</strong></div>
           <div className="inventory-action-card"><span>Производство</span><strong>production</strong></div>
         </div>
+      </div>
+
+      <div className="inventory-control-card">
+        <h3>Контроль движений склада</h3>
+        <p>Склад теперь показывает базовые сигналы: приход, списания, отрицательные остатки и фильтрацию по товару/типу движения.</p>
+        <div className="inventory-control-grid">
+          <div className="inventory-control-step good"><span>Приходы</span><strong>{purchaseCount}</strong></div>
+          <div className="inventory-control-step bad"><span>Списания</span><strong>{writeOffCount}</strong></div>
+          <div className={`inventory-control-step ${negativeRows ? 'bad' : 'good'}`}><span>Отрицательные остатки</span><strong>{negativeRows}</strong></div>
+          <div className="inventory-control-step warn"><span>Автосвязь с поставщиками</span><strong>Следующий этап</strong></div>
+        </div>
+      </div>
+
+      <div className="inventory-filter-row">
+        <input value={search} placeholder="Поиск по товару, локации или комментарию..." onChange={e => setSearch(e.target.value)} />
+        <select value={movementFilter} onChange={e => setMovementFilter(e.target.value)}>
+          <option value="all">Все движения</option>
+          <option value="purchase">Приход</option>
+          <option value="write_off">Списание</option>
+          <option value="transfer_in">Перемещение +</option>
+          <option value="transfer_out">Перемещение −</option>
+          <option value="production_in">Производство +</option>
+          <option value="production_out">Производство −</option>
+          <option value="adjustment_in">Корректировка +</option>
+          <option value="adjustment_out">Корректировка −</option>
+        </select>
+        <button className="ghost small" onClick={() => { setSearch(''); setMovementFilter('all') }}>Сбросить</button>
       </div>
 
       <div className="summary-grid inventory-summary-grid">
@@ -2518,14 +2555,14 @@ function InventoryModule({ branchId, branchName }) {
           <table className="inventory-stock-table">
             <thead><tr><th>Товар</th><th>Локация</th><th>Ед.</th><th>Остаток</th><th>Сумма</th><th>Последнее движение</th></tr></thead>
             <tbody>
-              {balances.map((r, idx) => {
+              {filteredBalances.map((r, idx) => {
                 const qty = parseNum(r.balance_qty)
                 return <tr key={`${r.location_id}-${r.supplier_product_id || r.product_id || r.item_name}-${idx}`} className={qty < 0 ? 'inventory-negative-row' : ''}>
                   <td><b>{r.item_name || 'Без названия'}</b></td><td>{r.location_name || 'Без локации'}</td><td>{r.unit || 'unit'}</td>
                   <td><strong className={qty < 0 ? 'bad' : qty > 0 ? 'good' : ''}>{fmt(qty)}</strong></td><td>{fmt(r.balance_cost)} AZN</td><td>{r.last_movement_date || '—'}</td>
                 </tr>
               })}
-              {!balances.length && <tr><td colSpan="6" className="hint">Пока нет складских остатков</td></tr>}
+              {!filteredBalances.length && <tr><td colSpan="6" className="hint">Пока нет складских остатков по выбранному фильтру</td></tr>}
             </tbody>
           </table>
         </div>
@@ -2537,8 +2574,8 @@ function InventoryModule({ branchId, branchName }) {
           <table className="inventory-movements-table">
             <thead><tr><th>Дата</th><th>Тип</th><th>Товар</th><th>Кол-во</th><th>Цена</th><th>Сумма</th><th>Комментарий</th></tr></thead>
             <tbody>
-              {movements.map(m => <tr key={m.id}><td>{m.movement_date}</td><td><span className={`inventory-move-chip ${m.movement_type}`}>{m.movement_type}</span></td><td><b>{m.item_name || 'Без названия'}</b><br /><span className="hint">{m.unit || 'unit'}</span></td><td>{fmt(m.quantity)}</td><td>{fmt(m.unit_cost)}</td><td>{fmt(m.total_cost)} AZN</td><td>{m.comment || '—'}</td></tr>)}
-              {!movements.length && <tr><td colSpan="7" className="hint">Пока нет движений склада</td></tr>}
+              {filteredMovements.map(m => <tr key={m.id}><td>{m.movement_date}</td><td><span className={`inventory-move-chip ${m.movement_type}`}>{m.movement_type}</span></td><td><b>{m.item_name || 'Без названия'}</b><br /><span className="hint">{m.unit || 'unit'}</span></td><td>{fmt(m.quantity)}</td><td>{fmt(m.unit_cost)}</td><td>{fmt(m.total_cost)} AZN</td><td>{m.comment || '—'}</td></tr>)}
+              {!filteredMovements.length && <tr><td colSpan="7" className="hint">Пока нет движений склада по выбранному фильтру</td></tr>}
             </tbody>
           </table>
         </div>
@@ -10126,6 +10163,88 @@ function RMSProV6Styles() {
 @media(max-width:620px){
   .rms-pro-shell .inventory-action-grid{grid-template-columns:1fr;}
 }
+
+/* v147 Inventory Write-off & Movement Control */
+.rms-pro-shell .inventory-control-card{
+  border:1px solid #bfdbfe;
+  border-left:5px solid #2563eb;
+  background:linear-gradient(180deg,#fff 0%,#eff6ff 100%);
+  border-radius:20px;
+  padding:17px;
+  margin:14px 0;
+  box-shadow:0 12px 30px rgba(15,23,42,.045);
+}
+.rms-pro-shell .inventory-control-card h3{margin:0;color:#0f172a;font-size:18px;letter-spacing:-.02em;}
+.rms-pro-shell .inventory-control-card p{margin:7px 0 0;color:#475569;font-size:13px;line-height:1.45;}
+.rms-pro-shell .inventory-control-grid{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:10px;
+  margin-top:14px;
+}
+.rms-pro-shell .inventory-control-step{
+  border:1px solid rgba(191,219,254,.95);
+  background:#fff;
+  border-radius:14px;
+  padding:11px 12px;
+}
+.rms-pro-shell .inventory-control-step span{display:block;color:#64748b;font-size:11.8px;font-weight:850;}
+.rms-pro-shell .inventory-control-step strong{display:block;margin-top:5px;color:#1d4ed8;font-size:13.5px;line-height:1.2;}
+.rms-pro-shell .inventory-control-step.good{border-color:#bbf7d0;background:#ecfdf5;}
+.rms-pro-shell .inventory-control-step.good strong{color:#047857;}
+.rms-pro-shell .inventory-control-step.warn{border-color:#fde68a;background:#fffbeb;}
+.rms-pro-shell .inventory-control-step.warn strong{color:#b45309;}
+.rms-pro-shell .inventory-control-step.bad{border-color:#fecdd3;background:#fff1f2;}
+.rms-pro-shell .inventory-control-step.bad strong{color:#be123c;}
+.rms-pro-shell .inventory-filter-row{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  flex-wrap:wrap;
+  margin:12px 0;
+}
+.rms-pro-shell .inventory-filter-row input,
+.rms-pro-shell .inventory-filter-row select{
+  min-width:180px;
+}
+.rms-pro-shell .inventory-writeoff-chip{
+  display:inline-flex;
+  align-items:center;
+  min-height:24px;
+  padding:3px 8px;
+  border-radius:999px;
+  border:1px solid #fecdd3;
+  background:#fff1f2;
+  color:#be123c;
+  font-size:11.5px;
+  font-weight:900;
+}
+.rms-pro-shell .inventory-purchase-chip{
+  display:inline-flex;
+  align-items:center;
+  min-height:24px;
+  padding:3px 8px;
+  border-radius:999px;
+  border:1px solid #bbf7d0;
+  background:#ecfdf5;
+  color:#047857;
+  font-size:11.5px;
+  font-weight:900;
+}
+.rms-pro-shell .inventory-neutral-chip{
+  display:inline-flex;
+  align-items:center;
+  min-height:24px;
+  padding:3px 8px;
+  border-radius:999px;
+  border:1px solid #bfdbfe;
+  background:#eff6ff;
+  color:#1d4ed8;
+  font-size:11.5px;
+  font-weight:900;
+}
+@media(max-width:980px){.rms-pro-shell .inventory-control-grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
+@media(max-width:620px){.rms-pro-shell .inventory-control-grid{grid-template-columns:1fr;}.rms-pro-shell .inventory-filter-row{display:grid;grid-template-columns:1fr;}}
 
 
   `}</style>
