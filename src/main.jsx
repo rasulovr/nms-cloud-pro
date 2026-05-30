@@ -2767,6 +2767,17 @@ function InventoryModule({ branchId, branchName }) {
         </div>
       </div>
 
+      <div className="inventory-name-location-card">
+        <h3>Supplier Stock Naming & Location</h3>
+        <p>Если в остатках видно “Без названия” или “Без локации”, нужно выполнить SQL v158: он улучшает определение названия товара и автоматически привязывает приход к складской локации.</p>
+        <div className="inventory-name-location-grid">
+          <div className="inventory-name-location-step ready"><span>Product resolver</span><strong>Улучшен</strong></div>
+          <div className="inventory-name-location-step ready"><span>Supplier product</span><strong>Поиск по ID</strong></div>
+          <div className="inventory-name-location-step ready"><span>Location resolver</span><strong>По branch</strong></div>
+          <div className="inventory-name-location-step"><span>Old rows</span><strong>Resync SQL</strong></div>
+        </div>
+      </div>
+
       <div className="inventory-filter-row">
         <input value={search} placeholder="Поиск по товару, локации или комментарию..." onChange={e => setSearch(e.target.value)} />
         <select value={movementFilter} onChange={e => setMovementFilter(e.target.value)}>
@@ -11059,6 +11070,67 @@ function RMSProV6Styles() {
   .rms-pro-shell .inventory-operations-grid{
     grid-template-columns:1fr;
   }
+}
+
+/* v158 Supplier Inventory Naming & Location Fix */
+.rms-pro-shell .inventory-name-location-card{
+  border:1px solid #fde68a;
+  border-left:5px solid #f59e0b;
+  background:linear-gradient(180deg,#fff 0%,#fffbeb 100%);
+  border-radius:20px;
+  padding:17px;
+  margin:14px 0;
+  box-shadow:0 12px 30px rgba(15,23,42,.045);
+}
+.rms-pro-shell .inventory-name-location-card h3{
+  margin:0;
+  color:#0f172a;
+  font-size:18px;
+  letter-spacing:-.02em;
+}
+.rms-pro-shell .inventory-name-location-card p{
+  margin:7px 0 0;
+  color:#92400e;
+  font-size:13px;
+  line-height:1.45;
+}
+.rms-pro-shell .inventory-name-location-grid{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:10px;
+  margin-top:14px;
+}
+.rms-pro-shell .inventory-name-location-step{
+  border:1px solid #fde68a;
+  background:#fff;
+  border-radius:14px;
+  padding:11px 12px;
+}
+.rms-pro-shell .inventory-name-location-step span{
+  display:block;
+  color:#64748b;
+  font-size:11.8px;
+  font-weight:850;
+}
+.rms-pro-shell .inventory-name-location-step strong{
+  display:block;
+  margin-top:5px;
+  color:#b45309;
+  font-size:13.5px;
+  line-height:1.2;
+}
+.rms-pro-shell .inventory-name-location-step.ready{
+  border-color:#bbf7d0;
+  background:#ecfdf5;
+}
+.rms-pro-shell .inventory-name-location-step.ready strong{
+  color:#047857;
+}
+@media(max-width:900px){
+  .rms-pro-shell .inventory-name-location-grid{grid-template-columns:repeat(2,minmax(0,1fr));}
+}
+@media(max-width:620px){
+  .rms-pro-shell .inventory-name-location-grid{grid-template-columns:1fr;}
 }
 
 
