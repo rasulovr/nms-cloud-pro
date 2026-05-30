@@ -168,6 +168,12 @@ async function rmsInventoryBackfillSupplierPurchases(locationId = null, limit = 
 // v154 Inventory auto-link validation helpers
 
 // v155 Inventory consolidated helpers
+
+// v157 Supplier Purchases -> Inventory Auto Stock Sync helpers
+async function rmsInventorySupplierStockSyncHealth() {
+  return rmsInventoryRpcCall('rms_inventory_supplier_stock_sync_health', {})
+}
+
 async function rmsInventoryDashboardReport() {
   return rmsInventoryRpcCall('rms_inventory_dashboard_report', {})
 }
@@ -2467,6 +2473,7 @@ function InventoryModule({ branchId, branchName }) {
   const [productionReport, setProductionReport] = React.useState(null)
   const [writeOffReport, setWriteOffReport] = React.useState(null)
   const [operationMode, setOperationMode] = React.useState('manual')
+  const [supplierSyncHealth, setSupplierSyncHealth] = React.useState(null)
   const [search, setSearch] = React.useState('')
   const [movementFilter, setMovementFilter] = React.useState('all')
 
@@ -2584,14 +2591,16 @@ function InventoryModule({ branchId, branchName }) {
     setBackfillBusy(true)
     setMessage('')
     try {
-      const [dash, prod, wo] = await Promise.all([
+      const [dash, prod, wo, syncHealth] = await Promise.all([
         rmsInventoryDashboardReport().catch(() => null),
         rmsInventoryProductionPreview().catch(() => null),
         rmsInventoryWriteOffReport().catch(() => null),
+        rmsInventorySupplierStockSyncHealth().catch(() => null),
       ])
       setDashboardReport(dash || null)
       setProductionReport(prod || null)
       setWriteOffReport(wo || null)
+      setSupplierSyncHealth(syncHealth || null)
       setMessage('Складские отчёты обновлены')
     } catch (err) {
       console.error('inventory reports error', err)
@@ -2740,6 +2749,21 @@ function InventoryModule({ branchId, branchName }) {
           <div className="inventory-consolidated-step"><span>Списания</span><strong>{writeOffReport?.writeoff_count ?? writeOffCount}</strong></div>
           <div className="inventory-consolidated-step ready"><span>Backfill ready</span><strong>{dashboardReport?.backfill_can_create ?? backfillHealth?.can_backfill ?? 0}</strong></div>
           <div className="inventory-consolidated-step pending"><span>Production</span><strong>{productionReport?.status || 'prep'}</strong></div>
+        </div>
+      </div>
+
+      <div className="inventory-supplier-sync-card">
+        <h3>Поступления поставщиков → Склад</h3>
+        <p>После установки SQL v157 строки поступлений поставщиков автоматически создают движение склада типа <b>purchase</b>. При изменении количества/цены движение обновляется, при удалении строки — отключается через deleted_at.</p>
+        <div className="action-row" style={{marginTop:12}}>
+          <button className="ghost small" onClick={loadInventoryConsolidatedReports} disabled={backfillBusy}>{backfillBusy ? 'Проверка…' : 'Проверить синхронизацию'}</button>
+        </div>
+        <div className="inventory-supplier-sync-grid">
+          <div className="inventory-supplier-sync-step ready"><span>Auto insert</span><strong>Готово</strong></div>
+          <div className="inventory-supplier-sync-step ready"><span>Auto update</span><strong>Готово</strong></div>
+          <div className="inventory-supplier-sync-step ready"><span>Auto delete</span><strong>Soft delete</strong></div>
+          <div className="inventory-supplier-sync-step"><span>Linked movements</span><strong>{supplierSyncHealth?.linked_movements ?? dashboardReport?.supplier_auto_link?.supplier_link?.linked_movements ?? 0}</strong></div>
+          <div className="inventory-supplier-sync-step pending"><span>Trigger</span><strong>{supplierSyncHealth?.trigger_status || 'после SQL'}</strong></div>
         </div>
       </div>
 
