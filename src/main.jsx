@@ -164,6 +164,27 @@ async function rmsInventoryBackfillSupplierPurchases(locationId = null, limit = 
 
 
 // v153 Inventory supplier auto-link prep helpers
+
+// v154 Inventory auto-link validation helpers
+
+// v155 Inventory consolidated helpers
+async function rmsInventoryDashboardReport() {
+  return rmsInventoryRpcCall('rms_inventory_dashboard_report', {})
+}
+
+async function rmsInventoryProductionPreview() {
+  return rmsInventoryRpcCall('rms_inventory_production_readiness', {})
+}
+
+async function rmsInventoryWriteOffReport() {
+  return rmsInventoryRpcCall('rms_inventory_writeoff_report', {})
+}
+
+async function rmsInventorySafeValidation() {
+  const health = await rmsInventoryRpcCall('rms_inventory_supplier_auto_link_health', {})
+  return health
+}
+
 async function rmsInventoryAutoLinkHealth() {
   return rmsInventoryRpcCall('rms_inventory_supplier_auto_link_health', {})
 }
@@ -2441,6 +2462,10 @@ function InventoryModule({ branchId, branchName }) {
   const [backfillBusy, setBackfillBusy] = React.useState(false)
   const [backfillPreview, setBackfillPreview] = React.useState([])
   const [backfillHealth, setBackfillHealth] = React.useState(null)
+  const [validationHealth, setValidationHealth] = React.useState(null)
+  const [dashboardReport, setDashboardReport] = React.useState(null)
+  const [productionReport, setProductionReport] = React.useState(null)
+  const [writeOffReport, setWriteOffReport] = React.useState(null)
   const [search, setSearch] = React.useState('')
   const [movementFilter, setMovementFilter] = React.useState('all')
 
@@ -2518,6 +2543,42 @@ function InventoryModule({ branchId, branchName }) {
     } catch (err) {
       console.error('inventory backfill error', err)
       setMessage(err?.message || 'Не удалось выполнить backfill')
+    } finally {
+      setBackfillBusy(false)
+    }
+  }
+
+  const loadAutoLinkValidation = async () => {
+    setBackfillBusy(true)
+    setMessage('')
+    try {
+      const data = await rmsInventorySafeValidation()
+      setValidationHealth(data || null)
+      setMessage('Проверка Auto-Link выполнена')
+    } catch (err) {
+      console.error('inventory autolink validation error', err)
+      setMessage(err?.message || 'Не удалось проверить Auto-Link')
+    } finally {
+      setBackfillBusy(false)
+    }
+  }
+
+  const loadInventoryConsolidatedReports = async () => {
+    setBackfillBusy(true)
+    setMessage('')
+    try {
+      const [dash, prod, wo] = await Promise.all([
+        rmsInventoryDashboardReport().catch(() => null),
+        rmsInventoryProductionPreview().catch(() => null),
+        rmsInventoryWriteOffReport().catch(() => null),
+      ])
+      setDashboardReport(dash || null)
+      setProductionReport(prod || null)
+      setWriteOffReport(wo || null)
+      setMessage('Складские отчёты обновлены')
+    } catch (err) {
+      console.error('inventory reports error', err)
+      setMessage(err?.message || 'Не удалось загрузить складские отчёты')
     } finally {
       setBackfillBusy(false)
     }
@@ -2631,6 +2692,37 @@ function InventoryModule({ branchId, branchName }) {
           <div className="inventory-autolink-step ready"><span>Manual backfill</span><strong>Готово</strong></div>
           <div className="inventory-autolink-step ready"><span>Duplicate guard</span><strong>Готово</strong></div>
           <div className="inventory-autolink-step pending"><span>Trigger</span><strong>Отдельно</strong></div>
+        </div>
+      </div>
+
+      <div className="inventory-validation-card">
+        <h3>Auto-Link Validation</h3>
+        <p>Контрольный слой перед автоматическим trigger: проверяет готовность связки поставщиков со складом, количество строк для переноса и текущий статус auto-trigger.</p>
+        <div className="action-row" style={{marginTop:12}}>
+          <button className="ghost small" onClick={loadAutoLinkValidation} disabled={backfillBusy}>{backfillBusy ? 'Проверка…' : 'Проверить Auto-Link'}</button>
+        </div>
+        {validationHealth && (
+          <div className="inventory-validation-grid">
+            <div className="inventory-validation-step ready"><span>Supplier link</span><strong>{validationHealth?.supplier_link?.status || 'prepared'}</strong></div>
+            <div className="inventory-validation-step ready"><span>Can backfill</span><strong>{validationHealth?.backfill_dry_run?.can_backfill || 0}</strong></div>
+            <div className="inventory-validation-step warn"><span>Already linked</span><strong>{validationHealth?.backfill_dry_run?.already_linked || 0}</strong></div>
+            <div className="inventory-validation-step pending"><span>Auto trigger</span><strong>{validationHealth?.auto_trigger || 'not_enabled'}</strong></div>
+          </div>
+        )}
+      </div>
+
+      <div className="inventory-consolidated-card">
+        <h3>Inventory Consolidated Control</h3>
+        <p>Единый контроль склада: остатки, списания, движения, backfill от поставщиков, отрицательные остатки и подготовка production/полуфабрикатов.</p>
+        <div className="action-row" style={{marginTop:12}}>
+          <button className="ghost small" onClick={loadInventoryConsolidatedReports} disabled={backfillBusy}>{backfillBusy ? 'Загрузка…' : 'Обновить складские отчёты'}</button>
+        </div>
+        <div className="inventory-consolidated-grid">
+          <div className="inventory-consolidated-step ready"><span>Остатки</span><strong>{dashboardReport?.balance_rows ?? balances.length}</strong></div>
+          <div className="inventory-consolidated-step warn"><span>Отрицательные</span><strong>{dashboardReport?.negative_stock_rows ?? negativeRows}</strong></div>
+          <div className="inventory-consolidated-step"><span>Списания</span><strong>{writeOffReport?.writeoff_count ?? writeOffCount}</strong></div>
+          <div className="inventory-consolidated-step ready"><span>Backfill ready</span><strong>{dashboardReport?.backfill_can_create ?? backfillHealth?.can_backfill ?? 0}</strong></div>
+          <div className="inventory-consolidated-step pending"><span>Production</span><strong>{productionReport?.status || 'prep'}</strong></div>
         </div>
       </div>
 
@@ -10666,6 +10758,161 @@ function RMSProV6Styles() {
 }
 @media(max-width:620px){
   .rms-pro-shell .inventory-autolink-grid{
+    grid-template-columns:1fr;
+  }
+}
+
+/* v154 Inventory Auto-Link Safe Validation */
+.rms-pro-shell .inventory-validation-card{
+  border:1px solid #bfdbfe;
+  border-left:5px solid #2563eb;
+  background:linear-gradient(180deg,#fff 0%,#eff6ff 100%);
+  border-radius:20px;
+  padding:17px;
+  margin:14px 0;
+  box-shadow:0 12px 30px rgba(15,23,42,.045);
+}
+.rms-pro-shell .inventory-validation-card h3{
+  margin:0;
+  color:#0f172a;
+  font-size:18px;
+  letter-spacing:-.02em;
+}
+.rms-pro-shell .inventory-validation-card p{
+  margin:7px 0 0;
+  color:#1d4ed8;
+  font-size:13px;
+  line-height:1.45;
+}
+.rms-pro-shell .inventory-validation-grid{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:10px;
+  margin-top:14px;
+}
+.rms-pro-shell .inventory-validation-step{
+  border:1px solid rgba(191,219,254,.95);
+  background:#fff;
+  border-radius:14px;
+  padding:11px 12px;
+}
+.rms-pro-shell .inventory-validation-step span{
+  display:block;
+  color:#64748b;
+  font-size:11.8px;
+  font-weight:850;
+}
+.rms-pro-shell .inventory-validation-step strong{
+  display:block;
+  margin-top:5px;
+  color:#1d4ed8;
+  font-size:13.5px;
+  line-height:1.2;
+}
+.rms-pro-shell .inventory-validation-step.ready{
+  border-color:#bbf7d0;
+  background:#ecfdf5;
+}
+.rms-pro-shell .inventory-validation-step.ready strong{
+  color:#047857;
+}
+.rms-pro-shell .inventory-validation-step.warn{
+  border-color:#fde68a;
+  background:#fffbeb;
+}
+.rms-pro-shell .inventory-validation-step.warn strong{
+  color:#b45309;
+}
+.rms-pro-shell .inventory-validation-step.pending{
+  border-color:#cbd5e1;
+  background:#f8fafc;
+}
+.rms-pro-shell .inventory-validation-step.pending strong{
+  color:#475569;
+}
+@media(max-width:900px){
+  .rms-pro-shell .inventory-validation-grid{grid-template-columns:repeat(2,minmax(0,1fr));}
+}
+@media(max-width:620px){
+  .rms-pro-shell .inventory-validation-grid{grid-template-columns:1fr;}
+}
+
+/* v155 Inventory Consolidated Pack */
+.rms-pro-shell .inventory-consolidated-card{
+  border:1px solid #c4b5fd;
+  border-left:5px solid #7c3aed;
+  background:linear-gradient(180deg,#fff 0%,#f5f3ff 100%);
+  border-radius:20px;
+  padding:17px;
+  margin:14px 0;
+  box-shadow:0 12px 30px rgba(15,23,42,.045);
+}
+.rms-pro-shell .inventory-consolidated-card h3{
+  margin:0;
+  color:#0f172a;
+  font-size:18px;
+  letter-spacing:-.02em;
+}
+.rms-pro-shell .inventory-consolidated-card p{
+  margin:7px 0 0;
+  color:#5b21b6;
+  font-size:13px;
+  line-height:1.45;
+}
+.rms-pro-shell .inventory-consolidated-grid{
+  display:grid;
+  grid-template-columns:repeat(5,minmax(0,1fr));
+  gap:10px;
+  margin-top:14px;
+}
+.rms-pro-shell .inventory-consolidated-step{
+  border:1px solid #ddd6fe;
+  background:#fff;
+  border-radius:14px;
+  padding:11px 12px;
+}
+.rms-pro-shell .inventory-consolidated-step span{
+  display:block;
+  color:#64748b;
+  font-size:11.8px;
+  font-weight:850;
+}
+.rms-pro-shell .inventory-consolidated-step strong{
+  display:block;
+  margin-top:5px;
+  color:#6d28d9;
+  font-size:14px;
+  line-height:1.2;
+  font-variant-numeric:tabular-nums;
+}
+.rms-pro-shell .inventory-consolidated-step.ready{
+  border-color:#bbf7d0;
+  background:#ecfdf5;
+}
+.rms-pro-shell .inventory-consolidated-step.ready strong{
+  color:#047857;
+}
+.rms-pro-shell .inventory-consolidated-step.warn{
+  border-color:#fde68a;
+  background:#fffbeb;
+}
+.rms-pro-shell .inventory-consolidated-step.warn strong{
+  color:#b45309;
+}
+.rms-pro-shell .inventory-consolidated-step.pending{
+  border-color:#bfdbfe;
+  background:#eff6ff;
+}
+.rms-pro-shell .inventory-consolidated-step.pending strong{
+  color:#1d4ed8;
+}
+@media(max-width:1180px){
+  .rms-pro-shell .inventory-consolidated-grid{
+    grid-template-columns:repeat(3,minmax(0,1fr));
+  }
+}
+@media(max-width:680px){
+  .rms-pro-shell .inventory-consolidated-grid{
     grid-template-columns:1fr;
   }
 }
