@@ -302,7 +302,7 @@ const I18N = {
     brand_subtitle:'Restaurant Management System', language_label:'Язык интерфейса', login_label:'Login', password_label:'Пароль',
     login_button:'Войти', login_hint:'Вход по внутреннему login. Допустим вход по логину без домена.', login_error:'Неверный логин или пароль', show_password:'Показать пароль',
     logout:'Выйти', revenue_tab:'Выручка', finance_tab:'Финансы', reports_tab:'Отчёты', recipes_tab:'Тех. карты', salaries_tab:'Зарплаты',
-    attendance_tab:'Посещаемость', advances_tab:'Авансы', suppliers_tab:'Поставщики', debts_payments_tab:'Долги и оплаты', qr_menu_tab:'QR Menu', loyalty_tab:'Loyalty', market_intelligence_tab:'Market Intelligence', security_recovery_tab:'Безопасность и диагностика', settings_tab:'Настройки',
+    attendance_tab:'Посещаемость', advances_tab:'Авансы', suppliers_tab:'Поставщики', debts_payments_tab:'Долги и оплаты', qr_menu_tab:'QR Menu', loyalty_tab:'Loyalty', market_intelligence_tab:'Market Intelligence', security_recovery_tab:'Безопасность и диагностика', settings_tab:'Настройки', inventory_tab:'Склад',
     revenue_subtitle:'Ввод выручки и расходов за выбранную дату по филиалу', finance_subtitle:'Аналитика по филиалу, месяцу, выручке и расходам',
     period_branch:'Период и филиал', branch_select:'Филиал', date:'Дата', daily_revenue_title:'Выручка за выбранную дату',
     cash:'Наличными', bank:'Банк', wolt:'Wolt', revenue_summary:'Сводка выручки', total_revenue:'Общая выручка',
@@ -2389,6 +2389,148 @@ function SecurityRecoveryCenter() {
 }
 
 
+
+
+function InventoryModule({ branchId, branchName }) {
+  const [loading, setLoading] = React.useState(false)
+  const [balances, setBalances] = React.useState([])
+  const [movements, setMovements] = React.useState([])
+  const [locations, setLocations] = React.useState([])
+  const [form, setForm] = React.useState({
+    movement_date: new Date().toISOString().slice(0, 10),
+    location_id: '',
+    item_name: '',
+    unit: 'unit',
+    quantity: '',
+    unit_cost: '',
+    movement_type: 'adjustment_in',
+    comment: '',
+  })
+  const [message, setMessage] = React.useState('')
+
+  const loadInventory = React.useCallback(async () => {
+    setLoading(true)
+    setMessage('')
+    try {
+      const [balanceRes, movementRes, locationRes] = await Promise.all([
+        supabase.from('rms_inventory_stock_balance_view').select('*').order('item_name', { ascending: true }).limit(500),
+        supabase.from('rms_stock_movements').select('*').is('deleted_at', null).order('movement_date', { ascending: false }).order('created_at', { ascending: false }).limit(100),
+        supabase.from('rms_inventory_locations').select('*').eq('is_active', true).order('name', { ascending: true }).limit(100),
+      ])
+      if (balanceRes.error) throw balanceRes.error
+      if (movementRes.error) throw movementRes.error
+      if (locationRes.error) throw locationRes.error
+      setBalances(balanceRes.data || [])
+      setMovements(movementRes.data || [])
+      setLocations(locationRes.data || [])
+    } catch (err) {
+      console.error('inventory load error', err)
+      setMessage(err?.message || 'Не удалось загрузить склад')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  React.useEffect(() => { loadInventory() }, [loadInventory])
+
+  const createMovement = async () => {
+    setLoading(true)
+    setMessage('')
+    try {
+      const payload = { ...form, quantity: parseNum(form.quantity), unit_cost: parseNum(form.unit_cost) }
+      if (!payload.item_name && !payload.supplier_product_id) throw new Error('Укажите товар')
+      if (!payload.quantity) throw new Error('Укажите количество')
+      await rmsInventoryMovementCreate(payload)
+      setMessage('Движение склада сохранено')
+      setForm({ movement_date: new Date().toISOString().slice(0, 10), location_id: '', item_name: '', unit: 'unit', quantity: '', unit_cost: '', movement_type: 'adjustment_in', comment: '' })
+      await loadInventory()
+    } catch (err) {
+      console.error('inventory movement create error', err)
+      setMessage(err?.message || 'Не удалось сохранить движение')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const totalCost = balances.reduce((s, r) => s + parseNum(r.balance_cost), 0)
+  const positiveRows = balances.filter(r => parseNum(r.balance_qty) > 0).length
+  const negativeRows = balances.filter(r => parseNum(r.balance_qty) < 0).length
+
+  return (
+    <div className="rms-pro-shell inventory-module-root">
+      <div className="topbar">
+        <div>
+          <h2>Склад</h2>
+          <p>Остатки, движения, списания, корректировки и складской фундамент для Food Cost.</p>
+        </div>
+        <div className="action-row">
+          <button className="ghost small" onClick={loadInventory} disabled={loading}>{loading ? 'Загрузка…' : 'Обновить'}</button>
+        </div>
+      </div>
+
+      <div className="summary-grid inventory-summary-grid">
+        <div className="soft-card inventory-kpi-card"><span>Позиции с остатком</span><strong>{positiveRows}</strong><p className="hint">balance_qty &gt; 0</p></div>
+        <div className="soft-card inventory-kpi-card"><span>Сумма остатков</span><strong>{fmt(totalCost)} AZN</strong><p className="hint">по движениям склада</p></div>
+        <div className="soft-card inventory-kpi-card"><span>Всего движений</span><strong>{movements.length}</strong><p className="hint">последние 100</p></div>
+        <div className="soft-card inventory-kpi-card"><span>Отрицательные остатки</span><strong className={negativeRows ? 'bad' : 'good'}>{negativeRows}</strong><p className="hint">нужна проверка</p></div>
+      </div>
+
+      {message && <div className="inventory-message">{message}</div>}
+
+      <div className="card inventory-form-card">
+        <div className="card-head">
+          <div>
+            <h3>Добавить движение склада</h3>
+            <p className="hint">Ручной режим: приход, списание, корректировка, перемещение или производство.</p>
+          </div>
+        </div>
+        <div className="form-grid">
+          <label><span>Дата</span><input type="date" value={form.movement_date} onChange={e => setForm({ ...form, movement_date: e.target.value })} /></label>
+          <label><span>Локация</span><select value={form.location_id} onChange={e => setForm({ ...form, location_id: e.target.value })}><option value="">Без локации</option>{locations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}</select></label>
+          <label><span>Тип движения</span><select value={form.movement_type} onChange={e => setForm({ ...form, movement_type: e.target.value })}><option value="purchase">Приход</option><option value="write_off">Списание</option><option value="transfer_in">Перемещение +</option><option value="transfer_out">Перемещение −</option><option value="production_in">Производство +</option><option value="production_out">Производство −</option><option value="adjustment_in">Корректировка +</option><option value="adjustment_out">Корректировка −</option><option value="adjustment">Корректировка</option></select></label>
+          <label><span>Товар</span><input value={form.item_name} placeholder="Название товара" onChange={e => setForm({ ...form, item_name: e.target.value })} /></label>
+          <label><span>Ед.</span><input value={form.unit} onChange={e => setForm({ ...form, unit: e.target.value })} /></label>
+          <label><span>Кол-во</span><input type="number" step="0.001" value={form.quantity} onChange={e => setForm({ ...form, quantity: e.target.value })} /></label>
+          <label><span>Цена за ед.</span><input type="number" step="0.01" value={form.unit_cost} onChange={e => setForm({ ...form, unit_cost: e.target.value })} /></label>
+          <label className="span-2"><span>Комментарий</span><input value={form.comment} placeholder="Причина / документ / примечание" onChange={e => setForm({ ...form, comment: e.target.value })} /></label>
+          <div className="action-row"><button className="primary small" onClick={createMovement} disabled={loading}>Сохранить</button></div>
+        </div>
+      </div>
+
+      <div className="card span-2">
+        <div className="card-head"><div><h3>Остатки</h3><p className="hint">Расчёт по движениям склада. Отрицательные остатки требуют проверки.</p></div></div>
+        <div className="table-wrap">
+          <table className="inventory-stock-table">
+            <thead><tr><th>Товар</th><th>Локация</th><th>Ед.</th><th>Остаток</th><th>Сумма</th><th>Последнее движение</th></tr></thead>
+            <tbody>
+              {balances.map((r, idx) => {
+                const qty = parseNum(r.balance_qty)
+                return <tr key={`${r.location_id}-${r.supplier_product_id || r.product_id || r.item_name}-${idx}`} className={qty < 0 ? 'inventory-negative-row' : ''}>
+                  <td><b>{r.item_name || 'Без названия'}</b></td><td>{r.location_name || 'Без локации'}</td><td>{r.unit || 'unit'}</td>
+                  <td><strong className={qty < 0 ? 'bad' : qty > 0 ? 'good' : ''}>{fmt(qty)}</strong></td><td>{fmt(r.balance_cost)} AZN</td><td>{r.last_movement_date || '—'}</td>
+                </tr>
+              })}
+              {!balances.length && <tr><td colSpan="6" className="hint">Пока нет складских остатков</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="card span-2">
+        <div className="card-head"><div><h3>Журнал движений</h3><p className="hint">Последние 100 движений склада.</p></div></div>
+        <div className="table-wrap">
+          <table className="inventory-movements-table">
+            <thead><tr><th>Дата</th><th>Тип</th><th>Товар</th><th>Кол-во</th><th>Цена</th><th>Сумма</th><th>Комментарий</th></tr></thead>
+            <tbody>
+              {movements.map(m => <tr key={m.id}><td>{m.movement_date}</td><td><span className={`inventory-move-chip ${m.movement_type}`}>{m.movement_type}</span></td><td><b>{m.item_name || 'Без названия'}</b><br /><span className="hint">{m.unit || 'unit'}</span></td><td>{fmt(m.quantity)}</td><td>{fmt(m.unit_cost)}</td><td>{fmt(m.total_cost)} AZN</td><td>{m.comment || '—'}</td></tr>)}
+              {!movements.length && <tr><td colSpan="7" className="hint">Пока нет движений склада</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 function App() {
   const params = new URLSearchParams(window.location.search)
@@ -9722,6 +9864,156 @@ function RMSProV6Styles() {
 @media(max-width:680px){.rms-pro-shell .inventory-foundation-grid{grid-template-columns:1fr;}}
 @media print{.rms-pro-shell .inventory-foundation-card{display:none!important;}}
 
+/* v142 Tech Cards KPI Reality & Status Fix */
+
+/* KPI warning states for tech cards */
+.rms-pro-shell .tech-kpi-warning,
+.rms-pro-shell .tech-kpi-empty,
+.rms-pro-shell .tech-kpi-risk{
+  border-radius:16px;
+}
+.rms-pro-shell .tech-kpi-warning{
+  border-color:#fde68a!important;
+  background:linear-gradient(180deg,#fff 0%,#fffbeb 100%)!important;
+}
+.rms-pro-shell .tech-kpi-risk{
+  border-color:#fecdd3!important;
+  background:linear-gradient(180deg,#fff 0%,#fff1f2 100%)!important;
+}
+.rms-pro-shell .tech-kpi-ok{
+  border-color:#bbf7d0!important;
+  background:linear-gradient(180deg,#fff 0%,#ecfdf5 100%)!important;
+}
+
+/* Correct visual language for incomplete tech cards */
+.rms-pro-shell .tech-status.empty,
+.rms-pro-shell .tech-status.no-cost,
+.rms-pro-shell .tech-status.no-price{
+  background:#fffbeb;
+  color:#b45309;
+  border:1px solid #fde68a;
+}
+.rms-pro-shell .tech-status.incomplete{
+  background:#fff1f2;
+  color:#be123c;
+  border:1px solid #fecdd3;
+}
+.rms-pro-shell .tech-status.ready{
+  background:#ecfdf5;
+  color:#047857;
+  border:1px solid #bbf7d0;
+}
+
+/* Tech table: make missing-cost rows obvious */
+.rms-pro-shell .tech-modern-table tr.tech-row-empty td,
+.rms-pro-shell .tech-modern-table tr.tech-row-no-cost td,
+.rms-pro-shell .tech-modern-table tr.tech-row-no-price td{
+  background:#fffbeb;
+}
+.rms-pro-shell .tech-modern-table tr.tech-row-risk td{
+  background:#fff1f2;
+}
+.rms-pro-shell .tech-modern-table tr.tech-row-ready td{
+  background:#fff;
+}
+
+/* Tech cards summary alert */
+.rms-pro-shell .tech-data-quality-card{
+  border:1px solid #fde68a;
+  border-left:5px solid #f59e0b;
+  background:linear-gradient(180deg,#fff 0%,#fffbeb 100%);
+  border-radius:18px;
+  padding:15px 16px;
+  margin-top:14px;
+}
+.rms-pro-shell .tech-data-quality-card h3{
+  margin:0;
+  color:#0f172a;
+  font-size:17px;
+}
+.rms-pro-shell .tech-data-quality-card p{
+  margin:7px 0 0;
+  color:#92400e;
+  font-size:13px;
+  line-height:1.45;
+}
+.rms-pro-shell .tech-data-quality-grid{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:10px;
+  margin-top:12px;
+}
+.rms-pro-shell .tech-data-quality-step{
+  border:1px solid #fde68a;
+  background:#fff;
+  border-radius:14px;
+  padding:11px 12px;
+}
+.rms-pro-shell .tech-data-quality-step span{
+  display:block;
+  color:#64748b;
+  font-size:11.8px;
+  font-weight:850;
+}
+.rms-pro-shell .tech-data-quality-step strong{
+  display:block;
+  margin-top:5px;
+  color:#b45309;
+  font-size:15px;
+  font-variant-numeric:tabular-nums;
+}
+.rms-pro-shell .tech-data-quality-step.good{
+  border-color:#bbf7d0;
+  background:#ecfdf5;
+}
+.rms-pro-shell .tech-data-quality-step.good strong{
+  color:#047857;
+}
+
+/* Avoid misleading 100% margin styling when cost is missing */
+.rms-pro-shell .tech-margin-muted{
+  color:#94a3b8!important;
+}
+.rms-pro-shell .tech-cost-missing{
+  color:#b45309!important;
+  font-weight:850;
+}
+
+@media(max-width:900px){
+  .rms-pro-shell .tech-data-quality-grid{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+}
+@media(max-width:620px){
+  .rms-pro-shell .tech-data-quality-grid{
+    grid-template-columns:1fr;
+  }
+}
+
+/* v143 Inventory UI Module */
+.rms-pro-shell .inventory-module-root .topbar{border-left:5px solid #2563eb;}
+.rms-pro-shell .inventory-summary-grid{grid-template-columns:repeat(4,minmax(0,1fr));}
+.rms-pro-shell .inventory-kpi-card span{color:#64748b;font-size:12.5px;font-weight:850;}
+.rms-pro-shell .inventory-kpi-card strong{display:block;margin-top:5px;font-size:22px;font-variant-numeric:tabular-nums;}
+.rms-pro-shell .inventory-message{margin:12px 0;border:1px solid #bfdbfe;background:#eff6ff;color:#1d4ed8;border-radius:14px;padding:11px 12px;font-size:13px;font-weight:800;}
+.rms-pro-shell .inventory-form-card{border-left:4px solid #2563eb;}
+.rms-pro-shell .inventory-stock-table td:nth-child(n+4),
+.rms-pro-shell .inventory-stock-table th:nth-child(n+4),
+.rms-pro-shell .inventory-movements-table td:nth-child(n+4):nth-child(-n+6),
+.rms-pro-shell .inventory-movements-table th:nth-child(n+4):nth-child(-n+6){text-align:right;font-variant-numeric:tabular-nums;}
+.rms-pro-shell .inventory-negative-row td{background:#fff1f2!important;}
+.rms-pro-shell .inventory-move-chip{display:inline-flex;align-items:center;min-height:24px;padding:3px 8px;border-radius:999px;border:1px solid rgba(226,232,240,.96);background:#f8fafc;color:#334155;font-size:11.5px;font-weight:900;}
+.rms-pro-shell .inventory-move-chip.purchase,
+.rms-pro-shell .inventory-move-chip.transfer_in,
+.rms-pro-shell .inventory-move-chip.production_in,
+.rms-pro-shell .inventory-move-chip.adjustment_in{background:#ecfdf5;border-color:#bbf7d0;color:#047857;}
+.rms-pro-shell .inventory-move-chip.write_off,
+.rms-pro-shell .inventory-move-chip.transfer_out,
+.rms-pro-shell .inventory-move-chip.production_out,
+.rms-pro-shell .inventory-move-chip.adjustment_out{background:#fff1f2;border-color:#fecdd3;color:#be123c;}
+@media(max-width:980px){.rms-pro-shell .inventory-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
+@media(max-width:620px){.rms-pro-shell .inventory-summary-grid{grid-template-columns:1fr;}.rms-pro-shell .inventory-stock-table,.rms-pro-shell .inventory-movements-table{min-width:820px;}}
+
 
   `}</style>
 }
@@ -14979,11 +15271,14 @@ function Recipes({ t }) {
                       const cost = rows.reduce((sum, item) => sum + componentCost(item), 0)
                       const sale = parseNum(m.sale_price)
                       const fc = sale > 0 ? (cost / sale) * 100 : 0
-                      const margin = sale > 0 ? 100 - fc : 0
+                      const margin = sale > 0 && cost > 0 ? 100 - fc : 0
                       const targetFc = parseNum(m.target_food_cost_percent || 35) || 35
                       const hasComposition = rows.length > 0
-                      const statusLabel = !hasComposition ? 'Нет состава' : !sale ? 'Нет цены' : fc > targetFc ? 'FC выше нормы' : 'ОК'
-                      const statusClass = !hasComposition || !sale ? 'warning' : fc > targetFc ? 'danger' : 'active'
+                      const hasSale = sale > 0
+                      const hasCost = cost > 0
+                      const statusLabel = !hasComposition ? 'Нет состава' : !hasSale ? 'Нет цены' : !hasCost ? 'Нет себест.' : fc > targetFc ? 'FC выше нормы' : 'ОК'
+                      const statusClass = !hasComposition ? 'empty' : !hasSale ? 'no-price' : !hasCost ? 'no-cost' : fc > targetFc ? 'incomplete' : 'ready'
+                      const rowClass = !hasComposition ? 'tech-row-empty' : !hasSale ? 'tech-row-no-price' : !hasCost ? 'tech-row-no-cost' : fc > targetFc ? 'tech-row-risk' : 'tech-row-ready'
                       const categoryName = m.category || 'Без категории'
                       const categoryClass = `tech-category-pill cat-${String(categoryName).toLowerCase().replace(/[^a-zа-яё0-9]+/gi, '-')}`
                       return (
