@@ -351,6 +351,7 @@ const SECTIONS = [
   { id: 'finance', key: 'finance_tab' },
   { id: 'reports', key: 'reports_tab' },
   { id: 'recipes', key: 'recipes_tab' },
+  { id: 'inventory', key: 'inventory_tab' },
   { id: 'salaries', key: 'salaries_tab' },
   { id: 'suppliers', key: 'suppliers_tab' },
   { id: 'debts', key: 'debts_payments_tab' },
@@ -383,6 +384,7 @@ function RmsIcon({ type }) {
     finance: <svg {...common}><rect x="3.5" y="5" width="17" height="14" rx="3"/><path d="M7 9h10"/><path d="M8 14h.01"/><path d="M12 14h4"/></svg>,
     reports: <svg {...common}><path d="M4 19V5"/><path d="M4 19h16"/><rect x="7" y="11" width="2.5" height="5" rx=".6"/><rect x="11" y="8" width="2.5" height="8" rx=".6"/><rect x="15" y="6" width="2.5" height="10" rx=".6"/></svg>,
     recipes: <svg {...common}><path d="M6 3.8h9.5L19 7.3V20a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 5 20V5.3A1.5 1.5 0 0 1 6.5 3.8Z"/><path d="M15 4v4h4"/><path d="M8 12h8"/><path d="M8 16h6"/></svg>,
+    inventory: <svg {...common}><path d="M4 7.5 12 3l8 4.5-8 4.5-8-4.5Z"/><path d="M4 12l8 4.5 8-4.5"/><path d="M4 16.5 12 21l8-4.5"/></svg>,
     suppliers: <svg {...common}><path d="M4 8.5 12 4l8 4.5-8 4.5-8-4.5Z"/><path d="M4 13l8 4.5 8-4.5"/><path d="M4 17l8 4.5 8-4.5"/></svg>,
     debts: <svg {...common}><path d="M4 7h16"/><path d="M6 7V5h12v2"/><rect x="5" y="7" width="14" height="12" rx="2"/><path d="M9 12h6"/><path d="M9 15h4"/></svg>,
     qrmenu: <svg {...common}><path d="M4 4h6v6H4z"/><path d="M14 4h6v6h-6z"/><path d="M4 14h6v6H4z"/><path d="M14 14h2.5"/><path d="M19 14h1"/><path d="M14 17h6"/><path d="M17 20h3"/><path d="M14 20h.01"/></svg>,
@@ -401,6 +403,7 @@ const RMS_PRO_SECTION_ICONS = {
   finance: <RmsIcon type="finance" />,
   reports: <RmsIcon type="reports" />,
   recipes: <RmsIcon type="recipes" />,
+  inventory: <RmsIcon type="inventory" />,
   salaries: <RmsIcon type="salaries" />,
   suppliers: <RmsIcon type="suppliers" />,
   debts: <RmsIcon type="debts" />,
@@ -420,6 +423,7 @@ function rmsProSectionTitle(section, t) {
     finance: t('finance_tab'),
     reports: t('reports_tab'),
     recipes: t('recipes_tab'),
+    inventory: t('inventory_tab'),
     salaries: t('salaries_tab'),
     suppliers: t('suppliers_tab'),
     debts: t('debts_payments_tab'),
@@ -2810,6 +2814,7 @@ function App() {
         {canReadAccess(currentAccess) && section === 'finance' && <Finance t={t} lang={lang} onGoToExpense={goToRevenueExpense} />}
         {canReadAccess(currentAccess) && section === 'reports' && <Reports t={t} />}
         {canReadAccess(currentAccess) && section === 'recipes' && <Recipes t={t} />}
+        {canReadAccess(currentAccess) && section === 'inventory' && <InventoryModule t={t} />}
         {canReadAccess(currentAccess) && section === 'salaries' && <SalaryWorkspace t={t} isAdmin={isAdmin || accessRank(sectionAccess('salaries')) >= accessRank('admin')} />}
         {canReadAccess(currentAccess) && section === 'suppliers' && <Suppliers t={t} isAdmin={isAdmin || accessRank(sectionAccess('suppliers')) >= accessRank('admin')} />}
         {canReadAccess(currentAccess) && section === 'debts' && <DebtsPayments t={t} />}
@@ -10026,6 +10031,11 @@ function RMSProV6Styles() {
   from{opacity:.86; transform:translateY(3px);}
   to{opacity:1; transform:translateY(0);}
 }
+
+/* v145 Inventory Real Sidebar Fix */
+.rms-pro-shell .inventory-module-root .topbar{border-left:5px solid #2563eb;}
+.rms-pro-shell .inventory-stock-table td:nth-child(n+4),
+.rms-pro-shell .inventory-stock-table th:nth-child(n+4){text-align:right;font-variant-numeric:tabular-nums;}
 
 
   `}</style>
