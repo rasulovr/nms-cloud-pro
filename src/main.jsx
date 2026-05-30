@@ -10392,6 +10392,44 @@ function RMSProV6Styles() {
 @media(max-width:980px){.rms-pro-shell .inventory-schema-check-grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
 @media(max-width:620px){.rms-pro-shell .inventory-schema-check-grid{grid-template-columns:1fr;}}
 
+/* v150 Tech Cards UI Cleanup */
+
+/* Hide technical hardening blocks from normal Tech Cards UI */
+.rms-pro-shell .tech-safe-edit-note,
+.rms-pro-shell .tech-secure-rpc-card,
+.rms-pro-shell .tech-rpc-wiring-card,
+.rms-pro-shell .tech-readiness-card,
+.rms-pro-shell .tech-rpc-switch-card,
+.rms-pro-shell .tech-handler-wiring-card,
+.rms-pro-shell .tech-hardening-command-card,
+.rms-pro-shell .tech-handler-switch-card,
+.rms-pro-shell .tech-lockdown-prep-card,
+.rms-pro-shell .tech-final-hardening-card{
+  display:none!important;
+}
+
+/* Keep Tech Cards focused on business use */
+.rms-pro-shell .tech-modern-shell > .card:first-child,
+.rms-pro-shell .tech-card-root > .card:first-child{
+  margin-top:0;
+}
+
+/* Cleaner Tech Cards header after removing hardening panels */
+.rms-pro-shell .tech-modern-shell .topbar,
+.rms-pro-shell .tech-card-root .topbar{
+  margin-bottom:14px;
+}
+
+/* Inventory foundation note is not shown inside Tech Cards anymore */
+.rms-pro-shell .inventory-foundation-card{
+  display:none!important;
+}
+
+/* Data quality card remains business-facing */
+.rms-pro-shell .tech-data-quality-card{
+  display:block!important;
+}
+
 
   `}</style>
 }
@@ -15522,16 +15560,6 @@ function Recipes({ t }) {
         <div>
           <h2>Тех. карты</h2>
           <p>Техкарты, полуфабрикаты, себестоимость и контроль Food Cost по блюдам.</p>
-          <p className="tech-safe-edit-note">Enterprise hardening: следующий этап переводит создание, изменение и удаление техкарт на secure RPC с журналом изменений. Текущая версия сохраняет рабочий интерфейс и добавляет подготовительный слой контроля.</p>
-          <div className="tech-secure-rpc-card phase-2">
-            <h3>Tech Cards Secure RPC · Final Hardening</h3>
-            <p>Tech Cards hardening завершён на уровне frontend/RPC/audit/readiness. Финальный permission lockdown вынесен отдельным SQL-файлом с rollback.</p>
-            <div className="tech-secure-rpc-grid">
-              <div className="tech-secure-rpc-step is-ready"><span>Audit log</span><strong>Готово</strong></div>
-              <div className="tech-secure-rpc-step is-ready"><span>Menu item RPC</span><strong>Подготовлено</strong></div>
-              <div className="tech-secure-rpc-step is-ready"><span>Ingredient RPC</span><strong>Phase 2</strong></div>
-              <div className="tech-secure-rpc-step is-waiting"><span>Permission lockdown</span><strong>После теста</strong></div>
-            </div>
           </div>
         </div>
         <div className="tech-header-actions">
