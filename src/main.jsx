@@ -2465,10 +2465,21 @@ function InventoryModule({ branchId, branchName }) {
       <div className="topbar">
         <div>
           <h2>Склад</h2>
-          <p>Остатки, движения, списания, корректировки и складской фундамент для Food Cost.</p>
+          <p>Остатки, движения, списания, корректировки, локации и складской фундамент для Food Cost.</p>
         </div>
         <div className="action-row">
           <button className="ghost small" onClick={loadInventory} disabled={loading}>{loading ? 'Загрузка…' : 'Обновить'}</button>
+        </div>
+      </div>
+
+      <div className="inventory-warning-card">
+        <h3>Складской модуль · стартовый режим</h3>
+        <p>Сейчас склад работает в ручном режиме: можно добавлять движения, видеть остатки и контролировать отрицательные позиции. Автоматическая связь с закупками поставщиков будет следующим этапом.</p>
+        <div className="inventory-action-grid">
+          <div className="inventory-action-card"><span>Приход</span><strong>ручной / purchase</strong></div>
+          <div className="inventory-action-card"><span>Списание</span><strong>write_off</strong></div>
+          <div className="inventory-action-card"><span>Перемещение</span><strong>transfer</strong></div>
+          <div className="inventory-action-card"><span>Производство</span><strong>production</strong></div>
         </div>
       </div>
 
@@ -10036,6 +10047,85 @@ function RMSProV6Styles() {
 .rms-pro-shell .inventory-module-root .topbar{border-left:5px solid #2563eb;}
 .rms-pro-shell .inventory-stock-table td:nth-child(n+4),
 .rms-pro-shell .inventory-stock-table th:nth-child(n+4){text-align:right;font-variant-numeric:tabular-nums;}
+
+/* v146 Inventory Locations & Practical Stock UX */
+.rms-pro-shell .inventory-module-root .topbar{
+  border-left:5px solid #2563eb;
+}
+.rms-pro-shell .inventory-location-chip{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  min-height:26px;
+  padding:4px 10px;
+  border-radius:999px;
+  border:1px solid #bfdbfe;
+  background:#eff6ff;
+  color:#1d4ed8;
+  font-size:12px;
+  font-weight:900;
+}
+.rms-pro-shell .inventory-warning-card{
+  border:1px solid #fde68a;
+  border-left:4px solid #f59e0b;
+  background:linear-gradient(180deg,#fff 0%,#fffbeb 100%);
+  border-radius:18px;
+  padding:15px 16px;
+  margin:12px 0;
+}
+.rms-pro-shell .inventory-warning-card h3{
+  margin:0;
+  color:#0f172a;
+  font-size:17px;
+}
+.rms-pro-shell .inventory-warning-card p{
+  margin:7px 0 0;
+  color:#92400e;
+  font-size:13px;
+  line-height:1.45;
+}
+.rms-pro-shell .inventory-action-grid{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:10px;
+  margin-top:12px;
+}
+.rms-pro-shell .inventory-action-card{
+  border:1px solid rgba(226,232,240,.96);
+  background:#fff;
+  border-radius:14px;
+  padding:11px 12px;
+}
+.rms-pro-shell .inventory-action-card span{
+  display:block;
+  color:#64748b;
+  font-size:12px;
+  font-weight:850;
+}
+.rms-pro-shell .inventory-action-card strong{
+  display:block;
+  margin-top:5px;
+  color:#0f172a;
+  font-size:14px;
+}
+.rms-pro-shell .inventory-stock-table td,
+.rms-pro-shell .inventory-movements-table td{
+  vertical-align:middle;
+}
+.rms-pro-shell .inventory-stock-table .bad,
+.rms-pro-shell .inventory-movements-table .bad{
+  color:#be123c;
+}
+.rms-pro-shell .inventory-stock-table .good,
+.rms-pro-shell .inventory-movements-table .good{
+  color:#047857;
+}
+@media(max-width:900px){
+  .rms-pro-shell .inventory-action-grid{grid-template-columns:repeat(2,minmax(0,1fr));}
+}
+@media(max-width:620px){
+  .rms-pro-shell .inventory-action-grid{grid-template-columns:1fr;}
+}
 
 
   `}</style>
