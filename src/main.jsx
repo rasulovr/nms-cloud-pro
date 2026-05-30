@@ -11133,6 +11133,60 @@ function RMSProV6Styles() {
   .rms-pro-shell .inventory-name-location-grid{grid-template-columns:1fr;}
 }
 
+/* v159 Supplier Purchase Product ID Resolver Fix */
+.rms-pro-shell .inventory-product-id-fix-card{
+  border:1px solid #bbf7d0;
+  border-left:5px solid #16a34a;
+  background:linear-gradient(180deg,#fff 0%,#ecfdf5 100%);
+  border-radius:20px;
+  padding:17px;
+  margin:14px 0;
+  box-shadow:0 12px 30px rgba(15,23,42,.045);
+}
+.rms-pro-shell .inventory-product-id-fix-card h3{
+  margin:0;
+  color:#0f172a;
+  font-size:18px;
+  letter-spacing:-.02em;
+}
+.rms-pro-shell .inventory-product-id-fix-card p{
+  margin:7px 0 0;
+  color:#047857;
+  font-size:13px;
+  line-height:1.45;
+}
+.rms-pro-shell .inventory-product-id-fix-grid{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:10px;
+  margin-top:14px;
+}
+.rms-pro-shell .inventory-product-id-fix-step{
+  border:1px solid #bbf7d0;
+  background:#fff;
+  border-radius:14px;
+  padding:11px 12px;
+}
+.rms-pro-shell .inventory-product-id-fix-step span{
+  display:block;
+  color:#64748b;
+  font-size:11.8px;
+  font-weight:850;
+}
+.rms-pro-shell .inventory-product-id-fix-step strong{
+  display:block;
+  margin-top:5px;
+  color:#047857;
+  font-size:13.5px;
+  line-height:1.2;
+}
+@media(max-width:900px){
+  .rms-pro-shell .inventory-product-id-fix-grid{grid-template-columns:repeat(2,minmax(0,1fr));}
+}
+@media(max-width:620px){
+  .rms-pro-shell .inventory-product-id-fix-grid{grid-template-columns:1fr;}
+}
+
 
   `}</style>
 }
