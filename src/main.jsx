@@ -170,6 +170,12 @@ async function rmsInventoryBackfillSupplierPurchases(locationId = null, limit = 
 // v155 Inventory consolidated helpers
 
 // v157 Supplier Purchases -> Inventory Auto Stock Sync helpers
+
+// v161 Bazar -> Inventory Stock Sync helpers
+async function rmsInventoryBazarStockSyncHealth() {
+  return rmsInventoryRpcCall('rms_inventory_bazar_stock_sync_health', {})
+}
+
 async function rmsInventorySupplierStockSyncHealth() {
   return rmsInventoryRpcCall('rms_inventory_supplier_stock_sync_health', {})
 }
@@ -2474,6 +2480,7 @@ function InventoryModule({ branchId, branchName }) {
   const [writeOffReport, setWriteOffReport] = React.useState(null)
   const [operationMode, setOperationMode] = React.useState('manual')
   const [supplierSyncHealth, setSupplierSyncHealth] = React.useState(null)
+  const [bazarSyncHealth, setBazarSyncHealth] = React.useState(null)
   const [search, setSearch] = React.useState('')
   const [movementFilter, setMovementFilter] = React.useState('all')
 
@@ -2591,16 +2598,18 @@ function InventoryModule({ branchId, branchName }) {
     setBackfillBusy(true)
     setMessage('')
     try {
-      const [dash, prod, wo, syncHealth] = await Promise.all([
+      const [dash, prod, wo, syncHealth, bazarHealth] = await Promise.all([
         rmsInventoryDashboardReport().catch(() => null),
         rmsInventoryProductionPreview().catch(() => null),
         rmsInventoryWriteOffReport().catch(() => null),
         rmsInventorySupplierStockSyncHealth().catch(() => null),
+        rmsInventoryBazarStockSyncHealth().catch(() => null),
       ])
       setDashboardReport(dash || null)
       setProductionReport(prod || null)
       setWriteOffReport(wo || null)
       setSupplierSyncHealth(syncHealth || null)
+      setBazarSyncHealth(bazarHealth || null)
       setMessage('Складские отчёты обновлены')
     } catch (err) {
       console.error('inventory reports error', err)
@@ -2787,6 +2796,21 @@ function InventoryModule({ branchId, branchName }) {
           <div className="inventory-branch-location-step ready"><span>BC3</span><strong>BC3 Stock</strong></div>
           <div className="inventory-branch-location-step ready"><span>BC4 / BC5</span><strong>Mapped</strong></div>
           <div className="inventory-branch-location-step warn"><span>Fallback</span><strong>Central</strong></div>
+        </div>
+      </div>
+
+      <div className="inventory-bazar-sync-card">
+        <h3>Базар → Склад</h3>
+        <p>Ежедневный базар с позициями будет попадать на склад как приход <b>purchase</b>. Если филиал указан — движение попадёт в склад филиала, если нет — в Central Warehouse.</p>
+        <div className="action-row" style={{marginTop:12}}>
+          <button className="ghost small" onClick={loadInventoryConsolidatedReports} disabled={backfillBusy}>{backfillBusy ? 'Проверка…' : 'Проверить базар-синхронизацию'}</button>
+        </div>
+        <div className="inventory-bazar-sync-grid">
+          <div className="inventory-bazar-sync-step ready"><span>Auto insert</span><strong>Готово</strong></div>
+          <div className="inventory-bazar-sync-step ready"><span>Auto update</span><strong>Готово</strong></div>
+          <div className="inventory-bazar-sync-step ready"><span>Auto delete</span><strong>Soft delete</strong></div>
+          <div className="inventory-bazar-sync-step"><span>Linked movements</span><strong>{bazarSyncHealth?.linked_movements ?? 0}</strong></div>
+          <div className="inventory-bazar-sync-step pending"><span>Trigger</span><strong>{bazarSyncHealth?.trigger_status || 'после SQL'}</strong></div>
         </div>
       </div>
 
