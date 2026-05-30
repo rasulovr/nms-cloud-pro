@@ -172,6 +172,16 @@ async function rmsInventoryBackfillSupplierPurchases(locationId = null, limit = 
 // v157 Supplier Purchases -> Inventory Auto Stock Sync helpers
 
 // v161 Bazar -> Inventory Stock Sync helpers
+
+// v162 iiko Sales -> Inventory Consumption Prep helpers
+async function rmsInventorySalesConsumptionReadiness() {
+  return rmsInventoryRpcCall('rms_inventory_sales_consumption_readiness', {})
+}
+
+async function rmsInventorySalesConsumptionHealth() {
+  return rmsInventoryRpcCall('rms_inventory_sales_consumption_health', {})
+}
+
 async function rmsInventoryBazarStockSyncHealth() {
   return rmsInventoryRpcCall('rms_inventory_bazar_stock_sync_health', {})
 }
@@ -2481,6 +2491,7 @@ function InventoryModule({ branchId, branchName }) {
   const [operationMode, setOperationMode] = React.useState('manual')
   const [supplierSyncHealth, setSupplierSyncHealth] = React.useState(null)
   const [bazarSyncHealth, setBazarSyncHealth] = React.useState(null)
+  const [salesConsumptionHealth, setSalesConsumptionHealth] = React.useState(null)
   const [search, setSearch] = React.useState('')
   const [movementFilter, setMovementFilter] = React.useState('all')
 
@@ -2598,18 +2609,20 @@ function InventoryModule({ branchId, branchName }) {
     setBackfillBusy(true)
     setMessage('')
     try {
-      const [dash, prod, wo, syncHealth, bazarHealth] = await Promise.all([
+      const [dash, prod, wo, syncHealth, bazarHealth, salesHealth] = await Promise.all([
         rmsInventoryDashboardReport().catch(() => null),
         rmsInventoryProductionPreview().catch(() => null),
         rmsInventoryWriteOffReport().catch(() => null),
         rmsInventorySupplierStockSyncHealth().catch(() => null),
         rmsInventoryBazarStockSyncHealth().catch(() => null),
+        rmsInventorySalesConsumptionHealth().catch(() => null),
       ])
       setDashboardReport(dash || null)
       setProductionReport(prod || null)
       setWriteOffReport(wo || null)
       setSupplierSyncHealth(syncHealth || null)
       setBazarSyncHealth(bazarHealth || null)
+      setSalesConsumptionHealth(salesHealth || null)
       setMessage('Складские отчёты обновлены')
     } catch (err) {
       console.error('inventory reports error', err)
@@ -2811,6 +2824,21 @@ function InventoryModule({ branchId, branchName }) {
           <div className="inventory-bazar-sync-step ready"><span>Auto delete</span><strong>Soft delete</strong></div>
           <div className="inventory-bazar-sync-step"><span>Linked movements</span><strong>{bazarSyncHealth?.linked_movements ?? 0}</strong></div>
           <div className="inventory-bazar-sync-step pending"><span>Trigger</span><strong>{bazarSyncHealth?.trigger_status || 'после SQL'}</strong></div>
+        </div>
+      </div>
+
+      <div className="inventory-sales-consumption-card">
+        <h3>iiko Sales → Inventory Consumption</h3>
+        <p>Следующий слой склада: после импорта продаж iiko RMS сможет рассчитать теоретический расход ингредиентов по техкартам и создать складские движения расхода. В v162 включён безопасный prep-режим без автоматического списания.</p>
+        <div className="action-row" style={{marginTop:12}}>
+          <button className="ghost small" onClick={loadInventoryConsolidatedReports} disabled={backfillBusy}>{backfillBusy ? 'Проверка…' : 'Проверить sales consumption'}</button>
+        </div>
+        <div className="inventory-sales-consumption-grid">
+          <div className="inventory-sales-consumption-step ready"><span>Sales schema</span><strong>{salesConsumptionHealth?.sales_schema_status || 'prep'}</strong></div>
+          <div className="inventory-sales-consumption-step ready"><span>Recipe mapping</span><strong>{salesConsumptionHealth?.recipe_mapping_status || 'prep'}</strong></div>
+          <div className="inventory-sales-consumption-step"><span>Batches</span><strong>{salesConsumptionHealth?.batches || 0}</strong></div>
+          <div className="inventory-sales-consumption-step"><span>Consumption rows</span><strong>{salesConsumptionHealth?.items || 0}</strong></div>
+          <div className="inventory-sales-consumption-step pending"><span>Auto write-off</span><strong>Off</strong></div>
         </div>
       </div>
 
