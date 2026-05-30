@@ -10430,6 +10430,14 @@ function RMSProV6Styles() {
   display:block!important;
 }
 
+/* v151 Tech Cards Cleanup Build Fix */
+.rms-pro-shell .tech-header-actions{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  flex-wrap:wrap;
+}
+
 
   `}</style>
 }
@@ -15561,8 +15569,7 @@ function Recipes({ t }) {
           <h2>Тех. карты</h2>
           <p>Техкарты, полуфабрикаты, себестоимость и контроль Food Cost по блюдам.</p>
           </div>
-        </div>
-        <div className="tech-header-actions">
+          <div className="tech-header-actions">
           <button className="ghost small" onClick={() => setTab('legacy')}>Все тех. карты</button>
           <button className="small primary" onClick={loadSemiData}>{loading ? 'Загрузка...' : 'Обновить'}</button>
         </div>
