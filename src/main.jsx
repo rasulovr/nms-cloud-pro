@@ -370,7 +370,7 @@ const THEMES = [
 ]
 
 const RMS_PRO_NAV_GROUPS = [
-  { title: 'МЕНЮ', ids: ['dashboard', 'revenue', 'finance', 'recipes', 'salaries', 'suppliers', 'debts'] },
+  { title: 'МЕНЮ', ids: ['dashboard', 'revenue', 'finance', 'recipes', 'inventory', 'salaries', 'suppliers', 'debts'] },
   { title: 'АНАЛИТИКА', ids: ['reports'] },
   { title: 'ИНСТРУМЕНТЫ', ids: ['qrmenu', 'loyalty', 'market', 'security_recovery', 'settings'] }
 ]
@@ -10013,6 +10013,19 @@ function RMSProV6Styles() {
 .rms-pro-shell .inventory-move-chip.adjustment_out{background:#fff1f2;border-color:#fecdd3;color:#be123c;}
 @media(max-width:980px){.rms-pro-shell .inventory-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
 @media(max-width:620px){.rms-pro-shell .inventory-summary-grid{grid-template-columns:1fr;}.rms-pro-shell .inventory-stock-table,.rms-pro-shell .inventory-movements-table{min-width:820px;}}
+
+/* v144 Inventory Sidebar Visibility Fix */
+.rms-pro-shell .inventory-nav-button,
+.rms-pro-shell button[data-tab="inventory_tab"]{
+  border-left:3px solid #2563eb;
+}
+.rms-pro-shell .inventory-module-root{
+  animation: inventoryFadeIn .12s ease-out;
+}
+@keyframes inventoryFadeIn{
+  from{opacity:.86; transform:translateY(3px);}
+  to{opacity:1; transform:translateY(0);}
+}
 
 
   `}</style>
