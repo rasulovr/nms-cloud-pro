@@ -162,6 +162,16 @@ async function rmsInventoryBackfillSupplierPurchases(locationId = null, limit = 
   })
 }
 
+
+// v153 Inventory supplier auto-link prep helpers
+async function rmsInventoryAutoLinkHealth() {
+  return rmsInventoryRpcCall('rms_inventory_supplier_auto_link_health', {})
+}
+
+async function rmsInventoryBackfillDryRun() {
+  return rmsInventoryRpcCall('rms_inventory_supplier_purchase_items_backfill_dry_run', {})
+}
+
 async function rmsInventoryBackfillPreview() {
   return rmsInventoryRpcCall('rms_inventory_supplier_purchase_items_backfill_preview', {})
 }
@@ -2430,6 +2440,7 @@ function InventoryModule({ branchId, branchName }) {
   const [message, setMessage] = React.useState('')
   const [backfillBusy, setBackfillBusy] = React.useState(false)
   const [backfillPreview, setBackfillPreview] = React.useState([])
+  const [backfillHealth, setBackfillHealth] = React.useState(null)
   const [search, setSearch] = React.useState('')
   const [movementFilter, setMovementFilter] = React.useState('all')
 
@@ -2481,8 +2492,12 @@ function InventoryModule({ branchId, branchName }) {
     setBackfillBusy(true)
     setMessage('')
     try {
-      const data = await rmsInventoryBackfillPreview()
+      const [data, health] = await Promise.all([
+        rmsInventoryBackfillPreview(),
+        rmsInventoryBackfillDryRun().catch(() => null),
+      ])
       setBackfillPreview(data || [])
+      setBackfillHealth(health || null)
       setMessage(`Preview готов: ${data?.length || 0} строк`)
     } catch (err) {
       console.error('inventory backfill preview error', err)
@@ -2583,6 +2598,13 @@ function InventoryModule({ branchId, branchName }) {
           <button className="ghost small" onClick={loadBackfillPreview} disabled={backfillBusy}>{backfillBusy ? 'Проверка…' : 'Preview'}</button>
           <button className="primary small" onClick={runBackfill} disabled={backfillBusy}>Создать движения</button>
         </div>
+        {backfillHealth && (
+          <div className="inventory-autolink-health">
+            <span>Готово к переносу: <b>{backfillHealth.can_backfill || 0}</b></span>
+            <span>Уже связано: <b>{backfillHealth.already_linked || 0}</b></span>
+            <span>Недостаточно данных: <b>{backfillHealth.not_ready || 0}</b></span>
+          </div>
+        )}
         {!!backfillPreview.length && (
           <div className="table-wrap" style={{marginTop:12}}>
             <table className="inventory-backfill-table">
@@ -2599,6 +2621,17 @@ function InventoryModule({ branchId, branchName }) {
             </table>
           </div>
         )}
+      </div>
+
+      <div className="inventory-autolink-card">
+        <h3>Auto-Link · подготовка</h3>
+        <p>Автоматическая связка поступлений со складом подготовлена как отдельный SQL-шаг. Сейчас активен безопасный ручной режим: preview → backfill → проверка остатков.</p>
+        <div className="inventory-autolink-grid">
+          <div className="inventory-autolink-step ready"><span>Preview</span><strong>Готово</strong></div>
+          <div className="inventory-autolink-step ready"><span>Manual backfill</span><strong>Готово</strong></div>
+          <div className="inventory-autolink-step ready"><span>Duplicate guard</span><strong>Готово</strong></div>
+          <div className="inventory-autolink-step pending"><span>Trigger</span><strong>Отдельно</strong></div>
+        </div>
       </div>
 
       <div className="inventory-filter-row">
@@ -10543,6 +10576,98 @@ function RMSProV6Styles() {
 .rms-pro-shell .inventory-backfill-table td:last-child,
 .rms-pro-shell .inventory-backfill-table th:last-child{
   text-align:center;
+}
+
+/* v153 Inventory Auto-Link Prep + Safer Backfill */
+.rms-pro-shell .inventory-autolink-card{
+  border:1px solid #bfdbfe;
+  border-left:5px solid #2563eb;
+  background:linear-gradient(180deg,#fff 0%,#eff6ff 100%);
+  border-radius:20px;
+  padding:17px;
+  margin:14px 0;
+  box-shadow:0 12px 30px rgba(15,23,42,.045);
+}
+.rms-pro-shell .inventory-autolink-card h3{
+  margin:0;
+  color:#0f172a;
+  font-size:18px;
+  letter-spacing:-.02em;
+}
+.rms-pro-shell .inventory-autolink-card p{
+  margin:7px 0 0;
+  color:#1d4ed8;
+  font-size:13px;
+  line-height:1.45;
+}
+.rms-pro-shell .inventory-autolink-grid{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:10px;
+  margin-top:14px;
+}
+.rms-pro-shell .inventory-autolink-step{
+  border:1px solid rgba(191,219,254,.95);
+  background:#fff;
+  border-radius:14px;
+  padding:11px 12px;
+}
+.rms-pro-shell .inventory-autolink-step span{
+  display:block;
+  color:#64748b;
+  font-size:11.8px;
+  font-weight:850;
+}
+.rms-pro-shell .inventory-autolink-step strong{
+  display:block;
+  margin-top:5px;
+  color:#1d4ed8;
+  font-size:13.5px;
+  line-height:1.2;
+}
+.rms-pro-shell .inventory-autolink-step.ready{
+  border-color:#bbf7d0;
+  background:#ecfdf5;
+}
+.rms-pro-shell .inventory-autolink-step.ready strong{
+  color:#047857;
+}
+.rms-pro-shell .inventory-autolink-step.pending{
+  border-color:#fde68a;
+  background:#fffbeb;
+}
+.rms-pro-shell .inventory-autolink-step.pending strong{
+  color:#b45309;
+}
+.rms-pro-shell .inventory-autolink-health{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  flex-wrap:wrap;
+  margin-top:12px;
+}
+.rms-pro-shell .inventory-autolink-health span{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  min-height:26px;
+  padding:4px 10px;
+  border-radius:999px;
+  background:#fff;
+  border:1px solid #bbf7d0;
+  color:#047857;
+  font-size:12px;
+  font-weight:850;
+}
+@media(max-width:900px){
+  .rms-pro-shell .inventory-autolink-grid{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+}
+@media(max-width:620px){
+  .rms-pro-shell .inventory-autolink-grid{
+    grid-template-columns:1fr;
+  }
 }
 
 
