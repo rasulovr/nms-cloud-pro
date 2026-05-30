@@ -2778,6 +2778,18 @@ function InventoryModule({ branchId, branchName }) {
         </div>
       </div>
 
+      <div className="inventory-branch-location-card">
+        <h3>Branch → Stock Location Mapping</h3>
+        <p>Поступления поставщиков теперь могут попадать на склад конкретного филиала: BC1, BC2, BC3, BC4, BC5 или Bistro. Если филиал не найден, используется Central Warehouse.</p>
+        <div className="inventory-branch-location-grid">
+          <div className="inventory-branch-location-step ready"><span>BC1</span><strong>BC1 Stock</strong></div>
+          <div className="inventory-branch-location-step ready"><span>BC2</span><strong>BC2 Stock</strong></div>
+          <div className="inventory-branch-location-step ready"><span>BC3</span><strong>BC3 Stock</strong></div>
+          <div className="inventory-branch-location-step ready"><span>BC4 / BC5</span><strong>Mapped</strong></div>
+          <div className="inventory-branch-location-step warn"><span>Fallback</span><strong>Central</strong></div>
+        </div>
+      </div>
+
       <div className="inventory-filter-row">
         <input value={search} placeholder="Поиск по товару, локации или комментарию..." onChange={e => setSearch(e.target.value)} />
         <select value={movementFilter} onChange={e => setMovementFilter(e.target.value)}>
@@ -11185,6 +11197,74 @@ function RMSProV6Styles() {
 }
 @media(max-width:620px){
   .rms-pro-shell .inventory-product-id-fix-grid{grid-template-columns:1fr;}
+}
+
+/* v160 Supplier Purchase Branch -> Inventory Location Mapping */
+.rms-pro-shell .inventory-branch-location-card{
+  border:1px solid #bfdbfe;
+  border-left:5px solid #2563eb;
+  background:linear-gradient(180deg,#fff 0%,#eff6ff 100%);
+  border-radius:20px;
+  padding:17px;
+  margin:14px 0;
+  box-shadow:0 12px 30px rgba(15,23,42,.045);
+}
+.rms-pro-shell .inventory-branch-location-card h3{
+  margin:0;
+  color:#0f172a;
+  font-size:18px;
+  letter-spacing:-.02em;
+}
+.rms-pro-shell .inventory-branch-location-card p{
+  margin:7px 0 0;
+  color:#1d4ed8;
+  font-size:13px;
+  line-height:1.45;
+}
+.rms-pro-shell .inventory-branch-location-grid{
+  display:grid;
+  grid-template-columns:repeat(5,minmax(0,1fr));
+  gap:10px;
+  margin-top:14px;
+}
+.rms-pro-shell .inventory-branch-location-step{
+  border:1px solid #bfdbfe;
+  background:#fff;
+  border-radius:14px;
+  padding:11px 12px;
+}
+.rms-pro-shell .inventory-branch-location-step span{
+  display:block;
+  color:#64748b;
+  font-size:11.8px;
+  font-weight:850;
+}
+.rms-pro-shell .inventory-branch-location-step strong{
+  display:block;
+  margin-top:5px;
+  color:#1d4ed8;
+  font-size:13.5px;
+  line-height:1.2;
+}
+.rms-pro-shell .inventory-branch-location-step.ready{
+  border-color:#bbf7d0;
+  background:#ecfdf5;
+}
+.rms-pro-shell .inventory-branch-location-step.ready strong{
+  color:#047857;
+}
+.rms-pro-shell .inventory-branch-location-step.warn{
+  border-color:#fde68a;
+  background:#fffbeb;
+}
+.rms-pro-shell .inventory-branch-location-step.warn strong{
+  color:#b45309;
+}
+@media(max-width:1180px){
+  .rms-pro-shell .inventory-branch-location-grid{grid-template-columns:repeat(3,minmax(0,1fr));}
+}
+@media(max-width:680px){
+  .rms-pro-shell .inventory-branch-location-grid{grid-template-columns:1fr;}
 }
 
 
