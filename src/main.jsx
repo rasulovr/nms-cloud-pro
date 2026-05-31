@@ -2513,6 +2513,133 @@ function SecurityRecoveryCenter() {
 
 
 
+
+// v167 iiko Frontend Import Parser Pack helpers
+function rmsIikoNormalizeKey(key) {
+  return String(key || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, '')
+}
+
+function rmsIikoPick(row, keys) {
+  if (!row || typeof row !== 'object') return ''
+  const normalized = {}
+  Object.keys(row).forEach(k => { normalized[rmsIikoNormalizeKey(k)] = row[k] })
+  for (const key of keys) {
+    const nk = rmsIikoNormalizeKey(key)
+    if (Object.prototype.hasOwnProperty.call(normalized, nk)) return normalized[nk]
+  }
+  return ''
+}
+
+function rmsIikoToNumber(value) {
+  if (value === null || value === undefined || value === '') return 0
+  if (typeof value === 'number') return Number.isFinite(value) ? value : 0
+  const cleaned = String(value)
+    .replace(/\s/g, '')
+    .replace(/AZN|₼|ман|руб|₽/gi, '')
+    .replace(',', '.')
+    .replace(/[^\d.-]/g, '')
+  const n = Number(cleaned)
+  return Number.isFinite(n) ? n : 0
+}
+
+function rmsIikoToDate(value) {
+  if (!value) return null
+  const s = String(value).trim()
+  if (!s) return null
+  const iso = Date.parse(s)
+  if (!Number.isNaN(iso)) return new Date(iso).toISOString().slice(0, 10)
+  const m = s.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{2,4})/)
+  if (m) {
+    const dd = String(m[1]).padStart(2, '0')
+    const mm = String(m[2]).padStart(2, '0')
+    const yy = m[3].length === 2 ? `20${m[3]}` : m[3]
+    return `${yy}-${mm}-${dd}`
+  }
+  return null
+}
+
+function rmsIikoMapRawRowToPayload(row = {}, fallback = {}) {
+  const productName = rmsIikoPick(row, [
+    'product_name','name','item_name','dish_name','menu_item_name','product','nomenclature',
+    'Наименование','Название','Блюдо','Товар','Номенклатура','Dish','Item','Product'
+  ])
+  const categoryName = rmsIikoPick(row, [
+    'category_name','category','group','parent','Группа','Категория','Раздел','Category'
+  ])
+  const qty = rmsIikoToNumber(rmsIikoPick(row, [
+    'qty','quantity','count','amount','sold_qty','qty_sold','sales_qty',
+    'Кол-во','Количество','Количество продаж','Qty','Quantity'
+  ]))
+  const price = rmsIikoToNumber(rmsIikoPick(row, [
+    'price','unit_price','Цена','Цена без скидки','Price'
+  ]))
+  const discount = rmsIikoToNumber(rmsIikoPick(row, [
+    'discount','discount_sum','Скидка','Discount'
+  ]))
+  const total = rmsIikoToNumber(rmsIikoPick(row, [
+    'total','sum','amount_total','revenue','Сумма','Итого','Выручка','Total','Sum'
+  ])) || Math.max(qty * price - discount, 0)
+  const branchName = rmsIikoPick(row, [
+    'branch_name','branch','restaurant','restaurant_name','Филиал','Ресторан','Outlet'
+  ]) || fallback.branch_name || ''
+  const businessDate = rmsIikoToDate(rmsIikoPick(row, [
+    'business_date','date','Дата','Дата продажи','Sale date'
+  ]) || fallback.business_date)
+
+  return {
+    branch_name: branchName,
+    business_date: businessDate,
+    sale_datetime: rmsIikoPick(row, ['sale_datetime','datetime','Дата/время','DateTime']) || null,
+    iiko_order_id: rmsIikoPick(row, ['iiko_order_id','order_id','Order ID','Заказ']) || '',
+    iiko_cheque_id: rmsIikoPick(row, ['iiko_cheque_id','cheque_id','check_id','Чек']) || '',
+    iiko_product_id: rmsIikoPick(row, ['iiko_product_id','product_id','id товара','Product ID']) || '',
+    product_name: String(productName || '').trim(),
+    category_name: String(categoryName || '').trim(),
+    qty,
+    price,
+    discount,
+    total,
+    payment_type: rmsIikoPick(row, ['payment_type','payment','Оплата','Тип оплаты']) || '',
+    table_name: rmsIikoPick(row, ['table_name','table','Стол']) || '',
+    waiter_name: rmsIikoPick(row, ['waiter_name','waiter','Официант']) || '',
+    is_refund: String(rmsIikoPick(row, ['is_refund','refund','Возврат']) || '').toLowerCase().includes('true'),
+    raw_row: row,
+  }
+}
+
+async function rmsIikoImportParsedRows(fileName, rows, fallback = {}) {
+  if (!Array.isArray(rows) || !rows.length) throw new Error('Нет строк для импорта')
+  const importRes = await supabase.rpc('rms_iiko_sales_import_create', {
+    p_file_name: fileName || 'iiko import',
+    p_comment: 'Frontend parsed import'
+  })
+  if (importRes.error) throw importRes.error
+  const importId = importRes.data?.id || importRes.data?.import_id || importRes.data?.id
+
+  let inserted = 0
+  let skipped = 0
+  for (const raw of rows) {
+    const payload = rmsIikoMapRawRowToPayload(raw, fallback)
+    if (!payload.product_name || !payload.qty) {
+      skipped += 1
+      continue
+    }
+    const r = await supabase.rpc('rms_iiko_sales_item_insert_secure', {
+      p_import_id: importId,
+      p_payload: payload
+    })
+    if (r.error || r.data?.status === 'error') skipped += 1
+    else inserted += 1
+  }
+
+  const finalRes = await supabase.rpc('rms_iiko_sales_import_finalize', { p_import_id: importId })
+  if (finalRes.error) throw finalRes.error
+  return { import_id: importId, inserted, skipped, finalize: finalRes.data }
+}
+
 function InventoryModule({ branchId, branchName }) {
   const [loading, setLoading] = React.useState(false)
   const [balances, setBalances] = React.useState([])
