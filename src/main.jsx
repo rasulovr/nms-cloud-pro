@@ -184,6 +184,24 @@ async function rmsInventoryBackfillSupplierPurchases(locationId = null, limit = 
 // v166 iiko Import + Sales Consumption Forward Pack helpers
 
 // v169 iiko Import + Consumption + Inventory UX Consolidated helpers
+
+// v170 iiko Consumption Operational Pack helpers
+async function rmsIikoConsumptionOperationalHealth() {
+  return rmsInventoryRpcCall('rms_iiko_consumption_operational_health', {})
+}
+
+async function rmsInventoryApplyLatestConsumptionBatch() {
+  return rmsInventoryRpcCall('rms_inventory_sales_consumption_apply_latest_batch', {})
+}
+
+async function rmsInventoryCancelLatestConsumptionBatch() {
+  return rmsInventoryRpcCall('rms_inventory_sales_consumption_cancel_latest_batch', {})
+}
+
+async function rmsInventoryMenuAliasHealth() {
+  return rmsInventoryRpcCall('rms_inventory_menu_alias_health', {})
+}
+
 async function rmsIikoLatestImportDashboard() {
   return rmsInventoryRpcCall('rms_iiko_latest_import_dashboard', {})
 }
@@ -2688,6 +2706,8 @@ function InventoryModule({ branchId, branchName }) {
   const [salesUnmappedReport, setSalesUnmappedReport] = React.useState(null)
   const [iikoLatestDashboard, setIikoLatestDashboard] = React.useState(null)
   const [consumptionDraftReadiness, setConsumptionDraftReadiness] = React.useState(null)
+  const [iikoOperationalHealth, setIikoOperationalHealth] = React.useState(null)
+  const [menuAliasHealth, setMenuAliasHealth] = React.useState(null)
   const [search, setSearch] = React.useState('')
   const [movementFilter, setMovementFilter] = React.useState('all')
 
@@ -2715,6 +2735,38 @@ function InventoryModule({ branchId, branchName }) {
   }, [])
 
   React.useEffect(() => { loadInventory() }, [loadInventory])
+
+  const applyLatestConsumptionBatch = async () => {
+    setBackfillBusy(true)
+    setMessage('')
+    try {
+      const data = await rmsInventoryApplyLatestConsumptionBatch()
+      setMessage(`Последний draft применён: applied ${data?.applied || 0}, remaining ${data?.skipped_or_remaining || 0}`)
+      await loadInventoryConsolidatedReports()
+      await loadInventory()
+    } catch (err) {
+      console.error('apply latest consumption error', err)
+      setMessage(err?.message || 'Не удалось применить последний draft')
+    } finally {
+      setBackfillBusy(false)
+    }
+  }
+
+  const cancelLatestConsumptionBatch = async () => {
+    setBackfillBusy(true)
+    setMessage('')
+    try {
+      const data = await rmsInventoryCancelLatestConsumptionBatch()
+      setMessage(`Последний consumption batch отменён: movements ${data?.movements_cancelled || 0}`)
+      await loadInventoryConsolidatedReports()
+      await loadInventory()
+    } catch (err) {
+      console.error('cancel latest consumption error', err)
+      setMessage(err?.message || 'Не удалось отменить последний batch')
+    } finally {
+      setBackfillBusy(false)
+    }
+  }
 
   const deduplicateIikoRows = async () => {
     setBackfillBusy(true)
@@ -2865,7 +2917,7 @@ function InventoryModule({ branchId, branchName }) {
     setBackfillBusy(true)
     setMessage('')
     try {
-      const [dash, prod, wo, syncHealth, bazarHealth, salesHealth, salesRecipeHealth, salesConsolidatedHealth, iikoHealth, iikoConsolidated, unmappedReport, latestImportDash, draftReady] = await Promise.all([
+      const [dash, prod, wo, syncHealth, bazarHealth, salesHealth, salesRecipeHealth, salesConsolidatedHealth, iikoHealth, iikoConsolidated, unmappedReport, latestImportDash, draftReady, operationalHealth, aliasHealth] = await Promise.all([
         rmsInventoryDashboardReport().catch(() => null),
         rmsInventoryProductionPreview().catch(() => null),
         rmsInventoryWriteOffReport().catch(() => null),
@@ -2879,6 +2931,8 @@ function InventoryModule({ branchId, branchName }) {
         rmsInventorySalesUnmappedReport().catch(() => null),
         rmsIikoLatestImportDashboard().catch(() => null),
         rmsInventoryConsumptionDraftReadiness().catch(() => null),
+        rmsIikoConsumptionOperationalHealth().catch(() => null),
+        rmsInventoryMenuAliasHealth().catch(() => null),
       ])
       setDashboardReport(dash || null)
       setProductionReport(prod || null)
@@ -2893,6 +2947,8 @@ function InventoryModule({ branchId, branchName }) {
       setSalesUnmappedReport(unmappedReport || null)
       setIikoLatestDashboard(latestImportDash || null)
       setConsumptionDraftReadiness(draftReady || null)
+      setIikoOperationalHealth(operationalHealth || null)
+      setMenuAliasHealth(aliasHealth || null)
       setMessage('Складские отчёты обновлены')
     } catch (err) {
       console.error('inventory reports error', err)
@@ -3176,6 +3232,25 @@ function InventoryModule({ branchId, branchName }) {
           <div className="inventory-v169-consolidated-step warn"><span>Unmapped</span><strong>{salesUnmappedReport?.unmapped_count ?? 0}</strong></div>
           <div className="inventory-v169-consolidated-step"><span>Draft ready</span><strong>{consumptionDraftReadiness?.ready_rows ?? 0}</strong></div>
           <div className="inventory-v169-consolidated-step pending"><span>Auto writeoff</span><strong>Off</strong></div>
+        </div>
+      </div>
+
+      <div className="inventory-v170-operational-card">
+        <h3>v170 · Consumption Operational Control</h3>
+        <p>Объединённый operational-слой: alias mapping для iiko названий, контроль готовности техкарт, создание draft, ручное применение последнего batch и быстрая отмена. Auto-writeoff выключен.</p>
+        <div className="action-row" style={{marginTop:12}}>
+          <button className="ghost small" onClick={loadInventoryConsolidatedReports} disabled={backfillBusy}>{backfillBusy ? 'Проверка…' : 'Обновить operational status'}</button>
+          <button className="primary small" onClick={createSalesConsumptionDraft} disabled={backfillBusy}>Создать draft</button>
+          <button className="primary small" onClick={applyLatestConsumptionBatch} disabled={backfillBusy}>Применить последний draft</button>
+          <button className="ghost small danger" onClick={cancelLatestConsumptionBatch} disabled={backfillBusy}>Отменить последний batch</button>
+        </div>
+        <div className="inventory-v170-operational-grid">
+          <div className="inventory-v170-operational-step ready"><span>Valid sales</span><strong>{iikoOperationalHealth?.valid_sales_rows ?? iikoLatestDashboard?.valid_rows ?? 0}</strong></div>
+          <div className="inventory-v170-operational-step"><span>Aliases</span><strong>{menuAliasHealth?.aliases ?? 0}</strong></div>
+          <div className="inventory-v170-operational-step warn"><span>Unmapped</span><strong>{iikoOperationalHealth?.unmapped_sales ?? salesUnmappedReport?.unmapped_count ?? 0}</strong></div>
+          <div className="inventory-v170-operational-step"><span>Draft batches</span><strong>{iikoOperationalHealth?.draft_batches ?? 0}</strong></div>
+          <div className="inventory-v170-operational-step"><span>Applied items</span><strong>{iikoOperationalHealth?.applied_items ?? 0}</strong></div>
+          <div className="inventory-v170-operational-step pending"><span>Auto writeoff</span><strong>Off</strong></div>
         </div>
       </div>
 
