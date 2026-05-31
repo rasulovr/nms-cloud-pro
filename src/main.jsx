@@ -3026,19 +3026,314 @@ function InventoryModule({ branchId, branchName }) {
         </div>
       </div>
 
-      <div className="inventory-clean-summary-card">
-        <div className="inventory-clean-summary-head">
-          <div>
-            <h3>Склад</h3>
-            <p>Краткий контроль остатков и операций склада.</p>
-          </div>
-          <button className="ghost small" onClick={loadInventoryConsolidatedReports} disabled={backfillBusy}>{backfillBusy ? 'Обновление…' : 'Обновить статус'}</button>
+      <div className="inventory-warning-card">
+        <h3>Складской модуль · стартовый режим</h3>
+        <p>Сейчас склад работает в ручном режиме: можно добавлять движения, видеть остатки и контролировать отрицательные позиции. Автоматическая связь с закупками поставщиков будет следующим этапом.</p>
+        <div className="inventory-action-grid">
+          <div className="inventory-action-card"><span>Приход</span><strong>ручной / purchase</strong></div>
+          <div className="inventory-action-card"><span>Списание</span><strong>write_off</strong></div>
+          <div className="inventory-action-card"><span>Перемещение</span><strong>transfer</strong></div>
+          <div className="inventory-action-card"><span>Производство</span><strong>production</strong></div>
         </div>
-        <div className="inventory-clean-summary-grid">
-          <div className="inventory-clean-summary-step good"><span>Позиции с остатком</span><strong>{positiveRows}</strong></div>
-          <div className="inventory-clean-summary-step"><span>Сумма остатков</span><strong>{money(totalCost)}</strong></div>
-          <div className={`inventory-clean-summary-step ${negativeRows ? 'bad' : 'good'}`}><span>Отрицательные остатки</span><strong>{negativeRows}</strong></div>
-          <div className="inventory-clean-summary-step"><span>Операций</span><strong>{movements.length}</strong></div>
+      </div>
+
+      <div className="inventory-control-card">
+        <h3>Контроль движений склада</h3>
+        <p>Склад теперь показывает базовые сигналы: приход, списания, отрицательные остатки и фильтрацию по товару/типу движения.</p>
+        <div className="inventory-control-grid">
+          <div className="inventory-control-step good"><span>Приходы</span><strong>{purchaseCount}</strong></div>
+          <div className="inventory-control-step bad"><span>Списания</span><strong>{writeOffCount}</strong></div>
+          <div className={`inventory-control-step ${negativeRows ? 'bad' : 'good'}`}><span>Отрицательные остатки</span><strong>{negativeRows}</strong></div>
+          <div className="inventory-control-step warn"><span>Автосвязь с поставщиками</span><strong>Следующий этап</strong></div>
+        </div>
+      </div>
+
+      <div className="inventory-supplier-link-card">
+        <h3>Поставщики → Склад</h3>
+        <p>Подготовлена связь поступлений от поставщиков со складскими движениями. Автосоздание движений включим после проверки схемы supplier_purchase_items.</p>
+        <div className="inventory-supplier-link-grid">
+          <div className="inventory-supplier-link-step"><span>Purchase movement</span><strong>RPC готов</strong></div>
+          <div className="inventory-supplier-link-step"><span>Duplicate guard</span><strong>Готово</strong></div>
+          <div className="inventory-supplier-link-step"><span>Backfill view</span><strong>Готово</strong></div>
+          <div className="inventory-supplier-link-step pending"><span>Auto trigger</span><strong>После теста</strong></div>
+        </div>
+      </div>
+
+      <div className="inventory-schema-check-card">
+        <h3>Supplier Purchase Items · Schema Check</h3>
+        <p>Перед автосвязкой закупок со складом нужно подтвердить реальные колонки supplier_purchase_items. В v149 добавлен schema-check и безопасный backfill-prep без trigger.</p>
+        <div className="inventory-schema-check-grid">
+          <div className="inventory-schema-check-step ready"><span>Schema view</span><strong>Готово</strong></div>
+          <div className="inventory-schema-check-step ready"><span>Mapping check</span><strong>Готово</strong></div>
+          <div className="inventory-schema-check-step ready"><span>Backfill RPC</span><strong>Prepared</strong></div>
+          <div className="inventory-schema-check-step pending"><span>Auto trigger</span><strong>После теста</strong></div>
+        </div>
+      </div>
+
+      <div className="inventory-backfill-card">
+        <h3>Backfill: Поставщики → Склад</h3>
+        <p>Безопасный перенос уже введённых поступлений поставщиков в складские движения. Auto-trigger пока не включён.</p>
+        <div className="action-row" style={{marginTop:12}}>
+          <button className="ghost small" onClick={loadBackfillPreview} disabled={backfillBusy}>{backfillBusy ? 'Проверка…' : 'Preview'}</button>
+          <button className="primary small" onClick={runBackfill} disabled={backfillBusy}>Создать движения</button>
+        </div>
+        {backfillHealth && (
+          <div className="inventory-autolink-health">
+            <span>Готово к переносу: <b>{backfillHealth.can_backfill || 0}</b></span>
+            <span>Уже связано: <b>{backfillHealth.already_linked || 0}</b></span>
+            <span>Недостаточно данных: <b>{backfillHealth.not_ready || 0}</b></span>
+          </div>
+        )}
+        {!!backfillPreview.length && (
+          <div className="table-wrap" style={{marginTop:12}}>
+            <table className="inventory-backfill-table">
+              <thead><tr><th>Товар</th><th>Кол-во</th><th>Ед.</th><th>Цена</th><th>Статус</th></tr></thead>
+              <tbody>
+                {backfillPreview.slice(0, 10).map(r => <tr key={r.purchase_item_id}>
+                  <td><b>{r.item_name || 'Без названия'}</b></td>
+                  <td>{fmt(r.quantity)}</td>
+                  <td>{r.unit || 'unit'}</td>
+                  <td>{fmt(r.unit_cost)}</td>
+                  <td>{r.already_linked ? <span className="inventory-link-chip pending">уже связано</span> : r.can_backfill ? <span className="inventory-link-chip">готово</span> : <span className="inventory-writeoff-chip">недостаточно данных</span>}</td>
+                </tr>)}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      <div className="inventory-autolink-card">
+        <h3>Auto-Link · подготовка</h3>
+        <p>Автоматическая связка поступлений со складом подготовлена как отдельный SQL-шаг. Сейчас активен безопасный ручной режим: preview → backfill → проверка остатков.</p>
+        <div className="inventory-autolink-grid">
+          <div className="inventory-autolink-step ready"><span>Preview</span><strong>Готово</strong></div>
+          <div className="inventory-autolink-step ready"><span>Manual backfill</span><strong>Готово</strong></div>
+          <div className="inventory-autolink-step ready"><span>Duplicate guard</span><strong>Готово</strong></div>
+          <div className="inventory-autolink-step pending"><span>Trigger</span><strong>Отдельно</strong></div>
+        </div>
+      </div>
+
+      <div className="inventory-validation-card">
+        <h3>Auto-Link Validation</h3>
+        <p>Контрольный слой перед автоматическим trigger: проверяет готовность связки поставщиков со складом, количество строк для переноса и текущий статус auto-trigger.</p>
+        <div className="action-row" style={{marginTop:12}}>
+          <button className="ghost small" onClick={loadAutoLinkValidation} disabled={backfillBusy}>{backfillBusy ? 'Проверка…' : 'Проверить Auto-Link'}</button>
+        </div>
+        {validationHealth && (
+          <div className="inventory-validation-grid">
+            <div className="inventory-validation-step ready"><span>Supplier link</span><strong>{validationHealth?.supplier_link?.status || 'prepared'}</strong></div>
+            <div className="inventory-validation-step ready"><span>Can backfill</span><strong>{validationHealth?.backfill_dry_run?.can_backfill || 0}</strong></div>
+            <div className="inventory-validation-step warn"><span>Already linked</span><strong>{validationHealth?.backfill_dry_run?.already_linked || 0}</strong></div>
+            <div className="inventory-validation-step pending"><span>Auto trigger</span><strong>{validationHealth?.auto_trigger || 'not_enabled'}</strong></div>
+          </div>
+        )}
+      </div>
+
+      <div className="inventory-consolidated-card">
+        <h3>Inventory Consolidated Control</h3>
+        <p>Единый контроль склада: остатки, списания, движения, backfill от поставщиков, отрицательные остатки и подготовка production/полуфабрикатов.</p>
+        <div className="action-row" style={{marginTop:12}}>
+          <button className="ghost small" onClick={loadInventoryConsolidatedReports} disabled={backfillBusy}>{backfillBusy ? 'Загрузка…' : 'Обновить складские отчёты'}</button>
+        </div>
+        <div className="inventory-consolidated-grid">
+          <div className="inventory-consolidated-step ready"><span>Остатки</span><strong>{dashboardReport?.balance_rows ?? balances.length}</strong></div>
+          <div className="inventory-consolidated-step warn"><span>Отрицательные</span><strong>{dashboardReport?.negative_stock_rows ?? negativeRows}</strong></div>
+          <div className="inventory-consolidated-step"><span>Списания</span><strong>{writeOffReport?.writeoff_count ?? writeOffCount}</strong></div>
+          <div className="inventory-consolidated-step ready"><span>Backfill ready</span><strong>{dashboardReport?.backfill_can_create ?? backfillHealth?.can_backfill ?? 0}</strong></div>
+          <div className="inventory-consolidated-step pending"><span>Production</span><strong>{productionReport?.status || 'prep'}</strong></div>
+        </div>
+      </div>
+
+      <div className="inventory-supplier-sync-card">
+        <h3>Поступления поставщиков → Склад</h3>
+        <p>После установки SQL v157 строки поступлений поставщиков автоматически создают движение склада типа <b>purchase</b>. При изменении количества/цены движение обновляется, при удалении строки — отключается через deleted_at.</p>
+        <div className="action-row" style={{marginTop:12}}>
+          <button className="ghost small" onClick={loadInventoryConsolidatedReports} disabled={backfillBusy}>{backfillBusy ? 'Проверка…' : 'Проверить синхронизацию'}</button>
+        </div>
+        <div className="inventory-supplier-sync-grid">
+          <div className="inventory-supplier-sync-step ready"><span>Auto insert</span><strong>Готово</strong></div>
+          <div className="inventory-supplier-sync-step ready"><span>Auto update</span><strong>Готово</strong></div>
+          <div className="inventory-supplier-sync-step ready"><span>Auto delete</span><strong>Soft delete</strong></div>
+          <div className="inventory-supplier-sync-step"><span>Linked movements</span><strong>{supplierSyncHealth?.linked_movements ?? dashboardReport?.supplier_auto_link?.supplier_link?.linked_movements ?? 0}</strong></div>
+          <div className="inventory-supplier-sync-step pending"><span>Trigger</span><strong>{supplierSyncHealth?.trigger_status || 'после SQL'}</strong></div>
+        </div>
+      </div>
+
+      <div className="inventory-name-location-card">
+        <h3>Supplier Stock Naming & Location</h3>
+        <p>Если в остатках видно “Без названия” или “Без локации”, нужно выполнить SQL v158: он улучшает определение названия товара и автоматически привязывает приход к складской локации.</p>
+        <div className="inventory-name-location-grid">
+          <div className="inventory-name-location-step ready"><span>Product resolver</span><strong>Улучшен</strong></div>
+          <div className="inventory-name-location-step ready"><span>Supplier product</span><strong>Поиск по ID</strong></div>
+          <div className="inventory-name-location-step ready"><span>Location resolver</span><strong>По branch</strong></div>
+          <div className="inventory-name-location-step"><span>Old rows</span><strong>Resync SQL</strong></div>
+        </div>
+      </div>
+
+      <div className="inventory-branch-location-card">
+        <h3>Branch → Stock Location Mapping</h3>
+        <p>Поступления поставщиков теперь могут попадать на склад конкретного филиала: BC1, BC2, BC3, BC4, BC5 или Bistro. Если филиал не найден, используется Central Warehouse.</p>
+        <div className="inventory-branch-location-grid">
+          <div className="inventory-branch-location-step ready"><span>BC1</span><strong>BC1 Stock</strong></div>
+          <div className="inventory-branch-location-step ready"><span>BC2</span><strong>BC2 Stock</strong></div>
+          <div className="inventory-branch-location-step ready"><span>BC3</span><strong>BC3 Stock</strong></div>
+          <div className="inventory-branch-location-step ready"><span>BC4 / BC5</span><strong>Mapped</strong></div>
+          <div className="inventory-branch-location-step warn"><span>Fallback</span><strong>Central</strong></div>
+        </div>
+      </div>
+
+      <div className="inventory-bazar-sync-card">
+        <h3>Базар → Склад</h3>
+        <p>Ежедневный базар с позициями будет попадать на склад как приход <b>purchase</b>. Если филиал указан — движение попадёт в склад филиала, если нет — в Central Warehouse.</p>
+        <div className="action-row" style={{marginTop:12}}>
+          <button className="ghost small" onClick={loadInventoryConsolidatedReports} disabled={backfillBusy}>{backfillBusy ? 'Проверка…' : 'Проверить базар-синхронизацию'}</button>
+        </div>
+        <div className="inventory-bazar-sync-grid">
+          <div className="inventory-bazar-sync-step ready"><span>Auto insert</span><strong>Готово</strong></div>
+          <div className="inventory-bazar-sync-step ready"><span>Auto update</span><strong>Готово</strong></div>
+          <div className="inventory-bazar-sync-step ready"><span>Auto delete</span><strong>Soft delete</strong></div>
+          <div className="inventory-bazar-sync-step"><span>Linked movements</span><strong>{bazarSyncHealth?.linked_movements ?? 0}</strong></div>
+          <div className="inventory-bazar-sync-step pending"><span>Trigger</span><strong>{bazarSyncHealth?.trigger_status || 'после SQL'}</strong></div>
+        </div>
+      </div>
+
+      <div className="inventory-sales-consumption-card">
+        <h3>iiko Sales → Inventory Consumption</h3>
+        <p>Следующий слой склада: после импорта продаж iiko RMS сможет рассчитать теоретический расход ингредиентов по техкартам и создать складские движения расхода. В v162 включён безопасный prep-режим без автоматического списания.</p>
+        <div className="action-row" style={{marginTop:12}}>
+          <button className="ghost small" onClick={loadInventoryConsolidatedReports} disabled={backfillBusy}>{backfillBusy ? 'Проверка…' : 'Проверить sales consumption'}</button>
+        </div>
+        <div className="inventory-sales-consumption-grid">
+          <div className="inventory-sales-consumption-step ready"><span>Sales schema</span><strong>{salesConsumptionHealth?.sales_schema_status || 'prep'}</strong></div>
+          <div className="inventory-sales-consumption-step ready"><span>Recipe mapping</span><strong>{salesConsumptionHealth?.recipe_mapping_status || 'prep'}</strong></div>
+          <div className="inventory-sales-consumption-step"><span>Batches</span><strong>{salesConsumptionHealth?.batches || 0}</strong></div>
+          <div className="inventory-sales-consumption-step"><span>Consumption rows</span><strong>{salesConsumptionHealth?.items || 0}</strong></div>
+          <div className="inventory-sales-consumption-step pending"><span>Auto write-off</span><strong>Off</strong></div>
+        </div>
+      </div>
+
+      <div className="inventory-sales-preview-card">
+        <h3>iiko Sales Mapping → Recipe Consumption Preview</h3>
+        <p>Preview-слой показывает, сколько строк продаж можно связать с меню и техкартами, и сколько будущих ingredient consumption rows можно рассчитать. Склад пока не списывается.</p>
+        <div className="action-row" style={{marginTop:12}}>
+          <button className="ghost small" onClick={loadInventoryConsolidatedReports} disabled={backfillBusy}>{backfillBusy ? 'Проверка…' : 'Проверить mapping preview'}</button>
+        </div>
+        <div className="inventory-sales-preview-grid">
+          <div className="inventory-sales-preview-step ready"><span>Sales table</span><strong>{salesRecipeMappingHealth?.detected_sales_table || salesConsumptionHealth?.detected_sales_table || '—'}</strong></div>
+          <div className="inventory-sales-preview-step"><span>Mapped sales</span><strong>{salesRecipeMappingHealth?.mapped_sales_rows ?? 0}</strong></div>
+          <div className="inventory-sales-preview-step"><span>Unmapped sales</span><strong>{salesRecipeMappingHealth?.unmapped_sales_rows ?? 0}</strong></div>
+          <div className="inventory-sales-preview-step"><span>Recipe rows</span><strong>{salesRecipeMappingHealth?.recipe_rows ?? 0}</strong></div>
+          <div className="inventory-sales-preview-step pending"><span>Apply write-off</span><strong>Off</strong></div>
+        </div>
+      </div>
+
+      <div className="inventory-sales-apply-card">
+        <h3>Sales Consumption Draft / Apply</h3>
+        <p>Следующий объединённый слой: из preview продаж iiko можно создать draft расхода ингредиентов, проверить его, а затем вручную применить как складское списание. Автоматическое списание выключено.</p>
+        <div className="action-row" style={{marginTop:12}}>
+          <button className="ghost small" onClick={loadInventoryConsolidatedReports} disabled={backfillBusy}>{backfillBusy ? 'Проверка…' : 'Обновить status'}</button>
+          <button className="primary small" onClick={createSalesConsumptionDraft} disabled={backfillBusy}>Создать draft</button>
+        </div>
+        <div className="inventory-sales-apply-grid">
+          <div className="inventory-sales-apply-step ready"><span>Preview rows</span><strong>{salesConsumptionConsolidatedHealth?.preview_rows ?? salesRecipeMappingHealth?.recipe_rows ?? 0}</strong></div>
+          <div className="inventory-sales-apply-step"><span>Draft batches</span><strong>{salesConsumptionConsolidatedHealth?.draft_batches ?? 0}</strong></div>
+          <div className="inventory-sales-apply-step"><span>Draft items</span><strong>{salesConsumptionConsolidatedHealth?.draft_items ?? 0}</strong></div>
+          <div className="inventory-sales-apply-step warn"><span>Applied items</span><strong>{salesConsumptionConsolidatedHealth?.applied_items ?? 0}</strong></div>
+          <div className="inventory-sales-apply-step pending"><span>Auto apply</span><strong>Off</strong></div>
+        </div>
+      </div>
+
+      <div className="inventory-iiko-forward-card">
+        <h3>iiko Import → Mapping → Consumption · Forward Pack</h3>
+        <p>Единый контроль следующего блока: качество импортированных продаж, нормализация строк, unmapped позиции, preview расхода ингредиентов и готовность draft/apply. Auto-writeoff остаётся выключенным.</p>
+        <div className="action-row" style={{marginTop:12}}>
+          <button className="ghost small" onClick={loadInventoryConsolidatedReports} disabled={backfillBusy}>{backfillBusy ? 'Проверка…' : 'Обновить полный status'}</button>
+          <button className="ghost small" onClick={normalizeIikoRows} disabled={backfillBusy}>Нормализовать iiko строки</button>
+          <button className="primary small" onClick={createSalesConsumptionDraft} disabled={backfillBusy}>Создать draft consumption</button>
+        </div>
+        <div className="inventory-iiko-forward-grid">
+          <div className="inventory-iiko-forward-step"><span>Imported rows</span><strong>{iikoImportConsolidatedHealth?.import?.total_rows ?? iikoImportHealth?.total_rows ?? 0}</strong></div>
+          <div className="inventory-iiko-forward-step ready"><span>Valid rows</span><strong>{iikoImportConsolidatedHealth?.import?.valid_rows ?? 0}</strong></div>
+          <div className="inventory-iiko-forward-step warn"><span>Unmapped sales</span><strong>{salesUnmappedReport?.unmapped_count ?? salesRecipeMappingHealth?.unmapped_sales_rows ?? 0}</strong></div>
+          <div className="inventory-iiko-forward-step"><span>Preview rows</span><strong>{iikoImportConsolidatedHealth?.consumption?.preview_rows ?? salesConsumptionConsolidatedHealth?.preview_rows ?? 0}</strong></div>
+          <div className="inventory-iiko-forward-step"><span>Draft items</span><strong>{iikoImportConsolidatedHealth?.consumption?.draft_items ?? salesConsumptionConsolidatedHealth?.draft_items ?? 0}</strong></div>
+          <div className="inventory-iiko-forward-step pending"><span>Auto writeoff</span><strong>Off</strong></div>
+        </div>
+      </div>
+
+      <div className="inventory-v169-consolidated-card">
+        <h3>v169 · iiko Import & Consumption Control</h3>
+        <p>Объединённый слой после v168: сохранение продаж в iiko_sales_items, контроль последнего импорта, защита от дублей, unmapped позиции и readiness для draft consumption. Auto-writeoff остаётся выключенным.</p>
+        <div className="action-row" style={{marginTop:12}}>
+          <button className="ghost small" onClick={loadInventoryConsolidatedReports} disabled={backfillBusy}>{backfillBusy ? 'Проверка…' : 'Обновить v169 status'}</button>
+          <button className="ghost small" onClick={deduplicateIikoRows} disabled={backfillBusy}>Очистить дубли iiko</button>
+          <button className="primary small" onClick={createSalesConsumptionDraft} disabled={backfillBusy}>Создать draft consumption</button>
+        </div>
+        <div className="inventory-v169-consolidated-grid">
+          <div className="inventory-v169-consolidated-step"><span>Latest import</span><strong>{iikoLatestDashboard?.latest_import_status || '—'}</strong></div>
+          <div className="inventory-v169-consolidated-step ready"><span>Valid iiko rows</span><strong>{iikoLatestDashboard?.valid_rows ?? iikoImportHealth?.valid_rows ?? 0}</strong></div>
+          <div className="inventory-v169-consolidated-step warn"><span>Duplicates</span><strong>{iikoLatestDashboard?.duplicate_rows ?? 0}</strong></div>
+          <div className="inventory-v169-consolidated-step warn"><span>Unmapped</span><strong>{salesUnmappedReport?.unmapped_count ?? 0}</strong></div>
+          <div className="inventory-v169-consolidated-step"><span>Draft ready</span><strong>{consumptionDraftReadiness?.ready_rows ?? 0}</strong></div>
+          <div className="inventory-v169-consolidated-step pending"><span>Auto writeoff</span><strong>Off</strong></div>
+        </div>
+      </div>
+
+      <div className="inventory-v170-operational-card">
+        <h3>v170 · Consumption Operational Control</h3>
+        <p>Объединённый operational-слой: alias mapping для iiko названий, контроль готовности техкарт, создание draft, ручное применение последнего batch и быстрая отмена. Auto-writeoff выключен.</p>
+        <div className="action-row" style={{marginTop:12}}>
+          <button className="ghost small" onClick={loadInventoryConsolidatedReports} disabled={backfillBusy}>{backfillBusy ? 'Проверка…' : 'Обновить operational status'}</button>
+          <button className="primary small" onClick={createSalesConsumptionDraft} disabled={backfillBusy}>Создать draft</button>
+          <button className="primary small" onClick={applyLatestConsumptionBatch} disabled={backfillBusy}>Применить последний draft</button>
+          <button className="ghost small danger" onClick={cancelLatestConsumptionBatch} disabled={backfillBusy}>Отменить последний batch</button>
+        </div>
+        <div className="inventory-v170-operational-grid">
+          <div className="inventory-v170-operational-step ready"><span>Valid sales</span><strong>{iikoOperationalHealth?.valid_sales_rows ?? iikoLatestDashboard?.valid_rows ?? 0}</strong></div>
+          <div className="inventory-v170-operational-step"><span>Aliases</span><strong>{menuAliasHealth?.aliases ?? 0}</strong></div>
+          <div className="inventory-v170-operational-step warn"><span>Unmapped</span><strong>{iikoOperationalHealth?.unmapped_sales ?? salesUnmappedReport?.unmapped_count ?? 0}</strong></div>
+          <div className="inventory-v170-operational-step"><span>Draft batches</span><strong>{iikoOperationalHealth?.draft_batches ?? 0}</strong></div>
+          <div className="inventory-v170-operational-step"><span>Applied items</span><strong>{iikoOperationalHealth?.applied_items ?? 0}</strong></div>
+          <div className="inventory-v170-operational-step pending"><span>Auto writeoff</span><strong>Off</strong></div>
+        </div>
+      </div>
+
+      <div className="inventory-v171-hardening-card">
+        <h3>v171 · iiko Import Operational Hardening</h3>
+        <p>Контроль качества реального импорта: дата, филиал, валидные строки, дубли, пустые строки, mapping readiness и draft readiness. Auto-writeoff выключен.</p>
+        <div className="action-row" style={{marginTop:12}}>
+          <button className="ghost small" onClick={loadInventoryConsolidatedReports} disabled={backfillBusy}>{backfillBusy ? 'Проверка…' : 'Обновить hardening status'}</button>
+          <button className="ghost small danger" onClick={cleanupIikoImportProblems} disabled={backfillBusy}>Очистить проблемы импорта</button>
+          <button className="primary small" onClick={createSalesConsumptionDraft} disabled={backfillBusy}>Создать draft</button>
+        </div>
+        <div className="inventory-v171-hardening-grid">
+          <div className="inventory-v171-hardening-step ready"><span>Valid rows</span><strong>{iikoOperationalAudit?.valid_rows ?? 0}</strong></div>
+          <div className="inventory-v171-hardening-step warn"><span>No branch</span><strong>{iikoBranchDateQuality?.rows_without_branch ?? 0}</strong></div>
+          <div className="inventory-v171-hardening-step warn"><span>No date</span><strong>{iikoBranchDateQuality?.rows_without_date ?? 0}</strong></div>
+          <div className="inventory-v171-hardening-step warn"><span>Duplicates</span><strong>{iikoOperationalAudit?.duplicate_groups ?? 0}</strong></div>
+          <div className="inventory-v171-hardening-step"><span>Ready draft</span><strong>{consumptionDraftReadiness?.ready_rows ?? 0}</strong></div>
+          <div className="inventory-v171-hardening-step pending"><span>Auto writeoff</span><strong>Off</strong></div>
+        </div>
+      </div>
+
+      <div className="inventory-v172-final-card">
+        <h3>v172 · Final Inventory Section</h3>
+        <p>Итоговая структура раздела: приход поставщиков и базара попадает на склад, остатки считаются по движениям, iiko импорт сохраняет продажи, consumption preview считает теоретический расход по техкартам, draft/apply выполняется вручную. Auto-writeoff выключен.</p>
+        <div className="action-row" style={{marginTop:12}}>
+          <button className="ghost small" onClick={loadInventoryConsolidatedReports} disabled={backfillBusy}>{backfillBusy ? 'Проверка…' : 'Обновить итоговый status'}</button>
+          <button className="primary small" onClick={createSalesConsumptionDraft} disabled={backfillBusy}>Создать draft списания</button>
+          <button className="primary small" onClick={applyLatestConsumptionBatch} disabled={backfillBusy}>Применить draft</button>
+          <button className="ghost small danger" onClick={cancelLatestConsumptionBatch} disabled={backfillBusy}>Отменить batch</button>
+        </div>
+        <div className="inventory-v172-final-grid">
+          <div className="inventory-v172-final-step ready"><span>Supplier → Stock</span><strong>{inventoryFinalHealth?.supplier_stock || supplierSyncHealth?.trigger_status || 'ready'}</strong></div>
+          <div className="inventory-v172-final-step ready"><span>Bazar → Stock</span><strong>{inventoryFinalHealth?.bazar_stock || bazarSyncHealth?.trigger_status || 'ready'}</strong></div>
+          <div className="inventory-v172-final-step"><span>Stock rows</span><strong>{inventoryFinalHealth?.stock_rows ?? dashboardReport?.balance_rows ?? balances.length}</strong></div>
+          <div className="inventory-v172-final-step warn"><span>Negative</span><strong>{inventoryFinalHealth?.negative_stock_rows ?? dashboardReport?.negative_stock_rows ?? negativeRows}</strong></div>
+          <div className="inventory-v172-final-step"><span>Valid iiko rows</span><strong>{inventoryFinalHealth?.valid_iiko_rows ?? iikoOperationalAudit?.valid_rows ?? 0}</strong></div>
+          <div className="inventory-v172-final-step warn"><span>Unmapped</span><strong>{inventoryFinalHealth?.unmapped_sales ?? salesUnmappedReport?.unmapped_count ?? 0}</strong></div>
+          <div className="inventory-v172-final-step"><span>Draft ready</span><strong>{inventoryFinalHealth?.draft_ready_rows ?? consumptionDraftReadiness?.ready_rows ?? 0}</strong></div>
+          <div className="inventory-v172-final-step pending"><span>Auto writeoff</span><strong>Off</strong></div>
         </div>
       </div>
 
@@ -3086,7 +3381,7 @@ function InventoryModule({ branchId, branchName }) {
         <div className="card-head">
           <div>
             <h3>Добавить операцию</h3>
-            <p className="hint">Добавьте приход, списание или корректировку товара.</p>
+            <p className="hint">Ручной режим: приход, списание, корректировка, перемещение или производство.</p>
           </div>
         </div>
         <div className="form-grid">
@@ -3129,7 +3424,7 @@ function InventoryModule({ branchId, branchName }) {
       </div>
 
       <div className="card span-2">
-        <div className="card-head"><div><h3>Журнал движений</h3><p className="hint">Последние 100 движений склада.</p></div></div>
+        <div className="card-head"><div><h3>Журнал операций</h3><p className="hint">Последние операции склада.</p></div></div>
         <div className="table-wrap">
           <table className="inventory-movements-table">
             <thead><tr><th>Дата</th><th>Тип</th><th>Товар</th><th>Кол-во</th><th>Цена</th><th>Сумма</th><th>Комментарий</th></tr></thead>
@@ -11659,7 +11954,17 @@ function RMSProV6Styles() {
 @media(max-width:1280px){.rms-pro-shell .inventory-v171-hardening-grid{grid-template-columns:repeat(3,minmax(0,1fr));}}
 @media(max-width:680px){.rms-pro-shell .inventory-v171-hardening-grid{grid-template-columns:1fr;}}
 
-/* v173 Inventory User Mode Cleanup */
+/* v175 Inventory Safe User UI Cleanup
+   Safe mode: no JSX removal, only hides technical/developer cards.
+   Settings and other sections are not touched. */
+.rms-pro-shell .inventory-warning-card,
+.rms-pro-shell .inventory-control-card,
+.rms-pro-shell .inventory-supplier-link-card,
+.rms-pro-shell .inventory-schema-check-card,
+.rms-pro-shell .inventory-backfill-card,
+.rms-pro-shell .inventory-autolink-card,
+.rms-pro-shell .inventory-validation-card,
+.rms-pro-shell .inventory-consolidated-card,
 .rms-pro-shell .inventory-supplier-sync-card,
 .rms-pro-shell .inventory-name-location-card,
 .rms-pro-shell .inventory-product-id-fix-card,
@@ -11673,202 +11978,72 @@ function RMSProV6Styles() {
 .rms-pro-shell .inventory-iiko-parser-card,
 .rms-pro-shell .inventory-v169-consolidated-card,
 .rms-pro-shell .inventory-v170-operational-card,
-.rms-pro-shell .inventory-v171-hardening-card{
-  display:none !important;
-}
-.rms-pro-shell .inventory-v172-final-card{
-  border:1px solid #dbeafe !important;
-  border-left:5px solid #2563eb !important;
-  background:linear-gradient(180deg,#ffffff 0%,#eff6ff 100%) !important;
-  margin-top:12px !important;
-}
-.rms-pro-shell .inventory-v172-final-card h3::after{
-  content:" · рабочий режим";
-  color:#64748b;
-  font-size:12px;
-  font-weight:800;
-}
-.rms-pro-shell .inventory-v172-final-card p{
-  display:none !important;
-}
-.rms-pro-shell .inventory-v172-final-grid{
-  grid-template-columns:repeat(4,minmax(0,1fr)) !important;
-}
-.rms-pro-shell .inventory-v172-final-step:nth-child(1),
-.rms-pro-shell .inventory-v172-final-step:nth-child(2),
-.rms-pro-shell .inventory-v172-final-step:nth-child(5),
-.rms-pro-shell .inventory-v172-final-step:nth-child(6),
-.rms-pro-shell .inventory-v172-final-step:nth-child(7),
-.rms-pro-shell .inventory-v172-final-step:nth-child(8){
-  display:none !important;
-}
-.rms-pro-shell .inventory-v172-final-card .action-row button:nth-child(n+2){
-  display:none !important;
-}
+.rms-pro-shell .inventory-v171-hardening-card,
+.rms-pro-shell .inventory-v172-final-card,
 .rms-pro-shell .inventory-operations-card{
   display:none !important;
 }
-.rms-pro-shell .inventory-form-card .card-head p,
-.rms-pro-shell .inventory-form-card .hint{
-  display:none !important;
-}
-.rms-pro-shell .inventory-form-card .card-head h3{
-  font-size:18px !important;
-}
-.rms-pro-shell .inventory-form-card{
-  border:1px solid #e2e8f0 !important;
-  background:#fff !important;
-}
-.rms-pro-shell .inventory-form-card label:has(select),
-.rms-pro-shell .inventory-form-card label:has(input[placeholder="Причина / документ / примечание"]){
-  display:none !important;
-}
-.rms-pro-shell .inventory-form-card select,
-.rms-pro-shell .inventory-form-card input,
-.rms-pro-shell .inventory-form-card textarea{
-  min-height:42px !important;
-}
-.rms-pro-shell .inventory-filter-row{
-  margin-top:12px !important;
-}
-.rms-pro-shell .inventory-filter-row select{
-  display:none !important;
-}
-.rms-pro-shell .inventory-negative-alert p{
-  display:none !important;
-}
-.rms-pro-shell .inventory-dashboard,
-.rms-pro-shell .inventory-metrics,
-.rms-pro-shell .inventory-kpi-row{
-  gap:10px !important;
-}
-@media(max-width:900px){
-  .rms-pro-shell .inventory-v172-final-grid{
-    grid-template-columns:repeat(2,minmax(0,1fr)) !important;
-  }
-}
-@media(max-width:620px){
-  .rms-pro-shell .inventory-v172-final-grid{
-    grid-template-columns:1fr !important;
-  }
-}
 
-/* v174 Inventory Clean User UI */
-.rms-pro-shell.inventory-module-root .inventory-clean-summary-card{
-  border:1px solid #dbeafe;
-  background:linear-gradient(180deg,#ffffff 0%,#eff6ff 100%);
-  border-radius:22px;
-  padding:18px;
-  margin:14px 0 16px;
-  box-shadow:0 14px 34px rgba(15,23,42,.055);
-}
-.rms-pro-shell.inventory-module-root .inventory-clean-summary-head{
-  display:flex;
-  justify-content:space-between;
-  gap:12px;
-  align-items:flex-start;
-}
-.rms-pro-shell.inventory-module-root .inventory-clean-summary-head h3{
-  margin:0;
-  color:#0f172a;
-  font-size:20px;
-  letter-spacing:-.025em;
-}
-.rms-pro-shell.inventory-module-root .inventory-clean-summary-head p{
-  margin:6px 0 0;
-  color:#2563eb;
-  font-size:13px;
-  line-height:1.45;
-}
-.rms-pro-shell.inventory-module-root .inventory-clean-summary-grid{
-  display:grid;
-  grid-template-columns:repeat(4,minmax(0,1fr));
-  gap:10px;
-  margin-top:15px;
-}
-.rms-pro-shell.inventory-module-root .inventory-clean-summary-step{
-  border:1px solid #dbeafe;
-  background:#fff;
-  border-radius:16px;
-  padding:13px;
-}
-.rms-pro-shell.inventory-module-root .inventory-clean-summary-step span{
-  display:block;
-  color:#64748b;
-  font-size:12px;
-  font-weight:900;
-}
-.rms-pro-shell.inventory-module-root .inventory-clean-summary-step strong{
-  display:block;
-  margin-top:6px;
-  color:#1d4ed8;
-  font-size:17px;
-  font-weight:950;
-  font-variant-numeric:tabular-nums;
-}
-.rms-pro-shell.inventory-module-root .inventory-clean-summary-step.good{
-  border-color:#bbf7d0;
-  background:#f0fdf4;
-}
-.rms-pro-shell.inventory-module-root .inventory-clean-summary-step.good strong{color:#047857;}
-.rms-pro-shell.inventory-module-root .inventory-clean-summary-step.bad{
-  border-color:#fecdd3;
-  background:#fff1f2;
-}
-.rms-pro-shell.inventory-module-root .inventory-clean-summary-step.bad strong{color:#be123c;}
-.rms-pro-shell.inventory-module-root .inventory-filter-row{
+/* Clean normal user layout */
+.rms-pro-shell .inventory-filter-row{
   display:grid;
   grid-template-columns:1fr auto;
   gap:10px;
   align-items:center;
   margin:12px 0;
 }
-.rms-pro-shell.inventory-module-root .inventory-filter-row select{
+.rms-pro-shell .inventory-filter-row select{
   display:none !important;
 }
-.rms-pro-shell.inventory-module-root .inventory-filter-row input{
+.rms-pro-shell .inventory-filter-row input{
   min-height:44px;
   border-radius:14px;
 }
-.rms-pro-shell.inventory-module-root .inventory-form-card{
-  border:1px solid #e2e8f0;
-  border-radius:20px;
-  background:#fff;
+.rms-pro-shell .inventory-form-card{
+  border:1px solid #e2e8f0 !important;
+  border-radius:20px !important;
+  background:#fff !important;
+  box-shadow:0 10px 24px rgba(15,23,42,.04) !important;
 }
-.rms-pro-shell.inventory-module-root .inventory-form-card .card-head p{
+.rms-pro-shell .inventory-form-card .card-head p{
   display:none !important;
 }
-.rms-pro-shell.inventory-module-root .inventory-form-card .form-grid{
-  grid-template-columns:repeat(4,minmax(0,1fr));
+.rms-pro-shell .inventory-form-card .card-head h3{
+  font-size:18px !important;
 }
-.rms-pro-shell.inventory-module-root .inventory-form-card label:has(select),
-.rms-pro-shell.inventory-module-root .inventory-form-card label:has(input[placeholder="Причина / документ / примечание"]){
+.rms-pro-shell .inventory-form-card input,
+.rms-pro-shell .inventory-form-card select{
+  min-height:42px !important;
+  border-radius:13px !important;
+}
+.rms-pro-shell .inventory-form-card label:nth-child(2),
+.rms-pro-shell .inventory-form-card label:nth-child(3),
+.rms-pro-shell .inventory-form-card label:nth-child(8){
   display:none !important;
 }
-.rms-pro-shell.inventory-module-root .inventory-form-card input,
-.rms-pro-shell.inventory-module-root .inventory-form-card select{
-  min-height:42px;
-  border-radius:13px;
+.rms-pro-shell .inventory-form-card .form-grid{
+  grid-template-columns:repeat(4,minmax(0,1fr)) !important;
 }
-.rms-pro-shell.inventory-module-root .card.span-2 .card-head p{
-  color:#64748b;
+.rms-pro-shell .inventory-negative-alert p{
+  display:none !important;
 }
-.rms-pro-shell.inventory-module-root .table-wrap table th{
+.rms-pro-shell .inventory-stock-table,
+.rms-pro-shell .inventory-movements-table{
+  font-size:13px;
+}
+.rms-pro-shell .inventory-stock-table th,
+.rms-pro-shell .inventory-movements-table th{
   white-space:nowrap;
 }
 @media(max-width:980px){
-  .rms-pro-shell.inventory-module-root .inventory-clean-summary-grid,
-  .rms-pro-shell.inventory-module-root .inventory-form-card .form-grid{
-    grid-template-columns:repeat(2,minmax(0,1fr));
+  .rms-pro-shell .inventory-form-card .form-grid{
+    grid-template-columns:repeat(2,minmax(0,1fr)) !important;
   }
 }
 @media(max-width:620px){
-  .rms-pro-shell.inventory-module-root .inventory-clean-summary-head{
-    flex-direction:column;
-  }
-  .rms-pro-shell.inventory-module-root .inventory-clean-summary-grid,
-  .rms-pro-shell.inventory-module-root .inventory-form-card .form-grid{
-    grid-template-columns:1fr;
+  .rms-pro-shell .inventory-filter-row,
+  .rms-pro-shell .inventory-form-card .form-grid{
+    grid-template-columns:1fr !important;
   }
 }
 
