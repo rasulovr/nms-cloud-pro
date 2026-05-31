@@ -468,6 +468,13 @@ const I18N = {
     logout:'Выйти', revenue_tab:'Выручка', finance_tab:'Финансы', reports_tab:'Отчёты', recipes_tab:'Тех. карты', salaries_tab:'Зарплаты',
     attendance_tab:'Посещаемость', advances_tab:'Авансы', suppliers_tab:'Поставщики', debts_payments_tab:'Долги и оплаты', qr_menu_tab:'QR Menu', loyalty_tab:'Loyalty', market_intelligence_tab:'Market Intelligence', security_recovery_tab:'Безопасность и диагностика', settings_tab:'Настройки', inventory_tab:'Склад',
     revenue_subtitle:'Ввод выручки и расходов за выбранную дату по филиалу', finance_subtitle:'Аналитика по филиалу, месяцу, выручке и расходам',
+      {/* v190-visible-excel-revenue-import-anchor */}
+
+      <ExcelRevenueImportCard onImported={async () => {
+        if (typeof loadData === 'function') await loadData()
+        else if (typeof loadRevenue === 'function') await loadRevenue()
+        else if (typeof refreshData === 'function') await refreshData()
+      }} />
     period_branch:'Период и филиал', branch_select:'Филиал', date:'Дата', daily_revenue_title:'Выручка за выбранную дату',
     cash:'Наличными', bank:'Банк', wolt:'Wolt', revenue_summary:'Сводка выручки', total_revenue:'Общая выручка',
     forecast:'Прогноз месяца', forecast_revenue:'Предполагаемая выручка', forecast_profit:'Предполагаемая прибыль', avg_daily_revenue:'Средняя выручка / день',
@@ -12194,6 +12201,20 @@ function RMSProV6Styles() {
 }
 .rms-pro-shell .inventory-negative-alert p{
   display:none !important;
+}
+
+/* v190 Revenue Import Visible Menu Fix */
+.excel-revenue-import-card{
+  display:block !important;
+  visibility:visible !important;
+  opacity:1 !important;
+  margin:14px 0 18px !important;
+  position:relative !important;
+  z-index:1 !important;
+}
+.excel-revenue-import-card .card-head h3::before{
+  content:"⇧ ";
+  color:#2563eb;
 }
 
 
