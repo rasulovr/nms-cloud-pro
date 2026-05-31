@@ -3380,8 +3380,8 @@ function InventoryModule({ branchId, branchName }) {
       <div className="card inventory-form-card">
         <div className="card-head">
           <div>
-            <h3>Добавить движение склада</h3>
-            <p className="hint">Ручной режим: приход, списание, корректировка, перемещение или производство.</p>
+            <h3>Добавить операцию</h3>
+            <p className="hint">Добавьте приход, списание или корректировку товара.</p>
           </div>
         </div>
         <div className="form-grid">
@@ -11953,6 +11953,100 @@ function RMSProV6Styles() {
 .rms-pro-shell .inventory-v171-hardening-step.pending strong{color:#475569;}
 @media(max-width:1280px){.rms-pro-shell .inventory-v171-hardening-grid{grid-template-columns:repeat(3,minmax(0,1fr));}}
 @media(max-width:680px){.rms-pro-shell .inventory-v171-hardening-grid{grid-template-columns:1fr;}}
+
+/* v173 Inventory User Mode Cleanup */
+.rms-pro-shell .inventory-supplier-sync-card,
+.rms-pro-shell .inventory-name-location-card,
+.rms-pro-shell .inventory-product-id-fix-card,
+.rms-pro-shell .inventory-branch-location-card,
+.rms-pro-shell .inventory-bazar-sync-card,
+.rms-pro-shell .inventory-sales-consumption-card,
+.rms-pro-shell .inventory-sales-preview-card,
+.rms-pro-shell .inventory-sales-apply-card,
+.rms-pro-shell .inventory-iiko-import-fix-card,
+.rms-pro-shell .inventory-iiko-forward-card,
+.rms-pro-shell .inventory-iiko-parser-card,
+.rms-pro-shell .inventory-v169-consolidated-card,
+.rms-pro-shell .inventory-v170-operational-card,
+.rms-pro-shell .inventory-v171-hardening-card{
+  display:none !important;
+}
+.rms-pro-shell .inventory-v172-final-card{
+  border:1px solid #dbeafe !important;
+  border-left:5px solid #2563eb !important;
+  background:linear-gradient(180deg,#ffffff 0%,#eff6ff 100%) !important;
+  margin-top:12px !important;
+}
+.rms-pro-shell .inventory-v172-final-card h3::after{
+  content:" · рабочий режим";
+  color:#64748b;
+  font-size:12px;
+  font-weight:800;
+}
+.rms-pro-shell .inventory-v172-final-card p{
+  display:none !important;
+}
+.rms-pro-shell .inventory-v172-final-grid{
+  grid-template-columns:repeat(4,minmax(0,1fr)) !important;
+}
+.rms-pro-shell .inventory-v172-final-step:nth-child(1),
+.rms-pro-shell .inventory-v172-final-step:nth-child(2),
+.rms-pro-shell .inventory-v172-final-step:nth-child(5),
+.rms-pro-shell .inventory-v172-final-step:nth-child(6),
+.rms-pro-shell .inventory-v172-final-step:nth-child(7),
+.rms-pro-shell .inventory-v172-final-step:nth-child(8){
+  display:none !important;
+}
+.rms-pro-shell .inventory-v172-final-card .action-row button:nth-child(n+2){
+  display:none !important;
+}
+.rms-pro-shell .inventory-operations-card{
+  display:none !important;
+}
+.rms-pro-shell .inventory-form-card .card-head p,
+.rms-pro-shell .inventory-form-card .hint{
+  display:none !important;
+}
+.rms-pro-shell .inventory-form-card .card-head h3{
+  font-size:18px !important;
+}
+.rms-pro-shell .inventory-form-card{
+  border:1px solid #e2e8f0 !important;
+  background:#fff !important;
+}
+.rms-pro-shell .inventory-form-card label:has(select),
+.rms-pro-shell .inventory-form-card label:has(input[placeholder="Причина / документ / примечание"]){
+  display:none !important;
+}
+.rms-pro-shell .inventory-form-card select,
+.rms-pro-shell .inventory-form-card input,
+.rms-pro-shell .inventory-form-card textarea{
+  min-height:42px !important;
+}
+.rms-pro-shell .inventory-filter-row{
+  margin-top:12px !important;
+}
+.rms-pro-shell .inventory-filter-row select{
+  display:none !important;
+}
+.rms-pro-shell .inventory-negative-alert p{
+  display:none !important;
+}
+.rms-pro-shell .inventory-dashboard,
+.rms-pro-shell .inventory-metrics,
+.rms-pro-shell .inventory-kpi-row{
+  gap:10px !important;
+}
+@media(max-width:900px){
+  .rms-pro-shell .inventory-v172-final-grid{
+    grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+  }
+}
+@media(max-width:620px){
+  .rms-pro-shell .inventory-v172-final-grid{
+    grid-template-columns:1fr !important;
+  }
+}
 
 
   `}</style>
