@@ -3409,6 +3409,37 @@ function InventoryModule({ branchId, branchName }) {
   )
 }
 
+
+class RmsSectionErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props)
+    this.state = { hasError: false, message: '' }
+  }
+  static getDerivedStateFromError(error) {
+    return { hasError: true, message: error?.message || 'Render error' }
+  }
+  componentDidCatch(error, info) {
+    console.error('RMS section render error', error, info)
+  }
+  componentDidUpdate(prevProps) {
+    if (prevProps.resetKey !== this.props.resetKey && this.state.hasError) {
+      this.setState({ hasError: false, message: '' })
+    }
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="card" style={{borderColor:'#fecdd3', background:'#fff1f2'}}>
+          <h3>Раздел временно не открылся</h3>
+          <p style={{color:'#9f1239'}}>Ошибка рендера: {this.state.message}</p>
+          <button className="ghost small" onClick={() => this.setState({ hasError:false, message:'' })}>Повторить</button>
+        </div>
+      )
+    }
+    return this.props.children
+  }
+}
+
 function App() {
   const params = new URLSearchParams(window.location.search)
 
@@ -11924,9 +11955,15 @@ function RMSProV6Styles() {
 @media(max-width:1280px){.rms-pro-shell .inventory-v171-hardening-grid{grid-template-columns:repeat(3,minmax(0,1fr));}}
 @media(max-width:680px){.rms-pro-shell .inventory-v171-hardening-grid{grid-template-columns:1fr;}}
 
-/* v176 Settings Recovery + Inventory Safe CSS
-   Recovery build: no JSX removal, no new React state, no settings handlers touched.
-   Only hides Inventory technical cards. */
+.rms-pro-shell .inventory-form-card{
+  border:1px solid #e2e8f0 !important;
+  border-radius:20px !important;
+  background:#fff !important;
+}
+
+/* v178 Surgical Settings Fix + Safe Inventory Cleanup
+   No JSX removal. No :has selectors. No structural selectors for Settings.
+   Only class-based hiding of technical Inventory cards. */
 .rms-pro-shell .inventory-warning-card,
 .rms-pro-shell .inventory-control-card,
 .rms-pro-shell .inventory-supplier-link-card,
@@ -11948,27 +11985,28 @@ function RMSProV6Styles() {
 .rms-pro-shell .inventory-iiko-parser-card,
 .rms-pro-shell .inventory-v169-consolidated-card,
 .rms-pro-shell .inventory-v170-operational-card,
-.rms-pro-shell .inventory-v171-hardening-card{
-  display:none !important;
-}
-.rms-pro-shell .inventory-filter-row select{
-  display:none !important;
-}
+.rms-pro-shell .inventory-v171-hardening-card,
+.rms-pro-shell .inventory-v172-final-card,
 .rms-pro-shell .inventory-operations-card{
-  display:none !important;
-}
-.rms-pro-shell .inventory-form-card .card-head p{
-  display:none !important;
-}
-.rms-pro-shell .inventory-form-card label:nth-child(2),
-.rms-pro-shell .inventory-form-card label:nth-child(3),
-.rms-pro-shell .inventory-form-card label:nth-child(8){
   display:none !important;
 }
 .rms-pro-shell .inventory-form-card{
   border:1px solid #e2e8f0 !important;
   border-radius:20px !important;
   background:#fff !important;
+}
+.rms-pro-shell .inventory-form-card .card-head p{
+  display:none !important;
+}
+.rms-pro-shell .inventory-filter-row select{
+  display:none !important;
+}
+.rms-pro-shell .inventory-filter-row input{
+  min-height:44px;
+  border-radius:14px;
+}
+.rms-pro-shell .inventory-negative-alert p{
+  display:none !important;
 }
 
 
