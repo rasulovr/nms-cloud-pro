@@ -174,6 +174,31 @@ async function rmsInventoryBackfillSupplierPurchases(locationId = null, limit = 
 // v161 Bazar -> Inventory Stock Sync helpers
 
 // v162 iiko Sales -> Inventory Consumption Prep helpers
+
+// v163 iiko Sales Mapping -> Recipe Consumption Preview helpers
+
+// v164 iiko Sales Consumption Consolidated Pack helpers
+async function rmsInventorySalesConsumptionConsolidatedHealth() {
+  return rmsInventoryRpcCall('rms_inventory_sales_consumption_consolidated_health', {})
+}
+
+async function rmsInventorySalesConsumptionCreateDraft(periodStart = null, periodEnd = null, branchText = null) {
+  return rmsInventoryRpcCall('rms_inventory_sales_consumption_create_draft_from_preview', {
+    p_period_start: periodStart || null,
+    p_period_end: periodEnd || null,
+    p_branch_text: branchText || null,
+    p_comment: 'Created from RMS inventory UI preview'
+  })
+}
+
+async function rmsInventorySalesConsumptionPreview() {
+  return rmsInventoryRpcCall('rms_inventory_sales_consumption_preview_health', {})
+}
+
+async function rmsInventorySalesRecipeMappingHealth() {
+  return rmsInventoryRpcCall('rms_inventory_sales_recipe_mapping_health', {})
+}
+
 async function rmsInventorySalesConsumptionReadiness() {
   return rmsInventoryRpcCall('rms_inventory_sales_consumption_readiness', {})
 }
@@ -2492,6 +2517,8 @@ function InventoryModule({ branchId, branchName }) {
   const [supplierSyncHealth, setSupplierSyncHealth] = React.useState(null)
   const [bazarSyncHealth, setBazarSyncHealth] = React.useState(null)
   const [salesConsumptionHealth, setSalesConsumptionHealth] = React.useState(null)
+  const [salesRecipeMappingHealth, setSalesRecipeMappingHealth] = React.useState(null)
+  const [salesConsumptionConsolidatedHealth, setSalesConsumptionConsolidatedHealth] = React.useState(null)
   const [search, setSearch] = React.useState('')
   const [movementFilter, setMovementFilter] = React.useState('all')
 
@@ -2519,6 +2546,21 @@ function InventoryModule({ branchId, branchName }) {
   }, [])
 
   React.useEffect(() => { loadInventory() }, [loadInventory])
+
+  const createSalesConsumptionDraft = async () => {
+    setBackfillBusy(true)
+    setMessage('')
+    try {
+      const data = await rmsInventorySalesConsumptionCreateDraft()
+      setMessage(`Draft создан: batch ${data?.batch_id || '—'}, строк ${data?.items_created || 0}`)
+      await loadInventoryConsolidatedReports()
+    } catch (err) {
+      console.error('sales consumption draft error', err)
+      setMessage(err?.message || 'Не удалось создать draft списания')
+    } finally {
+      setBackfillBusy(false)
+    }
+  }
 
   const applyInventoryPreset = (type) => {
     setOperationMode(type)
@@ -2609,13 +2651,15 @@ function InventoryModule({ branchId, branchName }) {
     setBackfillBusy(true)
     setMessage('')
     try {
-      const [dash, prod, wo, syncHealth, bazarHealth, salesHealth] = await Promise.all([
+      const [dash, prod, wo, syncHealth, bazarHealth, salesHealth, salesRecipeHealth, salesConsolidatedHealth] = await Promise.all([
         rmsInventoryDashboardReport().catch(() => null),
         rmsInventoryProductionPreview().catch(() => null),
         rmsInventoryWriteOffReport().catch(() => null),
         rmsInventorySupplierStockSyncHealth().catch(() => null),
         rmsInventoryBazarStockSyncHealth().catch(() => null),
         rmsInventorySalesConsumptionHealth().catch(() => null),
+        rmsInventorySalesRecipeMappingHealth().catch(() => null),
+        rmsInventorySalesConsumptionConsolidatedHealth().catch(() => null),
       ])
       setDashboardReport(dash || null)
       setProductionReport(prod || null)
@@ -2623,6 +2667,8 @@ function InventoryModule({ branchId, branchName }) {
       setSupplierSyncHealth(syncHealth || null)
       setBazarSyncHealth(bazarHealth || null)
       setSalesConsumptionHealth(salesHealth || null)
+      setSalesRecipeMappingHealth(salesRecipeHealth || null)
+      setSalesConsumptionConsolidatedHealth(salesConsolidatedHealth || null)
       setMessage('Складские отчёты обновлены')
     } catch (err) {
       console.error('inventory reports error', err)
@@ -2839,6 +2885,37 @@ function InventoryModule({ branchId, branchName }) {
           <div className="inventory-sales-consumption-step"><span>Batches</span><strong>{salesConsumptionHealth?.batches || 0}</strong></div>
           <div className="inventory-sales-consumption-step"><span>Consumption rows</span><strong>{salesConsumptionHealth?.items || 0}</strong></div>
           <div className="inventory-sales-consumption-step pending"><span>Auto write-off</span><strong>Off</strong></div>
+        </div>
+      </div>
+
+      <div className="inventory-sales-preview-card">
+        <h3>iiko Sales Mapping → Recipe Consumption Preview</h3>
+        <p>Preview-слой показывает, сколько строк продаж можно связать с меню и техкартами, и сколько будущих ingredient consumption rows можно рассчитать. Склад пока не списывается.</p>
+        <div className="action-row" style={{marginTop:12}}>
+          <button className="ghost small" onClick={loadInventoryConsolidatedReports} disabled={backfillBusy}>{backfillBusy ? 'Проверка…' : 'Проверить mapping preview'}</button>
+        </div>
+        <div className="inventory-sales-preview-grid">
+          <div className="inventory-sales-preview-step ready"><span>Sales table</span><strong>{salesRecipeMappingHealth?.detected_sales_table || salesConsumptionHealth?.detected_sales_table || '—'}</strong></div>
+          <div className="inventory-sales-preview-step"><span>Mapped sales</span><strong>{salesRecipeMappingHealth?.mapped_sales_rows ?? 0}</strong></div>
+          <div className="inventory-sales-preview-step"><span>Unmapped sales</span><strong>{salesRecipeMappingHealth?.unmapped_sales_rows ?? 0}</strong></div>
+          <div className="inventory-sales-preview-step"><span>Recipe rows</span><strong>{salesRecipeMappingHealth?.recipe_rows ?? 0}</strong></div>
+          <div className="inventory-sales-preview-step pending"><span>Apply write-off</span><strong>Off</strong></div>
+        </div>
+      </div>
+
+      <div className="inventory-sales-apply-card">
+        <h3>Sales Consumption Draft / Apply</h3>
+        <p>Следующий объединённый слой: из preview продаж iiko можно создать draft расхода ингредиентов, проверить его, а затем вручную применить как складское списание. Автоматическое списание выключено.</p>
+        <div className="action-row" style={{marginTop:12}}>
+          <button className="ghost small" onClick={loadInventoryConsolidatedReports} disabled={backfillBusy}>{backfillBusy ? 'Проверка…' : 'Обновить status'}</button>
+          <button className="primary small" onClick={createSalesConsumptionDraft} disabled={backfillBusy}>Создать draft</button>
+        </div>
+        <div className="inventory-sales-apply-grid">
+          <div className="inventory-sales-apply-step ready"><span>Preview rows</span><strong>{salesConsumptionConsolidatedHealth?.preview_rows ?? salesRecipeMappingHealth?.recipe_rows ?? 0}</strong></div>
+          <div className="inventory-sales-apply-step"><span>Draft batches</span><strong>{salesConsumptionConsolidatedHealth?.draft_batches ?? 0}</strong></div>
+          <div className="inventory-sales-apply-step"><span>Draft items</span><strong>{salesConsumptionConsolidatedHealth?.draft_items ?? 0}</strong></div>
+          <div className="inventory-sales-apply-step warn"><span>Applied items</span><strong>{salesConsumptionConsolidatedHealth?.applied_items ?? 0}</strong></div>
+          <div className="inventory-sales-apply-step pending"><span>Auto apply</span><strong>Off</strong></div>
         </div>
       </div>
 
