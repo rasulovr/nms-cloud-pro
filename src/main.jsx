@@ -12016,6 +12016,130 @@ function RMSProV6Styles() {
    Safe recovery from v192 runtime break.
    No Excel import code. No schema changes. */
 
+/* v202 Revenue Dynamics Chart */
+.reports-v202-trend-card{
+  margin:14px 0 18px;
+  border:1px solid #dbeafe;
+  background:linear-gradient(180deg,#ffffff 0%,#eff6ff 100%);
+  border-radius:20px;
+  padding:16px;
+}
+.reports-v202-trend-head{
+  display:grid;
+  grid-template-columns:1fr auto auto;
+  gap:12px;
+  align-items:start;
+  margin-bottom:12px;
+}
+.reports-v202-trend-head h4{
+  margin:0;
+  font-size:18px;
+  color:#0f172a;
+}
+.reports-v202-trend-head p{
+  margin:5px 0 0;
+  color:#64748b;
+  font-size:13px;
+}
+.reports-v202-trend-summary{
+  min-width:145px;
+  border:1px solid #dbeafe;
+  background:#fff;
+  border-radius:14px;
+  padding:10px 12px;
+}
+.reports-v202-trend-summary span{
+  display:block;
+  color:#64748b;
+  font-size:11.5px;
+  font-weight:850;
+}
+.reports-v202-trend-summary strong{
+  display:block;
+  margin-top:4px;
+  color:#1d4ed8;
+  font-size:15px;
+}
+.reports-v202-trend-summary em{
+  display:block;
+  margin-top:3px;
+  font-style:normal;
+  color:#0f172a;
+  font-weight:800;
+}
+.reports-v202-chart-wrap{
+  overflow-x:auto;
+  background:#fff;
+  border:1px solid #e2e8f0;
+  border-radius:16px;
+  padding:10px;
+}
+.reports-v202-line-chart{
+  display:block;
+  width:100%;
+  min-width:620px;
+  height:260px;
+}
+.reports-v202-axis{
+  stroke:#94a3b8;
+  stroke-width:1;
+}
+.reports-v202-grid-line{
+  stroke:#e2e8f0;
+  stroke-width:1;
+  stroke-dasharray:4 6;
+}
+.reports-v202-line{
+  fill:none;
+  stroke:#2563eb;
+  stroke-width:4;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+.reports-v202-dot{
+  fill:#64748b;
+  stroke:#fff;
+  stroke-width:2;
+}
+.reports-v202-dot.good{
+  fill:#059669;
+}
+.reports-v202-dot.bad{
+  fill:#dc2626;
+}
+.reports-v202-x-label{
+  fill:#64748b;
+  font-size:12px;
+  font-weight:800;
+}
+.reports-v202-trend-table-wrap{
+  overflow-x:auto;
+  margin-top:12px;
+}
+.reports-v202-trend-table{
+  width:100%;
+  border-collapse:collapse;
+  font-size:13px;
+}
+.reports-v202-trend-table th,
+.reports-v202-trend-table td{
+  padding:9px 10px;
+  border-bottom:1px solid #e2e8f0;
+  text-align:left;
+  white-space:nowrap;
+}
+.reports-v202-trend-table th{
+  color:#475569;
+  font-size:11.5px;
+  text-transform:uppercase;
+  letter-spacing:.04em;
+}
+@media(max-width:860px){
+  .reports-v202-trend-head{
+    grid-template-columns:1fr;
+  }
+}
+
 
   `}</style>
 }
@@ -26146,6 +26270,54 @@ function Reports({ t }) {
   const selectedMonthLabel = monthFilter === 'all' ? 'Все месяцы' : monthFilter
   const selectedBranchLabel = branchFilter === 'all' ? 'Все филиалы' : (branches.find(b => String(b.id) === String(branchFilter))?.name || 'Выбранный филиал')
   const selectedTypeLabel = departmentFilter === 'all' ? 'Все' : departmentFilter
+
+  const rmsRevenueTrend = useMemo(() => {
+    const sourceRows = rmsRevenueReport.rows || []
+    const groupBy = monthFilter === 'all' ? 'month' : 'day'
+    const map = new Map()
+
+    sourceRows.forEach(row => {
+      const rawDate = String(row.revenue_date || '')
+      const key = groupBy === 'month' ? rawDate.slice(0, 7) : rawDate
+      if (!key) return
+      const prev = map.get(key) || { key, revenue: 0, cash: 0, bank: 0, wolt: 0, days: new Set(), rows: 0 }
+      prev.revenue += parseNum(row.revenue)
+      prev.cash += parseNum(row.cash)
+      prev.bank += parseNum(row.bank)
+      prev.wolt += parseNum(row.wolt)
+      if (rawDate) prev.days.add(rawDate)
+      prev.rows += 1
+      map.set(key, prev)
+    })
+
+    const list = Array.from(map.values()).sort((a, b) => a.key.localeCompare(b.key))
+    return list.map((item, index) => {
+      const previous = index > 0 ? list[index - 1] : null
+      const change = previous && parseNum(previous.revenue) > 0 ? ((item.revenue - previous.revenue) / previous.revenue) * 100 : null
+      return {
+        ...item,
+        days_count: item.days.size,
+        avg_day: item.days.size ? item.revenue / item.days.size : 0,
+        change
+      }
+    })
+  }, [rmsRevenueReport.rows, monthFilter])
+
+  const rmsRevenueTrendMax = Math.max(...rmsRevenueTrend.map(item => parseNum(item.revenue)), 1)
+  const rmsRevenueTrendMin = Math.min(...rmsRevenueTrend.map(item => parseNum(item.revenue)), 0)
+  const rmsRevenueTrendRange = Math.max(rmsRevenueTrendMax - rmsRevenueTrendMin, 1)
+  const rmsRevenueTrendPath = rmsRevenueTrend.map((item, index) => {
+    const width = 720
+    const height = 220
+    const padX = 34
+    const padY = 24
+    const x = rmsRevenueTrend.length <= 1 ? width / 2 : padX + index * ((width - padX * 2) / (rmsRevenueTrend.length - 1))
+    const y = height - padY - ((parseNum(item.revenue) - rmsRevenueTrendMin) / rmsRevenueTrendRange) * (height - padY * 2)
+    return `${index === 0 ? 'M' : 'L'} ${x.toFixed(2)} ${y.toFixed(2)}`
+  }).join(' ')
+
+  const rmsRevenueBestTrend = [...rmsRevenueTrend].sort((a, b) => parseNum(b.revenue) - parseNum(a.revenue))[0] || null
+  const rmsRevenueLastTrend = rmsRevenueTrend[rmsRevenueTrend.length - 1] || null
   const reportsFoodCost = totals.revenue ? totals.cost / totals.revenue * 100 : 0
   const reportKpis = [
     { title: 'Выручка', value: fmt(totals.revenue), change: monthFilter !== 'all' ? formatChangePct(totals.revenue, previousMonthTotals.revenue) : '+0.0%', tone: 'green', icon: '↗' },
@@ -26214,6 +26386,73 @@ function Reports({ t }) {
         <div><span>Филиал</span><strong>{selectedBranchLabel}</strong><em>текущий фильтр</em></div>
         <div><span>Период</span><strong>{selectedMonthLabel}</strong><em>текущий фильтр</em></div>
       </div>
+
+      {!rmsRevenueReport.loading && !rmsRevenueReport.error && !!rmsRevenueTrend.length && <div className="reports-v202-trend-card">
+        <div className="reports-v202-trend-head">
+          <div>
+            <h4>Динамика выручки</h4>
+            <p>{monthFilter === 'all' ? 'Помесячная динамика роста и падения по daily_revenue.' : 'Дневная динамика выбранного месяца по daily_revenue.'}</p>
+          </div>
+          <div className="reports-v202-trend-summary">
+            <span>Последний период</span>
+            <strong>{rmsRevenueLastTrend?.key || '—'}</strong>
+            <em className={rmsRevenueLastTrend?.change >= 0 ? 'good' : 'bad'}>{rmsRevenueLastTrend?.change === null || rmsRevenueLastTrend?.change === undefined ? '—' : `${rmsRevenueLastTrend.change >= 0 ? '+' : ''}${pct(rmsRevenueLastTrend.change)}`}</em>
+          </div>
+          <div className="reports-v202-trend-summary">
+            <span>Лучший период</span>
+            <strong>{rmsRevenueBestTrend?.key || '—'}</strong>
+            <em>{rmsRevenueBestTrend ? fmt(rmsRevenueBestTrend.revenue) : '—'}</em>
+          </div>
+        </div>
+
+        <div className="reports-v202-chart-wrap">
+          <svg className="reports-v202-line-chart" viewBox="0 0 720 240" role="img" aria-label="Revenue trend chart">
+            <line x1="34" y1="196" x2="686" y2="196" className="reports-v202-axis" />
+            <line x1="34" y1="24" x2="34" y2="196" className="reports-v202-axis" />
+            {[0.25, 0.5, 0.75].map(level => <line key={level} x1="34" y1={196 - level * 172} x2="686" y2={196 - level * 172} className="reports-v202-grid-line" />)}
+            {rmsRevenueTrendPath && <path d={rmsRevenueTrendPath} className="reports-v202-line" />}
+            {rmsRevenueTrend.map((item, index) => {
+              const width = 720
+              const height = 220
+              const padX = 34
+              const padY = 24
+              const x = rmsRevenueTrend.length <= 1 ? width / 2 : padX + index * ((width - padX * 2) / (rmsRevenueTrend.length - 1))
+              const y = height - padY - ((parseNum(item.revenue) - rmsRevenueTrendMin) / rmsRevenueTrendRange) * (height - padY * 2)
+              const showLabel = rmsRevenueTrend.length <= 8 || index === 0 || index === rmsRevenueTrend.length - 1 || index % Math.ceil(rmsRevenueTrend.length / 8) === 0
+              return <g key={item.key}>
+                <circle cx={x} cy={y} r="5.5" className={item.change === null ? 'reports-v202-dot' : item.change >= 0 ? 'reports-v202-dot good' : 'reports-v202-dot bad'} />
+                <title>{item.key}: {fmt(item.revenue)} · {item.change === null ? 'без сравнения' : `${item.change >= 0 ? '+' : ''}${pct(item.change)}`}</title>
+                {showLabel && <text x={x} y="224" textAnchor="middle" className="reports-v202-x-label">{monthFilter === 'all' ? item.key.slice(5, 7) : item.key.slice(8, 10)}</text>}
+              </g>
+            })}
+          </svg>
+        </div>
+
+        <div className="reports-v202-trend-table-wrap">
+          <table className="reports-v202-trend-table">
+            <thead>
+              <tr>
+                <th>{monthFilter === 'all' ? 'Месяц' : 'Дата'}</th>
+                <th>Выручка</th>
+                <th>Cash</th>
+                <th>Bank</th>
+                <th>Сред./день</th>
+                <th>Изменение</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rmsRevenueTrend.map(item => <tr key={item.key}>
+                <td><b>{item.key}</b></td>
+                <td>{fmt(item.revenue)}</td>
+                <td>{fmt(item.cash)}</td>
+                <td>{fmt(item.bank)}</td>
+                <td>{fmt(item.avg_day)}</td>
+                <td className={item.change === null ? '' : item.change >= 0 ? 'good' : 'bad'}>{item.change === null ? '—' : `${item.change >= 0 ? '+' : ''}${pct(item.change)}`}</td>
+              </tr>)}
+            </tbody>
+          </table>
+        </div>
+      </div>}
 
       {rmsRevenueReport.loading && <div className="reports-v43-empty-state"><b>Загрузка выручки...</b><span>Идёт чтение daily_revenue.</span></div>}
       {rmsRevenueReport.error && <div className="reports-v43-empty-state"><b>Ошибка загрузки</b><span>{rmsRevenueReport.error}</span></div>}
