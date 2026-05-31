@@ -188,12 +188,6 @@ async function rmsInventoryBackfillSupplierPurchases(locationId = null, limit = 
 // v170 iiko Consumption Operational Pack helpers
 
 // v171 iiko Import Operational Hardening helpers
-
-// v172 Final Inventory Section helpers
-async function rmsInventoryFinalSectionHealth() {
-  return rmsInventoryRpcCall('rms_inventory_final_section_health', {})
-}
-
 async function rmsIikoImportOperationalAudit() {
   return rmsInventoryRpcCall('rms_iiko_import_operational_audit', {})
 }
@@ -2730,7 +2724,6 @@ function InventoryModule({ branchId, branchName }) {
   const [menuAliasHealth, setMenuAliasHealth] = React.useState(null)
   const [iikoOperationalAudit, setIikoOperationalAudit] = React.useState(null)
   const [iikoBranchDateQuality, setIikoBranchDateQuality] = React.useState(null)
-  const [inventoryFinalHealth, setInventoryFinalHealth] = React.useState(null)
   const [search, setSearch] = React.useState('')
   const [movementFilter, setMovementFilter] = React.useState('all')
 
@@ -2955,7 +2948,7 @@ function InventoryModule({ branchId, branchName }) {
     setBackfillBusy(true)
     setMessage('')
     try {
-      const [dash, prod, wo, syncHealth, bazarHealth, salesHealth, salesRecipeHealth, salesConsolidatedHealth, iikoHealth, iikoConsolidated, unmappedReport, latestImportDash, draftReady, operationalHealth, aliasHealth, importAudit, branchDateQuality, finalHealth] = await Promise.all([
+      const [dash, prod, wo, syncHealth, bazarHealth, salesHealth, salesRecipeHealth, salesConsolidatedHealth, iikoHealth, iikoConsolidated, unmappedReport, latestImportDash, draftReady, operationalHealth, aliasHealth, importAudit, branchDateQuality] = await Promise.all([
         rmsInventoryDashboardReport().catch(() => null),
         rmsInventoryProductionPreview().catch(() => null),
         rmsInventoryWriteOffReport().catch(() => null),
@@ -2973,7 +2966,6 @@ function InventoryModule({ branchId, branchName }) {
         rmsInventoryMenuAliasHealth().catch(() => null),
         rmsIikoImportOperationalAudit().catch(() => null),
         rmsIikoBranchDateQuality().catch(() => null),
-        rmsInventoryFinalSectionHealth().catch(() => null),
       ])
       setDashboardReport(dash || null)
       setProductionReport(prod || null)
@@ -2992,7 +2984,6 @@ function InventoryModule({ branchId, branchName }) {
       setMenuAliasHealth(aliasHealth || null)
       setIikoOperationalAudit(importAudit || null)
       setIikoBranchDateQuality(branchDateQuality || null)
-      setInventoryFinalHealth(finalHealth || null)
       setMessage('Складские отчёты обновлены')
     } catch (err) {
       console.error('inventory reports error', err)
@@ -3019,7 +3010,7 @@ function InventoryModule({ branchId, branchName }) {
       <div className="topbar">
         <div>
           <h2>Склад</h2>
-          <p>Остатки товаров, приход, списание и контроль склада.</p>
+          <p>Остатки, движения, списания, корректировки, локации и складской фундамент для Food Cost.</p>
         </div>
         <div className="action-row">
           <button className="ghost small" onClick={loadInventory} disabled={loading}>{loading ? 'Загрузка…' : 'Обновить'}</button>
@@ -3316,27 +3307,6 @@ function InventoryModule({ branchId, branchName }) {
         </div>
       </div>
 
-      <div className="inventory-v172-final-card">
-        <h3>v172 · Final Inventory Section</h3>
-        <p>Итоговая структура раздела: приход поставщиков и базара попадает на склад, остатки считаются по движениям, iiko импорт сохраняет продажи, consumption preview считает теоретический расход по техкартам, draft/apply выполняется вручную. Auto-writeoff выключен.</p>
-        <div className="action-row" style={{marginTop:12}}>
-          <button className="ghost small" onClick={loadInventoryConsolidatedReports} disabled={backfillBusy}>{backfillBusy ? 'Проверка…' : 'Обновить итоговый status'}</button>
-          <button className="primary small" onClick={createSalesConsumptionDraft} disabled={backfillBusy}>Создать draft списания</button>
-          <button className="primary small" onClick={applyLatestConsumptionBatch} disabled={backfillBusy}>Применить draft</button>
-          <button className="ghost small danger" onClick={cancelLatestConsumptionBatch} disabled={backfillBusy}>Отменить batch</button>
-        </div>
-        <div className="inventory-v172-final-grid">
-          <div className="inventory-v172-final-step ready"><span>Supplier → Stock</span><strong>{inventoryFinalHealth?.supplier_stock || supplierSyncHealth?.trigger_status || 'ready'}</strong></div>
-          <div className="inventory-v172-final-step ready"><span>Bazar → Stock</span><strong>{inventoryFinalHealth?.bazar_stock || bazarSyncHealth?.trigger_status || 'ready'}</strong></div>
-          <div className="inventory-v172-final-step"><span>Stock rows</span><strong>{inventoryFinalHealth?.stock_rows ?? dashboardReport?.balance_rows ?? balances.length}</strong></div>
-          <div className="inventory-v172-final-step warn"><span>Negative</span><strong>{inventoryFinalHealth?.negative_stock_rows ?? dashboardReport?.negative_stock_rows ?? negativeRows}</strong></div>
-          <div className="inventory-v172-final-step"><span>Valid iiko rows</span><strong>{inventoryFinalHealth?.valid_iiko_rows ?? iikoOperationalAudit?.valid_rows ?? 0}</strong></div>
-          <div className="inventory-v172-final-step warn"><span>Unmapped</span><strong>{inventoryFinalHealth?.unmapped_sales ?? salesUnmappedReport?.unmapped_count ?? 0}</strong></div>
-          <div className="inventory-v172-final-step"><span>Draft ready</span><strong>{inventoryFinalHealth?.draft_ready_rows ?? consumptionDraftReadiness?.ready_rows ?? 0}</strong></div>
-          <div className="inventory-v172-final-step pending"><span>Auto writeoff</span><strong>Off</strong></div>
-        </div>
-      </div>
-
       <div className="inventory-filter-row">
         <input value={search} placeholder="Поиск по товару, локации или комментарию..." onChange={e => setSearch(e.target.value)} />
         <select value={movementFilter} onChange={e => setMovementFilter(e.target.value)}>
@@ -3380,7 +3350,7 @@ function InventoryModule({ branchId, branchName }) {
       <div className="card inventory-form-card">
         <div className="card-head">
           <div>
-            <h3>Добавить операцию</h3>
+            <h3>Добавить движение склада</h3>
             <p className="hint">Ручной режим: приход, списание, корректировка, перемещение или производство.</p>
           </div>
         </div>
@@ -3393,7 +3363,7 @@ function InventoryModule({ branchId, branchName }) {
           <label><span>Кол-во</span><input type="number" step="0.001" value={form.quantity} onChange={e => setForm({ ...form, quantity: e.target.value })} /></label>
           <label><span>Цена за ед.</span><input type="number" step="0.01" value={form.unit_cost} onChange={e => setForm({ ...form, unit_cost: e.target.value })} /></label>
           <label className="span-2"><span>Комментарий</span><input value={form.comment} placeholder="Причина / документ / примечание" onChange={e => setForm({ ...form, comment: e.target.value })} /></label>
-          <div className="action-row"><button className="primary small" onClick={createMovement} disabled={loading}>Сохранить операцию</button></div>
+          <div className="action-row"><button className="primary small" onClick={createMovement} disabled={loading}>Сохранить движение</button></div>
         </div>
       </div>
 
@@ -3424,7 +3394,7 @@ function InventoryModule({ branchId, branchName }) {
       </div>
 
       <div className="card span-2">
-        <div className="card-head"><div><h3>Журнал операций</h3><p className="hint">Последние операции склада.</p></div></div>
+        <div className="card-head"><div><h3>Журнал движений</h3><p className="hint">Последние 100 движений склада.</p></div></div>
         <div className="table-wrap">
           <table className="inventory-movements-table">
             <thead><tr><th>Дата</th><th>Тип</th><th>Товар</th><th>Кол-во</th><th>Цена</th><th>Сумма</th><th>Комментарий</th></tr></thead>
@@ -11954,9 +11924,9 @@ function RMSProV6Styles() {
 @media(max-width:1280px){.rms-pro-shell .inventory-v171-hardening-grid{grid-template-columns:repeat(3,minmax(0,1fr));}}
 @media(max-width:680px){.rms-pro-shell .inventory-v171-hardening-grid{grid-template-columns:1fr;}}
 
-/* v175 Inventory Safe User UI Cleanup
-   Safe mode: no JSX removal, only hides technical/developer cards.
-   Settings and other sections are not touched. */
+/* v176 Settings Recovery + Inventory Safe CSS
+   Recovery build: no JSX removal, no new React state, no settings handlers touched.
+   Only hides Inventory technical cards. */
 .rms-pro-shell .inventory-warning-card,
 .rms-pro-shell .inventory-control-card,
 .rms-pro-shell .inventory-supplier-link-card,
@@ -11978,73 +11948,27 @@ function RMSProV6Styles() {
 .rms-pro-shell .inventory-iiko-parser-card,
 .rms-pro-shell .inventory-v169-consolidated-card,
 .rms-pro-shell .inventory-v170-operational-card,
-.rms-pro-shell .inventory-v171-hardening-card,
-.rms-pro-shell .inventory-v172-final-card,
-.rms-pro-shell .inventory-operations-card{
+.rms-pro-shell .inventory-v171-hardening-card{
   display:none !important;
-}
-
-/* Clean normal user layout */
-.rms-pro-shell .inventory-filter-row{
-  display:grid;
-  grid-template-columns:1fr auto;
-  gap:10px;
-  align-items:center;
-  margin:12px 0;
 }
 .rms-pro-shell .inventory-filter-row select{
   display:none !important;
 }
-.rms-pro-shell .inventory-filter-row input{
-  min-height:44px;
-  border-radius:14px;
-}
-.rms-pro-shell .inventory-form-card{
-  border:1px solid #e2e8f0 !important;
-  border-radius:20px !important;
-  background:#fff !important;
-  box-shadow:0 10px 24px rgba(15,23,42,.04) !important;
+.rms-pro-shell .inventory-operations-card{
+  display:none !important;
 }
 .rms-pro-shell .inventory-form-card .card-head p{
   display:none !important;
-}
-.rms-pro-shell .inventory-form-card .card-head h3{
-  font-size:18px !important;
-}
-.rms-pro-shell .inventory-form-card input,
-.rms-pro-shell .inventory-form-card select{
-  min-height:42px !important;
-  border-radius:13px !important;
 }
 .rms-pro-shell .inventory-form-card label:nth-child(2),
 .rms-pro-shell .inventory-form-card label:nth-child(3),
 .rms-pro-shell .inventory-form-card label:nth-child(8){
   display:none !important;
 }
-.rms-pro-shell .inventory-form-card .form-grid{
-  grid-template-columns:repeat(4,minmax(0,1fr)) !important;
-}
-.rms-pro-shell .inventory-negative-alert p{
-  display:none !important;
-}
-.rms-pro-shell .inventory-stock-table,
-.rms-pro-shell .inventory-movements-table{
-  font-size:13px;
-}
-.rms-pro-shell .inventory-stock-table th,
-.rms-pro-shell .inventory-movements-table th{
-  white-space:nowrap;
-}
-@media(max-width:980px){
-  .rms-pro-shell .inventory-form-card .form-grid{
-    grid-template-columns:repeat(2,minmax(0,1fr)) !important;
-  }
-}
-@media(max-width:620px){
-  .rms-pro-shell .inventory-filter-row,
-  .rms-pro-shell .inventory-form-card .form-grid{
-    grid-template-columns:1fr !important;
-  }
+.rms-pro-shell .inventory-form-card{
+  border:1px solid #e2e8f0 !important;
+  border-radius:20px !important;
+  background:#fff !important;
 }
 
 
