@@ -27928,20 +27928,2096 @@ function ReportsV43Styles() {
 }
 
 function Settings({ session, t, theme, setTheme }) {
-  // v181 Settings safety stubs
-  // Snapshot operations belong to SecurityRecoveryCenter, not Settings.
-  // These guards prevent Settings render crash if legacy buttons/references still exist.
-  const [settingsSnapshots, setSettingsSnapshots] = React.useState([])
-  const [settingsSnapshotLoading, setSettingsSnapshotLoading] = React.useState(false)
-  const loadSnapshots = React.useCallback(async () => {
-    setSettingsSnapshots([])
-    return []
-  }, [])
-  const createSnapshot = React.useCallback(async () => {
-    setSettingsSnapshotLoading(false)
-    return null
-  }, [])
-
+  // v182 Settings safety stubs
+  // Snapshot actions are handled in SecurityRecoveryCenter. These no-op guards prevent
+  // legacy Settings JSX references from crashing render.
+  const settingsSnapshots = []
   const snapshots = settingsSnapshots
-  const snapshotLoading = settingsSnapshotLoading
+  const snapshotLoading = false
+  const loadSnapshots = React.useCallback(async () => [], [])
+  const createSnapshot = React.useCallback(async () => null, [])
 
+
+  const [users, setUsers] = useState([])
+  const [permissions, setPermissions] = useState([])
+  const [legalEntities, setLegalEntities] = useState([])
+  const [branches, setBranches] = useState([])
+  const [expenseCategories, setExpenseCategories] = useState([])
+  const [newExpenseCategoryName, setNewExpenseCategoryName] = useState('')
+  const [serviceBranchId, setServiceBranchId] = useState('')
+  const [serviceSettings, setServiceSettings] = useState({ enabled: false, service_percent: '10', staff_cost_percent: '4' })
+  const [branchRentSettings, setBranchRentSettings] = useState({})
+  const [fullName, setFullName] = useState('')
+  const [legalForm, setLegalForm] = useState({ name: '', voen: '' })
+  const [newUser, setNewUser] = useState({ login: '', password: '', full_name: '' })
+  const [passwordEdits, setPasswordEdits] = useState({})
+  const [clearConfirm, setClearConfirm] = useState('')
+  const [backupBusy, setBackupBusy] = useState(false)
+  const [employeeImportText, setEmployeeImportText] = useState('')
+  const [employeeImportRows, setEmployeeImportRows] = useState([])
+  const [employeeImportBusy, setEmployeeImportBusy] = useState(false)
+  const [employeeImportReport, setEmployeeImportReport] = useState(null)
+  const [attendanceImportText, setAttendanceImportText] = useState('')
+  const [attendanceImportRows, setAttendanceImportRows] = useState([])
+  const [attendanceImportBusy, setAttendanceImportBusy] = useState(false)
+  const [attendanceImportReport, setAttendanceImportReport] = useState(null)
+  const [attendanceImportYear, setAttendanceImportYear] = useState('2026')
+  const [attendanceImportMonth, setAttendanceImportMonth] = useState('4')
+  const [advanceImportText, setAdvanceImportText] = useState('')
+  const [advanceImportRows, setAdvanceImportRows] = useState([])
+  const [advanceImportBusy, setAdvanceImportBusy] = useState(false)
+  const [advanceImportReport, setAdvanceImportReport] = useState(null)
+  const [iikoConnections, setIikoConnections] = useState([])
+  const [iikoSyncLogs, setIikoSyncLogs] = useState([])
+  const [iikoForm, setIikoForm] = useState({ branch_id: '', organization_id: '', terminal_group_id: '', sync_enabled: true })
+  const [iikoSyncForm, setIikoSyncForm] = useState({ period_from: todayISO(), period_to: todayISO() })
+  const [iikoBusy, setIikoBusy] = useState(false)
+  const [iikoStatus, setIikoStatus] = useState('')
+  const [advanceImportYear, setAdvanceImportYear] = useState('2026')
+  const [advanceImportMonth, setAdvanceImportMonth] = useState('4')
+  const [msg, setMsg] = useState('')
+  const [settingsTab, setSettingsTab] = useState('branches')
+  const [customLogoPreview, setCustomLogoPreview] = useState(() => {
+    try { return localStorage.getItem('rms_custom_logo') || sessionStorage.getItem('rms_custom_logo') || '' } catch (_e) { return '' }
+  })
+  const editableSections = SECTIONS.filter(s => s.id !== 'settings')
+
+  useEffect(() => { load(); loadSnapshots() }, [])
+
+  async function load() {
+    await hydrateRmsInternalAuthFromCloud()
+    const [{ data: u }, { data: le }, { data: perms }, { data: br }, { data: cats }] = await Promise.all([
+      supabase.from('user_profiles').select('*').order('created_at'),
+      supabase.from('legal_entities').select('*').order('name'),
+      supabase.from('user_permissions').select('*'),
+      supabase.from('branches').select('id,name,service_charge_enabled,service_charge_percent,service_staff_cost_percent').eq('is_active', true).order('name'),
+      supabase.from('expense_categories').select('*').order('name')
+    ])
+
+    const internalUsers = Object.values(getInternalUsers()).map(u => ({
+      id: u.id,
+      email: `${u.login}@rms.internal`,
+      login_name: u.login,
+      full_name: u.full_name || u.login,
+      role: 'employee',
+      is_active: u.is_active !== false,
+      hide_manager_salary: Boolean(u.hide_manager_salary || u.hide_manager_salaries),
+      hide_manager_salaries: Boolean(u.hide_manager_salary || u.hide_manager_salaries),
+      ui_theme: u.ui_theme || 'classic',
+      rms_internal: true
+    }))
+
+    const supabaseUsers = u || []
+    const allUsers = [
+      ...supabaseUsers,
+      ...internalUsers.filter(iu => !supabaseUsers.some(su => su.id === iu.id || normalizeInternalLogin(su.login_name || su.email) === iu.login_name))
+    ]
+
+    setUsers(allUsers)
+    setLegalEntities(le || [])
+    setPermissions([...(perms || []), ...internalUsers.flatMap(iu => makeInternalPermissionRows(iu.id))])
+    setBranches(br || [])
+    setExpenseCategories(cats || [])
+
+    try {
+      const [{ data: iikoRows }, { data: iikoLogs }] = await Promise.all([
+        supabase.from('iiko_sync_connections').select('*, branches(name)').order('created_at', { ascending: false }),
+        supabase.from('iiko_sync_logs').select('*').order('created_at', { ascending: false }).limit(10)
+      ])
+      setIikoConnections(iikoRows || [])
+      setIikoSyncLogs(iikoLogs || [])
+    } catch (_e) {
+      setIikoConnections([])
+      setIikoSyncLogs([])
+    }
+
+    const rentSettings = await readRmsAppSetting(RMS_BRANCH_RENT_FORECAST_SETTING, {})
+    setBranchRentSettings(rentSettings && typeof rentSettings === 'object' ? rentSettings : {})
+    if (!serviceBranchId && br?.[0]) setServiceBranchId(br[0].id)
+    if (!iikoForm.branch_id && br?.[0]) setIikoForm(prev => ({ ...prev, branch_id: br[0].id }))
+  }
+
+  async function addExpenseCategory() {
+    const name = newExpenseCategoryName.trim()
+    if (!name) return setMsg('Введите название статьи расходов')
+
+    const { data: existingRows, error: findError } = await supabase
+      .from('expense_categories')
+      .select('id, name, is_active')
+      .ilike('name', name)
+      .limit(1)
+
+    if (findError) return setMsg(findError.message)
+
+    const existing = existingRows?.[0]
+    if (existing?.id) {
+      const { error: updateError } = await supabase
+        .from('expense_categories')
+        .update({ name, is_active: true })
+        .eq('id', existing.id)
+
+      if (updateError) return setMsg(updateError.message)
+      setNewExpenseCategoryName('')
+      await load()
+      setMsg(`Статья расходов “${name}” уже была в базе и активирована`)
+      return
+    }
+
+    const { error } = await supabase.from('expense_categories').insert({ name, is_active: true })
+    if (error) return setMsg(error.message)
+    setNewExpenseCategoryName('')
+    await load()
+    setMsg('Статья расходов добавлена')
+  }
+
+  async function updateExpenseCategory(id, patch) {
+    const payload = { ...patch }
+    if ('name' in payload) {
+      payload.name = String(payload.name || '').trim()
+      if (!payload.name) return setMsg('Название статьи не может быть пустым')
+    }
+    const { error } = await supabase.from('expense_categories').update(payload).eq('id', id)
+    if (error) return setMsg(error.message)
+    setExpenseCategories(prev => prev.map(c => c.id === id ? { ...c, ...payload } : c))
+    setMsg('Статья расходов обновлена')
+  }
+
+  async function createProfileForCurrentUser() {
+    await supabase.from('user_profiles').upsert({ id: session.user.id, email: session.user.email, login_name: (session.user.email || '').split('@')[0], full_name: fullName || session.user.email, role: 'admin', ui_theme: theme })
+    setMsg(t('saved'))
+    load()
+  }
+
+  async function addUser() {
+    setMsg('')
+    const login = normalizeInternalLogin(newUser.login)
+    if (!login) return setMsg('Введите login пользователя')
+    if (!/^[a-z0-9._-]{3,40}$/.test(login)) return setMsg('Login: только латиница, цифры, точка, дефис или подчёркивание, минимум 3 символа')
+    const password = String(newUser.password || '').trim()
+    if (!password || password.length < 6) return setMsg('Пароль должен быть минимум 6 символов')
+
+    const internalUsers = getInternalUsers()
+    const existing = internalUsers[login]
+    const userId = existing?.id || `rms-${login}-${Date.now()}`
+    internalUsers[login] = {
+      id: userId,
+      login,
+      password,
+      full_name: newUser.full_name || existing?.full_name || login,
+      is_active: existing?.is_active !== false,
+      hide_manager_salary: Boolean(existing?.hide_manager_salary || existing?.hide_manager_salaries),
+      hide_manager_salaries: Boolean(existing?.hide_manager_salary || existing?.hide_manager_salaries),
+      ui_theme: existing?.ui_theme || theme || 'classic'
+    }
+    setInternalUsers(internalUsers)
+
+    const allPerms = getInternalPermissions()
+    if (!allPerms[userId]) {
+      allPerms[userId] = {}
+      editableSections.forEach(sec => { allPerms[userId][sec.id] = 'read' })
+      setInternalPermissions(allPerms)
+    }
+
+    setNewUser({ login: '', password: '', full_name: '' })
+    setMsg(`Пользователь ${login} добавлен. Вход: ${login}`)
+    window.dispatchEvent(new Event('rms-user-settings-updated'))
+    await load()
+  }
+
+  async function changeUserPassword(userId, loginName) {
+    setMsg('')
+    const password = String(passwordEdits[userId] || '').trim()
+    if (!password || password.length < 6) return setMsg('Пароль должен быть минимум 6 символов')
+
+    const internalUsers = getInternalUsers()
+    const localLogin = Object.keys(internalUsers).find(k => internalUsers[k]?.id === userId || k === normalizeInternalLogin(loginName))
+    if (localLogin) {
+      internalUsers[localLogin] = { ...internalUsers[localLogin], password }
+      setInternalUsers(internalUsers)
+      setPasswordEdits(p => ({ ...p, [userId]: '' }))
+      setMsg(`Пароль пользователя ${localLogin} изменён`)
+      window.dispatchEvent(new Event('rms-user-settings-updated'))
+      await load()
+      return
+    }
+
+    setMsg('Пароль можно менять только у внутренних RMS-пользователей. Для admin используйте Supabase Auth.')
+  }
+
+  async function updateUser(id, patch) {
+    const internalUsers = getInternalUsers()
+    const localLogin = Object.keys(internalUsers).find(k => internalUsers[k]?.id === id)
+    if (localLogin) {
+      const normalizedPatch = { ...patch }
+      if ('hide_manager_salary' in normalizedPatch) normalizedPatch.hide_manager_salaries = normalizedPatch.hide_manager_salary
+      if ('hide_manager_salaries' in normalizedPatch) normalizedPatch.hide_manager_salary = normalizedPatch.hide_manager_salaries
+      internalUsers[localLogin] = { ...internalUsers[localLogin], ...normalizedPatch }
+      setInternalUsers(internalUsers)
+      setMsg(t('saved'))
+      window.dispatchEvent(new Event('rms-user-settings-updated'))
+      await load()
+      return
+    }
+
+    const { error } = await supabase.from('user_profiles').update(patch).eq('id', id)
+    if (error) setMsg(error.message); else { setMsg(t('saved')); load() }
+  }
+
+  const getPermission = (userId, section) => {
+    const local = getInternalPermissions()
+    if (local[userId]) return local[userId]?.[section] || 'none'
+    return permissions.find(p => p.user_id === userId && p.section === section)?.access || 'none'
+  }
+
+  async function updatePermission(userId, section, access) {
+    const local = getInternalPermissions()
+    if (local[userId]) {
+      local[userId] = { ...(local[userId] || {}), [section]: access }
+      setInternalPermissions(local)
+      setMsg(t('saved'))
+      window.dispatchEvent(new Event('rms-user-settings-updated'))
+      await load()
+      return
+    }
+
+    if (access === 'none') {
+      const { error } = await supabase.from('user_permissions').delete().eq('user_id', userId).eq('section', section)
+      if (error) setMsg(error.message); else { setMsg(t('saved')); load() }
+      return
+    }
+
+    const { error } = await supabase.from('user_permissions').upsert({ user_id: userId, section, access }, { onConflict: 'user_id,section' })
+    if (error) setMsg(error.message); else { setMsg(t('saved')); load() }
+  }
+
+  async function deleteUser(user) {
+    const login = normalizeInternalLogin(user?.login_name || user?.email)
+    const internalUsers = getInternalUsers()
+    const localLogin = internalUsers[login] ? login : Object.keys(internalUsers).find(k => internalUsers[k]?.id === user.id)
+    if (!localLogin) return setMsg('Удалять через RMS можно только внутренних пользователей.')
+    if (!window.confirm(`Удалить пользователя ${localLogin}?`)) return
+
+    const userId = internalUsers[localLogin].id
+    delete internalUsers[localLogin]
+    setInternalUsers(internalUsers)
+
+    const allPerms = getInternalPermissions()
+    delete allPerms[userId]
+    setInternalPermissions(allPerms)
+
+    const active = getInternalSessionStorage()
+    if (active?.user?.id === userId) setInternalSessionStorage(null)
+
+    setMsg(`Пользователь ${localLogin} удалён`)
+    window.dispatchEvent(new Event('rms-user-settings-updated'))
+    await load()
+  }
+
+  async function updateTheme(value) {
+    setTheme(value)
+    await supabase.from('user_profiles').update({ ui_theme: value }).eq('id', session.user.id)
+    setMsg(t('saved'))
+  }
+
+  function notifyLogoUpdate() {
+    window.dispatchEvent(new Event('rms-logo-updated'))
+  }
+
+  useEffect(() => {
+    let cancelled = false
+    async function loadLogoForSettings() {
+      const cloudLogo = await readRmsAppSetting(RMS_CUSTOM_LOGO_KEY, '')
+      if (cancelled || !cloudLogo) return
+      try {
+        localStorage.setItem('rms_custom_logo', cloudLogo)
+        sessionStorage.setItem('rms_custom_logo', cloudLogo)
+      } catch (_e) {}
+      setCustomLogoPreview(cloudLogo)
+      notifyLogoUpdate()
+    }
+    loadLogoForSettings()
+    return () => { cancelled = true }
+  }, [])
+
+  function handleCustomLogoSelect(event) {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (!file) return
+    if (file.size > 4 * 1024 * 1024) {
+      setMsg('Лого должно быть не больше 4 MB')
+      return
+    }
+
+    const reader = new FileReader()
+    reader.onload = () => {
+      const raw = String(reader.result || '')
+      const img = new Image()
+      img.onload = () => {
+        const source = document.createElement('canvas')
+        source.width = img.width
+        source.height = img.height
+        const sctx = source.getContext('2d')
+        sctx.clearRect(0, 0, source.width, source.height)
+        sctx.drawImage(img, 0, 0)
+
+        let minX = source.width
+        let minY = source.height
+        let maxX = 0
+        let maxY = 0
+        const data = sctx.getImageData(0, 0, source.width, source.height).data
+
+        for (let y = 0; y < source.height; y += 1) {
+          for (let x = 0; x < source.width; x += 1) {
+            const i = (y * source.width + x) * 4
+            const r = data[i]
+            const g = data[i + 1]
+            const b = data[i + 2]
+            const a = data[i + 3]
+            const notTransparent = a > 20
+            const notWhite = !(r > 244 && g > 244 && b > 244)
+            if (notTransparent && notWhite) {
+              if (x < minX) minX = x
+              if (y < minY) minY = y
+              if (x > maxX) maxX = x
+              if (y > maxY) maxY = y
+            }
+          }
+        }
+
+        if (maxX <= minX || maxY <= minY) {
+          minX = 0
+          minY = 0
+          maxX = source.width
+          maxY = source.height
+        }
+
+        const pad = 12
+        minX = Math.max(0, minX - pad)
+        minY = Math.max(0, minY - pad)
+        maxX = Math.min(source.width, maxX + pad)
+        maxY = Math.min(source.height, maxY + pad)
+
+        const cropW = Math.max(1, maxX - minX)
+        const cropH = Math.max(1, maxY - minY)
+        const maxW = 560
+        const maxH = 260
+        const canvas = document.createElement('canvas')
+        canvas.width = maxW
+        canvas.height = maxH
+        const ctx = canvas.getContext('2d')
+        ctx.clearRect(0, 0, maxW, maxH)
+
+        const scale = Math.min((maxW * 0.88) / cropW, (maxH * 0.82) / cropH)
+        const drawW = Math.max(1, Math.round(cropW * scale))
+        const drawH = Math.max(1, Math.round(cropH * scale))
+        ctx.drawImage(source, minX, minY, cropW, cropH, Math.round((maxW - drawW) / 2), Math.round((maxH - drawH) / 2), drawW, drawH)
+
+        setCustomLogoPreview(canvas.toDataURL('image/png'))
+        setMsg('Лого автоматически обрезано от лишних полей и сжато под входное меню. Нажмите “Сохранить лого”.')
+      }
+      img.onerror = () => {
+        setCustomLogoPreview(raw)
+        setMsg('Лого загружено. Если размер выглядит некорректно, используйте PNG/SVG на прозрачном фоне.')
+      }
+      img.src = raw
+    }
+    reader.readAsDataURL(file)
+  }
+
+  async function saveCustomLogo() {
+    if (!customLogoPreview) return setMsg('Сначала выберите файл лого')
+    localStorage.setItem('rms_custom_logo', customLogoPreview)
+    try { sessionStorage.setItem('rms_custom_logo', customLogoPreview) } catch (_e) {}
+    const { error } = await writeRmsAppSetting(RMS_CUSTOM_LOGO_KEY, customLogoPreview)
+    notifyLogoUpdate()
+    setMsg(error ? 'Лого сохранено локально, но не удалось сохранить в Supabase. Создайте таблицу rms_app_settings, чтобы лого не слетало после замены файла.' : 'Лого сохранено в Supabase. Оно не должно слетать после замены JSX.')
+  }
+
+  async function removeCustomLogo() {
+    localStorage.removeItem('rms_custom_logo')
+    try { sessionStorage.removeItem('rms_custom_logo') } catch (_e) {}
+    await deleteRmsAppSetting(RMS_CUSTOM_LOGO_KEY)
+    setCustomLogoPreview('')
+    notifyLogoUpdate()
+    setMsg('Пользовательское лого удалено')
+  }
+
+  useEffect(() => {
+    const b = branches.find(x => x.id === serviceBranchId)
+    if (b) setServiceSettings({ enabled: Boolean(b.service_charge_enabled), service_percent: b.service_charge_percent ?? '10', staff_cost_percent: b.service_staff_cost_percent ?? '4' })
+  }, [serviceBranchId, branches])
+
+  async function saveBranchServiceSettings() {
+    if (!serviceBranchId) return setMsg('Выберите филиал')
+    const { error } = await supabase.from('branches').update({
+      service_charge_enabled: Boolean(serviceSettings.enabled),
+      service_charge_percent: parseNum(serviceSettings.service_percent),
+      service_staff_cost_percent: parseNum(serviceSettings.staff_cost_percent)
+    }).eq('id', serviceBranchId)
+    if (error) return setMsg(error.message)
+    setMsg('Настройка service charge сохранена')
+    load()
+  }
+
+  async function saveBranchRentSettings() {
+    const normalized = {}
+    ;(branches || []).forEach(b => {
+      const value = parseNum(branchRentSettings?.[b.id])
+      if (value > 0) normalized[b.id] = value
+    })
+    const { error } = await writeRmsAppSetting(RMS_BRANCH_RENT_FORECAST_SETTING, normalized)
+    if (error) return setMsg('Не удалось сохранить аренду филиалов: ' + (error.message || String(error)))
+    setBranchRentSettings(normalized)
+    setMsg('Арендная плата филиалов сохранена для прогноза')
+  }
+
+
+  async function addLegalEntity() {
+    if (!legalForm.name.trim() || !legalForm.voen.trim()) return setMsg('Введите название и VOEN')
+    const { error } = await supabase.from('legal_entities').insert({ name: legalForm.name.trim(), voen: legalForm.voen.trim() })
+    if (error) return setMsg(error.message)
+    setLegalForm({ name: '', voen: '' })
+    setMsg(t('saved'))
+    load()
+  }
+
+  async function updateLegalEntity(id, patch) {
+    const { error } = await supabase.from('legal_entities').update(patch).eq('id', id)
+    if (error) setMsg(error.message); else { setMsg(t('saved')); load() }
+  }
+
+  async function exportBackup() {
+    setMsg('')
+    setBackupBusy(true)
+    const { data, error } = await supabase.rpc('nms_backup_operational_data')
+    setBackupBusy(false)
+    if (error) return setMsg(error.message)
+    const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `nms-backup-${stamp}.json`
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    URL.revokeObjectURL(url)
+    setMsg('Бэкап данных скачан')
+  }
+
+  async function importBackup(event) {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (!file) return
+    setMsg('')
+    let parsed
+    try {
+      parsed = JSON.parse(await file.text())
+    } catch (_e) {
+      return setMsg('Не удалось прочитать JSON-файл бэкапа')
+    }
+    const ok = window.confirm('Восстановление сначала очистит текущие операционные данные и затем загрузит данные из бэкапа. Продолжить?')
+    if (!ok) return
+    setBackupBusy(true)
+    const { error } = await supabase.rpc('nms_restore_operational_data', { p_backup: parsed })
+    setBackupBusy(false)
+    if (error) return setMsg(error.message)
+    setMsg('Бэкап восстановлен')
+  }
+
+  function downloadRmsJsonFile(filename, payload) {
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    URL.revokeObjectURL(url)
+  }
+
+  async function readAllRowsForBackup(table) {
+    const pageSize = 1000
+    let from = 0
+    let rows = []
+    while (true) {
+      const { data, error } = await supabase
+        .from(table)
+        .select('*')
+        .range(from, from + pageSize - 1)
+      if (error) return { rows, error }
+      const chunk = data || []
+      rows = rows.concat(chunk)
+      if (chunk.length < pageSize) break
+      from += pageSize
+    }
+    return { rows, error: null }
+  }
+
+  function readLocalBackupState() {
+    const storage = {}
+    RMS_FULL_BACKUP_LOCAL_KEYS.forEach(key => {
+      try {
+        const value = localStorage.getItem(key)
+        if (value !== null) storage[key] = value
+      } catch (_e) {}
+    })
+    return storage
+  }
+
+  function restoreLocalBackupState(storage = {}) {
+    Object.entries(storage || {}).forEach(([key, value]) => {
+      try {
+        if (value === null || value === undefined) localStorage.removeItem(key)
+        else localStorage.setItem(key, String(value))
+      } catch (_e) {}
+    })
+  }
+
+  async function exportFullRmsBackup() {
+    setMsg('')
+    setBackupBusy(true)
+    const backup = {
+      backup_type: 'rms_full_restore_backup',
+      version: 2,
+      app_version: RMS_SOURCE_VERSION,
+      created_at: new Date().toISOString(),
+      description: 'Полный JSON-бэкап RMS: справочники, операционные данные, отчёты AIKO, настройки, скрытые позиции и локальные RMS-настройки. Код GitHub/Vercel env нужно хранить отдельно.',
+      tables: {},
+      table_errors: {},
+      local_storage: readLocalBackupState(),
+      restore_order: RMS_FULL_BACKUP_CHILD_FIRST_TABLES,
+      table_list: RMS_FULL_BACKUP_TABLES
+    }
+
+    for (const table of RMS_FULL_BACKUP_TABLES) {
+      const { rows, error } = await readAllRowsForBackup(table)
+      if (error) backup.table_errors[table] = error.message || String(error)
+      backup.tables[table] = rows || []
+    }
+
+    setBackupBusy(false)
+    const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')
+    downloadRmsJsonFile(`rms-full-backup-${stamp}.json`, backup)
+    const errorCount = Object.keys(backup.table_errors || {}).length
+    setMsg(errorCount ? `Полный бэкап скачан, но ${errorCount} таблиц не удалось прочитать. Подробности внутри JSON в table_errors.` : 'Полный бэкап RMS скачан. Его можно использовать для восстановления данных RMS.')
+  }
+
+  async function clearTableForRestore(table) {
+    const key = RMS_FULL_BACKUP_TABLE_KEY(table)
+    return supabase.from(table).delete().not(key, 'is', null)
+  }
+
+  async function insertRowsForRestore(table, rows) {
+    const list = rows || []
+    const chunkSize = 500
+    for (let i = 0; i < list.length; i += chunkSize) {
+      const chunk = list.slice(i, i + chunkSize)
+      if (!chunk.length) continue
+      const { error } = await supabase.from(table).insert(chunk)
+      if (error) return { error }
+    }
+    return { error: null }
+  }
+
+  async function importFullRmsBackup(event) {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (!file) return
+    setMsg('')
+    let parsed
+    try {
+      parsed = JSON.parse(await file.text())
+    } catch (_e) {
+      return setMsg('Не удалось прочитать JSON-файл полного бэкапа')
+    }
+    if (parsed?.backup_type !== 'rms_full_restore_backup' || !parsed?.tables) {
+      return setMsg('Это не полный RMS-бэкап. Для старого операционного бэкапа используйте кнопку восстановления операционных данных.')
+    }
+
+    const confirmText = window.prompt('Полное восстановление удалит текущие данные RMS и загрузит данные из бэкапа. Введите ВОССТАНОВИТЬ для продолжения.')
+    if (confirmText !== 'ВОССТАНОВИТЬ') return setMsg('Восстановление отменено')
+
+    setBackupBusy(true)
+    const restoreErrors = []
+    const tablesInBackup = Object.keys(parsed.tables || {})
+    const deleteOrder = RMS_FULL_BACKUP_CHILD_FIRST_TABLES.filter(t => tablesInBackup.includes(t))
+    const insertOrder = [...deleteOrder].reverse()
+
+    for (const table of deleteOrder) {
+      const { error } = await clearTableForRestore(table)
+      if (error) restoreErrors.push(`${table}: очистка — ${error.message || String(error)}`)
+    }
+
+    for (const table of insertOrder) {
+      const rows = parsed.tables?.[table] || []
+      if (!rows.length) continue
+      const { error } = await insertRowsForRestore(table, rows)
+      if (error) restoreErrors.push(`${table}: загрузка — ${error.message || String(error)}`)
+    }
+
+    restoreLocalBackupState(parsed.local_storage || {})
+    setBackupBusy(false)
+
+    if (restoreErrors.length) {
+      setMsg(`Восстановление завершено с предупреждениями: ${restoreErrors.slice(0, 4).join(' | ')}${restoreErrors.length > 4 ? ' ...' : ''}`)
+    } else {
+      setMsg('Полный RMS-бэкап восстановлен. Перезагрузите страницу, чтобы обновить сессию, лого и отчёты.')
+    }
+    load()
+  }
+
+  async function clearOperationalData() {
+    setMsg('')
+    if (clearConfirm !== 'ОЧИСТИТЬ') return setMsg('Для очистки введите ОЧИСТИТЬ')
+    const ok = window.confirm('Будут очищены выручка, расходы, приходы, касса, закупки/поступления, оплаты поставщикам, авансы, выплаты зарплаты, табель и журналы операций. Справочники останутся. Продолжить?')
+    if (!ok) return
+    setBackupBusy(true)
+    const { error } = await supabase.rpc('nms_clear_operational_data')
+    setBackupBusy(false)
+    if (error) return setMsg(error.message)
+    setClearConfirm('')
+    setMsg('Операционные данные очищены. Можно начинать работу с чистой базы.')
+  }
+
+  function normalizeImportValue(value) {
+    return String(value || '')
+      .trim()
+      .toLowerCase()
+      .replace(/ё/g, 'е')
+      .replace(/[^a-zа-я0-9]+/g, '')
+  }
+
+  function splitImportLine(line) {
+    if (line.includes('\t')) return line.split('\t').map(v => v.trim())
+    if (line.includes(';')) return line.split(';').map(v => v.trim())
+    return line.split(',').map(v => v.trim().replace(/^"|"$/g, ''))
+  }
+
+  function cleanImportEmployeeName(value) {
+    return String(value || '')
+      .replace(/\s+/g, ' ')
+      .replace(/\s*\((?:1|2|3|4|5|6)\)\s*$/i, '')
+      .replace(/\s+4\)\s*$/i, '')
+      .trim()
+  }
+
+  function parseEmployeeImport(textValue = employeeImportText) {
+    const source = String(textValue || '').replace(/^\uFEFF/, '')
+    const lines = source.split(/\r?\n/).map(l => l.trim()).filter(Boolean)
+    const parsed = []
+    let currentBranch = ''
+
+    if (!lines.length) {
+      setEmployeeImportRows([])
+      setEmployeeImportReport({ errors: ['Пока нет данных для распознавания'] })
+      return []
+    }
+
+    const first = splitImportLine(lines[0]).map(x => normalizeImportValue(x))
+    const hasCsvHeader = first.includes('branch') && first.includes('position') && first.includes('name') && first.includes('salary')
+
+    if (hasCsvHeader) {
+      const header = splitImportLine(lines[0]).map(h => normalizeImportValue(h))
+      const idxBranch = header.indexOf('branch')
+      const idxPosition = header.indexOf('position')
+      const idxName = header.indexOf('name')
+      const idxSalary = header.indexOf('salary')
+      lines.slice(1).forEach((line, idx) => {
+        const cells = splitImportLine(line)
+        const branch = cells[idxBranch] || ''
+        const position = cells[idxPosition] || ''
+        const name = cleanImportEmployeeName(cells[idxName] || '')
+        const salary = parseNum(cells[idxSalary])
+        if (branch && position && name && salary > 0) parsed.push({ branch, position, name, salary, line: idx + 2 })
+      })
+    } else {
+      lines.forEach((line, idx) => {
+        const cells = splitImportLine(line)
+        const nonEmpty = cells.filter(Boolean)
+        if (!nonEmpty.length) return
+        const c0 = String(cells[0] || '').trim()
+        const c1 = String(cells[1] || '').trim()
+        const c2 = String(cells[2] || '').trim()
+        const norm0 = normalizeImportValue(c0)
+
+        const looksLikeBranch = nonEmpty.length === 1 && (norm0.includes('managers') || norm0.includes('bistronomia') || /^b\d/.test(norm0) || /^bc\d/.test(norm0))
+        if (looksLikeBranch) { currentBranch = c0; return }
+        if (norm0.includes('должность') || norm0.includes('повара') || norm0.includes('барсервис') || norm0.includes('стюард')) return
+
+        const salary = parseNum(c2)
+        if (currentBranch && c0 && c1 && salary > 0) {
+          parsed.push({ branch: currentBranch, position: c0, name: cleanImportEmployeeName(c1), salary, line: idx + 1 })
+        }
+      })
+    }
+
+    setEmployeeImportRows(parsed)
+    setEmployeeImportReport({ errors: parsed.length ? [] : ['Не удалось распознать сотрудников. Нужны колонки branch, position, name, salary или табличный текст с филиалами.'] })
+    return parsed
+  }
+
+  function findImportBranch(branchName) {
+    const raw = String(branchName || '').trim()
+    const norm = normalizeImportValue(raw)
+    if (!norm || norm.includes('manager')) return { branch_id: null, branchName: 'Менеджеры', matched: true }
+
+    const exact = branches.find(b => normalizeImportValue(b.name) === norm)
+    if (exact) return { branch_id: exact.id, branchName: exact.name, matched: true }
+
+    const digit = (raw.match(/b\s*[- ]?(\d+)/i) || raw.match(/bc\s*[- ]?(\d+)/i))?.[1]
+    if (digit) {
+      const byDigit = branches.find(b => {
+        const n = normalizeImportValue(b.name)
+        return n.includes(`bc${digit}`) || n.includes(`b${digit}`) || n.endsWith(String(digit))
+      })
+      if (byDigit) return { branch_id: byDigit.id, branchName: byDigit.name, matched: true }
+    }
+
+    const partial = branches.find(b => norm.includes(normalizeImportValue(b.name)) || normalizeImportValue(b.name).includes(norm))
+    if (partial) return { branch_id: partial.id, branchName: partial.name, matched: true }
+
+    return { branch_id: null, branchName: raw, matched: false }
+  }
+
+  async function handleEmployeeImportFile(event) {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (!file) return
+    const text = await file.text()
+    setEmployeeImportText(text)
+    setEmployeeImportReport(null)
+    setTimeout(() => parseEmployeeImport(text), 0)
+  }
+
+  function normalizeEmployeeMatchName(value) {
+    return normalizeImportValue(cleanImportEmployeeName(value))
+      .replace(/помощник|помошник|заготовщик|заг|повар|бариста|сервис|сервиз|стюарт|стьюарт|steward|service|chef|barista|менеджер|бн|bn|cy|су/g, '')
+  }
+
+  function firstImportNameToken(value) {
+    return normalizeImportValue(cleanImportEmployeeName(value).split(/\s+/)[0] || '')
+  }
+
+  function importPositionMatch(a, b) {
+    const pa = positionGroup(a)
+    const pb = positionGroup(b)
+    if (pa === 'Другое' || pb === 'Другое') return true
+    return pa === pb
+  }
+
+  function findEmployeeForAttendance(existingEmployees, row, branchId) {
+    const branchKey = branchId || null
+    const rawName = normalizeImportValue(row.name)
+    const cleanName = normalizeEmployeeMatchName(row.name)
+    const firstToken = firstImportNameToken(row.name)
+    const sameBranch = (existingEmployees || []).filter(e => (e.branch_id || null) === branchKey)
+
+    const exact = sameBranch.find(e => normalizeImportValue(e.full_name) === rawName || normalizeImportValue(cleanImportEmployeeName(e.full_name)) === rawName)
+    if (exact) return exact
+
+    const cleanExact = sameBranch.find(e => normalizeEmployeeMatchName(e.full_name) === cleanName && importPositionMatch(e.position, row.position))
+    if (cleanExact) return cleanExact
+
+    const contains = sameBranch.find(e => {
+      const n = normalizeEmployeeMatchName(e.full_name)
+      if (!n || !cleanName || !importPositionMatch(e.position, row.position)) return false
+      return (n.length >= 4 && cleanName.includes(n)) || (cleanName.length >= 4 && n.includes(cleanName))
+    })
+    if (contains) return contains
+
+    if (firstToken.length >= 3) {
+      const byFirstAndPosition = sameBranch.find(e => {
+        const n = normalizeImportValue(e.full_name)
+        return n.includes(firstToken) && importPositionMatch(e.position, row.position)
+      })
+      if (byFirstAndPosition) return byFirstAndPosition
+    }
+
+    const globalExact = (existingEmployees || []).find(e => normalizeEmployeeMatchName(e.full_name) === cleanName && importPositionMatch(e.position, row.position))
+    if (globalExact) return globalExact
+
+    if (firstToken.length >= 3) {
+      const globalFirst = (existingEmployees || []).find(e => normalizeImportValue(e.full_name).includes(firstToken) && importPositionMatch(e.position, row.position))
+      if (globalFirst) return globalFirst
+    }
+
+    return null
+  }
+
+  function parseAttendanceImport(textValue = attendanceImportText) {
+    const source = String(textValue || '').replace(/^\uFEFF/, '')
+    const lines = source.split(/\r?\n/).map(l => l.trim()).filter(Boolean)
+    const parsed = []
+    let currentBranch = ''
+
+    if (!lines.length) {
+      setAttendanceImportRows([])
+      setAttendanceImportReport({ errors: ['Пока нет данных для распознавания'] })
+      return []
+    }
+
+    const first = splitImportLine(lines[0]).map(x => normalizeImportValue(x))
+    const hasCsvHeader = first.includes('branch') && first.includes('position') && first.includes('name') && (first.includes('workeddays') || first.includes('worked') || first.includes('workedday'))
+
+    if (hasCsvHeader) {
+      const header = splitImportLine(lines[0]).map(h => normalizeImportValue(h))
+      const idxBranch = header.indexOf('branch')
+      const idxPosition = header.indexOf('position')
+      const idxName = header.indexOf('name')
+      const idxWorked = header.findIndex(h => h === 'workeddays' || h === 'worked' || h === 'workedday')
+      const dayIndexes = Array.from({ length: 31 }, (_, i) => header.findIndex(h => h === `day${i + 1}` || h === String(i + 1)))
+
+      lines.slice(1).forEach((line, idx) => {
+        const cells = splitImportLine(line)
+        const branch = cells[idxBranch] || ''
+        const position = cells[idxPosition] || ''
+        const name = cleanImportEmployeeName(cells[idxName] || '')
+        const days = dayIndexes.map(dayIdx => {
+          if (dayIdx < 0) return ''
+          const value = String(cells[dayIdx] || '').trim().replace(',', '.')
+          return value === '1' || value === '0.5' || value === '0' ? value : ''
+        })
+        const workedDays = parseNum(cells[idxWorked]) || days.reduce((s, v) => s + parseNum(v), 0)
+        if (branch && name) parsed.push({ branch, position, name, days, workedDays, line: idx + 2 })
+      })
+    } else {
+      lines.forEach((line, idx) => {
+        const cells = line.split('\t')
+        const nonEmpty = cells.map(c => String(c || '').trim()).filter(Boolean)
+        if (!nonEmpty.length) return
+
+        const c0 = String(cells[0] || '').trim()
+        const c1 = String(cells[1] || '').trim()
+        const norm0 = normalizeImportValue(c0)
+
+        const looksLikeBranch = nonEmpty.length === 1 && (norm0.includes('managers') || norm0.includes('bistronomia') || /^b\d/.test(norm0) || /^bc\d/.test(norm0))
+        if (looksLikeBranch) { currentBranch = c0; return }
+        if (norm0.includes('должность') || norm0.includes('повара') || norm0.includes('барсервис') || norm0.includes('стюард') || norm0 === '0' || norm0 === '1') return
+        if (!currentBranch || !c1) return
+
+        const days = []
+        for (let i = 2; i < 33; i++) {
+          const value = String(cells[i] || '').trim().replace(',', '.')
+          days.push(value === '1' || value === '0.5' || value === '0' ? value : '')
+        }
+
+        let workedDays = 0
+        for (let i = cells.length - 1; i >= 33; i--) {
+          const raw = String(cells[i] || '').trim().replace(',', '.')
+          if (/^-?\d+(\.\d+)?$/.test(raw)) {
+            workedDays = parseNum(raw)
+            break
+          }
+        }
+        if (!workedDays) workedDays = days.reduce((s, v) => s + parseNum(v), 0)
+
+        parsed.push({ branch: currentBranch, position: c0, name: cleanImportEmployeeName(c1), days, workedDays, line: idx + 1 })
+      })
+    }
+
+    setAttendanceImportRows(parsed)
+    setAttendanceImportReport({ errors: parsed.length ? [] : ['Не удалось распознать табель. Нужен CSV branch,position,name,day_1...day_31,worked_days или табличный текст с филиалами.'] })
+    return parsed
+  }
+
+  async function handleAttendanceImportFile(event) {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (!file) return
+    const text = await file.text()
+    setAttendanceImportText(text)
+    setAttendanceImportReport(null)
+    setTimeout(() => parseAttendanceImport(text), 0)
+  }
+
+  async function importAttendanceToRms() {
+    setMsg('')
+    const rows = attendanceImportRows.length ? attendanceImportRows : parseAttendanceImport()
+    if (!rows.length) return setMsg('Нет распознанных строк табеля для импорта')
+    const year = Number(attendanceImportYear)
+    const month = Number(attendanceImportMonth)
+    if (!year || !month) return setMsg('Укажите год и месяц для импорта табеля')
+    const monthDate = monthStart(year, month)
+    const dim = daysInMonth(year, month)
+    if (!window.confirm(`Импортировать табель за ${I18N.ru.months[month - 1]} ${year}: ${rows.length} сотрудников?`)) return
+
+    setAttendanceImportBusy(true)
+    const report = { imported: 0, skipped: 0, createdEmployees: 0, attendanceRows: 0, salaryRows: 0, errors: [] }
+
+    try {
+      const { data: existingEmployees, error: empError } = await supabase
+        .from('employees')
+        .select('id, full_name, branch_id, position, monthly_salary, daily_rate, salary_type, is_active, employment_status')
+      if (empError) throw empError
+
+      for (const row of rows) {
+        const branch = findImportBranch(row.branch)
+        if (!branch.matched) {
+          report.skipped += 1
+          report.errors.push(`Строка ${row.line}: филиал не найден — ${row.branch}`)
+          continue
+        }
+
+        let employee = findEmployeeForAttendance(existingEmployees || [], row, branch.branch_id)
+
+        if (!employee) {
+          const createPayload = {
+            full_name: cleanImportEmployeeName(row.name),
+            position: row.position || null,
+            branch_id: branch.branch_id || null,
+            salary_type: 'monthly',
+            monthly_salary: 0,
+            daily_rate: 0,
+            is_active: true,
+            employment_status: 'active'
+          }
+          const { data: createdEmployee, error: createEmployeeError } = await supabase
+            .from('employees')
+            .insert(createPayload)
+            .select('id, full_name, branch_id, position, monthly_salary, daily_rate, salary_type, is_active, employment_status')
+            .single()
+          if (createEmployeeError) {
+            report.skipped += 1
+            report.errors.push(`Строка ${row.line}: сотрудник не найден и не создан — ${row.name}: ${createEmployeeError.message}`)
+            continue
+          }
+          employee = createdEmployee
+          existingEmployees.push(createdEmployee)
+          report.createdEmployees += 1
+          report.errors.push(`Создан сотрудник без оклада: ${row.name} / ${branch.branchName}. После этого импортируйте/обновите оклады сотрудников.`)
+        }
+
+        const attendancePayload = []
+        for (let d = 1; d <= Math.min(31, dim); d++) {
+          const value = row.days[d - 1]
+          const workDate = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+          await supabase.from('employee_attendance').delete().eq('employee_id', employee.id).eq('work_date', workDate)
+          if (value !== '' && value !== null && value !== undefined) {
+            attendancePayload.push({
+              employee_id: employee.id,
+              branch_id: employee.branch_id || branch.branch_id || null,
+              work_date: workDate,
+              value: parseNum(value)
+            })
+          }
+        }
+
+        if (attendancePayload.length) {
+          const { error: attError } = await supabase.from('employee_attendance').upsert(attendancePayload, { onConflict: 'employee_id,work_date' })
+          if (attError) {
+            report.skipped += 1
+            report.errors.push(`${row.name}: ${attError.message}`)
+            continue
+          }
+        }
+
+        const worked = row.workedDays || attendancePayload.reduce((s, r) => s + parseNum(r.value), 0)
+        const gross = calcGrossSalary(employee, worked)
+        const start = monthDate
+        const end = `${year}-${String(month).padStart(2, '0')}-${String(dim).padStart(2, '0')}`
+        const [{ data: existingSalary }, { data: advanceRows }] = await Promise.all([
+          supabase.from('salary_periods').select('*').eq('employee_id', employee.id).eq('salary_month', monthDate).maybeSingle(),
+          supabase.from('salary_advances').select('amount').eq('employee_id', employee.id).gte('advance_date', start).lte('advance_date', end).or('is_cancelled.is.null,is_cancelled.eq.false')
+        ])
+        const advance = (advanceRows || []).reduce((s, a) => s + parseNum(a.amount), 0)
+        const deduction = parseNum(existingSalary?.deduction_amount)
+        const net = gross - advance - deduction
+
+        const { error: salaryError } = await supabase.from('salary_periods').upsert({
+          employee_id: employee.id,
+          branch_id: employee.branch_id || branch.branch_id || null,
+          salary_month: monthDate,
+          worked_days: worked,
+          salary_gross: gross,
+          salary_net: net,
+          advance_amount: advance,
+          deduction_amount: deduction,
+          card_payment: parseNum(existingSalary?.card_payment),
+          cash_payment: parseNum(existingSalary?.cash_payment),
+          comment: existingSalary?.comment || `Импорт табеля: ${worked} дн.`
+        }, { onConflict: 'employee_id,salary_month' })
+        if (salaryError) {
+          report.skipped += 1
+          report.errors.push(`${row.name}: ${salaryError.message}`)
+          continue
+        }
+
+        report.imported += 1
+        report.attendanceRows += attendancePayload.length
+        report.salaryRows += 1
+      }
+
+      setAttendanceImportReport(report)
+      setMsg(`Импорт табеля завершён. Сотрудников: ${report.imported}, создано новых: ${report.createdEmployees || 0}, строк посещаемости: ${report.attendanceRows}, зарплатных периодов: ${report.salaryRows}, пропущено: ${report.skipped}.`)
+    } catch (e) {
+      setMsg(e.message || String(e))
+      setAttendanceImportReport({ ...report, errors: [...report.errors, e.message || String(e)] })
+    } finally {
+      setAttendanceImportBusy(false)
+    }
+  }
+
+  function parseAdvanceImport(textValue = advanceImportText) {
+    const source = String(textValue || '').replace(/^\uFEFF/, '')
+    const lines = source.split(/\r?\n/).map(l => l.trim()).filter(Boolean)
+    const parsed = []
+    let currentBranch = 'Managers'
+
+    if (!lines.length) {
+      setAdvanceImportRows([])
+      setAdvanceImportReport({ errors: ['Пока нет данных для распознавания'] })
+      return []
+    }
+
+    const first = splitImportLine(lines[0]).map(x => normalizeImportValue(x))
+    const hasCsvHeader = first.includes('branch') && first.includes('name') && first.includes('amount')
+
+    if (hasCsvHeader) {
+      const header = splitImportLine(lines[0]).map(h => normalizeImportValue(h))
+      const idxBranch = header.indexOf('branch')
+      const idxName = header.indexOf('name')
+      const idxDate = header.indexOf('advancedate') >= 0 ? header.indexOf('advancedate') : header.indexOf('date')
+      const idxAmount = header.indexOf('amount')
+      const idxComment = header.indexOf('comment')
+
+      lines.slice(1).forEach((line, idx) => {
+        const cells = splitImportLine(line)
+        const branch = cells[idxBranch] || ''
+        const name = cleanImportEmployeeName(cells[idxName] || '')
+        const amount = parseNum(cells[idxAmount])
+        const advanceDate = idxDate >= 0 && cells[idxDate] ? String(cells[idxDate]).trim() : ''
+        const comment = idxComment >= 0 ? String(cells[idxComment] || '') : ''
+        if (branch && name && amount > 0) parsed.push({ branch, name, advanceDate, amount, comment, line: idx + 2 })
+      })
+    } else {
+      lines.forEach((line, idx) => {
+        const cells = line.split('\t')
+        const nonEmpty = cells.map(c => String(c || '').trim()).filter(Boolean)
+        if (!nonEmpty.length) return
+
+        const c0 = String(cells[0] || '').trim()
+        const c1 = String(cells[1] || '').trim()
+        const norm0 = normalizeImportValue(c0)
+
+        const looksLikeBranch = nonEmpty.length === 1 && (norm0.includes('managers') || norm0.includes('bistronomia') || /^b\d/.test(norm0) || /^bc\d/.test(norm0))
+        if (looksLikeBranch) { currentBranch = c0; return }
+        if (norm0.includes('повара') || norm0.includes('барсервис') || norm0.includes('стюардинг') || norm0.includes('стюард') || norm0 === 'summ') return
+        if (!c1) return
+
+        const last = String(cells[cells.length - 1] || '').trim().replace(',', '.')
+        const amount = /^-?\d+(\.\d+)?$/.test(last) ? parseNum(last) : 0
+        if (amount > 0) {
+          parsed.push({
+            branch: currentBranch,
+            name: cleanImportEmployeeName(c1),
+            advanceDate: '',
+            amount,
+            comment: 'Импорт авансов за месяц',
+            line: idx + 1
+          })
+        }
+      })
+    }
+
+    setAdvanceImportRows(parsed)
+    setAdvanceImportReport({ errors: parsed.length ? [] : ['Не удалось распознать авансы. Нужен CSV branch,name,advance_date,amount,comment или табличный текст с филиалами.'] })
+    return parsed
+  }
+
+  async function handleAdvanceImportFile(event) {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (!file) return
+    const text = await file.text()
+    setAdvanceImportText(text)
+    setAdvanceImportReport(null)
+    setTimeout(() => parseAdvanceImport(text), 0)
+  }
+
+  function normalizeImportDateValue(value, year, month) {
+    const fallback = `${year}-${String(month).padStart(2, '0')}-${String(daysInMonth(year, month)).padStart(2, '0')}`
+    if (!value) return fallback
+    const s = String(value || '').trim()
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s
+    const parts = s.split(/[./-]/).map(x => x.trim())
+    if (parts.length === 3) {
+      const [d, m, y] = parts
+      if (String(y).length === 4) return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+    }
+    return fallback
+  }
+
+  async function importAdvancesToRms() {
+    setMsg('')
+    const rows = advanceImportRows.length ? advanceImportRows : parseAdvanceImport()
+    if (!rows.length) return setMsg('Нет распознанных авансов для импорта')
+    const year = Number(advanceImportYear)
+    const month = Number(advanceImportMonth)
+    if (!year || !month) return setMsg('Укажите год и месяц для импорта авансов')
+    const monthDate = monthStart(year, month)
+    const dim = daysInMonth(year, month)
+    const monthEndDate = `${year}-${String(month).padStart(2, '0')}-${String(dim).padStart(2, '0')}`
+    if (!window.confirm(`Импортировать авансы за ${I18N.ru.months[month - 1]} ${year}: ${rows.length} сотрудников?`)) return
+
+    setAdvanceImportBusy(true)
+    const report = { imported: 0, skipped: 0, createdEmployees: 0, total: 0, errors: [] }
+
+    try {
+      const { data: existingEmployees, error: empError } = await supabase
+        .from('employees')
+        .select('id, full_name, branch_id, position, monthly_salary, daily_rate, salary_type, is_active, employment_status')
+      if (empError) throw empError
+
+      for (const row of rows) {
+        const branch = findImportBranch(row.branch)
+        if (!branch.matched) {
+          report.skipped += 1
+          report.errors.push(`Строка ${row.line}: филиал не найден — ${row.branch}`)
+          continue
+        }
+
+        let employee = findEmployeeForAttendance(existingEmployees || [], { ...row, position: '' }, branch.branch_id)
+        if (!employee) {
+          const createPayload = {
+            full_name: cleanImportEmployeeName(row.name),
+            position: null,
+            branch_id: branch.branch_id || null,
+            salary_type: 'monthly',
+            monthly_salary: 0,
+            daily_rate: 0,
+            is_active: true,
+            employment_status: 'active'
+          }
+          const { data: createdEmployee, error: createEmployeeError } = await supabase
+            .from('employees')
+            .insert(createPayload)
+            .select('id, full_name, branch_id, position, monthly_salary, daily_rate, salary_type, is_active, employment_status')
+            .single()
+          if (createEmployeeError) {
+            report.skipped += 1
+            report.errors.push(`Строка ${row.line}: сотрудник не найден и не создан — ${row.name}: ${createEmployeeError.message}`)
+            continue
+          }
+          employee = createdEmployee
+          existingEmployees.push(createdEmployee)
+          report.createdEmployees += 1
+          report.errors.push(`Создан сотрудник без оклада: ${row.name} / ${branch.branchName}. После этого импортируйте/обновите оклады сотрудников.`)
+        }
+
+        const amount = parseNum(row.amount)
+        const advanceDate = normalizeImportDateValue(row.advanceDate, year, month)
+        const { data: oldRows } = await supabase
+          .from('salary_advances')
+          .select('id, amount, comment')
+          .eq('employee_id', employee.id)
+          .eq('advance_date', advanceDate)
+          .ilike('comment', 'Импорт авансов%')
+          .or('is_cancelled.is.null,is_cancelled.eq.false')
+        if (oldRows?.length) {
+          await supabase.from('salary_advances').update({ is_cancelled: true, comment: 'Отменено перед повторным импортом авансов' }).in('id', oldRows.map(r => r.id))
+        }
+
+        const { error: advError } = await supabase.from('salary_advances').insert({
+          employee_id: employee.id,
+          branch_id: employee.branch_id || branch.branch_id || null,
+          advance_date: advanceDate || monthEndDate,
+          amount,
+          comment: row.comment || `Импорт авансов за ${I18N.ru.months[month - 1]} ${year}`
+        })
+        if (advError) {
+          report.skipped += 1
+          report.errors.push(`${row.name}: ${advError.message}`)
+          continue
+        }
+
+        const start = monthDate
+        const end = monthEndDate
+        const [{ data: existingSalary }, { data: advanceRows }, { data: attendanceRows }] = await Promise.all([
+          supabase.from('salary_periods').select('*').eq('employee_id', employee.id).eq('salary_month', monthDate).maybeSingle(),
+          supabase.from('salary_advances').select('amount').eq('employee_id', employee.id).gte('advance_date', start).lte('advance_date', end).or('is_cancelled.is.null,is_cancelled.eq.false'),
+          supabase.from('employee_attendance').select('value').eq('employee_id', employee.id).gte('work_date', start).lte('work_date', end)
+        ])
+        const worked = (attendanceRows || []).reduce((s, a) => s + parseNum(a.value), 0) || parseNum(existingSalary?.worked_days)
+        const gross = parseNum(existingSalary?.salary_gross) || calcGrossSalary(employee, worked)
+        const advance = (advanceRows || []).reduce((s, a) => s + parseNum(a.amount), 0)
+        const deduction = parseNum(existingSalary?.deduction_amount)
+        const net = gross - advance - deduction
+
+        await supabase.from('salary_periods').upsert({
+          employee_id: employee.id,
+          branch_id: employee.branch_id || branch.branch_id || null,
+          salary_month: monthDate,
+          worked_days: worked,
+          salary_gross: gross,
+          salary_net: net,
+          advance_amount: advance,
+          deduction_amount: deduction,
+          card_payment: parseNum(existingSalary?.card_payment),
+          cash_payment: parseNum(existingSalary?.cash_payment),
+          comment: existingSalary?.comment || `Импорт авансов: ${fmt(advance)} AZN`
+        }, { onConflict: 'employee_id,salary_month' })
+
+        report.imported += 1
+        report.total += amount
+      }
+
+      setAdvanceImportReport(report)
+      setMsg(`Импорт авансов завершён. Сотрудников: ${report.imported}, сумма: ${fmt(report.total)} AZN, создано новых: ${report.createdEmployees || 0}, пропущено: ${report.skipped}.`)
+    } catch (e) {
+      setMsg(e.message || String(e))
+      setAdvanceImportReport({ ...report, errors: [...report.errors, e.message || String(e)] })
+    } finally {
+      setAdvanceImportBusy(false)
+    }
+  }
+
+  async function importEmployeesToRms() {
+    setMsg('')
+    const rows = employeeImportRows.length ? employeeImportRows : parseEmployeeImport()
+    if (!rows.length) return setMsg('Нет распознанных сотрудников для импорта')
+    if (!window.confirm(`Импортировать/обновить ${rows.length} сотрудников?`)) return
+
+    setEmployeeImportBusy(true)
+    const report = { created: 0, updated: 0, skipped: 0, errors: [] }
+
+    try {
+      const { data: existingEmployees, error: empError } = await supabase.from('employees').select('id, full_name, branch_id')
+      if (empError) throw empError
+
+      for (const row of rows) {
+        const branch = findImportBranch(row.branch)
+        if (!branch.matched) {
+          report.skipped += 1
+          report.errors.push(`Строка ${row.line}: филиал не найден — ${row.branch}`)
+          continue
+        }
+
+        const nameKey = normalizeImportValue(row.name)
+        const exists = (existingEmployees || []).find(e => normalizeImportValue(e.full_name) === nameKey && ((e.branch_id || null) === (branch.branch_id || null)))
+        const payload = {
+          full_name: row.name,
+          position: row.position || null,
+          branch_id: branch.branch_id,
+          salary_type: 'monthly',
+          monthly_salary: parseNum(row.salary),
+          daily_rate: parseNum(row.salary) / 26,
+          is_active: true,
+          employment_status: 'active'
+        }
+
+        if (exists) {
+          const { error } = await supabase.from('employees').update(payload).eq('id', exists.id)
+          if (error) { report.skipped += 1; report.errors.push(`${row.name}: ${error.message}`); continue }
+          report.updated += 1
+        } else {
+          const { data: created, error } = await supabase.from('employees').insert(payload).select('id').single()
+          if (error) { report.skipped += 1; report.errors.push(`${row.name}: ${error.message}`); continue }
+          report.created += 1
+          await supabase.from('employee_assignments').insert({
+            employee_id: created.id,
+            branch_id: branch.branch_id,
+            position: row.position || null,
+            salary_type: 'monthly',
+            monthly_salary: parseNum(row.salary),
+            daily_rate: parseNum(row.salary) / 26,
+            start_date: todayISO(),
+            comment: 'Импорт сотрудников из настроек'
+          })
+        }
+      }
+
+      setEmployeeImportReport(report)
+      setMsg(`Импорт сотрудников завершён. Добавлено: ${report.created}, обновлено: ${report.updated}, пропущено: ${report.skipped}.`)
+    } catch (e) {
+      setMsg(e.message || String(e))
+      setEmployeeImportReport({ ...report, errors: [...report.errors, e.message || String(e)] })
+    } finally {
+      setEmployeeImportBusy(false)
+    }
+  }
+
+
+  async function saveIikoConnection() {
+    setIikoStatus('')
+    const branchId = iikoForm.branch_id || branches[0]?.id
+    if (!branchId) return setIikoStatus('Сначала добавьте филиал в настройках.')
+    if (!String(iikoForm.organization_id || '').trim()) return setIikoStatus('Введите iiko organization_id.')
+
+    setIikoBusy(true)
+    try {
+      const payload = {
+        branch_id: branchId,
+        iiko_organization_id: String(iikoForm.organization_id || '').trim(),
+        iiko_terminal_group_id: String(iikoForm.terminal_group_id || '').trim() || null,
+        sync_enabled: Boolean(iikoForm.sync_enabled),
+        updated_at: new Date().toISOString()
+      }
+      const { error } = await supabase.from('iiko_sync_connections').upsert(payload, { onConflict: 'branch_id' })
+      if (error) throw error
+      setIikoForm({ branch_id: branchId, organization_id: '', terminal_group_id: '', sync_enabled: true })
+      setIikoStatus('Подключение iiko сохранено. Следующий шаг — добавить IIKO_API_LOGIN в Supabase Edge Functions / Vercel Environment.')
+      await load()
+    } catch (e) {
+      setIikoStatus(e.message || String(e))
+    } finally {
+      setIikoBusy(false)
+    }
+  }
+
+  function editIikoConnection(row) {
+    setIikoForm({
+      branch_id: row.branch_id || '',
+      organization_id: row.iiko_organization_id || '',
+      terminal_group_id: row.iiko_terminal_group_id || '',
+      sync_enabled: row.sync_enabled !== false
+    })
+    setSettingsTab('integrations')
+  }
+
+  async function toggleIikoConnection(row) {
+    setIikoStatus('')
+    const { error } = await supabase.from('iiko_sync_connections').update({ sync_enabled: !row.sync_enabled, updated_at: new Date().toISOString() }).eq('id', row.id)
+    if (error) setIikoStatus(error.message); else { setIikoStatus('Статус подключения обновлён'); await load() }
+  }
+
+  async function runIikoSync(row) {
+    setIikoStatus('')
+    setIikoBusy(true)
+    try {
+      const { data, error } = await supabase.functions.invoke('iiko-sync-sales', { body: { connectionId: row.id } })
+      if (error) throw error
+      setIikoStatus(data?.message || 'Синхронизация запущена.')
+      await load()
+    } catch (e) {
+      setIikoStatus((e && e.message) ? e.message : 'Edge Function iiko-sync-sales пока не развернута или вернула ошибку.')
+    } finally {
+      setIikoBusy(false)
+    }
+  }
+
+  return (
+    <section>
+      <section className="topbar"><div><h2>{t('settings_tab')}</h2><p>{t('settings_subtitle')}</p></div></section>
+      <div className="settings-tabs">
+        <button className={settingsTab === 'branches' ? 'active' : ''} onClick={() => setSettingsTab('branches')}>Настройки интерфейса и филиалов</button>
+        <button className={settingsTab === 'users' ? 'active' : ''} onClick={() => setSettingsTab('users')}>Пользователи</button>
+        <button className={settingsTab === 'voen' ? 'active' : ''} onClick={() => setSettingsTab('voen')}>Наши VOEN / юрлица</button>
+        <button className={settingsTab === 'backup' ? 'active' : ''} onClick={() => setSettingsTab('backup')}>Бэкап и очистка данных</button>
+        <button className={settingsTab === 'import' ? 'active' : ''} onClick={() => setSettingsTab('import')}>Импорт данных</button>
+        <button className={settingsTab === 'integrations' ? 'active' : ''} onClick={() => setSettingsTab('integrations')}>Интеграции</button>
+      </div>
+      <section className="grid">
+        {settingsTab === 'branches' && <>
+          <div className="card span-2"><h3>Настройки интерфейса и филиалов</h3><p className="hint">Тема интерфейса и service charge филиалов.</p></div>
+          <div className="card span-2"><div className="card-head"><h3>Интерфейс</h3></div><p className="hint">Добавлен новый светлый Dashboard-вариант, визуально ближе к присланным референсам.</p><div className="form-grid compact"><label><span>Вид интерфейса</span><select value={theme} onChange={e => updateTheme(e.target.value)}>{THEMES.map(th => <option key={th.id} value={th.id}>{th.name}</option>)}</select></label></div>{msg && <p className={`hint ${msg === t('saved') || String(msg).toLowerCase().includes('сохран') ? 'save-status' : 'good'}`}>{msg}</p>}</div>
+          <div className="card span-2"><div className="card-head"><div><h3>Лого стартовой страницы</h3><p className="hint">Теперь можно самостоятельно загрузить логотип без правки кода. Сохраняется в Supabase, а локально используется как быстрый кэш.</p></div></div><div className="logo-uploader"><div className="logo-preview-wrap">{customLogoPreview ? <img src={customLogoPreview} alt="Предпросмотр лого" /> : <div className="empty-logo">LOGO</div>}<div><b>Предпросмотр</b><p className="hint">Файл будет автоматически сжат под стартовую страницу. Лучше использовать PNG/SVG на прозрачном фоне.</p></div></div><div className="form-grid compact"><label><span>Выбрать файл</span><input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" onChange={handleCustomLogoSelect} /></label></div><div className="action-row"><button className="small primary" onClick={saveCustomLogo}>Сохранить лого</button><button className="ghost small" onClick={removeCustomLogo}>Удалить лого</button></div></div></div>
+          <div className="card span-2">
+            <div className="card-head">
+              <div>
+                <h3>Статьи расходов</h3>
+                <p className="hint">Добавление и редактирование названий статей, которые используются в “Расходы за выбранную дату”.</p>
+              </div>
+              <button className="small primary" onClick={addExpenseCategory}>+ Добавить статью</button>
+            </div>
+            <div className="form-grid compact">
+              <label><span>Новая статья расходов</span><input value={newExpenseCategoryName} onChange={e => setNewExpenseCategoryName(e.target.value)} placeholder="Например: Ремонт, Базар, Упаковка" /></label>
+            </div>
+            <div className="table-wrap" style={{marginTop:12}}>
+              <table>
+                <thead><tr><th>Название статьи</th><th>Активна</th></tr></thead>
+                <tbody>
+                  {expenseCategories.map(c => <tr key={c.id}>
+                    <td><input defaultValue={c.name} onBlur={e => updateExpenseCategory(c.id, { name: e.target.value })} /></td>
+                    <td><select value={String(c.is_active !== false)} onChange={e => updateExpenseCategory(c.id, { is_active: e.target.value === 'true' })}><option value="true">Да</option><option value="false">Нет</option></select></td>
+                  </tr>)}
+                  {!expenseCategories.length && <tr><td colSpan="2" className="hint">Статей расходов пока нет.</td></tr>}
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div className="card span-2"><div className="card-head"><div><h3>Настройка service charge филиала</h3><p className="hint">Выберите филиал и один раз включите service charge. В разделе “Выручка” сумма для персонала будет считаться автоматически в конце строки.</p></div><button className="small primary" onClick={saveBranchServiceSettings}>Сохранить</button></div><div className="form-grid compact"><label><span>Филиал</span><select value={serviceBranchId} onChange={e => setServiceBranchId(e.target.value)}>{branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label><label className="checkbox-row"><input type="checkbox" checked={serviceSettings.enabled} onChange={e => setServiceSettings(s => ({...s, enabled: e.target.checked}))} /> Учитывать service charge</label><MoneyInput label="Service charge % в счёте" value={serviceSettings.service_percent} onChange={v => setServiceSettings(s => ({...s, service_percent: v}))} /><MoneyInput label="% затрат персоналу от базы" value={serviceSettings.staff_cost_percent} onChange={v => setServiceSettings(s => ({...s, staff_cost_percent: v}))} /></div></div>
+
+          <div className="card span-2"><div className="card-head"><div><h3>Арендная плата для прогноза</h3><p className="hint">Эти суммы не добавляются в расходы дня. Они используются только в прогнозе месяца, чтобы аренда учитывалась сразу, даже если фактическую строку аренды ещё не внесли.</p></div><button className="small primary" onClick={saveBranchRentSettings}>Сохранить аренду</button></div><div className="table-wrap"><table><thead><tr><th>Филиал</th><th>Аренда / месяц, AZN</th></tr></thead><tbody>{branches.map(b => <tr key={b.id}><td><b>{b.name}</b></td><td><MoneyInput label="" value={branchRentSettings?.[b.id] || ''} onChange={v => setBranchRentSettings(prev => ({ ...prev, [b.id]: v }))} /></td></tr>)}</tbody></table></div><p className="hint">Если аренда здесь заполнена, прогноз использует её. Если нет — берёт аренду из текущего месяца, а если её ещё нет — среднее прошлых месяцев.</p></div>
+        </>}
+
+        {settingsTab === 'users' && <>
+          <div className="card span-2"><h3>Пользователи</h3><p className="hint">Добавление пользователей и права доступа.</p></div>
+          <div className="card span-2"><div className="card-head"><h3>Добавить пользователя</h3></div><p className="hint">Пользователь входит по login. Система создаёт внутренний email вида login@rms.local.az, поэтому email-рассылка не используется.</p><div className="form-grid compact"><label><span>Login</span><input value={newUser.login} onChange={e => setNewUser({...newUser, login: e.target.value})} placeholder="" /></label><label><span>Временный пароль</span><input type="password" value={newUser.password} onChange={e => setNewUser({...newUser, password: e.target.value})} /></label><label><span>Имя</span><input value={newUser.full_name} onChange={e => setNewUser({...newUser, full_name: e.target.value})} /></label></div><button className="small" onClick={addUser}>+ Добавить пользователя</button>{msg && <p className={`hint ${msg === t('saved') || String(msg).toLowerCase().includes('сохран') ? 'save-status' : 'good'}`}>{msg}</p>}</div>
+          <div className="card span-2"><div className="card-head"><h3>Права доступа</h3></div><p className="hint">Внутренние пользователи RMS входят по login/password без Supabase Auth. Раздел с доступом “Нет доступа” полностью скрывается из меню.</p><div className="table-wrap"><table><thead><tr><th>Пользователь</th><th>Login</th><th>Активен</th><th>Пароль</th><th>Зарплаты</th><th>Разделы</th><th>Действия</th></tr></thead><tbody>{users.map(u => <tr key={u.id}><td><b>{u.full_name || u.login_name || u.id}</b></td><td><span className="hint">{u.login_name || (u.email || '').split('@')[0] || u.id}</span></td><td><select value={String(u.is_active !== false)} onChange={e => updateUser(u.id, { is_active: e.target.value === 'true' })}><option value="true">Да</option><option value="false">Нет</option></select></td><td><div className="inline-edit"><input type="password" value={passwordEdits[u.id] || ''} onChange={e => setPasswordEdits(p => ({...p, [u.id]: e.target.value}))} placeholder="Новый пароль" /><button className="small" onClick={() => changeUserPassword(u.id, u.login_name || (u.email || '').split('@')[0])}>Изменить</button></div></td><td><label className="checkbox-row"><input type="checkbox" checked={Boolean(u.hide_manager_salary)} onChange={e => updateUser(u.id, { hide_manager_salary: e.target.checked })} /> Скрыть зарплаты менеджеров</label></td><td><div className="permission-grid">{editableSections.map(sec => <React.Fragment key={`${u.id}-${sec.id}`}><b>{t(sec.key)}</b><select value={getPermission(u.id, sec.id)} onChange={e => updatePermission(u.id, sec.id, e.target.value)}><option value="none">Нет доступа</option><option value="read">Только просмотр</option><option value="edit">Редактор</option></select></React.Fragment>)}</div></td><td>{u.rms_internal ? <button className="small danger" onClick={() => deleteUser(u)}>Удалить</button> : <span className="hint">admin</span>}</td></tr>)}</tbody></table></div></div>
+        </>}
+
+        {settingsTab === 'voen' && <div className="card span-2"><div className="card-head"><h3>Наши VOEN / юрлица</h3></div><p className="hint">Используются в разделе “Поставщики”.</p><div className="form-grid compact"><label><span>Имя / компания</span><input value={legalForm.name} onChange={e => setLegalForm({...legalForm, name: e.target.value})} placeholder="Ruslan Rasulov" /></label><label><span>VOEN</span><input value={legalForm.voen} onChange={e => setLegalForm({...legalForm, voen: e.target.value})} /></label></div><button className="small" onClick={addLegalEntity}>+ Добавить VOEN</button>{msg && <p className={`hint ${msg === t('saved') || String(msg).toLowerCase().includes('сохран') ? 'save-status' : 'good'}`}>{msg}</p>}<div className="table-wrap" style={{marginTop:12}}><table><thead><tr><th>Имя / компания</th><th>VOEN</th><th>Активен</th></tr></thead><tbody>{legalEntities.map(le => <tr key={le.id}><td><input defaultValue={le.name} onBlur={e => updateLegalEntity(le.id, { name: e.target.value.trim() })} /></td><td><input defaultValue={le.voen} onBlur={e => updateLegalEntity(le.id, { voen: e.target.value.trim() })} /></td><td><select defaultValue={String(le.is_active !== false)} onChange={e => updateLegalEntity(le.id, { is_active: e.target.value === 'true' })}><option value="true">Да</option><option value="false">Нет</option></select></td></tr>)}{!legalEntities.length && <tr><td colSpan="3" className="hint">—</td></tr>}</tbody></table></div></div>}
+
+        {settingsTab === 'backup' && <>
+          <div className="card span-2">
+            <div className="card-head">
+              <div>
+                <h3>Полный бэкап RMS</h3>
+                <p className="hint">Скачивает один JSON-файл для восстановления RMS-данных: справочники, филиалы, сотрудники, пользователи, права, выручка, расходы, поставщики, техкарты, зарплаты, AIKO-отчёты, скрытые позиции, alias, лого и настройки.</p>
+              </div>
+              <button type="button" className="small primary" disabled={backupBusy} onClick={exportFullRmsBackup}>{backupBusy ? 'Выполняется...' : 'Скачать полный бэкап RMS'}</button>
+            </div>
+            <div className="notice">
+              <b>Для полного восстановления</b>
+              <p className="hint">Этот файл восстанавливает данные RMS в Supabase. Код проекта GitHub, Vercel env-переменные и домен нужно хранить отдельно, потому что браузер не имеет безопасного доступа к GitHub/Vercel-токенам.</p>
+            </div>
+            <div className="form-grid compact">
+              <label><span>Восстановить полный RMS-бэкап</span><input type="file" accept="application/json,.json" disabled={backupBusy} onChange={importFullRmsBackup} /></label>
+            </div>
+            <p className="hint">Перед восстановлением система попросит ввести ВОССТАНОВИТЬ. Текущие данные будут очищены и заменены данными из файла.</p>
+          </div>
+
+          <div className="card span-2">
+            <div className="card-head">
+              <div>
+                <h3>Операционный бэкап и очистка</h3>
+                <p className="hint">Операционный бэкап сохраняет только рабочие движения: выручка, расходы, касса, поступления/оплаты поставщиков, авансы, выплаты зарплаты, табель и журналы. Справочники остаются.</p>
+              </div>
+            </div>
+            <div className="form-grid compact">
+              <label><span>Операционный бэкап</span><button type="button" className="small" disabled={backupBusy} onClick={exportBackup}>{backupBusy ? 'Выполняется...' : 'Скачать операционный JSON'}</button></label>
+              <label><span>Восстановить операционный бэкап</span><input type="file" accept="application/json,.json" disabled={backupBusy} onChange={importBackup} /></label>
+              <label><span>Очистка</span><input value={clearConfirm} onChange={e => setClearConfirm(e.target.value)} placeholder="Введите ОЧИСТИТЬ" /></label>
+            </div>
+            <button type="button" className="danger" disabled={backupBusy} onClick={clearOperationalData}>Очистить всю операционную информацию</button>
+            <p className="hint">Перед очисткой сначала скачай полный бэкап RMS.</p>
+            {msg && <p className={`hint ${msg === t('saved') || String(msg).toLowerCase().includes('сохран') ? 'save-status' : 'good'}`}>{msg}</p>}
+          </div>
+        </>}
+
+        {settingsTab === 'integrations' && <>
+          <div className="card span-2">
+            <div className="card-head">
+              <div>
+                <h3>Интеграции → iiko</h3>
+                <p className="hint">Внутри RMS можно управлять филиалами, соответствиями iiko, ручной синхронизацией и журналом. Секретные ключи остаются только на стороне Supabase Edge Function.</p>
+              </div>
+              <button className="small" disabled={iikoBusy} onClick={checkIikoBackend}>{iikoBusy ? 'Проверка...' : 'Проверить backend'}</button>
+            </div>
+            <div className="mini-grid">
+              <div className="metric"><span>В RMS</span><strong>Филиалы, sync, логи</strong></div>
+              <div className="metric"><span>В Supabase</span><strong>Secrets + Edge Function</strong></div>
+              <div className="metric"><span>Безопасность</span><strong>Ключи не во frontend</strong></div>
+            </div>
+            <div className="notice">
+              <b>Что можно делать внутри программы</b>
+              <p className="hint">Сохранять связку филиала RMS с iiko organization_id / terminal_group_id, включать или отключать синхронизацию, запускать ручную проверку подключения, запускать синхронизацию за период и смотреть журнал ошибок.</p>
+              <b>Что обязательно на стороне Supabase</b>
+              <p className="hint">Выполнить SQL-миграцию, создать Edge Function <b>iiko-sync-sales</b> и добавить secrets: <b>IIKO_API_LOGIN</b>, <b>SUPABASE_URL</b>, <b>SUPABASE_SERVICE_ROLE_KEY</b>. Service role key нельзя добавлять в main.jsx.</p>
+            </div>
+            {iikoStatus && <p className={String(iikoStatus).toLowerCase().includes('ошиб') || String(iikoStatus).toLowerCase().includes('error') || String(iikoStatus).toLowerCase().includes('missing') ? 'hint bad' : 'hint good'}>{iikoStatus}</p>}
+          </div>
+
+          <div className="card span-2">
+            <div className="card-head">
+              <div>
+                <h3>Связка филиала RMS с iiko</h3>
+                <p className="hint">Сначала заполните шапку подключения. API login здесь не вводится: он хранится в Supabase Secrets.</p>
+              </div>
+              <button className="small primary" disabled={iikoBusy} onClick={saveIikoConnection}>{iikoBusy ? 'Сохранение...' : 'Сохранить подключение'}</button>
+            </div>
+            <div className="form-grid compact">
+              <label><span>Филиал RMS</span><select value={iikoForm.branch_id || branches[0]?.id || ''} onChange={e => setIikoForm(prev => ({ ...prev, branch_id: e.target.value }))}>{branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label>
+              <label><span>iiko organization_id</span><input value={iikoForm.organization_id} onChange={e => setIikoForm(prev => ({ ...prev, organization_id: e.target.value }))} placeholder="ID организации из iikoCloud" /></label>
+              <label><span>iiko terminal_group_id</span><input value={iikoForm.terminal_group_id} onChange={e => setIikoForm(prev => ({ ...prev, terminal_group_id: e.target.value }))} placeholder="Опционально" /></label>
+              <label className="checkbox-row"><input type="checkbox" checked={iikoForm.sync_enabled !== false} onChange={e => setIikoForm(prev => ({ ...prev, sync_enabled: e.target.checked }))} /> Автосинхронизация включена</label>
+            </div>
+          </div>
+
+          <div className="card span-2">
+            <div className="card-head">
+              <div>
+                <h3>Ручная синхронизация</h3>
+                <p className="hint">Выберите период и нажмите “Синхронизировать” напротив нужного филиала. Сейчас функция готова к проверке подключения; реальная OLAP-загрузка продаж подключается следующим этапом.</p>
+              </div>
+            </div>
+            <div className="form-grid compact">
+              <label><span>Дата с</span><input type="date" value={iikoSyncForm.period_from} onChange={e => setIikoSyncForm(prev => ({ ...prev, period_from: e.target.value }))} /></label>
+              <label><span>Дата по</span><input type="date" value={iikoSyncForm.period_to} onChange={e => setIikoSyncForm(prev => ({ ...prev, period_to: e.target.value }))} /></label>
+            </div>
+          </div>
+
+          <div className="card span-2">
+            <div className="card-head"><h3>Подключенные филиалы</h3></div>
+            <div className="table-wrap">
+              <table>
+                <thead><tr><th>Филиал</th><th>Organization ID</th><th>Terminal Group ID</th><th>Статус</th><th>Последняя синхронизация</th><th>Действия</th></tr></thead>
+                <tbody>
+                  {iikoConnections.map(row => <tr key={row.id}>
+                    <td><b>{row.branches?.name || branches.find(b => b.id === row.branch_id)?.name || row.branch_id}</b></td>
+                    <td>{row.iiko_organization_id}</td>
+                    <td>{row.iiko_terminal_group_id || '—'}</td>
+                    <td>{row.sync_enabled ? 'Активно' : 'Отключено'}</td>
+                    <td>{row.last_sync_at ? new Date(row.last_sync_at).toLocaleString('ru-RU') : '—'}</td>
+                    <td><div className="action-row"><button className="small" onClick={() => editIikoConnection(row)}>Редактировать</button><button className="small" onClick={() => toggleIikoConnection(row)}>{row.sync_enabled ? 'Отключить' : 'Включить'}</button><button className="small" disabled={iikoBusy} onClick={() => testIikoConnection(row)}>Проверить</button><button className="small primary" disabled={iikoBusy} onClick={() => runIikoSync(row)}>Синхронизировать</button></div></td>
+                  </tr>)}
+                  {!iikoConnections.length && <tr><td colSpan="6" className="hint">Подключений пока нет. Сначала выполните SQL-миграцию и сохраните первый филиал.</td></tr>}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className="card span-2">
+            <div className="card-head"><h3>Журнал iiko sync</h3><button className="small" onClick={load}>Обновить</button></div>
+            <div className="table-wrap"><table><thead><tr><th>Дата</th><th>Статус</th><th>Период</th><th>Строк</th><th>Сумма</th><th>Комментарий</th></tr></thead><tbody>{iikoSyncLogs.map(log => <tr key={log.id}><td>{log.created_at ? new Date(log.created_at).toLocaleString('ru-RU') : '—'}</td><td>{log.status}</td><td>{log.period_from || '—'} — {log.period_to || '—'}</td><td>{log.rows_count || 0}</td><td>{fmt(log.total_amount || 0)}</td><td>{log.error_message || log.message || '—'}</td></tr>)}{!iikoSyncLogs.length && <tr><td colSpan="6" className="hint">Логов синхронизации пока нет.</td></tr>}</tbody></table></div>
+          </div>
+        </>}
+
+        {settingsTab === 'import' && <>
+          <div className="card span-2"><div className="card-head"><div><h3>Импорт сотрудников</h3><p className="hint">Импортирует только постоянные данные: филиал, должность, имя сотрудника и оклад. Начисления, авансы, остатки и рабочие дни не импортируются.</p></div><button className="small primary" disabled={employeeImportBusy || !employeeImportRows.length} onClick={importEmployeesToRms}>{employeeImportBusy ? 'Импорт...' : 'Импортировать сотрудников'}</button></div><div className="form-grid compact"><label><span>CSV / TXT файл</span><input type="file" accept=".csv,.txt,text/csv,text/plain" disabled={employeeImportBusy} onChange={handleEmployeeImportFile} /></label><label><span>Распознать вставленный текст</span><button type="button" className="small" disabled={employeeImportBusy} onClick={() => parseEmployeeImport()}>Распознать</button></label></div><label><span>Вставить список сотрудников</span><textarea rows="8" value={employeeImportText} onChange={e => { setEmployeeImportText(e.target.value); setEmployeeImportReport(null) }} placeholder={"branch,position,name,salary\nB1-Xaqani,Повар,Элвин,700"} /></label><div className="mini-grid"><div className="metric"><span>Распознано</span><strong>{employeeImportRows.length}</strong></div><div className="metric"><span>Будет импортировано</span><strong>{employeeImportRows.length}</strong></div><div className="metric"><span>Режим</span><strong>Сотрудники</strong></div></div>{msg && <p className={`hint ${msg === t('saved') || String(msg).toLowerCase().includes('сохран') ? 'save-status' : 'good'}`}>{msg}</p>}{employeeImportReport?.errors?.length > 0 && <div className="notice"><b>Ошибки / предупреждения</b>{employeeImportReport.errors.slice(0, 12).map((e, i) => <p key={i} className="bad">{e}</p>)}{employeeImportReport.errors.length > 12 && <p className="hint">Показаны первые 12 ошибок из {employeeImportReport.errors.length}</p>}</div>}{employeeImportRows.length > 0 && <div className="table-wrap" style={{marginTop:12}}><table><thead><tr><th>Филиал</th><th>Должность</th><th>Сотрудник</th><th>Оклад</th></tr></thead><tbody>{employeeImportRows.slice(0, 80).map((r, idx) => <tr key={`${r.line}-${idx}`}><td>{r.branch}</td><td>{r.position}</td><td><b>{r.name}</b></td><td>{fmt(r.salary)}</td></tr>)}{employeeImportRows.length > 80 && <tr><td colSpan="4" className="hint">Показаны первые 80 строк из {employeeImportRows.length}</td></tr>}</tbody></table></div>}<p className="hint">Если сотрудник уже есть в этом филиале, будут обновлены должность и оклад. Если сотрудника нет — он будет создан.</p></div>
+
+          <div className="card span-2">
+            <div className="card-head">
+              <div>
+                <h3>Импорт посещаемости</h3>
+                <p className="hint">Импортирует табель по дням за выбранный месяц в employee_attendance и пересчитывает salary_periods. Сотрудники должны уже существовать в RMS.</p>
+              </div>
+              <button className="small primary" disabled={attendanceImportBusy || !attendanceImportRows.length} onClick={importAttendanceToRms}>{attendanceImportBusy ? 'Импорт...' : 'Импортировать посещаемость'}</button>
+            </div>
+            <div className="form-grid compact">
+              <label><span>Год</span><input value={attendanceImportYear} onChange={e => setAttendanceImportYear(e.target.value)} /></label>
+              <label><span>Месяц</span><select value={attendanceImportMonth} onChange={e => setAttendanceImportMonth(e.target.value)}>{I18N.ru.months.map((m, idx) => <option key={m} value={idx + 1}>{m}</option>)}</select></label>
+              <label><span>CSV / TXT файл</span><input type="file" accept=".csv,.txt,text/csv,text/plain" disabled={attendanceImportBusy} onChange={handleAttendanceImportFile} /></label>
+              <label><span>Распознать вставленный текст</span><button type="button" className="small" disabled={attendanceImportBusy} onClick={() => parseAttendanceImport()}>Распознать табель</button></label>
+            </div>
+            <label><span>Вставить табель посещаемости</span><textarea rows="8" value={attendanceImportText} onChange={e => { setAttendanceImportText(e.target.value); setAttendanceImportReport(null) }} placeholder={"branch,position,name,day_1,day_2,...,day_31,worked_days\nB1-Xaqani,Повар,Элвин,1,1,0,...,25"} /></label>
+            <div className="mini-grid">
+              <div className="metric"><span>Распознано</span><strong>{attendanceImportRows.length}</strong></div>
+              <div className="metric"><span>Месяц</span><strong>{I18N.ru.months[Number(attendanceImportMonth) - 1]} {attendanceImportYear}</strong></div>
+              <div className="metric"><span>Режим</span><strong>Посещаемость</strong></div>
+            </div>
+            {attendanceImportReport?.errors?.length > 0 && <div className="notice"><b>Ошибки / предупреждения</b>{attendanceImportReport.errors.slice(0, 12).map((e, i) => <p key={i} className="bad">{e}</p>)}{attendanceImportReport.errors.length > 12 && <p className="hint">Показаны первые 12 ошибок из {attendanceImportReport.errors.length}</p>}</div>}
+            {attendanceImportRows.length > 0 && <div className="table-wrap" style={{marginTop:12}}><table><thead><tr><th>Филиал</th><th>Должность</th><th>Сотрудник</th><th>Отработано дней</th><th>Дни 1–31</th></tr></thead><tbody>{attendanceImportRows.slice(0, 80).map((r, idx) => <tr key={`${r.line}-${idx}`}><td>{r.branch}</td><td>{r.position || '—'}</td><td><b>{r.name}</b></td><td>{fmt(r.workedDays)}</td><td>{r.days.map((v, i) => v ? `${i + 1}:${v}` : '').filter(Boolean).join(' · ')}</td></tr>)}{attendanceImportRows.length > 80 && <tr><td colSpan="5" className="hint">Показаны первые 80 строк из {attendanceImportRows.length}</td></tr>}</tbody></table></div>}
+            <p className="hint">Импорт посещаемости сначала очищает значения по сотруднику за дни выбранного месяца, затем загружает новые 1 / 0.5 / 0 и обновляет расчёт зарплаты.</p>
+
+          <div className="card span-2">
+            <div className="card-head">
+              <div>
+                <h3>Импорт авансов</h3>
+                <p className="hint">Импортирует суммы авансов в salary_advances и пересчитывает salary_periods за выбранный месяц. По умолчанию сумма ставится последним днём месяца.</p>
+              </div>
+              <button className="small primary" disabled={advanceImportBusy || !advanceImportRows.length} onClick={importAdvancesToRms}>{advanceImportBusy ? 'Импорт...' : 'Импортировать авансы'}</button>
+            </div>
+            <div className="form-grid compact">
+              <label><span>Год</span><input value={advanceImportYear} onChange={e => setAdvanceImportYear(e.target.value)} /></label>
+              <label><span>Месяц</span><select value={advanceImportMonth} onChange={e => setAdvanceImportMonth(e.target.value)}>{I18N.ru.months.map((m, idx) => <option key={m} value={idx + 1}>{m}</option>)}</select></label>
+              <label><span>CSV / TXT файл</span><input type="file" accept=".csv,.txt,text/csv,text/plain" disabled={advanceImportBusy} onChange={handleAdvanceImportFile} /></label>
+              <label><span>Распознать вставленный текст</span><button type="button" className="small" disabled={advanceImportBusy} onClick={() => parseAdvanceImport()}>Распознать авансы</button></label>
+            </div>
+            <label><span>Вставить авансы</span><textarea rows="8" value={advanceImportText} onChange={e => { setAdvanceImportText(e.target.value); setAdvanceImportReport(null) }} placeholder={"branch,name,advance_date,amount,comment\nB1-Xaqani,Элвин,2026-04-30,250,Импорт авансов"} /></label>
+            <div className="mini-grid">
+              <div className="metric"><span>Распознано</span><strong>{advanceImportRows.length}</strong></div>
+              <div className="metric"><span>Сумма</span><strong>{fmt(advanceImportRows.reduce((s, r) => s + parseNum(r.amount), 0))}</strong></div>
+              <div className="metric"><span>Режим</span><strong>Авансы</strong></div>
+            </div>
+            {advanceImportReport?.errors?.length > 0 && <div className="notice"><b>Ошибки / предупреждения</b>{advanceImportReport.errors.slice(0, 12).map((e, i) => <p key={i} className={String(e).startsWith('Создан') ? 'hint' : 'bad'}>{e}</p>)}{advanceImportReport.errors.length > 12 && <p className="hint">Показаны первые 12 ошибок из {advanceImportReport.errors.length}</p>}</div>}
+            {advanceImportRows.length > 0 && <div className="table-wrap" style={{marginTop:12}}><table><thead><tr><th>Филиал</th><th>Сотрудник</th><th>Дата</th><th>Аванс</th></tr></thead><tbody>{advanceImportRows.slice(0, 80).map((r, idx) => <tr key={`${r.line}-${idx}`}><td>{r.branch}</td><td><b>{r.name}</b></td><td>{r.advanceDate || `${advanceImportYear}-${String(advanceImportMonth).padStart(2, '0')}-${String(daysInMonth(advanceImportYear, advanceImportMonth)).padStart(2, '0')}`}</td><td>{fmt(r.amount)}</td></tr>)}{advanceImportRows.length > 80 && <tr><td colSpan="4" className="hint">Показаны первые 80 строк из {advanceImportRows.length}</td></tr>}</tbody></table></div>}
+            <p className="hint">При повторном импорте старые строки “Импорт авансов...” за эту дату отменяются, чтобы не было дублей.</p>
+          </div>
+          </div>
+        </>}      </section>
+    </section>
+  )
+}
+
+
+function Placeholder({ title, t }) {
+  return <section><section className="topbar"><div><h2>{title}</h2></div></section><div className="module-placeholder"><h2>{title}</h2><p>{t('module_coming')}</p></div></section>
+}
+
+function MoneyInput({ label, value, onChange, disabled = false }) {
+  const [local, setLocal] = useState(value ?? '')
+  useEffect(() => setLocal(value ?? ''), [value])
+  return <label><span>{label}</span><input inputMode="decimal" value={local} disabled={disabled} onChange={e => setLocal(e.target.value)} onBlur={() => onChange(local)} /></label>
+}
+
+function Metric({ label, value }) {
+  return <div className="metric"><span>{label}</span><strong>{value}</strong></div>
+}
+
+function SummaryMetric({ label, value }) {
+  return <div className="revenue-summary-row"><span>{label}</span><strong>{value}</strong></div>
+}
+
+
+function RMSProV9Styles() {
+  return <style>{`
+    /* RMS Pro UI v13 — confirmed chart KPI design and clean financial rows */
+    .rms-pro-shell .rms-pro-topbar-title{
+      display:flex!important;
+      align-items:center!important;
+      gap:16px!important;
+      min-height:42px!important;
+    }
+    .rms-pro-shell .rms-pro-back{
+      width:38px!important;
+      height:38px!important;
+      min-width:38px!important;
+      border-radius:12px!important;
+      display:inline-flex!important;
+      align-items:center!important;
+      justify-content:center!important;
+      padding:0!important;
+      margin:0!important;
+      color:#10233f!important;
+      background:rgba(255,255,255,.72)!important;
+      border:1px solid rgba(203,213,225,.82)!important;
+      box-shadow:0 10px 24px rgba(15,23,42,.04)!important;
+      line-height:1!important;
+      transform:none!important;
+    }
+    .rms-pro-shell .rms-pro-back svg{width:20px!important;height:20px!important;display:block!important;}
+    .rms-pro-shell .rms-pro-back:hover{background:#fff!important;border-color:rgba(148,163,184,.82)!important;box-shadow:0 14px 30px rgba(15,23,42,.07)!important;transform:none!important;}
+
+    .rms-pro-shell .rms-pro-nav-item:hover,
+    .rms-pro-shell .rms-pro-nav-item.active,
+    .rms-pro-shell .rms-pro-nav-item:focus-visible,
+    .rms-pro-shell .rms-pro-nav-item.nav:hover,
+    .rms-pro-shell .rms-pro-nav-item.nav.active,
+    .rms-pro-shell .rms-pro-nav-item.nav:focus-visible{
+      background:linear-gradient(90deg,rgba(255,255,255,.105),rgba(255,255,255,.055))!important;
+      border-color:rgba(148,163,184,.20)!important;
+      color:#f8fbff!important;
+      box-shadow:none!important;
+      transform:none!important;
+    }
+    .rms-pro-shell .rms-pro-nav-item.active .rms-pro-nav-icon,
+    .rms-pro-shell .rms-pro-nav-item:hover .rms-pro-nav-icon{background:rgba(255,255,255,.075)!important;color:#eaf2ff!important;}
+
+    /* v43 account footer compact logout: remove separate exit button, place icon inside user card */
+    .rms-pro-shell .rms-pro-sidebar-bottom{
+      gap:0!important;
+    }
+    .rms-pro-shell .rms-pro-user-card{
+      display:grid!important;
+      grid-template-columns:42px minmax(0,1fr) 38px!important;
+      align-items:center!important;
+      gap:10px!important;
+      min-height:64px!important;
+      padding:11px 12px!important;
+    }
+    .rms-pro-shell .rms-pro-user-info{
+      min-width:0!important;
+    }
+    .rms-pro-shell .rms-pro-user-name{
+      max-width:100%!important;
+      overflow:hidden!important;
+      text-overflow:ellipsis!important;
+      white-space:nowrap!important;
+    }
+    .rms-pro-shell .rms-pro-account-logout{
+      width:38px!important;
+      height:38px!important;
+      min-width:38px!important;
+      border-radius:13px!important;
+      border:1px solid rgba(148,163,184,.18)!important;
+      background:rgba(15,23,42,.18)!important;
+      color:rgba(241,245,249,.92)!important;
+      display:inline-flex!important;
+      align-items:center!important;
+      justify-content:center!important;
+      padding:0!important;
+      margin:0!important;
+      box-shadow:none!important;
+      transform:none!important;
+    }
+    .rms-pro-shell .rms-pro-account-logout svg{
+      width:18px!important;
+      height:18px!important;
+      display:block!important;
+    }
+    .rms-pro-shell .rms-pro-account-logout:hover{
+      background:rgba(239,68,68,.14)!important;
+      border-color:rgba(248,113,113,.26)!important;
+      color:#fecdd3!important;
+      transform:none!important;
+      box-shadow:none!important;
+    }
+    .rms-pro-shell .rms-pro-logout{
+      display:none!important;
+    }
+
+    /* v43 menu typography polish: premium sidebar font and symmetric account logout icon */
+    .rms-pro-shell .sidebar.rms-pro-sidebar,
+    .rms-pro-shell .rms-pro-brand,
+    .rms-pro-shell .rms-pro-nav,
+    .rms-pro-shell .rms-pro-user-card{
+      font-family:"Manrope", "Inter", "SF Pro Display", "Segoe UI", -apple-system, BlinkMacSystemFont, Arial, sans-serif!important;
+      -webkit-font-smoothing:antialiased!important;
+      text-rendering:geometricPrecision!important;
+    }
+    .rms-pro-shell .rms-pro-nav-item{
+      font-family:"Manrope", "Inter", "SF Pro Display", "Segoe UI", -apple-system, BlinkMacSystemFont, Arial, sans-serif!important;
+      font-size:14.5px!important;
+      line-height:1.05!important;
+      font-weight:820!important;
+      letter-spacing:-.025em!important;
+    }
+    .rms-pro-shell .rms-pro-nav-group-title{
+      font-family:"Manrope", "Inter", "SF Pro Display", "Segoe UI", -apple-system, BlinkMacSystemFont, Arial, sans-serif!important;
+      font-size:10.8px!important;
+      font-weight:850!important;
+      letter-spacing:.105em!important;
+      color:rgba(203,213,225,.72)!important;
+    }
+    .rms-pro-shell .rms-pro-brand h1{
+      font-family:"Manrope", "Inter", "SF Pro Display", "Segoe UI", -apple-system, BlinkMacSystemFont, Arial, sans-serif!important;
+      font-weight:850!important;
+      letter-spacing:-.055em!important;
+    }
+    .rms-pro-shell .rms-pro-brand p{
+      font-family:"Manrope", "Inter", "SF Pro Display", "Segoe UI", -apple-system, BlinkMacSystemFont, Arial, sans-serif!important;
+      font-weight:780!important;
+      letter-spacing:.045em!important;
+    }
+    .rms-pro-shell .rms-pro-user-name{
+      font-family:"Manrope", "Inter", "SF Pro Display", "Segoe UI", -apple-system, BlinkMacSystemFont, Arial, sans-serif!important;
+      font-size:13.2px!important;
+      font-weight:850!important;
+      letter-spacing:-.025em!important;
+    }
+    .rms-pro-shell .rms-pro-user-role{
+      font-family:"Manrope", "Inter", "SF Pro Display", "Segoe UI", -apple-system, BlinkMacSystemFont, Arial, sans-serif!important;
+      font-size:11px!important;
+      font-weight:650!important;
+      letter-spacing:-.01em!important;
+    }
+    .rms-pro-shell .rms-pro-account-logout{
+      justify-self:end!important;
+      align-self:center!important;
+    }
+
+    .rms-pro-shell .card .metric,
+    .rms-pro-shell .module-placeholder .metric,
+    .rms-pro-shell .mini-grid .metric{
+      min-height:44px!important;
+      display:flex!important;
+      align-items:center!important;
+      justify-content:space-between!important;
+      gap:18px!important;
+      padding:11px 0!important;
+      margin:0!important;
+      border:0!important;
+      border-bottom:1px solid rgba(226,232,240,.92)!important;
+      border-radius:0!important;
+      background:transparent!important;
+      box-shadow:none!important;
+    }
+    .rms-pro-shell .card .metric:last-child,
+    .rms-pro-shell .module-placeholder .metric:last-child,
+    .rms-pro-shell .mini-grid .metric:last-child{border-bottom:0!important;}
+    .rms-pro-shell .card .metric span,
+    .rms-pro-shell .module-placeholder .metric span,
+    .rms-pro-shell .mini-grid .metric span{color:#475569!important;font-size:15px!important;line-height:1.35!important;font-weight:560!important;letter-spacing:-.015em!important;}
+    .rms-pro-shell .card .metric strong,
+    .rms-pro-shell .module-placeholder .metric strong,
+    .rms-pro-shell .mini-grid .metric strong{color:#061328!important;font-size:16px!important;line-height:1!important;font-weight:850!important;font-variant-numeric:tabular-nums!important;letter-spacing:-.018em!important;white-space:nowrap!important;}
+    .rms-pro-shell .mini-grid{gap:0!important;}
+    .rms-pro-shell .mini-grid .metric{padding:13px 0!important;}
+
+    .rms-pro-shell .finance-line-chart-wrap{
+      padding:22px 30px 26px!important;
+      border-radius:24px!important;
+      background:linear-gradient(180deg,#ffffff 0%,#fbfdff 100%)!important;
+      border:1px solid rgba(226,232,240,.92)!important;
+      box-shadow:0 20px 44px rgba(15,23,42,.035)!important;
+    }
+    .rms-pro-shell .finance-line-chart-svg{height:330px!important;display:block!important;width:100%!important;}
+    .rms-pro-shell .finance-line-chart-line{stroke:#2563eb!important;stroke-width:2.45!important;stroke-linecap:round!important;stroke-linejoin:round!important;fill:none!important;}
+    .rms-pro-shell .finance-line-chart-area{fill:url(#financeDailyRevenueGradient)!important;}
+    .rms-pro-shell .finance-line-chart-point,
+    .rms-pro-shell .finance-line-chart-best-point{display:none!important;}
+    .rms-pro-shell .finance-line-chart-grid{stroke:rgba(148,163,184,.26)!important;stroke-width:1!important;stroke-dasharray:4 6!important;}
+    .rms-pro-shell .finance-line-chart-axis{stroke:rgba(148,163,184,.30)!important;stroke-width:1!important;}
+    .rms-pro-shell .finance-line-chart-label{fill:#0f1b33!important;font-size:13px!important;font-weight:780!important;}
+    .rms-pro-shell .finance-line-chart-x-label{fill:#13223a!important;font-size:11.5px!important;font-weight:740!important;}
+    .rms-pro-shell .finance-line-chart-guide{stroke:rgba(148,163,184,.28)!important;stroke-width:1!important;stroke-dasharray:4 6!important;}
+    .rms-pro-shell .finance-line-chart-tooltip-box{fill:#fff!important;stroke:rgba(226,232,240,.98)!important;filter:drop-shadow(0 12px 20px rgba(15,23,42,.12))!important;}
+    .rms-pro-shell .finance-line-chart-tooltip-value{fill:#2563eb!important;font-size:14px!important;font-weight:900!important;letter-spacing:-.025em!important;}
+    .rms-pro-shell .finance-line-chart-tooltip-date{fill:#071327!important;font-size:11px!important;font-weight:800!important;}
+
+    .rms-pro-shell .finance-line-chart-summary{
+      display:grid!important;
+      grid-template-columns:repeat(5,minmax(0,1fr))!important;
+      gap:18px!important;
+      margin-top:22px!important;
+    }
+    .rms-pro-shell .finance-line-chart-summary .metric{
+      position:relative!important;
+      min-height:138px!important;
+      border-radius:18px!important;
+      border:1px solid rgba(203,213,225,.78)!important;
+      background:linear-gradient(180deg,#fff,#fbfdff)!important;
+      padding:18px 20px 20px!important;
+      display:grid!important;
+      grid-template-rows:auto 1fr auto!important;
+      align-items:start!important;
+      text-align:left!important;
+      gap:0!important;
+      box-shadow:0 16px 34px rgba(15,23,42,.045)!important;
+      transition:border-color .18s ease, box-shadow .18s ease!important;
+    }
+    .rms-pro-shell .finance-line-chart-summary .metric:hover{transform:none!important;box-shadow:0 18px 38px rgba(15,23,42,.06)!important;border-color:rgba(148,163,184,.58)!important;}
+    .rms-pro-shell .finance-line-chart-summary .metric::before{
+      width:34px!important;
+      height:34px!important;
+      border-radius:10px!important;
+      display:flex!important;
+      align-items:center!important;
+      justify-content:center!important;
+      color:#2563eb!important;
+      background:linear-gradient(180deg,#eef4ff,#dfeaff)!important;
+      font-size:18px!important;
+      font-weight:900!important;
+      line-height:1!important;
+      margin-bottom:12px!important;
+    }
+    .rms-pro-shell .finance-line-chart-summary .metric:nth-child(1)::before{content:'↗'!important;}
+    .rms-pro-shell .finance-line-chart-summary .metric:nth-child(2)::before{content:'▣'!important;font-size:15px!important;}
+    .rms-pro-shell .finance-line-chart-summary .metric:nth-child(3)::before{content:'♛'!important;color:#16a34a!important;background:linear-gradient(180deg,#dcfce7,#c8f5d8)!important;font-size:16px!important;}
+    .rms-pro-shell .finance-line-chart-summary .metric:nth-child(4)::before{content:'☆'!important;}
+    .rms-pro-shell .finance-line-chart-summary .metric:nth-child(5)::before{content:'↘'!important;color:#dc2626!important;background:linear-gradient(180deg,#fff1f2,#fee2e2)!important;}
+    .rms-pro-shell .finance-line-chart-summary .metric:nth-child(3){border-color:rgba(52,211,153,.78)!important;background:linear-gradient(180deg,#ffffff 0%,#f5fffa 100%)!important;box-shadow:0 0 0 1px rgba(52,211,153,.10),0 18px 38px rgba(15,23,42,.05)!important;}
+    .rms-pro-shell .finance-line-chart-summary .metric-title{
+      color:#071327!important;
+      font-size:15.5px!important;
+      line-height:1.22!important;
+      font-weight:850!important;
+      letter-spacing:-.025em!important;
+      margin:0!important;
+      text-align:left!important;
+      white-space:normal!important;
+    }
+    .rms-pro-shell .finance-line-chart-summary .metric-date{
+      margin-top:8px!important;
+      color:#16a34a!important;
+      font-size:15px!important;
+      line-height:1.1!important;
+      font-weight:850!important;
+      text-align:left!important;
+    }
+    .rms-pro-shell .finance-line-chart-summary .metric-weekday{
+      margin-top:8px!important;
+      color:#2563eb!important;
+      font-size:16px!important;
+      line-height:1.1!important;
+      font-weight:900!important;
+      text-align:left!important;
+    }
+    .rms-pro-shell .finance-line-chart-summary .metric-worst .metric-weekday,
+    .rms-pro-shell .finance-line-chart-summary .metric:nth-child(5) .metric-weekday{color:#dc2626!important;}
+    .rms-pro-shell .finance-line-chart-summary .metric-amount{
+      display:flex!important;
+      align-items:flex-end!important;
+      justify-content:flex-start!important;
+      gap:10px!important;
+      margin-top:18px!important;
+      line-height:1!important;
+      text-align:left!important;
+      width:100%!important;
+      align-self:end!important;
+      white-space:nowrap!important;
+    }
+    .rms-pro-shell .finance-line-chart-summary .metric-number{
+      color:#071327!important;
+      font-size:31px!important;
+      line-height:.94!important;
+      font-weight:900!important;
+      letter-spacing:-.055em!important;
+      font-variant-numeric:tabular-nums!important;
+      white-space:nowrap!important;
+    }
+    .rms-pro-shell .finance-line-chart-summary .metric:nth-child(3) .metric-number{color:#16a34a!important;}
+    .rms-pro-shell .finance-line-chart-summary .metric-currency{
+      color:#475569!important;
+      font-size:13px!important;
+      font-weight:780!important;
+      line-height:1!important;
+      padding-bottom:2px!important;
+      margin-left:1px!important;
+      white-space:nowrap!important;
+    }
+    .rms-pro-shell .finance-line-chart-summary .metric span,
+    .rms-pro-shell .finance-line-chart-summary .metric strong{white-space:normal!important;}
+    @media(max-width:1280px){.rms-pro-shell .finance-line-chart-summary .metric-number{font-size:28px!important;}.rms-pro-shell .finance-line-chart-summary .metric{padding:17px 18px 19px!important;}}
+    @media(max-width:1200px){.rms-pro-shell .finance-line-chart-summary{grid-template-columns:repeat(2,minmax(0,1fr))!important;}.rms-pro-shell .finance-line-chart-summary .metric{min-height:134px!important;}}
+    @media(max-width:760px){.rms-pro-shell .finance-line-chart-summary{grid-template-columns:1fr!important;}.rms-pro-shell .finance-line-chart-svg{height:260px!important;}.rms-pro-shell .finance-line-chart-summary .metric{min-height:124px!important;}}
+
+
+/* v19 — final KPI cards icon layout: icon is independent above the title, no inline text collision */
+.rms-pro-shell .finance-line-chart-summary .metric::before,
+.finance-line-chart-summary .metric::before{
+  content:none!important;
+  display:none!important;
+}
+.rms-pro-shell .finance-line-chart-summary .metric,
+.finance-line-chart-summary .metric{
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:flex-start!important;
+  justify-content:flex-start!important;
+  min-height:150px!important;
+  padding:18px 22px 20px!important;
+  gap:0!important;
+  text-align:left!important;
+}
+.rms-pro-shell .finance-line-chart-summary .finance-kpi-icon,
+.finance-line-chart-summary .finance-kpi-icon{
+  order:0!important;
+  width:34px!important;
+  height:34px!important;
+  min-width:34px!important;
+  flex:0 0 34px!important;
+  border-radius:10px!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  margin:0 0 12px 0!important;
+  padding:0!important;
+  color:#2563eb!important;
+  background:linear-gradient(180deg,#eef4ff,#dfeaff)!important;
+  font-size:17px!important;
+  font-weight:900!important;
+  line-height:1!important;
+  box-shadow:inset 0 0 0 1px rgba(37,99,235,.05)!important;
+  transform:none!important;
+}
+.rms-pro-shell .finance-line-chart-summary .metric-average .finance-kpi-icon,
+.finance-line-chart-summary .metric-average .finance-kpi-icon{
+  font-size:15px!important;
+}
+.rms-pro-shell .finance-line-chart-summary .metric-best-day .finance-kpi-icon,
+.finance-line-chart-summary .metric-best-day .finance-kpi-icon{
+  color:#16a34a!important;
+  background:linear-gradient(180deg,#dcfce7,#c8f5d8)!important;
+  font-size:16px!important;
+}
+.rms-pro-shell .finance-line-chart-summary .metric-worst .finance-kpi-icon,
+.finance-line-chart-summary .metric-worst .finance-kpi-icon{
+  color:#dc2626!important;
+  background:linear-gradient(180deg,#fff1f2,#fee2e2)!important;
+}
+.rms-pro-shell .finance-line-chart-summary .metric-copy,
+.finance-line-chart-summary .metric-copy{
+  order:1!important;
+  width:100%!important;
+  min-width:0!important;
+  display:block!important;
+  align-self:stretch!important;
+  margin:0!important;
+  padding:0!important;
+}
+.rms-pro-shell .finance-line-chart-summary .metric-title,
+.finance-line-chart-summary .metric-title{
+  margin:0!important;
+  color:#071327!important;
+  font-size:16px!important;
+  line-height:1.25!important;
+  font-weight:850!important;
+  letter-spacing:-.025em!important;
+  text-align:left!important;
+  white-space:normal!important;
+}
+.rms-pro-shell .finance-line-chart-summary .metric-date,
+.finance-line-chart-summary .metric-date{
+  margin-top:7px!important;
+  color:#16a34a!important;
+  font-size:16px!important;
+  line-height:1.1!important;
+  font-weight:900!important;
+  text-align:left!important;
+}
+.rms-pro-shell .finance-line-chart-summary .metric-weekday,
+.finance-line-chart-summary .metric-weekday{
+  margin-top:7px!important;
+  color:#2563eb!important;
+  font-size:16px!important;
+  line-height:1.1!important;
+  font-weight:900!important;
+  text-align:left!important;
+}
+.rms-pro-shell .finance-line-chart-summary .metric-worst .metric-weekday,
+.rms-pro-shell .finance-line-chart-summary .metric:nth-child(5) .metric-weekday,
+.finance-line-chart-summary .metric-worst .metric-weekday,
+.finance-line-chart-summary .metric:nth-child(5) .metric-weekday{
+  color:#dc2626!important;
+}
+.rms-pro-shell .finance-line-chart-summary .metric-amount,
+.finance-line-chart-summary .metric-amount{
+  order:2!important;
+  width:100%!important;
+  display:flex!important;
+  align-items:flex-end!important;
+  justify-content:flex-start!important;
+  gap:10px!important;
+  margin:0!important;
+  margin-top:auto!important;
+  padding-top:18px!important;
+  line-height:1!important;
+  white-space:nowrap!important;
+}
+.rms-pro-shell .finance-line-chart-summary .metric-number,
+.finance-line-chart-summary .metric-number{
+  color:#071327!important;
+  font-size:30px!important;
+  line-height:.95!important;
+  font-weight:900!important;
+  letter-spacing:-.055em!important;
+  font-variant-numeric:tabular-nums!important;
+  white-space:nowrap!important;
+}
+.rms-pro-shell .finance-line-chart-summary .metric-best-day .metric-number,
+.rms-pro-shell .finance-line-chart-summary .metric:nth-child(3) .metric-number,
+.finance-line-chart-summary .metric-best-day .metric-number,
+.finance-line-chart-summary .metric:nth-child(3) .metric-number{
+  color:#16a34a!important;
+}
+.rms-pro-shell .finance-line-chart-summary .metric-currency,
+.finance-line-chart-summary .metric-currency{
+  color:#475569!important;
+  font-size:13px!important;
+  font-weight:780!important;
+  line-height:1!important;
+  padding-bottom:3px!important;
+  margin-left:1px!important;
+  white-space:nowrap!important;
+}
+@media(max-width:1280px){
+  .rms-pro-shell .finance-line-chart-summary .metric,
+  .finance-line-chart-summary .metric{padding:17px 18px 19px!important;min-height:146px!important;}
+  .rms-pro-shell .finance-line-chart-summary .metric-number,
+  .finance-line-chart-summary .metric-number{font-size:28px!important;}
+}
+
+
+.finance-executive-strip{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin:16px 0 18px!important;}
+.finance-exec-card{background:#fff;border:1px solid #e5e7eb;border-radius:18px;padding:16px 18px;box-shadow:0 12px 28px rgba(15,23,42,.06);min-height:118px;}
+.finance-exec-card span{display:block;color:#64748b;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;margin-bottom:7px;}
+.finance-exec-card strong{display:block;color:#0f172a;font-size:18px;line-height:1.15;font-weight:900;letter-spacing:-.02em;margin-bottom:8px;}
+.finance-exec-card p{margin:0;color:#64748b;font-size:13px;line-height:1.45;}
+.finance-exec-card .good{color:#16a34a!important}.finance-exec-card .bad{color:#dc2626!important}
+@media(max-width:980px){.finance-executive-strip{grid-template-columns:1fr!important;}}
+
+
+.revenue-top-actions{align-items:center;flex-wrap:wrap;justify-content:flex-end;}
+.revenue-day-status-chip{display:inline-flex;align-items:center;justify-content:center;border-radius:999px;padding:7px 11px;font-size:12px;font-weight:900;border:1px solid #e5e7eb;background:#f8fafc;color:#475569;white-space:nowrap;}
+.revenue-day-status-chip.good{background:#ecfdf5;border-color:#bbf7d0;color:#047857;}
+.revenue-day-status-chip.warn{background:#fffbeb;border-color:#fde68a;color:#b45309;}
+.revenue-day-status-chip.bad{background:#fef2f2;border-color:#fecaca;color:#b91c1c;}
+.revenue-day-status-chip.muted{background:#f8fafc;border-color:#e2e8f0;color:#64748b;}
+.revenue-day-kpi-card{padding:16px!important;}
+.revenue-day-kpi-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;}
+.revenue-day-kpi{border:1px solid #e5e7eb;background:#fff;border-radius:16px;padding:14px 15px;box-shadow:0 10px 24px rgba(15,23,42,.04);min-height:98px;}
+.revenue-day-kpi span{display:block;color:#64748b;font-size:12px;font-weight:850;text-transform:uppercase;letter-spacing:.035em;margin-bottom:7px;}
+.revenue-day-kpi strong{display:block;color:#0f172a;font-size:22px;line-height:1.1;font-weight:950;letter-spacing:-.035em;margin-bottom:6px;}
+.revenue-day-kpi small{display:block;color:#64748b;font-size:12px;line-height:1.35;}
+.good-text{color:#16a34a!important;}.bad-text{color:#dc2626!important;}
+@media(max-width:1180px){.revenue-day-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
+@media(max-width:720px){.revenue-day-kpi-grid{grid-template-columns:1fr;}.revenue-top-actions{justify-content:flex-start;}}
+
+  `}</style>
+}
+
+createRoot(document.getElementById('root')).render(<App />)
