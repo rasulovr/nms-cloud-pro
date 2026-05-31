@@ -178,6 +178,29 @@ async function rmsInventoryBackfillSupplierPurchases(locationId = null, limit = 
 // v163 iiko Sales Mapping -> Recipe Consumption Preview helpers
 
 // v164 iiko Sales Consumption Consolidated Pack helpers
+
+// v165 iiko Import Parser Fix helpers
+
+// v166 iiko Import + Sales Consumption Forward Pack helpers
+async function rmsIikoImportConsolidatedHealth() {
+  return rmsInventoryRpcCall('rms_iiko_import_consolidated_health', {})
+}
+
+async function rmsIikoNormalizeImportedRows() {
+  return rmsInventoryRpcCall('rms_iiko_normalize_imported_rows', {})
+}
+
+async function rmsInventorySalesUnmappedReport() {
+  return rmsInventoryRpcCall('rms_inventory_sales_unmapped_report', {})
+}
+
+async function rmsIikoImportHealth() {
+  return rmsInventoryRpcCall('rms_iiko_import_health', {})
+}
+async function rmsIikoCleanupEmptySalesRows() {
+  return rmsInventoryRpcCall('rms_iiko_cleanup_empty_sales_rows', {})
+}
+
 async function rmsInventorySalesConsumptionConsolidatedHealth() {
   return rmsInventoryRpcCall('rms_inventory_sales_consumption_consolidated_health', {})
 }
@@ -2519,6 +2542,9 @@ function InventoryModule({ branchId, branchName }) {
   const [salesConsumptionHealth, setSalesConsumptionHealth] = React.useState(null)
   const [salesRecipeMappingHealth, setSalesRecipeMappingHealth] = React.useState(null)
   const [salesConsumptionConsolidatedHealth, setSalesConsumptionConsolidatedHealth] = React.useState(null)
+  const [iikoImportHealth, setIikoImportHealth] = React.useState(null)
+  const [iikoImportConsolidatedHealth, setIikoImportConsolidatedHealth] = React.useState(null)
+  const [salesUnmappedReport, setSalesUnmappedReport] = React.useState(null)
   const [search, setSearch] = React.useState('')
   const [movementFilter, setMovementFilter] = React.useState('all')
 
@@ -2546,6 +2572,36 @@ function InventoryModule({ branchId, branchName }) {
   }, [])
 
   React.useEffect(() => { loadInventory() }, [loadInventory])
+
+  const normalizeIikoRows = async () => {
+    setBackfillBusy(true)
+    setMessage('')
+    try {
+      const data = await rmsIikoNormalizeImportedRows()
+      setMessage(`iiko строки нормализованы: обновлено ${data?.updated || 0}`)
+      await loadInventoryConsolidatedReports()
+    } catch (err) {
+      console.error('iiko normalize error', err)
+      setMessage(err?.message || 'Не удалось нормализовать iiko строки')
+    } finally {
+      setBackfillBusy(false)
+    }
+  }
+
+  const cleanupEmptyIikoRows = async () => {
+    setBackfillBusy(true)
+    setMessage('')
+    try {
+      const data = await rmsIikoCleanupEmptySalesRows()
+      setMessage(`Пустые iiko строки очищены: ${data?.deleted || 0}`)
+      await loadInventoryConsolidatedReports()
+    } catch (err) {
+      console.error('iiko cleanup error', err)
+      setMessage(err?.message || 'Не удалось очистить пустые iiko строки')
+    } finally {
+      setBackfillBusy(false)
+    }
+  }
 
   const createSalesConsumptionDraft = async () => {
     setBackfillBusy(true)
@@ -2651,7 +2707,7 @@ function InventoryModule({ branchId, branchName }) {
     setBackfillBusy(true)
     setMessage('')
     try {
-      const [dash, prod, wo, syncHealth, bazarHealth, salesHealth, salesRecipeHealth, salesConsolidatedHealth] = await Promise.all([
+      const [dash, prod, wo, syncHealth, bazarHealth, salesHealth, salesRecipeHealth, salesConsolidatedHealth, iikoHealth, iikoConsolidated, unmappedReport] = await Promise.all([
         rmsInventoryDashboardReport().catch(() => null),
         rmsInventoryProductionPreview().catch(() => null),
         rmsInventoryWriteOffReport().catch(() => null),
@@ -2660,6 +2716,9 @@ function InventoryModule({ branchId, branchName }) {
         rmsInventorySalesConsumptionHealth().catch(() => null),
         rmsInventorySalesRecipeMappingHealth().catch(() => null),
         rmsInventorySalesConsumptionConsolidatedHealth().catch(() => null),
+        rmsIikoImportHealth().catch(() => null),
+        rmsIikoImportConsolidatedHealth().catch(() => null),
+        rmsInventorySalesUnmappedReport().catch(() => null),
       ])
       setDashboardReport(dash || null)
       setProductionReport(prod || null)
@@ -2669,6 +2728,9 @@ function InventoryModule({ branchId, branchName }) {
       setSalesConsumptionHealth(salesHealth || null)
       setSalesRecipeMappingHealth(salesRecipeHealth || null)
       setSalesConsumptionConsolidatedHealth(salesConsolidatedHealth || null)
+      setIikoImportHealth(iikoHealth || null)
+      setIikoImportConsolidatedHealth(iikoConsolidated || null)
+      setSalesUnmappedReport(unmappedReport || null)
       setMessage('Складские отчёты обновлены')
     } catch (err) {
       console.error('inventory reports error', err)
@@ -2916,6 +2978,24 @@ function InventoryModule({ branchId, branchName }) {
           <div className="inventory-sales-apply-step"><span>Draft items</span><strong>{salesConsumptionConsolidatedHealth?.draft_items ?? 0}</strong></div>
           <div className="inventory-sales-apply-step warn"><span>Applied items</span><strong>{salesConsumptionConsolidatedHealth?.applied_items ?? 0}</strong></div>
           <div className="inventory-sales-apply-step pending"><span>Auto apply</span><strong>Off</strong></div>
+        </div>
+      </div>
+
+      <div className="inventory-iiko-forward-card">
+        <h3>iiko Import → Mapping → Consumption · Forward Pack</h3>
+        <p>Единый контроль следующего блока: качество импортированных продаж, нормализация строк, unmapped позиции, preview расхода ингредиентов и готовность draft/apply. Auto-writeoff остаётся выключенным.</p>
+        <div className="action-row" style={{marginTop:12}}>
+          <button className="ghost small" onClick={loadInventoryConsolidatedReports} disabled={backfillBusy}>{backfillBusy ? 'Проверка…' : 'Обновить полный status'}</button>
+          <button className="ghost small" onClick={normalizeIikoRows} disabled={backfillBusy}>Нормализовать iiko строки</button>
+          <button className="primary small" onClick={createSalesConsumptionDraft} disabled={backfillBusy}>Создать draft consumption</button>
+        </div>
+        <div className="inventory-iiko-forward-grid">
+          <div className="inventory-iiko-forward-step"><span>Imported rows</span><strong>{iikoImportConsolidatedHealth?.import?.total_rows ?? iikoImportHealth?.total_rows ?? 0}</strong></div>
+          <div className="inventory-iiko-forward-step ready"><span>Valid rows</span><strong>{iikoImportConsolidatedHealth?.import?.valid_rows ?? 0}</strong></div>
+          <div className="inventory-iiko-forward-step warn"><span>Unmapped sales</span><strong>{salesUnmappedReport?.unmapped_count ?? salesRecipeMappingHealth?.unmapped_sales_rows ?? 0}</strong></div>
+          <div className="inventory-iiko-forward-step"><span>Preview rows</span><strong>{iikoImportConsolidatedHealth?.consumption?.preview_rows ?? salesConsumptionConsolidatedHealth?.preview_rows ?? 0}</strong></div>
+          <div className="inventory-iiko-forward-step"><span>Draft items</span><strong>{iikoImportConsolidatedHealth?.consumption?.draft_items ?? salesConsumptionConsolidatedHealth?.draft_items ?? 0}</strong></div>
+          <div className="inventory-iiko-forward-step pending"><span>Auto writeoff</span><strong>Off</strong></div>
         </div>
       </div>
 
