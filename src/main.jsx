@@ -468,13 +468,6 @@ const I18N = {
     logout:'Выйти', revenue_tab:'Выручка', finance_tab:'Финансы', reports_tab:'Отчёты', recipes_tab:'Тех. карты', salaries_tab:'Зарплаты',
     attendance_tab:'Посещаемость', advances_tab:'Авансы', suppliers_tab:'Поставщики', debts_payments_tab:'Долги и оплаты', qr_menu_tab:'QR Menu', loyalty_tab:'Loyalty', market_intelligence_tab:'Market Intelligence', security_recovery_tab:'Безопасность и диагностика', settings_tab:'Настройки', inventory_tab:'Склад',
     revenue_subtitle:'Ввод выручки и расходов за выбранную дату по филиалу', finance_subtitle:'Аналитика по филиалу, месяцу, выручке и расходам',
-      {/* v190-visible-excel-revenue-import-anchor */}
-
-      <ExcelRevenueImportCard onImported={async () => {
-        if (typeof loadData === 'function') await loadData()
-        else if (typeof loadRevenue === 'function') await loadRevenue()
-        else if (typeof refreshData === 'function') await refreshData()
-      }} />
     period_branch:'Период и филиал', branch_select:'Филиал', date:'Дата', daily_revenue_title:'Выручка за выбранную дату',
     cash:'Наличными', bank:'Банк', wolt:'Wolt', revenue_summary:'Сводка выручки', total_revenue:'Общая выручка',
     forecast:'Прогноз месяца', forecast_revenue:'Предполагаемая выручка', forecast_profit:'Предполагаемая прибыль', avg_daily_revenue:'Средняя выручка / день',
@@ -3908,6 +3901,7 @@ function App() {
         {!currentCanRead && <section className="card"><h3>{t('permission_denied')}</h3><p className="hint">Этот раздел скрыт для текущего пользователя.</p></section>}
         {currentCanRead && currentAccess === 'read' && <div className="readonly-banner">Режим просмотра: редактирование этого раздела отключено.</div>}
         {currentCanRead && section === 'dashboard' && <Dashboard t={t} />}
+        <RevenueExcelImportVisibleBlock section={section} onImported={async () => {}} />
         {currentCanRead && section === 'revenue' && <Revenue t={t} focusExpense={revenueFocus} />}
         {currentCanRead && section === 'finance' && <Finance t={t} lang={lang} onGoToExpense={goToRevenueExpense} />}
         {currentCanRead && section === 'reports' && <Reports t={t} />}
@@ -12203,7 +12197,7 @@ function RMSProV6Styles() {
   display:none !important;
 }
 
-/* v190 Revenue Import Visible Menu Fix */
+/* v191 Revenue Import Build Fix */
 .excel-revenue-import-card{
   display:block !important;
   visibility:visible !important;
@@ -12393,6 +12387,12 @@ function useBranches() {
   return branches
 }
 
+
+
+function RevenueExcelImportVisibleBlock({ section, onImported }) {
+  if (section !== 'revenue') return null
+  return <ExcelRevenueImportCard onImported={onImported} />
+}
 
 function ExcelRevenueImportCard({ onImported }) {
   const [fileName, setFileName] = React.useState('')
