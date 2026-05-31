@@ -182,6 +182,20 @@ async function rmsInventoryBackfillSupplierPurchases(locationId = null, limit = 
 // v165 iiko Import Parser Fix helpers
 
 // v166 iiko Import + Sales Consumption Forward Pack helpers
+
+// v169 iiko Import + Consumption + Inventory UX Consolidated helpers
+async function rmsIikoLatestImportDashboard() {
+  return rmsInventoryRpcCall('rms_iiko_latest_import_dashboard', {})
+}
+
+async function rmsIikoDeduplicateSalesItems() {
+  return rmsInventoryRpcCall('rms_iiko_deduplicate_sales_items', {})
+}
+
+async function rmsInventoryConsumptionDraftReadiness() {
+  return rmsInventoryRpcCall('rms_inventory_consumption_draft_readiness', {})
+}
+
 async function rmsIikoImportConsolidatedHealth() {
   return rmsInventoryRpcCall('rms_iiko_import_consolidated_health', {})
 }
@@ -2672,6 +2686,8 @@ function InventoryModule({ branchId, branchName }) {
   const [iikoImportHealth, setIikoImportHealth] = React.useState(null)
   const [iikoImportConsolidatedHealth, setIikoImportConsolidatedHealth] = React.useState(null)
   const [salesUnmappedReport, setSalesUnmappedReport] = React.useState(null)
+  const [iikoLatestDashboard, setIikoLatestDashboard] = React.useState(null)
+  const [consumptionDraftReadiness, setConsumptionDraftReadiness] = React.useState(null)
   const [search, setSearch] = React.useState('')
   const [movementFilter, setMovementFilter] = React.useState('all')
 
@@ -2699,6 +2715,21 @@ function InventoryModule({ branchId, branchName }) {
   }, [])
 
   React.useEffect(() => { loadInventory() }, [loadInventory])
+
+  const deduplicateIikoRows = async () => {
+    setBackfillBusy(true)
+    setMessage('')
+    try {
+      const data = await rmsIikoDeduplicateSalesItems()
+      setMessage(`Дубли iiko очищены: ${data?.deleted || 0}`)
+      await loadInventoryConsolidatedReports()
+    } catch (err) {
+      console.error('iiko deduplicate error', err)
+      setMessage(err?.message || 'Не удалось очистить дубли iiko')
+    } finally {
+      setBackfillBusy(false)
+    }
+  }
 
   const normalizeIikoRows = async () => {
     setBackfillBusy(true)
@@ -2834,7 +2865,7 @@ function InventoryModule({ branchId, branchName }) {
     setBackfillBusy(true)
     setMessage('')
     try {
-      const [dash, prod, wo, syncHealth, bazarHealth, salesHealth, salesRecipeHealth, salesConsolidatedHealth, iikoHealth, iikoConsolidated, unmappedReport] = await Promise.all([
+      const [dash, prod, wo, syncHealth, bazarHealth, salesHealth, salesRecipeHealth, salesConsolidatedHealth, iikoHealth, iikoConsolidated, unmappedReport, latestImportDash, draftReady] = await Promise.all([
         rmsInventoryDashboardReport().catch(() => null),
         rmsInventoryProductionPreview().catch(() => null),
         rmsInventoryWriteOffReport().catch(() => null),
@@ -2846,6 +2877,8 @@ function InventoryModule({ branchId, branchName }) {
         rmsIikoImportHealth().catch(() => null),
         rmsIikoImportConsolidatedHealth().catch(() => null),
         rmsInventorySalesUnmappedReport().catch(() => null),
+        rmsIikoLatestImportDashboard().catch(() => null),
+        rmsInventoryConsumptionDraftReadiness().catch(() => null),
       ])
       setDashboardReport(dash || null)
       setProductionReport(prod || null)
@@ -2858,6 +2891,8 @@ function InventoryModule({ branchId, branchName }) {
       setIikoImportHealth(iikoHealth || null)
       setIikoImportConsolidatedHealth(iikoConsolidated || null)
       setSalesUnmappedReport(unmappedReport || null)
+      setIikoLatestDashboard(latestImportDash || null)
+      setConsumptionDraftReadiness(draftReady || null)
       setMessage('Складские отчёты обновлены')
     } catch (err) {
       console.error('inventory reports error', err)
@@ -3123,6 +3158,24 @@ function InventoryModule({ branchId, branchName }) {
           <div className="inventory-iiko-forward-step"><span>Preview rows</span><strong>{iikoImportConsolidatedHealth?.consumption?.preview_rows ?? salesConsumptionConsolidatedHealth?.preview_rows ?? 0}</strong></div>
           <div className="inventory-iiko-forward-step"><span>Draft items</span><strong>{iikoImportConsolidatedHealth?.consumption?.draft_items ?? salesConsumptionConsolidatedHealth?.draft_items ?? 0}</strong></div>
           <div className="inventory-iiko-forward-step pending"><span>Auto writeoff</span><strong>Off</strong></div>
+        </div>
+      </div>
+
+      <div className="inventory-v169-consolidated-card">
+        <h3>v169 · iiko Import & Consumption Control</h3>
+        <p>Объединённый слой после v168: сохранение продаж в iiko_sales_items, контроль последнего импорта, защита от дублей, unmapped позиции и readiness для draft consumption. Auto-writeoff остаётся выключенным.</p>
+        <div className="action-row" style={{marginTop:12}}>
+          <button className="ghost small" onClick={loadInventoryConsolidatedReports} disabled={backfillBusy}>{backfillBusy ? 'Проверка…' : 'Обновить v169 status'}</button>
+          <button className="ghost small" onClick={deduplicateIikoRows} disabled={backfillBusy}>Очистить дубли iiko</button>
+          <button className="primary small" onClick={createSalesConsumptionDraft} disabled={backfillBusy}>Создать draft consumption</button>
+        </div>
+        <div className="inventory-v169-consolidated-grid">
+          <div className="inventory-v169-consolidated-step"><span>Latest import</span><strong>{iikoLatestDashboard?.latest_import_status || '—'}</strong></div>
+          <div className="inventory-v169-consolidated-step ready"><span>Valid iiko rows</span><strong>{iikoLatestDashboard?.valid_rows ?? iikoImportHealth?.valid_rows ?? 0}</strong></div>
+          <div className="inventory-v169-consolidated-step warn"><span>Duplicates</span><strong>{iikoLatestDashboard?.duplicate_rows ?? 0}</strong></div>
+          <div className="inventory-v169-consolidated-step warn"><span>Unmapped</span><strong>{salesUnmappedReport?.unmapped_count ?? 0}</strong></div>
+          <div className="inventory-v169-consolidated-step"><span>Draft ready</span><strong>{consumptionDraftReadiness?.ready_rows ?? 0}</strong></div>
+          <div className="inventory-v169-consolidated-step pending"><span>Auto writeoff</span><strong>Off</strong></div>
         </div>
       </div>
 
@@ -11602,6 +11655,79 @@ function RMSProV6Styles() {
 @media(max-width:680px){
   .rms-pro-shell .inventory-branch-location-grid{grid-template-columns:1fr;}
 }
+
+/* v168 iiko Import Button Wiring Pack */
+.rms-pro-shell .reports-v43-card .hint.good{
+  color:#047857;
+  font-weight:800;
+}
+
+/* v169 iiko Import + Consumption + Inventory UX Consolidated Pack */
+.rms-pro-shell .inventory-v169-consolidated-card{
+  border:1px solid #bfdbfe;
+  border-left:5px solid #2563eb;
+  background:linear-gradient(180deg,#fff 0%,#eff6ff 100%);
+  border-radius:20px;
+  padding:17px;
+  margin:14px 0;
+  box-shadow:0 12px 30px rgba(15,23,42,.045);
+}
+.rms-pro-shell .inventory-v169-consolidated-card h3{
+  margin:0;
+  color:#0f172a;
+  font-size:18px;
+  letter-spacing:-.02em;
+}
+.rms-pro-shell .inventory-v169-consolidated-card p{
+  margin:7px 0 0;
+  color:#1d4ed8;
+  font-size:13px;
+  line-height:1.45;
+}
+.rms-pro-shell .inventory-v169-consolidated-grid{
+  display:grid;
+  grid-template-columns:repeat(6,minmax(0,1fr));
+  gap:10px;
+  margin-top:14px;
+}
+.rms-pro-shell .inventory-v169-consolidated-step{
+  border:1px solid #bfdbfe;
+  background:#fff;
+  border-radius:14px;
+  padding:11px 12px;
+}
+.rms-pro-shell .inventory-v169-consolidated-step span{
+  display:block;
+  color:#64748b;
+  font-size:11.8px;
+  font-weight:850;
+}
+.rms-pro-shell .inventory-v169-consolidated-step strong{
+  display:block;
+  margin-top:5px;
+  color:#1d4ed8;
+  font-size:13.5px;
+  line-height:1.2;
+  font-variant-numeric:tabular-nums;
+  word-break:break-word;
+}
+.rms-pro-shell .inventory-v169-consolidated-step.ready{
+  border-color:#bbf7d0;
+  background:#ecfdf5;
+}
+.rms-pro-shell .inventory-v169-consolidated-step.ready strong{color:#047857;}
+.rms-pro-shell .inventory-v169-consolidated-step.warn{
+  border-color:#fde68a;
+  background:#fffbeb;
+}
+.rms-pro-shell .inventory-v169-consolidated-step.warn strong{color:#b45309;}
+.rms-pro-shell .inventory-v169-consolidated-step.pending{
+  border-color:#cbd5e1;
+  background:#f8fafc;
+}
+.rms-pro-shell .inventory-v169-consolidated-step.pending strong{color:#475569;}
+@media(max-width:1280px){.rms-pro-shell .inventory-v169-consolidated-grid{grid-template-columns:repeat(3,minmax(0,1fr));}}
+@media(max-width:680px){.rms-pro-shell .inventory-v169-consolidated-grid{grid-template-columns:1fr;}}
 
 
   `}</style>
@@ -25149,6 +25275,71 @@ function Reports({ t }) {
     return file.text()
   }
 
+
+  async function syncIikoSalesItemsToDb(parsedReports = []) {
+    try {
+      const flatRows = []
+      ;(parsedReports || []).forEach(report => {
+        ;(report.rows || []).forEach(row => {
+          flatRows.push({
+            product_name: row.name || row.product_name || row.item_name || '',
+            name: row.name || row.product_name || '',
+            qty: parseNum(row.quantity),
+            quantity: parseNum(row.quantity),
+            price: parseNum(row.avg_price),
+            unit_price: parseNum(row.avg_price),
+            total: parseNum(row.revenue),
+            revenue: parseNum(row.revenue),
+            category_name: row.source_category || row.menu_category || report.department || '',
+            category: row.source_category || row.menu_category || report.department || '',
+            branch_name: report.branch_name || report.aiko_branch_name || report.warehouse || '',
+            branch: report.branch_name || report.aiko_branch_name || report.warehouse || '',
+            business_date: report.period_start || '',
+            date: report.period_start || '',
+            department: report.department || '',
+            source_file: report.source_file || '',
+            raw_row: { ...row, report: { source_file: report.source_file, period_start: report.period_start, period_end: report.period_end, branch_name: report.branch_name, warehouse: report.warehouse, department: report.department } },
+          })
+        })
+      })
+
+      if (!flatRows.length) return { inserted: 0, skipped: 0 }
+
+      const fileName = parsedReports.length === 1 ? parsedReports[0]?.source_file : `AIKO batch ${new Date().toISOString()}`
+      const { data: importData, error: importError } = await supabase.rpc('rms_iiko_sales_import_create', {
+        p_file_name: fileName || 'AIKO import',
+        p_comment: 'Imported from Reports AIKO parser'
+      })
+      if (importError) throw importError
+
+      const importId = importData?.id || importData?.import_id
+      let inserted = 0
+      let skipped = 0
+
+      for (const payload of flatRows) {
+        if (!payload.product_name || !parseNum(payload.qty)) {
+          skipped += 1
+          continue
+        }
+        const { data, error } = await supabase.rpc('rms_iiko_sales_item_insert_secure', {
+          p_import_id: importId,
+          p_payload: payload
+        })
+        if (error || data?.status === 'error') skipped += 1
+        else inserted += 1
+      }
+
+      const { data: finalData, error: finalError } = await supabase.rpc('rms_iiko_sales_import_finalize', { p_import_id: importId })
+      if (finalError) throw finalError
+
+      return { import_id: importId, inserted, skipped, finalize: finalData }
+    } catch (err) {
+      console.warn('iiko sales db sync failed', err)
+      return { inserted: 0, skipped: 0, error: err?.message || String(err) }
+    }
+  }
+
+
   async function importParsedReports(parsedReports) {
     const cleaned = parsedReports.map(r => {
       const rows = (r.rows || []).map(row => normalizeAikoSalesRow(row, r.department || '')).filter(row => {
@@ -25170,9 +25361,13 @@ function Reports({ t }) {
     saveReports(next)
     const allRows = valid.flatMap(r => r.rows || [])
     const created = await syncMenuItemsFromSalesRows(allRows)
+    const iikoDbSync = await syncIikoSalesItemsToDb(valid)
     const withoutBranch = valid.filter(r => !r.branch_id).length
     const branchHint = withoutBranch ? ` Не распределено по филиалам: ${withoutBranch}. Проверьте подменю “Импорт”.` : ''
-    setMessage(`Импортировано отчётов: ${valid.length}. Строк продаж без модификаторов: ${allRows.length}. В техкарты добавлено новых позиций меню: ${created}.${branchHint}`)
+    const dbHint = iikoDbSync?.error
+      ? ` iiko_sales_items: не сохранено (${iikoDbSync.error}).`
+      : ` iiko_sales_items: сохранено ${iikoDbSync?.inserted || 0}, пропущено ${iikoDbSync?.skipped || 0}.`
+    setMessage(`Импортировано отчётов: ${valid.length}. Строк продаж без модификаторов: ${allRows.length}. В техкарты добавлено новых позиций меню: ${created}.${dbHint}${branchHint}`)
   }
 
   async function syncMenuItemsFromSalesRows(salesRows) {
@@ -25958,7 +26153,7 @@ function Reports({ t }) {
 
   const ImportReportView = <section className="reports-v43-import-grid">
     <div className="reports-v43-card">
-      <div className="reports-v43-card-head"><div><h3>Импорт отчёта продаж AIKO</h3><p>Поддерживаются PDF из AIKO, ZIP с PDF, TXT/CSV и ручная вставка текста. Модификаторы автоматически исключаются из продаж и из техкарт.</p></div></div>
+      <div className="reports-v43-card-head"><div><h3>Импорт отчёта продаж AIKO</h3><p>Поддерживаются PDF из AIKO, ZIP с PDF, TXT/CSV и ручная вставка текста. Модификаторы автоматически исключаются из продаж и из техкарт.</p><p className="hint good">v168: импорт теперь дополнительно сохраняет реальные строки продаж в iiko_sales_items для складского consumption preview.</p></div></div>
       <div className="form-grid compact">
         <label><span>Филиал для импорта</span><select value={importBranchId} onChange={e => setImportBranchId(e.target.value)}><option value="auto">Авто по названию склада / файла</option>{branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label>
         <label><span>Загрузить файлы</span><input type="file" multiple accept=".pdf,.zip,.txt,.csv,application/pdf,application/zip" onChange={e => handleFiles(e.target.files)} /></label>
