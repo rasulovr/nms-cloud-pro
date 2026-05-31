@@ -3440,380 +3440,8756 @@ class RmsSectionErrorBoundary extends React.Component {
   }
 }
 
+function App() {
+  const params = new URLSearchParams(window.location.search)
 
+  const isQRMenu =
+    params.get('qr') === 'menu' ||
+    window.location.pathname.startsWith('/qr-menu') ||
+    window.location.hash.startsWith('#/qr-menu')
 
-// v192 Revenue Import runtime-safe helpers
-function rmsFindBranchIdSafe(branchCode) {
-  const code = String(branchCode || '').trim()
-  try {
-    if (typeof getBranchId === 'function') {
-      const id = getBranchId(code)
-      if (id) return id
-    }
-  } catch (_) {}
+  if (isQRMenu) {
+    return <QRMenu />
+  }
 
-  try {
-    if (Array.isArray(window?.RMS_BRANCHES)) {
-      const found = window.RMS_BRANCHES.find(b => b.code === code || b.name === code || b.id === code)
-      if (found?.id) return found.id
-    }
-  } catch (_) {}
+  const [lang, setLang, t] = useLang()
+  const [session, setSession] = useState(() => getInternalSessionStorage())
+  const [profile, setProfile] = useState(null)
+  const [permissions, setPermissions] = useState([])
+  const [theme, setThemeState] = useState(localStorage.getItem('rms_theme') || localStorage.getItem('nms_theme') || 'classic')
+  const [section, setSection] = useState('dashboard')
+  const [revenueFocus, setRevenueFocus] = useState(null)
+  const [loading, setLoading] = useState(true)
 
-  // Known branch ids are usually resolved in app state, but if not available we use branch code fallback
-  // only when current schema accepts branch text. Insert function below also attempts branch_id only if found.
-  return null
-}
+  useEffect(() => { document.documentElement.lang = lang }, [lang])
 
-function rmsErrorText(error) {
-  if (!error) return 'Неизвестная ошибка'
-  if (typeof error === 'string') return error
-  return error.message || error.error_description || JSON.stringify(error)
-}
+  const setTheme = (value) => {
+    const next = value || 'classic'
+    localStorage.setItem('rms_theme', next)
+    setThemeState(next)
+  }
 
-// v189 Excel Revenue Import helpers
-function loadXlsxLibrary() {
-  if (window.XLSX) return Promise.resolve(window.XLSX)
-  return new Promise((resolve, reject) => {
-    const existing = document.querySelector('script[data-rms-xlsx="true"]')
-    if (existing) {
-      existing.addEventListener('load', () => resolve(window.XLSX))
-      existing.addEventListener('error', reject)
+  useEffect(() => { document.documentElement.dataset.nmsTheme = theme }, [theme])
+
+  useEffect(() => {
+    const storedInternal = getInternalSessionStorage()
+    if (storedInternal?.rms_internal) {
+      setSession(storedInternal)
+      setLoading(false)
       return
     }
-    const script = document.createElement('script')
-    script.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js'
-    script.async = true
-    script.dataset.rmsXlsx = 'true'
-    script.onload = () => resolve(window.XLSX)
-    script.onerror = () => reject(new Error('Не удалось загрузить XLSX parser'))
-    document.head.appendChild(script)
-  })
+
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session)
+      setLoading(false)
+    })
+
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      if (!getInternalSessionStorage()?.rms_internal) setSession(nextSession)
+    })
+    return () => sub.subscription.unsubscribe()
+  }, [])
+
+  async function loadSupabaseProfile(activeSession) {
+    const email = activeSession.user.email || ''
+    const loginName = String(email).split('@')[0] || ''
+
+    let prof = null
+    const { data: profById } = await supabase
+      .from('user_profiles')
+      .select('*')
+      .eq('id', activeSession.user.id)
+      .maybeSingle()
+
+    prof = profById || null
+
+    if (!prof && (email || loginName)) {
+      const filters = []
+      if (email) filters.push(`email.eq.${email}`)
+      if (loginName) filters.push(`login_name.eq.${loginName}`)
+      const { data: profByLogin } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .or(filters.join(','))
+        .maybeSingle()
+      prof = profByLogin || null
+    }
+
+    const permissionUserId = prof?.id || activeSession.user.id
+    const { data: perms } = await supabase
+      .from('user_permissions')
+      .select('*')
+      .eq('user_id', permissionUserId)
+
+    setProfile(prof)
+    setPermissions(perms || [])
+    if (prof?.ui_theme) setTheme(prof.ui_theme)
+  }
+
+  useEffect(() => {
+    async function loadProfile() {
+      if (!session?.user) { setProfile(null); setPermissions([]); return }
+
+      if (session?.rms_internal) {
+        const localUser = getRmsLocalUser()
+        setProfile(localUser)
+        setPermissions(makeInternalPermissionRows(localUser?.id || session.user.id))
+        if (localUser?.ui_theme) setTheme(localUser.ui_theme)
+        return
+      }
+
+      await loadSupabaseProfile(session)
+    }
+    loadProfile()
+  }, [session])
+
+  useEffect(() => {
+    const reloadUserAccess = async () => {
+      if (!session?.user) return
+
+      if (session?.rms_internal) {
+        const localUser = getRmsLocalUser()
+        setProfile(localUser)
+        setPermissions(makeInternalPermissionRows(localUser?.id || session.user.id))
+        if (localUser?.ui_theme) setTheme(localUser.ui_theme)
+        return
+      }
+
+      await loadSupabaseProfile(session)
+    }
+
+    window.addEventListener('rms-user-settings-updated', reloadUserAccess)
+    window.addEventListener('storage', reloadUserAccess)
+    return () => {
+      window.removeEventListener('rms-user-settings-updated', reloadUserAccess)
+      window.removeEventListener('storage', reloadUserAccess)
+    }
+  }, [session])
+
+  const isInternalSession = Boolean(session?.rms_internal)
+  const isAdmin = !isInternalSession && (!profile || profile?.role === 'admin')
+  const sectionAccess = (sectionId) => {
+    if (isAdmin) return 'admin'
+    if (sectionId === 'settings' && isInternalSession) return 'admin'
+    const row = permissions.find(p => p.section === sectionId)
+    return row?.access || 'none'
+  }
+  const visibleSections = SECTIONS.filter(s => canReadAccess(sectionAccess(s.id)) || (s.id === 'settings' && isInternalSession))
+  const currentAccess = sectionAccess(section)
+  const currentCanRead = canReadAccess(currentAccess) || (section === 'settings' && isInternalSession)
+
+  useEffect(() => {
+    const urlToken = new URLSearchParams(window.location.search).get('loyalty_scan_token')
+    if (urlToken && section !== 'loyalty') {
+      setSection('loyalty')
+    }
+  }, [section])
+
+  useEffect(() => {
+    if (!visibleSections.length) return
+    if (section === 'settings' && isInternalSession) return
+    if (!canReadAccess(sectionAccess(section))) setSection(visibleSections[0].id)
+  }, [permissions, profile, section, isInternalSession])
+
+  function goToRevenueExpense(row) {
+    if (!row?.expense_date || !row?.branch_id) return
+    setRevenueFocus({
+      expenseId: row.id || '',
+      branchId: row.branch_id,
+      date: row.expense_date,
+      name: row.name || '',
+      amount: row.amountValue ?? row.amount ?? '',
+      ts: Date.now()
+    })
+    setSection('revenue')
+  }
+
+  function logout() {
+    if (session?.rms_internal) {
+      setInternalSessionStorage(null)
+      setSession(null)
+      setProfile(null)
+      setPermissions([])
+      return
+    }
+    supabase.auth.signOut()
+  }
+
+  if (loading) return <div className="login-screen"><div className="login-card">{t('loading')}</div></div>
+  if (!session) return <Login lang={lang} setLang={setLang} t={t} />
+
+  const visibleSectionMap = Object.fromEntries(visibleSections.map(s => [s.id, s]))
+  const groupedSections = RMS_PRO_NAV_GROUPS.map(group => ({
+    ...group,
+    sections: group.ids.map(id => visibleSectionMap[id]).filter(Boolean)
+  })).filter(group => group.sections.length)
+  const ungroupedSections = visibleSections.filter(s => !RMS_PRO_NAV_GROUPS.some(group => group.ids.includes(s.id)))
+  const activeTitle = rmsProSectionTitle(section, t)
+  const userName = profile?.full_name || profile?.login_name || session?.user?.email || 'Admin'
+  const userInitial = String(userName || 'A').trim().slice(0, 1).toUpperCase()
+  const renderProNavButton = (s) => (
+    <button
+      key={s.id}
+      className={`rms-pro-nav-item ${section === s.id ? 'active' : ''}`}
+      onClick={() => setSection(s.id)}
+      type="button"
+    >
+      <span className="rms-pro-nav-icon">{RMS_PRO_SECTION_ICONS[s.id] || '•'}</span>
+      <span>{t(s.key)}</span>
+    </button>
+  )
+
+  return (
+    <div className={`app rms-pro-shell theme-${theme || 'classic'}`}>
+      <aside className="sidebar rms-pro-sidebar">
+        <div className="rms-pro-brand">
+          <div className="rms-pro-logo"><ProductLogo compact /></div>
+          <div>
+            <h1>{t('system_short_title')}</h1>
+            <p>{t('brand_subtitle')}</p>
+          </div>
+        </div>
+
+        <nav className="rms-pro-nav">
+          {groupedSections.map(group => (
+            <div key={group.title} className="rms-pro-nav-group">
+              <div className="rms-pro-nav-group-title">{group.title}</div>
+              <div className="rms-pro-nav-list">
+                {group.sections.map(renderProNavButton)}
+              </div>
+            </div>
+          ))}
+          {ungroupedSections.length > 0 && (
+            <div className="rms-pro-nav-group">
+              <div className="rms-pro-nav-group-title">ДРУГОЕ</div>
+              <div className="rms-pro-nav-list">
+                {ungroupedSections.map(renderProNavButton)}
+              </div>
+            </div>
+          )}
+        </nav>
+
+        <div className="rms-pro-sidebar-bottom">
+          <div className="rms-pro-user-card">
+            <div className="rms-pro-avatar">{userInitial}</div>
+            <div className="rms-pro-user-info">
+              <div className="rms-pro-user-name">{userName}</div>
+              <div className="rms-pro-user-role">{isAdmin ? t('administrator') : t('employee')}</div>
+            </div>
+            <button className="rms-pro-account-logout" onClick={logout} type="button" title={t('logout')} aria-label={t('logout')}>
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M14 7V5.5A1.5 1.5 0 0 0 12.5 4h-6A1.5 1.5 0 0 0 5 5.5v13A1.5 1.5 0 0 0 6.5 20h6a1.5 1.5 0 0 0 1.5-1.5V17" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M10 12h9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                <path d="m16 8 4 4-4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      </aside>
+
+      <main className={`main rms-pro-main section-${section} ${currentAccess === 'read' ? 'readonly-mode' : ''}`} data-section={section}>
+        <DashboardStyles />
+        <ThemeStyles />
+        <ResponsiveAndSettingsStyles />
+        <RMSProInterfaceStyles />
+        <RMSProV6Styles />
+        <RMSProV9Styles />
+        <DashboardTrendColorStyles />
+        <SupplierTotalOnlyCheckboxStyles />
+        <RMSProSidebarSatoshiStyles />
+        <GlobalProgressOverlay />
+        <div className="rms-pro-topbar">
+          <div className="rms-pro-topbar-title">
+            <button className="rms-pro-back" type="button" onClick={() => setSection('dashboard')} aria-label="Назад"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M15 6l-6 6 6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg></button>
+            <span>{activeTitle}</span>
+          </div>
+          <div className="rms-pro-topbar-actions">
+            <button className="rms-pro-top-icon" type="button" aria-label="Notifications"><RmsBellIcon /></button>
+            <button className="rms-pro-top-icon" type="button" aria-label="Help"><RmsHelpIcon /></button>
+            <div className="rms-pro-top-user">
+              <div className="rms-pro-top-avatar">{userInitial}</div>
+              <span>{isAdmin ? 'Admin' : userName}</span>
+              <span>⌄</span>
+            </div>
+          </div>
+        </div>
+        <div className="rms-pro-content">
+        {!currentCanRead && <section className="card"><h3>{t('permission_denied')}</h3><p className="hint">Этот раздел скрыт для текущего пользователя.</p></section>}
+        {currentCanRead && currentAccess === 'read' && <div className="readonly-banner">Режим просмотра: редактирование этого раздела отключено.</div>}
+        {currentCanRead && section === 'dashboard' && <Dashboard t={t} />}
+        {currentCanRead && section === 'revenue' && <Revenue t={t} focusExpense={revenueFocus} />}
+        {currentCanRead && section === 'finance' && <Finance t={t} lang={lang} onGoToExpense={goToRevenueExpense} />}
+        {currentCanRead && section === 'reports' && <Reports t={t} />}
+        {currentCanRead && section === 'recipes' && <Recipes t={t} />}
+        {currentCanRead && section === 'inventory' && <InventoryModule t={t} />}
+        {currentCanRead && section === 'salaries' && <SalaryWorkspace t={t} isAdmin={isAdmin || accessRank(sectionAccess('salaries')) >= accessRank('admin')} />}
+        {currentCanRead && section === 'suppliers' && <Suppliers t={t} isAdmin={isAdmin || accessRank(sectionAccess('suppliers')) >= accessRank('admin')} />}
+        {currentCanRead && section === 'debts' && <DebtsPayments t={t} />}
+        {currentCanRead && section === 'qrmenu' && <RMSQRMenuAdmin t={t} />}
+        {currentCanRead && section === 'loyalty' && <div className="grid">
+          <div className="card span-2">
+            <RMSLoyalty />
+          </div>
+          <div className="card span-2">
+            <div className="card-head">
+              <div>
+                <h3>Loyalty POS Scan</h3>
+                <p className="hint">Сканирование QR клиента официантом / POS.</p>
+              </div>
+            </div>
+            <RMSLoyaltyPOSScan />
+          </div>
+        </div>}
+        {currentCanRead && section === 'market' && <MarketIntelligence t={t} />}
+        {currentCanRead && section === 'security_recovery' && <SecurityRecoveryCenter />}
+        {currentCanRead && section === 'settings' && <RmsSectionErrorBoundary resetKey={`settings-${section}`}><Settings session={session} t={t} theme={theme} setTheme={setTheme} /></RmsSectionErrorBoundary>}
+        </div>
+      </main>
+    </div>
+  )
 }
 
-function rmsExcelCellToNumber(value) {
-  if (value === null || value === undefined || value === '') return 0
-  if (typeof value === 'number' && Number.isFinite(value)) return value
-  const cleaned = String(value)
-    .replace(/\s/g, '')
-    .replace(',', '.')
-    .replace(/[^\d.-]/g, '')
-  const n = Number(cleaned)
+
+
+function miParseNum(v) {
+  if (v === null || v === undefined || v === '') return 0
+  const n = Number(String(v).replace(',', '.').replace(/[^\d.-]/g, ''))
   return Number.isFinite(n) ? n : 0
 }
 
-function rmsExcelCellToText(value) {
-  if (value === null || value === undefined) return ''
-  return String(value).trim()
+function miMoney(v) {
+  return `${miParseNum(v).toFixed(2)} AZN`
 }
 
-function rmsExcelColumnLetterToIndex(letter) {
-  let n = 0
-  const s = String(letter || '').toUpperCase()
-  for (let i = 0; i < s.length; i += 1) {
-    n = n * 26 + (s.charCodeAt(i) - 64)
-  }
-  return n - 1
+function miNormalizeName(value = '') {
+  return String(value)
+    .toLowerCase()
+    .trim()
+    .replace(/[ə]/g, 'e')
+    .replace(/[ı]/g, 'i')
+    .replace(/[ö]/g, 'o')
+    .replace(/[ü]/g, 'u')
+    .replace(/[ğ]/g, 'g')
+    .replace(/[ş]/g, 's')
+    .replace(/[ç]/g, 'c')
+    .replace(/\b\d+\s?(g|gr|гр|ml|мл|kg|кг|l|л)\b/gi, '')
+    .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
 }
 
-function rmsExcelGetCell(sheet, rowNumber, colLetter) {
-  const XLSX = window.XLSX
-  const cell = sheet[XLSX.utils.encode_cell({ r: rowNumber - 1, c: rmsExcelColumnLetterToIndex(colLetter) })]
-  return cell ? cell.v : null
+function miRecommendation(ourPrice, avgPrice) {
+  const our = miParseNum(ourPrice)
+  const avg = miParseNum(avgPrice)
+  if (!our || !avg) return { type: 'neutral', text: 'Недостаточно данных', diff: 0 }
+  const diff = ((our - avg) / avg) * 100
+  if (diff <= -15) return { type: 'up', text: 'Цена ниже рынка — можно рассмотреть повышение', diff }
+  if (diff >= 20) return { type: 'down', text: 'Цена выше рынка — проверьте спрос и маржу', diff }
+  return { type: 'ok', text: 'Цена в пределах рынка', diff }
 }
 
-function rmsParseRevenueFromBCWorkbook(workbook) {
-  const branchSheets = [
-    { sheet: 'BC1', branch: 'BC1' },
-    { sheet: 'BC2', branch: 'BC2' },
-    { sheet: 'BC3', branch: 'BC3' },
-    { sheet: 'BC4', branch: 'BC4' },
-    { sheet: 'BC5', branch: 'BC5' },
-    { sheet: 'BC 5', branch: 'BC5' },
-    { sheet: 'Bistro', branch: 'Bistro' },
-  ]
+function MarketIntelligence({ t }) {
+  const [competitors, setCompetitors] = useState([])
+  const [marketItems, setMarketItems] = useState([])
+  const [ourMenu, setOurMenu] = useState([])
+  const [recommendations, setRecommendations] = useState([])
+  const [competitorForm, setCompetitorForm] = useState({ name: '', area: '', segment: 'coffee', menu_url: '', notes: '' })
+  const [itemForm, setItemForm] = useState({ competitor_id: '', category: '', item_name: '', normalized_name: '', description: '', price: '', weight: '', source_url: '' })
+  const [selectedCompetitor, setSelectedCompetitor] = useState('')
+  const [search, setSearch] = useState('')
+  const [status, setStatus] = useState('')
+  const [loading, setLoading] = useState(false)
 
-  const rows = []
-  const warnings = []
-  const seenBranchDate = new Set()
-  const dayStartCol = rmsExcelColumnLetterToIndex('D')
-  const dayEndCol = rmsExcelColumnLetterToIndex('AI')
+  useEffect(() => { loadAll() }, [])
 
-  branchSheets.forEach(({ sheet: sheetName, branch }) => {
-    const sheet = workbook.Sheets[sheetName]
-    if (!sheet) return
-
-    for (let c = dayStartCol; c <= dayEndCol; c += 1) {
-      const colLetter = window.XLSX.utils.encode_col(c)
-      const rawDay = rmsExcelGetCell(sheet, 1, colLetter)
-      const day = Number(rawDay)
-      if (!day || day < 1 || day > 31) continue
-
-      const cash = rmsExcelCellToNumber(rmsExcelGetCell(sheet, 2, colLetter))
-      const bank = rmsExcelCellToNumber(rmsExcelGetCell(sheet, 3, colLetter))
-
-      // Some sheets have total at row 4, some at row 6. Prefer explicit total row if it is close to cash+bank.
-      const totalRow4 = rmsExcelCellToNumber(rmsExcelGetCell(sheet, 4, colLetter))
-      const totalRow6 = rmsExcelCellToNumber(rmsExcelGetCell(sheet, 6, colLetter))
-      const computed = cash + bank
-      let total = computed
-      if (totalRow4 > 0 && Math.abs(totalRow4 - computed) <= Math.max(2, computed * 0.05)) total = totalRow4
-      else if (totalRow6 > 0 && Math.abs(totalRow6 - computed) <= Math.max(2, computed * 0.05)) total = totalRow6
-      else if (totalRow4 > 0 && computed === 0) total = totalRow4
-      else if (totalRow6 > 0 && computed === 0) total = totalRow6
-
-      if (!cash && !bank && !total) continue
-
-      const date = `2026-05-${String(day).padStart(2, '0')}`
-      const key = `${branch}|${date}`
-
-      // If both BC5 and BC 5 exist, prevent duplicate branch-date rows.
-      if (seenBranchDate.has(key)) {
-        warnings.push(`${branch} ${date}: дубликат между листами, строка пропущена`)
-        continue
-      }
-      seenBranchDate.add(key)
-
-      rows.push({
-        branch,
-        date,
-        cash,
-        bank,
-        total,
-        source_sheet: sheetName,
-        source_day: day,
-        external_id: `excel-2026-05-${branch}-${String(day).padStart(2, '0')}`,
-      })
-    }
-  })
-
-  return { rows, warnings }
-}
-
-async function rmsRevenueImportUpsertRow(row) {
-  const branchId = rmsFindBranchIdSafe(row.branch)
-
-  const totalAmount = Number(row.total || 0) || (Number(row.cash || 0) + Number(row.bank || 0))
-  const basePayload = {
-    date: row.date,
-    branch: row.branch,
-    cash_amount: Number(row.cash || 0),
-    card_amount: Number(row.bank || 0),
-    wolt_amount: 0,
-    total_amount: totalAmount,
-    comment: `Excel import ${row.source_sheet} day ${row.source_day}`,
-    source: 'excel_revenue_import',
-    external_id: row.external_id,
-  }
-
-  const revenuePayload = branchId ? { ...basePayload, branch_id: branchId } : basePayload
-
-  let revenueId = null
-  let existing = null
-
-  // Try by external_id first if SQL v189 was applied.
-  try {
-    existing = await supabase
-      .from('daily_revenue')
-      .select('id')
-      .eq('external_id', row.external_id)
-      .limit(1)
-    if (existing?.error && String(existing.error.message || '').includes('external_id')) existing = null
-  } catch (_) {
-    existing = null
-  }
-
-  if (!existing?.data?.[0]?.id) {
-    let query = supabase.from('daily_revenue').select('id').eq('date', row.date)
-    if (branchId) query = query.eq('branch_id', branchId)
-    else query = query.eq('branch', row.branch)
-    existing = await query.limit(1)
-  }
-
-  if (existing?.data?.[0]?.id) {
-    revenueId = existing.data[0].id
-    const updated = await supabase
-      .from('daily_revenue')
-      .update(revenuePayload)
-      .eq('id', revenueId)
-    if (updated.error) throw updated.error
-  } else {
-    const inserted = await supabase
-      .from('daily_revenue')
-      .insert(revenuePayload)
-      .select('id')
-      .single()
-    if (inserted.error) throw inserted.error
-    revenueId = inserted.data?.id
-  }
-
-  if (!revenueId) throw new Error(`Не удалось создать выручку: ${row.branch} ${row.date}`)
-
-  // Entry schema differs across versions. Try common schema first; if it fails, keep daily_revenue restored.
-  const entryRows = [
-    { revenue_id: revenueId, payment_type: 'cash', amount: Number(row.cash || 0), comment: 'Excel cash' },
-    { revenue_id: revenueId, payment_type: 'bank', amount: Number(row.bank || 0), comment: 'Excel bank' },
-  ].filter(r => Number(r.amount || 0) !== 0)
-
-  try {
-    await supabase.from('daily_revenue_entries').delete().eq('revenue_id', revenueId)
-    if (entryRows.length) {
-      const entryInsert = await supabase.from('daily_revenue_entries').insert(entryRows)
-      if (entryInsert.error) throw entryInsert.error
-    }
-  } catch (entryError) {
-    console.warn('daily_revenue_entries import skipped/failed', entryError)
-  }
-
-  return revenueId
-}
-
-function RevenueExcelImportVisibleBlock({ section, onImported }) {
-  if (section !== 'revenue') return null
-  const card = <ExcelRevenueImportCard onImported={onImported} />
-  if (typeof RmsSectionErrorBoundary !== 'undefined') {
-    return <RmsSectionErrorBoundary resetKey="excel-revenue-import">{card}</RmsSectionErrorBoundary>
-  }
-  return card
-}
-
-function ExcelRevenueImportCard({ onImported }) {
-  const [fileName, setFileName] = React.useState('')
-  const [rows, setRows] = React.useState([])
-  const [warnings, setWarnings] = React.useState([])
-  const [busy, setBusy] = React.useState(false)
-  const [message, setMessage] = React.useState('')
-
-  const totals = React.useMemo(() => {
-    return rows.reduce((acc, r) => {
-      acc.count += 1
-      acc.cash += Number(r.cash || 0)
-      acc.bank += Number(r.bank || 0)
-      acc.total += Number(r.total || 0)
-      return acc
-    }, { count: 0, cash: 0, bank: 0, total: 0 })
-  }, [rows])
-
-  const handleFile = async (event) => {
-    const file = event.target.files?.[0]
-    if (!file) return
-    setBusy(true)
-    setMessage('')
-    setRows([])
-    setWarnings([])
-    setFileName(file.name)
+  async function loadAll() {
+    setLoading(true)
+    setStatus('')
     try {
-      const XLSX = await loadXlsxLibrary()
-      const buffer = await file.arrayBuffer()
-      const workbook = XLSX.read(buffer, { type: 'array', cellDates: false, raw: true })
-      const parsed = rmsParseRevenueFromBCWorkbook(workbook)
-      setRows(parsed.rows)
-      setWarnings(parsed.warnings || [])
-      setMessage(`Preview готов: ${parsed.rows.length} строк выручки`)
-    } catch (err) {
-      console.error('Excel revenue parse error', err)
-      setMessage(err?.message || 'Не удалось прочитать Excel файл')
+      await Promise.all([loadCompetitors(), loadMarketItems(), loadOurMenu(), loadRecommendations()])
     } finally {
-      setBusy(false)
+      setLoading(false)
     }
   }
 
-  const importRows = async () => {
-    if (!rows.length) return
-    setBusy(true)
-    setMessage('')
-    let ok = 0
-    let failed = 0
+  async function loadCompetitors() {
+    const { data, error } = await supabase.from('market_competitors').select('*').order('created_at', { ascending: false })
+    if (error) {
+      setStatus(`Ошибка загрузки конкурентов: ${error.message}`)
+      return
+    }
+    setCompetitors(data || [])
+  }
+
+  async function loadMarketItems() {
+    const { data, error } = await supabase
+      .from('market_menu_items')
+      .select('*, market_competitors(name, area, segment)')
+      .eq('is_active', true)
+      .order('captured_at', { ascending: false })
+    if (error) {
+      setStatus(`Ошибка загрузки меню конкурентов: ${error.message}`)
+      return
+    }
+    setMarketItems(data || [])
+  }
+
+  async function loadRecommendations() {
+    const { data, error } = await supabase
+      .from('market_price_recommendations')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(50)
+    if (!error) setRecommendations(data || [])
+  }
+
+  async function tryReadMenuTable(tableName, fields) {
+    const { data, error } = await supabase.from(tableName).select(fields).limit(1000)
+    if (error) return null
+    return data || []
+  }
+
+  async function loadOurMenu() {
+    const variants = [
+      { table: 'menu_items', fields: 'id, name, item_name, title, category, price, sale_price' },
+      { table: 'rms_menu_items', fields: 'id, name, item_name, title, category, price, sale_price' },
+      { table: 'rms_menu_products', fields: 'id, name, item_name, title, category, price, sale_price' },
+      { table: 'products', fields: 'id, name, item_name, title, category, price, sale_price' }
+    ]
+
+    for (const v of variants) {
+      const rows = await tryReadMenuTable(v.table, v.fields)
+      if (rows && rows.length) {
+        const cleaned = rows.map(r => {
+          const itemName = r.name || r.item_name || r.title || ''
+          return {
+            ...r,
+            source_table: v.table,
+            item_name: itemName,
+            normalized_name: miNormalizeName(itemName),
+            price: miParseNum(r.sale_price || r.price)
+          }
+        }).filter(r => r.item_name)
+        setOurMenu(cleaned)
+        return
+      }
+    }
+
+    setOurMenu([])
+  }
+
+  async function addCompetitor(e) {
+    e.preventDefault()
+    if (!competitorForm.name.trim()) {
+      setStatus('Введите название конкурента.')
+      return
+    }
+
+    const { error } = await supabase.from('market_competitors').insert({
+      name: competitorForm.name.trim(),
+      area: competitorForm.area.trim(),
+      segment: competitorForm.segment.trim(),
+      menu_url: competitorForm.menu_url.trim(),
+      notes: competitorForm.notes.trim(),
+      is_active: true
+    })
+
+    if (error) {
+      setStatus(`Ошибка сохранения конкурента: ${error.message}`)
+      return
+    }
+
+    setCompetitorForm({ name: '', area: '', segment: 'coffee', menu_url: '', notes: '' })
+    setStatus('Конкурент добавлен.')
+    await loadCompetitors()
+  }
+
+  async function addMarketItem(e) {
+    e.preventDefault()
+    if (!itemForm.competitor_id) {
+      setStatus('Выберите конкурента.')
+      return
+    }
+    if (!itemForm.item_name.trim()) {
+      setStatus('Введите название позиции.')
+      return
+    }
+
+    const normalized = itemForm.normalized_name.trim() ? miNormalizeName(itemForm.normalized_name) : miNormalizeName(itemForm.item_name)
+
+    const { error } = await supabase.from('market_menu_items').insert({
+      competitor_id: itemForm.competitor_id,
+      category: itemForm.category.trim(),
+      item_name: itemForm.item_name.trim(),
+      normalized_name: normalized,
+      description: itemForm.description.trim(),
+      price: miParseNum(itemForm.price),
+      weight: itemForm.weight.trim(),
+      source_url: itemForm.source_url.trim(),
+      is_active: true
+    })
+
+    if (error) {
+      setStatus(`Ошибка сохранения позиции: ${error.message}`)
+      return
+    }
+
+    setItemForm({ competitor_id: itemForm.competitor_id, category: '', item_name: '', normalized_name: '', description: '', price: '', weight: '', source_url: '' })
+    setStatus('Позиция меню конкурента добавлена.')
+    await loadMarketItems()
+  }
+
+  async function hideMarketItem(id) {
+    const { error } = await supabase.from('market_menu_items').update({ is_active: false }).eq('id', id)
+    if (error) {
+      setStatus(`Ошибка удаления позиции: ${error.message}`)
+      return
+    }
+    setStatus('Позиция скрыта.')
+    await loadMarketItems()
+  }
+
+  async function toggleCompetitor(id, isActive) {
+    const { error } = await supabase.from('market_competitors').update({ is_active: !isActive }).eq('id', id)
+    if (error) {
+      setStatus(`Ошибка изменения статуса: ${error.message}`)
+      return
+    }
+    await loadCompetitors()
+  }
+
+  async function scanCompetitor(competitor) {
+    if (!competitor?.id) return
+    if (!competitor?.menu_url) {
+      setStatus('У конкурента не указана ссылка на меню.')
+      return
+    }
+
+    setStatus(`Сканирование меню: ${competitor.name}...`)
+    setLoading(true)
+
     try {
-      for (const row of rows) {
-        try {
-          await rmsRevenueImportUpsertRow(row)
-          ok += 1
-        } catch (err) {
-          console.error('Revenue import row failed', row, err)
-          failed += 1
+      const { data, error } = await supabase.functions.invoke('scan-competitor-menu', {
+        body: { competitor_id: competitor.id }
+      })
+
+      if (error) {
+        setStatus(`Ошибка сканирования: ${error.message || 'Edge Function вернула ошибку'}`)
+        return
+      }
+
+      if (!data?.ok) {
+        setStatus(`Сканирование не выполнено: ${data?.error || 'неизвестная ошибка'}`)
+        return
+      }
+
+      setStatus(`Сканирование завершено. Найдено: ${data.found || 0}, сохранено: ${data.inserted || 0}.`)
+      await Promise.all([loadCompetitors(), loadMarketItems()])
+    } catch (err) {
+      setStatus(`Ошибка сканирования: ${err?.message || String(err)}`)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const filteredItems = useMemo(() => {
+    const q = miNormalizeName(search)
+    return marketItems.filter(item => {
+      const byCompetitor = !selectedCompetitor || item.competitor_id === selectedCompetitor
+      const bySearch = !q ||
+        miNormalizeName(item.item_name).includes(q) ||
+        miNormalizeName(item.category || '').includes(q) ||
+        miNormalizeName(item.normalized_name || '').includes(q) ||
+        miNormalizeName(item.market_competitors?.name || '').includes(q)
+      return byCompetitor && bySearch
+    })
+  }, [marketItems, selectedCompetitor, search])
+
+  const marketGroups = useMemo(() => {
+    const map = new Map()
+
+    marketItems.forEach(item => {
+      const key = item.normalized_name || miNormalizeName(item.item_name)
+      if (!key) return
+      if (!map.has(key)) {
+        map.set(key, { normalized_name: key, display_name: item.item_name, category: item.category, prices: [], competitors: new Set(), items: [] })
+      }
+      const group = map.get(key)
+      const price = miParseNum(item.price)
+      if (price > 0) group.prices.push(price)
+      if (item.market_competitors?.name) group.competitors.add(item.market_competitors.name)
+      group.items.push(item)
+    })
+
+    return Array.from(map.values()).map(g => {
+      const avg = g.prices.length ? g.prices.reduce((sum, v) => sum + v, 0) / g.prices.length : 0
+      const ourMatch = ourMenu.find(m => m.normalized_name === g.normalized_name)
+      const rec = miRecommendation(ourMatch?.price, avg)
+      return {
+        ...g,
+        competitor_count: g.competitors.size,
+        avg_price: avg,
+        min_price: g.prices.length ? Math.min(...g.prices) : 0,
+        max_price: g.prices.length ? Math.max(...g.prices) : 0,
+        our_item_name: ourMatch?.item_name || '',
+        our_price: ourMatch?.price || 0,
+        recommendation: rec
+      }
+    }).sort((a, b) => b.competitor_count - a.competitor_count)
+  }, [marketItems, ourMenu])
+
+  async function saveRecommendation(row) {
+    const { error } = await supabase.from('market_price_recommendations').insert({
+      our_item_name: row.our_item_name || row.display_name,
+      our_price: row.our_price || null,
+      market_avg_price: row.avg_price || null,
+      market_min_price: row.min_price || null,
+      market_max_price: row.max_price || null,
+      recommendation: row.recommendation.text
+    })
+
+    if (error) {
+      setStatus(`Ошибка сохранения рекомендации: ${error.message}`)
+      return
+    }
+
+    setStatus('Рекомендация сохранена.')
+    await loadRecommendations()
+  }
+
+  const stats = useMemo(() => ({
+    activeCompetitors: competitors.filter(c => c.is_active).length,
+    totalItems: marketItems.length,
+    matched: marketGroups.filter(g => g.our_price > 0).length,
+    opportunities: marketGroups.filter(g => g.recommendation.type === 'up').length
+  }), [competitors, marketItems, marketGroups])
+
+  return (
+    <section className="market-intelligence-page">
+      <style>{`
+        .market-intelligence-page{display:flex;flex-direction:column;gap:16px}
+        .mi-hero{background:linear-gradient(135deg,#17211b,#314236);color:white;border-radius:24px;padding:22px;box-shadow:0 18px 44px rgba(23,33,27,.16)}
+        .mi-hero h2{margin:0;font-size:28px;letter-spacing:-.04em}
+        .mi-hero p{margin:8px 0 0;color:rgba(255,255,255,.78);max-width:920px}
+        .mi-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+        .mi-card{background:#fff;border:1px solid #e6ebe7;border-radius:20px;padding:16px;box-shadow:0 10px 28px rgba(28,45,35,.05)}
+        .mi-stat-label{color:#6a756d;font-size:12px}.mi-stat-value{margin-top:8px;font-size:26px;font-weight:800}
+        .mi-section{background:#fff;border:1px solid #e6ebe7;border-radius:22px;padding:18px;box-shadow:0 10px 28px rgba(28,45,35,.05)}
+        .mi-section h3{margin:0 0 12px;font-size:18px}.mi-form{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;align-items:end}
+        .mi-form label{display:flex;flex-direction:column;gap:6px;font-size:12px;color:#5d6b62}
+        .mi-form input,.mi-form select,.mi-form textarea,.mi-filter input,.mi-filter select{width:100%;border:1px solid #dce4df;border-radius:12px;padding:10px 12px;font-size:14px;outline:none;background:#fbfcfb}
+        .mi-form textarea{min-height:42px;resize:vertical}.mi-span-2{grid-column:span 2}.mi-span-3{grid-column:span 3}.mi-span-6{grid-column:span 6}
+        .mi-btn{border:0;border-radius:12px;padding:10px 14px;font-weight:700;cursor:pointer;background:#17211b;color:#fff}.mi-btn-light{background:#eef3ef;color:#17211b}.mi-btn-danger{background:#fff1f1;color:#a32222}
+        .mi-table-wrap{overflow:auto;border:1px solid #eef1ef;border-radius:16px}.mi-table{width:100%;border-collapse:collapse;min-width:980px}.mi-table th{text-align:left;font-size:12px;color:#69766d;background:#f6f8f6;padding:11px;white-space:nowrap}.mi-table td{border-top:1px solid #eef1ef;padding:11px;font-size:13px;vertical-align:top}
+        .mi-badge{display:inline-flex;align-items:center;border-radius:999px;padding:5px 9px;font-size:12px;font-weight:700;background:#eef3ef;color:#334239;white-space:nowrap}.mi-badge-up{background:#eaf7ee;color:#18733a}.mi-badge-down{background:#fff1f1;color:#a32222}.mi-badge-ok{background:#eef3ff;color:#244a9b}
+        .mi-muted{color:#6c786f;font-size:12px}.mi-filter{display:grid;grid-template-columns:240px 1fr 140px;gap:10px;margin-bottom:12px}.mi-status{padding:10px 12px;border-radius:12px;background:#f6f8f6;color:#334239;font-size:13px}.mi-link{color:#1f5f3e;text-decoration:none;font-weight:700}
+        @media(max-width:900px){.mi-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.mi-form{grid-template-columns:1fr}.mi-span-2,.mi-span-3,.mi-span-6{grid-column:span 1}.mi-filter{grid-template-columns:1fr}}
+      `}</style>
+
+      <div className="mi-hero">
+        <h2>Market Intelligence</h2>
+        <p>Анализ онлайн-меню конкурентов, сравнение цен и рекомендации по ценообразованию. Первая версия работает через ручной / полуавтоматический ввод позиций без агрессивного scraping.</p>
+      </div>
+
+      {status ? <div className="mi-status">{status}</div> : null}
+
+      <div className="mi-stats">
+        <div className="mi-card"><div className="mi-stat-label">Активные конкуренты</div><div className="mi-stat-value">{stats.activeCompetitors}</div></div>
+        <div className="mi-card"><div className="mi-stat-label">Позиции рынка</div><div className="mi-stat-value">{stats.totalItems}</div></div>
+        <div className="mi-card"><div className="mi-stat-label">Совпадения с нашим меню</div><div className="mi-stat-value">{stats.matched}</div></div>
+        <div className="mi-card"><div className="mi-stat-label">Возможности повышения цены</div><div className="mi-stat-value">{stats.opportunities}</div></div>
+      </div>
+
+      <div className="mi-section">
+        <div className="card-head">
+          <div>
+            <h3>Добавить конкурента</h3>
+            <p className="hint">Название, район, сегмент и ссылка на онлайн-меню конкурента.</p>
+          </div>
+          <button className="mi-btn mi-btn-light" onClick={loadAll}>{loading ? 'Обновление...' : 'Обновить'}</button>
+        </div>
+        <form className="mi-form" onSubmit={addCompetitor}>
+          <label className="mi-span-2 supplier-total-only-row">Название<input className="supplier-total-only-checkbox" value={competitorForm.name} onChange={e => setCompetitorForm({ ...competitorForm, name: e.target.value })} placeholder="Например: Coffee House" /></label>
+          <label>Район<input value={competitorForm.area} onChange={e => setCompetitorForm({ ...competitorForm, area: e.target.value })} placeholder="Nizami / Khagani" /></label>
+          <label>Сегмент<select value={competitorForm.segment} onChange={e => setCompetitorForm({ ...competitorForm, segment: e.target.value })}><option value="coffee">Coffee</option><option value="casual">Casual</option><option value="premium">Premium</option><option value="fast_food">Fast food</option><option value="bakery">Bakery</option><option value="delivery">Delivery</option></select></label>
+          <label className="mi-span-2">Ссылка на меню<input value={competitorForm.menu_url} onChange={e => setCompetitorForm({ ...competitorForm, menu_url: e.target.value })} placeholder="https://..." /></label>
+          <label className="mi-span-6">Комментарий<textarea value={competitorForm.notes} onChange={e => setCompetitorForm({ ...competitorForm, notes: e.target.value })} placeholder="Похожий сегмент, сильные завтраки, высокий рейтинг..." /></label>
+          <button className="mi-btn" type="submit">Добавить конкурента</button>
+        </form>
+      </div>
+
+      <div className="mi-section">
+        <h3>Конкуренты</h3>
+        <div className="mi-table-wrap">
+          <table className="mi-table">
+            <thead><tr><th>Название</th><th>Район</th><th>Сегмент</th><th>Меню</th><th>Сканер</th><th>Статус</th><th>Действие</th></tr></thead>
+            <tbody>
+              {competitors.map(c => (
+                <tr key={c.id}>
+                  <td><strong>{c.name}</strong>{c.notes ? <div className="mi-muted">{c.notes}</div> : null}</td>
+                  <td>{c.area || '—'}</td><td>{c.segment || '—'}</td>
+                  <td>{c.menu_url ? <a className="mi-link" href={c.menu_url} target="_blank" rel="noreferrer">Открыть меню</a> : '—'}</td>
+                  <td>
+                    <button className="mi-btn mi-btn-light" disabled={loading || !c.menu_url} onClick={() => scanCompetitor(c)}>Сканировать меню</button>
+                    <div className="mi-muted">{c.last_scan_at ? `Последний скан: ${new Date(c.last_scan_at).toLocaleString()}` : 'Ещё не сканировалось'}</div>
+                    {c.scan_status ? <div className="mi-muted">Статус: {c.scan_status}</div> : null}
+                    {c.scan_error ? <div className="mi-muted">Ошибка: {c.scan_error}</div> : null}
+                  </td>
+                  <td><span className="mi-badge">{c.is_active ? 'Активен' : 'Скрыт'}</span></td>
+                  <td><button className="mi-btn mi-btn-light" onClick={() => toggleCompetitor(c.id, c.is_active)}>{c.is_active ? 'Скрыть' : 'Вернуть'}</button></td>
+                </tr>
+              ))}
+              {!competitors.length ? <tr><td colSpan="7" className="mi-muted">Пока нет конкурентов.</td></tr> : null}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="mi-section">
+        <h3>Добавить позицию меню конкурента</h3>
+        <form className="mi-form" onSubmit={addMarketItem}>
+          <label className="mi-span-2">Конкурент<select value={itemForm.competitor_id} onChange={e => setItemForm({ ...itemForm, competitor_id: e.target.value })}><option value="">Выберите конкурента</option>{competitors.filter(c => c.is_active).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></label>
+          <label>Категория<input value={itemForm.category} onChange={e => setItemForm({ ...itemForm, category: e.target.value })} placeholder="Coffee / Burgers" /></label>
+          <label className="mi-span-2">Название<input value={itemForm.item_name} onChange={e => setItemForm({ ...itemForm, item_name: e.target.value, normalized_name: miNormalizeName(e.target.value) })} placeholder="Cappuccino 300 ml" /></label>
+          <label>Цена<input value={itemForm.price} onChange={e => setItemForm({ ...itemForm, price: e.target.value })} placeholder="6.50" /></label>
+          <label>Граммовка<input value={itemForm.weight} onChange={e => setItemForm({ ...itemForm, weight: e.target.value })} placeholder="300 ml / 250 g" /></label>
+          <label className="mi-span-2">Нормализованное имя<input value={itemForm.normalized_name} onChange={e => setItemForm({ ...itemForm, normalized_name: e.target.value })} placeholder="cappuccino" /></label>
+          <label className="mi-span-3">Источник<input value={itemForm.source_url} onChange={e => setItemForm({ ...itemForm, source_url: e.target.value })} placeholder="Ссылка на конкретное меню / страницу" /></label>
+          <label className="mi-span-6">Описание<textarea value={itemForm.description} onChange={e => setItemForm({ ...itemForm, description: e.target.value })} placeholder="Описание блюда из меню конкурента" /></label>
+          <button className="mi-btn" type="submit">Добавить позицию</button>
+        </form>
+      </div>
+
+      <div className="mi-section">
+        <h3>Меню конкурентов</h3>
+        <div className="mi-filter">
+          <select value={selectedCompetitor} onChange={e => setSelectedCompetitor(e.target.value)}><option value="">Все конкуренты</option>{competitors.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Поиск по блюду, категории или конкуренту" />
+          <button className="mi-btn mi-btn-light" onClick={() => setSearch('')}>Сбросить</button>
+        </div>
+        <div className="mi-table-wrap">
+          <table className="mi-table">
+            <thead><tr><th>Конкурент</th><th>Категория</th><th>Позиция</th><th>Нормализация</th><th>Цена</th><th>Граммовка</th><th>Источник</th><th></th></tr></thead>
+            <tbody>
+              {filteredItems.map(item => (
+                <tr key={item.id}>
+                  <td><strong>{item.market_competitors?.name || '—'}</strong><div className="mi-muted">{item.market_competitors?.area || ''}</div></td>
+                  <td>{item.category || '—'}</td>
+                  <td><strong>{item.item_name}</strong>{item.description ? <div className="mi-muted">{item.description}</div> : null}</td>
+                  <td>{item.normalized_name || '—'}</td>
+                  <td>{miMoney(item.price)}</td>
+                  <td>{item.weight || '—'}</td>
+                  <td>{item.source_url ? <a className="mi-link" href={item.source_url} target="_blank" rel="noreferrer">открыть</a> : '—'}</td>
+                  <td><button className="mi-btn mi-btn-danger" onClick={() => hideMarketItem(item.id)}>Скрыть</button></td>
+                </tr>
+              ))}
+              {!filteredItems.length ? <tr><td colSpan="8" className="mi-muted">Нет позиций по выбранному фильтру.</td></tr> : null}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="mi-section">
+        <h3>Сравнение цен и рекомендации</h3>
+        <p className="hint">Сравнение идёт по нормализованному названию: cappuccino, caesar salad, chicken burger и т.д.</p>
+        <div className="mi-table-wrap">
+          <table className="mi-table">
+            <thead><tr><th>Позиция рынка</th><th>Конкурентов</th><th>Наша позиция</th><th>Наша цена</th><th>Средняя цена рынка</th><th>Мин / Макс</th><th>Отклонение</th><th>Рекомендация</th><th></th></tr></thead>
+            <tbody>
+              {marketGroups.map(row => {
+                const badgeClass = row.recommendation.type === 'up' ? 'mi-badge-up' : row.recommendation.type === 'down' ? 'mi-badge-down' : row.recommendation.type === 'ok' ? 'mi-badge-ok' : ''
+                return (
+                  <tr key={row.normalized_name}>
+                    <td><strong>{row.display_name}</strong><div className="mi-muted">{row.normalized_name}</div></td>
+                    <td>{row.competitor_count}</td>
+                    <td>{row.our_item_name || 'Нет совпадения'}</td>
+                    <td>{row.our_price ? miMoney(row.our_price) : '—'}</td>
+                    <td>{row.avg_price ? miMoney(row.avg_price) : '—'}</td>
+                    <td>{row.min_price ? miMoney(row.min_price) : '—'} / {row.max_price ? miMoney(row.max_price) : '—'}</td>
+                    <td>{row.our_price && row.avg_price ? `${row.recommendation.diff.toFixed(1)}%` : '—'}</td>
+                    <td><span className={`mi-badge ${badgeClass}`}>{row.recommendation.text}</span></td>
+                    <td><button className="mi-btn mi-btn-light" onClick={() => saveRecommendation(row)}>Сохранить</button></td>
+                  </tr>
+                )
+              })}
+              {!marketGroups.length ? <tr><td colSpan="9" className="mi-muted">Пока нет данных для анализа.</td></tr> : null}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="mi-section">
+        <h3>Сохранённые рекомендации</h3>
+        <div className="mi-table-wrap">
+          <table className="mi-table">
+            <thead><tr><th>Позиция</th><th>Наша цена</th><th>Средняя цена рынка</th><th>Мин / Макс</th><th>Рекомендация</th><th>Дата</th></tr></thead>
+            <tbody>
+              {recommendations.map(r => (
+                <tr key={r.id}>
+                  <td>{r.our_item_name}</td>
+                  <td>{r.our_price ? miMoney(r.our_price) : '—'}</td>
+                  <td>{r.market_avg_price ? miMoney(r.market_avg_price) : '—'}</td>
+                  <td>{r.market_min_price ? miMoney(r.market_min_price) : '—'} / {r.market_max_price ? miMoney(r.market_max_price) : '—'}</td>
+                  <td>{r.recommendation}</td>
+                  <td>{r.created_at ? new Date(r.created_at).toLocaleString() : '—'}</td>
+                </tr>
+              ))}
+              {!recommendations.length ? <tr><td colSpan="6" className="mi-muted">Пока нет сохранённых рекомендаций.</td></tr> : null}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function posItemType(item) {
+  const category = normalizeExpenseText(item?.category || item?.name || '')
+  if (category.includes('кофе') || category.includes('чай') || category.includes('бар') || category.includes('напит') || category.includes('drink') || category.includes('coffee') || category.includes('tea')) return 'Бар'
+  return 'Кухня'
+}
+
+function POSLite({ t }) {
+  const branches = useBranches()
+  const halls = ['Основной зал', 'Терраса', 'VIP']
+  const tableCells = useMemo(() => ([
+    ...Array.from({ length: 12 }, (_, i) => ({ id: `T${i + 1}`, label: `Стол ${i + 1}`, defaultMode: 'hall' })),
+    { id: 'TA', label: 'С собой', defaultMode: 'takeaway' },
+    { id: 'DL', label: 'Доставка', defaultMode: 'delivery' },
+    { id: 'BAR', label: 'Бар', defaultMode: 'hall' },
+    { id: 'VIP', label: 'VIP', defaultMode: 'hall' }
+  ]), [])
+
+  const POS_CASHIER_KEY = 'rms_pos_cashier_session_v1'
+  const [branchId, setBranchId] = useState('')
+  const [date, setDate] = useState(todayISO())
+  const [menuItems, setMenuItems] = useState([])
+  const [orders, setOrders] = useState([])
+  const [search, setSearch] = useState('')
+  const [selectedTable, setSelectedTable] = useState('T1')
+  const [draftOrders, setDraftOrders] = useState({})
+  const [paymentMethod, setPaymentMethod] = useState('cash')
+  const [menuRoot, setMenuRoot] = useState('root')
+  const [menuTypeFilter, setMenuTypeFilter] = useState('all')
+  const [categoryFilter, setCategoryFilter] = useState('all')
+  const [message, setMessage] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [cashierNameInput, setCashierNameInput] = useState('')
+  const [cashierPin, setCashierPin] = useState('')
+  const [cashierSession, setCashierSession] = useState(null)
+
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem(POS_CASHIER_KEY) || 'null')
+      if (saved?.name && saved?.pin) setCashierSession(saved)
+    } catch (_e) {}
+  }, [])
+
+  useEffect(() => { if (!branchId && branches[0]) setBranchId(branches[0].id) }, [branches, branchId])
+  useEffect(() => { loadBase() }, [branchId, date])
+
+  const menuWithType = useMemo(() => (menuItems || []).map(item => ({ ...item, pos_type: posItemType(item) })), [menuItems])
+  const menuRoots = useMemo(() => ([
+    { id: 'Кухня', label: 'Еда' },
+    { id: 'Бар', label: 'Напитки' }
+  ]), [])
+
+  const visibleCategories = useMemo(() => {
+    if (menuTypeFilter === 'all') return []
+    const set = new Set(menuWithType
+      .filter(item => item.pos_type === menuTypeFilter)
+      .map(item => item.category || 'Без категории'))
+    return Array.from(set).filter(Boolean).sort((a, b) => String(a).localeCompare(String(b), 'ru'))
+  }, [menuWithType, menuTypeFilter])
+
+  const filteredMenu = useMemo(() => {
+    const q = normalizeSalesKey(search)
+    return menuWithType
+      .filter(item => menuTypeFilter === 'all' || item.pos_type === menuTypeFilter)
+      .filter(item => categoryFilter === 'all' || (item.category || 'Без категории') === categoryFilter)
+      .filter(item => !q || normalizeSalesKey(item.name).includes(q) || normalizeSalesKey(item.category).includes(q))
+      .slice(0, 300)
+  }, [menuWithType, search, menuTypeFilter, categoryFilter])
+
+  const currentDraft = draftOrders[selectedTable] || { table_name: selectedTable, customer_name: '', guests: 1, hall_name: halls[0], order_mode: 'hall', payment_method: paymentMethod, items: [] }
+  const items = currentDraft.items || []
+  const subtotal = items.reduce((s, item) => s + parseNum(item.qty) * parseNum(item.price), 0)
+  const totalQty = items.reduce((s, item) => s + parseNum(item.qty), 0)
+
+  function setCurrentDraft(patchOrFn) {
+    setDraftOrders(prev => {
+      const current = prev[selectedTable] || { table_name: selectedTable, customer_name: '', guests: 1, hall_name: halls[0], order_mode: 'hall', payment_method: paymentMethod, items: [] }
+      const next = typeof patchOrFn === 'function' ? patchOrFn(current) : { ...current, ...patchOrFn }
+      return { ...prev, [selectedTable]: next }
+    })
+  }
+
+  function selectTable(table) {
+    setSelectedTable(table.id)
+    setDraftOrders(prev => {
+      if (prev[table.id]) return prev
+      const orderMode = table.defaultMode || 'hall'
+      return {
+        ...prev,
+        [table.id]: {
+          table_name: table.label,
+          customer_name: '',
+          guests: 1,
+          hall_name: halls[0],
+          order_mode: orderMode,
+          payment_method: paymentMethod,
+          items: []
         }
       }
-      setMessage(`Импорт завершён: ${ok} строк, ошибок: ${failed}`)
-      if (onImported) await onImported()
-    } catch (err) {
-      console.error('Excel revenue import error', err)
-      setMessage(err?.message || 'Ошибка импорта выручки')
+    })
+  }
+
+  function handlePinDigit(digit) {
+    setCashierPin(prev => (prev + String(digit)).slice(0, 4))
+  }
+
+  function clearPin() { setCashierPin('') }
+  function backspacePin() { setCashierPin(prev => prev.slice(0, -1)) }
+
+  function unlockPos() {
+    if ((cashierNameInput || '').trim().length < 2) return setMessage('Укажи имя сотрудника / кассира')
+    if (cashierPin.length !== 4) return setMessage('PIN-код должен состоять из 4 цифр')
+    const session = { name: cashierNameInput.trim(), pin: cashierPin, opened_at: new Date().toISOString() }
+    setCashierSession(session)
+    try { localStorage.setItem(POS_CASHIER_KEY, JSON.stringify(session)) } catch (_e) {}
+    setCashierPin('')
+    setMessage('')
+  }
+
+  function logoutPos() {
+    setCashierSession(null)
+    setCashierPin('')
+    try { localStorage.removeItem(POS_CASHIER_KEY) } catch (_e) {}
+  }
+
+  async function currentUserMeta() {
+    try {
+      if (getInternalSessionStorage()?.rms_internal) {
+        const localUser = getRmsLocalUser()
+        return { user_id: null, user_email: localUser?.email || localUser?.login_name || 'rms.internal' }
+      }
+      const { data } = await supabase.auth.getUser()
+      return { user_id: data?.user?.id || null, user_email: data?.user?.email || null }
+    } catch (_e) {
+      return { user_id: null, user_email: null }
+    }
+  }
+
+  async function loadBase() {
+    setMessage('')
+    const [{ data: menu, error: menuError }, { data: orderRows, error: orderError }] = await Promise.all([
+      supabase.from('menu_items').select('id,name,category,sale_price,is_active').eq('is_active', true).order('category').order('name'),
+      branchId
+        ? supabase.from('pos_orders').select('*, pos_order_items(*)').eq('branch_id', branchId).eq('order_date', date).order('created_at', { ascending: false }).limit(25)
+        : Promise.resolve({ data: [], error: null })
+    ])
+    if (menuError) setMessage(menuError.message)
+    setMenuItems(menu || [])
+    if (orderError && String(orderError.message || '').includes('pos_orders')) {
+      setMessage('Для POS-кассы нужно один раз выполнить SQL-файл rms_pos_lite_tables_v2.sql в Supabase.')
+      setOrders([])
+    } else if (orderError) {
+      setMessage(orderError.message)
+      setOrders([])
+    } else {
+      setOrders(orderRows || [])
+    }
+  }
+
+  function addMenuItemToOrder(item) {
+    setCurrentDraft(current => {
+      const existing = (current.items || []).find(x => String(x.menu_item_id) === String(item.id))
+      const nextItems = existing
+        ? current.items.map(x => String(x.menu_item_id) === String(item.id) ? { ...x, qty: parseNum(x.qty) + 1 } : x)
+        : [...(current.items || []), {
+            menu_item_id: item.id,
+            name: item.name,
+            category: item.category || null,
+            item_type: item.pos_type || posItemType(item),
+            qty: 1,
+            price: parseNum(item.sale_price)
+          }]
+      return { ...current, items: nextItems }
+    })
+  }
+
+  function updateItem(index, patch) {
+    setCurrentDraft(current => ({
+      ...current,
+      items: (current.items || []).map((item, i) => i === index ? { ...item, ...patch } : item).filter(item => parseNum(item.qty) > 0)
+    }))
+  }
+
+  function clearCurrentOrder() {
+    if (!window.confirm('Очистить текущий заказ?')) return
+    setDraftOrders(prev => ({
+      ...prev,
+      [selectedTable]: {
+        ...(prev[selectedTable] || {}),
+        table_name: prev[selectedTable]?.table_name || selectedTable,
+        customer_name: '',
+        guests: 1,
+        hall_name: halls[0],
+        order_mode: prev[selectedTable]?.order_mode || 'hall',
+        payment_method: prev[selectedTable]?.payment_method || paymentMethod,
+        items: []
+      }
+    }))
+  }
+
+  function goBackMenu() {
+    if (categoryFilter !== 'all') {
+      setCategoryFilter('all')
+      return
+    }
+    if (menuTypeFilter !== 'all') {
+      setMenuTypeFilter('all')
+      setMenuRoot('root')
+      return
+    }
+    setMenuRoot('root')
+  }
+
+  function openMenuRoot(rootId) {
+    setMenuRoot(rootId)
+    setMenuTypeFilter(rootId)
+    setCategoryFilter('all')
+  }
+
+  function printHtmlDocument(title, rows, footerHtml = '') {
+    const html = `<!doctype html><html><head><meta charset="utf-8"><title>${title}</title><style>
+      body{font-family:Arial,sans-serif;padding:18px;color:#111}
+      h1{font-size:22px;margin:0 0 6px}
+      .meta{font-size:13px;color:#555;margin-bottom:12px}
+      table{width:100%;border-collapse:collapse;font-size:13px}
+      th,td{border-bottom:1px solid #ddd;padding:8px;text-align:left;vertical-align:top}
+      .right{text-align:right}.sum{font-size:22px;font-weight:800;margin-top:12px}
+      .section{margin-top:18px}
+    </style></head><body>${rows}${footerHtml}</body></html>`
+    const w = window.open('', '_blank', 'width=900,height=700')
+    if (!w) return
+    w.document.open()
+    w.document.write(html)
+    w.document.close()
+    w.focus()
+    w.print()
+  }
+
+  function currentOrderMetaLine() {
+    const modeLabel = currentDraft.order_mode === 'takeaway' ? 'С собой' : currentDraft.order_mode === 'delivery' ? 'Доставка' : 'Зал'
+    return `${branches.find(b => String(b.id) === String(branchId))?.name || ''} · ${date} · ${selectedTable} · ${modeLabel} · гостей: ${currentDraft.guests || 1}${currentDraft.hall_name && currentDraft.order_mode === 'hall' ? ` · ${currentDraft.hall_name}` : ''}${cashierSession?.name ? ` · кассир: ${cashierSession.name}` : ''}`
+  }
+
+  function precheckOrder() {
+    if (!items.length) return setMessage('Заказ пуст')
+    const rows = `
+      <h1>Пречек</h1>
+      <div class="meta">${currentOrderMetaLine()}</div>
+      <table><thead><tr><th>Позиция</th><th>Тип</th><th class="right">Кол-во</th><th class="right">Цена</th><th class="right">Сумма</th></tr></thead><tbody>
+      ${items.map(item => `<tr><td>${item.name}</td><td>${item.item_type}</td><td class="right">${fmt(item.qty)}</td><td class="right">${fmt(item.price)}</td><td class="right">${fmt(parseNum(item.qty) * parseNum(item.price))}</td></tr>`).join('')}
+      </tbody></table>`
+    const footer = `<div class="sum">Итого: ${fmt(subtotal)} AZN</div>`
+    printHtmlDocument('Пречек', rows, footer)
+  }
+
+  function printByType(type) {
+    const typeLabel = type === 'Бар' ? 'Печать в бар' : 'Печать на кухню'
+    const filtered = items.filter(item => item.item_type === type)
+    if (!filtered.length) return setMessage(type === 'Бар' ? 'В заказе нет напитков / барных позиций' : 'В заказе нет кухонных позиций')
+    const rows = `
+      <h1>${typeLabel}</h1>
+      <div class="meta">${currentOrderMetaLine()}</div>
+      <table><thead><tr><th>Позиция</th><th class="right">Кол-во</th><th class="right">Комментарий</th></tr></thead><tbody>
+      ${filtered.map(item => `<tr><td>${item.name}</td><td class="right">${fmt(item.qty)}</td><td class="right">—</td></tr>`).join('')}
+      </tbody></table>`
+    printHtmlDocument(typeLabel, rows)
+  }
+
+  function splitCheckPreview() {
+    if (!items.length) return setMessage('Заказ пуст')
+    const left = []
+    const right = []
+    items.forEach((item, idx) => (idx % 2 === 0 ? left : right).push(item))
+    const sumBlock = part => part.reduce((s, item) => s + parseNum(item.qty) * parseNum(item.price), 0)
+    const partHtml = (title, part) => `<div class="section"><h1>${title}</h1><table><thead><tr><th>Позиция</th><th class="right">Кол-во</th><th class="right">Цена</th><th class="right">Сумма</th></tr></thead><tbody>${part.map(item => `<tr><td>${item.name}</td><td class="right">${fmt(item.qty)}</td><td class="right">${fmt(item.price)}</td><td class="right">${fmt(parseNum(item.qty) * parseNum(item.price))}</td></tr>`).join('')}</tbody></table><div class="sum">${fmt(sumBlock(part))} AZN</div></div>`
+    printHtmlDocument('Разделение чека', `<div class="meta">${currentOrderMetaLine()}</div>${partHtml('Часть 1', left)}${partHtml('Часть 2', right)}`)
+  }
+
+  async function recalcDailyRevenueFromPos(activeBranchId, activeDate) {
+    const { data: entries } = await supabase
+      .from('daily_revenue_entries')
+      .select('cash_amount,bank_amount,wolt_amount')
+      .eq('branch_id', activeBranchId)
+      .eq('revenue_date', activeDate)
+      .is('deleted_at', null)
+
+    const totals = (entries || []).reduce((acc, row) => {
+      acc.cash_amount += parseNum(row.cash_amount)
+      acc.bank_amount += parseNum(row.bank_amount)
+      acc.wolt_amount += parseNum(row.wolt_amount)
+      return acc
+    }, { cash_amount: 0, bank_amount: 0, wolt_amount: 0 })
+
+    await supabase.rpc('rms_revenue_create_secure', {
+      p_revenue_date: activeDate,
+      p_branch_id: activeBranchId,
+      p_cash_amount: totals.cash_amount,
+      p_bank_amount: totals.bank_amount,
+      p_wolt_amount: totals.wolt_amount,
+      p_comment: 'POS auto revenue sync'
+    })
+  }
+
+  async function closeOrder() {
+    if (!branchId) return setMessage('Выберите филиал')
+    if (!items.length) return setMessage('Добавьте позиции в заказ')
+    setLoading(true)
+    setMessage('')
+    try {
+      const user = await currentUserMeta()
+      const activePayment = currentDraft.payment_method || paymentMethod || 'cash'
+      const revenuePayload = {
+        branch_id: branchId,
+        revenue_date: date,
+        cash_amount: activePayment === 'cash' ? subtotal : 0,
+        bank_amount: activePayment === 'bank' ? subtotal : 0,
+        wolt_amount: activePayment === 'wolt' ? subtotal : 0,
+        comment: `POS · ${currentDraft.table_name || selectedTable} · ${fmt(totalQty)} шт. · кассир ${cashierSession?.name || '—'}`,
+        created_by: user.user_id,
+        updated_by: user.user_id
+      }
+
+      const { data: order, error: orderError } = await supabase.from('pos_orders').insert({
+        branch_id: branchId,
+        order_date: date,
+        table_name: currentDraft.table_name || selectedTable || null,
+        customer_name: currentDraft.customer_name || null,
+        payment_method: activePayment,
+        total_amount: subtotal,
+        status: 'closed',
+        closed_at: new Date().toISOString(),
+        hall_name: currentDraft.hall_name || null,
+        guest_count: parseNum(currentDraft.guests || 1),
+        order_mode: currentDraft.order_mode || 'hall',
+        cashier_name: cashierSession?.name || null,
+        created_by: user.user_id,
+        updated_by: user.user_id
+      }).select('*').single()
+      if (orderError) throw orderError
+
+      const orderItems = items.map(item => ({
+        order_id: order.id,
+        menu_item_id: item.menu_item_id,
+        item_name: item.name,
+        item_category: item.category || null,
+        item_type: item.item_type || 'Кухня',
+        quantity: parseNum(item.qty),
+        unit_price: parseNum(item.price),
+        total_amount: parseNum(item.qty) * parseNum(item.price)
+      }))
+      const { error: itemsError } = await supabase.from('pos_order_items').insert(orderItems)
+      if (itemsError) throw itemsError
+
+      const { error: revenueError } = await supabase.rpc('rms_add_revenue_entry', {
+        p_branch_id: branchId,
+        p_date: date,
+        p_cash_amount: revenuePayload.cash_amount,
+        p_bank_amount: revenuePayload.bank_amount,
+        p_wolt_amount: revenuePayload.wolt_amount,
+        p_comment: revenuePayload.comment
+      })
+      if (revenueError) throw revenueError
+      await recalcDailyRevenueFromPos(branchId, date)
+
+      setDraftOrders(prev => ({
+        ...prev,
+        [selectedTable]: {
+          table_name: currentDraft.table_name || selectedTable,
+          customer_name: '',
+          guests: 1,
+          hall_name: halls[0],
+          order_mode: currentDraft.order_mode || 'hall',
+          payment_method: activePayment,
+          items: []
+        }
+      }))
+      await loadBase()
+      setMessage('Чек закрыт. Продажа отправлена в RMS.')
+    } catch (error) {
+      setMessage(error?.message || 'Не удалось закрыть чек')
     } finally {
-      setBusy(false)
+      setLoading(false)
+    }
+  }
+
+  function tableDraftSummary(tableId) {
+    const draft = draftOrders[tableId]
+    const draftItems = draft?.items || []
+    const qty = draftItems.reduce((s, item) => s + parseNum(item.qty), 0)
+    const total = draftItems.reduce((s, item) => s + parseNum(item.qty) * parseNum(item.price), 0)
+    return { qty, total, count: draftItems.length, mode: draft?.order_mode || 'hall', guests: draft?.guests || 1 }
+  }
+
+  if (!cashierSession) {
+    return (
+      <section>
+        <section className="topbar">
+          <div>
+            <h2>POS</h2>
+            <p>Вход в POS-кассу: сотрудник вводит своё имя и 4-значный PIN-код.</p>
+          </div>
+        </section>
+        {message && <p className="hint bad">{message}</p>}
+        <div className="card" style={{maxWidth:520, margin:'20px auto'}}>
+          <h3>Вход в POS</h3>
+          <div className="form-grid compact">
+            <label><span>Сотрудник / кассир</span><input value={cashierNameInput} onChange={e => setCashierNameInput(e.target.value)} placeholder="Например, Murad" /></label>
+            <label><span>PIN-код</span><input value={'•'.repeat(cashierPin.length)} readOnly placeholder="4 цифры" /></label>
+          </div>
+          <div style={{display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:10, marginTop:14}}>
+            {[1,2,3,4,5,6,7,8,9,'C',0,'⌫'].map(key => <button key={key} onClick={() => key === 'C' ? clearPin() : key === '⌫' ? backspacePin() : handlePinDigit(key)} style={{padding:'18px 12px', fontSize:22, fontWeight:800, borderRadius:14, border:'1px solid #d7dfd9', background:'#fff'}}>{key}</button>)}
+          </div>
+          <button className="primary" style={{width:'100%', marginTop:14}} onClick={unlockPos}>Войти в POS</button>
+        </div>
+      </section>
+    )
+  }
+
+
+  async function saveIikoConnection() {
+    setIikoStatus('')
+    const branchId = iikoForm.branch_id || branches[0]?.id
+    if (!branchId) return setIikoStatus('Сначала добавьте филиал в настройках.')
+    if (!String(iikoForm.organization_id || '').trim()) return setIikoStatus('Введите iiko organization_id.')
+
+    setIikoBusy(true)
+    try {
+      const payload = {
+        branch_id: branchId,
+        iiko_organization_id: String(iikoForm.organization_id || '').trim(),
+        iiko_terminal_group_id: String(iikoForm.terminal_group_id || '').trim() || null,
+        sync_enabled: Boolean(iikoForm.sync_enabled),
+        updated_at: new Date().toISOString()
+      }
+      const { error } = await supabase.from('iiko_sync_connections').upsert(payload, { onConflict: 'branch_id' })
+      if (error) throw error
+      setIikoForm({ branch_id: branchId, organization_id: '', terminal_group_id: '', sync_enabled: true })
+      setIikoStatus('Подключение iiko сохранено. Следующий шаг — добавить IIKO_API_LOGIN в Supabase Edge Functions / Vercel Environment.')
+      await load()
+    } catch (e) {
+      setIikoStatus(e.message || String(e))
+    } finally {
+      setIikoBusy(false)
+    }
+  }
+
+  function editIikoConnection(row) {
+    setIikoForm({
+      branch_id: row.branch_id || '',
+      organization_id: row.iiko_organization_id || '',
+      terminal_group_id: row.iiko_terminal_group_id || '',
+      sync_enabled: row.sync_enabled !== false
+    })
+    setSettingsTab('integrations')
+  }
+
+  async function toggleIikoConnection(row) {
+    setIikoStatus('')
+    const { error } = await supabase.from('iiko_sync_connections').update({ sync_enabled: !row.sync_enabled, updated_at: new Date().toISOString() }).eq('id', row.id)
+    if (error) setIikoStatus(error.message); else { setIikoStatus('Статус подключения обновлён'); await load() }
+  }
+
+  async function checkIikoBackend() {
+    setIikoStatus('')
+    setIikoBusy(true)
+    try {
+      const { data, error } = await supabase.functions.invoke('iiko-sync-sales', { body: { action: 'health' } })
+      if (error) throw error
+      setIikoStatus(data?.message || 'Edge Function отвечает. Можно проверять подключение филиалов.')
+    } catch (e) {
+      setIikoStatus((e && e.message) ? e.message : 'Edge Function iiko-sync-sales не развернута или secrets не настроены.')
+    } finally {
+      setIikoBusy(false)
+    }
+  }
+
+  async function testIikoConnection(row) {
+    setIikoStatus('')
+    setIikoBusy(true)
+    try {
+      const { data, error } = await supabase.functions.invoke('iiko-sync-sales', { body: { action: 'testConnection', connectionId: row.id } })
+      if (error) throw error
+      setIikoStatus(data?.message || 'Подключение iiko проверено.')
+      await load()
+    } catch (e) {
+      setIikoStatus((e && e.message) ? e.message : 'Не удалось проверить подключение iiko.')
+    } finally {
+      setIikoBusy(false)
+    }
+  }
+
+  async function runIikoSync(row) {
+    setIikoStatus('')
+    setIikoBusy(true)
+    try {
+      const fromDate = iikoSyncForm.period_from || todayISO()
+      const toDate = iikoSyncForm.period_to || fromDate
+      const { data, error } = await supabase.functions.invoke('iiko-sync-sales', {
+        body: {
+          action: 'syncSales',
+          connectionId: row.id,
+          periodFrom: `${fromDate}T00:00:00.000Z`,
+          periodTo: `${toDate}T23:59:59.999Z`
+        }
+      })
+      if (error) throw error
+      setIikoStatus(data?.message || 'Синхронизация продаж запущена.')
+      await load()
+    } catch (e) {
+      setIikoStatus((e && e.message) ? e.message : 'Edge Function iiko-sync-sales пока не развернута или вернула ошибку.')
+    } finally {
+      setIikoBusy(false)
     }
   }
 
   return (
-    <div className="card excel-revenue-import-card">
-      <div className="card-head">
+    <section>
+      <SemiFinishedInlineStyles />
+      <section className="topbar">
         <div>
-          <h3>Импорт выручки из Google Sheets / Excel</h3>
-          <p>Только выручка: наличные, банк и итог по дням. Расходы пока не импортируются.</p>
+          <h2>POS</h2>
+          <p>Кассир: <b>{cashierSession.name}</b> · Стиль работы: столы → заказ → категории → позиции → пречек / чек.</p>
         </div>
-      </div>
+        <div style={{display:'flex', gap:8, alignItems:'center'}}>
+          <button className="ghost" onClick={logoutPos}>Выйти</button>
+        </div>
+      </section>
 
-      <div className="excel-import-actions">
-        <label className="file-upload-button">
-          <input type="file" accept=".xlsx,.xls" onChange={handleFile} disabled={busy} />
-          Выбрать Excel файл
-        </label>
-        <button className="primary" onClick={importRows} disabled={busy || !rows.length}>
-          {busy ? 'Обработка…' : 'Импортировать выручку'}
-        </button>
-        {fileName && <span className="hint">{fileName}</span>}
-      </div>
+      {message && <p className={`hint ${message.includes('закрыт') || message.includes('отправлена') ? 'good' : 'bad'}`}>{message}</p>}
 
-      {message && <div className="soft-alert">{message}</div>}
-
-      {!!rows.length && (
-        <>
-          <div className="excel-import-summary">
-            <div><span>Строк</span><strong>{totals.count}</strong></div>
-            <div><span>Наличные</span><strong>{money(totals.cash)}</strong></div>
-            <div><span>Банк</span><strong>{money(totals.bank)}</strong></div>
-            <div><span>Итого</span><strong>{money(totals.total)}</strong></div>
+      <div style={{display:'grid', gridTemplateColumns:'1.1fr 1fr 1.25fr', gap:14}}>
+        <div className="card">
+          <div className="card-head"><div><h3>Текущий заказ</h3><p className="hint">Стол / режим обслуживания / посетители / заказ</p></div></div>
+          <div className="form-grid compact">
+            <label><span>Филиал</span><select value={branchId} onChange={e => setBranchId(e.target.value)}>{branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label>
+            <label><span>Дата</span><input type="date" value={date} onChange={e => setDate(e.target.value)} /></label>
+            <label><span>Стол</span><input value={currentDraft.table_name || selectedTable} onChange={e => setCurrentDraft({ table_name: e.target.value })} /></label>
+            <label><span>Посетители</span><input inputMode="numeric" value={currentDraft.guests || 1} onChange={e => setCurrentDraft({ guests: Math.max(1, parseInt(e.target.value || '1', 10) || 1) })} /></label>
+            <label><span>Режим</span><select value={currentDraft.order_mode || 'hall'} onChange={e => setCurrentDraft({ order_mode: e.target.value })}><option value="hall">Зал</option><option value="takeaway">С собой</option><option value="delivery">Доставка</option></select></label>
+            <label><span>Зал</span><select value={currentDraft.hall_name || halls[0]} onChange={e => setCurrentDraft({ hall_name: e.target.value })} disabled={(currentDraft.order_mode || 'hall') !== 'hall'}>{halls.map(h => <option key={h} value={h}>{h}</option>)}</select></label>
+            <label><span>Оплата</span><select value={currentDraft.payment_method || paymentMethod} onChange={e => { setPaymentMethod(e.target.value); setCurrentDraft({ payment_method: e.target.value }) }}><option value="cash">Наличные</option><option value="bank">Банк</option><option value="wolt">Wolt / доставка</option></select></label>
+            <label><span>Комментарий / гость</span><input value={currentDraft.customer_name || ''} onChange={e => setCurrentDraft({ customer_name: e.target.value })} placeholder="Необязательно" /></label>
           </div>
 
-          <div className="table-wrap">
+          <div className="table-wrap" style={{maxHeight:430, overflow:'auto', marginTop:12}}>
             <table>
-              <thead>
-                <tr>
-                  <th>Дата</th>
-                  <th>Филиал</th>
-                  <th>Наличные</th>
-                  <th>Банк</th>
-                  <th>Итого</th>
-                  <th>Лист</th>
-                </tr>
-              </thead>
+              <thead><tr><th>Позиция</th><th>Тип</th><th>Кол-во</th><th>Цена</th><th>Сумма</th><th></th></tr></thead>
               <tbody>
-                {rows.slice(0, 80).map((r) => (
-                  <tr key={r.external_id}>
-                    <td>{r.date}</td>
-                    <td>{r.branch}</td>
-                    <td>{money(r.cash)}</td>
-                    <td>{money(r.bank)}</td>
-                    <td>{money(r.total)}</td>
-                    <td>{r.source_sheet}</td>
-                  </tr>
-                ))}
+                {items.map((item, idx) => <tr key={`${item.menu_item_id}-${idx}`}>
+                  <td><b>{item.name}</b></td>
+                  <td>{item.item_type}</td>
+                  <td><input style={{width:64}} inputMode="decimal" value={item.qty} onChange={e => updateItem(idx, { qty: e.target.value })} /></td>
+                  <td><input style={{width:78}} inputMode="decimal" value={item.price} onChange={e => updateItem(idx, { price: e.target.value })} /></td>
+                  <td><b>{fmt(parseNum(item.qty) * parseNum(item.price))}</b></td>
+                  <td><button className="danger small" onClick={() => updateItem(idx, { qty: 0 })}>×</button></td>
+                </tr>)}
+                {!items.length && <tr><td colSpan="6" className="hint">Заказ пуст. Выбери стол и позиции из меню.</td></tr>}
               </tbody>
             </table>
           </div>
-          {rows.length > 80 && <p className="hint">Показаны первые 80 строк из {rows.length}.</p>}
-        </>
-      )}
 
-      {!!warnings.length && (
-        <div className="soft-alert warning">
-          <strong>Предупреждения</strong>
-          <ul>
-            {warnings.slice(0, 10).map((w, i) => <li key={i}>{w}</li>)}
-          </ul>
+          <div className="mini-grid" style={{marginTop:10}}>
+            <div className="metric"><span>Позиций</span><strong>{items.length}</strong></div>
+            <div className="metric"><span>Количество</span><strong>{fmt(totalQty)}</strong></div>
+            <div className="metric"><span>Итого</span><strong>{fmt(subtotal)} AZN</strong></div>
+          </div>
+
+          <div style={{display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:8, marginTop:12}}>
+            <button className="ghost" onClick={() => printByType('Кухня')}>Печать на кухню</button>
+            <button className="ghost" onClick={() => printByType('Бар')}>Печать в бар</button>
+            <button className="ghost" onClick={goBackMenu}>Вернуться</button>
+            <button className="danger" onClick={clearCurrentOrder}>Отмена</button>
+            <button className="ghost" onClick={precheckOrder}>Пречек</button>
+            <button className="ghost" onClick={splitCheckPreview}>Разделить чек</button>
+          </div>
+          <button className="primary" disabled={loading || !items.length} onClick={closeOrder} style={{marginTop:10, width:'100%'}}>{loading ? 'Сохранение...' : 'Чек'}</button>
         </div>
-      )}
-    </div>
+
+        <div className="card">
+          <h3>Столы / ячейки</h3>
+          <div style={{display:'grid', gridTemplateColumns:'repeat(2, minmax(120px, 1fr))', gap:10}}>
+            {tableCells.map(table => {
+              const summary = tableDraftSummary(table.id)
+              const active = selectedTable === table.id
+              const isBusy = summary.count > 0
+              return <button key={table.id} onClick={() => selectTable(table)} style={{border: active ? '2px solid #1f6f43' : '1px solid #d7dfd9', background: active ? '#eef7f0' : isBusy ? '#fff8e7' : '#fff', borderRadius:14, padding:'12px 10px', textAlign:'left', cursor:'pointer', minHeight:92}}>
+                <div style={{fontWeight:800, marginBottom:6}}>{table.label}</div>
+                <div className="hint">позиций: {summary.count}</div>
+                <div className="hint">посетители: {summary.guests}</div>
+                <div className="hint">режим: {summary.mode === 'takeaway' ? 'с собой' : summary.mode === 'delivery' ? 'доставка' : 'зал'}</div>
+                <div style={{fontWeight:700, marginTop:6}}>{fmt(summary.total)} AZN</div>
+              </button>
+            })}
+          </div>
+        </div>
+
+        <div className="card">
+          <div className="card-head">
+            <div><h3>Меню</h3><p className="hint">Сначала выбери Еда или Напитки, затем категорию и позицию.</p></div>
+          </div>
+          <div className="form-grid compact">
+            <label><span>Поиск</span><input value={search} onChange={e => setSearch(e.target.value)} placeholder="Поиск по меню" /></label>
+          </div>
+
+          <div style={{display:'flex', gap:8, marginTop:10, flexWrap:'wrap'}}>
+            <button className={menuTypeFilter === 'all' ? 'active' : ''} onClick={() => { setMenuRoot('root'); setMenuTypeFilter('all'); setCategoryFilter('all') }}>Корень</button>
+            {menuRoots.map(root => <button key={root.id} className={menuTypeFilter === root.id && categoryFilter === 'all' ? 'active' : ''} onClick={() => openMenuRoot(root.id)}>{root.label}</button>)}
+            {menuTypeFilter !== 'all' && <button className={categoryFilter === 'all' ? 'active' : ''} onClick={() => setCategoryFilter('all')}>Категории</button>}
+          </div>
+
+          {menuTypeFilter === 'all' && (
+            <div style={{display:'grid', gridTemplateColumns:'repeat(2, minmax(150px, 1fr))', gap:10, marginTop:12}}>
+              {menuRoots.map(root => <button key={root.id} onClick={() => openMenuRoot(root.id)} style={{border:'1px solid #d7dfd9', background:'#f8fafc', borderRadius:14, padding:'26px 12px', minHeight:118, fontSize:20, fontWeight:800}}>{root.label}</button>)}
+            </div>
+          )}
+
+          {menuTypeFilter !== 'all' && categoryFilter === 'all' && (
+            <div style={{display:'grid', gridTemplateColumns:'repeat(2, minmax(150px, 1fr))', gap:10, marginTop:12}}>
+              {visibleCategories.map(cat => <button key={cat} onClick={() => setCategoryFilter(cat)} style={{border:'1px solid #d7dfd9', background:'#eef2f7', borderRadius:14, padding:'20px 12px', minHeight:92, fontSize:18, fontWeight:700}}>{cat}</button>)}
+              {!visibleCategories.length && <div className="hint">Нет категорий.</div>}
+            </div>
+          )}
+
+          {menuTypeFilter !== 'all' && categoryFilter !== 'all' && (
+            <div style={{display:'grid', gridTemplateColumns:'repeat(2, minmax(170px, 1fr))', gap:10, marginTop:12, maxHeight:520, overflow:'auto'}}>
+              {filteredMenu.map(item => <button key={item.id} onClick={() => addMenuItemToOrder(item)} style={{border:'1px solid #d7dfd9', background:'#fff', borderRadius:14, padding:'12px 12px', textAlign:'left', minHeight:104}}>
+                <div style={{fontSize:12, color:'#6b7280', marginBottom:6}}>{item.pos_type} · {item.category || 'Без категории'}</div>
+                <div style={{fontWeight:800, lineHeight:1.25, minHeight:36}}>{item.name}</div>
+                <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:10}}>
+                  <span style={{fontWeight:800}}>{fmt(item.sale_price)} AZN</span>
+                  <span className="hint">+</span>
+                </div>
+              </button>)}
+              {!filteredMenu.length && <div className="hint">Нет позиций для выбранной категории.</div>}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="card" style={{marginTop:14}}>
+        <h3>Закрытые чеки за выбранную дату</h3>
+        <div className="table-wrap">
+          <table>
+            <thead><tr><th>Время</th><th>Стол</th><th>Оплата</th><th>Сумма</th><th>Позиции</th><th>Статус</th></tr></thead>
+            <tbody>
+              {orders.map(order => <tr key={order.id}>
+                <td>{formatDT(order.closed_at || order.created_at)}</td>
+                <td>{order.table_name || '—'}</td>
+                <td>{order.payment_method}</td>
+                <td><b>{fmt(order.total_amount)}</b></td>
+                <td>{(order.pos_order_items || []).slice(0, 4).map(i => i.item_name).join(', ')}{(order.pos_order_items || []).length > 4 ? '…' : ''}</td>
+                <td>{order.status}</td>
+              </tr>)}
+              {!orders.length && <tr><td colSpan="6" className="hint">Чеков пока нет.</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
   )
+}
+
+
+function SalaryWorkspace({ t, isAdmin = false }) {
+  const [salaryTab, setSalaryTab] = useState('employees')
+
+  async function saveIikoConnection() {
+    setIikoStatus('')
+    const branchId = iikoForm.branch_id || branches[0]?.id
+    if (!branchId) return setIikoStatus('Сначала добавьте филиал в настройках.')
+    if (!String(iikoForm.organization_id || '').trim()) return setIikoStatus('Введите iiko organization_id.')
+
+    setIikoBusy(true)
+    try {
+      const payload = {
+        branch_id: branchId,
+        iiko_organization_id: String(iikoForm.organization_id || '').trim(),
+        iiko_terminal_group_id: String(iikoForm.terminal_group_id || '').trim() || null,
+        sync_enabled: Boolean(iikoForm.sync_enabled),
+        updated_at: new Date().toISOString()
+      }
+      const { error } = await supabase.from('iiko_sync_connections').upsert(payload, { onConflict: 'branch_id' })
+      if (error) throw error
+      setIikoForm({ branch_id: branchId, organization_id: '', terminal_group_id: '', sync_enabled: true })
+      setIikoStatus('Подключение iiko сохранено. Следующий шаг — добавить IIKO_API_LOGIN в Supabase Edge Functions / Vercel Environment.')
+      await load()
+    } catch (e) {
+      setIikoStatus(e.message || String(e))
+    } finally {
+      setIikoBusy(false)
+    }
+  }
+
+  function editIikoConnection(row) {
+    setIikoForm({
+      branch_id: row.branch_id || '',
+      organization_id: row.iiko_organization_id || '',
+      terminal_group_id: row.iiko_terminal_group_id || '',
+      sync_enabled: row.sync_enabled !== false
+    })
+    setSettingsTab('integrations')
+  }
+
+  async function toggleIikoConnection(row) {
+    setIikoStatus('')
+    const { error } = await supabase.from('iiko_sync_connections').update({ sync_enabled: !row.sync_enabled, updated_at: new Date().toISOString() }).eq('id', row.id)
+    if (error) setIikoStatus(error.message); else { setIikoStatus('Статус подключения обновлён'); await load() }
+  }
+
+  async function runIikoSync(row) {
+    setIikoStatus('')
+    setIikoBusy(true)
+    try {
+      const { data, error } = await supabase.functions.invoke('iiko-sync-sales', { body: { connectionId: row.id } })
+      if (error) throw error
+      setIikoStatus(data?.message || 'Синхронизация запущена.')
+      await load()
+    } catch (e) {
+      setIikoStatus((e && e.message) ? e.message : 'Edge Function iiko-sync-sales пока не развернута или вернула ошибку.')
+    } finally {
+      setIikoBusy(false)
+    }
+  }
+
+  return (
+    <section>
+      <section className="topbar">
+        <div>
+          <h2>Зарплаты</h2>
+          <p>Единый раздел персонала: сотрудники, посещаемость, авансы и DSMF в одном месте.</p>
+        </div>
+      </section>
+      <div className="settings-tabs">
+        <button className={salaryTab === 'employees' ? 'active' : ''} onClick={() => setSalaryTab('employees')}>Сотрудники</button>
+        <button className={salaryTab === 'sheet' ? 'active' : ''} onClick={() => setSalaryTab('sheet')}>Зарплатный лист</button>
+        <button className={salaryTab === 'attendance' ? 'active' : ''} onClick={() => setSalaryTab('attendance')}>Посещения</button>
+        <button className={salaryTab === 'advances' ? 'active' : ''} onClick={() => setSalaryTab('advances')}>Авансы</button>
+        <button className={salaryTab === 'dsmf' ? 'active' : ''} onClick={() => setSalaryTab('dsmf')}>DSMF</button>
+      </div>
+      {salaryTab === 'employees' && <>
+        <Salaries t={t} view="employees" isAdmin={isAdmin} />
+        <Attendance t={t} mode="staff" isAdmin={isAdmin} />
+      </>}
+      {salaryTab === 'sheet' && <Salaries t={t} view="sheet" isAdmin={isAdmin} />}
+      {salaryTab === 'attendance' && <Attendance t={t} mode="attendance" isAdmin={isAdmin} />}
+      {salaryTab === 'advances' && <Advances t={t} />}
+      {salaryTab === 'dsmf' && <Salaries t={t} view="dsmf" isAdmin={isAdmin} />}
+    </section>
+  )
+}
+
+function ResponsiveAndSettingsStyles() {
+  return <style>{`
+    .salary-view-employees .salary-dsmf-card {
+      display: none;
+    }
+    .salary-view-dsmf > .topbar,
+    .salary-view-dsmf > .grid > .card:not(.salary-dsmf-card) {
+      display: none !important;
+    }
+    .salary-view-sheet tfoot td {
+      background: rgba(71,85,105,.06);
+      font-weight: 900;
+    }
+    .theme-executive .salary-view-sheet tfoot td {
+      background: rgba(71,85,105,.08);
+    }
+    .salary-view-dsmf .salary-dsmf-card {
+      display: block !important;
+    }
+    .settings-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 0 0 16px;
+    }
+    .rms-brandmark {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0;
+    }
+    .rms-brandmark.login {
+      margin: 0 auto 10px;
+    }
+    .rms-logo-svg {
+      width: 50px;
+      height: 50px;
+      display: block;
+      filter: drop-shadow(0 10px 18px rgba(0,0,0,.18));
+    }
+    .login-card .rms-logo-svg {
+      width: 64px;
+      height: 64px;
+      filter: drop-shadow(0 12px 18px rgba(0,0,0,.12));
+    }
+    .rms-custom-logo {
+      width: 50px;
+      height: 50px;
+      object-fit: contain;
+      display: block;
+      border-radius: 14px;
+      box-shadow: 0 10px 18px rgba(0,0,0,.16);
+      background: rgba(255,255,255,.9);
+      padding: 4px;
+    }
+    .login-card .rms-custom-logo {
+      width: 76px;
+      height: 76px;
+      border-radius: 18px;
+      box-shadow: 0 12px 24px rgba(0,0,0,.12);
+    }
+    .logo-uploader {
+      display: grid;
+      gap: 12px;
+    }
+    .logo-preview-wrap {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 12px;
+      border: 1px dashed var(--line);
+      border-radius: 16px;
+      background: rgba(255,255,255,.48);
+    }
+    .logo-preview-wrap img {
+      width: 84px;
+      height: 84px;
+      object-fit: contain;
+      border-radius: 18px;
+      background: #fff;
+      border: 1px solid var(--line);
+      padding: 6px;
+    }
+    .logo-preview-wrap .empty-logo {
+      width: 84px;
+      height: 84px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 18px;
+      background: #f7f3ea;
+      border: 1px dashed var(--line);
+      color: var(--muted);
+      font-weight: 800;
+    }
+    .action-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+    .inline-edit {
+      display: grid;
+      grid-template-columns: minmax(140px, 1fr) auto;
+      gap: 8px;
+      align-items: center;
+      min-width: 260px;
+    }
+    .login-title {
+      margin: 0;
+      text-align: center;
+      font-size: 20px;
+      letter-spacing: .14em;
+      font-weight: 900;
+    }
+    .login-subtitle {
+      margin: 4px 0 10px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .settings-tabs button {
+      background: rgba(23,37,29,.08);
+      color: var(--ink);
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 10px 14px;
+      font-weight: 800;
+    }
+    .settings-tabs button.active {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+    }
+    .blurred-money {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 72px;
+      height: 24px;
+      padding: 0 10px;
+      border-radius: 999px;
+      background: rgba(23,37,29,.12);
+      color: transparent;
+      text-shadow: 0 0 8px rgba(23,37,29,.65);
+      filter: blur(2.2px);
+      user-select: none;
+      pointer-events: none;
+      font-weight: 900;
+      letter-spacing: .12em;
+    }
+    .cell-value {
+      display: inline-block;
+      min-width: 0;
+      padding: 2px 0;
+    }
+    .table-wrap table th,
+    .table-wrap table td {
+      vertical-align: middle;
+    }
+    @media (max-width: 900px) {
+      .app {
+        display: block;
+      }
+      .sidebar {
+        position: sticky;
+        top: 0;
+        z-index: 30;
+        width: 100%;
+        min-height: auto;
+        padding: 12px;
+        border-radius: 0 0 18px 18px;
+      }
+      .brand h1 {
+        font-size: 18px;
+      }
+      .brand p {
+        display: none;
+      }
+      .nav-tabs {
+        display: flex;
+        overflow-x: auto;
+        gap: 8px;
+        padding-bottom: 4px;
+        -webkit-overflow-scrolling: touch;
+      }
+      .nav-tabs .nav {
+        white-space: nowrap;
+        min-width: max-content;
+      }
+      .userbar {
+        margin-top: 10px;
+      }
+      .main {
+        padding: 12px;
+      }
+      .topbar {
+        display: block;
+      }
+      .topbar h2 {
+        font-size: 24px;
+      }
+      .grid,
+      .form-grid,
+      .mini-grid {
+        display: block;
+      }
+      .card {
+        margin-bottom: 12px;
+        padding: 14px;
+        border-radius: 16px;
+      }
+      .span-2 {
+        grid-column: auto;
+      }
+      .settings-tabs {
+        position: sticky;
+        top: 108px;
+        z-index: 20;
+        background: var(--bg);
+        padding: 8px 0;
+        overflow-x: auto;
+        flex-wrap: nowrap;
+        -webkit-overflow-scrolling: touch;
+      }
+      .settings-tabs button {
+        white-space: nowrap;
+        min-width: max-content;
+      }
+      .table-wrap {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+      table {
+        min-width: 760px;
+      }
+      th, td {
+        padding: 8px;
+        font-size: 12px;
+      }
+      input, select, textarea, button {
+        font-size: 16px;
+      }
+    }
+    @media (max-width: 520px) {
+      .login-card {
+        padding: 18px;
+      }
+      .big-number {
+        font-size: 30px;
+      }
+      .metric {
+        align-items: flex-start;
+      }
+      .permission-grid {
+        grid-template-columns: 1fr;
+      }
+      .card-head {
+        display: block;
+      }
+      .card-head button {
+        margin-top: 10px;
+      }
+    }
+
+    /* FINAL FIELD COLOR OVERRIDE: all normal fields are white, attendance day cells are excluded. */
+    .app input:not([type="checkbox"]),
+    .app select,
+    .app textarea,
+    .login-screen input:not([type="checkbox"]),
+    .login-screen select,
+    .login-screen textarea,
+    .theme-executive input:not([type="checkbox"]),
+    .theme-executive select,
+    .theme-executive textarea {
+      background: #ffffff !important;
+      color: #111827 !important;
+      border-color: #cbd5e1 !important;
+      box-shadow: none !important;
+    }
+    .attendance-card td button.attendance-day-cell,
+    .theme-executive .attendance-card td button.attendance-day-cell {
+      box-shadow: inset 0 1px 2px rgba(15,23,42,.08) !important;
+    }
+    .supplier-opening-debt-card {
+      border: 1px solid rgba(71,85,105,.28) !important;
+      background: linear-gradient(180deg, #ffffff, #f8fafc) !important;
+      box-shadow: 0 16px 36px rgba(15,23,42,.07) !important;
+    }
+  `}</style>
+}
+
+
+function RMSProV6Styles() {
+  return <style>{`
+
+/* RMS Pro UI Redesign v6 — final sidebar/login alignment */
+:root{
+  --rms-navy-950:#031225;
+  --rms-navy-900:#06172d;
+  --rms-navy-800:#0b2340;
+  --rms-blue:#2563eb;
+  --rms-blue-soft:rgba(37,99,235,.18);
+  --rms-blue-border:rgba(96,165,250,.35);
+  --rms-gold:#f5b856;
+}
+
+.app.rms-pro-shell{
+  font-family: "Manrope", "Inter", "SF Pro Display", "Segoe UI", -apple-system, BlinkMacSystemFont, Arial, sans-serif!important;
+  background:
+    radial-gradient(circle at 70% -10%, rgba(59,130,246,.07), transparent 34%),
+    linear-gradient(180deg,#f8fafc 0%,#eef4fb 100%)!important;
+}
+
+.rms-pro-shell .sidebar.rms-pro-sidebar{
+  width:248px!important;
+  min-width:248px!important;
+  max-width:248px!important;
+  height:100vh!important;
+  min-height:100vh!important;
+  padding:18px 12px 12px!important;
+  overflow:hidden!important;
+  display:flex!important;
+  flex-direction:column!important;
+  gap:0!important;
+  background:
+    radial-gradient(circle at 18% -3%,rgba(59,130,246,.34),transparent 32%),
+    linear-gradient(180deg,#082044 0%,#06172d 48%,#031225 100%)!important;
+  border-right:1px solid rgba(148,163,184,.18)!important;
+  box-shadow:18px 0 52px rgba(15,23,42,.18)!important;
+}
+
+.rms-pro-brand{
+  flex:0 0 auto!important;
+  display:flex!important;
+  align-items:center!important;
+  gap:12px!important;
+  padding:0 10px 17px!important;
+  margin:0 0 14px!important;
+  border-bottom:1px solid rgba(148,163,184,.16)!important;
+}
+.rms-pro-logo,
+.rms-brandmark.compact{
+  width:48px!important;
+  height:48px!important;
+  min-width:48px!important;
+  border-radius:16px!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  background:linear-gradient(135deg,rgba(96,165,250,.22),rgba(15,23,42,.18))!important;
+  box-shadow:0 14px 34px rgba(37,99,235,.28)!important;
+  overflow:hidden!important;
+}
+.rms-brandmark.compact .rms-logo-svg,
+.rms-pro-logo .rms-logo-svg{width:48px!important;height:48px!important;display:block!important;}
+.rms-pro-brand h1{
+  font-size:25px!important;
+  font-weight:800!important;
+  letter-spacing:-.045em!important;
+  line-height:.98!important;
+  margin:0!important;
+  color:#fff!important;
+}
+.rms-pro-brand p{
+  font-size:9.8px!important;
+  font-weight:720!important;
+  line-height:1.18!important;
+  letter-spacing:.045em!important;
+  color:rgba(226,232,240,.72)!important;
+  text-transform:uppercase!important;
+  margin:5px 0 0!important;
+}
+
+.rms-pro-nav{
+  flex:1 1 auto!important;
+  min-height:0!important;
+  overflow-y:auto!important;
+  overflow-x:hidden!important;
+  padding:0 2px 12px!important;
+  margin:0!important;
+  display:flex!important;
+  flex-direction:column!important;
+  gap:12px!important;
+  scrollbar-width:none!important;
+  -ms-overflow-style:none!important;
+}
+.rms-pro-nav::-webkit-scrollbar{width:0!important;height:0!important;display:none!important;}
+.rms-pro-nav-group{display:flex!important;flex-direction:column!important;gap:6px!important;}
+.rms-pro-nav-group-title{
+  margin:0!important;
+  padding:0 10px!important;
+  font-size:11px!important;
+  font-weight:840!important;
+  letter-spacing:.065em!important;
+  text-transform:uppercase!important;
+  color:rgba(203,213,225,.70)!important;
+}
+.rms-pro-nav-list{display:flex!important;flex-direction:column!important;gap:5px!important;}
+.rms-pro-nav-item{
+  width:100%!important;
+  min-height:38px!important;
+  height:38px!important;
+  padding:0 10px!important;
+  border-radius:11px!important;
+  display:flex!important;
+  align-items:center!important;
+  gap:11px!important;
+  color:rgba(241,245,249,.92)!important;
+  background:transparent!important;
+  border:1px solid transparent!important;
+  box-shadow:none!important;
+  transform:none!important;
+  font-size:14px!important;
+  line-height:1.05!important;
+  font-weight:680!important;
+  letter-spacing:-.012em!important;
+  text-align:left!important;
+  transition:background .16s ease,border-color .16s ease,color .16s ease!important;
+}
+.rms-pro-nav-item:hover{
+  background:rgba(59,130,246,.10)!important;
+  border-color:rgba(96,165,250,.20)!important;
+  color:#dbeafe!important;
+  transform:none!important;
+  box-shadow:none!important;
+}
+.rms-pro-nav-item.active,
+.rms-pro-nav-item:focus-visible{
+  background:rgba(37,99,235,.20)!important;
+  border-color:rgba(96,165,250,.38)!important;
+  color:#8ab4ff!important;
+  box-shadow:inset 3px 0 0 #2563eb, 0 10px 24px rgba(2,6,23,.12)!important;
+  transform:none!important;
+}
+.rms-pro-nav-icon{
+  width:24px!important;
+  height:24px!important;
+  min-width:24px!important;
+  border-radius:8px!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  background:rgba(255,255,255,.055)!important;
+  color:currentColor!important;
+  font-size:0!important;
+}
+.rms-pro-nav-icon svg{width:18px!important;height:18px!important;stroke-width:1.9!important;}
+
+.rms-pro-sidebar-bottom{
+  flex:0 0 auto!important;
+  margin-top:0!important;
+  padding:10px 2px 0!important;
+  display:flex!important;
+  flex-direction:column!important;
+  gap:8px!important;
+  border-top:1px solid rgba(148,163,184,.14)!important;
+  background:linear-gradient(180deg,rgba(3,18,37,0),rgba(3,18,37,.44))!important;
+}
+.rms-pro-restaurant-select{display:none!important;}
+.rms-pro-user-card{
+  min-height:54px!important;
+  padding:9px 10px!important;
+  border-radius:14px!important;
+  border:1px solid rgba(148,163,184,.18)!important;
+  background:rgba(15,23,42,.23)!important;
+  display:flex!important;
+  align-items:center!important;
+  gap:10px!important;
+  overflow:hidden!important;
+}
+.rms-pro-avatar{
+  width:34px!important;
+  height:34px!important;
+  min-width:34px!important;
+  border-radius:999px!important;
+  background:#e5edf7!important;
+  color:#07172d!important;
+  font-size:16px!important;
+  font-weight:800!important;
+  position:relative!important;
+}
+.rms-pro-avatar:after{
+  content:"";
+  position:absolute;
+  right:-1px;
+  bottom:1px;
+  width:10px;
+  height:10px;
+  border-radius:999px;
+  background:#22c55e;
+  border:2px solid #06172d;
+}
+.rms-pro-user-name{
+  font-size:12px!important;
+  font-weight:790!important;
+  color:#fff!important;
+  max-width:150px!important;
+  white-space:nowrap!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+}
+.rms-pro-user-role{
+  font-size:10.5px!important;
+  color:rgba(226,232,240,.66)!important;
+  margin-top:2px!important;
+}
+.rms-pro-logout{
+  min-height:36px!important;
+  height:36px!important;
+  width:100%!important;
+  border-radius:12px!important;
+  border:1px solid rgba(148,163,184,.18)!important;
+  background:rgba(15,23,42,.24)!important;
+  color:rgba(241,245,249,.90)!important;
+  font-size:13px!important;
+  font-weight:760!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  margin:0!important;
+}
+.rms-pro-logout:hover{background:rgba(59,130,246,.10)!important;border-color:rgba(96,165,250,.20)!important;transform:none!important;}
+
+.rms-pro-main.main{
+  background:
+    radial-gradient(circle at 100% 0%,rgba(59,130,246,.08),transparent 32%),
+    linear-gradient(180deg,#ffffff 0%,#f2f6fb 100%)!important;
+  color:#0f172a!important;
+}
+.rms-pro-topbar{
+  background:rgba(255,255,255,.88)!important;
+  border-bottom:1px solid rgba(203,213,225,.72)!important;
+  box-shadow:0 10px 30px rgba(15,23,42,.035)!important;
+}
+.card,.module-placeholder{
+  background:rgba(255,255,255,.94)!important;
+  border:1px solid rgba(203,213,225,.72)!important;
+  box-shadow:0 18px 52px rgba(15,23,42,.055)!important;
+}
+
+/* Login screen aligned with new RMS Pro identity */
+.login-screen.theme-executive{
+  min-height:100vh!important;
+  display:grid!important;
+  place-items:center!important;
+  padding:28px!important;
+  background:
+    radial-gradient(circle at 12% 10%,rgba(37,99,235,.10),transparent 32%),
+    radial-gradient(circle at 90% 90%,rgba(245,184,86,.10),transparent 28%),
+    linear-gradient(135deg,#f8fbff 0%,#eef4fb 100%)!important;
+}
+.login-screen.theme-executive:before{
+  content:"";
+  position:fixed;
+  inset:0;
+  pointer-events:none;
+  background-image:linear-gradient(rgba(15,23,42,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(15,23,42,.035) 1px,transparent 1px);
+  background-size:44px 44px;
+  mask-image:radial-gradient(circle at 50% 40%,black,transparent 72%);
+}
+.login-screen.theme-executive .login-card{
+  width:min(440px,calc(100vw - 40px))!important;
+  border-radius:28px!important;
+  padding:32px!important;
+  background:rgba(255,255,255,.92)!important;
+  border:1px solid rgba(203,213,225,.74)!important;
+  box-shadow:0 28px 80px rgba(15,23,42,.13)!important;
+  backdrop-filter:blur(18px)!important;
+  align-items:stretch!important;
+}
+.rms-brandmark.login{
+  width:106px!important;
+  height:106px!important;
+  margin:0 auto 14px!important;
+  border-radius:28px!important;
+  background:linear-gradient(135deg,#0b2340,#06172d)!important;
+  box-shadow:0 22px 52px rgba(15,23,42,.18)!important;
+}
+.rms-brandmark.login .rms-logo-svg{width:106px!important;height:106px!important;}
+.login-title{
+  text-align:center!important;
+  color:#07172d!important;
+  font-size:42px!important;
+  line-height:1!important;
+  letter-spacing:-.06em!important;
+  margin:0!important;
+  font-weight:800!important;
+}
+.login-subtitle{
+  text-align:center!important;
+  color:#334155!important;
+  text-transform:uppercase!important;
+  font-weight:760!important;
+  letter-spacing:.05em!important;
+  margin:4px 0 16px!important;
+  font-size:12px!important;
+}
+.login-screen.theme-executive .login-card > p:not(.login-subtitle):not(.bad){
+  text-align:center!important;
+  color:#64748b!important;
+  margin:0 0 8px!important;
+}
+.login-screen.theme-executive label{color:#334155!important;font-weight:730!important;font-size:12px!important;}
+.login-screen.theme-executive input,
+.login-screen.theme-executive select{
+  min-height:46px!important;
+  border-radius:13px!important;
+  border:1px solid rgba(203,213,225,.84)!important;
+  background:#fff!important;
+  color:#0f172a!important;
+  box-shadow:0 8px 20px rgba(15,23,42,.035)!important;
+}
+.login-screen.theme-executive .primary{
+  min-height:48px!important;
+  border-radius:14px!important;
+  background:linear-gradient(135deg,#082044,#06172d)!important;
+  color:#fff!important;
+  font-size:15px!important;
+  box-shadow:0 18px 40px rgba(15,23,42,.18)!important;
+}
+.login-screen.theme-executive .primary:hover{transform:none!important;box-shadow:0 18px 40px rgba(15,23,42,.18)!important;}
+
+@media(max-width:900px){
+  .rms-pro-shell .sidebar.rms-pro-sidebar{width:100%!important;max-width:none!important;height:auto!important;min-height:0!important;position:relative!important;}
+  .rms-pro-nav{max-height:55vh!important;}
+}
+
+/* v101 · RMS professional cleanup bundle */
+.rms-pro-shell .topbar{gap:14px;align-items:flex-start;}
+.rms-pro-shell .topbar h2{letter-spacing:-.03em;}
+.rms-pro-shell .topbar p{max-width:860px;}
+.rms-pro-shell .action-row button.small,
+.rms-pro-shell button.small{min-height:32px;border-radius:10px;font-weight:800;}
+.rms-pro-shell button.primary{box-shadow:0 8px 18px rgba(37,99,235,.16);}
+.rms-pro-shell .card-head{gap:12px;align-items:flex-start;}
+.rms-pro-shell .card-head h3{letter-spacing:-.02em;}
+.rms-pro-shell .table-wrap table th{white-space:nowrap;}
+.rms-pro-shell .table-wrap table td{vertical-align:middle;}
+.rms-pro-shell .table-wrap table td:last-child .action-row,
+.rms-pro-shell .table-wrap table td:last-child{white-space:nowrap;}
+.rms-pro-shell .supplier-modal-backdrop{backdrop-filter:blur(5px);}
+.rms-pro-shell .supplier-modal-panel,
+.rms-pro-shell .finance-ai-modal-panel{max-height:86vh;overflow:auto;border-radius:22px;}
+.rms-pro-shell .supplier-modal-head{position:sticky;top:0;z-index:4;background:rgba(255,255,255,.96);backdrop-filter:blur(10px);border-bottom:1px solid #e5e7eb;margin:-2px -2px 12px;padding:14px 16px;}
+.rms-pro-shell .supplier-modal-x{width:34px;height:34px;border-radius:999px;font-size:20px;line-height:1;}
+.rms-pro-shell .finance-report-actions,
+.rms-pro-shell .revenue-top-actions{gap:8px!important;}
+.rms-pro-shell .finance-report-btn,
+.rms-pro-shell .revenue-top-actions button{min-width:72px;}
+.rms-pro-shell .revenue-day-kpi strong,
+.rms-pro-shell .finance-exec-card strong{font-variant-numeric:tabular-nums;}
+.rms-pro-shell .diagnostics-card,
+.rms-pro-shell .security-diagnostics-card{border-left:4px solid #64748b;}
+@media(max-width:780px){
+  .rms-pro-shell .topbar{display:block;}
+  .rms-pro-shell .topbar .action-row{margin-top:12px;justify-content:flex-start!important;}
+  .rms-pro-shell .table-wrap{overflow-x:auto;}
+  .rms-pro-shell .supplier-modal-panel{top:12px;width:calc(100vw - 16px);max-height:calc(100vh - 24px);border-radius:18px;}
+  .rms-pro-shell .supplier-modal-head{padding:14px 14px 12px;}
+  .rms-pro-shell .supplier-transactions-panel > .form-grid, .rms-pro-shell .supplier-transactions-panel > .table-wrap, .rms-pro-shell .supplier-transactions-panel > div:not(.supplier-modal-head){margin-left:14px;margin-right:14px;}
+  .rms-pro-shell .revenue-modal-body{padding:14px;}
+  .rms-pro-shell .revenue-modal-actions{padding:10px 14px 14px;flex-wrap:wrap;justify-content:flex-start;}
+}
+
+/* v103 RMS Full UX Polish Bundle */
+.rms-pro-shell .topbar,
+.rms-pro-shell .card-head{
+  border-radius: 18px;
+}
+.rms-pro-shell .topbar{
+  padding: 18px 20px;
+}
+.rms-pro-shell .topbar h2{
+  font-size: clamp(22px, 2vw, 30px);
+  line-height: 1.12;
+  margin-bottom: 4px;
+}
+.rms-pro-shell .topbar p,
+.rms-pro-shell .card-head p,
+.rms-pro-shell .hint{
+  line-height: 1.38;
+}
+.rms-pro-shell .card{
+  border-color: rgba(226,232,240,.92);
+  box-shadow: 0 12px 34px rgba(15,23,42,.045);
+}
+.rms-pro-shell .card:hover{
+  box-shadow: 0 14px 38px rgba(15,23,42,.06);
+}
+.rms-pro-shell .soft-card,
+.rms-pro-shell .kpi-card,
+.rms-pro-shell .finance-exec-card,
+.rms-pro-shell .revenue-day-kpi > div{
+  border-radius: 16px;
+  border-color: rgba(226,232,240,.92);
+}
+.rms-pro-shell .table-wrap{
+  border-radius: 16px;
+  border-color: rgba(226,232,240,.92);
+}
+.rms-pro-shell table th{
+  font-size: 12px;
+  letter-spacing: .01em;
+  color: #475569;
+  background: #f8fafc;
+}
+.rms-pro-shell table td{
+  font-size: 14px;
+}
+.rms-pro-shell table th,
+.rms-pro-shell table td{
+  padding: 11px 12px;
+}
+.rms-pro-shell table tbody tr:hover{
+  background: rgba(248,250,252,.75);
+}
+.rms-pro-shell .action-row{
+  gap: 8px;
+}
+.rms-pro-shell button,
+.rms-pro-shell .btn,
+.rms-pro-shell .small{
+  transition: background .16s ease, border-color .16s ease, box-shadow .16s ease, transform .08s ease;
+}
+.rms-pro-shell button:active,
+.rms-pro-shell .btn:active,
+.rms-pro-shell .small:active{
+  transform: translateY(1px);
+}
+.rms-pro-shell button.small,
+.rms-pro-shell .small{
+  min-height: 34px;
+  padding: 7px 12px;
+  border-radius: 11px;
+}
+.rms-pro-shell button.primary,
+.rms-pro-shell .primary{
+  box-shadow: 0 8px 18px rgba(37,99,235,.14);
+}
+.rms-pro-shell button.remove,
+.rms-pro-shell .small.remove,
+.rms-pro-shell .danger{
+  background: #fff1f2;
+  border-color: #fecdd3;
+  color: #be123c;
+}
+.rms-pro-shell button.remove:hover,
+.rms-pro-shell .small.remove:hover,
+.rms-pro-shell .danger:hover{
+  background: #ffe4e6;
+  border-color: #fda4af;
+}
+.rms-pro-shell input,
+.rms-pro-shell select,
+.rms-pro-shell textarea{
+  border-radius: 13px;
+  border-color: rgba(203,213,225,.95);
+}
+.rms-pro-shell input:focus,
+.rms-pro-shell select:focus,
+.rms-pro-shell textarea:focus{
+  outline: none;
+  border-color: rgba(59,130,246,.75);
+  box-shadow: 0 0 0 4px rgba(59,130,246,.10);
+}
+.rms-pro-shell .supplier-modal-panel{
+  background: #fff;
+}
+.rms-pro-shell .supplier-modal-head{
+  min-height: 70px;
+}
+.rms-pro-shell .supplier-modal-head p{
+  margin-top: 4px;
+}
+.rms-pro-shell .supplier-modal-panel .table-wrap{
+  margin-top: 14px;
+}
+.rms-pro-shell .supplier-modal-panel table th,
+.rms-pro-shell .supplier-modal-panel table td{
+  padding: 10px 12px;
+}
+.rms-pro-shell .supplier-modal-panel .form-grid{
+  padding-top: 16px;
+}
+.rms-pro-shell .finance-report-actions,
+.rms-pro-shell .revenue-top-actions{
+  align-items: center;
+  flex-wrap: wrap;
+}
+.rms-pro-shell .finance-report-actions button,
+.rms-pro-shell .revenue-top-actions button{
+  min-height: 36px;
+}
+.rms-pro-shell .badge,
+.rms-pro-shell .status-pill{
+  border-radius: 999px;
+}
+.rms-pro-shell .diagnostics-card,
+.rms-pro-shell .security-diagnostics-card{
+  background: #fff;
+  border-left-width: 3px;
+}
+@media(max-width:780px){
+  .rms-pro-shell .topbar{padding:16px;}
+  .rms-pro-shell .card{border-radius:16px;}
+  .rms-pro-shell table th,
+  .rms-pro-shell table td{padding:10px 10px;}
+  .rms-pro-shell .action-row{gap:6px;}
+  .rms-pro-shell button.small,
+  .rms-pro-shell .small{padding:7px 10px;}
+}
+
+/* v104 RMS Navigation, Tables & Density Pack */
+.rms-pro-shell{
+  --rms-card-radius: 18px;
+  --rms-control-radius: 12px;
+  --rms-soft-border: rgba(226,232,240,.92);
+}
+.rms-pro-shell .rms-pro-topbar{
+  border-bottom: 1px solid rgba(226,232,240,.85);
+  background: rgba(255,255,255,.88);
+  backdrop-filter: blur(10px);
+}
+.rms-pro-shell .rms-pro-topbar-title h1,
+.rms-pro-shell .topbar h2{
+  letter-spacing: -0.035em;
+}
+.rms-pro-shell .rms-pro-sidebar,
+.rms-pro-shell aside{
+  border-right-color: rgba(226,232,240,.85);
+}
+.rms-pro-shell nav button,
+.rms-pro-shell .sidebar button,
+.rms-pro-shell .rms-pro-sidebar button{
+  border-radius: 12px;
+}
+.rms-pro-shell nav button:hover,
+.rms-pro-shell .sidebar button:hover,
+.rms-pro-shell .rms-pro-sidebar button:hover{
+  background: rgba(248,250,252,.9);
+}
+.rms-pro-shell .card{
+  border-radius: var(--rms-card-radius);
+}
+.rms-pro-shell .card-head{
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(226,232,240,.65);
+  margin-bottom: 14px;
+}
+.rms-pro-shell .card-head h3{
+  font-size: 18px;
+  line-height: 1.2;
+}
+.rms-pro-shell .card-head p{
+  max-width: 920px;
+}
+.rms-pro-shell .kpi-grid,
+.rms-pro-shell .summary-grid,
+.rms-pro-shell .finance-kpi-grid,
+.rms-pro-shell .revenue-day-kpi{
+  gap: 12px;
+}
+.rms-pro-shell .kpi-card,
+.rms-pro-shell .soft-card,
+.rms-pro-shell .finance-exec-card{
+  padding: 14px 16px;
+}
+.rms-pro-shell .kpi-card strong,
+.rms-pro-shell .soft-card strong,
+.rms-pro-shell .finance-exec-card strong{
+  letter-spacing: -0.025em;
+}
+.rms-pro-shell .table-wrap{
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+.rms-pro-shell .table-wrap table{
+  border-collapse: separate;
+  border-spacing: 0;
+}
+.rms-pro-shell .table-wrap thead th{
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: #f8fafc;
+  box-shadow: inset 0 -1px 0 rgba(226,232,240,.95);
+}
+.rms-pro-shell .table-wrap tbody tr:last-child td{
+  border-bottom: 0;
+}
+.rms-pro-shell .table-wrap td:last-child,
+.rms-pro-shell .table-wrap th:last-child{
+  text-align: right;
+}
+.rms-pro-shell .table-wrap td:last-child .action-row,
+.rms-pro-shell .table-wrap td:last-child > div.action-row{
+  justify-content: flex-end;
+}
+.rms-pro-shell .action-row.compact,
+.rms-pro-shell .table-wrap .action-row{
+  gap: 6px;
+  flex-wrap: nowrap;
+}
+.rms-pro-shell .table-wrap .action-row button.small{
+  padding-inline: 10px;
+}
+.rms-pro-shell .muted-action,
+.rms-pro-shell button.ghost,
+.rms-pro-shell .ghost{
+  background: #fff;
+  border-color: rgba(203,213,225,.9);
+}
+.rms-pro-shell button.ghost:hover,
+.rms-pro-shell .ghost:hover{
+  background: #f8fafc;
+}
+.rms-pro-shell .primary{
+  border-color: rgba(37,99,235,.45);
+}
+.rms-pro-shell .good,
+.rms-pro-shell .bad,
+.rms-pro-shell .warn{
+  font-weight: 800;
+}
+.rms-pro-shell .hint{
+  color: #64748b;
+}
+.rms-pro-shell .form-grid{
+  gap: 14px;
+}
+.rms-pro-shell label{
+  font-weight: 700;
+  color: #475569;
+}
+.rms-pro-shell input,
+.rms-pro-shell select,
+.rms-pro-shell textarea{
+  min-height: 42px;
+}
+.rms-pro-shell textarea{
+  resize: vertical;
+}
+.rms-pro-shell .supplier-modal-panel{
+  scrollbar-width: thin;
+}
+.rms-pro-shell .supplier-modal-panel::before{
+  background: rgba(248,250,252,.84);
+}
+.rms-pro-shell .supplier-modal-head{
+  box-shadow: 0 8px 18px rgba(15,23,42,.035);
+}
+.rms-pro-shell .supplier-modal-x{
+  flex-shrink: 0;
+}
+.rms-pro-shell .revenue-modal-actions button,
+.rms-pro-shell .supplier-modal-panel .action-row button{
+  min-width: 88px;
+}
+.rms-pro-shell .finance-report-actions,
+.rms-pro-shell .revenue-top-actions,
+.rms-pro-shell .topbar .action-row{
+  row-gap: 8px;
+}
+.rms-pro-shell .diagnostics-card .card-head,
+.rms-pro-shell .security-diagnostics-card .card-head{
+  margin-bottom: 10px;
+}
+@media(max-width:980px){
+  .rms-pro-shell .kpi-grid,
+  .rms-pro-shell .summary-grid,
+  .rms-pro-shell .finance-kpi-grid,
+  .rms-pro-shell .revenue-day-kpi{
+    grid-template-columns: repeat(2, minmax(0,1fr));
+  }
+  .rms-pro-shell .topbar{
+    gap: 10px;
+  }
+}
+@media(max-width:620px){
+  .rms-pro-shell .kpi-grid,
+  .rms-pro-shell .summary-grid,
+  .rms-pro-shell .finance-kpi-grid,
+  .rms-pro-shell .revenue-day-kpi{
+    grid-template-columns: 1fr;
+  }
+  .rms-pro-shell .table-wrap th,
+  .rms-pro-shell .table-wrap td{
+    font-size: 13px;
+  }
+  .rms-pro-shell .table-wrap .action-row{
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+  .rms-pro-shell .table-wrap td:last-child,
+  .rms-pro-shell .table-wrap th:last-child{
+    text-align: left;
+  }
+  .rms-pro-shell .supplier-modal-panel{
+    width: calc(100vw - 12px);
+    top: 8px;
+    max-height: calc(100vh - 16px);
+  }
+}
+
+/* v105 RMS Consolidated UX & Stability Bundle */
+.rms-pro-shell{
+  --rms-radius-lg: 20px;
+  --rms-radius-md: 14px;
+  --rms-radius-sm: 11px;
+  --rms-border-soft: rgba(226,232,240,.94);
+  --rms-bg-soft: #f8fafc;
+  --rms-text-strong: #0f172a;
+  --rms-text-muted: #64748b;
+}
+
+/* Cleaner page rhythm */
+.rms-pro-shell main,
+.rms-pro-shell .main,
+.rms-pro-shell .content{
+  scroll-behavior: smooth;
+}
+.rms-pro-shell .topbar{
+  margin-bottom: 16px;
+  border: 1px solid var(--rms-border-soft);
+  box-shadow: 0 10px 28px rgba(15,23,42,.045);
+}
+.rms-pro-shell .topbar h2,
+.rms-pro-shell .card-head h3{
+  color: var(--rms-text-strong);
+}
+.rms-pro-shell .topbar p,
+.rms-pro-shell .card-head p,
+.rms-pro-shell .hint{
+  color: var(--rms-text-muted);
+}
+
+/* More professional cards */
+.rms-pro-shell .card{
+  border: 1px solid var(--rms-border-soft);
+  background: rgba(255,255,255,.98);
+}
+.rms-pro-shell .card + .card{
+  margin-top: 14px;
+}
+.rms-pro-shell .soft-card,
+.rms-pro-shell .kpi-card,
+.rms-pro-shell .finance-exec-card{
+  background: linear-gradient(180deg,#fff 0%,#fbfdff 100%);
+}
+
+/* Compact KPI value style */
+.rms-pro-shell .kpi-card strong,
+.rms-pro-shell .soft-card strong,
+.rms-pro-shell .finance-exec-card strong,
+.rms-pro-shell .revenue-day-kpi strong{
+  font-size: clamp(18px, 1.5vw, 24px);
+  line-height: 1.15;
+}
+
+/* Unified controls */
+.rms-pro-shell button,
+.rms-pro-shell .btn{
+  font-family: inherit;
+}
+.rms-pro-shell button:not(.supplier-modal-x),
+.rms-pro-shell .btn,
+.rms-pro-shell .small{
+  border-radius: var(--rms-radius-sm);
+}
+.rms-pro-shell button.primary,
+.rms-pro-shell .primary{
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #fff;
+}
+.rms-pro-shell button.primary:hover,
+.rms-pro-shell .primary:hover{
+  background: #1d4ed8;
+  border-color: #1d4ed8;
+}
+.rms-pro-shell button.ghost,
+.rms-pro-shell .ghost{
+  color: #334155;
+}
+.rms-pro-shell button.remove,
+.rms-pro-shell .small.remove,
+.rms-pro-shell button.danger,
+.rms-pro-shell .danger{
+  font-weight: 800;
+}
+
+/* Forms */
+.rms-pro-shell .form-grid label,
+.rms-pro-shell label{
+  font-size: 13px;
+}
+.rms-pro-shell input,
+.rms-pro-shell select,
+.rms-pro-shell textarea{
+  background: #fff;
+  color: #0f172a;
+}
+.rms-pro-shell input::placeholder,
+.rms-pro-shell textarea::placeholder{
+  color: #94a3b8;
+}
+
+/* Tables: cleaner enterprise density */
+.rms-pro-shell .table-wrap{
+  background: #fff;
+  border: 1px solid var(--rms-border-soft);
+}
+.rms-pro-shell .table-wrap table{
+  width: 100%;
+}
+.rms-pro-shell .table-wrap th{
+  text-transform: none;
+  font-weight: 800;
+}
+.rms-pro-shell .table-wrap td{
+  color: #334155;
+}
+.rms-pro-shell .table-wrap td b,
+.rms-pro-shell .table-wrap td strong{
+  color: #0f172a;
+}
+.rms-pro-shell .table-wrap tbody tr{
+  transition: background .14s ease;
+}
+.rms-pro-shell .table-wrap tbody tr:nth-child(even){
+  background: rgba(248,250,252,.36);
+}
+.rms-pro-shell .table-wrap tbody tr:hover{
+  background: rgba(239,246,255,.50);
+}
+.rms-pro-shell .table-wrap td:last-child{
+  min-width: 124px;
+}
+.rms-pro-shell .table-wrap td:last-child .action-row{
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+/* Modals: final light style */
+.rms-pro-shell .supplier-modal-panel{
+  border-radius: 22px;
+  border: 1px solid rgba(203,213,225,.9);
+  box-shadow: 0 24px 70px rgba(15,23,42,.18);
+}
+.rms-pro-shell .supplier-modal-panel::before{
+  background: rgba(248,250,252,.88);
+  backdrop-filter: blur(5px);
+}
+.rms-pro-shell .supplier-modal-head{
+  background: rgba(255,255,255,.985);
+  border-bottom: 1px solid rgba(226,232,240,.98);
+}
+.rms-pro-shell .supplier-modal-head h3{
+  font-size: 22px;
+  letter-spacing: -.025em;
+}
+.rms-pro-shell .supplier-modal-x{
+  border-radius: 12px;
+  color: #0f172a;
+}
+.rms-pro-shell .supplier-modal-x:hover{
+  background: #eef2ff;
+  border-color: #c7d2fe;
+}
+.rms-pro-shell .supplier-modal-panel .table-wrap{
+  max-width: calc(100% - 36px);
+}
+.rms-pro-shell .supplier-modal-panel .action-row{
+  align-items: center;
+}
+
+/* Revenue / Finance action bars */
+.rms-pro-shell .revenue-top-actions,
+.rms-pro-shell .finance-report-actions,
+.rms-pro-shell .topbar .action-row{
+  gap: 8px;
+}
+.rms-pro-shell .revenue-top-actions button,
+.rms-pro-shell .finance-report-actions button{
+  min-height: 36px;
+  padding-inline: 14px;
+}
+
+/* Diagnostics should look technical but not heavy */
+.rms-pro-shell .diagnostics-card,
+.rms-pro-shell .security-diagnostics-card{
+  background: #fff;
+  border-color: rgba(203,213,225,.92);
+  box-shadow: 0 10px 26px rgba(15,23,42,.035);
+}
+
+/* Better status colors */
+.rms-pro-shell .good{
+  color: #047857;
+}
+.rms-pro-shell .bad{
+  color: #be123c;
+}
+.rms-pro-shell .warn{
+  color: #b45309;
+}
+
+/* Compact helper chips and badges */
+.rms-pro-shell .badge,
+.rms-pro-shell .pill,
+.rms-pro-shell .status-pill{
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 26px;
+  padding: 4px 9px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+/* Prevent horizontal visual breakage */
+.rms-pro-shell .action-row,
+.rms-pro-shell .card-head,
+.rms-pro-shell .topbar{
+  min-width: 0;
+}
+.rms-pro-shell .card-head > div,
+.rms-pro-shell .topbar > div{
+  min-width: 0;
+}
+
+/* Mobile compact pack */
+@media(max-width:980px){
+  .rms-pro-shell .topbar{
+    padding: 16px;
+  }
+  .rms-pro-shell .card{
+    padding: 16px;
+  }
+  .rms-pro-shell .supplier-modal-panel{
+    width: calc(100vw - 20px);
+    top: 10px;
+    max-height: calc(100vh - 20px);
+  }
+}
+@media(max-width:620px){
+  .rms-pro-shell .topbar h2{
+    font-size: 22px;
+  }
+  .rms-pro-shell .card-head{
+    display: block;
+  }
+  .rms-pro-shell .card-head .action-row{
+    margin-top: 10px;
+    justify-content: flex-start;
+  }
+  .rms-pro-shell .table-wrap{
+    margin-left: -2px;
+    margin-right: -2px;
+  }
+  .rms-pro-shell .supplier-modal-head{
+    padding: 13px 14px;
+  }
+  .rms-pro-shell .supplier-modal-head h3{
+    font-size: 19px;
+  }
+  .rms-pro-shell .supplier-modal-panel .table-wrap{
+    max-width: calc(100% - 28px);
+  }
+}
+
+/* v106 RMS Operational UX Bundle */
+.rms-pro-shell .empty-state,
+.rms-pro-shell .no-data,
+.rms-pro-shell .table-empty{
+  border:1px dashed rgba(203,213,225,.95);
+  background:#f8fafc;
+  border-radius:16px;
+  padding:18px;
+  color:#64748b;
+}
+.rms-pro-shell td.hint,
+.rms-pro-shell .table-wrap td[colspan],
+.rms-pro-shell .table-wrap td[colSpan]{
+  color:#64748b;
+}
+.rms-pro-shell .export-actions,
+.rms-pro-shell .report-actions,
+.rms-pro-shell .finance-report-actions,
+.rms-pro-shell .revenue-top-actions{
+  display:flex;
+  align-items:center;
+  flex-wrap:wrap;
+  gap:8px;
+}
+.rms-pro-shell .export-actions button,
+.rms-pro-shell .report-actions button,
+.rms-pro-shell .finance-report-actions button,
+.rms-pro-shell .revenue-top-actions button{
+  white-space:nowrap;
+}
+.rms-pro-shell .revenue-modal-actions,
+.rms-pro-shell .supplier-modal-panel .action-row:last-child{
+  border-top:1px solid rgba(226,232,240,.72);
+}
+.rms-pro-shell .supplier-modal-panel .form-grid + .action-row,
+.rms-pro-shell .supplier-modal-panel .revenue-modal-actions{
+  margin-top:14px;
+}
+.rms-pro-shell .supplier-modal-panel button{
+  line-height:1.1;
+}
+.rms-pro-shell .supplier-modal-panel .table-wrap table{
+  min-width:760px;
+}
+.rms-pro-shell .revenue-modal-panel .form-grid{
+  grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+}
+.rms-pro-shell .revenue-modal-panel textarea,
+.rms-pro-shell .supplier-modal-panel textarea{
+  min-height:58px;
+}
+.rms-pro-shell .action-row .remove,
+.rms-pro-shell .action-row .danger,
+.rms-pro-shell button.remove,
+.rms-pro-shell button.danger{
+  margin-left:2px;
+}
+.rms-pro-shell .kpi-card .hint,
+.rms-pro-shell .soft-card .hint,
+.rms-pro-shell .finance-exec-card .hint{
+  font-size:12.5px;
+}
+.rms-pro-shell .kpi-card,
+.rms-pro-shell .soft-card{
+  min-width:0;
+}
+.rms-pro-shell .kpi-card strong,
+.rms-pro-shell .soft-card strong{
+  word-break:break-word;
+}
+.rms-pro-shell .section-divider{
+  border-top:1px solid rgba(226,232,240,.9);
+  margin:16px 0;
+}
+.rms-pro-shell .card .section-divider:first-child{
+  display:none;
+}
+.rms-pro-shell .diagnostics-card h3,
+.rms-pro-shell .security-diagnostics-card h3{
+  font-size:17px;
+}
+.rms-pro-shell .diagnostics-card .table-wrap,
+.rms-pro-shell .security-diagnostics-card .table-wrap{
+  margin-top:10px;
+}
+.rms-pro-shell .supplier-compact-table td:last-child,
+.rms-pro-shell .supplier-compact-table th:last-child{
+  width:150px;
+}
+.rms-pro-shell .supplier-compact-table .action-row{
+  justify-content:flex-end;
+}
+.rms-pro-shell .supplier-compact-table .small{
+  min-width:58px;
+}
+@media(min-width:1280px){
+  .rms-pro-shell .supplier-modal-panel{width:min(1220px,calc(100vw - 64px));}
+  .rms-pro-shell .revenue-log-modal-panel{width:min(1200px,calc(100vw - 64px));}
+  .rms-pro-shell .revenue-modal-panel{width:min(940px,calc(100vw - 64px));}
+}
+@media print{
+  .rms-pro-shell .rms-pro-sidebar,
+  .rms-pro-shell .rms-pro-topbar,
+  .rms-pro-shell .action-row,
+  .rms-pro-shell button,
+  .rms-pro-shell .supplier-modal-x{display:none!important;}
+  .rms-pro-shell .card,
+  .rms-pro-shell .table-wrap{box-shadow:none!important;border-color:#d1d5db!important;}
+  .rms-pro-shell .supplier-modal-panel{
+    position:static!important;
+    transform:none!important;
+    width:100%!important;
+    max-height:none!important;
+    overflow:visible!important;
+    box-shadow:none!important;
+  }
+  .rms-pro-shell .supplier-modal-panel::before{display:none!important;}
+}
+
+/* v107 RMS Accessibility, Performance & Form Polish Bundle */
+
+/* Stronger accessible focus states */
+.rms-pro-shell button:focus-visible,
+.rms-pro-shell a:focus-visible,
+.rms-pro-shell input:focus-visible,
+.rms-pro-shell select:focus-visible,
+.rms-pro-shell textarea:focus-visible{
+  outline: 3px solid rgba(37,99,235,.26);
+  outline-offset: 2px;
+}
+
+/* Disable accidental heavy animation while keeping UI responsive */
+.rms-pro-shell *,
+.rms-pro-shell *::before,
+.rms-pro-shell *::after{
+  scroll-margin-top: 84px;
+}
+@media (prefers-reduced-motion: reduce){
+  .rms-pro-shell *,
+  .rms-pro-shell *::before,
+  .rms-pro-shell *::after{
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Better form grouping */
+.rms-pro-shell .form-grid{
+  align-items: end;
+}
+.rms-pro-shell .form-grid > label,
+.rms-pro-shell .form-grid > div{
+  min-width: 0;
+}
+.rms-pro-shell label > span,
+.rms-pro-shell .field-label{
+  display: inline-block;
+  margin-bottom: 6px;
+}
+.rms-pro-shell input[type="date"],
+.rms-pro-shell input[type="number"],
+.rms-pro-shell select{
+  font-variant-numeric: tabular-nums;
+}
+.rms-pro-shell input:disabled,
+.rms-pro-shell select:disabled,
+.rms-pro-shell textarea:disabled{
+  background: #f1f5f9;
+  color: #64748b;
+  cursor: not-allowed;
+}
+
+/* Button groups */
+.rms-pro-shell .button-group,
+.rms-pro-shell .segmented-control{
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px;
+  border: 1px solid rgba(226,232,240,.94);
+  border-radius: 14px;
+  background: #f8fafc;
+}
+.rms-pro-shell .button-group button,
+.rms-pro-shell .segmented-control button{
+  min-height: 32px;
+  box-shadow: none;
+}
+
+/* More readable totals / footer rows */
+.rms-pro-shell tfoot td,
+.rms-pro-shell .total-row td,
+.rms-pro-shell tr.total td{
+  background: #f8fafc;
+  font-weight: 800;
+  color: #0f172a;
+}
+.rms-pro-shell tfoot td:first-child{
+  border-bottom-left-radius: 12px;
+}
+.rms-pro-shell tfoot td:last-child{
+  border-bottom-right-radius: 12px;
+}
+
+/* Numeric alignment */
+.rms-pro-shell .num,
+.rms-pro-shell .money,
+.rms-pro-shell td:nth-child(n+2):not(:last-child){
+  font-variant-numeric: tabular-nums;
+}
+
+/* Modal body spacing consistency */
+.rms-pro-shell .supplier-modal-panel .card,
+.rms-pro-shell .supplier-modal-panel .soft-card{
+  box-shadow: none;
+}
+.rms-pro-shell .supplier-modal-panel .card-head{
+  margin-left: 18px;
+  margin-right: 18px;
+}
+.rms-pro-shell .supplier-modal-panel .supplier-modal-head + .form-grid,
+.rms-pro-shell .supplier-modal-panel .supplier-modal-head + .table-wrap{
+  margin-top: 16px;
+}
+
+/* Cleaner close buttons and destructive actions */
+.rms-pro-shell .supplier-modal-x{
+  font-family: Arial, sans-serif;
+}
+.rms-pro-shell .remove,
+.rms-pro-shell .danger{
+  border-width: 1px;
+}
+
+/* Dense but readable table mode for large screens */
+@media(min-width:1180px){
+  .rms-pro-shell .table-wrap.compact table th,
+  .rms-pro-shell .table-wrap.compact table td,
+  .rms-pro-shell .supplier-compact-table th,
+  .rms-pro-shell .supplier-compact-table td{
+    padding-top: 9px;
+    padding-bottom: 9px;
+  }
+}
+
+/* Better mobile action handling */
+@media(max-width:620px){
+  .rms-pro-shell .button-group,
+  .rms-pro-shell .segmented-control{
+    display: flex;
+    width: 100%;
+    overflow-x: auto;
+  }
+  .rms-pro-shell .button-group button,
+  .rms-pro-shell .segmented-control button{
+    flex: 0 0 auto;
+  }
+  .rms-pro-shell .form-grid{
+    grid-template-columns: 1fr !important;
+  }
+  .rms-pro-shell .topbar .action-row,
+  .rms-pro-shell .card-head .action-row{
+    width: 100%;
+  }
+}
+
+/* Print: keep totals and titles readable */
+@media print{
+  .rms-pro-shell{
+    color: #111827 !important;
+    background: #fff !important;
+  }
+  .rms-pro-shell h1,
+  .rms-pro-shell h2,
+  .rms-pro-shell h3{
+    color: #111827 !important;
+  }
+  .rms-pro-shell .hint{
+    color: #4b5563 !important;
+  }
+  .rms-pro-shell table{
+    page-break-inside: auto;
+  }
+  .rms-pro-shell tr{
+    page-break-inside: avoid;
+    page-break-after: auto;
+  }
+}
+
+/* v108 RMS Enterprise UI Stabilization Bundle */
+
+/* Page headers: less height, stronger hierarchy */
+.rms-pro-shell .topbar{
+  min-height: auto;
+}
+.rms-pro-shell .topbar h2{
+  margin: 0;
+}
+.rms-pro-shell .topbar p{
+  margin-top: 6px;
+}
+.rms-pro-shell .card-head{
+  min-height: auto;
+}
+.rms-pro-shell .card-head h3{
+  margin-bottom: 3px;
+}
+
+/* Consistent action buttons in all modules */
+.rms-pro-shell .action-row button.small,
+.rms-pro-shell td button.small,
+.rms-pro-shell .table-wrap button.small{
+  min-width: 74px;
+  justify-content: center;
+}
+.rms-pro-shell .action-row button.small.primary,
+.rms-pro-shell td button.small.primary{
+  min-width: 68px;
+}
+.rms-pro-shell .action-row button.small.remove,
+.rms-pro-shell td button.small.remove{
+  min-width: 72px;
+}
+
+/* More controlled wide tables */
+.rms-pro-shell .table-wrap{
+  max-width: 100%;
+}
+.rms-pro-shell .table-wrap table{
+  table-layout: auto;
+}
+.rms-pro-shell .table-wrap th,
+.rms-pro-shell .table-wrap td{
+  vertical-align: middle;
+}
+.rms-pro-shell .table-wrap td .hint{
+  display: inline-block;
+  max-width: 340px;
+}
+.rms-pro-shell .table-wrap td:first-child{
+  min-width: 120px;
+}
+
+/* Cleaner section spacing */
+.rms-pro-shell .card:not(:last-child){
+  margin-bottom: 14px;
+}
+.rms-pro-shell .soft-card + .soft-card{
+  margin-top: 10px;
+}
+
+/* Finance / Revenue / Supplier common summary cards */
+.rms-pro-shell .finance-exec-card,
+.rms-pro-shell .revenue-day-kpi > div,
+.rms-pro-shell .supplier-control-center-card .soft-card{
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.9);
+}
+.rms-pro-shell .finance-exec-card .hint,
+.rms-pro-shell .revenue-day-kpi .hint{
+  margin-top: 4px;
+}
+
+/* Modal table action columns: avoid ugly wrapping */
+.rms-pro-shell .supplier-modal-panel .table-wrap td:last-child,
+.rms-pro-shell .supplier-modal-panel .table-wrap th:last-child{
+  min-width: 210px;
+}
+.rms-pro-shell .supplier-modal-panel .table-wrap td:last-child .action-row{
+  justify-content: flex-end;
+  flex-wrap: nowrap;
+}
+.rms-pro-shell .supplier-modal-panel .table-wrap td:last-child button{
+  white-space: nowrap;
+}
+
+/* Modal close button: clearer hit area */
+.rms-pro-shell .supplier-modal-x{
+  min-width: 38px;
+  min-height: 38px;
+}
+
+/* Forms: tighter vertical rhythm */
+.rms-pro-shell .form-grid{
+  margin-top: 10px;
+}
+.rms-pro-shell .form-grid label{
+  margin-bottom: 0;
+}
+.rms-pro-shell .form-grid input,
+.rms-pro-shell .form-grid select,
+.rms-pro-shell .form-grid textarea{
+  width: 100%;
+}
+
+/* Better neutral helper text */
+.rms-pro-shell .hint.small,
+.rms-pro-shell small.hint{
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+/* Report/print buttons should not dominate */
+.rms-pro-shell .finance-report-actions button,
+.rms-pro-shell .revenue-top-actions button,
+.rms-pro-shell .export-actions button{
+  font-weight: 800;
+}
+
+/* Diagnostics: visually separated from business modules */
+.rms-pro-shell .diagnostics-card,
+.rms-pro-shell .security-diagnostics-card{
+  background: linear-gradient(180deg,#fff 0%,#f8fafc 100%);
+}
+.rms-pro-shell .diagnostics-card .badge,
+.rms-pro-shell .security-diagnostics-card .badge{
+  background: #eef2ff;
+  color: #3730a3;
+}
+
+/* Better low-width tables */
+@media(max-width:760px){
+  .rms-pro-shell .table-wrap td .hint{
+    max-width: 220px;
+  }
+  .rms-pro-shell .action-row button.small,
+  .rms-pro-shell td button.small,
+  .rms-pro-shell .table-wrap button.small{
+    min-width: auto;
+  }
+  .rms-pro-shell .supplier-modal-panel .table-wrap td:last-child .action-row{
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+  .rms-pro-shell .supplier-modal-panel .table-wrap td:last-child,
+  .rms-pro-shell .supplier-modal-panel .table-wrap th:last-child{
+    min-width: 170px;
+  }
+}
+
+/* Final print polish */
+@media print{
+  .rms-pro-shell .topbar,
+  .rms-pro-shell .card-head{
+    border-bottom: 1px solid #d1d5db !important;
+  }
+  .rms-pro-shell .table-wrap th{
+    background: #f3f4f6 !important;
+    color: #111827 !important;
+  }
+}
+
+/* v109 RMS Final Layout & Interaction Polish Bundle */
+
+/* Global visual consistency */
+.rms-pro-shell{
+  --rms-shadow-soft: 0 10px 30px rgba(15,23,42,.045);
+  --rms-shadow-modal: 0 24px 72px rgba(15,23,42,.16);
+}
+.rms-pro-shell .card,
+.rms-pro-shell .topbar,
+.rms-pro-shell .soft-card,
+.rms-pro-shell .kpi-card{
+  box-shadow: var(--rms-shadow-soft);
+}
+
+/* Reduce top/bottom overload */
+.rms-pro-shell .topbar{
+  padding-top: 16px;
+  padding-bottom: 16px;
+}
+.rms-pro-shell .card{
+  padding-top: 18px;
+  padding-bottom: 18px;
+}
+.rms-pro-shell .card-head{
+  padding-bottom: 10px;
+}
+
+/* More stable two-column cards */
+.rms-pro-shell .span-2{
+  min-width: 0;
+}
+.rms-pro-shell .grid,
+.rms-pro-shell .cards-grid,
+.rms-pro-shell .form-grid{
+  min-width: 0;
+}
+
+/* Action bars: professional and predictable */
+.rms-pro-shell .action-row{
+  align-items: center;
+}
+.rms-pro-shell .action-row button{
+  white-space: nowrap;
+}
+.rms-pro-shell .topbar .action-row,
+.rms-pro-shell .card-head .action-row{
+  justify-content: flex-end;
+}
+.rms-pro-shell .table-wrap .action-row{
+  min-width: max-content;
+}
+
+/* Smaller technical helper text */
+.rms-pro-shell .hint,
+.rms-pro-shell small{
+  font-size: 13px;
+}
+.rms-pro-shell p.hint{
+  margin-bottom: 0;
+}
+
+/* Tables: final density pass */
+.rms-pro-shell .table-wrap{
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.rms-pro-shell .table-wrap th{
+  user-select: none;
+}
+.rms-pro-shell .table-wrap td,
+.rms-pro-shell .table-wrap th{
+  line-height: 1.34;
+}
+.rms-pro-shell .table-wrap td:first-child b{
+  letter-spacing: -.01em;
+}
+.rms-pro-shell .table-wrap .small{
+  min-height: 31px;
+}
+
+/* Deleted / cancelled rows should be clear but not ugly */
+.rms-pro-shell tr[style*="line-through"],
+.rms-pro-shell .deleted-row,
+.rms-pro-shell .cancelled-row{
+  opacity: .62;
+  background: #f8fafc !important;
+}
+.rms-pro-shell tr[style*="line-through"] td,
+.rms-pro-shell .deleted-row td,
+.rms-pro-shell .cancelled-row td{
+  color: #64748b;
+}
+
+/* Modal final pass */
+.rms-pro-shell .supplier-modal-panel{
+  box-shadow: var(--rms-shadow-modal);
+  animation: rmsModalIn .12s ease-out;
+}
+@keyframes rmsModalIn{
+  from{opacity:.86; transform: translateX(-50%) translateY(6px);}
+  to{opacity:1; transform: translateX(-50%) translateY(0);}
+}
+.rms-pro-shell .supplier-modal-panel::before{
+  animation: rmsBackdropIn .12s ease-out;
+}
+@keyframes rmsBackdropIn{
+  from{opacity:0;}
+  to{opacity:1;}
+}
+.rms-pro-shell .supplier-modal-head{
+  min-height: 64px;
+}
+.rms-pro-shell .supplier-modal-panel .card-head{
+  border-bottom: 1px solid rgba(226,232,240,.7);
+}
+.rms-pro-shell .supplier-modal-panel .table-wrap{
+  border-radius: 14px;
+}
+
+/* Forms inside modals and cards */
+.rms-pro-shell .supplier-modal-panel input,
+.rms-pro-shell .supplier-modal-panel select,
+.rms-pro-shell .supplier-modal-panel textarea{
+  min-height: 40px;
+}
+.rms-pro-shell .form-grid .action-row{
+  align-self: end;
+}
+
+/* Export and print buttons: less dominant */
+.rms-pro-shell .finance-report-actions button,
+.rms-pro-shell .revenue-top-actions button,
+.rms-pro-shell .export-actions button,
+.rms-pro-shell .report-actions button{
+  min-width: 72px;
+}
+
+/* Better mobile behavior */
+@media(max-width:900px){
+  .rms-pro-shell .topbar .action-row,
+  .rms-pro-shell .card-head .action-row{
+    justify-content: flex-start;
+  }
+  .rms-pro-shell .topbar{
+    gap: 12px;
+  }
+}
+@media(max-width:620px){
+  .rms-pro-shell .card{
+    padding: 14px;
+  }
+  .rms-pro-shell .topbar{
+    padding: 14px;
+  }
+  .rms-pro-shell .supplier-modal-panel{
+    border-radius: 16px;
+  }
+  .rms-pro-shell .supplier-modal-panel .table-wrap table{
+    min-width: 720px;
+  }
+  .rms-pro-shell .action-row button{
+    min-height: 34px;
+  }
+}
+
+/* Avoid heavy animation in reduced motion mode */
+@media (prefers-reduced-motion: reduce){
+  .rms-pro-shell .supplier-modal-panel,
+  .rms-pro-shell .supplier-modal-panel::before{
+    animation: none !important;
+  }
+}
+
+/* v110 RMS Modal Clarity & Action Footer Bundle */
+
+/* Make modal feel like a real window, not a floating page section */
+.rms-pro-shell .supplier-modal-panel{
+  top: 36px;
+  width: min(1080px, calc(100vw - 72px));
+  max-height: calc(100vh - 72px);
+  background: #ffffff;
+  border: 1px solid rgba(203,213,225,.95);
+  box-shadow: 0 28px 86px rgba(15,23,42,.22);
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+.rms-pro-shell .revenue-modal-panel{
+  width: min(860px, calc(100vw - 72px));
+}
+.rms-pro-shell .revenue-log-modal-panel,
+.rms-pro-shell .finance-ai-modal-panel,
+.rms-pro-shell .finance-forecast-modal-panel{
+  width: min(1080px, calc(100vw - 72px));
+}
+
+/* Light, visible backdrop: not dark, but clearly separates page and popup */
+.rms-pro-shell .supplier-modal-panel::before{
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background: rgba(241,245,249,.86);
+  backdrop-filter: blur(7px) saturate(1.05);
+}
+
+/* Cleaner modal header */
+.rms-pro-shell .supplier-modal-head{
+  min-height: 72px;
+  padding: 18px 20px;
+  background: rgba(255,255,255,.99);
+  border-bottom: 1px solid rgba(226,232,240,.96);
+  box-shadow: 0 8px 22px rgba(15,23,42,.045);
+}
+.rms-pro-shell .supplier-modal-head h3{
+  font-size: 22px;
+  line-height: 1.15;
+}
+.rms-pro-shell .supplier-modal-head p{
+  margin-top: 6px;
+  max-width: 760px;
+}
+
+/* X button more like a desktop window close control */
+.rms-pro-shell .supplier-modal-x{
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  min-height: 40px;
+  border-radius: 13px;
+  background: #ffffff;
+  border: 1px solid rgba(203,213,225,.95);
+  box-shadow: 0 8px 20px rgba(15,23,42,.08);
+}
+.rms-pro-shell .supplier-modal-x:hover{
+  background: #f1f5f9;
+  border-color: rgba(148,163,184,.95);
+}
+
+/* Modal body spacing */
+.rms-pro-shell .supplier-modal-panel > .form-grid,
+.rms-pro-shell .supplier-modal-panel > .table-wrap,
+.rms-pro-shell .supplier-modal-panel > div:not(.supplier-modal-head){
+  margin-left: 24px;
+  margin-right: 24px;
+}
+.rms-pro-shell .revenue-modal-body{
+  padding: 22px 24px;
+  background: #fff;
+}
+
+/* Form layout inside modal: less stretched, more readable */
+.rms-pro-shell .revenue-modal-panel .form-grid,
+.rms-pro-shell .supplier-modal-panel .form-grid{
+  display: grid;
+  grid-template-columns: repeat(3, minmax(180px, 1fr));
+  gap: 16px 18px;
+  align-items: end;
+}
+.rms-pro-shell .revenue-modal-panel textarea,
+.rms-pro-shell .supplier-modal-panel textarea{
+  min-height: 48px;
+}
+.rms-pro-shell .revenue-modal-panel input,
+.rms-pro-shell .revenue-modal-panel select,
+.rms-pro-shell .revenue-modal-panel textarea,
+.rms-pro-shell .supplier-modal-panel input,
+.rms-pro-shell .supplier-modal-panel select,
+.rms-pro-shell .supplier-modal-panel textarea{
+  background: #fff;
+}
+
+/* Sticky bottom actions so Save/Delete never disappear below scroll */
+.rms-pro-shell .revenue-modal-actions,
+.rms-pro-shell .supplier-modal-panel > .action-row:last-child{
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  padding: 14px 24px 18px;
+  background: linear-gradient(180deg, rgba(255,255,255,.72) 0%, #fff 38%, #fff 100%);
+  border-top: 1px solid rgba(226,232,240,.95);
+  justify-content: flex-end;
+  box-shadow: 0 -10px 24px rgba(15,23,42,.045);
+}
+.rms-pro-shell .revenue-modal-actions button,
+.rms-pro-shell .supplier-modal-panel > .action-row:last-child button{
+  min-width: 96px;
+}
+
+/* Prevent underlying page from visually competing with modal */
+.rms-pro-shell .supplier-modal-panel ~ .card,
+.rms-pro-shell .supplier-modal-panel ~ .soft-card{
+  opacity: .96;
+}
+
+/* Modal tables */
+.rms-pro-shell .supplier-modal-panel .table-wrap{
+  margin-top: 16px;
+  margin-bottom: 18px;
+  border-radius: 16px;
+  max-width: calc(100% - 48px);
+}
+.rms-pro-shell .supplier-modal-panel .table-wrap table{
+  min-width: 820px;
+}
+.rms-pro-shell .supplier-modal-panel .table-wrap th,
+.rms-pro-shell .supplier-modal-panel .table-wrap td{
+  padding: 10px 12px;
+}
+
+/* Mobile / narrow screen modal tuning */
+@media(max-width:980px){
+  .rms-pro-shell .supplier-modal-panel,
+  .rms-pro-shell .revenue-modal-panel,
+  .rms-pro-shell .revenue-log-modal-panel,
+  .rms-pro-shell .finance-ai-modal-panel,
+  .rms-pro-shell .finance-forecast-modal-panel{
+    top: 14px;
+    width: calc(100vw - 22px);
+    max-height: calc(100vh - 28px);
+    border-radius: 18px;
+  }
+  .rms-pro-shell .revenue-modal-panel .form-grid,
+  .rms-pro-shell .supplier-modal-panel .form-grid{
+    grid-template-columns: repeat(2, minmax(180px, 1fr));
+  }
+  .rms-pro-shell .supplier-modal-panel > .form-grid,
+  .rms-pro-shell .supplier-modal-panel > .table-wrap,
+  .rms-pro-shell .supplier-modal-panel > div:not(.supplier-modal-head){
+    margin-left: 16px;
+    margin-right: 16px;
+  }
+  .rms-pro-shell .supplier-modal-panel .table-wrap{
+    max-width: calc(100% - 32px);
+  }
+}
+@media(max-width:620px){
+  .rms-pro-shell .revenue-modal-panel .form-grid,
+  .rms-pro-shell .supplier-modal-panel .form-grid{
+    grid-template-columns: 1fr;
+  }
+  .rms-pro-shell .supplier-modal-head{
+    padding: 14px 15px;
+  }
+  .rms-pro-shell .supplier-modal-head h3{
+    font-size: 19px;
+  }
+  .rms-pro-shell .revenue-modal-actions,
+  .rms-pro-shell .supplier-modal-panel > .action-row:last-child{
+    padding: 12px 15px 15px;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+}
+
+/* v111 RMS Modal Footer Visibility Fix */
+
+/* Core modal layout: fixed header + scrollable body + always-visible footer */
+.rms-pro-shell .supplier-modal-panel{
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.rms-pro-shell .supplier-modal-head{
+  flex: 0 0 auto;
+}
+.rms-pro-shell .revenue-modal-body{
+  flex: 1 1 auto;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-bottom: 104px !important; /* reserve space for footer buttons */
+}
+
+/* Catch all likely footer/action wrappers inside modals */
+.rms-pro-shell .supplier-modal-panel .revenue-modal-actions,
+.rms-pro-shell .supplier-modal-panel .modal-actions,
+.rms-pro-shell .supplier-modal-panel .edit-actions,
+.rms-pro-shell .supplier-modal-panel .popup-actions,
+.rms-pro-shell .supplier-modal-panel .form-actions,
+.rms-pro-shell .supplier-modal-panel > .action-row:last-child{
+  position: sticky !important;
+  bottom: 0 !important;
+  left: 0;
+  right: 0;
+  z-index: 9;
+  display: flex !important;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 14px 24px 18px !important;
+  margin: 0 !important;
+  background: linear-gradient(180deg, rgba(255,255,255,.72) 0%, rgba(255,255,255,.97) 24%, #ffffff 100%) !important;
+  border-top: 1px solid rgba(226,232,240,.96);
+  box-shadow: 0 -12px 26px rgba(15,23,42,.05);
+}
+
+/* Buttons in footer must stay visible and usable */
+.rms-pro-shell .supplier-modal-panel .revenue-modal-actions button,
+.rms-pro-shell .supplier-modal-panel .modal-actions button,
+.rms-pro-shell .supplier-modal-panel .edit-actions button,
+.rms-pro-shell .supplier-modal-panel .popup-actions button,
+.rms-pro-shell .supplier-modal-panel .form-actions button,
+.rms-pro-shell .supplier-modal-panel > .action-row:last-child button{
+  min-width: 96px;
+  min-height: 38px;
+  white-space: nowrap;
+}
+
+/* Make modal slightly shorter so footer fits better in viewport */
+.rms-pro-shell .supplier-modal-panel{
+  top: 24px;
+  max-height: calc(100vh - 48px);
+}
+.rms-pro-shell .revenue-modal-panel{
+  width: min(820px, calc(100vw - 64px));
+}
+
+/* Tighter modal form so footer doesn't get pushed out */
+.rms-pro-shell .revenue-modal-panel .form-grid,
+.rms-pro-shell .supplier-modal-panel .form-grid{
+  gap: 14px 16px;
+}
+.rms-pro-shell .revenue-modal-panel textarea,
+.rms-pro-shell .supplier-modal-panel textarea{
+  min-height: 44px;
+}
+
+/* Make body container visually stop before footer */
+.rms-pro-shell .supplier-modal-panel .table-wrap:last-child,
+.rms-pro-shell .supplier-modal-panel .form-grid:last-child{
+  margin-bottom: 10px;
+}
+
+@media(max-width:980px){
+  .rms-pro-shell .supplier-modal-panel{
+    top: 10px;
+    max-height: calc(100vh - 20px);
+  }
+  .rms-pro-shell .revenue-modal-body{
+    padding-bottom: 112px !important;
+  }
+}
+@media(max-width:620px){
+  .rms-pro-shell .supplier-modal-panel .revenue-modal-actions,
+  .rms-pro-shell .supplier-modal-panel .modal-actions,
+  .rms-pro-shell .supplier-modal-panel .edit-actions,
+  .rms-pro-shell .supplier-modal-panel .popup-actions,
+  .rms-pro-shell .supplier-modal-panel .form-actions,
+  .rms-pro-shell .supplier-modal-panel > .action-row:last-child{
+    justify-content: flex-start;
+    padding: 12px 14px 14px !important;
+  }
+  .rms-pro-shell .revenue-modal-body{
+    padding-bottom: 122px !important;
+  }
+}
+
+/* v112 RMS Hard Fixed Modal Footer */
+
+/* Force edit modal footers to be visible on screen */
+.rms-pro-shell .revenue-modal-panel{
+  position: fixed !important;
+}
+.rms-pro-shell .revenue-modal-panel .revenue-modal-body{
+  padding-bottom: 120px !important;
+}
+.rms-pro-shell .revenue-modal-panel .revenue-modal-actions{
+  position: fixed !important;
+  left: 50% !important;
+  transform: translateX(-50%);
+  bottom: 18px !important;
+  z-index: 1305 !important;
+  width: min(820px, calc(100vw - 64px));
+  display: flex !important;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 12px 18px 14px !important;
+  background: rgba(255,255,255,.98) !important;
+  border: 1px solid rgba(226,232,240,.96);
+  border-radius: 16px;
+  box-shadow: 0 16px 40px rgba(15,23,42,.14);
+}
+.rms-pro-shell .revenue-modal-panel .revenue-modal-actions button{
+  min-width: 96px;
+}
+@media(max-width:980px){
+  .rms-pro-shell .revenue-modal-panel .revenue-modal-actions{
+    width: calc(100vw - 22px);
+    bottom: 10px !important;
+  }
+  .rms-pro-shell .revenue-modal-panel .revenue-modal-body{
+    padding-bottom: 132px !important;
+  }
+}
+@media(max-width:620px){
+  .rms-pro-shell .revenue-modal-panel .revenue-modal-actions{
+    justify-content: flex-start;
+    gap: 8px;
+    padding: 10px 12px 12px !important;
+  }
+  .rms-pro-shell .revenue-modal-panel .revenue-modal-actions button{
+    min-width: 88px;
+  }
+}
+
+/* v113 Revenue Modal Structure Hard Fix */
+
+/* Action buttons live in modal header now, always visible */
+.rms-pro-shell .modal-head-actions{
+  flex: 0 0 auto;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: nowrap;
+}
+.rms-pro-shell .modal-head-actions button.small{
+  min-width: 88px;
+  min-height: 36px;
+}
+.rms-pro-shell .modal-head-actions .supplier-modal-x{
+  min-width: 40px;
+  width: 40px;
+  height: 40px;
+  margin-left: 4px;
+}
+
+/* Revenue edit modals no longer need bottom sticky footer reserve */
+.rms-pro-shell .revenue-modal-panel .revenue-modal-body{
+  padding-bottom: 24px !important;
+}
+.rms-pro-shell .revenue-modal-panel .revenue-modal-actions{
+  display: none !important;
+}
+
+/* Keep header readable when action buttons are present */
+.rms-pro-shell .revenue-modal-panel .supplier-modal-head{
+  align-items: center;
+}
+.rms-pro-shell .revenue-modal-panel .supplier-modal-head > div:first-child{
+  min-width: 0;
+}
+.rms-pro-shell .revenue-modal-panel .supplier-modal-head h3,
+.rms-pro-shell .revenue-modal-panel .supplier-modal-head p{
+  max-width: 560px;
+}
+
+/* Better responsive behavior for header buttons */
+@media(max-width:760px){
+  .rms-pro-shell .revenue-modal-panel .supplier-modal-head{
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .rms-pro-shell .modal-head-actions{
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+  .rms-pro-shell .modal-head-actions button.small{
+    min-width: 80px;
+  }
+}
+@media(max-width:560px){
+  .rms-pro-shell .revenue-modal-panel .supplier-modal-head{
+    display: block;
+  }
+  .rms-pro-shell .modal-head-actions{
+    margin-top: 12px;
+    justify-content: flex-start;
+  }
+}
+
+/* v114 RMS Modal Header Actions Standardization */
+
+/* Standard modal header action layout across Revenue / Supplier / Finance */
+.rms-pro-shell .supplier-modal-head{
+  gap: 14px;
+}
+.rms-pro-shell .supplier-modal-head > .action-row{
+  flex: 0 0 auto;
+}
+.rms-pro-shell .supplier-modal-head .action-row{
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: nowrap;
+}
+.rms-pro-shell .supplier-modal-head .action-row button.small{
+  min-height: 36px;
+  padding-inline: 12px;
+  white-space: nowrap;
+}
+.rms-pro-shell .supplier-modal-head .action-row .supplier-modal-x{
+  margin-left: 2px;
+}
+
+/* Make statement / transaction modal headers less cramped */
+.rms-pro-shell .supplier-statement-modal .supplier-modal-head,
+.rms-pro-shell .supplier-transactions-panel .supplier-modal-head,
+.rms-pro-shell .finance-ai-modal-panel .supplier-modal-head,
+.rms-pro-shell .finance-forecast-modal-panel .supplier-modal-head{
+  align-items: center;
+}
+.rms-pro-shell .supplier-statement-modal .supplier-modal-head > div:first-child,
+.rms-pro-shell .supplier-transactions-panel .supplier-modal-head > div:first-child,
+.rms-pro-shell .finance-ai-modal-panel .supplier-modal-head > div:first-child,
+.rms-pro-shell .finance-forecast-modal-panel .supplier-modal-head > div:first-child{
+  min-width: 0;
+}
+.rms-pro-shell .supplier-statement-modal .supplier-modal-head h3,
+.rms-pro-shell .supplier-transactions-panel .supplier-modal-head h3,
+.rms-pro-shell .finance-ai-modal-panel .supplier-modal-head h3,
+.rms-pro-shell .finance-forecast-modal-panel .supplier-modal-head h3{
+  margin-bottom: 2px;
+}
+
+/* Compact secondary controls inside modal header */
+.rms-pro-shell .supplier-modal-head label{
+  margin: 0;
+}
+.rms-pro-shell .supplier-modal-head select{
+  min-height: 34px;
+  padding-block: 6px;
+}
+
+/* Remove excessive bottom action behavior from non-revenue modals */
+.rms-pro-shell .supplier-statement-modal > .action-row:last-child,
+.rms-pro-shell .finance-ai-modal-panel > .action-row:last-child,
+.rms-pro-shell .finance-forecast-modal-panel > .action-row:last-child{
+  position: static !important;
+  box-shadow: none !important;
+  border-top: 0 !important;
+  padding: 10px 0 0 !important;
+  background: transparent !important;
+}
+
+/* Modal body max readability */
+.rms-pro-shell .supplier-modal-panel .table-wrap{
+  margin-bottom: 18px;
+}
+.rms-pro-shell .supplier-modal-panel .card-head + .table-wrap{
+  margin-top: 14px;
+}
+
+/* Normalize close-only modal headers */
+.rms-pro-shell .supplier-modal-head > button.supplier-modal-x{
+  flex: 0 0 auto;
+}
+
+/* Better responsive header actions */
+@media(max-width:840px){
+  .rms-pro-shell .supplier-modal-head{
+    align-items: flex-start;
+  }
+  .rms-pro-shell .supplier-modal-head .action-row{
+    flex-wrap: wrap;
+  }
+}
+@media(max-width:620px){
+  .rms-pro-shell .supplier-modal-head{
+    display: block;
+  }
+  .rms-pro-shell .supplier-modal-head > .action-row{
+    margin-top: 12px;
+    justify-content: flex-start;
+  }
+  .rms-pro-shell .supplier-modal-head > button.supplier-modal-x{
+    position: absolute;
+    top: 12px;
+    right: 12px;
+  }
+  .rms-pro-shell .supplier-modal-head h3,
+  .rms-pro-shell .supplier-modal-head p{
+    padding-right: 48px;
+  }
+}
+
+/* v115 Revenue Modal Header Buttons Visibility Fix */
+
+/* Force revenue edit actions to live in the header */
+.rms-pro-shell .revenue-modal-panel .supplier-modal-head{
+  display:flex !important;
+  align-items:center !important;
+  justify-content:space-between !important;
+  gap:14px !important;
+}
+.rms-pro-shell .revenue-modal-panel .supplier-modal-head > div:first-child{
+  min-width:0;
+  flex:1 1 auto;
+}
+.rms-pro-shell .revenue-modal-panel .modal-head-actions{
+  flex:0 0 auto;
+  display:inline-flex !important;
+  align-items:center !important;
+  justify-content:flex-end !important;
+  gap:8px !important;
+  flex-wrap:nowrap !important;
+}
+.rms-pro-shell .revenue-modal-panel .modal-head-actions button.small{
+  min-width:88px;
+  min-height:36px;
+  padding:7px 12px;
+}
+.rms-pro-shell .revenue-modal-panel .modal-head-actions .supplier-modal-x{
+  min-width:40px !important;
+  width:40px !important;
+  height:40px !important;
+  margin-left:4px;
+}
+
+/* Old bottom footer must not reserve space or appear */
+.rms-pro-shell .revenue-modal-panel .revenue-modal-actions{
+  display:none !important;
+}
+.rms-pro-shell .revenue-modal-panel .revenue-modal-body{
+  padding-bottom:24px !important;
+}
+
+/* On narrower screens, keep actions visible below title, not below form */
+@media(max-width:760px){
+  .rms-pro-shell .revenue-modal-panel .supplier-modal-head{
+    align-items:flex-start !important;
+  }
+  .rms-pro-shell .revenue-modal-panel .modal-head-actions{
+    flex-wrap:wrap !important;
+  }
+}
+@media(max-width:560px){
+  .rms-pro-shell .revenue-modal-panel .supplier-modal-head{
+    display:block !important;
+  }
+  .rms-pro-shell .revenue-modal-panel .modal-head-actions{
+    margin-top:12px;
+    justify-content:flex-start !important;
+  }
+}
+
+/* v116 RMS Modal Action Visibility Final */
+.rms-pro-shell .revenue-modal-panel .supplier-modal-head{
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 14px !important;
+}
+.rms-pro-shell .revenue-modal-panel .modal-head-actions{
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  gap: 8px !important;
+  flex-wrap: nowrap !important;
+  flex: 0 0 auto;
+}
+.rms-pro-shell .revenue-modal-panel .modal-head-actions button{
+  white-space: nowrap;
+}
+.rms-pro-shell .revenue-modal-panel .modal-head-actions button.small{
+  min-width: 88px;
+  min-height: 36px;
+}
+.rms-pro-shell .revenue-modal-panel .modal-head-actions .supplier-modal-x{
+  min-width: 40px !important;
+  width: 40px !important;
+  height: 40px !important;
+  margin-left: 4px;
+}
+.rms-pro-shell .revenue-modal-panel .revenue-modal-actions{
+  display: none !important;
+}
+.rms-pro-shell .revenue-modal-panel .revenue-modal-body{
+  padding-bottom: 24px !important;
+}
+.rms-pro-shell .supplier-modal-head .action-row button{
+  white-space: nowrap;
+}
+.rms-pro-shell .supplier-modal-head > div:first-child{
+  min-width: 0;
+}
+.rms-pro-shell .supplier-modal-head h3,
+.rms-pro-shell .supplier-modal-head p{
+  overflow-wrap: anywhere;
+}
+.rms-pro-shell .revenue-modal-panel .form-grid{
+  margin-top: 14px;
+}
+.rms-pro-shell .revenue-modal-panel{
+  width: min(880px, calc(100vw - 64px));
+}
+.rms-pro-shell .revenue-modal-panel .supplier-modal-head p{
+  max-width: 520px;
+}
+.rms-pro-shell .supplier-statement-modal .supplier-modal-head .action-row,
+.rms-pro-shell .supplier-transactions-panel .supplier-modal-head .action-row{
+  gap: 8px;
+}
+@media(max-width:820px){
+  .rms-pro-shell .revenue-modal-panel .supplier-modal-head{
+    align-items: flex-start !important;
+  }
+  .rms-pro-shell .revenue-modal-panel .modal-head-actions{
+    flex-wrap: wrap !important;
+  }
+}
+@media(max-width:560px){
+  .rms-pro-shell .revenue-modal-panel .supplier-modal-head{
+    display: block !important;
+  }
+  .rms-pro-shell .revenue-modal-panel .modal-head-actions{
+    margin-top: 12px;
+    justify-content: flex-start !important;
+  }
+  .rms-pro-shell .revenue-modal-panel .modal-head-actions button.small{
+    min-width: 82px;
+  }
+  .rms-pro-shell .revenue-modal-panel{
+    width: calc(100vw - 16px);
+  }
+}
+
+/* v117 RMS Stable Consolidation Pack */
+
+/* Keep modal actions visible and above all body content */
+.rms-pro-shell .supplier-modal-panel{
+  isolation: isolate;
+}
+.rms-pro-shell .supplier-modal-head{
+  z-index: 30 !important;
+}
+.rms-pro-shell .modal-head-actions{
+  z-index: 31 !important;
+}
+
+/* Do not allow modal body to visually cover header actions */
+.rms-pro-shell .supplier-modal-panel .revenue-modal-body,
+.rms-pro-shell .supplier-modal-panel .form-grid,
+.rms-pro-shell .supplier-modal-panel .table-wrap{
+  position: relative;
+  z-index: 1;
+}
+
+/* Revenue edit modal: header is the only action location */
+.rms-pro-shell .revenue-modal-panel .modal-head-actions{
+  display: inline-flex !important;
+}
+.rms-pro-shell .revenue-modal-panel .revenue-modal-actions{
+  display: none !important;
+  visibility: hidden !important;
+  height: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  overflow: hidden !important;
+}
+
+/* Better header button proportions */
+.rms-pro-shell .modal-head-actions button.small{
+  font-weight: 800;
+  border-radius: 11px;
+}
+.rms-pro-shell .modal-head-actions button.danger,
+.rms-pro-shell .modal-head-actions .danger{
+  background: #fff1f2;
+  border-color: #fecdd3;
+  color: #be123c;
+}
+.rms-pro-shell .modal-head-actions button.danger:hover,
+.rms-pro-shell .modal-head-actions .danger:hover{
+  background: #ffe4e6;
+  border-color: #fda4af;
+}
+
+/* Stable modal width and spacing */
+.rms-pro-shell .revenue-modal-panel{
+  width: min(880px, calc(100vw - 56px));
+}
+.rms-pro-shell .supplier-modal-panel{
+  max-width: calc(100vw - 28px);
+}
+
+/* Make hidden/cancelled rows readable without looking active */
+.rms-pro-shell tr[style*="line-through"] td,
+.rms-pro-shell .deleted-row td,
+.rms-pro-shell .cancelled-row td{
+  text-decoration-thickness: 1px;
+  text-decoration-color: rgba(100,116,139,.75);
+}
+
+/* Final mobile safety */
+@media(max-width:620px){
+  .rms-pro-shell .revenue-modal-panel{
+    width: calc(100vw - 12px);
+  }
+  .rms-pro-shell .modal-head-actions{
+    gap: 7px !important;
+  }
+  .rms-pro-shell .modal-head-actions button.small{
+    min-width: 78px !important;
+    padding-inline: 9px;
+  }
+}
+
+/* v118 RMS Multi-Step Professional Optimization Bundle */
+
+/* 1) App-wide density and rhythm */
+.rms-pro-shell{
+  --rms-gap-sm: 8px;
+  --rms-gap-md: 12px;
+  --rms-gap-lg: 16px;
+  --rms-border: rgba(226,232,240,.94);
+  --rms-shadow-card: 0 10px 28px rgba(15,23,42,.04);
+}
+.rms-pro-shell .topbar{
+  padding: 16px 18px;
+  margin-bottom: 14px;
+}
+.rms-pro-shell .topbar h2{
+  font-size: clamp(22px, 1.8vw, 28px);
+}
+.rms-pro-shell .topbar p{
+  max-width: 900px;
+}
+.rms-pro-shell .card{
+  padding: 16px;
+  box-shadow: var(--rms-shadow-card);
+}
+.rms-pro-shell .card-head{
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+}
+
+/* 2) KPI / summary cards cleanup */
+.rms-pro-shell .kpi-grid,
+.rms-pro-shell .summary-grid,
+.rms-pro-shell .finance-kpi-grid,
+.rms-pro-shell .revenue-day-kpi{
+  gap: 12px;
+}
+.rms-pro-shell .kpi-card,
+.rms-pro-shell .soft-card,
+.rms-pro-shell .finance-exec-card,
+.rms-pro-shell .revenue-day-kpi > div{
+  padding: 13px 15px;
+  border: 1px solid var(--rms-border);
+  box-shadow: none;
+}
+.rms-pro-shell .kpi-card strong,
+.rms-pro-shell .soft-card strong,
+.rms-pro-shell .finance-exec-card strong{
+  font-variant-numeric: tabular-nums;
+}
+
+/* 3) Tables: consistent enterprise density */
+.rms-pro-shell .table-wrap{
+  border: 1px solid var(--rms-border);
+  box-shadow: none;
+}
+.rms-pro-shell .table-wrap th{
+  font-size: 12px;
+  font-weight: 850;
+  color: #475569;
+  background: #f8fafc;
+}
+.rms-pro-shell .table-wrap td{
+  font-size: 14px;
+  color: #334155;
+}
+.rms-pro-shell .table-wrap th,
+.rms-pro-shell .table-wrap td{
+  padding: 10px 12px;
+}
+.rms-pro-shell .table-wrap tbody tr:hover{
+  background: rgba(239,246,255,.46);
+}
+.rms-pro-shell .table-wrap td:last-child .action-row{
+  display: inline-flex;
+  justify-content: flex-end;
+  gap: 6px;
+  flex-wrap: nowrap;
+}
+
+/* 4) Buttons and destructive actions */
+.rms-pro-shell button.small,
+.rms-pro-shell .small{
+  min-height: 32px;
+  padding: 7px 11px;
+  border-radius: 10px;
+  font-weight: 800;
+}
+.rms-pro-shell .action-row button{
+  white-space: nowrap;
+}
+.rms-pro-shell button.primary,
+.rms-pro-shell .primary{
+  box-shadow: 0 8px 18px rgba(37,99,235,.12);
+}
+.rms-pro-shell button.danger,
+.rms-pro-shell button.remove,
+.rms-pro-shell .small.remove,
+.rms-pro-shell .danger{
+  background: #fff1f2;
+  border-color: #fecdd3;
+  color: #be123c;
+}
+.rms-pro-shell button.danger:hover,
+.rms-pro-shell button.remove:hover,
+.rms-pro-shell .small.remove:hover,
+.rms-pro-shell .danger:hover{
+  background: #ffe4e6;
+  border-color: #fda4af;
+}
+
+/* 5) Modal final guard: header actions never hidden */
+.rms-pro-shell .supplier-modal-panel{
+  isolation: isolate;
+  background: #fff;
+}
+.rms-pro-shell .supplier-modal-head{
+  position: sticky;
+  top: 0;
+  z-index: 40 !important;
+  background: rgba(255,255,255,.99);
+}
+.rms-pro-shell .modal-head-actions{
+  z-index: 41 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  flex: 0 0 auto;
+}
+.rms-pro-shell .modal-head-actions button{
+  white-space: nowrap;
+}
+.rms-pro-shell .revenue-modal-panel .revenue-modal-actions{
+  display: none !important;
+  visibility: hidden !important;
+  height: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  overflow: hidden !important;
+}
+.rms-pro-shell .revenue-modal-panel .revenue-modal-body{
+  padding-bottom: 22px !important;
+}
+
+/* 6) Modal body and forms */
+.rms-pro-shell .supplier-modal-panel .form-grid,
+.rms-pro-shell .revenue-modal-panel .form-grid{
+  gap: 14px 16px;
+}
+.rms-pro-shell .supplier-modal-panel input,
+.rms-pro-shell .supplier-modal-panel select,
+.rms-pro-shell .supplier-modal-panel textarea,
+.rms-pro-shell input,
+.rms-pro-shell select,
+.rms-pro-shell textarea{
+  border-color: rgba(203,213,225,.95);
+  background: #fff;
+}
+.rms-pro-shell input:focus,
+.rms-pro-shell select:focus,
+.rms-pro-shell textarea:focus{
+  border-color: rgba(37,99,235,.68);
+  box-shadow: 0 0 0 4px rgba(37,99,235,.10);
+}
+
+/* 7) Empty states and cancelled rows */
+.rms-pro-shell .table-wrap td[colspan],
+.rms-pro-shell .table-wrap td[colSpan]{
+  color: #64748b;
+  background: #f8fafc;
+}
+.rms-pro-shell tr[style*="line-through"],
+.rms-pro-shell .deleted-row,
+.rms-pro-shell .cancelled-row{
+  opacity: .64;
+  background: #f8fafc !important;
+}
+.rms-pro-shell tr[style*="line-through"] td,
+.rms-pro-shell .deleted-row td,
+.rms-pro-shell .cancelled-row td{
+  color: #64748b;
+}
+
+/* 8) Export / report actions */
+.rms-pro-shell .finance-report-actions,
+.rms-pro-shell .revenue-top-actions,
+.rms-pro-shell .export-actions,
+.rms-pro-shell .report-actions{
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.rms-pro-shell .finance-report-actions button,
+.rms-pro-shell .revenue-top-actions button,
+.rms-pro-shell .export-actions button,
+.rms-pro-shell .report-actions button{
+  min-height: 34px;
+  min-width: 68px;
+}
+
+/* 9) Diagnostics stays technical and compact */
+.rms-pro-shell .diagnostics-card,
+.rms-pro-shell .security-diagnostics-card{
+  border-left: 3px solid #64748b;
+  background: linear-gradient(180deg,#fff 0%,#f8fafc 100%);
+}
+.rms-pro-shell .diagnostics-card .card-head,
+.rms-pro-shell .security-diagnostics-card .card-head{
+  margin-bottom: 10px;
+}
+
+/* 10) Responsive hardening */
+@media(max-width:980px){
+  .rms-pro-shell .topbar{
+    display: block;
+  }
+  .rms-pro-shell .topbar .action-row{
+    margin-top: 12px;
+    justify-content: flex-start;
+  }
+  .rms-pro-shell .kpi-grid,
+  .rms-pro-shell .summary-grid,
+  .rms-pro-shell .finance-kpi-grid,
+  .rms-pro-shell .revenue-day-kpi{
+    grid-template-columns: repeat(2, minmax(0,1fr));
+  }
+}
+@media(max-width:640px){
+  .rms-pro-shell .card{
+    padding: 14px;
+  }
+  .rms-pro-shell .kpi-grid,
+  .rms-pro-shell .summary-grid,
+  .rms-pro-shell .finance-kpi-grid,
+  .rms-pro-shell .revenue-day-kpi{
+    grid-template-columns: 1fr;
+  }
+  .rms-pro-shell .supplier-modal-head{
+    display: block;
+  }
+  .rms-pro-shell .modal-head-actions{
+    margin-top: 12px;
+    flex-wrap: wrap !important;
+    justify-content: flex-start !important;
+  }
+  .rms-pro-shell .table-wrap th,
+  .rms-pro-shell .table-wrap td{
+    padding: 9px 10px;
+    font-size: 13px;
+  }
+}
+
+/* 11) Print polish */
+@media print{
+  .rms-pro-shell .rms-pro-sidebar,
+  .rms-pro-shell .rms-pro-topbar,
+  .rms-pro-shell button,
+  .rms-pro-shell .action-row,
+  .rms-pro-shell .supplier-modal-x{
+    display: none !important;
+  }
+  .rms-pro-shell .card,
+  .rms-pro-shell .table-wrap{
+    box-shadow: none !important;
+    border-color: #d1d5db !important;
+  }
+  .rms-pro-shell .supplier-modal-panel{
+    position: static !important;
+    transform: none !important;
+    width: 100% !important;
+    max-height: none !important;
+    overflow: visible !important;
+    box-shadow: none !important;
+  }
+  .rms-pro-shell .supplier-modal-panel::before{
+    display: none !important;
+  }
+}
+
+/* v119 RMS Tables, Forms & Workflow Polish Bundle */
+
+/* 1) Sticky table headers only inside scroll containers */
+.rms-pro-shell .table-wrap{
+  position: relative;
+}
+.rms-pro-shell .table-wrap thead th{
+  position: sticky;
+  top: 0;
+  z-index: 3;
+}
+
+/* 2) Cleaner action columns */
+.rms-pro-shell .table-wrap td:last-child,
+.rms-pro-shell .table-wrap th:last-child{
+  white-space: nowrap;
+}
+.rms-pro-shell .table-wrap td:last-child .action-row{
+  min-width: max-content;
+}
+.rms-pro-shell .table-wrap .action-row button.small{
+  min-width: 72px;
+}
+
+/* 3) Better readable long text in cells */
+.rms-pro-shell .table-wrap td{
+  max-width: 420px;
+}
+.rms-pro-shell .table-wrap td .hint,
+.rms-pro-shell .table-wrap td p{
+  overflow-wrap: anywhere;
+}
+
+/* 4) Compact inline editors */
+.rms-pro-shell .inline-edit,
+.rms-pro-shell .inline-actions{
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.rms-pro-shell .inline-edit input,
+.rms-pro-shell .inline-edit select{
+  min-width: 160px;
+}
+
+/* 5) Better form cards */
+.rms-pro-shell .form-grid.compact{
+  gap: 12px;
+}
+.rms-pro-shell .form-grid.compact input,
+.rms-pro-shell .form-grid.compact select,
+.rms-pro-shell .form-grid.compact textarea{
+  min-height: 40px;
+}
+.rms-pro-shell .form-grid.compact label span{
+  font-size: 12.5px;
+}
+
+/* 6) Section headers and secondary descriptions */
+.rms-pro-shell .card-head h3 + p,
+.rms-pro-shell .topbar h2 + p{
+  color: #64748b;
+}
+.rms-pro-shell .card-head .action-row{
+  gap: 8px;
+}
+
+/* 7) Modal action safety */
+.rms-pro-shell .supplier-modal-panel .modal-head-actions{
+  max-width: 100%;
+}
+.rms-pro-shell .supplier-modal-panel .modal-head-actions button{
+  flex: 0 0 auto;
+}
+.rms-pro-shell .supplier-modal-panel .supplier-modal-head{
+  overflow: visible;
+}
+
+/* 8) Better visual separation behind modal */
+.rms-pro-shell .supplier-modal-panel::before{
+  background: rgba(248,250,252,.90);
+}
+
+/* 9) More consistent status text */
+.rms-pro-shell .status-text,
+.rms-pro-shell .status-cell{
+  font-weight: 800;
+}
+.rms-pro-shell .good,
+.rms-pro-shell .bad,
+.rms-pro-shell .warn{
+  font-variant-numeric: tabular-nums;
+}
+
+/* 10) Export buttons should not dominate */
+.rms-pro-shell .finance-report-actions button,
+.rms-pro-shell .revenue-top-actions button,
+.rms-pro-shell .export-actions button,
+.rms-pro-shell .report-actions button{
+  padding-inline: 12px;
+}
+
+/* 11) Reduce nested-card heaviness */
+.rms-pro-shell .card .card{
+  box-shadow: none;
+  border-color: rgba(226,232,240,.88);
+}
+.rms-pro-shell .supplier-modal-panel .card{
+  background: #fff;
+}
+
+/* 12) Mobile action rows */
+@media(max-width:760px){
+  .rms-pro-shell .table-wrap td:last-child,
+  .rms-pro-shell .table-wrap th:last-child{
+    white-space: normal;
+  }
+  .rms-pro-shell .table-wrap td:last-child .action-row{
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+  .rms-pro-shell .table-wrap .action-row button.small{
+    min-width: auto;
+  }
+  .rms-pro-shell .inline-edit{
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+}
+
+/* 13) Narrow modal header action handling */
+@media(max-width:680px){
+  .rms-pro-shell .supplier-modal-head{
+    display: block !important;
+  }
+  .rms-pro-shell .supplier-modal-head .action-row,
+  .rms-pro-shell .modal-head-actions{
+    margin-top: 12px;
+    justify-content: flex-start !important;
+  }
+  .rms-pro-shell .supplier-modal-head h3,
+  .rms-pro-shell .supplier-modal-head p{
+    padding-right: 0;
+  }
+}
+
+/* 14) Print: keep data tables readable */
+@media print{
+  .rms-pro-shell .table-wrap{
+    overflow: visible !important;
+  }
+  .rms-pro-shell .table-wrap thead th{
+    position: static !important;
+  }
+  .rms-pro-shell .table-wrap td{
+    max-width: none !important;
+  }
+}
+
+/* v120 RMS Final UX Stabilization Bundle */
+
+/* 1) Stronger visual hierarchy for business sections */
+.rms-pro-shell .topbar,
+.rms-pro-shell .card{
+  border-color: rgba(226,232,240,.96);
+}
+.rms-pro-shell .topbar h2,
+.rms-pro-shell .card-head h3{
+  color: #0f172a;
+}
+.rms-pro-shell .card-head h3{
+  font-weight: 850;
+}
+.rms-pro-shell .card-head p,
+.rms-pro-shell .topbar p{
+  color: #64748b;
+  max-width: 960px;
+}
+
+/* 2) KPI polish */
+.rms-pro-shell .kpi-card,
+.rms-pro-shell .soft-card,
+.rms-pro-shell .finance-exec-card,
+.rms-pro-shell .revenue-day-kpi > div{
+  transition: border-color .16s ease, box-shadow .16s ease, transform .08s ease;
+}
+.rms-pro-shell .kpi-card:hover,
+.rms-pro-shell .soft-card:hover,
+.rms-pro-shell .finance-exec-card:hover,
+.rms-pro-shell .revenue-day-kpi > div:hover{
+  border-color: rgba(203,213,225,.98);
+  box-shadow: 0 10px 24px rgba(15,23,42,.045);
+}
+.rms-pro-shell .kpi-card:active,
+.rms-pro-shell .soft-card:active,
+.rms-pro-shell .finance-exec-card:active{
+  transform: translateY(1px);
+}
+
+/* 3) Tables final pass */
+.rms-pro-shell .table-wrap{
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148,163,184,.65) transparent;
+}
+.rms-pro-shell .table-wrap::-webkit-scrollbar{
+  height: 8px;
+  width: 8px;
+}
+.rms-pro-shell .table-wrap::-webkit-scrollbar-thumb{
+  background: rgba(148,163,184,.55);
+  border-radius: 999px;
+}
+.rms-pro-shell .table-wrap::-webkit-scrollbar-track{
+  background: transparent;
+}
+.rms-pro-shell .table-wrap th,
+.rms-pro-shell .table-wrap td{
+  border-bottom-color: rgba(226,232,240,.78);
+}
+.rms-pro-shell .table-wrap th:first-child,
+.rms-pro-shell .table-wrap td:first-child{
+  padding-left: 14px;
+}
+.rms-pro-shell .table-wrap th:last-child,
+.rms-pro-shell .table-wrap td:last-child{
+  padding-right: 14px;
+}
+
+/* 4) More professional action buttons in tables */
+.rms-pro-shell .table-wrap .action-row button.small{
+  border-radius: 10px;
+  line-height: 1.1;
+}
+.rms-pro-shell .table-wrap .action-row button.small:not(.primary):not(.danger):not(.remove){
+  background: #fff;
+  border-color: rgba(203,213,225,.95);
+  color: #334155;
+}
+.rms-pro-shell .table-wrap .action-row button.small:not(.primary):not(.danger):not(.remove):hover{
+  background: #f8fafc;
+  border-color: rgba(148,163,184,.95);
+}
+
+/* 5) Forms final pass */
+.rms-pro-shell .form-grid label{
+  color: #475569;
+}
+.rms-pro-shell .form-grid input,
+.rms-pro-shell .form-grid select,
+.rms-pro-shell .form-grid textarea{
+  color: #0f172a;
+}
+.rms-pro-shell .form-grid input::placeholder,
+.rms-pro-shell .form-grid textarea::placeholder{
+  color: #94a3b8;
+}
+.rms-pro-shell .checkbox-row{
+  gap: 8px;
+  align-items: center;
+}
+.rms-pro-shell input[type="checkbox"]{
+  accent-color: #2563eb;
+}
+
+/* 6) Modal final polish */
+.rms-pro-shell .supplier-modal-panel{
+  border-radius: 22px;
+}
+.rms-pro-shell .supplier-modal-head{
+  border-top-left-radius: 22px;
+  border-top-right-radius: 22px;
+}
+.rms-pro-shell .supplier-modal-panel .table-wrap{
+  background: #fff;
+}
+.rms-pro-shell .supplier-modal-panel .modal-head-actions button.small{
+  box-shadow: none;
+}
+.rms-pro-shell .supplier-modal-panel .modal-head-actions button.primary{
+  box-shadow: 0 8px 16px rgba(37,99,235,.12);
+}
+.rms-pro-shell .supplier-modal-x{
+  font-size: 22px;
+  font-weight: 850;
+}
+
+/* 7) Revenue / Finance / Supplier report buttons */
+.rms-pro-shell .finance-report-actions,
+.rms-pro-shell .revenue-top-actions,
+.rms-pro-shell .export-actions,
+.rms-pro-shell .report-actions{
+  padding: 2px 0;
+}
+.rms-pro-shell .finance-report-actions button,
+.rms-pro-shell .revenue-top-actions button,
+.rms-pro-shell .export-actions button,
+.rms-pro-shell .report-actions button{
+  border-radius: 10px;
+}
+
+/* 8) Diagnostics and technical sections */
+.rms-pro-shell .diagnostics-card,
+.rms-pro-shell .security-diagnostics-card{
+  color: #334155;
+}
+.rms-pro-shell .diagnostics-card .card-head h3,
+.rms-pro-shell .security-diagnostics-card .card-head h3{
+  color: #0f172a;
+}
+.rms-pro-shell .diagnostics-card .table-wrap,
+.rms-pro-shell .security-diagnostics-card .table-wrap{
+  background: #fff;
+}
+
+/* 9) Navigation polish */
+.rms-pro-shell .rms-pro-topbar{
+  box-shadow: 0 8px 22px rgba(15,23,42,.035);
+}
+.rms-pro-shell .rms-pro-back{
+  border-radius: 12px;
+}
+
+/* 10) Better disabled states */
+.rms-pro-shell button:disabled,
+.rms-pro-shell input:disabled,
+.rms-pro-shell select:disabled,
+.rms-pro-shell textarea:disabled{
+  opacity: .66;
+}
+.rms-pro-shell button:disabled{
+  cursor: not-allowed;
+}
+
+/* 11) Compact mobile behavior */
+@media(max-width:720px){
+  .rms-pro-shell .topbar{
+    padding: 14px;
+  }
+  .rms-pro-shell .card{
+    padding: 14px;
+  }
+  .rms-pro-shell .card-head{
+    margin-bottom: 10px;
+  }
+  .rms-pro-shell .table-wrap th:first-child,
+  .rms-pro-shell .table-wrap td:first-child{
+    padding-left: 10px;
+  }
+  .rms-pro-shell .table-wrap th:last-child,
+  .rms-pro-shell .table-wrap td:last-child{
+    padding-right: 10px;
+  }
+  .rms-pro-shell .supplier-modal-panel{
+    border-radius: 16px;
+  }
+  .rms-pro-shell .supplier-modal-head{
+    border-top-left-radius: 16px;
+    border-top-right-radius: 16px;
+  }
+}
+
+/* 12) Final print/export polish */
+@media print{
+  .rms-pro-shell .card{
+    break-inside: avoid;
+  }
+  .rms-pro-shell .table-wrap{
+    border-radius: 0 !important;
+  }
+  .rms-pro-shell .table-wrap th,
+  .rms-pro-shell .table-wrap td{
+    padding: 7px 8px !important;
+    font-size: 11px !important;
+  }
+}
+
+/* v121 Tech Cards Stability & Cost Engine Starter */
+
+/* Tech cards: clearer statuses */
+.rms-pro-shell .tech-status{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-height:26px;
+  padding:4px 10px;
+  border-radius:999px;
+  font-size:12px;
+  font-weight:850;
+  white-space:nowrap;
+}
+.rms-pro-shell .tech-status.active{
+  background:#ecfdf5;
+  color:#047857;
+  border:1px solid #bbf7d0;
+}
+.rms-pro-shell .tech-status.warning{
+  background:#fffbeb;
+  color:#b45309;
+  border:1px solid #fde68a;
+}
+.rms-pro-shell .tech-status.danger{
+  background:#fff1f2;
+  color:#be123c;
+  border:1px solid #fecdd3;
+}
+
+/* Tech card action buttons should be readable, not icon-only */
+.rms-pro-shell .tech-row-actions{
+  display:inline-flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:6px;
+  flex-wrap:nowrap;
+}
+.rms-pro-shell .tech-row-actions .icon-button{
+  width:auto;
+  min-width:76px;
+  height:32px;
+  padding:6px 10px;
+  border-radius:10px;
+  font-size:12px;
+  font-weight:850;
+  line-height:1;
+}
+.rms-pro-shell .tech-row-actions .tech-view-button{
+  min-width:82px;
+}
+.rms-pro-shell .tech-row-actions .tech-edit-button{
+  background:#fff;
+  border-color:rgba(203,213,225,.95);
+  color:#334155;
+}
+.rms-pro-shell .tech-row-actions .tech-print-button{
+  background:#f8fafc;
+  border-color:rgba(203,213,225,.95);
+  color:#334155;
+}
+
+/* Tech cards: keep cost and margin columns readable */
+.rms-pro-shell .tech-modern-table td:nth-child(3),
+.rms-pro-shell .tech-modern-table td:nth-child(4),
+.rms-pro-shell .tech-modern-table td:nth-child(5){
+  font-variant-numeric:tabular-nums;
+  white-space:nowrap;
+}
+.rms-pro-shell .tech-modern-table td:nth-child(7){
+  min-width:250px;
+  text-align:right;
+}
+.rms-pro-shell .tech-modern-table th:nth-child(7){
+  text-align:right;
+}
+
+/* Semi-finished composition: stronger editing state */
+.rms-pro-shell .semi-row.editing td{
+  background:#eff6ff!important;
+  box-shadow:inset 0 1px 0 rgba(59,130,246,.12), inset 0 -1px 0 rgba(59,130,246,.12);
+}
+.rms-pro-shell .semi-row-actions{
+  gap:6px!important;
+}
+.rms-pro-shell .semi-row-actions button{
+  min-width:86px!important;
+}
+
+/* Tech cards: professional empty state */
+.rms-pro-shell .tech-modern-table td.hint,
+.rms-pro-shell .semi-composition-card td.hint{
+  background:#f8fafc;
+  border:1px dashed rgba(203,213,225,.9);
+  color:#64748b;
+}
+
+/* Tech detail panel: lighter modal feel */
+.rms-pro-shell .tech-detail-overlay{
+  background:rgba(248,250,252,.88)!important;
+  backdrop-filter:blur(6px);
+}
+.rms-pro-shell .tech-detail-panel{
+  box-shadow:0 26px 80px rgba(15,23,42,.18)!important;
+  border:1px solid rgba(203,213,225,.9);
+}
+
+/* Mobile tech card table safety */
+@media(max-width:920px){
+  .rms-pro-shell .tech-modern-table{
+    min-width:980px;
+  }
+  .rms-pro-shell .tech-table-wrap{
+    overflow-x:auto;
+  }
+}
+
+/* v122 Tech Cards Print / Export & Recipe Card UX */
+
+/* Tech card top controls */
+.rms-pro-shell .tech-modern-shell .card-head,
+.rms-pro-shell .tech-card-root .card-head{
+  align-items:flex-start;
+  gap:14px;
+}
+.rms-pro-shell .tech-modern-shell .action-row,
+.rms-pro-shell .tech-card-root .action-row{
+  gap:8px;
+  flex-wrap:wrap;
+}
+
+/* Recipe card preview / detail panel */
+.rms-pro-shell .tech-detail-panel{
+  background:#fff;
+  border-radius:24px;
+}
+.rms-pro-shell .tech-detail-top{
+  border-bottom:1px solid rgba(226,232,240,.96);
+  padding-bottom:16px;
+  margin-bottom:16px;
+}
+.rms-pro-shell .tech-detail-hero{
+  border-radius:20px;
+  overflow:hidden;
+  background:#f8fafc;
+  border:1px solid rgba(226,232,240,.96);
+}
+.rms-pro-shell .tech-detail-hero img{
+  object-fit:cover;
+}
+.rms-pro-shell .tech-detail-placeholder{
+  background:linear-gradient(135deg,#eff6ff 0%,#f8fafc 100%);
+  color:#2563eb;
+}
+
+/* Cost summary chips inside tech cards */
+.rms-pro-shell .tech-cost-chip,
+.rms-pro-shell .recipe-cost-chip{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  min-height:28px;
+  padding:5px 10px;
+  border-radius:999px;
+  border:1px solid rgba(226,232,240,.96);
+  background:#fff;
+  font-size:12px;
+  font-weight:850;
+  color:#334155;
+}
+.rms-pro-shell .tech-cost-chip.good,
+.rms-pro-shell .recipe-cost-chip.good{
+  background:#ecfdf5;
+  border-color:#bbf7d0;
+  color:#047857;
+}
+.rms-pro-shell .tech-cost-chip.warn,
+.rms-pro-shell .recipe-cost-chip.warn{
+  background:#fffbeb;
+  border-color:#fde68a;
+  color:#b45309;
+}
+.rms-pro-shell .tech-cost-chip.bad,
+.rms-pro-shell .recipe-cost-chip.bad{
+  background:#fff1f2;
+  border-color:#fecdd3;
+  color:#be123c;
+}
+
+/* Ingredients / composition tables */
+.rms-pro-shell .recipe-items-table,
+.rms-pro-shell .semi-composition-card table,
+.rms-pro-shell .tech-detail-panel table{
+  width:100%;
+  border-collapse:separate;
+  border-spacing:0;
+}
+.rms-pro-shell .recipe-items-table th,
+.rms-pro-shell .recipe-items-table td,
+.rms-pro-shell .semi-composition-card th,
+.rms-pro-shell .semi-composition-card td,
+.rms-pro-shell .tech-detail-panel table th,
+.rms-pro-shell .tech-detail-panel table td{
+  padding:10px 12px;
+  border-bottom:1px solid rgba(226,232,240,.78);
+}
+.rms-pro-shell .recipe-items-table th,
+.rms-pro-shell .semi-composition-card th,
+.rms-pro-shell .tech-detail-panel table th{
+  background:#f8fafc;
+  color:#475569;
+  font-size:12px;
+  font-weight:850;
+}
+.rms-pro-shell .recipe-items-table td:nth-child(n+3),
+.rms-pro-shell .semi-composition-card td:nth-child(n+3),
+.rms-pro-shell .tech-detail-panel table td:nth-child(n+3){
+  font-variant-numeric:tabular-nums;
+}
+
+/* Edit actions in recipes */
+.rms-pro-shell .recipe-row-actions,
+.rms-pro-shell .tech-ingredient-actions{
+  display:inline-flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:6px;
+  flex-wrap:nowrap;
+}
+.rms-pro-shell .recipe-row-actions button,
+.rms-pro-shell .tech-ingredient-actions button{
+  min-width:78px;
+}
+
+/* Print/export buttons in Tech Cards */
+.rms-pro-shell .tech-print-button,
+.rms-pro-shell .tech-export-button,
+.rms-pro-shell .tech-modern-shell button[title*="Печать"]{
+  border-radius:10px;
+  font-weight:850;
+}
+.rms-pro-shell .tech-modern-shell button[title*="Печать"],
+.rms-pro-shell .tech-print-button{
+  background:#f8fafc;
+  border-color:rgba(203,213,225,.95);
+  color:#334155;
+}
+
+/* Better printed recipe card */
+@media print{
+  .rms-pro-shell .tech-detail-overlay,
+  .rms-pro-shell .tech-detail-panel{
+    position:static!important;
+    inset:auto!important;
+    width:100%!important;
+    max-width:none!important;
+    max-height:none!important;
+    overflow:visible!important;
+    box-shadow:none!important;
+    border:0!important;
+    background:#fff!important;
+  }
+  .rms-pro-shell .tech-detail-overlay{
+    backdrop-filter:none!important;
+  }
+  .rms-pro-shell .tech-detail-hero,
+  .rms-pro-shell .tech-detail-placeholder{
+    max-height:180px!important;
+  }
+  .rms-pro-shell .tech-detail-panel table th,
+  .rms-pro-shell .tech-detail-panel table td{
+    padding:7px 8px!important;
+    font-size:11px!important;
+  }
+  .rms-pro-shell .tech-status,
+  .rms-pro-shell .tech-cost-chip,
+  .rms-pro-shell .recipe-cost-chip{
+    border:1px solid #d1d5db!important;
+    background:#fff!important;
+    color:#111827!important;
+  }
+}
+
+/* Mobile tech card detail */
+@media(max-width:760px){
+  .rms-pro-shell .tech-detail-panel{
+    border-radius:18px;
+  }
+  .rms-pro-shell .recipe-row-actions,
+  .rms-pro-shell .tech-ingredient-actions{
+    flex-wrap:wrap;
+    justify-content:flex-start;
+  }
+  .rms-pro-shell .recipe-row-actions button,
+  .rms-pro-shell .tech-ingredient-actions button{
+    min-width:auto;
+  }
+}
+
+/* v123 Menu Profitability Pack */
+
+/* Menu profitability / tech analytics cards */
+.rms-pro-shell .menu-profitability-card,
+.rms-pro-shell .tech-profitability-card{
+  border:1px solid rgba(226,232,240,.96);
+  background:linear-gradient(180deg,#fff 0%,#f8fafc 100%);
+  border-radius:18px;
+  padding:16px;
+}
+.rms-pro-shell .menu-profitability-grid,
+.rms-pro-shell .tech-profitability-grid{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:12px;
+}
+.rms-pro-shell .menu-profitability-kpi,
+.rms-pro-shell .tech-profitability-kpi{
+  border:1px solid rgba(226,232,240,.96);
+  background:#fff;
+  border-radius:16px;
+  padding:13px 15px;
+}
+.rms-pro-shell .menu-profitability-kpi span,
+.rms-pro-shell .tech-profitability-kpi span{
+  display:block;
+  color:#64748b;
+  font-size:12.5px;
+  font-weight:800;
+}
+.rms-pro-shell .menu-profitability-kpi strong,
+.rms-pro-shell .tech-profitability-kpi strong{
+  display:block;
+  margin-top:5px;
+  font-size:20px;
+  line-height:1.15;
+  font-variant-numeric:tabular-nums;
+}
+.rms-pro-shell .profitability-status{
+  display:inline-flex;
+  align-items:center;
+  min-height:26px;
+  padding:4px 10px;
+  border-radius:999px;
+  font-size:12px;
+  font-weight:850;
+  border:1px solid rgba(226,232,240,.96);
+}
+.rms-pro-shell .profitability-status.good{
+  background:#ecfdf5;
+  border-color:#bbf7d0;
+  color:#047857;
+}
+.rms-pro-shell .profitability-status.warn{
+  background:#fffbeb;
+  border-color:#fde68a;
+  color:#b45309;
+}
+.rms-pro-shell .profitability-status.bad{
+  background:#fff1f2;
+  border-color:#fecdd3;
+  color:#be123c;
+}
+.rms-pro-shell .profitability-table td:nth-child(n+3),
+.rms-pro-shell .profitability-table th:nth-child(n+3){
+  text-align:right;
+  font-variant-numeric:tabular-nums;
+}
+.rms-pro-shell .profitability-table td:first-child,
+.rms-pro-shell .profitability-table th:first-child{
+  min-width:220px;
+}
+.rms-pro-shell .profitability-table .action-row{
+  justify-content:flex-end;
+}
+.rms-pro-shell .profitability-note{
+  margin-top:10px;
+  color:#64748b;
+  font-size:13px;
+  line-height:1.45;
+}
+@media(max-width:980px){
+  .rms-pro-shell .menu-profitability-grid,
+  .rms-pro-shell .tech-profitability-grid{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+}
+@media(max-width:620px){
+  .rms-pro-shell .menu-profitability-grid,
+  .rms-pro-shell .tech-profitability-grid{
+    grid-template-columns:1fr;
+  }
+}
+
+/* v124 Dashboard Executive Pack */
+
+/* Executive dashboard hierarchy */
+.rms-pro-shell .dashboard-executive-card,
+.rms-pro-shell .executive-summary-card{
+  border:1px solid rgba(226,232,240,.96);
+  background:linear-gradient(180deg,#fff 0%,#f8fafc 100%);
+  border-radius:20px;
+  padding:16px;
+  box-shadow:0 10px 28px rgba(15,23,42,.04);
+}
+.rms-pro-shell .dashboard-executive-grid,
+.rms-pro-shell .executive-summary-grid{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:12px;
+}
+.rms-pro-shell .dashboard-executive-kpi,
+.rms-pro-shell .executive-summary-kpi{
+  border:1px solid rgba(226,232,240,.96);
+  background:#fff;
+  border-radius:16px;
+  padding:14px 15px;
+}
+.rms-pro-shell .dashboard-executive-kpi span,
+.rms-pro-shell .executive-summary-kpi span{
+  display:block;
+  color:#64748b;
+  font-size:12.5px;
+  font-weight:850;
+}
+.rms-pro-shell .dashboard-executive-kpi strong,
+.rms-pro-shell .executive-summary-kpi strong{
+  display:block;
+  margin-top:5px;
+  font-size:22px;
+  line-height:1.12;
+  letter-spacing:-.025em;
+  font-variant-numeric:tabular-nums;
+}
+.rms-pro-shell .dashboard-executive-kpi small,
+.rms-pro-shell .executive-summary-kpi small{
+  display:block;
+  margin-top:5px;
+  color:#64748b;
+  font-size:12px;
+}
+
+/* Executive alerts */
+.rms-pro-shell .executive-alert-list{
+  display:grid;
+  gap:10px;
+}
+.rms-pro-shell .executive-alert{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+  padding:12px 14px;
+  border:1px solid rgba(226,232,240,.96);
+  border-radius:14px;
+  background:#fff;
+}
+.rms-pro-shell .executive-alert strong{
+  color:#0f172a;
+}
+.rms-pro-shell .executive-alert p{
+  margin:4px 0 0;
+  color:#64748b;
+  font-size:13px;
+}
+.rms-pro-shell .executive-alert.ok{
+  border-color:#bbf7d0;
+  background:#ecfdf5;
+}
+.rms-pro-shell .executive-alert.warn{
+  border-color:#fde68a;
+  background:#fffbeb;
+}
+.rms-pro-shell .executive-alert.bad{
+  border-color:#fecdd3;
+  background:#fff1f2;
+}
+
+/* Dashboard cards/tables density */
+.rms-pro-shell .dashboard-card .card-head,
+.rms-pro-shell .dashboard-executive-card .card-head{
+  margin-bottom:12px;
+}
+.rms-pro-shell .dashboard-card .table-wrap th,
+.rms-pro-shell .dashboard-card .table-wrap td{
+  padding:9px 11px;
+}
+
+/* Keep dashboard as director screen: not too technical */
+.rms-pro-shell .dashboard-technical-note{
+  color:#64748b;
+  font-size:12.5px;
+  line-height:1.42;
+}
+.rms-pro-shell .dashboard-quick-actions{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  flex-wrap:wrap;
+}
+.rms-pro-shell .dashboard-quick-actions button{
+  min-height:34px;
+  border-radius:10px;
+}
+
+/* Mobile dashboard */
+@media(max-width:980px){
+  .rms-pro-shell .dashboard-executive-grid,
+  .rms-pro-shell .executive-summary-grid{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+}
+@media(max-width:620px){
+  .rms-pro-shell .dashboard-executive-grid,
+  .rms-pro-shell .executive-summary-grid{
+    grid-template-columns:1fr;
+  }
+  .rms-pro-shell .executive-alert{
+    display:block;
+  }
+}
+
+/* v125 Dashboard Business Signals & Navigation Pack */
+
+/* Dashboard executive layout */
+.rms-pro-shell .dashboard-root,
+.rms-pro-shell .dashboard-section{
+  min-width:0;
+}
+.rms-pro-shell .dashboard-executive-card,
+.rms-pro-shell .executive-summary-card{
+  position:relative;
+  overflow:hidden;
+}
+.rms-pro-shell .dashboard-executive-card::before,
+.rms-pro-shell .executive-summary-card::before{
+  content:'';
+  position:absolute;
+  inset:0 0 auto 0;
+  height:4px;
+  background:linear-gradient(90deg,#2563eb,#22c55e,#f59e0b);
+  opacity:.72;
+}
+
+/* Business signal cards */
+.rms-pro-shell .business-signal-grid{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:12px;
+}
+.rms-pro-shell .business-signal-card{
+  border:1px solid rgba(226,232,240,.96);
+  background:#fff;
+  border-radius:16px;
+  padding:14px 15px;
+  box-shadow:0 8px 22px rgba(15,23,42,.035);
+}
+.rms-pro-shell .business-signal-card strong{
+  display:block;
+  margin-top:4px;
+  color:#0f172a;
+  font-size:18px;
+  line-height:1.16;
+  font-variant-numeric:tabular-nums;
+}
+.rms-pro-shell .business-signal-card span{
+  color:#64748b;
+  font-size:12.5px;
+  font-weight:850;
+}
+.rms-pro-shell .business-signal-card p{
+  margin:8px 0 0;
+  color:#64748b;
+  font-size:13px;
+  line-height:1.4;
+}
+.rms-pro-shell .business-signal-card.good{
+  border-color:#bbf7d0;
+  background:linear-gradient(180deg,#fff 0%,#ecfdf5 100%);
+}
+.rms-pro-shell .business-signal-card.warn{
+  border-color:#fde68a;
+  background:linear-gradient(180deg,#fff 0%,#fffbeb 100%);
+}
+.rms-pro-shell .business-signal-card.bad{
+  border-color:#fecdd3;
+  background:linear-gradient(180deg,#fff 0%,#fff1f2 100%);
+}
+
+/* Executive quick navigation */
+.rms-pro-shell .executive-nav,
+.rms-pro-shell .dashboard-quick-actions{
+  display:flex;
+  align-items:center;
+  flex-wrap:wrap;
+  gap:8px;
+}
+.rms-pro-shell .executive-nav button,
+.rms-pro-shell .dashboard-quick-actions button{
+  min-height:34px;
+  border-radius:10px;
+  font-weight:850;
+  background:#fff;
+  border:1px solid rgba(203,213,225,.95);
+  color:#334155;
+}
+.rms-pro-shell .executive-nav button:hover,
+.rms-pro-shell .dashboard-quick-actions button:hover{
+  background:#f8fafc;
+  border-color:rgba(148,163,184,.95);
+}
+
+/* Dashboard tables as compact director summaries */
+.rms-pro-shell .dashboard-executive-card .table-wrap,
+.rms-pro-shell .executive-summary-card .table-wrap,
+.rms-pro-shell .dashboard-card .table-wrap{
+  border-radius:15px;
+}
+.rms-pro-shell .dashboard-executive-card .table-wrap th,
+.rms-pro-shell .dashboard-executive-card .table-wrap td,
+.rms-pro-shell .executive-summary-card .table-wrap th,
+.rms-pro-shell .executive-summary-card .table-wrap td,
+.rms-pro-shell .dashboard-card .table-wrap th,
+.rms-pro-shell .dashboard-card .table-wrap td{
+  padding:9px 11px;
+}
+.rms-pro-shell .dashboard-card .table-wrap td:last-child,
+.rms-pro-shell .dashboard-card .table-wrap th:last-child{
+  text-align:right;
+}
+
+/* Dashboard status pills */
+.rms-pro-shell .dashboard-status-pill,
+.rms-pro-shell .executive-status-pill{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  min-height:26px;
+  padding:4px 10px;
+  border-radius:999px;
+  font-size:12px;
+  font-weight:850;
+  border:1px solid rgba(226,232,240,.96);
+  background:#fff;
+}
+.rms-pro-shell .dashboard-status-pill.good,
+.rms-pro-shell .executive-status-pill.good{
+  background:#ecfdf5;
+  border-color:#bbf7d0;
+  color:#047857;
+}
+.rms-pro-shell .dashboard-status-pill.warn,
+.rms-pro-shell .executive-status-pill.warn{
+  background:#fffbeb;
+  border-color:#fde68a;
+  color:#b45309;
+}
+.rms-pro-shell .dashboard-status-pill.bad,
+.rms-pro-shell .executive-status-pill.bad{
+  background:#fff1f2;
+  border-color:#fecdd3;
+  color:#be123c;
+}
+
+/* Make dashboard less technical */
+.rms-pro-shell .dashboard-technical-note,
+.rms-pro-shell .dashboard-muted-note{
+  color:#64748b;
+  font-size:12.5px;
+  line-height:1.45;
+  padding:10px 12px;
+  border:1px dashed rgba(203,213,225,.9);
+  border-radius:14px;
+  background:#f8fafc;
+}
+
+/* Dashboard cards rhythm */
+.rms-pro-shell .dashboard-executive-card + .card,
+.rms-pro-shell .executive-summary-card + .card{
+  margin-top:14px;
+}
+.rms-pro-shell .dashboard-card .card-head{
+  margin-bottom:10px;
+}
+
+/* Responsive dashboard */
+@media(max-width:1100px){
+  .rms-pro-shell .business-signal-grid{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+}
+@media(max-width:720px){
+  .rms-pro-shell .business-signal-grid{
+    grid-template-columns:1fr;
+  }
+  .rms-pro-shell .executive-nav,
+  .rms-pro-shell .dashboard-quick-actions{
+    align-items:stretch;
+  }
+  .rms-pro-shell .executive-nav button,
+  .rms-pro-shell .dashboard-quick-actions button{
+    flex:1 1 auto;
+  }
+}
+
+/* v126 Dashboard Executive Content Cleanup */
+
+/* Dashboard should read as a director screen */
+.rms-pro-shell .dashboard-executive-card,
+.rms-pro-shell .executive-summary-card,
+.rms-pro-shell .dashboard-card{
+  scroll-margin-top:96px;
+}
+.rms-pro-shell .dashboard-executive-card .card-head,
+.rms-pro-shell .executive-summary-card .card-head{
+  border-bottom:0;
+  padding-bottom:0;
+}
+.rms-pro-shell .dashboard-executive-card .card-head h3,
+.rms-pro-shell .executive-summary-card .card-head h3{
+  font-size:20px;
+}
+.rms-pro-shell .dashboard-executive-card .card-head p,
+.rms-pro-shell .executive-summary-card .card-head p{
+  max-width:760px;
+}
+
+/* Executive KPI cards: stronger numbers, softer labels */
+.rms-pro-shell .dashboard-executive-kpi,
+.rms-pro-shell .executive-summary-kpi{
+  min-height:104px;
+  display:flex;
+  flex-direction:column;
+  justify-content:space-between;
+}
+.rms-pro-shell .dashboard-executive-kpi strong,
+.rms-pro-shell .executive-summary-kpi strong{
+  font-size:clamp(20px,2vw,28px);
+}
+.rms-pro-shell .dashboard-executive-kpi small,
+.rms-pro-shell .executive-summary-kpi small{
+  min-height:16px;
+}
+
+/* Dashboard signal list */
+.rms-pro-shell .dashboard-signal-list{
+  display:grid;
+  gap:10px;
+}
+.rms-pro-shell .dashboard-signal-row{
+  display:grid;
+  grid-template-columns:minmax(160px,1.2fr) minmax(160px,2fr) auto;
+  gap:12px;
+  align-items:center;
+  padding:12px 14px;
+  border:1px solid rgba(226,232,240,.96);
+  border-radius:14px;
+  background:#fff;
+}
+.rms-pro-shell .dashboard-signal-row strong{
+  color:#0f172a;
+}
+.rms-pro-shell .dashboard-signal-row span{
+  color:#64748b;
+  font-size:13px;
+}
+.rms-pro-shell .dashboard-signal-row.good{
+  border-color:#bbf7d0;
+  background:#ecfdf5;
+}
+.rms-pro-shell .dashboard-signal-row.warn{
+  border-color:#fde68a;
+  background:#fffbeb;
+}
+.rms-pro-shell .dashboard-signal-row.bad{
+  border-color:#fecdd3;
+  background:#fff1f2;
+}
+
+/* Make Dashboard tables only supporting content */
+.rms-pro-shell .dashboard-card .table-wrap{
+  margin-top:10px;
+}
+.rms-pro-shell .dashboard-card .table-wrap th{
+  background:#f8fafc;
+}
+.rms-pro-shell .dashboard-card .table-wrap td,
+.rms-pro-shell .dashboard-card .table-wrap th{
+  padding:8px 10px;
+}
+
+/* Hide overly technical helper notes visually, but keep readable when present */
+.rms-pro-shell .dashboard-technical-note,
+.rms-pro-shell .dashboard-muted-note{
+  margin-top:10px;
+  font-size:12px;
+}
+
+/* Better branch comparison style if present */
+.rms-pro-shell .branch-health-card,
+.rms-pro-shell .branch-summary-card{
+  border:1px solid rgba(226,232,240,.96);
+  border-radius:16px;
+  background:#fff;
+  padding:14px;
+}
+.rms-pro-shell .branch-health-card strong,
+.rms-pro-shell .branch-summary-card strong{
+  font-variant-numeric:tabular-nums;
+}
+
+/* Compact Dashboard action chips */
+.rms-pro-shell .dashboard-action-chip,
+.rms-pro-shell .executive-action-chip{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  min-height:30px;
+  padding:6px 11px;
+  border-radius:999px;
+  border:1px solid rgba(203,213,225,.95);
+  background:#fff;
+  color:#334155;
+  font-size:12px;
+  font-weight:850;
+}
+.rms-pro-shell .dashboard-action-chip:hover,
+.rms-pro-shell .executive-action-chip:hover{
+  background:#f8fafc;
+}
+
+/* Dashboard responsive */
+@media(max-width:900px){
+  .rms-pro-shell .dashboard-signal-row{
+    grid-template-columns:1fr;
+    align-items:start;
+  }
+}
+@media(max-width:620px){
+  .rms-pro-shell .dashboard-executive-kpi,
+  .rms-pro-shell .executive-summary-kpi{
+    min-height:auto;
+  }
+}
+
+/* v127 Branch Performance & Dashboard Signals Pack */
+
+/* Branch performance cards */
+.rms-pro-shell .branch-performance-grid{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:12px;
+}
+.rms-pro-shell .branch-performance-card{
+  border:1px solid rgba(226,232,240,.96);
+  background:#fff;
+  border-radius:18px;
+  padding:15px;
+  box-shadow:0 10px 24px rgba(15,23,42,.035);
+}
+.rms-pro-shell .branch-performance-card h4{
+  margin:0;
+  font-size:16px;
+  color:#0f172a;
+}
+.rms-pro-shell .branch-performance-card .hint{
+  margin-top:4px;
+}
+.rms-pro-shell .branch-performance-kpis{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:10px;
+  margin-top:12px;
+}
+.rms-pro-shell .branch-performance-kpi{
+  border:1px solid rgba(226,232,240,.9);
+  background:#f8fafc;
+  border-radius:14px;
+  padding:10px 11px;
+}
+.rms-pro-shell .branch-performance-kpi span{
+  display:block;
+  color:#64748b;
+  font-size:12px;
+  font-weight:850;
+}
+.rms-pro-shell .branch-performance-kpi strong{
+  display:block;
+  margin-top:4px;
+  color:#0f172a;
+  font-size:17px;
+  font-variant-numeric:tabular-nums;
+}
+
+/* Статус филиалов statuses */
+.rms-pro-shell .branch-health-status{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  min-height:26px;
+  padding:4px 10px;
+  border-radius:999px;
+  border:1px solid rgba(226,232,240,.96);
+  background:#fff;
+  font-size:12px;
+  font-weight:850;
+}
+.rms-pro-shell .branch-health-status.good{
+  background:#ecfdf5;
+  border-color:#bbf7d0;
+  color:#047857;
+}
+.rms-pro-shell .branch-health-status.warn{
+  background:#fffbeb;
+  border-color:#fde68a;
+  color:#b45309;
+}
+.rms-pro-shell .branch-health-status.bad{
+  background:#fff1f2;
+  border-color:#fecdd3;
+  color:#be123c;
+}
+
+/* Dashboard problem signals */
+.rms-pro-shell .dashboard-problem-list{
+  display:grid;
+  gap:10px;
+}
+.rms-pro-shell .dashboard-problem-item{
+  display:grid;
+  grid-template-columns:120px minmax(0,1fr) auto;
+  gap:12px;
+  align-items:center;
+  padding:12px 14px;
+  border:1px solid rgba(226,232,240,.96);
+  border-radius:14px;
+  background:#fff;
+}
+.rms-pro-shell .dashboard-problem-item strong{
+  color:#0f172a;
+}
+.rms-pro-shell .dashboard-problem-item span{
+  color:#64748b;
+  font-size:13px;
+}
+.rms-pro-shell .dashboard-problem-item.bad{
+  border-color:#fecdd3;
+  background:#fff1f2;
+}
+.rms-pro-shell .dashboard-problem-item.warn{
+  border-color:#fde68a;
+  background:#fffbeb;
+}
+.rms-pro-shell .dashboard-problem-item.good{
+  border-color:#bbf7d0;
+  background:#ecfdf5;
+}
+
+/* Branch summary table */
+.rms-pro-shell .branch-summary-table td:nth-child(n+2),
+.rms-pro-shell .branch-summary-table th:nth-child(n+2){
+  text-align:right;
+  font-variant-numeric:tabular-nums;
+}
+.rms-pro-shell .branch-summary-table td:first-child,
+.rms-pro-shell .branch-summary-table th:first-child{
+  min-width:150px;
+  text-align:left;
+}
+.rms-pro-shell .branch-summary-table .branch-name{
+  font-weight:850;
+  color:#0f172a;
+}
+.rms-pro-shell .branch-summary-table .branch-subtitle{
+  display:block;
+  color:#64748b;
+  font-size:12px;
+  margin-top:2px;
+}
+
+/* Director screen sections */
+.rms-pro-shell .dashboard-director-section{
+  border:1px solid rgba(226,232,240,.96);
+  border-radius:20px;
+  background:linear-gradient(180deg,#fff 0%,#f8fafc 100%);
+  padding:16px;
+}
+.rms-pro-shell .dashboard-director-section .card-head{
+  border-bottom:0;
+  padding-bottom:0;
+}
+
+/* Quick severity chips */
+.rms-pro-shell .severity-chip{
+  display:inline-flex;
+  align-items:center;
+  min-height:24px;
+  padding:3px 8px;
+  border-radius:999px;
+  font-size:11.5px;
+  font-weight:900;
+  text-transform:uppercase;
+  letter-spacing:.02em;
+}
+.rms-pro-shell .severity-chip.ok{
+  background:#ecfdf5;
+  color:#047857;
+}
+.rms-pro-shell .severity-chip.warn{
+  background:#fffbeb;
+  color:#b45309;
+}
+.rms-pro-shell .severity-chip.critical{
+  background:#fff1f2;
+  color:#be123c;
+}
+
+/* Responsive branch dashboard */
+@media(max-width:1180px){
+  .rms-pro-shell .branch-performance-grid{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+}
+@media(max-width:760px){
+  .rms-pro-shell .branch-performance-grid{
+    grid-template-columns:1fr;
+  }
+  .rms-pro-shell .dashboard-problem-item{
+    grid-template-columns:1fr;
+    align-items:start;
+  }
+  .rms-pro-shell .branch-performance-kpis{
+    grid-template-columns:1fr;
+  }
+}
+
+/* v128 Dashboard + Tech Cards Stability Bundle */
+
+/* Dashboard: cleaner director blocks */
+.rms-pro-shell .dashboard-director-section,
+.rms-pro-shell .dashboard-executive-card,
+.rms-pro-shell .executive-summary-card{
+  box-shadow:0 10px 28px rgba(15,23,42,.04);
+}
+.rms-pro-shell .dashboard-director-section .card-head h3,
+.rms-pro-shell .dashboard-executive-card .card-head h3,
+.rms-pro-shell .executive-summary-card .card-head h3{
+  letter-spacing:-.02em;
+}
+.rms-pro-shell .dashboard-director-section .card-head p,
+.rms-pro-shell .dashboard-executive-card .card-head p,
+.rms-pro-shell .executive-summary-card .card-head p{
+  font-size:13px;
+}
+
+/* Branch performance: more compact cards */
+.rms-pro-shell .branch-performance-card{
+  min-width:0;
+}
+.rms-pro-shell .branch-performance-card h4{
+  letter-spacing:-.015em;
+}
+.rms-pro-shell .branch-performance-kpi strong{
+  word-break:break-word;
+}
+.rms-pro-shell .branch-performance-kpi span{
+  line-height:1.25;
+}
+
+/* Dashboard signals: softer but clearer */
+.rms-pro-shell .dashboard-problem-item,
+.rms-pro-shell .dashboard-signal-row,
+.rms-pro-shell .executive-alert{
+  box-shadow:0 8px 20px rgba(15,23,42,.025);
+}
+.rms-pro-shell .dashboard-problem-item.bad,
+.rms-pro-shell .dashboard-signal-row.bad,
+.rms-pro-shell .executive-alert.bad{
+  box-shadow:0 8px 22px rgba(190,18,60,.045);
+}
+.rms-pro-shell .dashboard-problem-item.warn,
+.rms-pro-shell .dashboard-signal-row.warn,
+.rms-pro-shell .executive-alert.warn{
+  box-shadow:0 8px 22px rgba(180,83,9,.045);
+}
+
+/* Tech cards: menu profitability panel */
+.rms-pro-shell .menu-profitability-card .card-head{
+  border-bottom:0;
+  padding-bottom:0;
+}
+.rms-pro-shell .menu-profitability-grid{
+  margin-top:12px;
+}
+.rms-pro-shell .profitability-table th,
+.rms-pro-shell .profitability-table td{
+  padding:9px 11px;
+}
+.rms-pro-shell .profitability-table td:first-child b{
+  letter-spacing:-.01em;
+}
+.rms-pro-shell .profitability-table td:nth-child(2){
+  text-align:left;
+}
+.rms-pro-shell .profitability-table .profitability-status{
+  white-space:nowrap;
+}
+
+/* Tech cards: stable row actions and statuses */
+.rms-pro-shell .tech-modern-table .tech-row-actions{
+  min-width:max-content;
+}
+.rms-pro-shell .tech-modern-table .tech-status{
+  min-width:82px;
+}
+.rms-pro-shell .tech-modern-table td,
+.rms-pro-shell .tech-modern-table th{
+  vertical-align:middle;
+}
+.rms-pro-shell .tech-modern-table td:nth-child(1){
+  min-width:210px;
+}
+.rms-pro-shell .tech-modern-table td:nth-child(6){
+  min-width:110px;
+}
+
+/* Ingredient composition readability */
+.rms-pro-shell .recipe-items-table,
+.rms-pro-shell .semi-composition-card table{
+  font-size:14px;
+}
+.rms-pro-shell .recipe-items-table input,
+.rms-pro-shell .recipe-items-table select,
+.rms-pro-shell .semi-composition-card input,
+.rms-pro-shell .semi-composition-card select{
+  min-height:38px;
+}
+.rms-pro-shell .semi-row.editing td{
+  border-top:1px solid rgba(59,130,246,.22);
+  border-bottom:1px solid rgba(59,130,246,.22);
+}
+
+/* Tech detail print/export */
+.rms-pro-shell .tech-detail-panel .action-row{
+  gap:8px;
+  flex-wrap:wrap;
+}
+.rms-pro-shell .tech-detail-panel .action-row button{
+  min-height:34px;
+  border-radius:10px;
+}
+
+/* Universal: compact warning/help notes */
+.rms-pro-shell .profitability-note,
+.rms-pro-shell .dashboard-muted-note,
+.rms-pro-shell .dashboard-technical-note{
+  border-radius:12px;
+}
+
+/* Responsive fixes */
+@media(max-width:980px){
+  .rms-pro-shell .profitability-table{
+    min-width:860px;
+  }
+  .rms-pro-shell .menu-profitability-card .table-wrap{
+    overflow-x:auto;
+  }
+}
+@media(max-width:720px){
+  .rms-pro-shell .branch-summary-table{
+    min-width:760px;
+  }
+  .rms-pro-shell .branch-summary-table-wrap,
+  .rms-pro-shell .dashboard-director-section .table-wrap{
+    overflow-x:auto;
+  }
+}
+
+/* v129 Tech Cards Secure RPC & Audit Starter */
+
+/* Tech Cards enterprise audit / diagnostics */
+.rms-pro-shell .tech-audit-card{
+  border:1px solid rgba(226,232,240,.96);
+  border-left:4px solid #64748b;
+  background:linear-gradient(180deg,#fff 0%,#f8fafc 100%);
+  border-radius:18px;
+  padding:16px;
+}
+.rms-pro-shell .tech-audit-grid{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:12px;
+}
+.rms-pro-shell .tech-audit-kpi{
+  border:1px solid rgba(226,232,240,.96);
+  background:#fff;
+  border-radius:16px;
+  padding:13px 15px;
+}
+.rms-pro-shell .tech-audit-kpi span{
+  display:block;
+  color:#64748b;
+  font-size:12.5px;
+  font-weight:850;
+}
+.rms-pro-shell .tech-audit-kpi strong{
+  display:block;
+  margin-top:5px;
+  color:#0f172a;
+  font-size:20px;
+  line-height:1.15;
+  font-variant-numeric:tabular-nums;
+}
+.rms-pro-shell .tech-audit-status{
+  display:inline-flex;
+  align-items:center;
+  min-height:26px;
+  padding:4px 10px;
+  border-radius:999px;
+  border:1px solid rgba(226,232,240,.96);
+  background:#fff;
+  font-size:12px;
+  font-weight:850;
+}
+.rms-pro-shell .tech-audit-status.ok{
+  background:#ecfdf5;
+  border-color:#bbf7d0;
+  color:#047857;
+}
+.rms-pro-shell .tech-audit-status.warn{
+  background:#fffbeb;
+  border-color:#fde68a;
+  color:#b45309;
+}
+.rms-pro-shell .tech-audit-status.bad{
+  background:#fff1f2;
+  border-color:#fecdd3;
+  color:#be123c;
+}
+
+/* Tech cards safe-edit visual layer */
+.rms-pro-shell .tech-safe-edit-note{
+  margin-top:10px;
+  border:1px dashed rgba(203,213,225,.95);
+  border-radius:14px;
+  background:#f8fafc;
+  padding:11px 12px;
+  color:#64748b;
+  font-size:13px;
+  line-height:1.45;
+}
+.rms-pro-shell .tech-modern-table .tech-row-actions button{
+  white-space:nowrap;
+}
+.rms-pro-shell .tech-modern-table .tech-row-actions .danger,
+.rms-pro-shell .tech-modern-table .tech-row-actions .remove{
+  background:#fff1f2;
+  border-color:#fecdd3;
+  color:#be123c;
+}
+
+/* Tech audit table */
+.rms-pro-shell .tech-audit-table td:nth-child(n+2),
+.rms-pro-shell .tech-audit-table th:nth-child(n+2){
+  text-align:right;
+  font-variant-numeric:tabular-nums;
+}
+.rms-pro-shell .tech-audit-table td:first-child,
+.rms-pro-shell .tech-audit-table th:first-child{
+  text-align:left;
+}
+
+/* Secure RPC phase badge */
+.rms-pro-shell .tech-secure-phase{
+  display:inline-flex;
+  align-items:center;
+  gap:7px;
+  min-height:28px;
+  padding:5px 10px;
+  border-radius:999px;
+  border:1px solid #bfdbfe;
+  background:#eff6ff;
+  color:#1d4ed8;
+  font-size:12px;
+  font-weight:900;
+}
+
+@media(max-width:980px){
+  .rms-pro-shell .tech-audit-grid{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+}
+@media(max-width:620px){
+  .rms-pro-shell .tech-audit-grid{
+    grid-template-columns:1fr;
+  }
+}
+
+/* v130 Tech Cards Secure RPC Phase 1 */
+
+/* Tech secure RPC progress banner */
+.rms-pro-shell .tech-secure-rpc-card{
+  border:1px solid #bfdbfe;
+  border-left:4px solid #2563eb;
+  background:linear-gradient(180deg,#fff 0%,#eff6ff 100%);
+  border-radius:18px;
+  padding:15px 16px;
+}
+.rms-pro-shell .tech-secure-rpc-card h3{
+  margin:0;
+  color:#0f172a;
+  font-size:17px;
+}
+.rms-pro-shell .tech-secure-rpc-card p{
+  margin:6px 0 0;
+  color:#475569;
+  font-size:13px;
+  line-height:1.45;
+}
+.rms-pro-shell .tech-secure-rpc-grid{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:10px;
+  margin-top:12px;
+}
+.rms-pro-shell .tech-secure-rpc-step{
+  border:1px solid rgba(191,219,254,.95);
+  background:#fff;
+  border-radius:14px;
+  padding:11px 12px;
+}
+.rms-pro-shell .tech-secure-rpc-step span{
+  display:block;
+  color:#64748b;
+  font-size:12px;
+  font-weight:850;
+}
+.rms-pro-shell .tech-secure-rpc-step strong{
+  display:block;
+  margin-top:5px;
+  color:#1d4ed8;
+  font-size:14px;
+}
+
+/* Tech audit log table */
+.rms-pro-shell .tech-audit-log-table td,
+.rms-pro-shell .tech-audit-log-table th{
+  padding:9px 11px;
+}
+.rms-pro-shell .tech-audit-log-table td:nth-child(1){
+  white-space:nowrap;
+  font-variant-numeric:tabular-nums;
+}
+.rms-pro-shell .tech-audit-log-table td:nth-child(3){
+  min-width:180px;
+}
+.rms-pro-shell .tech-audit-action{
+  display:inline-flex;
+  align-items:center;
+  min-height:24px;
+  padding:3px 8px;
+  border-radius:999px;
+  border:1px solid rgba(226,232,240,.96);
+  background:#f8fafc;
+  color:#334155;
+  font-size:12px;
+  font-weight:850;
+}
+
+/* Tech rows prepared for secure mode */
+.rms-pro-shell .tech-modern-table tr:hover .tech-secure-phase{
+  border-color:#93c5fd;
+  background:#dbeafe;
+}
+
+/* Mobile */
+@media(max-width:980px){
+  .rms-pro-shell .tech-secure-rpc-grid{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+}
+@media(max-width:620px){
+  .rms-pro-shell .tech-secure-rpc-grid{
+    grid-template-columns:1fr;
+  }
+}
+
+/* v131 Tech Cards Secure RPC Phase 2 */
+
+/* Phase 2 status */
+.rms-pro-shell .tech-secure-rpc-card.phase-2{
+  border-left-color:#16a34a;
+  background:linear-gradient(180deg,#fff 0%,#ecfdf5 100%);
+}
+.rms-pro-shell .tech-secure-rpc-card.phase-2 .tech-secure-rpc-step strong{
+  color:#047857;
+}
+.rms-pro-shell .tech-rpc-warning{
+  margin-top:10px;
+  border:1px dashed rgba(180,83,9,.45);
+  background:#fffbeb;
+  color:#92400e;
+  border-radius:14px;
+  padding:10px 12px;
+  font-size:13px;
+  line-height:1.45;
+}
+.rms-pro-shell .tech-rpc-ok{
+  margin-top:10px;
+  border:1px solid #bbf7d0;
+  background:#ecfdf5;
+  color:#047857;
+  border-radius:14px;
+  padding:10px 12px;
+  font-size:13px;
+  line-height:1.45;
+}
+.rms-pro-shell .tech-secure-rpc-step.is-ready{
+  border-color:#bbf7d0;
+  background:#ecfdf5;
+}
+.rms-pro-shell .tech-secure-rpc-step.is-waiting{
+  border-color:#fde68a;
+  background:#fffbeb;
+}
+.rms-pro-shell .tech-secure-rpc-step.is-locked{
+  border-color:#fecdd3;
+  background:#fff1f2;
+}
+
+/* Ingredient safe edit layer */
+.rms-pro-shell .recipe-items-table .editing-row td,
+.rms-pro-shell .semi-composition-card .editing-row td{
+  background:#eff6ff!important;
+  box-shadow:inset 0 1px 0 rgba(59,130,246,.15), inset 0 -1px 0 rgba(59,130,246,.15);
+}
+.rms-pro-shell .recipe-items-table .row-actions,
+.rms-pro-shell .semi-composition-card .row-actions{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  flex-wrap:nowrap;
+}
+.rms-pro-shell .recipe-items-table .row-actions button,
+.rms-pro-shell .semi-composition-card .row-actions button{
+  min-width:76px;
+}
+
+/* Audit event viewer placeholder */
+.rms-pro-shell .tech-audit-recent-card{
+  border:1px solid rgba(226,232,240,.96);
+  background:#fff;
+  border-radius:18px;
+  padding:16px;
+}
+.rms-pro-shell .tech-audit-recent-card .table-wrap{
+  margin-top:12px;
+}
+
+/* v132 Tech Cards RPC Wiring Prep */
+
+/* RPC helper / diagnostics visual layer */
+.rms-pro-shell .tech-rpc-wiring-card{
+  border:1px solid #bfdbfe;
+  border-left:4px solid #2563eb;
+  background:linear-gradient(180deg,#fff 0%,#eff6ff 100%);
+  border-radius:18px;
+  padding:16px;
+}
+.rms-pro-shell .tech-rpc-wiring-card h3{
+  margin:0;
+  font-size:17px;
+  color:#0f172a;
+}
+.rms-pro-shell .tech-rpc-wiring-card p{
+  margin:6px 0 0;
+  color:#475569;
+  font-size:13px;
+  line-height:1.45;
+}
+.rms-pro-shell .tech-rpc-wiring-grid{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:10px;
+  margin-top:12px;
+}
+.rms-pro-shell .tech-rpc-wiring-step{
+  border:1px solid rgba(191,219,254,.95);
+  background:#fff;
+  border-radius:14px;
+  padding:11px 12px;
+}
+.rms-pro-shell .tech-rpc-wiring-step span{
+  display:block;
+  color:#64748b;
+  font-size:12px;
+  font-weight:850;
+}
+.rms-pro-shell .tech-rpc-wiring-step strong{
+  display:block;
+  margin-top:5px;
+  color:#1d4ed8;
+  font-size:14px;
+}
+.rms-pro-shell .tech-rpc-wiring-step.ready{
+  background:#ecfdf5;
+  border-color:#bbf7d0;
+}
+.rms-pro-shell .tech-rpc-wiring-step.ready strong{
+  color:#047857;
+}
+.rms-pro-shell .tech-rpc-wiring-step.pending{
+  background:#fffbeb;
+  border-color:#fde68a;
+}
+.rms-pro-shell .tech-rpc-wiring-step.pending strong{
+  color:#b45309;
+}
+
+/* Better visual feedback for tech edit rows */
+.rms-pro-shell .tech-modern-table tr[data-rpc-ready="true"] td{
+  box-shadow:inset 3px 0 0 #bfdbfe;
+}
+.rms-pro-shell .recipe-items-table .rpc-ready,
+.rms-pro-shell .semi-composition-card .rpc-ready{
+  box-shadow:inset 3px 0 0 #bfdbfe;
+}
+
+/* Tech audit actions */
+.rms-pro-shell .tech-audit-action.update{
+  background:#eff6ff;
+  color:#1d4ed8;
+  border-color:#bfdbfe;
+}
+.rms-pro-shell .tech-audit-action.cancel{
+  background:#fff1f2;
+  color:#be123c;
+  border-color:#fecdd3;
+}
+
+@media(max-width:980px){
+  .rms-pro-shell .tech-rpc-wiring-grid{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+}
+@media(max-width:620px){
+  .rms-pro-shell .tech-rpc-wiring-grid{
+    grid-template-columns:1fr;
+  }
+}
+
+/* v133 Tech Cards RPC Readiness + Safe Wiring Bundle */
+
+.rms-pro-shell .tech-readiness-card{
+  border:1px solid rgba(226,232,240,.96);
+  border-left:4px solid #2563eb;
+  background:linear-gradient(180deg,#fff 0%,#eff6ff 100%);
+  border-radius:18px;
+  padding:16px;
+}
+.rms-pro-shell .tech-readiness-card h3{
+  margin:0;
+  color:#0f172a;
+  font-size:17px;
+}
+.rms-pro-shell .tech-readiness-card p{
+  margin:6px 0 0;
+  color:#475569;
+  font-size:13px;
+  line-height:1.45;
+}
+.rms-pro-shell .tech-readiness-status{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  min-height:26px;
+  padding:4px 10px;
+  border-radius:999px;
+  border:1px solid rgba(226,232,240,.96);
+  background:#fff;
+  font-size:12px;
+  font-weight:850;
+}
+.rms-pro-shell .tech-readiness-status.ready{
+  background:#ecfdf5;
+  border-color:#bbf7d0;
+  color:#047857;
+}
+.rms-pro-shell .tech-readiness-status.pending{
+  background:#fffbeb;
+  border-color:#fde68a;
+  color:#b45309;
+}
+.rms-pro-shell .tech-readiness-status.error{
+  background:#fff1f2;
+  border-color:#fecdd3;
+  color:#be123c;
+}
+.rms-pro-shell .tech-readiness-table td:nth-child(n+2),
+.rms-pro-shell .tech-readiness-table th:nth-child(n+2){
+  text-align:center;
+}
+.rms-pro-shell .tech-readiness-table td:first-child,
+.rms-pro-shell .tech-readiness-table th:first-child{
+  text-align:left;
+  min-width:190px;
+}
+.rms-pro-shell .tech-safe-wiring-note{
+  margin-top:10px;
+  border:1px dashed rgba(37,99,235,.35);
+  background:#eff6ff;
+  color:#1d4ed8;
+  border-radius:14px;
+  padding:10px 12px;
+  font-size:13px;
+  line-height:1.45;
+}
+.rms-pro-shell .tech-rpc-mode-chip{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  min-height:26px;
+  padding:4px 10px;
+  border-radius:999px;
+  border:1px solid #bfdbfe;
+  background:#eff6ff;
+  color:#1d4ed8;
+  font-size:12px;
+  font-weight:900;
+}
+.rms-pro-shell .tech-audit-recent-list{
+  display:grid;
+  gap:8px;
+}
+.rms-pro-shell .tech-audit-recent-item{
+  display:grid;
+  grid-template-columns:150px 120px minmax(0,1fr);
+  gap:10px;
+  align-items:center;
+  padding:10px 12px;
+  border:1px solid rgba(226,232,240,.96);
+  border-radius:12px;
+  background:#fff;
+  font-size:13px;
+}
+.rms-pro-shell .tech-audit-recent-item b{
+  color:#0f172a;
+}
+.rms-pro-shell .tech-audit-recent-item span{
+  color:#64748b;
+}
+@media(max-width:760px){
+  .rms-pro-shell .tech-audit-recent-item{
+    grid-template-columns:1fr;
+    align-items:start;
+  }
+}
+
+/* v134 Tech Cards Ingredient Save via RPC */
+
+.rms-pro-shell .tech-rpc-active-note{
+  margin-top:10px;
+  border:1px solid #bbf7d0;
+  background:#ecfdf5;
+  color:#047857;
+  border-radius:14px;
+  padding:10px 12px;
+  font-size:13px;
+  line-height:1.45;
+}
+.rms-pro-shell .tech-rpc-fallback-note{
+  margin-top:10px;
+  border:1px dashed #fde68a;
+  background:#fffbeb;
+  color:#92400e;
+  border-radius:14px;
+  padding:10px 12px;
+  font-size:13px;
+  line-height:1.45;
+}
+.rms-pro-shell .tech-rpc-mode-chip.active{
+  background:#ecfdf5;
+  border-color:#bbf7d0;
+  color:#047857;
+}
+.rms-pro-shell .tech-rpc-mode-chip.fallback{
+  background:#fffbeb;
+  border-color:#fde68a;
+  color:#b45309;
+}
+.rms-pro-shell .recipe-items-table tr.rpc-save-ready td,
+.rms-pro-shell .semi-composition-card tr.rpc-save-ready td{
+  box-shadow:inset 3px 0 0 #22c55e;
+}
+.rms-pro-shell .recipe-items-table tr.rpc-fallback td,
+.rms-pro-shell .semi-composition-card tr.rpc-fallback td{
+  box-shadow:inset 3px 0 0 #f59e0b;
+}
+.rms-pro-shell .tech-rpc-action-button{
+  border-color:#bbf7d0!important;
+  background:#ecfdf5!important;
+  color:#047857!important;
+}
+.rms-pro-shell .tech-rpc-action-button:hover{
+  background:#dcfce7!important;
+}
+
+/* v135 Tech Cards Frontend RPC Switch */
+
+/* Show that frontend switch is active */
+.rms-pro-shell .tech-rpc-switch-card{
+  border:1px solid #bbf7d0;
+  border-left:4px solid #16a34a;
+  background:linear-gradient(180deg,#fff 0%,#ecfdf5 100%);
+  border-radius:18px;
+  padding:16px;
+}
+.rms-pro-shell .tech-rpc-switch-card h3{
+  margin:0;
+  color:#0f172a;
+  font-size:17px;
+}
+.rms-pro-shell .tech-rpc-switch-card p{
+  margin:6px 0 0;
+  color:#047857;
+  font-size:13px;
+  line-height:1.45;
+}
+.rms-pro-shell .tech-rpc-switch-grid{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:10px;
+  margin-top:12px;
+}
+.rms-pro-shell .tech-rpc-switch-step{
+  border:1px solid #bbf7d0;
+  background:#fff;
+  border-radius:14px;
+  padding:11px 12px;
+}
+.rms-pro-shell .tech-rpc-switch-step span{
+  display:block;
+  color:#64748b;
+  font-size:12px;
+  font-weight:850;
+}
+.rms-pro-shell .tech-rpc-switch-step strong{
+  display:block;
+  margin-top:5px;
+  color:#047857;
+  font-size:14px;
+}
+.rms-pro-shell .tech-rpc-switch-step.pending{
+  border-color:#fde68a;
+  background:#fffbeb;
+}
+.rms-pro-shell .tech-rpc-switch-step.pending strong{
+  color:#b45309;
+}
+.rms-pro-shell .tech-rpc-action-button,
+.rms-pro-shell button.tech-rpc-action-button{
+  background:#ecfdf5!important;
+  border-color:#bbf7d0!important;
+  color:#047857!important;
+}
+.rms-pro-shell .tech-rpc-fallback-badge{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  min-height:24px;
+  padding:3px 8px;
+  border-radius:999px;
+  background:#fffbeb;
+  color:#b45309;
+  border:1px solid #fde68a;
+  font-size:11.5px;
+  font-weight:900;
+}
+@media(max-width:980px){
+  .rms-pro-shell .tech-rpc-switch-grid{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+}
+@media(max-width:620px){
+  .rms-pro-shell .tech-rpc-switch-grid{
+    grid-template-columns:1fr;
+  }
+}
+
+/* v136 Tech Cards Handler Wiring */
+
+/* Handler wiring status block */
+.rms-pro-shell .tech-handler-wiring-card{
+  border:1px solid #bbf7d0;
+  border-left:4px solid #16a34a;
+  background:linear-gradient(180deg,#fff 0%,#ecfdf5 100%);
+  border-radius:18px;
+  padding:16px;
+}
+.rms-pro-shell .tech-handler-wiring-card h3{
+  margin:0;
+  color:#0f172a;
+  font-size:17px;
+}
+.rms-pro-shell .tech-handler-wiring-card p{
+  margin:6px 0 0;
+  color:#047857;
+  font-size:13px;
+  line-height:1.45;
+}
+.rms-pro-shell .tech-handler-grid{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:10px;
+  margin-top:12px;
+}
+.rms-pro-shell .tech-handler-step{
+  border:1px solid #bbf7d0;
+  background:#fff;
+  border-radius:14px;
+  padding:11px 12px;
+}
+.rms-pro-shell .tech-handler-step span{
+  display:block;
+  color:#64748b;
+  font-size:12px;
+  font-weight:850;
+}
+.rms-pro-shell .tech-handler-step strong{
+  display:block;
+  margin-top:5px;
+  color:#047857;
+  font-size:14px;
+}
+.rms-pro-shell .tech-handler-step.pending{
+  border-color:#fde68a;
+  background:#fffbeb;
+}
+.rms-pro-shell .tech-handler-step.pending strong{
+  color:#b45309;
+}
+.rms-pro-shell .tech-handler-step.danger{
+  border-color:#fecdd3;
+  background:#fff1f2;
+}
+.rms-pro-shell .tech-handler-step.danger strong{
+  color:#be123c;
+}
+
+/* Visual confirmation of guarded mode */
+.rms-pro-shell .tech-guarded-mode{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  min-height:26px;
+  padding:4px 10px;
+  border-radius:999px;
+  border:1px solid #bbf7d0;
+  background:#ecfdf5;
+  color:#047857;
+  font-size:12px;
+  font-weight:900;
+}
+.rms-pro-shell .tech-direct-write-count{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  min-height:26px;
+  padding:4px 10px;
+  border-radius:999px;
+  border:1px solid #fde68a;
+  background:#fffbeb;
+  color:#b45309;
+  font-size:12px;
+  font-weight:900;
+}
+
+/* Handler scan table */
+.rms-pro-shell .tech-handler-scan-table td,
+.rms-pro-shell .tech-handler-scan-table th{
+  padding:9px 11px;
+}
+.rms-pro-shell .tech-handler-scan-table td:nth-child(n+2),
+.rms-pro-shell .tech-handler-scan-table th:nth-child(n+2){
+  text-align:center;
+}
+
+@media(max-width:980px){
+  .rms-pro-shell .tech-handler-grid{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+}
+@media(max-width:620px){
+  .rms-pro-shell .tech-handler-grid{
+    grid-template-columns:1fr;
+  }
+}
+
+/* v137 Tech Cards Hardening Consolidated Bundle */
+
+/* Consolidated hardening command center */
+.rms-pro-shell .tech-hardening-command-card{
+  border:1px solid #bfdbfe;
+  border-left:5px solid #2563eb;
+  background:linear-gradient(180deg,#fff 0%,#eff6ff 100%);
+  border-radius:20px;
+  padding:17px;
+  box-shadow:0 12px 30px rgba(15,23,42,.045);
+}
+.rms-pro-shell .tech-hardening-command-card h3{
+  margin:0;
+  color:#0f172a;
+  font-size:18px;
+  letter-spacing:-.02em;
+}
+.rms-pro-shell .tech-hardening-command-card p{
+  margin:7px 0 0;
+  color:#475569;
+  font-size:13px;
+  line-height:1.45;
+}
+.rms-pro-shell .tech-hardening-grid{
+  display:grid;
+  grid-template-columns:repeat(6,minmax(0,1fr));
+  gap:10px;
+  margin-top:14px;
+}
+.rms-pro-shell .tech-hardening-step{
+  border:1px solid rgba(191,219,254,.95);
+  background:#fff;
+  border-radius:14px;
+  padding:11px 12px;
+}
+.rms-pro-shell .tech-hardening-step span{
+  display:block;
+  color:#64748b;
+  font-size:11.8px;
+  font-weight:850;
+}
+.rms-pro-shell .tech-hardening-step strong{
+  display:block;
+  margin-top:5px;
+  color:#1d4ed8;
+  font-size:13.5px;
+  line-height:1.2;
+}
+.rms-pro-shell .tech-hardening-step.ready{
+  border-color:#bbf7d0;
+  background:#ecfdf5;
+}
+.rms-pro-shell .tech-hardening-step.ready strong{
+  color:#047857;
+}
+.rms-pro-shell .tech-hardening-step.pending{
+  border-color:#fde68a;
+  background:#fffbeb;
+}
+.rms-pro-shell .tech-hardening-step.pending strong{
+  color:#b45309;
+}
+
+/* Tech Cards executive summary */
+.rms-pro-shell .tech-executive-summary{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:12px;
+  margin-top:14px;
+}
+.rms-pro-shell .tech-executive-kpi{
+  border:1px solid rgba(226,232,240,.96);
+  background:#fff;
+  border-radius:16px;
+  padding:13px 15px;
+}
+.rms-pro-shell .tech-executive-kpi span{
+  display:block;
+  color:#64748b;
+  font-size:12.5px;
+  font-weight:850;
+}
+.rms-pro-shell .tech-executive-kpi strong{
+  display:block;
+  margin-top:5px;
+  color:#0f172a;
+  font-size:20px;
+  font-variant-numeric:tabular-nums;
+}
+
+/* RPC status chips */
+.rms-pro-shell .tech-rpc-status-chip{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  min-height:26px;
+  padding:4px 10px;
+  border-radius:999px;
+  border:1px solid rgba(226,232,240,.96);
+  background:#fff;
+  color:#334155;
+  font-size:12px;
+  font-weight:900;
+}
+.rms-pro-shell .tech-rpc-status-chip.ready{
+  background:#ecfdf5;
+  border-color:#bbf7d0;
+  color:#047857;
+}
+.rms-pro-shell .tech-rpc-status-chip.pending{
+  background:#fffbeb;
+  border-color:#fde68a;
+  color:#b45309;
+}
+.rms-pro-shell .tech-rpc-status-chip.locked{
+  background:#fff1f2;
+  border-color:#fecdd3;
+  color:#be123c;
+}
+
+/* Tech cards table final hardening */
+.rms-pro-shell .tech-modern-table td,
+.rms-pro-shell .tech-modern-table th{
+  vertical-align:middle;
+}
+.rms-pro-shell .tech-modern-table td:nth-child(1){
+  min-width:230px;
+}
+.rms-pro-shell .tech-modern-table td:nth-child(7),
+.rms-pro-shell .tech-modern-table th:nth-child(7){
+  min-width:270px;
+  text-align:right;
+}
+.rms-pro-shell .tech-modern-table .tech-row-actions{
+  justify-content:flex-end;
+  gap:6px;
+  flex-wrap:nowrap;
+}
+.rms-pro-shell .tech-modern-table .tech-row-actions button{
+  min-width:78px;
+}
+
+/* Recipe/semi component edit safety */
+.rms-pro-shell .recipe-items-table .editing-row td,
+.rms-pro-shell .semi-composition-card .editing-row td,
+.rms-pro-shell .recipe-items-table tr[data-editing="true"] td,
+.rms-pro-shell .semi-composition-card tr[data-editing="true"] td{
+  background:#eff6ff!important;
+  box-shadow:inset 3px 0 0 #2563eb;
+}
+.rms-pro-shell .recipe-items-table .rpc-ready td,
+.rms-pro-shell .semi-composition-card .rpc-ready td{
+  box-shadow:inset 3px 0 0 #16a34a;
+}
+.rms-pro-shell .recipe-items-table .rpc-fallback td,
+.rms-pro-shell .semi-composition-card .rpc-fallback td{
+  box-shadow:inset 3px 0 0 #f59e0b;
+}
+
+/* Audit and readiness tables */
+.rms-pro-shell .tech-readiness-table,
+.rms-pro-shell .tech-audit-log-table,
+.rms-pro-shell .tech-handler-scan-table{
+  width:100%;
+}
+.rms-pro-shell .tech-readiness-table th,
+.rms-pro-shell .tech-readiness-table td,
+.rms-pro-shell .tech-audit-log-table th,
+.rms-pro-shell .tech-audit-log-table td,
+.rms-pro-shell .tech-handler-scan-table th,
+.rms-pro-shell .tech-handler-scan-table td{
+  padding:9px 11px;
+  border-bottom:1px solid rgba(226,232,240,.78);
+}
+.rms-pro-shell .tech-audit-action.create{
+  background:#ecfdf5;
+  color:#047857;
+  border-color:#bbf7d0;
+}
+.rms-pro-shell .tech-audit-action.update{
+  background:#eff6ff;
+  color:#1d4ed8;
+  border-color:#bfdbfe;
+}
+.rms-pro-shell .tech-audit-action.cancel,
+.rms-pro-shell .tech-audit-action.delete{
+  background:#fff1f2;
+  color:#be123c;
+  border-color:#fecdd3;
+}
+
+/* Tech Cards diagnostics notes */
+.rms-pro-shell .tech-hardening-note{
+  margin-top:12px;
+  border:1px dashed rgba(37,99,235,.35);
+  background:#eff6ff;
+  color:#1d4ed8;
+  border-radius:14px;
+  padding:11px 12px;
+  font-size:13px;
+  line-height:1.45;
+}
+.rms-pro-shell .tech-lockdown-note{
+  margin-top:12px;
+  border:1px dashed rgba(180,83,9,.45);
+  background:#fffbeb;
+  color:#92400e;
+  border-radius:14px;
+  padding:11px 12px;
+  font-size:13px;
+  line-height:1.45;
+}
+
+/* Responsive */
+@media(max-width:1180px){
+  .rms-pro-shell .tech-hardening-grid{
+    grid-template-columns:repeat(3,minmax(0,1fr));
+  }
+  .rms-pro-shell .tech-executive-summary{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+}
+@media(max-width:680px){
+  .rms-pro-shell .tech-hardening-grid,
+  .rms-pro-shell .tech-executive-summary{
+    grid-template-columns:1fr;
+  }
+}
+
+/* v138 Tech Cards Frontend Handler Switch */
+
+.rms-pro-shell .tech-handler-switch-card{
+  border:1px solid #bbf7d0;
+  border-left:5px solid #16a34a;
+  background:linear-gradient(180deg,#fff 0%,#ecfdf5 100%);
+  border-radius:20px;
+  padding:17px;
+  box-shadow:0 12px 30px rgba(15,23,42,.045);
+}
+.rms-pro-shell .tech-handler-switch-card h3{
+  margin:0;
+  color:#0f172a;
+  font-size:18px;
+  letter-spacing:-.02em;
+}
+.rms-pro-shell .tech-handler-switch-card p{
+  margin:7px 0 0;
+  color:#047857;
+  font-size:13px;
+  line-height:1.45;
+}
+.rms-pro-shell .tech-handler-switch-grid{
+  display:grid;
+  grid-template-columns:repeat(5,minmax(0,1fr));
+  gap:10px;
+  margin-top:14px;
+}
+.rms-pro-shell .tech-handler-switch-step{
+  border:1px solid #bbf7d0;
+  background:#fff;
+  border-radius:14px;
+  padding:11px 12px;
+}
+.rms-pro-shell .tech-handler-switch-step span{
+  display:block;
+  color:#64748b;
+  font-size:11.8px;
+  font-weight:850;
+}
+.rms-pro-shell .tech-handler-switch-step strong{
+  display:block;
+  margin-top:5px;
+  color:#047857;
+  font-size:13.5px;
+  line-height:1.2;
+}
+.rms-pro-shell .tech-handler-switch-step.pending{
+  border-color:#fde68a;
+  background:#fffbeb;
+}
+.rms-pro-shell .tech-handler-switch-step.pending strong{
+  color:#b45309;
+}
+.rms-pro-shell .tech-handler-switch-step.locked{
+  border-color:#fecdd3;
+  background:#fff1f2;
+}
+.rms-pro-shell .tech-handler-switch-step.locked strong{
+  color:#be123c;
+}
+.rms-pro-shell .tech-rpc-switch-enabled{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  min-height:26px;
+  padding:4px 10px;
+  border-radius:999px;
+  background:#ecfdf5;
+  color:#047857;
+  border:1px solid #bbf7d0;
+  font-size:12px;
+  font-weight:900;
+}
+.rms-pro-shell .tech-rpc-lockdown-pending{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  min-height:26px;
+  padding:4px 10px;
+  border-radius:999px;
+  background:#fffbeb;
+  color:#b45309;
+  border:1px solid #fde68a;
+  font-size:12px;
+  font-weight:900;
+}
+.rms-pro-shell .tech-modern-table tr:hover .tech-rpc-switch-enabled,
+.rms-pro-shell .recipe-items-table tr:hover .tech-rpc-switch-enabled,
+.rms-pro-shell .semi-composition-card tr:hover .tech-rpc-switch-enabled{
+  background:#dcfce7;
+}
+@media(max-width:1180px){
+  .rms-pro-shell .tech-handler-switch-grid{
+    grid-template-columns:repeat(3,minmax(0,1fr));
+  }
+}
+@media(max-width:680px){
+  .rms-pro-shell .tech-handler-switch-grid{
+    grid-template-columns:1fr;
+  }
+}
+
+/* v139 Tech Cards Permission Lockdown Prep */
+
+.rms-pro-shell .tech-lockdown-prep-card{
+  border:1px solid #fde68a;
+  border-left:5px solid #f59e0b;
+  background:linear-gradient(180deg,#fff 0%,#fffbeb 100%);
+  border-radius:20px;
+  padding:17px;
+  box-shadow:0 12px 30px rgba(15,23,42,.045);
+}
+.rms-pro-shell .tech-lockdown-prep-card h3{
+  margin:0;
+  color:#0f172a;
+  font-size:18px;
+  letter-spacing:-.02em;
+}
+.rms-pro-shell .tech-lockdown-prep-card p{
+  margin:7px 0 0;
+  color:#92400e;
+  font-size:13px;
+  line-height:1.45;
+}
+.rms-pro-shell .tech-lockdown-grid{
+  display:grid;
+  grid-template-columns:repeat(5,minmax(0,1fr));
+  gap:10px;
+  margin-top:14px;
+}
+.rms-pro-shell .tech-lockdown-step{
+  border:1px solid #fde68a;
+  background:#fff;
+  border-radius:14px;
+  padding:11px 12px;
+}
+.rms-pro-shell .tech-lockdown-step span{
+  display:block;
+  color:#64748b;
+  font-size:11.8px;
+  font-weight:850;
+}
+.rms-pro-shell .tech-lockdown-step strong{
+  display:block;
+  margin-top:5px;
+  color:#b45309;
+  font-size:13.5px;
+  line-height:1.2;
+}
+.rms-pro-shell .tech-lockdown-step.ready{
+  border-color:#bbf7d0;
+  background:#ecfdf5;
+}
+.rms-pro-shell .tech-lockdown-step.ready strong{
+  color:#047857;
+}
+.rms-pro-shell .tech-lockdown-step.blocked{
+  border-color:#fecdd3;
+  background:#fff1f2;
+}
+.rms-pro-shell .tech-lockdown-step.blocked strong{
+  color:#be123c;
+}
+.rms-pro-shell .tech-lockdown-status-chip{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  min-height:26px;
+  padding:4px 10px;
+  border-radius:999px;
+  border:1px solid #fde68a;
+  background:#fffbeb;
+  color:#b45309;
+  font-size:12px;
+  font-weight:900;
+}
+.rms-pro-shell .tech-lockdown-status-chip.ready{
+  border-color:#bbf7d0;
+  background:#ecfdf5;
+  color:#047857;
+}
+.rms-pro-shell .tech-lockdown-status-chip.blocked{
+  border-color:#fecdd3;
+  background:#fff1f2;
+  color:#be123c;
+}
+.rms-pro-shell .tech-lockdown-table td,
+.rms-pro-shell .tech-lockdown-table th{
+  padding:9px 11px;
+}
+.rms-pro-shell .tech-lockdown-table td:nth-child(n+2),
+.rms-pro-shell .tech-lockdown-table th:nth-child(n+2){
+  text-align:center;
+}
+.rms-pro-shell .tech-lockdown-note{
+  margin-top:12px;
+  border:1px dashed rgba(180,83,9,.45);
+  background:#fffbeb;
+  color:#92400e;
+  border-radius:14px;
+  padding:11px 12px;
+  font-size:13px;
+  line-height:1.45;
+}
+@media(max-width:1180px){
+  .rms-pro-shell .tech-lockdown-grid{
+    grid-template-columns:repeat(3,minmax(0,1fr));
+  }
+}
+@media(max-width:680px){
+  .rms-pro-shell .tech-lockdown-grid{
+    grid-template-columns:1fr;
+  }
+}
+
+/* v140 Tech Cards Final Hardening Completion */
+.rms-pro-shell .tech-final-hardening-card{
+  border:1px solid #bbf7d0;
+  border-left:5px solid #16a34a;
+  background:linear-gradient(180deg,#fff 0%,#ecfdf5 100%);
+  border-radius:20px;
+  padding:17px;
+  box-shadow:0 12px 30px rgba(15,23,42,.045);
+}
+.rms-pro-shell .tech-final-hardening-card h3{
+  margin:0;
+  color:#0f172a;
+  font-size:18px;
+  letter-spacing:-.02em;
+}
+.rms-pro-shell .tech-final-hardening-card p{
+  margin:7px 0 0;
+  color:#047857;
+  font-size:13px;
+  line-height:1.45;
+}
+.rms-pro-shell .tech-final-hardening-grid{
+  display:grid;
+  grid-template-columns:repeat(5,minmax(0,1fr));
+  gap:10px;
+  margin-top:14px;
+}
+.rms-pro-shell .tech-final-hardening-step{
+  border:1px solid #bbf7d0;
+  background:#fff;
+  border-radius:14px;
+  padding:11px 12px;
+}
+.rms-pro-shell .tech-final-hardening-step span{
+  display:block;
+  color:#64748b;
+  font-size:11.8px;
+  font-weight:850;
+}
+.rms-pro-shell .tech-final-hardening-step strong{
+  display:block;
+  margin-top:5px;
+  color:#047857;
+  font-size:13.5px;
+  line-height:1.2;
+}
+.rms-pro-shell .tech-final-hardening-step.warning{
+  border-color:#fde68a;
+  background:#fffbeb;
+}
+.rms-pro-shell .tech-final-hardening-step.warning strong{
+  color:#b45309;
+}
+.rms-pro-shell .tech-modern-table .tech-row-actions button,
+.rms-pro-shell .recipe-row-actions button,
+.rms-pro-shell .tech-ingredient-actions button,
+.rms-pro-shell .semi-row-actions button{
+  white-space:nowrap;
+}
+.rms-pro-shell .tech-modern-table .tech-row-actions{
+  min-width:max-content;
+}
+.rms-pro-shell .tech-audit-card,
+.rms-pro-shell .tech-readiness-card,
+.rms-pro-shell .tech-lockdown-prep-card,
+.rms-pro-shell .tech-hardening-command-card,
+.rms-pro-shell .tech-handler-switch-card,
+.rms-pro-shell .tech-final-hardening-card{
+  margin-top:14px;
+}
+@media print{
+  .rms-pro-shell .tech-secure-rpc-card,
+  .rms-pro-shell .tech-rpc-wiring-card,
+  .rms-pro-shell .tech-readiness-card,
+  .rms-pro-shell .tech-rpc-switch-card,
+  .rms-pro-shell .tech-handler-wiring-card,
+  .rms-pro-shell .tech-hardening-command-card,
+  .rms-pro-shell .tech-handler-switch-card,
+  .rms-pro-shell .tech-lockdown-prep-card,
+  .rms-pro-shell .tech-final-hardening-card{
+    display:none!important;
+  }
+}
+@media(max-width:1180px){
+  .rms-pro-shell .tech-final-hardening-grid{grid-template-columns:repeat(3,minmax(0,1fr));}
+}
+@media(max-width:680px){
+  .rms-pro-shell .tech-final-hardening-grid{grid-template-columns:1fr;}
+}
+
+/* v141 Inventory / Stock Foundation Starter */
+.rms-pro-shell .inventory-foundation-card{
+  border:1px solid #bfdbfe;
+  border-left:5px solid #2563eb;
+  background:linear-gradient(180deg,#fff 0%,#eff6ff 100%);
+  border-radius:20px;
+  padding:17px;
+  box-shadow:0 12px 30px rgba(15,23,42,.045);
+  margin-top:14px;
+}
+.rms-pro-shell .inventory-foundation-card h3{margin:0;color:#0f172a;font-size:18px;letter-spacing:-.02em;}
+.rms-pro-shell .inventory-foundation-card p{margin:7px 0 0;color:#475569;font-size:13px;line-height:1.45;}
+.rms-pro-shell .inventory-foundation-grid{
+  display:grid;
+  grid-template-columns:repeat(5,minmax(0,1fr));
+  gap:10px;
+  margin-top:14px;
+}
+.rms-pro-shell .inventory-foundation-step{
+  border:1px solid rgba(191,219,254,.95);
+  background:#fff;
+  border-radius:14px;
+  padding:11px 12px;
+}
+.rms-pro-shell .inventory-foundation-step span{display:block;color:#64748b;font-size:11.8px;font-weight:850;}
+.rms-pro-shell .inventory-foundation-step strong{display:block;margin-top:5px;color:#1d4ed8;font-size:13.5px;line-height:1.2;}
+.rms-pro-shell .inventory-foundation-step.ready{border-color:#bbf7d0;background:#ecfdf5;}
+.rms-pro-shell .inventory-foundation-step.ready strong{color:#047857;}
+.rms-pro-shell .inventory-foundation-step.pending{border-color:#fde68a;background:#fffbeb;}
+.rms-pro-shell .inventory-foundation-step.pending strong{color:#b45309;}
+.rms-pro-shell .inventory-status-chip{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  min-height:26px;
+  padding:4px 10px;
+  border-radius:999px;
+  border:1px solid rgba(226,232,240,.96);
+  background:#fff;
+  color:#334155;
+  font-size:12px;
+  font-weight:900;
+}
+.rms-pro-shell .inventory-status-chip.ready{background:#ecfdf5;border-color:#bbf7d0;color:#047857;}
+.rms-pro-shell .inventory-status-chip.pending{background:#fffbeb;border-color:#fde68a;color:#b45309;}
+.rms-pro-shell .inventory-stock-table td:nth-child(n+3),
+.rms-pro-shell .inventory-stock-table th:nth-child(n+3){text-align:right;font-variant-numeric:tabular-nums;}
+.rms-pro-shell .inventory-stock-table td:first-child,
+.rms-pro-shell .inventory-stock-table th:first-child{min-width:220px;text-align:left;}
+.rms-pro-shell .inventory-note{
+  margin-top:12px;
+  border:1px dashed rgba(37,99,235,.35);
+  background:#eff6ff;
+  color:#1d4ed8;
+  border-radius:14px;
+  padding:11px 12px;
+  font-size:13px;
+  line-height:1.45;
+}
+@media(max-width:1180px){.rms-pro-shell .inventory-foundation-grid{grid-template-columns:repeat(3,minmax(0,1fr));}}
+@media(max-width:680px){.rms-pro-shell .inventory-foundation-grid{grid-template-columns:1fr;}}
+@media print{.rms-pro-shell .inventory-foundation-card{display:none!important;}}
+
+/* v142 Tech Cards KPI Reality & Status Fix */
+
+/* KPI warning states for tech cards */
+.rms-pro-shell .tech-kpi-warning,
+.rms-pro-shell .tech-kpi-empty,
+.rms-pro-shell .tech-kpi-risk{
+  border-radius:16px;
+}
+.rms-pro-shell .tech-kpi-warning{
+  border-color:#fde68a!important;
+  background:linear-gradient(180deg,#fff 0%,#fffbeb 100%)!important;
+}
+.rms-pro-shell .tech-kpi-risk{
+  border-color:#fecdd3!important;
+  background:linear-gradient(180deg,#fff 0%,#fff1f2 100%)!important;
+}
+.rms-pro-shell .tech-kpi-ok{
+  border-color:#bbf7d0!important;
+  background:linear-gradient(180deg,#fff 0%,#ecfdf5 100%)!important;
+}
+
+/* Correct visual language for incomplete tech cards */
+.rms-pro-shell .tech-status.empty,
+.rms-pro-shell .tech-status.no-cost,
+.rms-pro-shell .tech-status.no-price{
+  background:#fffbeb;
+  color:#b45309;
+  border:1px solid #fde68a;
+}
+.rms-pro-shell .tech-status.incomplete{
+  background:#fff1f2;
+  color:#be123c;
+  border:1px solid #fecdd3;
+}
+.rms-pro-shell .tech-status.ready{
+  background:#ecfdf5;
+  color:#047857;
+  border:1px solid #bbf7d0;
+}
+
+/* Tech table: make missing-cost rows obvious */
+.rms-pro-shell .tech-modern-table tr.tech-row-empty td,
+.rms-pro-shell .tech-modern-table tr.tech-row-no-cost td,
+.rms-pro-shell .tech-modern-table tr.tech-row-no-price td{
+  background:#fffbeb;
+}
+.rms-pro-shell .tech-modern-table tr.tech-row-risk td{
+  background:#fff1f2;
+}
+.rms-pro-shell .tech-modern-table tr.tech-row-ready td{
+  background:#fff;
+}
+
+/* Tech cards summary alert */
+.rms-pro-shell .tech-data-quality-card{
+  border:1px solid #fde68a;
+  border-left:5px solid #f59e0b;
+  background:linear-gradient(180deg,#fff 0%,#fffbeb 100%);
+  border-radius:18px;
+  padding:15px 16px;
+  margin-top:14px;
+}
+.rms-pro-shell .tech-data-quality-card h3{
+  margin:0;
+  color:#0f172a;
+  font-size:17px;
+}
+.rms-pro-shell .tech-data-quality-card p{
+  margin:7px 0 0;
+  color:#92400e;
+  font-size:13px;
+  line-height:1.45;
+}
+.rms-pro-shell .tech-data-quality-grid{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:10px;
+  margin-top:12px;
+}
+.rms-pro-shell .tech-data-quality-step{
+  border:1px solid #fde68a;
+  background:#fff;
+  border-radius:14px;
+  padding:11px 12px;
+}
+.rms-pro-shell .tech-data-quality-step span{
+  display:block;
+  color:#64748b;
+  font-size:11.8px;
+  font-weight:850;
+}
+.rms-pro-shell .tech-data-quality-step strong{
+  display:block;
+  margin-top:5px;
+  color:#b45309;
+  font-size:15px;
+  font-variant-numeric:tabular-nums;
+}
+.rms-pro-shell .tech-data-quality-step.good{
+  border-color:#bbf7d0;
+  background:#ecfdf5;
+}
+.rms-pro-shell .tech-data-quality-step.good strong{
+  color:#047857;
+}
+
+/* Avoid misleading 100% margin styling when cost is missing */
+.rms-pro-shell .tech-margin-muted{
+  color:#94a3b8!important;
+}
+.rms-pro-shell .tech-cost-missing{
+  color:#b45309!important;
+  font-weight:850;
+}
+
+@media(max-width:900px){
+  .rms-pro-shell .tech-data-quality-grid{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+}
+@media(max-width:620px){
+  .rms-pro-shell .tech-data-quality-grid{
+    grid-template-columns:1fr;
+  }
+}
+
+/* v143 Inventory UI Module */
+.rms-pro-shell .inventory-module-root .topbar{border-left:5px solid #2563eb;}
+.rms-pro-shell .inventory-summary-grid{grid-template-columns:repeat(4,minmax(0,1fr));}
+.rms-pro-shell .inventory-kpi-card span{color:#64748b;font-size:12.5px;font-weight:850;}
+.rms-pro-shell .inventory-kpi-card strong{display:block;margin-top:5px;font-size:22px;font-variant-numeric:tabular-nums;}
+.rms-pro-shell .inventory-message{margin:12px 0;border:1px solid #bfdbfe;background:#eff6ff;color:#1d4ed8;border-radius:14px;padding:11px 12px;font-size:13px;font-weight:800;}
+.rms-pro-shell .inventory-form-card{border-left:4px solid #2563eb;}
+.rms-pro-shell .inventory-stock-table td:nth-child(n+4),
+.rms-pro-shell .inventory-stock-table th:nth-child(n+4),
+.rms-pro-shell .inventory-movements-table td:nth-child(n+4):nth-child(-n+6),
+.rms-pro-shell .inventory-movements-table th:nth-child(n+4):nth-child(-n+6){text-align:right;font-variant-numeric:tabular-nums;}
+.rms-pro-shell .inventory-negative-row td{background:#fff1f2!important;}
+.rms-pro-shell .inventory-move-chip{display:inline-flex;align-items:center;min-height:24px;padding:3px 8px;border-radius:999px;border:1px solid rgba(226,232,240,.96);background:#f8fafc;color:#334155;font-size:11.5px;font-weight:900;}
+.rms-pro-shell .inventory-move-chip.purchase,
+.rms-pro-shell .inventory-move-chip.transfer_in,
+.rms-pro-shell .inventory-move-chip.production_in,
+.rms-pro-shell .inventory-move-chip.adjustment_in{background:#ecfdf5;border-color:#bbf7d0;color:#047857;}
+.rms-pro-shell .inventory-move-chip.write_off,
+.rms-pro-shell .inventory-move-chip.transfer_out,
+.rms-pro-shell .inventory-move-chip.production_out,
+.rms-pro-shell .inventory-move-chip.adjustment_out{background:#fff1f2;border-color:#fecdd3;color:#be123c;}
+@media(max-width:980px){.rms-pro-shell .inventory-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
+@media(max-width:620px){.rms-pro-shell .inventory-summary-grid{grid-template-columns:1fr;}.rms-pro-shell .inventory-stock-table,.rms-pro-shell .inventory-movements-table{min-width:820px;}}
+
+/* v144 Inventory Sidebar Visibility Fix */
+.rms-pro-shell .inventory-nav-button,
+.rms-pro-shell button[data-tab="inventory_tab"]{
+  border-left:3px solid #2563eb;
+}
+.rms-pro-shell .inventory-module-root{
+  animation: inventoryFadeIn .12s ease-out;
+}
+@keyframes inventoryFadeIn{
+  from{opacity:.86; transform:translateY(3px);}
+  to{opacity:1; transform:translateY(0);}
+}
+
+/* v145 Inventory Real Sidebar Fix */
+.rms-pro-shell .inventory-module-root .topbar{border-left:5px solid #2563eb;}
+.rms-pro-shell .inventory-stock-table td:nth-child(n+4),
+.rms-pro-shell .inventory-stock-table th:nth-child(n+4){text-align:right;font-variant-numeric:tabular-nums;}
+
+/* v146 Inventory Locations & Practical Stock UX */
+.rms-pro-shell .inventory-module-root .topbar{
+  border-left:5px solid #2563eb;
+}
+.rms-pro-shell .inventory-location-chip{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  min-height:26px;
+  padding:4px 10px;
+  border-radius:999px;
+  border:1px solid #bfdbfe;
+  background:#eff6ff;
+  color:#1d4ed8;
+  font-size:12px;
+  font-weight:900;
+}
+.rms-pro-shell .inventory-warning-card{
+  border:1px solid #fde68a;
+  border-left:4px solid #f59e0b;
+  background:linear-gradient(180deg,#fff 0%,#fffbeb 100%);
+  border-radius:18px;
+  padding:15px 16px;
+  margin:12px 0;
+}
+.rms-pro-shell .inventory-warning-card h3{
+  margin:0;
+  color:#0f172a;
+  font-size:17px;
+}
+.rms-pro-shell .inventory-warning-card p{
+  margin:7px 0 0;
+  color:#92400e;
+  font-size:13px;
+  line-height:1.45;
+}
+.rms-pro-shell .inventory-action-grid{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:10px;
+  margin-top:12px;
+}
+.rms-pro-shell .inventory-action-card{
+  border:1px solid rgba(226,232,240,.96);
+  background:#fff;
+  border-radius:14px;
+  padding:11px 12px;
+}
+.rms-pro-shell .inventory-action-card span{
+  display:block;
+  color:#64748b;
+  font-size:12px;
+  font-weight:850;
+}
+.rms-pro-shell .inventory-action-card strong{
+  display:block;
+  margin-top:5px;
+  color:#0f172a;
+  font-size:14px;
+}
+.rms-pro-shell .inventory-stock-table td,
+.rms-pro-shell .inventory-movements-table td{
+  vertical-align:middle;
+}
+.rms-pro-shell .inventory-stock-table .bad,
+.rms-pro-shell .inventory-movements-table .bad{
+  color:#be123c;
+}
+.rms-pro-shell .inventory-stock-table .good,
+.rms-pro-shell .inventory-movements-table .good{
+  color:#047857;
+}
+@media(max-width:900px){
+  .rms-pro-shell .inventory-action-grid{grid-template-columns:repeat(2,minmax(0,1fr));}
+}
+@media(max-width:620px){
+  .rms-pro-shell .inventory-action-grid{grid-template-columns:1fr;}
+}
+
+/* v147 Inventory Write-off & Movement Control */
+.rms-pro-shell .inventory-control-card{
+  border:1px solid #bfdbfe;
+  border-left:5px solid #2563eb;
+  background:linear-gradient(180deg,#fff 0%,#eff6ff 100%);
+  border-radius:20px;
+  padding:17px;
+  margin:14px 0;
+  box-shadow:0 12px 30px rgba(15,23,42,.045);
+}
+.rms-pro-shell .inventory-control-card h3{margin:0;color:#0f172a;font-size:18px;letter-spacing:-.02em;}
+.rms-pro-shell .inventory-control-card p{margin:7px 0 0;color:#475569;font-size:13px;line-height:1.45;}
+.rms-pro-shell .inventory-control-grid{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:10px;
+  margin-top:14px;
+}
+.rms-pro-shell .inventory-control-step{
+  border:1px solid rgba(191,219,254,.95);
+  background:#fff;
+  border-radius:14px;
+  padding:11px 12px;
+}
+.rms-pro-shell .inventory-control-step span{display:block;color:#64748b;font-size:11.8px;font-weight:850;}
+.rms-pro-shell .inventory-control-step strong{display:block;margin-top:5px;color:#1d4ed8;font-size:13.5px;line-height:1.2;}
+.rms-pro-shell .inventory-control-step.good{border-color:#bbf7d0;background:#ecfdf5;}
+.rms-pro-shell .inventory-control-step.good strong{color:#047857;}
+.rms-pro-shell .inventory-control-step.warn{border-color:#fde68a;background:#fffbeb;}
+.rms-pro-shell .inventory-control-step.warn strong{color:#b45309;}
+.rms-pro-shell .inventory-control-step.bad{border-color:#fecdd3;background:#fff1f2;}
+.rms-pro-shell .inventory-control-step.bad strong{color:#be123c;}
+.rms-pro-shell .inventory-filter-row{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  flex-wrap:wrap;
+  margin:12px 0;
+}
+.rms-pro-shell .inventory-filter-row input,
+.rms-pro-shell .inventory-filter-row select{
+  min-width:180px;
+}
+.rms-pro-shell .inventory-writeoff-chip{
+  display:inline-flex;
+  align-items:center;
+  min-height:24px;
+  padding:3px 8px;
+  border-radius:999px;
+  border:1px solid #fecdd3;
+  background:#fff1f2;
+  color:#be123c;
+  font-size:11.5px;
+  font-weight:900;
+}
+.rms-pro-shell .inventory-purchase-chip{
+  display:inline-flex;
+  align-items:center;
+  min-height:24px;
+  padding:3px 8px;
+  border-radius:999px;
+  border:1px solid #bbf7d0;
+  background:#ecfdf5;
+  color:#047857;
+  font-size:11.5px;
+  font-weight:900;
+}
+.rms-pro-shell .inventory-neutral-chip{
+  display:inline-flex;
+  align-items:center;
+  min-height:24px;
+  padding:3px 8px;
+  border-radius:999px;
+  border:1px solid #bfdbfe;
+  background:#eff6ff;
+  color:#1d4ed8;
+  font-size:11.5px;
+  font-weight:900;
+}
+@media(max-width:980px){.rms-pro-shell .inventory-control-grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
+@media(max-width:620px){.rms-pro-shell .inventory-control-grid{grid-template-columns:1fr;}.rms-pro-shell .inventory-filter-row{display:grid;grid-template-columns:1fr;}}
+
+/* v148 Inventory Supplier Purchases Link Prep */
+.rms-pro-shell .inventory-supplier-link-card{
+  border:1px solid #bbf7d0;
+  border-left:5px solid #16a34a;
+  background:linear-gradient(180deg,#fff 0%,#ecfdf5 100%);
+  border-radius:20px;
+  padding:17px;
+  margin:14px 0;
+  box-shadow:0 12px 30px rgba(15,23,42,.045);
+}
+.rms-pro-shell .inventory-supplier-link-card h3{margin:0;color:#0f172a;font-size:18px;letter-spacing:-.02em;}
+.rms-pro-shell .inventory-supplier-link-card p{margin:7px 0 0;color:#047857;font-size:13px;line-height:1.45;}
+.rms-pro-shell .inventory-supplier-link-grid{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:10px;
+  margin-top:14px;
+}
+.rms-pro-shell .inventory-supplier-link-step{
+  border:1px solid #bbf7d0;
+  background:#fff;
+  border-radius:14px;
+  padding:11px 12px;
+}
+.rms-pro-shell .inventory-supplier-link-step span{display:block;color:#64748b;font-size:11.8px;font-weight:850;}
+.rms-pro-shell .inventory-supplier-link-step strong{display:block;margin-top:5px;color:#047857;font-size:13.5px;line-height:1.2;}
+.rms-pro-shell .inventory-supplier-link-step.pending{border-color:#fde68a;background:#fffbeb;}
+.rms-pro-shell .inventory-supplier-link-step.pending strong{color:#b45309;}
+.rms-pro-shell .inventory-link-chip{
+  display:inline-flex;
+  align-items:center;
+  min-height:24px;
+  padding:3px 8px;
+  border-radius:999px;
+  border:1px solid #bbf7d0;
+  background:#ecfdf5;
+  color:#047857;
+  font-size:11.5px;
+  font-weight:900;
+}
+.rms-pro-shell .inventory-link-chip.pending{
+  border-color:#fde68a;
+  background:#fffbeb;
+  color:#b45309;
+}
+.rms-pro-shell .inventory-linked-row td{
+  box-shadow:inset 3px 0 0 #16a34a;
+}
+@media(max-width:980px){.rms-pro-shell .inventory-supplier-link-grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
+@media(max-width:620px){.rms-pro-shell .inventory-supplier-link-grid{grid-template-columns:1fr;}}
+
+/* v149 Supplier Purchase Items Schema Check + Backfill Prep */
+.rms-pro-shell .inventory-schema-check-card{
+  border:1px solid #fde68a;
+  border-left:5px solid #f59e0b;
+  background:linear-gradient(180deg,#fff 0%,#fffbeb 100%);
+  border-radius:20px;
+  padding:17px;
+  margin:14px 0;
+  box-shadow:0 12px 30px rgba(15,23,42,.045);
+}
+.rms-pro-shell .inventory-schema-check-card h3{
+  margin:0;
+  color:#0f172a;
+  font-size:18px;
+  letter-spacing:-.02em;
+}
+.rms-pro-shell .inventory-schema-check-card p{
+  margin:7px 0 0;
+  color:#92400e;
+  font-size:13px;
+  line-height:1.45;
+}
+.rms-pro-shell .inventory-schema-check-grid{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:10px;
+  margin-top:14px;
+}
+.rms-pro-shell .inventory-schema-check-step{
+  border:1px solid #fde68a;
+  background:#fff;
+  border-radius:14px;
+  padding:11px 12px;
+}
+.rms-pro-shell .inventory-schema-check-step span{
+  display:block;
+  color:#64748b;
+  font-size:11.8px;
+  font-weight:850;
+}
+.rms-pro-shell .inventory-schema-check-step strong{
+  display:block;
+  margin-top:5px;
+  color:#b45309;
+  font-size:13.5px;
+  line-height:1.2;
+}
+.rms-pro-shell .inventory-schema-check-step.ready{
+  border-color:#bbf7d0;
+  background:#ecfdf5;
+}
+.rms-pro-shell .inventory-schema-check-step.ready strong{
+  color:#047857;
+}
+.rms-pro-shell .inventory-schema-check-step.pending{
+  border-color:#fde68a;
+  background:#fffbeb;
+}
+.rms-pro-shell .inventory-schema-chip{
+  display:inline-flex;
+  align-items:center;
+  min-height:24px;
+  padding:3px 8px;
+  border-radius:999px;
+  border:1px solid #fde68a;
+  background:#fffbeb;
+  color:#b45309;
+  font-size:11.5px;
+  font-weight:900;
+}
+@media(max-width:980px){.rms-pro-shell .inventory-schema-check-grid{grid-template-columns:repeat(2,minmax(0,1fr));}}
+@media(max-width:620px){.rms-pro-shell .inventory-schema-check-grid{grid-template-columns:1fr;}}
+
+/* v150 Tech Cards UI Cleanup */
+
+/* Hide technical hardening blocks from normal Tech Cards UI */
+.rms-pro-shell .tech-safe-edit-note,
+.rms-pro-shell .tech-secure-rpc-card,
+.rms-pro-shell .tech-rpc-wiring-card,
+.rms-pro-shell .tech-readiness-card,
+.rms-pro-shell .tech-rpc-switch-card,
+.rms-pro-shell .tech-handler-wiring-card,
+.rms-pro-shell .tech-hardening-command-card,
+.rms-pro-shell .tech-handler-switch-card,
+.rms-pro-shell .tech-lockdown-prep-card,
+.rms-pro-shell .tech-final-hardening-card{
+  display:none!important;
+}
+
+/* Keep Tech Cards focused on business use */
+.rms-pro-shell .tech-modern-shell > .card:first-child,
+.rms-pro-shell .tech-card-root > .card:first-child{
+  margin-top:0;
+}
+
+/* Cleaner Tech Cards header after removing hardening panels */
+.rms-pro-shell .tech-modern-shell .topbar,
+.rms-pro-shell .tech-card-root .topbar{
+  margin-bottom:14px;
+}
+
+/* Inventory foundation note is not shown inside Tech Cards anymore */
+.rms-pro-shell .inventory-foundation-card{
+  display:none!important;
+}
+
+/* Data quality card remains business-facing */
+.rms-pro-shell .tech-data-quality-card{
+  display:block!important;
+}
+
+/* v151 Tech Cards Cleanup Build Fix */
+.rms-pro-shell .tech-header-actions{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  flex-wrap:wrap;
+}
+
+/* v152 Build-Safe Inventory Backfill UI Prep */
+.rms-pro-shell .inventory-backfill-card{
+  border:1px solid #bbf7d0;
+  border-left:5px solid #16a34a;
+  background:linear-gradient(180deg,#fff 0%,#ecfdf5 100%);
+  border-radius:20px;
+  padding:17px;
+  margin:14px 0;
+  box-shadow:0 12px 30px rgba(15,23,42,.045);
+}
+.rms-pro-shell .inventory-backfill-card h3{
+  margin:0;
+  color:#0f172a;
+  font-size:18px;
+  letter-spacing:-.02em;
+}
+.rms-pro-shell .inventory-backfill-card p{
+  margin:7px 0 0;
+  color:#047857;
+  font-size:13px;
+  line-height:1.45;
+}
+.rms-pro-shell .inventory-backfill-table td:nth-child(n+2),
+.rms-pro-shell .inventory-backfill-table th:nth-child(n+2){
+  text-align:right;
+  font-variant-numeric:tabular-nums;
+}
+.rms-pro-shell .inventory-backfill-table td:last-child,
+.rms-pro-shell .inventory-backfill-table th:last-child{
+  text-align:center;
+}
+
+/* v153 Inventory Auto-Link Prep + Safer Backfill */
+.rms-pro-shell .inventory-autolink-card{
+  border:1px solid #bfdbfe;
+  border-left:5px solid #2563eb;
+  background:linear-gradient(180deg,#fff 0%,#eff6ff 100%);
+  border-radius:20px;
+  padding:17px;
+  margin:14px 0;
+  box-shadow:0 12px 30px rgba(15,23,42,.045);
+}
+.rms-pro-shell .inventory-autolink-card h3{
+  margin:0;
+  color:#0f172a;
+  font-size:18px;
+  letter-spacing:-.02em;
+}
+.rms-pro-shell .inventory-autolink-card p{
+  margin:7px 0 0;
+  color:#1d4ed8;
+  font-size:13px;
+  line-height:1.45;
+}
+.rms-pro-shell .inventory-autolink-grid{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:10px;
+  margin-top:14px;
+}
+.rms-pro-shell .inventory-autolink-step{
+  border:1px solid rgba(191,219,254,.95);
+  background:#fff;
+  border-radius:14px;
+  padding:11px 12px;
+}
+.rms-pro-shell .inventory-autolink-step span{
+  display:block;
+  color:#64748b;
+  font-size:11.8px;
+  font-weight:850;
+}
+.rms-pro-shell .inventory-autolink-step strong{
+  display:block;
+  margin-top:5px;
+  color:#1d4ed8;
+  font-size:13.5px;
+  line-height:1.2;
+}
+.rms-pro-shell .inventory-autolink-step.ready{
+  border-color:#bbf7d0;
+  background:#ecfdf5;
+}
+.rms-pro-shell .inventory-autolink-step.ready strong{
+  color:#047857;
+}
+.rms-pro-shell .inventory-autolink-step.pending{
+  border-color:#fde68a;
+  background:#fffbeb;
+}
+.rms-pro-shell .inventory-autolink-step.pending strong{
+  color:#b45309;
+}
+.rms-pro-shell .inventory-autolink-health{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  flex-wrap:wrap;
+  margin-top:12px;
+}
+.rms-pro-shell .inventory-autolink-health span{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  min-height:26px;
+  padding:4px 10px;
+  border-radius:999px;
+  background:#fff;
+  border:1px solid #bbf7d0;
+  color:#047857;
+  font-size:12px;
+  font-weight:850;
+}
+@media(max-width:900px){
+  .rms-pro-shell .inventory-autolink-grid{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+}
+@media(max-width:620px){
+  .rms-pro-shell .inventory-autolink-grid{
+    grid-template-columns:1fr;
+  }
+}
+
+/* v154 Inventory Auto-Link Safe Validation */
+.rms-pro-shell .inventory-validation-card{
+  border:1px solid #bfdbfe;
+  border-left:5px solid #2563eb;
+  background:linear-gradient(180deg,#fff 0%,#eff6ff 100%);
+  border-radius:20px;
+  padding:17px;
+  margin:14px 0;
+  box-shadow:0 12px 30px rgba(15,23,42,.045);
+}
+.rms-pro-shell .inventory-validation-card h3{
+  margin:0;
+  color:#0f172a;
+  font-size:18px;
+  letter-spacing:-.02em;
+}
+.rms-pro-shell .inventory-validation-card p{
+  margin:7px 0 0;
+  color:#1d4ed8;
+  font-size:13px;
+  line-height:1.45;
+}
+.rms-pro-shell .inventory-validation-grid{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:10px;
+  margin-top:14px;
+}
+.rms-pro-shell .inventory-validation-step{
+  border:1px solid rgba(191,219,254,.95);
+  background:#fff;
+  border-radius:14px;
+  padding:11px 12px;
+}
+.rms-pro-shell .inventory-validation-step span{
+  display:block;
+  color:#64748b;
+  font-size:11.8px;
+  font-weight:850;
+}
+.rms-pro-shell .inventory-validation-step strong{
+  display:block;
+  margin-top:5px;
+  color:#1d4ed8;
+  font-size:13.5px;
+  line-height:1.2;
+}
+.rms-pro-shell .inventory-validation-step.ready{
+  border-color:#bbf7d0;
+  background:#ecfdf5;
+}
+.rms-pro-shell .inventory-validation-step.ready strong{
+  color:#047857;
+}
+.rms-pro-shell .inventory-validation-step.warn{
+  border-color:#fde68a;
+  background:#fffbeb;
+}
+.rms-pro-shell .inventory-validation-step.warn strong{
+  color:#b45309;
+}
+.rms-pro-shell .inventory-validation-step.pending{
+  border-color:#cbd5e1;
+  background:#f8fafc;
+}
+.rms-pro-shell .inventory-validation-step.pending strong{
+  color:#475569;
+}
+@media(max-width:900px){
+  .rms-pro-shell .inventory-validation-grid{grid-template-columns:repeat(2,minmax(0,1fr));}
+}
+@media(max-width:620px){
+  .rms-pro-shell .inventory-validation-grid{grid-template-columns:1fr;}
+}
+
+/* v155 Inventory Consolidated Pack */
+.rms-pro-shell .inventory-consolidated-card{
+  border:1px solid #c4b5fd;
+  border-left:5px solid #7c3aed;
+  background:linear-gradient(180deg,#fff 0%,#f5f3ff 100%);
+  border-radius:20px;
+  padding:17px;
+  margin:14px 0;
+  box-shadow:0 12px 30px rgba(15,23,42,.045);
+}
+.rms-pro-shell .inventory-consolidated-card h3{
+  margin:0;
+  color:#0f172a;
+  font-size:18px;
+  letter-spacing:-.02em;
+}
+.rms-pro-shell .inventory-consolidated-card p{
+  margin:7px 0 0;
+  color:#5b21b6;
+  font-size:13px;
+  line-height:1.45;
+}
+.rms-pro-shell .inventory-consolidated-grid{
+  display:grid;
+  grid-template-columns:repeat(5,minmax(0,1fr));
+  gap:10px;
+  margin-top:14px;
+}
+.rms-pro-shell .inventory-consolidated-step{
+  border:1px solid #ddd6fe;
+  background:#fff;
+  border-radius:14px;
+  padding:11px 12px;
+}
+.rms-pro-shell .inventory-consolidated-step span{
+  display:block;
+  color:#64748b;
+  font-size:11.8px;
+  font-weight:850;
+}
+.rms-pro-shell .inventory-consolidated-step strong{
+  display:block;
+  margin-top:5px;
+  color:#6d28d9;
+  font-size:14px;
+  line-height:1.2;
+  font-variant-numeric:tabular-nums;
+}
+.rms-pro-shell .inventory-consolidated-step.ready{
+  border-color:#bbf7d0;
+  background:#ecfdf5;
+}
+.rms-pro-shell .inventory-consolidated-step.ready strong{
+  color:#047857;
+}
+.rms-pro-shell .inventory-consolidated-step.warn{
+  border-color:#fde68a;
+  background:#fffbeb;
+}
+.rms-pro-shell .inventory-consolidated-step.warn strong{
+  color:#b45309;
+}
+.rms-pro-shell .inventory-consolidated-step.pending{
+  border-color:#bfdbfe;
+  background:#eff6ff;
+}
+.rms-pro-shell .inventory-consolidated-step.pending strong{
+  color:#1d4ed8;
+}
+@media(max-width:1180px){
+  .rms-pro-shell .inventory-consolidated-grid{
+    grid-template-columns:repeat(3,minmax(0,1fr));
+  }
+}
+@media(max-width:680px){
+  .rms-pro-shell .inventory-consolidated-grid{
+    grid-template-columns:1fr;
+  }
+}
+
+/* v156 Inventory Operations Pack */
+.rms-pro-shell .inventory-operations-card{
+  border:1px solid #bfdbfe;
+  border-left:5px solid #2563eb;
+  background:linear-gradient(180deg,#fff 0%,#eff6ff 100%);
+  border-radius:20px;
+  padding:17px;
+  margin:14px 0;
+  box-shadow:0 12px 30px rgba(15,23,42,.045);
+}
+.rms-pro-shell .inventory-operations-card h3{
+  margin:0;
+  color:#0f172a;
+  font-size:18px;
+  letter-spacing:-.02em;
+}
+.rms-pro-shell .inventory-operations-card p{
+  margin:7px 0 0;
+  color:#1d4ed8;
+  font-size:13px;
+  line-height:1.45;
+}
+.rms-pro-shell .inventory-operations-grid{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:10px;
+  margin-top:14px;
+}
+.rms-pro-shell .inventory-operations-grid button{
+  min-height:42px;
+  border-radius:14px;
+  border:1px solid #bfdbfe;
+  background:#fff;
+  color:#1d4ed8;
+  font-weight:900;
+  cursor:pointer;
+}
+.rms-pro-shell .inventory-operations-grid button.active{
+  background:#ecfdf5;
+  color:#047857;
+  border-color:#bbf7d0;
+}
+.rms-pro-shell .inventory-operations-grid button.danger{
+  color:#be123c;
+  border-color:#fecdd3;
+}
+.rms-pro-shell .inventory-operations-grid button.active.danger{
+  background:#fff1f2;
+  color:#be123c;
+  border-color:#fecdd3;
+}
+.rms-pro-shell .inventory-negative-alert{
+  border:1px solid #fecdd3;
+  border-left:5px solid #e11d48;
+  background:linear-gradient(180deg,#fff 0%,#fff1f2 100%);
+  border-radius:18px;
+  padding:15px 16px;
+  margin:14px 0;
+}
+.rms-pro-shell .inventory-negative-alert h3{
+  margin:0;
+  color:#0f172a;
+  font-size:17px;
+}
+.rms-pro-shell .inventory-negative-alert p{
+  margin:7px 0 0;
+  color:#be123c;
+  font-size:13px;
+  line-height:1.45;
+}
+@media(max-width:980px){
+  .rms-pro-shell .inventory-operations-grid{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+}
+@media(max-width:620px){
+  .rms-pro-shell .inventory-operations-grid{
+    grid-template-columns:1fr;
+  }
+}
+
+/* v158 Supplier Inventory Naming & Location Fix */
+.rms-pro-shell .inventory-name-location-card{
+  border:1px solid #fde68a;
+  border-left:5px solid #f59e0b;
+  background:linear-gradient(180deg,#fff 0%,#fffbeb 100%);
+  border-radius:20px;
+  padding:17px;
+  margin:14px 0;
+  box-shadow:0 12px 30px rgba(15,23,42,.045);
+}
+.rms-pro-shell .inventory-name-location-card h3{
+  margin:0;
+  color:#0f172a;
+  font-size:18px;
+  letter-spacing:-.02em;
+}
+.rms-pro-shell .inventory-name-location-card p{
+  margin:7px 0 0;
+  color:#92400e;
+  font-size:13px;
+  line-height:1.45;
+}
+.rms-pro-shell .inventory-name-location-grid{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:10px;
+  margin-top:14px;
+}
+.rms-pro-shell .inventory-name-location-step{
+  border:1px solid #fde68a;
+  background:#fff;
+  border-radius:14px;
+  padding:11px 12px;
+}
+.rms-pro-shell .inventory-name-location-step span{
+  display:block;
+  color:#64748b;
+  font-size:11.8px;
+  font-weight:850;
+}
+.rms-pro-shell .inventory-name-location-step strong{
+  display:block;
+  margin-top:5px;
+  color:#b45309;
+  font-size:13.5px;
+  line-height:1.2;
+}
+.rms-pro-shell .inventory-name-location-step.ready{
+  border-color:#bbf7d0;
+  background:#ecfdf5;
+}
+.rms-pro-shell .inventory-name-location-step.ready strong{
+  color:#047857;
+}
+@media(max-width:900px){
+  .rms-pro-shell .inventory-name-location-grid{grid-template-columns:repeat(2,minmax(0,1fr));}
+}
+@media(max-width:620px){
+  .rms-pro-shell .inventory-name-location-grid{grid-template-columns:1fr;}
+}
+
+/* v159 Supplier Purchase Product ID Resolver Fix */
+.rms-pro-shell .inventory-product-id-fix-card{
+  border:1px solid #bbf7d0;
+  border-left:5px solid #16a34a;
+  background:linear-gradient(180deg,#fff 0%,#ecfdf5 100%);
+  border-radius:20px;
+  padding:17px;
+  margin:14px 0;
+  box-shadow:0 12px 30px rgba(15,23,42,.045);
+}
+.rms-pro-shell .inventory-product-id-fix-card h3{
+  margin:0;
+  color:#0f172a;
+  font-size:18px;
+  letter-spacing:-.02em;
+}
+.rms-pro-shell .inventory-product-id-fix-card p{
+  margin:7px 0 0;
+  color:#047857;
+  font-size:13px;
+  line-height:1.45;
+}
+.rms-pro-shell .inventory-product-id-fix-grid{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:10px;
+  margin-top:14px;
+}
+.rms-pro-shell .inventory-product-id-fix-step{
+  border:1px solid #bbf7d0;
+  background:#fff;
+  border-radius:14px;
+  padding:11px 12px;
+}
+.rms-pro-shell .inventory-product-id-fix-step span{
+  display:block;
+  color:#64748b;
+  font-size:11.8px;
+  font-weight:850;
+}
+.rms-pro-shell .inventory-product-id-fix-step strong{
+  display:block;
+  margin-top:5px;
+  color:#047857;
+  font-size:13.5px;
+  line-height:1.2;
+}
+@media(max-width:900px){
+  .rms-pro-shell .inventory-product-id-fix-grid{grid-template-columns:repeat(2,minmax(0,1fr));}
+}
+@media(max-width:620px){
+  .rms-pro-shell .inventory-product-id-fix-grid{grid-template-columns:1fr;}
+}
+
+/* v160 Supplier Purchase Branch -> Inventory Location Mapping */
+.rms-pro-shell .inventory-branch-location-card{
+  border:1px solid #bfdbfe;
+  border-left:5px solid #2563eb;
+  background:linear-gradient(180deg,#fff 0%,#eff6ff 100%);
+  border-radius:20px;
+  padding:17px;
+  margin:14px 0;
+  box-shadow:0 12px 30px rgba(15,23,42,.045);
+}
+.rms-pro-shell .inventory-branch-location-card h3{
+  margin:0;
+  color:#0f172a;
+  font-size:18px;
+  letter-spacing:-.02em;
+}
+.rms-pro-shell .inventory-branch-location-card p{
+  margin:7px 0 0;
+  color:#1d4ed8;
+  font-size:13px;
+  line-height:1.45;
+}
+.rms-pro-shell .inventory-branch-location-grid{
+  display:grid;
+  grid-template-columns:repeat(5,minmax(0,1fr));
+  gap:10px;
+  margin-top:14px;
+}
+.rms-pro-shell .inventory-branch-location-step{
+  border:1px solid #bfdbfe;
+  background:#fff;
+  border-radius:14px;
+  padding:11px 12px;
+}
+.rms-pro-shell .inventory-branch-location-step span{
+  display:block;
+  color:#64748b;
+  font-size:11.8px;
+  font-weight:850;
+}
+.rms-pro-shell .inventory-branch-location-step strong{
+  display:block;
+  margin-top:5px;
+  color:#1d4ed8;
+  font-size:13.5px;
+  line-height:1.2;
+}
+.rms-pro-shell .inventory-branch-location-step.ready{
+  border-color:#bbf7d0;
+  background:#ecfdf5;
+}
+.rms-pro-shell .inventory-branch-location-step.ready strong{
+  color:#047857;
+}
+.rms-pro-shell .inventory-branch-location-step.warn{
+  border-color:#fde68a;
+  background:#fffbeb;
+}
+.rms-pro-shell .inventory-branch-location-step.warn strong{
+  color:#b45309;
+}
+@media(max-width:1180px){
+  .rms-pro-shell .inventory-branch-location-grid{grid-template-columns:repeat(3,minmax(0,1fr));}
+}
+@media(max-width:680px){
+  .rms-pro-shell .inventory-branch-location-grid{grid-template-columns:1fr;}
+}
+
+/* v168 iiko Import Button Wiring Pack */
+.rms-pro-shell .reports-v43-card .hint.good{
+  color:#047857;
+  font-weight:800;
+}
+
+/* v169 iiko Import + Consumption + Inventory UX Consolidated Pack */
+.rms-pro-shell .inventory-v169-consolidated-card{
+  border:1px solid #bfdbfe;
+  border-left:5px solid #2563eb;
+  background:linear-gradient(180deg,#fff 0%,#eff6ff 100%);
+  border-radius:20px;
+  padding:17px;
+  margin:14px 0;
+  box-shadow:0 12px 30px rgba(15,23,42,.045);
+}
+.rms-pro-shell .inventory-v169-consolidated-card h3{
+  margin:0;
+  color:#0f172a;
+  font-size:18px;
+  letter-spacing:-.02em;
+}
+.rms-pro-shell .inventory-v169-consolidated-card p{
+  margin:7px 0 0;
+  color:#1d4ed8;
+  font-size:13px;
+  line-height:1.45;
+}
+.rms-pro-shell .inventory-v169-consolidated-grid{
+  display:grid;
+  grid-template-columns:repeat(6,minmax(0,1fr));
+  gap:10px;
+  margin-top:14px;
+}
+.rms-pro-shell .inventory-v169-consolidated-step{
+  border:1px solid #bfdbfe;
+  background:#fff;
+  border-radius:14px;
+  padding:11px 12px;
+}
+.rms-pro-shell .inventory-v169-consolidated-step span{
+  display:block;
+  color:#64748b;
+  font-size:11.8px;
+  font-weight:850;
+}
+.rms-pro-shell .inventory-v169-consolidated-step strong{
+  display:block;
+  margin-top:5px;
+  color:#1d4ed8;
+  font-size:13.5px;
+  line-height:1.2;
+  font-variant-numeric:tabular-nums;
+  word-break:break-word;
+}
+.rms-pro-shell .inventory-v169-consolidated-step.ready{
+  border-color:#bbf7d0;
+  background:#ecfdf5;
+}
+.rms-pro-shell .inventory-v169-consolidated-step.ready strong{color:#047857;}
+.rms-pro-shell .inventory-v169-consolidated-step.warn{
+  border-color:#fde68a;
+  background:#fffbeb;
+}
+.rms-pro-shell .inventory-v169-consolidated-step.warn strong{color:#b45309;}
+.rms-pro-shell .inventory-v169-consolidated-step.pending{
+  border-color:#cbd5e1;
+  background:#f8fafc;
+}
+.rms-pro-shell .inventory-v169-consolidated-step.pending strong{color:#475569;}
+@media(max-width:1280px){.rms-pro-shell .inventory-v169-consolidated-grid{grid-template-columns:repeat(3,minmax(0,1fr));}}
+@media(max-width:680px){.rms-pro-shell .inventory-v169-consolidated-grid{grid-template-columns:1fr;}}
+
+/* v171 iiko Import Operational Hardening Pack */
+.rms-pro-shell .inventory-v171-hardening-card{
+  border:1px solid #fed7aa;
+  border-left:5px solid #f97316;
+  background:linear-gradient(180deg,#fff 0%,#fff7ed 100%);
+  border-radius:20px;
+  padding:17px;
+  margin:14px 0;
+  box-shadow:0 12px 30px rgba(15,23,42,.045);
+}
+.rms-pro-shell .inventory-v171-hardening-card h3{
+  margin:0;
+  color:#0f172a;
+  font-size:18px;
+  letter-spacing:-.02em;
+}
+.rms-pro-shell .inventory-v171-hardening-card p{
+  margin:7px 0 0;
+  color:#c2410c;
+  font-size:13px;
+  line-height:1.45;
+}
+.rms-pro-shell .inventory-v171-hardening-grid{
+  display:grid;
+  grid-template-columns:repeat(6,minmax(0,1fr));
+  gap:10px;
+  margin-top:14px;
+}
+.rms-pro-shell .inventory-v171-hardening-step{
+  border:1px solid #fed7aa;
+  background:#fff;
+  border-radius:14px;
+  padding:11px 12px;
+}
+.rms-pro-shell .inventory-v171-hardening-step span{
+  display:block;
+  color:#64748b;
+  font-size:11.8px;
+  font-weight:850;
+}
+.rms-pro-shell .inventory-v171-hardening-step strong{
+  display:block;
+  margin-top:5px;
+  color:#c2410c;
+  font-size:13.5px;
+  line-height:1.2;
+  font-variant-numeric:tabular-nums;
+  word-break:break-word;
+}
+.rms-pro-shell .inventory-v171-hardening-step.ready{
+  border-color:#bbf7d0;
+  background:#ecfdf5;
+}
+.rms-pro-shell .inventory-v171-hardening-step.ready strong{color:#047857;}
+.rms-pro-shell .inventory-v171-hardening-step.warn{
+  border-color:#fde68a;
+  background:#fffbeb;
+}
+.rms-pro-shell .inventory-v171-hardening-step.warn strong{color:#b45309;}
+.rms-pro-shell .inventory-v171-hardening-step.pending{
+  border-color:#cbd5e1;
+  background:#f8fafc;
+}
+.rms-pro-shell .inventory-v171-hardening-step.pending strong{color:#475569;}
+@media(max-width:1280px){.rms-pro-shell .inventory-v171-hardening-grid{grid-template-columns:repeat(3,minmax(0,1fr));}}
+@media(max-width:680px){.rms-pro-shell .inventory-v171-hardening-grid{grid-template-columns:1fr;}}
+
+.rms-pro-shell .inventory-form-card{
+  border:1px solid #e2e8f0 !important;
+  border-radius:20px !important;
+  background:#fff !important;
+}
+
+/* v178 Surgical Settings Fix + Safe Inventory Cleanup
+   No JSX removal. No :has selectors. No structural selectors for Settings.
+   Only class-based hiding of technical Inventory cards. */
+.rms-pro-shell .inventory-warning-card,
+.rms-pro-shell .inventory-control-card,
+.rms-pro-shell .inventory-supplier-link-card,
+.rms-pro-shell .inventory-schema-check-card,
+.rms-pro-shell .inventory-backfill-card,
+.rms-pro-shell .inventory-autolink-card,
+.rms-pro-shell .inventory-validation-card,
+.rms-pro-shell .inventory-consolidated-card,
+.rms-pro-shell .inventory-supplier-sync-card,
+.rms-pro-shell .inventory-name-location-card,
+.rms-pro-shell .inventory-product-id-fix-card,
+.rms-pro-shell .inventory-branch-location-card,
+.rms-pro-shell .inventory-bazar-sync-card,
+.rms-pro-shell .inventory-sales-consumption-card,
+.rms-pro-shell .inventory-sales-preview-card,
+.rms-pro-shell .inventory-sales-apply-card,
+.rms-pro-shell .inventory-iiko-import-fix-card,
+.rms-pro-shell .inventory-iiko-forward-card,
+.rms-pro-shell .inventory-iiko-parser-card,
+.rms-pro-shell .inventory-v169-consolidated-card,
+.rms-pro-shell .inventory-v170-operational-card,
+.rms-pro-shell .inventory-v171-hardening-card,
+.rms-pro-shell .inventory-v172-final-card,
+.rms-pro-shell .inventory-operations-card{
+  display:none !important;
+}
+.rms-pro-shell .inventory-form-card{
+  border:1px solid #e2e8f0 !important;
+  border-radius:20px !important;
+  background:#fff !important;
+}
+.rms-pro-shell .inventory-form-card .card-head p{
+  display:none !important;
+}
+.rms-pro-shell .inventory-filter-row select{
+  display:none !important;
+}
+.rms-pro-shell .inventory-filter-row input{
+  min-height:44px;
+  border-radius:14px;
+}
+.rms-pro-shell .inventory-negative-alert p{
+  display:none !important;
+}
+
+/* v193 Emergency Recovery
+   Safe recovery from v192 runtime break.
+   No Excel import code. No schema changes. */
+
+
+  `}</style>
+}
+
+
+function ProductLogo({ compact = false, login = false }) {
+  return <div className={`rms-brandmark ${compact ? 'compact' : ''} ${login ? 'login' : ''}`}>
+    <svg className="rms-logo-svg" viewBox="0 0 128 128" aria-hidden="true">
+      <defs>
+        <linearGradient id="rmsLogoShell" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#2f6df6" />
+          <stop offset="100%" stopColor="#071a31" />
+        </linearGradient>
+        <linearGradient id="rmsLogoLine" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#f7d38a" />
+          <stop offset="100%" stopColor="#f5b856" />
+        </linearGradient>
+        <filter id="rmsLogoGlow" x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow dx="0" dy="10" stdDeviation="10" floodColor="#2563eb" floodOpacity="0.22" />
+        </filter>
+      </defs>
+      <rect x="10" y="10" width="108" height="108" rx="28" fill="url(#rmsLogoShell)" filter="url(#rmsLogoGlow)" />
+      <path d="M64 22 98 41v46L64 106 30 87V41L64 22Z" fill="rgba(2,6,23,.16)" stroke="url(#rmsLogoLine)" strokeWidth="5" strokeLinejoin="round" />
+      <path d="M46 61c-5.8-2.6-9.5-7.4-9.5-13 0-8.3 8-15 17.8-15 3.5 0 6.8.9 9.5 2.3 2.7-1.4 6-2.3 9.5-2.3C83 33 91 39.7 91 48c0 5.6-3.7 10.4-9.5 13" fill="none" stroke="#fff7e8" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M45 62h38v16c0 7.8-6.4 14-14.2 14h-9.6C51.4 92 45 85.8 45 78V62Z" fill="none" stroke="#fff7e8" strokeWidth="5" strokeLinejoin="round" />
+      <path d="M51 75h26" stroke="url(#rmsLogoLine)" strokeWidth="5" strokeLinecap="round" />
+      <path d="M42 96h44" stroke="url(#rmsLogoLine)" strokeWidth="5" strokeLinecap="round" />
+    </svg>
+  </div>
+}
+
+function normalizeLoginCandidates(login) {
+  const value = String(login || '').trim().toLowerCase()
+  if (!value) return []
+  if (value.includes('@')) return [value]
+  return [`${value}@rms.local.az`, `${value}@nms.local.az`]
+}
+
+function Login({ lang, setLang, t }) {
+  const [login, setLogin] = useState('')
+  const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
+  const [error, setError] = useState('')
+
+  async function signIn() {
+    setError('')
+    const stopProgress = startGlobalProgress('Вход в RMS...')
+    try {
+      const rawLogin = String(login || '').trim()
+      const rawPassword = String(password || '')
+      const loginGuard = rmsGetLoginGuardState(rawLogin)
+      const failLogin = (message = t('login_error')) => {
+        const failedState = rmsRegisterFailedLogin(rawLogin)
+        stopProgress()
+        if (failedState.locked) {
+          return setError(`Слишком много неверных попыток. Вход заблокирован на ${rmsFormatLockTime(failedState.remainingMs)}.`)
+        }
+        const left = Math.max(0, RMS_LOGIN_MAX_FAILED_ATTEMPTS - failedState.attempts)
+        return setError(`${message}. Осталось попыток: ${left}`)
+      }
+
+      if (!rawLogin || !rawPassword) { stopProgress(); return setError(t('login_error')) }
+      if (loginGuard.locked) {
+        stopProgress()
+        return setError(`Слишком много неверных попыток. Вход заблокирован на ${rmsFormatLockTime(loginGuard.remainingMs)}.`)
+      }
+
+      const normalizedLogin = normalizeInternalLogin(rawLogin)
+      await hydrateRmsInternalAuthFromCloud()
+      const internalUsers = getInternalUsers()
+      const internalUser = normalizedLogin
+        ? (internalUsers[normalizedLogin] || Object.values(internalUsers).find(u =>
+            normalizeInternalLogin(u?.login || u?.email) === normalizedLogin ||
+            String(u?.id || '') === normalizedLogin
+          ))
+        : null
+
+      if (internalUser) {
+        if (internalUser.is_active === false) { stopProgress(); return setError('Пользователь отключён') }
+        if (String(internalUser.password || '') !== rawPassword) return failLogin(t('login_error'))
+
+        const loginName = internalUser.login || normalizedLogin
+        rmsClearLoginGuard(rawLogin)
+        setInternalSessionStorage({
+          rms_internal: true,
+          access_token: `rms-internal-${internalUser.id || loginName}`,
+          user: {
+            id: internalUser.id || `rms-${loginName}`,
+            email: `${loginName}@rms.internal`,
+            login_name: loginName
+          }
+        })
+        window.dispatchEvent(new Event('rms-user-settings-updated'))
+        window.location.reload()
+        return
+      }
+
+      if (!rawLogin.includes('@') || /@(rms|nms)\.local\.az$/i.test(rawLogin) || /@rms\.internal$/i.test(rawLogin)) {
+        return failLogin('Пользователь не найден или пароль неверный. Создайте пользователя заново в Настройки → Пользователи')
+      }
+
+      const { error } = await supabase.auth.signInWithPassword({ email: rawLogin.toLowerCase(), password: rawPassword })
+      if (!error) {
+        rmsClearLoginGuard(rawLogin)
+        stopProgress()
+        setInternalSessionStorage(null)
+        return
+      }
+
+      return failLogin(error?.message || t('login_error'))
+    } catch (e) {
+      stopProgress()
+      setError(e?.message || t('login_error'))
+    }
+  }
+
+  function handleLoginKeyDown(e) {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      signIn()
+    }
+  }
+
+  return <div className="login-screen theme-executive">
+    <ThemeStyles />
+    <ResponsiveAndSettingsStyles />
+    <RMSProV6Styles />
+    <GlobalProgressOverlay />
+    <div className="login-card">
+    <ProductLogo login />
+    <h1 className="login-title">{t('system_title')}</h1>
+    <p className="login-subtitle">{t('brand_subtitle')}</p>
+    <p>{t('login_hint')}</p>
+    <label><span>{t('language_label')}</span><select value={lang} onChange={e => setLang(e.target.value)}><option value="ru">Русский</option><option value="az">Azərbaycan</option></select></label>
+    <label><span>{t('login_label')}</span><input value={login} onChange={e => setLogin(e.target.value)} onKeyDown={handleLoginKeyDown} placeholder="" autoComplete="username" /></label>
+    <label><span>{t('password_label')}</span><input type={showPassword ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} onKeyDown={handleLoginKeyDown} autoComplete="current-password" /></label>
+    <label className="checkbox-row"><input type="checkbox" checked={showPassword} onChange={e => setShowPassword(e.target.checked)} /> {t('show_password')}</label>
+    {error && <p className="bad">{error}</p>}
+    <button className="primary" onClick={signIn}>{t('login_button')}</button>
+  </div></div>
+}
+
+function useBranches() {
+  const [branches, setBranches] = useState([])
+  useEffect(() => {
+    let alive = true
+
+    async function loadBranches() {
+      const { data, error } = await supabase.from('branches').select('*').eq('is_active', true).order('name')
+      if (!error && data?.length) {
+        if (alive) setBranches(data || [])
+        return
+      }
+
+      const now = new Date()
+      const { data: snap } = await fetchRmsStaffWorkspaceSnapshot(monthStart(now.getFullYear(), now.getMonth() + 1))
+      const map = new Map()
+      ;(snap?.employees || []).forEach(e => {
+        if (e.branch_id) {
+          map.set(e.branch_id, {
+            id: e.branch_id,
+            name: e.branches?.name || e.branch_name || 'Филиал',
+            is_active: true
+          })
+        }
+      })
+
+      if (alive) setBranches(Array.from(map.values()).sort((a, b) => String(a.name).localeCompare(String(b.name))))
+    }
+
+    loadBranches()
+    return () => { alive = false }
+  }, [])
+  return branches
 }
 
 function Revenue({ t, focusExpense }) {
@@ -18156,11 +26532,6 @@ function DashboardTrendColorStyles() {
   color: #ef4444 !important;
   font-weight: 900 !important;
 }
-/* v192 Revenue Import Runtime Safe Fix */
-.excel-revenue-import-card .soft-alert{
-  white-space:pre-wrap;
-}
-
 
   `}</style>
 }
