@@ -1677,7 +1677,7 @@ const RMS_BRANCH_RENT_FORECAST_SETTING = 'branch_rent_forecast_v1'
 const RMS_HIDDEN_SALES_KEYS_SETTING = 'hidden_sales_keys'
 const RMS_SALES_NAME_ALIASES_SETTING = 'sales_name_aliases'
 
-const RMS_SOURCE_VERSION = 'main_v48_persistent_users_hidden_aliases'
+const RMS_SOURCE_VERSION = 'main_v180_settings_internal_access_fix'
 const RMS_FULL_BACKUP_TABLES = [
   'branches',
   'expense_categories',
@@ -3570,11 +3570,13 @@ function App() {
   const isAdmin = !isInternalSession && (!profile || profile?.role === 'admin')
   const sectionAccess = (sectionId) => {
     if (isAdmin) return 'admin'
+    if (sectionId === 'settings' && isInternalSession) return 'admin'
     const row = permissions.find(p => p.section === sectionId)
     return row?.access || 'none'
   }
-  const visibleSections = SECTIONS.filter(s => canReadAccess(sectionAccess(s.id)))
+  const visibleSections = SECTIONS.filter(s => canReadAccess(sectionAccess(s.id)) || (s.id === 'settings' && isInternalSession))
   const currentAccess = sectionAccess(section)
+  const currentCanRead = canReadAccess(currentAccess) || (section === 'settings' && isInternalSession)
 
   useEffect(() => {
     const urlToken = new URLSearchParams(window.location.search).get('loyalty_scan_token')
@@ -3585,8 +3587,9 @@ function App() {
 
   useEffect(() => {
     if (!visibleSections.length) return
+    if (section === 'settings' && isInternalSession) return
     if (!canReadAccess(sectionAccess(section))) setSection(visibleSections[0].id)
-  }, [permissions, profile, section])
+  }, [permissions, profile, section, isInternalSession])
 
   function goToRevenueExpense(row) {
     if (!row?.expense_date || !row?.branch_id) return
@@ -3711,19 +3714,19 @@ function App() {
           </div>
         </div>
         <div className="rms-pro-content">
-        {!canReadAccess(currentAccess) && <section className="card"><h3>{t('permission_denied')}</h3><p className="hint">Этот раздел скрыт для текущего пользователя.</p></section>}
-        {canReadAccess(currentAccess) && currentAccess === 'read' && <div className="readonly-banner">Режим просмотра: редактирование этого раздела отключено.</div>}
-        {canReadAccess(currentAccess) && section === 'dashboard' && <Dashboard t={t} />}
-        {canReadAccess(currentAccess) && section === 'revenue' && <Revenue t={t} focusExpense={revenueFocus} />}
-        {canReadAccess(currentAccess) && section === 'finance' && <Finance t={t} lang={lang} onGoToExpense={goToRevenueExpense} />}
-        {canReadAccess(currentAccess) && section === 'reports' && <Reports t={t} />}
-        {canReadAccess(currentAccess) && section === 'recipes' && <Recipes t={t} />}
-        {canReadAccess(currentAccess) && section === 'inventory' && <InventoryModule t={t} />}
-        {canReadAccess(currentAccess) && section === 'salaries' && <SalaryWorkspace t={t} isAdmin={isAdmin || accessRank(sectionAccess('salaries')) >= accessRank('admin')} />}
-        {canReadAccess(currentAccess) && section === 'suppliers' && <Suppliers t={t} isAdmin={isAdmin || accessRank(sectionAccess('suppliers')) >= accessRank('admin')} />}
-        {canReadAccess(currentAccess) && section === 'debts' && <DebtsPayments t={t} />}
-        {canReadAccess(currentAccess) && section === 'qrmenu' && <RMSQRMenuAdmin t={t} />}
-        {canReadAccess(currentAccess) && section === 'loyalty' && <div className="grid">
+        {!currentCanRead && <section className="card"><h3>{t('permission_denied')}</h3><p className="hint">Этот раздел скрыт для текущего пользователя.</p></section>}
+        {currentCanRead && currentAccess === 'read' && <div className="readonly-banner">Режим просмотра: редактирование этого раздела отключено.</div>}
+        {currentCanRead && section === 'dashboard' && <Dashboard t={t} />}
+        {currentCanRead && section === 'revenue' && <Revenue t={t} focusExpense={revenueFocus} />}
+        {currentCanRead && section === 'finance' && <Finance t={t} lang={lang} onGoToExpense={goToRevenueExpense} />}
+        {currentCanRead && section === 'reports' && <Reports t={t} />}
+        {currentCanRead && section === 'recipes' && <Recipes t={t} />}
+        {currentCanRead && section === 'inventory' && <InventoryModule t={t} />}
+        {currentCanRead && section === 'salaries' && <SalaryWorkspace t={t} isAdmin={isAdmin || accessRank(sectionAccess('salaries')) >= accessRank('admin')} />}
+        {currentCanRead && section === 'suppliers' && <Suppliers t={t} isAdmin={isAdmin || accessRank(sectionAccess('suppliers')) >= accessRank('admin')} />}
+        {currentCanRead && section === 'debts' && <DebtsPayments t={t} />}
+        {currentCanRead && section === 'qrmenu' && <RMSQRMenuAdmin t={t} />}
+        {currentCanRead && section === 'loyalty' && <div className="grid">
           <div className="card span-2">
             <RMSLoyalty />
           </div>
@@ -3737,9 +3740,9 @@ function App() {
             <RMSLoyaltyPOSScan />
           </div>
         </div>}
-        {canReadAccess(currentAccess) && section === 'market' && <MarketIntelligence t={t} />}
-        {canReadAccess(currentAccess) && section === 'security_recovery' && <SecurityRecoveryCenter />}
-        {canReadAccess(currentAccess) && section === 'settings' && <Settings session={session} t={t} theme={theme} setTheme={setTheme} />}
+        {currentCanRead && section === 'market' && <MarketIntelligence t={t} />}
+        {currentCanRead && section === 'security_recovery' && <SecurityRecoveryCenter />}
+        {currentCanRead && section === 'settings' && <RmsSectionErrorBoundary resetKey={`settings-${section}`}><Settings session={session} t={t} theme={theme} setTheme={setTheme} /></RmsSectionErrorBoundary>}
         </div>
       </main>
     </div>
