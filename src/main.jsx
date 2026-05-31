@@ -3440,6 +3440,190 @@ class RmsSectionErrorBoundary extends React.Component {
   }
 }
 
+
+// v189 Excel Revenue Import helpers
+function loadXlsxLibrary() {
+  if (window.XLSX) return Promise.resolve(window.XLSX)
+  return new Promise((resolve, reject) => {
+    const existing = document.querySelector('script[data-rms-xlsx="true"]')
+    if (existing) {
+      existing.addEventListener('load', () => resolve(window.XLSX))
+      existing.addEventListener('error', reject)
+      return
+    }
+    const script = document.createElement('script')
+    script.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js'
+    script.async = true
+    script.dataset.rmsXlsx = 'true'
+    script.onload = () => resolve(window.XLSX)
+    script.onerror = () => reject(new Error('Не удалось загрузить XLSX parser'))
+    document.head.appendChild(script)
+  })
+}
+
+function rmsExcelCellToNumber(value) {
+  if (value === null || value === undefined || value === '') return 0
+  if (typeof value === 'number' && Number.isFinite(value)) return value
+  const cleaned = String(value)
+    .replace(/\s/g, '')
+    .replace(',', '.')
+    .replace(/[^\d.-]/g, '')
+  const n = Number(cleaned)
+  return Number.isFinite(n) ? n : 0
+}
+
+function rmsExcelCellToText(value) {
+  if (value === null || value === undefined) return ''
+  return String(value).trim()
+}
+
+function rmsExcelColumnLetterToIndex(letter) {
+  let n = 0
+  const s = String(letter || '').toUpperCase()
+  for (let i = 0; i < s.length; i += 1) {
+    n = n * 26 + (s.charCodeAt(i) - 64)
+  }
+  return n - 1
+}
+
+function rmsExcelGetCell(sheet, rowNumber, colLetter) {
+  const XLSX = window.XLSX
+  const cell = sheet[XLSX.utils.encode_cell({ r: rowNumber - 1, c: rmsExcelColumnLetterToIndex(colLetter) })]
+  return cell ? cell.v : null
+}
+
+function rmsParseRevenueFromBCWorkbook(workbook) {
+  const branchSheets = [
+    { sheet: 'BC1', branch: 'BC1' },
+    { sheet: 'BC2', branch: 'BC2' },
+    { sheet: 'BC3', branch: 'BC3' },
+    { sheet: 'BC4', branch: 'BC4' },
+    { sheet: 'BC5', branch: 'BC5' },
+    { sheet: 'BC 5', branch: 'BC5' },
+    { sheet: 'Bistro', branch: 'Bistro' },
+  ]
+
+  const rows = []
+  const warnings = []
+  const seenBranchDate = new Set()
+  const dayStartCol = rmsExcelColumnLetterToIndex('D')
+  const dayEndCol = rmsExcelColumnLetterToIndex('AI')
+
+  branchSheets.forEach(({ sheet: sheetName, branch }) => {
+    const sheet = workbook.Sheets[sheetName]
+    if (!sheet) return
+
+    for (let c = dayStartCol; c <= dayEndCol; c += 1) {
+      const colLetter = window.XLSX.utils.encode_col(c)
+      const rawDay = rmsExcelGetCell(sheet, 1, colLetter)
+      const day = Number(rawDay)
+      if (!day || day < 1 || day > 31) continue
+
+      const cash = rmsExcelCellToNumber(rmsExcelGetCell(sheet, 2, colLetter))
+      const bank = rmsExcelCellToNumber(rmsExcelGetCell(sheet, 3, colLetter))
+
+      // Some sheets have total at row 4, some at row 6. Prefer explicit total row if it is close to cash+bank.
+      const totalRow4 = rmsExcelCellToNumber(rmsExcelGetCell(sheet, 4, colLetter))
+      const totalRow6 = rmsExcelCellToNumber(rmsExcelGetCell(sheet, 6, colLetter))
+      const computed = cash + bank
+      let total = computed
+      if (totalRow4 > 0 && Math.abs(totalRow4 - computed) <= Math.max(2, computed * 0.05)) total = totalRow4
+      else if (totalRow6 > 0 && Math.abs(totalRow6 - computed) <= Math.max(2, computed * 0.05)) total = totalRow6
+      else if (totalRow4 > 0 && computed === 0) total = totalRow4
+      else if (totalRow6 > 0 && computed === 0) total = totalRow6
+
+      if (!cash && !bank && !total) continue
+
+      const date = `2026-05-${String(day).padStart(2, '0')}`
+      const key = `${branch}|${date}`
+
+      // If both BC5 and BC 5 exist, prevent duplicate branch-date rows.
+      if (seenBranchDate.has(key)) {
+        warnings.push(`${branch} ${date}: дубликат между листами, строка пропущена`)
+        continue
+      }
+      seenBranchDate.add(key)
+
+      rows.push({
+        branch,
+        date,
+        cash,
+        bank,
+        total,
+        source_sheet: sheetName,
+        source_day: day,
+        external_id: `excel-2026-05-${branch}-${String(day).padStart(2, '0')}`,
+      })
+    }
+  })
+
+  return { rows, warnings }
+}
+
+async function rmsRevenueImportUpsertRow(row) {
+  const branchId = getBranchId(row.branch)
+  if (!branchId) {
+    throw new Error(`Филиал не найден: ${row.branch}`)
+  }
+
+  const revenuePayload = {
+    date: row.date,
+    branch_id: branchId,
+    branch: row.branch,
+    cash_amount: row.cash,
+    card_amount: row.bank,
+    wolt_amount: 0,
+    total_amount: row.total || (Number(row.cash || 0) + Number(row.bank || 0)),
+    comment: `Excel import ${row.source_sheet} day ${row.source_day}`,
+    source: 'excel_revenue_import',
+    external_id: row.external_id,
+  }
+
+  let revenueId = null
+
+  // Try find existing row by date + branch first.
+  const existing = await supabase
+    .from('daily_revenue')
+    .select('id')
+    .eq('date', row.date)
+    .eq('branch_id', branchId)
+    .limit(1)
+
+  if (existing?.data?.[0]?.id) {
+    revenueId = existing.data[0].id
+    await supabase
+      .from('daily_revenue')
+      .update(revenuePayload)
+      .eq('id', revenueId)
+  } else {
+    const inserted = await supabase
+      .from('daily_revenue')
+      .insert(revenuePayload)
+      .select('id')
+      .single()
+    if (inserted.error) throw inserted.error
+    revenueId = inserted.data?.id
+  }
+
+  if (!revenueId) throw new Error(`Не удалось создать выручку: ${row.branch} ${row.date}`)
+
+  const entryRows = [
+    { revenue_id: revenueId, payment_type: 'cash', amount: row.cash || 0, comment: 'Excel cash' },
+    { revenue_id: revenueId, payment_type: 'bank', amount: row.bank || 0, comment: 'Excel bank' },
+  ]
+
+  // Replace only this revenue entry details to prevent duplicates.
+  await supabase.from('daily_revenue_entries').delete().eq('revenue_id', revenueId)
+
+  const hasEntries = entryRows.filter(r => Number(r.amount || 0) !== 0)
+  if (hasEntries.length) {
+    const entryInsert = await supabase.from('daily_revenue_entries').insert(hasEntries)
+    if (entryInsert.error) throw entryInsert.error
+  }
+
+  return revenueId
+}
+
 function App() {
   const params = new URLSearchParams(window.location.search)
 
@@ -12186,6 +12370,147 @@ function useBranches() {
     return () => { alive = false }
   }, [])
   return branches
+}
+
+
+function ExcelRevenueImportCard({ onImported }) {
+  const [fileName, setFileName] = React.useState('')
+  const [rows, setRows] = React.useState([])
+  const [warnings, setWarnings] = React.useState([])
+  const [busy, setBusy] = React.useState(false)
+  const [message, setMessage] = React.useState('')
+
+  const totals = React.useMemo(() => {
+    return rows.reduce((acc, r) => {
+      acc.count += 1
+      acc.cash += Number(r.cash || 0)
+      acc.bank += Number(r.bank || 0)
+      acc.total += Number(r.total || 0)
+      return acc
+    }, { count: 0, cash: 0, bank: 0, total: 0 })
+  }, [rows])
+
+  const handleFile = async (event) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+    setBusy(true)
+    setMessage('')
+    setRows([])
+    setWarnings([])
+    setFileName(file.name)
+    try {
+      const XLSX = await loadXlsxLibrary()
+      const buffer = await file.arrayBuffer()
+      const workbook = XLSX.read(buffer, { type: 'array', cellDates: false, raw: true })
+      const parsed = rmsParseRevenueFromBCWorkbook(workbook)
+      setRows(parsed.rows)
+      setWarnings(parsed.warnings || [])
+      setMessage(`Preview готов: ${parsed.rows.length} строк выручки`)
+    } catch (err) {
+      console.error('Excel revenue parse error', err)
+      setMessage(err?.message || 'Не удалось прочитать Excel файл')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const importRows = async () => {
+    if (!rows.length) return
+    setBusy(true)
+    setMessage('')
+    let ok = 0
+    let failed = 0
+    try {
+      for (const row of rows) {
+        try {
+          await rmsRevenueImportUpsertRow(row)
+          ok += 1
+        } catch (err) {
+          console.error('Revenue import row failed', row, err)
+          failed += 1
+        }
+      }
+      setMessage(`Импорт завершён: ${ok} строк, ошибок: ${failed}`)
+      if (onImported) await onImported()
+    } catch (err) {
+      console.error('Excel revenue import error', err)
+      setMessage(err?.message || 'Ошибка импорта выручки')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="card excel-revenue-import-card">
+      <div className="card-head">
+        <div>
+          <h3>Импорт выручки из Google Sheets / Excel</h3>
+          <p>Только выручка: наличные, банк и итог по дням. Расходы пока не импортируются.</p>
+        </div>
+      </div>
+
+      <div className="excel-import-actions">
+        <label className="file-upload-button">
+          <input type="file" accept=".xlsx,.xls" onChange={handleFile} disabled={busy} />
+          Выбрать Excel файл
+        </label>
+        <button className="primary" onClick={importRows} disabled={busy || !rows.length}>
+          {busy ? 'Обработка…' : 'Импортировать выручку'}
+        </button>
+        {fileName && <span className="hint">{fileName}</span>}
+      </div>
+
+      {message && <div className="soft-alert">{message}</div>}
+
+      {!!rows.length && (
+        <>
+          <div className="excel-import-summary">
+            <div><span>Строк</span><strong>{totals.count}</strong></div>
+            <div><span>Наличные</span><strong>{money(totals.cash)}</strong></div>
+            <div><span>Банк</span><strong>{money(totals.bank)}</strong></div>
+            <div><span>Итого</span><strong>{money(totals.total)}</strong></div>
+          </div>
+
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Дата</th>
+                  <th>Филиал</th>
+                  <th>Наличные</th>
+                  <th>Банк</th>
+                  <th>Итого</th>
+                  <th>Лист</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.slice(0, 80).map((r) => (
+                  <tr key={r.external_id}>
+                    <td>{r.date}</td>
+                    <td>{r.branch}</td>
+                    <td>{money(r.cash)}</td>
+                    <td>{money(r.bank)}</td>
+                    <td>{money(r.total)}</td>
+                    <td>{r.source_sheet}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {rows.length > 80 && <p className="hint">Показаны первые 80 строк из {rows.length}.</p>}
+        </>
+      )}
+
+      {!!warnings.length && (
+        <div className="soft-alert warning">
+          <strong>Предупреждения</strong>
+          <ul>
+            {warnings.slice(0, 10).map((w, i) => <li key={i}>{w}</li>)}
+          </ul>
+        </div>
+      )}
+    </div>
+  )
 }
 
 function Revenue({ t, focusExpense }) {
