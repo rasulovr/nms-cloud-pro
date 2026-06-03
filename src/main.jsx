@@ -12399,6 +12399,105 @@ function RMSProV6Styles() {
   font-variant-numeric:tabular-nums;
 }
 
+/* v227 Robust daily revenue chart from daily_revenue rows */
+.reports-v227-day-chart-card{
+  margin:14px 0 18px;
+  border:1px solid #dbeafe;
+  background:linear-gradient(180deg,#ffffff 0%,#f8fbff 100%);
+  border-radius:22px;
+  padding:16px;
+  box-shadow:0 18px 42px rgba(37,99,235,.08);
+}
+.reports-v227-day-chart-head h3{
+  margin:0;
+  color:#0f172a;
+  font-size:20px;
+}
+.reports-v227-day-chart-head p{
+  margin:5px 0 0;
+  color:#64748b;
+  font-size:13px;
+}
+.reports-v227-chart-wrap{
+  overflow-x:auto;
+  background:#fff;
+  border:1px solid #e2e8f0;
+  border-radius:18px;
+  padding:12px;
+  margin-top:14px;
+}
+.reports-v227-line-chart{
+  display:block;
+  width:100%;
+  min-width:720px;
+  height:260px;
+  color:#2563eb;
+}
+.reports-v227-axis{
+  stroke:#94a3b8;
+  stroke-width:1;
+}
+.reports-v227-grid-line{
+  stroke:#e2e8f0;
+  stroke-width:1;
+  stroke-dasharray:4 6;
+}
+.reports-v227-area{
+  fill:url(#revenueDailyGradientV227);
+}
+.reports-v227-line{
+  fill:none;
+  stroke:#2563eb;
+  stroke-width:4;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+  filter:drop-shadow(0 5px 8px rgba(37,99,235,.18));
+}
+.reports-v227-dot{
+  fill:#2563eb;
+  stroke:#fff;
+  stroke-width:2;
+}
+.reports-v227-x-label{
+  fill:#0f172a;
+  font-size:11px;
+  font-weight:800;
+}
+.reports-v227-chart-kpis{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:12px;
+  margin-top:14px;
+}
+.reports-v227-chart-kpis div{
+  background:#fff;
+  border:1px solid #e2e8f0;
+  border-radius:16px;
+  padding:14px;
+}
+.reports-v227-chart-kpis span{
+  display:block;
+  color:#64748b;
+  font-size:12px;
+  font-weight:850;
+}
+.reports-v227-chart-kpis strong{
+  display:block;
+  margin-top:8px;
+  color:#0f172a;
+  font-size:18px;
+}
+.reports-v227-chart-kpis em{
+  display:block;
+  margin-top:5px;
+  color:#16a34a;
+  font-style:normal;
+  font-weight:850;
+}
+@media(max-width:760px){
+  .reports-v227-chart-kpis{grid-template-columns:1fr;}
+}
+
 
   `}</style>
 }
@@ -25420,6 +25519,93 @@ function rmsNextMonthStart(monthValue) {
   return `${nextYear}-${String(nextMonth)}-01`
 }
 
+
+function ReportsRevenueDailyChartV227({ rows = [], title = 'Старая диаграмма выручки' }) {
+  const n = (value) => {
+    const x = Number(value || 0)
+    return Number.isFinite(x) ? x : 0
+  }
+  const money = (value) => `${n(value).toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} AZN`
+
+  const daily = React.useMemo(() => {
+    const map = new Map()
+    rows.forEach(row => {
+      const rawDate = String(row.revenue_date || '')
+      const day = Number(rawDate.slice(8, 10))
+      if (!day) return
+      const prev = map.get(day) || { day, label: String(day), revenue: 0, cash: 0, bank: 0, wolt: 0 }
+      const total = n(row.revenue ?? row.total_amount ?? (n(row.cash) + n(row.bank) + n(row.wolt)))
+      prev.revenue += total
+      prev.cash += n(row.cash)
+      prev.bank += n(row.bank)
+      prev.wolt += n(row.wolt)
+      map.set(day, prev)
+    })
+    return Array.from(map.values()).sort((a, b) => a.day - b.day)
+  }, [rows])
+
+  const total = daily.reduce((sum, row) => sum + n(row.revenue), 0)
+  const avg = daily.length ? total / daily.length : 0
+  const best = [...daily].sort((a, b) => n(b.revenue) - n(a.revenue))[0] || null
+  const max = Math.max(...daily.map(row => n(row.revenue)), 1)
+
+  const path = daily.map((item, index) => {
+    const width = 720
+    const height = 220
+    const padX = 34
+    const padY = 24
+    const x = daily.length <= 1 ? width / 2 : padX + index * ((width - padX * 2) / (daily.length - 1))
+    const y = height - padY - (n(item.revenue) / max) * (height - padY * 2)
+    return `${index === 0 ? 'M' : 'L'} ${x.toFixed(2)} ${y.toFixed(2)}`
+  }).join(' ')
+  const areaPath = path ? `${path} L 686 196 L 34 196 Z` : ''
+
+  return (
+    <div className="reports-v227-day-chart-card">
+      <div className="reports-v227-day-chart-head">
+        <div>
+          <h3>{title}</h3>
+          <p>Суммарная выручка сети по дням месяца, без Wolt</p>
+        </div>
+      </div>
+
+      <div className="reports-v227-chart-wrap">
+        <svg className="reports-v227-line-chart" viewBox="0 0 720 240" role="img" aria-label="Daily revenue chart">
+          <defs>
+            <linearGradient id="revenueDailyGradientV227" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="currentColor" stopOpacity="0.22" />
+              <stop offset="100%" stopColor="currentColor" stopOpacity="0.02" />
+            </linearGradient>
+          </defs>
+          <line x1="34" y1="196" x2="686" y2="196" className="reports-v227-axis" />
+          {[0.25, 0.5, 0.75, 1].map(level => <line key={level} x1="34" y1={196 - level * 172} x2="686" y2={196 - level * 172} className="reports-v227-grid-line" />)}
+          {areaPath && <path d={areaPath} className="reports-v227-area" />}
+          {path && <path d={path} className="reports-v227-line" />}
+          {daily.map((item, index) => {
+            const width = 720
+            const height = 220
+            const padX = 34
+            const padY = 24
+            const x = daily.length <= 1 ? width / 2 : padX + index * ((width - padX * 2) / (daily.length - 1))
+            const y = height - padY - (n(item.revenue) / max) * (height - padY * 2)
+            return <g key={item.day}>
+              <circle cx={x} cy={y} r="4.5" className="reports-v227-dot" />
+              <title>{item.day}: {money(item.revenue)}</title>
+              <text x={x} y="224" textAnchor="middle" className="reports-v227-x-label">{item.day}</text>
+            </g>
+          })}
+        </svg>
+      </div>
+
+      <div className="reports-v227-chart-kpis">
+        <div><span>Выручка за месяц</span><strong>{money(total)}</strong></div>
+        <div><span>Средняя выручка / день</span><strong>{money(avg)}</strong></div>
+        <div><span>Лучший день</span><strong>{best ? `${best.day}` : '—'}</strong><em>{best ? money(best.revenue) : money(0)}</em></div>
+      </div>
+    </div>
+  )
+}
+
 function ReportsBazarDailyFullCardV220() {
   const [rows, setRows] = React.useState([])
   const [loading, setLoading] = React.useState(false)
@@ -25494,7 +25680,6 @@ function ReportsBazarDailyFullCardV220() {
               <tr key={row.expense_date}>
                 <td><b>{row.expense_date}</b></td>
                 <td><strong>{money(row.total_amount)}</strong></td>
-                <td>{row.rows_count}</td>
                 <td>{row.branches_count}</td>
                 <td>{row.last_created_at ? String(row.last_created_at).slice(0, 19).replace('T', ' ') : '—'}</td>
               </tr>
@@ -26818,6 +27003,8 @@ function Reports({ t }) {
         <div><span>Филиал</span><strong>{selectedBranchLabel}</strong><em>текущий фильтр</em></div>
         <div><span>Период</span><strong>{selectedMonthLabel}</strong><em>текущий фильтр</em></div>
       </div>
+
+      {!rmsRevenueReport.loading && !rmsRevenueReport.error && revenueListMode === 'daily' && <ReportsRevenueDailyChartV227 rows={rmsRevenueReport.rows || []} />}
 
       {!rmsRevenueReport.loading && !rmsRevenueReport.error && !!revenueTrendRows.length && <div className="reports-v224-trend-card">
         <div className="reports-v224-trend-head">
@@ -30133,7 +30320,7 @@ function Settings({ session, t, theme, setTheme }) {
 
           <div className="card span-2">
             <div className="card-head"><h3>Журнал iiko sync</h3><button className="small" onClick={load}>Обновить</button></div>
-            <div className="table-wrap"><table><thead><tr><th>Дата</th><th>Статус</th><th>Период</th><th>Строк</th><th>Сумма</th><th>Комментарий</th></tr></thead><tbody>{iikoSyncLogs.map(log => <tr key={log.id}><td>{log.created_at ? new Date(log.created_at).toLocaleString('ru-RU') : '—'}</td><td>{log.status}</td><td>{log.period_from || '—'} — {log.period_to || '—'}</td><td>{log.rows_count || 0}</td><td>{fmt(log.total_amount || 0)}</td><td>{log.error_message || log.message || '—'}</td></tr>)}{!iikoSyncLogs.length && <tr><td colSpan="6" className="hint">Логов синхронизации пока нет.</td></tr>}</tbody></table></div>
+            <div className="table-wrap"><table><thead><tr><th>Дата</th><th>Статус</th><th>Период</th><th>Сумма</th><th>Комментарий</th></tr></thead><tbody>{iikoSyncLogs.map(log => <tr key={log.id}><td>{log.created_at ? new Date(log.created_at).toLocaleString('ru-RU') : '—'}</td><td>{log.status}</td><td>{log.period_from || '—'} — {log.period_to || '—'}</td><td>{log.rows_count || 0}</td><td>{fmt(log.total_amount || 0)}</td><td>{log.error_message || log.message || '—'}</td></tr>)}{!iikoSyncLogs.length && <tr><td colSpan="6" className="hint">Логов синхронизации пока нет.</td></tr>}</tbody></table></div>
           </div>
         </>}
 
