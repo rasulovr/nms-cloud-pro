@@ -12016,99 +12016,79 @@ function RMSProV6Styles() {
    Safe recovery from v192 runtime break.
    No Excel import code. No schema changes. */
 
-/* v219 Reports Bazar Daily Full */
-.reports-v219-bazar-card{
+/* v220 Reports Bazar Daily Full targeted fix */
+.reports-v220-bazar-card{
   margin:14px 0 18px;
   border:1px solid #bbf7d0;
   background:linear-gradient(180deg,#ffffff 0%,#f0fdf4 100%);
   border-radius:20px;
   padding:16px;
 }
-.reports-v219-head{
+.reports-v220-head{
   display:flex;
   justify-content:space-between;
   align-items:flex-start;
   gap:12px;
   margin-bottom:12px;
 }
-.reports-v219-head h4{
-  margin:0;
-  color:#0f172a;
-  font-size:18px;
-}
-.reports-v219-head p{
-  margin:5px 0 0;
-  color:#64748b;
-  font-size:13px;
-}
-.reports-v219-kpis{
+.reports-v220-head h4{margin:0;color:#0f172a;font-size:18px;}
+.reports-v220-head p{margin:5px 0 0;color:#64748b;font-size:13px;}
+.reports-v220-kpis{
   display:grid;
   grid-template-columns:repeat(3,minmax(0,1fr));
   gap:10px;
   margin:12px 0;
 }
-.reports-v219-kpis div{
+.reports-v220-kpis div{
   background:#fff;
   border:1px solid #dcfce7;
   border-radius:14px;
   padding:12px;
 }
-.reports-v219-kpis span{
-  display:block;
-  color:#64748b;
-  font-size:12px;
-  font-weight:850;
-}
-.reports-v219-kpis strong{
-  display:block;
-  margin-top:5px;
-  color:#166534;
-  font-size:17px;
-}
-.reports-v219-grid{
+.reports-v220-kpis span{display:block;color:#64748b;font-size:12px;font-weight:850;}
+.reports-v220-kpis strong{display:block;margin-top:5px;color:#166534;font-size:17px;}
+.reports-v220-grid{
   display:grid;
   grid-template-columns:minmax(420px,.48fr) minmax(480px,.52fr);
   gap:14px;
 }
-.reports-v219-table-card{
+.reports-v220-table-card{
   overflow:auto;
   background:#fff;
   border:1px solid #dcfce7;
   border-radius:16px;
 }
-.reports-v219-table-card h5{
+.reports-v220-table-card h5{
   margin:0;
   padding:12px;
   border-bottom:1px solid #dcfce7;
   color:#0f172a;
   font-size:15px;
 }
-.reports-v219-table-card table{
+.reports-v220-table-card table{
   width:100%;
   border-collapse:collapse;
   font-size:13px;
 }
-.reports-v219-table-card th,
-.reports-v219-table-card td{
+.reports-v220-table-card th,
+.reports-v220-table-card td{
   padding:9px 10px;
   border-bottom:1px solid #e2e8f0;
   text-align:left;
   vertical-align:top;
 }
-.reports-v219-table-card th{
+.reports-v220-table-card th{
   color:#475569;
   font-size:11.5px;
   text-transform:uppercase;
   letter-spacing:.04em;
   background:#f8fafc;
 }
-.reports-v219-table-card tr.active td{
-  background:#ecfdf5;
-}
+.reports-v220-table-card tr.active td{background:#ecfdf5;}
 .padded{padding:12px;}
 @media(max-width:960px){
-  .reports-v219-grid{grid-template-columns:1fr;}
-  .reports-v219-kpis{grid-template-columns:1fr;}
+  .reports-v220-grid{grid-template-columns:1fr;}
+  .reports-v220-kpis{grid-template-columns:1fr;}
 }
 
 
@@ -25120,7 +25100,7 @@ async function explodeZipFile(file) {
 }
 
 
-function ReportsBazarDailyFullCard() {
+function ReportsBazarDailyFullCardV220() {
   const [rows, setRows] = React.useState([])
   const [detailRows, setDetailRows] = React.useState([])
   const [selectedDate, setSelectedDate] = React.useState(null)
@@ -25128,18 +25108,25 @@ function ReportsBazarDailyFullCard() {
   const [detailLoading, setDetailLoading] = React.useState(false)
   const [error, setError] = React.useState('')
 
+  const n = (value) => {
+    const x = Number(value || 0)
+    return Number.isFinite(x) ? x : 0
+  }
+
+  const money = (value) => `${n(value).toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} AZN`
+
   const loadRows = React.useCallback(async () => {
     setLoading(true)
     setError('')
     try {
-      const { data, error } = await supabase.rpc('rms_report_bazar_daily_full_v219', {
+      const res = await supabase.rpc('rms_report_bazar_daily_full_v219', {
         p_date_from: null,
         p_date_to: null
       })
-      if (error) throw error
-      setRows(Array.isArray(data) ? data : [])
+      if (res.error) throw res.error
+      setRows(Array.isArray(res.data) ? res.data : [])
     } catch (err) {
-      console.error('Bazar daily report error', err)
+      console.error('Bazar v220 load error', err)
       setError(err?.message || 'Не удалось загрузить ежедневный отчёт по Базару')
     } finally {
       setLoading(false)
@@ -25151,13 +25138,13 @@ function ReportsBazarDailyFullCard() {
     setDetailLoading(true)
     setError('')
     try {
-      const { data, error } = await supabase.rpc('rms_report_bazar_daily_full_detail_v219', {
+      const res = await supabase.rpc('rms_report_bazar_daily_full_detail_v219', {
         p_expense_date: date
       })
-      if (error) throw error
-      setDetailRows(Array.isArray(data) ? data : [])
+      if (res.error) throw res.error
+      setDetailRows(Array.isArray(res.data) ? res.data : [])
     } catch (err) {
-      console.error('Bazar daily detail error', err)
+      console.error('Bazar v220 detail error', err)
       setError(err?.message || 'Не удалось загрузить детализацию дня')
     } finally {
       setDetailLoading(false)
@@ -25168,32 +25155,30 @@ function ReportsBazarDailyFullCard() {
     loadRows()
   }, [loadRows])
 
-  const total = React.useMemo(() => rows.reduce((sum, row) => sum + parseNum(row.total_amount), 0), [rows])
+  const total = rows.reduce((sum, row) => sum + n(row.total_amount), 0)
   const avg = rows.length ? total / rows.length : 0
 
   return (
-    <div className="reports-v219-bazar-card">
-      <div className="reports-v219-head">
+    <div className="reports-v220-bazar-card">
+      <div className="reports-v220-head">
         <div>
           <h4>Отчёт по базару</h4>
-          <p>Ежедневный полный расход статьи “Базар”. Сумма считается как общий итог за день, без разбивки по филиалам.</p>
+          <p>Ежедневный полный расход статьи “Базар”. Основная таблица показывает общий итог дня, без разбивки по филиалам.</p>
         </div>
-      <ReportsBazarDailyFullCard />
-
         <button className="ghost small" onClick={loadRows} disabled={loading}>{loading ? 'Обновление…' : 'Обновить'}</button>
       </div>
 
       {error && <div className="soft-alert warning">{error}</div>}
 
-      <div className="reports-v219-kpis">
-        <div><span>Итого Базар</span><strong>{fmt(total)}</strong></div>
+      <div className="reports-v220-kpis">
+        <div><span>Итого Базар</span><strong>{money(total)}</strong></div>
         <div><span>Дней</span><strong>{rows.length}</strong></div>
-        <div><span>Среднее / день</span><strong>{fmt(avg)}</strong></div>
+        <div><span>Среднее / день</span><strong>{money(avg)}</strong></div>
       </div>
 
-      <div className="reports-v219-grid">
-        <div className="reports-v219-table-card">
-          <h5>Ежедневный расход</h5>
+      <div className="reports-v220-grid">
+        <div className="reports-v220-table-card">
+          <h5>Ежедневный расход Базар</h5>
           <table>
             <thead>
               <tr>
@@ -25208,19 +25193,20 @@ function ReportsBazarDailyFullCard() {
               {rows.map(row => (
                 <tr key={row.expense_date} className={selectedDate === row.expense_date ? 'active' : ''}>
                   <td><b>{row.expense_date}</b></td>
-                  <td>{fmt(row.total_amount)}</td>
+                  <td>{money(row.total_amount)}</td>
                   <td>{row.rows_count}</td>
                   <td>{row.branches_count}</td>
                   <td><button className="ghost small" onClick={() => loadDetail(row.expense_date)}>Детали</button></td>
                 </tr>
               ))}
-              {!rows.length && !loading && <tr><td colSpan="5" className="muted">Данных по Базару нет.</td></tr>}
+              {!rows.length && !loading && <tr><td colSpan="5" className="muted">Данных по Базару нет. Если SQL v219 показывает строки, значит проблема в доступе RPC из frontend.</td></tr>}
+              {loading && <tr><td colSpan="5" className="muted">Загрузка…</td></tr>}
             </tbody>
           </table>
         </div>
 
-        <div className="reports-v219-table-card">
-          <h5>{selectedDate ? `Детализация распределения: ${selectedDate}` : 'Детализация дня'}</h5>
+        <div className="reports-v220-table-card">
+          <h5>{selectedDate ? `Детализация распределения: ${selectedDate}` : 'Детализация выбранного дня'}</h5>
           {detailLoading ? <div className="muted padded">Загрузка…</div> : (
             <table>
               <thead>
@@ -25234,7 +25220,7 @@ function ReportsBazarDailyFullCard() {
                 {detailRows.map(row => (
                   <tr key={row.expense_id}>
                     <td>{row.branch_name || '—'}</td>
-                    <td>{fmt(row.amount)}</td>
+                    <td>{money(row.amount)}</td>
                     <td>{row.comment || '—'}</td>
                   </tr>
                 ))}
@@ -26412,11 +26398,13 @@ function Reports({ t }) {
         </div>
       </div>
       <div className="reports-v43-empty-state">
-        <b></b>
-        <span></span>
+        <b>Источник данных ещё не подключён к этой вкладке</b>
+        <span>Этот раздел уже добавлен в структуру Reports. Следующий шаг — подключить реальные данные RMS и таблицу детализации.</span>
       </div>
     </div>
-  </section>
+  
+      <ReportsBazarDailyFullCardV220 />
+</section>
 
   const ReportsRevenueView = <section className="reports-v43-module-grid reports-v43-revenue-grid">
     <div className="reports-v43-module-card reports-v43-wide reports-v43-revenue-card">
