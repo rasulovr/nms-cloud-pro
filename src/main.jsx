@@ -12517,6 +12517,14 @@ function RMSProV6Styles() {
   white-space:normal !important;
 }
 
+/* v229 Keep preferred revenue chart, remove duplicate dynamics/direct chart */
+.reports-v227-day-chart-card{
+  display:none !important;
+}
+.reports-v224-trend-card{
+  display:none !important;
+}
+
 
   `}</style>
 }
@@ -16713,7 +16721,7 @@ function Finance({ t, lang, onGoToExpense }) {
             <div><span>Операционные расходы</span><b>{pct(financeTotalExpensePct)}</b><em>{fmt(financeTotalExpenses)} AZN</em></div>
             <div><span>Service charge</span><b>{pct(financeServicePct)}</b><em>{fmt(stats.serviceCost)} AZN</em></div>
             <div><span>Налог</span><b>{pct(financeTaxPct)}</b><em>{fmt(stats.tax)} AZN</em></div>
-            <div data-rms-old-revenue-chart="true"><span>Чистая маржа</span><b>{pct(financeProfitability)}</b><em className={financeProfitability >= 0 ? 'good' : 'bad'}>{fmt(financeNet)} AZN</em></div>
+            <div><span>Чистая маржа</span><b>{pct(financeProfitability)}</b><em className={financeProfitability >= 0 ? 'good' : 'bad'}>{fmt(financeNet)} AZN</em></div>
           </div>
         </div>
 
@@ -16809,7 +16817,7 @@ function Finance({ t, lang, onGoToExpense }) {
             </div>
             <div className="table-wrap" style={{marginTop: 12}}>
               <table>
-                <thead><tr><th>Дата</th><th>Филиал</th><th>Статья</th><th>Сумма</th><th>Комментарий</th><th>Создано</th><th>Действие</th></tr></thead>
+                <thead><tr><th>Дата</th><th>Филиал</th><th>Статья</th><th>Сумма</th><th>Комментарий</th><th>Действие</th></tr></thead>
                 <tbody>
                   {filteredExpenseDetailRows.map(row => <tr key={row.id}><td>{row.expense_date}</td><td>{row.branchName}</td><td>{row.name}</td><td><b>{fmt(row.amountValue)}</b></td><td>{row.comment || '—'}</td><td>{row.created_at ? new Date(row.created_at).toLocaleString('ru-RU') : '—'}</td><td>{row.isSupplierPurchase || row.isGroupedFoodCost ? <span className="hint">{row.isSupplierPurchase ? 'Поставщики' : 'Сводная строка'}</span> : <button className="small" onClick={() => onGoToExpense?.(row)}>Перейти</button>}</td></tr>)}
                   {!filteredExpenseDetailRows.length && <tr><td colSpan="8" className="hint">Нет строк по выбранной статье.</td></tr>}
@@ -25539,7 +25547,7 @@ function rmsNextMonthStart(monthValue) {
 }
 
 
-function ReportsRevenueDailyChartV227({ rows = [], title = 'Старая диаграмма выручки' }) {
+function ReportsRevenueDailyChartV227({ rows = [], title = 'Выручка по дням за выбранный месяц' }) {
   const n = (value) => {
     const x = Number(value || 0)
     return Number.isFinite(x) ? x : 0
@@ -25699,7 +25707,6 @@ function ReportsBazarDailyFullCardV220() {
                 <td><b>{row.expense_date}</b></td>
                 <td><strong>{money(row.total_amount)}</strong></td>
                 <td>{row.branches_count}</td>
-                <td>{row.last_created_at ? String(row.last_created_at).slice(0, 19).replace('T', ' ') : '—'}</td>
               </tr>
             ))}
             {!rows.length && !loading && <tr><td colSpan="4" className="muted">Данных по Базару нет.</td></tr>}
@@ -27023,46 +27030,6 @@ function Reports({ t }) {
       </div>
 
       {!rmsRevenueReport.loading && !rmsRevenueReport.error && revenueListMode === 'daily' && <ReportsRevenueDailyChartV227 rows={rmsRevenueReport.rows || []} />}
-
-      {!rmsRevenueReport.loading && !rmsRevenueReport.error && !!revenueTrendRows.length && <div className="reports-v224-trend-card">
-        <div className="reports-v224-trend-head">
-          <div>
-            <h4>Динамика выручки</h4>
-            <p>{revenueListMode === 'monthly' ? 'Помесячная динамика по выбранному периоду.' : 'Ежедневная динамика выбранного месяца.'}</p>
-          </div>
-          <div className="reports-v224-trend-mini"><span>Последний период</span><strong>{revenueLastTrend?.key || '—'}</strong><em>{revenueLastTrend?.change === null || revenueLastTrend?.change === undefined ? '—' : `${revenueLastTrend.change >= 0 ? '+' : ''}${pct(revenueLastTrend.change)}`}</em></div>
-          <div className="reports-v224-trend-mini"><span>Лучший период</span><strong>{revenueBestTrend?.key || '—'}</strong><em>{revenueBestTrend ? fmt(revenueBestTrend.revenue) : '—'}</em></div>
-        </div>
-        <div className="reports-v224-chart-wrap">
-          <svg className="reports-v224-line-chart" viewBox="0 0 720 240" role="img" aria-label="Revenue dynamics chart">
-            <defs>
-              <linearGradient id="revenueGradientV225" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="currentColor" stopOpacity="0.22" />
-                <stop offset="100%" stopColor="currentColor" stopOpacity="0.02" />
-              </linearGradient>
-            </defs>
-            <line x1="34" y1="196" x2="686" y2="196" className="reports-v224-axis" />
-            <line x1="34" y1="24" x2="34" y2="196" className="reports-v224-axis" />
-            {[0.25, 0.5, 0.75].map(level => <line key={level} x1="34" y1={196 - level * 172} x2="686" y2={196 - level * 172} className="reports-v224-grid-line" />)}
-            {revenueTrendAreaPath && <path d={revenueTrendAreaPath} className="reports-v225-area" />}
-            {revenueTrendPath && <path d={revenueTrendPath} className="reports-v224-line" />}
-            {revenueTrendRows.map((item, index) => {
-              const width = 720
-              const height = 220
-              const padX = 34
-              const padY = 24
-              const x = revenueTrendRows.length <= 1 ? width / 2 : padX + index * ((width - padX * 2) / (revenueTrendRows.length - 1))
-              const y = height - padY - (parseNum(item.revenue) / revenueTrendMax) * (height - padY * 2)
-              const showLabel = revenueTrendRows.length <= 10 || index === 0 || index === revenueTrendRows.length - 1 || index % Math.ceil(revenueTrendRows.length / 10) === 0
-              return <g key={item.key}>
-                <circle cx={x} cy={y} r="5.5" className={item.change === null ? 'reports-v224-dot' : item.change >= 0 ? 'reports-v224-dot good' : 'reports-v224-dot bad'} />
-                <title>{item.key}: {fmt(item.revenue)}</title>
-                {showLabel && <text x={x} y="224" textAnchor="middle" className="reports-v224-x-label">{revenueListMode === 'monthly' ? item.key.slice(5, 7) : String(Number(item.key.slice(8, 10)) || '')}</text>}
-              </g>
-            })}
-          </svg>
-        </div>
-      </div>}
 
       {rmsRevenueReport.loading && <div className="reports-v43-empty-state"><b>Загрузка выручки...</b><span>Идёт чтение выручки.</span></div>}
       {rmsRevenueReport.error && <div className="reports-v43-empty-state"><b>Ошибка загрузки</b><span>{rmsRevenueReport.error}</span></div>}
