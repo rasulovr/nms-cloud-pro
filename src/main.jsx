@@ -12525,6 +12525,12 @@ function RMSProV6Styles() {
   display:none !important;
 }
 
+/* v230 Preferred finance-style revenue chart data fix */
+.reports-v227-day-chart-card,
+.reports-v224-trend-card{
+  display:none !important;
+}
+
 
   `}</style>
 }
@@ -15378,7 +15384,7 @@ function Dashboard({ t }) {
     const daysInMonth = new Date(Number(y), Number(m), 0).getDate()
     const safeDay = Math.max(1, Math.min(Number(dayLimit) || daysInMonth, daysInMonth))
     const start = monthStart(y, m)
-    const end = new Date(Number(y), Number(m) - 1, safeDay + 1).toISOString().slice(0, 10)
+    const end = safeDay >= daysInMonth ? rmsNextMonthStart(`${Number(y)}-${String(Number(m)).padStart(2, '0')}`) : `${Number(y)}-${String(Number(m)).padStart(2, '0')}-${String(safeDay + 1).padStart(2, '0')}`
 
     let query = supabase
       .from('daily_revenue')
@@ -15653,7 +15659,7 @@ function Finance({ t, lang, onGoToExpense }) {
 
     try {
       const start = monthStart(year, month)
-      const end = new Date(Number(year), Number(month), 1).toISOString().slice(0, 10)
+      const end = rmsNextMonthStart(`${Number(year)}-${String(Number(month)).padStart(2, '0')}`)
       let query = supabase
         .from('daily_expenses')
         .select('id, branch_id, expense_date, amount, comment, custom_category, category_id, created_at, expense_categories(name)')
@@ -15829,8 +15835,9 @@ function Finance({ t, lang, onGoToExpense }) {
 
 
   async function loadDailyRevenueRowsForChart(y, m, selectedBranchId) {
-    const start = monthStart(y, m)
-    const end = new Date(Number(y), Number(m), 1).toISOString().slice(0, 10)
+    const monthKey = `${Number(y)}-${String(Number(m)).padStart(2, '0')}`
+    const start = `${monthKey}-01`
+    const end = rmsNextMonthStart(monthKey)
     const daysInMonth = new Date(Number(y), Number(m), 0).getDate()
     let query = supabase
       .from('daily_revenue')
@@ -15850,7 +15857,7 @@ function Finance({ t, lang, onGoToExpense }) {
 
     return Array.from({ length: daysInMonth }, (_, idx) => {
       const day = idx + 1
-      const date = `${y}-${String(m)}-${String(Number(day) || day)}`
+      const date = `${monthKey}-${String(day).padStart(2, '0')}`
       return { day: String(day), date, amount: parseNum(map.get(date)) }
     })
   }
@@ -16212,7 +16219,7 @@ function Finance({ t, lang, onGoToExpense }) {
     const daysInMonth = new Date(Number(y), Number(m), 0).getDate()
     const safeDay = Math.max(1, Math.min(Number(dayLimit) || daysInMonth, daysInMonth))
     const start = monthStart(y, m)
-    const end = new Date(Number(y), Number(m) - 1, safeDay + 1).toISOString().slice(0, 10)
+    const end = safeDay >= daysInMonth ? rmsNextMonthStart(`${Number(y)}-${String(Number(m)).padStart(2, '0')}`) : `${Number(y)}-${String(Number(m)).padStart(2, '0')}-${String(safeDay + 1).padStart(2, '0')}`
 
     let query = supabase
       .from('daily_revenue')
@@ -16242,7 +16249,7 @@ function Finance({ t, lang, onGoToExpense }) {
     const dailyChartRows = await loadDailyRevenueRowsForChart(year, month, branchId)
     setDailyRevenueRows(dailyChartRows)
     const start = monthDate
-    const end = new Date(Number(year), Number(month), 1).toISOString().slice(0, 10)
+    const end = rmsNextMonthStart(`${Number(year)}-${String(Number(month)).padStart(2, '0')}`)
     let expQuery = supabase.from('daily_expenses').select('branch_id, amount, comment, custom_category, expense_categories(name)').gte('expense_date', start).lt('expense_date', end).is('deleted_at', null)
     let purQuery = supabase.from('supplier_purchases').select('branch_id, total_amount, supplier_purchase_items(total_amount, supplier_products(name,category))').gte('purchase_date', start).lt('purchase_date', end).is('deleted_at', null)
     let empQuery = supabase.from('employees').select('id, branch_id, position, monthly_salary, official_salary, monthly_official_salary').eq('is_active', true)
