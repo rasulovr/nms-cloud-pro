@@ -12140,6 +12140,130 @@ function RMSProV6Styles() {
   }
 }
 
+/* v217 Reports Expense Articles UI */
+.reports-v217-articles-card{
+  margin:14px 0 18px;
+  border:1px solid #e2e8f0;
+  background:linear-gradient(180deg,#ffffff 0%,#f8fafc 100%);
+  border-radius:20px;
+  padding:16px;
+}
+.reports-v217-head{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:12px;
+}
+.reports-v217-head h4{
+  margin:0;
+  color:#0f172a;
+  font-size:18px;
+}
+.reports-v217-head p{
+  margin:5px 0 0;
+  color:#64748b;
+  font-size:13px;
+}
+.reports-v217-toolbar{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  margin-bottom:12px;
+}
+.reports-v217-toolbar input{
+  flex:1;
+  min-width:240px;
+  border:1px solid #cbd5e1;
+  border-radius:12px;
+  padding:9px 12px;
+  font-size:14px;
+}
+.reports-v217-kpis{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:10px;
+  margin:10px 0 14px;
+}
+.reports-v217-kpis div{
+  background:#fff;
+  border:1px solid #e2e8f0;
+  border-radius:14px;
+  padding:12px;
+}
+.reports-v217-kpis span{
+  display:block;
+  color:#64748b;
+  font-size:12px;
+  font-weight:850;
+}
+.reports-v217-kpis strong{
+  display:block;
+  margin-top:5px;
+  color:#0f172a;
+  font-size:17px;
+}
+.reports-v217-grid{
+  display:grid;
+  grid-template-columns:minmax(360px,0.9fr) minmax(420px,1.1fr);
+  gap:14px;
+}
+.reports-v217-list,
+.reports-v217-detail{
+  overflow:auto;
+  background:#fff;
+  border:1px solid #e2e8f0;
+  border-radius:16px;
+}
+.reports-v217-list table,
+.reports-v217-detail table{
+  width:100%;
+  border-collapse:collapse;
+  font-size:13px;
+}
+.reports-v217-list th,
+.reports-v217-list td,
+.reports-v217-detail th,
+.reports-v217-detail td{
+  padding:9px 10px;
+  border-bottom:1px solid #e2e8f0;
+  text-align:left;
+  vertical-align:top;
+}
+.reports-v217-list th,
+.reports-v217-detail th{
+  color:#475569;
+  font-size:11.5px;
+  text-transform:uppercase;
+  letter-spacing:.04em;
+  background:#f8fafc;
+}
+.reports-v217-list tr.active td{
+  background:#eff6ff;
+}
+.reports-v217-detail-head{
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+  align-items:center;
+  padding:12px;
+  border-bottom:1px solid #e2e8f0;
+}
+.reports-v217-detail-head h5{
+  margin:0;
+  font-size:15px;
+  color:#0f172a;
+}
+.reports-v217-detail-head span{
+  color:#64748b;
+  font-size:12px;
+  font-weight:800;
+}
+@media(max-width:980px){
+  .reports-v217-grid{grid-template-columns:1fr;}
+  .reports-v217-kpis{grid-template-columns:1fr;}
+}
+
 
   `}</style>
 }
@@ -25148,6 +25272,157 @@ async function explodeZipFile(file) {
   return files
 }
 
+
+function ReportsExpenseArticlesCard() {
+  const [categories, setCategories] = React.useState([])
+  const [transactions, setTransactions] = React.useState([])
+  const [selected, setSelected] = React.useState(null)
+  const [search, setSearch] = React.useState('')
+  const [loading, setLoading] = React.useState(false)
+  const [txLoading, setTxLoading] = React.useState(false)
+  const [error, setError] = React.useState('')
+
+  const loadCategories = React.useCallback(async () => {
+    setLoading(true)
+    setError('')
+    try {
+      const { data, error } = await supabase.rpc('rms_report_expense_categories_v216', {
+        p_date_from: null,
+        p_date_to: null,
+        p_branch_id: null,
+        p_search: search || null
+      })
+      if (error) throw error
+      setCategories(Array.isArray(data) ? data : [])
+    } catch (err) {
+      console.error('Expense categories report error', err)
+      setError(err?.message || 'Не удалось загрузить статьи расходов')
+    } finally {
+      setLoading(false)
+    }
+  }, [search])
+
+  const loadTransactions = React.useCallback(async (category) => {
+    if (!category) return
+    setSelected(category)
+    setTxLoading(true)
+    setError('')
+    try {
+      const { data, error } = await supabase.rpc('rms_report_expense_category_transactions_v216', {
+        p_category_id: category.category_id || null,
+        p_category_name: category.category_name || null,
+        p_date_from: null,
+        p_date_to: null,
+        p_branch_id: null
+      })
+      if (error) throw error
+      setTransactions(Array.isArray(data) ? data : [])
+    } catch (err) {
+      console.error('Expense category transactions error', err)
+      setError(err?.message || 'Не удалось загрузить детализацию статьи')
+    } finally {
+      setTxLoading(false)
+    }
+  }, [])
+
+  React.useEffect(() => {
+    loadCategories()
+  }, [loadCategories])
+
+  const total = React.useMemo(() => categories.reduce((sum, item) => sum + parseNum(item.total_amount), 0), [categories])
+
+  return (
+    <div className="reports-v217-articles-card">
+      <div className="reports-v217-head">
+        <div>
+          <h4>Расходы по статьям</h4>
+          <p>Сводка и расшифровка каждой статьи из daily_expenses / expense_categories.</p>
+        </div>
+        <button className="ghost small" onClick={loadCategories} disabled={loading}>{loading ? 'Обновление…' : 'Обновить'}</button>
+      </div>
+
+      <div className="reports-v217-toolbar">
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') loadCategories() }}
+          placeholder="Поиск статьи: Базар, Аренда, Такси..."
+        />
+        <button className="primary small" onClick={loadCategories} disabled={loading}>Найти</button>
+        <button className="ghost small" onClick={() => { setSearch(''); setTimeout(loadCategories, 0) }}>Сбросить</button>
+      </div>
+
+      {error && <div className="soft-alert warning">{error}</div>}
+
+      <div className="reports-v217-kpis">
+        <div><span>Всего статей</span><strong>{categories.length}</strong></div>
+        <div><span>Итого расходов</span><strong>{fmt(total)}</strong></div>
+        <div><span>Выбранная статья</span><strong>{selected?.category_name || '—'}</strong></div>
+      </div>
+
+      <div className="reports-v217-grid">
+        <div className="reports-v217-list">
+          <table>
+            <thead>
+              <tr>
+                <th>Статья</th>
+                <th>Строк</th>
+                <th>Сумма</th>
+                <th>Период</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {categories.map((item) => (
+                <tr key={item.category_id || item.category_name} className={selected?.category_name === item.category_name ? 'active' : ''}>
+                  <td><b>{item.category_name}</b></td>
+                  <td>{item.rows_count}</td>
+                  <td>{fmt(item.total_amount)}</td>
+                  <td>{item.first_date || '—'} — {item.last_date || '—'}</td>
+                  <td><button className="ghost small" onClick={() => loadTransactions(item)}>Просмотр</button></td>
+                </tr>
+              ))}
+              {!categories.length && !loading && <tr><td colSpan="5" className="muted">Нет данных по выбранному фильтру.</td></tr>}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="reports-v217-detail">
+          <div className="reports-v217-detail-head">
+            <h5>{selected ? `Транзакции по статье: ${selected.category_name}` : 'Выберите статью'}</h5>
+            {selected && <span>{transactions.length} строк · {fmt(transactions.reduce((s, x) => s + parseNum(x.amount), 0))}</span>}
+          </div>
+          {txLoading ? <div className="muted">Загрузка детализации…</div> : (
+            <table>
+              <thead>
+                <tr>
+                  <th>Дата</th>
+                  <th>Филиал</th>
+                  <th>Сумма</th>
+                  <th>Комментарий</th>
+                </tr>
+              </thead>
+              <tbody>
+                {transactions.slice(0, 120).map((tx) => (
+                  <tr key={tx.expense_id}>
+                    <td>{tx.expense_date}</td>
+                    <td>{tx.branch_name || '—'}</td>
+                    <td>{fmt(tx.amount)}</td>
+                    <td>{tx.comment || '—'}</td>
+                  </tr>
+                ))}
+                {selected && !transactions.length && !txLoading && <tr><td colSpan="4" className="muted">Нет транзакций.</td></tr>}
+                {!selected && <tr><td colSpan="4" className="muted">Нажмите “Просмотр” рядом со статьёй расхода.</td></tr>}
+              </tbody>
+            </table>
+          )}
+          {transactions.length > 120 && <p className="hint">Показаны первые 120 строк из {transactions.length}.</p>}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function Reports({ t }) {
   const branches = useBranches()
   const [reports, setReports] = useState(() => readAikoSalesReports())
@@ -26386,6 +26661,8 @@ function Reports({ t }) {
         <div><span>Филиал</span><strong>{selectedBranchLabel}</strong><em>текущий фильтр</em></div>
         <div><span>Период</span><strong>{selectedMonthLabel}</strong><em>текущий фильтр</em></div>
       </div>
+
+      <ReportsExpenseArticlesCard />
 
       {!rmsRevenueReport.loading && !rmsRevenueReport.error && !!rmsRevenueTrend.length && <div className="reports-v202-trend-card">
         <div className="reports-v202-trend-head">
