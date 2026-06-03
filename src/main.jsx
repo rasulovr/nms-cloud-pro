@@ -12016,349 +12016,99 @@ function RMSProV6Styles() {
    Safe recovery from v192 runtime break.
    No Excel import code. No schema changes. */
 
-/* v202 Revenue Dynamics Chart */
-.reports-v202-trend-card{
-  margin:14px 0 18px;
-  border:1px solid #dbeafe;
-  background:linear-gradient(180deg,#ffffff 0%,#eff6ff 100%);
-  border-radius:20px;
-  padding:16px;
-}
-.reports-v202-trend-head{
-  display:grid;
-  grid-template-columns:1fr auto auto;
-  gap:12px;
-  align-items:start;
-  margin-bottom:12px;
-}
-.reports-v202-trend-head h4{
-  margin:0;
-  font-size:18px;
-  color:#0f172a;
-}
-.reports-v202-trend-head p{
-  margin:5px 0 0;
-  color:#64748b;
-  font-size:13px;
-}
-.reports-v202-trend-summary{
-  min-width:145px;
-  border:1px solid #dbeafe;
-  background:#fff;
-  border-radius:14px;
-  padding:10px 12px;
-}
-.reports-v202-trend-summary span{
-  display:block;
-  color:#64748b;
-  font-size:11.5px;
-  font-weight:850;
-}
-.reports-v202-trend-summary strong{
-  display:block;
-  margin-top:4px;
-  color:#1d4ed8;
-  font-size:15px;
-}
-.reports-v202-trend-summary em{
-  display:block;
-  margin-top:3px;
-  font-style:normal;
-  color:#0f172a;
-  font-weight:800;
-}
-.reports-v202-chart-wrap{
-  overflow-x:auto;
-  background:#fff;
-  border:1px solid #e2e8f0;
-  border-radius:16px;
-  padding:10px;
-}
-.reports-v202-line-chart{
-  display:block;
-  width:100%;
-  min-width:620px;
-  height:260px;
-}
-.reports-v202-axis{
-  stroke:#94a3b8;
-  stroke-width:1;
-}
-.reports-v202-grid-line{
-  stroke:#e2e8f0;
-  stroke-width:1;
-  stroke-dasharray:4 6;
-}
-.reports-v202-line{
-  fill:none;
-  stroke:#2563eb;
-  stroke-width:4;
-  stroke-linecap:round;
-  stroke-linejoin:round;
-}
-.reports-v202-dot{
-  fill:#64748b;
-  stroke:#fff;
-  stroke-width:2;
-}
-.reports-v202-dot.good{
-  fill:#059669;
-}
-.reports-v202-dot.bad{
-  fill:#dc2626;
-}
-.reports-v202-x-label{
-  fill:#64748b;
-  font-size:12px;
-  font-weight:800;
-}
-.reports-v202-trend-table-wrap{
-  overflow-x:auto;
-  margin-top:12px;
-}
-.reports-v202-trend-table{
-  width:100%;
-  border-collapse:collapse;
-  font-size:13px;
-}
-.reports-v202-trend-table th,
-.reports-v202-trend-table td{
-  padding:9px 10px;
-  border-bottom:1px solid #e2e8f0;
-  text-align:left;
-  white-space:nowrap;
-}
-.reports-v202-trend-table th{
-  color:#475569;
-  font-size:11.5px;
-  text-transform:uppercase;
-  letter-spacing:.04em;
-}
-@media(max-width:860px){
-  .reports-v202-trend-head{
-    grid-template-columns:1fr;
-  }
-}
-
-/* v217 Reports Expense Articles UI */
-.reports-v217-articles-card{
-  margin:14px 0 18px;
-  border:1px solid #e2e8f0;
-  background:linear-gradient(180deg,#ffffff 0%,#f8fafc 100%);
-  border-radius:20px;
-  padding:16px;
-}
-.reports-v217-head{
-  display:flex;
-  align-items:flex-start;
-  justify-content:space-between;
-  gap:12px;
-  margin-bottom:12px;
-}
-.reports-v217-head h4{
-  margin:0;
-  color:#0f172a;
-  font-size:18px;
-}
-.reports-v217-head p{
-  margin:5px 0 0;
-  color:#64748b;
-  font-size:13px;
-}
-.reports-v217-toolbar{
-  display:flex;
-  gap:8px;
-  flex-wrap:wrap;
-  margin-bottom:12px;
-}
-.reports-v217-toolbar input{
-  flex:1;
-  min-width:240px;
-  border:1px solid #cbd5e1;
-  border-radius:12px;
-  padding:9px 12px;
-  font-size:14px;
-}
-.reports-v217-kpis{
-  display:grid;
-  grid-template-columns:repeat(3,minmax(0,1fr));
-  gap:10px;
-  margin:10px 0 14px;
-}
-.reports-v217-kpis div{
-  background:#fff;
-  border:1px solid #e2e8f0;
-  border-radius:14px;
-  padding:12px;
-}
-.reports-v217-kpis span{
-  display:block;
-  color:#64748b;
-  font-size:12px;
-  font-weight:850;
-}
-.reports-v217-kpis strong{
-  display:block;
-  margin-top:5px;
-  color:#0f172a;
-  font-size:17px;
-}
-.reports-v217-grid{
-  display:grid;
-  grid-template-columns:minmax(360px,0.9fr) minmax(420px,1.1fr);
-  gap:14px;
-}
-.reports-v217-list,
-.reports-v217-detail{
-  overflow:auto;
-  background:#fff;
-  border:1px solid #e2e8f0;
-  border-radius:16px;
-}
-.reports-v217-list table,
-.reports-v217-detail table{
-  width:100%;
-  border-collapse:collapse;
-  font-size:13px;
-}
-.reports-v217-list th,
-.reports-v217-list td,
-.reports-v217-detail th,
-.reports-v217-detail td{
-  padding:9px 10px;
-  border-bottom:1px solid #e2e8f0;
-  text-align:left;
-  vertical-align:top;
-}
-.reports-v217-list th,
-.reports-v217-detail th{
-  color:#475569;
-  font-size:11.5px;
-  text-transform:uppercase;
-  letter-spacing:.04em;
-  background:#f8fafc;
-}
-.reports-v217-list tr.active td{
-  background:#eff6ff;
-}
-.reports-v217-detail-head{
-  display:flex;
-  justify-content:space-between;
-  gap:12px;
-  align-items:center;
-  padding:12px;
-  border-bottom:1px solid #e2e8f0;
-}
-.reports-v217-detail-head h5{
-  margin:0;
-  font-size:15px;
-  color:#0f172a;
-}
-.reports-v217-detail-head span{
-  color:#64748b;
-  font-size:12px;
-  font-weight:800;
-}
-@media(max-width:980px){
-  .reports-v217-grid{grid-template-columns:1fr;}
-  .reports-v217-kpis{grid-template-columns:1fr;}
-}
-
-/* v218 Reports Bazar Connected */
-.reports-v218-bazar-card{
+/* v219 Reports Bazar Daily Full */
+.reports-v219-bazar-card{
   margin:14px 0 18px;
   border:1px solid #bbf7d0;
   background:linear-gradient(180deg,#ffffff 0%,#f0fdf4 100%);
   border-radius:20px;
   padding:16px;
 }
-.reports-v218-bazar-head{
+.reports-v219-head{
   display:flex;
   justify-content:space-between;
   align-items:flex-start;
   gap:12px;
   margin-bottom:12px;
 }
-.reports-v218-bazar-head h4{
+.reports-v219-head h4{
   margin:0;
   color:#0f172a;
   font-size:18px;
 }
-.reports-v218-bazar-head p{
+.reports-v219-head p{
   margin:5px 0 0;
   color:#64748b;
   font-size:13px;
 }
-.reports-v218-bazar-kpis{
+.reports-v219-kpis{
   display:grid;
   grid-template-columns:repeat(3,minmax(0,1fr));
   gap:10px;
   margin:12px 0;
 }
-.reports-v218-bazar-kpis div{
+.reports-v219-kpis div{
   background:#fff;
   border:1px solid #dcfce7;
   border-radius:14px;
   padding:12px;
 }
-.reports-v218-bazar-kpis span{
+.reports-v219-kpis span{
   display:block;
   color:#64748b;
   font-size:12px;
   font-weight:850;
 }
-.reports-v218-bazar-kpis strong{
+.reports-v219-kpis strong{
   display:block;
   margin-top:5px;
   color:#166534;
   font-size:17px;
 }
-.reports-v218-bazar-grid{
+.reports-v219-grid{
   display:grid;
-  grid-template-columns:minmax(280px,.42fr) minmax(480px,.58fr);
+  grid-template-columns:minmax(420px,.48fr) minmax(480px,.52fr);
   gap:14px;
 }
-.reports-v218-bazar-branch,
-.reports-v218-bazar-detail{
+.reports-v219-table-card{
   overflow:auto;
   background:#fff;
   border:1px solid #dcfce7;
   border-radius:16px;
 }
-.reports-v218-bazar-branch h5,
-.reports-v218-bazar-detail h5{
+.reports-v219-table-card h5{
   margin:0;
   padding:12px;
   border-bottom:1px solid #dcfce7;
   color:#0f172a;
   font-size:15px;
 }
-.reports-v218-bazar-branch table,
-.reports-v218-bazar-detail table{
+.reports-v219-table-card table{
   width:100%;
   border-collapse:collapse;
   font-size:13px;
 }
-.reports-v218-bazar-branch th,
-.reports-v218-bazar-branch td,
-.reports-v218-bazar-detail th,
-.reports-v218-bazar-detail td{
+.reports-v219-table-card th,
+.reports-v219-table-card td{
   padding:9px 10px;
   border-bottom:1px solid #e2e8f0;
   text-align:left;
   vertical-align:top;
 }
-.reports-v218-bazar-branch th,
-.reports-v218-bazar-detail th{
+.reports-v219-table-card th{
   color:#475569;
   font-size:11.5px;
   text-transform:uppercase;
   letter-spacing:.04em;
   background:#f8fafc;
 }
+.reports-v219-table-card tr.active td{
+  background:#ecfdf5;
+}
+.padded{padding:12px;}
 @media(max-width:960px){
-  .reports-v218-bazar-grid{grid-template-columns:1fr;}
-  .reports-v218-bazar-kpis{grid-template-columns:1fr;}
+  .reports-v219-grid{grid-template-columns:1fr;}
+  .reports-v219-kpis{grid-template-columns:1fr;}
 }
 
 
@@ -25370,264 +25120,129 @@ async function explodeZipFile(file) {
 }
 
 
-
-function ReportsBazarConnectedCard() {
+function ReportsBazarDailyFullCard() {
   const [rows, setRows] = React.useState([])
+  const [detailRows, setDetailRows] = React.useState([])
+  const [selectedDate, setSelectedDate] = React.useState(null)
   const [loading, setLoading] = React.useState(false)
+  const [detailLoading, setDetailLoading] = React.useState(false)
   const [error, setError] = React.useState('')
 
-  const loadBazar = React.useCallback(async () => {
+  const loadRows = React.useCallback(async () => {
     setLoading(true)
     setError('')
     try {
-      const { data, error } = await supabase.rpc('rms_report_bazar_v216', {
+      const { data, error } = await supabase.rpc('rms_report_bazar_daily_full_v219', {
         p_date_from: null,
-        p_date_to: null,
-        p_branch_id: null
+        p_date_to: null
       })
       if (error) throw error
       setRows(Array.isArray(data) ? data : [])
     } catch (err) {
-      console.error('Bazar report load error', err)
-      setError(err?.message || 'Не удалось загрузить отчёт по Базару')
+      console.error('Bazar daily report error', err)
+      setError(err?.message || 'Не удалось загрузить ежедневный отчёт по Базару')
     } finally {
       setLoading(false)
     }
   }, [])
 
+  const loadDetail = React.useCallback(async (date) => {
+    setSelectedDate(date)
+    setDetailLoading(true)
+    setError('')
+    try {
+      const { data, error } = await supabase.rpc('rms_report_bazar_daily_full_detail_v219', {
+        p_expense_date: date
+      })
+      if (error) throw error
+      setDetailRows(Array.isArray(data) ? data : [])
+    } catch (err) {
+      console.error('Bazar daily detail error', err)
+      setError(err?.message || 'Не удалось загрузить детализацию дня')
+    } finally {
+      setDetailLoading(false)
+    }
+  }, [])
+
   React.useEffect(() => {
-    loadBazar()
-  }, [loadBazar])
+    loadRows()
+  }, [loadRows])
 
-  const total = React.useMemo(() => rows.reduce((sum, row) => sum + parseNum(row.amount), 0), [rows])
-
-  const byBranch = React.useMemo(() => {
-    const map = new Map()
-    rows.forEach(row => {
-      const key = row.branch_name || 'Без филиала'
-      map.set(key, (map.get(key) || 0) + parseNum(row.amount))
-    })
-    return Array.from(map.entries()).map(([branch, amount]) => ({ branch, amount })).sort((a, b) => b.amount - a.amount)
-  }, [rows])
+  const total = React.useMemo(() => rows.reduce((sum, row) => sum + parseNum(row.total_amount), 0), [rows])
+  const avg = rows.length ? total / rows.length : 0
 
   return (
-    <div className="reports-v218-bazar-card">
-      <div className="reports-v218-bazar-head">
+    <div className="reports-v219-bazar-card">
+      <div className="reports-v219-head">
         <div>
           <h4>Отчёт по базару</h4>
-          <p>Базар, автоматическое распределение по филиалам и влияние на Food Cost.</p>
+          <p>Ежедневный полный расход статьи “Базар”. Сумма считается как общий итог за день, без разбивки по филиалам.</p>
         </div>
-      <ReportsBazarConnectedCard />
+      <ReportsBazarDailyFullCard />
 
-        <button className="ghost small" onClick={loadBazar} disabled={loading}>{loading ? 'Обновление…' : 'Обновить'}</button>
+        <button className="ghost small" onClick={loadRows} disabled={loading}>{loading ? 'Обновление…' : 'Обновить'}</button>
       </div>
 
       {error && <div className="soft-alert warning">{error}</div>}
 
-      <div className="reports-v218-bazar-kpis">
+      <div className="reports-v219-kpis">
         <div><span>Итого Базар</span><strong>{fmt(total)}</strong></div>
-        <div><span>Строк</span><strong>{rows.length}</strong></div>
-        <div><span>Период</span><strong>{rows.length ? `${rows[rows.length - 1]?.expense_date || '—'} → ${rows[0]?.expense_date || '—'}` : '—'}</strong></div>
+        <div><span>Дней</span><strong>{rows.length}</strong></div>
+        <div><span>Среднее / день</span><strong>{fmt(avg)}</strong></div>
       </div>
 
-      <div className="reports-v218-bazar-grid">
-        <div className="reports-v218-bazar-branch">
-          <h5>По филиалам</h5>
-          <table>
-            <thead>
-              <tr>
-                <th>Филиал</th>
-                <th>Сумма</th>
-                <th>Доля</th>
-              </tr>
-            </thead>
-            <tbody>
-              {byBranch.map(item => (
-                <tr key={item.branch}>
-                  <td><b>{item.branch}</b></td>
-                  <td>{fmt(item.amount)}</td>
-                  <td>{total ? pct(item.amount / total * 100) : '0.0%'}</td>
-                </tr>
-              ))}
-              {!byBranch.length && !loading && <tr><td colSpan="3" className="muted">Нет данных.</td></tr>}
-            </tbody>
-          </table>
-        </div>
-
-        <div className="reports-v218-bazar-detail">
-          <h5>Детализация</h5>
+      <div className="reports-v219-grid">
+        <div className="reports-v219-table-card">
+          <h5>Ежедневный расход</h5>
           <table>
             <thead>
               <tr>
                 <th>Дата</th>
-                <th>Филиал</th>
-                <th>Сумма</th>
-                <th>Комментарий</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.slice(0, 200).map(row => (
-                <tr key={row.expense_id}>
-                  <td>{row.expense_date}</td>
-                  <td>{row.branch_name || '—'}</td>
-                  <td>{fmt(row.amount)}</td>
-                  <td>{row.comment || '—'}</td>
-                </tr>
-              ))}
-              {!rows.length && !loading && <tr><td colSpan="4" className="muted">Данных по Базару пока нет.</td></tr>}
-            </tbody>
-          </table>
-          {rows.length > 200 && <p className="hint">Показаны первые 200 строк из {rows.length}.</p>}
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function ReportsExpenseArticlesCard() {
-  const [categories, setCategories] = React.useState([])
-  const [transactions, setTransactions] = React.useState([])
-  const [selected, setSelected] = React.useState(null)
-  const [search, setSearch] = React.useState('')
-  const [loading, setLoading] = React.useState(false)
-  const [txLoading, setTxLoading] = React.useState(false)
-  const [error, setError] = React.useState('')
-
-  const loadCategories = React.useCallback(async () => {
-    setLoading(true)
-    setError('')
-    try {
-      const { data, error } = await supabase.rpc('rms_report_expense_categories_v216', {
-        p_date_from: null,
-        p_date_to: null,
-        p_branch_id: null,
-        p_search: search || null
-      })
-      if (error) throw error
-      setCategories(Array.isArray(data) ? data : [])
-    } catch (err) {
-      console.error('Expense categories report error', err)
-      setError(err?.message || 'Не удалось загрузить статьи расходов')
-    } finally {
-      setLoading(false)
-    }
-  }, [search])
-
-  const loadTransactions = React.useCallback(async (category) => {
-    if (!category) return
-    setSelected(category)
-    setTxLoading(true)
-    setError('')
-    try {
-      const { data, error } = await supabase.rpc('rms_report_expense_category_transactions_v216', {
-        p_category_id: category.category_id || null,
-        p_category_name: category.category_name || null,
-        p_date_from: null,
-        p_date_to: null,
-        p_branch_id: null
-      })
-      if (error) throw error
-      setTransactions(Array.isArray(data) ? data : [])
-    } catch (err) {
-      console.error('Expense category transactions error', err)
-      setError(err?.message || 'Не удалось загрузить детализацию статьи')
-    } finally {
-      setTxLoading(false)
-    }
-  }, [])
-
-  React.useEffect(() => {
-    loadCategories()
-  }, [loadCategories])
-
-  const total = React.useMemo(() => categories.reduce((sum, item) => sum + parseNum(item.total_amount), 0), [categories])
-
-  return (
-    <div className="reports-v217-articles-card">
-      <div className="reports-v217-head">
-        <div>
-          <h4>Расходы по статьям</h4>
-          <p>Сводка и расшифровка каждой статьи из daily_expenses / expense_categories.</p>
-        </div>
-        <button className="ghost small" onClick={loadCategories} disabled={loading}>{loading ? 'Обновление…' : 'Обновить'}</button>
-      </div>
-
-      <div className="reports-v217-toolbar">
-        <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          onKeyDown={(e) => { if (e.key === 'Enter') loadCategories() }}
-          placeholder="Поиск статьи: Базар, Аренда, Такси..."
-        />
-        <button className="primary small" onClick={loadCategories} disabled={loading}>Найти</button>
-        <button className="ghost small" onClick={() => { setSearch(''); setTimeout(loadCategories, 0) }}>Сбросить</button>
-      </div>
-
-      {error && <div className="soft-alert warning">{error}</div>}
-
-      <div className="reports-v217-kpis">
-        <div><span>Всего статей</span><strong>{categories.length}</strong></div>
-        <div><span>Итого расходов</span><strong>{fmt(total)}</strong></div>
-        <div><span>Выбранная статья</span><strong>{selected?.category_name || '—'}</strong></div>
-      </div>
-
-      <div className="reports-v217-grid">
-        <div className="reports-v217-list">
-          <table>
-            <thead>
-              <tr>
-                <th>Статья</th>
+                <th>Полная сумма</th>
                 <th>Строк</th>
-                <th>Сумма</th>
-                <th>Период</th>
+                <th>Филиалов</th>
                 <th></th>
               </tr>
             </thead>
             <tbody>
-              {categories.map((item) => (
-                <tr key={item.category_id || item.category_name} className={selected?.category_name === item.category_name ? 'active' : ''}>
-                  <td><b>{item.category_name}</b></td>
-                  <td>{item.rows_count}</td>
-                  <td>{fmt(item.total_amount)}</td>
-                  <td>{item.first_date || '—'} — {item.last_date || '—'}</td>
-                  <td><button className="ghost small" onClick={() => loadTransactions(item)}>Просмотр</button></td>
+              {rows.map(row => (
+                <tr key={row.expense_date} className={selectedDate === row.expense_date ? 'active' : ''}>
+                  <td><b>{row.expense_date}</b></td>
+                  <td>{fmt(row.total_amount)}</td>
+                  <td>{row.rows_count}</td>
+                  <td>{row.branches_count}</td>
+                  <td><button className="ghost small" onClick={() => loadDetail(row.expense_date)}>Детали</button></td>
                 </tr>
               ))}
-              {!categories.length && !loading && <tr><td colSpan="5" className="muted">Нет данных по выбранному фильтру.</td></tr>}
+              {!rows.length && !loading && <tr><td colSpan="5" className="muted">Данных по Базару нет.</td></tr>}
             </tbody>
           </table>
         </div>
 
-        <div className="reports-v217-detail">
-          <div className="reports-v217-detail-head">
-            <h5>{selected ? `Транзакции по статье: ${selected.category_name}` : 'Выберите статью'}</h5>
-            {selected && <span>{transactions.length} строк · {fmt(transactions.reduce((s, x) => s + parseNum(x.amount), 0))}</span>}
-          </div>
-          {txLoading ? <div className="muted">Загрузка детализации…</div> : (
+        <div className="reports-v219-table-card">
+          <h5>{selectedDate ? `Детализация распределения: ${selectedDate}` : 'Детализация дня'}</h5>
+          {detailLoading ? <div className="muted padded">Загрузка…</div> : (
             <table>
               <thead>
                 <tr>
-                  <th>Дата</th>
                   <th>Филиал</th>
                   <th>Сумма</th>
                   <th>Комментарий</th>
                 </tr>
               </thead>
               <tbody>
-                {transactions.slice(0, 120).map((tx) => (
-                  <tr key={tx.expense_id}>
-                    <td>{tx.expense_date}</td>
-                    <td>{tx.branch_name || '—'}</td>
-                    <td>{fmt(tx.amount)}</td>
-                    <td>{tx.comment || '—'}</td>
+                {detailRows.map(row => (
+                  <tr key={row.expense_id}>
+                    <td>{row.branch_name || '—'}</td>
+                    <td>{fmt(row.amount)}</td>
+                    <td>{row.comment || '—'}</td>
                   </tr>
                 ))}
-                {selected && !transactions.length && !txLoading && <tr><td colSpan="4" className="muted">Нет транзакций.</td></tr>}
-                {!selected && <tr><td colSpan="4" className="muted">Нажмите “Просмотр” рядом со статьёй расхода.</td></tr>}
+                {selectedDate && !detailRows.length && !detailLoading && <tr><td colSpan="3" className="muted">Нет детализации.</td></tr>}
+                {!selectedDate && <tr><td colSpan="3" className="muted">Нажмите “Детали” рядом с нужной датой.</td></tr>}
               </tbody>
             </table>
           )}
-          {transactions.length > 120 && <p className="hint">Показаны первые 120 строк из {transactions.length}.</p>}
         </div>
       </div>
     </div>
@@ -26756,54 +26371,6 @@ function Reports({ t }) {
   const selectedMonthLabel = monthFilter === 'all' ? 'Все месяцы' : monthFilter
   const selectedBranchLabel = branchFilter === 'all' ? 'Все филиалы' : (branches.find(b => String(b.id) === String(branchFilter))?.name || 'Выбранный филиал')
   const selectedTypeLabel = departmentFilter === 'all' ? 'Все' : departmentFilter
-
-  const rmsRevenueTrend = useMemo(() => {
-    const sourceRows = rmsRevenueReport.rows || []
-    const groupBy = monthFilter === 'all' ? 'month' : 'day'
-    const map = new Map()
-
-    sourceRows.forEach(row => {
-      const rawDate = String(row.revenue_date || '')
-      const key = groupBy === 'month' ? rawDate.slice(0, 7) : rawDate
-      if (!key) return
-      const prev = map.get(key) || { key, revenue: 0, cash: 0, bank: 0, wolt: 0, days: new Set(), rows: 0 }
-      prev.revenue += parseNum(row.revenue)
-      prev.cash += parseNum(row.cash)
-      prev.bank += parseNum(row.bank)
-      prev.wolt += parseNum(row.wolt)
-      if (rawDate) prev.days.add(rawDate)
-      prev.rows += 1
-      map.set(key, prev)
-    })
-
-    const list = Array.from(map.values()).sort((a, b) => a.key.localeCompare(b.key))
-    return list.map((item, index) => {
-      const previous = index > 0 ? list[index - 1] : null
-      const change = previous && parseNum(previous.revenue) > 0 ? ((item.revenue - previous.revenue) / previous.revenue) * 100 : null
-      return {
-        ...item,
-        days_count: item.days.size,
-        avg_day: item.days.size ? item.revenue / item.days.size : 0,
-        change
-      }
-    })
-  }, [rmsRevenueReport.rows, monthFilter])
-
-  const rmsRevenueTrendMax = Math.max(...rmsRevenueTrend.map(item => parseNum(item.revenue)), 1)
-  const rmsRevenueTrendMin = Math.min(...rmsRevenueTrend.map(item => parseNum(item.revenue)), 0)
-  const rmsRevenueTrendRange = Math.max(rmsRevenueTrendMax - rmsRevenueTrendMin, 1)
-  const rmsRevenueTrendPath = rmsRevenueTrend.map((item, index) => {
-    const width = 720
-    const height = 220
-    const padX = 34
-    const padY = 24
-    const x = rmsRevenueTrend.length <= 1 ? width / 2 : padX + index * ((width - padX * 2) / (rmsRevenueTrend.length - 1))
-    const y = height - padY - ((parseNum(item.revenue) - rmsRevenueTrendMin) / rmsRevenueTrendRange) * (height - padY * 2)
-    return `${index === 0 ? 'M' : 'L'} ${x.toFixed(2)} ${y.toFixed(2)}`
-  }).join(' ')
-
-  const rmsRevenueBestTrend = [...rmsRevenueTrend].sort((a, b) => parseNum(b.revenue) - parseNum(a.revenue))[0] || null
-  const rmsRevenueLastTrend = rmsRevenueTrend[rmsRevenueTrend.length - 1] || null
   const reportsFoodCost = totals.revenue ? totals.cost / totals.revenue * 100 : 0
   const reportKpis = [
     { title: 'Выручка', value: fmt(totals.revenue), change: monthFilter !== 'all' ? formatChangePct(totals.revenue, previousMonthTotals.revenue) : '+0.0%', tone: 'green', icon: '↗' },
@@ -26872,75 +26439,6 @@ function Reports({ t }) {
         <div><span>Филиал</span><strong>{selectedBranchLabel}</strong><em>текущий фильтр</em></div>
         <div><span>Период</span><strong>{selectedMonthLabel}</strong><em>текущий фильтр</em></div>
       </div>
-
-      <ReportsExpenseArticlesCard />
-
-      {!rmsRevenueReport.loading && !rmsRevenueReport.error && !!rmsRevenueTrend.length && <div className="reports-v202-trend-card">
-        <div className="reports-v202-trend-head">
-          <div>
-            <h4>Динамика выручки</h4>
-            <p>{monthFilter === 'all' ? 'Помесячная динамика роста и падения по daily_revenue.' : 'Дневная динамика выбранного месяца по daily_revenue.'}</p>
-          </div>
-          <div className="reports-v202-trend-summary">
-            <span>Последний период</span>
-            <strong>{rmsRevenueLastTrend?.key || '—'}</strong>
-            <em className={rmsRevenueLastTrend?.change >= 0 ? 'good' : 'bad'}>{rmsRevenueLastTrend?.change === null || rmsRevenueLastTrend?.change === undefined ? '—' : `${rmsRevenueLastTrend.change >= 0 ? '+' : ''}${pct(rmsRevenueLastTrend.change)}`}</em>
-          </div>
-          <div className="reports-v202-trend-summary">
-            <span>Лучший период</span>
-            <strong>{rmsRevenueBestTrend?.key || '—'}</strong>
-            <em>{rmsRevenueBestTrend ? fmt(rmsRevenueBestTrend.revenue) : '—'}</em>
-          </div>
-        </div>
-
-        <div className="reports-v202-chart-wrap">
-          <svg className="reports-v202-line-chart" viewBox="0 0 720 240" role="img" aria-label="Revenue trend chart">
-            <line x1="34" y1="196" x2="686" y2="196" className="reports-v202-axis" />
-            <line x1="34" y1="24" x2="34" y2="196" className="reports-v202-axis" />
-            {[0.25, 0.5, 0.75].map(level => <line key={level} x1="34" y1={196 - level * 172} x2="686" y2={196 - level * 172} className="reports-v202-grid-line" />)}
-            {rmsRevenueTrendPath && <path d={rmsRevenueTrendPath} className="reports-v202-line" />}
-            {rmsRevenueTrend.map((item, index) => {
-              const width = 720
-              const height = 220
-              const padX = 34
-              const padY = 24
-              const x = rmsRevenueTrend.length <= 1 ? width / 2 : padX + index * ((width - padX * 2) / (rmsRevenueTrend.length - 1))
-              const y = height - padY - ((parseNum(item.revenue) - rmsRevenueTrendMin) / rmsRevenueTrendRange) * (height - padY * 2)
-              const showLabel = rmsRevenueTrend.length <= 8 || index === 0 || index === rmsRevenueTrend.length - 1 || index % Math.ceil(rmsRevenueTrend.length / 8) === 0
-              return <g key={item.key}>
-                <circle cx={x} cy={y} r="5.5" className={item.change === null ? 'reports-v202-dot' : item.change >= 0 ? 'reports-v202-dot good' : 'reports-v202-dot bad'} />
-                <title>{item.key}: {fmt(item.revenue)} · {item.change === null ? 'без сравнения' : `${item.change >= 0 ? '+' : ''}${pct(item.change)}`}</title>
-                {showLabel && <text x={x} y="224" textAnchor="middle" className="reports-v202-x-label">{monthFilter === 'all' ? item.key.slice(5, 7) : item.key.slice(8, 10)}</text>}
-              </g>
-            })}
-          </svg>
-        </div>
-
-        <div className="reports-v202-trend-table-wrap">
-          <table className="reports-v202-trend-table">
-            <thead>
-              <tr>
-                <th>{monthFilter === 'all' ? 'Месяц' : 'Дата'}</th>
-                <th>Выручка</th>
-                <th>Cash</th>
-                <th>Bank</th>
-                <th>Сред./день</th>
-                <th>Изменение</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rmsRevenueTrend.map(item => <tr key={item.key}>
-                <td><b>{item.key}</b></td>
-                <td>{fmt(item.revenue)}</td>
-                <td>{fmt(item.cash)}</td>
-                <td>{fmt(item.bank)}</td>
-                <td>{fmt(item.avg_day)}</td>
-                <td className={item.change === null ? '' : item.change >= 0 ? 'good' : 'bad'}>{item.change === null ? '—' : `${item.change >= 0 ? '+' : ''}${pct(item.change)}`}</td>
-              </tr>)}
-            </tbody>
-          </table>
-        </div>
-      </div>}
 
       {rmsRevenueReport.loading && <div className="reports-v43-empty-state"><b>Загрузка выручки...</b><span>Идёт чтение daily_revenue.</span></div>}
       {rmsRevenueReport.error && <div className="reports-v43-empty-state"><b>Ошибка загрузки</b><span>{rmsRevenueReport.error}</span></div>}
