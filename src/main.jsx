@@ -12264,6 +12264,103 @@ function RMSProV6Styles() {
   .reports-v217-kpis{grid-template-columns:1fr;}
 }
 
+/* v218 Reports Bazar Connected */
+.reports-v218-bazar-card{
+  margin:14px 0 18px;
+  border:1px solid #bbf7d0;
+  background:linear-gradient(180deg,#ffffff 0%,#f0fdf4 100%);
+  border-radius:20px;
+  padding:16px;
+}
+.reports-v218-bazar-head{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:12px;
+  margin-bottom:12px;
+}
+.reports-v218-bazar-head h4{
+  margin:0;
+  color:#0f172a;
+  font-size:18px;
+}
+.reports-v218-bazar-head p{
+  margin:5px 0 0;
+  color:#64748b;
+  font-size:13px;
+}
+.reports-v218-bazar-kpis{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:10px;
+  margin:12px 0;
+}
+.reports-v218-bazar-kpis div{
+  background:#fff;
+  border:1px solid #dcfce7;
+  border-radius:14px;
+  padding:12px;
+}
+.reports-v218-bazar-kpis span{
+  display:block;
+  color:#64748b;
+  font-size:12px;
+  font-weight:850;
+}
+.reports-v218-bazar-kpis strong{
+  display:block;
+  margin-top:5px;
+  color:#166534;
+  font-size:17px;
+}
+.reports-v218-bazar-grid{
+  display:grid;
+  grid-template-columns:minmax(280px,.42fr) minmax(480px,.58fr);
+  gap:14px;
+}
+.reports-v218-bazar-branch,
+.reports-v218-bazar-detail{
+  overflow:auto;
+  background:#fff;
+  border:1px solid #dcfce7;
+  border-radius:16px;
+}
+.reports-v218-bazar-branch h5,
+.reports-v218-bazar-detail h5{
+  margin:0;
+  padding:12px;
+  border-bottom:1px solid #dcfce7;
+  color:#0f172a;
+  font-size:15px;
+}
+.reports-v218-bazar-branch table,
+.reports-v218-bazar-detail table{
+  width:100%;
+  border-collapse:collapse;
+  font-size:13px;
+}
+.reports-v218-bazar-branch th,
+.reports-v218-bazar-branch td,
+.reports-v218-bazar-detail th,
+.reports-v218-bazar-detail td{
+  padding:9px 10px;
+  border-bottom:1px solid #e2e8f0;
+  text-align:left;
+  vertical-align:top;
+}
+.reports-v218-bazar-branch th,
+.reports-v218-bazar-detail th{
+  color:#475569;
+  font-size:11.5px;
+  text-transform:uppercase;
+  letter-spacing:.04em;
+  background:#f8fafc;
+}
+@media(max-width:960px){
+  .reports-v218-bazar-grid{grid-template-columns:1fr;}
+  .reports-v218-bazar-kpis{grid-template-columns:1fr;}
+}
+
 
   `}</style>
 }
@@ -25273,6 +25370,120 @@ async function explodeZipFile(file) {
 }
 
 
+
+function ReportsBazarConnectedCard() {
+  const [rows, setRows] = React.useState([])
+  const [loading, setLoading] = React.useState(false)
+  const [error, setError] = React.useState('')
+
+  const loadBazar = React.useCallback(async () => {
+    setLoading(true)
+    setError('')
+    try {
+      const { data, error } = await supabase.rpc('rms_report_bazar_v216', {
+        p_date_from: null,
+        p_date_to: null,
+        p_branch_id: null
+      })
+      if (error) throw error
+      setRows(Array.isArray(data) ? data : [])
+    } catch (err) {
+      console.error('Bazar report load error', err)
+      setError(err?.message || 'Не удалось загрузить отчёт по Базару')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  React.useEffect(() => {
+    loadBazar()
+  }, [loadBazar])
+
+  const total = React.useMemo(() => rows.reduce((sum, row) => sum + parseNum(row.amount), 0), [rows])
+
+  const byBranch = React.useMemo(() => {
+    const map = new Map()
+    rows.forEach(row => {
+      const key = row.branch_name || 'Без филиала'
+      map.set(key, (map.get(key) || 0) + parseNum(row.amount))
+    })
+    return Array.from(map.entries()).map(([branch, amount]) => ({ branch, amount })).sort((a, b) => b.amount - a.amount)
+  }, [rows])
+
+  return (
+    <div className="reports-v218-bazar-card">
+      <div className="reports-v218-bazar-head">
+        <div>
+          <h4>Отчёт по базару</h4>
+          <p>Базар, автоматическое распределение по филиалам и влияние на Food Cost.</p>
+        </div>
+      <ReportsBazarConnectedCard />
+
+        <button className="ghost small" onClick={loadBazar} disabled={loading}>{loading ? 'Обновление…' : 'Обновить'}</button>
+      </div>
+
+      {error && <div className="soft-alert warning">{error}</div>}
+
+      <div className="reports-v218-bazar-kpis">
+        <div><span>Итого Базар</span><strong>{fmt(total)}</strong></div>
+        <div><span>Строк</span><strong>{rows.length}</strong></div>
+        <div><span>Период</span><strong>{rows.length ? `${rows[rows.length - 1]?.expense_date || '—'} → ${rows[0]?.expense_date || '—'}` : '—'}</strong></div>
+      </div>
+
+      <div className="reports-v218-bazar-grid">
+        <div className="reports-v218-bazar-branch">
+          <h5>По филиалам</h5>
+          <table>
+            <thead>
+              <tr>
+                <th>Филиал</th>
+                <th>Сумма</th>
+                <th>Доля</th>
+              </tr>
+            </thead>
+            <tbody>
+              {byBranch.map(item => (
+                <tr key={item.branch}>
+                  <td><b>{item.branch}</b></td>
+                  <td>{fmt(item.amount)}</td>
+                  <td>{total ? pct(item.amount / total * 100) : '0.0%'}</td>
+                </tr>
+              ))}
+              {!byBranch.length && !loading && <tr><td colSpan="3" className="muted">Нет данных.</td></tr>}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="reports-v218-bazar-detail">
+          <h5>Детализация</h5>
+          <table>
+            <thead>
+              <tr>
+                <th>Дата</th>
+                <th>Филиал</th>
+                <th>Сумма</th>
+                <th>Комментарий</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.slice(0, 200).map(row => (
+                <tr key={row.expense_id}>
+                  <td>{row.expense_date}</td>
+                  <td>{row.branch_name || '—'}</td>
+                  <td>{fmt(row.amount)}</td>
+                  <td>{row.comment || '—'}</td>
+                </tr>
+              ))}
+              {!rows.length && !loading && <tr><td colSpan="4" className="muted">Данных по Базару пока нет.</td></tr>}
+            </tbody>
+          </table>
+          {rows.length > 200 && <p className="hint">Показаны первые 200 строк из {rows.length}.</p>}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function ReportsExpenseArticlesCard() {
   const [categories, setCategories] = React.useState([])
   const [transactions, setTransactions] = React.useState([])
@@ -26634,8 +26845,8 @@ function Reports({ t }) {
         </div>
       </div>
       <div className="reports-v43-empty-state">
-        <b>Источник данных ещё не подключён к этой вкладке</b>
-        <span>Этот раздел уже добавлен в структуру Reports. Следующий шаг — подключить реальные данные RMS и таблицу детализации.</span>
+        <b></b>
+        <span></span>
       </div>
     </div>
   </section>
