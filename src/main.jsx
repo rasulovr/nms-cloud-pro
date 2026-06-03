@@ -12207,6 +12207,9 @@ function RMSProV6Styles() {
   min-width:0 !important;
 }
 
+/* v223 Month Filter Timezone Fix
+   Fixes report filters excluding the last day of month in UTC+ timezones. */
+
 
   `}</style>
 }
@@ -25216,6 +25219,18 @@ async function explodeZipFile(file) {
 }
 
 
+
+function rmsNextMonthStart(monthValue) {
+  const value = String(monthValue || '')
+  if (!/^\d{4}-\d{2}$/.test(value)) return ''
+  const year = Number(value.slice(0, 4))
+  const month = Number(value.slice(5, 7))
+  if (!year || !month) return ''
+  const nextYear = month === 12 ? year + 1 : year
+  const nextMonth = month === 12 ? 1 : month + 1
+  return `${nextYear}-${String(nextMonth).padStart(2, '0')}-01`
+}
+
 function ReportsBazarDailyFullCardV220() {
   const [rows, setRows] = React.useState([])
   const [loading, setLoading] = React.useState(false)
@@ -25457,7 +25472,7 @@ function Reports({ t }) {
 
       if (/^\d{4}-\d{2}$/.test(String(monthFilter || ''))) {
         const start = `${monthFilter}-01`
-        const end = new Date(Number(monthFilter.slice(0, 4)), Number(monthFilter.slice(5, 7)), 1).toISOString().slice(0, 10)
+        const end = rmsNextMonthStart(monthFilter)
         query = query.gte('revenue_date', start).lt('revenue_date', end)
       }
 
@@ -25515,7 +25530,7 @@ function Reports({ t }) {
       if (branchFilter !== 'all') query = query.eq('branch_id', branchFilter)
       if (/^\d{4}-\d{2}$/.test(String(monthFilter || ''))) {
         const start = `${monthFilter}-01`
-        const end = new Date(Number(monthFilter.slice(0, 4)), Number(monthFilter.slice(5, 7)), 1).toISOString().slice(0, 10)
+        const end = rmsNextMonthStart(monthFilter)
         query = query.gte('expense_date', start).lt('expense_date', end)
       }
 
@@ -25574,7 +25589,7 @@ function Reports({ t }) {
       }
       if (/^\d{4}-\d{2}$/.test(String(monthFilter || ''))) {
         const start = `${monthFilter}-01`
-        const end = new Date(Number(monthFilter.slice(0, 4)), Number(monthFilter.slice(5, 7)), 1).toISOString().slice(0, 10)
+        const end = rmsNextMonthStart(monthFilter)
         purchasesQuery = purchasesQuery.gte('purchase_date', start).lt('purchase_date', end)
         paymentsQuery = paymentsQuery.gte('payment_date', start).lt('payment_date', end)
       }
