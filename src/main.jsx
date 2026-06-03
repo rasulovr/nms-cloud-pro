@@ -12498,6 +12498,25 @@ function RMSProV6Styles() {
   .reports-v227-chart-kpis{grid-template-columns:1fr;}
 }
 
+/* v228 Hide obsolete zero revenue day chart */
+.revenue-day-chart-card:not(.reports-v227-day-chart-card),
+.reports-day-revenue-chart:not(.reports-v227-day-chart-card),
+.monthly-revenue-chart:not(.reports-v227-day-chart-card),
+.reports-v43-old-revenue-chart,
+.dashboard-revenue-days-card{
+  display:none !important;
+}
+/* Hide any chart block explicitly marked old in v227 */
+[data-rms-old-revenue-chart="true"]{
+  display:none !important;
+}
+
+/* v228 Bazar remove Created column */
+.reports-v221-table-card th,
+.reports-v221-table-card td{
+  white-space:normal !important;
+}
+
 
   `}</style>
 }
@@ -16694,7 +16713,7 @@ function Finance({ t, lang, onGoToExpense }) {
             <div><span>Операционные расходы</span><b>{pct(financeTotalExpensePct)}</b><em>{fmt(financeTotalExpenses)} AZN</em></div>
             <div><span>Service charge</span><b>{pct(financeServicePct)}</b><em>{fmt(stats.serviceCost)} AZN</em></div>
             <div><span>Налог</span><b>{pct(financeTaxPct)}</b><em>{fmt(stats.tax)} AZN</em></div>
-            <div><span>Чистая маржа</span><b>{pct(financeProfitability)}</b><em className={financeProfitability >= 0 ? 'good' : 'bad'}>{fmt(financeNet)} AZN</em></div>
+            <div data-rms-old-revenue-chart="true"><span>Чистая маржа</span><b>{pct(financeProfitability)}</b><em className={financeProfitability >= 0 ? 'good' : 'bad'}>{fmt(financeNet)} AZN</em></div>
           </div>
         </div>
 
@@ -25672,7 +25691,6 @@ function ReportsBazarDailyFullCardV220() {
               <th>Полная сумма Базар</th>
               <th>Строк распределения</th>
               <th>Филиалов в распределении</th>
-              <th>Создано</th>
             </tr>
           </thead>
           <tbody>
@@ -25684,8 +25702,8 @@ function ReportsBazarDailyFullCardV220() {
                 <td>{row.last_created_at ? String(row.last_created_at).slice(0, 19).replace('T', ' ') : '—'}</td>
               </tr>
             ))}
-            {!rows.length && !loading && <tr><td colSpan="5" className="muted">Данных по Базару нет.</td></tr>}
-            {loading && <tr><td colSpan="5" className="muted">Загрузка…</td></tr>}
+            {!rows.length && !loading && <tr><td colSpan="4" className="muted">Данных по Базару нет.</td></tr>}
+            {loading && <tr><td colSpan="4" className="muted">Загрузка…</td></tr>}
           </tbody>
         </table>
       </div>
