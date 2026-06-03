@@ -12350,6 +12350,35 @@ function RMSProV6Styles() {
   .reports-v224-trend-head{grid-template-columns:1fr;}
 }
 
+/* v225 Revenue report cleanup + Bazar placeholder removal */
+.reports-v224-revenue-controls{
+  display:none !important;
+}
+.reports-v224-trend-card{
+  background:linear-gradient(180deg,#f8fbff 0%,#ffffff 100%) !important;
+  border:1px solid #dbeafe !important;
+  box-shadow:0 18px 42px rgba(37,99,235,.08);
+}
+.reports-v225-area{
+  fill:url(#revenueGradientV225);
+  color:#2563eb;
+}
+.reports-v224-line{
+  stroke:#2563eb !important;
+  filter:drop-shadow(0 5px 8px rgba(37,99,235,.18));
+}
+.reports-v225-bazar-section,
+.reports-v225-bazar-card-wrap{
+  width:100% !important;
+  max-width:none !important;
+}
+.reports-v225-bazar-card-wrap{
+  padding:0 !important;
+  border:0 !important;
+  background:transparent !important;
+  box-shadow:none !important;
+}
+
 
   `}</style>
 }
@@ -26624,22 +26653,31 @@ function Reports({ t }) {
     </div>
   </div>
 
-  const ReportModulePlaceholder = ({ title, description }) => <section className="reports-v43-module-grid">
-    <div className="reports-v43-module-card reports-v43-wide">
-      <div className="reports-v43-card-head">
-        <div>
-          <h3>{title}</h3>
-          <p>{description}</p>
+  const ReportModulePlaceholder = ({ title, description }) => {
+    const isBazarReport = String(title || '').toLowerCase().includes('базар')
+    if (isBazarReport) {
+      return <section className="reports-v43-module-grid reports-v225-bazar-section">
+        <div className="reports-v43-module-card reports-v43-wide reports-v225-bazar-card-wrap">
+          <ReportsBazarDailyFullCardV220 />
+        </div>
+      </section>
+    }
+
+    return <section className="reports-v43-module-grid">
+      <div className="reports-v43-module-card reports-v43-wide">
+        <div className="reports-v43-card-head">
+          <div>
+            <h3>{title}</h3>
+            <p>{description}</p>
+          </div>
+        </div>
+        <div className="reports-v43-empty-state">
+          <b>Источник данных ещё не подключён к этой вкладке</b>
+          <span>Этот раздел уже добавлен в структуру Reports. Следующий шаг — подключить реальные данные RMS и таблицу детализации.</span>
         </div>
       </div>
-      <div className="reports-v43-empty-state">
-        <b>Источник данных ещё не подключён к этой вкладке</b>
-        <span>Этот раздел уже добавлен в структуру Reports. Следующий шаг — подключить реальные данные RMS и таблицу детализации.</span>
-      </div>
-    </div>
-  
-      <ReportsBazarDailyFullCardV220 />
-</section>
+    </section>
+  }
 
 
   const revenueRowsRaw = rmsRevenueReport.rows || []
@@ -26711,6 +26749,7 @@ function Reports({ t }) {
     const y = height - padY - (parseNum(item.revenue) / revenueTrendMax) * (height - padY * 2)
     return `${index === 0 ? 'M' : 'L'} ${x.toFixed(2)} ${y.toFixed(2)}`
   }).join(' ')
+  const revenueTrendAreaPath = revenueTrendPath ? `${revenueTrendPath} L 686 196 L 34 196 Z` : ''
 
   const revenueLastTrend = revenueTrendRows[revenueTrendRows.length - 1] || null
   const revenueBestTrend = [...revenueTrendRows].sort((a, b) => parseNum(b.revenue) - parseNum(a.revenue))[0] || null
@@ -26733,36 +26772,36 @@ function Reports({ t }) {
         </div>
       </div>
 
-      <div className="reports-v224-revenue-controls">
-        <label><span>Дата с</span><input type="date" value={revenueDateFrom} onChange={e => { setRevenueDateFrom(e.target.value); setRevenuePage(1) }} /></label>
-        <label><span>Дата по</span><input type="date" value={revenueDateTo} onChange={e => { setRevenueDateTo(e.target.value); setRevenuePage(1) }} /></label>
-        <button className="small ghost" type="button" onClick={() => { setRevenueDateFrom(''); setRevenueDateTo(''); setRevenuePage(1); loadRmsRevenueReport() }}>Сбросить диапазон</button>
-        <span className="reports-v224-mode">{revenueListMode === 'monthly' ? 'Список агрегирован по месяцам' : 'Список по дням'}</span>
-      </div>
-
       <div className="reports-v43-mini-kpis">
         <div><span>Итого выручка</span><strong>{fmt(rmsRevenueReport.totals.revenue)}</strong><em>cash + bank + wolt</em></div>
         <div><span>Cash</span><strong>{fmt(rmsRevenueReport.totals.cash)}</strong><em>наличные</em></div>
         <div><span>Bank</span><strong>{fmt(rmsRevenueReport.totals.bank)}</strong><em>карта / банк</em></div>
         <div><span>Wolt</span><strong>{fmt(rmsRevenueReport.totals.wolt)}</strong><em>агрегатор</em></div>
         <div><span>Филиал</span><strong>{selectedBranchLabel}</strong><em>текущий фильтр</em></div>
-        <div><span>Период</span><strong>{revenueHasCustomRange ? `${revenueDateFrom || '...'} — ${revenueDateTo || '...'}` : selectedMonthLabel}</strong><em>текущий фильтр</em></div>
+        <div><span>Период</span><strong>{selectedMonthLabel}</strong><em>текущий фильтр</em></div>
       </div>
 
       {!rmsRevenueReport.loading && !rmsRevenueReport.error && !!revenueTrendRows.length && <div className="reports-v224-trend-card">
         <div className="reports-v224-trend-head">
           <div>
             <h4>Динамика выручки</h4>
-            <p>{revenueListMode === 'monthly' ? 'Помесячная динамика по выбранному диапазону.' : 'Ежедневная динамика выбранного месяца / периода.'}</p>
+            <p>{revenueListMode === 'monthly' ? 'Помесячная динамика по выбранному периоду.' : 'Ежедневная динамика выбранного месяца.'}</p>
           </div>
           <div className="reports-v224-trend-mini"><span>Последний период</span><strong>{revenueLastTrend?.key || '—'}</strong><em>{revenueLastTrend?.change === null || revenueLastTrend?.change === undefined ? '—' : `${revenueLastTrend.change >= 0 ? '+' : ''}${pct(revenueLastTrend.change)}`}</em></div>
           <div className="reports-v224-trend-mini"><span>Лучший период</span><strong>{revenueBestTrend?.key || '—'}</strong><em>{revenueBestTrend ? fmt(revenueBestTrend.revenue) : '—'}</em></div>
         </div>
         <div className="reports-v224-chart-wrap">
           <svg className="reports-v224-line-chart" viewBox="0 0 720 240" role="img" aria-label="Revenue dynamics chart">
+            <defs>
+              <linearGradient id="revenueGradientV225" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="currentColor" stopOpacity="0.22" />
+                <stop offset="100%" stopColor="currentColor" stopOpacity="0.02" />
+              </linearGradient>
+            </defs>
             <line x1="34" y1="196" x2="686" y2="196" className="reports-v224-axis" />
             <line x1="34" y1="24" x2="34" y2="196" className="reports-v224-axis" />
             {[0.25, 0.5, 0.75].map(level => <line key={level} x1="34" y1={196 - level * 172} x2="686" y2={196 - level * 172} className="reports-v224-grid-line" />)}
+            {revenueTrendAreaPath && <path d={revenueTrendAreaPath} className="reports-v225-area" />}
             {revenueTrendPath && <path d={revenueTrendPath} className="reports-v224-line" />}
             {revenueTrendRows.map((item, index) => {
               const width = 720
@@ -26775,7 +26814,7 @@ function Reports({ t }) {
               return <g key={item.key}>
                 <circle cx={x} cy={y} r="5.5" className={item.change === null ? 'reports-v224-dot' : item.change >= 0 ? 'reports-v224-dot good' : 'reports-v224-dot bad'} />
                 <title>{item.key}: {fmt(item.revenue)}</title>
-                {showLabel && <text x={x} y="224" textAnchor="middle" className="reports-v224-x-label">{revenueListMode === 'monthly' ? item.key.slice(5, 7) : item.key.slice(8, 10)}</text>}
+                {showLabel && <text x={x} y="224" textAnchor="middle" className="reports-v224-x-label">{revenueListMode === 'monthly' ? item.key.slice(5, 7) : String(Number(item.key.slice(8, 10)) || '')}</text>}
               </g>
             })}
           </svg>
