@@ -12210,6 +12210,146 @@ function RMSProV6Styles() {
 /* v223 Month Filter Timezone Fix
    Fixes report filters excluding the last day of month in UTC+ timezones. */
 
+/* v224 Revenue Report Graph Range Pagination */
+.reports-v224-revenue-controls{
+  display:flex;
+  align-items:end;
+  gap:10px;
+  flex-wrap:wrap;
+  margin:8px 0 14px;
+  padding:10px;
+  border:1px solid #e2e8f0;
+  border-radius:14px;
+  background:#fff;
+}
+.reports-v224-revenue-controls label{
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+  color:#64748b;
+  font-size:12px;
+  font-weight:800;
+}
+.reports-v224-revenue-controls input{
+  border:1px solid #cbd5e1;
+  border-radius:10px;
+  padding:8px 10px;
+  min-height:36px;
+}
+.reports-v224-mode{
+  color:#475569;
+  font-size:12px;
+  font-weight:800;
+  padding:9px 10px;
+  border-radius:12px;
+  background:#f8fafc;
+  border:1px solid #e2e8f0;
+}
+.reports-v224-trend-card{
+  margin:14px 0 18px;
+  border:1px solid #dbeafe;
+  background:linear-gradient(180deg,#ffffff 0%,#eff6ff 100%);
+  border-radius:20px;
+  padding:16px;
+}
+.reports-v224-trend-head{
+  display:grid;
+  grid-template-columns:1fr auto auto;
+  gap:12px;
+  align-items:start;
+  margin-bottom:12px;
+}
+.reports-v224-trend-head h4{
+  margin:0;
+  color:#0f172a;
+  font-size:18px;
+}
+.reports-v224-trend-head p{
+  margin:5px 0 0;
+  color:#64748b;
+  font-size:13px;
+}
+.reports-v224-trend-mini{
+  min-width:145px;
+  border:1px solid #dbeafe;
+  background:#fff;
+  border-radius:14px;
+  padding:10px 12px;
+}
+.reports-v224-trend-mini span{
+  display:block;
+  color:#64748b;
+  font-size:11.5px;
+  font-weight:850;
+}
+.reports-v224-trend-mini strong{
+  display:block;
+  margin-top:4px;
+  color:#1d4ed8;
+  font-size:15px;
+}
+.reports-v224-trend-mini em{
+  display:block;
+  margin-top:3px;
+  font-style:normal;
+  color:#0f172a;
+  font-weight:800;
+}
+.reports-v224-chart-wrap{
+  overflow-x:auto;
+  background:#fff;
+  border:1px solid #e2e8f0;
+  border-radius:16px;
+  padding:10px;
+}
+.reports-v224-line-chart{
+  display:block;
+  width:100%;
+  min-width:620px;
+  height:260px;
+}
+.reports-v224-axis{
+  stroke:#94a3b8;
+  stroke-width:1;
+}
+.reports-v224-grid-line{
+  stroke:#e2e8f0;
+  stroke-width:1;
+  stroke-dasharray:4 6;
+}
+.reports-v224-line{
+  fill:none;
+  stroke:#2563eb;
+  stroke-width:4;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+.reports-v224-dot{
+  fill:#64748b;
+  stroke:#fff;
+  stroke-width:2;
+}
+.reports-v224-dot.good{fill:#059669;}
+.reports-v224-dot.bad{fill:#dc2626;}
+.reports-v224-x-label{
+  fill:#64748b;
+  font-size:12px;
+  font-weight:800;
+}
+.reports-v224-pagination{
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:10px;
+  padding:12px 0 0;
+  color:#475569;
+  font-size:13px;
+  font-weight:800;
+}
+@media(max-width:860px){
+  .reports-v224-trend-head{grid-template-columns:1fr;}
+}
+
 
   `}</style>
 }
@@ -25327,6 +25467,9 @@ function Reports({ t }) {
   const [branchFilter, setBranchFilter] = useState('all')
   const [departmentFilter, setDepartmentFilter] = useState('all')
   const [monthFilter, setMonthFilter] = useState('all')
+  const [revenueDateFrom, setRevenueDateFrom] = useState('')
+  const [revenueDateTo, setRevenueDateTo] = useState('')
+  const [revenuePage, setRevenuePage] = useState(1)
   const [salesSort, setSalesSort] = useState({ field: 'revenue', dir: 'desc' })
   const [importBranchId, setImportBranchId] = useState('auto')
   const [importText, setImportText] = useState('')
@@ -25458,7 +25601,11 @@ function Reports({ t }) {
   useEffect(() => {
     if (reportsTab !== 'revenue') return
     loadRmsRevenueReport()
-  }, [reportsTab, branchFilter, monthFilter, branches.length])
+  }, [reportsTab, branchFilter, monthFilter, revenueDateFrom, revenueDateTo, branches.length])
+
+  useEffect(() => {
+    setRevenuePage(1)
+  }, [reportsTab, branchFilter, monthFilter, revenueDateFrom, revenueDateTo])
 
   async function loadRmsRevenueReport() {
     setRmsRevenueReport(prev => ({ ...prev, loading: true, error: '' }))
@@ -25470,13 +25617,17 @@ function Reports({ t }) {
 
       if (branchFilter !== 'all') query = query.eq('branch_id', branchFilter)
 
-      if (/^\d{4}-\d{2}$/.test(String(monthFilter || ''))) {
+      const hasCustomRevenueRange = Boolean(revenueDateFrom || revenueDateTo)
+      if (hasCustomRevenueRange) {
+        if (revenueDateFrom) query = query.gte('revenue_date', revenueDateFrom)
+        if (revenueDateTo) query = query.lte('revenue_date', revenueDateTo)
+      } else if (/^\d{4}-\d{2}$/.test(String(monthFilter || ''))) {
         const start = `${monthFilter}-01`
         const end = rmsNextMonthStart(monthFilter)
         query = query.gte('revenue_date', start).lt('revenue_date', end)
       }
 
-      const { data, error } = await query.order('revenue_date', { ascending: false })
+      const { data, error } = await query.order('revenue_date', { ascending: false }).order('branch_id', { ascending: true }).range(0, 4999)
       if (error) throw error
 
       const branchNameById = new Map((branches || []).map(b => [String(b.id), b.name]))
@@ -26490,17 +26641,103 @@ function Reports({ t }) {
       <ReportsBazarDailyFullCardV220 />
 </section>
 
-  const ReportsRevenueView = <section className="reports-v43-module-grid reports-v43-revenue-grid">
+
+  const revenueRowsRaw = rmsRevenueReport.rows || []
+  const revenueDateBounds = useMemo(() => {
+    const dates = revenueRowsRaw.map(row => row.revenue_date).filter(Boolean).sort()
+    if (!dates.length) return { min: '', max: '', days: 0 }
+    const min = dates[0]
+    const max = dates[dates.length - 1]
+    const start = new Date(`${min}T00:00:00`)
+    const end = new Date(`${max}T00:00:00`)
+    const days = Number.isFinite(start.getTime()) && Number.isFinite(end.getTime()) ? Math.round((end - start) / 86400000) + 1 : 0
+    return { min, max, days }
+  }, [revenueRowsRaw])
+
+  const revenueHasCustomRange = Boolean(revenueDateFrom || revenueDateTo)
+  const revenueListMode = revenueHasCustomRange
+    ? (revenueDateBounds.days > 45 ? 'monthly' : 'daily')
+    : (monthFilter === 'all' ? 'monthly' : 'daily')
+
+  const revenueDisplayRows = useMemo(() => {
+    if (revenueListMode === 'daily') return revenueRowsRaw
+    const map = new Map()
+    revenueRowsRaw.forEach(row => {
+      const key = String(row.revenue_date || '').slice(0, 7) || '—'
+      const prev = map.get(key) || { month: key, rows_count: 0, days: new Set(), cash: 0, bank: 0, wolt: 0, revenue: 0 }
+      prev.rows_count += 1
+      if (row.revenue_date) prev.days.add(row.revenue_date)
+      prev.cash += parseNum(row.cash)
+      prev.bank += parseNum(row.bank)
+      prev.wolt += parseNum(row.wolt)
+      prev.revenue += parseNum(row.revenue)
+      map.set(key, prev)
+    })
+    return Array.from(map.values()).map(item => ({ ...item, days_count: item.days.size })).sort((a, b) => b.month.localeCompare(a.month))
+  }, [revenueRowsRaw, revenueListMode])
+
+  const revenuePageSize = 80
+  const revenueTotalPages = Math.max(1, Math.ceil(revenueDisplayRows.length / revenuePageSize))
+  const safeRevenuePage = Math.min(Math.max(1, revenuePage), revenueTotalPages)
+  const revenuePagedRows = revenueDisplayRows.slice((safeRevenuePage - 1) * revenuePageSize, safeRevenuePage * revenuePageSize)
+
+  const revenueTrendRows = useMemo(() => {
+    const groupMode = revenueListMode === 'monthly' ? 'monthly' : 'daily'
+    const map = new Map()
+    revenueRowsRaw.forEach(row => {
+      const key = groupMode === 'monthly' ? String(row.revenue_date || '').slice(0, 7) : String(row.revenue_date || '')
+      if (!key) return
+      const prev = map.get(key) || { key, cash: 0, bank: 0, wolt: 0, revenue: 0 }
+      prev.cash += parseNum(row.cash)
+      prev.bank += parseNum(row.bank)
+      prev.wolt += parseNum(row.wolt)
+      prev.revenue += parseNum(row.revenue)
+      map.set(key, prev)
+    })
+    return Array.from(map.values()).sort((a, b) => a.key.localeCompare(b.key)).map((item, index, list) => {
+      const previous = index > 0 ? list[index - 1] : null
+      const change = previous && parseNum(previous.revenue) > 0 ? ((item.revenue - previous.revenue) / previous.revenue) * 100 : null
+      return { ...item, change }
+    })
+  }, [revenueRowsRaw, revenueListMode])
+
+  const revenueTrendMax = Math.max(...revenueTrendRows.map(item => parseNum(item.revenue)), 1)
+  const revenueTrendPath = revenueTrendRows.map((item, index) => {
+    const width = 720
+    const height = 220
+    const padX = 34
+    const padY = 24
+    const x = revenueTrendRows.length <= 1 ? width / 2 : padX + index * ((width - padX * 2) / (revenueTrendRows.length - 1))
+    const y = height - padY - (parseNum(item.revenue) / revenueTrendMax) * (height - padY * 2)
+    return `${index === 0 ? 'M' : 'L'} ${x.toFixed(2)} ${y.toFixed(2)}`
+  }).join(' ')
+
+  const revenueLastTrend = revenueTrendRows[revenueTrendRows.length - 1] || null
+  const revenueBestTrend = [...revenueTrendRows].sort((a, b) => parseNum(b.revenue) - parseNum(a.revenue))[0] || null
+
+  const ReportsRevenueView = <section className="reports-v43-module-grid reports-v43-revenue-grid reports-v224-revenue-grid">
     <div className="reports-v43-module-card reports-v43-wide reports-v43-revenue-card">
       <div className="reports-v43-card-head reports-v43-revenue-head">
         <div>
-          <h3>Отчёт по выручке RMS</h3>
-          <p>Данные берутся из раздела “Выручка” / таблицы daily_revenue, а не из AIKO Sales import.</p>
+          <h3>Отчёт по выручке</h3>
         </div>
         <div className="reports-v43-revenue-actions">
-          <button className={monthFilter === currentMonthKey ? 'small primary' : 'small ghost'} type="button" onClick={() => setMonthFilter(currentMonthKey)}>Текущий месяц</button>
+          <button
+            className={monthFilter === currentMonthKey && !revenueDateFrom && !revenueDateTo ? 'small primary' : 'small ghost'}
+            type="button"
+            onClick={() => { setRevenueDateFrom(''); setRevenueDateTo(''); setMonthFilter(currentMonthKey); setRevenuePage(1) }}
+          >
+            Текущий месяц
+          </button>
           <button className="small ghost" type="button" onClick={loadRmsRevenueReport}>Обновить</button>
         </div>
+      </div>
+
+      <div className="reports-v224-revenue-controls">
+        <label><span>Дата с</span><input type="date" value={revenueDateFrom} onChange={e => { setRevenueDateFrom(e.target.value); setRevenuePage(1) }} /></label>
+        <label><span>Дата по</span><input type="date" value={revenueDateTo} onChange={e => { setRevenueDateTo(e.target.value); setRevenuePage(1) }} /></label>
+        <button className="small ghost" type="button" onClick={() => { setRevenueDateFrom(''); setRevenueDateTo(''); setRevenuePage(1); loadRmsRevenueReport() }}>Сбросить диапазон</button>
+        <span className="reports-v224-mode">{revenueListMode === 'monthly' ? 'Список агрегирован по месяцам' : 'Список по дням'}</span>
       </div>
 
       <div className="reports-v43-mini-kpis">
@@ -26509,37 +26746,89 @@ function Reports({ t }) {
         <div><span>Bank</span><strong>{fmt(rmsRevenueReport.totals.bank)}</strong><em>карта / банк</em></div>
         <div><span>Wolt</span><strong>{fmt(rmsRevenueReport.totals.wolt)}</strong><em>агрегатор</em></div>
         <div><span>Филиал</span><strong>{selectedBranchLabel}</strong><em>текущий фильтр</em></div>
-        <div><span>Период</span><strong>{selectedMonthLabel}</strong><em>текущий фильтр</em></div>
+        <div><span>Период</span><strong>{revenueHasCustomRange ? `${revenueDateFrom || '...'} — ${revenueDateTo || '...'}` : selectedMonthLabel}</strong><em>текущий фильтр</em></div>
       </div>
 
-      {rmsRevenueReport.loading && <div className="reports-v43-empty-state"><b>Загрузка выручки...</b><span>Идёт чтение daily_revenue.</span></div>}
+      {!rmsRevenueReport.loading && !rmsRevenueReport.error && !!revenueTrendRows.length && <div className="reports-v224-trend-card">
+        <div className="reports-v224-trend-head">
+          <div>
+            <h4>Динамика выручки</h4>
+            <p>{revenueListMode === 'monthly' ? 'Помесячная динамика по выбранному диапазону.' : 'Ежедневная динамика выбранного месяца / периода.'}</p>
+          </div>
+          <div className="reports-v224-trend-mini"><span>Последний период</span><strong>{revenueLastTrend?.key || '—'}</strong><em>{revenueLastTrend?.change === null || revenueLastTrend?.change === undefined ? '—' : `${revenueLastTrend.change >= 0 ? '+' : ''}${pct(revenueLastTrend.change)}`}</em></div>
+          <div className="reports-v224-trend-mini"><span>Лучший период</span><strong>{revenueBestTrend?.key || '—'}</strong><em>{revenueBestTrend ? fmt(revenueBestTrend.revenue) : '—'}</em></div>
+        </div>
+        <div className="reports-v224-chart-wrap">
+          <svg className="reports-v224-line-chart" viewBox="0 0 720 240" role="img" aria-label="Revenue dynamics chart">
+            <line x1="34" y1="196" x2="686" y2="196" className="reports-v224-axis" />
+            <line x1="34" y1="24" x2="34" y2="196" className="reports-v224-axis" />
+            {[0.25, 0.5, 0.75].map(level => <line key={level} x1="34" y1={196 - level * 172} x2="686" y2={196 - level * 172} className="reports-v224-grid-line" />)}
+            {revenueTrendPath && <path d={revenueTrendPath} className="reports-v224-line" />}
+            {revenueTrendRows.map((item, index) => {
+              const width = 720
+              const height = 220
+              const padX = 34
+              const padY = 24
+              const x = revenueTrendRows.length <= 1 ? width / 2 : padX + index * ((width - padX * 2) / (revenueTrendRows.length - 1))
+              const y = height - padY - (parseNum(item.revenue) / revenueTrendMax) * (height - padY * 2)
+              const showLabel = revenueTrendRows.length <= 10 || index === 0 || index === revenueTrendRows.length - 1 || index % Math.ceil(revenueTrendRows.length / 10) === 0
+              return <g key={item.key}>
+                <circle cx={x} cy={y} r="5.5" className={item.change === null ? 'reports-v224-dot' : item.change >= 0 ? 'reports-v224-dot good' : 'reports-v224-dot bad'} />
+                <title>{item.key}: {fmt(item.revenue)}</title>
+                {showLabel && <text x={x} y="224" textAnchor="middle" className="reports-v224-x-label">{revenueListMode === 'monthly' ? item.key.slice(5, 7) : item.key.slice(8, 10)}</text>}
+              </g>
+            })}
+          </svg>
+        </div>
+      </div>}
+
+      {rmsRevenueReport.loading && <div className="reports-v43-empty-state"><b>Загрузка выручки...</b><span>Идёт чтение выручки.</span></div>}
       {rmsRevenueReport.error && <div className="reports-v43-empty-state"><b>Ошибка загрузки</b><span>{rmsRevenueReport.error}</span></div>}
-      {!rmsRevenueReport.loading && !rmsRevenueReport.error && <div className="reports-v43-table-wrap reports-v43-revenue-table-wrap">
+
+      {!rmsRevenueReport.loading && !rmsRevenueReport.error && <div className="reports-v43-table-wrap reports-v43-revenue-table-wrap reports-v224-revenue-table-wrap">
         <table className="reports-v43-revenue-table">
           <thead>
-            <tr>
+            {revenueListMode === 'monthly' ? <tr>
+              <th>Месяц</th>
+              <th>Дней</th>
+              <th>Строк</th>
+              <th>Cash</th>
+              <th>Bank</th>
+              <th>Wolt</th>
+              <th>Итого</th>
+            </tr> : <tr>
               <th>Дата</th>
               <th>Филиал</th>
               <th>Cash</th>
               <th>Bank</th>
               <th>Wolt</th>
               <th>Итого</th>
-            </tr>
+            </tr>}
           </thead>
           <tbody>
-            {rmsRevenueReport.rows.slice(0, 80).map((row, idx) => <tr key={`${row.revenue_date}-${row.branch_id}-${idx}`}>
-              <td>{row.revenue_date || '—'}</td>
-              <td><b>{row.branch_name || '—'}</b></td>
-              <td>{fmt(row.cash)}</td>
-              <td>{fmt(row.bank)}</td>
-              <td>{fmt(row.wolt)}</td>
-              <td><b>{fmt(row.revenue)}</b></td>
-            </tr>)}
-            {!rmsRevenueReport.rows.length && <tr><td colSpan="6" className="hint">Пока нет данных в RMS Revenue по выбранному фильтру.</td></tr>}
+            {revenueListMode === 'monthly'
+              ? revenuePagedRows.map(row => <tr key={row.month}>
+                  <td><b>{row.month}</b></td>
+                  <td>{row.days_count}</td>
+                  <td>{row.rows_count}</td>
+                  <td>{fmt(row.cash)}</td>
+                  <td>{fmt(row.bank)}</td>
+                  <td>{fmt(row.wolt)}</td>
+                  <td><b>{fmt(row.revenue)}</b></td>
+                </tr>)
+              : revenuePagedRows.map((row, idx) => <tr key={`${row.revenue_date}-${row.branch_id}-${idx}`}>
+                  <td>{row.revenue_date || '—'}</td>
+                  <td><b>{row.branch_name || '—'}</b></td>
+                  <td>{fmt(row.cash)}</td>
+                  <td>{fmt(row.bank)}</td>
+                  <td>{fmt(row.wolt)}</td>
+                  <td><b>{fmt(row.revenue)}</b></td>
+                </tr>)}
+            {!revenueDisplayRows.length && <tr><td colSpan={revenueListMode === 'monthly' ? 7 : 6} className="hint">Пока нет данных по выбранному фильтру.</td></tr>}
           </tbody>
-          {rmsRevenueReport.rows.length ? <tfoot>
+          {revenueDisplayRows.length ? <tfoot>
             <tr>
-              <td colSpan="2"><b>Итого</b></td>
+              <td colSpan={revenueListMode === 'monthly' ? 3 : 2}><b>Итого</b></td>
               <td><b>{fmt(rmsRevenueReport.totals.cash)}</b></td>
               <td><b>{fmt(rmsRevenueReport.totals.bank)}</b></td>
               <td><b>{fmt(rmsRevenueReport.totals.wolt)}</b></td>
@@ -26547,9 +26836,16 @@ function Reports({ t }) {
             </tr>
           </tfoot> : null}
         </table>
+
+        {revenueDisplayRows.length > revenuePageSize && <div className="reports-v224-pagination">
+          <button className="ghost small" type="button" disabled={safeRevenuePage <= 1} onClick={() => setRevenuePage(p => Math.max(1, p - 1))}>Назад</button>
+          <span>Страница {safeRevenuePage} из {revenueTotalPages} · строк {revenueDisplayRows.length}</span>
+          <button className="ghost small" type="button" disabled={safeRevenuePage >= revenueTotalPages} onClick={() => setRevenuePage(p => Math.min(revenueTotalPages, p + 1))}>Вперёд</button>
+        </div>}
       </div>}
     </div>
   </section>
+
 
 
   const ReportsExpensesView = <section className="reports-v43-module-grid reports-v43-revenue-grid">
