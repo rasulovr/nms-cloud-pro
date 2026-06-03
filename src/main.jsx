@@ -1292,7 +1292,7 @@ const rmsFormatLockTime = (ms) => {
   const totalSeconds = Math.max(1, Math.ceil(parseNum(ms) / 1000))
   const minutes = Math.floor(totalSeconds / 60)
   const seconds = totalSeconds % 60
-  return `${minutes}:${String(seconds).padStart(2, '0')}`
+  return `${minutes}:${String(seconds)}`
 }
 const rmsGetLoginGuardState = (login) => {
   const key = rmsLoginGuardLoginKey(login)
@@ -1521,7 +1521,7 @@ const calcGrossSalary = (emp, workedDays) => {
   return calcDailyRate(emp) * parseNum(workedDays)
 }
 const monthKeyFromDate = (date) => date.slice(0, 7)
-const monthStart = (year, month) => `${year}-${String(month).padStart(2, '0')}-01`
+const monthStart = (year, month) => `${year}-${String(month)}-01`
 const daysInMonth = (year, month) => new Date(Number(year), Number(month), 0).getDate()
 const prevMonth = (year, month) => {
   let y = Number(year)
@@ -12379,6 +12379,26 @@ function RMSProV6Styles() {
   box-shadow:none !important;
 }
 
+/* v226 Revenue report monthly table compact + day label fix */
+.reports-v224-revenue-table-wrap table,
+.reports-v43-revenue-table{
+  table-layout:auto !important;
+}
+.reports-v43-revenue-table th,
+.reports-v43-revenue-table td{
+  padding:8px 10px !important;
+}
+.reports-v224-revenue-table-wrap{
+  width:100% !important;
+  overflow-x:auto;
+}
+.reports-v43-revenue-card{
+  max-width:none !important;
+}
+.reports-v224-x-label{
+  font-variant-numeric:tabular-nums;
+}
+
 
   `}</style>
 }
@@ -15704,7 +15724,7 @@ function Finance({ t, lang, onGoToExpense }) {
 
     return Array.from({ length: daysInMonth }, (_, idx) => {
       const day = idx + 1
-      const date = `${y}-${String(m).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+      const date = `${y}-${String(m)}-${String(Number(day) || day)}`
       return { day: String(day), date, amount: parseNum(map.get(date)) }
     })
   }
@@ -16464,7 +16484,7 @@ function Finance({ t, lang, onGoToExpense }) {
       ]),
       ['Итого', fmt(financeTotalExpenses), pct(100), pct(stats.revenue ? financeTotalExpenses / stats.revenue * 100 : 0)]
     ]
-    downloadFinanceCsv(`finance-expenses-${branchId === ALL_BRANCHES ? 'all' : branchId}-${year}-${String(month).padStart(2, '0')}.csv`, rows)
+    downloadFinanceCsv(`finance-expenses-${branchId === ALL_BRANCHES ? 'all' : branchId}-${year}-${String(month)}.csv`, rows)
   }
 
   function exportFinanceMonthlyCsv() {
@@ -16484,7 +16504,7 @@ function Finance({ t, lang, onGoToExpense }) {
       ['Отклонения', '', ''],
       ...sortedAiRows.slice(0, 20).map(r => ['Отклонение', `${r.branchName} · ${r.indicator}`, `${r.fact} · ${r.deviation}`])
     ]
-    downloadFinanceCsv(`finance-summary-${branchId === ALL_BRANCHES ? 'all' : branchId}-${year}-${String(month).padStart(2, '0')}.csv`, rows)
+    downloadFinanceCsv(`finance-summary-${branchId === ALL_BRANCHES ? 'all' : branchId}-${year}-${String(month)}.csv`, rows)
   }
 
   function printFinanceMonthlyReport() {
@@ -19145,7 +19165,7 @@ function Attendance({ t, mode = 'attendance', isAdmin = false }) {
 
   async function load() {
     const start = monthDate
-    const end = `${year}-${String(month).padStart(2, '0')}-${String(dim).padStart(2, '0')}`
+    const end = `${year}-${String(month)}-${String(dim)}`
     const isInternal = Boolean(getInternalSessionStorage()?.rms_internal)
 
     let empRows = []
@@ -19202,7 +19222,7 @@ function Attendance({ t, mode = 'attendance', isAdmin = false }) {
   }
 
   function recordFor(employeeId, day) {
-    const date = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+    const date = `${year}-${String(month)}-${String(Number(day) || day)}`
     return attendance.find(a => a.employee_id === employeeId && a.work_date === date) || null
   }
 
@@ -19279,7 +19299,7 @@ function Attendance({ t, mode = 'attendance', isAdmin = false }) {
 
   async function setAttendanceValue(emp, day, rawValue) {
     setMessage('')
-    const workDate = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+    const workDate = `${year}-${String(month)}-${String(Number(day) || day)}`
     const isInternal = Boolean(getInternalSessionStorage()?.rms_internal)
 
     if (isInternal) {
@@ -19628,7 +19648,7 @@ function Salaries({ t, view = 'employees', isAdmin = false }) {
 
   const monthDate = monthStart(year, month)
   const dim = daysInMonth(year, month)
-  const monthEnd = `${year}-${String(month).padStart(2, '0')}-${String(dim).padStart(2, '0')}`
+  const monthEnd = `${year}-${String(month)}-${String(dim)}`
   const isMonthClosingDay = todayISO() === monthEnd
   const shouldHideManagerSalaries = Boolean(salaryPrivacyProfile?.hide_manager_salary || salaryPrivacyProfile?.hide_manager_salaries)
   const isManagerRow = (row) => isManagerStaff(row?.employees)
@@ -20614,7 +20634,7 @@ function Salaries({ t, view = 'employees', isAdmin = false }) {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `salary-sheet-${year}-${String(month).padStart(2, '0')}.csv`
+    a.download = `salary-sheet-${year}-${String(month)}.csv`
     document.body.appendChild(a)
     a.click()
     a.remove()
@@ -21164,7 +21184,7 @@ function Advances({ t }) {
 
   const monthDate = monthStart(year, month)
   const dim = daysInMonth(year, month)
-  const monthEnd = `${year}-${String(month).padStart(2, '0')}-${String(dim).padStart(2, '0')}`
+  const monthEnd = `${year}-${String(month)}-${String(dim)}`
 
   async function currentUserMeta() {
     try {
@@ -25397,7 +25417,7 @@ function rmsNextMonthStart(monthValue) {
   if (!year || !month) return ''
   const nextYear = month === 12 ? year + 1 : year
   const nextMonth = month === 12 ? 1 : month + 1
-  return `${nextYear}-${String(nextMonth).padStart(2, '0')}-01`
+  return `${nextYear}-${String(nextMonth)}-01`
 }
 
 function ReportsBazarDailyFullCardV220() {
@@ -25927,7 +25947,7 @@ function Reports({ t }) {
     if (!/^\d{4}-\d{2}$/.test(String(value || ''))) return ''
     const [year, month] = String(value).split('-').map(Number)
     const d = new Date(year, month - 2, 1)
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+    return `${d.getFullYear()}-${String(d.getMonth() + 1)}`
   }
 
   const previousMonthRows = useMemo(() => {
@@ -26439,11 +26459,11 @@ function Reports({ t }) {
     let targetMonth = ''
     let targetYear = ''
     if (qRaw.includes('этот месяц') || qRaw.includes('текущий месяц') || qRaw.includes('bu ay')) {
-      targetMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+      targetMonth = `${now.getFullYear()}-${String(now.getMonth() + 1)}`
       mode = 'month'
     } else if (qRaw.includes('прошлый месяц')) {
       const d = new Date(now.getFullYear(), now.getMonth() - 1, 1)
-      targetMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+      targetMonth = `${d.getFullYear()}-${String(d.getMonth() + 1)}`
       mode = 'month'
     }
     const yearMatch = qRaw.match(/20\d{2}/)
@@ -26616,7 +26636,7 @@ function Reports({ t }) {
   const salesKpiTabs = ['overview', 'sales']
   const showSalesKpis = salesKpiTabs.includes(reportsTab)
 
-  const currentMonthKey = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`
+  const currentMonthKey = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1)}`
   const currentMonthLabel = currentMonthKey
   const selectedMonthLabel = monthFilter === 'all' ? 'Все месяцы' : monthFilter
   const selectedBranchLabel = branchFilter === 'all' ? 'Все филиалы' : (branches.find(b => String(b.id) === String(branchFilter))?.name || 'Выбранный филиал')
@@ -26751,6 +26771,24 @@ function Reports({ t }) {
   }).join(' ')
   const revenueTrendAreaPath = revenueTrendPath ? `${revenueTrendPath} L 686 196 L 34 196 Z` : ''
 
+
+  const revenueDailyFromReportRowsV226 = useMemo(() => {
+    const map = new Map()
+    ;(rmsRevenueReport.rows || []).forEach(row => {
+      const rawDate = String(row.revenue_date || '')
+      if (!rawDate) return
+      const day = Number(rawDate.slice(8, 10))
+      if (!day) return
+      const prev = map.get(day) || { day, label: String(day), revenue: 0, cash: 0, bank: 0, wolt: 0 }
+      prev.revenue += parseNum(row.revenue)
+      prev.cash += parseNum(row.cash)
+      prev.bank += parseNum(row.bank)
+      prev.wolt += parseNum(row.wolt)
+      map.set(day, prev)
+    })
+    return Array.from(map.values()).sort((a, b) => a.day - b.day)
+  }, [rmsRevenueReport.rows])
+
   const revenueLastTrend = revenueTrendRows[revenueTrendRows.length - 1] || null
   const revenueBestTrend = [...revenueTrendRows].sort((a, b) => parseNum(b.revenue) - parseNum(a.revenue))[0] || null
 
@@ -26830,7 +26868,6 @@ function Reports({ t }) {
             {revenueListMode === 'monthly' ? <tr>
               <th>Месяц</th>
               <th>Дней</th>
-              <th>Строк</th>
               <th>Cash</th>
               <th>Bank</th>
               <th>Wolt</th>
@@ -26849,7 +26886,6 @@ function Reports({ t }) {
               ? revenuePagedRows.map(row => <tr key={row.month}>
                   <td><b>{row.month}</b></td>
                   <td>{row.days_count}</td>
-                  <td>{row.rows_count}</td>
                   <td>{fmt(row.cash)}</td>
                   <td>{fmt(row.bank)}</td>
                   <td>{fmt(row.wolt)}</td>
@@ -26863,11 +26899,11 @@ function Reports({ t }) {
                   <td>{fmt(row.wolt)}</td>
                   <td><b>{fmt(row.revenue)}</b></td>
                 </tr>)}
-            {!revenueDisplayRows.length && <tr><td colSpan={revenueListMode === 'monthly' ? 7 : 6} className="hint">Пока нет данных по выбранному фильтру.</td></tr>}
+            {!revenueDisplayRows.length && <tr><td colSpan={revenueListMode === 'monthly' ? 6 : 6} className="hint">Пока нет данных по выбранному фильтру.</td></tr>}
           </tbody>
           {revenueDisplayRows.length ? <tfoot>
             <tr>
-              <td colSpan={revenueListMode === 'monthly' ? 3 : 2}><b>Итого</b></td>
+              <td colSpan={revenueListMode === 'monthly' ? 2 : 2}><b>Итого</b></td>
               <td><b>{fmt(rmsRevenueReport.totals.cash)}</b></td>
               <td><b>{fmt(rmsRevenueReport.totals.bank)}</b></td>
               <td><b>{fmt(rmsRevenueReport.totals.wolt)}</b></td>
@@ -29528,7 +29564,7 @@ function Settings({ session, t, theme, setTheme }) {
         const attendancePayload = []
         for (let d = 1; d <= Math.min(31, dim); d++) {
           const value = row.days[d - 1]
-          const workDate = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+          const workDate = `${year}-${String(month)}-${String(d)}`
           await supabase.from('employee_attendance').delete().eq('employee_id', employee.id).eq('work_date', workDate)
           if (value !== '' && value !== null && value !== undefined) {
             attendancePayload.push({
@@ -29552,7 +29588,7 @@ function Settings({ session, t, theme, setTheme }) {
         const worked = row.workedDays || attendancePayload.reduce((s, r) => s + parseNum(r.value), 0)
         const gross = calcGrossSalary(employee, worked)
         const start = monthDate
-        const end = `${year}-${String(month).padStart(2, '0')}-${String(dim).padStart(2, '0')}`
+        const end = `${year}-${String(month)}-${String(dim)}`
         const [{ data: existingSalary }, { data: advanceRows }] = await Promise.all([
           supabase.from('salary_periods').select('*').eq('employee_id', employee.id).eq('salary_month', monthDate).maybeSingle(),
           supabase.from('salary_advances').select('amount').eq('employee_id', employee.id).gte('advance_date', start).lte('advance_date', end).or('is_cancelled.is.null,is_cancelled.eq.false')
@@ -29673,14 +29709,14 @@ function Settings({ session, t, theme, setTheme }) {
   }
 
   function normalizeImportDateValue(value, year, month) {
-    const fallback = `${year}-${String(month).padStart(2, '0')}-${String(daysInMonth(year, month)).padStart(2, '0')}`
+    const fallback = `${year}-${String(month)}-${String(daysInMonth(year, month))}`
     if (!value) return fallback
     const s = String(value || '').trim()
     if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s
     const parts = s.split(/[./-]/).map(x => x.trim())
     if (parts.length === 3) {
       const [d, m, y] = parts
-      if (String(y).length === 4) return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`
+      if (String(y).length === 4) return `${y}-${String(m)}-${String(d)}`
     }
     return fallback
   }
@@ -29694,7 +29730,7 @@ function Settings({ session, t, theme, setTheme }) {
     if (!year || !month) return setMsg('Укажите год и месяц для импорта авансов')
     const monthDate = monthStart(year, month)
     const dim = daysInMonth(year, month)
-    const monthEndDate = `${year}-${String(month).padStart(2, '0')}-${String(dim).padStart(2, '0')}`
+    const monthEndDate = `${year}-${String(month)}-${String(dim)}`
     if (!window.confirm(`Импортировать авансы за ${I18N.ru.months[month - 1]} ${year}: ${rows.length} сотрудников?`)) return
 
     setAdvanceImportBusy(true)
@@ -30149,7 +30185,7 @@ function Settings({ session, t, theme, setTheme }) {
               <div className="metric"><span>Режим</span><strong>Авансы</strong></div>
             </div>
             {advanceImportReport?.errors?.length > 0 && <div className="notice"><b>Ошибки / предупреждения</b>{advanceImportReport.errors.slice(0, 12).map((e, i) => <p key={i} className={String(e).startsWith('Создан') ? 'hint' : 'bad'}>{e}</p>)}{advanceImportReport.errors.length > 12 && <p className="hint">Показаны первые 12 ошибок из {advanceImportReport.errors.length}</p>}</div>}
-            {advanceImportRows.length > 0 && <div className="table-wrap" style={{marginTop:12}}><table><thead><tr><th>Филиал</th><th>Сотрудник</th><th>Дата</th><th>Аванс</th></tr></thead><tbody>{advanceImportRows.slice(0, 80).map((r, idx) => <tr key={`${r.line}-${idx}`}><td>{r.branch}</td><td><b>{r.name}</b></td><td>{r.advanceDate || `${advanceImportYear}-${String(advanceImportMonth).padStart(2, '0')}-${String(daysInMonth(advanceImportYear, advanceImportMonth)).padStart(2, '0')}`}</td><td>{fmt(r.amount)}</td></tr>)}{advanceImportRows.length > 80 && <tr><td colSpan="4" className="hint">Показаны первые 80 строк из {advanceImportRows.length}</td></tr>}</tbody></table></div>}
+            {advanceImportRows.length > 0 && <div className="table-wrap" style={{marginTop:12}}><table><thead><tr><th>Филиал</th><th>Сотрудник</th><th>Дата</th><th>Аванс</th></tr></thead><tbody>{advanceImportRows.slice(0, 80).map((r, idx) => <tr key={`${r.line}-${idx}`}><td>{r.branch}</td><td><b>{r.name}</b></td><td>{r.advanceDate || `${advanceImportYear}-${String(advanceImportMonth)}-${String(daysInMonth(advanceImportYear, advanceImportMonth))}`}</td><td>{fmt(r.amount)}</td></tr>)}{advanceImportRows.length > 80 && <tr><td colSpan="4" className="hint">Показаны первые 80 строк из {advanceImportRows.length}</td></tr>}</tbody></table></div>}
             <p className="hint">При повторном импорте старые строки “Импорт авансов...” за эту дату отменяются, чтобы не было дублей.</p>
           </div>
           </div>
