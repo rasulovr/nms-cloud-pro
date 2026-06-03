@@ -12091,6 +12091,47 @@ function RMSProV6Styles() {
   .reports-v220-kpis{grid-template-columns:1fr;}
 }
 
+/* v221 Bazar Daily Full Width */
+.reports-v221-bazar-full .reports-v220-kpis{
+  grid-template-columns:repeat(4,minmax(0,1fr));
+}
+.reports-v221-table-card{
+  width:100%;
+  overflow:auto;
+  background:#fff;
+  border:1px solid #dcfce7;
+  border-radius:16px;
+}
+.reports-v221-table-card h5{
+  margin:0;
+  padding:12px;
+  border-bottom:1px solid #dcfce7;
+  color:#0f172a;
+  font-size:15px;
+}
+.reports-v221-table-card table{
+  width:100%;
+  border-collapse:collapse;
+  font-size:13px;
+}
+.reports-v221-table-card th,
+.reports-v221-table-card td{
+  padding:10px 12px;
+  border-bottom:1px solid #e2e8f0;
+  text-align:left;
+  vertical-align:top;
+}
+.reports-v221-table-card th{
+  color:#475569;
+  font-size:11.5px;
+  text-transform:uppercase;
+  letter-spacing:.04em;
+  background:#f8fafc;
+}
+@media(max-width:960px){
+  .reports-v221-bazar-full .reports-v220-kpis{grid-template-columns:1fr;}
+}
+
 
   `}</style>
 }
@@ -25102,10 +25143,7 @@ async function explodeZipFile(file) {
 
 function ReportsBazarDailyFullCardV220() {
   const [rows, setRows] = React.useState([])
-  const [detailRows, setDetailRows] = React.useState([])
-  const [selectedDate, setSelectedDate] = React.useState(null)
   const [loading, setLoading] = React.useState(false)
-  const [detailLoading, setDetailLoading] = React.useState(false)
   const [error, setError] = React.useState('')
 
   const n = (value) => {
@@ -25126,28 +25164,10 @@ function ReportsBazarDailyFullCardV220() {
       if (res.error) throw res.error
       setRows(Array.isArray(res.data) ? res.data : [])
     } catch (err) {
-      console.error('Bazar v220 load error', err)
+      console.error('Bazar v221 load error', err)
       setError(err?.message || 'Не удалось загрузить ежедневный отчёт по Базару')
     } finally {
       setLoading(false)
-    }
-  }, [])
-
-  const loadDetail = React.useCallback(async (date) => {
-    setSelectedDate(date)
-    setDetailLoading(true)
-    setError('')
-    try {
-      const res = await supabase.rpc('rms_report_bazar_daily_full_detail_v219', {
-        p_expense_date: date
-      })
-      if (res.error) throw res.error
-      setDetailRows(Array.isArray(res.data) ? res.data : [])
-    } catch (err) {
-      console.error('Bazar v220 detail error', err)
-      setError(err?.message || 'Не удалось загрузить детализацию дня')
-    } finally {
-      setDetailLoading(false)
     }
   }, [])
 
@@ -25157,13 +25177,14 @@ function ReportsBazarDailyFullCardV220() {
 
   const total = rows.reduce((sum, row) => sum + n(row.total_amount), 0)
   const avg = rows.length ? total / rows.length : 0
+  const maxDay = rows.reduce((best, row) => n(row.total_amount) > n(best?.total_amount) ? row : best, null)
 
   return (
-    <div className="reports-v220-bazar-card">
+    <div className="reports-v220-bazar-card reports-v221-bazar-full">
       <div className="reports-v220-head">
         <div>
           <h4>Отчёт по базару</h4>
-          <p>Ежедневный полный расход статьи “Базар”. Основная таблица показывает общий итог дня, без разбивки по филиалам.</p>
+          <p>Ежедневный полный расход статьи “Базар”. Без распределения по филиалам.</p>
         </div>
         <button className="ghost small" onClick={loadRows} disabled={loading}>{loading ? 'Обновление…' : 'Обновить'}</button>
       </div>
@@ -25174,62 +25195,35 @@ function ReportsBazarDailyFullCardV220() {
         <div><span>Итого Базар</span><strong>{money(total)}</strong></div>
         <div><span>Дней</span><strong>{rows.length}</strong></div>
         <div><span>Среднее / день</span><strong>{money(avg)}</strong></div>
+        <div><span>Максимальный день</span><strong>{maxDay ? `${maxDay.expense_date} · ${money(maxDay.total_amount)}` : '—'}</strong></div>
       </div>
 
-      <div className="reports-v220-grid">
-        <div className="reports-v220-table-card">
-          <h5>Ежедневный расход Базар</h5>
-          <table>
-            <thead>
-              <tr>
-                <th>Дата</th>
-                <th>Полная сумма</th>
-                <th>Строк</th>
-                <th>Филиалов</th>
-                <th></th>
+      <div className="reports-v221-table-card">
+        <h5>Ежедневный расход Базар</h5>
+        <table>
+          <thead>
+            <tr>
+              <th>Дата</th>
+              <th>Полная сумма Базар</th>
+              <th>Строк распределения</th>
+              <th>Филиалов в распределении</th>
+              <th>Создано</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map(row => (
+              <tr key={row.expense_date}>
+                <td><b>{row.expense_date}</b></td>
+                <td><strong>{money(row.total_amount)}</strong></td>
+                <td>{row.rows_count}</td>
+                <td>{row.branches_count}</td>
+                <td>{row.last_created_at ? String(row.last_created_at).slice(0, 19).replace('T', ' ') : '—'}</td>
               </tr>
-            </thead>
-            <tbody>
-              {rows.map(row => (
-                <tr key={row.expense_date} className={selectedDate === row.expense_date ? 'active' : ''}>
-                  <td><b>{row.expense_date}</b></td>
-                  <td>{money(row.total_amount)}</td>
-                  <td>{row.rows_count}</td>
-                  <td>{row.branches_count}</td>
-                  <td><button className="ghost small" onClick={() => loadDetail(row.expense_date)}>Детали</button></td>
-                </tr>
-              ))}
-              {!rows.length && !loading && <tr><td colSpan="5" className="muted">Данных по Базару нет. Если SQL v219 показывает строки, значит проблема в доступе RPC из frontend.</td></tr>}
-              {loading && <tr><td colSpan="5" className="muted">Загрузка…</td></tr>}
-            </tbody>
-          </table>
-        </div>
-
-        <div className="reports-v220-table-card">
-          <h5>{selectedDate ? `Детализация распределения: ${selectedDate}` : 'Детализация выбранного дня'}</h5>
-          {detailLoading ? <div className="muted padded">Загрузка…</div> : (
-            <table>
-              <thead>
-                <tr>
-                  <th>Филиал</th>
-                  <th>Сумма</th>
-                  <th>Комментарий</th>
-                </tr>
-              </thead>
-              <tbody>
-                {detailRows.map(row => (
-                  <tr key={row.expense_id}>
-                    <td>{row.branch_name || '—'}</td>
-                    <td>{money(row.amount)}</td>
-                    <td>{row.comment || '—'}</td>
-                  </tr>
-                ))}
-                {selectedDate && !detailRows.length && !detailLoading && <tr><td colSpan="3" className="muted">Нет детализации.</td></tr>}
-                {!selectedDate && <tr><td colSpan="3" className="muted">Нажмите “Детали” рядом с нужной датой.</td></tr>}
-              </tbody>
-            </table>
-          )}
-        </div>
+            ))}
+            {!rows.length && !loading && <tr><td colSpan="5" className="muted">Данных по Базару нет.</td></tr>}
+            {loading && <tr><td colSpan="5" className="muted">Загрузка…</td></tr>}
+          </tbody>
+        </table>
       </div>
     </div>
   )
