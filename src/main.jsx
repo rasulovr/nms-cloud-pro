@@ -12132,6 +12132,81 @@ function RMSProV6Styles() {
   .reports-v221-bazar-full .reports-v220-kpis{grid-template-columns:1fr;}
 }
 
+/* v222 Bazar Report True Full Width */
+.reports-v220-bazar-card,
+.reports-v221-bazar-full,
+.reports-v219-bazar-card{
+  width:100% !important;
+  max-width:none !important;
+  box-sizing:border-box !important;
+}
+.reports-v221-bazar-full{
+  display:block !important;
+}
+.reports-v221-table-card{
+  width:100% !important;
+  max-width:none !important;
+}
+.reports-v221-table-card table{
+  width:100% !important;
+  table-layout:auto !important;
+}
+.reports-v221-table-card th:nth-child(1),
+.reports-v221-table-card td:nth-child(1){
+  width:130px;
+}
+.reports-v221-table-card th:nth-child(2),
+.reports-v221-table-card td:nth-child(2){
+  width:180px;
+}
+.reports-v221-table-card th:nth-child(3),
+.reports-v221-table-card td:nth-child(3){
+  width:180px;
+}
+.reports-v221-table-card th:nth-child(4),
+.reports-v221-table-card td:nth-child(4){
+  width:220px;
+}
+.reports-v221-table-card th:nth-child(5),
+.reports-v221-table-card td:nth-child(5){
+  width:220px;
+}
+.reports-v221-table-card td,
+.reports-v221-table-card th{
+  white-space:normal !important;
+}
+.reports-v221-table-card td:nth-child(2) strong{
+  white-space:nowrap;
+}
+.reports-v221-bazar-full .reports-v220-kpis{
+  grid-template-columns:repeat(4,minmax(180px,1fr)) !important;
+}
+@media(min-width:1100px){
+  .reports-v221-bazar-full{
+    margin-left:0 !important;
+    margin-right:0 !important;
+  }
+}
+@media(max-width:960px){
+  .reports-v221-bazar-full .reports-v220-kpis{
+    grid-template-columns:1fr 1fr !important;
+  }
+}
+@media(max-width:640px){
+  .reports-v221-bazar-full .reports-v220-kpis{
+    grid-template-columns:1fr !important;
+  }
+}
+
+/* v222 parent container expansion */
+.reports-v222-bazar-true-full{
+  grid-column:1 / -1 !important;
+  align-self:stretch !important;
+}
+.reports-v222-bazar-true-full{
+  min-width:0 !important;
+}
+
 
   `}</style>
 }
@@ -25180,7 +25255,7 @@ function ReportsBazarDailyFullCardV220() {
   const maxDay = rows.reduce((best, row) => n(row.total_amount) > n(best?.total_amount) ? row : best, null)
 
   return (
-    <div className="reports-v220-bazar-card reports-v221-bazar-full">
+    <div className="reports-v220-bazar-card reports-v221-bazar-full reports-v222-bazar-true-full">
       <div className="reports-v220-head">
         <div>
           <h4>Отчёт по базару</h4>
