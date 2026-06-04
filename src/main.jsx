@@ -12620,6 +12620,11 @@ function RMSProV6Styles() {
   background:#f8fafc !important;
 }
 
+/* v235 Revenue chart KPI labels only */
+.reports-v231-preferred-revenue-chart .metric-title{
+  line-height:1.15;
+}
+
 
   `}</style>
 }
@@ -15154,14 +15159,19 @@ function MiniBarChart({ rows, valueKey = 'revenue', labelKey = 'name', title, su
 }
 
 
-function DailyRevenueLineChart({ rows = [], title = 'Выручка по дням', subtitle = '', className = '', firstSummary = 'revenue' }) {
+function DailyRevenueLineChart({ rows = [], title = 'Выручка по дням', subtitle = '', className = '', firstSummary = 'revenue', mode = 'daily', dailyRows = [] }) {
   const values = rows.map(r => parseNum(r.amount))
+  const kpiRows = (Array.isArray(dailyRows) && dailyRows.length ? dailyRows : rows)
+    .map(r => ({ ...r, amount: parseNum(r.amount) }))
+    .filter(r => parseNum(r.amount) > 0)
+  const isMonthlyMode = mode === 'monthly'
   const maxRaw = Math.max(1, ...values)
   const max = Math.ceil(maxRaw / 1000) * 1000
   const total = values.reduce((s, v) => s + parseNum(v), 0)
-  const activeDays = values.filter(v => parseNum(v) > 0).length
-  const avg = activeDays ? total / activeDays : 0
-  const best = rows.reduce((top, r) => parseNum(r.amount) > parseNum(top.amount) ? r : top, { day: '—', date: '', amount: 0 })
+  const kpiTotal = kpiRows.reduce((s, r) => s + parseNum(r.amount), 0)
+  const activeDays = kpiRows.length
+  const avg = activeDays ? kpiTotal / activeDays : 0
+  const best = kpiRows.reduce((top, r) => parseNum(r.amount) > parseNum(top.amount) ? r : top, { day: '—', date: '', amount: 0 })
   const weekdayNames = ['Воскресенье', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота']
   const monthNamesRu = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря']
   const formatDayMonth = (row) => {
@@ -15171,7 +15181,7 @@ function DailyRevenueLineChart({ rows = [], title = 'Выручка по дня�
     return `${d.getDate()} ${monthNamesRu[d.getMonth()]}`
   }
   const weekdayStats = new Map()
-  rows
+  kpiRows
     .filter(r => parseNum(r.amount) > 0 && r.date)
     .forEach(r => {
       const d = new Date(`${r.date}T12:00:00`)
@@ -15248,8 +15258,8 @@ function DailyRevenueLineChart({ rows = [], title = 'Выручка по дня�
           <AmountBlock value={activeDays} suffix="дней" />
         </div> : <div className="metric metric-revenue">
           <span className="finance-kpi-icon" aria-hidden="true">↗</span>
-          <div className="metric-copy"><div className="metric-title">Выручка за<br />месяц</div></div>
-          <AmountBlock value={total} />
+          <div className="metric-copy"><div className="metric-title">{isMonthlyMode ? <>Весь<br />период</> : <>Выручка за<br />месяц</>}</div></div>
+          <AmountBlock value={isMonthlyMode ? kpiTotal : total} />
         </div>}
         <div className="metric metric-average">
           <span className="finance-kpi-icon" aria-hidden="true">▣</span>
@@ -27007,6 +27017,19 @@ function Reports({ t }) {
   }
 
 
+  const revenueDailyKpiRowsV235 = useMemo(() => {
+    const map = new Map()
+    ;(rmsRevenueReport.rows || []).forEach(row => {
+      const rawDate = String(row.revenue_date || '')
+      const day = Number(rawDate.slice(8, 10))
+      if (!rawDate || !day) return
+      const prev = map.get(rawDate) || { day: String(day), date: rawDate, amount: 0 }
+      prev.amount += parseNum(row.cash) + parseNum(row.bank)
+      map.set(rawDate, prev)
+    })
+    return Array.from(map.values()).sort((a, b) => String(a.date).localeCompare(String(b.date)))
+  }, [rmsRevenueReport.rows])
+
   const revenueRowsRaw = rmsRevenueReport.rows || []
   const revenueDateBounds = useMemo(() => {
     const dates = revenueRowsRaw.map(row => row.revenue_date).filter(Boolean).sort()
@@ -27154,6 +27177,8 @@ function Reports({ t }) {
         title={revenueListMode === 'monthly' ? 'Выручка по месяцам' : 'Выручка по дням за выбранный месяц'}
         subtitle={revenueListMode === 'monthly' ? 'Суммарная выручка сети по месяцам.' : 'Суммарная выручка сети по дням месяца, без Wolt'}
         className="reports-v234-revenue-chart"
+        mode={revenueListMode === 'monthly' ? 'monthly' : 'daily'}
+        dailyRows={revenueDailyKpiRowsV235}
       />}
 
       {rmsRevenueReport.loading && <div className="reports-v43-empty-state"><b>Загрузка выручки...</b><span>Идёт чтение выручки.</span></div>}
