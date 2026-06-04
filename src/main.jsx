@@ -12596,6 +12596,98 @@ function RMSProV6Styles() {
   overflow:auto !important;
 }
 
+/* v232 Revenue graph all-months + robust modal scroll */
+.reports-v232-revenue-chart{
+  display:block !important;
+  width:100% !important;
+}
+.reports-v232-revenue-chart .finance-line-chart-summary{
+  grid-template-columns:repeat(3,minmax(0,1fr)) !important;
+}
+.reports-v232-revenue-chart .metric-best-weekday,
+.reports-v232-revenue-chart .metric-worst{
+  display:none !important;
+}
+
+/* Robust modal shell */
+.finance-expense-detail-modal,
+.expense-detail-modal,
+.finance-detail-modal,
+.modal-card,
+.dialog-card,
+[role="dialog"]{
+  max-height:88vh !important;
+  overflow:hidden !important;
+  display:flex !important;
+  flex-direction:column !important;
+  background:#fff !important;
+  border:1px solid rgba(15,23,42,.16) !important;
+  box-shadow:0 32px 100px rgba(15,23,42,.32) !important;
+  border-radius:28px !important;
+}
+
+/* Header inside modal should stay visible and separated */
+.finance-expense-detail-modal > :first-child,
+.expense-detail-modal > :first-child,
+.finance-detail-modal > :first-child,
+.modal-card > :first-child,
+.dialog-card > :first-child,
+[role="dialog"] > :first-child{
+  flex:0 0 auto !important;
+  background:#fff !important;
+  border-bottom:1px solid rgba(15,23,42,.08) !important;
+  z-index:2 !important;
+}
+
+/* Body content gets scrolling */
+.finance-expense-detail-modal > :not(:first-child),
+.expense-detail-modal > :not(:first-child),
+.finance-detail-modal > :not(:first-child),
+.modal-card > :not(:first-child),
+.dialog-card > :not(:first-child),
+[role="dialog"] > :not(:first-child){
+  min-height:0 !important;
+}
+
+/* Scroll table container */
+.finance-expense-detail-modal table,
+.expense-detail-modal table,
+.finance-detail-modal table,
+.modal-card table,
+.dialog-card table,
+[role="dialog"] table{
+  width:100% !important;
+}
+
+.finance-expense-detail-modal .table-wrap,
+.expense-detail-modal .table-wrap,
+.finance-detail-modal .table-wrap,
+.modal-card .table-wrap,
+.dialog-card .table-wrap,
+[role="dialog"] .table-wrap{
+  max-height:48vh !important;
+  overflow:auto !important;
+  border-radius:18px !important;
+}
+
+/* If the modal table is not wrapped, make the surrounding content scroll */
+.finance-expense-detail-modal{
+  overflow:auto !important;
+}
+.finance-expense-detail-modal tbody{
+  max-height:none !important;
+}
+
+/* Better contrast with background */
+.modal-backdrop,
+.rms-modal-backdrop,
+.dialog-backdrop,
+.overlay,
+.modal-overlay{
+  background:rgba(15,23,42,.42) !important;
+  backdrop-filter:blur(10px) !important;
+}
+
 
   `}</style>
 }
@@ -15144,7 +15236,7 @@ function DailyRevenueLineChart({ rows = [], title = 'Выручка по дня�
     if (!row?.date) return row?.day && row.day !== '—' ? String(row.day) : '—'
     const d = new Date(`${row.date}T12:00:00`)
     if (Number.isNaN(d.getTime())) return row?.day && row.day !== '—' ? String(row.day) : '—'
-    return `${d.getDate()} ${monthNamesRu[d.getMonth()]}`
+    return row?.date ? `${d.getDate()} ${monthNamesRu[d.getMonth()]}` : (row?.day && /^\d{2}$/.test(String(row.day)) ? `${row.day}` : String(row?.day || '—'))
   }
   const weekdayStats = new Map()
   rows
@@ -26981,6 +27073,28 @@ function Reports({ t }) {
     </section>
   }
 
+
+  const revenueReportGraphRowsV232 = useMemo(() => {
+    if (monthFilter === 'all') {
+      return revenueDisplayRows
+        .map(row => ({
+          day: String(row.month || '').slice(5, 7) || String(row.month || ''),
+          date: '',
+          amount: parseNum(row.revenue)
+        }))
+        .reverse()
+    }
+    const map = new Map()
+    ;(rmsRevenueReport.rows || []).forEach(row => {
+      const rawDate = String(row.revenue_date || '')
+      const day = Number(rawDate.slice(8, 10))
+      if (!day) return
+      const prev = map.get(rawDate) || { day: String(day), date: rawDate, amount: 0 }
+      prev.amount += parseNum(row.cash) + parseNum(row.bank)
+      map.set(rawDate, prev)
+    })
+    return Array.from(map.values()).sort((a, b) => String(a.date).localeCompare(String(b.date)))
+  }, [monthFilter, revenueDisplayRows, rmsRevenueReport.rows])
 
   const revenueReportDailyChartRowsV231 = useMemo(() => {
     const map = new Map()
