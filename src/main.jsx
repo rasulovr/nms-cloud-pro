@@ -12596,96 +12596,92 @@ function RMSProV6Styles() {
   overflow:auto !important;
 }
 
-/* v232 Revenue graph all-months + robust modal scroll */
-.reports-v232-revenue-chart{
-  display:block !important;
-  width:100% !important;
-}
-.reports-v232-revenue-chart .finance-line-chart-summary{
-  grid-template-columns:repeat(3,minmax(0,1fr)) !important;
-}
-.reports-v232-revenue-chart .metric-best-weekday,
-.reports-v232-revenue-chart .metric-worst{
-  display:none !important;
-}
-
-/* Robust modal shell */
-.finance-expense-detail-modal,
-.expense-detail-modal,
-.finance-detail-modal,
-.modal-card,
-.dialog-card,
-[role="dialog"]{
-  max-height:88vh !important;
+/* v233 Safe modal scroll and framing */
+.rms-article-transactions-modal-v233{
+  width:min(1280px, calc(100vw - 72px)) !important;
+  max-width:min(1280px, calc(100vw - 72px)) !important;
+  max-height:86vh !important;
   overflow:hidden !important;
   display:flex !important;
   flex-direction:column !important;
-  background:#fff !important;
+  background:#ffffff !important;
   border:1px solid rgba(15,23,42,.16) !important;
-  box-shadow:0 32px 100px rgba(15,23,42,.32) !important;
+  box-shadow:0 34px 110px rgba(15,23,42,.34) !important;
   border-radius:28px !important;
+  padding:0 !important;
+  box-sizing:border-box !important;
 }
 
-/* Header inside modal should stay visible and separated */
-.finance-expense-detail-modal > :first-child,
-.expense-detail-modal > :first-child,
-.finance-detail-modal > :first-child,
-.modal-card > :first-child,
-.dialog-card > :first-child,
-[role="dialog"] > :first-child{
+.rms-article-transactions-modal-v233 > *{
+  box-sizing:border-box !important;
+}
+
+.rms-article-transactions-modal-v233 > :first-child{
   flex:0 0 auto !important;
-  background:#fff !important;
-  border-bottom:1px solid rgba(15,23,42,.08) !important;
-  z-index:2 !important;
-}
-
-/* Body content gets scrolling */
-.finance-expense-detail-modal > :not(:first-child),
-.expense-detail-modal > :not(:first-child),
-.finance-detail-modal > :not(:first-child),
-.modal-card > :not(:first-child),
-.dialog-card > :not(:first-child),
-[role="dialog"] > :not(:first-child){
-  min-height:0 !important;
-}
-
-/* Scroll table container */
-.finance-expense-detail-modal table,
-.expense-detail-modal table,
-.finance-detail-modal table,
-.modal-card table,
-.dialog-card table,
-[role="dialog"] table{
   width:100% !important;
+  padding:24px 28px 18px !important;
+  margin:0 !important;
+  background:#ffffff !important;
+  border-bottom:1px solid rgba(15,23,42,.08) !important;
+  box-shadow:none !important;
+  border-radius:28px 28px 0 0 !important;
 }
 
-.finance-expense-detail-modal .table-wrap,
-.expense-detail-modal .table-wrap,
-.finance-detail-modal .table-wrap,
-.modal-card .table-wrap,
-.dialog-card .table-wrap,
-[role="dialog"] .table-wrap{
-  max-height:48vh !important;
+.rms-article-transactions-modal-v233 > :first-child h1,
+.rms-article-transactions-modal-v233 > :first-child h2,
+.rms-article-transactions-modal-v233 > :first-child h3{
+  white-space:normal !important;
+  overflow:visible !important;
+  text-overflow:clip !important;
+  line-height:1.18 !important;
+  max-width:calc(100% - 72px) !important;
+}
+
+.rms-article-transactions-modal-v233 > :not(:first-child){
+  min-height:0 !important;
+  overflow:auto !important;
+  padding-left:28px !important;
+  padding-right:28px !important;
+}
+
+.rms-article-transactions-modal-v233 table{
+  width:100% !important;
+  min-width:1040px !important;
+  border-collapse:collapse !important;
+}
+
+.rms-article-transactions-modal-v233 thead th{
+  position:sticky !important;
+  top:0 !important;
+  z-index:3 !important;
+  background:#f8fafc !important;
+}
+
+.rms-article-transactions-modal-v233 .table-wrap,
+.rms-article-transactions-modal-v233 .reports-v43-table-wrap,
+.rms-article-transactions-modal-v233 .finance-table-wrap,
+.rms-article-transactions-modal-v233 .finance-expense-table-wrap{
+  max-height:52vh !important;
   overflow:auto !important;
   border-radius:18px !important;
+  border:1px solid rgba(15,23,42,.08) !important;
 }
 
-/* If the modal table is not wrapped, make the surrounding content scroll */
-.finance-expense-detail-modal{
-  overflow:auto !important;
-}
-.finance-expense-detail-modal tbody{
-  max-height:none !important;
+/* Light generic popup separation without breaking layout */
+[role="dialog"],
+.modal-card,
+.dialog-card{
+  background:#fff !important;
+  border:1px solid rgba(15,23,42,.12);
+  box-shadow:0 28px 90px rgba(15,23,42,.26);
 }
 
-/* Better contrast with background */
 .modal-backdrop,
 .rms-modal-backdrop,
 .dialog-backdrop,
-.overlay,
 .modal-overlay{
-  background:rgba(15,23,42,.42) !important;
-  backdrop-filter:blur(10px) !important;
+  background:rgba(15,23,42,.38) !important;
+  backdrop-filter:blur(8px) !important;
 }
 
 
@@ -15236,7 +15232,7 @@ function DailyRevenueLineChart({ rows = [], title = 'Выручка по дня�
     if (!row?.date) return row?.day && row.day !== '—' ? String(row.day) : '—'
     const d = new Date(`${row.date}T12:00:00`)
     if (Number.isNaN(d.getTime())) return row?.day && row.day !== '—' ? String(row.day) : '—'
-    return row?.date ? `${d.getDate()} ${monthNamesRu[d.getMonth()]}` : (row?.day && /^\d{2}$/.test(String(row.day)) ? `${row.day}` : String(row?.day || '—'))
+    return `${d.getDate()} ${monthNamesRu[d.getMonth()]}`
   }
   const weekdayStats = new Map()
   rows
@@ -16961,7 +16957,7 @@ function Finance({ t, lang, onGoToExpense }) {
 
         {expenseDetail.name && <div className="card span-2 supplier-transactions-panel supplier-modal-panel">
           <div className="card-head supplier-modal-head">
-            <div className="finance-expense-detail-modal">
+            <div className="finance-expense-detail-modal rms-article-transactions-modal-v233">
               <h3>Транзакции по статье: {expenseDetail.name}</h3>
               <p className="hint">Строки расходов за выбранный период{branchId === ALL_BRANCHES ? ' по всем филиалам' : ' по выбранному филиалу'}.</p>
             </div>
@@ -27073,28 +27069,6 @@ function Reports({ t }) {
     </section>
   }
 
-
-  const revenueReportGraphRowsV232 = useMemo(() => {
-    if (monthFilter === 'all') {
-      return revenueDisplayRows
-        .map(row => ({
-          day: String(row.month || '').slice(5, 7) || String(row.month || ''),
-          date: '',
-          amount: parseNum(row.revenue)
-        }))
-        .reverse()
-    }
-    const map = new Map()
-    ;(rmsRevenueReport.rows || []).forEach(row => {
-      const rawDate = String(row.revenue_date || '')
-      const day = Number(rawDate.slice(8, 10))
-      if (!day) return
-      const prev = map.get(rawDate) || { day: String(day), date: rawDate, amount: 0 }
-      prev.amount += parseNum(row.cash) + parseNum(row.bank)
-      map.set(rawDate, prev)
-    })
-    return Array.from(map.values()).sort((a, b) => String(a.date).localeCompare(String(b.date)))
-  }, [monthFilter, revenueDisplayRows, rmsRevenueReport.rows])
 
   const revenueReportDailyChartRowsV231 = useMemo(() => {
     const map = new Map()
