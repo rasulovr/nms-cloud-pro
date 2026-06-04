@@ -12531,6 +12531,71 @@ function RMSProV6Styles() {
   display:none !important;
 }
 
+/* v231 Reports revenue graph + modal scroll/borders */
+.reports-v231-preferred-revenue-chart{
+  display:block !important;
+  grid-column:1 / -1 !important;
+  width:100% !important;
+  max-width:none !important;
+  margin:18px 0 !important;
+}
+.reports-v231-preferred-revenue-chart.finance-daily-revenue-chart{
+  display:block !important;
+}
+.reports-v231-preferred-revenue-chart .finance-line-chart-wrap{
+  width:100% !important;
+}
+.reports-v231-preferred-revenue-chart .finance-line-chart-svg{
+  width:100% !important;
+  min-height:360px !important;
+}
+
+/* Strong modal framing */
+.modal,
+.rms-modal,
+.app-modal,
+.dialog,
+.dialog-card,
+.modal-card,
+.modal-content,
+.expense-detail-modal,
+.finance-expense-detail-modal,
+.finance-detail-modal,
+[role="dialog"]{
+  background:#ffffff !important;
+  border:1px solid rgba(15,23,42,.12) !important;
+  box-shadow:0 28px 90px rgba(15,23,42,.28) !important;
+  border-radius:24px !important;
+  box-sizing:border-box !important;
+  max-height:86vh !important;
+  overflow:auto !important;
+}
+
+/* Overlay separation */
+.modal-backdrop,
+.rms-modal-backdrop,
+.dialog-backdrop,
+.overlay,
+.modal-overlay{
+  background:rgba(15,23,42,.38) !important;
+  backdrop-filter:blur(8px) !important;
+}
+
+/* Scrollable tables inside popups */
+.modal .table-wrap,
+.rms-modal .table-wrap,
+.app-modal .table-wrap,
+.dialog-card .table-wrap,
+.modal-card .table-wrap,
+.modal-content .table-wrap,
+.expense-detail-modal .table-wrap,
+.finance-expense-detail-modal .table-wrap,
+.finance-detail-modal .table-wrap,
+[role="dialog"] .table-wrap{
+  max-height:56vh !important;
+  overflow:auto !important;
+}
+
 
   `}</style>
 }
@@ -16804,7 +16869,7 @@ function Finance({ t, lang, onGoToExpense }) {
 
         {expenseDetail.name && <div className="card span-2 supplier-transactions-panel supplier-modal-panel">
           <div className="card-head supplier-modal-head">
-            <div>
+            <div className="finance-expense-detail-modal">
               <h3>Транзакции по статье: {expenseDetail.name}</h3>
               <p className="hint">Строки расходов за выбранный период{branchId === ALL_BRANCHES ? ' по всем филиалам' : ' по выбранному филиалу'}.</p>
             </div>
@@ -26916,6 +26981,19 @@ function Reports({ t }) {
     </section>
   }
 
+
+  const revenueReportDailyChartRowsV231 = useMemo(() => {
+    const map = new Map()
+    ;(rmsRevenueReport.rows || []).forEach(row => {
+      const rawDate = String(row.revenue_date || '')
+      const day = Number(rawDate.slice(8, 10))
+      if (!day) return
+      const prev = map.get(rawDate) || { day: String(day), date: rawDate, amount: 0 }
+      prev.amount += parseNum(row.cash) + parseNum(row.bank)
+      map.set(rawDate, prev)
+    })
+    return Array.from(map.values()).sort((a, b) => String(a.date).localeCompare(String(b.date)))
+  }, [rmsRevenueReport.rows])
 
   const revenueRowsRaw = rmsRevenueReport.rows || []
   const revenueDateBounds = useMemo(() => {
