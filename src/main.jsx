@@ -12531,157 +12531,93 @@ function RMSProV6Styles() {
   display:none !important;
 }
 
-/* v231 Reports revenue graph + modal scroll/borders */
-.reports-v231-preferred-revenue-chart{
+/* v234 exact Reports revenue filter/chart + Finance expense modal */
+.reports-v234-revenue-chart{
   display:block !important;
   grid-column:1 / -1 !important;
   width:100% !important;
   max-width:none !important;
   margin:18px 0 !important;
 }
-.reports-v231-preferred-revenue-chart.finance-daily-revenue-chart{
+.reports-v234-revenue-chart.finance-daily-revenue-chart{
   display:block !important;
 }
-.reports-v231-preferred-revenue-chart .finance-line-chart-wrap{
+.reports-v234-revenue-chart .finance-line-chart-wrap{
   width:100% !important;
 }
-.reports-v231-preferred-revenue-chart .finance-line-chart-svg{
+.reports-v234-revenue-chart .finance-line-chart-svg{
   width:100% !important;
   min-height:360px !important;
 }
-
-/* Strong modal framing */
-.modal,
-.rms-modal,
-.app-modal,
-.dialog,
-.dialog-card,
-.modal-card,
-.modal-content,
-.expense-detail-modal,
-.finance-expense-detail-modal,
-.finance-detail-modal,
-[role="dialog"]{
-  background:#ffffff !important;
-  border:1px solid rgba(15,23,42,.12) !important;
-  box-shadow:0 28px 90px rgba(15,23,42,.28) !important;
-  border-radius:24px !important;
-  box-sizing:border-box !important;
-  max-height:86vh !important;
-  overflow:auto !important;
+/* Hide only duplicate experimental report charts, not the preferred finance-style chart */
+.reports-v227-day-chart-card,
+.reports-v224-trend-card{
+  display:none !important;
 }
 
-/* Overlay separation */
-.modal-backdrop,
-.rms-modal-backdrop,
-.dialog-backdrop,
-.overlay,
-.modal-overlay{
-  background:rgba(15,23,42,.38) !important;
-  backdrop-filter:blur(8px) !important;
-}
-
-/* Scrollable tables inside popups */
-.modal .table-wrap,
-.rms-modal .table-wrap,
-.app-modal .table-wrap,
-.dialog-card .table-wrap,
-.modal-card .table-wrap,
-.modal-content .table-wrap,
-.expense-detail-modal .table-wrap,
-.finance-expense-detail-modal .table-wrap,
-.finance-detail-modal .table-wrap,
-[role="dialog"] .table-wrap{
-  max-height:56vh !important;
-  overflow:auto !important;
-}
-
-/* v233 Safe modal scroll and framing */
-.rms-article-transactions-modal-v233{
+.expense-detail-modal-pro-v234{
   width:min(1280px, calc(100vw - 72px)) !important;
   max-width:min(1280px, calc(100vw - 72px)) !important;
   max-height:86vh !important;
   overflow:hidden !important;
   display:flex !important;
   flex-direction:column !important;
-  background:#ffffff !important;
-  border:1px solid rgba(15,23,42,.16) !important;
-  box-shadow:0 34px 110px rgba(15,23,42,.34) !important;
-  border-radius:28px !important;
+  background:#fff !important;
+  border:1px solid rgba(15,23,42,.14) !important;
+  border-radius:26px !important;
+  box-shadow:0 34px 110px rgba(15,23,42,.30) !important;
   padding:0 !important;
-  box-sizing:border-box !important;
 }
-
-.rms-article-transactions-modal-v233 > *{
-  box-sizing:border-box !important;
-}
-
-.rms-article-transactions-modal-v233 > :first-child{
+.expense-detail-modal-pro-v234 .supplier-modal-head{
   flex:0 0 auto !important;
-  width:100% !important;
-  padding:24px 28px 18px !important;
+  padding:22px 28px 18px !important;
   margin:0 !important;
-  background:#ffffff !important;
   border-bottom:1px solid rgba(15,23,42,.08) !important;
+  background:linear-gradient(180deg,#ffffff 0%,#f8fafc 100%) !important;
+  border-radius:26px 26px 0 0 !important;
   box-shadow:none !important;
-  border-radius:28px 28px 0 0 !important;
 }
-
-.rms-article-transactions-modal-v233 > :first-child h1,
-.rms-article-transactions-modal-v233 > :first-child h2,
-.rms-article-transactions-modal-v233 > :first-child h3{
+.expense-detail-modal-pro-v234 .supplier-modal-head h3{
+  margin:0 !important;
+  max-width:calc(100% - 72px) !important;
   white-space:normal !important;
   overflow:visible !important;
   text-overflow:clip !important;
   line-height:1.18 !important;
+}
+.expense-detail-modal-pro-v234 .supplier-modal-head .hint{
+  margin-top:6px !important;
   max-width:calc(100% - 72px) !important;
 }
-
-.rms-article-transactions-modal-v233 > :not(:first-child){
+.expense-detail-modal-pro-v234 > .hint,
+.expense-detail-modal-pro-v234 > .form-grid,
+.expense-detail-modal-pro-v234 > .table-wrap,
+.expense-detail-modal-pro-v234 > *:not(.supplier-modal-head){
+  margin-left:28px !important;
+  margin-right:28px !important;
+}
+.expense-detail-modal-pro-v234 > .form-grid{
+  flex:0 0 auto !important;
+  margin-top:22px !important;
+}
+.expense-detail-modal-pro-v234 > .table-wrap{
+  flex:1 1 auto !important;
   min-height:0 !important;
+  max-height:48vh !important;
   overflow:auto !important;
-  padding-left:28px !important;
-  padding-right:28px !important;
+  border:1px solid rgba(15,23,42,.08) !important;
+  border-radius:18px !important;
+  margin-top:18px !important;
+  margin-bottom:24px !important;
 }
-
-.rms-article-transactions-modal-v233 table{
-  width:100% !important;
+.expense-detail-modal-pro-v234 table{
   min-width:1040px !important;
-  border-collapse:collapse !important;
 }
-
-.rms-article-transactions-modal-v233 thead th{
+.expense-detail-modal-pro-v234 thead th{
   position:sticky !important;
   top:0 !important;
-  z-index:3 !important;
+  z-index:2 !important;
   background:#f8fafc !important;
-}
-
-.rms-article-transactions-modal-v233 .table-wrap,
-.rms-article-transactions-modal-v233 .reports-v43-table-wrap,
-.rms-article-transactions-modal-v233 .finance-table-wrap,
-.rms-article-transactions-modal-v233 .finance-expense-table-wrap{
-  max-height:52vh !important;
-  overflow:auto !important;
-  border-radius:18px !important;
-  border:1px solid rgba(15,23,42,.08) !important;
-}
-
-/* Light generic popup separation without breaking layout */
-[role="dialog"],
-.modal-card,
-.dialog-card{
-  background:#fff !important;
-  border:1px solid rgba(15,23,42,.12);
-  box-shadow:0 28px 90px rgba(15,23,42,.26);
-}
-
-.modal-backdrop,
-.rms-modal-backdrop,
-.dialog-backdrop,
-.modal-overlay{
-  background:rgba(15,23,42,.38) !important;
-  backdrop-filter:blur(8px) !important;
 }
 
 
@@ -16955,9 +16891,9 @@ function Finance({ t, lang, onGoToExpense }) {
           </div>}
         </div>
 
-        {expenseDetail.name && <div className="card span-2 supplier-transactions-panel supplier-modal-panel">
+        {expenseDetail.name && <div className="card span-2 supplier-transactions-panel supplier-modal-panel expense-detail-modal-pro-v234">
           <div className="card-head supplier-modal-head">
-            <div className="finance-expense-detail-modal rms-article-transactions-modal-v233">
+            <div>
               <h3>Транзакции по статье: {expenseDetail.name}</h3>
               <p className="hint">Строки расходов за выбранный период{branchId === ALL_BRANCHES ? ' по всем филиалам' : ' по выбранному филиалу'}.</p>
             </div>
@@ -25697,13 +25633,14 @@ async function explodeZipFile(file) {
 
 function rmsNextMonthStart(monthValue) {
   const value = String(monthValue || '')
-  if (!/^\d{4}-\d{2}$/.test(value)) return ''
-  const year = Number(value.slice(0, 4))
-  const month = Number(value.slice(5, 7))
+  const match = value.match(/^(\d{4})-(\d{1,2})$/)
+  if (!match) return ''
+  const year = Number(match[1])
+  const month = Number(match[2])
   if (!year || !month) return ''
   const nextYear = month === 12 ? year + 1 : year
   const nextMonth = month === 12 ? 1 : month + 1
-  return `${nextYear}-${String(nextMonth)}-01`
+  return `${nextYear}-${String(nextMonth).padStart(2, '0')}-01`
 }
 
 
@@ -27006,7 +26943,7 @@ function Reports({ t }) {
   const salesKpiTabs = ['overview', 'sales']
   const showSalesKpis = salesKpiTabs.includes(reportsTab)
 
-  const currentMonthKey = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1)}`
+  const currentMonthKey = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`
   const currentMonthLabel = currentMonthKey
   const selectedMonthLabel = monthFilter === 'all' ? 'Все месяцы' : monthFilter
   const selectedBranchLabel = branchFilter === 'all' ? 'Все филиалы' : (branches.find(b => String(b.id) === String(branchFilter))?.name || 'Выбранный филиал')
@@ -27070,19 +27007,6 @@ function Reports({ t }) {
   }
 
 
-  const revenueReportDailyChartRowsV231 = useMemo(() => {
-    const map = new Map()
-    ;(rmsRevenueReport.rows || []).forEach(row => {
-      const rawDate = String(row.revenue_date || '')
-      const day = Number(rawDate.slice(8, 10))
-      if (!day) return
-      const prev = map.get(rawDate) || { day: String(day), date: rawDate, amount: 0 }
-      prev.amount += parseNum(row.cash) + parseNum(row.bank)
-      map.set(rawDate, prev)
-    })
-    return Array.from(map.values()).sort((a, b) => String(a.date).localeCompare(String(b.date)))
-  }, [rmsRevenueReport.rows])
-
   const revenueRowsRaw = rmsRevenueReport.rows || []
   const revenueDateBounds = useMemo(() => {
     const dates = revenueRowsRaw.map(row => row.revenue_date).filter(Boolean).sort()
@@ -27116,6 +27040,29 @@ function Reports({ t }) {
     })
     return Array.from(map.values()).map(item => ({ ...item, days_count: item.days.size })).sort((a, b) => b.month.localeCompare(a.month))
   }, [revenueRowsRaw, revenueListMode])
+
+  const revenueGraphRowsV234 = useMemo(() => {
+    if (revenueListMode === 'monthly') {
+      return revenueDisplayRows
+        .slice()
+        .reverse()
+        .map(row => ({
+          day: String(row.month || ''),
+          date: '',
+          amount: parseNum(row.revenue)
+        }))
+    }
+    const map = new Map()
+    ;(rmsRevenueReport.rows || []).forEach(row => {
+      const rawDate = String(row.revenue_date || '')
+      const day = Number(rawDate.slice(8, 10))
+      if (!day) return
+      const prev = map.get(rawDate) || { day: String(day), date: rawDate, amount: 0 }
+      prev.amount += parseNum(row.cash) + parseNum(row.bank)
+      map.set(rawDate, prev)
+    })
+    return Array.from(map.values()).sort((a, b) => String(a.date).localeCompare(String(b.date)))
+  }, [revenueListMode, revenueDisplayRows, rmsRevenueReport.rows])
 
   const revenuePageSize = 80
   const revenueTotalPages = Math.max(1, Math.ceil(revenueDisplayRows.length / revenuePageSize))
@@ -27202,7 +27149,12 @@ function Reports({ t }) {
         <div><span>Период</span><strong>{selectedMonthLabel}</strong><em>текущий фильтр</em></div>
       </div>
 
-      {!rmsRevenueReport.loading && !rmsRevenueReport.error && revenueListMode === 'daily' && <ReportsRevenueDailyChartV227 rows={rmsRevenueReport.rows || []} />}
+      {!rmsRevenueReport.loading && !rmsRevenueReport.error && revenueGraphRowsV234.length > 0 && <DailyRevenueLineChart
+        rows={revenueGraphRowsV234}
+        title={revenueListMode === 'monthly' ? 'Выручка по месяцам' : 'Выручка по дням за выбранный месяц'}
+        subtitle={revenueListMode === 'monthly' ? 'Суммарная выручка сети по месяцам.' : 'Суммарная выручка сети по дням месяца, без Wolt'}
+        className="reports-v234-revenue-chart"
+      />}
 
       {rmsRevenueReport.loading && <div className="reports-v43-empty-state"><b>Загрузка выручки...</b><span>Идёт чтение выручки.</span></div>}
       {rmsRevenueReport.error && <div className="reports-v43-empty-state"><b>Ошибка загрузки</b><span>{rmsRevenueReport.error}</span></div>}
