@@ -26372,23 +26372,35 @@ function Reports({ t }) {
         return { months, years }
       }
 
-      const [entriesResult, legacyResult] = await Promise.all([
-        supabase
-          .from('daily_revenue_entries')
-          .select('revenue_date')
-          .is('deleted_at', null)
-          .order('revenue_date', { ascending: false })
-          .range(0, 20000),
-        supabase
-          .from('daily_revenue')
-          .select('revenue_date')
-          .is('deleted_at', null)
-          .order('revenue_date', { ascending: false })
-          .range(0, 20000)
+      async function fetchRevenueDates(tableName) {
+        const pageSize = 1000
+        let from = 0
+        let allRows = []
+        while (true) {
+          const { data, error } = await supabase
+            .from(tableName)
+            .select('revenue_date')
+            .is('deleted_at', null)
+            .order('revenue_date', { ascending: false })
+            .range(from, from + pageSize - 1)
+
+          if (error) throw error
+          const batch = data || []
+          allRows = allRows.concat(batch)
+          if (batch.length < pageSize) break
+          from += pageSize
+          if (from > 50000) break
+        }
+        return allRows
+      }
+
+      const [entriesRows, legacyRows] = await Promise.all([
+        fetchRevenueDates('daily_revenue_entries'),
+        fetchRevenueDates('daily_revenue')
       ])
 
-      const entries = collect(entriesResult.data || [])
-      const legacy = collect(legacyResult.data || [])
+      const entries = collect(entriesRows)
+      const legacy = collect(legacyRows)
       const months = Array.from(new Set([...entries.months, ...legacy.months])).sort().reverse()
       const years = Array.from(new Set([...entries.years, ...legacy.years])).sort().reverse()
       setRmsRevenuePeriodOptions({ months, years })
@@ -26405,7 +26417,17 @@ function Reports({ t }) {
   async function loadRmsRevenueReport() {
     setRmsRevenueReport(prev => ({ ...prev, loading: true, error: '' }))
     try {
-      const applyRevenueFilters = (query) => {
+      const pageSize = 1000
+
+      const buildRevenueQuery = (tableName, from, to) => {
+        let query = supabase
+          .from(tableName)
+          .select(tableName === 'daily_revenue_entries'
+            ? 'id,branch_id,revenue_date,cash_amount,bank_amount,wolt_amount,comment'
+            : 'branch_id,revenue_date,cash_amount,bank_amount,wolt_amount'
+          )
+          .is('deleted_at', null)
+
         if (branchFilter !== 'all') query = query.eq('branch_id', branchFilter)
 
         const hasCustomRevenueRange = Boolean(revenueDateFrom || revenueDateTo)
@@ -26422,39 +26444,32 @@ function Reports({ t }) {
         }
 
         return query
+          .order('revenue_date', { ascending: false })
+          .order('branch_id', { ascending: true })
+          .range(from, to)
       }
 
-      let entriesQuery = supabase
-        .from('daily_revenue_entries')
-        .select('id,branch_id,revenue_date,cash_amount,bank_amount,wolt_amount,comment')
-        .is('deleted_at', null)
+      async function fetchAllRevenueRows(tableName) {
+        let from = 0
+        let allRows = []
+        while (true) {
+          const { data, error } = await buildRevenueQuery(tableName, from, from + pageSize - 1)
+          if (error) throw error
+          const batch = data || []
+          allRows = allRows.concat(batch)
+          if (batch.length < pageSize) break
+          from += pageSize
+          if (from > 50000) break
+        }
+        return allRows
+      }
 
-      entriesQuery = applyRevenueFilters(entriesQuery)
-      const { data: entriesData, error: entriesError } = await entriesQuery
-        .order('revenue_date', { ascending: false })
-        .order('branch_id', { ascending: true })
-        .range(0, 20000)
-
-      if (entriesError) throw entriesError
-
-      let data = entriesData || []
+      let data = await fetchAllRevenueRows('daily_revenue_entries')
       let sourceTable = 'daily_revenue_entries'
 
       // Fallback for old databases where only daily_revenue aggregate rows exist.
       if (!data.length) {
-        let legacyQuery = supabase
-          .from('daily_revenue')
-          .select('branch_id,revenue_date,cash_amount,bank_amount,wolt_amount')
-          .is('deleted_at', null)
-
-        legacyQuery = applyRevenueFilters(legacyQuery)
-        const { data: legacyData, error: legacyError } = await legacyQuery
-          .order('revenue_date', { ascending: false })
-          .order('branch_id', { ascending: true })
-          .range(0, 20000)
-
-        if (legacyError) throw legacyError
-        data = legacyData || []
+        data = await fetchAllRevenueRows('daily_revenue')
         sourceTable = 'daily_revenue'
       }
 
