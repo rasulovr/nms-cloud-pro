@@ -21743,6 +21743,9 @@ function Suppliers({ t, isAdmin = false }) {
   const [eInvoiceListSearch, setEInvoiceListSearch] = useState('')
   const [eInvoiceListSupplierId, setEInvoiceListSupplierId] = useState('all')
   const [eInvoiceListLegalEntityId, setEInvoiceListLegalEntityId] = useState('all')
+  const [eInvoiceAdminPageSize, setEInvoiceAdminPageSize] = useState(5)
+  const [eInvoiceAdminPage, setEInvoiceAdminPage] = useState(1)
+  const [eInvoiceListExpanded, setEInvoiceListExpanded] = useState(false)
   const [editingEInvoiceId, setEditingEInvoiceId] = useState('')
   const [eInvoiceEditForm, setEInvoiceEditForm] = useState({ invoice_number: '', invoice_date: '', amount: '', payment_due_date: '', note: '', status: '' })
   const [singleEInvoiceDrafts, setSingleEInvoiceDrafts] = useState({})
@@ -21814,6 +21817,10 @@ function Suppliers({ t, isAdmin = false }) {
     if (!supplierForm.opening_debt_legal_entity_id && legalEntities[0]) setSupplierForm(f => ({ ...f, opening_debt_legal_entity_id: legalEntities[0].id }))
     if (!purchaseForm.branch_id && branches[0]) setPurchaseForm(f => ({ ...f, branch_id: branches[0].id }))
   }, [activeSuppliers, legalEntities, branches])
+
+  useEffect(() => {
+    setEInvoiceAdminPage(1)
+  }, [eInvoiceListSearch, eInvoiceListSupplierId, eInvoiceListLegalEntityId, eInvoiceAdminPageSize, eInvoiceListExpanded])
 
   async function load() {
     const isInternal = Boolean(getInternalSessionStorage()?.rms_internal)
@@ -22679,7 +22686,13 @@ function Suppliers({ t, isAdmin = false }) {
       if (!hay.includes(needle)) return false
     }
     return true
-  }).slice(0, 200)
+  }).slice(0, 500)
+  const eInvoiceAdminPageSizeNumber = parseNum(eInvoiceAdminPageSize) || 5
+  const eInvoiceAdminTotalPages = Math.max(1, Math.ceil(filteredEInvoiceAdminRows.length / eInvoiceAdminPageSizeNumber))
+  const safeEInvoiceAdminPage = Math.min(eInvoiceAdminPage, eInvoiceAdminTotalPages)
+  const pagedEInvoiceAdminRows = eInvoiceListExpanded
+    ? filteredEInvoiceAdminRows.slice((safeEInvoiceAdminPage - 1) * eInvoiceAdminPageSizeNumber, safeEInvoiceAdminPage * eInvoiceAdminPageSizeNumber)
+    : filteredEInvoiceAdminRows.slice(0, 5)
 
   function setEInvoiceSupplierDefaults(supplierId) {
     const supplier = suppliers.find(s => String(s.id) === String(supplierId))
@@ -22791,7 +22804,7 @@ function Suppliers({ t, isAdmin = false }) {
     return {
       invoice_number: existing.invoice_number || '',
       invoice_date: invoiceDate,
-      amount: existing.amount ?? String(remainingAmount || parseNum(purchase.total_amount || 0)),
+      amount: existing.amount ?? String(remainingAmount),
       payment_term_days: existing.payment_term_days ?? (termDays ? String(termDays) : ''),
       payment_due_date: due,
       note: existing.note || ''
@@ -23058,46 +23071,6 @@ function Suppliers({ t, isAdmin = false }) {
 
 
 
-      <div className="card span-2 supplier-einvoice-list-card">
-        <div className="card-head suppliers-v43-card-head">
-          <div><h3>Список e-qaimə</h3><p className="hint">Единый журнал электронных накладных. Повторный номер e-qaimə запрещён.</p></div>
-          <span className="suppliers-v43-badge">e-qaimə</span>
-        </div>
-        <div className="form-grid compact">
-          <label><span>Поиск</span><input value={eInvoiceListSearch} onChange={e => setEInvoiceListSearch(e.target.value)} placeholder="№, поставщик, VOEN" /></label>
-          <label><span>Поставщик</span><select value={eInvoiceListSupplierId} onChange={e => setEInvoiceListSupplierId(e.target.value)}><option value="all">Все поставщики</option>{activeSuppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
-          <label><span>Наш VOEN</span><select value={eInvoiceListLegalEntityId} onChange={e => setEInvoiceListLegalEntityId(e.target.value)}><option value="all">Все VOEN</option>{legalEntities.map(le => <option key={le.id} value={le.id}>{le.name} · {le.voen}</option>)}</select></label>
-        </div>
-        <div className="table-wrap" style={{marginTop:12}}>
-          <table>
-            <thead><tr><th>Дата</th><th>№ e-qaimə</th><th>Поставщик</th><th>Наш VOEN</th><th>Сумма</th><th>Оплачено</th><th>Остаток</th><th>Статус</th><th>Действие</th></tr></thead>
-            <tbody>
-              {filteredEInvoiceAdminRows.map(inv => {
-                const isEditing = editingEInvoiceId === inv.id
-                const physicalTotal = eInvoiceLinkedPhysicalTotal(inv.id)
-                const balance = Math.max(0, parseNum(inv.amount) - parseNum(inv.paid_amount))
-                return <React.Fragment key={inv.id}>
-                  <tr>
-                    <td>{isEditing ? <input type="date" value={eInvoiceEditForm.invoice_date} onChange={e => setEInvoiceEditForm({...eInvoiceEditForm, invoice_date: e.target.value})} /> : inv.invoice_date}</td>
-                    <td>{isEditing ? <input value={eInvoiceEditForm.invoice_number} onChange={e => setEInvoiceEditForm({...eInvoiceEditForm, invoice_number: e.target.value})} /> : <b>{inv.invoice_number}</b>}</td>
-                    <td>{inv.suppliers?.name || '—'}</td>
-                    <td>{inv.legal_entities?.name || '—'}<br /><span className="hint">{inv.legal_entities?.voen || ''}</span></td>
-                    <td>{isEditing ? <input inputMode="decimal" value={eInvoiceEditForm.amount} onChange={e => setEInvoiceEditForm({...eInvoiceEditForm, amount: e.target.value})} /> : <b>{fmt(inv.amount)}</b>}</td>
-                    <td>{fmt(inv.paid_amount)}</td>
-                    <td className={balance > 0 ? 'bad' : 'good'}><b>{fmt(balance)}</b></td>
-                    <td>{physicalTotal ? (Math.abs(parseNum(inv.amount) - physicalTotal) <= 0.02 ? <span className="good">Сверено</span> : <span className="bad">Расхождение</span>) : (inv.status || '—')}</td>
-                    <td><div className="action-row">{isEditing ? <><button className="small primary" onClick={() => saveEInvoiceEdit(inv)}>Сохранить</button><button className="ghost small" onClick={cancelEditEInvoice}>Отмена</button></> : <><button className="small" onClick={() => startEditEInvoice(inv)}>Изменить</button><button className="small remove" onClick={() => softDeleteEInvoice(inv)}>Удалить</button></>}</div></td>
-                  </tr>
-                  {isEditing && <tr><td colSpan="9"><div className="form-grid compact"><label><span>Срок оплаты</span><input type="date" value={eInvoiceEditForm.payment_due_date} onChange={e => setEInvoiceEditForm({...eInvoiceEditForm, payment_due_date: e.target.value})} /></label><label><span>Комментарий</span><input value={eInvoiceEditForm.note} onChange={e => setEInvoiceEditForm({...eInvoiceEditForm, note: e.target.value})} /></label><label><span>Физический приход</span><strong>{fmt(physicalTotal)} AZN</strong></label></div></td></tr>}
-                </React.Fragment>
-              })}
-              {!filteredEInvoiceAdminRows.length && <tr><td colSpan="9" className="hint">e-qaimə не найдены</td></tr>}
-            </tbody>
-          </table>
-        </div>
-        {eInvoiceMessage && <p className={`hint ${eInvoiceMessage.includes('обновлена') || eInvoiceMessage.includes('удалена') ? 'save-status' : 'bad'}`}>{eInvoiceMessage}</p>}
-      </div>
-
       <div className="card span-2 supplier-opening-debt-card">
         <div className="card-head suppliers-v43-card-head"><div><h3>Долг за предыдущий период</h3><p className="hint">Стартовый баланс поставщика при запуске RMS с уже существующими долгами.</p></div><span className="suppliers-v43-badge">Баланс</span></div>
         <div className="form-grid compact">
@@ -23212,6 +23185,59 @@ function Suppliers({ t, isAdmin = false }) {
         <div className="form-grid compact"><label><span>Товар</span><input value={productForm.name} onChange={e => setProductForm({...productForm, name: e.target.value})} /></label><label><span>Тип</span><select value={productForm.category} onChange={e => setProductForm({...productForm, category: e.target.value})}>{PRODUCT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select></label><label><span>Базовая ед. для техкарты</span><select value={productForm.base_unit} onChange={e => setProductForm({...productForm, base_unit: e.target.value})}>{BASE_UNITS.map(u => <option key={u.value} value={u.value}>{u.label}</option>)}</select></label></div><button className="small" onClick={addProductFromForm}>+ Добавить товар</button>
       </div>
 
+      <div className="card span-2 supplier-einvoice-list-card">
+        <div className="card-head suppliers-v43-card-head">
+          <div><h3>Список e-qaimə</h3><p className="hint">Последние e-qaimə. По умолчанию показываются 5 последних накладных; список можно развернуть, перелистывать и редактировать.</p></div>
+          <div className="action-row" style={{gap:8, alignItems:'center'}}>
+            <span className="suppliers-v43-badge">e-qaimə</span>
+            <button className="ghost small" onClick={() => setEInvoiceListExpanded(v => !v)}>{eInvoiceListExpanded ? 'Свернуть' : `Развернуть список · всего ${filteredEInvoiceAdminRows.length}`}</button>
+          </div>
+        </div>
+        {eInvoiceListExpanded && <div className="form-grid compact">
+          <label><span>Поиск</span><input value={eInvoiceListSearch} onChange={e => setEInvoiceListSearch(e.target.value)} placeholder="№, поставщик, VOEN" /></label>
+          <label><span>Поставщик</span><select value={eInvoiceListSupplierId} onChange={e => setEInvoiceListSupplierId(e.target.value)}><option value="all">Все поставщики</option>{activeSuppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
+          <label><span>Наш VOEN</span><select value={eInvoiceListLegalEntityId} onChange={e => setEInvoiceListLegalEntityId(e.target.value)}><option value="all">Все VOEN</option>{legalEntities.map(le => <option key={le.id} value={le.id}>{le.name} · {le.voen}</option>)}</select></label>
+          <label><span>Показать</span><select value={eInvoiceAdminPageSize} onChange={e => setEInvoiceAdminPageSize(Number(e.target.value))}><option value={5}>5</option><option value={10}>10</option><option value={20}>20</option><option value={30}>30</option><option value={50}>50</option></select></label>
+        </div>}
+        {!eInvoiceListExpanded && <p className="hint" style={{marginTop:4}}>Показаны 5 последних e-qaimə. Для полного списка нажмите «Развернуть список».</p>}
+        <div className="table-wrap" style={{marginTop:12}}>
+          <table>
+            <thead><tr><th>Дата</th><th>№ e-qaimə</th><th>Поставщик</th><th>Наш VOEN</th><th>Сумма</th><th>Оплачено</th><th>Остаток</th><th>Статус</th><th>Действие</th></tr></thead>
+            <tbody>
+              {pagedEInvoiceAdminRows.map(inv => {
+                const isEditing = editingEInvoiceId === inv.id
+                const physicalTotal = eInvoiceLinkedPhysicalTotal(inv.id)
+                const balance = Math.max(0, parseNum(inv.amount) - parseNum(inv.paid_amount))
+                return <React.Fragment key={inv.id}>
+                  <tr>
+                    <td>{isEditing ? <input type="date" value={eInvoiceEditForm.invoice_date} onChange={e => setEInvoiceEditForm({...eInvoiceEditForm, invoice_date: e.target.value})} /> : inv.invoice_date}</td>
+                    <td>{isEditing ? <input value={eInvoiceEditForm.invoice_number} onChange={e => setEInvoiceEditForm({...eInvoiceEditForm, invoice_number: e.target.value})} /> : <b>{inv.invoice_number}</b>}</td>
+                    <td>{inv.suppliers?.name || '—'}</td>
+                    <td>{inv.legal_entities?.name || '—'}<br /><span className="hint">{inv.legal_entities?.voen || ''}</span></td>
+                    <td>{isEditing ? <input inputMode="decimal" value={eInvoiceEditForm.amount} onChange={e => setEInvoiceEditForm({...eInvoiceEditForm, amount: e.target.value})} /> : <b>{fmt(inv.amount)}</b>}</td>
+                    <td>{fmt(inv.paid_amount)}</td>
+                    <td className={balance > 0 ? 'bad' : 'good'}><b>{fmt(balance)}</b></td>
+                    <td>{physicalTotal ? (Math.abs(parseNum(inv.amount) - physicalTotal) <= 0.02 ? <span className="good">Сверено</span> : <span className="bad">Расхождение</span>) : (inv.status || '—')}</td>
+                    <td><div className="action-row">{isEditing ? <><button className="small primary" onClick={() => saveEInvoiceEdit(inv)}>Сохранить</button><button className="ghost small" onClick={cancelEditEInvoice}>Отмена</button></> : <><button className="small" onClick={() => startEditEInvoice(inv)}>Изменить</button><button className="small remove" onClick={() => softDeleteEInvoice(inv)}>Удалить</button></>}</div></td>
+                  </tr>
+                  {isEditing && <tr><td colSpan="9"><div className="form-grid compact"><label><span>Срок оплаты</span><input type="date" value={eInvoiceEditForm.payment_due_date} onChange={e => setEInvoiceEditForm({...eInvoiceEditForm, payment_due_date: e.target.value})} /></label><label><span>Комментарий</span><input value={eInvoiceEditForm.note} onChange={e => setEInvoiceEditForm({...eInvoiceEditForm, note: e.target.value})} /></label><label><span>Физический приход</span><strong>{fmt(physicalTotal)} AZN</strong></label></div></td></tr>}
+                </React.Fragment>
+              })}
+              {!pagedEInvoiceAdminRows.length && <tr><td colSpan="9" className="hint">e-qaimə не найдены</td></tr>}
+            </tbody>
+          </table>
+        </div>
+        {eInvoiceListExpanded && <div className="action-row" style={{justifyContent:'space-between', marginTop:10, alignItems:'center'}}>
+          <span className="hint">Показано {pagedEInvoiceAdminRows.length ? ((safeEInvoiceAdminPage - 1) * eInvoiceAdminPageSizeNumber) + 1 : 0}–{Math.min(safeEInvoiceAdminPage * eInvoiceAdminPageSizeNumber, filteredEInvoiceAdminRows.length)} из {filteredEInvoiceAdminRows.length}</span>
+          <div className="action-row" style={{gap:10, alignItems:'center'}}>
+            <button className="ghost small" onClick={() => setEInvoiceAdminPage(p => Math.max(1, p - 1))} disabled={safeEInvoiceAdminPage <= 1}>← Пред.</button>
+            <span className="hint">Страница {safeEInvoiceAdminPage} / {eInvoiceAdminTotalPages} · всего {filteredEInvoiceAdminRows.length}</span>
+            <button className="ghost small" onClick={() => setEInvoiceAdminPage(p => Math.min(eInvoiceAdminTotalPages, p + 1))} disabled={safeEInvoiceAdminPage >= eInvoiceAdminTotalPages}>След. →</button>
+          </div>
+        </div>}
+        {eInvoiceMessage && <p className={`hint ${eInvoiceMessage.includes('обновлена') || eInvoiceMessage.includes('удалена') ? 'save-status' : 'bad'}`}>{eInvoiceMessage}</p>}
+      </div>
+
      <div className="card span-2">
         <div className="card-head">
           <div>
@@ -23263,12 +23289,12 @@ function Suppliers({ t, isAdmin = false }) {
                 <React.Fragment key={p.id}>
                   <tr className={p.deleted_at ? 'cancelled-row' : ''}>
                     <td>{p.purchase_date}</td>
-                    <td>{highlightSupplierMatch(p.invoice_number || '—', purchaseJournalFilters.invoice)}<br /><span className="hint">e-qaimə: {highlightSupplierMatch(purchaseLinkedEInvoices(p.id)[0]?.invoice_number || supplierPurchaseReconciliation(p).eInvoiceNumber || 'ожидается', purchaseJournalFilters.e_invoice)}</span></td>
+                    <td>{highlightSupplierMatch(p.invoice_number || '—', purchaseJournalFilters.invoice)}<br /><span className="hint">e-qaimə: {highlightSupplierMatch(purchaseReconciliationByEInvoices(p).numbers || 'ожидается', purchaseJournalFilters.e_invoice)}</span></td>
                     <td>{p.suppliers?.name}</td>
                     <td>{p.legal_entities?.name || '—'}<br /><span className="hint">{p.legal_entities?.voen || ''}</span></td>
                     <td>{p.branches?.name || '—'}</td>
-                    <td><strong>{fmt(p.total_amount)}</strong>{purchaseLinkedEInvoices(p.id)[0] ? <><br /><span className={Math.abs(parseNum(purchaseLinkedEInvoices(p.id)[0].amount) - parseNum(p.total_amount)) > 0.02 ? 'bad' : 'good'}>diff {fmt(parseNum(purchaseLinkedEInvoices(p.id)[0].amount) - parseNum(p.total_amount))}</span></> : supplierPurchaseReconciliation(p).eAmount ? <><br /><span className={Math.abs(supplierPurchaseReconciliation(p).diff) > 0.02 ? 'bad' : 'good'}>diff {fmt(supplierPurchaseReconciliation(p).diff)}</span></> : null}</td>
-                    <td>{p.deleted_at ? <span className="bad">Отменено</span> : purchaseLinkedEInvoices(p.id)[0] ? <span className={Math.abs(parseNum(purchaseLinkedEInvoices(p.id)[0].amount) - parseNum(p.total_amount)) > 0.02 ? 'bad' : 'good'}>{Math.abs(parseNum(purchaseLinkedEInvoices(p.id)[0].amount) - parseNum(p.total_amount)) > 0.02 ? 'Расхождение' : 'Сверено'}</span> : <span className={supplierPurchaseReconciliation(p).tone === 'bad' ? 'bad' : supplierPurchaseReconciliation(p).tone === 'good' ? 'good' : 'warn'}>{supplierPurchaseReconciliation(p).status}</span>}</td>
+                    <td><strong>{fmt(p.total_amount)}</strong>{purchaseReconciliationByEInvoices(p).eAmount ? <><br /><span className={Math.abs(purchaseReconciliationByEInvoices(p).diff) > 0.02 ? 'bad' : 'good'}>diff {fmt(purchaseReconciliationByEInvoices(p).diff)}</span></> : null}</td>
+                    <td>{p.deleted_at ? <span className="bad">Отменено</span> : <span className={purchaseReconciliationByEInvoices(p).tone === 'bad' ? 'bad' : purchaseReconciliationByEInvoices(p).tone === 'good' ? 'good' : 'warn'}>{purchaseReconciliationByEInvoices(p).status}</span>}</td>
                     <td><button className="ghost small" onClick={() => { setViewPurchaseId(viewPurchaseId === p.id ? '' : p.id); setEditingPurchaseId('') }}>{viewPurchaseId === p.id ? 'Закрыть' : 'Просмотр'}</button></td>
                   </tr>
                   {viewPurchaseId === p.id && (
