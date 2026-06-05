@@ -1500,7 +1500,45 @@ const statutoryRestaurantOfficialPayrollCost = (baseValue) => {
     total: employer.total + employee.total
   }
 }
-const todayISO = () => new Date().toISOString().slice(0, 10)
+const pad2 = (value) => String(value).padStart(2, '0')
+const toLocalISODate = (date = new Date()) => {
+  const d = date instanceof Date ? date : new Date(date)
+  if (Number.isNaN(d.getTime())) return new Date().toISOString().slice(0, 10)
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`
+}
+const todayISO = () => toLocalISODate(new Date())
+const normalizeISODate = (value, fallback = todayISO()) => {
+  const raw = String(value || '').trim()
+  const iso = raw.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/)
+  if (iso) return `${iso[1]}-${pad2(iso[2])}-${pad2(iso[3])}`
+  const slash = raw.match(/^(\d{1,2})[\/.](\d{1,2})[\/.](\d{4})$/)
+  if (slash) {
+    const a = Number(slash[1])
+    const b = Number(slash[2])
+    const y = slash[3]
+    const month = a > 12 ? b : a
+    const day = a > 12 ? a : b
+    return `${y}-${pad2(month)}-${pad2(day)}`
+  }
+  return fallback
+}
+const parseISODateLocal = (value, fallback = todayISO()) => {
+  const iso = normalizeISODate(value, fallback)
+  const [y, m, d] = iso.split('-').map(Number)
+  return new Date(y, m - 1, d)
+}
+const monthRangeFromISODate = (value = todayISO()) => {
+  const anchor = parseISODateLocal(value)
+  const year = anchor.getFullYear()
+  const month = anchor.getMonth() + 1
+  const from = `${year}-${pad2(month)}-01`
+  const to = `${year}-${pad2(month)}-${pad2(new Date(year, month, 0).getDate())}`
+  const toExclusive = month === 12 ? `${year + 1}-01-01` : `${year}-${pad2(month + 1)}-01`
+  return { from, to, toExclusive, year, month }
+}
+const sameISODate = (a, b) => normalizeISODate(a) === normalizeISODate(b)
+const sameISOMonth = (a, b) => normalizeISODate(a).slice(0, 7) === normalizeISODate(b).slice(0, 7)
+const sameISOYear = (a, b) => normalizeISODate(a).slice(0, 4) === normalizeISODate(b).slice(0, 4)
 const RMS_SUPPLIERS_UPDATED_EVENT = 'rms:suppliers-updated'
 function notifySuppliersUpdated() {
   try { window.dispatchEvent(new CustomEvent(RMS_SUPPLIERS_UPDATED_EVENT)) } catch (_) {}
@@ -1521,7 +1559,7 @@ const calcGrossSalary = (emp, workedDays) => {
   return calcDailyRate(emp) * parseNum(workedDays)
 }
 const monthKeyFromDate = (date) => date.slice(0, 7)
-const monthStart = (year, month) => `${year}-${String(month)}-01`
+const monthStart = (year, month) => `${year}-${pad2(month)}-01`
 const daysInMonth = (year, month) => new Date(Number(year), Number(month), 0).getDate()
 const prevMonth = (year, month) => {
   let y = Number(year)
@@ -22362,10 +22400,11 @@ function Suppliers({ t, isAdmin = false }) {
   }
   function periodOk(dateStr) {
     if (transactionPeriod === 'all') return true
-    const d = new Date(dateStr), anchor = new Date(transactionDate || todayISO())
-    if (transactionPeriod === 'day') return d.toISOString().slice(0,10) === anchor.toISOString().slice(0,10)
-    if (transactionPeriod === 'month') return d.getFullYear() === anchor.getFullYear() && d.getMonth() === anchor.getMonth()
-    if (transactionPeriod === 'year') return d.getFullYear() === anchor.getFullYear()
+    if (!dateStr) return false
+    const anchor = transactionDate || todayISO()
+    if (transactionPeriod === 'day') return sameISODate(dateStr, anchor)
+    if (transactionPeriod === 'month') return sameISOMonth(dateStr, anchor)
+    if (transactionPeriod === 'year') return sameISOYear(dateStr, anchor)
     return true
   }
   const supplierTransactions = allTransactions().filter(r => (!transactionSupplierId || r.supplier_id === transactionSupplierId) && periodOk(r.date))
@@ -23384,12 +23423,8 @@ function DebtsPayments({ t }) {
     return { overLimit, overdueCount: overdue.length, overdueInvoices: overdue.map(p => p.invoice_number || p.purchase_date).slice(0, 5) }
   }
   function supplierLegalHasActivityInSelectedMonth(supplierId, entityId) {
-    const anchor = new Date(transactionDate || todayISO())
-    const inMonth = (dateStr) => {
-      if (!dateStr) return false
-      const d = new Date(dateStr)
-      return d.getFullYear() === anchor.getFullYear() && d.getMonth() === anchor.getMonth()
-    }
+    const anchor = transactionDate || todayISO()
+    const inMonth = (dateStr) => !!dateStr && sameISOMonth(dateStr, anchor)
     return purchases.some(p => p.supplier_id === supplierId && p.legal_entity_id === entityId && !p.deleted_at && inMonth(p.purchase_date))
       || openingDebts.some(d => d.supplier_id === supplierId && d.legal_entity_id === entityId && d.is_active !== false && inMonth(d.debt_date))
       || payments.some(p => p.supplier_id === supplierId && p.legal_entity_id === entityId && inMonth(p.payment_date))
@@ -23425,10 +23460,11 @@ function DebtsPayments({ t }) {
   }
   function periodOk(dateStr) {
     if (transactionPeriod === 'all') return true
-    const d = new Date(dateStr), anchor = new Date(transactionDate || todayISO())
-    if (transactionPeriod === 'day') return d.toISOString().slice(0,10) === anchor.toISOString().slice(0,10)
-    if (transactionPeriod === 'month') return d.getFullYear() === anchor.getFullYear() && d.getMonth() === anchor.getMonth()
-    if (transactionPeriod === 'year') return d.getFullYear() === anchor.getFullYear()
+    if (!dateStr) return false
+    const anchor = transactionDate || todayISO()
+    if (transactionPeriod === 'day') return sameISODate(dateStr, anchor)
+    if (transactionPeriod === 'month') return sameISOMonth(dateStr, anchor)
+    if (transactionPeriod === 'year') return sameISOYear(dateStr, anchor)
     return true
   }
   function openTransactions(id, type = 'purchases', legalEntityId = '') {
@@ -23703,9 +23739,10 @@ function DebtsPayments({ t }) {
     : 'Есть расхождения между source-операциями и ledger. Откройте детали и проверьте строки.'
   function commonOpsDateInPeriod(dateStr) {
     if (!dateStr) return false
-    const d = new Date(dateStr)
-    const anchor = new Date(commonOpsDate || todayISO())
-    if (commonOpsPeriod === 'day') return dateStr === (commonOpsDate || todayISO())
+    const d = parseISODateLocal(dateStr)
+    const anchorIso = commonOpsDate || todayISO()
+    const anchor = parseISODateLocal(anchorIso)
+    if (commonOpsPeriod === 'day') return sameISODate(dateStr, anchorIso)
     if (commonOpsPeriod === 'week') {
       const a = new Date(anchor)
       const day = a.getDay() || 7
@@ -23716,10 +23753,10 @@ function DebtsPayments({ t }) {
       end.setDate(start.getDate() + 7)
       return d >= start && d < end
     }
-    if (commonOpsPeriod === 'month') return d.getFullYear() === anchor.getFullYear() && d.getMonth() === anchor.getMonth()
+    if (commonOpsPeriod === 'month') return sameISOMonth(dateStr, anchorIso)
     if (commonOpsPeriod === 'range') {
-      const from = commonOpsDateFrom ? new Date(commonOpsDateFrom) : null
-      const to = commonOpsDateTo ? new Date(commonOpsDateTo) : null
+      const from = commonOpsDateFrom ? parseISODateLocal(commonOpsDateFrom) : null
+      const to = commonOpsDateTo ? parseISODateLocal(commonOpsDateTo) : null
       if (from) from.setHours(0, 0, 0, 0)
       if (to) to.setHours(23, 59, 59, 999)
       return (!from || d >= from) && (!to || d <= to)
@@ -24670,10 +24707,13 @@ function DebtsPayments({ t }) {
 
   function openSupplierStatement(actualSupplier, legalEntityId) {
     if (!actualSupplier) return
+    const monthRange = monthRangeFromISODate(transactionDate || todayISO())
     setLedgerSupplierId(actualSupplier.id || 'all')
     setLedgerLegalEntityId(legalEntityId || 'all')
     setLedgerSearch('')
     setInvoiceSearch('')
+    setLedgerDateFrom(monthRange.from)
+    setLedgerDateTo(monthRange.to)
     setLedgerPage(1)
     setShowSupplierStatementPanel(true)
     scrollToSupplierStatementPanel()
