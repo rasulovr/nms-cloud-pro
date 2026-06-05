@@ -26216,6 +26216,7 @@ function Reports({ t }) {
   const [branchFilter, setBranchFilter] = useState('all')
   const [departmentFilter, setDepartmentFilter] = useState('all')
   const [monthFilter, setMonthFilter] = useState('all')
+  const [rmsRevenuePeriodOptions, setRmsRevenuePeriodOptions] = useState({ months: [], years: [] })
   const [revenueDateFrom, setRevenueDateFrom] = useState('')
   const [revenueDateTo, setRevenueDateTo] = useState('')
   const [revenuePage, setRevenuePage] = useState(1)
@@ -26356,28 +26357,106 @@ function Reports({ t }) {
     setRevenuePage(1)
   }, [reportsTab, branchFilter, monthFilter, revenueDateFrom, revenueDateTo])
 
+  async function loadRmsRevenuePeriodOptions() {
+    try {
+      const collect = (rows = []) => {
+        const months = new Set()
+        const years = new Set()
+        ;(rows || []).forEach(row => {
+          const d = String(row?.revenue_date || '').slice(0, 10)
+          const month = d.slice(0, 7)
+          const year = d.slice(0, 4)
+          if (/^\d{4}-\d{2}$/.test(month)) months.add(month)
+          if (/^\d{4}$/.test(year)) years.add(year)
+        })
+        return { months, years }
+      }
+
+      const [entriesResult, legacyResult] = await Promise.all([
+        supabase
+          .from('daily_revenue_entries')
+          .select('revenue_date')
+          .is('deleted_at', null)
+          .order('revenue_date', { ascending: false })
+          .range(0, 20000),
+        supabase
+          .from('daily_revenue')
+          .select('revenue_date')
+          .is('deleted_at', null)
+          .order('revenue_date', { ascending: false })
+          .range(0, 20000)
+      ])
+
+      const entries = collect(entriesResult.data || [])
+      const legacy = collect(legacyResult.data || [])
+      const months = Array.from(new Set([...entries.months, ...legacy.months])).sort().reverse()
+      const years = Array.from(new Set([...entries.years, ...legacy.years])).sort().reverse()
+      setRmsRevenuePeriodOptions({ months, years })
+    } catch (error) {
+      // Period selector is diagnostic/UX only. Revenue loading below remains the source of truth.
+      setRmsRevenuePeriodOptions(prev => prev || { months: [], years: [] })
+    }
+  }
+
+  useEffect(() => {
+    loadRmsRevenuePeriodOptions()
+  }, [])
+
   async function loadRmsRevenueReport() {
     setRmsRevenueReport(prev => ({ ...prev, loading: true, error: '' }))
     try {
-      let query = supabase
-        .from('daily_revenue')
-        .select('branch_id,revenue_date,cash_amount,bank_amount,wolt_amount')
-        .is('deleted_at', null)
+      const applyRevenueFilters = (query) => {
+        if (branchFilter !== 'all') query = query.eq('branch_id', branchFilter)
 
-      if (branchFilter !== 'all') query = query.eq('branch_id', branchFilter)
+        const hasCustomRevenueRange = Boolean(revenueDateFrom || revenueDateTo)
+        if (hasCustomRevenueRange) {
+          if (revenueDateFrom) query = query.gte('revenue_date', revenueDateFrom)
+          if (revenueDateTo) query = query.lte('revenue_date', revenueDateTo)
+        } else if (/^year:\d{4}$/.test(String(monthFilter || ''))) {
+          const year = String(monthFilter).replace('year:', '')
+          query = query.gte('revenue_date', `${year}-01-01`).lt('revenue_date', `${Number(year) + 1}-01-01`)
+        } else if (/^\d{4}-\d{2}$/.test(String(monthFilter || ''))) {
+          const start = `${monthFilter}-01`
+          const end = rmsNextMonthStart(monthFilter)
+          query = query.gte('revenue_date', start).lt('revenue_date', end)
+        }
 
-      const hasCustomRevenueRange = Boolean(revenueDateFrom || revenueDateTo)
-      if (hasCustomRevenueRange) {
-        if (revenueDateFrom) query = query.gte('revenue_date', revenueDateFrom)
-        if (revenueDateTo) query = query.lte('revenue_date', revenueDateTo)
-      } else if (/^\d{4}-\d{2}$/.test(String(monthFilter || ''))) {
-        const start = `${monthFilter}-01`
-        const end = rmsNextMonthStart(monthFilter)
-        query = query.gte('revenue_date', start).lt('revenue_date', end)
+        return query
       }
 
-      const { data, error } = await query.order('revenue_date', { ascending: false }).order('branch_id', { ascending: true }).range(0, 4999)
-      if (error) throw error
+      let entriesQuery = supabase
+        .from('daily_revenue_entries')
+        .select('id,branch_id,revenue_date,cash_amount,bank_amount,wolt_amount,comment')
+        .is('deleted_at', null)
+
+      entriesQuery = applyRevenueFilters(entriesQuery)
+      const { data: entriesData, error: entriesError } = await entriesQuery
+        .order('revenue_date', { ascending: false })
+        .order('branch_id', { ascending: true })
+        .range(0, 20000)
+
+      if (entriesError) throw entriesError
+
+      let data = entriesData || []
+      let sourceTable = 'daily_revenue_entries'
+
+      // Fallback for old databases where only daily_revenue aggregate rows exist.
+      if (!data.length) {
+        let legacyQuery = supabase
+          .from('daily_revenue')
+          .select('branch_id,revenue_date,cash_amount,bank_amount,wolt_amount')
+          .is('deleted_at', null)
+
+        legacyQuery = applyRevenueFilters(legacyQuery)
+        const { data: legacyData, error: legacyError } = await legacyQuery
+          .order('revenue_date', { ascending: false })
+          .order('branch_id', { ascending: true })
+          .range(0, 20000)
+
+        if (legacyError) throw legacyError
+        data = legacyData || []
+        sourceTable = 'daily_revenue'
+      }
 
       const branchNameById = new Map((branches || []).map(b => [String(b.id), b.name]))
       const rows = (data || []).map(row => {
@@ -26386,6 +26465,7 @@ function Reports({ t }) {
         const wolt = parseNum(row.wolt_amount)
         return {
           ...row,
+          source_table: sourceTable,
           branch_name: branchNameById.get(String(row.branch_id)) || row.branch_id || '—',
           cash,
           bank,
@@ -26403,11 +26483,11 @@ function Reports({ t }) {
       }, { cash: 0, bank: 0, wolt: 0, revenue: 0 })
 
       setRmsRevenueReport({ loading: false, error: '', rows, totals })
+      loadRmsRevenuePeriodOptions()
     } catch (error) {
       setRmsRevenueReport({ loading: false, error: error?.message || 'Не удалось загрузить выручку RMS', rows: [], totals: { cash: 0, bank: 0, wolt: 0, revenue: 0 } })
     }
   }
-
 
   useEffect(() => {
     if (reportsTab !== 'expenses') return
@@ -26616,7 +26696,7 @@ function Reports({ t }) {
   }, [reports])
 
   const reportMonthValue = (report) => String(report?.period_start || report?.period_end || '').slice(0, 7) || 'unknown'
-  const monthOptions = useMemo(() => {
+  const reportMonthOptions = useMemo(() => {
     const map = new Map()
     ;(reports || []).forEach(r => {
       const key = reportMonthValue(r)
@@ -26625,6 +26705,27 @@ function Reports({ t }) {
     })
     return Array.from(map.keys()).sort().reverse()
   }, [reports])
+
+  const monthOptions = useMemo(() => {
+    const map = new Map()
+    ;[...(reportMonthOptions || []), ...((rmsRevenuePeriodOptions.months) || [])].forEach(key => {
+      if (!key) return
+      map.set(key, key)
+    })
+    return Array.from(map.keys()).sort().reverse()
+  }, [reportMonthOptions, rmsRevenuePeriodOptions.months])
+
+  const yearOptions = useMemo(() => {
+    const map = new Map()
+    ;(monthOptions || []).forEach(key => {
+      const y = String(key || '').slice(0, 4)
+      if (/^\d{4}$/.test(y)) map.set(y, y)
+    })
+    ;((rmsRevenuePeriodOptions.years) || []).forEach(y => {
+      if (/^\d{4}$/.test(String(y))) map.set(String(y), String(y))
+    })
+    return Array.from(map.keys()).sort().reverse()
+  }, [monthOptions, rmsRevenuePeriodOptions.years])
 
   const filteredReports = useMemo(() => reports.filter(r => {
     const branchOk = branchFilter === 'all' || String(r.branch_id || r.branch_name) === String(branchFilter)
@@ -27338,7 +27439,7 @@ function Reports({ t }) {
 
   const currentMonthKey = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`
   const currentMonthLabel = currentMonthKey
-  const selectedMonthLabel = monthFilter === 'all' ? 'Все месяцы' : monthFilter
+  const selectedMonthLabel = monthFilter === 'all' ? 'Все месяцы' : (/^year:\d{4}$/.test(String(monthFilter || '')) ? `${String(monthFilter).replace('year:', '')} год` : monthFilter)
   const selectedBranchLabel = branchFilter === 'all' ? 'Все филиалы' : (branches.find(b => String(b.id) === String(branchFilter))?.name || 'Выбранный филиал')
   const selectedTypeLabel = departmentFilter === 'all' ? 'Все' : departmentFilter
   const reportsFoodCost = totals.revenue ? totals.cost / totals.revenue * 100 : 0
@@ -27428,7 +27529,7 @@ function Reports({ t }) {
   const revenueHasCustomRange = Boolean(revenueDateFrom || revenueDateTo)
   const revenueListMode = revenueHasCustomRange
     ? (revenueDateBounds.days > 45 ? 'monthly' : 'daily')
-    : (monthFilter === 'all' ? 'monthly' : 'daily')
+    : ((monthFilter === 'all' || /^year:\d{4}$/.test(String(monthFilter || ''))) ? 'monthly' : 'daily')
 
   const revenueDisplayRows = useMemo(() => {
     if (revenueListMode === 'daily') return revenueRowsRaw
@@ -27864,7 +27965,7 @@ function Reports({ t }) {
     </section>
 
     <section className="reports-v43-filterbar">
-      <label><span>Период</span><select value={monthFilter} onChange={e => setMonthFilter(e.target.value)}><option value="all">Все месяцы</option>{!monthOptions.includes(currentMonthKey) && <option value={currentMonthKey}>Текущий месяц · {currentMonthLabel}</option>}{monthOptions.map(m => <option key={m} value={m}>{m}</option>)}</select></label>
+      <label><span>Период</span><select value={monthFilter} onChange={e => { setMonthFilter(e.target.value); setRevenueDateFrom(''); setRevenueDateTo(''); setRevenuePage(1) }}><option value="all">Все годы / все месяцы</option>{yearOptions.length > 0 && <optgroup label="Годы">{yearOptions.map(y => <option key={`year-${y}`} value={`year:${y}`}>{y} год</option>)}</optgroup>}<optgroup label="Месяцы">{!monthOptions.includes(currentMonthKey) && <option value={currentMonthKey}>Текущий месяц · {currentMonthLabel}</option>}{monthOptions.map(m => <option key={m} value={m}>{m}</option>)}</optgroup></select></label>
       <label><span>Филиал</span><select value={branchFilter} onChange={e => setBranchFilter(e.target.value)}><option value="all">Все филиалы</option>{branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label>
       <label><span>Тип</span><select value={departmentFilter} onChange={e => setDepartmentFilter(e.target.value)}><option value="all">Все</option><option value="Бар">Бар</option><option value="Кухня">Кухня</option><option value="Смешанный">Смешанный</option></select></label>
       <div className="reports-v43-filter-actions"><button className="ghost small" type="button">Обновить</button><button className="ghost small" type="button">Экспорт</button><button className="small primary" type="button" onClick={() => window.print()}>Печать</button></div>
