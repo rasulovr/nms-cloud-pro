@@ -21837,6 +21837,32 @@ function Suppliers({ t, isAdmin = false }) {
     setEInvoiceAdminPage(1)
   }, [eInvoiceListSearch, eInvoiceListSupplierId, eInvoiceListLegalEntityId, eInvoiceAdminPageSize, eInvoiceListExpanded])
 
+  async function fetchAllSupplierPurchasesRows() {
+    const pageSize = 1000
+    let from = 0
+    let allRows = []
+
+    while (true) {
+      const { data, error } = await supabase
+        .from('supplier_purchases')
+        .select('*, suppliers(name), legal_entities(name,voen), branches(name), supplier_purchase_items(*, supplier_products(name,base_unit,category))')
+        .order('purchase_date', { ascending: false })
+        .order('created_at', { ascending: false })
+        .range(from, from + pageSize - 1)
+
+      if (error) throw error
+
+      const batch = data || []
+      allRows = allRows.concat(batch)
+
+      if (batch.length < pageSize) break
+      from += pageSize
+      if (from > 50000) break
+    }
+
+    return allRows
+  }
+
   async function load() {
     const isInternal = Boolean(getInternalSessionStorage()?.rms_internal)
 
@@ -21847,7 +21873,12 @@ function Suppliers({ t, isAdmin = false }) {
         setSuppliers(ws.suppliers || [])
         setProducts(ws.supplier_products || [])
         setBalances(ws.supplier_balances || [])
-        setPurchases(ws.supplier_purchases || [])
+        try {
+          const fullPurchases = await fetchAllSupplierPurchasesRows()
+          setPurchases(fullPurchases || ws.supplier_purchases || [])
+        } catch (_purchaseFetchError) {
+          setPurchases(ws.supplier_purchases || [])
+        }
         setPayments(ws.supplier_payments || [])
         setOpeningDebts(ws.supplier_opening_debts || [])
         const [{ data: statusRows }, { data: eInv }, { data: eLinks }] = await Promise.all([
@@ -21881,7 +21912,12 @@ function Suppliers({ t, isAdmin = false }) {
     setSuppliers(sup || [])
     setProducts(prod || [])
     setBalances(bal || [])
-    setPurchases(pur || [])
+    try {
+      const fullPurchases = await fetchAllSupplierPurchasesRows()
+      setPurchases(fullPurchases || pur || [])
+    } catch (_purchaseFetchError) {
+      setPurchases(pur || [])
+    }
     setPayments(pay || [])
     setOpeningDebts(opening || [])
     setSupplierEntityStatuses(statusRows || [])
