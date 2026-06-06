@@ -15213,10 +15213,22 @@ function DailyRevenueLineChart({ rows = [], title = 'Выручка по дня�
   const weekdayNames = ['Воскресенье', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота']
   const monthNamesRu = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря']
   const formatDayMonth = (row) => {
+    if (isMonthlyMode) return formatChartXAxisLabel(row)
     if (!row?.date) return row?.day && row.day !== '—' ? String(row.day) : '—'
     const d = new Date(`${row.date}T12:00:00`)
     if (Number.isNaN(d.getTime())) return row?.day && row.day !== '—' ? String(row.day) : '—'
     return `${d.getDate()} ${monthNamesRu[d.getMonth()]}`
+  }
+  const formatChartXAxisLabel = (row) => {
+    const raw = String(row?.day || row?.date || '')
+    const monthMatch = raw.match(/^(\d{4})-(\d{2})$/)
+    if (isMonthlyMode && monthMatch) return `${monthMatch[2]}/${monthMatch[1].slice(2)}`
+    if (isMonthlyMode && row?.date) {
+      const dateMonth = String(row.date).slice(0, 7)
+      const dateMatch = dateMonth.match(/^(\d{4})-(\d{2})$/)
+      if (dateMatch) return `${dateMatch[2]}/${dateMatch[1].slice(2)}`
+    }
+    return raw || '—'
   }
   const weekdayStats = new Map()
   kpiRows
@@ -15236,7 +15248,7 @@ function DailyRevenueLineChart({ rows = [], title = 'Выручка по дня�
   const worstWeekday = weekdayRows.reduce((low, r) => !low.count || parseNum(r.avg) < parseNum(low.avg) ? r : low, { name: '—', avg: 0, count: 0 })
   const width = 1000
   const height = 300
-  const pad = { left: 42, right: 10, top: 30, bottom: 34 }
+  const pad = { left: 48, right: 48, top: 30, bottom: 42 }
   const chartW = width - pad.left - pad.right
   const chartH = height - pad.top - pad.bottom
   const count = Math.max(1, rows.length - 1)
@@ -15287,7 +15299,10 @@ function DailyRevenueLineChart({ rows = [], title = 'Выручка по дня�
             <text className="finance-line-chart-tooltip-date" x="44" y="36" textAnchor="middle">{formatDayMonth(bestPoint)}</text>
           </g>
         </g>}
-        {points.map((p, i) => <text key={`x-${p.date || i}`} className="finance-line-chart-x-label" x={p.x} y={height - 9} textAnchor="middle">{p.day}</text>)}
+        {points.map((p, i) => {
+          const anchor = i === 0 ? 'start' : i === points.length - 1 ? 'end' : 'middle'
+          return <text key={`x-${p.date || p.day || i}`} className="finance-line-chart-x-label" x={p.x} y={height - 11} textAnchor={anchor}>{formatChartXAxisLabel(p)}</text>
+        })}
       </svg> : <p className="hint">Пока нет данных по выручке за выбранный месяц.</p>}
       <div className="finance-line-chart-summary">
         {firstSummary === 'activeDays' ? <div className="metric metric-active-days">
