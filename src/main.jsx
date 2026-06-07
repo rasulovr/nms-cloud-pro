@@ -24190,20 +24190,28 @@ function DebtsPayments({ t }) {
         comment: `${p.legal_entities?.name || 'VOEN не указан'}${p.comment ? ' · ' + p.comment : ''}`,
         source: p
       })),
-    ...payments.map(p => ({
-      id: `pay-${p.id}`,
-      date: p.payment_date,
-      supplier_id: p.supplier_id,
-      supplier: p.suppliers?.name || suppliers.find(s => s.id === p.supplier_id)?.name || '—',
-      type: 'Оплата',
-      type_key: 'payment',
-      invoice: p.invoice_notes || '—',
-      debit: 0,
-      credit: parseNum(p.amount),
-      amount: -parseNum(p.amount),
-      comment: `${p.legal_entities?.name || 'VOEN не указан'}${p.comment ? ' · ' + p.comment : ''}`,
-      source: p
-    }))
+    ...(payments || [])
+      .filter(p => !p.deleted_at && !String(p.comment || '').includes('v255b: merged into payment'))
+      .map(p => {
+        const rawComment = String(p.comment || '').trim()
+        const cleanComment = rawComment.startsWith('v255b: merged single payment')
+          ? 'Оплата одной суммой по нескольким e-qaimə'
+          : rawComment
+        return {
+          id: `pay-${p.id}`,
+          date: p.payment_date,
+          supplier_id: p.supplier_id,
+          supplier: p.suppliers?.name || suppliers.find(s => s.id === p.supplier_id)?.name || '—',
+          type: 'Оплата',
+          type_key: 'payment',
+          invoice: p.invoice_notes || '—',
+          debit: 0,
+          credit: parseNum(p.amount),
+          amount: -parseNum(p.amount),
+          comment: `${p.legal_entities?.name || 'VOEN не указан'}${cleanComment ? ' · ' + cleanComment : ''}`,
+          source: p
+        }
+      })
   ]
 
   const filteredCommonOps = commonOpsAll
