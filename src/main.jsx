@@ -21880,7 +21880,7 @@ function Suppliers({ t, isAdmin = false }) {
         } catch (_purchaseFetchError) {
           setPurchases(ws.supplier_purchases || [])
         }
-        setPayments(ws.supplier_payments || [])
+        setPayments((ws.supplier_payments || []).filter(p => !p.deleted_at))
         setOpeningDebts(ws.supplier_opening_debts || [])
         const [{ data: statusRows }, { data: eInv }, { data: eLinks }] = await Promise.all([
           supabase.from('supplier_legal_entity_status').select('*'),
@@ -21919,7 +21919,7 @@ function Suppliers({ t, isAdmin = false }) {
     } catch (_purchaseFetchError) {
       setPurchases(pur || [])
     }
-    setPayments(pay || [])
+    setPayments((pay || []).filter(p => !p.deleted_at))
     setOpeningDebts(opening || [])
     setSupplierEntityStatuses(statusRows || [])
     setEInvoices(eInv || [])
@@ -22492,7 +22492,7 @@ function Suppliers({ t, isAdmin = false }) {
   function allTransactions() {
     const openingDebtRows = openingDebts.map(d => ({ id: `od-${d.id}`, type: 'Долг за предыдущий период', date: d.debt_date, supplier_id: d.supplier_id, legal_entity_id: d.legal_entity_id || '', supplier: d.suppliers?.name || suppliers.find(s => s.id === d.supplier_id)?.name || '—', invoice: d.invoice_notes || 'Стартовый долг', amount: parseNum(d.amount), comment: d.comment || '', legal: d.legal_entities?.name || legalEntities.find(le => le.id === d.legal_entity_id)?.name || '—' }))
     const purchaseRows = purchases.map(p => ({ id: `p-${p.id}`, type: 'Поступление', date: p.purchase_date, supplier_id: p.supplier_id, legal_entity_id: p.legal_entity_id || '', supplier: p.suppliers?.name || suppliers.find(s => s.id === p.supplier_id)?.name || '—', invoice: p.invoice_number || '—', amount: parseNum(p.total_amount), comment: p.comment || '', legal: p.legal_entities?.name || '—' }))
-    const paymentRows = payments.map(p => ({ id: `pay-${p.id}`, type: 'Оплата', date: p.payment_date, supplier_id: p.supplier_id, legal_entity_id: p.legal_entity_id || '', supplier: p.suppliers?.name || suppliers.find(s => s.id === p.supplier_id)?.name || '—', invoice: p.invoice_notes || '—', amount: -parseNum(p.amount), comment: p.comment || '', legal: p.legal_entities?.name || legalEntities.find(le => le.id === p.legal_entity_id)?.name || '—' }))
+    const paymentRows = (payments || []).filter(p => !p.deleted_at).map(p => ({ id: `pay-${p.id}`, type: 'Оплата', date: p.payment_date, supplier_id: p.supplier_id, legal_entity_id: p.legal_entity_id || '', supplier: p.suppliers?.name || suppliers.find(s => s.id === p.supplier_id)?.name || '—', invoice: p.invoice_notes || '—', amount: -parseNum(p.amount), comment: p.comment || '', legal: p.legal_entities?.name || legalEntities.find(le => le.id === p.legal_entity_id)?.name || '—' }))
     return [...openingDebtRows, ...purchaseRows, ...paymentRows].sort((a,b) => new Date(b.date) - new Date(a.date))
   }
   function periodOk(dateStr) {
