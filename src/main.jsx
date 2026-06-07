@@ -22418,33 +22418,59 @@ function Suppliers({ t, isAdmin = false }) {
   async function savePayment() {
     setMessage('')
     setPaymentMessage('')
+
     const amount = parseNum(paymentForm.amount)
-    if (!paymentForm.supplier_id || !amount) return setPaymentMessage('Выберите поставщика и сумму оплаты')
-    if (!paymentForm.legal_entity_id) return setPaymentMessage('Выберите наш VOEN / юрлицо для оплаты')
     const selectedIds = paymentForm.selected_e_invoice_ids || []
     const selectedRealInvoices = supplierEInvoiceOptions.filter(inv => selectedIds.includes(inv.e_invoice_id || inv.number) && inv.e_invoice_id)
 
+    const paymentSupplierId = selectedRealInvoices[0]?.supplier_id || paymentForm.supplier_id
+    const paymentLegalEntityId = selectedRealInvoices[0]?.legal_entity_id || paymentForm.legal_entity_id
+
+    if (!paymentSupplierId || !amount) return setPaymentMessage('Выберите поставщика и сумму оплаты')
+    if (!paymentLegalEntityId) return setPaymentMessage('Выберите наш VOEN / юрлицо для оплаты')
+
     try {
       if (selectedRealInvoices.length > 1) {
+        const invoiceNumbers = selectedRealInvoices.map(inv => inv.number).filter(Boolean)
+        const invoiceNotes = paymentForm.invoice_notes.trim() || invoiceNumbers.join(', ')
+        const multiComment = [
+          paymentForm.comment.trim(),
+          `Оплата одной суммой по e-qaimə: ${invoiceNumbers.join(', ')}`
+        ].filter(Boolean).join(' | ')
+
+        await callSupplierRpc('rms_supplier_payment_create_secure', {
+          p_supplier_id: paymentSupplierId,
+          p_legal_entity_id: paymentLegalEntityId || null,
+          p_payment_date: paymentForm.payment_date || todayISO(),
+          p_amount: amount,
+          p_invoice_notes: invoiceNotes || null,
+          p_comment: multiComment || null,
+          p_e_invoice_id: null
+        }, t('saved'), setPaymentMessage)
+
+        let remainingPayment = amount
         for (const inv of selectedRealInvoices) {
-          const payAmount = parseNum(inv.amount)
-          await callSupplierRpc('rms_supplier_payment_create_secure', {
-            p_supplier_id: inv.supplier_id,
-            p_legal_entity_id: inv.legal_entity_id || paymentForm.legal_entity_id || null,
-            p_payment_date: paymentForm.payment_date || todayISO(),
-            p_amount: payAmount,
-            p_invoice_notes: inv.number || null,
-            p_comment: paymentForm.comment.trim() || null,
-            p_e_invoice_id: inv.e_invoice_id
-          }, t('saved'), setPaymentMessage)
+          if (remainingPayment <= 0) break
+          const invoiceRemaining = parseNum(inv.amount)
+          const payAmount = Math.min(invoiceRemaining, remainingPayment)
+          if (payAmount <= 0) continue
+
           const dbInv = eInvoices.find(row => row.id === inv.e_invoice_id)
-          await supabase.from('supplier_e_invoices').update({ paid_amount: parseNum(dbInv?.paid_amount) + payAmount, updated_at: new Date().toISOString() }).eq('id', inv.e_invoice_id)
+          await supabase
+            .from('supplier_e_invoices')
+            .update({
+              paid_amount: parseNum(dbInv?.paid_amount) + payAmount,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', inv.e_invoice_id)
+
+          remainingPayment -= payAmount
         }
       } else {
         const updateInvoiceId = paymentForm.e_invoice_id || selectedRealInvoices[0]?.e_invoice_id || null
         await callSupplierRpc('rms_supplier_payment_create_secure', {
-          p_supplier_id: paymentForm.supplier_id,
-          p_legal_entity_id: paymentForm.legal_entity_id || null,
+          p_supplier_id: paymentSupplierId,
+          p_legal_entity_id: paymentLegalEntityId || null,
           p_payment_date: paymentForm.payment_date || todayISO(),
           p_amount: amount,
           p_invoice_notes: paymentForm.invoice_notes.trim() || null,
