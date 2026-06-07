@@ -21777,6 +21777,7 @@ function Suppliers({ t, isAdmin = false }) {
   const [expandedEntities, setExpandedEntities] = useState({})
   const [message, setMessage] = useState('')
   const [paymentMessage, setPaymentMessage] = useState('')
+  const [paymentEInvoiceSearch, setPaymentEInvoiceSearch] = useState('')
   const [supplierAdminExpanded, setSupplierAdminExpanded] = useState(false)
   const [editingSupplierId, setEditingSupplierId] = useState('')
   const [supplierEditForm, setSupplierEditForm] = useState({ name: '', voen: '', contact_person: '', phone: '', info: '', payment_term_days: '', credit_limit: '' })
@@ -22558,10 +22559,25 @@ function Suppliers({ t, isAdmin = false }) {
 
   const supplierEInvoiceOptions = [...realSupplierEInvoiceOptions, ...legacySupplierEInvoiceOptions]
 
-  const filteredPaymentEInvoices = supplierEInvoiceOptions.filter(inv =>
-    (!paymentForm.supplier_id || String(inv.supplier_id) === String(paymentForm.supplier_id)) &&
-    (!paymentForm.legal_entity_id || String(inv.legal_entity_id) === String(paymentForm.legal_entity_id))
-  )
+  const filteredPaymentEInvoices = supplierEInvoiceOptions.filter(inv => {
+    if (paymentForm.supplier_id && String(inv.supplier_id) !== String(paymentForm.supplier_id)) return false
+    if (paymentForm.legal_entity_id && String(inv.legal_entity_id) !== String(paymentForm.legal_entity_id)) return false
+
+    const needle = String(paymentEInvoiceSearch || '').trim().toLowerCase()
+    if (needle) {
+      const hay = [
+        inv.number,
+        inv.supplier,
+        inv.date,
+        inv.status,
+        inv.branch,
+        inv.amount
+      ].filter(Boolean).join(' ').toLowerCase()
+      if (!hay.includes(needle)) return false
+    }
+
+    return true
+  })
 
 
   const selectedPaymentEInvoices = supplierEInvoiceOptions.filter(inv => (paymentForm.selected_e_invoice_ids || []).includes(inv.e_invoice_id || inv.number))
@@ -23093,8 +23109,25 @@ function Suppliers({ t, isAdmin = false }) {
         </div>
         <div className="supplier-payment-multi">
           <div className="card-head suppliers-v43-card-head">
-            <div><h3>Выбор нескольких e-qaimə</h3><p className="hint">Отметьте несколько электронных накладных — сумма оплаты и номера подтянутся автоматически.</p></div>
-            {(paymentForm.selected_e_invoice_ids || []).length > 0 && <button className="ghost small" onClick={clearPaymentEInvoices}>Очистить выбор</button>}
+            <div><h3>Выбор нескольких e-qaimə</h3><p className="hint">Быстрый поиск по номеру e-qaimə, дате, статусу или сумме. Отметьте несколько накладных — сумма оплаты и номера подтянутся автоматически.</p></div>
+            <div className="action-row" style={{gap:8, alignItems:'center'}}>
+              {(paymentForm.selected_e_invoice_ids || []).length > 0 && <button className="ghost small" onClick={clearPaymentEInvoices}>Очистить выбор</button>}
+              {paymentEInvoiceSearch && <button className="ghost small" onClick={() => setPaymentEInvoiceSearch('')}>Очистить поиск</button>}
+            </div>
+          </div>
+          <div className="form-grid compact supplier-payment-searchbar" style={{marginBottom:12}}>
+            <label>
+              <span>Быстрый поиск e-qaimə</span>
+              <input
+                value={paymentEInvoiceSearch}
+                onChange={e => setPaymentEInvoiceSearch(e.target.value)}
+                placeholder="Например: MT2605, 2026-05-29, 360"
+              />
+            </label>
+            <div className="mini-kpi">
+              <span>Найдено</span>
+              <strong>{filteredPaymentEInvoices.length}</strong>
+            </div>
           </div>
           <div className="supplier-payment-multi-list">
             {filteredPaymentEInvoices.map(inv => {
