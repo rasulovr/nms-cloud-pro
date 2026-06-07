@@ -21778,6 +21778,7 @@ function Suppliers({ t, isAdmin = false }) {
   const [message, setMessage] = useState('')
   const [paymentMessage, setPaymentMessage] = useState('')
   const [paymentEInvoiceSearch, setPaymentEInvoiceSearch] = useState('')
+  const [selectedJournalPaymentIds, setSelectedJournalPaymentIds] = useState([])
   const [supplierAdminExpanded, setSupplierAdminExpanded] = useState(false)
   const [editingSupplierId, setEditingSupplierId] = useState('')
   const [supplierEditForm, setSupplierEditForm] = useState({ name: '', voen: '', contact_person: '', phone: '', info: '', payment_term_days: '', credit_limit: '' })
@@ -22930,6 +22931,28 @@ function Suppliers({ t, isAdmin = false }) {
     return purchaseLinkedEInvoices(purchaseId).map(inv => inv.invoice_number).filter(Boolean).join(', ')
   }
 
+  function paymentsForEInvoice(inv) {
+    const invoiceNumber = String(inv?.invoice_number || '').trim().toLowerCase()
+    return (payments || []).filter(p => {
+      if (p.deleted_at || String(p.comment || '').includes('v255b: merged into payment')) return false
+      if (inv?.id && String(p.e_invoice_id || '') === String(inv.id)) return true
+      if (invoiceNumber && String(p.invoice_notes || '').toLowerCase().includes(invoiceNumber)) return true
+      return false
+    })
+  }
+
+  function paymentsForPurchase(purchaseId) {
+    const byId = new Map()
+    purchaseLinkedEInvoices(purchaseId).forEach(inv => {
+      paymentsForEInvoice(inv).forEach(p => byId.set(String(p.id), p))
+    })
+    return Array.from(byId.values()).sort((a, b) => String(b.payment_date || '').localeCompare(String(a.payment_date || '')))
+  }
+
+  function toggleJournalPaymentSelection(paymentId) {
+    setSelectedJournalPaymentIds(ids => ids.includes(paymentId) ? ids.filter(id => id !== paymentId) : [...ids, paymentId])
+  }
+
   function purchaseReconciliationByEInvoices(purchase) {
     const physicalAmount = parseNum(purchase?.total_amount)
     const linkedTotal = purchaseLinkedEInvoicesTotal(purchase?.id)
@@ -23255,20 +23278,8 @@ function Suppliers({ t, isAdmin = false }) {
 
 
 
-      <div className="card span-2 supplier-opening-debt-card">
-        <div className="card-head suppliers-v43-card-head"><div><h3>Долг за предыдущий период</h3><p className="hint">Стартовый баланс поставщика при запуске RMS с уже существующими долгами.</p></div><span className="suppliers-v43-badge">Баланс</span></div>
-        <div className="form-grid compact">
-          <label><span>Поставщик</span><select value={openingDebtForm.supplier_id} onChange={e => setOpeningDebtForm({...openingDebtForm, supplier_id: e.target.value})}><option value="">Выберите поставщика</option>{activeSuppliersForOpeningLegal.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
-          <label><span>Наш VOEN</span><select value={openingDebtForm.legal_entity_id} onChange={e => setOpeningDebtForm({...openingDebtForm, legal_entity_id: e.target.value})}><option value="">Выберите VOEN</option>{legalEntities.map(le => <option key={le.id} value={le.id}>{le.name} · {le.voen}</option>)}</select></label>
-          <label><span>Дата долга</span><input type="date" value={openingDebtForm.debt_date} onChange={e => setOpeningDebtForm({...openingDebtForm, debt_date: e.target.value})} /></label>
-          <label><span>Сумма долга</span><input inputMode="decimal" value={openingDebtForm.amount} onChange={e => setOpeningDebtForm({...openingDebtForm, amount: e.target.value})} /></label>
-          <label><span>Фактура / отметка</span><input value={openingDebtForm.invoice_notes} onChange={e => setOpeningDebtForm({...openingDebtForm, invoice_notes: e.target.value})} /></label>
-          <label><span>Комментарий</span><input value={openingDebtForm.comment} onChange={e => setOpeningDebtForm({...openingDebtForm, comment: e.target.value})} /></label>
-        </div><button className="small primary" onClick={addOpeningDebt}>+ Добавить долг</button>
-        {message && <p className={`hint ${message === t('saved') ? 'save-status' : message.includes('добавлен') ? 'good' : 'bad'}`}>{message}</p>}
-      </div>
-
-
+      {/* v260: “Долг за предыдущий период” removed from UI.
+          Use a normal supplier purchase/приход with the required previous-period amount. */}
 
       <div className="card span-2">
         <div className="card-head"><div><h3>Контрагенты</h3><p className="hint">Условия оплаты и лимиты используются в Dashboard для проблемных долгов.</p></div></div>
@@ -23369,58 +23380,8 @@ function Suppliers({ t, isAdmin = false }) {
         <div className="form-grid compact"><label><span>Товар</span><input value={productForm.name} onChange={e => setProductForm({...productForm, name: e.target.value})} /></label><label><span>Тип</span><select value={productForm.category} onChange={e => setProductForm({...productForm, category: e.target.value})}>{PRODUCT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select></label><label><span>Базовая ед. для техкарты</span><select value={productForm.base_unit} onChange={e => setProductForm({...productForm, base_unit: e.target.value})}>{BASE_UNITS.map(u => <option key={u.value} value={u.value}>{u.label}</option>)}</select></label></div><button className="small" onClick={addProductFromForm}>+ Добавить товар</button>
       </div>
 
-      <div className="card span-2 supplier-einvoice-list-card">
-        <div className="card-head suppliers-v43-card-head">
-          <div><h3>Список e-qaimə</h3><p className="hint">Последние e-qaimə. По умолчанию показываются 5 последних накладных; список можно развернуть, перелистывать и редактировать.</p></div>
-          <div className="action-row" style={{gap:8, alignItems:'center'}}>
-            <span className="suppliers-v43-badge">e-qaimə</span>
-            <button className="ghost small" onClick={() => setEInvoiceListExpanded(v => !v)}>{eInvoiceListExpanded ? 'Свернуть' : `Развернуть список · всего ${filteredEInvoiceAdminRows.length}`}</button>
-          </div>
-        </div>
-        {eInvoiceListExpanded && <div className="form-grid compact">
-          <label><span>Поиск</span><input value={eInvoiceListSearch} onChange={e => setEInvoiceListSearch(e.target.value)} placeholder="№, поставщик, VOEN" /></label>
-          <label><span>Поставщик</span><select value={eInvoiceListSupplierId} onChange={e => setEInvoiceListSupplierId(e.target.value)}><option value="all">Все поставщики</option>{activeSuppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
-          <label><span>Наш VOEN</span><select value={eInvoiceListLegalEntityId} onChange={e => setEInvoiceListLegalEntityId(e.target.value)}><option value="all">Все VOEN</option>{legalEntities.map(le => <option key={le.id} value={le.id}>{le.name} · {le.voen}</option>)}</select></label>
-          <label><span>Показать</span><select value={eInvoiceAdminPageSize} onChange={e => setEInvoiceAdminPageSize(Number(e.target.value))}><option value={5}>5</option><option value={10}>10</option><option value={20}>20</option><option value={30}>30</option><option value={50}>50</option></select></label>
-        </div>}
-        {!eInvoiceListExpanded && <p className="hint" style={{marginTop:4}}>Показаны 5 последних e-qaimə. Для полного списка нажмите «Развернуть список».</p>}
-        <div className="table-wrap" style={{marginTop:12}}>
-          <table>
-            <thead><tr><th>Дата</th><th>№ e-qaimə</th><th>Поставщик</th><th>Наш VOEN</th><th>Сумма</th><th>Оплачено</th><th>Остаток</th><th>Статус</th><th>Действие</th></tr></thead>
-            <tbody>
-              {pagedEInvoiceAdminRows.map(inv => {
-                const isEditing = editingEInvoiceId === inv.id
-                const physicalTotal = eInvoiceLinkedPhysicalTotal(inv.id)
-                const balance = Math.max(0, parseNum(inv.amount) - parseNum(inv.paid_amount))
-                return <React.Fragment key={inv.id}>
-                  <tr>
-                    <td>{isEditing ? <input type="date" value={eInvoiceEditForm.invoice_date} onChange={e => setEInvoiceEditForm({...eInvoiceEditForm, invoice_date: e.target.value})} /> : inv.invoice_date}</td>
-                    <td>{isEditing ? <input value={eInvoiceEditForm.invoice_number} onChange={e => setEInvoiceEditForm({...eInvoiceEditForm, invoice_number: e.target.value})} /> : <b>{inv.invoice_number}</b>}</td>
-                    <td>{inv.suppliers?.name || '—'}</td>
-                    <td>{inv.legal_entities?.name || '—'}<br /><span className="hint">{inv.legal_entities?.voen || ''}</span></td>
-                    <td>{isEditing ? <input inputMode="decimal" value={eInvoiceEditForm.amount} onChange={e => setEInvoiceEditForm({...eInvoiceEditForm, amount: e.target.value})} /> : <b>{fmt(inv.amount)}</b>}</td>
-                    <td>{fmt(inv.paid_amount)}</td>
-                    <td className={balance > 0 ? 'bad' : 'good'}><b>{fmt(balance)}</b></td>
-                    <td>{physicalTotal ? (Math.abs(parseNum(inv.amount) - physicalTotal) <= 0.02 ? <span className="good">Сверено</span> : <span className="bad">Расхождение</span>) : (inv.status || '—')}</td>
-                    <td><div className="action-row">{isEditing ? <><button className="small primary" onClick={() => saveEInvoiceEdit(inv)}>Сохранить</button><button className="ghost small" onClick={cancelEditEInvoice}>Отмена</button></> : <><button className="small" onClick={() => startEditEInvoice(inv)}>Изменить</button><button className="small remove" onClick={() => softDeleteEInvoice(inv)}>Удалить</button></>}</div></td>
-                  </tr>
-                  {isEditing && <tr><td colSpan="9"><div className="form-grid compact"><label><span>Срок оплаты</span><input type="date" value={eInvoiceEditForm.payment_due_date} onChange={e => setEInvoiceEditForm({...eInvoiceEditForm, payment_due_date: e.target.value})} /></label><label><span>Комментарий</span><input value={eInvoiceEditForm.note} onChange={e => setEInvoiceEditForm({...eInvoiceEditForm, note: e.target.value})} /></label><label><span>Физический приход</span><strong>{fmt(physicalTotal)} AZN</strong></label></div></td></tr>}
-                </React.Fragment>
-              })}
-              {!pagedEInvoiceAdminRows.length && <tr><td colSpan="9" className="hint">e-qaimə не найдены</td></tr>}
-            </tbody>
-          </table>
-        </div>
-        {eInvoiceListExpanded && <div className="action-row" style={{justifyContent:'space-between', marginTop:10, alignItems:'center'}}>
-          <span className="hint">Показано {pagedEInvoiceAdminRows.length ? ((safeEInvoiceAdminPage - 1) * eInvoiceAdminPageSizeNumber) + 1 : 0}–{Math.min(safeEInvoiceAdminPage * eInvoiceAdminPageSizeNumber, filteredEInvoiceAdminRows.length)} из {filteredEInvoiceAdminRows.length}</span>
-          <div className="action-row" style={{gap:10, alignItems:'center'}}>
-            <button className="ghost small" onClick={() => setEInvoiceAdminPage(p => Math.max(1, p - 1))} disabled={safeEInvoiceAdminPage <= 1}>← Пред.</button>
-            <span className="hint">Страница {safeEInvoiceAdminPage} / {eInvoiceAdminTotalPages} · всего {filteredEInvoiceAdminRows.length}</span>
-            <button className="ghost small" onClick={() => setEInvoiceAdminPage(p => Math.min(eInvoiceAdminTotalPages, p + 1))} disabled={safeEInvoiceAdminPage >= eInvoiceAdminTotalPages}>След. →</button>
-          </div>
-        </div>}
-        {eInvoiceMessage && <p className={`hint ${eInvoiceMessage.includes('обновлена') || eInvoiceMessage.includes('удалена') ? 'save-status' : 'bad'}`}>{eInvoiceMessage}</p>}
-      </div>
+      {/* v260: Standalone “Список e-qaimə” removed.
+          e-qaimə is managed inside “Журнал поступлений и сверки”. */}
 
      <div className="card span-2">
         <div className="card-head">
@@ -23538,10 +23499,42 @@ function Suppliers({ t, isAdmin = false }) {
                           </div>}
 
                           {purchaseLinkedEInvoices(p.id).length > 0 && <div className="supplier-single-einvoice-card">
-                            <div className="card-head suppliers-v43-card-head"><div><h3>Связанные e-qaimə</h3><p className="hint">К одной физической накладной можно привязать несколько e-qaimə. Для сверки используется их общая сумма.</p></div></div>
-                            <div className="table-wrap"><table><thead><tr><th>Дата</th><th>№ e-qaimə</th><th>Сумма</th><th>Оплачено</th><th>Остаток</th></tr></thead><tbody>
-                              {purchaseLinkedEInvoices(p.id).map(inv => <tr key={inv.id}><td>{inv.invoice_date}</td><td><b>{inv.invoice_number}</b></td><td>{fmt(inv.amount)}</td><td>{fmt(inv.paid_amount)}</td><td>{fmt(Math.max(0, parseNum(inv.amount) - parseNum(inv.paid_amount)))}</td></tr>)}
-                            </tbody><tfoot><tr><td colSpan="2"><b>Итого e-qaimə</b></td><td><b>{fmt(purchaseLinkedEInvoicesTotal(p.id))}</b></td><td colSpan="2" className={Math.abs(purchaseLinkedEInvoicesTotal(p.id) - parseNum(p.total_amount)) > 0.02 ? 'bad' : 'good'}><b>Расхождение: {fmt(purchaseLinkedEInvoicesTotal(p.id) - parseNum(p.total_amount))}</b></td></tr></tfoot></table></div>
+                            <div className="card-head suppliers-v43-card-head"><div><h3>Связанные e-qaimə</h3><p className="hint">Здесь можно просматривать, менять, удалять и добавлять e-qaimə по выбранной физической накладной.</p></div></div>
+                            <div className="table-wrap"><table><thead><tr><th>Дата</th><th>№ e-qaimə</th><th>Сумма</th><th>Оплачено</th><th>Остаток</th><th>Оплаты</th><th>Действие</th></tr></thead><tbody>
+                              {purchaseLinkedEInvoices(p.id).map(inv => {
+                                const isEditingInv = editingEInvoiceId === inv.id
+                                const invPayments = paymentsForEInvoice(inv)
+                                const invBalance = Math.max(0, parseNum(inv.amount) - parseNum(inv.paid_amount))
+                                return <React.Fragment key={inv.id}>
+                                  <tr>
+                                    <td>{isEditingInv ? <input type="date" value={eInvoiceEditForm.invoice_date} onChange={e => setEInvoiceEditForm({...eInvoiceEditForm, invoice_date: e.target.value})} /> : inv.invoice_date}</td>
+                                    <td>{isEditingInv ? <input value={eInvoiceEditForm.invoice_number} onChange={e => setEInvoiceEditForm({...eInvoiceEditForm, invoice_number: e.target.value})} /> : <b>{inv.invoice_number}</b>}</td>
+                                    <td>{isEditingInv ? <input inputMode="decimal" value={eInvoiceEditForm.amount} onChange={e => setEInvoiceEditForm({...eInvoiceEditForm, amount: e.target.value})} /> : fmt(inv.amount)}</td>
+                                    <td>{fmt(inv.paid_amount)}</td>
+                                    <td className={invBalance > 0 ? 'bad' : 'good'}>{fmt(invBalance)}</td>
+                                    <td>{invPayments.length ? `${invPayments.length} оплат · ${fmt(invPayments.reduce((s, pay) => s + parseNum(pay.amount), 0))}` : <span className="hint">нет</span>}</td>
+                                    <td><div className="action-row">{isEditingInv ? <><button className="small primary" onClick={() => saveEInvoiceEdit(inv)}>Сохранить</button><button className="ghost small" onClick={cancelEditEInvoice}>Отмена</button></> : <><button className="small" onClick={() => startEditEInvoice(inv)}>Изменить</button><button className="small remove" onClick={() => softDeleteEInvoice(inv)}>Удалить</button></>}</div></td>
+                                  </tr>
+                                  {isEditingInv && <tr><td colSpan="7"><div className="form-grid compact"><label><span>Срок оплаты</span><input type="date" value={eInvoiceEditForm.payment_due_date} onChange={e => setEInvoiceEditForm({...eInvoiceEditForm, payment_due_date: e.target.value})} /></label><label><span>Комментарий</span><input value={eInvoiceEditForm.note} onChange={e => setEInvoiceEditForm({...eInvoiceEditForm, note: e.target.value})} /></label></div></td></tr>}
+                                </React.Fragment>
+                              })}
+                            </tbody><tfoot><tr><td colSpan="2"><b>Итого e-qaimə</b></td><td><b>{fmt(purchaseLinkedEInvoicesTotal(p.id))}</b></td><td colSpan="4" className={Math.abs(purchaseLinkedEInvoicesTotal(p.id) - parseNum(p.total_amount)) > 0.02 ? 'bad' : 'good'}><b>Расхождение: {fmt(purchaseLinkedEInvoicesTotal(p.id) - parseNum(p.total_amount))}</b></td></tr></tfoot></table></div>
+                            {paymentsForPurchase(p.id).length > 0 && <div className="supplier-single-einvoice-card" style={{marginTop:12}}>
+                              <div className="card-head suppliers-v43-card-head"><div><h3>Оплаты по выбранным e-qaimə</h3><p className="hint">Можно отметить оплаты для проверки. Баланс не меняется — это только выбор для контроля в журнале.</p></div>{selectedJournalPaymentIds.length > 0 && <button className="ghost small" onClick={() => setSelectedJournalPaymentIds([])}>Очистить выбор</button>}</div>
+                              <div className="table-wrap"><table><thead><tr><th></th><th>Дата</th><th>Отметки / e-qaimə</th><th>Сумма</th><th>Комментарий</th></tr></thead><tbody>
+                                {paymentsForPurchase(p.id).map(pay => {
+                                  const checked = selectedJournalPaymentIds.includes(pay.id)
+                                  return <tr key={pay.id} className={checked ? 'active' : ''}>
+                                    <td><input type="checkbox" checked={checked} onChange={() => toggleJournalPaymentSelection(pay.id)} /></td>
+                                    <td>{pay.payment_date}</td>
+                                    <td>{pay.invoice_notes || '—'}</td>
+                                    <td><b>{fmt(pay.amount)}</b></td>
+                                    <td>{pay.comment || '—'}</td>
+                                  </tr>
+                                })}
+                              </tbody></table></div>
+                              {selectedJournalPaymentIds.length > 0 && <p className="hint">Выбрано оплат: <b>{selectedJournalPaymentIds.length}</b> · сумма: <b>{fmt(paymentsForPurchase(p.id).filter(pay => selectedJournalPaymentIds.includes(pay.id)).reduce((s, pay) => s + parseNum(pay.amount), 0))} AZN</b></p>}
+                            </div>}
                           </div>}
 
                           <div className="table-wrap">
