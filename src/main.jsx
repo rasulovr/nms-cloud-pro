@@ -22333,6 +22333,11 @@ function Suppliers({ t, isAdmin = false }) {
     const current = purchases.find(p => p.id === id)
     if (!current) return setMessage('Поступление не найдено')
     try {
+      const hasManualAmountPatch = Object.prototype.hasOwnProperty.call(patch || {}, 'total_amount') || Object.prototype.hasOwnProperty.call(patch || {}, 'manual_amount')
+      const manualAmountRaw = Object.prototype.hasOwnProperty.call(patch || {}, 'total_amount') ? patch.total_amount : patch.manual_amount
+      const manualAmount = hasManualAmountPatch ? parseNum(manualAmountRaw) : null
+      if (hasManualAmountPatch && manualAmount <= 0) throw new Error('Сумма накладной должна быть больше 0')
+
       await callSupplierRpc('rms_supplier_purchase_update_secure', {
         p_purchase_id: id,
         p_supplier_id: patch.supplier_id ?? current.supplier_id,
@@ -22342,8 +22347,10 @@ function Suppliers({ t, isAdmin = false }) {
         p_invoice_number: patch.invoice_number ?? current.invoice_number ?? null,
         p_comment: patch.comment ?? current.comment ?? null,
         p_items: null,
-        p_manual_amount: null
+        p_manual_amount: hasManualAmountPatch ? manualAmount : null
       })
+      setMessage('Поступление обновлено')
+      await load()
     } catch (e) { setMessage(e.message) }
   }
 
@@ -23403,6 +23410,7 @@ function Suppliers({ t, isAdmin = false }) {
                           <div className="form-grid compact">
                             <label><span>Дата</span>{editingPurchaseId === p.id && !p.deleted_at ? <input type="date" defaultValue={p.purchase_date} onBlur={e => updatePurchase(p.id, { purchase_date: e.target.value })} /> : <strong>{p.purchase_date}</strong>}</label>
                             <label><span>Приходная накладная</span>{editingPurchaseId === p.id && !p.deleted_at ? <input defaultValue={p.invoice_number || ''} onBlur={e => updatePurchase(p.id, { invoice_number: e.target.value.trim() || null })} /> : <strong>{p.invoice_number || '—'}</strong>}</label>
+                            <label><span>Сумма накладной</span>{editingPurchaseId === p.id && !p.deleted_at ? <input inputMode="decimal" defaultValue={fmt(p.total_amount)} onBlur={e => updatePurchase(p.id, { total_amount: e.target.value })} /> : <strong>{fmt(p.total_amount)} AZN</strong>}</label>
                             <label><span>Филиал</span>{editingPurchaseId === p.id && !p.deleted_at ? <select defaultValue={p.branch_id || ''} onBlur={e => updatePurchase(p.id, { branch_id: e.target.value || null })}><option value="">—</option>{branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select> : <strong>{p.branches?.name || '—'}</strong>}</label>
                           </div>
                           <div className="supplier-reconcile-preview">
