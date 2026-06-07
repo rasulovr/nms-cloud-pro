@@ -22528,6 +22528,8 @@ function Suppliers({ t, isAdmin = false }) {
     return { ...meta, physicalAmount, eAmount, diff, status, tone }
   }
 
+  const normalizePaymentEInvoiceNumber = (value) => String(value || '').trim().replace(/\s+/g, '').toLowerCase()
+
   const legacySupplierEInvoiceOptions = (purchases || [])
     .filter(p => activeSupplierIds.has(p.supplier_id) && isSupplierActiveForLegal(p.supplier_id, p.legal_entity_id) && !p.deleted_at)
     .map(p => {
@@ -22564,7 +22566,34 @@ function Suppliers({ t, isAdmin = false }) {
     diff: 0
   })).filter(x => x.number && x.amount > 0)
 
-  const supplierEInvoiceOptions = [...realSupplierEInvoiceOptions, ...legacySupplierEInvoiceOptions]
+  const supplierEInvoiceOptions = (() => {
+    const byKey = new Map()
+
+    const addOption = (inv) => {
+      const key = [
+        String(inv.supplier_id || ''),
+        String(inv.legal_entity_id || ''),
+        normalizePaymentEInvoiceNumber(inv.number)
+      ].join('|')
+
+      if (!normalizePaymentEInvoiceNumber(inv.number)) return
+
+      const existing = byKey.get(key)
+      if (!existing) {
+        byKey.set(key, inv)
+        return
+      }
+
+      // Prefer real supplier_e_invoices rows over legacy metadata parsed from old purchase comments.
+      if (!existing.e_invoice_id && inv.e_invoice_id) {
+        byKey.set(key, inv)
+      }
+    }
+
+    ;[...realSupplierEInvoiceOptions, ...legacySupplierEInvoiceOptions].forEach(addOption)
+
+    return Array.from(byKey.values())
+  })()
 
   const filteredPaymentEInvoices = supplierEInvoiceOptions.filter(inv => {
     if (paymentForm.supplier_id && String(inv.supplier_id) !== String(paymentForm.supplier_id)) return false
