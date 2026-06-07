@@ -21892,6 +21892,33 @@ function Suppliers({ t, isAdmin = false }) {
     return allRows.filter(p => !p.deleted_at && !String(p.comment || '').includes('v255b: merged into payment'))
   }
 
+  async function fetchAllSupplierEInvoicesRows() {
+    const pageSize = 1000
+    let from = 0
+    let allRows = []
+
+    while (true) {
+      const { data, error } = await supabase
+        .from('supplier_e_invoices')
+        .select('*, suppliers(name), legal_entities(name,voen), branches(name)')
+        .is('deleted_at', null)
+        .order('invoice_date', { ascending: false })
+        .order('created_at', { ascending: false })
+        .range(from, from + pageSize - 1)
+
+      if (error) throw error
+
+      const batch = data || []
+      allRows = allRows.concat(batch)
+
+      if (batch.length < pageSize) break
+      from += pageSize
+      if (from > 50000) break
+    }
+
+    return allRows
+  }
+
 
   async function load() {
     const isInternal = Boolean(getInternalSessionStorage()?.rms_internal)
@@ -21922,7 +21949,12 @@ function Suppliers({ t, isAdmin = false }) {
           supabase.from('supplier_e_invoice_purchase_links').select('*, supplier_purchases(id,invoice_number,purchase_date,total_amount,branch_id,branches(name))')
         ])
         setSupplierEntityStatuses(statusRows || [])
-        setEInvoices(eInv || [])
+        try {
+          const fullEInvoices = await fetchAllSupplierEInvoicesRows()
+          setEInvoices(fullEInvoices || eInv || [])
+        } catch (_eInvoiceFetchError) {
+          setEInvoices(eInv || [])
+        }
         setEInvoiceLinks(eLinks || [])
         setProfiles(ws.user_profiles || [])
         return
@@ -21961,7 +21993,12 @@ function Suppliers({ t, isAdmin = false }) {
     }
     setOpeningDebts(opening || [])
     setSupplierEntityStatuses(statusRows || [])
-    setEInvoices(eInv || [])
+    try {
+      const fullEInvoices = await fetchAllSupplierEInvoicesRows()
+      setEInvoices(fullEInvoices || eInv || [])
+    } catch (_eInvoiceFetchError) {
+      setEInvoices(eInv || [])
+    }
     setEInvoiceLinks(eLinks || [])
     setProfiles(prof || [])
   }
@@ -24027,17 +24064,9 @@ function DebtsPayments({ t }) {
     setMessage('Открыто редактирование оплаты')
     setTimeout(() => {
       const panel = supplierTransactionPanelRef.current
-      if (panel) {
-        panel.scrollIntoView?.({ behavior: 'smooth', block: 'start' })
-        panel.scrollTo?.({ top: 0, behavior: 'smooth' })
-      }
-    }, 60)
-    setTimeout(() => {
-      const panel = supplierTransactionPanelRef.current
-      const editPanel = panel?.querySelector?.('.supplier-payment-edit-panel')
-      if (editPanel) editPanel.scrollIntoView({ behavior: 'smooth', block: 'start' })
-      else panel?.scrollIntoView?.({ behavior: 'smooth', block: 'start' })
-    }, 260)
+      panel?.scrollIntoView?.({ behavior: 'smooth', block: 'start' })
+      panel?.scrollTo?.({ top: 0, behavior: 'smooth' })
+    }, 40)
   }
 
   function paymentEditEInvoiceOptions(row) {
@@ -24052,8 +24081,10 @@ function DebtsPayments({ t }) {
       .filter(inv => String(inv.legal_entity_id || '') === String(paymentTransactionEditForm.legal_entity_id || row?.legal_entity_id || ''))
       .filter(inv => {
         const isSelected = selectedSet.has(String(inv.id)) || (inv.invoice_number && notesText.includes(String(inv.invoice_number).toLowerCase()))
-        const unpaid = Math.max(0, parseNum(inv.amount) - parseNum(inv.paid_amount)) > 0.02
-        return isSelected || unpaid
+        const balance = Math.max(0, parseNum(inv.amount) - parseNum(inv.paid_amount))
+        // Show all e-qaimə for this supplier/VOEN. Paid rows are still useful when editing old payments
+        // that were created before e-qaimə linking existed.
+        return isSelected || balance >= 0
       })
       .filter(inv => {
         if (!needle) return true
@@ -25428,7 +25459,7 @@ function DebtsPayments({ t }) {
           <div className="card-head suppliers-v43-card-head">
             <div>
               <h4>Редактирование оплаты поставщику</h4>
-              <p className="hint">Оплата редактируется здесь, над списком. Можно выбрать неоплаченные e-qaimə и сохранить одной общей строкой.</p>
+              <p className="hint">Оплата редактируется здесь, над списком. Можно выбрать e-qaimə из списка и сохранить оплату одной общей строкой.</p>
             </div>
             <button className="ghost small" onClick={() => setEditingPaymentTransactionId('')}>Закрыть</button>
           </div>
@@ -25441,7 +25472,7 @@ function DebtsPayments({ t }) {
           </div>
           <div className="supplier-single-einvoice-card" style={{marginTop:12}}>
             <div className="card-head suppliers-v43-card-head">
-              <div><h4>Добавить / изменить e-qaimə в этой оплате</h4><p className="hint">Выберите из списка неоплаченных e-qaimə. Номера и сумма оплаты подтянутся автоматически.</p></div>
+              <div><h4>Добавить / изменить e-qaimə в этой оплате</h4><p className="hint">Выберите e-qaimə по этому поставщику / VOEN. Номера и сумма оплаты подтянутся автоматически.</p></div>
               {(paymentTransactionEditForm.selected_e_invoice_ids || []).length > 0 && <button className="ghost small" onClick={() => setPaymentTransactionEditForm(f => ({...f, selected_e_invoice_ids: [], invoice_notes: '', amount: ''}))}>Очистить выбор</button>}
             </div>
             <div className="form-grid compact">
@@ -25449,7 +25480,7 @@ function DebtsPayments({ t }) {
               <div className="mini-kpi"><span>Найдено</span><strong>{safePaymentEditEInvoiceOptions(activeEditingPayment).length}</strong></div>
             </div>
             <div className="table-wrap" style={{maxHeight:260, overflow:'auto'}}>
-              <table><thead><tr><th></th><th>Дата</th><th>№ e-qaimə</th><th>Сумма</th><th>Оплачено</th><th>Остаток</th></tr></thead><tbody>{safePaymentEditEInvoiceOptions(activeEditingPayment).map(inv => { const selectedIds = Array.isArray(paymentTransactionEditForm.selected_e_invoice_ids) ? paymentTransactionEditForm.selected_e_invoice_ids : []; const checked = selectedIds.map(String).includes(String(inv.id)); const balance = Math.max(0, parseNum(inv.amount) - parseNum(inv.paid_amount)); return <tr key={inv.id} className={checked ? 'active' : ''}><td><input type="checkbox" checked={checked} onChange={() => togglePaymentEditEInvoice(inv, activeEditingPayment)} /></td><td>{inv.invoice_date}</td><td><b>{inv.invoice_number}</b></td><td>{fmt(inv.amount)}</td><td>{fmt(inv.paid_amount)}</td><td className={balance > 0 ? 'bad' : 'good'}>{fmt(balance)}</td></tr> })}{!safePaymentEditEInvoiceOptions(activeEditingPayment).length && <tr><td colSpan="6" className="hint">Нет неоплаченных e-qaimə по этому поставщику / VOEN.</td></tr>}</tbody></table>
+              <table><thead><tr><th></th><th>Дата</th><th>№ e-qaimə</th><th>Сумма</th><th>Оплачено</th><th>Остаток</th></tr></thead><tbody>{safePaymentEditEInvoiceOptions(activeEditingPayment).map(inv => { const selectedIds = Array.isArray(paymentTransactionEditForm.selected_e_invoice_ids) ? paymentTransactionEditForm.selected_e_invoice_ids : []; const checked = selectedIds.map(String).includes(String(inv.id)); const balance = Math.max(0, parseNum(inv.amount) - parseNum(inv.paid_amount)); return <tr key={inv.id} className={checked ? 'active' : ''}><td><input type="checkbox" checked={checked} onChange={() => togglePaymentEditEInvoice(inv, activeEditingPayment)} /></td><td>{inv.invoice_date}</td><td><b>{inv.invoice_number}</b></td><td>{fmt(inv.amount)}</td><td>{fmt(inv.paid_amount)}</td><td className={balance > 0 ? 'bad' : 'good'}>{fmt(balance)}</td></tr> })}{!safePaymentEditEInvoiceOptions(activeEditingPayment).length && <tr><td colSpan="6" className="hint">e-qaimə по этому поставщику / VOEN не найдены.</td></tr>}</tbody></table>
             </div>
             {(paymentTransactionEditForm.selected_e_invoice_ids || []).length > 0 && <p className="hint">Выбрано: <b>{paymentTransactionEditForm.selected_e_invoice_ids.length}</b> · сумма в поле оплаты будет общей по выбранным e-qaimə.</p>}
           </div>
@@ -25615,22 +25646,31 @@ function DebtsPayments({ t }) {
           border-radius:18px!important;
         }
 
-        /* v266: payment edit panel must be visible and comfortable, not squeezed by generic card max-height */
+        /* v267: payment edit panel opens as a clear standalone overlay, not hidden inside the table scroll */
         .rms-pro-shell .supplier-transactions-panel.supplier-modal-panel > .supplier-payment-edit-panel{
-          max-height:calc(100vh - 150px)!important;
-          min-height:min(560px,calc(100vh - 170px))!important;
+          position:fixed!important;
+          top:36px!important;
+          left:50%!important;
+          transform:translateX(-50%)!important;
+          z-index:2605!important;
+          width:min(1180px,calc(100vw - 44px))!important;
+          max-height:calc(100vh - 72px)!important;
+          min-height:min(640px,calc(100vh - 92px))!important;
           overflow:auto!important;
-          margin-top:14px!important;
-          margin-bottom:18px!important;
-          border-radius:20px!important;
+          margin:0!important;
+          padding:18px!important;
+          border-radius:22px!important;
           background:#fff!important;
+          box-shadow:0 34px 90px rgba(15,23,42,.34)!important;
+          border:2px solid rgba(37,99,235,.24)!important;
         }
 
         .rms-pro-shell .supplier-payment-edit-panel .table-wrap{
-          max-height:min(420px,calc(100vh - 390px))!important;
+          max-height:min(460px,calc(100vh - 410px))!important;
           overflow:auto!important;
           border:1px solid #e5e7eb!important;
           border-radius:14px!important;
+          background:#fff!important;
         }
 
         .rms-pro-shell .supplier-payment-edit-panel .card-head{
