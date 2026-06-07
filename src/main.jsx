@@ -24324,18 +24324,26 @@ function DebtsPayments({ t }) {
       debit: parseNum(p.total_amount),
       credit: 0
     })),
-    ...payments.map(p => ({
-      id: `pay-${p.id}`,
-      supplier_id: p.supplier_id,
-      legal_entity_id: p.legal_entity_id || '',
-      suppliers: p.suppliers,
-      legal_entities: p.legal_entities,
-      transaction_date: p.payment_date,
-      invoice: p.invoice_notes || '',
-      comment: p.comment || p.invoice_notes || 'Оплата',
-      debit: 0,
-      credit: parseNum(p.amount)
-    }))
+    ...(payments || [])
+      .filter(p => !p.deleted_at && !String(p.comment || '').includes('v255b: merged into payment'))
+      .map(p => {
+        const rawComment = String(p.comment || '').trim()
+        const cleanComment = rawComment.startsWith('v255b: merged single payment')
+          ? 'Оплата одной суммой по нескольким e-qaimə'
+          : (rawComment || p.invoice_notes || 'Оплата')
+        return {
+          id: `pay-${p.id}`,
+          supplier_id: p.supplier_id,
+          legal_entity_id: p.legal_entity_id || '',
+          suppliers: p.suppliers,
+          legal_entities: p.legal_entities,
+          transaction_date: p.payment_date,
+          invoice: p.invoice_notes || '',
+          comment: cleanComment,
+          debit: 0,
+          credit: parseNum(p.amount)
+        }
+      })
   ]
     .filter(r => activeSupplierIds.has(r.supplier_id) && isSupplierActiveForLegal(r.supplier_id, r.legal_entity_id))
     .filter(r => ledgerSupplierId === 'all' || r.supplier_id === ledgerSupplierId)
