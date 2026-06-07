@@ -24027,10 +24027,17 @@ function DebtsPayments({ t }) {
     setMessage('Открыто редактирование оплаты')
     setTimeout(() => {
       const panel = supplierTransactionPanelRef.current
+      if (panel) {
+        panel.scrollIntoView?.({ behavior: 'smooth', block: 'start' })
+        panel.scrollTo?.({ top: 0, behavior: 'smooth' })
+      }
+    }, 60)
+    setTimeout(() => {
+      const panel = supplierTransactionPanelRef.current
       const editPanel = panel?.querySelector?.('.supplier-payment-edit-panel')
       if (editPanel) editPanel.scrollIntoView({ behavior: 'smooth', block: 'start' })
       else panel?.scrollIntoView?.({ behavior: 'smooth', block: 'start' })
-    }, 180)
+    }, 260)
   }
 
   function paymentEditEInvoiceOptions(row) {
@@ -25606,6 +25613,34 @@ function DebtsPayments({ t }) {
           margin-top:12px!important;
           margin-bottom:18px!important;
           border-radius:18px!important;
+        }
+
+        /* v266: payment edit panel must be visible and comfortable, not squeezed by generic card max-height */
+        .rms-pro-shell .supplier-transactions-panel.supplier-modal-panel > .supplier-payment-edit-panel{
+          max-height:calc(100vh - 150px)!important;
+          min-height:min(560px,calc(100vh - 170px))!important;
+          overflow:auto!important;
+          margin-top:14px!important;
+          margin-bottom:18px!important;
+          border-radius:20px!important;
+          background:#fff!important;
+        }
+
+        .rms-pro-shell .supplier-payment-edit-panel .table-wrap{
+          max-height:min(420px,calc(100vh - 390px))!important;
+          overflow:auto!important;
+          border:1px solid #e5e7eb!important;
+          border-radius:14px!important;
+        }
+
+        .rms-pro-shell .supplier-payment-edit-panel .card-head{
+          position:sticky!important;
+          top:0!important;
+          z-index:6!important;
+          background:rgba(255,255,255,.98)!important;
+          backdrop-filter:blur(8px)!important;
+          border-bottom:1px solid #e5e7eb!important;
+          padding-bottom:10px!important;
         }
 
         .rms-pro-shell .supplier-transactions-panel.supplier-modal-panel .action-row{
