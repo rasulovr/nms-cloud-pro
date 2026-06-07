@@ -21864,6 +21864,34 @@ function Suppliers({ t, isAdmin = false }) {
     return allRows
   }
 
+  async function fetchAllSupplierPaymentsRows() {
+    const pageSize = 1000
+    let from = 0
+    let allRows = []
+
+    while (true) {
+      const { data, error } = await supabase
+        .from('supplier_payments')
+        .select('*, suppliers(name), legal_entities(name,voen), supplier_e_invoices(invoice_number)')
+        .is('deleted_at', null)
+        .order('payment_date', { ascending: false })
+        .order('created_at', { ascending: false })
+        .range(from, from + pageSize - 1)
+
+      if (error) throw error
+
+      const batch = data || []
+      allRows = allRows.concat(batch)
+
+      if (batch.length < pageSize) break
+      from += pageSize
+      if (from > 50000) break
+    }
+
+    return allRows.filter(p => !p.deleted_at && !String(p.comment || '').includes('v255b: merged into payment'))
+  }
+
+
   async function load() {
     const isInternal = Boolean(getInternalSessionStorage()?.rms_internal)
 
@@ -21880,7 +21908,12 @@ function Suppliers({ t, isAdmin = false }) {
         } catch (_purchaseFetchError) {
           setPurchases(ws.supplier_purchases || [])
         }
-        setPayments((ws.supplier_payments || []).filter(p => !p.deleted_at))
+        try {
+          const fullPayments = await fetchAllSupplierPaymentsRows()
+          setPayments(fullPayments || [])
+        } catch (_paymentFetchError) {
+          setPayments((ws.supplier_payments || []).filter(p => !p.deleted_at && !String(p.comment || '').includes('v255b: merged into payment')))
+        }
         setOpeningDebts(ws.supplier_opening_debts || [])
         const [{ data: statusRows }, { data: eInv }, { data: eLinks }] = await Promise.all([
           supabase.from('supplier_legal_entity_status').select('*'),
@@ -21919,7 +21952,12 @@ function Suppliers({ t, isAdmin = false }) {
     } catch (_purchaseFetchError) {
       setPurchases(pur || [])
     }
-    setPayments((pay || []).filter(p => !p.deleted_at))
+    try {
+      const fullPayments = await fetchAllSupplierPaymentsRows()
+      setPayments(fullPayments || [])
+    } catch (_paymentFetchError) {
+      setPayments((pay || []).filter(p => !p.deleted_at && !String(p.comment || '').includes('v255b: merged into payment')))
+    }
     setOpeningDebts(opening || [])
     setSupplierEntityStatuses(statusRows || [])
     setEInvoices(eInv || [])
@@ -22492,7 +22530,7 @@ function Suppliers({ t, isAdmin = false }) {
   function allTransactions() {
     const openingDebtRows = openingDebts.map(d => ({ id: `od-${d.id}`, type: 'Долг за предыдущий период', date: d.debt_date, supplier_id: d.supplier_id, legal_entity_id: d.legal_entity_id || '', supplier: d.suppliers?.name || suppliers.find(s => s.id === d.supplier_id)?.name || '—', invoice: d.invoice_notes || 'Стартовый долг', amount: parseNum(d.amount), comment: d.comment || '', legal: d.legal_entities?.name || legalEntities.find(le => le.id === d.legal_entity_id)?.name || '—' }))
     const purchaseRows = purchases.map(p => ({ id: `p-${p.id}`, type: 'Поступление', date: p.purchase_date, supplier_id: p.supplier_id, legal_entity_id: p.legal_entity_id || '', supplier: p.suppliers?.name || suppliers.find(s => s.id === p.supplier_id)?.name || '—', invoice: p.invoice_number || '—', amount: parseNum(p.total_amount), comment: p.comment || '', legal: p.legal_entities?.name || '—' }))
-    const paymentRows = (payments || []).filter(p => !p.deleted_at).map(p => ({ id: `pay-${p.id}`, type: 'Оплата', date: p.payment_date, supplier_id: p.supplier_id, legal_entity_id: p.legal_entity_id || '', supplier: p.suppliers?.name || suppliers.find(s => s.id === p.supplier_id)?.name || '—', invoice: p.invoice_notes || '—', amount: -parseNum(p.amount), comment: p.comment || '', legal: p.legal_entities?.name || legalEntities.find(le => le.id === p.legal_entity_id)?.name || '—' }))
+    const paymentRows = (payments || []).filter(p => !p.deleted_at && !String(p.comment || '').includes('v255b: merged into payment')).map(p => ({ id: `pay-${p.id}`, type: 'Оплата', date: p.payment_date, supplier_id: p.supplier_id, legal_entity_id: p.legal_entity_id || '', supplier: p.suppliers?.name || suppliers.find(s => s.id === p.supplier_id)?.name || '—', invoice: p.invoice_notes || '—', amount: -parseNum(p.amount), comment: p.comment || '', legal: p.legal_entities?.name || legalEntities.find(le => le.id === p.legal_entity_id)?.name || '—' }))
     return [...openingDebtRows, ...purchaseRows, ...paymentRows].sort((a,b) => new Date(b.date) - new Date(a.date))
   }
   function periodOk(dateStr) {
