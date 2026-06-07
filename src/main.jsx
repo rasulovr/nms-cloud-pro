@@ -24021,11 +24021,15 @@ function DebtsPayments({ t }) {
       amount: String(parseNum(row.amount)),
       invoice_notes: row.invoice_notes || '',
       comment: row.comment || '',
-      selected_e_invoice_ids: selectedInvoiceIds,
+      selected_e_invoice_ids: Array.isArray(selectedInvoiceIds) ? selectedInvoiceIds : [],
       e_invoice_search: ''
     })
+    setMessage('Открыто редактирование оплаты')
     setTimeout(() => {
-      supplierTransactionPanelRef.current?.querySelector?.('.supplier-payment-edit-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      const panel = supplierTransactionPanelRef.current
+      const editPanel = panel?.querySelector?.('.supplier-payment-edit-panel')
+      if (editPanel) editPanel.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      else panel?.scrollIntoView?.({ behavior: 'smooth', block: 'start' })
     }, 180)
   }
 
@@ -24051,6 +24055,14 @@ function DebtsPayments({ t }) {
       })
       .sort((a, b) => String(b.invoice_date || '').localeCompare(String(a.invoice_date || '')))
       .slice(0, 80)
+  }
+
+  function safePaymentEditEInvoiceOptions(row) {
+    try {
+      return paymentEditEInvoiceOptions(row) || []
+    } catch (_error) {
+      return []
+    }
   }
 
   function togglePaymentEditEInvoice(inv, row) {
@@ -25427,10 +25439,10 @@ function DebtsPayments({ t }) {
             </div>
             <div className="form-grid compact">
               <label><span>Поиск e-qaimə</span><input value={paymentTransactionEditForm.e_invoice_search || ''} onChange={e => setPaymentTransactionEditForm({...paymentTransactionEditForm, e_invoice_search: e.target.value})} placeholder="№, дата, сумма" /></label>
-              <div className="mini-kpi"><span>Найдено</span><strong>{paymentEditEInvoiceOptions(activeEditingPayment).length}</strong></div>
+              <div className="mini-kpi"><span>Найдено</span><strong>{safePaymentEditEInvoiceOptions(activeEditingPayment).length}</strong></div>
             </div>
             <div className="table-wrap" style={{maxHeight:260, overflow:'auto'}}>
-              <table><thead><tr><th></th><th>Дата</th><th>№ e-qaimə</th><th>Сумма</th><th>Оплачено</th><th>Остаток</th></tr></thead><tbody>{paymentEditEInvoiceOptions(activeEditingPayment).map(inv => { const checked = (paymentTransactionEditForm.selected_e_invoice_ids || []).map(String).includes(String(inv.id)); const balance = Math.max(0, parseNum(inv.amount) - parseNum(inv.paid_amount)); return <tr key={inv.id} className={checked ? 'active' : ''}><td><input type="checkbox" checked={checked} onChange={() => togglePaymentEditEInvoice(inv, activeEditingPayment)} /></td><td>{inv.invoice_date}</td><td><b>{inv.invoice_number}</b></td><td>{fmt(inv.amount)}</td><td>{fmt(inv.paid_amount)}</td><td className={balance > 0 ? 'bad' : 'good'}>{fmt(balance)}</td></tr> })}{!paymentEditEInvoiceOptions(activeEditingPayment).length && <tr><td colSpan="6" className="hint">Нет неоплаченных e-qaimə по этому поставщику / VOEN.</td></tr>}</tbody></table>
+              <table><thead><tr><th></th><th>Дата</th><th>№ e-qaimə</th><th>Сумма</th><th>Оплачено</th><th>Остаток</th></tr></thead><tbody>{safePaymentEditEInvoiceOptions(activeEditingPayment).map(inv => { const selectedIds = Array.isArray(paymentTransactionEditForm.selected_e_invoice_ids) ? paymentTransactionEditForm.selected_e_invoice_ids : []; const checked = selectedIds.map(String).includes(String(inv.id)); const balance = Math.max(0, parseNum(inv.amount) - parseNum(inv.paid_amount)); return <tr key={inv.id} className={checked ? 'active' : ''}><td><input type="checkbox" checked={checked} onChange={() => togglePaymentEditEInvoice(inv, activeEditingPayment)} /></td><td>{inv.invoice_date}</td><td><b>{inv.invoice_number}</b></td><td>{fmt(inv.amount)}</td><td>{fmt(inv.paid_amount)}</td><td className={balance > 0 ? 'bad' : 'good'}>{fmt(balance)}</td></tr> })}{!safePaymentEditEInvoiceOptions(activeEditingPayment).length && <tr><td colSpan="6" className="hint">Нет неоплаченных e-qaimə по этому поставщику / VOEN.</td></tr>}</tbody></table>
             </div>
             {(paymentTransactionEditForm.selected_e_invoice_ids || []).length > 0 && <p className="hint">Выбрано: <b>{paymentTransactionEditForm.selected_e_invoice_ids.length}</b> · сумма в поле оплаты будет общей по выбранным e-qaimə.</p>}
           </div>
