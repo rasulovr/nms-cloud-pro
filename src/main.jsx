@@ -24036,6 +24036,31 @@ function DebtsPayments({ t }) {
   }
 
 
+  function resolvePaymentLegalEntityId(row) {
+    if (row?.legal_entity_id) return row.legal_entity_id
+    if (activeLegalEntityId) return activeLegalEntityId
+    const rowLegalName = String(row?.legal_entities?.name || '').trim().toLowerCase()
+    const rowLegalVoen = String(row?.legal_entities?.voen || '').trim()
+    if (rowLegalName || rowLegalVoen) {
+      const matched = (legalEntities || []).find(le =>
+        (rowLegalName && String(le.name || '').trim().toLowerCase() === rowLegalName) ||
+        (rowLegalVoen && String(le.voen || '').trim() === rowLegalVoen)
+      )
+      if (matched?.id) return matched.id
+    }
+
+    const notesText = String(row?.invoice_notes || '').toLowerCase()
+    const byInvoice = (eInvoices || []).find(inv =>
+      String(inv.supplier_id || '') === String(row?.supplier_id || '') &&
+      inv.legal_entity_id &&
+      inv.invoice_number &&
+      notesText.includes(String(inv.invoice_number).toLowerCase())
+    )
+    if (byInvoice?.legal_entity_id) return byInvoice.legal_entity_id
+
+    return legalEntities[0]?.id || ''
+  }
+
   function startEditSupplierPayment(row) {
     if (!row) return
     setMessage('')
@@ -24043,18 +24068,19 @@ function DebtsPayments({ t }) {
     setEditingPurchaseTransactionId('')
     setDetailPurchaseId('')
     setEditingPaymentTransactionId(String(row.id))
+    const resolvedLegalEntityId = resolvePaymentLegalEntityId(row)
     const invoiceNotesText = String(row.invoice_notes || '').toLowerCase()
     const selectedInvoiceIds = (eInvoices || [])
       .filter(inv =>
         String(inv.supplier_id || '') === String(row.supplier_id || '') &&
-        String(inv.legal_entity_id || '') === String(row.legal_entity_id || '') &&
+        (!resolvedLegalEntityId || String(inv.legal_entity_id || '') === String(resolvedLegalEntityId) || invoiceNotesText.includes(String(inv.invoice_number || '').toLowerCase())) &&
         inv.invoice_number &&
         invoiceNotesText.includes(String(inv.invoice_number).toLowerCase())
       )
       .map(inv => inv.id)
     setPaymentTransactionEditForm({
       payment_date: row.payment_date || todayISO(),
-      legal_entity_id: row.legal_entity_id || activeLegalEntityId || legalEntities[0]?.id || '',
+      legal_entity_id: resolvedLegalEntityId,
       amount: String(parseNum(row.amount)),
       invoice_notes: row.invoice_notes || '',
       comment: row.comment || '',
@@ -24070,29 +24096,34 @@ function DebtsPayments({ t }) {
   }
 
   function paymentEditEInvoiceOptions(row) {
-    const selectedIds = paymentTransactionEditForm.selected_e_invoice_ids || []
+    const selectedIds = Array.isArray(paymentTransactionEditForm.selected_e_invoice_ids) ? paymentTransactionEditForm.selected_e_invoice_ids : []
     const selectedSet = new Set(selectedIds.map(String))
     const needle = String(paymentTransactionEditForm.e_invoice_search || '').trim().toLowerCase()
     const notesText = String(paymentTransactionEditForm.invoice_notes || '').toLowerCase()
+    const supplierId = String(row?.supplier_id || '')
+    const selectedLegalEntityId = String(paymentTransactionEditForm.legal_entity_id || resolvePaymentLegalEntityId(row) || '')
 
-    return (eInvoices || [])
+    const baseRows = (eInvoices || [])
       .filter(inv => !inv.deleted_at)
-      .filter(inv => String(inv.supplier_id || '') === String(row?.supplier_id || ''))
-      .filter(inv => String(inv.legal_entity_id || '') === String(paymentTransactionEditForm.legal_entity_id || row?.legal_entity_id || ''))
-      .filter(inv => {
-        const isSelected = selectedSet.has(String(inv.id)) || (inv.invoice_number && notesText.includes(String(inv.invoice_number).toLowerCase()))
-        const balance = Math.max(0, parseNum(inv.amount) - parseNum(inv.paid_amount))
-        // Show all e-qaimə for this supplier/VOEN. Paid rows are still useful when editing old payments
-        // that were created before e-qaimə linking existed.
-        return isSelected || balance >= 0
-      })
+      .filter(inv => String(inv.supplier_id || '') === supplierId)
       .filter(inv => {
         if (!needle) return true
-        const hay = [inv.invoice_number, inv.invoice_date, inv.amount, inv.paid_amount, inv.status].filter(Boolean).join(' ').toLowerCase()
+        const hay = [inv.invoice_number, inv.invoice_date, inv.amount, inv.paid_amount, inv.status, inv.legal_entities?.name, inv.legal_entities?.voen].filter(Boolean).join(' ').toLowerCase()
         return hay.includes(needle)
       })
-      .sort((a, b) => String(b.invoice_date || '').localeCompare(String(a.invoice_date || '')))
-      .slice(0, 80)
+
+    const exactLegalRows = baseRows.filter(inv =>
+      !selectedLegalEntityId ||
+      String(inv.legal_entity_id || '') === selectedLegalEntityId ||
+      selectedSet.has(String(inv.id)) ||
+      (inv.invoice_number && notesText.includes(String(inv.invoice_number).toLowerCase()))
+    )
+
+    const rows = exactLegalRows.length ? exactLegalRows : baseRows
+
+    return rows
+      .sort((a, b) => String(b.invoice_date || '').localeCompare(String(a.invoice_date || '')) || String(b.created_at || '').localeCompare(String(a.created_at || '')))
+      .slice(0, 120)
   }
 
   function safePaymentEditEInvoiceOptions(row) {
@@ -24115,6 +24146,7 @@ function DebtsPayments({ t }) {
     }, 0)
     setPaymentTransactionEditForm(f => ({
       ...f,
+      legal_entity_id: selected[0]?.legal_entity_id || f.legal_entity_id,
       selected_e_invoice_ids: nextIds,
       invoice_notes: notes || f.invoice_notes,
       amount: selected.length ? String(selectedTotal.toFixed(2)) : f.amount,
@@ -25480,7 +25512,7 @@ function DebtsPayments({ t }) {
               <div className="mini-kpi"><span>Найдено</span><strong>{safePaymentEditEInvoiceOptions(activeEditingPayment).length}</strong></div>
             </div>
             <div className="table-wrap" style={{maxHeight:260, overflow:'auto'}}>
-              <table><thead><tr><th></th><th>Дата</th><th>№ e-qaimə</th><th>Сумма</th><th>Оплачено</th><th>Остаток</th></tr></thead><tbody>{safePaymentEditEInvoiceOptions(activeEditingPayment).map(inv => { const selectedIds = Array.isArray(paymentTransactionEditForm.selected_e_invoice_ids) ? paymentTransactionEditForm.selected_e_invoice_ids : []; const checked = selectedIds.map(String).includes(String(inv.id)); const balance = Math.max(0, parseNum(inv.amount) - parseNum(inv.paid_amount)); return <tr key={inv.id} className={checked ? 'active' : ''}><td><input type="checkbox" checked={checked} onChange={() => togglePaymentEditEInvoice(inv, activeEditingPayment)} /></td><td>{inv.invoice_date}</td><td><b>{inv.invoice_number}</b></td><td>{fmt(inv.amount)}</td><td>{fmt(inv.paid_amount)}</td><td className={balance > 0 ? 'bad' : 'good'}>{fmt(balance)}</td></tr> })}{!safePaymentEditEInvoiceOptions(activeEditingPayment).length && <tr><td colSpan="6" className="hint">e-qaimə по этому поставщику / VOEN не найдены.</td></tr>}</tbody></table>
+              <table><thead><tr><th></th><th>Дата</th><th>№ e-qaimə</th><th>Сумма</th><th>Оплачено</th><th>Остаток</th></tr></thead><tbody>{safePaymentEditEInvoiceOptions(activeEditingPayment).map(inv => { const selectedIds = Array.isArray(paymentTransactionEditForm.selected_e_invoice_ids) ? paymentTransactionEditForm.selected_e_invoice_ids : []; const checked = selectedIds.map(String).includes(String(inv.id)); const balance = Math.max(0, parseNum(inv.amount) - parseNum(inv.paid_amount)); return <tr key={inv.id} className={checked ? 'active' : ''}><td><input type="checkbox" checked={checked} onChange={() => togglePaymentEditEInvoice(inv, activeEditingPayment)} /></td><td>{inv.invoice_date}</td><td><b>{inv.invoice_number}</b></td><td>{fmt(inv.amount)}</td><td>{fmt(inv.paid_amount)}</td><td className={balance > 0 ? 'bad' : 'good'}>{fmt(balance)}</td></tr> })}{!safePaymentEditEInvoiceOptions(activeEditingPayment).length && <tr><td colSpan="6" className="hint">e-qaimə не найдены. Проверьте VOEN или введите часть номера в поиск.</td></tr>}</tbody></table>
             </div>
             {(paymentTransactionEditForm.selected_e_invoice_ids || []).length > 0 && <p className="hint">Выбрано: <b>{paymentTransactionEditForm.selected_e_invoice_ids.length}</b> · сумма в поле оплаты будет общей по выбранным e-qaimə.</p>}
           </div>
@@ -25649,20 +25681,21 @@ function DebtsPayments({ t }) {
         /* v267: payment edit panel opens as a clear standalone overlay, not hidden inside the table scroll */
         .rms-pro-shell .supplier-transactions-panel.supplier-modal-panel > .supplier-payment-edit-panel{
           position:fixed!important;
-          top:36px!important;
+          top:18px!important;
           left:50%!important;
           transform:translateX(-50%)!important;
-          z-index:2605!important;
-          width:min(1180px,calc(100vw - 44px))!important;
-          max-height:calc(100vh - 72px)!important;
-          min-height:min(640px,calc(100vh - 92px))!important;
+          z-index:9999!important;
+          width:min(1240px,calc(100vw - 32px))!important;
+          max-height:calc(100vh - 36px)!important;
+          min-height:min(680px,calc(100vh - 56px))!important;
           overflow:auto!important;
           margin:0!important;
-          padding:18px!important;
-          border-radius:22px!important;
+          padding:22px!important;
+          border-radius:24px!important;
           background:#fff!important;
-          box-shadow:0 34px 90px rgba(15,23,42,.34)!important;
-          border:2px solid rgba(37,99,235,.24)!important;
+          box-shadow:0 40px 110px rgba(15,23,42,.42)!important;
+          border:2px solid rgba(37,99,235,.36)!important;
+          outline:9999px solid rgba(15,23,42,.18)!important;
         }
 
         .rms-pro-shell .supplier-payment-edit-panel .table-wrap{
