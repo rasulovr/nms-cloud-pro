@@ -24633,7 +24633,24 @@ function DebtsPayments({ t }) {
     setEditingOpeningDebtId('')
     setEditingPurchaseTransactionId('')
     setDetailPurchaseId('')
+
+    const initialNotesText = `${row.invoice_notes || ''} ${row.comment || ''}`
+    const initialSelectedNumbers = extractPaymentEInvoiceNumbers(initialNotesText)
+    const initialResolvedLegalEntityId = resolvePaymentLegalEntityId(row)
+
+    // v288: fill the editor immediately before any async fetch.
+    // Previously the overlay opened with empty fields while e-qaimə were loading.
     setEditingPaymentTransactionId(String(row.id))
+    setPaymentTransactionEditForm({
+      payment_date: row.payment_date || row.date || todayISO(),
+      legal_entity_id: row.legal_entity_id || initialResolvedLegalEntityId || activeLegalEntityId || legalEntities[0]?.id || '',
+      amount: String(parseNum(row.amount)),
+      invoice_notes: row.invoice_notes || initialSelectedNumbers.join(', '),
+      comment: row.comment || '',
+      selected_e_invoice_ids: initialSelectedNumbers,
+      e_invoice_search: ''
+    })
+
     setPaymentEditLoading(true)
     let directEInvoices = []
     try {
@@ -24650,7 +24667,8 @@ function DebtsPayments({ t }) {
     }
     setPaymentEditEInvoices(directEInvoices)
     setPaymentEditLoading(false)
-    const resolvedLegalEntityId = resolvePaymentLegalEntityId({ ...row, _direct_e_invoices: directEInvoices })
+
+    const resolvedLegalEntityId = resolvePaymentLegalEntityId({ ...row, _direct_e_invoices: directEInvoices }) || initialResolvedLegalEntityId
     const invoiceNotesText = `${row.invoice_notes || ''} ${row.comment || ''}`.toLowerCase()
     const selectedInvoiceIds = (directEInvoices.length ? directEInvoices : (eInvoices || []))
       .filter(inv =>
@@ -24661,18 +24679,21 @@ function DebtsPayments({ t }) {
       )
       .map(inv => inv.id)
 
-    extractPaymentEInvoiceNumbers(`${row.invoice_notes || ''} ${row.comment || ''}`).forEach(number => {
+    initialSelectedNumbers.forEach(number => {
       if (!selectedInvoiceIds.map(String).includes(String(number))) selectedInvoiceIds.push(number)
     })
-    setPaymentTransactionEditForm({
-      payment_date: row.payment_date || todayISO(),
-      legal_entity_id: resolvedLegalEntityId,
+
+    setPaymentTransactionEditForm(prev => ({
+      ...prev,
+      payment_date: row.payment_date || row.date || prev.payment_date || todayISO(),
+      legal_entity_id: row.legal_entity_id || resolvedLegalEntityId || prev.legal_entity_id || legalEntities[0]?.id || '',
       amount: String(parseNum(row.amount)),
-      invoice_notes: row.invoice_notes || '',
-      comment: row.comment || '',
-      selected_e_invoice_ids: Array.isArray(selectedInvoiceIds) ? selectedInvoiceIds : [],
+      invoice_notes: row.invoice_notes || initialSelectedNumbers.join(', ') || prev.invoice_notes,
+      comment: row.comment || prev.comment,
+      selected_e_invoice_ids: Array.isArray(selectedInvoiceIds) ? selectedInvoiceIds : initialSelectedNumbers,
       e_invoice_search: ''
-    })
+    }))
+
     setMessage('Открыто редактирование оплаты')
     setTimeout(() => {
       const panel = supplierTransactionPanelRef.current
