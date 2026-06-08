@@ -22956,14 +22956,6 @@ function Suppliers({ t, isAdmin = false }) {
   }
 
   const normalizePaymentEInvoiceNumber = (value) => String(value || '').trim().replace(/\s+/g, '').toLowerCase()
-  const extractPaymentEInvoiceNumbers = (value) => {
-    try {
-      const matches = String(value || '').match(/MT\d{6,}/gi) || []
-      return [...new Set(matches.map(v => v.trim()))]
-    } catch (_error) {
-      return []
-    }
-  }
 
   const legacySupplierEInvoiceOptions = (purchases || [])
     .filter(p => activeSupplierIds.has(p.supplier_id) && isSupplierActiveForLegal(p.supplier_id, p.legal_entity_id) && !p.deleted_at)
@@ -26158,22 +26150,6 @@ function DebtsPayments({ t }) {
             <label><span>Отметки / фактуры</span><input value={paymentTransactionEditForm.invoice_notes} onChange={e => setPaymentTransactionEditForm({...paymentTransactionEditForm, invoice_notes: e.target.value})} /></label>
             <label><span>Комментарий</span><input value={paymentTransactionEditForm.comment} onChange={e => setPaymentTransactionEditForm({...paymentTransactionEditForm, comment: e.target.value})} /></label>
           </div>
-
-          {(() => {
-                const nums = extractPaymentEInvoiceNumbers(`${activeEditingPayment?.invoice_notes || ''} ${activeEditingPayment?.comment || ''} ${paymentTransactionEditForm.invoice_notes || ''} ${paymentTransactionEditForm.comment || ''}`)
-                return nums.length ? <div className="supplier-single-einvoice-card" style={{marginTop:10, marginBottom:10, background:'rgba(37,99,235,.04)'}}>
-                  <div className="card-head suppliers-v43-card-head">
-                    <div>
-                      <h4>e-qaimə из этой оплаты</h4>
-                      <p className="hint">Эти номера взяты напрямую из оплаты. Даже если накладной нет в supplier_e_invoices, номер остаётся видимым.</p>
-                    </div>
-                    <span className="badge">{nums.length} шт.</span>
-                  </div>
-                  <div className="action-row" style={{gap:8, flexWrap:'wrap'}}>
-                    {nums.map(n => <span key={n} className="badge" style={{fontWeight:700}}>{n}</span>)}
-                  </div>
-                </div> : null
-              })()}
 
           <div className="supplier-single-einvoice-card" style={{marginTop:12}}>
             <div className="card-head suppliers-v43-card-head">
