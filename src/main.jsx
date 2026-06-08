@@ -22510,6 +22510,37 @@ function Suppliers({ t, isAdmin = false }) {
     if (!paymentLegalEntityId) return setPaymentMessage('Выберите наш VOEN / юрлицо для оплаты')
 
     try {
+      let latestById = new Map()
+      if (selectedRealInvoices.length > 0) {
+        const { data: latestRows, error: latestError } = await supabase
+          .from('supplier_e_invoices')
+          .select('id, invoice_number, amount, paid_amount, supplier_id, legal_entity_id')
+          .in('id', selectedRealInvoices.map(inv => inv.e_invoice_id))
+          .is('deleted_at', null)
+
+        if (latestError) throw latestError
+        latestById = new Map((latestRows || []).map(row => [String(row.id), row]))
+
+        const alreadyPaid = (latestRows || []).filter(row => parseNum(row.paid_amount) >= parseNum(row.amount) - 0.01)
+        if (alreadyPaid.length) {
+          const paidList = alreadyPaid.map(row => row.invoice_number).filter(Boolean).join(', ')
+          await openPaymentCreateOverlay()
+          return setPaymentMessage(`Следующие e-qaimə уже оплачены: ${paidList}`)
+        }
+
+        if (selectedRealInvoices.length === 1) {
+          const row = latestRows?.[0]
+          const remaining = Math.max(0, parseNum(row?.amount) - parseNum(row?.paid_amount))
+          if (remaining <= 0.01) {
+            await openPaymentCreateOverlay()
+            return setPaymentMessage(`e-qaimə ${row?.invoice_number || ''} уже оплачена`)
+          }
+          if (amount > remaining + 0.01) {
+            return setPaymentMessage(`Сумма оплаты (${fmt(amount)}) превышает остаток по e-qaimə (${fmt(remaining)})`)
+          }
+        }
+      }
+
       if (selectedRealInvoices.length > 1) {
         const invoiceNumbers = selectedRealInvoices.map(inv => inv.number).filter(Boolean)
         const invoiceNotes = paymentForm.invoice_notes.trim() || invoiceNumbers.join(', ')
@@ -22531,11 +22562,11 @@ function Suppliers({ t, isAdmin = false }) {
         let remainingPayment = amount
         for (const inv of selectedRealInvoices) {
           if (remainingPayment <= 0) break
-          const invoiceRemaining = parseNum(inv.amount)
+          const dbInv = latestById.get(String(inv.e_invoice_id)) || [...(eInvoices || []), ...(paymentCreateEInvoices || [])].find(row => row.id === inv.e_invoice_id)
+          const invoiceRemaining = Math.max(0, parseNum(dbInv?.amount) - parseNum(dbInv?.paid_amount))
           const payAmount = Math.min(invoiceRemaining, remainingPayment)
           if (payAmount <= 0) continue
 
-          const dbInv = [...(eInvoices || []), ...(paymentCreateEInvoices || [])].find(row => row.id === inv.e_invoice_id)
           await supabase
             .from('supplier_e_invoices')
             .update({
@@ -22558,12 +22589,15 @@ function Suppliers({ t, isAdmin = false }) {
           p_e_invoice_id: updateInvoiceId
         }, t('saved'), setPaymentMessage)
         if (updateInvoiceId) {
-          const inv = eInvoices.find(row => row.id === updateInvoiceId)
-          await supabase.from('supplier_e_invoices').update({ paid_amount: parseNum(inv?.paid_amount) + amount, updated_at: new Date().toISOString() }).eq('id', updateInvoiceId)
+          const inv = latestById.get(String(updateInvoiceId)) || eInvoices.find(row => row.id === updateInvoiceId)
+          const nextPaid = Math.min(parseNum(inv?.amount), parseNum(inv?.paid_amount) + amount)
+          await supabase.from('supplier_e_invoices').update({ paid_amount: nextPaid, updated_at: new Date().toISOString() }).eq('id', updateInvoiceId)
         }
       }
       setPaymentForm({ supplier_id: '', legal_entity_id: legalEntities[0]?.id || '', payment_date: todayISO(), amount: '', invoice_notes: '', comment: '', e_invoice_id: '', selected_e_invoice_ids: [] })
-      await load(); setPaymentMessage(t('saved'))
+      setShowPaymentCreateOverlay(false)
+      await load()
+      setPaymentMessage(t('saved'))
     } catch (e) { setPaymentMessage(e.message) }
   }
 
@@ -22763,34 +22797,93 @@ function Suppliers({ t, isAdmin = false }) {
   }
 
   const paymentCreateInvoiceOptions = (() => {
-    const sourceRows = (paymentCreateEInvoices && paymentCreateEInvoices.length)
-      ? paymentCreateEInvoices.map(inv => ({
-          e_invoice_id: inv.id,
-          number: inv.invoice_number,
-          supplier_id: inv.supplier_id,
-          legal_entity_id: inv.legal_entity_id,
-          amount: parseNum(inv.amount),
-          paid_amount: parseNum(inv.paid_amount),
-          date: inv.invoice_date,
-          supplier: inv.suppliers?.name || suppliers.find(s => s.id === inv.supplier_id)?.name || '—',
-          legal: inv.legal_entities?.name || legalEntities.find(le => le.id === inv.legal_entity_id)?.name || '—',
-          voen: inv.legal_entities?.voen || legalEntities.find(le => le.id === inv.legal_entity_id)?.voen || '',
-          branch: inv.branches?.name || '—',
-          status: parseNum(inv.paid_amount) >= parseNum(inv.amount) ? 'Оплачена' : 'К оплате'
-        })).filter(x => x.number && x.amount > 0)
-      : supplierEInvoiceOptions
+    const directRows = (paymentCreateEInvoices || []).map(inv => {
+      const totalAmount = parseNum(inv.amount)
+      const paidAmount = parseNum(inv.paid_amount)
+      const remainingAmount = Math.max(0, totalAmount - paidAmount)
+      return {
+        e_invoice_id: inv.id,
+        purchase_id: '',
+        number: inv.invoice_number,
+        supplier_id: inv.supplier_id,
+        legal_entity_id: inv.legal_entity_id,
+        amount: totalAmount,
+        paid_amount: paidAmount,
+        remaining_amount: remainingAmount,
+        date: inv.invoice_date,
+        supplier: inv.suppliers?.name || suppliers.find(s => s.id === inv.supplier_id)?.name || '—',
+        legal: inv.legal_entities?.name || legalEntities.find(le => le.id === inv.legal_entity_id)?.name || '—',
+        voen: inv.legal_entities?.voen || legalEntities.find(le => le.id === inv.legal_entity_id)?.voen || '',
+        branch: inv.branches?.name || '—',
+        status: remainingAmount <= 0.01 ? 'Оплачена' : 'К оплате',
+        source_kind: 'real'
+      }
+    }).filter(x => x.number && x.amount > 0)
+
+    // Fallback is important: Журнал поступлений и сверки can show e-qaimə from linked purchase/meta
+    // even when it is not present in the direct supplier_e_invoices fetch or was created as a legacy entry.
+    const fallbackRows = (supplierEInvoiceOptions || []).map(inv => ({
+      ...inv,
+      paid_amount: parseNum(inv.paid_amount || 0),
+      remaining_amount: inv.e_invoice_id
+        ? Math.max(0, parseNum(inv.remaining_amount ?? inv.amount))
+        : parseNum(inv.amount),
+      legal: inv.legal || legalEntities.find(le => le.id === inv.legal_entity_id)?.name || '—',
+      voen: inv.voen || legalEntities.find(le => le.id === inv.legal_entity_id)?.voen || '',
+      source_kind: inv.e_invoice_id ? 'real_fallback' : 'legacy_purchase'
+    }))
+
+    const byKey = new Map()
+    const addCandidate = (inv) => {
+      const key = [
+        String(inv.supplier_id || ''),
+        String(inv.legal_entity_id || ''),
+        normalizePaymentEInvoiceNumber(inv.number)
+      ].join('|')
+
+      if (!normalizePaymentEInvoiceNumber(inv.number)) return
+      const existing = byKey.get(key)
+
+      if (!existing) {
+        byKey.set(key, inv)
+        return
+      }
+
+      // Prefer direct real rows when active, but do not lose legacy purchase rows
+      // when direct real rows are missing or already fully paid.
+      const currentRemaining = Math.max(0, parseNum(existing.remaining_amount ?? existing.amount))
+      const nextRemaining = Math.max(0, parseNum(inv.remaining_amount ?? inv.amount))
+      if (existing.source_kind !== 'real' && inv.source_kind === 'real' && nextRemaining > 0.01) {
+        byKey.set(key, inv)
+        return
+      }
+      if (currentRemaining <= 0.01 && nextRemaining > 0.01) {
+        byKey.set(key, inv)
+      }
+    }
+
+    ;[...directRows, ...fallbackRows].forEach(addCandidate)
 
     const needle = String(paymentEInvoiceSearch || '').trim().toLowerCase()
-    return sourceRows
+    return Array.from(byKey.values())
       .filter(inv => !paymentForm.supplier_id || String(inv.supplier_id) === String(paymentForm.supplier_id))
       .filter(inv => !paymentForm.legal_entity_id || String(inv.legal_entity_id) === String(paymentForm.legal_entity_id) || (paymentForm.selected_e_invoice_ids || []).includes(inv.e_invoice_id || inv.number))
       .filter(inv => {
+        const remaining = Math.max(0, parseNum(inv.remaining_amount ?? (parseNum(inv.amount) - parseNum(inv.paid_amount))))
+        const isSelected = (paymentForm.selected_e_invoice_ids || []).includes(inv.e_invoice_id || inv.number)
+
+        // Hide only real fully-paid e-qaimə. Legacy purchase/meta entries stay visible,
+        // because they may be the only source shown in Журнал поступлений и сверки.
+        if (inv.e_invoice_id && !isSelected && remaining <= 0.01) return false
+        return true
+      })
+      .filter(inv => {
         if (!needle) return true
-        const hay = [inv.number, inv.supplier, inv.legal, inv.voen, inv.date, inv.status, inv.branch, inv.amount].filter(Boolean).join(' ').toLowerCase()
+        const hay = [inv.number, inv.supplier, inv.legal, inv.voen, inv.date, inv.status, inv.branch, inv.amount, inv.remaining_amount].filter(Boolean).join(' ').toLowerCase()
         return hay.includes(needle)
       })
       .sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')))
-      .slice(0, 200)
+      .slice(0, 300)
   })()
 
   function togglePaymentCreateEInvoice(inv) {
@@ -22799,7 +22892,7 @@ function Suppliers({ t, isAdmin = false }) {
     const nextIds = current.includes(key) ? current.filter(id => id !== key) : [...current, key]
     const selected = paymentCreateInvoiceOptions.filter(row => nextIds.includes(row.e_invoice_id || row.number))
     const selectedTotal = selected.reduce((sum, row) => {
-      const remaining = Math.max(0, parseNum(row.amount) - parseNum(row.paid_amount))
+      const remaining = Math.max(0, parseNum(row.remaining_amount ?? (parseNum(row.amount) - parseNum(row.paid_amount))))
       return sum + (remaining > 0 ? remaining : parseNum(row.amount))
     }, 0)
 
@@ -23413,7 +23506,7 @@ function Suppliers({ t, isAdmin = false }) {
               <div className="mini-kpi"><span>{paymentCreateLoading ? 'Загрузка' : 'Найдено'}</span><strong>{paymentCreateLoading ? '...' : paymentCreateInvoiceOptions.length}</strong></div>
             </div>
             <div className="table-wrap supplier-payment-einvoice-picker" style={{maxHeight:'min(520px, calc(100vh - 430px))', overflow:'auto', border:'1px solid #e5e7eb', borderRadius:14, background:'#fff'}}>
-              <table style={{minWidth:1060}}><thead><tr><th></th><th>Дата</th><th>№ e-qaimə</th><th>VOEN</th><th>Сумма</th><th>Оплачено</th><th>Остаток</th><th>Статус</th></tr></thead><tbody>{paymentCreateInvoiceOptions.map(inv => { const key = inv.e_invoice_id || inv.number; const checked = (paymentForm.selected_e_invoice_ids || []).includes(key); const balance = Math.max(0, parseNum(inv.amount) - parseNum(inv.paid_amount)); return <tr key={key} className={checked ? 'active' : ''}><td><input type="checkbox" checked={checked} onChange={() => togglePaymentCreateEInvoice(inv)} /></td><td>{inv.date || '—'}</td><td><b>{inv.number}</b></td><td>{inv.legal || '—'}<br /><span className="hint">{inv.voen || ''}</span></td><td>{fmt(inv.amount)}</td><td>{fmt(inv.paid_amount)}</td><td className={balance > 0 ? 'bad' : 'good'}>{fmt(balance)}</td><td>{inv.status}</td></tr> })}{!paymentCreateLoading && !paymentCreateInvoiceOptions.length && <tr><td colSpan="8" className="hint">e-qaimə не найдены. Проверьте поставщика / VOEN или нажмите “Обновить список”.</td></tr>}</tbody></table>
+              <table style={{minWidth:1060}}><thead><tr><th></th><th>Дата</th><th>№ e-qaimə</th><th>VOEN</th><th>Сумма</th><th>Оплачено</th><th>Остаток</th><th>Статус</th></tr></thead><tbody>{paymentCreateInvoiceOptions.map(inv => { const key = inv.e_invoice_id || inv.number; const checked = (paymentForm.selected_e_invoice_ids || []).includes(key); const balance = Math.max(0, parseNum(inv.remaining_amount ?? (parseNum(inv.amount) - parseNum(inv.paid_amount)))); return <tr key={key} className={checked ? 'active' : ''}><td><input type="checkbox" checked={checked} onChange={() => togglePaymentCreateEInvoice(inv)} /></td><td>{inv.date || '—'}</td><td><b>{inv.number}</b></td><td>{inv.legal || '—'}<br /><span className="hint">{inv.voen || ''}</span></td><td>{fmt(inv.amount)}</td><td>{fmt(inv.paid_amount)}</td><td className={balance > 0 ? 'bad' : 'good'}>{fmt(balance)}</td><td>{inv.status}</td></tr> })}{!paymentCreateLoading && !paymentCreateInvoiceOptions.length && <tr><td colSpan="8" className="hint">e-qaimə не найдены. Проверьте поставщика / VOEN или нажмите “Обновить список”.</td></tr>}</tbody></table>
             </div>
           </div>
 
