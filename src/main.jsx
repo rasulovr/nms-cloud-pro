@@ -23366,7 +23366,7 @@ function Suppliers({ t, isAdmin = false }) {
           <label><span>Комментарий</span><input value={paymentForm.comment} onChange={e => setPaymentForm({...paymentForm, comment: e.target.value})} /></label>
         </div>
         <div className="action-row" style={{margin:'12px 0'}}>
-          <button className="small primary" onClick={openPaymentCreateOverlay}>Открыть большое окно выбора e-qaimə</button>
+          <button className="small primary" onClick={openPaymentCreateOverlay}>Выбрать e-qaimə в большом окне</button>
           {(paymentForm.selected_e_invoice_ids || []).length > 0 && <span className="hint">Выбрано e-qaimə: <b>{paymentForm.selected_e_invoice_ids.length}</b> · сумма: <b>{fmt(paymentForm.amount)} AZN</b></span>}
         </div>
         <div className="supplier-payment-multi">
@@ -25959,9 +25959,19 @@ function DebtsPayments({ t }) {
           min-width:1060px!important;
         }
 
-        /* v270: use the large overlay for supplier payment e-qaimə selection */
-        .rms-pro-shell .supplier-payment-multi{
+        /* v271: use ONLY the large overlay for supplier payment e-qaimə selection.
+           Hide the old inline multi-list regardless of parent shell class. */
+        .supplier-payment-multi,
+        .rms-pro-shell .supplier-payment-multi,
+        .rms-pro-shell .card .supplier-payment-multi{
           display:none!important;
+          visibility:hidden!important;
+          height:0!important;
+          max-height:0!important;
+          overflow:hidden!important;
+          margin:0!important;
+          padding:0!important;
+          border:0!important;
         }
 
         /* v269: old inline panel disabled; the global overlay above is the real editor */
