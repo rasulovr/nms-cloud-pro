@@ -24632,20 +24632,7 @@ function DebtsPayments({ t }) {
     setEditingOpeningDebtId('')
     setEditingPurchaseTransactionId('')
     setDetailPurchaseId('')
-    const immediateLegacyIds = extractPaymentEInvoiceNumbers(`${row.invoice_notes || ''} ${row.comment || ''}`)
     setEditingPaymentTransactionId(String(row.id))
-
-    // v297: visible fields are filled before async e-qaimə loading.
-    setPaymentTransactionEditForm({
-      payment_date: row.payment_date || todayISO(),
-      legal_entity_id: row.legal_entity_id || activeLegalEntityId || legalEntities[0]?.id || '',
-      amount: String(parseNum(row.amount)),
-      invoice_notes: row.invoice_notes || immediateLegacyIds.join(', '),
-      comment: row.comment || '',
-      selected_e_invoice_ids: immediateLegacyIds,
-      e_invoice_search: ''
-    })
-
     setPaymentEditLoading(true)
     let directEInvoices = []
     try {
@@ -24663,7 +24650,7 @@ function DebtsPayments({ t }) {
     setPaymentEditEInvoices(directEInvoices)
     setPaymentEditLoading(false)
     const resolvedLegalEntityId = resolvePaymentLegalEntityId({ ...row, _direct_e_invoices: directEInvoices })
-    const invoiceNotesText = `${row.invoice_notes || ''} ${row.comment || ''}`.toLowerCase()
+    const invoiceNotesText = String(row.invoice_notes || '').toLowerCase()
     const selectedInvoiceIds = (directEInvoices.length ? directEInvoices : (eInvoices || []))
       .filter(inv =>
         String(inv.supplier_id || '') === String(row.supplier_id || '') &&
@@ -24672,24 +24659,21 @@ function DebtsPayments({ t }) {
         invoiceNotesText.includes(String(inv.invoice_number).toLowerCase())
       )
       .map(inv => inv.id)
-
-    // v296: keep legacy e-qaimə numbers from the payment itself.
-    // They may not exist as supplier_e_invoices, but they must stay visible in the edit list.
-    extractPaymentEInvoiceNumbers(`${row.invoice_notes || ''} ${row.comment || ''}`).forEach(number => {
-      if (!selectedInvoiceIds.map(String).includes(String(number))) selectedInvoiceIds.push(number)
+    setPaymentTransactionEditForm({
+      payment_date: row.payment_date || todayISO(),
+      legal_entity_id: resolvedLegalEntityId,
+      amount: String(parseNum(row.amount)),
+      invoice_notes: row.invoice_notes || '',
+      comment: row.comment || '',
+      selected_e_invoice_ids: Array.isArray(selectedInvoiceIds) ? selectedInvoiceIds : [],
+      e_invoice_search: ''
     })
-    setPaymentTransactionEditForm(prev => ({
-      ...prev,
-      payment_date: row.payment_date || prev.payment_date || todayISO(),
-      legal_entity_id: resolvedLegalEntityId || prev.legal_entity_id,
-      amount: String(parseNum(row.amount)) || prev.amount,
-      invoice_notes: row.invoice_notes || prev.invoice_notes || '',
-      comment: row.comment || prev.comment || '',
-      selected_e_invoice_ids: Array.isArray(selectedInvoiceIds) ? selectedInvoiceIds : (prev.selected_e_invoice_ids || []),
-      e_invoice_search: prev.e_invoice_search || ''
-    }))
     setMessage('Открыто редактирование оплаты')
-    // v297: no scroll to transaction panel; editor is already visible as modal.
+    setTimeout(() => {
+      const panel = supplierTransactionPanelRef.current
+      panel?.scrollIntoView?.({ behavior: 'smooth', block: 'start' })
+      panel?.scrollTo?.({ top: 0, behavior: 'smooth' })
+    }, 40)
   }
 
   function paymentEditEInvoiceOptions(row) {
@@ -24718,15 +24702,18 @@ function DebtsPayments({ t }) {
     )
 
     const rows = exactLegalRows.length ? exactLegalRows : baseRows
-    const resultRows = [...rows]
 
-    const noteNumbers = extractPaymentEInvoiceNumbers(`${paymentTransactionEditForm.invoice_notes || ''} ${paymentTransactionEditForm.comment || ''} ${row?.invoice_notes || ''} ${row?.comment || ''}`)
+    // v299: minimal fix only.
+    // Keep the old working edit-window logic unchanged, but add legacy invoice numbers
+    // that exist only in the payment notes/comment and therefore are absent from supplier_e_invoices.
+    const resultRows = [...rows]
+    const paymentNoteNumbers = extractPaymentEInvoiceNumbers(`${row?.invoice_notes || ''} ${row?.comment || ''} ${paymentTransactionEditForm.invoice_notes || ''} ${paymentTransactionEditForm.comment || ''}`)
     const existingNumbers = new Set(resultRows.map(inv => normalizePaymentEInvoiceNumber(inv.invoice_number)))
-    noteNumbers.forEach(number => {
+    paymentNoteNumbers.forEach(number => {
       const normalized = normalizePaymentEInvoiceNumber(number)
       if (!normalized || existingNumbers.has(normalized)) return
       resultRows.unshift({
-        id: number,
+        id: `note-${number}`,
         invoice_number: number,
         invoice_date: row?.payment_date || paymentTransactionEditForm.payment_date || '',
         amount: 0,
@@ -24746,7 +24733,7 @@ function DebtsPayments({ t }) {
         if (b.source_kind === 'note_placeholder' && a.source_kind !== 'note_placeholder') return 1
         return String(b.invoice_date || '').localeCompare(String(a.invoice_date || '')) || String(b.created_at || '').localeCompare(String(a.created_at || ''))
       })
-      .slice(0, 160)
+      .slice(0, 140)
   }
 
   function safePaymentEditEInvoiceOptions(row) {
@@ -24761,10 +24748,11 @@ function DebtsPayments({ t }) {
     const key = String(inv.id)
     const current = (paymentTransactionEditForm.selected_e_invoice_ids || []).map(String)
     const nextIds = current.includes(key) ? current.filter(id => id !== key) : [...current, key]
-    const selected = paymentEditEInvoiceOptions(row).filter(ei => nextIds.includes(String(ei.id)))
+    const invoicePool = (paymentEditEInvoices && paymentEditEInvoices.length) ? paymentEditEInvoices : (eInvoices || [])
+    const selected = (invoicePool || []).filter(ei => nextIds.includes(String(ei.id)))
     const notes = selected.map(ei => ei.invoice_number).filter(Boolean).join(', ')
     const selectedTotal = selected.reduce((sum, ei) => {
-      const remaining = Math.max(0, parseNum(ei.remaining_amount ?? (parseNum(ei.amount) - parseNum(ei.paid_amount))))
+      const remaining = Math.max(0, parseNum(ei.amount) - parseNum(ei.paid_amount))
       return sum + (remaining > 0 ? remaining : parseNum(ei.amount))
     }, 0)
     setPaymentTransactionEditForm(f => ({
@@ -24785,15 +24773,10 @@ function DebtsPayments({ t }) {
       if (!amount) return setMessage('Введите сумму оплаты')
       if (!paymentTransactionEditForm.legal_entity_id) return setMessage('Выберите физ. лицо / VOEN')
 
-      const selectedIds = (paymentTransactionEditForm.selected_e_invoice_ids || []).filter(Boolean).map(String)
+      const selectedIds = (paymentTransactionEditForm.selected_e_invoice_ids || []).filter(Boolean)
       const invoicePool = (paymentEditEInvoices && paymentEditEInvoices.length) ? paymentEditEInvoices : (eInvoices || [])
-      const selectedInvoices = (invoicePool || []).filter(inv => selectedIds.includes(String(inv.id)))
-      const selectedNumbers = paymentEditEInvoiceOptions(row)
-        .filter(inv => selectedIds.includes(String(inv.id)))
-        .map(inv => inv.invoice_number)
-        .filter(Boolean)
-      const typedNumbers = extractPaymentEInvoiceNumbers(paymentTransactionEditForm.invoice_notes || '')
-      const invoiceNotes = paymentTransactionEditForm.invoice_notes?.trim() || [...new Set([...selectedNumbers, ...typedNumbers])].join(', ') || selectedInvoices.map(inv => inv.invoice_number).filter(Boolean).join(', ')
+      const selectedInvoices = (invoicePool || []).filter(inv => selectedIds.map(String).includes(String(inv.id)))
+      const invoiceNotes = paymentTransactionEditForm.invoice_notes?.trim() || selectedInvoices.map(inv => inv.invoice_number).filter(Boolean).join(', ')
 
       await callSupplierRpc('rms_supplier_payment_update_secure', {
         p_payment_id: row.id,
@@ -25957,14 +25940,9 @@ function DebtsPayments({ t }) {
     if (row.type_key === 'payment') {
       setTransactionPageSize(20)
       setTransactionPage(1)
-
-      // v297: open only the payment edit modal from “Журнал долгов и оплат”.
-      // Do not open “Транзакции: ...” behind it.
-      setActiveSupplierId('')
-      setActiveLegalEntityId('')
-      setTransactionType('payments')
-
+      openTransactions(source.supplier_id, 'payments', source.legal_entity_id || '')
       startEditSupplierPayment(source)
+      scrollToSupplierTransactionPanel()
       return
     }
 
@@ -26108,7 +26086,7 @@ function DebtsPayments({ t }) {
               <div className="mini-kpi"><span>Найдено</span><strong>{safePaymentEditEInvoiceOptions(activeEditingPayment).length}</strong></div>
             </div>
             <div className="table-wrap" style={{maxHeight:260, overflow:'auto'}}>
-              <table><thead><tr><th></th><th>Дата</th><th>№ e-qaimə</th><th>Сумма</th><th>Оплачено</th><th>Остаток</th></tr></thead><tbody>{safePaymentEditEInvoiceOptions(activeEditingPayment).map(inv => { const selectedIds = Array.isArray(paymentTransactionEditForm.selected_e_invoice_ids) ? paymentTransactionEditForm.selected_e_invoice_ids : []; const checked = selectedIds.map(String).includes(String(inv.id)); const balance = Math.max(0, parseNum(inv.amount) - parseNum(inv.paid_amount)); return <tr key={inv.id} className={checked ? 'active' : ''}><td><input type="checkbox" checked={checked} onChange={() => togglePaymentEditEInvoice(inv, activeEditingPayment)} /></td><td>{formatDateDMY(inv.invoice_date)}</td><td><b>{inv.invoice_number}</b></td><td>{fmt(inv.amount)}</td><td>{fmt(inv.paid_amount)}</td><td className={balance > 0 ? 'bad' : 'good'}>{fmt(balance)}</td></tr> })}{!safePaymentEditEInvoiceOptions(activeEditingPayment).length && <tr><td colSpan="6" className="hint">e-qaimə не найдены. Проверьте VOEN или введите часть номера в поиск.</td></tr>}</tbody></table>
+              <table><thead><tr><th></th><th>Дата</th><th>№ e-qaimə</th><th>Сумма</th><th>Оплачено</th><th>Остаток</th></tr></thead><tbody>{safePaymentEditEInvoiceOptions(activeEditingPayment).map(inv => { const selectedIds = Array.isArray(paymentTransactionEditForm.selected_e_invoice_ids) ? paymentTransactionEditForm.selected_e_invoice_ids : []; const checked = selectedIds.map(String).includes(String(inv.id)); const balance = Math.max(0, parseNum(inv.amount) - parseNum(inv.paid_amount)); return <tr key={inv.id} className={checked ? 'active' : ''}><td><input type="checkbox" checked={checked} onChange={() => togglePaymentEditEInvoice(inv, activeEditingPayment)} /></td><td>{formatDateDMY(inv.invoice_date)}</td><td><b>{inv.invoice_number}</b>{inv.source_kind === 'note_placeholder' ? <><br /><span className="hint">номер из оплаты</span></> : null}</td><td>{fmt(inv.amount)}</td><td>{fmt(inv.paid_amount)}</td><td className={balance > 0 ? 'bad' : 'good'}>{fmt(balance)}</td></tr> })}{!safePaymentEditEInvoiceOptions(activeEditingPayment).length && <tr><td colSpan="6" className="hint">e-qaimə не найдены. Проверьте VOEN или введите часть номера в поиск.</td></tr>}</tbody></table>
             </div>
             {(paymentTransactionEditForm.selected_e_invoice_ids || []).length > 0 && <p className="hint">Выбрано: <b>{paymentTransactionEditForm.selected_e_invoice_ids.length}</b> · сумма в поле оплаты будет общей по выбранным e-qaimə.</p>}
           </div>
@@ -26215,7 +26193,7 @@ function DebtsPayments({ t }) {
               <div className="mini-kpi"><span>{paymentEditLoading ? 'Загрузка' : 'Найдено'}</span><strong>{paymentEditLoading ? '...' : safePaymentEditEInvoiceOptions(activeEditingPayment).length}</strong></div>
             </div>
             <div className="table-wrap supplier-payment-einvoice-picker">
-              <table><thead><tr><th></th><th>Дата</th><th>№ e-qaimə</th><th>VOEN</th><th>Сумма</th><th>Оплачено</th><th>Остаток</th></tr></thead><tbody>{safePaymentEditEInvoiceOptions(activeEditingPayment).map(inv => { const selectedIds = Array.isArray(paymentTransactionEditForm.selected_e_invoice_ids) ? paymentTransactionEditForm.selected_e_invoice_ids : []; const checked = selectedIds.map(String).includes(String(inv.id)); const balance = Math.max(0, parseNum(inv.remaining_amount ?? (parseNum(inv.amount) - parseNum(inv.paid_amount)))); return <tr key={inv.id} className={checked ? 'active' : ''}><td><input type="checkbox" checked={checked} onChange={() => togglePaymentEditEInvoice(inv, activeEditingPayment)} /></td><td>{formatDateDMY(inv.invoice_date)}</td><td><b>{inv.invoice_number}</b>{inv.source_kind === 'note_placeholder' ? <><br /><span className="hint">номер из оплаты</span></> : null}</td><td>{inv.legal_entities?.name || legalEntities.find(le => le.id === inv.legal_entity_id)?.name || '—'}<br /><span className="hint">{inv.legal_entities?.voen || legalEntities.find(le => le.id === inv.legal_entity_id)?.voen || ''}</span></td><td>{fmt(inv.amount)}</td><td>{fmt(inv.paid_amount)}</td><td className={balance > 0 ? 'bad' : 'good'}>{fmt(balance)}</td></tr> })}{!paymentEditLoading && !safePaymentEditEInvoiceOptions(activeEditingPayment).length && <tr><td colSpan="7" className="hint">e-qaimə не найдены. Проверьте поставщика, VOEN или введите часть номера.</td></tr>}</tbody></table>
+              <table><thead><tr><th></th><th>Дата</th><th>№ e-qaimə</th><th>VOEN</th><th>Сумма</th><th>Оплачено</th><th>Остаток</th></tr></thead><tbody>{safePaymentEditEInvoiceOptions(activeEditingPayment).map(inv => { const selectedIds = Array.isArray(paymentTransactionEditForm.selected_e_invoice_ids) ? paymentTransactionEditForm.selected_e_invoice_ids : []; const checked = selectedIds.map(String).includes(String(inv.id)); const balance = Math.max(0, parseNum(inv.amount) - parseNum(inv.paid_amount)); return <tr key={inv.id} className={checked ? 'active' : ''}><td><input type="checkbox" checked={checked} onChange={() => togglePaymentEditEInvoice(inv, activeEditingPayment)} /></td><td>{formatDateDMY(inv.invoice_date)}</td><td><b>{inv.invoice_number}</b></td><td>{inv.legal_entities?.name || legalEntities.find(le => le.id === inv.legal_entity_id)?.name || '—'}<br /><span className="hint">{inv.legal_entities?.voen || legalEntities.find(le => le.id === inv.legal_entity_id)?.voen || ''}</span></td><td>{fmt(inv.amount)}</td><td>{fmt(inv.paid_amount)}</td><td className={balance > 0 ? 'bad' : 'good'}>{fmt(balance)}</td></tr> })}{!paymentEditLoading && !safePaymentEditEInvoiceOptions(activeEditingPayment).length && <tr><td colSpan="7" className="hint">e-qaimə не найдены. Проверьте поставщика, VOEN или введите часть номера.</td></tr>}</tbody></table>
             </div>
           </div>
 
