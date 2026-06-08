@@ -22022,6 +22022,7 @@ function Suppliers({ t, isAdmin = false }) {
   const [showPaymentCreateOverlay, setShowPaymentCreateOverlay] = useState(false)
   const [paymentCreateLoading, setPaymentCreateLoading] = useState(false)
   const [paymentCreateEInvoices, setPaymentCreateEInvoices] = useState([])
+  const [paymentCreatePaidRefs, setPaymentCreatePaidRefs] = useState({})
   const [openingDebtForm, setOpeningDebtForm] = useState({ supplier_id: '', legal_entity_id: '', debt_date: todayISO(), amount: '', invoice_notes: '', comment: '' })
   const [eInvoices, setEInvoices] = useState([])
   const [eInvoiceLinks, setEInvoiceLinks] = useState([])
@@ -22797,9 +22798,13 @@ function Suppliers({ t, isAdmin = false }) {
           .is('deleted_at', null)
 
         if (latestError) throw latestError
-        latestById = new Map((latestRows || []).map(row => [String(row.id), row]))
+        const normalizedLatestRows = (latestRows || []).map(row => ({
+          ...row,
+          paid_amount: paymentCreateEffectivePaidAmount({ ...row, number: row.invoice_number })
+        }))
+        latestById = new Map(normalizedLatestRows.map(row => [String(row.id), row]))
 
-        const alreadyPaid = (latestRows || []).filter(row => parseNum(row.paid_amount) >= parseNum(row.amount) - 0.01)
+        const alreadyPaid = normalizedLatestRows.filter(row => parseNum(row.paid_amount) >= parseNum(row.amount) - 0.01)
         if (alreadyPaid.length) {
           const paidList = alreadyPaid.map(row => row.invoice_number).filter(Boolean).join(', ')
           await openPaymentCreateOverlay()
@@ -22807,7 +22812,7 @@ function Suppliers({ t, isAdmin = false }) {
         }
 
         if (selectedRealInvoices.length === 1) {
-          const row = latestRows?.[0]
+          const row = normalizedLatestRows?.[0]
           const remaining = Math.max(0, parseNum(row?.amount) - parseNum(row?.paid_amount))
           if (remaining <= 0.01) {
             await openPaymentCreateOverlay()
@@ -23034,11 +23039,32 @@ function Suppliers({ t, isAdmin = false }) {
   })
 
 
+  function paymentCreateEffectivePaidAmount(inv) {
+    const number = normalizePaymentEInvoiceNumber(inv?.invoice_number || inv?.number)
+    const refs = paymentCreatePaidRefs?.[number]
+    // If paid_amount exists but there is no real payment row pointing to this e-qaimə/number,
+    // treat it as stale technical value. This prevents underpaying by a phantom partial payment.
+    return refs?.hasRef ? parseNum(inv?.paid_amount) : 0
+  }
+
+  function paymentCreateInvoicePaymentRefInfo(inv, paymentRows = []) {
+    const invoiceId = String(inv?.id || inv?.e_invoice_id || '')
+    const normalizedNumber = normalizePaymentEInvoiceNumber(inv?.invoice_number || inv?.number)
+    const matchedRows = (paymentRows || []).filter(pay => {
+      if (!pay || pay.deleted_at) return false
+      if (invoiceId && String(pay.e_invoice_id || '') === invoiceId) return true
+      const notes = normalizePaymentEInvoiceNumber(pay.invoice_notes || '')
+      return normalizedNumber && notes.includes(normalizedNumber)
+    })
+    return { hasRef: matchedRows.length > 0, rows: matchedRows }
+  }
+
   async function openPaymentCreateOverlay() {
     setPaymentMessage('')
     setShowPaymentCreateOverlay(true)
     if (!paymentForm.supplier_id) {
       setPaymentCreateEInvoices([])
+      setPaymentCreatePaidRefs({})
       setPaymentMessage('Сначала выберите поставщика')
       return
     }
@@ -23060,6 +23086,30 @@ function Suppliers({ t, isAdmin = false }) {
       const rows = data || []
       setPaymentCreateEInvoices(rows)
 
+      let paymentRows = []
+      try {
+        let paymentQuery = supabase
+          .from('supplier_payments')
+          .select('id, amount, invoice_notes, e_invoice_id, payment_date, deleted_at')
+          .eq('supplier_id', paymentForm.supplier_id)
+          .is('deleted_at', null)
+          .limit(5000)
+        if (paymentForm.legal_entity_id) paymentQuery = paymentQuery.eq('legal_entity_id', paymentForm.legal_entity_id)
+        const { data: paymentData, error: paymentError } = await paymentQuery
+        if (paymentError) throw paymentError
+        paymentRows = paymentData || []
+      } catch (_paymentRefError) {
+        paymentRows = []
+      }
+
+      const refs = {}
+      rows.forEach(inv => {
+        const key = normalizePaymentEInvoiceNumber(inv.invoice_number)
+        if (!key) return
+        refs[key] = paymentCreateInvoicePaymentRefInfo(inv, paymentRows)
+      })
+      setPaymentCreatePaidRefs(refs)
+
       // Keep direct fetched e-qaimə available for the existing selector/save logic.
       setEInvoices(prev => {
         const byId = new Map((prev || []).map(inv => [String(inv.id), inv]))
@@ -23069,6 +23119,7 @@ function Suppliers({ t, isAdmin = false }) {
     } catch (e) {
       setPaymentMessage(e.message || 'Не удалось загрузить e-qaimə')
       setPaymentCreateEInvoices([])
+      setPaymentCreatePaidRefs({})
     } finally {
       setPaymentCreateLoading(false)
     }
@@ -23077,7 +23128,7 @@ function Suppliers({ t, isAdmin = false }) {
   function paymentCreateAllInvoiceCandidates() {
     const directRows = (paymentCreateEInvoices || []).map(inv => {
       const totalAmount = parseNum(inv.amount)
-      const paidAmount = parseNum(inv.paid_amount)
+      const paidAmount = paymentCreateEffectivePaidAmount(inv)
       const remainingAmount = Math.max(0, totalAmount - paidAmount)
       return {
         e_invoice_id: inv.id,
