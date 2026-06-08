@@ -23749,6 +23749,8 @@ function DebtsPayments({ t }) {
   const [purchaseTransactionEditItems, setPurchaseTransactionEditItems] = useState([])
   const [editingPaymentTransactionId, setEditingPaymentTransactionId] = useState('')
   const [paymentTransactionEditForm, setPaymentTransactionEditForm] = useState({ payment_date: todayISO(), legal_entity_id: '', amount: '', invoice_notes: '', comment: '', selected_e_invoice_ids: [], e_invoice_search: '' })
+  const [paymentEditEInvoices, setPaymentEditEInvoices] = useState([])
+  const [paymentEditLoading, setPaymentEditLoading] = useState(false)
   const supplierTransactionPanelRef = useRef(null)
   const supplierStatementPanelRef = useRef(null)
   const activeSuppliers = useMemo(() => (suppliers || []).filter(s => s.is_active !== false), [suppliers])
@@ -24050,7 +24052,8 @@ function DebtsPayments({ t }) {
     }
 
     const notesText = String(row?.invoice_notes || '').toLowerCase()
-    const byInvoice = (eInvoices || []).find(inv =>
+    const invoicePool = row?._direct_e_invoices || eInvoices || []
+    const byInvoice = (invoicePool || []).find(inv =>
       String(inv.supplier_id || '') === String(row?.supplier_id || '') &&
       inv.legal_entity_id &&
       inv.invoice_number &&
@@ -24061,16 +24064,32 @@ function DebtsPayments({ t }) {
     return legalEntities[0]?.id || ''
   }
 
-  function startEditSupplierPayment(row) {
+  async function startEditSupplierPayment(row) {
     if (!row) return
     setMessage('')
     setEditingOpeningDebtId('')
     setEditingPurchaseTransactionId('')
     setDetailPurchaseId('')
     setEditingPaymentTransactionId(String(row.id))
-    const resolvedLegalEntityId = resolvePaymentLegalEntityId(row)
+    setPaymentEditLoading(true)
+    let directEInvoices = []
+    try {
+      const { data, error } = await supabase
+        .from('supplier_e_invoices')
+        .select('*, suppliers(name), legal_entities(name,voen), branches(name)')
+        .eq('supplier_id', row.supplier_id)
+        .is('deleted_at', null)
+        .order('invoice_date', { ascending: false })
+        .limit(2000)
+      if (!error) directEInvoices = data || []
+    } catch (_error) {
+      directEInvoices = []
+    }
+    setPaymentEditEInvoices(directEInvoices)
+    setPaymentEditLoading(false)
+    const resolvedLegalEntityId = resolvePaymentLegalEntityId({ ...row, _direct_e_invoices: directEInvoices })
     const invoiceNotesText = String(row.invoice_notes || '').toLowerCase()
-    const selectedInvoiceIds = (eInvoices || [])
+    const selectedInvoiceIds = (directEInvoices.length ? directEInvoices : (eInvoices || []))
       .filter(inv =>
         String(inv.supplier_id || '') === String(row.supplier_id || '') &&
         (!resolvedLegalEntityId || String(inv.legal_entity_id || '') === String(resolvedLegalEntityId) || invoiceNotesText.includes(String(inv.invoice_number || '').toLowerCase())) &&
@@ -24103,7 +24122,8 @@ function DebtsPayments({ t }) {
     const supplierId = String(row?.supplier_id || '')
     const selectedLegalEntityId = String(paymentTransactionEditForm.legal_entity_id || resolvePaymentLegalEntityId(row) || '')
 
-    const baseRows = (eInvoices || [])
+    const invoicePool = (paymentEditEInvoices && paymentEditEInvoices.length) ? paymentEditEInvoices : (eInvoices || [])
+    const baseRows = (invoicePool || [])
       .filter(inv => !inv.deleted_at)
       .filter(inv => String(inv.supplier_id || '') === supplierId)
       .filter(inv => {
@@ -24138,7 +24158,8 @@ function DebtsPayments({ t }) {
     const key = String(inv.id)
     const current = (paymentTransactionEditForm.selected_e_invoice_ids || []).map(String)
     const nextIds = current.includes(key) ? current.filter(id => id !== key) : [...current, key]
-    const selected = (eInvoices || []).filter(ei => nextIds.includes(String(ei.id)))
+    const invoicePool = (paymentEditEInvoices && paymentEditEInvoices.length) ? paymentEditEInvoices : (eInvoices || [])
+    const selected = (invoicePool || []).filter(ei => nextIds.includes(String(ei.id)))
     const notes = selected.map(ei => ei.invoice_number).filter(Boolean).join(', ')
     const selectedTotal = selected.reduce((sum, ei) => {
       const remaining = Math.max(0, parseNum(ei.amount) - parseNum(ei.paid_amount))
@@ -24163,7 +24184,8 @@ function DebtsPayments({ t }) {
       if (!paymentTransactionEditForm.legal_entity_id) return setMessage('Выберите физ. лицо / VOEN')
 
       const selectedIds = (paymentTransactionEditForm.selected_e_invoice_ids || []).filter(Boolean)
-      const selectedInvoices = (eInvoices || []).filter(inv => selectedIds.map(String).includes(String(inv.id)))
+      const invoicePool = (paymentEditEInvoices && paymentEditEInvoices.length) ? paymentEditEInvoices : (eInvoices || [])
+      const selectedInvoices = (invoicePool || []).filter(inv => selectedIds.map(String).includes(String(inv.id)))
       const invoiceNotes = paymentTransactionEditForm.invoice_notes?.trim() || selectedInvoices.map(inv => inv.invoice_number).filter(Boolean).join(', ')
 
       await callSupplierRpc('rms_supplier_payment_update_secure', {
@@ -25553,6 +25575,46 @@ function DebtsPayments({ t }) {
         </div>
       </div>
 
+      {activeEditingPayment && <div className="supplier-payment-edit-global-overlay">
+        <div className="supplier-payment-edit-global-card">
+          <div className="card-head suppliers-v43-card-head">
+            <div>
+              <h3>Редактирование оплаты поставщику</h3>
+              <p className="hint">Отдельное окно редактирования. Выберите e-qaimə по поставщику и VOEN, затем сохраните оплату одной строкой.</p>
+            </div>
+            <button className="supplier-modal-x" title="Закрыть" aria-label="Закрыть" onClick={() => setEditingPaymentTransactionId('')}>×</button>
+          </div>
+
+          <div className="form-grid compact">
+            <label><span>Дата оплаты</span><input type="date" value={paymentTransactionEditForm.payment_date} onChange={e => setPaymentTransactionEditForm({...paymentTransactionEditForm, payment_date: e.target.value})} /></label>
+            <label><span>Наш VOEN / VOEN</span><select value={paymentTransactionEditForm.legal_entity_id} onChange={e => setPaymentTransactionEditForm({...paymentTransactionEditForm, legal_entity_id: e.target.value, selected_e_invoice_ids: []})}>{legalEntities.map(le => <option key={le.id} value={le.id}>{le.name} · {le.voen}</option>)}</select></label>
+            <label><span>Сумма оплаты</span><input inputMode="decimal" value={paymentTransactionEditForm.amount} onChange={e => setPaymentTransactionEditForm({...paymentTransactionEditForm, amount: e.target.value})} /></label>
+            <label><span>Отметки / фактуры</span><input value={paymentTransactionEditForm.invoice_notes} onChange={e => setPaymentTransactionEditForm({...paymentTransactionEditForm, invoice_notes: e.target.value})} /></label>
+            <label><span>Комментарий</span><input value={paymentTransactionEditForm.comment} onChange={e => setPaymentTransactionEditForm({...paymentTransactionEditForm, comment: e.target.value})} /></label>
+          </div>
+
+          <div className="supplier-single-einvoice-card" style={{marginTop:12}}>
+            <div className="card-head suppliers-v43-card-head">
+              <div><h4>Добавить / изменить e-qaimə в этой оплате</h4><p className="hint">Список грузится напрямую из базы по поставщику. При выборе e-qaimə сумма и номера подтягиваются автоматически.</p></div>
+              {(paymentTransactionEditForm.selected_e_invoice_ids || []).length > 0 && <button className="ghost small" onClick={() => setPaymentTransactionEditForm(f => ({...f, selected_e_invoice_ids: [], invoice_notes: '', amount: ''}))}>Очистить выбор</button>}
+            </div>
+            <div className="form-grid compact">
+              <label><span>Поиск e-qaimə</span><input value={paymentTransactionEditForm.e_invoice_search || ''} onChange={e => setPaymentTransactionEditForm({...paymentTransactionEditForm, e_invoice_search: e.target.value})} placeholder="№, дата, сумма, VOEN" /></label>
+              <div className="mini-kpi"><span>{paymentEditLoading ? 'Загрузка' : 'Найдено'}</span><strong>{paymentEditLoading ? '...' : safePaymentEditEInvoiceOptions(activeEditingPayment).length}</strong></div>
+            </div>
+            <div className="table-wrap supplier-payment-einvoice-picker">
+              <table><thead><tr><th></th><th>Дата</th><th>№ e-qaimə</th><th>VOEN</th><th>Сумма</th><th>Оплачено</th><th>Остаток</th></tr></thead><tbody>{safePaymentEditEInvoiceOptions(activeEditingPayment).map(inv => { const selectedIds = Array.isArray(paymentTransactionEditForm.selected_e_invoice_ids) ? paymentTransactionEditForm.selected_e_invoice_ids : []; const checked = selectedIds.map(String).includes(String(inv.id)); const balance = Math.max(0, parseNum(inv.amount) - parseNum(inv.paid_amount)); return <tr key={inv.id} className={checked ? 'active' : ''}><td><input type="checkbox" checked={checked} onChange={() => togglePaymentEditEInvoice(inv, activeEditingPayment)} /></td><td>{inv.invoice_date}</td><td><b>{inv.invoice_number}</b></td><td>{inv.legal_entities?.name || legalEntities.find(le => le.id === inv.legal_entity_id)?.name || '—'}<br /><span className="hint">{inv.legal_entities?.voen || legalEntities.find(le => le.id === inv.legal_entity_id)?.voen || ''}</span></td><td>{fmt(inv.amount)}</td><td>{fmt(inv.paid_amount)}</td><td className={balance > 0 ? 'bad' : 'good'}>{fmt(balance)}</td></tr> })}{!paymentEditLoading && !safePaymentEditEInvoiceOptions(activeEditingPayment).length && <tr><td colSpan="7" className="hint">e-qaimə не найдены. Проверьте поставщика, VOEN или введите часть номера.</td></tr>}</tbody></table>
+            </div>
+          </div>
+
+          <div className="action-row" style={{marginTop:14}}>
+            <button className="small primary" onClick={() => saveSupplierPaymentEdit(activeEditingPayment)}>Сохранить</button>
+            <button className="ghost small" onClick={() => setEditingPaymentTransactionId('')}>Закрыть</button>
+            <button className="small remove" onClick={() => deleteSupplierPayment(activeEditingPayment)}>Удалить</button>
+          </div>
+        </div>
+      </div>}
+
       {showSupplierStatementPanel && <div ref={supplierStatementPanelRef} className="card span-2 supplier-transactions-panel supplier-modal-panel supplier-statement-modal">
         <div className="card-head supplier-modal-head"><div><h3>Акт сверки</h3><p className="hint">Операции, оплаты и остаток по выбранному поставщику / VOEN.</p></div><div className="action-row" style={{gap:8}}><label style={{display:'flex',alignItems:'center',gap:8}}><span className="hint">Показать</span><select value={ledgerPageSize} onChange={e => { setLedgerPageSize(Number(e.target.value)); setLedgerPage(1) }}><option value={10}>10</option><option value={20}>20</option><option value={30}>30</option><option value={50}>50</option></select></label><button className="small primary" onClick={printSupplierLedger}>PDF / печать</button><button className="small" onClick={exportSupplierStatementCsv}>CSV</button><button className="supplier-modal-x" title="Закрыть" aria-label="Закрыть" onClick={() => setShowSupplierStatementPanel(false)}>×</button></div></div>
         <div className="form-grid compact">
@@ -25704,6 +25766,55 @@ function DebtsPayments({ t }) {
           border:1px solid #e5e7eb!important;
           border-radius:14px!important;
           background:#fff!important;
+        }
+
+        .rms-pro-shell .supplier-payment-edit-global-overlay{
+          position:fixed!important;
+          inset:0!important;
+          z-index:12000!important;
+          background:rgba(15,23,42,.32)!important;
+          display:flex!important;
+          align-items:flex-start!important;
+          justify-content:center!important;
+          padding:22px!important;
+          overflow:auto!important;
+        }
+
+        .rms-pro-shell .supplier-payment-edit-global-card{
+          width:min(1280px,calc(100vw - 44px))!important;
+          max-height:calc(100vh - 44px)!important;
+          overflow:auto!important;
+          background:#fff!important;
+          border-radius:24px!important;
+          padding:22px!important;
+          box-shadow:0 42px 120px rgba(15,23,42,.45)!important;
+          border:2px solid rgba(37,99,235,.32)!important;
+        }
+
+        .rms-pro-shell .supplier-payment-edit-global-card > .card-head{
+          position:sticky!important;
+          top:-22px!important;
+          z-index:10!important;
+          background:rgba(255,255,255,.98)!important;
+          border-bottom:1px solid #e5e7eb!important;
+          padding-bottom:12px!important;
+        }
+
+        .rms-pro-shell .supplier-payment-edit-global-card .supplier-payment-einvoice-picker{
+          max-height:min(520px,calc(100vh - 430px))!important;
+          overflow:auto!important;
+          border:1px solid #e5e7eb!important;
+          border-radius:14px!important;
+          background:#fff!important;
+        }
+
+        .rms-pro-shell .supplier-payment-edit-global-card .supplier-payment-einvoice-picker table{
+          min-width:1060px!important;
+        }
+
+        /* v269: old inline panel disabled; the global overlay above is the real editor */
+        .rms-pro-shell .supplier-transactions-panel.supplier-modal-panel > .supplier-payment-edit-panel{
+          display:none!important;
         }
 
         .rms-pro-shell .supplier-payment-edit-panel .card-head{
