@@ -1626,6 +1626,8 @@ function DateInput({ value, onChange, className = '', placeholder = 'дд/мм/�
       className={`date-dmy-input ${className || ''}`.trim()}
       placeholder={placeholder}
       value={displayValue === '—' ? '' : displayValue}
+      onClick={openNativePicker}
+      onFocus={openNativePicker}
       onChange={e => {
         setDisplayValue(e.target.value)
         emitISOIfComplete(e.target.value, false)
@@ -6572,16 +6574,28 @@ function RMSProV6Styles() {
   margin-bottom: 6px;
 }
 .rms-pro-shell .revenue-period-grid{
-  grid-template-columns:repeat(2,minmax(0,1fr))!important;
-  align-items:end;
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;
+  gap:16px!important;
+  align-items:end!important;
 }
-.rms-pro-shell .revenue-period-grid > label{
-  width:100%;
+.rms-pro-shell .revenue-period-grid > label,
+.rms-pro-shell .revenue-period-grid .revenue-period-field{
+  width:100%!important;
+  max-width:none!important;
+  min-width:0!important;
+  display:block!important;
 }
 .rms-pro-shell .revenue-period-grid select,
 .rms-pro-shell .revenue-period-grid .date-dmy-wrap,
+.rms-pro-shell .revenue-period-grid .date-dmy-input,
 .rms-pro-shell .revenue-period-grid input{
   width:100%!important;
+  max-width:none!important;
+  min-width:0!important;
+}
+.rms-pro-shell .revenue-period-grid .date-dmy-input{
+  cursor:pointer!important;
 }
 @media (max-width:900px){
   .rms-pro-shell .revenue-period-grid{
@@ -13976,9 +13990,9 @@ function Revenue({ t, focusExpense }) {
     <section id="revenuePage">
       <section className="topbar"><div><h2>{t('revenue_tab')}</h2><p>{t('revenue_subtitle')}</p></div><div className="action-row revenue-top-actions" style={{gap:8}}><span className={`revenue-day-status-chip ${revenueDayHealthClass}`}>{revenueDayHealthLabel}</span><button className="small" onClick={exportRevenueDayCsv}>CSV</button><button className="small primary" onClick={printRevenueDayReport}>PDF / печать</button></div></section>
       <section className="grid">
-        <div className="card span-2"><div className="card-head"><h3>{t('period_branch')}</h3></div><div className="form-grid revenue-period-grid">
-          <label><span>{t('branch_select')}</span><select value={branchId} onChange={e => setBranchId(e.target.value)}>{branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label>
-          <label><span>{t('date')}</span><DateInput value={date} onChange={e => setDate(e.target.value)} /></label>
+        <div className="card span-2"><div className="card-head"><h3>{t('period_branch')}</h3></div><div className="revenue-period-grid" style={{display:'grid', gridTemplateColumns:'minmax(0,1fr) minmax(0,1fr)', gap:16, alignItems:'end'}}>
+          <label className="revenue-period-field"><span>{t('branch_select')}</span><select value={branchId} onChange={e => setBranchId(e.target.value)}>{branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label>
+          <label className="revenue-period-field"><span>{t('date')}</span><DateInput value={date} onChange={e => setDate(e.target.value)} /></label>
         </div></div>
 
         <div className="card span-2 revenue-day-kpi-card">
