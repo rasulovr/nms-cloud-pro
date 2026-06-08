@@ -1815,6 +1815,7 @@ const setInternalSessionStorage = (session) => {
 const RMS_APP_SETTINGS_TABLE = 'rms_app_settings'
 const RMS_CUSTOM_LOGO_KEY = 'custom_logo'
 const RMS_BRANCH_RENT_FORECAST_SETTING = 'branch_rent_forecast_v1'
+const RMS_BRANCH_TAX_RATE_SETTING = 'branch_tax_rate_v1'
 const RMS_HIDDEN_SALES_KEYS_SETTING = 'hidden_sales_keys'
 const RMS_SALES_NAME_ALIASES_SETTING = 'sales_name_aliases'
 
@@ -6570,6 +6571,24 @@ function RMSProV6Styles() {
   display: inline-block;
   margin-bottom: 6px;
 }
+.rms-pro-shell .revenue-period-grid{
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  align-items:end;
+}
+.rms-pro-shell .revenue-period-grid > label{
+  width:100%;
+}
+.rms-pro-shell .revenue-period-grid select,
+.rms-pro-shell .revenue-period-grid .date-dmy-wrap,
+.rms-pro-shell .revenue-period-grid input{
+  width:100%!important;
+}
+@media (max-width:900px){
+  .rms-pro-shell .revenue-period-grid{
+    grid-template-columns:1fr!important;
+  }
+}
+
 .rms-pro-shell .date-dmy-wrap{
   position:relative;
   display:flex;
@@ -13957,7 +13976,7 @@ function Revenue({ t, focusExpense }) {
     <section id="revenuePage">
       <section className="topbar"><div><h2>{t('revenue_tab')}</h2><p>{t('revenue_subtitle')}</p></div><div className="action-row revenue-top-actions" style={{gap:8}}><span className={`revenue-day-status-chip ${revenueDayHealthClass}`}>{revenueDayHealthLabel}</span><button className="small" onClick={exportRevenueDayCsv}>CSV</button><button className="small primary" onClick={printRevenueDayReport}>PDF / печать</button></div></section>
       <section className="grid">
-        <div className="card span-2"><div className="card-head"><h3>{t('period_branch')}</h3></div><div className="form-grid">
+        <div className="card span-2"><div className="card-head"><h3>{t('period_branch')}</h3></div><div className="form-grid revenue-period-grid">
           <label><span>{t('branch_select')}</span><select value={branchId} onChange={e => setBranchId(e.target.value)}>{branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label>
           <label><span>{t('date')}</span><DateInput value={date} onChange={e => setDate(e.target.value)} /></label>
         </div></div>
@@ -15851,6 +15870,17 @@ function Dashboard({ t }) {
 function Finance({ t, lang, onGoToExpense }) {
   const ALL_BRANCHES = '__all__'
   const TAX_RATE = 8
+
+  async function financeBranchTaxRates() {
+    const settings = await readRmsAppSetting(RMS_BRANCH_TAX_RATE_SETTING, {})
+    return settings && typeof settings === 'object' ? settings : {}
+  }
+
+  function financeTaxRateForBranch(branchId, taxRates = {}) {
+    const value = parseNum(taxRates?.[branchId])
+    return value > 0 ? value : TAX_RATE
+  }
+
   const branches = useBranches()
   const now = new Date()
   const [branchId, setBranchId] = useState(ALL_BRANCHES)
@@ -16500,7 +16530,13 @@ function Finance({ t, lang, onGoToExpense }) {
     const bank = (revRows || []).reduce((s, r) => s + parseNum(r.bank_amount), 0)
     const wolt = (revRows || []).reduce((s, r) => s + parseNum(r.wolt_amount), 0)
 
-    const tax = revenue * (TAX_RATE / 100)
+    const taxRates = await financeBranchTaxRates()
+    const tax = (revRows || []).reduce((sum, row) => {
+      const rowRevenue = parseNum(row.total_revenue)
+      const rate = financeTaxRateForBranch(row.branch_id || branch, taxRates)
+      return sum + rowRevenue * (rate / 100)
+    }, 0)
+    const effectiveTaxRate = revenue > 0 ? tax / revenue * 100 : (branch !== ALL_BRANCHES ? financeTaxRateForBranch(branch, taxRates) : TAX_RATE)
     const net = revenue - expenses - salary - serviceCost - tax
 
     const syncedForecast = await rmsFinanceForecastEngine(y, m, branch)
@@ -16508,7 +16544,7 @@ function Finance({ t, lang, onGoToExpense }) {
     const forecastRevenue = parseNum(syncedForecast.forecastRevenue)
     const forecastProfit = parseNum(syncedForecast.forecastProfit)
 
-    return { revenue, expenses, salary, serviceCost, cash, bank, wolt, tax, gross: revenue, net, avg, forecastRevenue, forecastProfit, forecastDetails: syncedForecast.details || [], forecastExpenses: syncedForecast.forecastExpenses, forecastMargin: syncedForecast.forecastMargin }
+    return { revenue, expenses, salary, serviceCost, cash, bank, wolt, tax, taxRate: effectiveTaxRate, gross: revenue, net, avg, forecastRevenue, forecastProfit, forecastDetails: syncedForecast.details || [], forecastExpenses: syncedForecast.forecastExpenses, forecastMargin: syncedForecast.forecastMargin }
   }
 
 
@@ -16636,7 +16672,7 @@ function Finance({ t, lang, onGoToExpense }) {
 
     const financeActualBreakdownRows = [...expenseRows]
     if (currentForFinance.serviceCost > 0) financeActualBreakdownRows.push({ name: 'Service charge персоналу', amount: currentForFinance.serviceCost })
-    if (currentForFinance.tax > 0) financeActualBreakdownRows.push({ name: `Налог ${TAX_RATE}%`, amount: currentForFinance.tax })
+    if (currentForFinance.tax > 0) financeActualBreakdownRows.push({ name: `Налог ${fmt(currentForFinance.taxRate || TAX_RATE)}%`, amount: currentForFinance.tax })
     const financeActualExpenseTotal = financeActualBreakdownRows.reduce((sum, row) => sum + parseNum(row.amount), 0)
     const financeUnifiedNet = parseNum(currentForFinance.revenue) - financeActualExpenseTotal
     const financeLegacyFormulaTotal = parseNum(currentForFinance.expenses) + parseNum(currentForFinance.salary) + parseNum(currentForFinance.serviceCost) + parseNum(currentForFinance.tax)
@@ -16653,7 +16689,7 @@ function Finance({ t, lang, onGoToExpense }) {
       { name: 'Операционные расходы', amount: currentForFinance.expenses, note: 'daily_expenses без supplier mirror и salary-like строк + распределённые supplier purchases' },
       { name: 'Зарплаты', amount: currentForFinance.salary, note: 'единая payroll-логика с долей менеджеров' },
       { name: 'Service charge персоналу', amount: currentForFinance.serviceCost, note: 'monthly_branch_service_charge_cost' },
-      { name: `Налог ${TAX_RATE}%`, amount: currentForFinance.tax, note: '8% от выручки' },
+      { name: `Налог ${fmt(currentForFinance.taxRate || TAX_RATE)}%`, amount: currentForFinance.tax, note: 'процент налогообложения по настройкам филиала' },
       { name: 'Итого расходов по единой формуле', amount: financeActualExpenseTotal, note: 'сумма статей в “Расходы по статьям”' },
       { name: 'Чистая прибыль', amount: currentForFinance.net, note: 'выручка − все расходы' },
       { name: 'Контроль расхождения legacy/net', amount: financeFormulaDiff, note: Math.abs(financeFormulaDiff) <= 0.01 ? 'OK: формулы совпадают' : 'исправлено единой формулой v76' }
@@ -30387,6 +30423,7 @@ function Settings({ session, t, theme, setTheme }) {
   const [serviceBranchId, setServiceBranchId] = useState('')
   const [serviceSettings, setServiceSettings] = useState({ enabled: false, service_percent: '10', staff_cost_percent: '4' })
   const [branchRentSettings, setBranchRentSettings] = useState({})
+  const [branchTaxSettings, setBranchTaxSettings] = useState({})
   const [fullName, setFullName] = useState('')
   const [legalForm, setLegalForm] = useState({ name: '', voen: '' })
   const [newUser, setNewUser] = useState({ login: '', password: '', full_name: '' })
@@ -30473,6 +30510,8 @@ function Settings({ session, t, theme, setTheme }) {
 
     const rentSettings = await readRmsAppSetting(RMS_BRANCH_RENT_FORECAST_SETTING, {})
     setBranchRentSettings(rentSettings && typeof rentSettings === 'object' ? rentSettings : {})
+    const taxSettings = await readRmsAppSetting(RMS_BRANCH_TAX_RATE_SETTING, {})
+    setBranchTaxSettings(taxSettings && typeof taxSettings === 'object' ? taxSettings : {})
     if (!serviceBranchId && br?.[0]) setServiceBranchId(br[0].id)
     if (!iikoForm.branch_id && br?.[0]) setIikoForm(prev => ({ ...prev, branch_id: br[0].id }))
   }
@@ -30809,6 +30848,18 @@ function Settings({ session, t, theme, setTheme }) {
     if (error) return setMsg('Не удалось сохранить аренду филиалов: ' + (error.message || String(error)))
     setBranchRentSettings(normalized)
     setMsg('Арендная плата филиалов сохранена для прогноза')
+  }
+
+  async function saveBranchTaxSettings() {
+    const normalized = {}
+    ;(branches || []).forEach(b => {
+      const value = parseNum(branchTaxSettings?.[b.id])
+      if (value >= 0) normalized[b.id] = value || 0
+    })
+    const { error } = await writeRmsAppSetting(RMS_BRANCH_TAX_RATE_SETTING, normalized)
+    if (error) return setMsg('Не удалось сохранить налоги филиалов: ' + (error.message || String(error)))
+    setBranchTaxSettings(normalized)
+    setMsg('Проценты налогообложения филиалов сохранены')
   }
 
 
@@ -31778,6 +31829,8 @@ function Settings({ session, t, theme, setTheme }) {
             </div>
           </div>
           <div className="card span-2"><div className="card-head"><div><h3>Настройка service charge филиала</h3><p className="hint">Выберите филиал и один раз включите service charge. В разделе “Выручка” сумма для персонала будет считаться автоматически в конце строки.</p></div><button className="small primary" onClick={saveBranchServiceSettings}>Сохранить</button></div><div className="form-grid compact"><label><span>Филиал</span><select value={serviceBranchId} onChange={e => setServiceBranchId(e.target.value)}>{branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label><label className="checkbox-row"><input type="checkbox" checked={serviceSettings.enabled} onChange={e => setServiceSettings(s => ({...s, enabled: e.target.checked}))} /> Учитывать service charge</label><MoneyInput label="Service charge % в счёте" value={serviceSettings.service_percent} onChange={v => setServiceSettings(s => ({...s, service_percent: v}))} /><MoneyInput label="% затрат персоналу от базы" value={serviceSettings.staff_cost_percent} onChange={v => setServiceSettings(s => ({...s, staff_cost_percent: v}))} /></div></div>
+
+          <div className="card span-2"><div className="card-head"><div><h3>Налогообложение по филиалам</h3><p className="hint">У каждого филиала может быть свой процент налога. Используется в “Финансы ресторанов” для расчёта чистой прибыли.</p></div><button className="small primary" onClick={saveBranchTaxSettings}>Сохранить налоги</button></div><div className="table-wrap"><table><thead><tr><th>Филиал</th><th>Налог, %</th></tr></thead><tbody>{branches.map(b => <tr key={b.id}><td><b>{b.name}</b></td><td><MoneyInput label="" value={branchTaxSettings?.[b.id] ?? '8'} onChange={v => setBranchTaxSettings(prev => ({ ...prev, [b.id]: v }))} /></td></tr>)}</tbody></table></div><p className="hint">Если поле пустое — используется стандартный налог 8%. Для филиалов с другим режимом укажите нужный процент.</p></div>
 
           <div className="card span-2"><div className="card-head"><div><h3>Арендная плата для прогноза</h3><p className="hint">Эти суммы не добавляются в расходы дня. Они используются только в прогнозе месяца, чтобы аренда учитывалась сразу, даже если фактическую строку аренды ещё не внесли.</p></div><button className="small primary" onClick={saveBranchRentSettings}>Сохранить аренду</button></div><div className="table-wrap"><table><thead><tr><th>Филиал</th><th>Аренда / месяц, AZN</th></tr></thead><tbody>{branches.map(b => <tr key={b.id}><td><b>{b.name}</b></td><td><MoneyInput label="" value={branchRentSettings?.[b.id] || ''} onChange={v => setBranchRentSettings(prev => ({ ...prev, [b.id]: v }))} /></td></tr>)}</tbody></table></div><p className="hint">Если аренда здесь заполнена, прогноз использует её. Если нет — берёт аренду из текущего месяца, а если её ещё нет — среднее прошлых месяцев.</p></div>
         </>}
