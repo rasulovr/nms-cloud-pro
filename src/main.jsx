@@ -1513,12 +1513,12 @@ const normalizeISODate = (value, fallback = todayISO()) => {
   if (iso) return `${iso[1]}-${pad2(iso[2])}-${pad2(iso[3])}`
   const slash = raw.match(/^(\d{1,2})[\/.](\d{1,2})[\/.](\d{4})$/)
   if (slash) {
-    const a = Number(slash[1])
-    const b = Number(slash[2])
+    // RMS uses Azerbaijani/Russian business date format: DD/MM/YYYY.
+    // Do not auto-guess MM/DD/YYYY, because 08/06/2026 must mean 8 June, not 6 August.
+    const day = Number(slash[1])
+    const month = Number(slash[2])
     const y = slash[3]
-    const month = a > 12 ? b : a
-    const day = a > 12 ? a : b
-    return `${y}-${pad2(month)}-${pad2(day)}`
+    if (month >= 1 && month <= 12 && day >= 1 && day <= 31) return `${y}-${pad2(month)}-${pad2(day)}`
   }
   return fallback
 }
@@ -1551,10 +1551,10 @@ const canEditWithinWeek = (row) => row?.created_at ? (Date.now() - new Date(row.
 const formatDateDMY = (value) => {
   if (!value) return '—'
   const raw = String(value).trim()
-  const iso = raw.match(/^(\d{4})-(\d{2})-(\d{2})/)
-  if (iso) return `${iso[3]}/${iso[2]}/${iso[1]}`
-  const dmy = raw.match(/^(\d{2})\/(\d{2})\/(\d{4})$/)
-  if (dmy) return raw
+  const iso = raw.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/)
+  if (iso) return `${pad2(iso[3])}/${pad2(iso[2])}/${iso[1]}`
+  const dmy = raw.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{4})$/)
+  if (dmy) return `${pad2(dmy[1])}/${pad2(dmy[2])}/${dmy[3]}`
   const dt = new Date(raw)
   if (Number.isNaN(dt.getTime())) return raw
   return `${pad2(dt.getDate())}/${pad2(dt.getMonth() + 1)}/${dt.getFullYear()}`
@@ -1567,19 +1567,31 @@ const formatDT = (value) => {
 }
 const dmyToISODate = (value) => {
   const raw = String(value || '').trim()
-  const iso = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/)
-  if (iso) return raw
+  const iso = raw.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/)
+  if (iso) return `${iso[1]}-${pad2(iso[2])}-${pad2(iso[3])}`
   const dmy = raw.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{4})$/)
-  if (dmy) return `${dmy[3]}-${pad2(dmy[2])}-${pad2(dmy[1])}`
-  return raw
+  if (dmy) {
+    const day = Number(dmy[1])
+    const month = Number(dmy[2])
+    if (month >= 1 && month <= 12 && day >= 1 && day <= 31) return `${dmy[3]}-${pad2(month)}-${pad2(day)}`
+  }
+  return ''
 }
 function DateInput({ value, onChange, className = '', placeholder = 'дд/мм/гггг', ...props }) {
   const [displayValue, setDisplayValue] = useState(formatDateDMY(value))
   useEffect(() => { setDisplayValue(formatDateDMY(value)) }, [value])
 
-  const emitISO = (rawValue) => {
-    const isoValue = dmyToISODate(rawValue)
-    if (onChange) onChange({ target: { value: isoValue } })
+  const emitISOIfComplete = (rawValue, force = false) => {
+    const raw = String(rawValue || '').trim()
+    const completeDMY = /^(\d{1,2})[./-](\d{1,2})[./-](\d{4})$/.test(raw)
+    const completeISO = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.test(raw)
+    if (!raw) {
+      if (force && onChange) onChange({ target: { value: '' } })
+      return
+    }
+    if (!completeDMY && !completeISO) return
+    const isoValue = dmyToISODate(raw)
+    if (isoValue && onChange) onChange({ target: { value: isoValue } })
   }
 
   return <input
@@ -1591,16 +1603,21 @@ function DateInput({ value, onChange, className = '', placeholder = 'дд/мм/�
     value={displayValue === '—' ? '' : displayValue}
     onChange={e => {
       setDisplayValue(e.target.value)
-      emitISO(e.target.value)
+      emitISOIfComplete(e.target.value, false)
     }}
     onBlur={e => {
       const isoValue = dmyToISODate(e.target.value)
-      const pretty = formatDateDMY(isoValue)
-      setDisplayValue(pretty === '—' ? '' : pretty)
-      if (onChange) onChange({ target: { value: isoValue } })
+      if (isoValue) {
+        const pretty = formatDateDMY(isoValue)
+        setDisplayValue(pretty === '—' ? '' : pretty)
+        if (onChange) onChange({ target: { value: isoValue } })
+      } else {
+        setDisplayValue(formatDateDMY(value))
+      }
     }}
   />
 }
+
 const calcDailyRate = (emp) => {
   const type = emp?.salary_type || 'monthly'
   return type === 'daily' ? parseNum(emp?.daily_rate) : parseNum(emp?.monthly_salary) / 26
