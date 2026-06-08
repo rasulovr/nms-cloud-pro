@@ -24313,6 +24313,7 @@ function DebtsPayments({ t }) {
   const [editingPaymentTransactionId, setEditingPaymentTransactionId] = useState('')
   const [editingPaymentSource, setEditingPaymentSource] = useState(null)
   const [showPaymentEditOverlay, setShowPaymentEditOverlay] = useState(false)
+  const [quickPaymentEditOpen, setQuickPaymentEditOpen] = useState(false)
   const [paymentTransactionEditForm, setPaymentTransactionEditForm] = useState({ payment_date: todayISO(), legal_entity_id: '', amount: '', invoice_notes: '', comment: '', selected_e_invoice_ids: [], e_invoice_search: '' })
   const [paymentEditEInvoices, setPaymentEditEInvoices] = useState([])
   const [paymentEditLoading, setPaymentEditLoading] = useState(false)
@@ -24474,6 +24475,7 @@ function DebtsPayments({ t }) {
     setEditingPaymentTransactionId('')
     setEditingPaymentSource(null)
     setShowPaymentEditOverlay(false)
+    setQuickPaymentEditOpen(false)
     setTransactionPage(1)
   }
 
@@ -24707,6 +24709,33 @@ function DebtsPayments({ t }) {
     }, 120)
   }
 
+  function openQuickPaymentEdit(row) {
+    const safeRow = normalizePaymentEditRow(row)
+    const form = buildPaymentEditFormFromRow(safeRow)
+    setMessage('')
+    setEditingOpeningDebtId('')
+    setEditingPurchaseTransactionId('')
+    setDetailPurchaseId('')
+    setEditingPaymentSource(safeRow)
+    setEditingPaymentTransactionId(String(safeRow.id || `payment-${Date.now()}`))
+    setPaymentTransactionEditForm(form)
+    setQuickPaymentEditOpen(true)
+
+    // Load real e-qaimə in background, but never block the modal from opening.
+    setPaymentEditLoading(true)
+    supabase
+      .from('supplier_e_invoices')
+      .select('*, suppliers(name), legal_entities(name,voen), branches(name)')
+      .eq('supplier_id', safeRow.supplier_id)
+      .is('deleted_at', null)
+      .order('invoice_date', { ascending: false })
+      .limit(2000)
+      .then(({ data }) => setPaymentEditEInvoices(data || []))
+      .catch(() => setPaymentEditEInvoices([]))
+      .finally(() => setPaymentEditLoading(false))
+  }
+
+
   async function startEditSupplierPayment(row) {
     if (!row) return
 
@@ -24907,6 +24936,27 @@ function DebtsPayments({ t }) {
     } catch (_error) {
       return []
     }
+  }
+
+  function quickPaymentEditEInvoiceOptions(row) {
+    const base = safePaymentEditEInvoiceOptions(row)
+    const noteNumbers = extractPaymentEInvoiceNumbers(`${paymentTransactionEditForm.invoice_notes || ''} ${paymentTransactionEditForm.comment || ''} ${row?.invoice_notes || ''} ${row?.comment || ''}`)
+    const existing = new Set(base.map(inv => normalizePaymentEInvoiceNumber(inv.invoice_number)))
+    const placeholders = noteNumbers
+      .filter(number => !existing.has(normalizePaymentEInvoiceNumber(number)))
+      .map(number => ({
+        id: number,
+        invoice_number: number,
+        invoice_date: row?.payment_date || paymentTransactionEditForm.payment_date || '',
+        amount: 0,
+        paid_amount: 0,
+        remaining_amount: 0,
+        supplier_id: row?.supplier_id || activeSupplierId,
+        legal_entity_id: paymentTransactionEditForm.legal_entity_id || row?.legal_entity_id || activeLegalEntityId,
+        legal_entities: legalEntities.find(le => String(le.id) === String(paymentTransactionEditForm.legal_entity_id || row?.legal_entity_id || activeLegalEntityId)) || null,
+        source_kind: 'note_placeholder'
+      }))
+    return [...placeholders, ...base]
   }
 
   function togglePaymentEditEInvoice(inv, row) {
@@ -25252,6 +25302,18 @@ function DebtsPayments({ t }) {
           invoice_notes: paymentTransactionEditForm.invoice_notes || '',
           comment: paymentTransactionEditForm.comment || ''
         } : null))
+
+  const quickPaymentEditRow = quickPaymentEditOpen
+    ? normalizePaymentEditRow(editingPaymentSource || paymentEditOverlayRow || {
+        id: editingPaymentTransactionId || 'payment-edit-draft',
+        supplier_id: activeSupplierId || '',
+        legal_entity_id: paymentTransactionEditForm.legal_entity_id || activeLegalEntityId || '',
+        payment_date: paymentTransactionEditForm.payment_date || todayISO(),
+        amount: parseNum(paymentTransactionEditForm.amount),
+        invoice_notes: paymentTransactionEditForm.invoice_notes || '',
+        comment: paymentTransactionEditForm.comment || ''
+      })
+    : null
 
   const normalizedLedgerSearch = String(ledgerSearch || '').trim().toLowerCase()
   const normalizedInvoiceSearch = String(invoiceSearch || '').trim().toLowerCase()
@@ -26128,8 +26190,7 @@ function DebtsPayments({ t }) {
       setActiveSupplierId(paymentSource.supplier_id)
       setActiveLegalEntityId(paymentSource.legal_entity_id || '')
       setTransactionType('payments')
-      forceOpenPaymentEditOverlay(paymentSource)
-      startEditSupplierPayment(paymentSource)
+      openQuickPaymentEdit(paymentSource)
       return
     }
 
@@ -26283,7 +26344,7 @@ function DebtsPayments({ t }) {
             <button className="small remove" onClick={() => deleteSupplierPayment(activeEditingPayment)}>Удалить</button>
           </div>
         </div>}
-        {transactionType === 'purchases' ? <div className="table-wrap"><table><thead><tr><th>Дата</th><th>Фактура</th><th>Наш VOEN</th><th>Филиал</th><th>Сумма</th><th>Комментарий</th><th></th></tr></thead><tbody>{pagedFilteredPurchases.map(p => <React.Fragment key={p.id}><tr className={p.deleted_at ? 'cancelled-row' : ''}><td>{formatDateDMY(p.purchase_date)}</td><td>{p.invoice_number || '—'}</td><td>{p.legal_entities?.name || '—'}<br /><span className="hint">{p.legal_entities?.voen || ''}</span></td><td>{p.row_type === 'opening_debt' ? 'Стартовый долг' : (p.branches?.name || '—')}</td><td><strong className="bad">{fmt(p.total_amount)}</strong></td><td>{p.deleted_at ? 'Удалено / зачёркнуто' : (p.comment || '—')}</td><td>{p.row_type === 'opening_debt' ? <div className="action-row"><button className="small" disabled={Boolean(p.deleted_at)} onClick={() => startEditOpeningDebt(p)}>Изменить</button><button className="small remove" disabled={Boolean(p.deleted_at)} onClick={() => softDeleteOpeningDebt(p)}>Удалить</button></div> : <div className="action-row"><button className="small" onClick={() => setDetailPurchaseId(detailPurchaseId === p.id ? '' : p.id)}>{detailPurchaseId === p.id ? 'Скрыть' : 'Просмотр'}</button><button className="small" disabled={Boolean(p.deleted_at)} onClick={() => startEditPurchaseTransaction(p)}>Изменить</button><button className="small remove" disabled={Boolean(p.deleted_at)} onClick={() => softDeletePurchaseTransaction(p)}>Удалить</button></div>}</td></tr>{p.row_type === 'purchase' && editingPurchaseTransactionId === String(p.id) && <tr><td colSpan="7"><div className="card" style={{margin:0}}><h4>Редактирование поступления</h4><p className="hint">Сумма накладной пересчитывается автоматически по товарам. Изменения товара, количества, единицы или цены фиксируются в журнале операций.</p><div className="form-grid compact"><label><span>Дата</span><DateInput value={purchaseTransactionEditForm.purchase_date} onChange={e => setPurchaseTransactionEditForm({...purchaseTransactionEditForm, purchase_date: e.target.value})} /></label><label><span>Фактура</span><input value={purchaseTransactionEditForm.invoice_number} onChange={e => setPurchaseTransactionEditForm({...purchaseTransactionEditForm, invoice_number: e.target.value})} /></label><label><span>Филиал</span><select value={purchaseTransactionEditForm.branch_id} onChange={e => setPurchaseTransactionEditForm({...purchaseTransactionEditForm, branch_id: e.target.value})}><option value="">—</option>{branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label><label><span>Сумма накладной</span><strong>{fmt(getPurchaseEditTotal() || p.total_amount)} AZN</strong></label><label><span>Комментарий</span><input value={purchaseTransactionEditForm.comment} onChange={e => setPurchaseTransactionEditForm({...purchaseTransactionEditForm, comment: e.target.value})} /></label></div><div className="table-wrap"><table><thead><tr><th>Категория</th><th>Товар</th><th>Кол-во</th><th>Ед.</th><th>Цена</th><th>Сумма</th></tr></thead><tbody>{purchaseTransactionEditItems.map(i => { const editProduct = getPurchaseEditProduct(i); return <tr key={i.id}><td>{editProduct?.category || i.supplier_products?.category || '—'}</td><td><select value={i.product_id || ''} onChange={e => updatePurchaseEditItemLocal(i.id, { product_id: e.target.value })}>{products.map(prod => <option key={prod.id} value={prod.id}>{prod.name}</option>)}</select></td><td><input inputMode="decimal" value={i.quantity} onChange={e => updatePurchaseEditItemLocal(i.id, { quantity: e.target.value })} /></td><td><select value={i.unit || 'kg'} onChange={e => updatePurchaseEditItemLocal(i.id, { unit: e.target.value })}>{PURCHASE_UNITS.map(u => <option key={u.value} value={u.value}>{u.label}</option>)}</select></td><td><input inputMode="decimal" value={i.unit_price} onChange={e => updatePurchaseEditItemLocal(i.id, { unit_price: e.target.value })} /></td><td>{fmt(getPurchaseEditItemTotal(i))} AZN</td></tr> })}{!purchaseTransactionEditItems.length && <tr><td colSpan="6" className="hint">Товары не найдены</td></tr>}</tbody></table></div><div className="action-row"><button className="small primary" onClick={() => savePurchaseTransactionEdit(p)}>Сохранить изменения</button><button className="ghost small" onClick={() => { setEditingPurchaseTransactionId(''); setPurchaseTransactionEditItems([]) }}>Отмена</button></div></div></td></tr>}{p.row_type === 'opening_debt' && editingOpeningDebtId === String(p.id).replace('opening-', '') && <tr><td colSpan="7"><div className="card" style={{margin:0}}><h4>Редактирование стартового долга</h4><div className="form-grid compact"><label><span>Дата</span><DateInput value={openingDebtEditForm.debt_date} onChange={e => setOpeningDebtEditForm({...openingDebtEditForm, debt_date: e.target.value})} /></label><label><span>Сумма</span><input inputMode="decimal" value={openingDebtEditForm.amount} onChange={e => setOpeningDebtEditForm({...openingDebtEditForm, amount: e.target.value})} /></label><label><span>Фактура / отметка</span><input value={openingDebtEditForm.invoice_notes} onChange={e => setOpeningDebtEditForm({...openingDebtEditForm, invoice_notes: e.target.value})} /></label><label><span>Комментарий</span><input value={openingDebtEditForm.comment} onChange={e => setOpeningDebtEditForm({...openingDebtEditForm, comment: e.target.value})} /></label></div><div className="action-row"><button className="small primary" onClick={() => saveOpeningDebtEdit(p)}>Сохранить</button><button className="ghost small" onClick={() => setEditingOpeningDebtId('')}>Закрыть</button></div></div></td></tr>}{p.row_type !== 'opening_debt' && detailPurchaseId === p.id && <tr><td colSpan="7"><div className="table-wrap"><table><thead><tr><th>Категория</th><th>Товар</th><th>Кол-во</th><th>Ед.</th><th>Цена</th><th>Сумма</th></tr></thead><tbody>{(p.supplier_purchase_items || []).map(i => <tr key={i.id}><td>{i.supplier_products?.category || '—'}</td><td>{i.supplier_products?.name || '—'}</td><td>{fmt(i.quantity)}</td><td>{i.unit}</td><td>{fmt(i.unit_price)}</td><td>{fmt(i.total_amount)}</td></tr>)}{!(p.supplier_purchase_items || []).length && <tr><td colSpan="6" className="hint">Товары не найдены</td></tr>}</tbody></table></div></td></tr>}</React.Fragment>)}{!purchaseTransactionRows.length && <tr><td colSpan="7" className="hint">Нет поступлений или стартовых долгов за выбранный период</td></tr>}</tbody></table></div> : transactionType === 'products' ? <div><div className="form-grid compact" style={{marginTop:12}}><label><span>Поиск товара</span><input value={productSearch} onChange={e => setProductSearch(e.target.value)} placeholder="Например: молоко, кофе" /></label><label><span>Сортировка</span><select value={productSort} onChange={e => setProductSort(e.target.value)}><option value="name_asc">Наименование A → Z</option><option value="name_desc">Наименование Z → A</option><option value="change_desc">Изменение цены: рост сверху</option><option value="change_asc">Изменение цены: снижение сверху</option><option value="price_desc">Последняя цена: убывание</option><option value="price_asc">Последняя цена: возрастание</option></select></label></div><div className="table-wrap"><table><thead><tr><th>Тип</th><th>Товар</th><th>Последняя цена закупа</th><th>Предыдущая цена закупа</th><th>Разница</th><th>Изменение</th><th>Последняя закупка</th><th>Фактура</th></tr></thead><tbody>{pagedProductPriceRows.map(row => <tr key={row.id}><td>{row.category}</td><td><b>{row.name}</b></td><td>{fmt(row.latest?.price)} / {row.latest?.unit || row.unit}</td><td>{row.previous ? `${fmt(row.previous.price)} / ${row.previous.unit || row.unit}` : '—'}</td><td>{row.changeAmount == null ? <span className="hint">—</span> : <strong className={row.changeAmount > 0 ? 'bad' : row.changeAmount < 0 ? 'good' : ''}>{row.changeAmount > 0 ? '+' : ''}{fmt(row.changeAmount)} AZN</strong>}</td><td>{row.changePct == null ? <span className="hint">—</span> : <strong className={row.changePct > 0 ? 'bad' : row.changePct < 0 ? 'good' : ''}>{row.changePct > 0 ? '+' : ''}{pct(row.changePct)}</strong>}</td><td>{row.latest?.date || '—'}</td><td>{row.latest?.invoice || '—'}</td></tr>)}{!productPriceRows.length && <tr><td colSpan="8" className="hint">Товары не найдены за выбранный период</td></tr>}</tbody></table></div></div> : <div className="table-wrap"><table><thead><tr><th>Дата</th><th>Наш VOEN</th><th>Отметки / фактуры</th><th>Сумма</th><th>Комментарий</th><th>Действие</th></tr></thead><tbody>{pagedFilteredPayments.map(p => { const paymentRowComment = String(p.comment || '').startsWith('v255b: merged single payment') ? 'Оплата одной суммой по нескольким e-qaimə' : (p.comment || '—'); return <React.Fragment key={p.id}><tr><td>{formatDateDMY(p.payment_date)}</td><td>{p.legal_entities?.name || legalEntities.find(le => le.id === p.legal_entity_id)?.name || '—'}<br /><span className="hint">{p.legal_entities?.voen || legalEntities.find(le => le.id === p.legal_entity_id)?.voen || ''}</span></td><td>{p.invoice_notes || '—'}</td><td><strong className="good">{fmt(p.amount)}</strong></td><td>{paymentRowComment}</td><td><div className="action-row"><button className="small" onClick={() => { forceOpenPaymentEditOverlay(p); startEditSupplierPayment(p) }}>Изменить</button><button className="small remove" onClick={() => deleteSupplierPayment(p)}>Удалить</button></div></td></tr></React.Fragment> })}{!filteredPayments.length && <tr><td colSpan="6" className="hint">Нет оплат за выбранный период</td></tr>}</tbody></table></div>}
+        {transactionType === 'purchases' ? <div className="table-wrap"><table><thead><tr><th>Дата</th><th>Фактура</th><th>Наш VOEN</th><th>Филиал</th><th>Сумма</th><th>Комментарий</th><th></th></tr></thead><tbody>{pagedFilteredPurchases.map(p => <React.Fragment key={p.id}><tr className={p.deleted_at ? 'cancelled-row' : ''}><td>{formatDateDMY(p.purchase_date)}</td><td>{p.invoice_number || '—'}</td><td>{p.legal_entities?.name || '—'}<br /><span className="hint">{p.legal_entities?.voen || ''}</span></td><td>{p.row_type === 'opening_debt' ? 'Стартовый долг' : (p.branches?.name || '—')}</td><td><strong className="bad">{fmt(p.total_amount)}</strong></td><td>{p.deleted_at ? 'Удалено / зачёркнуто' : (p.comment || '—')}</td><td>{p.row_type === 'opening_debt' ? <div className="action-row"><button className="small" disabled={Boolean(p.deleted_at)} onClick={() => startEditOpeningDebt(p)}>Изменить</button><button className="small remove" disabled={Boolean(p.deleted_at)} onClick={() => softDeleteOpeningDebt(p)}>Удалить</button></div> : <div className="action-row"><button className="small" onClick={() => setDetailPurchaseId(detailPurchaseId === p.id ? '' : p.id)}>{detailPurchaseId === p.id ? 'Скрыть' : 'Просмотр'}</button><button className="small" disabled={Boolean(p.deleted_at)} onClick={() => startEditPurchaseTransaction(p)}>Изменить</button><button className="small remove" disabled={Boolean(p.deleted_at)} onClick={() => softDeletePurchaseTransaction(p)}>Удалить</button></div>}</td></tr>{p.row_type === 'purchase' && editingPurchaseTransactionId === String(p.id) && <tr><td colSpan="7"><div className="card" style={{margin:0}}><h4>Редактирование поступления</h4><p className="hint">Сумма накладной пересчитывается автоматически по товарам. Изменения товара, количества, единицы или цены фиксируются в журнале операций.</p><div className="form-grid compact"><label><span>Дата</span><DateInput value={purchaseTransactionEditForm.purchase_date} onChange={e => setPurchaseTransactionEditForm({...purchaseTransactionEditForm, purchase_date: e.target.value})} /></label><label><span>Фактура</span><input value={purchaseTransactionEditForm.invoice_number} onChange={e => setPurchaseTransactionEditForm({...purchaseTransactionEditForm, invoice_number: e.target.value})} /></label><label><span>Филиал</span><select value={purchaseTransactionEditForm.branch_id} onChange={e => setPurchaseTransactionEditForm({...purchaseTransactionEditForm, branch_id: e.target.value})}><option value="">—</option>{branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label><label><span>Сумма накладной</span><strong>{fmt(getPurchaseEditTotal() || p.total_amount)} AZN</strong></label><label><span>Комментарий</span><input value={purchaseTransactionEditForm.comment} onChange={e => setPurchaseTransactionEditForm({...purchaseTransactionEditForm, comment: e.target.value})} /></label></div><div className="table-wrap"><table><thead><tr><th>Категория</th><th>Товар</th><th>Кол-во</th><th>Ед.</th><th>Цена</th><th>Сумма</th></tr></thead><tbody>{purchaseTransactionEditItems.map(i => { const editProduct = getPurchaseEditProduct(i); return <tr key={i.id}><td>{editProduct?.category || i.supplier_products?.category || '—'}</td><td><select value={i.product_id || ''} onChange={e => updatePurchaseEditItemLocal(i.id, { product_id: e.target.value })}>{products.map(prod => <option key={prod.id} value={prod.id}>{prod.name}</option>)}</select></td><td><input inputMode="decimal" value={i.quantity} onChange={e => updatePurchaseEditItemLocal(i.id, { quantity: e.target.value })} /></td><td><select value={i.unit || 'kg'} onChange={e => updatePurchaseEditItemLocal(i.id, { unit: e.target.value })}>{PURCHASE_UNITS.map(u => <option key={u.value} value={u.value}>{u.label}</option>)}</select></td><td><input inputMode="decimal" value={i.unit_price} onChange={e => updatePurchaseEditItemLocal(i.id, { unit_price: e.target.value })} /></td><td>{fmt(getPurchaseEditItemTotal(i))} AZN</td></tr> })}{!purchaseTransactionEditItems.length && <tr><td colSpan="6" className="hint">Товары не найдены</td></tr>}</tbody></table></div><div className="action-row"><button className="small primary" onClick={() => savePurchaseTransactionEdit(p)}>Сохранить изменения</button><button className="ghost small" onClick={() => { setEditingPurchaseTransactionId(''); setPurchaseTransactionEditItems([]) }}>Отмена</button></div></div></td></tr>}{p.row_type === 'opening_debt' && editingOpeningDebtId === String(p.id).replace('opening-', '') && <tr><td colSpan="7"><div className="card" style={{margin:0}}><h4>Редактирование стартового долга</h4><div className="form-grid compact"><label><span>Дата</span><DateInput value={openingDebtEditForm.debt_date} onChange={e => setOpeningDebtEditForm({...openingDebtEditForm, debt_date: e.target.value})} /></label><label><span>Сумма</span><input inputMode="decimal" value={openingDebtEditForm.amount} onChange={e => setOpeningDebtEditForm({...openingDebtEditForm, amount: e.target.value})} /></label><label><span>Фактура / отметка</span><input value={openingDebtEditForm.invoice_notes} onChange={e => setOpeningDebtEditForm({...openingDebtEditForm, invoice_notes: e.target.value})} /></label><label><span>Комментарий</span><input value={openingDebtEditForm.comment} onChange={e => setOpeningDebtEditForm({...openingDebtEditForm, comment: e.target.value})} /></label></div><div className="action-row"><button className="small primary" onClick={() => saveOpeningDebtEdit(p)}>Сохранить</button><button className="ghost small" onClick={() => setEditingOpeningDebtId('')}>Закрыть</button></div></div></td></tr>}{p.row_type !== 'opening_debt' && detailPurchaseId === p.id && <tr><td colSpan="7"><div className="table-wrap"><table><thead><tr><th>Категория</th><th>Товар</th><th>Кол-во</th><th>Ед.</th><th>Цена</th><th>Сумма</th></tr></thead><tbody>{(p.supplier_purchase_items || []).map(i => <tr key={i.id}><td>{i.supplier_products?.category || '—'}</td><td>{i.supplier_products?.name || '—'}</td><td>{fmt(i.quantity)}</td><td>{i.unit}</td><td>{fmt(i.unit_price)}</td><td>{fmt(i.total_amount)}</td></tr>)}{!(p.supplier_purchase_items || []).length && <tr><td colSpan="6" className="hint">Товары не найдены</td></tr>}</tbody></table></div></td></tr>}</React.Fragment>)}{!purchaseTransactionRows.length && <tr><td colSpan="7" className="hint">Нет поступлений или стартовых долгов за выбранный период</td></tr>}</tbody></table></div> : transactionType === 'products' ? <div><div className="form-grid compact" style={{marginTop:12}}><label><span>Поиск товара</span><input value={productSearch} onChange={e => setProductSearch(e.target.value)} placeholder="Например: молоко, кофе" /></label><label><span>Сортировка</span><select value={productSort} onChange={e => setProductSort(e.target.value)}><option value="name_asc">Наименование A → Z</option><option value="name_desc">Наименование Z → A</option><option value="change_desc">Изменение цены: рост сверху</option><option value="change_asc">Изменение цены: снижение сверху</option><option value="price_desc">Последняя цена: убывание</option><option value="price_asc">Последняя цена: возрастание</option></select></label></div><div className="table-wrap"><table><thead><tr><th>Тип</th><th>Товар</th><th>Последняя цена закупа</th><th>Предыдущая цена закупа</th><th>Разница</th><th>Изменение</th><th>Последняя закупка</th><th>Фактура</th></tr></thead><tbody>{pagedProductPriceRows.map(row => <tr key={row.id}><td>{row.category}</td><td><b>{row.name}</b></td><td>{fmt(row.latest?.price)} / {row.latest?.unit || row.unit}</td><td>{row.previous ? `${fmt(row.previous.price)} / ${row.previous.unit || row.unit}` : '—'}</td><td>{row.changeAmount == null ? <span className="hint">—</span> : <strong className={row.changeAmount > 0 ? 'bad' : row.changeAmount < 0 ? 'good' : ''}>{row.changeAmount > 0 ? '+' : ''}{fmt(row.changeAmount)} AZN</strong>}</td><td>{row.changePct == null ? <span className="hint">—</span> : <strong className={row.changePct > 0 ? 'bad' : row.changePct < 0 ? 'good' : ''}>{row.changePct > 0 ? '+' : ''}{pct(row.changePct)}</strong>}</td><td>{row.latest?.date || '—'}</td><td>{row.latest?.invoice || '—'}</td></tr>)}{!productPriceRows.length && <tr><td colSpan="8" className="hint">Товары не найдены за выбранный период</td></tr>}</tbody></table></div></div> : <div className="table-wrap"><table><thead><tr><th>Дата</th><th>Наш VOEN</th><th>Отметки / фактуры</th><th>Сумма</th><th>Комментарий</th><th>Действие</th></tr></thead><tbody>{pagedFilteredPayments.map(p => { const paymentRowComment = String(p.comment || '').startsWith('v255b: merged single payment') ? 'Оплата одной суммой по нескольким e-qaimə' : (p.comment || '—'); return <React.Fragment key={p.id}><tr><td>{formatDateDMY(p.payment_date)}</td><td>{p.legal_entities?.name || legalEntities.find(le => le.id === p.legal_entity_id)?.name || '—'}<br /><span className="hint">{p.legal_entities?.voen || legalEntities.find(le => le.id === p.legal_entity_id)?.voen || ''}</span></td><td>{p.invoice_notes || '—'}</td><td><strong className="good">{fmt(p.amount)}</strong></td><td>{paymentRowComment}</td><td><div className="action-row"><button className="small" onClick={() => openQuickPaymentEdit(p)}>Изменить</button><button className="small remove" onClick={() => deleteSupplierPayment(p)}>Удалить</button></div></td></tr></React.Fragment> })}{!filteredPayments.length && <tr><td colSpan="6" className="hint">Нет оплат за выбранный период</td></tr>}</tbody></table></div>}
         <div className="action-row" style={{margin:'12px 0 0'}}><button className="ghost small" disabled={safeTransactionPage <= 1} onClick={() => setTransactionPage(p => Math.max(1, parseNum(p) - 1))}>← Пред.</button><span className="hint">Страница {safeTransactionPage} / {transactionTotalPages} · всего {transactionSourceCount}</span><button className="ghost small" disabled={safeTransactionPage >= transactionTotalPages} onClick={() => setTransactionPage(p => Math.min(transactionTotalPages, parseNum(p) + 1))}>След. →</button></div>
         <div className="card" style={{marginTop:12}}><h4>Журнал изменений</h4><p className="hint">Любое редактирование и отключение стартового долга фиксируется по времени и пользователю.</p><div className="table-wrap"><table><thead><tr><th>Дата</th><th>Пользователь</th><th>Действие</th><th>Было</th><th>Стало</th></tr></thead><tbody>{visibleTransactionLogs.map(l => <tr key={l.id}><td>{formatDT(l.created_at)}</td><td>{l.user_email || l.user_id || '—'}</td><td>{l.action}</td><td><span className="hint">{l.old_value || '—'}</span></td><td>{l.new_value || '—'}</td></tr>)}{!visibleTransactionLogs.length && <tr><td colSpan="5" className="hint">Изменений пока нет.</td></tr>}</tbody></table></div></div>
       </div>}</div>
@@ -26351,6 +26412,49 @@ function DebtsPayments({ t }) {
         </div>
       </div>
 
+
+      {quickPaymentEditOpen && quickPaymentEditRow && <div
+        className="supplier-payment-edit-global-overlay"
+        style={{position:'fixed', inset:0, zIndex:60000, background:'rgba(15,23,42,.42)', display:'flex', alignItems:'flex-start', justifyContent:'center', padding:24, overflow:'auto'}}
+      >
+        <div className="supplier-payment-edit-global-card" style={{width:'min(1320px, calc(100vw - 48px))', maxHeight:'calc(100vh - 48px)', overflow:'auto', background:'#fff', borderRadius:24, padding:22, boxShadow:'0 42px 120px rgba(15,23,42,.45)', border:'2px solid rgba(37,99,235,.30)'}}>
+          <div className="card-head suppliers-v43-card-head" style={{position:'sticky', top:-22, zIndex:10, background:'rgba(255,255,255,.98)', borderBottom:'1px solid #e5e7eb', paddingBottom:12}}>
+            <div>
+              <h3>Редактирование оплаты поставщику</h3>
+              <p className="hint">Независимое окно редактирования: открывается напрямую из журнала, без окна транзакций.</p>
+            </div>
+            <button className="supplier-modal-x" title="Закрыть" aria-label="Закрыть" onClick={() => { setQuickPaymentEditOpen(false); setEditingPaymentTransactionId(''); setEditingPaymentSource(null) }}>×</button>
+          </div>
+
+          <div className="form-grid compact">
+            <label><span>Дата оплаты</span><DateInput value={paymentTransactionEditForm.payment_date || quickPaymentEditRow.payment_date || todayISO()} onChange={e => setPaymentTransactionEditForm({...paymentTransactionEditForm, payment_date: e.target.value})} /></label>
+            <label><span>Наш VOEN / VOEN</span><select value={paymentTransactionEditForm.legal_entity_id || quickPaymentEditRow.legal_entity_id || ''} onChange={e => setPaymentTransactionEditForm({...paymentTransactionEditForm, legal_entity_id: e.target.value, selected_e_invoice_ids: []})}>{legalEntities.map(le => <option key={le.id} value={le.id}>{le.name} · {le.voen}</option>)}</select></label>
+            <label><span>Сумма оплаты</span><input inputMode="decimal" value={paymentTransactionEditForm.amount || String(parseNum(quickPaymentEditRow.amount))} onChange={e => setPaymentTransactionEditForm({...paymentTransactionEditForm, amount: e.target.value})} /></label>
+            <label><span>Отметки / фактуры</span><input value={paymentTransactionEditForm.invoice_notes || quickPaymentEditRow.invoice_notes || ''} onChange={e => setPaymentTransactionEditForm({...paymentTransactionEditForm, invoice_notes: e.target.value})} /></label>
+            <label><span>Комментарий</span><input value={paymentTransactionEditForm.comment || quickPaymentEditRow.comment || ''} onChange={e => setPaymentTransactionEditForm({...paymentTransactionEditForm, comment: e.target.value})} /></label>
+          </div>
+
+          <div className="supplier-single-einvoice-card" style={{marginTop:12}}>
+            <div className="card-head suppliers-v43-card-head">
+              <div><h4>e-qaimə в этой оплате</h4><p className="hint">Показывает номера из оплаты и доступные неоплаченные e-qaimə по поставщику / VOEN.</p></div>
+              {(paymentTransactionEditForm.selected_e_invoice_ids || []).length > 0 && <button className="ghost small" onClick={() => setPaymentTransactionEditForm(f => ({...f, selected_e_invoice_ids: [], invoice_notes: '', amount: ''}))}>Очистить выбор</button>}
+            </div>
+            <div className="form-grid compact">
+              <label><span>Поиск e-qaimə</span><input value={paymentTransactionEditForm.e_invoice_search || ''} onChange={e => setPaymentTransactionEditForm({...paymentTransactionEditForm, e_invoice_search: e.target.value})} placeholder="№, дата, сумма, VOEN" /></label>
+              <div className="mini-kpi"><span>{paymentEditLoading ? 'Загрузка' : 'Найдено'}</span><strong>{paymentEditLoading ? '...' : quickPaymentEditEInvoiceOptions(quickPaymentEditRow).length}</strong></div>
+            </div>
+            <div className="table-wrap supplier-payment-einvoice-picker" style={{maxHeight:'min(520px, calc(100vh - 430px))', overflow:'auto'}}>
+              <table style={{minWidth:1060}}><thead><tr><th></th><th>Дата</th><th>№ e-qaimə</th><th>VOEN</th><th>Сумма</th><th>Оплачено</th><th>Остаток</th></tr></thead><tbody>{quickPaymentEditEInvoiceOptions(quickPaymentEditRow).map(inv => { const selectedIds = Array.isArray(paymentTransactionEditForm.selected_e_invoice_ids) ? paymentTransactionEditForm.selected_e_invoice_ids : []; const checked = selectedIds.map(String).includes(String(inv.id)) || extractPaymentEInvoiceNumbers(paymentTransactionEditForm.invoice_notes || '').some(n => normalizePaymentEInvoiceNumber(n) === normalizePaymentEInvoiceNumber(inv.invoice_number)); const balance = Math.max(0, parseNum(inv.remaining_amount ?? (parseNum(inv.amount) - parseNum(inv.paid_amount)))); return <tr key={inv.id} className={checked ? 'active' : ''}><td><input type="checkbox" checked={checked} onChange={() => togglePaymentEditEInvoice(inv, quickPaymentEditRow)} /></td><td>{formatDateDMY(inv.invoice_date)}</td><td><b>{inv.invoice_number}</b>{inv.source_kind === 'note_placeholder' ? <><br /><span className="hint">номер из оплаты</span></> : null}</td><td>{inv.legal_entities?.name || legalEntities.find(le => le.id === inv.legal_entity_id)?.name || '—'}<br /><span className="hint">{inv.legal_entities?.voen || legalEntities.find(le => le.id === inv.legal_entity_id)?.voen || ''}</span></td><td>{fmt(inv.amount)}</td><td>{fmt(inv.paid_amount)}</td><td className={balance > 0 ? 'bad' : 'good'}>{fmt(balance)}</td></tr> })}{!paymentEditLoading && !quickPaymentEditEInvoiceOptions(quickPaymentEditRow).length && <tr><td colSpan="7" className="hint">e-qaimə не найдены. Но номера из оплаты должны отображаться как “номер из оплаты”.</td></tr>}</tbody></table>
+            </div>
+          </div>
+
+          <div className="action-row" style={{marginTop:14}}>
+            <button className="small primary" onClick={async () => { await saveSupplierPaymentEdit(quickPaymentEditRow); setQuickPaymentEditOpen(false) }}>Сохранить</button>
+            <button className="ghost small" onClick={() => { setQuickPaymentEditOpen(false); setEditingPaymentTransactionId(''); setEditingPaymentSource(null) }}>Закрыть</button>
+            <button className="small remove" onClick={() => deleteSupplierPayment(quickPaymentEditRow)}>Удалить</button>
+          </div>
+        </div>
+      </div>}
 
       {showPaymentEditOverlay && paymentEditOverlayRow && <div className="supplier-payment-edit-global-overlay">
         <div className="supplier-payment-edit-global-card">
