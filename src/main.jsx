@@ -24736,48 +24736,61 @@ function DebtsPayments({ t }) {
       .slice(0, 140)
   }
 
-  function paymentEditLegacyPlaceholderRows(row, existingRows = []) {
-    const notes = `${row?.invoice_notes || ''} ${row?.comment || ''} ${paymentTransactionEditForm.invoice_notes || ''} ${paymentTransactionEditForm.comment || ''}`
-    const numbers = extractPaymentEInvoiceNumbers(notes)
-    const existingNumbers = new Set((existingRows || []).map(inv => normalizePaymentEInvoiceNumber(inv.invoice_number)))
-    const legalId = paymentTransactionEditForm.legal_entity_id || row?.legal_entity_id || activeLegalEntityId || ''
-    return numbers
-      .filter(number => {
-        const normalized = normalizePaymentEInvoiceNumber(number)
-        return normalized && !existingNumbers.has(normalized)
-      })
-      .map(number => ({
-        id: `note-${number}`,
-        invoice_number: number,
-        invoice_date: row?.payment_date || paymentTransactionEditForm.payment_date || '',
-        amount: 0,
-        paid_amount: 0,
-        remaining_amount: 0,
-        supplier_id: row?.supplier_id || activeSupplierId || '',
-        legal_entity_id: legalId,
-        legal_entities: legalEntities.find(le => String(le.id) === String(legalId)) || null,
-        source_kind: 'note_placeholder'
-      }))
-  }
-
   function safePaymentEditEInvoiceOptions(row) {
-    let rows = []
+    // v301: never allow the e-qaimə list to crash the edit modal.
+    // If the real supplier_e_invoices query/list fails, show numbers from the payment itself.
+    let realRows = []
     try {
-      rows = paymentEditEInvoiceOptions(row) || []
+      realRows = paymentEditEInvoiceOptions(row) || []
     } catch (_error) {
-      rows = []
+      realRows = []
     }
 
-    const placeholders = paymentEditLegacyPlaceholderRows(row, rows)
-    const merged = [...placeholders, ...rows]
+    let legacyRows = []
+    try {
+      const textForNumbers = [
+        row?.invoice_notes,
+        row?.comment,
+        paymentTransactionEditForm.invoice_notes,
+        paymentTransactionEditForm.comment
+      ].filter(Boolean).join(' ')
 
+      const existing = new Set((realRows || []).map(inv => normalizePaymentEInvoiceNumber(inv?.invoice_number)))
+      legacyRows = extractPaymentEInvoiceNumbers(textForNumbers)
+        .filter(number => {
+          const key = normalizePaymentEInvoiceNumber(number)
+          return key && !existing.has(key)
+        })
+        .map(number => ({
+          id: `note-${number}`,
+          invoice_number: number,
+          invoice_date: row?.payment_date || paymentTransactionEditForm.payment_date || '',
+          amount: 0,
+          paid_amount: 0,
+          remaining_amount: 0,
+          supplier_id: row?.supplier_id || '',
+          legal_entity_id: paymentTransactionEditForm.legal_entity_id || row?.legal_entity_id || '',
+          legal_entities: null,
+          source_kind: 'note_placeholder'
+        }))
+    } catch (_error) {
+      legacyRows = []
+    }
+
+    const merged = [...legacyRows, ...realRows]
     const needle = String(paymentTransactionEditForm.e_invoice_search || '').trim().toLowerCase()
     if (!needle) return merged
+
     return merged.filter(inv => {
-      const hay = [inv.invoice_number, inv.invoice_date, inv.amount, inv.paid_amount, inv.remaining_amount, inv.legal_entities?.name, inv.legal_entities?.voen]
-        .filter(Boolean)
-        .join(' ')
-        .toLowerCase()
+      const hay = [
+        inv?.invoice_number,
+        inv?.invoice_date,
+        inv?.amount,
+        inv?.paid_amount,
+        inv?.remaining_amount,
+        inv?.legal_entities?.name,
+        inv?.legal_entities?.voen
+      ].filter(Boolean).join(' ').toLowerCase()
       return hay.includes(needle)
     })
   }
