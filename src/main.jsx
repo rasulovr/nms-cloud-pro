@@ -24311,6 +24311,7 @@ function DebtsPayments({ t }) {
   const [purchaseTransactionEditForm, setPurchaseTransactionEditForm] = useState({ purchase_date: todayISO(), invoice_number: '', branch_id: '', total_amount: '', comment: '' })
   const [purchaseTransactionEditItems, setPurchaseTransactionEditItems] = useState([])
   const [editingPaymentTransactionId, setEditingPaymentTransactionId] = useState('')
+  const [editingPaymentSource, setEditingPaymentSource] = useState(null)
   const [paymentTransactionEditForm, setPaymentTransactionEditForm] = useState({ payment_date: todayISO(), legal_entity_id: '', amount: '', invoice_notes: '', comment: '', selected_e_invoice_ids: [], e_invoice_search: '' })
   const [paymentEditEInvoices, setPaymentEditEInvoices] = useState([])
   const [paymentEditLoading, setPaymentEditLoading] = useState(false)
@@ -24470,6 +24471,7 @@ function DebtsPayments({ t }) {
     setEditingOpeningDebtId('')
     setEditingPurchaseTransactionId('')
     setEditingPaymentTransactionId('')
+    setEditingPaymentSource(null)
     setTransactionPage(1)
   }
 
@@ -24638,6 +24640,9 @@ function DebtsPayments({ t }) {
     const initialSelectedNumbers = extractPaymentEInvoiceNumbers(initialNotesText)
     const initialResolvedLegalEntityId = resolvePaymentLegalEntityId(row)
 
+    // v289: keep an explicit payment source, so the edit overlay opens even
+    // when the transaction list is filtered by another month/date.
+    setEditingPaymentSource(row)
     // v288: fill the editor immediately before any async fetch.
     // Previously the overlay opened with empty fields while e-qaimə were loading.
     setEditingPaymentTransactionId(String(row.id))
@@ -24882,6 +24887,7 @@ function DebtsPayments({ t }) {
       }
 
       setEditingPaymentTransactionId('')
+      setEditingPaymentSource(null)
       await load()
     } catch (e) {
       setMessage(e.message || 'Не удалось сохранить оплату')
@@ -24899,6 +24905,7 @@ function DebtsPayments({ t }) {
         p_reason: reason
       }, 'Оплата удалена из активного баланса')
       setEditingPaymentTransactionId('')
+      setEditingPaymentSource(null)
     } catch (e) {
       setMessage(e.message || 'Не удалось удалить оплату')
     }
@@ -25140,7 +25147,7 @@ function DebtsPayments({ t }) {
   const pagedFilteredPayments = filteredPayments.slice(transactionStart, transactionStart + transactionPageSize)
   const pagedProductPriceRows = productPriceRows.slice(transactionStart, transactionStart + transactionPageSize)
   const activeEditingPayment = editingPaymentTransactionId
-    ? ((filteredPayments || []).find(p => String(p.id) === String(editingPaymentTransactionId)) || (payments || []).find(p => String(p.id) === String(editingPaymentTransactionId)) || null)
+    ? (editingPaymentSource || (filteredPayments || []).find(p => String(p.id) === String(editingPaymentTransactionId)) || (payments || []).find(p => String(p.id) === String(editingPaymentTransactionId)) || null)
     : null
 
   const normalizedLedgerSearch = String(ledgerSearch || '').trim().toLowerCase()
@@ -26014,9 +26021,10 @@ function DebtsPayments({ t }) {
     if (row.type_key === 'payment') {
       setTransactionPageSize(20)
       setTransactionPage(1)
-      openTransactions(source.supplier_id, 'payments', source.legal_entity_id || '')
+      setActiveSupplierId(source.supplier_id)
+      setActiveLegalEntityId(source.legal_entity_id || '')
+      setTransactionType('payments')
       startEditSupplierPayment(source)
-      scrollToSupplierTransactionPanel()
       return
     }
 
@@ -26141,7 +26149,7 @@ function DebtsPayments({ t }) {
               <h4>Редактирование оплаты поставщику</h4>
               <p className="hint">Оплата редактируется здесь, над списком. Можно выбрать e-qaimə из списка и сохранить оплату одной общей строкой.</p>
             </div>
-            <button className="ghost small" onClick={() => setEditingPaymentTransactionId('')}>Закрыть</button>
+            <button className="ghost small" onClick={() => { setEditingPaymentTransactionId(''); setEditingPaymentSource(null) }}>Закрыть</button>
           </div>
           <div className="form-grid compact">
             <label><span>Дата оплаты</span><DateInput value={paymentTransactionEditForm.payment_date} onChange={e => setPaymentTransactionEditForm({...paymentTransactionEditForm, payment_date: e.target.value})} /></label>
@@ -26166,7 +26174,7 @@ function DebtsPayments({ t }) {
           </div>
           <div className="action-row" style={{marginTop:12}}>
             <button className="small primary" onClick={() => saveSupplierPaymentEdit(activeEditingPayment)}>Сохранить</button>
-            <button className="ghost small" onClick={() => setEditingPaymentTransactionId('')}>Закрыть</button>
+            <button className="ghost small" onClick={() => { setEditingPaymentTransactionId(''); setEditingPaymentSource(null) }}>Закрыть</button>
             <button className="small remove" onClick={() => deleteSupplierPayment(activeEditingPayment)}>Удалить</button>
           </div>
         </div>}
@@ -26246,7 +26254,7 @@ function DebtsPayments({ t }) {
               <h3>Редактирование оплаты поставщику</h3>
               <p className="hint">Отдельное окно редактирования. Выберите e-qaimə по поставщику и VOEN, затем сохраните оплату одной строкой.</p>
             </div>
-            <button className="supplier-modal-x" title="Закрыть" aria-label="Закрыть" onClick={() => setEditingPaymentTransactionId('')}>×</button>
+            <button className="supplier-modal-x" title="Закрыть" aria-label="Закрыть" onClick={() => { setEditingPaymentTransactionId(''); setEditingPaymentSource(null) }}>×</button>
           </div>
 
           <div className="form-grid compact">
@@ -26273,7 +26281,7 @@ function DebtsPayments({ t }) {
 
           <div className="action-row" style={{marginTop:14}}>
             <button className="small primary" onClick={() => saveSupplierPaymentEdit(activeEditingPayment)}>Сохранить</button>
-            <button className="ghost small" onClick={() => setEditingPaymentTransactionId('')}>Закрыть</button>
+            <button className="ghost small" onClick={() => { setEditingPaymentTransactionId(''); setEditingPaymentSource(null) }}>Закрыть</button>
             <button className="small remove" onClick={() => deleteSupplierPayment(activeEditingPayment)}>Удалить</button>
           </div>
         </div>
