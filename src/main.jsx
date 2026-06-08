@@ -24631,8 +24631,29 @@ function DebtsPayments({ t }) {
     return legalEntities[0]?.id || ''
   }
 
+  function normalizePaymentEditRow(row) {
+    const source = row?.source || row || {}
+    const rowId = String(source.id || row?.id || '').replace(/^pay-/, '')
+    const rowInvoice = String(source.invoice_notes || row?.invoice || '').trim()
+    const rowComment = String(source.comment || row?.comment || '').trim()
+    const rowCredit = parseNum(row?.credit)
+    const rowAmount = parseNum(source.amount ?? row?.amount)
+    return {
+      ...source,
+      id: rowId || source.id || row?.id || `payment-${Date.now()}`,
+      supplier_id: source.supplier_id || row?.supplier_id || activeSupplierId || '',
+      suppliers: source.suppliers || row?.suppliers || null,
+      legal_entity_id: source.legal_entity_id || row?.legal_entity_id || activeLegalEntityId || '',
+      legal_entities: source.legal_entities || row?.legal_entities || null,
+      payment_date: source.payment_date || source.date || row?.payment_date || row?.date || todayISO(),
+      amount: rowCredit > 0 ? rowCredit : (Math.abs(rowAmount) || parseNum(source.amount)),
+      invoice_notes: source.invoice_notes || (rowInvoice && rowInvoice !== '—' ? rowInvoice : ''),
+      comment: source.comment || rowComment || ''
+    }
+  }
+
   function buildPaymentEditFormFromRow(row) {
-    const safeRow = row || {}
+    const safeRow = normalizePaymentEditRow(row)
     const notesText = `${safeRow.invoice_notes || ''} ${safeRow.comment || ''}`
     const selectedNumbers = extractPaymentEInvoiceNumbers(notesText)
     let legalId = safeRow.legal_entity_id || activeLegalEntityId || legalEntities[0]?.id || ''
@@ -24652,7 +24673,7 @@ function DebtsPayments({ t }) {
 
   function forceOpenPaymentEditOverlay(row) {
     if (!row) return
-    const safeRow = { ...row }
+    const safeRow = normalizePaymentEditRow(row)
     const form = buildPaymentEditFormFromRow(safeRow)
     setShowPaymentEditOverlay(true)
     setEditingPaymentSource(safeRow)
@@ -24689,7 +24710,7 @@ function DebtsPayments({ t }) {
   async function startEditSupplierPayment(row) {
     if (!row) return
 
-    const safeRow = { ...row }
+    const safeRow = normalizePaymentEditRow(row)
     const initialNotesText = `${safeRow.invoice_notes || ''} ${safeRow.comment || ''}`
     const initialSelectedNumbers = extractPaymentEInvoiceNumbers(initialNotesText)
     const fallbackLegalEntityId = safeRow.legal_entity_id || activeLegalEntityId || legalEntities[0]?.id || ''
@@ -24778,7 +24799,7 @@ function DebtsPayments({ t }) {
     const needle = String(paymentTransactionEditForm.e_invoice_search || '').trim().toLowerCase()
     const notesText = `${paymentTransactionEditForm.invoice_notes || ''} ${paymentTransactionEditForm.comment || ''} ${row?.invoice_notes || ''} ${row?.comment || ''}`.toLowerCase()
     const noteNumbers = extractPaymentEInvoiceNumbers(notesText)
-    const supplierId = String(row?.supplier_id || '')
+    const supplierId = String(row?.supplier_id || editingPaymentSource?.supplier_id || activeSupplierId || '')
     const selectedLegalEntityId = String(paymentTransactionEditForm.legal_entity_id || resolvePaymentLegalEntityId(row) || '')
 
     const realPool = ((paymentEditEInvoices && paymentEditEInvoices.length) ? paymentEditEInvoices : (eInvoices || []))
@@ -24912,6 +24933,7 @@ function DebtsPayments({ t }) {
 
   async function saveSupplierPaymentEdit(row) {
     try {
+      const editRow = normalizePaymentEditRow(row)
       const amount = parseNum(paymentTransactionEditForm.amount)
       if (!amount) return setMessage('Введите сумму оплаты')
       if (!paymentTransactionEditForm.legal_entity_id) return setMessage('Выберите физ. лицо / VOEN')
@@ -24923,8 +24945,8 @@ function DebtsPayments({ t }) {
       const invoiceNotes = [...new Set([...(selectedNumbers.length ? selectedNumbers : []), ...existingNumbers])].join(', ') || paymentTransactionEditForm.invoice_notes?.trim()
 
       await callSupplierRpc('rms_supplier_payment_update_secure', {
-        p_payment_id: row.id,
-        p_supplier_id: row.supplier_id,
+        p_payment_id: editRow.id,
+        p_supplier_id: editRow.supplier_id,
         p_legal_entity_id: paymentTransactionEditForm.legal_entity_id || null,
         p_payment_date: paymentTransactionEditForm.payment_date || todayISO(),
         p_amount: amount,
@@ -24962,6 +24984,7 @@ function DebtsPayments({ t }) {
 
 
   async function deleteSupplierPayment(row) {
+    row = normalizePaymentEditRow(row)
     if (!window.confirm('Удалить оплату из активного баланса? Сумма вернётся в долг поставщика, запись останется в журнале.')) return
     const reason = askSupplierCancelReason('Удаление оплаты поставщику')
     if (reason === null) return
@@ -25216,15 +25239,19 @@ function DebtsPayments({ t }) {
     ? (editingPaymentSource || (editingPaymentTransactionId ? ((filteredPayments || []).find(p => String(p.id) === String(editingPaymentTransactionId)) || (payments || []).find(p => String(p.id) === String(editingPaymentTransactionId)) || null) : null))
     : null
 
-  const paymentEditOverlayRow = activeEditingPayment || editingPaymentSource || (showPaymentEditOverlay ? {
-    id: editingPaymentTransactionId || 'payment-edit-draft',
-    supplier_id: activeSupplierId || paymentForm.supplier_id || '',
-    legal_entity_id: paymentTransactionEditForm.legal_entity_id || activeLegalEntityId || '',
-    payment_date: paymentTransactionEditForm.payment_date || todayISO(),
-    amount: parseNum(paymentTransactionEditForm.amount),
-    invoice_notes: paymentTransactionEditForm.invoice_notes || '',
-    comment: paymentTransactionEditForm.comment || ''
-  } : null)
+  const paymentEditOverlayRow = activeEditingPayment
+    ? normalizePaymentEditRow(activeEditingPayment)
+    : (editingPaymentSource
+      ? normalizePaymentEditRow(editingPaymentSource)
+      : (showPaymentEditOverlay ? {
+          id: editingPaymentTransactionId || 'payment-edit-draft',
+          supplier_id: activeSupplierId || paymentForm.supplier_id || '',
+          legal_entity_id: paymentTransactionEditForm.legal_entity_id || activeLegalEntityId || '',
+          payment_date: paymentTransactionEditForm.payment_date || todayISO(),
+          amount: parseNum(paymentTransactionEditForm.amount),
+          invoice_notes: paymentTransactionEditForm.invoice_notes || '',
+          comment: paymentTransactionEditForm.comment || ''
+        } : null))
 
   const normalizedLedgerSearch = String(ledgerSearch || '').trim().toLowerCase()
   const normalizedInvoiceSearch = String(invoiceSearch || '').trim().toLowerCase()
@@ -26095,13 +26122,14 @@ function DebtsPayments({ t }) {
     }
 
     if (row.type_key === 'payment') {
+      const paymentSource = normalizePaymentEditRow(row)
       setTransactionPageSize(20)
       setTransactionPage(1)
-      setActiveSupplierId(source.supplier_id)
-      setActiveLegalEntityId(source.legal_entity_id || '')
+      setActiveSupplierId(paymentSource.supplier_id)
+      setActiveLegalEntityId(paymentSource.legal_entity_id || '')
       setTransactionType('payments')
-      forceOpenPaymentEditOverlay(source)
-      startEditSupplierPayment(source)
+      forceOpenPaymentEditOverlay(paymentSource)
+      startEditSupplierPayment(paymentSource)
       return
     }
 
