@@ -23208,8 +23208,7 @@ function Suppliers({ t, isAdmin = false }) {
       .filter(inv => {
         const remaining = Math.max(0, parseNum(inv.remaining_amount ?? (parseNum(inv.amount) - parseNum(inv.paid_amount))))
         const isSelected = (paymentForm.selected_e_invoice_ids || []).includes(inv.e_invoice_id || inv.number)
-        // New payment window must not offer already-paid e-qaimə.
-        if (!isSelected && remaining <= 0.01) return false
+        if (inv.e_invoice_id && !isSelected && remaining <= 0.01) return false
         return true
       })
       .filter(inv => {
@@ -24311,9 +24310,6 @@ function DebtsPayments({ t }) {
   const [purchaseTransactionEditForm, setPurchaseTransactionEditForm] = useState({ purchase_date: todayISO(), invoice_number: '', branch_id: '', total_amount: '', comment: '' })
   const [purchaseTransactionEditItems, setPurchaseTransactionEditItems] = useState([])
   const [editingPaymentTransactionId, setEditingPaymentTransactionId] = useState('')
-  const [editingPaymentSource, setEditingPaymentSource] = useState(null)
-  const [showPaymentEditOverlay, setShowPaymentEditOverlay] = useState(false)
-  const [quickPaymentEditOpen, setQuickPaymentEditOpen] = useState(false)
   const [paymentTransactionEditForm, setPaymentTransactionEditForm] = useState({ payment_date: todayISO(), legal_entity_id: '', amount: '', invoice_notes: '', comment: '', selected_e_invoice_ids: [], e_invoice_search: '' })
   const [paymentEditEInvoices, setPaymentEditEInvoices] = useState([])
   const [paymentEditLoading, setPaymentEditLoading] = useState(false)
@@ -24473,9 +24469,6 @@ function DebtsPayments({ t }) {
     setEditingOpeningDebtId('')
     setEditingPurchaseTransactionId('')
     setEditingPaymentTransactionId('')
-    setEditingPaymentSource(null)
-    setShowPaymentEditOverlay(false)
-    setQuickPaymentEditOpen(false)
     setTransactionPage(1)
   }
 
@@ -24633,301 +24626,117 @@ function DebtsPayments({ t }) {
     return legalEntities[0]?.id || ''
   }
 
-  function normalizePaymentEditRow(row) {
-    const source = row?.source || row || {}
-    const rowId = String(source.id || row?.id || '').replace(/^pay-/, '')
-    const rowInvoice = String(source.invoice_notes || row?.invoice || '').trim()
-    const rowComment = String(source.comment || row?.comment || '').trim()
-    const rowCredit = parseNum(row?.credit)
-    const rowAmount = parseNum(source.amount ?? row?.amount)
-    return {
-      ...source,
-      id: rowId || source.id || row?.id || `payment-${Date.now()}`,
-      supplier_id: source.supplier_id || row?.supplier_id || activeSupplierId || '',
-      suppliers: source.suppliers || row?.suppliers || null,
-      legal_entity_id: source.legal_entity_id || row?.legal_entity_id || activeLegalEntityId || '',
-      legal_entities: source.legal_entities || row?.legal_entities || null,
-      payment_date: source.payment_date || source.date || row?.payment_date || row?.date || todayISO(),
-      amount: rowCredit > 0 ? rowCredit : (Math.abs(rowAmount) || parseNum(source.amount)),
-      invoice_notes: source.invoice_notes || (rowInvoice && rowInvoice !== '—' ? rowInvoice : ''),
-      comment: source.comment || rowComment || ''
-    }
-  }
-
-  function buildPaymentEditFormFromRow(row) {
-    const safeRow = normalizePaymentEditRow(row)
-    const notesText = `${safeRow.invoice_notes || ''} ${safeRow.comment || ''}`
-    const selectedNumbers = extractPaymentEInvoiceNumbers(notesText)
-    let legalId = safeRow.legal_entity_id || activeLegalEntityId || legalEntities[0]?.id || ''
-    try {
-      legalId = safeRow.legal_entity_id || resolvePaymentLegalEntityId(safeRow) || legalId
-    } catch (_e) {}
-    return {
-      payment_date: safeRow.payment_date || safeRow.date || todayISO(),
-      legal_entity_id: legalId,
-      amount: String(parseNum(safeRow.amount)),
-      invoice_notes: safeRow.invoice_notes || selectedNumbers.join(', '),
-      comment: safeRow.comment || '',
-      selected_e_invoice_ids: selectedNumbers,
-      e_invoice_search: ''
-    }
-  }
-
-  function forceOpenPaymentEditOverlay(row) {
-    if (!row) return
-    const safeRow = normalizePaymentEditRow(row)
-    const form = buildPaymentEditFormFromRow(safeRow)
-    setShowPaymentEditOverlay(true)
-    setEditingPaymentSource(safeRow)
-    setEditingPaymentTransactionId(String(safeRow.id || `payment-${Date.now()}`))
-    setPaymentTransactionEditForm(form)
-
-    // v293: several supplier windows can re-render after changing filters.
-    // Re-apply once after React flush so the edit form cannot fall back to empty defaults.
-    setTimeout(() => {
-      setShowPaymentEditOverlay(true)
-      setEditingPaymentSource(safeRow)
-      setEditingPaymentTransactionId(String(safeRow.id || `payment-${Date.now()}`))
-      setPaymentTransactionEditForm(prev => ({
-        ...prev,
-        ...form,
-        invoice_notes: form.invoice_notes || prev.invoice_notes,
-        comment: form.comment || prev.comment,
-        amount: form.amount || prev.amount
-      }))
-    }, 0)
-    setTimeout(() => {
-      setShowPaymentEditOverlay(true)
-      setEditingPaymentSource(safeRow)
-      setPaymentTransactionEditForm(prev => ({
-        ...prev,
-        ...form,
-        invoice_notes: form.invoice_notes || prev.invoice_notes,
-        comment: form.comment || prev.comment,
-        amount: form.amount || prev.amount
-      }))
-    }, 120)
-  }
-
-  function openQuickPaymentEdit(row) {
-    const safeRow = normalizePaymentEditRow(row)
-    const form = buildPaymentEditFormFromRow(safeRow)
-    setMessage('')
-    setEditingOpeningDebtId('')
-    setEditingPurchaseTransactionId('')
-    setDetailPurchaseId('')
-    setEditingPaymentSource(safeRow)
-    setEditingPaymentTransactionId(String(safeRow.id || `payment-${Date.now()}`))
-    setPaymentTransactionEditForm(form)
-    setQuickPaymentEditOpen(true)
-
-    // Load real e-qaimə in background, but never block the modal from opening.
-    setPaymentEditLoading(true)
-    supabase
-      .from('supplier_e_invoices')
-      .select('*, suppliers(name), legal_entities(name,voen), branches(name)')
-      .eq('supplier_id', safeRow.supplier_id)
-      .is('deleted_at', null)
-      .order('invoice_date', { ascending: false })
-      .limit(2000)
-      .then(({ data }) => setPaymentEditEInvoices(data || []))
-      .catch(() => setPaymentEditEInvoices([]))
-      .finally(() => setPaymentEditLoading(false))
-  }
-
-
   async function startEditSupplierPayment(row) {
     if (!row) return
-
-    const safeRow = normalizePaymentEditRow(row)
-    const initialNotesText = `${safeRow.invoice_notes || ''} ${safeRow.comment || ''}`
-    const initialSelectedNumbers = extractPaymentEInvoiceNumbers(initialNotesText)
-    const fallbackLegalEntityId = safeRow.legal_entity_id || activeLegalEntityId || legalEntities[0]?.id || ''
-
-    // v293: open + fill via a dedicated force helper.
     setMessage('')
     setEditingOpeningDebtId('')
     setEditingPurchaseTransactionId('')
     setDetailPurchaseId('')
-    forceOpenPaymentEditOverlay(safeRow)
-
-    let initialResolvedLegalEntityId = fallbackLegalEntityId
-    try {
-      initialResolvedLegalEntityId = safeRow.legal_entity_id || resolvePaymentLegalEntityId(safeRow) || fallbackLegalEntityId
-      setPaymentTransactionEditForm(prev => ({
-        ...prev,
-        legal_entity_id: initialResolvedLegalEntityId || prev.legal_entity_id
-      }))
-    } catch (_e) {
-      initialResolvedLegalEntityId = fallbackLegalEntityId
-    }
-
+    setEditingPaymentTransactionId(String(row.id))
     setPaymentEditLoading(true)
     let directEInvoices = []
     try {
       const { data, error } = await supabase
         .from('supplier_e_invoices')
         .select('*, suppliers(name), legal_entities(name,voen), branches(name)')
-        .eq('supplier_id', safeRow.supplier_id)
+        .eq('supplier_id', row.supplier_id)
         .is('deleted_at', null)
         .order('invoice_date', { ascending: false })
         .limit(2000)
       if (!error) directEInvoices = data || []
     } catch (_error) {
       directEInvoices = []
-    } finally {
-      setPaymentEditEInvoices(directEInvoices)
-      setPaymentEditLoading(false)
     }
+    setPaymentEditEInvoices(directEInvoices)
+    setPaymentEditLoading(false)
+    const resolvedLegalEntityId = resolvePaymentLegalEntityId({ ...row, _direct_e_invoices: directEInvoices })
+    const invoiceNotesText = `${row.invoice_notes || ''} ${row.comment || ''}`.toLowerCase()
+    const selectedInvoiceIds = (directEInvoices.length ? directEInvoices : (eInvoices || []))
+      .filter(inv =>
+        String(inv.supplier_id || '') === String(row.supplier_id || '') &&
+        (!resolvedLegalEntityId || String(inv.legal_entity_id || '') === String(resolvedLegalEntityId) || invoiceNotesText.includes(String(inv.invoice_number || '').toLowerCase())) &&
+        inv.invoice_number &&
+        invoiceNotesText.includes(String(inv.invoice_number).toLowerCase())
+      )
+      .map(inv => inv.id)
 
-    try {
-      const resolvedLegalEntityId = safeRow.legal_entity_id || resolvePaymentLegalEntityId({ ...safeRow, _direct_e_invoices: directEInvoices }) || initialResolvedLegalEntityId || fallbackLegalEntityId
-      const invoiceNotesText = `${safeRow.invoice_notes || ''} ${safeRow.comment || ''}`.toLowerCase()
-      const selectedInvoiceIds = (directEInvoices.length ? directEInvoices : (eInvoices || []))
-        .filter(inv =>
-          String(inv.supplier_id || '') === String(safeRow.supplier_id || '') &&
-          (!resolvedLegalEntityId || String(inv.legal_entity_id || '') === String(resolvedLegalEntityId) || invoiceNotesText.includes(String(inv.invoice_number || '').toLowerCase())) &&
-          inv.invoice_number &&
-          invoiceNotesText.includes(String(inv.invoice_number).toLowerCase())
-        )
-        .map(inv => inv.id)
-
-      initialSelectedNumbers.forEach(number => {
-        if (!selectedInvoiceIds.map(String).includes(String(number))) selectedInvoiceIds.push(number)
-      })
-
-      setPaymentTransactionEditForm(prev => ({
-        ...prev,
-        payment_date: safeRow.payment_date || safeRow.date || prev.payment_date || todayISO(),
-        legal_entity_id: resolvedLegalEntityId || prev.legal_entity_id || legalEntities[0]?.id || '',
-        amount: String(parseNum(safeRow.amount)),
-        invoice_notes: safeRow.invoice_notes || initialSelectedNumbers.join(', ') || prev.invoice_notes,
-        comment: safeRow.comment || prev.comment,
-        selected_e_invoice_ids: Array.isArray(selectedInvoiceIds) ? selectedInvoiceIds : initialSelectedNumbers,
-        e_invoice_search: ''
-      }))
-      setMessage('Открыто редактирование оплаты')
-    } catch (e) {
-      setPaymentTransactionEditForm(prev => ({
-        ...prev,
-        payment_date: safeRow.payment_date || safeRow.date || prev.payment_date || todayISO(),
-        legal_entity_id: fallbackLegalEntityId || prev.legal_entity_id,
-        amount: String(parseNum(safeRow.amount)),
-        invoice_notes: safeRow.invoice_notes || initialSelectedNumbers.join(', ') || prev.invoice_notes,
-        comment: safeRow.comment || prev.comment,
-        selected_e_invoice_ids: initialSelectedNumbers,
-        e_invoice_search: ''
-      }))
-      setMessage(e?.message || 'Редактирование оплаты открыто, но список e-qaimə не загрузился')
-    }
+    // v296: keep legacy e-qaimə numbers from the payment itself.
+    // They may not exist as supplier_e_invoices, but they must stay visible in the edit list.
+    extractPaymentEInvoiceNumbers(`${row.invoice_notes || ''} ${row.comment || ''}`).forEach(number => {
+      if (!selectedInvoiceIds.map(String).includes(String(number))) selectedInvoiceIds.push(number)
+    })
+    setPaymentTransactionEditForm({
+      payment_date: row.payment_date || todayISO(),
+      legal_entity_id: resolvedLegalEntityId,
+      amount: String(parseNum(row.amount)),
+      invoice_notes: row.invoice_notes || '',
+      comment: row.comment || '',
+      selected_e_invoice_ids: Array.isArray(selectedInvoiceIds) ? selectedInvoiceIds : [],
+      e_invoice_search: ''
+    })
+    setMessage('Открыто редактирование оплаты')
+    setTimeout(() => {
+      const panel = supplierTransactionPanelRef.current
+      panel?.scrollIntoView?.({ behavior: 'smooth', block: 'start' })
+      panel?.scrollTo?.({ top: 0, behavior: 'smooth' })
+    }, 40)
   }
 
   function paymentEditEInvoiceOptions(row) {
     const selectedIds = Array.isArray(paymentTransactionEditForm.selected_e_invoice_ids) ? paymentTransactionEditForm.selected_e_invoice_ids : []
     const selectedSet = new Set(selectedIds.map(String))
     const needle = String(paymentTransactionEditForm.e_invoice_search || '').trim().toLowerCase()
-    const notesText = `${paymentTransactionEditForm.invoice_notes || ''} ${paymentTransactionEditForm.comment || ''} ${row?.invoice_notes || ''} ${row?.comment || ''}`.toLowerCase()
-    const noteNumbers = extractPaymentEInvoiceNumbers(notesText)
-    const supplierId = String(row?.supplier_id || editingPaymentSource?.supplier_id || activeSupplierId || '')
+    const notesText = String(paymentTransactionEditForm.invoice_notes || '').toLowerCase()
+    const supplierId = String(row?.supplier_id || '')
     const selectedLegalEntityId = String(paymentTransactionEditForm.legal_entity_id || resolvePaymentLegalEntityId(row) || '')
 
-    const realPool = ((paymentEditEInvoices && paymentEditEInvoices.length) ? paymentEditEInvoices : (eInvoices || []))
+    const invoicePool = (paymentEditEInvoices && paymentEditEInvoices.length) ? paymentEditEInvoices : (eInvoices || [])
+    const baseRows = (invoicePool || [])
       .filter(inv => !inv.deleted_at)
       .filter(inv => String(inv.supplier_id || '') === supplierId)
-      .map(inv => {
-        const remaining = Math.max(0, parseNum(inv.amount) - parseNum(inv.paid_amount))
-        return {
-          id: inv.id,
-          invoice_number: inv.invoice_number,
-          invoice_date: inv.invoice_date,
-          amount: parseNum(inv.amount),
-          paid_amount: parseNum(inv.paid_amount),
-          remaining_amount: remaining,
-          supplier_id: inv.supplier_id,
-          legal_entity_id: inv.legal_entity_id,
-          suppliers: inv.suppliers,
-          legal_entities: inv.legal_entities,
-          branches: inv.branches,
-          source_kind: 'real'
-        }
-      })
-
-    const legacyPool = (supplierEInvoiceOptions || [])
-      .filter(inv => String(inv.supplier_id || '') === supplierId)
-      .map(inv => ({
-        id: inv.e_invoice_id || inv.number,
-        invoice_number: inv.number,
-        invoice_date: inv.date,
-        amount: parseNum(inv.amount),
-        paid_amount: parseNum(inv.paid_amount || 0),
-        remaining_amount: Math.max(0, parseNum(inv.remaining_amount ?? inv.amount)),
-        supplier_id: inv.supplier_id,
-        legal_entity_id: inv.legal_entity_id,
-        suppliers: inv.supplier ? { name: inv.supplier } : null,
-        legal_entities: inv.legal || inv.voen ? { name: inv.legal, voen: inv.voen } : null,
-        branches: inv.branch ? { name: inv.branch } : null,
-        source_kind: inv.e_invoice_id ? 'real_fallback' : 'legacy'
-      }))
-
-    const byNumber = new Map()
-    ;[...realPool, ...legacyPool].forEach(inv => {
-      const normalized = normalizePaymentEInvoiceNumber(inv.invoice_number)
-      if (!normalized) return
-      const existing = byNumber.get(normalized)
-      if (!existing) {
-        byNumber.set(normalized, inv)
-        return
-      }
-      const existingRemaining = Math.max(0, parseNum(existing.remaining_amount ?? (parseNum(existing.amount) - parseNum(existing.paid_amount))))
-      const nextRemaining = Math.max(0, parseNum(inv.remaining_amount ?? (parseNum(inv.amount) - parseNum(inv.paid_amount))))
-      if (existing.source_kind !== 'real' && inv.source_kind === 'real') {
-        byNumber.set(normalized, inv)
-      } else if (existingRemaining <= 0.01 && nextRemaining > 0.01) {
-        byNumber.set(normalized, inv)
-      }
-    })
-
-    const rows = Array.from(byNumber.values())
-      .filter(inv =>
-        !selectedLegalEntityId ||
-        String(inv.legal_entity_id || '') === String(selectedLegalEntityId) ||
-        selectedSet.has(String(inv.id)) ||
-        noteNumbers.some(n => normalizePaymentEInvoiceNumber(n) === normalizePaymentEInvoiceNumber(inv.invoice_number))
-      )
-      .filter(inv => {
-        const isSelected = selectedSet.has(String(inv.id)) ||
-          noteNumbers.some(n => normalizePaymentEInvoiceNumber(n) === normalizePaymentEInvoiceNumber(inv.invoice_number))
-        const remaining = Math.max(0, parseNum(inv.remaining_amount ?? (parseNum(inv.amount) - parseNum(inv.paid_amount))))
-        // Edit window: show current payment invoices even if paid; otherwise show only unpaid candidates.
-        if (!isSelected && remaining <= 0.01) return false
-        return true
-      })
       .filter(inv => {
         if (!needle) return true
-        const hay = [inv.invoice_number, inv.invoice_date, inv.amount, inv.paid_amount, inv.remaining_amount, inv.legal_entities?.name, inv.legal_entities?.voen].filter(Boolean).join(' ').toLowerCase()
+        const hay = [inv.invoice_number, inv.invoice_date, inv.amount, inv.paid_amount, inv.status, inv.legal_entities?.name, inv.legal_entities?.voen].filter(Boolean).join(' ').toLowerCase()
         return hay.includes(needle)
       })
-      .sort((a, b) => String(b.invoice_date || '').localeCompare(String(a.invoice_date || '')) || String(b.created_at || '').localeCompare(String(a.created_at || '')))
 
+    const exactLegalRows = baseRows.filter(inv =>
+      !selectedLegalEntityId ||
+      String(inv.legal_entity_id || '') === selectedLegalEntityId ||
+      selectedSet.has(String(inv.id)) ||
+      (inv.invoice_number && notesText.includes(String(inv.invoice_number).toLowerCase()))
+    )
+
+    const rows = exactLegalRows.length ? exactLegalRows : baseRows
+    const resultRows = [...rows]
+
+    const noteNumbers = extractPaymentEInvoiceNumbers(`${paymentTransactionEditForm.invoice_notes || ''} ${paymentTransactionEditForm.comment || ''} ${row?.invoice_notes || ''} ${row?.comment || ''}`)
+    const existingNumbers = new Set(resultRows.map(inv => normalizePaymentEInvoiceNumber(inv.invoice_number)))
     noteNumbers.forEach(number => {
-      const exists = rows.some(inv => normalizePaymentEInvoiceNumber(inv.invoice_number) === normalizePaymentEInvoiceNumber(number))
-      if (!exists && (!needle || normalizePaymentEInvoiceNumber(number).includes(normalizePaymentEInvoiceNumber(needle)))) {
-        rows.unshift({
-          id: number,
-          invoice_number: number,
-          invoice_date: row?.payment_date || '',
-          amount: 0,
-          paid_amount: 0,
-          remaining_amount: 0,
-          supplier_id: row?.supplier_id,
-          legal_entity_id: selectedLegalEntityId,
-          legal_entities: legalEntities.find(le => String(le.id) === String(selectedLegalEntityId)) || null,
-          source_kind: 'note_placeholder'
-        })
-      }
+      const normalized = normalizePaymentEInvoiceNumber(number)
+      if (!normalized || existingNumbers.has(normalized)) return
+      resultRows.unshift({
+        id: number,
+        invoice_number: number,
+        invoice_date: row?.payment_date || paymentTransactionEditForm.payment_date || '',
+        amount: 0,
+        paid_amount: 0,
+        remaining_amount: 0,
+        supplier_id: row?.supplier_id || '',
+        legal_entity_id: selectedLegalEntityId || paymentTransactionEditForm.legal_entity_id || '',
+        legal_entities: legalEntities.find(le => String(le.id) === String(selectedLegalEntityId || paymentTransactionEditForm.legal_entity_id)) || null,
+        source_kind: 'note_placeholder'
+      })
+      existingNumbers.add(normalized)
     })
 
-    return rows.slice(0, 160)
+    return resultRows
+      .sort((a, b) => {
+        if (a.source_kind === 'note_placeholder' && b.source_kind !== 'note_placeholder') return -1
+        if (b.source_kind === 'note_placeholder' && a.source_kind !== 'note_placeholder') return 1
+        return String(b.invoice_date || '').localeCompare(String(a.invoice_date || '')) || String(b.created_at || '').localeCompare(String(a.created_at || ''))
+      })
+      .slice(0, 160)
   }
 
   function safePaymentEditEInvoiceOptions(row) {
@@ -24936,27 +24745,6 @@ function DebtsPayments({ t }) {
     } catch (_error) {
       return []
     }
-  }
-
-  function quickPaymentEditEInvoiceOptions(row) {
-    const base = safePaymentEditEInvoiceOptions(row)
-    const noteNumbers = extractPaymentEInvoiceNumbers(`${paymentTransactionEditForm.invoice_notes || ''} ${paymentTransactionEditForm.comment || ''} ${row?.invoice_notes || ''} ${row?.comment || ''}`)
-    const existing = new Set(base.map(inv => normalizePaymentEInvoiceNumber(inv.invoice_number)))
-    const placeholders = noteNumbers
-      .filter(number => !existing.has(normalizePaymentEInvoiceNumber(number)))
-      .map(number => ({
-        id: number,
-        invoice_number: number,
-        invoice_date: row?.payment_date || paymentTransactionEditForm.payment_date || '',
-        amount: 0,
-        paid_amount: 0,
-        remaining_amount: 0,
-        supplier_id: row?.supplier_id || activeSupplierId,
-        legal_entity_id: paymentTransactionEditForm.legal_entity_id || row?.legal_entity_id || activeLegalEntityId,
-        legal_entities: legalEntities.find(le => String(le.id) === String(paymentTransactionEditForm.legal_entity_id || row?.legal_entity_id || activeLegalEntityId)) || null,
-        source_kind: 'note_placeholder'
-      }))
-    return [...placeholders, ...base]
   }
 
   function togglePaymentEditEInvoice(inv, row) {
@@ -24983,20 +24771,23 @@ function DebtsPayments({ t }) {
 
   async function saveSupplierPaymentEdit(row) {
     try {
-      const editRow = normalizePaymentEditRow(row)
       const amount = parseNum(paymentTransactionEditForm.amount)
       if (!amount) return setMessage('Введите сумму оплаты')
       if (!paymentTransactionEditForm.legal_entity_id) return setMessage('Выберите физ. лицо / VOEN')
 
       const selectedIds = (paymentTransactionEditForm.selected_e_invoice_ids || []).filter(Boolean).map(String)
-      const selectedInvoices = paymentEditEInvoiceOptions(row).filter(inv => selectedIds.includes(String(inv.id)))
-      const selectedNumbers = selectedInvoices.map(inv => inv.invoice_number).filter(Boolean)
-      const existingNumbers = extractPaymentEInvoiceNumbers(paymentTransactionEditForm.invoice_notes || '')
-      const invoiceNotes = [...new Set([...(selectedNumbers.length ? selectedNumbers : []), ...existingNumbers])].join(', ') || paymentTransactionEditForm.invoice_notes?.trim()
+      const invoicePool = (paymentEditEInvoices && paymentEditEInvoices.length) ? paymentEditEInvoices : (eInvoices || [])
+      const selectedInvoices = (invoicePool || []).filter(inv => selectedIds.includes(String(inv.id)))
+      const selectedNumbers = paymentEditEInvoiceOptions(row)
+        .filter(inv => selectedIds.includes(String(inv.id)))
+        .map(inv => inv.invoice_number)
+        .filter(Boolean)
+      const typedNumbers = extractPaymentEInvoiceNumbers(paymentTransactionEditForm.invoice_notes || '')
+      const invoiceNotes = paymentTransactionEditForm.invoice_notes?.trim() || [...new Set([...selectedNumbers, ...typedNumbers])].join(', ') || selectedInvoices.map(inv => inv.invoice_number).filter(Boolean).join(', ')
 
       await callSupplierRpc('rms_supplier_payment_update_secure', {
-        p_payment_id: editRow.id,
-        p_supplier_id: editRow.supplier_id,
+        p_payment_id: row.id,
+        p_supplier_id: row.supplier_id,
         p_legal_entity_id: paymentTransactionEditForm.legal_entity_id || null,
         p_payment_date: paymentTransactionEditForm.payment_date || todayISO(),
         p_amount: amount,
@@ -25024,8 +24815,6 @@ function DebtsPayments({ t }) {
       }
 
       setEditingPaymentTransactionId('')
-      setEditingPaymentSource(null)
-      setShowPaymentEditOverlay(false)
       await load()
     } catch (e) {
       setMessage(e.message || 'Не удалось сохранить оплату')
@@ -25034,7 +24823,6 @@ function DebtsPayments({ t }) {
 
 
   async function deleteSupplierPayment(row) {
-    row = normalizePaymentEditRow(row)
     if (!window.confirm('Удалить оплату из активного баланса? Сумма вернётся в долг поставщика, запись останется в журнале.')) return
     const reason = askSupplierCancelReason('Удаление оплаты поставщику')
     if (reason === null) return
@@ -25044,7 +24832,6 @@ function DebtsPayments({ t }) {
         p_reason: reason
       }, 'Оплата удалена из активного баланса')
       setEditingPaymentTransactionId('')
-      setEditingPaymentSource(null)
     } catch (e) {
       setMessage(e.message || 'Не удалось удалить оплату')
     }
@@ -25285,34 +25072,8 @@ function DebtsPayments({ t }) {
   const pagedFilteredPurchases = purchaseTransactionRows.slice(transactionStart, transactionStart + transactionPageSize)
   const pagedFilteredPayments = filteredPayments.slice(transactionStart, transactionStart + transactionPageSize)
   const pagedProductPriceRows = productPriceRows.slice(transactionStart, transactionStart + transactionPageSize)
-  const activeEditingPayment = showPaymentEditOverlay
-    ? (editingPaymentSource || (editingPaymentTransactionId ? ((filteredPayments || []).find(p => String(p.id) === String(editingPaymentTransactionId)) || (payments || []).find(p => String(p.id) === String(editingPaymentTransactionId)) || null) : null))
-    : null
-
-  const paymentEditOverlayRow = activeEditingPayment
-    ? normalizePaymentEditRow(activeEditingPayment)
-    : (editingPaymentSource
-      ? normalizePaymentEditRow(editingPaymentSource)
-      : (showPaymentEditOverlay ? {
-          id: editingPaymentTransactionId || 'payment-edit-draft',
-          supplier_id: activeSupplierId || paymentForm.supplier_id || '',
-          legal_entity_id: paymentTransactionEditForm.legal_entity_id || activeLegalEntityId || '',
-          payment_date: paymentTransactionEditForm.payment_date || todayISO(),
-          amount: parseNum(paymentTransactionEditForm.amount),
-          invoice_notes: paymentTransactionEditForm.invoice_notes || '',
-          comment: paymentTransactionEditForm.comment || ''
-        } : null))
-
-  const quickPaymentEditRow = quickPaymentEditOpen
-    ? normalizePaymentEditRow(editingPaymentSource || paymentEditOverlayRow || {
-        id: editingPaymentTransactionId || 'payment-edit-draft',
-        supplier_id: activeSupplierId || '',
-        legal_entity_id: paymentTransactionEditForm.legal_entity_id || activeLegalEntityId || '',
-        payment_date: paymentTransactionEditForm.payment_date || todayISO(),
-        amount: parseNum(paymentTransactionEditForm.amount),
-        invoice_notes: paymentTransactionEditForm.invoice_notes || '',
-        comment: paymentTransactionEditForm.comment || ''
-      })
+  const activeEditingPayment = editingPaymentTransactionId
+    ? ((filteredPayments || []).find(p => String(p.id) === String(editingPaymentTransactionId)) || (payments || []).find(p => String(p.id) === String(editingPaymentTransactionId)) || null)
     : null
 
   const normalizedLedgerSearch = String(ledgerSearch || '').trim().toLowerCase()
@@ -26184,13 +25945,11 @@ function DebtsPayments({ t }) {
     }
 
     if (row.type_key === 'payment') {
-      const paymentSource = normalizePaymentEditRow(row)
       setTransactionPageSize(20)
       setTransactionPage(1)
-      setActiveSupplierId(paymentSource.supplier_id)
-      setActiveLegalEntityId(paymentSource.legal_entity_id || '')
-      setTransactionType('payments')
-      openQuickPaymentEdit(paymentSource)
+      openTransactions(source.supplier_id, 'payments', source.legal_entity_id || '')
+      startEditSupplierPayment(source)
+      scrollToSupplierTransactionPanel()
       return
     }
 
@@ -26309,20 +26068,20 @@ function DebtsPayments({ t }) {
           return <div key={le.id} className="supplier-entity-group"><div className="supplier-entity-head"><b>{le.name} · {le.voen}</b><div className="action-row" style={{gap:12,alignItems:'center'}}><span>{list.length} поставщиков</span><span className={entityDebtClass}>{entityDebtLabel}: <b>{fmt(Math.abs(entityTotalDebt))} AZN</b></span></div></div><div className="table-wrap"><table className="supplier-compact-table"><thead><tr><th>Поставщик</th><th>Долг</th><th>Условия</th><th>Статус</th><th></th></tr></thead><tbody>{shown.map(s => { const actualSupplier = currentSupplierSnapshot(s); const entityBalance = balanceForSupplierLegal(actualSupplier.id, le.id); const alert = supplierAlert(actualSupplier, le.id); const risky = alert.overLimit > 0 || alert.overdueCount > 0; return <tr key={`${le.id}-${actualSupplier.id}`} style={risky ? { background: 'rgba(155,45,45,.08)' } : undefined}><td><b>{actualSupplier.name}</b><br /><span className="hint">{actualSupplier.voen || 'VOEN не указан'}</span></td><td><strong className={entityBalance > 0 ? 'bad' : entityBalance < 0 ? 'good' : 'hint'}>{fmt(entityBalance)}</strong></td><td className="hint">{actualSupplier.payment_term_days ? `${actualSupplier.payment_term_days} дней` : '—'} · лимит {fmt(actualSupplier.credit_limit)}</td><td className="hint">{alert.overLimit > 0 && <div className="bad">лимит +{fmt(alert.overLimit)}</div>}{alert.overdueCount > 0 && <div className="bad">просрочено: {alert.overdueCount}</div>}{!risky && <span className="good">ОК</span>}</td><td><div className="action-row" style={{gap:6}}><button className="small" onClick={() => openTransactions(actualSupplier.id, 'purchases', le.id)}>Транзакции</button><button className="small primary" onClick={() => openSupplierStatement(actualSupplier, le.id)}>Акт</button></div></td></tr>})}{!shown.length && <tr><td colSpan="5" className="hint">Нет поставщиков по этому VOEN</td></tr>}</tbody><tfoot><tr><td><b>Итого по VOEN</b></td><td><strong className={entityDebtClass}>{fmt(entityTotalDebt)}</strong></td><td colSpan="3" className="hint">Поступления + стартовый долг − оплаты</td></tr></tfoot></table></div>{list.length > 5 && <button className="ghost small" onClick={() => setExpandedEntities(e => ({...e, [le.id]: !e[le.id]}))}>{expandedEntities[le.id] ? 'Скрыть' : 'Показать все'}</button>}{activeSupplierId && activeLegalEntityId === le.id && <div ref={supplierTransactionPanelRef} className="card supplier-transactions-panel supplier-modal-panel"><div className="card-head supplier-modal-head"><div><h3>Транзакции: {activeSupplier?.name}</h3><p className="hint">{activeLegalEntityId ? `Наш VOEN: ${legalEntities.find(le => le.id === activeLegalEntityId)?.name || '—'}` : 'Поступления и оплаты показаны отдельно, чтобы не смешивать операции.'}</p></div><button className="supplier-modal-x" title="Закрыть" aria-label="Закрыть" onClick={() => { setActiveSupplierId(''); setActiveLegalEntityId('') }}>×</button></div>
         <div className="form-grid compact"><label><span>Тип операций</span><select value={transactionType} onChange={e => { setTransactionType(e.target.value); setDetailPurchaseId(''); setTransactionPage(1) }}><option value="purchases">Поступления</option><option value="payments">Оплаты</option><option value="products">Товары / цены</option></select></label><label><span>Период</span><select value={transactionPeriod} onChange={e => { setTransactionPeriod(e.target.value); setTransactionPage(1) }}><option value="day">За день</option><option value="month">За месяц</option><option value="year">За год</option><option value="all">Весь период</option></select></label>{transactionPeriod !== 'all' && <label><span>Дата периода</span><DateInput value={transactionDate} onChange={e => { setTransactionDate(e.target.value); setTransactionPage(1) }} /></label>}</div>
         <div className="action-row" style={{margin:'12px 0 10px'}}><label style={{display:'flex',alignItems:'center',gap:8}}><span className="hint">Показать</span><select value={transactionPageSize} onChange={e => { setTransactionPageSize(Number(e.target.value)); setTransactionPage(1) }}><option value={20}>20</option><option value={30}>30</option><option value={50}>50</option></select></label></div>
-        {false && transactionType === 'payments' && activeEditingPayment && <div className="card supplier-payment-edit-panel" style={{marginTop:12, marginBottom:12, border:'2px solid rgba(37,99,235,.22)', boxShadow:'0 18px 45px rgba(37,99,235,.10)'}}>
+        {transactionType === 'payments' && activeEditingPayment && <div className="card supplier-payment-edit-panel" style={{marginTop:12, marginBottom:12, border:'2px solid rgba(37,99,235,.22)', boxShadow:'0 18px 45px rgba(37,99,235,.10)'}}>
           <div className="card-head suppliers-v43-card-head">
             <div>
               <h4>Редактирование оплаты поставщику</h4>
               <p className="hint">Оплата редактируется здесь, над списком. Можно выбрать e-qaimə из списка и сохранить оплату одной общей строкой.</p>
             </div>
-            <button className="ghost small" onClick={() => { setEditingPaymentTransactionId(''); setEditingPaymentSource(null); setShowPaymentEditOverlay(false) }}>Закрыть</button>
+            <button className="ghost small" onClick={() => setEditingPaymentTransactionId('')}>Закрыть</button>
           </div>
           <div className="form-grid compact">
-            <label><span>Дата оплаты</span><DateInput value={paymentTransactionEditForm.payment_date || paymentEditOverlayRow?.payment_date || paymentEditOverlayRow?.date || todayISO()} onChange={e => setPaymentTransactionEditForm({...paymentTransactionEditForm, payment_date: e.target.value})} /></label>
+            <label><span>Дата оплаты</span><DateInput value={paymentTransactionEditForm.payment_date} onChange={e => setPaymentTransactionEditForm({...paymentTransactionEditForm, payment_date: e.target.value})} /></label>
             <label><span>Наш VOEN / VOEN</span><select value={paymentTransactionEditForm.legal_entity_id} onChange={e => setPaymentTransactionEditForm({...paymentTransactionEditForm, legal_entity_id: e.target.value, selected_e_invoice_ids: []})}>{legalEntities.map(le => <option key={le.id} value={le.id}>{le.name} · {le.voen}</option>)}</select></label>
-            <label><span>Сумма оплаты</span><input inputMode="decimal" value={paymentTransactionEditForm.amount || String(parseNum(paymentEditOverlayRow?.amount))} onChange={e => setPaymentTransactionEditForm({...paymentTransactionEditForm, amount: e.target.value})} /></label>
-            <label><span>Отметки / фактуры</span><input value={paymentTransactionEditForm.invoice_notes || paymentEditOverlayRow?.invoice_notes || ''} onChange={e => setPaymentTransactionEditForm({...paymentTransactionEditForm, invoice_notes: e.target.value})} /></label>
-            <label><span>Комментарий</span><input value={paymentTransactionEditForm.comment || paymentEditOverlayRow?.comment || ''} onChange={e => setPaymentTransactionEditForm({...paymentTransactionEditForm, comment: e.target.value})} /></label>
+            <label><span>Сумма оплаты</span><input inputMode="decimal" value={paymentTransactionEditForm.amount} onChange={e => setPaymentTransactionEditForm({...paymentTransactionEditForm, amount: e.target.value})} /></label>
+            <label><span>Отметки / фактуры</span><input value={paymentTransactionEditForm.invoice_notes} onChange={e => setPaymentTransactionEditForm({...paymentTransactionEditForm, invoice_notes: e.target.value})} /></label>
+            <label><span>Комментарий</span><input value={paymentTransactionEditForm.comment} onChange={e => setPaymentTransactionEditForm({...paymentTransactionEditForm, comment: e.target.value})} /></label>
           </div>
           <div className="supplier-single-einvoice-card" style={{marginTop:12}}>
             <div className="card-head suppliers-v43-card-head">
@@ -26340,11 +26099,11 @@ function DebtsPayments({ t }) {
           </div>
           <div className="action-row" style={{marginTop:12}}>
             <button className="small primary" onClick={() => saveSupplierPaymentEdit(activeEditingPayment)}>Сохранить</button>
-            <button className="ghost small" onClick={() => { setEditingPaymentTransactionId(''); setEditingPaymentSource(null); setShowPaymentEditOverlay(false) }}>Закрыть</button>
+            <button className="ghost small" onClick={() => setEditingPaymentTransactionId('')}>Закрыть</button>
             <button className="small remove" onClick={() => deleteSupplierPayment(activeEditingPayment)}>Удалить</button>
           </div>
         </div>}
-        {transactionType === 'purchases' ? <div className="table-wrap"><table><thead><tr><th>Дата</th><th>Фактура</th><th>Наш VOEN</th><th>Филиал</th><th>Сумма</th><th>Комментарий</th><th></th></tr></thead><tbody>{pagedFilteredPurchases.map(p => <React.Fragment key={p.id}><tr className={p.deleted_at ? 'cancelled-row' : ''}><td>{formatDateDMY(p.purchase_date)}</td><td>{p.invoice_number || '—'}</td><td>{p.legal_entities?.name || '—'}<br /><span className="hint">{p.legal_entities?.voen || ''}</span></td><td>{p.row_type === 'opening_debt' ? 'Стартовый долг' : (p.branches?.name || '—')}</td><td><strong className="bad">{fmt(p.total_amount)}</strong></td><td>{p.deleted_at ? 'Удалено / зачёркнуто' : (p.comment || '—')}</td><td>{p.row_type === 'opening_debt' ? <div className="action-row"><button className="small" disabled={Boolean(p.deleted_at)} onClick={() => startEditOpeningDebt(p)}>Изменить</button><button className="small remove" disabled={Boolean(p.deleted_at)} onClick={() => softDeleteOpeningDebt(p)}>Удалить</button></div> : <div className="action-row"><button className="small" onClick={() => setDetailPurchaseId(detailPurchaseId === p.id ? '' : p.id)}>{detailPurchaseId === p.id ? 'Скрыть' : 'Просмотр'}</button><button className="small" disabled={Boolean(p.deleted_at)} onClick={() => startEditPurchaseTransaction(p)}>Изменить</button><button className="small remove" disabled={Boolean(p.deleted_at)} onClick={() => softDeletePurchaseTransaction(p)}>Удалить</button></div>}</td></tr>{p.row_type === 'purchase' && editingPurchaseTransactionId === String(p.id) && <tr><td colSpan="7"><div className="card" style={{margin:0}}><h4>Редактирование поступления</h4><p className="hint">Сумма накладной пересчитывается автоматически по товарам. Изменения товара, количества, единицы или цены фиксируются в журнале операций.</p><div className="form-grid compact"><label><span>Дата</span><DateInput value={purchaseTransactionEditForm.purchase_date} onChange={e => setPurchaseTransactionEditForm({...purchaseTransactionEditForm, purchase_date: e.target.value})} /></label><label><span>Фактура</span><input value={purchaseTransactionEditForm.invoice_number} onChange={e => setPurchaseTransactionEditForm({...purchaseTransactionEditForm, invoice_number: e.target.value})} /></label><label><span>Филиал</span><select value={purchaseTransactionEditForm.branch_id} onChange={e => setPurchaseTransactionEditForm({...purchaseTransactionEditForm, branch_id: e.target.value})}><option value="">—</option>{branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label><label><span>Сумма накладной</span><strong>{fmt(getPurchaseEditTotal() || p.total_amount)} AZN</strong></label><label><span>Комментарий</span><input value={purchaseTransactionEditForm.comment} onChange={e => setPurchaseTransactionEditForm({...purchaseTransactionEditForm, comment: e.target.value})} /></label></div><div className="table-wrap"><table><thead><tr><th>Категория</th><th>Товар</th><th>Кол-во</th><th>Ед.</th><th>Цена</th><th>Сумма</th></tr></thead><tbody>{purchaseTransactionEditItems.map(i => { const editProduct = getPurchaseEditProduct(i); return <tr key={i.id}><td>{editProduct?.category || i.supplier_products?.category || '—'}</td><td><select value={i.product_id || ''} onChange={e => updatePurchaseEditItemLocal(i.id, { product_id: e.target.value })}>{products.map(prod => <option key={prod.id} value={prod.id}>{prod.name}</option>)}</select></td><td><input inputMode="decimal" value={i.quantity} onChange={e => updatePurchaseEditItemLocal(i.id, { quantity: e.target.value })} /></td><td><select value={i.unit || 'kg'} onChange={e => updatePurchaseEditItemLocal(i.id, { unit: e.target.value })}>{PURCHASE_UNITS.map(u => <option key={u.value} value={u.value}>{u.label}</option>)}</select></td><td><input inputMode="decimal" value={i.unit_price} onChange={e => updatePurchaseEditItemLocal(i.id, { unit_price: e.target.value })} /></td><td>{fmt(getPurchaseEditItemTotal(i))} AZN</td></tr> })}{!purchaseTransactionEditItems.length && <tr><td colSpan="6" className="hint">Товары не найдены</td></tr>}</tbody></table></div><div className="action-row"><button className="small primary" onClick={() => savePurchaseTransactionEdit(p)}>Сохранить изменения</button><button className="ghost small" onClick={() => { setEditingPurchaseTransactionId(''); setPurchaseTransactionEditItems([]) }}>Отмена</button></div></div></td></tr>}{p.row_type === 'opening_debt' && editingOpeningDebtId === String(p.id).replace('opening-', '') && <tr><td colSpan="7"><div className="card" style={{margin:0}}><h4>Редактирование стартового долга</h4><div className="form-grid compact"><label><span>Дата</span><DateInput value={openingDebtEditForm.debt_date} onChange={e => setOpeningDebtEditForm({...openingDebtEditForm, debt_date: e.target.value})} /></label><label><span>Сумма</span><input inputMode="decimal" value={openingDebtEditForm.amount} onChange={e => setOpeningDebtEditForm({...openingDebtEditForm, amount: e.target.value})} /></label><label><span>Фактура / отметка</span><input value={openingDebtEditForm.invoice_notes} onChange={e => setOpeningDebtEditForm({...openingDebtEditForm, invoice_notes: e.target.value})} /></label><label><span>Комментарий</span><input value={openingDebtEditForm.comment} onChange={e => setOpeningDebtEditForm({...openingDebtEditForm, comment: e.target.value})} /></label></div><div className="action-row"><button className="small primary" onClick={() => saveOpeningDebtEdit(p)}>Сохранить</button><button className="ghost small" onClick={() => setEditingOpeningDebtId('')}>Закрыть</button></div></div></td></tr>}{p.row_type !== 'opening_debt' && detailPurchaseId === p.id && <tr><td colSpan="7"><div className="table-wrap"><table><thead><tr><th>Категория</th><th>Товар</th><th>Кол-во</th><th>Ед.</th><th>Цена</th><th>Сумма</th></tr></thead><tbody>{(p.supplier_purchase_items || []).map(i => <tr key={i.id}><td>{i.supplier_products?.category || '—'}</td><td>{i.supplier_products?.name || '—'}</td><td>{fmt(i.quantity)}</td><td>{i.unit}</td><td>{fmt(i.unit_price)}</td><td>{fmt(i.total_amount)}</td></tr>)}{!(p.supplier_purchase_items || []).length && <tr><td colSpan="6" className="hint">Товары не найдены</td></tr>}</tbody></table></div></td></tr>}</React.Fragment>)}{!purchaseTransactionRows.length && <tr><td colSpan="7" className="hint">Нет поступлений или стартовых долгов за выбранный период</td></tr>}</tbody></table></div> : transactionType === 'products' ? <div><div className="form-grid compact" style={{marginTop:12}}><label><span>Поиск товара</span><input value={productSearch} onChange={e => setProductSearch(e.target.value)} placeholder="Например: молоко, кофе" /></label><label><span>Сортировка</span><select value={productSort} onChange={e => setProductSort(e.target.value)}><option value="name_asc">Наименование A → Z</option><option value="name_desc">Наименование Z → A</option><option value="change_desc">Изменение цены: рост сверху</option><option value="change_asc">Изменение цены: снижение сверху</option><option value="price_desc">Последняя цена: убывание</option><option value="price_asc">Последняя цена: возрастание</option></select></label></div><div className="table-wrap"><table><thead><tr><th>Тип</th><th>Товар</th><th>Последняя цена закупа</th><th>Предыдущая цена закупа</th><th>Разница</th><th>Изменение</th><th>Последняя закупка</th><th>Фактура</th></tr></thead><tbody>{pagedProductPriceRows.map(row => <tr key={row.id}><td>{row.category}</td><td><b>{row.name}</b></td><td>{fmt(row.latest?.price)} / {row.latest?.unit || row.unit}</td><td>{row.previous ? `${fmt(row.previous.price)} / ${row.previous.unit || row.unit}` : '—'}</td><td>{row.changeAmount == null ? <span className="hint">—</span> : <strong className={row.changeAmount > 0 ? 'bad' : row.changeAmount < 0 ? 'good' : ''}>{row.changeAmount > 0 ? '+' : ''}{fmt(row.changeAmount)} AZN</strong>}</td><td>{row.changePct == null ? <span className="hint">—</span> : <strong className={row.changePct > 0 ? 'bad' : row.changePct < 0 ? 'good' : ''}>{row.changePct > 0 ? '+' : ''}{pct(row.changePct)}</strong>}</td><td>{row.latest?.date || '—'}</td><td>{row.latest?.invoice || '—'}</td></tr>)}{!productPriceRows.length && <tr><td colSpan="8" className="hint">Товары не найдены за выбранный период</td></tr>}</tbody></table></div></div> : <div className="table-wrap"><table><thead><tr><th>Дата</th><th>Наш VOEN</th><th>Отметки / фактуры</th><th>Сумма</th><th>Комментарий</th><th>Действие</th></tr></thead><tbody>{pagedFilteredPayments.map(p => { const paymentRowComment = String(p.comment || '').startsWith('v255b: merged single payment') ? 'Оплата одной суммой по нескольким e-qaimə' : (p.comment || '—'); return <React.Fragment key={p.id}><tr><td>{formatDateDMY(p.payment_date)}</td><td>{p.legal_entities?.name || legalEntities.find(le => le.id === p.legal_entity_id)?.name || '—'}<br /><span className="hint">{p.legal_entities?.voen || legalEntities.find(le => le.id === p.legal_entity_id)?.voen || ''}</span></td><td>{p.invoice_notes || '—'}</td><td><strong className="good">{fmt(p.amount)}</strong></td><td>{paymentRowComment}</td><td><div className="action-row"><button className="small" onClick={() => openQuickPaymentEdit(p)}>Изменить</button><button className="small remove" onClick={() => deleteSupplierPayment(p)}>Удалить</button></div></td></tr></React.Fragment> })}{!filteredPayments.length && <tr><td colSpan="6" className="hint">Нет оплат за выбранный период</td></tr>}</tbody></table></div>}
+        {transactionType === 'purchases' ? <div className="table-wrap"><table><thead><tr><th>Дата</th><th>Фактура</th><th>Наш VOEN</th><th>Филиал</th><th>Сумма</th><th>Комментарий</th><th></th></tr></thead><tbody>{pagedFilteredPurchases.map(p => <React.Fragment key={p.id}><tr className={p.deleted_at ? 'cancelled-row' : ''}><td>{formatDateDMY(p.purchase_date)}</td><td>{p.invoice_number || '—'}</td><td>{p.legal_entities?.name || '—'}<br /><span className="hint">{p.legal_entities?.voen || ''}</span></td><td>{p.row_type === 'opening_debt' ? 'Стартовый долг' : (p.branches?.name || '—')}</td><td><strong className="bad">{fmt(p.total_amount)}</strong></td><td>{p.deleted_at ? 'Удалено / зачёркнуто' : (p.comment || '—')}</td><td>{p.row_type === 'opening_debt' ? <div className="action-row"><button className="small" disabled={Boolean(p.deleted_at)} onClick={() => startEditOpeningDebt(p)}>Изменить</button><button className="small remove" disabled={Boolean(p.deleted_at)} onClick={() => softDeleteOpeningDebt(p)}>Удалить</button></div> : <div className="action-row"><button className="small" onClick={() => setDetailPurchaseId(detailPurchaseId === p.id ? '' : p.id)}>{detailPurchaseId === p.id ? 'Скрыть' : 'Просмотр'}</button><button className="small" disabled={Boolean(p.deleted_at)} onClick={() => startEditPurchaseTransaction(p)}>Изменить</button><button className="small remove" disabled={Boolean(p.deleted_at)} onClick={() => softDeletePurchaseTransaction(p)}>Удалить</button></div>}</td></tr>{p.row_type === 'purchase' && editingPurchaseTransactionId === String(p.id) && <tr><td colSpan="7"><div className="card" style={{margin:0}}><h4>Редактирование поступления</h4><p className="hint">Сумма накладной пересчитывается автоматически по товарам. Изменения товара, количества, единицы или цены фиксируются в журнале операций.</p><div className="form-grid compact"><label><span>Дата</span><DateInput value={purchaseTransactionEditForm.purchase_date} onChange={e => setPurchaseTransactionEditForm({...purchaseTransactionEditForm, purchase_date: e.target.value})} /></label><label><span>Фактура</span><input value={purchaseTransactionEditForm.invoice_number} onChange={e => setPurchaseTransactionEditForm({...purchaseTransactionEditForm, invoice_number: e.target.value})} /></label><label><span>Филиал</span><select value={purchaseTransactionEditForm.branch_id} onChange={e => setPurchaseTransactionEditForm({...purchaseTransactionEditForm, branch_id: e.target.value})}><option value="">—</option>{branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label><label><span>Сумма накладной</span><strong>{fmt(getPurchaseEditTotal() || p.total_amount)} AZN</strong></label><label><span>Комментарий</span><input value={purchaseTransactionEditForm.comment} onChange={e => setPurchaseTransactionEditForm({...purchaseTransactionEditForm, comment: e.target.value})} /></label></div><div className="table-wrap"><table><thead><tr><th>Категория</th><th>Товар</th><th>Кол-во</th><th>Ед.</th><th>Цена</th><th>Сумма</th></tr></thead><tbody>{purchaseTransactionEditItems.map(i => { const editProduct = getPurchaseEditProduct(i); return <tr key={i.id}><td>{editProduct?.category || i.supplier_products?.category || '—'}</td><td><select value={i.product_id || ''} onChange={e => updatePurchaseEditItemLocal(i.id, { product_id: e.target.value })}>{products.map(prod => <option key={prod.id} value={prod.id}>{prod.name}</option>)}</select></td><td><input inputMode="decimal" value={i.quantity} onChange={e => updatePurchaseEditItemLocal(i.id, { quantity: e.target.value })} /></td><td><select value={i.unit || 'kg'} onChange={e => updatePurchaseEditItemLocal(i.id, { unit: e.target.value })}>{PURCHASE_UNITS.map(u => <option key={u.value} value={u.value}>{u.label}</option>)}</select></td><td><input inputMode="decimal" value={i.unit_price} onChange={e => updatePurchaseEditItemLocal(i.id, { unit_price: e.target.value })} /></td><td>{fmt(getPurchaseEditItemTotal(i))} AZN</td></tr> })}{!purchaseTransactionEditItems.length && <tr><td colSpan="6" className="hint">Товары не найдены</td></tr>}</tbody></table></div><div className="action-row"><button className="small primary" onClick={() => savePurchaseTransactionEdit(p)}>Сохранить изменения</button><button className="ghost small" onClick={() => { setEditingPurchaseTransactionId(''); setPurchaseTransactionEditItems([]) }}>Отмена</button></div></div></td></tr>}{p.row_type === 'opening_debt' && editingOpeningDebtId === String(p.id).replace('opening-', '') && <tr><td colSpan="7"><div className="card" style={{margin:0}}><h4>Редактирование стартового долга</h4><div className="form-grid compact"><label><span>Дата</span><DateInput value={openingDebtEditForm.debt_date} onChange={e => setOpeningDebtEditForm({...openingDebtEditForm, debt_date: e.target.value})} /></label><label><span>Сумма</span><input inputMode="decimal" value={openingDebtEditForm.amount} onChange={e => setOpeningDebtEditForm({...openingDebtEditForm, amount: e.target.value})} /></label><label><span>Фактура / отметка</span><input value={openingDebtEditForm.invoice_notes} onChange={e => setOpeningDebtEditForm({...openingDebtEditForm, invoice_notes: e.target.value})} /></label><label><span>Комментарий</span><input value={openingDebtEditForm.comment} onChange={e => setOpeningDebtEditForm({...openingDebtEditForm, comment: e.target.value})} /></label></div><div className="action-row"><button className="small primary" onClick={() => saveOpeningDebtEdit(p)}>Сохранить</button><button className="ghost small" onClick={() => setEditingOpeningDebtId('')}>Закрыть</button></div></div></td></tr>}{p.row_type !== 'opening_debt' && detailPurchaseId === p.id && <tr><td colSpan="7"><div className="table-wrap"><table><thead><tr><th>Категория</th><th>Товар</th><th>Кол-во</th><th>Ед.</th><th>Цена</th><th>Сумма</th></tr></thead><tbody>{(p.supplier_purchase_items || []).map(i => <tr key={i.id}><td>{i.supplier_products?.category || '—'}</td><td>{i.supplier_products?.name || '—'}</td><td>{fmt(i.quantity)}</td><td>{i.unit}</td><td>{fmt(i.unit_price)}</td><td>{fmt(i.total_amount)}</td></tr>)}{!(p.supplier_purchase_items || []).length && <tr><td colSpan="6" className="hint">Товары не найдены</td></tr>}</tbody></table></div></td></tr>}</React.Fragment>)}{!purchaseTransactionRows.length && <tr><td colSpan="7" className="hint">Нет поступлений или стартовых долгов за выбранный период</td></tr>}</tbody></table></div> : transactionType === 'products' ? <div><div className="form-grid compact" style={{marginTop:12}}><label><span>Поиск товара</span><input value={productSearch} onChange={e => setProductSearch(e.target.value)} placeholder="Например: молоко, кофе" /></label><label><span>Сортировка</span><select value={productSort} onChange={e => setProductSort(e.target.value)}><option value="name_asc">Наименование A → Z</option><option value="name_desc">Наименование Z → A</option><option value="change_desc">Изменение цены: рост сверху</option><option value="change_asc">Изменение цены: снижение сверху</option><option value="price_desc">Последняя цена: убывание</option><option value="price_asc">Последняя цена: возрастание</option></select></label></div><div className="table-wrap"><table><thead><tr><th>Тип</th><th>Товар</th><th>Последняя цена закупа</th><th>Предыдущая цена закупа</th><th>Разница</th><th>Изменение</th><th>Последняя закупка</th><th>Фактура</th></tr></thead><tbody>{pagedProductPriceRows.map(row => <tr key={row.id}><td>{row.category}</td><td><b>{row.name}</b></td><td>{fmt(row.latest?.price)} / {row.latest?.unit || row.unit}</td><td>{row.previous ? `${fmt(row.previous.price)} / ${row.previous.unit || row.unit}` : '—'}</td><td>{row.changeAmount == null ? <span className="hint">—</span> : <strong className={row.changeAmount > 0 ? 'bad' : row.changeAmount < 0 ? 'good' : ''}>{row.changeAmount > 0 ? '+' : ''}{fmt(row.changeAmount)} AZN</strong>}</td><td>{row.changePct == null ? <span className="hint">—</span> : <strong className={row.changePct > 0 ? 'bad' : row.changePct < 0 ? 'good' : ''}>{row.changePct > 0 ? '+' : ''}{pct(row.changePct)}</strong>}</td><td>{row.latest?.date || '—'}</td><td>{row.latest?.invoice || '—'}</td></tr>)}{!productPriceRows.length && <tr><td colSpan="8" className="hint">Товары не найдены за выбранный период</td></tr>}</tbody></table></div></div> : <div className="table-wrap"><table><thead><tr><th>Дата</th><th>Наш VOEN</th><th>Отметки / фактуры</th><th>Сумма</th><th>Комментарий</th><th>Действие</th></tr></thead><tbody>{pagedFilteredPayments.map(p => { const paymentRowComment = String(p.comment || '').startsWith('v255b: merged single payment') ? 'Оплата одной суммой по нескольким e-qaimə' : (p.comment || '—'); return <React.Fragment key={p.id}><tr><td>{formatDateDMY(p.payment_date)}</td><td>{p.legal_entities?.name || legalEntities.find(le => le.id === p.legal_entity_id)?.name || '—'}<br /><span className="hint">{p.legal_entities?.voen || legalEntities.find(le => le.id === p.legal_entity_id)?.voen || ''}</span></td><td>{p.invoice_notes || '—'}</td><td><strong className="good">{fmt(p.amount)}</strong></td><td>{paymentRowComment}</td><td><div className="action-row"><button className="small" onClick={() => startEditSupplierPayment(p)}>Изменить</button><button className="small remove" onClick={() => deleteSupplierPayment(p)}>Удалить</button></div></td></tr></React.Fragment> })}{!filteredPayments.length && <tr><td colSpan="6" className="hint">Нет оплат за выбранный период</td></tr>}</tbody></table></div>}
         <div className="action-row" style={{margin:'12px 0 0'}}><button className="ghost small" disabled={safeTransactionPage <= 1} onClick={() => setTransactionPage(p => Math.max(1, parseNum(p) - 1))}>← Пред.</button><span className="hint">Страница {safeTransactionPage} / {transactionTotalPages} · всего {transactionSourceCount}</span><button className="ghost small" disabled={safeTransactionPage >= transactionTotalPages} onClick={() => setTransactionPage(p => Math.min(transactionTotalPages, parseNum(p) + 1))}>След. →</button></div>
         <div className="card" style={{marginTop:12}}><h4>Журнал изменений</h4><p className="hint">Любое редактирование и отключение стартового долга фиксируется по времени и пользователю.</p><div className="table-wrap"><table><thead><tr><th>Дата</th><th>Пользователь</th><th>Действие</th><th>Было</th><th>Стало</th></tr></thead><tbody>{visibleTransactionLogs.map(l => <tr key={l.id}><td>{formatDT(l.created_at)}</td><td>{l.user_email || l.user_id || '—'}</td><td>{l.action}</td><td><span className="hint">{l.old_value || '—'}</span></td><td>{l.new_value || '—'}</td></tr>)}{!visibleTransactionLogs.length && <tr><td colSpan="5" className="hint">Изменений пока нет.</td></tr>}</tbody></table></div></div>
       </div>}</div>
@@ -26413,65 +26172,22 @@ function DebtsPayments({ t }) {
       </div>
 
 
-      {quickPaymentEditOpen && quickPaymentEditRow && <div
-        className="supplier-payment-edit-global-overlay"
-        style={{position:'fixed', inset:0, zIndex:60000, background:'rgba(15,23,42,.42)', display:'flex', alignItems:'flex-start', justifyContent:'center', padding:24, overflow:'auto'}}
-      >
-        <div className="supplier-payment-edit-global-card" style={{width:'min(1320px, calc(100vw - 48px))', maxHeight:'calc(100vh - 48px)', overflow:'auto', background:'#fff', borderRadius:24, padding:22, boxShadow:'0 42px 120px rgba(15,23,42,.45)', border:'2px solid rgba(37,99,235,.30)'}}>
-          <div className="card-head suppliers-v43-card-head" style={{position:'sticky', top:-22, zIndex:10, background:'rgba(255,255,255,.98)', borderBottom:'1px solid #e5e7eb', paddingBottom:12}}>
-            <div>
-              <h3>Редактирование оплаты поставщику</h3>
-              <p className="hint">Независимое окно редактирования: открывается напрямую из журнала, без окна транзакций.</p>
-            </div>
-            <button className="supplier-modal-x" title="Закрыть" aria-label="Закрыть" onClick={() => { setQuickPaymentEditOpen(false); setEditingPaymentTransactionId(''); setEditingPaymentSource(null) }}>×</button>
-          </div>
-
-          <div className="form-grid compact">
-            <label><span>Дата оплаты</span><DateInput value={paymentTransactionEditForm.payment_date || quickPaymentEditRow.payment_date || todayISO()} onChange={e => setPaymentTransactionEditForm({...paymentTransactionEditForm, payment_date: e.target.value})} /></label>
-            <label><span>Наш VOEN / VOEN</span><select value={paymentTransactionEditForm.legal_entity_id || quickPaymentEditRow.legal_entity_id || ''} onChange={e => setPaymentTransactionEditForm({...paymentTransactionEditForm, legal_entity_id: e.target.value, selected_e_invoice_ids: []})}>{legalEntities.map(le => <option key={le.id} value={le.id}>{le.name} · {le.voen}</option>)}</select></label>
-            <label><span>Сумма оплаты</span><input inputMode="decimal" value={paymentTransactionEditForm.amount || String(parseNum(quickPaymentEditRow.amount))} onChange={e => setPaymentTransactionEditForm({...paymentTransactionEditForm, amount: e.target.value})} /></label>
-            <label><span>Отметки / фактуры</span><input value={paymentTransactionEditForm.invoice_notes || quickPaymentEditRow.invoice_notes || ''} onChange={e => setPaymentTransactionEditForm({...paymentTransactionEditForm, invoice_notes: e.target.value})} /></label>
-            <label><span>Комментарий</span><input value={paymentTransactionEditForm.comment || quickPaymentEditRow.comment || ''} onChange={e => setPaymentTransactionEditForm({...paymentTransactionEditForm, comment: e.target.value})} /></label>
-          </div>
-
-          <div className="supplier-single-einvoice-card" style={{marginTop:12}}>
-            <div className="card-head suppliers-v43-card-head">
-              <div><h4>e-qaimə в этой оплате</h4><p className="hint">Показывает номера из оплаты и доступные неоплаченные e-qaimə по поставщику / VOEN.</p></div>
-              {(paymentTransactionEditForm.selected_e_invoice_ids || []).length > 0 && <button className="ghost small" onClick={() => setPaymentTransactionEditForm(f => ({...f, selected_e_invoice_ids: [], invoice_notes: '', amount: ''}))}>Очистить выбор</button>}
-            </div>
-            <div className="form-grid compact">
-              <label><span>Поиск e-qaimə</span><input value={paymentTransactionEditForm.e_invoice_search || ''} onChange={e => setPaymentTransactionEditForm({...paymentTransactionEditForm, e_invoice_search: e.target.value})} placeholder="№, дата, сумма, VOEN" /></label>
-              <div className="mini-kpi"><span>{paymentEditLoading ? 'Загрузка' : 'Найдено'}</span><strong>{paymentEditLoading ? '...' : quickPaymentEditEInvoiceOptions(quickPaymentEditRow).length}</strong></div>
-            </div>
-            <div className="table-wrap supplier-payment-einvoice-picker" style={{maxHeight:'min(520px, calc(100vh - 430px))', overflow:'auto'}}>
-              <table style={{minWidth:1060}}><thead><tr><th></th><th>Дата</th><th>№ e-qaimə</th><th>VOEN</th><th>Сумма</th><th>Оплачено</th><th>Остаток</th></tr></thead><tbody>{quickPaymentEditEInvoiceOptions(quickPaymentEditRow).map(inv => { const selectedIds = Array.isArray(paymentTransactionEditForm.selected_e_invoice_ids) ? paymentTransactionEditForm.selected_e_invoice_ids : []; const checked = selectedIds.map(String).includes(String(inv.id)) || extractPaymentEInvoiceNumbers(paymentTransactionEditForm.invoice_notes || '').some(n => normalizePaymentEInvoiceNumber(n) === normalizePaymentEInvoiceNumber(inv.invoice_number)); const balance = Math.max(0, parseNum(inv.remaining_amount ?? (parseNum(inv.amount) - parseNum(inv.paid_amount)))); return <tr key={inv.id} className={checked ? 'active' : ''}><td><input type="checkbox" checked={checked} onChange={() => togglePaymentEditEInvoice(inv, quickPaymentEditRow)} /></td><td>{formatDateDMY(inv.invoice_date)}</td><td><b>{inv.invoice_number}</b>{inv.source_kind === 'note_placeholder' ? <><br /><span className="hint">номер из оплаты</span></> : null}</td><td>{inv.legal_entities?.name || legalEntities.find(le => le.id === inv.legal_entity_id)?.name || '—'}<br /><span className="hint">{inv.legal_entities?.voen || legalEntities.find(le => le.id === inv.legal_entity_id)?.voen || ''}</span></td><td>{fmt(inv.amount)}</td><td>{fmt(inv.paid_amount)}</td><td className={balance > 0 ? 'bad' : 'good'}>{fmt(balance)}</td></tr> })}{!paymentEditLoading && !quickPaymentEditEInvoiceOptions(quickPaymentEditRow).length && <tr><td colSpan="7" className="hint">e-qaimə не найдены. Но номера из оплаты должны отображаться как “номер из оплаты”.</td></tr>}</tbody></table>
-            </div>
-          </div>
-
-          <div className="action-row" style={{marginTop:14}}>
-            <button className="small primary" onClick={async () => { await saveSupplierPaymentEdit(quickPaymentEditRow); setQuickPaymentEditOpen(false) }}>Сохранить</button>
-            <button className="ghost small" onClick={() => { setQuickPaymentEditOpen(false); setEditingPaymentTransactionId(''); setEditingPaymentSource(null) }}>Закрыть</button>
-            <button className="small remove" onClick={() => deleteSupplierPayment(quickPaymentEditRow)}>Удалить</button>
-          </div>
-        </div>
-      </div>}
-
-      {showPaymentEditOverlay && paymentEditOverlayRow && <div className="supplier-payment-edit-global-overlay">
+      {activeEditingPayment && <div className="supplier-payment-edit-global-overlay">
         <div className="supplier-payment-edit-global-card">
           <div className="card-head suppliers-v43-card-head">
             <div>
               <h3>Редактирование оплаты поставщику</h3>
               <p className="hint">Отдельное окно редактирования. Выберите e-qaimə по поставщику и VOEN, затем сохраните оплату одной строкой.</p>
             </div>
-            <button className="supplier-modal-x" title="Закрыть" aria-label="Закрыть" onClick={() => { setEditingPaymentTransactionId(''); setEditingPaymentSource(null); setShowPaymentEditOverlay(false) }}>×</button>
+            <button className="supplier-modal-x" title="Закрыть" aria-label="Закрыть" onClick={() => setEditingPaymentTransactionId('')}>×</button>
           </div>
 
           <div className="form-grid compact">
-            <label><span>Дата оплаты</span><DateInput value={paymentTransactionEditForm.payment_date || paymentEditOverlayRow?.payment_date || paymentEditOverlayRow?.date || todayISO()} onChange={e => setPaymentTransactionEditForm({...paymentTransactionEditForm, payment_date: e.target.value})} /></label>
+            <label><span>Дата оплаты</span><DateInput value={paymentTransactionEditForm.payment_date} onChange={e => setPaymentTransactionEditForm({...paymentTransactionEditForm, payment_date: e.target.value})} /></label>
             <label><span>Наш VOEN / VOEN</span><select value={paymentTransactionEditForm.legal_entity_id} onChange={e => setPaymentTransactionEditForm({...paymentTransactionEditForm, legal_entity_id: e.target.value, selected_e_invoice_ids: []})}>{legalEntities.map(le => <option key={le.id} value={le.id}>{le.name} · {le.voen}</option>)}</select></label>
-            <label><span>Сумма оплаты</span><input inputMode="decimal" value={paymentTransactionEditForm.amount || String(parseNum(paymentEditOverlayRow?.amount))} onChange={e => setPaymentTransactionEditForm({...paymentTransactionEditForm, amount: e.target.value})} /></label>
-            <label><span>Отметки / фактуры</span><input value={paymentTransactionEditForm.invoice_notes || paymentEditOverlayRow?.invoice_notes || ''} onChange={e => setPaymentTransactionEditForm({...paymentTransactionEditForm, invoice_notes: e.target.value})} /></label>
-            <label><span>Комментарий</span><input value={paymentTransactionEditForm.comment || paymentEditOverlayRow?.comment || ''} onChange={e => setPaymentTransactionEditForm({...paymentTransactionEditForm, comment: e.target.value})} /></label>
+            <label><span>Сумма оплаты</span><input inputMode="decimal" value={paymentTransactionEditForm.amount} onChange={e => setPaymentTransactionEditForm({...paymentTransactionEditForm, amount: e.target.value})} /></label>
+            <label><span>Отметки / фактуры</span><input value={paymentTransactionEditForm.invoice_notes} onChange={e => setPaymentTransactionEditForm({...paymentTransactionEditForm, invoice_notes: e.target.value})} /></label>
+            <label><span>Комментарий</span><input value={paymentTransactionEditForm.comment} onChange={e => setPaymentTransactionEditForm({...paymentTransactionEditForm, comment: e.target.value})} /></label>
           </div>
 
           <div className="supplier-single-einvoice-card" style={{marginTop:12}}>
@@ -26481,17 +26197,17 @@ function DebtsPayments({ t }) {
             </div>
             <div className="form-grid compact">
               <label><span>Поиск e-qaimə</span><input value={paymentTransactionEditForm.e_invoice_search || ''} onChange={e => setPaymentTransactionEditForm({...paymentTransactionEditForm, e_invoice_search: e.target.value})} placeholder="№, дата, сумма, VOEN" /></label>
-              <div className="mini-kpi"><span>{paymentEditLoading ? 'Загрузка' : 'Найдено'}</span><strong>{paymentEditLoading ? '...' : safePaymentEditEInvoiceOptions(paymentEditOverlayRow).length}</strong></div>
+              <div className="mini-kpi"><span>{paymentEditLoading ? 'Загрузка' : 'Найдено'}</span><strong>{paymentEditLoading ? '...' : safePaymentEditEInvoiceOptions(activeEditingPayment).length}</strong></div>
             </div>
             <div className="table-wrap supplier-payment-einvoice-picker">
-              <table><thead><tr><th></th><th>Дата</th><th>№ e-qaimə</th><th>VOEN</th><th>Сумма</th><th>Оплачено</th><th>Остаток</th></tr></thead><tbody>{safePaymentEditEInvoiceOptions(paymentEditOverlayRow).map(inv => { const selectedIds = Array.isArray(paymentTransactionEditForm.selected_e_invoice_ids) ? paymentTransactionEditForm.selected_e_invoice_ids : []; const checked = selectedIds.map(String).includes(String(inv.id)) || extractPaymentEInvoiceNumbers(paymentTransactionEditForm.invoice_notes || '').some(n => normalizePaymentEInvoiceNumber(n) === normalizePaymentEInvoiceNumber(inv.invoice_number)); const balance = Math.max(0, parseNum(inv.remaining_amount ?? (parseNum(inv.amount) - parseNum(inv.paid_amount)))); return <tr key={inv.id} className={checked ? 'active' : ''}><td><input type="checkbox" checked={checked} onChange={() => togglePaymentEditEInvoice(inv, paymentEditOverlayRow)} /></td><td>{formatDateDMY(inv.invoice_date)}</td><td><b>{inv.invoice_number}</b>{inv.source_kind === 'note_placeholder' ? <><br /><span className="hint">номер из оплаты</span></> : null}</td><td>{inv.legal_entities?.name || legalEntities.find(le => le.id === inv.legal_entity_id)?.name || '—'}<br /><span className="hint">{inv.legal_entities?.voen || legalEntities.find(le => le.id === inv.legal_entity_id)?.voen || ''}</span></td><td>{fmt(inv.amount)}</td><td>{fmt(inv.paid_amount)}</td><td className={balance > 0 ? 'bad' : 'good'}>{fmt(balance)}</td></tr> })}{!paymentEditLoading && !safePaymentEditEInvoiceOptions(paymentEditOverlayRow).length && <tr><td colSpan="7" className="hint">e-qaimə не найдены. Проверьте поставщика, VOEN или введите часть номера.</td></tr>}</tbody></table>
+              <table><thead><tr><th></th><th>Дата</th><th>№ e-qaimə</th><th>VOEN</th><th>Сумма</th><th>Оплачено</th><th>Остаток</th></tr></thead><tbody>{safePaymentEditEInvoiceOptions(activeEditingPayment).map(inv => { const selectedIds = Array.isArray(paymentTransactionEditForm.selected_e_invoice_ids) ? paymentTransactionEditForm.selected_e_invoice_ids : []; const checked = selectedIds.map(String).includes(String(inv.id)); const balance = Math.max(0, parseNum(inv.remaining_amount ?? (parseNum(inv.amount) - parseNum(inv.paid_amount)))); return <tr key={inv.id} className={checked ? 'active' : ''}><td><input type="checkbox" checked={checked} onChange={() => togglePaymentEditEInvoice(inv, activeEditingPayment)} /></td><td>{formatDateDMY(inv.invoice_date)}</td><td><b>{inv.invoice_number}</b>{inv.source_kind === 'note_placeholder' ? <><br /><span className="hint">номер из оплаты</span></> : null}</td><td>{inv.legal_entities?.name || legalEntities.find(le => le.id === inv.legal_entity_id)?.name || '—'}<br /><span className="hint">{inv.legal_entities?.voen || legalEntities.find(le => le.id === inv.legal_entity_id)?.voen || ''}</span></td><td>{fmt(inv.amount)}</td><td>{fmt(inv.paid_amount)}</td><td className={balance > 0 ? 'bad' : 'good'}>{fmt(balance)}</td></tr> })}{!paymentEditLoading && !safePaymentEditEInvoiceOptions(activeEditingPayment).length && <tr><td colSpan="7" className="hint">e-qaimə не найдены. Проверьте поставщика, VOEN или введите часть номера.</td></tr>}</tbody></table>
             </div>
           </div>
 
           <div className="action-row" style={{marginTop:14}}>
-            <button className="small primary" onClick={() => saveSupplierPaymentEdit(paymentEditOverlayRow)}>Сохранить</button>
-            <button className="ghost small" onClick={() => { setEditingPaymentTransactionId(''); setEditingPaymentSource(null); setShowPaymentEditOverlay(false) }}>Закрыть</button>
-            <button className="small remove" onClick={() => deleteSupplierPayment(paymentEditOverlayRow)}>Удалить</button>
+            <button className="small primary" onClick={() => saveSupplierPaymentEdit(activeEditingPayment)}>Сохранить</button>
+            <button className="ghost small" onClick={() => setEditingPaymentTransactionId('')}>Закрыть</button>
+            <button className="small remove" onClick={() => deleteSupplierPayment(activeEditingPayment)}>Удалить</button>
           </div>
         </div>
       </div>}
