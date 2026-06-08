@@ -23361,56 +23361,15 @@ function Suppliers({ t, isAdmin = false }) {
           <label><span>Наш VOEN</span><select value={paymentForm.legal_entity_id} onChange={e => setPaymentForm({...paymentForm, legal_entity_id: e.target.value})}><option value="">Выберите VOEN</option>{legalEntities.map(le => <option key={le.id} value={le.id}>{le.name} · {le.voen}</option>)}</select></label>
           <label><span>Дата оплаты</span><input type="date" value={paymentForm.payment_date} onChange={e => setPaymentForm({...paymentForm, payment_date: e.target.value})} /></label>
           <label><span>Сумма оплаты</span><input inputMode="decimal" value={paymentForm.amount} onChange={e => setPaymentForm({...paymentForm, amount: e.target.value})} /></label>
-          <label><span>Оплата по e-qaimə</span><select value={paymentForm.invoice_notes} onChange={e => applyPaymentEInvoice(e.target.value)}><option value="">Быстрый выбор одной e-qaimə</option>{filteredPaymentEInvoices.map(inv => <option key={inv.e_invoice_id || inv.purchase_id || inv.number} value={inv.number}>{inv.number} · {inv.supplier} · {fmt(inv.amount)} AZN · {inv.status}</option>)}</select></label>
           <label><span>Отметки / номера счёт-фактур</span><input value={paymentForm.invoice_notes} onChange={e => setPaymentForm({...paymentForm, invoice_notes: e.target.value})} /></label>
           <label><span>Комментарий</span><input value={paymentForm.comment} onChange={e => setPaymentForm({...paymentForm, comment: e.target.value})} /></label>
         </div>
         <div className="action-row" style={{margin:'12px 0'}}>
-          <button className="small primary" onClick={openPaymentCreateOverlay}>Выбрать e-qaimə в большом окне</button>
+          <button className="small primary" onClick={openPaymentCreateOverlay}>+ Выбрать e-qaimə / открыть большое окно</button>
           {(paymentForm.selected_e_invoice_ids || []).length > 0 && <span className="hint">Выбрано e-qaimə: <b>{paymentForm.selected_e_invoice_ids.length}</b> · сумма: <b>{fmt(paymentForm.amount)} AZN</b></span>}
         </div>
-        <div className="supplier-payment-multi">
-          <div className="card-head suppliers-v43-card-head">
-            <div><h3>Выбор нескольких e-qaimə</h3><p className="hint">Быстрый поиск по номеру e-qaimə, дате, статусу или сумме. Отметьте несколько накладных — сумма оплаты и номера подтянутся автоматически.</p></div>
-            <div className="action-row" style={{gap:8, alignItems:'center'}}>
-              {(paymentForm.selected_e_invoice_ids || []).length > 0 && <button className="ghost small" onClick={clearPaymentEInvoices}>Очистить выбор</button>}
-              {paymentEInvoiceSearch && <button className="ghost small" onClick={() => setPaymentEInvoiceSearch('')}>Очистить поиск</button>}
-            </div>
-          </div>
-          <div className="form-grid compact supplier-payment-searchbar" style={{marginBottom:12}}>
-            <label>
-              <span>Быстрый поиск e-qaimə</span>
-              <input
-                value={paymentEInvoiceSearch}
-                onChange={e => setPaymentEInvoiceSearch(e.target.value)}
-                placeholder="Например: MT2605, 2026-05-29, 360"
-              />
-            </label>
-            <div className="mini-kpi">
-              <span>Найдено</span>
-              <strong>{filteredPaymentEInvoices.length}</strong>
-            </div>
-          </div>
-          <div className="supplier-payment-multi-list">
-            {filteredPaymentEInvoices.map(inv => {
-              const key = inv.e_invoice_id || inv.number
-              const checked = (paymentForm.selected_e_invoice_ids || []).includes(key)
-              return <label key={key} className={`supplier-payment-invoice-row ${checked ? 'active' : ''}`}>
-                <input type="checkbox" checked={checked} onChange={() => togglePaymentEInvoice(inv)} />
-                <span>
-                  <b>{inv.number}</b>
-                  <small>{inv.supplier} · {inv.date || '—'} · {inv.status}</small>
-                </span>
-                <strong>{fmt(inv.amount)} AZN</strong>
-              </label>
-            })}
-            {!filteredPaymentEInvoices.length && <p className="hint">Нет неоплаченных e-qaimə по выбранному поставщику / VOEN.</p>}
-          </div>
-          {(paymentForm.selected_e_invoice_ids || []).length > 0 && <div className="supplier-payment-total">
-            <span>Выбрано: <b>{(paymentForm.selected_e_invoice_ids || []).length}</b></span>
-            <strong>Итого к оплате: {fmt(selectedPaymentTotal)} AZN</strong>
-          </div>}
-        </div>
+        {/* v272: старый встроенный список выбора нескольких e-qaimə полностью удалён.
+            Используем только большое overlay-окно выбора e-qaimə. */}
         <button className="small primary" onClick={savePayment}>+ Сохранить оплату</button>
         {paymentMessage && <p className={`hint ${paymentMessage === t('saved') ? 'save-status' : 'bad'}`}>{paymentMessage}</p>}
       </div>
