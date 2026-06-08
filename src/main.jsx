@@ -23369,6 +23369,20 @@ function Suppliers({ t, isAdmin = false }) {
     }
   }
 
+  function purchasePaymentStatusByEInvoices(purchase) {
+    const physicalAmount = parseNum(purchase?.total_amount)
+    const linkedInvoices = purchaseLinkedEInvoices(purchase?.id)
+    const paidByInvoices = linkedInvoices.reduce((sum, inv) => sum + parseNum(inv.paid_amount), 0)
+    const paidByPayments = paymentsForPurchase(purchase?.id).reduce((sum, pay) => sum + parseNum(pay.amount), 0)
+    const paidAmount = Math.max(paidByInvoices, paidByPayments)
+    const remaining = Math.max(0, physicalAmount - paidAmount)
+
+    if (purchase?.deleted_at) return { status: 'Отменено', tone: 'bad', paidAmount, remaining }
+    if (physicalAmount > 0 && paidAmount >= physicalAmount - 0.02) return { status: 'Оплачено', tone: 'good', paidAmount, remaining: 0 }
+    if (paidAmount > 0.02) return { status: 'Частично оплачено', tone: 'warn', paidAmount, remaining }
+    return { status: 'Не оплачено', tone: 'bad', paidAmount: 0, remaining: physicalAmount }
+  }
+
   function singleEInvoiceDraft(purchase) {
     const existing = singleEInvoiceDrafts[purchase.id] || {}
     const supplier = suppliers.find(s => String(s.id) === String(purchase.supplier_id))
@@ -23839,8 +23853,8 @@ function Suppliers({ t, isAdmin = false }) {
                     <td>{p.suppliers?.name}</td>
                     <td>{p.legal_entities?.name || '—'}<br /><span className="hint">{p.legal_entities?.voen || ''}</span></td>
                     <td>{p.branches?.name || '—'}</td>
-                    <td><strong>{fmt(p.total_amount)}</strong>{purchaseReconciliationByEInvoices(p).eAmount ? <><br /><span className={Math.abs(purchaseReconciliationByEInvoices(p).diff) > 0.02 ? 'bad' : 'good'}>diff {fmt(purchaseReconciliationByEInvoices(p).diff)}</span></> : null}</td>
-                    <td>{p.deleted_at ? <span className="bad">Отменено</span> : <span className={purchaseReconciliationByEInvoices(p).tone === 'bad' ? 'bad' : purchaseReconciliationByEInvoices(p).tone === 'good' ? 'good' : 'warn'}>{purchaseReconciliationByEInvoices(p).status}</span>}</td>
+                    <td><strong>{fmt(p.total_amount)}</strong>{(() => { const rec = purchaseReconciliationByEInvoices(p); return rec.eAmount && Math.abs(rec.diff) > 0.02 ? <><br /><span className="bad" style={{fontSize:11, fontWeight:600}}>diff {fmt(rec.diff)}</span></> : null })()}</td>
+                    <td>{(() => { const payStatus = purchasePaymentStatusByEInvoices(p); return <span className={payStatus.tone === 'bad' ? 'bad' : payStatus.tone === 'good' ? 'good' : 'warn'}>{payStatus.status}</span> })()}</td>
                     <td><button className="ghost small" onClick={() => { setViewPurchaseId(viewPurchaseId === p.id ? '' : p.id); setEditingPurchaseId('') }}>{viewPurchaseId === p.id ? 'Закрыть' : 'Просмотр'}</button></td>
                   </tr>
                   {viewPurchaseId === p.id && (
