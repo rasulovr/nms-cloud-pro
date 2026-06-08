@@ -22769,21 +22769,23 @@ function Suppliers({ t, isAdmin = false }) {
     setMessage('')
     setPaymentMessage('')
 
-    const selectedCreateTotalForSave = showPaymentCreateOverlay && (paymentForm.selected_e_invoice_ids || []).length
-      ? paymentCreateAllInvoiceCandidates()
-          .filter(inv => (paymentForm.selected_e_invoice_ids || []).includes(inv.e_invoice_id || inv.number))
-          .reduce((sum, inv) => {
-            const remaining = Math.max(0, parseNum(inv.remaining_amount ?? (parseNum(inv.amount) - parseNum(inv.paid_amount))))
-            return sum + (remaining > 0 ? remaining : parseNum(inv.amount))
-          }, 0)
+    const selectedIds = paymentForm.selected_e_invoice_ids || []
+    const paymentInvoicePool = showPaymentCreateOverlay ? paymentCreateAllInvoiceCandidates() : supplierEInvoiceOptions
+    const selectedAllInvoices = paymentInvoicePool
+      .filter(inv => selectedIds.includes(inv.e_invoice_id || inv.number))
+    const selectedRealInvoices = selectedAllInvoices.filter(inv => inv.e_invoice_id)
+    const selectedInvoiceNumbers = selectedAllInvoices.map(inv => inv.number).filter(Boolean)
+
+    const selectedCreateTotalForSave = showPaymentCreateOverlay && selectedAllInvoices.length
+      ? selectedAllInvoices.reduce((sum, inv) => {
+          const remaining = Math.max(0, parseNum(inv.remaining_amount ?? (parseNum(inv.amount) - parseNum(inv.paid_amount))))
+          return sum + (remaining > 0 ? remaining : parseNum(inv.amount))
+        }, 0)
       : 0
     const amount = selectedCreateTotalForSave > 0 ? selectedCreateTotalForSave : parseNum(paymentForm.amount)
-    const selectedIds = paymentForm.selected_e_invoice_ids || []
-    const selectedRealInvoices = (showPaymentCreateOverlay ? paymentCreateAllInvoiceCandidates() : supplierEInvoiceOptions)
-      .filter(inv => selectedIds.includes(inv.e_invoice_id || inv.number) && inv.e_invoice_id)
 
-    const paymentSupplierId = selectedRealInvoices[0]?.supplier_id || paymentForm.supplier_id
-    const paymentLegalEntityId = selectedRealInvoices[0]?.legal_entity_id || paymentForm.legal_entity_id
+    const paymentSupplierId = selectedAllInvoices[0]?.supplier_id || selectedRealInvoices[0]?.supplier_id || paymentForm.supplier_id
+    const paymentLegalEntityId = selectedAllInvoices[0]?.legal_entity_id || selectedRealInvoices[0]?.legal_entity_id || paymentForm.legal_entity_id
 
     if (!paymentSupplierId || !amount) return setPaymentMessage('Выберите поставщика и сумму оплаты')
     if (!paymentLegalEntityId) return setPaymentMessage('Выберите наш VOEN / юрлицо для оплаты')
@@ -22811,7 +22813,7 @@ function Suppliers({ t, isAdmin = false }) {
           return setPaymentMessage(`Следующие e-qaimə уже оплачены: ${paidList}`)
         }
 
-        if (selectedRealInvoices.length === 1) {
+        if (selectedAllInvoices.length === 1 && selectedRealInvoices.length === 1) {
           const row = normalizedLatestRows?.[0]
           const remaining = Math.max(0, parseNum(row?.amount) - parseNum(row?.paid_amount))
           if (remaining <= 0.01) {
@@ -22824,8 +22826,8 @@ function Suppliers({ t, isAdmin = false }) {
         }
       }
 
-      if (selectedRealInvoices.length > 1) {
-        const invoiceNumbers = selectedRealInvoices.map(inv => inv.number).filter(Boolean)
+      if (selectedAllInvoices.length > 1) {
+        const invoiceNumbers = selectedInvoiceNumbers
         const invoiceNotes = paymentForm.invoice_notes.trim() || invoiceNumbers.join(', ')
         const multiComment = [
           paymentForm.comment.trim(),
@@ -22861,13 +22863,16 @@ function Suppliers({ t, isAdmin = false }) {
           remainingPayment -= payAmount
         }
       } else {
-        const updateInvoiceId = paymentForm.e_invoice_id || selectedRealInvoices[0]?.e_invoice_id || null
+        const selectedOne = selectedAllInvoices[0] || selectedRealInvoices[0] || null
+        const updateInvoiceId = paymentForm.e_invoice_id || selectedOne?.e_invoice_id || null
+        const invoiceNotes = paymentForm.invoice_notes.trim() || selectedOne?.number || null
+
         await callSupplierRpc('rms_supplier_payment_create_secure', {
           p_supplier_id: paymentSupplierId,
           p_legal_entity_id: paymentLegalEntityId || null,
           p_payment_date: paymentForm.payment_date || todayISO(),
           p_amount: amount,
-          p_invoice_notes: paymentForm.invoice_notes.trim() || null,
+          p_invoice_notes: invoiceNotes,
           p_comment: paymentForm.comment.trim() || null,
           p_e_invoice_id: updateInvoiceId
         }, t('saved'), setPaymentMessage)
@@ -22883,7 +22888,6 @@ function Suppliers({ t, isAdmin = false }) {
       setPaymentMessage(t('saved'))
     } catch (e) { setPaymentMessage(e.message) }
   }
-
 
   const purchaseTotal = purchaseForm.amount_only ? parseNum(purchaseForm.manual_amount) : lineRows.reduce((s, r) => s + lineTotal(r), 0)
   function allTransactions() {
