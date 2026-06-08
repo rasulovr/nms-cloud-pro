@@ -6645,6 +6645,81 @@ function RMSProV6Styles() {
   pointer-events:none!important;
 }
 
+/* v284: global form alignment fix for select + DateInput fields */
+.rms-pro-shell .form-grid,
+.rms-pro-shell .form-grid.compact{
+  align-items:end!important;
+}
+
+.rms-pro-shell .form-grid > label,
+.rms-pro-shell .form-grid.compact > label,
+.rms-pro-shell .supplier-modal-panel .form-grid > label,
+.rms-pro-shell .supplier-payment-edit-global-card .form-grid > label{
+  display:flex!important;
+  flex-direction:column!important;
+  justify-content:flex-end!important;
+  gap:6px!important;
+  min-width:0!important;
+  align-self:stretch!important;
+}
+
+.rms-pro-shell label > span,
+.rms-pro-shell .field-label{
+  display:block!important;
+  min-height:18px!important;
+  line-height:18px!important;
+  margin:0!important;
+  margin-bottom:0!important;
+}
+
+.rms-pro-shell .form-grid input:not([type="checkbox"]):not([type="radio"]):not(.attendance-day-input),
+.rms-pro-shell .form-grid select,
+.rms-pro-shell .form-grid textarea,
+.rms-pro-shell .date-dmy-wrap,
+.rms-pro-shell .date-dmy-input{
+  min-height:52px!important;
+  height:52px!important;
+  box-sizing:border-box!important;
+}
+
+.rms-pro-shell .date-dmy-wrap{
+  position:relative!important;
+  display:flex!important;
+  align-items:center!important;
+  width:100%!important;
+  min-width:0!important;
+}
+
+.rms-pro-shell .date-dmy-wrap .date-dmy-input{
+  flex:1 1 auto!important;
+  width:100%!important;
+  padding-right:48px!important;
+}
+
+.rms-pro-shell .date-dmy-picker-btn{
+  height:36px!important;
+  width:36px!important;
+  right:8px!important;
+}
+
+.rms-pro-shell .revenue-period-grid{
+  align-items:end!important;
+}
+
+.rms-pro-shell .revenue-period-grid > label{
+  display:flex!important;
+  flex-direction:column!important;
+  justify-content:flex-end!important;
+  gap:6px!important;
+  align-self:stretch!important;
+}
+
+.rms-pro-shell .revenue-period-grid select,
+.rms-pro-shell .revenue-period-grid .date-dmy-wrap{
+  height:52px!important;
+  min-height:52px!important;
+}
+
 .rms-pro-shell input[type="date"],
 .rms-pro-shell input[type="number"],
 .rms-pro-shell select{
