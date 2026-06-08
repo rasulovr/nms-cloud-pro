@@ -22724,12 +22724,13 @@ function Suppliers({ t, isAdmin = false }) {
 
   async function openPaymentCreateOverlay() {
     setPaymentMessage('')
+    setShowPaymentCreateOverlay(true)
     if (!paymentForm.supplier_id) {
+      setPaymentCreateEInvoices([])
       setPaymentMessage('Сначала выберите поставщика')
       return
     }
 
-    setShowPaymentCreateOverlay(true)
     setPaymentCreateLoading(true)
 
     try {
@@ -23365,7 +23366,7 @@ function Suppliers({ t, isAdmin = false }) {
           <label><span>Комментарий</span><input value={paymentForm.comment} onChange={e => setPaymentForm({...paymentForm, comment: e.target.value})} /></label>
         </div>
         <div className="action-row" style={{margin:'12px 0'}}>
-          <button className="small primary" onClick={openPaymentCreateOverlay}>+ Выбрать e-qaimə / открыть большое окно</button>
+          <button className="small primary" onClick={() => { setShowPaymentCreateOverlay(true); openPaymentCreateOverlay() }}>+ Выбрать e-qaimə / открыть большое окно</button>
           {(paymentForm.selected_e_invoice_ids || []).length > 0 && <span className="hint">Выбрано e-qaimə: <b>{paymentForm.selected_e_invoice_ids.length}</b> · сумма: <b>{fmt(paymentForm.amount)} AZN</b></span>}
         </div>
         {/* v272: старый встроенный список выбора нескольких e-qaimə полностью удалён.
@@ -23373,6 +23374,59 @@ function Suppliers({ t, isAdmin = false }) {
         <button className="small primary" onClick={savePayment}>+ Сохранить оплату</button>
         {paymentMessage && <p className={`hint ${paymentMessage === t('saved') ? 'save-status' : 'bad'}`}>{paymentMessage}</p>}
       </div>
+
+      {showPaymentCreateOverlay && <div
+        className="supplier-payment-edit-global-overlay supplier-payment-create-global-overlay"
+        style={{position:'fixed', inset:0, zIndex:20000, background:'rgba(15,23,42,.38)', display:'flex', alignItems:'flex-start', justifyContent:'center', padding:22, overflow:'auto'}}
+      >
+        <div
+          className="supplier-payment-edit-global-card supplier-payment-create-global-card"
+          style={{width:'min(1280px, calc(100vw - 44px))', maxHeight:'calc(100vh - 44px)', overflow:'auto', background:'#fff', borderRadius:24, padding:22, boxShadow:'0 42px 120px rgba(15,23,42,.45)', border:'2px solid rgba(37,99,235,.32)'}}
+        >
+          <div className="card-head suppliers-v43-card-head" style={{position:'sticky', top:-22, zIndex:10, background:'rgba(255,255,255,.98)', borderBottom:'1px solid #e5e7eb', paddingBottom:12}}>
+            <div>
+              <h3>Оплата поставщику</h3>
+              <p className="hint">Большое окно выбора e-qaimə. Выберите одну или несколько e-qaimə и сохраните оплату одной строкой.</p>
+            </div>
+            <button className="supplier-modal-x" title="Закрыть" aria-label="Закрыть" onClick={() => setShowPaymentCreateOverlay(false)}>×</button>
+          </div>
+
+          <div className="form-grid compact">
+            <label><span>Поставщик</span><select value={paymentForm.supplier_id} onChange={e => setPaymentForm({...paymentForm, supplier_id: e.target.value, selected_e_invoice_ids: [], invoice_notes: '', amount: '', e_invoice_id: ''})}><option value="">Выберите поставщика</option>{activeSuppliersForPaymentLegal.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
+            <label><span>Наш VOEN</span><select value={paymentForm.legal_entity_id} onChange={e => setPaymentForm({...paymentForm, legal_entity_id: e.target.value, selected_e_invoice_ids: [], invoice_notes: '', amount: '', e_invoice_id: ''})}><option value="">Выберите VOEN</option>{legalEntities.map(le => <option key={le.id} value={le.id}>{le.name} · {le.voen}</option>)}</select></label>
+            <label><span>Дата оплаты</span><input type="date" value={paymentForm.payment_date} onChange={e => setPaymentForm({...paymentForm, payment_date: e.target.value})} /></label>
+            <label><span>Сумма оплаты</span><input inputMode="decimal" value={paymentForm.amount} onChange={e => setPaymentForm({...paymentForm, amount: e.target.value})} /></label>
+            <label><span>Отметки / фактуры</span><input value={paymentForm.invoice_notes} onChange={e => setPaymentForm({...paymentForm, invoice_notes: e.target.value})} /></label>
+            <label><span>Комментарий</span><input value={paymentForm.comment} onChange={e => setPaymentForm({...paymentForm, comment: e.target.value})} /></label>
+          </div>
+
+          <div className="supplier-single-einvoice-card" style={{marginTop:12}}>
+            <div className="card-head suppliers-v43-card-head">
+              <div><h4>Выбор e-qaimə</h4><p className="hint">Список грузится напрямую из базы по выбранному поставщику. Поиск работает по номеру, дате, сумме и VOEN.</p></div>
+              <div className="action-row" style={{gap:8}}>
+                <button className="ghost small" onClick={openPaymentCreateOverlay}>Обновить список</button>
+                {(paymentForm.selected_e_invoice_ids || []).length > 0 && <button className="ghost small" onClick={clearPaymentEInvoices}>Очистить выбор</button>}
+              </div>
+            </div>
+            <div className="form-grid compact">
+              <label><span>Поиск e-qaimə</span><input value={paymentEInvoiceSearch} onChange={e => setPaymentEInvoiceSearch(e.target.value)} placeholder="№, дата, сумма, VOEN" /></label>
+              <div className="mini-kpi"><span>{paymentCreateLoading ? 'Загрузка' : 'Найдено'}</span><strong>{paymentCreateLoading ? '...' : paymentCreateInvoiceOptions.length}</strong></div>
+            </div>
+            <div className="table-wrap supplier-payment-einvoice-picker" style={{maxHeight:'min(520px, calc(100vh - 430px))', overflow:'auto', border:'1px solid #e5e7eb', borderRadius:14, background:'#fff'}}>
+              <table style={{minWidth:1060}}><thead><tr><th></th><th>Дата</th><th>№ e-qaimə</th><th>VOEN</th><th>Сумма</th><th>Оплачено</th><th>Остаток</th><th>Статус</th></tr></thead><tbody>{paymentCreateInvoiceOptions.map(inv => { const key = inv.e_invoice_id || inv.number; const checked = (paymentForm.selected_e_invoice_ids || []).includes(key); const balance = Math.max(0, parseNum(inv.amount) - parseNum(inv.paid_amount)); return <tr key={key} className={checked ? 'active' : ''}><td><input type="checkbox" checked={checked} onChange={() => togglePaymentCreateEInvoice(inv)} /></td><td>{inv.date || '—'}</td><td><b>{inv.number}</b></td><td>{inv.legal || '—'}<br /><span className="hint">{inv.voen || ''}</span></td><td>{fmt(inv.amount)}</td><td>{fmt(inv.paid_amount)}</td><td className={balance > 0 ? 'bad' : 'good'}>{fmt(balance)}</td><td>{inv.status}</td></tr> })}{!paymentCreateLoading && !paymentCreateInvoiceOptions.length && <tr><td colSpan="8" className="hint">e-qaimə не найдены. Проверьте поставщика / VOEN или нажмите “Обновить список”.</td></tr>}</tbody></table>
+            </div>
+          </div>
+
+          <div className="action-row" style={{marginTop:14}}>
+            <button className="small primary" onClick={savePayment}>+ Сохранить оплату</button>
+            <button className="ghost small" onClick={() => setShowPaymentCreateOverlay(false)}>Закрыть</button>
+            {(paymentForm.selected_e_invoice_ids || []).length > 0 && <span className="hint">Выбрано: <b>{paymentForm.selected_e_invoice_ids.length}</b> · сумма: <b>{fmt(paymentForm.amount)} AZN</b></span>}
+          </div>
+          {paymentMessage && <p className={`hint ${paymentMessage === t('saved') ? 'save-status' : 'bad'}`}>{paymentMessage}</p>}
+        </div>
+      </div>}
+
+
 
 
 
@@ -25636,50 +25690,6 @@ function DebtsPayments({ t }) {
         </div>
       </div>
 
-      {showPaymentCreateOverlay && <div className="supplier-payment-edit-global-overlay">
-        <div className="supplier-payment-edit-global-card">
-          <div className="card-head suppliers-v43-card-head">
-            <div>
-              <h3>Оплата поставщику</h3>
-              <p className="hint">Большое окно выбора e-qaimə. Выберите одну или несколько e-qaimə и сохраните оплату одной строкой.</p>
-            </div>
-            <button className="supplier-modal-x" title="Закрыть" aria-label="Закрыть" onClick={() => setShowPaymentCreateOverlay(false)}>×</button>
-          </div>
-
-          <div className="form-grid compact">
-            <label><span>Поставщик</span><select value={paymentForm.supplier_id} onChange={e => setPaymentForm({...paymentForm, supplier_id: e.target.value, selected_e_invoice_ids: [], invoice_notes: '', amount: '', e_invoice_id: ''})}><option value="">Выберите поставщика</option>{activeSuppliersForPaymentLegal.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
-            <label><span>Наш VOEN</span><select value={paymentForm.legal_entity_id} onChange={e => setPaymentForm({...paymentForm, legal_entity_id: e.target.value, selected_e_invoice_ids: [], invoice_notes: '', amount: '', e_invoice_id: ''})}><option value="">Выберите VOEN</option>{legalEntities.map(le => <option key={le.id} value={le.id}>{le.name} · {le.voen}</option>)}</select></label>
-            <label><span>Дата оплаты</span><input type="date" value={paymentForm.payment_date} onChange={e => setPaymentForm({...paymentForm, payment_date: e.target.value})} /></label>
-            <label><span>Сумма оплаты</span><input inputMode="decimal" value={paymentForm.amount} onChange={e => setPaymentForm({...paymentForm, amount: e.target.value})} /></label>
-            <label><span>Отметки / фактуры</span><input value={paymentForm.invoice_notes} onChange={e => setPaymentForm({...paymentForm, invoice_notes: e.target.value})} /></label>
-            <label><span>Комментарий</span><input value={paymentForm.comment} onChange={e => setPaymentForm({...paymentForm, comment: e.target.value})} /></label>
-          </div>
-
-          <div className="supplier-single-einvoice-card" style={{marginTop:12}}>
-            <div className="card-head suppliers-v43-card-head">
-              <div><h4>Выбор e-qaimə</h4><p className="hint">Список грузится напрямую из базы по выбранному поставщику. Поиск работает по номеру, дате, сумме и VOEN.</p></div>
-              <div className="action-row" style={{gap:8}}>
-                <button className="ghost small" onClick={openPaymentCreateOverlay}>Обновить список</button>
-                {(paymentForm.selected_e_invoice_ids || []).length > 0 && <button className="ghost small" onClick={clearPaymentEInvoices}>Очистить выбор</button>}
-              </div>
-            </div>
-            <div className="form-grid compact">
-              <label><span>Поиск e-qaimə</span><input value={paymentEInvoiceSearch} onChange={e => setPaymentEInvoiceSearch(e.target.value)} placeholder="№, дата, сумма, VOEN" /></label>
-              <div className="mini-kpi"><span>{paymentCreateLoading ? 'Загрузка' : 'Найдено'}</span><strong>{paymentCreateLoading ? '...' : paymentCreateInvoiceOptions.length}</strong></div>
-            </div>
-            <div className="table-wrap supplier-payment-einvoice-picker">
-              <table><thead><tr><th></th><th>Дата</th><th>№ e-qaimə</th><th>VOEN</th><th>Сумма</th><th>Оплачено</th><th>Остаток</th><th>Статус</th></tr></thead><tbody>{paymentCreateInvoiceOptions.map(inv => { const key = inv.e_invoice_id || inv.number; const checked = (paymentForm.selected_e_invoice_ids || []).includes(key); const balance = Math.max(0, parseNum(inv.amount) - parseNum(inv.paid_amount)); return <tr key={key} className={checked ? 'active' : ''}><td><input type="checkbox" checked={checked} onChange={() => togglePaymentCreateEInvoice(inv)} /></td><td>{inv.date || '—'}</td><td><b>{inv.number}</b></td><td>{inv.legal || '—'}<br /><span className="hint">{inv.voen || ''}</span></td><td>{fmt(inv.amount)}</td><td>{fmt(inv.paid_amount)}</td><td className={balance > 0 ? 'bad' : 'good'}>{fmt(balance)}</td><td>{inv.status}</td></tr> })}{!paymentCreateLoading && !paymentCreateInvoiceOptions.length && <tr><td colSpan="8" className="hint">e-qaimə не найдены. Проверьте поставщика / VOEN или нажмите “Обновить список”.</td></tr>}</tbody></table>
-            </div>
-          </div>
-
-          <div className="action-row" style={{marginTop:14}}>
-            <button className="small primary" onClick={savePayment}>+ Сохранить оплату</button>
-            <button className="ghost small" onClick={() => setShowPaymentCreateOverlay(false)}>Закрыть</button>
-            {(paymentForm.selected_e_invoice_ids || []).length > 0 && <span className="hint">Выбрано: <b>{paymentForm.selected_e_invoice_ids.length}</b> · сумма: <b>{fmt(paymentForm.amount)} AZN</b></span>}
-          </div>
-          {paymentMessage && <p className={`hint ${paymentMessage === t('saved') ? 'save-status' : 'bad'}`}>{paymentMessage}</p>}
-        </div>
-      </div>}
 
       {activeEditingPayment && <div className="supplier-payment-edit-global-overlay">
         <div className="supplier-payment-edit-global-card">
