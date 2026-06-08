@@ -1578,8 +1578,16 @@ const dmyToISODate = (value) => {
   return ''
 }
 function DateInput({ value, onChange, className = '', placeholder = 'дд/мм/гггг', ...props }) {
+  const nativeDateRef = useRef(null)
   const [displayValue, setDisplayValue] = useState(formatDateDMY(value))
   useEffect(() => { setDisplayValue(formatDateDMY(value)) }, [value])
+
+  const commitISO = (isoValue) => {
+    if (!isoValue) return
+    const pretty = formatDateDMY(isoValue)
+    setDisplayValue(pretty === '—' ? '' : pretty)
+    if (onChange) onChange({ target: { value: isoValue } })
+  }
 
   const emitISOIfComplete = (rawValue, force = false) => {
     const raw = String(rawValue || '').trim()
@@ -1591,31 +1599,57 @@ function DateInput({ value, onChange, className = '', placeholder = 'дд/мм/�
     }
     if (!completeDMY && !completeISO) return
     const isoValue = dmyToISODate(raw)
-    if (isoValue && onChange) onChange({ target: { value: isoValue } })
+    if (isoValue) commitISO(isoValue)
   }
 
-  return <input
-    {...props}
-    type="text"
-    inputMode="numeric"
-    className={`date-dmy-input ${className || ''}`.trim()}
-    placeholder={placeholder}
-    value={displayValue === '—' ? '' : displayValue}
-    onChange={e => {
-      setDisplayValue(e.target.value)
-      emitISOIfComplete(e.target.value, false)
-    }}
-    onBlur={e => {
-      const isoValue = dmyToISODate(e.target.value)
-      if (isoValue) {
-        const pretty = formatDateDMY(isoValue)
-        setDisplayValue(pretty === '—' ? '' : pretty)
-        if (onChange) onChange({ target: { value: isoValue } })
+  const openNativePicker = () => {
+    const el = nativeDateRef.current
+    if (!el) return
+    try {
+      if (typeof el.showPicker === 'function') {
+        el.showPicker()
       } else {
-        setDisplayValue(formatDateDMY(value))
+        el.focus()
+        el.click()
       }
-    }}
-  />
+    } catch (_e) {
+      el.focus()
+      el.click()
+    }
+  }
+
+  return <span className="date-dmy-wrap">
+    <input
+      {...props}
+      type="text"
+      inputMode="numeric"
+      className={`date-dmy-input ${className || ''}`.trim()}
+      placeholder={placeholder}
+      value={displayValue === '—' ? '' : displayValue}
+      onChange={e => {
+        setDisplayValue(e.target.value)
+        emitISOIfComplete(e.target.value, false)
+      }}
+      onBlur={e => {
+        const isoValue = dmyToISODate(e.target.value)
+        if (isoValue) {
+          commitISO(isoValue)
+        } else {
+          setDisplayValue(formatDateDMY(value))
+        }
+      }}
+    />
+    <button type="button" className="date-dmy-picker-btn" onClick={openNativePicker} title="Выбрать дату" aria-label="Выбрать дату">📅</button>
+    <input
+      ref={nativeDateRef}
+      type="date"
+      className="date-dmy-native"
+      tabIndex={-1}
+      value={normalizeISODate(value || todayISO())}
+      onChange={e => commitISO(e.target.value)}
+      aria-hidden="true"
+    />
+  </span>
 }
 
 const calcDailyRate = (emp) => {
@@ -6536,6 +6570,48 @@ function RMSProV6Styles() {
   display: inline-block;
   margin-bottom: 6px;
 }
+.rms-pro-shell .date-dmy-wrap{
+  position:relative;
+  display:flex;
+  align-items:center;
+  width:100%;
+}
+.rms-pro-shell .date-dmy-wrap .date-dmy-input{
+  width:100%;
+  padding-right:48px!important;
+}
+.rms-pro-shell .date-dmy-picker-btn{
+  position:absolute;
+  right:8px;
+  top:50%;
+  transform:translateY(-50%);
+  width:34px;
+  height:34px;
+  border:0;
+  background:transparent;
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:16px;
+  opacity:.85;
+}
+.rms-pro-shell .date-dmy-picker-btn:hover{
+  opacity:1;
+  background:rgba(37,99,235,.08);
+  border-radius:10px;
+}
+.rms-pro-shell .date-dmy-native{
+  position:absolute!important;
+  right:8px!important;
+  top:50%!important;
+  transform:translateY(-50%)!important;
+  width:34px!important;
+  height:34px!important;
+  opacity:0!important;
+  pointer-events:none!important;
+}
+
 .rms-pro-shell input[type="date"],
 .rms-pro-shell input[type="number"],
 .rms-pro-shell select{
