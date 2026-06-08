@@ -21749,6 +21749,9 @@ function Suppliers({ t, isAdmin = false }) {
   const emptyLine = { category: PRODUCT_CATEGORIES[0], product_id: '', base_unit: 'g', quantity: '1', unit: 'kg', unit_price: '' }
   const [lineRows, setLineRows] = useState([emptyLine])
   const [paymentForm, setPaymentForm] = useState({ supplier_id: '', legal_entity_id: '', payment_date: todayISO(), amount: '', invoice_notes: '', comment: '', e_invoice_id: '', selected_e_invoice_ids: [] })
+  const [showPaymentCreateOverlay, setShowPaymentCreateOverlay] = useState(false)
+  const [paymentCreateLoading, setPaymentCreateLoading] = useState(false)
+  const [paymentCreateEInvoices, setPaymentCreateEInvoices] = useState([])
   const [openingDebtForm, setOpeningDebtForm] = useState({ supplier_id: '', legal_entity_id: '', debt_date: todayISO(), amount: '', invoice_notes: '', comment: '' })
   const [eInvoices, setEInvoices] = useState([])
   const [eInvoiceLinks, setEInvoiceLinks] = useState([])
@@ -22497,7 +22500,8 @@ function Suppliers({ t, isAdmin = false }) {
 
     const amount = parseNum(paymentForm.amount)
     const selectedIds = paymentForm.selected_e_invoice_ids || []
-    const selectedRealInvoices = supplierEInvoiceOptions.filter(inv => selectedIds.includes(inv.e_invoice_id || inv.number) && inv.e_invoice_id)
+    const selectedRealInvoices = (showPaymentCreateOverlay ? paymentCreateInvoiceOptions : supplierEInvoiceOptions)
+      .filter(inv => selectedIds.includes(inv.e_invoice_id || inv.number) && inv.e_invoice_id)
 
     const paymentSupplierId = selectedRealInvoices[0]?.supplier_id || paymentForm.supplier_id
     const paymentLegalEntityId = selectedRealInvoices[0]?.legal_entity_id || paymentForm.legal_entity_id
@@ -22531,7 +22535,7 @@ function Suppliers({ t, isAdmin = false }) {
           const payAmount = Math.min(invoiceRemaining, remainingPayment)
           if (payAmount <= 0) continue
 
-          const dbInv = eInvoices.find(row => row.id === inv.e_invoice_id)
+          const dbInv = [...(eInvoices || []), ...(paymentCreateEInvoices || [])].find(row => row.id === inv.e_invoice_id)
           await supabase
             .from('supplier_e_invoices')
             .update({
@@ -22717,6 +22721,100 @@ function Suppliers({ t, isAdmin = false }) {
     return true
   })
 
+
+  async function openPaymentCreateOverlay() {
+    setPaymentMessage('')
+    if (!paymentForm.supplier_id) {
+      setPaymentMessage('Сначала выберите поставщика')
+      return
+    }
+
+    setShowPaymentCreateOverlay(true)
+    setPaymentCreateLoading(true)
+
+    try {
+      let query = supabase
+        .from('supplier_e_invoices')
+        .select('*, suppliers(name), legal_entities(name,voen), branches(name)')
+        .eq('supplier_id', paymentForm.supplier_id)
+        .is('deleted_at', null)
+        .order('invoice_date', { ascending: false })
+        .limit(2000)
+
+      const { data, error } = await query
+      if (error) throw error
+
+      const rows = data || []
+      setPaymentCreateEInvoices(rows)
+
+      // Keep direct fetched e-qaimə available for the existing selector/save logic.
+      setEInvoices(prev => {
+        const byId = new Map((prev || []).map(inv => [String(inv.id), inv]))
+        rows.forEach(inv => byId.set(String(inv.id), inv))
+        return Array.from(byId.values())
+      })
+    } catch (e) {
+      setPaymentMessage(e.message || 'Не удалось загрузить e-qaimə')
+      setPaymentCreateEInvoices([])
+    } finally {
+      setPaymentCreateLoading(false)
+    }
+  }
+
+  const paymentCreateInvoiceOptions = (() => {
+    const sourceRows = (paymentCreateEInvoices && paymentCreateEInvoices.length)
+      ? paymentCreateEInvoices.map(inv => ({
+          e_invoice_id: inv.id,
+          number: inv.invoice_number,
+          supplier_id: inv.supplier_id,
+          legal_entity_id: inv.legal_entity_id,
+          amount: parseNum(inv.amount),
+          paid_amount: parseNum(inv.paid_amount),
+          date: inv.invoice_date,
+          supplier: inv.suppliers?.name || suppliers.find(s => s.id === inv.supplier_id)?.name || '—',
+          legal: inv.legal_entities?.name || legalEntities.find(le => le.id === inv.legal_entity_id)?.name || '—',
+          voen: inv.legal_entities?.voen || legalEntities.find(le => le.id === inv.legal_entity_id)?.voen || '',
+          branch: inv.branches?.name || '—',
+          status: parseNum(inv.paid_amount) >= parseNum(inv.amount) ? 'Оплачена' : 'К оплате'
+        })).filter(x => x.number && x.amount > 0)
+      : supplierEInvoiceOptions
+
+    const needle = String(paymentEInvoiceSearch || '').trim().toLowerCase()
+    return sourceRows
+      .filter(inv => !paymentForm.supplier_id || String(inv.supplier_id) === String(paymentForm.supplier_id))
+      .filter(inv => !paymentForm.legal_entity_id || String(inv.legal_entity_id) === String(paymentForm.legal_entity_id) || (paymentForm.selected_e_invoice_ids || []).includes(inv.e_invoice_id || inv.number))
+      .filter(inv => {
+        if (!needle) return true
+        const hay = [inv.number, inv.supplier, inv.legal, inv.voen, inv.date, inv.status, inv.branch, inv.amount].filter(Boolean).join(' ').toLowerCase()
+        return hay.includes(needle)
+      })
+      .sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')))
+      .slice(0, 200)
+  })()
+
+  function togglePaymentCreateEInvoice(inv) {
+    const key = inv.e_invoice_id || inv.number
+    const current = paymentForm.selected_e_invoice_ids || []
+    const nextIds = current.includes(key) ? current.filter(id => id !== key) : [...current, key]
+    const selected = paymentCreateInvoiceOptions.filter(row => nextIds.includes(row.e_invoice_id || row.number))
+    const selectedTotal = selected.reduce((sum, row) => {
+      const remaining = Math.max(0, parseNum(row.amount) - parseNum(row.paid_amount))
+      return sum + (remaining > 0 ? remaining : parseNum(row.amount))
+    }, 0)
+
+    setPaymentForm(f => ({
+      ...f,
+      selected_e_invoice_ids: nextIds,
+      supplier_id: selected[0]?.supplier_id || f.supplier_id,
+      legal_entity_id: selected[0]?.legal_entity_id || f.legal_entity_id,
+      invoice_notes: selected.map(row => row.number).filter(Boolean).join(', '),
+      amount: selected.length ? String(selectedTotal.toFixed(2)) : '',
+      e_invoice_id: selected.length === 1 ? (selected[0]?.e_invoice_id || '') : '',
+      comment: selected.length > 1 && !String(f.comment || '').includes('Оплата одной суммой')
+        ? [f.comment, 'Оплата одной суммой по нескольким e-qaimə'].filter(Boolean).join(' | ')
+        : f.comment
+    }))
+  }
 
   const selectedPaymentEInvoices = supplierEInvoiceOptions.filter(inv => (paymentForm.selected_e_invoice_ids || []).includes(inv.e_invoice_id || inv.number))
   const selectedPaymentTotal = selectedPaymentEInvoices.reduce((sum, inv) => sum + parseNum(inv.amount), 0)
@@ -23266,6 +23364,10 @@ function Suppliers({ t, isAdmin = false }) {
           <label><span>Оплата по e-qaimə</span><select value={paymentForm.invoice_notes} onChange={e => applyPaymentEInvoice(e.target.value)}><option value="">Быстрый выбор одной e-qaimə</option>{filteredPaymentEInvoices.map(inv => <option key={inv.e_invoice_id || inv.purchase_id || inv.number} value={inv.number}>{inv.number} · {inv.supplier} · {fmt(inv.amount)} AZN · {inv.status}</option>)}</select></label>
           <label><span>Отметки / номера счёт-фактур</span><input value={paymentForm.invoice_notes} onChange={e => setPaymentForm({...paymentForm, invoice_notes: e.target.value})} /></label>
           <label><span>Комментарий</span><input value={paymentForm.comment} onChange={e => setPaymentForm({...paymentForm, comment: e.target.value})} /></label>
+        </div>
+        <div className="action-row" style={{margin:'12px 0'}}>
+          <button className="small primary" onClick={openPaymentCreateOverlay}>Открыть большое окно выбора e-qaimə</button>
+          {(paymentForm.selected_e_invoice_ids || []).length > 0 && <span className="hint">Выбрано e-qaimə: <b>{paymentForm.selected_e_invoice_ids.length}</b> · сумма: <b>{fmt(paymentForm.amount)} AZN</b></span>}
         </div>
         <div className="supplier-payment-multi">
           <div className="card-head suppliers-v43-card-head">
@@ -25575,6 +25677,51 @@ function DebtsPayments({ t }) {
         </div>
       </div>
 
+      {showPaymentCreateOverlay && <div className="supplier-payment-edit-global-overlay">
+        <div className="supplier-payment-edit-global-card">
+          <div className="card-head suppliers-v43-card-head">
+            <div>
+              <h3>Оплата поставщику</h3>
+              <p className="hint">Большое окно выбора e-qaimə. Выберите одну или несколько e-qaimə и сохраните оплату одной строкой.</p>
+            </div>
+            <button className="supplier-modal-x" title="Закрыть" aria-label="Закрыть" onClick={() => setShowPaymentCreateOverlay(false)}>×</button>
+          </div>
+
+          <div className="form-grid compact">
+            <label><span>Поставщик</span><select value={paymentForm.supplier_id} onChange={e => setPaymentForm({...paymentForm, supplier_id: e.target.value, selected_e_invoice_ids: [], invoice_notes: '', amount: '', e_invoice_id: ''})}><option value="">Выберите поставщика</option>{activeSuppliersForPaymentLegal.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
+            <label><span>Наш VOEN</span><select value={paymentForm.legal_entity_id} onChange={e => setPaymentForm({...paymentForm, legal_entity_id: e.target.value, selected_e_invoice_ids: [], invoice_notes: '', amount: '', e_invoice_id: ''})}><option value="">Выберите VOEN</option>{legalEntities.map(le => <option key={le.id} value={le.id}>{le.name} · {le.voen}</option>)}</select></label>
+            <label><span>Дата оплаты</span><input type="date" value={paymentForm.payment_date} onChange={e => setPaymentForm({...paymentForm, payment_date: e.target.value})} /></label>
+            <label><span>Сумма оплаты</span><input inputMode="decimal" value={paymentForm.amount} onChange={e => setPaymentForm({...paymentForm, amount: e.target.value})} /></label>
+            <label><span>Отметки / фактуры</span><input value={paymentForm.invoice_notes} onChange={e => setPaymentForm({...paymentForm, invoice_notes: e.target.value})} /></label>
+            <label><span>Комментарий</span><input value={paymentForm.comment} onChange={e => setPaymentForm({...paymentForm, comment: e.target.value})} /></label>
+          </div>
+
+          <div className="supplier-single-einvoice-card" style={{marginTop:12}}>
+            <div className="card-head suppliers-v43-card-head">
+              <div><h4>Выбор e-qaimə</h4><p className="hint">Список грузится напрямую из базы по выбранному поставщику. Поиск работает по номеру, дате, сумме и VOEN.</p></div>
+              <div className="action-row" style={{gap:8}}>
+                <button className="ghost small" onClick={openPaymentCreateOverlay}>Обновить список</button>
+                {(paymentForm.selected_e_invoice_ids || []).length > 0 && <button className="ghost small" onClick={clearPaymentEInvoices}>Очистить выбор</button>}
+              </div>
+            </div>
+            <div className="form-grid compact">
+              <label><span>Поиск e-qaimə</span><input value={paymentEInvoiceSearch} onChange={e => setPaymentEInvoiceSearch(e.target.value)} placeholder="№, дата, сумма, VOEN" /></label>
+              <div className="mini-kpi"><span>{paymentCreateLoading ? 'Загрузка' : 'Найдено'}</span><strong>{paymentCreateLoading ? '...' : paymentCreateInvoiceOptions.length}</strong></div>
+            </div>
+            <div className="table-wrap supplier-payment-einvoice-picker">
+              <table><thead><tr><th></th><th>Дата</th><th>№ e-qaimə</th><th>VOEN</th><th>Сумма</th><th>Оплачено</th><th>Остаток</th><th>Статус</th></tr></thead><tbody>{paymentCreateInvoiceOptions.map(inv => { const key = inv.e_invoice_id || inv.number; const checked = (paymentForm.selected_e_invoice_ids || []).includes(key); const balance = Math.max(0, parseNum(inv.amount) - parseNum(inv.paid_amount)); return <tr key={key} className={checked ? 'active' : ''}><td><input type="checkbox" checked={checked} onChange={() => togglePaymentCreateEInvoice(inv)} /></td><td>{inv.date || '—'}</td><td><b>{inv.number}</b></td><td>{inv.legal || '—'}<br /><span className="hint">{inv.voen || ''}</span></td><td>{fmt(inv.amount)}</td><td>{fmt(inv.paid_amount)}</td><td className={balance > 0 ? 'bad' : 'good'}>{fmt(balance)}</td><td>{inv.status}</td></tr> })}{!paymentCreateLoading && !paymentCreateInvoiceOptions.length && <tr><td colSpan="8" className="hint">e-qaimə не найдены. Проверьте поставщика / VOEN или нажмите “Обновить список”.</td></tr>}</tbody></table>
+            </div>
+          </div>
+
+          <div className="action-row" style={{marginTop:14}}>
+            <button className="small primary" onClick={savePayment}>+ Сохранить оплату</button>
+            <button className="ghost small" onClick={() => setShowPaymentCreateOverlay(false)}>Закрыть</button>
+            {(paymentForm.selected_e_invoice_ids || []).length > 0 && <span className="hint">Выбрано: <b>{paymentForm.selected_e_invoice_ids.length}</b> · сумма: <b>{fmt(paymentForm.amount)} AZN</b></span>}
+          </div>
+          {paymentMessage && <p className={`hint ${paymentMessage === t('saved') ? 'save-status' : 'bad'}`}>{paymentMessage}</p>}
+        </div>
+      </div>}
+
       {activeEditingPayment && <div className="supplier-payment-edit-global-overlay">
         <div className="supplier-payment-edit-global-card">
           <div className="card-head suppliers-v43-card-head">
@@ -25810,6 +25957,11 @@ function DebtsPayments({ t }) {
 
         .rms-pro-shell .supplier-payment-edit-global-card .supplier-payment-einvoice-picker table{
           min-width:1060px!important;
+        }
+
+        /* v270: use the large overlay for supplier payment e-qaimə selection */
+        .rms-pro-shell .supplier-payment-multi{
+          display:none!important;
         }
 
         /* v269: old inline panel disabled; the global overlay above is the real editor */
