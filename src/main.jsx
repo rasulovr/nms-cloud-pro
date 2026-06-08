@@ -25667,45 +25667,7 @@ function DebtsPayments({ t }) {
         <DebtKpiCard tone="info" label="Лимит" value={debtIntelligence.availableLimit >= 0 ? `${fmt(debtIntelligence.availableLimit)} AZN` : `${fmt(Math.abs(debtIntelligence.availableLimit))} AZN`} sub={debtIntelligence.availableLimit >= 0 ? 'доступный лимит' : 'превышение лимита'} />
       </div>
 
-      <div style={{marginTop:16, display:'grid', gap:14}}>
-        <div className="card soft-card">
-          <div className="card-head">
-            <div>
-              <h4>Просрочка и лимиты</h4>
-              <p className="hint">Сумма просрочки, превышение лимита и конкретные фактуры.</p>
-            </div>
-            <div className="action-row" style={{gap:8}}>
-              <label style={{display:'flex',alignItems:'center',gap:8}}><span className="hint">Фильтр</span><select value={supplierRiskFilter} onChange={e => setSupplierRiskFilter(e.target.value)}><option value="all">Все</option><option value="overdue">Только просрочка</option><option value="limit">Сверх лимита</option><option value="critical">Critical</option><option value="warning">Warning</option></select></label>
-              {supplierOverdueRows.length > 5 && <button className="ghost small" onClick={() => setSupplierCompactAlertsExpanded(v => !v)}>{supplierCompactAlertsExpanded ? 'Скрыть' : `Показать все · ${supplierOverdueRows.length}`}</button>}
-            </div>
-          </div>
-          <div className="table-wrap">
-            <table>
-              <thead><tr><th>Поставщик / VOEN</th><th>Остаток</th><th>Просрочено</th><th>Сверх лимита</th><th>Фактуры</th></tr></thead>
-              <tbody>{(supplierCompactAlertsExpanded ? supplierOverdueRows : supplierOverdueRows.slice(0, 5)).map(row => <tr key={`overdue-${row.key}`}><td><b>{row.supplier_name}</b><br /><span className="hint">{row.legal_entity_name}</span></td><td><b>{fmt(row.balance)}</b></td><td className={row.overdueAmount > 0 ? 'bad' : 'hint'}><b>{fmt(row.overdueAmount)}</b><br /><span>{row.maxOverdueDays > 0 ? `${row.maxOverdueDays} дн.` : 'нет'}</span></td><td className={row.limitOver > 0 ? 'bad' : 'hint'}>{row.limitOver > 0 ? fmt(row.limitOver) : '—'}</td><td>{(row.unpaid || []).filter(inv => parseNum(inv.daysOverdue) > 0).slice(0, 4).map(inv => <div key={`${row.key}-${inv.invoice}-${inv.date}`}>{inv.invoice || 'Без фактуры'} · {fmt(inv.openAmount)} · {inv.daysOverdue} дн.</div>)}{!(row.unpaid || []).some(inv => parseNum(inv.daysOverdue) > 0) && <span className="hint">Просроченных фактур нет</span>}</td></tr>)}{!supplierOverdueRows.length && <tr><td colSpan="5" className="good">Просрочек и превышения лимитов нет.</td></tr>}</tbody>
-            </table>
-          </div>
-        </div>
-
-        <div className="card soft-card">
-          <div className="card-head">
-            <div>
-              <h4>Рейтинг поставщиков</h4>
-              <p className="hint">Рейтинг риска по долгу, просрочке, лимиту и открытым фактурам.</p>
-            </div>
-            {supplierRatingRows.length > 5 && <button className="ghost small" onClick={() => setSupplierCompactPlanExpanded(v => !v)}>{supplierCompactPlanExpanded ? 'Скрыть' : `Показать все · ${supplierRatingRows.length}`}</button>}
-          </div>
-          <div className="table-wrap">
-            <table>
-              <thead><tr><th>#</th><th>Поставщик / VOEN</th><th>Статус</th><th>Долг</th><th>Просрочка</th><th>Фактуры</th></tr></thead>
-              <tbody>{(supplierCompactPlanExpanded ? supplierRatingRows : supplierRatingRows.slice(0, 5)).map((row, idx) => <tr key={`rating-${row.key}`}><td>{idx + 1}</td><td><b>{row.supplier_name}</b><br /><span className="hint">{row.legal_entity_name}</span></td><td><b className={row.riskLevel === 'critical' ? 'bad' : row.riskLevel === 'warning' ? 'warn' : 'good'}>{row.riskLevel === 'critical' ? 'Critical' : row.riskLevel === 'warning' ? 'Warning' : 'OK'}</b><br /><span className="hint">score {row.riskScore}</span></td><td><b>{fmt(row.balance)}</b></td><td className={row.overdueAmount > 0 ? 'bad' : 'hint'}>{fmt(row.overdueAmount)}</td><td>{row.unpaidCount}</td></tr>)}{!supplierRatingRows.length && <tr><td colSpan="6" className="hint">Нет активных долгов для рейтинга.</td></tr>}</tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <section className="grid">
+      {/* v276: “Поставщики и долги” moved directly after supplier control KPIs. */}
       <div className="card span-2">
         <div className="card-head"><div><h3>Поставщики и долги</h3><p className="hint">Балансы по вашим VOEN / юрлицам. Долги по VOEN. Транзакции и акт сверки открываются в отдельном окне.</p></div></div>
         {legalEntities.map(le => {
@@ -25759,8 +25721,45 @@ function DebtsPayments({ t }) {
         })}
       </div>
 
+      <div style={{marginTop:16, display:'grid', gap:14}}>
+        <div className="card soft-card">
+          <div className="card-head">
+            <div>
+              <h4>Просрочка и лимиты</h4>
+              <p className="hint">Сумма просрочки, превышение лимита и конкретные фактуры.</p>
+            </div>
+            <div className="action-row" style={{gap:8}}>
+              <label style={{display:'flex',alignItems:'center',gap:8}}><span className="hint">Фильтр</span><select value={supplierRiskFilter} onChange={e => setSupplierRiskFilter(e.target.value)}><option value="all">Все</option><option value="overdue">Только просрочка</option><option value="limit">Сверх лимита</option><option value="critical">Critical</option><option value="warning">Warning</option></select></label>
+              {supplierOverdueRows.length > 5 && <button className="ghost small" onClick={() => setSupplierCompactAlertsExpanded(v => !v)}>{supplierCompactAlertsExpanded ? 'Скрыть' : `Показать все · ${supplierOverdueRows.length}`}</button>}
+            </div>
+          </div>
+          <div className="table-wrap">
+            <table>
+              <thead><tr><th>Поставщик / VOEN</th><th>Остаток</th><th>Просрочено</th><th>Сверх лимита</th><th>Фактуры</th></tr></thead>
+              <tbody>{(supplierCompactAlertsExpanded ? supplierOverdueRows : supplierOverdueRows.slice(0, 5)).map(row => <tr key={`overdue-${row.key}`}><td><b>{row.supplier_name}</b><br /><span className="hint">{row.legal_entity_name}</span></td><td><b>{fmt(row.balance)}</b></td><td className={row.overdueAmount > 0 ? 'bad' : 'hint'}><b>{fmt(row.overdueAmount)}</b><br /><span>{row.maxOverdueDays > 0 ? `${row.maxOverdueDays} дн.` : 'нет'}</span></td><td className={row.limitOver > 0 ? 'bad' : 'hint'}>{row.limitOver > 0 ? fmt(row.limitOver) : '—'}</td><td>{(row.unpaid || []).filter(inv => parseNum(inv.daysOverdue) > 0).slice(0, 4).map(inv => <div key={`${row.key}-${inv.invoice}-${inv.date}`}>{inv.invoice || 'Без фактуры'} · {fmt(inv.openAmount)} · {inv.daysOverdue} дн.</div>)}{!(row.unpaid || []).some(inv => parseNum(inv.daysOverdue) > 0) && <span className="hint">Просроченных фактур нет</span>}</td></tr>)}{!supplierOverdueRows.length && <tr><td colSpan="5" className="good">Просрочек и превышения лимитов нет.</td></tr>}</tbody>
+            </table>
+          </div>
+        </div>
 
+        <div className="card soft-card">
+          <div className="card-head">
+            <div>
+              <h4>Рейтинг поставщиков</h4>
+              <p className="hint">Рейтинг риска по долгу, просрочке, лимиту и открытым фактурам.</p>
+            </div>
+            {supplierRatingRows.length > 5 && <button className="ghost small" onClick={() => setSupplierCompactPlanExpanded(v => !v)}>{supplierCompactPlanExpanded ? 'Скрыть' : `Показать все · ${supplierRatingRows.length}`}</button>}
+          </div>
+          <div className="table-wrap">
+            <table>
+              <thead><tr><th>#</th><th>Поставщик / VOEN</th><th>Статус</th><th>Долг</th><th>Просрочка</th><th>Фактуры</th></tr></thead>
+              <tbody>{(supplierCompactPlanExpanded ? supplierRatingRows : supplierRatingRows.slice(0, 5)).map((row, idx) => <tr key={`rating-${row.key}`}><td>{idx + 1}</td><td><b>{row.supplier_name}</b><br /><span className="hint">{row.legal_entity_name}</span></td><td><b className={row.riskLevel === 'critical' ? 'bad' : row.riskLevel === 'warning' ? 'warn' : 'good'}>{row.riskLevel === 'critical' ? 'Critical' : row.riskLevel === 'warning' ? 'Warning' : 'OK'}</b><br /><span className="hint">score {row.riskScore}</span></td><td><b>{fmt(row.balance)}</b></td><td className={row.overdueAmount > 0 ? 'bad' : 'hint'}>{fmt(row.overdueAmount)}</td><td>{row.unpaidCount}</td></tr>)}{!supplierRatingRows.length && <tr><td colSpan="6" className="hint">Нет активных долгов для рейтинга.</td></tr>}</tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
 
+    <section className="grid">
       <div className="card span-2"><div className="card-head"><div><h3>Журнал долгов и оплат</h3><p className="hint">Стартовый долг, поступления и оплаты в одном журнале.</p></div><label style={{display:'flex',alignItems:'center',gap:8}}><span className="hint">Показать</span><select value={commonOpsPageSize} onChange={e => { setCommonOpsPageSize(Number(e.target.value)); setCommonOpsPage(1) }}><option value={10}>10</option><option value={20}>20</option><option value={30}>30</option><option value={50}>50</option></select></label></div>
         <div className="form-grid compact">
           <label><span>Период</span><select value={commonOpsPeriod} onChange={e => { setCommonOpsPeriod(e.target.value); setCommonOpsPage(1) }}><option value="day">День</option><option value="week">Неделя</option><option value="month">Месяц</option><option value="range">Диапазон дат</option><option value="all">Весь период</option></select></label>
