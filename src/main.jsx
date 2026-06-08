@@ -24632,7 +24632,20 @@ function DebtsPayments({ t }) {
     setEditingOpeningDebtId('')
     setEditingPurchaseTransactionId('')
     setDetailPurchaseId('')
+    const immediateLegacyIds = extractPaymentEInvoiceNumbers(`${row.invoice_notes || ''} ${row.comment || ''}`)
     setEditingPaymentTransactionId(String(row.id))
+
+    // v297: visible fields are filled before async e-qaimə loading.
+    setPaymentTransactionEditForm({
+      payment_date: row.payment_date || todayISO(),
+      legal_entity_id: row.legal_entity_id || activeLegalEntityId || legalEntities[0]?.id || '',
+      amount: String(parseNum(row.amount)),
+      invoice_notes: row.invoice_notes || immediateLegacyIds.join(', '),
+      comment: row.comment || '',
+      selected_e_invoice_ids: immediateLegacyIds,
+      e_invoice_search: ''
+    })
+
     setPaymentEditLoading(true)
     let directEInvoices = []
     try {
@@ -24665,21 +24678,18 @@ function DebtsPayments({ t }) {
     extractPaymentEInvoiceNumbers(`${row.invoice_notes || ''} ${row.comment || ''}`).forEach(number => {
       if (!selectedInvoiceIds.map(String).includes(String(number))) selectedInvoiceIds.push(number)
     })
-    setPaymentTransactionEditForm({
-      payment_date: row.payment_date || todayISO(),
-      legal_entity_id: resolvedLegalEntityId,
-      amount: String(parseNum(row.amount)),
-      invoice_notes: row.invoice_notes || '',
-      comment: row.comment || '',
-      selected_e_invoice_ids: Array.isArray(selectedInvoiceIds) ? selectedInvoiceIds : [],
-      e_invoice_search: ''
-    })
+    setPaymentTransactionEditForm(prev => ({
+      ...prev,
+      payment_date: row.payment_date || prev.payment_date || todayISO(),
+      legal_entity_id: resolvedLegalEntityId || prev.legal_entity_id,
+      amount: String(parseNum(row.amount)) || prev.amount,
+      invoice_notes: row.invoice_notes || prev.invoice_notes || '',
+      comment: row.comment || prev.comment || '',
+      selected_e_invoice_ids: Array.isArray(selectedInvoiceIds) ? selectedInvoiceIds : (prev.selected_e_invoice_ids || []),
+      e_invoice_search: prev.e_invoice_search || ''
+    }))
     setMessage('Открыто редактирование оплаты')
-    setTimeout(() => {
-      const panel = supplierTransactionPanelRef.current
-      panel?.scrollIntoView?.({ behavior: 'smooth', block: 'start' })
-      panel?.scrollTo?.({ top: 0, behavior: 'smooth' })
-    }, 40)
+    // v297: no scroll to transaction panel; editor is already visible as modal.
   }
 
   function paymentEditEInvoiceOptions(row) {
@@ -25947,9 +25957,14 @@ function DebtsPayments({ t }) {
     if (row.type_key === 'payment') {
       setTransactionPageSize(20)
       setTransactionPage(1)
-      openTransactions(source.supplier_id, 'payments', source.legal_entity_id || '')
+
+      // v297: open only the payment edit modal from “Журнал долгов и оплат”.
+      // Do not open “Транзакции: ...” behind it.
+      setActiveSupplierId('')
+      setActiveLegalEntityId('')
+      setTransactionType('payments')
+
       startEditSupplierPayment(source)
-      scrollToSupplierTransactionPanel()
       return
     }
 
