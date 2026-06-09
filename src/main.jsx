@@ -28130,6 +28130,41 @@ function Reports({ t }) {
     return sortedSalesRows.filter(row => rowMatchesSalesSearch(row, salesTableSearchParsed))
   }, [sortedSalesRows, salesTableSearchParsed])
 
+
+  const monthlyProductSalesChartRows = useMemo(() => {
+    if (!salesTableSearchParsed) return []
+    const grouped = new Map()
+    fullPeriodReportsForMonthlySalesChart.forEach(report => {
+      const monthKey = reportMonthValue(report)
+      if (!monthKey) return
+      if (!grouped.has(monthKey)) grouped.set(monthKey, [])
+      grouped.get(monthKey).push(report)
+    })
+    return Array.from(grouped.entries())
+      .sort((a, b) => String(a[0]).localeCompare(String(b[0])))
+      .map(([monthKey, monthReports]) => {
+        const monthRows = aggregateSalesRows(monthReports, { includeBranch: false, hiddenKeys: hiddenSalesKeys, recipeCostMap, aliases: salesNameAliases })
+          .filter(row => rowMatchesSalesSearch(row, salesTableSearchParsed))
+        const totals = monthRows.reduce((acc, row) => {
+          acc.quantity += parseNum(row.quantity)
+          acc.revenue += parseNum(row.revenue)
+          acc.cost += parseNum(row.cost)
+          acc.profit += parseNum(row.profit)
+          return acc
+        }, { quantity: 0, revenue: 0, cost: 0, profit: 0 })
+        return {
+          day: monthKey,
+          date: `${monthKey}-01`,
+          amount: totals.revenue,
+          quantity: totals.quantity,
+          cost: totals.cost,
+          profit: totals.profit,
+          reports: monthReports.length,
+        }
+      })
+      .filter(row => parseNum(row.amount) > 0 || parseNum(row.quantity) > 0)
+  }, [salesTableSearchParsed, fullPeriodReportsForMonthlySalesChart, hiddenSalesKeys, recipeCostMap, salesNameAliases])
+
   const salesRowsPageSize = 50
   const salesRowsTotalPages = Math.max(1, Math.ceil(searchedSalesRows.length / salesRowsPageSize))
   const safeSalesRowsPage = Math.min(Math.max(1, parseNum(salesRowsPage) || 1), salesRowsTotalPages)
@@ -28689,9 +28724,11 @@ function Reports({ t }) {
 
     <div style={{marginTop:12}}>
       <MonthlySalesLineChart
-        rows={monthlySalesChartRows}
-        title="Продажи по месяцам"
-        subtitle={`График строится за весь доступный период по текущим фильтрам филиала и типа. Выбранный месяц (${monthFilter === 'all' ? 'весь список' : monthFilter}) на этот график не влияет.`}
+        rows={monthlyProductSalesChartRows}
+        title={salesTableSearchParsed ? `Продажи по месяцам: ${salesTableSearch.trim()}` : 'Продажи выбранного продукта по месяцам'}
+        subtitle={salesTableSearchParsed
+          ? `График строится за весь доступный период только по найденным позициям из умного поиска. Выбранный месяц (${monthFilter === 'all' ? 'весь список' : monthFilter}) на график не влияет.`
+          : 'Введите название блюда или напитка в умный поиск выше — тогда здесь появится график продаж выбранного продукта по месяцам за весь период.'}
       />
     </div>
     <div className="mini-grid">
