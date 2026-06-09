@@ -15595,14 +15595,14 @@ function DailyRevenueLineChart({ rows = [], title = 'Выручка по дня�
 
 function MonthlySalesLineChart({ rows = [], title = 'Продажи по месяцам', subtitle = '' }) {
   const sortedRows = [...(rows || [])].sort((a, b) => String(a.day || a.date || '').localeCompare(String(b.day || b.date || '')))
-  const values = sortedRows.map(r => parseNum(r.amount))
+  const values = sortedRows.map(r => parseNum(r.quantity))
   const maxRaw = Math.max(1, ...values)
-  const max = Math.ceil(maxRaw / 1000) * 1000
+  const max = Math.ceil(maxRaw / 100) * 100
   const total = values.reduce((sum, value) => sum + parseNum(value), 0)
   const monthsCount = sortedRows.length
   const avg = monthsCount ? total / monthsCount : 0
-  const best = sortedRows.reduce((top, row) => parseNum(row.amount) > parseNum(top.amount) ? row : top, { day: '—', date: '', amount: 0 })
-  const latest = sortedRows[sortedRows.length - 1] || { day: '—', date: '', amount: 0 }
+  const best = sortedRows.reduce((top, row) => parseNum(row.quantity) > parseNum(top.quantity) ? row : top, { day: '—', date: '', quantity: 0 })
+  const latest = sortedRows[sortedRows.length - 1] || { day: '—', date: '', quantity: 0 }
   const width = 1000
   const height = 300
   const pad = { left: 48, right: 48, top: 30, bottom: 42 }
@@ -15611,7 +15611,7 @@ function MonthlySalesLineChart({ rows = [], title = 'Продажи по мес�
   const count = Math.max(1, sortedRows.length - 1)
   const points = sortedRows.map((row, index) => {
     const x = pad.left + (sortedRows.length <= 1 ? 0 : index / count * chartW)
-    const y = pad.top + chartH - (parseNum(row.amount) / max * chartH)
+    const y = pad.top + chartH - (parseNum(row.quantity) / max * chartH)
     return { ...row, x, y }
   })
   const linePath = points.map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x.toFixed(1)} ${point.y.toFixed(1)}`).join(' ')
@@ -15632,7 +15632,7 @@ function MonthlySalesLineChart({ rows = [], title = 'Продажи по мес�
     const monthIndex = Math.max(0, Math.min(11, Number(match[2]) - 1))
     return `${monthNamesRu[monthIndex]} ${year}`
   }
-  const AmountBlock = ({ value, suffix = 'AZN' }) => (
+  const AmountBlock = ({ value, suffix = 'шт.' }) => (
     <div className="metric-amount">
       <span className="metric-number">{fmt(value)}</span>
       {suffix ? <span className="metric-currency">{suffix}</span> : null}
@@ -15669,23 +15669,23 @@ function MonthlySalesLineChart({ rows = [], title = 'Продажи по мес�
       <div className="finance-line-chart-summary">
         <div className="metric metric-revenue">
           <span className="finance-kpi-icon" aria-hidden="true">↗</span>
-          <div className="metric-copy"><div className="metric-title">Выручка за<br />весь период</div></div>
+          <div className="metric-copy"><div className="metric-title">Продано за<br />весь период</div></div>
           <AmountBlock value={total} />
         </div>
         <div className="metric metric-average">
           <span className="finance-kpi-icon" aria-hidden="true">▣</span>
-          <div className="metric-copy"><div className="metric-title">Средняя выручка<br />в месяц</div></div>
+          <div className="metric-copy"><div className="metric-title">Среднее кол-во<br />в месяц</div></div>
           <AmountBlock value={avg} />
         </div>
         <div className="metric metric-best-day">
           <span className="finance-kpi-icon" aria-hidden="true">♛</span>
           <div className="metric-copy"><div className="metric-title">Лучший месяц</div><div className="metric-date">{best.day !== '—' ? formatMonthLong(best) : '—'}</div></div>
-          <AmountBlock value={best.amount} />
+          <AmountBlock value={best.quantity} />
         </div>
         <div className="metric metric-best-weekday">
           <span className="finance-kpi-icon" aria-hidden="true">☆</span>
           <div className="metric-copy"><div className="metric-title">Последний месяц</div><div className="metric-weekday">{latest.day !== '—' ? formatMonthLong(latest) : '—'}</div></div>
-          <AmountBlock value={latest.amount} />
+          <AmountBlock value={latest.quantity} />
         </div>
         <div className="metric metric-active-days">
           <span className="finance-kpi-icon" aria-hidden="true">◷</span>
@@ -28725,10 +28725,10 @@ function Reports({ t }) {
     <div style={{marginTop:12}}>
       <MonthlySalesLineChart
         rows={monthlyProductSalesChartRows}
-        title={salesTableSearchParsed ? `Продажи по месяцам: ${salesTableSearch.trim()}` : 'Продажи выбранного продукта по месяцам'}
+        title={salesTableSearchParsed ? `Количество продаж по месяцам: ${salesTableSearch.trim()}` : 'Количество продаж выбранного продукта по месяцам'}
         subtitle={salesTableSearchParsed
-          ? `График строится за весь доступный период только по найденным позициям из умного поиска. Выбранный месяц (${monthFilter === 'all' ? 'весь список' : monthFilter}) на график не влияет.`
-          : 'Введите название блюда или напитка в умный поиск выше — тогда здесь появится график продаж выбранного продукта по месяцам за весь период.'}
+          ? `График строится за весь доступный период только по найденным позициям из умного поиска и показывает количество продаж. Выбранный месяц (${monthFilter === 'all' ? 'весь список' : monthFilter}) на график не влияет.`
+          : 'Введите название блюда или напитка в умный поиск выше — тогда здесь появится график количества продаж выбранного продукта по месяцам за весь период.'}
       />
     </div>
     <div className="mini-grid">
