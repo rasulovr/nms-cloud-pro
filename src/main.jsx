@@ -27353,6 +27353,8 @@ function Reports({ t }) {
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
   const [expandedSalesRows, setExpandedSalesRows] = useState(false)
+  const [salesTableSearch, setSalesTableSearch] = useState('')
+  const [salesRowsPage, setSalesRowsPage] = useState(1)
   const [expandedReportsTable, setExpandedReportsTable] = useState(false)
   const [expandedAiTables, setExpandedAiTables] = useState({})
   const [aiTopLimit, setAiTopLimit] = useState(10)
@@ -27975,7 +27977,31 @@ function Reports({ t }) {
     return (av - bv) * dir
   })
   const sortedSalesRows = useMemo(() => sortRowsByField(rows, salesSort), [rows, salesSort])
-  const visibleSalesRows = expandedSalesRows ? sortedSalesRows : sortedSalesRows.slice(0, 10)
+
+  const salesTableSearchParsed = useMemo(() => {
+    const raw = String(salesTableSearch || '').trim()
+    if (!raw) return null
+    const stop = new Set(['и','или','по','за','все','всех','блюда','блюдо','напитки','напиток','позиция','позиции','товар','товары','найти','поиск','show','find','search','all','item','items'])
+    const tokens = normalizeSalesSearchText(raw)
+      .split(' ')
+      .map(x => x.trim())
+      .filter(x => x.length >= 2 && !stop.has(x))
+    const includeTokens = expandCanonicalSalesSearchTokens(tokens)
+    return { tokens, searchTokens: includeTokens, includeTokens, excludeTokens: [] }
+  }, [salesTableSearch])
+
+  const searchedSalesRows = useMemo(() => {
+    if (!salesTableSearchParsed) return sortedSalesRows
+    return sortedSalesRows.filter(row => rowMatchesSalesSearch(row, salesTableSearchParsed))
+  }, [sortedSalesRows, salesTableSearchParsed])
+
+  const salesRowsPageSize = 50
+  const salesRowsTotalPages = Math.max(1, Math.ceil(searchedSalesRows.length / salesRowsPageSize))
+  const safeSalesRowsPage = Math.min(Math.max(1, parseNum(salesRowsPage) || 1), salesRowsTotalPages)
+  const visibleSalesRows = expandedSalesRows
+    ? searchedSalesRows.slice((safeSalesRowsPage - 1) * salesRowsPageSize, safeSalesRowsPage * salesRowsPageSize)
+    : searchedSalesRows.slice(0, 10)
+
   const visibleReports = expandedReportsTable ? reports : reports.slice(0, 10)
 
   const ai = useMemo(() => {
@@ -28520,9 +28546,10 @@ function Reports({ t }) {
   const SalesTableBlock = <div className="card span-2">
     <div className="card-head"><div><h3>Общая таблица продаж</h3><p className="hint">В общем режиме продажи агрегируются по всей сети без разбивки по филиалам. Себестоимость считается только из техкарт. Если техкарта пока не заполнена, себестоимость остаётся 0.</p></div></div>
     <div className="form-grid compact">
-      <label><span>Месяц</span><select value={monthFilter} onChange={e => { setMonthFilter(e.target.value); setExpandedSalesRows(false) }}><option value="all">Все месяцы</option>{monthOptions.map(m => <option key={m} value={m}>{m}</option>)}</select></label>
-      <label><span>Филиал</span><select value={branchFilter} onChange={e => { setBranchFilter(e.target.value); setExpandedSalesRows(false) }}><option value="all">Все филиалы</option>{branchOptions.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label>
-      <label><span>Тип</span><select value={departmentFilter} onChange={e => { setDepartmentFilter(e.target.value); setExpandedSalesRows(false) }}><option value="all">Бар + Кухня</option><option value="Бар">Бар</option><option value="Кухня">Кухня</option></select></label>
+      <label><span>Месяц</span><select value={monthFilter} onChange={e => { setMonthFilter(e.target.value); setExpandedSalesRows(false); setSalesRowsPage(1) }}><option value="all">Все месяцы</option>{monthOptions.map(m => <option key={m} value={m}>{m}</option>)}</select></label>
+      <label><span>Филиал</span><select value={branchFilter} onChange={e => { setBranchFilter(e.target.value); setExpandedSalesRows(false); setSalesRowsPage(1) }}><option value="all">Все филиалы</option>{branchOptions.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label>
+      <label><span>Тип</span><select value={departmentFilter} onChange={e => { setDepartmentFilter(e.target.value); setExpandedSalesRows(false); setSalesRowsPage(1) }}><option value="all">Бар + Кухня</option><option value="Бар">Бар</option><option value="Кухня">Кухня</option></select></label>
+      <label><span>Умный поиск по блюдам и напиткам</span><input value={salesTableSearch} onChange={e => { setSalesTableSearch(e.target.value); setExpandedSalesRows(false); setSalesRowsPage(1) }} placeholder="burger, кофе, чай, салат..." /></label>
     </div>
     <div className="mini-grid">
       <div className="metric"><span>Выручка</span><strong>{fmt(totals.revenue)}</strong>{monthFilter !== 'all' && <small className={changeClass(totals.revenue, previousMonthTotals.revenue)}>{formatChangePct(totals.revenue, previousMonthTotals.revenue)}</small>}</div>
@@ -28533,13 +28560,24 @@ function Reports({ t }) {
     <div className="table-wrap" style={{marginTop:12}}><table><thead><tr><th>Раздел</th><th>Кол-во</th><th>Выручка</th><th>Себестоимость</th><th>Прибыль</th><th>Food cost</th></tr></thead><tbody>{['Бар', 'Кухня'].map(renderDepartmentSummaryRow)}</tbody></table></div>
     <div className="table-wrap" style={{marginTop:12}}><table><thead><tr><th>Позиция</th>{!isNetworkSalesView && <th>Филиал</th>}<th>Тип</th><th>Категория</th><th>{sortHeader('quantity', 'Кол-во')}</th><th>{sortHeader('revenue', 'Выручка')}</th>{monthFilter !== 'all' && <th>Динамика кол-ва</th>}<th>{sortHeader('cost', 'Себестоимость')}</th><th>{sortHeader('profit', 'Прибыль')}</th><th>{sortHeader('margin', 'Маржа')}</th><th></th></tr></thead><tbody>
       {visibleSalesRows.map((r, idx) => <tr key={`${r.name}-${idx}`}><td><b>{r.name}</b>{r.original_names?.length > 1 && <><br /><span className="hint">AIKO: {r.original_names.slice(0, 3).join(', ')}{r.original_names.length > 3 ? '…' : ''}</span></>}</td>{!isNetworkSalesView && <td>{r.branch_name || '—'}</td>}<td><span className={r.department === 'Бар' ? 'pill good' : r.department === 'Кухня' ? 'pill warn' : 'pill'}>{r.department === 'Кухня' ? 'Кухня' : r.department === 'Бар' ? 'Бар' : '—'}</span></td><td>{r.menu_category || r.source_category || '—'}</td><td>{fmt(r.quantity)}</td><td>{fmt(r.revenue)}</td>{monthFilter !== 'all' && <td>{renderRowChange(r, 'quantity')}</td>}<td>{fmt(r.cost)}</td><td className={r.profit >= 0 ? 'good' : 'bad'}>{fmt(r.profit)}</td><td>{pct(r.margin)}</td><td><button className="ghost small" onClick={() => renameSalesItem(r.name)}>Переименовать</button></td></tr>)}
-      {!rows.length && <tr><td colSpan={(isNetworkSalesView ? 9 : 10) + (monthFilter !== 'all' ? 1 : 0)} className="hint">Пока нет данных</td></tr>}
+      {!searchedSalesRows.length && <tr><td colSpan={(isNetworkSalesView ? 9 : 10) + (monthFilter !== 'all' ? 1 : 0)} className="hint">Пока нет данных по текущему фильтру / поиску</td></tr>}
     </tbody></table></div>
-    {rows.length > 10 && <button className="ghost small" style={{marginTop:10}} onClick={() => setExpandedSalesRows(v => !v)}>{expandedSalesRows ? 'Скрыть' : `Показать все позиции (${rows.length})`}</button>}
+    {searchedSalesRows.length > 10 && <div className="action-row" style={{marginTop:10, justifyContent:'space-between', flexWrap:'wrap'}}>
+      <div className="action-row" style={{gap:8}}>
+        {!expandedSalesRows && <button className="ghost small" onClick={() => { setExpandedSalesRows(true); setSalesRowsPage(1) }}>{`Показать все позиции (${searchedSalesRows.length})`}</button>}
+        {expandedSalesRows && <button className="ghost small" onClick={() => { setExpandedSalesRows(false); setSalesRowsPage(1) }}>Скрыть</button>}
+        {expandedSalesRows && <span className="hint">Показано до 50 позиций на странице</span>}
+      </div>
+      {expandedSalesRows && <div className="action-row" style={{gap:8}}>
+        <button className="ghost small" disabled={safeSalesRowsPage <= 1} onClick={() => setSalesRowsPage(p => Math.max(1, parseNum(p) - 1))}>← Пред.</button>
+        <span className="hint">Страница {safeSalesRowsPage} / {salesRowsTotalPages} · найдено {searchedSalesRows.length}</span>
+        <button className="ghost small" disabled={safeSalesRowsPage >= salesRowsTotalPages} onClick={() => setSalesRowsPage(p => Math.min(salesRowsTotalPages, parseNum(p) + 1))}>След. →</button>
+      </div>}
+    </div>}
   </div>
 
   const AiSearchBlock = <div className="card span-2">
-    <div className="card-head"><div><h3>ИИ-поиск по продажам</h3><p className="hint">Пример: “Покажи продажи пиццы за этот месяц и за год”. Поиск учитывает текущие фильтры филиала и Бар/Кухня.</p></div><div className="action-row"><button className="ghost small" onClick={() => setShowHiddenSalesItems(v => !v)}>{showHiddenSalesItems ? 'Скрыть список скрытых' : `Скрытые позиции (${hiddenSalesKeys.length})`}</button></div></div>
+    <div className="card-head"><div><h3>ИИ-поиск по продажам</h3><p className="hint">Нижний блок расширенного поиска. Пример: “Покажи продажи пиццы за этот месяц и за год”. Поиск учитывает текущие фильтры филиала и Бар/Кухня.</p></div><div className="action-row"><button className="ghost small" onClick={() => setShowHiddenSalesItems(v => !v)}>{showHiddenSalesItems ? 'Скрыть список скрытых' : `Скрытые позиции (${hiddenSalesKeys.length})`}</button></div></div>
     <div className="form-grid compact"><label><span>Запрос</span><input value={salesAiQuery} onChange={e => setSalesAiQuery(e.target.value)} placeholder="Покажи продажи пиццы за этот месяц / за год" /></label><label><span>Экспорт PDF</span><select value={salesAiExportMode} onChange={e => setSalesAiExportMode(e.target.value)}><option value="prices">С ценами</option><option value="quantity">Только количество</option></select></label></div>
     {showHiddenSalesItems && <div className="table-wrap" style={{marginTop:12}}><table><thead><tr><th>Скрытая позиция</th><th></th></tr></thead><tbody>
       {hiddenSalesKeys.map(key => <tr key={`ai-hidden-${key}`}><td><b>{key}</b></td><td><button className="ghost small" onClick={() => restoreSalesItem(key)}>Вернуть</button></td></tr>)}
@@ -29047,7 +29085,6 @@ function Reports({ t }) {
 
   const SalesReportView = <section className="reports-v43-sales-view">
     {SalesTableBlock}
-    {AiSearchBlock}
     <div className="reports-v43-ai-grid">
       {renderAiTable('Топ продаж по выручке', ai.topSales, 'Выручка')}
       {renderAiTable('Топ продаж по количеству', ai.topQty, 'Выручка')}
@@ -29055,6 +29092,7 @@ function Reports({ t }) {
       {renderAiTable('Топ высокомаржинальных товаров', ai.highMargin, 'Маржа %')}
       {renderAiTable('Топ низкомаржинальных товаров', ai.lowMargin, 'Маржа %')}
     </div>
+    {AiSearchBlock}
   </section>
 
   const ImportReportView = <section className="reports-v43-import-grid">
