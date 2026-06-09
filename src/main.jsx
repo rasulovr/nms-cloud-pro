@@ -27890,7 +27890,10 @@ function Reports({ t }) {
     if (!/^\d{4}-\d{2}$/.test(String(value || ''))) return ''
     const [year, month] = String(value).split('-').map(Number)
     const d = new Date(year, month - 2, 1)
-    return `${d.getFullYear()}-${String(d.getMonth() + 1)}`
+
+    // v305: keep YYYY-MM format. Without zero padding, previous month was "2026-4"
+    // instead of "2026-04", so reportMonthValue() could not match previous reports.
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
   }
 
   const previousMonthRows = useMemo(() => {
