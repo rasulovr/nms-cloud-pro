@@ -15592,6 +15592,111 @@ function DailyRevenueLineChart({ rows = [], title = 'Выручка по дня�
   </div>
 }
 
+
+function MonthlySalesLineChart({ rows = [], title = 'Продажи по месяцам', subtitle = '' }) {
+  const sortedRows = [...(rows || [])].sort((a, b) => String(a.day || a.date || '').localeCompare(String(b.day || b.date || '')))
+  const values = sortedRows.map(r => parseNum(r.amount))
+  const maxRaw = Math.max(1, ...values)
+  const max = Math.ceil(maxRaw / 1000) * 1000
+  const total = values.reduce((sum, value) => sum + parseNum(value), 0)
+  const monthsCount = sortedRows.length
+  const avg = monthsCount ? total / monthsCount : 0
+  const best = sortedRows.reduce((top, row) => parseNum(row.amount) > parseNum(top.amount) ? row : top, { day: '—', date: '', amount: 0 })
+  const latest = sortedRows[sortedRows.length - 1] || { day: '—', date: '', amount: 0 }
+  const width = 1000
+  const height = 300
+  const pad = { left: 48, right: 48, top: 30, bottom: 42 }
+  const chartW = width - pad.left - pad.right
+  const chartH = height - pad.top - pad.bottom
+  const count = Math.max(1, sortedRows.length - 1)
+  const points = sortedRows.map((row, index) => {
+    const x = pad.left + (sortedRows.length <= 1 ? 0 : index / count * chartW)
+    const y = pad.top + chartH - (parseNum(row.amount) / max * chartH)
+    return { ...row, x, y }
+  })
+  const linePath = points.map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x.toFixed(1)} ${point.y.toFixed(1)}`).join(' ')
+  const areaPath = points.length ? `${linePath} L ${points[points.length - 1].x.toFixed(1)} ${pad.top + chartH} L ${points[0].x.toFixed(1)} ${pad.top + chartH} Z` : ''
+  const yTicks = [0, 0.25, 0.5, 0.75, 1]
+  const monthNamesRu = ['январь', 'февраль', 'март', 'апрель', 'май', 'июнь', 'июль', 'август', 'сентябрь', 'октябрь', 'ноябрь', 'декабрь']
+  const formatMonthShort = (row) => {
+    const raw = String(row?.day || row?.date || '')
+    const match = raw.match(/^(\d{4})-(\d{2})/)
+    if (!match) return raw || '—'
+    return `${match[2]}/${match[1].slice(2)}`
+  }
+  const formatMonthLong = (row) => {
+    const raw = String(row?.day || row?.date || '')
+    const match = raw.match(/^(\d{4})-(\d{2})/)
+    if (!match) return raw || '—'
+    const year = match[1]
+    const monthIndex = Math.max(0, Math.min(11, Number(match[2]) - 1))
+    return `${monthNamesRu[monthIndex]} ${year}`
+  }
+  const AmountBlock = ({ value, suffix = 'AZN' }) => (
+    <div className="metric-amount">
+      <span className="metric-number">{fmt(value)}</span>
+      {suffix ? <span className="metric-currency">{suffix}</span> : null}
+    </div>
+  )
+
+  return <div className="card span-2 finance-daily-revenue-chart reports-v307-monthly-sales-chart">
+    <div className="card-head"><div><h3>{title}</h3><p className="hint">{subtitle}</p></div></div>
+    <div className="finance-line-chart-wrap">
+      {sortedRows.length ? <svg className="finance-line-chart-svg" viewBox={`0 0 ${width} ${height}`} role="img" aria-label={title} preserveAspectRatio="none">
+        <defs>
+          <linearGradient id="monthlySalesRevenueGradient" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#2563eb" stopOpacity="0.24" />
+            <stop offset="58%" stopColor="#2563eb" stopOpacity="0.11" />
+            <stop offset="100%" stopColor="#2563eb" stopOpacity="0.02" />
+          </linearGradient>
+        </defs>
+        {yTicks.map(tick => {
+          const y = pad.top + chartH - tick * chartH
+          const label = max * tick
+          return <g key={tick}>
+            <line className="finance-line-chart-grid" x1={pad.left} y1={y} x2={width - pad.right} y2={y} />
+            <text className="finance-line-chart-label" x={pad.left - 10} y={y + 4} textAnchor="end">{label >= 1000 ? `${Math.round(label / 1000)}k` : Math.round(label)}</text>
+          </g>
+        })}
+        <line className="finance-line-chart-axis" x1={pad.left} y1={pad.top + chartH} x2={width - pad.right} y2={pad.top + chartH} />
+        {areaPath && <path className="finance-line-chart-area" d={areaPath} fill="url(#monthlySalesRevenueGradient)" />}
+        {linePath && <path className="finance-line-chart-line" d={linePath} />}
+        {points.map((point, index) => {
+          const anchor = index === 0 ? 'start' : index === points.length - 1 ? 'end' : 'middle'
+          return <text key={`month-x-${point.day || point.date || index}`} className="finance-line-chart-x-label" x={point.x} y={height - 11} textAnchor={anchor}>{formatMonthShort(point)}</text>
+        })}
+      </svg> : <p className="hint">Пока нет данных по продажам для графика.</p>}
+      <div className="finance-line-chart-summary">
+        <div className="metric metric-revenue">
+          <span className="finance-kpi-icon" aria-hidden="true">↗</span>
+          <div className="metric-copy"><div className="metric-title">Выручка за<br />весь период</div></div>
+          <AmountBlock value={total} />
+        </div>
+        <div className="metric metric-average">
+          <span className="finance-kpi-icon" aria-hidden="true">▣</span>
+          <div className="metric-copy"><div className="metric-title">Средняя выручка<br />в месяц</div></div>
+          <AmountBlock value={avg} />
+        </div>
+        <div className="metric metric-best-day">
+          <span className="finance-kpi-icon" aria-hidden="true">♛</span>
+          <div className="metric-copy"><div className="metric-title">Лучший месяц</div><div className="metric-date">{best.day !== '—' ? formatMonthLong(best) : '—'}</div></div>
+          <AmountBlock value={best.amount} />
+        </div>
+        <div className="metric metric-best-weekday">
+          <span className="finance-kpi-icon" aria-hidden="true">☆</span>
+          <div className="metric-copy"><div className="metric-title">Последний месяц</div><div className="metric-weekday">{latest.day !== '—' ? formatMonthLong(latest) : '—'}</div></div>
+          <AmountBlock value={latest.amount} />
+        </div>
+        <div className="metric metric-active-days">
+          <span className="finance-kpi-icon" aria-hidden="true">◷</span>
+          <div className="metric-copy"><div className="metric-title">Месяцев<br />в графике</div></div>
+          <AmountBlock value={monthsCount} suffix="мес." />
+        </div>
+      </div>
+    </div>
+  </div>
+}
+
 function Dashboard({ t }) {
   const TAX_RATE = 8
   const branches = useBranches()
@@ -27969,6 +28074,36 @@ function Reports({ t }) {
     return base
   }, [rows])
 
+
+  const fullPeriodReportsForMonthlySalesChart = useMemo(() => reports.filter(r => {
+    const branchOk = branchFilter === 'all' || String(r.branch_id || r.branch_name) === String(branchFilter)
+    const deptOk = departmentFilter === 'all' || r.department === departmentFilter
+    return branchOk && deptOk && reportMonthValue(r)
+  }), [reports, branchFilter, departmentFilter])
+
+  const monthlySalesChartRows = useMemo(() => {
+    const grouped = new Map()
+    fullPeriodReportsForMonthlySalesChart.forEach(report => {
+      const monthKey = reportMonthValue(report)
+      if (!monthKey) return
+      if (!grouped.has(monthKey)) grouped.set(monthKey, [])
+      grouped.get(monthKey).push(report)
+    })
+    return Array.from(grouped.entries())
+      .sort((a, b) => String(a[0]).localeCompare(String(b[0])))
+      .map(([monthKey, monthReports]) => {
+        const monthRows = aggregateSalesRows(monthReports, { includeBranch: false, hiddenKeys: hiddenSalesKeys, recipeCostMap, aliases: salesNameAliases })
+        const totals = monthRows.reduce((acc, row) => {
+          acc.quantity += parseNum(row.quantity)
+          acc.revenue += parseNum(row.revenue)
+          acc.cost += parseNum(row.cost)
+          acc.profit += parseNum(row.profit)
+          return acc
+        }, { quantity: 0, revenue: 0, cost: 0, profit: 0 })
+        return { day: monthKey, date: `${monthKey}-01`, amount: totals.revenue, quantity: totals.quantity, cost: totals.cost, profit: totals.profit, reports: monthReports.length }
+      })
+  }, [fullPeriodReportsForMonthlySalesChart, hiddenSalesKeys, recipeCostMap, salesNameAliases])
+
   const sortRowsByField = (list, sort) => [...(list || [])].sort((a, b) => {
     const field = sort.field || 'revenue'
     const dir = sort.dir === 'asc' ? 1 : -1
@@ -28550,6 +28685,14 @@ function Reports({ t }) {
       <label><span>Филиал</span><select value={branchFilter} onChange={e => { setBranchFilter(e.target.value); setExpandedSalesRows(false); setSalesRowsPage(1) }}><option value="all">Все филиалы</option>{branchOptions.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label>
       <label><span>Тип</span><select value={departmentFilter} onChange={e => { setDepartmentFilter(e.target.value); setExpandedSalesRows(false); setSalesRowsPage(1) }}><option value="all">Бар + Кухня</option><option value="Бар">Бар</option><option value="Кухня">Кухня</option></select></label>
       <label><span>Умный поиск по блюдам и напиткам</span><input value={salesTableSearch} onChange={e => { setSalesTableSearch(e.target.value); setExpandedSalesRows(false); setSalesRowsPage(1) }} placeholder="burger, кофе, чай, салат..." /></label>
+    </div>
+
+    <div style={{marginTop:12}}>
+      <MonthlySalesLineChart
+        rows={monthlySalesChartRows}
+        title="Продажи по месяцам"
+        subtitle={`График строится за весь доступный период по текущим фильтрам филиала и типа. Выбранный месяц (${monthFilter === 'all' ? 'весь список' : monthFilter}) на этот график не влияет.`}
+      />
     </div>
     <div className="mini-grid">
       <div className="metric"><span>Выручка</span><strong>{fmt(totals.revenue)}</strong>{monthFilter !== 'all' && <small className={changeClass(totals.revenue, previousMonthTotals.revenue)}>{formatChangePct(totals.revenue, previousMonthTotals.revenue)}</small>}</div>
