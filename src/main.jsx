@@ -23127,6 +23127,58 @@ function Suppliers({ t, isAdmin = false }) {
     return Array.from(byKey.values())
   })()
 
+  function buildPaymentEditEInvoicePool(row, directRows = []) {
+    const supplierId = String(row?.supplier_id || '')
+    const selectedLegalEntityId = String(resolvePaymentLegalEntityId({ ...row, _direct_e_invoices: directRows }) || row?.legal_entity_id || '')
+
+    const legacyRows = (legacySupplierEInvoiceOptions || [])
+      .filter(inv => String(inv.supplier_id || '') === supplierId)
+      .filter(inv => !selectedLegalEntityId || String(inv.legal_entity_id || '') === selectedLegalEntityId || String(row?.invoice_notes || '').toLowerCase().includes(String(inv.number || '').toLowerCase()))
+      .map(inv => {
+        const legal = legalEntities.find(le => String(le.id) === String(inv.legal_entity_id))
+        const supplier = suppliers.find(s => String(s.id) === String(inv.supplier_id))
+        const branch = branches.find(b => String(b.name || '') === String(inv.branch || '')) || branches.find(b => String(b.id || '') === String(inv.branch_id || ''))
+        const invoiceNumber = String(inv.number || '').trim()
+        return {
+          id: `legacy:${inv.purchase_id || ''}:${normalizePaymentEInvoiceNumber(invoiceNumber)}`,
+          _legacy_e_invoice: true,
+          purchase_id: inv.purchase_id || '',
+          supplier_id: inv.supplier_id,
+          legal_entity_id: inv.legal_entity_id,
+          branch_id: branch?.id || '',
+          invoice_number: invoiceNumber,
+          invoice_date: inv.date || '',
+          amount: parseNum(inv.amount),
+          paid_amount: 0,
+          status: inv.status || 'legacy_purchase',
+          suppliers: { name: inv.supplier || supplier?.name || '—' },
+          legal_entities: { name: legal?.name || inv.legal || '—', voen: legal?.voen || inv.voen || '' },
+          branches: { name: inv.branch || branch?.name || '—' },
+          created_at: ''
+        }
+      })
+      .filter(inv => inv.invoice_number && parseNum(inv.amount) > 0)
+
+    const byKey = new Map()
+    const addRow = (inv) => {
+      const key = [
+        String(inv.supplier_id || ''),
+        String(inv.legal_entity_id || ''),
+        normalizePaymentEInvoiceNumber(inv.invoice_number)
+      ].join('|')
+      if (!normalizePaymentEInvoiceNumber(inv.invoice_number)) return
+      const existing = byKey.get(key)
+      if (!existing) {
+        byKey.set(key, inv)
+        return
+      }
+      if (existing._legacy_e_invoice && !inv._legacy_e_invoice) byKey.set(key, inv)
+    }
+
+    ;[...(directRows || []), ...legacyRows].forEach(addRow)
+    return Array.from(byKey.values())
+  }
+
   const filteredPaymentEInvoices = supplierEInvoiceOptions.filter(inv => {
     if (paymentForm.supplier_id && String(inv.supplier_id) !== String(paymentForm.supplier_id)) return false
     if (paymentForm.legal_entity_id && String(inv.legal_entity_id) !== String(paymentForm.legal_entity_id)) return false
@@ -24748,11 +24800,12 @@ function DebtsPayments({ t }) {
     } catch (_error) {
       directEInvoices = []
     }
-    setPaymentEditEInvoices(directEInvoices)
+    const editInvoicePool = buildPaymentEditEInvoicePool(row, directEInvoices)
+    setPaymentEditEInvoices(editInvoicePool)
     setPaymentEditLoading(false)
-    const resolvedLegalEntityId = resolvePaymentLegalEntityId({ ...row, _direct_e_invoices: directEInvoices })
+    const resolvedLegalEntityId = resolvePaymentLegalEntityId({ ...row, _direct_e_invoices: editInvoicePool })
     const invoiceNotesText = String(row.invoice_notes || '').toLowerCase()
-    const selectedInvoiceIds = (directEInvoices.length ? directEInvoices : (eInvoices || []))
+    const selectedInvoiceIds = (editInvoicePool.length ? editInvoicePool : (eInvoices || []))
       .filter(inv =>
         String(inv.supplier_id || '') === String(row.supplier_id || '') &&
         (!resolvedLegalEntityId || String(inv.legal_entity_id || '') === String(resolvedLegalEntityId) || invoiceNotesText.includes(String(inv.invoice_number || '').toLowerCase())) &&
@@ -24851,6 +24904,8 @@ function DebtsPayments({ t }) {
       const selectedInvoices = (invoicePool || []).filter(inv => selectedIds.map(String).includes(String(inv.id)))
       const invoiceNotes = paymentTransactionEditForm.invoice_notes?.trim() || selectedInvoices.map(inv => inv.invoice_number).filter(Boolean).join(', ')
 
+      const singleRealInvoiceId = selectedInvoices.length === 1 && !selectedInvoices[0]._legacy_e_invoice ? selectedInvoices[0].id : null
+
       await callSupplierRpc('rms_supplier_payment_update_secure', {
         p_payment_id: row.id,
         p_supplier_id: row.supplier_id,
@@ -24859,13 +24914,18 @@ function DebtsPayments({ t }) {
         p_amount: amount,
         p_invoice_notes: invoiceNotes || null,
         p_comment: paymentTransactionEditForm.comment?.trim() || null,
-        p_e_invoice_id: selectedInvoices.length === 1 ? selectedInvoices[0].id : (selectedInvoices.length > 1 ? null : (row.e_invoice_id || null))
+        p_e_invoice_id: singleRealInvoiceId || (selectedInvoices.length > 0 ? null : (row.e_invoice_id || null))
       }, 'Оплата поставщику обновлена')
 
       if (selectedInvoices.length > 0) {
         let remainingPayment = amount
         for (const inv of selectedInvoices) {
           if (remainingPayment <= 0) break
+          if (inv._legacy_e_invoice) {
+            const legacyAmount = parseNum(inv.amount)
+            remainingPayment -= Math.min(legacyAmount, remainingPayment)
+            continue
+          }
           const invoiceRemaining = Math.max(0, parseNum(inv.amount) - parseNum(inv.paid_amount))
           const payAmount = Math.min(invoiceRemaining, remainingPayment)
           if (payAmount <= 0) continue
@@ -26159,7 +26219,7 @@ function DebtsPayments({ t }) {
               <div className="mini-kpi"><span>Найдено</span><strong>{safePaymentEditEInvoiceOptions(activeEditingPayment).length}</strong></div>
             </div>
             <div className="table-wrap" style={{maxHeight:260, overflow:'auto'}}>
-              <table><thead><tr><th></th><th>Дата</th><th>№ e-qaimə</th><th>Сумма</th><th>Оплачено</th><th>Остаток</th></tr></thead><tbody>{safePaymentEditEInvoiceOptions(activeEditingPayment).map(inv => { const selectedIds = Array.isArray(paymentTransactionEditForm.selected_e_invoice_ids) ? paymentTransactionEditForm.selected_e_invoice_ids : []; const checked = selectedIds.map(String).includes(String(inv.id)); const balance = Math.max(0, parseNum(inv.amount) - parseNum(inv.paid_amount)); return <tr key={inv.id} className={checked ? 'active' : ''}><td><input type="checkbox" checked={checked} onChange={() => togglePaymentEditEInvoice(inv, activeEditingPayment)} /></td><td>{formatDateDMY(inv.invoice_date)}</td><td><b>{inv.invoice_number}</b></td><td>{fmt(inv.amount)}</td><td>{fmt(inv.paid_amount)}</td><td className={balance > 0 ? 'bad' : 'good'}>{fmt(balance)}</td></tr> })}{!safePaymentEditEInvoiceOptions(activeEditingPayment).length && <tr><td colSpan="6" className="hint">e-qaimə не найдены. Проверьте VOEN или введите часть номера в поиск.</td></tr>}</tbody></table>
+              <table><thead><tr><th></th><th>Дата</th><th>№ e-qaimə</th><th>Сумма</th><th>Оплачено</th><th>Остаток</th></tr></thead><tbody>{safePaymentEditEInvoiceOptions(activeEditingPayment).map(inv => { const selectedIds = Array.isArray(paymentTransactionEditForm.selected_e_invoice_ids) ? paymentTransactionEditForm.selected_e_invoice_ids : []; const checked = selectedIds.map(String).includes(String(inv.id)); const balance = Math.max(0, parseNum(inv.amount) - parseNum(inv.paid_amount)); return <tr key={inv.id} className={checked ? 'active' : ''}><td><input type="checkbox" checked={checked} onChange={() => togglePaymentEditEInvoice(inv, activeEditingPayment)} /></td><td>{formatDateDMY(inv.invoice_date)}</td><td><b>{inv.invoice_number}</b>{inv._legacy_e_invoice && <><br /><span className="hint">из поступления</span></>}</td><td>{fmt(inv.amount)}</td><td>{fmt(inv.paid_amount)}</td><td className={balance > 0 ? 'bad' : 'good'}>{fmt(balance)}</td></tr> })}{!safePaymentEditEInvoiceOptions(activeEditingPayment).length && <tr><td colSpan="6" className="hint">e-qaimə не найдены. Проверьте VOEN или введите часть номера в поиск.</td></tr>}</tbody></table>
             </div>
             {(paymentTransactionEditForm.selected_e_invoice_ids || []).length > 0 && <p className="hint">Выбрано: <b>{paymentTransactionEditForm.selected_e_invoice_ids.length}</b> · сумма в поле оплаты будет общей по выбранным e-qaimə.</p>}
           </div>
