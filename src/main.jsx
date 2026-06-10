@@ -24732,6 +24732,24 @@ function DebtsPayments({ t }) {
     return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(value || ''))
   }
 
+  function supplierPaymentExtractInvoiceNumbers(value) {
+    const raw = String(value || '')
+    const found = []
+    const add = (item) => {
+      const cleaned = String(item || '').trim().replace(/[;|]+$/g, '').replace(/^[;|]+/g, '')
+      if (!cleaned) return
+      const normalized = normalizePaymentEInvoiceNumber(cleaned)
+      if (!normalized) return
+      if (!found.some(existing => normalizePaymentEInvoiceNumber(existing) === normalized)) found.push(cleaned)
+    }
+
+    ;(raw.match(/[A-Z]{1,5}\d{6,}/gi) || []).forEach(add)
+    raw.split(/[ ,;\n\t]+/).forEach(part => {
+      if (/\d{4,}/.test(part)) add(part)
+    })
+    return found
+  }
+
   function normalizePaymentEditCandidateRow(row) {
     const invoiceNumber = String(row?.invoice_number || row?.number || '').trim()
     if (!invoiceNumber) return null
