@@ -24727,6 +24727,31 @@ function DebtsPayments({ t }) {
     return legalEntities[0]?.id || ''
   }
 
+  function supplierPaymentExtractInvoiceNumbers(value) {
+    const text = String(value || '')
+    const matches = text.match(/[A-Z]{1,4}\d{6,}/gi) || []
+    return Array.from(new Set(matches.map(x => normalizePaymentEInvoiceNumber(x)).filter(Boolean)))
+  }
+
+  function paymentEditSelectedIdsFromNotes(row, invoicePool = []) {
+    const noteNumbers = supplierPaymentExtractInvoiceNumbers([
+      row?.invoice_notes || '',
+      row?.comment || '',
+      paymentTransactionEditForm.invoice_notes || '',
+      paymentTransactionEditForm.comment || ''
+    ].join(' '))
+
+    if (!noteNumbers.length) return []
+
+    return (invoicePool || [])
+      .filter(inv => {
+        const invoiceNumber = normalizePaymentEInvoiceNumber(inv.invoice_number)
+        return invoiceNumber && noteNumbers.includes(invoiceNumber)
+      })
+      .map(inv => inv.id)
+      .filter(Boolean)
+  }
+
   async function startEditSupplierPayment(row) {
     if (!row) return
     setMessage('')
@@ -24767,15 +24792,7 @@ function DebtsPayments({ t }) {
     }
     setPaymentEditLoading(false)
     const resolvedLegalEntityId = resolvePaymentLegalEntityId({ ...row, _direct_e_invoices: directEInvoices })
-    const invoiceNotesText = String(row.invoice_notes || '').toLowerCase()
-    const selectedInvoiceIds = (directEInvoices.length ? directEInvoices : (eInvoices || []))
-      .filter(inv =>
-        String(inv.supplier_id || '') === String(row.supplier_id || '') &&
-        (!resolvedLegalEntityId || String(inv.legal_entity_id || '') === String(resolvedLegalEntityId) || invoiceNotesText.includes(String(inv.invoice_number || '').toLowerCase())) &&
-        inv.invoice_number &&
-        invoiceNotesText.includes(String(inv.invoice_number).toLowerCase())
-      )
-      .map(inv => inv.id)
+    const selectedInvoiceIds = paymentEditSelectedIdsFromNotes(row, directEInvoices.length ? directEInvoices : (eInvoices || []))
     setPaymentTransactionEditForm({
       payment_date: row.payment_date || todayISO(),
       legal_entity_id: resolvedLegalEntityId,
@@ -24835,9 +24852,11 @@ function DebtsPayments({ t }) {
 
   function togglePaymentEditEInvoice(inv, row) {
     const key = String(inv.id)
-    const current = (paymentTransactionEditForm.selected_e_invoice_ids || []).map(String)
-    const nextIds = current.includes(key) ? current.filter(id => id !== key) : [...current, key]
     const invoicePool = (paymentEditEInvoices && paymentEditEInvoices.length) ? paymentEditEInvoices : (eInvoices || [])
+    const currentRaw = (paymentTransactionEditForm.selected_e_invoice_ids || []).map(String)
+    const notedIds = paymentEditSelectedIdsFromNotes(row, invoicePool).map(String)
+    const current = Array.from(new Set([...currentRaw, ...notedIds]))
+    const nextIds = current.includes(key) ? current.filter(id => id !== key) : [...current, key]
     const selected = (invoicePool || []).filter(ei => nextIds.includes(String(ei.id)))
     const notes = selected.map(ei => ei.invoice_number).filter(Boolean).join(', ')
     const selectedTotal = selected.reduce((sum, ei) => {
@@ -24862,9 +24881,12 @@ function DebtsPayments({ t }) {
       if (!amount) return setMessage('Введите сумму оплаты')
       if (!paymentTransactionEditForm.legal_entity_id) return setMessage('Выберите физ. лицо / VOEN')
 
-      const selectedIds = (paymentTransactionEditForm.selected_e_invoice_ids || []).filter(Boolean)
       const invoicePool = (paymentEditEInvoices && paymentEditEInvoices.length) ? paymentEditEInvoices : (eInvoices || [])
-      const selectedInvoices = (invoicePool || []).filter(inv => selectedIds.map(String).includes(String(inv.id)))
+      const selectedIds = Array.from(new Set([
+        ...(paymentTransactionEditForm.selected_e_invoice_ids || []).filter(Boolean).map(String),
+        ...paymentEditSelectedIdsFromNotes(row, invoicePool).map(String)
+      ]))
+      const selectedInvoices = (invoicePool || []).filter(inv => selectedIds.includes(String(inv.id)))
       const invoiceNotes = paymentTransactionEditForm.invoice_notes?.trim() || selectedInvoices.map(inv => inv.invoice_number).filter(Boolean).join(', ')
 
       await callSupplierRpc('rms_supplier_payment_update_secure', {
