@@ -24777,6 +24777,10 @@ function DebtsPayments({ t }) {
     ;(paymentEditCandidates || []).forEach(add)
     ;(paymentEditEInvoices || []).forEach(add)
     ;(eInvoices || []).forEach(add)
+    ;(supplierEInvoiceOptions || []).forEach(add)
+    try {
+      ;(paymentCreateAllInvoiceCandidates() || []).forEach(add)
+    } catch (_paymentEditCandidateBuildError) {}
     supplierPaymentExtractInvoiceNumbers(paymentTransactionEditForm.invoice_notes || '').forEach(number => add({
       candidate_key: `payment-note:${normalizePaymentEInvoiceNumber(number)}`,
       invoice_number: number,
