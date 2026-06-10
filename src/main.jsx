@@ -23062,126 +23062,6 @@ function Suppliers({ t, isAdmin = false }) {
 
   const normalizePaymentEInvoiceNumber = (value) => String(value || '').trim().replace(/\s+/g, '').toLowerCase()
 
-  async function ensureSupplierMetaEInvoicesForPaymentEdit(row) {
-    const supplierId = String(row?.supplier_id || '')
-    const legalEntityId = String(row?.legal_entity_id || '')
-    if (!supplierId) return []
-
-    const candidates = (purchases || [])
-      .filter(p => !p.deleted_at)
-      .filter(p => String(p.supplier_id || '') === supplierId)
-      .filter(p => !legalEntityId || String(p.legal_entity_id || '') === legalEntityId)
-      .map(p => {
-        const meta = supplierMetaFromComment(p.comment)
-        const invoiceNumber = String(meta.eInvoiceNumber || '').trim()
-        const amount = parseNum(meta.eInvoiceAmount || p.total_amount)
-        return {
-          purchase: p,
-          invoice_number: invoiceNumber,
-          invoice_date: meta.eInvoiceDate || p.purchase_date || todayISO(),
-          amount
-        }
-      })
-      .filter(x => x.invoice_number && x.amount > 0)
-
-    if (!candidates.length) return []
-
-    const createdOrExisting = []
-
-    for (const item of candidates) {
-      const normalizedNumber = normalizePaymentEInvoiceNumber(item.invoice_number)
-      let existing = (eInvoices || []).find(inv =>
-        normalizePaymentEInvoiceNumber(inv.invoice_number) === normalizedNumber &&
-        String(inv.supplier_id || '') === String(item.purchase.supplier_id || '') &&
-        String(inv.legal_entity_id || '') === String(item.purchase.legal_entity_id || '')
-      )
-
-      if (!existing) {
-        try {
-          const { data: existingRows, error: existingError } = await supabase
-            .from('supplier_e_invoices')
-            .select('*, suppliers(name), legal_entities(name,voen), branches(name)')
-            .eq('supplier_id', item.purchase.supplier_id)
-            .eq('legal_entity_id', item.purchase.legal_entity_id)
-            .eq('invoice_number', item.invoice_number)
-            .is('deleted_at', null)
-            .limit(1)
-
-          if (existingError) throw existingError
-          existing = (existingRows || [])[0] || null
-        } catch (_existingError) {
-          existing = null
-        }
-      }
-
-      if (!existing) {
-        try {
-          const { data: authData } = await supabase.auth.getUser()
-          const { data: inserted, error: insertError } = await supabase
-            .from('supplier_e_invoices')
-            .insert({
-              supplier_id: item.purchase.supplier_id,
-              legal_entity_id: item.purchase.legal_entity_id || null,
-              branch_id: item.purchase.branch_id || null,
-              invoice_number: item.invoice_number,
-              invoice_date: item.invoice_date || item.purchase.purchase_date || todayISO(),
-              period_start: item.purchase.purchase_date || null,
-              period_end: item.purchase.purchase_date || null,
-              amount: item.amount,
-              paid_amount: 0,
-              payment_term_days: null,
-              payment_due_date: null,
-              note: `Auto-created from purchase RMS_SUPPLIER_META / purchase_id=${item.purchase.id}`,
-              status: Math.abs(item.amount - parseNum(item.purchase.total_amount)) <= 0.02 ? 'matched' : 'partial',
-              created_by: authData?.user?.id || null
-            })
-            .select('*, suppliers(name), legal_entities(name,voen), branches(name)')
-            .single()
-
-          if (insertError) throw insertError
-          existing = inserted
-        } catch (_insertError) {
-          existing = null
-        }
-      }
-
-      if (existing?.id) {
-        createdOrExisting.push(existing)
-
-        try {
-          const alreadyLinked = (eInvoiceLinks || []).some(link =>
-            String(link.e_invoice_id || '') === String(existing.id) &&
-            String(link.purchase_id || '') === String(item.purchase.id)
-          )
-
-          if (!alreadyLinked) {
-            const { data: authData } = await supabase.auth.getUser()
-            await supabase
-              .from('supplier_e_invoice_purchase_links')
-              .insert({
-                e_invoice_id: existing.id,
-                purchase_id: item.purchase.id,
-                linked_amount: item.amount,
-                created_by: authData?.user?.id || null
-              })
-          }
-        } catch (_linkError) {
-          // Link is useful but not required for the payment edit picker.
-        }
-      }
-    }
-
-    if (createdOrExisting.length) {
-      setEInvoices(prev => {
-        const byId = new Map((prev || []).map(inv => [String(inv.id), inv]))
-        createdOrExisting.forEach(inv => byId.set(String(inv.id), inv))
-        return Array.from(byId.values())
-      })
-    }
-
-    return createdOrExisting
-  }
-
   const legacySupplierEInvoiceOptions = (purchases || [])
     .filter(p => activeSupplierIds.has(p.supplier_id) && isSupplierActiveForLegal(p.supplier_id, p.legal_entity_id) && !p.deleted_at)
     .map(p => {
@@ -24855,11 +24735,13 @@ function DebtsPayments({ t }) {
     setDetailPurchaseId('')
     setEditingPaymentTransactionId(String(row.id))
     setPaymentEditLoading(true)
-    let ensuredMetaEInvoices = []
     try {
-      ensuredMetaEInvoices = await ensureSupplierMetaEInvoicesForPaymentEdit(row)
-    } catch (_ensureError) {
-      ensuredMetaEInvoices = []
+      await supabase.rpc('rms_supplier_materialize_purchase_meta_einvoices', {
+        p_supplier_id: row.supplier_id,
+        p_legal_entity_id: row.legal_entity_id || null
+      })
+    } catch (_materializeError) {
+      // If the RPC is not installed or blocked, keep the old stable behavior.
     }
 
     let directEInvoices = []
@@ -24875,13 +24757,14 @@ function DebtsPayments({ t }) {
     } catch (_error) {
       directEInvoices = []
     }
-
-    const byInvoiceId = new Map()
-    ;[...directEInvoices, ...ensuredMetaEInvoices].forEach(inv => {
-      if (inv?.id) byInvoiceId.set(String(inv.id), inv)
-    })
-    directEInvoices = Array.from(byInvoiceId.values())
     setPaymentEditEInvoices(directEInvoices)
+    if (directEInvoices.length) {
+      setEInvoices(prev => {
+        const byId = new Map((prev || []).map(inv => [String(inv.id), inv]))
+        directEInvoices.forEach(inv => byId.set(String(inv.id), inv))
+        return Array.from(byId.values())
+      })
+    }
     setPaymentEditLoading(false)
     const resolvedLegalEntityId = resolvePaymentLegalEntityId({ ...row, _direct_e_invoices: directEInvoices })
     const invoiceNotesText = String(row.invoice_notes || '').toLowerCase()
