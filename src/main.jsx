@@ -24786,40 +24786,36 @@ function DebtsPayments({ t }) {
     setEditingPurchaseTransactionId('')
     setDetailPurchaseId('')
     setEditingPaymentTransactionId(String(row.id))
-    setPaymentEditLoading(true)
-    let directEInvoices = []
+
+    // v311 frontend: open the edit window immediately from the payment row and legacy purchase e-qaimə data.
+    // Do not block the form on supplier_e_invoices fetch; some e-qaimə exist only inside purchase metadata.
+    let initialPool = []
     try {
-      const { data, error } = await supabase
-        .from('supplier_e_invoices')
-        .select('*, suppliers(name), legal_entities(name,voen), branches(name)')
-        .eq('supplier_id', row.supplier_id)
-        .is('deleted_at', null)
-        .order('invoice_date', { ascending: false })
-        .limit(2000)
-      if (!error) directEInvoices = data || []
-    } catch (_error) {
-      directEInvoices = []
+      initialPool = buildPaymentEditEInvoicePool(row, [])
+    } catch (_legacyPoolError) {
+      initialPool = []
     }
-    const editInvoicePool = buildPaymentEditEInvoicePool(row, directEInvoices)
-    setPaymentEditEInvoices(editInvoicePool)
-    setPaymentEditLoading(false)
-    const resolvedLegalEntityId = resolvePaymentLegalEntityId({ ...row, _direct_e_invoices: editInvoicePool })
+
+    const initialResolvedLegalEntityId = resolvePaymentLegalEntityId({ ...row, _direct_e_invoices: initialPool })
     const invoiceNotesText = String(row.invoice_notes || '').toLowerCase()
-    const selectedInvoiceIds = (editInvoicePool.length ? editInvoicePool : (eInvoices || []))
+    const initialSelectedInvoiceIds = (initialPool.length ? initialPool : (eInvoices || []))
       .filter(inv =>
         String(inv.supplier_id || '') === String(row.supplier_id || '') &&
-        (!resolvedLegalEntityId || String(inv.legal_entity_id || '') === String(resolvedLegalEntityId) || invoiceNotesText.includes(String(inv.invoice_number || '').toLowerCase())) &&
+        (!initialResolvedLegalEntityId || String(inv.legal_entity_id || '') === String(initialResolvedLegalEntityId) || invoiceNotesText.includes(String(inv.invoice_number || '').toLowerCase())) &&
         inv.invoice_number &&
         invoiceNotesText.includes(String(inv.invoice_number).toLowerCase())
       )
       .map(inv => inv.id)
+
+    setPaymentEditEInvoices(initialPool)
+    setPaymentEditLoading(false)
     setPaymentTransactionEditForm({
       payment_date: row.payment_date || todayISO(),
-      legal_entity_id: resolvedLegalEntityId,
+      legal_entity_id: initialResolvedLegalEntityId,
       amount: String(parseNum(row.amount)),
       invoice_notes: row.invoice_notes || '',
       comment: row.comment || '',
-      selected_e_invoice_ids: Array.isArray(selectedInvoiceIds) ? selectedInvoiceIds : [],
+      selected_e_invoice_ids: Array.isArray(initialSelectedInvoiceIds) ? initialSelectedInvoiceIds : [],
       e_invoice_search: ''
     })
     setMessage('Открыто редактирование оплаты')
@@ -24828,6 +24824,41 @@ function DebtsPayments({ t }) {
       panel?.scrollIntoView?.({ behavior: 'smooth', block: 'start' })
       panel?.scrollTo?.({ top: 0, behavior: 'smooth' })
     }, 40)
+
+    // Then enrich the picker with real supplier_e_invoices rows in the background.
+    try {
+      setPaymentEditLoading(true)
+      const { data, error } = await supabase
+        .from('supplier_e_invoices')
+        .select('*, suppliers(name), legal_entities(name,voen), branches(name)')
+        .eq('supplier_id', row.supplier_id)
+        .is('deleted_at', null)
+        .order('invoice_date', { ascending: false })
+        .limit(2000)
+
+      const directEInvoices = error ? [] : (data || [])
+      const editInvoicePool = buildPaymentEditEInvoicePool(row, directEInvoices)
+      const resolvedLegalEntityId = resolvePaymentLegalEntityId({ ...row, _direct_e_invoices: editInvoicePool })
+      const selectedInvoiceIds = (editInvoicePool.length ? editInvoicePool : (eInvoices || []))
+        .filter(inv =>
+          String(inv.supplier_id || '') === String(row.supplier_id || '') &&
+          (!resolvedLegalEntityId || String(inv.legal_entity_id || '') === String(resolvedLegalEntityId) || invoiceNotesText.includes(String(inv.invoice_number || '').toLowerCase())) &&
+          inv.invoice_number &&
+          invoiceNotesText.includes(String(inv.invoice_number).toLowerCase())
+        )
+        .map(inv => inv.id)
+
+      setPaymentEditEInvoices(editInvoicePool)
+      setPaymentTransactionEditForm(f => ({
+        ...f,
+        legal_entity_id: resolvedLegalEntityId || f.legal_entity_id,
+        selected_e_invoice_ids: Array.isArray(selectedInvoiceIds) ? selectedInvoiceIds : f.selected_e_invoice_ids
+      }))
+    } catch (_error) {
+      // Keep the already opened legacy/fallback list instead of freezing the modal.
+    } finally {
+      setPaymentEditLoading(false)
+    }
   }
 
   function paymentEditEInvoiceOptions(row) {
