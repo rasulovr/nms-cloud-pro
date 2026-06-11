@@ -22125,7 +22125,6 @@ function Suppliers({ t, isAdmin = false }) {
   const [lineRows, setLineRows] = useState([emptyLine])
   const [paymentForm, setPaymentForm] = useState({ supplier_id: '', legal_entity_id: '', payment_date: todayISO(), amount: '', invoice_notes: '', comment: '', e_invoice_id: '', selected_e_invoice_ids: [] })
   const [showPaymentCreateOverlay, setShowPaymentCreateOverlay] = useState(false)
-  const [paymentOverlayEditId, setPaymentOverlayEditId] = useState('')
   const [paymentCreateLoading, setPaymentCreateLoading] = useState(false)
   const [paymentCreateEInvoices, setPaymentCreateEInvoices] = useState([])
   const [paymentCreatePaidRefs, setPaymentCreatePaidRefs] = useState({})
@@ -22875,8 +22874,6 @@ function Suppliers({ t, isAdmin = false }) {
     setMessage('')
     setPaymentMessage('')
 
-    const editPaymentId = paymentOverlayEditId || ''
-
     const selectedIds = paymentForm.selected_e_invoice_ids || []
     const paymentInvoicePool = showPaymentCreateOverlay ? paymentCreateAllInvoiceCandidates() : supplierEInvoiceOptions
     const selectedAllInvoices = paymentInvoicePool
@@ -22915,7 +22912,7 @@ function Suppliers({ t, isAdmin = false }) {
         latestById = new Map(normalizedLatestRows.map(row => [String(row.id), row]))
 
         const alreadyPaid = normalizedLatestRows.filter(row => parseNum(row.paid_amount) >= parseNum(row.amount) - 0.01)
-        if (!editPaymentId && alreadyPaid.length) {
+        if (alreadyPaid.length) {
           const paidList = alreadyPaid.map(row => row.invoice_number).filter(Boolean).join(', ')
           await openPaymentCreateOverlay()
           return setPaymentMessage(`Следующие e-qaimə уже оплачены: ${paidList}`)
@@ -22924,7 +22921,7 @@ function Suppliers({ t, isAdmin = false }) {
         if (selectedAllInvoices.length === 1 && selectedRealInvoices.length === 1) {
           const row = normalizedLatestRows?.[0]
           const remaining = Math.max(0, parseNum(row?.amount) - parseNum(row?.paid_amount))
-          if (!editPaymentId && remaining <= 0.01) {
+          if (remaining <= 0.01) {
             await openPaymentCreateOverlay()
             return setPaymentMessage(`e-qaimə ${row?.invoice_number || ''} уже оплачена`)
           }
@@ -22942,28 +22939,15 @@ function Suppliers({ t, isAdmin = false }) {
           `Оплата одной суммой по e-qaimə: ${invoiceNumbers.join(', ')}`
         ].filter(Boolean).join(' | ')
 
-        if (editPaymentId) {
-          await callSupplierRpc('rms_supplier_payment_update_secure', {
-            p_payment_id: editPaymentId,
-            p_supplier_id: paymentSupplierId,
-            p_legal_entity_id: paymentLegalEntityId || null,
-            p_payment_date: paymentForm.payment_date || todayISO(),
-            p_amount: amount,
-            p_invoice_notes: invoiceNotes || null,
-            p_comment: multiComment || null,
-            p_e_invoice_id: null
-          }, 'Оплата поставщику обновлена', setPaymentMessage)
-        } else {
-          await callSupplierRpc('rms_supplier_payment_create_secure', {
-            p_supplier_id: paymentSupplierId,
-            p_legal_entity_id: paymentLegalEntityId || null,
-            p_payment_date: paymentForm.payment_date || todayISO(),
-            p_amount: amount,
-            p_invoice_notes: invoiceNotes || null,
-            p_comment: multiComment || null,
-            p_e_invoice_id: null
-          }, t('saved'), setPaymentMessage)
-        }
+        await callSupplierRpc('rms_supplier_payment_create_secure', {
+          p_supplier_id: paymentSupplierId,
+          p_legal_entity_id: paymentLegalEntityId || null,
+          p_payment_date: paymentForm.payment_date || todayISO(),
+          p_amount: amount,
+          p_invoice_notes: invoiceNotes || null,
+          p_comment: multiComment || null,
+          p_e_invoice_id: null
+        }, t('saved'), setPaymentMessage)
 
         let remainingPayment = amount
         for (const inv of selectedRealInvoices) {
@@ -22988,28 +22972,15 @@ function Suppliers({ t, isAdmin = false }) {
         const updateInvoiceId = paymentForm.e_invoice_id || selectedOne?.e_invoice_id || null
         const invoiceNotes = paymentForm.invoice_notes.trim() || selectedOne?.number || null
 
-        if (editPaymentId) {
-          await callSupplierRpc('rms_supplier_payment_update_secure', {
-            p_payment_id: editPaymentId,
-            p_supplier_id: paymentSupplierId,
-            p_legal_entity_id: paymentLegalEntityId || null,
-            p_payment_date: paymentForm.payment_date || todayISO(),
-            p_amount: amount,
-            p_invoice_notes: invoiceNotes,
-            p_comment: paymentForm.comment.trim() || null,
-            p_e_invoice_id: updateInvoiceId
-          }, 'Оплата поставщику обновлена', setPaymentMessage)
-        } else {
-          await callSupplierRpc('rms_supplier_payment_create_secure', {
-            p_supplier_id: paymentSupplierId,
-            p_legal_entity_id: paymentLegalEntityId || null,
-            p_payment_date: paymentForm.payment_date || todayISO(),
-            p_amount: amount,
-            p_invoice_notes: invoiceNotes,
-            p_comment: paymentForm.comment.trim() || null,
-            p_e_invoice_id: updateInvoiceId
-          }, t('saved'), setPaymentMessage)
-        }
+        await callSupplierRpc('rms_supplier_payment_create_secure', {
+          p_supplier_id: paymentSupplierId,
+          p_legal_entity_id: paymentLegalEntityId || null,
+          p_payment_date: paymentForm.payment_date || todayISO(),
+          p_amount: amount,
+          p_invoice_notes: invoiceNotes,
+          p_comment: paymentForm.comment.trim() || null,
+          p_e_invoice_id: updateInvoiceId
+        }, t('saved'), setPaymentMessage)
         if (updateInvoiceId) {
           const inv = latestById.get(String(updateInvoiceId)) || eInvoices.find(row => row.id === updateInvoiceId)
           const nextPaid = Math.min(parseNum(inv?.amount), parseNum(inv?.paid_amount) + amount)
@@ -23017,7 +22988,6 @@ function Suppliers({ t, isAdmin = false }) {
         }
       }
       setPaymentForm({ supplier_id: '', legal_entity_id: legalEntities[0]?.id || '', payment_date: todayISO(), amount: '', invoice_notes: '', comment: '', e_invoice_id: '', selected_e_invoice_ids: [] })
-      setPaymentOverlayEditId('')
       setShowPaymentCreateOverlay(false)
       await load()
       setPaymentMessage(t('saved'))
@@ -23091,12 +23061,6 @@ function Suppliers({ t, isAdmin = false }) {
   }
 
   const normalizePaymentEInvoiceNumber = (value) => String(value || '').trim().replace(/\s+/g, '').toLowerCase()
-
-  function supplierPaymentExtractInvoiceNumbers(value) {
-    const text = String(value || '')
-    const matches = text.match(/[A-Z]{1,4}\d{6,}/gi) || []
-    return Array.from(new Set(matches.map(x => normalizePaymentEInvoiceNumber(x)).filter(Boolean)))
-  }
 
   const legacySupplierEInvoiceOptions = (purchases || [])
     .filter(p => activeSupplierIds.has(p.supplier_id) && isSupplierActiveForLegal(p.supplier_id, p.legal_entity_id) && !p.deleted_at)
@@ -23955,7 +23919,7 @@ function Suppliers({ t, isAdmin = false }) {
         </div>
         {/* v272: старый встроенный список выбора нескольких e-qaimə полностью удалён.
             Используем только большое overlay-окно выбора e-qaimə. */}
-        <button className="small primary" onClick={savePayment}>{paymentOverlayEditId ? 'Сохранить изменения' : '+ Сохранить оплату'}</button>
+        <button className="small primary" onClick={savePayment}>+ Сохранить оплату</button>
         {paymentMessage && <p className={`hint ${paymentMessage === t('saved') ? 'save-status' : 'bad'}`}>{paymentMessage}</p>}
       </div>
 
@@ -23969,10 +23933,10 @@ function Suppliers({ t, isAdmin = false }) {
         >
           <div className="card-head suppliers-v43-card-head" style={{position:'sticky', top:-22, zIndex:10, background:'rgba(255,255,255,.98)', borderBottom:'1px solid #e5e7eb', paddingBottom:12}}>
             <div>
-              <h3>{paymentOverlayEditId ? 'Редактирование оплаты поставщику' : 'Оплата поставщику'}</h3>
+              <h3>Оплата поставщику</h3>
               <p className="hint">Большое окно выбора e-qaimə. Выберите одну или несколько e-qaimə и сохраните оплату одной строкой.</p>
             </div>
-            <button className="supplier-modal-x" title="Закрыть" aria-label="Закрыть" onClick={() => { setShowPaymentCreateOverlay(false); setPaymentOverlayEditId('') }}>×</button>
+            <button className="supplier-modal-x" title="Закрыть" aria-label="Закрыть" onClick={() => setShowPaymentCreateOverlay(false)}>×</button>
           </div>
 
           <div className="form-grid compact">
@@ -24765,43 +24729,14 @@ function DebtsPayments({ t }) {
 
   async function startEditSupplierPayment(row) {
     if (!row) return
-
     setMessage('')
-    setPaymentMessage('')
     setEditingOpeningDebtId('')
     setEditingPurchaseTransactionId('')
     setDetailPurchaseId('')
-    setEditingPaymentTransactionId('')
-    setPaymentOverlayEditId(String(row.id))
-    setPaymentEInvoiceSearch('')
-
-    const noteNumbers = supplierPaymentExtractInvoiceNumbers([row.invoice_notes || '', row.comment || ''].join(' '))
-
-    const baseForm = {
-      supplier_id: row.supplier_id || '',
-      legal_entity_id: row.legal_entity_id || legalEntities[0]?.id || '',
-      payment_date: row.payment_date || todayISO(),
-      amount: String(parseNum(row.amount)),
-      invoice_notes: row.invoice_notes || '',
-      comment: row.comment || '',
-      e_invoice_id: row.e_invoice_id || '',
-      selected_e_invoice_ids: []
-    }
-
-    setPaymentForm(baseForm)
-    setShowPaymentCreateOverlay(true)
-    setPaymentCreateLoading(true)
-
+    setEditingPaymentTransactionId(String(row.id))
+    setPaymentEditLoading(true)
+    let directEInvoices = []
     try {
-      try {
-        await supabase.rpc('rms_supplier_materialize_purchase_meta_einvoices', {
-          p_supplier_id: row.supplier_id,
-          p_legal_entity_id: row.legal_entity_id || null
-        })
-      } catch (_materializeError) {
-        // Optional backend helper. If it is not installed, the normal direct list still loads.
-      }
-
       const { data, error } = await supabase
         .from('supplier_e_invoices')
         .select('*, suppliers(name), legal_entities(name,voen), branches(name)')
@@ -24809,71 +24744,37 @@ function DebtsPayments({ t }) {
         .is('deleted_at', null)
         .order('invoice_date', { ascending: false })
         .limit(2000)
-
-      if (error) throw error
-
-      const rows = data || []
-      setPaymentCreateEInvoices(rows)
-
-      let paymentRows = []
-      try {
-        let paymentQuery = supabase
-          .from('supplier_payments')
-          .select('id, amount, invoice_notes, e_invoice_id, payment_date, deleted_at')
-          .eq('supplier_id', row.supplier_id)
-          .is('deleted_at', null)
-          .limit(5000)
-        if (row.legal_entity_id) paymentQuery = paymentQuery.eq('legal_entity_id', row.legal_entity_id)
-        const { data: paymentData, error: paymentError } = await paymentQuery
-        if (paymentError) throw paymentError
-        paymentRows = paymentData || []
-      } catch (_paymentRefError) {
-        paymentRows = []
-      }
-
-      const refs = {}
-      rows.forEach(inv => {
-        const key = normalizePaymentEInvoiceNumber(inv.invoice_number)
-        if (!key) return
-        refs[key] = paymentCreateInvoicePaymentRefInfo(inv, paymentRows)
-      })
-      setPaymentCreatePaidRefs(refs)
-
-      setEInvoices(prev => {
-        const byId = new Map((prev || []).map(inv => [String(inv.id), inv]))
-        rows.forEach(inv => byId.set(String(inv.id), inv))
-        return Array.from(byId.values())
-      })
-
-      const selectedKeys = rows
-        .filter(inv => {
-          const invNumber = normalizePaymentEInvoiceNumber(inv.invoice_number)
-          return invNumber && noteNumbers.includes(invNumber)
-        })
-        .map(inv => inv.id)
-        .filter(Boolean)
-
-      if (row.e_invoice_id && rows.some(inv => String(inv.id) === String(row.e_invoice_id))) {
-        selectedKeys.push(row.e_invoice_id)
-      }
-
-      const uniqueSelectedKeys = Array.from(new Set(selectedKeys.map(String)))
-      setPaymentForm(f => ({
-        ...f,
-        ...baseForm,
-        selected_e_invoice_ids: uniqueSelectedKeys,
-        e_invoice_id: uniqueSelectedKeys.length === 1 ? uniqueSelectedKeys[0] : (row.e_invoice_id || '')
-      }))
-
-      setPaymentMessage('Открыто редактирование оплаты')
-    } catch (e) {
-      setPaymentCreateEInvoices([])
-      setPaymentCreatePaidRefs({})
-      setPaymentForm(baseForm)
-      setPaymentMessage(e?.message || 'Не удалось загрузить e-qaimə для редактирования')
-    } finally {
-      setPaymentCreateLoading(false)
+      if (!error) directEInvoices = data || []
+    } catch (_error) {
+      directEInvoices = []
     }
+    setPaymentEditEInvoices(directEInvoices)
+    setPaymentEditLoading(false)
+    const resolvedLegalEntityId = resolvePaymentLegalEntityId({ ...row, _direct_e_invoices: directEInvoices })
+    const invoiceNotesText = String(row.invoice_notes || '').toLowerCase()
+    const selectedInvoiceIds = (directEInvoices.length ? directEInvoices : (eInvoices || []))
+      .filter(inv =>
+        String(inv.supplier_id || '') === String(row.supplier_id || '') &&
+        (!resolvedLegalEntityId || String(inv.legal_entity_id || '') === String(resolvedLegalEntityId) || invoiceNotesText.includes(String(inv.invoice_number || '').toLowerCase())) &&
+        inv.invoice_number &&
+        invoiceNotesText.includes(String(inv.invoice_number).toLowerCase())
+      )
+      .map(inv => inv.id)
+    setPaymentTransactionEditForm({
+      payment_date: row.payment_date || todayISO(),
+      legal_entity_id: resolvedLegalEntityId,
+      amount: String(parseNum(row.amount)),
+      invoice_notes: row.invoice_notes || '',
+      comment: row.comment || '',
+      selected_e_invoice_ids: Array.isArray(selectedInvoiceIds) ? selectedInvoiceIds : [],
+      e_invoice_search: ''
+    })
+    setMessage('Открыто редактирование оплаты')
+    setTimeout(() => {
+      const panel = supplierTransactionPanelRef.current
+      panel?.scrollIntoView?.({ behavior: 'smooth', block: 'start' })
+      panel?.scrollTo?.({ top: 0, behavior: 'smooth' })
+    }, 40)
   }
 
   function paymentEditEInvoiceOptions(row) {
@@ -26233,7 +26134,7 @@ function DebtsPayments({ t }) {
           return <div key={le.id} className="supplier-entity-group"><div className="supplier-entity-head"><b>{le.name} · {le.voen}</b><div className="action-row" style={{gap:12,alignItems:'center'}}><span>{list.length} поставщиков</span><span className={entityDebtClass}>{entityDebtLabel}: <b>{fmt(Math.abs(entityTotalDebt))} AZN</b></span></div></div><div className="table-wrap"><table className="supplier-compact-table"><thead><tr><th>Поставщик</th><th>Долг</th><th>Условия</th><th>Статус</th><th></th></tr></thead><tbody>{shown.map(s => { const actualSupplier = currentSupplierSnapshot(s); const entityBalance = balanceForSupplierLegal(actualSupplier.id, le.id); const alert = supplierAlert(actualSupplier, le.id); const risky = alert.overLimit > 0 || alert.overdueCount > 0; return <tr key={`${le.id}-${actualSupplier.id}`} style={risky ? { background: 'rgba(155,45,45,.08)' } : undefined}><td><b>{actualSupplier.name}</b><br /><span className="hint">{actualSupplier.voen || 'VOEN не указан'}</span></td><td><strong className={entityBalance > 0 ? 'bad' : entityBalance < 0 ? 'good' : 'hint'}>{fmt(entityBalance)}</strong></td><td className="hint">{actualSupplier.payment_term_days ? `${actualSupplier.payment_term_days} дней` : '—'} · лимит {fmt(actualSupplier.credit_limit)}</td><td className="hint">{alert.overLimit > 0 && <div className="bad">лимит +{fmt(alert.overLimit)}</div>}{alert.overdueCount > 0 && <div className="bad">просрочено: {alert.overdueCount}</div>}{!risky && <span className="good">ОК</span>}</td><td><div className="action-row" style={{gap:6}}><button className="small" onClick={() => openTransactions(actualSupplier.id, 'purchases', le.id)}>Транзакции</button><button className="small primary" onClick={() => openSupplierStatement(actualSupplier, le.id)}>Акт</button></div></td></tr>})}{!shown.length && <tr><td colSpan="5" className="hint">Нет поставщиков по этому VOEN</td></tr>}</tbody><tfoot><tr><td><b>Итого по VOEN</b></td><td><strong className={entityDebtClass}>{fmt(entityTotalDebt)}</strong></td><td colSpan="3" className="hint">Поступления + стартовый долг − оплаты</td></tr></tfoot></table></div>{list.length > 5 && <button className="ghost small" onClick={() => setExpandedEntities(e => ({...e, [le.id]: !e[le.id]}))}>{expandedEntities[le.id] ? 'Скрыть' : 'Показать все'}</button>}{activeSupplierId && activeLegalEntityId === le.id && <div ref={supplierTransactionPanelRef} className="card supplier-transactions-panel supplier-modal-panel"><div className="card-head supplier-modal-head"><div><h3>Транзакции: {activeSupplier?.name}</h3><p className="hint">{activeLegalEntityId ? `Наш VOEN: ${legalEntities.find(le => le.id === activeLegalEntityId)?.name || '—'}` : 'Поступления и оплаты показаны отдельно, чтобы не смешивать операции.'}</p></div><button className="supplier-modal-x" title="Закрыть" aria-label="Закрыть" onClick={() => { setActiveSupplierId(''); setActiveLegalEntityId('') }}>×</button></div>
         <div className="form-grid compact"><label><span>Тип операций</span><select value={transactionType} onChange={e => { setTransactionType(e.target.value); setDetailPurchaseId(''); setTransactionPage(1) }}><option value="purchases">Поступления</option><option value="payments">Оплаты</option><option value="products">Товары / цены</option></select></label><label><span>Период</span><select value={transactionPeriod} onChange={e => { setTransactionPeriod(e.target.value); setTransactionPage(1) }}><option value="day">За день</option><option value="month">За месяц</option><option value="year">За год</option><option value="all">Весь период</option></select></label>{transactionPeriod !== 'all' && <label><span>Дата периода</span><DateInput value={transactionDate} onChange={e => { setTransactionDate(e.target.value); setTransactionPage(1) }} /></label>}</div>
         <div className="action-row" style={{margin:'12px 0 10px'}}><label style={{display:'flex',alignItems:'center',gap:8}}><span className="hint">Показать</span><select value={transactionPageSize} onChange={e => { setTransactionPageSize(Number(e.target.value)); setTransactionPage(1) }}><option value={20}>20</option><option value={30}>30</option><option value={50}>50</option></select></label></div>
-        {transactionType === 'payments' && activeEditingPayment && !showPaymentCreateOverlay && <div className="card supplier-payment-edit-panel" style={{marginTop:12, marginBottom:12, border:'2px solid rgba(37,99,235,.22)', boxShadow:'0 18px 45px rgba(37,99,235,.10)'}}>
+        {transactionType === 'payments' && activeEditingPayment && <div className="card supplier-payment-edit-panel" style={{marginTop:12, marginBottom:12, border:'2px solid rgba(37,99,235,.22)', boxShadow:'0 18px 45px rgba(37,99,235,.10)'}}>
           <div className="card-head suppliers-v43-card-head">
             <div>
               <h4>Редактирование оплаты поставщику</h4>
@@ -26337,7 +26238,7 @@ function DebtsPayments({ t }) {
       </div>
 
 
-      {activeEditingPayment && !showPaymentCreateOverlay && <div className="supplier-payment-edit-global-overlay">
+      {activeEditingPayment && <div className="supplier-payment-edit-global-overlay">
         <div className="supplier-payment-edit-global-card">
           <div className="card-head suppliers-v43-card-head">
             <div>
