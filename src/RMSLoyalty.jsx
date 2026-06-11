@@ -34,6 +34,44 @@ function buildCardNumber(client) {
   return seed.replace(/(\d{3})(\d{3})(\d{3})(\d{1})/, '$1 $2 $3 $4')
 }
 
+function rawCardNumber(client) {
+  return buildCardNumber(client).replace(/\s+/g, '')
+}
+
+function createWalletToken(client) {
+  const base = `${client?.id || ''}-${client?.phone || ''}-${client?.created_at || ''}-${Date.now()}`
+  return `bcw_${stableHash(base)}_${Math.random().toString(36).slice(2, 10)}`
+}
+
+function getWalletToken(client) {
+  return client?.wallet_token || client?.qr_token || client?.pass_token || ''
+}
+
+function getPublicOrigin() {
+  if (typeof window === 'undefined') return 'https://app.rms.rest'
+  return window.location.origin || 'https://app.rms.rest'
+}
+
+function buildWalletLandingUrl(client) {
+  const token = getWalletToken(client)
+  const base = getPublicOrigin()
+  return token ? `${base}/?loyalty_wallet=${encodeURIComponent(token)}` : ''
+}
+
+function buildAppleWalletUrl(client) {
+  const token = getWalletToken(client)
+  return token ? `${getPublicOrigin()}/api/loyalty/apple-wallet?token=${encodeURIComponent(token)}` : ''
+}
+
+function buildGoogleWalletUrl(client) {
+  const token = getWalletToken(client)
+  return token ? `${getPublicOrigin()}/api/loyalty/google-wallet?token=${encodeURIComponent(token)}` : ''
+}
+
+function qrImageUrl(value, size = 260) {
+  return value ? `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&margin=12&data=${encodeURIComponent(value)}` : ''
+}
+
 function barcodeBars(value) {
   const clean = String(value || '9400000000').replace(/[^A-Za-z0-9]/g, '')
   const source = `${clean}${stableHash(clean)}`.padEnd(44, '314159265358979323846')
@@ -66,6 +104,8 @@ function CoffeeIcon({ filled }) {
 
 function DrinkStampCard({ client }) {
   const cardNumber = buildCardNumber(client)
+  const appleUrl = buildAppleWalletUrl(client)
+  const googleUrl = buildGoogleWalletUrl(client)
   const bars = barcodeBars(cardNumber)
   const stampCount = getStampCount(client)
   const filled = stampCount % STAMPS_FOR_FREE_DRINK
@@ -111,10 +151,44 @@ function DrinkStampCard({ client }) {
       </div>
 
       <div className="wallet-actions">
-        <button type="button">Добавить в Apple Wallet</button>
-        <button type="button">Добавить в Google Wallet</button>
+        <button type="button" onClick={() => appleUrl && window.open(appleUrl, '_blank')}>Добавить в Apple Wallet</button>
+        <button type="button" onClick={() => googleUrl && window.open(googleUrl, '_blank')}>Добавить в Google Wallet</button>
       </div>
-      <p>Wallet UI подготовлен. Реальное добавление в Apple/Google Wallet подключается следующим этапом через backend-pass.</p>
+      <p>QR и ссылки подготовлены. Реальные Apple/Google pass-файлы подключаются через backend-pass endpoints.</p>
+    </div>
+  )
+}
+
+
+function WalletQrPanel({ client, onEnsure, onCopy, busy }) {
+  const landingUrl = buildWalletLandingUrl(client)
+  const appleUrl = buildAppleWalletUrl(client)
+  const googleUrl = buildGoogleWalletUrl(client)
+  const hasToken = Boolean(getWalletToken(client))
+
+  return (
+    <div className="wallet-qr-panel">
+      <div className="wallet-qr-header">
+        <div>
+          <h3>QR для подключения Wallet</h3>
+          <p>Гость сканирует QR, открывает страницу карты и нажимает Apple Wallet / Google Wallet.</p>
+        </div>
+        <button type="button" onClick={onEnsure} disabled={busy}>{hasToken ? 'Обновить данные QR' : 'Создать QR'}</button>
+      </div>
+
+      {hasToken ? (
+        <div className="wallet-qr-body">
+          <div className="wallet-qr-code"><img src={qrImageUrl(landingUrl)} alt="Loyalty wallet QR" /></div>
+          <div className="wallet-qr-links">
+            <label>Landing link<input value={landingUrl} readOnly /></label>
+            <label>Apple endpoint<input value={appleUrl} readOnly /></label>
+            <label>Google endpoint<input value={googleUrl} readOnly /></label>
+            <button type="button" onClick={() => onCopy(landingUrl)}>Скопировать ссылку</button>
+          </div>
+        </div>
+      ) : (
+        <div className="loyalty-empty">Для этой карты ещё нет wallet_token. Нажмите “Создать QR”.</div>
+      )}
     </div>
   )
 }
@@ -125,6 +199,7 @@ export default function RMSLoyalty() {
   const [selectedClientId, setSelectedClientId] = useState('')
   const [query, setQuery] = useState('')
   const [loading, setLoading] = useState(false)
+  const [qrBusy, setQrBusy] = useState(false)
   const [message, setMessage] = useState('')
   const [clientForm, setClientForm] = useState({ name: '', phone: '', birthday: '', notes: '' })
   const [stampForm, setStampForm] = useState({ drinks: '1', comment: '' })
@@ -146,12 +221,44 @@ export default function RMSLoyalty() {
     setLoading(false)
   }
 
+  async function ensureWalletIdentity(clientArg = selectedClient) {
+    const client = clientArg || clients.find((item) => item.id === selectedClientId)
+    if (!client) return setMessage('Выберите клиента.')
+    setQrBusy(true)
+    setMessage('')
+
+    const nextCardNumber = client.card_number || rawCardNumber(client)
+    const nextToken = getWalletToken(client) || createWalletToken(client)
+    const { error } = await supabase.from('rms_loyalty_clients').update({
+      card_number: nextCardNumber,
+      wallet_token: nextToken,
+      wallet_enabled: true,
+      updated_at: new Date().toISOString(),
+    }).eq('id', client.id)
+
+    setQrBusy(false)
+    if (error) return setMessage(error.message)
+    await loadLoyalty()
+    setSelectedClientId(client.id)
+    setMessage('Wallet QR создан. Гость может сканировать код и открыть карту на телефоне.')
+  }
+
+  async function copyText(value) {
+    try {
+      await navigator.clipboard.writeText(value)
+      setMessage('Ссылка скопирована.')
+    } catch (error) {
+      setMessage('Не удалось скопировать ссылку. Скопируйте вручную из поля.')
+    }
+  }
+
   async function createClient(e) {
     e.preventDefault()
     setMessage('')
     const phone = clientForm.phone.trim()
     if (!phone) return setMessage('Укажите номер телефона клиента.')
 
+    const tempClient = { phone, name: clientForm.name.trim() || 'Гость', created_at: new Date().toISOString() }
     const { error } = await supabase.from('rms_loyalty_clients').insert({
       name: clientForm.name.trim() || 'Гость',
       phone,
@@ -163,6 +270,9 @@ export default function RMSLoyalty() {
       visits_count: 0,
       stamp_count: 0,
       free_drink_balance: 0,
+      card_number: rawCardNumber(tempClient),
+      wallet_token: createWalletToken(tempClient),
+      wallet_enabled: true,
       is_active: true,
     })
 
@@ -358,6 +468,10 @@ export default function RMSLoyalty() {
               <div><span className="mini-beans">••••••••••</span><b>10 отметок = 1 подарок</b></div>
               <div><span className="gift-icon">□</span><b>Подарок списывается на кассе</b></div>
             </div>
+          </div>
+
+          <div className="loyalty-card wallet-qr-card">
+            <WalletQrPanel client={selectedClient} onEnsure={() => ensureWalletIdentity(selectedClient)} onCopy={copyText} busy={qrBusy} />
           </div>
         </section>
       )}
