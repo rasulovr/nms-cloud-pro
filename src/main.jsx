@@ -23181,6 +23181,15 @@ function Suppliers({ t, isAdmin = false }) {
     setPaymentCreateLoading(true)
 
     try {
+      try {
+        await supabase.rpc('rms_supplier_materialize_purchase_meta_einvoices', {
+          p_supplier_id: paymentForm.supplier_id,
+          p_legal_entity_id: paymentForm.legal_entity_id || null
+        })
+      } catch (_materializeError) {
+        // Optional backend helper. If it is not installed, the normal direct list still loads.
+      }
+
       let query = supabase
         .from('supplier_e_invoices')
         .select('*, suppliers(name), legal_entities(name,voen), branches(name)')
@@ -23288,10 +23297,15 @@ function Suppliers({ t, isAdmin = false }) {
       const currentRemaining = Math.max(0, parseNum(existing.remaining_amount ?? existing.amount))
       const nextRemaining = Math.max(0, parseNum(inv.remaining_amount ?? inv.amount))
 
-      if (existing.source_kind !== 'real' && inv.source_kind === 'real' && nextRemaining > 0.01) {
+      if (existing.source_kind === 'real' && inv.source_kind !== 'real') {
+        return
+      }
+
+      if (existing.source_kind !== 'real' && inv.source_kind === 'real') {
         byKey.set(key, inv)
         return
       }
+
       if (currentRemaining <= 0.01 && nextRemaining > 0.01) {
         byKey.set(key, inv)
       }
