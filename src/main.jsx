@@ -22311,13 +22311,14 @@ function Suppliers({ t, isAdmin = false }) {
         setBalances(ws.supplier_balances || [])
         try {
           const fullPurchases = await fetchAllSupplierPurchasesRows()
-          setPurchases(fullPurchases || ws.supplier_purchases || [])
+          setPurchases(Array.isArray(fullPurchases) && fullPurchases.length ? fullPurchases : (ws.supplier_purchases || []))
         } catch (_purchaseFetchError) {
           setPurchases(ws.supplier_purchases || [])
         }
         try {
           const fullPayments = await fetchAllSupplierPaymentsRows()
-          setPayments(fullPayments || [])
+          const wsPayments = (ws.supplier_payments || []).filter(p => !p.deleted_at && !String(p.comment || '').includes('v255b: merged into payment'))
+          setPayments(Array.isArray(fullPayments) && fullPayments.length ? fullPayments : wsPayments)
         } catch (_paymentFetchError) {
           setPayments((ws.supplier_payments || []).filter(p => !p.deleted_at && !String(p.comment || '').includes('v255b: merged into payment')))
         }
@@ -22330,7 +22331,7 @@ function Suppliers({ t, isAdmin = false }) {
         setSupplierEntityStatuses(statusRows || [])
         try {
           const fullEInvoices = await fetchAllSupplierEInvoicesRows()
-          setEInvoices(fullEInvoices || eInv || [])
+          setEInvoices(Array.isArray(fullEInvoices) && fullEInvoices.length ? fullEInvoices : (eInv || []))
         } catch (_eInvoiceFetchError) {
           setEInvoices(eInv || [])
         }
@@ -22360,13 +22361,14 @@ function Suppliers({ t, isAdmin = false }) {
     setBalances(bal || [])
     try {
       const fullPurchases = await fetchAllSupplierPurchasesRows()
-      setPurchases(fullPurchases || pur || [])
+      setPurchases(Array.isArray(fullPurchases) && fullPurchases.length ? fullPurchases : (pur || []))
     } catch (_purchaseFetchError) {
       setPurchases(pur || [])
     }
     try {
       const fullPayments = await fetchAllSupplierPaymentsRows()
-      setPayments(fullPayments || [])
+      const basePayments = (pay || []).filter(p => !p.deleted_at && !String(p.comment || '').includes('v255b: merged into payment'))
+      setPayments(Array.isArray(fullPayments) && fullPayments.length ? fullPayments : basePayments)
     } catch (_paymentFetchError) {
       setPayments((pay || []).filter(p => !p.deleted_at && !String(p.comment || '').includes('v255b: merged into payment')))
     }
@@ -22374,7 +22376,7 @@ function Suppliers({ t, isAdmin = false }) {
     setSupplierEntityStatuses(statusRows || [])
     try {
       const fullEInvoices = await fetchAllSupplierEInvoicesRows()
-      setEInvoices(fullEInvoices || eInv || [])
+      setEInvoices(Array.isArray(fullEInvoices) && fullEInvoices.length ? fullEInvoices : (eInv || []))
     } catch (_eInvoiceFetchError) {
       setEInvoices(eInv || [])
     }
@@ -23149,11 +23151,15 @@ function Suppliers({ t, isAdmin = false }) {
 
 
   function paymentCreateEffectivePaidAmount(inv) {
+    const totalAmount = parseNum(inv?.amount)
+    const rawPaidAmount = parseNum(inv?.paid_amount)
+    if (totalAmount > 0 && rawPaidAmount >= totalAmount - 0.01) return rawPaidAmount
+
     const number = normalizePaymentEInvoiceNumber(inv?.invoice_number || inv?.number)
     const refs = paymentCreatePaidRefs?.[number]
-    // If paid_amount exists but there is no real payment row pointing to this e-qaimə/number,
-    // treat it as stale technical value. This prevents underpaying by a phantom partial payment.
-    return refs?.hasRef ? parseNum(inv?.paid_amount) : 0
+    // For partial paid rows, require a visible payment reference to avoid phantom stale partial payments.
+    // Full-paid rows are always trusted so limited internal users cannot pay the same e-qaimə again.
+    return refs?.hasRef ? rawPaidAmount : 0
   }
 
   function paymentCreateInvoicePaymentRefInfo(inv, paymentRows = []) {
