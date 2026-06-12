@@ -3713,14 +3713,14 @@ function App() {
   const isInternalSession = Boolean(session?.rms_internal)
   const isAdmin = !isInternalSession && (!profile || profile?.role === 'admin')
   const sectionAccess = (sectionId) => {
+    if (isInternalSession && (sectionId === 'settings' || sectionId === 'security_recovery')) return 'none'
     if (isAdmin) return 'admin'
-    if (sectionId === 'settings' && isInternalSession) return 'admin'
     const row = permissions.find(p => p.section === sectionId)
     return row?.access || 'none'
   }
-  const visibleSections = SECTIONS.filter(s => canReadAccess(sectionAccess(s.id)) || (s.id === 'settings' && isInternalSession))
+  const visibleSections = SECTIONS.filter(s => canReadAccess(sectionAccess(s.id)))
   const currentAccess = sectionAccess(section)
-  const currentCanRead = canReadAccess(currentAccess) || (section === 'settings' && isInternalSession)
+  const currentCanRead = canReadAccess(currentAccess)
 
   useEffect(() => {
     const urlToken = new URLSearchParams(window.location.search).get('loyalty_scan_token')
@@ -3731,7 +3731,6 @@ function App() {
 
   useEffect(() => {
     if (!visibleSections.length) return
-    if (section === 'settings' && isInternalSession) return
     if (!canReadAccess(sectionAccess(section))) setSection(visibleSections[0].id)
   }, [permissions, profile, section, isInternalSession])
 
@@ -24466,6 +24465,29 @@ function DebtsPayments({ t }) {
   }
 
   async function load() {
+    const isInternal = Boolean(getInternalSessionStorage()?.rms_internal)
+
+    if (isInternal) {
+      const { data: ws, error } = await fetchRmsSuppliersWorkspace()
+      if (!error && ws) {
+        const wsPayments = (ws.supplier_payments || []).filter(p => !p.deleted_at && !String(p.comment || '').includes('v255b: merged into payment'))
+        setLegalEntities(ws.legal_entities || [])
+        setSuppliers(ws.suppliers || [])
+        setProducts(ws.supplier_products || [])
+        setBalances(ws.supplier_balances || [])
+        setPurchases(ws.supplier_purchases || [])
+        setPayments(wsPayments)
+        setOpeningDebts(ws.supplier_opening_debts || [])
+        setBranches([])
+        setSupplierEntityStatuses([])
+        setTransactionLogs([])
+        setSupplierAuditRows([])
+        setMessage('')
+        return
+      }
+      setMessage(error?.message || 'Нет доступа к поставщикам / долгам')
+    }
+
     const [{ data: le }, { data: br }, { data: sup }, { data: prod }, { data: bal }, { data: pur }, { data: pay }, { data: opening }, { data: statusRows }, { data: logs }, { data: auditRows }, { data: followUpsCloud }] = await Promise.all([
       supabase.from('legal_entities').select('*').eq('is_active', true).order('name'),
       supabase.from('branches').select('id,name').eq('is_active', true).order('name'),
@@ -30789,6 +30811,11 @@ function ReportsV43Styles() {
 }
 
 function Settings({ session, t, theme, setTheme }) {
+  const settingsAdminOnly = !session?.rms_internal
+  if (!settingsAdminOnly) {
+    return <section><section className="topbar"><div><h2>Настройки</h2><p>Доступ запрещён для обычных пользователей.</p></div></section><div className="card span-2"><h3>Нет доступа</h3><p className="hint">Управление пользователями, правами доступа, бэкапом, восстановлением и очисткой данных доступно только владельцу / admin.</p></div></section>
+  }
+
   // v182 Settings safety stubs
   // Snapshot actions are handled in SecurityRecoveryCenter. These no-op guards prevent
   // legacy Settings JSX references from crashing render.
@@ -30842,7 +30869,7 @@ function Settings({ session, t, theme, setTheme }) {
   const [customLogoPreview, setCustomLogoPreview] = useState(() => {
     try { return localStorage.getItem('rms_custom_logo') || sessionStorage.getItem('rms_custom_logo') || '' } catch (_e) { return '' }
   })
-  const editableSections = SECTIONS.filter(s => s.id !== 'settings')
+  const editableSections = SECTIONS.filter(s => !['settings', 'security_recovery'].includes(s.id))
 
   useEffect(() => { load(); loadSnapshots() }, [])
 
