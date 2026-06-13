@@ -3758,6 +3758,12 @@ function App() {
     supabase.auth.signOut()
   }
 
+  const rmsPublicLoyaltyWalletRoute = typeof window !== 'undefined' && window.location.pathname.startsWith('/loyalty/card/')
+
+  if (rmsPublicLoyaltyWalletRoute) {
+    return <RMSLoyalty />
+  }
+
   if (loading) return <div className="login-screen"><div className="login-card">{t('loading')}</div></div>
   if (!session) return <Login lang={lang} setLang={setLang} t={t} />
 
