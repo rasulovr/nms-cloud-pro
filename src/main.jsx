@@ -458,7 +458,6 @@ import QRMenu from './QRMenu'
 import './QRMenu.css'
 import RMSQRMenuAdmin from './RMSQRMenuAdmin'
 import RMSLoyalty from './RMSLoyalty'
-import RMSLoyaltyPOSScan from './RMSLoyaltyPOSScan'
 
 const I18N = {
   ru: {
@@ -3878,15 +3877,6 @@ function App() {
         {currentCanRead && section === 'loyalty' && <div className="grid">
           <div className="card span-2">
             <RMSLoyalty />
-          </div>
-          <div className="card span-2">
-            <div className="card-head">
-              <div>
-                <h3>Loyalty POS Scan</h3>
-                <p className="hint">Сканирование QR клиента официантом / POS.</p>
-              </div>
-            </div>
-            <RMSLoyaltyPOSScan />
           </div>
         </div>}
         {currentCanRead && section === 'market' && <MarketIntelligence t={t} />}
