@@ -311,18 +311,44 @@ function RMSLoyaltyAdmin() {
 
     const nextCardNumber = client.card_number || rawCardNumber(client)
     const nextToken = getWalletToken(client) || createWalletToken(client)
-    const { error } = await supabase.from('rms_loyalty_clients').update({
-      card_number: nextCardNumber,
-      wallet_token: nextToken,
-      wallet_enabled: true,
-      updated_at: new Date().toISOString(),
-    }).eq('id', client.id)
+
+    let savedRow = null
+    let saveError = null
+
+    const rpcRes = await supabase.rpc('rms_loyalty_wallet_enable_secure', {
+      p_client_id: client.id,
+      p_card_number: nextCardNumber,
+      p_wallet_token: nextToken,
+    })
+
+    if (rpcRes.error) {
+      const directRes = await supabase
+        .from('rms_loyalty_clients')
+        .update({
+          card_number: nextCardNumber,
+          wallet_token: nextToken,
+          wallet_enabled: true,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', client.id)
+        .select('id,name,phone,card_number,wallet_token,wallet_enabled,stamp_count,free_drink_balance,visits_count,created_at,updated_at')
+        .maybeSingle()
+
+      saveError = directRes.error
+      savedRow = directRes.data
+    } else {
+      savedRow = Array.isArray(rpcRes.data) ? rpcRes.data[0] : rpcRes.data
+    }
 
     setQrBusy(false)
-    if (error) return setMessage(error.message)
+    if (saveError) return setMessage(saveError.message)
+    if (!savedRow?.wallet_token || savedRow.wallet_enabled !== true) {
+      return setMessage('QR не сохранён в базе. Запустите SQL v7 и повторите “Обновить данные QR”.')
+    }
+
     await loadLoyalty()
     setSelectedClientId(client.id)
-    setMessage('Wallet QR создан. Гость может сканировать код и открыть карту на телефоне.')
+    setMessage(`Wallet QR сохранён в базе. Token: ${savedRow.wallet_token}`)
   }
 
   async function copyText(value) {
