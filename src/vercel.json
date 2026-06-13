@@ -1,11 +1,7 @@
 {
   "rewrites": [
     {
-      "source": "/api/:path*",
-      "destination": "/api/:path*"
-    },
-    {
-      "source": "/loyalty/card/:token*",
+      "source": "/loyalty/card/:token",
       "destination": "/index.html"
     },
     {
