@@ -55,7 +55,7 @@ function getPublicOrigin() {
 function buildWalletLandingUrl(client) {
   const token = getWalletToken(client)
   const base = getPublicOrigin()
-  return token ? `${base}/?loyalty_wallet=${encodeURIComponent(token)}` : ''
+  return token ? `${base}/loyalty/card/${encodeURIComponent(token)}` : ''
 }
 
 function buildAppleWalletUrl(client) {
@@ -193,7 +193,89 @@ function WalletQrPanel({ client, onEnsure, onCopy, busy }) {
   )
 }
 
+
+function LoyaltyWalletLanding({ token }) {
+  const [client, setClient] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    let alive = true
+    async function loadPublicCard() {
+      setLoading(true)
+      setError('')
+      const { data, error: rpcError } = await supabase.rpc('rms_loyalty_wallet_card_by_token', { p_wallet_token: token })
+      if (!alive) return
+      if (rpcError) {
+        setError(rpcError.message)
+        setLoading(false)
+        return
+      }
+      const row = Array.isArray(data) ? data[0] : data
+      if (!row) setError('Карта не найдена или отключена.')
+      setClient(row || null)
+      setLoading(false)
+    }
+    loadPublicCard()
+    return () => { alive = false }
+  }, [token])
+
+  const appleUrl = client ? buildAppleWalletUrl(client) : ''
+  const googleUrl = client ? buildGoogleWalletUrl(client) : ''
+
+  return (
+    <div className="wallet-public-page">
+      <div className="wallet-public-shell">
+        <div className="wallet-public-top">
+          <b>Barista&Chef</b>
+          <span>Drink Loyalty Card</span>
+        </div>
+
+        {loading && <div className="wallet-public-state">Загрузка карты…</div>}
+        {!loading && error && <div className="wallet-public-state error">{error}</div>}
+
+        {!loading && client && (
+          <>
+            <DrinkStampCard client={client} />
+            <div className="wallet-public-addbox">
+              <h1>Добавьте карту в Wallet</h1>
+              <p>После добавления карта будет открываться на телефоне как обычная wallet-карта. На кассе достаточно показать barcode.</p>
+              <button type="button" className="wallet-apple-btn" onClick={() => window.location.href = appleUrl}>Добавить в Apple Wallet</button>
+              <button type="button" className="wallet-google-btn" onClick={() => window.location.href = googleUrl}>Добавить в Google Wallet</button>
+              <small>Если кнопка пока открывает служебную страницу — значит backend-pass ещё не подключён.</small>
+            </div>
+            <div className="wallet-public-how">
+              <div><b>1 напиток</b><span>= 1 отметка</span></div>
+              <div><b>10 отметок</b><span>= 1 напиток в подарок</span></div>
+              <div><b>Покажите карту</b><span>на кассе перед оплатой</span></div>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function readWalletTokenFromLocation() {
+  if (typeof window === 'undefined') return ''
+  const paramsToken = new URLSearchParams(window.location.search).get('loyalty_wallet') || ''
+  if (paramsToken) return paramsToken
+
+  const match = window.location.pathname.match(/\/loyalty\/card\/([^/?#]+)/)
+  return match?.[1] ? decodeURIComponent(match[1]) : ''
+}
+
 export default function RMSLoyalty() {
+  const walletTokenFromUrl = readWalletTokenFromLocation()
+
+  if (walletTokenFromUrl) {
+    return <LoyaltyWalletLanding token={walletTokenFromUrl} />
+  }
+
+  return <RMSLoyaltyAdmin />
+}
+
+function RMSLoyaltyAdmin() {
   const [clients, setClients] = useState([])
   const [transactions, setTransactions] = useState([])
   const [selectedClientId, setSelectedClientId] = useState('')
