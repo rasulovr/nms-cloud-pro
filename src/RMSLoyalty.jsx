@@ -162,32 +162,27 @@ function DrinkStampCard({ client }) {
 
 function WalletQrPanel({ client, onEnsure, onCopy, busy }) {
   const landingUrl = buildWalletLandingUrl(client)
-  const appleUrl = buildAppleWalletUrl(client)
-  const googleUrl = buildGoogleWalletUrl(client)
   const hasToken = Boolean(getWalletToken(client))
 
   return (
-    <div className="wallet-qr-panel">
+    <div className="wallet-qr-panel compact-wallet-qr">
       <div className="wallet-qr-header">
         <div>
-          <h3>QR для подключения Wallet</h3>
-          <p>Гость сканирует QR, открывает страницу карты и нажимает Apple Wallet / Google Wallet.</p>
+          <h3>QR карта клиента</h3>
+          <p>Гость сканирует QR и открывает карту лояльности на телефоне.</p>
         </div>
-        <button type="button" onClick={onEnsure} disabled={busy}>{hasToken ? 'Обновить данные QR' : 'Создать QR'}</button>
+        <button type="button" onClick={onEnsure} disabled={busy}>{hasToken ? 'Обновить QR' : 'Создать QR'}</button>
       </div>
 
       {hasToken ? (
-        <div className="wallet-qr-body">
-          <div className="wallet-qr-code"><img src={qrImageUrl(landingUrl)} alt="Loyalty wallet QR" /></div>
-          <div className="wallet-qr-links">
-            <label>Landing link<input value={landingUrl} readOnly /></label>
-            <label>Apple endpoint<input value={appleUrl} readOnly /></label>
-            <label>Google endpoint<input value={googleUrl} readOnly /></label>
+        <div className="wallet-qr-body compact">
+          <div className="wallet-qr-code"><img src={qrImageUrl(landingUrl)} alt="QR карты лояльности" /></div>
+          <div className="wallet-qr-links compact">
             <button type="button" onClick={() => onCopy(landingUrl)}>Скопировать ссылку</button>
           </div>
         </div>
       ) : (
-        <div className="loyalty-empty">Для этой карты ещё нет wallet_token. Нажмите “Создать QR”.</div>
+        <div className="loyalty-empty">Для этой карты ещё нет QR. Нажмите “Создать QR”.</div>
       )}
     </div>
   )
@@ -468,10 +463,6 @@ function RMSLoyaltyAdmin() {
 
   const selectedClient = clients.find((item) => item.id === selectedClientId) || null
 
-  const selectedTransactions = useMemo(() => {
-    if (!selectedClientId) return transactions.slice(0, 12)
-    return transactions.filter((item) => item.client_id === selectedClientId).slice(0, 20)
-  }, [transactions, selectedClientId])
 
   const stats = useMemo(() => {
     const totalClients = clients.length
@@ -479,12 +470,9 @@ function RMSLoyaltyAdmin() {
     const totalStamps = clients.reduce((sum, item) => sum + getStampCount(item), 0)
     const freeDrinks = clients.reduce((sum, item) => sum + getFreeDrinkBalance(item), 0)
     const totalVisits = clients.reduce((sum, item) => sum + Number(item.visits_count || 0), 0)
-    const earnedStamps = transactions.filter((item) => item.type === 'drink_stamp_earn').reduce((sum, item) => sum + Number(item.amount || 0), 0)
-    const redeemedDrinks = Math.abs(transactions.filter((item) => item.type === 'free_drink_redeem').reduce((sum, item) => sum + Number(item.amount || 0), 0))
-    return { totalClients, activeClients, totalStamps, freeDrinks, totalVisits, earnedStamps, redeemedDrinks }
+    return { totalClients, activeClients, totalStamps, freeDrinks, totalVisits }
   }, [clients, transactions])
 
-  const topClients = useMemo(() => [...clients].sort((a, b) => (getFreeDrinkBalance(b) + Number(b.visits_count || 0)) - (getFreeDrinkBalance(a) + Number(a.visits_count || 0))).slice(0, 8), [clients])
 
   return (
     <div className="loyalty-page drink-mode">
@@ -508,8 +496,6 @@ function RMSLoyaltyAdmin() {
         <div className="loyalty-kpi"><span>Активные</span><b>{stats.activeClients}</b><small>можно начислять</small></div>
         <div className="loyalty-kpi"><span>Текущие отметки</span><b>{stats.totalStamps}</b><small>до следующих подарков</small></div>
         <div className="loyalty-kpi"><span>Баланс подарков</span><b>{stats.freeDrinks}</b><small>напитков к выдаче</small></div>
-        <div className="loyalty-kpi"><span>Начислено отметок</span><b>{stats.earnedStamps}</b><small>по операциям</small></div>
-        <div className="loyalty-kpi"><span>Списано подарков</span><b>{stats.redeemedDrinks}</b><small>выдано клиентам</small></div>
       </section>
 
       <section className="loyalty-grid drink-grid-main">
@@ -542,7 +528,7 @@ function RMSLoyaltyAdmin() {
         </div>
 
         <div className="loyalty-card wallet-preview-card">
-          <div className="loyalty-card-head"><div><h2>Wallet preview</h2><p>Вид карты на телефоне клиента.</p></div></div>
+          <div className="loyalty-card-head"><div><h2>Карта клиента</h2><p>Вид карты на телефоне клиента.</p></div></div>
           {selectedClient ? <DrinkStampCard client={selectedClient} /> : <div className="loyalty-empty">Выберите клиента из списка.</div>}
         </div>
       </section>
@@ -569,38 +555,11 @@ function RMSLoyaltyAdmin() {
             </form>
           </div>
 
-          <div className="loyalty-card how-card">
-            <div className="loyalty-card-head"><div><h2>Как работает</h2><p>Правила для персонала.</p></div></div>
-            <div className="how-list">
-              <div><CoffeeIcon filled /><b>1 напиток = 1 отметка</b></div>
-              <div><span className="mini-beans">••••••••••</span><b>10 отметок = 1 подарок</b></div>
-              <div><span className="gift-icon">□</span><b>Подарок списывается на кассе</b></div>
-            </div>
-          </div>
-
           <div className="loyalty-card wallet-qr-card">
             <WalletQrPanel client={selectedClient} onEnsure={() => ensureWalletIdentity(selectedClient)} onCopy={copyText} busy={qrBusy} />
           </div>
         </section>
       )}
-
-      <section className="loyalty-grid bottom">
-        <div className="loyalty-card">
-          <div className="loyalty-card-head"><div><h2>Топ клиентов</h2><p>По визитам и балансу подарков.</p></div></div>
-          <div className="loyalty-table">
-            <div className="loyalty-table-head"><span>Клиент</span><span>Карта</span><span>Отметки</span><span>Баланс</span></div>
-            {topClients.map((client) => <div className="loyalty-table-row" key={client.id}><span>{client.name}<small>{client.phone}</small></span><span>{buildCardNumber(client)}</span><span>{getStampCount(client)}/{STAMPS_FOR_FREE_DRINK}</span><span>{intFmt(getFreeDrinkBalance(client))}</span></div>)}
-          </div>
-        </div>
-
-        <div className="loyalty-card">
-          <div className="loyalty-card-head"><div><h2>Операции</h2><p>{selectedClient ? 'По выбранному клиенту' : 'Последние операции'}</p></div></div>
-          <div className="loyalty-ops">
-            {selectedTransactions.map((tx) => <div className="loyalty-op" key={tx.id}><div><b>{tx.client_name || 'Клиент'}</b><span>{tx.comment || tx.client_phone || 'Операция Loyalty'}</span></div><strong className={Number(tx.amount || 0) >= 0 ? 'plus' : 'minus'}>{Number(tx.amount || 0) >= 0 ? '+' : ''}{Number(tx.amount || 0).toFixed(0)}</strong></div>)}
-            {!selectedTransactions.length && <div className="loyalty-empty">Операций пока нет.</div>}
-          </div>
-        </div>
-      </section>
     </div>
   )
 }
