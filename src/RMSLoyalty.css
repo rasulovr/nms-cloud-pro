@@ -155,3 +155,131 @@
 .pos-lite-form-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
 @media(max-width:1180px){.pos-lite-grid{grid-template-columns:1fr}.pos-lite-client{max-width:520px}.pos-lite-form-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:640px){.pos-lite-form-grid{grid-template-columns:1fr}.pos-lite-client-head{flex-direction:column}.pos-lite-client-head strong{width:100%}}
+
+
+/* RMS Loyalty v10.6 — drink progress 0–100% */
+.drink-wallet-card.progress-card{
+  position:relative;
+}
+.drink-progress-hero{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:18px;
+  margin:18px 0 16px;
+  padding:16px;
+  border:1px solid rgba(255,255,255,.18);
+  border-radius:24px;
+  background:rgba(255,255,255,.08);
+}
+.drink-progress-ring{
+  --drink-progress:0deg;
+  width:116px;
+  height:116px;
+  min-width:116px;
+  border-radius:999px;
+  display:grid;
+  place-items:center;
+  background:
+    conic-gradient(#d8b46a 0deg, #d8b46a var(--drink-progress), rgba(255,255,255,.16) var(--drink-progress), rgba(255,255,255,.16) 360deg);
+  box-shadow:0 18px 42px rgba(0,0,0,.18), inset 0 1px 0 rgba(255,255,255,.22);
+}
+.drink-progress-ring-inner{
+  width:84px;
+  height:84px;
+  border-radius:999px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  background:rgba(15,23,42,.92);
+  color:#fff;
+  border:1px solid rgba(255,255,255,.12);
+}
+.drink-progress-ring-inner strong{
+  font-size:27px;
+  line-height:1;
+  letter-spacing:-.06em;
+}
+.drink-progress-ring-inner span{
+  margin-top:5px;
+  font-size:12px;
+  color:rgba(255,255,255,.72);
+  font-weight:850;
+}
+.drink-progress-ring.compact{
+  width:54px;
+  height:54px;
+  min-width:54px;
+  box-shadow:none;
+}
+.drink-progress-ring.compact .drink-progress-ring-inner{
+  width:40px;
+  height:40px;
+}
+.drink-progress-ring.compact .drink-progress-ring-inner strong{
+  font-size:14px;
+  letter-spacing:-.03em;
+}
+.drink-progress-ring.compact .drink-progress-ring-inner span{display:none;}
+.drink-progress-summary{
+  flex:1;
+  min-width:0;
+}
+.drink-progress-summary b,
+.drink-progress-summary span{
+  display:block;
+}
+.drink-progress-summary b{
+  color:#fff;
+  font-size:24px;
+  line-height:1.1;
+  letter-spacing:-.04em;
+}
+.drink-progress-summary span{
+  margin-top:7px;
+  color:rgba(255,255,255,.72);
+  font-size:13px;
+  font-weight:850;
+  line-height:1.35;
+}
+.drink-progress-summary.gift b{
+  color:#f8e2a6;
+}
+.stamp-grid.progress-stamps{
+  margin-top:6px;
+}
+.drink-card-progress.enhanced{
+  display:grid;
+  gap:8px;
+}
+.drink-card-progress.enhanced small{
+  color:rgba(255,255,255,.72);
+  font-weight:850;
+  line-height:1.35;
+}
+.pos-lite-client-head{
+  align-items:center;
+}
+.pos-lite-progress-note{
+  margin:10px 0 12px;
+  padding:10px 12px;
+  border-radius:14px;
+  background:#f8fafc;
+  border:1px solid #e5e7eb;
+  color:#475569;
+  font-size:13px;
+  font-weight:850;
+}
+.loyalty-rule-preview.progress-preview{
+  display:flex;
+  align-items:center;
+  gap:12px;
+}
+.loyalty-rule-preview.progress-preview > div{
+  min-width:0;
+}
+@media(max-width:560px){
+  .drink-progress-hero{flex-direction:column;text-align:center;}
+  .drink-progress-summary b{font-size:21px;}
+}
