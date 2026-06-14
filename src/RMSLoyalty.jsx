@@ -89,6 +89,47 @@ function getFreeDrinkBalance(client) {
   return Number(client?.free_drink_balance ?? client?.drink_balance ?? 0) || 0
 }
 
+
+function getStampProgress(client) {
+  const raw = getStampCount(client)
+  const filled = raw % STAMPS_FOR_FREE_DRINK
+  const percent = Math.round((filled / STAMPS_FOR_FREE_DRINK) * 100)
+  const remaining = filled === 0 ? STAMPS_FOR_FREE_DRINK : STAMPS_FOR_FREE_DRINK - filled
+  const freeBalance = getFreeDrinkBalance(client)
+  const giftAvailable = freeBalance > 0
+  return { raw, filled, percent, remaining, freeBalance, giftAvailable }
+}
+
+function progressPhrase(client) {
+  const progress = getStampProgress(client)
+  if (progress.giftAvailable) return `Подарок доступен · баланс: ${intFmt(progress.freeBalance)}`
+  if (progress.filled === 0) return `Осталось ${STAMPS_FOR_FREE_DRINK} напитков до подарка`
+  return `Осталось ${progress.remaining} напитков до подарка`
+}
+
+function DrinkProgressRing({ client, compact = false }) {
+  const progress = getStampProgress(client)
+  const rotation = Math.round((progress.percent / 100) * 360)
+  return (
+    <div className={`drink-progress-ring ${compact ? 'compact' : ''}`} style={{ '--drink-progress': `${rotation}deg` }}>
+      <div className="drink-progress-ring-inner">
+        <strong>{progress.percent}%</strong>
+        {!compact && <span>{progress.filled}/{STAMPS_FOR_FREE_DRINK}</span>}
+      </div>
+    </div>
+  )
+}
+
+function DrinkProgressSummary({ client }) {
+  const progress = getStampProgress(client)
+  return (
+    <div className={`drink-progress-summary ${progress.giftAvailable ? 'gift' : ''}`}>
+      <b>{progress.giftAvailable ? 'Подарок доступен' : `${progress.filled} из ${STAMPS_FOR_FREE_DRINK} напитков`}</b>
+      <span>{progressPhrase(client)}</span>
+    </div>
+  )
+}
+
 function CoffeeIcon({ filled }) {
   return (
     <span className={`stamp-cup ${filled ? 'filled' : ''}`} aria-hidden="true">
@@ -107,9 +148,8 @@ function DrinkStampCard({ client }) {
   const appleUrl = buildAppleWalletUrl(client)
   const googleUrl = buildGoogleWalletUrl(client)
   const bars = barcodeBars(cardNumber)
-  const stampCount = getStampCount(client)
-  const filled = stampCount % STAMPS_FOR_FREE_DRINK
-  const freeBalance = getFreeDrinkBalance(client)
+  const progress = getStampProgress(client)
+  const freeBalance = progress.freeBalance
 
   return (
     <div className="drink-card-wallet-wrap">
@@ -119,7 +159,7 @@ function DrinkStampCard({ client }) {
         <span>Добавить</span>
       </div>
 
-      <div className="drink-wallet-card">
+      <div className="drink-wallet-card progress-card">
         <div className="drink-wallet-head">
           <div className="bc-lockup">
             <div className="bc-emblem"><span /></div>
@@ -128,8 +168,13 @@ function DrinkStampCard({ client }) {
           <div className="guest-card-label">КАРТА<br />ГОСТЯ</div>
         </div>
 
-        <div className="stamp-grid">
-          {Array.from({ length: STAMPS_FOR_FREE_DRINK }).map((_, idx) => <CoffeeIcon key={idx} filled={idx < filled} />)}
+        <div className="drink-progress-hero">
+          <DrinkProgressRing client={client} />
+          <DrinkProgressSummary client={client} />
+        </div>
+
+        <div className="stamp-grid progress-stamps">
+          {Array.from({ length: STAMPS_FOR_FREE_DRINK }).map((_, idx) => <CoffeeIcon key={idx} filled={idx < progress.filled} />)}
         </div>
 
         <div className="drink-card-client-row">
@@ -137,9 +182,10 @@ function DrinkStampCard({ client }) {
           <div><small>БАЛАНС</small><strong>{intFmt(freeBalance)}</strong></div>
         </div>
 
-        <div className="drink-card-progress">
-          <span>{filled}/{STAMPS_FOR_FREE_DRINK} отметок</span>
-          <i><em style={{ width: `${(filled / STAMPS_FOR_FREE_DRINK) * 100}%` }} /></i>
+        <div className="drink-card-progress enhanced">
+          <span>{progress.percent}% · {progress.filled}/{STAMPS_FOR_FREE_DRINK} отметок</span>
+          <i><em style={{ width: `${progress.percent}%` }} /></i>
+          <small>{progressPhrase(client)}</small>
         </div>
 
         <div className="drink-barcode-box">
@@ -158,7 +204,6 @@ function DrinkStampCard({ client }) {
     </div>
   )
 }
-
 
 
 function extractLoyaltyToken(value) {
@@ -352,7 +397,9 @@ function LoyaltyPOSDrinkScan({ onDone }) {
                 <div className="pos-lite-client-head">
                   <div><span>Клиент</span><b>{client.name || 'Гость'}</b><small>{client.phone || buildCardNumber(client)}</small></div>
                   <strong>{getStampCount(client)}/{STAMPS_FOR_FREE_DRINK}</strong>
+                  <DrinkProgressRing client={client} compact />
                 </div>
+                <div className="pos-lite-progress-note">{progressPhrase(client)}</div>
                 <DrinkStampCard client={client} />
               </>
             ) : (
@@ -788,7 +835,7 @@ function RMSLoyaltyAdmin() {
             <div className="loyalty-card-head"><div><h2>Начислить отметки</h2><p>1 напиток = 1 отметка. После 10 отметок автоматически добавляется подарок.</p></div></div>
             <form className="loyalty-form" onSubmit={addDrinkStamps}>
               <label>Количество напитков<input value={stampForm.drinks} onChange={(e) => setStampForm({ ...stampForm, drinks: e.target.value })} placeholder="1" /></label>
-              <div className="loyalty-rule-preview"><b>Текущий прогресс</b><span>{getStampCount(selectedClient)}/{STAMPS_FOR_FREE_DRINK} отметок · баланс подарков: {intFmt(getFreeDrinkBalance(selectedClient))}</span></div>
+              <div className="loyalty-rule-preview progress-preview"><DrinkProgressRing client={selectedClient} compact /><div><b>Текущий прогресс</b><span>{getStampProgress(selectedClient).percent}% · {getStampCount(selectedClient)}/{STAMPS_FOR_FREE_DRINK} отметок · {progressPhrase(selectedClient)}</span></div></div>
               <label>Комментарий<textarea value={stampForm.comment} onChange={(e) => setStampForm({ ...stampForm, comment: e.target.value })} placeholder="Например: чек POS #1258" /></label>
               <button className="loyalty-primary">Начислить</button>
             </form>
