@@ -209,9 +209,12 @@ function CoffeeIcon({ filled }) {
 
 function DrinkStampCard({ client }) {
   const cardNumber = buildCardNumber(client)
-  const appleUrl = buildAppleWalletUrl(client)
-  const googleUrl = buildGoogleWalletUrl(client)
+  const landingUrl = buildWalletLandingUrl(client)
   const bars = barcodeBars(cardNumber)
+  const copyCardLink = async () => {
+    if (!landingUrl) return
+    try { await navigator.clipboard.writeText(landingUrl) } catch (_e) {}
+  }
   const progress = getStampProgress(client)
   const freeBalance = progress.freeBalance
 
@@ -220,7 +223,7 @@ function DrinkStampCard({ client }) {
       <div className="ios-wallet-topbar">
         <span>Отменить</span>
         <b>Карта лояльности</b>
-        <span>Добавить</span>
+        <span>QR</span>
       </div>
 
       <div className="drink-wallet-card progress-card">
@@ -260,11 +263,11 @@ function DrinkStampCard({ client }) {
         </div>
       </div>
 
-      <div className="wallet-actions">
-        <button type="button" onClick={() => appleUrl && window.open(appleUrl, '_blank')}>Добавить в Apple Wallet</button>
-        <button type="button" onClick={() => googleUrl && window.open(googleUrl, '_blank')}>Добавить в Google Wallet</button>
+      <div className="wallet-actions qr-only-actions">
+        <button type="button" onClick={() => landingUrl && window.open(landingUrl, '_blank')}>Открыть карту</button>
+        <button type="button" onClick={copyCardLink}>Скопировать ссылку</button>
       </div>
-      <p>QR и ссылки подготовлены. Реальные Apple/Google pass-файлы подключаются через backend-pass endpoints.</p>
+      <p>Пока используем QR-карту без Apple Wallet. Гость может открыть ссылку и добавить страницу на главный экран телефона.</p>
     </div>
   )
 }
@@ -546,9 +549,6 @@ function LoyaltyWalletLanding({ token }) {
     return () => { alive = false }
   }, [token])
 
-  const appleUrl = client ? buildAppleWalletUrl(client) : ''
-  const googleUrl = client ? buildGoogleWalletUrl(client) : ''
-
   return (
     <div className="wallet-public-page">
       <div className="wallet-public-shell">
@@ -563,12 +563,14 @@ function LoyaltyWalletLanding({ token }) {
         {!loading && client && (
           <>
             <DrinkStampCard client={client} />
-            <div className="wallet-public-addbox">
-              <h1>Добавьте карту в Wallet</h1>
-              <p>После добавления карта будет открываться на телефоне как обычная wallet-карта. На кассе достаточно показать barcode.</p>
-              <button type="button" className="wallet-apple-btn" onClick={() => window.location.href = appleUrl}>Добавить в Apple Wallet</button>
-              <button type="button" className="wallet-google-btn" onClick={() => window.location.href = googleUrl}>Добавить в Google Wallet</button>
-              <small>Если кнопка пока открывает служебную страницу — значит backend-pass ещё не подключён.</small>
+            <div className="wallet-public-addbox qr-save-box">
+              <h1>Сохраните карту на телефоне</h1>
+              <p>Пока карта работает как QR‑страница. Откройте её в браузере и добавьте на главный экран телефона.</p>
+              <div className="qr-save-steps">
+                <div><b>iPhone</b><span>Safari → Поделиться → На экран «Домой»</span></div>
+                <div><b>Android</b><span>Chrome → Меню → Добавить на главный экран</span></div>
+              </div>
+              <small>На кассе достаточно показать barcode или назвать номер телефона.</small>
             </div>
             <div className="wallet-public-how">
               <div><b>1 напиток</b><span>= 1 отметка</span></div>
@@ -675,7 +677,7 @@ function RMSLoyaltyAdmin() {
 
     await loadLoyalty()
     setSelectedClientId(client.id)
-    setMessage(`Wallet QR сохранён в базе. Token: ${savedRow.wallet_token}`)
+    setMessage(`QR карты сохранён в базе. Token: ${savedRow.wallet_token}`)
   }
 
   async function copyText(value) {
