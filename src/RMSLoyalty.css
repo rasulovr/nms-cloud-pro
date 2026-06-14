@@ -91,3 +91,67 @@
 .wallet-public-how b{color:#14351f}
 .wallet-public-how span{color:#6b7280;font-weight:800;text-align:right}
 @media(max-width:520px){.wallet-public-page{padding:14px}.wallet-public-addbox h1{font-size:24px}}
+
+/* RMS Loyalty v8 — cleaned launch UI */
+.drink-kpis{grid-template-columns:repeat(4,minmax(160px,1fr))!important}
+.wallet-preview-card .loyalty-card-head h2{letter-spacing:-.035em}
+.compact-wallet-qr .wallet-qr-header p{max-width:420px}
+.wallet-qr-body.compact{grid-template-columns:180px 1fr;align-items:center}
+.wallet-qr-links.compact{display:flex;align-items:center;gap:10px}
+.wallet-qr-links.compact button{min-height:44px}
+@media(max-width:1100px){.drink-kpis{grid-template-columns:repeat(2,minmax(0,1fr))!important}.wallet-qr-body.compact{grid-template-columns:1fr}}
+@media(max-width:560px){.drink-kpis{grid-template-columns:1fr!important}}
+
+/* RMS Loyalty v9 — internal tabs */
+.loyalty-tabs{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  margin:0 0 18px;
+  padding:8px;
+  border:1px solid var(--loy-border);
+  border-radius:22px;
+  background:#fff;
+  box-shadow:var(--loy-shadow);
+  width:max-content;
+  max-width:100%;
+}
+.loyalty-tabs button{
+  border:0;
+  border-radius:16px;
+  padding:12px 18px;
+  color:var(--loy-muted);
+  background:transparent;
+  font-weight:950;
+  cursor:pointer;
+  transition:.18s ease;
+}
+.loyalty-tabs button:hover{background:#f8f9fc;color:var(--loy-text)}
+.loyalty-tabs button.active{color:#fff;background:#111827;box-shadow:0 10px 24px rgba(15,23,42,.18)}
+.loyalty-pos-tab{display:block}
+.loyalty-pos-tab .loyalty-pos-page,
+.loyalty-pos-tab .pos-scan-page,
+.loyalty-pos-tab .loyalty-scan-page{margin-top:0}
+@media(max-width:700px){.loyalty-tabs{width:100%;display:grid;grid-template-columns:1fr 1fr}.loyalty-tabs button{width:100%;padding:12px 10px}}
+
+/* RMS Loyalty v10 — POS Scan inside Loyalty for drink stamps */
+.loyalty-pos-lite{display:grid;gap:18px}
+.pos-lite-card{overflow:hidden}
+.pos-lite-grid{display:grid;grid-template-columns:1fr 420px;gap:20px;align-items:start}
+.pos-lite-block{display:grid;gap:14px}
+.pos-lite-block label,.pos-lite-form label{display:grid;gap:7px;color:var(--loy-muted);font-size:13px;font-weight:900}
+.pos-lite-block textarea,.pos-lite-form textarea,.pos-lite-form input,.pos-lite-form select{width:100%;border:1px solid var(--loy-border);border-radius:16px;background:#f8f9fc;padding:14px 15px;color:var(--loy-text);font:inherit;font-weight:700;outline:none}
+.pos-lite-block textarea{min-height:130px;resize:vertical}
+.pos-lite-form textarea{min-height:86px;resize:vertical}
+.pos-lite-message{margin-bottom:16px;padding:14px 16px;border-radius:18px;background:#f8fafc;border:1px solid var(--loy-border);font-weight:850;color:#0f172a}
+.pos-lite-client{min-width:0}
+.pos-lite-client .drink-card-wallet-wrap{gap:10px}
+.pos-lite-client .ios-wallet-topbar,.pos-lite-client .wallet-actions,.pos-lite-client .drink-card-wallet-wrap>p{display:none}
+.pos-lite-client .drink-wallet-card{box-shadow:0 18px 42px rgba(15,45,32,.16)}
+.pos-lite-client-head{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;margin-bottom:12px;padding:14px;border:1px solid var(--loy-border);border-radius:18px;background:#faf9f6}
+.pos-lite-client-head span,.pos-lite-client-head small{display:block;color:var(--loy-muted);font-weight:800;font-size:12px}
+.pos-lite-client-head b{display:block;margin:4px 0;color:#111827;font-size:22px;letter-spacing:-.04em}
+.pos-lite-client-head strong{display:grid;place-items:center;min-width:72px;height:52px;border-radius:16px;background:#14351f;color:#fff;font-size:19px}
+.pos-lite-form-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+@media(max-width:1180px){.pos-lite-grid{grid-template-columns:1fr}.pos-lite-client{max-width:520px}.pos-lite-form-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:640px){.pos-lite-form-grid{grid-template-columns:1fr}.pos-lite-client-head{flex-direction:column}.pos-lite-client-head strong{width:100%}}
