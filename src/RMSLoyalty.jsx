@@ -808,6 +808,7 @@ function RMSLoyaltyAdmin() {
             <WalletQrPanel client={selectedClient} onEnsure={() => ensureWalletIdentity(selectedClient)} onCopy={copyText} busy={qrBusy} />
           </div>
         </section>
+        </>
       )}
     </div>
   )
