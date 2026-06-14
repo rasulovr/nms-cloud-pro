@@ -224,10 +224,10 @@ function DrinkStampCard({ client }) {
       </div>
 
       <div className="drink-wallet-card progress-card">
-        <div className="drink-wallet-head">
-          <div className="bc-lockup">
-            <div className="bc-emblem"><span /></div>
-            <div><b>{DEFAULT_BRAND}</b><small>{DEFAULT_SUBTITLE}</small></div>
+        <div className="drink-wallet-head bc-card-head-centered">
+          <div className="bc-round-logo" aria-label="Barista&Chef">
+            <span className="bc-script-logo">Barista<span>&amp;</span>Chef</span>
+            <small>COFFEE &amp; KITCHEN</small>
           </div>
           <div className="guest-card-label">КАРТА<br />ГОСТЯ</div>
         </div>
@@ -240,8 +240,6 @@ function DrinkStampCard({ client }) {
         <div className="stamp-grid progress-stamps">
           {Array.from({ length: STAMPS_FOR_FREE_DRINK }).map((_, idx) => <CoffeeIcon key={idx} filled={idx < progress.filled} />)}
         </div>
-
-        <CoffeeStampRow client={client} />
 
         <div className="drink-card-client-row">
           <div><small>ИМЯ</small><strong>{client?.name || 'Гость'}</strong></div>
