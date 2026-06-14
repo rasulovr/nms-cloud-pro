@@ -309,3 +309,169 @@
 .client-history-row.minus .client-history-icon{background:#fff7ed;border-color:#fed7aa}
 @media(max-width:1450px){.client-history-card{grid-column:span 2}.drink-kpis{grid-template-columns:repeat(3,minmax(0,1fr))!important}}
 @media(max-width:900px){.client-history-card{grid-column:auto}.client-history-row{grid-template-columns:38px 1fr}.client-history-date{grid-column:2;text-align:left}.coffee-stamp-row{gap:5px}.coffee-stamp-row span{width:22px;height:22px}}
+
+
+/* RMS Loyalty v11.1 — Barista&Chef black card visual update */
+.drink-wallet-card.progress-card{
+  background:
+    radial-gradient(circle at 50% -8%, rgba(239,35,42,.14), transparent 30%),
+    radial-gradient(circle at 82% 18%, rgba(255,255,255,.06), transparent 26%),
+    linear-gradient(180deg,#050505 0%, #070707 48%, #020202 100%) !important;
+  border:1px solid rgba(255,255,255,.18) !important;
+  box-shadow:0 24px 56px rgba(0,0,0,.38), inset 0 1px 0 rgba(255,255,255,.08) !important;
+}
+.drink-wallet-card.progress-card:after{
+  background:linear-gradient(120deg,transparent,rgba(255,255,255,.035),transparent) !important;
+}
+.bc-card-head-centered{
+  min-height:122px;
+  justify-content:center !important;
+  align-items:flex-start !important;
+  padding-top:2px;
+}
+.bc-card-head-centered .guest-card-label{
+  position:absolute;
+  right:0;
+  top:8px;
+  color:#fff !important;
+  font-weight:950;
+  font-size:20px;
+  letter-spacing:.035em;
+  text-shadow:0 2px 10px rgba(0,0,0,.65);
+}
+.bc-round-logo{
+  width:126px;
+  height:126px;
+  border-radius:999px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  color:#fff;
+  background:radial-gradient(circle at 50% 45%, #171717 0%, #080808 70%);
+  border:1px solid rgba(255,255,255,.18);
+  box-shadow:0 0 0 2px rgba(239,35,42,.10), 0 16px 38px rgba(0,0,0,.38);
+  position:relative;
+  z-index:2;
+}
+.bc-round-logo:before{
+  content:"";
+  position:absolute;
+  inset:13px;
+  border-radius:999px;
+  border:2px dotted #ef232a;
+  opacity:.95;
+}
+.bc-script-logo{
+  position:relative;
+  z-index:1;
+  display:grid;
+  gap:0;
+  color:#fff;
+  font-family:"Trebuchet MS", Inter, system-ui, sans-serif;
+  font-weight:950;
+  font-style:italic;
+  font-size:25px;
+  line-height:.72;
+  letter-spacing:-.07em;
+  transform:rotate(-5deg);
+  text-shadow:0 2px 0 rgba(0,0,0,.65);
+}
+.bc-script-logo span{
+  font-size:13px;
+  line-height:1;
+  margin:1px 0;
+  letter-spacing:0;
+}
+.bc-round-logo small{
+  position:absolute;
+  z-index:1;
+  bottom:18px;
+  color:#ef232a;
+  font-size:7px;
+  font-weight:950;
+  letter-spacing:.12em;
+  transform:none;
+}
+.drink-progress-hero{
+  border:1px solid rgba(255,255,255,.16) !important;
+  background:linear-gradient(180deg,rgba(255,255,255,.055),rgba(255,255,255,.018)) !important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.06);
+}
+.drink-progress-ring{
+  background:conic-gradient(#ef232a 0deg, #ef232a var(--drink-progress), #262626 var(--drink-progress), #262626 360deg) !important;
+  box-shadow:0 18px 42px rgba(0,0,0,.32), inset 0 1px 0 rgba(255,255,255,.14) !important;
+}
+.drink-progress-ring-inner{
+  background:#040404 !important;
+  border-color:rgba(255,255,255,.09) !important;
+}
+.drink-progress-summary b{color:#fff !important;}
+.drink-progress-summary span{color:rgba(255,255,255,.60) !important;}
+.stamp-grid.progress-stamps{
+  grid-template-columns:repeat(10,1fr) !important;
+  gap:8px !important;
+  margin:22px 0 26px !important;
+}
+.stamp-grid.progress-stamps .stamp-cup{
+  height:44px;
+  border:2px dashed rgba(255,255,255,.22) !important;
+  background:rgba(255,255,255,.02) !important;
+  opacity:1 !important;
+}
+.stamp-grid.progress-stamps .stamp-cup svg{
+  width:26px;
+  height:26px;
+  stroke:rgba(255,255,255,.25) !important;
+}
+.stamp-grid.progress-stamps .stamp-cup .bean{
+  fill:rgba(255,255,255,.24) !important;
+}
+.stamp-grid.progress-stamps .stamp-cup.filled{
+  border-color:#ef232a !important;
+  border-style:solid !important;
+  background:rgba(239,35,42,.10) !important;
+  box-shadow:0 0 0 1px rgba(239,35,42,.18), 0 10px 22px rgba(239,35,42,.10) !important;
+}
+.stamp-grid.progress-stamps .stamp-cup.filled svg{
+  stroke:#fff !important;
+}
+.stamp-grid.progress-stamps .stamp-cup.filled .bean{
+  fill:#fff !important;
+}
+.drink-card-client-row{
+  border-top:1px solid rgba(255,255,255,.16);
+  padding-top:24px;
+}
+.drink-card-client-row small{
+  color:#ef232a !important;
+  font-size:14px !important;
+  letter-spacing:.09em !important;
+}
+.drink-card-client-row strong{
+  color:#fff !important;
+  font-weight:850 !important;
+  text-shadow:0 2px 10px rgba(0,0,0,.65);
+}
+.drink-card-progress span,
+.drink-card-progress.enhanced small{color:rgba(255,255,255,.62) !important;}
+.drink-card-progress i{background:#1e1e1e !important;}
+.drink-card-progress em{background:#ef232a !important;}
+.drink-barcode-box{
+  border-radius:18px !important;
+  box-shadow:0 18px 36px rgba(0,0,0,.24);
+}
+.wallet-actions button:first-child{background:#050505 !important;}
+.wallet-actions button:last-child{background:#202020 !important;}
+
+@media(max-width:560px){
+  .bc-card-head-centered{min-height:104px;}
+  .bc-round-logo{width:106px;height:106px;}
+  .bc-script-logo{font-size:21px;}
+  .bc-round-logo small{font-size:6px;bottom:15px;}
+  .bc-card-head-centered .guest-card-label{font-size:16px;}
+  .stamp-grid.progress-stamps{gap:5px!important;}
+  .stamp-grid.progress-stamps .stamp-cup{height:33px;}
+  .stamp-grid.progress-stamps .stamp-cup svg{width:21px;height:21px;}
+}
