@@ -886,7 +886,18 @@ function RMSLoyaltyAdmin() {
 
         <div className="loyalty-card wallet-preview-card">
           <div className="loyalty-card-head"><div><h2>Карта клиента</h2><p>Вид карты на телефоне клиента.</p></div></div>
-          {selectedClient ? <DrinkStampCard client={selectedClient} /> : <div className="loyalty-empty">Выберите клиента из списка.</div>}
+          {selectedClient ? (
+            <>
+              <DrinkStampCard client={selectedClient} />
+              <div className="inline-client-history">
+                <div className="inline-client-history-head">
+                  <h3>Последние операции</h3>
+                  <span>{selectedTransactions.length ? `${Math.min(selectedTransactions.length, 8)} операций` : 'нет операций'}</span>
+                </div>
+                <ClientOperationsHistory transactions={selectedTransactions} />
+              </div>
+            </>
+          ) : <div className="loyalty-empty">Выберите клиента из списка.</div>}
         </div>
       </section>
 
@@ -914,11 +925,6 @@ function RMSLoyaltyAdmin() {
 
           <div className="loyalty-card wallet-qr-card">
             <WalletQrPanel client={selectedClient} onEnsure={() => ensureWalletIdentity(selectedClient)} onCopy={copyText} busy={qrBusy} />
-          </div>
-
-          <div className="loyalty-card client-history-card">
-            <div className="loyalty-card-head"><div><h2>История клиента</h2><p>Последние начисления и списания по выбранной карте.</p></div></div>
-            <ClientOperationsHistory transactions={selectedTransactions} />
           </div>
         </section>
       )}
