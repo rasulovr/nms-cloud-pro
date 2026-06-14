@@ -692,3 +692,14 @@
   .drink-card-client-row strong{font-size:28px!important;}
   .drink-bars{height:48px!important;}
 }
+
+
+/* v11.3 — visible client operations history inside card panel */
+.inline-client-history{margin-top:18px;padding-top:16px;border-top:1px solid #e5e7eb}
+.inline-client-history-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+.inline-client-history-head h3{margin:0;color:#111827;font-size:18px;font-weight:950;letter-spacing:-.035em}
+.inline-client-history-head span{display:inline-flex;align-items:center;justify-content:center;border-radius:999px;padding:6px 10px;background:#f8fafc;border:1px solid #e5e7eb;color:#64748b;font-size:12px;font-weight:900}
+.inline-client-history .client-history-list{max-height:360px;overflow:auto;padding-right:3px}
+.inline-client-history .client-history-row{background:#ffffff}
+.inline-client-history .loyalty-empty{margin-top:0}
+@media(max-width:900px){.inline-client-history{margin-top:14px;padding-top:14px}.inline-client-history-head{align-items:flex-start;flex-direction:column}.inline-client-history .client-history-list{max-height:none}}
