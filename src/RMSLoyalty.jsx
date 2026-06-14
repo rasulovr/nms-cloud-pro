@@ -738,7 +738,7 @@ function RMSLoyaltyAdmin() {
           <LoyaltyPOSDrinkScan onDone={loadLoyalty} />
         </section>
       ) : (
-        <>
+        <div className="loyalty-cards-tab">
 
       <section className="loyalty-kpis drink-kpis">
         <div className="loyalty-kpi"><span>Клиенты</span><b>{stats.totalClients}</b><small>в базе карт</small></div>
@@ -808,7 +808,8 @@ function RMSLoyaltyAdmin() {
             <WalletQrPanel client={selectedClient} onEnsure={() => ensureWalletIdentity(selectedClient)} onCopy={copyText} busy={qrBusy} />
           </div>
         </section>
-        </>
+      )}
+        </div>
       )}
     </div>
   )
