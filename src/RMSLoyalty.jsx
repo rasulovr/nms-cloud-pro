@@ -130,6 +130,70 @@ function DrinkProgressSummary({ client }) {
   )
 }
 
+function formatLoyaltyDate(value) {
+  if (!value) return '—'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return '—'
+  return date.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' })
+}
+
+function formatLoyaltyTime(value) {
+  if (!value) return ''
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+  return date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
+}
+
+function txOperationMeta(tx = {}) {
+  const type = String(tx.type || '')
+  const amount = Number(tx.amount || 0)
+  if (type === 'drink_stamp' || type === 'pos_drink_stamp') {
+    return { label: `+${Math.abs(amount).toFixed(0)} напиток`, kind: 'plus', icon: '☕' }
+  }
+  if (type === 'drink_redeem' || type === 'pos_drink_redeem') {
+    return { label: `-${Math.abs(amount).toFixed(0)} подарок`, kind: 'minus', icon: '🎁' }
+  }
+  if (amount > 0) return { label: `+${amount.toFixed(0)}`, kind: 'plus', icon: '＋' }
+  if (amount < 0) return { label: `${amount.toFixed(0)}`, kind: 'minus', icon: '−' }
+  return { label: 'Операция', kind: 'neutral', icon: '•' }
+}
+
+function CoffeeStampRow({ client, size = 'default' }) {
+  const progress = getStampProgress(client)
+  return (
+    <div className={`coffee-stamp-row ${size}`} aria-label={`${progress.filled} из ${STAMPS_FOR_FREE_DRINK} напитков`}>
+      {Array.from({ length: STAMPS_FOR_FREE_DRINK }).map((_, idx) => (
+        <span key={idx} className={idx < progress.filled ? 'filled' : ''}>{idx < progress.filled ? '☕' : '○'}</span>
+      ))}
+    </div>
+  )
+}
+
+function ClientOperationsHistory({ transactions = [] }) {
+  const rows = transactions.slice(0, 8)
+  return (
+    <div className="client-history-list">
+      {rows.map((tx) => {
+        const meta = txOperationMeta(tx)
+        return (
+          <div className={`client-history-row ${meta.kind}`} key={tx.id || `${tx.created_at}-${tx.comment}`}> 
+            <div className="client-history-icon">{meta.icon}</div>
+            <div className="client-history-main">
+              <b>{meta.label}</b>
+              <span>{tx.comment || 'Операция по карте напитков'}</span>
+            </div>
+            <div className="client-history-date">
+              <strong>{formatLoyaltyDate(tx.created_at)}</strong>
+              <small>{formatLoyaltyTime(tx.created_at)}</small>
+            </div>
+          </div>
+        )
+      })}
+      {!rows.length && <div className="loyalty-empty">Истории операций пока нет.</div>}
+    </div>
+  )
+}
+
 function CoffeeIcon({ filled }) {
   return (
     <span className={`stamp-cup ${filled ? 'filled' : ''}`} aria-hidden="true">
@@ -176,6 +240,8 @@ function DrinkStampCard({ client }) {
         <div className="stamp-grid progress-stamps">
           {Array.from({ length: STAMPS_FOR_FREE_DRINK }).map((_, idx) => <CoffeeIcon key={idx} filled={idx < progress.filled} />)}
         </div>
+
+        <CoffeeStampRow client={client} />
 
         <div className="drink-card-client-row">
           <div><small>ИМЯ</small><strong>{client?.name || 'Гость'}</strong></div>
@@ -383,6 +449,7 @@ function LoyaltyPOSDrinkScan({ onDone }) {
                   <DrinkProgressRing client={client} compact />
                 </div>
                 <div className="pos-lite-progress-note">{progressPhrase(client)}</div>
+                <CoffeeStampRow client={client} size="compact" />
                 <DrinkStampCard client={client} />
               </>
             ) : (
@@ -730,6 +797,11 @@ function RMSLoyaltyAdmin() {
 
   const selectedClient = clients.find((item) => item.id === selectedClientId) || null
 
+  const selectedTransactions = useMemo(() => {
+    if (!selectedClientId) return []
+    return transactions.filter((item) => item.client_id === selectedClientId).slice(0, 12)
+  }, [transactions, selectedClientId])
+
 
   const stats = useMemo(() => {
     const totalClients = clients.length
@@ -737,7 +809,13 @@ function RMSLoyaltyAdmin() {
     const totalStamps = clients.reduce((sum, item) => sum + getStampCount(item), 0)
     const freeDrinks = clients.reduce((sum, item) => sum + getFreeDrinkBalance(item), 0)
     const totalVisits = clients.reduce((sum, item) => sum + Number(item.visits_count || 0), 0)
-    return { totalClients, activeClients, totalStamps, freeDrinks, totalVisits }
+    const earnedStamps = transactions
+      .filter((item) => ['drink_stamp', 'pos_drink_stamp'].includes(String(item.type || '')))
+      .reduce((sum, item) => sum + Math.max(0, Number(item.amount || 0)), 0)
+    const redeemedGifts = Math.abs(transactions
+      .filter((item) => ['drink_redeem', 'pos_drink_redeem'].includes(String(item.type || '')))
+      .reduce((sum, item) => sum + Math.min(0, Number(item.amount || 0)), 0))
+    return { totalClients, activeClients, totalStamps, freeDrinks, totalVisits, earnedStamps, redeemedGifts }
   }, [clients, transactions])
 
 
@@ -773,8 +851,10 @@ function RMSLoyaltyAdmin() {
       <section className="loyalty-kpis drink-kpis">
         <div className="loyalty-kpi"><span>Клиенты</span><b>{stats.totalClients}</b><small>в базе карт</small></div>
         <div className="loyalty-kpi"><span>Активные</span><b>{stats.activeClients}</b><small>можно начислять</small></div>
+        <div className="loyalty-kpi"><span>Начислено</span><b>{stats.earnedStamps}</b><small>напитков по операциям</small></div>
+        <div className="loyalty-kpi"><span>Подарки</span><b>{stats.freeDrinks}</b><small>баланс к выдаче</small></div>
+        <div className="loyalty-kpi"><span>Выдано</span><b>{stats.redeemedGifts}</b><small>подарков списано</small></div>
         <div className="loyalty-kpi"><span>Текущие отметки</span><b>{stats.totalStamps}</b><small>до следующих подарков</small></div>
-        <div className="loyalty-kpi"><span>Баланс подарков</span><b>{stats.freeDrinks}</b><small>напитков к выдаче</small></div>
       </section>
 
       <section className="loyalty-grid drink-grid-main">
@@ -787,8 +867,8 @@ function RMSLoyaltyAdmin() {
           <div className="loyalty-client-list">
             {filteredClients.map((client) => (
               <button key={client.id} className={`loyalty-client-row ${selectedClientId === client.id ? 'active' : ''}`} onClick={() => setSelectedClientId(client.id)}>
-                <div><b>{client.name || 'Гость'}</b><span>{client.phone}</span></div>
-                <div><em>{getStampCount(client)}/{STAMPS_FOR_FREE_DRINK}</em><strong>{intFmt(getFreeDrinkBalance(client))}</strong></div>
+                <div><b>{client.name || 'Гость'}</b><span>{client.phone}</span><CoffeeStampRow client={client} size="mini" /></div>
+                <div><em>{getStampProgress(client).percent}%</em><strong>{intFmt(getFreeDrinkBalance(client))}</strong></div>
               </button>
             ))}
             {!filteredClients.length && <div className="loyalty-empty">Клиенты не найдены.</div>}
@@ -836,6 +916,11 @@ function RMSLoyaltyAdmin() {
 
           <div className="loyalty-card wallet-qr-card">
             <WalletQrPanel client={selectedClient} onEnsure={() => ensureWalletIdentity(selectedClient)} onCopy={copyText} busy={qrBusy} />
+          </div>
+
+          <div className="loyalty-card client-history-card">
+            <div className="loyalty-card-head"><div><h2>История клиента</h2><p>Последние начисления и списания по выбранной карте.</p></div></div>
+            <ClientOperationsHistory transactions={selectedTransactions} />
           </div>
         </section>
       )}
