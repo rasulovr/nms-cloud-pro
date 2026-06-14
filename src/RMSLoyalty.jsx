@@ -160,6 +160,242 @@ function DrinkStampCard({ client }) {
 }
 
 
+
+function extractLoyaltyToken(value) {
+  const raw = String(value || '').trim()
+  if (!raw) return ''
+  try {
+    const url = new URL(raw)
+    const fromPath = url.pathname.match(/\/loyalty\/card\/([^/?#]+)/)?.[1]
+    if (fromPath) return decodeURIComponent(fromPath)
+    return url.searchParams.get('loyalty_wallet') || url.searchParams.get('token') || raw
+  } catch (_error) {
+    const fromPath = raw.match(/\/loyalty\/card\/([^/?#]+)/)?.[1]
+    if (fromPath) return decodeURIComponent(fromPath)
+    return raw
+  }
+}
+
+async function findLoyaltyClientByTokenOrCode(value) {
+  const token = extractLoyaltyToken(value)
+  if (!token) return { client: null, error: 'Введите token, ссылку карты, номер карты или телефон.' }
+
+  const selectFields = 'id,name,phone,card_number,wallet_token,wallet_enabled,stamp_count,free_drink_balance,visits_count,created_at,updated_at,is_active'
+
+  const checks = [
+    { field: 'wallet_token', value: token },
+    { field: 'card_number', value: token },
+  ]
+
+  const digits = normalizeDigits(token)
+  if (digits) {
+    checks.push({ field: 'phone', value: token })
+    checks.push({ field: 'phone', value: `+${digits}` })
+    checks.push({ field: 'card_number', value: digits })
+  }
+
+  for (const check of checks) {
+    const { data, error } = await supabase
+      .from('rms_loyalty_clients')
+      .select(selectFields)
+      .eq(check.field, check.value)
+      .maybeSingle()
+    if (error) return { client: null, error: error.message }
+    if (data) return { client: data, error: '' }
+  }
+
+  return { client: null, error: 'Клиент не найден. Проверьте QR, номер карты или телефон.' }
+}
+
+function LoyaltyPOSDrinkScan({ onDone }) {
+  const [scanValue, setScanValue] = useState('')
+  const [client, setClient] = useState(null)
+  const [drinks, setDrinks] = useState('1')
+  const [receiptNumber, setReceiptNumber] = useState('')
+  const [branchId, setBranchId] = useState('BC1')
+  const [staffName, setStaffName] = useState('')
+  const [comment, setComment] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [message, setMessage] = useState('')
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const token = params.get('loyalty_scan_token') || params.get('loyalty_wallet') || params.get('token') || ''
+    if (token) {
+      setScanValue(token)
+      findClient(token)
+    }
+  }, [])
+
+  async function findClient(value = scanValue) {
+    setBusy(true)
+    setMessage('')
+    const result = await findLoyaltyClientByTokenOrCode(value)
+    setBusy(false)
+    if (result.error) {
+      setClient(null)
+      setMessage(result.error)
+      return
+    }
+    setClient(result.client)
+    setMessage('Клиент найден. Можно начислить отметки за напитки.')
+  }
+
+  async function applyPosStamps(e) {
+    e.preventDefault()
+    setMessage('')
+    let currentClient = client
+    if (!currentClient) {
+      const result = await findLoyaltyClientByTokenOrCode(scanValue)
+      if (result.error) return setMessage(result.error)
+      currentClient = result.client
+      setClient(result.client)
+    }
+
+    const count = Math.max(1, Math.floor(parseNum(drinks)))
+    const receipt = receiptNumber.trim()
+
+    if (receipt) {
+      const { data: duplicateRows, error: duplicateError } = await supabase
+        .from('rms_loyalty_transactions')
+        .select('id')
+        .eq('source', 'pos_scan_drink_card')
+        .eq('receipt_number', receipt)
+        .limit(1)
+      if (duplicateError && !String(duplicateError.message || '').includes('source')) {
+        return setMessage(duplicateError.message)
+      }
+      if (duplicateRows?.length) return setMessage('Этот POS чек уже использован для начисления Loyalty.')
+    }
+
+    const currentStamps = getStampCount(currentClient)
+    const currentFree = getFreeDrinkBalance(currentClient)
+    const totalStamps = currentStamps + count
+    const newFree = Math.floor(totalStamps / STAMPS_FOR_FREE_DRINK)
+    const nextStamps = totalStamps % STAMPS_FOR_FREE_DRINK
+    const nextFreeBalance = currentFree + newFree
+
+    const txPayload = {
+      client_id: currentClient.id,
+      client_name: currentClient.name,
+      client_phone: currentClient.phone,
+      type: 'drink_stamp_pos',
+      amount: count,
+      order_total: null,
+      receipt_number: receipt || null,
+      branch_id: branchId || null,
+      source: 'pos_scan_drink_card',
+      staff_name: staffName.trim() || null,
+      comment: comment.trim() || (receipt ? `POS чек ${receipt}: напитков ${count}` : `POS Scan: напитков ${count}`),
+    }
+
+    let txError = null
+    const txRes = await supabase.from('rms_loyalty_transactions').insert(txPayload)
+    txError = txRes.error
+
+    if (txError && (String(txError.message || '').includes('receipt_number') || String(txError.message || '').includes('source') || String(txError.message || '').includes('staff_name') || String(txError.message || '').includes('branch_id'))) {
+      const fallbackPayload = {
+        client_id: txPayload.client_id,
+        client_name: txPayload.client_name,
+        client_phone: txPayload.client_phone,
+        type: txPayload.type,
+        amount: txPayload.amount,
+        order_total: txPayload.order_total,
+        comment: txPayload.comment,
+      }
+      const fallbackRes = await supabase.from('rms_loyalty_transactions').insert(fallbackPayload)
+      txError = fallbackRes.error
+    }
+
+    if (txError) return setMessage(txError.message)
+
+    const { error: clientError } = await supabase.from('rms_loyalty_clients').update({
+      stamp_count: nextStamps,
+      free_drink_balance: nextFreeBalance,
+      visits_count: Number(currentClient.visits_count || 0) + count,
+      updated_at: new Date().toISOString(),
+    }).eq('id', currentClient.id)
+    if (clientError) return setMessage(clientError.message)
+
+    const refreshed = await findLoyaltyClientByTokenOrCode(currentClient.wallet_token || currentClient.card_number || currentClient.phone)
+    if (refreshed.client) setClient(refreshed.client)
+    setDrinks('1')
+    setReceiptNumber('')
+    setComment('')
+    if (typeof onDone === 'function') await onDone()
+    setMessage(newFree > 0 ? `Начислено ${count}. Клиент получил подарок: ${newFree} напиток.` : `Начислено отметок: ${count}.`)
+  }
+
+  return (
+    <section className="loyalty-pos-lite">
+      <div className="loyalty-card pos-lite-card">
+        <div className="loyalty-card-head">
+          <div>
+            <h2>POS Scan</h2>
+            <p>Сканируйте QR карты гостя или вставьте ссылку / token вручную.</p>
+          </div>
+        </div>
+
+        {message && <div className="pos-lite-message">{message}</div>}
+
+        <div className="pos-lite-grid">
+          <div className="pos-lite-block">
+            <label>QR / token / номер карты / телефон
+              <textarea value={scanValue} onChange={(e) => setScanValue(e.target.value)} placeholder="Вставьте ссылку из QR или wallet_token" />
+            </label>
+            <button type="button" className="loyalty-primary" onClick={() => findClient()} disabled={busy}>{busy ? 'Поиск…' : 'Найти клиента'}</button>
+          </div>
+
+          <div className="pos-lite-client">
+            {client ? (
+              <>
+                <div className="pos-lite-client-head">
+                  <div><span>Клиент</span><b>{client.name || 'Гость'}</b><small>{client.phone || buildCardNumber(client)}</small></div>
+                  <strong>{getStampCount(client)}/{STAMPS_FOR_FREE_DRINK}</strong>
+                </div>
+                <DrinkStampCard client={client} />
+              </>
+            ) : (
+              <div className="loyalty-empty">Клиент пока не выбран.</div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="loyalty-card pos-lite-card">
+        <div className="loyalty-card-head"><div><h2>Начисление с POS</h2><p>Для текущего этапа начисляем отметки за напитки.</p></div></div>
+        <form className="loyalty-form pos-lite-form" onSubmit={applyPosStamps}>
+          <div className="pos-lite-form-grid">
+            <label>Филиал
+              <select value={branchId} onChange={(e) => setBranchId(e.target.value)}>
+                <option value="BC1">BC1</option>
+                <option value="BC2">BC2</option>
+                <option value="BC3">BC3</option>
+                <option value="BC4">BC4</option>
+                <option value="BC5">BC5</option>
+                <option value="Bistro">Bistro</option>
+              </select>
+            </label>
+            <label>POS чек
+              <input value={receiptNumber} onChange={(e) => setReceiptNumber(e.target.value)} placeholder="Например: POS-1258" />
+            </label>
+            <label>Количество напитков
+              <input value={drinks} onChange={(e) => setDrinks(e.target.value)} placeholder="1" />
+            </label>
+            <label>Сотрудник
+              <input value={staffName} onChange={(e) => setStaffName(e.target.value)} placeholder="Имя кассира / официанта" />
+            </label>
+          </div>
+          <label>Комментарий
+            <textarea value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Необязательно" />
+          </label>
+          <button className="loyalty-primary" disabled={!client}>Начислить отметки</button>
+        </form>
+      </div>
+    </section>
+  )
+}
+
 function WalletQrPanel({ client, onEnsure, onCopy, busy }) {
   const landingUrl = buildWalletLandingUrl(client)
   const hasToken = Boolean(getWalletToken(client))
@@ -281,6 +517,7 @@ function RMSLoyaltyAdmin() {
   const [clientForm, setClientForm] = useState({ name: '', phone: '', birthday: '', notes: '' })
   const [stampForm, setStampForm] = useState({ drinks: '1', comment: '' })
   const [redeemForm, setRedeemForm] = useState({ count: '1', comment: '' })
+  const [activeTab, setActiveTab] = useState('cards')
 
   useEffect(() => { loadLoyalty() }, [])
 
@@ -490,6 +727,18 @@ function RMSLoyaltyAdmin() {
       </section>
 
       {message && <div className="loyalty-message">{message}</div>}
+
+      <div className="loyalty-tabs">
+        <button type="button" className={activeTab === 'cards' ? 'active' : ''} onClick={() => setActiveTab('cards')}>Клиенты и карты</button>
+        <button type="button" className={activeTab === 'pos' ? 'active' : ''} onClick={() => setActiveTab('pos')}>POS Scan</button>
+      </div>
+
+      {activeTab === 'pos' ? (
+        <section className="loyalty-pos-tab">
+          <LoyaltyPOSDrinkScan onDone={loadLoyalty} />
+        </section>
+      ) : (
+        <>
 
       <section className="loyalty-kpis drink-kpis">
         <div className="loyalty-kpi"><span>Клиенты</span><b>{stats.totalClients}</b><small>в базе карт</small></div>
