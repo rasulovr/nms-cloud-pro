@@ -252,6 +252,20 @@ async function findLoyaltyClientByTokenOrCode(value) {
   return { client: null, error: 'Клиент не найден. Проверьте QR, номер карты или телефон.' }
 }
 
+
+async function rmsLoyaltyApplyDrinkStampRpc({ clientId, drinks, receiptNumber, branchId, staffName, comment }) {
+  const { data, error } = await supabase.rpc('rms_loyalty_apply_drink_stamp_secure', {
+    p_client_id: clientId,
+    p_drinks: drinks,
+    p_receipt_number: receiptNumber || null,
+    p_branch_id: branchId || null,
+    p_staff_name: staffName || null,
+    p_comment: comment || null,
+  })
+  if (error) throw error
+  return Array.isArray(data) ? data[0] : data
+}
+
 function LoyaltyPOSDrinkScan({ onDone }) {
   const [scanValue, setScanValue] = useState('')
   const [client, setClient] = useState(null)
@@ -299,76 +313,45 @@ function LoyaltyPOSDrinkScan({ onDone }) {
 
     const count = Math.max(1, Math.floor(parseNum(drinks)))
     const receipt = receiptNumber.trim()
+    const cleanStaff = staffName.trim()
+    const cleanComment = comment.trim() || (receipt ? `POS чек ${receipt}: напитков ${count}` : `POS Scan: напитков ${count}`)
 
-    if (receipt) {
-      const { data: duplicateRows, error: duplicateError } = await supabase
-        .from('rms_loyalty_transactions')
-        .select('id')
-        .eq('source', 'pos_scan_drink_card')
-        .eq('receipt_number', receipt)
-        .limit(1)
-      if (duplicateError && !String(duplicateError.message || '').includes('source')) {
-        return setMessage(duplicateError.message)
+    setBusy(true)
+    try {
+      const result = await rmsLoyaltyApplyDrinkStampRpc({
+        clientId: currentClient.id,
+        drinks: count,
+        receiptNumber: receipt,
+        branchId,
+        staffName: cleanStaff,
+        comment: cleanComment,
+      })
+
+      const updatedClient = {
+        ...currentClient,
+        stamp_count: Number(result?.stamp_count ?? 0),
+        free_drink_balance: Number(result?.free_drink_balance ?? 0),
+        visits_count: Number(result?.visits_count ?? currentClient.visits_count ?? 0),
+        updated_at: result?.updated_at || new Date().toISOString(),
       }
-      if (duplicateRows?.length) return setMessage('Этот POS чек уже использован для начисления Loyalty.')
+
+      setClient(updatedClient)
+      setDrinks('1')
+      setReceiptNumber('')
+      setComment('')
+      if (typeof onDone === 'function') await onDone()
+
+      const giftCount = Number(result?.gift_added || 0)
+      setMessage(giftCount > 0 ? `Начислено ${count}. Подарок доступен: +${giftCount} напиток.` : `Начислено отметок: ${count}.`)
+    } catch (err) {
+      const text = String(err?.message || err || '')
+      if (text.includes('already_used')) return setMessage('Этот POS чек уже использован для начисления Loyalty.')
+      if (text.includes('client_not_found')) return setMessage('Клиент не найден или карта отключена.')
+      if (text.includes('invalid_drinks')) return setMessage('Количество напитков должно быть больше 0.')
+      return setMessage(text || 'Не удалось начислить отметки.')
+    } finally {
+      setBusy(false)
     }
-
-    const currentStamps = getStampCount(currentClient)
-    const currentFree = getFreeDrinkBalance(currentClient)
-    const totalStamps = currentStamps + count
-    const newFree = Math.floor(totalStamps / STAMPS_FOR_FREE_DRINK)
-    const nextStamps = totalStamps % STAMPS_FOR_FREE_DRINK
-    const nextFreeBalance = currentFree + newFree
-
-    const txPayload = {
-      client_id: currentClient.id,
-      client_name: currentClient.name,
-      client_phone: currentClient.phone,
-      type: 'pos_drink_stamp',
-      amount: count,
-      order_total: null,
-      receipt_number: receipt || null,
-      branch_id: branchId || null,
-      source: 'pos_scan_drink_card',
-      staff_name: staffName.trim() || null,
-      comment: comment.trim() || (receipt ? `POS чек ${receipt}: напитков ${count}` : `POS Scan: напитков ${count}`),
-    }
-
-    let txError = null
-    const txRes = await supabase.from('rms_loyalty_transactions').insert(txPayload)
-    txError = txRes.error
-
-    if (txError && (String(txError.message || '').includes('receipt_number') || String(txError.message || '').includes('source') || String(txError.message || '').includes('staff_name') || String(txError.message || '').includes('branch_id'))) {
-      const fallbackPayload = {
-        client_id: txPayload.client_id,
-        client_name: txPayload.client_name,
-        client_phone: txPayload.client_phone,
-        type: txPayload.type,
-        amount: txPayload.amount,
-        order_total: txPayload.order_total,
-        comment: txPayload.comment,
-      }
-      const fallbackRes = await supabase.from('rms_loyalty_transactions').insert(fallbackPayload)
-      txError = fallbackRes.error
-    }
-
-    if (txError) return setMessage(txError.message)
-
-    const { error: clientError } = await supabase.from('rms_loyalty_clients').update({
-      stamp_count: nextStamps,
-      free_drink_balance: nextFreeBalance,
-      visits_count: Number(currentClient.visits_count || 0) + count,
-      updated_at: new Date().toISOString(),
-    }).eq('id', currentClient.id)
-    if (clientError) return setMessage(clientError.message)
-
-    const refreshed = await findLoyaltyClientByTokenOrCode(currentClient.wallet_token || currentClient.card_number || currentClient.phone)
-    if (refreshed.client) setClient(refreshed.client)
-    setDrinks('1')
-    setReceiptNumber('')
-    setComment('')
-    if (typeof onDone === 'function') await onDone()
-    setMessage(newFree > 0 ? `Начислено ${count}. Клиент получил подарок: ${newFree} напиток.` : `Начислено отметок: ${count}.`)
   }
 
   return (
