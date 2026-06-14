@@ -703,3 +703,34 @@
 .inline-client-history .client-history-row{background:#ffffff}
 .inline-client-history .loyalty-empty{margin-top:0}
 @media(max-width:900px){.inline-client-history{margin-top:14px;padding-top:14px}.inline-client-history-head{align-items:flex-start;flex-direction:column}.inline-client-history .client-history-list{max-height:none}}
+
+
+/* v12.1 QR-only loyalty flow — no Apple/Google Wallet dependency */
+.qr-only-actions{
+  grid-template-columns:repeat(2,minmax(0,1fr));
+}
+.qr-only-actions button:first-child{
+  background:#e11d2f!important;
+  color:#fff!important;
+  border-color:#e11d2f!important;
+}
+.qr-only-actions button:last-child{
+  background:#171717!important;
+  color:#f8fafc!important;
+  border-color:rgba(255,255,255,.16)!important;
+}
+.qr-save-box{
+  border:1px solid rgba(225,29,47,.22)!important;
+  background:linear-gradient(180deg,#111,#050505)!important;
+  color:#fff!important;
+}
+.qr-save-box h1{color:#fff!important;margin-bottom:8px!important;}
+.qr-save-box p{color:rgba(255,255,255,.72)!important;}
+.qr-save-box small{color:rgba(255,255,255,.58)!important;}
+.qr-save-steps{display:grid;gap:10px;margin:15px 0 12px;}
+.qr-save-steps div{display:flex;justify-content:space-between;gap:14px;align-items:flex-start;padding:12px 14px;border-radius:16px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.10);}
+.qr-save-steps b{color:#fff;font-size:13px;white-space:nowrap;}
+.qr-save-steps span{color:rgba(255,255,255,.70);font-size:13px;text-align:right;line-height:1.35;}
+.wallet-public-addbox .wallet-apple-btn,
+.wallet-public-addbox .wallet-google-btn{display:none!important;}
+@media(max-width:640px){.qr-only-actions{grid-template-columns:1fr}.qr-save-steps div{display:block}.qr-save-steps span{text-align:left;display:block;margin-top:5px}}
