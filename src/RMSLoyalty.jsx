@@ -452,11 +452,13 @@ function LoyaltyPOSDrinkScan({ onDone, scannerProfile = null, scannerOnly = fals
   const [todayRows, setTodayRows] = useState([])
   const [cameraOpen, setCameraOpen] = useState(false)
   const [cameraStatus, setCameraStatus] = useState('')
+  const [successFlash, setSuccessFlash] = useState(null)
   const videoRef = useRef(null)
   const streamRef = useRef(null)
   const scanLoopRef = useRef(null)
   const scanActiveRef = useRef(false)
   const zxingControlsRef = useRef(null)
+  const successTimerRef = useRef(null)
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -467,7 +469,10 @@ function LoyaltyPOSDrinkScan({ onDone, scannerProfile = null, scannerOnly = fals
     }
     loadFraudRows()
     loadTodayRows()
-    return () => stopCameraScan()
+    return () => {
+      stopCameraScan()
+      if (successTimerRef.current) clearTimeout(successTimerRef.current)
+    }
   }, [])
 
   function stopCameraScan() {
@@ -591,6 +596,43 @@ function LoyaltyPOSDrinkScan({ onDone, scannerProfile = null, scannerOnly = fals
     }
   }
 
+
+  function playScanSuccessFeedback() {
+    try {
+      if (navigator?.vibrate) navigator.vibrate([45, 35, 45])
+    } catch (_e) {}
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext
+      if (!AudioCtx) return
+      const ctx = new AudioCtx()
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+      osc.type = 'sine'
+      osc.frequency.setValueAtTime(880, ctx.currentTime)
+      osc.frequency.setValueAtTime(1175, ctx.currentTime + 0.07)
+      gain.gain.setValueAtTime(0.001, ctx.currentTime)
+      gain.gain.exponentialRampToValueAtTime(0.12, ctx.currentTime + 0.02)
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.18)
+      osc.connect(gain)
+      gain.connect(ctx.destination)
+      osc.start()
+      osc.stop(ctx.currentTime + 0.2)
+      setTimeout(() => { try { ctx.close() } catch (_e) {} }, 280)
+    } catch (_e) {}
+  }
+
+  function resetScannerForNextGuest(delayMs = 2600) {
+    if (successTimerRef.current) clearTimeout(successTimerRef.current)
+    successTimerRef.current = setTimeout(() => {
+      setClient(null)
+      setScanValue('')
+      setComment('')
+      setMessage('')
+      setSuccessFlash(null)
+      setCameraStatus('')
+    }, delayMs)
+  }
+
   async function loadFraudRows() {
     const { data, error } = await supabase
       .from('rms_loyalty_suspicious_operations')
@@ -692,6 +734,7 @@ function LoyaltyPOSDrinkScan({ onDone, scannerProfile = null, scannerOnly = fals
         return
       }
 
+      const beforeCount = getStampCount(currentClient)
       const updatedClient = {
         ...currentClient,
         stamp_count: Number(result?.stamp_count ?? 0),
@@ -699,16 +742,26 @@ function LoyaltyPOSDrinkScan({ onDone, scannerProfile = null, scannerOnly = fals
         visits_count: Number(result?.visits_count ?? currentClient.visits_count ?? 0),
         updated_at: result?.updated_at || new Date().toISOString(),
       }
+      const afterCount = getStampCount(updatedClient)
+      const giftCount = Number(result?.gift_added || 0)
 
       setClient(updatedClient)
       setDrinks('1')
       setComment('')
+      setMessage('')
+      setSuccessFlash({
+        name: updatedClient.name || 'Гость',
+        before: beforeCount,
+        after: afterCount,
+        giftCount,
+        freeBalance: Number(updatedClient.free_drink_balance || 0),
+        client: updatedClient,
+      })
+      playScanSuccessFeedback()
       if (typeof onDone === 'function') await onDone()
       await loadFraudRows()
       await loadTodayRows()
-
-      const giftCount = Number(result?.gift_added || 0)
-      setMessage(giftCount > 0 ? `Начислено +1. Подарок доступен: +${giftCount} напиток.` : 'Начислена 1 отметка.')
+      resetScannerForNextGuest(2700)
     } catch (err) {
       const text = String(err?.message || err || '')
       if (text.includes('cooldown_active')) return setMessage('Повторное начисление для этого клиента пока заблокировано. Интервал — 10 минут.')
@@ -728,13 +781,23 @@ function LoyaltyPOSDrinkScan({ onDone, scannerProfile = null, scannerOnly = fals
           {scannerOnly && <span>{scannerProfile?.branch_id || branchId}</span>}
         </div>
 
-        {message && <div className="pos-lite-message scanner-compact-message">{message}</div>}
+        {successFlash && (
+          <div className={`scanner-success-flash ${successFlash.giftCount > 0 ? 'gift' : ''}`}>
+            <div className="scanner-success-icon">{successFlash.giftCount > 0 ? '🎁' : '✅'}</div>
+            <b>{successFlash.giftCount > 0 ? 'ПОДАРОК ДОСТУПЕН' : 'НАЧИСЛЕНО'}</b>
+            <span>{successFlash.name}</span>
+            <strong>{successFlash.before} → {successFlash.after} из {STAMPS_FOR_FREE_DRINK}</strong>
+            {successFlash.giftCount > 0 && <em>Бесплатный напиток доступен</em>}
+          </div>
+        )}
+
+        {message && !successFlash && <div className="pos-lite-message scanner-compact-message">{message}</div>}
 
         <div className="scanner-primary-actions">
-          <button type="button" className="loyalty-primary scanner-camera-main" onClick={startCameraScan} disabled={busy || cameraOpen}>
+          <button type="button" className="loyalty-primary scanner-camera-main" onClick={startCameraScan} disabled={busy || cameraOpen || Boolean(successFlash)}>
             {cameraOpen ? 'Камера открыта…' : 'Сканировать QR'}
           </button>
-          <button type="button" className="loyalty-primary scanner-apply-main" onClick={applyPosStamps} disabled={!client || busy}>
+          <button type="button" className="loyalty-primary scanner-apply-main" onClick={applyPosStamps} disabled={!client || busy || Boolean(successFlash)}>
             {busy ? 'Начисление…' : 'Начислить +1'}
           </button>
         </div>
@@ -761,9 +824,11 @@ function LoyaltyPOSDrinkScan({ onDone, scannerProfile = null, scannerOnly = fals
                 <em>{getStampProgress(client).percent}%</em>
               </div>
             </div>
-            <CoffeeStampRow client={client} size="compact" />
+            <CoffeeStampRow client={client} size="scanner-large" />
             <div className="scanner-progress-line"><i><em style={{ width: `${getStampProgress(client).percent}%` }} /></i></div>
-            <p>{progressPhrase(client)}</p>
+            <p className={Number(client?.free_drink_balance || 0) > 0 ? 'scanner-gift-note' : ''}>
+              {Number(client?.free_drink_balance || 0) > 0 ? '🎁 БЕСПЛАТНЫЙ НАПИТОК ДОСТУПЕН' : progressPhrase(client)}
+            </p>
           </div>
         ) : (
           <div className="scanner-client-placeholder">Клиент не выбран</div>
