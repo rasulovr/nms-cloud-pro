@@ -1015,6 +1015,188 @@ function LoyaltyPOSDrinkScan({ onDone, scannerProfile = null, scannerOnly = fals
   )
 }
 
+
+function LoyaltyAnalyticsPanel({ clients = [], transactions = [] }) {
+  const [scanRows, setScanRows] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    loadAnalyticsScanRows()
+  }, [])
+
+  async function loadAnalyticsScanRows() {
+    setLoading(true)
+    setError('')
+    const start = new Date()
+    start.setHours(0, 0, 0, 0)
+    const monthStart = new Date(start.getFullYear(), start.getMonth(), 1)
+
+    const { data, error: scanError } = await supabase
+      .from('rms_loyalty_scan_log')
+      .select('*')
+      .gte('created_at', monthStart.toISOString())
+      .order('created_at', { ascending: false })
+      .limit(800)
+
+    if (scanError) {
+      setError(scanError.message)
+      setScanRows([])
+    } else {
+      setScanRows(data || [])
+    }
+    setLoading(false)
+  }
+
+  const analytics = useMemo(() => {
+    const now = new Date()
+    const todayStart = new Date(now)
+    todayStart.setHours(0, 0, 0, 0)
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+    const activeFrom = new Date(now)
+    activeFrom.setDate(activeFrom.getDate() - 30)
+
+    const successfulScans = scanRows.filter((row) => row.cooldown_blocked !== true && String(row.operation_type || '') === 'drink_stamp')
+    const redeemedScans = scanRows.filter((row) => row.cooldown_blocked !== true && String(row.operation_type || '').includes('redeem'))
+    const blockedScans = scanRows.filter((row) => row.cooldown_blocked === true)
+    const todayScans = successfulScans.filter((row) => new Date(row.created_at) >= todayStart)
+    const monthScans = successfulScans.filter((row) => new Date(row.created_at) >= monthStart)
+    const activeClientIds = new Set(scanRows.filter((row) => row.client_id && new Date(row.created_at) >= activeFrom).map((row) => row.client_id))
+
+    const topClientsMap = new Map()
+    successfulScans.forEach((row) => {
+      const key = row.client_id || row.card_number || row.client_phone || row.client_name || 'unknown'
+      const current = topClientsMap.get(key) || { name: row.client_name || 'Клиент', phone: row.client_phone || '', count: 0 }
+      current.count += Number(row.drinks || row.stamps || 1) || 1
+      topClientsMap.set(key, current)
+    })
+
+    const topStaffMap = new Map()
+    successfulScans.forEach((row) => {
+      const key = row.staff_name || 'Не указан'
+      const current = topStaffMap.get(key) || { name: key, count: 0 }
+      current.count += 1
+      topStaffMap.set(key, current)
+    })
+
+    const topBranchMap = new Map()
+    successfulScans.forEach((row) => {
+      const key = row.branch_id || 'Без филиала'
+      const current = topBranchMap.get(key) || { name: key, count: 0 }
+      current.count += 1
+      topBranchMap.set(key, current)
+    })
+
+    const blockedMap = new Map()
+    blockedScans.forEach((row) => {
+      const key = row.client_id || row.card_number || row.client_phone || row.client_name || 'unknown'
+      const current = blockedMap.get(key) || { name: row.client_name || 'Клиент', phone: row.client_phone || '', count: 0 }
+      current.count += 1
+      blockedMap.set(key, current)
+    })
+
+    const totalStamps = clients.reduce((sum, item) => sum + getStampCount(item), 0)
+    const freeBalance = clients.reduce((sum, item) => sum + getFreeDrinkBalance(item), 0)
+    const transactionRedeems = Math.abs(transactions
+      .filter((item) => ['drink_redeem', 'pos_drink_redeem'].includes(String(item.type || '')))
+      .reduce((sum, item) => sum + Math.min(0, Number(item.amount || 0)), 0))
+
+    return {
+      totalClients: clients.length,
+      activeClients30: activeClientIds.size,
+      todayStamps: todayScans.reduce((sum, row) => sum + (Number(row.drinks || row.stamps || 1) || 1), 0),
+      monthStamps: monthScans.reduce((sum, row) => sum + (Number(row.drinks || row.stamps || 1) || 1), 0),
+      giftsRedeemed: redeemedScans.length || transactionRedeems,
+      freeBalance,
+      totalStamps,
+      blockedCount: blockedScans.length,
+      topClients: Array.from(topClientsMap.values()).sort((a, b) => b.count - a.count).slice(0, 10),
+      topStaff: Array.from(topStaffMap.values()).sort((a, b) => b.count - a.count).slice(0, 8),
+      topBranches: Array.from(topBranchMap.values()).sort((a, b) => b.count - a.count).slice(0, 8),
+      blockedClients: Array.from(blockedMap.values()).sort((a, b) => b.count - a.count).slice(0, 8),
+      recentRows: scanRows.slice(0, 12),
+    }
+  }, [clients, transactions, scanRows])
+
+  function renderRankRows(rows, emptyText, valueLabel = 'начислений') {
+    return rows.length ? rows.map((row, idx) => (
+      <div className="analytics-rank-row" key={`${row.name || 'row'}-${idx}`}>
+        <div>
+          <b>{idx + 1}. {row.name || 'Клиент'}</b>
+          {row.phone && <span>{row.phone}</span>}
+        </div>
+        <strong>{row.count} <small>{valueLabel}</small></strong>
+      </div>
+    )) : <div className="loyalty-empty">{emptyText}</div>
+  }
+
+  return (
+    <section className="loyalty-analytics-panel">
+      <div className="loyalty-card analytics-head-card">
+        <div className="loyalty-card-head">
+          <div>
+            <h2>Loyalty Analytics</h2>
+            <p>Ключевые показатели программы лояльности и контроль активности по сканированию.</p>
+          </div>
+          <button type="button" onClick={loadAnalyticsScanRows} disabled={loading}>{loading ? 'Обновление…' : 'Обновить'}</button>
+        </div>
+        {error && <div className="pos-lite-message">{error}</div>}
+      </div>
+
+      <section className="loyalty-kpis analytics-kpis">
+        <div className="loyalty-kpi"><span>Клиентов</span><b>{analytics.totalClients}</b><small>в базе Loyalty</small></div>
+        <div className="loyalty-kpi"><span>Активные 30 дней</span><b>{analytics.activeClients30}</b><small>по scan log</small></div>
+        <div className="loyalty-kpi"><span>Сегодня</span><b>{analytics.todayStamps}</b><small>начислено напитков</small></div>
+        <div className="loyalty-kpi"><span>Этот месяц</span><b>{analytics.monthStamps}</b><small>начислено напитков</small></div>
+        <div className="loyalty-kpi"><span>Подарков выдано</span><b>{analytics.giftsRedeemed}</b><small>по журналу</small></div>
+        <div className="loyalty-kpi"><span>Блокировки</span><b>{analytics.blockedCount}</b><small>cooldown попытки</small></div>
+      </section>
+
+      <section className="analytics-grid">
+        <div className="loyalty-card analytics-card">
+          <div className="loyalty-card-head"><div><h2>TOP клиентов</h2><p>Кто чаще всего использует карту.</p></div></div>
+          <div className="analytics-rank-list">{renderRankRows(analytics.topClients, 'Пока нет начислений.', 'напитков')}</div>
+        </div>
+
+        <div className="loyalty-card analytics-card">
+          <div className="loyalty-card-head"><div><h2>TOP сотрудников</h2><p>Кто сделал больше начислений.</p></div></div>
+          <div className="analytics-rank-list">{renderRankRows(analytics.topStaff, 'Пока нет операций.', 'сканов')}</div>
+        </div>
+
+        <div className="loyalty-card analytics-card">
+          <div className="loyalty-card-head"><div><h2>Филиалы</h2><p>Активность Loyalty по филиалам.</p></div></div>
+          <div className="analytics-rank-list">{renderRankRows(analytics.topBranches, 'Пока нет данных по филиалам.', 'сканов')}</div>
+        </div>
+
+        <div className="loyalty-card analytics-card">
+          <div className="loyalty-card-head"><div><h2>Cooldown</h2><p>Попытки повторного начисления раньше 10 минут.</p></div></div>
+          <div className="analytics-rank-list danger">{renderRankRows(analytics.blockedClients, 'Заблокированных попыток нет.', 'попыток')}</div>
+        </div>
+      </section>
+
+      <section className="loyalty-card analytics-card analytics-recent-card">
+        <div className="loyalty-card-head"><div><h2>Последние события</h2><p>Начисления, выдачи подарков и cooldown-блокировки.</p></div></div>
+        <div className="analytics-events-list">
+          {analytics.recentRows.length ? analytics.recentRows.map((row, idx) => {
+            const blocked = row.cooldown_blocked === true
+            const redeem = String(row.operation_type || '').includes('redeem')
+            return (
+              <div className={`analytics-event-row ${blocked ? 'blocked' : ''} ${redeem ? 'gift' : ''}`} key={`${row.id || row.created_at || 'event'}-${idx}`}>
+                <div className="analytics-event-icon">{blocked ? '⛔' : (redeem ? '🎁' : '+1')}</div>
+                <div>
+                  <b>{row.client_name || 'Клиент'}</b>
+                  <span>{row.branch_id || '—'} · {row.staff_name || '—'} · {row.created_at ? new Date(row.created_at).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : ''}</span>
+                </div>
+                <strong>{blocked ? 'Блок' : (redeem ? 'Подарок' : 'Начисление')}</strong>
+              </div>
+            )
+          }) : <div className="loyalty-empty">Событий пока нет.</div>}
+        </div>
+      </section>
+    </section>
+  )
+}
+
 function WalletQrPanel({ client, onEnsure, onCopy, busy }) {
   const landingUrl = buildWalletLandingUrl(client)
   const hasToken = Boolean(getWalletToken(client))
@@ -1383,12 +1565,15 @@ function RMSLoyaltyAdmin() {
       <div className="loyalty-tabs">
         <button type="button" className={activeTab === 'cards' ? 'active' : ''} onClick={() => setActiveTab('cards')}>Клиенты и карты</button>
         <button type="button" className={activeTab === 'pos' ? 'active' : ''} onClick={() => setActiveTab('pos')}>POS Scan</button>
+        <button type="button" className={activeTab === 'analytics' ? 'active' : ''} onClick={() => setActiveTab('analytics')}>Analytics</button>
       </div>
 
       {activeTab === 'pos' ? (
         <section className="loyalty-pos-tab">
           <LoyaltyPOSDrinkScan onDone={loadLoyalty} />
         </section>
+      ) : activeTab === 'analytics' ? (
+        <LoyaltyAnalyticsPanel clients={clients} transactions={transactions} />
       ) : (
         <div className="loyalty-cards-tab">
 
