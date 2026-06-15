@@ -68,6 +68,44 @@ function buildGoogleWalletUrl(client) {
   return token ? `${getPublicOrigin()}/api/loyalty/google-wallet?token=${encodeURIComponent(token)}` : ''
 }
 
+
+function safeJsonParse(value, fallback = null) {
+  try { return value ? JSON.parse(value) : fallback } catch (_e) { return fallback }
+}
+
+function normalizeScannerLogin(value) {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/@(rms|nms)\.local\.az$/i, '')
+    .replace(/@rms\.internal$/i, '')
+}
+
+function getCurrentRmsInternalScannerProfile() {
+  if (typeof window === 'undefined') return null
+  const session = safeJsonParse(window.localStorage.getItem('rms_internal_session_v2'), null)
+    || safeJsonParse(window.localStorage.getItem('rms_internal_session_v1'), null)
+  if (!session?.rms_internal) return null
+  const login = normalizeScannerLogin(session?.user?.login_name || session?.user?.email || '')
+  const users = safeJsonParse(window.localStorage.getItem('rms_internal_users_v2'), {}) || {}
+  const user = users[login] || Object.values(users).find((item) => item?.id === session?.user?.id) || {}
+  const isScanner = Boolean(
+    user.loyalty_scanner_only ||
+    user.role === 'loyalty_scanner' ||
+    user.access_profile === 'loyalty_scanner' ||
+    login.includes('scanner') ||
+    login.includes('scan')
+  )
+  if (!isScanner) return null
+  return {
+    id: user.id || session?.user?.id || login,
+    login,
+    full_name: user.full_name || session?.user?.full_name || login || 'Loyalty Scanner',
+    branch_id: user.branch_id || user.branch || 'BC1',
+    scanner: true,
+  }
+}
+
 function qrImageUrl(value, size = 260) {
   return value ? `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&margin=12&data=${encodeURIComponent(value)}` : ''
 }
@@ -320,11 +358,11 @@ async function findLoyaltyClientByTokenOrCode(value) {
 }
 
 
-async function rmsLoyaltyApplyDrinkStampRpc({ clientId, drinks, receiptNumber, branchId, staffName, comment }) {
+async function rmsLoyaltyApplyDrinkStampRpc({ clientId, drinks, branchId, staffName, comment }) {
   const { data, error } = await supabase.rpc('rms_loyalty_apply_drink_stamp_secure', {
     p_client_id: clientId,
     p_drinks: drinks,
-    p_receipt_number: receiptNumber || null,
+    p_receipt_number: null,
     p_branch_id: branchId || null,
     p_staff_name: staffName || null,
     p_comment: comment || null,
@@ -333,16 +371,17 @@ async function rmsLoyaltyApplyDrinkStampRpc({ clientId, drinks, receiptNumber, b
   return Array.isArray(data) ? data[0] : data
 }
 
-function LoyaltyPOSDrinkScan({ onDone }) {
+function LoyaltyPOSDrinkScan({ onDone, scannerProfile = null, scannerOnly = false }) {
   const [scanValue, setScanValue] = useState('')
   const [client, setClient] = useState(null)
   const [drinks, setDrinks] = useState('1')
-  const [receiptNumber, setReceiptNumber] = useState('')
-  const [branchId, setBranchId] = useState('BC1')
-  const [staffName, setStaffName] = useState('')
+  const [branchId, setBranchId] = useState(scannerProfile?.branch_id || 'BC1')
+  const [staffName, setStaffName] = useState(scannerProfile?.full_name || '')
   const [comment, setComment] = useState('')
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
+  const [fraudRows, setFraudRows] = useState([])
+  const [todayRows, setTodayRows] = useState([])
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -351,7 +390,34 @@ function LoyaltyPOSDrinkScan({ onDone }) {
       setScanValue(token)
       findClient(token)
     }
+    loadFraudRows()
+    loadTodayRows()
   }, [])
+
+  async function loadFraudRows() {
+    const { data, error } = await supabase
+      .from('rms_loyalty_suspicious_operations')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(12)
+    if (!error) setFraudRows(data || [])
+  }
+
+
+  async function loadTodayRows() {
+    const start = new Date()
+    start.setHours(0, 0, 0, 0)
+    let query = supabase
+      .from('rms_loyalty_transactions')
+      .select('*')
+      .gte('created_at', start.toISOString())
+      .in('type', ['drink_stamp', 'pos_drink_stamp', 'drink_redeem', 'pos_drink_redeem'])
+      .order('created_at', { ascending: false })
+      .limit(40)
+    if (scannerProfile?.branch_id) query = query.eq('branch_id', scannerProfile.branch_id)
+    const { data, error } = await query
+    if (!error) setTodayRows(data || [])
+  }
 
   async function findClient(value = scanValue) {
     setBusy(true)
@@ -379,20 +445,34 @@ function LoyaltyPOSDrinkScan({ onDone }) {
     }
 
     const count = Math.max(1, Math.floor(parseNum(drinks)))
-    const receipt = receiptNumber.trim()
+    if (count > 5) return setMessage('За одно сканирование можно начислить максимум 5 напитков.')
     const cleanStaff = staffName.trim()
-    const cleanComment = comment.trim() || (receipt ? `POS чек ${receipt}: напитков ${count}` : `POS Scan: напитков ${count}`)
+    const cleanComment = comment.trim() || `POS Scan: напитков ${count}`
 
     setBusy(true)
     try {
       const result = await rmsLoyaltyApplyDrinkStampRpc({
         clientId: currentClient.id,
         drinks: count,
-        receiptNumber: receipt,
-        branchId,
-        staffName: cleanStaff,
+        branchId: scannerProfile?.branch_id || branchId,
+        staffName: scannerProfile?.full_name || cleanStaff,
         comment: cleanComment,
       })
+
+      if (result?.status && result.status !== 'ok') {
+        if (result.status === 'cooldown') {
+          const mins = Math.max(1, Math.ceil(Number(result?.cooldown_seconds || 0) / 60))
+          setMessage(`Повторное начисление для этого клиента доступно примерно через ${mins} мин.`)
+        } else if (result.status === 'too_many_drinks') {
+          setMessage('Слишком много напитков за одно сканирование. Максимум: 5.')
+        } else {
+          setMessage(result?.message || 'Начисление заблокировано.')
+        }
+        await loadFraudRows()
+        await loadTodayRows()
+        setBusy(false)
+        return
+      }
 
       const updatedClient = {
         ...currentClient,
@@ -404,17 +484,18 @@ function LoyaltyPOSDrinkScan({ onDone }) {
 
       setClient(updatedClient)
       setDrinks('1')
-      setReceiptNumber('')
       setComment('')
       if (typeof onDone === 'function') await onDone()
+      await loadFraudRows()
+      await loadTodayRows()
 
       const giftCount = Number(result?.gift_added || 0)
       setMessage(giftCount > 0 ? `Начислено ${count}. Подарок доступен: +${giftCount} напиток.` : `Начислено отметок: ${count}.`)
     } catch (err) {
       const text = String(err?.message || err || '')
-      if (text.includes('already_used')) return setMessage('Этот POS чек уже использован для начисления Loyalty.')
+      if (text.includes('cooldown_active')) return setMessage('Повторное начисление для этого клиента пока заблокировано. Интервал — 10 минут.')
       if (text.includes('client_not_found')) return setMessage('Клиент не найден или карта отключена.')
-      if (text.includes('invalid_drinks')) return setMessage('Количество напитков должно быть больше 0.')
+      if (text.includes('invalid_drinks')) return setMessage('Количество напитков должно быть от 1 до 5.')
       return setMessage(text || 'Не удалось начислить отметки.')
     } finally {
       setBusy(false)
@@ -427,7 +508,7 @@ function LoyaltyPOSDrinkScan({ onDone }) {
         <div className="loyalty-card-head">
           <div>
             <h2>POS Scan</h2>
-            <p>Сканируйте QR карты гостя или вставьте ссылку / token вручную.</p>
+            <p>{scannerOnly ? 'Сканируйте QR гостя и начисляйте отметку. Доступ ограничен только POS Scan.' : 'Сканируйте QR карты гостя. Система сама защищает от повторного начисления в течение 10 минут.'}</p>
           </div>
         </div>
 
@@ -461,34 +542,67 @@ function LoyaltyPOSDrinkScan({ onDone }) {
       </div>
 
       <div className="loyalty-card pos-lite-card">
-        <div className="loyalty-card-head"><div><h2>Начисление с POS</h2><p>Для текущего этапа начисляем отметки за напитки.</p></div></div>
+        <div className="loyalty-card-head"><div><h2>Быстрое начисление</h2><p>QR клиента + количество напитков. Повторное начисление этому клиенту доступно не раньше чем через 10 минут.</p></div></div>
         <form className="loyalty-form pos-lite-form" onSubmit={applyPosStamps}>
           <div className="pos-lite-form-grid">
-            <label>Филиал
-              <select value={branchId} onChange={(e) => setBranchId(e.target.value)}>
-                <option value="BC1">BC1</option>
-                <option value="BC2">BC2</option>
-                <option value="BC3">BC3</option>
-                <option value="BC4">BC4</option>
-                <option value="BC5">BC5</option>
-                <option value="Bistro">Bistro</option>
-              </select>
-            </label>
-            <label>POS чек
-              <input value={receiptNumber} onChange={(e) => setReceiptNumber(e.target.value)} placeholder="Например: POS-1258" />
-            </label>
+            {scannerOnly ? (
+              <div className="scanner-readonly-box">
+                <span>Филиал</span>
+                <b>{scannerProfile?.branch_id || branchId}</b>
+                <small>{scannerProfile?.full_name || staffName || 'Scanner'}</small>
+              </div>
+            ) : (
+              <label>Филиал
+                <select value={branchId} onChange={(e) => setBranchId(e.target.value)}>
+                  <option value="BC1">BC1</option>
+                  <option value="BC2">BC2</option>
+                  <option value="BC3">BC3</option>
+                  <option value="BC4">BC4</option>
+                  <option value="BC5">BC5</option>
+                  <option value="Bistro">Bistro</option>
+                </select>
+              </label>
+            )}
             <label>Количество напитков
               <input value={drinks} onChange={(e) => setDrinks(e.target.value)} placeholder="1" />
             </label>
-            <label>Сотрудник
-              <input value={staffName} onChange={(e) => setStaffName(e.target.value)} placeholder="Имя кассира / официанта" />
-            </label>
+            {!scannerOnly && (
+              <label>Сотрудник
+                <input value={staffName} onChange={(e) => setStaffName(e.target.value)} placeholder="Имя кассира / официанта" />
+              </label>
+            )}
           </div>
-          <label>Комментарий
-            <textarea value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Необязательно" />
-          </label>
-          <button className="loyalty-primary" disabled={!client}>Начислить отметки</button>
+          {!scannerOnly && (
+            <label>Комментарий
+              <textarea value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Необязательно" />
+            </label>
+          )}
+          <button className="loyalty-primary" disabled={!client || busy}>{busy ? 'Сохранение…' : 'Начислить отметки'}</button>
         </form>
+      </div>
+
+      <div className="loyalty-card pos-lite-card scanner-today-card">
+        <div className="loyalty-card-head"><div><h2>Операции за сегодня</h2><p>Видны только операции текущего дня для контроля смены.</p></div></div>
+        <div className="scanner-today-list">
+          {todayRows.length ? todayRows.map((row, idx) => (
+            <div className="scanner-today-row" key={`${row.id || row.created_at || 'today'}-${idx}`}>
+              <div><b>{row.client_name || 'Клиент'}</b><span>{new Date(row.created_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })} · {row.comment || row.client_phone || 'Операция Loyalty'}</span></div>
+              <strong>{Number(row.amount || 0) > 0 ? '+' : ''}{Number(row.amount || 0).toFixed(0)}</strong>
+            </div>
+          )) : <div className="loyalty-empty">Сегодня операций пока нет.</div>}
+        </div>
+      </div>
+
+      <div className="loyalty-card pos-lite-card antifraud-card">
+        <div className="loyalty-card-head"><div><h2>Антифрод</h2><p>Последние подозрительные или заблокированные операции.</p></div></div>
+        <div className="antifraud-list">
+          {fraudRows.length ? fraudRows.map((row, idx) => (
+            <div className="antifraud-row" key={`${row.id || row.client_id || 'row'}-${idx}`}>
+              <div><b>{row.reason || row.event_type || 'Проверка'}</b><span>{row.client_name || row.client_phone || row.card_number || 'Клиент не указан'}</span></div>
+              <strong>{row.drinks || row.operations_count || 0}</strong>
+            </div>
+          )) : <div className="loyalty-empty">Подозрительных операций нет.</div>}
+        </div>
       </div>
     </section>
   )
@@ -614,9 +728,12 @@ function RMSLoyaltyAdmin() {
   const [clientForm, setClientForm] = useState({ name: '', phone: '', birthday: '', notes: '' })
   const [stampForm, setStampForm] = useState({ drinks: '1', comment: '' })
   const [redeemForm, setRedeemForm] = useState({ count: '1', comment: '' })
-  const [activeTab, setActiveTab] = useState('cards')
+  const scannerProfile = getCurrentRmsInternalScannerProfile()
+  const scannerOnly = Boolean(scannerProfile)
+  const [activeTab, setActiveTab] = useState(scannerOnly ? 'pos' : 'cards')
 
   useEffect(() => { loadLoyalty() }, [])
+  useEffect(() => { if (scannerOnly && activeTab !== 'pos') setActiveTab('pos') }, [scannerOnly, activeTab])
 
   async function loadLoyalty() {
     setLoading(true)
@@ -818,6 +935,26 @@ function RMSLoyaltyAdmin() {
     return { totalClients, activeClients, totalStamps, freeDrinks, totalVisits, earnedStamps, redeemedGifts }
   }, [clients, transactions])
 
+
+  if (scannerOnly) {
+    return (
+      <div className="loyalty-page drink-mode scanner-only-page">
+        <section className="loyalty-hero drink-hero scanner-hero">
+          <div>
+            <span className="loyalty-eyebrow">RMS Pro Loyalty · Scanner</span>
+            <h1>POS Scan</h1>
+            <p>Ограниченный режим: сканирование QR клиента, начисление отметок и просмотр операций за сегодня.</p>
+          </div>
+          <div className="loyalty-hero-card">
+            <span>Пользователь</span>
+            <b>{scannerProfile?.full_name || 'Scanner'}</b>
+            <small>{scannerProfile?.branch_id || 'BC1'} · повторное начисление не раньше 10 минут</small>
+          </div>
+        </section>
+        <LoyaltyPOSDrinkScan onDone={loadLoyalty} scannerProfile={scannerProfile} scannerOnly />
+      </div>
+    )
+  }
 
   return (
     <div className="loyalty-page drink-mode">
