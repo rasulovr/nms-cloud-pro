@@ -1528,3 +1528,54 @@
 /* v16.9 — Today scan log fix */
 .compact-today-list .scanner-today-row strong{background:#ecfdf5;color:#047857;}
 .compact-today-list .scanner-today-row span{font-variant-numeric:tabular-nums;}
+
+/* v17 — auto scan/apply production scanner */
+.scanner-only-compact .scanner-primary-actions{
+  grid-template-columns:1fr;
+}
+.scanner-only-compact .scanner-apply-main{
+  display:none!important;
+}
+.scanner-only-compact .scanner-compact-top span{
+  background:#ecfdf5;
+  color:#047857;
+  border:1px solid #bbf7d0;
+  padding:6px 10px;
+  border-radius:999px;
+  font-size:12px;
+  font-weight:950;
+  white-space:nowrap;
+}
+.scanner-only-compact .scanner-camera-main{
+  min-height:64px;
+  font-size:19px;
+  border-radius:20px;
+  background:#111827!important;
+}
+.scanner-only-compact .scanner-success-flash{
+  min-height:250px;
+  justify-content:center;
+}
+.scanner-only-compact .scanner-success-icon{
+  font-size:74px;
+}
+.scanner-only-compact .scanner-success-flash b{
+  font-size:30px;
+  letter-spacing:-.04em;
+}
+.scanner-only-compact .scanner-success-flash strong{
+  font-size:24px;
+}
+.scanner-only-compact .scanner-client-compact{
+  padding:16px;
+}
+.scanner-only-compact .coffee-stamp-row.scanner-large span{
+  width:30px;
+  height:30px;
+  font-size:16px;
+}
+@media(max-width:760px){
+  .scanner-only-compact .scanner-camera-main{min-height:68px;font-size:20px;}
+  .scanner-only-compact .scanner-success-flash{min-height:230px;}
+  .scanner-only-compact .scanner-success-icon{font-size:68px;}
+}
