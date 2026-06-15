@@ -248,7 +248,6 @@ function CoffeeIcon({ filled }) {
 function DrinkStampCard({ client }) {
   const cardNumber = buildCardNumber(client)
   const landingUrl = buildWalletLandingUrl(client)
-  const bars = barcodeBars(cardNumber)
   const copyCardLink = async () => {
     if (!landingUrl) return
     try { await navigator.clipboard.writeText(landingUrl) } catch (_e) {}
@@ -293,11 +292,14 @@ function DrinkStampCard({ client }) {
           <small>{progressPhrase(client)}</small>
         </div>
 
-        <div className="drink-barcode-box">
-          <div className="drink-bars">
-            {bars.map((bar, idx) => <i key={idx} style={{ width: `${bar.width}px`, marginRight: `${bar.gap}px`, height: bar.tall ? '64px' : '48px' }} />)}
-          </div>
+        <div className="drink-qr-box">
+          {landingUrl ? (
+            <img src={qrImageUrl(landingUrl, 220)} alt="QR карты клиента" />
+          ) : (
+            <div className="drink-qr-placeholder">QR</div>
+          )}
           <b>{cardNumber}</b>
+          <small>Покажите этот QR на кассе</small>
         </div>
       </div>
 
@@ -828,7 +830,7 @@ function LoyaltyWalletLanding({ token }) {
                 <div><b>iPhone</b><span>Safari → Поделиться → На экран «Домой»</span></div>
                 <div><b>Android</b><span>Chrome → Меню → Добавить на главный экран</span></div>
               </div>
-              <small>На кассе достаточно показать barcode или назвать номер телефона.</small>
+              <small>На кассе достаточно показать QR-код или назвать номер телефона.</small>
             </div>
             <div className="wallet-public-how">
               <div><b>1 напиток</b><span>= 1 отметка</span></div>
