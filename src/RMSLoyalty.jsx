@@ -644,38 +644,58 @@ function LoyaltyPOSDrinkScan({ onDone, scannerProfile = null, scannerOnly = fals
 
 
   async function loadTodayRows() {
-    const start = new Date()
-    start.setHours(0, 0, 0, 0)
+    const branch = scannerProfile?.branch_id || branchId || null
+    const staff = scannerProfile?.full_name || staffName || null
 
-    const { data: scanLog, error: scanLogError } = await supabase
-      .from('rms_loyalty_scan_log')
-      .select('*')
-      .gte('created_at', start.toISOString())
-      .order('created_at', { ascending: false })
-      .limit(40)
+    const { data: rpcRows, error: rpcError } = await supabase.rpc('rms_loyalty_scan_log_today_secure', {
+      p_branch_id: branch,
+      p_staff_name: scannerOnly ? staff : null,
+    })
 
-    if (!scanLogError && Array.isArray(scanLog) && scanLog.length) {
-      setTodayRows(scanLog.map((row) => ({
+    if (!rpcError && Array.isArray(rpcRows)) {
+      setTodayRows(rpcRows.map((row) => ({
         id: row.id,
         created_at: row.created_at,
-        client_name: row.client_name,
-        client_phone: row.client_phone || row.phone,
-        card_number: row.card_number,
-        amount: row.stamps || row.drinks || 1,
-        comment: row.cooldown_blocked ? 'Блокировка 10 минут' : (row.operation_type || 'Loyalty scan'),
+        client_name: row.client_name || 'Клиент',
+        client_phone: row.client_phone || '',
+        card_number: row.card_number || '',
+        amount: Number(row.drinks || row.stamps || 1),
+        comment: row.operation_type || 'drink_stamp',
       })))
       return
     }
 
-    const { data, error } = await supabase
-      .from('rms_loyalty_transactions')
+    const start = new Date()
+    start.setHours(0, 0, 0, 0)
+
+    let query = supabase
+      .from('rms_loyalty_scan_log')
       .select('*')
       .gte('created_at', start.toISOString())
-      .in('type', ['earn', 'redeem', 'adjustment', 'drink_stamp', 'pos_drink_stamp', 'drink_redeem', 'pos_drink_redeem'])
+      .eq('operation_type', 'drink_stamp')
+      .eq('cooldown_blocked', false)
       .order('created_at', { ascending: false })
       .limit(40)
 
-    if (!error) setTodayRows(data || [])
+    if (branch) query = query.eq('branch_id', branch)
+    if (scannerOnly && staff) query = query.eq('staff_name', staff)
+
+    const { data: scanLog, error: scanLogError } = await query
+
+    if (!scanLogError && Array.isArray(scanLog)) {
+      setTodayRows(scanLog.map((row) => ({
+        id: row.id,
+        created_at: row.created_at,
+        client_name: row.client_name || 'Клиент',
+        client_phone: row.client_phone || '',
+        card_number: row.card_number || '',
+        amount: Number(row.drinks || row.stamps || 1),
+        comment: row.operation_type || 'drink_stamp',
+      })))
+      return
+    }
+
+    setTodayRows([])
   }
 
   async function findClient(value = scanValue) {
