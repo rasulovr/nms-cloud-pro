@@ -314,18 +314,55 @@ function DrinkStampCard({ client }) {
 
 
 function extractLoyaltyToken(value) {
-  const raw = String(value || '').trim()
-  if (!raw) return ''
-  try {
-    const url = new URL(raw)
-    const fromPath = url.pathname.match(/\/loyalty\/card\/([^/?#]+)/)?.[1]
-    if (fromPath) return decodeURIComponent(fromPath)
-    return url.searchParams.get('loyalty_wallet') || url.searchParams.get('token') || raw
-  } catch (_error) {
-    const fromPath = raw.match(/\/loyalty\/card\/([^/?#]+)/)?.[1]
-    if (fromPath) return decodeURIComponent(fromPath)
-    return raw
+  const rawInput = String(value || '')
+    .replace(/[\u200B-\u200D\uFEFF]/g, '')
+    .trim()
+
+  if (!rawInput) return ''
+
+  // QR scanners on iOS/Safari can return a full URL, a URL with spaces/newlines,
+  // plain wallet_token, card number, or phone. Normalize all common QR payloads here.
+  const compact = rawInput.replace(/\s+/g, '')
+
+  const decodeSafe = (input) => {
+    try { return decodeURIComponent(input || '') } catch (_error) { return input || '' }
   }
+
+  const cleanToken = (input) => decodeSafe(String(input || '')
+    .replace(/^loyalty:/i, '')
+    .replace(/^token:/i, '')
+    .replace(/^wallet:/i, '')
+    .replace(/^card:/i, '')
+    .trim()
+    .replace(/[?&#].*$/, ''))
+
+  const parseFromText = (input) => {
+    const text = String(input || '')
+    const pathMatch = text.match(/(?:https?:\/\/[^\s/]+)?\/loyalty\/card\/([^\s/?#]+)/i)
+    if (pathMatch?.[1]) return cleanToken(pathMatch[1])
+
+    const queryMatch = text.match(/[?&](?:loyalty_wallet|wallet_token|token)=([^&#\s]+)/i)
+    if (queryMatch?.[1]) return cleanToken(queryMatch[1])
+
+    return cleanToken(text)
+  }
+
+  try {
+    const url = new URL(compact)
+    const fromPath = url.pathname.match(/\/loyalty\/card\/([^/?#]+)/i)?.[1]
+    if (fromPath) return cleanToken(fromPath)
+
+    const fromQuery =
+      url.searchParams.get('loyalty_wallet') ||
+      url.searchParams.get('wallet_token') ||
+      url.searchParams.get('token')
+
+    if (fromQuery) return cleanToken(fromQuery)
+  } catch (_error) {
+    // Not a valid URL. Continue with text parsing.
+  }
+
+  return parseFromText(compact) || parseFromText(rawInput)
 }
 
 async function findLoyaltyClientByTokenOrCode(value) {
@@ -429,12 +466,13 @@ function LoyaltyPOSDrinkScan({ onDone, scannerProfile = null, scannerOnly = fals
 
   async function handleScannedQr(rawValue) {
     const value = String(rawValue || '').trim()
+    const tokenValue = extractLoyaltyToken(value)
     if (!value || !scanActiveRef.current) return
     scanActiveRef.current = false
-    setScanValue(value)
+    setScanValue(tokenValue || value)
     setCameraStatus('QR найден. Ищу клиента…')
     stopCameraScan()
-    await findClient(value)
+    await findClient(tokenValue || value)
   }
 
   async function startNativeBarcodeScan() {
@@ -552,7 +590,9 @@ function LoyaltyPOSDrinkScan({ onDone, scannerProfile = null, scannerOnly = fals
   async function findClient(value = scanValue) {
     setBusy(true)
     setMessage('')
-    const result = await findLoyaltyClientByTokenOrCode(value)
+    const normalizedValue = extractLoyaltyToken(value) || value
+    if (normalizedValue && normalizedValue !== scanValue) setScanValue(normalizedValue)
+    const result = await findLoyaltyClientByTokenOrCode(normalizedValue)
     setBusy(false)
     if (result.error) {
       setClient(null)
