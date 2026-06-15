@@ -1215,3 +1215,242 @@
   .scanner-only-page .scanner-camera-video{min-height:310px!important;}
   .scanner-only-page .scanner-camera-frame{width:250px!important;height:250px!important;}
 }
+
+/* v16.6 — ultra-compact mobile scanner for staff */
+.scanner-compact-mode{
+  gap:12px!important;
+}
+.scanner-compact-mode .scanner-main-card{
+  padding:18px!important;
+}
+.scanner-compact-top{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:12px;
+}
+.scanner-compact-top h2{
+  margin:0;
+  font-size:28px;
+  line-height:1;
+  letter-spacing:-.055em;
+}
+.scanner-compact-top span{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-width:58px;
+  height:36px;
+  border-radius:999px;
+  background:#111827;
+  color:#fff;
+  font-weight:950;
+  font-size:14px;
+}
+.scanner-compact-message{
+  margin:0 0 12px!important;
+  padding:12px 14px!important;
+  border-radius:18px!important;
+  font-size:15px!important;
+  line-height:1.25!important;
+}
+.scanner-primary-actions{
+  display:grid;
+  grid-template-columns:1fr;
+  gap:10px;
+  margin-bottom:12px;
+}
+.scanner-primary-actions .loyalty-primary{
+  min-height:58px!important;
+  border-radius:20px!important;
+  font-size:19px!important;
+  letter-spacing:-.02em;
+}
+.scanner-apply-main{
+  background:#111827!important;
+}
+.scanner-apply-main:disabled{
+  opacity:.38!important;
+  cursor:not-allowed!important;
+}
+.scanner-client-placeholder{
+  padding:18px;
+  border:1px dashed #d7d0c5;
+  border-radius:20px;
+  color:#6b7280;
+  background:#faf9f6;
+  font-weight:950;
+  text-align:center;
+}
+.scanner-client-compact{
+  padding:15px;
+  border-radius:22px;
+  background:linear-gradient(180deg,#111827,#05070a);
+  color:#fff;
+  box-shadow:0 16px 36px rgba(15,23,42,.16);
+}
+.scanner-client-mainline{
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:14px;
+  margin-bottom:12px;
+}
+.scanner-client-mainline span,
+.scanner-client-mainline small{
+  display:block;
+  color:rgba(255,255,255,.58);
+  font-size:11px;
+  font-weight:900;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+}
+.scanner-client-mainline b{
+  display:block;
+  margin:4px 0 3px;
+  color:#fff;
+  font-size:27px;
+  line-height:1;
+  letter-spacing:-.055em;
+}
+.scanner-client-score{
+  text-align:right;
+  min-width:72px;
+}
+.scanner-client-score strong{
+  display:block;
+  color:#fff;
+  font-size:24px;
+  line-height:1;
+}
+.scanner-client-score em{
+  display:block;
+  margin-top:5px;
+  color:#ef2330;
+  font-style:normal;
+  font-weight:950;
+}
+.scanner-client-compact .coffee-stamp-row.compact{
+  margin:0 0 10px!important;
+}
+.scanner-client-compact .coffee-stamp-row.compact span{
+  background:rgba(255,255,255,.08)!important;
+  border-color:rgba(255,255,255,.16)!important;
+  color:rgba(255,255,255,.35)!important;
+}
+.scanner-client-compact .coffee-stamp-row.compact span.filled{
+  background:rgba(239,35,42,.16)!important;
+  border-color:#ef2330!important;
+  color:#fff!important;
+}
+.scanner-progress-line i{
+  display:block;
+  height:7px;
+  overflow:hidden;
+  border-radius:999px;
+  background:rgba(255,255,255,.14);
+}
+.scanner-progress-line em{
+  display:block;
+  height:100%;
+  border-radius:999px;
+  background:#ef2330;
+}
+.scanner-client-compact p{
+  margin:9px 0 0;
+  color:rgba(255,255,255,.72);
+  font-size:13px;
+  font-weight:850;
+}
+.scanner-manual-details{
+  margin-top:12px;
+  border-top:1px solid #ece7df;
+  padding-top:10px;
+}
+.scanner-manual-details summary{
+  cursor:pointer;
+  color:#8b95a5;
+  font-size:13px;
+  font-weight:950;
+  list-style:none;
+}
+.scanner-manual-details summary::-webkit-details-marker{display:none;}
+.scanner-manual-details .scanner-manual-input{
+  margin-top:10px;
+  display:grid;
+  gap:7px;
+  color:#8b95a5;
+  font-size:12px;
+  font-weight:900;
+}
+.scanner-manual-details textarea{
+  min-height:74px!important;
+  font-size:14px!important;
+}
+.compact-camera-box{
+  margin:0 0 12px!important;
+}
+.compact-today-card{
+  padding:16px!important;
+}
+.scanner-today-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:10px;
+}
+.scanner-today-head h2{
+  margin:0;
+  font-size:22px;
+  line-height:1;
+  letter-spacing:-.045em;
+}
+.scanner-today-head span{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-width:34px;
+  height:34px;
+  border-radius:999px;
+  background:#111827;
+  color:#fff;
+  font-weight:950;
+}
+.compact-today-list{
+  max-height:280px!important;
+}
+.compact-today-list .scanner-today-row{
+  padding:10px 12px!important;
+  border-radius:14px!important;
+}
+.compact-today-list .scanner-today-row b{
+  font-size:14px!important;
+}
+.compact-today-list .scanner-today-row span{
+  font-size:11px!important;
+}
+.compact-today-list .scanner-today-row strong{
+  min-width:36px!important;
+  padding:6px 8px!important;
+}
+
+@media(max-width:760px){
+  .scanner-only-page .loyalty-hero,
+  .scanner-only-page .loyalty-tabs,
+  .scanner-only-page .loyalty-kpis{
+    display:none!important;
+  }
+  .scanner-only-page.loyalty-page{
+    padding:10px!important;
+    background:#f7f4ee!important;
+  }
+  .scanner-compact-mode .scanner-main-card,
+  .scanner-compact-mode .compact-today-card{
+    border-radius:24px!important;
+    box-shadow:0 14px 34px rgba(15,23,42,.08)!important;
+  }
+  .scanner-compact-top h2{font-size:25px;}
+  .scanner-primary-actions .loyalty-primary{min-height:56px!important;font-size:18px!important;}
+}
