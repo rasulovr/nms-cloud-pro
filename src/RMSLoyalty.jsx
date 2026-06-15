@@ -388,6 +388,7 @@ function LoyaltyPOSDrinkScan({ onDone, scannerProfile = null, scannerOnly = fals
   const streamRef = useRef(null)
   const scanLoopRef = useRef(null)
   const scanActiveRef = useRef(false)
+  const zxingControlsRef = useRef(null)
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -407,6 +408,10 @@ function LoyaltyPOSDrinkScan({ onDone, scannerProfile = null, scannerOnly = fals
       try { cancelAnimationFrame(scanLoopRef.current) } catch (_e) {}
       scanLoopRef.current = null
     }
+    if (zxingControlsRef.current) {
+      try { zxingControlsRef.current.stop() } catch (_e) {}
+      zxingControlsRef.current = null
+    }
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((track) => {
         try { track.stop() } catch (_e) {}
@@ -420,15 +425,82 @@ function LoyaltyPOSDrinkScan({ onDone, scannerProfile = null, scannerOnly = fals
     setCameraStatus('')
   }
 
+  async function handleScannedQr(rawValue) {
+    const value = String(rawValue || '').trim()
+    if (!value || !scanActiveRef.current) return
+    scanActiveRef.current = false
+    setScanValue(value)
+    setCameraStatus('QR найден. Ищу клиента…')
+    stopCameraScan()
+    await findClient(value)
+  }
+
+  async function startNativeBarcodeScan() {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } },
+      audio: false,
+    })
+    streamRef.current = stream
+    if (videoRef.current) {
+      videoRef.current.srcObject = stream
+      await videoRef.current.play()
+    }
+
+    const detector = new window.BarcodeDetector({ formats: ['qr_code'] })
+    scanActiveRef.current = true
+    setCameraStatus('Наведите камеру на QR клиента')
+
+    const scanFrame = async () => {
+      if (!scanActiveRef.current || !videoRef.current) return
+      try {
+        const codes = await detector.detect(videoRef.current)
+        const rawValue = codes?.[0]?.rawValue || ''
+        if (rawValue) {
+          await handleScannedQr(rawValue)
+          return
+        }
+      } catch (_err) {
+        // Keep scanning. Some frames may fail before the video is ready.
+      }
+      scanLoopRef.current = requestAnimationFrame(scanFrame)
+    }
+
+    scanLoopRef.current = requestAnimationFrame(scanFrame)
+  }
+
+  async function startZxingSafariScan() {
+    setCameraStatus('Запуск камеры Safari…')
+    const mod = await import('https://esm.sh/@zxing/browser@0.1.5')
+    const BrowserQRCodeReader = mod.BrowserQRCodeReader
+    if (!BrowserQRCodeReader || !videoRef.current) throw new Error('QR scanner module unavailable')
+
+    const reader = new BrowserQRCodeReader()
+    scanActiveRef.current = true
+    setCameraStatus('Наведите камеру на QR клиента')
+
+    let selectedDeviceId = undefined
+    try {
+      const devices = await BrowserQRCodeReader.listVideoInputDevices()
+      const backCamera = devices.find((item) => /back|rear|environment|зад/i.test(item.label || ''))
+      selectedDeviceId = (backCamera || devices[0])?.deviceId
+    } catch (_err) {
+      selectedDeviceId = undefined
+    }
+
+    const controls = await reader.decodeFromVideoDevice(selectedDeviceId, videoRef.current, async (result) => {
+      const rawValue = result?.getText?.() || result?.text || ''
+      if (rawValue && scanActiveRef.current) {
+        await handleScannedQr(rawValue)
+      }
+    })
+    zxingControlsRef.current = controls
+  }
+
   async function startCameraScan() {
     setMessage('')
     if (typeof window === 'undefined') return
     if (!navigator?.mediaDevices?.getUserMedia) {
-      setMessage('Камера недоступна в этом браузере. Откройте RMS через Chrome/Safari и разрешите доступ к камере.')
-      return
-    }
-    if (!('BarcodeDetector' in window)) {
-      setMessage('Автоскан QR не поддерживается этим браузером. Используйте Chrome на Android или ручной ввод token/карты.')
+      setMessage('Камера недоступна в этом браузере. Откройте RMS через Safari/Chrome по HTTPS и разрешите доступ к камере.')
       return
     }
 
@@ -437,45 +509,16 @@ function LoyaltyPOSDrinkScan({ onDone, scannerProfile = null, scannerOnly = fals
     setCameraStatus('Запуск камеры…')
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } },
-        audio: false,
-      })
-      streamRef.current = stream
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream
-        await videoRef.current.play()
+      if ('BarcodeDetector' in window) {
+        await startNativeBarcodeScan()
+      } else {
+        await startZxingSafariScan()
       }
-
-      const detector = new window.BarcodeDetector({ formats: ['qr_code'] })
-      scanActiveRef.current = true
-      setCameraStatus('Наведите камеру на QR клиента')
-
-      const scanFrame = async () => {
-        if (!scanActiveRef.current || !videoRef.current) return
-        try {
-          const codes = await detector.detect(videoRef.current)
-          const rawValue = codes?.[0]?.rawValue || ''
-          if (rawValue) {
-            scanActiveRef.current = false
-            setScanValue(rawValue)
-            setCameraStatus('QR найден. Ищу клиента…')
-            stopCameraScan()
-            await findClient(rawValue)
-            return
-          }
-        } catch (_err) {
-          // Keep scanning. Some frames may fail before the video is ready.
-        }
-        scanLoopRef.current = requestAnimationFrame(scanFrame)
-      }
-
-      scanLoopRef.current = requestAnimationFrame(scanFrame)
     } catch (err) {
       stopCameraScan()
       setMessage(err?.name === 'NotAllowedError'
-        ? 'Доступ к камере запрещён. Разрешите камеру для app.rms.rest в настройках браузера.'
-        : (err?.message || 'Не удалось открыть камеру.'))
+        ? 'Доступ к камере запрещён. Разрешите камеру для app.rms.rest в настройках Safari.'
+        : (err?.message || 'Не удалось открыть камеру. На iPhone используйте Safari по HTTPS и разрешите камеру для сайта.'))
     }
   }
 
