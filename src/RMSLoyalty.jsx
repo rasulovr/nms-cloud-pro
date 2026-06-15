@@ -604,15 +604,35 @@ function LoyaltyPOSDrinkScan({ onDone, scannerProfile = null, scannerOnly = fals
   async function loadTodayRows() {
     const start = new Date()
     start.setHours(0, 0, 0, 0)
-    let query = supabase
+
+    const { data: scanLog, error: scanLogError } = await supabase
+      .from('rms_loyalty_scan_log')
+      .select('*')
+      .gte('created_at', start.toISOString())
+      .order('created_at', { ascending: false })
+      .limit(40)
+
+    if (!scanLogError && Array.isArray(scanLog) && scanLog.length) {
+      setTodayRows(scanLog.map((row) => ({
+        id: row.id,
+        created_at: row.created_at,
+        client_name: row.client_name,
+        client_phone: row.client_phone || row.phone,
+        card_number: row.card_number,
+        amount: row.stamps || row.drinks || 1,
+        comment: row.cooldown_blocked ? 'Блокировка 10 минут' : (row.operation_type || 'Loyalty scan'),
+      })))
+      return
+    }
+
+    const { data, error } = await supabase
       .from('rms_loyalty_transactions')
       .select('*')
       .gte('created_at', start.toISOString())
-      .in('type', ['drink_stamp', 'pos_drink_stamp', 'drink_redeem', 'pos_drink_redeem'])
+      .in('type', ['earn', 'redeem', 'adjustment', 'drink_stamp', 'pos_drink_stamp', 'drink_redeem', 'pos_drink_redeem'])
       .order('created_at', { ascending: false })
       .limit(40)
-    if (scannerProfile?.branch_id) query = query.eq('branch_id', scannerProfile.branch_id)
-    const { data, error } = await query
+
     if (!error) setTodayRows(data || [])
   }
 
@@ -701,106 +721,73 @@ function LoyaltyPOSDrinkScan({ onDone, scannerProfile = null, scannerOnly = fals
   }
 
   return (
-    <section className="loyalty-pos-lite">
-      <div className="loyalty-card pos-lite-card">
-        <div className="loyalty-card-head">
-          <div>
-            <h2>POS Scan</h2>
-            <p>{scannerOnly ? 'Сканируйте QR гостя и начисляйте одну отметку. Доступ ограничен только POS Scan.' : 'Сканируйте QR карты гостя. Начисление строго +1, повторное начисление этому клиенту не раньше чем через 10 минут.'}</p>
-          </div>
+    <section className={`loyalty-pos-lite scanner-compact-mode ${scannerOnly ? 'scanner-only-compact' : ''}`}>
+      <div className="loyalty-card pos-lite-card scanner-main-card">
+        <div className="scanner-compact-top">
+          <h2>POS Scan</h2>
+          {scannerOnly && <span>{scannerProfile?.branch_id || branchId}</span>}
         </div>
 
-        {message && <div className="pos-lite-message">{message}</div>}
+        {message && <div className="pos-lite-message scanner-compact-message">{message}</div>}
 
-        <div className="pos-lite-grid">
-          <div className="pos-lite-block scanner-camera-block">
-            <button type="button" className="loyalty-primary scanner-camera-main" onClick={startCameraScan} disabled={busy || cameraOpen}>
-              {cameraOpen ? 'Камера открыта…' : 'Сканировать QR'}
-            </button>
-
-            {cameraOpen && (
-              <div className="scanner-camera-box">
-                <video ref={videoRef} className="scanner-camera-video" muted playsInline autoPlay />
-                <div className="scanner-camera-frame" />
-                <div className="scanner-camera-status">{cameraStatus || 'Наведите камеру на QR клиента'}</div>
-                <button type="button" onClick={stopCameraScan}>Закрыть камеру</button>
-              </div>
-            )}
-
-            <label className="scanner-manual-input">QR / token / номер карты / телефон
-              <textarea value={scanValue} onChange={(e) => setScanValue(e.target.value)} placeholder="Ручной ввод, если камера недоступна" />
-            </label>
-            <button type="button" className="loyalty-primary secondary-scan-button" onClick={() => findClient()} disabled={busy}>{busy ? 'Поиск…' : 'Найти клиента вручную'}</button>
-          </div>
-
-          <div className="pos-lite-client">
-            {client ? (
-              <>
-                <div className="pos-lite-client-head">
-                  <div><span>Клиент</span><b>{client.name || 'Гость'}</b><small>{client.phone || buildCardNumber(client)}</small></div>
-                  <strong>{getStampCount(client)}/{STAMPS_FOR_FREE_DRINK}</strong>
-                  <DrinkProgressRing client={client} compact />
-                </div>
-                <div className="pos-lite-progress-note">{progressPhrase(client)}</div>
-                <CoffeeStampRow client={client} size="compact" />
-                <DrinkStampCard client={client} />
-              </>
-            ) : (
-              <div className="loyalty-empty">Клиент пока не выбран.</div>
-            )}
-          </div>
+        <div className="scanner-primary-actions">
+          <button type="button" className="loyalty-primary scanner-camera-main" onClick={startCameraScan} disabled={busy || cameraOpen}>
+            {cameraOpen ? 'Камера открыта…' : 'Сканировать QR'}
+          </button>
+          <button type="button" className="loyalty-primary scanner-apply-main" onClick={applyPosStamps} disabled={!client || busy}>
+            {busy ? 'Начисление…' : 'Начислить +1'}
+          </button>
         </div>
-      </div>
 
-      <div className="loyalty-card pos-lite-card">
-        <div className="loyalty-card-head"><div><h2>Быстрое начисление</h2><p>QR клиента → начислить 1 напиток. Без номера чека и лишних полей.</p></div></div>
-        <form className="loyalty-form pos-lite-form" onSubmit={applyPosStamps}>
-          <div className="pos-lite-form-grid scanner-fast-grid">
-            {scannerOnly ? (
-              <div className="scanner-readonly-box">
-                <span>Филиал / сотрудник</span>
-                <b>{scannerProfile?.branch_id || branchId}</b>
-                <small>{scannerProfile?.full_name || staffName || 'Scanner'}</small>
+        {cameraOpen && (
+          <div className="scanner-camera-box compact-camera-box">
+            <video ref={videoRef} className="scanner-camera-video" muted playsInline autoPlay />
+            <div className="scanner-camera-frame" />
+            <div className="scanner-camera-status">{cameraStatus || 'Наведите камеру на QR'}</div>
+            <button type="button" onClick={stopCameraScan}>Закрыть</button>
+          </div>
+        )}
+
+        {client ? (
+          <div className="scanner-client-compact">
+            <div className="scanner-client-mainline">
+              <div>
+                <span>Клиент</span>
+                <b>{client.name || 'Гость'}</b>
+                <small>{client.phone || buildCardNumber(client)}</small>
               </div>
-            ) : (
-              <>
-                <label>Филиал
-                  <select value={branchId} onChange={(e) => setBranchId(e.target.value)}>
-                    <option value="BC1">BC1</option>
-                    <option value="BC2">BC2</option>
-                    <option value="BC3">BC3</option>
-                    <option value="BC4">BC4</option>
-                    <option value="BC5">BC5</option>
-                    <option value="Bistro">Bistro</option>
-                  </select>
-                </label>
-                <label>Сотрудник
-                  <input value={staffName} onChange={(e) => setStaffName(e.target.value)} placeholder="Имя кассира / официанта" />
-                </label>
-              </>
-            )}
-            <div className="scanner-plus-one-box">
-              <span>Начисление</span>
-              <b>+1 напиток</b>
-              <small>Следующее начисление этому клиенту — не раньше чем через 10 минут.</small>
+              <div className="scanner-client-score">
+                <strong>{getStampCount(client)}/{STAMPS_FOR_FREE_DRINK}</strong>
+                <em>{getStampProgress(client).percent}%</em>
+              </div>
             </div>
+            <CoffeeStampRow client={client} size="compact" />
+            <div className="scanner-progress-line"><i><em style={{ width: `${getStampProgress(client).percent}%` }} /></i></div>
+            <p>{progressPhrase(client)}</p>
           </div>
-          {!scannerOnly && (
-            <label>Комментарий
-              <textarea value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Необязательно" />
-            </label>
-          )}
-          <button className="loyalty-primary" disabled={!client || busy}>{busy ? 'Сохранение…' : 'Начислить 1 напиток'}</button>
-        </form>
+        ) : (
+          <div className="scanner-client-placeholder">Клиент не выбран</div>
+        )}
+
+        <details className="scanner-manual-details">
+          <summary>Ручной ввод</summary>
+          <label className="scanner-manual-input">QR / token / карта / телефон
+            <textarea value={scanValue} onChange={(e) => setScanValue(e.target.value)} placeholder="Вставьте token, номер карты или телефон" />
+          </label>
+          <button type="button" className="loyalty-primary secondary-scan-button" onClick={() => findClient()} disabled={busy}>{busy ? 'Поиск…' : 'Найти клиента'}</button>
+        </details>
       </div>
 
-      <div className="loyalty-card pos-lite-card scanner-today-card">
-        <div className="loyalty-card-head"><div><h2>Операции за сегодня</h2><p>Видны только операции текущего дня для контроля смены.</p></div></div>
-        <div className="scanner-today-list">
+      <div className="loyalty-card pos-lite-card scanner-today-card compact-today-card">
+        <div className="scanner-today-head">
+          <h2>Сегодня</h2>
+          <span>{todayRows.length}</span>
+        </div>
+        <div className="scanner-today-list compact-today-list">
           {todayRows.length ? todayRows.map((row, idx) => (
             <div className="scanner-today-row" key={`${row.id || row.created_at || 'today'}-${idx}`}>
-              <div><b>{row.client_name || 'Клиент'}</b><span>{new Date(row.created_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })} · {row.comment || row.client_phone || 'Операция Loyalty'}</span></div>
-              <strong>{Number(row.amount || 0) > 0 ? '+' : ''}{Number(row.amount || 0).toFixed(0)}</strong>
+              <div><b>{row.client_name || row.name || 'Клиент'}</b><span>{row.created_at ? new Date(row.created_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) : ''}</span></div>
+              <strong>{Number(row.amount || row.stamps || 1) > 0 ? '+' : ''}{Number(row.amount || row.stamps || 1).toFixed(0)}</strong>
             </div>
           )) : <div className="loyalty-empty">Сегодня операций пока нет.</div>}
         </div>
