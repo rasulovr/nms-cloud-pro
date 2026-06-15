@@ -790,3 +790,25 @@
   .scanner-only-page .pos-lite-form-grid{grid-template-columns:1fr}
   .scanner-today-row{align-items:flex-start}
 }
+
+/* RMS Loyalty v15 — Scanner +1 fixed flow and audit-ready UI */
+.scanner-only-page .loyalty-hero-card b{font-size:28px;line-height:1.05;}
+.scanner-only-page .pos-lite-card{border-radius:26px;}
+.scanner-only-page .pos-lite-grid{grid-template-columns:minmax(0,1fr) minmax(320px,420px);}
+.scanner-only-page .pos-lite-block textarea{min-height:104px;font-size:15px;}
+.scanner-fast-grid{grid-template-columns:1fr 1fr!important;align-items:stretch;}
+.scanner-plus-one-box{width:100%;border:1px solid #e5e7eb;border-radius:18px;padding:14px 15px;background:linear-gradient(180deg,#fff,#f8fafc);color:#0f172a;}
+.scanner-plus-one-box span,.scanner-plus-one-box small{display:block;color:#64748b;font-size:12px;font-weight:850;letter-spacing:.04em;text-transform:uppercase;}
+.scanner-plus-one-box b{display:block;margin:7px 0 5px;font-size:22px;line-height:1;font-weight:950;color:#111827;}
+.scanner-plus-one-box small{text-transform:none;letter-spacing:0;line-height:1.35;font-weight:750;}
+.scanner-only-page .scanner-plus-one-box{background:#0d0f13;border-color:rgba(226,232,240,.12);color:#fff;}
+.scanner-only-page .scanner-plus-one-box b{color:#fff;}
+.scanner-only-page .scanner-plus-one-box span,.scanner-only-page .scanner-plus-one-box small{color:rgba(255,255,255,.62);}
+.scanner-only-page .loyalty-primary{background:#e11d2f!important;box-shadow:0 18px 34px rgba(225,29,47,.18);}
+.scanner-only-page .loyalty-primary:disabled{opacity:.45;box-shadow:none;}
+.scanner-only-page .scanner-today-card{margin-top:0;}
+.scanner-only-page .antifraud-card{display:none!important;}
+.scanner-only-page .drink-card-wallet-wrap{max-width:420px;}
+.scanner-only-page .drink-wallet-card.progress-card{transform:none;}
+@media(max-width:1180px){.scanner-only-page .pos-lite-grid{grid-template-columns:1fr}.scanner-fast-grid{grid-template-columns:1fr!important;}}
+@media(max-width:760px){.scanner-only-page .pos-lite-block textarea{min-height:86px}.scanner-plus-one-box b{font-size:20px}.scanner-only-page .drink-card-wallet-wrap{max-width:100%;}}
