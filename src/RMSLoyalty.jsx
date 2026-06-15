@@ -371,6 +371,35 @@ async function findLoyaltyClientByTokenOrCode(value) {
 
   const selectFields = 'id,name,phone,card_number,wallet_token,wallet_enabled,stamp_count,free_drink_balance,visits_count,created_at,updated_at,is_active'
 
+  // First try the public wallet RPC. It is SECURITY DEFINER and is the same source
+  // used by the public card page, so QR scanning works even when direct table RLS
+  // blocks/filters the anon client on mobile scanner sessions.
+  const looksLikeWalletToken = /^[a-z0-9]{24,128}$/i.test(token) && !String(token).startsWith('BC-')
+  if (looksLikeWalletToken) {
+    const { data: rpcData, error: rpcError } = await supabase.rpc('rms_loyalty_wallet_card_by_token', { p_wallet_token: token })
+    if (rpcError) return { client: null, error: rpcError.message }
+    const rpcClient = Array.isArray(rpcData) ? rpcData[0] : rpcData
+    if (rpcClient?.id) {
+      return {
+        client: {
+          id: rpcClient.id,
+          name: rpcClient.name,
+          phone: rpcClient.phone,
+          card_number: rpcClient.card_number,
+          wallet_token: rpcClient.wallet_token || token,
+          wallet_enabled: true,
+          stamp_count: Number(rpcClient.stamp_count || 0),
+          free_drink_balance: Number(rpcClient.free_drink_balance || 0),
+          visits_count: Number(rpcClient.visits_count || 0),
+          created_at: rpcClient.created_at || null,
+          updated_at: rpcClient.updated_at || null,
+          is_active: rpcClient.is_active !== false,
+        },
+        error: '',
+      }
+    }
+  }
+
   const checks = [
     { field: 'wallet_token', value: token },
     { field: 'card_number', value: token },
