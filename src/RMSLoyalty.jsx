@@ -439,6 +439,18 @@ async function rmsLoyaltyApplyDrinkStampRpc({ clientId, drinks, branchId, staffN
   return Array.isArray(data) ? data[0] : data
 }
 
+
+async function rmsLoyaltyRedeemFreeDrinkRpc({ clientId, branchId, staffName, comment }) {
+  const { data, error } = await supabase.rpc('rms_loyalty_redeem_free_drink_secure', {
+    p_client_id: clientId,
+    p_branch_id: branchId || null,
+    p_staff_name: staffName || null,
+    p_comment: comment || null,
+  })
+  if (error) throw error
+  return Array.isArray(data) ? data[0] : data
+}
+
 function LoyaltyPOSDrinkScan({ onDone, scannerProfile = null, scannerOnly = false }) {
   const [scanValue, setScanValue] = useState('')
   const [client, setClient] = useState(null)
@@ -670,7 +682,7 @@ function LoyaltyPOSDrinkScan({ onDone, scannerProfile = null, scannerOnly = fals
         client_name: row.client_name || 'Клиент',
         client_phone: row.client_phone || '',
         card_number: row.card_number || '',
-        amount: Number(row.drinks || row.stamps || 1),
+        amount: String(row.operation_type || '').includes('redeem') ? -Math.abs(Number(row.drinks || row.stamps || 1)) : Number(row.drinks || row.stamps || 1),
         comment: row.operation_type || 'drink_stamp',
       })))
       return
@@ -700,7 +712,7 @@ function LoyaltyPOSDrinkScan({ onDone, scannerProfile = null, scannerOnly = fals
         client_name: row.client_name || 'Клиент',
         client_phone: row.client_phone || '',
         card_number: row.card_number || '',
-        amount: Number(row.drinks || row.stamps || 1),
+        amount: String(row.operation_type || '').includes('redeem') ? -Math.abs(Number(row.drinks || row.stamps || 1)) : Number(row.drinks || row.stamps || 1),
         comment: row.operation_type || 'drink_stamp',
       })))
       return
@@ -722,7 +734,11 @@ function LoyaltyPOSDrinkScan({ onDone, scannerProfile = null, scannerOnly = fals
       return null
     }
     setClient(result.client)
-    if (options?.autoApply) {
+    const freeBalance = getFreeDrinkBalance(result.client)
+    if (freeBalance > 0) {
+      autoApplyLockRef.current = false
+      setMessage('🎁 У клиента есть бесплатный напиток. Начисление заблокировано — можно только выдать подарок.')
+    } else if (options?.autoApply) {
       setMessage('Клиент найден. Начисляю +1…')
       if (!autoApplyLockRef.current) {
         autoApplyLockRef.current = true
@@ -743,6 +759,12 @@ function LoyaltyPOSDrinkScan({ onDone, scannerProfile = null, scannerOnly = fals
       if (result.error) return setMessage(result.error)
       currentClient = result.client
       setClient(result.client)
+    }
+
+    if (getFreeDrinkBalance(currentClient) > 0) {
+      autoApplyLockRef.current = false
+      setMessage('🎁 У клиента есть бесплатный напиток. Сначала выдайте подарок.')
+      return
     }
 
     const count = 1
@@ -815,6 +837,75 @@ function LoyaltyPOSDrinkScan({ onDone, scannerProfile = null, scannerOnly = fals
     }
   }
 
+
+  async function redeemScannerGift(e, forcedClient = null) {
+    if (e?.preventDefault) e.preventDefault()
+    setMessage('')
+    let currentClient = forcedClient || client
+    if (!currentClient) {
+      const result = await findLoyaltyClientByTokenOrCode(scanValue)
+      if (result.error) return setMessage(result.error)
+      currentClient = result.client
+      setClient(result.client)
+    }
+
+    const beforeFree = getFreeDrinkBalance(currentClient)
+    if (beforeFree <= 0) {
+      return setMessage('У клиента нет доступного подарка.')
+    }
+
+    const cleanStaff = staffName.trim()
+    const cleanComment = comment.trim() || 'Scanner: подарок выдан'
+
+    setBusy(true)
+    try {
+      const result = await rmsLoyaltyRedeemFreeDrinkRpc({
+        clientId: currentClient.id,
+        branchId: scannerProfile?.branch_id || branchId,
+        staffName: scannerProfile?.full_name || cleanStaff,
+        comment: cleanComment,
+      })
+
+      if (result?.status && result.status !== 'ok') {
+        setMessage(result?.message || 'Списание подарка заблокировано.')
+        await loadFraudRows()
+        await loadTodayRows()
+        setBusy(false)
+        return
+      }
+
+      const updatedClient = {
+        ...currentClient,
+        stamp_count: Number(result?.stamp_count ?? currentClient.stamp_count ?? 0),
+        free_drink_balance: Number(result?.free_drink_balance ?? 0),
+        visits_count: Number(result?.visits_count ?? currentClient.visits_count ?? 0),
+        updated_at: result?.updated_at || new Date().toISOString(),
+      }
+      const afterFree = getFreeDrinkBalance(updatedClient)
+
+      setClient(updatedClient)
+      setComment('')
+      setMessage('')
+      setSuccessFlash({
+        name: updatedClient.name || 'Гость',
+        before: beforeFree,
+        after: afterFree,
+        redeemed: true,
+        client: updatedClient,
+      })
+      playScanSuccessFeedback()
+      if (typeof onDone === 'function') await onDone()
+      await loadFraudRows()
+      await loadTodayRows()
+      resetScannerForNextGuest(2700, scannerOnly)
+    } catch (err) {
+      const text = String(err?.message || err || '')
+      setMessage(text || 'Не удалось выдать подарок.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   return (
     <section className={`loyalty-pos-lite scanner-compact-mode ${scannerOnly ? 'scanner-only-compact' : ''}`}>
       <div className="loyalty-card pos-lite-card scanner-main-card">
@@ -824,12 +915,13 @@ function LoyaltyPOSDrinkScan({ onDone, scannerProfile = null, scannerOnly = fals
         </div>
 
         {successFlash && (
-          <div className={`scanner-success-flash ${successFlash.giftCount > 0 ? 'gift' : ''}`}>
-            <div className="scanner-success-icon">{successFlash.giftCount > 0 ? '🎁' : '✅'}</div>
-            <b>{successFlash.giftCount > 0 ? 'ПОДАРОК ДОСТУПЕН' : 'НАЧИСЛЕНО'}</b>
+          <div className={`scanner-success-flash ${(successFlash.giftCount > 0 || successFlash.redeemed) ? 'gift' : ''}`}>
+            <div className="scanner-success-icon">{(successFlash.giftCount > 0 || successFlash.redeemed) ? '🎁' : '✅'}</div>
+            <b>{successFlash.redeemed ? 'ПОДАРОК ВЫДАН' : (successFlash.giftCount > 0 ? 'ПОДАРОК ДОСТУПЕН' : 'НАЧИСЛЕНО')}</b>
             <span>{successFlash.name}</span>
-            <strong>{successFlash.before} → {successFlash.after} из {STAMPS_FOR_FREE_DRINK}</strong>
+            <strong>{successFlash.redeemed ? `Баланс: ${successFlash.before} → ${successFlash.after}` : `${successFlash.before} → ${successFlash.after} из ${STAMPS_FOR_FREE_DRINK}`}</strong>
             {successFlash.giftCount > 0 && <em>Бесплатный напиток доступен</em>}
+            {successFlash.redeemed && <em>Бесплатный напиток списан</em>}
           </div>
         )}
 
@@ -839,9 +931,15 @@ function LoyaltyPOSDrinkScan({ onDone, scannerProfile = null, scannerOnly = fals
           <button type="button" className="loyalty-primary scanner-camera-main" onClick={startCameraScan} disabled={busy || cameraOpen || Boolean(successFlash)}>
             {cameraOpen ? 'Камера открыта…' : 'Сканировать QR'}
           </button>
-          <button type="button" className="loyalty-primary scanner-apply-main" onClick={applyPosStamps} disabled={!client || busy || Boolean(successFlash)}>
-            {busy ? 'Начисление…' : 'Начислить +1'}
-          </button>
+          {client && getFreeDrinkBalance(client) > 0 ? (
+            <button type="button" className="loyalty-primary scanner-redeem-main" onClick={redeemScannerGift} disabled={busy || Boolean(successFlash)}>
+              {busy ? 'Выдача…' : 'Выдать подарок'}
+            </button>
+          ) : (
+            <button type="button" className="loyalty-primary scanner-apply-main" onClick={applyPosStamps} disabled={!client || busy || Boolean(successFlash)}>
+              {busy ? 'Начисление…' : 'Начислить +1'}
+            </button>
+          )}
         </div>
 
         {cameraOpen && (
