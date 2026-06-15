@@ -734,3 +734,59 @@
 .wallet-public-addbox .wallet-apple-btn,
 .wallet-public-addbox .wallet-google-btn{display:none!important;}
 @media(max-width:640px){.qr-only-actions{grid-template-columns:1fr}.qr-save-steps div{display:block}.qr-save-steps span{text-align:left;display:block;margin-top:5px}}
+
+/* v13 — Fast QR scan + anti-fraud panel */
+.pos-lite-form-grid{grid-template-columns:repeat(3,minmax(0,1fr));}
+.antifraud-card{margin-top:18px;}
+.antifraud-list{display:grid;gap:10px;}
+.antifraud-row{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:13px 14px;border:1px solid var(--loy-border);border-radius:16px;background:#f8fafc;}
+.antifraud-row b,.antifraud-row span{display:block;}
+.antifraud-row b{font-size:14px;color:#111827;}
+.antifraud-row span{margin-top:4px;font-size:12px;color:#6b7280;}
+.antifraud-row strong{min-width:38px;text-align:center;padding:7px 9px;border-radius:999px;background:#111827;color:#fff;font-size:13px;}
+@media(max-width:900px){.pos-lite-form-grid{grid-template-columns:1fr!important;}.antifraud-card{margin-top:12px;}}
+
+/* v14 Scanner-only mode */
+.scanner-only-page{
+  min-height:100vh;
+}
+.scanner-hero{
+  margin-bottom:18px;
+}
+.scanner-only-page .loyalty-pos-lite{
+  display:grid;
+  gap:18px;
+}
+.scanner-readonly-box{
+  width:100%;
+  border:1px solid rgba(226,232,240,.12);
+  border-radius:18px;
+  padding:14px 15px;
+  background:#0d0f13;
+  color:#fff;
+}
+.scanner-readonly-box span,
+.scanner-readonly-box small{display:block;color:rgba(255,255,255,.62);font-size:12px;font-weight:850;letter-spacing:.04em;text-transform:uppercase}
+.scanner-readonly-box b{display:block;margin:6px 0 4px;font-size:20px;line-height:1;font-weight:950;color:#fff}
+.scanner-today-card{border-color:rgba(34,197,94,.20)!important}
+.scanner-today-list{display:grid;gap:10px;max-height:360px;overflow:auto;padding-right:4px}
+.scanner-today-row{display:flex;justify-content:space-between;align-items:center;gap:14px;padding:14px 15px;border-radius:16px;background:#f8fafc;border:1px solid #e5e7eb}
+.scanner-today-row b,.scanner-today-row span{display:block}
+.scanner-today-row b{font-size:15px;font-weight:950;color:#0f172a}
+.scanner-today-row span{margin-top:4px;color:#64748b;font-size:12px;font-weight:750;line-height:1.35}
+.scanner-today-row strong{min-width:42px;text-align:center;border-radius:999px;padding:7px 9px;background:#ecfdf5;color:#047857;font-size:14px;font-weight:950}
+.scanner-only-page .pos-lite-form .loyalty-primary,
+.scanner-only-page .pos-lite-block .loyalty-primary{
+  min-height:52px;
+  font-size:16px;
+}
+.scanner-only-page .pos-lite-form-grid{
+  grid-template-columns:1fr 1fr;
+}
+@media(max-width:760px){
+  .scanner-only-page{padding:12px!important}
+  .scanner-only-page .loyalty-hero{border-radius:24px;padding:22px}
+  .scanner-only-page .loyalty-hero h1{font-size:32px}
+  .scanner-only-page .pos-lite-form-grid{grid-template-columns:1fr}
+  .scanner-today-row{align-items:flex-start}
+}
