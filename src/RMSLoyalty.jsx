@@ -459,6 +459,8 @@ function LoyaltyPOSDrinkScan({ onDone, scannerProfile = null, scannerOnly = fals
   const scanActiveRef = useRef(false)
   const zxingControlsRef = useRef(null)
   const successTimerRef = useRef(null)
+  const autoApplyLockRef = useRef(false)
+  const autoRestartCameraRef = useRef(false)
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -506,7 +508,7 @@ function LoyaltyPOSDrinkScan({ onDone, scannerProfile = null, scannerOnly = fals
     setScanValue(tokenValue || value)
     setCameraStatus('QR найден. Ищу клиента…')
     stopCameraScan()
-    await findClient(tokenValue || value)
+    await findClient(tokenValue || value, { autoApply: scannerOnly })
   }
 
   async function startNativeBarcodeScan() {
@@ -621,8 +623,9 @@ function LoyaltyPOSDrinkScan({ onDone, scannerProfile = null, scannerOnly = fals
     } catch (_e) {}
   }
 
-  function resetScannerForNextGuest(delayMs = 2600) {
+  function resetScannerForNextGuest(delayMs = 2600, restartCamera = false) {
     if (successTimerRef.current) clearTimeout(successTimerRef.current)
+    autoRestartCameraRef.current = Boolean(restartCamera)
     successTimerRef.current = setTimeout(() => {
       setClient(null)
       setScanValue('')
@@ -630,6 +633,14 @@ function LoyaltyPOSDrinkScan({ onDone, scannerProfile = null, scannerOnly = fals
       setMessage('')
       setSuccessFlash(null)
       setCameraStatus('')
+      autoApplyLockRef.current = false
+      const shouldRestart = autoRestartCameraRef.current
+      autoRestartCameraRef.current = false
+      if (shouldRestart) {
+        setTimeout(() => {
+          try { startCameraScan() } catch (_e) {}
+        }, 180)
+      }
     }, delayMs)
   }
 
@@ -698,7 +709,7 @@ function LoyaltyPOSDrinkScan({ onDone, scannerProfile = null, scannerOnly = fals
     setTodayRows([])
   }
 
-  async function findClient(value = scanValue) {
+  async function findClient(value = scanValue, options = {}) {
     setBusy(true)
     setMessage('')
     const normalizedValue = extractLoyaltyToken(value) || value
@@ -708,16 +719,25 @@ function LoyaltyPOSDrinkScan({ onDone, scannerProfile = null, scannerOnly = fals
     if (result.error) {
       setClient(null)
       setMessage(result.error)
-      return
+      return null
     }
     setClient(result.client)
-    setMessage('Клиент найден. Можно начислить отметки за напитки.')
+    if (options?.autoApply) {
+      setMessage('Клиент найден. Начисляю +1…')
+      if (!autoApplyLockRef.current) {
+        autoApplyLockRef.current = true
+        setTimeout(() => applyPosStamps(null, result.client), 120)
+      }
+    } else {
+      setMessage('Клиент найден. Можно начислить +1.')
+    }
+    return result.client
   }
 
-  async function applyPosStamps(e) {
-    e.preventDefault()
+  async function applyPosStamps(e, forcedClient = null) {
+    if (e?.preventDefault) e.preventDefault()
     setMessage('')
-    let currentClient = client
+    let currentClient = forcedClient || client
     if (!currentClient) {
       const result = await findLoyaltyClientByTokenOrCode(scanValue)
       if (result.error) return setMessage(result.error)
@@ -750,6 +770,7 @@ function LoyaltyPOSDrinkScan({ onDone, scannerProfile = null, scannerOnly = fals
         }
         await loadFraudRows()
         await loadTodayRows()
+        autoApplyLockRef.current = false
         setBusy(false)
         return
       }
@@ -781,12 +802,13 @@ function LoyaltyPOSDrinkScan({ onDone, scannerProfile = null, scannerOnly = fals
       if (typeof onDone === 'function') await onDone()
       await loadFraudRows()
       await loadTodayRows()
-      resetScannerForNextGuest(2700)
+      resetScannerForNextGuest(2700, scannerOnly)
     } catch (err) {
       const text = String(err?.message || err || '')
-      if (text.includes('cooldown_active')) return setMessage('Повторное начисление для этого клиента пока заблокировано. Интервал — 10 минут.')
-      if (text.includes('client_not_found')) return setMessage('Клиент не найден или карта отключена.')
-      if (text.includes('invalid_drinks')) return setMessage('Начисление доступно только по 1 напитку за одно сканирование.')
+      if (text.includes('cooldown_active')) { autoApplyLockRef.current = false; return setMessage('Повторное начисление для этого клиента пока заблокировано. Интервал — 10 минут.') }
+      if (text.includes('client_not_found')) { autoApplyLockRef.current = false; return setMessage('Клиент не найден или карта отключена.') }
+      if (text.includes('invalid_drinks')) { autoApplyLockRef.current = false; return setMessage('Начисление доступно только по 1 напитку за одно сканирование.') }
+      autoApplyLockRef.current = false
       return setMessage(text || 'Не удалось начислить отметки.')
     } finally {
       setBusy(false)
@@ -797,8 +819,8 @@ function LoyaltyPOSDrinkScan({ onDone, scannerProfile = null, scannerOnly = fals
     <section className={`loyalty-pos-lite scanner-compact-mode ${scannerOnly ? 'scanner-only-compact' : ''}`}>
       <div className="loyalty-card pos-lite-card scanner-main-card">
         <div className="scanner-compact-top">
-          <h2>POS Scan</h2>
-          {scannerOnly && <span>{scannerProfile?.branch_id || branchId}</span>}
+          <h2>Scanner</h2>
+          {scannerOnly && <span>{scannerProfile?.branch_id || branchId} · auto +1</span>}
         </div>
 
         {successFlash && (
