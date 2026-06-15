@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from './supabase'
 import './RMSLoyalty.css'
 
@@ -382,6 +382,12 @@ function LoyaltyPOSDrinkScan({ onDone, scannerProfile = null, scannerOnly = fals
   const [message, setMessage] = useState('')
   const [fraudRows, setFraudRows] = useState([])
   const [todayRows, setTodayRows] = useState([])
+  const [cameraOpen, setCameraOpen] = useState(false)
+  const [cameraStatus, setCameraStatus] = useState('')
+  const videoRef = useRef(null)
+  const streamRef = useRef(null)
+  const scanLoopRef = useRef(null)
+  const scanActiveRef = useRef(false)
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -392,7 +398,86 @@ function LoyaltyPOSDrinkScan({ onDone, scannerProfile = null, scannerOnly = fals
     }
     loadFraudRows()
     loadTodayRows()
+    return () => stopCameraScan()
   }, [])
+
+  function stopCameraScan() {
+    scanActiveRef.current = false
+    if (scanLoopRef.current) {
+      try { cancelAnimationFrame(scanLoopRef.current) } catch (_e) {}
+      scanLoopRef.current = null
+    }
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => {
+        try { track.stop() } catch (_e) {}
+      })
+      streamRef.current = null
+    }
+    if (videoRef.current) {
+      try { videoRef.current.srcObject = null } catch (_e) {}
+    }
+    setCameraOpen(false)
+    setCameraStatus('')
+  }
+
+  async function startCameraScan() {
+    setMessage('')
+    if (typeof window === 'undefined') return
+    if (!navigator?.mediaDevices?.getUserMedia) {
+      setMessage('Камера недоступна в этом браузере. Откройте RMS через Chrome/Safari и разрешите доступ к камере.')
+      return
+    }
+    if (!('BarcodeDetector' in window)) {
+      setMessage('Автоскан QR не поддерживается этим браузером. Используйте Chrome на Android или ручной ввод token/карты.')
+      return
+    }
+
+    stopCameraScan()
+    setCameraOpen(true)
+    setCameraStatus('Запуск камеры…')
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } },
+        audio: false,
+      })
+      streamRef.current = stream
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream
+        await videoRef.current.play()
+      }
+
+      const detector = new window.BarcodeDetector({ formats: ['qr_code'] })
+      scanActiveRef.current = true
+      setCameraStatus('Наведите камеру на QR клиента')
+
+      const scanFrame = async () => {
+        if (!scanActiveRef.current || !videoRef.current) return
+        try {
+          const codes = await detector.detect(videoRef.current)
+          const rawValue = codes?.[0]?.rawValue || ''
+          if (rawValue) {
+            scanActiveRef.current = false
+            setScanValue(rawValue)
+            setCameraStatus('QR найден. Ищу клиента…')
+            stopCameraScan()
+            await findClient(rawValue)
+            return
+          }
+        } catch (_err) {
+          // Keep scanning. Some frames may fail before the video is ready.
+        }
+        scanLoopRef.current = requestAnimationFrame(scanFrame)
+      }
+
+      scanLoopRef.current = requestAnimationFrame(scanFrame)
+    } catch (err) {
+      stopCameraScan()
+      setMessage(err?.name === 'NotAllowedError'
+        ? 'Доступ к камере запрещён. Разрешите камеру для app.rms.rest в настройках браузера.'
+        : (err?.message || 'Не удалось открыть камеру.'))
+    }
+  }
 
   async function loadFraudRows() {
     const { data, error } = await supabase
@@ -514,11 +599,24 @@ function LoyaltyPOSDrinkScan({ onDone, scannerProfile = null, scannerOnly = fals
         {message && <div className="pos-lite-message">{message}</div>}
 
         <div className="pos-lite-grid">
-          <div className="pos-lite-block">
-            <label>QR / token / номер карты / телефон
-              <textarea value={scanValue} onChange={(e) => setScanValue(e.target.value)} placeholder="Вставьте ссылку из QR или wallet_token" />
+          <div className="pos-lite-block scanner-camera-block">
+            <button type="button" className="loyalty-primary scanner-camera-main" onClick={startCameraScan} disabled={busy || cameraOpen}>
+              {cameraOpen ? 'Камера открыта…' : 'Сканировать QR'}
+            </button>
+
+            {cameraOpen && (
+              <div className="scanner-camera-box">
+                <video ref={videoRef} className="scanner-camera-video" muted playsInline autoPlay />
+                <div className="scanner-camera-frame" />
+                <div className="scanner-camera-status">{cameraStatus || 'Наведите камеру на QR клиента'}</div>
+                <button type="button" onClick={stopCameraScan}>Закрыть камеру</button>
+              </div>
+            )}
+
+            <label className="scanner-manual-input">QR / token / номер карты / телефон
+              <textarea value={scanValue} onChange={(e) => setScanValue(e.target.value)} placeholder="Ручной ввод, если камера недоступна" />
             </label>
-            <button type="button" className="loyalty-primary" onClick={() => findClient()} disabled={busy}>{busy ? 'Поиск…' : 'Найти клиента'}</button>
+            <button type="button" className="loyalty-primary secondary-scan-button" onClick={() => findClient()} disabled={busy}>{busy ? 'Поиск…' : 'Найти клиента вручную'}</button>
           </div>
 
           <div className="pos-lite-client">
