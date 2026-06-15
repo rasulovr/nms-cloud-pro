@@ -1579,3 +1579,33 @@
   .scanner-only-compact .scanner-success-flash{min-height:230px;}
   .scanner-only-compact .scanner-success-icon{font-size:68px;}
 }
+
+
+/* v18 — Scanner gift redeem flow */
+.scanner-redeem-main{
+  background:linear-gradient(135deg,#f59e0b,#d97706)!important;
+  color:#111827!important;
+  box-shadow:0 16px 36px rgba(217,119,6,.28)!important;
+}
+.scanner-redeem-main:hover{
+  background:linear-gradient(135deg,#fbbf24,#f59e0b)!important;
+}
+.scanner-client-compact .scanner-gift-note{
+  display:block;
+  margin-top:10px;
+  padding:12px 14px;
+  border-radius:16px;
+  background:rgba(245,158,11,.14);
+  border:1px solid rgba(245,158,11,.35);
+  color:#92400e!important;
+  font-weight:950;
+  text-align:center;
+}
+.scanner-success-flash.gift{
+  background:linear-gradient(180deg,#064e3b,#022c22)!important;
+  border-color:rgba(250,204,21,.38)!important;
+}
+.scanner-success-flash.gift .scanner-success-icon{
+  background:rgba(250,204,21,.18)!important;
+  color:#facc15!important;
+}
