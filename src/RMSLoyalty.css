@@ -836,3 +836,62 @@
 /* v16.1 — iPhone Safari camera fallback */
 .scanner-camera-status{font-weight:900;}
 .scanner-camera-help{margin-top:8px;color:#64748b;font-size:12px;font-weight:800;line-height:1.35;}
+
+
+/* v16.2 — QR code on customer card instead of barcode */
+.drink-qr-box{
+  position:relative;
+  z-index:1;
+  display:grid;
+  place-items:center;
+  gap:8px;
+  border-radius:20px!important;
+  padding:16px 16px 13px!important;
+  background:#fff!important;
+  color:#111827!important;
+  box-shadow:0 18px 36px rgba(0,0,0,.24);
+}
+.drink-qr-box img{
+  display:block;
+  width:178px;
+  height:178px;
+  max-width:100%;
+  border-radius:16px;
+  background:#fff;
+}
+.drink-qr-box b{
+  display:block;
+  text-align:center;
+  font-size:15px;
+  line-height:1.15;
+  letter-spacing:.05em;
+  font-weight:950;
+}
+.drink-qr-box small{
+  display:block;
+  color:#64748b;
+  font-size:12px;
+  font-weight:850;
+  text-align:center;
+}
+.drink-qr-placeholder{
+  width:178px;
+  height:178px;
+  max-width:100%;
+  border-radius:16px;
+  display:grid;
+  place-items:center;
+  background:#f1f5f9;
+  color:#94a3b8;
+  font-weight:950;
+  letter-spacing:.12em;
+}
+.wallet-public-page .drink-qr-box img{
+  width:190px;
+  height:190px;
+}
+@media(max-width:560px){
+  .drink-qr-box{padding:13px 12px 11px!important;border-radius:17px!important;}
+  .drink-qr-box img,.drink-qr-placeholder{width:154px;height:154px;border-radius:14px;}
+  .wallet-public-page .drink-qr-box img{width:168px;height:168px;}
+}
