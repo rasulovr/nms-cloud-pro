@@ -895,3 +895,6 @@
   .drink-qr-box img,.drink-qr-placeholder{width:154px;height:154px;border-radius:14px;}
   .wallet-public-page .drink-qr-box img{width:168px;height:168px;}
 }
+
+
+/* v16.3 — QR URL parse fix: no visual changes, scanner now accepts full loyalty/card URLs */
