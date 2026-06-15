@@ -812,3 +812,22 @@
 .scanner-only-page .drink-wallet-card.progress-card{transform:none;}
 @media(max-width:1180px){.scanner-only-page .pos-lite-grid{grid-template-columns:1fr}.scanner-fast-grid{grid-template-columns:1fr!important;}}
 @media(max-width:760px){.scanner-only-page .pos-lite-block textarea{min-height:86px}.scanner-plus-one-box b{font-size:20px}.scanner-only-page .drink-card-wallet-wrap{max-width:100%;}}
+
+/* v16 — mobile camera QR scan for Loyalty Scanner */
+.scanner-camera-block{gap:14px!important}
+.scanner-camera-main{min-height:58px!important;font-size:17px!important;border-radius:18px!important;background:#e11d2f!important;box-shadow:0 14px 30px rgba(225,29,47,.22)!important}
+.scanner-camera-main:hover{background:#c91626!important}
+.secondary-scan-button{background:#111827!important;min-height:48px!important}
+.scanner-camera-box{position:relative;overflow:hidden;border-radius:24px;background:#050505;border:1px solid rgba(255,255,255,.14);box-shadow:0 18px 46px rgba(15,23,42,.22);min-height:320px}
+.scanner-camera-video{display:block;width:100%;height:360px;object-fit:cover;background:#050505}
+.scanner-camera-frame{position:absolute;left:50%;top:46%;width:min(72%,280px);aspect-ratio:1/1;transform:translate(-50%,-50%);border:3px solid rgba(255,255,255,.88);border-radius:28px;box-shadow:0 0 0 999px rgba(0,0,0,.34),0 0 30px rgba(225,29,47,.22);pointer-events:none}
+.scanner-camera-frame:before,.scanner-camera-frame:after{content:"";position:absolute;width:42px;height:42px;border-color:#ef232a;border-style:solid}
+.scanner-camera-frame:before{left:-3px;top:-3px;border-width:5px 0 0 5px;border-radius:24px 0 0 0}
+.scanner-camera-frame:after{right:-3px;bottom:-3px;border-width:0 5px 5px 0;border-radius:0 0 24px 0}
+.scanner-camera-status{position:absolute;left:14px;right:14px;bottom:64px;padding:11px 13px;border-radius:16px;background:rgba(0,0,0,.64);color:#fff;font-weight:900;text-align:center;backdrop-filter:blur(8px)}
+.scanner-camera-box button{position:absolute;left:14px;right:14px;bottom:14px;height:42px;border:0;border-radius:14px;background:rgba(255,255,255,.92);color:#111827;font-weight:950;cursor:pointer}
+.scanner-manual-input textarea{min-height:74px!important}
+.scanner-only-page .scanner-manual-input{opacity:.82}
+.scanner-only-page .secondary-scan-button{display:none}
+.scanner-only-page .scanner-manual-input textarea{min-height:56px!important}
+@media(max-width:760px){.scanner-camera-box{min-height:280px;border-radius:22px}.scanner-camera-video{height:320px}.scanner-camera-frame{width:min(76%,250px);border-radius:24px}.scanner-camera-main{min-height:62px!important;font-size:18px!important}.scanner-camera-status{bottom:62px;font-size:13px}.scanner-only-page .scanner-manual-input textarea{font-size:14px}}
