@@ -444,10 +444,9 @@ function LoyaltyPOSDrinkScan({ onDone, scannerProfile = null, scannerOnly = fals
       setClient(result.client)
     }
 
-    const count = Math.max(1, Math.floor(parseNum(drinks)))
-    if (count > 5) return setMessage('За одно сканирование можно начислить максимум 5 напитков.')
+    const count = 1
     const cleanStaff = staffName.trim()
-    const cleanComment = comment.trim() || `POS Scan: напитков ${count}`
+    const cleanComment = comment.trim() || 'POS Scan: +1 напиток'
 
     setBusy(true)
     try {
@@ -490,12 +489,12 @@ function LoyaltyPOSDrinkScan({ onDone, scannerProfile = null, scannerOnly = fals
       await loadTodayRows()
 
       const giftCount = Number(result?.gift_added || 0)
-      setMessage(giftCount > 0 ? `Начислено ${count}. Подарок доступен: +${giftCount} напиток.` : `Начислено отметок: ${count}.`)
+      setMessage(giftCount > 0 ? `Начислено +1. Подарок доступен: +${giftCount} напиток.` : 'Начислена 1 отметка.')
     } catch (err) {
       const text = String(err?.message || err || '')
       if (text.includes('cooldown_active')) return setMessage('Повторное начисление для этого клиента пока заблокировано. Интервал — 10 минут.')
       if (text.includes('client_not_found')) return setMessage('Клиент не найден или карта отключена.')
-      if (text.includes('invalid_drinks')) return setMessage('Количество напитков должно быть от 1 до 5.')
+      if (text.includes('invalid_drinks')) return setMessage('Начисление доступно только по 1 напитку за одно сканирование.')
       return setMessage(text || 'Не удалось начислить отметки.')
     } finally {
       setBusy(false)
@@ -508,7 +507,7 @@ function LoyaltyPOSDrinkScan({ onDone, scannerProfile = null, scannerOnly = fals
         <div className="loyalty-card-head">
           <div>
             <h2>POS Scan</h2>
-            <p>{scannerOnly ? 'Сканируйте QR гостя и начисляйте отметку. Доступ ограничен только POS Scan.' : 'Сканируйте QR карты гостя. Система сама защищает от повторного начисления в течение 10 минут.'}</p>
+            <p>{scannerOnly ? 'Сканируйте QR гостя и начисляйте одну отметку. Доступ ограничен только POS Scan.' : 'Сканируйте QR карты гостя. Начисление строго +1, повторное начисление этому клиенту не раньше чем через 10 минут.'}</p>
           </div>
         </div>
 
@@ -542,42 +541,44 @@ function LoyaltyPOSDrinkScan({ onDone, scannerProfile = null, scannerOnly = fals
       </div>
 
       <div className="loyalty-card pos-lite-card">
-        <div className="loyalty-card-head"><div><h2>Быстрое начисление</h2><p>QR клиента + количество напитков. Повторное начисление этому клиенту доступно не раньше чем через 10 минут.</p></div></div>
+        <div className="loyalty-card-head"><div><h2>Быстрое начисление</h2><p>QR клиента → начислить 1 напиток. Без номера чека и лишних полей.</p></div></div>
         <form className="loyalty-form pos-lite-form" onSubmit={applyPosStamps}>
-          <div className="pos-lite-form-grid">
+          <div className="pos-lite-form-grid scanner-fast-grid">
             {scannerOnly ? (
               <div className="scanner-readonly-box">
-                <span>Филиал</span>
+                <span>Филиал / сотрудник</span>
                 <b>{scannerProfile?.branch_id || branchId}</b>
                 <small>{scannerProfile?.full_name || staffName || 'Scanner'}</small>
               </div>
             ) : (
-              <label>Филиал
-                <select value={branchId} onChange={(e) => setBranchId(e.target.value)}>
-                  <option value="BC1">BC1</option>
-                  <option value="BC2">BC2</option>
-                  <option value="BC3">BC3</option>
-                  <option value="BC4">BC4</option>
-                  <option value="BC5">BC5</option>
-                  <option value="Bistro">Bistro</option>
-                </select>
-              </label>
+              <>
+                <label>Филиал
+                  <select value={branchId} onChange={(e) => setBranchId(e.target.value)}>
+                    <option value="BC1">BC1</option>
+                    <option value="BC2">BC2</option>
+                    <option value="BC3">BC3</option>
+                    <option value="BC4">BC4</option>
+                    <option value="BC5">BC5</option>
+                    <option value="Bistro">Bistro</option>
+                  </select>
+                </label>
+                <label>Сотрудник
+                  <input value={staffName} onChange={(e) => setStaffName(e.target.value)} placeholder="Имя кассира / официанта" />
+                </label>
+              </>
             )}
-            <label>Количество напитков
-              <input value={drinks} onChange={(e) => setDrinks(e.target.value)} placeholder="1" />
-            </label>
-            {!scannerOnly && (
-              <label>Сотрудник
-                <input value={staffName} onChange={(e) => setStaffName(e.target.value)} placeholder="Имя кассира / официанта" />
-              </label>
-            )}
+            <div className="scanner-plus-one-box">
+              <span>Начисление</span>
+              <b>+1 напиток</b>
+              <small>Следующее начисление этому клиенту — не раньше чем через 10 минут.</small>
+            </div>
           </div>
           {!scannerOnly && (
             <label>Комментарий
               <textarea value={comment} onChange={(e) => setComment(e.target.value)} placeholder="Необязательно" />
             </label>
           )}
-          <button className="loyalty-primary" disabled={!client || busy}>{busy ? 'Сохранение…' : 'Начислить отметки'}</button>
+          <button className="loyalty-primary" disabled={!client || busy}>{busy ? 'Сохранение…' : 'Начислить 1 напиток'}</button>
         </form>
       </div>
 
@@ -593,17 +594,19 @@ function LoyaltyPOSDrinkScan({ onDone, scannerProfile = null, scannerOnly = fals
         </div>
       </div>
 
-      <div className="loyalty-card pos-lite-card antifraud-card">
-        <div className="loyalty-card-head"><div><h2>Антифрод</h2><p>Последние подозрительные или заблокированные операции.</p></div></div>
-        <div className="antifraud-list">
-          {fraudRows.length ? fraudRows.map((row, idx) => (
-            <div className="antifraud-row" key={`${row.id || row.client_id || 'row'}-${idx}`}>
-              <div><b>{row.reason || row.event_type || 'Проверка'}</b><span>{row.client_name || row.client_phone || row.card_number || 'Клиент не указан'}</span></div>
-              <strong>{row.drinks || row.operations_count || 0}</strong>
-            </div>
-          )) : <div className="loyalty-empty">Подозрительных операций нет.</div>}
+      {!scannerOnly && (
+        <div className="loyalty-card pos-lite-card antifraud-card">
+          <div className="loyalty-card-head"><div><h2>Антифрод</h2><p>Последние подозрительные или заблокированные операции.</p></div></div>
+          <div className="antifraud-list">
+            {fraudRows.length ? fraudRows.map((row, idx) => (
+              <div className="antifraud-row" key={`${row.id || row.client_id || 'row'}-${idx}`}>
+                <div><b>{row.reason || row.event_type || 'Проверка'}</b><span>{row.client_name || row.client_phone || row.card_number || 'Клиент не указан'}</span></div>
+                <strong>{row.drinks || row.operations_count || 0}</strong>
+              </div>
+            )) : <div className="loyalty-empty">Подозрительных операций нет.</div>}
+          </div>
         </div>
-      </div>
+      )}
     </section>
   )
 }
@@ -942,8 +945,8 @@ function RMSLoyaltyAdmin() {
         <section className="loyalty-hero drink-hero scanner-hero">
           <div>
             <span className="loyalty-eyebrow">RMS Pro Loyalty · Scanner</span>
-            <h1>POS Scan</h1>
-            <p>Ограниченный режим: сканирование QR клиента, начисление отметок и просмотр операций за сегодня.</p>
+            <h1>Loyalty Scanner</h1>
+            <p>Ограниченный режим: сканировать QR гостя, начислить 1 напиток и видеть операции за сегодня.</p>
           </div>
           <div className="loyalty-hero-card">
             <span>Пользователь</span>
