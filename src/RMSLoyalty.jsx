@@ -318,12 +318,11 @@ function DrinkStampCard({ client }) {
 
         <div className="bc-card-owner">
           <strong>{client?.name || 'Гость'}</strong>
-          <span>ГОСТЬ</span>
         </div>
 
         <div className={`vip-level-card vip-${vip.key} bc-vip-summary`}>
           <div>
-            <span>VIP LEVEL</span>
+            <span>Level</span>
             <b>{vip.title}</b>
             <small>{vip.benefit || `${vip.threshold} → 1`}</small>
           </div>
@@ -346,19 +345,6 @@ function DrinkStampCard({ client }) {
             <small>напитков</small>
           </div>
 
-          <div className="bc-progress-details">
-            <div className="bc-percent-side"><DrinkProgressRing client={client} /></div>
-            <div className="bc-left-side">
-              <span>Осталось</span>
-              <b>{progress.remaining}</b>
-              <small>напитков<br />до подарка</small>
-            </div>
-            <div className="bc-right-side">
-              <span>До следующего уровня</span>
-              <b>{nextLevelPct}</b>
-              <i><em style={{ width: `${vip.progressToNext}%` }} /></i>
-            </div>
-          </div>
         </div>
 
         <div className="bc-next-level-strip">
