@@ -421,3 +421,124 @@
   .drink-qr-box img{width:148px!important;height:148px!important;}
   .wallet-actions.qr-only-actions{grid-template-columns:1fr!important;}
 }
+
+/* v21.2 — optimized Barista&Chef premium card */
+.drink-card-wallet-wrap{max-width:520px;margin:0 auto;}
+.bc-premium-card-v212{
+  border-radius:34px!important;
+  padding:28px 28px 24px!important;
+  background:
+    radial-gradient(circle at 50% 0%,rgba(239,35,58,.14),transparent 20%),
+    radial-gradient(circle at 18% 9%,rgba(239,35,58,.22) 0 1px,transparent 2px) 0 0/17px 17px,
+    radial-gradient(circle at 82% 9%,rgba(239,35,58,.18) 0 1px,transparent 2px) 0 0/17px 17px,
+    linear-gradient(180deg,#070707 0%,#050505 54%,#020202 100%)!important;
+  border:1px solid rgba(255,255,255,.18)!important;
+  box-shadow:0 30px 70px rgba(0,0,0,.44), inset 0 1px 0 rgba(255,255,255,.08)!important;
+}
+.bc-premium-card-v212:before{
+  content:"";
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  background:radial-gradient(circle at 50% 18%,rgba(255,255,255,.07),transparent 28%);
+}
+.bc-premium-logo-row{position:relative;z-index:2;display:flex;justify-content:center;margin:0 0 16px;}
+.bc-premium-logo-row .bc-round-logo{
+  width:148px!important;
+  height:148px!important;
+  margin:0!important;
+  background:radial-gradient(circle at 50% 42%,#181818 0%,#050505 72%)!important;
+  border:1px solid rgba(255,255,255,.20)!important;
+  box-shadow:0 0 0 2px rgba(239,35,58,.08),0 22px 48px rgba(0,0,0,.46)!important;
+}
+.bc-premium-logo-row .bc-round-logo:before{inset:14px!important;border-color:#ef233a!important;}
+.bc-premium-logo-row .bc-script-logo{font-size:30px!important;line-height:.72!important;}
+.bc-premium-logo-row .bc-script-logo span{font-size:15px!important;}
+.bc-premium-logo-row .bc-round-logo small{bottom:20px!important;color:#ef233a!important;font-size:7.5px!important;}
+.guest-card-label{display:none!important;}
+.bc-card-owner{position:relative;z-index:2;text-align:center;margin:0 0 18px;}
+.bc-card-owner strong{display:block;color:#fff;font-size:42px;line-height:1;font-weight:950;letter-spacing:-.06em;text-shadow:0 3px 18px rgba(0,0,0,.68);}
+.bc-card-owner span{display:block;margin-top:8px;color:#ff4a64;font-size:16px;font-weight:950;letter-spacing:.10em;}
+.bc-vip-summary{
+  position:relative!important;
+  z-index:2!important;
+  display:grid!important;
+  grid-template-columns:1fr 1fr!important;
+  gap:0!important;
+  margin:0 0 16px!important;
+  padding:22px 24px!important;
+  border-radius:25px!important;
+  background:linear-gradient(180deg,rgba(255,255,255,.055),rgba(255,255,255,.018))!important;
+  border:1px solid rgba(255,255,255,.15)!important;
+}
+.bc-vip-summary:after{content:"";position:absolute;top:25px;bottom:25px;left:50%;width:1px;background:#ef233a;opacity:.70;}
+.bc-vip-summary div:first-child{text-align:left;}
+.bc-vip-summary div:last-child{text-align:right;}
+.bc-vip-summary span{display:block;color:rgba(255,255,255,.55)!important;font-size:13px!important;font-weight:950!important;letter-spacing:.10em!important;text-transform:uppercase;}
+.bc-vip-summary b{display:block;margin:8px 0 8px!important;color:#fff!important;font-size:31px!important;line-height:1!important;font-weight:950!important;letter-spacing:-.055em!important;}
+.bc-vip-summary div:last-child b{font-size:48px!important;}
+.bc-vip-summary small{display:inline-flex!important;align-items:center;justify-content:center;min-height:36px;padding:8px 18px;border-radius:999px;border:1px solid #ef233a;background:rgba(239,35,58,.10);color:#fff!important;font-size:18px!important;font-weight:950!important;line-height:1!important;text-transform:none!important;letter-spacing:0!important;}
+.bc-vip-summary div:last-child small{display:block!important;border:0;background:transparent;padding:0;min-height:0;color:rgba(255,255,255,.82)!important;text-transform:uppercase!important;font-size:18px!important;letter-spacing:.04em!important;}
+.bc-reward-panel{position:relative;z-index:2;margin:0 0 14px;padding:22px 22px 20px;border-radius:25px;background:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,.014));border:1px solid rgba(255,255,255,.13);box-shadow:inset 0 1px 0 rgba(255,255,255,.04);}
+.bc-panel-title{text-align:center;color:rgba(255,255,255,.66);font-size:15px;font-weight:950;letter-spacing:.08em;text-transform:uppercase;margin-bottom:16px;}
+.bc-cups-row{display:grid!important;grid-template-columns:repeat(var(--stamp-columns,10),minmax(0,1fr))!important;gap:8px!important;margin:0 0 18px!important;}
+.bc-cups-row .stamp-cup{width:100%!important;aspect-ratio:1/1!important;height:auto!important;border-radius:999px!important;background:transparent!important;border:0!important;opacity:1!important;display:grid!important;place-items:center!important;}
+.bc-cups-row .stamp-cup svg{width:82%!important;height:82%!important;stroke:rgba(255,255,255,.33)!important;filter:drop-shadow(0 4px 8px rgba(0,0,0,.32));}
+.bc-cups-row .stamp-cup .bean{fill:rgba(255,255,255,.25)!important;}
+.bc-cups-row .stamp-cup.filled{box-shadow:none!important;background:transparent!important;}
+.bc-cups-row .stamp-cup.filled svg{stroke:#ff4a64!important;}
+.bc-cups-row .stamp-cup.filled .bean{fill:#ff4a64!important;}
+.bc-main-count{text-align:center;border-top:1px dashed rgba(255,255,255,.22);padding-top:16px;margin-bottom:16px;}
+.bc-main-count strong{color:#ff4a64;font-size:44px;line-height:1;font-weight:1000;letter-spacing:-.06em;}
+.bc-main-count span{margin-left:9px;color:#fff;font-size:34px;font-weight:950;letter-spacing:-.045em;}
+.bc-main-count small{display:block;margin-top:6px;color:rgba(255,255,255,.66);font-size:16px;font-weight:900;text-transform:uppercase;letter-spacing:.06em;}
+.bc-progress-details{display:grid;grid-template-columns:112px 1fr 1.25fr;gap:18px;align-items:center;border-top:1px solid rgba(255,255,255,.08);padding-top:18px;}
+.bc-percent-side .drink-progress-ring{width:100px!important;height:100px!important;min-width:100px!important;background:conic-gradient(#ff4a64 0deg,#ff4a64 var(--drink-progress),#272727 var(--drink-progress),#272727 360deg)!important;box-shadow:none!important;}
+.bc-percent-side .drink-progress-ring-inner{width:75px!important;height:75px!important;background:#070707!important;}
+.bc-percent-side .drink-progress-ring-inner strong{font-size:27px!important;}
+.bc-percent-side .drink-progress-ring-inner span{display:none!important;}
+.bc-left-side{border-right:1px solid rgba(255,255,255,.18);padding-right:14px;}
+.bc-left-side span,.bc-right-side span{display:block;color:rgba(255,255,255,.62);font-size:15px;font-weight:850;}
+.bc-left-side b,.bc-right-side b{display:block;margin:4px 0;color:#ff4a64;font-size:34px;line-height:1;font-weight:1000;letter-spacing:-.05em;}
+.bc-left-side small{display:block;color:rgba(255,255,255,.72);font-size:15px;line-height:1.25;font-weight:850;}
+.bc-right-side{text-align:right;}
+.bc-right-side i{display:block;width:100%;height:8px;margin-top:13px;border-radius:999px;background:#272727;overflow:hidden;}
+.bc-right-side em{display:block;height:100%;border-radius:999px;background:#ff4a64;}
+.bc-next-level-strip{position:relative;z-index:2;margin:0 0 14px;padding:14px 16px;border-radius:22px;background:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,.014));border:1px solid rgba(255,255,255,.13);text-align:center;}
+.bc-next-level-strip span{color:rgba(255,255,255,.82);font-size:17px;font-weight:900;}
+.bc-next-level-strip span::first-letter{color:#ff4a64;}
+.bc-premium-qr{position:relative;z-index:2;padding:22px 16px 18px!important;border-radius:24px!important;background:linear-gradient(180deg,rgba(255,255,255,.04),rgba(255,255,255,.012))!important;border:1px solid rgba(255,255,255,.12)!important;box-shadow:none!important;}
+.bc-premium-qr img{width:190px!important;height:190px!important;border-radius:18px!important;box-shadow:0 18px 34px rgba(0,0,0,.35);}
+.bc-premium-qr b{margin-top:4px;color:#fff!important;font-size:15px!important;}
+.bc-premium-qr small{margin-top:6px;color:rgba(255,255,255,.66)!important;font-size:14px!important;}
+.bc-card-footer-note{position:relative;z-index:2;margin-top:16px;color:#ff4a64;text-align:center;font-weight:900;font-size:15px;}
+.bc-card-footer-note.ready{color:#22c55e;}
+
+@media(max-width:560px){
+  .bc-premium-card-v212{border-radius:28px!important;padding:22px 18px 20px!important;}
+  .bc-premium-logo-row .bc-round-logo{width:124px!important;height:124px!important;}
+  .bc-premium-logo-row .bc-script-logo{font-size:24px!important;}
+  .bc-premium-logo-row .bc-script-logo span{font-size:12px!important;}
+  .bc-premium-logo-row .bc-round-logo small{font-size:6px!important;bottom:18px!important;}
+  .bc-card-owner strong{font-size:36px;}
+  .bc-card-owner span{font-size:14px;}
+  .bc-vip-summary{padding:18px 17px!important;border-radius:22px!important;}
+  .bc-vip-summary b{font-size:25px!important;}
+  .bc-vip-summary div:last-child b{font-size:39px!important;}
+  .bc-vip-summary small{font-size:15px!important;padding:7px 14px;}
+  .bc-reward-panel{padding:18px 14px 16px;border-radius:22px;}
+  .bc-panel-title{font-size:13px;margin-bottom:14px;}
+  .bc-cups-row{gap:4px!important;}
+  .bc-main-count strong{font-size:36px;}
+  .bc-main-count span{font-size:28px;}
+  .bc-main-count small{font-size:13px;}
+  .bc-progress-details{grid-template-columns:82px 1fr;gap:12px;}
+  .bc-percent-side .drink-progress-ring{width:76px!important;height:76px!important;min-width:76px!important;}
+  .bc-percent-side .drink-progress-ring-inner{width:58px!important;height:58px!important;}
+  .bc-percent-side .drink-progress-ring-inner strong{font-size:20px!important;}
+  .bc-left-side{border-right:0;padding-right:0;}
+  .bc-left-side b,.bc-right-side b{font-size:28px;}
+  .bc-right-side{grid-column:1 / -1;text-align:left;border-top:1px solid rgba(255,255,255,.10);padding-top:12px;}
+  .bc-next-level-strip span{font-size:15px;}
+  .bc-premium-qr img{width:166px!important;height:166px!important;}
+}
