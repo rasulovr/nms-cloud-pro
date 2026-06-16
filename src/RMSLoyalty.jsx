@@ -86,11 +86,6 @@ function buildGoogleWalletUrl(client) {
   return token ? `${getPublicOrigin()}/api/loyalty/google-wallet?token=${encodeURIComponent(token)}` : ''
 }
 
-function buildPublicJoinUrl(branchId = 'BC1') {
-  const branch = String(branchId || 'BC1').trim() || 'BC1'
-  return `${getPublicOrigin()}/loyalty/join?branch=${encodeURIComponent(branch)}`
-}
-
 
 function safeJsonParse(value, fallback = null) {
   try { return value ? JSON.parse(value) : fallback } catch (_e) { return fallback }
@@ -1400,91 +1395,91 @@ function LoyaltyWalletLanding({ token }) {
 }
 
 
+
+function readJoinBranchFromLocation() {
+  if (typeof window === 'undefined') return 'BC1'
+  const params = new URLSearchParams(window.location.search)
+  return params.get('branch') || params.get('b') || 'BC1'
+}
+
+function normalizePublicPhone(value) {
+  const raw = String(value || '').trim()
+  if (!raw) return ''
+  const digits = normalizeDigits(raw)
+  if (!digits) return raw
+  if (digits.startsWith('994')) return `+${digits}`
+  if (digits.length === 9) return `+994${digits}`
+  return raw.startsWith('+') ? raw : `+${digits}`
+}
+
 function LoyaltyPublicJoin() {
-  const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams()
-  const branchId = params.get('branch') || params.get('b') || 'BC1'
-  const [form, setForm] = useState({ name: '', phone: '', birthday: '' })
+  const branch = readJoinBranchFromLocation()
+  const [form, setForm] = useState({ name: '', phone: '' })
   const [client, setClient] = useState(null)
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
   const [message, setMessage] = useState('')
+  const [error, setError] = useState('')
 
-  async function submitPublicJoin(e) {
+  async function submitJoin(e) {
     e.preventDefault()
-    setError('')
     setMessage('')
-    const phone = form.phone.trim()
-    if (!phone) {
-      setError('Введите номер телефона.')
-      return
-    }
+    setError('')
+    const phone = normalizePublicPhone(form.phone)
+    const name = String(form.name || '').trim() || 'Гость'
+    if (!phone) return setError('Укажите номер телефона.')
     setLoading(true)
-    const { data, error: rpcError } = await supabase.rpc('rms_loyalty_public_register_secure', {
-      p_name: form.name.trim() || 'Гость',
-      p_phone: phone,
-      p_birthday: form.birthday || null,
-      p_branch_id: branchId,
-      p_source: 'public_join_qr',
-    })
-    setLoading(false)
-    if (rpcError) {
-      setError(rpcError.message || 'Не удалось создать карту.')
-      return
+    try {
+      const { data, error: rpcError } = await supabase.rpc('rms_loyalty_public_join', {
+        p_name: name,
+        p_phone: phone,
+        p_branch_id: branch,
+      })
+      if (rpcError) throw rpcError
+      const row = Array.isArray(data) ? data[0] : data
+      if (!row) throw new Error('Карта не создана. Попробуйте ещё раз.')
+      setClient(row)
+      setMessage('Карта готова.')
+    } catch (err) {
+      setError(err?.message || 'Не удалось создать карту.')
+    } finally {
+      setLoading(false)
     }
-    const row = Array.isArray(data) ? data[0] : data
-    if (!row?.id) {
-      setError('Карта не создана. Попробуйте ещё раз.')
-      return
-    }
-    setClient(row)
-    setMessage('Карта создана. Покажите QR-код сотруднику при заказе напитка.')
+  }
+
+  if (client) {
+    return (
+      <div className="loyalty-public-join-page">
+        <div className="loyalty-public-join-shell">
+          <div className="public-join-brand">
+            <div className="public-join-logo"><span>Barista<span>&amp;Chef</span></span><small>COFFEE HOUSE</small></div>
+            <b>Карта готова</b>
+            <p>Покажите QR на кассе для начисления напитков и выдачи подарков.</p>
+          </div>
+          {message && <div className="public-join-alert">{message}</div>}
+          <div className="public-join-result"><DrinkStampCard client={client} /></div>
+        </div>
+      </div>
+    )
   }
 
   return (
     <div className="loyalty-public-join-page">
       <div className="loyalty-public-join-shell">
         <div className="public-join-brand">
-          <div className="public-join-logo">
-            <span>Barista<span>&amp;</span>Chef</span>
-            <small>COFFEE &amp; KITCHEN</small>
-          </div>
-          <b>Карта напитков</b>
-          <p>Зарегистрируйтесь один раз и показывайте QR-код при заказе напитка.</p>
+          <div className="public-join-logo"><span>Barista<span>&amp;Chef</span></span><small>COFFEE HOUSE</small></div>
+          <b>Loyalty Card</b>
+          <p>Введите имя и телефон. Карта откроется сразу после регистрации.</p>
         </div>
-
-        {!client ? (
-          <form className="public-join-form" onSubmit={submitPublicJoin}>
-            {error && <div className="public-join-alert error">{error}</div>}
-            {message && <div className="public-join-alert">{message}</div>}
-            <label>
-              Имя
-              <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Например: Ayxan" autoComplete="name" />
-            </label>
-            <label>
-              Телефон
-              <input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="+994..." inputMode="tel" autoComplete="tel" />
-            </label>
-            <label>
-              День рождения <small>необязательно</small>
-              <input type="date" value={form.birthday} onChange={(e) => setForm({ ...form, birthday: e.target.value })} />
-            </label>
-            <button type="submit" disabled={loading}>{loading ? 'Создаём карту…' : 'Получить карту'}</button>
-            <small className="public-join-note">1 напиток = 1 отметка. Уровень Classic: 10 → 1.</small>
-          </form>
-        ) : (
-          <div className="public-join-result">
-            <div className="public-join-alert">Карта готова.</div>
-            <DrinkStampCard client={client} />
-          </div>
-        )}
+        <form className="public-join-form" onSubmit={submitJoin}>
+          {error && <div className="public-join-alert error">{error}</div>}
+          <label>Имя<input value={form.name} onChange={(e) => setForm((v) => ({ ...v, name: e.target.value }))} placeholder="Например: Ayxan" /></label>
+          <label>Телефон<input value={form.phone} onChange={(e) => setForm((v) => ({ ...v, phone: e.target.value }))} placeholder="+994..." inputMode="tel" /></label>
+          <button type="submit" disabled={loading}>{loading ? 'Создаём карту…' : 'Получить карту'}</button>
+          <small className="public-join-note">Филиал: {branch}. Если карта уже есть, откроется существующая карта.</small>
+        </form>
       </div>
     </div>
   )
-}
-
-function readPublicJoinFromLocation() {
-  if (typeof window === 'undefined') return false
-  return /^\/loyalty\/join\/?$/i.test(window.location.pathname)
 }
 
 function readWalletTokenFromLocation() {
@@ -1497,12 +1492,12 @@ function readWalletTokenFromLocation() {
 }
 
 export default function RMSLoyalty() {
-  const isPublicJoin = readPublicJoinFromLocation()
-  const walletTokenFromUrl = readWalletTokenFromLocation()
-
+  const isPublicJoin = typeof window !== 'undefined' && window.location.pathname.startsWith('/loyalty/join')
   if (isPublicJoin) {
     return <LoyaltyPublicJoin />
   }
+
+  const walletTokenFromUrl = readWalletTokenFromLocation()
 
   if (walletTokenFromUrl) {
     return <LoyaltyWalletLanding token={walletTokenFromUrl} />
@@ -1864,28 +1859,6 @@ function RMSLoyaltyAdmin() {
               </div>
             </>
           ) : <div className="loyalty-empty">Выберите клиента из списка.</div>}
-        </div>
-      </section>
-
-      <section className="loyalty-grid bottom public-join-admin-grid">
-        <div className="loyalty-card public-join-admin-card">
-          <div className="loyalty-card-head">
-            <div>
-              <h2>QR регистрации</h2>
-              <p>Для стойки, чека или столика. Гость сам создаёт карту по телефону.</p>
-            </div>
-            <button type="button" onClick={() => copyText(buildPublicJoinUrl('BC1'))}>Скопировать</button>
-          </div>
-          <div className="public-join-admin-body">
-            <div className="wallet-qr-code public-join-admin-qr">
-              <img src={qrImageUrl(buildPublicJoinUrl('BC1'), 240)} alt="QR регистрации Loyalty" />
-            </div>
-            <div>
-              <b>Barista&Chef Loyalty</b>
-              <span>{buildPublicJoinUrl('BC1')}</span>
-              <small>Распечатайте этот QR или добавьте его на чек. После регистрации клиент сразу получает QR-карту.</small>
-            </div>
-          </div>
         </div>
       </section>
 
