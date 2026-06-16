@@ -1726,10 +1726,12 @@ function RMSLoyaltyAdmin() {
                     <span className={`vip-mini-badge vip-${vipInfo.key}`}>{vipInfo.title}</span>
                   </div>
                   <span className="compact-client-phone">{formatPhoneDisplay(client.phone)}</span>
-                  <CoffeeStampRow client={client} size="mini" />
+                  <div className="compact-client-progressbar" aria-label={`${stampProgress.filled} из ${stampProgress.threshold}`}>
+                    <i><em style={{ width: `${Math.min(100, Math.max(0, stampProgress.percent))}%` }} /></i>
+                  </div>
                 </div>
                 <div className="compact-client-score">
-                  <strong>{stampProgress.current} / {stampProgress.threshold}</strong>
+                  <strong>{stampProgress.filled} / {stampProgress.threshold}</strong>
                   <small>{getLifetimeDrinkCount(client)} напитков</small>
                 </div>
               </button>
