@@ -7,14 +7,15 @@ const fmt = (n) => `${Number(n || 0).toFixed(2)} AZN`
 const intFmt = (n) => `${Number(n || 0).toFixed(0)} ед.`
 
 const STAMPS_FOR_FREE_DRINK = 10
+const VIP_DEFAULT_THRESHOLD = 10
 const DEFAULT_BRAND = 'BARISTA&CHEF'
 const DEFAULT_SUBTITLE = 'COFFEE HOUSE'
 
 const VIP_LEVELS = [
-  { key: 'classic', title: 'Classic', min: 0, short: 'CL' },
-  { key: 'silver', title: 'Silver', min: 50, short: 'SV' },
-  { key: 'gold', title: 'Gold', min: 150, short: 'GD' },
-  { key: 'black', title: 'Black', min: 300, short: 'BK' },
+  { key: 'classic', title: 'Classic', min: 0, short: 'CL', threshold: 10, benefit: '10 → 1' },
+  { key: 'silver', title: 'Silver', min: 50, short: 'SV', threshold: 9, benefit: '9 → 1' },
+  { key: 'gold', title: 'Gold', min: 150, short: 'GD', threshold: 8, benefit: '8 → 1' },
+  { key: 'black', title: 'Black', min: 300, short: 'BK', threshold: 6, benefit: '6 → 1' },
 ]
 
 function normalizeDigits(value) {
@@ -153,6 +154,7 @@ function getVipLevelInfo(client) {
   const remaining = next ? Math.max(0, next.min - drinks) : 0
   return {
     ...current,
+    threshold: Number(current.threshold || VIP_DEFAULT_THRESHOLD),
     drinks,
     next,
     nextTitle: next?.title || '',
@@ -162,21 +164,32 @@ function getVipLevelInfo(client) {
   }
 }
 
+function getRewardThreshold(client) {
+  const explicit = Number(client?.reward_threshold || 0)
+  if (explicit > 0) return explicit
+  return Number(getVipLevelInfo(client).threshold || VIP_DEFAULT_THRESHOLD)
+}
+
+function getVipBenefitText(client) {
+  const vip = getVipLevelInfo(client)
+  return vip.benefit || `${getRewardThreshold(client)} → 1`
+}
 
 function getStampProgress(client) {
   const raw = getStampCount(client)
-  const filled = raw % STAMPS_FOR_FREE_DRINK
-  const percent = Math.round((filled / STAMPS_FOR_FREE_DRINK) * 100)
-  const remaining = filled === 0 ? STAMPS_FOR_FREE_DRINK : STAMPS_FOR_FREE_DRINK - filled
+  const threshold = getRewardThreshold(client)
+  const filled = raw % threshold
+  const percent = Math.round((filled / threshold) * 100)
+  const remaining = filled === 0 ? threshold : threshold - filled
   const freeBalance = getFreeDrinkBalance(client)
   const giftAvailable = freeBalance > 0
-  return { raw, filled, percent, remaining, freeBalance, giftAvailable }
+  return { raw, filled, percent, remaining, freeBalance, giftAvailable, threshold }
 }
 
 function progressPhrase(client) {
   const progress = getStampProgress(client)
   if (progress.giftAvailable) return `Подарок доступен · баланс: ${intFmt(progress.freeBalance)}`
-  if (progress.filled === 0) return `Осталось ${STAMPS_FOR_FREE_DRINK} напитков до подарка`
+  if (progress.filled === 0) return `Осталось ${progress.threshold} напитков до подарка`
   return `Осталось ${progress.remaining} напитков до подарка`
 }
 
@@ -187,7 +200,7 @@ function DrinkProgressRing({ client, compact = false }) {
     <div className={`drink-progress-ring ${compact ? 'compact' : ''}`} style={{ '--drink-progress': `${rotation}deg` }}>
       <div className="drink-progress-ring-inner">
         <strong>{progress.percent}%</strong>
-        {!compact && <span>{progress.filled}/{STAMPS_FOR_FREE_DRINK}</span>}
+        {!compact && <span>{progress.filled}/{progress.threshold}</span>}
       </div>
     </div>
   )
@@ -197,7 +210,7 @@ function DrinkProgressSummary({ client }) {
   const progress = getStampProgress(client)
   return (
     <div className={`drink-progress-summary ${progress.giftAvailable ? 'gift' : ''}`}>
-      <b>{progress.giftAvailable ? 'Подарок доступен' : `${progress.filled} из ${STAMPS_FOR_FREE_DRINK} напитков`}</b>
+      <b>{progress.giftAvailable ? 'Подарок доступен' : `${progress.filled} из ${progress.threshold} напитков`}</b>
       <span>{progressPhrase(client)}</span>
     </div>
   )
@@ -234,8 +247,8 @@ function txOperationMeta(tx = {}) {
 function CoffeeStampRow({ client, size = 'default' }) {
   const progress = getStampProgress(client)
   return (
-    <div className={`coffee-stamp-row ${size}`} aria-label={`${progress.filled} из ${STAMPS_FOR_FREE_DRINK} напитков`}>
-      {Array.from({ length: STAMPS_FOR_FREE_DRINK }).map((_, idx) => (
+    <div className={`coffee-stamp-row ${size}`} aria-label={`${progress.filled} из ${progress.threshold} напитков`}>
+      {Array.from({ length: progress.threshold }).map((_, idx) => (
         <span key={idx} className={idx < progress.filled ? 'filled' : ''}>{idx < progress.filled ? '☕' : '○'}</span>
       ))}
     </div>
@@ -312,6 +325,7 @@ function DrinkStampCard({ client }) {
           <div>
             <span>VIP LEVEL</span>
             <b>{vip.title}</b>
+            <small>{vip.benefit || `${vip.threshold} → 1`}</small>
           </div>
           <div>
             <span>ВСЕГО</span>
@@ -333,7 +347,7 @@ function DrinkStampCard({ client }) {
         </div>
 
         <div className="stamp-grid progress-stamps">
-          {Array.from({ length: STAMPS_FOR_FREE_DRINK }).map((_, idx) => <CoffeeIcon key={idx} filled={idx < progress.filled} />)}
+          {Array.from({ length: progress.threshold }).map((_, idx) => <CoffeeIcon key={idx} filled={idx < progress.filled} />)}
         </div>
 
         <div className="drink-card-client-row">
@@ -342,7 +356,7 @@ function DrinkStampCard({ client }) {
         </div>
 
         <div className="drink-card-progress enhanced">
-          <span>{progress.percent}% · {progress.filled}/{STAMPS_FOR_FREE_DRINK} отметок</span>
+          <span>{progress.percent}% · {progress.filled}/{progress.threshold} отметок · {getVipBenefitText(client)}</span>
           <i><em style={{ width: `${progress.percent}%` }} /></i>
           <small>{progressPhrase(client)}</small>
         </div>
@@ -424,7 +438,7 @@ async function findLoyaltyClientByTokenOrCode(value) {
   const token = extractLoyaltyToken(value)
   if (!token) return { client: null, error: 'Введите token, ссылку карты, номер карты или телефон.' }
 
-  const selectFields = 'id,name,phone,card_number,wallet_token,wallet_enabled,stamp_count,free_drink_balance,visits_count,created_at,updated_at,is_active'
+  const selectFields = 'id,name,phone,card_number,wallet_token,wallet_enabled,stamp_count,free_drink_balance,visits_count,lifetime_drinks,total_drinks,vip_level,reward_threshold,created_at,updated_at,is_active'
 
   // First try the public wallet RPC. It is SECURITY DEFINER and is the same source
   // used by the public card page, so QR scanning works even when direct table RLS
@@ -446,6 +460,10 @@ async function findLoyaltyClientByTokenOrCode(value) {
           stamp_count: Number(rpcClient.stamp_count || 0),
           free_drink_balance: Number(rpcClient.free_drink_balance || 0),
           visits_count: Number(rpcClient.visits_count || 0),
+          lifetime_drinks: Number(rpcClient.lifetime_drinks ?? rpcClient.total_drinks ?? rpcClient.visits_count ?? 0),
+          total_drinks: Number(rpcClient.total_drinks ?? rpcClient.lifetime_drinks ?? rpcClient.visits_count ?? 0),
+          vip_level: rpcClient.vip_level || getVipLevelInfo({ lifetime_drinks: Number(rpcClient.lifetime_drinks ?? rpcClient.total_drinks ?? rpcClient.visits_count ?? 0) }).key,
+          reward_threshold: Number(rpcClient.reward_threshold || getRewardThreshold({ lifetime_drinks: Number(rpcClient.lifetime_drinks ?? rpcClient.total_drinks ?? rpcClient.visits_count ?? 0) })),
           created_at: rpcClient.created_at || null,
           updated_at: rpcClient.updated_at || null,
           is_active: rpcClient.is_active !== false,
@@ -858,6 +876,11 @@ function LoyaltyPOSDrinkScan({ onDone, scannerProfile = null, scannerOnly = fals
         stamp_count: Number(result?.stamp_count ?? 0),
         free_drink_balance: Number(result?.free_drink_balance ?? 0),
         visits_count: Number(result?.visits_count ?? currentClient.visits_count ?? 0),
+        lifetime_drinks: Number(result?.lifetime_drinks ?? currentClient.lifetime_drinks ?? result?.visits_count ?? currentClient.visits_count ?? 0),
+        total_drinks: Number(result?.lifetime_drinks ?? currentClient.lifetime_drinks ?? result?.visits_count ?? currentClient.visits_count ?? 0),
+        vip_level: result?.vip_level || getVipLevelInfo({ lifetime_drinks: Number(result?.lifetime_drinks ?? currentClient.lifetime_drinks ?? result?.visits_count ?? currentClient.visits_count ?? 0) }).key,
+        reward_threshold: Number(result?.reward_threshold || getRewardThreshold(currentClient)),
+        available_rewards: Number(result?.free_drink_balance ?? currentClient.free_drink_balance ?? 0),
         updated_at: result?.updated_at || new Date().toISOString(),
       }
       const afterCount = getStampCount(updatedClient)
@@ -872,6 +895,8 @@ function LoyaltyPOSDrinkScan({ onDone, scannerProfile = null, scannerOnly = fals
         before: beforeCount,
         after: afterCount,
         giftCount,
+        threshold: Number(result?.reward_threshold || getRewardThreshold(updatedClient)),
+        vipLevel: getVipLevelInfo(updatedClient).title,
         freeBalance: Number(updatedClient.free_drink_balance || 0),
         client: updatedClient,
       })
@@ -934,6 +959,11 @@ function LoyaltyPOSDrinkScan({ onDone, scannerProfile = null, scannerOnly = fals
         stamp_count: Number(result?.stamp_count ?? currentClient.stamp_count ?? 0),
         free_drink_balance: Number(result?.free_drink_balance ?? 0),
         visits_count: Number(result?.visits_count ?? currentClient.visits_count ?? 0),
+        lifetime_drinks: Number(result?.lifetime_drinks ?? currentClient.lifetime_drinks ?? result?.visits_count ?? currentClient.visits_count ?? 0),
+        total_drinks: Number(result?.lifetime_drinks ?? currentClient.lifetime_drinks ?? result?.visits_count ?? currentClient.visits_count ?? 0),
+        vip_level: result?.vip_level || getVipLevelInfo({ lifetime_drinks: Number(result?.lifetime_drinks ?? currentClient.lifetime_drinks ?? result?.visits_count ?? currentClient.visits_count ?? 0) }).key,
+        reward_threshold: Number(result?.reward_threshold || getRewardThreshold(currentClient)),
+        available_rewards: Number(result?.free_drink_balance ?? currentClient.free_drink_balance ?? 0),
         updated_at: result?.updated_at || new Date().toISOString(),
       }
       const afterFree = getFreeDrinkBalance(updatedClient)
@@ -974,9 +1004,10 @@ function LoyaltyPOSDrinkScan({ onDone, scannerProfile = null, scannerOnly = fals
             <div className="scanner-success-icon">{(successFlash.giftCount > 0 || successFlash.redeemed) ? '🎁' : '✅'}</div>
             <b>{successFlash.redeemed ? 'ПОДАРОК ВЫДАН' : (successFlash.giftCount > 0 ? 'ПОДАРОК ДОСТУПЕН' : 'НАЧИСЛЕНО')}</b>
             <span>{successFlash.name}</span>
-            <strong>{successFlash.redeemed ? `Баланс: ${successFlash.before} → ${successFlash.after}` : `${successFlash.before} → ${successFlash.after} из ${STAMPS_FOR_FREE_DRINK}`}</strong>
+            <strong>{successFlash.redeemed ? `Баланс: ${successFlash.before} → ${successFlash.after}` : `${successFlash.before} → ${successFlash.after} из ${successFlash.threshold || VIP_DEFAULT_THRESHOLD}`}</strong>
             {successFlash.giftCount > 0 && <em>Бесплатный напиток доступен</em>}
             {successFlash.redeemed && <em>Бесплатный напиток списан</em>}
+            {successFlash.vipLevel && !successFlash.redeemed && <i className="scanner-vip-note">{successFlash.vipLevel} · {successFlash.threshold || VIP_DEFAULT_THRESHOLD} → 1</i>}
           </div>
         )}
 
@@ -1015,8 +1046,9 @@ function LoyaltyPOSDrinkScan({ onDone, scannerProfile = null, scannerOnly = fals
                 <small>{client.phone || buildCardNumber(client)}</small>
               </div>
               <div className="scanner-client-score">
-                <strong>{getStampCount(client)}/{STAMPS_FOR_FREE_DRINK}</strong>
+                <strong>{getStampCount(client)}/{getRewardThreshold(client)}</strong>
                 <em>{getStampProgress(client).percent}%</em>
+                <small>{getVipLevelInfo(client).title}</small>
               </div>
             </div>
             <CoffeeStampRow client={client} size="scanner-large" />
@@ -1217,7 +1249,7 @@ function LoyaltyAnalyticsPanel({ clients = [], transactions = [] }) {
           <div className="vip-analytics-list">
             {analytics.vipDistribution.map((level) => (
               <div className={`vip-analytics-row vip-${level.key}`} key={level.key}>
-                <div><b>{level.title}</b><span>{level.min}+ напитков</span></div>
+                <div><b>{level.title}</b><span>{level.min}+ напитков · {level.benefit}</span></div>
                 <strong>{level.count}</strong>
               </div>
             ))}
@@ -1484,6 +1516,11 @@ function RMSLoyaltyAdmin() {
       visits_count: 0,
       stamp_count: 0,
       free_drink_balance: 0,
+      lifetime_drinks: 0,
+      total_drinks: 0,
+      vip_level: 'classic',
+      reward_threshold: 10,
+      available_rewards: 0,
       card_number: rawCardNumber(tempClient),
       wallet_token: createWalletToken(tempClient),
       wallet_enabled: true,
@@ -1506,9 +1543,12 @@ function RMSLoyaltyAdmin() {
     const currentStamps = getStampCount(client)
     const currentFree = getFreeDrinkBalance(client)
     const totalStamps = currentStamps + drinks
-    const newFree = Math.floor(totalStamps / STAMPS_FOR_FREE_DRINK)
-    const nextStamps = totalStamps % STAMPS_FOR_FREE_DRINK
+    const threshold = getRewardThreshold(client)
+    const newFree = Math.floor(totalStamps / threshold)
+    const nextStamps = totalStamps % threshold
     const nextFreeBalance = currentFree + newFree
+    const nextLifetime = getLifetimeDrinkCount(client) + drinks
+    const nextVip = getVipLevelInfo({ ...client, lifetime_drinks: nextLifetime })
 
     const { error: txError } = await supabase.from('rms_loyalty_transactions').insert({
       client_id: client.id,
@@ -1525,6 +1565,11 @@ function RMSLoyaltyAdmin() {
       stamp_count: nextStamps,
       free_drink_balance: nextFreeBalance,
       visits_count: Number(client.visits_count || 0) + drinks,
+      lifetime_drinks: nextLifetime,
+      total_drinks: nextLifetime,
+      vip_level: nextVip.key,
+      reward_threshold: nextVip.threshold,
+      available_rewards: nextFreeBalance,
       updated_at: new Date().toISOString(),
     }).eq('id', client.id)
     if (clientError) return setMessage(clientError.message)
@@ -1556,6 +1601,7 @@ function RMSLoyaltyAdmin() {
 
     const { error: clientError } = await supabase.from('rms_loyalty_clients').update({
       free_drink_balance: currentFree - count,
+      available_rewards: currentFree - count,
       updated_at: new Date().toISOString(),
     }).eq('id', client.id)
     if (clientError) return setMessage(clientError.message)
@@ -1673,7 +1719,8 @@ function RMSLoyaltyAdmin() {
                   <span className={`vip-mini-badge vip-${getVipLevelInfo(client).key}`}>{getVipLevelInfo(client).title} · {getLifetimeDrinkCount(client)} напитков</span>
                   <CoffeeStampRow client={client} size="mini" />
                 </div>
-                <div><em>{getStampProgress(client).percent}%</em><strong>{intFmt(getFreeDrinkBalance(client))}</strong></div>
+                <div><em>{getStampProgress(client).percent}%</em>
+                <small>{getVipLevelInfo(client).title}</small><strong>{intFmt(getFreeDrinkBalance(client))}</strong></div>
               </button>
             ))}
             {!filteredClients.length && <div className="loyalty-empty">Клиенты не найдены.</div>}
@@ -1714,7 +1761,7 @@ function RMSLoyaltyAdmin() {
             <div className="loyalty-card-head"><div><h2>Начислить отметки</h2><p>1 напиток = 1 отметка. После 10 отметок автоматически добавляется подарок.</p></div></div>
             <form className="loyalty-form" onSubmit={addDrinkStamps}>
               <label>Количество напитков<input value={stampForm.drinks} onChange={(e) => setStampForm({ ...stampForm, drinks: e.target.value })} placeholder="1" /></label>
-              <div className="loyalty-rule-preview progress-preview"><DrinkProgressRing client={selectedClient} compact /><div><b>Текущий прогресс</b><span>{getStampProgress(selectedClient).percent}% · {getStampCount(selectedClient)}/{STAMPS_FOR_FREE_DRINK} отметок · {progressPhrase(selectedClient)}</span></div></div>
+              <div className="loyalty-rule-preview progress-preview"><DrinkProgressRing client={selectedClient} compact /><div><b>Текущий прогресс</b><span>{getStampProgress(selectedClient).percent}% · {getStampCount(selectedClient)}/{getRewardThreshold(selectedClient)} отметок · {getVipBenefitText(selectedClient)} · {progressPhrase(selectedClient)}</span></div></div>
               <label>Комментарий<textarea value={stampForm.comment} onChange={(e) => setStampForm({ ...stampForm, comment: e.target.value })} placeholder="Например: чек POS #1258" /></label>
               <button className="loyalty-primary">Начислить</button>
             </form>
