@@ -46,6 +46,16 @@ function rawCardNumber(client) {
   return buildCardNumber(client).replace(/\s+/g, '')
 }
 
+function formatPhoneDisplay(phone) {
+  const raw = String(phone || '').trim()
+  if (!raw) return ''
+  const digits = raw.replace(/\D/g, '')
+  if (digits.startsWith('994') && digits.length >= 12) {
+    return `+994 ${digits.slice(3, 5)} ${digits.slice(5, 8)} ${digits.slice(8, 10)} ${digits.slice(10, 12)}`
+  }
+  return raw
+}
+
 function createWalletToken(client) {
   const base = `${client?.id || ''}-${client?.phone || ''}-${client?.created_at || ''}-${Date.now()}`
   return `bcw_${stableHash(base)}_${Math.random().toString(36).slice(2, 10)}`
@@ -1699,24 +1709,32 @@ function RMSLoyaltyAdmin() {
 
       <section className="loyalty-grid drink-grid-main">
         <div className="loyalty-card loyalty-client-card">
-          <div className="loyalty-card-head">
-            <div><h2>Клиенты</h2><p>Выберите клиента для начисления отметок или показа карты.</p></div>
-            <button onClick={loadLoyalty} disabled={loading}>{loading ? 'Загрузка…' : 'Обновить'}</button>
+          <div className="loyalty-card-head compact-client-head">
+            <div><h2>Клиенты Loyalty</h2></div>
+            <button className="loyalty-refresh-icon" onClick={loadLoyalty} disabled={loading} title="Обновить">{loading ? '…' : '↻'}</button>
           </div>
-          <input className="loyalty-search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Поиск по имени, телефону или номеру карты..." />
-          <div className="loyalty-client-list">
-            {filteredClients.map((client) => (
-              <button key={client.id} className={`loyalty-client-row ${selectedClientId === client.id ? 'active' : ''}`} onClick={() => setSelectedClientId(client.id)}>
-                <div>
-                  <b>{client.name || 'Гость'}</b>
-                  <span>{client.phone}</span>
-                  <span className={`vip-mini-badge vip-${getVipLevelInfo(client).key}`}>{getVipLevelInfo(client).title} · {getLifetimeDrinkCount(client)} напитков</span>
+          <input className="loyalty-search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Поиск клиента..." />
+          <div className="loyalty-client-list compact-client-list">
+            {filteredClients.map((client) => {
+              const vipInfo = getVipLevelInfo(client)
+              const stampProgress = getStampProgress(client)
+              return (
+              <button key={client.id} className={`loyalty-client-row compact-client-row ${selectedClientId === client.id ? 'active' : ''}`} onClick={() => setSelectedClientId(client.id)}>
+                <div className="compact-client-main">
+                  <div className="compact-client-titleline">
+                    <b>{client.name || 'Гость'}</b>
+                    <span className={`vip-mini-badge vip-${vipInfo.key}`}>{vipInfo.title}</span>
+                  </div>
+                  <span className="compact-client-phone">{formatPhoneDisplay(client.phone)}</span>
                   <CoffeeStampRow client={client} size="mini" />
                 </div>
-                <div><em>{getStampProgress(client).percent}%</em>
-                <small>{getVipLevelInfo(client).title}</small><strong>{intFmt(getFreeDrinkBalance(client))}</strong></div>
+                <div className="compact-client-score">
+                  <strong>{stampProgress.current} / {stampProgress.threshold}</strong>
+                  <small>{getLifetimeDrinkCount(client)} напитков</small>
+                </div>
               </button>
-            ))}
+              )
+            })}
             {!filteredClients.length && <div className="loyalty-empty">Клиенты не найдены.</div>}
           </div>
         </div>
