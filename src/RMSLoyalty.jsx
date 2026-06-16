@@ -306,12 +306,6 @@ function DrinkStampCard({ client }) {
 
   return (
     <div className="drink-card-wallet-wrap">
-      <div className="ios-wallet-topbar">
-        <span>Отменить</span>
-        <b>Карта лояльности</b>
-        <span>QR</span>
-      </div>
-
       <div className="drink-wallet-card progress-card">
         <div className="drink-wallet-head bc-card-head-centered">
           <div className="bc-round-logo" aria-label="Barista&Chef">
@@ -346,7 +340,7 @@ function DrinkStampCard({ client }) {
           <i><em style={{ width: `${vip.progressToNext}%` }} /></i>
         </div>
 
-        <div className="stamp-grid progress-stamps">
+        <div className="stamp-grid progress-stamps" style={{ '--stamp-columns': progress.threshold }}>
           {Array.from({ length: progress.threshold }).map((_, idx) => <CoffeeIcon key={idx} filled={idx < progress.filled} />)}
         </div>
 
