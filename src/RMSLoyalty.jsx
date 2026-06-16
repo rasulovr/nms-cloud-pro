@@ -10,6 +10,13 @@ const STAMPS_FOR_FREE_DRINK = 10
 const DEFAULT_BRAND = 'BARISTA&CHEF'
 const DEFAULT_SUBTITLE = 'COFFEE HOUSE'
 
+const VIP_LEVELS = [
+  { key: 'classic', title: 'Classic', min: 0, short: 'CL' },
+  { key: 'silver', title: 'Silver', min: 50, short: 'SV' },
+  { key: 'gold', title: 'Gold', min: 150, short: 'GD' },
+  { key: 'black', title: 'Black', min: 300, short: 'BK' },
+]
+
 function normalizeDigits(value) {
   return String(value || '').replace(/\D/g, '')
 }
@@ -125,6 +132,34 @@ function getStampCount(client) {
 
 function getFreeDrinkBalance(client) {
   return Number(client?.free_drink_balance ?? client?.drink_balance ?? 0) || 0
+}
+
+function getLifetimeDrinkCount(client) {
+  return Number(client?.lifetime_drinks ?? client?.total_drinks ?? client?.visits_count ?? 0) || 0
+}
+
+function getVipLevelInfo(client) {
+  const drinks = getLifetimeDrinkCount(client)
+  let current = VIP_LEVELS[0]
+  for (const level of VIP_LEVELS) {
+    if (drinks >= level.min) current = level
+  }
+  const currentIndex = VIP_LEVELS.findIndex((level) => level.key === current.key)
+  const next = VIP_LEVELS[currentIndex + 1] || null
+  const previousMin = current.min
+  const nextMin = next?.min || current.min
+  const span = Math.max(1, nextMin - previousMin)
+  const progressToNext = next ? Math.min(100, Math.max(0, Math.round(((drinks - previousMin) / span) * 100))) : 100
+  const remaining = next ? Math.max(0, next.min - drinks) : 0
+  return {
+    ...current,
+    drinks,
+    next,
+    nextTitle: next?.title || '',
+    remaining,
+    progressToNext,
+    isMax: !next,
+  }
 }
 
 
@@ -254,6 +289,7 @@ function DrinkStampCard({ client }) {
   }
   const progress = getStampProgress(client)
   const freeBalance = progress.freeBalance
+  const vip = getVipLevelInfo(client)
 
   return (
     <div className="drink-card-wallet-wrap">
@@ -272,9 +308,28 @@ function DrinkStampCard({ client }) {
           <div className="guest-card-label">КАРТА<br />ГОСТЯ</div>
         </div>
 
+        <div className={`vip-level-card vip-${vip.key}`}>
+          <div>
+            <span>VIP LEVEL</span>
+            <b>{vip.title}</b>
+          </div>
+          <div>
+            <span>ВСЕГО</span>
+            <b>{vip.drinks} напитков</b>
+          </div>
+        </div>
+
         <div className="drink-progress-hero">
           <DrinkProgressRing client={client} />
           <DrinkProgressSummary client={client} />
+        </div>
+
+        <div className="vip-progress-line">
+          <div>
+            <span>{vip.isMax ? 'Максимальный уровень' : `До ${vip.nextTitle}: ${vip.remaining} напитков`}</span>
+            <b>{vip.isMax ? 'Black уровень активен' : `${vip.progressToNext}% до следующего уровня`}</b>
+          </div>
+          <i><em style={{ width: `${vip.progressToNext}%` }} /></i>
         </div>
 
         <div className="stamp-grid progress-stamps">
@@ -1115,6 +1170,10 @@ function LoyaltyAnalyticsPanel({ clients = [], transactions = [] }) {
       topBranches: Array.from(topBranchMap.values()).sort((a, b) => b.count - a.count).slice(0, 8),
       blockedClients: Array.from(blockedMap.values()).sort((a, b) => b.count - a.count).slice(0, 8),
       recentRows: scanRows.slice(0, 12),
+      vipDistribution: VIP_LEVELS.map((level) => ({
+        ...level,
+        count: clients.filter((client) => getVipLevelInfo(client).key === level.key).length,
+      })),
     }
   }, [clients, transactions, scanRows])
 
@@ -1153,6 +1212,18 @@ function LoyaltyAnalyticsPanel({ clients = [], transactions = [] }) {
       </section>
 
       <section className="analytics-grid">
+        <div className="loyalty-card analytics-card">
+          <div className="loyalty-card-head"><div><h2>VIP уровни</h2><p>Распределение клиентов по уровням Barista&Chef.</p></div></div>
+          <div className="vip-analytics-list">
+            {analytics.vipDistribution.map((level) => (
+              <div className={`vip-analytics-row vip-${level.key}`} key={level.key}>
+                <div><b>{level.title}</b><span>{level.min}+ напитков</span></div>
+                <strong>{level.count}</strong>
+              </div>
+            ))}
+          </div>
+        </div>
+
         <div className="loyalty-card analytics-card">
           <div className="loyalty-card-head"><div><h2>TOP клиентов</h2><p>Кто чаще всего использует карту.</p></div></div>
           <div className="analytics-rank-list">{renderRankRows(analytics.topClients, 'Пока нет начислений.', 'напитков')}</div>
@@ -1596,7 +1667,12 @@ function RMSLoyaltyAdmin() {
           <div className="loyalty-client-list">
             {filteredClients.map((client) => (
               <button key={client.id} className={`loyalty-client-row ${selectedClientId === client.id ? 'active' : ''}`} onClick={() => setSelectedClientId(client.id)}>
-                <div><b>{client.name || 'Гость'}</b><span>{client.phone}</span><CoffeeStampRow client={client} size="mini" /></div>
+                <div>
+                  <b>{client.name || 'Гость'}</b>
+                  <span>{client.phone}</span>
+                  <span className={`vip-mini-badge vip-${getVipLevelInfo(client).key}`}>{getVipLevelInfo(client).title} · {getLifetimeDrinkCount(client)} напитков</span>
+                  <CoffeeStampRow client={client} size="mini" />
+                </div>
                 <div><em>{getStampProgress(client).percent}%</em><strong>{intFmt(getFreeDrinkBalance(client))}</strong></div>
               </button>
             ))}
