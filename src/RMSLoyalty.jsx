@@ -303,19 +303,25 @@ function DrinkStampCard({ client }) {
   const progress = getStampProgress(client)
   const freeBalance = progress.freeBalance
   const vip = getVipLevelInfo(client)
+  const nextLevelText = vip.isMax ? 'Максимальный уровень' : `До ${vip.nextTitle}: ${vip.remaining} напитков`
+  const nextLevelPct = vip.isMax ? '100%' : `${vip.progressToNext}%`
 
   return (
     <div className="drink-card-wallet-wrap">
-      <div className="drink-wallet-card progress-card">
-        <div className="drink-wallet-head bc-card-head-centered">
+      <div className="drink-wallet-card progress-card bc-premium-card-v212">
+        <div className="bc-premium-logo-row">
           <div className="bc-round-logo" aria-label="Barista&Chef">
             <span className="bc-script-logo">Barista<span>&amp;</span>Chef</span>
             <small>COFFEE &amp; KITCHEN</small>
           </div>
-          <div className="guest-card-label">КАРТА<br />ГОСТЯ</div>
         </div>
 
-        <div className={`vip-level-card vip-${vip.key}`}>
+        <div className="bc-card-owner">
+          <strong>{client?.name || 'Гость'}</strong>
+          <span>ГОСТЬ</span>
+        </div>
+
+        <div className={`vip-level-card vip-${vip.key} bc-vip-summary`}>
           <div>
             <span>VIP LEVEL</span>
             <b>{vip.title}</b>
@@ -323,46 +329,54 @@ function DrinkStampCard({ client }) {
           </div>
           <div>
             <span>ВСЕГО</span>
-            <b>{vip.drinks} напитков</b>
+            <b>{vip.drinks}</b>
+            <small>напитков</small>
           </div>
         </div>
 
-        <div className="drink-progress-hero">
-          <DrinkProgressRing client={client} />
-          <DrinkProgressSummary client={client} />
-        </div>
-
-        <div className="vip-progress-line">
-          <div>
-            <span>{vip.isMax ? 'Максимальный уровень' : `До ${vip.nextTitle}: ${vip.remaining} напитков`}</span>
-            <b>{vip.isMax ? 'Black уровень активен' : `${vip.progressToNext}% до следующего уровня`}</b>
+        <div className="bc-reward-panel">
+          <div className="bc-panel-title">Прогресс до подарка</div>
+          <div className="stamp-grid progress-stamps bc-cups-row" style={{ '--stamp-columns': progress.threshold }}>
+            {Array.from({ length: progress.threshold }).map((_, idx) => <CoffeeIcon key={idx} filled={idx < progress.filled} />)}
           </div>
-          <i><em style={{ width: `${vip.progressToNext}%` }} /></i>
+
+          <div className="bc-main-count">
+            <strong>{progress.filled}</strong>
+            <span>из {progress.threshold}</span>
+            <small>напитков</small>
+          </div>
+
+          <div className="bc-progress-details">
+            <div className="bc-percent-side"><DrinkProgressRing client={client} /></div>
+            <div className="bc-left-side">
+              <span>Осталось</span>
+              <b>{progress.remaining}</b>
+              <small>напитков<br />до подарка</small>
+            </div>
+            <div className="bc-right-side">
+              <span>До следующего уровня</span>
+              <b>{nextLevelPct}</b>
+              <i><em style={{ width: `${vip.progressToNext}%` }} /></i>
+            </div>
+          </div>
         </div>
 
-        <div className="stamp-grid progress-stamps" style={{ '--stamp-columns': progress.threshold }}>
-          {Array.from({ length: progress.threshold }).map((_, idx) => <CoffeeIcon key={idx} filled={idx < progress.filled} />)}
+        <div className="bc-next-level-strip">
+          <span>{nextLevelText}</span>
         </div>
 
-        <div className="drink-card-client-row">
-          <div><small>ИМЯ</small><strong>{client?.name || 'Гость'}</strong></div>
-          <div><small>БАЛАНС</small><strong>{intFmt(freeBalance)}</strong></div>
-        </div>
-
-        <div className="drink-card-progress enhanced">
-          <span>{progress.percent}% · {progress.filled}/{progress.threshold} отметок · {getVipBenefitText(client)}</span>
-          <i><em style={{ width: `${progress.percent}%` }} /></i>
-          <small>{progressPhrase(client)}</small>
-        </div>
-
-        <div className="drink-qr-box">
+        <div className="drink-qr-box bc-premium-qr">
           {landingUrl ? (
             <img src={qrImageUrl(landingUrl, 220)} alt="QR карты клиента" />
           ) : (
             <div className="drink-qr-placeholder">QR</div>
           )}
           <b>{cardNumber}</b>
-          <small>Покажите этот QR на кассе</small>
+          <small>Покажите QR-код для начисления напитка</small>
+        </div>
+
+        <div className={`bc-card-footer-note ${freeBalance > 0 ? 'ready' : ''}`}>
+          {freeBalance > 0 ? `🎁 Доступно подарков: ${intFmt(freeBalance)}` : '🎁 Подарок доступен после достижения цели'}
         </div>
       </div>
 
@@ -370,7 +384,7 @@ function DrinkStampCard({ client }) {
         <button type="button" onClick={() => landingUrl && window.open(landingUrl, '_blank')}>Открыть карту</button>
         <button type="button" onClick={copyCardLink}>Скопировать ссылку</button>
       </div>
-      <p>Пока используем QR-карту без Apple Wallet. Гость может открыть ссылку и добавить страницу на главный экран телефона.</p>
+      <p>QR-карта для гостя. Сотрудник сканирует QR для начисления напитков или выдачи подарка.</p>
     </div>
   )
 }
