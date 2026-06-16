@@ -718,3 +718,230 @@
   .bc-premium-qr small{font-size:14px!important;}
   .bc-card-footer-note{font-size:14px!important;margin-top:10px!important;}
 }
+
+/* v21.4 — card alignment fix: compact premium layout, no text overflow */
+.drink-wallet-card.progress-card.bc-premium-card-v212{
+  width:100%!important;
+  max-width:430px!important;
+  margin:0 auto!important;
+  overflow:hidden!important;
+  padding:16px 16px 18px!important;
+}
+.bc-premium-card-v212 *{box-sizing:border-box;}
+.bc-premium-logo-row{
+  height:74px!important;
+  min-height:74px!important;
+  margin:0 0 8px!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+}
+.bc-premium-card-v212 .bc-round-logo{
+  width:70px!important;
+  height:70px!important;
+  min-width:70px!important;
+  margin:0 auto!important;
+}
+.bc-premium-card-v212 .bc-script-logo{font-size:14px!important;line-height:.78!important;}
+.bc-premium-card-v212 .bc-script-logo span{font-size:8px!important;margin:0!important;}
+.bc-premium-card-v212 .bc-round-logo small{display:none!important;}
+.bc-card-owner{margin:0 0 10px!important;}
+.bc-card-owner strong{font-size:30px!important;line-height:1!important;}
+.bc-card-owner span{display:none!important;}
+.bc-vip-summary{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) 1px minmax(0,1fr)!important;
+  gap:14px!important;
+  align-items:center!important;
+  width:100%!important;
+  margin:0 0 12px!important;
+  padding:16px 18px!important;
+  border-radius:22px!important;
+}
+.bc-vip-summary:before{
+  grid-column:2!important;
+  grid-row:1!important;
+  width:1px!important;
+  min-height:78px!important;
+  align-self:stretch!important;
+}
+.bc-vip-summary > div{min-width:0!important;}
+.bc-vip-summary > div:first-child{
+  grid-column:1!important;
+  grid-row:1!important;
+  text-align:left!important;
+}
+.bc-vip-summary > div:last-child{
+  grid-column:3!important;
+  grid-row:1!important;
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:center!important;
+  justify-content:center!important;
+  text-align:center!important;
+  min-width:0!important;
+}
+.bc-vip-summary span{
+  display:block!important;
+  font-size:15px!important;
+  line-height:1.1!important;
+  margin:0!important;
+  white-space:nowrap!important;
+  color:rgba(255,255,255,.66)!important;
+}
+.bc-vip-summary b{
+  display:block!important;
+  margin:6px 0 0!important;
+  font-size:30px!important;
+  line-height:1!important;
+  white-space:nowrap!important;
+}
+.bc-vip-summary small{
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  width:auto!important;
+  min-width:94px!important;
+  min-height:34px!important;
+  margin:10px 0 0!important;
+  padding:5px 14px!important;
+  font-size:16px!important;
+  line-height:1!important;
+  white-space:nowrap!important;
+}
+.bc-vip-summary > div:last-child b{
+  font-size:48px!important;
+  line-height:.9!important;
+  margin:6px 0 0!important;
+}
+.bc-vip-summary > div:last-child small{
+  display:block!important;
+  width:100%!important;
+  min-width:0!important;
+  min-height:0!important;
+  margin:8px 0 0!important;
+  padding:0!important;
+  border:0!important;
+  background:transparent!important;
+  color:rgba(255,255,255,.72)!important;
+  font-size:17px!important;
+  line-height:1.1!important;
+  text-align:center!important;
+  white-space:nowrap!important;
+  letter-spacing:0!important;
+}
+.bc-reward-panel{
+  margin:0 0 10px!important;
+  padding:17px 14px 16px!important;
+  border-radius:22px!important;
+}
+.bc-panel-title{
+  margin:0 0 12px!important;
+  font-size:17px!important;
+  line-height:1.1!important;
+  white-space:nowrap!important;
+}
+.bc-cups-row{
+  display:grid!important;
+  grid-template-columns:repeat(var(--reward-threshold,10),minmax(0,1fr))!important;
+  gap:5px!important;
+  width:100%!important;
+  margin:0 0 13px!important;
+}
+.bc-cups-row .stamp-cup{
+  width:100%!important;
+  max-width:28px!important;
+  height:auto!important;
+  aspect-ratio:1/1!important;
+  justify-self:center!important;
+  border-radius:999px!important;
+}
+.bc-cups-row .stamp-cup svg{width:18px!important;height:18px!important;}
+.bc-main-count{padding-top:8px!important;}
+.bc-main-count strong{font-size:42px!important;line-height:1!important;}
+.bc-main-count span{font-size:30px!important;line-height:1!important;}
+.bc-main-count small{font-size:15px!important;line-height:1.1!important;margin-top:6px!important;}
+.bc-progress-details{display:none!important;}
+.bc-next-level-strip{
+  margin:0 0 10px!important;
+  padding:10px 12px!important;
+  border-radius:18px!important;
+}
+.bc-next-level-strip span{
+  display:block!important;
+  font-size:16px!important;
+  line-height:1.15!important;
+  white-space:nowrap!important;
+}
+.bc-premium-qr{
+  display:grid!important;
+  place-items:center!important;
+  gap:10px!important;
+  margin:0!important;
+  padding:16px 14px 17px!important;
+  border-radius:22px!important;
+  min-height:auto!important;
+  overflow:visible!important;
+}
+.bc-premium-qr img{
+  display:block!important;
+  width:205px!important;
+  height:205px!important;
+  max-width:75vw!important;
+  max-height:75vw!important;
+  margin:0 auto!important;
+  border-radius:14px!important;
+}
+.bc-premium-qr b{display:none!important;}
+.bc-premium-qr small{
+  display:block!important;
+  max-width:260px!important;
+  margin:0 auto!important;
+  color:rgba(255,255,255,.66)!important;
+  font-size:15px!important;
+  line-height:1.25!important;
+  text-align:center!important;
+  overflow:visible!important;
+  text-decoration:none!important;
+}
+.bc-card-footer-note{
+  margin:12px 0 0!important;
+  padding-bottom:0!important;
+  font-size:15px!important;
+  line-height:1.2!important;
+}
+@media(max-width:560px){
+  .drink-wallet-card.progress-card.bc-premium-card-v212{max-width:390px!important;padding:14px 13px 15px!important;border-radius:24px!important;}
+  .bc-premium-logo-row{height:62px!important;min-height:62px!important;margin-bottom:7px!important;}
+  .bc-premium-card-v212 .bc-round-logo{width:62px!important;height:62px!important;min-width:62px!important;}
+  .bc-premium-card-v212 .bc-script-logo{font-size:12px!important;}
+  .bc-card-owner strong{font-size:28px!important;}
+  .bc-vip-summary{gap:10px!important;padding:14px 16px!important;margin-bottom:10px!important;border-radius:20px!important;}
+  .bc-vip-summary:before{min-height:70px!important;}
+  .bc-vip-summary span{font-size:14px!important;}
+  .bc-vip-summary b{font-size:27px!important;}
+  .bc-vip-summary small{min-width:84px!important;min-height:30px!important;font-size:14px!important;padding:4px 12px!important;}
+  .bc-vip-summary > div:last-child b{font-size:42px!important;}
+  .bc-vip-summary > div:last-child small{font-size:15px!important;}
+  .bc-reward-panel{padding:15px 12px 14px!important;}
+  .bc-panel-title{font-size:15px!important;margin-bottom:11px!important;}
+  .bc-cups-row{gap:4px!important;}
+  .bc-cups-row .stamp-cup{max-width:25px!important;}
+  .bc-cups-row .stamp-cup svg{width:16px!important;height:16px!important;}
+  .bc-main-count strong{font-size:38px!important;}
+  .bc-main-count span{font-size:27px!important;}
+  .bc-main-count small{font-size:14px!important;}
+  .bc-next-level-strip span{font-size:15px!important;}
+  .bc-premium-qr{padding:15px 12px 16px!important;}
+  .bc-premium-qr img{width:190px!important;height:190px!important;max-width:72vw!important;max-height:72vw!important;}
+  .bc-premium-qr small{font-size:14px!important;}
+  .bc-card-footer-note{font-size:14px!important;}
+}
+@media(max-width:380px){
+  .drink-wallet-card.progress-card.bc-premium-card-v212{padding:12px 11px 14px!important;}
+  .bc-vip-summary{padding:13px 14px!important;}
+  .bc-vip-summary > div:last-child b{font-size:38px!important;}
+  .bc-vip-summary > div:last-child small{font-size:14px!important;}
+  .bc-cups-row .stamp-cup{max-width:23px!important;}
+  .bc-premium-qr img{width:176px!important;height:176px!important;}
+}
