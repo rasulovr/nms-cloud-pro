@@ -458,6 +458,7 @@ import QRMenu from './QRMenu'
 import './QRMenu.css'
 import RMSQRMenuAdmin from './RMSQRMenuAdmin'
 import RMSLoyalty from './RMSLoyalty'
+import RMSLoyaltyPOSScan from './RMSLoyaltyPOSScan'
 
 const I18N = {
   ru: {
@@ -1820,7 +1821,7 @@ const RMS_BRANCH_TAX_RATE_SETTING = 'branch_tax_rate_v1'
 const RMS_HIDDEN_SALES_KEYS_SETTING = 'hidden_sales_keys'
 const RMS_SALES_NAME_ALIASES_SETTING = 'sales_name_aliases'
 
-const RMS_SOURCE_VERSION = 'main_v237_internal_auth_cleanup_section_fix'
+const RMS_SOURCE_VERSION = 'main_v180_settings_internal_access_fix'
 const RMS_FULL_BACKUP_TABLES = [
   'branches',
   'expense_categories',
@@ -1985,146 +1986,6 @@ async function hydrateRmsInternalAuthFromCloud() {
 }
 
 
-// RMS Internal Auth v2 — database-backed internal users via secure RPC.
-// localStorage is kept only as a session/cache fallback, not as the source of truth.
-async function rmsInternalLoginSecure(rawLogin, rawPassword) {
-  try {
-    if (!supabase?.rpc) return { user: null, permissions: [], error: new Error('Supabase RPC недоступен') }
-    const { data, error } = await supabase.rpc('rms_internal_login_secure', {
-      p_login_name: normalizeInternalLogin(rawLogin),
-      p_password: String(rawPassword || '')
-    })
-    if (error) return { user: null, permissions: [], error }
-    const row = Array.isArray(data) ? data[0] : data
-    if (!row?.id) return { user: null, permissions: [], error: null }
-    const permissions = Array.isArray(row.permissions) ? row.permissions : []
-    return {
-      user: {
-        id: row.id,
-        login: row.login_name,
-        login_name: row.login_name,
-        email: `${row.login_name}@rms.internal`,
-        full_name: row.full_name || row.login_name,
-        role: row.role || 'employee',
-        is_active: row.is_active !== false,
-        hide_manager_salary: Boolean(row.hide_manager_salary || row.hide_manager_salaries),
-        hide_manager_salaries: Boolean(row.hide_manager_salary || row.hide_manager_salaries),
-        ui_theme: row.ui_theme || 'classic',
-        branch_id: row.branch_id || null,
-        rms_internal: true,
-        source: 'db'
-      },
-      permissions,
-      error: null
-    }
-  } catch (error) {
-    return { user: null, permissions: [], error }
-  }
-}
-
-async function rmsInternalUsersListAdmin() {
-  try {
-    const { data, error } = await supabase.rpc('rms_internal_users_list_admin')
-    if (error) throw error
-    return Array.isArray(data) ? data : []
-  } catch (_e) {
-    return []
-  }
-}
-
-async function rmsInternalPermissionsListAdmin() {
-  try {
-    const { data, error } = await supabase.rpc('rms_internal_permissions_list_admin')
-    if (error) throw error
-    return Array.isArray(data) ? data : []
-  } catch (_e) {
-    return []
-  }
-}
-
-async function rmsInternalUserCreateAdmin(payload = {}) {
-  const { data, error } = await supabase.rpc('rms_internal_user_create_admin', {
-    p_login_name: normalizeInternalLogin(payload.login_name || payload.login),
-    p_password: String(payload.password || ''),
-    p_full_name: payload.full_name || null,
-    p_role: payload.role || 'employee',
-    p_branch_id: payload.branch_id || null,
-    p_ui_theme: payload.ui_theme || 'classic'
-  })
-  if (error) throw error
-  return Array.isArray(data) ? data[0] : data
-}
-
-async function rmsInternalUserPasswordAdmin(userId, password) {
-  const { data, error } = await supabase.rpc('rms_internal_user_password_admin', {
-    p_user_id: userId,
-    p_password: String(password || '')
-  })
-  if (error) throw error
-  return data
-}
-
-async function rmsInternalUserUpdateAdmin(userId, patch = {}) {
-  const { data, error } = await supabase.rpc('rms_internal_user_update_admin', {
-    p_user_id: userId,
-    p_patch: patch || {}
-  })
-  if (error) throw error
-  return data
-}
-
-async function rmsInternalUserDeleteAdmin(userId) {
-  const { data, error } = await supabase.rpc('rms_internal_user_delete_admin', { p_user_id: userId })
-  if (error) throw error
-  return data
-}
-
-async function rmsInternalPermissionSetAdmin(userId, section, access) {
-  const { data, error } = await supabase.rpc('rms_internal_permission_set_admin', {
-    p_user_id: userId,
-    p_section: section,
-    p_access: access
-  })
-  if (error) throw error
-  return data
-}
-
-
-async function rmsInternalMigrateLegacyUsersToDbIfNeeded(existingCount = 0) {
-  try {
-    if (Number(existingCount || 0) > 0) return 0
-    const legacyUsers = getInternalUsers()
-    const legacyPermissions = getInternalPermissions()
-    const entries = Object.entries(legacyUsers || {}).filter(([, user]) => user && (user.login || user.login_name) && user.password)
-    if (!entries.length) return 0
-    let migrated = 0
-    for (const [loginKey, user] of entries) {
-      const loginName = normalizeInternalLogin(user.login || user.login_name || loginKey)
-      if (!loginName || !user.password) continue
-      const created = await rmsInternalUserCreateAdmin({
-        login_name: loginName,
-        password: String(user.password),
-        full_name: user.full_name || user.name || loginName,
-        role: user.role || 'employee',
-        branch_id: user.branch_id || null,
-        ui_theme: user.ui_theme || 'classic'
-      })
-      if (created?.id) {
-        const oldPerms = legacyPermissions?.[user.id] || legacyPermissions?.[loginKey] || {}
-        for (const [section, access] of Object.entries(oldPerms)) {
-          await rmsInternalPermissionSetAdmin(created.id, section, access || 'none')
-        }
-        migrated += 1
-      }
-    }
-    return migrated
-  } catch (error) {
-    console.warn('Legacy internal users migration skipped:', error?.message || error)
-    return 0
-  }
-}
-
-
 const RMS_GLOBAL_PROGRESS_EVENT = 'rms-global-progress'
 const startGlobalProgress = (label = 'Выполняется операция...') => {
   let progress = 12
@@ -2162,30 +2023,27 @@ function getRmsLocalUser() {
   const sess = getInternalSessionStorage()
   if (!sess?.rms_internal) return null
   const login = normalizeInternalLogin(sess?.user?.login_name || sess?.user?.email)
-  const user = sess.user || {}
+  const users = getInternalUsers()
+  const localUser = users[login] || Object.values(users).find(u => u?.id === sess?.user?.id)
+  if (!localUser) return null
   return {
-    id: user.id || sess?.user?.id,
-    login_name: user.login_name || user.login || login,
-    email: user.email || `${user.login_name || user.login || login}@rms.internal`,
-    full_name: user.full_name || user.login_name || user.login || login,
-    role: user.role || 'employee',
-    is_active: user.is_active !== false,
-    hide_manager_salary: Boolean(user.hide_manager_salary || user.hide_manager_salaries),
-    hide_manager_salaries: Boolean(user.hide_manager_salary || user.hide_manager_salaries),
-    ui_theme: user.ui_theme || 'classic',
-    branch_id: user.branch_id || null,
-    rms_internal: true,
-    source: 'db'
+    id: localUser.id,
+    login_name: localUser.login || login,
+    email: `${localUser.login || login}@rms.internal`,
+    full_name: localUser.full_name || localUser.login || login,
+    role: 'employee',
+    is_active: localUser.is_active !== false,
+    hide_manager_salary: Boolean(localUser.hide_manager_salary || localUser.hide_manager_salaries),
+    hide_manager_salaries: Boolean(localUser.hide_manager_salary || localUser.hide_manager_salaries),
+    ui_theme: localUser.ui_theme || 'classic',
+    rms_internal: true
   }
 }
 
 const makeInternalPermissionRows = (userId) => {
-  const sess = getInternalSessionStorage()
-  const sessionPerms = Array.isArray(sess?.user?.permissions) ? sess.user.permissions : []
-  if (sessionPerms.length) {
-    return sessionPerms.map(p => ({ user_id: p.user_id || userId, section: p.section, access: p.access || 'none' }))
-  }
-  return []
+  const all = getInternalPermissions()
+  const byUser = all[userId] || {}
+  return Object.entries(byUser).map(([section, access]) => ({ user_id: userId, section, access }))
 }
 
 async function fetchRmsStaffWorkspaceSnapshot(monthDate) {
@@ -3738,21 +3596,22 @@ function App() {
     return <QRMenu />
   }
 
+  const isPublicLoyalty =
+    window.location.pathname.startsWith('/loyalty/join') ||
+    window.location.pathname.startsWith('/loyalty/card') ||
+    window.location.hash.startsWith('#/loyalty/join') ||
+    window.location.hash.startsWith('#/loyalty/card')
+
+  if (isPublicLoyalty) {
+    return <RMSLoyalty />
+  }
+
   const [lang, setLang, t] = useLang()
   const [session, setSession] = useState(() => getInternalSessionStorage())
   const [profile, setProfile] = useState(null)
   const [permissions, setPermissions] = useState([])
   const [theme, setThemeState] = useState(localStorage.getItem('rms_theme') || localStorage.getItem('nms_theme') || 'classic')
-  const [section, setSectionRaw] = useState(() => {
-    try { return localStorage.getItem('rms_current_section') || 'dashboard' } catch (_e) { return 'dashboard' }
-  })
-  const setSection = (value) => {
-    setSectionRaw(prev => {
-      const next = typeof value === 'function' ? value(prev) : value
-      try { if (next) localStorage.setItem('rms_current_section', next) } catch (_e) {}
-      return next || 'dashboard'
-    })
-  }
+  const [section, setSection] = useState('dashboard')
   const [revenueFocus, setRevenueFocus] = useState(null)
   const [loading, setLoading] = useState(true)
 
@@ -3909,12 +3768,6 @@ function App() {
     supabase.auth.signOut()
   }
 
-  const rmsPublicLoyaltyWalletRoute = typeof window !== 'undefined' && window.location.pathname.startsWith('/loyalty/card/')
-
-  if (rmsPublicLoyaltyWalletRoute) {
-    return <RMSLoyalty />
-  }
-
   if (loading) return <div className="login-screen"><div className="login-card">{t('loading')}</div></div>
   if (!session) return <Login lang={lang} setLang={setLang} t={t} />
 
@@ -4029,6 +3882,15 @@ function App() {
         {currentCanRead && section === 'loyalty' && <div className="grid">
           <div className="card span-2">
             <RMSLoyalty />
+          </div>
+          <div className="card span-2">
+            <div className="card-head">
+              <div>
+                <h3>Loyalty POS Scan</h3>
+                <p className="hint">Сканирование QR клиента официантом / POS.</p>
+              </div>
+            </div>
+            <RMSLoyaltyPOSScan />
           </div>
         </div>}
         {currentCanRead && section === 'market' && <MarketIntelligence t={t} />}
@@ -13131,27 +12993,28 @@ function Login({ lang, setLang, t }) {
       }
 
       const normalizedLogin = normalizeInternalLogin(rawLogin)
+      await hydrateRmsInternalAuthFromCloud()
+      const internalUsers = getInternalUsers()
+      const internalUser = normalizedLogin
+        ? (internalUsers[normalizedLogin] || Object.values(internalUsers).find(u =>
+            normalizeInternalLogin(u?.login || u?.email) === normalizedLogin ||
+            String(u?.id || '') === normalizedLogin
+          ))
+        : null
 
-      const dbLogin = await rmsInternalLoginSecure(rawLogin, rawPassword)
-      if (dbLogin.user) {
-        const loginName = dbLogin.user.login_name || normalizedLogin
+      if (internalUser) {
+        if (internalUser.is_active === false) { stopProgress(); return setError('Пользователь отключён') }
+        if (String(internalUser.password || '') !== rawPassword) return failLogin(t('login_error'))
+
+        const loginName = internalUser.login || normalizedLogin
         rmsClearLoginGuard(rawLogin)
         setInternalSessionStorage({
           rms_internal: true,
-          access_token: `rms-internal-${dbLogin.user.id}`,
+          access_token: `rms-internal-${internalUser.id || loginName}`,
           user: {
-            id: dbLogin.user.id,
+            id: internalUser.id || `rms-${loginName}`,
             email: `${loginName}@rms.internal`,
-            login_name: loginName,
-            full_name: dbLogin.user.full_name,
-            role: dbLogin.user.role || 'employee',
-            ui_theme: dbLogin.user.ui_theme || 'classic',
-            branch_id: dbLogin.user.branch_id || null,
-            hide_manager_salary: Boolean(dbLogin.user.hide_manager_salary || dbLogin.user.hide_manager_salaries),
-            hide_manager_salaries: Boolean(dbLogin.user.hide_manager_salary || dbLogin.user.hide_manager_salaries),
-            permissions: dbLogin.permissions || [],
-            rms_internal: true,
-            source: 'db'
+            login_name: loginName
           }
         })
         window.dispatchEvent(new Event('rms-user-settings-updated'))
@@ -31021,6 +30884,7 @@ function Settings({ session, t, theme, setTheme }) {
   useEffect(() => { load(); loadSnapshots() }, [])
 
   async function load() {
+    await hydrateRmsInternalAuthFromCloud()
     const [{ data: u }, { data: le }, { data: perms }, { data: br }, { data: cats }] = await Promise.all([
       supabase.from('user_profiles').select('*').order('created_at'),
       supabase.from('legal_entities').select('*').order('name'),
@@ -31029,30 +30893,18 @@ function Settings({ session, t, theme, setTheme }) {
       supabase.from('expense_categories').select('*').order('name')
     ])
 
-    let dbInternalRows = await rmsInternalUsersListAdmin()
-    let dbInternalPerms = await rmsInternalPermissionsListAdmin()
-    if (!dbInternalRows.length) {
-      const migrated = await rmsInternalMigrateLegacyUsersToDbIfNeeded(0)
-      if (migrated > 0) {
-        dbInternalRows = await rmsInternalUsersListAdmin()
-        dbInternalPerms = await rmsInternalPermissionsListAdmin()
-      }
-    }
-    const dbInternalUsers = dbInternalRows.map(u => ({
+    const internalUsers = Object.values(getInternalUsers()).map(u => ({
       id: u.id,
-      email: `${u.login_name}@rms.internal`,
-      login_name: u.login_name,
-      full_name: u.full_name || u.login_name,
-      role: u.role || 'employee',
+      email: `${u.login}@rms.internal`,
+      login_name: u.login,
+      full_name: u.full_name || u.login,
+      role: 'employee',
       is_active: u.is_active !== false,
       hide_manager_salary: Boolean(u.hide_manager_salary || u.hide_manager_salaries),
       hide_manager_salaries: Boolean(u.hide_manager_salary || u.hide_manager_salaries),
       ui_theme: u.ui_theme || 'classic',
-      branch_id: u.branch_id || null,
-      rms_internal: true,
-      source: 'db'
+      rms_internal: true
     }))
-    const internalUsers = dbInternalUsers
 
     const supabaseUsers = u || []
     const allUsers = [
@@ -31062,7 +30914,7 @@ function Settings({ session, t, theme, setTheme }) {
 
     setUsers(allUsers)
     setLegalEntities(le || [])
-    setPermissions([...(perms || []), ...dbInternalPerms])
+    setPermissions([...(perms || []), ...internalUsers.flatMap(iu => makeInternalPermissionRows(iu.id))])
     setBranches(br || [])
     setExpenseCategories(cats || [])
 
@@ -31145,21 +30997,32 @@ function Settings({ session, t, theme, setTheme }) {
     const password = String(newUser.password || '').trim()
     if (!password || password.length < 6) return setMsg('Пароль должен быть минимум 6 символов')
 
-    try {
-      const created = await rmsInternalUserCreateAdmin({ login_name: login, password, full_name: newUser.full_name || login, role: 'employee', ui_theme: theme || 'classic' })
-      const userId = created?.id
-      if (userId) {
-        for (const sec of editableSections) {
-          await rmsInternalPermissionSetAdmin(userId, sec.id, 'read')
-        }
-      }
-      setNewUser({ login: '', password: '', full_name: '' })
-      setMsg(`Пользователь ${login} добавлен в базу. Вход работает с любого устройства.`)
-      window.dispatchEvent(new Event('rms-user-settings-updated'))
-      await load()
-    } catch (error) {
-      setMsg(error?.message || 'Не удалось создать пользователя')
+    const internalUsers = getInternalUsers()
+    const existing = internalUsers[login]
+    const userId = existing?.id || `rms-${login}-${Date.now()}`
+    internalUsers[login] = {
+      id: userId,
+      login,
+      password,
+      full_name: newUser.full_name || existing?.full_name || login,
+      is_active: existing?.is_active !== false,
+      hide_manager_salary: Boolean(existing?.hide_manager_salary || existing?.hide_manager_salaries),
+      hide_manager_salaries: Boolean(existing?.hide_manager_salary || existing?.hide_manager_salaries),
+      ui_theme: existing?.ui_theme || theme || 'classic'
     }
+    setInternalUsers(internalUsers)
+
+    const allPerms = getInternalPermissions()
+    if (!allPerms[userId]) {
+      allPerms[userId] = {}
+      editableSections.forEach(sec => { allPerms[userId][sec.id] = 'read' })
+      setInternalPermissions(allPerms)
+    }
+
+    setNewUser({ login: '', password: '', full_name: '' })
+    setMsg(`Пользователь ${login} добавлен. Вход: ${login}`)
+    window.dispatchEvent(new Event('rms-user-settings-updated'))
+    await load()
   }
 
   async function changeUserPassword(userId, loginName) {
@@ -31167,27 +31030,13 @@ function Settings({ session, t, theme, setTheme }) {
     const password = String(passwordEdits[userId] || '').trim()
     if (!password || password.length < 6) return setMsg('Пароль должен быть минимум 6 символов')
 
-    const target = users.find(u => u.id === userId)
-    if (target?.rms_internal && target?.source === 'db') {
-      try {
-        await rmsInternalUserPasswordAdmin(userId, password)
-        setPasswordEdits(p => ({ ...p, [userId]: '' }))
-        setMsg(`Пароль пользователя ${target.login_name || loginName} изменён`)
-        window.dispatchEvent(new Event('rms-user-settings-updated'))
-        await load()
-      } catch (error) {
-        setMsg(error?.message || 'Не удалось изменить пароль')
-      }
-      return
-    }
-
     const internalUsers = getInternalUsers()
     const localLogin = Object.keys(internalUsers).find(k => internalUsers[k]?.id === userId || k === normalizeInternalLogin(loginName))
     if (localLogin) {
       internalUsers[localLogin] = { ...internalUsers[localLogin], password }
       setInternalUsers(internalUsers)
       setPasswordEdits(p => ({ ...p, [userId]: '' }))
-      setMsg(`Пароль legacy-пользователя ${localLogin} изменён. Рекомендуется пересоздать его в новой базе.`)
+      setMsg(`Пароль пользователя ${localLogin} изменён`)
       window.dispatchEvent(new Event('rms-user-settings-updated'))
       await load()
       return
@@ -31197,22 +31046,6 @@ function Settings({ session, t, theme, setTheme }) {
   }
 
   async function updateUser(id, patch) {
-    const target = users.find(u => u.id === id)
-    if (target?.rms_internal && target?.source === 'db') {
-      try {
-        const normalizedPatch = { ...patch }
-        if ('hide_manager_salary' in normalizedPatch) normalizedPatch.hide_manager_salaries = normalizedPatch.hide_manager_salary
-        if ('hide_manager_salaries' in normalizedPatch) normalizedPatch.hide_manager_salary = normalizedPatch.hide_manager_salaries
-        await rmsInternalUserUpdateAdmin(id, normalizedPatch)
-        setMsg(t('saved'))
-        window.dispatchEvent(new Event('rms-user-settings-updated'))
-        await load()
-      } catch (error) {
-        setMsg(error?.message || 'Не удалось обновить пользователя')
-      }
-      return
-    }
-
     const internalUsers = getInternalUsers()
     const localLogin = Object.keys(internalUsers).find(k => internalUsers[k]?.id === id)
     if (localLogin) {
@@ -31238,19 +31071,6 @@ function Settings({ session, t, theme, setTheme }) {
   }
 
   async function updatePermission(userId, section, access) {
-    const target = users.find(u => u.id === userId)
-    if (target?.rms_internal && target?.source === 'db') {
-      try {
-        await rmsInternalPermissionSetAdmin(userId, section, access)
-        setMsg(t('saved'))
-        window.dispatchEvent(new Event('rms-user-settings-updated'))
-        await load()
-      } catch (error) {
-        setMsg(error?.message || 'Не удалось обновить права')
-      }
-      return
-    }
-
     const local = getInternalPermissions()
     if (local[userId]) {
       local[userId] = { ...(local[userId] || {}), [section]: access }
@@ -31272,22 +31092,6 @@ function Settings({ session, t, theme, setTheme }) {
   }
 
   async function deleteUser(user) {
-    const target = users.find(u => u.id === user?.id) || user
-    if (target?.rms_internal && target?.source === 'db') {
-      if (!window.confirm(`Удалить пользователя ${target.login_name || target.full_name}?`)) return
-      try {
-        await rmsInternalUserDeleteAdmin(target.id)
-        const active = getInternalSessionStorage()
-        if (active?.user?.id === target.id) setInternalSessionStorage(null)
-        setMsg(`Пользователь ${target.login_name || target.full_name} удалён`)
-        window.dispatchEvent(new Event('rms-user-settings-updated'))
-        await load()
-      } catch (error) {
-        setMsg(error?.message || 'Не удалось удалить пользователя')
-      }
-      return
-    }
-
     const login = normalizeInternalLogin(user?.login_name || user?.email)
     const internalUsers = getInternalUsers()
     const localLogin = internalUsers[login] ? login : Object.keys(internalUsers).find(k => internalUsers[k]?.id === user.id)
