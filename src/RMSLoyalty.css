@@ -1624,3 +1624,116 @@
 @media(max-width:1300px){.analytics-kpis{grid-template-columns:repeat(3,minmax(0,1fr))!important}.analytics-grid{grid-template-columns:1fr}}
 @media(max-width:760px){.analytics-kpis{grid-template-columns:1fr 1fr!important}.analytics-event-row{grid-template-columns:38px 1fr}.analytics-event-row strong{grid-column:2}.analytics-rank-row{align-items:flex-start}.analytics-rank-row strong{font-size:13px}}
 @media(max-width:480px){.analytics-kpis{grid-template-columns:1fr!important}}
+
+
+/* RMS Loyalty v20 — VIP levels + premium card polish */
+.vip-level-card{
+  position:relative;
+  z-index:2;
+  display:grid;
+  grid-template-columns:1fr auto;
+  gap:16px;
+  align-items:center;
+  margin:-4px 0 14px;
+  padding:14px 16px;
+  border-radius:20px;
+  background:linear-gradient(180deg,rgba(255,255,255,.075),rgba(255,255,255,.025));
+  border:1px solid rgba(255,255,255,.13);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.08);
+}
+.vip-level-card span{
+  display:block;
+  color:rgba(255,255,255,.48);
+  font-size:11px;
+  font-weight:950;
+  letter-spacing:.11em;
+}
+.vip-level-card b{
+  display:block;
+  margin-top:4px;
+  color:#fff;
+  font-size:22px;
+  line-height:1;
+  letter-spacing:-.04em;
+}
+.vip-level-card div:last-child{text-align:right;}
+.vip-level-card.vip-classic{border-color:rgba(255,255,255,.12)}
+.vip-level-card.vip-silver{border-color:rgba(226,232,240,.36);background:linear-gradient(180deg,rgba(226,232,240,.12),rgba(255,255,255,.025))}
+.vip-level-card.vip-gold{border-color:rgba(250,204,21,.40);background:linear-gradient(180deg,rgba(250,204,21,.13),rgba(255,255,255,.025))}
+.vip-level-card.vip-black{border-color:rgba(239,35,42,.50);background:linear-gradient(180deg,rgba(239,35,42,.16),rgba(255,255,255,.025))}
+.vip-progress-line{
+  position:relative;
+  z-index:2;
+  display:grid;
+  gap:8px;
+  margin:-8px 0 18px;
+  padding:0 2px;
+}
+.vip-progress-line div{
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+  align-items:center;
+}
+.vip-progress-line span,.vip-progress-line b{
+  color:rgba(255,255,255,.60);
+  font-size:12px;
+  font-weight:850;
+}
+.vip-progress-line b{color:rgba(255,255,255,.82)}
+.vip-progress-line i{
+  height:6px;
+  border-radius:999px;
+  background:#1d1d1d;
+  overflow:hidden;
+}
+.vip-progress-line em{
+  display:block;
+  height:100%;
+  border-radius:999px;
+  background:linear-gradient(90deg,#ef232a,#f59e0b);
+}
+.vip-mini-badge{
+  display:inline-flex!important;
+  width:max-content;
+  margin:6px 0 4px!important;
+  padding:4px 8px;
+  border-radius:999px;
+  font-size:11px!important;
+  line-height:1!important;
+  font-weight:950!important;
+  color:#111827!important;
+  background:#f1f5f9;
+  border:1px solid #e5e7eb;
+}
+.vip-mini-badge.vip-silver{background:#f8fafc;border-color:#cbd5e1;color:#334155!important}
+.vip-mini-badge.vip-gold{background:#fffbeb;border-color:#facc15;color:#92400e!important}
+.vip-mini-badge.vip-black{background:#111827;border-color:#ef232a;color:#fff!important}
+.loyalty-client-row.active .vip-mini-badge{background:rgba(255,255,255,.10);border-color:rgba(255,255,255,.20);color:#fff!important}
+.vip-analytics-list{display:grid;gap:10px}
+.vip-analytics-row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:14px;
+  padding:14px 15px;
+  border-radius:18px;
+  background:#f8fafc;
+  border:1px solid #e5e7eb;
+}
+.vip-analytics-row b,.vip-analytics-row span{display:block}
+.vip-analytics-row b{font-size:15px;color:#0f172a;font-weight:950}
+.vip-analytics-row span{margin-top:4px;color:#64748b;font-size:12px;font-weight:800}
+.vip-analytics-row strong{min-width:44px;text-align:center;padding:8px 10px;border-radius:999px;background:#111827;color:#fff}
+.vip-analytics-row.vip-silver{background:#f8fafc;border-color:#cbd5e1}
+.vip-analytics-row.vip-gold{background:#fffbeb;border-color:#facc15}
+.vip-analytics-row.vip-black{background:#111827;border-color:#ef232a}
+.vip-analytics-row.vip-black b,.vip-analytics-row.vip-black span{color:#fff}
+.vip-analytics-row.vip-black strong{background:#ef232a}
+@media(max-width:560px){
+  .vip-level-card{grid-template-columns:1fr;padding:13px 14px;gap:10px;}
+  .vip-level-card div:last-child{text-align:left;}
+  .vip-level-card b{font-size:20px;}
+  .vip-progress-line div{display:block;}
+  .vip-progress-line b{display:block;margin-top:4px;}
+}
