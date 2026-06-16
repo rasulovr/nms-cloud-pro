@@ -945,3 +945,123 @@
   .bc-cups-row .stamp-cup{max-width:23px!important;}
   .bc-premium-qr img{width:176px!important;height:176px!important;}
 }
+
+
+/* v21.5 — compact clean Loyalty clients list */
+.loyalty-client-card .compact-client-head{
+  align-items:center!important;
+  margin-bottom:14px!important;
+}
+.loyalty-client-card .compact-client-head h2{
+  margin:0!important;
+  font-size:26px!important;
+  letter-spacing:-.045em!important;
+}
+.loyalty-client-card .compact-client-head p{display:none!important;}
+.loyalty-refresh-icon{
+  width:48px!important;
+  height:48px!important;
+  min-width:48px!important;
+  padding:0!important;
+  border-radius:16px!important;
+  display:grid!important;
+  place-items:center!important;
+  font-size:24px!important;
+  line-height:1!important;
+  background:#111827!important;
+  color:#fff!important;
+}
+.loyalty-client-card .loyalty-search{
+  height:52px!important;
+  border-radius:18px!important;
+  font-size:15px!important;
+}
+.compact-client-list{
+  gap:10px!important;
+  max-height:620px!important;
+}
+.compact-client-row{
+  min-height:118px!important;
+  padding:14px!important;
+  border-radius:20px!important;
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) auto!important;
+  align-items:center!important;
+  gap:14px!important;
+}
+.compact-client-row:hover{transform:translateY(-1px)!important;}
+.compact-client-row.active{
+  background:#111827!important;
+  border-color:#111827!important;
+  color:#fff!important;
+}
+.compact-client-main{min-width:0;display:grid;gap:6px;}
+.compact-client-titleline{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  min-width:0;
+}
+.compact-client-titleline b{
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  font-size:17px!important;
+  line-height:1.15!important;
+}
+.compact-client-phone{
+  color:#64748b!important;
+  font-size:13px!important;
+  font-weight:850!important;
+  margin:0!important;
+}
+.compact-client-row.active .compact-client-phone{color:rgba(255,255,255,.68)!important;}
+.compact-client-row .vip-mini-badge{
+  margin:0!important;
+  padding:5px 8px!important;
+  font-size:10px!important;
+  letter-spacing:.06em!important;
+  text-transform:uppercase!important;
+  flex-shrink:0;
+}
+.compact-client-row .coffee-stamp-row.mini{
+  margin:2px 0 0!important;
+  gap:4px!important;
+  max-width:none!important;
+}
+.compact-client-row .coffee-stamp-row.mini span{
+  width:15px!important;
+  height:15px!important;
+  font-size:9px!important;
+}
+.compact-client-score{
+  text-align:right;
+  display:grid;
+  gap:5px;
+  justify-items:end;
+}
+.compact-client-score strong{
+  display:block!important;
+  color:#111827!important;
+  font-size:18px!important;
+  line-height:1!important;
+  white-space:nowrap!important;
+}
+.compact-client-row.active .compact-client-score strong{color:#fff!important;}
+.compact-client-score small{
+  display:block!important;
+  color:#64748b!important;
+  font-size:11px!important;
+  font-weight:850!important;
+  white-space:nowrap!important;
+}
+.compact-client-row.active .compact-client-score small{color:rgba(255,255,255,.62)!important;}
+.compact-client-row em,
+.compact-client-row > div:last-child em{display:none!important;}
+
+@media(max-width:900px){
+  .compact-client-row{min-height:108px!important;}
+  .compact-client-titleline{align-items:flex-start;flex-direction:column;gap:5px;}
+  .compact-client-score strong{font-size:16px!important;}
+}
