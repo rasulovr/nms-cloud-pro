@@ -20446,7 +20446,14 @@ function Salaries({ t, view = 'employees', isAdmin = false }) {
     }
 
     const advancesByEmployee = new Map()
-    ;(advRows || []).forEach(a => advancesByEmployee.set(a.employee_id, parseNum(advancesByEmployee.get(a.employee_id)) + parseNum(a.amount)))
+    const previousBalanceByEmployee = new Map()
+    ;(advRows || []).forEach(a => {
+      if (a.operation_type === 'previous_month_balance') {
+        previousBalanceByEmployee.set(a.employee_id, parseNum(previousBalanceByEmployee.get(a.employee_id)) + parseNum(a.amount))
+      } else {
+        advancesByEmployee.set(a.employee_id, parseNum(advancesByEmployee.get(a.employee_id)) + parseNum(a.amount))
+      }
+    })
     const paymentsByEmployee = new Map()
     ;(payRows || []).forEach(p => paymentsByEmployee.set(p.employee_id, parseNum(paymentsByEmployee.get(p.employee_id)) + parseNum(p.amount)))
     const prevDueByEmployee = new Map()
@@ -20461,15 +20468,18 @@ function Salaries({ t, view = 'employees', isAdmin = false }) {
       .filter(e => matchesPositionGroup(e, positionFilter))
       .map(e => {
         const advanceTotal = parseNum(advancesByEmployee.get(e.id))
+        const previousBalanceAmount = parseNum(previousBalanceByEmployee.get(e.id))
         const salary = salaryByEmployee.get(e.id) || emptySalary(e, advanceTotal)
         const employees = { ...e, ...(salary.employees || {}) }
         const gross = salary.id ? parseNum(salary.salary_gross) : 0
         const deduction = parseNum(salary.deduction_amount)
-        const currentDue = gross - advanceTotal - deduction
+        // Остаток прошлого месяца — это долг заведения сотруднику.
+        // Он прибавляется к текущей зарплате, а не считается авансом/оплатой.
+        const currentDue = gross + previousBalanceAmount - advanceTotal - deduction
         const paid = parseNum(paymentsByEmployee.get(e.id))
         const opening = parseNum(prevDueByEmployee.get(e.id)) - parseNum(prevPaymentsByEmployee.get(e.id))
         const finalBalance = opening + currentDue - paid
-        return { ...salary, employees, branches: e.branches || salary.branches, branch_id: e.branch_id, salary_gross: gross, advance_amount: advanceTotal, salary_net: currentDue, opening_balance: opening, payroll_payments: paid, final_balance: finalBalance }
+        return { ...salary, employees, branches: e.branches || salary.branches, branch_id: e.branch_id, salary_gross: gross, advance_amount: advanceTotal, previous_balance_amount: previousBalanceAmount, salary_net: currentDue, opening_balance: opening, payroll_payments: paid, final_balance: finalBalance }
       })
 
     const visibleMappedRows = shouldHideManagerSalaries ? mappedRows.filter(r => !isManagerStaff(r?.employees)) : mappedRows
@@ -20487,7 +20497,10 @@ function Salaries({ t, view = 'employees', isAdmin = false }) {
     const workedDays = 'worked_days' in patch ? parseNum(patch.worked_days) : parseNum(row.worked_days)
     const gross = 'salary_gross' in patch ? parseNum(patch.salary_gross) : calcGrossSalary(updatedEmployee, workedDays)
     const advance = parseNum(row.advance_amount)
+    const previousBalanceAmount = parseNum(row.previous_balance_amount)
     const deduction = 'deduction_amount' in patch ? parseNum(patch.deduction_amount) : parseNum(row.deduction_amount)
+    const net = gross + previousBalanceAmount - advance - deduction
+    const payments = 'payroll_payments' in patch ? parseNum(patch.payroll_payments) : parseNum(row.payroll_payments)
     const payload = {
       employee_id: row.employee_id,
       branch_id: row.branch_id || null,
@@ -20496,7 +20509,10 @@ function Salaries({ t, view = 'employees', isAdmin = false }) {
       salary_gross: gross,
       advance_amount: advance,
       deduction_amount: deduction,
-      salary_net: gross - advance - deduction,
+      previous_balance_amount: previousBalanceAmount,
+      salary_net: net,
+      payroll_payments: payments,
+      final_balance: parseNum(row.opening_balance) + net - payments,
       card_payment: 'card_payment' in patch ? parseNum(patch.card_payment) : parseNum(row.card_payment),
       cash_payment: 'cash_payment' in patch ? parseNum(patch.cash_payment) : parseNum(row.cash_payment),
       comment: 'comment' in patch ? patch.comment : (row.comment || '')
@@ -20889,11 +20905,12 @@ function Salaries({ t, view = 'employees', isAdmin = false }) {
       supabase.from('salary_payments').select('amount').eq('employee_id', employeeId).eq('salary_month', monthDate).or('is_cancelled.is.null,is_cancelled.eq.false')
     ])
 
-    const advance = (advanceRows || []).reduce((sum, a) => sum + parseNum(a.amount), 0)
+    const advance = (advanceRows || []).filter(a => a.operation_type !== 'previous_month_balance').reduce((sum, a) => sum + parseNum(a.amount), 0)
+    const previousBalanceAmount = (advanceRows || []).filter(a => a.operation_type === 'previous_month_balance').reduce((sum, a) => sum + parseNum(a.amount), 0)
     const paid = (payRows || []).reduce((sum, p) => sum + parseNum(p.amount), 0)
     const gross = parseNum(existing?.salary_gross || row.salary_gross)
     const deduction = parseNum(existing?.deduction_amount || row.deduction_amount)
-    const net = gross - advance - deduction
+    const net = gross + previousBalanceAmount - advance - deduction
 
     const { error: salaryError } = await supabase.from('salary_periods').upsert({
       employee_id: employeeId,
@@ -20903,7 +20920,9 @@ function Salaries({ t, view = 'employees', isAdmin = false }) {
       salary_gross: gross,
       salary_net: net,
       advance_amount: advance,
+      previous_balance_amount: previousBalanceAmount,
       deduction_amount: deduction,
+      final_balance: parseNum(row.opening_balance) + net - paid,
       card_payment: method === 'bank' ? paid : parseNum(existing?.card_payment || row.card_payment),
       cash_payment: method === 'cash' ? paid : parseNum(existing?.cash_payment || row.cash_payment),
       comment: existing?.comment || 'Автообновление после выплаты зарплаты'
@@ -20916,7 +20935,7 @@ function Salaries({ t, view = 'employees', isAdmin = false }) {
     await load()
 
     const parts = []
-    if (manualPreviousBalance > 0) parts.push(`сохранён ручной долг прошлого месяца: ${fmt(manualPreviousBalance)} AZN`)
+    if (manualPreviousBalance > 0) parts.push(`сохранён остаток прошлого месяца к выплате: ${fmt(manualPreviousBalance)} AZN`)
     if (previousPaidAmount > 0) parts.push(`закрыт остаток прошлого месяца: ${fmt(previousPaidAmount)} AZN`)
     if (previousExcessToAdvance > 0) parts.push(`превышение перенесено в аванс: ${fmt(previousExcessToAdvance)} AZN`)
     if (currentAmount > 0) parts.push(`оплата выбранного месяца: ${fmt(currentAmount)} AZN`)
@@ -21914,6 +21933,8 @@ function Advances({ t }) {
     const previousBalanceTotal = (advanceRows || []).filter(r => r.operation_type === 'previous_month_balance').reduce((s, r) => s + parseNum(r.amount), 0)
     const gross = parseNum(existing?.salary_gross)
     const deduction = parseNum(existing?.deduction_amount)
+    const paid = parseNum(existing?.payroll_payments)
+    const opening = parseNum(existing?.opening_balance)
     const net = gross + previousBalanceTotal - advanceTotal - deduction
     await supabase.from('salary_periods').upsert({
       employee_id: employeeId,
@@ -21927,6 +21948,8 @@ function Advances({ t }) {
       card_payment: parseNum(existing?.card_payment),
       cash_payment: parseNum(existing?.cash_payment),
       salary_net: net,
+      payroll_payments: paid,
+      final_balance: opening + net - paid,
       comment: existing?.comment || ''
     }, { onConflict: 'employee_id,salary_month' })
   }
