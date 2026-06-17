@@ -3596,6 +3596,16 @@ function App() {
     return <QRMenu />
   }
 
+  const isPublicLoyalty =
+    window.location.pathname.startsWith('/loyalty/join') ||
+    window.location.pathname.startsWith('/loyalty/card') ||
+    window.location.hash.startsWith('#/loyalty/join') ||
+    window.location.hash.startsWith('#/loyalty/card')
+
+  if (isPublicLoyalty) {
+    return <RMSLoyalty />
+  }
+
   const [lang, setLang, t] = useLang()
   const [session, setSession] = useState(() => getInternalSessionStorage())
   const [profile, setProfile] = useState(null)
@@ -3869,20 +3879,7 @@ function App() {
         {currentCanRead && section === 'suppliers' && <Suppliers t={t} isAdmin={isAdmin || accessRank(sectionAccess('suppliers')) >= accessRank('admin')} />}
         {currentCanRead && section === 'debts' && <DebtsPayments t={t} />}
         {currentCanRead && section === 'qrmenu' && <RMSQRMenuAdmin t={t} />}
-        {currentCanRead && section === 'loyalty' && <div className="grid">
-          <div className="card span-2">
-            <RMSLoyalty />
-          </div>
-          <div className="card span-2">
-            <div className="card-head">
-              <div>
-                <h3>Loyalty POS Scan</h3>
-                <p className="hint">Сканирование QR клиента официантом / POS.</p>
-              </div>
-            </div>
-            <RMSLoyaltyPOSScan />
-          </div>
-        </div>}
+        {currentCanRead && section === 'loyalty' && <RMSLoyalty />}
         {currentCanRead && section === 'market' && <MarketIntelligence t={t} />}
         {currentCanRead && section === 'security_recovery' && <SecurityRecoveryCenter />}
         {currentCanRead && section === 'settings' && <RmsSectionErrorBoundary resetKey={`settings-${section}`}><Settings session={session} t={t} theme={theme} setTheme={setTheme} /></RmsSectionErrorBoundary>}
@@ -20308,12 +20305,6 @@ function Salaries({ t, view = 'employees', isAdmin = false }) {
   const monthDate = monthStart(year, month)
   const dim = daysInMonth(year, month)
   const monthEnd = `${year}-${String(month)}-${String(dim)}`
-  const prevForBalance = prevMonth(year, month)
-  const defaultPreviousBalanceMonth = monthStart(prevForBalance.year, prevForBalance.month)
-
-  useEffect(() => {
-    setPreviousBalanceForm(f => ({ ...f, balance_month: defaultPreviousBalanceMonth }))
-  }, [defaultPreviousBalanceMonth])
   const isMonthClosingDay = todayISO() === monthEnd
   const shouldHideManagerSalaries = Boolean(salaryPrivacyProfile?.hide_manager_salary || salaryPrivacyProfile?.hide_manager_salaries)
   const isManagerRow = (row) => isManagerStaff(row?.employees)
@@ -21826,12 +21817,10 @@ function Advances({ t }) {
   const [advanceGroupId, setAdvanceGroupId] = useState(STAFF_GROUP_MANAGERS)
   const [employees, setEmployees] = useState([])
   const [advances, setAdvances] = useState([])
-  const [previousBalances, setPreviousBalances] = useState([])
   const [salaryPeriods, setSalaryPeriods] = useState([])
   const [salaryPayments, setSalaryPayments] = useState([])
   const [profiles, setProfiles] = useState([])
   const [form, setForm] = useState({ employee_id: '', advance_date: todayISO(), amount: '', comment: '' })
-  const [previousBalanceForm, setPreviousBalanceForm] = useState({ employee_id: '', balance_month: monthStart(current.getFullYear(), current.getMonth() || 1), amount: '', comment: '' })
   const [message, setMessage] = useState('')
   const [editAdvanceId, setEditAdvanceId] = useState('')
   const [editAdvanceForm, setEditAdvanceForm] = useState({ advance_date: '', amount: '', comment: '' })
@@ -21844,7 +21833,6 @@ function Advances({ t }) {
   const filterEmployees = employees.filter(e => matchesStaffGroup(e, branchId))
   useEffect(() => {
     if (!formEmployees.some(e => e.id === form.employee_id)) setForm(f => ({ ...f, employee_id: formEmployees[0]?.id || '' }))
-    if (!formEmployees.some(e => e.id === previousBalanceForm.employee_id)) setPreviousBalanceForm(f => ({ ...f, employee_id: formEmployees[0]?.id || '' }))
   }, [advanceGroupId, employees])
   useEffect(() => {
     if (employeeFilter !== 'all' && !filterEmployees.some(e => e.id === employeeFilter)) setEmployeeFilter('all')
@@ -21871,24 +21859,21 @@ function Advances({ t }) {
     setMessage('')
     const empQ = supabase.from('employees').select('*, branches(name)').order('branch_id').order('position').order('full_name')
     const advQ = supabase.from('salary_advances').select('*, employees(full_name, position, monthly_salary, branch_id), branches(name)').gte('advance_date', monthDate).lte('advance_date', monthEnd).order('advance_date', { ascending: false }).order('created_at', { ascending: false })
-    const prevBalanceQ = supabase.from('salary_previous_balances').select('*, employees(full_name, position, monthly_salary, branch_id), branches(name)').eq('target_salary_month', monthDate).order('created_at', { ascending: false })
     const salQ = supabase.from('salary_periods').select('*').eq('salary_month', monthDate)
     const payQ = supabase.from('salary_payments').select('*').eq('salary_month', monthDate).or('is_cancelled.is.null,is_cancelled.eq.false')
     const [
       { data: emp, error: empError },
       { data: adv, error: advError },
-      { data: prevBalances, error: prevBalanceError },
       { data: sal },
       { data: pay },
       { data: prof }
-    ] = await Promise.all([empQ, advQ, prevBalanceQ, salQ, payQ, supabase.from('user_profiles').select('id, full_name, email, login_name')])
-    if (empError || advError || prevBalanceError) {
-      setMessage(empError?.message || advError?.message || prevBalanceError?.message)
+    ] = await Promise.all([empQ, advQ, salQ, payQ, supabase.from('user_profiles').select('id, full_name, email, login_name')])
+    if (empError || advError) {
+      setMessage(empError?.message || advError?.message)
       return
     }
     setEmployees(emp || [])
     setAdvances(adv || [])
-    setPreviousBalances(prevBalances || [])
     setSalaryPeriods(sal || [])
     setSalaryPayments(pay || [])
     setProfiles(prof || [])
@@ -21955,51 +21940,6 @@ function Advances({ t }) {
     setMessage(t('saved'))
   }
 
-
-  async function addPreviousBalance() {
-    setMessage('')
-    const emp = employees.find(e => e.id === previousBalanceForm.employee_id)
-    if (!emp) return setMessage('Выберите сотрудника')
-    const amount = parseNum(previousBalanceForm.amount)
-    if (!amount) return setMessage('Введите сумму остатка')
-    const user = await currentUserMeta()
-    const { error } = await supabase.from('salary_previous_balances').insert({
-      employee_id: emp.id,
-      branch_id: emp.branch_id || null,
-      balance_month: previousBalanceForm.balance_month || defaultPreviousBalanceMonth,
-      target_salary_month: monthDate,
-      amount,
-      comment: previousBalanceForm.comment || null,
-      created_by: user.user_id,
-      created_by_label: user.user_email || null
-    })
-    if (error) return setMessage(error.message)
-    setPreviousBalanceForm(f => ({ ...f, amount: '', comment: '' }))
-    await load()
-    setMessage(t('saved'))
-  }
-
-  async function cancelPreviousBalance(row) {
-    setMessage('')
-    if (row.is_cancelled) return
-    const ok = window.confirm('Отменить этот остаток прошлого месяца? Строка останется в журнале и не будет учитываться в сводке.')
-    if (!ok) return
-    const user = await currentUserMeta()
-    const { error } = await supabase.from('salary_previous_balances').update({
-      is_cancelled: true,
-      cancelled_at: new Date().toISOString(),
-      cancelled_by: user.user_id,
-      cancelled_by_label: user.user_email || null,
-      updated_at: new Date().toISOString(),
-      updated_by: user.user_id,
-      updated_by_label: user.user_email || null,
-      cancel_comment: 'Отменено через журнал авансов'
-    }).eq('id', row.id)
-    if (error) return setMessage(error.message)
-    await load()
-    setMessage(t('saved'))
-  }
-
   function startEditAdvance(row) {
     if (row.is_cancelled) return
     setEditAdvanceId(row.id)
@@ -22061,68 +22001,32 @@ function Advances({ t }) {
   const displayedAdvances = advances
     .filter(a => matchesStaffGroup({ branch_id: a.branch_id, branches: a.branches }, branchId))
     .filter(a => employeeFilter === 'all' || a.employee_id === employeeFilter)
-  const displayedPreviousBalances = previousBalances
-    .filter(b => matchesStaffGroup({ branch_id: b.branch_id, branches: b.branches }, branchId))
-    .filter(b => employeeFilter === 'all' || b.employee_id === employeeFilter)
-  const activePreviousBalances = displayedPreviousBalances.filter(b => !b.is_cancelled)
   const activeAdvances = displayedAdvances.filter(a => !a.is_cancelled)
 
   const totalAdvance = activeAdvances.reduce((s, r) => s + parseNum(r.amount), 0)
-  const totalPreviousBalance = activePreviousBalances.reduce((s, r) => s + parseNum(r.amount), 0)
   const salaryPeriodByEmployee = new Map((salaryPeriods || []).map(r => [r.employee_id, r]))
   const activeAdvancesByEmployee = new Map()
   ;(activeAdvances || []).forEach(a => activeAdvancesByEmployee.set(a.employee_id, parseNum(activeAdvancesByEmployee.get(a.employee_id)) + parseNum(a.amount)))
   const salaryPaymentsByEmployee = new Map()
   ;(salaryPayments || []).filter(p => !p.is_cancelled).forEach(p => salaryPaymentsByEmployee.set(p.employee_id, parseNum(salaryPaymentsByEmployee.get(p.employee_id)) + parseNum(p.amount)))
-  const previousBalancesByEmployee = new Map()
-  ;(activePreviousBalances || []).forEach(b => previousBalancesByEmployee.set(b.employee_id, parseNum(previousBalancesByEmployee.get(b.employee_id)) + parseNum(b.amount)))
   const salaryBalance = displayedEmployees.reduce((sum, e) => {
     const salary = salaryPeriodByEmployee.get(e.id)
     const gross = salary ? parseNum(salary.salary_gross) : parseNum(e.monthly_salary)
     const deduction = parseNum(salary?.deduction_amount)
     const advancesAmount = parseNum(activeAdvancesByEmployee.get(e.id))
     const paid = parseNum(salaryPaymentsByEmployee.get(e.id))
-    const previousBalanceAmount = parseNum(previousBalancesByEmployee.get(e.id))
-    return sum + previousBalanceAmount + gross - deduction - advancesAmount - paid
+    return sum + gross - deduction - advancesAmount - paid
   }, 0)
   const branchTotals = staffGroupOptions(branches).map(b => ({
     id: b.id,
     name: b.name,
     employees: displayedEmployees.filter(e => employeeGroupId(e) === b.id).length,
-    amount: activeAdvances.filter(a => (a.branch_id || STAFF_GROUP_MANAGERS) === b.id).reduce((s, a) => s + parseNum(a.amount), 0),
-    previousBalance: activePreviousBalances.filter(a => (a.branch_id || STAFF_GROUP_MANAGERS) === b.id).reduce((s, a) => s + parseNum(a.amount), 0)
-  })).filter(b => branchId === 'all' ? (b.amount || b.previousBalance || b.employees) : b.id === branchId)
+    amount: activeAdvances.filter(a => (a.branch_id || STAFF_GROUP_MANAGERS) === b.id).reduce((s, a) => s + parseNum(a.amount), 0)
+  })).filter(b => branchId === 'all' ? (b.amount || b.employees) : b.id === branchId)
 
   const advancePageTotal = Math.max(1, Math.ceil(displayedAdvances.length / advancePageSize))
   const safeAdvancePage = Math.min(advancePage, advancePageTotal)
   const pagedAdvances = displayedAdvances.slice((safeAdvancePage - 1) * advancePageSize, safeAdvancePage * advancePageSize)
-  const salaryMovementLogs = [
-    ...displayedAdvances.map(a => ({
-      id: `advance-${a.id}`,
-      created_at: a.created_at || a.advance_date,
-      date: a.advance_date,
-      employeeName: a.employees?.full_name || '—',
-      branchName: employeeGroupName({ branch_id: a.branch_id, branches: a.branches }),
-      operation: 'Аванс',
-      amount: parseNum(a.amount),
-      comment: a.comment || '',
-      status: advanceStatus(a),
-      is_cancelled: a.is_cancelled
-    })),
-    ...displayedPreviousBalances.map(b => ({
-      id: `previous-${b.id}`,
-      created_at: b.created_at || b.balance_month,
-      date: b.balance_month,
-      employeeName: b.employees?.full_name || '—',
-      branchName: employeeGroupName({ branch_id: b.branch_id, branches: b.branches }),
-      operation: 'Остаток прошлого месяца',
-      amount: parseNum(b.amount),
-      comment: b.comment || '',
-      status: b.is_cancelled ? `Отменено: ${formatDT(b.cancelled_at)} · ${b.cancelled_by_label || userName(b.cancelled_by)}` : `Создано: ${formatDT(b.created_at)} · ${b.created_by_label || userName(b.created_by)}`,
-      is_cancelled: b.is_cancelled,
-      sourceRow: b
-    }))
-  ].sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')))
 
   return <section>
     <section className="topbar"><div><h2>{t('advances_tab')}</h2><p>Каждая выплата аванса фиксируется отдельной строкой с датой, сотрудником, суммой и комментарием.</p></div></section>
@@ -22140,19 +22044,6 @@ function Advances({ t }) {
       </div>
 
       <div className="card span-2">
-        <h3>Остаток прошлого месяца</h3>
-        <p className="hint">Используется для переноса невыплаченного остатка сотрудника в текущий месяц. Сумма учитывается в сводке как долг компании перед сотрудником.</p>
-        <div className="form-grid compact">
-          <label><span>Филиал / группа</span><select value={advanceGroupId} onChange={e => setAdvanceGroupId(e.target.value)}>{staffGroupOptions(branches).map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label>
-          <label><span>Сотрудник</span><select value={previousBalanceForm.employee_id} onChange={e => setPreviousBalanceForm({...previousBalanceForm, employee_id: e.target.value})}>{formEmployees.map(e => <option key={e.id} value={e.id}>{positionGroup(e.position)} · {e.full_name}</option>)}</select></label>
-          <label><span>Месяц остатка</span><DateInput value={previousBalanceForm.balance_month} onChange={e => setPreviousBalanceForm({...previousBalanceForm, balance_month: e.target.value})} /></label>
-          <label><span>Сумма</span><input value={previousBalanceForm.amount} onChange={e => setPreviousBalanceForm({...previousBalanceForm, amount: e.target.value})} placeholder="0.00" /></label>
-          <label><span>Комментарий</span><input value={previousBalanceForm.comment} onChange={e => setPreviousBalanceForm({...previousBalanceForm, comment: e.target.value})} placeholder="Например: остаток зарплаты за прошлый месяц" /></label>
-        </div><br />
-        <button className="small" onClick={addPreviousBalance}>+ Сохранить остаток</button>
-      </div>
-
-      <div className="card span-2">
         <h3>Журнал авансов</h3>
         <p className="hint">По умолчанию строки закрыты от изменений. Для правки нажмите “Редактировать”; изменения фиксируются по времени и пользователю.</p>
         <div className="form-grid compact">
@@ -22163,7 +22054,6 @@ function Advances({ t }) {
         </div>
         <div className="mini-grid" style={{marginTop:12}}>
           <div className="metric"><span>Итого авансы за месяц</span><strong>{fmt(totalAdvance)}</strong></div>
-          <div className="metric"><span>Остатки прошлого месяца</span><strong>{fmt(totalPreviousBalance)}</strong></div>
           <div className="metric"><span>Остаток по зарплате</span><strong className={salaryBalance < 0 ? 'bad' : ''}>{fmt(salaryBalance)}</strong></div>
         </div>
         {message && <p className={`hint ${message === t('saved') ? 'save-status' : 'bad'}`}>{message}</p>}
@@ -22203,28 +22093,10 @@ function Advances({ t }) {
       </div>
 
       <div className="card span-2">
-        <h3>Журнал логов</h3>
-        <p className="hint">Единый журнал по авансам и остаткам прошлого месяца. Отменённые строки остаются в журнале и не участвуют в расчётах.</p>
-        <div className="table-wrap"><table>
-          <thead><tr><th>Дата</th><th>Филиал / группа</th><th>Сотрудник</th><th>Операция</th><th>Сумма</th><th>Комментарий</th><th>Статус</th><th></th></tr></thead>
-          <tbody>{salaryMovementLogs.slice(0, 50).map(log => <tr key={log.id} className={log.is_cancelled ? 'cancelled-row' : ''}>
-            <td>{formatDateDMY(log.date)}</td>
-            <td>{log.branchName}</td>
-            <td>{log.employeeName}</td>
-            <td>{log.operation}</td>
-            <td><strong>{fmt(log.amount)}</strong></td>
-            <td>{log.comment || '—'}</td>
-            <td className="hint" style={{minWidth:220}}>{log.status}</td>
-            <td>{log.sourceRow && !log.is_cancelled && <button className="remove" onClick={() => cancelPreviousBalance(log.sourceRow)}>×</button>}</td>
-          </tr>)}{!salaryMovementLogs.length && <tr><td colSpan="8" className="hint">Логов за выбранный период пока нет.</td></tr>}</tbody>
-        </table></div>
-      </div>
-
-      <div className="card span-2">
         <h3>Сводка авансов по филиалам</h3>
         <div className="table-wrap"><table>
-          <thead><tr><th>Филиал / группа</th><th>Сотрудников</th><th>Авансы</th><th>Остатки прошлого месяца</th></tr></thead>
-          <tbody>{branchTotals.map(b => <tr key={b.id}><td>{b.name}</td><td><strong>{b.employees}</strong></td><td><strong>{fmt(b.amount)}</strong></td><td><strong>{fmt(b.previousBalance)}</strong></td></tr>)}{!branchTotals.length && <tr><td colSpan="4" className="hint">Нет движений за выбранный период.</td></tr>}</tbody>
+          <thead><tr><th>Филиал / группа</th><th>Сотрудников</th><th>Авансы</th></tr></thead>
+          <tbody>{branchTotals.map(b => <tr key={b.id}><td>{b.name}</td><td><strong>{b.employees}</strong></td><td><strong>{fmt(b.amount)}</strong></td></tr>)}{!branchTotals.length && <tr><td colSpan="3" className="hint">Нет авансов за выбранный период.</td></tr>}</tbody>
         </table></div>
       </div>
     </section>
