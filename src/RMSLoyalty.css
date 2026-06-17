@@ -1229,3 +1229,30 @@
 
 .loyalty-public-join-page{min-height:100vh;padding:16px;background:radial-gradient(circle at 50% 0,rgba(239,35,48,.18),transparent 28%),linear-gradient(180deg,#060608,#020203);color:#fff;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.loyalty-public-join-shell{max-width:430px;margin:0 auto;display:grid;gap:14px}.public-join-brand{text-align:center;padding:10px 6px 0}.public-join-brand b{display:block;margin-top:10px;font-size:28px;line-height:1;letter-spacing:-.05em}.public-join-brand p{max-width:330px;margin:8px auto 0;color:rgba(255,255,255,.66);font-size:13px;line-height:1.35;font-weight:750}.public-join-logo{width:88px;height:88px;margin:0 auto;border-radius:999px;display:grid;place-items:center;background:radial-gradient(circle at 50% 45%,#171717,#050505 72%);border:1px solid rgba(255,255,255,.20);box-shadow:0 0 0 2px rgba(239,35,48,.10),0 18px 42px rgba(0,0,0,.38);position:relative}.public-join-logo:before{content:"";position:absolute;inset:9px;border-radius:999px;border:1.5px dotted #ef2330}.public-join-logo>span{position:relative;z-index:1;display:grid;color:#fff;font-size:18px;font-weight:950;font-style:italic;line-height:.72;letter-spacing:-.08em;transform:rotate(-5deg);text-shadow:0 2px 0 rgba(0,0,0,.65)}.public-join-logo>span span{font-size:10px;line-height:1;margin:1px 0}.public-join-logo small{position:absolute;z-index:1;bottom:12px;color:#ef2330;font-size:5px;font-weight:950;letter-spacing:.12em}.public-join-form{display:grid;gap:12px;padding:18px;border-radius:24px;background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.12);box-shadow:0 24px 56px rgba(0,0,0,.30),inset 0 1px 0 rgba(255,255,255,.06);backdrop-filter:blur(12px)}.public-join-form label{display:grid;gap:7px;color:rgba(255,255,255,.70);font-size:13px;font-weight:950}.public-join-form input{width:100%;height:52px;border:1px solid rgba(255,255,255,.12);border-radius:16px;background:rgba(255,255,255,.08);color:#fff;padding:0 14px;font:inherit;font-size:16px;font-weight:850;outline:none}.public-join-form input::placeholder{color:rgba(255,255,255,.36)}.public-join-form button{height:56px;border:0;border-radius:18px;background:#ef2330;color:#fff;font:inherit;font-size:17px;font-weight:1000;cursor:pointer;box-shadow:0 18px 34px rgba(239,35,48,.25)}.public-join-note{display:block;color:rgba(255,255,255,.52);font-size:12px;line-height:1.35;font-weight:800;text-align:center}.public-join-alert{padding:12px 14px;border-radius:16px;background:rgba(16,185,129,.12);border:1px solid rgba(16,185,129,.26);color:#bbf7d0;font-weight:900;text-align:center}.public-join-alert.error{background:rgba(239,35,48,.12);border-color:rgba(239,35,48,.30);color:#fecaca}.public-join-result .wallet-actions,.public-join-result .drink-card-wallet-wrap>p{display:none!important}
 @media(max-width:420px){.drink-wallet-card.progress-card.bc-premium-card-v212{max-width:360px!important;padding:12px!important}.bc-premium-qr img{width:160px!important;height:160px!important}.bc-card-owner strong{font-size:23px!important}.bc-vip-summary > div:last-child b{font-size:25px!important}.bc-main-count strong{font-size:28px!important}.bc-main-count span{font-size:20px!important}}
+
+/* v24 — Loyalty cleanup: hide obsolete manual action panels and stabilize final UI */
+.drink-actions-grid,
+.wallet-qr-card,
+.compact-wallet-qr,
+.wallet-qr-panel,
+.wallet-actions:not(.qr-only-actions){
+  display:none!important;
+}
+.loyalty-cards-tab .drink-grid-main{
+  grid-template-columns:minmax(300px,.85fr) minmax(260px,.62fr) minmax(360px,1.15fr)!important;
+}
+.loyalty-card.wallet-preview-card .loyalty-card-head p{
+  display:none!important;
+}
+.wallet-preview-card .inline-client-history{
+  margin-top:14px!important;
+}
+.loyalty-client-card .compact-client-head h2::after{
+  content:"";
+}
+.public-join-admin-card .loyalty-card-head p{
+  max-width:520px;
+}
+@media(max-width:1150px){
+  .loyalty-cards-tab .drink-grid-main{grid-template-columns:1fr!important;}
+}
