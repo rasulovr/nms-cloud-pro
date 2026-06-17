@@ -1,3 +1,4 @@
+// RMS Loyalty v24 — cleanup of obsolete manual Wallet/stamp/redeem UI
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from './supabase'
 import './RMSLoyalty.css'
@@ -6,7 +7,6 @@ const parseNum = (v) => Number(String(v ?? '0').replace(',', '.')) || 0
 const fmt = (n) => `${Number(n || 0).toFixed(2)} AZN`
 const intFmt = (n) => `${Number(n || 0).toFixed(0)} ед.`
 
-const STAMPS_FOR_FREE_DRINK = 10
 const VIP_DEFAULT_THRESHOLD = 10
 const DEFAULT_BRAND = 'BARISTA&CHEF'
 const DEFAULT_SUBTITLE = 'COFFEE HOUSE'
@@ -75,17 +75,6 @@ function buildWalletLandingUrl(client) {
   const base = getPublicOrigin()
   return token ? `${base}/loyalty/card/${encodeURIComponent(token)}` : ''
 }
-
-function buildAppleWalletUrl(client) {
-  const token = getWalletToken(client)
-  return token ? `${getPublicOrigin()}/api/loyalty/apple-wallet?token=${encodeURIComponent(token)}` : ''
-}
-
-function buildGoogleWalletUrl(client) {
-  const token = getWalletToken(client)
-  return token ? `${getPublicOrigin()}/api/loyalty/google-wallet?token=${encodeURIComponent(token)}` : ''
-}
-
 
 function safeJsonParse(value, fallback = null) {
   try { return value ? JSON.parse(value) : fallback } catch (_e) { return fallback }
@@ -1304,35 +1293,6 @@ function LoyaltyAnalyticsPanel({ clients = [], transactions = [] }) {
   )
 }
 
-function WalletQrPanel({ client, onEnsure, onCopy, busy }) {
-  const landingUrl = buildWalletLandingUrl(client)
-  const hasToken = Boolean(getWalletToken(client))
-
-  return (
-    <div className="wallet-qr-panel compact-wallet-qr">
-      <div className="wallet-qr-header">
-        <div>
-          <h3>QR карта клиента</h3>
-          <p>Гость сканирует QR и открывает карту лояльности на телефоне.</p>
-        </div>
-        <button type="button" onClick={onEnsure} disabled={busy}>{hasToken ? 'Обновить QR' : 'Создать QR'}</button>
-      </div>
-
-      {hasToken ? (
-        <div className="wallet-qr-body compact">
-          <div className="wallet-qr-code"><img src={qrImageUrl(landingUrl)} alt="QR карты лояльности" /></div>
-          <div className="wallet-qr-links compact">
-            <button type="button" onClick={() => onCopy(landingUrl)}>Скопировать ссылку</button>
-          </div>
-        </div>
-      ) : (
-        <div className="loyalty-empty">Для этой карты ещё нет QR. Нажмите “Создать QR”.</div>
-      )}
-    </div>
-  )
-}
-
-
 function LoyaltyWalletLanding({ token }) {
   const [client, setClient] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -1512,11 +1472,8 @@ function RMSLoyaltyAdmin() {
   const [selectedClientId, setSelectedClientId] = useState('')
   const [query, setQuery] = useState('')
   const [loading, setLoading] = useState(false)
-  const [qrBusy, setQrBusy] = useState(false)
   const [message, setMessage] = useState('')
   const [clientForm, setClientForm] = useState({ name: '', phone: '', birthday: '', notes: '' })
-  const [stampForm, setStampForm] = useState({ drinks: '1', comment: '' })
-  const [redeemForm, setRedeemForm] = useState({ count: '1', comment: '' })
   const scannerProfile = getCurrentRmsInternalScannerProfile()
   const scannerOnly = Boolean(scannerProfile)
   const [activeTab, setActiveTab] = useState(scannerOnly ? 'pos' : 'cards')
@@ -1536,63 +1493,6 @@ function RMSLoyaltyAdmin() {
     setClients(clientsRes.data || [])
     setTransactions(txRes.data || [])
     setLoading(false)
-  }
-
-  async function ensureWalletIdentity(clientArg = selectedClient) {
-    const client = clientArg || clients.find((item) => item.id === selectedClientId)
-    if (!client) return setMessage('Выберите клиента.')
-    setQrBusy(true)
-    setMessage('')
-
-    const nextCardNumber = client.card_number || rawCardNumber(client)
-    const nextToken = getWalletToken(client) || createWalletToken(client)
-
-    let savedRow = null
-    let saveError = null
-
-    const rpcRes = await supabase.rpc('rms_loyalty_wallet_enable_secure', {
-      p_client_id: client.id,
-      p_card_number: nextCardNumber,
-      p_wallet_token: nextToken,
-    })
-
-    if (rpcRes.error) {
-      const directRes = await supabase
-        .from('rms_loyalty_clients')
-        .update({
-          card_number: nextCardNumber,
-          wallet_token: nextToken,
-          wallet_enabled: true,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', client.id)
-        .select('id,name,phone,card_number,wallet_token,wallet_enabled,stamp_count,free_drink_balance,visits_count,created_at,updated_at')
-        .maybeSingle()
-
-      saveError = directRes.error
-      savedRow = directRes.data
-    } else {
-      savedRow = Array.isArray(rpcRes.data) ? rpcRes.data[0] : rpcRes.data
-    }
-
-    setQrBusy(false)
-    if (saveError) return setMessage(saveError.message)
-    if (!savedRow?.wallet_token || savedRow.wallet_enabled !== true) {
-      return setMessage('QR не сохранён в базе. Запустите SQL v7 и повторите “Обновить данные QR”.')
-    }
-
-    await loadLoyalty()
-    setSelectedClientId(client.id)
-    setMessage(`QR карты сохранён в базе. Token: ${savedRow.wallet_token}`)
-  }
-
-  async function copyText(value) {
-    try {
-      await navigator.clipboard.writeText(value)
-      setMessage('Ссылка скопирована.')
-    } catch (error) {
-      setMessage('Не удалось скопировать ссылку. Скопируйте вручную из поля.')
-    }
   }
 
   async function createClient(e) {
@@ -1628,84 +1528,6 @@ function RMSLoyaltyAdmin() {
     setClientForm({ name: '', phone: '', birthday: '', notes: '' })
     await loadLoyalty()
     setMessage('Клиент добавлен. Карта напитков создана.')
-  }
-
-  async function addDrinkStamps(e) {
-    e.preventDefault()
-    setMessage('')
-    const client = clients.find((item) => item.id === selectedClientId)
-    if (!client) return setMessage('Выберите клиента.')
-
-    const drinks = Math.max(1, Math.floor(parseNum(stampForm.drinks)))
-    const currentStamps = getStampCount(client)
-    const currentFree = getFreeDrinkBalance(client)
-    const totalStamps = currentStamps + drinks
-    const threshold = getRewardThreshold(client)
-    const newFree = Math.floor(totalStamps / threshold)
-    const nextStamps = totalStamps % threshold
-    const nextFreeBalance = currentFree + newFree
-    const nextLifetime = getLifetimeDrinkCount(client) + drinks
-    const nextVip = getVipLevelInfo({ ...client, lifetime_drinks: nextLifetime })
-
-    const { error: txError } = await supabase.from('rms_loyalty_transactions').insert({
-      client_id: client.id,
-      client_name: client.name,
-      client_phone: client.phone,
-      type: 'drink_stamp',
-      amount: drinks,
-      order_total: null,
-      comment: stampForm.comment.trim() || `Начислено отметок за напитки: ${drinks}`,
-    })
-    if (txError) return setMessage(txError.message)
-
-    const { error: clientError } = await supabase.from('rms_loyalty_clients').update({
-      stamp_count: nextStamps,
-      free_drink_balance: nextFreeBalance,
-      visits_count: Number(client.visits_count || 0) + drinks,
-      lifetime_drinks: nextLifetime,
-      total_drinks: nextLifetime,
-      vip_level: nextVip.key,
-      reward_threshold: nextVip.threshold,
-      available_rewards: nextFreeBalance,
-      updated_at: new Date().toISOString(),
-    }).eq('id', client.id)
-    if (clientError) return setMessage(clientError.message)
-
-    setStampForm({ drinks: '1', comment: '' })
-    await loadLoyalty()
-    setMessage(newFree > 0 ? `Начислено. Клиент получил бесплатных напитков: ${newFree}.` : 'Отметки начислены.')
-  }
-
-  async function redeemFreeDrink(e) {
-    e.preventDefault()
-    setMessage('')
-    const client = clients.find((item) => item.id === selectedClientId)
-    if (!client) return setMessage('Выберите клиента.')
-    const count = Math.max(1, Math.floor(parseNum(redeemForm.count)))
-    const currentFree = getFreeDrinkBalance(client)
-    if (count > currentFree) return setMessage(`Недостаточно бесплатных напитков. Доступно: ${intFmt(currentFree)}.`)
-
-    const { error: txError } = await supabase.from('rms_loyalty_transactions').insert({
-      client_id: client.id,
-      client_name: client.name,
-      client_phone: client.phone,
-      type: 'drink_redeem',
-      amount: -count,
-      order_total: null,
-      comment: redeemForm.comment.trim() || `Списан бесплатный напиток: ${count}`,
-    })
-    if (txError) return setMessage(txError.message)
-
-    const { error: clientError } = await supabase.from('rms_loyalty_clients').update({
-      free_drink_balance: currentFree - count,
-      available_rewards: currentFree - count,
-      updated_at: new Date().toISOString(),
-    }).eq('id', client.id)
-    if (clientError) return setMessage(clientError.message)
-
-    setRedeemForm({ count: '1', comment: '' })
-    await loadLoyalty()
-    setMessage('Бесплатный напиток списан.')
   }
 
   const filteredClients = useMemo(() => {
@@ -1861,34 +1683,6 @@ function RMSLoyaltyAdmin() {
           ) : <div className="loyalty-empty">Выберите клиента из списка.</div>}
         </div>
       </section>
-
-      {selectedClient && (
-        <section className="loyalty-grid bottom drink-actions-grid">
-          <div className="loyalty-card">
-            <div className="loyalty-card-head"><div><h2>Начислить отметки</h2><p>1 напиток = 1 отметка. После 10 отметок автоматически добавляется подарок.</p></div></div>
-            <form className="loyalty-form" onSubmit={addDrinkStamps}>
-              <label>Количество напитков<input value={stampForm.drinks} onChange={(e) => setStampForm({ ...stampForm, drinks: e.target.value })} placeholder="1" /></label>
-              <div className="loyalty-rule-preview progress-preview"><DrinkProgressRing client={selectedClient} compact /><div><b>Текущий прогресс</b><span>{getStampProgress(selectedClient).percent}% · {getStampCount(selectedClient)}/{getRewardThreshold(selectedClient)} отметок · {getVipBenefitText(selectedClient)} · {progressPhrase(selectedClient)}</span></div></div>
-              <label>Комментарий<textarea value={stampForm.comment} onChange={(e) => setStampForm({ ...stampForm, comment: e.target.value })} placeholder="Например: чек POS #1258" /></label>
-              <button className="loyalty-primary">Начислить</button>
-            </form>
-          </div>
-
-          <div className="loyalty-card">
-            <div className="loyalty-card-head"><div><h2>Списать подарок</h2><p>Используется, когда клиент получает бесплатный напиток.</p></div></div>
-            <form className="loyalty-form" onSubmit={redeemFreeDrink}>
-              <label>Количество подарков<input value={redeemForm.count} onChange={(e) => setRedeemForm({ ...redeemForm, count: e.target.value })} placeholder="1" /></label>
-              <div className="loyalty-rule-preview"><b>Доступно к списанию</b><span>{intFmt(getFreeDrinkBalance(selectedClient))}</span></div>
-              <label>Комментарий<textarea value={redeemForm.comment} onChange={(e) => setRedeemForm({ ...redeemForm, comment: e.target.value })} placeholder="Например: free drink redeemed" /></label>
-              <button className="loyalty-primary">Списать подарок</button>
-            </form>
-          </div>
-
-          <div className="loyalty-card wallet-qr-card">
-            <WalletQrPanel client={selectedClient} onEnsure={() => ensureWalletIdentity(selectedClient)} onCopy={copyText} busy={qrBusy} />
-          </div>
-        </section>
-      )}
         </div>
       )}
     </div>
