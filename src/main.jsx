@@ -1195,6 +1195,126 @@ function RMSProInterfaceStyles() {
   box-shadow:0 16px 44px rgba(15,23,42,.052)!important;
 }
 
+
+
+/* v240.3 — salary movement journal table optimization */
+.rms-pro-shell .salary-movement-wrap{
+  width:100%!important;
+  max-width:100%!important;
+  overflow-x:auto!important;
+  overflow-y:visible!important;
+  border-radius:22px!important;
+}
+.rms-pro-shell .salary-movement-table{
+  width:100%!important;
+  min-width:1180px!important;
+  table-layout:fixed!important;
+  border-collapse:separate!important;
+  border-spacing:0!important;
+}
+.rms-pro-shell .salary-movement-table th,
+.rms-pro-shell .salary-movement-table td{
+  padding:13px 12px!important;
+  vertical-align:middle!important;
+  line-height:1.22!important;
+}
+.rms-pro-shell .salary-movement-table th{
+  white-space:nowrap!important;
+  font-size:12px!important;
+  letter-spacing:.045em!important;
+}
+.rms-pro-shell .salary-col-date{width:120px!important;}
+.rms-pro-shell .salary-col-type{width:150px!important;}
+.rms-pro-shell .salary-col-branch{width:130px!important;}
+.rms-pro-shell .salary-col-position{width:160px!important;}
+.rms-pro-shell .salary-col-employee{width:185px!important;}
+.rms-pro-shell .salary-col-amount{width:110px!important;text-align:right!important;}
+.rms-pro-shell .salary-col-comment{width:210px!important;}
+.rms-pro-shell .salary-col-status{width:190px!important;}
+.rms-pro-shell .salary-col-actions{width:150px!important;}
+.rms-pro-shell .salary-cell-type,
+.rms-pro-shell .salary-cell-amount{
+  white-space:nowrap!important;
+}
+.rms-pro-shell .salary-op-badge{
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  max-width:130px!important;
+  padding:7px 10px!important;
+  border-radius:999px!important;
+  font-size:12px!important;
+  line-height:1.05!important;
+  font-weight:850!important;
+  white-space:normal!important;
+  text-align:center!important;
+}
+.rms-pro-shell .salary-op-badge.balance{
+  color:#991b1b!important;
+  background:#fef2f2!important;
+  border:1px solid #fecaca!important;
+}
+.rms-pro-shell .salary-op-badge.advance{
+  color:#475569!important;
+  background:#f8fafc!important;
+  border:1px solid #e2e8f0!important;
+}
+.rms-pro-shell .salary-cell-position span,
+.rms-pro-shell .salary-cell-position small,
+.rms-pro-shell .salary-cell-status span,
+.rms-pro-shell .salary-cell-comment span{
+  display:block!important;
+  min-width:0!important;
+}
+.rms-pro-shell .salary-cell-position small{
+  margin-top:3px!important;
+  color:#64748b!important;
+  font-size:12px!important;
+}
+.rms-pro-shell .salary-cell-employee,
+.rms-pro-shell .salary-cell-branch{
+  font-weight:700!important;
+  color:#334155!important;
+}
+.rms-pro-shell .salary-cell-amount{
+  text-align:right!important;
+}
+.rms-pro-shell .salary-cell-comment span,
+.rms-pro-shell .salary-cell-status span{
+  display:-webkit-box!important;
+  -webkit-line-clamp:2!important;
+  -webkit-box-orient:vertical!important;
+  overflow:hidden!important;
+  color:#475569!important;
+}
+.rms-pro-shell .salary-cell-status span{
+  font-size:12px!important;
+  color:#64748b!important;
+}
+.rms-pro-shell .salary-actions-cell{
+  position:sticky!important;
+  right:0!important;
+  z-index:3!important;
+  background:linear-gradient(90deg,rgba(255,255,255,.88),#fff 28%)!important;
+  box-shadow:-12px 0 18px rgba(15,23,42,.05)!important;
+  min-width:150px!important;
+  white-space:nowrap!important;
+}
+.rms-pro-shell .salary-actions-cell .small{
+  padding:9px 11px!important;
+  border-radius:12px!important;
+  font-size:12px!important;
+}
+.rms-pro-shell .salary-actions-cell .remove{
+  width:32px!important;
+  height:32px!important;
+  min-width:32px!important;
+}
+@media(max-width:900px){
+  .rms-pro-shell .salary-movement-table{min-width:1120px!important;}
+  .rms-pro-shell .salary-movement-wrap{margin-left:-4px;margin-right:-4px;width:calc(100% + 8px)!important;}
+}
+
     @media (max-width: 960px) {
       .app.rms-pro-shell {
         display: block;
@@ -22151,20 +22271,20 @@ function Advances({ t }) {
 
       <div className="card span-2">
         <div className="card-head"><div></div><label style={{display:'flex',alignItems:'center',gap:8}}><span className="hint">Показать</span><select value={advancePageSize} onChange={e => { setAdvancePageSize(Number(e.target.value)); setAdvancePage(1) }}><option value={10}>10</option><option value={20}>20</option><option value={30}>30</option><option value={50}>50</option></select></label></div>
-        <div className="table-wrap"><table>
-          <thead><tr><th>Дата</th><th>Тип</th><th>Филиал</th><th>Должность</th><th style={{minWidth:220}}>Сотрудник</th><th>Сумма</th><th>Комментарий</th><th>Кто внёс / статус</th><th></th></tr></thead>
+        <div className="table-wrap salary-movement-wrap"><table className="salary-movement-table">
+          <thead><tr><th className="salary-col-date">Дата</th><th className="salary-col-type">Тип</th><th className="salary-col-branch">Филиал</th><th className="salary-col-position">Должность</th><th className="salary-col-employee">Сотрудник</th><th className="salary-col-amount">Сумма</th><th className="salary-col-comment">Комментарий</th><th className="salary-col-status">Кто внёс / статус</th><th className="salary-col-actions"></th></tr></thead>
           <tbody>{pagedAdvances.map(a => {
             const isEditing = editAdvanceId === a.id
             return <tr key={a.id} className={a.is_cancelled ? 'cancelled-row' : ''}>
               <td>{isEditing ? <DateInput value={editAdvanceForm.advance_date} onChange={e => setEditAdvanceForm(f => ({...f, advance_date: e.target.value}))} /> : String(a.advance_date || '—')}</td>
-              <td><span className={a.operation_type === 'previous_month_balance' ? 'save-status' : 'hint'}>{advanceType(a)}</span></td>
-              <td>{employeeGroupName({ branch_id: a.branch_id, branches: a.branches })}</td>
-              <td>{positionGroup(a.employees?.position)} · {a.employees?.position || '—'}</td>
-              <td>{a.employees?.full_name || '—'}</td>
-              <td>{isEditing ? <input value={editAdvanceForm.amount} onChange={e => setEditAdvanceForm(f => ({...f, amount: e.target.value}))} /> : <strong>{fmt(a.amount)}</strong>}</td>
-              <td>{isEditing ? <input value={editAdvanceForm.comment} onChange={e => setEditAdvanceForm(f => ({...f, comment: e.target.value}))} /> : (a.comment || '—')}</td>
-              <td className="hint" style={{minWidth:220}}>{advanceStatus(a)}</td>
-              <td className="actions-cell">
+              <td className="salary-cell-type"><span className={a.operation_type === 'previous_month_balance' ? 'salary-op-badge balance' : 'salary-op-badge advance'}>{advanceType(a)}</span></td>
+              <td className="salary-cell-branch">{employeeGroupName({ branch_id: a.branch_id, branches: a.branches })}</td>
+              <td className="salary-cell-position"><span>{positionGroup(a.employees?.position)}</span><small>{a.employees?.position || '—'}</small></td>
+              <td className="salary-cell-employee">{a.employees?.full_name || '—'}</td>
+              <td className="salary-cell-amount">{isEditing ? <input value={editAdvanceForm.amount} onChange={e => setEditAdvanceForm(f => ({...f, amount: e.target.value}))} /> : <strong>{fmt(a.amount)}</strong>}</td>
+              <td className="salary-cell-comment">{isEditing ? <input value={editAdvanceForm.comment} onChange={e => setEditAdvanceForm(f => ({...f, comment: e.target.value}))} /> : <span title={a.comment || '—'}>{a.comment || '—'}</span>}</td>
+              <td className="salary-cell-status"><span title={advanceStatus(a)}>{advanceStatus(a)}</span></td>
+              <td className="actions-cell salary-actions-cell">
                 {isEditing ? <>
                   <button className="small" onClick={() => saveAdvance(a)}>Сохранить</button>
                   <button className="small ghost" onClick={cancelEditAdvance}>Отмена</button>
