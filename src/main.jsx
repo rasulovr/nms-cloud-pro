@@ -1229,8 +1229,8 @@ function RMSProInterfaceStyles() {
 .rms-pro-shell .salary-col-employee{width:170px!important;}
 .rms-pro-shell .salary-col-amount{width:104px!important;text-align:right!important;}
 .rms-pro-shell .salary-col-comment{width:auto!important;}
-.rms-pro-shell .salary-col-status{width:92px!important;}
-.rms-pro-shell .salary-col-actions{width:138px!important;}
+.rms-pro-shell .salary-col-status{width:160px!important;}
+.rms-pro-shell .salary-col-actions{width:190px!important;}
 .rms-pro-shell .salary-cell-type,
 .rms-pro-shell .salary-cell-amount{
   white-space:nowrap!important;
@@ -1299,42 +1299,88 @@ function RMSProInterfaceStyles() {
   white-space:nowrap!important;
   color:#475569!important;
 }
-.rms-pro-shell .salary-cell-status span{
-  color:#64748b!important;
-  text-align:left!important;
+.rms-pro-shell .salary-status-box{
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:flex-start!important;
+  gap:6px!important;
+  min-width:0!important;
 }
-.rms-pro-shell .salary-cell-status b{
+.rms-pro-shell .salary-status-meta{
+  display:flex!important;
+  align-items:center!important;
+  gap:5px!important;
+  max-width:100%!important;
   color:#334155!important;
   font-size:12px!important;
   line-height:1.05!important;
+  white-space:nowrap!important;
 }
-.rms-pro-shell .salary-cell-status small{
-  margin-top:3px!important;
-  color:#64748b!important;
-  font-size:11px!important;
+.rms-pro-shell .salary-status-meta b,
+.rms-pro-shell .salary-status-meta small,
+.rms-pro-shell .salary-status-meta span{
+  display:inline!important;
+  margin:0!important;
   line-height:1.05!important;
+}
+.rms-pro-shell .salary-status-meta b{
+  color:#334155!important;
+  font-size:12px!important;
+  font-weight:850!important;
+}
+.rms-pro-shell .salary-status-meta small{
+  max-width:82px!important;
   overflow:hidden!important;
   text-overflow:ellipsis!important;
   white-space:nowrap!important;
+  color:#64748b!important;
+  font-size:12px!important;
+  font-weight:750!important;
+}
+.rms-pro-shell .salary-save-pill{
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  width:max-content!important;
+  max-width:100%!important;
+  padding:5px 10px!important;
+  border-radius:999px!important;
+  font-size:11px!important;
+  line-height:1!important;
+  font-weight:900!important;
+  white-space:nowrap!important;
+}
+.rms-pro-shell .salary-save-pill.saved{
+  color:#15803d!important;
+  background:#ecfdf3!important;
+  border:1px solid #bbf7d0!important;
+}
+.rms-pro-shell .salary-save-pill.cancelled{
+  color:#991b1b!important;
+  background:#fef2f2!important;
+  border:1px solid #fecaca!important;
 }
 .rms-pro-shell .salary-actions-cell{
-  min-width:0!important;
+  min-width:190px!important;
+  width:190px!important;
   white-space:nowrap!important;
   background:#fff!important;
 }
 .rms-pro-shell .salary-actions-cell .small{
-  padding:8px 10px!important;
-  border-radius:12px!important;
+  padding:9px 13px!important;
+  border-radius:13px!important;
   font-size:12px!important;
+  font-weight:850!important;
 }
 .rms-pro-shell .salary-actions-cell .remove{
-  width:30px!important;
-  height:30px!important;
-  min-width:30px!important;
+  width:34px!important;
+  height:34px!important;
+  min-width:34px!important;
+  margin-left:6px!important;
 }
 @media(max-width:1100px){
   .rms-pro-shell .salary-movement-wrap{overflow-x:auto!important;}
-  .rms-pro-shell .salary-movement-table{min-width:980px!important;}
+  .rms-pro-shell .salary-movement-table{min-width:1080px!important;}
 }
     @media (max-width: 960px) {
       .app.rms-pro-shell {
@@ -22325,7 +22371,7 @@ function Advances({ t }) {
               <td className="salary-cell-employee"><strong>{a.employees?.full_name || '—'}</strong><small>{positionGroup(a.employees?.position)}</small></td>
               <td className="salary-cell-amount">{isEditing ? <input value={editAdvanceForm.amount} onChange={e => setEditAdvanceForm(f => ({...f, amount: e.target.value}))} /> : <strong>{fmt(a.amount)}</strong>}</td>
               <td className="salary-cell-comment">{isEditing ? <input value={editAdvanceForm.comment} onChange={e => setEditAdvanceForm(f => ({...f, comment: e.target.value}))} /> : <span title={a.comment || '—'}>{a.comment || '—'}</span>}</td>
-              <td className="salary-cell-status"><span title={advanceStatus(a)}><b>{salaryJournalDate(a)}</b><small>{salaryJournalActor(a)}</small></span></td>
+              <td className="salary-cell-status"><div className="salary-status-box" title={advanceStatus(a)}><div className="salary-status-meta"><b>{salaryJournalDate(a)}</b><span>·</span><small>{salaryJournalActor(a)}</small></div><div className={a.is_cancelled ? 'salary-save-pill cancelled' : 'salary-save-pill saved'}>{a.is_cancelled ? '× Отменено' : '✓ Сохранено'}</div></div></td>
               <td className="actions-cell salary-actions-cell">
                 {isEditing ? <>
                   <button className="small" onClick={() => saveAdvance(a)}>Сохранить</button>
