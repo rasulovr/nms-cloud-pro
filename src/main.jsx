@@ -3879,20 +3879,7 @@ function App() {
         {currentCanRead && section === 'suppliers' && <Suppliers t={t} isAdmin={isAdmin || accessRank(sectionAccess('suppliers')) >= accessRank('admin')} />}
         {currentCanRead && section === 'debts' && <DebtsPayments t={t} />}
         {currentCanRead && section === 'qrmenu' && <RMSQRMenuAdmin t={t} />}
-        {currentCanRead && section === 'loyalty' && <div className="grid">
-          <div className="card span-2">
-            <RMSLoyalty />
-          </div>
-          <div className="card span-2">
-            <div className="card-head">
-              <div>
-                <h3>Loyalty POS Scan</h3>
-                <p className="hint">Сканирование QR клиента официантом / POS.</p>
-              </div>
-            </div>
-            <RMSLoyaltyPOSScan />
-          </div>
-        </div>}
+        {currentCanRead && section === 'loyalty' && <RMSLoyalty />}
         {currentCanRead && section === 'market' && <MarketIntelligence t={t} />}
         {currentCanRead && section === 'security_recovery' && <SecurityRecoveryCenter />}
         {currentCanRead && section === 'settings' && <RmsSectionErrorBoundary resetKey={`settings-${section}`}><Settings session={session} t={t} theme={theme} setTheme={setTheme} /></RmsSectionErrorBoundary>}
