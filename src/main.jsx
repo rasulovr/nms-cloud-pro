@@ -20564,6 +20564,7 @@ function Salaries({ t, view = 'employees', isAdmin = false }) {
     let dsmfExpenseRows = []
     let prevSalRows = []
     let prevPayRows = []
+    let previousBalanceRows = []
 
     if (isInternal) {
       const { data: snap } = await fetchRmsStaffWorkspaceSnapshot(monthDate)
@@ -20573,6 +20574,7 @@ function Salaries({ t, view = 'employees', isAdmin = false }) {
         const allSalaryPayments = snap.salary_payments || []
         salRows = allSalaryPeriods.filter(r => r.salary_month === monthDate)
         advRows = (snap.salary_advances || []).filter(r => String(r.advance_date || '') >= monthDate && String(r.advance_date || '') <= monthEnd && !r.is_cancelled)
+        previousBalanceRows = (snap.salary_previous_balances || []).filter(r => r.target_salary_month === monthDate && !r.is_cancelled)
         payRows = allSalaryPayments.filter(r => r.salary_month === monthDate && !r.is_cancelled)
         previousDisplayPayRows = allSalaryPayments.filter(r => r.salary_month === previousMonthForDisplay && !r.is_cancelled)
         dsmfExpenseRows = (snap.dsmf_expenses || []).filter(r => String(r.expense_date || '') >= monthDate && String(r.expense_date || '') <= monthEnd && !r.deleted_at)
@@ -20585,6 +20587,7 @@ function Salaries({ t, view = 'employees', isAdmin = false }) {
       const empQ = supabase.from('employees').select('*, branches(name)').order('branch_id').order('position').order('full_name')
       const salQ = supabase.from('salary_periods').select('*, employees(*), branches(name)').eq('salary_month', monthDate).order('branch_id')
       const advQ = supabase.from('salary_advances').select('*').gte('advance_date', monthDate).lte('advance_date', monthEnd).or('is_cancelled.is.null,is_cancelled.eq.false').order('advance_date', { ascending: false }).order('created_at', { ascending: false })
+      const prevBalanceQ = supabase.from('salary_previous_balances').select('*').eq('target_salary_month', monthDate).or('is_cancelled.is.null,is_cancelled.eq.false').order('created_at', { ascending: false })
       const payQ = supabase.from('salary_payments').select('*').eq('salary_month', monthDate).or('is_cancelled.is.null,is_cancelled.eq.false').order('payment_date', { ascending: false }).order('created_at', { ascending: false })
       const previousPayDisplayQ = supabase.from('salary_payments').select('*').eq('salary_month', previousMonthForDisplay).or('is_cancelled.is.null,is_cancelled.eq.false').order('payment_date', { ascending: false }).order('created_at', { ascending: false })
       const dsmfQ = supabase.from('daily_expenses').select('*, branches(name)').gte('expense_date', monthDate).lte('expense_date', monthEnd).eq('custom_category', 'DSMF').is('deleted_at', null).order('expense_date', { ascending: false })
@@ -20595,12 +20598,13 @@ function Salaries({ t, view = 'employees', isAdmin = false }) {
         { data: emp, error: empError },
         { data: sal, error: salError },
         { data: adv, error: advError },
+        { data: prevBalances, error: prevBalanceError },
         { data: pays, error: payError },
         { data: previousDisplayPays, error: previousDisplayPayError },
         { data: dsmf, error: dsmfError },
         { data: prevSal, error: prevSalError },
         { data: prevPays, error: prevPayError }
-      ] = await Promise.all([empQ, salQ, advQ, payQ, previousPayDisplayQ, dsmfQ, prevSalQ, prevPayQ])
+      ] = await Promise.all([empQ, salQ, advQ, prevBalanceQ, payQ, previousPayDisplayQ, dsmfQ, prevSalQ, prevPayQ])
 
       if (empError || salError || advError || payError || previousDisplayPayError || dsmfError || prevSalError || prevPayError) {
         const { data: snap } = await fetchRmsStaffWorkspaceSnapshot(monthDate)
@@ -20610,6 +20614,7 @@ function Salaries({ t, view = 'employees', isAdmin = false }) {
           const allSalaryPayments = snap.salary_payments || []
           salRows = allSalaryPeriods.filter(r => r.salary_month === monthDate)
           advRows = (snap.salary_advances || []).filter(r => String(r.advance_date || '') >= monthDate && String(r.advance_date || '') <= monthEnd && !r.is_cancelled)
+          previousBalanceRows = (snap.salary_previous_balances || []).filter(r => r.target_salary_month === monthDate && !r.is_cancelled)
           payRows = allSalaryPayments.filter(r => r.salary_month === monthDate && !r.is_cancelled)
           previousDisplayPayRows = allSalaryPayments.filter(r => r.salary_month === previousMonthForDisplay && !r.is_cancelled)
           dsmfExpenseRows = (snap.dsmf_expenses || []).filter(r => String(r.expense_date || '') >= monthDate && String(r.expense_date || '') <= monthEnd && !r.deleted_at)
@@ -20624,6 +20629,7 @@ function Salaries({ t, view = 'employees', isAdmin = false }) {
         empRows = emp || []
         salRows = sal || []
         advRows = adv || []
+        previousBalanceRows = prevBalances || []
         payRows = pays || []
         previousDisplayPayRows = previousDisplayPays || []
         dsmfExpenseRows = dsmf || []
@@ -20635,11 +20641,12 @@ function Salaries({ t, view = 'employees', isAdmin = false }) {
     const advancesByEmployee = new Map()
     const previousBalanceByEmployee = new Map()
     ;(advRows || []).forEach(a => {
-      if (a.operation_type === 'previous_month_balance') {
-        previousBalanceByEmployee.set(a.employee_id, parseNum(previousBalanceByEmployee.get(a.employee_id)) + parseNum(a.amount))
-      } else {
+      if (a.operation_type !== 'previous_month_balance') {
         advancesByEmployee.set(a.employee_id, parseNum(advancesByEmployee.get(a.employee_id)) + parseNum(a.amount))
       }
+    })
+    ;(previousBalanceRows || []).filter(r => !r.is_cancelled).forEach(b => {
+      previousBalanceByEmployee.set(b.employee_id, parseNum(previousBalanceByEmployee.get(b.employee_id)) + parseNum(b.amount))
     })
     const paymentsByEmployee = new Map()
     ;(payRows || []).forEach(p => paymentsByEmployee.set(p.employee_id, parseNum(paymentsByEmployee.get(p.employee_id)) + parseNum(p.amount)))
@@ -21086,14 +21093,15 @@ function Salaries({ t, view = 'employees', isAdmin = false }) {
 
     const start = monthDate
     const end = monthEnd
-    const [{ data: existing }, { data: advanceRows }, { data: payRows }] = await Promise.all([
+    const [{ data: existing }, { data: advanceRows }, { data: previousBalanceRows }, { data: payRows }] = await Promise.all([
       supabase.from('salary_periods').select('*').eq('employee_id', employeeId).eq('salary_month', monthDate).maybeSingle(),
-      supabase.from('salary_advances').select('amount').eq('employee_id', employeeId).gte('advance_date', start).lte('advance_date', end).or('is_cancelled.is.null,is_cancelled.eq.false'),
+      supabase.from('salary_advances').select('amount, operation_type').eq('employee_id', employeeId).gte('advance_date', start).lte('advance_date', end).or('is_cancelled.is.null,is_cancelled.eq.false'),
+      supabase.from('salary_previous_balances').select('amount').eq('employee_id', employeeId).eq('target_salary_month', monthDate).or('is_cancelled.is.null,is_cancelled.eq.false'),
       supabase.from('salary_payments').select('amount').eq('employee_id', employeeId).eq('salary_month', monthDate).or('is_cancelled.is.null,is_cancelled.eq.false')
     ])
 
     const advance = (advanceRows || []).filter(a => a.operation_type !== 'previous_month_balance').reduce((sum, a) => sum + parseNum(a.amount), 0)
-    const previousBalanceAmount = (advanceRows || []).filter(a => a.operation_type === 'previous_month_balance').reduce((sum, a) => sum + parseNum(a.amount), 0)
+    const previousBalanceAmount = (previousBalanceRows || []).reduce((sum, a) => sum + parseNum(a.amount), 0)
     const paid = (payRows || []).reduce((sum, p) => sum + parseNum(p.amount), 0)
     const gross = parseNum(existing?.salary_gross || row.salary_gross)
     const deduction = parseNum(existing?.deduction_amount || row.deduction_amount)
@@ -22040,6 +22048,7 @@ function Advances({ t }) {
   const [advanceGroupId, setAdvanceGroupId] = useState(STAFF_GROUP_MANAGERS)
   const [employees, setEmployees] = useState([])
   const [advances, setAdvances] = useState([])
+  const [previousBalances, setPreviousBalances] = useState([])
   const [salaryPeriods, setSalaryPeriods] = useState([])
   const [salaryPayments, setSalaryPayments] = useState([])
   const [profiles, setProfiles] = useState([])
@@ -22084,21 +22093,24 @@ function Advances({ t }) {
     setMessage('')
     const empQ = supabase.from('employees').select('*, branches(name)').order('branch_id').order('position').order('full_name')
     const advQ = supabase.from('salary_advances').select('*, employees(full_name, position, monthly_salary, branch_id), branches(name)').gte('advance_date', monthDate).lte('advance_date', monthEnd).order('advance_date', { ascending: false }).order('created_at', { ascending: false })
+    const prevBalanceQ = supabase.from('salary_previous_balances').select('*, employees(full_name, position, monthly_salary, branch_id), branches(name)').eq('target_salary_month', monthDate).order('created_at', { ascending: false })
     const salQ = supabase.from('salary_periods').select('*').eq('salary_month', monthDate)
     const payQ = supabase.from('salary_payments').select('*').eq('salary_month', monthDate).or('is_cancelled.is.null,is_cancelled.eq.false')
     const [
       { data: emp, error: empError },
       { data: adv, error: advError },
+      { data: prevBalances, error: prevBalanceError },
       { data: sal },
       { data: pay },
       { data: prof }
-    ] = await Promise.all([empQ, advQ, salQ, payQ, supabase.from('user_profiles').select('id, full_name, email, login_name')])
-    if (empError || advError) {
-      setMessage(empError?.message || advError?.message)
+    ] = await Promise.all([empQ, advQ, prevBalanceQ, salQ, payQ, supabase.from('user_profiles').select('id, full_name, email, login_name')])
+    if (empError || advError || prevBalanceError) {
+      setMessage(empError?.message || advError?.message || prevBalanceError?.message)
       return
     }
     setEmployees(emp || [])
     setAdvances(adv || [])
+    setPreviousBalances(prevBalances || [])
     setSalaryPeriods(sal || [])
     setSalaryPayments(pay || [])
     setProfiles(prof || [])
@@ -22148,12 +22160,13 @@ function Advances({ t }) {
   async function refreshSalaryForEmployee(employeeId) {
     const emp = employees.find(e => e.id === employeeId)
     if (!emp) return
-    const [{ data: existing }, { data: advanceRows }] = await Promise.all([
+    const [{ data: existing }, { data: advanceRows }, { data: previousBalanceRows }] = await Promise.all([
       supabase.from('salary_periods').select('*').eq('employee_id', employeeId).eq('salary_month', monthDate).maybeSingle(),
-      supabase.from('salary_advances').select('amount, operation_type').eq('employee_id', employeeId).gte('advance_date', monthDate).lte('advance_date', monthEnd).or('is_cancelled.is.null,is_cancelled.eq.false')
+      supabase.from('salary_advances').select('amount, operation_type').eq('employee_id', employeeId).gte('advance_date', monthDate).lte('advance_date', monthEnd).or('is_cancelled.is.null,is_cancelled.eq.false'),
+      supabase.from('salary_previous_balances').select('amount').eq('employee_id', employeeId).eq('target_salary_month', monthDate).or('is_cancelled.is.null,is_cancelled.eq.false')
     ])
     const advanceTotal = (advanceRows || []).filter(r => r.operation_type !== 'previous_month_balance').reduce((s, r) => s + parseNum(r.amount), 0)
-    const previousBalanceTotal = (advanceRows || []).filter(r => r.operation_type === 'previous_month_balance').reduce((s, r) => s + parseNum(r.amount), 0)
+    const previousBalanceTotal = (previousBalanceRows || []).reduce((s, r) => s + parseNum(r.amount), 0)
     const gross = parseNum(existing?.salary_gross)
     const deduction = parseNum(existing?.deduction_amount)
     const paid = parseNum(existing?.payroll_payments)
@@ -22210,17 +22223,17 @@ function Advances({ t }) {
     const amount = parseNum(previousBalanceForm.amount)
     if (!amount) return setMessage('Введите сумму остатка')
     const user = await currentUserMeta()
-    const { error } = await supabase.from('salary_advances').insert({
+    const { error } = await supabase.from('salary_previous_balances').insert({
       employee_id: emp.id,
       branch_id: emp.branch_id || null,
-      advance_date: previousBalanceForm.balance_date || todayISO(),
+      balance_month: previousBalanceForm.balance_date || todayISO(),
+      target_salary_month: monthDate,
       amount,
       comment: previousBalanceForm.comment || 'Остаток зарплаты за прошлый месяц',
-      operation_type: 'previous_month_balance',
       created_by: user.user_id,
       updated_by: user.user_id,
-      created_by_text: user.user_email || null,
-      updated_by_text: user.user_email || null
+      created_by_label: user.user_email || null,
+      updated_by_label: user.user_email || null
     })
     if (error) return setMessage(error.message)
     await refreshSalaryForEmployee(emp.id)
@@ -22249,7 +22262,15 @@ function Advances({ t }) {
     const amount = parseNum(editAdvanceForm.amount)
     if (!amount) return setMessage('Введите сумму аванса')
     const user = await currentUserMeta()
-    const payload = {
+    const isPreviousBalance = row.operation_type === 'previous_month_balance' || row.source_table === 'salary_previous_balances'
+    const payload = isPreviousBalance ? {
+      balance_month: editAdvanceForm.advance_date || row.advance_date,
+      amount,
+      comment: editAdvanceForm.comment || null,
+      updated_at: new Date().toISOString(),
+      updated_by: user.user_id,
+      updated_by_label: user.user_email || null
+    } : {
       advance_date: editAdvanceForm.advance_date || row.advance_date,
       amount,
       comment: editAdvanceForm.comment || null,
@@ -22257,7 +22278,7 @@ function Advances({ t }) {
       updated_by: user.user_id,
       updated_by_text: user.user_email || null
     }
-    const { error } = await supabase.from('salary_advances').update(payload).eq('id', row.id)
+    const { error } = await supabase.from(isPreviousBalance ? 'salary_previous_balances' : 'salary_advances').update(payload).eq('id', row.id)
     if (error) return setMessage(error.message)
     await refreshSalaryForEmployee(row.employee_id)
     cancelEditAdvance()
@@ -22271,7 +22292,17 @@ function Advances({ t }) {
     const ok = window.confirm('Отменить этот аванс? Строка останется в журнале перечёркнутой и не будет учитываться в расчётах.')
     if (!ok) return
     const user = await currentUserMeta()
-    const { error } = await supabase.from('salary_advances').update({
+    const isPreviousBalance = row.operation_type === 'previous_month_balance' || row.source_table === 'salary_previous_balances'
+    const { error } = await supabase.from(isPreviousBalance ? 'salary_previous_balances' : 'salary_advances').update(isPreviousBalance ? {
+      is_cancelled: true,
+      cancelled_at: new Date().toISOString(),
+      cancelled_by: user.user_id,
+      cancelled_by_label: user.user_email || null,
+      updated_at: new Date().toISOString(),
+      updated_by: user.user_id,
+      updated_by_label: user.user_email || null,
+      cancel_comment: 'Отменено через журнал движения по сотрудникам'
+    } : {
       is_cancelled: true,
       cancelled_at: new Date().toISOString(),
       cancelled_by: user.user_id,
@@ -22290,7 +22321,21 @@ function Advances({ t }) {
   const displayedEmployees = employees
     .filter(e => matchesStaffGroup(e, branchId))
     .filter(e => employeeFilter === 'all' || e.id === employeeFilter)
-  const displayedAdvances = advances
+  const movementRows = [
+    ...(advances || []).filter(a => a.operation_type !== 'previous_month_balance').map(a => ({ ...a, operation_type: a.operation_type || 'advance', source_table: 'salary_advances' })),
+    ...(previousBalances || []).map(b => ({
+      ...b,
+      operation_type: 'previous_month_balance',
+      source_table: 'salary_previous_balances',
+      advance_date: b.balance_month || b.created_at,
+      created_by_text: b.created_by_label || b.created_by_text,
+      updated_by_text: b.updated_by_label || b.updated_by_text,
+      cancelled_by_text: b.cancelled_by_label || b.cancelled_by_text,
+      employees: b.employees,
+      branches: b.branches
+    }))
+  ].sort((a, b) => String(b.advance_date || b.created_at || '').localeCompare(String(a.advance_date || a.created_at || '')))
+  const displayedAdvances = movementRows
     .filter(a => matchesStaffGroup({ branch_id: a.branch_id, branches: a.branches }, branchId))
     .filter(a => employeeFilter === 'all' || a.employee_id === employeeFilter)
   const activeAdvances = displayedAdvances.filter(a => !a.is_cancelled)
