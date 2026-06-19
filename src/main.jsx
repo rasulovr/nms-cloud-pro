@@ -4916,6 +4916,63 @@ function ResponsiveAndSettingsStyles() {
       }
     }
 
+
+    /* v243 — Settings users permissions visibility fix */
+    .settings-tabs + .grid .card .table-wrap {
+      overflow-x: auto;
+    }
+    .permission-grid {
+      display: grid !important;
+      grid-template-columns: minmax(140px, 1fr) 170px !important;
+      gap: 8px 12px !important;
+      align-items: center !important;
+      min-width: 330px !important;
+      width: 100% !important;
+    }
+    .permission-grid b {
+      display: block !important;
+      min-width: 0 !important;
+      overflow: hidden !important;
+      text-overflow: ellipsis !important;
+      white-space: nowrap !important;
+      color: #0f172a !important;
+      font-weight: 800 !important;
+    }
+    .permission-grid select {
+      display: block !important;
+      visibility: visible !important;
+      opacity: 1 !important;
+      width: 170px !important;
+      min-width: 170px !important;
+      height: 38px !important;
+      padding: 7px 10px !important;
+      border-radius: 12px !important;
+      border: 1px solid #cbd5e1 !important;
+      background: #ffffff !important;
+      color: #111827 !important;
+      font-size: 13px !important;
+      font-weight: 800 !important;
+    }
+    .permission-grid select:focus {
+      outline: none !important;
+      border-color: #334155 !important;
+      box-shadow: 0 0 0 3px rgba(51,65,85,.10) !important;
+    }
+    .table-wrap table th:nth-child(6),
+    .table-wrap table td:nth-child(6) {
+      min-width: 360px !important;
+    }
+    @media (max-width: 900px) {
+      .permission-grid {
+        grid-template-columns: 1fr !important;
+        min-width: 240px !important;
+      }
+      .permission-grid select {
+        width: 100% !important;
+        min-width: 0 !important;
+      }
+    }
+
     /* FINAL FIELD COLOR OVERRIDE: all normal fields are white, attendance day cells are excluded. */
     .app input:not([type="checkbox"]),
     .app select,
