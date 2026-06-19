@@ -20671,8 +20671,10 @@ function Salaries({ t, view = 'employees', isAdmin = false }) {
         // Он прибавляется к текущей зарплате, а не считается авансом/оплатой.
         const currentDue = gross + previousBalanceAmount - advanceTotal - deduction
         const paid = parseNum(paymentsByEmployee.get(e.id))
-        const opening = parseNum(prevDueByEmployee.get(e.id)) - parseNum(prevPaymentsByEmployee.get(e.id))
-        const finalBalance = opening + currentDue - paid
+        // v240.9: прошлые salary_periods больше не подтягиваются скрыто в текущий месяц.
+        // Единственный перенос прошлого месяца — это salary_previous_balances.
+        const opening = 0
+        const finalBalance = currentDue - paid
         return { ...salary, employees, branches: e.branches || salary.branches, branch_id: e.branch_id, salary_gross: gross, advance_amount: advanceTotal, previous_balance_amount: previousBalanceAmount, salary_net: currentDue, opening_balance: opening, payroll_payments: paid, final_balance: finalBalance }
       })
 
@@ -20706,7 +20708,7 @@ function Salaries({ t, view = 'employees', isAdmin = false }) {
       previous_balance_amount: previousBalanceAmount,
       salary_net: net,
       payroll_payments: payments,
-      final_balance: parseNum(row.opening_balance) + net - payments,
+      final_balance: net - payments,
       card_payment: 'card_payment' in patch ? parseNum(patch.card_payment) : parseNum(row.card_payment),
       cash_payment: 'cash_payment' in patch ? parseNum(patch.cash_payment) : parseNum(row.cash_payment),
       comment: 'comment' in patch ? patch.comment : (row.comment || '')
@@ -21117,7 +21119,7 @@ function Salaries({ t, view = 'employees', isAdmin = false }) {
       advance_amount: advance,
       previous_balance_amount: previousBalanceAmount,
       deduction_amount: deduction,
-      final_balance: parseNum(row.opening_balance) + net - paid,
+      final_balance: net - paid,
       card_payment: method === 'bank' ? paid : parseNum(existing?.card_payment || row.card_payment),
       cash_payment: method === 'cash' ? paid : parseNum(existing?.cash_payment || row.cash_payment),
       comment: existing?.comment || 'Автообновление после выплаты зарплаты'
@@ -21285,12 +21287,13 @@ function Salaries({ t, view = 'employees', isAdmin = false }) {
     acc.deductions += parseNum(r.deduction_amount)
     acc.net += parseNum(r.salary_net)
     acc.opening += parseNum(r.opening_balance)
+    acc.previousBalance += parseNum(r.previous_balance_amount)
     acc.payments += parseNum(r.payroll_payments)
     acc.balance += parseNum(r.final_balance)
     acc.card += parseNum(r.card_payment)
     acc.cash += parseNum(r.cash_payment)
     return acc
-  }, { gross: 0, advances: 0, deductions: 0, net: 0, opening: 0, payments: 0, balance: 0, card: 0, cash: 0 })
+  }, { gross: 0, advances: 0, deductions: 0, net: 0, opening: 0, previousBalance: 0, payments: 0, balance: 0, card: 0, cash: 0 })
 
   const branchTotals = staffGroupOptions(branches).map(b => {
     const branchRows = rows.filter(r => employeeGroupId(r.employees) === b.id)
@@ -21306,6 +21309,7 @@ function Salaries({ t, view = 'employees', isAdmin = false }) {
       deductions: visibleBranchRows.reduce((s, r) => s + parseNum(r.deduction_amount), 0),
       net: visibleBranchRows.reduce((s, r) => s + parseNum(r.salary_net), 0),
       opening: visibleBranchRows.reduce((s, r) => s + parseNum(r.opening_balance), 0),
+      previousBalance: visibleBranchRows.reduce((s, r) => s + parseNum(r.previous_balance_amount), 0),
       payments: visibleBranchRows.reduce((s, r) => s + parseNum(r.payroll_payments), 0),
       balance: visibleBranchRows.reduce((s, r) => s + parseNum(r.final_balance), 0)
     }
@@ -21687,7 +21691,7 @@ function Salaries({ t, view = 'employees', isAdmin = false }) {
           <div className="salary-kpi-card salary-kpi-green"><span>Начислено</span><strong>{fmt(totals.gross)}</strong><small>AZN · за месяц</small></div>
           <div className="salary-kpi-card salary-kpi-orange"><span>Авансы</span><strong>{fmt(totals.advances)}</strong><small>AZN · выдано</small></div>
           <div className="salary-kpi-card salary-kpi-red"><span>Удержания</span><strong>{fmt(totals.deductions)}</strong><small>AZN · корректировки</small></div>
-          <div className="salary-kpi-card salary-kpi-blue"><span>Долг на начало</span><strong>{fmt(totals.opening)}</strong><small>AZN · прошлый период</small></div>
+          <div className="salary-kpi-card salary-kpi-blue"><span>Остаток пред. месяца</span><strong>{fmt(totals.previousBalance || 0)}</strong><small>только вручную</small></div>
           <div className="salary-kpi-card salary-kpi-purple"><span>Выплачено</span><strong>{fmt(totals.payments)}</strong><small>AZN · за месяц</small></div>
           <div className="salary-kpi-card salary-kpi-balance"><span>Итоговый баланс</span><strong className={totals.balance >= 0 ? 'good' : 'bad'}>{fmt(totals.balance)}</strong><small>{totals.balance >= 0 ? 'к выплате' : 'переплата'}</small></div>
         </div>
@@ -22170,7 +22174,7 @@ function Advances({ t }) {
     const gross = parseNum(existing?.salary_gross)
     const deduction = parseNum(existing?.deduction_amount)
     const paid = parseNum(existing?.payroll_payments)
-    const opening = parseNum(existing?.opening_balance)
+    const opening = 0
     const net = gross + previousBalanceTotal - advanceTotal - deduction
     await supabase.from('salary_periods').upsert({
       employee_id: employeeId,
@@ -22185,7 +22189,7 @@ function Advances({ t }) {
       cash_payment: parseNum(existing?.cash_payment),
       salary_net: net,
       payroll_payments: paid,
-      final_balance: opening + net - paid,
+      final_balance: net - paid,
       comment: existing?.comment || ''
     }, { onConflict: 'employee_id,salary_month' })
   }
