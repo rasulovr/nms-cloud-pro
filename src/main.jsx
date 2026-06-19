@@ -1195,193 +1195,6 @@ function RMSProInterfaceStyles() {
   box-shadow:0 16px 44px rgba(15,23,42,.052)!important;
 }
 
-
-
-/* v240.4 — salary movement journal compact: no horizontal scroll */
-.rms-pro-shell .salary-movement-wrap{
-  width:100%!important;
-  max-width:100%!important;
-  overflow-x:hidden!important;
-  overflow-y:visible!important;
-  border-radius:22px!important;
-}
-.rms-pro-shell .salary-movement-table{
-  width:100%!important;
-  min-width:0!important;
-  table-layout:fixed!important;
-  border-collapse:separate!important;
-  border-spacing:0!important;
-}
-.rms-pro-shell .salary-movement-table th,
-.rms-pro-shell .salary-movement-table td{
-  padding:12px 10px!important;
-  vertical-align:middle!important;
-  line-height:1.18!important;
-}
-.rms-pro-shell .salary-movement-table th{
-  white-space:nowrap!important;
-  font-size:11px!important;
-  letter-spacing:.035em!important;
-}
-.rms-pro-shell .salary-col-date{width:88px!important;}
-.rms-pro-shell .salary-col-type{width:104px!important;}
-.rms-pro-shell .salary-col-branch{width:128px!important;}
-.rms-pro-shell .salary-col-employee{width:170px!important;}
-.rms-pro-shell .salary-col-amount{width:104px!important;text-align:right!important;}
-.rms-pro-shell .salary-col-comment{width:auto!important;}
-.rms-pro-shell .salary-col-status{width:160px!important;}
-.rms-pro-shell .salary-col-actions{width:190px!important;}
-.rms-pro-shell .salary-cell-type,
-.rms-pro-shell .salary-cell-amount{
-  white-space:nowrap!important;
-}
-.rms-pro-shell .salary-op-badge{
-  display:inline-flex!important;
-  align-items:center!important;
-  justify-content:center!important;
-  width:max-content!important;
-  max-width:94px!important;
-  padding:7px 10px!important;
-  border-radius:999px!important;
-  font-size:12px!important;
-  line-height:1!important;
-  font-weight:900!important;
-  white-space:nowrap!important;
-  text-align:center!important;
-}
-.rms-pro-shell .salary-op-badge.balance{
-  color:#991b1b!important;
-  background:#fef2f2!important;
-  border:1px solid #fecaca!important;
-}
-.rms-pro-shell .salary-op-badge.advance{
-  color:#1d4ed8!important;
-  background:#eff6ff!important;
-  border:1px solid #bfdbfe!important;
-}
-.rms-pro-shell .salary-cell-employee strong,
-.rms-pro-shell .salary-cell-employee small,
-.rms-pro-shell .salary-cell-status span,
-.rms-pro-shell .salary-cell-status b,
-.rms-pro-shell .salary-cell-status small,
-.rms-pro-shell .salary-cell-comment span{
-  display:block!important;
-  min-width:0!important;
-}
-.rms-pro-shell .salary-cell-employee strong{
-  color:#0f172a!important;
-  font-weight:850!important;
-  overflow:hidden!important;
-  text-overflow:ellipsis!important;
-  white-space:nowrap!important;
-}
-.rms-pro-shell .salary-cell-employee small{
-  margin-top:3px!important;
-  color:#64748b!important;
-  font-size:11px!important;
-  overflow:hidden!important;
-  text-overflow:ellipsis!important;
-  white-space:nowrap!important;
-}
-.rms-pro-shell .salary-cell-branch{
-  font-weight:750!important;
-  color:#334155!important;
-  overflow:hidden!important;
-  text-overflow:ellipsis!important;
-  white-space:nowrap!important;
-}
-.rms-pro-shell .salary-cell-amount{
-  text-align:right!important;
-}
-.rms-pro-shell .salary-cell-comment span{
-  overflow:hidden!important;
-  text-overflow:ellipsis!important;
-  white-space:nowrap!important;
-  color:#475569!important;
-}
-.rms-pro-shell .salary-status-box{
-  display:flex!important;
-  flex-direction:column!important;
-  align-items:flex-start!important;
-  gap:6px!important;
-  min-width:0!important;
-}
-.rms-pro-shell .salary-status-meta{
-  display:flex!important;
-  align-items:center!important;
-  gap:5px!important;
-  max-width:100%!important;
-  color:#334155!important;
-  font-size:12px!important;
-  line-height:1.05!important;
-  white-space:nowrap!important;
-}
-.rms-pro-shell .salary-status-meta b,
-.rms-pro-shell .salary-status-meta small,
-.rms-pro-shell .salary-status-meta span{
-  display:inline!important;
-  margin:0!important;
-  line-height:1.05!important;
-}
-.rms-pro-shell .salary-status-meta b{
-  color:#334155!important;
-  font-size:12px!important;
-  font-weight:850!important;
-}
-.rms-pro-shell .salary-status-meta small{
-  max-width:82px!important;
-  overflow:hidden!important;
-  text-overflow:ellipsis!important;
-  white-space:nowrap!important;
-  color:#64748b!important;
-  font-size:12px!important;
-  font-weight:750!important;
-}
-.rms-pro-shell .salary-save-pill{
-  display:inline-flex!important;
-  align-items:center!important;
-  justify-content:center!important;
-  width:max-content!important;
-  max-width:100%!important;
-  padding:5px 10px!important;
-  border-radius:999px!important;
-  font-size:11px!important;
-  line-height:1!important;
-  font-weight:900!important;
-  white-space:nowrap!important;
-}
-.rms-pro-shell .salary-save-pill.saved{
-  color:#15803d!important;
-  background:#ecfdf3!important;
-  border:1px solid #bbf7d0!important;
-}
-.rms-pro-shell .salary-save-pill.cancelled{
-  color:#991b1b!important;
-  background:#fef2f2!important;
-  border:1px solid #fecaca!important;
-}
-.rms-pro-shell .salary-actions-cell{
-  min-width:190px!important;
-  width:190px!important;
-  white-space:nowrap!important;
-  background:#fff!important;
-}
-.rms-pro-shell .salary-actions-cell .small{
-  padding:9px 13px!important;
-  border-radius:13px!important;
-  font-size:12px!important;
-  font-weight:850!important;
-}
-.rms-pro-shell .salary-actions-cell .remove{
-  width:34px!important;
-  height:34px!important;
-  min-width:34px!important;
-  margin-left:6px!important;
-}
-@media(max-width:1100px){
-  .rms-pro-shell .salary-movement-wrap{overflow-x:auto!important;}
-  .rms-pro-shell .salary-movement-table{min-width:1080px!important;}
-}
     @media (max-width: 960px) {
       .app.rms-pro-shell {
         display: block;
@@ -20187,9 +20000,9 @@ function Attendance({ t, mode = 'attendance', isAdmin = false }) {
 
     const [{ data: existing }, { data: advanceRows }] = await Promise.all([
       supabase.from('salary_periods').select('*').eq('employee_id', emp.id).eq('salary_month', monthDate).maybeSingle(),
-      supabase.from('salary_advances').select('amount, operation_type').eq('employee_id', emp.id).gte('advance_date', start).lte('advance_date', end).or('is_cancelled.is.null,is_cancelled.eq.false')
+      supabase.from('salary_advances').select('amount').eq('employee_id', emp.id).gte('advance_date', start).lte('advance_date', end).or('is_cancelled.is.null,is_cancelled.eq.false')
     ])
-    const advance = (advanceRows || []).filter(row => row.operation_type !== 'previous_month_balance').reduce((sum, row) => sum + parseNum(row.amount), 0)
+    const advance = (advanceRows || []).reduce((sum, row) => sum + parseNum(row.amount), 0)
     const deduction = parseNum(existing?.deduction_amount)
     const net = gross - advance - deduction
 
@@ -20564,7 +20377,6 @@ function Salaries({ t, view = 'employees', isAdmin = false }) {
     let dsmfExpenseRows = []
     let prevSalRows = []
     let prevPayRows = []
-    let previousBalanceRows = []
 
     if (isInternal) {
       const { data: snap } = await fetchRmsStaffWorkspaceSnapshot(monthDate)
@@ -20574,7 +20386,6 @@ function Salaries({ t, view = 'employees', isAdmin = false }) {
         const allSalaryPayments = snap.salary_payments || []
         salRows = allSalaryPeriods.filter(r => r.salary_month === monthDate)
         advRows = (snap.salary_advances || []).filter(r => String(r.advance_date || '') >= monthDate && String(r.advance_date || '') <= monthEnd && !r.is_cancelled)
-        previousBalanceRows = (snap.salary_previous_balances || []).filter(r => r.target_salary_month === monthDate && !r.is_cancelled)
         payRows = allSalaryPayments.filter(r => r.salary_month === monthDate && !r.is_cancelled)
         previousDisplayPayRows = allSalaryPayments.filter(r => r.salary_month === previousMonthForDisplay && !r.is_cancelled)
         dsmfExpenseRows = (snap.dsmf_expenses || []).filter(r => String(r.expense_date || '') >= monthDate && String(r.expense_date || '') <= monthEnd && !r.deleted_at)
@@ -20587,7 +20398,6 @@ function Salaries({ t, view = 'employees', isAdmin = false }) {
       const empQ = supabase.from('employees').select('*, branches(name)').order('branch_id').order('position').order('full_name')
       const salQ = supabase.from('salary_periods').select('*, employees(*), branches(name)').eq('salary_month', monthDate).order('branch_id')
       const advQ = supabase.from('salary_advances').select('*').gte('advance_date', monthDate).lte('advance_date', monthEnd).or('is_cancelled.is.null,is_cancelled.eq.false').order('advance_date', { ascending: false }).order('created_at', { ascending: false })
-      const prevBalanceQ = supabase.from('salary_previous_balances').select('*').eq('target_salary_month', monthDate).or('is_cancelled.is.null,is_cancelled.eq.false').order('created_at', { ascending: false })
       const payQ = supabase.from('salary_payments').select('*').eq('salary_month', monthDate).or('is_cancelled.is.null,is_cancelled.eq.false').order('payment_date', { ascending: false }).order('created_at', { ascending: false })
       const previousPayDisplayQ = supabase.from('salary_payments').select('*').eq('salary_month', previousMonthForDisplay).or('is_cancelled.is.null,is_cancelled.eq.false').order('payment_date', { ascending: false }).order('created_at', { ascending: false })
       const dsmfQ = supabase.from('daily_expenses').select('*, branches(name)').gte('expense_date', monthDate).lte('expense_date', monthEnd).eq('custom_category', 'DSMF').is('deleted_at', null).order('expense_date', { ascending: false })
@@ -20598,13 +20408,12 @@ function Salaries({ t, view = 'employees', isAdmin = false }) {
         { data: emp, error: empError },
         { data: sal, error: salError },
         { data: adv, error: advError },
-        { data: prevBalances, error: prevBalanceError },
         { data: pays, error: payError },
         { data: previousDisplayPays, error: previousDisplayPayError },
         { data: dsmf, error: dsmfError },
         { data: prevSal, error: prevSalError },
         { data: prevPays, error: prevPayError }
-      ] = await Promise.all([empQ, salQ, advQ, prevBalanceQ, payQ, previousPayDisplayQ, dsmfQ, prevSalQ, prevPayQ])
+      ] = await Promise.all([empQ, salQ, advQ, payQ, previousPayDisplayQ, dsmfQ, prevSalQ, prevPayQ])
 
       if (empError || salError || advError || payError || previousDisplayPayError || dsmfError || prevSalError || prevPayError) {
         const { data: snap } = await fetchRmsStaffWorkspaceSnapshot(monthDate)
@@ -20614,7 +20423,6 @@ function Salaries({ t, view = 'employees', isAdmin = false }) {
           const allSalaryPayments = snap.salary_payments || []
           salRows = allSalaryPeriods.filter(r => r.salary_month === monthDate)
           advRows = (snap.salary_advances || []).filter(r => String(r.advance_date || '') >= monthDate && String(r.advance_date || '') <= monthEnd && !r.is_cancelled)
-          previousBalanceRows = (snap.salary_previous_balances || []).filter(r => r.target_salary_month === monthDate && !r.is_cancelled)
           payRows = allSalaryPayments.filter(r => r.salary_month === monthDate && !r.is_cancelled)
           previousDisplayPayRows = allSalaryPayments.filter(r => r.salary_month === previousMonthForDisplay && !r.is_cancelled)
           dsmfExpenseRows = (snap.dsmf_expenses || []).filter(r => String(r.expense_date || '') >= monthDate && String(r.expense_date || '') <= monthEnd && !r.deleted_at)
@@ -20629,7 +20437,6 @@ function Salaries({ t, view = 'employees', isAdmin = false }) {
         empRows = emp || []
         salRows = sal || []
         advRows = adv || []
-        previousBalanceRows = prevBalances || []
         payRows = pays || []
         previousDisplayPayRows = previousDisplayPays || []
         dsmfExpenseRows = dsmf || []
@@ -20639,20 +20446,7 @@ function Salaries({ t, view = 'employees', isAdmin = false }) {
     }
 
     const advancesByEmployee = new Map()
-    const previousBalanceByEmployee = new Map()
-    ;(advRows || []).forEach(a => {
-      if (a.operation_type !== 'previous_month_balance') {
-        advancesByEmployee.set(a.employee_id, parseNum(advancesByEmployee.get(a.employee_id)) + parseNum(a.amount))
-      }
-    })
-    ;(previousBalanceRows || []).filter(r => !r.is_cancelled).forEach(b => {
-      previousBalanceByEmployee.set(b.employee_id, parseNum(previousBalanceByEmployee.get(b.employee_id)) + parseNum(b.amount))
-    })
-    // v240.10: legacy balances entered before salary_previous_balances existed were stored in salary_advances
-    // with operation_type = 'previous_month_balance'. They are not advances and must be added only as previous balance.
-    ;(advRows || []).filter(r => r.operation_type === 'previous_month_balance' && !r.is_cancelled).forEach(b => {
-      previousBalanceByEmployee.set(b.employee_id, parseNum(previousBalanceByEmployee.get(b.employee_id)) + parseNum(b.amount))
-    })
+    ;(advRows || []).forEach(a => advancesByEmployee.set(a.employee_id, parseNum(advancesByEmployee.get(a.employee_id)) + parseNum(a.amount)))
     const paymentsByEmployee = new Map()
     ;(payRows || []).forEach(p => paymentsByEmployee.set(p.employee_id, parseNum(paymentsByEmployee.get(p.employee_id)) + parseNum(p.amount)))
     const prevDueByEmployee = new Map()
@@ -20667,24 +20461,15 @@ function Salaries({ t, view = 'employees', isAdmin = false }) {
       .filter(e => matchesPositionGroup(e, positionFilter))
       .map(e => {
         const advanceTotal = parseNum(advancesByEmployee.get(e.id))
-        const previousBalanceAmount = parseNum(previousBalanceByEmployee.get(e.id))
         const salary = salaryByEmployee.get(e.id) || emptySalary(e, advanceTotal)
         const employees = { ...e, ...(salary.employees || {}) }
-        const salaryType = employees?.salary_type || 'monthly'
-        const storedGross = parseNum(salary.salary_gross)
-        // v240.11: if salary is fixed/monthly, accrued salary must equal base salary by default.
-        // Attendance days affect only employees explicitly set to daily calculation.
-        const gross = salaryType === 'daily' ? storedGross : parseNum(employees?.monthly_salary)
+        const gross = salary.id ? parseNum(salary.salary_gross) : 0
         const deduction = parseNum(salary.deduction_amount)
-        // Остаток прошлого месяца — это долг заведения сотруднику.
-        // Он прибавляется к текущей зарплате, а не считается авансом/оплатой.
-        const currentDue = gross + previousBalanceAmount - advanceTotal - deduction
+        const currentDue = gross - advanceTotal - deduction
         const paid = parseNum(paymentsByEmployee.get(e.id))
-        // v240.9: прошлые salary_periods больше не подтягиваются скрыто в текущий месяц.
-        // Единственный перенос прошлого месяца — это salary_previous_balances.
-        const opening = 0
-        const finalBalance = currentDue - paid
-        return { ...salary, employees, branches: e.branches || salary.branches, branch_id: e.branch_id, salary_gross: gross, advance_amount: advanceTotal, previous_balance_amount: previousBalanceAmount, salary_net: currentDue, opening_balance: opening, payroll_payments: paid, final_balance: finalBalance }
+        const opening = parseNum(prevDueByEmployee.get(e.id)) - parseNum(prevPaymentsByEmployee.get(e.id))
+        const finalBalance = opening + currentDue - paid
+        return { ...salary, employees, branches: e.branches || salary.branches, branch_id: e.branch_id, salary_gross: gross, advance_amount: advanceTotal, salary_net: currentDue, opening_balance: opening, payroll_payments: paid, final_balance: finalBalance }
       })
 
     const visibleMappedRows = shouldHideManagerSalaries ? mappedRows.filter(r => !isManagerStaff(r?.employees)) : mappedRows
@@ -20702,10 +20487,7 @@ function Salaries({ t, view = 'employees', isAdmin = false }) {
     const workedDays = 'worked_days' in patch ? parseNum(patch.worked_days) : parseNum(row.worked_days)
     const gross = 'salary_gross' in patch ? parseNum(patch.salary_gross) : calcGrossSalary(updatedEmployee, workedDays)
     const advance = parseNum(row.advance_amount)
-    const previousBalanceAmount = parseNum(row.previous_balance_amount)
     const deduction = 'deduction_amount' in patch ? parseNum(patch.deduction_amount) : parseNum(row.deduction_amount)
-    const net = gross + previousBalanceAmount - advance - deduction
-    const payments = 'payroll_payments' in patch ? parseNum(patch.payroll_payments) : parseNum(row.payroll_payments)
     const payload = {
       employee_id: row.employee_id,
       branch_id: row.branch_id || null,
@@ -20714,10 +20496,7 @@ function Salaries({ t, view = 'employees', isAdmin = false }) {
       salary_gross: gross,
       advance_amount: advance,
       deduction_amount: deduction,
-      previous_balance_amount: previousBalanceAmount,
-      salary_net: net,
-      payroll_payments: payments,
-      final_balance: net - payments,
+      salary_net: gross - advance - deduction,
       card_payment: 'card_payment' in patch ? parseNum(patch.card_payment) : parseNum(row.card_payment),
       cash_payment: 'cash_payment' in patch ? parseNum(patch.cash_payment) : parseNum(row.cash_payment),
       comment: 'comment' in patch ? patch.comment : (row.comment || '')
@@ -21104,19 +20883,17 @@ function Salaries({ t, view = 'employees', isAdmin = false }) {
 
     const start = monthDate
     const end = monthEnd
-    const [{ data: existing }, { data: advanceRows }, { data: previousBalanceRows }, { data: payRows }] = await Promise.all([
+    const [{ data: existing }, { data: advanceRows }, { data: payRows }] = await Promise.all([
       supabase.from('salary_periods').select('*').eq('employee_id', employeeId).eq('salary_month', monthDate).maybeSingle(),
-      supabase.from('salary_advances').select('amount, operation_type').eq('employee_id', employeeId).gte('advance_date', start).lte('advance_date', end).or('is_cancelled.is.null,is_cancelled.eq.false'),
-      supabase.from('salary_previous_balances').select('amount').eq('employee_id', employeeId).eq('target_salary_month', monthDate).or('is_cancelled.is.null,is_cancelled.eq.false'),
+      supabase.from('salary_advances').select('amount').eq('employee_id', employeeId).gte('advance_date', start).lte('advance_date', end).or('is_cancelled.is.null,is_cancelled.eq.false'),
       supabase.from('salary_payments').select('amount').eq('employee_id', employeeId).eq('salary_month', monthDate).or('is_cancelled.is.null,is_cancelled.eq.false')
     ])
 
-    const advance = (advanceRows || []).filter(a => a.operation_type !== 'previous_month_balance').reduce((sum, a) => sum + parseNum(a.amount), 0)
-    const previousBalanceAmount = (previousBalanceRows || []).reduce((sum, a) => sum + parseNum(a.amount), 0)
+    const advance = (advanceRows || []).reduce((sum, a) => sum + parseNum(a.amount), 0)
     const paid = (payRows || []).reduce((sum, p) => sum + parseNum(p.amount), 0)
     const gross = parseNum(existing?.salary_gross || row.salary_gross)
     const deduction = parseNum(existing?.deduction_amount || row.deduction_amount)
-    const net = gross + previousBalanceAmount - advance - deduction
+    const net = gross - advance - deduction
 
     const { error: salaryError } = await supabase.from('salary_periods').upsert({
       employee_id: employeeId,
@@ -21126,9 +20903,7 @@ function Salaries({ t, view = 'employees', isAdmin = false }) {
       salary_gross: gross,
       salary_net: net,
       advance_amount: advance,
-      previous_balance_amount: previousBalanceAmount,
       deduction_amount: deduction,
-      final_balance: net - paid,
       card_payment: method === 'bank' ? paid : parseNum(existing?.card_payment || row.card_payment),
       cash_payment: method === 'cash' ? paid : parseNum(existing?.cash_payment || row.cash_payment),
       comment: existing?.comment || 'Автообновление после выплаты зарплаты'
@@ -21141,7 +20916,7 @@ function Salaries({ t, view = 'employees', isAdmin = false }) {
     await load()
 
     const parts = []
-    if (manualPreviousBalance > 0) parts.push(`сохранён остаток прошлого месяца к выплате: ${fmt(manualPreviousBalance)} AZN`)
+    if (manualPreviousBalance > 0) parts.push(`сохранён ручной долг прошлого месяца: ${fmt(manualPreviousBalance)} AZN`)
     if (previousPaidAmount > 0) parts.push(`закрыт остаток прошлого месяца: ${fmt(previousPaidAmount)} AZN`)
     if (previousExcessToAdvance > 0) parts.push(`превышение перенесено в аванс: ${fmt(previousExcessToAdvance)} AZN`)
     if (currentAmount > 0) parts.push(`оплата выбранного месяца: ${fmt(currentAmount)} AZN`)
@@ -21296,13 +21071,12 @@ function Salaries({ t, view = 'employees', isAdmin = false }) {
     acc.deductions += parseNum(r.deduction_amount)
     acc.net += parseNum(r.salary_net)
     acc.opening += parseNum(r.opening_balance)
-    acc.previousBalance += parseNum(r.previous_balance_amount)
     acc.payments += parseNum(r.payroll_payments)
     acc.balance += parseNum(r.final_balance)
     acc.card += parseNum(r.card_payment)
     acc.cash += parseNum(r.cash_payment)
     return acc
-  }, { gross: 0, advances: 0, deductions: 0, net: 0, opening: 0, previousBalance: 0, payments: 0, balance: 0, card: 0, cash: 0 })
+  }, { gross: 0, advances: 0, deductions: 0, net: 0, opening: 0, payments: 0, balance: 0, card: 0, cash: 0 })
 
   const branchTotals = staffGroupOptions(branches).map(b => {
     const branchRows = rows.filter(r => employeeGroupId(r.employees) === b.id)
@@ -21318,7 +21092,6 @@ function Salaries({ t, view = 'employees', isAdmin = false }) {
       deductions: visibleBranchRows.reduce((s, r) => s + parseNum(r.deduction_amount), 0),
       net: visibleBranchRows.reduce((s, r) => s + parseNum(r.salary_net), 0),
       opening: visibleBranchRows.reduce((s, r) => s + parseNum(r.opening_balance), 0),
-      previousBalance: visibleBranchRows.reduce((s, r) => s + parseNum(r.previous_balance_amount), 0),
       payments: visibleBranchRows.reduce((s, r) => s + parseNum(r.payroll_payments), 0),
       balance: visibleBranchRows.reduce((s, r) => s + parseNum(r.final_balance), 0)
     }
@@ -21478,34 +21251,29 @@ function Salaries({ t, view = 'employees', isAdmin = false }) {
 
   const salarySheetRows = rows
     .filter(r => r.employees?.employment_status !== 'terminated' && r.employees?.is_active !== false)
-    .map(r => {
-      const previousBalance = parseNum(r.previous_balance_amount ?? r.previous_balance ?? r.manual_previous_balance ?? 0)
-      return {
-        employee_id: r.employee_id,
-        branch: employeeGroupName(r.employees),
-        employee: r.employees?.full_name || '—',
-        position: r.employees?.position || '—',
-        days: parseNum(r.worked_days),
-        previous_balance: previousBalance,
-        base_salary: parseNum(r.employees?.monthly_salary),
-        accrued: parseNum(r.salary_gross),
-        advances: parseNum(r.advance_amount),
-        to_pay: parseNum(r.final_balance)
-      }
-    })
+    .map(r => ({
+      employee_id: r.employee_id,
+      branch: employeeGroupName(r.employees),
+      employee: r.employees?.full_name || '—',
+      position: r.employees?.position || '—',
+      days: parseNum(r.worked_days),
+      base_salary: parseNum(r.employees?.monthly_salary),
+      accrued: parseNum(r.salary_gross),
+      advances: parseNum(r.advance_amount),
+      to_pay: parseNum(r.final_balance)
+    }))
     .sort((a, b) => String(a.branch).localeCompare(String(b.branch)) || String(a.position).localeCompare(String(b.position)) || String(a.employee).localeCompare(String(b.employee)))
 
   const salarySheetTotals = salarySheetRows.reduce((acc, r) => {
-    acc.previousBalance += parseNum(r.previous_balance)
     acc.base += parseNum(r.base_salary)
     acc.accrued += parseNum(r.accrued)
     acc.advances += parseNum(r.advances)
     acc.toPay += parseNum(r.to_pay)
     return acc
-  }, { previousBalance: 0, base: 0, accrued: 0, advances: 0, toPay: 0 })
+  }, { base: 0, accrued: 0, advances: 0, toPay: 0 })
 
   function exportSalarySheetCsv() {
-    const headers = ['Филиал', 'Сотрудник', 'Должность', 'Остаток пред. месяца', 'Дни', 'Базовая зарплата', 'Начислено', 'Авансы', 'К выплате']
+    const headers = ['Филиал', 'Сотрудник', 'Должность', 'Дни', 'Базовая зарплата', 'Начислено', 'Авансы', 'К выплате']
     const escapeCsv = value => `"${String(value ?? '').replace(/"/g, '""')}"`
     const lines = [
       headers.map(escapeCsv).join(';'),
@@ -21513,14 +21281,13 @@ function Salaries({ t, view = 'employees', isAdmin = false }) {
         r.branch,
         r.employee,
         r.position,
-        fmt(r.previous_balance),
         fmt(r.days),
         fmt(r.base_salary),
         fmt(r.accrued),
         fmt(r.advances),
         fmt(r.to_pay)
       ].map(escapeCsv).join(';')),
-      ['ИТОГО', '', '', fmt(salarySheetTotals.previousBalance), '', fmt(salarySheetTotals.base), fmt(salarySheetTotals.accrued), fmt(salarySheetTotals.advances), fmt(salarySheetTotals.toPay)].map(escapeCsv).join(';')
+      ['ИТОГО', '', '', '', fmt(salarySheetTotals.base), fmt(salarySheetTotals.accrued), fmt(salarySheetTotals.advances), fmt(salarySheetTotals.toPay)].map(escapeCsv).join(';')
     ]
     const blob = new Blob(['\ufeff' + lines.join('\n')], { type: 'text/csv;charset=utf-8;' })
     const url = URL.createObjectURL(blob)
@@ -21539,7 +21306,6 @@ function Salaries({ t, view = 'employees', isAdmin = false }) {
       <td>${r.branch}</td>
       <td><b>${r.employee}</b></td>
       <td>${r.position}</td>
-      <td class="num prev ${r.previous_balance >= 0 ? 'good' : 'bad'}">${fmt(r.previous_balance)}</td>
       <td class="num">${fmt(r.days)}</td>
       <td class="num">${fmt(r.base_salary)}</td>
       <td class="num">${fmt(r.accrued)}</td>
@@ -21558,22 +21324,19 @@ function Salaries({ t, view = 'employees', isAdmin = false }) {
         table{width:100%;border-collapse:collapse;font-size:10.5px;table-layout:fixed}
         th{background:#eef2f7;color:#475569;text-align:left;padding:6px;border-bottom:1px solid #d7dee8}
         td{padding:6px;border-bottom:1px solid #e5e9ef;vertical-align:top;word-break:break-word}
-        th:nth-child(1),td:nth-child(1){width:14%}
-        th:nth-child(2),td:nth-child(2){width:18%}
-        th:nth-child(3),td:nth-child(3){width:12%}
-        th:nth-child(4),td:nth-child(4){width:12%}
-        th:nth-child(5),td:nth-child(5){width:6%}
+        th:nth-child(1),td:nth-child(1){width:17%}
+        th:nth-child(2),td:nth-child(2){width:22%}
+        th:nth-child(3),td:nth-child(3){width:15%}
+        th:nth-child(4),td:nth-child(4){width:7%}
+        th:nth-child(5),td:nth-child(5){width:13%}
         th:nth-child(6),td:nth-child(6){width:12%}
         th:nth-child(7),td:nth-child(7){width:10%}
-        th:nth-child(8),td:nth-child(8){width:8%}
-        th:nth-child(9),td:nth-child(9){width:8%}
+        th:nth-child(8),td:nth-child(8){width:12%}
         thead{display:table-header-group}
         tfoot{display:table-row-group}
         tr{page-break-inside:avoid}
         .num{text-align:right;white-space:nowrap}
         .pay{font-weight:900;color:#166534}
-        .good{color:#166534;font-weight:900}
-        .bad{color:#b91c1c;font-weight:900}
         tfoot td{background:#f8fafc;font-weight:900;border-top:2px solid #cbd5e1}
         .actions{width:210mm;margin:0 auto 10px;padding-top:10px}
         button{border:0;border-radius:10px;padding:9px 14px;background:#475569;color:white;font-weight:800}
@@ -21584,9 +21347,9 @@ function Salaries({ t, view = 'employees', isAdmin = false }) {
         <h1>${title}</h1>
         <div class="muted">${branchId === 'all' ? 'Все филиалы и группы' : (staffGroupOptions(branches).find(b => b.id === branchId)?.name || 'Филиал')}</div>
         <table>
-          <thead><tr><th>Филиал</th><th>Сотрудник</th><th>Должность</th><th class="num">Остаток пред. месяца</th><th class="num">Дни</th><th class="num">Базовая зарплата</th><th class="num">Начислено</th><th class="num">Авансы</th><th class="num">К выплате</th></tr></thead>
-          <tbody>${rowsHtml || '<tr><td colspan="9">Пока нет данных</td></tr>'}</tbody>
-          <tfoot><tr><td colspan="3">Итого</td><td class="num ${salarySheetTotals.previousBalance >= 0 ? 'good' : 'bad'}">${fmt(salarySheetTotals.previousBalance)}</td><td class="num">—</td><td class="num">${fmt(salarySheetTotals.base)}</td><td class="num">${fmt(salarySheetTotals.accrued)}</td><td class="num">${fmt(salarySheetTotals.advances)}</td><td class="num pay">${fmt(salarySheetTotals.toPay)}</td></tr></tfoot>
+          <thead><tr><th>Филиал</th><th>Сотрудник</th><th>Должность</th><th class="num">Дни</th><th class="num">Базовая зарплата</th><th class="num">Начислено</th><th class="num">Авансы</th><th class="num">К выплате</th></tr></thead>
+          <tbody>${rowsHtml || '<tr><td colspan="8">Пока нет данных</td></tr>'}</tbody>
+          <tfoot><tr><td colspan="3">Итого</td><td class="num">—</td><td class="num">${fmt(salarySheetTotals.base)}</td><td class="num">${fmt(salarySheetTotals.accrued)}</td><td class="num">${fmt(salarySheetTotals.advances)}</td><td class="num pay">${fmt(salarySheetTotals.toPay)}</td></tr></tfoot>
         </table>
       </div></div>
     </body></html>`
@@ -21603,7 +21366,7 @@ function Salaries({ t, view = 'employees', isAdmin = false }) {
       <section className="topbar">
         <div>
           <h2>Зарплатный лист</h2>
-          <p>Компактная таблица по сотрудникам: остаток прошлого месяца, начислено, авансы и итоговая сумма к выплате.</p>
+          <p>Компактная таблица по сотрудникам: филиал, должность, дни, базовая зарплата, начислено, авансы и сумма к выплате.</p>
         </div>
         <div className="action-row">
           <button className="ghost small" onClick={exportSalarySheetCsv}>CSV</button>
@@ -21622,7 +21385,6 @@ function Salaries({ t, view = 'employees', isAdmin = false }) {
           <div className="salary-kpi-grid salary-kpi-grid-sheet">
             <div className="salary-kpi-card salary-kpi-neutral"><span>Дни</span><strong>—</strong><small>по табелю</small></div>
             <div className="salary-kpi-card salary-kpi-blue"><span>Базовая зарплата</span><strong>{fmt(salarySheetTotals.base)}</strong><small>AZN</small></div>
-            <div className="salary-kpi-card salary-kpi-orange"><span>Остаток пред. месяца</span><strong className={salarySheetTotals.previousBalance >= 0 ? 'good' : 'bad'}>{fmt(salarySheetTotals.previousBalance)}</strong><small>перенос</small></div>
             <div className="salary-kpi-card salary-kpi-green"><span>Начислено</span><strong>{fmt(salarySheetTotals.accrued)}</strong><small>AZN</small></div>
             <div className="salary-kpi-card salary-kpi-orange"><span>Авансы</span><strong>{fmt(salarySheetTotals.advances)}</strong><small>AZN</small></div>
             <div className="salary-kpi-card salary-kpi-balance"><span>К выплате</span><strong className={salarySheetTotals.toPay >= 0 ? 'good' : 'bad'}>{fmt(salarySheetTotals.toPay)}</strong><small>итог</small></div>
@@ -21646,7 +21408,6 @@ function Salaries({ t, view = 'employees', isAdmin = false }) {
                   <th>Филиал</th>
                   <th>Сотрудник</th>
                   <th>Должность</th>
-                  <th>Остаток пред. месяца</th>
                   <th>Дни</th>
                   <th>Базовая зарплата</th>
                   <th>Начислено</th>
@@ -21659,19 +21420,17 @@ function Salaries({ t, view = 'employees', isAdmin = false }) {
                   <td>{r.branch}</td>
                   <td><strong>{r.employee}</strong></td>
                   <td>{r.position}</td>
-                  <td><strong className={r.previous_balance >= 0 ? 'good' : 'bad'}>{fmt(r.previous_balance)}</strong></td>
                   <td>{fmt(r.days)}</td>
                   <td>{fmt(r.base_salary)}</td>
                   <td>{fmt(r.accrued)}</td>
                   <td>{fmt(r.advances)}</td>
                   <td><strong className={r.to_pay >= 0 ? 'good' : 'bad'}>{fmt(r.to_pay)}</strong></td>
                 </tr>)}
-                {!salarySheetRows.length && <tr><td colSpan="9" className="hint">Пока нет данных за выбранный период.</td></tr>}
+                {!salarySheetRows.length && <tr><td colSpan="8" className="hint">Пока нет данных за выбранный период.</td></tr>}
               </tbody>
               <tfoot>
                 <tr>
                   <td colSpan="3"><strong>Итого</strong></td>
-                  <td><strong className={salarySheetTotals.previousBalance >= 0 ? 'good' : 'bad'}>{fmt(salarySheetTotals.previousBalance)}</strong></td>
                   <td><strong>—</strong></td>
                   <td><strong>{fmt(salarySheetTotals.base)}</strong></td>
                   <td><strong>{fmt(salarySheetTotals.accrued)}</strong></td>
@@ -21700,7 +21459,7 @@ function Salaries({ t, view = 'employees', isAdmin = false }) {
           <div className="salary-kpi-card salary-kpi-green"><span>Начислено</span><strong>{fmt(totals.gross)}</strong><small>AZN · за месяц</small></div>
           <div className="salary-kpi-card salary-kpi-orange"><span>Авансы</span><strong>{fmt(totals.advances)}</strong><small>AZN · выдано</small></div>
           <div className="salary-kpi-card salary-kpi-red"><span>Удержания</span><strong>{fmt(totals.deductions)}</strong><small>AZN · корректировки</small></div>
-          <div className="salary-kpi-card salary-kpi-blue"><span>Остаток пред. месяца</span><strong>{fmt(totals.previousBalance || 0)}</strong><small>только вручную</small></div>
+          <div className="salary-kpi-card salary-kpi-blue"><span>Долг на начало</span><strong>{fmt(totals.opening)}</strong><small>AZN · прошлый период</small></div>
           <div className="salary-kpi-card salary-kpi-purple"><span>Выплачено</span><strong>{fmt(totals.payments)}</strong><small>AZN · за месяц</small></div>
           <div className="salary-kpi-card salary-kpi-balance"><span>Итоговый баланс</span><strong className={totals.balance >= 0 ? 'good' : 'bad'}>{fmt(totals.balance)}</strong><small>{totals.balance >= 0 ? 'к выплате' : 'переплата'}</small></div>
         </div>
@@ -22061,12 +21820,10 @@ function Advances({ t }) {
   const [advanceGroupId, setAdvanceGroupId] = useState(STAFF_GROUP_MANAGERS)
   const [employees, setEmployees] = useState([])
   const [advances, setAdvances] = useState([])
-  const [previousBalances, setPreviousBalances] = useState([])
   const [salaryPeriods, setSalaryPeriods] = useState([])
   const [salaryPayments, setSalaryPayments] = useState([])
   const [profiles, setProfiles] = useState([])
   const [form, setForm] = useState({ employee_id: '', advance_date: todayISO(), amount: '', comment: '' })
-  const [previousBalanceForm, setPreviousBalanceForm] = useState({ employee_id: '', balance_date: todayISO(), amount: '', comment: '' })
   const [message, setMessage] = useState('')
   const [editAdvanceId, setEditAdvanceId] = useState('')
   const [editAdvanceForm, setEditAdvanceForm] = useState({ advance_date: '', amount: '', comment: '' })
@@ -22079,7 +21836,6 @@ function Advances({ t }) {
   const filterEmployees = employees.filter(e => matchesStaffGroup(e, branchId))
   useEffect(() => {
     if (!formEmployees.some(e => e.id === form.employee_id)) setForm(f => ({ ...f, employee_id: formEmployees[0]?.id || '' }))
-    if (!formEmployees.some(e => e.id === previousBalanceForm.employee_id)) setPreviousBalanceForm(f => ({ ...f, employee_id: formEmployees[0]?.id || '' }))
   }, [advanceGroupId, employees])
   useEffect(() => {
     if (employeeFilter !== 'all' && !filterEmployees.some(e => e.id === employeeFilter)) setEmployeeFilter('all')
@@ -22106,24 +21862,21 @@ function Advances({ t }) {
     setMessage('')
     const empQ = supabase.from('employees').select('*, branches(name)').order('branch_id').order('position').order('full_name')
     const advQ = supabase.from('salary_advances').select('*, employees(full_name, position, monthly_salary, branch_id), branches(name)').gte('advance_date', monthDate).lte('advance_date', monthEnd).order('advance_date', { ascending: false }).order('created_at', { ascending: false })
-    const prevBalanceQ = supabase.from('salary_previous_balances').select('*, employees(full_name, position, monthly_salary, branch_id), branches(name)').eq('target_salary_month', monthDate).order('created_at', { ascending: false })
     const salQ = supabase.from('salary_periods').select('*').eq('salary_month', monthDate)
     const payQ = supabase.from('salary_payments').select('*').eq('salary_month', monthDate).or('is_cancelled.is.null,is_cancelled.eq.false')
     const [
       { data: emp, error: empError },
       { data: adv, error: advError },
-      { data: prevBalances, error: prevBalanceError },
       { data: sal },
       { data: pay },
       { data: prof }
-    ] = await Promise.all([empQ, advQ, prevBalanceQ, salQ, payQ, supabase.from('user_profiles').select('id, full_name, email, login_name')])
-    if (empError || advError || prevBalanceError) {
-      setMessage(empError?.message || advError?.message || prevBalanceError?.message)
+    ] = await Promise.all([empQ, advQ, salQ, payQ, supabase.from('user_profiles').select('id, full_name, email, login_name')])
+    if (empError || advError) {
+      setMessage(empError?.message || advError?.message)
       return
     }
     setEmployees(emp || [])
     setAdvances(adv || [])
-    setPreviousBalances(prevBalances || [])
     setSalaryPeriods(sal || [])
     setSalaryPayments(pay || [])
     setProfiles(prof || [])
@@ -22136,56 +21889,22 @@ function Advances({ t }) {
   }
 
   function advanceStatus(row) {
-    const createdBy = row.created_by_text || userName(row.created_by)
-    const updatedBy = row.updated_by_text || userName(row.updated_by)
-    const cancelledBy = row.cancelled_by_text || userName(row.cancelled_by)
-    if (row.is_cancelled) return `Отменено: ${formatDT(row.cancelled_at)} · ${cancelledBy}`
-    if (row.updated_at && (row.updated_by || row.updated_by_text)) return `Изменено: ${formatDT(row.updated_at)} · ${updatedBy}`
-    return `Создано: ${formatDT(row.created_at)} · ${createdBy}`
-  }
-
-  function advanceType(row) {
-    return row.operation_type === 'previous_month_balance' ? 'Остаток прошлого месяца' : 'Аванс'
-  }
-
-  function advanceTypeShort(row) {
-    return row.operation_type === 'previous_month_balance' ? 'Остаток' : 'Аванс'
-  }
-
-  function salaryJournalActor(row) {
-    const raw = row.updated_by_text || row.created_by_text || userName(row.updated_by || row.created_by)
-    if (!raw || raw === '—') return '—'
-    const base = String(raw).split('@')[0].replace(/[._-]+/g, ' ').trim()
-    if (!base) return raw
-    return base.charAt(0).toUpperCase() + base.slice(1)
-  }
-
-  function salaryJournalDate(row) {
-    const value = row.is_cancelled ? row.cancelled_at : (row.updated_at || row.created_at)
-    if (!value) return '—'
-    try {
-      return new Date(value).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' })
-    } catch (_e) {
-      return '—'
-    }
+    if (row.is_cancelled) return `Отменено: ${formatDT(row.cancelled_at)} · ${userName(row.cancelled_by)}`
+    if (row.updated_at && row.updated_by) return `Изменено: ${formatDT(row.updated_at)} · ${userName(row.updated_by)}`
+    return `Создано: ${formatDT(row.created_at)} · ${userName(row.created_by)}`
   }
 
   async function refreshSalaryForEmployee(employeeId) {
     const emp = employees.find(e => e.id === employeeId)
     if (!emp) return
-    const [{ data: existing }, { data: advanceRows }, { data: previousBalanceRows }] = await Promise.all([
+    const [{ data: existing }, { data: advanceRows }] = await Promise.all([
       supabase.from('salary_periods').select('*').eq('employee_id', employeeId).eq('salary_month', monthDate).maybeSingle(),
-      supabase.from('salary_advances').select('amount, operation_type').eq('employee_id', employeeId).gte('advance_date', monthDate).lte('advance_date', monthEnd).or('is_cancelled.is.null,is_cancelled.eq.false'),
-      supabase.from('salary_previous_balances').select('amount').eq('employee_id', employeeId).eq('target_salary_month', monthDate).or('is_cancelled.is.null,is_cancelled.eq.false')
+      supabase.from('salary_advances').select('amount').eq('employee_id', employeeId).gte('advance_date', monthDate).lte('advance_date', monthEnd).or('is_cancelled.is.null,is_cancelled.eq.false')
     ])
-    const advanceTotal = (advanceRows || []).filter(r => r.operation_type !== 'previous_month_balance').reduce((s, r) => s + parseNum(r.amount), 0)
-    const legacyPreviousBalanceTotal = (advanceRows || []).filter(r => r.operation_type === 'previous_month_balance').reduce((s, r) => s + parseNum(r.amount), 0)
-    const previousBalanceTotal = (previousBalanceRows || []).reduce((s, r) => s + parseNum(r.amount), 0) + legacyPreviousBalanceTotal
+    const advanceTotal = (advanceRows || []).reduce((s, r) => s + parseNum(r.amount), 0)
     const gross = parseNum(existing?.salary_gross)
     const deduction = parseNum(existing?.deduction_amount)
-    const paid = parseNum(existing?.payroll_payments)
-    const opening = 0
-    const net = gross + previousBalanceTotal - advanceTotal - deduction
+    const net = gross - advanceTotal - deduction
     await supabase.from('salary_periods').upsert({
       employee_id: employeeId,
       branch_id: emp.branch_id || null,
@@ -22193,13 +21912,10 @@ function Advances({ t }) {
       worked_days: parseNum(existing?.worked_days),
       salary_gross: gross,
       advance_amount: advanceTotal,
-      previous_balance_amount: previousBalanceTotal,
       deduction_amount: deduction,
       card_payment: parseNum(existing?.card_payment),
       cash_payment: parseNum(existing?.cash_payment),
       salary_net: net,
-      payroll_payments: paid,
-      final_balance: net - paid,
       comment: existing?.comment || ''
     }, { onConflict: 'employee_id,salary_month' })
   }
@@ -22217,41 +21933,12 @@ function Advances({ t }) {
       advance_date: form.advance_date || todayISO(),
       amount,
       comment: form.comment || null,
-      operation_type: 'advance',
       created_by: user.user_id,
-      updated_by: user.user_id,
-      created_by_text: user.user_email || null,
-      updated_by_text: user.user_email || null
+      updated_by: user.user_id
     })
     if (error) return setMessage(error.message)
     await refreshSalaryForEmployee(emp.id)
     setForm(f => ({ ...f, amount: '', comment: '' }))
-    await load()
-    setMessage(t('saved'))
-  }
-
-  async function addPreviousBalance() {
-    setMessage('')
-    const emp = employees.find(e => e.id === previousBalanceForm.employee_id)
-    if (!emp) return setMessage('Выберите сотрудника')
-    const amount = parseNum(previousBalanceForm.amount)
-    if (!amount) return setMessage('Введите сумму остатка')
-    const user = await currentUserMeta()
-    const { error } = await supabase.from('salary_previous_balances').insert({
-      employee_id: emp.id,
-      branch_id: emp.branch_id || null,
-      balance_month: previousBalanceForm.balance_date || todayISO(),
-      target_salary_month: monthDate,
-      amount,
-      comment: previousBalanceForm.comment || 'Остаток зарплаты за прошлый месяц',
-      created_by: user.user_id,
-      updated_by: user.user_id,
-      created_by_label: user.user_email || null,
-      updated_by_label: user.user_email || null
-    })
-    if (error) return setMessage(error.message)
-    await refreshSalaryForEmployee(emp.id)
-    setPreviousBalanceForm(f => ({ ...f, amount: '', comment: '' }))
     await load()
     setMessage(t('saved'))
   }
@@ -22276,24 +21963,14 @@ function Advances({ t }) {
     const amount = parseNum(editAdvanceForm.amount)
     if (!amount) return setMessage('Введите сумму аванса')
     const user = await currentUserMeta()
-    const targetTable = row.source_table === 'salary_previous_balances' ? 'salary_previous_balances' : 'salary_advances'
-    const isPreviousBalance = targetTable === 'salary_previous_balances'
-    const payload = isPreviousBalance ? {
-      balance_month: editAdvanceForm.advance_date || row.advance_date,
-      amount,
-      comment: editAdvanceForm.comment || null,
-      updated_at: new Date().toISOString(),
-      updated_by: user.user_id,
-      updated_by_label: user.user_email || null
-    } : {
+    const payload = {
       advance_date: editAdvanceForm.advance_date || row.advance_date,
       amount,
       comment: editAdvanceForm.comment || null,
       updated_at: new Date().toISOString(),
-      updated_by: user.user_id,
-      updated_by_text: user.user_email || null
+      updated_by: user.user_id
     }
-    const { error } = await supabase.from(targetTable).update(payload).eq('id', row.id)
+    const { error } = await supabase.from('salary_advances').update(payload).eq('id', row.id)
     if (error) return setMessage(error.message)
     await refreshSalaryForEmployee(row.employee_id)
     cancelEditAdvance()
@@ -22304,44 +21981,18 @@ function Advances({ t }) {
   async function deleteAdvance(row) {
     setMessage('')
     if (row.is_cancelled) return
-    const ok = window.confirm('Отменить эту операцию? Строка будет скрыта из активного журнала и не будет учитываться в расчётах.')
+    const ok = window.confirm('Отменить этот аванс? Строка останется в журнале перечёркнутой и не будет учитываться в расчётах.')
     if (!ok) return
     const user = await currentUserMeta()
-    const targetTable = row.source_table === 'salary_previous_balances' ? 'salary_previous_balances' : 'salary_advances'
-
-    // v240.11: use SECURITY DEFINER RPC first, because RMS internal login works through anon key
-    // and direct update can be blocked by RLS in some environments.
-    const { error: rpcError } = await supabase.rpc('rms_salary_movement_cancel', {
-      p_id: row.id,
-      p_source_table: targetTable,
-      p_user_text: user.user_email || user.user_id || 'RMS',
-      p_comment: 'Отменено через журнал движения по сотрудникам'
-    })
-
-    if (rpcError) {
-      const isPreviousBalance = targetTable === 'salary_previous_balances'
-      const { error } = await supabase.from(targetTable).update(isPreviousBalance ? {
-        is_cancelled: true,
-        cancelled_at: new Date().toISOString(),
-        cancelled_by: user.user_id,
-        cancelled_by_label: user.user_email || null,
-        updated_at: new Date().toISOString(),
-        updated_by: user.user_id,
-        updated_by_label: user.user_email || null,
-        cancel_comment: 'Отменено через журнал движения по сотрудникам'
-      } : {
-        is_cancelled: true,
-        cancelled_at: new Date().toISOString(),
-        cancelled_by: user.user_id,
-        cancelled_by_text: user.user_email || null,
-        updated_at: new Date().toISOString(),
-        updated_by: user.user_id,
-        updated_by_text: user.user_email || null,
-        cancel_comment: 'Отменено через журнал движения по сотрудникам'
-      }).eq('id', row.id)
-      if (error) return setMessage(error.message || rpcError.message)
-    }
-
+    const { error } = await supabase.from('salary_advances').update({
+      is_cancelled: true,
+      cancelled_at: new Date().toISOString(),
+      cancelled_by: user.user_id,
+      updated_at: new Date().toISOString(),
+      updated_by: user.user_id,
+      cancel_comment: 'Отменено через журнал авансов'
+    }).eq('id', row.id)
+    if (error) return setMessage(error.message)
     await refreshSalaryForEmployee(row.employee_id)
     await load()
     setMessage(t('saved'))
@@ -22350,34 +22001,15 @@ function Advances({ t }) {
   const displayedEmployees = employees
     .filter(e => matchesStaffGroup(e, branchId))
     .filter(e => employeeFilter === 'all' || e.id === employeeFilter)
-  const movementRows = [
-    ...(advances || []).map(a => ({ ...a, operation_type: a.operation_type || 'advance', source_table: 'salary_advances' })),
-    ...(previousBalances || []).map(b => ({
-      ...b,
-      operation_type: 'previous_month_balance',
-      source_table: 'salary_previous_balances',
-      advance_date: b.balance_month || b.created_at,
-      created_by_text: b.created_by_label || b.created_by_text,
-      updated_by_text: b.updated_by_label || b.updated_by_text,
-      cancelled_by_text: b.cancelled_by_label || b.cancelled_by_text,
-      employees: b.employees,
-      branches: b.branches
-    }))
-  ].sort((a, b) => String(b.advance_date || b.created_at || '').localeCompare(String(a.advance_date || a.created_at || '')))
-  const displayedAdvances = movementRows
+  const displayedAdvances = advances
     .filter(a => matchesStaffGroup({ branch_id: a.branch_id, branches: a.branches }, branchId))
     .filter(a => employeeFilter === 'all' || a.employee_id === employeeFilter)
   const activeAdvances = displayedAdvances.filter(a => !a.is_cancelled)
-  const activeAdvanceRows = activeAdvances.filter(a => a.operation_type !== 'previous_month_balance')
-  const activePreviousBalanceRows = activeAdvances.filter(a => a.operation_type === 'previous_month_balance')
 
-  const totalAdvance = activeAdvanceRows.reduce((s, r) => s + parseNum(r.amount), 0)
-  const totalPreviousBalance = activePreviousBalanceRows.reduce((s, r) => s + parseNum(r.amount), 0)
+  const totalAdvance = activeAdvances.reduce((s, r) => s + parseNum(r.amount), 0)
   const salaryPeriodByEmployee = new Map((salaryPeriods || []).map(r => [r.employee_id, r]))
   const activeAdvancesByEmployee = new Map()
-  ;(activeAdvanceRows || []).forEach(a => activeAdvancesByEmployee.set(a.employee_id, parseNum(activeAdvancesByEmployee.get(a.employee_id)) + parseNum(a.amount)))
-  const previousBalanceByEmployee = new Map()
-  ;(activePreviousBalanceRows || []).forEach(a => previousBalanceByEmployee.set(a.employee_id, parseNum(previousBalanceByEmployee.get(a.employee_id)) + parseNum(a.amount)))
+  ;(activeAdvances || []).forEach(a => activeAdvancesByEmployee.set(a.employee_id, parseNum(activeAdvancesByEmployee.get(a.employee_id)) + parseNum(a.amount)))
   const salaryPaymentsByEmployee = new Map()
   ;(salaryPayments || []).filter(p => !p.is_cancelled).forEach(p => salaryPaymentsByEmployee.set(p.employee_id, parseNum(salaryPaymentsByEmployee.get(p.employee_id)) + parseNum(p.amount)))
   const salaryBalance = displayedEmployees.reduce((sum, e) => {
@@ -22385,17 +22017,15 @@ function Advances({ t }) {
     const gross = salary ? parseNum(salary.salary_gross) : parseNum(e.monthly_salary)
     const deduction = parseNum(salary?.deduction_amount)
     const advancesAmount = parseNum(activeAdvancesByEmployee.get(e.id))
-    const previousBalanceAmount = parseNum(previousBalanceByEmployee.get(e.id))
     const paid = parseNum(salaryPaymentsByEmployee.get(e.id))
-    return sum + gross + previousBalanceAmount - deduction - advancesAmount - paid
+    return sum + gross - deduction - advancesAmount - paid
   }, 0)
   const branchTotals = staffGroupOptions(branches).map(b => ({
     id: b.id,
     name: b.name,
     employees: displayedEmployees.filter(e => employeeGroupId(e) === b.id).length,
-    amount: activeAdvanceRows.filter(a => (a.branch_id || STAFF_GROUP_MANAGERS) === b.id).reduce((s, a) => s + parseNum(a.amount), 0),
-    previousBalance: activePreviousBalanceRows.filter(a => (a.branch_id || STAFF_GROUP_MANAGERS) === b.id).reduce((s, a) => s + parseNum(a.amount), 0)
-  })).filter(b => branchId === 'all' ? (b.amount || b.previousBalance || b.employees) : b.id === branchId)
+    amount: activeAdvances.filter(a => (a.branch_id || STAFF_GROUP_MANAGERS) === b.id).reduce((s, a) => s + parseNum(a.amount), 0)
+  })).filter(b => branchId === 'all' ? (b.amount || b.employees) : b.id === branchId)
 
   const advancePageTotal = Math.max(1, Math.ceil(displayedAdvances.length / advancePageSize))
   const safeAdvancePage = Math.min(advancePage, advancePageTotal)
@@ -22417,21 +22047,8 @@ function Advances({ t }) {
       </div>
 
       <div className="card span-2">
-        <h3>Остаток прошлого месяца</h3>
-        <p className="hint">Сумма, которую компания должна сотруднику с прошлого месяца. Она добавляется к сумме к выплате и фиксируется в общем журнале.</p>
-        <div className="form-grid compact">
-          <label><span>Филиал / группа</span><select value={advanceGroupId} onChange={e => setAdvanceGroupId(e.target.value)}>{staffGroupOptions(branches).map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label>
-          <label><span>Сотрудник</span><select value={previousBalanceForm.employee_id} onChange={e => setPreviousBalanceForm({...previousBalanceForm, employee_id: e.target.value})}>{formEmployees.map(e => <option key={e.id} value={e.id}>{positionGroup(e.position)} · {e.full_name}</option>)}</select></label>
-          <label><span>Дата</span><DateInput value={previousBalanceForm.balance_date} onChange={e => setPreviousBalanceForm({...previousBalanceForm, balance_date: e.target.value})} /></label>
-          <label><span>Сумма остатка</span><input value={previousBalanceForm.amount} onChange={e => setPreviousBalanceForm({...previousBalanceForm, amount: e.target.value})} placeholder="0.00" /></label>
-          <label><span>Комментарий</span><input value={previousBalanceForm.comment} onChange={e => setPreviousBalanceForm({...previousBalanceForm, comment: e.target.value})} placeholder="Например: остаток зарплаты за май" /></label>
-        </div><br />
-        <button className="small" onClick={addPreviousBalance}>+ Добавить остаток</button>
-      </div>
-
-      <div className="card span-2">
-        <h3>Журнал движения по сотрудникам</h3>
-        <p className="hint">По умолчанию строки закрыты от изменений. Авансы и остатки прошлого месяца фиксируются отдельными строками; изменения логируются по времени и пользователю.</p>
+        <h3>Журнал авансов</h3>
+        <p className="hint">По умолчанию строки закрыты от изменений. Для правки нажмите “Редактировать”; изменения фиксируются по времени и пользователю.</p>
         <div className="form-grid compact">
           <label><span>{t('year')}</span><select value={year} onChange={e => setYear(Number(e.target.value))}>{defaultYears().map(y => <option key={y} value={y}>{y}</option>)}</select></label>
           <label><span>{t('month')}</span><select value={month} onChange={e => setMonth(Number(e.target.value))}>{I18N.ru.months.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}</select></label>
@@ -22439,8 +22056,7 @@ function Advances({ t }) {
           <label><span>Сотрудник</span><select value={employeeFilter} onChange={e => setEmployeeFilter(e.target.value)}><option value="all">Все сотрудники</option>{filterEmployees.map(e => <option key={e.id} value={e.id}>{positionGroup(e.position)} · {e.full_name}</option>)}</select></label>
         </div>
         <div className="mini-grid" style={{marginTop:12}}>
-          <div className="metric"><span>Авансы за месяц</span><strong>{fmt(totalAdvance)}</strong></div>
-          <div className="metric"><span>Остатки прошлого месяца</span><strong>{fmt(totalPreviousBalance)}</strong></div>
+          <div className="metric"><span>Итого авансы за месяц</span><strong>{fmt(totalAdvance)}</strong></div>
           <div className="metric"><span>Остаток по зарплате</span><strong className={salaryBalance < 0 ? 'bad' : ''}>{fmt(salaryBalance)}</strong></div>
         </div>
         {message && <p className={`hint ${message === t('saved') ? 'save-status' : 'bad'}`}>{message}</p>}
@@ -22448,19 +22064,19 @@ function Advances({ t }) {
 
       <div className="card span-2">
         <div className="card-head"><div></div><label style={{display:'flex',alignItems:'center',gap:8}}><span className="hint">Показать</span><select value={advancePageSize} onChange={e => { setAdvancePageSize(Number(e.target.value)); setAdvancePage(1) }}><option value={10}>10</option><option value={20}>20</option><option value={30}>30</option><option value={50}>50</option></select></label></div>
-        <div className="table-wrap salary-movement-wrap"><table className="salary-movement-table">
-          <thead><tr><th className="salary-col-date">Дата</th><th className="salary-col-type">Тип</th><th className="salary-col-branch">Филиал</th><th className="salary-col-employee">Сотрудник</th><th className="salary-col-amount">Сумма</th><th className="salary-col-comment">Комментарий</th><th className="salary-col-status">Кто внёс</th><th className="salary-col-actions"></th></tr></thead>
+        <div className="table-wrap"><table>
+          <thead><tr><th>Дата</th><th>Филиал</th><th>Должность</th><th style={{minWidth:220}}>Сотрудник</th><th>Сумма</th><th>Комментарий</th><th>Статус</th><th></th></tr></thead>
           <tbody>{pagedAdvances.map(a => {
             const isEditing = editAdvanceId === a.id
             return <tr key={a.id} className={a.is_cancelled ? 'cancelled-row' : ''}>
               <td>{isEditing ? <DateInput value={editAdvanceForm.advance_date} onChange={e => setEditAdvanceForm(f => ({...f, advance_date: e.target.value}))} /> : String(a.advance_date || '—')}</td>
-              <td className="salary-cell-type"><span className={a.operation_type === 'previous_month_balance' ? 'salary-op-badge balance' : 'salary-op-badge advance'}>{advanceTypeShort(a)}</span></td>
-              <td className="salary-cell-branch">{employeeGroupName({ branch_id: a.branch_id, branches: a.branches })}</td>
-              <td className="salary-cell-employee"><strong>{a.employees?.full_name || '—'}</strong><small>{positionGroup(a.employees?.position)}</small></td>
-              <td className="salary-cell-amount">{isEditing ? <input value={editAdvanceForm.amount} onChange={e => setEditAdvanceForm(f => ({...f, amount: e.target.value}))} /> : <strong>{fmt(a.amount)}</strong>}</td>
-              <td className="salary-cell-comment">{isEditing ? <input value={editAdvanceForm.comment} onChange={e => setEditAdvanceForm(f => ({...f, comment: e.target.value}))} /> : <span title={a.comment || '—'}>{a.comment || '—'}</span>}</td>
-              <td className="salary-cell-status"><div className="salary-status-box" title={advanceStatus(a)}><div className="salary-status-meta"><b>{salaryJournalDate(a)}</b><span>·</span><small>{salaryJournalActor(a)}</small></div><div className={a.is_cancelled ? 'salary-save-pill cancelled' : 'salary-save-pill saved'}>{a.is_cancelled ? '× Отменено' : '✓ Сохранено'}</div></div></td>
-              <td className="actions-cell salary-actions-cell">
+              <td>{employeeGroupName({ branch_id: a.branch_id, branches: a.branches })}</td>
+              <td>{positionGroup(a.employees?.position)} · {a.employees?.position || '—'}</td>
+              <td>{a.employees?.full_name || '—'}</td>
+              <td>{isEditing ? <input value={editAdvanceForm.amount} onChange={e => setEditAdvanceForm(f => ({...f, amount: e.target.value}))} /> : <strong>{fmt(a.amount)}</strong>}</td>
+              <td>{isEditing ? <input value={editAdvanceForm.comment} onChange={e => setEditAdvanceForm(f => ({...f, comment: e.target.value}))} /> : (a.comment || '—')}</td>
+              <td className="hint" style={{minWidth:220}}>{advanceStatus(a)}</td>
+              <td className="actions-cell">
                 {isEditing ? <>
                   <button className="small" onClick={() => saveAdvance(a)}>Сохранить</button>
                   <button className="small ghost" onClick={cancelEditAdvance}>Отмена</button>
@@ -22470,7 +22086,7 @@ function Advances({ t }) {
                 </>}
               </td>
             </tr>
-          })}{!displayedAdvances.length && <tr><td colSpan="8" className="hint">Операций за выбранный период нет.</td></tr>}</tbody>
+          })}{!displayedAdvances.length && <tr><td colSpan="8" className="hint">Авансов за выбранный период нет.</td></tr>}</tbody>
         </table></div>
         <div className="action-row" style={{margin:'12px 0 0'}}>
           <button className="ghost small" disabled={safeAdvancePage <= 1} onClick={() => setAdvancePage(p => Math.max(1, p - 1))}>← Пред.</button>
@@ -22480,10 +22096,10 @@ function Advances({ t }) {
       </div>
 
       <div className="card span-2">
-        <h3>Сводка движения по филиалам</h3>
+        <h3>Сводка авансов по филиалам</h3>
         <div className="table-wrap"><table>
-          <thead><tr><th>Филиал / группа</th><th>Сотрудников</th><th>Авансы</th><th>Остатки прошлого месяца</th></tr></thead>
-          <tbody>{branchTotals.map(b => <tr key={b.id}><td>{b.name}</td><td><strong>{b.employees}</strong></td><td><strong>{fmt(b.amount)}</strong></td><td><strong>{fmt(b.previousBalance)}</strong></td></tr>)}{!branchTotals.length && <tr><td colSpan="4" className="hint">Нет операций за выбранный период.</td></tr>}</tbody>
+          <thead><tr><th>Филиал / группа</th><th>Сотрудников</th><th>Авансы</th></tr></thead>
+          <tbody>{branchTotals.map(b => <tr key={b.id}><td>{b.name}</td><td><strong>{b.employees}</strong></td><td><strong>{fmt(b.amount)}</strong></td></tr>)}{!branchTotals.length && <tr><td colSpan="3" className="hint">Нет авансов за выбранный период.</td></tr>}</tbody>
         </table></div>
       </div>
     </section>
@@ -31226,6 +30842,7 @@ function Settings({ session, t, theme, setTheme }) {
   const [passwordEdits, setPasswordEdits] = useState({})
   const [clearConfirm, setClearConfirm] = useState('')
   const [backupBusy, setBackupBusy] = useState(false)
+  const [backupProgress, setBackupProgress] = useState({ active: false, percent: 0, label: '' })
   const [employeeImportText, setEmployeeImportText] = useState('')
   const [employeeImportRows, setEmployeeImportRows] = useState([])
   const [employeeImportBusy, setEmployeeImportBusy] = useState(false)
@@ -31673,12 +31290,53 @@ function Settings({ session, t, theme, setTheme }) {
     if (error) setMsg(error.message); else { setMsg(t('saved')); load() }
   }
 
+  function updateBackupProgress(percent, label) {
+    const safePercent = Math.max(0, Math.min(100, Math.round(Number(percent) || 0)))
+    const next = { active: safePercent < 100, percent: safePercent, label: label || '' }
+    setBackupProgress(next)
+    try {
+      window.dispatchEvent(new CustomEvent(RMS_GLOBAL_PROGRESS_EVENT, {
+        detail: { active: true, progress: safePercent, label: label || 'Выполняется бэкап RMS...' }
+      }))
+    } catch (_e) {}
+  }
+
+  function finishBackupProgress(label = 'Бэкап RMS готов') {
+    setBackupProgress({ active: true, percent: 100, label })
+    try {
+      window.dispatchEvent(new CustomEvent(RMS_GLOBAL_PROGRESS_EVENT, { detail: { active: true, progress: 100, label } }))
+      setTimeout(() => window.dispatchEvent(new CustomEvent(RMS_GLOBAL_PROGRESS_EVENT, { detail: { active: false, progress: 0, label: '' } })), 300)
+    } catch (_e) {}
+    setTimeout(() => setBackupProgress({ active: false, percent: 0, label: '' }), 900)
+  }
+
+  function renderBackupProgress() {
+    if (!backupBusy && !backupProgress.active) return null
+    const percent = Math.max(0, Math.min(100, Math.round(backupProgress.percent || 0)))
+    return (
+      <div style={{margin:'14px 0 4px', padding:'14px 16px', border:'1px solid #e5e7eb', borderRadius:16, background:'#f8fafc'}}>
+        <div style={{display:'flex', justifyContent:'space-between', gap:12, alignItems:'center', marginBottom:8}}>
+          <b style={{fontSize:13, color:'#111827'}}>{backupProgress.label || 'Выполняется бэкап RMS...'}</b>
+          <strong style={{fontSize:13, color:'#111827'}}>{percent}%</strong>
+        </div>
+        <div style={{height:10, borderRadius:999, background:'#e5e7eb', overflow:'hidden'}}>
+          <div style={{height:'100%', width:`${percent}%`, borderRadius:999, background:'linear-gradient(90deg,#2563eb,#16a34a)', transition:'width .25s ease'}} />
+        </div>
+      </div>
+    )
+  }
+
   async function exportBackup() {
     setMsg('')
     setBackupBusy(true)
+    updateBackupProgress(8, 'Подготовка операционного бэкапа...')
     const { data, error } = await supabase.rpc('nms_backup_operational_data')
-    setBackupBusy(false)
-    if (error) return setMsg(error.message)
+    if (error) {
+      setBackupBusy(false)
+      setBackupProgress({ active: false, percent: 0, label: '' })
+      return setMsg(error.message)
+    }
+    updateBackupProgress(80, 'Формирование JSON-файла...')
     const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json;charset=utf-8' })
     const url = URL.createObjectURL(blob)
@@ -31689,6 +31347,8 @@ function Settings({ session, t, theme, setTheme }) {
     a.click()
     a.remove()
     URL.revokeObjectURL(url)
+    finishBackupProgress('Операционный бэкап скачан')
+    setBackupBusy(false)
     setMsg('Бэкап данных скачан')
   }
 
@@ -31765,6 +31425,7 @@ function Settings({ session, t, theme, setTheme }) {
   async function exportFullRmsBackup() {
     setMsg('')
     setBackupBusy(true)
+    updateBackupProgress(2, 'Подготовка полного бэкапа RMS...')
     const backup = {
       backup_type: 'rms_full_restore_backup',
       version: 2,
@@ -31778,17 +31439,40 @@ function Settings({ session, t, theme, setTheme }) {
       table_list: RMS_FULL_BACKUP_TABLES
     }
 
-    for (const table of RMS_FULL_BACKUP_TABLES) {
-      const { rows, error } = await readAllRowsForBackup(table)
-      if (error) backup.table_errors[table] = error.message || String(error)
-      backup.tables[table] = rows || []
+    const labelForBackupTable = (table) => {
+      const t = String(table || '').toLowerCase()
+      if (t.includes('branch') || t.includes('setting') || t.includes('legal') || t.includes('user')) return 'Справочники, филиалы и настройки...'
+      if (t.includes('employee') || t.includes('salary') || t.includes('attendance')) return 'Сотрудники, зарплаты и табель...'
+      if (t.includes('revenue') || t.includes('expense') || t.includes('cash')) return 'Выручка, расходы и касса...'
+      if (t.includes('supplier') || t.includes('purchase') || t.includes('invoice')) return 'Поставщики, приходы и оплаты...'
+      if (t.includes('recipe') || t.includes('menu') || t.includes('product')) return 'Техкарты, товары и меню...'
+      if (t.includes('report') || t.includes('aiko') || t.includes('alias')) return 'Отчёты, AIKO и аналитика...'
+      return `Чтение таблицы: ${table}`
     }
 
-    setBackupBusy(false)
-    const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')
-    downloadRmsJsonFile(`rms-full-backup-${stamp}.json`, backup)
-    const errorCount = Object.keys(backup.table_errors || {}).length
-    setMsg(errorCount ? `Полный бэкап скачан, но ${errorCount} таблиц не удалось прочитать. Подробности внутри JSON в table_errors.` : 'Полный бэкап RMS скачан. Его можно использовать для восстановления данных RMS.')
+    try {
+      const totalTables = Math.max(1, RMS_FULL_BACKUP_TABLES.length)
+      for (let i = 0; i < RMS_FULL_BACKUP_TABLES.length; i += 1) {
+        const table = RMS_FULL_BACKUP_TABLES[i]
+        const percent = 5 + Math.round((i / totalTables) * 88)
+        updateBackupProgress(percent, labelForBackupTable(table))
+        const { rows, error } = await readAllRowsForBackup(table)
+        if (error) backup.table_errors[table] = error.message || String(error)
+        backup.tables[table] = rows || []
+      }
+
+      updateBackupProgress(96, 'Формирование полного JSON-файла...')
+      const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')
+      downloadRmsJsonFile(`rms-full-backup-${stamp}.json`, backup)
+      const errorCount = Object.keys(backup.table_errors || {}).length
+      finishBackupProgress(errorCount ? 'Бэкап создан с предупреждениями' : 'Полный бэкап RMS скачан')
+      setMsg(errorCount ? `Полный бэкап скачан, но ${errorCount} таблиц не удалось прочитать. Подробности внутри JSON в table_errors.` : 'Полный бэкап RMS скачан. Его можно использовать для восстановления данных RMS.')
+    } catch (error) {
+      setBackupProgress({ active: false, percent: 0, label: '' })
+      setMsg(error?.message || 'Ошибка при создании полного бэкапа RMS')
+    } finally {
+      setBackupBusy(false)
+    }
   }
 
   async function clearTableForRestore(table) {
@@ -32646,8 +32330,9 @@ function Settings({ session, t, theme, setTheme }) {
                 <h3>Полный бэкап RMS</h3>
                 <p className="hint">Скачивает один JSON-файл для восстановления RMS-данных: справочники, филиалы, сотрудники, пользователи, права, выручка, расходы, поставщики, техкарты, зарплаты, AIKO-отчёты, скрытые позиции, alias, лого и настройки.</p>
               </div>
-              <button type="button" className="small primary" disabled={backupBusy} onClick={exportFullRmsBackup}>{backupBusy ? 'Выполняется...' : 'Скачать полный бэкап RMS'}</button>
+              <button type="button" className="small primary" disabled={backupBusy} onClick={exportFullRmsBackup}>{backupBusy ? `${Math.round(backupProgress.percent || 0)}%` : 'Скачать полный бэкап RMS'}</button>
             </div>
+            {renderBackupProgress()}
             <div className="notice">
               <b>Для полного восстановления</b>
               <p className="hint">Этот файл восстанавливает данные RMS в Supabase. Код проекта GitHub, Vercel env-переменные и домен нужно хранить отдельно, потому что браузер не имеет безопасного доступа к GitHub/Vercel-токенам.</p>
@@ -32665,6 +32350,7 @@ function Settings({ session, t, theme, setTheme }) {
                 <p className="hint">Операционный бэкап сохраняет только рабочие движения: выручка, расходы, касса, поступления/оплаты поставщиков, авансы, выплаты зарплаты, табель и журналы. Справочники остаются.</p>
               </div>
             </div>
+            {renderBackupProgress()}
             <div className="form-grid compact">
               <label><span>Операционный бэкап</span><button type="button" className="small" disabled={backupBusy} onClick={exportBackup}>{backupBusy ? 'Выполняется...' : 'Скачать операционный JSON'}</button></label>
               <label><span>Восстановить операционный бэкап</span><input type="file" accept="application/json,.json" disabled={backupBusy} onChange={importBackup} /></label>
