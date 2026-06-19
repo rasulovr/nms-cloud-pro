@@ -20187,9 +20187,9 @@ function Attendance({ t, mode = 'attendance', isAdmin = false }) {
 
     const [{ data: existing }, { data: advanceRows }] = await Promise.all([
       supabase.from('salary_periods').select('*').eq('employee_id', emp.id).eq('salary_month', monthDate).maybeSingle(),
-      supabase.from('salary_advances').select('amount').eq('employee_id', emp.id).gte('advance_date', start).lte('advance_date', end).or('is_cancelled.is.null,is_cancelled.eq.false')
+      supabase.from('salary_advances').select('amount, operation_type').eq('employee_id', emp.id).gte('advance_date', start).lte('advance_date', end).or('is_cancelled.is.null,is_cancelled.eq.false')
     ])
-    const advance = (advanceRows || []).reduce((sum, row) => sum + parseNum(row.amount), 0)
+    const advance = (advanceRows || []).filter(row => row.operation_type !== 'previous_month_balance').reduce((sum, row) => sum + parseNum(row.amount), 0)
     const deduction = parseNum(existing?.deduction_amount)
     const net = gross - advance - deduction
 
@@ -20670,7 +20670,11 @@ function Salaries({ t, view = 'employees', isAdmin = false }) {
         const previousBalanceAmount = parseNum(previousBalanceByEmployee.get(e.id))
         const salary = salaryByEmployee.get(e.id) || emptySalary(e, advanceTotal)
         const employees = { ...e, ...(salary.employees || {}) }
-        const gross = salary.id ? parseNum(salary.salary_gross) : 0
+        const salaryType = employees?.salary_type || 'monthly'
+        const storedGross = parseNum(salary.salary_gross)
+        // v240.11: if salary is fixed/monthly, accrued salary must equal base salary by default.
+        // Attendance days affect only employees explicitly set to daily calculation.
+        const gross = salaryType === 'daily' ? storedGross : parseNum(employees?.monthly_salary)
         const deduction = parseNum(salary.deduction_amount)
         // Остаток прошлого месяца — это долг заведения сотруднику.
         // Он прибавляется к текущей зарплате, а не считается авансом/оплатой.
@@ -22300,31 +22304,44 @@ function Advances({ t }) {
   async function deleteAdvance(row) {
     setMessage('')
     if (row.is_cancelled) return
-    const ok = window.confirm('Отменить этот аванс? Строка останется в журнале перечёркнутой и не будет учитываться в расчётах.')
+    const ok = window.confirm('Отменить эту операцию? Строка будет скрыта из активного журнала и не будет учитываться в расчётах.')
     if (!ok) return
     const user = await currentUserMeta()
     const targetTable = row.source_table === 'salary_previous_balances' ? 'salary_previous_balances' : 'salary_advances'
-    const isPreviousBalance = targetTable === 'salary_previous_balances'
-    const { error } = await supabase.from(targetTable).update(isPreviousBalance ? {
-      is_cancelled: true,
-      cancelled_at: new Date().toISOString(),
-      cancelled_by: user.user_id,
-      cancelled_by_label: user.user_email || null,
-      updated_at: new Date().toISOString(),
-      updated_by: user.user_id,
-      updated_by_label: user.user_email || null,
-      cancel_comment: 'Отменено через журнал движения по сотрудникам'
-    } : {
-      is_cancelled: true,
-      cancelled_at: new Date().toISOString(),
-      cancelled_by: user.user_id,
-      cancelled_by_text: user.user_email || null,
-      updated_at: new Date().toISOString(),
-      updated_by: user.user_id,
-      updated_by_text: user.user_email || null,
-      cancel_comment: 'Отменено через журнал движения по сотрудникам'
-    }).eq('id', row.id)
-    if (error) return setMessage(error.message)
+
+    // v240.11: use SECURITY DEFINER RPC first, because RMS internal login works through anon key
+    // and direct update can be blocked by RLS in some environments.
+    const { error: rpcError } = await supabase.rpc('rms_salary_movement_cancel', {
+      p_id: row.id,
+      p_source_table: targetTable,
+      p_user_text: user.user_email || user.user_id || 'RMS',
+      p_comment: 'Отменено через журнал движения по сотрудникам'
+    })
+
+    if (rpcError) {
+      const isPreviousBalance = targetTable === 'salary_previous_balances'
+      const { error } = await supabase.from(targetTable).update(isPreviousBalance ? {
+        is_cancelled: true,
+        cancelled_at: new Date().toISOString(),
+        cancelled_by: user.user_id,
+        cancelled_by_label: user.user_email || null,
+        updated_at: new Date().toISOString(),
+        updated_by: user.user_id,
+        updated_by_label: user.user_email || null,
+        cancel_comment: 'Отменено через журнал движения по сотрудникам'
+      } : {
+        is_cancelled: true,
+        cancelled_at: new Date().toISOString(),
+        cancelled_by: user.user_id,
+        cancelled_by_text: user.user_email || null,
+        updated_at: new Date().toISOString(),
+        updated_by: user.user_id,
+        updated_by_text: user.user_email || null,
+        cancel_comment: 'Отменено через журнал движения по сотрудникам'
+      }).eq('id', row.id)
+      if (error) return setMessage(error.message || rpcError.message)
+    }
+
     await refreshSalaryForEmployee(row.employee_id)
     await load()
     setMessage(t('saved'))
