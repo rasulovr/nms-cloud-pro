@@ -20648,6 +20648,11 @@ function Salaries({ t, view = 'employees', isAdmin = false }) {
     ;(previousBalanceRows || []).filter(r => !r.is_cancelled).forEach(b => {
       previousBalanceByEmployee.set(b.employee_id, parseNum(previousBalanceByEmployee.get(b.employee_id)) + parseNum(b.amount))
     })
+    // v240.10: legacy balances entered before salary_previous_balances existed were stored in salary_advances
+    // with operation_type = 'previous_month_balance'. They are not advances and must be added only as previous balance.
+    ;(advRows || []).filter(r => r.operation_type === 'previous_month_balance' && !r.is_cancelled).forEach(b => {
+      previousBalanceByEmployee.set(b.employee_id, parseNum(previousBalanceByEmployee.get(b.employee_id)) + parseNum(b.amount))
+    })
     const paymentsByEmployee = new Map()
     ;(payRows || []).forEach(p => paymentsByEmployee.set(p.employee_id, parseNum(paymentsByEmployee.get(p.employee_id)) + parseNum(p.amount)))
     const prevDueByEmployee = new Map()
@@ -22170,7 +22175,8 @@ function Advances({ t }) {
       supabase.from('salary_previous_balances').select('amount').eq('employee_id', employeeId).eq('target_salary_month', monthDate).or('is_cancelled.is.null,is_cancelled.eq.false')
     ])
     const advanceTotal = (advanceRows || []).filter(r => r.operation_type !== 'previous_month_balance').reduce((s, r) => s + parseNum(r.amount), 0)
-    const previousBalanceTotal = (previousBalanceRows || []).reduce((s, r) => s + parseNum(r.amount), 0)
+    const legacyPreviousBalanceTotal = (advanceRows || []).filter(r => r.operation_type === 'previous_month_balance').reduce((s, r) => s + parseNum(r.amount), 0)
+    const previousBalanceTotal = (previousBalanceRows || []).reduce((s, r) => s + parseNum(r.amount), 0) + legacyPreviousBalanceTotal
     const gross = parseNum(existing?.salary_gross)
     const deduction = parseNum(existing?.deduction_amount)
     const paid = parseNum(existing?.payroll_payments)
@@ -22266,7 +22272,8 @@ function Advances({ t }) {
     const amount = parseNum(editAdvanceForm.amount)
     if (!amount) return setMessage('Введите сумму аванса')
     const user = await currentUserMeta()
-    const isPreviousBalance = row.operation_type === 'previous_month_balance' || row.source_table === 'salary_previous_balances'
+    const targetTable = row.source_table === 'salary_previous_balances' ? 'salary_previous_balances' : 'salary_advances'
+    const isPreviousBalance = targetTable === 'salary_previous_balances'
     const payload = isPreviousBalance ? {
       balance_month: editAdvanceForm.advance_date || row.advance_date,
       amount,
@@ -22282,7 +22289,7 @@ function Advances({ t }) {
       updated_by: user.user_id,
       updated_by_text: user.user_email || null
     }
-    const { error } = await supabase.from(isPreviousBalance ? 'salary_previous_balances' : 'salary_advances').update(payload).eq('id', row.id)
+    const { error } = await supabase.from(targetTable).update(payload).eq('id', row.id)
     if (error) return setMessage(error.message)
     await refreshSalaryForEmployee(row.employee_id)
     cancelEditAdvance()
@@ -22296,8 +22303,9 @@ function Advances({ t }) {
     const ok = window.confirm('Отменить этот аванс? Строка останется в журнале перечёркнутой и не будет учитываться в расчётах.')
     if (!ok) return
     const user = await currentUserMeta()
-    const isPreviousBalance = row.operation_type === 'previous_month_balance' || row.source_table === 'salary_previous_balances'
-    const { error } = await supabase.from(isPreviousBalance ? 'salary_previous_balances' : 'salary_advances').update(isPreviousBalance ? {
+    const targetTable = row.source_table === 'salary_previous_balances' ? 'salary_previous_balances' : 'salary_advances'
+    const isPreviousBalance = targetTable === 'salary_previous_balances'
+    const { error } = await supabase.from(targetTable).update(isPreviousBalance ? {
       is_cancelled: true,
       cancelled_at: new Date().toISOString(),
       cancelled_by: user.user_id,
@@ -22326,7 +22334,7 @@ function Advances({ t }) {
     .filter(e => matchesStaffGroup(e, branchId))
     .filter(e => employeeFilter === 'all' || e.id === employeeFilter)
   const movementRows = [
-    ...(advances || []).filter(a => a.operation_type !== 'previous_month_balance').map(a => ({ ...a, operation_type: a.operation_type || 'advance', source_table: 'salary_advances' })),
+    ...(advances || []).map(a => ({ ...a, operation_type: a.operation_type || 'advance', source_table: 'salary_advances' })),
     ...(previousBalances || []).map(b => ({
       ...b,
       operation_type: 'previous_month_balance',
