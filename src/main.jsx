@@ -466,7 +466,7 @@ const I18N = {
     brand_subtitle:'Restaurant Management System', language_label:'Язык интерфейса', login_label:'Login', password_label:'Пароль',
     login_button:'Войти', login_hint:'Вход по внутреннему login. Допустим вход по логину без домена.', login_error:'Неверный логин или пароль', show_password:'Показать пароль',
     logout:'Выйти', revenue_tab:'Выручка', finance_tab:'Финансы', reports_tab:'Отчёты', recipes_tab:'Тех. карты', salaries_tab:'Зарплаты',
-    attendance_tab:'Посещаемость', advances_tab:'Авансы', suppliers_tab:'Поставщики', debts_payments_tab:'Долги и оплаты', qr_menu_tab:'QR Menu', loyalty_tab:'Loyalty', market_intelligence_tab:'Market Intelligence', security_recovery_tab:'Безопасность и диагностика', settings_tab:'Настройки', inventory_tab:'Склад',
+    attendance_tab:'Посещаемость', advances_tab:'Авансы', suppliers_tab:'Поставщики', debts_payments_tab:'Долги и оплаты', qr_menu_tab:'QR Menu', loyalty_tab:'Loyalty', security_recovery_tab:'Безопасность и диагностика', settings_tab:'Настройки', inventory_tab:'Склад',
     revenue_subtitle:'Ввод выручки и расходов за выбранную дату по филиалу', finance_subtitle:'Аналитика по филиалу, месяцу, выручке и расходам',
     period_branch:'Период и филиал', branch_select:'Филиал', date:'Дата', daily_revenue_title:'Выручка за выбранную дату',
     cash:'Наличными', bank:'Банк', wolt:'Wolt', revenue_summary:'Сводка выручки', total_revenue:'Общая выручка',
@@ -489,7 +489,7 @@ const I18N = {
     brand_subtitle:'Restaurant Management System', language_label:'İnterfeys dili', login_label:'Login', password_label:'Parol',
     login_button:'Daxil ol', login_hint:'Daxili login ilə giriş. Domen yazmadan login istifadə etmək olar.', login_error:'Login və ya parol yanlışdır', show_password:'Parolu göstər',
     logout:'Çıxış', revenue_tab:'Dövriyyə', finance_tab:'Maliyyə', reports_tab:'Hesabatlar', recipes_tab:'Tex. kartlar', salaries_tab:'Maaşlar',
-    attendance_tab:'Davamiyyət', advances_tab:'Avanslar', suppliers_tab:'Təchizatçılar', debts_payments_tab:'Borclar və ödənişlər', qr_menu_tab:'QR Menu', loyalty_tab:'Loyalty', market_intelligence_tab:'Market Intelligence', security_recovery_tab:'Безопасность и диагностика', settings_tab:'Ayarlar',
+    attendance_tab:'Davamiyyət', advances_tab:'Avanslar', suppliers_tab:'Təchizatçılar', debts_payments_tab:'Borclar və ödənişlər', qr_menu_tab:'QR Menu', loyalty_tab:'Loyalty', security_recovery_tab:'Безопасность и диагностика', settings_tab:'Ayarlar',
     revenue_subtitle:'Seçilmiş tarix və filial üzrə dövriyyə və xərclər', finance_subtitle:'Filial, ay, dövriyyə və xərclər üzrə analitika',
     period_branch:'Dövr və filial', branch_select:'Filial', date:'Tarix', daily_revenue_title:'Seçilmiş tarixin dövriyyəsi',
     cash:'Nağd', bank:'Bank', wolt:'Wolt', revenue_summary:'Dövriyyə xülasəsi', total_revenue:'Ümumi dövriyyə',
@@ -521,8 +521,6 @@ const SECTIONS = [
   { id: 'debts', key: 'debts_payments_tab' },
   { id: 'qrmenu', key: 'qr_menu_tab' },
   { id: 'loyalty', key: 'loyalty_tab' },
-  { id: 'market', key: 'market_intelligence_tab' },
-  { id: 'security_recovery', key: 'security_recovery_tab' },
   { id: 'settings', key: 'settings_tab' }
 ]
 
@@ -537,7 +535,7 @@ const THEMES = [
 const RMS_PRO_NAV_GROUPS = [
   { title: 'МЕНЮ', ids: ['dashboard', 'revenue', 'finance', 'recipes', 'inventory', 'salaries', 'suppliers', 'debts'] },
   { title: 'АНАЛИТИКА', ids: ['reports'] },
-  { title: 'ИНСТРУМЕНТЫ', ids: ['qrmenu', 'loyalty', 'market', 'security_recovery', 'settings'] }
+  { title: 'ИНСТРУМЕНТЫ', ids: ['qrmenu', 'loyalty', 'settings'] }
 ]
 
 function RmsIcon({ type }) {
@@ -553,7 +551,6 @@ function RmsIcon({ type }) {
     debts: <svg {...common}><path d="M4 7h16"/><path d="M6 7V5h12v2"/><rect x="5" y="7" width="14" height="12" rx="2"/><path d="M9 12h6"/><path d="M9 15h4"/></svg>,
     qrmenu: <svg {...common}><path d="M4 4h6v6H4z"/><path d="M14 4h6v6h-6z"/><path d="M4 14h6v6H4z"/><path d="M14 14h2.5"/><path d="M19 14h1"/><path d="M14 17h6"/><path d="M17 20h3"/><path d="M14 20h.01"/></svg>,
     loyalty: <svg {...common}><path d="m12 3 2.6 5.3 5.8.8-4.2 4.1 1 5.8-5.2-2.7L6.8 19l1-5.8L3.6 9.1l5.8-.8L12 3Z"/></svg>,
-    market: <svg {...common}><path d="M4 19V5"/><path d="M20 19H4"/><path d="M8 16v-5"/><path d="M12 16V8"/><path d="M16 16v-9"/></svg>,
     salaries: <svg {...common}><path d="M16 20v-1.5A3.5 3.5 0 0 0 12.5 15h-5A3.5 3.5 0 0 0 4 18.5V20"/><circle cx="10" cy="8" r="3.5"/><path d="M17 8h4"/><path d="M19 6v4"/><path d="M18 14.5h3"/><path d="M18 18h3"/></svg>,
     security_recovery: <svg {...common}><path d="M12 3 5 6v5c0 4.5 3 8 7 10 4-2 7-5.5 7-10V6l-7-3Z"/><path d="M9 12l2 2 4-4"/></svg>,
     settings: <svg {...common}><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.88-.34 1.7 1.7 0 0 0-1.03 1.56V21a2 2 0 0 1-4 0v-.07a1.7 1.7 0 0 0-1.03-1.56 1.7 1.7 0 0 0-1.88.34l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.56-1.03H3a2 2 0 0 1 0-4h.04A1.7 1.7 0 0 0 4.6 8.94a1.7 1.7 0 0 0-.34-1.88l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.88.34H9a1.7 1.7 0 0 0 1-1.56V3a2 2 0 0 1 4 0v.04a1.7 1.7 0 0 0 1.03 1.56 1.7 1.7 0 0 0 1.88-.34l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.88V9a1.7 1.7 0 0 0 1.56 1H21a2 2 0 0 1 0 4h-.04A1.7 1.7 0 0 0 19.4 15Z"/></svg>
@@ -573,7 +570,6 @@ const RMS_PRO_SECTION_ICONS = {
   debts: <RmsIcon type="debts" />,
   qrmenu: <RmsIcon type="qrmenu" />,
   loyalty: <RmsIcon type="loyalty" />,
-  market: <RmsIcon type="market" />,
   settings: <RmsIcon type="settings" />
 }
 
@@ -593,7 +589,6 @@ function rmsProSectionTitle(section, t) {
     debts: t('debts_payments_tab'),
     qrmenu: t('qr_menu_tab'),
     loyalty: t('loyalty_tab'),
-    market: t('market_intelligence_tab'),
     settings: t('settings_tab')
   }
   return map[section] || 'RMS Pro'
@@ -610,6 +605,11 @@ function RMSProInterfaceStyles() {
       --rms-pro-muted: #64748b;
       --rms-pro-ink: #0f172a;
     }
+
+
+    .settings-with-security{display:grid;gap:22px;}
+    .settings-security-card{margin-top:0;}
+    .settings-with-security .space-y-6{margin:0;}
 
     .app.rms-pro-shell {
       min-height: 100vh;
@@ -3883,9 +3883,14 @@ function App() {
             <RMSLoyaltyPOSScan />
           </div>
         </div>}
-        {currentCanRead && section === 'market' && <MarketIntelligence t={t} />}
-        {currentCanRead && section === 'security_recovery' && <SecurityRecoveryCenter />}
-        {currentCanRead && section === 'settings' && <RmsSectionErrorBoundary resetKey={`settings-${section}`}><Settings session={session} t={t} theme={theme} setTheme={setTheme} /></RmsSectionErrorBoundary>}
+        {currentCanRead && section === 'settings' && <RmsSectionErrorBoundary resetKey={`settings-${section}`}>
+          <div className="settings-with-security">
+            <Settings session={session} t={t} theme={theme} setTheme={setTheme} />
+            <section className="card span-2 settings-security-card">
+              <SecurityRecoveryCenter />
+            </section>
+          </div>
+        </RmsSectionErrorBoundary>}
         </div>
       </main>
     </div>
@@ -3894,497 +3899,7 @@ function App() {
 
 
 
-function miParseNum(v) {
-  if (v === null || v === undefined || v === '') return 0
-  const n = Number(String(v).replace(',', '.').replace(/[^\d.-]/g, ''))
-  return Number.isFinite(n) ? n : 0
-}
 
-function miMoney(v) {
-  return `${miParseNum(v).toFixed(2)} AZN`
-}
-
-function miNormalizeName(value = '') {
-  return String(value)
-    .toLowerCase()
-    .trim()
-    .replace(/[ə]/g, 'e')
-    .replace(/[ı]/g, 'i')
-    .replace(/[ö]/g, 'o')
-    .replace(/[ü]/g, 'u')
-    .replace(/[ğ]/g, 'g')
-    .replace(/[ş]/g, 's')
-    .replace(/[ç]/g, 'c')
-    .replace(/\b\d+\s?(g|gr|гр|ml|мл|kg|кг|l|л)\b/gi, '')
-    .replace(/[^\p{L}\p{N}\s]/gu, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
-}
-
-function miRecommendation(ourPrice, avgPrice) {
-  const our = miParseNum(ourPrice)
-  const avg = miParseNum(avgPrice)
-  if (!our || !avg) return { type: 'neutral', text: 'Недостаточно данных', diff: 0 }
-  const diff = ((our - avg) / avg) * 100
-  if (diff <= -15) return { type: 'up', text: 'Цена ниже рынка — можно рассмотреть повышение', diff }
-  if (diff >= 20) return { type: 'down', text: 'Цена выше рынка — проверьте спрос и маржу', diff }
-  return { type: 'ok', text: 'Цена в пределах рынка', diff }
-}
-
-function MarketIntelligence({ t }) {
-  const [competitors, setCompetitors] = useState([])
-  const [marketItems, setMarketItems] = useState([])
-  const [ourMenu, setOurMenu] = useState([])
-  const [recommendations, setRecommendations] = useState([])
-  const [competitorForm, setCompetitorForm] = useState({ name: '', area: '', segment: 'coffee', menu_url: '', notes: '' })
-  const [itemForm, setItemForm] = useState({ competitor_id: '', category: '', item_name: '', normalized_name: '', description: '', price: '', weight: '', source_url: '' })
-  const [selectedCompetitor, setSelectedCompetitor] = useState('')
-  const [search, setSearch] = useState('')
-  const [status, setStatus] = useState('')
-  const [loading, setLoading] = useState(false)
-
-  useEffect(() => { loadAll() }, [])
-
-  async function loadAll() {
-    setLoading(true)
-    setStatus('')
-    try {
-      await Promise.all([loadCompetitors(), loadMarketItems(), loadOurMenu(), loadRecommendations()])
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  async function loadCompetitors() {
-    const { data, error } = await supabase.from('market_competitors').select('*').order('created_at', { ascending: false })
-    if (error) {
-      setStatus(`Ошибка загрузки конкурентов: ${error.message}`)
-      return
-    }
-    setCompetitors(data || [])
-  }
-
-  async function loadMarketItems() {
-    const { data, error } = await supabase
-      .from('market_menu_items')
-      .select('*, market_competitors(name, area, segment)')
-      .eq('is_active', true)
-      .order('captured_at', { ascending: false })
-    if (error) {
-      setStatus(`Ошибка загрузки меню конкурентов: ${error.message}`)
-      return
-    }
-    setMarketItems(data || [])
-  }
-
-  async function loadRecommendations() {
-    const { data, error } = await supabase
-      .from('market_price_recommendations')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(50)
-    if (!error) setRecommendations(data || [])
-  }
-
-  async function tryReadMenuTable(tableName, fields) {
-    const { data, error } = await supabase.from(tableName).select(fields).limit(1000)
-    if (error) return null
-    return data || []
-  }
-
-  async function loadOurMenu() {
-    const variants = [
-      { table: 'menu_items', fields: 'id, name, item_name, title, category, price, sale_price' },
-      { table: 'rms_menu_items', fields: 'id, name, item_name, title, category, price, sale_price' },
-      { table: 'rms_menu_products', fields: 'id, name, item_name, title, category, price, sale_price' },
-      { table: 'products', fields: 'id, name, item_name, title, category, price, sale_price' }
-    ]
-
-    for (const v of variants) {
-      const rows = await tryReadMenuTable(v.table, v.fields)
-      if (rows && rows.length) {
-        const cleaned = rows.map(r => {
-          const itemName = r.name || r.item_name || r.title || ''
-          return {
-            ...r,
-            source_table: v.table,
-            item_name: itemName,
-            normalized_name: miNormalizeName(itemName),
-            price: miParseNum(r.sale_price || r.price)
-          }
-        }).filter(r => r.item_name)
-        setOurMenu(cleaned)
-        return
-      }
-    }
-
-    setOurMenu([])
-  }
-
-  async function addCompetitor(e) {
-    e.preventDefault()
-    if (!competitorForm.name.trim()) {
-      setStatus('Введите название конкурента.')
-      return
-    }
-
-    const { error } = await supabase.from('market_competitors').insert({
-      name: competitorForm.name.trim(),
-      area: competitorForm.area.trim(),
-      segment: competitorForm.segment.trim(),
-      menu_url: competitorForm.menu_url.trim(),
-      notes: competitorForm.notes.trim(),
-      is_active: true
-    })
-
-    if (error) {
-      setStatus(`Ошибка сохранения конкурента: ${error.message}`)
-      return
-    }
-
-    setCompetitorForm({ name: '', area: '', segment: 'coffee', menu_url: '', notes: '' })
-    setStatus('Конкурент добавлен.')
-    await loadCompetitors()
-  }
-
-  async function addMarketItem(e) {
-    e.preventDefault()
-    if (!itemForm.competitor_id) {
-      setStatus('Выберите конкурента.')
-      return
-    }
-    if (!itemForm.item_name.trim()) {
-      setStatus('Введите название позиции.')
-      return
-    }
-
-    const normalized = itemForm.normalized_name.trim() ? miNormalizeName(itemForm.normalized_name) : miNormalizeName(itemForm.item_name)
-
-    const { error } = await supabase.from('market_menu_items').insert({
-      competitor_id: itemForm.competitor_id,
-      category: itemForm.category.trim(),
-      item_name: itemForm.item_name.trim(),
-      normalized_name: normalized,
-      description: itemForm.description.trim(),
-      price: miParseNum(itemForm.price),
-      weight: itemForm.weight.trim(),
-      source_url: itemForm.source_url.trim(),
-      is_active: true
-    })
-
-    if (error) {
-      setStatus(`Ошибка сохранения позиции: ${error.message}`)
-      return
-    }
-
-    setItemForm({ competitor_id: itemForm.competitor_id, category: '', item_name: '', normalized_name: '', description: '', price: '', weight: '', source_url: '' })
-    setStatus('Позиция меню конкурента добавлена.')
-    await loadMarketItems()
-  }
-
-  async function hideMarketItem(id) {
-    const { error } = await supabase.from('market_menu_items').update({ is_active: false }).eq('id', id)
-    if (error) {
-      setStatus(`Ошибка удаления позиции: ${error.message}`)
-      return
-    }
-    setStatus('Позиция скрыта.')
-    await loadMarketItems()
-  }
-
-  async function toggleCompetitor(id, isActive) {
-    const { error } = await supabase.from('market_competitors').update({ is_active: !isActive }).eq('id', id)
-    if (error) {
-      setStatus(`Ошибка изменения статуса: ${error.message}`)
-      return
-    }
-    await loadCompetitors()
-  }
-
-  async function scanCompetitor(competitor) {
-    if (!competitor?.id) return
-    if (!competitor?.menu_url) {
-      setStatus('У конкурента не указана ссылка на меню.')
-      return
-    }
-
-    setStatus(`Сканирование меню: ${competitor.name}...`)
-    setLoading(true)
-
-    try {
-      const { data, error } = await supabase.functions.invoke('scan-competitor-menu', {
-        body: { competitor_id: competitor.id }
-      })
-
-      if (error) {
-        setStatus(`Ошибка сканирования: ${error.message || 'Edge Function вернула ошибку'}`)
-        return
-      }
-
-      if (!data?.ok) {
-        setStatus(`Сканирование не выполнено: ${data?.error || 'неизвестная ошибка'}`)
-        return
-      }
-
-      setStatus(`Сканирование завершено. Найдено: ${data.found || 0}, сохранено: ${data.inserted || 0}.`)
-      await Promise.all([loadCompetitors(), loadMarketItems()])
-    } catch (err) {
-      setStatus(`Ошибка сканирования: ${err?.message || String(err)}`)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const filteredItems = useMemo(() => {
-    const q = miNormalizeName(search)
-    return marketItems.filter(item => {
-      const byCompetitor = !selectedCompetitor || item.competitor_id === selectedCompetitor
-      const bySearch = !q ||
-        miNormalizeName(item.item_name).includes(q) ||
-        miNormalizeName(item.category || '').includes(q) ||
-        miNormalizeName(item.normalized_name || '').includes(q) ||
-        miNormalizeName(item.market_competitors?.name || '').includes(q)
-      return byCompetitor && bySearch
-    })
-  }, [marketItems, selectedCompetitor, search])
-
-  const marketGroups = useMemo(() => {
-    const map = new Map()
-
-    marketItems.forEach(item => {
-      const key = item.normalized_name || miNormalizeName(item.item_name)
-      if (!key) return
-      if (!map.has(key)) {
-        map.set(key, { normalized_name: key, display_name: item.item_name, category: item.category, prices: [], competitors: new Set(), items: [] })
-      }
-      const group = map.get(key)
-      const price = miParseNum(item.price)
-      if (price > 0) group.prices.push(price)
-      if (item.market_competitors?.name) group.competitors.add(item.market_competitors.name)
-      group.items.push(item)
-    })
-
-    return Array.from(map.values()).map(g => {
-      const avg = g.prices.length ? g.prices.reduce((sum, v) => sum + v, 0) / g.prices.length : 0
-      const ourMatch = ourMenu.find(m => m.normalized_name === g.normalized_name)
-      const rec = miRecommendation(ourMatch?.price, avg)
-      return {
-        ...g,
-        competitor_count: g.competitors.size,
-        avg_price: avg,
-        min_price: g.prices.length ? Math.min(...g.prices) : 0,
-        max_price: g.prices.length ? Math.max(...g.prices) : 0,
-        our_item_name: ourMatch?.item_name || '',
-        our_price: ourMatch?.price || 0,
-        recommendation: rec
-      }
-    }).sort((a, b) => b.competitor_count - a.competitor_count)
-  }, [marketItems, ourMenu])
-
-  async function saveRecommendation(row) {
-    const { error } = await supabase.from('market_price_recommendations').insert({
-      our_item_name: row.our_item_name || row.display_name,
-      our_price: row.our_price || null,
-      market_avg_price: row.avg_price || null,
-      market_min_price: row.min_price || null,
-      market_max_price: row.max_price || null,
-      recommendation: row.recommendation.text
-    })
-
-    if (error) {
-      setStatus(`Ошибка сохранения рекомендации: ${error.message}`)
-      return
-    }
-
-    setStatus('Рекомендация сохранена.')
-    await loadRecommendations()
-  }
-
-  const stats = useMemo(() => ({
-    activeCompetitors: competitors.filter(c => c.is_active).length,
-    totalItems: marketItems.length,
-    matched: marketGroups.filter(g => g.our_price > 0).length,
-    opportunities: marketGroups.filter(g => g.recommendation.type === 'up').length
-  }), [competitors, marketItems, marketGroups])
-
-  return (
-    <section className="market-intelligence-page">
-      <style>{`
-        .market-intelligence-page{display:flex;flex-direction:column;gap:16px}
-        .mi-hero{background:linear-gradient(135deg,#17211b,#314236);color:white;border-radius:24px;padding:22px;box-shadow:0 18px 44px rgba(23,33,27,.16)}
-        .mi-hero h2{margin:0;font-size:28px;letter-spacing:-.04em}
-        .mi-hero p{margin:8px 0 0;color:rgba(255,255,255,.78);max-width:920px}
-        .mi-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
-        .mi-card{background:#fff;border:1px solid #e6ebe7;border-radius:20px;padding:16px;box-shadow:0 10px 28px rgba(28,45,35,.05)}
-        .mi-stat-label{color:#6a756d;font-size:12px}.mi-stat-value{margin-top:8px;font-size:26px;font-weight:800}
-        .mi-section{background:#fff;border:1px solid #e6ebe7;border-radius:22px;padding:18px;box-shadow:0 10px 28px rgba(28,45,35,.05)}
-        .mi-section h3{margin:0 0 12px;font-size:18px}.mi-form{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;align-items:end}
-        .mi-form label{display:flex;flex-direction:column;gap:6px;font-size:12px;color:#5d6b62}
-        .mi-form input,.mi-form select,.mi-form textarea,.mi-filter input,.mi-filter select{width:100%;border:1px solid #dce4df;border-radius:12px;padding:10px 12px;font-size:14px;outline:none;background:#fbfcfb}
-        .mi-form textarea{min-height:42px;resize:vertical}.mi-span-2{grid-column:span 2}.mi-span-3{grid-column:span 3}.mi-span-6{grid-column:span 6}
-        .mi-btn{border:0;border-radius:12px;padding:10px 14px;font-weight:700;cursor:pointer;background:#17211b;color:#fff}.mi-btn-light{background:#eef3ef;color:#17211b}.mi-btn-danger{background:#fff1f1;color:#a32222}
-        .mi-table-wrap{overflow:auto;border:1px solid #eef1ef;border-radius:16px}.mi-table{width:100%;border-collapse:collapse;min-width:980px}.mi-table th{text-align:left;font-size:12px;color:#69766d;background:#f6f8f6;padding:11px;white-space:nowrap}.mi-table td{border-top:1px solid #eef1ef;padding:11px;font-size:13px;vertical-align:top}
-        .mi-badge{display:inline-flex;align-items:center;border-radius:999px;padding:5px 9px;font-size:12px;font-weight:700;background:#eef3ef;color:#334239;white-space:nowrap}.mi-badge-up{background:#eaf7ee;color:#18733a}.mi-badge-down{background:#fff1f1;color:#a32222}.mi-badge-ok{background:#eef3ff;color:#244a9b}
-        .mi-muted{color:#6c786f;font-size:12px}.mi-filter{display:grid;grid-template-columns:240px 1fr 140px;gap:10px;margin-bottom:12px}.mi-status{padding:10px 12px;border-radius:12px;background:#f6f8f6;color:#334239;font-size:13px}.mi-link{color:#1f5f3e;text-decoration:none;font-weight:700}
-        @media(max-width:900px){.mi-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.mi-form{grid-template-columns:1fr}.mi-span-2,.mi-span-3,.mi-span-6{grid-column:span 1}.mi-filter{grid-template-columns:1fr}}
-      `}</style>
-
-      <div className="mi-hero">
-        <h2>Market Intelligence</h2>
-        <p>Анализ онлайн-меню конкурентов, сравнение цен и рекомендации по ценообразованию. Первая версия работает через ручной / полуавтоматический ввод позиций без агрессивного scraping.</p>
-      </div>
-
-      {status ? <div className="mi-status">{status}</div> : null}
-
-      <div className="mi-stats">
-        <div className="mi-card"><div className="mi-stat-label">Активные конкуренты</div><div className="mi-stat-value">{stats.activeCompetitors}</div></div>
-        <div className="mi-card"><div className="mi-stat-label">Позиции рынка</div><div className="mi-stat-value">{stats.totalItems}</div></div>
-        <div className="mi-card"><div className="mi-stat-label">Совпадения с нашим меню</div><div className="mi-stat-value">{stats.matched}</div></div>
-        <div className="mi-card"><div className="mi-stat-label">Возможности повышения цены</div><div className="mi-stat-value">{stats.opportunities}</div></div>
-      </div>
-
-      <div className="mi-section">
-        <div className="card-head">
-          <div>
-            <h3>Добавить конкурента</h3>
-            <p className="hint">Название, район, сегмент и ссылка на онлайн-меню конкурента.</p>
-          </div>
-          <button className="mi-btn mi-btn-light" onClick={loadAll}>{loading ? 'Обновление...' : 'Обновить'}</button>
-        </div>
-        <form className="mi-form" onSubmit={addCompetitor}>
-          <label className="mi-span-2 supplier-total-only-row">Название<input className="supplier-total-only-checkbox" value={competitorForm.name} onChange={e => setCompetitorForm({ ...competitorForm, name: e.target.value })} placeholder="Например: Coffee House" /></label>
-          <label>Район<input value={competitorForm.area} onChange={e => setCompetitorForm({ ...competitorForm, area: e.target.value })} placeholder="Nizami / Khagani" /></label>
-          <label>Сегмент<select value={competitorForm.segment} onChange={e => setCompetitorForm({ ...competitorForm, segment: e.target.value })}><option value="coffee">Coffee</option><option value="casual">Casual</option><option value="premium">Premium</option><option value="fast_food">Fast food</option><option value="bakery">Bakery</option><option value="delivery">Delivery</option></select></label>
-          <label className="mi-span-2">Ссылка на меню<input value={competitorForm.menu_url} onChange={e => setCompetitorForm({ ...competitorForm, menu_url: e.target.value })} placeholder="https://..." /></label>
-          <label className="mi-span-6">Комментарий<textarea value={competitorForm.notes} onChange={e => setCompetitorForm({ ...competitorForm, notes: e.target.value })} placeholder="Похожий сегмент, сильные завтраки, высокий рейтинг..." /></label>
-          <button className="mi-btn" type="submit">Добавить конкурента</button>
-        </form>
-      </div>
-
-      <div className="mi-section">
-        <h3>Конкуренты</h3>
-        <div className="mi-table-wrap">
-          <table className="mi-table">
-            <thead><tr><th>Название</th><th>Район</th><th>Сегмент</th><th>Меню</th><th>Сканер</th><th>Статус</th><th>Действие</th></tr></thead>
-            <tbody>
-              {competitors.map(c => (
-                <tr key={c.id}>
-                  <td><strong>{c.name}</strong>{c.notes ? <div className="mi-muted">{c.notes}</div> : null}</td>
-                  <td>{c.area || '—'}</td><td>{c.segment || '—'}</td>
-                  <td>{c.menu_url ? <a className="mi-link" href={c.menu_url} target="_blank" rel="noreferrer">Открыть меню</a> : '—'}</td>
-                  <td>
-                    <button className="mi-btn mi-btn-light" disabled={loading || !c.menu_url} onClick={() => scanCompetitor(c)}>Сканировать меню</button>
-                    <div className="mi-muted">{c.last_scan_at ? `Последний скан: ${new Date(c.last_scan_at).toLocaleString()}` : 'Ещё не сканировалось'}</div>
-                    {c.scan_status ? <div className="mi-muted">Статус: {c.scan_status}</div> : null}
-                    {c.scan_error ? <div className="mi-muted">Ошибка: {c.scan_error}</div> : null}
-                  </td>
-                  <td><span className="mi-badge">{c.is_active ? 'Активен' : 'Скрыт'}</span></td>
-                  <td><button className="mi-btn mi-btn-light" onClick={() => toggleCompetitor(c.id, c.is_active)}>{c.is_active ? 'Скрыть' : 'Вернуть'}</button></td>
-                </tr>
-              ))}
-              {!competitors.length ? <tr><td colSpan="7" className="mi-muted">Пока нет конкурентов.</td></tr> : null}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <div className="mi-section">
-        <h3>Добавить позицию меню конкурента</h3>
-        <form className="mi-form" onSubmit={addMarketItem}>
-          <label className="mi-span-2">Конкурент<select value={itemForm.competitor_id} onChange={e => setItemForm({ ...itemForm, competitor_id: e.target.value })}><option value="">Выберите конкурента</option>{competitors.filter(c => c.is_active).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></label>
-          <label>Категория<input value={itemForm.category} onChange={e => setItemForm({ ...itemForm, category: e.target.value })} placeholder="Coffee / Burgers" /></label>
-          <label className="mi-span-2">Название<input value={itemForm.item_name} onChange={e => setItemForm({ ...itemForm, item_name: e.target.value, normalized_name: miNormalizeName(e.target.value) })} placeholder="Cappuccino 300 ml" /></label>
-          <label>Цена<input value={itemForm.price} onChange={e => setItemForm({ ...itemForm, price: e.target.value })} placeholder="6.50" /></label>
-          <label>Граммовка<input value={itemForm.weight} onChange={e => setItemForm({ ...itemForm, weight: e.target.value })} placeholder="300 ml / 250 g" /></label>
-          <label className="mi-span-2">Нормализованное имя<input value={itemForm.normalized_name} onChange={e => setItemForm({ ...itemForm, normalized_name: e.target.value })} placeholder="cappuccino" /></label>
-          <label className="mi-span-3">Источник<input value={itemForm.source_url} onChange={e => setItemForm({ ...itemForm, source_url: e.target.value })} placeholder="Ссылка на конкретное меню / страницу" /></label>
-          <label className="mi-span-6">Описание<textarea value={itemForm.description} onChange={e => setItemForm({ ...itemForm, description: e.target.value })} placeholder="Описание блюда из меню конкурента" /></label>
-          <button className="mi-btn" type="submit">Добавить позицию</button>
-        </form>
-      </div>
-
-      <div className="mi-section">
-        <h3>Меню конкурентов</h3>
-        <div className="mi-filter">
-          <select value={selectedCompetitor} onChange={e => setSelectedCompetitor(e.target.value)}><option value="">Все конкуренты</option>{competitors.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select>
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Поиск по блюду, категории или конкуренту" />
-          <button className="mi-btn mi-btn-light" onClick={() => setSearch('')}>Сбросить</button>
-        </div>
-        <div className="mi-table-wrap">
-          <table className="mi-table">
-            <thead><tr><th>Конкурент</th><th>Категория</th><th>Позиция</th><th>Нормализация</th><th>Цена</th><th>Граммовка</th><th>Источник</th><th></th></tr></thead>
-            <tbody>
-              {filteredItems.map(item => (
-                <tr key={item.id}>
-                  <td><strong>{item.market_competitors?.name || '—'}</strong><div className="mi-muted">{item.market_competitors?.area || ''}</div></td>
-                  <td>{item.category || '—'}</td>
-                  <td><strong>{item.item_name}</strong>{item.description ? <div className="mi-muted">{item.description}</div> : null}</td>
-                  <td>{item.normalized_name || '—'}</td>
-                  <td>{miMoney(item.price)}</td>
-                  <td>{item.weight || '—'}</td>
-                  <td>{item.source_url ? <a className="mi-link" href={item.source_url} target="_blank" rel="noreferrer">открыть</a> : '—'}</td>
-                  <td><button className="mi-btn mi-btn-danger" onClick={() => hideMarketItem(item.id)}>Скрыть</button></td>
-                </tr>
-              ))}
-              {!filteredItems.length ? <tr><td colSpan="8" className="mi-muted">Нет позиций по выбранному фильтру.</td></tr> : null}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <div className="mi-section">
-        <h3>Сравнение цен и рекомендации</h3>
-        <p className="hint">Сравнение идёт по нормализованному названию: cappuccino, caesar salad, chicken burger и т.д.</p>
-        <div className="mi-table-wrap">
-          <table className="mi-table">
-            <thead><tr><th>Позиция рынка</th><th>Конкурентов</th><th>Наша позиция</th><th>Наша цена</th><th>Средняя цена рынка</th><th>Мин / Макс</th><th>Отклонение</th><th>Рекомендация</th><th></th></tr></thead>
-            <tbody>
-              {marketGroups.map(row => {
-                const badgeClass = row.recommendation.type === 'up' ? 'mi-badge-up' : row.recommendation.type === 'down' ? 'mi-badge-down' : row.recommendation.type === 'ok' ? 'mi-badge-ok' : ''
-                return (
-                  <tr key={row.normalized_name}>
-                    <td><strong>{row.display_name}</strong><div className="mi-muted">{row.normalized_name}</div></td>
-                    <td>{row.competitor_count}</td>
-                    <td>{row.our_item_name || 'Нет совпадения'}</td>
-                    <td>{row.our_price ? miMoney(row.our_price) : '—'}</td>
-                    <td>{row.avg_price ? miMoney(row.avg_price) : '—'}</td>
-                    <td>{row.min_price ? miMoney(row.min_price) : '—'} / {row.max_price ? miMoney(row.max_price) : '—'}</td>
-                    <td>{row.our_price && row.avg_price ? `${row.recommendation.diff.toFixed(1)}%` : '—'}</td>
-                    <td><span className={`mi-badge ${badgeClass}`}>{row.recommendation.text}</span></td>
-                    <td><button className="mi-btn mi-btn-light" onClick={() => saveRecommendation(row)}>Сохранить</button></td>
-                  </tr>
-                )
-              })}
-              {!marketGroups.length ? <tr><td colSpan="9" className="mi-muted">Пока нет данных для анализа.</td></tr> : null}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <div className="mi-section">
-        <h3>Сохранённые рекомендации</h3>
-        <div className="mi-table-wrap">
-          <table className="mi-table">
-            <thead><tr><th>Позиция</th><th>Наша цена</th><th>Средняя цена рынка</th><th>Мин / Макс</th><th>Рекомендация</th><th>Дата</th></tr></thead>
-            <tbody>
-              {recommendations.map(r => (
-                <tr key={r.id}>
-                  <td>{r.our_item_name}</td>
-                  <td>{r.our_price ? miMoney(r.our_price) : '—'}</td>
-                  <td>{r.market_avg_price ? miMoney(r.market_avg_price) : '—'}</td>
-                  <td>{r.market_min_price ? miMoney(r.market_min_price) : '—'} / {r.market_max_price ? miMoney(r.market_max_price) : '—'}</td>
-                  <td>{r.recommendation}</td>
-                  <td>{r.created_at ? new Date(r.created_at).toLocaleString() : '—'}</td>
-                </tr>
-              ))}
-              {!recommendations.length ? <tr><td colSpan="6" className="mi-muted">Пока нет сохранённых рекомендаций.</td></tr> : null}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </section>
-  )
-}
 
 function posItemType(item) {
   const category = normalizeExpenseText(item?.category || item?.name || '')
