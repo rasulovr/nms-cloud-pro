@@ -4973,6 +4973,175 @@ function ResponsiveAndSettingsStyles() {
       }
     }
 
+
+
+    /* v244 — Settings users permissions card layout fix */
+    .settings-users-permissions-card .card-head{
+      margin-bottom:14px!important;
+    }
+    .settings-user-list{
+      display:grid!important;
+      gap:16px!important;
+    }
+    .settings-user-card{
+      display:grid!important;
+      grid-template-columns:minmax(300px,.95fr) minmax(420px,1.45fr)!important;
+      gap:18px!important;
+      padding:18px!important;
+      border:1px solid #e2e8f0!important;
+      border-radius:22px!important;
+      background:#fff!important;
+      box-shadow:0 12px 28px rgba(15,23,42,.05)!important;
+    }
+    .settings-user-main{
+      display:grid!important;
+      grid-template-columns:1fr 120px!important;
+      gap:12px!important;
+      align-items:end!important;
+      min-width:0!important;
+    }
+    .settings-user-id{
+      grid-column:1 / -1!important;
+      display:grid!important;
+      gap:4px!important;
+      min-width:0!important;
+    }
+    .settings-user-id b{
+      color:#0f172a!important;
+      font-size:18px!important;
+      line-height:1.15!important;
+      overflow:hidden!important;
+      text-overflow:ellipsis!important;
+      white-space:nowrap!important;
+    }
+    .settings-user-id span,
+    .settings-user-active > span,
+    .settings-user-password > span,
+    .settings-permission-title{
+      color:#64748b!important;
+      font-size:12px!important;
+      font-weight:900!important;
+      letter-spacing:.04em!important;
+      text-transform:uppercase!important;
+    }
+    .settings-user-active,
+    .settings-user-password{
+      display:grid!important;
+      gap:7px!important;
+      min-width:0!important;
+    }
+    .settings-user-active select{
+      width:100%!important;
+      min-width:0!important;
+      height:42px!important;
+    }
+    .settings-user-password{
+      grid-column:1 / -1!important;
+    }
+    .settings-user-password .inline-edit{
+      display:grid!important;
+      grid-template-columns:minmax(0,1fr) auto!important;
+      gap:10px!important;
+      align-items:center!important;
+    }
+    .settings-user-password input{
+      min-width:0!important;
+      height:44px!important;
+    }
+    .settings-user-salary-hide{
+      grid-column:1 / -1!important;
+      align-items:center!important;
+      margin:0!important;
+      padding:10px 12px!important;
+      border:1px solid #e2e8f0!important;
+      border-radius:14px!important;
+      background:#f8fafc!important;
+      color:#334155!important;
+      font-weight:850!important;
+    }
+    .settings-user-actions{
+      grid-column:1 / -1!important;
+      display:flex!important;
+      justify-content:flex-start!important;
+      align-items:center!important;
+      gap:10px!important;
+    }
+    .settings-permission-panel{
+      min-width:0!important;
+      padding:14px!important;
+      border:1px solid #e2e8f0!important;
+      border-radius:18px!important;
+      background:#f8fafc!important;
+    }
+    .settings-permission-title{
+      margin-bottom:10px!important;
+    }
+    .settings-permission-grid{
+      display:grid!important;
+      grid-template-columns:repeat(2,minmax(190px,1fr))!important;
+      gap:10px!important;
+    }
+    .settings-permission-item{
+      display:grid!important;
+      grid-template-columns:minmax(100px,1fr) 150px!important;
+      gap:10px!important;
+      align-items:center!important;
+      margin:0!important;
+      padding:10px 12px!important;
+      border:1px solid #e2e8f0!important;
+      border-radius:14px!important;
+      background:#fff!important;
+      min-width:0!important;
+    }
+    .settings-permission-item span{
+      color:#0f172a!important;
+      font-size:13px!important;
+      font-weight:900!important;
+      line-height:1.2!important;
+      overflow:hidden!important;
+      text-overflow:ellipsis!important;
+      white-space:nowrap!important;
+    }
+    .settings-permission-item select{
+      display:block!important;
+      width:150px!important;
+      min-width:150px!important;
+      height:38px!important;
+      padding:7px 9px!important;
+      border-radius:12px!important;
+      border:1px solid #cbd5e1!important;
+      background:#fff!important;
+      color:#111827!important;
+      font-size:13px!important;
+      font-weight:850!important;
+    }
+    @media(max-width:1280px){
+      .settings-user-card{
+        grid-template-columns:1fr!important;
+      }
+      .settings-permission-grid{
+        grid-template-columns:repeat(2,minmax(220px,1fr))!important;
+      }
+    }
+    @media(max-width:760px){
+      .settings-user-main{
+        grid-template-columns:1fr!important;
+      }
+      .settings-user-password .inline-edit{
+        grid-template-columns:1fr!important;
+      }
+      .settings-permission-grid{
+        grid-template-columns:1fr!important;
+      }
+      .settings-permission-item{
+        grid-template-columns:1fr!important;
+      }
+      .settings-permission-item select{
+        width:100%!important;
+        min-width:0!important;
+      }
+    }
+
     /* FINAL FIELD COLOR OVERRIDE: all normal fields are white, attendance day cells are excluded. */
     .app input:not([type="checkbox"]),
     .app select,
@@ -31890,7 +32059,66 @@ function Settings({ session, t, theme, setTheme }) {
         {settingsTab === 'users' && <>
           <div className="card span-2"><h3>Пользователи</h3><p className="hint">Добавление пользователей и права доступа.</p></div>
           <div className="card span-2"><div className="card-head"><h3>Добавить пользователя</h3></div><p className="hint">Пользователь входит по login. Система создаёт внутренний email вида login@rms.local.az, поэтому email-рассылка не используется.</p><div className="form-grid compact"><label><span>Login</span><input value={newUser.login} onChange={e => setNewUser({...newUser, login: e.target.value})} placeholder="" /></label><label><span>Временный пароль</span><input type="password" value={newUser.password} onChange={e => setNewUser({...newUser, password: e.target.value})} /></label><label><span>Имя</span><input value={newUser.full_name} onChange={e => setNewUser({...newUser, full_name: e.target.value})} /></label></div><button className="small" onClick={addUser}>+ Добавить пользователя</button>{msg && <p className={`hint ${msg === t('saved') || String(msg).toLowerCase().includes('сохран') ? 'save-status' : 'good'}`}>{msg}</p>}</div>
-          <div className="card span-2"><div className="card-head"><h3>Права доступа</h3></div><p className="hint">Внутренние пользователи RMS входят по login/password без Supabase Auth. Раздел с доступом “Нет доступа” полностью скрывается из меню.</p><div className="table-wrap"><table><thead><tr><th>Пользователь</th><th>Login</th><th>Активен</th><th>Пароль</th><th>Зарплаты</th><th>Разделы</th><th>Действия</th></tr></thead><tbody>{users.map(u => <tr key={u.id}><td><b>{u.full_name || u.login_name || u.id}</b></td><td><span className="hint">{u.login_name || (u.email || '').split('@')[0] || u.id}</span></td><td><select value={String(u.is_active !== false)} onChange={e => updateUser(u.id, { is_active: e.target.value === 'true' })}><option value="true">Да</option><option value="false">Нет</option></select></td><td><div className="inline-edit"><input type="password" value={passwordEdits[u.id] || ''} onChange={e => setPasswordEdits(p => ({...p, [u.id]: e.target.value}))} placeholder="Новый пароль" /><button className="small" onClick={() => changeUserPassword(u.id, u.login_name || (u.email || '').split('@')[0])}>Изменить</button></div></td><td><label className="checkbox-row"><input type="checkbox" checked={Boolean(u.hide_manager_salary)} onChange={e => updateUser(u.id, { hide_manager_salary: e.target.checked })} /> Скрыть зарплаты менеджеров</label></td><td><div className="permission-grid">{editableSections.map(sec => <React.Fragment key={`${u.id}-${sec.id}`}><b>{t(sec.key)}</b><select value={getPermission(u.id, sec.id)} onChange={e => updatePermission(u.id, sec.id, e.target.value)}><option value="none">Нет доступа</option><option value="read">Только просмотр</option><option value="edit">Редактор</option></select></React.Fragment>)}</div></td><td>{u.rms_internal ? <button className="small danger" onClick={() => deleteUser(u)}>Удалить</button> : <span className="hint">admin</span>}</td></tr>)}</tbody></table></div></div>
+          <div className="card span-2 settings-users-permissions-card">
+            <div className="card-head">
+              <div>
+                <h3>Права доступа</h3>
+                <p className="hint">Внутренние пользователи RMS входят по login/password без Supabase Auth. Раздел с доступом “Нет доступа” полностью скрывается из меню.</p>
+              </div>
+            </div>
+            <div className="settings-user-list">
+              {users.map(u => {
+                const loginLabel = u.login_name || (u.email || '').split('@')[0] || u.id
+                const displayName = u.full_name || u.login_name || u.id
+                return (
+                  <div className="settings-user-card" key={u.id}>
+                    <div className="settings-user-main">
+                      <div className="settings-user-id">
+                        <b>{displayName}</b>
+                        <span>{loginLabel}</span>
+                      </div>
+                      <label className="settings-user-active">
+                        <span>Активен</span>
+                        <select value={String(u.is_active !== false)} onChange={e => updateUser(u.id, { is_active: e.target.value === 'true' })}>
+                          <option value="true">Да</option>
+                          <option value="false">Нет</option>
+                        </select>
+                      </label>
+                      <div className="settings-user-password">
+                        <span>Пароль</span>
+                        <div className="inline-edit">
+                          <input type="password" value={passwordEdits[u.id] || ''} onChange={e => setPasswordEdits(p => ({...p, [u.id]: e.target.value}))} placeholder="Новый пароль" />
+                          <button className="small" onClick={() => changeUserPassword(u.id, loginLabel)}>Изменить</button>
+                        </div>
+                      </div>
+                      <label className="checkbox-row settings-user-salary-hide">
+                        <input type="checkbox" checked={Boolean(u.hide_manager_salary)} onChange={e => updateUser(u.id, { hide_manager_salary: e.target.checked })} />
+                        <span>Скрыть зарплаты менеджеров</span>
+                      </label>
+                      <div className="settings-user-actions">
+                        {u.rms_internal ? <button className="small danger" onClick={() => deleteUser(u)}>Удалить</button> : <span className="hint">admin</span>}
+                      </div>
+                    </div>
+                    <div className="settings-permission-panel">
+                      <div className="settings-permission-title">Разделы</div>
+                      <div className="settings-permission-grid">
+                        {editableSections.map(sec => (
+                          <label className="settings-permission-item" key={`${u.id}-${sec.id}`}>
+                            <span>{t(sec.key)}</span>
+                            <select value={getPermission(u.id, sec.id)} onChange={e => updatePermission(u.id, sec.id, e.target.value)}>
+                              <option value="none">Нет доступа</option>
+                              <option value="read">Только просмотр</option>
+                              <option value="edit">Редактор</option>
+                            </select>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
         </>}
 
         {settingsTab === 'voen' && <div className="card span-2"><div className="card-head"><h3>Наши VOEN / юрлица</h3></div><p className="hint">Используются в разделе “Поставщики”.</p><div className="form-grid compact"><label><span>Имя / компания</span><input value={legalForm.name} onChange={e => setLegalForm({...legalForm, name: e.target.value})} placeholder="Ruslan Rasulov" /></label><label><span>VOEN</span><input value={legalForm.voen} onChange={e => setLegalForm({...legalForm, voen: e.target.value})} /></label></div><button className="small" onClick={addLegalEntity}>+ Добавить VOEN</button>{msg && <p className={`hint ${msg === t('saved') || String(msg).toLowerCase().includes('сохран') ? 'save-status' : 'good'}`}>{msg}</p>}<div className="table-wrap" style={{marginTop:12}}><table><thead><tr><th>Имя / компания</th><th>VOEN</th><th>Активен</th></tr></thead><tbody>{legalEntities.map(le => <tr key={le.id}><td><input defaultValue={le.name} onBlur={e => updateLegalEntity(le.id, { name: e.target.value.trim() })} /></td><td><input defaultValue={le.voen} onBlur={e => updateLegalEntity(le.id, { voen: e.target.value.trim() })} /></td><td><select defaultValue={String(le.is_active !== false)} onChange={e => updateLegalEntity(le.id, { is_active: e.target.value === 'true' })}><option value="true">Да</option><option value="false">Нет</option></select></td></tr>)}{!legalEntities.length && <tr><td colSpan="3" className="hint">—</td></tr>}</tbody></table></div></div>}
