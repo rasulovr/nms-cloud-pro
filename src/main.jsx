@@ -5142,6 +5142,109 @@ function ResponsiveAndSettingsStyles() {
       }
     }
 
+
+    /* v245 — Settings permissions as stable table, no overlapping selects */
+    .settings-user-card{
+      grid-template-columns:minmax(280px,.75fr) minmax(520px,1.55fr)!important;
+      align-items:start!important;
+    }
+    .settings-permission-table-panel{
+      padding:16px!important;
+      overflow:hidden!important;
+    }
+    .settings-permission-table-wrap{
+      width:100%!important;
+      overflow:visible!important;
+      border:1px solid #e2e8f0!important;
+      border-radius:16px!important;
+      background:#fff!important;
+    }
+    .settings-permission-table{
+      width:100%!important;
+      border-collapse:separate!important;
+      border-spacing:0!important;
+      table-layout:fixed!important;
+      background:#fff!important;
+    }
+    .settings-permission-table th,
+    .settings-permission-table td{
+      padding:11px 14px!important;
+      border-bottom:1px solid #eef2f7!important;
+      vertical-align:middle!important;
+      color:#0f172a!important;
+      font-size:14px!important;
+      line-height:1.2!important;
+    }
+    .settings-permission-table tr:last-child td{
+      border-bottom:0!important;
+    }
+    .settings-permission-table th{
+      background:#f8fafc!important;
+      color:#64748b!important;
+      font-size:12px!important;
+      font-weight:950!important;
+      letter-spacing:.05em!important;
+      text-transform:uppercase!important;
+      text-align:left!important;
+    }
+    .settings-permission-table th:first-child,
+    .settings-permission-table td:first-child{
+      width:58%!important;
+      font-weight:900!important;
+    }
+    .settings-permission-table th:last-child,
+    .settings-permission-table td:last-child{
+      width:42%!important;
+    }
+    .settings-permission-table select{
+      display:block!important;
+      width:100%!important;
+      min-width:0!important;
+      max-width:220px!important;
+      height:40px!important;
+      padding:7px 12px!important;
+      border-radius:12px!important;
+      border:1px solid #cbd5e1!important;
+      background:#fff!important;
+      color:#111827!important;
+      font-size:14px!important;
+      font-weight:850!important;
+    }
+    .settings-permission-table td:last-child{
+      text-align:right!important;
+    }
+    .settings-permission-table td:last-child select{
+      margin-left:auto!important;
+    }
+    @media(max-width:1280px){
+      .settings-user-card{
+        grid-template-columns:1fr!important;
+      }
+      .settings-permission-table select{
+        max-width:260px!important;
+      }
+    }
+    @media(max-width:760px){
+      .settings-permission-table th,
+      .settings-permission-table td{
+        padding:10px!important;
+        font-size:13px!important;
+      }
+      .settings-permission-table th:first-child,
+      .settings-permission-table td:first-child{
+        width:50%!important;
+      }
+      .settings-permission-table th:last-child,
+      .settings-permission-table td:last-child{
+        width:50%!important;
+      }
+      .settings-permission-table select{
+        max-width:none!important;
+        height:38px!important;
+        font-size:13px!important;
+      }
+    }
+
     /* FINAL FIELD COLOR OVERRIDE: all normal fields are white, attendance day cells are excluded. */
     .app input:not([type="checkbox"]),
     .app select,
@@ -32099,19 +32202,31 @@ function Settings({ session, t, theme, setTheme }) {
                         {u.rms_internal ? <button className="small danger" onClick={() => deleteUser(u)}>Удалить</button> : <span className="hint">admin</span>}
                       </div>
                     </div>
-                    <div className="settings-permission-panel">
+                    <div className="settings-permission-panel settings-permission-table-panel">
                       <div className="settings-permission-title">Разделы</div>
-                      <div className="settings-permission-grid">
-                        {editableSections.map(sec => (
-                          <label className="settings-permission-item" key={`${u.id}-${sec.id}`}>
-                            <span>{t(sec.key)}</span>
-                            <select value={getPermission(u.id, sec.id)} onChange={e => updatePermission(u.id, sec.id, e.target.value)}>
-                              <option value="none">Нет доступа</option>
-                              <option value="read">Только просмотр</option>
-                              <option value="edit">Редактор</option>
-                            </select>
-                          </label>
-                        ))}
+                      <div className="settings-permission-table-wrap">
+                        <table className="settings-permission-table">
+                          <thead>
+                            <tr>
+                              <th>Раздел</th>
+                              <th>Доступ</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {editableSections.map(sec => (
+                              <tr key={`${u.id}-${sec.id}`}>
+                                <td>{t(sec.key)}</td>
+                                <td>
+                                  <select value={getPermission(u.id, sec.id)} onChange={e => updatePermission(u.id, sec.id, e.target.value)}>
+                                    <option value="none">Нет доступа</option>
+                                    <option value="read">Только просмотр</option>
+                                    <option value="edit">Редактор</option>
+                                  </select>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
                       </div>
                     </div>
                   </div>
