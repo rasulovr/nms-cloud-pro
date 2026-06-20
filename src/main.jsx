@@ -1933,8 +1933,32 @@ async function writeRmsAppSetting(key, value) {
     const { error } = await supabase
       .from(RMS_APP_SETTINGS_TABLE)
       .upsert({ key, value, updated_at: new Date().toISOString() }, { onConflict: 'key' })
-    return { error: error || null }
+
+    if (!error) return { error: null }
+
+    const canUseInternalAuthRpc = [RMS_INTERNAL_USERS_SETTING, RMS_INTERNAL_PERMISSIONS_SETTING].includes(key)
+    if (canUseInternalAuthRpc) {
+      const { error: rpcError } = await supabase.rpc('rms_app_setting_upsert_internal_auth', {
+        p_key: key,
+        p_value: value
+      })
+      return { error: rpcError || null }
+    }
+
+    return { error }
   } catch (error) {
+    try {
+      const canUseInternalAuthRpc = [RMS_INTERNAL_USERS_SETTING, RMS_INTERNAL_PERMISSIONS_SETTING].includes(key)
+      if (canUseInternalAuthRpc) {
+        const { error: rpcError } = await supabase.rpc('rms_app_setting_upsert_internal_auth', {
+          p_key: key,
+          p_value: value
+        })
+        return { error: rpcError || null }
+      }
+    } catch (rpcError) {
+      return { error: rpcError }
+    }
     return { error }
   }
 }
@@ -4974,6 +4998,63 @@ function ResponsiveAndSettingsStyles() {
     }
 
 
+
+
+    /* v247 — settings toast popup */
+    .settings-toast{
+      position:fixed!important;
+      top:22px!important;
+      right:22px!important;
+      z-index:99999!important;
+      max-width:min(520px,calc(100vw - 32px))!important;
+      display:grid!important;
+      grid-template-columns:32px minmax(0,1fr) 28px!important;
+      gap:12px!important;
+      align-items:center!important;
+      padding:14px 14px!important;
+      border-radius:18px!important;
+      background:#ffffff!important;
+      border:1px solid #dbe4ef!important;
+      box-shadow:0 20px 48px rgba(15,23,42,.20)!important;
+      color:#0f172a!important;
+    }
+    .settings-toast > span{
+      width:32px!important;
+      height:32px!important;
+      border-radius:999px!important;
+      display:grid!important;
+      place-items:center!important;
+      font-weight:1000!important;
+      background:#eff6ff!important;
+      color:#1d4ed8!important;
+    }
+    .settings-toast b{
+      display:block!important;
+      min-width:0!important;
+      color:#0f172a!important;
+      font-size:14px!important;
+      line-height:1.35!important;
+      font-weight:850!important;
+      word-break:break-word!important;
+    }
+    .settings-toast button{
+      width:28px!important;
+      height:28px!important;
+      border:0!important;
+      border-radius:999px!important;
+      background:#f1f5f9!important;
+      color:#475569!important;
+      font-size:18px!important;
+      line-height:1!important;
+      cursor:pointer!important;
+    }
+    .settings-toast.success{border-color:#bbf7d0!important;background:#f0fdf4!important;}
+    .settings-toast.success > span{background:#dcfce7!important;color:#15803d!important;}
+    .settings-toast.error{border-color:#fecaca!important;background:#fff7f7!important;}
+    .settings-toast.error > span{background:#fee2e2!important;color:#b91c1c!important;}
+    @media(max-width:700px){
+      .settings-toast{left:12px!important;right:12px!important;top:12px!important;max-width:none!important;}
+    }
 
     /* v244 — Settings users permissions card layout fix */
     .settings-users-permissions-card .card-head{
@@ -30710,6 +30791,14 @@ function Settings({ session, t, theme, setTheme }) {
   const [advanceImportYear, setAdvanceImportYear] = useState('2026')
   const [advanceImportMonth, setAdvanceImportMonth] = useState('4')
   const [msg, setMsg] = useState('')
+  const [settingsToast, setSettingsToast] = useState(null)
+  const settingsToastTimer = React.useRef(null)
+  const showSettingsToast = React.useCallback((text, type = 'info') => {
+    const safeText = String(text || '').trim() || 'Операция выполнена'
+    setSettingsToast({ text: safeText, type })
+    if (settingsToastTimer.current) window.clearTimeout(settingsToastTimer.current)
+    settingsToastTimer.current = window.setTimeout(() => setSettingsToast(null), 5200)
+  }, [])
   const [settingsTab, setSettingsTab] = useState('branches')
   const [customLogoPreview, setCustomLogoPreview] = useState(() => {
     try { return localStorage.getItem('rms_custom_logo') || sessionStorage.getItem('rms_custom_logo') || '' } catch (_e) { return '' }
@@ -30717,6 +30806,7 @@ function Settings({ session, t, theme, setTheme }) {
   const editableSections = SECTIONS.filter(s => !['settings', 'security_recovery'].includes(s.id))
 
   useEffect(() => { load(); loadSnapshots() }, [])
+  useEffect(() => () => { if (settingsToastTimer.current) window.clearTimeout(settingsToastTimer.current) }, [])
 
   async function load() {
     await hydrateRmsInternalAuthFromCloud()
@@ -30959,11 +31049,15 @@ function Settings({ session, t, theme, setTheme }) {
       const active = getInternalSessionStorage()
       if (active?.user?.id === userId) setInternalSessionStorage(null)
 
-      setMsg(`Пользователь ${localLogin} удалён`)
+      const okMessage = `Пользователь ${localLogin} удалён`
+      setMsg(okMessage)
+      showSettingsToast(okMessage, 'success')
       window.dispatchEvent(new Event('rms-user-settings-updated'))
       await load()
     } catch (error) {
-      setMsg(error?.message || 'Не удалось удалить пользователя')
+      const errorMessage = error?.message || 'Не удалось удалить пользователя'
+      setMsg(errorMessage)
+      showSettingsToast(`Удаление не выполнено: ${errorMessage}`, 'error')
     }
   }
 
@@ -32132,6 +32226,13 @@ function Settings({ session, t, theme, setTheme }) {
 
   return (
     <section>
+      {settingsToast && (
+        <div className={`settings-toast ${settingsToast.type || 'info'}`} role="status" aria-live="polite">
+          <span>{settingsToast.type === 'error' ? '!' : settingsToast.type === 'success' ? '✓' : 'i'}</span>
+          <b>{settingsToast.text}</b>
+          <button type="button" onClick={() => setSettingsToast(null)}>×</button>
+        </div>
+      )}
       <section className="topbar"><div><h2>{t('settings_tab')}</h2><p>{t('settings_subtitle')}</p></div></section>
       <div className="settings-tabs">
         <button className={settingsTab === 'branches' ? 'active' : ''} onClick={() => setSettingsTab('branches')}>Настройки интерфейса и филиалов</button>
