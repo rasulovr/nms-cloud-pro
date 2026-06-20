@@ -30933,20 +30933,38 @@ function Settings({ session, t, theme, setTheme }) {
     if (!localLogin) return setMsg('Удалять через RMS можно только внутренних пользователей.')
     if (!window.confirm(`Удалить пользователя ${localLogin}?`)) return
 
-    const userId = internalUsers[localLogin].id
-    delete internalUsers[localLogin]
-    setInternalUsers(internalUsers)
+    const userId = internalUsers[localLogin]?.id
+    const nextUsers = { ...internalUsers }
+    delete nextUsers[localLogin]
 
     const allPerms = getInternalPermissions()
-    delete allPerms[userId]
-    setInternalPermissions(allPerms)
+    const nextPerms = { ...allPerms }
+    if (userId) delete nextPerms[userId]
 
-    const active = getInternalSessionStorage()
-    if (active?.user?.id === userId) setInternalSessionStorage(null)
+    try {
+      writeJsonStorage(RMS_INTERNAL_USERS_KEY, nextUsers)
+      writeJsonStorage(RMS_INTERNAL_PERMISSIONS_KEY, nextPerms)
+      localStorage.removeItem('rms_internal_users_v1')
+      localStorage.removeItem('rms_internal_permissions_v1')
 
-    setMsg(`Пользователь ${localLogin} удалён`)
-    window.dispatchEvent(new Event('rms-user-settings-updated'))
-    await load()
+      const [{ error: usersError }, { error: permsError }] = await Promise.all([
+        writeRmsAppSetting(RMS_INTERNAL_USERS_SETTING, nextUsers),
+        writeRmsAppSetting(RMS_INTERNAL_PERMISSIONS_SETTING, nextPerms)
+      ])
+
+      if (usersError || permsError) {
+        throw (usersError || permsError)
+      }
+
+      const active = getInternalSessionStorage()
+      if (active?.user?.id === userId) setInternalSessionStorage(null)
+
+      setMsg(`Пользователь ${localLogin} удалён`)
+      window.dispatchEvent(new Event('rms-user-settings-updated'))
+      await load()
+    } catch (error) {
+      setMsg(error?.message || 'Не удалось удалить пользователя')
+    }
   }
 
   async function updateTheme(value) {
