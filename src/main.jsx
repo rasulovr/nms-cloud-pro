@@ -17496,7 +17496,7 @@ function Recipes({ t }) {
   const [semiSearch, setSemiSearch] = useState('')
   const [selectedMenuId, setSelectedMenuId] = useState('')
   const [techPreviewOpen, setTechPreviewOpen] = useState(false)
-  const [finalMenuForm, setFinalMenuForm] = useState({ name: '', category: 'Кофе', sale_price: '', target_food_cost_percent: '30' })
+  const [finalMenuForm, setFinalMenuForm] = useState({ name: '', category: 'Кофе', sale_price: '', target_food_cost_percent: '30', image_url: '' })
   const [finalSearch, setFinalSearch] = useState('')
   const [techCardSearch, setTechCardSearch] = useState('')
   const [techCardCategory, setTechCardCategory] = useState('all')
@@ -17884,12 +17884,13 @@ function Recipes({ t }) {
       category: finalMenuForm.category || 'Прочее',
       sale_price: parseNum(finalMenuForm.sale_price),
       target_food_cost_percent: parseNum(finalMenuForm.target_food_cost_percent) || 30,
+      image_url: String(finalMenuForm.image_url || '').trim() || null,
       is_active: true
     }).select('*').single()
 
     if (error) return setMessage(error.message)
 
-    setFinalMenuForm({ name: '', category: finalMenuForm.category || 'Кофе', sale_price: '', target_food_cost_percent: '30' })
+    setFinalMenuForm({ name: '', category: finalMenuForm.category || 'Кофе', sale_price: '', target_food_cost_percent: '30', image_url: '' })
     await loadSemiData()
     if (data?.id) setSelectedMenuId(data.id)
     setMessage('Блюдо создано. Теперь можно добавить компоненты тех. карты.')
@@ -17900,6 +17901,7 @@ function Recipes({ t }) {
     const payload = { ...patch }
     if (payload.sale_price !== undefined) payload.sale_price = parseNum(payload.sale_price)
     if (payload.target_food_cost_percent !== undefined) payload.target_food_cost_percent = parseNum(payload.target_food_cost_percent) || 30
+    if (payload.image_url !== undefined) payload.image_url = String(payload.image_url || '').trim() || null
     if (payload.name !== undefined && !String(payload.name).trim()) return setMessage('Название блюда не может быть пустым')
 
     const { error } = await supabase.from('menu_items').update(payload).eq('id', id)
@@ -17915,32 +17917,82 @@ function Recipes({ t }) {
       name: finalMenuForm.name,
       category: finalMenuForm.category,
       sale_price: finalMenuForm.sale_price,
-      target_food_cost_percent: finalMenuForm.target_food_cost_percent
+      target_food_cost_percent: finalMenuForm.target_food_cost_percent,
+      image_url: finalMenuForm.image_url
     })
   }
 
   function resetFinalMenuFormForCreate() {
     setSelectedMenuId('')
-    setFinalMenuForm({ name: '', category: finalMenuForm.category || 'Кофе', sale_price: '', target_food_cost_percent: '30' })
+    setFinalMenuForm({ name: '', category: finalMenuForm.category || 'Кофе', sale_price: '', target_food_cost_percent: '30', image_url: '' })
     setTab('final')
     setMessage('Режим создания новой тех. карты')
   }
 
+  function fillFinalMenuFormFromMenu(menu) {
+    if (!menu) return
+    setFinalMenuForm({
+      name: menu.name || '',
+      category: menu.category || 'Прочее',
+      sale_price: menu.sale_price ?? '',
+      target_food_cost_percent: menu.target_food_cost_percent ?? '30',
+      image_url: menu.image_url || menu.photo_url || ''
+    })
+  }
+
+  function dataUrlFromImageFile(file) {
+    return new Promise((resolve, reject) => {
+      if (!file) return resolve('')
+      if (!String(file.type || '').startsWith('image/')) return reject(new Error('Выберите файл изображения'))
+      const reader = new FileReader()
+      reader.onerror = () => reject(new Error('Не удалось прочитать файл'))
+      reader.onload = () => {
+        const img = new Image()
+        img.onerror = () => reject(new Error('Не удалось обработать изображение'))
+        img.onload = () => {
+          const maxSide = 1200
+          const scale = Math.min(1, maxSide / Math.max(img.width || 1, img.height || 1))
+          const canvas = document.createElement('canvas')
+          canvas.width = Math.max(1, Math.round((img.width || 1) * scale))
+          canvas.height = Math.max(1, Math.round((img.height || 1) * scale))
+          const ctx = canvas.getContext('2d')
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+          resolve(canvas.toDataURL('image/jpeg', 0.82))
+        }
+        img.src = String(reader.result || '')
+      }
+      reader.readAsDataURL(file)
+    })
+  }
+
+  async function handleFinalMenuPhotoFile(file) {
+    try {
+      if (!selectedMenuId) return setMessage('Сначала выберите или создайте тех. карту')
+      setMessage('Обработка фото...')
+      const imageUrl = await dataUrlFromImageFile(file)
+      if (!imageUrl) return
+      setFinalMenuForm(prev => ({ ...prev, image_url: imageUrl }))
+      await updateFinalMenuItem(selectedMenuId, { image_url: imageUrl })
+      setMessage('Фото тех. карты сохранено')
+    } catch (e) {
+      setMessage(e?.message || 'Не удалось добавить фото')
+    }
+  }
+
+  async function removeFinalMenuPhoto() {
+    if (!selectedMenuId) return
+    setFinalMenuForm(prev => ({ ...prev, image_url: '' }))
+    await updateFinalMenuItem(selectedMenuId, { image_url: '' })
+    setMessage('Фото удалено')
+  }
+
   function editFinalTechCard(menuId) {
     const menu = menuItems.find(m => String(m.id) === String(menuId))
-    if (menu) {
-      setFinalMenuForm({
-        name: menu.name || '',
-        category: menu.category || 'Прочее',
-        sale_price: menu.sale_price ?? '',
-        target_food_cost_percent: menu.target_food_cost_percent ?? '30'
-      })
-    }
+    if (menu) fillFinalMenuFormFromMenu(menu)
     setSelectedMenuId(menuId)
-    setFinalSearch('')
     setTechPreviewOpen(false)
     setTab('final')
-    setMessage(menu ? `Открыто редактирование тех. карты: ${menu.name}` : 'Открыто редактирование выбранной тех. карты')
+    setMessage('Открыто редактирование выбранной тех. карты')
   }
 
   function viewFinalTechCard(menuId) {
@@ -18474,7 +18526,7 @@ function Recipes({ t }) {
               <button>Калькуляция</button>
               <button>Пищевая ценность</button>
               <button>Аллергены</button>
-              <button>Фото</button>
+              <button onClick={() => editFinalTechCard(selectedMenu.id)}>Фото</button>
             </div>
 
             <div className="tech-detail-table-card">
@@ -18560,13 +18612,10 @@ function Recipes({ t }) {
           <div className="card span-2">
             <div className="card-head">
               <div>
-                <h3>{selectedMenu ? 'Редактировать тех. карту' : 'Создать блюдо'}</h3>
-                <p className="hint">{selectedMenu ? `Открыта тех. карта: ${selectedMenu.name}. Измените данные блюда или добавьте компоненты ниже.` : 'Создайте позицию меню, затем добавьте компоненты тех. карты.'}</p>
+                <h3>Создать / редактировать блюдо</h3>
+                <p className="hint">Создайте позицию меню или выберите существующую, затем добавьте компоненты тех. карты.</p>
               </div>
-              <div className="action-row">
-                {selectedMenu && <button className="small" onClick={() => printFinalTechCard(selectedMenu.id, true)}>Печать</button>}
-                {selectedMenu && <button className="small" onClick={resetFinalMenuFormForCreate}>+ Новая</button>}
-              </div>
+              {selectedMenu && <button className="small" onClick={() => printFinalTechCard(selectedMenu.id, true)}>Печать</button>}
             </div>
 
             <div className="form-grid compact">
@@ -18574,14 +18623,11 @@ function Recipes({ t }) {
               <label><span>Категория</span><select value={finalMenuForm.category} onChange={e => setFinalMenuForm({ ...finalMenuForm, category: e.target.value })}>{MENU_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select></label>
               <label><span>Цена продажи</span><input inputMode="decimal" value={finalMenuForm.sale_price} onChange={e => setFinalMenuForm({ ...finalMenuForm, sale_price: e.target.value })} /></label>
               <label><span>Целевой Food Cost %</span><input inputMode="decimal" value={finalMenuForm.target_food_cost_percent} onChange={e => setFinalMenuForm({ ...finalMenuForm, target_food_cost_percent: e.target.value })} /></label>
+              <label className="wide"><span>Фото / URL изображения</span><input value={finalMenuForm.image_url || ''} onChange={e => setFinalMenuForm({ ...finalMenuForm, image_url: e.target.value })} onBlur={e => selectedMenuId && updateFinalMenuItem(selectedMenuId, { image_url: e.target.value })} placeholder="https://... или загрузите файл ниже" /></label>
             </div>
             <div className="actions-row">
-              {selectedMenu ? (
-                <button className="small primary" onClick={saveSelectedFinalMenuItemFromForm}>Сохранить изменения</button>
-              ) : (
-                <button className="small primary" onClick={createFinalMenuItem}>+ Создать блюдо</button>
-              )}
-              <button className="small" onClick={resetFinalMenuFormForCreate}>Очистить / новая тех. карта</button>
+              <button className="small primary" onClick={createFinalMenuItem}>+ Создать блюдо</button>
+              <button className="small" onClick={() => setFinalMenuForm({ name: '', category: finalMenuForm.category || 'Кофе', sale_price: '', target_food_cost_percent: '30', image_url: '' })}>Очистить</button>
             </div>
           </div>
 
@@ -18589,19 +18635,7 @@ function Recipes({ t }) {
             <h3>Выбрать блюдо для тех. карты</h3>
             <div className="form-grid compact">
               <label><span>Поиск</span><input value={finalSearch} onChange={e => setFinalSearch(e.target.value)} placeholder="Название или категория" /></label>
-              <label><span>Блюдо</span><select value={selectedMenuId} onChange={e => {
-                const nextMenuId = e.target.value
-                setSelectedMenuId(nextMenuId)
-                const menu = menuItems.find(m => String(m.id) === String(nextMenuId))
-                if (menu) {
-                  setFinalMenuForm({
-                    name: menu.name || '',
-                    category: menu.category || 'Прочее',
-                    sale_price: menu.sale_price ?? '',
-                    target_food_cost_percent: menu.target_food_cost_percent ?? '30'
-                  })
-                }
-              }}>
+              <label><span>Блюдо</span><select value={selectedMenuId} onChange={e => { const nextMenuId = e.target.value; setSelectedMenuId(nextMenuId); const menu = menuItems.find(m => String(m.id) === String(nextMenuId)); if (menu) fillFinalMenuFormFromMenu(menu) }}>
                 <option value="">Выбрать</option>
                 {filteredFinalMenuItems.map(m => <option key={m.id} value={m.id}>{m.name} · {m.category || '—'}</option>)}
               </select></label>
@@ -18951,8 +18985,50 @@ function SemiFinishedInlineStyles() {
         flex-direction: column;
         gap: 7px;
       }
-      .semi-form-grid label.wide {
+      .semi-form-grid label.wide,
+      .semi-edit-grid label.wide {
         grid-column: 1 / -1;
+      }
+      .tech-photo-upload-button {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        border: 1px solid #dbe4f0;
+        background: #fff;
+        color: #0f172a;
+        border-radius: 12px;
+        padding: 9px 12px;
+        font-weight: 800;
+      }
+      .tech-photo-upload-button input {
+        position: absolute;
+        inset: 0;
+        opacity: 0;
+        cursor: pointer;
+      }
+      .tech-photo-preview-card {
+        margin-top: 14px;
+        display: grid;
+        grid-template-columns: 120px 1fr;
+        gap: 14px;
+        align-items: center;
+        padding: 14px;
+        border: 1px solid #e2e8f0;
+        border-radius: 18px;
+        background: #f8fafc;
+      }
+      .tech-photo-preview-card img {
+        width: 120px;
+        height: 90px;
+        object-fit: cover;
+        border-radius: 14px;
+        background: #fff;
+      }
+      .tech-photo-preview-card span {
+        color: #64748b;
+        font-weight: 800;
       }
       .semi-form-grid input,
       .semi-form-grid select,
