@@ -17496,7 +17496,7 @@ function Recipes({ t }) {
   const [semiSearch, setSemiSearch] = useState('')
   const [selectedMenuId, setSelectedMenuId] = useState('')
   const [techPreviewOpen, setTechPreviewOpen] = useState(false)
-  const [finalMenuForm, setFinalMenuForm] = useState({ name: '', category: 'Кофе', sale_price: '', target_food_cost_percent: '30', image_url: '' })
+  const [finalMenuForm, setFinalMenuForm] = useState({ name: '', category: 'Кофе', sale_price: '', target_food_cost_percent: '30', image_url: '', image_storage_path: '' })
   const [finalSearch, setFinalSearch] = useState('')
   const [techCardSearch, setTechCardSearch] = useState('')
   const [techCardCategory, setTechCardCategory] = useState('all')
@@ -17885,12 +17885,13 @@ function Recipes({ t }) {
       sale_price: parseNum(finalMenuForm.sale_price),
       target_food_cost_percent: parseNum(finalMenuForm.target_food_cost_percent) || 30,
       image_url: String(finalMenuForm.image_url || '').trim() || null,
+      image_storage_path: String(finalMenuForm.image_storage_path || '').trim() || null,
       is_active: true
     }).select('*').single()
 
     if (error) return setMessage(error.message)
 
-    setFinalMenuForm({ name: '', category: finalMenuForm.category || 'Кофе', sale_price: '', target_food_cost_percent: '30', image_url: '' })
+    setFinalMenuForm({ name: '', category: finalMenuForm.category || 'Кофе', sale_price: '', target_food_cost_percent: '30', image_url: '', image_storage_path: '' })
     await loadSemiData()
     if (data?.id) setSelectedMenuId(data.id)
     setMessage('Блюдо создано. Теперь можно добавить компоненты тех. карты.')
@@ -17902,6 +17903,7 @@ function Recipes({ t }) {
     if (payload.sale_price !== undefined) payload.sale_price = parseNum(payload.sale_price)
     if (payload.target_food_cost_percent !== undefined) payload.target_food_cost_percent = parseNum(payload.target_food_cost_percent) || 30
     if (payload.image_url !== undefined) payload.image_url = String(payload.image_url || '').trim() || null
+    if (payload.image_storage_path !== undefined) payload.image_storage_path = String(payload.image_storage_path || '').trim() || null
     if (payload.name !== undefined && !String(payload.name).trim()) return setMessage('Название блюда не может быть пустым')
 
     const { error } = await supabase.from('menu_items').update(payload).eq('id', id)
@@ -17918,13 +17920,14 @@ function Recipes({ t }) {
       category: finalMenuForm.category,
       sale_price: finalMenuForm.sale_price,
       target_food_cost_percent: finalMenuForm.target_food_cost_percent,
-      image_url: finalMenuForm.image_url
+      image_url: finalMenuForm.image_url,
+      image_storage_path: finalMenuForm.image_storage_path
     })
   }
 
   function resetFinalMenuFormForCreate() {
     setSelectedMenuId('')
-    setFinalMenuForm({ name: '', category: finalMenuForm.category || 'Кофе', sale_price: '', target_food_cost_percent: '30', image_url: '' })
+    setFinalMenuForm({ name: '', category: finalMenuForm.category || 'Кофе', sale_price: '', target_food_cost_percent: '30', image_url: '', image_storage_path: '' })
     setTab('final')
     setMessage('Режим создания новой тех. карты')
   }
@@ -17936,7 +17939,8 @@ function Recipes({ t }) {
       category: menu.category || 'Прочее',
       sale_price: menu.sale_price ?? '',
       target_food_cost_percent: menu.target_food_cost_percent ?? '30',
-      image_url: menu.image_url || menu.photo_url || ''
+      image_url: menu.image_url || menu.photo_url || '',
+      image_storage_path: menu.image_storage_path || ''
     })
   }
 
@@ -17965,15 +17969,41 @@ function Recipes({ t }) {
     })
   }
 
+  function safeStorageFileName(name) {
+    const ext = String(name || '').split('.').pop()?.toLowerCase() || 'jpg'
+    const cleanExt = ['jpg', 'jpeg', 'png', 'webp'].includes(ext) ? ext : 'jpg'
+    return `${Date.now()}-${Math.random().toString(16).slice(2)}.${cleanExt}`
+  }
+
+  async function uploadFinalMenuPhotoToStorage(file) {
+    if (!file) return null
+    if (!String(file.type || '').startsWith('image/')) throw new Error('Выберите файл изображения')
+    if (file.size > 6 * 1024 * 1024) throw new Error('Фото слишком большое. Максимум 6 MB')
+    if (!selectedMenuId) throw new Error('Сначала выберите или создайте блюдо')
+
+    const fileName = safeStorageFileName(file.name)
+    const path = `tech-cards/${selectedMenuId}/${fileName}`
+    const { error: uploadError } = await supabase.storage
+      .from('menu-images')
+      .upload(path, file, { cacheControl: '3600', upsert: true, contentType: file.type || 'image/jpeg' })
+
+    if (uploadError) throw uploadError
+
+    const { data } = supabase.storage.from('menu-images').getPublicUrl(path)
+    const publicUrl = data?.publicUrl || ''
+    if (!publicUrl) throw new Error('Не удалось получить ссылку на фото')
+    return { publicUrl, path }
+  }
+
   async function handleFinalMenuPhotoFile(file) {
     try {
       if (!selectedMenuId) return setMessage('Сначала выберите или создайте тех. карту')
-      setMessage('Обработка фото...')
-      const imageUrl = await dataUrlFromImageFile(file)
-      if (!imageUrl) return
-      setFinalMenuForm(prev => ({ ...prev, image_url: imageUrl }))
-      await updateFinalMenuItem(selectedMenuId, { image_url: imageUrl })
-      setMessage('Фото тех. карты сохранено')
+      setMessage('Загрузка фото...')
+      const uploaded = await uploadFinalMenuPhotoToStorage(file)
+      if (!uploaded?.publicUrl) return
+      setFinalMenuForm(prev => ({ ...prev, image_url: uploaded.publicUrl, image_storage_path: uploaded.path }))
+      await updateFinalMenuItem(selectedMenuId, { image_url: uploaded.publicUrl, image_storage_path: uploaded.path })
+      setMessage('Фото тех. карты загружено и сохранено')
     } catch (e) {
       setMessage(e?.message || 'Не удалось добавить фото')
     }
@@ -17981,8 +18011,8 @@ function Recipes({ t }) {
 
   async function removeFinalMenuPhoto() {
     if (!selectedMenuId) return
-    setFinalMenuForm(prev => ({ ...prev, image_url: '' }))
-    await updateFinalMenuItem(selectedMenuId, { image_url: '' })
+    setFinalMenuForm(prev => ({ ...prev, image_url: '', image_storage_path: '' }))
+    await updateFinalMenuItem(selectedMenuId, { image_url: '', image_storage_path: '' })
     setMessage('Фото удалено')
   }
 
@@ -18623,11 +18653,31 @@ function Recipes({ t }) {
               <label><span>Категория</span><select value={finalMenuForm.category} onChange={e => setFinalMenuForm({ ...finalMenuForm, category: e.target.value })}>{MENU_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select></label>
               <label><span>Цена продажи</span><input inputMode="decimal" value={finalMenuForm.sale_price} onChange={e => setFinalMenuForm({ ...finalMenuForm, sale_price: e.target.value })} /></label>
               <label><span>Целевой Food Cost %</span><input inputMode="decimal" value={finalMenuForm.target_food_cost_percent} onChange={e => setFinalMenuForm({ ...finalMenuForm, target_food_cost_percent: e.target.value })} /></label>
-              <label className="wide"><span>Фото / URL изображения</span><input value={finalMenuForm.image_url || ''} onChange={e => setFinalMenuForm({ ...finalMenuForm, image_url: e.target.value })} onBlur={e => selectedMenuId && updateFinalMenuItem(selectedMenuId, { image_url: e.target.value })} placeholder="https://... или загрузите файл ниже" /></label>
+              <label className="wide"><span>Фото / URL изображения</span><input value={finalMenuForm.image_url || ''} onChange={e => setFinalMenuForm({ ...finalMenuForm, image_url: e.target.value })} onBlur={e => selectedMenuId && updateFinalMenuItem(selectedMenuId, { image_url: e.target.value, image_storage_path: '' })} placeholder="https://... или загрузите файл ниже" /></label>
+            </div>
+
+            <div className="tech-photo-upload-box">
+              <div>
+                <strong>Фото блюда</strong>
+                <span>Загрузите JPG / PNG / WEBP до 6 MB. Фото сохранится в Supabase Storage и привяжется к блюду.</span>
+              </div>
+              <div className="tech-photo-upload-actions">
+                <label className="small primary tech-photo-file-btn">
+                  Выбрать фото
+                  <input type="file" accept="image/*" onChange={e => handleFinalMenuPhotoFile(e.target.files?.[0])} />
+                </label>
+                {finalMenuForm.image_url ? <button className="small" onClick={removeFinalMenuPhoto}>Удалить фото</button> : null}
+              </div>
+              {finalMenuForm.image_url ? (
+                <div className="tech-photo-preview">
+                  <img src={finalMenuForm.image_url} alt={finalMenuForm.name || 'Фото блюда'} />
+                  <small>{finalMenuForm.image_storage_path ? 'Загружено в menu-images' : 'Внешний URL'}</small>
+                </div>
+              ) : null}
             </div>
             <div className="actions-row">
               <button className="small primary" onClick={createFinalMenuItem}>+ Создать блюдо</button>
-              <button className="small" onClick={() => setFinalMenuForm({ name: '', category: finalMenuForm.category || 'Кофе', sale_price: '', target_food_cost_percent: '30', image_url: '' })}>Очистить</button>
+              <button className="small" onClick={() => setFinalMenuForm({ name: '', category: finalMenuForm.category || 'Кофе', sale_price: '', target_food_cost_percent: '30', image_url: '', image_storage_path: '' })}>Очистить</button>
             </div>
           </div>
 
@@ -18647,6 +18697,21 @@ function Recipes({ t }) {
                 <label><span>Категория</span><select defaultValue={selectedMenu.category || 'Прочее'} onChange={e => updateFinalMenuItem(selectedMenu.id, { category: e.target.value })}>{MENU_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select></label>
                 <label><span>Цена продажи</span><input inputMode="decimal" defaultValue={selectedMenu.sale_price} onBlur={e => updateFinalMenuItem(selectedMenu.id, { sale_price: e.target.value })} /></label>
                 <label><span>Целевой Food Cost %</span><input inputMode="decimal" defaultValue={selectedMenu.target_food_cost_percent || 30} onBlur={e => updateFinalMenuItem(selectedMenu.id, { target_food_cost_percent: e.target.value })} /></label>
+                <label className="wide"><span>Фото / URL изображения</span><input defaultValue={selectedMenu.image_url || ''} onBlur={e => updateFinalMenuItem(selectedMenu.id, { image_url: e.target.value, image_storage_path: '' })} placeholder="https://..." /></label>
+              </div>
+              <div className="tech-photo-upload-box compact">
+                <div>
+                  <strong>Фото блюда</strong>
+                  <span>Можно загрузить файл или вставить URL выше.</span>
+                </div>
+                <div className="tech-photo-upload-actions">
+                  <label className="small primary tech-photo-file-btn">
+                    Загрузить фото
+                    <input type="file" accept="image/*" onChange={e => handleFinalMenuPhotoFile(e.target.files?.[0])} />
+                  </label>
+                  {selectedMenu.image_url ? <button className="small" onClick={removeFinalMenuPhoto}>Удалить фото</button> : null}
+                </div>
+                {selectedMenu.image_url ? <div className="tech-photo-preview"><img src={selectedMenu.image_url} alt={selectedMenu.name} /></div> : null}
               </div>
               <div className="metric-grid">
                 <Metric label="Цена продажи" value={`${fmt(selectedMenu.sale_price)} AZN`} />
@@ -19030,6 +19095,68 @@ function SemiFinishedInlineStyles() {
         color: #64748b;
         font-weight: 800;
       }
+
+      .tech-photo-upload-box {
+        margin-top: 14px;
+        padding: 14px;
+        border: 1px solid #e2e8f0;
+        border-radius: 18px;
+        background: #f8fafc;
+        display: grid;
+        gap: 12px;
+      }
+      .tech-photo-upload-box.compact {
+        margin: 12px 0 14px;
+      }
+      .tech-photo-upload-box strong {
+        display: block;
+        color: #0f172a;
+        font-weight: 900;
+      }
+      .tech-photo-upload-box span {
+        display: block;
+        margin-top: 4px;
+        color: #64748b;
+        font-size: 13px;
+        line-height: 1.35;
+        font-weight: 700;
+      }
+      .tech-photo-upload-actions {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+      .tech-photo-file-btn {
+        position: relative;
+        overflow: hidden;
+        cursor: pointer;
+      }
+      .tech-photo-file-btn input {
+        position: absolute;
+        inset: 0;
+        opacity: 0;
+        cursor: pointer;
+      }
+      .tech-photo-preview {
+        display: grid;
+        grid-template-columns: 132px 1fr;
+        gap: 12px;
+        align-items: center;
+      }
+      .tech-photo-preview img {
+        width: 132px;
+        height: 96px;
+        object-fit: cover;
+        border-radius: 16px;
+        border: 1px solid #e2e8f0;
+        background: #fff;
+      }
+      .tech-photo-preview small {
+        color: #64748b;
+        font-weight: 800;
+      }
+
       .semi-form-grid input,
       .semi-form-grid select,
       .semi-edit-grid input,
