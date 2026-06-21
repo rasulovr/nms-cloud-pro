@@ -18100,6 +18100,32 @@ function Recipes({ t }) {
     setTab('legacy')
   }
 
+  async function deleteFinalTechCard(menuId) {
+    const menu = menuItems.find(m => String(m.id) === String(menuId))
+    const title = menu?.name || 'тех. карту'
+    const ok = window.confirm(`Удалить тех. карту “${title}”? Она будет скрыта из списка и QR/POS, но история состава останется в базе.`)
+    if (!ok) return
+
+    const { error } = await supabase
+      .from('menu_items')
+      .update({ is_active: false })
+      .eq('id', menuId)
+
+    if (error) {
+      setMessage(error.message || 'Не удалось удалить тех. карту')
+      return
+    }
+
+    if (String(selectedMenuId) === String(menuId)) {
+      setSelectedMenuId('')
+      setFinalMenuForm({ name: '', category: finalMenuForm.category || 'Кофе', sale_price: '', target_food_cost_percent: '30', image_url: '', image_storage_path: '' })
+      setTechPreviewOpen(false)
+    }
+
+    await loadSemiData()
+    setMessage('Тех. карта удалена из активного списка')
+  }
+
   function escapeHtml(value) {
     return String(value ?? '').replace(/[&<>"']/g, (s) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[s]))
   }
@@ -18544,6 +18570,7 @@ function Recipes({ t }) {
                               <button className="icon-button tech-view-button" title="Просмотр" onClick={() => viewFinalTechCard(m.id)}>Просмотр</button>
                               <button className="icon-button tech-edit-button" title="Редактировать" onClick={() => editFinalTechCard(m.id)}>Изменить</button>
                               <button className="icon-button tech-print-button" title="Печать" onClick={() => printFinalTechCard(m.id, true)}>Печать</button>
+                              <button className="icon-button tech-delete-button danger" title="Удалить" onClick={() => deleteFinalTechCard(m.id)}>Удалить</button>
                             </div>
                           </td>
                         </tr>
@@ -18573,6 +18600,7 @@ function Recipes({ t }) {
                     <div className="action-row">
                       <button className="small" onClick={() => editFinalTechCard(selectedMenu.id)}>Редактировать</button>
                       <button className="small primary" onClick={() => printFinalTechCard(selectedMenu.id, true)}>Печать</button>
+                      <button className="small danger" onClick={() => deleteFinalTechCard(selectedMenu.id)}>Удалить</button>
                     </div>
                   </div>
                   <div className="metric-grid">
@@ -18779,8 +18807,15 @@ function Recipes({ t }) {
               ) : null}
             </div>
             <div className="actions-row">
-              <button className="small primary" onClick={createFinalMenuItem}>+ Создать блюдо</button>
-              <button className="small" onClick={() => setFinalMenuForm({ name: '', category: finalMenuForm.category || 'Кофе', sale_price: '', target_food_cost_percent: '30', image_url: '', image_storage_path: '' })}>Очистить</button>
+              {selectedMenuId ? (
+                <>
+                  <button className="small primary" onClick={saveSelectedFinalMenuItemFromForm}>Сохранить изменения</button>
+                  <button className="small danger" onClick={() => deleteFinalTechCard(selectedMenuId)}>Удалить тех. карту</button>
+                </>
+              ) : (
+                <button className="small primary" onClick={createFinalMenuItem}>+ Создать блюдо</button>
+              )}
+              <button className="small" onClick={resetFinalMenuFormForCreate}>Очистить</button>
             </div>
           </div>
 
@@ -18815,6 +18850,10 @@ function Recipes({ t }) {
                   {selectedMenu.image_url ? <button className="small" onClick={removeFinalMenuPhoto}>Удалить фото</button> : null}
                 </div>
                 {selectedMenu.image_url ? <div className="tech-photo-preview"><img src={selectedMenu.image_url} alt={selectedMenu.name} /></div> : null}
+              </div>
+              <div className="actions-row">
+                <button className="small primary" onClick={saveSelectedFinalMenuItemFromForm}>Сохранить изменения</button>
+                <button className="small danger" onClick={() => deleteFinalTechCard(selectedMenu.id)}>Удалить тех. карту</button>
               </div>
               <div className="metric-grid">
                 <Metric label="Цена продажи" value={`${fmt(selectedMenu.sale_price)} AZN`} />
