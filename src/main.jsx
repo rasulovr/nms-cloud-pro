@@ -5421,6 +5421,75 @@ function ResponsiveAndSettingsStyles() {
       background: linear-gradient(180deg, #ffffff, #f8fafc) !important;
       box-shadow: 0 16px 36px rgba(15,23,42,.07) !important;
     }
+
+      /* v252 — strict tech card list thumbnails: never stretch table rows */
+      .rms-pro-shell .tech-modern-table .tech-dish-cell{
+        display:flex!important;
+        align-items:center!important;
+        gap:12px!important;
+        min-width:0!important;
+        max-width:360px!important;
+        overflow:hidden!important;
+      }
+      .rms-pro-shell .tech-modern-table .tech-dish-cell > div:last-child{
+        min-width:0!important;
+        overflow:hidden!important;
+      }
+      .rms-pro-shell .tech-modern-table .tech-dish-cell b{
+        display:block!important;
+        max-width:260px!important;
+        overflow:hidden!important;
+        text-overflow:ellipsis!important;
+        white-space:nowrap!important;
+      }
+      .rms-pro-shell .tech-modern-table .tech-dish-cell span{
+        display:block!important;
+        max-width:260px!important;
+        overflow:hidden!important;
+        text-overflow:ellipsis!important;
+        white-space:nowrap!important;
+      }
+      .rms-pro-shell .tech-modern-table .tech-dish-thumb.tech-dish-thumb-photo{
+        width:54px!important;
+        height:54px!important;
+        min-width:54px!important;
+        max-width:54px!important;
+        min-height:54px!important;
+        max-height:54px!important;
+        flex:0 0 54px!important;
+        border-radius:14px!important;
+        overflow:hidden!important;
+        display:grid!important;
+        place-items:center!important;
+        background:#eff6ff!important;
+        border:1px solid #dbeafe!important;
+      }
+      .rms-pro-shell .tech-modern-table .tech-dish-thumb.tech-dish-thumb-photo img{
+        width:54px!important;
+        height:54px!important;
+        min-width:54px!important;
+        max-width:54px!important;
+        min-height:54px!important;
+        max-height:54px!important;
+        object-fit:cover!important;
+        display:block!important;
+      }
+      .rms-pro-shell .tech-modern-table tbody tr{
+        height:auto!important;
+        min-height:72px!important;
+      }
+      .rms-pro-shell .tech-modern-table tbody td{
+        height:72px!important;
+        max-height:72px!important;
+        padding-top:10px!important;
+        padding-bottom:10px!important;
+        overflow:hidden!important;
+      }
+      .rms-pro-shell .tech-modern-table td:nth-child(1){
+        width:320px!important;
+        max-width:320px!important;
+      }
+
   `}</style>
 }
 
@@ -18424,9 +18493,37 @@ function Recipes({ t }) {
                         <tr key={m.id} className={String(selectedMenuId) === String(m.id) ? 'selected-row' : ''}>
                           <td>
                             <div className="tech-dish-cell">
-                              <div className="tech-dish-thumb tech-dish-thumb-photo">
+                              <div
+                                className="tech-dish-thumb tech-dish-thumb-photo"
+                                style={{
+                                  width: 54,
+                                  height: 54,
+                                  minWidth: 54,
+                                  maxWidth: 54,
+                                  maxHeight: 54,
+                                  borderRadius: 14,
+                                  overflow: 'hidden',
+                                  display: 'grid',
+                                  placeItems: 'center',
+                                  background: '#eff6ff',
+                                  border: '1px solid #dbeafe',
+                                  flex: '0 0 54px'
+                                }}
+                              >
                                 {m.image_url || m.photo_url ? (
-                                  <img src={m.image_url || m.photo_url} alt={m.name || 'Фото блюда'} loading="lazy" />
+                                  <img
+                                    src={m.image_url || m.photo_url}
+                                    alt={m.name || 'Фото блюда'}
+                                    loading="lazy"
+                                    style={{
+                                      width: '100%',
+                                      height: '100%',
+                                      maxWidth: '100%',
+                                      maxHeight: '100%',
+                                      objectFit: 'cover',
+                                      display: 'block'
+                                    }}
+                                  />
                                 ) : (
                                   <span>{String(m.name || '?').slice(0, 1).toUpperCase()}</span>
                                 )}
