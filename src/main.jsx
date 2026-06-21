@@ -18424,7 +18424,13 @@ function Recipes({ t }) {
                         <tr key={m.id} className={String(selectedMenuId) === String(m.id) ? 'selected-row' : ''}>
                           <td>
                             <div className="tech-dish-cell">
-                              <div className="tech-dish-thumb">{String(m.name || '?').slice(0, 1).toUpperCase()}</div>
+                              <div className="tech-dish-thumb tech-dish-thumb-photo">
+                                {m.image_url || m.photo_url ? (
+                                  <img src={m.image_url || m.photo_url} alt={m.name || 'Фото блюда'} loading="lazy" />
+                                ) : (
+                                  <span>{String(m.name || '?').slice(0, 1).toUpperCase()}</span>
+                                )}
+                              </div>
                               <div>
                                 <b>{m.name}</b>
                                 <span>{rows.length} компонентов</span>
@@ -19155,6 +19161,55 @@ function SemiFinishedInlineStyles() {
       .tech-photo-preview small {
         color: #64748b;
         font-weight: 800;
+      }
+
+
+      /* v251 — Tech card photo thumbnail and compact preview */
+      .tech-dish-thumb.tech-dish-thumb-photo{
+        width:44px!important;
+        height:44px!important;
+        min-width:44px!important;
+        border-radius:14px!important;
+        overflow:hidden!important;
+        display:grid!important;
+        place-items:center!important;
+        background:#eff6ff!important;
+        border:1px solid #dbeafe!important;
+        color:#2563eb!important;
+        font-weight:950!important;
+      }
+      .tech-dish-thumb.tech-dish-thumb-photo img{
+        width:100%!important;
+        height:100%!important;
+        display:block!important;
+        object-fit:cover!important;
+      }
+      .tech-dish-thumb.tech-dish-thumb-photo span{
+        display:grid!important;
+        place-items:center!important;
+        width:100%!important;
+        height:100%!important;
+      }
+      .tech-photo-preview{
+        grid-template-columns:120px minmax(0,1fr)!important;
+        max-width:420px!important;
+      }
+      .tech-photo-preview img{
+        width:120px!important;
+        height:86px!important;
+        max-width:120px!important;
+        max-height:86px!important;
+        object-fit:cover!important;
+      }
+      .tech-photo-upload-box:not(.compact) .tech-photo-preview{
+        grid-template-columns:160px minmax(0,1fr)!important;
+        max-width:520px!important;
+      }
+      .tech-photo-upload-box:not(.compact) .tech-photo-preview img{
+        width:160px!important;
+        height:110px!important;
+        max-width:160px!important;
+        max-height:110px!important;
       }
 
       .semi-form-grid input,
