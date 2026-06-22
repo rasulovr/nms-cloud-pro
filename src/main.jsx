@@ -1027,23 +1027,4059 @@ function RMSProInterfaceStyles() {
   box-shadow:16px 0 42px rgba(15,23,42,.16)!important;
 }
 .rms-pro-brand{
+  gap:10px!important;
+  margin-bottom:18px!important;
+  padding:0 8px 14px!important;
+  border-bottom:1px solid rgba(148,163,184,.14)!important;
+}
+.rms-pro-logo{
+  width:43px!important;
+  height:43px!important;
+  border-radius:13px!important;
+  box-shadow:0 12px 28px rgba(37,99,235,.32)!important;
+}
+.rms-pro-brand h1{
+  font-size:22px!important;
+  font-weight:780!important;
+  letter-spacing:-.035em!important;
+}
+.rms-pro-brand p{
+  font-size:9.5px!important;
+  line-height:1.15!important;
+  letter-spacing:.045em!important;
+}
+.rms-pro-nav{
+  gap:13px!important;
+  flex:0 1 auto!important;
+  min-height:0!important;
+}
+.rms-pro-nav-group-title{
+  margin:0 0 6px!important;
+  padding:0 8px!important;
+  color:rgba(203,213,225,.72)!important;
+  font-size:11px!important;
+  font-weight:800!important;
+  letter-spacing:.055em!important;
+}
+.rms-pro-nav-list{
+  gap:5px!important;
+}
+.rms-pro-nav-item{
+  min-height:38px!important;
+  height:38px!important;
+  padding:0 10px!important;
+  border-radius:10px!important;
+  gap:10px!important;
+  color:rgba(241,245,249,.90)!important;
+  font-size:14px!important;
+  font-weight:690!important;
+  line-height:1.05!important;
+  letter-spacing:-.01em!important;
+  background:transparent!important;
+  border-color:transparent!important;
+  box-shadow:none!important;
+  transform:none!important;
+}
+.rms-pro-nav-item:hover{
+  background:rgba(59,130,246,.09)!important;
+  border-color:rgba(96,165,250,.20)!important;
+  color:#dbeafe!important;
+  transform:none!important;
+  box-shadow:none!important;
+}
+.rms-pro-nav-item.active{
+  color:#60a5fa!important;
+  background:rgba(37,99,235,.18)!important;
+  border-color:rgba(96,165,250,.35)!important;
+  box-shadow:inset 3px 0 0 #2563eb!important;
+}
+.rms-pro-nav-icon{
+  width:22px!important;
+  height:22px!important;
+  min-width:22px!important;
+  border-radius:8px!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  background:rgba(255,255,255,.045)!important;
+  color:currentColor!important;
+  font-size:0!important;
+}
+.rms-pro-nav-icon svg{
+  width:18px!important;
+  height:18px!important;
+  display:block!important;
+}
+.rms-pro-sidebar-bottom{
+  margin-top:auto!important;
+  padding-top:10px!important;
+  gap:8px!important;
+  border-top:1px solid rgba(148,163,184,.12)!important;
+}
+.rms-pro-restaurant-select{
+  min-height:42px!important;
+  padding:0 12px!important;
+  border-radius:10px!important;
+  font-size:12px!important;
+  background:rgba(15,23,42,.22)!important;
+}
+.rms-pro-user-card{
+  padding:9px!important;
+  gap:9px!important;
+  border-radius:12px!important;
+  background:rgba(15,23,42,.18)!important;
+}
+.rms-pro-avatar{
+  width:35px!important;
+  height:35px!important;
+}
+.rms-pro-user-name{
+  font-size:12px!important;
+  font-weight:800!important;
+  max-width:130px!important;
+}
+.rms-pro-user-role{
+  font-size:10.5px!important;
+}
+.rms-pro-logout{
+  display:none!important;
+}
+.rms-pro-topbar{
+  height:74px!important;
+  background:rgba(255,255,255,.86)!important;
+}
+.rms-pro-topbar-title{
+  font-size:20px!important;
+  font-weight:800!important;
+  letter-spacing:-.025em!important;
+}
+.rms-pro-topbar-actions{
+  gap:18px!important;
+}
+.rms-pro-top-icon{
+  color:#334155!important;
+  font-size:0!important;
+}
+.rms-pro-top-icon svg{
+  width:22px!important;
+  height:22px!important;
+}
+.rms-pro-top-user{
+  font-size:14px!important;
+  font-weight:750!important;
+}
+.rms-pro-top-avatar{
+  width:38px!important;
+  height:38px!important;
+  font-weight:800!important;
+}
+.rms-pro-content{
+  max-width:none!important;
+  padding:24px 24px 34px!important;
+}
+.rms-pro-shell .topbar h2,
+.rms-pro-shell h2{
+  font-weight:780!important;
+  letter-spacing:-.035em!important;
+}
+.rms-pro-shell .card,
+.rms-pro-shell .finance-line-chart-wrap,
+.rms-pro-shell .table-wrap{
+  border-radius:22px!important;
+  box-shadow:0 16px 44px rgba(15,23,42,.052)!important;
+}
+
+    @media (max-width: 960px) {
+      .app.rms-pro-shell {
+        display: block;
+      }
+      .rms-pro-shell .sidebar.rms-pro-sidebar {
+        position: relative;
+        width: 100%;
+        height: auto;
+        min-height: auto;
+        border-radius: 0 0 20px 20px;
+      }
+      .rms-pro-nav {
+        gap: 12px;
+      }
+      .rms-pro-nav-list {
+        flex-direction: row;
+        overflow-x: auto;
+      }
+      .rms-pro-nav-item {
+        min-width: max-content;
+      }
+      .rms-pro-sidebar-bottom {
+        display: none;
+      }
+      .rms-pro-topbar {
+        padding: 0 16px;
+      }
+      .rms-pro-content {
+        padding: 16px;
+      }
+      .rms-pro-topbar-title {
+        font-size: 17px;
+      }
+      .rms-pro-topbar-actions {
+        gap: 6px;
+      }
+    }
+  
+
+/* v88 Finance & Dashboard Professional Cleanup */
+/* v89 Finance Management Export & Health Pack */
+.finance-pro-kpis { grid-template-columns: repeat(7, minmax(150px, 1fr)); }
+.finance-pro-kpis .dash-kpi em { letter-spacing: .01em; }
+.finance-head-main { display:flex; flex-direction:column; gap:8px; }
+.finance-health-row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:2px; }
+.finance-health-pill { display:inline-flex; align-items:center; gap:6px; padding:6px 10px; border-radius:999px; font-size:12px; font-weight:800; border:1px solid rgba(15,23,42,.10); background:#f8fafc; color:#334155; }
+.finance-health-pill.ok { background:#ecfdf5; color:#047857; border-color:#a7f3d0; }
+.finance-health-pill.warn { background:#fffbeb; color:#92400e; border-color:#fde68a; }
+.finance-health-pill.bad { background:#fef2f2; color:#b91c1c; border-color:#fecaca; }
+.finance-head-actions { display:flex; gap:8px; justify-content:flex-end; align-items:end; flex-wrap:wrap; margin-top:8px; }
+.finance-report-btn { white-space:nowrap; }
+.finance-expense-row.food td:first-child::before,
+.finance-expense-row.salary td:first-child::before,
+.finance-expense-row.rent td:first-child::before,
+.finance-expense-row.tax td:first-child::before { content: ''; display:inline-block; width:7px; height:7px; border-radius:999px; margin-right:8px; vertical-align:middle; }
+.finance-expense-row.food td:first-child::before { background:#10b981; }
+.finance-expense-row.salary td:first-child::before { background:#8b5cf6; }
+.finance-expense-row.rent td:first-child::before { background:#f97316; }
+.finance-expense-row.tax td:first-child::before { background:#ef4444; }
+.table-actions { text-align:right; white-space:nowrap; }
+@media (max-width: 1320px) { .finance-pro-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 760px) { .finance-pro-kpis { grid-template-columns: 1fr; } }
+`}</style>
+}
+
+const accessRank = (value) => ACCESS_LEVELS.indexOf(value || 'none')
+const canReadAccess = (value) => accessRank(value) >= accessRank('read')
+
+const fmt = (n) => Number(n || 0).toFixed(2)
+const pct = (n) => `${(Number(n) || 0).toFixed(1)}%`
+const parseNum = (v) => Number(String(v ?? '0').replace(',', '.').replace(/\s/g, '')) || 0
+const supplierEntityKey = (supplierId, legalEntityId) => `${supplierId || ''}::${legalEntityId || ''}`
+const normalizeExpenseText = (value) => String(value || '').trim().toLowerCase().replace(/ё/g, 'е').replace(/\s+/g, ' ')
+const isBazarExpenseName = (value) => {
+  const name = normalizeExpenseText(value)
+  return name === 'базар' || name === 'bazar' || name.includes('базар')
+}
+
+const isDsmfExpenseName = (value) => {
+  const name = normalizeExpenseText(value)
+  return name.includes('dsmf') || name.includes('dmsf') || name.includes('дсмф') || name.includes('дмсф') || name.includes('соц') || name.includes('sosial') || name.includes('social')
+}
+const isSalaryExpenseName = (value) => {
+  const name = normalizeExpenseText(value)
+  return name.includes('зарплат') || name.includes('salary') || name.includes('emek haqq') || name.includes('əmək haqq')
+}
+const RMS_LOGIN_GUARD_KEY = 'rms_login_guard_v1'
+const RMS_LOGIN_MAX_FAILED_ATTEMPTS = 5
+const RMS_LOGIN_LOCK_MS = 5 * 60 * 1000
+
+const rmsLoginGuardLoginKey = (login) => normalizeInternalLogin(login) || String(login || '').trim().toLowerCase()
+const rmsReadLoginGuard = () => readJsonStorage(RMS_LOGIN_GUARD_KEY, {}) || {}
+const rmsWriteLoginGuard = (value) => writeJsonStorage(RMS_LOGIN_GUARD_KEY, value || {})
+const rmsFormatLockTime = (ms) => {
+  const totalSeconds = Math.max(1, Math.ceil(parseNum(ms) / 1000))
+  const minutes = Math.floor(totalSeconds / 60)
+  const seconds = totalSeconds % 60
+  return `${minutes}:${String(seconds)}`
+}
+const rmsGetLoginGuardState = (login) => {
+  const key = rmsLoginGuardLoginKey(login)
+  const guard = rmsReadLoginGuard()
+  const row = guard[key] || { attempts: 0, locked_until: 0 }
+  const lockedUntil = parseNum(row.locked_until)
+  const now = Date.now()
+  if (lockedUntil > now) return { key, locked: true, attempts: parseNum(row.attempts), lockedUntil, remainingMs: lockedUntil - now }
+  if (lockedUntil && lockedUntil <= now) {
+    delete guard[key]
+    rmsWriteLoginGuard(guard)
+    return { key, locked: false, attempts: 0, lockedUntil: 0, remainingMs: 0 }
+  }
+  return { key, locked: false, attempts: parseNum(row.attempts), lockedUntil: 0, remainingMs: 0 }
+}
+const rmsRegisterFailedLogin = (login) => {
+  const key = rmsLoginGuardLoginKey(login)
+  const guard = rmsReadLoginGuard()
+  const previous = guard[key] || { attempts: 0, locked_until: 0 }
+  const now = Date.now()
+  const activeLock = parseNum(previous.locked_until) > now
+  if (activeLock) return rmsGetLoginGuardState(login)
+  const attempts = parseNum(previous.attempts) + 1
+  const lockedUntil = attempts >= RMS_LOGIN_MAX_FAILED_ATTEMPTS ? now + RMS_LOGIN_LOCK_MS : 0
+  guard[key] = { attempts, locked_until: lockedUntil, updated_at: new Date().toISOString() }
+  rmsWriteLoginGuard(guard)
+  return rmsGetLoginGuardState(login)
+}
+const rmsClearLoginGuard = (login) => {
+  const key = rmsLoginGuardLoginKey(login)
+  const guard = rmsReadLoginGuard()
+  if (guard[key]) {
+    delete guard[key]
+    rmsWriteLoginGuard(guard)
+  }
+}
+
+const rmsFinanceExpenseGroupName = (name) => {
+  const value = normalizeExpenseText(name)
+  if (value.includes('аренд')) return 'rent'
+  if (value.includes('коммун') || value.includes('свет') || value.includes('газ') || value.includes('вода') || value.includes('элект')) return 'utilities'
+  if (value.includes('упаков') || value.includes('тара') || value.includes('однораз') || value.includes('стакан') || value.includes('крыш') || value.includes('контейнер') || value.includes('пакет') || value.includes('салфет') || value.includes('take away') || value.includes('takeaway') || value.includes('packaging')) return 'packaging'
+  if (value.includes('хоз') || value.includes('хим') || value.includes('перчат') || value.includes('тряп') || value.includes('губк') || value.includes('моющ') || value.includes('уборк') || value.includes('cleaning')) return 'household'
+  if (value.includes('маркет') || value.includes('реклам') || value.includes('smm')) return 'marketing'
+  if (isBazarExpenseName(value) || value.includes('food cost') || value.includes('market') || value.includes('продукт') || value.includes('закуп') || value.includes('кухня') || value.includes('бар') || value.includes('кофе') || value.includes('напит') || value.includes('списан')) return 'food_market'
+  if (value.includes('ремонт') || value.includes('тех') || value.includes('обслуж')) return 'maintenance'
+  return 'other'
+}
+
+const rmsFinanceSupplierProductGroup = (product = {}) => {
+  const value = normalizeExpenseText(`${product?.category || ''} ${product?.name || ''}`)
+  if (value.includes('упаков') || value.includes('тара') || value.includes('однораз') || value.includes('стакан') || value.includes('крыш') || value.includes('контейнер') || value.includes('пакет') || value.includes('салфет') || value.includes('take away') || value.includes('takeaway') || value.includes('packaging')) return 'packaging'
+  if (value.includes('хоз') || value.includes('хим') || value.includes('перчат') || value.includes('тряп') || value.includes('губк') || value.includes('моющ') || value.includes('уборк') || value.includes('cleaning')) return 'household'
+  if (value.includes('бар') || value.includes('кухня') || value.includes('кофе') || value.includes('напит') || value.includes('food') || value.includes('продукт') || value.includes('мяс') || value.includes('рыб') || value.includes('овощ') || value.includes('молоч') || value.includes('бакале') || value.includes('соус') || value.includes('специ')) return 'food'
+  return 'other'
+}
+
+const rmsFinancePurchaseTotalsByGroup = (rows = []) => (rows || []).reduce((totals, p) => {
+  const items = p.supplier_purchase_items || []
+  if (items.length) {
+    items.forEach(i => {
+      const group = rmsFinanceSupplierProductGroup(i.supplier_products || {})
+      totals[group] = parseNum(totals[group]) + parseNum(i.total_amount)
+    })
+  } else {
+    totals.food = parseNum(totals.food) + parseNum(p.total_amount)
+  }
+  return totals
+}, { food: 0, packaging: 0, household: 0, other: 0 })
+
+const rmsFinanceAllocatedSupplierTotals = (purchaseRows = [], share = 1) => {
+  // Пока не делим поставщиков на кухня / бар / хозтовары / упаковку.
+  // Вся сумма приходов поставщиков входит в FoodCost как “Поставщики”.
+  const total = (purchaseRows || []).reduce((sum, p) => sum + parseNum(p.total_amount), 0)
+  return {
+    food: total * parseNum(share),
+    packaging: 0,
+    household: 0,
+    other: 0
+  }
+}
+
+const rmsFinanceOfficialDaysByEmployee = () => {
+  try { return JSON.parse(localStorage.getItem('rms_employee_official_days') || '{}') } catch (_e) { return {} }
+}
+const rmsFinanceOfficialSalaryByEmployee = () => {
+  try { return JSON.parse(localStorage.getItem('rms_employee_official_salary') || '{}') } catch (_e) { return {} }
+}
+const rmsFinancePayrollBaseByEmployee = (employeeRows = []) => {
+  const officialDays = rmsFinanceOfficialDaysByEmployee()
+  const officialSalary = rmsFinanceOfficialSalaryByEmployee()
+  const defaultDays = parseNum(localStorage.getItem('rms_dsmf_official_days') || '26') || 26
+  const map = new Map()
+  ;(employeeRows || []).forEach(e => {
+    const days = parseNum(officialDays[e.id]) || defaultDays
+    const officialMonthly = parseNum(officialSalary[e.id]) || parseNum(e.official_salary) || parseNum(e.monthly_official_salary) || parseNum(e.monthly_salary)
+    const base = officialMonthly > 0 ? officialMonthly / 26 * days : 0
+    if (base > 0) map.set(e.id, base)
+  })
+  return map
+}
+const rmsFinancePayrollDetailsForScope = (employeeRows = [], selectedBranchId = 'all', revenueShareMap = new Map()) => {
+  const baseMap = rmsFinancePayrollBaseByEmployee(employeeRows)
+  let directSalary = 0
+  let managersSalary = 0
+  let directDsmf = 0
+  let managersDsmf = 0
+  ;(employeeRows || []).forEach(e => {
+    const base = parseNum(baseMap.get(e.id))
+    if (base <= 0) return
+    const isManager = !e.branch_id || positionGroup(e.position) === 'Менеджеры'
+    const charges = statutoryRestaurantOfficialPayrollCost(base).total
+    if (isManager) {
+      managersSalary += base
+      managersDsmf += charges
+    } else if (selectedBranchId === 'all' || e.branch_id === selectedBranchId) {
+      directSalary += base
+      directDsmf += charges
+    }
+  })
+  const branchShares = Array.from(revenueShareMap.values()).reduce((sum, value) => sum + parseNum(value), 0)
+  const share = selectedBranchId === 'all' ? 1 : parseNum(revenueShareMap.get(selectedBranchId)) || (branchShares ? 0 : 0)
+  const allocatedManagersSalary = selectedBranchId === 'all' ? managersSalary : managersSalary * share
+  const allocatedManagersDsmf = selectedBranchId === 'all' ? managersDsmf : managersDsmf * share
+  return {
+    directSalary,
+    managersSalary: allocatedManagersSalary,
+    totalSalary: directSalary + allocatedManagersSalary,
+    directDsmf,
+    managersDsmf: allocatedManagersDsmf,
+    totalDsmf: directDsmf + allocatedManagersDsmf,
+    managerShare: share
+  }
+}
+const statutorySocialEmployer = (baseValue) => {
+  const base = parseNum(baseValue)
+  if (base <= 0) return 0
+  if (base <= 200) return base * 0.22
+  if (base <= 8000) return 44 + (base - 200) * 0.15
+  return 1214 + (base - 8000) * 0.11
+}
+const statutoryUnemploymentEmployer = (baseValue) => parseNum(baseValue) * 0.005
+const statutoryMedicalEmployer = (baseValue) => {
+  const base = parseNum(baseValue)
+  if (base <= 0) return 0
+  if (base <= 2500) return base * 0.02
+  return 50 + (base - 2500) * 0.005
+}
+const statutorySocialEmployee = (baseValue) => {
+  const base = parseNum(baseValue)
+  if (base <= 0) return 0
+  if (base <= 200) return base * 0.03
+  return 6 + (base - 200) * 0.10
+}
+const statutoryUnemploymentEmployee = (baseValue) => parseNum(baseValue) * 0.005
+const statutoryMedicalEmployee = (baseValue) => {
+  const base = parseNum(baseValue)
+  if (base <= 0) return 0
+  if (base <= 2500) return base * 0.02
+  return 50 + (base - 2500) * 0.005
+}
+const statutoryIncomeTaxPrivateNonOil2026 = (baseValue) => {
+  const base = parseNum(baseValue)
+  if (base <= 0) return 0
+  if (base <= 2500) return Math.max(base - 200, 0) * 0.03
+  if (base <= 8000) return 75 + (base - 2500) * 0.10
+  return 625 + (base - 8000) * 0.14
+}
+const statutoryEmployerPayrollCharges = (baseValue) => {
+  const base = parseNum(baseValue)
+  const social = statutorySocialEmployer(base)
+  const unemployment = statutoryUnemploymentEmployer(base)
+  const medical = statutoryMedicalEmployer(base)
+  return {
+    base,
+    social,
+    unemployment,
+    medical,
+    total: social + unemployment + medical
+  }
+}
+const statutoryEmployeePayrollDeductions = (baseValue) => {
+  const base = parseNum(baseValue)
+  const social = statutorySocialEmployee(base)
+  const unemployment = statutoryUnemploymentEmployee(base)
+  const medical = statutoryMedicalEmployee(base)
+  const incomeTax = statutoryIncomeTaxPrivateNonOil2026(base)
+  return {
+    base,
+    social,
+    unemployment,
+    medical,
+    incomeTax,
+    total: social + unemployment + medical + incomeTax
+  }
+}
+const statutoryRestaurantOfficialPayrollCost = (baseValue) => {
+  const base = parseNum(baseValue)
+  const employer = statutoryEmployerPayrollCharges(base)
+  const employee = statutoryEmployeePayrollDeductions(base)
+  return {
+    base,
+    employer,
+    employee,
+    total: employer.total + employee.total
+  }
+}
+const pad2 = (value) => String(value).padStart(2, '0')
+const toLocalISODate = (date = new Date()) => {
+  const d = date instanceof Date ? date : new Date(date)
+  if (Number.isNaN(d.getTime())) return new Date().toISOString().slice(0, 10)
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`
+}
+const todayISO = () => toLocalISODate(new Date())
+const normalizeISODate = (value, fallback = todayISO()) => {
+  const raw = String(value || '').trim()
+  const iso = raw.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/)
+  if (iso) return `${iso[1]}-${pad2(iso[2])}-${pad2(iso[3])}`
+  const slash = raw.match(/^(\d{1,2})[\/.](\d{1,2})[\/.](\d{4})$/)
+  if (slash) {
+    // RMS uses Azerbaijani/Russian business date format: DD/MM/YYYY.
+    // Do not auto-guess MM/DD/YYYY, because 08/06/2026 must mean 8 June, not 6 August.
+    const day = Number(slash[1])
+    const month = Number(slash[2])
+    const y = slash[3]
+    if (month >= 1 && month <= 12 && day >= 1 && day <= 31) return `${y}-${pad2(month)}-${pad2(day)}`
+  }
+  return fallback
+}
+const parseISODateLocal = (value, fallback = todayISO()) => {
+  const iso = normalizeISODate(value, fallback)
+  const [y, m, d] = iso.split('-').map(Number)
+  return new Date(y, m - 1, d)
+}
+const monthRangeFromISODate = (value = todayISO()) => {
+  const anchor = parseISODateLocal(value)
+  const year = anchor.getFullYear()
+  const month = anchor.getMonth() + 1
+  const from = `${year}-${pad2(month)}-01`
+  const to = `${year}-${pad2(month)}-${pad2(new Date(year, month, 0).getDate())}`
+  const toExclusive = month === 12 ? `${year + 1}-01-01` : `${year}-${pad2(month + 1)}-01`
+  return { from, to, toExclusive, year, month }
+}
+const sameISODate = (a, b) => normalizeISODate(a) === normalizeISODate(b)
+const sameISOMonth = (a, b) => normalizeISODate(a).slice(0, 7) === normalizeISODate(b).slice(0, 7)
+const sameISOYear = (a, b) => normalizeISODate(a).slice(0, 4) === normalizeISODate(b).slice(0, 4)
+const RMS_SUPPLIERS_UPDATED_EVENT = 'rms:suppliers-updated'
+function notifySuppliersUpdated() {
+  try { window.dispatchEvent(new CustomEvent(RMS_SUPPLIERS_UPDATED_EVENT)) } catch (_) {}
+}
+
+const ADVANCE_EDIT_WINDOW_MS = 7 * 24 * 60 * 60 * 1000
+const EDIT_WINDOW_MS = 7 * 24 * 60 * 60 * 1000
+const canEditAdvance = (row) => row?.created_at ? (Date.now() - new Date(row.created_at).getTime()) <= ADVANCE_EDIT_WINDOW_MS : true
+const canEditWithinWeek = (row) => row?.created_at ? (Date.now() - new Date(row.created_at).getTime()) <= EDIT_WINDOW_MS : true
+const formatDateDMY = (value) => {
+  if (!value) return '—'
+  const raw = String(value).trim()
+  const iso = raw.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/)
+  if (iso) return `${pad2(iso[3])}/${pad2(iso[2])}/${iso[1]}`
+  const dmy = raw.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{4})$/)
+  if (dmy) return `${pad2(dmy[1])}/${pad2(dmy[2])}/${dmy[3]}`
+  const dt = new Date(raw)
+  if (Number.isNaN(dt.getTime())) return raw
+  return `${pad2(dt.getDate())}/${pad2(dt.getMonth() + 1)}/${dt.getFullYear()}`
+}
+const formatDT = (value) => {
+  if (!value) return '—'
+  const dt = new Date(value)
+  if (Number.isNaN(dt.getTime())) return String(value)
+  return `${pad2(dt.getDate())}/${pad2(dt.getMonth() + 1)}/${dt.getFullYear()} ${pad2(dt.getHours())}:${pad2(dt.getMinutes())}`
+}
+const dmyToISODate = (value) => {
+  const raw = String(value || '').trim()
+  const iso = raw.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/)
+  if (iso) return `${iso[1]}-${pad2(iso[2])}-${pad2(iso[3])}`
+  const dmy = raw.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{4})$/)
+  if (dmy) {
+    const day = Number(dmy[1])
+    const month = Number(dmy[2])
+    if (month >= 1 && month <= 12 && day >= 1 && day <= 31) return `${dmy[3]}-${pad2(month)}-${pad2(day)}`
+  }
+  return ''
+}
+function DateInput({ value, onChange, className = '', placeholder = 'дд/мм/гггг', ...props }) {
+  const nativeDateRef = useRef(null)
+  const [displayValue, setDisplayValue] = useState(formatDateDMY(value))
+  useEffect(() => { setDisplayValue(formatDateDMY(value)) }, [value])
+
+  const commitISO = (isoValue) => {
+    if (!isoValue) return
+    const pretty = formatDateDMY(isoValue)
+    setDisplayValue(pretty === '—' ? '' : pretty)
+    if (onChange) onChange({ target: { value: isoValue } })
+  }
+
+  const emitISOIfComplete = (rawValue, force = false) => {
+    const raw = String(rawValue || '').trim()
+    const completeDMY = /^(\d{1,2})[./-](\d{1,2})[./-](\d{4})$/.test(raw)
+    const completeISO = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.test(raw)
+    if (!raw) {
+      if (force && onChange) onChange({ target: { value: '' } })
+      return
+    }
+    if (!completeDMY && !completeISO) return
+    const isoValue = dmyToISODate(raw)
+    if (isoValue) commitISO(isoValue)
+  }
+
+  const openNativePicker = () => {
+    const el = nativeDateRef.current
+    if (!el) return
+    try {
+      if (typeof el.showPicker === 'function') {
+        el.showPicker()
+      } else {
+        el.focus()
+        el.click()
+      }
+    } catch (_e) {
+      el.focus()
+      el.click()
+    }
+  }
+
+  return <span className="date-dmy-wrap">
+    <input
+      {...props}
+      type="text"
+      inputMode="numeric"
+      className={`date-dmy-input ${className || ''}`.trim()}
+      placeholder={placeholder}
+      value={displayValue === '—' ? '' : displayValue}
+      onClick={openNativePicker}
+      onFocus={openNativePicker}
+      onChange={e => {
+        setDisplayValue(e.target.value)
+        emitISOIfComplete(e.target.value, false)
+      }}
+      onBlur={e => {
+        const isoValue = dmyToISODate(e.target.value)
+        if (isoValue) {
+          commitISO(isoValue)
+        } else {
+          setDisplayValue(formatDateDMY(value))
+        }
+      }}
+    />
+    <button type="button" className="date-dmy-picker-btn" onClick={openNativePicker} title="Выбрать дату" aria-label="Выбрать дату">📅</button>
+    <input
+      ref={nativeDateRef}
+      type="date"
+      className="date-dmy-native"
+      tabIndex={-1}
+      value={normalizeISODate(value || todayISO())}
+      onChange={e => commitISO(e.target.value)}
+      aria-hidden="true"
+    />
+  </span>
+}
+
+const calcDailyRate = (emp) => {
+  const type = emp?.salary_type || 'monthly'
+  return type === 'daily' ? parseNum(emp?.daily_rate) : parseNum(emp?.monthly_salary) / 26
+}
+const calcGrossSalary = (emp, workedDays) => {
+  const type = emp?.salary_type || 'monthly'
+  if (type === 'monthly') return parseNum(emp?.monthly_salary)
+  return calcDailyRate(emp) * parseNum(workedDays)
+}
+const monthKeyFromDate = (date) => date.slice(0, 7)
+const monthStart = (year, month) => `${year}-${pad2(month)}-01`
+const daysInMonth = (year, month) => new Date(Number(year), Number(month), 0).getDate()
+const prevMonth = (year, month) => {
+  let y = Number(year)
+  let m = Number(month) - 1
+  if (m < 1) { m = 12; y -= 1 }
+  return { year: y, month: m }
+}
+const defaultYears = () => {
+  const cy = new Date().getFullYear()
+  return Array.from({ length: 6 }, (_, i) => cy - 3 + i)
+}
+
+const STAFF_GROUP_MANAGERS = '__managers'
+const STAFF_POSITION_GROUPS = ['Менеджеры', 'Бар', 'Повар', 'Стьюарт', 'Другое']
+const STAFF_POSITIONS = ['Повар', 'Бар', 'Стьюард', 'Менеджер']
+const employeeGroupId = (emp) => emp?.branch_id || STAFF_GROUP_MANAGERS
+const employeeGroupName = (emp) => {
+  if (!emp?.branch_id) return 'Менеджеры'
+  if (emp?.branches?.name) return emp.branches.name
+  if (emp?.branch_name) return emp.branch_name
+  return 'Филиал'
+}
+const staffGroupOptions = (branches) => [{ id: STAFF_GROUP_MANAGERS, name: 'Менеджеры' }, ...branches]
+const positionGroup = (position) => {
+  const p = String(position || '').trim().toLowerCase()
+  if (p.includes('менедж') || p.includes('управ') || p.includes('директор') || p.includes('админ') || p.includes('закуп') || p.includes('smm') || p.includes('шеф-бар') || p.includes('шеф бар') || p.includes('brand') || p.includes('manager') || p.includes('director') || p.includes('admin')) return 'Менеджеры'
+  if (p.includes('повар') || p.includes('кух') || p.includes('кухар') || p.includes('су-шеф') || p.includes('су шеф') || p.includes('шеф-повар') || p.includes('шеф повар') || p.includes('chef') || p.includes('cook') || p.includes('kitchen') || p.includes('aşpaz') || p.includes('ashpaz') || p.includes('povar')) return 'Повар'
+  if (p.includes('бар') || p.includes('бариста') || p.includes('бармен') || p.includes('сервис') || p.includes('servis') || p.includes('service') || p.includes('barista') || p.includes('barmen')) return 'Бар'
+  if (p.includes('стюард') || p.includes('стьюард') || p.includes('стюарт') || p.includes('стьюарт') || p.includes('stew')) return 'Стьюарт'
+  return 'Другое'
+}
+const isManagerStaff = (emp) => {
+  const position = String(emp?.position || '').toLowerCase()
+  const groupName = String(emp?.branches?.name || emp?.branch_name || '').toLowerCase()
+  return !emp?.branch_id
+    || groupName.includes('менедж')
+    || positionGroup(position) === 'Менеджеры'
+    || ['owner', 'ceo', 'coo', 'cfo', 'управ', 'директор', 'админ', 'закуп', 'smm', 'шеф'].some(x => position.includes(x))
+}
+const matchesStaffGroup = (emp, groupId) => {
+  if (groupId === 'all') return true
+  if (groupId === STAFF_GROUP_MANAGERS) return !emp?.branch_id
+  return String(employeeGroupId(emp)) === String(groupId)
+}
+const matchesPositionGroup = (emp, group) => group === 'all' || positionGroup(emp?.position) === group
+
+function useLang() {
+  const [lang, setLangState] = useState(localStorage.getItem('rms_lang') || localStorage.getItem('nms_lang') || 'ru')
+
+  const [snapshots, setSnapshots] = useState([])
+  const [snapshotLoading, setSnapshotLoading] = useState(false)
+
+  const loadSnapshots = async () => {
+    try {
+      const { data, error } = await supabase.rpc('rms_list_snapshots')
+      if (error) throw error
+      setSnapshots(data || [])
+    } catch (e) {
+      console.error('loadSnapshots error', e)
+    }
+  }
+
+  const createSnapshot = async () => {
+    try {
+      setSnapshotLoading(true)
+      const { data, error } = await supabase.rpc('rms_create_operational_snapshot', {
+        p_snapshot_type: 'manual_ui'
+      })
+      if (error) throw error
+      alert('Snapshot created: ' + data)
+      await loadSnapshots()
+    } catch (e) {
+      console.error('createSnapshot error', e)
+      alert(e.message || 'Snapshot error')
+    } finally {
+      setSnapshotLoading(false)
+    }
+  }
+
+  const setLang = (value) => {
+    localStorage.setItem('rms_lang', value)
+    setLangState(value)
+  }
+  return [lang, setLang, (key) => I18N[lang]?.[key] || I18N.ru[key] || key]
+}
+
+
+const RMS_INTERNAL_USERS_KEY = 'rms_internal_users_v2'
+const RMS_INTERNAL_PERMISSIONS_KEY = 'rms_internal_permissions_v2'
+const RMS_INTERNAL_USERS_SETTING = 'internal_users_v2'
+const RMS_INTERNAL_PERMISSIONS_SETTING = 'internal_permissions_v2'
+const RMS_INTERNAL_SESSION_KEY = 'rms_internal_session_v2'
+
+const normalizeInternalLogin = (value) =>
+  String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/@(rms|nms)\.local\.az$/i, '')
+    .replace(/@rms\.internal$/i, '')
+
+const readJsonStorage = (key, fallback) => {
+  try {
+    const raw = localStorage.getItem(key)
+    return raw ? JSON.parse(raw) : fallback
+  } catch (_e) {
+    return fallback
+  }
+}
+
+const writeJsonStorage = (key, value) => {
+  try { localStorage.setItem(key, JSON.stringify(value)) } catch (_e) {}
+}
+
+const getInternalUsers = () =>
+  readJsonStorage(RMS_INTERNAL_USERS_KEY, null) ||
+  readJsonStorage('rms_internal_users_v1', null) ||
+  {}
+
+const setInternalUsers = (users) => {
+  const payload = users || {}
+  writeJsonStorage(RMS_INTERNAL_USERS_KEY, payload)
+  try { writeRmsAppSetting(RMS_INTERNAL_USERS_SETTING, payload) } catch (_e) {}
+}
+
+const getInternalPermissions = () =>
+  readJsonStorage(RMS_INTERNAL_PERMISSIONS_KEY, null) ||
+  readJsonStorage('rms_internal_permissions_v1', null) ||
+  {}
+
+const setInternalPermissions = (perms) => {
+  const payload = perms || {}
+  writeJsonStorage(RMS_INTERNAL_PERMISSIONS_KEY, payload)
+  try { writeRmsAppSetting(RMS_INTERNAL_PERMISSIONS_SETTING, payload) } catch (_e) {}
+}
+
+const getInternalSessionStorage = () =>
+  readJsonStorage(RMS_INTERNAL_SESSION_KEY, null) ||
+  readJsonStorage('rms_internal_session_v1', null)
+
+const setInternalSessionStorage = (session) => {
+  try {
+    if (session) writeJsonStorage(RMS_INTERNAL_SESSION_KEY, session)
+    else {
+      localStorage.removeItem(RMS_INTERNAL_SESSION_KEY)
+      localStorage.removeItem('rms_internal_session_v1')
+    }
+  } catch (_e) {}
+}
+
+const RMS_APP_SETTINGS_TABLE = 'rms_app_settings'
+const RMS_CUSTOM_LOGO_KEY = 'custom_logo'
+const RMS_BRANCH_RENT_FORECAST_SETTING = 'branch_rent_forecast_v1'
+const RMS_BRANCH_TAX_RATE_SETTING = 'branch_tax_rate_v1'
+const RMS_HIDDEN_SALES_KEYS_SETTING = 'hidden_sales_keys'
+const RMS_SALES_NAME_ALIASES_SETTING = 'sales_name_aliases'
+
+const RMS_SOURCE_VERSION = 'main_v257_backup_animated_progress'
+const RMS_FULL_BACKUP_TABLES = [
+  'branches',
+  'expense_categories',
+  'legal_entities',
+  'user_profiles',
+  'user_permissions',
+  'employees',
+  'employee_assignments',
+  'employee_attendance',
+  'employee_files',
+  'salary_periods',
+  'salary_advances',
+  'salary_payments',
+  'suppliers',
+  'supplier_products',
+  'supplier_purchases',
+  'supplier_purchase_items',
+  'supplier_payments',
+  'supplier_balances',
+  'supplier_balances_v2',
+  'latest_product_costs',
+  'daily_revenue',
+  'daily_revenue_entries',
+  'pos_orders',
+  'pos_order_items',
+  'daily_expenses',
+  'daily_cash_register',
+  'daily_cash_inflows',
+  'monthly_branch_revenue',
+  'monthly_branch_expenses',
+  'monthly_branch_salary',
+  'monthly_branch_service_charge_cost',
+  'finance_operation_log',
+  'menu_items',
+  'recipe_items',
+  'rms_sales_reports',
+  'rms_app_settings'
+]
+const RMS_FULL_BACKUP_CHILD_FIRST_TABLES = [
+  'recipe_items',
+  'supplier_purchase_items',
+  'supplier_payments',
+  'supplier_purchases',
+  'supplier_balances',
+  'supplier_balances_v2',
+  'latest_product_costs',
+  'salary_payments',
+  'salary_advances',
+  'salary_periods',
+  'employee_attendance',
+  'employee_files',
+  'employee_assignments',
+  'pos_order_items',
+  'pos_orders',
+  'daily_revenue_entries',
+  'daily_expenses',
+  'daily_cash_register',
+  'daily_cash_inflows',
+  'monthly_branch_revenue',
+  'monthly_branch_expenses',
+  'monthly_branch_salary',
+  'monthly_branch_service_charge_cost',
+  'finance_operation_log',
+  'menu_items',
+  'supplier_products',
+  'suppliers',
+  'employees',
+  'branches',
+  'expense_categories',
+  'legal_entities',
+  'user_permissions',
+  'user_profiles',
+  'rms_sales_reports',
+  'rms_app_settings'
+]
+const RMS_FULL_BACKUP_TABLE_KEY = (table) => table === 'rms_app_settings' ? 'key' : 'id'
+const RMS_FULL_BACKUP_LOCAL_KEYS = [
+  RMS_INTERNAL_USERS_KEY,
+  RMS_INTERNAL_PERMISSIONS_KEY,
+  RMS_INTERNAL_SESSION_KEY,
+  RMS_INTERNAL_USERS_SETTING,
+  RMS_INTERNAL_PERMISSIONS_SETTING,
+  'rms_lang',
+  'rms_theme',
+  'rms_custom_logo',
+  'rms_sales_reports_v1',
+  'rms_sales_reports_v2',
+  'rms_hidden_sales_keys',
+  'rms_sales_name_aliases'
+]
+
+
+async function readRmsAppSetting(key, fallback = null) {
+  try {
+    const { data, error } = await supabase
+      .from(RMS_APP_SETTINGS_TABLE)
+      .select('value')
+      .eq('key', key)
+      .maybeSingle()
+    if (error) return fallback
+    return data?.value ?? fallback
+  } catch (_e) {
+    return fallback
+  }
+}
+
+async function writeRmsAppSetting(key, value) {
+  try {
+    const { error } = await supabase
+      .from(RMS_APP_SETTINGS_TABLE)
+      .upsert({ key, value, updated_at: new Date().toISOString() }, { onConflict: 'key' })
+    return { error: error || null }
+  } catch (error) {
+    return { error }
+  }
+}
+
+async function deleteRmsAppSetting(key) {
+  try {
+    const { error } = await supabase
+      .from(RMS_APP_SETTINGS_TABLE)
+      .delete()
+      .eq('key', key)
+    return { error: error || null }
+  } catch (error) {
+    return { error }
+  }
+}
+
+async function hydrateRmsInternalAuthFromCloud() {
+  try {
+    const [cloudUsers, cloudPerms] = await Promise.all([
+      readRmsAppSetting(RMS_INTERNAL_USERS_SETTING, null),
+      readRmsAppSetting(RMS_INTERNAL_PERMISSIONS_SETTING, null)
+    ])
+
+    const localUsers = getInternalUsers()
+    const localPerms = getInternalPermissions()
+
+    const cloudUsersObj = (cloudUsers && typeof cloudUsers === 'object' && !Array.isArray(cloudUsers)) ? cloudUsers : {}
+    const cloudPermsObj = (cloudPerms && typeof cloudPerms === 'object' && !Array.isArray(cloudPerms)) ? cloudPerms : {}
+    const localUsersObj = (localUsers && typeof localUsers === 'object' && !Array.isArray(localUsers)) ? localUsers : {}
+    const localPermsObj = (localPerms && typeof localPerms === 'object' && !Array.isArray(localPerms)) ? localPerms : {}
+
+    const nextUsers = { ...cloudUsersObj, ...localUsersObj }
+    const nextPerms = { ...cloudPermsObj, ...localPermsObj }
+
+    if (Object.keys(nextUsers).length) writeJsonStorage(RMS_INTERNAL_USERS_KEY, nextUsers)
+    if (Object.keys(nextPerms).length) writeJsonStorage(RMS_INTERNAL_PERMISSIONS_KEY, nextPerms)
+
+    if (Object.keys(nextUsers).length && JSON.stringify(nextUsers) !== JSON.stringify(cloudUsersObj)) {
+      await writeRmsAppSetting(RMS_INTERNAL_USERS_SETTING, nextUsers)
+    }
+    if (Object.keys(nextPerms).length && JSON.stringify(nextPerms) !== JSON.stringify(cloudPermsObj)) {
+      await writeRmsAppSetting(RMS_INTERNAL_PERMISSIONS_SETTING, nextPerms)
+    }
+
+    return { users: nextUsers, permissions: nextPerms, error: null }
+  } catch (error) {
+    return { users: getInternalUsers(), permissions: getInternalPermissions(), error }
+  }
+}
+
+
+const RMS_GLOBAL_PROGRESS_EVENT = 'rms-global-progress'
+const startGlobalProgress = (label = 'Выполняется операция...') => {
+  let progress = 12
+  window.dispatchEvent(new CustomEvent(RMS_GLOBAL_PROGRESS_EVENT, { detail: { active: true, progress, label } }))
+  const timer = setInterval(() => {
+    progress = Math.min(92, progress + Math.max(1, Math.round((96 - progress) / 8)))
+    window.dispatchEvent(new CustomEvent(RMS_GLOBAL_PROGRESS_EVENT, { detail: { active: true, progress, label } }))
+  }, 320)
+  return () => {
+    clearInterval(timer)
+    window.dispatchEvent(new CustomEvent(RMS_GLOBAL_PROGRESS_EVENT, { detail: { active: true, progress: 100, label: 'Готово' } }))
+    setTimeout(() => window.dispatchEvent(new CustomEvent(RMS_GLOBAL_PROGRESS_EVENT, { detail: { active: false, progress: 0, label: '' } })), 260)
+  }
+}
+
+function GlobalProgressOverlay() {
+  const [state, setState] = useState({ active: false, progress: 0, label: '' })
+  useEffect(() => {
+    const handler = e => setState(e.detail || { active: false, progress: 0, label: '' })
+    window.addEventListener(RMS_GLOBAL_PROGRESS_EVENT, handler)
+    return () => window.removeEventListener(RMS_GLOBAL_PROGRESS_EVENT, handler)
+  }, [])
+  if (!state.active) return null
+  return <div className="global-progress-overlay">
+    <div className="global-progress-card">
+      <div className="global-progress-spinner" />
+      <strong>{state.label || 'Выполняется операция...'}</strong>
+      <div className="global-progress-track"><div style={{width: `${Math.round(state.progress || 0)}%`}} /></div>
+      <span>{Math.round(state.progress || 0)}%</span>
+    </div>
+  </div>
+}
+
+
+function BackupProgressOverlay({ state }) {
+  if (!state?.active) return null
+  const progress = Math.max(0, Math.min(100, Math.round(Number(state.progress) || 0)))
+  const radius = 52
+  const circumference = 2 * Math.PI * radius
+  const dashOffset = circumference * (1 - progress / 100)
+  const isError = state.status === 'error'
+  const isSuccess = state.status === 'success'
+
+  return <div className="backup-progress-overlay" role="status" aria-live="polite" aria-label={`${state.title || 'Операция с данными'}: ${progress}%`}>
+    <div className={`backup-progress-card ${isError ? 'is-error' : ''} ${isSuccess ? 'is-success' : ''}`}>
+      <div className="backup-progress-ring-wrap">
+        <svg className="backup-progress-ring" viewBox="0 0 128 128" aria-hidden="true">
+          <circle className="backup-progress-ring-bg" cx="64" cy="64" r={radius} />
+          <circle
+            className="backup-progress-ring-value"
+            cx="64"
+            cy="64"
+            r={radius}
+            strokeDasharray={circumference}
+            strokeDashoffset={dashOffset}
+          />
+        </svg>
+        <div className="backup-progress-percent"><strong>{progress}</strong><span>%</span></div>
+      </div>
+      <div className="backup-progress-copy">
+        <span className="backup-progress-eyebrow">RMS DATA CENTER</span>
+        <h3>{state.title || 'Выполняется операция'}</h3>
+        <p>{state.detail || 'Подготовка данных…'}</p>
+        <div className="backup-progress-track"><div style={{ width: `${progress}%` }} /></div>
+        <div className="backup-progress-footer">
+          <span>{state.step || (isSuccess ? 'Операция завершена' : isError ? 'Операция остановлена' : 'Не закрывайте страницу')}</span>
+          <b>{progress} / 100</b>
+        </div>
+      </div>
+    </div>
+  </div>
+}
+
+function getRmsLocalUser() {
+  const sess = getInternalSessionStorage()
+  if (!sess?.rms_internal) return null
+  const login = normalizeInternalLogin(sess?.user?.login_name || sess?.user?.email)
+  const users = getInternalUsers()
+  const localUser = users[login] || Object.values(users).find(u => u?.id === sess?.user?.id)
+  if (!localUser) return null
+  return {
+    id: localUser.id,
+    login_name: localUser.login || login,
+    email: `${localUser.login || login}@rms.internal`,
+    full_name: localUser.full_name || localUser.login || login,
+    role: 'employee',
+    is_active: localUser.is_active !== false,
+    hide_manager_salary: Boolean(localUser.hide_manager_salary || localUser.hide_manager_salaries),
+    hide_manager_salaries: Boolean(localUser.hide_manager_salary || localUser.hide_manager_salaries),
+    ui_theme: localUser.ui_theme || 'classic',
+    rms_internal: true
+  }
+}
+
+const makeInternalPermissionRows = (userId) => {
+  const all = getInternalPermissions()
+  const byUser = all[userId] || {}
+  return Object.entries(byUser).map(([section, access]) => ({ user_id: userId, section, access }))
+}
+
+async function fetchRmsStaffWorkspaceSnapshot(monthDate) {
+  if (!monthDate) return { data: null, error: new Error('monthDate is required') }
+  const { data, error } = await supabase.rpc('rms_staff_workspace_snapshot', { p_month: monthDate })
+  if (error) return { data: null, error }
+  const normalized = data && typeof data === 'object' ? data : null
+  if (!normalized) return { data: null, error: new Error('Empty RMS workspace snapshot') }
+  return { data: normalized, error: null }
+}
+
+
+async function fetchRmsRevenueWorkspace(branchId, activeDate) {
+  if (!branchId || !activeDate) return { data: null, error: new Error('branchId/date required') }
+  const { data, error } = await supabase.rpc('rms_revenue_day_workspace', { p_branch_id: branchId, p_date: activeDate })
+  if (error) return { data: null, error }
+  const normalized = data && typeof data === 'object' ? data : null
+  if (!normalized) return { data: null, error: new Error('Empty RMS revenue workspace') }
+  return { data: normalized, error: null }
+}
+
+
+async function fetchRmsSuppliersWorkspace() {
+  const { data, error } = await supabase.rpc('rms_suppliers_workspace')
+  if (error) return { data: null, error }
+  const normalized = data && typeof data === 'object' ? data : null
+  if (!normalized) return { data: null, error: new Error('Empty RMS suppliers workspace') }
+  return { data: normalized, error: null }
+}
+
+async function fetchRmsRecipesWorkspace() {
+  const { data, error } = await supabase.rpc('rms_recipes_workspace')
+  if (error) return { data: null, error }
+  const normalized = data && typeof data === 'object' ? data : null
+  if (!normalized) return { data: null, error: new Error('Empty RMS recipes workspace') }
+  return { data: normalized, error: null }
+}
+
+
+
+
+function SecurityRecoveryCenter({ embedded = false } = {}) {
+  const [snapshots, setSnapshots] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [message, setMessage] = useState('')
+  const [preview, setPreview] = useState(null)
+  const [previewLoading, setPreviewLoading] = useState(false)
+  const [compareResult, setCompareResult] = useState(null)
+  const [compareLoading, setCompareLoading] = useState(false)
+  const [restoreLoading, setRestoreLoading] = useState(false)
+  const [restoreResult, setRestoreResult] = useState(null)
+  const [supplierAuditRows, setSupplierAuditRows] = useState([])
+  const [supplierAuditLoading, setSupplierAuditLoading] = useState(false)
+  const [showSupplierAuditDetails, setShowSupplierAuditDetails] = useState(false)
+  const [financeFormulaDiagnostics, setFinanceFormulaDiagnostics] = useState([])
+  const [financeForecastDiagnostics, setFinanceForecastDiagnostics] = useState([])
+  const [showFinanceDiagnosticsDetails, setShowFinanceDiagnosticsDetails] = useState(false)
+  const [revenueAuditRows, setRevenueAuditRows] = useState([])
+  const [revenueAuditLoading, setRevenueAuditLoading] = useState(false)
+  const [showRevenueAuditDetails, setShowRevenueAuditDetails] = useState(false)
+
+  const loadFinanceDiagnostics = () => {
+    try {
+      const formula = JSON.parse(localStorage.getItem('rms_finance_formula_audit_v78') || '[]')
+      const forecast = JSON.parse(localStorage.getItem('rms_finance_forecast_audit_v78') || '[]')
+      setFinanceFormulaDiagnostics(Array.isArray(formula) ? formula : [])
+      setFinanceForecastDiagnostics(Array.isArray(forecast) ? forecast : [])
+    } catch (_) {
+      setFinanceFormulaDiagnostics([])
+      setFinanceForecastDiagnostics([])
+    }
+  }
+
+  const loadSupplierEnterpriseAudit = async () => {
+    setSupplierAuditLoading(true)
+    try {
+      const { data, error } = await supabase.from('supplier_enterprise_audit_view').select('*')
+      if (error) throw error
+      setSupplierAuditRows(data || [])
+    } catch (e) {
+      setSupplierAuditRows([])
+      setMessage(e?.message || 'Не удалось загрузить supplier audit')
+    } finally {
+      setSupplierAuditLoading(false)
+    }
+  }
+
+  const loadRevenueDiagnostics = async () => {
+    setRevenueAuditLoading(true)
+    try {
+      const { data, error } = await supabase
+        .from('revenue_enterprise_audit_view')
+        .select('*')
+        .order('audit_date', { ascending: false })
+        .limit(300)
+      if (error) throw error
+      setRevenueAuditRows(data || [])
+    } catch (e) {
+      setRevenueAuditRows([])
+      setMessage(e?.message || 'Не удалось загрузить revenue audit')
+    } finally {
+      setRevenueAuditLoading(false)
+    }
+  }
+
+  const revenueAuditProblemRows = (revenueAuditRows || []).filter(r => (r.status || 'ok') !== 'ok' || Math.abs(parseNum(r.diff)) > 0.01)
+  const revenueAuditTotals = (revenueAuditRows || []).reduce((acc, r) => {
+    acc.source += parseNum(r.source_amount)
+    acc.aggregate += parseNum(r.aggregate_amount)
+    acc.diff += parseNum(r.diff)
+    return acc
+  }, { source: 0, aggregate: 0, diff: 0 })
+  const revenueAuditOk = !revenueAuditProblemRows.length && Math.abs(parseNum(revenueAuditTotals.diff)) <= 0.01
+
+  const supplierAuditCriticalRows = (supplierAuditRows || []).filter(r => (r.issue_type || 'ok') !== 'ok' || Math.abs(parseNum(r.diff)) > 0.01)
+  const supplierAuditTotals = (supplierAuditRows || []).reduce((acc, r) => {
+    acc.source += parseNum(r.source_balance)
+    acc.ledger += parseNum(r.ledger_balance)
+    acc.diff += parseNum(r.diff)
+    return acc
+  }, { source: 0, ledger: 0, diff: 0 })
+  const supplierAuditOk = !supplierAuditCriticalRows.length && Math.abs(parseNum(supplierAuditTotals.diff)) <= 0.01
+
+  const loadSnapshots = async () => {
+    setLoading(true)
+    setMessage('')
+    try {
+      const { data, error } = await supabase.rpc('rms_list_snapshots')
+      if (error) throw error
+      setSnapshots(data || [])
+    } catch (e) {
+      setMessage(e?.message || 'Не удалось загрузить snapshots')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const previewSnapshot = async (id) => {
+    setPreviewLoading(true)
+    try {
+      const { data, error } = await supabase.rpc('rms_get_snapshot_details', {
+        p_snapshot_id: id
+      })
+      if (error) throw error
+      setPreview(data || null)
+    } catch (e) {
+      alert(e?.message || 'Preview error')
+    } finally {
+      setPreviewLoading(false)
+    }
+  }
+
+  const compareSnapshot = async (id) => {
+    setCompareLoading(true)
+    try {
+      const { data, error } = await supabase.rpc('rms_compare_snapshot_with_current', {
+        p_snapshot_id: id
+      })
+      if (error) throw error
+      setCompareResult(data || null)
+    } catch (e) {
+      alert(e?.message || 'Compare error')
+    } finally {
+      setCompareLoading(false)
+    }
+  }
+
+
+  const restoreMissingSnapshot = async (id) => {
+    const confirmed = window.confirm(
+      'Restore ONLY missing rows from this snapshot? Current data will NOT be deleted.'
+    )
+
+    if (!confirmed) return
+
+    setRestoreLoading(true)
+
+    try {
+      const { data, error } = await supabase.rpc(
+        'rms_restore_snapshot_missing_operational',
+        {
+          p_snapshot_id: id,
+          p_scope: 'operational'
+        }
+      )
+
+      if (error) throw error
+
+      setRestoreResult(data || null)
+
+      alert(
+        `Restore complete. Revenue restored: ${data?.revenue_restored || 0}, Expenses restored: ${data?.expense_restored || 0}`
+      )
+    } catch (e) {
+      alert(e?.message || 'Restore failed')
+    } finally {
+      setRestoreLoading(false)
+    }
+  }
+
+
+  const createSnapshot = async () => {
+    setLoading(true)
+    setMessage('')
+    try {
+      const { data, error } = await supabase.rpc('rms_create_operational_snapshot', {
+        p_snapshot_type: 'manual_ui'
+      })
+      if (error) throw error
+      setMessage(`Snapshot создан: ${data}`)
+      await loadSnapshots()
+    } catch (e) {
+      setMessage(e?.message || 'Не удалось создать snapshot')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => { loadSnapshots(); loadSupplierEnterpriseAudit(); loadFinanceDiagnostics(); loadRevenueDiagnostics() }, [])
+
+  return (
+    <section className={`space-y-6 ${embedded ? 'security-center-embedded' : ''}`}>
+      <section className={embedded ? 'card security-center-header' : 'topbar'}>
+        <div>
+          <h2>Безопасность и диагностика</h2>
+          <p>Снимки данных, аудит, восстановление и контроль целостности операций.</p>
+        </div>
+        <button className="primary" onClick={createSnapshot} disabled={loading}>
+          {loading ? 'Создание...' : 'Create Snapshot'}
+        </button>
+      </section>
+
+      {message ? <p className="hint">{message}</p> : null}
+
+      <section className="card span-2">
+        <div className="card-head">
+          <div>
+            <h3>Operational Snapshots</h3>
+            <p className="hint">Снимки operational data: выручка, расходы, ledger и ERP events.</p>
+          </div>
+          <button className="small" onClick={loadSnapshots} disabled={loading}>Обновить</button>
+        </div>
+
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Created</th>
+                <th>Type</th>
+                <th>Scope</th>
+                <th>Revenue</th>
+                <th>Expenses</th>
+                <th>Ledger</th>
+                <th>Events</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {(snapshots || []).map((s) => (
+                <tr key={s.id}>
+                  <td>{String(s.created_at || '').slice(0, 19).replace('T', ' ')}</td>
+                  <td>{s.snapshot_type}</td>
+                  <td>{s.snapshot_scope}</td>
+                  <td>{s.revenue_rows}</td>
+                  <td>{s.expense_rows}</td>
+                  <td>{s.ledger_rows}</td>
+                  <td>{s.event_rows}</td>
+                  <td>
+                    <div style={{display:'flex',gap:8}}>
+                      <button className="small" onClick={() => previewSnapshot(s.id)}>
+                        Preview
+                      </button>
+
+                      <button className="small" onClick={() => compareSnapshot(s.id)}>
+                        Compare
+                      </button>
+
+                      <button
+                        className="small"
+                        onClick={() => restoreMissingSnapshot(s.id)}
+                        disabled={restoreLoading}
+                      >
+                        {restoreLoading ? 'Restoring...' : 'Restore Missing'}
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {!snapshots?.length && (
+                <tr>
+                  <td colSpan="8" className="hint">Snapshots пока нет.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section className="card span-2 supplier-enterprise-audit-card">
+        <div className="card-head">
+          <div>
+            <h3>Diagnostics Center · Supplier audit</h3>
+            <p className="hint">Техническая сверка: стартовый долг + поступления − оплаты против supplier_ledger.</p>
+          </div>
+          <div className="action-row">
+            <button className="ghost small" onClick={() => setShowSupplierAuditDetails(v => !v)}>{showSupplierAuditDetails ? 'Скрыть детали' : 'Показать детали'}</button>
+            <button className="ghost small" onClick={loadSupplierEnterpriseAudit} disabled={supplierAuditLoading}>{supplierAuditLoading ? 'Обновление...' : 'Обновить'}</button>
+          </div>
+        </div>
+        <div className={supplierAuditOk ? 'enterprise-audit-banner audit-ok' : 'enterprise-audit-banner audit-bad'}>
+          <strong>{supplierAuditOk ? 'Enterprise OK' : 'Требуется проверка'}</strong>
+          <span>{supplierAuditOk ? 'Источник операций и supplier_ledger совпадают.' : 'Найдены расхождения supplier ledger.'}</span>
+        </div>
+        <div className="mini-grid">
+          <div className="metric"><span>Source balance</span><strong>{fmt(supplierAuditTotals.source)}</strong></div>
+          <div className="metric"><span>Ledger balance</span><strong>{fmt(supplierAuditTotals.ledger)}</strong></div>
+          <div className="metric"><span>Разница</span><strong className={Math.abs(supplierAuditTotals.diff) > 0.01 ? 'bad' : 'good'}>{fmt(supplierAuditTotals.diff)}</strong></div>
+        </div>
+        {(showSupplierAuditDetails || !supplierAuditOk) && <div className="table-wrap"><table><thead><tr><th>Статус</th><th>Поставщик</th><th>VOEN</th><th>Source</th><th>Ledger</th><th>Diff</th></tr></thead><tbody>{supplierAuditCriticalRows.slice(0, 30).map(r => <tr key={`${r.supplier_id || 'none'}-${r.legal_entity_id || 'none'}`}><td><span className={r.issue_type === 'ok' ? 'good' : 'bad'}>{r.issue_type || 'ok'}</span></td><td>{r.supplier_name || '—'}</td><td>{r.legal_entity_name || '—'}<br /><span className="hint">{r.legal_entity_voen || ''}</span></td><td>{fmt(r.source_balance)}</td><td>{fmt(r.ledger_balance)}</td><td className={Math.abs(parseNum(r.diff)) > 0.01 ? 'bad' : 'good'}><b>{fmt(r.diff)}</b></td></tr>)}{!supplierAuditCriticalRows.length && <tr><td colSpan="6" className="good">Расхождений не найдено</td></tr>}</tbody></table></div>}
+      </section>
+
+      <section className="card span-2 supplier-enterprise-audit-card">
+        <div className="card-head">
+          <div>
+            <h3>Diagnostics Center · Finance audit</h3>
+            <p className="hint">Техническая сверка формулы прибыли и прогноза Dashboard / Finance.</p>
+          </div>
+          <div className="action-row">
+            <button className="ghost small" onClick={() => setShowFinanceDiagnosticsDetails(v => !v)}>{showFinanceDiagnosticsDetails ? 'Скрыть детали' : 'Показать детали'}</button>
+            <button className="ghost small" onClick={loadFinanceDiagnostics}>Обновить</button>
+          </div>
+        </div>
+        <div className="mini-grid">
+          <div className="metric"><span>Formula audit</span><strong>{financeFormulaDiagnostics.length ? 'OK' : 'Пока нет данных'}</strong></div>
+          <div className="metric"><span>Forecast audit</span><strong>{financeForecastDiagnostics.length ? 'OK' : 'Пока нет данных'}</strong></div>
+          <div className="metric"><span>Статус</span><strong className={(financeFormulaDiagnostics.length || financeForecastDiagnostics.length) ? 'good' : ''}>{(financeFormulaDiagnostics.length || financeForecastDiagnostics.length) ? 'Данные загружены' : 'Откройте Финансы'}</strong></div>
+        </div>
+        {showFinanceDiagnosticsDetails && <>
+          <div className="table-wrap"><table><thead><tr><th colSpan="3">Finance formula audit</th></tr><tr><th>Показатель</th><th>Сумма</th><th>Источник / логика</th></tr></thead><tbody>{financeFormulaDiagnostics.map(row => <tr key={row.name}><td><b>{row.name}</b></td><td className={row.name.includes('Расхождения') || row.name.includes('Контроль') ? (Math.abs(parseNum(row.amount)) > 0.01 ? 'bad' : 'good') : ''}>{fmt(row.amount)}</td><td className="hint">{row.note}</td></tr>)}{!financeFormulaDiagnostics.length && <tr><td colSpan="3" className="hint">Пока нет данных. Откройте раздел “Финансы”, чтобы обновить расчёт.</td></tr>}</tbody></table></div>
+          <div className="table-wrap"><table><thead><tr><th colSpan="3">Dashboard / Finance forecast parity</th></tr><tr><th>Показатель</th><th>Сумма</th><th>Источник / логика</th></tr></thead><tbody>{financeForecastDiagnostics.map(row => <tr key={row.name}><td><b>{row.name}</b></td><td className={row.name.includes('Контроль') ? (Math.abs(parseNum(row.amount)) > 0.01 ? 'bad' : 'good') : ''}>{fmt(row.amount)}</td><td className="hint">{row.note}</td></tr>)}{!financeForecastDiagnostics.length && <tr><td colSpan="3" className="hint">Пока нет данных. Откройте раздел “Финансы”, чтобы обновить расчёт.</td></tr>}</tbody></table></div>
+        </>}
+      </section>
+
+      <section className="card span-2 supplier-enterprise-audit-card">
+        <div className="card-head">
+          <div>
+            <h3>Diagnostics Center · Revenue audit</h3>
+            <p className="hint">Техническая сверка: строки выручки против агрегированной daily_revenue.</p>
+          </div>
+          <div className="action-row">
+            <button className="ghost small" onClick={() => setShowRevenueAuditDetails(v => !v)}>{showRevenueAuditDetails ? 'Скрыть детали' : 'Показать детали'}</button>
+            <button className="ghost small" onClick={loadRevenueDiagnostics} disabled={revenueAuditLoading}>{revenueAuditLoading ? 'Обновление...' : 'Обновить'}</button>
+          </div>
+        </div>
+        <div className={revenueAuditOk ? 'enterprise-audit-banner audit-ok' : 'enterprise-audit-banner audit-bad'}>
+          <strong>{revenueAuditOk ? 'Revenue OK' : 'Требуется проверка'}</strong>
+          <span>{revenueAuditOk ? 'Строки выручки и daily_revenue совпадают.' : 'Найдены расхождения агрегированной выручки.'}</span>
+        </div>
+        <div className="mini-grid">
+          <div className="metric"><span>Entries total</span><strong>{fmt(revenueAuditTotals.source)}</strong></div>
+          <div className="metric"><span>Daily revenue</span><strong>{fmt(revenueAuditTotals.aggregate)}</strong></div>
+          <div className="metric"><span>Разница</span><strong className={Math.abs(revenueAuditTotals.diff) > 0.01 ? 'bad' : 'good'}>{fmt(revenueAuditTotals.diff)}</strong></div>
+        </div>
+        {(showRevenueAuditDetails || !revenueAuditOk) && <div className="table-wrap"><table><thead><tr><th>Статус</th><th>Дата</th><th>Филиал</th><th>Entries</th><th>Daily</th><th>Diff</th></tr></thead><tbody>{revenueAuditProblemRows.slice(0, 50).map(r => <tr key={`${r.audit_type || 'revenue'}-${r.branch_id || 'none'}-${r.audit_date || 'none'}`}><td><span className={(r.status || 'ok') === 'ok' ? 'good' : 'bad'}>{r.status || 'ok'}</span></td><td>{r.audit_date || '—'}</td><td>{r.branch_name || '—'}</td><td>{fmt(r.source_amount)}</td><td>{fmt(r.aggregate_amount)}</td><td className={Math.abs(parseNum(r.diff)) > 0.01 ? 'bad' : 'good'}><b>{fmt(r.diff)}</b></td></tr>)}{!revenueAuditProblemRows.length && <tr><td colSpan="6" className="good">Расхождений не найдено</td></tr>}</tbody></table></div>}
+      </section>
+
+      {restoreResult && (
+        <section className="card span-2">
+          <div className="card-head">
+            <div>
+              <h3>Restore Result</h3>
+              <p className="hint">
+                Missing rows restored safely without TRUNCATE or DELETE.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid">
+            <div className="card">
+              <h3>Revenue Restored</h3>
+              <p style={{fontSize:28,fontWeight:800}}>
+                {restoreResult.revenue_restored || 0}
+              </p>
+            </div>
+
+            <div className="card">
+              <h3>Expenses Restored</h3>
+              <p style={{fontSize:28,fontWeight:800}}>
+                {restoreResult.expense_restored || 0}
+              </p>
+            </div>
+
+            <div className="card">
+              <h3>Scope</h3>
+              <p style={{fontSize:20,fontWeight:700}}>
+                {restoreResult.scope}
+              </p>
+            </div>
+
+            <div className="card">
+              <h3>Event ID</h3>
+              <p className="hint" style={{wordBreak:'break-all'}}>
+                {restoreResult.event_id}
+              </p>
+            </div>
+          </div>
+        </section>
+      )}
+
+
+{compareResult && (
+        <section className="card span-2">
+          <div className="card-head">
+            <div>
+              <h3>Snapshot Compare Result</h3>
+              <p className="hint">
+                Current database vs selected snapshot.
+              </p>
+            </div>
+          </div>
+
+          {compareLoading && <p className="hint">Comparing...</p>}
+
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Entity</th>
+                  <th>Snapshot Rows</th>
+                  <th>Current Rows</th>
+                  <th>Missing From Current</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>daily_revenue</td>
+                  <td>{compareResult.daily_revenue?.snapshot_rows}</td>
+                  <td>{compareResult.daily_revenue?.current_rows}</td>
+                  <td>{(compareResult.daily_revenue?.missing_from_current || []).length}</td>
+                </tr>
+
+                <tr>
+                  <td>daily_expenses</td>
+                  <td>{compareResult.daily_expenses?.snapshot_rows}</td>
+                  <td>{compareResult.daily_expenses?.current_rows}</td>
+                  <td>{(compareResult.daily_expenses?.missing_from_current || []).length}</td>
+                </tr>
+
+                <tr>
+                  <td>finance_ledger</td>
+                  <td>{compareResult.finance_ledger?.snapshot_rows}</td>
+                  <td>{compareResult.finance_ledger?.current_rows}</td>
+                  <td>{(compareResult.finance_ledger?.missing_from_current || []).length}</td>
+                </tr>
+
+                <tr>
+                  <td>erp_events</td>
+                  <td>{compareResult.erp_events?.snapshot_rows}</td>
+                  <td>{compareResult.erp_events?.current_rows}</td>
+                  <td>{(compareResult.erp_events?.missing_from_current || []).length}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
+
+
+{preview && (
+        <section className="card span-2">
+          <div className="card-head">
+            <div>
+              <h3>Snapshot Preview</h3>
+              <p className="hint">
+                {preview.snapshot_type} · {String(preview.created_at || '').slice(0,19).replace('T',' ')}
+              </p>
+            </div>
+          </div>
+
+          {previewLoading && <p className="hint">Loading...</p>}
+
+          <div className="grid">
+            <div className="card">
+              <h3>Revenue Rows</h3>
+              <p style={{fontSize:28,fontWeight:800}}>
+                {(preview.daily_revenue || []).length}
+              </p>
+            </div>
+
+            <div className="card">
+              <h3>Expense Rows</h3>
+              <p style={{fontSize:28,fontWeight:800}}>
+                {(preview.daily_expenses || []).length}
+              </p>
+            </div>
+
+            <div className="card">
+              <h3>Ledger Rows</h3>
+              <p style={{fontSize:28,fontWeight:800}}>
+                {(preview.finance_ledger || []).length}
+              </p>
+            </div>
+
+            <div className="card">
+              <h3>ERP Events</h3>
+              <p style={{fontSize:28,fontWeight:800}}>
+                {(preview.erp_events || []).length}
+              </p>
+            </div>
+          </div>
+
+          <div className="card span-2">
+            <div className="card-head">
+              <div>
+                <h3>Revenue Preview</h3>
+                <p className="hint">Последние строки выручки внутри snapshot.</p>
+              </div>
+            </div>
+            <div className="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Branch</th>
+                    <th>Cash</th>
+                    <th>Bank</th>
+                    <th>Wolt</th>
+                    <th>Deleted</th>
+                    <th>Comment</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(preview.daily_revenue || []).slice(-20).reverse().map((r, idx) => (
+                    <tr key={r.id || idx}>
+                      <td>{r.revenue_date}</td>
+                      <td>{r.branch_id}</td>
+                      <td>{r.cash_amount}</td>
+                      <td>{r.bank_amount}</td>
+                      <td>{r.wolt_amount}</td>
+                      <td>{r.deleted_at ? 'yes' : 'no'}</td>
+                      <td>{r.comment}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className="card span-2">
+            <div className="card-head">
+              <div>
+                <h3>Expenses Preview</h3>
+                <p className="hint">Последние расходы внутри snapshot.</p>
+              </div>
+            </div>
+            <div className="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Branch</th>
+                    <th>Category</th>
+                    <th>Amount</th>
+                    <th>Deleted</th>
+                    <th>Comment</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(preview.daily_expenses || []).slice(-20).reverse().map((r, idx) => (
+                    <tr key={r.id || idx}>
+                      <td>{r.expense_date}</td>
+                      <td>{r.branch_id}</td>
+                      <td>{r.custom_category || r.category_id}</td>
+                      <td>{r.amount}</td>
+                      <td>{r.deleted_at ? 'yes' : 'no'}</td>
+                      <td>{r.comment}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className="card span-2">
+            <div className="card-head">
+              <div>
+                <h3>Finance Ledger Preview</h3>
+                <p className="hint">Последние бухгалтерские записи snapshot.</p>
+              </div>
+            </div>
+            <div className="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Entry</th>
+                    <th>Entity</th>
+                    <th>Debit</th>
+                    <th>Credit</th>
+                    <th>Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(preview.finance_ledger || []).slice(-20).reverse().map((r, idx) => (
+                    <tr key={r.id || idx}>
+                      <td>{r.ledger_date}</td>
+                      <td>{r.entry_type}</td>
+                      <td>{r.entity_type}</td>
+                      <td>{r.debit_amount}</td>
+                      <td>{r.credit_amount}</td>
+                      <td>{r.description}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className="card span-2">
+            <div className="card-head">
+              <div>
+                <h3>ERP Events Preview</h3>
+                <p className="hint">Последние события immutable event log.</p>
+              </div>
+            </div>
+            <div className="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Created</th>
+                    <th>Event</th>
+                    <th>Entity</th>
+                    <th>Source</th>
+                    <th>User</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(preview.erp_events || []).slice(-20).reverse().map((r, idx) => (
+                    <tr key={r.id || idx}>
+                      <td>{String(r.created_at || '').slice(0, 19).replace('T', ' ')}</td>
+                      <td>{r.event_type}</td>
+                      <td>{r.entity_type}</td>
+                      <td>{r.action_source}</td>
+                      <td>{r.user_id}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      )}
+    </section>
+  )
+}
+
+
+
+
+
+// v167 iiko Frontend Import Parser Pack helpers
+function rmsIikoNormalizeKey(key) {
+  return String(key || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, '')
+}
+
+function rmsIikoPick(row, keys) {
+  if (!row || typeof row !== 'object') return ''
+  const normalized = {}
+  Object.keys(row).forEach(k => { normalized[rmsIikoNormalizeKey(k)] = row[k] })
+  for (const key of keys) {
+    const nk = rmsIikoNormalizeKey(key)
+    if (Object.prototype.hasOwnProperty.call(normalized, nk)) return normalized[nk]
+  }
+  return ''
+}
+
+function rmsIikoToNumber(value) {
+  if (value === null || value === undefined || value === '') return 0
+  if (typeof value === 'number') return Number.isFinite(value) ? value : 0
+  const cleaned = String(value)
+    .replace(/\s/g, '')
+    .replace(/AZN|₼|ман|руб|₽/gi, '')
+    .replace(',', '.')
+    .replace(/[^\d.-]/g, '')
+  const n = Number(cleaned)
+  return Number.isFinite(n) ? n : 0
+}
+
+function rmsIikoToDate(value) {
+  if (!value) return null
+  const s = String(value).trim()
+  if (!s) return null
+  const iso = Date.parse(s)
+  if (!Number.isNaN(iso)) return new Date(iso).toISOString().slice(0, 10)
+  const m = s.match(/^(\d{1,2})[./-](\d{1,2})[./-](\d{2,4})/)
+  if (m) {
+    const dd = String(m[1]).padStart(2, '0')
+    const mm = String(m[2]).padStart(2, '0')
+    const yy = m[3].length === 2 ? `20${m[3]}` : m[3]
+    return `${yy}-${mm}-${dd}`
+  }
+  return null
+}
+
+function rmsIikoMapRawRowToPayload(row = {}, fallback = {}) {
+  const productName = rmsIikoPick(row, [
+    'product_name','name','item_name','dish_name','menu_item_name','product','nomenclature',
+    'Наименование','Название','Блюдо','Товар','Номенклатура','Dish','Item','Product'
+  ])
+  const categoryName = rmsIikoPick(row, [
+    'category_name','category','group','parent','Группа','Категория','Раздел','Category'
+  ])
+  const qty = rmsIikoToNumber(rmsIikoPick(row, [
+    'qty','quantity','count','amount','sold_qty','qty_sold','sales_qty',
+    'Кол-во','Количество','Количество продаж','Qty','Quantity'
+  ]))
+  const price = rmsIikoToNumber(rmsIikoPick(row, [
+    'price','unit_price','Цена','Цена без скидки','Price'
+  ]))
+  const discount = rmsIikoToNumber(rmsIikoPick(row, [
+    'discount','discount_sum','Скидка','Discount'
+  ]))
+  const total = rmsIikoToNumber(rmsIikoPick(row, [
+    'total','sum','amount_total','revenue','Сумма','Итого','Выручка','Total','Sum'
+  ])) || Math.max(qty * price - discount, 0)
+  const branchName = rmsIikoPick(row, [
+    'branch_name','branch','restaurant','restaurant_name','Филиал','Ресторан','Outlet'
+  ]) || fallback.branch_name || ''
+  const businessDate = rmsIikoToDate(rmsIikoPick(row, [
+    'business_date','date','Дата','Дата продажи','Sale date'
+  ]) || fallback.business_date)
+
+  return {
+    branch_name: branchName,
+    business_date: businessDate,
+    sale_datetime: rmsIikoPick(row, ['sale_datetime','datetime','Дата/время','DateTime']) || null,
+    iiko_order_id: rmsIikoPick(row, ['iiko_order_id','order_id','Order ID','Заказ']) || '',
+    iiko_cheque_id: rmsIikoPick(row, ['iiko_cheque_id','cheque_id','check_id','Чек']) || '',
+    iiko_product_id: rmsIikoPick(row, ['iiko_product_id','product_id','id товара','Product ID']) || '',
+    product_name: String(productName || '').trim(),
+    category_name: String(categoryName || '').trim(),
+    qty,
+    price,
+    discount,
+    total,
+    payment_type: rmsIikoPick(row, ['payment_type','payment','Оплата','Тип оплаты']) || '',
+    table_name: rmsIikoPick(row, ['table_name','table','Стол']) || '',
+    waiter_name: rmsIikoPick(row, ['waiter_name','waiter','Официант']) || '',
+    is_refund: String(rmsIikoPick(row, ['is_refund','refund','Возврат']) || '').toLowerCase().includes('true'),
+    raw_row: row,
+  }
+}
+
+async function rmsIikoImportParsedRows(fileName, rows, fallback = {}) {
+  if (!Array.isArray(rows) || !rows.length) throw new Error('Нет строк для импорта')
+  const importRes = await supabase.rpc('rms_iiko_sales_import_create', {
+    p_file_name: fileName || 'iiko import',
+    p_comment: 'Frontend parsed import'
+  })
+  if (importRes.error) throw importRes.error
+  const importId = importRes.data?.id || importRes.data?.import_id || importRes.data?.id
+
+  let inserted = 0
+  let skipped = 0
+  for (const raw of rows) {
+    const payload = rmsIikoMapRawRowToPayload(raw, fallback)
+    if (!payload.product_name || !payload.qty) {
+      skipped += 1
+      continue
+    }
+    const r = await supabase.rpc('rms_iiko_sales_item_insert_secure', {
+      p_import_id: importId,
+      p_payload: payload
+    })
+    if (r.error || r.data?.status === 'error') skipped += 1
+    else inserted += 1
+  }
+
+  const finalRes = await supabase.rpc('rms_iiko_sales_import_finalize', { p_import_id: importId })
+  if (finalRes.error) throw finalRes.error
+  return { import_id: importId, inserted, skipped, finalize: finalRes.data }
+}
+
+function InventoryModule({ branchId, branchName }) {
+  const [loading, setLoading] = React.useState(false)
+  const [balances, setBalances] = React.useState([])
+  const [movements, setMovements] = React.useState([])
+  const [locations, setLocations] = React.useState([])
+  const [form, setForm] = React.useState({
+    movement_date: new Date().toISOString().slice(0, 10),
+    location_id: '',
+    item_name: '',
+    unit: 'unit',
+    quantity: '',
+    unit_cost: '',
+    movement_type: 'adjustment_in',
+    comment: '',
+  })
+  const [message, setMessage] = React.useState('')
+  const [backfillBusy, setBackfillBusy] = React.useState(false)
+  const [backfillPreview, setBackfillPreview] = React.useState([])
+  const [backfillHealth, setBackfillHealth] = React.useState(null)
+  const [validationHealth, setValidationHealth] = React.useState(null)
+  const [dashboardReport, setDashboardReport] = React.useState(null)
+  const [productionReport, setProductionReport] = React.useState(null)
+  const [writeOffReport, setWriteOffReport] = React.useState(null)
+  const [operationMode, setOperationMode] = React.useState('manual')
+  const [supplierSyncHealth, setSupplierSyncHealth] = React.useState(null)
+  const [bazarSyncHealth, setBazarSyncHealth] = React.useState(null)
+  const [salesConsumptionHealth, setSalesConsumptionHealth] = React.useState(null)
+  const [salesRecipeMappingHealth, setSalesRecipeMappingHealth] = React.useState(null)
+  const [salesConsumptionConsolidatedHealth, setSalesConsumptionConsolidatedHealth] = React.useState(null)
+  const [iikoImportHealth, setIikoImportHealth] = React.useState(null)
+  const [iikoImportConsolidatedHealth, setIikoImportConsolidatedHealth] = React.useState(null)
+  const [salesUnmappedReport, setSalesUnmappedReport] = React.useState(null)
+  const [iikoLatestDashboard, setIikoLatestDashboard] = React.useState(null)
+  const [consumptionDraftReadiness, setConsumptionDraftReadiness] = React.useState(null)
+  const [iikoOperationalHealth, setIikoOperationalHealth] = React.useState(null)
+  const [menuAliasHealth, setMenuAliasHealth] = React.useState(null)
+  const [iikoOperationalAudit, setIikoOperationalAudit] = React.useState(null)
+  const [iikoBranchDateQuality, setIikoBranchDateQuality] = React.useState(null)
+  const [search, setSearch] = React.useState('')
+  const [movementFilter, setMovementFilter] = React.useState('all')
+
+  const loadInventory = React.useCallback(async () => {
+    setLoading(true)
+    setMessage('')
+    try {
+      const [balanceRes, movementRes, locationRes] = await Promise.all([
+        supabase.from('rms_inventory_stock_balance_view').select('*').order('item_name', { ascending: true }).limit(500),
+        supabase.from('rms_stock_movements').select('*').is('deleted_at', null).order('movement_date', { ascending: false }).order('created_at', { ascending: false }).limit(100),
+        supabase.from('rms_inventory_locations').select('*').eq('is_active', true).order('name', { ascending: true }).limit(100),
+      ])
+      if (balanceRes.error) throw balanceRes.error
+      if (movementRes.error) throw movementRes.error
+      if (locationRes.error) throw locationRes.error
+      setBalances(balanceRes.data || [])
+      setMovements(movementRes.data || [])
+      setLocations(locationRes.data || [])
+    } catch (err) {
+      console.error('inventory load error', err)
+      setMessage(err?.message || 'Не удалось загрузить склад')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  React.useEffect(() => { loadInventory() }, [loadInventory])
+
+  const cleanupIikoImportProblems = async () => {
+    setBackfillBusy(true)
+    setMessage('')
+    try {
+      const data = await rmsIikoCleanupImportProblems()
+      setMessage(`iiko import cleanup: empty ${data?.empty_deleted || 0}, duplicates ${data?.duplicates_deleted || 0}`)
+      await loadInventoryConsolidatedReports()
+    } catch (err) {
+      console.error('iiko import cleanup problems error', err)
+      setMessage(err?.message || 'Не удалось очистить проблемы iiko import')
+    } finally {
+      setBackfillBusy(false)
+    }
+  }
+
+  const applyLatestConsumptionBatch = async () => {
+    setBackfillBusy(true)
+    setMessage('')
+    try {
+      const data = await rmsInventoryApplyLatestConsumptionBatch()
+      setMessage(`Последний draft применён: applied ${data?.applied || 0}, remaining ${data?.skipped_or_remaining || 0}`)
+      await loadInventoryConsolidatedReports()
+      await loadInventory()
+    } catch (err) {
+      console.error('apply latest consumption error', err)
+      setMessage(err?.message || 'Не удалось применить последний draft')
+    } finally {
+      setBackfillBusy(false)
+    }
+  }
+
+  const cancelLatestConsumptionBatch = async () => {
+    setBackfillBusy(true)
+    setMessage('')
+    try {
+      const data = await rmsInventoryCancelLatestConsumptionBatch()
+      setMessage(`Последний consumption batch отменён: movements ${data?.movements_cancelled || 0}`)
+      await loadInventoryConsolidatedReports()
+      await loadInventory()
+    } catch (err) {
+      console.error('cancel latest consumption error', err)
+      setMessage(err?.message || 'Не удалось отменить последний batch')
+    } finally {
+      setBackfillBusy(false)
+    }
+  }
+
+  const deduplicateIikoRows = async () => {
+    setBackfillBusy(true)
+    setMessage('')
+    try {
+      const data = await rmsIikoDeduplicateSalesItems()
+      setMessage(`Дубли iiko очищены: ${data?.deleted || 0}`)
+      await loadInventoryConsolidatedReports()
+    } catch (err) {
+      console.error('iiko deduplicate error', err)
+      setMessage(err?.message || 'Не удалось очистить дубли iiko')
+    } finally {
+      setBackfillBusy(false)
+    }
+  }
+
+  const normalizeIikoRows = async () => {
+    setBackfillBusy(true)
+    setMessage('')
+    try {
+      const data = await rmsIikoNormalizeImportedRows()
+      setMessage(`iiko строки нормализованы: обновлено ${data?.updated || 0}`)
+      await loadInventoryConsolidatedReports()
+    } catch (err) {
+      console.error('iiko normalize error', err)
+      setMessage(err?.message || 'Не удалось нормализовать iiko строки')
+    } finally {
+      setBackfillBusy(false)
+    }
+  }
+
+  const cleanupEmptyIikoRows = async () => {
+    setBackfillBusy(true)
+    setMessage('')
+    try {
+      const data = await rmsIikoCleanupEmptySalesRows()
+      setMessage(`Пустые iiko строки очищены: ${data?.deleted || 0}`)
+      await loadInventoryConsolidatedReports()
+    } catch (err) {
+      console.error('iiko cleanup error', err)
+      setMessage(err?.message || 'Не удалось очистить пустые iiko строки')
+    } finally {
+      setBackfillBusy(false)
+    }
+  }
+
+  const createSalesConsumptionDraft = async () => {
+    setBackfillBusy(true)
+    setMessage('')
+    try {
+      const data = await rmsInventorySalesConsumptionCreateDraft()
+      setMessage(`Draft создан: batch ${data?.batch_id || '—'}, строк ${data?.items_created || 0}`)
+      await loadInventoryConsolidatedReports()
+    } catch (err) {
+      console.error('sales consumption draft error', err)
+      setMessage(err?.message || 'Не удалось создать draft списания')
+    } finally {
+      setBackfillBusy(false)
+    }
+  }
+
+  const applyInventoryPreset = (type) => {
+    setOperationMode(type)
+    const map = {
+      purchase: { movement_type: 'purchase', comment: 'Приход на склад' },
+      write_off: { movement_type: 'write_off', comment: 'Списание со склада' },
+      transfer_in: { movement_type: 'transfer_in', comment: 'Перемещение на склад' },
+      transfer_out: { movement_type: 'transfer_out', comment: 'Перемещение со склада' },
+      production_in: { movement_type: 'production_in', comment: 'Производство / выпуск полуфабриката' },
+      production_out: { movement_type: 'production_out', comment: 'Производство / расход ингредиентов' },
+      adjustment_in: { movement_type: 'adjustment_in', comment: 'Положительная корректировка' },
+      adjustment_out: { movement_type: 'adjustment_out', comment: 'Отрицательная корректировка' },
+    }
+    const preset = map[type] || map.adjustment_in
+    setForm(prev => ({ ...prev, movement_type: preset.movement_type, comment: preset.comment }))
+  }
+
+  const createMovement = async () => {
+    setLoading(true)
+    setMessage('')
+    try {
+      const payload = { ...form, quantity: parseNum(form.quantity), unit_cost: parseNum(form.unit_cost) }
+      if (!payload.item_name && !payload.supplier_product_id) throw new Error('Укажите товар')
+      if (!payload.quantity) throw new Error('Укажите количество')
+      await rmsInventoryMovementCreate(payload)
+      setMessage('Движение склада сохранено')
+      setForm({ movement_date: new Date().toISOString().slice(0, 10), location_id: '', item_name: '', unit: 'unit', quantity: '', unit_cost: '', movement_type: 'adjustment_in', comment: '' })
+      await loadInventory()
+    } catch (err) {
+      console.error('inventory movement create error', err)
+      setMessage(err?.message || 'Не удалось сохранить движение')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const loadBackfillPreview = async () => {
+    setBackfillBusy(true)
+    setMessage('')
+    try {
+      const [data, health] = await Promise.all([
+        rmsInventoryBackfillPreview(),
+        rmsInventoryBackfillDryRun().catch(() => null),
+      ])
+      setBackfillPreview(data || [])
+      setBackfillHealth(health || null)
+      setMessage(`Preview готов: ${data?.length || 0} строк`)
+    } catch (err) {
+      console.error('inventory backfill preview error', err)
+      setMessage(err?.message || 'Не удалось получить preview')
+    } finally {
+      setBackfillBusy(false)
+    }
+  }
+
+  const runBackfill = async () => {
+    setBackfillBusy(true)
+    setMessage('')
+    try {
+      const data = await rmsInventoryBackfillSupplierPurchases(form.location_id || null, 100)
+      setMessage(`Backfill выполнен: создано ${data?.created || 0}, пропущено ${data?.already_linked_skipped || 0}`)
+      await loadInventory()
+      await loadBackfillPreview()
+    } catch (err) {
+      console.error('inventory backfill error', err)
+      setMessage(err?.message || 'Не удалось выполнить backfill')
+    } finally {
+      setBackfillBusy(false)
+    }
+  }
+
+  const loadAutoLinkValidation = async () => {
+    setBackfillBusy(true)
+    setMessage('')
+    try {
+      const data = await rmsInventorySafeValidation()
+      setValidationHealth(data || null)
+      setMessage('Проверка Auto-Link выполнена')
+    } catch (err) {
+      console.error('inventory autolink validation error', err)
+      setMessage(err?.message || 'Не удалось проверить Auto-Link')
+    } finally {
+      setBackfillBusy(false)
+    }
+  }
+
+  const loadInventoryConsolidatedReports = async () => {
+    setBackfillBusy(true)
+    setMessage('')
+    try {
+      const [dash, prod, wo, syncHealth, bazarHealth, salesHealth, salesRecipeHealth, salesConsolidatedHealth, iikoHealth, iikoConsolidated, unmappedReport, latestImportDash, draftReady, operationalHealth, aliasHealth, importAudit, branchDateQuality] = await Promise.all([
+        rmsInventoryDashboardReport().catch(() => null),
+        rmsInventoryProductionPreview().catch(() => null),
+        rmsInventoryWriteOffReport().catch(() => null),
+        rmsInventorySupplierStockSyncHealth().catch(() => null),
+        rmsInventoryBazarStockSyncHealth().catch(() => null),
+        rmsInventorySalesConsumptionHealth().catch(() => null),
+        rmsInventorySalesRecipeMappingHealth().catch(() => null),
+        rmsInventorySalesConsumptionConsolidatedHealth().catch(() => null),
+        rmsIikoImportHealth().catch(() => null),
+        rmsIikoImportConsolidatedHealth().catch(() => null),
+        rmsInventorySalesUnmappedReport().catch(() => null),
+        rmsIikoLatestImportDashboard().catch(() => null),
+        rmsInventoryConsumptionDraftReadiness().catch(() => null),
+        rmsIikoConsumptionOperationalHealth().catch(() => null),
+        rmsInventoryMenuAliasHealth().catch(() => null),
+        rmsIikoImportOperationalAudit().catch(() => null),
+        rmsIikoBranchDateQuality().catch(() => null),
+      ])
+      setDashboardReport(dash || null)
+      setProductionReport(prod || null)
+      setWriteOffReport(wo || null)
+      setSupplierSyncHealth(syncHealth || null)
+      setBazarSyncHealth(bazarHealth || null)
+      setSalesConsumptionHealth(salesHealth || null)
+      setSalesRecipeMappingHealth(salesRecipeHealth || null)
+      setSalesConsumptionConsolidatedHealth(salesConsolidatedHealth || null)
+      setIikoImportHealth(iikoHealth || null)
+      setIikoImportConsolidatedHealth(iikoConsolidated || null)
+      setSalesUnmappedReport(unmappedReport || null)
+      setIikoLatestDashboard(latestImportDash || null)
+      setConsumptionDraftReadiness(draftReady || null)
+      setIikoOperationalHealth(operationalHealth || null)
+      setMenuAliasHealth(aliasHealth || null)
+      setIikoOperationalAudit(importAudit || null)
+      setIikoBranchDateQuality(branchDateQuality || null)
+      setMessage('Складские отчёты обновлены')
+    } catch (err) {
+      console.error('inventory reports error', err)
+      setMessage(err?.message || 'Не удалось загрузить складские отчёты')
+    } finally {
+      setBackfillBusy(false)
+    }
+  }
+
+  const filteredBalances = balances.filter(r => !search || String(r.item_name || '').toLowerCase().includes(search.toLowerCase()) || String(r.location_name || '').toLowerCase().includes(search.toLowerCase()))
+  const filteredMovements = movements.filter(m => {
+    const q = !search || String(m.item_name || '').toLowerCase().includes(search.toLowerCase()) || String(m.comment || '').toLowerCase().includes(search.toLowerCase())
+    const t = movementFilter === 'all' || m.movement_type === movementFilter
+    return q && t
+  })
+  const totalCost = balances.reduce((s, r) => s + parseNum(r.balance_cost), 0)
+  const positiveRows = balances.filter(r => parseNum(r.balance_qty) > 0).length
+  const negativeRows = balances.filter(r => parseNum(r.balance_qty) < 0).length
+  const writeOffCount = movements.filter(m => m.movement_type === 'write_off').length
+  const purchaseCount = movements.filter(m => m.movement_type === 'purchase').length
+
+  return (
+    <div className="rms-pro-shell inventory-module-root">
+      <div className="topbar">
+        <div>
+          <h2>Склад</h2>
+          <p>Остатки, движения, списания, корректировки, локации и складской фундамент для Food Cost.</p>
+        </div>
+        <div className="action-row">
+          <button className="ghost small" onClick={loadInventory} disabled={loading}>{loading ? 'Загрузка…' : 'Обновить'}</button>
+        </div>
+      </div>
+
+      <div className="inventory-warning-card">
+        <h3>Складской модуль · стартовый режим</h3>
+        <p>Сейчас склад работает в ручном режиме: можно добавлять движения, видеть остатки и контролировать отрицательные позиции. Автоматическая связь с закупками поставщиков будет следующим этапом.</p>
+        <div className="inventory-action-grid">
+          <div className="inventory-action-card"><span>Приход</span><strong>ручной / purchase</strong></div>
+          <div className="inventory-action-card"><span>Списание</span><strong>write_off</strong></div>
+          <div className="inventory-action-card"><span>Перемещение</span><strong>transfer</strong></div>
+          <div className="inventory-action-card"><span>Производство</span><strong>production</strong></div>
+        </div>
+      </div>
+
+      <div className="inventory-control-card">
+        <h3>Контроль движений склада</h3>
+        <p>Склад теперь показывает базовые сигналы: приход, списания, отрицательные остатки и фильтрацию по товару/типу движения.</p>
+        <div className="inventory-control-grid">
+          <div className="inventory-control-step good"><span>Приходы</span><strong>{purchaseCount}</strong></div>
+          <div className="inventory-control-step bad"><span>Списания</span><strong>{writeOffCount}</strong></div>
+          <div className={`inventory-control-step ${negativeRows ? 'bad' : 'good'}`}><span>Отрицательные остатки</span><strong>{negativeRows}</strong></div>
+          <div className="inventory-control-step warn"><span>Автосвязь с поставщиками</span><strong>Следующий этап</strong></div>
+        </div>
+      </div>
+
+      <div className="inventory-supplier-link-card">
+        <h3>Поставщики → Склад</h3>
+        <p>Подготовлена связь поступлений от поставщиков со складскими движениями. Автосоздание движений включим после проверки схемы supplier_purchase_items.</p>
+        <div className="inventory-supplier-link-grid">
+          <div className="inventory-supplier-link-step"><span>Purchase movement</span><strong>RPC готов</strong></div>
+          <div className="inventory-supplier-link-step"><span>Duplicate guard</span><strong>Готово</strong></div>
+          <div className="inventory-supplier-link-step"><span>Backfill view</span><strong>Готово</strong></div>
+          <div className="inventory-supplier-link-step pending"><span>Auto trigger</span><strong>После теста</strong></div>
+        </div>
+      </div>
+
+      <div className="inventory-schema-check-card">
+        <h3>Supplier Purchase Items · Schema Check</h3>
+        <p>Перед автосвязкой закупок со складом нужно подтвердить реальные колонки supplier_purchase_items. В v149 добавлен schema-check и безопасный backfill-prep без trigger.</p>
+        <div className="inventory-schema-check-grid">
+          <div className="inventory-schema-check-step ready"><span>Schema view</span><strong>Готово</strong></div>
+          <div className="inventory-schema-check-step ready"><span>Mapping check</span><strong>Готово</strong></div>
+          <div className="inventory-schema-check-step ready"><span>Backfill RPC</span><strong>Prepared</strong></div>
+          <div className="inventory-schema-check-step pending"><span>Auto trigger</span><strong>После теста</strong></div>
+        </div>
+      </div>
+
+      <div className="inventory-backfill-card">
+        <h3>Backfill: Поставщики → Склад</h3>
+        <p>Безопасный перенос уже введённых поступлений поставщиков в складские движения. Auto-trigger пока не включён.</p>
+        <div className="action-row" style={{marginTop:12}}>
+          <button className="ghost small" onClick={loadBackfillPreview} disabled={backfillBusy}>{backfillBusy ? 'Проверка…' : 'Preview'}</button>
+          <button className="primary small" onClick={runBackfill} disabled={backfillBusy}>Создать движения</button>
+        </div>
+        {backfillHealth && (
+          <div className="inventory-autolink-health">
+            <span>Готово к переносу: <b>{backfillHealth.can_backfill || 0}</b></span>
+            <span>Уже связано: <b>{backfillHealth.already_linked || 0}</b></span>
+            <span>Недостаточно данных: <b>{backfillHealth.not_ready || 0}</b></span>
+          </div>
+        )}
+        {!!backfillPreview.length && (
+          <div className="table-wrap" style={{marginTop:12}}>
+            <table className="inventory-backfill-table">
+              <thead><tr><th>Товар</th><th>Кол-во</th><th>Ед.</th><th>Цена</th><th>Статус</th></tr></thead>
+              <tbody>
+                {backfillPreview.slice(0, 10).map(r => <tr key={r.purchase_item_id}>
+                  <td><b>{r.item_name || 'Без названия'}</b></td>
+                  <td>{fmt(r.quantity)}</td>
+                  <td>{r.unit || 'unit'}</td>
+                  <td>{fmt(r.unit_cost)}</td>
+                  <td>{r.already_linked ? <span className="inventory-link-chip pending">уже связано</span> : r.can_backfill ? <span className="inventory-link-chip">готово</span> : <span className="inventory-writeoff-chip">недостаточно данных</span>}</td>
+                </tr>)}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      <div className="inventory-autolink-card">
+        <h3>Auto-Link · подготовка</h3>
+        <p>Автоматическая связка поступлений со складом подготовлена как отдельный SQL-шаг. Сейчас активен безопасный ручной режим: preview → backfill → проверка остатков.</p>
+        <div className="inventory-autolink-grid">
+          <div className="inventory-autolink-step ready"><span>Preview</span><strong>Готово</strong></div>
+          <div className="inventory-autolink-step ready"><span>Manual backfill</span><strong>Готово</strong></div>
+          <div className="inventory-autolink-step ready"><span>Duplicate guard</span><strong>Готово</strong></div>
+          <div className="inventory-autolink-step pending"><span>Trigger</span><strong>Отдельно</strong></div>
+        </div>
+      </div>
+
+      <div className="inventory-validation-card">
+        <h3>Auto-Link Validation</h3>
+        <p>Контрольный слой перед автоматическим trigger: проверяет готовность связки поставщиков со складом, количество строк для переноса и текущий статус auto-trigger.</p>
+        <div className="action-row" style={{marginTop:12}}>
+          <button className="ghost small" onClick={loadAutoLinkValidation} disabled={backfillBusy}>{backfillBusy ? 'Проверка…' : 'Проверить Auto-Link'}</button>
+        </div>
+        {validationHealth && (
+          <div className="inventory-validation-grid">
+            <div className="inventory-validation-step ready"><span>Supplier link</span><strong>{validationHealth?.supplier_link?.status || 'prepared'}</strong></div>
+            <div className="inventory-validation-step ready"><span>Can backfill</span><strong>{validationHealth?.backfill_dry_run?.can_backfill || 0}</strong></div>
+            <div className="inventory-validation-step warn"><span>Already linked</span><strong>{validationHealth?.backfill_dry_run?.already_linked || 0}</strong></div>
+            <div className="inventory-validation-step pending"><span>Auto trigger</span><strong>{validationHealth?.auto_trigger || 'not_enabled'}</strong></div>
+          </div>
+        )}
+      </div>
+
+      <div className="inventory-consolidated-card">
+        <h3>Inventory Consolidated Control</h3>
+        <p>Единый контроль склада: остатки, списания, движения, backfill от поставщиков, отрицательные остатки и подготовка production/полуфабрикатов.</p>
+        <div className="action-row" style={{marginTop:12}}>
+          <button className="ghost small" onClick={loadInventoryConsolidatedReports} disabled={backfillBusy}>{backfillBusy ? 'Загрузка…' : 'Обновить складские отчёты'}</button>
+        </div>
+        <div className="inventory-consolidated-grid">
+          <div className="inventory-consolidated-step ready"><span>Остатки</span><strong>{dashboardReport?.balance_rows ?? balances.length}</strong></div>
+          <div className="inventory-consolidated-step warn"><span>Отрицательные</span><strong>{dashboardReport?.negative_stock_rows ?? negativeRows}</strong></div>
+          <div className="inventory-consolidated-step"><span>Списания</span><strong>{writeOffReport?.writeoff_count ?? writeOffCount}</strong></div>
+          <div className="inventory-consolidated-step ready"><span>Backfill ready</span><strong>{dashboardReport?.backfill_can_create ?? backfillHealth?.can_backfill ?? 0}</strong></div>
+          <div className="inventory-consolidated-step pending"><span>Production</span><strong>{productionReport?.status || 'prep'}</strong></div>
+        </div>
+      </div>
+
+      <div className="inventory-supplier-sync-card">
+        <h3>Поступления поставщиков → Склад</h3>
+        <p>После установки SQL v157 строки поступлений поставщиков автоматически создают движение склада типа <b>purchase</b>. При изменении количества/цены движение обновляется, при удалении строки — отключается через deleted_at.</p>
+        <div className="action-row" style={{marginTop:12}}>
+          <button className="ghost small" onClick={loadInventoryConsolidatedReports} disabled={backfillBusy}>{backfillBusy ? 'Проверка…' : 'Проверить синхронизацию'}</button>
+        </div>
+        <div className="inventory-supplier-sync-grid">
+          <div className="inventory-supplier-sync-step ready"><span>Auto insert</span><strong>Готово</strong></div>
+          <div className="inventory-supplier-sync-step ready"><span>Auto update</span><strong>Готово</strong></div>
+          <div className="inventory-supplier-sync-step ready"><span>Auto delete</span><strong>Soft delete</strong></div>
+          <div className="inventory-supplier-sync-step"><span>Linked movements</span><strong>{supplierSyncHealth?.linked_movements ?? dashboardReport?.supplier_auto_link?.supplier_link?.linked_movements ?? 0}</strong></div>
+          <div className="inventory-supplier-sync-step pending"><span>Trigger</span><strong>{supplierSyncHealth?.trigger_status || 'после SQL'}</strong></div>
+        </div>
+      </div>
+
+      <div className="inventory-name-location-card">
+        <h3>Supplier Stock Naming & Location</h3>
+        <p>Если в остатках видно “Без названия” или “Без локации”, нужно выполнить SQL v158: он улучшает определение названия товара и автоматически привязывает приход к складской локации.</p>
+        <div className="inventory-name-location-grid">
+          <div className="inventory-name-location-step ready"><span>Product resolver</span><strong>Улучшен</strong></div>
+          <div className="inventory-name-location-step ready"><span>Supplier product</span><strong>Поиск по ID</strong></div>
+          <div className="inventory-name-location-step ready"><span>Location resolver</span><strong>По branch</strong></div>
+          <div className="inventory-name-location-step"><span>Old rows</span><strong>Resync SQL</strong></div>
+        </div>
+      </div>
+
+      <div className="inventory-branch-location-card">
+        <h3>Branch → Stock Location Mapping</h3>
+        <p>Поступления поставщиков теперь могут попадать на склад конкретного филиала: BC1, BC2, BC3, BC4, BC5 или Bistro. Если филиал не найден, используется Central Warehouse.</p>
+        <div className="inventory-branch-location-grid">
+          <div className="inventory-branch-location-step ready"><span>BC1</span><strong>BC1 Stock</strong></div>
+          <div className="inventory-branch-location-step ready"><span>BC2</span><strong>BC2 Stock</strong></div>
+          <div className="inventory-branch-location-step ready"><span>BC3</span><strong>BC3 Stock</strong></div>
+          <div className="inventory-branch-location-step ready"><span>BC4 / BC5</span><strong>Mapped</strong></div>
+          <div className="inventory-branch-location-step warn"><span>Fallback</span><strong>Central</strong></div>
+        </div>
+      </div>
+
+      <div className="inventory-bazar-sync-card">
+        <h3>Базар → Склад</h3>
+        <p>Ежедневный базар с позициями будет попадать на склад как приход <b>purchase</b>. Если филиал указан — движение попадёт в склад филиала, если нет — в Central Warehouse.</p>
+        <div className="action-row" style={{marginTop:12}}>
+          <button className="ghost small" onClick={loadInventoryConsolidatedReports} disabled={backfillBusy}>{backfillBusy ? 'Проверка…' : 'Проверить базар-синхронизацию'}</button>
+        </div>
+        <div className="inventory-bazar-sync-grid">
+          <div className="inventory-bazar-sync-step ready"><span>Auto insert</span><strong>Готово</strong></div>
+          <div className="inventory-bazar-sync-step ready"><span>Auto update</span><strong>Готово</strong></div>
+          <div className="inventory-bazar-sync-step ready"><span>Auto delete</span><strong>Soft delete</strong></div>
+          <div className="inventory-bazar-sync-step"><span>Linked movements</span><strong>{bazarSyncHealth?.linked_movements ?? 0}</strong></div>
+          <div className="inventory-bazar-sync-step pending"><span>Trigger</span><strong>{bazarSyncHealth?.trigger_status || 'после SQL'}</strong></div>
+        </div>
+      </div>
+
+      <div className="inventory-sales-consumption-card">
+        <h3>iiko Sales → Inventory Consumption</h3>
+        <p>Следующий слой склада: после импорта продаж iiko RMS сможет рассчитать теоретический расход ингредиентов по техкартам и создать складские движения расхода. В v162 включён безопасный prep-режим без автоматического списания.</p>
+        <div className="action-row" style={{marginTop:12}}>
+          <button className="ghost small" onClick={loadInventoryConsolidatedReports} disabled={backfillBusy}>{backfillBusy ? 'Проверка…' : 'Проверить sales consumption'}</button>
+        </div>
+        <div className="inventory-sales-consumption-grid">
+          <div className="inventory-sales-consumption-step ready"><span>Sales schema</span><strong>{salesConsumptionHealth?.sales_schema_status || 'prep'}</strong></div>
+          <div className="inventory-sales-consumption-step ready"><span>Recipe mapping</span><strong>{salesConsumptionHealth?.recipe_mapping_status || 'prep'}</strong></div>
+          <div className="inventory-sales-consumption-step"><span>Batches</span><strong>{salesConsumptionHealth?.batches || 0}</strong></div>
+          <div className="inventory-sales-consumption-step"><span>Consumption rows</span><strong>{salesConsumptionHealth?.items || 0}</strong></div>
+          <div className="inventory-sales-consumption-step pending"><span>Auto write-off</span><strong>Off</strong></div>
+        </div>
+      </div>
+
+      <div className="inventory-sales-preview-card">
+        <h3>iiko Sales Mapping → Recipe Consumption Preview</h3>
+        <p>Preview-слой показывает, сколько строк продаж можно связать с меню и техкартами, и сколько будущих ingredient consumption rows можно рассчитать. Склад пока не списывается.</p>
+        <div className="action-row" style={{marginTop:12}}>
+          <button className="ghost small" onClick={loadInventoryConsolidatedReports} disabled={backfillBusy}>{backfillBusy ? 'Проверка…' : 'Проверить mapping preview'}</button>
+        </div>
+        <div className="inventory-sales-preview-grid">
+          <div className="inventory-sales-preview-step ready"><span>Sales table</span><strong>{salesRecipeMappingHealth?.detected_sales_table || salesConsumptionHealth?.detected_sales_table || '—'}</strong></div>
+          <div className="inventory-sales-preview-step"><span>Mapped sales</span><strong>{salesRecipeMappingHealth?.mapped_sales_rows ?? 0}</strong></div>
+          <div className="inventory-sales-preview-step"><span>Unmapped sales</span><strong>{salesRecipeMappingHealth?.unmapped_sales_rows ?? 0}</strong></div>
+          <div className="inventory-sales-preview-step"><span>Recipe rows</span><strong>{salesRecipeMappingHealth?.recipe_rows ?? 0}</strong></div>
+          <div className="inventory-sales-preview-step pending"><span>Apply write-off</span><strong>Off</strong></div>
+        </div>
+      </div>
+
+      <div className="inventory-sales-apply-card">
+        <h3>Sales Consumption Draft / Apply</h3>
+        <p>Следующий объединённый слой: из preview продаж iiko можно создать draft расхода ингредиентов, проверить его, а затем вручную применить как складское списание. Автоматическое списание выключено.</p>
+        <div className="action-row" style={{marginTop:12}}>
+          <button className="ghost small" onClick={loadInventoryConsolidatedReports} disabled={backfillBusy}>{backfillBusy ? 'Проверка…' : 'Обновить status'}</button>
+          <button className="primary small" onClick={createSalesConsumptionDraft} disabled={backfillBusy}>Создать draft</button>
+        </div>
+        <div className="inventory-sales-apply-grid">
+          <div className="inventory-sales-apply-step ready"><span>Preview rows</span><strong>{salesConsumptionConsolidatedHealth?.preview_rows ?? salesRecipeMappingHealth?.recipe_rows ?? 0}</strong></div>
+          <div className="inventory-sales-apply-step"><span>Draft batches</span><strong>{salesConsumptionConsolidatedHealth?.draft_batches ?? 0}</strong></div>
+          <div className="inventory-sales-apply-step"><span>Draft items</span><strong>{salesConsumptionConsolidatedHealth?.draft_items ?? 0}</strong></div>
+          <div className="inventory-sales-apply-step warn"><span>Applied items</span><strong>{salesConsumptionConsolidatedHealth?.applied_items ?? 0}</strong></div>
+          <div className="inventory-sales-apply-step pending"><span>Auto apply</span><strong>Off</strong></div>
+        </div>
+      </div>
+
+      <div className="inventory-iiko-forward-card">
+        <h3>iiko Import → Mapping → Consumption · Forward Pack</h3>
+        <p>Единый контроль следующего блока: качество импортированных продаж, нормализация строк, unmapped позиции, preview расхода ингредиентов и готовность draft/apply. Auto-writeoff остаётся выключенным.</p>
+        <div className="action-row" style={{marginTop:12}}>
+          <button className="ghost small" onClick={loadInventoryConsolidatedReports} disabled={backfillBusy}>{backfillBusy ? 'Проверка…' : 'Обновить полный status'}</button>
+          <button className="ghost small" onClick={normalizeIikoRows} disabled={backfillBusy}>Нормализовать iiko строки</button>
+          <button className="primary small" onClick={createSalesConsumptionDraft} disabled={backfillBusy}>Создать draft consumption</button>
+        </div>
+        <div className="inventory-iiko-forward-grid">
+          <div className="inventory-iiko-forward-step"><span>Imported rows</span><strong>{iikoImportConsolidatedHealth?.import?.total_rows ?? iikoImportHealth?.total_rows ?? 0}</strong></div>
+          <div className="inventory-iiko-forward-step ready"><span>Valid rows</span><strong>{iikoImportConsolidatedHealth?.import?.valid_rows ?? 0}</strong></div>
+          <div className="inventory-iiko-forward-step warn"><span>Unmapped sales</span><strong>{salesUnmappedReport?.unmapped_count ?? salesRecipeMappingHealth?.unmapped_sales_rows ?? 0}</strong></div>
+          <div className="inventory-iiko-forward-step"><span>Preview rows</span><strong>{iikoImportConsolidatedHealth?.consumption?.preview_rows ?? salesConsumptionConsolidatedHealth?.preview_rows ?? 0}</strong></div>
+          <div className="inventory-iiko-forward-step"><span>Draft items</span><strong>{iikoImportConsolidatedHealth?.consumption?.draft_items ?? salesConsumptionConsolidatedHealth?.draft_items ?? 0}</strong></div>
+          <div className="inventory-iiko-forward-step pending"><span>Auto writeoff</span><strong>Off</strong></div>
+        </div>
+      </div>
+
+      <div className="inventory-v169-consolidated-card">
+        <h3>v169 · iiko Import & Consumption Control</h3>
+        <p>Объединённый слой после v168: сохранение продаж в iiko_sales_items, контроль последнего импорта, защита от дублей, unmapped позиции и readiness для draft consumption. Auto-writeoff остаётся выключенным.</p>
+        <div className="action-row" style={{marginTop:12}}>
+          <button className="ghost small" onClick={loadInventoryConsolidatedReports} disabled={backfillBusy}>{backfillBusy ? 'Проверка…' : 'Обновить v169 status'}</button>
+          <button className="ghost small" onClick={deduplicateIikoRows} disabled={backfillBusy}>Очистить дубли iiko</button>
+          <button className="primary small" onClick={createSalesConsumptionDraft} disabled={backfillBusy}>Создать draft consumption</button>
+        </div>
+        <div className="inventory-v169-consolidated-grid">
+          <div className="inventory-v169-consolidated-step"><span>Latest import</span><strong>{iikoLatestDashboard?.latest_import_status || '—'}</strong></div>
+          <div className="inventory-v169-consolidated-step ready"><span>Valid iiko rows</span><strong>{iikoLatestDashboard?.valid_rows ?? iikoImportHealth?.valid_rows ?? 0}</strong></div>
+          <div className="inventory-v169-consolidated-step warn"><span>Duplicates</span><strong>{iikoLatestDashboard?.duplicate_rows ?? 0}</strong></div>
+          <div className="inventory-v169-consolidated-step warn"><span>Unmapped</span><strong>{salesUnmappedReport?.unmapped_count ?? 0}</strong></div>
+          <div className="inventory-v169-consolidated-step"><span>Draft ready</span><strong>{consumptionDraftReadiness?.ready_rows ?? 0}</strong></div>
+          <div className="inventory-v169-consolidated-step pending"><span>Auto writeoff</span><strong>Off</strong></div>
+        </div>
+      </div>
+
+      <div className="inventory-v170-operational-card">
+        <h3>v170 · Consumption Operational Control</h3>
+        <p>Объединённый operational-слой: alias mapping для iiko названий, контроль готовности техкарт, создание draft, ручное применение последнего batch и быстрая отмена. Auto-writeoff выключен.</p>
+        <div className="action-row" style={{marginTop:12}}>
+          <button className="ghost small" onClick={loadInventoryConsolidatedReports} disabled={backfillBusy}>{backfillBusy ? 'Проверка…' : 'Обновить operational status'}</button>
+          <button className="primary small" onClick={createSalesConsumptionDraft} disabled={backfillBusy}>Создать draft</button>
+          <button className="primary small" onClick={applyLatestConsumptionBatch} disabled={backfillBusy}>Применить последний draft</button>
+          <button className="ghost small danger" onClick={cancelLatestConsumptionBatch} disabled={backfillBusy}>Отменить последний batch</button>
+        </div>
+        <div className="inventory-v170-operational-grid">
+          <div className="inventory-v170-operational-step ready"><span>Valid sales</span><strong>{iikoOperationalHealth?.valid_sales_rows ?? iikoLatestDashboard?.valid_rows ?? 0}</strong></div>
+          <div className="inventory-v170-operational-step"><span>Aliases</span><strong>{menuAliasHealth?.aliases ?? 0}</strong></div>
+          <div className="inventory-v170-operational-step warn"><span>Unmapped</span><strong>{iikoOperationalHealth?.unmapped_sales ?? salesUnmappedReport?.unmapped_count ?? 0}</strong></div>
+          <div className="inventory-v170-operational-step"><span>Draft batches</span><strong>{iikoOperationalHealth?.draft_batches ?? 0}</strong></div>
+          <div className="inventory-v170-operational-step"><span>Applied items</span><strong>{iikoOperationalHealth?.applied_items ?? 0}</strong></div>
+          <div className="inventory-v170-operational-step pending"><span>Auto writeoff</span><strong>Off</strong></div>
+        </div>
+      </div>
+
+      <div className="inventory-v171-hardening-card">
+        <h3>v171 · iiko Import Operational Hardening</h3>
+        <p>Контроль качества реального импорта: дата, филиал, валидные строки, дубли, пустые строки, mapping readiness и draft readiness. Auto-writeoff выключен.</p>
+        <div className="action-row" style={{marginTop:12}}>
+          <button className="ghost small" onClick={loadInventoryConsolidatedReports} disabled={backfillBusy}>{backfillBusy ? 'Проверка…' : 'Обновить hardening status'}</button>
+          <button className="ghost small danger" onClick={cleanupIikoImportProblems} disabled={backfillBusy}>Очистить проблемы импорта</button>
+          <button className="primary small" onClick={createSalesConsumptionDraft} disabled={backfillBusy}>Создать draft</button>
+        </div>
+        <div className="inventory-v171-hardening-grid">
+          <div className="inventory-v171-hardening-step ready"><span>Valid rows</span><strong>{iikoOperationalAudit?.valid_rows ?? 0}</strong></div>
+          <div className="inventory-v171-hardening-step warn"><span>No branch</span><strong>{iikoBranchDateQuality?.rows_without_branch ?? 0}</strong></div>
+          <div className="inventory-v171-hardening-step warn"><span>No date</span><strong>{iikoBranchDateQuality?.rows_without_date ?? 0}</strong></div>
+          <div className="inventory-v171-hardening-step warn"><span>Duplicates</span><strong>{iikoOperationalAudit?.duplicate_groups ?? 0}</strong></div>
+          <div className="inventory-v171-hardening-step"><span>Ready draft</span><strong>{consumptionDraftReadiness?.ready_rows ?? 0}</strong></div>
+          <div className="inventory-v171-hardening-step pending"><span>Auto writeoff</span><strong>Off</strong></div>
+        </div>
+      </div>
+
+      <div className="inventory-filter-row">
+        <input value={search} placeholder="Поиск по товару, локации или комментарию..." onChange={e => setSearch(e.target.value)} />
+        <select value={movementFilter} onChange={e => setMovementFilter(e.target.value)}>
+          <option value="all">Все движения</option>
+          <option value="purchase">Приход</option>
+          <option value="write_off">Списание</option>
+          <option value="transfer_in">Перемещение +</option>
+          <option value="transfer_out">Перемещение −</option>
+          <option value="production_in">Производство +</option>
+          <option value="production_out">Производство −</option>
+          <option value="adjustment_in">Корректировка +</option>
+          <option value="adjustment_out">Корректировка −</option>
+        </select>
+        <button className="ghost small" onClick={() => { setSearch(''); setMovementFilter('all') }}>Сбросить</button>
+      </div>
+
+      <div className="summary-grid inventory-summary-grid">
+        <div className="soft-card inventory-kpi-card"><span>Позиции с остатком</span><strong>{positiveRows}</strong><p className="hint">balance_qty &gt; 0</p></div>
+        <div className="soft-card inventory-kpi-card"><span>Сумма остатков</span><strong>{fmt(totalCost)} AZN</strong><p className="hint">по движениям склада</p></div>
+        <div className="soft-card inventory-kpi-card"><span>Всего движений</span><strong>{movements.length}</strong><p className="hint">последние 100</p></div>
+        <div className="soft-card inventory-kpi-card"><span>Отрицательные остатки</span><strong className={negativeRows ? 'bad' : 'good'}>{negativeRows}</strong><p className="hint">нужна проверка</p></div>
+      </div>
+
+      {message && <div className="inventory-message">{message}</div>}
+
+      <div className="inventory-operations-card">
+        <h3>Операции склада</h3>
+        <p>Быстрый выбор сценария движения. Это не автосписание — операции сохраняются вручную и попадают в журнал склада.</p>
+        <div className="inventory-operations-grid">
+          <button className={operationMode === 'purchase' ? 'active' : ''} onClick={() => applyInventoryPreset('purchase')}>+ Приход</button>
+          <button className={operationMode === 'write_off' ? 'active danger' : 'danger'} onClick={() => applyInventoryPreset('write_off')}>− Списание</button>
+          <button className={operationMode === 'transfer_in' ? 'active' : ''} onClick={() => applyInventoryPreset('transfer_in')}>⇢ Перемещение +</button>
+          <button className={operationMode === 'transfer_out' ? 'active danger' : 'danger'} onClick={() => applyInventoryPreset('transfer_out')}>⇠ Перемещение −</button>
+          <button className={operationMode === 'production_in' ? 'active' : ''} onClick={() => applyInventoryPreset('production_in')}>Производство +</button>
+          <button className={operationMode === 'production_out' ? 'active danger' : 'danger'} onClick={() => applyInventoryPreset('production_out')}>Производство −</button>
+          <button className={operationMode === 'adjustment_in' ? 'active' : ''} onClick={() => applyInventoryPreset('adjustment_in')}>Корректировка +</button>
+          <button className={operationMode === 'adjustment_out' ? 'active danger' : 'danger'} onClick={() => applyInventoryPreset('adjustment_out')}>Корректировка −</button>
+        </div>
+      </div>
+
+      <div className="card inventory-form-card">
+        <div className="card-head">
+          <div>
+            <h3>Добавить движение склада</h3>
+            <p className="hint">Ручной режим: приход, списание, корректировка, перемещение или производство.</p>
+          </div>
+        </div>
+        <div className="form-grid">
+          <label><span>Дата</span><DateInput value={formatDateDMY(form.movement_date)} onChange={e => setForm({ ...form, movement_date: e.target.value })} /></label>
+          <label><span>Локация</span><select value={form.location_id} onChange={e => setForm({ ...form, location_id: e.target.value })}><option value="">Без локации</option>{locations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}</select></label>
+          <label><span>Тип движения</span><select value={form.movement_type} onChange={e => setForm({ ...form, movement_type: e.target.value })}><option value="purchase">Приход</option><option value="write_off">Списание</option><option value="transfer_in">Перемещение +</option><option value="transfer_out">Перемещение −</option><option value="production_in">Производство +</option><option value="production_out">Производство −</option><option value="adjustment_in">Корректировка +</option><option value="adjustment_out">Корректировка −</option><option value="adjustment">Корректировка</option></select></label>
+          <label><span>Товар</span><input value={form.item_name} placeholder="Название товара" onChange={e => setForm({ ...form, item_name: e.target.value })} /></label>
+          <label><span>Ед.</span><input value={form.unit} onChange={e => setForm({ ...form, unit: e.target.value })} /></label>
+          <label><span>Кол-во</span><input type="number" step="0.001" value={form.quantity} onChange={e => setForm({ ...form, quantity: e.target.value })} /></label>
+          <label><span>Цена за ед.</span><input type="number" step="0.01" value={form.unit_cost} onChange={e => setForm({ ...form, unit_cost: e.target.value })} /></label>
+          <label className="span-2"><span>Комментарий</span><input value={form.comment} placeholder="Причина / документ / примечание" onChange={e => setForm({ ...form, comment: e.target.value })} /></label>
+          <div className="action-row"><button className="primary small" onClick={createMovement} disabled={loading}>Сохранить движение</button></div>
+        </div>
+      </div>
+
+      {negativeRows > 0 && (
+        <div className="inventory-negative-alert">
+          <h3>Есть отрицательные остатки</h3>
+          <p>Найдены позиции с отрицательным остатком. Обычно это означает списание/расход без корректного прихода или неправильную локацию.</p>
+        </div>
+      )}
+
+      <div className="card span-2">
+        <div className="card-head"><div><h3>Остатки</h3><p className="hint">Расчёт по движениям склада. Отрицательные остатки требуют проверки.</p></div></div>
+        <div className="table-wrap">
+          <table className="inventory-stock-table">
+            <thead><tr><th>Товар</th><th>Локация</th><th>Ед.</th><th>Остаток</th><th>Сумма</th><th>Последнее движение</th></tr></thead>
+            <tbody>
+              {filteredBalances.map((r, idx) => {
+                const qty = parseNum(r.balance_qty)
+                return <tr key={`${r.location_id}-${r.supplier_product_id || r.product_id || r.item_name}-${idx}`} className={qty < 0 ? 'inventory-negative-row' : ''}>
+                  <td><b>{r.item_name || 'Без названия'}</b></td><td>{r.location_name || 'Без локации'}</td><td>{r.unit || 'unit'}</td>
+                  <td><strong className={qty < 0 ? 'bad' : qty > 0 ? 'good' : ''}>{fmt(qty)}</strong></td><td>{fmt(r.balance_cost)} AZN</td><td>{r.last_movement_date || '—'}</td>
+                </tr>
+              })}
+              {!filteredBalances.length && <tr><td colSpan="6" className="hint">Пока нет складских остатков по выбранному фильтру</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="card span-2">
+        <div className="card-head"><div><h3>Журнал движений</h3><p className="hint">Последние 100 движений склада.</p></div></div>
+        <div className="table-wrap">
+          <table className="inventory-movements-table">
+            <thead><tr><th>Дата</th><th>Тип</th><th>Товар</th><th>Кол-во</th><th>Цена</th><th>Сумма</th><th>Комментарий</th></tr></thead>
+            <tbody>
+              {filteredMovements.map(m => <tr key={m.id}><td>{m.movement_date}</td><td><span className={`inventory-move-chip ${m.movement_type}`}>{m.movement_type}</span></td><td><b>{m.item_name || 'Без названия'}</b><br /><span className="hint">{m.unit || 'unit'}</span></td><td>{fmt(m.quantity)}</td><td>{fmt(m.unit_cost)}</td><td>{fmt(m.total_cost)} AZN</td><td>{m.comment || '—'}</td></tr>)}
+              {!filteredMovements.length && <tr><td colSpan="7" className="hint">Пока нет движений склада по выбранному фильтру</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+
+class RmsSectionErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props)
+    this.state = { hasError: false, message: '' }
+  }
+  static getDerivedStateFromError(error) {
+    return { hasError: true, message: error?.message || 'Render error' }
+  }
+  componentDidCatch(error, info) {
+    console.error('RMS section render error', error, info)
+  }
+  componentDidUpdate(prevProps) {
+    if (prevProps.resetKey !== this.props.resetKey && this.state.hasError) {
+      this.setState({ hasError: false, message: '' })
+    }
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="card" style={{borderColor:'#fecdd3', background:'#fff1f2'}}>
+          <h3>Раздел временно не открылся</h3>
+          <p style={{color:'#9f1239'}}>Ошибка рендера: {this.state.message}</p>
+          <button className="ghost small" onClick={() => this.setState({ hasError:false, message:'' })}>Повторить</button>
+        </div>
+      )
+    }
+    return this.props.children
+  }
+}
+
+function App() {
+  const params = new URLSearchParams(window.location.search)
+
+  const isQRMenu =
+    params.get('qr') === 'menu' ||
+    window.location.pathname.startsWith('/qr-menu') ||
+    window.location.hash.startsWith('#/qr-menu')
+
+  if (isQRMenu) {
+    return <QRMenu />
+  }
+
+  const [lang, setLang, t] = useLang()
+  const [session, setSession] = useState(() => getInternalSessionStorage())
+  const [profile, setProfile] = useState(null)
+  const [permissions, setPermissions] = useState([])
+  const [theme, setThemeState] = useState(localStorage.getItem('rms_theme') || localStorage.getItem('nms_theme') || 'classic')
+  const [section, setSection] = useState('dashboard')
+  const [revenueFocus, setRevenueFocus] = useState(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => { document.documentElement.lang = lang }, [lang])
+
+  const setTheme = (value) => {
+    const next = value || 'classic'
+    localStorage.setItem('rms_theme', next)
+    setThemeState(next)
+  }
+
+  useEffect(() => { document.documentElement.dataset.nmsTheme = theme }, [theme])
+
+  useEffect(() => {
+    const storedInternal = getInternalSessionStorage()
+    if (storedInternal?.rms_internal) {
+      setSession(storedInternal)
+      setLoading(false)
+      return
+    }
+
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session)
+      setLoading(false)
+    })
+
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      if (!getInternalSessionStorage()?.rms_internal) setSession(nextSession)
+    })
+    return () => sub.subscription.unsubscribe()
+  }, [])
+
+  async function loadSupabaseProfile(activeSession) {
+    const email = activeSession.user.email || ''
+    const loginName = String(email).split('@')[0] || ''
+
+    let prof = null
+    const { data: profById } = await supabase
+      .from('user_profiles')
+      .select('*')
+      .eq('id', activeSession.user.id)
+      .maybeSingle()
+
+    prof = profById || null
+
+    if (!prof && (email || loginName)) {
+      const filters = []
+      if (email) filters.push(`email.eq.${email}`)
+      if (loginName) filters.push(`login_name.eq.${loginName}`)
+      const { data: profByLogin } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .or(filters.join(','))
+        .maybeSingle()
+      prof = profByLogin || null
+    }
+
+    const permissionUserId = prof?.id || activeSession.user.id
+    const { data: perms } = await supabase
+      .from('user_permissions')
+      .select('*')
+      .eq('user_id', permissionUserId)
+
+    setProfile(prof)
+    setPermissions(perms || [])
+    if (prof?.ui_theme) setTheme(prof.ui_theme)
+  }
+
+  useEffect(() => {
+    async function loadProfile() {
+      if (!session?.user) { setProfile(null); setPermissions([]); return }
+
+      if (session?.rms_internal) {
+        const localUser = getRmsLocalUser()
+        setProfile(localUser)
+        setPermissions(makeInternalPermissionRows(localUser?.id || session.user.id))
+        if (localUser?.ui_theme) setTheme(localUser.ui_theme)
+        return
+      }
+
+      await loadSupabaseProfile(session)
+    }
+    loadProfile()
+  }, [session])
+
+  useEffect(() => {
+    const reloadUserAccess = async () => {
+      if (!session?.user) return
+
+      if (session?.rms_internal) {
+        const localUser = getRmsLocalUser()
+        setProfile(localUser)
+        setPermissions(makeInternalPermissionRows(localUser?.id || session.user.id))
+        if (localUser?.ui_theme) setTheme(localUser.ui_theme)
+        return
+      }
+
+      await loadSupabaseProfile(session)
+    }
+
+    window.addEventListener('rms-user-settings-updated', reloadUserAccess)
+    window.addEventListener('storage', reloadUserAccess)
+    return () => {
+      window.removeEventListener('rms-user-settings-updated', reloadUserAccess)
+      window.removeEventListener('storage', reloadUserAccess)
+    }
+  }, [session])
+
+  const isInternalSession = Boolean(session?.rms_internal)
+  const isAdmin = !isInternalSession && (!profile || profile?.role === 'admin')
+  const sectionAccess = (sectionId) => {
+    if (isInternalSession && sectionId === 'settings') return 'none'
+    if (isAdmin) return 'admin'
+    const row = permissions.find(p => p.section === sectionId)
+    return row?.access || 'none'
+  }
+  const visibleSections = SECTIONS.filter(s => canReadAccess(sectionAccess(s.id)))
+  const currentAccess = sectionAccess(section)
+  const currentCanRead = canReadAccess(currentAccess)
+
+  useEffect(() => {
+    const urlToken = new URLSearchParams(window.location.search).get('loyalty_scan_token')
+    if (urlToken && section !== 'loyalty') {
+      setSection('loyalty')
+    }
+  }, [section])
+
+  useEffect(() => {
+    if (!visibleSections.length) return
+    if (!canReadAccess(sectionAccess(section))) setSection(visibleSections[0].id)
+  }, [permissions, profile, section, isInternalSession])
+
+  function goToRevenueExpense(row) {
+    if (!row?.expense_date || !row?.branch_id) return
+    setRevenueFocus({
+      expenseId: row.id || '',
+      branchId: row.branch_id,
+      date: row.expense_date,
+      name: row.name || '',
+      amount: row.amountValue ?? row.amount ?? '',
+      ts: Date.now()
+    })
+    setSection('revenue')
+  }
+
+  function logout() {
+    if (session?.rms_internal) {
+      setInternalSessionStorage(null)
+      setSession(null)
+      setProfile(null)
+      setPermissions([])
+      return
+    }
+    supabase.auth.signOut()
+  }
+
+  const rmsPublicLoyaltyWalletRoute = typeof window !== 'undefined' && window.location.pathname.startsWith('/loyalty/card/')
+
+  if (rmsPublicLoyaltyWalletRoute) {
+    return <RMSLoyalty />
+  }
+
+  if (loading) return <div className="login-screen"><div className="login-card">{t('loading')}</div></div>
+  if (!session) return <Login lang={lang} setLang={setLang} t={t} />
+
+  const visibleSectionMap = Object.fromEntries(visibleSections.map(s => [s.id, s]))
+  const groupedSections = RMS_PRO_NAV_GROUPS.map(group => ({
+    ...group,
+    sections: group.ids.map(id => visibleSectionMap[id]).filter(Boolean)
+  })).filter(group => group.sections.length)
+  const ungroupedSections = visibleSections.filter(s => !RMS_PRO_NAV_GROUPS.some(group => group.ids.includes(s.id)))
+  const activeTitle = rmsProSectionTitle(section, t)
+  const userName = profile?.full_name || profile?.login_name || session?.user?.email || 'Admin'
+  const userInitial = String(userName || 'A').trim().slice(0, 1).toUpperCase()
+  const renderProNavButton = (s) => (
+    <button
+      key={s.id}
+      className={`rms-pro-nav-item ${section === s.id ? 'active' : ''}`}
+      onClick={() => setSection(s.id)}
+      type="button"
+    >
+      <span className="rms-pro-nav-icon">{RMS_PRO_SECTION_ICONS[s.id] || '•'}</span>
+      <span>{t(s.key)}</span>
+    </button>
+  )
+
+  return (
+    <div className={`app rms-pro-shell theme-${theme || 'classic'}`}>
+      <aside className="sidebar rms-pro-sidebar">
+        <div className="rms-pro-brand rms-pro-brand-logo-only">
+          <div className="rms-pro-logo rms-pro-logo-wide"><ProductLogo compact /></div>
+        </div>
+
+        <nav className="rms-pro-nav">
+          {groupedSections.map(group => (
+            <div key={group.title} className="rms-pro-nav-group">
+              <div className="rms-pro-nav-group-title">{group.title}</div>
+              <div className="rms-pro-nav-list">
+                {group.sections.map(renderProNavButton)}
+              </div>
+            </div>
+          ))}
+          {ungroupedSections.length > 0 && (
+            <div className="rms-pro-nav-group">
+              <div className="rms-pro-nav-group-title">ДРУГОЕ</div>
+              <div className="rms-pro-nav-list">
+                {ungroupedSections.map(renderProNavButton)}
+              </div>
+            </div>
+          )}
+        </nav>
+
+        <div className="rms-pro-sidebar-bottom">
+          <div className="rms-pro-user-card">
+            <div className="rms-pro-avatar">{userInitial}</div>
+            <div className="rms-pro-user-info">
+              <div className="rms-pro-user-name">{userName}</div>
+              <div className="rms-pro-user-role">{isAdmin ? t('administrator') : t('employee')}</div>
+            </div>
+            <button className="rms-pro-account-logout" onClick={logout} type="button" title={t('logout')} aria-label={t('logout')}>
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M14 7V5.5A1.5 1.5 0 0 0 12.5 4h-6A1.5 1.5 0 0 0 5 5.5v13A1.5 1.5 0 0 0 6.5 20h6a1.5 1.5 0 0 0 1.5-1.5V17" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M10 12h9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+                <path d="m16 8 4 4-4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      </aside>
+
+      <main className={`main rms-pro-main section-${section} ${currentAccess === 'read' ? 'readonly-mode' : ''}`} data-section={section}>
+        <DashboardStyles />
+        <ThemeStyles />
+        <ResponsiveAndSettingsStyles />
+        <RMSProInterfaceStyles />
+        <RMSProV6Styles />
+        <RMSProV9Styles />
+        <DashboardTrendColorStyles />
+        <SupplierTotalOnlyCheckboxStyles />
+        <RMSProSidebarSatoshiStyles />
+        <GlobalProgressOverlay />
+        <div className="rms-pro-topbar">
+          <div className="rms-pro-topbar-title">
+            <button className="rms-pro-back" type="button" onClick={() => setSection('dashboard')} aria-label="Назад"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M15 6l-6 6 6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg></button>
+            <span>{activeTitle}</span>
+          </div>
+          <div className="rms-pro-topbar-actions">
+            <button className="rms-pro-top-icon" type="button" aria-label="Notifications"><RmsBellIcon /></button>
+            <button className="rms-pro-top-icon" type="button" aria-label="Help"><RmsHelpIcon /></button>
+            <div className="rms-pro-top-user">
+              <div className="rms-pro-top-avatar">{userInitial}</div>
+              <span>{isAdmin ? 'Admin' : userName}</span>
+              <span>⌄</span>
+            </div>
+          </div>
+        </div>
+        <div className="rms-pro-content">
+        {!currentCanRead && <section className="card"><h3>{t('permission_denied')}</h3><p className="hint">Этот раздел скрыт для текущего пользователя.</p></section>}
+        {currentCanRead && currentAccess === 'read' && <div className="readonly-banner">Режим просмотра: редактирование этого раздела отключено.</div>}
+        {currentCanRead && section === 'dashboard' && <Dashboard t={t} />}
+        {currentCanRead && section === 'revenue' && <Revenue t={t} focusExpense={revenueFocus} />}
+        {currentCanRead && section === 'finance' && <Finance t={t} lang={lang} onGoToExpense={goToRevenueExpense} />}
+        {currentCanRead && section === 'reports' && <Reports t={t} />}
+        {currentCanRead && section === 'recipes' && <Recipes t={t} />}
+        {currentCanRead && section === 'inventory' && <InventoryModule t={t} />}
+        {currentCanRead && section === 'salaries' && <SalaryWorkspace t={t} isAdmin={isAdmin || accessRank(sectionAccess('salaries')) >= accessRank('admin')} />}
+        {currentCanRead && section === 'suppliers' && <Suppliers t={t} isAdmin={isAdmin || accessRank(sectionAccess('suppliers')) >= accessRank('admin')} />}
+        {currentCanRead && section === 'debts' && <DebtsPayments t={t} />}
+        {currentCanRead && section === 'qrmenu' && <RMSQRMenuAdmin t={t} />}
+        {currentCanRead && section === 'loyalty' && <div className="grid">
+          <div className="card span-2">
+            <RMSLoyalty />
+          </div>
+        </div>}
+        {currentCanRead && section === 'settings' && <RmsSectionErrorBoundary resetKey={`settings-${section}`}><Settings session={session} t={t} theme={theme} setTheme={setTheme} /></RmsSectionErrorBoundary>}
+        </div>
+      </main>
+    </div>
+  )
+}
+
+
+
+function posItemType(item) {
+  const category = normalizeExpenseText(item?.category || item?.name || '')
+  if (category.includes('кофе') || category.includes('чай') || category.includes('бар') || category.includes('напит') || category.includes('drink') || category.includes('coffee') || category.includes('tea')) return 'Бар'
+  return 'Кухня'
+}
+
+function POSLite({ t }) {
+  const branches = useBranches()
+  const halls = ['Основной зал', 'Терраса', 'VIP']
+  const tableCells = useMemo(() => ([
+    ...Array.from({ length: 12 }, (_, i) => ({ id: `T${i + 1}`, label: `Стол ${i + 1}`, defaultMode: 'hall' })),
+    { id: 'TA', label: 'С собой', defaultMode: 'takeaway' },
+    { id: 'DL', label: 'Доставка', defaultMode: 'delivery' },
+    { id: 'BAR', label: 'Бар', defaultMode: 'hall' },
+    { id: 'VIP', label: 'VIP', defaultMode: 'hall' }
+  ]), [])
+
+  const POS_CASHIER_KEY = 'rms_pos_cashier_session_v1'
+  const [branchId, setBranchId] = useState('')
+  const [date, setDate] = useState(todayISO())
+  const [menuItems, setMenuItems] = useState([])
+  const [orders, setOrders] = useState([])
+  const [search, setSearch] = useState('')
+  const [selectedTable, setSelectedTable] = useState('T1')
+  const [draftOrders, setDraftOrders] = useState({})
+  const [paymentMethod, setPaymentMethod] = useState('cash')
+  const [menuRoot, setMenuRoot] = useState('root')
+  const [menuTypeFilter, setMenuTypeFilter] = useState('all')
+  const [categoryFilter, setCategoryFilter] = useState('all')
+  const [message, setMessage] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [cashierNameInput, setCashierNameInput] = useState('')
+  const [cashierPin, setCashierPin] = useState('')
+  const [cashierSession, setCashierSession] = useState(null)
+
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem(POS_CASHIER_KEY) || 'null')
+      if (saved?.name && saved?.pin) setCashierSession(saved)
+    } catch (_e) {}
+  }, [])
+
+  useEffect(() => { if (!branchId && branches[0]) setBranchId(branches[0].id) }, [branches, branchId])
+  useEffect(() => { loadBase() }, [branchId, date])
+
+  const menuWithType = useMemo(() => (menuItems || []).map(item => ({ ...item, pos_type: posItemType(item) })), [menuItems])
+  const menuRoots = useMemo(() => ([
+    { id: 'Кухня', label: 'Еда' },
+    { id: 'Бар', label: 'Напитки' }
+  ]), [])
+
+  const visibleCategories = useMemo(() => {
+    if (menuTypeFilter === 'all') return []
+    const set = new Set(menuWithType
+      .filter(item => item.pos_type === menuTypeFilter)
+      .map(item => item.category || 'Без категории'))
+    return Array.from(set).filter(Boolean).sort((a, b) => String(a).localeCompare(String(b), 'ru'))
+  }, [menuWithType, menuTypeFilter])
+
+  const filteredMenu = useMemo(() => {
+    const q = normalizeSalesKey(search)
+    return menuWithType
+      .filter(item => menuTypeFilter === 'all' || item.pos_type === menuTypeFilter)
+      .filter(item => categoryFilter === 'all' || (item.category || 'Без категории') === categoryFilter)
+      .filter(item => !q || normalizeSalesKey(item.name).includes(q) || normalizeSalesKey(item.category).includes(q))
+      .slice(0, 300)
+  }, [menuWithType, search, menuTypeFilter, categoryFilter])
+
+  const currentDraft = draftOrders[selectedTable] || { table_name: selectedTable, customer_name: '', guests: 1, hall_name: halls[0], order_mode: 'hall', payment_method: paymentMethod, items: [] }
+  const items = currentDraft.items || []
+  const subtotal = items.reduce((s, item) => s + parseNum(item.qty) * parseNum(item.price), 0)
+  const totalQty = items.reduce((s, item) => s + parseNum(item.qty), 0)
+
+  function setCurrentDraft(patchOrFn) {
+    setDraftOrders(prev => {
+      const current = prev[selectedTable] || { table_name: selectedTable, customer_name: '', guests: 1, hall_name: halls[0], order_mode: 'hall', payment_method: paymentMethod, items: [] }
+      const next = typeof patchOrFn === 'function' ? patchOrFn(current) : { ...current, ...patchOrFn }
+      return { ...prev, [selectedTable]: next }
+    })
+  }
+
+  function selectTable(table) {
+    setSelectedTable(table.id)
+    setDraftOrders(prev => {
+      if (prev[table.id]) return prev
+      const orderMode = table.defaultMode || 'hall'
+      return {
+        ...prev,
+        [table.id]: {
+          table_name: table.label,
+          customer_name: '',
+          guests: 1,
+          hall_name: halls[0],
+          order_mode: orderMode,
+          payment_method: paymentMethod,
+          items: []
+        }
+      }
+    })
+  }
+
+  function handlePinDigit(digit) {
+    setCashierPin(prev => (prev + String(digit)).slice(0, 4))
+  }
+
+  function clearPin() { setCashierPin('') }
+  function backspacePin() { setCashierPin(prev => prev.slice(0, -1)) }
+
+  function unlockPos() {
+    if ((cashierNameInput || '').trim().length < 2) return setMessage('Укажи имя сотрудника / кассира')
+    if (cashierPin.length !== 4) return setMessage('PIN-код должен состоять из 4 цифр')
+    const session = { name: cashierNameInput.trim(), pin: cashierPin, opened_at: new Date().toISOString() }
+    setCashierSession(session)
+    try { localStorage.setItem(POS_CASHIER_KEY, JSON.stringify(session)) } catch (_e) {}
+    setCashierPin('')
+    setMessage('')
+  }
+
+  function logoutPos() {
+    setCashierSession(null)
+    setCashierPin('')
+    try { localStorage.removeItem(POS_CASHIER_KEY) } catch (_e) {}
+  }
+
+  async function currentUserMeta() {
+    try {
+      if (getInternalSessionStorage()?.rms_internal) {
+        const localUser = getRmsLocalUser()
+        return { user_id: null, user_email: localUser?.email || localUser?.login_name || 'rms.internal' }
+      }
+      const { data } = await supabase.auth.getUser()
+      return { user_id: data?.user?.id || null, user_email: data?.user?.email || null }
+    } catch (_e) {
+      return { user_id: null, user_email: null }
+    }
+  }
+
+  async function loadBase() {
+    setMessage('')
+    const [{ data: menu, error: menuError }, { data: orderRows, error: orderError }] = await Promise.all([
+      supabase.from('menu_items').select('id,name,category,sale_price,is_active').eq('is_active', true).order('category').order('name'),
+      branchId
+        ? supabase.from('pos_orders').select('*, pos_order_items(*)').eq('branch_id', branchId).eq('order_date', date).order('created_at', { ascending: false }).limit(25)
+        : Promise.resolve({ data: [], error: null })
+    ])
+    if (menuError) setMessage(menuError.message)
+    setMenuItems((menu || []).filter(m => m.is_active !== false))
+    if (orderError && String(orderError.message || '').includes('pos_orders')) {
+      setMessage('Для POS-кассы нужно один раз выполнить SQL-файл rms_pos_lite_tables_v2.sql в Supabase.')
+      setOrders([])
+    } else if (orderError) {
+      setMessage(orderError.message)
+      setOrders([])
+    } else {
+      setOrders(orderRows || [])
+    }
+  }
+
+  function addMenuItemToOrder(item) {
+    setCurrentDraft(current => {
+      const existing = (current.items || []).find(x => String(x.menu_item_id) === String(item.id))
+      const nextItems = existing
+        ? current.items.map(x => String(x.menu_item_id) === String(item.id) ? { ...x, qty: parseNum(x.qty) + 1 } : x)
+        : [...(current.items || []), {
+            menu_item_id: item.id,
+            name: item.name,
+            category: item.category || null,
+            item_type: item.pos_type || posItemType(item),
+            qty: 1,
+            price: parseNum(item.sale_price)
+          }]
+      return { ...current, items: nextItems }
+    })
+  }
+
+  function updateItem(index, patch) {
+    setCurrentDraft(current => ({
+      ...current,
+      items: (current.items || []).map((item, i) => i === index ? { ...item, ...patch } : item).filter(item => parseNum(item.qty) > 0)
+    }))
+  }
+
+  function clearCurrentOrder() {
+    if (!window.confirm('Очистить текущий заказ?')) return
+    setDraftOrders(prev => ({
+      ...prev,
+      [selectedTable]: {
+        ...(prev[selectedTable] || {}),
+        table_name: prev[selectedTable]?.table_name || selectedTable,
+        customer_name: '',
+        guests: 1,
+        hall_name: halls[0],
+        order_mode: prev[selectedTable]?.order_mode || 'hall',
+        payment_method: prev[selectedTable]?.payment_method || paymentMethod,
+        items: []
+      }
+    }))
+  }
+
+  function goBackMenu() {
+    if (categoryFilter !== 'all') {
+      setCategoryFilter('all')
+      return
+    }
+    if (menuTypeFilter !== 'all') {
+      setMenuTypeFilter('all')
+      setMenuRoot('root')
+      return
+    }
+    setMenuRoot('root')
+  }
+
+  function openMenuRoot(rootId) {
+    setMenuRoot(rootId)
+    setMenuTypeFilter(rootId)
+    setCategoryFilter('all')
+  }
+
+  function printHtmlDocument(title, rows, footerHtml = '') {
+    const html = `<!doctype html><html><head><meta charset="utf-8"><title>${title}</title><style>
+      body{font-family:Arial,sans-serif;padding:18px;color:#111}
+      h1{font-size:22px;margin:0 0 6px}
+      .meta{font-size:13px;color:#555;margin-bottom:12px}
+      table{width:100%;border-collapse:collapse;font-size:13px}
+      th,td{border-bottom:1px solid #ddd;padding:8px;text-align:left;vertical-align:top}
+      .right{text-align:right}.sum{font-size:22px;font-weight:800;margin-top:12px}
+      .section{margin-top:18px}
+    </style></head><body>${rows}${footerHtml}</body></html>`
+    const w = window.open('', '_blank', 'width=900,height=700')
+    if (!w) return
+    w.document.open()
+    w.document.write(html)
+    w.document.close()
+    w.focus()
+    w.print()
+  }
+
+  function currentOrderMetaLine() {
+    const modeLabel = currentDraft.order_mode === 'takeaway' ? 'С собой' : currentDraft.order_mode === 'delivery' ? 'Доставка' : 'Зал'
+    return `${branches.find(b => String(b.id) === String(branchId))?.name || ''} · ${date} · ${selectedTable} · ${modeLabel} · гостей: ${currentDraft.guests || 1}${currentDraft.hall_name && currentDraft.order_mode === 'hall' ? ` · ${currentDraft.hall_name}` : ''}${cashierSession?.name ? ` · кассир: ${cashierSession.name}` : ''}`
+  }
+
+  function precheckOrder() {
+    if (!items.length) return setMessage('Заказ пуст')
+    const rows = `
+      <h1>Пречек</h1>
+      <div class="meta">${currentOrderMetaLine()}</div>
+      <table><thead><tr><th>Позиция</th><th>Тип</th><th class="right">Кол-во</th><th class="right">Цена</th><th class="right">Сумма</th></tr></thead><tbody>
+      ${items.map(item => `<tr><td>${item.name}</td><td>${item.item_type}</td><td class="right">${fmt(item.qty)}</td><td class="right">${fmt(item.price)}</td><td class="right">${fmt(parseNum(item.qty) * parseNum(item.price))}</td></tr>`).join('')}
+      </tbody></table>`
+    const footer = `<div class="sum">Итого: ${fmt(subtotal)} AZN</div>`
+    printHtmlDocument('Пречек', rows, footer)
+  }
+
+  function printByType(type) {
+    const typeLabel = type === 'Бар' ? 'Печать в бар' : 'Печать на кухню'
+    const filtered = items.filter(item => item.item_type === type)
+    if (!filtered.length) return setMessage(type === 'Бар' ? 'В заказе нет напитков / барных позиций' : 'В заказе нет кухонных позиций')
+    const rows = `
+      <h1>${typeLabel}</h1>
+      <div class="meta">${currentOrderMetaLine()}</div>
+      <table><thead><tr><th>Позиция</th><th class="right">Кол-во</th><th class="right">Комментарий</th></tr></thead><tbody>
+      ${filtered.map(item => `<tr><td>${item.name}</td><td class="right">${fmt(item.qty)}</td><td class="right">—</td></tr>`).join('')}
+      </tbody></table>`
+    printHtmlDocument(typeLabel, rows)
+  }
+
+  function splitCheckPreview() {
+    if (!items.length) return setMessage('Заказ пуст')
+    const left = []
+    const right = []
+    items.forEach((item, idx) => (idx % 2 === 0 ? left : right).push(item))
+    const sumBlock = part => part.reduce((s, item) => s + parseNum(item.qty) * parseNum(item.price), 0)
+    const partHtml = (title, part) => `<div class="section"><h1>${title}</h1><table><thead><tr><th>Позиция</th><th class="right">Кол-во</th><th class="right">Цена</th><th class="right">Сумма</th></tr></thead><tbody>${part.map(item => `<tr><td>${item.name}</td><td class="right">${fmt(item.qty)}</td><td class="right">${fmt(item.price)}</td><td class="right">${fmt(parseNum(item.qty) * parseNum(item.price))}</td></tr>`).join('')}</tbody></table><div class="sum">${fmt(sumBlock(part))} AZN</div></div>`
+    printHtmlDocument('Разделение чека', `<div class="meta">${currentOrderMetaLine()}</div>${partHtml('Часть 1', left)}${partHtml('Часть 2', right)}`)
+  }
+
+  async function recalcDailyRevenueFromPos(activeBranchId, activeDate) {
+    const { data: entries } = await supabase
+      .from('daily_revenue_entries')
+      .select('cash_amount,bank_amount,wolt_amount')
+      .eq('branch_id', activeBranchId)
+      .eq('revenue_date', activeDate)
+      .is('deleted_at', null)
+
+    const totals = (entries || []).reduce((acc, row) => {
+      acc.cash_amount += parseNum(row.cash_amount)
+      acc.bank_amount += parseNum(row.bank_amount)
+      acc.wolt_amount += parseNum(row.wolt_amount)
+      return acc
+    }, { cash_amount: 0, bank_amount: 0, wolt_amount: 0 })
+
+    await supabase.rpc('rms_revenue_create_secure', {
+      p_revenue_date: activeDate,
+      p_branch_id: activeBranchId,
+      p_cash_amount: totals.cash_amount,
+      p_bank_amount: totals.bank_amount,
+      p_wolt_amount: totals.wolt_amount,
+      p_comment: 'POS auto revenue sync'
+    })
+  }
+
+  async function closeOrder() {
+    if (!branchId) return setMessage('Выберите филиал')
+    if (!items.length) return setMessage('Добавьте позиции в заказ')
+    setLoading(true)
+    setMessage('')
+    try {
+      const user = await currentUserMeta()
+      const activePayment = currentDraft.payment_method || paymentMethod || 'cash'
+      const revenuePayload = {
+        branch_id: branchId,
+        revenue_date: date,
+        cash_amount: activePayment === 'cash' ? subtotal : 0,
+        bank_amount: activePayment === 'bank' ? subtotal : 0,
+        wolt_amount: activePayment === 'wolt' ? subtotal : 0,
+        comment: `POS · ${currentDraft.table_name || selectedTable} · ${fmt(totalQty)} шт. · кассир ${cashierSession?.name || '—'}`,
+        created_by: user.user_id,
+        updated_by: user.user_id
+      }
+
+      const { data: order, error: orderError } = await supabase.from('pos_orders').insert({
+        branch_id: branchId,
+        order_date: date,
+        table_name: currentDraft.table_name || selectedTable || null,
+        customer_name: currentDraft.customer_name || null,
+        payment_method: activePayment,
+        total_amount: subtotal,
+        status: 'closed',
+        closed_at: new Date().toISOString(),
+        hall_name: currentDraft.hall_name || null,
+        guest_count: parseNum(currentDraft.guests || 1),
+        order_mode: currentDraft.order_mode || 'hall',
+        cashier_name: cashierSession?.name || null,
+        created_by: user.user_id,
+        updated_by: user.user_id
+      }).select('*').single()
+      if (orderError) throw orderError
+
+      const orderItems = items.map(item => ({
+        order_id: order.id,
+        menu_item_id: item.menu_item_id,
+        item_name: item.name,
+        item_category: item.category || null,
+        item_type: item.item_type || 'Кухня',
+        quantity: parseNum(item.qty),
+        unit_price: parseNum(item.price),
+        total_amount: parseNum(item.qty) * parseNum(item.price)
+      }))
+      const { error: itemsError } = await supabase.from('pos_order_items').insert(orderItems)
+      if (itemsError) throw itemsError
+
+      const { error: revenueError } = await supabase.rpc('rms_add_revenue_entry', {
+        p_branch_id: branchId,
+        p_date: date,
+        p_cash_amount: revenuePayload.cash_amount,
+        p_bank_amount: revenuePayload.bank_amount,
+        p_wolt_amount: revenuePayload.wolt_amount,
+        p_comment: revenuePayload.comment
+      })
+      if (revenueError) throw revenueError
+      await recalcDailyRevenueFromPos(branchId, date)
+
+      setDraftOrders(prev => ({
+        ...prev,
+        [selectedTable]: {
+          table_name: currentDraft.table_name || selectedTable,
+          customer_name: '',
+          guests: 1,
+          hall_name: halls[0],
+          order_mode: currentDraft.order_mode || 'hall',
+          payment_method: activePayment,
+          items: []
+        }
+      }))
+      await loadBase()
+      setMessage('Чек закрыт. Продажа отправлена в RMS.')
+    } catch (error) {
+      setMessage(error?.message || 'Не удалось закрыть чек')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  function tableDraftSummary(tableId) {
+    const draft = draftOrders[tableId]
+    const draftItems = draft?.items || []
+    const qty = draftItems.reduce((s, item) => s + parseNum(item.qty), 0)
+    const total = draftItems.reduce((s, item) => s + parseNum(item.qty) * parseNum(item.price), 0)
+    return { qty, total, count: draftItems.length, mode: draft?.order_mode || 'hall', guests: draft?.guests || 1 }
+  }
+
+  if (!cashierSession) {
+    return (
+      <section>
+        <section className="topbar">
+          <div>
+            <h2>POS</h2>
+            <p>Вход в POS-кассу: сотрудник вводит своё имя и 4-значный PIN-код.</p>
+          </div>
+        </section>
+        {message && <p className="hint bad">{message}</p>}
+        <div className="card" style={{maxWidth:520, margin:'20px auto'}}>
+          <h3>Вход в POS</h3>
+          <div className="form-grid compact">
+            <label><span>Сотрудник / кассир</span><input value={cashierNameInput} onChange={e => setCashierNameInput(e.target.value)} placeholder="Например, Murad" /></label>
+            <label><span>PIN-код</span><input value={'•'.repeat(cashierPin.length)} readOnly placeholder="4 цифры" /></label>
+          </div>
+          <div style={{display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:10, marginTop:14}}>
+            {[1,2,3,4,5,6,7,8,9,'C',0,'⌫'].map(key => <button key={key} onClick={() => key === 'C' ? clearPin() : key === '⌫' ? backspacePin() : handlePinDigit(key)} style={{padding:'18px 12px', fontSize:22, fontWeight:800, borderRadius:14, border:'1px solid #d7dfd9', background:'#fff'}}>{key}</button>)}
+          </div>
+          <button className="primary" style={{width:'100%', marginTop:14}} onClick={unlockPos}>Войти в POS</button>
+        </div>
+      </section>
+    )
+  }
+
+
+  async function saveIikoConnection() {
+    setIikoStatus('')
+    const branchId = iikoForm.branch_id || branches[0]?.id
+    if (!branchId) return setIikoStatus('Сначала добавьте филиал в настройках.')
+    if (!String(iikoForm.organization_id || '').trim()) return setIikoStatus('Введите iiko organization_id.')
+
+    setIikoBusy(true)
+    try {
+      const payload = {
+        branch_id: branchId,
+        iiko_organization_id: String(iikoForm.organization_id || '').trim(),
+        iiko_terminal_group_id: String(iikoForm.terminal_group_id || '').trim() || null,
+        sync_enabled: Boolean(iikoForm.sync_enabled),
+        updated_at: new Date().toISOString()
+      }
+      const { error } = await supabase.from('iiko_sync_connections').upsert(payload, { onConflict: 'branch_id' })
+      if (error) throw error
+      setIikoForm({ branch_id: branchId, organization_id: '', terminal_group_id: '', sync_enabled: true })
+      setIikoStatus('Подключение iiko сохранено. Следующий шаг — добавить IIKO_API_LOGIN в Supabase Edge Functions / Vercel Environment.')
+      await load()
+    } catch (e) {
+      setIikoStatus(e.message || String(e))
+    } finally {
+      setIikoBusy(false)
+    }
+  }
+
+  function editIikoConnection(row) {
+    setIikoForm({
+      branch_id: row.branch_id || '',
+      organization_id: row.iiko_organization_id || '',
+      terminal_group_id: row.iiko_terminal_group_id || '',
+      sync_enabled: row.sync_enabled !== false
+    })
+    setSettingsTab('integrations')
+  }
+
+  async function toggleIikoConnection(row) {
+    setIikoStatus('')
+    const { error } = await supabase.from('iiko_sync_connections').update({ sync_enabled: !row.sync_enabled, updated_at: new Date().toISOString() }).eq('id', row.id)
+    if (error) setIikoStatus(error.message); else { setIikoStatus('Статус подключения обновлён'); await load() }
+  }
+
+  async function checkIikoBackend() {
+    setIikoStatus('')
+    setIikoBusy(true)
+    try {
+      const { data, error } = await supabase.functions.invoke('iiko-sync-sales', { body: { action: 'health' } })
+      if (error) throw error
+      setIikoStatus(data?.message || 'Edge Function отвечает. Можно проверять подключение филиалов.')
+    } catch (e) {
+      setIikoStatus((e && e.message) ? e.message : 'Edge Function iiko-sync-sales не развернута или secrets не настроены.')
+    } finally {
+      setIikoBusy(false)
+    }
+  }
+
+  async function testIikoConnection(row) {
+    setIikoStatus('')
+    setIikoBusy(true)
+    try {
+      const { data, error } = await supabase.functions.invoke('iiko-sync-sales', { body: { action: 'testConnection', connectionId: row.id } })
+      if (error) throw error
+      setIikoStatus(data?.message || 'Подключение iiko проверено.')
+      await load()
+    } catch (e) {
+      setIikoStatus((e && e.message) ? e.message : 'Не удалось проверить подключение iiko.')
+    } finally {
+      setIikoBusy(false)
+    }
+  }
+
+  async function runIikoSync(row) {
+    setIikoStatus('')
+    setIikoBusy(true)
+    try {
+      const fromDate = iikoSyncForm.period_from || todayISO()
+      const toDate = iikoSyncForm.period_to || fromDate
+      const { data, error } = await supabase.functions.invoke('iiko-sync-sales', {
+        body: {
+          action: 'syncSales',
+          connectionId: row.id,
+          periodFrom: `${fromDate}T00:00:00.000Z`,
+          periodTo: `${toDate}T23:59:59.999Z`
+        }
+      })
+      if (error) throw error
+      setIikoStatus(data?.message || 'Синхронизация продаж запущена.')
+      await load()
+    } catch (e) {
+      setIikoStatus((e && e.message) ? e.message : 'Edge Function iiko-sync-sales пока не развернута или вернула ошибку.')
+    } finally {
+      setIikoBusy(false)
+    }
+  }
+
+  return (
+    <section>
+      <SemiFinishedInlineStyles />
+      <section className="topbar">
+        <div>
+          <h2>POS</h2>
+          <p>Кассир: <b>{cashierSession.name}</b> · Стиль работы: столы → заказ → категории → позиции → пречек / чек.</p>
+        </div>
+        <div style={{display:'flex', gap:8, alignItems:'center'}}>
+          <button className="ghost" onClick={logoutPos}>Выйти</button>
+        </div>
+      </section>
+
+      {message && <p className={`hint ${message.includes('закрыт') || message.includes('отправлена') ? 'good' : 'bad'}`}>{message}</p>}
+
+      <div style={{display:'grid', gridTemplateColumns:'1.1fr 1fr 1.25fr', gap:14}}>
+        <div className="card">
+          <div className="card-head"><div><h3>Текущий заказ</h3><p className="hint">Стол / режим обслуживания / посетители / заказ</p></div></div>
+          <div className="form-grid compact">
+            <label><span>Филиал</span><select value={branchId} onChange={e => setBranchId(e.target.value)}>{branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label>
+            <label><span>Дата</span><DateInput value={date} onChange={e => setDate(e.target.value)} /></label>
+            <label><span>Стол</span><input value={currentDraft.table_name || selectedTable} onChange={e => setCurrentDraft({ table_name: e.target.value })} /></label>
+            <label><span>Посетители</span><input inputMode="numeric" value={currentDraft.guests || 1} onChange={e => setCurrentDraft({ guests: Math.max(1, parseInt(e.target.value || '1', 10) || 1) })} /></label>
+            <label><span>Режим</span><select value={currentDraft.order_mode || 'hall'} onChange={e => setCurrentDraft({ order_mode: e.target.value })}><option value="hall">Зал</option><option value="takeaway">С собой</option><option value="delivery">Доставка</option></select></label>
+            <label><span>Зал</span><select value={currentDraft.hall_name || halls[0]} onChange={e => setCurrentDraft({ hall_name: e.target.value })} disabled={(currentDraft.order_mode || 'hall') !== 'hall'}>{halls.map(h => <option key={h} value={h}>{h}</option>)}</select></label>
+            <label><span>Оплата</span><select value={currentDraft.payment_method || paymentMethod} onChange={e => { setPaymentMethod(e.target.value); setCurrentDraft({ payment_method: e.target.value }) }}><option value="cash">Наличные</option><option value="bank">Банк</option><option value="wolt">Wolt / доставка</option></select></label>
+            <label><span>Комментарий / гость</span><input value={currentDraft.customer_name || ''} onChange={e => setCurrentDraft({ customer_name: e.target.value })} placeholder="Необязательно" /></label>
+          </div>
+
+          <div className="table-wrap" style={{maxHeight:430, overflow:'auto', marginTop:12}}>
+            <table>
+              <thead><tr><th>Позиция</th><th>Тип</th><th>Кол-во</th><th>Цена</th><th>Сумма</th><th></th></tr></thead>
+              <tbody>
+                {items.map((item, idx) => <tr key={`${item.menu_item_id}-${idx}`}>
+                  <td><b>{item.name}</b></td>
+                  <td>{item.item_type}</td>
+                  <td><input style={{width:64}} inputMode="decimal" value={item.qty} onChange={e => updateItem(idx, { qty: e.target.value })} /></td>
+                  <td><input style={{width:78}} inputMode="decimal" value={item.price} onChange={e => updateItem(idx, { price: e.target.value })} /></td>
+                  <td><b>{fmt(parseNum(item.qty) * parseNum(item.price))}</b></td>
+                  <td><button className="danger small" onClick={() => updateItem(idx, { qty: 0 })}>×</button></td>
+                </tr>)}
+                {!items.length && <tr><td colSpan="6" className="hint">Заказ пуст. Выбери стол и позиции из меню.</td></tr>}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="mini-grid" style={{marginTop:10}}>
+            <div className="metric"><span>Позиций</span><strong>{items.length}</strong></div>
+            <div className="metric"><span>Количество</span><strong>{fmt(totalQty)}</strong></div>
+            <div className="metric"><span>Итого</span><strong>{fmt(subtotal)} AZN</strong></div>
+          </div>
+
+          <div style={{display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:8, marginTop:12}}>
+            <button className="ghost" onClick={() => printByType('Кухня')}>Печать на кухню</button>
+            <button className="ghost" onClick={() => printByType('Бар')}>Печать в бар</button>
+            <button className="ghost" onClick={goBackMenu}>Вернуться</button>
+            <button className="danger" onClick={clearCurrentOrder}>Отмена</button>
+            <button className="ghost" onClick={precheckOrder}>Пречек</button>
+            <button className="ghost" onClick={splitCheckPreview}>Разделить чек</button>
+          </div>
+          <button className="primary" disabled={loading || !items.length} onClick={closeOrder} style={{marginTop:10, width:'100%'}}>{loading ? 'Сохранение...' : 'Чек'}</button>
+        </div>
+
+        <div className="card">
+          <h3>Столы / ячейки</h3>
+          <div style={{display:'grid', gridTemplateColumns:'repeat(2, minmax(120px, 1fr))', gap:10}}>
+            {tableCells.map(table => {
+              const summary = tableDraftSummary(table.id)
+              const active = selectedTable === table.id
+              const isBusy = summary.count > 0
+              return <button key={table.id} onClick={() => selectTable(table)} style={{border: active ? '2px solid #1f6f43' : '1px solid #d7dfd9', background: active ? '#eef7f0' : isBusy ? '#fff8e7' : '#fff', borderRadius:14, padding:'12px 10px', textAlign:'left', cursor:'pointer', minHeight:92}}>
+                <div style={{fontWeight:800, marginBottom:6}}>{table.label}</div>
+                <div className="hint">позиций: {summary.count}</div>
+                <div className="hint">посетители: {summary.guests}</div>
+                <div className="hint">режим: {summary.mode === 'takeaway' ? 'с собой' : summary.mode === 'delivery' ? 'доставка' : 'зал'}</div>
+                <div style={{fontWeight:700, marginTop:6}}>{fmt(summary.total)} AZN</div>
+              </button>
+            })}
+          </div>
+        </div>
+
+        <div className="card">
+          <div className="card-head">
+            <div><h3>Меню</h3><p className="hint">Сначала выбери Еда или Напитки, затем категорию и позицию.</p></div>
+          </div>
+          <div className="form-grid compact">
+            <label><span>Поиск</span><input value={search} onChange={e => setSearch(e.target.value)} placeholder="Поиск по меню" /></label>
+          </div>
+
+          <div style={{display:'flex', gap:8, marginTop:10, flexWrap:'wrap'}}>
+            <button className={menuTypeFilter === 'all' ? 'active' : ''} onClick={() => { setMenuRoot('root'); setMenuTypeFilter('all'); setCategoryFilter('all') }}>Корень</button>
+            {menuRoots.map(root => <button key={root.id} className={menuTypeFilter === root.id && categoryFilter === 'all' ? 'active' : ''} onClick={() => openMenuRoot(root.id)}>{root.label}</button>)}
+            {menuTypeFilter !== 'all' && <button className={categoryFilter === 'all' ? 'active' : ''} onClick={() => setCategoryFilter('all')}>Категории</button>}
+          </div>
+
+          {menuTypeFilter === 'all' && (
+            <div style={{display:'grid', gridTemplateColumns:'repeat(2, minmax(150px, 1fr))', gap:10, marginTop:12}}>
+              {menuRoots.map(root => <button key={root.id} onClick={() => openMenuRoot(root.id)} style={{border:'1px solid #d7dfd9', background:'#f8fafc', borderRadius:14, padding:'26px 12px', minHeight:118, fontSize:20, fontWeight:800}}>{root.label}</button>)}
+            </div>
+          )}
+
+          {menuTypeFilter !== 'all' && categoryFilter === 'all' && (
+            <div style={{display:'grid', gridTemplateColumns:'repeat(2, minmax(150px, 1fr))', gap:10, marginTop:12}}>
+              {visibleCategories.map(cat => <button key={cat} onClick={() => setCategoryFilter(cat)} style={{border:'1px solid #d7dfd9', background:'#eef2f7', borderRadius:14, padding:'20px 12px', minHeight:92, fontSize:18, fontWeight:700}}>{cat}</button>)}
+              {!visibleCategories.length && <div className="hint">Нет категорий.</div>}
+            </div>
+          )}
+
+          {menuTypeFilter !== 'all' && categoryFilter !== 'all' && (
+            <div style={{display:'grid', gridTemplateColumns:'repeat(2, minmax(170px, 1fr))', gap:10, marginTop:12, maxHeight:520, overflow:'auto'}}>
+              {filteredMenu.map(item => <button key={item.id} onClick={() => addMenuItemToOrder(item)} style={{border:'1px solid #d7dfd9', background:'#fff', borderRadius:14, padding:'12px 12px', textAlign:'left', minHeight:104}}>
+                <div style={{fontSize:12, color:'#6b7280', marginBottom:6}}>{item.pos_type} · {item.category || 'Без категории'}</div>
+                <div style={{fontWeight:800, lineHeight:1.25, minHeight:36}}>{item.name}</div>
+                <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:10}}>
+                  <span style={{fontWeight:800}}>{fmt(item.sale_price)} AZN</span>
+                  <span className="hint">+</span>
+                </div>
+              </button>)}
+              {!filteredMenu.length && <div className="hint">Нет позиций для выбранной категории.</div>}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="card" style={{marginTop:14}}>
+        <h3>Закрытые чеки за выбранную дату</h3>
+        <div className="table-wrap">
+          <table>
+            <thead><tr><th>Время</th><th>Стол</th><th>Оплата</th><th>Сумма</th><th>Позиции</th><th>Статус</th></tr></thead>
+            <tbody>
+              {orders.map(order => <tr key={order.id}>
+                <td>{formatDT(order.closed_at || order.created_at)}</td>
+                <td>{order.table_name || '—'}</td>
+                <td>{order.payment_method}</td>
+                <td><b>{fmt(order.total_amount)}</b></td>
+                <td>{(order.pos_order_items || []).slice(0, 4).map(i => i.item_name).join(', ')}{(order.pos_order_items || []).length > 4 ? '…' : ''}</td>
+                <td>{order.status}</td>
+              </tr>)}
+              {!orders.length && <tr><td colSpan="6" className="hint">Чеков пока нет.</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+
+function SalaryWorkspace({ t, isAdmin = false }) {
+  const [salaryTab, setSalaryTab] = useState('employees')
+
+  async function saveIikoConnection() {
+    setIikoStatus('')
+    const branchId = iikoForm.branch_id || branches[0]?.id
+    if (!branchId) return setIikoStatus('Сначала добавьте филиал в настройках.')
+    if (!String(iikoForm.organization_id || '').trim()) return setIikoStatus('Введите iiko organization_id.')
+
+    setIikoBusy(true)
+    try {
+      const payload = {
+        branch_id: branchId,
+        iiko_organization_id: String(iikoForm.organization_id || '').trim(),
+        iiko_terminal_group_id: String(iikoForm.terminal_group_id || '').trim() || null,
+        sync_enabled: Boolean(iikoForm.sync_enabled),
+        updated_at: new Date().toISOString()
+      }
+      const { error } = await supabase.from('iiko_sync_connections').upsert(payload, { onConflict: 'branch_id' })
+      if (error) throw error
+      setIikoForm({ branch_id: branchId, organization_id: '', terminal_group_id: '', sync_enabled: true })
+      setIikoStatus('Подключение iiko сохранено. Следующий шаг — добавить IIKO_API_LOGIN в Supabase Edge Functions / Vercel Environment.')
+      await load()
+    } catch (e) {
+      setIikoStatus(e.message || String(e))
+    } finally {
+      setIikoBusy(false)
+    }
+  }
+
+  function editIikoConnection(row) {
+    setIikoForm({
+      branch_id: row.branch_id || '',
+      organization_id: row.iiko_organization_id || '',
+      terminal_group_id: row.iiko_terminal_group_id || '',
+      sync_enabled: row.sync_enabled !== false
+    })
+    setSettingsTab('integrations')
+  }
+
+  async function toggleIikoConnection(row) {
+    setIikoStatus('')
+    const { error } = await supabase.from('iiko_sync_connections').update({ sync_enabled: !row.sync_enabled, updated_at: new Date().toISOString() }).eq('id', row.id)
+    if (error) setIikoStatus(error.message); else { setIikoStatus('Статус подключения обновлён'); await load() }
+  }
+
+  async function runIikoSync(row) {
+    setIikoStatus('')
+    setIikoBusy(true)
+    try {
+      const { data, error } = await supabase.functions.invoke('iiko-sync-sales', { body: { connectionId: row.id } })
+      if (error) throw error
+      setIikoStatus(data?.message || 'Синхронизация запущена.')
+      await load()
+    } catch (e) {
+      setIikoStatus((e && e.message) ? e.message : 'Edge Function iiko-sync-sales пока не развернута или вернула ошибку.')
+    } finally {
+      setIikoBusy(false)
+    }
+  }
+
+  return (
+    <section>
+      <section className="topbar">
+        <div>
+          <h2>Зарплаты</h2>
+          <p>Единый раздел персонала: сотрудники, посещаемость, авансы и DSMF в одном месте.</p>
+        </div>
+      </section>
+      <div className="settings-tabs">
+        <button className={salaryTab === 'employees' ? 'active' : ''} onClick={() => setSalaryTab('employees')}>Сотрудники</button>
+        <button className={salaryTab === 'sheet' ? 'active' : ''} onClick={() => setSalaryTab('sheet')}>Зарплатный лист</button>
+        <button className={salaryTab === 'attendance' ? 'active' : ''} onClick={() => setSalaryTab('attendance')}>Посещения</button>
+        <button className={salaryTab === 'advances' ? 'active' : ''} onClick={() => setSalaryTab('advances')}>Авансы</button>
+        <button className={salaryTab === 'dsmf' ? 'active' : ''} onClick={() => setSalaryTab('dsmf')}>DSMF</button>
+      </div>
+      {salaryTab === 'employees' && <>
+        <Salaries t={t} view="employees" isAdmin={isAdmin} />
+        <Attendance t={t} mode="staff" isAdmin={isAdmin} />
+      </>}
+      {salaryTab === 'sheet' && <Salaries t={t} view="sheet" isAdmin={isAdmin} />}
+      {salaryTab === 'attendance' && <Attendance t={t} mode="attendance" isAdmin={isAdmin} />}
+      {salaryTab === 'advances' && <Advances t={t} />}
+      {salaryTab === 'dsmf' && <Salaries t={t} view="dsmf" isAdmin={isAdmin} />}
+    </section>
+  )
+}
+
+function ResponsiveAndSettingsStyles() {
+  return <style>{`
+    .salary-view-employees .salary-dsmf-card {
+      display: none;
+    }
+    .salary-view-dsmf > .topbar,
+    .salary-view-dsmf > .grid > .card:not(.salary-dsmf-card) {
+      display: none !important;
+    }
+    .salary-view-sheet tfoot td {
+      background: rgba(71,85,105,.06);
+      font-weight: 900;
+    }
+    .theme-executive .salary-view-sheet tfoot td {
+      background: rgba(71,85,105,.08);
+    }
+    .salary-view-dsmf .salary-dsmf-card {
+      display: block !important;
+    }
+    .settings-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 0 0 16px;
+    }
+    .rms-brandmark {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0;
+    }
+    .rms-brandmark.login {
+      margin: 0 auto 10px;
+    }
+    .rms-logo-svg {
+      width: 50px;
+      height: 50px;
+      display: block;
+      filter: drop-shadow(0 10px 18px rgba(0,0,0,.18));
+    }
+    .login-card .rms-logo-svg {
+      width: 64px;
+      height: 64px;
+      filter: drop-shadow(0 12px 18px rgba(0,0,0,.12));
+    }
+    .rms-custom-logo {
+      width: 50px;
+      height: 50px;
+      object-fit: contain;
+      display: block;
+      border-radius: 14px;
+      box-shadow: 0 10px 18px rgba(0,0,0,.16);
+      background: rgba(255,255,255,.9);
+      padding: 4px;
+    }
+    .login-card .rms-custom-logo {
+      width: 76px;
+      height: 76px;
+      border-radius: 18px;
+      box-shadow: 0 12px 24px rgba(0,0,0,.12);
+    }
+    .logo-uploader {
+      display: grid;
+      gap: 12px;
+    }
+    .logo-preview-wrap {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 12px;
+      border: 1px dashed var(--line);
+      border-radius: 16px;
+      background: rgba(255,255,255,.48);
+    }
+    .logo-preview-wrap img {
+      width: 84px;
+      height: 84px;
+      object-fit: contain;
+      border-radius: 18px;
+      background: #fff;
+      border: 1px solid var(--line);
+      padding: 6px;
+    }
+    .logo-preview-wrap .empty-logo {
+      width: 84px;
+      height: 84px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 18px;
+      background: #f7f3ea;
+      border: 1px dashed var(--line);
+      color: var(--muted);
+      font-weight: 800;
+    }
+    .action-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+    .inline-edit {
+      display: grid;
+      grid-template-columns: minmax(140px, 1fr) auto;
+      gap: 8px;
+      align-items: center;
+      min-width: 260px;
+    }
+    .login-title {
+      margin: 0;
+      text-align: center;
+      font-size: 20px;
+      letter-spacing: .14em;
+      font-weight: 900;
+    }
+    .login-subtitle {
+      margin: 4px 0 10px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .settings-tabs button {
+      background: rgba(23,37,29,.08);
+      color: var(--ink);
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 10px 14px;
+      font-weight: 800;
+    }
+    .settings-tabs button.active {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+    }
+    .blurred-money {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 72px;
+      height: 24px;
+      padding: 0 10px;
+      border-radius: 999px;
+      background: rgba(23,37,29,.12);
+      color: transparent;
+      text-shadow: 0 0 8px rgba(23,37,29,.65);
+      filter: blur(2.2px);
+      user-select: none;
+      pointer-events: none;
+      font-weight: 900;
+      letter-spacing: .12em;
+    }
+    .cell-value {
+      display: inline-block;
+      min-width: 0;
+      padding: 2px 0;
+    }
+    .table-wrap table th,
+    .table-wrap table td {
+      vertical-align: middle;
+    }
+    @media (max-width: 900px) {
+      .app {
+        display: block;
+      }
+      .sidebar {
+        position: sticky;
+        top: 0;
+        z-index: 30;
+        width: 100%;
+        min-height: auto;
+        padding: 12px;
+        border-radius: 0 0 18px 18px;
+      }
+      .brand h1 {
+        font-size: 18px;
+      }
+      .brand p {
+        display: none;
+      }
+      .nav-tabs {
+        display: flex;
+        overflow-x: auto;
+        gap: 8px;
+        padding-bottom: 4px;
+        -webkit-overflow-scrolling: touch;
+      }
+      .nav-tabs .nav {
+        white-space: nowrap;
+        min-width: max-content;
+      }
+      .userbar {
+        margin-top: 10px;
+      }
+      .main {
+        padding: 12px;
+      }
+      .topbar {
+        display: block;
+      }
+      .topbar h2 {
+        font-size: 24px;
+      }
+      .grid,
+      .form-grid,
+      .mini-grid {
+        display: block;
+      }
+      .card {
+        margin-bottom: 12px;
+        padding: 14px;
+        border-radius: 16px;
+      }
+      .span-2 {
+        grid-column: auto;
+      }
+      .settings-tabs {
+        position: sticky;
+        top: 108px;
+        z-index: 20;
+        background: var(--bg);
+        padding: 8px 0;
+        overflow-x: auto;
+        flex-wrap: nowrap;
+        -webkit-overflow-scrolling: touch;
+      }
+      .settings-tabs button {
+        white-space: nowrap;
+        min-width: max-content;
+      }
+      .table-wrap {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+      }
+      table {
+        min-width: 760px;
+      }
+      th, td {
+        padding: 8px;
+        font-size: 12px;
+      }
+      input, select, textarea, button {
+        font-size: 16px;
+      }
+    }
+    @media (max-width: 520px) {
+      .login-card {
+        padding: 18px;
+      }
+      .big-number {
+        font-size: 30px;
+      }
+      .metric {
+        align-items: flex-start;
+      }
+      .permission-grid {
+        grid-template-columns: 1fr;
+      }
+      .card-head {
+        display: block;
+      }
+      .card-head button {
+        margin-top: 10px;
+      }
+    }
+
+    /* FINAL FIELD COLOR OVERRIDE: all normal fields are white, attendance day cells are excluded. */
+    .app input:not([type="checkbox"]),
+    .app select,
+    .app textarea,
+    .login-screen input:not([type="checkbox"]),
+    .login-screen select,
+    .login-screen textarea,
+    .theme-executive input:not([type="checkbox"]),
+    .theme-executive select,
+    .theme-executive textarea {
+      background: #ffffff !important;
+      color: #111827 !important;
+      border-color: #cbd5e1 !important;
+      box-shadow: none !important;
+    }
+    .attendance-card td button.attendance-day-cell,
+    .theme-executive .attendance-card td button.attendance-day-cell {
+      box-shadow: inset 0 1px 2px rgba(15,23,42,.08) !important;
+    }
+    .supplier-opening-debt-card {
+      border: 1px solid rgba(71,85,105,.28) !important;
+      background: linear-gradient(180deg, #ffffff, #f8fafc) !important;
+      box-shadow: 0 16px 36px rgba(15,23,42,.07) !important;
+    }
+
+      /* v252 — strict tech card list thumbnails: never stretch table rows */
+      .rms-pro-shell .tech-modern-table .tech-dish-cell{
+        display:flex!important;
+        align-items:center!important;
+        gap:12px!important;
+        min-width:0!important;
+        max-width:360px!important;
+        overflow:hidden!important;
+      }
+      .rms-pro-shell .tech-modern-table .tech-dish-cell > div:last-child{
+        min-width:0!important;
+        overflow:hidden!important;
+      }
+      .rms-pro-shell .tech-modern-table .tech-dish-cell b{
+        display:block!important;
+        max-width:260px!important;
+        overflow:hidden!important;
+        text-overflow:ellipsis!important;
+        white-space:nowrap!important;
+      }
+      .rms-pro-shell .tech-modern-table .tech-dish-cell span{
+        display:block!important;
+        max-width:260px!important;
+        overflow:hidden!important;
+        text-overflow:ellipsis!important;
+        white-space:nowrap!important;
+      }
+      .rms-pro-shell .tech-modern-table .tech-dish-thumb.tech-dish-thumb-photo{
+        width:54px!important;
+        height:54px!important;
+        min-width:54px!important;
+        max-width:54px!important;
+        min-height:54px!important;
+        max-height:54px!important;
+        flex:0 0 54px!important;
+        border-radius:14px!important;
+        overflow:hidden!important;
+        display:grid!important;
+        place-items:center!important;
+        background:#eff6ff!important;
+        border:1px solid #dbeafe!important;
+      }
+      .rms-pro-shell .tech-modern-table .tech-dish-thumb.tech-dish-thumb-photo img{
+        width:54px!important;
+        height:54px!important;
+        min-width:54px!important;
+        max-width:54px!important;
+        min-height:54px!important;
+        max-height:54px!important;
+        object-fit:cover!important;
+        display:block!important;
+      }
+      .rms-pro-shell .tech-modern-table tbody tr{
+        height:auto!important;
+        min-height:72px!important;
+      }
+      .rms-pro-shell .tech-modern-table tbody td{
+        height:72px!important;
+        max-height:72px!important;
+        padding-top:10px!important;
+        padding-bottom:10px!important;
+        overflow:hidden!important;
+      }
+      .rms-pro-shell .tech-modern-table td:nth-child(1){
+        width:320px!important;
+        max-width:320px!important;
+      }
+
+  `}</style>
+}
+
+
+function RMSProV6Styles() {
+  return <style>{`
+
+/* RMS Pro UI Redesign v6 — final sidebar/login alignment */
+:root{
+  --rms-navy-950:#031225;
+  --rms-navy-900:#06172d;
+  --rms-navy-800:#0b2340;
+  --rms-blue:#2563eb;
+  --rms-blue-soft:rgba(37,99,235,.18);
+  --rms-blue-border:rgba(96,165,250,.35);
+  --rms-gold:#f5b856;
+}
+
+.app.rms-pro-shell{
+  font-family: "Manrope", "Inter", "SF Pro Display", "Segoe UI", -apple-system, BlinkMacSystemFont, Arial, sans-serif!important;
+  background:
+    radial-gradient(circle at 70% -10%, rgba(59,130,246,.07), transparent 34%),
+    linear-gradient(180deg,#f8fafc 0%,#eef4fb 100%)!important;
+}
+
+.rms-pro-shell .sidebar.rms-pro-sidebar{
+  width:248px!important;
+  min-width:248px!important;
+  max-width:248px!important;
+  height:100vh!important;
+  min-height:100vh!important;
+  padding:18px 12px 12px!important;
+  overflow:hidden!important;
+  display:flex!important;
+  flex-direction:column!important;
+  gap:0!important;
+  background:
+    radial-gradient(circle at 18% -3%,rgba(59,130,246,.34),transparent 32%),
+    linear-gradient(180deg,#082044 0%,#06172d 48%,#031225 100%)!important;
+  border-right:1px solid rgba(148,163,184,.18)!important;
+  box-shadow:18px 0 52px rgba(15,23,42,.18)!important;
+}
+
+.rms-pro-brand{
   flex:0 0 auto!important;
   display:flex!important;
   align-items:center!important;
-  justify-content:flex-start!important;
-  gap:0!important;
-  padding:4px 12px 18px!important;
+  gap:12px!important;
+  padding:0 10px 17px!important;
   margin:0 0 14px!important;
   border-bottom:1px solid rgba(148,163,184,.16)!important;
 }
-.rms-pro-logo{
-  width:100%!important;
-  min-width:0!important;
-  display:block!important;
-  background:transparent!important;
-  box-shadow:none!important;
-  overflow:visible!important;
-}
+.rms-pro-logo,
 .rms-brandmark.compact{
   width:48px!important;
   height:48px!important;
@@ -1055,17 +5091,6 @@ function RMSProInterfaceStyles() {
   background:linear-gradient(135deg,rgba(96,165,250,.22),rgba(15,23,42,.18))!important;
   box-shadow:0 14px 34px rgba(37,99,235,.28)!important;
   overflow:hidden!important;
-}
-.rms-brandmark.sidebar{
-  width:100%!important;
-  max-width:172px!important;
-  height:70px!important;
-  min-width:0!important;
-  justify-content:flex-start!important;
-  border-radius:14px!important;
-  background:#090a0c!important;
-  border:1px solid rgba(212,175,55,.18)!important;
-  box-shadow:0 16px 34px rgba(2,6,23,.30)!important;
 }
 .rms-brandmark.compact .rms-logo-svg,
 .rms-pro-logo .rms-logo-svg{width:48px!important;height:48px!important;display:block!important;}
@@ -8515,16 +12540,6 @@ function RMSProInterfaceStyles() {
 .rms-primary-brandmark.compact .rms-primary-logo{
   transform:scale(1.48)!important;
 }
-.rms-primary-brandmark.sidebar{
-  width:100%!important;
-  max-width:172px!important;
-  height:70px!important;
-  min-width:0!important;
-  border-radius:14px!important;
-}
-.rms-primary-brandmark.sidebar .rms-primary-logo{
-  transform:scale(1.06)!important;
-}
 .rms-primary-brandmark.login{
   width:250px!important;
   height:156px!important;
@@ -8536,22 +12551,56 @@ function RMSProInterfaceStyles() {
   transform:scale(1.04)!important;
 }
 .rms-pro-brand .rms-pro-logo{
-  width:100%!important;
-  height:auto!important;
-  min-width:0!important;
+  width:64px!important;
+  height:50px!important;
+  min-width:64px!important;
   background:transparent!important;
   border:0!important;
   box-shadow:none!important;
 }
-.rms-primary-logo.sidebar{
-  width:100%!important;
-  height:100%!important;
-  object-fit:contain!important;
-}
 @media (max-width:760px){
   .rms-primary-brandmark.login{width:220px!important;height:138px!important;}
   .rms-primary-brandmark.compact{width:58px!important;height:46px!important;min-width:58px!important;}
-  .rms-primary-brandmark.sidebar{max-width:154px!important;height:62px!important;}
+}
+
+/* v259 — sidebar logo only, based directly on working v258 */
+.rms-pro-brand-logo-only{
+  justify-content:flex-start!important;
+  gap:0!important;
+  padding:4px 10px 18px!important;
+}
+.rms-pro-logo-wide{
+  width:100%!important;
+  height:72px!important;
+  min-width:0!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:flex-start!important;
+  background:transparent!important;
+  border:0!important;
+  box-shadow:none!important;
+  overflow:visible!important;
+}
+.rms-pro-logo-wide .rms-primary-brandmark.compact{
+  width:174px!important;
+  height:72px!important;
+  min-width:174px!important;
+  border-radius:14px!important;
+  background:#090a0c!important;
+  border:1px solid rgba(212,175,55,.18)!important;
+  box-shadow:0 14px 30px rgba(2,6,23,.28)!important;
+}
+.rms-pro-logo-wide .rms-primary-brandmark.compact .rms-primary-logo{
+  transform:scale(1.06)!important;
+  object-fit:contain!important;
+}
+@media (max-width:760px){
+  .rms-pro-logo-wide{height:64px!important;}
+  .rms-pro-logo-wide .rms-primary-brandmark.compact{
+    width:156px!important;
+    height:64px!important;
+    min-width:156px!important;
+  }
 }
 
 /* v235 Revenue chart KPI labels only */
@@ -8566,10 +12615,10 @@ function RMSProInterfaceStyles() {
 
 const RMS_PRO_PRIMARY_LOGO = 'data:image/webp;base64,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'
 
-function ProductLogo({ compact = false, login = false, sidebar = false }) {
-  return <div className={`rms-brandmark rms-primary-brandmark ${compact ? 'compact' : ''} ${login ? 'login' : ''} ${sidebar ? 'sidebar' : ''}`}>
+function ProductLogo({ compact = false, login = false }) {
+  return <div className={`rms-brandmark rms-primary-brandmark ${compact ? 'compact' : ''} ${login ? 'login' : ''}`}>
     <img
-      className={`rms-primary-logo ${sidebar ? 'sidebar' : ''}`.trim()}
+      className="rms-primary-logo"
       src={RMS_PRO_PRIMARY_LOGO}
       alt="RMS Pro — Restaurant Management System"
       draggable="false"
