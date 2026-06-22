@@ -4528,7 +4528,7 @@ function POSLite({ t }) {
         : Promise.resolve({ data: [], error: null })
     ])
     if (menuError) setMessage(menuError.message)
-    setMenuItems(menu || [])
+    setMenuItems((menu || []).filter(m => m.is_active !== false))
     if (orderError && String(orderError.message || '').includes('pos_orders')) {
       setMessage('Для POS-кассы нужно один раз выполнить SQL-файл rms_pos_lite_tables_v2.sql в Supabase.')
       setOrders([])
@@ -17644,7 +17644,7 @@ function Recipes({ t }) {
 
       setProducts((prod || []).map(p => ({ ...p, category: normalizeProductType(p.category) })))
       setCosts(latest || [])
-      setMenuItems(menu || [])
+      setMenuItems((menu || []).filter(m => m.is_active !== false))
       setSemis(semiRows || [])
       setSemiItems(semiItemRows || [])
       setFinalItems(finalRows || [])
@@ -18106,6 +18106,8 @@ function Recipes({ t }) {
     const ok = window.confirm(`Удалить тех. карту “${title}”? Она будет скрыта из списка и QR/POS, но история состава останется в базе.`)
     if (!ok) return
 
+    setMessage('Удаление тех. карты...')
+
     const { error } = await supabase
       .from('menu_items')
       .update({ is_active: false })
@@ -18116,8 +18118,11 @@ function Recipes({ t }) {
       return
     }
 
+    setMenuItems(prev => (prev || []).filter(m => String(m.id) !== String(menuId) && m.is_active !== false))
+
     if (String(selectedMenuId) === String(menuId)) {
-      setSelectedMenuId('')
+      const nextMenu = (menuItems || []).find(m => String(m.id) !== String(menuId) && m.is_active !== false)
+      setSelectedMenuId(nextMenu?.id || '')
       setFinalMenuForm({ name: '', category: finalMenuForm.category || 'Кофе', sale_price: '', target_food_cost_percent: '30', image_url: '', image_storage_path: '' })
       setTechPreviewOpen(false)
     }
