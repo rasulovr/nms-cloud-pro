@@ -17644,7 +17644,9 @@ function Recipes({ t }) {
 
       setProducts((prod || []).map(p => ({ ...p, category: normalizeProductType(p.category) })))
       setCosts(latest || [])
-      setMenuItems((menu || []).filter(m => m.is_active !== false))
+      const activeMenu = (menu || []).filter(m => m.is_active !== false)
+      const dedupedMenu = dedupeMenuItemsForTechCards(activeMenu, finalRows || [])
+      setMenuItems(dedupedMenu)
       setSemis(semiRows || [])
       setSemiItems(semiItemRows || [])
       setFinalItems(finalRows || [])
@@ -17737,6 +17739,45 @@ function Recipes({ t }) {
       return manualLineCost(item.qty, item.manual_unit_cost, item.waste_percent)
     }
     return productLineCost(item.product_id, item.qty, item.unit, item.waste_percent)
+  }
+
+  function menuDedupeKey(menu) {
+    return `${String(menu?.name || '').trim().toLowerCase()}::${String(menu?.category || '').trim().toLowerCase()}`
+  }
+
+  function finalComponentCount(menuId, rows = finalItems) {
+    return (rows || []).filter(i => String(i.menu_item_id) === String(menuId)).length
+  }
+
+  function chooseBestMenuItemForGroup(current, candidate, rows = finalItems) {
+    if (!current) return candidate
+    const currentCount = finalComponentCount(current.id, rows)
+    const candidateCount = finalComponentCount(candidate.id, rows)
+    if (candidateCount !== currentCount) return candidateCount > currentCount ? candidate : current
+    if (!current.image_url && candidate.image_url) return candidate
+    if (current.image_url && !candidate.image_url) return current
+    return String(candidate.created_at || '') > String(current.created_at || '') ? candidate : current
+  }
+
+  function dedupeMenuItemsForTechCards(items, rows = finalItems) {
+    const grouped = new Map()
+    ;(items || []).filter(m => m.is_active !== false).forEach(menu => {
+      const key = menuDedupeKey(menu)
+      const existing = grouped.get(key)
+      const best = chooseBestMenuItemForGroup(existing, menu, rows)
+      const imageFallback = best.image_url || existing?.image_url || menu.image_url || ''
+      grouped.set(key, { ...best, image_url: best.image_url || imageFallback })
+    })
+    return Array.from(grouped.values()).sort((a, b) => String(a.name || '').localeCompare(String(b.name || '')))
+  }
+
+  function findExistingActiveMenuByName(name, category = '') {
+    const normalizedName = String(name || '').trim().toLowerCase()
+    const normalizedCategory = String(category || '').trim().toLowerCase()
+    return dedupeMenuItemsForTechCards(menuItems, finalItems).find(m =>
+      String(m.name || '').trim().toLowerCase() === normalizedName &&
+      (!normalizedCategory || String(m.category || '').trim().toLowerCase() === normalizedCategory)
+    )
   }
 
   const filteredSemisForSearch = semis.filter(s => String(s.name || '').toLowerCase().includes(semiSearch.trim().toLowerCase()))
@@ -17946,10 +17987,22 @@ function Recipes({ t }) {
 
   async function createFinalMenuItem() {
     setMessage('')
-    if (!finalMenuForm.name.trim()) return setMessage('Введите название блюда')
+    const cleanName = finalMenuForm.name.trim()
+    if (!cleanName) return setMessage('Введите название блюда')
+
+    const existing = findExistingActiveMenuByName(cleanName, finalMenuForm.category || 'Прочее') ||
+      menuItems.find(m => String(m.name || '').trim().toLowerCase() === cleanName.toLowerCase() && m.is_active !== false)
+
+    if (existing?.id) {
+      setSelectedMenuId(existing.id)
+      fillFinalMenuFormFromMenu(existing)
+      setTab('final')
+      setMessage('Такое блюдо уже есть. Открыта существующая тех. карта, чтобы не создавать дубль.')
+      return
+    }
 
     const { data, error } = await supabase.from('menu_items').insert({
-      name: finalMenuForm.name.trim(),
+      name: cleanName,
       category: finalMenuForm.category || 'Прочее',
       sale_price: parseNum(finalMenuForm.sale_price),
       target_food_cost_percent: parseNum(finalMenuForm.target_food_cost_percent) || 30,
@@ -17978,7 +18031,9 @@ function Recipes({ t }) {
     const { error } = await supabase.from('menu_items').update(payload).eq('id', id)
     if (error) return setMessage(error.message)
 
+    setMenuItems(prev => (prev || []).map(m => String(m.id) === String(id) ? { ...m, ...payload } : m))
     await loadSemiData()
+    setSelectedMenuId(id)
     setMessage('Блюдо обновлено')
   }
 
@@ -18066,12 +18121,33 @@ function Recipes({ t }) {
 
   async function handleFinalMenuPhotoFile(file) {
     try {
-      if (!selectedMenuId) return setMessage('Сначала выберите или создайте тех. карту')
+      let targetMenuId = selectedMenuId
+      if (!targetMenuId && finalMenuForm.name) {
+        const existing = findExistingActiveMenuByName(finalMenuForm.name, finalMenuForm.category)
+        if (existing?.id) {
+          targetMenuId = existing.id
+          setSelectedMenuId(existing.id)
+          fillFinalMenuFormFromMenu(existing)
+        }
+      }
+      if (!targetMenuId) return setMessage('Сначала выберите или создайте тех. карту')
       setMessage('Загрузка фото...')
-      const uploaded = await uploadFinalMenuPhotoToStorage(file)
-      if (!uploaded?.publicUrl) return
-      setFinalMenuForm(prev => ({ ...prev, image_url: uploaded.publicUrl, image_storage_path: uploaded.path }))
-      await updateFinalMenuItem(selectedMenuId, { image_url: uploaded.publicUrl, image_storage_path: uploaded.path })
+      const previousSelectedId = selectedMenuId
+      if (String(previousSelectedId || '') !== String(targetMenuId)) setSelectedMenuId(targetMenuId)
+      const fileName = safeStorageFileName(file?.name)
+      if (!file || !String(file.type || '').startsWith('image/')) throw new Error('Выберите файл изображения')
+      if (file.size > 6 * 1024 * 1024) throw new Error('Фото слишком большое. Максимум 6 MB')
+      const path = `tech-cards/${targetMenuId}/${fileName}`
+      const { error: uploadError } = await supabase.storage
+        .from('menu-images')
+        .upload(path, file, { cacheControl: '3600', upsert: true, contentType: file.type || 'image/jpeg' })
+      if (uploadError) throw uploadError
+      const { data } = supabase.storage.from('menu-images').getPublicUrl(path)
+      const publicUrl = data?.publicUrl || ''
+      if (!publicUrl) throw new Error('Не удалось получить ссылку на фото')
+      setFinalMenuForm(prev => ({ ...prev, image_url: publicUrl, image_storage_path: path }))
+      await updateFinalMenuItem(targetMenuId, { image_url: publicUrl, image_storage_path: path })
+      setSelectedMenuId(targetMenuId)
       setMessage('Фото тех. карты загружено и сохранено')
     } catch (e) {
       setMessage(e?.message || 'Не удалось добавить фото')
@@ -18108,20 +18184,28 @@ function Recipes({ t }) {
 
     setMessage('Удаление тех. карты...')
 
+    const targetKey = menuDedupeKey(menu)
+    const sameNameActiveIds = (menuItems || [])
+      .filter(m => m.is_active !== false && menuDedupeKey(m) === targetKey)
+      .filter(m => String(m.id) === String(menuId) || finalComponentCount(m.id, finalItems) === 0)
+      .map(m => m.id)
+
+    const idsToHide = sameNameActiveIds.length ? sameNameActiveIds : [menuId]
+
     const { error } = await supabase
       .from('menu_items')
       .update({ is_active: false })
-      .eq('id', menuId)
+      .in('id', idsToHide)
 
     if (error) {
       setMessage(error.message || 'Не удалось удалить тех. карту')
       return
     }
 
-    setMenuItems(prev => (prev || []).filter(m => String(m.id) !== String(menuId) && m.is_active !== false))
+    setMenuItems(prev => (prev || []).filter(m => !idsToHide.some(id => String(id) === String(m.id)) && m.is_active !== false))
 
-    if (String(selectedMenuId) === String(menuId)) {
-      const nextMenu = (menuItems || []).find(m => String(m.id) !== String(menuId) && m.is_active !== false)
+    if (idsToHide.some(id => String(id) === String(selectedMenuId))) {
+      const nextMenu = (menuItems || []).find(m => !idsToHide.some(id => String(id) === String(m.id)) && m.is_active !== false)
       setSelectedMenuId(nextMenu?.id || '')
       setFinalMenuForm({ name: '', category: finalMenuForm.category || 'Кофе', sale_price: '', target_food_cost_percent: '30', image_url: '', image_storage_path: '' })
       setTechPreviewOpen(false)
