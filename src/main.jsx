@@ -1,4 +1,4 @@
-// v256 — Compact unified Tech Card editor and Security inside Settings
+// v257 — Animated backup and restore progress (0–100%)
 
 // v132 Tech Cards RPC helpers
 
@@ -1815,7 +1815,7 @@ const RMS_BRANCH_TAX_RATE_SETTING = 'branch_tax_rate_v1'
 const RMS_HIDDEN_SALES_KEYS_SETTING = 'hidden_sales_keys'
 const RMS_SALES_NAME_ALIASES_SETTING = 'sales_name_aliases'
 
-const RMS_SOURCE_VERSION = 'main_v256_tech_cards_compact_editor_security_settings'
+const RMS_SOURCE_VERSION = 'main_v257_backup_animated_progress'
 const RMS_FULL_BACKUP_TABLES = [
   'branches',
   'expense_categories',
@@ -2009,6 +2009,46 @@ function GlobalProgressOverlay() {
       <strong>{state.label || 'Выполняется операция...'}</strong>
       <div className="global-progress-track"><div style={{width: `${Math.round(state.progress || 0)}%`}} /></div>
       <span>{Math.round(state.progress || 0)}%</span>
+    </div>
+  </div>
+}
+
+
+function BackupProgressOverlay({ state }) {
+  if (!state?.active) return null
+  const progress = Math.max(0, Math.min(100, Math.round(Number(state.progress) || 0)))
+  const radius = 52
+  const circumference = 2 * Math.PI * radius
+  const dashOffset = circumference * (1 - progress / 100)
+  const isError = state.status === 'error'
+  const isSuccess = state.status === 'success'
+
+  return <div className="backup-progress-overlay" role="status" aria-live="polite" aria-label={`${state.title || 'Операция с данными'}: ${progress}%`}>
+    <div className={`backup-progress-card ${isError ? 'is-error' : ''} ${isSuccess ? 'is-success' : ''}`}>
+      <div className="backup-progress-ring-wrap">
+        <svg className="backup-progress-ring" viewBox="0 0 128 128" aria-hidden="true">
+          <circle className="backup-progress-ring-bg" cx="64" cy="64" r={radius} />
+          <circle
+            className="backup-progress-ring-value"
+            cx="64"
+            cy="64"
+            r={radius}
+            strokeDasharray={circumference}
+            strokeDashoffset={dashOffset}
+          />
+        </svg>
+        <div className="backup-progress-percent"><strong>{progress}</strong><span>%</span></div>
+      </div>
+      <div className="backup-progress-copy">
+        <span className="backup-progress-eyebrow">RMS DATA CENTER</span>
+        <h3>{state.title || 'Выполняется операция'}</h3>
+        <p>{state.detail || 'Подготовка данных…'}</p>
+        <div className="backup-progress-track"><div style={{ width: `${progress}%` }} /></div>
+        <div className="backup-progress-footer">
+          <span>{state.step || (isSuccess ? 'Операция завершена' : isError ? 'Операция остановлена' : 'Не закрывайте страницу')}</span>
+          <b>{progress} / 100</b>
+        </div>
+      </div>
     </div>
   </div>
 }
@@ -31091,6 +31131,9 @@ function Settings({ session, t, theme, setTheme }) {
   const [passwordEdits, setPasswordEdits] = useState({})
   const [clearConfirm, setClearConfirm] = useState('')
   const [backupBusy, setBackupBusy] = useState(false)
+  const [backupProgress, setBackupProgress] = useState({ active: false, progress: 0, title: '', detail: '', step: '', status: 'idle' })
+  const backupProgressTimerRef = useRef(null)
+  const backupProgressHideTimerRef = useRef(null)
   const [employeeImportText, setEmployeeImportText] = useState('')
   const [employeeImportRows, setEmployeeImportRows] = useState([])
   const [employeeImportBusy, setEmployeeImportBusy] = useState(false)
@@ -31121,6 +31164,68 @@ function Settings({ session, t, theme, setTheme }) {
   const editableSections = SECTIONS.filter(s => s.id !== 'settings')
 
   useEffect(() => { load(); loadSnapshots() }, [])
+
+
+  useEffect(() => () => {
+    if (backupProgressTimerRef.current) clearInterval(backupProgressTimerRef.current)
+    if (backupProgressHideTimerRef.current) clearTimeout(backupProgressHideTimerRef.current)
+  }, [])
+
+  function clearBackupProgressTimers() {
+    if (backupProgressTimerRef.current) {
+      clearInterval(backupProgressTimerRef.current)
+      backupProgressTimerRef.current = null
+    }
+    if (backupProgressHideTimerRef.current) {
+      clearTimeout(backupProgressHideTimerRef.current)
+      backupProgressHideTimerRef.current = null
+    }
+  }
+
+  function beginBackupProgress(title, detail = 'Подготовка данных…', simulate = false) {
+    clearBackupProgressTimers()
+    setBackupProgress({ active: true, progress: 0, title, detail, step: 'Запуск операции', status: 'running' })
+    if (simulate) {
+      backupProgressTimerRef.current = setInterval(() => {
+        setBackupProgress(prev => {
+          if (!prev.active || prev.status !== 'running' || prev.progress >= 90) return prev
+          const increment = prev.progress < 35 ? 5 : prev.progress < 70 ? 3 : 1
+          return { ...prev, progress: Math.min(90, prev.progress + increment) }
+        })
+      }, 280)
+    }
+  }
+
+  function updateBackupProgress(progress, detail, step = '') {
+    const safeProgress = Math.max(0, Math.min(99, Math.round(Number(progress) || 0)))
+    setBackupProgress(prev => ({
+      ...prev,
+      active: true,
+      status: 'running',
+      progress: Math.max(Number(prev.progress) || 0, safeProgress),
+      detail: detail || prev.detail,
+      step: step || prev.step
+    }))
+  }
+
+  function completeBackupProgress(title = 'Готово', detail = 'Операция успешно завершена') {
+    clearBackupProgressTimers()
+    setBackupProgress(prev => ({ ...prev, active: true, progress: 100, title, detail, step: 'Завершено', status: 'success' }))
+    backupProgressHideTimerRef.current = setTimeout(() => {
+      setBackupProgress(prev => ({ ...prev, active: false }))
+      backupProgressHideTimerRef.current = null
+    }, 1300)
+  }
+
+  function failBackupProgress(error) {
+    clearBackupProgressTimers()
+    const message = error?.message || String(error || 'Неизвестная ошибка')
+    setBackupProgress(prev => ({ ...prev, active: true, title: 'Ошибка операции', detail: message, step: 'Проверьте сообщение и повторите попытку', status: 'error' }))
+    backupProgressHideTimerRef.current = setTimeout(() => {
+      setBackupProgress(prev => ({ ...prev, active: false }))
+      backupProgressHideTimerRef.current = null
+    }, 3600)
+  }
 
   async function load() {
     await hydrateRmsInternalAuthFromCloud()
@@ -31541,20 +31646,32 @@ function Settings({ session, t, theme, setTheme }) {
   async function exportBackup() {
     setMsg('')
     setBackupBusy(true)
-    const { data, error } = await supabase.rpc('nms_backup_operational_data')
-    setBackupBusy(false)
-    if (error) return setMsg(error.message)
-    const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json;charset=utf-8' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `nms-backup-${stamp}.json`
-    document.body.appendChild(a)
-    a.click()
-    a.remove()
-    URL.revokeObjectURL(url)
-    setMsg('Бэкап данных скачан')
+    beginBackupProgress('Операционный бэкап', 'Сбор рабочих операций из Supabase…', true)
+    try {
+      const { data, error } = await supabase.rpc('nms_backup_operational_data')
+      if (error) {
+        failBackupProgress(error)
+        return setMsg(error.message)
+      }
+      updateBackupProgress(94, 'Формирование операционного JSON-файла…', 'Подготовка файла к скачиванию')
+      const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json;charset=utf-8' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `nms-backup-${stamp}.json`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+      completeBackupProgress('Операционный бэкап готов', 'JSON-файл успешно сформирован и отправлен на скачивание')
+      setMsg('Бэкап данных скачан')
+    } catch (error) {
+      failBackupProgress(error)
+      setMsg(error?.message || 'Не удалось создать операционный бэкап')
+    } finally {
+      setBackupBusy(false)
+    }
   }
 
   async function importBackup(event) {
@@ -31571,10 +31688,22 @@ function Settings({ session, t, theme, setTheme }) {
     const ok = window.confirm('Восстановление сначала очистит текущие операционные данные и затем загрузит данные из бэкапа. Продолжить?')
     if (!ok) return
     setBackupBusy(true)
-    const { error } = await supabase.rpc('nms_restore_operational_data', { p_backup: parsed })
-    setBackupBusy(false)
-    if (error) return setMsg(error.message)
-    setMsg('Бэкап восстановлен')
+    beginBackupProgress('Восстановление операций', 'Передача операционного бэкапа в Supabase…', true)
+    try {
+      const { error } = await supabase.rpc('nms_restore_operational_data', { p_backup: parsed })
+      if (error) {
+        failBackupProgress(error)
+        return setMsg(error.message)
+      }
+      updateBackupProgress(96, 'Проверка восстановленных данных…', 'Финальная проверка')
+      completeBackupProgress('Операционные данные восстановлены', 'Бэкап успешно загружен в RMS')
+      setMsg('Бэкап восстановлен')
+    } catch (error) {
+      failBackupProgress(error)
+      setMsg(error?.message || 'Не удалось восстановить операционный бэкап')
+    } finally {
+      setBackupBusy(false)
+    }
   }
 
   function downloadRmsJsonFile(filename, payload) {
@@ -31630,6 +31759,7 @@ function Settings({ session, t, theme, setTheme }) {
   async function exportFullRmsBackup() {
     setMsg('')
     setBackupBusy(true)
+    beginBackupProgress('Полный бэкап RMS', 'Подготовка списка таблиц…')
     const backup = {
       backup_type: 'rms_full_restore_backup',
       version: 2,
@@ -31643,17 +31773,34 @@ function Settings({ session, t, theme, setTheme }) {
       table_list: RMS_FULL_BACKUP_TABLES
     }
 
-    for (const table of RMS_FULL_BACKUP_TABLES) {
-      const { rows, error } = await readAllRowsForBackup(table)
-      if (error) backup.table_errors[table] = error.message || String(error)
-      backup.tables[table] = rows || []
-    }
+    try {
+      const total = Math.max(1, RMS_FULL_BACKUP_TABLES.length)
+      for (let index = 0; index < RMS_FULL_BACKUP_TABLES.length; index += 1) {
+        const table = RMS_FULL_BACKUP_TABLES[index]
+        const beforeProgress = 3 + Math.round((index / total) * 88)
+        updateBackupProgress(beforeProgress, `Чтение таблицы: ${table}`, `Таблица ${index + 1} из ${total}`)
+        const { rows, error } = await readAllRowsForBackup(table)
+        if (error) backup.table_errors[table] = error.message || String(error)
+        backup.tables[table] = rows || []
+        const afterProgress = 3 + Math.round(((index + 1) / total) * 88)
+        updateBackupProgress(afterProgress, `Сохранено строк: ${(rows || []).length.toLocaleString('ru-RU')} · ${table}`, `Таблица ${index + 1} из ${total}`)
+      }
 
-    setBackupBusy(false)
-    const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')
-    downloadRmsJsonFile(`rms-full-backup-${stamp}.json`, backup)
-    const errorCount = Object.keys(backup.table_errors || {}).length
-    setMsg(errorCount ? `Полный бэкап скачан, но ${errorCount} таблиц не удалось прочитать. Подробности внутри JSON в table_errors.` : 'Полный бэкап RMS скачан. Его можно использовать для восстановления данных RMS.')
+      updateBackupProgress(96, 'Формирование полного JSON-файла…', 'Упаковка данных')
+      const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')
+      downloadRmsJsonFile(`rms-full-backup-${stamp}.json`, backup)
+      const errorCount = Object.keys(backup.table_errors || {}).length
+      completeBackupProgress(
+        errorCount ? 'Бэкап завершён с предупреждениями' : 'Полный бэкап RMS готов',
+        errorCount ? `${errorCount} таблиц не удалось прочитать. Подробности сохранены в table_errors.` : 'Все доступные таблицы и локальные настройки сохранены в JSON-файл'
+      )
+      setMsg(errorCount ? `Полный бэкап скачан, но ${errorCount} таблиц не удалось прочитать. Подробности внутри JSON в table_errors.` : 'Полный бэкап RMS скачан. Его можно использовать для восстановления данных RMS.')
+    } catch (error) {
+      failBackupProgress(error)
+      setMsg(error?.message || 'Не удалось создать полный бэкап RMS')
+    } finally {
+      setBackupBusy(false)
+    }
   }
 
   async function clearTableForRestore(table) {
@@ -31692,32 +31839,51 @@ function Settings({ session, t, theme, setTheme }) {
     if (confirmText !== 'ВОССТАНОВИТЬ') return setMsg('Восстановление отменено')
 
     setBackupBusy(true)
+    beginBackupProgress('Полное восстановление RMS', 'Подготовка таблиц к восстановлению…')
     const restoreErrors = []
     const tablesInBackup = Object.keys(parsed.tables || {})
     const deleteOrder = RMS_FULL_BACKUP_CHILD_FIRST_TABLES.filter(t => tablesInBackup.includes(t))
     const insertOrder = [...deleteOrder].reverse()
+    const totalSteps = Math.max(1, deleteOrder.length + insertOrder.length + 1)
+    let completedSteps = 0
 
-    for (const table of deleteOrder) {
-      const { error } = await clearTableForRestore(table)
-      if (error) restoreErrors.push(`${table}: очистка — ${error.message || String(error)}`)
+    try {
+      for (const table of deleteOrder) {
+        updateBackupProgress(2 + Math.round((completedSteps / totalSteps) * 92), `Очистка таблицы: ${table}`, `Этап ${completedSteps + 1} из ${totalSteps}`)
+        const { error } = await clearTableForRestore(table)
+        if (error) restoreErrors.push(`${table}: очистка — ${error.message || String(error)}`)
+        completedSteps += 1
+        updateBackupProgress(2 + Math.round((completedSteps / totalSteps) * 92), `Таблица подготовлена: ${table}`, `Этап ${completedSteps} из ${totalSteps}`)
+      }
+
+      for (const table of insertOrder) {
+        const rows = parsed.tables?.[table] || []
+        updateBackupProgress(2 + Math.round((completedSteps / totalSteps) * 92), `Восстановление таблицы: ${table}`, `${rows.length.toLocaleString('ru-RU')} строк`)
+        if (rows.length) {
+          const { error } = await insertRowsForRestore(table, rows)
+          if (error) restoreErrors.push(`${table}: загрузка — ${error.message || String(error)}`)
+        }
+        completedSteps += 1
+        updateBackupProgress(2 + Math.round((completedSteps / totalSteps) * 92), `Восстановлена таблица: ${table}`, `Этап ${completedSteps} из ${totalSteps}`)
+      }
+
+      updateBackupProgress(97, 'Восстановление локальных настроек и сессии…', 'Финальная синхронизация')
+      restoreLocalBackupState(parsed.local_storage || {})
+
+      if (restoreErrors.length) {
+        completeBackupProgress('Восстановление завершено с предупреждениями', `${restoreErrors.length} операций завершились с ошибками`)
+        setMsg(`Восстановление завершено с предупреждениями: ${restoreErrors.slice(0, 4).join(' | ')}${restoreErrors.length > 4 ? ' ...' : ''}`)
+      } else {
+        completeBackupProgress('Полный бэкап восстановлен', 'Данные и настройки RMS успешно загружены')
+        setMsg('Полный RMS-бэкап восстановлен. Перезагрузите страницу, чтобы обновить сессию, лого и отчёты.')
+      }
+      load()
+    } catch (error) {
+      failBackupProgress(error)
+      setMsg(error?.message || 'Не удалось восстановить полный RMS-бэкап')
+    } finally {
+      setBackupBusy(false)
     }
-
-    for (const table of insertOrder) {
-      const rows = parsed.tables?.[table] || []
-      if (!rows.length) continue
-      const { error } = await insertRowsForRestore(table, rows)
-      if (error) restoreErrors.push(`${table}: загрузка — ${error.message || String(error)}`)
-    }
-
-    restoreLocalBackupState(parsed.local_storage || {})
-    setBackupBusy(false)
-
-    if (restoreErrors.length) {
-      setMsg(`Восстановление завершено с предупреждениями: ${restoreErrors.slice(0, 4).join(' | ')}${restoreErrors.length > 4 ? ' ...' : ''}`)
-    } else {
-      setMsg('Полный RMS-бэкап восстановлен. Перезагрузите страницу, чтобы обновить сессию, лого и отчёты.')
-    }
-    load()
   }
 
   async function clearOperationalData() {
@@ -31726,11 +31892,23 @@ function Settings({ session, t, theme, setTheme }) {
     const ok = window.confirm('Будут очищены выручка, расходы, приходы, касса, закупки/поступления, оплаты поставщикам, авансы, выплаты зарплаты, табель и журналы операций. Справочники останутся. Продолжить?')
     if (!ok) return
     setBackupBusy(true)
-    const { error } = await supabase.rpc('nms_clear_operational_data')
-    setBackupBusy(false)
-    if (error) return setMsg(error.message)
-    setClearConfirm('')
-    setMsg('Операционные данные очищены. Можно начинать работу с чистой базы.')
+    beginBackupProgress('Очистка операционных данных', 'Безопасная очистка рабочих операций…', true)
+    try {
+      const { error } = await supabase.rpc('nms_clear_operational_data')
+      if (error) {
+        failBackupProgress(error)
+        return setMsg(error.message)
+      }
+      updateBackupProgress(96, 'Проверка результата очистки…', 'Финальная проверка')
+      setClearConfirm('')
+      completeBackupProgress('Операционные данные очищены', 'Справочники и настройки сохранены')
+      setMsg('Операционные данные очищены. Можно начинать работу с чистой базы.')
+    } catch (error) {
+      failBackupProgress(error)
+      setMsg(error?.message || 'Не удалось очистить операционные данные')
+    } finally {
+      setBackupBusy(false)
+    }
   }
 
   function normalizeImportValue(value) {
@@ -32506,6 +32684,36 @@ function Settings({ session, t, theme, setTheme }) {
         {settingsTab === 'voen' && <div className="card span-2"><div className="card-head"><h3>Наши VOEN / юрлица</h3></div><p className="hint">Используются в разделе “Поставщики”.</p><div className="form-grid compact"><label><span>Имя / компания</span><input value={legalForm.name} onChange={e => setLegalForm({...legalForm, name: e.target.value})} placeholder="Ruslan Rasulov" /></label><label><span>VOEN</span><input value={legalForm.voen} onChange={e => setLegalForm({...legalForm, voen: e.target.value})} /></label></div><button className="small" onClick={addLegalEntity}>+ Добавить VOEN</button>{msg && <p className={`hint ${msg === t('saved') || String(msg).toLowerCase().includes('сохран') ? 'save-status' : 'good'}`}>{msg}</p>}<div className="table-wrap" style={{marginTop:12}}><table><thead><tr><th>Имя / компания</th><th>VOEN</th><th>Активен</th></tr></thead><tbody>{legalEntities.map(le => <tr key={le.id}><td><input defaultValue={le.name} onBlur={e => updateLegalEntity(le.id, { name: e.target.value.trim() })} /></td><td><input defaultValue={le.voen} onBlur={e => updateLegalEntity(le.id, { voen: e.target.value.trim() })} /></td><td><select defaultValue={String(le.is_active !== false)} onChange={e => updateLegalEntity(le.id, { is_active: e.target.value === 'true' })}><option value="true">Да</option><option value="false">Нет</option></select></td></tr>)}{!legalEntities.length && <tr><td colSpan="3" className="hint">—</td></tr>}</tbody></table></div></div>}
 
         {settingsTab === 'backup' && <>
+          <style>{`
+            .backup-progress-overlay{position:fixed;inset:0;z-index:12000;display:grid;place-items:center;padding:20px;background:rgba(15,23,42,.52);backdrop-filter:blur(7px);animation:backupOverlayIn .18s ease-out}
+            .backup-progress-card{width:min(620px,calc(100vw - 32px));display:grid;grid-template-columns:168px minmax(0,1fr);align-items:center;gap:24px;padding:28px;border:1px solid rgba(148,163,184,.28);border-radius:24px;background:rgba(255,255,255,.98);box-shadow:0 28px 80px rgba(15,23,42,.28);animation:backupCardIn .24s cubic-bezier(.2,.8,.2,1)}
+            .backup-progress-ring-wrap{position:relative;width:150px;height:150px;display:grid;place-items:center}
+            .backup-progress-ring{width:150px;height:150px;transform:rotate(-90deg);overflow:visible}
+            .backup-progress-ring circle{fill:none;stroke-width:10}
+            .backup-progress-ring-bg{stroke:#e2e8f0}
+            .backup-progress-ring-value{stroke:#2563eb;stroke-linecap:round;transition:stroke-dashoffset .35s ease,stroke .25s ease;filter:drop-shadow(0 0 5px rgba(37,99,235,.28))}
+            .backup-progress-card.is-success .backup-progress-ring-value{stroke:#16a34a}
+            .backup-progress-card.is-error .backup-progress-ring-value{stroke:#dc2626}
+            .backup-progress-percent{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:2px;color:#0f172a}
+            .backup-progress-percent strong{font-size:42px;line-height:1;font-weight:900;letter-spacing:-2px}
+            .backup-progress-percent span{align-self:center;margin-top:13px;font-size:15px;font-weight:800;color:#64748b}
+            .backup-progress-copy{min-width:0}
+            .backup-progress-eyebrow{display:block;margin-bottom:7px;font-size:10px;font-weight:900;letter-spacing:.18em;color:#2563eb}
+            .backup-progress-copy h3{margin:0;color:#0f172a;font-size:23px;line-height:1.2}
+            .backup-progress-copy p{min-height:42px;margin:9px 0 17px;color:#475569;font-size:13px;line-height:1.5;overflow-wrap:anywhere}
+            .backup-progress-track{height:9px;overflow:hidden;border-radius:999px;background:#e2e8f0}
+            .backup-progress-track>div{height:100%;border-radius:inherit;background:linear-gradient(90deg,#2563eb,#38bdf8);transition:width .35s ease;position:relative}
+            .backup-progress-track>div:after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.7),transparent);transform:translateX(-100%);animation:backupShimmer 1.25s linear infinite}
+            .backup-progress-card.is-success .backup-progress-track>div{background:linear-gradient(90deg,#16a34a,#4ade80)}
+            .backup-progress-card.is-error .backup-progress-track>div{background:linear-gradient(90deg,#dc2626,#fb7185)}
+            .backup-progress-footer{display:flex;justify-content:space-between;gap:16px;margin-top:10px;color:#64748b;font-size:11px;font-weight:700}
+            .backup-progress-footer b{color:#0f172a;white-space:nowrap}
+            @keyframes backupOverlayIn{from{opacity:0}to{opacity:1}}
+            @keyframes backupCardIn{from{opacity:0;transform:translateY(10px) scale(.98)}to{opacity:1;transform:none}}
+            @keyframes backupShimmer{to{transform:translateX(100%)}}
+            @media(max-width:620px){.backup-progress-card{grid-template-columns:1fr;text-align:center;padding:22px}.backup-progress-ring-wrap{margin:auto}.backup-progress-footer{text-align:left}.backup-progress-copy p{min-height:0}}
+          `}</style>
+          <BackupProgressOverlay state={backupProgress} />
           <div className="card span-2">
             <div className="card-head">
               <div>
