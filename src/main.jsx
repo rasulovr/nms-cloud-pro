@@ -12617,38 +12617,50 @@ function RMSProV6Styles() {
 
 /* v265 — user access table alignment and password visibility */
 .users-access-table-wrap{
-  overflow-x:auto!important;
-  padding-bottom:6px!important;
+  overflow:visible!important;
+  padding-bottom:0!important;
 }
 .users-access-table{
+  display:block!important;
   width:100%!important;
-  min-width:1320px!important;
+  min-width:0!important;
   table-layout:auto!important;
 }
-.users-access-table th,
-.users-access-table td{
+.users-access-table thead{
+  display:none!important;
+}
+.users-access-table tbody{
+  display:grid!important;
+  gap:14px!important;
+}
+.users-access-table tbody tr{
+  display:grid!important;
+  grid-template-columns:minmax(120px,.9fr) minmax(100px,.8fr) 90px minmax(320px,2fr) minmax(145px,1fr) minmax(175px,1.15fr) 96px!important;
+  gap:14px!important;
+  align-items:center!important;
+  padding:18px!important;
+  border:1px solid #e2e8f0!important;
+  border-radius:18px!important;
+  background:#fff!important;
+  box-shadow:0 10px 28px rgba(15,23,42,.04)!important;
+}
+.users-access-table tbody td{
+  display:block!important;
+  width:auto!important;
+  min-width:0!important;
+  padding:0!important;
+  border:0!important;
   vertical-align:middle!important;
 }
-.users-access-table th:nth-child(1),
-.users-access-table td:nth-child(1){min-width:150px!important;width:150px!important;}
-.users-access-table th:nth-child(2),
-.users-access-table td:nth-child(2){min-width:120px!important;width:120px!important;}
-.users-access-table th:nth-child(3),
-.users-access-table td:nth-child(3){min-width:90px!important;width:90px!important;}
-.users-access-table th:nth-child(4),
-.users-access-table td:nth-child(4){min-width:350px!important;width:350px!important;}
-.users-access-table th:nth-child(5),
-.users-access-table td:nth-child(5){min-width:170px!important;width:170px!important;}
-.users-access-table th:nth-child(6),
-.users-access-table td:nth-child(6){min-width:190px!important;width:190px!important;}
-.users-access-table th:nth-child(7),
-.users-access-table td:nth-child(7){min-width:350px!important;width:350px!important;}
-.users-access-table th:nth-child(8),
-.users-access-table td:nth-child(8){min-width:100px!important;width:100px!important;}
+.users-access-table tbody td:nth-child(7){
+  grid-column:1 / -1!important;
+  padding-top:14px!important;
+  border-top:1px solid #e2e8f0!important;
+}
 .users-access-table .permission-grid{
   display:grid!important;
-  grid-template-columns:minmax(135px,1fr) 180px!important;
-  column-gap:12px!important;
+  grid-template-columns:repeat(4,minmax(95px,1fr) minmax(135px,1fr))!important;
+  column-gap:10px!important;
   row-gap:10px!important;
   align-items:center!important;
   width:100%!important;
@@ -12656,37 +12668,58 @@ function RMSProV6Styles() {
 .users-access-table .permission-grid b{
   min-width:0!important;
   white-space:normal!important;
-  line-height:1.25!important;
+  line-height:1.2!important;
+  font-size:13px!important;
 }
 .users-access-table .permission-grid select{
-  width:180px!important;
-  min-width:180px!important;
+  width:100%!important;
+  min-width:0!important;
   margin:0!important;
 }
 .user-password-editor{
-  display:flex!important;
-  flex-direction:column!important;
-  gap:8px!important;
-  min-width:320px!important;
+  display:block!important;
+  min-width:0!important;
 }
 .user-password-inline-edit{
-  grid-template-columns:minmax(190px,1fr) auto!important;
-  min-width:320px!important;
+  display:grid!important;
+  grid-template-columns:minmax(180px,1fr) auto auto!important;
+  gap:8px!important;
+  align-items:center!important;
+  min-width:0!important;
   width:100%!important;
 }
 .user-password-show{
+  display:flex!important;
+  align-items:center!important;
+  gap:6px!important;
   width:max-content!important;
   margin:0!important;
   font-size:12px!important;
   color:#475569!important;
+  white-space:nowrap!important;
 }
 .user-password-show input{
   width:16px!important;
   height:16px!important;
   min-height:16px!important;
+  margin:0!important;
 }
-@media (max-width:1100px){
-  .users-access-table{min-width:1260px!important;}
+@media (max-width:1250px){
+  .users-access-table tbody tr{
+    grid-template-columns:minmax(120px,1fr) minmax(100px,.8fr) 88px minmax(300px,2fr) minmax(145px,1fr) minmax(170px,1.1fr) 90px!important;
+  }
+  .users-access-table .permission-grid{
+    grid-template-columns:repeat(3,minmax(95px,1fr) minmax(130px,1fr))!important;
+  }
+}
+@media (max-width:980px){
+  .users-access-table tbody tr{
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  }
+  .users-access-table tbody td:nth-child(7){grid-column:1 / -1!important;}
+  .users-access-table .permission-grid{
+    grid-template-columns:minmax(110px,1fr) minmax(140px,1fr)!important;
+  }
 }
 
 /* v235 Revenue chart KPI labels only */
@@ -32877,8 +32910,8 @@ function Settings({ session, t, theme, setTheme }) {
                       <div className="inline-edit user-password-inline-edit">
                         <input type={passwordVisibility[u.id] ? 'text' : 'password'} value={passwordEdits[u.id] || ''} onChange={e => { setPasswordEdits(p => ({...p, [u.id]: e.target.value})); setPasswordStatuses(p => ({...p, [u.id]: null})) }} placeholder="Новый пароль" autoComplete="new-password" />
                         <button className="small primary" disabled={!String(passwordEdits[u.id] || '').trim()} onClick={() => changeUserPassword(u.id, userLogin)}>Применить</button>
+                        <label className="checkbox-row user-password-show"><input type="checkbox" checked={Boolean(passwordVisibility[u.id])} onChange={e => setPasswordVisibility(p => ({...p, [u.id]: e.target.checked}))} /> Показать пароль</label>
                       </div>
-                      <label className="checkbox-row user-password-show"><input type="checkbox" checked={Boolean(passwordVisibility[u.id])} onChange={e => setPasswordVisibility(p => ({...p, [u.id]: e.target.checked}))} /> Показать пароль</label>
                     </div>
                     {passwordStatus?.text && <div className={passwordStatus.type === 'error' ? 'bad user-password-status' : passwordStatus.type === 'success' ? 'good user-password-status' : 'hint user-password-status'}>{passwordStatus.text}</div>}
                   </td>
