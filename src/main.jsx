@@ -12609,6 +12609,12 @@ function RMSProV6Styles() {
   }
 }
 
+.user-password-status{
+  margin-top:7px!important;
+  font-size:12px!important;
+  line-height:1.3!important;
+}
+
 /* v235 Revenue chart KPI labels only */
 .reports-v231-preferred-revenue-chart .metric-title{
   line-height:1.15;
@@ -31209,6 +31215,8 @@ function Settings({ session, t, theme, setTheme }) {
   const [legalForm, setLegalForm] = useState({ name: '', voen: '' })
   const [newUser, setNewUser] = useState({ login: '', password: '', full_name: '' })
   const [passwordEdits, setPasswordEdits] = useState({})
+  const [passwordStatuses, setPasswordStatuses] = useState({})
+  const [loginGuardRevision, setLoginGuardRevision] = useState(0)
   const [clearConfirm, setClearConfirm] = useState('')
   const [backupBusy, setBackupBusy] = useState(false)
   const [backupProgress, setBackupProgress] = useState({ active: false, progress: 0, title: '', detail: '', step: '', status: 'idle' })
@@ -31451,8 +31459,12 @@ function Settings({ session, t, theme, setTheme }) {
 
   async function changeUserPassword(userId, loginName) {
     setMsg('')
+    setPasswordStatuses(prev => ({ ...prev, [userId]: { type: 'loading', text: 'Сохранение...' } }))
     const password = String(passwordEdits[userId] || '').trim()
-    if (!password || password.length < 6) return setMsg('Пароль должен быть минимум 6 символов')
+    if (!password || password.length < 6) {
+      setPasswordStatuses(prev => ({ ...prev, [userId]: { type: 'error', text: 'Пароль должен быть минимум 6 символов' } }))
+      return setMsg('Пароль должен быть минимум 6 символов')
+    }
 
     const internalUsers = getInternalUsers()
     const localLogin = Object.keys(internalUsers).find(k => internalUsers[k]?.id === userId || k === normalizeInternalLogin(loginName))
@@ -31460,13 +31472,27 @@ function Settings({ session, t, theme, setTheme }) {
       internalUsers[localLogin] = { ...internalUsers[localLogin], password }
       setInternalUsers(internalUsers)
       setPasswordEdits(p => ({ ...p, [userId]: '' }))
+      setPasswordStatuses(prev => ({ ...prev, [userId]: { type: 'success', text: 'Пароль изменён и применён' } }))
       setMsg(`Пароль пользователя ${localLogin} изменён`)
       window.dispatchEvent(new Event('rms-user-settings-updated'))
       await load()
       return
     }
 
+    setPasswordStatuses(prev => ({ ...prev, [userId]: { type: 'error', text: 'Для admin пароль меняется через Supabase Auth' } }))
     setMsg('Пароль можно менять только у внутренних RMS-пользователей. Для admin используйте Supabase Auth.')
+  }
+
+  function resetUserLoginLock(loginName, userId) {
+    const login = normalizeInternalLogin(loginName)
+    if (!login) {
+      setPasswordStatuses(prev => ({ ...prev, [userId]: { type: 'error', text: 'Login пользователя не найден' } }))
+      return
+    }
+    rmsClearLoginGuard(login)
+    setLoginGuardRevision(v => v + 1)
+    setPasswordStatuses(prev => ({ ...prev, [userId]: { type: 'success', text: 'Блокировка и счётчик попыток обнулены' } }))
+    setMsg(`Блокировка пользователя ${login} снята`)
   }
 
   async function updateUser(id, patch) {
@@ -32758,7 +32784,37 @@ function Settings({ session, t, theme, setTheme }) {
         {settingsTab === 'users' && <>
           <div className="card span-2"><h3>Пользователи</h3><p className="hint">Добавление пользователей и права доступа.</p></div>
           <div className="card span-2"><div className="card-head"><h3>Добавить пользователя</h3></div><p className="hint">Пользователь входит по login. Система создаёт внутренний email вида login@rms.local.az, поэтому email-рассылка не используется.</p><div className="form-grid compact"><label><span>Login</span><input value={newUser.login} onChange={e => setNewUser({...newUser, login: e.target.value})} placeholder="" /></label><label><span>Временный пароль</span><input type="password" value={newUser.password} onChange={e => setNewUser({...newUser, password: e.target.value})} /></label><label><span>Имя</span><input value={newUser.full_name} onChange={e => setNewUser({...newUser, full_name: e.target.value})} /></label></div><button className="small" onClick={addUser}>+ Добавить пользователя</button>{msg && <p className={`hint ${msg === t('saved') || String(msg).toLowerCase().includes('сохран') ? 'save-status' : 'good'}`}>{msg}</p>}</div>
-          <div className="card span-2"><div className="card-head"><h3>Права доступа</h3></div><p className="hint">Внутренние пользователи RMS входят по login/password без Supabase Auth. Раздел с доступом “Нет доступа” полностью скрывается из меню.</p><div className="table-wrap"><table><thead><tr><th>Пользователь</th><th>Login</th><th>Активен</th><th>Пароль</th><th>Зарплаты</th><th>Разделы</th><th>Действия</th></tr></thead><tbody>{users.map(u => <tr key={u.id}><td><b>{u.full_name || u.login_name || u.id}</b></td><td><span className="hint">{u.login_name || (u.email || '').split('@')[0] || u.id}</span></td><td><select value={String(u.is_active !== false)} onChange={e => updateUser(u.id, { is_active: e.target.value === 'true' })}><option value="true">Да</option><option value="false">Нет</option></select></td><td><div className="inline-edit"><input type="password" value={passwordEdits[u.id] || ''} onChange={e => setPasswordEdits(p => ({...p, [u.id]: e.target.value}))} placeholder="Новый пароль" /><button className="small" onClick={() => changeUserPassword(u.id, u.login_name || (u.email || '').split('@')[0])}>Изменить</button></div></td><td><label className="checkbox-row"><input type="checkbox" checked={Boolean(u.hide_manager_salary)} onChange={e => updateUser(u.id, { hide_manager_salary: e.target.checked })} /> Скрыть зарплаты менеджеров</label></td><td><div className="permission-grid">{editableSections.map(sec => <React.Fragment key={`${u.id}-${sec.id}`}><b>{t(sec.key)}</b><select value={getPermission(u.id, sec.id)} onChange={e => updatePermission(u.id, sec.id, e.target.value)}><option value="none">Нет доступа</option><option value="read">Только просмотр</option><option value="edit">Редактор</option></select></React.Fragment>)}</div></td><td>{u.rms_internal ? <button className="small danger" onClick={() => deleteUser(u)}>Удалить</button> : <span className="hint">admin</span>}</td></tr>)}</tbody></table></div></div>
+          <div className="card span-2">
+            <div className="card-head"><h3>Права доступа</h3></div>
+            <p className="hint">Внутренние пользователи RMS входят по login/password без Supabase Auth. Раздел с доступом “Нет доступа” полностью скрывается из меню.</p>
+            <div className="table-wrap"><table>
+              <thead><tr><th>Пользователь</th><th>Login</th><th>Активен</th><th>Пароль</th><th>Статус входа</th><th>Зарплаты</th><th>Разделы</th><th>Действия</th></tr></thead>
+              <tbody>{users.map(u => {
+                const userLogin = u.login_name || (u.email || '').split('@')[0] || u.id
+                const guardState = rmsGetLoginGuardState(userLogin)
+                const passwordStatus = passwordStatuses[u.id]
+                return <tr key={`${u.id}-${loginGuardRevision}`}>
+                  <td><b>{u.full_name || u.login_name || u.id}</b></td>
+                  <td><span className="hint">{userLogin}</span></td>
+                  <td><select value={String(u.is_active !== false)} onChange={e => updateUser(u.id, { is_active: e.target.value === 'true' })}><option value="true">Да</option><option value="false">Нет</option></select></td>
+                  <td>
+                    <div className="inline-edit">
+                      <input type="password" value={passwordEdits[u.id] || ''} onChange={e => { setPasswordEdits(p => ({...p, [u.id]: e.target.value})); setPasswordStatuses(p => ({...p, [u.id]: null})) }} placeholder="Новый пароль" />
+                      <button className="small primary" disabled={!String(passwordEdits[u.id] || '').trim()} onClick={() => changeUserPassword(u.id, userLogin)}>Применить</button>
+                    </div>
+                    {passwordStatus?.text && <div className={passwordStatus.type === 'error' ? 'bad user-password-status' : passwordStatus.type === 'success' ? 'good user-password-status' : 'hint user-password-status'}>{passwordStatus.text}</div>}
+                  </td>
+                  <td>
+                    {guardState.locked ? <div><strong className="bad">Заблокирован</strong><div className="hint">Осталось: {rmsFormatLockTime(guardState.remainingMs)}</div></div> : guardState.attempts > 0 ? <div><strong>Попыток: {guardState.attempts}</strong><div className="hint">До блокировки: {Math.max(0, RMS_LOGIN_MAX_FAILED_ATTEMPTS - guardState.attempts)}</div></div> : <span className="good">Доступен</span>}
+                    {(guardState.locked || guardState.attempts > 0) && <button className="small" style={{marginTop:8}} onClick={() => resetUserLoginLock(userLogin, u.id)}>Обнулить блокировку</button>}
+                  </td>
+                  <td><label className="checkbox-row"><input type="checkbox" checked={Boolean(u.hide_manager_salary)} onChange={e => updateUser(u.id, { hide_manager_salary: e.target.checked })} /> Скрыть зарплаты менеджеров</label></td>
+                  <td><div className="permission-grid">{editableSections.map(sec => <React.Fragment key={`${u.id}-${sec.id}`}><b>{t(sec.key)}</b><select value={getPermission(u.id, sec.id)} onChange={e => updatePermission(u.id, sec.id, e.target.value)}><option value="none">Нет доступа</option><option value="read">Только просмотр</option><option value="edit">Редактор</option></select></React.Fragment>)}</div></td>
+                  <td>{u.rms_internal ? <button className="small danger" onClick={() => deleteUser(u)}>Удалить</button> : <span className="hint">admin</span>}</td>
+                </tr>
+              })}</tbody>
+            </table></div>
+          </div>
         </>}
 
         {settingsTab === 'voen' && <div className="card span-2"><div className="card-head"><h3>Наши VOEN / юрлица</h3></div><p className="hint">Используются в разделе “Поставщики”.</p><div className="form-grid compact"><label><span>Имя / компания</span><input value={legalForm.name} onChange={e => setLegalForm({...legalForm, name: e.target.value})} placeholder="Ruslan Rasulov" /></label><label><span>VOEN</span><input value={legalForm.voen} onChange={e => setLegalForm({...legalForm, voen: e.target.value})} /></label></div><button className="small" onClick={addLegalEntity}>+ Добавить VOEN</button>{msg && <p className={`hint ${msg === t('saved') || String(msg).toLowerCase().includes('сохран') ? 'save-status' : 'good'}`}>{msg}</p>}<div className="table-wrap" style={{marginTop:12}}><table><thead><tr><th>Имя / компания</th><th>VOEN</th><th>Активен</th></tr></thead><tbody>{legalEntities.map(le => <tr key={le.id}><td><input defaultValue={le.name} onBlur={e => updateLegalEntity(le.id, { name: e.target.value.trim() })} /></td><td><input defaultValue={le.voen} onBlur={e => updateLegalEntity(le.id, { voen: e.target.value.trim() })} /></td><td><select defaultValue={String(le.is_active !== false)} onChange={e => updateLegalEntity(le.id, { is_active: e.target.value === 'true' })}><option value="true">Да</option><option value="false">Нет</option></select></td></tr>)}{!legalEntities.length && <tr><td colSpan="3" className="hint">—</td></tr>}</tbody></table></div></div>}
