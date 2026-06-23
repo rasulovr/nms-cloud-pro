@@ -12615,6 +12615,80 @@ function RMSProV6Styles() {
   line-height:1.3!important;
 }
 
+/* v265 — user access table alignment and password visibility */
+.users-access-table-wrap{
+  overflow-x:auto!important;
+  padding-bottom:6px!important;
+}
+.users-access-table{
+  width:100%!important;
+  min-width:1320px!important;
+  table-layout:auto!important;
+}
+.users-access-table th,
+.users-access-table td{
+  vertical-align:middle!important;
+}
+.users-access-table th:nth-child(1),
+.users-access-table td:nth-child(1){min-width:150px!important;width:150px!important;}
+.users-access-table th:nth-child(2),
+.users-access-table td:nth-child(2){min-width:120px!important;width:120px!important;}
+.users-access-table th:nth-child(3),
+.users-access-table td:nth-child(3){min-width:90px!important;width:90px!important;}
+.users-access-table th:nth-child(4),
+.users-access-table td:nth-child(4){min-width:350px!important;width:350px!important;}
+.users-access-table th:nth-child(5),
+.users-access-table td:nth-child(5){min-width:170px!important;width:170px!important;}
+.users-access-table th:nth-child(6),
+.users-access-table td:nth-child(6){min-width:190px!important;width:190px!important;}
+.users-access-table th:nth-child(7),
+.users-access-table td:nth-child(7){min-width:350px!important;width:350px!important;}
+.users-access-table th:nth-child(8),
+.users-access-table td:nth-child(8){min-width:100px!important;width:100px!important;}
+.users-access-table .permission-grid{
+  display:grid!important;
+  grid-template-columns:minmax(135px,1fr) 180px!important;
+  column-gap:12px!important;
+  row-gap:10px!important;
+  align-items:center!important;
+  width:100%!important;
+}
+.users-access-table .permission-grid b{
+  min-width:0!important;
+  white-space:normal!important;
+  line-height:1.25!important;
+}
+.users-access-table .permission-grid select{
+  width:180px!important;
+  min-width:180px!important;
+  margin:0!important;
+}
+.user-password-editor{
+  display:flex!important;
+  flex-direction:column!important;
+  gap:8px!important;
+  min-width:320px!important;
+}
+.user-password-inline-edit{
+  grid-template-columns:minmax(190px,1fr) auto!important;
+  min-width:320px!important;
+  width:100%!important;
+}
+.user-password-show{
+  width:max-content!important;
+  margin:0!important;
+  font-size:12px!important;
+  color:#475569!important;
+}
+.user-password-show input{
+  width:16px!important;
+  height:16px!important;
+  min-height:16px!important;
+}
+@media (max-width:1100px){
+  .users-access-table{min-width:1260px!important;}
+}
+
 /* v235 Revenue chart KPI labels only */
 .reports-v231-preferred-revenue-chart .metric-title{
   line-height:1.15;
@@ -31215,6 +31289,7 @@ function Settings({ session, t, theme, setTheme }) {
   const [legalForm, setLegalForm] = useState({ name: '', voen: '' })
   const [newUser, setNewUser] = useState({ login: '', password: '', full_name: '' })
   const [passwordEdits, setPasswordEdits] = useState({})
+  const [passwordVisibility, setPasswordVisibility] = useState({})
   const [passwordStatuses, setPasswordStatuses] = useState({})
   const [loginGuardRevision, setLoginGuardRevision] = useState(0)
   const [clearConfirm, setClearConfirm] = useState('')
@@ -32787,7 +32862,7 @@ function Settings({ session, t, theme, setTheme }) {
           <div className="card span-2">
             <div className="card-head"><h3>Права доступа</h3></div>
             <p className="hint">Внутренние пользователи RMS входят по login/password без Supabase Auth. Раздел с доступом “Нет доступа” полностью скрывается из меню.</p>
-            <div className="table-wrap"><table>
+            <div className="table-wrap users-access-table-wrap"><table className="users-access-table">
               <thead><tr><th>Пользователь</th><th>Login</th><th>Активен</th><th>Пароль</th><th>Статус входа</th><th>Зарплаты</th><th>Разделы</th><th>Действия</th></tr></thead>
               <tbody>{users.map(u => {
                 const userLogin = u.login_name || (u.email || '').split('@')[0] || u.id
@@ -32798,9 +32873,12 @@ function Settings({ session, t, theme, setTheme }) {
                   <td><span className="hint">{userLogin}</span></td>
                   <td><select value={String(u.is_active !== false)} onChange={e => updateUser(u.id, { is_active: e.target.value === 'true' })}><option value="true">Да</option><option value="false">Нет</option></select></td>
                   <td>
-                    <div className="inline-edit">
-                      <input type="password" value={passwordEdits[u.id] || ''} onChange={e => { setPasswordEdits(p => ({...p, [u.id]: e.target.value})); setPasswordStatuses(p => ({...p, [u.id]: null})) }} placeholder="Новый пароль" />
-                      <button className="small primary" disabled={!String(passwordEdits[u.id] || '').trim()} onClick={() => changeUserPassword(u.id, userLogin)}>Применить</button>
+                    <div className="user-password-editor">
+                      <div className="inline-edit user-password-inline-edit">
+                        <input type={passwordVisibility[u.id] ? 'text' : 'password'} value={passwordEdits[u.id] || ''} onChange={e => { setPasswordEdits(p => ({...p, [u.id]: e.target.value})); setPasswordStatuses(p => ({...p, [u.id]: null})) }} placeholder="Новый пароль" autoComplete="new-password" />
+                        <button className="small primary" disabled={!String(passwordEdits[u.id] || '').trim()} onClick={() => changeUserPassword(u.id, userLogin)}>Применить</button>
+                      </div>
+                      <label className="checkbox-row user-password-show"><input type="checkbox" checked={Boolean(passwordVisibility[u.id])} onChange={e => setPasswordVisibility(p => ({...p, [u.id]: e.target.checked}))} /> Показать пароль</label>
                     </div>
                     {passwordStatus?.text && <div className={passwordStatus.type === 'error' ? 'bad user-password-status' : passwordStatus.type === 'success' ? 'good user-password-status' : 'hint user-password-status'}>{passwordStatus.text}</div>}
                   </td>
