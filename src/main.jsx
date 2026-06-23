@@ -12869,6 +12869,114 @@ function RMSProV6Styles() {
   .permission-item{grid-template-columns:1fr!important;}
 }
 
+
+/* v268 — final clean user cards: no overlap, vertical permission controls */
+.users-access-table tbody tr{
+  display:grid!important;
+  grid-template-columns:repeat(12,minmax(0,1fr))!important;
+  column-gap:18px!important;
+  row-gap:18px!important;
+  align-items:start!important;
+  padding:22px 24px!important;
+}
+.users-access-table tbody td:nth-child(1){grid-column:1 / span 2!important;}
+.users-access-table tbody td:nth-child(2){grid-column:3 / span 2!important;}
+.users-access-table tbody td:nth-child(3){grid-column:5 / span 1!important;}
+.users-access-table tbody td:nth-child(5){grid-column:6 / span 2!important;}
+.users-access-table tbody td:nth-child(6){grid-column:8 / span 3!important;}
+.users-access-table tbody td:nth-child(8){grid-column:11 / span 2!important;justify-self:end!important;align-self:start!important;}
+.users-access-table tbody td:nth-child(4){
+  grid-column:1 / -1!important;
+  padding:16px 0 2px!important;
+  border-top:1px solid #eef2f7!important;
+}
+.users-access-table tbody td:nth-child(7){
+  grid-column:1 / -1!important;
+  padding-top:18px!important;
+  margin-top:0!important;
+  border-top:1px solid #e2e8f0!important;
+}
+.users-access-table tbody td:nth-child(8){
+  display:flex!important;
+  justify-content:flex-end!important;
+  min-width:0!important;
+}
+.users-access-table tbody td:nth-child(6) .checkbox-row{
+  align-items:flex-start!important;
+  line-height:1.25!important;
+  white-space:normal!important;
+}
+.user-password-editor{max-width:760px!important;}
+.user-password-inline-edit{
+  display:grid!important;
+  grid-template-columns:minmax(240px,1fr) auto auto!important;
+  gap:10px!important;
+  align-items:center!important;
+}
+.user-password-show{
+  min-height:44px!important;
+  padding:0 12px!important;
+  background:#f8fafc!important;
+  border:1px solid #e2e8f0!important;
+  border-radius:12px!important;
+}
+.permission-grid{
+  display:grid!important;
+  grid-template-columns:repeat(4,minmax(0,1fr))!important;
+  gap:12px!important;
+  width:100%!important;
+}
+.permission-item{
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:stretch!important;
+  gap:8px!important;
+  min-width:0!important;
+  padding:12px!important;
+  border:1px solid #e2e8f0!important;
+  border-radius:14px!important;
+  background:#f8fafc!important;
+}
+.permission-item span{
+  display:block!important;
+  min-height:20px!important;
+  color:#334155!important;
+  font-size:13px!important;
+  font-weight:800!important;
+  line-height:1.25!important;
+  white-space:normal!important;
+  overflow:visible!important;
+}
+.permission-item select{
+  width:100%!important;
+  min-width:0!important;
+  height:42px!important;
+  margin:0!important;
+}
+@media(max-width:1320px){
+  .users-access-table tbody td:nth-child(1){grid-column:1 / span 3!important;}
+  .users-access-table tbody td:nth-child(2){grid-column:4 / span 3!important;}
+  .users-access-table tbody td:nth-child(3){grid-column:7 / span 2!important;}
+  .users-access-table tbody td:nth-child(5){grid-column:9 / span 2!important;}
+  .users-access-table tbody td:nth-child(6){grid-column:11 / span 2!important;}
+  .users-access-table tbody td:nth-child(8){grid-column:1 / -1!important;justify-self:end!important;}
+  .permission-grid{grid-template-columns:repeat(3,minmax(0,1fr))!important;}
+}
+@media(max-width:980px){
+  .users-access-table tbody tr{grid-template-columns:repeat(2,minmax(0,1fr))!important;}
+  .users-access-table tbody td:nth-child(-n+6),
+  .users-access-table tbody td:nth-child(8){grid-column:auto!important;}
+  .users-access-table tbody td:nth-child(4),
+  .users-access-table tbody td:nth-child(7){grid-column:1 / -1!important;}
+  .permission-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;}
+}
+@media(max-width:700px){
+  .users-access-table tbody tr{grid-template-columns:1fr!important;padding:16px!important;}
+  .users-access-table tbody td{grid-column:1!important;}
+  .user-password-inline-edit{grid-template-columns:1fr!important;}
+  .permission-grid{grid-template-columns:1fr!important;}
+}
+
 /* v235 Revenue chart KPI labels only */
 .reports-v231-preferred-revenue-chart .metric-title{
   line-height:1.15;
