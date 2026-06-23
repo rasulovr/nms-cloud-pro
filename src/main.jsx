@@ -13132,6 +13132,190 @@ function RMSProV6Styles() {
   .permission-item select{width:100%!important;min-width:0!important;}
 }
 
+
+/* v270 — clean professional users administration panel */
+.users-access-table-wrap{
+  overflow:visible!important;
+  max-width:100%!important;
+}
+.users-access-table{
+  width:100%!important;
+  min-width:0!important;
+  table-layout:fixed!important;
+  border-collapse:separate!important;
+  border-spacing:0!important;
+}
+.users-access-table thead{display:none!important;}
+.users-access-table tbody{
+  display:grid!important;
+  gap:20px!important;
+  width:100%!important;
+}
+.users-access-table tbody tr{
+  display:grid!important;
+  grid-template-columns:minmax(0,1.35fr) minmax(0,1.35fr) 180px 220px!important;
+  grid-template-areas:
+    "name login active salary"
+    "password password status status"
+    "permissions permissions permissions permissions"
+    "actions actions actions actions"!important;
+  gap:18px 24px!important;
+  width:100%!important;
+  min-width:0!important;
+  padding:24px!important;
+  border:1px solid #dfe6ee!important;
+  border-radius:20px!important;
+  background:#fff!important;
+  box-shadow:0 10px 28px rgba(15,23,42,.05)!important;
+}
+.users-access-table tbody td{
+  display:block!important;
+  min-width:0!important;
+  width:auto!important;
+  padding:0!important;
+  margin:0!important;
+  border:0!important;
+  overflow:visible!important;
+}
+.users-access-table tbody td:nth-child(1){grid-area:name!important;}
+.users-access-table tbody td:nth-child(2){grid-area:login!important;}
+.users-access-table tbody td:nth-child(3){grid-area:active!important;}
+.users-access-table tbody td:nth-child(4){grid-area:password!important;padding-top:16px!important;border-top:1px solid #edf1f5!important;}
+.users-access-table tbody td:nth-child(5){grid-area:status!important;padding-top:16px!important;border-top:1px solid #edf1f5!important;}
+.users-access-table tbody td:nth-child(6){grid-area:salary!important;}
+.users-access-table tbody td:nth-child(7){grid-area:permissions!important;padding-top:18px!important;border-top:1px solid #edf1f5!important;}
+.users-access-table tbody td:nth-child(8){grid-area:actions!important;display:flex!important;justify-content:flex-end!important;padding-top:2px!important;}
+.users-access-table tbody td:nth-child(-n+6)::before,
+.users-access-table tbody td:nth-child(7)::before{
+  display:block!important;
+  margin:0 0 8px!important;
+  color:#94a3b8!important;
+  font-size:10px!important;
+  font-weight:850!important;
+  letter-spacing:.1em!important;
+  text-transform:uppercase!important;
+}
+.users-access-table tbody td:nth-child(1)::before{content:'Пользователь'!important;}
+.users-access-table tbody td:nth-child(2)::before{content:'Login'!important;}
+.users-access-table tbody td:nth-child(3)::before{content:'Активен'!important;}
+.users-access-table tbody td:nth-child(4)::before{content:'Смена пароля'!important;}
+.users-access-table tbody td:nth-child(5)::before{content:'Статус входа'!important;}
+.users-access-table tbody td:nth-child(6)::before{content:'Зарплаты'!important;}
+.users-access-table tbody td:nth-child(7)::before{content:'Доступ к разделам'!important;font-size:14px!important;letter-spacing:0!important;text-transform:none!important;color:#334155!important;}
+.users-access-table tbody td:nth-child(3)>select{
+  width:100%!important;
+  min-width:0!important;
+  height:46px!important;
+}
+.user-password-editor{max-width:none!important;width:100%!important;}
+.user-password-inline-edit{
+  display:grid!important;
+  grid-template-columns:minmax(240px,1fr) 120px 160px!important;
+  gap:10px!important;
+  width:100%!important;
+  align-items:center!important;
+}
+.user-password-inline-edit input,
+.user-password-inline-edit .small,
+.user-password-toggle{
+  width:100%!important;
+  min-width:0!important;
+  height:46px!important;
+  min-height:46px!important;
+  margin:0!important;
+  border-radius:12px!important;
+}
+.user-password-toggle{padding:0 14px!important;white-space:nowrap!important;}
+.user-password-status{margin-top:8px!important;}
+.users-access-table tbody td:nth-child(6) .checkbox-row{
+  display:grid!important;
+  grid-template-columns:18px minmax(0,1fr)!important;
+  align-items:start!important;
+  gap:9px!important;
+  min-height:46px!important;
+  margin:0!important;
+  padding:10px 0 0!important;
+  line-height:1.35!important;
+}
+.users-access-table tbody td:nth-child(6) .checkbox-row input{margin-top:2px!important;}
+.permission-grid{
+  display:grid!important;
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  gap:10px 14px!important;
+  width:100%!important;
+}
+.permission-item{
+  display:grid!important;
+  grid-template-columns:minmax(130px,1fr) 190px!important;
+  align-items:center!important;
+  gap:14px!important;
+  min-width:0!important;
+  min-height:60px!important;
+  padding:10px 12px!important;
+  border:1px solid #e2e8f0!important;
+  border-radius:12px!important;
+  background:#f8fafc!important;
+}
+.permission-item span{
+  display:block!important;
+  min-width:0!important;
+  margin:0!important;
+  color:#334155!important;
+  font-size:13px!important;
+  font-weight:750!important;
+  line-height:1.3!important;
+  white-space:normal!important;
+  overflow:visible!important;
+  text-overflow:clip!important;
+  word-break:normal!important;
+}
+.permission-item select{
+  width:190px!important;
+  min-width:190px!important;
+  max-width:190px!important;
+  height:42px!important;
+  min-height:42px!important;
+  padding:0 34px 0 12px!important;
+  margin:0!important;
+  border-radius:10px!important;
+  white-space:nowrap!important;
+  text-overflow:clip!important;
+}
+@media(max-width:1180px){
+  .users-access-table tbody tr{
+    grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;
+    grid-template-areas:
+      "name login"
+      "active salary"
+      "password password"
+      "status status"
+      "permissions permissions"
+      "actions actions"!important;
+  }
+  .users-access-table tbody td:nth-child(5){border-top:0!important;padding-top:0!important;}
+  .permission-grid{grid-template-columns:1fr!important;}
+}
+@media(max-width:720px){
+  .users-access-table tbody tr{
+    grid-template-columns:1fr!important;
+    grid-template-areas:
+      "name"
+      "login"
+      "active"
+      "salary"
+      "password"
+      "status"
+      "permissions"
+      "actions"!important;
+    padding:18px!important;
+  }
+  .user-password-inline-edit{grid-template-columns:1fr!important;}
+  .permission-item{grid-template-columns:1fr!important;gap:8px!important;}
+  .permission-item select{width:100%!important;min-width:0!important;max-width:none!important;}
+  .users-access-table tbody td:nth-child(8){justify-content:stretch!important;}
+  .users-access-table tbody td:nth-child(8) .small{width:100%!important;}
+}
+
 /* v235 Revenue chart KPI labels only */
 .reports-v231-preferred-revenue-chart .metric-title{
   line-height:1.15;
