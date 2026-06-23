@@ -12722,6 +12722,153 @@ function RMSProV6Styles() {
   }
 }
 
+
+/* v267 — cleaner user permission cards */
+.users-access-table-wrap{
+  overflow:visible!important;
+  border:0!important;
+  background:transparent!important;
+}
+.users-access-table{
+  display:block!important;
+  width:100%!important;
+  border-collapse:separate!important;
+}
+.users-access-table thead{display:none!important;}
+.users-access-table tbody{
+  display:grid!important;
+  gap:18px!important;
+  width:100%!important;
+}
+.users-access-table tbody tr{
+  display:grid!important;
+  grid-template-columns:minmax(180px,1.2fr) minmax(120px,.8fr) 96px minmax(420px,2.7fr) minmax(145px,1fr) minmax(190px,1.25fr) 96px!important;
+  gap:14px 18px!important;
+  align-items:start!important;
+  width:100%!important;
+  padding:22px!important;
+  border:1px solid #e2e8f0!important;
+  border-radius:20px!important;
+  background:#fff!important;
+  box-shadow:0 10px 28px rgba(15,23,42,.045)!important;
+}
+.users-access-table tbody td{
+  display:block!important;
+  min-width:0!important;
+  padding:0!important;
+  border:0!important;
+  vertical-align:top!important;
+}
+.users-access-table tbody td:nth-child(1)::before{content:'Пользователь';}
+.users-access-table tbody td:nth-child(2)::before{content:'Login';}
+.users-access-table tbody td:nth-child(3)::before{content:'Активен';}
+.users-access-table tbody td:nth-child(4)::before{content:'Новый пароль';}
+.users-access-table tbody td:nth-child(5)::before{content:'Статус входа';}
+.users-access-table tbody td:nth-child(6)::before{content:'Зарплаты';}
+.users-access-table tbody td:nth-child(-n+6)::before{
+  display:block!important;
+  margin:0 0 7px!important;
+  color:#94a3b8!important;
+  font-size:10px!important;
+  font-weight:850!important;
+  line-height:1!important;
+  letter-spacing:.08em!important;
+  text-transform:uppercase!important;
+}
+.users-access-table tbody td:nth-child(7){
+  grid-column:1 / -1!important;
+  padding-top:18px!important;
+  margin-top:2px!important;
+  border-top:1px solid #e2e8f0!important;
+}
+.users-access-table tbody td:nth-child(7)::before{
+  content:'Доступ к разделам';
+  display:block!important;
+  margin:0 0 12px!important;
+  color:#334155!important;
+  font-size:13px!important;
+  font-weight:850!important;
+}
+.users-access-table tbody td:nth-child(8){
+  grid-column:1 / -1!important;
+  display:flex!important;
+  justify-content:flex-end!important;
+  padding-top:2px!important;
+}
+.user-password-inline-edit{
+  display:grid!important;
+  grid-template-columns:minmax(190px,1fr) auto auto!important;
+  gap:8px!important;
+  align-items:center!important;
+  width:100%!important;
+}
+.user-password-inline-edit input{
+  width:100%!important;
+  min-width:0!important;
+}
+.user-password-inline-edit .small{
+  height:44px!important;
+  white-space:nowrap!important;
+}
+.user-password-show{
+  min-height:44px!important;
+  padding:0 6px!important;
+  border-radius:10px!important;
+  background:#f8fafc!important;
+  white-space:nowrap!important;
+}
+.user-password-status{margin-top:8px!important;font-size:12px!important;font-weight:750!important;}
+.permission-grid{
+  display:grid!important;
+  grid-template-columns:repeat(4,minmax(220px,1fr))!important;
+  gap:10px!important;
+  width:100%!important;
+}
+.permission-item{
+  display:grid!important;
+  grid-template-columns:minmax(90px,1fr) minmax(130px,1.25fr)!important;
+  align-items:center!important;
+  gap:10px!important;
+  min-width:0!important;
+  padding:10px 12px!important;
+  border:1px solid #e2e8f0!important;
+  border-radius:14px!important;
+  background:#f8fafc!important;
+}
+.permission-item span{
+  min-width:0!important;
+  color:#334155!important;
+  font-size:13px!important;
+  font-weight:750!important;
+  line-height:1.2!important;
+}
+.permission-item select{
+  width:100%!important;
+  min-width:0!important;
+  height:40px!important;
+  margin:0!important;
+}
+@media(max-width:1350px){
+  .users-access-table tbody tr{
+    grid-template-columns:minmax(150px,1fr) minmax(110px,.8fr) 90px minmax(360px,2.2fr) minmax(130px,1fr) minmax(170px,1.1fr) 86px!important;
+  }
+  .permission-grid{grid-template-columns:repeat(3,minmax(220px,1fr))!important;}
+}
+@media(max-width:1050px){
+  .users-access-table tbody tr{grid-template-columns:repeat(2,minmax(0,1fr))!important;}
+  .users-access-table tbody td:nth-child(4),
+  .users-access-table tbody td:nth-child(7),
+  .users-access-table tbody td:nth-child(8){grid-column:1 / -1!important;}
+  .permission-grid{grid-template-columns:repeat(2,minmax(220px,1fr))!important;}
+}
+@media(max-width:700px){
+  .users-access-table tbody tr{grid-template-columns:1fr!important;padding:16px!important;}
+  .users-access-table tbody td{grid-column:1!important;}
+  .user-password-inline-edit{grid-template-columns:1fr!important;}
+  .permission-grid{grid-template-columns:1fr!important;}
+  .permission-item{grid-template-columns:1fr!important;}
+}
+
 /* v235 Revenue chart KPI labels only */
 .reports-v231-preferred-revenue-chart .metric-title{
   line-height:1.15;
@@ -32920,7 +33067,7 @@ function Settings({ session, t, theme, setTheme }) {
                     {(guardState.locked || guardState.attempts > 0) && <button className="small" style={{marginTop:8}} onClick={() => resetUserLoginLock(userLogin, u.id)}>Обнулить блокировку</button>}
                   </td>
                   <td><label className="checkbox-row"><input type="checkbox" checked={Boolean(u.hide_manager_salary)} onChange={e => updateUser(u.id, { hide_manager_salary: e.target.checked })} /> Скрыть зарплаты менеджеров</label></td>
-                  <td><div className="permission-grid">{editableSections.map(sec => <React.Fragment key={`${u.id}-${sec.id}`}><b>{t(sec.key)}</b><select value={getPermission(u.id, sec.id)} onChange={e => updatePermission(u.id, sec.id, e.target.value)}><option value="none">Нет доступа</option><option value="read">Только просмотр</option><option value="edit">Редактор</option></select></React.Fragment>)}</div></td>
+                  <td><div className="permission-grid">{editableSections.map(sec => <div className="permission-item" key={`${u.id}-${sec.id}`}><span>{t(sec.key)}</span><select value={getPermission(u.id, sec.id)} onChange={e => updatePermission(u.id, sec.id, e.target.value)}><option value="none">Нет доступа</option><option value="read">Только просмотр</option><option value="edit">Редактор</option></select></div>)}</div></td>
                   <td>{u.rms_internal ? <button className="small danger" onClick={() => deleteUser(u)}>Удалить</button> : <span className="hint">admin</span>}</td>
                 </tr>
               })}</tbody>
