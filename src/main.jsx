@@ -5313,9 +5313,11 @@ function RMSProV6Styles() {
   width:106px!important;
   height:106px!important;
   margin:0 auto 14px!important;
-  border-radius:28px!important;
-  background:linear-gradient(135deg,#0b2340,#06172d)!important;
-  box-shadow:0 22px 52px rgba(15,23,42,.18)!important;
+  border-radius:0!important;
+  background:transparent!important;
+  border:0!important;
+  box-shadow:none!important;
+  overflow:visible!important;
 }
 .rms-brandmark.login .rms-logo-svg{width:106px!important;height:106px!important;}
 .login-title{
