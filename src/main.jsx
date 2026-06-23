@@ -12977,6 +12977,161 @@ function RMSProV6Styles() {
   .permission-grid{grid-template-columns:1fr!important;}
 }
 
+
+/* v269 — professional users administration layout */
+.users-access-table tbody{
+  gap:20px!important;
+}
+.users-access-table tbody tr{
+  grid-template-columns:repeat(12,minmax(0,1fr))!important;
+  gap:20px 22px!important;
+  padding:26px!important;
+  border:1px solid #dfe6ee!important;
+  border-radius:22px!important;
+  background:linear-gradient(180deg,#ffffff 0%,#fbfcfe 100%)!important;
+  box-shadow:0 12px 34px rgba(15,23,42,.055)!important;
+}
+.users-access-table tbody td:nth-child(1){grid-column:1 / span 3!important;}
+.users-access-table tbody td:nth-child(2){grid-column:4 / span 3!important;}
+.users-access-table tbody td:nth-child(3){grid-column:7 / span 2!important;}
+.users-access-table tbody td:nth-child(5){grid-column:9 / span 2!important;}
+.users-access-table tbody td:nth-child(6){grid-column:11 / span 2!important;}
+.users-access-table tbody td:nth-child(4){
+  grid-column:1 / -1!important;
+  padding:18px 0!important;
+  border-top:1px solid #edf1f5!important;
+  border-bottom:1px solid #edf1f5!important;
+}
+.users-access-table tbody td:nth-child(7){
+  grid-column:1 / -1!important;
+  padding-top:2px!important;
+  margin-top:0!important;
+  border-top:0!important;
+}
+.users-access-table tbody td:nth-child(8){
+  grid-column:1 / -1!important;
+  justify-self:end!important;
+  align-self:center!important;
+  padding-top:0!important;
+}
+.users-access-table tbody td:nth-child(-n+6)::before{
+  margin-bottom:8px!important;
+  font-size:10px!important;
+  letter-spacing:.1em!important;
+}
+.user-password-editor{
+  max-width:860px!important;
+}
+.user-password-inline-edit{
+  display:grid!important;
+  grid-template-columns:minmax(260px,1fr) 120px 150px!important;
+  gap:10px!important;
+  align-items:center!important;
+}
+.user-password-inline-edit input{
+  height:46px!important;
+  border-radius:12px!important;
+}
+.user-password-inline-edit .small,
+.user-password-toggle{
+  height:46px!important;
+  min-height:46px!important;
+  margin:0!important;
+  border-radius:12px!important;
+  white-space:nowrap!important;
+}
+.user-password-toggle{
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  padding:0 16px!important;
+  border:1px solid #d8e0e8!important;
+  background:#fff!important;
+  color:#475569!important;
+  font-weight:750!important;
+}
+.user-password-toggle:hover,
+.user-password-toggle.is-active{
+  border-color:#94a3b8!important;
+  background:#f8fafc!important;
+  color:#0f172a!important;
+}
+.user-password-status{
+  margin-top:10px!important;
+  font-size:12px!important;
+}
+.users-access-table tbody td:nth-child(7)::before{
+  margin-bottom:14px!important;
+  font-size:14px!important;
+}
+.permission-grid{
+  display:grid!important;
+  grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  gap:12px!important;
+}
+.permission-item{
+  display:grid!important;
+  grid-template-columns:minmax(125px,1fr) 168px!important;
+  align-items:center!important;
+  gap:14px!important;
+  min-height:66px!important;
+  padding:12px 14px!important;
+  border:1px solid #e2e8f0!important;
+  border-radius:14px!important;
+  background:#f8fafc!important;
+}
+.permission-item span{
+  min-height:0!important;
+  font-size:13px!important;
+  line-height:1.25!important;
+  white-space:normal!important;
+  overflow:visible!important;
+  word-break:normal!important;
+}
+.permission-item select{
+  width:168px!important;
+  min-width:168px!important;
+  height:42px!important;
+  padding-right:34px!important;
+  text-overflow:clip!important;
+}
+.users-access-table tbody td:nth-child(6) .checkbox-row{
+  display:flex!important;
+  align-items:center!important;
+  gap:8px!important;
+  min-height:46px!important;
+  padding:0 2px!important;
+}
+.users-access-table tbody td:nth-child(6) .checkbox-row input{
+  flex:0 0 auto!important;
+}
+@media(max-width:1280px){
+  .users-access-table tbody td:nth-child(1){grid-column:1 / span 4!important;}
+  .users-access-table tbody td:nth-child(2){grid-column:5 / span 3!important;}
+  .users-access-table tbody td:nth-child(3){grid-column:8 / span 2!important;}
+  .users-access-table tbody td:nth-child(5){grid-column:10 / span 3!important;}
+  .users-access-table tbody td:nth-child(6){grid-column:1 / span 4!important;}
+  .permission-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;}
+}
+@media(max-width:900px){
+  .users-access-table tbody tr{grid-template-columns:repeat(2,minmax(0,1fr))!important;padding:20px!important;}
+  .users-access-table tbody td:nth-child(-n+6),
+  .users-access-table tbody td:nth-child(8){grid-column:auto!important;}
+  .users-access-table tbody td:nth-child(4),
+  .users-access-table tbody td:nth-child(7){grid-column:1 / -1!important;}
+  .user-password-inline-edit{grid-template-columns:1fr 120px!important;}
+  .user-password-toggle{grid-column:1 / -1!important;width:max-content!important;}
+  .permission-grid{grid-template-columns:1fr!important;}
+}
+@media(max-width:620px){
+  .users-access-table tbody tr{grid-template-columns:1fr!important;padding:16px!important;}
+  .users-access-table tbody td{grid-column:1!important;}
+  .user-password-inline-edit{grid-template-columns:1fr!important;}
+  .user-password-toggle{width:100%!important;}
+  .permission-item{grid-template-columns:1fr!important;}
+  .permission-item select{width:100%!important;min-width:0!important;}
+}
+
 /* v235 Revenue chart KPI labels only */
 .reports-v231-preferred-revenue-chart .metric-title{
   line-height:1.15;
@@ -33165,7 +33320,7 @@ function Settings({ session, t, theme, setTheme }) {
                       <div className="inline-edit user-password-inline-edit">
                         <input type={passwordVisibility[u.id] ? 'text' : 'password'} value={passwordEdits[u.id] || ''} onChange={e => { setPasswordEdits(p => ({...p, [u.id]: e.target.value})); setPasswordStatuses(p => ({...p, [u.id]: null})) }} placeholder="Новый пароль" autoComplete="new-password" />
                         <button className="small primary" disabled={!String(passwordEdits[u.id] || '').trim()} onClick={() => changeUserPassword(u.id, userLogin)}>Применить</button>
-                        <label className="checkbox-row user-password-show"><input type="checkbox" checked={Boolean(passwordVisibility[u.id])} onChange={e => setPasswordVisibility(p => ({...p, [u.id]: e.target.checked}))} /> Показать пароль</label>
+                        <button type="button" className={`small user-password-toggle ${passwordVisibility[u.id] ? 'is-active' : ''}`} onClick={() => setPasswordVisibility(p => ({...p, [u.id]: !p[u.id]}))}>{passwordVisibility[u.id] ? 'Скрыть пароль' : 'Показать пароль'}</button>
                       </div>
                     </div>
                     {passwordStatus?.text && <div className={passwordStatus.type === 'error' ? 'bad user-password-status' : passwordStatus.type === 'success' ? 'good user-password-status' : 'hint user-password-status'}>{passwordStatus.text}</div>}
