@@ -12541,14 +12541,14 @@ function RMSProV6Styles() {
   transform:scale(1.48)!important;
 }
 .rms-primary-brandmark.login{
-  width:250px!important;
-  height:156px!important;
-  margin:0 auto 18px!important;
-  border-radius:18px!important;
-  box-shadow:0 22px 55px rgba(0,0,0,.34)!important;
+  width:320px!important;
+  height:196px!important;
+  margin:0 auto 14px!important;
+  border-radius:22px!important;
+  box-shadow:0 24px 60px rgba(0,0,0,.34)!important;
 }
 .rms-primary-brandmark.login .rms-primary-logo{
-  transform:scale(1.04)!important;
+  transform:scale(1.08)!important;
 }
 .rms-pro-brand .rms-pro-logo{
   width:64px!important;
@@ -12565,41 +12565,49 @@ function RMSProV6Styles() {
 
 /* v259 — sidebar logo only, based directly on working v258 */
 .rms-pro-brand-logo-only{
-  justify-content:flex-start!important;
+  justify-content:center!important;
   gap:0!important;
-  padding:4px 10px 18px!important;
+  padding:8px 8px 18px!important;
 }
 .rms-pro-logo-wide{
   width:100%!important;
-  height:72px!important;
+  height:86px!important;
   min-width:0!important;
   display:flex!important;
   align-items:center!important;
-  justify-content:flex-start!important;
+  justify-content:center!important;
   background:transparent!important;
   border:0!important;
   box-shadow:none!important;
   overflow:visible!important;
 }
 .rms-pro-logo-wide .rms-primary-brandmark.compact{
-  width:174px!important;
-  height:72px!important;
-  min-width:174px!important;
-  border-radius:14px!important;
+  width:208px!important;
+  height:86px!important;
+  min-width:208px!important;
+  border-radius:16px!important;
   background:#090a0c!important;
   border:1px solid rgba(212,175,55,.18)!important;
   box-shadow:0 14px 30px rgba(2,6,23,.28)!important;
 }
 .rms-pro-logo-wide .rms-primary-brandmark.compact .rms-primary-logo{
-  transform:scale(1.06)!important;
+  transform:scale(1.1)!important;
   object-fit:contain!important;
 }
+.login-hint-top{
+  margin:2px 0 18px!important;
+  text-align:center!important;
+  color:#64748b!important;
+  font-size:15px!important;
+  line-height:1.5!important;
+}
 @media (max-width:760px){
-  .rms-pro-logo-wide{height:64px!important;}
+  .rms-primary-brandmark.login{width:270px!important;height:168px!important;}
+  .rms-pro-logo-wide{height:76px!important;}
   .rms-pro-logo-wide .rms-primary-brandmark.compact{
-    width:156px!important;
-    height:64px!important;
-    min-width:156px!important;
+    width:184px!important;
+    height:76px!important;
+    min-width:184px!important;
   }
 }
 
@@ -12725,9 +12733,7 @@ function Login({ lang, setLang, t }) {
     <GlobalProgressOverlay />
     <div className="login-card">
     <ProductLogo login />
-    <h1 className="login-title">{t('system_title')}</h1>
-    <p className="login-subtitle">{t('brand_subtitle')}</p>
-    <p>{t('login_hint')}</p>
+    <p className="login-hint-top">{t('login_hint')}</p>
     <label><span>{t('language_label')}</span><select value={lang} onChange={e => setLang(e.target.value)}><option value="ru">Русский</option><option value="az">Azərbaycan</option></select></label>
     <label><span>{t('login_label')}</span><input value={login} onChange={e => setLogin(e.target.value)} onKeyDown={handleLoginKeyDown} placeholder="" autoComplete="username" /></label>
     <label><span>{t('password_label')}</span><input type={showPassword ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} onKeyDown={handleLoginKeyDown} autoComplete="current-password" /></label>
