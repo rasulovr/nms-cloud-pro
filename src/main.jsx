@@ -12544,8 +12544,8 @@ function RMSProV6Styles() {
   transform:scale(1)!important;
 }
 .rms-primary-brandmark.login{
-  width:390px!important;
-  height:200px!important;
+  width:320px!important;
+  height:164px!important;
   margin:0 auto 10px!important;
   border-radius:0!important;
 }
@@ -12569,7 +12569,7 @@ function RMSProV6Styles() {
 }
 .rms-pro-logo-wide{
   width:100%!important;
-  height:104px!important;
+  height:84px!important;
   min-width:0!important;
   display:flex!important;
   align-items:center!important;
@@ -12580,9 +12580,9 @@ function RMSProV6Styles() {
   overflow:visible!important;
 }
 .rms-pro-logo-wide .rms-primary-brandmark.compact{
-  width:236px!important;
-  height:104px!important;
-  min-width:236px!important;
+  width:192px!important;
+  height:84px!important;
+  min-width:192px!important;
   border-radius:0!important;
   background:transparent!important;
   border:0!important;
@@ -12600,12 +12600,12 @@ function RMSProV6Styles() {
   line-height:1.5!important;
 }
 @media (max-width:760px){
-  .rms-primary-brandmark.login{width:300px!important;height:154px!important;}
-  .rms-pro-logo-wide{height:88px!important;}
+  .rms-primary-brandmark.login{width:260px!important;height:134px!important;}
+  .rms-pro-logo-wide{height:72px!important;}
   .rms-pro-logo-wide .rms-primary-brandmark.compact{
-    width:196px!important;
-    height:88px!important;
-    min-width:196px!important;
+    width:168px!important;
+    height:72px!important;
+    min-width:168px!important;
   }
 }
 
@@ -13314,6 +13314,50 @@ function RMSProV6Styles() {
   .permission-item select{width:100%!important;min-width:0!important;max-width:none!important;}
   .users-access-table tbody td:nth-child(8){justify-content:stretch!important;}
   .users-access-table tbody td:nth-child(8) .small{width:100%!important;}
+}
+
+
+/* v271 users permissions professional clean layout */
+.users-admin-panel{display:grid!important;gap:22px!important;}
+.user-admin-card{background:#fff!important;border:1px solid #e5eaf1!important;border-radius:22px!important;padding:24px!important;box-shadow:0 10px 30px rgba(15,23,42,.04)!important;}
+.user-admin-head{display:grid!important;grid-template-columns:minmax(220px,1.1fr) minmax(220px,1.2fr) 180px minmax(240px,.9fr)!important;gap:18px 22px!important;align-items:start!important;padding-bottom:18px!important;border-bottom:1px solid #edf1f5!important;}
+.user-admin-field{display:flex!important;flex-direction:column!important;gap:8px!important;min-width:0!important;}
+.user-admin-field select{width:100%!important;max-width:180px!important;}
+.user-admin-label{font-size:12px!important;line-height:1.2!important;font-weight:800!important;letter-spacing:.08em!important;text-transform:uppercase!important;color:#94a3b8!important;}
+.user-admin-value{font-size:15px!important;line-height:1.45!important;word-break:break-word!important;color:#0f172a!important;}
+.user-admin-middle{display:grid!important;grid-template-columns:minmax(460px,1.2fr) minmax(220px,.8fr)!important;gap:18px 22px!important;align-items:start!important;padding:18px 0!important;border-bottom:1px solid #edf1f5!important;}
+.user-admin-password-block,.user-admin-status-block{display:flex!important;flex-direction:column!important;gap:10px!important;min-width:0!important;}
+.user-password-bar{display:flex!important;align-items:center!important;gap:12px!important;flex-wrap:wrap!important;}
+.user-password-bar input{flex:1 1 240px!important;min-width:220px!important;max-width:360px!important;}
+.user-password-bar .small{height:50px!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;padding:0 18px!important;white-space:nowrap!important;}
+.user-password-toggle.is-active{background:#eff6ff!important;border-color:#bfdbfe!important;color:#1d4ed8!important;}
+.user-password-status{margin-top:2px!important;}
+.user-admin-section-title{font-size:14px!important;font-weight:800!important;color:#334155!important;margin:2px 0 14px!important;}
+.user-admin-permissions-block{padding-top:18px!important;}
+.user-permissions-table-wrap{overflow-x:auto!important;}
+.user-permissions-table{width:100%!important;border-collapse:separate!important;border-spacing:0 10px!important;table-layout:fixed!important;}
+.user-permissions-table td{vertical-align:middle!important;}
+.user-permissions-table .perm-label-cell{width:18%!important;padding:0 12px 0 0!important;font-size:15px!important;font-weight:700!important;line-height:1.35!important;color:#334155!important;word-break:break-word!important;}
+.user-permissions-table .perm-select-cell{width:32%!important;padding:0 18px 0 0!important;}
+.user-permissions-table .perm-select-cell select{width:100%!important;min-width:0!important;height:48px!important;}
+.user-permissions-table .perm-label-cell.empty,.user-permissions-table .perm-select-cell.empty{padding:0!important;background:transparent!important;}
+.user-admin-actions{display:flex!important;justify-content:flex-end!important;align-items:center!important;padding-top:16px!important;}
+.users-access-table-wrap,.users-access-table{display:block!important;}
+@media (max-width:1200px){
+  .user-admin-head{grid-template-columns:minmax(200px,1fr) minmax(200px,1fr)!important;}
+  .user-admin-middle{grid-template-columns:1fr!important;}
+  .user-permissions-table{table-layout:auto!important;}
+  .user-permissions-table tr{display:grid!important;grid-template-columns:1fr!important;gap:10px!important;padding:12px 14px!important;background:#f8fafc!important;border:1px solid #e5eaf1!important;border-radius:16px!important;margin-bottom:10px!important;}
+  .user-permissions-table .perm-label-cell,.user-permissions-table .perm-select-cell{width:auto!important;padding:0!important;}
+  .user-permissions-table .perm-label-cell.empty,.user-permissions-table .perm-select-cell.empty{display:none!important;}
+}
+@media (max-width:760px){
+  .user-admin-card{padding:18px!important;border-radius:18px!important;}
+  .user-admin-head{grid-template-columns:1fr!important;gap:14px!important;}
+  .user-password-bar{flex-direction:column!important;align-items:stretch!important;}
+  .user-password-bar input,.user-password-bar .small{width:100%!important;max-width:none!important;}
+  .user-permission-row{grid-template-columns:1fr!important;}
+  .user-permission-row select{max-width:none!important;justify-self:stretch!important;}
 }
 
 /* v235 Revenue chart KPI labels only */
@@ -33489,36 +33533,80 @@ function Settings({ session, t, theme, setTheme }) {
           <div className="card span-2">
             <div className="card-head"><h3>Права доступа</h3></div>
             <p className="hint">Внутренние пользователи RMS входят по login/password без Supabase Auth. Раздел с доступом “Нет доступа” полностью скрывается из меню.</p>
-            <div className="table-wrap users-access-table-wrap"><table className="users-access-table">
-              <thead><tr><th>Пользователь</th><th>Login</th><th>Активен</th><th>Пароль</th><th>Статус входа</th><th>Зарплаты</th><th>Разделы</th><th>Действия</th></tr></thead>
-              <tbody>{users.map(u => {
+            <div className="users-admin-panel">{users.map(u => {
                 const userLogin = u.login_name || (u.email || '').split('@')[0] || u.id
                 const guardState = rmsGetLoginGuardState(userLogin)
                 const passwordStatus = passwordStatuses[u.id]
-                return <tr key={`${u.id}-${loginGuardRevision}`}>
-                  <td><b>{u.full_name || u.login_name || u.id}</b></td>
-                  <td><span className="hint">{userLogin}</span></td>
-                  <td><select value={String(u.is_active !== false)} onChange={e => updateUser(u.id, { is_active: e.target.value === 'true' })}><option value="true">Да</option><option value="false">Нет</option></select></td>
-                  <td>
-                    <div className="user-password-editor">
-                      <div className="inline-edit user-password-inline-edit">
+                return <div className="user-admin-card" key={`${u.id}-${loginGuardRevision}`}>
+                  <div className="user-admin-head">
+                    <div className="user-admin-field">
+                      <span className="user-admin-label">Пользователь</span>
+                      <strong className="user-admin-value">{u.full_name || u.login_name || u.id}</strong>
+                    </div>
+                    <div className="user-admin-field">
+                      <span className="user-admin-label">Login</span>
+                      <span className="user-admin-value hint">{userLogin}</span>
+                    </div>
+                    <div className="user-admin-field user-admin-field-compact">
+                      <span className="user-admin-label">Активен</span>
+                      <select value={String(u.is_active !== false)} onChange={e => updateUser(u.id, { is_active: e.target.value === 'true' })}><option value="true">Да</option><option value="false">Нет</option></select>
+                    </div>
+                    <div className="user-admin-field user-admin-field-salary">
+                      <span className="user-admin-label">Зарплаты</span>
+                      <label className="checkbox-row compact"><input type="checkbox" checked={Boolean(u.hide_manager_salary)} onChange={e => updateUser(u.id, { hide_manager_salary: e.target.checked })} /> <span>Скрыть зарплаты менеджеров</span></label>
+                    </div>
+                  </div>
+
+                  <div className="user-admin-middle">
+                    <div className="user-admin-password-block">
+                      <span className="user-admin-label">Смена пароля</span>
+                      <div className="user-password-bar">
                         <input type={passwordVisibility[u.id] ? 'text' : 'password'} value={passwordEdits[u.id] || ''} onChange={e => { setPasswordEdits(p => ({...p, [u.id]: e.target.value})); setPasswordStatuses(p => ({...p, [u.id]: null})) }} placeholder="Новый пароль" autoComplete="new-password" />
                         <button className="small primary" disabled={!String(passwordEdits[u.id] || '').trim()} onClick={() => changeUserPassword(u.id, userLogin)}>Применить</button>
                         <button type="button" className={`small user-password-toggle ${passwordVisibility[u.id] ? 'is-active' : ''}`} onClick={() => setPasswordVisibility(p => ({...p, [u.id]: !p[u.id]}))}>{passwordVisibility[u.id] ? 'Скрыть пароль' : 'Показать пароль'}</button>
                       </div>
+                      {passwordStatus?.text && <div className={passwordStatus.type === 'error' ? 'bad user-password-status' : passwordStatus.type === 'success' ? 'good user-password-status' : 'hint user-password-status'}>{passwordStatus.text}</div>}
                     </div>
-                    {passwordStatus?.text && <div className={passwordStatus.type === 'error' ? 'bad user-password-status' : passwordStatus.type === 'success' ? 'good user-password-status' : 'hint user-password-status'}>{passwordStatus.text}</div>}
-                  </td>
-                  <td>
-                    {guardState.locked ? <div><strong className="bad">Заблокирован</strong><div className="hint">Осталось: {rmsFormatLockTime(guardState.remainingMs)}</div></div> : guardState.attempts > 0 ? <div><strong>Попыток: {guardState.attempts}</strong><div className="hint">До блокировки: {Math.max(0, RMS_LOGIN_MAX_FAILED_ATTEMPTS - guardState.attempts)}</div></div> : <span className="good">Доступен</span>}
-                    {(guardState.locked || guardState.attempts > 0) && <button className="small" style={{marginTop:8}} onClick={() => resetUserLoginLock(userLogin, u.id)}>Обнулить блокировку</button>}
-                  </td>
-                  <td><label className="checkbox-row"><input type="checkbox" checked={Boolean(u.hide_manager_salary)} onChange={e => updateUser(u.id, { hide_manager_salary: e.target.checked })} /> Скрыть зарплаты менеджеров</label></td>
-                  <td><div className="permission-grid">{editableSections.map(sec => <div className="permission-item" key={`${u.id}-${sec.id}`}><span>{t(sec.key)}</span><select value={getPermission(u.id, sec.id)} onChange={e => updatePermission(u.id, sec.id, e.target.value)}><option value="none">Нет доступа</option><option value="read">Только просмотр</option><option value="edit">Редактор</option></select></div>)}</div></td>
-                  <td>{u.rms_internal ? <button className="small danger" onClick={() => deleteUser(u)}>Удалить</button> : <span className="hint">admin</span>}</td>
-                </tr>
-              })}</tbody>
-            </table></div>
+
+                    <div className="user-admin-status-block">
+                      <span className="user-admin-label">Статус входа</span>
+                      {guardState.locked ? <div><strong className="bad">Заблокирован</strong><div className="hint">Осталось: {rmsFormatLockTime(guardState.remainingMs)}</div></div> : guardState.attempts > 0 ? <div><strong>Попыток: {guardState.attempts}</strong><div className="hint">До блокировки: {Math.max(0, RMS_LOGIN_MAX_FAILED_ATTEMPTS - guardState.attempts)}</div></div> : <span className="good">Доступен</span>}
+                      {(guardState.locked || guardState.attempts > 0) && <button className="small" style={{marginTop:8}} onClick={() => resetUserLoginLock(userLogin, u.id)}>Обнулить блокировку</button>}
+                    </div>
+                  </div>
+
+                  <div className="user-admin-permissions-block">
+                    <div className="user-admin-section-title">Доступ к разделам</div>
+                    <div className="user-permissions-table-wrap">
+                      <table className="user-permissions-table">
+                        <tbody>{editableSections.filter((_, idx) => idx % 2 === 0).map((sec, rowIdx) => {
+                          const second = editableSections[rowIdx * 2 + 1]
+                          return <tr key={`${u.id}-perm-row-${rowIdx}`}>
+                            <td className="perm-label-cell">{t(sec.key)}</td>
+                            <td className="perm-select-cell"><select value={getPermission(u.id, sec.id)} onChange={e => updatePermission(u.id, sec.id, e.target.value)}>
+                              <option value="none">Нет доступа</option>
+                              <option value="read">Только просмотр</option>
+                              <option value="edit">Редактор</option>
+                            </select></td>
+                            {second ? <>
+                              <td className="perm-label-cell">{t(second.key)}</td>
+                              <td className="perm-select-cell"><select value={getPermission(u.id, second.id)} onChange={e => updatePermission(u.id, second.id, e.target.value)}>
+                                <option value="none">Нет доступа</option>
+                                <option value="read">Только просмотр</option>
+                                <option value="edit">Редактор</option>
+                              </select></td>
+                            </> : <><td className="perm-label-cell empty"></td><td className="perm-select-cell empty"></td></>}
+                          </tr>
+                        })}</tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  <div className="user-admin-actions">
+                    {u.rms_internal ? <button className="small danger" onClick={() => deleteUser(u)}>Удалить</button> : <span className="hint">admin</span>}
+                  </div>
+                </div>
+              })}</div>
           </div>
         </>}
 
