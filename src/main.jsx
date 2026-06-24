@@ -24893,30 +24893,19 @@ function Suppliers({ t, isAdmin = false }) {
     if (reason === null) return
     const stopProgress = startGlobalProgress('Удаление товара...')
     try {
-      const [{ count: purchaseRefs }, { count: recipeRefs }] = await Promise.all([
-        supabase.from('supplier_purchase_items').select('id', { count: 'exact', head: true }).eq('product_id', product.id),
-        supabase.from('recipe_items').select('id', { count: 'exact', head: true }).eq('product_id', product.id)
-      ])
-      const referenced = parseNum(purchaseRefs) + parseNum(recipeRefs) > 0
-      const { error } = referenced
-        ? await supabase.from('supplier_products').update({ is_active: false }).eq('id', product.id)
-        : await supabase.from('supplier_products').delete().eq('id', product.id)
+      const { data, error } = await supabase.rpc('rms_supplier_product_remove_secure', {
+        p_product_id: product.id,
+        p_reason: reason
+      })
       if (error) throw error
-      try {
-        const { data: authUserData } = await supabase.auth.getUser()
-        const internalSession = getInternalSessionStorage()
-        await supabase.from('finance_operation_log').insert({
-          entity_type: 'supplier_product', record_id: product.id, branch_id: null,
-          operation_date: todayISO(), action: referenced ? 'deactivate' : 'delete',
-          field_name: 'is_active', old_value: 'true', new_value: referenced ? 'false' : `deleted: ${reason}`,
-          user_id: authUserData?.user?.id || null,
-          user_email: authUserData?.user?.email || internalSession?.user?.email || internalSession?.user?.login_name || 'rms.internal'
-        })
-      } catch (_logError) {}
+      const result = Array.isArray(data) ? data[0] : data
+      if (!result?.ok) throw new Error('База не подтвердила удаление товара')
+
       setEditingSupplierProductId('')
-      setProducts(prev => (prev || []).filter(p => p.id !== product.id))
+      setProducts(prev => (prev || []).filter(p => String(p.id) !== String(product.id)))
       await load()
-      setProductMessage('Товар удалён из рабочего справочника')
+      setProducts(prev => (prev || []).filter(p => String(p.id) !== String(product.id) && p.is_active !== false))
+      setProductMessage(result.mode === 'deleted' ? 'Товар удалён' : 'Товар удалён из рабочего справочника')
     } catch (e) {
       setProductMessage(e.message || 'Не удалось удалить товар')
     } finally {
@@ -27456,12 +27445,12 @@ function DebtsPayments({ t }) {
 
   const normalizedLedgerSearch = String(ledgerSearch || '').trim().toLowerCase()
   const normalizedInvoiceSearch = String(invoiceSearch || '').trim().toLowerCase()
-  const searchedSuppliers = activeSuppliers
+  const searchedSuppliers = (suppliers || [])
     .filter(s => {
       const haystack = `${s.name || ''} ${s.voen || ''}`.toLowerCase()
       return !normalizedLedgerSearch || haystack.includes(normalizedLedgerSearch)
     })
-    .slice(0, 25)
+    .sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'ru'))
 
   const ledgerSupplierIds = new Set(searchedSuppliers.map(s => s.id))
   const ledgerBaseRows = [
