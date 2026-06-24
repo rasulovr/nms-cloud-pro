@@ -4132,6 +4132,13 @@ const RMS_AZ_EXTRA_TRANSLATIONS = {
   ,'Операции не найдены.': 'Əməliyyat tapılmadı.'
   ,'Закрыть': 'Bağla'
   ,'Редактировать': 'Redaktə et'
+
+  ,'Поставщик / VOEN': 'Təchizatçı / VÖEN'
+  ,'Поставщик/VOEN': 'Təchizatçı / VÖEN'
+  ,'Фактура / отметки': 'Faktura / qeydlər'
+  ,'Фактура/отметки': 'Faktura / qeydlər'
+  ,'фактура / отметки': 'Faktura / qeydlər'
+  ,'фактура/отметки': 'Faktura / qeydlər'
 }
 
 function rmsBuildAzInterfaceMap() {
@@ -4168,15 +4175,17 @@ function rmsTranslateDynamicAzText(text) {
     [/^Показать ещё\s*·\s*всего\s*(\d+)$/i, (_, n) => `Daha çox göstər · cəmi ${n}`],
     [/^Страница\s+(\d+)\s*\/\s*(\d+)\s*·\s*всего\s*(\d+)$/i, (_, a, b, c) => `Səhifə ${a} / ${b} · cəmi ${c}`],
     [/^Итого по фактуре:\s*([\d.,]+)\s*AZN\.?$/i, (_, n) => `Faktura üzrə cəmi: ${n} AZN.`],
-    [/^(\d+)\s+поставщиков$/i, (_, n) => `${n} təchizatçı`],
+    [/^(\d+)\s+поставщик(?:а|ов)?$/i, (_, n) => `${n} təchizatçı`],
     [/^(\d+)\s+дней$/i, (_, n) => `${n} gün`],
-    [/^просрочено:\s*(\d+)$/i, (_, n) => `gecikmiş: ${n}`],
+    [/^просрочено\s*:\s*(\d+)$/i, (_, n) => `gecikmiş: ${n}`],
     [/^лимит \+([\d.,]+)$/i, (_, n) => `limit +${n}`],
     [/^(\d+)\s+дн\.$/i, (_, n) => `${n} gün`],
     [/^Показать все\s*·\s*(\d+)$/i, (_, n) => `Hamısını göstər · ${n}`],
     [/^Долг:\s*([\d.,]+)\s*AZN$/i, (_, n) => `Borc: ${n} AZN`],
     [/^Долга нет:\s*([\d.,]+)\s*AZN$/i, (_, n) => `Borc yoxdur: ${n} AZN`],
     [/^превышение лимита$/i, () => 'limit aşımı'],
+    [/^поставщик\s*\/\s*voen$/i, () => 'Təchizatçı / VÖEN'],
+    [/^фактура\s*\/\s*отметки$/i, () => 'Faktura / qeydlər'],
     [/^(\d+)\s+найдено$/i, (_, n) => `${n} tapıldı`]
   ]
   for (const [pattern, replacer] of patterns) {
