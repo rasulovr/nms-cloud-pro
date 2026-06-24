@@ -18648,11 +18648,15 @@ function normalizeProductType(category) {
 
 const BASE_UNITS = [
   { value: 'g', label: 'грамм (g)' },
-  { value: 'kg', label: 'килограмм (kg)' },
   { value: 'ml', label: 'миллилитр (ml)' },
-  { value: 'l', label: 'литр (l)' },
   { value: 'pcs', label: 'штука (pcs)' }
 ]
+function normalizeSupplierBaseUnit(unit) {
+  const value = String(unit || '').trim().toLowerCase()
+  if (value === 'kg') return 'g'
+  if (value === 'l') return 'ml'
+  return ['g', 'ml', 'pcs'].includes(value) ? value : 'g'
+}
 const PURCHASE_UNITS = [
   { value: 'kg', label: 'килограмм (kg)' },
   { value: 'g', label: 'грамм (g)' },
@@ -21176,10 +21180,10 @@ function RecipesLegacy({ t }) {
     const { data, error } = await supabase.from('supplier_products').insert({
       name: productForm.name.trim(),
       category: productForm.category,
-      base_unit: productForm.base_unit
+      base_unit: normalizeSupplierBaseUnit(productForm.base_unit)
     }).select('*').single()
     if (error) return setMessage(error.message)
-    setProductForm({ name: '', category: productForm.category, base_unit: productForm.base_unit })
+    setProductForm({ name: '', category: productForm.category, base_unit: normalizeSupplierBaseUnit(productForm.base_unit) })
     await loadBase()
     setSelectedCategory(data?.category || productForm.category)
     setSelectedProductId(data?.id || '')
@@ -21188,7 +21192,10 @@ function RecipesLegacy({ t }) {
 
   async function updateProduct(id, patch) {
     setMessage('')
-    const { error } = await supabase.from('supplier_products').update(patch).eq('id', id)
+    const safePatch = patch && Object.prototype.hasOwnProperty.call(patch, 'base_unit')
+      ? { ...patch, base_unit: normalizeSupplierBaseUnit(patch.base_unit) }
+      : patch
+    const { error } = await supabase.from('supplier_products').update(safePatch).eq('id', id)
     if (error) setMessage(error.message)
     else await loadBase()
   }
@@ -24585,7 +24592,7 @@ function Suppliers({ t, isAdmin = false }) {
     const { error } = await supabase.from('supplier_products').insert({ name: productForm.name.trim(), category: productForm.category, base_unit: productForm.base_unit })
     stopProgress()
     if (error) return setProductMessage(error.message)
-    setProductForm({ name: '', category: productForm.category, base_unit: productForm.base_unit })
+    setProductForm({ name: '', category: productForm.category, base_unit: normalizeSupplierBaseUnit(productForm.base_unit) })
     await load(); setProductMessage(t('saved'))
   }
 
