@@ -2058,17 +2058,23 @@ async function hydrateRmsInternalAuthFromCloud() {
     const localUsersObj = (localUsers && typeof localUsers === 'object' && !Array.isArray(localUsers)) ? localUsers : {}
     const localPermsObj = (localPerms && typeof localPerms === 'object' && !Array.isArray(localPerms)) ? localPerms : {}
 
-    const nextUsers = { ...cloudUsersObj, ...localUsersObj }
-    const nextPerms = { ...cloudPermsObj, ...localPermsObj }
+    const hasCloudUsers = Object.keys(cloudUsersObj).length > 0
+    const hasCloudPerms = Object.keys(cloudPermsObj).length > 0
+
+    // v290: cloud is authoritative. A stale browser cache must never overwrite
+    // a newer password, user state or permissions saved from another computer.
+    const nextUsers = hasCloudUsers ? cloudUsersObj : localUsersObj
+    const nextPerms = hasCloudPerms ? cloudPermsObj : localPermsObj
 
     if (Object.keys(nextUsers).length) writeJsonStorage(RMS_INTERNAL_USERS_KEY, nextUsers)
     if (Object.keys(nextPerms).length) writeJsonStorage(RMS_INTERNAL_PERMISSIONS_KEY, nextPerms)
 
-    if (Object.keys(nextUsers).length && JSON.stringify(nextUsers) !== JSON.stringify(cloudUsersObj)) {
-      await writeRmsAppSetting(RMS_INTERNAL_USERS_SETTING, nextUsers)
+    // Upload local data only when the cloud setting does not exist yet.
+    if (!hasCloudUsers && Object.keys(localUsersObj).length) {
+      await writeRmsAppSetting(RMS_INTERNAL_USERS_SETTING, localUsersObj)
     }
-    if (Object.keys(nextPerms).length && JSON.stringify(nextPerms) !== JSON.stringify(cloudPermsObj)) {
-      await writeRmsAppSetting(RMS_INTERNAL_PERMISSIONS_SETTING, nextPerms)
+    if (!hasCloudPerms && Object.keys(localPermsObj).length) {
+      await writeRmsAppSetting(RMS_INTERNAL_PERMISSIONS_SETTING, localPermsObj)
     }
 
     return { users: nextUsers, permissions: nextPerms, error: null }
@@ -4413,22 +4419,34 @@ function App() {
   useEffect(() => { document.documentElement.dataset.nmsTheme = theme }, [theme])
 
   useEffect(() => {
-    const storedInternal = getInternalSessionStorage()
-    if (storedInternal?.rms_internal) {
-      setSession(storedInternal)
-      setLoading(false)
-      return
+    let mounted = true
+
+    const bootAuth = async () => {
+      try {
+        // v290: finish cloud hydration before resolving an internal session.
+        await hydrateRmsInternalAuthFromCloud()
+        const storedInternal = getInternalSessionStorage()
+        if (storedInternal?.rms_internal) {
+          if (mounted) setSession(storedInternal)
+          return
+        }
+
+        const { data } = await supabase.auth.getSession()
+        if (mounted) setSession(data.session || null)
+      } finally {
+        if (mounted) setLoading(false)
+      }
     }
 
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session)
-      setLoading(false)
-    })
+    bootAuth()
 
     const { data: sub } = supabase.auth.onAuthStateChange((_event, nextSession) => {
-      if (!getInternalSessionStorage()?.rms_internal) setSession(nextSession)
+      if (!getInternalSessionStorage()?.rms_internal && mounted) setSession(nextSession || null)
     })
-    return () => sub.subscription.unsubscribe()
+    return () => {
+      mounted = false
+      sub.subscription.unsubscribe()
+    }
   }, [])
 
   async function loadSupabaseProfile(activeSession) {
@@ -4562,7 +4580,7 @@ function App() {
   }
 
   if (loading) return <div className="login-screen"><div className="login-card">{t('loading')}</div></div>
-  if (!session) return <Login lang={lang} setLang={setLang} t={t} />
+  if (!session) return <Login lang={lang} setLang={setLang} t={t} onSignedIn={nextSession => { setSession(nextSession); setLoading(false) }} />
 
   const visibleSectionMap = Object.fromEntries(visibleSections.map(s => [s.id, s]))
   const groupedSections = RMS_PRO_NAV_GROUPS.map(group => ({
@@ -14381,7 +14399,7 @@ function normalizeLoginCandidates(login) {
   return [`${value}@rms.local.az`, `${value}@nms.local.az`]
 }
 
-function Login({ lang, setLang, t }) {
+function Login({ lang, setLang, t, onSignedIn }) {
   const [login, setLogin] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -14426,7 +14444,7 @@ function Login({ lang, setLang, t }) {
 
         const loginName = internalUser.login || normalizedLogin
         await rmsClearSharedLoginGuard(rawLogin)
-        setInternalSessionStorage({
+        const nextInternalSession = {
           rms_internal: true,
           access_token: `rms-internal-${internalUser.id || loginName}`,
           user: {
@@ -14434,9 +14452,11 @@ function Login({ lang, setLang, t }) {
             email: `${loginName}@rms.internal`,
             login_name: loginName
           }
-        })
+        }
+        setInternalSessionStorage(nextInternalSession)
         window.dispatchEvent(new Event('rms-user-settings-updated'))
-        window.location.reload()
+        stopProgress()
+        onSignedIn?.(nextInternalSession)
         return
       }
 
@@ -14444,11 +14464,12 @@ function Login({ lang, setLang, t }) {
         return await failLogin('Пользователь не найден или пароль неверный. Создайте пользователя заново в Настройки → Пользователи')
       }
 
-      const { error } = await supabase.auth.signInWithPassword({ email: rawLogin.toLowerCase(), password: rawPassword })
-      if (!error) {
+      const { data, error } = await supabase.auth.signInWithPassword({ email: rawLogin.toLowerCase(), password: rawPassword })
+      if (!error && data?.session) {
         await rmsClearSharedLoginGuard(rawLogin)
-        stopProgress()
         setInternalSessionStorage(null)
+        stopProgress()
+        onSignedIn?.(data.session)
         return
       }
 
