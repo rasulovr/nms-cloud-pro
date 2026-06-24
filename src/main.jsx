@@ -1992,24 +1992,54 @@ async function readRmsAppSetting(key, fallback = null) {
 
 async function writeRmsAppSetting(key, value) {
   try {
-    const { error } = await supabase
+    const direct = await supabase
       .from(RMS_APP_SETTINGS_TABLE)
       .upsert({ key, value, updated_at: new Date().toISOString() }, { onConflict: 'key' })
-    return { error: error || null }
+
+    if (!direct.error) return { error: null }
+
+    const isRlsError = /row-level security|violates row-level security|permission denied/i.test(String(direct.error?.message || direct.error || ''))
+    if (!isRlsError) return { error: direct.error }
+
+    const rpc = await supabase.rpc('rms_app_setting_write_secure', {
+      p_key: key,
+      p_value: value
+    })
+    return { error: rpc.error || null, data: rpc.data || null }
   } catch (error) {
-    return { error }
+    try {
+      const rpc = await supabase.rpc('rms_app_setting_write_secure', {
+        p_key: key,
+        p_value: value
+      })
+      return { error: rpc.error || null, data: rpc.data || null }
+    } catch (rpcError) {
+      return { error: rpcError || error }
+    }
   }
 }
 
 async function deleteRmsAppSetting(key) {
   try {
-    const { error } = await supabase
+    const direct = await supabase
       .from(RMS_APP_SETTINGS_TABLE)
       .delete()
       .eq('key', key)
-    return { error: error || null }
+
+    if (!direct.error) return { error: null }
+
+    const isRlsError = /row-level security|violates row-level security|permission denied/i.test(String(direct.error?.message || direct.error || ''))
+    if (!isRlsError) return { error: direct.error }
+
+    const rpc = await supabase.rpc('rms_app_setting_delete_secure', { p_key: key })
+    return { error: rpc.error || null, data: rpc.data || null }
   } catch (error) {
-    return { error }
+    try {
+      const rpc = await supabase.rpc('rms_app_setting_delete_secure', { p_key: key })
+      return { error: rpc.error || null, data: rpc.data || null }
+    } catch (rpcError) {
+      return { error: rpcError || error }
+    }
   }
 }
 
@@ -14294,6 +14324,31 @@ function RMSProV6Styles() {
 .rms-pro-shell .supplier-products-admin-list select{width:100%!important;min-width:0!important;}
 .rms-pro-shell .supplier-products-admin-list .action-row{flex-wrap:nowrap!important;}
 
+
+/* v287 supplier products collapsed list and pagination */
+.rms-pro-shell .supplier-products-toolbar{
+  display:grid!important;
+  grid-template-columns:minmax(260px,1fr) 150px!important;
+  gap:14px!important;
+  align-items:end!important;
+  margin:18px 0 12px!important;
+}
+.rms-pro-shell .supplier-products-toolbar label{display:flex!important;flex-direction:column!important;gap:6px!important;}
+.rms-pro-shell .supplier-products-toolbar label>span{font-size:11.5px!important;font-weight:800!important;color:#64748b!important;}
+.rms-pro-shell .supplier-products-pagination{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:space-between!important;
+  gap:16px!important;
+  margin-top:12px!important;
+  padding-top:12px!important;
+  border-top:1px solid #e5eaf1!important;
+}
+@media(max-width:760px){
+  .rms-pro-shell .supplier-products-toolbar{grid-template-columns:1fr!important;}
+  .rms-pro-shell .supplier-products-pagination{align-items:flex-start!important;flex-direction:column!important;}
+}
+
 /* v235 Revenue chart KPI labels only */
 .reports-v231-preferred-revenue-chart .metric-title{
   line-height:1.15;
@@ -24189,6 +24244,9 @@ function Suppliers({ t, isAdmin = false }) {
   const [supplierForm, setSupplierForm] = useState({ name: '', voen: '', contact_person: '', phone: '', info: '', payment_term_days: '', credit_limit: '', opening_debt_amount: '', opening_debt_legal_entity_id: '', opening_debt_date: todayISO(), opening_debt_comment: '' })
   const [productForm, setProductForm] = useState({ name: '', category: PRODUCT_CATEGORIES[0], base_unit: 'g' })
   const [supplierProductSearch, setSupplierProductSearch] = useState('')
+  const [showSupplierProducts, setShowSupplierProducts] = useState(false)
+  const [supplierProductsPageSize, setSupplierProductsPageSize] = useState(10)
+  const [supplierProductsPage, setSupplierProductsPage] = useState(1)
   const [editingSupplierProductId, setEditingSupplierProductId] = useState('')
   const [supplierProductEditForm, setSupplierProductEditForm] = useState({ name: '', category: PRODUCT_CATEGORIES[0], base_unit: 'g' })
   const [purchaseForm, setPurchaseForm] = useState({ supplier_id: '', legal_entity_id: '', branch_id: '', purchase_date: todayISO(), invoice_number: '', e_invoice_number: '', e_invoice_date: '', e_invoice_amount: '', comment: '', amount_only: false, manual_amount: '' })
@@ -24252,6 +24310,13 @@ function Suppliers({ t, isAdmin = false }) {
   const activeSuppliersForOpeningLegal = useMemo(() => activeSuppliers.filter(s => isSupplierActiveForLegal(s.id, openingDebtForm.legal_entity_id)), [activeSuppliers, supplierEntityStatusMap, openingDebtForm.legal_entity_id])
   const supplierAdminRows = isAdmin ? (suppliers || []) : activeSuppliers
   const visibleSupplierAdminRows = supplierAdminExpanded ? supplierAdminRows : supplierAdminRows.slice(0, 2)
+  const filteredSupplierProducts = useMemo(() => {
+    const q = String(supplierProductSearch || '').trim().toLowerCase()
+    return (products || []).filter(p => p.is_active !== false).filter(p => !q || String(p.name || '').toLowerCase().includes(q) || String(p.category || '').toLowerCase().includes(q))
+  }, [products, supplierProductSearch])
+  const supplierProductsPageCount = Math.max(1, Math.ceil(filteredSupplierProducts.length / supplierProductsPageSize))
+  const safeSupplierProductsPage = Math.min(supplierProductsPage, supplierProductsPageCount)
+  const pagedSupplierProducts = filteredSupplierProducts.slice((safeSupplierProductsPage - 1) * supplierProductsPageSize, safeSupplierProductsPage * supplierProductsPageSize)
 
   async function revenueDistributionForSupplierDate(expenseDate) {
     const { data } = await supabase
@@ -24383,7 +24448,7 @@ function Suppliers({ t, isAdmin = false }) {
       if (!error && ws) {
         setLegalEntities(ws.legal_entities || [])
         setSuppliers(ws.suppliers || [])
-        setProducts(ws.supplier_products || [])
+        setProducts((ws.supplier_products || []).filter(p => p.is_active !== false))
         setBalances(ws.supplier_balances || [])
         try {
           const fullPurchases = await fetchAllSupplierPurchasesRows()
@@ -24849,8 +24914,9 @@ function Suppliers({ t, isAdmin = false }) {
         })
       } catch (_logError) {}
       setEditingSupplierProductId('')
+      setProducts(prev => (prev || []).filter(p => p.id !== product.id))
       await load()
-      setProductMessage(referenced ? 'Товар использовался в операциях и был деактивирован' : 'Товар удалён')
+      setProductMessage('Товар удалён из рабочего справочника')
     } catch (e) {
       setProductMessage(e.message || 'Не удалось удалить товар')
     } finally {
@@ -26276,13 +26342,16 @@ function Suppliers({ t, isAdmin = false }) {
       </div>
 
       <div className="card span-2">
-        <div className="card-head"><div><h3>Товары</h3><p className="hint">Товар создаётся один раз и потом выбирается в поступлении и в техкарте.</p></div></div>
+        <div className="card-head"><div><h3>Товары</h3><p className="hint">Товар создаётся один раз и потом выбирается в поступлении и в техкарте.</p></div><button className="small" onClick={() => { setShowSupplierProducts(v => !v); setSupplierProductsPage(1) }}>{showSupplierProducts ? 'Скрыть товары' : `Показать товары · ${filteredSupplierProducts.length}`}</button></div>
         <div className="form-grid compact"><label><span>Товар</span><input value={productForm.name} onChange={e => { setProductForm({...productForm, name: e.target.value}); setProductMessage('') }} /></label><label><span>Тип</span><select value={productForm.category} onChange={e => setProductForm({...productForm, category: e.target.value})}>{PRODUCT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select></label><label><span>Базовая ед. для техкарты</span><select value={productForm.base_unit} onChange={e => setProductForm({...productForm, base_unit: e.target.value})}>{BASE_UNITS.map(u => <option key={u.value} value={u.value}>{u.label}</option>)}</select></label></div>
         <div className="rms-form-action-row"><button className="small" onClick={addProductFromForm}>+ Добавить товар</button>{productMessage && <span className={`rms-inline-operation-status ${rmsInferToastType(productMessage)}`}>{productMessage}</span>}</div>
-        <div className="supplier-products-admin-list">
-          <div className="form-grid compact" style={{marginTop:16}}><label><span>Поиск товара</span><input value={supplierProductSearch} onChange={e => setSupplierProductSearch(e.target.value)} placeholder="Название или категория" /></label></div>
+        {showSupplierProducts && <div className="supplier-products-admin-list">
+          <div className="supplier-products-toolbar">
+            <label><span>Поиск товара</span><input value={supplierProductSearch} onChange={e => { setSupplierProductSearch(e.target.value); setSupplierProductsPage(1) }} placeholder="Название или категория" /></label>
+            <label><span>Показать</span><select value={supplierProductsPageSize} onChange={e => { setSupplierProductsPageSize(Number(e.target.value)); setSupplierProductsPage(1) }}><option value={10}>10</option><option value={20}>20</option><option value={50}>50</option><option value={100}>100</option></select></label>
+          </div>
           <div className="table-wrap"><table><thead><tr><th>Товар</th><th>Тип</th><th>Базовая единица</th><th>Действия</th></tr></thead><tbody>
-            {products.filter(p => { const q = supplierProductSearch.trim().toLowerCase(); return !q || String(p.name || '').toLowerCase().includes(q) || String(p.category || '').toLowerCase().includes(q) }).map(product => {
+            {pagedSupplierProducts.map(product => {
               const editing = editingSupplierProductId === product.id
               return <tr key={product.id}>
                 <td>{editing ? <input value={supplierProductEditForm.name} onChange={e => setSupplierProductEditForm({...supplierProductEditForm, name:e.target.value})} /> : <b>{product.name}</b>}</td>
@@ -26291,9 +26360,10 @@ function Suppliers({ t, isAdmin = false }) {
                 <td><div className="action-row">{editing ? <><button className="small primary" onClick={() => saveSupplierProduct(product)}>Сохранить</button><button className="ghost small" onClick={() => setEditingSupplierProductId('')}>Отмена</button></> : <><button className="small" onClick={() => startEditSupplierProduct(product)}>Редактировать</button><button className="small remove" onClick={() => deleteSupplierProduct(product)}>Удалить</button></>}</div></td>
               </tr>
             })}
-            {!products.length && <tr><td colSpan="4" className="hint">Товары не найдены</td></tr>}
+            {!filteredSupplierProducts.length && <tr><td colSpan="4" className="hint">Товары не найдены</td></tr>}
           </tbody></table></div>
-        </div>
+          <div className="supplier-products-pagination"><span className="hint">Показано {filteredSupplierProducts.length ? (safeSupplierProductsPage - 1) * supplierProductsPageSize + 1 : 0}–{Math.min(safeSupplierProductsPage * supplierProductsPageSize, filteredSupplierProducts.length)} из {filteredSupplierProducts.length}</span><div className="action-row"><button className="ghost small" disabled={safeSupplierProductsPage <= 1} onClick={() => setSupplierProductsPage(p => Math.max(1, p - 1))}>← Пред.</button><span className="hint">Страница {safeSupplierProductsPage} / {supplierProductsPageCount}</span><button className="ghost small" disabled={safeSupplierProductsPage >= supplierProductsPageCount} onClick={() => setSupplierProductsPage(p => Math.min(supplierProductsPageCount, p + 1))}>След. →</button></div></div>
+        </div>}
       </div>
 
       {/* v260: Standalone “Список e-qaimə” removed.
