@@ -14125,6 +14125,26 @@ function RMSProV6Styles() {
   .rms-pro-shell .supplier-common-ops-table{min-width:1040px!important;}
 }
 
+
+/* v284 supplier purchase: editable line amount and automatic unit price */
+.rms-pro-shell .suppliers-purchase-price-table{min-width:1180px!important;table-layout:fixed!important;}
+.rms-pro-shell .suppliers-purchase-price-table th:nth-child(1),
+.rms-pro-shell .suppliers-purchase-price-table td:nth-child(1){width:135px!important;}
+.rms-pro-shell .suppliers-purchase-price-table th:nth-child(2),
+.rms-pro-shell .suppliers-purchase-price-table td:nth-child(2){width:280px!important;}
+.rms-pro-shell .suppliers-purchase-price-table th:nth-child(3),
+.rms-pro-shell .suppliers-purchase-price-table td:nth-child(3){width:135px!important;}
+.rms-pro-shell .suppliers-purchase-price-table th:nth-child(4),
+.rms-pro-shell .suppliers-purchase-price-table td:nth-child(4){width:170px!important;}
+.rms-pro-shell .suppliers-purchase-price-table th:nth-child(5),
+.rms-pro-shell .suppliers-purchase-price-table td:nth-child(5){width:155px!important;}
+.rms-pro-shell .suppliers-purchase-price-table th:nth-child(6),
+.rms-pro-shell .suppliers-purchase-price-table td:nth-child(6){width:190px!important;}
+.rms-pro-shell .suppliers-purchase-price-table th:nth-child(7),
+.rms-pro-shell .suppliers-purchase-price-table td:nth-child(7){width:58px!important;text-align:center!important;}
+.rms-pro-shell .supplier-auto-unit-price{display:flex!important;flex-direction:column!important;gap:5px!important;min-width:0!important;}
+.rms-pro-shell .supplier-auto-unit-price small{font-size:11px!important;line-height:1.25!important;color:#64748b!important;white-space:nowrap!important;}
+
 /* v235 Revenue chart KPI labels only */
 .reports-v231-preferred-revenue-chart .metric-title{
   line-height:1.15;
@@ -18647,15 +18667,15 @@ function normalizeProductType(category) {
 }
 
 const BASE_UNITS = [
+  { value: 'kg', label: 'килограмм (kg)' },
   { value: 'g', label: 'грамм (g)' },
   { value: 'ml', label: 'миллилитр (ml)' },
   { value: 'pcs', label: 'штука (pcs)' }
 ]
 function normalizeSupplierBaseUnit(unit) {
   const value = String(unit || '').trim().toLowerCase()
-  if (value === 'kg') return 'g'
   if (value === 'l') return 'ml'
-  return ['g', 'ml', 'pcs'].includes(value) ? value : 'g'
+  return ['kg', 'g', 'ml', 'pcs'].includes(value) ? value : 'g'
 }
 const PURCHASE_UNITS = [
   { value: 'kg', label: 'килограмм (kg)' },
@@ -24020,7 +24040,7 @@ function Suppliers({ t, isAdmin = false }) {
   const [supplierForm, setSupplierForm] = useState({ name: '', voen: '', contact_person: '', phone: '', info: '', payment_term_days: '', credit_limit: '', opening_debt_amount: '', opening_debt_legal_entity_id: '', opening_debt_date: todayISO(), opening_debt_comment: '' })
   const [productForm, setProductForm] = useState({ name: '', category: PRODUCT_CATEGORIES[0], base_unit: 'g' })
   const [purchaseForm, setPurchaseForm] = useState({ supplier_id: '', legal_entity_id: '', branch_id: '', purchase_date: todayISO(), invoice_number: '', e_invoice_number: '', e_invoice_date: '', e_invoice_amount: '', comment: '', amount_only: false, manual_amount: '' })
-  const emptyLine = { category: PRODUCT_CATEGORIES[0], product_id: '', base_unit: 'g', quantity: '1', unit: 'kg', unit_price: '' }
+  const emptyLine = { category: PRODUCT_CATEGORIES[0], product_id: '', base_unit: 'kg', quantity: '1', unit: 'kg', unit_price: '', line_amount: '' }
   const [lineRows, setLineRows] = useState([emptyLine])
   const [paymentForm, setPaymentForm] = useState({ supplier_id: '', legal_entity_id: '', payment_date: todayISO(), amount: '', invoice_notes: '', comment: '', e_invoice_id: '', selected_e_invoice_ids: [] })
   const [showPaymentCreateOverlay, setShowPaymentCreateOverlay] = useState(false)
@@ -24303,11 +24323,35 @@ function Suppliers({ t, isAdmin = false }) {
     const overdue = termDays > 0 ? purchases.filter(p => p.supplier_id === supplier.id && ((now - new Date(p.purchase_date)) / 86400000) > termDays) : []
     return { overLimit, overdueCount: overdue.length, overdueInvoices: overdue.map(p => p.invoice_number || p.purchase_date).slice(0, 5) }
   }
-  function lineTotal(row) { return parseNum(row.quantity) * parseNum(row.unit_price) }
+  function formatPurchaseDraftNumber(value, precision = 6) {
+    const number = Number(value)
+    if (!Number.isFinite(number)) return ''
+    return number.toFixed(precision).replace(/\.?0+$/, '')
+  }
+  function lineTotal(row) {
+    const explicitAmount = String(row?.line_amount ?? '').trim()
+    return explicitAmount !== '' ? parseNum(explicitAmount) : parseNum(row.quantity) * parseNum(row.unit_price)
+  }
   function updateLine(index, patch) {
     setLineRows(rows => rows.map((row, i) => {
       if (i !== index) return row
       const next = { ...row, ...patch }
+      const quantity = parseNum(next.quantity)
+
+      if (Object.prototype.hasOwnProperty.call(patch, 'line_amount')) {
+        const amount = parseNum(patch.line_amount)
+        next.unit_price = quantity > 0 && amount >= 0 ? formatPurchaseDraftNumber(amount / quantity) : ''
+      } else if (Object.prototype.hasOwnProperty.call(patch, 'unit_price')) {
+        const unitPrice = parseNum(patch.unit_price)
+        next.line_amount = quantity > 0 && unitPrice >= 0 ? formatPurchaseDraftNumber(quantity * unitPrice, 2) : ''
+      } else if (Object.prototype.hasOwnProperty.call(patch, 'quantity')) {
+        const amount = parseNum(next.line_amount)
+        if (quantity > 0 && String(next.line_amount ?? '').trim() !== '') {
+          next.unit_price = formatPurchaseDraftNumber(amount / quantity)
+        } else if (quantity > 0 && parseNum(next.unit_price) > 0) {
+          next.line_amount = formatPurchaseDraftNumber(quantity * parseNum(next.unit_price), 2)
+        }
+      }
       return next
     }))
   }
@@ -24589,10 +24633,11 @@ function Suppliers({ t, isAdmin = false }) {
     setProductMessage('')
     if (!productForm.name.trim()) return setProductMessage('Введите товар')
     const stopProgress = startGlobalProgress('Сохранение товара...')
-    const { error } = await supabase.from('supplier_products').insert({ name: productForm.name.trim(), category: productForm.category, base_unit: productForm.base_unit })
+    const safeBaseUnit = normalizeSupplierBaseUnit(productForm.base_unit)
+    const { error } = await supabase.from('supplier_products').insert({ name: productForm.name.trim(), category: productForm.category, base_unit: safeBaseUnit })
     stopProgress()
     if (error) return setProductMessage(error.message)
-    setProductForm({ name: '', category: productForm.category, base_unit: normalizeSupplierBaseUnit(productForm.base_unit) })
+    setProductForm({ name: '', category: productForm.category, base_unit: safeBaseUnit })
     await load(); setProductMessage(t('saved'))
   }
 
@@ -25815,13 +25860,13 @@ function Suppliers({ t, isAdmin = false }) {
         </div>
 
         <div className="card-head suppliers-purchase-items-head"><div><h3>Товары в поступлении</h3><p className="hint">Если товара нет, сначала добавьте его ниже в блоке “Товары”.</p></div><button className="small" disabled={purchaseForm.amount_only} onClick={() => setLineRows(rows => [...rows, { ...emptyLine }])}>+ Строка товара</button></div>
-        <div className="table-wrap suppliers-purchase-items-wrap"><table className="suppliers-purchase-items-table"><thead><tr><th>Тип</th><th>Товар</th><th>Кол-во закупа</th><th>Ед. закупа</th><th>Цена за ед.</th><th>Сумма</th><th></th></tr></thead><tbody>{purchaseForm.amount_only ? <tr><td colSpan="7" className="hint">Товары отключены: поступление будет сохранено общей суммой.</td></tr> : lineRows.map((row, idx) => <tr key={idx}>
+        <div className="table-wrap suppliers-purchase-items-wrap"><table className="suppliers-purchase-items-table suppliers-purchase-price-table"><thead><tr><th>Тип</th><th>Товар</th><th>Кол-во закупа</th><th>Ед. закупа</th><th>Сумма строки</th><th>Цена за ед.</th><th></th></tr></thead><tbody>{purchaseForm.amount_only ? <tr><td colSpan="7" className="hint">Товары отключены: поступление будет сохранено общей суммой.</td></tr> : lineRows.map((row, idx) => <tr key={idx}>
           <td><select value={row.category} onChange={e => updateLine(idx, { category: e.target.value })}>{PRODUCT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select></td>
           <td style={{minWidth:260}}><select value={row.product_id || ''} onChange={e => selectProductForLine(idx, e.target.value)}><option value="">Выберите товар</option>{productOptionsForRow(row).map(p => <option key={p.id} value={p.id}>{productLabel(p)}</option>)}</select></td>
-          <td><input inputMode="decimal" value={row.quantity} onChange={e => updateLine(idx, { quantity: e.target.value })} /></td>
+          <td><input inputMode="decimal" value={row.quantity} onChange={e => updateLine(idx, { quantity: e.target.value })} placeholder="30" /></td>
           <td><select value={row.unit} onChange={e => updateLine(idx, { unit: e.target.value })}>{PURCHASE_UNITS.map(u => <option key={u.value} value={u.value}>{u.label}</option>)}</select></td>
-          <td><input inputMode="decimal" value={row.unit_price} onChange={e => updateLine(idx, { unit_price: e.target.value })} /></td>
-          <td><strong>{fmt(lineTotal(row))}</strong></td>
+          <td><input inputMode="decimal" value={row.line_amount ?? ''} onChange={e => updateLine(idx, { line_amount: e.target.value })} placeholder="86.87" /></td>
+          <td><div className="supplier-auto-unit-price"><input inputMode="decimal" value={row.unit_price} onChange={e => updateLine(idx, { unit_price: e.target.value })} placeholder="0.00" /><small>{parseNum(row.quantity) > 0 && parseNum(row.unit_price) >= 0 ? `${formatPurchaseDraftNumber(parseNum(row.unit_price), 4)} AZN / ${row.unit || 'ед.'}` : 'Рассчитается автоматически'}</small></div></td>
           <td><button className="remove" onClick={() => setLineRows(rows => rows.length === 1 ? [{ ...emptyLine }] : rows.filter((_, i) => i !== idx))}>×</button></td>
         </tr>)}</tbody></table></div>
         <p className="hint">Итого по фактуре: <strong>{fmt(purchaseTotal)}</strong> AZN.</p><button className="small primary" onClick={addPurchase}>+ Сохранить поступление</button>{message && <p className={`hint ${message === t('saved') ? 'save-status' : 'bad'}`}>{message}</p>}
