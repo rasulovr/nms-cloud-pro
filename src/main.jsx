@@ -14415,6 +14415,48 @@ function RMSProV6Styles() {
   }
 }
 
+
+/* v293 compact counterparty form */
+.rms-pro-shell .supplier-counterparty-primary-fields{
+  grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  margin-bottom:12px!important;
+}
+.rms-pro-shell .supplier-counterparty-more{
+  margin:4px 0 14px!important;
+  border:1px solid #e2e8f0!important;
+  border-radius:14px!important;
+  background:#f8fafc!important;
+  overflow:hidden!important;
+}
+.rms-pro-shell .supplier-counterparty-more summary{
+  cursor:pointer!important;
+  list-style:none!important;
+  padding:13px 16px!important;
+  font-size:13px!important;
+  font-weight:800!important;
+  color:#475569!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:space-between!important;
+}
+.rms-pro-shell .supplier-counterparty-more summary::-webkit-details-marker{display:none!important;}
+.rms-pro-shell .supplier-counterparty-more summary::after{
+  content:'+'!important;
+  font-size:18px!important;
+  line-height:1!important;
+  color:#64748b!important;
+}
+.rms-pro-shell .supplier-counterparty-more[open] summary::after{content:'−'!important;}
+.rms-pro-shell .supplier-counterparty-extra-fields{
+  padding:0 16px 16px!important;
+  border-top:1px solid #e2e8f0!important;
+  margin-top:0!important;
+  padding-top:16px!important;
+}
+@media (max-width:900px){
+  .rms-pro-shell .supplier-counterparty-primary-fields{grid-template-columns:1fr!important;}
+}
+
 /* v235 Revenue chart KPI labels only */
 .reports-v231-preferred-revenue-chart .metric-title{
   line-height:1.15;
@@ -26323,19 +26365,25 @@ function Suppliers({ t, isAdmin = false }) {
 
       <div className="card span-2">
         <div className="card-head"><div><h3>Контрагенты</h3><p className="hint">Условия оплаты и лимиты используются в Dashboard для проблемных долгов.</p></div></div>
-        <div className="form-grid compact">
+        <div className="form-grid compact supplier-counterparty-primary-fields">
           <label><span>Имя контрагента</span><input value={supplierForm.name} onChange={e => setSupplierForm({...supplierForm, name: e.target.value})} /></label>
           <label><span>VOEN поставщика</span><input value={supplierForm.voen} onChange={e => setSupplierForm({...supplierForm, voen: e.target.value})} /></label>
           <label><span>Контакт</span><input value={supplierForm.contact_person} onChange={e => setSupplierForm({...supplierForm, contact_person: e.target.value})} /></label>
-          <label><span>Телефон</span><input value={supplierForm.phone} onChange={e => setSupplierForm({...supplierForm, phone: e.target.value})} /></label>
-          <label><span>Информация</span><input value={supplierForm.info} onChange={e => setSupplierForm({...supplierForm, info: e.target.value})} /></label>
-          <label><span>Срок оплаты, дней</span><input inputMode="numeric" value={supplierForm.payment_term_days} onChange={e => setSupplierForm({...supplierForm, payment_term_days: e.target.value})} /></label>
-          <label><span>Кредитный лимит</span><input inputMode="decimal" value={supplierForm.credit_limit} onChange={e => setSupplierForm({...supplierForm, credit_limit: e.target.value})} /></label>
-          <label><span>Долг за предыдущий период</span><input inputMode="decimal" value={supplierForm.opening_debt_amount} onChange={e => setSupplierForm({...supplierForm, opening_debt_amount: e.target.value})} placeholder="0.00" /></label>
-          <label><span>Наш VOEN для стартового долга</span><select value={supplierForm.opening_debt_legal_entity_id} onChange={e => setSupplierForm({...supplierForm, opening_debt_legal_entity_id: e.target.value})}><option value="">Выберите VOEN</option>{legalEntities.map(le => <option key={le.id} value={le.id}>{le.name} · {le.voen}</option>)}</select></label>
-          <label><span>Дата стартового долга</span><DateInput value={supplierForm.opening_debt_date} onChange={e => setSupplierForm({...supplierForm, opening_debt_date: e.target.value})} /></label>
-          <label><span>Комментарий к стартовому долгу</span><input value={supplierForm.opening_debt_comment} onChange={e => setSupplierForm({...supplierForm, opening_debt_comment: e.target.value})} placeholder="Например: остаток на 01.05" /></label>
-        </div><button className="small" onClick={addSupplier}>+ Добавить поставщика</button>
+        </div>
+        <details className="supplier-counterparty-more">
+          <summary>Дополнительные условия</summary>
+          <div className="form-grid compact supplier-counterparty-extra-fields">
+            <label><span>Телефон</span><input value={supplierForm.phone} onChange={e => setSupplierForm({...supplierForm, phone: e.target.value})} /></label>
+            <label><span>Информация</span><input value={supplierForm.info} onChange={e => setSupplierForm({...supplierForm, info: e.target.value})} /></label>
+            <label><span>Срок оплаты, дней</span><input inputMode="numeric" value={supplierForm.payment_term_days} onChange={e => setSupplierForm({...supplierForm, payment_term_days: e.target.value})} /></label>
+            <label><span>Кредитный лимит</span><input inputMode="decimal" value={supplierForm.credit_limit} onChange={e => setSupplierForm({...supplierForm, credit_limit: e.target.value})} /></label>
+            <label><span>Долг за предыдущий период</span><input inputMode="decimal" value={supplierForm.opening_debt_amount} onChange={e => setSupplierForm({...supplierForm, opening_debt_amount: e.target.value})} placeholder="0.00" /></label>
+            <label><span>Наш VOEN для стартового долга</span><select value={supplierForm.opening_debt_legal_entity_id} onChange={e => setSupplierForm({...supplierForm, opening_debt_legal_entity_id: e.target.value})}><option value="">Выберите VOEN</option>{legalEntities.map(le => <option key={le.id} value={le.id}>{le.name} · {le.voen}</option>)}</select></label>
+            <label><span>Дата стартового долга</span><DateInput value={supplierForm.opening_debt_date} onChange={e => setSupplierForm({...supplierForm, opening_debt_date: e.target.value})} /></label>
+            <label><span>Комментарий к стартовому долгу</span><input value={supplierForm.opening_debt_comment} onChange={e => setSupplierForm({...supplierForm, opening_debt_comment: e.target.value})} placeholder="Например: остаток на 01.05" /></label>
+          </div>
+        </details>
+        <button className="small" onClick={addSupplier}>+ Добавить поставщика</button>
         {editingSupplierId && (() => {
           const selected = supplierAdminRows.find(s => s.id === editingSupplierId)
           if (!selected) return null
