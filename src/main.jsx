@@ -460,6 +460,73 @@ import './QRMenu.css'
 import RMSQRMenuAdmin from './RMSQRMenuAdmin'
 import RMSLoyalty from './RMSLoyalty'
 
+
+// v278 — unified operation notifications for create/update/delete/save actions
+const RMS_TOAST_EVENT = 'rms:operation-toast'
+let rmsLastToastKey = ''
+let rmsLastToastAt = 0
+
+function rmsInferToastType(message = '') {
+  const value = String(message || '').toLowerCase()
+  if (!value) return 'info'
+  if (/error|ошиб|не удалось|невозможно|failed|xəta|mümkün deyil|Введите|выберите|требуется|минимум|yalnış/.test(value)) return 'error'
+  if (/удален|удалён|деактив|очищ|silin|ləğv|deaktiv/.test(value)) return 'warning'
+  if (/сохран|добав|создан|обнов|измен|восстанов|импорт|скачан|готов|успеш|saved|added|created|updated|yadda saxlan|əlavə|yaradıl|yenilən|uğurla/.test(value)) return 'success'
+  return 'info'
+}
+
+function rmsShowOperationToast(message, type) {
+  const clean = String(message || '').trim()
+  if (!clean || typeof window === 'undefined') return
+  const toastType = type || rmsInferToastType(clean)
+  const key = `${toastType}:${clean}`
+  const now = Date.now()
+  if (key === rmsLastToastKey && now - rmsLastToastAt < 1200) return
+  rmsLastToastKey = key
+  rmsLastToastAt = now
+  window.dispatchEvent(new CustomEvent(RMS_TOAST_EVENT, { detail: { message: clean, type: toastType } }))
+}
+
+function useRmsStatusToast(message, type) {
+  const previousRef = useRef('')
+  useEffect(() => {
+    const clean = String(message || '').trim()
+    if (!clean || clean === previousRef.current) return
+    previousRef.current = clean
+    rmsShowOperationToast(clean, type)
+  }, [message, type])
+}
+
+function RMSOperationToastCenter() {
+  const [items, setItems] = useState([])
+  useEffect(() => {
+    const handler = event => {
+      const detail = event?.detail || {}
+      const item = {
+        id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        message: String(detail.message || ''),
+        type: detail.type || 'info'
+      }
+      setItems(prev => [...prev.slice(-3), item])
+      const delay = item.type === 'error' ? 7000 : 4200
+      window.setTimeout(() => setItems(prev => prev.filter(x => x.id !== item.id)), delay)
+    }
+    window.addEventListener(RMS_TOAST_EVENT, handler)
+    return () => window.removeEventListener(RMS_TOAST_EVENT, handler)
+  }, [])
+  if (!items.length) return null
+  return <div className="rms-operation-toast-stack" role="status" aria-live="polite">
+    {items.map(item => <div key={item.id} className={`rms-operation-toast ${item.type}`}>
+      <div className="rms-operation-toast-icon">{item.type === 'success' ? '✓' : item.type === 'error' ? '!' : item.type === 'warning' ? '!' : 'i'}</div>
+      <div className="rms-operation-toast-copy">
+        <strong>{item.type === 'success' ? 'Готово' : item.type === 'error' ? 'Ошибка' : item.type === 'warning' ? 'Внимание' : 'Статус'}</strong>
+        <span>{item.message}</span>
+      </div>
+      <button type="button" aria-label="Закрыть" onClick={() => setItems(prev => prev.filter(x => x.id !== item.id))}>×</button>
+    </div>)}
+  </div>
+}
+
 const I18N = {
   ru: {
     system_title:'RMS', system_short_title:'RMS', system_subtitle:'Выручка · Финансы · Персонал · Поставщики', dashboard_tab:'Dashboard', pos_tab:'POS / Продажи',
@@ -2123,6 +2190,7 @@ function SecurityRecoveryCenter({ embedded = false } = {}) {
   const [snapshots, setSnapshots] = useState([])
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
+  useRmsStatusToast(message)
   const [preview, setPreview] = useState(null)
   const [previewLoading, setPreviewLoading] = useState(false)
   const [compareResult, setCompareResult] = useState(null)
@@ -2880,6 +2948,7 @@ function InventoryModule({ branchId, branchName }) {
     comment: '',
   })
   const [message, setMessage] = React.useState('')
+  useRmsStatusToast(message)
   const [backfillBusy, setBackfillBusy] = React.useState(false)
   const [backfillPreview, setBackfillPreview] = React.useState([])
   const [backfillHealth, setBackfillHealth] = React.useState(null)
@@ -4453,6 +4522,7 @@ function POSLite({ t }) {
   const [menuTypeFilter, setMenuTypeFilter] = useState('all')
   const [categoryFilter, setCategoryFilter] = useState('all')
   const [message, setMessage] = useState('')
+  useRmsStatusToast(message)
   const [loading, setLoading] = useState(false)
   const [cashierNameInput, setCashierNameInput] = useState('')
   const [cashierPin, setCashierPin] = useState('')
@@ -13864,6 +13934,33 @@ function RMSProV6Styles() {
   .user-permission-row select{max-width:none!important;justify-self:stretch!important;}
 }
 
+
+/* v278 — standardized local and global operation statuses */
+.rms-form-action-row{display:flex!important;align-items:center!important;gap:12px!important;flex-wrap:wrap!important;margin-top:12px!important;}
+.rms-inline-operation-status{display:inline-flex!important;align-items:center!important;min-height:36px!important;padding:7px 12px!important;border-radius:10px!important;font-size:13px!important;font-weight:750!important;line-height:1.35!important;}
+.rms-inline-operation-status.success{color:#166534!important;background:#f0fdf4!important;border:1px solid #bbf7d0!important;}
+.rms-inline-operation-status.error{color:#b91c1c!important;background:#fef2f2!important;border:1px solid #fecaca!important;}
+.rms-inline-operation-status.warning{color:#92400e!important;background:#fffbeb!important;border:1px solid #fde68a!important;}
+.rms-inline-operation-status.info{color:#1e40af!important;background:#eff6ff!important;border:1px solid #bfdbfe!important;}
+.rms-operation-toast-stack{position:fixed!important;top:22px!important;right:22px!important;z-index:20000!important;display:flex!important;flex-direction:column!important;gap:12px!important;width:min(430px,calc(100vw - 32px))!important;pointer-events:none!important;}
+.rms-operation-toast{pointer-events:auto!important;display:grid!important;grid-template-columns:38px minmax(0,1fr) 30px!important;align-items:start!important;gap:12px!important;padding:15px 14px!important;border-radius:16px!important;background:rgba(255,255,255,.98)!important;border:1px solid #e2e8f0!important;box-shadow:0 18px 55px rgba(15,23,42,.18)!important;animation:rmsToastIn .22s ease-out!important;backdrop-filter:blur(12px)!important;}
+.rms-operation-toast.success{border-left:4px solid #16a34a!important;}
+.rms-operation-toast.error{border-left:4px solid #dc2626!important;}
+.rms-operation-toast.warning{border-left:4px solid #d97706!important;}
+.rms-operation-toast.info{border-left:4px solid #2563eb!important;}
+.rms-operation-toast-icon{width:34px!important;height:34px!important;border-radius:10px!important;display:flex!important;align-items:center!important;justify-content:center!important;font-size:18px!important;font-weight:900!important;}
+.rms-operation-toast.success .rms-operation-toast-icon{background:#dcfce7!important;color:#15803d!important;}
+.rms-operation-toast.error .rms-operation-toast-icon{background:#fee2e2!important;color:#b91c1c!important;}
+.rms-operation-toast.warning .rms-operation-toast-icon{background:#fef3c7!important;color:#b45309!important;}
+.rms-operation-toast.info .rms-operation-toast-icon{background:#dbeafe!important;color:#1d4ed8!important;}
+.rms-operation-toast-copy{display:flex!important;flex-direction:column!important;gap:4px!important;min-width:0!important;}
+.rms-operation-toast-copy strong{font-size:14px!important;line-height:1.25!important;color:#0f172a!important;}
+.rms-operation-toast-copy span{font-size:13px!important;line-height:1.45!important;color:#475569!important;overflow-wrap:anywhere!important;}
+.rms-operation-toast>button{width:28px!important;height:28px!important;padding:0!important;border:0!important;background:transparent!important;color:#94a3b8!important;font-size:22px!important;line-height:1!important;box-shadow:none!important;}
+.rms-operation-toast>button:hover{color:#334155!important;background:#f1f5f9!important;}
+@keyframes rmsToastIn{from{opacity:0;transform:translateY(-10px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
+@media(max-width:760px){.rms-operation-toast-stack{top:12px!important;right:12px!important;left:12px!important;width:auto!important;}.rms-operation-toast{grid-template-columns:34px minmax(0,1fr) 28px!important;}}
+
 /* v235 Revenue chart KPI labels only */
 .reports-v231-preferred-revenue-chart .metric-title{
   line-height:1.15;
@@ -14051,6 +14148,7 @@ function Revenue({ t, focusExpense }) {
   const [monthStats, setMonthStats] = useState({ cash: 0, bank: 0, wolt: 0, revenue: 0, expenses: 0, inflows: 0, serviceCharge: 0, serviceCost: 0 })
   const [logs, setLogs] = useState([])
   const [message, setMessage] = useState('')
+  useRmsStatusToast(message)
   const [showRevenueLogModal, setShowRevenueLogModal] = useState(false)
 
   useEffect(() => {
@@ -18450,6 +18548,7 @@ function Recipes({ t }) {
   const [techCardPageSize, setTechCardPageSize] = useState(10)
   const [techCardPage, setTechCardPage] = useState(1)
   const [message, setMessage] = useState('')
+  useRmsStatusToast(message)
   const [loading, setLoading] = useState(false)
   const didAutoSelectMenuRef = useRef(false)
 
@@ -20778,6 +20877,7 @@ function RecipesLegacy({ t }) {
   const [productForm, setProductForm] = useState({ name: '', category: PRODUCT_CATEGORIES[0], base_unit: 'g' })
   const [menuForm, setMenuForm] = useState({ name: '', category: 'Кофе', sale_price: '', target_food_cost_percent: '30' })
   const [message, setMessage] = useState('')
+  useRmsStatusToast(message)
   const [recipesLoading, setRecipesLoading] = useState(false)
 
   useEffect(() => { loadBase() }, [])
@@ -21400,6 +21500,7 @@ function Attendance({ t, mode = 'attendance', isAdmin = false }) {
   const [employees, setEmployees] = useState([])
   const [attendance, setAttendance] = useState([])
   const [message, setMessage] = useState('')
+  useRmsStatusToast(message)
   const [employeeForm, setEmployeeForm] = useState({ full_name: '', position: 'Повар', branch_id: '', monthly_salary: '' })
   const [officialDaysByEmployee, setOfficialDaysByEmployee] = useState(() => { try { return JSON.parse(localStorage.getItem('rms_employee_official_days') || '{}') } catch (_e) { return {} } })
   const [officialSalaryByEmployee, setOfficialSalaryByEmployee] = useState(() => { try { return JSON.parse(localStorage.getItem('rms_employee_official_salary') || '{}') } catch (_e) { return {} } })
@@ -21859,6 +21960,7 @@ function Salaries({ t, view = 'employees', isAdmin = false }) {
   const [usePreviousSalaryBalance, setUsePreviousSalaryBalance] = useState(false)
   const [expandedPaymentGroups, setExpandedPaymentGroups] = useState({})
   const [message, setMessage] = useState('')
+  useRmsStatusToast(message)
   const [employeeInfoId, setEmployeeInfoId] = useState('')
   const [employeeHistoryTick, setEmployeeHistoryTick] = useState(0)
   const [terminationPayments, setTerminationPayments] = useState({})
@@ -23451,6 +23553,7 @@ function Advances({ t }) {
   const [profiles, setProfiles] = useState([])
   const [form, setForm] = useState({ employee_id: '', advance_date: todayISO(), amount: '', comment: '' })
   const [message, setMessage] = useState('')
+  useRmsStatusToast(message)
   const [editAdvanceId, setEditAdvanceId] = useState('')
   const [editAdvanceForm, setEditAdvanceForm] = useState({ advance_date: '', amount: '', comment: '' })
   const [advancePageSize, setAdvancePageSize] = useState(10)
@@ -23759,6 +23862,7 @@ function Suppliers({ t, isAdmin = false }) {
   const [eInvoiceForm, setEInvoiceForm] = useState({ supplier_id: '', legal_entity_id: '', branch_id: '', invoice_number: '', invoice_date: todayISO(), period_start: monthStart(new Date().getFullYear(), new Date().getMonth() + 1), period_end: todayISO(), amount: '', payment_term_days: '', payment_due_date: '', note: '' })
   const [selectedEInvoiceId, setSelectedEInvoiceId] = useState('')
   const [eInvoiceMessage, setEInvoiceMessage] = useState('')
+  useRmsStatusToast(eInvoiceMessage)
   const [eInvoiceListSearch, setEInvoiceListSearch] = useState('')
   const [eInvoiceListSupplierId, setEInvoiceListSupplierId] = useState('all')
   const [eInvoiceListLegalEntityId, setEInvoiceListLegalEntityId] = useState('all')
@@ -23780,7 +23884,11 @@ function Suppliers({ t, isAdmin = false }) {
   const [transactionDate, setTransactionDate] = useState(todayISO())
   const [expandedEntities, setExpandedEntities] = useState({})
   const [message, setMessage] = useState('')
+  useRmsStatusToast(message)
   const [paymentMessage, setPaymentMessage] = useState('')
+  useRmsStatusToast(paymentMessage)
+  const [productMessage, setProductMessage] = useState('')
+  useRmsStatusToast(productMessage)
   const [paymentEInvoiceSearch, setPaymentEInvoiceSearch] = useState('')
   const [selectedJournalPaymentIds, setSelectedJournalPaymentIds] = useState([])
   const [supplierAdminExpanded, setSupplierAdminExpanded] = useState(false)
@@ -24307,14 +24415,14 @@ function Suppliers({ t, isAdmin = false }) {
   }
 
   async function addProductFromForm() {
-    setMessage('')
-    if (!productForm.name.trim()) return setMessage('Введите товар')
+    setProductMessage('')
+    if (!productForm.name.trim()) return setProductMessage('Введите товар')
     const stopProgress = startGlobalProgress('Сохранение товара...')
     const { error } = await supabase.from('supplier_products').insert({ name: productForm.name.trim(), category: productForm.category, base_unit: productForm.base_unit })
     stopProgress()
-    if (error) return setMessage(error.message)
+    if (error) return setProductMessage(error.message)
     setProductForm({ name: '', category: productForm.category, base_unit: productForm.base_unit })
-    await load(); setMessage(t('saved'))
+    await load(); setProductMessage(t('saved'))
   }
 
   async function callSupplierRpc(name, args, okMessage = t('saved'), messageSetter = setMessage) {
@@ -25722,7 +25830,8 @@ function Suppliers({ t, isAdmin = false }) {
 
       <div className="card span-2">
         <div className="card-head"><div><h3>Товары</h3><p className="hint">Товар создаётся один раз и потом выбирается в поступлении и в техкарте.</p></div></div>
-        <div className="form-grid compact"><label><span>Товар</span><input value={productForm.name} onChange={e => setProductForm({...productForm, name: e.target.value})} /></label><label><span>Тип</span><select value={productForm.category} onChange={e => setProductForm({...productForm, category: e.target.value})}>{PRODUCT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select></label><label><span>Базовая ед. для техкарты</span><select value={productForm.base_unit} onChange={e => setProductForm({...productForm, base_unit: e.target.value})}>{BASE_UNITS.map(u => <option key={u.value} value={u.value}>{u.label}</option>)}</select></label></div><button className="small" onClick={addProductFromForm}>+ Добавить товар</button>
+        <div className="form-grid compact"><label><span>Товар</span><input value={productForm.name} onChange={e => { setProductForm({...productForm, name: e.target.value}); setProductMessage('') }} /></label><label><span>Тип</span><select value={productForm.category} onChange={e => setProductForm({...productForm, category: e.target.value})}>{PRODUCT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select></label><label><span>Базовая ед. для техкарты</span><select value={productForm.base_unit} onChange={e => setProductForm({...productForm, base_unit: e.target.value})}>{BASE_UNITS.map(u => <option key={u.value} value={u.value}>{u.label}</option>)}</select></label></div>
+        <div className="rms-form-action-row"><button className="small" onClick={addProductFromForm}>+ Добавить товар</button>{productMessage && <span className={`rms-inline-operation-status ${rmsInferToastType(productMessage)}`}>{productMessage}</span>}</div>
       </div>
 
       {/* v260: Standalone “Список e-qaimə” removed.
@@ -26009,6 +26118,7 @@ function DebtsPayments({ t }) {
   const [expandedEntities, setExpandedEntities] = useState({})
   const [detailPurchaseId, setDetailPurchaseId] = useState('')
   const [message, setMessage] = useState('')
+  useRmsStatusToast(message)
   const [ledgerSupplierId, setLedgerSupplierId] = useState('all')
   const [ledgerLegalEntityId, setLedgerLegalEntityId] = useState('all')
   const [ledgerSearch, setLedgerSearch] = useState('')
@@ -29125,6 +29235,7 @@ function Reports({ t }) {
   const [importText, setImportText] = useState('')
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
+  useRmsStatusToast(message)
   const [expandedSalesRows, setExpandedSalesRows] = useState(false)
   const [salesTableSearch, setSalesTableSearch] = useState('')
   const [salesRowsPage, setSalesRowsPage] = useState(1)
@@ -32497,6 +32608,7 @@ function Settings({ session, t, theme, setTheme, lang, setLang }) {
   const [advanceImportYear, setAdvanceImportYear] = useState('2026')
   const [advanceImportMonth, setAdvanceImportMonth] = useState('4')
   const [msg, setMsg] = useState('')
+  useRmsStatusToast(msg)
   const [settingsTab, setSettingsTab] = useState('branches')
   const [customLogoPreview, setCustomLogoPreview] = useState(() => {
     try { return localStorage.getItem('rms_custom_logo') || sessionStorage.getItem('rms_custom_logo') || '' } catch (_e) { return '' }
@@ -34820,4 +34932,4 @@ function RMSProV9Styles() {
   `}</style>
 }
 
-createRoot(document.getElementById('root')).render(<App />)
+createRoot(document.getElementById('root')).render(<><App /><RMSOperationToastCenter /></>)
