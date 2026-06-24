@@ -3618,6 +3618,315 @@ class RmsSectionErrorBoundary extends React.Component {
   }
 }
 
+
+
+const RMS_AZ_EXTRA_TRANSLATIONS = {
+  'Права доступа': 'Giriş hüquqları',
+  'Добавление пользователей и права доступа.': 'İstifadəçilərin əlavə edilməsi və giriş hüquqları.',
+  'Добавить пользователя': 'İstifadəçi əlavə et',
+  'Пользователь': 'İstifadəçi',
+  'Пользователи': 'İstifadəçilər',
+  'Login': 'Login',
+  'Активен': 'Aktivdir',
+  'Активна': 'Aktivdir',
+  'Да': 'Bəli',
+  'Нет': 'Xeyr',
+  'Новый пароль': 'Yeni parol',
+  'Временный пароль': 'Müvəqqəti parol',
+  'Смена пароля': 'Parolun dəyişdirilməsi',
+  'Применить': 'Tətbiq et',
+  'Показать пароль': 'Parolu göstər',
+  'Скрыть пароль': 'Parolu gizlət',
+  'Пароль изменён и применён': 'Parol dəyişdirildi və tətbiq edildi',
+  'Сохранение...': 'Yadda saxlanılır...',
+  'Статус входа': 'Giriş statusu',
+  'Доступен': 'Giriş açıqdır',
+  'Заблокирован': 'Bloklanıb',
+  'Обнулить блокировку': 'Bloklamanı sıfırla',
+  'Зарплаты': 'Maaşlar',
+  'Скрыть зарплаты менеджеров': 'Menecerlərin maaşlarını gizlət',
+  'Доступ к разделам': 'Bölmələrə giriş',
+  'Нет доступа': 'Giriş yoxdur',
+  'Только просмотр': 'Yalnız baxış',
+  'Только чтение': 'Yalnız oxu',
+  'Редактор': 'Redaktor',
+  'Удалить': 'Sil',
+  'Действия': 'Əməliyyatlar',
+  'Разделы': 'Bölmələr',
+  'Раздел': 'Bölmə',
+  'Режим': 'Rejim',
+  'Администратор': 'Administrator',
+  'Сотрудник': 'Əməkdaş',
+  'Имя': 'Ad',
+  'Сохранить': 'Yadda saxla',
+  'Сохранено': 'Yadda saxlanıldı',
+  'Отмена': 'Ləğv et',
+  'Обновить': 'Yenilə',
+  'Загрузка...': 'Yüklənir...',
+  'Загрузка…': 'Yüklənir…',
+  'Проверка…': 'Yoxlanılır…',
+  'Создание...': 'Yaradılır...',
+  'Выполняется операция...': 'Əməliyyat icra olunur...',
+  'Выполняется операция': 'Əməliyyat icra olunur',
+  'Подготовка данных…': 'Məlumatlar hazırlanır…',
+  'Операция завершена': 'Əməliyyat tamamlandı',
+  'Операция остановлена': 'Əməliyyat dayandırıldı',
+  'Не закрывайте страницу': 'Səhifəni bağlamayın',
+  'Готово': 'Hazırdır',
+  'Контроль': 'Nəzarət',
+  'Требуется проверка': 'Yoxlama tələb olunur',
+  'Пока нет данных': 'Hələ məlumat yoxdur',
+  'Нет данных': 'Məlumat yoxdur',
+  'Без названия': 'Adsız',
+  'Без категории': 'Kateqoriyasız',
+  'Другое': 'Digər',
+  'Выбрать': 'Seç',
+  'Выбрать дату': 'Tarixi seç',
+  'Дата': 'Tarix',
+  'Год': 'İl',
+  'Месяц': 'Ay',
+  'Филиал': 'Filial',
+  'Все филиалы': 'Bütün filiallar',
+  'Сумма': 'Məbləğ',
+  'Итого': 'Cəmi',
+  'Количество': 'Miqdar',
+  'Кол-во': 'Miqdar',
+  'Цена': 'Qiymət',
+  'Комментарий': 'Şərh',
+  'Наименование': 'Ad',
+  'Название': 'Ad',
+  'Категория': 'Kateqoriya',
+  'Группа': 'Qrup',
+  'Товар': 'Məhsul',
+  'Номенклатура': 'Nomenklatura',
+  'Блюдо': 'Yemək',
+  'Поставщик': 'Təchizatçı',
+  'Поставщики': 'Təchizatçılar',
+  'Долги и оплаты': 'Borclar və ödənişlər',
+  'Оплата': 'Ödəniş',
+  'Чек': 'Çek',
+  'Заказ': 'Sifariş',
+  'Заказ пуст': 'Sifariş boşdur',
+  'Наличными': 'Nağd',
+  'Банк': 'Bank',
+  'Выручка': 'Dövriyyə',
+  'Финансы': 'Maliyyə',
+  'Отчёты': 'Hesabatlar',
+  'Тех. карты': 'Tex. kartlar',
+  'Склад': 'Anbar',
+  'Посещаемость': 'Davamiyyət',
+  'Авансы': 'Avanslar',
+  'Настройки': 'Parametrlər',
+  'Безопасность и диагностика': 'Təhlükəsizlik və diaqnostika',
+  'Резервное копирование': 'Ehtiyat nüsxələmə',
+  'Пользователи, права доступа и режимы работы': 'İstifadəçilər, giriş hüquqları və iş rejimləri',
+  'Интерфейс': 'İnterfeys',
+  'Вид интерфейса': 'İnterfeys görünüşü',
+  'Язык интерфейса': 'İnterfeys dili',
+  'Классический': 'Klassik',
+  'Современный': 'Müasir',
+  'Статьи расходов': 'Xərc maddələri',
+  'Новая статья расходов': 'Yeni xərc maddəsi',
+  'Добавить статью': 'Maddə əlavə et',
+  'Филиал прибыльный': 'Filial gəlirlidir',
+  'Филиал в убытке': 'Filial zərərlə işləyir',
+  'Чистая прибыль': 'Xalis mənfəət',
+  'Валовая прибыль': 'Ümumi mənfəət',
+  'Расходы': 'Xərclər',
+  'Налог': 'Vergi',
+  'Налог %': 'Vergi %',
+  'План': 'Plan',
+  'Сравнение': 'Müqayisə',
+  'Маржинальность': 'Marjinallıq',
+  'Прогноз месяца': 'Ay üzrə proqnoz',
+  'Средняя выручка / день': 'Orta gündəlik dövriyyə',
+  'Общая выручка': 'Ümumi dövriyyə',
+  'Расходы по статьям': 'Xərc maddələri üzrə',
+  'Текущий факт': 'Cari fakt',
+  'План выручки': 'Dövriyyə planı',
+  'План прибыли': 'Mənfəət planı',
+  'Сводка выручки': 'Dövriyyə icmalı',
+  'Расходы за выбранную дату': 'Seçilmiş tarix üzrə xərclər',
+  'Выручка за выбранную дату': 'Seçilmiş tarix üzrə dövriyyə',
+  'Период и филиал': 'Dövr və filial',
+  'Скрыть детали': 'Detalları gizlət',
+  'Показать детали': 'Detalları göstər',
+  'МЕНЮ': 'MENYU',
+  'АНАЛИТИКА': 'ANALİTİKA',
+  'ИНСТРУМЕНТЫ': 'ALƏTLƏR',
+  'Dashboard': 'Dashboard',
+  'QR Menu': 'QR Menu',
+  'Loyalty': 'Loyalty',
+  'Бар': 'Bar',
+  'Кухня': 'Mətbəx',
+  'Менеджеры': 'Menecerlər',
+  'Повар': 'Aşpaz',
+  'Менеджер': 'Menecer',
+  'Стьюард': 'Stüard',
+  'С собой': 'Paketlə',
+  'Доставка': 'Çatdırılma',
+  'Ресторан': 'Restoran',
+  'Официант': 'Ofisiant',
+  'Стол': 'Masa',
+  'Возврат': 'Qaytarma',
+  'Тип оплаты': 'Ödəniş növü',
+  'Дата продажи': 'Satış tarixi',
+  'Дата/время': 'Tarix/vaxt',
+  'Количество продаж': 'Satış sayı',
+  'Цена без скидки': 'Endirimsiz qiymət',
+  'Скидка': 'Endirim',
+  'Профиль текущего пользователя': 'Cari istifadəçi profili',
+  'Создать admin-профиль': 'Admin profili yarat',
+  'Лого стартовой страницы': 'Başlanğıc səhifə loqosu',
+  'Предпросмотр': 'Ön baxış',
+  'Выбрать файл': 'Fayl seç',
+  'Сохранить лого': 'Loqonu yadda saxla',
+  'Удалить лого': 'Loqonu sil',
+  'Сохранить налоги': 'Vergiləri yadda saxla',
+  'Сохранить аренду': 'İcarəni yadda saxla',
+  'Арендная плата для прогноза': 'Proqnoz üçün icarə haqqı',
+  'Налогообложение по филиалам': 'Filiallar üzrə vergitutma',
+  'Наши VOEN / юрлица': 'VÖEN-lərimiz / hüquqi şəxslər',
+  'Активные': 'Aktiv',
+  'Январь': 'Yanvar',
+  'Февраль': 'Fevral',
+  'Март': 'Mart',
+  'Апрель': 'Aprel',
+  'Май': 'May',
+  'Июнь': 'İyun',
+  'Июль': 'İyul',
+  'Август': 'Avqust',
+  'Сентябрь': 'Sentyabr',
+  'Октябрь': 'Oktyabr',
+  'Ноябрь': 'Noyabr',
+  'Декабрь': 'Dekabr'
+}
+
+function rmsBuildAzInterfaceMap() {
+  const map = { ...RMS_AZ_EXTRA_TRANSLATIONS }
+  Object.keys(I18N.ru || {}).forEach((key) => {
+    const ru = I18N.ru?.[key]
+    const az = I18N.az?.[key]
+    if (typeof ru === 'string' && typeof az === 'string' && ru && az && ru !== az) map[ru] = az
+  })
+  return map
+}
+
+const RMS_AZ_INTERFACE_MAP = rmsBuildAzInterfaceMap()
+
+function rmsTranslateDynamicAzText(text) {
+  const exact = RMS_AZ_INTERFACE_MAP[text]
+  if (exact) return exact
+
+  const patterns = [
+    [/^Попыток:\s*(\d+)$/i, (_, n) => `Cəhdlər: ${n}`],
+    [/^До блокировки:\s*(\d+)$/i, (_, n) => `Bloklamaya qədər: ${n}`],
+    [/^Осталось:\s*(.+)$/i, (_, value) => `Qalıb: ${value}`],
+    [/^Таблица\s+(\d+)\s+из\s+(\d+)$/i, (_, a, b) => `Cədvəl ${a} / ${b}`],
+    [/^Чтение таблицы:\s*(.+)$/i, (_, value) => `Cədvəl oxunur: ${value}`],
+    [/^Показаны первые\s+(\d+)\s+строк из\s+(\d+)$/i, (_, a, b) => `${b} sətirdən ilk ${a} sətir göstərilir`],
+    [/^Показаны первые\s+(\d+)\s+ошибок из\s+(\d+)$/i, (_, a, b) => `${b} xətadan ilk ${a} xəta göstərilir`],
+    [/^Осталось попыток:\s*(\d+)$/i, (_, n) => `Qalan cəhd sayı: ${n}`]
+  ]
+  for (const [pattern, replacer] of patterns) {
+    if (pattern.test(text)) return text.replace(pattern, replacer)
+  }
+  return text
+}
+
+function RMSInterfaceTranslator({ lang }) {
+  useEffect(() => {
+    let frame = 0
+    let applying = false
+
+    const translateTextNode = (node) => {
+      if (!node || node.nodeType !== Node.TEXT_NODE) return
+      const parent = node.parentElement
+      if (!parent || parent.closest('script,style,textarea')) return
+      const raw = node.nodeValue || ''
+      const trimmed = raw.trim()
+      if (!trimmed) return
+
+      if (lang === 'az') {
+        if (node.__rmsRuOriginal == null) node.__rmsRuOriginal = raw
+        const translated = rmsTranslateDynamicAzText(trimmed)
+        if (translated !== trimmed) {
+          const leading = raw.match(/^\s*/)?.[0] || ''
+          const trailing = raw.match(/\s*$/)?.[0] || ''
+          node.nodeValue = `${leading}${translated}${trailing}`
+        }
+      } else if (node.__rmsRuOriginal != null && node.nodeValue !== node.__rmsRuOriginal) {
+        node.nodeValue = node.__rmsRuOriginal
+      }
+    }
+
+    const translateAttribute = (el, attr) => {
+      const value = el.getAttribute(attr)
+      if (!value) return
+      const storage = `rmsRu${attr.replace(/(^|-)(\w)/g, (_, __, c) => c.toUpperCase())}`
+      if (lang === 'az') {
+        if (!el.dataset[storage]) el.dataset[storage] = value
+        const translated = rmsTranslateDynamicAzText(value.trim())
+        if (translated !== value.trim()) el.setAttribute(attr, translated)
+      } else if (el.dataset[storage]) {
+        el.setAttribute(attr, el.dataset[storage])
+      }
+    }
+
+    const applyTranslation = () => {
+      if (applying) return
+      applying = true
+      try {
+        const root = document.querySelector('.rms-pro-shell, .login-screen')
+        if (!root) return
+        const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT)
+        let node
+        while ((node = walker.nextNode())) translateTextNode(node)
+        root.querySelectorAll('[placeholder],[title],[aria-label]').forEach((el) => {
+          translateAttribute(el, 'placeholder')
+          translateAttribute(el, 'title')
+          translateAttribute(el, 'aria-label')
+        })
+      } finally {
+        applying = false
+      }
+    }
+
+    const schedule = () => {
+      cancelAnimationFrame(frame)
+      frame = requestAnimationFrame(applyTranslation)
+    }
+
+    schedule()
+    const observer = new MutationObserver(schedule)
+    observer.observe(document.body, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ['placeholder', 'title', 'aria-label'] })
+    return () => {
+      cancelAnimationFrame(frame)
+      observer.disconnect()
+      applying = true
+      try {
+        const root = document.querySelector('.rms-pro-shell, .login-screen')
+        if (root && lang === 'az') {
+          const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT)
+          let node
+          while ((node = walker.nextNode())) {
+            if (node.__rmsRuOriginal != null) node.nodeValue = node.__rmsRuOriginal
+          }
+          root.querySelectorAll('[data-rms-ru-placeholder],[data-rms-ru-title],[data-rms-ru-aria-label]').forEach((el) => {
+            if (el.dataset.rmsRuPlaceholder) el.setAttribute('placeholder', el.dataset.rmsRuPlaceholder)
+            if (el.dataset.rmsRuTitle) el.setAttribute('title', el.dataset.rmsRuTitle)
+            if (el.dataset.rmsRuAriaLabel) el.setAttribute('aria-label', el.dataset.rmsRuAriaLabel)
+          })
+        }
+      } finally {
+        applying = false
+      }
+    }
+  }, [lang])
+
+  return null
+}
+
 function App() {
   const params = new URLSearchParams(window.location.search)
 
@@ -3824,6 +4133,7 @@ function App() {
 
   return (
     <div className={`app rms-pro-shell theme-${theme || 'classic'}`}>
+      <RMSInterfaceTranslator lang={lang} />
       <aside className="sidebar rms-pro-sidebar">
         <div className="rms-pro-brand rms-pro-brand-logo-only">
           <div className="rms-pro-logo rms-pro-logo-wide"><ProductLogo compact /></div>
@@ -3910,7 +4220,7 @@ function App() {
             <RMSLoyalty />
           </div>
         </div>}
-        {currentCanRead && section === 'settings' && <RmsSectionErrorBoundary resetKey={`settings-${section}`}><Settings session={session} t={t} theme={theme} setTheme={setTheme} /></RmsSectionErrorBoundary>}
+        {currentCanRead && section === 'settings' && <RmsSectionErrorBoundary resetKey={`settings-${section}`}><Settings session={session} t={t} theme={theme} setTheme={setTheme} lang={lang} setLang={setLang} /></RmsSectionErrorBoundary>}
         </div>
       </main>
     </div>
@@ -13478,6 +13788,7 @@ function Login({ lang, setLang, t }) {
   }
 
   return <div className="login-screen theme-executive">
+    <RMSInterfaceTranslator lang={lang} />
     <ThemeStyles />
     <ResponsiveAndSettingsStyles />
     <RMSProV6Styles />
@@ -31930,7 +32241,7 @@ function ReportsV43Styles() {
   `}</style>
 }
 
-function Settings({ session, t, theme, setTheme }) {
+function Settings({ session, t, theme, setTheme, lang, setLang }) {
   const settingsAdminOnly = !session?.rms_internal
   if (!settingsAdminOnly) {
     return <section><section className="topbar"><div><h2>Настройки</h2><p>Доступ запрещён для обычных пользователей.</p></div></section><div className="card span-2"><h3>Нет доступа</h3><p className="hint">Управление пользователями, правами доступа, бэкапом, восстановлением и очисткой данных доступно только владельцу / admin.</p></div></section>
@@ -33494,7 +33805,7 @@ function Settings({ session, t, theme, setTheme }) {
       <section className="grid">
         {settingsTab === 'branches' && <>
           <div className="card span-2"><h3>Настройки интерфейса и филиалов</h3><p className="hint">Тема интерфейса и service charge филиалов.</p></div>
-          <div className="card span-2"><div className="card-head"><h3>Интерфейс</h3></div><p className="hint">Добавлен новый светлый Dashboard-вариант, визуально ближе к присланным референсам.</p><div className="form-grid compact"><label><span>Вид интерфейса</span><select value={theme} onChange={e => updateTheme(e.target.value)}>{THEMES.map(th => <option key={th.id} value={th.id}>{th.name}</option>)}</select></label></div>{msg && <p className={`hint ${msg === t('saved') || String(msg).toLowerCase().includes('сохран') ? 'save-status' : 'good'}`}>{msg}</p>}</div>
+          <div className="card span-2"><div className="card-head"><h3>Интерфейс</h3></div><p className="hint">Добавлен новый светлый Dashboard-вариант, визуально ближе к присланным референсам.</p><div className="form-grid compact"><label><span>Вид интерфейса</span><select value={theme} onChange={e => updateTheme(e.target.value)}>{THEMES.map(th => <option key={th.id} value={th.id}>{th.name}</option>)}</select></label><label><span>Язык интерфейса</span><select value={lang} onChange={e => setLang(e.target.value)}><option value="ru">Русский</option><option value="az">Azərbaycan</option></select></label></div>{msg && <p className={`hint ${msg === t('saved') || String(msg).toLowerCase().includes('сохран') ? 'save-status' : 'good'}`}>{msg}</p>}</div>
           <div className="card span-2"><div className="card-head"><div><h3>Лого стартовой страницы</h3><p className="hint">Теперь можно самостоятельно загрузить логотип без правки кода. Сохраняется в Supabase, а локально используется как быстрый кэш.</p></div></div><div className="logo-uploader"><div className="logo-preview-wrap">{customLogoPreview ? <img src={customLogoPreview} alt="Предпросмотр лого" /> : <div className="empty-logo">LOGO</div>}<div><b>Предпросмотр</b><p className="hint">Файл будет автоматически сжат под стартовую страницу. Лучше использовать PNG/SVG на прозрачном фоне.</p></div></div><div className="form-grid compact"><label><span>Выбрать файл</span><input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" onChange={handleCustomLogoSelect} /></label></div><div className="action-row"><button className="small primary" onClick={saveCustomLogo}>Сохранить лого</button><button className="ghost small" onClick={removeCustomLogo}>Удалить лого</button></div></div></div>
           <div className="card span-2">
             <div className="card-head">
