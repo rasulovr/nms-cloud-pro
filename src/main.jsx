@@ -14145,6 +14145,79 @@ function RMSProV6Styles() {
 .rms-pro-shell .supplier-auto-unit-price{display:flex!important;flex-direction:column!important;gap:5px!important;min-width:0!important;}
 .rms-pro-shell .supplier-auto-unit-price small{font-size:11px!important;line-height:1.25!important;color:#64748b!important;white-space:nowrap!important;}
 
+
+/* v285 supplier purchase UI alignment fix */
+.rms-pro-shell .supplier-amount-only-block{
+  width:100%!important;
+}
+.rms-pro-shell .supplier-amount-only-check{
+  display:grid!important;
+  grid-template-columns:18px 1fr!important;
+  align-items:start!important;
+  column-gap:12px!important;
+  row-gap:0!important;
+  width:100%!important;
+  max-width:100%!important;
+}
+.rms-pro-shell .supplier-amount-only-copy{
+  min-width:0!important;
+  width:100%!important;
+}
+.rms-pro-shell .supplier-amount-only-copy b,
+.rms-pro-shell .supplier-amount-only-copy small{
+  display:block!important;
+  max-width:100%!important;
+  white-space:normal!important;
+  overflow-wrap:anywhere!important;
+  word-break:break-word!important;
+}
+
+.rms-pro-shell .suppliers-purchase-price-table{min-width:1220px!important;}
+.rms-pro-shell .suppliers-purchase-price-table th:nth-child(3),
+.rms-pro-shell .suppliers-purchase-price-table td:nth-child(3){width:125px!important;}
+.rms-pro-shell .suppliers-purchase-price-table th:nth-child(4),
+.rms-pro-shell .suppliers-purchase-price-table td:nth-child(4){width:170px!important;}
+.rms-pro-shell .suppliers-purchase-price-table th:nth-child(5),
+.rms-pro-shell .suppliers-purchase-price-table td:nth-child(5){width:160px!important;}
+.rms-pro-shell .suppliers-purchase-price-table th:nth-child(6),
+.rms-pro-shell .suppliers-purchase-price-table td:nth-child(6){
+  width:225px!important;
+  text-align:left!important;
+  vertical-align:top!important;
+}
+.rms-pro-shell .suppliers-purchase-price-table td:nth-child(5),
+.rms-pro-shell .suppliers-purchase-price-table td:nth-child(6){
+  padding-top:14px!important;
+  padding-bottom:14px!important;
+}
+.rms-pro-shell .supplier-auto-unit-price{
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:flex-start!important;
+  justify-content:flex-start!important;
+  gap:6px!important;
+  width:100%!important;
+  min-width:0!important;
+}
+.rms-pro-shell .supplier-auto-unit-price input{
+  width:100%!important;
+}
+.rms-pro-shell .supplier-auto-unit-price small{
+  display:block!important;
+  width:100%!important;
+  padding-left:2px!important;
+  font-size:11px!important;
+  line-height:1.3!important;
+  color:#64748b!important;
+  white-space:normal!important;
+  overflow-wrap:anywhere!important;
+  word-break:break-word!important;
+  text-align:left!important;
+}
+@media (max-width:1200px){
+  .rms-pro-shell .suppliers-purchase-price-table{min-width:1140px!important;}
+}
+
 /* v235 Revenue chart KPI labels only */
 .reports-v231-preferred-revenue-chart .metric-title{
   line-height:1.15;
