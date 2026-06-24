@@ -4053,6 +4053,85 @@ const RMS_AZ_EXTRA_TRANSLATIONS = {
   'Октябрь': 'Oktyabr',
   'Ноябрь': 'Noyabr',
   'Декабрь': 'Dekabr'
+  ,'Поставщики: долги и оплаты': 'Təchizatçılar: borclar və ödənişlər'
+  ,'Основной контроль: долг, просрочка, лимиты, журнал операций и акт сверки.': 'Əsas nəzarət: borc, gecikmə, limitlər, əməliyyat jurnalı və üzləşmə aktı.'
+  ,'Контроль поставщиков': 'Təchizatçılara nəzarət'
+  ,'Ключевые отклонения по поставщикам. Просмотр открываются через акт сверки.': 'Təchizatçılar üzrə əsas kənarlaşmalar. Baxış üzləşmə aktı vasitəsilə açılır.'
+  ,'Обновить': 'Yenilə'
+  ,'Поставщиков': 'Təchizatçı'
+  ,'с активным балансом': 'aktiv balansla'
+  ,'Общий долг': 'Ümumi borc'
+  ,'открытый баланс': 'açıq balans'
+  ,'Просрочено': 'Gecikmiş borc'
+  ,'Лимит': 'Limit'
+  ,'доступный лимит': 'mövcud limit'
+  ,'превышение лимита': 'limit aşımı'
+  ,'Поставщики и долги': 'Təchizatçılar və borclar'
+  ,'Балансы по вашим VOEN / юрлицам. Долги по VOEN. Транзакции и акт сверки открываются в отдельном окне.': 'Sizin VÖEN / hüquqi şəxslər üzrə balanslar. Borclar VÖEN üzrə göstərilir. Əməliyyatlar və üzləşmə aktı ayrıca pəncərədə açılır.'
+  ,'Долг': 'Borc'
+  ,'Переплата': 'Artıq ödəniş'
+  ,'Долга нет': 'Borc yoxdur'
+  ,'Поставщик': 'Təchizatçı'
+  ,'Условия': 'Şərtlər'
+  ,'Статус': 'Status'
+  ,'VOEN не указан': 'VÖEN göstərilməyib'
+  ,'лимит': 'limit'
+  ,'Транзакции': 'Əməliyyatlar'
+  ,'Акт': 'Akt'
+  ,'Итого по VOEN': 'VÖEN üzrə cəmi'
+  ,'Поступления + стартовый долг − оплаты': 'Daxilolmalar + başlanğıc borc − ödənişlər'
+  ,'Показать все': 'Hamısını göstər'
+  ,'Скрыть': 'Gizlət'
+  ,'Нет поставщиков по этому VOEN': 'Bu VÖEN üzrə təchizatçı yoxdur'
+  ,'Просрочка и лимиты': 'Gecikmələr və limitlər'
+  ,'Сумма просрочки, превышение лимита и конкретные фактуры.': 'Gecikmə məbləği, limit aşımı və konkret fakturalar.'
+  ,'Фильтр': 'Filtr'
+  ,'Показать все': 'Hamısını göstər'
+  ,'Без фактуры': 'Fakturasız'
+  ,'Стартовый долг': 'Başlanğıc borc'
+  ,'Рейтинг поставщиков': 'Təchizatçı reytinqi'
+  ,'Рейтинг риска по долгу, просрочке, лимиту и открытым фактурам.': 'Borc, gecikmə, limit və açıq fakturalar üzrə risk reytinqi.'
+  ,'Critical': 'Kritik'
+  ,'Normal': 'Normal'
+  ,'Журнал долгов и оплат': 'Borclar və ödənişlər jurnalı'
+  ,'Стартовый долг, поступления и оплаты в одном журнале.': 'Başlanğıc borc, daxilolmalar və ödənişlər vahid jurnalda.'
+  ,'Дата периода': 'Dövrün tarixi'
+  ,'Операция': 'Əməliyyat'
+  ,'Все операции': 'Bütün əməliyyatlar'
+  ,'Итого приход / долг': 'Daxilolma / borc cəmi'
+  ,'Итого оплат': 'Ödənişlərin cəmi'
+  ,'Баланс': 'Balans'
+  ,'Оплата одной суммой по нескольким e-qaimə': 'Bir neçə e-qaimə üzrə vahid məbləğlə ödəniş'
+  ,'Поступление введено общей суммой без детализации товаров': 'Daxilolma məhsullar üzrə detallandırılmadan ümumi məbləğlə daxil edilib'
+  ,'Пред.': 'Əvvəlki'
+  ,'След.': 'Növbəti'
+  ,'Только admin': 'Yalnız admin'
+  ,'Поступления и оплаты показаны отдельно, чтобы не смешивать операции.': 'Əməliyyatların qarışmaması üçün daxilolmalar və ödənişlər ayrıca göstərilir.'
+  ,'Тип операций': 'Əməliyyat növü'
+  ,'Товары / цены': 'Məhsullar / qiymətlər'
+  ,'За день': 'Gün üzrə'
+  ,'За месяц': 'Ay üzrə'
+  ,'За год': 'İl üzrə'
+  ,'Весь период': 'Bütün dövr'
+  ,'Акт сверки': 'Üzləşmə aktı'
+  ,'Операции, оплаты и остаток по выбранному поставщику / VOEN.': 'Seçilmiş təchizatçı / VÖEN üzrə əməliyyatlar, ödənişlər və qalıq.'
+  ,'PDF / печать': 'PDF / çap'
+  ,'Поиск поставщика': 'Təchizatçı axtarışı'
+  ,'Название или VOEN': 'Ad və ya VÖEN'
+  ,'Все найденные / все поставщики': 'Tapılanların hamısı / bütün təchizatçılar'
+  ,'Наш VOEN / физ. лицо': 'Bizim VÖEN / fiziki şəxs'
+  ,'Все VOEN': 'Bütün VÖEN-lər'
+  ,'Поиск E-qaimə / фактуры': 'E-qaimə / faktura axtarışı'
+  ,'Номер фактуры': 'Faktura nömrəsi'
+  ,'Период с': 'Dövrün başlanğıcı'
+  ,'Период по': 'Dövrün sonu'
+  ,'Название документа': 'Sənədin adı'
+  ,'Акт сверки взаиморасчётов': 'Qarşılıqlı hesablaşmaların üzləşmə aktı'
+  ,'Приход / долг': 'Daxilolma / borc'
+  ,'Остаток': 'Qalıq'
+  ,'Операции не найдены.': 'Əməliyyat tapılmadı.'
+  ,'Закрыть': 'Bağla'
+  ,'Редактировать': 'Redaktə et'
 }
 
 function rmsBuildAzInterfaceMap() {
@@ -4089,6 +4168,15 @@ function rmsTranslateDynamicAzText(text) {
     [/^Показать ещё\s*·\s*всего\s*(\d+)$/i, (_, n) => `Daha çox göstər · cəmi ${n}`],
     [/^Страница\s+(\d+)\s*\/\s*(\d+)\s*·\s*всего\s*(\d+)$/i, (_, a, b, c) => `Səhifə ${a} / ${b} · cəmi ${c}`],
     [/^Итого по фактуре:\s*([\d.,]+)\s*AZN\.?$/i, (_, n) => `Faktura üzrə cəmi: ${n} AZN.`],
+    [/^(\d+)\s+поставщиков$/i, (_, n) => `${n} təchizatçı`],
+    [/^(\d+)\s+дней$/i, (_, n) => `${n} gün`],
+    [/^просрочено:\s*(\d+)$/i, (_, n) => `gecikmiş: ${n}`],
+    [/^лимит \+([\d.,]+)$/i, (_, n) => `limit +${n}`],
+    [/^(\d+)\s+дн\.$/i, (_, n) => `${n} gün`],
+    [/^Показать все\s*·\s*(\d+)$/i, (_, n) => `Hamısını göstər · ${n}`],
+    [/^Долг:\s*([\d.,]+)\s*AZN$/i, (_, n) => `Borc: ${n} AZN`],
+    [/^Долга нет:\s*([\d.,]+)\s*AZN$/i, (_, n) => `Borc yoxdur: ${n} AZN`],
+    [/^превышение лимита$/i, () => 'limit aşımı'],
     [/^(\d+)\s+найдено$/i, (_, n) => `${n} tapıldı`]
   ]
   for (const [pattern, replacer] of patterns) {
