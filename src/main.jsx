@@ -14368,6 +14368,53 @@ function RMSProV6Styles() {
   .rms-pro-shell .supplier-products-pagination{align-items:flex-start!important;flex-direction:column!important;}
 }
 
+
+/* v292 supplier products footer toggle and verified unit update */
+.rms-pro-shell .supplier-products-form-footer{
+  display:flex!important;
+  align-items:flex-end!important;
+  justify-content:space-between!important;
+  gap:16px!important;
+  margin-top:14px!important;
+  padding-top:14px!important;
+  border-top:1px solid #edf1f5!important;
+}
+.rms-pro-shell .supplier-products-form-footer .rms-form-action-row{
+  flex:1 1 auto!important;
+  margin:0!important;
+}
+.rms-pro-shell .supplier-products-toggle{
+  flex:0 0 auto!important;
+  margin-left:auto!important;
+  min-width:190px!important;
+  height:44px!important;
+  border-color:#0f766e!important;
+  background:#ecfdf5!important;
+  color:#0f766e!important;
+  font-weight:850!important;
+  box-shadow:0 8px 18px rgba(15,118,110,.10)!important;
+}
+.rms-pro-shell .supplier-products-toggle:hover{
+  background:#d1fae5!important;
+  border-color:#0d9488!important;
+  color:#0f766e!important;
+}
+.rms-pro-shell .supplier-products-toggle.is-open{
+  background:#0f766e!important;
+  border-color:#0f766e!important;
+  color:#fff!important;
+}
+@media (max-width:760px){
+  .rms-pro-shell .supplier-products-form-footer{
+    flex-direction:column!important;
+    align-items:stretch!important;
+  }
+  .rms-pro-shell .supplier-products-toggle{
+    width:100%!important;
+    margin-left:0!important;
+  }
+}
+
 /* v235 Revenue chart KPI labels only */
 .reports-v231-preferred-revenue-chart .metric-title{
   line-height:1.15;
@@ -24901,12 +24948,28 @@ function Suppliers({ t, isAdmin = false }) {
       base_unit: normalizeSupplierBaseUnit(supplierProductEditForm.base_unit)
     }
     const stopProgress = startGlobalProgress('Сохранение товара...')
-    const { error } = await supabase.from('supplier_products').update(payload).eq('id', product.id)
-    stopProgress()
-    if (error) return setProductMessage(error.message)
-    setEditingSupplierProductId('')
-    await load()
-    setProductMessage('Товар обновлён')
+    try {
+      const { data, error } = await supabase.rpc('rms_supplier_product_update_secure', {
+        p_product_id: product.id,
+        p_name: payload.name,
+        p_category: payload.category,
+        p_base_unit: payload.base_unit
+      })
+      if (error) throw error
+      const saved = Array.isArray(data) ? data[0] : data
+      if (!saved?.id || saved.base_unit !== payload.base_unit) {
+        throw new Error('Изменение единицы товара не подтверждено базой данных')
+      }
+      setProducts(rows => rows.map(row => row.id === product.id ? { ...row, ...saved } : row))
+      setEditingSupplierProductId('')
+      setSupplierProductEditForm({ name: '', category: PRODUCT_CATEGORIES[0], base_unit: 'g' })
+      await load()
+      setProductMessage('Товар обновлён')
+    } catch (error) {
+      setProductMessage(error?.message || 'Не удалось обновить товар')
+    } finally {
+      stopProgress()
+    }
   }
 
   async function deleteSupplierProduct(product) {
@@ -26353,9 +26416,12 @@ function Suppliers({ t, isAdmin = false }) {
       </div>
 
       <div className="card span-2">
-        <div className="card-head"><div><h3>Товары</h3><p className="hint">Товар создаётся один раз и потом выбирается в поступлении и в техкарте.</p></div><button className="small" onClick={() => { setShowSupplierProducts(v => !v); setSupplierProductsPage(1) }}>{showSupplierProducts ? 'Скрыть товары' : `Показать товары · ${filteredSupplierProducts.length}`}</button></div>
+        <div className="card-head"><div><h3>Товары</h3><p className="hint">Товар создаётся один раз и потом выбирается в поступлении и в техкарте.</p></div></div>
         <div className="form-grid compact"><label><span>Товар</span><input value={productForm.name} onChange={e => { setProductForm({...productForm, name: e.target.value}); setProductMessage('') }} /></label><label><span>Тип</span><select value={productForm.category} onChange={e => setProductForm({...productForm, category: e.target.value})}>{PRODUCT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select></label><label><span>Базовая ед. для техкарты</span><select value={productForm.base_unit} onChange={e => setProductForm({...productForm, base_unit: e.target.value})}>{BASE_UNITS.map(u => <option key={u.value} value={u.value}>{u.label}</option>)}</select></label></div>
-        <div className="rms-form-action-row"><button className="small" onClick={addProductFromForm}>+ Добавить товар</button>{productMessage && <span className={`rms-inline-operation-status ${rmsInferToastType(productMessage)}`}>{productMessage}</span>}</div>
+        <div className="supplier-products-form-footer">
+          <div className="rms-form-action-row"><button className="small" onClick={addProductFromForm}>+ Добавить товар</button>{productMessage && <span className={`rms-inline-operation-status ${rmsInferToastType(productMessage)}`}>{productMessage}</span>}</div>
+          <button className={`small supplier-products-toggle ${showSupplierProducts ? 'is-open' : ''}`} onClick={() => { setShowSupplierProducts(v => !v); setSupplierProductsPage(1) }}>{showSupplierProducts ? 'Скрыть товары' : `Показать товары · ${filteredSupplierProducts.length}`}</button>
+        </div>
         {showSupplierProducts && <div className="supplier-products-admin-list">
           <div className="supplier-products-toolbar">
             <label><span>Поиск товара</span><input value={supplierProductSearch} onChange={e => { setSupplierProductSearch(e.target.value); setSupplierProductsPage(1) }} placeholder="Название или категория" /></label>
