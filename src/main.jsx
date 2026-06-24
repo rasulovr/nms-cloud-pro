@@ -18396,6 +18396,7 @@ function convertToBase(quantity, fromUnit, baseUnit) {
 
 
 function Recipes({ t }) {
+  const isAzInterface = t('language_label') === 'İnterfeys dili'
   const [tab, setTab] = useState('legacy')
   const [products, setProducts] = useState([])
   const [costs, setCosts] = useState([])
@@ -19399,9 +19400,9 @@ function Recipes({ t }) {
                   <button>Неактивные</button>
                 </div>
                 <div className="tech-toolbar-actions">
-                  <button className="ghost small">⇩ Экспорт</button>
-                  <button className="ghost small">⇧ Импорт</button>
-                  <button className="small primary" onClick={resetFinalMenuFormForCreate}>+ Новая тех. карта</button>
+                  <button className="ghost small">⇩ {isAzInterface ? 'İxrac' : 'Экспорт'}</button>
+                  <button className="ghost small">⇧ {isAzInterface ? 'İdxal' : 'Импорт'}</button>
+                  <button className="small primary" onClick={resetFinalMenuFormForCreate}>+ {isAzInterface ? 'Yeni texnoloji kart' : 'Новая тех. карта'}</button>
                 </div>
               </div>
 
@@ -19497,7 +19498,7 @@ function Recipes({ t }) {
                               </div>
                               <div>
                                 <b>{m.name}</b>
-                                <span>{rows.length} компонентов</span>
+                                <span>{rows.length} {isAzInterface ? 'komponent' : 'компонентов'}</span>
                               </div>
                             </div>
                           </td>
@@ -19523,7 +19524,7 @@ function Recipes({ t }) {
               </div>
 
               <div className="tech-pagination-row">
-                <span className="hint">Показано {pagedTechCards.length ? ((safeTechCardPage - 1) * techCardPageSizeNumber) + 1 : 0}–{Math.min(safeTechCardPage * techCardPageSizeNumber, filteredTechCards.length)} из {filteredTechCards.length}</span>
+                <span className="hint">{isAzInterface ? `${filteredTechCards.length} qeyddən ${pagedTechCards.length ? ((safeTechCardPage - 1) * techCardPageSizeNumber) + 1 : 0}–${Math.min(safeTechCardPage * techCardPageSizeNumber, filteredTechCards.length)} göstərilir` : `Показано ${pagedTechCards.length ? ((safeTechCardPage - 1) * techCardPageSizeNumber) + 1 : 0}–${Math.min(safeTechCardPage * techCardPageSizeNumber, filteredTechCards.length)} из ${filteredTechCards.length}`}</span>
                 <div className="tech-pages">
                   <button className="ghost small" disabled={safeTechCardPage <= 1} onClick={() => setTechCardPage(p => Math.max(1, parseNum(p) - 1))}>‹</button>
                   <span>{safeTechCardPage}</span>
