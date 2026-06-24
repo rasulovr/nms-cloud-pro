@@ -4080,7 +4080,7 @@ const RMS_AZ_EXTRA_TRANSLATIONS = {
   'Дата оплаты': 'Ödəniş tarixi',
   'Сумма оплаты': 'Ödəniş məbləği',
   'Отметки / номера счёт-фактур': 'Qeydlər / faktura nömrələri',
-  '+ Выбрать e-qaimə / открыть большое окно': '+ e-qaimə seç / geniş pəncərəni aç',
+  '+ Выбрать e-qaimə': '+ e-qaimə seç / geniş pəncərəni aç',
   '+ Сохранить оплату': '+ Ödənişi yadda saxla',
   'Контрагенты': 'Kontragentlər',
   'Условия оплаты и лимиты используются в Dashboard для проблемных долгов.': 'Ödəniş şərtləri və limitlər Dashboard-da problemli borclar üçün istifadə olunur.',
@@ -14455,6 +14455,93 @@ function RMSProV6Styles() {
 }
 @media (max-width:900px){
   .rms-pro-shell .supplier-counterparty-primary-fields{grid-template-columns:1fr!important;}
+}
+
+
+/* v295 standardized supplier form actions */
+.rms-pro-shell .supplier-form-footer{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) auto!important;
+  align-items:center!important;
+  gap:16px!important;
+  width:100%!important;
+  margin-top:18px!important;
+  padding-top:16px!important;
+  border-top:1px solid #e8edf3!important;
+}
+.rms-pro-shell .supplier-form-footer-status{
+  min-width:0!important;
+}
+.rms-pro-shell .supplier-form-footer-status p,
+.rms-pro-shell .supplier-form-footer-status span{
+  margin:0!important;
+}
+.rms-pro-shell .supplier-save-action{
+  min-width:190px!important;
+  height:46px!important;
+  padding:0 22px!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  border:1px solid #0f766e!important;
+  border-radius:13px!important;
+  background:linear-gradient(135deg,#0f766e,#0d9488)!important;
+  color:#fff!important;
+  font-weight:850!important;
+  white-space:nowrap!important;
+  box-shadow:0 10px 24px rgba(13,148,136,.22)!important;
+}
+.rms-pro-shell .supplier-save-action:hover{
+  background:linear-gradient(135deg,#115e59,#0f766e)!important;
+  border-color:#115e59!important;
+  box-shadow:0 13px 28px rgba(13,148,136,.28)!important;
+  transform:translateY(-1px)!important;
+}
+.rms-pro-shell .supplier-save-action:disabled{
+  opacity:.55!important;
+  cursor:not-allowed!important;
+  transform:none!important;
+  box-shadow:none!important;
+}
+.rms-pro-shell .supplier-modal-footer{
+  position:sticky!important;
+  bottom:-22px!important;
+  z-index:12!important;
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) auto!important;
+  align-items:center!important;
+  gap:16px!important;
+  margin:18px -22px -22px!important;
+  padding:15px 22px!important;
+  border-top:1px solid #e5e7eb!important;
+  background:rgba(255,255,255,.98)!important;
+  backdrop-filter:blur(10px)!important;
+}
+.rms-pro-shell .supplier-modal-footer-left{
+  min-width:0!important;
+  display:flex!important;
+  align-items:center!important;
+  gap:12px!important;
+  flex-wrap:wrap!important;
+}
+.rms-pro-shell .supplier-modal-footer-left p{margin:0!important;}
+.rms-pro-shell .supplier-modal-footer-actions{
+  display:flex!important;
+  justify-content:flex-end!important;
+  align-items:center!important;
+  gap:10px!important;
+}
+@media(max-width:760px){
+  .rms-pro-shell .supplier-form-footer,
+  .rms-pro-shell .supplier-modal-footer{
+    grid-template-columns:1fr!important;
+  }
+  .rms-pro-shell .supplier-form-footer .supplier-save-action,
+  .rms-pro-shell .supplier-modal-footer-actions,
+  .rms-pro-shell .supplier-modal-footer-actions .supplier-save-action{
+    width:100%!important;
+  }
+  .rms-pro-shell .supplier-modal-footer-actions{flex-direction:column-reverse!important;align-items:stretch!important;}
 }
 
 /* v235 Revenue chart KPI labels only */
@@ -26282,7 +26369,8 @@ function Suppliers({ t, isAdmin = false }) {
           <td><div className="supplier-auto-unit-price"><input inputMode="decimal" value={row.unit_price} onChange={e => updateLine(idx, { unit_price: e.target.value })} placeholder="0.00" /><small>{parseNum(row.quantity) > 0 && parseNum(row.unit_price) >= 0 ? `${formatPurchaseDraftNumber(parseNum(row.unit_price), 4)} AZN / ${row.unit || 'ед.'}` : 'Рассчитается автоматически'}</small></div></td>
           <td><button className="remove" onClick={() => setLineRows(rows => rows.length === 1 ? [{ ...emptyLine }] : rows.filter((_, i) => i !== idx))}>×</button></td>
         </tr>)}</tbody></table></div>
-        <p className="hint">Итого по фактуре: <strong>{fmt(purchaseTotal)}</strong> AZN.</p><button className="small primary" onClick={addPurchase}>+ Сохранить поступление</button>{message && <p className={`hint ${message === t('saved') ? 'save-status' : 'bad'}`}>{message}</p>}
+        <p className="hint">Итого по фактуре: <strong>{fmt(purchaseTotal)}</strong> AZN.</p>
+        <div className="supplier-form-footer"><div className="supplier-form-footer-status">{message && <p className={`hint ${message === t('saved') ? 'save-status' : 'bad'}`}>{message}</p>}</div><button className="small supplier-save-action" onClick={addPurchase}>+ Сохранить поступление</button></div>
       </div>
 
       <div className="card span-2">
@@ -26296,13 +26384,12 @@ function Suppliers({ t, isAdmin = false }) {
           <label><span>Комментарий</span><input value={paymentForm.comment} onChange={e => setPaymentForm({...paymentForm, comment: e.target.value})} /></label>
         </div>
         <div className="action-row" style={{margin:'12px 0'}}>
-          <button className="small primary" onClick={() => { setShowPaymentCreateOverlay(true); openPaymentCreateOverlay() }}>+ Выбрать e-qaimə / открыть большое окно</button>
+          <button className="small primary" onClick={() => { setShowPaymentCreateOverlay(true); openPaymentCreateOverlay() }}>+ Выбрать e-qaimə</button>
           {(paymentForm.selected_e_invoice_ids || []).length > 0 && <span className="hint">Выбрано e-qaimə: <b>{paymentForm.selected_e_invoice_ids.length}</b> · сумма: <b>{fmt(paymentForm.amount)} AZN</b></span>}
         </div>
         {/* v272: старый встроенный список выбора нескольких e-qaimə полностью удалён.
             Используем только большое overlay-окно выбора e-qaimə. */}
-        <button className="small primary" onClick={savePayment}>+ Сохранить оплату</button>
-        {paymentMessage && <p className={`hint ${paymentMessage === t('saved') ? 'save-status' : 'bad'}`}>{paymentMessage}</p>}
+        <div className="supplier-form-footer"><div className="supplier-form-footer-status">{paymentMessage && <p className={`hint ${paymentMessage === t('saved') ? 'save-status' : 'bad'}`}>{paymentMessage}</p>}</div><button className="small supplier-save-action" onClick={savePayment}>+ Сохранить оплату</button></div>
       </div>
 
       {showPaymentCreateOverlay && <div
@@ -26347,12 +26434,10 @@ function Suppliers({ t, isAdmin = false }) {
             </div>
           </div>
 
-          <div className="action-row" style={{marginTop:14}}>
-            <button className="small primary" onClick={savePayment}>+ Сохранить оплату</button>
-            <button className="ghost small" onClick={() => setShowPaymentCreateOverlay(false)}>Закрыть</button>
-            {(paymentForm.selected_e_invoice_ids || []).length > 0 && <span className="hint">Выбрано: <b>{paymentForm.selected_e_invoice_ids.length}</b> · сумма: <b>{fmt(selectedPaymentCreateTotal || paymentForm.amount)} AZN</b></span>}
+          <div className="supplier-modal-footer">
+            <div className="supplier-modal-footer-left">{(paymentForm.selected_e_invoice_ids || []).length > 0 && <span className="hint">Выбрано: <b>{paymentForm.selected_e_invoice_ids.length}</b> · сумма: <b>{fmt(selectedPaymentCreateTotal || paymentForm.amount)} AZN</b></span>}{paymentMessage && <p className={`hint ${paymentMessage === t('saved') ? 'save-status' : 'bad'}`}>{paymentMessage}</p>}</div>
+            <div className="supplier-modal-footer-actions"><button className="ghost small" onClick={() => setShowPaymentCreateOverlay(false)}>Закрыть</button><button className="small supplier-save-action" onClick={savePayment}>+ Сохранить оплату</button></div>
           </div>
-          {paymentMessage && <p className={`hint ${paymentMessage === t('saved') ? 'save-status' : 'bad'}`}>{paymentMessage}</p>}
         </div>
       </div>}
 
@@ -26383,7 +26468,7 @@ function Suppliers({ t, isAdmin = false }) {
             <label><span>Комментарий к стартовому долгу</span><input value={supplierForm.opening_debt_comment} onChange={e => setSupplierForm({...supplierForm, opening_debt_comment: e.target.value})} placeholder="Например: остаток на 01.05" /></label>
           </div>
         </details>
-        <button className="small" onClick={addSupplier}>+ Добавить поставщика</button>
+        <div className="supplier-form-footer"><span></span><button className="small supplier-save-action" onClick={addSupplier}>+ Добавить поставщика</button></div>
         {editingSupplierId && (() => {
           const selected = supplierAdminRows.find(s => s.id === editingSupplierId)
           if (!selected) return null
@@ -26467,7 +26552,7 @@ function Suppliers({ t, isAdmin = false }) {
         <div className="card-head"><div><h3>Товары</h3><p className="hint">Товар создаётся один раз и потом выбирается в поступлении и в техкарте.</p></div></div>
         <div className="form-grid compact"><label><span>Товар</span><input value={productForm.name} onChange={e => { setProductForm({...productForm, name: e.target.value}); setProductMessage('') }} /></label><label><span>Тип</span><select value={productForm.category} onChange={e => setProductForm({...productForm, category: e.target.value})}>{PRODUCT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select></label><label><span>Базовая ед. для техкарты</span><select value={productForm.base_unit} onChange={e => setProductForm({...productForm, base_unit: e.target.value})}>{BASE_UNITS.map(u => <option key={u.value} value={u.value}>{u.label}</option>)}</select></label></div>
         <div className="supplier-products-form-footer">
-          <div className="rms-form-action-row"><button className="small" onClick={addProductFromForm}>+ Добавить товар</button>{productMessage && <span className={`rms-inline-operation-status ${rmsInferToastType(productMessage)}`}>{productMessage}</span>}</div>
+          <div className="supplier-form-footer"><div className="supplier-form-footer-status">{productMessage && <span className={`rms-inline-operation-status ${rmsInferToastType(productMessage)}`}>{productMessage}</span>}</div><button className="small supplier-save-action" onClick={addProductFromForm}>+ Добавить товар</button></div>
           <button className={`small supplier-products-toggle ${showSupplierProducts ? 'is-open' : ''}`} onClick={() => { setShowSupplierProducts(v => !v); setSupplierProductsPage(1) }}>{showSupplierProducts ? 'Скрыть товары' : `Показать товары · ${filteredSupplierProducts.length}`}</button>
         </div>
         {showSupplierProducts && <div className="supplier-products-admin-list">
