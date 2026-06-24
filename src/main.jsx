@@ -14058,6 +14058,73 @@ function RMSProV6Styles() {
 @keyframes rmsToastIn{from{opacity:0;transform:translateY(-10px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
 @media(max-width:760px){.rms-operation-toast-stack{top:12px!important;right:12px!important;left:12px!important;width:auto!important;}.rms-operation-toast{grid-template-columns:34px minmax(0,1fr) 28px!important;}}
 
+
+/* v282 supplier journal: keep action button inside table */
+.rms-pro-shell .supplier-common-ops-wrap{
+  width:100%!important;
+  max-width:100%!important;
+  overflow-x:auto!important;
+  overflow-y:visible!important;
+}
+.rms-pro-shell .supplier-common-ops-table{
+  width:100%!important;
+  min-width:1120px!important;
+  table-layout:fixed!important;
+}
+.rms-pro-shell .supplier-common-ops-table th,
+.rms-pro-shell .supplier-common-ops-table td{
+  vertical-align:middle!important;
+}
+.rms-pro-shell .supplier-common-ops-table th:nth-child(1),
+.rms-pro-shell .supplier-common-ops-table td:nth-child(1){width:120px!important;}
+.rms-pro-shell .supplier-common-ops-table th:nth-child(2),
+.rms-pro-shell .supplier-common-ops-table td:nth-child(2){width:135px!important;}
+.rms-pro-shell .supplier-common-ops-table th:nth-child(3),
+.rms-pro-shell .supplier-common-ops-table td:nth-child(3){width:110px!important;}
+.rms-pro-shell .supplier-common-ops-table th:nth-child(4),
+.rms-pro-shell .supplier-common-ops-table td:nth-child(4){width:190px!important;}
+.rms-pro-shell .supplier-common-ops-table th:nth-child(5),
+.rms-pro-shell .supplier-common-ops-table td:nth-child(5){width:145px!important;}
+.rms-pro-shell .supplier-common-ops-table th:nth-child(6),
+.rms-pro-shell .supplier-common-ops-table td:nth-child(6){width:110px!important;}
+.rms-pro-shell .supplier-common-ops-table th:nth-child(7),
+.rms-pro-shell .supplier-common-ops-table td:nth-child(7){width:auto!important;}
+.rms-pro-shell .supplier-common-ops-table th:nth-child(8),
+.rms-pro-shell .supplier-common-ops-table td:nth-child(8){
+  width:132px!important;
+  min-width:132px!important;
+  max-width:132px!important;
+  text-align:center!important;
+  padding-left:10px!important;
+  padding-right:10px!important;
+}
+.rms-pro-shell .supplier-common-ops-comment{
+  white-space:normal!important;
+  overflow-wrap:anywhere!important;
+  word-break:break-word!important;
+  line-height:1.45!important;
+}
+.rms-pro-shell .supplier-common-ops-action{
+  white-space:nowrap!important;
+  overflow:visible!important;
+}
+.rms-pro-shell .supplier-common-ops-action .small{
+  width:100%!important;
+  min-width:0!important;
+  max-width:112px!important;
+  margin:0 auto!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  white-space:nowrap!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  box-sizing:border-box!important;
+}
+@media (max-width:900px){
+  .rms-pro-shell .supplier-common-ops-table{min-width:1040px!important;}
+}
+
 /* v235 Revenue chart KPI labels only */
 .reports-v231-preferred-revenue-chart .metric-title{
   line-height:1.15;
@@ -26196,6 +26263,7 @@ function SupplierRiskBars({ data = [] }) {
 }
 
 function DebtsPayments({ t }) {
+  const isAzInterface = t('language_label') === 'İnterfeys dili'
   const [legalEntities, setLegalEntities] = useState([])
   const [branches, setBranches] = useState([])
   const [suppliers, setSuppliers] = useState([])
@@ -27993,7 +28061,7 @@ function DebtsPayments({ t }) {
       <div className="debt-kpi-grid">
         <DebtKpiCard tone="muted" label="Поставщиков" value={debtIntelligence.supplierCount} sub="с активным балансом" />
         <DebtKpiCard tone="danger" label="Общий долг" value={`${fmt(debtIntelligence.totalDebt)} AZN`} sub="открытый баланс" />
-        <DebtKpiCard tone="danger" label="Просрочено" value={`${fmt(debtIntelligence.overdueDebt)} AZN`} sub={`${debtIntelligence.overdueSupplierCount} поставщиков`} />
+        <DebtKpiCard tone="danger" label="Просрочено" value={`${fmt(debtIntelligence.overdueDebt)} AZN`} sub={`${debtIntelligence.overdueSupplierCount} ${isAzInterface ? 'təchizatçı' : 'поставщиков'}`} />
         <DebtKpiCard tone="info" label="Лимит" value={debtIntelligence.availableLimit >= 0 ? `${fmt(debtIntelligence.availableLimit)} AZN` : `${fmt(Math.abs(debtIntelligence.availableLimit))} AZN`} sub={debtIntelligence.availableLimit >= 0 ? 'доступный лимит' : 'превышение лимита'} />
       </div>
 
@@ -28006,7 +28074,7 @@ function DebtsPayments({ t }) {
           const entityTotalDebt = debtForLegalEntity(le.id)
           const entityDebtLabel = entityTotalDebt > 0 ? 'Долг' : entityTotalDebt < 0 ? 'Переплата' : 'Долга нет'
           const entityDebtClass = entityTotalDebt > 0 ? 'bad' : entityTotalDebt < 0 ? 'good' : 'hint'
-          return <div key={le.id} className="supplier-entity-group"><div className="supplier-entity-head"><b>{le.name} · {le.voen}</b><div className="action-row" style={{gap:12,alignItems:'center'}}><span>{list.length} поставщиков</span><span className={entityDebtClass}>{entityDebtLabel}: <b>{fmt(Math.abs(entityTotalDebt))} AZN</b></span></div></div><div className="table-wrap"><table className="supplier-compact-table"><thead><tr><th>Поставщик</th><th>Долг</th><th>Условия</th><th>Статус</th><th></th></tr></thead><tbody>{shown.map(s => { const actualSupplier = currentSupplierSnapshot(s); const entityBalance = balanceForSupplierLegal(actualSupplier.id, le.id); const alert = supplierAlert(actualSupplier, le.id); const risky = alert.overLimit > 0 || alert.overdueCount > 0; return <tr key={`${le.id}-${actualSupplier.id}`} style={risky ? { background: 'rgba(155,45,45,.08)' } : undefined}><td><b>{actualSupplier.name}</b><br /><span className="hint">{actualSupplier.voen || 'VOEN не указан'}</span></td><td><strong className={entityBalance > 0 ? 'bad' : entityBalance < 0 ? 'good' : 'hint'}>{fmt(entityBalance)}</strong></td><td className="hint">{actualSupplier.payment_term_days ? `${actualSupplier.payment_term_days} дней` : '—'} · лимит {fmt(actualSupplier.credit_limit)}</td><td className="hint">{alert.overLimit > 0 && <div className="bad">лимит +{fmt(alert.overLimit)}</div>}{alert.overdueCount > 0 && <div className="bad">просрочено: {alert.overdueCount}</div>}{!risky && <span className="good">ОК</span>}</td><td><div className="action-row" style={{gap:6}}><button className="small" onClick={() => openTransactions(actualSupplier.id, 'purchases', le.id)}>Транзакции</button><button className="small primary" onClick={() => openSupplierStatement(actualSupplier, le.id)}>Акт</button></div></td></tr>})}{!shown.length && <tr><td colSpan="5" className="hint">Нет поставщиков по этому VOEN</td></tr>}</tbody><tfoot><tr><td><b>Итого по VOEN</b></td><td><strong className={entityDebtClass}>{fmt(entityTotalDebt)}</strong></td><td colSpan="3" className="hint">Поступления + стартовый долг − оплаты</td></tr></tfoot></table></div>{list.length > 5 && <button className="ghost small" onClick={() => setExpandedEntities(e => ({...e, [le.id]: !e[le.id]}))}>{expandedEntities[le.id] ? 'Скрыть' : 'Показать все'}</button>}{activeSupplierId && activeLegalEntityId === le.id && <div ref={supplierTransactionPanelRef} className="card supplier-transactions-panel supplier-modal-panel"><div className="card-head supplier-modal-head"><div><h3>Транзакции: {activeSupplier?.name}</h3><p className="hint">{activeLegalEntityId ? `Наш VOEN: ${legalEntities.find(le => le.id === activeLegalEntityId)?.name || '—'}` : 'Поступления и оплаты показаны отдельно, чтобы не смешивать операции.'}</p></div><button className="supplier-modal-x" title="Закрыть" aria-label="Закрыть" onClick={() => { setActiveSupplierId(''); setActiveLegalEntityId('') }}>×</button></div>
+          return <div key={le.id} className="supplier-entity-group"><div className="supplier-entity-head"><b>{le.name} · {le.voen}</b><div className="action-row" style={{gap:12,alignItems:'center'}}><span>{list.length} {isAzInterface ? 'təchizatçı' : 'поставщиков'}</span><span className={entityDebtClass}>{entityDebtLabel}: <b>{fmt(Math.abs(entityTotalDebt))} AZN</b></span></div></div><div className="table-wrap"><table className="supplier-compact-table"><thead><tr><th>Поставщик</th><th>Долг</th><th>Условия</th><th>Статус</th><th></th></tr></thead><tbody>{shown.map(s => { const actualSupplier = currentSupplierSnapshot(s); const entityBalance = balanceForSupplierLegal(actualSupplier.id, le.id); const alert = supplierAlert(actualSupplier, le.id); const risky = alert.overLimit > 0 || alert.overdueCount > 0; return <tr key={`${le.id}-${actualSupplier.id}`} style={risky ? { background: 'rgba(155,45,45,.08)' } : undefined}><td><b>{actualSupplier.name}</b><br /><span className="hint">{actualSupplier.voen || 'VOEN не указан'}</span></td><td><strong className={entityBalance > 0 ? 'bad' : entityBalance < 0 ? 'good' : 'hint'}>{fmt(entityBalance)}</strong></td><td className="hint">{actualSupplier.payment_term_days ? `${actualSupplier.payment_term_days} дней` : '—'} · лимит {fmt(actualSupplier.credit_limit)}</td><td className="hint">{alert.overLimit > 0 && <div className="bad">лимит +{fmt(alert.overLimit)}</div>}{alert.overdueCount > 0 && <div className="bad">{isAzInterface ? 'gecikmiş' : 'просрочено'}: {alert.overdueCount}</div>}{!risky && <span className="good">ОК</span>}</td><td><div className="action-row" style={{gap:6}}><button className="small" onClick={() => openTransactions(actualSupplier.id, 'purchases', le.id)}>Транзакции</button><button className="small primary" onClick={() => openSupplierStatement(actualSupplier, le.id)}>Акт</button></div></td></tr>})}{!shown.length && <tr><td colSpan="5" className="hint">Нет поставщиков по этому VOEN</td></tr>}</tbody><tfoot><tr><td><b>Итого по VOEN</b></td><td><strong className={entityDebtClass}>{fmt(entityTotalDebt)}</strong></td><td colSpan="3" className="hint">Поступления + стартовый долг − оплаты</td></tr></tfoot></table></div>{list.length > 5 && <button className="ghost small" onClick={() => setExpandedEntities(e => ({...e, [le.id]: !e[le.id]}))}>{expandedEntities[le.id] ? 'Скрыть' : 'Показать все'}</button>}{activeSupplierId && activeLegalEntityId === le.id && <div ref={supplierTransactionPanelRef} className="card supplier-transactions-panel supplier-modal-panel"><div className="card-head supplier-modal-head"><div><h3>Транзакции: {activeSupplier?.name}</h3><p className="hint">{activeLegalEntityId ? `Наш VOEN: ${legalEntities.find(le => le.id === activeLegalEntityId)?.name || '—'}` : 'Поступления и оплаты показаны отдельно, чтобы не смешивать операции.'}</p></div><button className="supplier-modal-x" title="Закрыть" aria-label="Закрыть" onClick={() => { setActiveSupplierId(''); setActiveLegalEntityId('') }}>×</button></div>
         <div className="form-grid compact"><label><span>Тип операций</span><select value={transactionType} onChange={e => { setTransactionType(e.target.value); setDetailPurchaseId(''); setTransactionPage(1) }}><option value="purchases">Поступления</option><option value="payments">Оплаты</option><option value="products">Товары / цены</option></select></label><label><span>Период</span><select value={transactionPeriod} onChange={e => { setTransactionPeriod(e.target.value); setTransactionPage(1) }}><option value="day">За день</option><option value="month">За месяц</option><option value="year">За год</option><option value="all">Весь период</option></select></label>{transactionPeriod !== 'all' && <label><span>Дата периода</span><DateInput value={transactionDate} onChange={e => { setTransactionDate(e.target.value); setTransactionPage(1) }} /></label>}</div>
         <div className="action-row" style={{margin:'12px 0 10px'}}><label style={{display:'flex',alignItems:'center',gap:8}}><span className="hint">Показать</span><select value={transactionPageSize} onChange={e => { setTransactionPageSize(Number(e.target.value)); setTransactionPage(1) }}><option value={20}>20</option><option value={30}>30</option><option value={50}>50</option></select></label></div>
         {transactionType === 'payments' && activeEditingPayment && <div className="card supplier-payment-edit-panel" style={{marginTop:12, marginBottom:12, border:'2px solid rgba(37,99,235,.22)', boxShadow:'0 18px 45px rgba(37,99,235,.10)'}}>
@@ -28104,7 +28172,7 @@ function DebtsPayments({ t }) {
           <div className="metric"><span>Итого оплат</span><strong>{fmt(commonOpsTotals.credit)}</strong></div>
           <div className="metric"><span>Баланс</span><strong className={commonOpsTotals.balance > 0 ? 'bad' : commonOpsTotals.balance < 0 ? 'good' : 'hint'}>{fmt(commonOpsTotals.balance)}</strong></div>
         </div>
-        <div className="table-wrap"><table><thead><tr><th>Дата</th><th>Поставщик</th><th>Операция</th><th>Фактура/отметки</th><th>Приход / долг</th><th>Оплата</th><th>Комментарий</th><th>Действие</th></tr></thead><tbody>{lastOps.map(r => <tr key={r.id}><td>{r.date}</td><td>{r.supplier}</td><td><b>{r.type}</b></td><td>{r.invoice}</td><td className={r.debit > 0 ? 'bad' : 'hint'}>{r.debit > 0 ? fmt(r.debit) : '—'}</td><td className={r.credit > 0 ? 'good' : 'hint'}>{r.credit > 0 ? fmt(r.credit) : '—'}</td><td>{r.comment || '—'}</td><td>{r.type_key === 'purchase' || r.type_key === 'payment' || r.type_key === 'opening' ? <button className="small" onClick={() => handleCommonOperationAction(r)}>Редактировать</button> : '—'}</td></tr>)}{!lastOps.length && <tr><td colSpan="8" className="hint">—</td></tr>}</tbody></table></div>
+        <div className="table-wrap supplier-common-ops-wrap"><table className="supplier-common-ops-table"><thead><tr><th>Дата</th><th>Поставщик</th><th>Операция</th><th>Фактура/отметки</th><th>Приход / долг</th><th>Оплата</th><th>Комментарий</th><th>Действие</th></tr></thead><tbody>{lastOps.map(r => <tr key={r.id}><td>{r.date}</td><td>{r.supplier}</td><td><b>{r.type}</b></td><td>{r.invoice}</td><td className={r.debit > 0 ? 'bad' : 'hint'}>{r.debit > 0 ? fmt(r.debit) : '—'}</td><td className={r.credit > 0 ? 'good' : 'hint'}>{r.credit > 0 ? fmt(r.credit) : '—'}</td><td className="supplier-common-ops-comment">{r.comment || '—'}</td><td className="supplier-common-ops-action">{r.type_key === 'purchase' || r.type_key === 'payment' || r.type_key === 'opening' ? <button className="small" onClick={() => handleCommonOperationAction(r)}>Редактировать</button> : '—'}</td></tr>)}{!lastOps.length && <tr><td colSpan="8" className="hint">—</td></tr>}</tbody></table></div>
         <div className="action-row" style={{margin:'12px 0'}}>
           <button className="ghost small" disabled={safeCommonOpsPage <= 1} onClick={() => setCommonOpsPage(p => Math.max(1, parseNum(p) - 1))}>← Пред.</button>
           <span className="hint">Страница {safeCommonOpsPage} / {commonOpsTotalPages} · всего {filteredCommonOps.length}</span>
