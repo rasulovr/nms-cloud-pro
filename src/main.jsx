@@ -1818,6 +1818,7 @@ const RMS_INTERNAL_PERMISSIONS_KEY = 'rms_internal_permissions_v2'
 const RMS_INTERNAL_USERS_SETTING = 'internal_users_v2'
 const RMS_INTERNAL_PERMISSIONS_SETTING = 'internal_permissions_v2'
 const RMS_INTERNAL_SESSION_KEY = 'rms_internal_session_v2'
+const RMS_LOGIN_GUARD_SETTING = 'internal_login_guard_v1'
 
 const normalizeInternalLogin = (value) =>
   String(value || '')
@@ -2044,6 +2045,69 @@ async function hydrateRmsInternalAuthFromCloud() {
   } catch (error) {
     return { users: getInternalUsers(), permissions: getInternalPermissions(), error }
   }
+}
+
+
+async function rmsReadSharedLoginGuard() {
+  const cloud = await readRmsAppSetting(RMS_LOGIN_GUARD_SETTING, null)
+  if (cloud && typeof cloud === 'object' && !Array.isArray(cloud)) {
+    rmsWriteLoginGuard(cloud)
+    return cloud
+  }
+  return rmsReadLoginGuard()
+}
+
+async function rmsGetSharedLoginGuardState(login) {
+  const key = rmsLoginGuardLoginKey(login)
+  const guard = await rmsReadSharedLoginGuard()
+  const row = guard[key] || { attempts: 0, locked_until: 0 }
+  const lockedUntil = parseNum(row.locked_until)
+  const now = Date.now()
+  if (lockedUntil > now) return { key, locked: true, attempts: parseNum(row.attempts), lockedUntil, remainingMs: lockedUntil - now }
+  if (lockedUntil && lockedUntil <= now) {
+    delete guard[key]
+    rmsWriteLoginGuard(guard)
+    await writeRmsAppSetting(RMS_LOGIN_GUARD_SETTING, guard)
+  }
+  return { key, locked: false, attempts: 0, lockedUntil: 0, remainingMs: 0 }
+}
+
+async function rmsRegisterSharedFailedLogin(login) {
+  const key = rmsLoginGuardLoginKey(login)
+  const guard = await rmsReadSharedLoginGuard()
+  const previous = guard[key] || { attempts: 0, locked_until: 0 }
+  const now = Date.now()
+  if (parseNum(previous.locked_until) > now) return rmsGetSharedLoginGuardState(login)
+  const attempts = parseNum(previous.attempts) + 1
+  const lockedUntil = attempts >= RMS_LOGIN_MAX_FAILED_ATTEMPTS ? now + RMS_LOGIN_LOCK_MS : 0
+  guard[key] = { attempts, locked_until: lockedUntil, updated_at: new Date().toISOString() }
+  rmsWriteLoginGuard(guard)
+  await writeRmsAppSetting(RMS_LOGIN_GUARD_SETTING, guard)
+  return rmsGetSharedLoginGuardState(login)
+}
+
+async function rmsClearSharedLoginGuard(login) {
+  const key = rmsLoginGuardLoginKey(login)
+  const guard = await rmsReadSharedLoginGuard()
+  delete guard[key]
+  rmsWriteLoginGuard(guard)
+  await writeRmsAppSetting(RMS_LOGIN_GUARD_SETTING, guard)
+}
+
+async function persistInternalUsersShared(users) {
+  const payload = users || {}
+  writeJsonStorage(RMS_INTERNAL_USERS_KEY, payload)
+  const result = await writeRmsAppSetting(RMS_INTERNAL_USERS_SETTING, payload)
+  if (result?.error) throw result.error
+  return payload
+}
+
+async function persistInternalPermissionsShared(perms) {
+  const payload = perms || {}
+  writeJsonStorage(RMS_INTERNAL_PERMISSIONS_KEY, payload)
+  const result = await writeRmsAppSetting(RMS_INTERNAL_PERMISSIONS_SETTING, payload)
+  if (result?.error) throw result.error
+  return payload
 }
 
 
@@ -14218,6 +14282,18 @@ function RMSProV6Styles() {
   .rms-pro-shell .suppliers-purchase-price-table{min-width:1140px!important;}
 }
 
+
+/* v286 supplier product administration */
+.rms-pro-shell .supplier-products-admin-list{margin-top:16px!important;padding-top:16px!important;border-top:1px solid #e5e7eb!important;}
+.rms-pro-shell .supplier-products-admin-list table{min-width:760px!important;}
+.rms-pro-shell .supplier-products-admin-list th:nth-child(1){width:34%!important;}
+.rms-pro-shell .supplier-products-admin-list th:nth-child(2){width:24%!important;}
+.rms-pro-shell .supplier-products-admin-list th:nth-child(3){width:18%!important;}
+.rms-pro-shell .supplier-products-admin-list th:nth-child(4){width:24%!important;}
+.rms-pro-shell .supplier-products-admin-list input,
+.rms-pro-shell .supplier-products-admin-list select{width:100%!important;min-width:0!important;}
+.rms-pro-shell .supplier-products-admin-list .action-row{flex-wrap:nowrap!important;}
+
 /* v235 Revenue chart KPI labels only */
 .reports-v231-preferred-revenue-chart .metric-title{
   line-height:1.15;
@@ -14262,9 +14338,9 @@ function Login({ lang, setLang, t }) {
     try {
       const rawLogin = String(login || '').trim()
       const rawPassword = String(password || '')
-      const loginGuard = rmsGetLoginGuardState(rawLogin)
-      const failLogin = (message = t('login_error')) => {
-        const failedState = rmsRegisterFailedLogin(rawLogin)
+      const loginGuard = await rmsGetSharedLoginGuardState(rawLogin)
+      const failLogin = async (message = t('login_error')) => {
+        const failedState = await rmsRegisterSharedFailedLogin(rawLogin)
         stopProgress()
         if (failedState.locked) {
           return setError(`Слишком много неверных попыток. Вход заблокирован на ${rmsFormatLockTime(failedState.remainingMs)}.`)
@@ -14280,8 +14356,8 @@ function Login({ lang, setLang, t }) {
       }
 
       const normalizedLogin = normalizeInternalLogin(rawLogin)
-      await hydrateRmsInternalAuthFromCloud()
-      const internalUsers = getInternalUsers()
+      const hydratedInternalAuth = await hydrateRmsInternalAuthFromCloud()
+      const internalUsers = hydratedInternalAuth?.users || getInternalUsers()
       const internalUser = normalizedLogin
         ? (internalUsers[normalizedLogin] || Object.values(internalUsers).find(u =>
             normalizeInternalLogin(u?.login || u?.email) === normalizedLogin ||
@@ -14291,10 +14367,10 @@ function Login({ lang, setLang, t }) {
 
       if (internalUser) {
         if (internalUser.is_active === false) { stopProgress(); return setError('Пользователь отключён') }
-        if (String(internalUser.password || '') !== rawPassword) return failLogin(t('login_error'))
+        if (String(internalUser.password || '') !== rawPassword) return await failLogin(t('login_error'))
 
         const loginName = internalUser.login || normalizedLogin
-        rmsClearLoginGuard(rawLogin)
+        await rmsClearSharedLoginGuard(rawLogin)
         setInternalSessionStorage({
           rms_internal: true,
           access_token: `rms-internal-${internalUser.id || loginName}`,
@@ -14310,18 +14386,18 @@ function Login({ lang, setLang, t }) {
       }
 
       if (!rawLogin.includes('@') || /@(rms|nms)\.local\.az$/i.test(rawLogin) || /@rms\.internal$/i.test(rawLogin)) {
-        return failLogin('Пользователь не найден или пароль неверный. Создайте пользователя заново в Настройки → Пользователи')
+        return await failLogin('Пользователь не найден или пароль неверный. Создайте пользователя заново в Настройки → Пользователи')
       }
 
       const { error } = await supabase.auth.signInWithPassword({ email: rawLogin.toLowerCase(), password: rawPassword })
       if (!error) {
-        rmsClearLoginGuard(rawLogin)
+        await rmsClearSharedLoginGuard(rawLogin)
         stopProgress()
         setInternalSessionStorage(null)
         return
       }
 
-      return failLogin(error?.message || t('login_error'))
+      return await failLogin(error?.message || t('login_error'))
     } catch (e) {
       stopProgress()
       setError(e?.message || t('login_error'))
@@ -24112,6 +24188,9 @@ function Suppliers({ t, isAdmin = false }) {
   const [profiles, setProfiles] = useState([])
   const [supplierForm, setSupplierForm] = useState({ name: '', voen: '', contact_person: '', phone: '', info: '', payment_term_days: '', credit_limit: '', opening_debt_amount: '', opening_debt_legal_entity_id: '', opening_debt_date: todayISO(), opening_debt_comment: '' })
   const [productForm, setProductForm] = useState({ name: '', category: PRODUCT_CATEGORIES[0], base_unit: 'g' })
+  const [supplierProductSearch, setSupplierProductSearch] = useState('')
+  const [editingSupplierProductId, setEditingSupplierProductId] = useState('')
+  const [supplierProductEditForm, setSupplierProductEditForm] = useState({ name: '', category: PRODUCT_CATEGORIES[0], base_unit: 'g' })
   const [purchaseForm, setPurchaseForm] = useState({ supplier_id: '', legal_entity_id: '', branch_id: '', purchase_date: todayISO(), invoice_number: '', e_invoice_number: '', e_invoice_date: '', e_invoice_amount: '', comment: '', amount_only: false, manual_amount: '' })
   const emptyLine = { category: PRODUCT_CATEGORIES[0], product_id: '', base_unit: 'kg', quantity: '1', unit: 'kg', unit_price: '', line_amount: '' }
   const [lineRows, setLineRows] = useState([emptyLine])
@@ -24712,6 +24791,85 @@ function Suppliers({ t, isAdmin = false }) {
     if (error) return setProductMessage(error.message)
     setProductForm({ name: '', category: productForm.category, base_unit: safeBaseUnit })
     await load(); setProductMessage(t('saved'))
+  }
+
+
+
+  function startEditSupplierProduct(product) {
+    setEditingSupplierProductId(product.id)
+    setSupplierProductEditForm({
+      name: product.name || '',
+      category: product.category || PRODUCT_CATEGORIES[0],
+      base_unit: product.base_unit || 'g'
+    })
+    setProductMessage('')
+  }
+
+  async function saveSupplierProduct(product) {
+    const name = String(supplierProductEditForm.name || '').trim()
+    if (!name) return setProductMessage('Введите название товара')
+    const payload = {
+      name,
+      category: supplierProductEditForm.category || PRODUCT_CATEGORIES[0],
+      base_unit: normalizeSupplierBaseUnit(supplierProductEditForm.base_unit)
+    }
+    const stopProgress = startGlobalProgress('Сохранение товара...')
+    const { error } = await supabase.from('supplier_products').update(payload).eq('id', product.id)
+    stopProgress()
+    if (error) return setProductMessage(error.message)
+    setEditingSupplierProductId('')
+    await load()
+    setProductMessage('Товар обновлён')
+  }
+
+  async function deleteSupplierProduct(product) {
+    if (!window.confirm(`Удалить товар “${product.name}”?`)) return
+    const reason = window.prompt('Причина удаления товара', 'Ошибочно созданный товар')
+    if (reason === null) return
+    const stopProgress = startGlobalProgress('Удаление товара...')
+    try {
+      const [{ count: purchaseRefs }, { count: recipeRefs }] = await Promise.all([
+        supabase.from('supplier_purchase_items').select('id', { count: 'exact', head: true }).eq('product_id', product.id),
+        supabase.from('recipe_items').select('id', { count: 'exact', head: true }).eq('product_id', product.id)
+      ])
+      const referenced = parseNum(purchaseRefs) + parseNum(recipeRefs) > 0
+      const { error } = referenced
+        ? await supabase.from('supplier_products').update({ is_active: false }).eq('id', product.id)
+        : await supabase.from('supplier_products').delete().eq('id', product.id)
+      if (error) throw error
+      try {
+        const { data: authUserData } = await supabase.auth.getUser()
+        const internalSession = getInternalSessionStorage()
+        await supabase.from('finance_operation_log').insert({
+          entity_type: 'supplier_product', record_id: product.id, branch_id: null,
+          operation_date: todayISO(), action: referenced ? 'deactivate' : 'delete',
+          field_name: 'is_active', old_value: 'true', new_value: referenced ? 'false' : `deleted: ${reason}`,
+          user_id: authUserData?.user?.id || null,
+          user_email: authUserData?.user?.email || internalSession?.user?.email || internalSession?.user?.login_name || 'rms.internal'
+        })
+      } catch (_logError) {}
+      setEditingSupplierProductId('')
+      await load()
+      setProductMessage(referenced ? 'Товар использовался в операциях и был деактивирован' : 'Товар удалён')
+    } catch (e) {
+      setProductMessage(e.message || 'Не удалось удалить товар')
+    } finally {
+      stopProgress()
+    }
+  }
+
+  async function cancelSupplierPaymentFromPurchaseJournal(payment) {
+    if (!window.confirm('Удалить ошибочную оплату? Сумма будет возвращена в долг поставщика, а операция останется в журнале.')) return
+    const reason = window.prompt('Причина удаления оплаты', 'Ошибочная оплата поставщику')
+    if (reason === null) return
+    try {
+      await callSupplierRpc('rms_supplier_payment_cancel_secure', {
+        p_payment_id: payment.id,
+        p_reason: String(reason || '').trim() || 'Ошибочная оплата поставщику'
+      }, 'Оплата удалена из активного баланса')
+    } catch (e) {
+      setMessage(e.message || 'Не удалось удалить оплату')
+    }
   }
 
   async function callSupplierRpc(name, args, okMessage = t('saved'), messageSetter = setMessage) {
@@ -26121,6 +26279,21 @@ function Suppliers({ t, isAdmin = false }) {
         <div className="card-head"><div><h3>Товары</h3><p className="hint">Товар создаётся один раз и потом выбирается в поступлении и в техкарте.</p></div></div>
         <div className="form-grid compact"><label><span>Товар</span><input value={productForm.name} onChange={e => { setProductForm({...productForm, name: e.target.value}); setProductMessage('') }} /></label><label><span>Тип</span><select value={productForm.category} onChange={e => setProductForm({...productForm, category: e.target.value})}>{PRODUCT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select></label><label><span>Базовая ед. для техкарты</span><select value={productForm.base_unit} onChange={e => setProductForm({...productForm, base_unit: e.target.value})}>{BASE_UNITS.map(u => <option key={u.value} value={u.value}>{u.label}</option>)}</select></label></div>
         <div className="rms-form-action-row"><button className="small" onClick={addProductFromForm}>+ Добавить товар</button>{productMessage && <span className={`rms-inline-operation-status ${rmsInferToastType(productMessage)}`}>{productMessage}</span>}</div>
+        <div className="supplier-products-admin-list">
+          <div className="form-grid compact" style={{marginTop:16}}><label><span>Поиск товара</span><input value={supplierProductSearch} onChange={e => setSupplierProductSearch(e.target.value)} placeholder="Название или категория" /></label></div>
+          <div className="table-wrap"><table><thead><tr><th>Товар</th><th>Тип</th><th>Базовая единица</th><th>Действия</th></tr></thead><tbody>
+            {products.filter(p => { const q = supplierProductSearch.trim().toLowerCase(); return !q || String(p.name || '').toLowerCase().includes(q) || String(p.category || '').toLowerCase().includes(q) }).map(product => {
+              const editing = editingSupplierProductId === product.id
+              return <tr key={product.id}>
+                <td>{editing ? <input value={supplierProductEditForm.name} onChange={e => setSupplierProductEditForm({...supplierProductEditForm, name:e.target.value})} /> : <b>{product.name}</b>}</td>
+                <td>{editing ? <select value={supplierProductEditForm.category} onChange={e => setSupplierProductEditForm({...supplierProductEditForm, category:e.target.value})}>{PRODUCT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select> : product.category}</td>
+                <td>{editing ? <select value={supplierProductEditForm.base_unit} onChange={e => setSupplierProductEditForm({...supplierProductEditForm, base_unit:e.target.value})}>{BASE_UNITS.map(u => <option key={u.value} value={u.value}>{u.label}</option>)}</select> : product.base_unit}</td>
+                <td><div className="action-row">{editing ? <><button className="small primary" onClick={() => saveSupplierProduct(product)}>Сохранить</button><button className="ghost small" onClick={() => setEditingSupplierProductId('')}>Отмена</button></> : <><button className="small" onClick={() => startEditSupplierProduct(product)}>Редактировать</button><button className="small remove" onClick={() => deleteSupplierProduct(product)}>Удалить</button></>}</div></td>
+              </tr>
+            })}
+            {!products.length && <tr><td colSpan="4" className="hint">Товары не найдены</td></tr>}
+          </tbody></table></div>
+        </div>
       </div>
 
       {/* v260: Standalone “Список e-qaimə” removed.
@@ -26264,7 +26437,7 @@ function Suppliers({ t, isAdmin = false }) {
                             </tbody><tfoot><tr><td colSpan="2"><b>Итого e-qaimə</b></td><td><b>{fmt(purchaseLinkedEInvoicesTotal(p.id))}</b></td><td colSpan="4" className={Math.abs(purchaseLinkedEInvoicesTotal(p.id) - parseNum(p.total_amount)) > 0.02 ? 'bad' : 'good'}><b>Расхождение: {fmt(purchaseLinkedEInvoicesTotal(p.id) - parseNum(p.total_amount))}</b></td></tr></tfoot></table></div>
                             {paymentsForPurchase(p.id).length > 0 && <div className="supplier-single-einvoice-card" style={{marginTop:12}}>
                               <div className="card-head suppliers-v43-card-head"><div><h3>Оплаты по выбранным e-qaimə</h3><p className="hint">Можно отметить оплаты для проверки. Баланс не меняется — это только выбор для контроля в журнале.</p></div>{selectedJournalPaymentIds.length > 0 && <button className="ghost small" onClick={() => setSelectedJournalPaymentIds([])}>Очистить выбор</button>}</div>
-                              <div className="table-wrap"><table><thead><tr><th></th><th>Дата</th><th>Отметки / e-qaimə</th><th>Сумма</th><th>Комментарий</th></tr></thead><tbody>
+                              <div className="table-wrap"><table><thead><tr><th></th><th>Дата</th><th>Отметки / e-qaimə</th><th>Сумма</th><th>Комментарий</th><th>Действие</th></tr></thead><tbody>
                                 {paymentsForPurchase(p.id).map(pay => {
                                   const checked = selectedJournalPaymentIds.includes(pay.id)
                                   return <tr key={pay.id} className={checked ? 'active' : ''}>
@@ -26273,6 +26446,7 @@ function Suppliers({ t, isAdmin = false }) {
                                     <td>{pay.invoice_notes || '—'}</td>
                                     <td><b>{fmt(pay.amount)}</b></td>
                                     <td>{pay.comment || '—'}</td>
+                                    <td><button className="small remove" onClick={() => cancelSupplierPaymentFromPurchaseJournal(pay)}>Удалить</button></td>
                                   </tr>
                                 })}
                               </tbody></table></div>
@@ -33096,13 +33270,13 @@ function Settings({ session, t, theme, setTheme, lang, setLang }) {
       hide_manager_salaries: Boolean(existing?.hide_manager_salary || existing?.hide_manager_salaries),
       ui_theme: existing?.ui_theme || theme || 'classic'
     }
-    setInternalUsers(internalUsers)
+    try { await persistInternalUsersShared(internalUsers) } catch (e) { return setMsg(`Не удалось сохранить пользователя в облаке: ${e.message}`) }
 
     const allPerms = getInternalPermissions()
     if (!allPerms[userId]) {
       allPerms[userId] = {}
       editableSections.forEach(sec => { allPerms[userId][sec.id] = 'read' })
-      setInternalPermissions(allPerms)
+      try { await persistInternalPermissionsShared(allPerms) } catch (e) { return setMsg(`Не удалось сохранить права в облаке: ${e.message}`) }
     }
 
     setNewUser({ login: '', password: '', full_name: '' })
@@ -33124,7 +33298,10 @@ function Settings({ session, t, theme, setTheme, lang, setLang }) {
     const localLogin = Object.keys(internalUsers).find(k => internalUsers[k]?.id === userId || k === normalizeInternalLogin(loginName))
     if (localLogin) {
       internalUsers[localLogin] = { ...internalUsers[localLogin], password }
-      setInternalUsers(internalUsers)
+      try { await persistInternalUsersShared(internalUsers) } catch (e) {
+        setPasswordStatuses(prev => ({ ...prev, [userId]: { type: 'error', text: `Ошибка облачного сохранения: ${e.message}` } }))
+        return setMsg(`Не удалось сохранить пароль в облаке: ${e.message}`)
+      }
       setPasswordEdits(p => ({ ...p, [userId]: '' }))
       setPasswordStatuses(prev => ({ ...prev, [userId]: { type: 'success', text: 'Пароль изменён и применён' } }))
       setMsg(`Пароль пользователя ${localLogin} изменён`)
@@ -33137,13 +33314,13 @@ function Settings({ session, t, theme, setTheme, lang, setLang }) {
     setMsg('Пароль можно менять только у внутренних RMS-пользователей. Для admin используйте Supabase Auth.')
   }
 
-  function resetUserLoginLock(loginName, userId) {
+  async function resetUserLoginLock(loginName, userId) {
     const login = normalizeInternalLogin(loginName)
     if (!login) {
       setPasswordStatuses(prev => ({ ...prev, [userId]: { type: 'error', text: 'Login пользователя не найден' } }))
       return
     }
-    rmsClearLoginGuard(login)
+    await rmsClearSharedLoginGuard(login)
     setLoginGuardRevision(v => v + 1)
     setPasswordStatuses(prev => ({ ...prev, [userId]: { type: 'success', text: 'Блокировка и счётчик попыток обнулены' } }))
     setMsg(`Блокировка пользователя ${login} снята`)
@@ -33157,7 +33334,7 @@ function Settings({ session, t, theme, setTheme, lang, setLang }) {
       if ('hide_manager_salary' in normalizedPatch) normalizedPatch.hide_manager_salaries = normalizedPatch.hide_manager_salary
       if ('hide_manager_salaries' in normalizedPatch) normalizedPatch.hide_manager_salary = normalizedPatch.hide_manager_salaries
       internalUsers[localLogin] = { ...internalUsers[localLogin], ...normalizedPatch }
-      setInternalUsers(internalUsers)
+      try { await persistInternalUsersShared(internalUsers) } catch (e) { return setMsg(`Не удалось сохранить пользователя в облаке: ${e.message}`) }
       setMsg(t('saved'))
       window.dispatchEvent(new Event('rms-user-settings-updated'))
       await load()
@@ -33178,7 +33355,7 @@ function Settings({ session, t, theme, setTheme, lang, setLang }) {
     const local = getInternalPermissions()
     if (local[userId]) {
       local[userId] = { ...(local[userId] || {}), [section]: access }
-      setInternalPermissions(local)
+      try { await persistInternalPermissionsShared(local) } catch (e) { return setMsg(`Не удалось сохранить права в облаке: ${e.message}`) }
       setMsg(t('saved'))
       window.dispatchEvent(new Event('rms-user-settings-updated'))
       await load()
@@ -33204,11 +33381,11 @@ function Settings({ session, t, theme, setTheme, lang, setLang }) {
 
     const userId = internalUsers[localLogin].id
     delete internalUsers[localLogin]
-    setInternalUsers(internalUsers)
+    await persistInternalUsersShared(internalUsers)
 
     const allPerms = getInternalPermissions()
     delete allPerms[userId]
-    setInternalPermissions(allPerms)
+    await persistInternalPermissionsShared(allPerms)
 
     const active = getInternalSessionStorage()
     if (active?.user?.id === userId) setInternalSessionStorage(null)
@@ -34479,7 +34656,7 @@ function Settings({ session, t, theme, setTheme, lang, setLang }) {
                     <div className="user-admin-status-block">
                       <span className="user-admin-label">Статус входа</span>
                       {guardState.locked ? <div><strong className="bad">Заблокирован</strong><div className="hint">Осталось: {rmsFormatLockTime(guardState.remainingMs)}</div></div> : guardState.attempts > 0 ? <div><strong>Попыток: {guardState.attempts}</strong><div className="hint">До блокировки: {Math.max(0, RMS_LOGIN_MAX_FAILED_ATTEMPTS - guardState.attempts)}</div></div> : <span className="good">Доступен</span>}
-                      {(guardState.locked || guardState.attempts > 0) && <button className="small" style={{marginTop:8}} onClick={() => resetUserLoginLock(userLogin, u.id)}>Обнулить блокировку</button>}
+                      <button className="small" style={{marginTop:8}} onClick={() => resetUserLoginLock(userLogin, u.id)}>Обнулить счётчик попыток</button>
                     </div>
                   </div>
 
