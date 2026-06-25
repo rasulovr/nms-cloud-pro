@@ -4070,7 +4070,7 @@ const RMS_AZ_EXTRA_TRANSLATIONS = {
   'Ожидает e-qaimə': 'e-qaimə gözləyir',
   'Товары в поступлении': 'Daxilolmadakı məhsullar',
   'Если товара нет, сначала добавьте его ниже в блоке “Товары”.': 'Məhsul yoxdursa, əvvəlcə onu aşağıdakı “Məhsullar” bölməsində əlavə edin.',
-  '+ Строка товара': '+ Məhsul sətri',
+  '+ Строка товара': '+ Məhsulu əlavə et',
   'Выберите товар': 'Məhsul seçin',
   'килограмм (kg)': 'kiloqram (kg)',
   'грамм (g)': 'qram (g)',
@@ -14705,6 +14705,27 @@ function RMSProV6Styles() {
   .rms-pro-shell .supplier-single-einvoice-form{grid-template-columns:1fr!important;}
   .rms-pro-shell .invoice-view>.supplier-reconcile-preview,
   .rms-pro-shell .supplier-single-einvoice-card .supplier-reconcile-preview{grid-template-columns:1fr!important;}
+}
+
+
+/* v301 supplier add-product button */
+.rms-pro-shell .supplier-add-product-line-btn{
+  background:linear-gradient(135deg,#0f766e,#14b8a6)!important;
+  border-color:#0f766e!important;
+  color:#ffffff!important;
+  box-shadow:0 8px 18px rgba(15,118,110,.18)!important;
+  font-weight:800!important;
+}
+.rms-pro-shell .supplier-add-product-line-btn:hover{
+  background:linear-gradient(135deg,#115e59,#0d9488)!important;
+  border-color:#115e59!important;
+  color:#ffffff!important;
+}
+.rms-pro-shell .supplier-add-product-line-btn:disabled{
+  background:#cbd5e1!important;
+  border-color:#cbd5e1!important;
+  color:#64748b!important;
+  box-shadow:none!important;
 }
 
 /* v235 Revenue chart KPI labels only */
@@ -26610,7 +26631,7 @@ function Suppliers({ t, isAdmin = false }) {
           <div><span>Статус</span><strong>{purchaseForm.e_invoice_amount ? (Math.abs(parseNum(purchaseForm.e_invoice_amount) - parseNum(purchaseForm.amount_only ? purchaseForm.manual_amount : purchaseTotal)) <= 0.02 ? 'Сверено' : 'Расхождение') : 'Ожидает e-qaimə'}</strong></div>
         </div>
 
-        <div className="card-head suppliers-purchase-items-head"><div><h3>Товары в поступлении</h3><p className="hint">Если товара нет, сначала добавьте его ниже в блоке “Товары”.</p></div><button className="small" disabled={purchaseForm.amount_only} onClick={() => setLineRows(rows => [...rows, { ...emptyLine }])}>+ Строка товара</button></div>
+        <div className="card-head suppliers-purchase-items-head"><div><h3>Товары в поступлении</h3><p className="hint">Если товара нет, сначала добавьте его ниже в блоке “Товары”.</p></div><button className="small supplier-add-product-line-btn" disabled={purchaseForm.amount_only} onClick={() => setLineRows(rows => [...rows, { ...emptyLine }])}>+ Строка товара</button></div>
         <div className="table-wrap suppliers-purchase-items-wrap"><table className="suppliers-purchase-items-table suppliers-purchase-price-table"><thead><tr><th>Тип</th><th>Товар</th><th>Кол-во закупа</th><th>Ед. закупа</th><th>Сумма строки</th><th>Цена за ед.</th><th></th></tr></thead><tbody>{purchaseForm.amount_only ? <tr><td colSpan="7" className="hint">Товары отключены: поступление будет сохранено общей суммой.</td></tr> : lineRows.map((row, idx) => <tr key={idx}>
           <td><select value={row.category} onChange={e => updateLine(idx, { category: e.target.value })}>{PRODUCT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select></td>
           <td style={{minWidth:260}}><select value={row.product_id || ''} onChange={e => selectProductForLine(idx, e.target.value)}><option value="">Выберите товар</option>{productOptionsForRow(row).map(p => <option key={p.id} value={p.id}>{productLabel(p)}</option>)}</select></td>
@@ -27008,7 +27029,7 @@ function Suppliers({ t, isAdmin = false }) {
                               </table>
                             </div>
                             <div className="existing-purchase-items-footer">
-                              <button className="ghost small" onClick={() => setPurchaseItemsDraft(rows => [...rows, { ...emptyLine, id: crypto.randomUUID?.() || String(Math.random()), quantity: '', unit_price: '', line_amount: '' }])}>+ Строка товара</button>
+                              <button className="ghost small supplier-add-product-line-btn" onClick={() => setPurchaseItemsDraft(rows => [...rows, { ...emptyLine, id: crypto.randomUUID?.() || String(Math.random()), quantity: '', unit_price: '', line_amount: '' }])}>+ Строка товара</button>
                               <div className="existing-purchase-items-total">Новая сумма накладной: <strong>{fmt(existingPurchaseDraftTotal())} AZN</strong></div>
                               <div className="action-row">
                                 <button className="ghost small" onClick={() => { setPurchaseItemsEditorId(''); setPurchaseItemsDraft([]) }}>Отмена</button>
