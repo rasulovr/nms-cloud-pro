@@ -14615,6 +14615,98 @@ function RMSProV6Styles() {
   transform:none!important;
 }
 
+
+/* v300 compact supplier invoice detail */
+.rms-pro-shell .invoice-view{
+  padding:18px!important;
+}
+.rms-pro-shell .invoice-view>.card-head{
+  margin-bottom:12px!important;
+  padding-bottom:12px!important;
+}
+.rms-pro-shell .invoice-view>.card-head h3{
+  margin:0 0 4px!important;
+  font-size:21px!important;
+}
+.rms-pro-shell .invoice-view>.card-head .hint{
+  margin:0!important;
+  font-size:12px!important;
+}
+.rms-pro-shell .invoice-summary-grid{
+  display:grid!important;
+  grid-template-columns:repeat(4,minmax(0,1fr))!important;
+  gap:12px!important;
+  margin-bottom:12px!important;
+}
+.rms-pro-shell .invoice-summary-grid label{
+  min-width:0!important;
+}
+.rms-pro-shell .invoice-summary-grid label>span{
+  margin-bottom:5px!important;
+}
+.rms-pro-shell .invoice-summary-grid strong,
+.rms-pro-shell .invoice-summary-grid input,
+.rms-pro-shell .invoice-summary-grid select{
+  min-height:42px!important;
+}
+.rms-pro-shell .invoice-view>.supplier-reconcile-preview{
+  display:grid!important;
+  grid-template-columns:repeat(5,minmax(0,1fr))!important;
+  gap:10px!important;
+  margin:10px 0 14px!important;
+}
+.rms-pro-shell .invoice-view>.supplier-reconcile-preview>div{
+  min-height:74px!important;
+  padding:12px 14px!important;
+}
+.rms-pro-shell .supplier-single-einvoice-card{
+  margin-top:14px!important;
+  padding:16px!important;
+}
+.rms-pro-shell .supplier-single-einvoice-card .card-head{
+  margin-bottom:10px!important;
+  padding-bottom:10px!important;
+}
+.rms-pro-shell .supplier-single-einvoice-card .card-head h3{
+  margin:0 0 4px!important;
+  font-size:19px!important;
+}
+.rms-pro-shell .supplier-single-einvoice-card .card-head .hint{
+  margin:0!important;
+  font-size:12px!important;
+  line-height:1.4!important;
+}
+.rms-pro-shell .supplier-single-einvoice-form{
+  display:grid!important;
+  grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  gap:12px!important;
+  margin-bottom:8px!important;
+}
+.rms-pro-shell .supplier-single-einvoice-card .supplier-einvoice-auto-terms{
+  margin:6px 0 10px!important;
+}
+.rms-pro-shell .supplier-single-einvoice-card .supplier-reconcile-preview{
+  display:grid!important;
+  grid-template-columns:repeat(5,minmax(0,1fr))!important;
+  gap:10px!important;
+  margin:10px 0!important;
+}
+.rms-pro-shell .supplier-single-einvoice-card .supplier-reconcile-preview>div{
+  min-height:68px!important;
+  padding:10px 12px!important;
+}
+@media (max-width:1100px){
+  .rms-pro-shell .invoice-summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;}
+  .rms-pro-shell .invoice-view>.supplier-reconcile-preview,
+  .rms-pro-shell .supplier-single-einvoice-card .supplier-reconcile-preview{grid-template-columns:repeat(3,minmax(0,1fr))!important;}
+}
+@media (max-width:760px){
+  .rms-pro-shell .invoice-summary-grid,
+  .rms-pro-shell .supplier-single-einvoice-form{grid-template-columns:1fr!important;}
+  .rms-pro-shell .invoice-view>.supplier-reconcile-preview,
+  .rms-pro-shell .supplier-single-einvoice-card .supplier-reconcile-preview{grid-template-columns:1fr!important;}
+}
+
 /* v235 Revenue chart KPI labels only */
 .reports-v231-preferred-revenue-chart .metric-title{
   line-height:1.15;
@@ -26816,7 +26908,7 @@ function Suppliers({ t, isAdmin = false }) {
                             </div>}
                           </div>
 
-                          <div className="form-grid compact">
+                          <div className="form-grid compact invoice-summary-grid">
                             <label><span>Дата</span>{editingPurchaseId === p.id && !p.deleted_at ? <DateInput defaultValue={formatDateDMY(p.purchase_date)} onBlur={e => updatePurchase(p.id, { purchase_date: e.target.value })} /> : <strong>{formatDateDMY(p.purchase_date)}</strong>}</label>
                             <label><span>Приходная накладная</span>{editingPurchaseId === p.id && !p.deleted_at ? <input defaultValue={p.invoice_number || ''} onBlur={e => updatePurchase(p.id, { invoice_number: e.target.value.trim() || null })} /> : <strong>{p.invoice_number || '—'}</strong>}</label>
                             <label><span>Сумма накладной</span>{editingPurchaseId === p.id && !p.deleted_at ? <input inputMode="decimal" defaultValue={fmt(p.total_amount)} onBlur={e => updatePurchase(p.id, { total_amount: e.target.value })} /> : <strong>{fmt(p.total_amount)} AZN</strong>}</label>
@@ -26835,11 +26927,10 @@ function Suppliers({ t, isAdmin = false }) {
                               <div><h3>{purchaseLinkedEInvoices(p.id).length ? 'Добавить ещё одну e-qaimə к этому приходу' : 'Добавить e-qaimə к этому приходу'}</h3><p className="hint">Можно привязать несколько электронных накладных к одной физической поставке. Суммы e-qaimə будут суммироваться для сверки.</p></div>
                               <span className="suppliers-v43-badge">e-qaimə</span>
                             </div>
-                            <div className="form-grid compact">
+                            <div className="form-grid compact supplier-single-einvoice-form">
                               <label><span>№ e-qaimə</span><input value={singleEInvoiceDraft(p).invoice_number} onChange={e => updateSingleEInvoiceDraft(p.id, { invoice_number: e.target.value })} /></label>
                               <label><span>Дата e-qaimə</span><DateInput value={singleEInvoiceDraft(p).invoice_date} onChange={e => updateSingleEInvoiceDraft(p.id, { invoice_date: e.target.value })} /></label>
                               <label><span>Сумма e-qaimə</span><input inputMode="decimal" value={singleEInvoiceDraft(p).amount} onChange={e => updateSingleEInvoiceDraft(p.id, { amount: e.target.value })} /></label>
-                              <label><span>Комментарий</span><input value={singleEInvoiceDraft(p).note} onChange={e => updateSingleEInvoiceDraft(p.id, { note: e.target.value })} /></label>
                             </div>
                             <p className="hint supplier-einvoice-auto-terms">Срок оплаты рассчитывается автоматически по настройкам поставщика.</p>
                             <div className="supplier-reconcile-preview">
