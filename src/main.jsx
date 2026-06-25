@@ -4234,6 +4234,30 @@ const RMS_AZ_EXTRA_TRANSLATIONS = {
   ,'Закрыть': 'Bağla'
   ,'Редактировать': 'Redaktə et'
 
+  ,'Текущий месяц': 'Cari ay'
+  ,'Накладная без номера': 'Nömrəsiz qaimə'
+  ,'Создано': 'Yaradılıb'
+  ,'Изменено': 'Dəyişdirilib'
+  ,'Сумма накладной': 'Qaimənin məbləği'
+  ,'Физический приход': 'Fiziki daxilolma'
+  ,'Статус сверки': 'Üzləşdirmə statusu'
+  ,'Добавить e-qaimə к этому приходу': 'Bu daxilolmaya e-qaimə əlavə et'
+  ,'Добавить ещё одну e-qaimə к этому приходу': 'Bu daxilolmaya daha bir e-qaimə əlavə et'
+  ,'Можно привязать несколько электронных накладных к одной физической поставке. Суммы e-qaimə будут суммироваться для сверки.': 'Bir fiziki təchizata bir neçə elektron qaimə bağlamaq olar. Üzləşdirmə üçün e-qaimə məbləğləri cəmlənəcək.'
+  ,'Срок оплаты рассчитывается автоматически по настройкам поставщика.': 'Ödəniş müddəti təchizatçı parametrlərinə əsasən avtomatik hesablanır.'
+  ,'Уже привязано': 'Artıq bağlanıb'
+  ,'После добавления': 'Əlavədən sonra'
+  ,'Сверено': 'Üzləşdirilib'
+  ,'+ Добавить e-qaimə к поступлению': '+ Daxilolmaya e-qaimə əlavə et'
+  ,'Товары в накладной': 'Qaimədəki məhsullar'
+  ,'Можно заменить ручную сумму детализацией по товарам. После сохранения сумма накладной рассчитывается по строкам.': 'Əl ilə daxil edilmiş məbləği məhsullar üzrə detallandırma ilə əvəz etmək olar. Yadda saxlandıqdan sonra qaimənin məbləği sətirlər üzrə hesablanır.'
+  ,'Рассчитается автоматически': 'Avtomatik hesablanacaq'
+  ,'Новая сумма накладной': 'Qaimənin yeni məbləği'
+  ,'Сохранить товары и пересчитать': 'Məhsulları yadda saxla və yenidən hesabla'
+  ,'найдено': 'tapıldı'
+  ,'Пред.': 'Əvvəlki'
+  ,'След.': 'Növbəti'
+
   ,'Поставщик / VOEN': 'Təchizatçı / VÖEN'
   ,'Поставщик/VOEN': 'Təchizatçı / VÖEN'
   ,'Фактура / отметки': 'Faktura / qeydlər'
@@ -4287,7 +4311,11 @@ function rmsTranslateDynamicAzText(text) {
     [/^превышение лимита$/i, () => 'limit aşımı'],
     [/^поставщик\s*\/\s*voen$/i, () => 'Təchizatçı / VÖEN'],
     [/^фактура\s*\/\s*отметки$/i, () => 'Faktura / qeydlər'],
-    [/^(\d+)\s+найдено$/i, (_, n) => `${n} tapıldı`]
+    [/^(\d+)\s+найдено$/i, (_, n) => `${n} tapıldı`],
+    [/^Создано:\s*(.+)$/i, (_, v) => `Yaradılıb: ${v}`],
+    [/^Изменено:\s*(.+)$/i, (_, v) => `Dəyişdirilib: ${v}`],
+    [/^Новая сумма накладной:\s*([\d.,]+)\s*AZN$/i, (_, n) => `Qaimənin yeni məbləği: ${n} AZN`],
+    [/^Страница\s+(\d+)\s*\/\s*(\d+)\s*·\s*всего\s*(\d+)$/i, (_, a, b, c) => `Səhifə ${a} / ${b} · cəmi ${c}`]
   ]
   for (const [pattern, replacer] of patterns) {
     if (pattern.test(text)) return text.replace(pattern, replacer)
