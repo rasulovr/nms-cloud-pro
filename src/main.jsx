@@ -14544,6 +14544,21 @@ function RMSProV6Styles() {
   .rms-pro-shell .supplier-modal-footer-actions{flex-direction:column-reverse!important;align-items:stretch!important;}
 }
 
+
+/* v296 add items to an existing amount-only supplier invoice */
+.rms-pro-shell .existing-purchase-items-head{display:flex!important;align-items:flex-start!important;justify-content:space-between!important;gap:18px!important;margin:18px 0 12px!important;}
+.rms-pro-shell .existing-purchase-items-head h4{margin:0 0 4px!important;}
+.rms-pro-shell .existing-purchase-items-editor{padding:14px!important;border:1px solid #dbe4ee!important;border-radius:18px!important;background:#f8fafc!important;}
+.rms-pro-shell .existing-purchase-items-footer{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:14px!important;flex-wrap:wrap!important;margin-top:12px!important;}
+.rms-pro-shell .existing-purchase-items-total{margin-left:auto!important;font-size:14px!important;color:#475569!important;}
+.rms-pro-shell .existing-purchase-items-total strong{font-size:16px!important;color:#0f172a!important;}
+@media (max-width:760px){
+  .rms-pro-shell .existing-purchase-items-head{flex-direction:column!important;}
+  .rms-pro-shell .existing-purchase-items-head .small{width:100%!important;}
+  .rms-pro-shell .existing-purchase-items-footer{align-items:stretch!important;}
+  .rms-pro-shell .existing-purchase-items-total{margin-left:0!important;}
+}
+
 /* v235 Revenue chart KPI labels only */
 .reports-v231-preferred-revenue-chart .metric-title{
   line-height:1.15;
@@ -24473,6 +24488,8 @@ function Suppliers({ t, isAdmin = false }) {
   const [singleEInvoiceDrafts, setSingleEInvoiceDrafts] = useState({})
   const [activeInfoId, setActiveInfoId] = useState('')
   const [editingPurchaseId, setEditingPurchaseId] = useState('')
+  const [purchaseItemsEditorId, setPurchaseItemsEditorId] = useState('')
+  const [purchaseItemsDraft, setPurchaseItemsDraft] = useState([])
   const [viewPurchaseId, setViewPurchaseId] = useState('')
   const [recentPurchasesPageSize, setRecentPurchasesPageSize] = useState(10)
   const [recentPurchasesPage, setRecentPurchasesPage] = useState(1)
@@ -25281,6 +25298,67 @@ function Suppliers({ t, isAdmin = false }) {
     } catch (e) { setMessage(e.message) }
   }
 
+
+  function startExistingPurchaseItemsEdit(purchase) {
+    const existing = (purchase?.supplier_purchase_items || []).map(item => ({
+      id: item.id || crypto.randomUUID?.() || String(Math.random()),
+      category: item.supplier_products?.category || PRODUCT_CATEGORIES[0],
+      product_id: item.product_id || '',
+      quantity: String(item.quantity ?? ''),
+      unit: item.unit || item.supplier_products?.base_unit || 'kg',
+      unit_price: String(item.unit_price ?? ''),
+      line_amount: formatPurchaseDraftNumber(parseNum(item.total_amount) || (parseNum(item.quantity) * parseNum(item.unit_price)), 2)
+    }))
+    setPurchaseItemsDraft(existing.length ? existing : [{ ...emptyLine, id: crypto.randomUUID?.() || String(Math.random()), quantity: '', unit_price: '', line_amount: '' }])
+    setPurchaseItemsEditorId(purchase.id)
+  }
+
+  function updateExistingPurchaseDraft(index, patch) {
+    setPurchaseItemsDraft(rows => rows.map((row, i) => {
+      if (i !== index) return row
+      const next = { ...row, ...patch }
+      const quantity = parseNum(next.quantity)
+      if (Object.prototype.hasOwnProperty.call(patch, 'line_amount')) {
+        const amount = parseNum(patch.line_amount)
+        next.unit_price = quantity > 0 && amount >= 0 ? formatPurchaseDraftNumber(amount / quantity) : ''
+      } else if (Object.prototype.hasOwnProperty.call(patch, 'unit_price')) {
+        const unitPrice = parseNum(patch.unit_price)
+        next.line_amount = quantity > 0 && unitPrice >= 0 ? formatPurchaseDraftNumber(quantity * unitPrice, 2) : ''
+      } else if (Object.prototype.hasOwnProperty.call(patch, 'quantity')) {
+        const amount = parseNum(next.line_amount)
+        if (quantity > 0 && String(next.line_amount ?? '').trim() !== '') next.unit_price = formatPurchaseDraftNumber(amount / quantity)
+        else if (quantity > 0 && parseNum(next.unit_price) > 0) next.line_amount = formatPurchaseDraftNumber(quantity * parseNum(next.unit_price), 2)
+      }
+      return next
+    }))
+  }
+
+  function existingPurchaseDraftTotal() {
+    return (purchaseItemsDraft || []).reduce((sum, row) => sum + lineTotal(row), 0)
+  }
+
+  async function saveExistingPurchaseItems(purchase) {
+    setMessage('')
+    try {
+      const prepared = normalizeSupplierPurchaseItems(purchaseItemsDraft)
+      if (!prepared.length) throw new Error('Добавьте хотя бы один товар с количеством и ценой')
+      await callSupplierRpc('rms_supplier_purchase_update_secure', {
+        p_purchase_id: purchase.id,
+        p_supplier_id: purchase.supplier_id,
+        p_legal_entity_id: purchase.legal_entity_id || null,
+        p_branch_id: purchase.branch_id || null,
+        p_purchase_date: purchase.purchase_date,
+        p_invoice_number: purchase.invoice_number || null,
+        p_comment: purchase.comment || null,
+        p_items: prepared,
+        p_manual_amount: null
+      }, 'Товары добавлены. Сумма накладной пересчитана по товарам')
+      setPurchaseItemsEditorId('')
+      setPurchaseItemsDraft([])
+    } catch (e) {
+      setMessage(e.message || 'Не удалось сохранить товары в накладной')
+    }
+  }
 
   async function softDeletePurchase(id) {
     if (!window.confirm('Отменить поступление? Оно будет зачёркнуто и не будет учитываться в финансах.')) return
@@ -26734,24 +26812,53 @@ function Suppliers({ t, isAdmin = false }) {
                             </div>}
                           </div>}
 
-                          <div className="table-wrap">
+                          <div className="existing-purchase-items-head">
+                            <div>
+                              <h4>Товары в накладной</h4>
+                              <p className="hint">Можно заменить ручную сумму детализацией по товарам. После сохранения сумма накладной рассчитывается по строкам.</p>
+                            </div>
+                            {!p.deleted_at && purchaseItemsEditorId !== p.id && <button className="small supplier-main-action" onClick={() => startExistingPurchaseItemsEdit(p)}>{(p.supplier_purchase_items || []).length ? 'Редактировать товары' : '+ Добавить товары в накладную'}</button>}
+                          </div>
+
+                          {purchaseItemsEditorId === p.id ? <div className="existing-purchase-items-editor">
+                            <div className="table-wrap suppliers-purchase-items-wrap">
+                              <table className="suppliers-purchase-items-table suppliers-purchase-price-table">
+                                <thead><tr><th>Тип</th><th>Товар</th><th>Количество</th><th>Ед.</th><th>Сумма строки</th><th>Цена за ед.</th><th></th></tr></thead>
+                                <tbody>{purchaseItemsDraft.map((row, idx) => <tr key={row.id || idx}>
+                                  <td><select value={row.category || PRODUCT_CATEGORIES[0]} onChange={e => updateExistingPurchaseDraft(idx, { category: e.target.value })}>{PRODUCT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select></td>
+                                  <td><select value={row.product_id || ''} onChange={e => updateExistingPurchaseDraft(idx, { product_id: e.target.value })}><option value="">Выберите товар</option>{productOptionsForRow(row).map(prod => <option key={prod.id} value={prod.id}>{prod.name}</option>)}</select></td>
+                                  <td><input inputMode="decimal" value={row.quantity} onChange={e => updateExistingPurchaseDraft(idx, { quantity: e.target.value })} placeholder="30" /></td>
+                                  <td><select value={row.unit || 'kg'} onChange={e => updateExistingPurchaseDraft(idx, { unit: e.target.value })}>{PURCHASE_UNITS.map(u => <option key={u.value} value={u.value}>{u.label}</option>)}</select></td>
+                                  <td><input inputMode="decimal" value={row.line_amount ?? ''} onChange={e => updateExistingPurchaseDraft(idx, { line_amount: e.target.value })} placeholder="86.87" /></td>
+                                  <td><div className="supplier-auto-unit-price"><input inputMode="decimal" value={row.unit_price} onChange={e => updateExistingPurchaseDraft(idx, { unit_price: e.target.value })} placeholder="0.00" /><small>{parseNum(row.quantity) > 0 && parseNum(row.unit_price) >= 0 ? `${formatPurchaseDraftNumber(parseNum(row.unit_price), 4)} AZN / ${row.unit || 'ед.'}` : 'Рассчитается автоматически'}</small></div></td>
+                                  <td><button className="remove" onClick={() => setPurchaseItemsDraft(rows => rows.length === 1 ? [{ ...emptyLine, id: crypto.randomUUID?.() || String(Math.random()), quantity: '', unit_price: '', line_amount: '' }] : rows.filter((_, i) => i !== idx))}>×</button></td>
+                                </tr>)}</tbody>
+                              </table>
+                            </div>
+                            <div className="existing-purchase-items-footer">
+                              <button className="ghost small" onClick={() => setPurchaseItemsDraft(rows => [...rows, { ...emptyLine, id: crypto.randomUUID?.() || String(Math.random()), quantity: '', unit_price: '', line_amount: '' }])}>+ Строка товара</button>
+                              <div className="existing-purchase-items-total">Новая сумма накладной: <strong>{fmt(existingPurchaseDraftTotal())} AZN</strong></div>
+                              <div className="action-row">
+                                <button className="ghost small" onClick={() => { setPurchaseItemsEditorId(''); setPurchaseItemsDraft([]) }}>Отмена</button>
+                                <button className="small supplier-main-action" onClick={() => saveExistingPurchaseItems(p)}>Сохранить товары и пересчитать</button>
+                              </div>
+                            </div>
+                          </div> : <div className="table-wrap">
                             <table>
                               <thead><tr><th>Тип</th><th>Товар</th><th>Кол-во</th><th>Ед.</th><th>Цена</th><th>Сумма</th></tr></thead>
                               <tbody>
-                                {(p.supplier_purchase_items || []).map(i => (
-                                  <tr key={i.id}>
-                                    <td>{i.supplier_products?.category || '—'}</td>
-                                    <td>{editingPurchaseId === p.id && !p.deleted_at ? <select defaultValue={i.product_id} onBlur={e => updatePurchaseItem(p.id, i, { product_id: e.target.value })}>{products.map(prod => <option key={prod.id} value={prod.id}>{prod.name}</option>)}</select> : <span>{i.supplier_products?.name}</span>}</td>
-                                    <td>{editingPurchaseId === p.id && !p.deleted_at ? <input inputMode="decimal" defaultValue={i.quantity} onBlur={e => updatePurchaseItem(p.id, i, { quantity: parseNum(e.target.value) })} /> : <span>{fmt(i.quantity)}</span>}</td>
-                                    <td>{editingPurchaseId === p.id && !p.deleted_at ? <select defaultValue={i.unit} onBlur={e => updatePurchaseItem(p.id, i, { unit: e.target.value })}>{PURCHASE_UNITS.map(u => <option key={u.value} value={u.value}>{u.label}</option>)}</select> : <span>{i.unit}</span>}</td>
-                                    <td>{editingPurchaseId === p.id && !p.deleted_at ? <input inputMode="decimal" defaultValue={i.unit_price} onBlur={e => updatePurchaseItem(p.id, i, { unit_price: parseNum(e.target.value) })} /> : <span>{fmt(i.unit_price)} AZN</span>}</td>
-                                    <td><strong>{fmt(i.total_amount)}</strong></td>
-                                  </tr>
-                                ))}
-                                {!(p.supplier_purchase_items || []).length && <tr><td colSpan="6" className="hint">Товары не найдены</td></tr>}
+                                {(p.supplier_purchase_items || []).map(i => <tr key={i.id}>
+                                  <td>{i.supplier_products?.category || '—'}</td>
+                                  <td>{i.supplier_products?.name || '—'}</td>
+                                  <td>{fmt(i.quantity)}</td>
+                                  <td>{i.unit}</td>
+                                  <td>{fmt(i.unit_price)} AZN</td>
+                                  <td><strong>{fmt(i.total_amount)}</strong></td>
+                                </tr>)}
+                                {!(p.supplier_purchase_items || []).length && <tr><td colSpan="6" className="hint">Товары не добавлены. Накладная пока рассчитана общей суммой.</td></tr>}
                               </tbody>
                             </table>
-                          </div>
+                          </div>}
                         </div>
                       </td>
                     </tr>
