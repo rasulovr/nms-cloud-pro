@@ -4257,6 +4257,11 @@ const RMS_AZ_EXTRA_TRANSLATIONS = {
   ,'найдено': 'tapıldı'
   ,'Пред.': 'Əvvəlki'
   ,'След.': 'Növbəti'
+  ,'+ Добавить товары в накладную': '+ Qaiməyə məhsullar əlavə et'
+  ,'Редактировать товары': 'Məhsulları redaktə et'
+  ,'Товары не добавлены. Накладная пока рассчитана общей суммой.': 'Məhsullar əlavə edilməyib. Qaimə hələlik ümumi məbləğlə hesablanıb.'
+  ,'← Пред.': '← Əvvəlki'
+  ,'След. →': 'Növbəti →'
 
   ,'Поставщик / VOEN': 'Təchizatçı / VÖEN'
   ,'Поставщик/VOEN': 'Təchizatçı / VÖEN'
@@ -4315,7 +4320,9 @@ function rmsTranslateDynamicAzText(text) {
     [/^Создано:\s*(.+)$/i, (_, v) => `Yaradılıb: ${v}`],
     [/^Изменено:\s*(.+)$/i, (_, v) => `Dəyişdirilib: ${v}`],
     [/^Новая сумма накладной:\s*([\d.,]+)\s*AZN$/i, (_, n) => `Qaimənin yeni məbləği: ${n} AZN`],
-    [/^Страница\s+(\d+)\s*\/\s*(\d+)\s*·\s*всего\s*(\d+)$/i, (_, a, b, c) => `Səhifə ${a} / ${b} · cəmi ${c}`]
+    [/^Страница\s+(\d+)\s*\/\s*(\d+)\s*·\s*всего\s*(\d+)$/i, (_, a, b, c) => `Səhifə ${a} / ${b} · cəmi ${c}`],
+    [/^←\s*Пред\.$/i, () => '← Əvvəlki'],
+    [/^След\.\s*→$/i, () => 'Növbəti →']
   ]
   for (const [pattern, replacer] of patterns) {
     if (pattern.test(text)) return text.replace(pattern, replacer)
@@ -14585,6 +14592,27 @@ function RMSProV6Styles() {
   .rms-pro-shell .existing-purchase-items-head .small{width:100%!important;}
   .rms-pro-shell .existing-purchase-items-footer{align-items:stretch!important;}
   .rms-pro-shell .existing-purchase-items-total{margin-left:0!important;}
+}
+
+
+/* v298 existing invoice items action button */
+.rms-pro-shell .supplier-main-action{
+  background:linear-gradient(135deg,#0f766e,#14b8a6)!important;
+  border-color:#0f766e!important;
+  color:#fff!important;
+  box-shadow:0 10px 22px rgba(20,184,166,.22)!important;
+  font-weight:850!important;
+}
+.rms-pro-shell .supplier-main-action:hover{
+  background:linear-gradient(135deg,#115e59,#0d9488)!important;
+  border-color:#115e59!important;
+  color:#fff!important;
+  transform:translateY(-1px)!important;
+}
+.rms-pro-shell .supplier-main-action:disabled{
+  opacity:.55!important;
+  box-shadow:none!important;
+  transform:none!important;
 }
 
 /* v235 Revenue chart KPI labels only */
