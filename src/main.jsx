@@ -19292,7 +19292,7 @@ function Recipes({ t }) {
       setMenuItems(dedupedMenu)
       setSemis(semiRows || [])
       setSemiItems(semiItemRows || [])
-      setFinalItems(finalRows || [])
+      setFinalItems((finalRows || []).filter(r => r?.is_active !== false && !r?.deleted_at && String(r?.status || '').toLowerCase() !== 'cancelled'))
     } catch (e) {
       setMessage(e?.message || 'Ошибка загрузки полуфабрикатов. Проверь SQL-таблицы.')
     } finally {
@@ -19865,9 +19865,9 @@ function Recipes({ t }) {
   }
 
   function finalLineTypeLabel(item) {
-    if (item.component_type === 'semi') return 'Полуфабрикат'
-    if (item.component_type === 'manual') return 'Вручную'
-    return 'Ингредиент'
+    if (item.component_type === 'semi') return isAzInterface ? 'Yarımfabrikat' : 'Полуфабрикат'
+    if (item.component_type === 'manual') return isAzInterface ? 'Əl ilə' : 'Вручную'
+    return isAzInterface ? 'İnqrediyent' : 'Ингредиент'
   }
 
   function buildFinalTechCardHtml(menuId = selectedMenuId) {
@@ -20042,9 +20042,26 @@ function Recipes({ t }) {
   }
 
   async function deleteFinalLine(id) {
-    const { error } = await supabase.from('rms_final_recipe_components').delete().eq('id', id)
-    if (error) return setMessage(error.message)
-    await loadSemiData()
+    if (!id) return
+    const previousItems = finalItems
+    setFinalItems(items => items.filter(item => String(item.id) !== String(id)))
+    setMessage('')
+    try {
+      await rmsTechFinalComponentDeleteSecure({
+        id,
+        comment: 'Удаление компонента из тех. карты',
+        fallback: async () => {
+          const { error } = await supabase.from('rms_final_recipe_components').delete().eq('id', id)
+          if (error) throw error
+          return true
+        }
+      })
+      await loadSemiData()
+      setMessage(isAzInterface ? 'Komponent texnoloji kartdan silindi' : 'Компонент удалён из тех. карты')
+    } catch (error) {
+      setFinalItems(previousItems)
+      setMessage(error?.message || (isAzInterface ? 'Komponenti silmək mümkün olmadı' : 'Не удалось удалить компонент'))
+    }
   }
 
   function seedBrownieExample() {
@@ -20514,8 +20531,8 @@ function Recipes({ t }) {
                 <p className="hint">Один редактор для названия, цены, фотографии и состава. Все изменения сохраняются в выбранный menu_item_id.</p>
               </div>
               <div className="action-row tech-editor-head-actions">
-                {selectedMenu && <button className="small" onClick={() => viewFinalTechCard(selectedMenu.id)}>Просмотр</button>}
-                {selectedMenu && <button className="small" onClick={() => printFinalTechCard(selectedMenu.id, true)}>Печать</button>}
+                {selectedMenu && <button className="small" onClick={() => viewFinalTechCard(selectedMenu.id)}>{isAzInterface ? 'Baxış' : 'Просмотр'}</button>}
+                {selectedMenu && <button className="small" onClick={() => printFinalTechCard(selectedMenu.id, true)}>{isAzInterface ? 'Çap' : 'Печать'}</button>}
                 <button className="small primary" onClick={resetFinalMenuFormForCreate}>+ Новая тех. карта</button>
               </div>
             </div>
@@ -20618,48 +20635,56 @@ function Recipes({ t }) {
                 <option value="manual">Вручную</option>
               </select></label>
 
-              {finalLineForm.component_type === 'semi' && <label><span>Полуфабрикат</span><select value={finalLineForm.semi_id} onChange={e => setFinalLineForm({ ...finalLineForm, semi_id: e.target.value })}>
-                <option value="">Выбрать</option>
+              {finalLineForm.component_type === 'semi' && <label><span>{isAzInterface ? 'Yarımfabrikat' : 'Полуфабрикат'}</span><select value={finalLineForm.semi_id} onChange={e => setFinalLineForm({ ...finalLineForm, semi_id: e.target.value })}>
+                <option value="">{isAzInterface ? 'Seç' : 'Выбрать'}</option>
                 {semis.map(s => <option key={s.id} value={s.id}>{s.name} · {s.output_qty} {s.output_unit}</option>)}
               </select></label>}
 
-              {finalLineForm.component_type === 'product' && <label><span>Ингредиент</span><select value={finalLineForm.product_id} onChange={e => setFinalLineForm({ ...finalLineForm, product_id: e.target.value })}>
+              {finalLineForm.component_type === 'product' && <label><span>{isAzInterface ? 'İnqrediyent' : 'Ингредиент'}</span><select value={finalLineForm.product_id} onChange={e => setFinalLineForm({ ...finalLineForm, product_id: e.target.value })}>
                 <option value="">Выбрать</option>
                 {products.map(p => <option key={p.id} value={p.id}>{p.name} · {p.category}</option>)}
               </select></label>}
 
               {finalLineForm.component_type === 'manual' && <>
-                <label><span>Название</span><input value={finalLineForm.manual_name} onChange={e => setFinalLineForm({ ...finalLineForm, manual_name: e.target.value })} placeholder="Соль / специи / декор" /></label>
-                <label><span>Цена за 1 ед.</span><input inputMode="decimal" value={finalLineForm.manual_unit_cost} onChange={e => setFinalLineForm({ ...finalLineForm, manual_unit_cost: e.target.value })} /></label>
+                <label><span>{isAzInterface ? 'Ad' : 'Название'}</span><input value={finalLineForm.manual_name} onChange={e => setFinalLineForm({ ...finalLineForm, manual_name: e.target.value })} placeholder="Соль / специи / декор" /></label>
+                <label><span>{isAzInterface ? '1 vahidin qiyməti' : 'Цена за 1 ед.'}</span><input inputMode="decimal" value={finalLineForm.manual_unit_cost} onChange={e => setFinalLineForm({ ...finalLineForm, manual_unit_cost: e.target.value })} /></label>
               </>}
 
-              <label><span>Кол-во</span><input inputMode="decimal" value={finalLineForm.qty} onChange={e => setFinalLineForm({ ...finalLineForm, qty: e.target.value })} /></label>
-              <label><span>Ед.</span><select value={finalLineForm.unit} onChange={e => setFinalLineForm({ ...finalLineForm, unit: e.target.value })}>
+              <label><span>{isAzInterface ? 'Miqdar' : 'Кол-во'}</span><input inputMode="decimal" value={finalLineForm.qty} onChange={e => setFinalLineForm({ ...finalLineForm, qty: e.target.value })} /></label>
+              <label><span>{isAzInterface ? 'Ölçü vahidi' : 'Ед.'}</span><select value={finalLineForm.unit} onChange={e => setFinalLineForm({ ...finalLineForm, unit: e.target.value })}>
                 <option value="g">g</option><option value="kg">kg</option><option value="ml">ml</option><option value="l">l</option><option value="pcs">pcs</option>
               </select></label>
-              <label><span>Потери %</span><input inputMode="decimal" value={finalLineForm.waste_percent} onChange={e => setFinalLineForm({ ...finalLineForm, waste_percent: e.target.value })} /></label>
+              <label><span>{isAzInterface ? 'İtki %' : 'Потери %'}</span><input inputMode="decimal" value={finalLineForm.waste_percent} onChange={e => setFinalLineForm({ ...finalLineForm, waste_percent: e.target.value })} /></label>
             </div>
             <div className="actions-row">
-              <button className="small primary" onClick={addFinalLine} disabled={!selectedMenuId}>+ Добавить компонент</button>
+              <button className="small primary" onClick={addFinalLine} disabled={!selectedMenuId}>{isAzInterface ? '+ Komponent əlavə et' : '+ Добавить компонент'}</button>
             </div>
           </div>
 
           <div className="card span-2 tech-composition-card">
             <div className="card-head">
               <div>
-                <h3>Состав тех. карты</h3>
-                <p className="hint">{selectedMenu ? `${selectedMenu.name} · ${selectedFinalItems.length} компонентов · ${fmt(finalCost)} AZN` : 'Выберите или создайте блюдо выше'}</p>
+                <h3>{isAzInterface ? 'Texnoloji kartın tərkibi' : 'Состав тех. карты'}</h3>
+                <p className="hint">{selectedMenu ? `${selectedMenu.name} · ${selectedFinalItems.length} ${isAzInterface ? 'komponent' : 'компонентов'} · ${fmt(finalCost)} AZN` : (isAzInterface ? 'Yuxarıdan yemək seçin və ya yaradın' : 'Выберите или создайте блюдо выше')}</p>
               </div>
               <div className="action-row">
-                {selectedMenu && <button className="small" onClick={() => printFinalTechCard(selectedMenu.id, true)}>Печать</button>}
-                {selectedMenu && <button className="small" onClick={() => viewFinalTechCard(selectedMenu.id)}>Просмотр</button>}
+                {selectedMenu && <button className="small" onClick={() => printFinalTechCard(selectedMenu.id, true)}>{isAzInterface ? 'Çap' : 'Печать'}</button>}
+                {selectedMenu && <button className="small" onClick={() => viewFinalTechCard(selectedMenu.id)}>{isAzInterface ? 'Baxış' : 'Просмотр'}</button>}
               </div>
             </div>
 
             <div className="table-wrap">
               <table>
                 <thead>
-                  <tr><th>Тип</th><th>Компонент</th><th>Кол-во</th><th>Ед.</th><th>Потери</th><th>Себестоимость</th><th>Действие</th></tr>
+                  <tr>
+                    <th>{isAzInterface ? 'Növ' : 'Тип'}</th>
+                    <th>{isAzInterface ? 'Komponent' : 'Компонент'}</th>
+                    <th>{isAzInterface ? 'Miqdar' : 'Кол-во'}</th>
+                    <th>{isAzInterface ? 'Ölçü vahidi' : 'Ед.'}</th>
+                    <th>{isAzInterface ? 'İtki %' : 'Потери'}</th>
+                    <th>{isAzInterface ? 'Maya dəyəri' : 'Себестоимость'}</th>
+                    <th>{isAzInterface ? 'Əməliyyat' : 'Действие'}</th>
+                  </tr>
                 </thead>
                 <tbody>
                   {selectedFinalItems.map(item => (
@@ -20670,10 +20695,10 @@ function Recipes({ t }) {
                       <td><select defaultValue={item.unit || 'g'} onChange={e => updateFinalLine(item.id, { unit: e.target.value })}><option value="g">g</option><option value="kg">kg</option><option value="ml">ml</option><option value="l">l</option><option value="pcs">pcs</option></select></td>
                       <td><input inputMode="decimal" defaultValue={item.waste_percent || 0} onBlur={e => updateFinalLine(item.id, { waste_percent: e.target.value })} /></td>
                       <td><b>{fmt(componentCost(item))} AZN</b></td>
-                      <td><button className="remove" onClick={() => deleteFinalLine(item.id)}>×</button></td>
+                      <td><button className="remove" title={isAzInterface ? 'Komponenti sil' : 'Удалить компонент'} aria-label={isAzInterface ? 'Komponenti sil' : 'Удалить компонент'} onClick={() => deleteFinalLine(item.id)}>×</button></td>
                     </tr>
                   ))}
-                  {!selectedFinalItems.length && <tr><td colSpan="7" className="hint">В тех. карте пока нет компонентов.</td></tr>}
+                  {!selectedFinalItems.length && <tr><td colSpan="7" className="hint">{isAzInterface ? 'Texnoloji kartda hələ komponent yoxdur.' : 'В тех. карте пока нет компонентов.'}</td></tr>}
                 </tbody>
               </table>
             </div>
