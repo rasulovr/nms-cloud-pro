@@ -14728,6 +14728,32 @@ function RMSProV6Styles() {
   box-shadow:none!important;
 }
 
+
+/* v304 supplier price dynamics */
+.rms-pro-shell .supplier-price-dynamics-card .card-head{align-items:flex-end!important;}
+.rms-pro-shell .supplier-price-dynamics-card input{height:38px!important;border-radius:12px!important;}
+.rms-pro-shell .supplier-price-dynamics-card table th,
+.rms-pro-shell .supplier-price-dynamics-card table td{vertical-align:middle!important;}
+.rms-pro-shell .supplier-price-dynamics-card table td:nth-child(5),
+.rms-pro-shell .supplier-price-dynamics-card table td:nth-child(6){white-space:nowrap!important;}
+
+/* v303 retained: supplier purchase item rows must fit without horizontal scroll */
+.rms-pro-shell .suppliers-purchase-items-wrap{width:100%!important;overflow-x:hidden!important;}
+.rms-pro-shell .suppliers-purchase-items-table{width:100%!important;min-width:0!important;table-layout:fixed!important;}
+.rms-pro-shell .suppliers-purchase-items-table th,
+.rms-pro-shell .suppliers-purchase-items-table td{white-space:normal!important;overflow:hidden!important;padding-left:8px!important;padding-right:8px!important;}
+.rms-pro-shell .suppliers-purchase-items-table th:nth-child(1),.rms-pro-shell .suppliers-purchase-items-table td:nth-child(1){width:12%!important;}
+.rms-pro-shell .suppliers-purchase-items-table th:nth-child(2),.rms-pro-shell .suppliers-purchase-items-table td:nth-child(2){width:25%!important;}
+.rms-pro-shell .suppliers-purchase-items-table th:nth-child(3),.rms-pro-shell .suppliers-purchase-items-table td:nth-child(3){width:11%!important;}
+.rms-pro-shell .suppliers-purchase-items-table th:nth-child(4),.rms-pro-shell .suppliers-purchase-items-table td:nth-child(4){width:15%!important;}
+.rms-pro-shell .suppliers-purchase-items-table th:nth-child(5),.rms-pro-shell .suppliers-purchase-items-table td:nth-child(5){width:14%!important;}
+.rms-pro-shell .suppliers-purchase-items-table th:nth-child(6),.rms-pro-shell .suppliers-purchase-items-table td:nth-child(6){width:17%!important;text-align:left!important;}
+.rms-pro-shell .suppliers-purchase-items-table th:nth-child(7),.rms-pro-shell .suppliers-purchase-items-table td:nth-child(7){width:42px!important;padding-left:4px!important;padding-right:4px!important;}
+.rms-pro-shell .suppliers-purchase-items-table select,
+.rms-pro-shell .suppliers-purchase-items-table input,
+.rms-pro-shell .suppliers-purchase-items-table .supplier-auto-unit-price{width:100%!important;min-width:0!important;max-width:100%!important;}
+.rms-pro-shell .suppliers-purchase-items-table .supplier-auto-unit-price small{white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;font-size:11px!important;}
+
 /* v235 Revenue chart KPI labels only */
 .reports-v231-preferred-revenue-chart .metric-title{
   line-height:1.15;
@@ -27201,6 +27227,7 @@ function DebtsPayments({ t }) {
   const [supplierCalendarFilter, setSupplierCalendarFilter] = useState('next7')
   const [supplierCalendarPageSize, setSupplierCalendarPageSize] = useState(20)
   const [supplierCompactAlertsExpanded, setSupplierCompactAlertsExpanded] = useState(false)
+  const [supplierPriceDynamicsExpanded, setSupplierPriceDynamicsExpanded] = useState(false)
   const [supplierCompactPlanExpanded, setSupplierCompactPlanExpanded] = useState(false)
   const [supplierCompactFollowUpExpanded, setSupplierCompactFollowUpExpanded] = useState(false)
   const [supplierFollowUps, setSupplierFollowUps] = useState(() => readJsonStorage('rms_supplier_followups_v1', {}))
@@ -27953,6 +27980,9 @@ function DebtsPayments({ t }) {
     })
     return result
   }, [filteredPurchases, productSearch, productSort])
+  const supplierPriceIncreaseRows = useMemo(() => [...productPriceRows]
+    .filter(row => row.previous && parseNum(row.changeAmount) > 0)
+    .sort((a, b) => parseNum(b.changePct) - parseNum(a.changePct) || parseNum(b.changeAmount) - parseNum(a.changeAmount)), [productPriceRows])
   const transactionSourceCount = transactionType === 'purchases' ? purchaseTransactionRows.length : transactionType === 'payments' ? filteredPayments.length : productPriceRows.length
   const transactionTotalPages = Math.max(1, Math.ceil(transactionSourceCount / transactionPageSize))
   const safeTransactionPage = Math.min(Math.max(1, parseNum(transactionPage) || 1), transactionTotalPages)
@@ -28999,6 +29029,25 @@ function DebtsPayments({ t }) {
       </div>
 
       <div style={{marginTop:16, display:'grid', gap:14}}>
+        <div className="card soft-card supplier-price-dynamics-card">
+          <div className="card-head">
+            <div>
+              <h4>{isAzInterface ? 'Təchizatçı qiymətlərinin dinamikası' : 'Динамика цен поставщиков'}</h4>
+              <p className="hint">{isAzInterface ? 'Məhsullar üzrə son alış qiyməti əvvəlki alış qiyməti ilə müqayisə edilir.' : 'Сравнение последней закупочной цены товара с предыдущей закупкой.'}</p>
+            </div>
+            <div className="action-row" style={{gap:8}}>
+              <label style={{display:'flex',alignItems:'center',gap:8}}><span className="hint">{isAzInterface ? 'Axtarış' : 'Поиск'}</span><input value={productSearch} onChange={e => setProductSearch(e.target.value)} placeholder={isAzInterface ? 'Məhsul adı' : 'Название товара'} style={{minWidth:220}} /></label>
+              {supplierPriceIncreaseRows.length > 10 && <button className="ghost small" onClick={() => setSupplierPriceDynamicsExpanded(v => !v)}>{supplierPriceDynamicsExpanded ? (isAzInterface ? 'Gizlət' : 'Скрыть') : `${isAzInterface ? 'Hamısını göstər' : 'Показать все'} · ${supplierPriceIncreaseRows.length}`}</button>}
+            </div>
+          </div>
+          <div className="table-wrap">
+            <table>
+              <thead><tr><th>{isAzInterface ? 'Məhsul' : 'Товар'}</th><th>{isAzInterface ? 'Təchizatçı' : 'Поставщик'}</th><th>{isAzInterface ? 'Əvvəlki qiymət' : 'Предыдущая цена'}</th><th>{isAzInterface ? 'Son qiymət' : 'Последняя цена'}</th><th>{isAzInterface ? 'Fərq' : 'Разница'}</th><th>{isAzInterface ? 'Artım' : 'Рост'}</th><th>{isAzInterface ? 'Son alış' : 'Последняя закупка'}</th></tr></thead>
+              <tbody>{(supplierPriceDynamicsExpanded ? supplierPriceIncreaseRows : supplierPriceIncreaseRows.slice(0,10)).map(row => <tr key={`price-rise-${row.id}`}><td><b>{row.name}</b><br /><span className="hint">{row.category}</span></td><td>{row.latest?.supplier || '—'}</td><td>{fmt(row.previous?.price)} / {row.previous?.unit || row.unit}</td><td><b>{fmt(row.latest?.price)} / {row.latest?.unit || row.unit}</b></td><td className="bad"><b>+{fmt(row.changeAmount)} AZN</b></td><td className="bad"><b>+{pct(row.changePct)}</b></td><td>{formatDateDMY(row.latest?.date) || row.latest?.date || '—'}<br /><span className="hint">{row.latest?.invoice || '—'}</span></td></tr>)}{!supplierPriceIncreaseRows.length && <tr><td colSpan="7" className="good">{isAzInterface ? 'Seçilmiş dövr üzrə qiymət artımı tapılmadı.' : 'За выбранный период подорожавших товаров не найдено.'}</td></tr>}</tbody>
+            </table>
+          </div>
+        </div>
+
         <div className="card soft-card">
           <div className="card-head">
             <div>
@@ -30329,7 +30378,7 @@ function Reports({ t }) {
   const [cloudSalesAliasesLoaded, setCloudSalesAliasesLoaded] = useState(false)
   const [rmsRevenueReport, setRmsRevenueReport] = useState({ loading: false, error: '', rows: [], totals: { cash: 0, bank: 0, wolt: 0, revenue: 0 } })
   const [rmsExpensesReport, setRmsExpensesReport] = useState({ loading: false, error: '', rows: [], totals: { amount: 0, transactions: 0, categories: 0 }, byCategory: [], byBranch: [] })
-  const [rmsSuppliersReport, setRmsSuppliersReport] = useState({ loading: false, error: '', rows: [], totals: { purchases: 0, payments: 0, balance: 0, suppliers: 0 }, purchases: [], payments: [] })
+  const [rmsSuppliersReport, setRmsSuppliersReport] = useState({ loading: false, error: '', rows: [], totals: { purchases: 0, payments: 0, balance: 0, suppliers: 0 }, purchases: [], payments: [], priceChanges: [] })
 
   useEffect(() => { writeAikoSalesReports(reports) }, [reports])
   useEffect(() => { writeAikoBranchMap(branchMap) }, [branchMap])
@@ -30691,6 +30740,47 @@ function Reports({ t }) {
       const suppliers = suppliersRes.data || []
       const purchases = (purchasesRes.data || []).map(row => ({ ...row, total_amount: parseNum(row.total_amount) }))
       const payments = (paymentsRes.data || []).map(row => ({ ...row, amount: parseNum(row.amount) }))
+
+      const purchaseIds = purchases.map(row => row.id).filter(Boolean)
+      let purchaseItems = []
+      for (let offset = 0; offset < purchaseIds.length; offset += 200) {
+        const chunk = purchaseIds.slice(offset, offset + 200)
+        if (!chunk.length) continue
+        const { data: itemRows, error: itemsError } = await supabase
+          .from('supplier_purchase_items')
+          .select('id,supplier_purchase_id,product_id,quantity,unit,unit_price,total_amount,supplier_products(id,name,category,base_unit)')
+          .in('supplier_purchase_id', chunk)
+        if (itemsError) throw itemsError
+        purchaseItems = purchaseItems.concat(itemRows || [])
+      }
+      const purchaseById = new Map(purchases.map(row => [String(row.id), row]))
+      const supplierById = new Map(suppliers.map(row => [String(row.id), row]))
+      const priceHistoryMap = new Map()
+      purchaseItems.forEach(item => {
+        const purchase = purchaseById.get(String(item.supplier_purchase_id))
+        const product = item.supplier_products || {}
+        const price = parseNum(item.unit_price)
+        if (!purchase || !price || !product.id) return
+        const key = `${product.id}::${item.unit || product.base_unit || ''}`
+        if (!priceHistoryMap.has(key)) priceHistoryMap.set(key, { product_id: product.id, product_name: product.name || '—', category: product.category || '—', unit: item.unit || product.base_unit || '', history: [] })
+        priceHistoryMap.get(key).history.push({
+          price,
+          date: purchase.purchase_date,
+          invoice: purchase.invoice_number || '—',
+          supplier_id: purchase.supplier_id,
+          supplier_name: supplierById.get(String(purchase.supplier_id))?.name || '—'
+        })
+      })
+      const priceChanges = Array.from(priceHistoryMap.values()).map(row => {
+        const history = [...row.history].sort((a,b) => String(a.date || '').localeCompare(String(b.date || '')))
+        const first = history[0]
+        const latest = history[history.length - 1]
+        const changeAmount = history.length > 1 ? parseNum(latest.price) - parseNum(first.price) : 0
+        const changePct = history.length > 1 && parseNum(first.price) > 0 ? (changeAmount / parseNum(first.price)) * 100 : 0
+        return { ...row, first, latest, changeAmount, changePct, purchases_count: history.length }
+      }).filter(row => row.purchases_count > 1 && row.changeAmount > 0)
+        .sort((a,b) => parseNum(b.changePct) - parseNum(a.changePct) || parseNum(b.changeAmount) - parseNum(a.changeAmount))
+
       const balanceMap = new Map()
       balanceRows.forEach(r => {
         const key = String(r.supplier_id || '')
@@ -30726,9 +30816,9 @@ function Reports({ t }) {
         suppliers: rows.length
       }
 
-      setRmsSuppliersReport({ loading: false, error: '', rows, totals, purchases, payments })
+      setRmsSuppliersReport({ loading: false, error: '', rows, totals, purchases, payments, priceChanges })
     } catch (error) {
-      setRmsSuppliersReport({ loading: false, error: error?.message || 'Не удалось загрузить отчёт по поставщикам', rows: [], totals: { purchases: 0, payments: 0, balance: 0, suppliers: 0 }, purchases: [], payments: [] })
+      setRmsSuppliersReport({ loading: false, error: error?.message || 'Не удалось загрузить отчёт по поставщикам', rows: [], totals: { purchases: 0, payments: 0, balance: 0, suppliers: 0 }, purchases: [], payments: [], priceChanges: [] })
     }
   }
 
@@ -32047,6 +32137,26 @@ function Reports({ t }) {
                 <td>{row.credit_limit ? fmt(row.credit_limit) : '—'}</td>
               </tr>)}
               {!rmsSuppliersReport.rows.length && <tr><td colSpan="7" className="hint">Пока нет данных по поставщикам за выбранный фильтр.</td></tr>}
+            </tbody>
+          </table></div>
+        </div>
+
+        <div className="reports-v43-card" style={{ marginTop: 14 }}>
+          <div className="reports-v43-card-head"><div><h3>Подорожавшие товары</h3><p>Первая закупочная цена отчётного периода сравнивается с последней ценой того же товара и единицы измерения.</p></div><span className="reports-v43-badge">{rmsSuppliersReport.priceChanges.length}</span></div>
+          <div className="reports-v43-table-wrap"><table>
+            <thead><tr><th>Товар</th><th>Категория</th><th>Поставщик</th><th>Первая цена периода</th><th>Последняя цена</th><th>Рост, AZN</th><th>Рост, %</th><th>Последняя закупка</th></tr></thead>
+            <tbody>
+              {rmsSuppliersReport.priceChanges.slice(0, 120).map(row => <tr key={`${row.product_id}-${row.unit}`}>
+                <td><b>{row.product_name}</b></td>
+                <td>{row.category}</td>
+                <td>{row.latest?.supplier_name || '—'}</td>
+                <td>{fmt(row.first?.price)} / {row.unit}</td>
+                <td><b>{fmt(row.latest?.price)} / {row.unit}</b></td>
+                <td className="bad"><b>+{fmt(row.changeAmount)}</b></td>
+                <td className="bad"><b>+{pct(row.changePct)}</b></td>
+                <td>{row.latest?.date || '—'}<br /><span className="hint">{row.latest?.invoice || '—'}</span></td>
+              </tr>)}
+              {!rmsSuppliersReport.priceChanges.length && <tr><td colSpan="8" className="good">За выбранный отчётный период подорожавших товаров не найдено.</td></tr>}
             </tbody>
           </table></div>
         </div>
