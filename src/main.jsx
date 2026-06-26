@@ -30748,8 +30748,8 @@ function Reports({ t }) {
         if (!chunk.length) continue
         const { data: itemRows, error: itemsError } = await supabase
           .from('supplier_purchase_items')
-          .select('id,supplier_purchase_id,product_id,quantity,unit,unit_price,total_amount,supplier_products(id,name,category,base_unit)')
-          .in('supplier_purchase_id', chunk)
+          .select('id,purchase_id,product_id,quantity,unit,unit_price,total_amount,supplier_products(id,name,category,base_unit)')
+          .in('purchase_id', chunk)
         if (itemsError) throw itemsError
         purchaseItems = purchaseItems.concat(itemRows || [])
       }
@@ -30757,7 +30757,7 @@ function Reports({ t }) {
       const supplierById = new Map(suppliers.map(row => [String(row.id), row]))
       const priceHistoryMap = new Map()
       purchaseItems.forEach(item => {
-        const purchase = purchaseById.get(String(item.supplier_purchase_id))
+        const purchase = purchaseById.get(String(item.purchase_id))
         const product = item.supplier_products || {}
         const price = parseNum(item.unit_price)
         if (!purchase || !price || !product.id) return
