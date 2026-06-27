@@ -16385,11 +16385,11 @@ async function rmsCalculateNetworkForecastForMonth(y, m, scopeBranchId = 'all') 
     supabase.from('supplier_purchases').select('branch_id,purchase_date,total_amount,supplier_purchase_items(total_amount,supplier_products(name,category))').gte('purchase_date', monthDate).lt('purchase_date', monthEnd).is('deleted_at', null),
     supabase.from('daily_expenses').select('branch_id,expense_date,amount,custom_category,expense_categories(name)').gte('expense_date', historyStart).lt('expense_date', historyEnd).is('deleted_at', null),
     supabase.from('supplier_purchases').select('branch_id,purchase_date,total_amount,supplier_purchase_items(total_amount,supplier_products(name,category))').gte('purchase_date', historyStart).lt('purchase_date', historyEnd).is('deleted_at', null),
-    supabase.from('employees').select('id,branch_id,position,monthly_salary,official_salary,monthly_official_salary,salary_type,daily_rate').eq('is_active', true),
-    supabase.from('monthly_branch_salary').select('branch_id,total_salary').eq('month', monthDate),
-    supabase.from('monthly_branch_salary').select('branch_id,total_salary,month').gte('month', historyStart).lt('month', historyEnd),
-    supabase.from('salary_periods').select('employee_id,branch_id,salary_month,salary_gross,salary_net,final_balance,payroll_payments,employees(id,branch_id,position,is_active,employment_status)').eq('salary_month', monthDate),
-    supabase.from('salary_periods').select('employee_id,branch_id,salary_month,salary_gross,salary_net,final_balance,payroll_payments,employees(id,branch_id,position,is_active,employment_status)').gte('salary_month', historyStart).lt('salary_month', historyEnd),
+    supabase.from('employees').select('id,branch_id,position,monthly_salary,salary_type,daily_rate,is_active,employment_status').eq('is_active', true),
+    supabase.from('salary_periods').select('branch_id,salary_month,salary_gross,salary_net').eq('salary_month', monthDate),
+    supabase.from('salary_periods').select('branch_id,salary_month,salary_gross,salary_net').gte('salary_month', historyStart).lt('salary_month', historyEnd),
+    supabase.from('salary_periods').select('employee_id,branch_id,salary_month,salary_gross,salary_net,card_payment,cash_payment,advance_amount,deduction_amount,previous_balance_amount,employees(id,branch_id,position,is_active,employment_status)').eq('salary_month', monthDate),
+    supabase.from('salary_periods').select('employee_id,branch_id,salary_month,salary_gross,salary_net,card_payment,cash_payment,advance_amount,deduction_amount,previous_balance_amount,employees(id,branch_id,position,is_active,employment_status)').gte('salary_month', historyStart).lt('salary_month', historyEnd),
     supabase.from('branches').select('id,name,service_charge_enabled,service_charge_percent,service_staff_cost_percent').eq('is_active', true),
     readRmsAppSetting(RMS_BRANCH_RENT_FORECAST_SETTING, {})
   ])
@@ -16498,7 +16498,7 @@ async function rmsCalculateNetworkForecastForMonth(y, m, scopeBranchId = 'all') 
   const rentCurrent = rmsForecastSumExpenseGroups((currentExpenseRows || []).filter(filterByBranch)).rent
   const rentForecast = configuredRent > 0 ? configuredRent : (rentCurrent > 0 ? rentCurrent : rentHistory)
 
-  const sumMonthlySalaryRows = (rows = []) => (rows || []).filter(filterByBranch).reduce((sum, row) => sum + parseNum(row.total_salary), 0)
+  const sumMonthlySalaryRows = (rows = []) => (rows || []).filter(filterByBranch).reduce((sum, row) => sum + rmsSalaryPeriodTotal(row), 0)
   const salaryPeriodAmount = (row = {}) => {
     const gross = parseNum(row.salary_gross)
     const net = parseNum(row.salary_net)
@@ -16628,7 +16628,7 @@ async function rmsCalculateNetworkForecastForMonth(y, m, scopeBranchId = 'all') 
   const sumSalaryPeriodRows = (rows = []) => salarySummaryFromPeriods(rows, selectedBranchId)
   const salaryHistoryByMonth = prevMonths.map(pm => {
     const periodValue = salarySummaryFromPeriods((effectiveHistoricalSalaryPeriodRows || []).filter(r => r.salary_month >= pm.start && r.salary_month < pm.end), selectedBranchId)
-    const monthlyValue = sumMonthlySalaryRows((historicalSalaryRows || []).filter(r => r.month >= pm.start && r.month < pm.end))
+    const monthlyValue = sumMonthlySalaryRows((historicalSalaryRows || []).filter(r => r.salary_month >= pm.start && r.salary_month < pm.end))
     const specialValue = rmsForecastSumSpecialExpenses((historicalExpenseRows || []).filter(r => r.expense_date >= pm.start && r.expense_date < pm.end).filter(filterByBranch)).salary
     return periodValue || monthlyValue || specialValue
   })
@@ -17535,6 +17535,35 @@ function MonthlySalesLineChart({ rows = [], title = 'Продажи по мес�
   </div>
 }
 
+async function rmsLoadDailyRevenueRowsForChart(y, m, selectedBranchId = '__all__') {
+  const monthKey = `${Number(y)}-${String(Number(m)).padStart(2, '0')}`
+  const start = `${monthKey}-01`
+  const end = rmsNextMonthStart(monthKey)
+  const count = new Date(Number(y), Number(m), 0).getDate()
+  let query = supabase.from('daily_revenue')
+    .select('branch_id,revenue_date,cash_amount,bank_amount,wolt_amount')
+    .gte('revenue_date', start).lt('revenue_date', end).is('deleted_at', null)
+  if (selectedBranchId && selectedBranchId !== '__all__') query = query.eq('branch_id', selectedBranchId)
+  const { data, error } = await query
+  if (error) throw error
+  const map = new Map()
+  ;(data || []).forEach(row => {
+    const value = parseNum(row.cash_amount) + parseNum(row.bank_amount) + parseNum(row.wolt_amount)
+    map.set(row.revenue_date, parseNum(map.get(row.revenue_date)) + value)
+  })
+  return Array.from({ length: count }, (_, index) => {
+    const day = index + 1
+    const date = `${monthKey}-${String(day).padStart(2, '0')}`
+    return { day: String(day), date, amount: parseNum(map.get(date)) }
+  })
+}
+
+function rmsSalaryPeriodTotal(row = {}) {
+  const gross = parseNum(row.salary_gross)
+  const net = parseNum(row.salary_net)
+  return gross > 0 ? gross : net
+}
+
 function Dashboard({ t }) {
   const TAX_RATE = 8
   const branches = useBranches()
@@ -17568,15 +17597,15 @@ function Dashboard({ t }) {
       supabase.from('monthly_branch_revenue').select('*').eq('month', monthDate),
       supabase.from('monthly_branch_expenses').select('*').eq('month', monthDate),
       supabase.from('daily_expenses').select('branch_id, amount, comment, custom_category, expense_categories(name)').gte('expense_date', monthDate).lt('expense_date', monthEnd).is('deleted_at', null),
-      supabase.from('monthly_branch_salary').select('*').eq('month', monthDate),
+      supabase.from('salary_periods').select('branch_id,salary_gross,salary_net').eq('salary_month', monthDate),
       supabase.from('monthly_branch_service_charge_cost').select('*').eq('month', monthDate),
       supabase.from('supplier_balances_v2').select('*'),
       supabase.from('suppliers').select('id,name,payment_term_days,credit_limit,is_active').eq('is_active', true),
       supabase.from('supplier_purchases').select('id,supplier_id,branch_id,purchase_date,invoice_number,total_amount,deleted_at,supplier_purchase_items(total_amount,supplier_products(name,category))').gte('purchase_date', monthDate).lt('purchase_date', monthEnd).is('deleted_at', null),
       supabase.from('supplier_purchases').select('id,supplier_id,purchase_date,invoice_number,total_amount,deleted_at').is('deleted_at', null),
       supabase.from('supplier_payments').select('supplier_id,amount'),
-      supabase.from('employees').select('id,branch_id,position,monthly_salary,official_salary,monthly_official_salary').eq('is_active', true),
-      supabase.from('salary_periods').select('employee_id,branch_id,salary_gross,salary_net,final_balance,payroll_payments').eq('salary_month', monthDate)
+      supabase.from('employees').select('id,branch_id,position,monthly_salary,salary_type,daily_rate,is_active,employment_status').eq('is_active', true),
+      supabase.from('salary_periods').select('employee_id,branch_id,salary_gross,salary_net,card_payment,cash_payment,advance_amount,deduction_amount,previous_balance_amount').eq('salary_month', monthDate)
     ])
 
     const suppliersRaw = suppliersResult?.data || []
@@ -17615,7 +17644,7 @@ function Dashboard({ t }) {
     const salaryPeriodRows = salaryPeriodResult?.data || []
     const revByBranch = new Map((revRows || []).map(r => [r.branch_id, r]))
     const expByBranch = new Map((expRows || []).map(r => [r.branch_id, r]))
-    const salByBranch = new Map((salRows || []).map(r => [r.branch_id, r]))
+    const salByBranch = new Map(); (salRows || []).forEach(r => { const key = r.branch_id || ''; const current = salByBranch.get(key) || { branch_id:key, total_salary:0 }; current.total_salary += rmsSalaryPeriodTotal(r); salByBranch.set(key, current) })
     const svcByBranch = new Map((svcRows || []).map(r => [r.branch_id, r]))
     const baseRevenueTotal = (revRows || []).reduce((s, r) => s + parseNum(r.total_revenue), 0)
     const revenueShareMap = new Map()
@@ -17819,7 +17848,7 @@ function Dashboard({ t }) {
 
       let dailyChartRows = []
       try {
-        dailyChartRows = await loadDailyRevenueRowsForChart(year, month, branchId === DASH_ALL_BRANCHES ? '__all__' : branchId)
+        dailyChartRows = await rmsLoadDailyRevenueRowsForChart(year, month, branchId === DASH_ALL_BRANCHES ? '__all__' : branchId)
       } catch (chartError) {
         console.error('Dashboard daily chart load failed:', chartError)
       }
@@ -18542,7 +18571,7 @@ function Finance({ t, lang, onGoToExpense }) {
 
     let revQuery = supabase.from('monthly_branch_revenue').select('*').eq('month', monthDate)
     let expQuery = supabase.from('monthly_branch_expenses').select('*').eq('month', monthDate)
-    let salQuery = supabase.from('monthly_branch_salary').select('*').eq('month', monthDate)
+    let salQuery = supabase.from('salary_periods').select('branch_id,salary_gross,salary_net').eq('salary_month', monthDate)
     let svcQuery = supabase.from('monthly_branch_service_charge_cost').select('*').eq('month', monthDate)
 
     if (branch !== ALL_BRANCHES) {
@@ -18556,7 +18585,7 @@ function Finance({ t, lang, onGoToExpense }) {
 
     const revenue = (revRows || []).reduce((s, r) => s + parseNum(r.total_revenue), 0)
     const expenses = (expRows || []).reduce((s, r) => s + parseNum(r.total_expenses), 0)
-    const salary = (salRows || []).reduce((s, r) => s + parseNum(r.total_salary), 0)
+    const salary = (salRows || []).reduce((s, r) => s + rmsSalaryPeriodTotal(r), 0)
     const serviceCost = (svcRows || []).reduce((s, r) => s + parseNum(r.staff_cost_amount), 0)
     const cash = (revRows || []).reduce((s, r) => s + parseNum(r.cash_amount), 0)
     const bank = (revRows || []).reduce((s, r) => s + parseNum(r.bank_amount), 0)
@@ -18617,8 +18646,8 @@ function Finance({ t, lang, onGoToExpense }) {
     const end = rmsNextMonthStart(`${Number(year)}-${String(Number(month)).padStart(2, '0')}`)
     let expQuery = supabase.from('daily_expenses').select('branch_id, amount, comment, custom_category, expense_categories(name)').gte('expense_date', start).lt('expense_date', end).is('deleted_at', null)
     let purQuery = supabase.from('supplier_purchases').select('branch_id, total_amount, supplier_purchase_items(total_amount, supplier_products(name,category))').gte('purchase_date', start).lt('purchase_date', end).is('deleted_at', null)
-    let empQuery = supabase.from('employees').select('id, branch_id, position, monthly_salary, official_salary, monthly_official_salary').eq('is_active', true)
-    let salaryPeriodQuery = supabase.from('salary_periods').select('employee_id, branch_id, salary_gross, salary_net, final_balance, payroll_payments').eq('salary_month', monthDate)
+    let empQuery = supabase.from('employees').select('id, branch_id, position, monthly_salary, salary_type, daily_rate, is_active, employment_status').eq('is_active', true)
+    let salaryPeriodQuery = supabase.from('salary_periods').select('employee_id, branch_id, salary_gross, salary_net, card_payment, cash_payment, advance_amount, deduction_amount, previous_balance_amount').eq('salary_month', monthDate)
     let salaryPaymentQuery = supabase.from('salary_payments').select('employee_id, branch_id, amount').eq('salary_month', monthDate).or('is_cancelled.is.null,is_cancelled.eq.false')
 
     if (branchId !== ALL_BRANCHES) {
