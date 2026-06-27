@@ -25090,14 +25090,25 @@ function Suppliers({ t, isAdmin = false }) {
     const openingAmount = parseNum(supplierForm.opening_debt_amount)
     const stopProgress = startGlobalProgress('Сохранение поставщика...')
     try {
-      const { data: createdSupplier, error } = await supabase.from('suppliers').insert({
-        name: supplierForm.name.trim(), voen: supplierForm.voen.trim() || null,
-        contact_person: supplierForm.contact_person.trim() || null, phone: supplierForm.phone.trim() || null,
-        info: supplierForm.info.trim() || null,
-        payment_term_days: parseNum(supplierForm.payment_term_days) || null,
-        credit_limit: parseNum(supplierForm.credit_limit) || 0
-      }).select('*').single()
+      const paymentTermRaw = String(supplierForm.payment_term_days ?? '').trim()
+      const paymentTermDays = paymentTermRaw ? Math.max(0, Math.trunc(parseNum(paymentTermRaw))) : null
+      const creditLimit = Math.max(0, parseNum(supplierForm.credit_limit) || 0)
+
+      const { data: createdSupplierRows, error } = await supabase.rpc('rms_supplier_create_secure', {
+        p_name: supplierForm.name.trim(),
+        p_voen: supplierForm.voen.trim() || null,
+        p_contact_person: supplierForm.contact_person.trim() || null,
+        p_phone: supplierForm.phone.trim() || null,
+        p_info: supplierForm.info.trim() || null,
+        p_payment_term_days: paymentTermDays,
+        p_credit_limit: creditLimit
+      })
       if (error) throw error
+
+      const createdSupplier = Array.isArray(createdSupplierRows)
+        ? createdSupplierRows[0]
+        : (createdSupplierRows?.supplier || createdSupplierRows?.row || createdSupplierRows)
+      if (!createdSupplier?.id) throw new Error('Поставщик не был сохранён в базе')
 
       if (openingAmount > 0 && createdSupplier?.id) {
         const { error: debtError } = await supabase.rpc('rms_add_supplier_opening_debt', {
