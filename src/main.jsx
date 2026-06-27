@@ -3414,7 +3414,7 @@ function InventoryModule({ branchId, branchName }) {
         <p>Безопасный перенос уже введённых поступлений поставщиков в складские движения. Auto-trigger пока не включён.</p>
         <div className="action-row" style={{marginTop:12}}>
           <button className="ghost small" onClick={loadBackfillPreview} disabled={backfillBusy}>{backfillBusy ? 'Проверка…' : 'Preview'}</button>
-          <button className="primary small rms-add-action" onClick={runBackfill} disabled={backfillBusy}>Создать движения</button>
+          <button className="primary small" onClick={runBackfill} disabled={backfillBusy}>Создать движения</button>
         </div>
         {backfillHealth && (
           <div className="inventory-autolink-health">
@@ -3571,7 +3571,7 @@ function InventoryModule({ branchId, branchName }) {
         <p>Следующий объединённый слой: из preview продаж iiko можно создать draft расхода ингредиентов, проверить его, а затем вручную применить как складское списание. Автоматическое списание выключено.</p>
         <div className="action-row" style={{marginTop:12}}>
           <button className="ghost small" onClick={loadInventoryConsolidatedReports} disabled={backfillBusy}>{backfillBusy ? 'Проверка…' : 'Обновить status'}</button>
-          <button className="primary small rms-add-action" onClick={createSalesConsumptionDraft} disabled={backfillBusy}>Создать draft</button>
+          <button className="primary small" onClick={createSalesConsumptionDraft} disabled={backfillBusy}>Создать draft</button>
         </div>
         <div className="inventory-sales-apply-grid">
           <div className="inventory-sales-apply-step ready"><span>Preview rows</span><strong>{salesConsumptionConsolidatedHealth?.preview_rows ?? salesRecipeMappingHealth?.recipe_rows ?? 0}</strong></div>
@@ -3588,7 +3588,7 @@ function InventoryModule({ branchId, branchName }) {
         <div className="action-row" style={{marginTop:12}}>
           <button className="ghost small" onClick={loadInventoryConsolidatedReports} disabled={backfillBusy}>{backfillBusy ? 'Проверка…' : 'Обновить полный status'}</button>
           <button className="ghost small" onClick={normalizeIikoRows} disabled={backfillBusy}>Нормализовать iiko строки</button>
-          <button className="primary small rms-add-action" onClick={createSalesConsumptionDraft} disabled={backfillBusy}>Создать draft consumption</button>
+          <button className="primary small" onClick={createSalesConsumptionDraft} disabled={backfillBusy}>Создать draft consumption</button>
         </div>
         <div className="inventory-iiko-forward-grid">
           <div className="inventory-iiko-forward-step"><span>Imported rows</span><strong>{iikoImportConsolidatedHealth?.import?.total_rows ?? iikoImportHealth?.total_rows ?? 0}</strong></div>
@@ -3606,7 +3606,7 @@ function InventoryModule({ branchId, branchName }) {
         <div className="action-row" style={{marginTop:12}}>
           <button className="ghost small" onClick={loadInventoryConsolidatedReports} disabled={backfillBusy}>{backfillBusy ? 'Проверка…' : 'Обновить v169 status'}</button>
           <button className="ghost small" onClick={deduplicateIikoRows} disabled={backfillBusy}>Очистить дубли iiko</button>
-          <button className="primary small rms-add-action" onClick={createSalesConsumptionDraft} disabled={backfillBusy}>Создать draft consumption</button>
+          <button className="primary small" onClick={createSalesConsumptionDraft} disabled={backfillBusy}>Создать draft consumption</button>
         </div>
         <div className="inventory-v169-consolidated-grid">
           <div className="inventory-v169-consolidated-step"><span>Latest import</span><strong>{iikoLatestDashboard?.latest_import_status || '—'}</strong></div>
@@ -3623,7 +3623,7 @@ function InventoryModule({ branchId, branchName }) {
         <p>Объединённый operational-слой: alias mapping для iiko названий, контроль готовности техкарт, создание draft, ручное применение последнего batch и быстрая отмена. Auto-writeoff выключен.</p>
         <div className="action-row" style={{marginTop:12}}>
           <button className="ghost small" onClick={loadInventoryConsolidatedReports} disabled={backfillBusy}>{backfillBusy ? 'Проверка…' : 'Обновить operational status'}</button>
-          <button className="primary small rms-add-action" onClick={createSalesConsumptionDraft} disabled={backfillBusy}>Создать draft</button>
+          <button className="primary small" onClick={createSalesConsumptionDraft} disabled={backfillBusy}>Создать draft</button>
           <button className="primary small" onClick={applyLatestConsumptionBatch} disabled={backfillBusy}>Применить последний draft</button>
           <button className="ghost small danger" onClick={cancelLatestConsumptionBatch} disabled={backfillBusy}>Отменить последний batch</button>
         </div>
@@ -3643,7 +3643,7 @@ function InventoryModule({ branchId, branchName }) {
         <div className="action-row" style={{marginTop:12}}>
           <button className="ghost small" onClick={loadInventoryConsolidatedReports} disabled={backfillBusy}>{backfillBusy ? 'Проверка…' : 'Обновить hardening status'}</button>
           <button className="ghost small danger" onClick={cleanupIikoImportProblems} disabled={backfillBusy}>Очистить проблемы импорта</button>
-          <button className="primary small rms-add-action" onClick={createSalesConsumptionDraft} disabled={backfillBusy}>Создать draft</button>
+          <button className="primary small" onClick={createSalesConsumptionDraft} disabled={backfillBusy}>Создать draft</button>
         </div>
         <div className="inventory-v171-hardening-grid">
           <div className="inventory-v171-hardening-step ready"><span>Valid rows</span><strong>{iikoOperationalAudit?.valid_rows ?? 0}</strong></div>
@@ -3684,7 +3684,7 @@ function InventoryModule({ branchId, branchName }) {
         <h3>Операции склада</h3>
         <p>Быстрый выбор сценария движения. Это не автосписание — операции сохраняются вручную и попадают в журнал склада.</p>
         <div className="inventory-operations-grid">
-          <button className={`${operationMode === 'purchase' ? 'active ' : ''}rms-add-action`} onClick={() => applyInventoryPreset('purchase')}>+ Приход</button>
+          <button className={operationMode === 'purchase' ? 'active' : ''} onClick={() => applyInventoryPreset('purchase')}>+ Приход</button>
           <button className={operationMode === 'write_off' ? 'active danger' : 'danger'} onClick={() => applyInventoryPreset('write_off')}>− Списание</button>
           <button className={operationMode === 'transfer_in' ? 'active' : ''} onClick={() => applyInventoryPreset('transfer_in')}>⇢ Перемещение +</button>
           <button className={operationMode === 'transfer_out' ? 'active danger' : 'danger'} onClick={() => applyInventoryPreset('transfer_out')}>⇠ Перемещение −</button>
@@ -14732,33 +14732,6 @@ function RMSProV6Styles() {
 }
 
 
-/* v307 global add/create/new action buttons */
-.rms-pro-shell .rms-add-action{
-  background:linear-gradient(135deg,#dc2626,#ef4444)!important;
-  border-color:#dc2626!important;
-  color:#ffffff!important;
-  box-shadow:0 8px 18px rgba(220,38,38,.18)!important;
-  font-weight:850!important;
-}
-.rms-pro-shell .rms-add-action:hover{
-  background:linear-gradient(135deg,#b91c1c,#dc2626)!important;
-  border-color:#b91c1c!important;
-  color:#ffffff!important;
-  transform:translateY(-1px)!important;
-}
-.rms-pro-shell .rms-add-action:disabled{
-  background:#cbd5e1!important;
-  border-color:#cbd5e1!important;
-  color:#64748b!important;
-  box-shadow:none!important;
-  transform:none!important;
-}
-.rms-pro-shell .rms-add-action.active{
-  background:linear-gradient(135deg,#991b1b,#dc2626)!important;
-  border-color:#991b1b!important;
-  color:#ffffff!important;
-}
-
 /* v304 supplier price dynamics */
 .rms-pro-shell .supplier-price-dynamics-card .card-head{align-items:flex-end!important;}
 .rms-pro-shell .supplier-price-dynamics-card input{height:38px!important;border-radius:12px!important;}
@@ -15944,7 +15917,7 @@ function Revenue({ t, focusExpense }) {
           </div>
         </div>
 
-        <div className="card span-2"><div className="card-head"><div><h3>{t('daily_revenue_title')}</h3><p className="hint">Ввод выручки за выбранный день. Редактирование и удаление открываются во всплывающем окне.</p></div><button className="small primary rms-add-action" onClick={addRevenueEntry}>Добавить</button></div><div className="form-grid">
+        <div className="card span-2"><div className="card-head"><div><h3>{t('daily_revenue_title')}</h3><p className="hint">Ввод выручки за выбранный день. Редактирование и удаление открываются во всплывающем окне.</p></div><button className="small primary" onClick={addRevenueEntry}>Добавить</button></div><div className="form-grid">
           <MoneyInput label={t('cash')} value={form.cash_amount} onChange={v => setForm(f => ({ ...f, cash_amount: v }))} />
           <MoneyInput label={t('bank')} value={form.bank_amount} onChange={v => setForm(f => ({ ...f, bank_amount: v }))} />
           <MoneyInput label={t('wolt')} value={form.wolt_amount} onChange={v => setForm(f => ({ ...f, wolt_amount: v }))} />
@@ -15959,7 +15932,7 @@ function Revenue({ t, focusExpense }) {
         </div>
 
         <div className="card span-2">
-          <div className="card-head"><div><h3>{t('daily_expenses_title')}</h3><p className="hint">Расходы дня. Изменение и удаление выполняются через безопасное окно редактирования.</p></div><div className="actions-row"><button className="small rms-add-action" onClick={addExpense}>+ Добавить</button></div></div>
+          <div className="card-head"><div><h3>{t('daily_expenses_title')}</h3><p className="hint">Расходы дня. Изменение и удаление выполняются через безопасное окно редактирования.</p></div><div className="actions-row"><button className="small" onClick={addExpense}>+ Добавить</button></div></div>
           <div className="form-grid compact"><label><span>{t('daily_expenses_total')}</span><input value={fmt(dailyExpenseTotal)} readOnly /></label></div>
           <div className="table-wrap"><table><thead><tr><th>Дата</th><th>{t('expense_item')}</th><th>{t('amount')}</th><th>{t('comment')}</th><th>Статус</th><th></th></tr></thead><tbody>
             {expenses.map(e => <ExpenseRow key={e.id} expense={e} categories={categories} focusExpenseId={focusExpense?.expenseId} onSave={patch => updateExpense(e.id, patch)} onCancel={() => cancelExpense(e.id)} />)}
@@ -15969,7 +15942,7 @@ function Revenue({ t, focusExpense }) {
         </div>
 
         <div className="card span-2">
-          <div className="card-head"><div><h3>Приходы за выбранную дату</h3><p className="hint">Деньги извне: возврат подотчёта, пополнение кассы, личное внесение. Не является выручкой.</p></div><button className="small primary rms-add-action" onClick={addInflow}>+ Добавить</button></div>
+          <div className="card-head"><div><h3>Приходы за выбранную дату</h3><p className="hint">Деньги извне: возврат подотчёта, пополнение кассы, личное внесение. Не является выручкой.</p></div><button className="small primary" onClick={addInflow}>+ Добавить</button></div>
           <div className="form-grid">
             <MoneyInput label="Сумма прихода" value={inflowForm.amount} onChange={v => setInflowForm(f => ({ ...f, amount: v }))} />
             <label><span>Источник</span><input value={inflowForm.source} onChange={e => setInflowForm(f => ({ ...f, source: e.target.value }))} placeholder="Например: возврат, пополнение кассы" /></label>
@@ -20318,8 +20291,8 @@ function Recipes({ t }) {
 
       <div className="settings-tabs tech-page-tabs">
         <button className={tab === 'legacy' ? 'active' : ''} onClick={() => setTab('legacy')}>Текущие тех. карты</button>
-        <button className={`${tab === 'semis' ? 'active ' : ''}rms-add-action`} onClick={() => setTab('semis')}>Создать полуфабрикат</button>
-        <button className={`${tab === 'final' ? 'active ' : ''}rms-add-action`} onClick={() => setTab('final')}>Создать блюдо</button>
+        <button className={tab === 'semis' ? 'active' : ''} onClick={() => setTab('semis')}>Создать полуфабрикат</button>
+        <button className={tab === 'final' ? 'active' : ''} onClick={() => setTab('final')}>Создать блюдо</button>
       </div>
 
       {message ? <p className="hint">{message}</p> : null}
@@ -20380,7 +20353,7 @@ function Recipes({ t }) {
                 <div className="tech-toolbar-actions">
                   <button className="ghost small">⇩ {isAzInterface ? 'İxrac' : 'Экспорт'}</button>
                   <button className="ghost small">⇧ {isAzInterface ? 'İdxal' : 'Импорт'}</button>
-                  <button className="small primary rms-add-action" onClick={resetFinalMenuFormForCreate}>+ {isAzInterface ? 'Yeni texnoloji kart' : 'Новая тех. карта'}</button>
+                  <button className="small primary" onClick={resetFinalMenuFormForCreate}>+ {isAzInterface ? 'Yeni texnoloji kart' : 'Новая тех. карта'}</button>
                 </div>
               </div>
 
@@ -20547,9 +20520,9 @@ function Recipes({ t }) {
 
               <div className="tech-side-card">
                 <h3>Быстрые действия</h3>
-                <button className="tech-action-line rms-add-action" onClick={() => setTab('final')}><span>＋</span><div><b>Создать тех. карту</b><small>Добавить новое блюдо</small></div><em>›</em></button>
+                <button className="tech-action-line" onClick={() => setTab('final')}><span>＋</span><div><b>Создать тех. карту</b><small>Добавить новое блюдо</small></div><em>›</em></button>
                 <button className="tech-action-line"><span>⇧</span><div><b>Импорт из Excel</b><small>Загрузить тех. карты</small></div><em>›</em></button>
-                <button className="tech-action-line rms-add-action" onClick={() => setTab('semis')}><span>▧</span><div><b>Полуфабрикаты</b><small>Создать заготовки</small></div><em>›</em></button>
+                <button className="tech-action-line" onClick={() => setTab('semis')}><span>▧</span><div><b>Полуфабрикаты</b><small>Создать заготовки</small></div><em>›</em></button>
               </div>
             </aside>
           </div>
@@ -20584,7 +20557,7 @@ function Recipes({ t }) {
                 </div>
               </div>
               <div className="tech-detail-actions">
-                <button className="small primary rms-add-action" onClick={() => editFinalTechCard(selectedMenu.id)}>✎ Редактировать</button>
+                <button className="small primary" onClick={() => editFinalTechCard(selectedMenu.id)}>✎ Редактировать</button>
                 <button className="small" onClick={() => printFinalTechCard(selectedMenu.id, true)}>⎙ Печать</button>
                 <button className="small" onClick={() => printFinalTechCard(selectedMenu.id, true)}>⇩ Экспорт в PDF</button>
                 <button className="small" onClick={() => exportFinalTechCardCsv(selectedMenu.id)}>⇧ Экспорт в Excel</button>
@@ -20644,7 +20617,7 @@ function Recipes({ t }) {
                         <div className="tech-empty-state">
                           <b>Компоненты пока не добавлены</b>
                           <span>Откройте редактирование и добавьте ингредиенты, полуфабрикаты или ручные компоненты.</span>
-                          <button className="small primary rms-add-action" onClick={() => editFinalTechCard(selectedMenu.id)}>Добавить компоненты</button>
+                          <button className="small primary" onClick={() => editFinalTechCard(selectedMenu.id)}>Добавить компоненты</button>
                         </div>
                       </td>
                     </tr>
@@ -20702,7 +20675,7 @@ function Recipes({ t }) {
               <div className="action-row tech-editor-head-actions">
                 {selectedMenu && <button className="small" onClick={() => viewFinalTechCard(selectedMenu.id)}>{isAzInterface ? 'Baxış' : 'Просмотр'}</button>}
                 {selectedMenu && <button className="small" onClick={() => printFinalTechCard(selectedMenu.id, true)}>{isAzInterface ? 'Çap' : 'Печать'}</button>}
-                <button className="small primary rms-add-action" onClick={resetFinalMenuFormForCreate}>+ Новая тех. карта</button>
+                <button className="small primary" onClick={resetFinalMenuFormForCreate}>+ Новая тех. карта</button>
               </div>
             </div>
 
@@ -20774,7 +20747,7 @@ function Recipes({ t }) {
                 {selectedMenuId ? (
                   <button className="small primary" onClick={saveSelectedFinalMenuItemFromForm}>Сохранить изменения</button>
                 ) : (
-                  <button className="small primary rms-add-action" onClick={createFinalMenuItem}>+ Создать блюдо</button>
+                  <button className="small primary" onClick={createFinalMenuItem}>+ Создать блюдо</button>
                 )}
                 <button className="small" onClick={resetFinalMenuFormForCreate}>Очистить</button>
                 {selectedMenuId ? <button className="small danger" onClick={() => deleteFinalTechCard(selectedMenuId)}>Удалить тех. карту</button> : null}
@@ -20887,7 +20860,7 @@ function Recipes({ t }) {
               <label className="wide"><span>Комментарий</span><input value={semiForm.notes} onChange={e => setSemiForm({ ...semiForm, notes: e.target.value })} /></label>
             </div>
             <div className="actions-row">
-              <button className="small primary rms-add-action" onClick={addSemi}>+ Создать</button>
+              <button className="small primary" onClick={addSemi}>+ Создать</button>
               <button className="small" onClick={seedBrownieExample}>Шаблон Брауни</button>
             </div>
           </div>
@@ -21075,7 +21048,7 @@ function Recipes({ t }) {
                 </div>
 
                 <div className="actions-row">
-                  <button className="small primary rms-add-action" onClick={addSemiLine}>+ Добавить ингредиент</button>
+                  <button className="small primary" onClick={addSemiLine}>+ Добавить ингредиент</button>
                 </div>
               </>
             )}
@@ -22293,7 +22266,7 @@ function RecipesLegacy({ t }) {
             <label><span>Цена продажи</span><input inputMode="decimal" value={menuForm.sale_price} onChange={e => setMenuForm({...menuForm, sale_price: e.target.value})} /></label>
             <label><span>Целевой food cost %</span><input inputMode="decimal" value={menuForm.target_food_cost_percent} onChange={e => setMenuForm({...menuForm, target_food_cost_percent: e.target.value})} /></label>
           </div>
-          <button className="small rms-add-action" onClick={addMenuItem}>+ Добавить блюдо</button><br /><br />
+          <button className="small" onClick={addMenuItem}>+ Добавить блюдо</button><br /><br />
           <div className="table-wrap">
             <table>
               <thead><tr><th>Блюдо</th><th>Категория</th><th>Цена</th><th>Цель food cost</th><th></th></tr></thead>
@@ -22320,7 +22293,7 @@ function RecipesLegacy({ t }) {
             <label><span>Тип</span><select value={productForm.category} onChange={e => setProductForm({...productForm, category: e.target.value})}>{PRODUCT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select></label>
             <label><span>Базовая ед. использования</span><select value={productForm.base_unit} onChange={e => setProductForm({...productForm, base_unit: e.target.value})}>{BASE_UNITS.map(u => <option key={u.value} value={u.value}>{u.label}</option>)}</select></label>
           </div>
-          <button className="small rms-add-action" onClick={addProduct}>+ Добавить товар</button><br /><br />
+          <button className="small" onClick={addProduct}>+ Добавить товар</button><br /><br />
           <div className="table-wrap">
             <table>
               <thead><tr><th>Категория</th><th>Товар</th><th>Базовая ед.</th><th>Цена / изменение</th><th></th></tr></thead>
@@ -22726,7 +22699,7 @@ function Attendance({ t, mode = 'attendance', isAdmin = false }) {
             <label><span>Месячная ставка</span><input inputMode="decimal" value={employeeForm.monthly_salary} onChange={e => setEmployeeForm({...employeeForm, monthly_salary: e.target.value})} /></label>
             <label><span>Дневная ставка</span><input value={fmt(parseNum(employeeForm.monthly_salary) / DAILY_DIVISOR)} readOnly /></label>
           </div>
-          <button className="small rms-add-action" onClick={addEmployee}>+ Добавить сотрудника</button>
+          <button className="small" onClick={addEmployee}>+ Добавить сотрудника</button>
         </div>
 
         <div className="card span-2">
@@ -24630,7 +24603,7 @@ function Advances({ t }) {
           <label><span>Сумма</span><input value={form.amount} onChange={e => setForm({...form, amount: e.target.value})} placeholder="0.00" /></label>
           <label><span>Комментарий</span><input value={form.comment} onChange={e => setForm({...form, comment: e.target.value})} placeholder="Например: аванс за первую половину месяца" /></label>
         </div><br />
-        <button className="small rms-add-action" onClick={addAdvance}>+ Добавить аванс</button>
+        <button className="small" onClick={addAdvance}>+ Добавить аванс</button>
       </div>
 
       <div className="card span-2">
@@ -26687,7 +26660,7 @@ function Suppliers({ t, isAdmin = false }) {
           <div><span>Статус</span><strong>{purchaseForm.e_invoice_amount ? (Math.abs(parseNum(purchaseForm.e_invoice_amount) - parseNum(purchaseForm.amount_only ? purchaseForm.manual_amount : purchaseTotal)) <= 0.02 ? 'Сверено' : 'Расхождение') : 'Ожидает e-qaimə'}</strong></div>
         </div>
 
-        <div className="card-head suppliers-purchase-items-head"><div><h3>Товары в поступлении</h3><p className="hint">Если товара нет, сначала добавьте его ниже в блоке “Товары”.</p></div><button className="small supplier-add-product-line-btn rms-add-action" disabled={purchaseForm.amount_only} onClick={() => setLineRows(rows => [...rows, { ...emptyLine }])}>{isAzInterface ? '+ Məhsulu əlavə et' : '+ Добавить товар'}</button></div>
+        <div className="card-head suppliers-purchase-items-head"><div><h3>Товары в поступлении</h3><p className="hint">Если товара нет, сначала добавьте его ниже в блоке “Товары”.</p></div><button className="small supplier-add-product-line-btn" disabled={purchaseForm.amount_only} onClick={() => setLineRows(rows => [...rows, { ...emptyLine }])}>{isAzInterface ? '+ Məhsulu əlavə et' : '+ Добавить товар'}</button></div>
         <div className="table-wrap suppliers-purchase-items-wrap"><table className="suppliers-purchase-items-table suppliers-purchase-price-table"><thead><tr><th>Тип</th><th>Товар</th><th>Кол-во закупа</th><th>Ед. закупа</th><th>Сумма строки</th><th>Цена за ед.</th><th></th></tr></thead><tbody>{purchaseForm.amount_only ? <tr><td colSpan="7" className="hint">Товары отключены: поступление будет сохранено общей суммой.</td></tr> : lineRows.map((row, idx) => <tr key={idx}>
           <td><select value={row.category} onChange={e => updateLine(idx, { category: e.target.value })}>{PRODUCT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select></td>
           <td style={{minWidth:260}}><select value={row.product_id || ''} onChange={e => selectProductForLine(idx, e.target.value)}><option value="">Выберите товар</option>{productOptionsForRow(row).map(p => <option key={p.id} value={p.id}>{productLabel(p)}</option>)}</select></td>
@@ -26796,7 +26769,7 @@ function Suppliers({ t, isAdmin = false }) {
             <label><span>Комментарий к стартовому долгу</span><input value={supplierForm.opening_debt_comment} onChange={e => setSupplierForm({...supplierForm, opening_debt_comment: e.target.value})} placeholder="Например: остаток на 01.05" /></label>
           </div>
         </details>
-        <div className="supplier-form-footer"><span></span><button className="small supplier-save-action supplier-add-accent rms-add-action" onClick={addSupplier}>+ Добавить поставщика</button></div>
+        <div className="supplier-form-footer"><span></span><button className="small supplier-save-action supplier-add-accent" onClick={addSupplier}>+ Добавить поставщика</button></div>
         {editingSupplierId && (() => {
           const selected = supplierAdminRows.find(s => s.id === editingSupplierId)
           if (!selected) return null
@@ -26880,7 +26853,7 @@ function Suppliers({ t, isAdmin = false }) {
         <div className="card-head"><div><h3>Товары</h3><p className="hint">Товар создаётся один раз и потом выбирается в поступлении и в техкарте.</p></div></div>
         <div className="form-grid compact"><label><span>Товар</span><input value={productForm.name} onChange={e => { setProductForm({...productForm, name: e.target.value}); setProductMessage('') }} /></label><label><span>Тип</span><select value={productForm.category} onChange={e => setProductForm({...productForm, category: e.target.value})}>{PRODUCT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select></label><label><span>Базовая ед. для техкарты</span><select value={productForm.base_unit} onChange={e => setProductForm({...productForm, base_unit: e.target.value})}>{BASE_UNITS.map(u => <option key={u.value} value={u.value}>{u.label}</option>)}</select></label></div>
         <div className="supplier-products-form-footer">
-          <div className="supplier-form-footer"><div className="supplier-form-footer-status">{productMessage && <span className={`rms-inline-operation-status ${rmsInferToastType(productMessage)}`}>{productMessage}</span>}</div><button className="small supplier-save-action supplier-add-accent rms-add-action" onClick={addProductFromForm}>+ Добавить товар</button></div>
+          <div className="supplier-form-footer"><div className="supplier-form-footer-status">{productMessage && <span className={`rms-inline-operation-status ${rmsInferToastType(productMessage)}`}>{productMessage}</span>}</div><button className="small supplier-save-action supplier-add-accent" onClick={addProductFromForm}>+ Добавить товар</button></div>
           <button className={`small supplier-products-toggle ${showSupplierProducts ? 'is-open' : ''}`} onClick={() => { setShowSupplierProducts(v => !v); setSupplierProductsPage(1) }}>{showSupplierProducts ? 'Скрыть товары' : `Показать товары · ${filteredSupplierProducts.length}`}</button>
         </div>
         {showSupplierProducts && <div className="supplier-products-admin-list">
@@ -27017,7 +26990,7 @@ function Suppliers({ t, isAdmin = false }) {
                               <div><span>Расхождение</span><strong className={Math.abs((purchaseLinkedEInvoicesTotal(p.id) + parseNum(singleEInvoiceDraft(p).amount)) - parseNum(p.total_amount)) > 0.02 ? 'bad' : 'good'}>{fmt((purchaseLinkedEInvoicesTotal(p.id) + parseNum(singleEInvoiceDraft(p).amount)) - parseNum(p.total_amount))}</strong></div>
                               <div><span>Статус</span><strong className={Math.abs((purchaseLinkedEInvoicesTotal(p.id) + parseNum(singleEInvoiceDraft(p).amount)) - parseNum(p.total_amount)) > 0.02 ? 'bad' : 'good'}>{Math.abs((purchaseLinkedEInvoicesTotal(p.id) + parseNum(singleEInvoiceDraft(p).amount)) - parseNum(p.total_amount)) > 0.02 ? 'Расхождение' : 'Сверено'}</strong></div>
                             </div>
-                            <button className="small primary supplier-add-accent rms-add-action" onClick={() => createSingleEInvoiceForPurchase(p)}>+ Добавить e-qaimə к поступлению</button>
+                            <button className="small primary supplier-add-accent" onClick={() => createSingleEInvoiceForPurchase(p)}>+ Добавить e-qaimə к поступлению</button>
                             {eInvoiceMessage && <p className={`hint ${eInvoiceMessage.includes('добавлена') ? 'save-status' : 'bad'}`}>{eInvoiceMessage}</p>}
                           </div>}
 
@@ -27066,7 +27039,7 @@ function Suppliers({ t, isAdmin = false }) {
                               <h4>Товары в накладной</h4>
                               <p className="hint">Можно заменить ручную сумму детализацией по товарам. После сохранения сумма накладной рассчитывается по строкам.</p>
                             </div>
-                            {!p.deleted_at && purchaseItemsEditorId !== p.id && <button className="small supplier-main-action rms-add-action" onClick={() => startExistingPurchaseItemsEdit(p)}>{(p.supplier_purchase_items || []).length ? 'Редактировать товары' : '+ Добавить товары в накладную'}</button>}
+                            {!p.deleted_at && purchaseItemsEditorId !== p.id && <button className="small supplier-main-action" onClick={() => startExistingPurchaseItemsEdit(p)}>{(p.supplier_purchase_items || []).length ? 'Редактировать товары' : '+ Добавить товары в накладную'}</button>}
                           </div>
 
                           {purchaseItemsEditorId === p.id ? <div className="existing-purchase-items-editor">
@@ -27085,7 +27058,7 @@ function Suppliers({ t, isAdmin = false }) {
                               </table>
                             </div>
                             <div className="existing-purchase-items-footer">
-                              <button className="ghost small supplier-add-product-line-btn rms-add-action" onClick={() => setPurchaseItemsDraft(rows => [...rows, { ...emptyLine, id: crypto.randomUUID?.() || String(Math.random()), quantity: '', unit_price: '', line_amount: '' }])}>{isAzInterface ? '+ Məhsulu əlavə et' : '+ Добавить товар'}</button>
+                              <button className="ghost small supplier-add-product-line-btn" onClick={() => setPurchaseItemsDraft(rows => [...rows, { ...emptyLine, id: crypto.randomUUID?.() || String(Math.random()), quantity: '', unit_price: '', line_amount: '' }])}>{isAzInterface ? '+ Məhsulu əlavə et' : '+ Добавить товар'}</button>
                               <div className="existing-purchase-items-total">Новая сумма накладной: <strong>{fmt(existingPurchaseDraftTotal())} AZN</strong></div>
                               <div className="action-row">
                                 <button className="ghost small" onClick={() => { setPurchaseItemsEditorId(''); setPurchaseItemsDraft([]) }}>Отмена</button>
@@ -35338,7 +35311,7 @@ function Settings({ session, t, theme, setTheme, lang, setLang }) {
                 <h3>Статьи расходов</h3>
                 <p className="hint">Добавление и редактирование названий статей, которые используются в “Расходы за выбранную дату”.</p>
               </div>
-              <button className="small primary rms-add-action" onClick={addExpenseCategory}>+ Добавить статью</button>
+              <button className="small primary" onClick={addExpenseCategory}>+ Добавить статью</button>
             </div>
             <div className="form-grid compact">
               <label><span>Новая статья расходов</span><input value={newExpenseCategoryName} onChange={e => setNewExpenseCategoryName(e.target.value)} placeholder="Например: Ремонт, Базар, Упаковка" /></label>
@@ -35365,7 +35338,7 @@ function Settings({ session, t, theme, setTheme, lang, setLang }) {
 
         {settingsTab === 'users' && <>
           <div className="card span-2"><h3>Пользователи</h3><p className="hint">Добавление пользователей и права доступа.</p></div>
-          <div className="card span-2"><div className="card-head"><h3>Добавить пользователя</h3></div><p className="hint">Пользователь входит по login. Система создаёт внутренний email вида login@rms.local.az, поэтому email-рассылка не используется.</p><div className="form-grid compact"><label><span>Login</span><input value={newUser.login} onChange={e => setNewUser({...newUser, login: e.target.value})} placeholder="" /></label><label><span>Временный пароль</span><input type="password" value={newUser.password} onChange={e => setNewUser({...newUser, password: e.target.value})} /></label><label><span>Имя</span><input value={newUser.full_name} onChange={e => setNewUser({...newUser, full_name: e.target.value})} /></label></div><button className="small rms-add-action" onClick={addUser}>+ Добавить пользователя</button>{msg && <p className={`hint ${msg === t('saved') || String(msg).toLowerCase().includes('сохран') ? 'save-status' : 'good'}`}>{msg}</p>}</div>
+          <div className="card span-2"><div className="card-head"><h3>Добавить пользователя</h3></div><p className="hint">Пользователь входит по login. Система создаёт внутренний email вида login@rms.local.az, поэтому email-рассылка не используется.</p><div className="form-grid compact"><label><span>Login</span><input value={newUser.login} onChange={e => setNewUser({...newUser, login: e.target.value})} placeholder="" /></label><label><span>Временный пароль</span><input type="password" value={newUser.password} onChange={e => setNewUser({...newUser, password: e.target.value})} /></label><label><span>Имя</span><input value={newUser.full_name} onChange={e => setNewUser({...newUser, full_name: e.target.value})} /></label></div><button className="small" onClick={addUser}>+ Добавить пользователя</button>{msg && <p className={`hint ${msg === t('saved') || String(msg).toLowerCase().includes('сохран') ? 'save-status' : 'good'}`}>{msg}</p>}</div>
           <div className="card span-2">
             <div className="card-head"><h3>Права доступа</h3></div>
             <p className="hint">Внутренние пользователи RMS входят по login/password без Supabase Auth. Раздел с доступом “Нет доступа” полностью скрывается из меню.</p>
@@ -35446,7 +35419,7 @@ function Settings({ session, t, theme, setTheme, lang, setLang }) {
           </div>
         </>}
 
-        {settingsTab === 'voen' && <div className="card span-2"><div className="card-head"><h3>Наши VOEN / юрлица</h3></div><p className="hint">Используются в разделе “Поставщики”.</p><div className="form-grid compact"><label><span>Имя / компания</span><input value={legalForm.name} onChange={e => setLegalForm({...legalForm, name: e.target.value})} placeholder="Ruslan Rasulov" /></label><label><span>VOEN</span><input value={legalForm.voen} onChange={e => setLegalForm({...legalForm, voen: e.target.value})} /></label></div><button className="small rms-add-action" onClick={addLegalEntity}>+ Добавить VOEN</button>{msg && <p className={`hint ${msg === t('saved') || String(msg).toLowerCase().includes('сохран') ? 'save-status' : 'good'}`}>{msg}</p>}<div className="table-wrap" style={{marginTop:12}}><table><thead><tr><th>Имя / компания</th><th>VOEN</th><th>Активен</th></tr></thead><tbody>{legalEntities.map(le => <tr key={le.id}><td><input defaultValue={le.name} onBlur={e => updateLegalEntity(le.id, { name: e.target.value.trim() })} /></td><td><input defaultValue={le.voen} onBlur={e => updateLegalEntity(le.id, { voen: e.target.value.trim() })} /></td><td><select defaultValue={String(le.is_active !== false)} onChange={e => updateLegalEntity(le.id, { is_active: e.target.value === 'true' })}><option value="true">Да</option><option value="false">Нет</option></select></td></tr>)}{!legalEntities.length && <tr><td colSpan="3" className="hint">—</td></tr>}</tbody></table></div></div>}
+        {settingsTab === 'voen' && <div className="card span-2"><div className="card-head"><h3>Наши VOEN / юрлица</h3></div><p className="hint">Используются в разделе “Поставщики”.</p><div className="form-grid compact"><label><span>Имя / компания</span><input value={legalForm.name} onChange={e => setLegalForm({...legalForm, name: e.target.value})} placeholder="Ruslan Rasulov" /></label><label><span>VOEN</span><input value={legalForm.voen} onChange={e => setLegalForm({...legalForm, voen: e.target.value})} /></label></div><button className="small" onClick={addLegalEntity}>+ Добавить VOEN</button>{msg && <p className={`hint ${msg === t('saved') || String(msg).toLowerCase().includes('сохран') ? 'save-status' : 'good'}`}>{msg}</p>}<div className="table-wrap" style={{marginTop:12}}><table><thead><tr><th>Имя / компания</th><th>VOEN</th><th>Активен</th></tr></thead><tbody>{legalEntities.map(le => <tr key={le.id}><td><input defaultValue={le.name} onBlur={e => updateLegalEntity(le.id, { name: e.target.value.trim() })} /></td><td><input defaultValue={le.voen} onBlur={e => updateLegalEntity(le.id, { voen: e.target.value.trim() })} /></td><td><select defaultValue={String(le.is_active !== false)} onChange={e => updateLegalEntity(le.id, { is_active: e.target.value === 'true' })}><option value="true">Да</option><option value="false">Нет</option></select></td></tr>)}{!legalEntities.length && <tr><td colSpan="3" className="hint">—</td></tr>}</tbody></table></div></div>}
 
         {settingsTab === 'backup' && <>
           <style>{`
