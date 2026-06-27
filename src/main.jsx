@@ -24696,6 +24696,7 @@ function Advances({ t }) {
 }
 
 function Suppliers({ t, isAdmin = false }) {
+  const isAzInterface = t('language_label') === 'İnterfeys dili'
   const branches = useBranches()
   const [legalEntities, setLegalEntities] = useState([])
   const [suppliers, setSuppliers] = useState([])
