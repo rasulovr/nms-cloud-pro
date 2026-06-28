@@ -30423,6 +30423,7 @@ function Reports({ t }) {
   const [rmsRevenueReport, setRmsRevenueReport] = useState({ loading: false, error: '', rows: [], totals: { cash: 0, bank: 0, wolt: 0, revenue: 0 } })
   const [rmsExpensesReport, setRmsExpensesReport] = useState({ loading: false, error: '', rows: [], totals: { amount: 0, transactions: 0, categories: 0 }, byCategory: [], byBranch: [] })
   const [rmsSuppliersReport, setRmsSuppliersReport] = useState({ loading: false, error: '', rows: [], totals: { purchases: 0, payments: 0, balance: 0, suppliers: 0 }, purchases: [], payments: [], priceChanges: [] })
+  const [supplierReportSort, setSupplierReportSort] = useState({ field: 'balance', dir: 'desc' })
 
   useEffect(() => { writeAikoSalesReports(reports) }, [reports])
   useEffect(() => { writeAikoBranchMap(branchMap) }, [branchMap])
@@ -32141,6 +32142,27 @@ function Reports({ t }) {
     </div>
   </section>
 
+  const sortedSupplierReportRows = useMemo(() => {
+    const field = supplierReportSort?.field || 'balance'
+    const dir = supplierReportSort?.dir === 'asc' ? 1 : -1
+    return [...(rmsSuppliersReport.rows || [])].sort((a, b) => {
+      const av = parseNum(a?.[field])
+      const bv = parseNum(b?.[field])
+      if (av !== bv) return (av - bv) * dir
+      return String(a?.supplier_name || '').localeCompare(String(b?.supplier_name || ''), 'ru')
+    })
+  }, [rmsSuppliersReport.rows, supplierReportSort])
+
+  const toggleSupplierReportSort = field => {
+    setSupplierReportSort(current => current.field === field
+      ? { field, dir: current.dir === 'desc' ? 'asc' : 'desc' }
+      : { field, dir: 'desc' })
+  }
+
+  const supplierReportSortArrow = field => supplierReportSort.field === field
+    ? (supplierReportSort.dir === 'desc' ? '▼' : '▲')
+    : '↕'
+
   const ReportsSuppliersView = <section className="reports-v43-module-grid reports-v43-revenue-grid">
     <div className="reports-v43-module-card reports-v43-wide reports-v43-revenue-card">
       <div className="reports-v43-card-head reports-v43-revenue-head">
@@ -32167,11 +32189,11 @@ function Reports({ t }) {
       {rmsSuppliersReport.error && <div className="reports-v43-empty-state"><b>Ошибка загрузки</b><span>{rmsSuppliersReport.error}</span></div>}
       {!rmsSuppliersReport.loading && !rmsSuppliersReport.error && <>
         <div className="reports-v43-card">
-          <div className="reports-v43-card-head"><div><h3>Сводка по поставщикам</h3><p>Закупки и оплаты за выбранный период + текущий баланс.</p></div></div>
+          <div className="reports-v43-card-head"><div><h3>Сводка по поставщикам</h3><p>Закупки и оплаты за выбранный период + текущий баланс. Нажмите на стрелку в заголовке для сортировки по возрастанию или убыванию.</p></div></div>
           <div className="reports-v43-table-wrap"><table>
-            <thead><tr><th>Поставщик</th><th>Закупки</th><th>Оплаты</th><th>Баланс</th><th>Последняя закупка</th><th>Срок оплаты</th><th>Кредитный лимит</th></tr></thead>
+            <thead><tr><th>Поставщик</th><th><button type="button" className={`reports-sort-button ${supplierReportSort.field === 'purchases' ? 'active' : ''}`} onClick={() => toggleSupplierReportSort('purchases')}><span>Закупки</span><b>{supplierReportSortArrow('purchases')}</b></button></th><th><button type="button" className={`reports-sort-button ${supplierReportSort.field === 'payments' ? 'active' : ''}`} onClick={() => toggleSupplierReportSort('payments')}><span>Оплаты</span><b>{supplierReportSortArrow('payments')}</b></button></th><th><button type="button" className={`reports-sort-button ${supplierReportSort.field === 'balance' ? 'active' : ''}`} onClick={() => toggleSupplierReportSort('balance')}><span>Баланс</span><b>{supplierReportSortArrow('balance')}</b></button></th><th>Последняя закупка</th><th>Срок оплаты</th><th>Кредитный лимит</th></tr></thead>
             <tbody>
-              {rmsSuppliersReport.rows.slice(0, 120).map(row => <tr key={row.supplier_id}>
+              {sortedSupplierReportRows.slice(0, 120).map(row => <tr key={row.supplier_id}>
                 <td><b>{row.supplier_name || '—'}</b></td>
                 <td>{fmt(row.purchases)}</td>
                 <td>{fmt(row.payments)}</td>
@@ -33352,6 +33374,40 @@ function ReportsV43Styles() {
   return <style>{`
 
 /* RMS Pro v43 — Reports Center redesign. Scope: Reports page only. */
+.reports-sort-button{
+  width:100%;
+  display:inline-flex;
+  align-items:center;
+  justify-content:flex-start;
+  gap:7px;
+  padding:0;
+  border:0;
+  background:transparent;
+  color:inherit;
+  font:inherit;
+  font-weight:850;
+  cursor:pointer;
+  text-align:left;
+}
+.reports-sort-button b{
+  display:inline-grid;
+  place-items:center;
+  min-width:20px;
+  height:20px;
+  border-radius:7px;
+  background:#eef2f7;
+  color:#64748b;
+  font-size:11px;
+  line-height:1;
+}
+.reports-sort-button.active b{
+  background:#dbeafe;
+  color:#1d4ed8;
+}
+.reports-sort-button:hover b{
+  background:#fee2e2;
+  color:#b91c1c;
+}
 .reports-v43-page { display:flex; flex-direction:column; gap:14px; padding:4px 0 36px; }
 .reports-v43-page, .reports-v43-page * { box-sizing:border-box; }
 .reports-v43-hero { display:flex; align-items:flex-end; justify-content:space-between; gap:18px; margin-bottom:2px; }
