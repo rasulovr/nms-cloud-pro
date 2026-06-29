@@ -24924,6 +24924,9 @@ function Suppliers({ t, isAdmin = false }) {
   const [supplierForm, setSupplierForm] = useState({ name: '', voen: '', contact_person: '', phone: '', info: '', payment_term_days: '', credit_limit: '', opening_debt_amount: '', opening_debt_legal_entity_id: '', opening_debt_date: todayISO(), opening_debt_comment: '' })
   const [productForm, setProductForm] = useState({ name: '', category: PRODUCT_CATEGORIES[0], base_unit: 'g' })
   const [supplierProductSearch, setSupplierProductSearch] = useState('')
+  const [supplierProductInvoiceSearch, setSupplierProductInvoiceSearch] = useState('')
+  const [supplierProductInvoicePageSize, setSupplierProductInvoicePageSize] = useState(20)
+  const [supplierProductInvoicePage, setSupplierProductInvoicePage] = useState(1)
   const [showSupplierProducts, setShowSupplierProducts] = useState(false)
   const [supplierProductsPageSize, setSupplierProductsPageSize] = useState(10)
   const [supplierProductsPage, setSupplierProductsPage] = useState(1)
@@ -24999,6 +25002,53 @@ function Suppliers({ t, isAdmin = false }) {
   const supplierProductsPageCount = Math.max(1, Math.ceil(filteredSupplierProducts.length / supplierProductsPageSize))
   const safeSupplierProductsPage = Math.min(supplierProductsPage, supplierProductsPageCount)
   const pagedSupplierProducts = filteredSupplierProducts.slice((safeSupplierProductsPage - 1) * supplierProductsPageSize, safeSupplierProductsPage * supplierProductsPageSize)
+
+
+  const supplierProductInvoiceRows = useMemo(() => {
+    const q = String(supplierProductInvoiceSearch || '').trim().toLowerCase()
+    if (!q) return []
+
+    const rows = []
+    ;(purchases || []).filter(p => !p.deleted_at).forEach(p => {
+      ;(p.supplier_purchase_items || []).forEach(item => {
+        const product = item.supplier_products || {}
+        const productName = product.name || item.product_name || '—'
+        const category = product.category || '—'
+        const supplierName = p.suppliers?.name || suppliers.find(s => String(s.id) === String(p.supplier_id))?.name || '—'
+        const branchName = p.branches?.name || branches.find(b => String(b.id) === String(p.branch_id))?.name || '—'
+        const invoice = p.invoice_number || '—'
+        const haystack = `${productName} ${category} ${supplierName} ${invoice} ${branchName}`.toLowerCase()
+        if (!haystack.includes(q)) return
+
+        rows.push({
+          id: `${p.id}-${item.id || item.product_id || productName}`,
+          purchase_id: p.id,
+          product: productName,
+          category,
+          supplier: supplierName,
+          invoice,
+          date: p.purchase_date || '',
+          branch: branchName,
+          quantity: parseNum(item.quantity),
+          unit: item.unit || product.base_unit || '',
+          unit_price: parseNum(item.unit_price),
+          total_amount: parseNum(item.total_amount)
+        })
+      })
+    })
+
+    return rows.sort((a, b) => {
+      const dateDiff = String(b.date).localeCompare(String(a.date))
+      return dateDiff || String(a.product).localeCompare(String(b.product), 'ru')
+    })
+  }, [purchases, suppliers, branches, supplierProductInvoiceSearch])
+
+  const supplierProductInvoiceTotalPages = Math.max(1, Math.ceil(supplierProductInvoiceRows.length / supplierProductInvoicePageSize))
+  const safeSupplierProductInvoicePage = Math.min(Math.max(1, supplierProductInvoicePage), supplierProductInvoiceTotalPages)
+  const pagedSupplierProductInvoiceRows = supplierProductInvoiceRows.slice(
+    (safeSupplierProductInvoicePage - 1) * supplierProductInvoicePageSize,
+    safeSupplierProductInvoicePage * supplierProductInvoicePageSize
+  )
 
   async function revenueDistributionForSupplierDate(expenseDate) {
     const { data } = await supabase
@@ -27177,6 +27227,77 @@ function Suppliers({ t, isAdmin = false }) {
             {!filteredSupplierProducts.length && <tr><td colSpan="4" className="hint">Товары не найдены</td></tr>}
           </tbody></table></div>
           <div className="supplier-products-pagination"><span className="hint">Показано {filteredSupplierProducts.length ? (safeSupplierProductsPage - 1) * supplierProductsPageSize + 1 : 0}–{Math.min(safeSupplierProductsPage * supplierProductsPageSize, filteredSupplierProducts.length)} из {filteredSupplierProducts.length}</span><div className="action-row"><button className="ghost small" disabled={safeSupplierProductsPage <= 1} onClick={() => setSupplierProductsPage(p => Math.max(1, p - 1))}>← Пред.</button><span className="hint">Страница {safeSupplierProductsPage} / {supplierProductsPageCount}</span><button className="ghost small" disabled={safeSupplierProductsPage >= supplierProductsPageCount} onClick={() => setSupplierProductsPage(p => Math.min(supplierProductsPageCount, p + 1))}>След. →</button></div></div>
+        </div>}
+      </div>
+
+
+      <div className="card span-2 supplier-product-invoice-search-card">
+        <div className="card-head">
+          <div>
+            <h3>{isAzInterface ? 'Məhsul üzrə təchizatçı və qaimə axtarışı' : 'Поиск товара по поставщикам и накладным'}</h3>
+            <p className="hint">{isAzInterface ? 'Məhsulun hansı təchizatçıdan və hansı qaimə ilə alındığını tapın.' : 'Найдите, у какого поставщика и в какой накладной закупался товар.'}</p>
+          </div>
+          <label className="supplier-product-invoice-page-size">
+            <span className="hint">{isAzInterface ? 'Göstər' : 'Показать'}</span>
+            <select value={supplierProductInvoicePageSize} onChange={e => { setSupplierProductInvoicePageSize(Number(e.target.value)); setSupplierProductInvoicePage(1) }}>
+              <option value={10}>10</option>
+              <option value={20}>20</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+            </select>
+          </label>
+        </div>
+
+        <div className="supplier-product-invoice-searchbar">
+          <label>
+            <span>{isAzInterface ? 'Məhsul, təchizatçı və ya qaimə' : 'Товар, поставщик или накладная'}</span>
+            <input
+              value={supplierProductInvoiceSearch}
+              onChange={e => { setSupplierProductInvoiceSearch(e.target.value); setSupplierProductInvoicePage(1) }}
+              placeholder={isAzInterface ? 'Məsələn: çedar, Foodini, INV-125' : 'Например: чеддар, Foodini, № накладной'}
+            />
+          </label>
+          {supplierProductInvoiceSearch && <button className="ghost small" type="button" onClick={() => { setSupplierProductInvoiceSearch(''); setSupplierProductInvoicePage(1) }}>{isAzInterface ? 'Təmizlə' : 'Очистить'}</button>}
+          <div className="supplier-product-invoice-found"><b>{supplierProductInvoiceRows.length}</b><span>{isAzInterface ? 'tapıldı' : 'найдено'}</span></div>
+        </div>
+
+        <div className="table-wrap supplier-product-invoice-search-wrap">
+          <table className="supplier-product-invoice-search-table">
+            <thead>
+              <tr>
+                <th>{isAzInterface ? 'Məhsul' : 'Товар'}</th>
+                <th>{isAzInterface ? 'Təchizatçı' : 'Поставщик'}</th>
+                <th>{isAzInterface ? 'Qaimə' : 'Накладная'}</th>
+                <th>{isAzInterface ? 'Tarix' : 'Дата'}</th>
+                <th>{isAzInterface ? 'Filial' : 'Филиал'}</th>
+                <th>{isAzInterface ? 'Miqdar' : 'Количество'}</th>
+                <th>{isAzInterface ? 'Vahid qiyməti' : 'Цена за ед.'}</th>
+                <th>{isAzInterface ? 'Məbləğ' : 'Сумма'}</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {pagedSupplierProductInvoiceRows.map(row => <tr key={row.id}>
+                <td><b>{row.product}</b><br /><span className="hint">{row.category}</span></td>
+                <td>{row.supplier}</td>
+                <td><b>{row.invoice}</b></td>
+                <td>{formatDateDMY(row.date)}</td>
+                <td>{row.branch}</td>
+                <td>{fmt(row.quantity)} {row.unit}</td>
+                <td>{fmt(row.unit_price)} AZN</td>
+                <td><b>{fmt(row.total_amount)} AZN</b></td>
+                <td><button className="ghost small" type="button" onClick={() => setViewPurchaseId(row.purchase_id)}>{isAzInterface ? 'Baxış' : 'Просмотр'}</button></td>
+              </tr>)}
+              {!supplierProductInvoiceSearch && <tr><td colSpan="9" className="hint">{isAzInterface ? 'Axtarış üçün məhsulun, təchizatçının və ya qaimənin adını daxil edin.' : 'Введите название товара, поставщика или номер накладной.'}</td></tr>}
+              {supplierProductInvoiceSearch && !supplierProductInvoiceRows.length && <tr><td colSpan="9" className="hint">{isAzInterface ? 'Uyğun alış tapılmadı.' : 'Подходящие закупки не найдены.'}</td></tr>}
+            </tbody>
+          </table>
+        </div>
+
+        {supplierProductInvoiceRows.length > supplierProductInvoicePageSize && <div className="action-row supplier-product-invoice-pagination">
+          <button className="ghost small" disabled={safeSupplierProductInvoicePage <= 1} onClick={() => setSupplierProductInvoicePage(p => Math.max(1, p - 1))}>← {isAzInterface ? 'Əvvəlki' : 'Пред.'}</button>
+          <span className="hint">{isAzInterface ? 'Səhifə' : 'Страница'} {safeSupplierProductInvoicePage} / {supplierProductInvoiceTotalPages}</span>
+          <button className="ghost small" disabled={safeSupplierProductInvoicePage >= supplierProductInvoiceTotalPages} onClick={() => setSupplierProductInvoicePage(p => Math.min(supplierProductInvoiceTotalPages, p + 1))}>{isAzInterface ? 'Növbəti' : 'След.'} →</button>
         </div>}
       </div>
 
