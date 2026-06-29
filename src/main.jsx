@@ -19685,8 +19685,41 @@ function Recipes({ t }) {
   const filteredSemisForSearch = semis.filter(s => String(s.name || '').toLowerCase().includes(semiSearch.trim().toLowerCase()))
   const selectedSemi = semiById(selectedSemiId)
   const selectedSemiItems = semiItems.filter(i => String(i.semi_id) === String(selectedSemiId))
+
+  function semiOutputQtyFromItems(items, outputUnit = 'g') {
+    return (items || []).reduce((sum, item) => {
+      const qty = parseNum(item.qty)
+      const unit = item.unit || outputUnit
+      const multiplier = unitMultiplier(unit, outputUnit)
+
+      const compatible =
+        unit === outputUnit ||
+        (['g', 'kg'].includes(unit) && ['g', 'kg'].includes(outputUnit)) ||
+        (['ml', 'l'].includes(unit) && ['ml', 'l'].includes(outputUnit)) ||
+        (unit === 'pcs' && outputUnit === 'pcs')
+
+      return compatible ? sum + qty * multiplier : sum
+    }, 0)
+  }
+
+  const selectedSemiAutoOutputQty = selectedSemi
+    ? semiOutputQtyFromItems(selectedSemiItems, selectedSemi.output_unit || 'g')
+    : 0
+  const selectedSemiEffectiveOutputQty = selectedSemiItems.length
+    ? selectedSemiAutoOutputQty
+    : parseNum(selectedSemi?.output_qty)
   const selectedSemiTotalCost = selectedSemiId ? semiTotalCost(selectedSemiId) : 0
-  const selectedSemiUnitCost = selectedSemiId ? semiUnitCost(selectedSemiId, selectedSemi?.output_unit || 'g') : 0
+  const selectedSemiUnitCost = selectedSemiEffectiveOutputQty > 0
+    ? selectedSemiTotalCost / selectedSemiEffectiveOutputQty
+    : 0
+
+  async function recalculateSemiOutput(semiId) {
+    if (!semiId) return
+    const { error } = await supabase.rpc('rms_semi_finished_recalculate_output_secure', {
+      p_id: semiId
+    })
+    if (error) throw error
+  }
 
   const selectedMenu = menuItems.find(m => String(m.id) === String(selectedMenuId))
   const selectedFinalItems = finalItems.filter(i => String(i.menu_item_id) === String(selectedMenuId))
@@ -19815,14 +19848,26 @@ function Recipes({ t }) {
     if (error) return setMessage(error.message)
 
     setSemiLineForm({ ...semiLineForm, product_id: '', semi_id_ref: '', manual_name: '', manual_unit_cost: '', qty: '' })
+    try {
+      await recalculateSemiOutput(selectedSemiId)
+    } catch (recalcError) {
+      return setMessage(recalcError?.message || 'Не удалось пересчитать выход полуфабриката')
+    }
     await loadSemiData()
-    setMessage('Компонент полуфабриката добавлен')
+    setMessage('Компонент добавлен. Выход пересчитан автоматически')
   }
 
   async function deleteSemiLine(id) {
+    const semiId = selectedSemiId
     const { error } = await supabase.from('rms_semi_finished_items').delete().eq('id', id)
     if (error) return setMessage(error.message)
+    try {
+      await recalculateSemiOutput(semiId)
+    } catch (recalcError) {
+      return setMessage(recalcError?.message || 'Не удалось пересчитать выход полуфабриката')
+    }
     await loadSemiData()
+    setMessage('Ингредиент удалён. Выход пересчитан автоматически')
   }
 
   async function updateSemiLine(id, patch) {
@@ -19834,8 +19879,13 @@ function Recipes({ t }) {
 
     const { error } = await supabase.from('rms_semi_finished_items').update(payload).eq('id', id)
     if (error) return setMessage(error.message)
+    try {
+      await recalculateSemiOutput(selectedSemiId)
+    } catch (recalcError) {
+      return setMessage(recalcError?.message || 'Не удалось пересчитать выход полуфабриката')
+    }
     await loadSemiData()
-    setMessage('Ингредиент полуфабриката обновлён')
+    setMessage('Ингредиент обновлён. Выход пересчитан автоматически')
   }
 
   function openSemiIngredientsРедактор() {
@@ -19882,9 +19932,15 @@ function Recipes({ t }) {
       }
     }
 
+    try {
+      await recalculateSemiOutput(selectedSemiId)
+    } catch (recalcError) {
+      return setMessage(recalcError?.message || 'Не удалось пересчитать выход полуфабриката')
+    }
+
     setSemiEditModalOpen(false)
     await loadSemiData()
-    setMessage('Состав полуфабриката обновлён')
+    setMessage('Состав обновлён. Выход пересчитан автоматически')
   }
 
 
@@ -21021,12 +21077,13 @@ function Recipes({ t }) {
             <div className="semi-edit-grid semi-edit-grid-v315">
               <label><span>{isAzInterface ? 'Ad' : 'Название'}</span><input defaultValue={selectedSemi.name} onBlur={e => updateSemi(selectedSemi.id, { name: e.target.value.trim() })} /></label>
               <label><span>{isAzInterface ? 'Kateqoriya' : 'Категория'}</span><input defaultValue={selectedSemi.category || ''} onBlur={e => updateSemi(selectedSemi.id, { category: e.target.value.trim() })} /></label>
-              <label><span>{isAzInterface ? 'Çıxış' : 'Выход'}</span><input defaultValue={selectedSemi.output_qty} onBlur={e => updateSemi(selectedSemi.id, { output_qty: e.target.value })} /></label>
-              <label><span>{isAzInterface ? 'Ölçü vahidi' : 'Ед.'}</span><select defaultValue={selectedSemi.output_unit || 'g'} onChange={e => updateSemi(selectedSemi.id, { output_unit: e.target.value })}><option value="g">g</option><option value="kg">kg</option><option value="ml">ml</option><option value="l">l</option><option value="pcs">pcs</option></select></label>
+              <label><span>{isAzInterface ? 'Avtomatik çıxış' : 'Автоматический выход'}</span><input value={fmt(selectedSemiEffectiveOutputQty)} readOnly title={isAzInterface ? 'Tərkibdəki komponentlərin cəmi' : 'Сумма компонентов в составе'} /></label>
+              <label><span>{isAzInterface ? 'Ölçü vahidi' : 'Ед.'}</span><select defaultValue={selectedSemi.output_unit || 'g'} onChange={async e => { await updateSemi(selectedSemi.id, { output_unit: e.target.value }); try { await recalculateSemiOutput(selectedSemi.id); await loadSemiData() } catch (err) { setMessage(err?.message || 'Не удалось пересчитать выход') } }}><option value="g">g</option><option value="kg">kg</option><option value="ml">ml</option><option value="l">l</option><option value="pcs">pcs</option></select></label>
             </div>
+            <p className="hint semi-auto-output-hint">{isAzInterface ? 'Çıxış tərkibdəki komponentlərin miqdarına əsasən avtomatik hesablanır.' : 'Выход рассчитывается автоматически как сумма количества компонентов с учётом единиц измерения.'}</p>
 
             <div className="metric-grid semi-metrics-v315">
-              <Metric label={isAzInterface ? 'Çıxış' : 'Выход'} value={`${fmt(selectedSemi.output_qty)} ${selectedSemi.output_unit}`} />
+              <Metric label={isAzInterface ? 'Avtomatik çıxış' : 'Автоматический выход'} value={`${fmt(selectedSemiEffectiveOutputQty)} ${selectedSemi.output_unit}`} />
               <Metric label={isAzInterface ? 'Partiyanın maya dəyəri' : 'Себестоимость партии'} value={`${fmt(selectedSemiTotalCost)} AZN`} />
               <Metric label={`${isAzInterface ? '1 vahidin maya dəyəri' : 'Себестоимость 1'} ${selectedSemi.output_unit}`} value={`${fmt(selectedSemiUnitCost)} AZN`} />
               <Metric label={isAzInterface ? 'Tərkib sayı' : 'Ингредиентов'} value={String(selectedSemiItems.length)} />
@@ -33460,6 +33517,23 @@ function SupplierV43Styles() {
 }
 
   `}</style>
+}
+
+
+/* v317 automatic semi-finished output */
+.rms-pro-shell .semi-auto-output-hint{
+  margin:8px 0 14px!important;
+  padding:10px 12px!important;
+  border-radius:12px!important;
+  background:#eff6ff!important;
+  color:#1d4ed8!important;
+  font-weight:750!important;
+}
+.rms-pro-shell .semi-edit-grid input[readonly]{
+  background:#f8fafc!important;
+  color:#0f172a!important;
+  font-weight:900!important;
+  cursor:default!important;
 }
 
 function ReportsV43Styles() {
