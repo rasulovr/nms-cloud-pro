@@ -14820,6 +14820,89 @@ function RMSProV6Styles() {
   }
 }
 
+
+/* v322 supplier product / invoice search */
+.rms-pro-shell .supplier-product-invoice-search-card .card-head{
+  align-items:flex-end!important;
+}
+.rms-pro-shell .supplier-product-invoice-page-size{
+  display:flex!important;
+  align-items:center!important;
+  gap:8px!important;
+  margin:0!important;
+}
+.rms-pro-shell .supplier-product-invoice-page-size select{
+  height:38px!important;
+  min-width:82px!important;
+  border-radius:11px!important;
+}
+.rms-pro-shell .supplier-product-invoice-searchbar{
+  display:grid!important;
+  grid-template-columns:minmax(280px,1fr) auto 82px!important;
+  gap:10px!important;
+  align-items:end!important;
+  margin:12px 0!important;
+}
+.rms-pro-shell .supplier-product-invoice-searchbar label{
+  margin:0!important;
+}
+.rms-pro-shell .supplier-product-invoice-searchbar label>span{
+  display:block!important;
+  margin-bottom:6px!important;
+  color:#64748b!important;
+  font-size:12px!important;
+  font-weight:850!important;
+}
+.rms-pro-shell .supplier-product-invoice-searchbar input{
+  width:100%!important;
+  height:42px!important;
+  border-radius:13px!important;
+}
+.rms-pro-shell .supplier-product-invoice-found{
+  height:42px!important;
+  display:grid!important;
+  place-items:center!important;
+  align-content:center!important;
+  border-radius:13px!important;
+  background:#eff6ff!important;
+  color:#1d4ed8!important;
+}
+.rms-pro-shell .supplier-product-invoice-found b{
+  font-size:15px!important;
+  line-height:1!important;
+}
+.rms-pro-shell .supplier-product-invoice-found span{
+  margin-top:3px!important;
+  font-size:10px!important;
+  font-weight:800!important;
+}
+.rms-pro-shell .supplier-product-invoice-search-wrap{
+  max-height:540px!important;
+  overflow:auto!important;
+}
+.rms-pro-shell .supplier-product-invoice-search-table{
+  min-width:1040px!important;
+}
+.rms-pro-shell .supplier-product-invoice-search-table td:nth-child(3),
+.rms-pro-shell .supplier-product-invoice-search-table td:nth-child(4),
+.rms-pro-shell .supplier-product-invoice-search-table td:nth-child(6),
+.rms-pro-shell .supplier-product-invoice-search-table td:nth-child(7),
+.rms-pro-shell .supplier-product-invoice-search-table td:nth-child(8){
+  white-space:nowrap!important;
+}
+.rms-pro-shell .supplier-product-invoice-pagination{
+  justify-content:center!important;
+  margin-top:12px!important;
+}
+@media (max-width:900px){
+  .rms-pro-shell .supplier-product-invoice-searchbar{
+    grid-template-columns:1fr!important;
+  }
+  .rms-pro-shell .supplier-product-invoice-found{
+    width:100%!important;
+  }
+}
+
 /* v304 supplier price dynamics */
 .rms-pro-shell .supplier-price-dynamics-card .card-head{align-items:flex-end!important;}
 .rms-pro-shell .supplier-price-dynamics-card input{height:38px!important;border-radius:12px!important;}
@@ -27451,6 +27534,9 @@ function DebtsPayments({ t }) {
   const [supplierCalendarPageSize, setSupplierCalendarPageSize] = useState(20)
   const [supplierCompactAlertsExpanded, setSupplierCompactAlertsExpanded] = useState(false)
   const [supplierPriceDynamicsExpanded, setSupplierPriceDynamicsExpanded] = useState(false)
+  const [supplierProductInvoiceSearch, setSupplierProductInvoiceSearch] = useState('')
+  const [supplierProductInvoicePageSize, setSupplierProductInvoicePageSize] = useState(20)
+  const [supplierProductInvoicePage, setSupplierProductInvoicePage] = useState(1)
   const [supplierCompactPlanExpanded, setSupplierCompactPlanExpanded] = useState(false)
   const [supplierCompactFollowUpExpanded, setSupplierCompactFollowUpExpanded] = useState(false)
   const [supplierFollowUps, setSupplierFollowUps] = useState(() => readJsonStorage('rms_supplier_followups_v1', {}))
@@ -28206,6 +28292,53 @@ function DebtsPayments({ t }) {
   const supplierPriceIncreaseRows = useMemo(() => [...productPriceRows]
     .filter(row => row.previous && parseNum(row.changeAmount) > 0)
     .sort((a, b) => parseNum(b.changePct) - parseNum(a.changePct) || parseNum(b.changeAmount) - parseNum(a.changeAmount)), [productPriceRows])
+
+  const supplierProductInvoiceRows = useMemo(() => {
+    const q = String(supplierProductInvoiceSearch || '').trim().toLowerCase()
+    if (!q) return []
+
+    const rows = []
+    ;(purchases || []).filter(p => !p.deleted_at).forEach(p => {
+      ;(p.supplier_purchase_items || []).forEach(item => {
+        const product = item.supplier_products || {}
+        const supplierName = p.suppliers?.name || suppliers.find(s => String(s.id) === String(p.supplier_id))?.name || '—'
+        const branchName = p.branches?.name || branches.find(b => String(b.id) === String(p.branch_id))?.name || '—'
+        const invoice = p.invoice_number || '—'
+        const productName = product.name || item.product_name || '—'
+        const category = product.category || '—'
+        const haystack = `${productName} ${category} ${supplierName} ${invoice} ${branchName}`.toLowerCase()
+        if (!haystack.includes(q)) return
+
+        rows.push({
+          id: `${p.id}-${item.id || item.product_id || productName}`,
+          purchase_id: p.id,
+          product: productName,
+          category,
+          supplier: supplierName,
+          invoice,
+          date: p.purchase_date || '',
+          branch: branchName,
+          quantity: parseNum(item.quantity),
+          unit: item.unit || product.base_unit || '',
+          unit_price: parseNum(item.unit_price),
+          total_amount: parseNum(item.total_amount)
+        })
+      })
+    })
+
+    return rows.sort((a, b) => {
+      const dateDiff = String(b.date).localeCompare(String(a.date))
+      if (dateDiff) return dateDiff
+      return String(a.product).localeCompare(String(b.product), 'ru')
+    })
+  }, [purchases, suppliers, branches, supplierProductInvoiceSearch])
+
+  const supplierProductInvoiceTotalPages = Math.max(1, Math.ceil(supplierProductInvoiceRows.length / supplierProductInvoicePageSize))
+  const safeSupplierProductInvoicePage = Math.min(Math.max(1, supplierProductInvoicePage), supplierProductInvoiceTotalPages)
+  const pagedSupplierProductInvoiceRows = supplierProductInvoiceRows.slice(
+    (safeSupplierProductInvoicePage - 1) * supplierProductInvoicePageSize,
+    safeSupplierProductInvoicePage * supplierProductInvoicePageSize
+  )
   const transactionSourceCount = transactionType === 'purchases' ? purchaseTransactionRows.length : transactionType === 'payments' ? filteredPayments.length : productPriceRows.length
   const transactionTotalPages = Math.max(1, Math.ceil(transactionSourceCount / transactionPageSize))
   const safeTransactionPage = Math.min(Math.max(1, parseNum(transactionPage) || 1), transactionTotalPages)
@@ -29252,6 +29385,76 @@ function DebtsPayments({ t }) {
       </div>
 
       <div style={{marginTop:16, display:'grid', gap:14}}>
+        <div className="card soft-card supplier-product-invoice-search-card">
+          <div className="card-head">
+            <div>
+              <h4>{isAzInterface ? 'Məhsul üzrə təchizatçı və qaimə axtarışı' : 'Поиск товара по поставщикам и накладным'}</h4>
+              <p className="hint">{isAzInterface ? 'Məhsulun hansı təchizatçıdan və hansı qaimə ilə alındığını tapın.' : 'Найдите, у какого поставщика и в какой накладной закупался товар.'}</p>
+            </div>
+            <label className="supplier-product-invoice-page-size">
+              <span className="hint">{isAzInterface ? 'Göstər' : 'Показать'}</span>
+              <select value={supplierProductInvoicePageSize} onChange={e => { setSupplierProductInvoicePageSize(Number(e.target.value)); setSupplierProductInvoicePage(1) }}>
+                <option value={10}>10</option>
+                <option value={20}>20</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+              </select>
+            </label>
+          </div>
+
+          <div className="supplier-product-invoice-searchbar">
+            <label>
+              <span>{isAzInterface ? 'Məhsul, təchizatçı və ya qaimə' : 'Товар, поставщик или накладная'}</span>
+              <input
+                value={supplierProductInvoiceSearch}
+                onChange={e => { setSupplierProductInvoiceSearch(e.target.value); setSupplierProductInvoicePage(1) }}
+                placeholder={isAzInterface ? 'Məsələn: çedar, Foodini, INV-125' : 'Например: чеддар, Foodini, № накладной'}
+              />
+            </label>
+            {supplierProductInvoiceSearch && <button className="ghost small" type="button" onClick={() => { setSupplierProductInvoiceSearch(''); setSupplierProductInvoicePage(1) }}>{isAzInterface ? 'Təmizlə' : 'Очистить'}</button>}
+            <div className="supplier-product-invoice-found"><b>{supplierProductInvoiceRows.length}</b><span>{isAzInterface ? 'tapıldı' : 'найдено'}</span></div>
+          </div>
+
+          <div className="table-wrap supplier-product-invoice-search-wrap">
+            <table className="supplier-product-invoice-search-table">
+              <thead>
+                <tr>
+                  <th>{isAzInterface ? 'Məhsul' : 'Товар'}</th>
+                  <th>{isAzInterface ? 'Təchizatçı' : 'Поставщик'}</th>
+                  <th>{isAzInterface ? 'Qaimə' : 'Накладная'}</th>
+                  <th>{isAzInterface ? 'Tarix' : 'Дата'}</th>
+                  <th>{isAzInterface ? 'Filial' : 'Филиал'}</th>
+                  <th>{isAzInterface ? 'Miqdar' : 'Количество'}</th>
+                  <th>{isAzInterface ? 'Vahid qiyməti' : 'Цена за ед.'}</th>
+                  <th>{isAzInterface ? 'Məbləğ' : 'Сумма'}</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {pagedSupplierProductInvoiceRows.map(row => <tr key={row.id}>
+                  <td><b>{row.product}</b><br /><span className="hint">{row.category}</span></td>
+                  <td>{row.supplier}</td>
+                  <td><b>{row.invoice}</b></td>
+                  <td>{formatDateDMY(row.date)}</td>
+                  <td>{row.branch}</td>
+                  <td>{fmt(row.quantity)} {row.unit}</td>
+                  <td>{fmt(row.unit_price)} AZN</td>
+                  <td><b>{fmt(row.total_amount)} AZN</b></td>
+                  <td><button className="ghost small" type="button" onClick={() => setDetailPurchaseId(detailPurchaseId === row.purchase_id ? '' : row.purchase_id)}>{isAzInterface ? 'Baxış' : 'Просмотр'}</button></td>
+                </tr>)}
+                {!supplierProductInvoiceSearch && <tr><td colSpan="9" className="hint">{isAzInterface ? 'Axtarış üçün məhsulun, təchizatçının və ya qaimənin adını daxil edin.' : 'Введите название товара, поставщика или номер накладной.'}</td></tr>}
+                {supplierProductInvoiceSearch && !supplierProductInvoiceRows.length && <tr><td colSpan="9" className="hint">{isAzInterface ? 'Uyğun alış tapılmadı.' : 'Подходящие закупки не найдены.'}</td></tr>}
+              </tbody>
+            </table>
+          </div>
+
+          {supplierProductInvoiceRows.length > supplierProductInvoicePageSize && <div className="action-row supplier-product-invoice-pagination">
+            <button className="ghost small" disabled={safeSupplierProductInvoicePage <= 1} onClick={() => setSupplierProductInvoicePage(p => Math.max(1, p - 1))}>← {isAzInterface ? 'Əvvəlki' : 'Пред.'}</button>
+            <span className="hint">{isAzInterface ? 'Səhifə' : 'Страница'} {safeSupplierProductInvoicePage} / {supplierProductInvoiceTotalPages}</span>
+            <button className="ghost small" disabled={safeSupplierProductInvoicePage >= supplierProductInvoiceTotalPages} onClick={() => setSupplierProductInvoicePage(p => Math.min(supplierProductInvoiceTotalPages, p + 1))}>{isAzInterface ? 'Növbəti' : 'След.'} →</button>
+          </div>}
+        </div>
+
         <div className="card soft-card supplier-price-dynamics-card">
           <div className="card-head">
             <div>
