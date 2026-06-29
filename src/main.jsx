@@ -33516,10 +33516,6 @@ function SupplierV43Styles() {
   }
 }
 
-  `}</style>
-}
-
-
 /* v317 automatic semi-finished output */
 .rms-pro-shell .semi-auto-output-hint{
   margin:8px 0 14px!important;
@@ -33535,6 +33531,10 @@ function SupplierV43Styles() {
   font-weight:900!important;
   cursor:default!important;
 }
+
+  `}</style>
+}
+
 
 function ReportsV43Styles() {
   return <style>{`
