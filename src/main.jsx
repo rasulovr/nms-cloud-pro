@@ -19686,9 +19686,13 @@ function Recipes({ t }) {
   function productLineCost(productId, qty, unit, wastePercent = 0) {
     const product = productById(productId)
     const cost = productCost(productId)
-    const baseUnit = product?.base_unit || cost?.base_unit || unit || 'g'
-    const normalizedQty = parseNum(qty) * unitMultiplier(unit, baseUnit)
+
+    // price_per_base_unit belongs to the unit stored in latest_product_costs.
+    // Example: 13.99 AZN per kg must be converted before costing 10 g.
+    const priceUnit = cost?.base_unit || cost?.unit || product?.base_unit || unit || 'g'
+    const normalizedQty = parseNum(qty) * unitMultiplier(unit, priceUnit)
     const unitPrice = parseNum(cost?.price_per_base_unit || cost?.price || cost?.unit_price)
+
     return normalizedQty * unitPrice * (1 + parseNum(wastePercent) / 100)
   }
 
@@ -22070,9 +22074,12 @@ function RecipesLegacy({ t }) {
 
   function lineCost(row) {
     const cost = productCost(row.product_id)
-    const unitPrice = parseNum(cost?.price_per_base_unit)
+    const product = products.find(p => String(p.id) === String(row.product_id))
+    const priceUnit = cost?.base_unit || cost?.unit || product?.base_unit || row.unit || 'g'
+    const normalizedQty = parseNum(row.quantity) * unitMultiplier(row.unit || priceUnit, priceUnit)
+    const unitPrice = parseNum(cost?.price_per_base_unit || cost?.unit_price)
     const waste = parseNum(row.waste_percent)
-    return parseNum(row.quantity) * unitPrice * (1 + waste / 100)
+    return normalizedQty * unitPrice * (1 + waste / 100)
   }
 
   const filteredProducts = products.filter(p => normalizeProductType(p.category) === selectedCategory)
