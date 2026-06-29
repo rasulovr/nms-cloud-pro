@@ -14821,6 +14821,20 @@ function RMSProV6Styles() {
 }
 
 
+
+/* v324 product search jump to invoice */
+.rms-pro-shell tr.supplier-purchase-jump-highlight > td{
+  background:#fff7ed!important;
+  box-shadow:inset 0 2px 0 #f97316, inset 0 -2px 0 #f97316!important;
+  transition:background .25s ease, box-shadow .25s ease!important;
+}
+.rms-pro-shell tr.supplier-purchase-jump-highlight > td:first-child{
+  box-shadow:inset 2px 0 0 #f97316, inset 0 2px 0 #f97316, inset 0 -2px 0 #f97316!important;
+}
+.rms-pro-shell tr.supplier-purchase-jump-highlight > td:last-child{
+  box-shadow:inset -2px 0 0 #f97316, inset 0 2px 0 #f97316, inset 0 -2px 0 #f97316!important;
+}
+
 /* v322 supplier product / invoice search */
 .rms-pro-shell .supplier-product-invoice-search-card .card-head{
   align-items:flex-end!important;
@@ -26591,6 +26605,38 @@ function Suppliers({ t, isAdmin = false }) {
   const recentPurchasesTotalPages = Math.max(1, Math.ceil(filteredPurchases.length / recentPurchasesPageSizeNumber))
   const safeRecentPurchasesPage = Math.min(Math.max(1, parseNum(recentPurchasesPage) || 1), recentPurchasesTotalPages)
   const recentPurchasesRows = filteredPurchases.slice((safeRecentPurchasesPage - 1) * recentPurchasesPageSizeNumber, safeRecentPurchasesPage * recentPurchasesPageSizeNumber)
+
+
+  function openPurchaseFromProductSearch(purchaseId) {
+    if (!purchaseId) return
+
+    const targetIndex = visiblePurchases.findIndex(p => String(p.id) === String(purchaseId))
+    const targetPage = targetIndex >= 0
+      ? Math.floor(targetIndex / recentPurchasesPageSizeNumber) + 1
+      : 1
+
+    setPurchaseJournalFilters({
+      date_from: '',
+      date_to: '',
+      supplier_id: '',
+      legal_entity_id: '',
+      e_invoice: '',
+      invoice: ''
+    })
+    setJournalPeriodMode('all')
+    setRecentPurchasesPage(targetPage)
+    setEditingPurchaseId('')
+    setViewPurchaseId(purchaseId)
+
+    window.setTimeout(() => {
+      const target = document.getElementById(`supplier-purchase-${purchaseId}`)
+      if (target) {
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        target.classList.add('supplier-purchase-jump-highlight')
+        window.setTimeout(() => target.classList.remove('supplier-purchase-jump-highlight'), 2200)
+      }
+    }, 180)
+  }
   function suppliersForLegalEntity(entityId) {
     const ids = new Set(purchases.filter(p => p.legal_entity_id === entityId).map(p => p.supplier_id))
     return activeSuppliers.filter(s => ids.has(s.id) && isSupplierActiveForLegal(s.id, entityId))
@@ -27286,7 +27332,7 @@ function Suppliers({ t, isAdmin = false }) {
                 <td>{fmt(row.quantity)} {row.unit}</td>
                 <td>{fmt(row.unit_price)} AZN</td>
                 <td><b>{fmt(row.total_amount)} AZN</b></td>
-                <td><button className="ghost small" type="button" onClick={() => setViewPurchaseId(row.purchase_id)}>{isAzInterface ? 'Baxış' : 'Просмотр'}</button></td>
+                <td><button className="ghost small" type="button" onClick={() => openPurchaseFromProductSearch(row.purchase_id)}>{isAzInterface ? 'Baxış' : 'Просмотр'}</button></td>
               </tr>)}
               {!supplierProductInvoiceSearch && <tr><td colSpan="9" className="hint">{isAzInterface ? 'Axtarış üçün məhsulun, təchizatçının və ya qaimənin adını daxil edin.' : 'Введите название товара, поставщика или номер накладной.'}</td></tr>}
               {supplierProductInvoiceSearch && !supplierProductInvoiceRows.length && <tr><td colSpan="9" className="hint">{isAzInterface ? 'Uyğun alış tapılmadı.' : 'Подходящие закупки не найдены.'}</td></tr>}
@@ -27353,7 +27399,7 @@ function Suppliers({ t, isAdmin = false }) {
             <tbody>
               {recentPurchasesRows.map(p => (
                 <React.Fragment key={p.id}>
-                  <tr className={p.deleted_at ? 'cancelled-row' : ''}>
+                  <tr id={`supplier-purchase-${p.id}`} className={`${p.deleted_at ? 'cancelled-row' : ''}`}>
                     <td>{formatDateDMY(p.purchase_date)}</td>
                     <td>{highlightSupplierMatch(p.invoice_number || '—', purchaseJournalFilters.invoice)}<br /><span className="hint">e-qaimə: {highlightSupplierMatch(purchaseReconciliationByEInvoices(p).numbers || 'ожидается', purchaseJournalFilters.e_invoice)}</span></td>
                     <td>{p.suppliers?.name}</td>
