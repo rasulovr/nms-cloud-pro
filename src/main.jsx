@@ -19769,12 +19769,17 @@ function Recipes({ t }) {
 
   async function deleteSemi(id) {
     if (!id) return
-    const ok = window.confirm('Удалить полуфабрикат? Если он используется в блюдах, удаление может быть запрещено.')
+    const ok = window.confirm('Удалить полуфабрикат? Он будет скрыт из рабочего списка, но история и связи сохранятся.')
     if (!ok) return
 
-    const { error } = await supabase.from('rms_semi_finished').delete().eq('id', id)
+    const { data, error } = await supabase.rpc('rms_semi_finished_remove_secure', {
+      p_id: id
+    })
 
     if (error) return setMessage(error.message)
+
+    const removed = Array.isArray(data) ? data[0] : data
+    if (removed === false) return setMessage('Полуфабрикат не найден или уже удалён')
 
     setSelectedSemiId('')
     await loadSemiData()
