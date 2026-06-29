@@ -14790,6 +14790,36 @@ function RMSProV6Styles() {
   }
 }
 
+
+/* v314 read-only supplier invoice price trend — no table shift */
+.rms-pro-shell .supplier-readonly-price-with-trend{
+  display:flex!important;
+  align-items:center!important;
+  gap:8px!important;
+  min-width:0!important;
+  white-space:nowrap!important;
+}
+.rms-pro-shell .supplier-readonly-price-with-trend>span:first-child{
+  font-weight:800!important;
+}
+.rms-pro-shell .supplier-inline-price-trend.readonly{
+  position:static!important;
+  transform:none!important;
+  flex:0 0 auto!important;
+  height:22px!important;
+  min-width:48px!important;
+  padding:0 6px!important;
+  font-size:10.5px!important;
+}
+@media (max-width:1200px){
+  .rms-pro-shell .supplier-readonly-price-with-trend{gap:5px!important;}
+  .rms-pro-shell .supplier-inline-price-trend.readonly{
+    min-width:42px!important;
+    padding:0 5px!important;
+    font-size:10px!important;
+  }
+}
+
 /* v304 supplier price dynamics */
 .rms-pro-shell .supplier-price-dynamics-card .card-head{align-items:flex-end!important;}
 .rms-pro-shell .supplier-price-dynamics-card input{height:38px!important;border-radius:12px!important;}
@@ -27221,7 +27251,7 @@ function Suppliers({ t, isAdmin = false }) {
                                   <td>{i.supplier_products?.name || '—'}</td>
                                   <td>{fmt(i.quantity)}</td>
                                   <td>{i.unit}</td>
-                                  <td>{fmt(i.unit_price)} AZN</td>
+                                  <td><div className="supplier-readonly-price-with-trend"><span>{fmt(i.unit_price)} AZN</span>{(() => { const trend = supplierItemInlineTrend(i.product_id, i.unit_price, i.unit, p.id); return trend ? <span className={`supplier-inline-price-trend readonly ${trend.direction}`} title={trend.title}>{trend.label}</span> : null })()}</div></td>
                                   <td><strong>{fmt(i.total_amount)}</strong></td>
                                 </tr>)}
                                 {!(p.supplier_purchase_items || []).length && <tr><td colSpan="6" className="hint">Товары не добавлены. Накладная пока рассчитана общей суммой.</td></tr>}
