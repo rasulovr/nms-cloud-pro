@@ -20966,210 +20966,116 @@ function Recipes({ t }) {
       )}
 
       {tab === 'semis' && (
-        <section className="semifinished-layout">
-          <div className="card semi-create-card">
-            <h3>Создать полуфабрикат / заготовку</h3>
-            <div className="semi-form-grid">
-              <label><span>Название</span><input value={semiForm.name} onChange={e => setSemiForm({ ...semiForm, name: e.target.value })} placeholder="Брауни масса" /></label>
-              <label><span>Категория</span><input value={semiForm.category} onChange={e => setSemiForm({ ...semiForm, category: e.target.value })} /></label>
-              <label><span>Выход</span><input value={semiForm.output_qty} onChange={e => setSemiForm({ ...semiForm, output_qty: e.target.value })} /></label>
-              <label><span>Ед.</span><select value={semiForm.output_unit} onChange={e => setSemiForm({ ...semiForm, output_unit: e.target.value })}><option value="g">g</option><option value="kg">kg</option><option value="ml">ml</option><option value="l">l</option><option value="pcs">pcs</option></select></label>
-              <label className="wide"><span>Комментарий</span><input value={semiForm.notes} onChange={e => setSemiForm({ ...semiForm, notes: e.target.value })} /></label>
+        <section className="semifinished-layout semifinished-layout-v315">
+          <div className="card semi-browser-card">
+            <div className="card-head semi-browser-head">
+              <div>
+                <h3>{isAzInterface ? 'Yarımfabrikatlar' : 'Полуфабрикаты'}</h3>
+                <p className="hint">{isAzInterface ? 'Mövcud yarımfabrikatı seçin və ya yenisini yaradın.' : 'Выберите существующий полуфабрикат или создайте новый.'}</p>
+              </div>
+              <div className="semi-browser-count">{semis.length}</div>
             </div>
-            <div className="actions-row">
-              <button className="small primary" onClick={addSemi}>+ Создать</button>
-              <button className="small" onClick={seedBrownieExample}>Шаблон Брауни</button>
+            <div className="semi-browser-grid">
+              <label><span>{isAzInterface ? 'Axtarış' : 'Поиск'}</span><input value={semiSearch} onChange={e => setSemiSearch(e.target.value)} placeholder={isAzInterface ? 'Məsələn: krem, sous, brauni' : 'Например: крем, соус, брауни'} /></label>
+              <label><span>{isAzInterface ? 'Yarımfabrikat' : 'Полуфабрикат'}</span><select value={selectedSemiId} onChange={e => setSelectedSemiId(e.target.value)}>
+                <option value="">{isAzInterface ? 'Seçin' : 'Выберите'}</option>
+                {filteredSemisForSearch.map(s => <option key={s.id} value={s.id}>{s.name} · {s.output_qty} {s.output_unit}</option>)}
+              </select></label>
             </div>
           </div>
 
-          <div className="card semi-info-card">
-            <h3>Полуфабрикат для расчёта</h3>
-            <label><span>Поиск полуфабриката</span><input value={semiSearch} onChange={e => setSemiSearch(e.target.value)} placeholder="Например: брауни, крем, соус" /></label>
-            <label><span>Полуфабрикат</span><select value={selectedSemiId} onChange={e => setSelectedSemiId(e.target.value)}>
-              <option value="">Выбрать</option>
-              {filteredSemisForSearch.map(s => <option key={s.id} value={s.id}>{s.name} · {s.output_qty} {s.output_unit}</option>)}
-            </select></label>
-
-            {selectedSemi && <>
-              <div className="semi-edit-grid">
-                <label><span>Название</span><input defaultValue={selectedSemi.name} onBlur={e => updateSemi(selectedSemi.id, { name: e.target.value.trim() })} /></label>
-                <label><span>Категория</span><input defaultValue={selectedSemi.category || ''} onBlur={e => updateSemi(selectedSemi.id, { category: e.target.value.trim() })} /></label>
-                <label><span>Выход</span><input defaultValue={selectedSemi.output_qty} onBlur={e => updateSemi(selectedSemi.id, { output_qty: e.target.value })} /></label>
-                <label><span>Ед.</span><select defaultValue={selectedSemi.output_unit || 'g'} onChange={e => updateSemi(selectedSemi.id, { output_unit: e.target.value })}><option value="g">g</option><option value="kg">kg</option><option value="ml">ml</option><option value="l">l</option><option value="pcs">pcs</option></select></label>
+          <details className="card semi-create-card semi-create-collapsible" open={!selectedSemiId}>
+            <summary>
+              <div><b>{isAzInterface ? 'Yeni yarımfabrikat yarat' : 'Создать новый полуфабрикат'}</b><span>{isAzInterface ? 'Ad, kateqoriya və çıxışı qeyd edin' : 'Укажите название, категорию и выход'}</span></div>
+              <em>＋</em>
+            </summary>
+            <div className="semi-create-body">
+              <div className="semi-form-grid semi-form-grid-v315">
+                <label><span>{isAzInterface ? 'Ad' : 'Название'}</span><input value={semiForm.name} onChange={e => setSemiForm({ ...semiForm, name: e.target.value })} placeholder={isAzInterface ? 'Məsələn: brauni kütləsi' : 'Например: брауни масса'} /></label>
+                <label><span>{isAzInterface ? 'Kateqoriya' : 'Категория'}</span><input value={semiForm.category} onChange={e => setSemiForm({ ...semiForm, category: e.target.value })} /></label>
+                <label><span>{isAzInterface ? 'Çıxış' : 'Выход'}</span><input value={semiForm.output_qty} onChange={e => setSemiForm({ ...semiForm, output_qty: e.target.value })} /></label>
+                <label><span>{isAzInterface ? 'Ölçü vahidi' : 'Ед.'}</span><select value={semiForm.output_unit} onChange={e => setSemiForm({ ...semiForm, output_unit: e.target.value })}><option value="g">g</option><option value="kg">kg</option><option value="ml">ml</option><option value="l">l</option><option value="pcs">pcs</option></select></label>
+                <label className="wide"><span>{isAzInterface ? 'Şərh' : 'Комментарий'}</span><input value={semiForm.notes} onChange={e => setSemiForm({ ...semiForm, notes: e.target.value })} placeholder={isAzInterface ? 'İstəyə bağlı' : 'Необязательно'} /></label>
               </div>
-              <div className="metric-grid">
-                <Metric label="Выход" value={`${fmt(selectedSemi.output_qty)} ${selectedSemi.output_unit}`} />
-                <Metric label="Себестоимость партии" value={`${fmt(selectedSemiTotalCost)} AZN`} />
-                <Metric label={`Себестоимость 1 ${selectedSemi.output_unit}`} value={`${fmt(selectedSemiUnitCost)} AZN`} />
+              <div className="actions-row semi-create-actions">
+                <button className="small primary" onClick={addSemi}>{isAzInterface ? '+ Yarat və tərkibə keç' : '+ Создать и перейти к составу'}</button>
+                <button className="small" onClick={seedBrownieExample}>{isAzInterface ? 'Brauni nümunəsi' : 'Пример Брауни'}</button>
               </div>
-              <div className="actions-row">
-                <button className="small danger" onClick={() => deleteSemi(selectedSemi.id)}>Удалить полуфабрикат</button>
+            </div>
+          </details>
+
+          {selectedSemi ? <div className="card semi-workspace-card">
+            <div className="card-head semi-workspace-head">
+              <div>
+                <h3>{selectedSemi.name}</h3>
+                <p className="hint">{isAzInterface ? 'Parametrləri və tərkibi bir ekranda idarə edin.' : 'Редактируйте параметры и состав на одном экране.'}</p>
               </div>
-            </>}
-          </div>
+              <button className="small danger" onClick={() => deleteSemi(selectedSemi.id)}>{isAzInterface ? 'Sil' : 'Удалить'}</button>
+            </div>
 
-          <div className="card semi-composition-card">
-            <h3>Состав выбранного полуфабриката</h3>
-            <p className="hint">Кнопка “Изменить” открывает редактирование только выбранного ингредиента прямо в этой же строке.</p>
+            <div className="semi-edit-grid semi-edit-grid-v315">
+              <label><span>{isAzInterface ? 'Ad' : 'Название'}</span><input defaultValue={selectedSemi.name} onBlur={e => updateSemi(selectedSemi.id, { name: e.target.value.trim() })} /></label>
+              <label><span>{isAzInterface ? 'Kateqoriya' : 'Категория'}</span><input defaultValue={selectedSemi.category || ''} onBlur={e => updateSemi(selectedSemi.id, { category: e.target.value.trim() })} /></label>
+              <label><span>{isAzInterface ? 'Çıxış' : 'Выход'}</span><input defaultValue={selectedSemi.output_qty} onBlur={e => updateSemi(selectedSemi.id, { output_qty: e.target.value })} /></label>
+              <label><span>{isAzInterface ? 'Ölçü vahidi' : 'Ед.'}</span><select defaultValue={selectedSemi.output_unit || 'g'} onChange={e => updateSemi(selectedSemi.id, { output_unit: e.target.value })}><option value="g">g</option><option value="kg">kg</option><option value="ml">ml</option><option value="l">l</option><option value="pcs">pcs</option></select></label>
+            </div>
 
-            <div className="table-wrap semi-composition-table-wrap">
-              <table className="semi-composition-table">
-                <thead>
-                  <tr>
-                    <th>Компонент</th>
-                    <th>Кол-во</th>
-                    <th>Ед.</th>
-                    <th>Цена</th>
-                    <th>Пот.</th>
-                    <th>Себес.</th>
-                    <th>Действие</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {selectedSemiItems.map(item => {
-                    const isEditing = String(selectedSemiItemId) === String(item.id) && semiLineEditDraft
-                    const draft = isEditing ? semiLineEditDraft : null
+            <div className="metric-grid semi-metrics-v315">
+              <Metric label={isAzInterface ? 'Çıxış' : 'Выход'} value={`${fmt(selectedSemi.output_qty)} ${selectedSemi.output_unit}`} />
+              <Metric label={isAzInterface ? 'Partiyanın maya dəyəri' : 'Себестоимость партии'} value={`${fmt(selectedSemiTotalCost)} AZN`} />
+              <Metric label={`${isAzInterface ? '1 vahidin maya dəyəri' : 'Себестоимость 1'} ${selectedSemi.output_unit}`} value={`${fmt(selectedSemiUnitCost)} AZN`} />
+              <Metric label={isAzInterface ? 'Tərkib sayı' : 'Ингредиентов'} value={String(selectedSemiItems.length)} />
+            </div>
 
-                    return (
-                      <tr key={item.id} className={isEditing ? 'semi-row editing' : 'semi-row'}>
-                        <td>
-                          {isEditing ? (
-                            item.component_type === 'manual'
-                              ? <input className="semi-inline-input semi-component-input" value={draft.item_name} onChange={e => updateSemiLineEditDraft({ item_name: e.target.value })} />
-                              : <input className="semi-inline-input semi-component-input" value={draft.item_name} readOnly />
-                          ) : (
-                            <div className="semi-main-value semi-name">{item.item_name}</div>
-                          )}
-                        </td>
-                        <td>
-                          {isEditing
-                            ? <input className="semi-inline-input semi-number-input" value={draft.qty} onChange={e => updateSemiLineEditDraft({ qty: e.target.value })} />
-                            : <b>{fmt(item.qty)}</b>}
-                        </td>
-                        <td>
-                          {isEditing ? (
-                            <select className="semi-inline-input semi-unit-input" value={draft.unit} onChange={e => updateSemiLineEditDraft({ unit: e.target.value })}>
-                              <option value="g">g</option>
-                              <option value="kg">kg</option>
-                              <option value="ml">ml</option>
-                              <option value="l">l</option>
-                              <option value="pcs">pcs</option>
-                            </select>
-                          ) : <b>{item.unit || 'g'}</b>}
-                        </td>
-                        <td>
-                          {isEditing ? (
-                            item.component_type === 'manual'
-                              ? <input className="semi-inline-input semi-price-input" value={draft.manual_unit_cost} onChange={e => updateSemiLineEditDraft({ manual_unit_cost: e.target.value })} />
-                              : <input className="semi-inline-input semi-price-input" value="закупка" readOnly />
-                          ) : <span>{item.component_type === 'manual' ? fmt(item.manual_unit_cost || 0) : 'закупка'}</span>}
-                        </td>
-                        <td>
-                          {isEditing
-                            ? <input className="semi-inline-input semi-number-input" value={draft.waste_percent} onChange={e => updateSemiLineEditDraft({ waste_percent: e.target.value })} />
-                            : <span>{fmt(item.waste_percent || 0)}%</span>}
-                        </td>
+            <div className="semi-add-inline-panel">
+              <div className="card-head">
+                <div><h4>{isAzInterface ? 'Tərkibə inqrediyent əlavə et' : 'Добавить ингредиент'}</h4><p className="hint">{isAzInterface ? 'Sətiri doldurun və əlavə edin.' : 'Заполните одну строку и добавьте её в состав.'}</p></div>
+              </div>
+              <div className="semi-add-form-grid semi-add-form-grid-v315">
+                <label><span>{isAzInterface ? 'Növ' : 'Тип'}</span><select value={semiLineForm.component_type} onChange={e => setSemiLineForm({ ...semiLineForm, component_type: e.target.value, product_id: '', semi_id_ref: '', manual_name: '', manual_unit_cost: '' })}>
+                  <option value="product">{isAzInterface ? 'Satınalmadan inqrediyent' : 'Ингредиент из закупок'}</option>
+                  <option value="semi">{isAzInterface ? 'Başqa yarımfabrikat' : 'Другой полуфабрикат'}</option>
+                  <option value="manual">{isAzInterface ? 'Əl ilə' : 'Ручной ингредиент'}</option>
+                </select></label>
+
+                {semiLineForm.component_type === 'product' && <label className="semi-add-component-field"><span>{isAzInterface ? 'İnqrediyent' : 'Ингредиент'}</span><select value={semiLineForm.product_id} onChange={e => setSemiLineForm({ ...semiLineForm, product_id: e.target.value })}><option value="">{isAzInterface ? 'Seçin' : 'Выберите ингредиент'}</option>{products.map(p => <option key={p.id} value={p.id}>{p.name} · {p.category || (isAzInterface ? 'Kateqoriyasız' : 'Без категории')}</option>)}</select></label>}
+
+                {semiLineForm.component_type === 'semi' && <label className="semi-add-component-field"><span>{isAzInterface ? 'Yarımfabrikat' : 'Полуфабрикат'}</span><select value={semiLineForm.semi_id_ref} onChange={e => setSemiLineForm({ ...semiLineForm, semi_id_ref: e.target.value })}><option value="">{isAzInterface ? 'Seçin' : 'Выберите полуфабрикат'}</option>{semis.filter(s => String(s.id) !== String(selectedSemiId)).map(s => <option key={s.id} value={s.id}>{s.name} · {s.output_qty} {s.output_unit}</option>)}</select></label>}
+
+                {semiLineForm.component_type === 'manual' && <><label className="semi-add-component-field"><span>{isAzInterface ? 'Ad' : 'Название'}</span><input value={semiLineForm.manual_name} onChange={e => setSemiLineForm({ ...semiLineForm, manual_name: e.target.value })} placeholder={isAzInterface ? 'Məsələn: ədviyyat' : 'Например: специи'} /></label><label><span>{isAzInterface ? '1 vahidin qiyməti' : 'Цена за 1 ед.'}</span><input value={semiLineForm.manual_unit_cost} onChange={e => setSemiLineForm({ ...semiLineForm, manual_unit_cost: e.target.value })} placeholder="0.00" /></label></>}
+
+                <label><span>{isAzInterface ? 'Miqdar' : 'Кол-во'}</span><input value={semiLineForm.qty} onChange={e => setSemiLineForm({ ...semiLineForm, qty: e.target.value })} placeholder="0" /></label>
+                <label><span>{isAzInterface ? 'Ölçü vahidi' : 'Ед.'}</span><select value={semiLineForm.unit} onChange={e => setSemiLineForm({ ...semiLineForm, unit: e.target.value })}><option value="g">g</option><option value="kg">kg</option><option value="ml">ml</option><option value="l">l</option><option value="pcs">pcs</option></select></label>
+                <label><span>{isAzInterface ? 'İtki %' : 'Потери %'}</span><input value={semiLineForm.waste_percent} onChange={e => setSemiLineForm({ ...semiLineForm, waste_percent: e.target.value })} /></label>
+                <div className="semi-add-submit"><button className="small primary" onClick={addSemiLine}>{isAzInterface ? '+ İnqrediyent əlavə et' : '+ Добавить ингредиент'}</button></div>
+              </div>
+            </div>
+
+            <div className="semi-composition-section-v315">
+              <div className="card-head"><div><h4>{isAzInterface ? 'Tərkib' : 'Состав'}</h4><p className="hint">{isAzInterface ? 'Dəyişmək üçün uyğun sətrin düyməsini basın.' : 'Для изменения нажмите кнопку в нужной строке.'}</p></div></div>
+              <div className="table-wrap semi-composition-table-wrap">
+                <table className="semi-composition-table">
+                  <thead><tr><th>{isAzInterface ? 'Komponent' : 'Компонент'}</th><th>{isAzInterface ? 'Miqdar' : 'Кол-во'}</th><th>{isAzInterface ? 'Ölçü vahidi' : 'Ед.'}</th><th>{isAzInterface ? 'Qiymət' : 'Цена'}</th><th>{isAzInterface ? 'İtki' : 'Пот.'}</th><th>{isAzInterface ? 'Maya dəyəri' : 'Себес.'}</th><th>{isAzInterface ? 'Əməliyyat' : 'Действие'}</th></tr></thead>
+                  <tbody>
+                    {selectedSemiItems.map(item => {
+                      const isEditing = String(selectedSemiItemId) === String(item.id) && semiLineEditDraft
+                      const draft = isEditing ? semiLineEditDraft : null
+                      return <tr key={item.id} className={isEditing ? 'semi-row editing' : 'semi-row'}>
+                        <td>{isEditing ? (item.component_type === 'manual' ? <input className="semi-inline-input semi-component-input" value={draft.item_name} onChange={e => updateSemiLineEditDraft({ item_name: e.target.value })} /> : <input className="semi-inline-input semi-component-input" value={draft.item_name} readOnly />) : <div className="semi-main-value semi-name">{item.item_name}</div>}</td>
+                        <td>{isEditing ? <input className="semi-inline-input semi-number-input" value={draft.qty} onChange={e => updateSemiLineEditDraft({ qty: e.target.value })} /> : <b>{fmt(item.qty)}</b>}</td>
+                        <td>{isEditing ? <select className="semi-inline-input semi-unit-input" value={draft.unit} onChange={e => updateSemiLineEditDraft({ unit: e.target.value })}><option value="g">g</option><option value="kg">kg</option><option value="ml">ml</option><option value="l">l</option><option value="pcs">pcs</option></select> : <b>{item.unit || 'g'}</b>}</td>
+                        <td>{isEditing ? (item.component_type === 'manual' ? <input className="semi-inline-input semi-price-input" value={draft.manual_unit_cost} onChange={e => updateSemiLineEditDraft({ manual_unit_cost: e.target.value })} /> : <input className="semi-inline-input semi-price-input" value={isAzInterface ? 'satınalma' : 'закупка'} readOnly />) : <span>{item.component_type === 'manual' ? fmt(item.manual_unit_cost || 0) : (isAzInterface ? 'satınalma' : 'закупка')}</span>}</td>
+                        <td>{isEditing ? <input className="semi-inline-input semi-number-input" value={draft.waste_percent} onChange={e => updateSemiLineEditDraft({ waste_percent: e.target.value })} /> : <span>{fmt(item.waste_percent || 0)}%</span>}</td>
                         <td><b>{fmt(componentCost(item))}</b></td>
-                        <td>
-                          {isEditing ? (
-                            <div className="semi-row-actions">
-                              <button className="small primary" onClick={saveSemiLineEdit}>Сохранить</button>
-                              <button className="small" onClick={cancelSemiLineEdit}>Отмена</button>
-                              <button className="small danger" onClick={() => deleteSemiLineFromEdit(item.id)}>Удалить</button>
-                            </div>
-                          ) : (
-                            <div className="semi-row-actions">
-                              <button className="small" onClick={() => startSemiLineEdit(item)}>Изменить</button>
-                              
-                            </div>
-                          )}
-                        </td>
+                        <td>{isEditing ? <div className="semi-row-actions"><button className="small primary" onClick={saveSemiLineEdit}>{isAzInterface ? 'Yadda saxla' : 'Сохранить'}</button><button className="small" onClick={cancelSemiLineEdit}>{isAzInterface ? 'Ləğv et' : 'Отмена'}</button><button className="small danger" onClick={() => deleteSemiLineFromEdit(item.id)}>{isAzInterface ? 'Sil' : 'Удалить'}</button></div> : <div className="semi-row-actions"><button className="small" onClick={() => startSemiLineEdit(item)}>{isAzInterface ? 'Dəyiş' : 'Изменить'}</button></div>}</td>
                       </tr>
-                    )
-                  })}
-                  {!selectedSemiItems.length && <tr><td colSpan="7" className="hint">Состав пока пустой. Добавь ингредиенты ниже.</td></tr>}
-                </tbody>
-              </table>
+                    })}
+                    {!selectedSemiItems.length && <tr><td colSpan="7" className="hint">{isAzInterface ? 'Tərkib hələ boşdur. Yuxarıdakı sətirdən ilk inqrediyenti əlavə edin.' : 'Состав пока пуст. Добавьте первый ингредиент в строке выше.'}</td></tr>}
+                  </tbody>
+                </table>
+              </div>
             </div>
-          </div>
-
-          <div className="card semi-add-card">
-            <h3>Добавить ингредиент в состав</h3>
-            <p className="hint">Сначала выбери или создай полуфабрикат. После создания новый полуфабрикат выбирается автоматически, и сюда можно сразу добавлять ингредиенты.</p>
-
-            {!selectedSemiId ? (
-              <p className="hint">Выбери полуфабрикат выше или создай новый, чтобы добавить ингредиент.</p>
-            ) : (
-              <>
-                <div className="semi-add-form-grid">
-                  <label>
-                    <span>Тип компонента</span>
-                    <select value={semiLineForm.component_type} onChange={e => setSemiLineForm({ ...semiLineForm, component_type: e.target.value, product_id: '', semi_id_ref: '', manual_name: '', manual_unit_cost: '' })}>
-                      <option value="product">Ингредиент из закупок</option>
-                      <option value="semi">Другой полуфабрикат</option>
-                      <option value="manual">Ручной ингредиент</option>
-                    </select>
-                  </label>
-
-                  {semiLineForm.component_type === 'product' && (
-                    <label className="semi-add-component-field">
-                      <span>Ингредиент</span>
-                      <select value={semiLineForm.product_id} onChange={e => setSemiLineForm({ ...semiLineForm, product_id: e.target.value })}>
-                        <option value="">Выбрать ингредиент</option>
-                        {products.map(p => <option key={p.id} value={p.id}>{p.name} · {p.category || 'Без категории'}</option>)}
-                      </select>
-                    </label>
-                  )}
-
-                  {semiLineForm.component_type === 'semi' && (
-                    <label className="semi-add-component-field">
-                      <span>Полуфабрикат-компонент</span>
-                      <select value={semiLineForm.semi_id_ref} onChange={e => setSemiLineForm({ ...semiLineForm, semi_id_ref: e.target.value })}>
-                        <option value="">Выбрать полуфабрикат</option>
-                        {semis.filter(s => String(s.id) !== String(selectedSemiId)).map(s => <option key={s.id} value={s.id}>{s.name} · {s.output_qty} {s.output_unit}</option>)}
-                      </select>
-                    </label>
-                  )}
-
-                  {semiLineForm.component_type === 'manual' && (
-                    <>
-                      <label className="semi-add-component-field">
-                        <span>Название</span>
-                        <input value={semiLineForm.manual_name} onChange={e => setSemiLineForm({ ...semiLineForm, manual_name: e.target.value })} placeholder="Например: специи, декор" />
-                      </label>
-                      <label>
-                        <span>Цена за 1 ед.</span>
-                        <input value={semiLineForm.manual_unit_cost} onChange={e => setSemiLineForm({ ...semiLineForm, manual_unit_cost: e.target.value })} placeholder="0.00" />
-                      </label>
-                    </>
-                  )}
-
-                  <label>
-                    <span>Кол-во</span>
-                    <input value={semiLineForm.qty} onChange={e => setSemiLineForm({ ...semiLineForm, qty: e.target.value })} placeholder="0" />
-                  </label>
-                  <label>
-                    <span>Ед.</span>
-                    <select value={semiLineForm.unit} onChange={e => setSemiLineForm({ ...semiLineForm, unit: e.target.value })}>
-                      <option value="g">g</option>
-                      <option value="kg">kg</option>
-                      <option value="ml">ml</option>
-                      <option value="l">l</option>
-                      <option value="pcs">pcs</option>
-                    </select>
-                  </label>
-                  <label>
-                    <span>Потери %</span>
-                    <input value={semiLineForm.waste_percent} onChange={e => setSemiLineForm({ ...semiLineForm, waste_percent: e.target.value })} />
-                  </label>
-                </div>
-
-                <div className="actions-row">
-                  <button className="small primary" onClick={addSemiLine}>+ Добавить ингредиент</button>
-                </div>
-              </>
-            )}
-          </div>
+          </div> : <div className="card semi-empty-state"><b>{isAzInterface ? 'Yarımfabrikat seçilməyib' : 'Полуфабрикат не выбран'}</b><span>{isAzInterface ? 'Yuxarıdan seçin və ya yenisini yaradın.' : 'Выберите его выше или создайте новый.'}</span></div>}
         </section>
       )}
 
@@ -21182,6 +21088,51 @@ function Recipes({ t }) {
 function SemiFinishedInlineStyles() {
   return (
     <style>{`
+      /* v315 simplified semifinished workflow */
+      .semifinished-layout-v315{
+        display:flex!important;
+        flex-direction:column!important;
+        gap:16px!important;
+      }
+      .semifinished-layout-v315>.card{width:100%!important;max-width:none!important;}
+      .semi-browser-head,.semi-workspace-head{align-items:center!important;}
+      .semi-browser-count{display:grid;place-items:center;min-width:44px;height:44px;border-radius:14px;background:#eff6ff;color:#1d4ed8;font-weight:900;}
+      .semi-browser-grid{display:grid;grid-template-columns:minmax(220px,.8fr) minmax(300px,1.2fr);gap:14px;}
+      .semi-browser-grid label,.semi-form-grid-v315 label,.semi-edit-grid-v315 label,.semi-add-form-grid-v315 label{display:flex;flex-direction:column;gap:7px;min-width:0;}
+      .semi-create-collapsible{padding:0!important;overflow:hidden!important;}
+      .semi-create-collapsible>summary{list-style:none;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:18px 20px;cursor:pointer;background:#fff;}
+      .semi-create-collapsible>summary::-webkit-details-marker{display:none;}
+      .semi-create-collapsible>summary div{display:flex;flex-direction:column;gap:4px;}
+      .semi-create-collapsible>summary b{font-size:17px;color:#0f172a;}
+      .semi-create-collapsible>summary span{font-size:12px;color:#64748b;font-weight:700;}
+      .semi-create-collapsible>summary em{font-style:normal;font-size:24px;color:#dc2626;font-weight:900;}
+      .semi-create-body{padding:0 20px 20px;border-top:1px solid #eef2f7;}
+      .semi-form-grid-v315{grid-template-columns:2fr 1.4fr .7fr .7fr!important;margin-top:16px;}
+      .semi-form-grid-v315 .wide{grid-column:1/-1!important;}
+      .semi-create-actions{justify-content:flex-end!important;margin-top:14px!important;}
+      .semi-workspace-card{padding:20px!important;}
+      .semi-edit-grid-v315{grid-template-columns:2fr 1.4fr .7fr .7fr!important;}
+      .semi-metrics-v315{grid-template-columns:repeat(4,minmax(0,1fr))!important;margin:14px 0!important;}
+      .semi-add-inline-panel{padding:16px;border:1px solid #e2e8f0;border-radius:18px;background:#f8fafc;margin-top:14px;}
+      .semi-add-inline-panel .card-head{margin-bottom:12px!important;}
+      .semi-add-form-grid-v315{display:grid!important;grid-template-columns:1fr 2fr .7fr .7fr .7fr auto!important;gap:10px!important;align-items:end!important;}
+      .semi-add-submit{display:flex;align-items:flex-end;}
+      .semi-add-submit button{height:42px;white-space:nowrap;}
+      .semi-composition-section-v315{margin-top:18px;}
+      .semi-composition-section-v315>.card-head{margin-bottom:10px!important;}
+      .semi-empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;min-height:150px;color:#64748b;}
+      .semi-empty-state b{font-size:18px;color:#0f172a;}
+      @media(max-width:1200px){
+        .semi-form-grid-v315,.semi-edit-grid-v315{grid-template-columns:repeat(2,minmax(0,1fr))!important;}
+        .semi-add-form-grid-v315{grid-template-columns:repeat(3,minmax(0,1fr))!important;}
+        .semi-add-submit{grid-column:1/-1;justify-content:flex-end;}
+      }
+      @media(max-width:760px){
+        .semi-browser-grid,.semi-form-grid-v315,.semi-edit-grid-v315,.semi-add-form-grid-v315,.semi-metrics-v315{grid-template-columns:1fr!important;}
+        .semi-create-actions,.semi-add-submit{justify-content:stretch!important;}
+        .semi-create-actions button,.semi-add-submit button{width:100%!important;}
+      }
+
       /* SEMIFINISHED: clean full-width layout, no narrow third column */
       .semifinished-layout {
         display: grid !important;
