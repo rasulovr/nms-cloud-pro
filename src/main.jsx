@@ -19459,6 +19459,7 @@ function Recipes({ t }) {
   const [semiEditModalOpen, setSemiEditModalOpen] = useState(false)
   const [semiEditDraft, setSemiEditDraft] = useState([])
   const [semiSearch, setSemiSearch] = useState('')
+  const [showSemiCreate, setShowSemiCreate] = useState(false)
   const [selectedMenuId, setSelectedMenuId] = useState('')
   const [techPreviewOpen, setTechPreviewOpen] = useState(false)
   const [finalMenuForm, setFinalMenuForm] = useState({ name: '', category: 'Кофе', sale_price: '', target_food_cost_percent: '30', image_url: '', image_storage_path: '' })
@@ -19475,7 +19476,7 @@ function Recipes({ t }) {
   const [semiForm, setSemiForm] = useState({
     name: '',
     category: 'Заготовки',
-    output_qty: '480',
+    output_qty: '0',
     output_unit: 'g',
     notes: ''
   })
@@ -19702,6 +19703,14 @@ function Recipes({ t }) {
     }, 0)
   }
 
+  function semiEffectiveOutputFor(semi) {
+    if (!semi) return 0
+    const items = semiItems.filter(i => String(i.semi_id) === String(semi.id))
+    return items.length
+      ? semiOutputQtyFromItems(items, semi.output_unit || 'g')
+      : parseNum(semi.output_qty)
+  }
+
   const selectedSemiAutoOutputQty = selectedSemi
     ? semiOutputQtyFromItems(selectedSemiItems, selectedSemi.output_unit || 'g')
     : 0
@@ -19767,22 +19776,22 @@ function Recipes({ t }) {
   async function addSemi() {
     setMessage('')
     if (!semiForm.name.trim()) return setMessage('Введите название полуфабриката')
-    if (!parseNum(semiForm.output_qty)) return setMessage('Укажите выход полуфабриката')
 
     const { data, error } = await supabase.from('rms_semi_finished').insert({
       name: semiForm.name.trim(),
       category: semiForm.category.trim() || 'Заготовки',
-      output_qty: parseNum(semiForm.output_qty),
+      output_qty: 0,
       output_unit: semiForm.output_unit || 'g',
       notes: semiForm.notes || ''
     }).select('*').single()
 
     if (error) return setMessage(error.message)
 
-    setSemiForm({ name: '', category: semiForm.category, output_qty: '480', output_unit: 'g', notes: '' })
+    setSemiForm({ name: '', category: semiForm.category, output_qty: '0', output_unit: 'g', notes: '' })
     await loadSemiData()
     if (data?.id) setSelectedSemiId(data.id)
-    setMessage('Полуфабрикат создан')
+    setShowSemiCreate(false)
+    setMessage('Полуфабрикат создан. Добавьте ингредиенты — выход рассчитается автоматически')
   }
 
   async function updateSemi(id, patch) {
@@ -21034,28 +21043,32 @@ function Recipes({ t }) {
                 <h3>{isAzInterface ? 'Yarımfabrikatlar' : 'Полуфабрикаты'}</h3>
                 <p className="hint">{isAzInterface ? 'Mövcud yarımfabrikatı seçin və ya yenisini yaradın.' : 'Выберите существующий полуфабрикат или создайте новый.'}</p>
               </div>
-              <div className="semi-browser-count">{semis.length}</div>
+              <div className="semi-browser-actions">
+                <div className="semi-browser-count">{semis.length}</div>
+                <button className="small primary semi-create-open-btn" type="button" onClick={() => setShowSemiCreate(true)}>
+                  {isAzInterface ? '+ Yeni yarımfabrikat' : '+ Создать новый полуфабрикат'}
+                </button>
+              </div>
             </div>
             <div className="semi-browser-grid">
               <label><span>{isAzInterface ? 'Axtarış' : 'Поиск'}</span><input value={semiSearch} onChange={e => setSemiSearch(e.target.value)} placeholder={isAzInterface ? 'Məsələn: krem, sous, brauni' : 'Например: крем, соус, брауни'} /></label>
-              <label><span>{isAzInterface ? 'Yarımfabrikat' : 'Полуфабрикат'}</span><select value={selectedSemiId} onChange={e => setSelectedSemiId(e.target.value)}>
+              <label><span>{isAzInterface ? 'Yarımfabrikat' : 'Полуфабрикат'}</span><select value={selectedSemiId} onChange={e => { setSelectedSemiId(e.target.value); setShowSemiCreate(false) }}>
                 <option value="">{isAzInterface ? 'Seçin' : 'Выберите'}</option>
-                {filteredSemisForSearch.map(s => <option key={s.id} value={s.id}>{s.name} · {s.output_qty} {s.output_unit}</option>)}
+                {filteredSemisForSearch.map(s => <option key={s.id} value={s.id}>{s.name} · {fmt(semiEffectiveOutputFor(s))} {s.output_unit}</option>)}
               </select></label>
             </div>
           </div>
 
-          <details className="card semi-create-card semi-create-collapsible" open={!selectedSemiId}>
+          <details className="card semi-create-card semi-create-collapsible" open={showSemiCreate || !selectedSemiId} onToggle={e => setShowSemiCreate(e.currentTarget.open)}>
             <summary>
-              <div><b>{isAzInterface ? 'Yeni yarımfabrikat yarat' : 'Создать новый полуфабрикат'}</b><span>{isAzInterface ? 'Ad, kateqoriya və çıxışı qeyd edin' : 'Укажите название, категорию и выход'}</span></div>
+              <div><b>{isAzInterface ? 'Yeni yarımfabrikat yarat' : 'Создать новый полуфабрикат'}</b><span>{isAzInterface ? 'Adı və kateqoriyanı qeyd edin. Çıxış avtomatik hesablanacaq.' : 'Укажите название и категорию. Выход рассчитается автоматически.'}</span></div>
               <em>＋</em>
             </summary>
             <div className="semi-create-body">
               <div className="semi-form-grid semi-form-grid-v315">
                 <label><span>{isAzInterface ? 'Ad' : 'Название'}</span><input value={semiForm.name} onChange={e => setSemiForm({ ...semiForm, name: e.target.value })} placeholder={isAzInterface ? 'Məsələn: brauni kütləsi' : 'Например: брауни масса'} /></label>
                 <label><span>{isAzInterface ? 'Kateqoriya' : 'Категория'}</span><input value={semiForm.category} onChange={e => setSemiForm({ ...semiForm, category: e.target.value })} /></label>
-                <label><span>{isAzInterface ? 'Çıxış' : 'Выход'}</span><input value={semiForm.output_qty} onChange={e => setSemiForm({ ...semiForm, output_qty: e.target.value })} /></label>
-                <label><span>{isAzInterface ? 'Ölçü vahidi' : 'Ед.'}</span><select value={semiForm.output_unit} onChange={e => setSemiForm({ ...semiForm, output_unit: e.target.value })}><option value="g">g</option><option value="kg">kg</option><option value="ml">ml</option><option value="l">l</option><option value="pcs">pcs</option></select></label>
+                <label><span>{isAzInterface ? 'Ölçü vahidi' : 'Единица выхода'}</span><select value={semiForm.output_unit} onChange={e => setSemiForm({ ...semiForm, output_unit: e.target.value })}><option value="g">g</option><option value="kg">kg</option><option value="ml">ml</option><option value="l">l</option><option value="pcs">pcs</option></select></label>
                 <label className="wide"><span>{isAzInterface ? 'Şərh' : 'Комментарий'}</span><input value={semiForm.notes} onChange={e => setSemiForm({ ...semiForm, notes: e.target.value })} placeholder={isAzInterface ? 'İstəyə bağlı' : 'Необязательно'} /></label>
               </div>
               <div className="actions-row semi-create-actions">
@@ -21075,10 +21088,10 @@ function Recipes({ t }) {
             </div>
 
             <div className="semi-edit-grid semi-edit-grid-v315">
-              <label><span>{isAzInterface ? 'Ad' : 'Название'}</span><input defaultValue={selectedSemi.name} onBlur={e => updateSemi(selectedSemi.id, { name: e.target.value.trim() })} /></label>
-              <label><span>{isAzInterface ? 'Kateqoriya' : 'Категория'}</span><input defaultValue={selectedSemi.category || ''} onBlur={e => updateSemi(selectedSemi.id, { category: e.target.value.trim() })} /></label>
+              <label><span>{isAzInterface ? 'Ad' : 'Название'}</span><input key={`semi-name-${selectedSemi.id}`} defaultValue={selectedSemi.name} onBlur={e => updateSemi(selectedSemi.id, { name: e.target.value.trim() })} /></label>
+              <label><span>{isAzInterface ? 'Kateqoriya' : 'Категория'}</span><input key={`semi-category-${selectedSemi.id}`} defaultValue={selectedSemi.category || ''} onBlur={e => updateSemi(selectedSemi.id, { category: e.target.value.trim() })} /></label>
               <label><span>{isAzInterface ? 'Avtomatik çıxış' : 'Автоматический выход'}</span><input value={fmt(selectedSemiEffectiveOutputQty)} readOnly title={isAzInterface ? 'Tərkibdəki komponentlərin cəmi' : 'Сумма компонентов в составе'} /></label>
-              <label><span>{isAzInterface ? 'Ölçü vahidi' : 'Ед.'}</span><select defaultValue={selectedSemi.output_unit || 'g'} onChange={async e => { await updateSemi(selectedSemi.id, { output_unit: e.target.value }); try { await recalculateSemiOutput(selectedSemi.id); await loadSemiData() } catch (err) { setMessage(err?.message || 'Не удалось пересчитать выход') } }}><option value="g">g</option><option value="kg">kg</option><option value="ml">ml</option><option value="l">l</option><option value="pcs">pcs</option></select></label>
+              <label><span>{isAzInterface ? 'Ölçü vahidi' : 'Ед.'}</span><select key={`semi-unit-${selectedSemi.id}`} defaultValue={selectedSemi.output_unit || 'g'} onChange={async e => { await updateSemi(selectedSemi.id, { output_unit: e.target.value }); try { await recalculateSemiOutput(selectedSemi.id); await loadSemiData() } catch (err) { setMessage(err?.message || 'Не удалось пересчитать выход') } }}><option value="g">g</option><option value="kg">kg</option><option value="ml">ml</option><option value="l">l</option><option value="pcs">pcs</option></select></label>
             </div>
             <p className="hint semi-auto-output-hint">{isAzInterface ? 'Çıxış tərkibdəki komponentlərin miqdarına əsasən avtomatik hesablanır.' : 'Выход рассчитывается автоматически как сумма количества компонентов с учётом единиц измерения.'}</p>
 
@@ -33513,6 +33526,49 @@ function SupplierV43Styles() {
 
   .suppliers-purchase-items-wrap {
     overflow-x: auto !important;
+  }
+}
+
+
+/* v319 semi browser create action and selection refresh */
+.rms-pro-shell .semi-browser-actions{
+  display:flex!important;
+  align-items:center!important;
+  gap:10px!important;
+  flex-wrap:wrap!important;
+  justify-content:flex-end!important;
+}
+.rms-pro-shell .semi-create-open-btn{
+  background:linear-gradient(135deg,#dc2626,#ef4444)!important;
+  border-color:#dc2626!important;
+  color:#fff!important;
+  font-weight:850!important;
+  box-shadow:0 8px 18px rgba(220,38,38,.18)!important;
+}
+.rms-pro-shell .semi-create-open-btn:hover{
+  background:linear-gradient(135deg,#b91c1c,#dc2626)!important;
+  border-color:#b91c1c!important;
+}
+.rms-pro-shell .semi-create-collapsible summary{
+  gap:14px!important;
+}
+.rms-pro-shell .semi-create-collapsible summary > div{
+  min-width:0!important;
+}
+.rms-pro-shell .semi-create-collapsible summary b,
+.rms-pro-shell .semi-create-collapsible summary span{
+  display:block!important;
+}
+.rms-pro-shell .semi-create-collapsible summary span{
+  margin-top:4px!important;
+}
+@media (max-width:760px){
+  .rms-pro-shell .semi-browser-actions{
+    width:100%!important;
+    justify-content:space-between!important;
+  }
+  .rms-pro-shell .semi-create-open-btn{
+    flex:1!important;
   }
 }
 
