@@ -14732,6 +14732,64 @@ function RMSProV6Styles() {
 }
 
 
+
+/* v313 inline supplier item price trend — absolute badge, no row/field shift */
+.rms-pro-shell .supplier-price-input-shell{
+  position:relative!important;
+  display:block!important;
+  width:100%!important;
+  min-width:0!important;
+}
+.rms-pro-shell .supplier-price-input-shell input{
+  width:100%!important;
+  min-width:0!important;
+  padding-right:70px!important;
+}
+.rms-pro-shell .supplier-inline-price-trend{
+  position:absolute!important;
+  right:8px!important;
+  top:50%!important;
+  transform:translateY(-50%)!important;
+  z-index:2!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  min-width:52px!important;
+  height:24px!important;
+  padding:0 7px!important;
+  border-radius:999px!important;
+  font-size:11px!important;
+  line-height:1!important;
+  font-weight:900!important;
+  white-space:nowrap!important;
+  pointer-events:none!important;
+  box-sizing:border-box!important;
+}
+.rms-pro-shell .supplier-inline-price-trend.up{
+  color:#b91c1c!important;
+  background:#fef2f2!important;
+  border:1px solid #fecaca!important;
+}
+.rms-pro-shell .supplier-inline-price-trend.down{
+  color:#1d4ed8!important;
+  background:#eff6ff!important;
+  border:1px solid #bfdbfe!important;
+}
+.rms-pro-shell .supplier-inline-price-trend.same{
+  color:#64748b!important;
+  background:#f8fafc!important;
+  border:1px solid #e2e8f0!important;
+}
+@media (max-width:1350px){
+  .rms-pro-shell .supplier-price-input-shell input{padding-right:62px!important;}
+  .rms-pro-shell .supplier-inline-price-trend{
+    right:5px!important;
+    min-width:46px!important;
+    padding:0 5px!important;
+    font-size:10px!important;
+  }
+}
+
 /* v304 supplier price dynamics */
 .rms-pro-shell .supplier-price-dynamics-card .card-head{align-items:flex-end!important;}
 .rms-pro-shell .supplier-price-dynamics-card input{height:38px!important;border-radius:12px!important;}
@@ -25076,6 +25134,54 @@ function Suppliers({ t, isAdmin = false }) {
     }
   }
 
+  function supplierItemInlineTrend(productId, currentUnitPrice, unit = '', excludePurchaseId = '') {
+    const currentPrice = parseNum(currentUnitPrice)
+    if (!productId || !(currentPrice > 0)) return null
+
+    const history = []
+    ;(purchases || []).forEach(p => {
+      if (excludePurchaseId && String(p.id) === String(excludePurchaseId)) return
+      ;(p.supplier_purchase_items || []).forEach(item => {
+        if (String(item.product_id || '') !== String(productId)) return
+        const itemUnit = String(item.unit || item.supplier_products?.base_unit || '')
+        if (unit && itemUnit && itemUnit !== String(unit)) return
+        const price = parseNum(item.unit_price || item.price_per_base_unit)
+        if (!(price > 0)) return
+        history.push({
+          price,
+          unit: itemUnit,
+          date: p.purchase_date || p.created_at || '',
+          created_at: p.created_at || '',
+          invoice: p.invoice_number || ''
+        })
+      })
+    })
+
+    history.sort((a, b) => {
+      const dateCompare = String(b.date).localeCompare(String(a.date))
+      return dateCompare || String(b.created_at).localeCompare(String(a.created_at))
+    })
+
+    const previous = history[0]
+    if (!previous?.price) return null
+
+    const changePct = ((currentPrice - previous.price) / previous.price) * 100
+    if (Math.abs(changePct) < 0.005) {
+      return {
+        direction: 'same',
+        label: '0%',
+        title: `Предыдущая цена: ${fmt(previous.price)} AZN${previous.invoice ? ` · ${previous.invoice}` : ''}`
+      }
+    }
+
+    const isUp = changePct > 0
+    return {
+      direction: isUp ? 'up' : 'down',
+      label: `${isUp ? '↑' : '↓'} ${Math.abs(changePct).toFixed(1)}%`,
+      title: `Предыдущая цена: ${fmt(previous.price)} AZN · ${isUp ? 'рост' : 'снижение'} ${Math.abs(changePct).toFixed(2)}%${previous.invoice ? ` · ${previous.invoice}` : ''}`
+    }
+  }
+
   function selectProductForLine(index, productId) {
     setLineRows(rows => rows.map((row, i) => i === index ? { ...row, product_id: productId || '' } : row))
   }
@@ -26708,7 +26814,7 @@ function Suppliers({ t, isAdmin = false }) {
           <td><input inputMode="decimal" value={row.quantity} onChange={e => updateLine(idx, { quantity: e.target.value })} placeholder="30" /></td>
           <td><select value={row.unit} onChange={e => updateLine(idx, { unit: e.target.value })}>{PURCHASE_UNITS.map(u => <option key={u.value} value={u.value}>{u.label}</option>)}</select></td>
           <td><input inputMode="decimal" value={row.line_amount ?? ''} onChange={e => updateLine(idx, { line_amount: e.target.value })} placeholder="0.00" /></td>
-          <td><div className="supplier-auto-unit-price"><input inputMode="decimal" value={row.unit_price} onChange={e => updateLine(idx, { unit_price: e.target.value })} placeholder="0.00" /></div></td>
+          <td><div className="supplier-auto-unit-price supplier-price-input-shell"><input inputMode="decimal" value={row.unit_price} onChange={e => updateLine(idx, { unit_price: e.target.value })} placeholder="0.00" />{(() => { const trend = supplierItemInlineTrend(row.product_id, row.unit_price, row.unit); return trend ? <span className={`supplier-inline-price-trend ${trend.direction}`} title={trend.title}>{trend.label}</span> : null })()}</div></td>
           <td><button className="remove" onClick={() => setLineRows(rows => rows.length === 1 ? [{ ...emptyLine }] : rows.filter((_, i) => i !== idx))}>×</button></td>
         </tr>)}</tbody></table></div>
         <p className="hint">Итого по фактуре: <strong>{fmt(purchaseTotal)}</strong> AZN.</p>
@@ -27093,7 +27199,7 @@ function Suppliers({ t, isAdmin = false }) {
                                   <td><input inputMode="decimal" value={row.quantity} onChange={e => updateExistingPurchaseDraft(idx, { quantity: e.target.value })} placeholder="30" /></td>
                                   <td><select value={row.unit || 'kg'} onChange={e => updateExistingPurchaseDraft(idx, { unit: e.target.value })}>{PURCHASE_UNITS.map(u => <option key={u.value} value={u.value}>{u.label}</option>)}</select></td>
                                   <td><input inputMode="decimal" value={row.line_amount ?? ''} onChange={e => updateExistingPurchaseDraft(idx, { line_amount: e.target.value })} placeholder="0.00" /></td>
-                                  <td><div className="supplier-auto-unit-price"><input inputMode="decimal" value={row.unit_price} onChange={e => updateExistingPurchaseDraft(idx, { unit_price: e.target.value })} placeholder="0.00" /></div></td>
+                                  <td><div className="supplier-auto-unit-price supplier-price-input-shell"><input inputMode="decimal" value={row.unit_price} onChange={e => updateExistingPurchaseDraft(idx, { unit_price: e.target.value })} placeholder="0.00" />{(() => { const trend = supplierItemInlineTrend(row.product_id, row.unit_price, row.unit, purchaseItemsEditorId); return trend ? <span className={`supplier-inline-price-trend ${trend.direction}`} title={trend.title}>{trend.label}</span> : null })()}</div></td>
                                   <td><button className="remove" onClick={() => setPurchaseItemsDraft(rows => rows.length === 1 ? [{ ...emptyLine, id: crypto.randomUUID?.() || String(Math.random()), quantity: '', unit_price: '', line_amount: '' }] : rows.filter((_, i) => i !== idx))}>×</button></td>
                                 </tr>)}</tbody>
                               </table>
