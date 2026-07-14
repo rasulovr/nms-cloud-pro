@@ -14744,12 +14744,16 @@ function RMSProV6Styles() {
   background:#eff6ff!important;
   color:#1d4ed8!important;
 }
-.rms-pro-shell .supplier-pricebook-modal-backdrop{
+.rms-pro-shell.supplier-pricebook-modal-root{
   position:fixed!important;
   inset:0!important;
   z-index:4000!important;
-  background:rgba(15,23,42,.44)!important;
-  backdrop-filter:blur(8px)!important;
+}
+.rms-pro-shell .supplier-pricebook-modal-backdrop{
+  position:absolute!important;
+  inset:0!important;
+  background:rgba(15,23,42,.46)!important;
+  backdrop-filter:blur(9px)!important;
   display:flex!important;
   align-items:center!important;
   justify-content:center!important;
@@ -14766,15 +14770,16 @@ function RMSProV6Styles() {
 .rms-pro-shell .supplier-pricebook-modal-summary{
   display:grid!important;
   grid-template-columns:repeat(4,minmax(0,1fr))!important;
-  gap:14px!important;
-  margin:0 18px 8px!important;
+  gap:16px!important;
+  margin:18px 22px 16px!important;
 }
 .rms-pro-shell .supplier-pricebook-stat-card{
   border:1px solid #dbeafe!important;
-  border-radius:18px!important;
+  border-radius:20px!important;
   background:linear-gradient(180deg,#ffffff,#f8fbff)!important;
-  padding:14px 16px!important;
-  box-shadow:0 10px 24px rgba(15,23,42,.05)!important;
+  padding:16px 18px!important;
+  box-shadow:0 12px 28px rgba(15,23,42,.06)!important;
+  min-height:118px!important;
 }
 .rms-pro-shell .supplier-pricebook-stat-card span{
   display:block!important;
@@ -14786,9 +14791,10 @@ function RMSProV6Styles() {
 .rms-pro-shell .supplier-pricebook-stat-card b{
   display:block!important;
   color:#0f172a!important;
-  font-size:24px!important;
-  line-height:1.2!important;
+  font-size:21px!important;
+  line-height:1.28!important;
   font-weight:950!important;
+  letter-spacing:-.02em!important;
 }
 .rms-pro-shell .supplier-pricebook-stat-card b .supplier-product-price-trend{
   vertical-align:middle!important;
@@ -14801,8 +14807,9 @@ function RMSProV6Styles() {
   font-weight:750!important;
 }
 .rms-pro-shell .supplier-pricebook-modal-grid{
-  padding:0 18px 18px!important;
-  grid-template-columns:minmax(420px,.92fr) minmax(560px,1.08fr)!important;
+  padding:0 22px 22px!important;
+  grid-template-columns:minmax(500px,.95fr) minmax(600px,1.05fr)!important;
+  align-items:stretch!important;
 }
 .rms-pro-shell .supplier-pricebook-history-card .table-wrap{
   max-height:440px!important;
@@ -14997,14 +15004,27 @@ function RMSProV6Styles() {
   stroke-width:1!important;
 }
 .rms-pro-shell .supplier-product-price-area{
-  fill:rgba(37,99,235,.08)!important;
+  fill:rgba(37,99,235,.06)!important;
 }
 .rms-pro-shell .supplier-product-price-line{
   fill:none!important;
-  stroke:#2563eb!important;
-  stroke-width:3!important;
+  stroke:url(#supplierPriceLineGradient)!important;
+  stroke-width:3.6!important;
   stroke-linecap:round!important;
   stroke-linejoin:round!important;
+}
+.rms-pro-shell .supplier-product-price-axis-line{
+  stroke:#cbd5e1!important;
+  stroke-width:1.2!important;
+}
+.rms-pro-shell .supplier-product-price-y-label,
+.rms-pro-shell .supplier-product-price-value-label{
+  fill:#334155!important;
+  font-size:12px!important;
+  font-weight:900!important;
+}
+.rms-pro-shell .supplier-product-price-value-label{
+  fill:#0f172a!important;
 }
 .rms-pro-shell .supplier-product-price-dot{
   fill:#2563eb!important;
@@ -25605,22 +25625,36 @@ function SupplierProductPriceHistoryChart({ history = [], baseUnit = '' }) {
     return <div className="supplier-product-price-chart-empty">Нет данных для графика</div>
   }
 
-  const width = 640
-  const height = 210
-  const padX = 34
-  const padY = 24
+  const width = 760
+  const height = 280
+  const padLeft = 58
+  const padRight = 34
+  const padTop = 42
+  const padBottom = 48
   const values = rows.map(r => parseNum(r.base_unit_price || r.price))
-  const minValue = Math.min(...values)
-  const maxValue = Math.max(...values)
+  const minValueRaw = Math.min(...values)
+  const maxValueRaw = Math.max(...values)
+  const allSame = Math.abs(maxValueRaw - minValueRaw) < 0.00001
+  const paddingValue = allSame ? Math.max(0.01, maxValueRaw * 0.08) : (maxValueRaw - minValueRaw) * 0.18
+  const minValue = Math.max(0, minValueRaw - paddingValue)
+  const maxValue = maxValueRaw + paddingValue
   const spread = Math.max(0.0001, maxValue - minValue)
+  const chartH = height - padTop - padBottom
+  const chartW = width - padLeft - padRight
+
   const points = rows.map((r, idx) => {
     const value = parseNum(r.base_unit_price || r.price)
-    const x = rows.length === 1 ? width / 2 : padX + (idx / Math.max(1, rows.length - 1)) * (width - padX * 2)
-    const y = height - padY - ((value - minValue) / spread) * (height - padY * 2)
+    const x = rows.length === 1 ? padLeft + chartW / 2 : padLeft + (idx / Math.max(1, rows.length - 1)) * chartW
+    const y = padTop + (1 - ((value - minValue) / spread)) * chartH
     return { ...r, value, x, y }
   })
+
   const path = points.map((p, idx) => `${idx ? 'L' : 'M'} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ')
-  const areaPath = points.length > 1 ? `${path} L ${points[points.length - 1].x.toFixed(1)} ${height - padY} L ${points[0].x.toFixed(1)} ${height - padY} Z` : ''
+  const yTicks = [0, .5, 1].map(v => {
+    const value = maxValue - v * spread
+    const y = padTop + v * chartH
+    return { value, y }
+  })
 
   return <div className="supplier-product-price-chart">
     <div className="supplier-product-price-chart-head">
@@ -25628,13 +25662,26 @@ function SupplierProductPriceHistoryChart({ history = [], baseUnit = '' }) {
       <strong>{fmt(points[points.length - 1]?.value)} AZN / {baseUnit || 'ед.'}</strong>
     </div>
     <svg viewBox={`0 0 ${width} ${height}`} className="supplier-product-price-svg" aria-hidden="true">
-      {[0, .5, 1].map((v, idx) => <line key={idx} x1={padX} x2={width - padX} y1={padY + v * (height - padY * 2)} y2={padY + v * (height - padY * 2)} className="supplier-product-price-grid-line" />)}
-      {areaPath ? <path d={areaPath} className="supplier-product-price-area" /> : null}
-      {points.length > 1 ? <path d={path} className="supplier-product-price-line" /> : null}
-      {points.map((p, idx) => <g key={`${p.date}-${idx}`}>
-        <circle cx={p.x} cy={p.y} r="4.5" className="supplier-product-price-dot" />
-        {(idx === 0 || idx === points.length - 1) && <text x={p.x} y={height - 6} textAnchor="middle" className="supplier-product-price-axis-label">{formatDateDMY(p.date) || p.date || '—'}</text>}
+      <defs>
+        <linearGradient id="supplierPriceLineGradient" x1="0" x2="1" y1="0" y2="0">
+          <stop offset="0%" stopColor="#2563eb" />
+          <stop offset="100%" stopColor="#0f766e" />
+        </linearGradient>
+      </defs>
+      {yTicks.map((tick, idx) => <g key={idx}>
+        <line x1={padLeft} x2={width - padRight} y1={tick.y} y2={tick.y} className="supplier-product-price-grid-line" />
+        <text x={padLeft - 10} y={tick.y + 4} textAnchor="end" className="supplier-product-price-y-label">{fmt(tick.value)}</text>
       </g>)}
+      <line x1={padLeft} x2={width - padRight} y1={height - padBottom} y2={height - padBottom} className="supplier-product-price-axis-line" />
+      {points.length > 1 ? <path d={path} className="supplier-product-price-line" /> : null}
+      {points.map((p, idx) => {
+        const labelY = Math.max(18, p.y - 14)
+        return <g key={`${p.date}-${idx}`}>
+          <circle cx={p.x} cy={p.y} r="5.5" className="supplier-product-price-dot" />
+          <text x={p.x} y={labelY} textAnchor="middle" className="supplier-product-price-value-label">{fmt(p.value)}</text>
+          {(idx === 0 || idx === points.length - 1 || rows.length <= 6) && <text x={p.x} y={height - 18} textAnchor="middle" className="supplier-product-price-axis-label">{formatDateDMY(p.date) || p.date || '—'}</text>}
+        </g>
+      })}
     </svg>
   </div>
 }
@@ -28120,15 +28167,15 @@ function Suppliers({ t, isAdmin = false }) {
       </div>
 
       {activeSupplierProductPriceModal && createPortal(
-        <div className="supplier-pricebook-modal-backdrop" onMouseDown={e => { if (e.target === e.currentTarget) setSupplierProductPriceDetailId('') }}>
-          <div className="card supplier-transactions-panel supplier-modal-panel supplier-pricebook-modal-panel" role="dialog" aria-modal="true" aria-label={`История цен: ${activeSupplierProductPriceModal.product?.name || ''}`} onMouseDown={e => e.stopPropagation()}>
+        <div className="rms-pro-shell supplier-pricebook-modal-root">
+          <div className="supplier-pricebook-modal-backdrop" onMouseDown={e => { if (e.target === e.currentTarget) setSupplierProductPriceDetailId('') }}>
+            <div className="card supplier-transactions-panel supplier-modal-panel supplier-pricebook-modal-panel" role="dialog" aria-modal="true" aria-label={`История цен: ${activeSupplierProductPriceModal.product?.name || ''}`} onMouseDown={e => e.stopPropagation()}>
             <div className="card-head supplier-modal-head supplier-pricebook-modal-head">
               <div>
                 <h3>{activeSupplierProductPriceModal.product?.name || 'Товар'}</h3>
                 <p className="hint">{activeSupplierProductPriceModal.product?.category || '—'} · Базовая единица: {activeSupplierProductPriceModal.priceInfo?.baseUnit || activeSupplierProductPriceModal.product?.base_unit || 'ед.'}</p>
               </div>
               <div className="modal-head-actions">
-                <button className="ghost small" type="button" onClick={() => setSupplierProductPriceDetailId('')}>Закрыть</button>
                 <button className="supplier-modal-x" title="Закрыть" aria-label="Закрыть" onClick={() => setSupplierProductPriceDetailId('')}>×</button>
               </div>
             </div>
@@ -28182,10 +28229,12 @@ function Suppliers({ t, isAdmin = false }) {
                 </div>
               </div>
             </div>
+            </div>
           </div>
         </div>,
         document.body
       )}
+
 
       <div className="card span-2 supplier-product-invoice-search-card">
         <div className="card-head">
