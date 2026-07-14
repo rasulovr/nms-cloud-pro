@@ -14738,6 +14738,108 @@ function RMSProV6Styles() {
 
 
 
+
+.rms-pro-shell .supplier-pricebook-open-btn{
+  border-color:#93c5fd!important;
+  background:#eff6ff!important;
+  color:#1d4ed8!important;
+}
+.rms-pro-shell .supplier-pricebook-modal-backdrop{
+  position:fixed!important;
+  inset:0!important;
+  z-index:4000!important;
+  background:rgba(15,23,42,.44)!important;
+  backdrop-filter:blur(8px)!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  padding:24px!important;
+}
+.rms-pro-shell .supplier-pricebook-modal-panel{
+  width:min(1320px,calc(100vw - 48px))!important;
+  max-height:calc(100vh - 48px)!important;
+  overflow:auto!important;
+}
+.rms-pro-shell .supplier-pricebook-modal-head{
+  align-items:flex-start!important;
+}
+.rms-pro-shell .supplier-pricebook-modal-summary{
+  display:grid!important;
+  grid-template-columns:repeat(4,minmax(0,1fr))!important;
+  gap:14px!important;
+  margin:0 18px 8px!important;
+}
+.rms-pro-shell .supplier-pricebook-stat-card{
+  border:1px solid #dbeafe!important;
+  border-radius:18px!important;
+  background:linear-gradient(180deg,#ffffff,#f8fbff)!important;
+  padding:14px 16px!important;
+  box-shadow:0 10px 24px rgba(15,23,42,.05)!important;
+}
+.rms-pro-shell .supplier-pricebook-stat-card span{
+  display:block!important;
+  color:#64748b!important;
+  font-size:12px!important;
+  font-weight:850!important;
+  margin-bottom:6px!important;
+}
+.rms-pro-shell .supplier-pricebook-stat-card b{
+  display:block!important;
+  color:#0f172a!important;
+  font-size:24px!important;
+  line-height:1.2!important;
+  font-weight:950!important;
+}
+.rms-pro-shell .supplier-pricebook-stat-card b .supplier-product-price-trend{
+  vertical-align:middle!important;
+}
+.rms-pro-shell .supplier-pricebook-stat-card small{
+  display:block!important;
+  margin-top:6px!important;
+  color:#64748b!important;
+  font-size:12px!important;
+  font-weight:750!important;
+}
+.rms-pro-shell .supplier-pricebook-modal-grid{
+  padding:0 18px 18px!important;
+  grid-template-columns:minmax(420px,.92fr) minmax(560px,1.08fr)!important;
+}
+.rms-pro-shell .supplier-pricebook-history-card .table-wrap{
+  max-height:440px!important;
+}
+.rms-pro-shell .supplier-pricebook-modal-panel .supplier-product-price-chart,
+.rms-pro-shell .supplier-pricebook-modal-panel .supplier-product-price-history-list{
+  border-radius:22px!important;
+  box-shadow:0 12px 26px rgba(15,23,42,.05)!important;
+}
+@media(max-width:1100px){
+  .rms-pro-shell .supplier-pricebook-modal-summary{
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  }
+  .rms-pro-shell .supplier-pricebook-modal-grid{
+    grid-template-columns:1fr!important;
+  }
+}
+@media(max-width:760px){
+  .rms-pro-shell .supplier-pricebook-modal-backdrop{
+    padding:10px!important;
+  }
+  .rms-pro-shell .supplier-pricebook-modal-panel{
+    width:calc(100vw - 12px)!important;
+    max-height:calc(100vh - 12px)!important;
+  }
+  .rms-pro-shell .supplier-pricebook-modal-summary{
+    grid-template-columns:1fr!important;
+    margin:0 12px 8px!important;
+  }
+  .rms-pro-shell .supplier-pricebook-modal-grid{
+    padding:0 12px 12px!important;
+  }
+  .rms-pro-shell .supplier-pricebook-stat-card b{
+    font-size:20px!important;
+  }
+}
+
 /* v329 visible supplier pricebook entry */
 .rms-pro-shell .supplier-pricebook-visibility-banner{
   display:flex!important;
@@ -25718,6 +25820,27 @@ function Suppliers({ t, isAdmin = false }) {
   }, [purchases, products, suppliers, branches])
 
 
+  const activeSupplierProductPriceModal = useMemo(() => {
+    if (!supplierProductPriceDetailId) return null
+    const product = (products || []).find(p => String(p.id) === String(supplierProductPriceDetailId))
+    if (!product) return null
+    const priceInfo = supplierProductPriceInfoMap.get(String(product.id))
+    if (!priceInfo) return null
+    const latest = priceInfo.latest || null
+    const previous = priceInfo.previous || null
+    const change = parseNum(priceInfo.changePct)
+    const trendClass = !previous ? 'neutral' : change > 0 ? 'up' : change < 0 ? 'down' : 'same'
+    return {
+      product,
+      priceInfo,
+      latest,
+      previous,
+      change,
+      trendClass
+    }
+  }, [supplierProductPriceDetailId, products, supplierProductPriceInfoMap])
+
+
   const supplierProductInvoiceRows = useMemo(() => {
     const q = String(supplierProductInvoiceSearch || '').trim().toLowerCase()
     if (!q) return []
@@ -27980,47 +28103,15 @@ function Suppliers({ t, isAdmin = false }) {
               const change = parseNum(priceInfo?.changePct)
               const trendClass = !previous ? 'neutral' : change > 0 ? 'up' : change < 0 ? 'down' : 'same'
               const detailOpen = supplierProductPriceDetailId === product.id
-              return <React.Fragment key={product.id}>
-                <tr className={detailOpen ? 'supplier-product-price-open-row' : ''}>
+              return <tr key={product.id} className={detailOpen ? 'supplier-product-price-open-row' : ''}>
                   <td>{editing ? <input value={supplierProductEditForm.name} onChange={e => setSupplierProductEditForm({...supplierProductEditForm, name:e.target.value})} /> : <b>{product.name}</b>}</td>
                   <td>{editing ? <select value={supplierProductEditForm.category} onChange={e => setSupplierProductEditForm({...supplierProductEditForm, category:e.target.value})}>{PRODUCT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select> : product.category}</td>
                   <td>{editing ? <select value={supplierProductEditForm.base_unit} onChange={e => setSupplierProductEditForm({...supplierProductEditForm, base_unit:e.target.value})}>{BASE_UNITS.map(u => <option key={u.value} value={u.value}>{u.label}</option>)}</select> : product.base_unit}</td>
                   <td>{latest ? <><b>{fmt(latest.price)} AZN / {latest.unit}</b><br /><span className="hint">≈ {fmt(latest.base_unit_price)} AZN / {priceInfo.baseUnit || product.base_unit}</span></> : <span className="hint">нет закупок</span>}</td>
                   <td>{latest ? <>{latest.supplier}<br /><span className="hint">{formatDateDMY(latest.date)} · {latest.invoice}</span></> : <span className="hint">—</span>}</td>
                   <td>{latest ? <span className={`supplier-product-price-trend ${trendClass}`}>{previous ? `${change > 0 ? '↑' : change < 0 ? '↓' : '→'} ${pct(Math.abs(change))}` : 'первая цена'}</span> : <span className="hint">—</span>}</td>
-                  <td><div className="action-row">{editing ? <><button className="small primary" onClick={() => saveSupplierProduct(product)}>Сохранить</button><button className="ghost small" onClick={() => setEditingSupplierProductId('')}>Отмена</button></> : <><button className="small" onClick={() => startEditSupplierProduct(product)}>Редактировать</button><button className="ghost small" disabled={!priceInfo?.history?.length} onClick={() => setSupplierProductPriceDetailId(detailOpen ? '' : product.id)}>{detailOpen ? 'Скрыть цены' : 'Цены'}</button><button className="small remove" onClick={() => deleteSupplierProduct(product)}>Удалить</button></>}</div></td>
+                  <td><div className="action-row">{editing ? <><button className="small primary" onClick={() => saveSupplierProduct(product)}>Сохранить</button><button className="ghost small" onClick={() => setEditingSupplierProductId('')}>Отмена</button></> : <><button className="small" onClick={() => startEditSupplierProduct(product)}>Редактировать</button><button className={`ghost small ${detailOpen ? 'supplier-pricebook-open-btn' : ''}`} disabled={!priceInfo?.history?.length} onClick={() => setSupplierProductPriceDetailId(product.id)}>{detailOpen ? 'Открыто' : 'Цены'}</button><button className="small remove" onClick={() => deleteSupplierProduct(product)}>Удалить</button></>}</div></td>
                 </tr>
-                {detailOpen && priceInfo && <tr className="supplier-product-price-detail-row">
-                  <td colSpan="7">
-                    <div className="supplier-product-price-detail">
-                      <SupplierProductPriceHistoryChart history={priceInfo.history} baseUnit={priceInfo.baseUnit || product.base_unit} />
-                      <div className="supplier-product-price-history-list">
-                        <div className="supplier-product-price-history-head">
-                          <b>История закупок</b>
-                          <span>{priceInfo.history.length} записей</span>
-                        </div>
-                        <div className="table-wrap">
-                          <table>
-                            <thead><tr><th>Дата</th><th>Поставщик</th><th>Накладная</th><th>Филиал</th><th>Кол-во</th><th>Цена</th><th>В базовой ед.</th><th>Сумма</th></tr></thead>
-                            <tbody>
-                              {priceInfo.history.slice(0, 30).map(row => <tr key={row.id}>
-                                <td>{formatDateDMY(row.date) || row.date || '—'}</td>
-                                <td>{row.supplier}</td>
-                                <td>{row.invoice}</td>
-                                <td>{row.branch}</td>
-                                <td>{fmt(row.quantity)} {row.unit}</td>
-                                <td><b>{fmt(row.price)} AZN / {row.unit}</b></td>
-                                <td>{fmt(row.base_unit_price)} AZN / {priceInfo.baseUnit || product.base_unit}</td>
-                                <td>{fmt(row.total_amount)} AZN</td>
-                              </tr>)}
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
-                    </div>
-                  </td>
-                </tr>}
-              </React.Fragment>
             })}
             {!filteredSupplierProducts.length && <tr><td colSpan="7" className="hint">Товары не найдены</td></tr>}
           </tbody></table></div>
@@ -28028,6 +28119,73 @@ function Suppliers({ t, isAdmin = false }) {
         </div>}
       </div>
 
+      {activeSupplierProductPriceModal && createPortal(
+        <div className="supplier-pricebook-modal-backdrop" onMouseDown={e => { if (e.target === e.currentTarget) setSupplierProductPriceDetailId('') }}>
+          <div className="card supplier-transactions-panel supplier-modal-panel supplier-pricebook-modal-panel" role="dialog" aria-modal="true" aria-label={`История цен: ${activeSupplierProductPriceModal.product?.name || ''}`} onMouseDown={e => e.stopPropagation()}>
+            <div className="card-head supplier-modal-head supplier-pricebook-modal-head">
+              <div>
+                <h3>{activeSupplierProductPriceModal.product?.name || 'Товар'}</h3>
+                <p className="hint">{activeSupplierProductPriceModal.product?.category || '—'} · Базовая единица: {activeSupplierProductPriceModal.priceInfo?.baseUnit || activeSupplierProductPriceModal.product?.base_unit || 'ед.'}</p>
+              </div>
+              <div className="modal-head-actions">
+                <button className="ghost small" type="button" onClick={() => setSupplierProductPriceDetailId('')}>Закрыть</button>
+                <button className="supplier-modal-x" title="Закрыть" aria-label="Закрыть" onClick={() => setSupplierProductPriceDetailId('')}>×</button>
+              </div>
+            </div>
+
+            <div className="supplier-pricebook-modal-summary">
+              <div className="supplier-pricebook-stat-card">
+                <span>Последняя цена</span>
+                <b>{activeSupplierProductPriceModal.latest ? `${fmt(activeSupplierProductPriceModal.latest.price)} AZN / ${activeSupplierProductPriceModal.latest.unit}` : '—'}</b>
+                <small>{activeSupplierProductPriceModal.latest ? `≈ ${fmt(activeSupplierProductPriceModal.latest.base_unit_price)} AZN / ${activeSupplierProductPriceModal.priceInfo?.baseUnit || activeSupplierProductPriceModal.product?.base_unit}` : 'Нет закупок'}</small>
+              </div>
+              <div className="supplier-pricebook-stat-card">
+                <span>Предыдущая цена</span>
+                <b>{activeSupplierProductPriceModal.previous ? `${fmt(activeSupplierProductPriceModal.previous.price)} AZN / ${activeSupplierProductPriceModal.previous.unit}` : '—'}</b>
+                <small>{activeSupplierProductPriceModal.previous ? `${formatDateDMY(activeSupplierProductPriceModal.previous.date)} · ${activeSupplierProductPriceModal.previous.supplier}` : 'Первая зафиксированная цена'}</small>
+              </div>
+              <div className="supplier-pricebook-stat-card">
+                <span>Динамика</span>
+                <b><span className={`supplier-product-price-trend ${activeSupplierProductPriceModal.trendClass}`}>{activeSupplierProductPriceModal.previous ? `${activeSupplierProductPriceModal.change > 0 ? '↑' : activeSupplierProductPriceModal.change < 0 ? '↓' : '→'} ${pct(Math.abs(activeSupplierProductPriceModal.change))}` : 'первая цена'}</span></b>
+                <small>{activeSupplierProductPriceModal.latest ? `${formatDateDMY(activeSupplierProductPriceModal.latest.date)} · ${activeSupplierProductPriceModal.latest.supplier}` : '—'}</small>
+              </div>
+              <div className="supplier-pricebook-stat-card">
+                <span>История закупок</span>
+                <b>{activeSupplierProductPriceModal.priceInfo?.history?.length || 0}</b>
+                <small>записей по этому товару</small>
+              </div>
+            </div>
+
+            <div className="supplier-product-price-detail supplier-pricebook-modal-grid">
+              <SupplierProductPriceHistoryChart history={activeSupplierProductPriceModal.priceInfo?.history || []} baseUnit={activeSupplierProductPriceModal.priceInfo?.baseUnit || activeSupplierProductPriceModal.product?.base_unit} />
+              <div className="supplier-product-price-history-list supplier-pricebook-history-card">
+                <div className="supplier-product-price-history-head">
+                  <b>История закупок</b>
+                  <span>{activeSupplierProductPriceModal.priceInfo?.history?.length || 0} записей</span>
+                </div>
+                <div className="table-wrap">
+                  <table>
+                    <thead><tr><th>Дата</th><th>Поставщик</th><th>Накладная</th><th>Филиал</th><th>Кол-во</th><th>Цена</th><th>В базовой ед.</th><th>Сумма</th></tr></thead>
+                    <tbody>
+                      {(activeSupplierProductPriceModal.priceInfo?.history || []).slice(0, 50).map(row => <tr key={row.id}>
+                        <td>{formatDateDMY(row.date) || row.date || '—'}</td>
+                        <td>{row.supplier}</td>
+                        <td>{row.invoice}</td>
+                        <td>{row.branch}</td>
+                        <td>{fmt(row.quantity)} {row.unit}</td>
+                        <td><b>{fmt(row.price)} AZN / {row.unit}</b></td>
+                        <td>{fmt(row.base_unit_price)} AZN / {activeSupplierProductPriceModal.priceInfo?.baseUnit || activeSupplierProductPriceModal.product?.base_unit}</td>
+                        <td>{fmt(row.total_amount)} AZN</td>
+                      </tr>)}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
 
       <div className="card span-2 supplier-product-invoice-search-card">
         <div className="card-head">
