@@ -3075,7 +3075,7 @@ function InventoryModule({ branchId, branchName }) {
   const [search, setSearch] = React.useState('')
   const [movementFilter, setMovementFilter] = React.useState('all')
   const [branchConsumptionSearch, setBranchConsumptionSearch] = React.useState('')
-  const [branchConsumptionMode, setBranchConsumptionMode] = React.useState('outgoing')
+  const [branchConsumptionMode, setBranchConsumptionMode] = React.useState('incoming')
   const [transferForm, setTransferForm] = React.useState({
     source_location_id: '',
     target_location_id: '',
@@ -3500,8 +3500,9 @@ function InventoryModule({ branchId, branchName }) {
         }
         .rms-pro-shell .inventory-branch-transfer-grid{
           display:grid;
-          grid-template-columns:repeat(4,minmax(0,1fr));
-          gap:12px;
+          grid-template-columns:minmax(180px,1.15fr) minmax(180px,1.15fr) minmax(220px,1.5fr) minmax(120px,.75fr) minmax(110px,.7fr) minmax(150px,.95fr);
+          gap:14px;
+          align-items:end;
           margin-top:12px;
         }
         .rms-pro-shell .inventory-branch-transfer-grid label{
@@ -3517,16 +3518,47 @@ function InventoryModule({ branchId, branchName }) {
         }
         .rms-pro-shell .inventory-branch-transfer-grid input,
         .rms-pro-shell .inventory-branch-transfer-grid select{
-          height:42px;
-          border-radius:13px;
+          width:100%;
+          min-width:0;
+          height:46px;
+          border-radius:14px;
+          font-size:14px;
+          font-weight:800;
+        }
+        .rms-pro-shell .inventory-branch-transfer-grid select{
+          text-overflow:ellipsis;
         }
         .rms-pro-shell .inventory-branch-transfer-grid .span-2{
-          grid-column:span 2;
+          grid-column:1 / -1;
+        }
+        .rms-pro-shell .inventory-branch-transfer-grid .action-row{
+          grid-column:1 / -1;
+          justify-content:flex-start;
+          margin-top:2px;
         }
         .rms-pro-shell .inventory-branch-transfer-btn{
+          min-width:260px;
+          height:46px;
+          padding:0 22px!important;
+          white-space:nowrap;
+          overflow:visible!important;
           background:linear-gradient(135deg,#dc2626,#ef4444)!important;
           border-color:#dc2626!important;
           color:#fff!important;
+          box-shadow:0 12px 24px rgba(220,38,38,.22)!important;
+        }
+        .rms-pro-shell .inventory-branch-consumption-card .card-head{
+          display:grid;
+          grid-template-columns:minmax(260px,1fr) minmax(260px,420px);
+          gap:14px;
+          align-items:center;
+        }
+        .rms-pro-shell .inventory-branch-consumption-card .card-head select{
+          width:100%;
+          height:46px;
+          border-radius:14px;
+          font-size:14px;
+          font-weight:850;
         }
         .rms-pro-shell .inventory-branch-consumption-search{
           display:grid;
@@ -3573,9 +3605,17 @@ function InventoryModule({ branchId, branchName }) {
           min-width:900px;
         }
         @media (max-width:1200px){
-          .rms-pro-shell .inventory-branch-transfer-grid,
+          .rms-pro-shell .inventory-branch-transfer-grid{
+            grid-template-columns:repeat(3,minmax(0,1fr));
+          }
           .rms-pro-shell .inventory-branch-consumption-summary{
             grid-template-columns:repeat(2,minmax(0,1fr));
+          }
+        }
+        @media (max-width:980px){
+          .rms-pro-shell .inventory-branch-transfer-grid,
+          .rms-pro-shell .inventory-branch-consumption-card .card-head{
+            grid-template-columns:1fr 1fr;
           }
         }
         @media (max-width:760px){
@@ -3586,6 +3626,13 @@ function InventoryModule({ branchId, branchName }) {
           }
           .rms-pro-shell .inventory-branch-transfer-grid .span-2{
             grid-column:span 1;
+          }
+          .rms-pro-shell .inventory-branch-transfer-grid .action-row{
+            grid-column:span 1;
+          }
+          .rms-pro-shell .inventory-branch-transfer-btn{
+            width:100%;
+            min-width:0;
           }
         }
       `}</style>
@@ -3942,12 +3989,12 @@ function InventoryModule({ branchId, branchName }) {
       <div className="inventory-branch-consumption-card">
         <div className="card-head">
           <div>
-            <h3>Потребление филиалов</h3>
-            <p className="hint">Отчёт по расходным движениям склада: списания, производство, перемещения со склада филиала. Можно быстро понять, какой филиал сколько использует.</p>
+            <h3>Получено / израсходовано филиалами</h3>
+            <p className="hint">Переключайте режим: сколько филиалы получили со склада и сколько реально израсходовали через списания, производство или расходные движения.</p>
           </div>
           <select value={branchConsumptionMode} onChange={e => setBranchConsumptionMode(e.target.value)}>
-            <option value="outgoing">Расход / потребление</option>
-            <option value="incoming">Приход / получение</option>
+            <option value="incoming">Получено филиалами</option>
+            <option value="outgoing">Израсходовано филиалами</option>
           </select>
         </div>
 
@@ -3984,7 +4031,7 @@ function InventoryModule({ branchId, branchName }) {
                   <td>{fmt(share)}%</td>
                 </tr>
               })}
-              {!inventoryBranchConsumptionRows.length && <tr><td colSpan="7" className="hint">Нет складских движений для отчёта потребления.</td></tr>}
+              {!inventoryBranchConsumptionRows.length && <tr><td colSpan="7" className="hint">Нет складских движений для выбранного режима.</td></tr>}
             </tbody>
           </table>
         </div>
