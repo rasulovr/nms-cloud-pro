@@ -3074,6 +3074,17 @@ function InventoryModule({ branchId, branchName }) {
   const [iikoBranchDateQuality, setIikoBranchDateQuality] = React.useState(null)
   const [search, setSearch] = React.useState('')
   const [movementFilter, setMovementFilter] = React.useState('all')
+  const [branchConsumptionSearch, setBranchConsumptionSearch] = React.useState('')
+  const [branchConsumptionMode, setBranchConsumptionMode] = React.useState('outgoing')
+  const [transferForm, setTransferForm] = React.useState({
+    source_location_id: '',
+    target_location_id: '',
+    item_name: '',
+    unit: 'kg',
+    quantity: '',
+    unit_cost: '',
+    comment: 'Распределение товара по филиалу',
+  })
 
   const loadInventory = React.useCallback(async () => {
     setLoading(true)
@@ -3242,6 +3253,65 @@ function InventoryModule({ branchId, branchName }) {
     }
   }
 
+
+  const createBranchTransfer = async () => {
+    setLoading(true)
+    setMessage('')
+    try {
+      const qty = parseNum(transferForm.quantity)
+      const unitCost = parseNum(transferForm.unit_cost)
+      if (!transferForm.source_location_id) throw new Error('Выберите склад-источник')
+      if (!transferForm.target_location_id) throw new Error('Выберите филиал-получатель')
+      if (transferForm.source_location_id === transferForm.target_location_id) throw new Error('Источник и получатель должны отличаться')
+      if (!String(transferForm.item_name || '').trim()) throw new Error('Укажите товар')
+      if (!(qty > 0)) throw new Error('Укажите количество больше 0')
+
+      const today = new Date().toISOString().slice(0, 10)
+      const sourceLocation = locations.find(l => String(l.id) === String(transferForm.source_location_id))
+      const targetLocation = locations.find(l => String(l.id) === String(transferForm.target_location_id))
+      const comment = `${transferForm.comment || 'Распределение товара по филиалу'} · ${sourceLocation?.name || 'Источник'} → ${targetLocation?.name || 'Филиал'}`
+
+      await rmsInventoryMovementCreate({
+        movement_date: today,
+        location_id: transferForm.source_location_id,
+        item_name: transferForm.item_name.trim(),
+        unit: transferForm.unit || 'unit',
+        quantity: qty,
+        unit_cost: unitCost,
+        movement_type: 'transfer_out',
+        comment,
+      })
+
+      await rmsInventoryMovementCreate({
+        movement_date: today,
+        location_id: transferForm.target_location_id,
+        item_name: transferForm.item_name.trim(),
+        unit: transferForm.unit || 'unit',
+        quantity: qty,
+        unit_cost: unitCost,
+        movement_type: 'transfer_in',
+        comment,
+      })
+
+      setMessage('Товар распределён по филиалу')
+      setTransferForm({
+        source_location_id: transferForm.source_location_id,
+        target_location_id: '',
+        item_name: '',
+        unit: 'kg',
+        quantity: '',
+        unit_cost: '',
+        comment: 'Распределение товара по филиалу',
+      })
+      await loadInventory()
+    } catch (err) {
+      console.error('inventory branch transfer error', err)
+      setMessage(err?.message || 'Не удалось распределить товар')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const loadBackfillPreview = async () => {
     setBackfillBusy(true)
     setMessage('')
@@ -3353,8 +3423,172 @@ function InventoryModule({ branchId, branchName }) {
   const writeOffCount = movements.filter(m => m.movement_type === 'write_off').length
   const purchaseCount = movements.filter(m => m.movement_type === 'purchase').length
 
+  const locationById = React.useMemo(() => Object.fromEntries((locations || []).map(l => [String(l.id), l])), [locations])
+  const branchLikeLocations = React.useMemo(() => {
+    const rows = (locations || []).filter(l => {
+      const name = String(l.name || '').toLowerCase()
+      return /bc\s*\d|bistro|branch|filial|филиал/.test(name) || !/central|main|глав|централ|централь/.test(name)
+    })
+    return rows.length ? rows : locations
+  }, [locations])
+
+  const stockItemsForDistribution = React.useMemo(() => {
+    const q = String(transferForm.source_location_id || '')
+    return (balances || [])
+      .filter(r => !q || String(r.location_id || '') === q)
+      .filter(r => parseNum(r.balance_qty) > 0)
+      .sort((a, b) => String(a.item_name || '').localeCompare(String(b.item_name || ''), 'ru'))
+  }, [balances, transferForm.source_location_id])
+
+  const inventoryBranchConsumptionRows = React.useMemo(() => {
+    const outgoingTypes = new Set(['write_off', 'transfer_out', 'production_out', 'sales_consumption', 'consumption'])
+    const incomingTypes = new Set(['purchase', 'transfer_in', 'production_in', 'adjustment_in'])
+    const q = String(branchConsumptionSearch || '').trim().toLowerCase()
+    const map = new Map()
+
+    ;(movements || []).filter(m => !m.deleted_at).forEach(m => {
+      const type = String(m.movement_type || '')
+      const isOutgoing = outgoingTypes.has(type) || type.endsWith('_out')
+      const isIncoming = incomingTypes.has(type) || type.endsWith('_in')
+      if (branchConsumptionMode === 'outgoing' && !isOutgoing) return
+      if (branchConsumptionMode === 'incoming' && !isIncoming) return
+
+      const location = locationById[String(m.location_id || '')]
+      const branch = location?.name || m.location_name || 'Без локации'
+      const item = m.item_name || 'Без названия'
+      const haystack = `${branch} ${item} ${m.comment || ''} ${type}`.toLowerCase()
+      if (q && !haystack.includes(q)) return
+
+      const key = `${branch}||${item}||${m.unit || 'unit'}`
+      const qty = Math.abs(parseNum(m.quantity))
+      const cost = Math.abs(parseNum(m.total_cost || (parseNum(m.quantity) * parseNum(m.unit_cost))))
+      const prev = map.get(key) || { branch, item, unit: m.unit || 'unit', qty: 0, cost: 0, count: 0, last_date: '' }
+      prev.qty += qty
+      prev.cost += cost
+      prev.count += 1
+      if (String(m.movement_date || '') > String(prev.last_date || '')) prev.last_date = m.movement_date
+      map.set(key, prev)
+    })
+
+    return Array.from(map.values()).sort((a, b) => b.cost - a.cost || b.qty - a.qty)
+  }, [movements, locationById, branchConsumptionSearch, branchConsumptionMode])
+
+  const inventoryBranchConsumptionTotal = inventoryBranchConsumptionRows.reduce((s, r) => s + parseNum(r.cost), 0)
+  const inventoryBranchConsumptionByBranch = React.useMemo(() => {
+    const map = new Map()
+    inventoryBranchConsumptionRows.forEach(r => {
+      const prev = map.get(r.branch) || { branch: r.branch, qty: 0, cost: 0, items: 0 }
+      prev.qty += parseNum(r.qty)
+      prev.cost += parseNum(r.cost)
+      prev.items += 1
+      map.set(r.branch, prev)
+    })
+    return Array.from(map.values()).sort((a, b) => b.cost - a.cost)
+  }, [inventoryBranchConsumptionRows])
+
   return (
     <div className="rms-pro-shell inventory-module-root">
+      <style>{`
+        .rms-pro-shell .inventory-branch-flow-card,
+        .rms-pro-shell .inventory-branch-consumption-card{
+          border:1px solid rgba(226,232,240,.95);
+          border-radius:22px;
+          background:#fff;
+          padding:18px;
+          box-shadow:0 16px 44px rgba(15,23,42,.06);
+          margin:14px 0;
+        }
+        .rms-pro-shell .inventory-branch-transfer-grid{
+          display:grid;
+          grid-template-columns:repeat(4,minmax(0,1fr));
+          gap:12px;
+          margin-top:12px;
+        }
+        .rms-pro-shell .inventory-branch-transfer-grid label{
+          display:flex;
+          flex-direction:column;
+          gap:6px;
+          margin:0;
+        }
+        .rms-pro-shell .inventory-branch-transfer-grid label>span{
+          color:#64748b;
+          font-size:12px;
+          font-weight:850;
+        }
+        .rms-pro-shell .inventory-branch-transfer-grid input,
+        .rms-pro-shell .inventory-branch-transfer-grid select{
+          height:42px;
+          border-radius:13px;
+        }
+        .rms-pro-shell .inventory-branch-transfer-grid .span-2{
+          grid-column:span 2;
+        }
+        .rms-pro-shell .inventory-branch-transfer-btn{
+          background:linear-gradient(135deg,#dc2626,#ef4444)!important;
+          border-color:#dc2626!important;
+          color:#fff!important;
+        }
+        .rms-pro-shell .inventory-branch-consumption-search{
+          display:grid;
+          grid-template-columns:minmax(260px,1fr) auto;
+          gap:10px;
+          margin:12px 0;
+        }
+        .rms-pro-shell .inventory-branch-consumption-search input{
+          height:42px;
+          border-radius:13px;
+        }
+        .rms-pro-shell .inventory-branch-consumption-summary{
+          display:grid;
+          grid-template-columns:repeat(4,minmax(0,1fr));
+          gap:10px;
+          margin:12px 0;
+        }
+        .rms-pro-shell .inventory-branch-consumption-pill{
+          border:1px solid #e2e8f0;
+          border-radius:16px;
+          background:#f8fafc;
+          padding:12px;
+          min-width:0;
+        }
+        .rms-pro-shell .inventory-branch-consumption-pill span,
+        .rms-pro-shell .inventory-branch-consumption-pill em{
+          display:block;
+          color:#64748b;
+          font-size:12px;
+          font-weight:750;
+        }
+        .rms-pro-shell .inventory-branch-consumption-pill strong{
+          display:block;
+          margin:5px 0;
+          color:#0f172a;
+          font-size:18px;
+          font-weight:950;
+        }
+        .rms-pro-shell .inventory-branch-consumption-wrap{
+          max-height:520px;
+          overflow:auto;
+        }
+        .rms-pro-shell .inventory-branch-consumption-wrap table{
+          min-width:900px;
+        }
+        @media (max-width:1200px){
+          .rms-pro-shell .inventory-branch-transfer-grid,
+          .rms-pro-shell .inventory-branch-consumption-summary{
+            grid-template-columns:repeat(2,minmax(0,1fr));
+          }
+        }
+        @media (max-width:760px){
+          .rms-pro-shell .inventory-branch-transfer-grid,
+          .rms-pro-shell .inventory-branch-consumption-summary,
+          .rms-pro-shell .inventory-branch-consumption-search{
+            grid-template-columns:1fr;
+          }
+          .rms-pro-shell .inventory-branch-transfer-grid .span-2{
+            grid-column:span 1;
+          }
+        }
+      `}</style>
       <div className="topbar">
         <div>
           <h2>Склад</h2>
@@ -3367,7 +3601,7 @@ function InventoryModule({ branchId, branchName }) {
 
       <div className="inventory-warning-card">
         <h3>Складской модуль · стартовый режим</h3>
-        <p>Сейчас склад работает в ручном режиме: можно добавлять движения, видеть остатки и контролировать отрицательные позиции. Автоматическая связь с закупками поставщиков будет следующим этапом.</p>
+        <p>Склад работает как контур движения товара: поступления поставщиков попадают в приход, затем товар можно распределять по филиалам и видеть расход каждого филиала.</p>
         <div className="inventory-action-grid">
           <div className="inventory-action-card"><span>Приход</span><strong>ручной / purchase</strong></div>
           <div className="inventory-action-card"><span>Списание</span><strong>write_off</strong></div>
@@ -3383,7 +3617,7 @@ function InventoryModule({ branchId, branchName }) {
           <div className="inventory-control-step good"><span>Приходы</span><strong>{purchaseCount}</strong></div>
           <div className="inventory-control-step bad"><span>Списания</span><strong>{writeOffCount}</strong></div>
           <div className={`inventory-control-step ${negativeRows ? 'bad' : 'good'}`}><span>Отрицательные остатки</span><strong>{negativeRows}</strong></div>
-          <div className="inventory-control-step warn"><span>Автосвязь с поставщиками</span><strong>Следующий этап</strong></div>
+          <div className="inventory-control-step good"><span>Поставщики → склад</span><strong>Активно / backfill</strong></div>
         </div>
       </div>
 
@@ -3676,9 +3910,85 @@ function InventoryModule({ branchId, branchName }) {
         <div className="soft-card inventory-kpi-card"><span>Сумма остатков</span><strong>{fmt(totalCost)} AZN</strong><p className="hint">по движениям склада</p></div>
         <div className="soft-card inventory-kpi-card"><span>Всего движений</span><strong>{movements.length}</strong><p className="hint">последние 100</p></div>
         <div className="soft-card inventory-kpi-card"><span>Отрицательные остатки</span><strong className={negativeRows ? 'bad' : 'good'}>{negativeRows}</strong><p className="hint">нужна проверка</p></div>
+        <div className="soft-card inventory-kpi-card"><span>Расход филиалов</span><strong>{fmt(inventoryBranchConsumptionTotal)} AZN</strong><p className="hint">по движениям склада</p></div>
       </div>
 
       {message && <div className="inventory-message">{message}</div>}
+
+      <div className="inventory-branch-flow-card">
+        <div className="card-head">
+          <div>
+            <h3>Распределение товара по филиалам</h3>
+            <p className="hint">Поступление от поставщиков попадает на склад, затем товар можно перемещать на нужный филиал. Так видно, какой филиал сколько потребляет.</p>
+          </div>
+          <button className="ghost small" onClick={loadInventory} disabled={loading}>Обновить остатки</button>
+        </div>
+
+        <div className="inventory-branch-transfer-grid">
+          <label><span>Склад-источник</span><select value={transferForm.source_location_id} onChange={e => setTransferForm({ ...transferForm, source_location_id: e.target.value, item_name: '', quantity: '', unit_cost: '' })}><option value="">Выберите склад</option>{locations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}</select></label>
+          <label><span>Филиал-получатель</span><select value={transferForm.target_location_id} onChange={e => setTransferForm({ ...transferForm, target_location_id: e.target.value })}><option value="">Выберите филиал</option>{branchLikeLocations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}</select></label>
+          <label><span>Товар на складе</span><select value={transferForm.item_name} onChange={e => {
+            const row = stockItemsForDistribution.find(r => `${r.item_name}||${r.unit}` === e.target.value)
+            setTransferForm({ ...transferForm, item_name: row?.item_name || '', unit: row?.unit || 'unit', unit_cost: row?.balance_qty ? String(parseNum(row.balance_cost) / Math.max(1, parseNum(row.balance_qty))) : '', quantity: '' })
+          }}><option value="">Выберите товар</option>{stockItemsForDistribution.map((r, idx) => <option key={`${r.location_id}-${r.item_name}-${r.unit}-${idx}`} value={`${r.item_name}||${r.unit}`}>{r.item_name} · остаток {fmt(r.balance_qty)} {r.unit}</option>)}</select></label>
+          <label><span>Кол-во</span><input type="number" step="0.001" value={transferForm.quantity} onChange={e => setTransferForm({ ...transferForm, quantity: e.target.value })} /></label>
+          <label><span>Ед.</span><input value={transferForm.unit} onChange={e => setTransferForm({ ...transferForm, unit: e.target.value })} /></label>
+          <label><span>Цена за ед.</span><input type="number" step="0.01" value={transferForm.unit_cost} onChange={e => setTransferForm({ ...transferForm, unit_cost: e.target.value })} /></label>
+          <label className="span-2"><span>Комментарий</span><input value={transferForm.comment} onChange={e => setTransferForm({ ...transferForm, comment: e.target.value })} /></label>
+          <div className="action-row"><button className="primary small inventory-branch-transfer-btn" onClick={createBranchTransfer} disabled={loading}>Распределить на филиал</button></div>
+        </div>
+      </div>
+
+      <div className="inventory-branch-consumption-card">
+        <div className="card-head">
+          <div>
+            <h3>Потребление филиалов</h3>
+            <p className="hint">Отчёт по расходным движениям склада: списания, производство, перемещения со склада филиала. Можно быстро понять, какой филиал сколько использует.</p>
+          </div>
+          <select value={branchConsumptionMode} onChange={e => setBranchConsumptionMode(e.target.value)}>
+            <option value="outgoing">Расход / потребление</option>
+            <option value="incoming">Приход / получение</option>
+          </select>
+        </div>
+
+        <div className="inventory-branch-consumption-search">
+          <input value={branchConsumptionSearch} onChange={e => setBranchConsumptionSearch(e.target.value)} placeholder="Поиск по филиалу, товару или комментарию..." />
+          <button className="ghost small" onClick={() => setBranchConsumptionSearch('')}>Очистить</button>
+        </div>
+
+        <div className="inventory-branch-consumption-summary">
+          {inventoryBranchConsumptionByBranch.slice(0, 8).map(row => {
+            const share = inventoryBranchConsumptionTotal ? row.cost / inventoryBranchConsumptionTotal * 100 : 0
+            return <div key={row.branch} className="inventory-branch-consumption-pill">
+              <span>{row.branch}</span>
+              <strong>{fmt(row.cost)} AZN</strong>
+              <em>{fmt(share)}% · {row.items} поз.</em>
+            </div>
+          })}
+          {!inventoryBranchConsumptionByBranch.length && <div className="inventory-branch-consumption-pill"><span>Нет данных</span><strong>0.00 AZN</strong><em>создайте движения</em></div>}
+        </div>
+
+        <div className="table-wrap inventory-branch-consumption-wrap">
+          <table>
+            <thead><tr><th>Филиал / склад</th><th>Товар</th><th>Кол-во</th><th>Сумма</th><th>Движений</th><th>Последняя дата</th><th>Доля</th></tr></thead>
+            <tbody>
+              {inventoryBranchConsumptionRows.slice(0, 80).map(row => {
+                const share = inventoryBranchConsumptionTotal ? row.cost / inventoryBranchConsumptionTotal * 100 : 0
+                return <tr key={`${row.branch}-${row.item}-${row.unit}`}>
+                  <td><b>{row.branch}</b></td>
+                  <td>{row.item}</td>
+                  <td>{fmt(row.qty)} {row.unit}</td>
+                  <td><strong>{fmt(row.cost)} AZN</strong></td>
+                  <td>{row.count}</td>
+                  <td>{row.last_date || '—'}</td>
+                  <td>{fmt(share)}%</td>
+                </tr>
+              })}
+              {!inventoryBranchConsumptionRows.length && <tr><td colSpan="7" className="hint">Нет складских движений для отчёта потребления.</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      </div>
 
       <div className="inventory-operations-card">
         <h3>Операции склада</h3>
