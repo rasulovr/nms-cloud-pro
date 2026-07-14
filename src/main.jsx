@@ -14736,6 +14736,211 @@ function RMSProV6Styles() {
 .rms-pro-shell .supplier-products-admin-list .action-row{flex-wrap:nowrap!important;}
 
 
+
+
+/* v329 visible supplier pricebook entry */
+.rms-pro-shell .supplier-pricebook-visibility-banner{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:space-between!important;
+  gap:14px!important;
+  margin:12px 0 4px!important;
+  padding:14px 16px!important;
+  border:1px solid #bfdbfe!important;
+  border-radius:18px!important;
+  background:linear-gradient(135deg,#eff6ff,#f8fafc)!important;
+}
+.rms-pro-shell .supplier-pricebook-visibility-banner b,
+.rms-pro-shell .supplier-pricebook-visibility-banner span{
+  display:block!important;
+}
+.rms-pro-shell .supplier-pricebook-visibility-banner b{
+  color:#0f172a!important;
+  font-size:14px!important;
+  font-weight:950!important;
+}
+.rms-pro-shell .supplier-pricebook-visibility-banner span{
+  margin-top:3px!important;
+  color:#475569!important;
+  font-size:12px!important;
+  font-weight:750!important;
+}
+.rms-pro-shell .supplier-pricebook-visibility-banner button{
+  white-space:nowrap!important;
+}
+@media(max-width:760px){
+  .rms-pro-shell .supplier-pricebook-visibility-banner{
+    flex-direction:column!important;
+    align-items:flex-start!important;
+  }
+  .rms-pro-shell .supplier-pricebook-visibility-banner button{
+    width:100%!important;
+  }
+}
+
+/* v328 supplier products pricebook */
+.rms-pro-shell .supplier-products-admin-list table.supplier-products-pricebook-table{
+  min-width:1180px!important;
+}
+.rms-pro-shell .supplier-products-pricebook-note{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:space-between!important;
+  gap:12px!important;
+  margin:12px 0!important;
+  padding:12px 14px!important;
+  border:1px solid #e2e8f0!important;
+  border-radius:16px!important;
+  background:#f8fafc!important;
+}
+.rms-pro-shell .supplier-products-pricebook-note b,
+.rms-pro-shell .supplier-products-pricebook-note span,
+.rms-pro-shell .supplier-products-pricebook-note em{
+  display:block!important;
+}
+.rms-pro-shell .supplier-products-pricebook-note b{
+  color:#0f172a!important;
+  font-size:14px!important;
+  font-weight:950!important;
+}
+.rms-pro-shell .supplier-products-pricebook-note span{
+  margin-top:3px!important;
+  color:#64748b!important;
+  font-size:12px!important;
+}
+.rms-pro-shell .supplier-products-pricebook-note em{
+  white-space:nowrap!important;
+  color:#2563eb!important;
+  font-style:normal!important;
+  font-size:12px!important;
+  font-weight:900!important;
+}
+.rms-pro-shell .supplier-product-price-trend{
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  min-width:82px!important;
+  height:28px!important;
+  padding:0 10px!important;
+  border-radius:999px!important;
+  font-size:12px!important;
+  font-weight:950!important;
+}
+.rms-pro-shell .supplier-product-price-trend.up{
+  background:#fee2e2!important;
+  color:#b91c1c!important;
+}
+.rms-pro-shell .supplier-product-price-trend.down{
+  background:#dbeafe!important;
+  color:#1d4ed8!important;
+}
+.rms-pro-shell .supplier-product-price-trend.same,
+.rms-pro-shell .supplier-product-price-trend.neutral{
+  background:#f1f5f9!important;
+  color:#475569!important;
+}
+.rms-pro-shell .supplier-product-price-open-row td{
+  background:#f8fafc!important;
+}
+.rms-pro-shell .supplier-product-price-detail-row td{
+  background:#f8fafc!important;
+  padding:14px!important;
+}
+.rms-pro-shell .supplier-product-price-detail{
+  display:grid!important;
+  grid-template-columns:minmax(360px,.9fr) minmax(520px,1.1fr)!important;
+  gap:16px!important;
+}
+.rms-pro-shell .supplier-product-price-chart,
+.rms-pro-shell .supplier-product-price-history-list{
+  border:1px solid #e2e8f0!important;
+  border-radius:18px!important;
+  background:#fff!important;
+  padding:14px!important;
+}
+.rms-pro-shell .supplier-product-price-chart-head,
+.rms-pro-shell .supplier-product-price-history-head{
+  display:flex!important;
+  align-items:flex-start!important;
+  justify-content:space-between!important;
+  gap:12px!important;
+  margin-bottom:10px!important;
+}
+.rms-pro-shell .supplier-product-price-chart-head b,
+.rms-pro-shell .supplier-product-price-history-head b{
+  display:block!important;
+  color:#0f172a!important;
+  font-size:14px!important;
+  font-weight:950!important;
+}
+.rms-pro-shell .supplier-product-price-chart-head span,
+.rms-pro-shell .supplier-product-price-history-head span{
+  display:block!important;
+  margin-top:3px!important;
+  color:#64748b!important;
+  font-size:12px!important;
+  font-weight:750!important;
+}
+.rms-pro-shell .supplier-product-price-chart-head strong{
+  white-space:nowrap!important;
+  color:#0f172a!important;
+}
+.rms-pro-shell .supplier-product-price-svg{
+  width:100%!important;
+  height:auto!important;
+  display:block!important;
+}
+.rms-pro-shell .supplier-product-price-grid-line{
+  stroke:#e2e8f0!important;
+  stroke-width:1!important;
+}
+.rms-pro-shell .supplier-product-price-area{
+  fill:rgba(37,99,235,.08)!important;
+}
+.rms-pro-shell .supplier-product-price-line{
+  fill:none!important;
+  stroke:#2563eb!important;
+  stroke-width:3!important;
+  stroke-linecap:round!important;
+  stroke-linejoin:round!important;
+}
+.rms-pro-shell .supplier-product-price-dot{
+  fill:#2563eb!important;
+  stroke:#fff!important;
+  stroke-width:2!important;
+}
+.rms-pro-shell .supplier-product-price-axis-label{
+  fill:#64748b!important;
+  font-size:11px!important;
+  font-weight:800!important;
+}
+.rms-pro-shell .supplier-product-price-chart-empty{
+  border:1px dashed #cbd5e1!important;
+  border-radius:16px!important;
+  padding:28px!important;
+  color:#64748b!important;
+  font-weight:850!important;
+  text-align:center!important;
+}
+.rms-pro-shell .supplier-product-price-history-list .table-wrap{
+  max-height:330px!important;
+  overflow:auto!important;
+}
+.rms-pro-shell .supplier-product-price-history-list table{
+  min-width:820px!important;
+}
+@media(max-width:1180px){
+  .rms-pro-shell .supplier-product-price-detail{
+    grid-template-columns:1fr!important;
+  }
+}
+@media(max-width:760px){
+  .rms-pro-shell .supplier-products-pricebook-note{
+    align-items:flex-start!important;
+    flex-direction:column!important;
+  }
+}
+
 /* v287 supplier products collapsed list and pagination */
 .rms-pro-shell .supplier-products-toolbar{
   display:grid!important;
@@ -25287,6 +25492,52 @@ function Advances({ t }) {
   </section>
 }
 
+
+function SupplierProductPriceHistoryChart({ history = [], baseUnit = '' }) {
+  const rows = [...(history || [])]
+    .filter(r => parseNum(r.base_unit_price || r.price) > 0)
+    .sort((a, b) => String(a.date || a.createdAt || '').localeCompare(String(b.date || b.createdAt || '')))
+    .slice(-12)
+
+  if (!rows.length) {
+    return <div className="supplier-product-price-chart-empty">Нет данных для графика</div>
+  }
+
+  const width = 640
+  const height = 210
+  const padX = 34
+  const padY = 24
+  const values = rows.map(r => parseNum(r.base_unit_price || r.price))
+  const minValue = Math.min(...values)
+  const maxValue = Math.max(...values)
+  const spread = Math.max(0.0001, maxValue - minValue)
+  const points = rows.map((r, idx) => {
+    const value = parseNum(r.base_unit_price || r.price)
+    const x = rows.length === 1 ? width / 2 : padX + (idx / Math.max(1, rows.length - 1)) * (width - padX * 2)
+    const y = height - padY - ((value - minValue) / spread) * (height - padY * 2)
+    return { ...r, value, x, y }
+  })
+  const path = points.map((p, idx) => `${idx ? 'L' : 'M'} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ')
+  const areaPath = points.length > 1 ? `${path} L ${points[points.length - 1].x.toFixed(1)} ${height - padY} L ${points[0].x.toFixed(1)} ${height - padY} Z` : ''
+
+  return <div className="supplier-product-price-chart">
+    <div className="supplier-product-price-chart-head">
+      <div><b>График закупочной цены</b><span>Цена приведена к базовой единице: {baseUnit || 'ед.'}</span></div>
+      <strong>{fmt(points[points.length - 1]?.value)} AZN / {baseUnit || 'ед.'}</strong>
+    </div>
+    <svg viewBox={`0 0 ${width} ${height}`} className="supplier-product-price-svg" aria-hidden="true">
+      {[0, .5, 1].map((v, idx) => <line key={idx} x1={padX} x2={width - padX} y1={padY + v * (height - padY * 2)} y2={padY + v * (height - padY * 2)} className="supplier-product-price-grid-line" />)}
+      {areaPath ? <path d={areaPath} className="supplier-product-price-area" /> : null}
+      {points.length > 1 ? <path d={path} className="supplier-product-price-line" /> : null}
+      {points.map((p, idx) => <g key={`${p.date}-${idx}`}>
+        <circle cx={p.x} cy={p.y} r="4.5" className="supplier-product-price-dot" />
+        {(idx === 0 || idx === points.length - 1) && <text x={p.x} y={height - 6} textAnchor="middle" className="supplier-product-price-axis-label">{formatDateDMY(p.date) || p.date || '—'}</text>}
+      </g>)}
+    </svg>
+  </div>
+}
+
+
 function Suppliers({ t, isAdmin = false }) {
   const isAzInterface = t('language_label') === 'İnterfeys dili'
   const branches = useBranches()
@@ -25308,6 +25559,7 @@ function Suppliers({ t, isAdmin = false }) {
   const [showSupplierProducts, setShowSupplierProducts] = useState(false)
   const [supplierProductsPageSize, setSupplierProductsPageSize] = useState(10)
   const [supplierProductsPage, setSupplierProductsPage] = useState(1)
+  const [supplierProductPriceDetailId, setSupplierProductPriceDetailId] = useState('')
   const [editingSupplierProductId, setEditingSupplierProductId] = useState('')
   const [supplierProductEditForm, setSupplierProductEditForm] = useState({ name: '', category: PRODUCT_CATEGORIES[0], base_unit: 'g' })
   const [purchaseForm, setPurchaseForm] = useState({ supplier_id: '', legal_entity_id: '', branch_id: '', purchase_date: todayISO(), invoice_number: '', e_invoice_number: '', e_invoice_date: '', e_invoice_amount: '', comment: '', amount_only: false, manual_amount: '' })
@@ -25380,6 +25632,90 @@ function Suppliers({ t, isAdmin = false }) {
   const supplierProductsPageCount = Math.max(1, Math.ceil(filteredSupplierProducts.length / supplierProductsPageSize))
   const safeSupplierProductsPage = Math.min(supplierProductsPage, supplierProductsPageCount)
   const pagedSupplierProducts = filteredSupplierProducts.slice((safeSupplierProductsPage - 1) * supplierProductsPageSize, safeSupplierProductsPage * supplierProductsPageSize)
+
+
+  function supplierProductUnitMultiplier(fromUnit, toUnit) {
+    const from = String(fromUnit || '').toLowerCase()
+    const to = String(toUnit || '').toLowerCase()
+    if (!from || !to || from === to) return 1
+    if (from === 'kg' && to === 'g') return 1000
+    if (from === 'g' && to === 'kg') return 0.001
+    if (from === 'l' && to === 'ml') return 1000
+    if (from === 'ml' && to === 'l') return 0.001
+    return 1
+  }
+
+  function supplierProductBaseUnitPrice(price, fromUnit, baseUnit) {
+    const multiplier = supplierProductUnitMultiplier(fromUnit, baseUnit)
+    return multiplier ? parseNum(price) / multiplier : parseNum(price)
+  }
+
+  const supplierProductPriceInfoMap = useMemo(() => {
+    const productMap = new Map((products || []).map(p => [String(p.id), p]))
+    const rowsByProduct = new Map()
+
+    ;(purchases || []).filter(p => !p.deleted_at).forEach(p => {
+      ;(p.supplier_purchase_items || []).forEach(item => {
+        const productId = item.product_id || item.supplier_product_id
+        const unitPrice = parseNum(item.unit_price)
+        if (!productId || !(unitPrice > 0)) return
+
+        const product = productMap.get(String(productId)) || item.supplier_products || {}
+        const baseUnit = product.base_unit || item.supplier_products?.base_unit || item.unit || 'unit'
+        const purchaseUnit = item.unit || baseUnit
+        const baseUnitPrice = supplierProductBaseUnitPrice(unitPrice, purchaseUnit, baseUnit)
+        const supplierName = p.suppliers?.name || suppliers.find(s => String(s.id) === String(p.supplier_id))?.name || '—'
+        const branchName = p.branches?.name || branches.find(b => String(b.id) === String(p.branch_id))?.name || '—'
+
+        if (!rowsByProduct.has(String(productId))) {
+          rowsByProduct.set(String(productId), {
+            product_id: String(productId),
+            name: product.name || item.product_name || '—',
+            category: product.category || '—',
+            baseUnit,
+            history: []
+          })
+        }
+
+        rowsByProduct.get(String(productId)).history.push({
+          id: item.id || `${p.id}-${productId}-${item.unit}-${item.quantity}`,
+          purchase_id: p.id,
+          date: p.purchase_date || '',
+          createdAt: p.created_at || '',
+          invoice: p.invoice_number || '—',
+          supplier: supplierName,
+          branch: branchName,
+          quantity: parseNum(item.quantity),
+          unit: purchaseUnit,
+          price: unitPrice,
+          base_unit_price: baseUnitPrice,
+          total_amount: parseNum(item.total_amount || (parseNum(item.quantity) * unitPrice))
+        })
+      })
+    })
+
+    const result = new Map()
+    rowsByProduct.forEach((info, productId) => {
+      const historyDesc = [...info.history].sort((a, b) => {
+        const dateDiff = String(b.date || b.createdAt || '').localeCompare(String(a.date || a.createdAt || ''))
+        if (dateDiff) return dateDiff
+        return String(b.createdAt || '').localeCompare(String(a.createdAt || ''))
+      })
+      const latest = historyDesc[0] || null
+      const previous = historyDesc[1] || null
+      const changeAmount = latest && previous ? parseNum(latest.base_unit_price) - parseNum(previous.base_unit_price) : null
+      const changePct = previous && parseNum(previous.base_unit_price) ? (changeAmount / parseNum(previous.base_unit_price)) * 100 : null
+      result.set(String(productId), {
+        ...info,
+        latest,
+        previous,
+        history: historyDesc,
+        changeAmount,
+        changePct
+      })
+    })
+    return result
+  }, [purchases, products, suppliers, branches])
 
 
   const supplierProductInvoiceRows = useMemo(() => {
@@ -27617,24 +27953,76 @@ function Suppliers({ t, isAdmin = false }) {
         <div className="form-grid compact"><label><span>Товар</span><input value={productForm.name} onChange={e => { setProductForm({...productForm, name: e.target.value}); setProductMessage('') }} /></label><label><span>Тип</span><select value={productForm.category} onChange={e => setProductForm({...productForm, category: e.target.value})}>{PRODUCT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select></label><label><span>Базовая ед. для техкарты</span><select value={productForm.base_unit} onChange={e => setProductForm({...productForm, base_unit: e.target.value})}>{BASE_UNITS.map(u => <option key={u.value} value={u.value}>{u.label}</option>)}</select></label></div>
         <div className="supplier-products-form-footer">
           <div className="supplier-form-footer"><div className="supplier-form-footer-status">{productMessage && <span className={`rms-inline-operation-status ${rmsInferToastType(productMessage)}`}>{productMessage}</span>}</div><button className="small supplier-save-action supplier-add-accent" onClick={addProductFromForm}>+ Добавить товар</button></div>
-          <button className={`small supplier-products-toggle ${showSupplierProducts ? 'is-open' : ''}`} onClick={() => { setShowSupplierProducts(v => !v); setSupplierProductsPage(1) }}>{showSupplierProducts ? 'Скрыть товары' : `Показать товары · ${filteredSupplierProducts.length}`}</button>
+          <button className={`small supplier-products-toggle ${showSupplierProducts ? 'is-open' : ''}`} onClick={() => { setShowSupplierProducts(v => !v); setSupplierProductsPage(1) }}>{showSupplierProducts ? 'Скрыть товары / прейскурант' : `Показать товары / прейскурант · ${filteredSupplierProducts.length}`}</button>
+        </div>
+        <div className="supplier-pricebook-visibility-banner">
+          <div>
+            <b>Прейскурант закупочных цен</b>
+            <span>Откройте список товаров: там есть последняя цена закупа, поставщик, накладная, динамика цены, график и история закупок.</span>
+          </div>
+          <button className="ghost small" type="button" onClick={() => setShowSupplierProducts(true)}>Открыть прейскурант</button>
         </div>
         {showSupplierProducts && <div className="supplier-products-admin-list">
           <div className="supplier-products-toolbar">
             <label><span>Поиск товара</span><input value={supplierProductSearch} onChange={e => { setSupplierProductSearch(e.target.value); setSupplierProductsPage(1) }} placeholder="Название или категория" /></label>
             <label><span>Показать</span><select value={supplierProductsPageSize} onChange={e => { setSupplierProductsPageSize(Number(e.target.value)); setSupplierProductsPage(1) }}><option value={10}>10</option><option value={20}>20</option><option value={50}>50</option><option value={100}>100</option></select></label>
           </div>
-          <div className="table-wrap"><table><thead><tr><th>Товар</th><th>Тип</th><th>Базовая единица</th><th>Действия</th></tr></thead><tbody>
+          <div className="supplier-products-pricebook-note">
+            <div><b>Прейскурант закупочных цен</b><span>Это не отдельное меню: прейскурант находится прямо в списке товаров. Кнопка «Цены» открывает график и список закупок.</span></div>
+            <em>{supplierProductPriceInfoMap.size} товаров с закупочной историей</em>
+          </div>
+          <div className="table-wrap supplier-products-pricebook-wrap"><table className="supplier-products-pricebook-table"><thead><tr><th>Товар</th><th>Тип</th><th>Базовая ед.</th><th>Последняя цена закупа</th><th>Поставщик / накладная</th><th>Динамика</th><th>Действия</th></tr></thead><tbody>
             {pagedSupplierProducts.map(product => {
               const editing = editingSupplierProductId === product.id
-              return <tr key={product.id}>
-                <td>{editing ? <input value={supplierProductEditForm.name} onChange={e => setSupplierProductEditForm({...supplierProductEditForm, name:e.target.value})} /> : <b>{product.name}</b>}</td>
-                <td>{editing ? <select value={supplierProductEditForm.category} onChange={e => setSupplierProductEditForm({...supplierProductEditForm, category:e.target.value})}>{PRODUCT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select> : product.category}</td>
-                <td>{editing ? <select value={supplierProductEditForm.base_unit} onChange={e => setSupplierProductEditForm({...supplierProductEditForm, base_unit:e.target.value})}>{BASE_UNITS.map(u => <option key={u.value} value={u.value}>{u.label}</option>)}</select> : product.base_unit}</td>
-                <td><div className="action-row">{editing ? <><button className="small primary" onClick={() => saveSupplierProduct(product)}>Сохранить</button><button className="ghost small" onClick={() => setEditingSupplierProductId('')}>Отмена</button></> : <><button className="small" onClick={() => startEditSupplierProduct(product)}>Редактировать</button><button className="small remove" onClick={() => deleteSupplierProduct(product)}>Удалить</button></>}</div></td>
-              </tr>
+              const priceInfo = supplierProductPriceInfoMap.get(String(product.id))
+              const latest = priceInfo?.latest || null
+              const previous = priceInfo?.previous || null
+              const change = parseNum(priceInfo?.changePct)
+              const trendClass = !previous ? 'neutral' : change > 0 ? 'up' : change < 0 ? 'down' : 'same'
+              const detailOpen = supplierProductPriceDetailId === product.id
+              return <React.Fragment key={product.id}>
+                <tr className={detailOpen ? 'supplier-product-price-open-row' : ''}>
+                  <td>{editing ? <input value={supplierProductEditForm.name} onChange={e => setSupplierProductEditForm({...supplierProductEditForm, name:e.target.value})} /> : <b>{product.name}</b>}</td>
+                  <td>{editing ? <select value={supplierProductEditForm.category} onChange={e => setSupplierProductEditForm({...supplierProductEditForm, category:e.target.value})}>{PRODUCT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select> : product.category}</td>
+                  <td>{editing ? <select value={supplierProductEditForm.base_unit} onChange={e => setSupplierProductEditForm({...supplierProductEditForm, base_unit:e.target.value})}>{BASE_UNITS.map(u => <option key={u.value} value={u.value}>{u.label}</option>)}</select> : product.base_unit}</td>
+                  <td>{latest ? <><b>{fmt(latest.price)} AZN / {latest.unit}</b><br /><span className="hint">≈ {fmt(latest.base_unit_price)} AZN / {priceInfo.baseUnit || product.base_unit}</span></> : <span className="hint">нет закупок</span>}</td>
+                  <td>{latest ? <>{latest.supplier}<br /><span className="hint">{formatDateDMY(latest.date)} · {latest.invoice}</span></> : <span className="hint">—</span>}</td>
+                  <td>{latest ? <span className={`supplier-product-price-trend ${trendClass}`}>{previous ? `${change > 0 ? '↑' : change < 0 ? '↓' : '→'} ${pct(Math.abs(change))}` : 'первая цена'}</span> : <span className="hint">—</span>}</td>
+                  <td><div className="action-row">{editing ? <><button className="small primary" onClick={() => saveSupplierProduct(product)}>Сохранить</button><button className="ghost small" onClick={() => setEditingSupplierProductId('')}>Отмена</button></> : <><button className="small" onClick={() => startEditSupplierProduct(product)}>Редактировать</button><button className="ghost small" disabled={!priceInfo?.history?.length} onClick={() => setSupplierProductPriceDetailId(detailOpen ? '' : product.id)}>{detailOpen ? 'Скрыть цены' : 'Цены'}</button><button className="small remove" onClick={() => deleteSupplierProduct(product)}>Удалить</button></>}</div></td>
+                </tr>
+                {detailOpen && priceInfo && <tr className="supplier-product-price-detail-row">
+                  <td colSpan="7">
+                    <div className="supplier-product-price-detail">
+                      <SupplierProductPriceHistoryChart history={priceInfo.history} baseUnit={priceInfo.baseUnit || product.base_unit} />
+                      <div className="supplier-product-price-history-list">
+                        <div className="supplier-product-price-history-head">
+                          <b>История закупок</b>
+                          <span>{priceInfo.history.length} записей</span>
+                        </div>
+                        <div className="table-wrap">
+                          <table>
+                            <thead><tr><th>Дата</th><th>Поставщик</th><th>Накладная</th><th>Филиал</th><th>Кол-во</th><th>Цена</th><th>В базовой ед.</th><th>Сумма</th></tr></thead>
+                            <tbody>
+                              {priceInfo.history.slice(0, 30).map(row => <tr key={row.id}>
+                                <td>{formatDateDMY(row.date) || row.date || '—'}</td>
+                                <td>{row.supplier}</td>
+                                <td>{row.invoice}</td>
+                                <td>{row.branch}</td>
+                                <td>{fmt(row.quantity)} {row.unit}</td>
+                                <td><b>{fmt(row.price)} AZN / {row.unit}</b></td>
+                                <td>{fmt(row.base_unit_price)} AZN / {priceInfo.baseUnit || product.base_unit}</td>
+                                <td>{fmt(row.total_amount)} AZN</td>
+                              </tr>)}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    </div>
+                  </td>
+                </tr>}
+              </React.Fragment>
             })}
-            {!filteredSupplierProducts.length && <tr><td colSpan="4" className="hint">Товары не найдены</td></tr>}
+            {!filteredSupplierProducts.length && <tr><td colSpan="7" className="hint">Товары не найдены</td></tr>}
           </tbody></table></div>
           <div className="supplier-products-pagination"><span className="hint">Показано {filteredSupplierProducts.length ? (safeSupplierProductsPage - 1) * supplierProductsPageSize + 1 : 0}–{Math.min(safeSupplierProductsPage * supplierProductsPageSize, filteredSupplierProducts.length)} из {filteredSupplierProducts.length}</span><div className="action-row"><button className="ghost small" disabled={safeSupplierProductsPage <= 1} onClick={() => setSupplierProductsPage(p => Math.max(1, p - 1))}>← Пред.</button><span className="hint">Страница {safeSupplierProductsPage} / {supplierProductsPageCount}</span><button className="ghost small" disabled={safeSupplierProductsPage >= supplierProductsPageCount} onClick={() => setSupplierProductsPage(p => Math.min(supplierProductsPageCount, p + 1))}>След. →</button></div></div>
         </div>}
