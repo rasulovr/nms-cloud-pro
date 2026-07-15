@@ -14850,6 +14850,94 @@ function RMSProV6Styles() {
 
 
 
+
+/* v335 actions moved into product cell */
+.rms-pro-shell .supplier-products-pricebook-table th:nth-child(1),
+.rms-pro-shell .supplier-products-pricebook-table td:nth-child(1){
+  width:35%!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table th:nth-child(2),
+.rms-pro-shell .supplier-products-pricebook-table td:nth-child(2){
+  width:25%!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table th:nth-child(3),
+.rms-pro-shell .supplier-products-pricebook-table td:nth-child(3){
+  width:25%!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table th:nth-child(4),
+.rms-pro-shell .supplier-products-pricebook-table td:nth-child(4){
+  width:15%!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table th:nth-child(5),
+.rms-pro-shell .supplier-products-pricebook-table td:nth-child(5){
+  display:none!important;
+}
+.rms-pro-shell .supplier-pricebook-product-cell{
+  position:relative!important;
+  overflow:visible!important;
+}
+.rms-pro-shell .supplier-pricebook-product-line{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) 34px!important;
+  gap:8px!important;
+  align-items:center!important;
+  min-width:0!important;
+}
+.rms-pro-shell .supplier-pricebook-product-title{
+  min-width:0!important;
+}
+.rms-pro-shell .supplier-pricebook-product-cell b{
+  max-width:100%!important;
+}
+.rms-pro-shell .supplier-products-menu-shell{
+  position:relative!important;
+  display:flex!important;
+  justify-content:flex-end!important;
+  z-index:20!important;
+}
+.rms-pro-shell .supplier-products-action-menu{
+  left:auto!important;
+  right:0!important;
+  top:38px!important;
+  transform:none!important;
+  width:164px!important;
+}
+.rms-pro-shell .supplier-products-edit-actions{
+  justify-content:flex-start!important;
+  margin-top:6px!important;
+}
+.rms-pro-shell .supplier-products-pricebook-wrap{
+  overflow:visible!important;
+}
+@media(max-width:900px){
+  .rms-pro-shell .supplier-products-pricebook-table th:nth-child(4),
+  .rms-pro-shell .supplier-products-pricebook-table td:nth-child(4){
+    display:table-cell!important;
+  }
+  .rms-pro-shell .supplier-products-pricebook-table th:nth-child(1),
+  .rms-pro-shell .supplier-products-pricebook-table td:nth-child(1){
+    width:38%!important;
+  }
+  .rms-pro-shell .supplier-products-pricebook-table th:nth-child(2),
+  .rms-pro-shell .supplier-products-pricebook-table td:nth-child(2){
+    width:30%!important;
+  }
+  .rms-pro-shell .supplier-products-pricebook-table th:nth-child(3),
+  .rms-pro-shell .supplier-products-pricebook-table td:nth-child(3){
+    width:22%!important;
+  }
+  .rms-pro-shell .supplier-products-pricebook-table th:nth-child(4),
+  .rms-pro-shell .supplier-products-pricebook-table td:nth-child(4){
+    width:10%!important;
+  }
+  .rms-pro-shell .supplier-product-price-trend{
+    min-width:0!important;
+    width:auto!important;
+    padding:0 6px!important;
+    font-size:10px!important;
+  }
+}
+
 /* v334 tighter pricebook table and no-scroll history cards */
 .rms-pro-shell .supplier-products-pricebook-wrap{
   overflow:visible!important;
@@ -28507,7 +28595,7 @@ function Suppliers({ t, isAdmin = false }) {
             <div><b>Прейскурант закупочных цен</b><span>Последняя цена закупа, поставщик, накладная, динамика цены и история закупок.</span></div>
             <em>{supplierProductPriceInfoMap.size} товаров с закупочной историей</em>
           </div>
-          <div className="table-wrap supplier-products-pricebook-wrap"><table className="supplier-products-pricebook-table"><thead><tr><th>Товар</th><th>Цена закупа</th><th>Поставщик</th><th>Динамика</th><th></th></tr></thead><tbody>
+          <div className="table-wrap supplier-products-pricebook-wrap"><table className="supplier-products-pricebook-table"><thead><tr><th>Товар</th><th>Цена закупа</th><th>Поставщик</th><th>Динамика</th></tr></thead><tbody>
             {pagedSupplierProducts.map(product => {
               const editing = editingSupplierProductId === product.id
               const priceInfo = supplierProductPriceInfoMap.get(String(product.id))
@@ -28517,21 +28605,20 @@ function Suppliers({ t, isAdmin = false }) {
               const trendClass = !previous ? 'neutral' : change > 0 ? 'up' : change < 0 ? 'down' : 'same'
               const detailOpen = supplierProductPriceDetailId === product.id
               return <tr key={product.id} className={detailOpen ? 'supplier-product-price-open-row' : ''}>
-                  <td className="supplier-pricebook-product-cell">{editing ? <div className="supplier-pricebook-product-edit"><input value={supplierProductEditForm.name} onChange={e => setSupplierProductEditForm({...supplierProductEditForm, name:e.target.value})} /><div><select value={supplierProductEditForm.category} onChange={e => setSupplierProductEditForm({...supplierProductEditForm, category:e.target.value})}>{PRODUCT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select><select value={supplierProductEditForm.base_unit} onChange={e => setSupplierProductEditForm({...supplierProductEditForm, base_unit:e.target.value})}>{BASE_UNITS.map(u => <option key={u.value} value={u.value}>{u.label}</option>)}</select></div></div> : <><b>{product.name}</b><br /><span className="supplier-pricebook-product-meta">{product.category || '—'} · {product.base_unit || 'unit'}</span></>}</td>
-                  <td>{latest ? <><b>{fmt(latest.price)} AZN / {latest.unit}</b><br /><span className="hint">≈ {fmt(latest.base_unit_price)} AZN / {priceInfo.baseUnit || product.base_unit}</span></> : <span className="hint">нет закупок</span>}</td>
-                  <td>{latest ? <>{latest.supplier}<br /><span className="hint">{formatDateDMY(latest.date)} · {latest.invoice}</span></> : <span className="hint">—</span>}</td>
-                  <td>{latest ? <span className={`supplier-product-price-trend ${trendClass}`}>{previous ? `${change > 0 ? '↑' : change < 0 ? '↓' : '→'} ${pct(Math.abs(change))}` : 'первая цена'}</span> : <span className="hint">—</span>}</td>
-                  <td className="supplier-products-actions-cell">{editing ? <div className="supplier-products-edit-actions"><button className="small primary" onClick={() => saveSupplierProduct(product)}>OK</button><button className="ghost small" onClick={() => setEditingSupplierProductId('')}>×</button></div> : <div className="supplier-products-menu-shell">
+                  <td className="supplier-pricebook-product-cell">{editing ? <div className="supplier-pricebook-product-edit"><input value={supplierProductEditForm.name} onChange={e => setSupplierProductEditForm({...supplierProductEditForm, name:e.target.value})} /><div><select value={supplierProductEditForm.category} onChange={e => setSupplierProductEditForm({...supplierProductEditForm, category:e.target.value})}>{PRODUCT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select><select value={supplierProductEditForm.base_unit} onChange={e => setSupplierProductEditForm({...supplierProductEditForm, base_unit:e.target.value})}>{BASE_UNITS.map(u => <option key={u.value} value={u.value}>{u.label}</option>)}</select></div><div className="supplier-products-edit-actions"><button className="small primary" onClick={() => saveSupplierProduct(product)}>OK</button><button className="ghost small" onClick={() => setEditingSupplierProductId('')}>×</button></div></div> : <div className="supplier-pricebook-product-line"><div className="supplier-pricebook-product-title"><b>{product.name}</b><br /><span className="supplier-pricebook-product-meta">{product.category || '—'} · {product.base_unit || 'unit'}</span></div><div className="supplier-products-menu-shell">
                     <button className={`ghost small supplier-products-ellipsis ${supplierProductActionMenuId === product.id ? 'is-open' : ''}`} type="button" title="Действия" aria-label="Действия" onClick={() => setSupplierProductActionMenuId(id => id === product.id ? '' : product.id)}>…</button>
                     {supplierProductActionMenuId === product.id && <div className="supplier-products-action-menu">
                       <button type="button" onClick={() => { setSupplierProductActionMenuId(''); startEditSupplierProduct(product) }}>Редактировать</button>
                       <button type="button" disabled={!priceInfo?.history?.length} onClick={() => { setSupplierProductActionMenuId(''); setSupplierProductPriceDetailId(product.id) }}>Цены</button>
                       <button type="button" className="danger" onClick={() => { setSupplierProductActionMenuId(''); deleteSupplierProduct(product) }}>Удалить</button>
                     </div>}
-                  </div>}</td>
+                  </div></div>}</td>
+                  <td>{latest ? <><b>{fmt(latest.price)} AZN / {latest.unit}</b><br /><span className="hint">≈ {fmt(latest.base_unit_price)} AZN / {priceInfo.baseUnit || product.base_unit}</span></> : <span className="hint">нет закупок</span>}</td>
+                  <td>{latest ? <>{latest.supplier}<br /><span className="hint">{formatDateDMY(latest.date)} · {latest.invoice}</span></> : <span className="hint">—</span>}</td>
+                  <td>{latest ? <span className={`supplier-product-price-trend ${trendClass}`}>{previous ? `${change > 0 ? '↑' : change < 0 ? '↓' : '→'} ${pct(Math.abs(change))}` : 'первая цена'}</span> : <span className="hint">—</span>}</td>
                 </tr>
             })}
-            {!filteredSupplierProducts.length && <tr><td colSpan="5" className="hint">Товары не найдены</td></tr>}
+            {!filteredSupplierProducts.length && <tr><td colSpan="4" className="hint">Товары не найдены</td></tr>}
           </tbody></table></div>
           <div className="supplier-products-pagination"><span className="hint">Показано {filteredSupplierProducts.length ? (safeSupplierProductsPage - 1) * supplierProductsPageSize + 1 : 0}–{Math.min(safeSupplierProductsPage * supplierProductsPageSize, filteredSupplierProducts.length)} из {filteredSupplierProducts.length}</span><div className="action-row"><button className="ghost small" disabled={safeSupplierProductsPage <= 1} onClick={() => setSupplierProductsPage(p => Math.max(1, p - 1))}>← Пред.</button><span className="hint">Страница {safeSupplierProductsPage} / {supplierProductsPageCount}</span><button className="ghost small" disabled={safeSupplierProductsPage >= supplierProductsPageCount} onClick={() => setSupplierProductsPage(p => Math.min(supplierProductsPageCount, p + 1))}>След. →</button></div></div>
         </div>}
