@@ -38829,3 +38829,225 @@ if (typeof document !== 'undefined') {
     document.head.appendChild(style)
   }
 }
+
+
+/* v341 final reset: normal compact table, no artificial grid gaps */
+if (typeof document !== 'undefined') {
+  const STYLE_ID = 'rms-v341-supplier-pricebook-normal-table-compact-fit'
+  if (!document.getElementById(STYLE_ID)) {
+    const style = document.createElement('style')
+    style.id = STYLE_ID
+    style.textContent = `
+.rms-pro-shell .supplier-products-pricebook-wrap,
+.rms-pro-shell .supplier-products-admin-list .supplier-products-pricebook-wrap{
+  width:100%!important;
+  max-width:100%!important;
+  overflow:visible!important;
+}
+.rms-pro-shell .supplier-products-admin-list table.supplier-products-pricebook-table,
+.rms-pro-shell table.supplier-products-pricebook-table{
+  display:table!important;
+  width:100%!important;
+  max-width:100%!important;
+  min-width:0!important;
+  table-layout:auto!important;
+  border-collapse:separate!important;
+  border-spacing:0!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table thead{
+  display:table-header-group!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table tbody{
+  display:table-row-group!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table thead tr,
+.rms-pro-shell .supplier-products-pricebook-table tbody tr{
+  display:table-row!important;
+  width:auto!important;
+  max-width:none!important;
+  min-height:0!important;
+  column-gap:0!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table th,
+.rms-pro-shell .supplier-products-pricebook-table td{
+  display:table-cell!important;
+  box-sizing:border-box!important;
+  width:auto!important;
+  min-width:0!important;
+  max-width:none!important;
+  padding:10px 8px!important;
+  border-bottom:1px solid #e5e7eb!important;
+  vertical-align:middle!important;
+  overflow:visible!important;
+  white-space:normal!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table th{
+  color:#64748b!important;
+  font-size:11px!important;
+  line-height:1.15!important;
+  font-weight:950!important;
+  letter-spacing:.035em!important;
+  text-transform:uppercase!important;
+  background:#f8fafc!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table tbody tr:nth-child(even) td{
+  background:#fbfdff!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table th:nth-child(1),
+.rms-pro-shell .supplier-products-pricebook-table td:nth-child(1){
+  width:30%!important;
+  max-width:30%!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table th:nth-child(2),
+.rms-pro-shell .supplier-products-pricebook-table td:nth-child(2){
+  width:22%!important;
+  max-width:22%!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table th:nth-child(3),
+.rms-pro-shell .supplier-products-pricebook-table td:nth-child(3){
+  width:22%!important;
+  max-width:22%!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table th:nth-child(4),
+.rms-pro-shell .supplier-products-pricebook-table td:nth-child(4){
+  width:17%!important;
+  max-width:17%!important;
+  text-align:left!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table th:nth-child(5),
+.rms-pro-shell .supplier-products-pricebook-table td:nth-child(5){
+  display:table-cell!important;
+  width:42px!important;
+  min-width:42px!important;
+  max-width:42px!important;
+  padding-left:2px!important;
+  padding-right:4px!important;
+  text-align:right!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table td:nth-child(1) b,
+.rms-pro-shell .supplier-products-pricebook-table td:nth-child(2) b,
+.rms-pro-shell .supplier-products-pricebook-table td:nth-child(3) b{
+  display:block!important;
+  max-width:100%!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  white-space:nowrap!important;
+  line-height:1.25!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table td:nth-child(2) .hint,
+.rms-pro-shell .supplier-products-pricebook-table td:nth-child(3) .hint{
+  display:block!important;
+  max-width:100%!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  white-space:nowrap!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table td:nth-child(2) b{
+  font-size:13.5px!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table td:nth-child(2) .hint,
+.rms-pro-shell .supplier-products-pricebook-table td:nth-child(3) .hint{
+  font-size:12px!important;
+}
+.rms-pro-shell .supplier-pricebook-product-meta{
+  display:inline-flex!important;
+  max-width:100%!important;
+  margin-top:5px!important;
+  padding:3px 8px!important;
+  border-radius:999px!important;
+  background:#f1f5f9!important;
+  color:#64748b!important;
+  font-size:10.5px!important;
+  font-weight:900!important;
+  line-height:1.1!important;
+}
+.rms-pro-shell .supplier-products-actions-cell{
+  position:relative!important;
+  overflow:visible!important;
+}
+.rms-pro-shell .supplier-products-menu-shell{
+  position:relative!important;
+  display:flex!important;
+  justify-content:flex-end!important;
+  align-items:center!important;
+  width:100%!important;
+}
+.rms-pro-shell .supplier-products-ellipsis{
+  width:30px!important;
+  min-width:30px!important;
+  max-width:30px!important;
+  height:30px!important;
+  padding:0!important;
+  margin:0!important;
+  border-radius:10px!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  font-size:21px!important;
+  line-height:1!important;
+}
+.rms-pro-shell .supplier-products-action-menu{
+  position:absolute!important;
+  right:0!important;
+  left:auto!important;
+  top:36px!important;
+  width:160px!important;
+  max-width:160px!important;
+  z-index:90!important;
+}
+.rms-pro-shell .supplier-product-price-trend{
+  min-width:76px!important;
+  max-width:110px!important;
+  width:auto!important;
+  height:28px!important;
+  padding:0 8px!important;
+  margin:0!important;
+  font-size:11px!important;
+  white-space:nowrap!important;
+}
+@media(max-width:1200px){
+  .rms-pro-shell .supplier-products-pricebook-table th,
+  .rms-pro-shell .supplier-products-pricebook-table td{
+    padding-left:6px!important;
+    padding-right:6px!important;
+  }
+  .rms-pro-shell .supplier-products-pricebook-table th:nth-child(1),
+  .rms-pro-shell .supplier-products-pricebook-table td:nth-child(1){width:29%!important;max-width:29%!important;}
+  .rms-pro-shell .supplier-products-pricebook-table th:nth-child(2),
+  .rms-pro-shell .supplier-products-pricebook-table td:nth-child(2){width:22%!important;max-width:22%!important;}
+  .rms-pro-shell .supplier-products-pricebook-table th:nth-child(3),
+  .rms-pro-shell .supplier-products-pricebook-table td:nth-child(3){width:22%!important;max-width:22%!important;}
+  .rms-pro-shell .supplier-products-pricebook-table th:nth-child(4),
+  .rms-pro-shell .supplier-products-pricebook-table td:nth-child(4){width:18%!important;max-width:18%!important;}
+  .rms-pro-shell .supplier-products-pricebook-table th:nth-child(5),
+  .rms-pro-shell .supplier-products-pricebook-table td:nth-child(5){width:40px!important;min-width:40px!important;max-width:40px!important;}
+  .rms-pro-shell .supplier-products-ellipsis{
+    width:28px!important;
+    min-width:28px!important;
+    max-width:28px!important;
+    height:28px!important;
+  }
+}
+@media(max-width:980px){
+  .rms-pro-shell .supplier-products-pricebook-table th:nth-child(4),
+  .rms-pro-shell .supplier-products-pricebook-table td:nth-child(4){
+    display:none!important;
+  }
+  .rms-pro-shell .supplier-products-pricebook-table th:nth-child(1),
+  .rms-pro-shell .supplier-products-pricebook-table td:nth-child(1){width:34%!important;max-width:34%!important;}
+  .rms-pro-shell .supplier-products-pricebook-table th:nth-child(2),
+  .rms-pro-shell .supplier-products-pricebook-table td:nth-child(2){width:29%!important;max-width:29%!important;}
+  .rms-pro-shell .supplier-products-pricebook-table th:nth-child(3),
+  .rms-pro-shell .supplier-products-pricebook-table td:nth-child(3){width:28%!important;max-width:28%!important;}
+  .rms-pro-shell .supplier-products-pricebook-table th:nth-child(5),
+  .rms-pro-shell .supplier-products-pricebook-table td:nth-child(5){
+    display:table-cell!important;
+    width:40px!important;
+    min-width:40px!important;
+    max-width:40px!important;
+  }
+}
+`
+    document.head.appendChild(style)
+  }
+}
