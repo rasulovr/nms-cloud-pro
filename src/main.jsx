@@ -14849,6 +14849,175 @@ function RMSProV6Styles() {
 
 
 
+
+/* v334 tighter pricebook table and no-scroll history cards */
+.rms-pro-shell .supplier-products-pricebook-wrap{
+  overflow:visible!important;
+}
+.rms-pro-shell .supplier-products-admin-list table.supplier-products-pricebook-table{
+  min-width:0!important;
+  width:100%!important;
+  table-layout:fixed!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table th:nth-child(1),
+.rms-pro-shell .supplier-products-pricebook-table td:nth-child(1){
+  width:31%!important;
+  min-width:0!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table th:nth-child(2),
+.rms-pro-shell .supplier-products-pricebook-table td:nth-child(2){
+  width:23%!important;
+  min-width:0!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table th:nth-child(3),
+.rms-pro-shell .supplier-products-pricebook-table td:nth-child(3){
+  width:24%!important;
+  min-width:0!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table th:nth-child(4),
+.rms-pro-shell .supplier-products-pricebook-table td:nth-child(4){
+  width:15%!important;
+  min-width:0!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table th:nth-child(5),
+.rms-pro-shell .supplier-products-pricebook-table td:nth-child(5){
+  width:48px!important;
+  min-width:48px!important;
+  max-width:48px!important;
+  padding-left:4px!important;
+  padding-right:4px!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table td:nth-child(2) b,
+.rms-pro-shell .supplier-products-pricebook-table td:nth-child(3){
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table th,
+.rms-pro-shell .supplier-products-pricebook-table td{
+  padding-left:10px!important;
+  padding-right:10px!important;
+}
+.rms-pro-shell .supplier-products-actions-cell{
+  position:relative!important;
+  overflow:visible!important;
+  padding-left:2px!important;
+  padding-right:2px!important;
+}
+.rms-pro-shell .supplier-products-menu-shell{
+  position:relative!important;
+  justify-content:center!important;
+}
+.rms-pro-shell .supplier-products-ellipsis{
+  width:32px!important;
+  min-width:32px!important;
+  height:32px!important;
+  border-radius:11px!important;
+}
+.rms-pro-shell .supplier-products-action-menu{
+  right:0!important;
+  top:36px!important;
+  width:158px!important;
+  transform:translateX(-6px)!important;
+}
+.rms-pro-shell .supplier-product-price-trend{
+  min-width:74px!important;
+  max-width:100%!important;
+  padding:0 8px!important;
+  font-size:11px!important;
+  white-space:nowrap!important;
+}
+.rms-pro-shell .supplier-pricebook-product-meta{
+  max-width:100%!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+}
+.rms-pro-shell .supplier-pricebook-history-card .table-wrap,
+.rms-pro-shell .supplier-product-price-history-list .table-wrap{
+  overflow:visible!important;
+  max-height:none!important;
+}
+.rms-pro-shell .supplier-pricebook-history-cards{
+  display:grid!important;
+  gap:8px!important;
+  max-height:none!important;
+  overflow:visible!important;
+}
+.rms-pro-shell .supplier-pricebook-history-card-row{
+  display:grid!important;
+  grid-template-columns:1.35fr 1fr .8fr 1fr 1.05fr .8fr!important;
+  gap:8px!important;
+  align-items:center!important;
+  padding:10px 12px!important;
+  border:1px solid #e2e8f0!important;
+  border-radius:14px!important;
+  background:#fff!important;
+}
+.rms-pro-shell .supplier-pricebook-history-card-row > div{
+  min-width:0!important;
+}
+.rms-pro-shell .supplier-pricebook-history-card-row span{
+  display:block!important;
+  color:#64748b!important;
+  font-size:10px!important;
+  font-weight:850!important;
+  margin-bottom:3px!important;
+}
+.rms-pro-shell .supplier-pricebook-history-card-row b{
+  display:block!important;
+  color:#0f172a!important;
+  font-size:12px!important;
+  font-weight:950!important;
+  line-height:1.25!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+}
+.rms-pro-shell .supplier-pricebook-history-main b{
+  font-size:13px!important;
+}
+.rms-pro-shell .supplier-pricebook-history-main span{
+  margin:4px 0 0!important;
+  font-size:11px!important;
+}
+.rms-pro-shell .supplier-pricebook-modal-panel .supplier-product-price-history-list{
+  overflow:visible!important;
+}
+@media(max-width:1200px){
+  .rms-pro-shell .supplier-pricebook-history-card-row{
+    grid-template-columns:1.3fr 1fr .8fr 1fr!important;
+  }
+  .rms-pro-shell .supplier-pricebook-history-card-row > div:nth-child(5),
+  .rms-pro-shell .supplier-pricebook-history-card-row > div:nth-child(6){
+    display:none!important;
+  }
+}
+@media(max-width:900px){
+  .rms-pro-shell .supplier-products-pricebook-table th:nth-child(4),
+  .rms-pro-shell .supplier-products-pricebook-table td:nth-child(4){
+    display:none!important;
+  }
+  .rms-pro-shell .supplier-products-pricebook-table th:nth-child(1),
+  .rms-pro-shell .supplier-products-pricebook-table td:nth-child(1){
+    width:37%!important;
+  }
+  .rms-pro-shell .supplier-products-pricebook-table th:nth-child(2),
+  .rms-pro-shell .supplier-products-pricebook-table td:nth-child(2){
+    width:30%!important;
+  }
+  .rms-pro-shell .supplier-products-pricebook-table th:nth-child(3),
+  .rms-pro-shell .supplier-products-pricebook-table td:nth-child(3){
+    width:25%!important;
+  }
+}
+@media(max-width:720px){
+  .rms-pro-shell .supplier-pricebook-history-card-row{
+    grid-template-columns:1fr 1fr!important;
+  }
+  .rms-pro-shell .supplier-pricebook-history-card-row > div:nth-child(5),
+  .rms-pro-shell .supplier-pricebook-history-card-row > div:nth-child(6){
+    display:block!important;
+  }
+}
+
 /* v333 supplier pricebook compact columns */
 .rms-pro-shell .supplier-products-admin-list table.supplier-products-pricebook-table{
   min-width:920px!important;
@@ -28338,7 +28507,7 @@ function Suppliers({ t, isAdmin = false }) {
             <div><b>Прейскурант закупочных цен</b><span>Последняя цена закупа, поставщик, накладная, динамика цены и история закупок.</span></div>
             <em>{supplierProductPriceInfoMap.size} товаров с закупочной историей</em>
           </div>
-          <div className="table-wrap supplier-products-pricebook-wrap"><table className="supplier-products-pricebook-table"><thead><tr><th>Товар</th><th>Последняя цена закупа</th><th>Поставщик / накладная</th><th>Динамика</th><th>Действия</th></tr></thead><tbody>
+          <div className="table-wrap supplier-products-pricebook-wrap"><table className="supplier-products-pricebook-table"><thead><tr><th>Товар</th><th>Цена закупа</th><th>Поставщик</th><th>Динамика</th><th></th></tr></thead><tbody>
             {pagedSupplierProducts.map(product => {
               const editing = editingSupplierProductId === product.id
               const priceInfo = supplierProductPriceInfoMap.get(String(product.id))
@@ -28412,22 +28581,19 @@ function Suppliers({ t, isAdmin = false }) {
                   <b>История закупок</b>
                   <span>{activeSupplierProductPriceModal.priceInfo?.history?.length || 0} записей</span>
                 </div>
-                <div className="table-wrap">
-                  <table>
-                    <thead><tr><th>Дата</th><th>Поставщик</th><th>Накладная</th><th>Филиал</th><th>Кол-во</th><th>Цена</th><th>В базовой ед.</th><th>Сумма</th></tr></thead>
-                    <tbody>
-                      {(activeSupplierProductPriceModal.priceInfo?.history || []).slice(0, 50).map(row => <tr key={row.id}>
-                        <td>{formatDateDMY(row.date) || row.date || '—'}</td>
-                        <td>{row.supplier}</td>
-                        <td>{row.invoice}</td>
-                        <td>{row.branch}</td>
-                        <td>{fmt(row.quantity)} {row.unit}</td>
-                        <td><b>{fmt(row.price)} AZN / {row.unit}</b></td>
-                        <td>{fmt(row.base_unit_price)} AZN / {activeSupplierProductPriceModal.priceInfo?.baseUnit || activeSupplierProductPriceModal.product?.base_unit}</td>
-                        <td>{fmt(row.total_amount)} AZN</td>
-                      </tr>)}
-                    </tbody>
-                  </table>
+                <div className="supplier-pricebook-history-cards">
+                  {(activeSupplierProductPriceModal.priceInfo?.history || []).slice(0, 50).map(row => <div className="supplier-pricebook-history-card-row" key={row.id}>
+                    <div className="supplier-pricebook-history-main">
+                      <b>{formatDateDMY(row.date) || row.date || '—'}</b>
+                      <span>{row.supplier} · {row.branch || '—'}</span>
+                    </div>
+                    <div><span>Накладная</span><b>{row.invoice || '—'}</b></div>
+                    <div><span>Кол-во</span><b>{fmt(row.quantity)} {row.unit}</b></div>
+                    <div><span>Цена</span><b>{fmt(row.price)} AZN / {row.unit}</b></div>
+                    <div><span>База</span><b>{fmt(row.base_unit_price)} AZN / {activeSupplierProductPriceModal.priceInfo?.baseUnit || activeSupplierProductPriceModal.product?.base_unit}</b></div>
+                    <div><span>Сумма</span><b>{fmt(row.total_amount)} AZN</b></div>
+                  </div>)}
+                  {!(activeSupplierProductPriceModal.priceInfo?.history || []).length && <div className="hint">Истории закупок нет.</div>}
                 </div>
               </div>
             </div>
