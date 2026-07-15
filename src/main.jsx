@@ -14848,6 +14848,92 @@ function RMSProV6Styles() {
 }
 
 
+
+/* v333 supplier pricebook compact columns */
+.rms-pro-shell .supplier-products-admin-list table.supplier-products-pricebook-table{
+  min-width:920px!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table th:nth-child(1),
+.rms-pro-shell .supplier-products-pricebook-table td:nth-child(1){
+  width:32%!important;
+  min-width:260px!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table th:nth-child(2),
+.rms-pro-shell .supplier-products-pricebook-table td:nth-child(2){
+  width:22%!important;
+  min-width:190px!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table th:nth-child(3),
+.rms-pro-shell .supplier-products-pricebook-table td:nth-child(3){
+  width:23%!important;
+  min-width:200px!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table th:nth-child(4),
+.rms-pro-shell .supplier-products-pricebook-table td:nth-child(4){
+  width:13%!important;
+  min-width:120px!important;
+}
+.rms-pro-shell .supplier-pricebook-product-cell b{
+  display:inline-block!important;
+  max-width:100%!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  white-space:nowrap!important;
+  vertical-align:bottom!important;
+}
+.rms-pro-shell .supplier-pricebook-product-meta{
+  display:inline-flex!important;
+  align-items:center!important;
+  gap:6px!important;
+  margin-top:5px!important;
+  padding:3px 8px!important;
+  border-radius:999px!important;
+  background:#f1f5f9!important;
+  color:#64748b!important;
+  font-size:11px!important;
+  font-weight:900!important;
+  line-height:1.2!important;
+  white-space:nowrap!important;
+}
+.rms-pro-shell .supplier-pricebook-product-edit{
+  display:grid!important;
+  gap:8px!important;
+}
+.rms-pro-shell .supplier-pricebook-product-edit input{
+  width:100%!important;
+  min-width:0!important;
+  height:36px!important;
+}
+.rms-pro-shell .supplier-pricebook-product-edit > div{
+  display:grid!important;
+  grid-template-columns:1fr 92px!important;
+  gap:8px!important;
+}
+.rms-pro-shell .supplier-pricebook-product-edit select{
+  width:100%!important;
+  min-width:0!important;
+  height:34px!important;
+  padding-left:10px!important;
+  padding-right:24px!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table th,
+.rms-pro-shell .supplier-products-pricebook-table td{
+  padding-left:14px!important;
+  padding-right:14px!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table td{
+  vertical-align:middle!important;
+}
+@media(max-width:980px){
+  .rms-pro-shell .supplier-products-admin-list table.supplier-products-pricebook-table{
+    min-width:820px!important;
+  }
+  .rms-pro-shell .supplier-products-pricebook-table th:nth-child(1),
+  .rms-pro-shell .supplier-products-pricebook-table td:nth-child(1){
+    min-width:220px!important;
+  }
+}
+
 /* v332 supplier pricebook: single toggle + ellipsis row actions */
 .rms-pro-shell .supplier-products-form-footer{
   align-items:center!important;
@@ -28252,7 +28338,7 @@ function Suppliers({ t, isAdmin = false }) {
             <div><b>Прейскурант закупочных цен</b><span>Последняя цена закупа, поставщик, накладная, динамика цены и история закупок.</span></div>
             <em>{supplierProductPriceInfoMap.size} товаров с закупочной историей</em>
           </div>
-          <div className="table-wrap supplier-products-pricebook-wrap"><table className="supplier-products-pricebook-table"><thead><tr><th>Товар</th><th>Тип</th><th>Базовая ед.</th><th>Последняя цена закупа</th><th>Поставщик / накладная</th><th>Динамика</th><th>Действия</th></tr></thead><tbody>
+          <div className="table-wrap supplier-products-pricebook-wrap"><table className="supplier-products-pricebook-table"><thead><tr><th>Товар</th><th>Последняя цена закупа</th><th>Поставщик / накладная</th><th>Динамика</th><th>Действия</th></tr></thead><tbody>
             {pagedSupplierProducts.map(product => {
               const editing = editingSupplierProductId === product.id
               const priceInfo = supplierProductPriceInfoMap.get(String(product.id))
@@ -28262,9 +28348,7 @@ function Suppliers({ t, isAdmin = false }) {
               const trendClass = !previous ? 'neutral' : change > 0 ? 'up' : change < 0 ? 'down' : 'same'
               const detailOpen = supplierProductPriceDetailId === product.id
               return <tr key={product.id} className={detailOpen ? 'supplier-product-price-open-row' : ''}>
-                  <td>{editing ? <input value={supplierProductEditForm.name} onChange={e => setSupplierProductEditForm({...supplierProductEditForm, name:e.target.value})} /> : <b>{product.name}</b>}</td>
-                  <td>{editing ? <select value={supplierProductEditForm.category} onChange={e => setSupplierProductEditForm({...supplierProductEditForm, category:e.target.value})}>{PRODUCT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select> : product.category}</td>
-                  <td>{editing ? <select value={supplierProductEditForm.base_unit} onChange={e => setSupplierProductEditForm({...supplierProductEditForm, base_unit:e.target.value})}>{BASE_UNITS.map(u => <option key={u.value} value={u.value}>{u.label}</option>)}</select> : product.base_unit}</td>
+                  <td className="supplier-pricebook-product-cell">{editing ? <div className="supplier-pricebook-product-edit"><input value={supplierProductEditForm.name} onChange={e => setSupplierProductEditForm({...supplierProductEditForm, name:e.target.value})} /><div><select value={supplierProductEditForm.category} onChange={e => setSupplierProductEditForm({...supplierProductEditForm, category:e.target.value})}>{PRODUCT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select><select value={supplierProductEditForm.base_unit} onChange={e => setSupplierProductEditForm({...supplierProductEditForm, base_unit:e.target.value})}>{BASE_UNITS.map(u => <option key={u.value} value={u.value}>{u.label}</option>)}</select></div></div> : <><b>{product.name}</b><br /><span className="supplier-pricebook-product-meta">{product.category || '—'} · {product.base_unit || 'unit'}</span></>}</td>
                   <td>{latest ? <><b>{fmt(latest.price)} AZN / {latest.unit}</b><br /><span className="hint">≈ {fmt(latest.base_unit_price)} AZN / {priceInfo.baseUnit || product.base_unit}</span></> : <span className="hint">нет закупок</span>}</td>
                   <td>{latest ? <>{latest.supplier}<br /><span className="hint">{formatDateDMY(latest.date)} · {latest.invoice}</span></> : <span className="hint">—</span>}</td>
                   <td>{latest ? <span className={`supplier-product-price-trend ${trendClass}`}>{previous ? `${change > 0 ? '↑' : change < 0 ? '↓' : '→'} ${pct(Math.abs(change))}` : 'первая цена'}</span> : <span className="hint">—</span>}</td>
@@ -28278,7 +28362,7 @@ function Suppliers({ t, isAdmin = false }) {
                   </div>}</td>
                 </tr>
             })}
-            {!filteredSupplierProducts.length && <tr><td colSpan="7" className="hint">Товары не найдены</td></tr>}
+            {!filteredSupplierProducts.length && <tr><td colSpan="5" className="hint">Товары не найдены</td></tr>}
           </tbody></table></div>
           <div className="supplier-products-pagination"><span className="hint">Показано {filteredSupplierProducts.length ? (safeSupplierProductsPage - 1) * supplierProductsPageSize + 1 : 0}–{Math.min(safeSupplierProductsPage * supplierProductsPageSize, filteredSupplierProducts.length)} из {filteredSupplierProducts.length}</span><div className="action-row"><button className="ghost small" disabled={safeSupplierProductsPage <= 1} onClick={() => setSupplierProductsPage(p => Math.max(1, p - 1))}>← Пред.</button><span className="hint">Страница {safeSupplierProductsPage} / {supplierProductsPageCount}</span><button className="ghost small" disabled={safeSupplierProductsPage >= supplierProductsPageCount} onClick={() => setSupplierProductsPage(p => Math.min(supplierProductsPageCount, p + 1))}>След. →</button></div></div>
         </div>}
