@@ -14847,6 +14847,123 @@ function RMSProV6Styles() {
   }
 }
 
+
+/* v332 supplier pricebook: single toggle + ellipsis row actions */
+.rms-pro-shell .supplier-products-form-footer{
+  align-items:center!important;
+}
+.rms-pro-shell .supplier-products-toggle{
+  min-width:220px!important;
+  white-space:nowrap!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table th:last-child,
+.rms-pro-shell .supplier-products-pricebook-table td:last-child{
+  width:78px!important;
+  min-width:78px!important;
+  max-width:78px!important;
+}
+.rms-pro-shell .supplier-products-actions-cell{
+  position:relative!important;
+  overflow:visible!important;
+  padding-left:6px!important;
+  padding-right:10px!important;
+  text-align:right!important;
+}
+.rms-pro-shell .supplier-products-menu-shell{
+  position:relative!important;
+  display:flex!important;
+  justify-content:flex-end!important;
+}
+.rms-pro-shell .supplier-products-ellipsis{
+  width:34px!important;
+  min-width:34px!important;
+  height:34px!important;
+  padding:0!important;
+  border-radius:12px!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  font-size:24px!important;
+  line-height:1!important;
+  font-weight:950!important;
+  color:#334155!important;
+  background:#f8fafc!important;
+}
+.rms-pro-shell .supplier-products-ellipsis.is-open{
+  color:#1d4ed8!important;
+  border-color:#bfdbfe!important;
+  background:#eff6ff!important;
+}
+.rms-pro-shell .supplier-products-action-menu{
+  position:absolute!important;
+  right:0!important;
+  top:40px!important;
+  z-index:50!important;
+  width:188px!important;
+  padding:8px!important;
+  border:1px solid #e2e8f0!important;
+  border-radius:16px!important;
+  background:#fff!important;
+  box-shadow:0 18px 48px rgba(15,23,42,.18)!important;
+  display:grid!important;
+  gap:4px!important;
+  text-align:left!important;
+}
+.rms-pro-shell .supplier-products-action-menu button{
+  width:100%!important;
+  height:36px!important;
+  padding:0 12px!important;
+  border:0!important;
+  border-radius:11px!important;
+  background:transparent!important;
+  color:#0f172a!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:flex-start!important;
+  font-size:13px!important;
+  font-weight:850!important;
+  cursor:pointer!important;
+}
+.rms-pro-shell .supplier-products-action-menu button:hover{
+  background:#f1f5f9!important;
+}
+.rms-pro-shell .supplier-products-action-menu button:disabled{
+  opacity:.45!important;
+  cursor:not-allowed!important;
+}
+.rms-pro-shell .supplier-products-action-menu button.danger{
+  color:#b91c1c!important;
+}
+.rms-pro-shell .supplier-products-action-menu button.danger:hover{
+  background:#fff1f2!important;
+}
+.rms-pro-shell .supplier-products-edit-actions{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:flex-end!important;
+  gap:6px!important;
+}
+.rms-pro-shell .supplier-products-edit-actions button{
+  min-width:34px!important;
+  height:34px!important;
+  padding:0 10px!important;
+}
+.rms-pro-shell .supplier-products-pricebook-note{
+  margin-top:14px!important;
+}
+.rms-pro-shell .supplier-products-pricebook-note span{
+  max-width:720px!important;
+}
+@media(max-width:900px){
+  .rms-pro-shell .supplier-products-form-footer{
+    align-items:stretch!important;
+    flex-direction:column!important;
+  }
+  .rms-pro-shell .supplier-products-toggle{
+    width:100%!important;
+  }
+}
+
 /* v329 visible supplier pricebook entry */
 .rms-pro-shell .supplier-pricebook-visibility-banner{
   display:flex!important;
@@ -25709,6 +25826,7 @@ function Suppliers({ t, isAdmin = false }) {
   const [supplierProductsPageSize, setSupplierProductsPageSize] = useState(10)
   const [supplierProductsPage, setSupplierProductsPage] = useState(1)
   const [supplierProductPriceDetailId, setSupplierProductPriceDetailId] = useState('')
+  const [supplierProductActionMenuId, setSupplierProductActionMenuId] = useState('')
   const [editingSupplierProductId, setEditingSupplierProductId] = useState('')
   const [supplierProductEditForm, setSupplierProductEditForm] = useState({ name: '', category: PRODUCT_CATEGORIES[0], base_unit: 'g' })
   const [purchaseForm, setPurchaseForm] = useState({ supplier_id: '', legal_entity_id: '', branch_id: '', purchase_date: todayISO(), invoice_number: '', e_invoice_number: '', e_invoice_date: '', e_invoice_amount: '', comment: '', amount_only: false, manual_amount: '' })
@@ -28123,14 +28241,7 @@ function Suppliers({ t, isAdmin = false }) {
         <div className="form-grid compact"><label><span>Товар</span><input value={productForm.name} onChange={e => { setProductForm({...productForm, name: e.target.value}); setProductMessage('') }} /></label><label><span>Тип</span><select value={productForm.category} onChange={e => setProductForm({...productForm, category: e.target.value})}>{PRODUCT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select></label><label><span>Базовая ед. для техкарты</span><select value={productForm.base_unit} onChange={e => setProductForm({...productForm, base_unit: e.target.value})}>{BASE_UNITS.map(u => <option key={u.value} value={u.value}>{u.label}</option>)}</select></label></div>
         <div className="supplier-products-form-footer">
           <div className="supplier-form-footer"><div className="supplier-form-footer-status">{productMessage && <span className={`rms-inline-operation-status ${rmsInferToastType(productMessage)}`}>{productMessage}</span>}</div><button className="small supplier-save-action supplier-add-accent" onClick={addProductFromForm}>+ Добавить товар</button></div>
-          <button className={`small supplier-products-toggle ${showSupplierProducts ? 'is-open' : ''}`} onClick={() => { setShowSupplierProducts(v => !v); setSupplierProductsPage(1) }}>{showSupplierProducts ? 'Скрыть товары / прейскурант' : `Показать товары / прейскурант · ${filteredSupplierProducts.length}`}</button>
-        </div>
-        <div className="supplier-pricebook-visibility-banner">
-          <div>
-            <b>Прейскурант закупочных цен</b>
-            <span>Откройте список товаров: там есть последняя цена закупа, поставщик, накладная, динамика цены, график и история закупок.</span>
-          </div>
-          <button className="ghost small" type="button" onClick={() => setShowSupplierProducts(true)}>Открыть прейскурант</button>
+          <button className={`small supplier-products-toggle ${showSupplierProducts ? 'is-open' : ''}`} onClick={() => { setShowSupplierProducts(v => !v); setSupplierProductsPage(1) }}>{showSupplierProducts ? 'Скрыть прейскурант' : `Показать прейскурант · ${filteredSupplierProducts.length}`}</button>
         </div>
         {showSupplierProducts && <div className="supplier-products-admin-list">
           <div className="supplier-products-toolbar">
@@ -28138,7 +28249,7 @@ function Suppliers({ t, isAdmin = false }) {
             <label><span>Показать</span><select value={supplierProductsPageSize} onChange={e => { setSupplierProductsPageSize(Number(e.target.value)); setSupplierProductsPage(1) }}><option value={10}>10</option><option value={20}>20</option><option value={50}>50</option><option value={100}>100</option></select></label>
           </div>
           <div className="supplier-products-pricebook-note">
-            <div><b>Прейскурант закупочных цен</b><span>Это не отдельное меню: прейскурант находится прямо в списке товаров. Кнопка «Цены» открывает график и список закупок.</span></div>
+            <div><b>Прейскурант закупочных цен</b><span>Последняя цена закупа, поставщик, накладная, динамика цены и история закупок.</span></div>
             <em>{supplierProductPriceInfoMap.size} товаров с закупочной историей</em>
           </div>
           <div className="table-wrap supplier-products-pricebook-wrap"><table className="supplier-products-pricebook-table"><thead><tr><th>Товар</th><th>Тип</th><th>Базовая ед.</th><th>Последняя цена закупа</th><th>Поставщик / накладная</th><th>Динамика</th><th>Действия</th></tr></thead><tbody>
@@ -28157,7 +28268,14 @@ function Suppliers({ t, isAdmin = false }) {
                   <td>{latest ? <><b>{fmt(latest.price)} AZN / {latest.unit}</b><br /><span className="hint">≈ {fmt(latest.base_unit_price)} AZN / {priceInfo.baseUnit || product.base_unit}</span></> : <span className="hint">нет закупок</span>}</td>
                   <td>{latest ? <>{latest.supplier}<br /><span className="hint">{formatDateDMY(latest.date)} · {latest.invoice}</span></> : <span className="hint">—</span>}</td>
                   <td>{latest ? <span className={`supplier-product-price-trend ${trendClass}`}>{previous ? `${change > 0 ? '↑' : change < 0 ? '↓' : '→'} ${pct(Math.abs(change))}` : 'первая цена'}</span> : <span className="hint">—</span>}</td>
-                  <td><div className="action-row">{editing ? <><button className="small primary" onClick={() => saveSupplierProduct(product)}>Сохранить</button><button className="ghost small" onClick={() => setEditingSupplierProductId('')}>Отмена</button></> : <><button className="small" onClick={() => startEditSupplierProduct(product)}>Редактировать</button><button className={`ghost small ${detailOpen ? 'supplier-pricebook-open-btn' : ''}`} disabled={!priceInfo?.history?.length} onClick={() => setSupplierProductPriceDetailId(product.id)}>{detailOpen ? 'Открыто' : 'Цены'}</button><button className="small remove" onClick={() => deleteSupplierProduct(product)}>Удалить</button></>}</div></td>
+                  <td className="supplier-products-actions-cell">{editing ? <div className="supplier-products-edit-actions"><button className="small primary" onClick={() => saveSupplierProduct(product)}>OK</button><button className="ghost small" onClick={() => setEditingSupplierProductId('')}>×</button></div> : <div className="supplier-products-menu-shell">
+                    <button className={`ghost small supplier-products-ellipsis ${supplierProductActionMenuId === product.id ? 'is-open' : ''}`} type="button" title="Действия" aria-label="Действия" onClick={() => setSupplierProductActionMenuId(id => id === product.id ? '' : product.id)}>…</button>
+                    {supplierProductActionMenuId === product.id && <div className="supplier-products-action-menu">
+                      <button type="button" onClick={() => { setSupplierProductActionMenuId(''); startEditSupplierProduct(product) }}>Редактировать</button>
+                      <button type="button" disabled={!priceInfo?.history?.length} onClick={() => { setSupplierProductActionMenuId(''); setSupplierProductPriceDetailId(product.id) }}>Цены</button>
+                      <button type="button" className="danger" onClick={() => { setSupplierProductActionMenuId(''); deleteSupplierProduct(product) }}>Удалить</button>
+                    </div>}
+                  </div>}</td>
                 </tr>
             })}
             {!filteredSupplierProducts.length && <tr><td colSpan="7" className="hint">Товары не найдены</td></tr>}
