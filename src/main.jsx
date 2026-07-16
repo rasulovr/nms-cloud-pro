@@ -26112,14 +26112,47 @@ function Advances({ t }) {
 
 
 function SupplierProductPriceHistoryChart({ history = [], baseUnit = '' }) {
-  const rows = [...(history || [])]
+  const sourceRows = [...(history || [])]
     .filter(r => parseNum(r.base_unit_price || r.price) > 0)
     .sort((a, b) => String(a.date || a.createdAt || '').localeCompare(String(b.date || b.createdAt || '')))
-    .slice(-12)
 
-  if (!rows.length) {
+  if (!sourceRows.length) {
     return <div className="supplier-product-price-chart-empty">Нет данных для графика</div>
   }
+
+  const firstDate = sourceRows[0]?.date || sourceRows[0]?.createdAt || ''
+  const lastDate = sourceRows[sourceRows.length - 1]?.date || sourceRows[sourceRows.length - 1]?.createdAt || ''
+  const firstMs = firstDate ? new Date(firstDate).getTime() : 0
+  const lastMs = lastDate ? new Date(lastDate).getTime() : 0
+  const daysSpan = firstMs && lastMs ? Math.max(0, (lastMs - firstMs) / 86400000) : 0
+  const useMonthly = sourceRows.length > 18 || daysSpan > 62
+
+  const rows = useMonthly
+    ? (() => {
+        const byMonth = new Map()
+        sourceRows.forEach(r => {
+          const rawDate = r.date || r.createdAt || ''
+          const key = String(rawDate).slice(0, 7) || '—'
+          const prev = byMonth.get(key) || { key, date: `${key}-01`, total: 0, count: 0, last: r }
+          prev.total += parseNum(r.base_unit_price || r.price)
+          prev.count += 1
+          prev.last = r
+          byMonth.set(key, prev)
+        })
+        return Array.from(byMonth.values()).map(row => ({
+          ...row.last,
+          date: row.date,
+          periodLabel: row.key,
+          value: row.count ? row.total / row.count : parseNum(row.last?.base_unit_price || row.last?.price),
+          count: row.count,
+        }))
+      })()
+    : sourceRows.map(r => ({
+        ...r,
+        periodLabel: formatDateDMY(r.date) || r.date || '—',
+        value: parseNum(r.base_unit_price || r.price),
+        count: 1,
+      }))
 
   const width = 760
   const height = 280
@@ -26127,7 +26160,7 @@ function SupplierProductPriceHistoryChart({ history = [], baseUnit = '' }) {
   const padRight = 34
   const padTop = 42
   const padBottom = 48
-  const values = rows.map(r => parseNum(r.base_unit_price || r.price))
+  const values = rows.map(r => parseNum(r.value || r.base_unit_price || r.price))
   const minValueRaw = Math.min(...values)
   const maxValueRaw = Math.max(...values)
   const allSame = Math.abs(maxValueRaw - minValueRaw) < 0.00001
@@ -26139,7 +26172,7 @@ function SupplierProductPriceHistoryChart({ history = [], baseUnit = '' }) {
   const chartW = width - padLeft - padRight
 
   const points = rows.map((r, idx) => {
-    const value = parseNum(r.base_unit_price || r.price)
+    const value = parseNum(r.value || r.base_unit_price || r.price)
     const x = rows.length === 1 ? padLeft + chartW / 2 : padLeft + (idx / Math.max(1, rows.length - 1)) * chartW
     const y = padTop + (1 - ((value - minValue) / spread)) * chartH
     return { ...r, value, x, y }
@@ -26152,9 +26185,14 @@ function SupplierProductPriceHistoryChart({ history = [], baseUnit = '' }) {
     return { value, y }
   })
 
+  const showEveryLabel = points.length <= 8 ? 1 : Math.ceil(points.length / 8)
+
   return <div className="supplier-product-price-chart">
     <div className="supplier-product-price-chart-head">
-      <div><b>График закупочной цены</b><span>Цена приведена к базовой единице: {baseUnit || 'ед.'}</span></div>
+      <div>
+        <b>{useMonthly ? 'Помесячный график закупочной цены' : 'График закупочной цены'}</b>
+        <span>{useMonthly ? 'Много записей: показана средняя цена по месяцам за весь период.' : 'Цена приведена к базовой единице.'} Базовая единица: {baseUnit || 'ед.'}</span>
+      </div>
       <strong>{fmt(points[points.length - 1]?.value)} AZN / {baseUnit || 'ед.'}</strong>
     </div>
     <svg viewBox={`0 0 ${width} ${height}`} className="supplier-product-price-svg" aria-hidden="true">
@@ -26172,16 +26210,17 @@ function SupplierProductPriceHistoryChart({ history = [], baseUnit = '' }) {
       {points.length > 1 ? <path d={path} className="supplier-product-price-line" /> : null}
       {points.map((p, idx) => {
         const labelY = Math.max(18, p.y - 14)
+        const showAxis = idx === 0 || idx === points.length - 1 || idx % showEveryLabel === 0
+        const axisLabel = useMonthly ? String(p.periodLabel || '').replace('-', '/') : (formatDateDMY(p.date) || p.date || '—')
         return <g key={`${p.date}-${idx}`}>
           <circle cx={p.x} cy={p.y} r="5.5" className="supplier-product-price-dot" />
-          <text x={p.x} y={labelY} textAnchor="middle" className="supplier-product-price-value-label">{fmt(p.value)}</text>
-          {(idx === 0 || idx === points.length - 1 || rows.length <= 6) && <text x={p.x} y={height - 18} textAnchor="middle" className="supplier-product-price-axis-label">{formatDateDMY(p.date) || p.date || '—'}</text>}
+          {(points.length <= 14 || idx === 0 || idx === points.length - 1 || idx % showEveryLabel === 0) && <text x={p.x} y={labelY} textAnchor="middle" className="supplier-product-price-value-label">{fmt(p.value)}</text>}
+          {showAxis && <text x={p.x} y={height - 18} textAnchor="middle" className="supplier-product-price-axis-label">{axisLabel}</text>}
         </g>
       })}
     </svg>
   </div>
 }
-
 
 function Suppliers({ t, isAdmin = false }) {
   const isAzInterface = t('language_label') === 'İnterfeys dili'
@@ -39251,5 +39290,225 @@ if (typeof document !== 'undefined') {
 }
 `;
     document.head.appendChild(style);
+  }
+}
+
+
+/* v343 final supplier products fit: same table, tighter spacing, full-width alignment */
+if (typeof document !== 'undefined') {
+  const STYLE_ID = 'rms-v343-supplier-products-fit-full-period'
+  if (!document.getElementById(STYLE_ID)) {
+    const style = document.createElement('style')
+    style.id = STYLE_ID
+    style.textContent = `
+.rms-pro-shell .supplier-products-admin-list{
+  width:100%!important;
+  max-width:100%!important;
+  min-width:0!important;
+  box-sizing:border-box!important;
+}
+.rms-pro-shell .supplier-products-admin-list > *,
+.rms-pro-shell .supplier-products-toolbar,
+.rms-pro-shell .supplier-products-pricebook-note,
+.rms-pro-shell .supplier-products-pricebook-wrap,
+.rms-pro-shell .supplier-products-pagination{
+  width:100%!important;
+  max-width:100%!important;
+  min-width:0!important;
+  box-sizing:border-box!important;
+}
+.rms-pro-shell .supplier-products-toolbar{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) 150px!important;
+  gap:10px!important;
+  align-items:end!important;
+}
+.rms-pro-shell .supplier-products-toolbar label{
+  min-width:0!important;
+  margin:0!important;
+}
+.rms-pro-shell .supplier-products-toolbar input,
+.rms-pro-shell .supplier-products-toolbar select{
+  width:100%!important;
+  min-width:0!important;
+  box-sizing:border-box!important;
+}
+.rms-pro-shell .supplier-products-pricebook-wrap{
+  overflow:visible!important;
+}
+.rms-pro-shell .supplier-products-admin-list table.supplier-products-pricebook-table,
+.rms-pro-shell table.supplier-products-pricebook-table{
+  display:table!important;
+  width:100%!important;
+  max-width:100%!important;
+  min-width:0!important;
+  table-layout:fixed!important;
+  border-collapse:separate!important;
+  border-spacing:0!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table thead{display:table-header-group!important;}
+.rms-pro-shell .supplier-products-pricebook-table tbody{display:table-row-group!important;}
+.rms-pro-shell .supplier-products-pricebook-table tr{display:table-row!important;}
+.rms-pro-shell .supplier-products-pricebook-table th,
+.rms-pro-shell .supplier-products-pricebook-table td{
+  display:table-cell!important;
+  box-sizing:border-box!important;
+  padding:8px 4px!important;
+  vertical-align:middle!important;
+  border-bottom:1px solid #e5e7eb!important;
+  min-width:0!important;
+  overflow:visible!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table th{
+  font-size:10.5px!important;
+  line-height:1.05!important;
+  letter-spacing:.015em!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table td{
+  font-size:12.5px!important;
+  line-height:1.15!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table th:nth-child(1),
+.rms-pro-shell .supplier-products-pricebook-table td:nth-child(1){
+  width:35%!important;
+  max-width:35%!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table th:nth-child(2),
+.rms-pro-shell .supplier-products-pricebook-table td:nth-child(2){
+  width:23%!important;
+  max-width:23%!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table th:nth-child(3),
+.rms-pro-shell .supplier-products-pricebook-table td:nth-child(3){
+  width:20%!important;
+  max-width:20%!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table th:nth-child(4),
+.rms-pro-shell .supplier-products-pricebook-table td:nth-child(4){
+  width:16%!important;
+  max-width:16%!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table th:nth-child(5),
+.rms-pro-shell .supplier-products-pricebook-table td:nth-child(5){
+  width:40px!important;
+  min-width:40px!important;
+  max-width:40px!important;
+  padding-left:0!important;
+  padding-right:2px!important;
+  text-align:right!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table td:nth-child(1) b,
+.rms-pro-shell .supplier-products-pricebook-table td:nth-child(2) b,
+.rms-pro-shell .supplier-products-pricebook-table td:nth-child(3) b,
+.rms-pro-shell .supplier-products-pricebook-table td:nth-child(2) .hint,
+.rms-pro-shell .supplier-products-pricebook-table td:nth-child(3) .hint{
+  display:block!important;
+  max-width:100%!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table td:nth-child(1) b,
+.rms-pro-shell .supplier-products-pricebook-table td:nth-child(2) b{
+  white-space:nowrap!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table td:nth-child(3) b,
+.rms-pro-shell .supplier-products-pricebook-table td:nth-child(3) .hint{
+  white-space:normal!important;
+  word-break:break-word!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table td:nth-child(2) b{
+  font-size:12.2px!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table td:nth-child(2) .hint,
+.rms-pro-shell .supplier-products-pricebook-table td:nth-child(3) .hint{
+  font-size:10.8px!important;
+  margin-top:3px!important;
+}
+.rms-pro-shell .supplier-pricebook-product-meta{
+  margin-top:4px!important;
+  padding:2px 6px!important;
+  font-size:9.8px!important;
+  line-height:1.05!important;
+  max-width:100%!important;
+}
+.rms-pro-shell .supplier-product-price-trend{
+  min-width:0!important;
+  max-width:100%!important;
+  width:auto!important;
+  height:26px!important;
+  padding:0 6px!important;
+  font-size:10.5px!important;
+  border-radius:999px!important;
+  white-space:nowrap!important;
+}
+.rms-pro-shell .supplier-products-actions-cell,
+.rms-pro-shell .supplier-products-menu-shell{
+  position:relative!important;
+  overflow:visible!important;
+}
+.rms-pro-shell .supplier-products-menu-shell{
+  display:flex!important;
+  justify-content:flex-end!important;
+  align-items:center!important;
+  width:100%!important;
+}
+.rms-pro-shell .supplier-products-ellipsis{
+  width:28px!important;
+  min-width:28px!important;
+  max-width:28px!important;
+  height:28px!important;
+  padding:0!important;
+  margin:0!important;
+  border-radius:10px!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  font-size:19px!important;
+  line-height:1!important;
+}
+.rms-pro-shell .supplier-products-action-menu{
+  position:absolute!important;
+  right:0!important;
+  left:auto!important;
+  top:32px!important;
+  width:168px!important;
+  z-index:100!important;
+}
+@media (max-width:1180px){
+  .rms-pro-shell .supplier-products-pricebook-table th,
+  .rms-pro-shell .supplier-products-pricebook-table td{
+    padding-left:3px!important;
+    padding-right:3px!important;
+  }
+  .rms-pro-shell .supplier-products-pricebook-table th:nth-child(1),
+  .rms-pro-shell .supplier-products-pricebook-table td:nth-child(1){width:34%!important;max-width:34%!important;}
+  .rms-pro-shell .supplier-products-pricebook-table th:nth-child(2),
+  .rms-pro-shell .supplier-products-pricebook-table td:nth-child(2){width:23%!important;max-width:23%!important;}
+  .rms-pro-shell .supplier-products-pricebook-table th:nth-child(3),
+  .rms-pro-shell .supplier-products-pricebook-table td:nth-child(3){width:20%!important;max-width:20%!important;}
+  .rms-pro-shell .supplier-products-pricebook-table th:nth-child(4),
+  .rms-pro-shell .supplier-products-pricebook-table td:nth-child(4){width:17%!important;max-width:17%!important;}
+  .rms-pro-shell .supplier-products-pricebook-table th:nth-child(5),
+  .rms-pro-shell .supplier-products-pricebook-table td:nth-child(5){width:38px!important;min-width:38px!important;max-width:38px!important;}
+}
+@media (max-width:980px){
+  .rms-pro-shell .supplier-products-toolbar{
+    grid-template-columns:minmax(0,1fr) 126px!important;
+  }
+  .rms-pro-shell .supplier-products-pricebook-table th:nth-child(4),
+  .rms-pro-shell .supplier-products-pricebook-table td:nth-child(4){
+    display:none!important;
+  }
+  .rms-pro-shell .supplier-products-pricebook-table th:nth-child(1),
+  .rms-pro-shell .supplier-products-pricebook-table td:nth-child(1){width:40%!important;max-width:40%!important;}
+  .rms-pro-shell .supplier-products-pricebook-table th:nth-child(2),
+  .rms-pro-shell .supplier-products-pricebook-table td:nth-child(2){width:28%!important;max-width:28%!important;}
+  .rms-pro-shell .supplier-products-pricebook-table th:nth-child(3),
+  .rms-pro-shell .supplier-products-pricebook-table td:nth-child(3){width:24%!important;max-width:24%!important;}
+  .rms-pro-shell .supplier-products-pricebook-table th:nth-child(5),
+  .rms-pro-shell .supplier-products-pricebook-table td:nth-child(5){width:38px!important;min-width:38px!important;max-width:38px!important;}
+}
+`
+    document.head.appendChild(style)
   }
 }
