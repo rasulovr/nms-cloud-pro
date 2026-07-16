@@ -4188,7 +4188,6 @@ const RMS_AZ_EXTRA_TRANSLATIONS = {
   'Сохранить': 'Yadda saxla',
   'Сохранено': 'Yadda saxlanıldı',
   'Отмена': 'Ləğv et',
-  'Обновить': 'Yenilə',
   'Загрузка...': 'Yüklənir...',
   'Загрузка…': 'Yüklənir…',
   'Проверка…': 'Yoxlanılır…',
@@ -4227,7 +4226,6 @@ const RMS_AZ_EXTRA_TRANSLATIONS = {
   'Товар': 'Məhsul',
   'Номенклатура': 'Nomenklatura',
   'Блюдо': 'Yemək',
-  'Поставщик': 'Təchizatçı',
   'Поставщики': 'Təchizatçılar',
   'Долги и оплаты': 'Borclar və ödənişlər',
   'Оплата': 'Ödəniş',
@@ -4258,7 +4256,6 @@ const RMS_AZ_EXTRA_TRANSLATIONS = {
   'Филиал прибыльный': 'Filial gəlirlidir',
   'Филиал в убытке': 'Filial zərərlə işləyir',
   'Чистая прибыль': 'Xalis mənfəət',
-  'Валовая прибыль': 'Ümumi mənfəət',
   'Расходы': 'Xərclər',
   'Налог': 'Vergi',
   'Налог %': 'Vergi %',
@@ -4332,27 +4329,22 @@ const RMS_AZ_EXTRA_TRANSLATIONS = {
   'средняя маржа': 'orta marja',
   'Актив': 'Aktiv',
   'Неактивные': 'Qeyri-aktiv',
-  'Экспорт': 'İxrac',
   'Импорт': 'İdxal',
   'Новая тех. карта': 'Yeni texnoloji kart',
   'Все категории': 'Bütün kateqoriyalar',
   'Поиск': 'Axtarış',
   'Поиск по названию или категории...': 'Ad və ya kateqoriya üzrə axtarış...',
-  'Показать': 'Göstər',
   'Блюдо / Напиток': 'Yemək / İçki',
   'Себестоимость': 'Maya dəyəri',
   'Цена продажи': 'Satış qiyməti',
   'Маржа': 'Marja',
-  'Статус': 'Status',
   'Нет состава': 'Tərkib yoxdur',
   'Нет цены': 'Qiymət yoxdur',
   'Нет себест.': 'Maya dəyəri yoxdur',
   'FC выше нормы': 'FC normadan yüksəkdir',
   'ОК': 'Normal',
   'Просмотр': 'Baxış',
-  'Редактировать': 'Redaktə et',
   'Изменить': 'Dəyişdir',
-  'Печать': 'Çap',
   'Просмотр тех. карты выбранного блюда.': 'Seçilmiş yeməyin texnoloji kartına baxış.',
   'Создать / редактировать блюдо': 'Yemək yarat / redaktə et',
   'Создайте позицию меню или выберите существующую, затем добавьте компоненты тех. карты.': 'Menyu mövqeyi yaradın və ya mövcud mövqeyi seçin, sonra texnoloji kartın komponentlərini əlavə edin.',
@@ -4367,7 +4359,6 @@ const RMS_AZ_EXTRA_TRANSLATIONS = {
   'Название или категория': 'Ad və ya kateqoriya',
   'Добавить компонент в тех. карту': 'Texnoloji karta komponent əlavə et',
   'Компонентом может быть полуфабрикат, товар из закупок или ручной ингредиент.': 'Komponent yarımfabrikat, satınalma məhsulu və ya əl ilə əlavə edilmiş inqrediyent ola bilər.',
-  'Тип': 'Növ',
   'Полуфабрикат': 'Yarımfabrikat',
   'Потери %': 'İtki %',
   '+ Добавить компонент': '+ Komponent əlavə et',
@@ -4454,7 +4445,6 @@ const RMS_AZ_EXTRA_TRANSLATIONS = {
   'Комментарий к стартовому долгу': 'Başlanğıc borca şərh',
   'Например: остаток на 01.05': 'Məsələn: 01.05 tarixinə qalıq',
   '+ Добавить поставщика': '+ Təchizatçı əlavə et',
-  'Только admin': 'Yalnız admin',
   'Товары': 'Məhsullar',
   'Товар создаётся один раз и потом выбирается в поступлении и в техкарте.': 'Məhsul bir dəfə yaradılır, sonra daxilolmada və texnoloji kartda seçilir.',
   'Тип': 'Növ',
@@ -4476,8 +4466,6 @@ const RMS_AZ_EXTRA_TRANSLATIONS = {
   '№ прихода': 'Daxilolma №-si',
   'Сбросить': 'Sıfırla',
   'Не оплачено': 'Ödənilməyib',
-  'Пред.': 'Əvvəlki',
-  'След.': 'Növbəti',
   'Создать полуфабрикат / заготовку': 'Yarımfabrikat / hazırlıq yarat',
   '+ Создать': '+ Yarat',
   'Шаблон Брауни': 'Brauni şablonu',
@@ -4538,7 +4526,6 @@ const RMS_AZ_EXTRA_TRANSLATIONS = {
   ,'Акт': 'Akt'
   ,'Итого по VOEN': 'VÖEN üzrə cəmi'
   ,'Поступления + стартовый долг − оплаты': 'Daxilolmalar + başlanğıc borc − ödənişlər'
-  ,'Показать все': 'Hamısını göstər'
   ,'Скрыть': 'Gizlət'
   ,'Нет поставщиков по этому VOEN': 'Bu VÖEN üzrə təchizatçı yoxdur'
   ,'Просрочка и лимиты': 'Gecikmələr və limitlər'
@@ -4561,8 +4548,6 @@ const RMS_AZ_EXTRA_TRANSLATIONS = {
   ,'Баланс': 'Balans'
   ,'Оплата одной суммой по нескольким e-qaimə': 'Bir neçə e-qaimə üzrə vahid məbləğlə ödəniş'
   ,'Поступление введено общей суммой без детализации товаров': 'Daxilolma məhsullar üzrə detallandırılmadan ümumi məbləğlə daxil edilib'
-  ,'Пред.': 'Əvvəlki'
-  ,'След.': 'Növbəti'
   ,'Только admin': 'Yalnız admin'
   ,'Поступления и оплаты показаны отдельно, чтобы не смешивать операции.': 'Əməliyyatların qarışmaması üçün daxilolmalar və ödənişlər ayrıca göstərilir.'
   ,'Тип операций': 'Əməliyyat növü'
