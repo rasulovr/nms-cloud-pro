@@ -39607,3 +39607,244 @@ if (typeof document !== 'undefined') {
     document.head.appendChild(style)
   }
 }
+
+
+/* v346 supplier pricebook: fixed 5-column grid, dots always visible */
+if (typeof document !== 'undefined') {
+  const STYLE_ID = 'rms-v346-supplier-pricebook-grid-dots-fixed'
+  if (!document.getElementById(STYLE_ID)) {
+    const style = document.createElement('style')
+    style.id = STYLE_ID
+    style.textContent = `
+.rms-pro-shell .supplier-products-admin-list,
+.rms-pro-shell .supplier-products-pricebook-wrap,
+.rms-pro-shell .supplier-products-pricebook-note,
+.rms-pro-shell .supplier-products-pagination{
+  width:100%!important;
+  max-width:100%!important;
+  min-width:0!important;
+  box-sizing:border-box!important;
+}
+.rms-pro-shell .supplier-products-toolbar{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) 150px!important;
+  gap:10px!important;
+  align-items:end!important;
+  width:100%!important;
+  max-width:100%!important;
+  min-width:0!important;
+  box-sizing:border-box!important;
+}
+.rms-pro-shell .supplier-products-toolbar label,
+.rms-pro-shell .supplier-products-toolbar input,
+.rms-pro-shell .supplier-products-toolbar select{
+  min-width:0!important;
+  max-width:100%!important;
+  box-sizing:border-box!important;
+}
+.rms-pro-shell .supplier-products-toolbar input,
+.rms-pro-shell .supplier-products-toolbar select{
+  width:100%!important;
+}
+.rms-pro-shell .supplier-products-pricebook-wrap{
+  overflow:visible!important;
+}
+.rms-pro-shell .supplier-products-admin-list table.supplier-products-pricebook-table,
+.rms-pro-shell table.supplier-products-pricebook-table{
+  display:block!important;
+  width:100%!important;
+  max-width:100%!important;
+  min-width:0!important;
+  table-layout:auto!important;
+  border-collapse:separate!important;
+  border-spacing:0!important;
+  overflow:visible!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table thead,
+.rms-pro-shell .supplier-products-pricebook-table tbody{
+  display:block!important;
+  width:100%!important;
+  max-width:100%!important;
+  min-width:0!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table thead tr,
+.rms-pro-shell .supplier-products-pricebook-table tbody tr{
+  display:grid!important;
+  grid-template-columns:minmax(0,34fr) minmax(0,23fr) minmax(0,20fr) minmax(0,16fr) 42px!important;
+  column-gap:0!important;
+  align-items:center!important;
+  width:100%!important;
+  max-width:100%!important;
+  min-width:0!important;
+  box-sizing:border-box!important;
+  border-bottom:1px solid #e5e7eb!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table thead tr{
+  min-height:36px!important;
+  background:#f8fafc!important;
+  border-top:1px solid #e5e7eb!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table tbody tr{
+  min-height:72px!important;
+  background:#fff!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table tbody tr:nth-child(even){
+  background:#fbfdff!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table th,
+.rms-pro-shell .supplier-products-pricebook-table td{
+  display:block!important;
+  width:auto!important;
+  min-width:0!important;
+  max-width:100%!important;
+  box-sizing:border-box!important;
+  padding:8px 5px!important;
+  border:0!important;
+  vertical-align:middle!important;
+  overflow:visible!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table th{
+  font-size:10.5px!important;
+  line-height:1.05!important;
+  letter-spacing:.015em!important;
+  color:#64748b!important;
+  font-weight:950!important;
+  text-transform:uppercase!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table td{
+  font-size:12.5px!important;
+  line-height:1.15!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table th:nth-child(5),
+.rms-pro-shell .supplier-products-pricebook-table td:nth-child(5),
+.rms-pro-shell .supplier-products-actions-cell{
+  display:flex!important;
+  visibility:visible!important;
+  opacity:1!important;
+  width:42px!important;
+  min-width:42px!important;
+  max-width:42px!important;
+  height:100%!important;
+  padding-left:0!important;
+  padding-right:4px!important;
+  align-items:center!important;
+  justify-content:flex-end!important;
+  overflow:visible!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table td:nth-child(1) b,
+.rms-pro-shell .supplier-products-pricebook-table td:nth-child(2) b,
+.rms-pro-shell .supplier-products-pricebook-table td:nth-child(3) b,
+.rms-pro-shell .supplier-products-pricebook-table td:nth-child(2) .hint,
+.rms-pro-shell .supplier-products-pricebook-table td:nth-child(3) .hint{
+  display:block!important;
+  max-width:100%!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table td:nth-child(1) b,
+.rms-pro-shell .supplier-products-pricebook-table td:nth-child(2) b{
+  white-space:nowrap!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table td:nth-child(3) b,
+.rms-pro-shell .supplier-products-pricebook-table td:nth-child(3) .hint{
+  white-space:normal!important;
+  word-break:break-word!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table td:nth-child(2) b{
+  font-size:12.2px!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table td:nth-child(2) .hint,
+.rms-pro-shell .supplier-products-pricebook-table td:nth-child(3) .hint{
+  font-size:10.8px!important;
+  margin-top:3px!important;
+}
+.rms-pro-shell .supplier-pricebook-product-meta{
+  margin-top:4px!important;
+  padding:2px 6px!important;
+  font-size:9.8px!important;
+  line-height:1.05!important;
+  max-width:100%!important;
+}
+.rms-pro-shell .supplier-product-price-trend{
+  min-width:0!important;
+  max-width:100%!important;
+  width:auto!important;
+  height:26px!important;
+  padding:0 6px!important;
+  font-size:10.5px!important;
+  border-radius:999px!important;
+  white-space:nowrap!important;
+}
+.rms-pro-shell .supplier-products-menu-shell{
+  display:flex!important;
+  visibility:visible!important;
+  opacity:1!important;
+  position:relative!important;
+  width:100%!important;
+  height:100%!important;
+  min-width:0!important;
+  align-items:center!important;
+  justify-content:flex-end!important;
+  overflow:visible!important;
+}
+.rms-pro-shell .supplier-products-ellipsis{
+  display:inline-flex!important;
+  visibility:visible!important;
+  opacity:1!important;
+  width:30px!important;
+  min-width:30px!important;
+  max-width:30px!important;
+  height:30px!important;
+  padding:0!important;
+  margin:0!important;
+  border:1px solid #e2e8f0!important;
+  border-radius:11px!important;
+  background:#f8fafc!important;
+  color:#334155!important;
+  align-items:center!important;
+  justify-content:center!important;
+  font-size:21px!important;
+  font-weight:950!important;
+  line-height:1!important;
+  box-shadow:none!important;
+  cursor:pointer!important;
+}
+.rms-pro-shell .supplier-products-ellipsis:hover,
+.rms-pro-shell .supplier-products-ellipsis.is-open{
+  background:#eff6ff!important;
+  color:#1d4ed8!important;
+  border-color:#bfdbfe!important;
+}
+.rms-pro-shell .supplier-products-action-menu{
+  display:grid!important;
+  position:absolute!important;
+  right:0!important;
+  left:auto!important;
+  top:34px!important;
+  width:168px!important;
+  z-index:300!important;
+  visibility:visible!important;
+  opacity:1!important;
+}
+@media(max-width:980px){
+  .rms-pro-shell .supplier-products-toolbar{
+    grid-template-columns:minmax(0,1fr) 126px!important;
+  }
+  .rms-pro-shell .supplier-products-pricebook-table thead tr,
+  .rms-pro-shell .supplier-products-pricebook-table tbody tr{
+    grid-template-columns:minmax(0,39fr) minmax(0,28fr) minmax(0,25fr) 42px!important;
+  }
+  .rms-pro-shell .supplier-products-pricebook-table th:nth-child(4),
+  .rms-pro-shell .supplier-products-pricebook-table td:nth-child(4){
+    display:none!important;
+  }
+  .rms-pro-shell .supplier-products-pricebook-table th:nth-child(5),
+  .rms-pro-shell .supplier-products-pricebook-table td:nth-child(5),
+  .rms-pro-shell .supplier-products-actions-cell{
+    display:flex!important;
+  }
+}
+`
+    document.head.appendChild(style)
+  }
+}
