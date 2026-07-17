@@ -32483,6 +32483,15 @@ function Reports({ t }) {
   const [rmsRevenueReport, setRmsRevenueReport] = useState({ loading: false, error: '', rows: [], totals: { cash: 0, bank: 0, wolt: 0, revenue: 0 } })
   const [rmsExpensesReport, setRmsExpensesReport] = useState({ loading: false, error: '', rows: [], totals: { amount: 0, transactions: 0, categories: 0 }, byCategory: [], byBranch: [] })
   const [rmsSuppliersReport, setRmsSuppliersReport] = useState({ loading: false, error: '', rows: [], totals: { purchases: 0, payments: 0, balance: 0, suppliers: 0 }, purchases: [], payments: [], priceChanges: [] })
+  const [rmsProductsReport, setRmsProductsReport] = useState({ loading: false, error: '', rows: [], detailRows: [], totals: { amount: 0, products: 0, items: 0, invoices: 0, suppliers: 0 }, categories: [], suppliers: [], bySupplier: [], byCategory: [] })
+  const [productsReportDateFrom, setProductsReportDateFrom] = useState('')
+  const [productsReportDateTo, setProductsReportDateTo] = useState('')
+  const [productsReportSearch, setProductsReportSearch] = useState('')
+  const [productsReportCategory, setProductsReportCategory] = useState('all')
+  const [productsReportSupplierId, setProductsReportSupplierId] = useState('all')
+  const [productsReportSort, setProductsReportSort] = useState({ field: 'amount', dir: 'desc' })
+  const [productsReportPage, setProductsReportPage] = useState(1)
+  const [productsReportDetailsOpen, setProductsReportDetailsOpen] = useState(false)
   const [supplierReportSort, setSupplierReportSort] = useState({ field: 'balance', dir: 'desc' })
 
   useEffect(() => { writeAikoSalesReports(reports) }, [reports])
@@ -32756,6 +32765,15 @@ function Reports({ t }) {
     loadRmsSuppliersReport()
   }, [reportsTab, branchFilter, monthFilter, branches.length])
 
+  useEffect(() => {
+    if (reportsTab !== 'products') return
+    loadRmsProductsReport()
+  }, [reportsTab, branchFilter, monthFilter, productsReportDateFrom, productsReportDateTo, branches.length])
+
+  useEffect(() => {
+    setProductsReportPage(1)
+  }, [reportsTab, branchFilter, monthFilter, productsReportDateFrom, productsReportDateTo, productsReportSearch, productsReportCategory, productsReportSupplierId, productsReportSort])
+
   async function loadRmsExpensesReport() {
     setRmsExpensesReport(prev => ({ ...prev, loading: true, error: '' }))
     try {
@@ -32924,6 +32942,185 @@ function Reports({ t }) {
       setRmsSuppliersReport({ loading: false, error: '', rows, totals, purchases, payments, priceChanges })
     } catch (error) {
       setRmsSuppliersReport({ loading: false, error: error?.message || 'Не удалось загрузить отчёт по поставщикам', rows: [], totals: { purchases: 0, payments: 0, balance: 0, suppliers: 0 }, purchases: [], payments: [], priceChanges: [] })
+    }
+  }
+
+
+  async function loadRmsProductsReport() {
+    setRmsProductsReport(prev => ({ ...prev, loading: true, error: '' }))
+    try {
+      const pageSize = 1000
+      const hasCustomRange = Boolean(productsReportDateFrom || productsReportDateTo)
+
+      const buildQuery = (from, to) => {
+        let query = supabase
+          .from('supplier_purchases')
+          .select('id,supplier_id,branch_id,purchase_date,invoice_number,total_amount,comment,created_at,suppliers(id,name),branches(id,name),supplier_purchase_items(id,purchase_id,product_id,quantity,unit,unit_price,total_amount,supplier_products(id,name,category,base_unit))')
+          .is('deleted_at', null)
+
+        if (branchFilter !== 'all') query = query.eq('branch_id', branchFilter)
+
+        if (hasCustomRange) {
+          if (productsReportDateFrom) query = query.gte('purchase_date', productsReportDateFrom)
+          if (productsReportDateTo) query = query.lte('purchase_date', productsReportDateTo)
+        } else if (/^year:\d{4}$/.test(String(monthFilter || ''))) {
+          const year = String(monthFilter).replace('year:', '')
+          query = query.gte('purchase_date', `${year}-01-01`).lt('purchase_date', `${Number(year) + 1}-01-01`)
+        } else if (/^\d{4}-\d{2}$/.test(String(monthFilter || ''))) {
+          const start = `${monthFilter}-01`
+          const end = rmsNextMonthStart(monthFilter)
+          query = query.gte('purchase_date', start).lt('purchase_date', end)
+        }
+
+        return query
+          .order('purchase_date', { ascending: false })
+          .order('created_at', { ascending: false })
+          .range(from, to)
+      }
+
+      let from = 0
+      let purchases = []
+      while (true) {
+        const { data, error } = await buildQuery(from, from + pageSize - 1)
+        if (error) throw error
+        const batch = data || []
+        purchases = purchases.concat(batch)
+        if (batch.length < pageSize) break
+        from += pageSize
+        if (from > 50000) break
+      }
+
+      const branchNameById = new Map((branches || []).map(b => [String(b.id), b.name]))
+      const detailRows = []
+      const invoiceIds = new Set()
+      const supplierIds = new Set()
+      const productMap = new Map()
+      const bySupplierMap = new Map()
+      const byCategoryMap = new Map()
+
+      ;(purchases || []).forEach(purchase => {
+        const supplierId = purchase.supplier_id || purchase.suppliers?.id || ''
+        const supplierName = purchase.suppliers?.name || '—'
+        const branchName = purchase.branches?.name || branchNameById.get(String(purchase.branch_id)) || purchase.branch_id || '—'
+        if (purchase.id) invoiceIds.add(String(purchase.id))
+        if (supplierId) supplierIds.add(String(supplierId))
+
+        ;(purchase.supplier_purchase_items || []).forEach(item => {
+          const product = item.supplier_products || {}
+          const productId = item.product_id || product.id || ''
+          const productName = product.name || item.product_name || '—'
+          const category = product.category || 'Без категории'
+          const unit = item.unit || product.base_unit || 'unit'
+          const qty = parseNum(item.quantity)
+          const unitPrice = parseNum(item.unit_price)
+          const amount = parseNum(item.total_amount || (qty * unitPrice))
+          if (!productName || productName === '—') return
+          if (!qty && !amount) return
+
+          const detail = {
+            id: item.id || `${purchase.id}-${productId}-${productName}-${unit}`,
+            purchase_id: purchase.id,
+            date: purchase.purchase_date || '',
+            invoice: purchase.invoice_number || '—',
+            branch_id: purchase.branch_id || '',
+            branch_name: branchName,
+            supplier_id: supplierId,
+            supplier_name: supplierName,
+            product_id: productId,
+            product_name: productName,
+            category,
+            unit,
+            quantity: qty,
+            unit_price: unitPrice,
+            amount,
+          }
+          detailRows.push(detail)
+
+          const productKey = `${productId || productName}::${unit}`
+          const current = productMap.get(productKey) || {
+            product_id: productId,
+            product_name: productName,
+            category,
+            unit,
+            quantity: 0,
+            amount: 0,
+            item_count: 0,
+            invoice_ids: new Set(),
+            supplier_ids: new Set(),
+            supplier_names: new Set(),
+            branch_names: new Set(),
+            first_date: '',
+            last_date: '',
+            latest_price: 0,
+            latest_supplier: '',
+            latest_invoice: '',
+          }
+          current.quantity += qty
+          current.amount += amount
+          current.item_count += 1
+          if (purchase.id) current.invoice_ids.add(String(purchase.id))
+          if (supplierId) current.supplier_ids.add(String(supplierId))
+          if (supplierName) current.supplier_names.add(supplierName)
+          if (branchName) current.branch_names.add(branchName)
+          if (!current.first_date || String(detail.date).localeCompare(String(current.first_date)) < 0) current.first_date = detail.date
+          if (!current.last_date || String(detail.date).localeCompare(String(current.last_date)) >= 0) {
+            current.last_date = detail.date
+            current.latest_price = unitPrice
+            current.latest_supplier = supplierName
+            current.latest_invoice = purchase.invoice_number || '—'
+          }
+          productMap.set(productKey, current)
+
+          const supplierKey = supplierId || supplierName
+          const supplierRow = bySupplierMap.get(supplierKey) || { supplier_id: supplierId, name: supplierName, amount: 0, quantity: 0, items: 0, products: new Set() }
+          supplierRow.amount += amount
+          supplierRow.quantity += qty
+          supplierRow.items += 1
+          supplierRow.products.add(productKey)
+          bySupplierMap.set(supplierKey, supplierRow)
+
+          const categoryRow = byCategoryMap.get(category) || { name: category, amount: 0, quantity: 0, items: 0, products: new Set() }
+          categoryRow.amount += amount
+          categoryRow.quantity += qty
+          categoryRow.items += 1
+          categoryRow.products.add(productKey)
+          byCategoryMap.set(category, categoryRow)
+        })
+      })
+
+      const productRows = Array.from(productMap.values()).map(row => ({
+        ...row,
+        avg_price: row.quantity ? row.amount / row.quantity : 0,
+        invoices: row.invoice_ids.size,
+        suppliers: row.supplier_ids.size || row.supplier_names.size,
+        supplier_names_text: Array.from(row.supplier_names).filter(Boolean).slice(0, 4).join(', '),
+        branch_names_text: Array.from(row.branch_names).filter(Boolean).slice(0, 4).join(', '),
+      })).sort((a, b) => parseNum(b.amount) - parseNum(a.amount))
+
+      const supplierRows = Array.from(bySupplierMap.values()).map(row => ({
+        ...row,
+        products_count: row.products.size,
+      })).sort((a, b) => parseNum(b.amount) - parseNum(a.amount))
+
+      const categoryRows = Array.from(byCategoryMap.values()).map(row => ({
+        ...row,
+        products_count: row.products.size,
+      })).sort((a, b) => parseNum(b.amount) - parseNum(a.amount))
+
+      const categories = Array.from(new Set(productRows.map(row => row.category || 'Без категории'))).sort()
+      const suppliersList = supplierRows.map(row => ({ id: row.supplier_id || row.name, name: row.name || '—' }))
+
+      const totals = {
+        amount: detailRows.reduce((sum, row) => sum + parseNum(row.amount), 0),
+        products: productRows.length,
+        items: detailRows.length,
+        invoices: invoiceIds.size,
+        suppliers: supplierIds.size || supplierRows.length,
+      }
+
+      setRmsProductsReport({ loading: false, error: '', rows: productRows, detailRows, totals, categories, suppliers: suppliersList, bySupplier: supplierRows, byCategory: categoryRows })
+    } catch (error) {
+      setRmsProductsReport({ loading: false, error: error?.message || 'Не удалось загрузить отчёт по товарам', rows: [], detailRows: [], totals: { amount: 0, products: 0, items: 0, invoices: 0, suppliers: 0 }, categories: [], suppliers: [], bySupplier: [], byCategory: [] })
     }
   }
 
@@ -33831,6 +34028,175 @@ function Reports({ t }) {
     </>}
   </div>
 
+
+  const filteredProductReportRows = useMemo(() => {
+    const needle = String(productsReportSearch || '').trim().toLowerCase()
+    const filtered = (rmsProductsReport.rows || []).filter(row => {
+      const searchOk = !needle || [
+        row.product_name,
+        row.category,
+        row.unit,
+        row.supplier_names_text,
+        row.branch_names_text,
+        row.latest_invoice,
+      ].some(value => String(value || '').toLowerCase().includes(needle))
+      const categoryOk = productsReportCategory === 'all' || String(row.category || '') === String(productsReportCategory)
+      const supplierOk = productsReportSupplierId === 'all' || (row.supplier_ids && row.supplier_ids.has && row.supplier_ids.has(String(productsReportSupplierId))) || String(row.supplier_names_text || '').includes(String(productsReportSupplierId))
+      return searchOk && categoryOk && supplierOk
+    })
+    const field = productsReportSort.field || 'amount'
+    const dir = productsReportSort.dir === 'asc' ? 1 : -1
+    return [...filtered].sort((a, b) => {
+      if (field === 'name') return String(a.product_name || '').localeCompare(String(b.product_name || '')) * dir
+      if (field === 'category') return String(a.category || '').localeCompare(String(b.category || '')) * dir
+      return (parseNum(a[field]) - parseNum(b[field])) * dir
+    })
+  }, [rmsProductsReport.rows, productsReportSearch, productsReportCategory, productsReportSupplierId, productsReportSort])
+
+  const filteredProductDetailRows = useMemo(() => {
+    const needle = String(productsReportSearch || '').trim().toLowerCase()
+    return (rmsProductsReport.detailRows || []).filter(row => {
+      const searchOk = !needle || [
+        row.product_name,
+        row.category,
+        row.supplier_name,
+        row.branch_name,
+        row.invoice,
+        row.unit,
+      ].some(value => String(value || '').toLowerCase().includes(needle))
+      const categoryOk = productsReportCategory === 'all' || String(row.category || '') === String(productsReportCategory)
+      const supplierOk = productsReportSupplierId === 'all' || String(row.supplier_id || row.supplier_name) === String(productsReportSupplierId) || String(row.supplier_name || '') === String(productsReportSupplierId)
+      return searchOk && categoryOk && supplierOk
+    }).sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')) || parseNum(b.amount) - parseNum(a.amount))
+  }, [rmsProductsReport.detailRows, productsReportSearch, productsReportCategory, productsReportSupplierId])
+
+  const filteredProductTotals = useMemo(() => ({
+    amount: filteredProductDetailRows.reduce((sum, row) => sum + parseNum(row.amount), 0),
+    products: filteredProductReportRows.length,
+    items: filteredProductDetailRows.length,
+    invoices: new Set(filteredProductDetailRows.map(row => row.purchase_id).filter(Boolean)).size,
+    suppliers: new Set(filteredProductDetailRows.map(row => row.supplier_id || row.supplier_name).filter(Boolean)).size,
+  }), [filteredProductReportRows, filteredProductDetailRows])
+
+  const productReportPageSize = 50
+  const productReportTotalPages = Math.max(1, Math.ceil(filteredProductReportRows.length / productReportPageSize))
+  const safeProductsReportPage = Math.min(Math.max(1, parseNum(productsReportPage) || 1), productReportTotalPages)
+  const visibleProductReportRows = filteredProductReportRows.slice((safeProductsReportPage - 1) * productReportPageSize, safeProductsReportPage * productReportPageSize)
+  const visibleProductDetailRows = filteredProductDetailRows.slice(0, productsReportDetailsOpen ? 250 : 25)
+
+  const setProductSort = (field) => {
+    setProductsReportSort(prev => ({
+      field,
+      dir: prev.field === field && prev.dir === 'desc' ? 'asc' : 'desc'
+    }))
+  }
+  const productSortHeader = (field, label) => <button type="button" className="reports-v353-sort-btn" onClick={() => setProductSort(field)}>{label}{productsReportSort.field === field ? (productsReportSort.dir === 'desc' ? ' ↓' : ' ↑') : ''}</button>
+
+  const selectedProductPeriodLabel = productsReportDateFrom || productsReportDateTo
+    ? `${productsReportDateFrom || 'начало'} — ${productsReportDateTo || 'сегодня'}`
+    : (monthFilter === 'all' ? 'Все даты' : (/^year:\d{4}$/.test(String(monthFilter || '')) ? `${String(monthFilter).replace('year:', '')} год` : monthFilter))
+
+  const ReportsProductsView = <section className="reports-v43-module-grid reports-v353-products-section">
+    <div className="reports-v43-module-card reports-v43-wide">
+      <div className="reports-v43-card-head">
+        <div>
+          <h3>Товары</h3>
+          <p>Статистика по закупкам товаров: количество, сумма, средняя цена, поставщики, накладные и детализация за выбранный период.</p>
+        </div>
+        <div className="action-row">
+          <button className="ghost small" type="button" onClick={loadRmsProductsReport} disabled={rmsProductsReport.loading}>{rmsProductsReport.loading ? 'Загрузка...' : 'Обновить'}</button>
+        </div>
+      </div>
+
+      <div className="reports-v353-product-filters">
+        <label><span>Период с</span><input type="date" value={productsReportDateFrom} onChange={e => setProductsReportDateFrom(e.target.value)} /></label>
+        <label><span>Период по</span><input type="date" value={productsReportDateTo} onChange={e => setProductsReportDateTo(e.target.value)} /></label>
+        <label><span>Категория</span><select value={productsReportCategory} onChange={e => setProductsReportCategory(e.target.value)}><option value="all">Все категории</option>{rmsProductsReport.categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}</select></label>
+        <label><span>Поставщик</span><select value={productsReportSupplierId} onChange={e => setProductsReportSupplierId(e.target.value)}><option value="all">Все поставщики</option>{rmsProductsReport.suppliers.map(s => <option key={s.id || s.name} value={s.id || s.name}>{s.name}</option>)}</select></label>
+        <label className="reports-v353-products-search"><span>Поиск товара / поставщика / накладной</span><input value={productsReportSearch} onChange={e => setProductsReportSearch(e.target.value)} placeholder="Например: киви, кофе, Zaur, 123..." /></label>
+        <div className="reports-v353-products-filter-actions">
+          <button className="ghost small" type="button" onClick={() => { setProductsReportDateFrom(''); setProductsReportDateTo(''); setProductsReportSearch(''); setProductsReportCategory('all'); setProductsReportSupplierId('all') }}>Сбросить</button>
+        </div>
+      </div>
+
+      <div className="reports-v353-period-note">Период: <b>{selectedProductPeriodLabel}</b>{branchFilter !== 'all' && <span> · филиал: <b>{branches.find(b => String(b.id) === String(branchFilter))?.name || 'выбранный филиал'}</b></span>}</div>
+
+      {rmsProductsReport.error && <div className="reports-v43-empty-state"><b>Ошибка загрузки товаров</b><span>{rmsProductsReport.error}</span></div>}
+      {rmsProductsReport.loading && <div className="reports-v43-empty-state"><b>Загрузка товаров...</b><span>Читаю supplier_purchases и supplier_purchase_items за выбранный период.</span></div>}
+
+      <div className="reports-v353-products-kpis">
+        <div className="metric"><span>Сумма закупок</span><strong>{fmt(filteredProductTotals.amount)} AZN</strong><small>по выбранному фильтру</small></div>
+        <div className="metric"><span>Товаров</span><strong>{filteredProductTotals.products}</strong><small>уникальных позиций</small></div>
+        <div className="metric"><span>Строк закупок</span><strong>{filteredProductTotals.items}</strong><small>товарных строк</small></div>
+        <div className="metric"><span>Накладных</span><strong>{filteredProductTotals.invoices}</strong><small>физических поступлений</small></div>
+        <div className="metric"><span>Поставщиков</span><strong>{filteredProductTotals.suppliers}</strong><small>участвовали в закупках</small></div>
+      </div>
+
+      <div className="reports-v353-products-split">
+        <div className="reports-v353-mini-card">
+          <div className="reports-v43-card-head"><div><h4>Топ категорий</h4><p>По сумме закупок.</p></div></div>
+          {(rmsProductsReport.byCategory || []).slice(0, 8).map(row => <div className="reports-v353-rank-row" key={`cat-${row.name}`}><span>{row.name}</span><b>{fmt(row.amount)} AZN</b><small>{row.products_count} товаров</small></div>)}
+          {!rmsProductsReport.byCategory.length && <span className="hint">Нет данных по категориям.</span>}
+        </div>
+        <div className="reports-v353-mini-card">
+          <div className="reports-v43-card-head"><div><h4>Топ поставщиков</h4><p>По сумме закупок товаров.</p></div></div>
+          {(rmsProductsReport.bySupplier || []).slice(0, 8).map(row => <div className="reports-v353-rank-row" key={`sup-${row.supplier_id || row.name}`}><span>{row.name}</span><b>{fmt(row.amount)} AZN</b><small>{row.products_count} товаров</small></div>)}
+          {!rmsProductsReport.bySupplier.length && <span className="hint">Нет данных по поставщикам.</span>}
+        </div>
+      </div>
+
+      <div className="table-wrap reports-v353-products-table-wrap" style={{marginTop:14}}>
+        <table className="reports-v353-products-table">
+          <thead><tr><th>{productSortHeader('name', 'Товар')}</th><th>{productSortHeader('category', 'Категория')}</th><th>{productSortHeader('quantity', 'Кол-во')}</th><th>Ед.</th><th>{productSortHeader('amount', 'Сумма')}</th><th>{productSortHeader('avg_price', 'Средняя цена')}</th><th>{productSortHeader('item_count', 'Закупок')}</th><th>Поставщики</th><th>Последняя закупка</th></tr></thead>
+          <tbody>
+            {visibleProductReportRows.map(row => <tr key={`${row.product_id || row.product_name}-${row.unit}`}>
+              <td><b>{row.product_name}</b><br /><span className="hint">{row.branch_names_text || 'Все филиалы'}</span></td>
+              <td>{row.category || '—'}</td>
+              <td><b>{fmt(row.quantity)}</b></td>
+              <td>{row.unit || '—'}</td>
+              <td><b>{fmt(row.amount)} AZN</b></td>
+              <td>{fmt(row.avg_price)} AZN / {row.unit || 'ед.'}</td>
+              <td>{row.item_count} строк<br /><span className="hint">{row.invoices} накл.</span></td>
+              <td>{row.supplier_names_text || '—'}{row.suppliers > 4 && <><br /><span className="hint">+ ещё {row.suppliers - 4}</span></>}</td>
+              <td>{row.last_date ? formatDateDMY(row.last_date) : '—'}<br /><span className="hint">{row.latest_supplier || '—'} · {fmt(row.latest_price)} AZN</span></td>
+            </tr>)}
+            {!filteredProductReportRows.length && <tr><td colSpan="9" className="hint">Нет товаров по выбранному периоду / фильтру.</td></tr>}
+          </tbody>
+        </table>
+      </div>
+
+      {filteredProductReportRows.length > productReportPageSize && <div className="action-row reports-v353-products-pager">
+        <button className="ghost small" disabled={safeProductsReportPage <= 1} onClick={() => setProductsReportPage(p => Math.max(1, parseNum(p) - 1))}>← Пред.</button>
+        <span className="hint">Страница {safeProductsReportPage} / {productReportTotalPages} · найдено {filteredProductReportRows.length}</span>
+        <button className="ghost small" disabled={safeProductsReportPage >= productReportTotalPages} onClick={() => setProductsReportPage(p => Math.min(productReportTotalPages, parseNum(p) + 1))}>След. →</button>
+      </div>}
+
+      <div className="reports-v353-detail-head">
+        <div><h4>Детализация закупок</h4><p>Последние товарные строки по выбранному фильтру.</p></div>
+        <button className="ghost small" onClick={() => setProductsReportDetailsOpen(v => !v)}>{productsReportDetailsOpen ? 'Скрыть детализацию' : `Показать больше (${filteredProductDetailRows.length})`}</button>
+      </div>
+      <div className="table-wrap reports-v353-detail-table-wrap">
+        <table className="reports-v353-detail-table">
+          <thead><tr><th>Дата</th><th>Товар</th><th>Категория</th><th>Поставщик</th><th>Филиал</th><th>Накладная</th><th>Кол-во</th><th>Цена</th><th>Сумма</th></tr></thead>
+          <tbody>
+            {visibleProductDetailRows.map(row => <tr key={row.id}>
+              <td>{formatDateDMY(row.date)}</td>
+              <td><b>{row.product_name}</b></td>
+              <td>{row.category || '—'}</td>
+              <td>{row.supplier_name || '—'}</td>
+              <td>{row.branch_name || '—'}</td>
+              <td>{row.invoice || '—'}</td>
+              <td>{fmt(row.quantity)} {row.unit}</td>
+              <td>{fmt(row.unit_price)} AZN</td>
+              <td><b>{fmt(row.amount)} AZN</b></td>
+            </tr>)}
+            {!filteredProductDetailRows.length && <tr><td colSpan="9" className="hint">Детализация пуста.</td></tr>}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
   const reportTabs = [
     { id: 'overview', label: 'Обзор', icon: '▣' },
     { id: 'sales', label: 'Продажи', icon: '↗' },
@@ -34435,7 +34801,7 @@ function Reports({ t }) {
     {reportsTab === 'expenses' && ReportsExpensesView}
     {reportsTab === 'categories' && <ReportModulePlaceholder title="Расходы по статьям" description="Просмотрзация каждой статьи с drill-down до транзакций." />}
     {reportsTab === 'purchases' && <ReportModulePlaceholder title="Отчёт по закупкам" description="Закупки поставщиков по периодам, филиалам, категориям и фактурам." />}
-    {reportsTab === 'products' && <ReportModulePlaceholder title="Отчёт по товарам" description="Движение товаров, закупочные цены, последние цены и объём закупок." />}
+    {reportsTab === 'products' && ReportsProductsView}
     {reportsTab === 'suppliers' && ReportsSuppliersView}
     {reportsTab === 'bazar' && <ReportModulePlaceholder title="Отчёт по базару" description="Базар, автоматическое распределение по филиалам и влияние на Food Cost." />}
     {reportsTab === 'export' && <ReportModulePlaceholder title="Экспорт отчётов" description="PDF, печать, CSV/Excel и сохранение выбранного среза." />}
@@ -40477,6 +40843,186 @@ if (typeof document !== 'undefined') {
   .rms-pro-shell .supplier-products-pricebook-table thead tr,
   .rms-pro-shell .supplier-products-pricebook-table tbody tr{
     grid-template-columns:minmax(0,38fr) minmax(0,24fr) minmax(0,38fr)!important;
+  }
+}
+`
+    document.head.appendChild(style)
+  }
+}
+
+
+/* v353 Reports -> Products purchase statistics */
+if (typeof document !== 'undefined') {
+  const STYLE_ID = 'rms-v353-reports-products-purchase-stats'
+  if (!document.getElementById(STYLE_ID)) {
+    const style = document.createElement('style')
+    style.id = STYLE_ID
+    style.textContent = `
+.rms-pro-shell .reports-v353-products-section .reports-v43-module-card{
+  overflow:visible!important;
+}
+.rms-pro-shell .reports-v353-product-filters{
+  display:grid!important;
+  grid-template-columns:160px 160px 190px 220px minmax(260px,1fr) auto!important;
+  gap:10px!important;
+  align-items:end!important;
+  margin-top:14px!important;
+}
+.rms-pro-shell .reports-v353-product-filters label{
+  min-width:0!important;
+}
+.rms-pro-shell .reports-v353-product-filters input,
+.rms-pro-shell .reports-v353-product-filters select{
+  width:100%!important;
+  min-width:0!important;
+}
+.rms-pro-shell .reports-v353-products-search{
+  min-width:260px!important;
+}
+.rms-pro-shell .reports-v353-products-filter-actions{
+  display:flex!important;
+  align-items:end!important;
+  justify-content:flex-end!important;
+}
+.rms-pro-shell .reports-v353-period-note{
+  margin-top:10px!important;
+  color:#64748b!important;
+  font-size:13px!important;
+  font-weight:750!important;
+}
+.rms-pro-shell .reports-v353-products-kpis{
+  display:grid!important;
+  grid-template-columns:repeat(5,minmax(0,1fr))!important;
+  gap:10px!important;
+  margin-top:14px!important;
+}
+.rms-pro-shell .reports-v353-products-split{
+  display:grid!important;
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  gap:12px!important;
+  margin-top:14px!important;
+}
+.rms-pro-shell .reports-v353-mini-card{
+  border:1px solid rgba(226,232,240,.92)!important;
+  border-radius:18px!important;
+  background:#fbfdff!important;
+  padding:14px!important;
+}
+.rms-pro-shell .reports-v353-mini-card h4,
+.rms-pro-shell .reports-v353-detail-head h4{
+  margin:0!important;
+  color:#0f172a!important;
+  font-size:16px!important;
+  font-weight:950!important;
+}
+.rms-pro-shell .reports-v353-mini-card p,
+.rms-pro-shell .reports-v353-detail-head p{
+  margin:4px 0 0!important;
+  color:#64748b!important;
+  font-size:12px!important;
+  font-weight:700!important;
+}
+.rms-pro-shell .reports-v353-rank-row{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) auto!important;
+  gap:8px 12px!important;
+  align-items:center!important;
+  padding:9px 0!important;
+  border-top:1px solid #e5e7eb!important;
+}
+.rms-pro-shell .reports-v353-rank-row:first-of-type{
+  border-top:0!important;
+}
+.rms-pro-shell .reports-v353-rank-row span{
+  color:#0f172a!important;
+  font-size:13px!important;
+  font-weight:900!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  white-space:nowrap!important;
+}
+.rms-pro-shell .reports-v353-rank-row b{
+  color:#0f172a!important;
+  font-size:13px!important;
+  font-weight:950!important;
+  white-space:nowrap!important;
+}
+.rms-pro-shell .reports-v353-rank-row small{
+  grid-column:1 / -1!important;
+  color:#64748b!important;
+  font-size:11px!important;
+  font-weight:750!important;
+}
+.rms-pro-shell .reports-v353-products-table-wrap,
+.rms-pro-shell .reports-v353-detail-table-wrap{
+  overflow:auto!important;
+  border-radius:18px!important;
+}
+.rms-pro-shell .reports-v353-products-table{
+  min-width:1180px!important;
+}
+.rms-pro-shell .reports-v353-detail-table{
+  min-width:1080px!important;
+}
+.rms-pro-shell .reports-v353-products-table th,
+.rms-pro-shell .reports-v353-products-table td,
+.rms-pro-shell .reports-v353-detail-table th,
+.rms-pro-shell .reports-v353-detail-table td{
+  vertical-align:top!important;
+  white-space:nowrap!important;
+}
+.rms-pro-shell .reports-v353-products-table td:first-child,
+.rms-pro-shell .reports-v353-detail-table td:nth-child(2){
+  white-space:normal!important;
+  min-width:220px!important;
+}
+.rms-pro-shell .reports-v353-sort-btn{
+  border:0!important;
+  background:transparent!important;
+  color:#64748b!important;
+  font:inherit!important;
+  font-weight:950!important;
+  text-transform:uppercase!important;
+  cursor:pointer!important;
+  padding:0!important;
+}
+.rms-pro-shell .reports-v353-products-pager{
+  justify-content:space-between!important;
+  margin-top:10px!important;
+}
+.rms-pro-shell .reports-v353-detail-head{
+  display:flex!important;
+  justify-content:space-between!important;
+  align-items:flex-end!important;
+  gap:12px!important;
+  margin-top:18px!important;
+  margin-bottom:10px!important;
+}
+@media(max-width:1300px){
+  .rms-pro-shell .reports-v353-product-filters{
+    grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  }
+  .rms-pro-shell .reports-v353-products-search{
+    grid-column:1 / span 2!important;
+  }
+  .rms-pro-shell .reports-v353-products-kpis{
+    grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  }
+}
+@media(max-width:900px){
+  .rms-pro-shell .reports-v353-product-filters,
+  .rms-pro-shell .reports-v353-products-split{
+    grid-template-columns:1fr!important;
+  }
+  .rms-pro-shell .reports-v353-products-search{
+    grid-column:auto!important;
+  }
+  .rms-pro-shell .reports-v353-products-kpis{
+    grid-template-columns:1fr!important;
+  }
+  .rms-pro-shell .reports-v353-detail-head{
+    align-items:flex-start!important;
+    flex-direction:column!important;
   }
 }
 `
