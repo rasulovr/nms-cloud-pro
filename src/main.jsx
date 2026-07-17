@@ -28031,6 +28031,24 @@ function Suppliers({ t, isAdmin = false }) {
   const safeRecentPurchasesPage = Math.min(Math.max(1, parseNum(recentPurchasesPage) || 1), recentPurchasesTotalPages)
   const recentPurchasesRows = filteredPurchases.slice((safeRecentPurchasesPage - 1) * recentPurchasesPageSizeNumber, safeRecentPurchasesPage * recentPurchasesPageSizeNumber)
 
+  const supplierJournalTotal = filteredPurchases.reduce((acc, p) => {
+    const amount = parseNum(p.total_amount)
+    if (p.deleted_at) {
+      acc.cancelled_amount += amount
+      acc.cancelled_count += 1
+    } else {
+      acc.amount += amount
+      acc.count += 1
+    }
+    return acc
+  }, { amount: 0, count: 0, cancelled_amount: 0, cancelled_count: 0 })
+
+  const supplierJournalSelectedSupplier = purchaseJournalFilters.supplier_id
+    ? activeSuppliers.find(s => String(s.id) === String(purchaseJournalFilters.supplier_id))
+    : null
+
+  const supplierJournalPeriodTitle = journalPeriodLabel()
+
 
   function openPurchaseFromProductSearch(purchaseId) {
     if (!purchaseId) return
@@ -29068,14 +29086,32 @@ function Suppliers({ t, isAdmin = false }) {
                   )}
                 </React.Fragment>
               ))}
-              {!visiblePurchases.length && <tr><td colSpan="8" className="hint">—</td></tr>}
+              {!filteredPurchases.length && <tr><td colSpan="8" className="hint">По выбранным фильтрам поступления не найдены.</td></tr>}
             </tbody>
           </table>
         </div>
-        <div className="action-row" style={{margin:'12px 0 0'}}>
+        <div className="action-row supplier-journal-pagination" style={{margin:'12px 0 0'}}>
           <button className="ghost small" disabled={safeRecentPurchasesPage <= 1} onClick={() => setRecentPurchasesPage(p => Math.max(1, parseNum(p) - 1))}>← Пред.</button>
-          <span className="hint">Страница {safeRecentPurchasesPage} / {recentPurchasesTotalPages} · всего {visiblePurchases.length}</span>
+          <span className="hint">Страница {safeRecentPurchasesPage} / {recentPurchasesTotalPages} · найдено {filteredPurchases.length}</span>
           <button className="ghost small" disabled={safeRecentPurchasesPage >= recentPurchasesTotalPages} onClick={() => setRecentPurchasesPage(p => Math.min(recentPurchasesTotalPages, parseNum(p) + 1))}>След. →</button>
+        </div>
+
+        <div className="supplier-journal-total-card">
+          <div>
+            <span>{supplierJournalSelectedSupplier ? 'Итого по поставщику' : 'Итого по журналу'}</span>
+            <strong>{supplierJournalSelectedSupplier?.name || 'Все поставщики'}</strong>
+            <small>Период: {supplierJournalPeriodTitle}</small>
+          </div>
+          <div>
+            <span>Активных поступлений</span>
+            <strong>{supplierJournalTotal.count}</strong>
+            <small>{supplierJournalTotal.cancelled_count ? `Отменено: ${supplierJournalTotal.cancelled_count} · ${fmt(supplierJournalTotal.cancelled_amount)} AZN` : 'отменённые строки не учитываются'}</small>
+          </div>
+          <div className="supplier-journal-total-amount">
+            <span>Сумма за выбранный период</span>
+            <strong>{fmt(supplierJournalTotal.amount)} AZN</strong>
+            <small>{purchaseJournalFilters.supplier_id ? 'по выбранному поставщику' : 'по текущим фильтрам'}</small>
+          </div>
         </div>
       </div>
     </section>
@@ -34078,6 +34114,44 @@ function Reports({ t }) {
     suppliers: new Set(filteredProductDetailRows.map(row => row.supplier_id || row.supplier_name).filter(Boolean)).size,
   }), [filteredProductReportRows, filteredProductDetailRows])
 
+
+  const productUnitMismatchRows = useMemo(() => {
+    const map = new Map()
+    ;(rmsProductsReport.detailRows || []).forEach(row => {
+      const key = row.product_id ? String(row.product_id) : normalizeSalesKey(row.product_name || '')
+      if (!key) return
+      const current = map.get(key) || {
+        product_id: row.product_id || '',
+        product_name: row.product_name || '—',
+        units: new Set(),
+        rows: 0,
+        amount: 0,
+        suppliers: new Set(),
+        branches: new Set(),
+        invoices: new Set(),
+        last_date: '',
+      }
+      if (row.unit) current.units.add(row.unit)
+      current.rows += 1
+      current.amount += parseNum(row.amount)
+      if (row.supplier_name) current.suppliers.add(row.supplier_name)
+      if (row.branch_name) current.branches.add(row.branch_name)
+      if (row.purchase_id) current.invoices.add(String(row.purchase_id))
+      if (!current.last_date || String(row.date || '').localeCompare(String(current.last_date || '')) > 0) current.last_date = row.date || ''
+      map.set(key, current)
+    })
+    return Array.from(map.values())
+      .filter(row => row.units.size > 1)
+      .map(row => ({
+        ...row,
+        units_text: Array.from(row.units).join(' / '),
+        suppliers_text: Array.from(row.suppliers).slice(0, 4).join(', '),
+        branches_text: Array.from(row.branches).slice(0, 4).join(', '),
+        invoices_count: row.invoices.size,
+      }))
+      .sort((a, b) => parseNum(b.amount) - parseNum(a.amount))
+  }, [rmsProductsReport.detailRows])
+
   const productReportPageSize = 50
   const productReportTotalPages = Math.max(1, Math.ceil(filteredProductReportRows.length / productReportPageSize))
   const safeProductsReportPage = Math.min(Math.max(1, parseNum(productsReportPage) || 1), productReportTotalPages)
@@ -34131,6 +34205,33 @@ function Reports({ t }) {
         <div className="metric"><span>Накладных</span><strong>{filteredProductTotals.invoices}</strong><small>физических поступлений</small></div>
         <div className="metric"><span>Поставщиков</span><strong>{filteredProductTotals.suppliers}</strong><small>участвовали в закупках</small></div>
       </div>
+
+      {productUnitMismatchRows.length > 0 && <div className="reports-v355-unit-warning">
+        <div className="reports-v355-unit-warning-head">
+          <div>
+            <h4>Ошибка единиц измерения</h4>
+            <p>Один и тот же товар закупался в разных единицах. Это не объединяется автоматически, чтобы не искажать количество и среднюю цену. Исправьте вручную в накладных / карточке товара.</p>
+          </div>
+          <strong>{productUnitMismatchRows.length} товаров</strong>
+        </div>
+        <div className="table-wrap reports-v355-unit-warning-table-wrap">
+          <table className="reports-v355-unit-warning-table">
+            <thead><tr><th>Товар</th><th>Единицы</th><th>Строк</th><th>Накладных</th><th>Сумма</th><th>Поставщики</th><th>Филиалы</th><th>Последняя дата</th></tr></thead>
+            <tbody>
+              {productUnitMismatchRows.map(row => <tr key={`unit-mismatch-${row.product_id || row.product_name}`}>
+                <td><b>{row.product_name}</b></td>
+                <td><span className="pill bad">{row.units_text}</span></td>
+                <td>{row.rows}</td>
+                <td>{row.invoices_count}</td>
+                <td><b>{fmt(row.amount)} AZN</b></td>
+                <td>{row.suppliers_text || '—'}</td>
+                <td>{row.branches_text || '—'}</td>
+                <td>{row.last_date ? formatDateDMY(row.last_date) : '—'}</td>
+              </tr>)}
+            </tbody>
+          </table>
+        </div>
+      </div>}
 
       <div className="reports-v353-products-split">
         <div className="reports-v353-mini-card">
@@ -41023,6 +41124,254 @@ if (typeof document !== 'undefined') {
   .rms-pro-shell .reports-v353-detail-head{
     align-items:flex-start!important;
     flex-direction:column!important;
+  }
+}
+`
+    document.head.appendChild(style)
+  }
+}
+
+
+/* v355 Reports -> Products: unit mismatch warning instead of auto-merge */
+if (typeof document !== 'undefined') {
+  const STYLE_ID = 'rms-v355-reports-products-unit-mismatch-warning'
+  if (!document.getElementById(STYLE_ID)) {
+    const style = document.createElement('style')
+    style.id = STYLE_ID
+    style.textContent = `
+.rms-pro-shell .reports-v355-unit-warning{
+  margin-top:14px!important;
+  padding:14px!important;
+  border:1px solid rgba(239,68,68,.28)!important;
+  border-radius:18px!important;
+  background:linear-gradient(180deg,rgba(254,242,242,.92),rgba(255,255,255,.96))!important;
+}
+.rms-pro-shell .reports-v355-unit-warning-head{
+  display:flex!important;
+  justify-content:space-between!important;
+  align-items:flex-start!important;
+  gap:14px!important;
+  margin-bottom:12px!important;
+}
+.rms-pro-shell .reports-v355-unit-warning-head h4{
+  margin:0!important;
+  color:#991b1b!important;
+  font-size:16px!important;
+  font-weight:950!important;
+}
+.rms-pro-shell .reports-v355-unit-warning-head p{
+  margin:5px 0 0!important;
+  max-width:920px!important;
+  color:#7f1d1d!important;
+  font-size:12.5px!important;
+  line-height:1.35!important;
+  font-weight:750!important;
+}
+.rms-pro-shell .reports-v355-unit-warning-head strong{
+  white-space:nowrap!important;
+  color:#991b1b!important;
+  background:#fee2e2!important;
+  border:1px solid #fecaca!important;
+  border-radius:999px!important;
+  padding:7px 10px!important;
+  font-size:12px!important;
+  font-weight:950!important;
+}
+.rms-pro-shell .reports-v355-unit-warning-table-wrap{
+  overflow:auto!important;
+  border-radius:14px!important;
+  border:1px solid rgba(254,202,202,.9)!important;
+}
+.rms-pro-shell .reports-v355-unit-warning-table{
+  min-width:980px!important;
+}
+.rms-pro-shell .reports-v355-unit-warning-table th,
+.rms-pro-shell .reports-v355-unit-warning-table td{
+  white-space:nowrap!important;
+  vertical-align:top!important;
+}
+.rms-pro-shell .reports-v355-unit-warning-table td:first-child{
+  white-space:normal!important;
+  min-width:220px!important;
+}
+.rms-pro-shell .reports-v355-unit-warning .pill.bad{
+  background:#fee2e2!important;
+  color:#991b1b!important;
+  border:1px solid #fecaca!important;
+}
+`
+    document.head.appendChild(style)
+  }
+}
+
+
+/* v356 supplier journal: aligned filters + supplier period total */
+if (typeof document !== 'undefined') {
+  const STYLE_ID = 'rms-v356-supplier-journal-aligned-filters-total'
+  if (!document.getElementById(STYLE_ID)) {
+    const style = document.createElement('style')
+    style.id = STYLE_ID
+    style.textContent = `
+.rms-pro-shell .supplier-journal-filterbar{
+  display:grid!important;
+  grid-template-columns:repeat(4,minmax(160px,1fr)) auto 104px!important;
+  align-items:end!important;
+  gap:10px!important;
+  width:100%!important;
+  max-width:100%!important;
+  box-sizing:border-box!important;
+}
+.rms-pro-shell .supplier-journal-period-modern{
+  grid-column:1 / -1!important;
+  min-width:0!important;
+  width:100%!important;
+  display:grid!important;
+  grid-template-columns:110px minmax(360px,520px) minmax(360px,1fr)!important;
+  gap:10px!important;
+  align-items:end!important;
+}
+.rms-pro-shell .supplier-journal-period-modern > span{
+  align-self:center!important;
+  padding-bottom:0!important;
+}
+.rms-pro-shell .supplier-period-pills{
+  height:52px!important;
+  align-items:center!important;
+  padding:6px!important;
+  box-sizing:border-box!important;
+}
+.rms-pro-shell .supplier-period-pills button{
+  height:38px!important;
+}
+.rms-pro-shell .supplier-custom-period{
+  height:52px!important;
+  min-width:0!important;
+  box-sizing:border-box!important;
+}
+.rms-pro-shell .supplier-custom-period summary{
+  height:0!important;
+  min-height:0!important;
+  padding:0!important;
+  overflow:hidden!important;
+  opacity:0!important;
+  pointer-events:none!important;
+}
+.rms-pro-shell .supplier-custom-period summary::after{
+  content:''!important;
+}
+.rms-pro-shell .supplier-custom-period > div{
+  height:52px!important;
+  padding:6px 10px!important;
+  box-sizing:border-box!important;
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) 18px minmax(0,1fr)!important;
+  align-items:center!important;
+}
+.rms-pro-shell .supplier-custom-period input{
+  height:40px!important;
+}
+.rms-pro-shell .supplier-journal-filterbar label{
+  min-width:0!important;
+  width:100%!important;
+}
+.rms-pro-shell .supplier-journal-filterbar label span{
+  min-height:16px!important;
+  display:flex!important;
+  align-items:flex-end!important;
+}
+.rms-pro-shell .supplier-journal-filterbar input,
+.rms-pro-shell .supplier-journal-filterbar select{
+  width:100%!important;
+  min-width:0!important;
+  height:42px!important;
+  box-sizing:border-box!important;
+}
+.rms-pro-shell .supplier-journal-filterbar > button.ghost.small{
+  height:42px!important;
+  align-self:end!important;
+  white-space:nowrap!important;
+}
+.rms-pro-shell .supplier-journal-filter-summary{
+  height:42px!important;
+  align-self:end!important;
+}
+.rms-pro-shell .supplier-journal-pagination{
+  justify-content:space-between!important;
+  gap:12px!important;
+  flex-wrap:wrap!important;
+}
+.rms-pro-shell .supplier-journal-total-card{
+  display:grid!important;
+  grid-template-columns:minmax(0,1.3fr) minmax(0,.9fr) minmax(260px,1fr)!important;
+  gap:12px!important;
+  margin-top:12px!important;
+  padding:14px!important;
+  border:1px solid rgba(37,99,235,.18)!important;
+  border-radius:18px!important;
+  background:linear-gradient(180deg,#ffffff,#f8fbff)!important;
+  box-shadow:0 12px 28px rgba(15,23,42,.035)!important;
+}
+.rms-pro-shell .supplier-journal-total-card > div{
+  padding:12px!important;
+  border:1px solid rgba(226,232,240,.9)!important;
+  border-radius:14px!important;
+  background:#fff!important;
+}
+.rms-pro-shell .supplier-journal-total-card span{
+  display:block!important;
+  color:#64748b!important;
+  font-size:11.5px!important;
+  line-height:1.2!important;
+  font-weight:850!important;
+  margin-bottom:6px!important;
+}
+.rms-pro-shell .supplier-journal-total-card strong{
+  display:block!important;
+  color:#0f172a!important;
+  font-size:18px!important;
+  line-height:1.1!important;
+  font-weight:950!important;
+  white-space:nowrap!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+}
+.rms-pro-shell .supplier-journal-total-card small{
+  display:block!important;
+  margin-top:7px!important;
+  color:#64748b!important;
+  font-size:11.5px!important;
+  line-height:1.25!important;
+  font-weight:750!important;
+}
+.rms-pro-shell .supplier-journal-total-amount{
+  border-color:rgba(37,99,235,.28)!important;
+  background:#eff6ff!important;
+}
+.rms-pro-shell .supplier-journal-total-amount strong{
+  color:#1d4ed8!important;
+  font-size:22px!important;
+}
+@media(max-width:1400px){
+  .rms-pro-shell .supplier-journal-filterbar{
+    grid-template-columns:repeat(2,minmax(0,1fr)) auto 104px!important;
+  }
+  .rms-pro-shell .supplier-journal-period-modern{
+    grid-template-columns:1fr!important;
+  }
+  .rms-pro-shell .supplier-journal-total-card{
+    grid-template-columns:1fr 1fr!important;
+  }
+  .rms-pro-shell .supplier-journal-total-amount{
+    grid-column:1 / -1!important;
+  }
+}
+@media(max-width:900px){
+  .rms-pro-shell .supplier-journal-filterbar,
+  .rms-pro-shell .supplier-journal-total-card{
+    grid-template-columns:1fr!important;
+  }
+  .rms-pro-shell .supplier-journal-total-amount{
+    grid-column:auto!important;
   }
 }
 `
