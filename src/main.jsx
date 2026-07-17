@@ -28699,9 +28699,9 @@ function Suppliers({ t, isAdmin = false }) {
               const trendClass = !previous ? 'neutral' : change > 0 ? 'up' : change < 0 ? 'down' : 'same'
               const detailOpen = supplierProductPriceDetailId === product.id
               return <tr key={product.id} className={detailOpen ? 'supplier-product-price-open-row' : ''}>
-                  <td className="supplier-pricebook-product-cell">{editing ? <div className="supplier-pricebook-product-edit"><input value={supplierProductEditForm.name} onChange={e => setSupplierProductEditForm({...supplierProductEditForm, name:e.target.value})} /><div><select value={supplierProductEditForm.category} onChange={e => setSupplierProductEditForm({...supplierProductEditForm, category:e.target.value})}>{PRODUCT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select><select value={supplierProductEditForm.base_unit} onChange={e => setSupplierProductEditForm({...supplierProductEditForm, base_unit:e.target.value})}>{BASE_UNITS.map(u => <option key={u.value} value={u.value}>{u.label}</option>)}</select></div></div> : <><b>{product.name}</b><br /><span className="supplier-pricebook-product-meta">{product.category || '—'} · {product.base_unit || 'unit'}</span></>}</td>
-                  <td>{latest ? <><b>{fmt(latest.price)} AZN / {latest.unit}</b><br /><span className="hint">≈ {fmt(latest.base_unit_price)} AZN / {priceInfo.baseUnit || product.base_unit}</span></> : <span className="hint">нет закупок</span>}</td>
-                  <td>{latest ? <>{latest.supplier}<br /><span className="hint">{formatDateDMY(latest.date)} · {latest.invoice}</span></> : <span className="hint">—</span>}</td>
+                  <td className="supplier-pricebook-product-cell">{editing ? <div className="supplier-pricebook-product-edit"><input value={supplierProductEditForm.name} onChange={e => setSupplierProductEditForm({...supplierProductEditForm, name:e.target.value})} /><div><select value={supplierProductEditForm.category} onChange={e => setSupplierProductEditForm({...supplierProductEditForm, category:e.target.value})}>{PRODUCT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select><select value={supplierProductEditForm.base_unit} onChange={e => setSupplierProductEditForm({...supplierProductEditForm, base_unit:e.target.value})}>{BASE_UNITS.map(u => <option key={u.value} value={u.value}>{u.label}</option>)}</select></div></div> : <><strong className="supplier-pricebook-main-text">{product.name}</strong><br /><span className="supplier-pricebook-product-meta">{product.category || '—'} · {product.base_unit || 'unit'}</span></>}</td>
+                  <td className="supplier-pricebook-price-cell">{latest ? <><strong className="supplier-pricebook-price-main">{fmt(latest.price)} AZN / {latest.unit}</strong><br /><span className="hint">≈ {fmt(latest.base_unit_price)} AZN / {priceInfo.baseUnit || product.base_unit}</span></> : <span className="hint">нет закупок</span>}</td>
+                  <td className="supplier-pricebook-supplier-cell">{latest ? <><span className="supplier-pricebook-supplier-main">{latest.supplier}</span><br /><span className="hint">{formatDateDMY(latest.date)} · {latest.invoice}</span></> : <span className="hint">—</span>}</td>
                   <td className="supplier-products-price-action-cell">{editing ? <div className="supplier-products-edit-actions"><button className="small primary" onClick={() => saveSupplierProduct(product)}>OK</button><button className="ghost small" onClick={() => setEditingSupplierProductId('')}>×</button></div> : <div className="supplier-products-price-action-inner">
                     <div className="supplier-products-trend-slot">{latest ? <span className={`supplier-product-price-trend ${trendClass}`}>{previous ? `${change > 0 ? '↑' : change < 0 ? '↓' : '→'} ${pct(Math.abs(change))}` : 'первая цена'}</span> : <span className="hint">—</span>}</div>
                     <div className="supplier-products-menu-shell">
@@ -40246,6 +40246,181 @@ if (typeof document !== 'undefined') {
   }
   .rms-pro-shell .supplier-products-price-action-inner{
     grid-template-columns:34px!important;
+    justify-content:end!important;
+  }
+}
+`
+    document.head.appendChild(style)
+  }
+}
+
+
+/* v351 supplier pricebook: real visible text, wider dynamic cell, no overlap */
+if (typeof document !== 'undefined') {
+  const STYLE_ID = 'rms-v351-supplier-pricebook-text-visible-no-overlap'
+  if (!document.getElementById(STYLE_ID)) {
+    const style = document.createElement('style')
+    style.id = STYLE_ID
+    style.textContent = `
+.rms-pro-shell .supplier-products-pricebook-table thead tr,
+.rms-pro-shell .supplier-products-pricebook-table tbody tr{
+  display:grid!important;
+  grid-template-columns:minmax(0,34fr) minmax(0,24fr) minmax(0,22fr) minmax(176px,20fr)!important;
+  column-gap:0!important;
+  align-items:center!important;
+  width:100%!important;
+  max-width:100%!important;
+  min-width:0!important;
+  box-sizing:border-box!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table th,
+.rms-pro-shell .supplier-products-pricebook-table td{
+  min-width:0!important;
+  max-width:100%!important;
+  box-sizing:border-box!important;
+  padding-left:7px!important;
+  padding-right:7px!important;
+  overflow:visible!important;
+}
+.rms-pro-shell .supplier-pricebook-main-text,
+.rms-pro-shell .supplier-pricebook-price-main,
+.rms-pro-shell .supplier-pricebook-supplier-main{
+  display:inline-block!important;
+  width:auto!important;
+  max-width:none!important;
+  min-width:0!important;
+  overflow:visible!important;
+  text-overflow:clip!important;
+  white-space:nowrap!important;
+  word-break:normal!important;
+  vertical-align:bottom!important;
+  line-height:1.2!important;
+  font-weight:950!important;
+  color:#0f172a!important;
+}
+.rms-pro-shell .supplier-pricebook-main-text{
+  font-size:13.8px!important;
+}
+.rms-pro-shell .supplier-pricebook-price-main{
+  font-size:13.6px!important;
+}
+.rms-pro-shell .supplier-pricebook-supplier-main{
+  font-size:13.3px!important;
+}
+.rms-pro-shell .supplier-pricebook-price-cell .hint,
+.rms-pro-shell .supplier-pricebook-supplier-cell .hint{
+  display:inline-block!important;
+  width:auto!important;
+  max-width:none!important;
+  min-width:0!important;
+  overflow:visible!important;
+  text-overflow:clip!important;
+  white-space:nowrap!important;
+  word-break:normal!important;
+  font-size:11.6px!important;
+  margin-top:4px!important;
+}
+.rms-pro-shell .supplier-pricebook-product-meta{
+  display:inline-flex!important;
+  width:auto!important;
+  max-width:none!important;
+  min-width:0!important;
+  overflow:visible!important;
+  text-overflow:clip!important;
+  white-space:nowrap!important;
+  margin-top:5px!important;
+}
+.rms-pro-shell .supplier-products-price-action-cell{
+  width:100%!important;
+  min-width:0!important;
+  max-width:100%!important;
+  overflow:visible!important;
+}
+.rms-pro-shell .supplier-products-price-action-inner{
+  display:grid!important;
+  grid-template-columns:minmax(92px,1fr) 36px!important;
+  gap:10px!important;
+  align-items:center!important;
+  justify-content:stretch!important;
+  width:100%!important;
+  max-width:100%!important;
+  min-width:0!important;
+  overflow:visible!important;
+}
+.rms-pro-shell .supplier-products-trend-slot{
+  display:flex!important;
+  justify-content:flex-start!important;
+  align-items:center!important;
+  min-width:0!important;
+  max-width:100%!important;
+  overflow:visible!important;
+}
+.rms-pro-shell .supplier-product-price-trend{
+  position:relative!important;
+  z-index:1!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  width:auto!important;
+  min-width:72px!important;
+  max-width:100%!important;
+  height:28px!important;
+  padding:0 9px!important;
+  font-size:11px!important;
+  white-space:nowrap!important;
+  overflow:visible!important;
+  text-overflow:clip!important;
+}
+.rms-pro-shell .supplier-products-menu-shell{
+  position:relative!important;
+  z-index:3!important;
+  width:36px!important;
+  min-width:36px!important;
+  max-width:36px!important;
+  height:34px!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:flex-end!important;
+  overflow:visible!important;
+}
+.rms-pro-shell .supplier-products-ellipsis{
+  width:32px!important;
+  min-width:32px!important;
+  max-width:32px!important;
+  height:32px!important;
+  display:inline-flex!important;
+  visibility:visible!important;
+  opacity:1!important;
+  align-items:center!important;
+  justify-content:center!important;
+}
+@media(max-width:1180px){
+  .rms-pro-shell .supplier-products-pricebook-table thead tr,
+  .rms-pro-shell .supplier-products-pricebook-table tbody tr{
+    grid-template-columns:minmax(0,33fr) minmax(0,23fr) minmax(0,21fr) minmax(168px,23fr)!important;
+  }
+  .rms-pro-shell .supplier-products-pricebook-table th,
+  .rms-pro-shell .supplier-products-pricebook-table td{
+    padding-left:5px!important;
+    padding-right:5px!important;
+  }
+}
+@media(max-width:980px){
+  .rms-pro-shell .supplier-products-pricebook-table thead tr,
+  .rms-pro-shell .supplier-products-pricebook-table tbody tr{
+    grid-template-columns:minmax(0,42fr) minmax(0,28fr) minmax(0,30fr)!important;
+  }
+  .rms-pro-shell .supplier-products-pricebook-table th:nth-child(4){
+    display:none!important;
+  }
+  .rms-pro-shell .supplier-products-pricebook-table td:nth-child(4){
+    display:block!important;
+  }
+  .rms-pro-shell .supplier-products-trend-slot{
+    display:none!important;
+  }
+  .rms-pro-shell .supplier-products-price-action-inner{
+    grid-template-columns:36px!important;
     justify-content:end!important;
   }
 }
