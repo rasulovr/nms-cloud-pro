@@ -28907,19 +28907,14 @@ function Suppliers({ t, isAdmin = false }) {
               <button type="button" className={journalPeriodMode === 'month' ? 'active' : ''} onClick={() => setJournalQuickPeriod('month')}>Месяц</button>
               <button type="button" className={journalPeriodMode === 'all' ? 'active' : ''} onClick={() => setJournalQuickPeriod('all')}>Все</button>
             </div>
-            <details className="supplier-custom-period" open={journalPeriodMode === 'custom'}>
-              <summary>{journalPeriodLabel()}</summary>
+            <div className="supplier-custom-period supplier-custom-period-visible">
+              <strong>{supplierJournalPeriodTitle}</strong>
               <div>
                 <DateInput value={purchaseJournalFilters.date_from} onChange={e => { setJournalPeriodMode('custom'); setPurchaseJournalFilters(f => ({...f, date_from: e.target.value})); setRecentPurchasesPage(1) }} />
                 <em>—</em>
                 <DateInput value={purchaseJournalFilters.date_to} onChange={e => { setJournalPeriodMode('custom'); setPurchaseJournalFilters(f => ({...f, date_to: e.target.value})); setRecentPurchasesPage(1) }} />
               </div>
-            </details>
-          </div>
-          <div className="supplier-journal-period-display-box">
-            <span>Выбранный период</span>
-            <strong>{supplierJournalPeriodTitle}</strong>
-            <small>{supplierJournalPeriodDisplayRange}</small>
+            </div>
           </div>
           <label><span>Поставщик</span><select value={purchaseJournalFilters.supplier_id} onChange={e => { setPurchaseJournalFilters(f => ({...f, supplier_id: e.target.value})); setRecentPurchasesPage(1) }}><option value="">Все поставщики</option>{activeSuppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
           <label><span>Наш VOEN / VOEN</span><select value={purchaseJournalFilters.legal_entity_id} onChange={e => { setPurchaseJournalFilters(f => ({...f, legal_entity_id: e.target.value})); setRecentPurchasesPage(1) }}><option value="">Все юрлица</option>{legalEntities.map(le => <option key={le.id} value={le.id}>{le.name} · {le.voen}</option>)}</select></label>
@@ -41482,6 +41477,134 @@ if (typeof document !== 'undefined') {
   .rms-pro-shell .supplier-journal-filterbar > button,
   .rms-pro-shell .supplier-journal-filter-summary{
     grid-column:1 / -1!important;
+  }
+}
+`
+    document.head.appendChild(style)
+  }
+}
+
+
+/* v358 Supplier journal: period field same height + dates selectable */
+if (typeof document !== 'undefined') {
+  const STYLE_ID = 'rms-v358-supplier-journal-period-same-height-selectable'
+  if (!document.getElementById(STYLE_ID)) {
+    const style = document.createElement('style')
+    style.id = STYLE_ID
+    style.textContent = `
+.rms-pro-shell .supplier-journal-period-display-box{
+  display:none!important;
+}
+.rms-pro-shell .supplier-journal-filterbar{
+  display:grid!important;
+  grid-template-columns:repeat(4,minmax(160px,1fr)) auto 104px!important;
+  align-items:end!important;
+  gap:10px!important;
+  width:100%!important;
+  max-width:100%!important;
+  box-sizing:border-box!important;
+}
+.rms-pro-shell .supplier-journal-period-modern{
+  grid-column:1 / -1!important;
+  width:100%!important;
+  min-width:0!important;
+  display:grid!important;
+  grid-template-columns:110px minmax(360px,440px) minmax(430px,1fr)!important;
+  gap:10px!important;
+  align-items:end!important;
+}
+.rms-pro-shell .supplier-journal-period-modern > span{
+  align-self:center!important;
+  padding-bottom:0!important;
+}
+.rms-pro-shell .supplier-period-pills{
+  height:52px!important;
+  align-items:center!important;
+  padding:6px!important;
+  box-sizing:border-box!important;
+}
+.rms-pro-shell .supplier-period-pills button{
+  height:38px!important;
+}
+.rms-pro-shell .supplier-custom-period.supplier-custom-period-visible{
+  height:52px!important;
+  min-width:0!important;
+  width:100%!important;
+  display:grid!important;
+  grid-template-columns:150px minmax(0,1fr)!important;
+  align-items:center!important;
+  gap:10px!important;
+  padding:6px 10px!important;
+  box-sizing:border-box!important;
+  border:1px solid rgba(203,213,225,.92)!important;
+  border-radius:15px!important;
+  background:linear-gradient(180deg,#ffffff,#f8fafc)!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.82)!important;
+}
+.rms-pro-shell .supplier-custom-period.supplier-custom-period-visible strong{
+  color:#0f172a!important;
+  font-size:14px!important;
+  line-height:1.15!important;
+  font-weight:950!important;
+  white-space:nowrap!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+}
+.rms-pro-shell .supplier-custom-period.supplier-custom-period-visible > div{
+  height:40px!important;
+  min-width:0!important;
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) 18px minmax(0,1fr)!important;
+  align-items:center!important;
+  gap:8px!important;
+  padding:0!important;
+  border:0!important;
+  background:transparent!important;
+}
+.rms-pro-shell .supplier-custom-period.supplier-custom-period-visible input{
+  height:40px!important;
+  width:100%!important;
+  min-width:0!important;
+}
+.rms-pro-shell .supplier-custom-period.supplier-custom-period-visible em{
+  display:flex!important;
+  justify-content:center!important;
+  color:#94a3b8!important;
+  font-style:normal!important;
+  font-weight:950!important;
+}
+.rms-pro-shell .supplier-journal-filterbar > label{
+  min-width:0!important;
+  width:100%!important;
+}
+.rms-pro-shell .supplier-journal-filterbar > button.ghost.small{
+  height:42px!important;
+  align-self:end!important;
+}
+.rms-pro-shell .supplier-journal-filter-summary{
+  height:42px!important;
+  align-self:end!important;
+}
+@media(max-width:1500px){
+  .rms-pro-shell .supplier-journal-filterbar{
+    grid-template-columns:repeat(2,minmax(0,1fr)) auto 104px!important;
+  }
+  .rms-pro-shell .supplier-journal-period-modern{
+    grid-template-columns:110px minmax(320px,420px) minmax(360px,1fr)!important;
+  }
+}
+@media(max-width:1100px){
+  .rms-pro-shell .supplier-journal-period-modern{
+    grid-template-columns:1fr!important;
+  }
+  .rms-pro-shell .supplier-custom-period.supplier-custom-period-visible{
+    grid-template-columns:1fr!important;
+    height:auto!important;
+  }
+}
+@media(max-width:900px){
+  .rms-pro-shell .supplier-journal-filterbar{
+    grid-template-columns:1fr!important;
   }
 }
 `
