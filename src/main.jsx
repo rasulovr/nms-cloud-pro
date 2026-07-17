@@ -26099,18 +26099,27 @@ function Advances({ t }) {
 function SupplierProductPriceHistoryChart({ history = [], baseUnit = '' }) {
   const sourceRows = [...(history || [])]
     .filter(r => parseNum(r.base_unit_price || r.price) > 0)
-    .sort((a, b) => String(a.date || a.createdAt || '').localeCompare(String(b.date || b.createdAt || '')))
+    .sort((a, b) => {
+      const dateDiff = String(a.date || a.createdAt || '').localeCompare(String(b.date || b.createdAt || ''))
+      if (dateDiff) return dateDiff
+      return String(a.createdAt || '').localeCompare(String(b.createdAt || ''))
+    })
 
   if (!sourceRows.length) {
     return <div className="supplier-product-price-chart-empty">Нет данных для графика</div>
   }
 
+  const monthKeys = new Set(sourceRows.map(r => String(r.date || r.createdAt || '').slice(0, 7)).filter(Boolean))
   const firstDate = sourceRows[0]?.date || sourceRows[0]?.createdAt || ''
   const lastDate = sourceRows[sourceRows.length - 1]?.date || sourceRows[sourceRows.length - 1]?.createdAt || ''
   const firstMs = firstDate ? new Date(firstDate).getTime() : 0
   const lastMs = lastDate ? new Date(lastDate).getTime() : 0
   const daysSpan = firstMs && lastMs ? Math.max(0, (lastMs - firstMs) / 86400000) : 0
-  const useMonthly = sourceRows.length > 18 || daysSpan > 62
+
+  // Monthly mode only when the history really covers several months.
+  // If there are many purchases inside one month, show daily averages instead of collapsing everything into one point.
+  const useMonthly = monthKeys.size >= 3 || daysSpan > 92
+  const useDaily = !useMonthly && sourceRows.length > 24
 
   const rows = useMonthly
     ? (() => {
@@ -26132,12 +26141,31 @@ function SupplierProductPriceHistoryChart({ history = [], baseUnit = '' }) {
           count: row.count,
         }))
       })()
-    : sourceRows.map(r => ({
-        ...r,
-        periodLabel: formatDateDMY(r.date) || r.date || '—',
-        value: parseNum(r.base_unit_price || r.price),
-        count: 1,
-      }))
+    : useDaily
+      ? (() => {
+          const byDay = new Map()
+          sourceRows.forEach(r => {
+            const key = String(r.date || r.createdAt || '').slice(0, 10) || '—'
+            const prev = byDay.get(key) || { key, date: key, total: 0, count: 0, last: r }
+            prev.total += parseNum(r.base_unit_price || r.price)
+            prev.count += 1
+            prev.last = r
+            byDay.set(key, prev)
+          })
+          return Array.from(byDay.values()).map(row => ({
+            ...row.last,
+            date: row.date,
+            periodLabel: row.key,
+            value: row.count ? row.total / row.count : parseNum(row.last?.base_unit_price || row.last?.price),
+            count: row.count,
+          }))
+        })()
+      : sourceRows.map(r => ({
+          ...r,
+          periodLabel: formatDateDMY(r.date) || r.date || '—',
+          value: parseNum(r.base_unit_price || r.price),
+          count: 1,
+        }))
 
   const width = 760
   const height = 280
@@ -26149,7 +26177,7 @@ function SupplierProductPriceHistoryChart({ history = [], baseUnit = '' }) {
   const minValueRaw = Math.min(...values)
   const maxValueRaw = Math.max(...values)
   const allSame = Math.abs(maxValueRaw - minValueRaw) < 0.00001
-  const paddingValue = allSame ? Math.max(0.01, maxValueRaw * 0.08) : (maxValueRaw - minValueRaw) * 0.18
+  const paddingValue = allSame ? Math.max(0.01, maxValueRaw * 0.04) : (maxValueRaw - minValueRaw) * 0.18
   const minValue = Math.max(0, minValueRaw - paddingValue)
   const maxValue = maxValueRaw + paddingValue
   const spread = Math.max(0.0001, maxValue - minValue)
@@ -26171,12 +26199,18 @@ function SupplierProductPriceHistoryChart({ history = [], baseUnit = '' }) {
   })
 
   const showEveryLabel = points.length <= 8 ? 1 : Math.ceil(points.length / 8)
+  const modeTitle = useMonthly ? 'Помесячный график закупочной цены' : useDaily ? 'Дневной график закупочной цены' : 'График закупочной цены'
+  const modeNote = useMonthly
+    ? 'Показана средняя цена по месяцам за весь период.'
+    : useDaily
+      ? 'Много записей внутри короткого периода: показана средняя цена по дням.'
+      : 'Цена приведена к базовой единице.'
 
   return <div className="supplier-product-price-chart">
     <div className="supplier-product-price-chart-head">
       <div>
-        <b>{useMonthly ? 'Помесячный график закупочной цены' : 'График закупочной цены'}</b>
-        <span>{useMonthly ? 'Много записей: показана средняя цена по месяцам за весь период.' : 'Цена приведена к базовой единице.'} Базовая единица: {baseUnit || 'ед.'}</span>
+        <b>{modeTitle}</b>
+        <span>{modeNote} Базовая единица: {baseUnit || 'ед.'}</span>
       </div>
       <strong>{fmt(points[points.length - 1]?.value)} AZN / {baseUnit || 'ед.'}</strong>
     </div>
@@ -39873,6 +39907,93 @@ if (typeof document !== 'undefined') {
   .rms-pro-shell .supplier-products-price-action-inner{
     grid-template-columns:34px!important;
     justify-content:end!important;
+  }
+}
+`
+    document.head.appendChild(style)
+  }
+}
+
+
+/* v349 supplier pricebook: no text wrapping + fixed chart grouping */
+if (typeof document !== 'undefined') {
+  const STYLE_ID = 'rms-v349-supplier-pricebook-nowrap-chart-fix'
+  if (!document.getElementById(STYLE_ID)) {
+    const style = document.createElement('style')
+    style.id = STYLE_ID
+    style.textContent = `
+.rms-pro-shell .supplier-products-pricebook-table thead tr,
+.rms-pro-shell .supplier-products-pricebook-table tbody tr{
+  grid-template-columns:minmax(0,33fr) minmax(0,22fr) minmax(0,22fr) minmax(142px,23fr)!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table th,
+.rms-pro-shell .supplier-products-pricebook-table td{
+  padding-left:6px!important;
+  padding-right:6px!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table td:nth-child(1) b,
+.rms-pro-shell .supplier-products-pricebook-table td:nth-child(2) b,
+.rms-pro-shell .supplier-products-pricebook-table td:nth-child(3) b,
+.rms-pro-shell .supplier-products-pricebook-table td:nth-child(2) .hint,
+.rms-pro-shell .supplier-products-pricebook-table td:nth-child(3) .hint{
+  display:block!important;
+  max-width:100%!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  white-space:nowrap!important;
+  word-break:normal!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table td:nth-child(1) b{
+  font-size:13.5px!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table td:nth-child(2) b{
+  font-size:13.2px!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table td:nth-child(3) b{
+  font-size:13px!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table td:nth-child(2) .hint,
+.rms-pro-shell .supplier-products-pricebook-table td:nth-child(3) .hint{
+  font-size:11.4px!important;
+}
+.rms-pro-shell .supplier-products-price-action-inner{
+  grid-template-columns:minmax(0,1fr) 34px!important;
+  gap:5px!important;
+}
+.rms-pro-shell .supplier-products-trend-slot{
+  min-width:0!important;
+  overflow:hidden!important;
+}
+.rms-pro-shell .supplier-product-price-trend{
+  max-width:100%!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+}
+.rms-pro-shell .supplier-products-menu-shell{
+  width:34px!important;
+  min-width:34px!important;
+  max-width:34px!important;
+}
+.rms-pro-shell .supplier-products-ellipsis{
+  width:32px!important;
+  min-width:32px!important;
+  max-width:32px!important;
+}
+@media(max-width:1180px){
+  .rms-pro-shell .supplier-products-pricebook-table thead tr,
+  .rms-pro-shell .supplier-products-pricebook-table tbody tr{
+    grid-template-columns:minmax(0,32fr) minmax(0,21fr) minmax(0,21fr) minmax(138px,26fr)!important;
+  }
+  .rms-pro-shell .supplier-products-pricebook-table th,
+  .rms-pro-shell .supplier-products-pricebook-table td{
+    padding-left:5px!important;
+    padding-right:5px!important;
+  }
+}
+@media(max-width:980px){
+  .rms-pro-shell .supplier-products-pricebook-table thead tr,
+  .rms-pro-shell .supplier-products-pricebook-table tbody tr{
+    grid-template-columns:minmax(0,38fr) minmax(0,26fr) minmax(0,36fr)!important;
   }
 }
 `
