@@ -2292,6 +2292,11 @@ function SecurityRecoveryCenter({ embedded = false } = {}) {
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
   useRmsStatusToast(message)
+
+  useEffect(() => () => {
+    if (purchaseItemsSaveProgressTimerRef.current) clearInterval(purchaseItemsSaveProgressTimerRef.current)
+    if (purchaseItemsSaveProgressHideTimerRef.current) clearTimeout(purchaseItemsSaveProgressHideTimerRef.current)
+  }, [])
   const [preview, setPreview] = useState(null)
   const [previewLoading, setPreviewLoading] = useState(false)
   const [compareResult, setCompareResult] = useState(null)
@@ -26332,6 +26337,9 @@ function Suppliers({ t, isAdmin = false }) {
   const [editingPurchaseId, setEditingPurchaseId] = useState('')
   const [purchaseItemsEditorId, setPurchaseItemsEditorId] = useState('')
   const [purchaseItemsDraft, setPurchaseItemsDraft] = useState([])
+  const [purchaseItemsSaveProgress, setPurchaseItemsSaveProgress] = useState({ active: false, progress: 0, title: '', detail: '', step: '', status: 'idle' })
+  const purchaseItemsSaveProgressTimerRef = useRef(null)
+  const purchaseItemsSaveProgressHideTimerRef = useRef(null)
   const [viewPurchaseId, setViewPurchaseId] = useState('')
   const [recentPurchasesPageSize, setRecentPurchasesPageSize] = useState(10)
   const [recentPurchasesPage, setRecentPurchasesPage] = useState(1)
@@ -27386,15 +27394,90 @@ function Suppliers({ t, isAdmin = false }) {
     }))
   }
 
+
+  function clearPurchaseItemsSaveProgressTimers() {
+    if (purchaseItemsSaveProgressTimerRef.current) {
+      clearInterval(purchaseItemsSaveProgressTimerRef.current)
+      purchaseItemsSaveProgressTimerRef.current = null
+    }
+    if (purchaseItemsSaveProgressHideTimerRef.current) {
+      clearTimeout(purchaseItemsSaveProgressHideTimerRef.current)
+      purchaseItemsSaveProgressHideTimerRef.current = null
+    }
+  }
+
+  function beginPurchaseItemsSaveProgress(title = 'Сохранение товаров в накладной', detail = 'Проверка строк и подготовка пересчёта…') {
+    clearPurchaseItemsSaveProgressTimers()
+    setPurchaseItemsSaveProgress({ active: true, progress: 8, title, detail, step: 'Проверка строк', status: 'running' })
+    purchaseItemsSaveProgressTimerRef.current = setInterval(() => {
+      setPurchaseItemsSaveProgress(prev => {
+        if (!prev.active || prev.status !== 'running' || prev.progress >= 88) return prev
+        const increment = prev.progress < 35 ? 6 : prev.progress < 70 ? 4 : 2
+        return { ...prev, progress: Math.min(88, parseNum(prev.progress) + increment) }
+      })
+    }, 300)
+  }
+
+  function updatePurchaseItemsSaveProgress(progress, detail, step = '') {
+    const safeProgress = Math.max(0, Math.min(96, Math.round(Number(progress) || 0)))
+    setPurchaseItemsSaveProgress(prev => ({
+      ...prev,
+      active: true,
+      status: 'running',
+      progress: Math.max(parseNum(prev.progress), safeProgress),
+      detail: detail || prev.detail,
+      step: step || prev.step
+    }))
+  }
+
+  function completePurchaseItemsSaveProgress(detail = 'Товары сохранены. Сумма накладной пересчитана.') {
+    clearPurchaseItemsSaveProgressTimers()
+    setPurchaseItemsSaveProgress(prev => ({
+      ...prev,
+      active: true,
+      progress: 100,
+      title: 'Сохранение завершено',
+      detail,
+      step: 'Готово',
+      status: 'success'
+    }))
+    purchaseItemsSaveProgressHideTimerRef.current = setTimeout(() => {
+      setPurchaseItemsSaveProgress(prev => ({ ...prev, active: false }))
+      purchaseItemsSaveProgressHideTimerRef.current = null
+    }, 1200)
+  }
+
+  function failPurchaseItemsSaveProgress(error) {
+    clearPurchaseItemsSaveProgressTimers()
+    const messageText = error?.message || String(error || 'Не удалось сохранить товары')
+    setPurchaseItemsSaveProgress(prev => ({
+      ...prev,
+      active: true,
+      title: 'Ошибка сохранения',
+      detail: messageText,
+      step: 'Проверьте строки и повторите сохранение',
+      status: 'error'
+    }))
+    purchaseItemsSaveProgressHideTimerRef.current = setTimeout(() => {
+      setPurchaseItemsSaveProgress(prev => ({ ...prev, active: false }))
+      purchaseItemsSaveProgressHideTimerRef.current = null
+    }, 3600)
+  }
+
   function existingPurchaseDraftTotal() {
     return (purchaseItemsDraft || []).reduce((sum, row) => sum + lineTotal(row), 0)
   }
 
   async function saveExistingPurchaseItems(purchase) {
     setMessage('')
+    beginPurchaseItemsSaveProgress('Сохранение товаров в накладной', 'Проверка количества, единиц и цен…')
     try {
       const prepared = normalizeSupplierPurchaseItems(purchaseItemsDraft)
       if (!prepared.length) throw new Error('Добавьте хотя бы один товар с количеством и ценой')
+
+      updatePurchaseItemsSaveProgress(24, `Подготовлено строк: ${prepared.length}`, 'Проверка строк завершена')
+      updatePurchaseItemsSaveProgress(42, 'Передача строк в Supabase…', 'Сохранение товарных строк')
+
       await callSupplierRpc('rms_supplier_purchase_update_secure', {
         p_purchase_id: purchase.id,
         p_supplier_id: purchase.supplier_id,
@@ -27406,10 +27489,14 @@ function Suppliers({ t, isAdmin = false }) {
         p_items: prepared,
         p_manual_amount: null
       }, 'Товары добавлены. Сумма накладной пересчитана по товарам')
+
+      updatePurchaseItemsSaveProgress(86, `Пересчёт суммы накладной: ${fmt(existingPurchaseDraftTotal())} AZN`, 'Пересчёт накладной')
       setPurchaseItemsEditorId('')
       setPurchaseItemsDraft([])
+      completePurchaseItemsSaveProgress('Товары сохранены, сумма накладной пересчитана, данные обновлены.')
     } catch (e) {
       setMessage(e.message || 'Не удалось сохранить товары в накладной')
+      failPurchaseItemsSaveProgress(e)
     }
   }
 
@@ -28486,6 +28573,7 @@ function Suppliers({ t, isAdmin = false }) {
 
   return <section className="suppliers-v43-page">
     <SupplierV43Styles />
+    <BackupProgressOverlay state={purchaseItemsSaveProgress} />
     <section className="suppliers-v43-hero">
       <div>
         <h2>{t('suppliers_tab')}</h2>
@@ -29097,12 +29185,20 @@ function Suppliers({ t, isAdmin = false }) {
                                 </tr>)}</tbody>
                               </table>
                             </div>
+                            {purchaseItemsSaveProgress.active && <div className="supplier-purchase-save-inline-progress">
+                              <div className="supplier-purchase-save-inline-ring" style={{'--progress': Math.round(parseNum(purchaseItemsSaveProgress.progress))}}><span>{Math.round(parseNum(purchaseItemsSaveProgress.progress))}%</span></div>
+                              <div>
+                                <b>{purchaseItemsSaveProgress.title || 'Сохранение товаров'}</b>
+                                <p>{purchaseItemsSaveProgress.detail || 'Операция выполняется…'}</p>
+                                <small>{purchaseItemsSaveProgress.step || 'Не закрывайте страницу'}</small>
+                              </div>
+                            </div>}
                             <div className="existing-purchase-items-footer">
-                              <button className="ghost small supplier-add-product-line-btn" onClick={() => setPurchaseItemsDraft(rows => [...rows, { ...emptyLine, id: crypto.randomUUID?.() || String(Math.random()), quantity: '', unit_price: '', line_amount: '' }])}>{isAzInterface ? '+ Məhsulu əlavə et' : '+ Добавить товар'}</button>
+                              <button className="ghost small supplier-add-product-line-btn" disabled={purchaseItemsSaveProgress.active} onClick={() => setPurchaseItemsDraft(rows => [...rows, { ...emptyLine, id: crypto.randomUUID?.() || String(Math.random()), quantity: '', unit_price: '', line_amount: '' }])}>{isAzInterface ? '+ Məhsulu əlavə et' : '+ Добавить товар'}</button>
                               <div className="existing-purchase-items-total">Новая сумма накладной: <strong>{fmt(existingPurchaseDraftTotal())} AZN</strong></div>
                               <div className="action-row">
-                                <button className="ghost small" onClick={() => { setPurchaseItemsEditorId(''); setPurchaseItemsDraft([]) }}>Отмена</button>
-                                <button className="small supplier-main-action" onClick={() => saveExistingPurchaseItems(p)}>Сохранить товары и пересчитать</button>
+                                <button className="ghost small" disabled={purchaseItemsSaveProgress.active} onClick={() => { setPurchaseItemsEditorId(''); setPurchaseItemsDraft([]) }}>Отмена</button>
+                                <button className="small supplier-main-action" disabled={purchaseItemsSaveProgress.active} onClick={() => saveExistingPurchaseItems(p)}>{purchaseItemsSaveProgress.active ? 'Сохраняется...' : 'Сохранить товары и пересчитать'}</button>
                               </div>
                             </div>
                           </div> : <div className="table-wrap">
@@ -42021,6 +42117,77 @@ if (typeof document !== 'undefined') {
 }
 .rms-pro-shell .reports-v353-detail-table{
   min-width:1280px!important;
+}
+`
+    document.head.appendChild(style)
+  }
+}
+
+
+/* v363 supplier invoice save progress */
+if (typeof document !== 'undefined') {
+  const STYLE_ID = 'rms-v363-supplier-invoice-save-progress'
+  if (!document.getElementById(STYLE_ID)) {
+    const style = document.createElement('style')
+    style.id = STYLE_ID
+    style.textContent = `
+.rms-pro-shell .supplier-purchase-save-inline-progress{
+  display:grid!important;
+  grid-template-columns:48px minmax(0,1fr)!important;
+  gap:12px!important;
+  align-items:center!important;
+  margin:12px 0!important;
+  padding:12px 14px!important;
+  border:1px solid rgba(37,99,235,.18)!important;
+  border-radius:18px!important;
+  background:linear-gradient(180deg,#ffffff,#f8fbff)!important;
+  box-shadow:0 14px 28px rgba(15,23,42,.045)!important;
+}
+.rms-pro-shell .supplier-purchase-save-inline-ring{
+  width:48px!important;
+  height:48px!important;
+  border-radius:999px!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  background:conic-gradient(#2563eb calc(var(--progress, 0) * 1%), #e2e8f0 0)!important;
+  position:relative!important;
+}
+.rms-pro-shell .supplier-purchase-save-inline-ring::before{
+  content:''!important;
+  position:absolute!important;
+  inset:5px!important;
+  border-radius:999px!important;
+  background:#fff!important;
+}
+.rms-pro-shell .supplier-purchase-save-inline-ring span{
+  position:relative!important;
+  z-index:1!important;
+  color:#0f172a!important;
+  font-size:11px!important;
+  font-weight:950!important;
+}
+.rms-pro-shell .supplier-purchase-save-inline-progress b{
+  display:block!important;
+  color:#0f172a!important;
+  font-size:14px!important;
+  font-weight:950!important;
+}
+.rms-pro-shell .supplier-purchase-save-inline-progress p{
+  margin:3px 0!important;
+  color:#475569!important;
+  font-size:12px!important;
+  font-weight:800!important;
+}
+.rms-pro-shell .supplier-purchase-save-inline-progress small{
+  display:block!important;
+  color:#2563eb!important;
+  font-size:11px!important;
+  font-weight:900!important;
+}
+.rms-pro-shell .existing-purchase-items-footer button:disabled{
+  opacity:.55!important;
+  cursor:not-allowed!important;
 }
 `
     document.head.appendChild(style)
