@@ -19110,8 +19110,9 @@ function Dashboard({ t }) {
   async function calcDashboardRevenueUntilDay(y, m, dayLimit) {
     const daysInMonth = new Date(Number(y), Number(m), 0).getDate()
     const safeDay = Math.max(1, Math.min(Number(dayLimit) || daysInMonth, daysInMonth))
-    const start = monthStart(y, m)
-    const end = safeDay >= daysInMonth ? rmsNextMonthStart(`${Number(y)}-${String(Number(m)).padStart(2, '0')}`) : `${Number(y)}-${String(Number(m)).padStart(2, '0')}-${String(safeDay + 1).padStart(2, '0')}`
+    const monthKey = `${Number(y)}-${String(Number(m)).padStart(2, '0')}`
+    const start = `${monthKey}-01`
+    const end = safeDay >= daysInMonth ? rmsNextMonthStart(monthKey) : `${monthKey}-${String(safeDay + 1).padStart(2, '0')}`
 
     let query = supabase
       .from('daily_revenue')
@@ -19128,6 +19129,35 @@ function Dashboard({ t }) {
     return (data || []).reduce((sum, row) => {
       return sum + parseNum(row.cash_amount) + parseNum(row.bank_amount) + parseNum(row.wolt_amount)
     }, 0)
+  }
+
+  async function calcDashboardLastFilledRevenueDay(y, m, maxDay) {
+    const daysInMonth = new Date(Number(y), Number(m), 0).getDate()
+    const safeMaxDay = Math.max(1, Math.min(Number(maxDay) || daysInMonth, daysInMonth))
+    const monthKey = `${Number(y)}-${String(Number(m)).padStart(2, '0')}`
+    const start = `${monthKey}-01`
+    const end = safeMaxDay >= daysInMonth ? rmsNextMonthStart(monthKey) : `${monthKey}-${String(safeMaxDay + 1).padStart(2, '0')}`
+
+    let query = supabase
+      .from('daily_revenue')
+      .select('branch_id,revenue_date,cash_amount,bank_amount,wolt_amount')
+      .gte('revenue_date', start)
+      .lt('revenue_date', end)
+      .is('deleted_at', null)
+
+    if (branchId !== DASH_ALL_BRANCHES) query = query.eq('branch_id', branchId)
+
+    const { data, error } = await query
+    if (error) throw error
+
+    let lastDay = 0
+    ;(data || []).forEach(row => {
+      const amount = parseNum(row.cash_amount) + parseNum(row.bank_amount) + parseNum(row.wolt_amount)
+      if (amount <= 0) return
+      const day = Number(String(row.revenue_date || '').slice(8, 10))
+      if (day > lastDay) lastDay = day
+    })
+    return lastDay
   }
 
   function emptyDashboardData() {
@@ -19175,16 +19205,24 @@ function Dashboard({ t }) {
 
       if (shouldCompareDayToDay) {
         try {
+          // v361: compare only up to the latest day with entered revenue in the current month.
+          // If today's revenue has not been entered yet, use yesterday / the latest filled day,
+          // so Dashboard does not show an artificially low revenue dynamic.
+          const lastFilledDay = await calcDashboardLastFilledRevenueDay(year, month, currentDay)
+          const comparisonDay = Math.max(1, Math.min(currentDay, lastFilledDay || Math.max(1, currentDay - 1)))
+          const usedPreviousDay = comparisonDay < currentDay
           const [currentMtdRevenue, previousMtdRevenue] = await Promise.all([
-            calcDashboardRevenueUntilDay(year, month, currentDay),
-            calcDashboardRevenueUntilDay(pm.year, pm.month, currentDay)
+            calcDashboardRevenueUntilDay(year, month, comparisonDay),
+            calcDashboardRevenueUntilDay(pm.year, pm.month, comparisonDay)
           ])
 
           comparison = {
             currentRevenue: currentMtdRevenue,
             previousRevenue: previousMtdRevenue,
-            revenueLabel: `день-к-дню · 1-${currentDay}`,
-            revenueTooltip: `День-к-дню: 1-${currentDay} текущего месяца против 1-${currentDay} предыдущего месяца. Предыдущий период: ${fmt(previousMtdRevenue)} AZN`
+            revenueLabel: `день-к-дню · 1-${comparisonDay}${usedPreviousDay ? ' · до последнего заполненного дня' : ''}`,
+            revenueTooltip: usedPreviousDay
+              ? `Сегодняшняя выручка ещё не заполнена. Сравнение считается по последнему заполненному дню: 1-${comparisonDay} текущего месяца против 1-${comparisonDay} предыдущего месяца. Предыдущий период: ${fmt(previousMtdRevenue)} AZN`
+              : `День-к-дню: 1-${comparisonDay} текущего месяца против 1-${comparisonDay} предыдущего месяца. Предыдущий период: ${fmt(previousMtdRevenue)} AZN`
           }
 
           previous = {
