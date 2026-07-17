@@ -42016,3 +42016,139 @@ if (typeof document !== 'undefined') {
     document.head.appendChild(style)
   }
 }
+
+
+/* v365 supplier pricebook: keep actions visible on smaller screens */
+if (typeof document !== 'undefined') {
+  const STYLE_ID = 'rms-v365-supplier-pricebook-mobile-dots-visible'
+  if (!document.getElementById(STYLE_ID)) {
+    const style = document.createElement('style')
+    style.id = STYLE_ID
+    style.textContent = `
+@media(max-width:1500px){
+  .rms-pro-shell .supplier-products-pricebook-wrap,
+  .rms-pro-shell .supplier-products-pricebook-table,
+  .rms-pro-shell .supplier-products-pricebook-table thead,
+  .rms-pro-shell .supplier-products-pricebook-table tbody{
+    overflow:visible!important;
+    max-width:100%!important;
+    min-width:0!important;
+  }
+  .rms-pro-shell .supplier-products-pricebook-table thead tr,
+  .rms-pro-shell .supplier-products-pricebook-table tbody tr{
+    display:grid!important;
+    grid-template-columns:minmax(0,36fr) minmax(0,23fr) minmax(0,33fr) 46px!important;
+    width:100%!important;
+    max-width:100%!important;
+    min-width:0!important;
+    column-gap:0!important;
+    align-items:center!important;
+  }
+  .rms-pro-shell .supplier-products-pricebook-table th:nth-child(4){
+    display:block!important;
+    width:46px!important;
+    max-width:46px!important;
+    min-width:46px!important;
+    padding-left:0!important;
+    padding-right:4px!important;
+    overflow:hidden!important;
+    color:transparent!important;
+  }
+  .rms-pro-shell .supplier-products-pricebook-table th:nth-child(4)::after{
+    content:'•••'!important;
+    color:#64748b!important;
+    display:block!important;
+    text-align:right!important;
+    letter-spacing:1px!important;
+  }
+  .rms-pro-shell .supplier-products-pricebook-table td:nth-child(4),
+  .rms-pro-shell .supplier-products-price-action-cell{
+    display:flex!important;
+    width:46px!important;
+    max-width:46px!important;
+    min-width:46px!important;
+    padding-left:0!important;
+    padding-right:4px!important;
+    justify-content:flex-end!important;
+    align-items:center!important;
+    overflow:visible!important;
+    position:relative!important;
+    z-index:20!important;
+  }
+  .rms-pro-shell .supplier-products-trend-slot{
+    display:none!important;
+  }
+  .rms-pro-shell .supplier-products-price-action-inner{
+    display:flex!important;
+    width:36px!important;
+    min-width:36px!important;
+    max-width:36px!important;
+    justify-content:flex-end!important;
+    align-items:center!important;
+    overflow:visible!important;
+    gap:0!important;
+  }
+  .rms-pro-shell .supplier-products-menu-shell{
+    display:flex!important;
+    visibility:visible!important;
+    opacity:1!important;
+    width:36px!important;
+    min-width:36px!important;
+    max-width:36px!important;
+    height:34px!important;
+    justify-content:flex-end!important;
+    align-items:center!important;
+    position:relative!important;
+    overflow:visible!important;
+    z-index:30!important;
+  }
+  .rms-pro-shell .supplier-products-ellipsis{
+    display:inline-flex!important;
+    visibility:visible!important;
+    opacity:1!important;
+    width:32px!important;
+    min-width:32px!important;
+    max-width:32px!important;
+    height:32px!important;
+    padding:0!important;
+    margin:0!important;
+    align-items:center!important;
+    justify-content:center!important;
+    border:1px solid #e2e8f0!important;
+    border-radius:11px!important;
+    background:#f8fafc!important;
+    color:#334155!important;
+    font-size:22px!important;
+    font-weight:950!important;
+    line-height:1!important;
+    box-shadow:0 1px 2px rgba(15,23,42,.05)!important;
+    cursor:pointer!important;
+  }
+  .rms-pro-shell .supplier-products-action-menu{
+    right:0!important;
+    left:auto!important;
+    top:36px!important;
+    z-index:500!important;
+  }
+}
+@media(max-width:980px){
+  .rms-pro-shell .supplier-products-pricebook-table thead tr,
+  .rms-pro-shell .supplier-products-pricebook-table tbody tr{
+    grid-template-columns:minmax(0,40fr) minmax(0,25fr) minmax(0,35fr) 44px!important;
+  }
+  .rms-pro-shell .supplier-products-pricebook-table td:nth-child(4),
+  .rms-pro-shell .supplier-products-price-action-cell,
+  .rms-pro-shell .supplier-products-pricebook-table th:nth-child(4){
+    display:flex!important;
+    width:44px!important;
+    max-width:44px!important;
+    min-width:44px!important;
+  }
+  .rms-pro-shell .supplier-products-pricebook-table th:nth-child(4){
+    display:block!important;
+  }
+}
+`
+    document.head.appendChild(style)
+  }
+}
