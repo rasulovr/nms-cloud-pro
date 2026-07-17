@@ -28908,7 +28908,7 @@ function Suppliers({ t, isAdmin = false }) {
               <button type="button" className={journalPeriodMode === 'all' ? 'active' : ''} onClick={() => setJournalQuickPeriod('all')}>Все</button>
             </div>
             <div className="supplier-custom-period supplier-custom-period-visible">
-              <strong>{supplierJournalPeriodTitle}</strong>
+              <strong>Диапазон</strong>
               <div>
                 <DateInput value={purchaseJournalFilters.date_from} onChange={e => { setJournalPeriodMode('custom'); setPurchaseJournalFilters(f => ({...f, date_from: e.target.value})); setRecentPurchasesPage(1) }} />
                 <em>—</em>
@@ -41605,6 +41605,143 @@ if (typeof document !== 'undefined') {
 @media(max-width:900px){
   .rms-pro-shell .supplier-journal-filterbar{
     grid-template-columns:1fr!important;
+  }
+}
+`
+    document.head.appendChild(style)
+  }
+}
+
+
+/* v359 Supplier journal: polished compact period row */
+if (typeof document !== 'undefined') {
+  const STYLE_ID = 'rms-v359-supplier-journal-period-polished'
+  if (!document.getElementById(STYLE_ID)) {
+    const style = document.createElement('style')
+    style.id = STYLE_ID
+    style.textContent = `
+.rms-pro-shell .supplier-journal-period-modern{
+  grid-column:1 / -1!important;
+  width:100%!important;
+  min-width:0!important;
+  display:grid!important;
+  grid-template-columns:110px minmax(420px,520px) minmax(460px,1fr)!important;
+  gap:12px!important;
+  align-items:center!important;
+}
+.rms-pro-shell .supplier-journal-period-modern > span{
+  align-self:center!important;
+  padding:0!important;
+  color:#64748b!important;
+  font-size:13px!important;
+  font-weight:950!important;
+}
+.rms-pro-shell .supplier-period-pills{
+  height:52px!important;
+  min-width:0!important;
+  width:100%!important;
+  display:grid!important;
+  grid-template-columns:repeat(4,minmax(0,1fr))!important;
+  align-items:center!important;
+  gap:6px!important;
+  padding:6px!important;
+  box-sizing:border-box!important;
+  border:1px solid rgba(203,213,225,.92)!important;
+  border-radius:16px!important;
+  background:#fff!important;
+}
+.rms-pro-shell .supplier-period-pills button{
+  height:40px!important;
+  min-width:0!important;
+  padding:0 12px!important;
+  border-radius:12px!important;
+  white-space:nowrap!important;
+  font-size:13px!important;
+  font-weight:950!important;
+}
+.rms-pro-shell .supplier-custom-period.supplier-custom-period-visible{
+  height:52px!important;
+  min-height:52px!important;
+  width:100%!important;
+  min-width:0!important;
+  display:grid!important;
+  grid-template-columns:96px minmax(0,1fr)!important;
+  align-items:center!important;
+  gap:10px!important;
+  padding:6px 10px!important;
+  box-sizing:border-box!important;
+  border:1px solid rgba(203,213,225,.92)!important;
+  border-radius:16px!important;
+  background:#fff!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.85)!important;
+}
+.rms-pro-shell .supplier-custom-period.supplier-custom-period-visible strong{
+  display:flex!important;
+  align-items:center!important;
+  height:40px!important;
+  color:#64748b!important;
+  font-size:12px!important;
+  line-height:1!important;
+  font-weight:950!important;
+  white-space:nowrap!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+}
+.rms-pro-shell .supplier-custom-period.supplier-custom-period-visible > div{
+  height:40px!important;
+  min-width:0!important;
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) 20px minmax(0,1fr)!important;
+  align-items:center!important;
+  gap:8px!important;
+  padding:0!important;
+  border:0!important;
+  background:transparent!important;
+}
+.rms-pro-shell .supplier-custom-period.supplier-custom-period-visible input{
+  height:40px!important;
+  width:100%!important;
+  min-width:0!important;
+  border-radius:12px!important;
+  padding:0 12px!important;
+  box-sizing:border-box!important;
+  font-size:13px!important;
+  font-weight:900!important;
+}
+.rms-pro-shell .supplier-custom-period.supplier-custom-period-visible em{
+  height:40px!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  color:#94a3b8!important;
+  font-style:normal!important;
+  font-weight:950!important;
+}
+@media(max-width:1380px){
+  .rms-pro-shell .supplier-journal-period-modern{
+    grid-template-columns:90px minmax(360px,440px) minmax(430px,1fr)!important;
+    gap:10px!important;
+  }
+  .rms-pro-shell .supplier-custom-period.supplier-custom-period-visible{
+    grid-template-columns:82px minmax(0,1fr)!important;
+  }
+}
+@media(max-width:1100px){
+  .rms-pro-shell .supplier-journal-period-modern{
+    grid-template-columns:1fr!important;
+    align-items:stretch!important;
+  }
+  .rms-pro-shell .supplier-journal-period-modern > span{
+    display:none!important;
+  }
+  .rms-pro-shell .supplier-custom-period.supplier-custom-period-visible{
+    grid-template-columns:1fr!important;
+    height:auto!important;
+    min-height:52px!important;
+  }
+  .rms-pro-shell .supplier-custom-period.supplier-custom-period-visible strong{
+    height:auto!important;
+    padding:2px 2px 0!important;
   }
 }
 `
