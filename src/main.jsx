@@ -28048,6 +28048,9 @@ function Suppliers({ t, isAdmin = false }) {
     : null
 
   const supplierJournalPeriodTitle = journalPeriodLabel()
+  const supplierJournalPeriodDisplayRange = (purchaseJournalFilters.date_from || purchaseJournalFilters.date_to)
+    ? `${purchaseJournalFilters.date_from ? formatDateDMY(purchaseJournalFilters.date_from) : 'начало'} — ${purchaseJournalFilters.date_to ? formatDateDMY(purchaseJournalFilters.date_to) : 'сегодня'}`
+    : supplierJournalPeriodTitle
 
 
   function openPurchaseFromProductSearch(purchaseId) {
@@ -28912,6 +28915,11 @@ function Suppliers({ t, isAdmin = false }) {
                 <DateInput value={purchaseJournalFilters.date_to} onChange={e => { setJournalPeriodMode('custom'); setPurchaseJournalFilters(f => ({...f, date_to: e.target.value})); setRecentPurchasesPage(1) }} />
               </div>
             </details>
+          </div>
+          <div className="supplier-journal-period-display-box">
+            <span>Выбранный период</span>
+            <strong>{supplierJournalPeriodTitle}</strong>
+            <small>{supplierJournalPeriodDisplayRange}</small>
           </div>
           <label><span>Поставщик</span><select value={purchaseJournalFilters.supplier_id} onChange={e => { setPurchaseJournalFilters(f => ({...f, supplier_id: e.target.value})); setRecentPurchasesPage(1) }}><option value="">Все поставщики</option>{activeSuppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
           <label><span>Наш VOEN / VOEN</span><select value={purchaseJournalFilters.legal_entity_id} onChange={e => { setPurchaseJournalFilters(f => ({...f, legal_entity_id: e.target.value})); setRecentPurchasesPage(1) }}><option value="">Все юрлица</option>{legalEntities.map(le => <option key={le.id} value={le.id}>{le.name} · {le.voen}</option>)}</select></label>
@@ -41372,6 +41380,108 @@ if (typeof document !== 'undefined') {
   }
   .rms-pro-shell .supplier-journal-total-amount{
     grid-column:auto!important;
+  }
+}
+`
+    document.head.appendChild(style)
+  }
+}
+
+
+/* v357 Supplier journal: period display box in right top field */
+if (typeof document !== 'undefined') {
+  const STYLE_ID = 'rms-v357-supplier-journal-period-display-box'
+  if (!document.getElementById(STYLE_ID)) {
+    const style = document.createElement('style')
+    style.id = STYLE_ID
+    style.textContent = `
+.rms-pro-shell .supplier-journal-filterbar{
+  display:grid!important;
+  grid-template-columns:repeat(12,minmax(0,1fr))!important;
+  gap:10px!important;
+  align-items:end!important;
+}
+.rms-pro-shell .supplier-journal-period-modern{
+  grid-column:1 / span 7!important;
+  min-width:0!important;
+}
+.rms-pro-shell .supplier-journal-period-display-box{
+  grid-column:8 / span 5!important;
+  min-width:0!important;
+  min-height:58px!important;
+  display:grid!important;
+  align-content:center!important;
+  gap:3px!important;
+  padding:10px 16px!important;
+  border:1px solid rgba(203,213,225,.92)!important;
+  border-radius:15px!important;
+  background:linear-gradient(180deg,#ffffff,#f8fafc)!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.82)!important;
+}
+.rms-pro-shell .supplier-journal-period-display-box span{
+  color:#64748b!important;
+  font-size:11px!important;
+  line-height:1.1!important;
+  font-weight:850!important;
+}
+.rms-pro-shell .supplier-journal-period-display-box strong{
+  color:#0f172a!important;
+  font-size:15px!important;
+  line-height:1.15!important;
+  font-weight:950!important;
+  white-space:nowrap!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+}
+.rms-pro-shell .supplier-journal-period-display-box small{
+  color:#2563eb!important;
+  font-size:12px!important;
+  line-height:1.15!important;
+  font-weight:900!important;
+  white-space:nowrap!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+}
+.rms-pro-shell .supplier-journal-filterbar > label{
+  grid-column:span 2!important;
+  min-width:0!important;
+}
+.rms-pro-shell .supplier-journal-filterbar > button{
+  grid-column:span 2!important;
+  width:100%!important;
+  min-width:0!important;
+}
+.rms-pro-shell .supplier-journal-filter-summary{
+  grid-column:span 2!important;
+  width:100%!important;
+  min-width:0!important;
+}
+@media(max-width:1500px){
+  .rms-pro-shell .supplier-journal-filterbar{
+    grid-template-columns:repeat(6,minmax(0,1fr))!important;
+  }
+  .rms-pro-shell .supplier-journal-period-modern{
+    grid-column:1 / span 3!important;
+  }
+  .rms-pro-shell .supplier-journal-period-display-box{
+    grid-column:4 / span 3!important;
+  }
+  .rms-pro-shell .supplier-journal-filterbar > label,
+  .rms-pro-shell .supplier-journal-filterbar > button,
+  .rms-pro-shell .supplier-journal-filter-summary{
+    grid-column:span 2!important;
+  }
+}
+@media(max-width:900px){
+  .rms-pro-shell .supplier-journal-filterbar{
+    grid-template-columns:1fr!important;
+  }
+  .rms-pro-shell .supplier-journal-period-modern,
+  .rms-pro-shell .supplier-journal-period-display-box,
+  .rms-pro-shell .supplier-journal-filterbar > label,
+  .rms-pro-shell .supplier-journal-filterbar > button,
+  .rms-pro-shell .supplier-journal-filter-summary{
+    grid-column:1 / -1!important;
   }
 }
 `
