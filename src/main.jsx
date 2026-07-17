@@ -41748,3 +41748,84 @@ if (typeof document !== 'undefined') {
     document.head.appendChild(style)
   }
 }
+
+
+/* v360 Supplier journal: remove inner date fields inside range box */
+if (typeof document !== 'undefined') {
+  const STYLE_ID = 'rms-v360-supplier-journal-period-no-inner-fields'
+  if (!document.getElementById(STYLE_ID)) {
+    const style = document.createElement('style')
+    style.id = STYLE_ID
+    style.textContent = `
+.rms-pro-shell .supplier-custom-period.supplier-custom-period-visible{
+  height:52px!important;
+  min-height:52px!important;
+  overflow:hidden!important;
+}
+.rms-pro-shell .supplier-custom-period.supplier-custom-period-visible > div{
+  height:40px!important;
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) 18px minmax(0,1fr)!important;
+  align-items:center!important;
+  gap:8px!important;
+  padding:0!important;
+  border:0!important;
+  background:transparent!important;
+}
+.rms-pro-shell .supplier-custom-period.supplier-custom-period-visible .date-dmy-wrap{
+  min-height:40px!important;
+  height:40px!important;
+  width:100%!important;
+  min-width:0!important;
+  border:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+  border-radius:0!important;
+}
+.rms-pro-shell .supplier-custom-period.supplier-custom-period-visible .date-dmy-input{
+  min-height:40px!important;
+  height:40px!important;
+  width:100%!important;
+  border:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+  outline:none!important;
+  border-radius:0!important;
+  padding:0 34px 0 4px!important;
+  color:#0f172a!important;
+  font-size:13.5px!important;
+  font-weight:950!important;
+}
+.rms-pro-shell .supplier-custom-period.supplier-custom-period-visible .date-dmy-input:focus{
+  border:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+  outline:none!important;
+}
+.rms-pro-shell .supplier-custom-period.supplier-custom-period-visible .date-dmy-picker-btn{
+  right:0!important;
+  width:30px!important;
+  height:30px!important;
+  border:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+  font-size:15px!important;
+  opacity:.9!important;
+}
+.rms-pro-shell .supplier-custom-period.supplier-custom-period-visible .date-dmy-picker-btn:hover{
+  background:rgba(37,99,235,.08)!important;
+  border-radius:9px!important;
+}
+.rms-pro-shell .supplier-custom-period.supplier-custom-period-visible em{
+  height:40px!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  color:#94a3b8!important;
+  font-style:normal!important;
+  font-weight:950!important;
+}
+`
+    document.head.appendChild(style)
+  }
+}
