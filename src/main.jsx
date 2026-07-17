@@ -34294,42 +34294,6 @@ function Reports({ t }) {
   }, [rmsProductsReport.detailRows])
 
 
-  const productQuantityAnomalyRows = useMemo(() => {
-    return (filteredProductReportRows || []).map(row => {
-      const rowKey = `${row.product_id || row.product_name}::${row.unit || ''}`
-      const details = (rmsProductsReport.detailRows || []).filter(item => `${item.product_id || item.product_name}::${item.unit || ''}` === rowKey)
-      const maxDetail = details.reduce((best, item) => parseNum(item.quantity) > parseNum(best?.quantity) ? item : best, null)
-      const maxAmountDiff = details.reduce((max, item) => Math.max(max, Math.abs(parseNum(item.amount_diff))), 0)
-      const avgQtyPerLine = row.item_count ? parseNum(row.quantity) / row.item_count : 0
-      const unit = String(row.unit || '').toLowerCase()
-      const isWeightOrVolume = ['kg', 'l', 'lt', 'liter', 'litre'].includes(unit)
-      const reasons = []
-      if (isWeightOrVolume && parseNum(row.quantity) >= 100) reasons.push(`общее количество ${fmt(row.quantity)} ${row.unit}`)
-      if (isWeightOrVolume && avgQtyPerLine >= 8) reasons.push(`в среднем ${fmt(avgQtyPerLine)} ${row.unit} на строку`)
-      if (isWeightOrVolume && parseNum(maxDetail?.quantity) >= 25) reasons.push(`максимальная строка ${fmt(maxDetail?.quantity)} ${row.unit}`)
-      if (parseNum(row.item_count) >= 50) reasons.push(`${row.item_count} строк за период`)
-      if (maxAmountDiff > 0.05) reasons.push(`расхождение сумма vs кол-во×цена до ${fmt(maxAmountDiff)} AZN`)
-      return {
-        ...row,
-        details,
-        maxDetail,
-        avgQtyPerLine,
-        maxAmountDiff,
-        reasons,
-      }
-    }).filter(row => row.reasons.length)
-      .sort((a, b) => parseNum(b.amount) - parseNum(a.amount))
-      .slice(0, 12)
-  }, [filteredProductReportRows, rmsProductsReport.detailRows])
-
-  const inspectProductReportRow = (row) => {
-    setProductsReportSearch(row?.product_name || '')
-    setProductsReportCategory(row?.category || 'all')
-    setProductsReportSupplierId('all')
-    setProductsReportDetailsOpen(true)
-    setProductsReportPage(1)
-  }
-
   const productReportPageSize = 50
   const productReportTotalPages = Math.max(1, Math.ceil(filteredProductReportRows.length / productReportPageSize))
   const safeProductsReportPage = Math.min(Math.max(1, parseNum(productsReportPage) || 1), productReportTotalPages)
@@ -34411,32 +34375,6 @@ function Reports({ t }) {
         </div>
       </div>}
 
-      {productQuantityAnomalyRows.length > 0 && <div className="reports-v362-product-audit-warning">
-        <div className="reports-v362-product-audit-head">
-          <div>
-            <h4>Проверка количества товаров</h4>
-            <p>RMS нашёл позиции с необычно большим количеством, большим числом строк или расхождением суммы. Это не означает автоматическую ошибку, но такие товары нужно открыть и проверить по накладным.</p>
-          </div>
-          <strong>{productQuantityAnomalyRows.length} позиций</strong>
-        </div>
-        <div className="table-wrap reports-v362-product-audit-table-wrap">
-          <table className="reports-v362-product-audit-table">
-            <thead><tr><th>Товар</th><th>Кол-во</th><th>Сумма</th><th>Строк</th><th>Причина проверки</th><th>Макс. строка</th><th></th></tr></thead>
-            <tbody>
-              {productQuantityAnomalyRows.map(row => <tr key={`product-audit-${row.product_id || row.product_name}-${row.unit}`}>
-                <td><b>{row.product_name}</b><br /><span className="hint">{row.category || '—'} · {row.supplier_names_text || '—'}</span></td>
-                <td><b>{fmt(row.quantity)} {row.unit}</b><br /><span className="hint">сред. {fmt(row.avgQtyPerLine)} / строку</span></td>
-                <td><b>{fmt(row.amount)} AZN</b><br /><span className="hint">сред. {fmt(row.avg_price)} AZN / {row.unit}</span></td>
-                <td>{row.item_count} строк<br /><span className="hint">{row.invoices} накл.</span></td>
-                <td>{row.reasons.map(reason => <span className="reports-v362-audit-chip" key={reason}>{reason}</span>)}</td>
-                <td>{row.maxDetail ? <><b>{fmt(row.maxDetail.quantity)} {row.maxDetail.unit}</b><br /><span className="hint">{formatDateDMY(row.maxDetail.date)} · {row.maxDetail.supplier_name}</span></> : '—'}</td>
-                <td><button className="ghost small" onClick={() => inspectProductReportRow(row)}>Проверить строки</button></td>
-              </tr>)}
-            </tbody>
-          </table>
-        </div>
-      </div>}
-
       <div className="reports-v353-products-split">
         <div className="reports-v353-mini-card">
           <div className="reports-v43-card-head"><div><h4>Топ категорий</h4><p>По сумме закупок.</p></div></div>
@@ -34455,7 +34393,7 @@ function Reports({ t }) {
           <thead><tr><th>{productSortHeader('name', 'Товар')}</th><th>{productSortHeader('category', 'Категория')}</th><th>{productSortHeader('quantity', 'Кол-во')}</th><th>Ед.</th><th>{productSortHeader('amount', 'Сумма')}</th><th>{productSortHeader('avg_price', 'Средняя цена')}</th><th>{productSortHeader('item_count', 'Закупок')}</th><th>Поставщики</th><th>Последняя закупка</th></tr></thead>
           <tbody>
             {visibleProductReportRows.map(row => <tr key={`${row.product_id || row.product_name}-${row.unit}`}>
-              <td><b>{row.product_name}</b><br /><span className="hint">{row.branch_names_text || 'Все филиалы'}</span><br /><button className="ghost small reports-v362-check-product-btn" onClick={() => inspectProductReportRow(row)}>Проверить строки</button></td>
+              <td><b>{row.product_name}</b><br /><span className="hint">{row.branch_names_text || 'Все филиалы'}</span></td>
               <td>{row.category || '—'}</td>
               <td><b>{fmt(row.quantity)}</b></td>
               <td>{row.unit || '—'}</td>
@@ -34476,31 +34414,6 @@ function Reports({ t }) {
         <button className="ghost small" disabled={safeProductsReportPage >= productReportTotalPages} onClick={() => setProductsReportPage(p => Math.min(productReportTotalPages, parseNum(p) + 1))}>След. →</button>
       </div>}
 
-      <div className="reports-v353-detail-head">
-        <div><h4>Детализация закупок</h4><p>Последние товарные строки по выбранному фильтру.</p></div>
-        <button className="ghost small" onClick={() => setProductsReportDetailsOpen(v => !v)}>{productsReportDetailsOpen ? 'Скрыть детализацию' : `Показать больше (${filteredProductDetailRows.length})`}</button>
-      </div>
-      <div className="table-wrap reports-v353-detail-table-wrap">
-        <table className="reports-v353-detail-table">
-          <thead><tr><th>Дата</th><th>Товар</th><th>Категория</th><th>Поставщик</th><th>Филиал</th><th>Накладная</th><th>Кол-во</th><th>Цена</th><th>Сумма</th><th>Кол-во × цена</th><th>Разница</th></tr></thead>
-          <tbody>
-            {visibleProductDetailRows.map(row => <tr key={row.id}>
-              <td>{formatDateDMY(row.date)}</td>
-              <td><b>{row.product_name}</b></td>
-              <td>{row.category || '—'}</td>
-              <td>{row.supplier_name || '—'}</td>
-              <td>{row.branch_name || '—'}</td>
-              <td>{row.invoice || '—'}</td>
-              <td>{fmt(row.quantity)} {row.unit}</td>
-              <td>{fmt(row.unit_price)} AZN</td>
-              <td><b>{fmt(row.amount)} AZN</b></td>
-              <td>{fmt(row.calculated_amount)} AZN</td>
-              <td className={Math.abs(parseNum(row.amount_diff)) > 0.05 ? 'bad' : 'hint'}>{Math.abs(parseNum(row.amount_diff)) > 0.05 ? fmt(row.amount_diff) : '—'}</td>
-            </tr>)}
-            {!filteredProductDetailRows.length && <tr><td colSpan="11" className="hint">Детализация пуста.</td></tr>}
-          </tbody>
-        </table>
-      </div>
     </div>
   </section>
 
@@ -42027,96 +41940,6 @@ if (typeof document !== 'undefined') {
   color:#94a3b8!important;
   font-style:normal!important;
   font-weight:950!important;
-}
-`
-    document.head.appendChild(style)
-  }
-}
-
-
-/* v362 Reports -> Products detailed audit */
-if (typeof document !== 'undefined') {
-  const STYLE_ID = 'rms-v362-reports-products-detailed-audit'
-  if (!document.getElementById(STYLE_ID)) {
-    const style = document.createElement('style')
-    style.id = STYLE_ID
-    style.textContent = `
-.rms-pro-shell .reports-v362-product-audit-warning{
-  margin-top:14px!important;
-  padding:14px!important;
-  border:1px solid rgba(245,158,11,.35)!important;
-  border-radius:18px!important;
-  background:linear-gradient(180deg,rgba(255,251,235,.96),rgba(255,255,255,.98))!important;
-}
-.rms-pro-shell .reports-v362-product-audit-head{
-  display:flex!important;
-  justify-content:space-between!important;
-  align-items:flex-start!important;
-  gap:14px!important;
-  margin-bottom:12px!important;
-}
-.rms-pro-shell .reports-v362-product-audit-head h4{
-  margin:0!important;
-  color:#92400e!important;
-  font-size:16px!important;
-  font-weight:950!important;
-}
-.rms-pro-shell .reports-v362-product-audit-head p{
-  margin:5px 0 0!important;
-  max-width:980px!important;
-  color:#78350f!important;
-  font-size:12.5px!important;
-  line-height:1.35!important;
-  font-weight:750!important;
-}
-.rms-pro-shell .reports-v362-product-audit-head strong{
-  white-space:nowrap!important;
-  color:#92400e!important;
-  background:#fef3c7!important;
-  border:1px solid #fde68a!important;
-  border-radius:999px!important;
-  padding:7px 10px!important;
-  font-size:12px!important;
-  font-weight:950!important;
-}
-.rms-pro-shell .reports-v362-product-audit-table-wrap{
-  overflow:auto!important;
-  border-radius:14px!important;
-  border:1px solid rgba(253,230,138,.9)!important;
-}
-.rms-pro-shell .reports-v362-product-audit-table{
-  min-width:1180px!important;
-}
-.rms-pro-shell .reports-v362-product-audit-table th,
-.rms-pro-shell .reports-v362-product-audit-table td{
-  white-space:nowrap!important;
-  vertical-align:top!important;
-}
-.rms-pro-shell .reports-v362-product-audit-table td:first-child,
-.rms-pro-shell .reports-v362-product-audit-table td:nth-child(5){
-  white-space:normal!important;
-  min-width:230px!important;
-}
-.rms-pro-shell .reports-v362-audit-chip{
-  display:inline-flex!important;
-  margin:0 5px 5px 0!important;
-  padding:5px 8px!important;
-  border-radius:999px!important;
-  background:#fef3c7!important;
-  color:#92400e!important;
-  border:1px solid #fde68a!important;
-  font-size:11px!important;
-  font-weight:900!important;
-}
-.rms-pro-shell .reports-v362-check-product-btn{
-  margin-top:7px!important;
-  padding:5px 9px!important;
-  height:auto!important;
-  min-height:28px!important;
-  font-size:11px!important;
-}
-.rms-pro-shell .reports-v353-detail-table{
-  min-width:1280px!important;
 }
 `
     document.head.appendChild(style)
