@@ -40428,3 +40428,58 @@ if (typeof document !== 'undefined') {
     document.head.appendChild(style)
   }
 }
+
+
+/* v352 supplier pricebook: wider supplier column, full supplier names */
+if (typeof document !== 'undefined') {
+  const STYLE_ID = 'rms-v352-supplier-pricebook-supplier-names-fit'
+  if (!document.getElementById(STYLE_ID)) {
+    const style = document.createElement('style')
+    style.id = STYLE_ID
+    style.textContent = `
+.rms-pro-shell .supplier-products-pricebook-table thead tr,
+.rms-pro-shell .supplier-products-pricebook-table tbody tr{
+  grid-template-columns:minmax(0,30fr) minmax(0,21fr) minmax(0,30fr) minmax(174px,19fr)!important;
+}
+.rms-pro-shell .supplier-pricebook-supplier-cell{
+  min-width:0!important;
+  max-width:100%!important;
+  overflow:visible!important;
+}
+.rms-pro-shell .supplier-pricebook-supplier-main,
+.rms-pro-shell .supplier-pricebook-supplier-cell .hint{
+  display:inline-block!important;
+  width:auto!important;
+  max-width:none!important;
+  min-width:0!important;
+  overflow:visible!important;
+  text-overflow:clip!important;
+  white-space:nowrap!important;
+  word-break:normal!important;
+}
+.rms-pro-shell .supplier-pricebook-supplier-main{
+  font-size:13.4px!important;
+  font-weight:950!important;
+  line-height:1.2!important;
+}
+.rms-pro-shell .supplier-pricebook-supplier-cell .hint{
+  font-size:11.6px!important;
+  line-height:1.2!important;
+  margin-top:4px!important;
+}
+@media(max-width:1180px){
+  .rms-pro-shell .supplier-products-pricebook-table thead tr,
+  .rms-pro-shell .supplier-products-pricebook-table tbody tr{
+    grid-template-columns:minmax(0,29fr) minmax(0,20fr) minmax(0,31fr) minmax(166px,20fr)!important;
+  }
+}
+@media(max-width:980px){
+  .rms-pro-shell .supplier-products-pricebook-table thead tr,
+  .rms-pro-shell .supplier-products-pricebook-table tbody tr{
+    grid-template-columns:minmax(0,38fr) minmax(0,24fr) minmax(0,38fr)!important;
+  }
+}
+`
+    document.head.appendChild(style)
+  }
+}
