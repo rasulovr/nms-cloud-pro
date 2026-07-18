@@ -28851,11 +28851,11 @@ function Suppliers({ t, isAdmin = false }) {
                       <div className="supplier-pricebook-supplier-text">{latest ? <><span className="supplier-pricebook-supplier-main">{latest.supplier}</span><br /><span className="hint">{formatDateDMY(latest.date)} · {latest.invoice}</span></> : <span className="hint">—</span>}</div>
                       {editing ? <div className="supplier-products-edit-actions"><button className="small primary" onClick={() => saveSupplierProduct(product)}>OK</button><button className="ghost small" onClick={() => setEditingSupplierProductId('')}>×</button></div> : <div className="supplier-products-action-cell-wrap">
                         <button type="button" className={`supplier-products-ellipsis ${supplierProductActionMenuId === product.id ? 'is-open' : ''}`} aria-label="Действия" title="Действия" onClick={() => setSupplierProductActionMenuId(id => id === product.id ? '' : product.id)}>⋯</button>
-                        {supplierProductActionMenuId === product.id && <div className="supplier-products-action-menu supplier-products-row-action-menu">
-                          <button type="button" onClick={() => { setSupplierProductActionMenuId(''); startEditSupplierProduct(product) }}>Редактировать</button>
-                          <button type="button" disabled={!priceInfo?.history?.length} onClick={() => { setSupplierProductActionMenuId(''); setSupplierProductPriceDetailId(product.id) }}>Цены</button>
-                          <button type="button" className="danger" onClick={() => { setSupplierProductActionMenuId(''); deleteSupplierProduct(product) }}>Удалить</button>
-                        </div>}
+                      </div>}
+                      {!editing && supplierProductActionMenuId === product.id && <div className="supplier-products-inline-row-actions">
+                        <button type="button" onClick={() => { setSupplierProductActionMenuId(''); startEditSupplierProduct(product) }}>Редактировать</button>
+                        <button type="button" disabled={!priceInfo?.history?.length} onClick={() => { setSupplierProductActionMenuId(''); setSupplierProductPriceDetailId(product.id) }}>Цены</button>
+                        <button type="button" className="danger" onClick={() => { setSupplierProductActionMenuId(''); deleteSupplierProduct(product) }}>Удалить</button>
                       </div>}
                     </div>
                   </td>
@@ -43088,6 +43088,116 @@ if (typeof document !== 'undefined') {
 }
 .rms-pro-shell .supplier-products-row-action-menu button.danger{
   color:#dc2626!important;
+}
+`
+    document.head.appendChild(style)
+  }
+}
+
+
+/* v374 supplier pricebook: ellipsis opens inline action bar, no popup/z-index dependency */
+if (typeof document !== 'undefined') {
+  const STYLE_ID = 'rms-v374-supplier-pricebook-inline-ellipsis-actions'
+  if (!document.getElementById(STYLE_ID)) {
+    const style = document.createElement('style')
+    style.id = STYLE_ID
+    style.textContent = `
+.rms-pro-shell .supplier-pricebook-supplier-action-grid{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) 42px!important;
+  gap:8px!important;
+  align-items:center!important;
+  width:100%!important;
+  min-width:0!important;
+  max-width:100%!important;
+  overflow:visible!important;
+}
+.rms-pro-shell .supplier-products-inline-row-actions{
+  grid-column:1 / -1!important;
+  display:flex!important;
+  flex-wrap:wrap!important;
+  gap:6px!important;
+  align-items:center!important;
+  justify-content:flex-start!important;
+  margin-top:8px!important;
+  padding:8px!important;
+  border:1px solid rgba(203,213,225,.95)!important;
+  border-radius:14px!important;
+  background:#fff!important;
+  box-shadow:0 8px 22px rgba(15,23,42,.08)!important;
+  width:100%!important;
+  max-width:100%!important;
+  box-sizing:border-box!important;
+  position:static!important;
+  visibility:visible!important;
+  opacity:1!important;
+  z-index:auto!important;
+}
+.rms-pro-shell .supplier-products-inline-row-actions button{
+  height:30px!important;
+  padding:0 10px!important;
+  border:1px solid #e2e8f0!important;
+  border-radius:10px!important;
+  background:#f8fafc!important;
+  color:#0f172a!important;
+  font-size:11.5px!important;
+  font-weight:900!important;
+  line-height:1!important;
+  white-space:nowrap!important;
+  cursor:pointer!important;
+}
+.rms-pro-shell .supplier-products-inline-row-actions button:hover{
+  background:#eff6ff!important;
+  border-color:#bfdbfe!important;
+  color:#1d4ed8!important;
+}
+.rms-pro-shell .supplier-products-inline-row-actions button.danger{
+  background:#fff1f2!important;
+  border-color:#fecdd3!important;
+  color:#b91c1c!important;
+}
+.rms-pro-shell .supplier-products-inline-row-actions button.danger:hover{
+  background:#ffe4e6!important;
+  color:#991b1b!important;
+}
+.rms-pro-shell .supplier-products-inline-row-actions button:disabled{
+  opacity:.45!important;
+  cursor:not-allowed!important;
+}
+.rms-pro-shell .supplier-products-row-action-menu,
+.rms-pro-shell .supplier-products-action-menu.supplier-products-row-action-menu{
+  display:none!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table tbody tr.supplier-product-row-menu-open{
+  z-index:auto!important;
+}
+.rms-pro-shell .supplier-products-ellipsis{
+  display:inline-flex!important;
+  visibility:visible!important;
+  opacity:1!important;
+  align-items:center!important;
+  justify-content:center!important;
+  width:34px!important;
+  min-width:34px!important;
+  max-width:34px!important;
+  height:34px!important;
+  padding:0!important;
+  margin:0!important;
+  border-radius:12px!important;
+  border:1px solid #dbe2ea!important;
+  background:#fff!important;
+  color:#334155!important;
+  font-size:24px!important;
+  font-weight:950!important;
+  line-height:1!important;
+  box-shadow:0 2px 10px rgba(15,23,42,.05)!important;
+  cursor:pointer!important;
+}
+.rms-pro-shell .supplier-products-ellipsis:hover,
+.rms-pro-shell .supplier-products-ellipsis.is-open{
+  border-color:#93c5fd!important;
+  color:#2563eb!important;
+  background:#eff6ff!important;
 }
 `
     document.head.appendChild(style)
