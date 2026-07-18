@@ -42408,3 +42408,119 @@ if (typeof document !== 'undefined') {
     document.head.appendChild(style)
   }
 }
+
+
+/* v368 supplier pricebook: product-name actions open inline, not as overlay */
+if (typeof document !== 'undefined') {
+  const STYLE_ID = 'rms-v368-supplier-pricebook-inline-name-actions'
+  if (!document.getElementById(STYLE_ID)) {
+    const style = document.createElement('style')
+    style.id = STYLE_ID
+    style.textContent = `
+.rms-pro-shell .supplier-products-pricebook-table tbody tr{
+  align-items:center!important;
+}
+.rms-pro-shell .supplier-pricebook-product-click-cell,
+.rms-pro-shell .supplier-pricebook-name-action-shell{
+  position:relative!important;
+  overflow:visible!important;
+  z-index:auto!important;
+}
+.rms-pro-shell .supplier-pricebook-name-action{
+  display:inline-block!important;
+  max-width:100%!important;
+  color:#0f172a!important;
+  font-size:13.8px!important;
+  font-weight:950!important;
+  line-height:1.2!important;
+  text-align:left!important;
+  white-space:nowrap!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  cursor:pointer!important;
+}
+.rms-pro-shell .supplier-pricebook-name-action:hover,
+.rms-pro-shell .supplier-pricebook-name-action.is-open{
+  color:#2563eb!important;
+  text-decoration:underline!important;
+  text-underline-offset:3px!important;
+}
+.rms-pro-shell .supplier-products-name-action-menu{
+  position:static!important;
+  left:auto!important;
+  right:auto!important;
+  top:auto!important;
+  z-index:auto!important;
+  display:flex!important;
+  flex-wrap:wrap!important;
+  align-items:center!important;
+  gap:6px!important;
+  width:100%!important;
+  min-width:0!important;
+  max-width:100%!important;
+  margin-top:8px!important;
+  padding:8px!important;
+  border:1px solid rgba(203,213,225,.9)!important;
+  border-radius:14px!important;
+  background:#ffffff!important;
+  box-shadow:0 8px 20px rgba(15,23,42,.08)!important;
+  visibility:visible!important;
+  opacity:1!important;
+}
+.rms-pro-shell .supplier-products-name-action-menu button{
+  width:auto!important;
+  min-width:0!important;
+  height:30px!important;
+  padding:0 10px!important;
+  border:1px solid #e2e8f0!important;
+  border-radius:10px!important;
+  background:#f8fafc!important;
+  color:#0f172a!important;
+  font-size:11.5px!important;
+  font-weight:900!important;
+  line-height:1!important;
+  white-space:nowrap!important;
+  cursor:pointer!important;
+}
+.rms-pro-shell .supplier-products-name-action-menu button:hover{
+  background:#eff6ff!important;
+  border-color:#bfdbfe!important;
+  color:#1d4ed8!important;
+}
+.rms-pro-shell .supplier-products-name-action-menu button.danger{
+  background:#fff1f2!important;
+  border-color:#fecdd3!important;
+  color:#b91c1c!important;
+}
+.rms-pro-shell .supplier-products-name-action-menu button.danger:hover{
+  background:#ffe4e6!important;
+  color:#991b1b!important;
+}
+.rms-pro-shell .supplier-products-name-action-menu button:disabled{
+  opacity:.45!important;
+  cursor:not-allowed!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table th:nth-child(4),
+.rms-pro-shell .supplier-products-pricebook-table td:nth-child(4),
+.rms-pro-shell .supplier-products-price-action-cell{
+  display:none!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table thead tr,
+.rms-pro-shell .supplier-products-pricebook-table tbody tr{
+  grid-template-columns:minmax(0,40fr) minmax(0,25fr) minmax(0,35fr)!important;
+}
+@media(max-width:980px){
+  .rms-pro-shell .supplier-products-name-action-menu{
+    gap:5px!important;
+    padding:7px!important;
+  }
+  .rms-pro-shell .supplier-products-name-action-menu button{
+    height:29px!important;
+    padding:0 8px!important;
+    font-size:11px!important;
+  }
+}
+`
+    document.head.appendChild(style)
+  }
+}
