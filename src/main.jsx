@@ -28842,7 +28842,8 @@ function Suppliers({ t, isAdmin = false }) {
               const priceInfo = supplierProductPriceInfoMap.get(String(product.id))
               const latest = priceInfo?.latest || null
               const detailOpen = supplierProductPriceDetailId === product.id
-              return <tr key={product.id} className={detailOpen ? 'supplier-product-price-open-row' : ''}>
+              const actionOpen = supplierProductActionMenuId === product.id
+              return <tr key={product.id} className={`${detailOpen ? 'supplier-product-price-open-row' : ''} ${actionOpen ? 'supplier-product-row-menu-open' : ''}`.trim()}>
                   <td className="supplier-pricebook-product-cell">{editing ? <div className="supplier-pricebook-product-edit"><input value={supplierProductEditForm.name} onChange={e => setSupplierProductEditForm({...supplierProductEditForm, name:e.target.value})} /><div><select value={supplierProductEditForm.category} onChange={e => setSupplierProductEditForm({...supplierProductEditForm, category:e.target.value})}>{PRODUCT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select><select value={supplierProductEditForm.base_unit} onChange={e => setSupplierProductEditForm({...supplierProductEditForm, base_unit:e.target.value})}>{BASE_UNITS.map(u => <option key={u.value} value={u.value}>{u.label}</option>)}</select></div></div> : <><strong className="supplier-pricebook-main-text">{product.name}</strong><br /><span className="supplier-pricebook-product-meta">{product.category || '—'} · {product.base_unit || 'unit'}</span></>}</td>
                   <td className="supplier-pricebook-price-cell">{latest ? <><strong className="supplier-pricebook-price-main">{fmt(latest.price)} AZN / {latest.unit}</strong><br /><span className="hint">≈ {fmt(latest.base_unit_price)} AZN / {priceInfo.baseUnit || product.base_unit}</span></> : <span className="hint">нет закупок</span>}</td>
                   <td className="supplier-pricebook-supplier-cell supplier-pricebook-supplier-action-cell">
@@ -43013,6 +43014,80 @@ if (typeof document !== 'undefined') {
     padding-left:7px!important;
     padding-right:7px!important;
   }
+}
+`
+    document.head.appendChild(style)
+  }
+}
+
+
+/* v373 fix: show row action menu above table rows */
+if (typeof document !== 'undefined') {
+  const STYLE_ID = 'rms-v373-supplier-pricebook-menu-visible'
+  if (!document.getElementById(STYLE_ID)) {
+    const style = document.createElement('style')
+    style.id = STYLE_ID
+    style.textContent = `
+.rms-pro-shell .supplier-products-pricebook-wrap,
+.rms-pro-shell .supplier-products-pricebook-table,
+.rms-pro-shell .supplier-products-pricebook-table thead,
+.rms-pro-shell .supplier-products-pricebook-table tbody,
+.rms-pro-shell .supplier-products-pricebook-table tr,
+.rms-pro-shell .supplier-products-pricebook-table td{
+  overflow:visible!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table tbody tr{
+  position:relative!important;
+  z-index:1!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table tbody tr.supplier-product-row-menu-open{
+  z-index:500!important;
+}
+.rms-pro-shell .supplier-pricebook-supplier-action-cell,
+.rms-pro-shell .supplier-products-action-cell-wrap{
+  position:relative!important;
+  overflow:visible!important;
+  z-index:600!important;
+}
+.rms-pro-shell .supplier-products-row-action-menu,
+.rms-pro-shell .supplier-products-action-menu.supplier-products-row-action-menu{
+  position:absolute!important;
+  top:calc(100% + 8px)!important;
+  right:0!important;
+  left:auto!important;
+  min-width:180px!important;
+  width:180px!important;
+  display:grid!important;
+  gap:0!important;
+  padding:8px!important;
+  border-radius:16px!important;
+  background:#fff!important;
+  border:1px solid #dbe2ea!important;
+  box-shadow:0 20px 50px rgba(15,23,42,.18)!important;
+  z-index:99999!important;
+  visibility:visible!important;
+  opacity:1!important;
+  transform:none!important;
+}
+.rms-pro-shell .supplier-products-row-action-menu button{
+  position:relative!important;
+  z-index:100000!important;
+  display:flex!important;
+  align-items:center!important;
+  width:100%!important;
+  padding:11px 12px!important;
+  border:0!important;
+  background:transparent!important;
+  text-align:left!important;
+  font-weight:800!important;
+  color:#0f172a!important;
+  border-radius:10px!important;
+}
+.rms-pro-shell .supplier-products-row-action-menu button:hover{
+  background:#f8fafc!important;
+}
+.rms-pro-shell .supplier-products-row-action-menu button.danger{
+  color:#dc2626!important;
 }
 `
     document.head.appendChild(style)
