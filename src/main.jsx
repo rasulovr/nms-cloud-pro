@@ -28836,33 +28836,31 @@ function Suppliers({ t, isAdmin = false }) {
             <div><b>Прейскурант закупочных цен</b><span>Последняя цена закупа, поставщик, накладная, динамика цены и история закупок.</span></div>
             <em>{supplierProductPriceInfoMap.size} товаров с закупочной историей</em>
           </div>
-          <div className="table-wrap supplier-products-pricebook-wrap"><table className="supplier-products-pricebook-table"><thead><tr><th>Товар</th><th>Цена закупа</th><th>Поставщик</th><th>Динамика</th></tr></thead><tbody>
+          <div className="table-wrap supplier-products-pricebook-wrap"><table className="supplier-products-pricebook-table"><thead><tr><th>Товар</th><th>Цена закупа</th><th>Поставщик</th></tr></thead><tbody>
             {pagedSupplierProducts.map(product => {
               const editing = editingSupplierProductId === product.id
               const priceInfo = supplierProductPriceInfoMap.get(String(product.id))
               const latest = priceInfo?.latest || null
-              const previous = priceInfo?.previous || null
-              const change = parseNum(priceInfo?.changePct)
-              const trendClass = !previous ? 'neutral' : change > 0 ? 'up' : change < 0 ? 'down' : 'same'
               const detailOpen = supplierProductPriceDetailId === product.id
               return <tr key={product.id} className={detailOpen ? 'supplier-product-price-open-row' : ''}>
-                  <td className="supplier-pricebook-product-cell supplier-pricebook-product-click-cell">{editing ? <div className="supplier-pricebook-product-edit"><input value={supplierProductEditForm.name} onChange={e => setSupplierProductEditForm({...supplierProductEditForm, name:e.target.value})} /><div><select value={supplierProductEditForm.category} onChange={e => setSupplierProductEditForm({...supplierProductEditForm, category:e.target.value})}>{PRODUCT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select><select value={supplierProductEditForm.base_unit} onChange={e => setSupplierProductEditForm({...supplierProductEditForm, base_unit:e.target.value})}>{BASE_UNITS.map(u => <option key={u.value} value={u.value}>{u.label}</option>)}</select></div></div> : <div className="supplier-pricebook-name-action-shell">
-                    <button type="button" className={`supplier-pricebook-name-action ${supplierProductActionMenuId === product.id ? 'is-open' : ''}`} title="Открыть действия" onClick={() => setSupplierProductActionMenuId(id => id === product.id ? '' : product.id)}>{product.name}</button>
-                    <br /><span className="supplier-pricebook-product-meta">{product.category || '—'} · {product.base_unit || 'unit'}</span>
-                    {supplierProductActionMenuId === product.id && <div className="supplier-products-action-menu supplier-products-name-action-menu">
-                      <button type="button" onClick={() => { setSupplierProductActionMenuId(''); startEditSupplierProduct(product) }}>Редактировать</button>
-                      <button type="button" disabled={!priceInfo?.history?.length} onClick={() => { setSupplierProductActionMenuId(''); setSupplierProductPriceDetailId(product.id) }}>Цены</button>
-                      <button type="button" className="danger" onClick={() => { setSupplierProductActionMenuId(''); deleteSupplierProduct(product) }}>Удалить</button>
-                    </div>}
-                  </div>}</td>
+                  <td className="supplier-pricebook-product-cell">{editing ? <div className="supplier-pricebook-product-edit"><input value={supplierProductEditForm.name} onChange={e => setSupplierProductEditForm({...supplierProductEditForm, name:e.target.value})} /><div><select value={supplierProductEditForm.category} onChange={e => setSupplierProductEditForm({...supplierProductEditForm, category:e.target.value})}>{PRODUCT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select><select value={supplierProductEditForm.base_unit} onChange={e => setSupplierProductEditForm({...supplierProductEditForm, base_unit:e.target.value})}>{BASE_UNITS.map(u => <option key={u.value} value={u.value}>{u.label}</option>)}</select></div></div> : <><strong className="supplier-pricebook-main-text">{product.name}</strong><br /><span className="supplier-pricebook-product-meta">{product.category || '—'} · {product.base_unit || 'unit'}</span></>}</td>
                   <td className="supplier-pricebook-price-cell">{latest ? <><strong className="supplier-pricebook-price-main">{fmt(latest.price)} AZN / {latest.unit}</strong><br /><span className="hint">≈ {fmt(latest.base_unit_price)} AZN / {priceInfo.baseUnit || product.base_unit}</span></> : <span className="hint">нет закупок</span>}</td>
-                  <td className="supplier-pricebook-supplier-cell">{latest ? <><span className="supplier-pricebook-supplier-main">{latest.supplier}</span><br /><span className="hint">{formatDateDMY(latest.date)} · {latest.invoice}</span></> : <span className="hint">—</span>}</td>
-                  <td className="supplier-products-price-action-cell">{editing ? <div className="supplier-products-edit-actions"><button className="small primary" onClick={() => saveSupplierProduct(product)}>OK</button><button className="ghost small" onClick={() => setEditingSupplierProductId('')}>×</button></div> : <div className="supplier-products-price-action-inner">
-                    <div className="supplier-products-trend-slot">{latest ? <span className={`supplier-product-price-trend ${trendClass}`}>{previous ? `${change > 0 ? '↑' : change < 0 ? '↓' : '→'} ${pct(Math.abs(change))}` : 'первая цена'}</span> : <span className="hint">—</span>}</div>
-                  </div>}</td>
+                  <td className="supplier-pricebook-supplier-cell supplier-pricebook-supplier-action-cell">
+                    <div className="supplier-pricebook-supplier-action-grid">
+                      <div className="supplier-pricebook-supplier-text">{latest ? <><span className="supplier-pricebook-supplier-main">{latest.supplier}</span><br /><span className="hint">{formatDateDMY(latest.date)} · {latest.invoice}</span></> : <span className="hint">—</span>}</div>
+                      {editing ? <div className="supplier-products-edit-actions"><button className="small primary" onClick={() => saveSupplierProduct(product)}>OK</button><button className="ghost small" onClick={() => setEditingSupplierProductId('')}>×</button></div> : <div className="supplier-products-action-cell-wrap">
+                        <button type="button" className={`supplier-products-ellipsis ${supplierProductActionMenuId === product.id ? 'is-open' : ''}`} aria-label="Действия" title="Действия" onClick={() => setSupplierProductActionMenuId(id => id === product.id ? '' : product.id)}>⋯</button>
+                        {supplierProductActionMenuId === product.id && <div className="supplier-products-action-menu supplier-products-row-action-menu">
+                          <button type="button" onClick={() => { setSupplierProductActionMenuId(''); startEditSupplierProduct(product) }}>Редактировать</button>
+                          <button type="button" disabled={!priceInfo?.history?.length} onClick={() => { setSupplierProductActionMenuId(''); setSupplierProductPriceDetailId(product.id) }}>Цены</button>
+                          <button type="button" className="danger" onClick={() => { setSupplierProductActionMenuId(''); deleteSupplierProduct(product) }}>Удалить</button>
+                        </div>}
+                      </div>}
+                    </div>
+                  </td>
                 </tr>
             })}
-            {!filteredSupplierProducts.length && <tr><td colSpan="4" className="hint">Товары не найдены</td></tr>}
+            {!filteredSupplierProducts.length && <tr><td colSpan="3" className="hint">Товары не найдены</td></tr>}
           </tbody></table></div>
           <div className="supplier-products-pagination"><span className="hint">Показано {filteredSupplierProducts.length ? (safeSupplierProductsPage - 1) * supplierProductsPageSize + 1 : 0}–{Math.min(safeSupplierProductsPage * supplierProductsPageSize, filteredSupplierProducts.length)} из {filteredSupplierProducts.length}</span><div className="action-row"><button className="ghost small" disabled={safeSupplierProductsPage <= 1} onClick={() => setSupplierProductsPage(p => Math.max(1, p - 1))}>← Пред.</button><span className="hint">Страница {safeSupplierProductsPage} / {supplierProductsPageCount}</span><button className="ghost small" disabled={safeSupplierProductsPage >= supplierProductsPageCount} onClick={() => setSupplierProductsPage(p => Math.min(supplierProductsPageCount, p + 1))}>След. →</button></div></div>
         </div>}
@@ -42866,6 +42864,154 @@ if (typeof document !== 'undefined') {
   .rms-pro-shell .supplier-products-pricebook-table td{
     padding-left:6px!important;
     padding-right:6px!important;
+  }
+}
+`
+    document.head.appendChild(style)
+  }
+}
+
+
+/* v372 supplier pricebook: no dynamic column, ellipsis inside supplier cell */
+if (typeof document !== 'undefined') {
+  const STYLE_ID = 'rms-v372-supplier-pricebook-supplier-cell-ellipsis'
+  if (!document.getElementById(STYLE_ID)) {
+    const style = document.createElement('style')
+    style.id = STYLE_ID
+    style.textContent = `
+.rms-pro-shell .supplier-products-pricebook-wrap,
+.rms-pro-shell .supplier-products-admin-list table.supplier-products-pricebook-table,
+.rms-pro-shell table.supplier-products-pricebook-table,
+.rms-pro-shell .supplier-products-pricebook-table thead,
+.rms-pro-shell .supplier-products-pricebook-table tbody{
+  width:100%!important;
+  max-width:100%!important;
+  min-width:0!important;
+  box-sizing:border-box!important;
+  overflow:visible!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table thead tr,
+.rms-pro-shell .supplier-products-pricebook-table tbody tr{
+  display:grid!important;
+  grid-template-columns:minmax(0,36fr) minmax(0,28fr) minmax(0,36fr)!important;
+  width:100%!important;
+  max-width:100%!important;
+  min-width:0!important;
+  column-gap:0!important;
+  align-items:center!important;
+  box-sizing:border-box!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table th,
+.rms-pro-shell .supplier-products-pricebook-table td{
+  display:block!important;
+  width:100%!important;
+  min-width:0!important;
+  max-width:100%!important;
+  box-sizing:border-box!important;
+  padding:10px 10px!important;
+  border:0!important;
+  overflow:visible!important;
+  white-space:normal!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table th:nth-child(4),
+.rms-pro-shell .supplier-products-pricebook-table td:nth-child(4),
+.rms-pro-shell .supplier-products-price-action-cell,
+.rms-pro-shell .supplier-products-trend-slot,
+.rms-pro-shell .supplier-product-price-trend,
+.rms-pro-shell .supplier-products-name-action-menu{
+  display:none!important;
+}
+.rms-pro-shell .supplier-pricebook-supplier-action-cell{
+  overflow:visible!important;
+  position:relative!important;
+  z-index:30!important;
+}
+.rms-pro-shell .supplier-pricebook-supplier-action-grid{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) 42px!important;
+  gap:8px!important;
+  align-items:center!important;
+  width:100%!important;
+  min-width:0!important;
+  max-width:100%!important;
+  overflow:visible!important;
+}
+.rms-pro-shell .supplier-pricebook-supplier-text{
+  min-width:0!important;
+  overflow:visible!important;
+}
+.rms-pro-shell .supplier-products-action-cell-wrap{
+  position:relative!important;
+  display:flex!important;
+  justify-content:flex-end!important;
+  align-items:center!important;
+  width:42px!important;
+  min-width:42px!important;
+  max-width:42px!important;
+  overflow:visible!important;
+  z-index:50!important;
+}
+.rms-pro-shell .supplier-products-ellipsis{
+  display:inline-flex!important;
+  visibility:visible!important;
+  opacity:1!important;
+  align-items:center!important;
+  justify-content:center!important;
+  width:34px!important;
+  min-width:34px!important;
+  max-width:34px!important;
+  height:34px!important;
+  padding:0!important;
+  margin:0!important;
+  border-radius:12px!important;
+  border:1px solid #dbe2ea!important;
+  background:#fff!important;
+  color:#334155!important;
+  font-size:24px!important;
+  font-weight:950!important;
+  line-height:1!important;
+  box-shadow:0 2px 10px rgba(15,23,42,.05)!important;
+  cursor:pointer!important;
+}
+.rms-pro-shell .supplier-products-ellipsis:hover,
+.rms-pro-shell .supplier-products-ellipsis.is-open{
+  border-color:#93c5fd!important;
+  color:#2563eb!important;
+  background:#eff6ff!important;
+}
+.rms-pro-shell .supplier-products-row-action-menu{
+  position:absolute!important;
+  top:40px!important;
+  right:0!important;
+  left:auto!important;
+  width:170px!important;
+  z-index:900!important;
+  display:grid!important;
+  visibility:visible!important;
+  opacity:1!important;
+}
+.rms-pro-shell .supplier-pricebook-main-text,
+.rms-pro-shell .supplier-pricebook-price-main,
+.rms-pro-shell .supplier-pricebook-supplier-main,
+.rms-pro-shell .supplier-pricebook-price-cell .hint,
+.rms-pro-shell .supplier-pricebook-supplier-cell .hint,
+.rms-pro-shell .supplier-pricebook-product-meta{
+  display:inline-block!important;
+  max-width:none!important;
+  overflow:visible!important;
+  text-overflow:clip!important;
+  white-space:nowrap!important;
+  word-break:normal!important;
+}
+@media(max-width:1180px){
+  .rms-pro-shell .supplier-products-pricebook-table thead tr,
+  .rms-pro-shell .supplier-products-pricebook-table tbody tr{
+    grid-template-columns:minmax(0,36fr) minmax(0,28fr) minmax(0,36fr)!important;
+  }
+  .rms-pro-shell .supplier-products-pricebook-table th,
+  .rms-pro-shell .supplier-products-pricebook-table td{
+    padding-left:7px!important;
+    padding-right:7px!important;
   }
 }
 `
