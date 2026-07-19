@@ -43317,3 +43317,57 @@ if (typeof document !== 'undefined') {
     document.head.appendChild(style)
   }
 }
+
+
+/* v376 supplier pricebook: do not shorten product / supplier names */
+if (typeof document !== 'undefined') {
+  const STYLE_ID = 'rms-v376-supplier-pricebook-names-not-shortened'
+  if (!document.getElementById(STYLE_ID)) {
+    const style = document.createElement('style')
+    style.id = STYLE_ID
+    style.textContent = `
+.rms-pro-shell .supplier-products-pricebook-table thead tr,
+.rms-pro-shell .supplier-products-pricebook-table tbody tr{
+  grid-template-columns:minmax(0,34fr) minmax(0,26fr) minmax(0,40fr)!important;
+}
+.rms-pro-shell .supplier-pricebook-product-cell,
+.rms-pro-shell .supplier-pricebook-price-cell,
+.rms-pro-shell .supplier-pricebook-supplier-cell,
+.rms-pro-shell .supplier-pricebook-supplier-action-cell,
+.rms-pro-shell .supplier-pricebook-supplier-text{
+  overflow:visible!important;
+}
+.rms-pro-shell .supplier-pricebook-main-text,
+.rms-pro-shell .supplier-pricebook-price-main,
+.rms-pro-shell .supplier-pricebook-supplier-main,
+.rms-pro-shell .supplier-pricebook-product-meta,
+.rms-pro-shell .supplier-pricebook-price-cell .hint,
+.rms-pro-shell .supplier-pricebook-supplier-cell .hint{
+  display:inline-block!important;
+  width:auto!important;
+  max-width:none!important;
+  min-width:0!important;
+  overflow:visible!important;
+  text-overflow:clip!important;
+  white-space:nowrap!important;
+  word-break:normal!important;
+}
+.rms-pro-shell .supplier-pricebook-supplier-action-grid{
+  grid-template-columns:minmax(0,1fr) 42px!important;
+  gap:10px!important;
+}
+.rms-pro-shell .supplier-products-full-action-panel span{
+  max-width:none!important;
+  overflow:visible!important;
+  text-overflow:clip!important;
+}
+@media(max-width:1180px){
+  .rms-pro-shell .supplier-products-pricebook-table thead tr,
+  .rms-pro-shell .supplier-products-pricebook-table tbody tr{
+    grid-template-columns:minmax(0,34fr) minmax(0,25fr) minmax(0,41fr)!important;
+  }
+}
+`
+    document.head.appendChild(style)
+  }
+}
