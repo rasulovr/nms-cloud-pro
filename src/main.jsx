@@ -43371,3 +43371,73 @@ if (typeof document !== 'undefined') {
     document.head.appendChild(style)
   }
 }
+
+
+/* v377 supplier pricebook: full supplier name before ellipsis button */
+if (typeof document !== 'undefined') {
+  const STYLE_ID = 'rms-v377-supplier-pricebook-supplier-full-name'
+  if (!document.getElementById(STYLE_ID)) {
+    const style = document.createElement('style')
+    style.id = STYLE_ID
+    style.textContent = `
+.rms-pro-shell .supplier-products-pricebook-table thead tr,
+.rms-pro-shell .supplier-products-pricebook-table tbody tr{
+  grid-template-columns:minmax(0,33fr) minmax(0,25fr) minmax(0,42fr)!important;
+}
+.rms-pro-shell .supplier-pricebook-supplier-action-cell{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  overflow:visible!important;
+}
+.rms-pro-shell .supplier-pricebook-supplier-action-grid{
+  display:inline-grid!important;
+  grid-template-columns:max-content 42px!important;
+  width:auto!important;
+  min-width:0!important;
+  max-width:none!important;
+  gap:10px!important;
+  align-items:center!important;
+  justify-content:center!important;
+  overflow:visible!important;
+}
+.rms-pro-shell .supplier-pricebook-supplier-text{
+  display:block!important;
+  width:max-content!important;
+  min-width:max-content!important;
+  max-width:none!important;
+  overflow:visible!important;
+}
+.rms-pro-shell .supplier-pricebook-supplier-main,
+.rms-pro-shell .supplier-pricebook-supplier-cell .hint,
+.rms-pro-shell .supplier-pricebook-supplier-text .hint{
+  display:inline-block!important;
+  width:auto!important;
+  min-width:max-content!important;
+  max-width:none!important;
+  overflow:visible!important;
+  text-overflow:clip!important;
+  white-space:nowrap!important;
+  word-break:normal!important;
+}
+.rms-pro-shell .supplier-products-action-cell-wrap{
+  width:42px!important;
+  min-width:42px!important;
+  max-width:42px!important;
+  display:flex!important;
+  justify-content:flex-end!important;
+  overflow:visible!important;
+}
+.rms-pro-shell .supplier-products-ellipsis{
+  flex:0 0 34px!important;
+}
+@media(max-width:1180px){
+  .rms-pro-shell .supplier-products-pricebook-table thead tr,
+  .rms-pro-shell .supplier-products-pricebook-table tbody tr{
+    grid-template-columns:minmax(0,32fr) minmax(0,25fr) minmax(0,43fr)!important;
+  }
+}
+`
+    document.head.appendChild(style)
+  }
+}
