@@ -28897,7 +28897,7 @@ function Suppliers({ t, isAdmin = false }) {
                   <div className="supplier-pricebook-final-action-panel">
                     <span>Действия с товаром: <b>{product.name}</b></span>
                     <button type="button" onClick={() => { setSupplierProductActionMenuId(''); startEditSupplierProduct(product) }}>Редактировать</button>
-                    <button type="button" disabled={!priceInfo?.history?.length} onClick={() => { setSupplierProductActionMenuId(''); setSupplierProductPriceDetailId(product.id) }}>Цены</button>
+                    <button type="button" disabled={!priceInfo?.history?.length} onClick={() => { setSupplierProductActionMenuId(''); setSupplierProductPriceDetailId(product.id) }}>Статистика</button>
                     <button type="button" className="danger" onClick={() => { setSupplierProductActionMenuId(''); deleteSupplierProduct(product) }}>Удалить</button>
                   </div>
                 </div>}
@@ -44116,6 +44116,36 @@ if (typeof document !== 'undefined') {
   .rms-pro-shell .supplier-pricebook-final-action-panel button.danger{
     margin-left:0!important;
   }
+}
+`
+    document.head.appendChild(style)
+  }
+}
+
+
+/* v383 supplier pricebook: lighter text, keep bold only for product name */
+if (typeof document !== 'undefined') {
+  const STYLE_ID = 'rms-v383-supplier-pricebook-font-and-statistics-label'
+  if (!document.getElementById(STYLE_ID)) {
+    const style = document.createElement('style')
+    style.id = STYLE_ID
+    style.textContent = `
+.rms-pro-shell .supplier-pricebook-final-product strong{
+  font-weight:950!important;
+}
+.rms-pro-shell .supplier-pricebook-final-price strong,
+.rms-pro-shell .supplier-pricebook-final-supplier-text strong{
+  font-weight:760!important;
+}
+.rms-pro-shell .supplier-pricebook-final-price span,
+.rms-pro-shell .supplier-pricebook-final-supplier-text span{
+  font-weight:650!important;
+}
+.rms-pro-shell .supplier-pricebook-final-action-panel span{
+  font-weight:650!important;
+}
+.rms-pro-shell .supplier-pricebook-final-action-panel span b{
+  font-weight:850!important;
 }
 `
     document.head.appendChild(style)
