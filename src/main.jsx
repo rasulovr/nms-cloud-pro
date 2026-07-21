@@ -26576,7 +26576,42 @@ function Suppliers({ t, isAdmin = false }) {
     setEInvoiceAdminPage(1)
   }, [eInvoiceListSearch, eInvoiceListSupplierId, eInvoiceListLegalEntityId, eInvoiceAdminPageSize, eInvoiceListExpanded])
 
-  async function fetchAllSupplierPurchasesRows() {
+  function normalizeSupplierPurchasesFullPayload(payload) {
+    if (Array.isArray(payload)) return payload
+    if (typeof payload === 'string') {
+      try {
+        const parsed = JSON.parse(payload)
+        return Array.isArray(parsed) ? parsed : []
+      } catch (_error) {
+        return []
+      }
+    }
+    if (payload && typeof payload === 'object') {
+      if (Array.isArray(payload.rows)) return payload.rows
+      if (Array.isArray(payload.supplier_purchases)) return payload.supplier_purchases
+    }
+    return []
+  }
+
+  async function fetchSupplierPurchasesFullRowsViaRpc() {
+    const { data, error } = await supabase.rpc('rms_supplier_purchases_full', { p_limit: 50000 })
+    if (error) throw error
+    return normalizeSupplierPurchasesFullPayload(data)
+  }
+
+  async function fetchAllSupplierPurchasesRows(options = {}) {
+    const preferRpc = Boolean(options?.preferRpc)
+
+    if (preferRpc) {
+      try {
+        const rpcRows = await fetchSupplierPurchasesFullRowsViaRpc()
+        if (Array.isArray(rpcRows) && rpcRows.length) return rpcRows
+      } catch (_rpcError) {
+        // Fallback to direct ranged reads. Restricted internal users may be blocked by RLS here,
+        // in which case the caller will fall back to rms_suppliers_workspace.
+      }
+    }
+
     const pageSize = 1000
     let from = 0
     let allRows = []
@@ -26597,6 +26632,15 @@ function Suppliers({ t, isAdmin = false }) {
       if (batch.length < pageSize) break
       from += pageSize
       if (from > 50000) break
+    }
+
+    if (!allRows.length && !preferRpc) {
+      try {
+        const rpcRows = await fetchSupplierPurchasesFullRowsViaRpc()
+        if (Array.isArray(rpcRows) && rpcRows.length) return rpcRows
+      } catch (_rpcError) {
+        // keep direct result
+      }
     }
 
     return allRows
@@ -26668,7 +26712,7 @@ function Suppliers({ t, isAdmin = false }) {
         setProducts((ws.supplier_products || []).filter(p => p.is_active !== false))
         setBalances(ws.supplier_balances || [])
         try {
-          const fullPurchases = await fetchAllSupplierPurchasesRows()
+          const fullPurchases = await fetchAllSupplierPurchasesRows({ preferRpc: true })
           setPurchases(Array.isArray(fullPurchases) && fullPurchases.length ? fullPurchases : (ws.supplier_purchases || []))
         } catch (_purchaseFetchError) {
           setPurchases(ws.supplier_purchases || [])
@@ -29473,6 +29517,68 @@ function DebtsPayments({ t }) {
     return data
   }
 
+  function normalizeDebtSupplierPurchasesFullPayload(payload) {
+    if (Array.isArray(payload)) return payload
+    if (typeof payload === 'string') {
+      try {
+        const parsed = JSON.parse(payload)
+        return Array.isArray(parsed) ? parsed : []
+      } catch (_error) {
+        return []
+      }
+    }
+    if (payload && typeof payload === 'object') {
+      if (Array.isArray(payload.rows)) return payload.rows
+      if (Array.isArray(payload.supplier_purchases)) return payload.supplier_purchases
+    }
+    return []
+  }
+
+  async function fetchDebtSupplierPurchasesFullRows(options = {}) {
+    const preferRpc = Boolean(options?.preferRpc)
+    const fetchRpc = async () => {
+      const { data, error } = await supabase.rpc('rms_supplier_purchases_full', { p_limit: 50000 })
+      if (error) throw error
+      return normalizeDebtSupplierPurchasesFullPayload(data)
+    }
+
+    if (preferRpc) {
+      try {
+        const rpcRows = await fetchRpc()
+        if (Array.isArray(rpcRows) && rpcRows.length) return rpcRows
+      } catch (_rpcError) {}
+    }
+
+    const pageSize = 1000
+    let from = 0
+    let allRows = []
+
+    while (true) {
+      const { data, error } = await supabase
+        .from('supplier_purchases')
+        .select('*, suppliers(name,voen,payment_term_days,credit_limit), legal_entities(name,voen), branches(name), supplier_purchase_items(*, supplier_products(name,category,base_unit))')
+        .order('purchase_date', { ascending: false })
+        .order('created_at', { ascending: false })
+        .range(from, from + pageSize - 1)
+
+      if (error) throw error
+      const batch = data || []
+      allRows = allRows.concat(batch)
+      if (batch.length < pageSize) break
+      from += pageSize
+      if (from > 50000) break
+    }
+
+    if (!allRows.length && !preferRpc) {
+      try {
+        const rpcRows = await fetchRpc()
+        if (Array.isArray(rpcRows) && rpcRows.length) return rpcRows
+      } catch (_rpcError) {}
+    }
+
+    return allRows
+  }
+
   async function load() {
     const isInternal = Boolean(getInternalSessionStorage()?.rms_internal)
 
@@ -29484,7 +29590,12 @@ function DebtsPayments({ t }) {
         setSuppliers(ws.suppliers || [])
         setProducts(ws.supplier_products || [])
         setBalances(ws.supplier_balances || [])
-        setPurchases(ws.supplier_purchases || [])
+        try {
+          const fullPurchases = await fetchDebtSupplierPurchasesFullRows({ preferRpc: true })
+          setPurchases(Array.isArray(fullPurchases) && fullPurchases.length ? fullPurchases : (ws.supplier_purchases || []))
+        } catch (_purchaseFetchError) {
+          setPurchases(ws.supplier_purchases || [])
+        }
         setPayments(wsPayments)
         setOpeningDebts(ws.supplier_opening_debts || [])
         setBranches([])
@@ -29516,7 +29627,12 @@ function DebtsPayments({ t }) {
     setSuppliers(sup || [])
     setProducts(prod || [])
     setBalances(bal || [])
-    setPurchases(pur || [])
+    try {
+      const fullPurchases = await fetchDebtSupplierPurchasesFullRows()
+      setPurchases(Array.isArray(fullPurchases) && fullPurchases.length ? fullPurchases : (pur || []))
+    } catch (_purchaseFetchError) {
+      setPurchases(pur || [])
+    }
     setPayments(pay || [])
     setOpeningDebts(opening || [])
     setSupplierEntityStatuses(statusRows || [])
