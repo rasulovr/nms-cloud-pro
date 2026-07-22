@@ -20753,13 +20753,13 @@ function normalizeProductType(category) {
 const BASE_UNITS = [
   { value: 'kg', label: 'килограмм (kg)' },
   { value: 'g', label: 'грамм (g)' },
+  { value: 'l', label: 'литр (L)' },
   { value: 'ml', label: 'миллилитр (ml)' },
   { value: 'pcs', label: 'штука (pcs)' }
 ]
 function normalizeSupplierBaseUnit(unit) {
   const value = String(unit || '').trim().toLowerCase()
-  if (value === 'l') return 'ml'
-  return ['kg', 'g', 'ml', 'pcs'].includes(value) ? value : 'g'
+  return ['kg', 'g', 'l', 'ml', 'pcs'].includes(value) ? value : 'g'
 }
 const PURCHASE_UNITS = [
   { value: 'kg', label: 'килограмм (kg)' },
@@ -20771,6 +20771,7 @@ const PURCHASE_UNITS = [
 ]
 
 function unitLabel(unit) {
+  if (String(unit || '').trim().toLowerCase() === 'l') return 'литр (L)'
   return [...BASE_UNITS, ...PURCHASE_UNITS].find(u => u.value === unit)?.label || unit || '—'
 }
 
@@ -32873,6 +32874,7 @@ function Reports({ t }) {
   const [productsReportSort, setProductsReportSort] = useState({ field: 'amount', dir: 'desc' })
   const [productsPriceCompareMode, setProductsPriceCompareMode] = useState('period')
   const [productsPriceDynamicsTab, setProductsPriceDynamicsTab] = useState('up')
+  const [productsReportLiquidUnit, setProductsReportLiquidUnit] = useState('base')
   const [productsReportPage, setProductsReportPage] = useState(1)
   const [productsReportDetailsOpen, setProductsReportDetailsOpen] = useState(false)
   const [supplierReportSort, setSupplierReportSort] = useState({ field: 'balance', dir: 'desc' })
@@ -34784,6 +34786,48 @@ function Reports({ t }) {
   const productPriceDynamicsImpactUp = productPriceDynamicsUpRows.reduce((sum, row) => sum + Math.max(0, parseNum(row.impact)), 0)
   const productPriceDynamicsImpactDown = productPriceDynamicsDownRows.reduce((sum, row) => sum + Math.abs(Math.min(0, parseNum(row.impact))), 0)
 
+  const productReportDisplayUnit = (unit) => {
+    const u = String(unit || '').trim().toLowerCase()
+    if (productsReportLiquidUnit === 'l' && u === 'ml') return 'l'
+    return u || unit || 'ед.'
+  }
+
+  const productReportDisplayUnitLabel = (unit) => {
+    const u = String(unit || '').trim().toLowerCase()
+    if (u === 'l') return 'L'
+    if (u === 'ml') return 'ml'
+    if (u === 'kg') return 'kg'
+    if (u === 'g') return 'g'
+    if (u === 'pcs') return 'pcs'
+    return unit || 'ед.'
+  }
+
+  const productReportUnitFactor = (baseUnit) => {
+    const base = String(baseUnit || '').trim().toLowerCase()
+    const display = productReportDisplayUnit(base)
+    if (!base || !display || base === display) return 1
+    return supplierProductUnitMultiplier(display, base) || 1
+  }
+
+  const productReportDisplayQuantity = (quantity, baseUnit) => {
+    const factor = productReportUnitFactor(baseUnit)
+    return factor ? parseNum(quantity) / factor : parseNum(quantity)
+  }
+
+  const productReportDisplayPrice = (price, baseUnit) => {
+    const factor = productReportUnitFactor(baseUnit)
+    return parseNum(price) * (factor || 1)
+  }
+
+  const productReportFormatQuantity = (quantity, unit) => {
+    const n = Number(quantity || 0)
+    const u = String(unit || '').trim().toLowerCase()
+    if (!Number.isFinite(n)) return '0.00'
+    if (['l', 'kg'].includes(u)) return n.toFixed(2)
+    if (['ml', 'g'].includes(u)) return n.toFixed(0)
+    return fmt(n)
+  }
+
   const selectedProductPeriodLabel = productsReportDateFrom || productsReportDateTo
     ? `${productsReportDateFrom || 'начало'} — ${productsReportDateTo || 'сегодня'}`
     : (monthFilter === 'all' ? 'Все даты' : (/^year:\d{4}$/.test(String(monthFilter || '')) ? `${String(monthFilter).replace('year:', '')} год` : monthFilter))
@@ -34886,6 +34930,12 @@ function Reports({ t }) {
           {productUnitMismatchRows.length > 0 && <span className="bad">Товары с ошибкой единиц измерения исключены из динамики.</span>}
         </div>
 
+        <div className="reports-v392-liquid-unit-switch">
+          <span>Жидкие товары показывать:</span>
+          <button type="button" className={productsReportLiquidUnit === 'base' ? 'active' : ''} onClick={() => setProductsReportLiquidUnit('base')}>по базе товара</button>
+          <button type="button" className={productsReportLiquidUnit === 'l' ? 'active' : ''} onClick={() => setProductsReportLiquidUnit('l')}>в L</button>
+        </div>
+
         <div className="reports-v385-price-dynamics-kpis">
           <button type="button" className={productsPriceDynamicsTab === 'up' ? 'active bad' : 'bad'} onClick={() => setProductsPriceDynamicsTab('up')}><span>Подорожали</span><b>{productPriceDynamicsUpRows.length}</b><small>влияние +{fmt(productPriceDynamicsImpactUp)} AZN</small></button>
           <button type="button" className={productsPriceDynamicsTab === 'down' ? 'active good' : 'good'} onClick={() => setProductsPriceDynamicsTab('down')}><span>Подешевели</span><b>{productPriceDynamicsDownRows.length}</b><small>экономия {fmt(productPriceDynamicsImpactDown)} AZN</small></button>
@@ -34897,11 +34947,11 @@ function Reports({ t }) {
             <thead><tr><th>Товар</th><th>Цена раньше</th><th>Цена сейчас</th><th>Изменение</th><th>Кол-во периода</th><th>Влияние</th><th>Поставщик / дата</th></tr></thead>
             <tbody>
               {activeProductPriceDynamicsRows.slice(0, 80).map(row => <tr key={`price-dyn-${productsPriceCompareMode}-${row.key || row.product_id || row.product_name}`}>
-                <td><b>{row.product_name}</b><br /><span className="hint">{row.category || '—'} · {row.base_unit || 'ед.'}</span></td>
-                <td>{row.previous_price ? <><b>{fmt(row.previous_price)}</b><br /><span className="hint">AZN / {row.base_unit || 'ед.'}</span></> : <span className="hint">нет истории</span>}</td>
-                <td><b>{fmt(row.current_price)}</b><br /><span className="hint">AZN / {row.base_unit || 'ед.'}</span></td>
-                <td className={row.direction === 'up' ? 'bad' : row.direction === 'down' ? 'good' : ''}>{row.direction === 'new' ? 'новый товар' : <><b>{row.changeAmount > 0 ? '+' : ''}{fmt(row.changeAmount)}</b><br /><span>{row.changePct === null ? '—' : `${row.changePct > 0 ? '+' : ''}${pct(row.changePct)}`}</span></>}</td>
-                <td>{fmt(row.quantity)} {row.base_unit || ''}<br /><span className="hint">{fmt(row.amount)} AZN</span></td>
+                <td><b>{row.product_name}</b><br /><span className="hint">{row.category || '—'} · {productReportDisplayUnitLabel(productReportDisplayUnit(row.base_unit || 'ед.'))}</span></td>
+                <td>{row.previous_price ? <><b>{rmsFormatPurchaseUnitPrice(productReportDisplayPrice(row.previous_price, row.base_unit), productReportDisplayUnit(row.base_unit))}</b><br /><span className="hint">AZN / {productReportDisplayUnitLabel(productReportDisplayUnit(row.base_unit || 'ед.'))}</span></> : <span className="hint">нет истории</span>}</td>
+                <td><b>{rmsFormatPurchaseUnitPrice(productReportDisplayPrice(row.current_price, row.base_unit), productReportDisplayUnit(row.base_unit))}</b><br /><span className="hint">AZN / {productReportDisplayUnitLabel(productReportDisplayUnit(row.base_unit || 'ед.'))}</span></td>
+                <td className={row.direction === 'up' ? 'bad' : row.direction === 'down' ? 'good' : ''}>{row.direction === 'new' ? 'новый товар' : <><b>{row.changeAmount > 0 ? '+' : ''}{rmsFormatPurchaseUnitPrice(productReportDisplayPrice(row.changeAmount, row.base_unit), productReportDisplayUnit(row.base_unit))}</b><br /><span>{row.changePct === null ? '—' : `${row.changePct > 0 ? '+' : ''}${pct(row.changePct)}`}</span></>}</td>
+                <td>{productReportFormatQuantity(productReportDisplayQuantity(row.quantity, row.base_unit), productReportDisplayUnit(row.base_unit))} {productReportDisplayUnitLabel(productReportDisplayUnit(row.base_unit || ''))}<br /><span className="hint">{fmt(row.amount)} AZN</span></td>
                 <td className={row.impact > 0 ? 'bad' : row.impact < 0 ? 'good' : ''}><b>{row.impact > 0 ? '+' : ''}{fmt(row.impact)} AZN</b></td>
                 <td>{row.latest_supplier || row.supplier_names_text || '—'}<br /><span className="hint">{row.last_date ? formatDateDMY(row.last_date) : '—'} · {row.latest_invoice || '—'}</span></td>
               </tr>)}
@@ -34931,13 +34981,13 @@ function Reports({ t }) {
             {visibleProductReportRows.map(row => <tr key={`${row.product_id || row.product_name}-${row.unit}`}>
               <td><b>{row.product_name}</b><br /><span className="hint">{row.branch_names_text || 'Все филиалы'}</span></td>
               <td>{row.category || '—'}</td>
-              <td><b>{fmt(row.quantity)}</b></td>
-              <td>{row.unit || '—'}</td>
+              <td><b>{productReportFormatQuantity(productReportDisplayQuantity(row.quantity, row.unit), productReportDisplayUnit(row.unit))}</b></td>
+              <td>{productReportDisplayUnitLabel(productReportDisplayUnit(row.unit || '—'))}</td>
               <td><b>{fmt(row.amount)} AZN</b></td>
-              <td>{fmt(row.avg_price)} AZN / {row.unit || 'ед.'}</td>
+              <td>{rmsFormatPurchaseUnitPrice(productReportDisplayPrice(row.avg_price, row.unit), productReportDisplayUnit(row.unit))} AZN / {productReportDisplayUnitLabel(productReportDisplayUnit(row.unit || 'ед.'))}</td>
               <td>{row.item_count} строк<br /><span className="hint">{row.invoices} накл.</span></td>
               <td>{row.supplier_names_text || '—'}{row.suppliers > 4 && <><br /><span className="hint">+ ещё {row.suppliers - 4}</span></>}</td>
-              <td>{row.last_date ? formatDateDMY(row.last_date) : '—'}<br /><span className="hint">{row.latest_supplier || '—'} · {fmt(row.latest_price)} AZN</span></td>
+              <td>{row.last_date ? formatDateDMY(row.last_date) : '—'}<br /><span className="hint">{row.latest_supplier || '—'} · {rmsFormatPurchaseUnitPrice(productReportDisplayPrice(row.latest_price, row.unit), productReportDisplayUnit(row.unit))} AZN / {productReportDisplayUnitLabel(productReportDisplayUnit(row.unit || 'ед.'))}</span></td>
             </tr>)}
             {!filteredProductReportRows.length && <tr><td colSpan="9" className="hint">Нет товаров по выбранному периоду / фильтру.</td></tr>}
           </tbody>
@@ -44844,3 +44894,48 @@ if (typeof document !== 'undefined') {
 
 
 /* v391 reports products: small ml/g unit prices are shown with 4 decimals instead of rounding to 0.00 */
+
+
+/* v392 reports products: liquid unit display switch */
+if (typeof document !== 'undefined') {
+  const STYLE_ID = 'rms-v392-reports-products-liquid-unit-switch'
+  if (!document.getElementById(STYLE_ID)) {
+    const style = document.createElement('style')
+    style.id = STYLE_ID
+    style.textContent = `
+.rms-pro-shell .reports-v392-liquid-unit-switch{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:flex-start!important;
+  gap:8px!important;
+  margin:10px 0 12px!important;
+  flex-wrap:wrap!important;
+}
+.rms-pro-shell .reports-v392-liquid-unit-switch span{
+  color:#64748b!important;
+  font-size:12px!important;
+  font-weight:850!important;
+}
+.rms-pro-shell .reports-v392-liquid-unit-switch button{
+  height:30px!important;
+  padding:0 12px!important;
+  border:1px solid #dbe2ea!important;
+  border-radius:999px!important;
+  background:#fff!important;
+  color:#334155!important;
+  font-size:12px!important;
+  font-weight:850!important;
+  cursor:pointer!important;
+}
+.rms-pro-shell .reports-v392-liquid-unit-switch button.active{
+  border-color:#2563eb!important;
+  background:#eff6ff!important;
+  color:#1d4ed8!important;
+}
+`
+    document.head.appendChild(style)
+  }
+}
+
+
+/* v392 reports products: added L as base unit and liquid display switch for ml -> L in reports */
