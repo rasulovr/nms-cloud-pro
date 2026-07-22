@@ -33456,35 +33456,129 @@ function Reports({ t, permissions = [], isAdmin = false }) {
 
       const reportRange = resolveProductReportRange()
 
+      const normalizeReportSupplierPurchasesPayload = (payload) => {
+        if (Array.isArray(payload)) return payload
+        if (typeof payload === 'string') {
+          try {
+            const parsed = JSON.parse(payload)
+            return Array.isArray(parsed) ? parsed : []
+          } catch (_error) {
+            return []
+          }
+        }
+        if (payload && typeof payload === 'object') {
+          if (Array.isArray(payload.rows)) return payload.rows
+          if (Array.isArray(payload.supplier_purchases)) return payload.supplier_purchases
+        }
+        return []
+      }
+
+      const isReportPurchaseCancelled = (purchase) => {
+        const status = String(purchase?.status || purchase?.payment_status || purchase?.sync_status || '').trim().toLowerCase()
+        return Boolean(
+          purchase?.deleted_at ||
+          purchase?.cancelled_at ||
+          purchase?.canceled_at ||
+          purchase?.is_cancelled ||
+          purchase?.is_canceled ||
+          ['cancelled', 'canceled', 'cancel', 'отменено', 'отменен', 'отменён'].includes(status)
+        )
+      }
+
+      const purchaseInReportRange = (purchase, range) => {
+        if (!purchase || isReportPurchaseCancelled(purchase)) return false
+        if (branchFilter !== 'all' && String(purchase.branch_id || '') !== String(branchFilter)) return false
+        const date = String(purchase.purchase_date || '').slice(0, 10)
+        if (range?.from && (!date || date < range.from)) return false
+        if (range?.toExclusive && (!date || date >= range.toExclusive)) return false
+        return true
+      }
+
+      const sortReportPurchases = (rows) => [...(rows || [])].sort((a, b) =>
+        String(b.purchase_date || '').localeCompare(String(a.purchase_date || '')) ||
+        String(b.created_at || '').localeCompare(String(a.created_at || ''))
+      )
+
+      const fetchPurchasesFromSecureRpc = async () => {
+        const { data, error } = await supabase.rpc('rms_supplier_purchases_full', { p_limit: 50000 })
+        if (error) throw error
+        return normalizeReportSupplierPurchasesPayload(data)
+      }
+
+      const fetchPurchasesFromDirectTables = async (range) => {
+        const selectMain = 'id,supplier_id,branch_id,purchase_date,invoice_number,total_amount,comment,created_at,deleted_at,status,cancelled_at,canceled_at,is_cancelled,is_canceled,suppliers(id,name),branches(id,name),supplier_purchase_items(id,purchase_id,product_id,quantity,unit,unit_price,total_amount,supplier_products(id,name,category,base_unit))'
+        const selectFallback = 'id,supplier_id,branch_id,purchase_date,invoice_number,total_amount,comment,created_at,deleted_at,suppliers(id,name),branches(id,name),supplier_purchase_items(id,purchase_id,product_id,quantity,unit,unit_price,total_amount,supplier_products(id,name,category,base_unit))'
+
+        const fetchBySelect = async (selectText) => {
+          const buildQuery = (from, to) => {
+            let query = supabase
+              .from('supplier_purchases')
+              .select(selectText)
+              .is('deleted_at', null)
+
+            if (branchFilter !== 'all') query = query.eq('branch_id', branchFilter)
+            if (range?.from) query = query.gte('purchase_date', range.from)
+            if (range?.toExclusive) query = query.lt('purchase_date', range.toExclusive)
+
+            return query
+              .order('purchase_date', { ascending: false })
+              .order('created_at', { ascending: false })
+              .range(from, to)
+          }
+
+          let from = 0
+          let result = []
+          while (true) {
+            const { data, error } = await buildQuery(from, from + pageSize - 1)
+            if (error) throw error
+            const batch = data || []
+            result = result.concat(batch)
+            if (batch.length < pageSize) break
+            from += pageSize
+            if (from > 50000) break
+          }
+          return result
+        }
+
+        try {
+          return await fetchBySelect(selectMain)
+        } catch (_error) {
+          return fetchBySelect(selectFallback)
+        }
+      }
+
+      const fetchPurchasesFromWorkspace = async () => {
+        const workspace = await fetchRmsSuppliersWorkspace()
+        if (workspace?.error) throw workspace.error
+        return normalizeReportSupplierPurchasesPayload(workspace?.data?.supplier_purchases || [])
+      }
+
       const fetchPurchases = async (range) => {
-        const buildQuery = (from, to) => {
-          let query = supabase
-            .from('supplier_purchases')
-            .select('id,supplier_id,branch_id,purchase_date,invoice_number,total_amount,comment,created_at,suppliers(id,name),branches(id,name),supplier_purchase_items(id,purchase_id,product_id,quantity,unit,unit_price,total_amount,supplier_products(id,name,category,base_unit))')
-            .is('deleted_at', null)
+        let fullRows = []
 
-          if (branchFilter !== 'all') query = query.eq('branch_id', branchFilter)
-          if (range?.from) query = query.gte('purchase_date', range.from)
-          if (range?.toExclusive) query = query.lt('purchase_date', range.toExclusive)
-
-          return query
-            .order('purchase_date', { ascending: false })
-            .order('created_at', { ascending: false })
-            .range(from, to)
+        try {
+          fullRows = await fetchPurchasesFromSecureRpc()
+        } catch (_rpcError) {
+          fullRows = []
         }
 
-        let from = 0
-        let result = []
-        while (true) {
-          const { data, error } = await buildQuery(from, from + pageSize - 1)
-          if (error) throw error
-          const batch = data || []
-          result = result.concat(batch)
-          if (batch.length < pageSize) break
-          from += pageSize
-          if (from > 50000) break
+        if (Array.isArray(fullRows) && fullRows.length) {
+          return sortReportPurchases(fullRows.filter(purchase => purchaseInReportRange(purchase, range)))
         }
-        return result
+
+        try {
+          const directRows = await fetchPurchasesFromDirectTables(range)
+          if (Array.isArray(directRows) && directRows.length) {
+            return sortReportPurchases(directRows.filter(purchase => purchaseInReportRange(purchase, range)))
+          }
+        } catch (_directError) {}
+
+        try {
+          const workspaceRows = await fetchPurchasesFromWorkspace()
+          return sortReportPurchases(workspaceRows.filter(purchase => purchaseInReportRange(purchase, range)))
+        } catch (_workspaceError) {
+          return []
+        }
       }
 
       const currentPurchases = await fetchPurchases(reportRange.current)
@@ -33782,7 +33876,10 @@ function Reports({ t, permissions = [], isAdmin = false }) {
         suppliers: supplierIds.size || supplierRows.length,
       }
 
-      setRmsProductsReport({ loading: false, error: '', rows: productRows, detailRows, totals, categories, suppliers: suppliersList, bySupplier: supplierRows, byCategory: categoryRows, priceDynamics, lastPurchaseDynamics, priceDynamicsMeta: { currentLabel: reportRange.currentLabel, previousLabel: reportRange.previousLabel, compareAvailable: reportRange.compareAvailable } })
+      const emptySourceWarning = !detailRows.length && !isAdmin
+        ? 'Нет доступных строк закупок для этого пользователя. Проверьте, что в Supabase выполнен secure RPC rms_supplier_purchases_full и что в общих правах открыт раздел “Отчёты”.'
+        : ''
+      setRmsProductsReport({ loading: false, error: emptySourceWarning, rows: productRows, detailRows, totals, categories, suppliers: suppliersList, bySupplier: supplierRows, byCategory: categoryRows, priceDynamics, lastPurchaseDynamics, priceDynamicsMeta: { currentLabel: reportRange.currentLabel, previousLabel: reportRange.previousLabel, compareAvailable: reportRange.compareAvailable } })
     } catch (error) {
       setRmsProductsReport({ loading: false, error: error?.message || 'Не удалось загрузить отчёт по товарам', rows: [], detailRows: [], totals: { amount: 0, products: 0, items: 0, invoices: 0, suppliers: 0 }, categories: [], suppliers: [], bySupplier: [], byCategory: [], priceDynamics: [], lastPurchaseDynamics: [], priceDynamicsMeta: { currentLabel: '', previousLabel: '', compareAvailable: false } })
     }
@@ -45283,3 +45380,6 @@ if (typeof document !== 'undefined') {
 
 
 /* v394: per-report-type permissions inside Reports; removed duplicated general reports access card */
+
+
+/* v395 Reports -> Products: restricted users load product purchases through secure RPC with direct/workspace fallback */
