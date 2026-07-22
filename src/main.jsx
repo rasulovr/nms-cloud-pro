@@ -1,3 +1,37 @@
+
+
+/* v389 reports products: global unit helpers for Reports -> Products */
+function supplierProductUnitMultiplier(fromUnit, toUnit) {
+  const normalizeUnit = (value) => {
+    const u = String(value || '').trim().toLowerCase()
+    if (['кг', 'kilogram', 'kilograms'].includes(u)) return 'kg'
+    if (['гр', 'г', 'gram', 'grams'].includes(u)) return 'g'
+    if (['литр', 'литры', 'liter', 'liters'].includes(u)) return 'l'
+    if (['мл', 'milliliter', 'milliliters'].includes(u)) return 'ml'
+    if (['шт', 'штук', 'piece', 'pieces', 'pcs'].includes(u)) return 'pcs'
+    return u || 'unit'
+  }
+
+  const from = normalizeUnit(fromUnit)
+  const to = normalizeUnit(toUnit)
+
+  if (!from || !to || from === to) return 1
+
+  if (from === 'kg' && to === 'g') return 1000
+  if (from === 'g' && to === 'kg') return 0.001
+
+  if (from === 'l' && to === 'ml') return 1000
+  if (from === 'ml' && to === 'l') return 0.001
+
+  return 1
+}
+
+function supplierProductBaseUnitPrice(price, fromUnit, baseUnit) {
+  const multiplier = supplierProductUnitMultiplier(fromUnit, baseUnit)
+  const numericPrice = Number(price || 0)
+  return multiplier ? numericPrice / multiplier : numericPrice
+}
+
 // v257 — Animated backup and restore progress (0–100%)
 
 // v132 Tech Cards RPC helpers
