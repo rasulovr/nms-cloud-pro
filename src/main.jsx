@@ -37339,7 +37339,7 @@ function Settings({ session, t, theme, setTheme, lang, setLang }) {
     const allPerms = getInternalPermissions()
     if (!allPerms[userId]) {
       allPerms[userId] = {}
-      editableSections.forEach(sec => { allPerms[userId][sec.id] = 'read' })
+      editableSections.forEach(sec => { allPerms[userId][sec.id] = sec.id === 'reports' ? 'none' : 'read' })
       try { await persistInternalPermissionsShared(allPerms) } catch (e) { return setMsg(`Не удалось сохранить права в облаке: ${e.message}`) }
     }
 
@@ -37413,6 +37413,13 @@ function Settings({ session, t, theme, setTheme, lang, setLang }) {
     const local = getInternalPermissions()
     if (local[userId]) return local[userId]?.[section] || 'none'
     return permissions.find(p => p.user_id === userId && p.section === section)?.access || 'none'
+  }
+
+  const accessModeLabel = (access) => {
+    if (access === 'admin') return 'Администратор'
+    if (access === 'edit') return 'Редактор'
+    if (access === 'read') return 'Только просмотр'
+    return 'Нет доступа'
   }
 
   async function updatePermission(userId, section, access) {
@@ -38679,6 +38686,33 @@ function Settings({ session, t, theme, setTheme, lang, setLang }) {
         {settingsTab === 'users' && <>
           <div className="card span-2"><h3>Пользователи</h3><p className="hint">Добавление пользователей и права доступа.</p></div>
           <div className="card span-2"><div className="card-head"><h3>Добавить пользователя</h3></div><p className="hint">Пользователь входит по login. Система создаёт внутренний email вида login@rms.local.az, поэтому email-рассылка не используется.</p><div className="form-grid compact"><label><span>Login</span><input value={newUser.login} onChange={e => setNewUser({...newUser, login: e.target.value})} placeholder="" /></label><label><span>Временный пароль</span><input type="password" value={newUser.password} onChange={e => setNewUser({...newUser, password: e.target.value})} /></label><label><span>Имя</span><input value={newUser.full_name} onChange={e => setNewUser({...newUser, full_name: e.target.value})} /></label></div><button className="small" onClick={addUser}>+ Добавить пользователя</button>{msg && <p className={`hint ${msg === t('saved') || String(msg).toLowerCase().includes('сохран') ? 'save-status' : 'good'}`}>{msg}</p>}</div>
+          <div className="card span-2 reports-access-control-card">
+            <div className="card-head">
+              <div>
+                <h3>Доступ к отчётам</h3>
+                <p className="hint">Раздел “Отчёты” показывается только пользователям, которым здесь выбран доступ. У остальных он полностью скрыт из меню.</p>
+              </div>
+            </div>
+            <div className="reports-access-control-grid">
+              {users.map(u => {
+                const userLogin = u.login_name || (u.email || '').split('@')[0] || u.id
+                const access = getPermission(u.id, 'reports')
+                return <div className={`reports-access-control-row ${access === 'none' ? 'is-closed' : 'is-open'}`} key={`reports-access-${u.id}`}>
+                  <div>
+                    <strong>{u.full_name || u.login_name || u.id}</strong>
+                    <span>{userLogin}</span>
+                  </div>
+                  <select value={access} onChange={e => updatePermission(u.id, 'reports', e.target.value)}>
+                    <option value="none">Нет доступа</option>
+                    <option value="read">Только просмотр</option>
+                    <option value="edit">Редактор</option>
+                  </select>
+                  <em>{accessModeLabel(access)}</em>
+                </div>
+              })}
+            </div>
+          </div>
+
           <div className="card span-2">
             <div className="card-head"><h3>Права доступа</h3></div>
             <p className="hint">Внутренние пользователи RMS входят по login/password без Supabase Auth. Раздел с доступом “Нет доступа” полностью скрывается из меню.</p>
@@ -44848,4 +44882,146 @@ if (typeof document !== 'undefined') {
 `
     document.head.appendChild(style)
   }
+}
+
+
+/* v391 Reports access per user */
+if (typeof document !== 'undefined') {
+  const STYLE_ID = 'rms-v391-reports-access-per-user'
+  if (!document.getElementById(STYLE_ID)) {
+    const style = document.createElement('style')
+    style.id = STYLE_ID
+    style.textContent = `
+.rms-pro-shell .reports-access-control-card{
+  border-color:#dbeafe!important;
+  background:linear-gradient(180deg,#ffffff 0%,#f8fbff 100%)!important;
+}
+.rms-pro-shell .reports-access-control-grid{
+  display:grid!important;
+  grid-template-columns:repeat(auto-fit,minmax(280px,1fr))!important;
+  gap:10px!important;
+  margin-top:12px!important;
+}
+.rms-pro-shell .reports-access-control-row{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) 160px 118px!important;
+  align-items:center!important;
+  gap:10px!important;
+  padding:11px!important;
+  border:1px solid #e2e8f0!important;
+  border-radius:16px!important;
+  background:#fff!important;
+  box-shadow:0 8px 24px rgba(15,23,42,.04)!important;
+}
+.rms-pro-shell .reports-access-control-row>div{
+  min-width:0!important;
+}
+.rms-pro-shell .reports-access-control-row strong{
+  display:block!important;
+  color:#0f172a!important;
+  font-size:13.5px!important;
+  line-height:1.2!important;
+  white-space:nowrap!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+}
+.rms-pro-shell .reports-access-control-row span{
+  display:block!important;
+  margin-top:3px!important;
+  color:#64748b!important;
+  font-size:11.5px!important;
+  font-weight:750!important;
+  white-space:nowrap!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+}
+.rms-pro-shell .reports-access-control-row select{
+  height:36px!important;
+  width:100%!important;
+  border-radius:12px!important;
+  font-size:12px!important;
+  font-weight:850!important;
+}
+.rms-pro-shell .reports-access-control-row em{
+  display:inline-flex!important;
+  justify-content:center!important;
+  align-items:center!important;
+  height:28px!important;
+  padding:0 9px!important;
+  border-radius:999px!important;
+  font-style:normal!important;
+  font-size:10.5px!important;
+  font-weight:950!important;
+  white-space:nowrap!important;
+}
+.rms-pro-shell .reports-access-control-row.is-open em{
+  color:#166534!important;
+  background:#dcfce7!important;
+}
+.rms-pro-shell .reports-access-control-row.is-closed em{
+  color:#991b1b!important;
+  background:#fee2e2!important;
+}
+@media(max-width:760px){
+  .rms-pro-shell .reports-access-control-row{
+    grid-template-columns:1fr!important;
+  }
+  .rms-pro-shell .reports-access-control-row em{
+    justify-content:flex-start!important;
+  }
+}
+`
+    document.head.appendChild(style)
+  }
+}
+
+
+/* v391 reports access: new users do not receive Reports by default; dedicated Settings control added */
+
+
+/* v392 browser tab branding: RMS Pro instead of NMS Cloud Pro */
+if (typeof document !== 'undefined') {
+  const RMS_BROWSER_TITLE = 'RMS Pro'
+
+  const applyRmsBrowserBranding = () => {
+    if (document.title !== RMS_BROWSER_TITLE) {
+      document.title = RMS_BROWSER_TITLE
+    }
+
+    const upsertMeta = (selector, attrName, attrValue, contentValue) => {
+      let meta = document.head.querySelector(selector)
+      if (!meta) {
+        meta = document.createElement('meta')
+        meta.setAttribute(attrName, attrValue)
+        document.head.appendChild(meta)
+      }
+      meta.setAttribute('content', contentValue)
+    }
+
+    upsertMeta('meta[name="application-name"]', 'name', 'application-name', RMS_BROWSER_TITLE)
+    upsertMeta('meta[name="apple-mobile-web-app-title"]', 'name', 'apple-mobile-web-app-title', RMS_BROWSER_TITLE)
+    upsertMeta('meta[property="og:site_name"]', 'property', 'og:site_name', RMS_BROWSER_TITLE)
+    upsertMeta('meta[property="og:title"]', 'property', 'og:title', RMS_BROWSER_TITLE)
+  }
+
+  applyRmsBrowserBranding()
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', applyRmsBrowserBranding, { once: true })
+  }
+
+  const rmsTitleObserver = new MutationObserver(() => {
+    if (document.title !== RMS_BROWSER_TITLE) {
+      applyRmsBrowserBranding()
+    }
+  })
+
+  const titleNode = document.head.querySelector('title')
+  if (titleNode) {
+    rmsTitleObserver.observe(titleNode, { childList: true, characterData: true, subtree: true })
+  }
+
+  window.addEventListener('load', applyRmsBrowserBranding)
+  setTimeout(applyRmsBrowserBranding, 500)
+  setTimeout(applyRmsBrowserBranding, 1500)
 }
