@@ -626,6 +626,23 @@ const SECTIONS = [
   { id: 'settings', key: 'settings_tab' }
 ]
 
+const REPORTS_ACCESS_TABS = [
+  { id: 'overview', label: 'Обзор', icon: '▣' },
+  { id: 'sales', label: 'Продажи', icon: '↗' },
+  { id: 'revenue', label: 'Выручка', icon: '◷' },
+  { id: 'expenses', label: 'Расходы', icon: '▥' },
+  { id: 'categories', label: 'По статьям', icon: '☷' },
+  { id: 'purchases', label: 'Закупки', icon: '▤' },
+  { id: 'products', label: 'Товары', icon: '◇' },
+  { id: 'suppliers', label: 'Поставщики', icon: '▱' },
+  { id: 'bazar', label: 'Базар', icon: '⌂' },
+  { id: 'export', label: 'Экспорт', icon: '⇩' },
+  { id: 'import', label: 'Импорт', icon: '⇧' }
+]
+
+const REPORT_PERMISSION_PREFIX = 'reports:'
+const reportPermissionSection = (tabId) => `${REPORT_PERMISSION_PREFIX}${tabId}`
+
 const ACCESS_LEVELS = ['none', 'read', 'edit', 'admin']
 const THEMES = [
   { id: 'classic', name: 'Классический' },
@@ -5097,7 +5114,7 @@ function App() {
         {currentCanRead && section === 'dashboard' && <Dashboard t={t} />}
         {currentCanRead && section === 'revenue' && <Revenue t={t} focusExpense={revenueFocus} />}
         {currentCanRead && section === 'finance' && <Finance t={t} lang={lang} onGoToExpense={goToRevenueExpense} />}
-        {currentCanRead && section === 'reports' && <Reports t={t} />}
+        {currentCanRead && section === 'reports' && <Reports t={t} permissions={permissions} isAdmin={isAdmin} />}
         {currentCanRead && section === 'recipes' && <Recipes t={t} />}
         {currentCanRead && section === 'inventory' && <InventoryModule t={t} />}
         {currentCanRead && section === 'salaries' && <SalaryWorkspace t={t} isAdmin={isAdmin || accessRank(sectionAccess('salaries')) >= accessRank('admin')} />}
@@ -32821,13 +32838,35 @@ function ReportsBazarDailyFullCardV220() {
   )
 }
 
-function Reports({ t }) {
+function Reports({ t, permissions = [], isAdmin = false }) {
   const branches = useBranches()
   const [reports, setReports] = useState(() => readAikoSalesReports())
   const [branchMap, setBranchMap] = useState(() => readAikoBranchMap())
   const [reportsTab, setReportsTab] = useState('overview')
+
+  const reportPermissionRows = Array.isArray(permissions)
+    ? permissions.filter(p => String(p.section || '').startsWith(REPORT_PERMISSION_PREFIX))
+    : []
+  const hasSpecificReportPermissions = reportPermissionRows.length > 0
+  const canReadReportTab = (tabId) => {
+    if (isAdmin || !hasSpecificReportPermissions) return true
+    const row = reportPermissionRows.find(p => p.section === reportPermissionSection(tabId))
+    return canReadAccess(row?.access || 'none')
+  }
+  const reportTabs = REPORTS_ACCESS_TABS.filter(tab => canReadReportTab(tab.id))
+  const reportTabIdsKey = reportTabs.map(tab => tab.id).join('|')
+  const effectiveReportsTab = reportTabs.some(tab => tab.id === reportsTab)
+    ? reportsTab
+    : (reportTabs[0]?.id || '')
+
+  React.useEffect(() => {
+    if (effectiveReportsTab && effectiveReportsTab !== reportsTab) {
+      setReportsTab(effectiveReportsTab)
+    }
+  }, [effectiveReportsTab, reportsTab, reportTabIdsKey])
+
   const productReportTabIds = ['products', 'product', 'goods', 'items', 'stock-products', 'inventory-products', 'product_movement', 'products_movement', 'goods_movement', 'товары']
-  const isProductsReportTab = productReportTabIds.includes(String(reportsTab || '').toLowerCase())
+  const isProductsReportTab = productReportTabIds.includes(String(effectiveReportsTab || reportsTab || '').toLowerCase())
 
   const [branchFilter, setBranchFilter] = useState('all')
   const [departmentFilter, setDepartmentFilter] = useState('all')
@@ -34947,23 +34986,9 @@ function Reports({ t }) {
     </div>
   </section>
 
-  const reportTabs = [
-    { id: 'overview', label: 'Обзор', icon: '▣' },
-    { id: 'sales', label: 'Продажи', icon: '↗' },
-    { id: 'revenue', label: 'Выручка', icon: '◷' },
-    { id: 'expenses', label: 'Расходы', icon: '▥' },
-    { id: 'categories', label: 'По статьям', icon: '☷' },
-    { id: 'purchases', label: 'Закупки', icon: '▤' },
-    { id: 'products', label: 'Товары', icon: '◇' },
-    { id: 'suppliers', label: 'Поставщики', icon: '▱' },
-    { id: 'bazar', label: 'Базар', icon: '⌂' },
-    { id: 'export', label: 'Экспорт', icon: '⇩' },
-    { id: 'import', label: 'Импорт', icon: '⇧' }
-  ]
-
-  const activeReportTab = reportTabs.find(tab => tab.id === reportsTab) || reportTabs[0]
+  const activeReportTab = reportTabs.find(tab => tab.id === effectiveReportsTab) || reportTabs[0] || REPORTS_ACCESS_TABS[0]
   const salesKpiTabs = ['overview', 'sales']
-  const showSalesKpis = salesKpiTabs.includes(reportsTab)
+  const showSalesKpis = salesKpiTabs.includes(effectiveReportsTab)
 
   const currentMonthKey = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`
   const currentMonthLabel = currentMonthKey
@@ -35516,7 +35541,7 @@ function Reports({ t }) {
         <p>Сводная отчётность по продажам, выручке, расходам, закупкам, товарам, поставщикам и базару.</p>
       </div>
       <div className="reports-v43-actions">
-        <button className="ghost small" type="button" onClick={() => setReportsTab('import')}>Импорт</button>
+        {canReadReportTab('import') && <button className="ghost small" type="button" onClick={() => setReportsTab('import')}>Импорт</button>}
         <button className="ghost small" type="button">Экспорт</button>
         <button className="small primary" type="button" onClick={() => window.print()}>Печать</button>
       </div>
@@ -35532,13 +35557,14 @@ function Reports({ t }) {
       </div>
       <label>
         <span>Открыть раздел</span>
-        <select value={reportsTab} onChange={e => setReportsTab(e.target.value)}>
+        <select value={effectiveReportsTab} onChange={e => setReportsTab(e.target.value)}>
           {reportTabs.map(tab => <option key={tab.id} value={tab.id}>{tab.label}</option>)}
         </select>
       </label>
     </section>
 
     <section className="reports-v43-filterbar">
+      {!reportTabs.length && <div className="soft-alert warning reports-type-access-empty">Для этого пользователя не разрешён ни один тип отчёта. Настройте доступ в “Настройки → Пользователи → Доступ к типам отчётов”.</div>}
       <label><span>Период</span><select value={monthFilter} onChange={e => { setMonthFilter(e.target.value); setRevenueDateFrom(''); setRevenueDateTo(''); setRevenuePage(1) }}><option value="all">Все годы / все месяцы</option>{yearOptions.length > 0 && <optgroup label="Годы">{yearOptions.map(y => <option key={`year-${y}`} value={`year:${y}`}>{y} год</option>)}</optgroup>}<optgroup label="Месяцы">{!monthOptions.includes(currentMonthKey) && <option value={currentMonthKey}>Текущий месяц · {currentMonthLabel}</option>}{monthOptions.map(m => <option key={m} value={m}>{m}</option>)}</optgroup></select></label>
       <label><span>Филиал</span><select value={branchFilter} onChange={e => setBranchFilter(e.target.value)}><option value="all">Все филиалы</option>{branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label>
       <label><span>Тип</span><select value={departmentFilter} onChange={e => setDepartmentFilter(e.target.value)}><option value="all">Все</option><option value="Бар">Бар</option><option value="Кухня">Кухня</option><option value="Смешанный">Смешанный</option></select></label>
@@ -35549,17 +35575,17 @@ function Reports({ t }) {
       {reportKpis.map(item => <ReportsKpiCard key={item.title} item={item} />)}
     </section>}
 
-    {reportsTab === 'overview' && ReportsOverview}
-    {reportsTab === 'sales' && SalesReportView}
-    {reportsTab === 'import' && ImportReportView}
-    {reportsTab === 'revenue' && ReportsRevenueView}
-    {reportsTab === 'expenses' && ReportsExpensesView}
-    {reportsTab === 'categories' && <ReportModulePlaceholder title="Расходы по статьям" description="Просмотрзация каждой статьи с drill-down до транзакций." />}
-    {reportsTab === 'purchases' && <ReportModulePlaceholder title="Отчёт по закупкам" description="Закупки поставщиков по периодам, филиалам, категориям и фактурам." />}
+    {effectiveReportsTab === 'overview' && ReportsOverview}
+    {effectiveReportsTab === 'sales' && SalesReportView}
+    {effectiveReportsTab === 'import' && ImportReportView}
+    {effectiveReportsTab === 'revenue' && ReportsRevenueView}
+    {effectiveReportsTab === 'expenses' && ReportsExpensesView}
+    {effectiveReportsTab === 'categories' && <ReportModulePlaceholder title="Расходы по статьям" description="Просмотрзация каждой статьи с drill-down до транзакций." />}
+    {effectiveReportsTab === 'purchases' && <ReportModulePlaceholder title="Отчёт по закупкам" description="Закупки поставщиков по периодам, филиалам, категориям и фактурам." />}
     {isProductsReportTab && ReportsProductsView}
-    {reportsTab === 'suppliers' && ReportsSuppliersView}
-    {reportsTab === 'bazar' && <ReportModulePlaceholder title="Отчёт по базару" description="Базар, автоматическое распределение по филиалам и влияние на Food Cost." />}
-    {reportsTab === 'export' && <ReportModulePlaceholder title="Экспорт отчётов" description="PDF, печать, CSV/Excel и сохранение выбранного среза." />}
+    {effectiveReportsTab === 'suppliers' && ReportsSuppliersView}
+    {effectiveReportsTab === 'bazar' && <ReportModulePlaceholder title="Отчёт по базару" description="Базар, автоматическое распределение по филиалам и влияние на Food Cost." />}
+    {effectiveReportsTab === 'export' && <ReportModulePlaceholder title="Экспорт отчётов" description="PDF, печать, CSV/Excel и сохранение выбранного среза." />}
   </section>
 }
 
@@ -37349,7 +37375,7 @@ function Settings({ session, t, theme, setTheme, lang, setLang }) {
     const allPerms = getInternalPermissions()
     if (!allPerms[userId]) {
       allPerms[userId] = {}
-      editableSections.forEach(sec => { allPerms[userId][sec.id] = sec.id === 'reports' ? 'none' : 'read' })
+      editableSections.forEach(sec => { allPerms[userId][sec.id] = 'read' })
       try { await persistInternalPermissionsShared(allPerms) } catch (e) { return setMsg(`Не удалось сохранить права в облаке: ${e.message}`) }
     }
 
@@ -37451,6 +37477,57 @@ function Settings({ session, t, theme, setTheme, lang, setLang }) {
 
     const { error } = await supabase.from('user_permissions').upsert({ user_id: userId, section, access }, { onConflict: 'user_id,section' })
     if (error) setMsg(error.message); else { setMsg(t('saved')); load() }
+  }
+
+  const getReportTypePermission = (userId, tabId) => {
+    const section = reportPermissionSection(tabId)
+    const local = getInternalPermissions()
+    const localUserPerms = local[userId]
+    if (localUserPerms) {
+      const hasAnySpecific = REPORTS_ACCESS_TABS.some(tab => Object.prototype.hasOwnProperty.call(localUserPerms, reportPermissionSection(tab.id)))
+      if (!hasAnySpecific) return 'read'
+      return localUserPerms[section] || 'none'
+    }
+
+    const userRows = (permissions || []).filter(p => p.user_id === userId && String(p.section || '').startsWith(REPORT_PERMISSION_PREFIX))
+    if (!userRows.length) return 'read'
+    return (permissions || []).find(p => p.user_id === userId && p.section === section)?.access || 'none'
+  }
+
+  async function updateReportTypePermission(userId, tabId, access) {
+    const section = reportPermissionSection(tabId)
+    const local = getInternalPermissions()
+
+    if (local[userId]) {
+      const current = { ...(local[userId] || {}) }
+      const hasAnySpecific = REPORTS_ACCESS_TABS.some(tab => Object.prototype.hasOwnProperty.call(current, reportPermissionSection(tab.id)))
+      if (!hasAnySpecific) {
+        REPORTS_ACCESS_TABS.forEach(tab => { current[reportPermissionSection(tab.id)] = 'read' })
+      }
+      current[section] = access
+      local[userId] = current
+      try { await persistInternalPermissionsShared(local) } catch (e) { return setMsg(`Не удалось сохранить права отчётов в облаке: ${e.message}`) }
+      setMsg(t('saved'))
+      window.dispatchEvent(new Event('rms-user-settings-updated'))
+      await load()
+      return
+    }
+
+    const existingSpecific = (permissions || []).some(p => p.user_id === userId && String(p.section || '').startsWith(REPORT_PERMISSION_PREFIX))
+    if (!existingSpecific) {
+      const seedRows = REPORTS_ACCESS_TABS.map(tab => ({ user_id: userId, section: reportPermissionSection(tab.id), access: 'read' }))
+      const seed = await supabase.from('user_permissions').upsert(seedRows, { onConflict: 'user_id,section' })
+      if (seed.error) return setMsg(seed.error.message)
+    }
+
+    if (access === 'none') {
+      const { error } = await supabase.from('user_permissions').delete().eq('user_id', userId).eq('section', section)
+      if (error) setMsg(error.message); else { setMsg(t('saved')); await load() }
+      return
+    }
+
+    const { error } = await supabase.from('user_permissions').upsert({ user_id: userId, section, access }, { onConflict: 'user_id,section' })
+    if (error) setMsg(error.message); else { setMsg(t('saved')); await load() }
   }
 
   async function deleteUser(user) {
@@ -38696,28 +38773,39 @@ function Settings({ session, t, theme, setTheme, lang, setLang }) {
         {settingsTab === 'users' && <>
           <div className="card span-2"><h3>Пользователи</h3><p className="hint">Добавление пользователей и права доступа.</p></div>
           <div className="card span-2"><div className="card-head"><h3>Добавить пользователя</h3></div><p className="hint">Пользователь входит по login. Система создаёт внутренний email вида login@rms.local.az, поэтому email-рассылка не используется.</p><div className="form-grid compact"><label><span>Login</span><input value={newUser.login} onChange={e => setNewUser({...newUser, login: e.target.value})} placeholder="" /></label><label><span>Временный пароль</span><input type="password" value={newUser.password} onChange={e => setNewUser({...newUser, password: e.target.value})} /></label><label><span>Имя</span><input value={newUser.full_name} onChange={e => setNewUser({...newUser, full_name: e.target.value})} /></label></div><button className="small" onClick={addUser}>+ Добавить пользователя</button>{msg && <p className={`hint ${msg === t('saved') || String(msg).toLowerCase().includes('сохран') ? 'save-status' : 'good'}`}>{msg}</p>}</div>
-          <div className="card span-2 reports-access-control-card">
+          <div className="card span-2 reports-type-access-card">
             <div className="card-head">
               <div>
-                <h3>Доступ к отчётам</h3>
-                <p className="hint">Раздел “Отчёты” показывается только пользователям, которым здесь выбран доступ. У остальных он полностью скрыт из меню.</p>
+                <h3>Доступ к типам отчётов</h3>
+                <p className="hint">Сначала пользователь должен иметь доступ к разделу “Отчёты” в общих правах ниже. Здесь выбирается, какие именно позиции он увидит внутри раздела.</p>
               </div>
             </div>
-            <div className="reports-access-control-grid">
+            <div className="reports-type-access-grid">
               {users.map(u => {
                 const userLogin = u.login_name || (u.email || '').split('@')[0] || u.id
-                const access = getPermission(u.id, 'reports')
-                return <div className={`reports-access-control-row ${access === 'none' ? 'is-closed' : 'is-open'}`} key={`reports-access-${u.id}`}>
-                  <div>
-                    <strong>{u.full_name || u.login_name || u.id}</strong>
-                    <span>{userLogin}</span>
+                const reportsSectionAccess = getPermission(u.id, 'reports')
+                const reportsSectionOpen = canReadAccess(reportsSectionAccess)
+                const allowedCount = REPORTS_ACCESS_TABS.filter(tab => canReadAccess(getReportTypePermission(u.id, tab.id))).length
+                return <div className={`reports-type-access-user ${reportsSectionOpen ? 'is-open' : 'is-section-closed'}`} key={`reports-type-access-${u.id}`}>
+                  <div className="reports-type-access-user-head">
+                    <div>
+                      <strong>{u.full_name || u.login_name || u.id}</strong>
+                      <span>{userLogin}</span>
+                    </div>
+                    <em>{reportsSectionOpen ? `${allowedCount} / ${REPORTS_ACCESS_TABS.length}` : 'Раздел закрыт'}</em>
                   </div>
-                  <select value={access} onChange={e => updatePermission(u.id, 'reports', e.target.value)}>
-                    <option value="none">Нет доступа</option>
-                    <option value="read">Только просмотр</option>
-                    <option value="edit">Редактор</option>
-                  </select>
-                  <em>{accessModeLabel(access)}</em>
+                  {!reportsSectionOpen && <p className="hint">В общих правах ниже у пользователя закрыт раздел “Отчёты”. Типы отчётов можно отметить заранее, но они появятся только после открытия раздела.</p>}
+                  <div className="reports-type-access-chip-grid">
+                    {REPORTS_ACCESS_TABS.map(tab => {
+                      const access = getReportTypePermission(u.id, tab.id)
+                      const checked = canReadAccess(access)
+                      return <label className={`reports-type-access-chip ${checked ? 'is-allowed' : 'is-denied'}`} key={`${u.id}-${tab.id}`}>
+                        <input type="checkbox" checked={checked} onChange={e => updateReportTypePermission(u.id, tab.id, e.target.checked ? 'read' : 'none')} />
+                        <span>{tab.icon}</span>
+                        <b>{tab.label}</b>
+                      </label>
+                    })}
+                  </div>
                 </div>
               })}
             </div>
@@ -45061,3 +45149,137 @@ if (typeof document !== 'undefined') {
 
 
 /* v393 supplier journal: invoice supplier is editable from the invoice details card */
+
+
+/* v394 report type permissions */
+if (typeof document !== 'undefined') {
+  const STYLE_ID = 'rms-v394-report-type-permissions'
+  if (!document.getElementById(STYLE_ID)) {
+    const style = document.createElement('style')
+    style.id = STYLE_ID
+    style.textContent = `
+.rms-pro-shell .reports-type-access-card{
+  border-color:#dbeafe!important;
+  background:linear-gradient(180deg,#ffffff 0%,#f8fbff 100%)!important;
+}
+.rms-pro-shell .reports-type-access-grid{
+  display:grid!important;
+  grid-template-columns:repeat(auto-fit,minmax(360px,1fr))!important;
+  gap:12px!important;
+  margin-top:12px!important;
+}
+.rms-pro-shell .reports-type-access-user{
+  padding:12px!important;
+  border:1px solid #e2e8f0!important;
+  border-radius:18px!important;
+  background:#fff!important;
+  box-shadow:0 8px 24px rgba(15,23,42,.04)!important;
+}
+.rms-pro-shell .reports-type-access-user.is-section-closed{
+  background:#fffafa!important;
+  border-color:#fecaca!important;
+}
+.rms-pro-shell .reports-type-access-user-head{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:space-between!important;
+  gap:12px!important;
+  margin-bottom:10px!important;
+}
+.rms-pro-shell .reports-type-access-user-head strong{
+  display:block!important;
+  color:#0f172a!important;
+  font-size:14px!important;
+  font-weight:950!important;
+  line-height:1.2!important;
+}
+.rms-pro-shell .reports-type-access-user-head span{
+  display:block!important;
+  margin-top:3px!important;
+  color:#64748b!important;
+  font-size:12px!important;
+  font-weight:750!important;
+}
+.rms-pro-shell .reports-type-access-user-head em{
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  min-width:86px!important;
+  height:28px!important;
+  padding:0 10px!important;
+  border-radius:999px!important;
+  font-style:normal!important;
+  color:#1d4ed8!important;
+  background:#dbeafe!important;
+  font-size:11px!important;
+  font-weight:950!important;
+  white-space:nowrap!important;
+}
+.rms-pro-shell .reports-type-access-user.is-section-closed .reports-type-access-user-head em{
+  color:#991b1b!important;
+  background:#fee2e2!important;
+}
+.rms-pro-shell .reports-type-access-chip-grid{
+  display:grid!important;
+  grid-template-columns:repeat(auto-fit,minmax(132px,1fr))!important;
+  gap:8px!important;
+}
+.rms-pro-shell .reports-type-access-chip{
+  display:flex!important;
+  align-items:center!important;
+  gap:8px!important;
+  min-height:36px!important;
+  padding:7px 9px!important;
+  border:1px solid #e2e8f0!important;
+  border-radius:13px!important;
+  background:#f8fafc!important;
+  cursor:pointer!important;
+  user-select:none!important;
+}
+.rms-pro-shell .reports-type-access-chip input{
+  width:16px!important;
+  height:16px!important;
+  margin:0!important;
+  accent-color:#2563eb!important;
+}
+.rms-pro-shell .reports-type-access-chip span{
+  color:#64748b!important;
+  font-size:13px!important;
+  font-weight:900!important;
+}
+.rms-pro-shell .reports-type-access-chip b{
+  color:#334155!important;
+  font-size:12px!important;
+  font-weight:850!important;
+  line-height:1.1!important;
+}
+.rms-pro-shell .reports-type-access-chip.is-allowed{
+  border-color:#bfdbfe!important;
+  background:#eff6ff!important;
+}
+.rms-pro-shell .reports-type-access-chip.is-allowed b,
+.rms-pro-shell .reports-type-access-chip.is-allowed span{
+  color:#1d4ed8!important;
+}
+.rms-pro-shell .reports-type-access-chip.is-denied{
+  opacity:.68!important;
+}
+.rms-pro-shell .reports-type-access-empty{
+  grid-column:1 / -1!important;
+  width:100%!important;
+}
+@media(max-width:760px){
+  .rms-pro-shell .reports-type-access-grid{
+    grid-template-columns:1fr!important;
+  }
+  .rms-pro-shell .reports-type-access-chip-grid{
+    grid-template-columns:1fr 1fr!important;
+  }
+}
+`
+    document.head.appendChild(style)
+  }
+}
+
+
+/* v394: per-report-type permissions inside Reports; removed duplicated general reports access card */
