@@ -1,6 +1,19 @@
 
 
 /* v389 reports products: global unit helpers for Reports -> Products */
+
+
+/* v391 reports products: readable precision for small base-unit prices */
+function rmsFormatPurchaseUnitPrice(value, unit) {
+  const n = Number(value || 0)
+  const u = String(unit || '').trim().toLowerCase()
+  if (!Number.isFinite(n)) return '0.00'
+  if (n === 0) return '0.00'
+  if (['ml', 'g', 'гр', 'г', 'мл'].includes(u) || Math.abs(n) < 0.01) return n.toFixed(4)
+  if (Math.abs(n) < 0.1) return n.toFixed(3)
+  return n.toFixed(2)
+}
+
 function supplierProductUnitMultiplier(fromUnit, toUnit) {
   const normalizeUnit = (value) => {
     const u = String(value || '').trim().toLowerCase()
@@ -44828,3 +44841,6 @@ if (typeof document !== 'undefined') {
 
 
 /* v390 reports products: unit mismatch detection groups by normalized product name to catch duplicate product cards with different IDs */
+
+
+/* v391 reports products: small ml/g unit prices are shown with 4 decimals instead of rounding to 0.00 */
