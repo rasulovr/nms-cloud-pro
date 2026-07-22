@@ -626,23 +626,6 @@ const SECTIONS = [
   { id: 'settings', key: 'settings_tab' }
 ]
 
-const REPORTS_ACCESS_TABS = [
-  { id: 'overview', label: 'Обзор', icon: '▣' },
-  { id: 'sales', label: 'Продажи', icon: '↗' },
-  { id: 'revenue', label: 'Выручка', icon: '◷' },
-  { id: 'expenses', label: 'Расходы', icon: '▥' },
-  { id: 'categories', label: 'По статьям', icon: '☷' },
-  { id: 'purchases', label: 'Закупки', icon: '▤' },
-  { id: 'products', label: 'Товары', icon: '◇' },
-  { id: 'suppliers', label: 'Поставщики', icon: '▱' },
-  { id: 'bazar', label: 'Базар', icon: '⌂' },
-  { id: 'export', label: 'Экспорт', icon: '⇩' },
-  { id: 'import', label: 'Импорт', icon: '⇧' }
-]
-
-const REPORT_PERMISSION_PREFIX = 'reports:'
-const reportPermissionSection = (tabId) => `${REPORT_PERMISSION_PREFIX}${tabId}`
-
 const ACCESS_LEVELS = ['none', 'read', 'edit', 'admin']
 const THEMES = [
   { id: 'classic', name: 'Классический' },
@@ -5114,7 +5097,7 @@ function App() {
         {currentCanRead && section === 'dashboard' && <Dashboard t={t} />}
         {currentCanRead && section === 'revenue' && <Revenue t={t} focusExpense={revenueFocus} />}
         {currentCanRead && section === 'finance' && <Finance t={t} lang={lang} onGoToExpense={goToRevenueExpense} />}
-        {currentCanRead && section === 'reports' && <Reports t={t} permissions={permissions} isAdmin={isAdmin} />}
+        {currentCanRead && section === 'reports' && <Reports t={t} />}
         {currentCanRead && section === 'recipes' && <Recipes t={t} />}
         {currentCanRead && section === 'inventory' && <InventoryModule t={t} />}
         {currentCanRead && section === 'salaries' && <SalaryWorkspace t={t} isAdmin={isAdmin || accessRank(sectionAccess('salaries')) >= accessRank('admin')} />}
@@ -28727,13 +28710,13 @@ function Suppliers({ t, isAdmin = false }) {
         </div>
 
         <div className="card-head suppliers-purchase-items-head"><div><h3>Товары в поступлении</h3><p className="hint">Если товара нет, сначала добавьте его ниже в блоке “Товары”.</p></div><button className="small supplier-add-product-line-btn" disabled={purchaseForm.amount_only} onClick={() => setLineRows(rows => [...rows, { ...emptyLine }])}>{isAzInterface ? '+ Məhsulu əlavə et' : '+ Добавить товар'}</button></div>
-        <div className="table-wrap suppliers-purchase-items-wrap"><table className="suppliers-purchase-items-table suppliers-purchase-price-table"><thead><tr><th>Тип</th><th>Товар</th><th>Кол-во закупа</th><th>Ед. закупа</th><th>Цена за ед.</th><th>Сумма строки</th><th></th></tr></thead><tbody>{purchaseForm.amount_only ? <tr><td colSpan="7" className="hint">Товары отключены: поступление будет сохранено общей суммой.</td></tr> : lineRows.map((row, idx) => <tr key={idx}>
+        <div className="table-wrap suppliers-purchase-items-wrap"><table className="suppliers-purchase-items-table suppliers-purchase-price-table"><thead><tr><th>Тип</th><th>Товар</th><th>Кол-во закупа</th><th>Ед. закупа</th><th>Сумма строки</th><th>Цена за ед.</th><th></th></tr></thead><tbody>{purchaseForm.amount_only ? <tr><td colSpan="7" className="hint">Товары отключены: поступление будет сохранено общей суммой.</td></tr> : lineRows.map((row, idx) => <tr key={idx}>
           <td><select value={row.category} onChange={e => updateLine(idx, { category: e.target.value })}>{PRODUCT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select></td>
           <td style={{minWidth:260}}><select value={row.product_id || ''} onChange={e => selectProductForLine(idx, e.target.value)}><option value="">Выберите товар</option>{productOptionsForRow(row).map(p => <option key={p.id} value={p.id}>{productLabel(p)}</option>)}</select></td>
           <td><input inputMode="decimal" value={row.quantity} onChange={e => updateLine(idx, { quantity: e.target.value })} placeholder="30" /></td>
           <td><select value={row.unit} onChange={e => updateLine(idx, { unit: e.target.value })}>{PURCHASE_UNITS.map(u => <option key={u.value} value={u.value}>{u.label}</option>)}</select></td>
-          <td><div className="supplier-auto-unit-price supplier-price-input-shell"><input inputMode="decimal" value={row.unit_price} onChange={e => updateLine(idx, { unit_price: e.target.value })} placeholder="0.00" />{(() => { const trend = supplierItemInlineTrend(row.product_id, row.unit_price, row.unit); return trend ? <span className={`supplier-inline-price-trend ${trend.direction}`} title={trend.title}>{trend.label}</span> : null })()}</div></td>
           <td><input inputMode="decimal" value={row.line_amount ?? ''} onChange={e => updateLine(idx, { line_amount: e.target.value })} placeholder="0.00" /></td>
+          <td><div className="supplier-auto-unit-price supplier-price-input-shell"><input inputMode="decimal" value={row.unit_price} onChange={e => updateLine(idx, { unit_price: e.target.value })} placeholder="0.00" />{(() => { const trend = supplierItemInlineTrend(row.product_id, row.unit_price, row.unit); return trend ? <span className={`supplier-inline-price-trend ${trend.direction}`} title={trend.title}>{trend.label}</span> : null })()}</div></td>
           <td><button className="remove" onClick={() => setLineRows(rows => rows.length === 1 ? [{ ...emptyLine }] : rows.filter((_, i) => i !== idx))}>×</button></td>
         </tr>)}</tbody></table></div>
         <p className="hint">Итого по фактуре: <strong>{fmt(purchaseTotal)}</strong> AZN.</p>
@@ -29223,18 +29206,8 @@ function Suppliers({ t, isAdmin = false }) {
                             </div>}
                           </div>
 
-                          <div className="form-grid compact invoice-summary-grid supplier-invoice-summary-edit-grid">
+                          <div className="form-grid compact invoice-summary-grid">
                             <label><span>Дата</span>{editingPurchaseId === p.id && !p.deleted_at ? <DateInput defaultValue={formatDateDMY(p.purchase_date)} onBlur={e => updatePurchase(p.id, { purchase_date: e.target.value })} /> : <strong>{formatDateDMY(p.purchase_date)}</strong>}</label>
-                            <label><span>Поставщик</span>{editingPurchaseId === p.id && !p.deleted_at ? (() => {
-                              const currentSupplierOption = p.supplier_id && !activeSuppliers.some(s => s.id === p.supplier_id)
-                                ? [{ id: p.supplier_id, name: p.suppliers?.name || 'Текущий поставщик' }]
-                                : []
-                              const supplierOptions = [...currentSupplierOption, ...activeSuppliers]
-                              return <select defaultValue={p.supplier_id || ''} onChange={e => updatePurchase(p.id, { supplier_id: e.target.value || null })}>
-                                <option value="">—</option>
-                                {supplierOptions.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                              </select>
-                            })() : <strong>{p.suppliers?.name || '—'}</strong>}</label>
                             <label><span>Приходная накладная</span>{editingPurchaseId === p.id && !p.deleted_at ? <input defaultValue={p.invoice_number || ''} onBlur={e => updatePurchase(p.id, { invoice_number: e.target.value.trim() || null })} /> : <strong>{p.invoice_number || '—'}</strong>}</label>
                             <label><span>Сумма накладной</span>{editingPurchaseId === p.id && !p.deleted_at ? <input inputMode="decimal" defaultValue={fmt(p.total_amount)} onBlur={e => updatePurchase(p.id, { total_amount: e.target.value })} /> : <strong>{fmt(p.total_amount)} AZN</strong>}</label>
                             <label><span>Филиал</span>{editingPurchaseId === p.id && !p.deleted_at ? <select defaultValue={p.branch_id || ''} onBlur={e => updatePurchase(p.id, { branch_id: e.target.value || null })}><option value="">—</option>{branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select> : <strong>{p.branches?.name || '—'}</strong>}</label>
@@ -29320,14 +29293,14 @@ function Suppliers({ t, isAdmin = false }) {
                           {purchaseItemsEditorId === p.id ? <div className="existing-purchase-items-editor">
                             <div className="table-wrap suppliers-purchase-items-wrap">
                               <table className="suppliers-purchase-items-table suppliers-purchase-price-table">
-                                <thead><tr><th>Тип</th><th>Товар</th><th>Количество</th><th>Ед.</th><th>Цена за ед.</th><th>Сумма строки</th><th></th></tr></thead>
+                                <thead><tr><th>Тип</th><th>Товар</th><th>Количество</th><th>Ед.</th><th>Сумма строки</th><th>Цена за ед.</th><th></th></tr></thead>
                                 <tbody>{purchaseItemsDraft.map((row, idx) => <tr key={row.id || idx}>
                                   <td><select value={row.category || PRODUCT_CATEGORIES[0]} onChange={e => updateExistingPurchaseDraft(idx, { category: e.target.value })}>{PRODUCT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select></td>
                                   <td><select value={row.product_id || ''} onChange={e => updateExistingPurchaseDraft(idx, { product_id: e.target.value })}><option value="">Выберите товар</option>{productOptionsForRow(row).map(prod => <option key={prod.id} value={prod.id}>{prod.name}</option>)}</select></td>
                                   <td><input inputMode="decimal" value={row.quantity} onChange={e => updateExistingPurchaseDraft(idx, { quantity: e.target.value })} placeholder="30" /></td>
                                   <td><select value={row.unit || 'kg'} onChange={e => updateExistingPurchaseDraft(idx, { unit: e.target.value })}>{PURCHASE_UNITS.map(u => <option key={u.value} value={u.value}>{u.label}</option>)}</select></td>
-                                  <td><div className="supplier-auto-unit-price supplier-price-input-shell"><input inputMode="decimal" value={row.unit_price} onChange={e => updateExistingPurchaseDraft(idx, { unit_price: e.target.value })} placeholder="0.00" />{(() => { const trend = supplierItemInlineTrend(row.product_id, row.unit_price, row.unit, purchaseItemsEditorId); return trend ? <span className={`supplier-inline-price-trend ${trend.direction}`} title={trend.title}>{trend.label}</span> : null })()}</div></td>
                                   <td><input inputMode="decimal" value={row.line_amount ?? ''} onChange={e => updateExistingPurchaseDraft(idx, { line_amount: e.target.value })} placeholder="0.00" /></td>
+                                  <td><div className="supplier-auto-unit-price supplier-price-input-shell"><input inputMode="decimal" value={row.unit_price} onChange={e => updateExistingPurchaseDraft(idx, { unit_price: e.target.value })} placeholder="0.00" />{(() => { const trend = supplierItemInlineTrend(row.product_id, row.unit_price, row.unit, purchaseItemsEditorId); return trend ? <span className={`supplier-inline-price-trend ${trend.direction}`} title={trend.title}>{trend.label}</span> : null })()}</div></td>
                                   <td><button className="remove" onClick={() => setPurchaseItemsDraft(rows => rows.length === 1 ? [{ ...emptyLine, id: crypto.randomUUID?.() || String(Math.random()), quantity: '', unit_price: '', line_amount: '' }] : rows.filter((_, i) => i !== idx))}>×</button></td>
                                 </tr>)}</tbody>
                               </table>
@@ -32838,35 +32811,13 @@ function ReportsBazarDailyFullCardV220() {
   )
 }
 
-function Reports({ t, permissions = [], isAdmin = false }) {
+function Reports({ t }) {
   const branches = useBranches()
   const [reports, setReports] = useState(() => readAikoSalesReports())
   const [branchMap, setBranchMap] = useState(() => readAikoBranchMap())
   const [reportsTab, setReportsTab] = useState('overview')
-
-  const reportPermissionRows = Array.isArray(permissions)
-    ? permissions.filter(p => String(p.section || '').startsWith(REPORT_PERMISSION_PREFIX))
-    : []
-  const hasSpecificReportPermissions = reportPermissionRows.length > 0
-  const canReadReportTab = (tabId) => {
-    if (isAdmin || !hasSpecificReportPermissions) return true
-    const row = reportPermissionRows.find(p => p.section === reportPermissionSection(tabId))
-    return canReadAccess(row?.access || 'none')
-  }
-  const reportTabs = REPORTS_ACCESS_TABS.filter(tab => canReadReportTab(tab.id))
-  const reportTabIdsKey = reportTabs.map(tab => tab.id).join('|')
-  const effectiveReportsTab = reportTabs.some(tab => tab.id === reportsTab)
-    ? reportsTab
-    : (reportTabs[0]?.id || '')
-
-  React.useEffect(() => {
-    if (effectiveReportsTab && effectiveReportsTab !== reportsTab) {
-      setReportsTab(effectiveReportsTab)
-    }
-  }, [effectiveReportsTab, reportsTab, reportTabIdsKey])
-
   const productReportTabIds = ['products', 'product', 'goods', 'items', 'stock-products', 'inventory-products', 'product_movement', 'products_movement', 'goods_movement', 'товары']
-  const isProductsReportTab = productReportTabIds.includes(String(effectiveReportsTab || reportsTab || '').toLowerCase())
+  const isProductsReportTab = productReportTabIds.includes(String(reportsTab || '').toLowerCase())
 
   const [branchFilter, setBranchFilter] = useState('all')
   const [departmentFilter, setDepartmentFilter] = useState('all')
@@ -33456,182 +33407,39 @@ function Reports({ t, permissions = [], isAdmin = false }) {
 
       const reportRange = resolveProductReportRange()
 
-      const normalizeReportSupplierPurchasesPayload = (payload) => {
-        if (Array.isArray(payload)) return payload
-        if (typeof payload === 'string') {
-          try {
-            const parsed = JSON.parse(payload)
-            return Array.isArray(parsed) ? parsed : []
-          } catch (_error) {
-            return []
-          }
-        }
-        if (payload && typeof payload === 'object') {
-          if (Array.isArray(payload.rows)) return payload.rows
-          if (Array.isArray(payload.supplier_purchases)) return payload.supplier_purchases
-        }
-        return []
-      }
-
-      const isReportPurchaseCancelled = (purchase) => {
-        const status = String(purchase?.status || purchase?.payment_status || purchase?.sync_status || '').trim().toLowerCase()
-        return Boolean(
-          purchase?.deleted_at ||
-          purchase?.cancelled_at ||
-          purchase?.canceled_at ||
-          purchase?.is_cancelled ||
-          purchase?.is_canceled ||
-          ['cancelled', 'canceled', 'cancel', 'отменено', 'отменен', 'отменён'].includes(status)
-        )
-      }
-
-      const purchaseInReportRange = (purchase, range) => {
-        if (!purchase || isReportPurchaseCancelled(purchase)) return false
-        if (branchFilter !== 'all' && String(purchase.branch_id || '') !== String(branchFilter)) return false
-        const date = String(purchase.purchase_date || '').slice(0, 10)
-        if (range?.from && (!date || date < range.from)) return false
-        if (range?.toExclusive && (!date || date >= range.toExclusive)) return false
-        return true
-      }
-
-      const sortReportPurchases = (rows) => [...(rows || [])].sort((a, b) =>
-        String(b.purchase_date || '').localeCompare(String(a.purchase_date || '')) ||
-        String(b.created_at || '').localeCompare(String(a.created_at || ''))
-      )
-
-      const fetchPurchasesFromSecureRpc = async () => {
-        const { data, error } = await supabase.rpc('rms_supplier_purchases_full', { p_limit: 50000 })
-        if (error) throw error
-        return normalizeReportSupplierPurchasesPayload(data)
-      }
-
-      const fetchPurchasesFromDirectTables = async (range) => {
-        const selectMain = 'id,supplier_id,branch_id,purchase_date,invoice_number,total_amount,comment,created_at,deleted_at,status,cancelled_at,canceled_at,is_cancelled,is_canceled,suppliers(id,name),branches(id,name),supplier_purchase_items(id,purchase_id,product_id,quantity,unit,unit_price,total_amount,supplier_products(id,name,category,base_unit))'
-        const selectFallback = 'id,supplier_id,branch_id,purchase_date,invoice_number,total_amount,comment,created_at,deleted_at,suppliers(id,name),branches(id,name),supplier_purchase_items(id,purchase_id,product_id,quantity,unit,unit_price,total_amount,supplier_products(id,name,category,base_unit))'
-
-        const fetchBySelect = async (selectText) => {
-          const buildQuery = (from, to) => {
-            let query = supabase
-              .from('supplier_purchases')
-              .select(selectText)
-              .is('deleted_at', null)
-
-            if (branchFilter !== 'all') query = query.eq('branch_id', branchFilter)
-            if (range?.from) query = query.gte('purchase_date', range.from)
-            if (range?.toExclusive) query = query.lt('purchase_date', range.toExclusive)
-
-            return query
-              .order('purchase_date', { ascending: false })
-              .order('created_at', { ascending: false })
-              .range(from, to)
-          }
-
-          let from = 0
-          let result = []
-          while (true) {
-            const { data, error } = await buildQuery(from, from + pageSize - 1)
-            if (error) throw error
-            const batch = data || []
-            result = result.concat(batch)
-            if (batch.length < pageSize) break
-            from += pageSize
-            if (from > 50000) break
-          }
-          return result
-        }
-
-        try {
-          return await fetchBySelect(selectMain)
-        } catch (_error) {
-          return fetchBySelect(selectFallback)
-        }
-      }
-
-      const fetchPurchasesFromWorkspace = async () => {
-        const workspace = await fetchRmsSuppliersWorkspace()
-        if (workspace?.error) throw workspace.error
-        return normalizeReportSupplierPurchasesPayload(workspace?.data?.supplier_purchases || [])
-      }
-
       const fetchPurchases = async (range) => {
-        let fullRows = []
+        const buildQuery = (from, to) => {
+          let query = supabase
+            .from('supplier_purchases')
+            .select('id,supplier_id,branch_id,purchase_date,invoice_number,total_amount,comment,created_at,suppliers(id,name),branches(id,name),supplier_purchase_items(id,purchase_id,product_id,quantity,unit,unit_price,total_amount,supplier_products(id,name,category,base_unit))')
+            .is('deleted_at', null)
 
-        try {
-          fullRows = await fetchPurchasesFromSecureRpc()
-        } catch (_rpcError) {
-          fullRows = []
+          if (branchFilter !== 'all') query = query.eq('branch_id', branchFilter)
+          if (range?.from) query = query.gte('purchase_date', range.from)
+          if (range?.toExclusive) query = query.lt('purchase_date', range.toExclusive)
+
+          return query
+            .order('purchase_date', { ascending: false })
+            .order('created_at', { ascending: false })
+            .range(from, to)
         }
 
-        if (Array.isArray(fullRows) && fullRows.length) {
-          return sortReportPurchases(fullRows.filter(purchase => purchaseInReportRange(purchase, range)))
+        let from = 0
+        let result = []
+        while (true) {
+          const { data, error } = await buildQuery(from, from + pageSize - 1)
+          if (error) throw error
+          const batch = data || []
+          result = result.concat(batch)
+          if (batch.length < pageSize) break
+          from += pageSize
+          if (from > 50000) break
         }
-
-        try {
-          const directRows = await fetchPurchasesFromDirectTables(range)
-          if (Array.isArray(directRows) && directRows.length) {
-            return sortReportPurchases(directRows.filter(purchase => purchaseInReportRange(purchase, range)))
-          }
-        } catch (_directError) {}
-
-        try {
-          const workspaceRows = await fetchPurchasesFromWorkspace()
-          return sortReportPurchases(workspaceRows.filter(purchase => purchaseInReportRange(purchase, range)))
-        } catch (_workspaceError) {
-          return []
-        }
+        return result
       }
 
-      let effectiveReportRange = reportRange
-
-      if (
-        productsPriceCompareMode !== 'last' &&
-        !reportRange.compareAvailable &&
-        !productsReportDateFrom &&
-        !productsReportDateTo &&
-        monthFilter === 'all'
-      ) {
-        const allAvailablePurchases = await fetchPurchases({})
-        const validDates = (allAvailablePurchases || [])
-          .map(p => String(p.purchase_date || '').slice(0, 10))
-          .filter(Boolean)
-          .sort()
-
-        const latestDate = validDates[validDates.length - 1] || ''
-        if (latestDate) {
-          const latestMonthStart = `${latestDate.slice(0, 7)}-01`
-          const latestMonthDate = new Date(`${latestMonthStart}T00:00:00`)
-          const nextMonthDate = new Date(latestMonthDate)
-          nextMonthDate.setMonth(nextMonthDate.getMonth() + 1)
-          const prevMonthDate = new Date(latestMonthDate)
-          prevMonthDate.setMonth(prevMonthDate.getMonth() - 1)
-
-          const toIsoDate = (date) => {
-            const y = date.getFullYear()
-            const m = String(date.getMonth() + 1).padStart(2, '0')
-            const d = String(date.getDate()).padStart(2, '0')
-            return `${y}-${m}-${d}`
-          }
-
-          const monthLabel = (date) => {
-            const y = date.getFullYear()
-            const m = String(date.getMonth() + 1).padStart(2, '0')
-            return `${m}/${y}`
-          }
-
-          effectiveReportRange = {
-            ...reportRange,
-            current: { from: latestMonthStart, toExclusive: toIsoDate(nextMonthDate) },
-            previous: { from: toIsoDate(prevMonthDate), toExclusive: latestMonthStart },
-            currentLabel: monthLabel(latestMonthDate),
-            previousLabel: monthLabel(prevMonthDate),
-            compareAvailable: true,
-            autoCompare: true
-          }
-        }
-      }
-
-      const currentPurchases = await fetchPurchases(effectiveReportRange.current)
-      const previousPurchases = effectiveReportRange.previous ? await fetchPurchases(effectiveReportRange.previous) : []
+      const currentPurchases = await fetchPurchases(reportRange.current)
+      const previousPurchases = reportRange.previous ? await fetchPurchases(reportRange.previous) : []
 
       const branchNameById = new Map((branches || []).map(b => [String(b.id), b.name]))
 
@@ -33777,7 +33585,10 @@ function Reports({ t, permissions = [], isAdmin = false }) {
         products_count: row.products.size,
       })).sort((a, b) => parseNum(b.amount) - parseNum(a.amount))
 
-      const makeProductKey = (row) => row.product_id ? String(row.product_id) : normalizeSalesKey(row.product_name || '')
+      const makeProductKey = (row) => {
+        const nameKey = normalizeSalesKey(row.product_name || '')
+        return nameKey || (row.product_id ? String(row.product_id) : '')
+      }
       const rawUnitsByProduct = new Map()
       ;[...detailRows, ...previousDetailRows].forEach(row => {
         const key = makeProductKey(row)
@@ -33925,10 +33736,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
         suppliers: supplierIds.size || supplierRows.length,
       }
 
-      const emptySourceWarning = !detailRows.length && !isAdmin
-        ? 'Нет доступных строк закупок для этого пользователя. Проверьте, что в Supabase выполнен secure RPC rms_supplier_purchases_full и что в общих правах открыт раздел “Отчёты”.'
-        : ''
-      setRmsProductsReport({ loading: false, error: emptySourceWarning, rows: productRows, detailRows, totals, categories, suppliers: suppliersList, bySupplier: supplierRows, byCategory: categoryRows, priceDynamics, lastPurchaseDynamics, priceDynamicsMeta: { currentLabel: effectiveReportRange.currentLabel, previousLabel: effectiveReportRange.previousLabel, compareAvailable: effectiveReportRange.compareAvailable, autoCompare: Boolean(effectiveReportRange.autoCompare) } })
+      setRmsProductsReport({ loading: false, error: '', rows: productRows, detailRows, totals, categories, suppliers: suppliersList, bySupplier: supplierRows, byCategory: categoryRows, priceDynamics, lastPurchaseDynamics, priceDynamicsMeta: { currentLabel: reportRange.currentLabel, previousLabel: reportRange.previousLabel, compareAvailable: reportRange.compareAvailable } })
     } catch (error) {
       setRmsProductsReport({ loading: false, error: error?.message || 'Не удалось загрузить отчёт по товарам', rows: [], detailRows: [], totals: { amount: 0, products: 0, items: 0, invoices: 0, suppliers: 0 }, categories: [], suppliers: [], bySupplier: [], byCategory: [], priceDynamics: [], lastPurchaseDynamics: [], priceDynamicsMeta: { currentLabel: '', previousLabel: '', compareAvailable: false } })
     }
@@ -34892,7 +34700,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
   const productUnitMismatchRows = useMemo(() => {
     const map = new Map()
     ;(rmsProductsReport.detailRows || []).forEach(row => {
-      const key = row.product_id ? String(row.product_id) : normalizeSalesKey(row.product_name || '')
+      const key = normalizeSalesKey(row.product_name || '') || (row.product_id ? String(row.product_id) : '')
       if (!key) return
       const current = map.get(key) || {
         product_id: row.product_id || '',
@@ -34969,7 +34777,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
 
   const productPriceDynamicsModeLabel = productsPriceCompareMode === 'last'
     ? 'последняя закупка против предыдущей закупки'
-    : `${rmsProductsReport.priceDynamicsMeta?.autoCompare ? 'авто-сравнение: ' : 'период '}${rmsProductsReport.priceDynamicsMeta?.currentLabel || selectedProductPeriodLabel} против ${rmsProductsReport.priceDynamicsMeta?.previousLabel || 'предыдущего периода'}`
+    : `период ${rmsProductsReport.priceDynamicsMeta?.currentLabel || selectedProductPeriodLabel} против ${rmsProductsReport.priceDynamicsMeta?.previousLabel || 'предыдущего периода'}`
 
   const productReportPageSize = 50
   const productReportTotalPages = Math.max(1, Math.ceil(filteredProductReportRows.length / productReportPageSize))
@@ -35052,7 +34860,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
         <div className="reports-v43-card-head reports-v385-price-dynamics-head">
           <div>
             <h4>Динамика закупочных цен</h4>
-            <p>Основная логика: средневзвешенная цена текущего периода сравнивается с предыдущим сопоставимым периодом по базовой единице. Если выбран режим “Все даты”, динамика автоматически сравнивает последний месяц закупок с предыдущим месяцем. Сортировка — по финансовому влиянию на Food Cost.</p>
+            <p>Основная логика: средневзвешенная цена текущего периода сравнивается с предыдущим сопоставимым периодом по базовой единице. Сортировка — по финансовому влиянию на Food Cost.</p>
           </div>
           <div className="reports-v385-mode-switch">
             <button type="button" className={productsPriceCompareMode === 'period' ? 'primary small' : 'ghost small'} onClick={() => setProductsPriceCompareMode('period')}>Период к периоду</button>
@@ -35132,9 +34940,23 @@ function Reports({ t, permissions = [], isAdmin = false }) {
     </div>
   </section>
 
-  const activeReportTab = reportTabs.find(tab => tab.id === effectiveReportsTab) || reportTabs[0] || REPORTS_ACCESS_TABS[0]
+  const reportTabs = [
+    { id: 'overview', label: 'Обзор', icon: '▣' },
+    { id: 'sales', label: 'Продажи', icon: '↗' },
+    { id: 'revenue', label: 'Выручка', icon: '◷' },
+    { id: 'expenses', label: 'Расходы', icon: '▥' },
+    { id: 'categories', label: 'По статьям', icon: '☷' },
+    { id: 'purchases', label: 'Закупки', icon: '▤' },
+    { id: 'products', label: 'Товары', icon: '◇' },
+    { id: 'suppliers', label: 'Поставщики', icon: '▱' },
+    { id: 'bazar', label: 'Базар', icon: '⌂' },
+    { id: 'export', label: 'Экспорт', icon: '⇩' },
+    { id: 'import', label: 'Импорт', icon: '⇧' }
+  ]
+
+  const activeReportTab = reportTabs.find(tab => tab.id === reportsTab) || reportTabs[0]
   const salesKpiTabs = ['overview', 'sales']
-  const showSalesKpis = salesKpiTabs.includes(effectiveReportsTab)
+  const showSalesKpis = salesKpiTabs.includes(reportsTab)
 
   const currentMonthKey = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`
   const currentMonthLabel = currentMonthKey
@@ -35687,7 +35509,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
         <p>Сводная отчётность по продажам, выручке, расходам, закупкам, товарам, поставщикам и базару.</p>
       </div>
       <div className="reports-v43-actions">
-        {canReadReportTab('import') && <button className="ghost small" type="button" onClick={() => setReportsTab('import')}>Импорт</button>}
+        <button className="ghost small" type="button" onClick={() => setReportsTab('import')}>Импорт</button>
         <button className="ghost small" type="button">Экспорт</button>
         <button className="small primary" type="button" onClick={() => window.print()}>Печать</button>
       </div>
@@ -35703,14 +35525,13 @@ function Reports({ t, permissions = [], isAdmin = false }) {
       </div>
       <label>
         <span>Открыть раздел</span>
-        <select value={effectiveReportsTab} onChange={e => setReportsTab(e.target.value)}>
+        <select value={reportsTab} onChange={e => setReportsTab(e.target.value)}>
           {reportTabs.map(tab => <option key={tab.id} value={tab.id}>{tab.label}</option>)}
         </select>
       </label>
     </section>
 
     <section className="reports-v43-filterbar">
-      {!reportTabs.length && <div className="soft-alert warning reports-type-access-empty">Для этого пользователя не разрешён ни один тип отчёта. Настройте доступ в “Настройки → Пользователи → Доступ к типам отчётов”.</div>}
       <label><span>Период</span><select value={monthFilter} onChange={e => { setMonthFilter(e.target.value); setRevenueDateFrom(''); setRevenueDateTo(''); setRevenuePage(1) }}><option value="all">Все годы / все месяцы</option>{yearOptions.length > 0 && <optgroup label="Годы">{yearOptions.map(y => <option key={`year-${y}`} value={`year:${y}`}>{y} год</option>)}</optgroup>}<optgroup label="Месяцы">{!monthOptions.includes(currentMonthKey) && <option value={currentMonthKey}>Текущий месяц · {currentMonthLabel}</option>}{monthOptions.map(m => <option key={m} value={m}>{m}</option>)}</optgroup></select></label>
       <label><span>Филиал</span><select value={branchFilter} onChange={e => setBranchFilter(e.target.value)}><option value="all">Все филиалы</option>{branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label>
       <label><span>Тип</span><select value={departmentFilter} onChange={e => setDepartmentFilter(e.target.value)}><option value="all">Все</option><option value="Бар">Бар</option><option value="Кухня">Кухня</option><option value="Смешанный">Смешанный</option></select></label>
@@ -35721,17 +35542,17 @@ function Reports({ t, permissions = [], isAdmin = false }) {
       {reportKpis.map(item => <ReportsKpiCard key={item.title} item={item} />)}
     </section>}
 
-    {effectiveReportsTab === 'overview' && ReportsOverview}
-    {effectiveReportsTab === 'sales' && SalesReportView}
-    {effectiveReportsTab === 'import' && ImportReportView}
-    {effectiveReportsTab === 'revenue' && ReportsRevenueView}
-    {effectiveReportsTab === 'expenses' && ReportsExpensesView}
-    {effectiveReportsTab === 'categories' && <ReportModulePlaceholder title="Расходы по статьям" description="Просмотрзация каждой статьи с drill-down до транзакций." />}
-    {effectiveReportsTab === 'purchases' && <ReportModulePlaceholder title="Отчёт по закупкам" description="Закупки поставщиков по периодам, филиалам, категориям и фактурам." />}
+    {reportsTab === 'overview' && ReportsOverview}
+    {reportsTab === 'sales' && SalesReportView}
+    {reportsTab === 'import' && ImportReportView}
+    {reportsTab === 'revenue' && ReportsRevenueView}
+    {reportsTab === 'expenses' && ReportsExpensesView}
+    {reportsTab === 'categories' && <ReportModulePlaceholder title="Расходы по статьям" description="Просмотрзация каждой статьи с drill-down до транзакций." />}
+    {reportsTab === 'purchases' && <ReportModulePlaceholder title="Отчёт по закупкам" description="Закупки поставщиков по периодам, филиалам, категориям и фактурам." />}
     {isProductsReportTab && ReportsProductsView}
-    {effectiveReportsTab === 'suppliers' && ReportsSuppliersView}
-    {effectiveReportsTab === 'bazar' && <ReportModulePlaceholder title="Отчёт по базару" description="Базар, автоматическое распределение по филиалам и влияние на Food Cost." />}
-    {effectiveReportsTab === 'export' && <ReportModulePlaceholder title="Экспорт отчётов" description="PDF, печать, CSV/Excel и сохранение выбранного среза." />}
+    {reportsTab === 'suppliers' && ReportsSuppliersView}
+    {reportsTab === 'bazar' && <ReportModulePlaceholder title="Отчёт по базару" description="Базар, автоматическое распределение по филиалам и влияние на Food Cost." />}
+    {reportsTab === 'export' && <ReportModulePlaceholder title="Экспорт отчётов" description="PDF, печать, CSV/Excel и сохранение выбранного среза." />}
   </section>
 }
 
@@ -37597,13 +37418,6 @@ function Settings({ session, t, theme, setTheme, lang, setLang }) {
     return permissions.find(p => p.user_id === userId && p.section === section)?.access || 'none'
   }
 
-  const accessModeLabel = (access) => {
-    if (access === 'admin') return 'Администратор'
-    if (access === 'edit') return 'Редактор'
-    if (access === 'read') return 'Только просмотр'
-    return 'Нет доступа'
-  }
-
   async function updatePermission(userId, section, access) {
     const local = getInternalPermissions()
     if (local[userId]) {
@@ -37623,57 +37437,6 @@ function Settings({ session, t, theme, setTheme, lang, setLang }) {
 
     const { error } = await supabase.from('user_permissions').upsert({ user_id: userId, section, access }, { onConflict: 'user_id,section' })
     if (error) setMsg(error.message); else { setMsg(t('saved')); load() }
-  }
-
-  const getReportTypePermission = (userId, tabId) => {
-    const section = reportPermissionSection(tabId)
-    const local = getInternalPermissions()
-    const localUserPerms = local[userId]
-    if (localUserPerms) {
-      const hasAnySpecific = REPORTS_ACCESS_TABS.some(tab => Object.prototype.hasOwnProperty.call(localUserPerms, reportPermissionSection(tab.id)))
-      if (!hasAnySpecific) return 'read'
-      return localUserPerms[section] || 'none'
-    }
-
-    const userRows = (permissions || []).filter(p => p.user_id === userId && String(p.section || '').startsWith(REPORT_PERMISSION_PREFIX))
-    if (!userRows.length) return 'read'
-    return (permissions || []).find(p => p.user_id === userId && p.section === section)?.access || 'none'
-  }
-
-  async function updateReportTypePermission(userId, tabId, access) {
-    const section = reportPermissionSection(tabId)
-    const local = getInternalPermissions()
-
-    if (local[userId]) {
-      const current = { ...(local[userId] || {}) }
-      const hasAnySpecific = REPORTS_ACCESS_TABS.some(tab => Object.prototype.hasOwnProperty.call(current, reportPermissionSection(tab.id)))
-      if (!hasAnySpecific) {
-        REPORTS_ACCESS_TABS.forEach(tab => { current[reportPermissionSection(tab.id)] = 'read' })
-      }
-      current[section] = access
-      local[userId] = current
-      try { await persistInternalPermissionsShared(local) } catch (e) { return setMsg(`Не удалось сохранить права отчётов в облаке: ${e.message}`) }
-      setMsg(t('saved'))
-      window.dispatchEvent(new Event('rms-user-settings-updated'))
-      await load()
-      return
-    }
-
-    const existingSpecific = (permissions || []).some(p => p.user_id === userId && String(p.section || '').startsWith(REPORT_PERMISSION_PREFIX))
-    if (!existingSpecific) {
-      const seedRows = REPORTS_ACCESS_TABS.map(tab => ({ user_id: userId, section: reportPermissionSection(tab.id), access: 'read' }))
-      const seed = await supabase.from('user_permissions').upsert(seedRows, { onConflict: 'user_id,section' })
-      if (seed.error) return setMsg(seed.error.message)
-    }
-
-    if (access === 'none') {
-      const { error } = await supabase.from('user_permissions').delete().eq('user_id', userId).eq('section', section)
-      if (error) setMsg(error.message); else { setMsg(t('saved')); await load() }
-      return
-    }
-
-    const { error } = await supabase.from('user_permissions').upsert({ user_id: userId, section, access }, { onConflict: 'user_id,section' })
-    if (error) setMsg(error.message); else { setMsg(t('saved')); await load() }
   }
 
   async function deleteUser(user) {
@@ -38919,44 +38682,6 @@ function Settings({ session, t, theme, setTheme, lang, setLang }) {
         {settingsTab === 'users' && <>
           <div className="card span-2"><h3>Пользователи</h3><p className="hint">Добавление пользователей и права доступа.</p></div>
           <div className="card span-2"><div className="card-head"><h3>Добавить пользователя</h3></div><p className="hint">Пользователь входит по login. Система создаёт внутренний email вида login@rms.local.az, поэтому email-рассылка не используется.</p><div className="form-grid compact"><label><span>Login</span><input value={newUser.login} onChange={e => setNewUser({...newUser, login: e.target.value})} placeholder="" /></label><label><span>Временный пароль</span><input type="password" value={newUser.password} onChange={e => setNewUser({...newUser, password: e.target.value})} /></label><label><span>Имя</span><input value={newUser.full_name} onChange={e => setNewUser({...newUser, full_name: e.target.value})} /></label></div><button className="small" onClick={addUser}>+ Добавить пользователя</button>{msg && <p className={`hint ${msg === t('saved') || String(msg).toLowerCase().includes('сохран') ? 'save-status' : 'good'}`}>{msg}</p>}</div>
-          <div className="card span-2 reports-type-access-card">
-            <div className="card-head">
-              <div>
-                <h3>Доступ к типам отчётов</h3>
-                <p className="hint">Сначала пользователь должен иметь доступ к разделу “Отчёты” в общих правах ниже. Здесь выбирается, какие именно позиции он увидит внутри раздела.</p>
-              </div>
-            </div>
-            <div className="reports-type-access-grid">
-              {users.map(u => {
-                const userLogin = u.login_name || (u.email || '').split('@')[0] || u.id
-                const reportsSectionAccess = getPermission(u.id, 'reports')
-                const reportsSectionOpen = canReadAccess(reportsSectionAccess)
-                const allowedCount = REPORTS_ACCESS_TABS.filter(tab => canReadAccess(getReportTypePermission(u.id, tab.id))).length
-                return <div className={`reports-type-access-user ${reportsSectionOpen ? 'is-open' : 'is-section-closed'}`} key={`reports-type-access-${u.id}`}>
-                  <div className="reports-type-access-user-head">
-                    <div>
-                      <strong>{u.full_name || u.login_name || u.id}</strong>
-                      <span>{userLogin}</span>
-                    </div>
-                    <em>{reportsSectionOpen ? `${allowedCount} / ${REPORTS_ACCESS_TABS.length}` : 'Раздел закрыт'}</em>
-                  </div>
-                  {!reportsSectionOpen && <p className="hint">В общих правах ниже у пользователя закрыт раздел “Отчёты”. Типы отчётов можно отметить заранее, но они появятся только после открытия раздела.</p>}
-                  <div className="reports-type-access-chip-grid">
-                    {REPORTS_ACCESS_TABS.map(tab => {
-                      const access = getReportTypePermission(u.id, tab.id)
-                      const checked = canReadAccess(access)
-                      return <label className={`reports-type-access-chip ${checked ? 'is-allowed' : 'is-denied'}`} key={`${u.id}-${tab.id}`}>
-                        <input type="checkbox" checked={checked} onChange={e => updateReportTypePermission(u.id, tab.id, e.target.checked ? 'read' : 'none')} />
-                        <span>{tab.icon}</span>
-                        <b>{tab.label}</b>
-                      </label>
-                    })}
-                  </div>
-                </div>
-              })}
-            </div>
-          </div>
-
           <div className="card span-2">
             <div className="card-head"><h3>Права доступа</h3></div>
             <p className="hint">Внутренние пользователи RMS входят по login/password без Supabase Auth. Раздел с доступом “Нет доступа” полностью скрывается из меню.</p>
@@ -45102,336 +44827,4 @@ if (typeof document !== 'undefined') {
 /* v388 reports products: product placeholder is connected to real ReportsProductsView; supports product tab aliases */
 
 
-/* v390 supplier invoice items: price before row amount */
-if (typeof document !== 'undefined') {
-  const STYLE_ID = 'rms-v390-supplier-invoice-items-price-before-sum'
-  if (!document.getElementById(STYLE_ID)) {
-    const style = document.createElement('style')
-    style.id = STYLE_ID
-    style.textContent = `
-.rms-pro-shell .suppliers-purchase-price-table th:nth-child(5),
-.rms-pro-shell .suppliers-purchase-price-table td:nth-child(5){
-  width:190px!important;
-}
-.rms-pro-shell .suppliers-purchase-price-table th:nth-child(6),
-.rms-pro-shell .suppliers-purchase-price-table td:nth-child(6){
-  width:160px!important;
-  text-align:left!important;
-}
-.rms-pro-shell .suppliers-purchase-price-table td:nth-child(5) .supplier-auto-unit-price{
-  width:100%!important;
-  min-width:0!important;
-  max-width:100%!important;
-}
-`
-    document.head.appendChild(style)
-  }
-}
-
-
-/* v391 Reports access per user */
-if (typeof document !== 'undefined') {
-  const STYLE_ID = 'rms-v391-reports-access-per-user'
-  if (!document.getElementById(STYLE_ID)) {
-    const style = document.createElement('style')
-    style.id = STYLE_ID
-    style.textContent = `
-.rms-pro-shell .reports-access-control-card{
-  border-color:#dbeafe!important;
-  background:linear-gradient(180deg,#ffffff 0%,#f8fbff 100%)!important;
-}
-.rms-pro-shell .reports-access-control-grid{
-  display:grid!important;
-  grid-template-columns:repeat(auto-fit,minmax(280px,1fr))!important;
-  gap:10px!important;
-  margin-top:12px!important;
-}
-.rms-pro-shell .reports-access-control-row{
-  display:grid!important;
-  grid-template-columns:minmax(0,1fr) 160px 118px!important;
-  align-items:center!important;
-  gap:10px!important;
-  padding:11px!important;
-  border:1px solid #e2e8f0!important;
-  border-radius:16px!important;
-  background:#fff!important;
-  box-shadow:0 8px 24px rgba(15,23,42,.04)!important;
-}
-.rms-pro-shell .reports-access-control-row>div{
-  min-width:0!important;
-}
-.rms-pro-shell .reports-access-control-row strong{
-  display:block!important;
-  color:#0f172a!important;
-  font-size:13.5px!important;
-  line-height:1.2!important;
-  white-space:nowrap!important;
-  overflow:hidden!important;
-  text-overflow:ellipsis!important;
-}
-.rms-pro-shell .reports-access-control-row span{
-  display:block!important;
-  margin-top:3px!important;
-  color:#64748b!important;
-  font-size:11.5px!important;
-  font-weight:750!important;
-  white-space:nowrap!important;
-  overflow:hidden!important;
-  text-overflow:ellipsis!important;
-}
-.rms-pro-shell .reports-access-control-row select{
-  height:36px!important;
-  width:100%!important;
-  border-radius:12px!important;
-  font-size:12px!important;
-  font-weight:850!important;
-}
-.rms-pro-shell .reports-access-control-row em{
-  display:inline-flex!important;
-  justify-content:center!important;
-  align-items:center!important;
-  height:28px!important;
-  padding:0 9px!important;
-  border-radius:999px!important;
-  font-style:normal!important;
-  font-size:10.5px!important;
-  font-weight:950!important;
-  white-space:nowrap!important;
-}
-.rms-pro-shell .reports-access-control-row.is-open em{
-  color:#166534!important;
-  background:#dcfce7!important;
-}
-.rms-pro-shell .reports-access-control-row.is-closed em{
-  color:#991b1b!important;
-  background:#fee2e2!important;
-}
-@media(max-width:760px){
-  .rms-pro-shell .reports-access-control-row{
-    grid-template-columns:1fr!important;
-  }
-  .rms-pro-shell .reports-access-control-row em{
-    justify-content:flex-start!important;
-  }
-}
-`
-    document.head.appendChild(style)
-  }
-}
-
-
-/* v391 reports access: new users do not receive Reports by default; dedicated Settings control added */
-
-
-/* v392 browser tab branding: RMS Pro instead of NMS Cloud Pro */
-if (typeof document !== 'undefined') {
-  const RMS_BROWSER_TITLE = 'RMS Pro'
-
-  const applyRmsBrowserBranding = () => {
-    if (document.title !== RMS_BROWSER_TITLE) {
-      document.title = RMS_BROWSER_TITLE
-    }
-
-    const upsertMeta = (selector, attrName, attrValue, contentValue) => {
-      let meta = document.head.querySelector(selector)
-      if (!meta) {
-        meta = document.createElement('meta')
-        meta.setAttribute(attrName, attrValue)
-        document.head.appendChild(meta)
-      }
-      meta.setAttribute('content', contentValue)
-    }
-
-    upsertMeta('meta[name="application-name"]', 'name', 'application-name', RMS_BROWSER_TITLE)
-    upsertMeta('meta[name="apple-mobile-web-app-title"]', 'name', 'apple-mobile-web-app-title', RMS_BROWSER_TITLE)
-    upsertMeta('meta[property="og:site_name"]', 'property', 'og:site_name', RMS_BROWSER_TITLE)
-    upsertMeta('meta[property="og:title"]', 'property', 'og:title', RMS_BROWSER_TITLE)
-  }
-
-  applyRmsBrowserBranding()
-
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', applyRmsBrowserBranding, { once: true })
-  }
-
-  const rmsTitleObserver = new MutationObserver(() => {
-    if (document.title !== RMS_BROWSER_TITLE) {
-      applyRmsBrowserBranding()
-    }
-  })
-
-  const titleNode = document.head.querySelector('title')
-  if (titleNode) {
-    rmsTitleObserver.observe(titleNode, { childList: true, characterData: true, subtree: true })
-  }
-
-  window.addEventListener('load', applyRmsBrowserBranding)
-  setTimeout(applyRmsBrowserBranding, 500)
-  setTimeout(applyRmsBrowserBranding, 1500)
-}
-
-
-/* v393 supplier journal: supplier can be edited in invoice view */
-if (typeof document !== 'undefined') {
-  const STYLE_ID = 'rms-v393-supplier-journal-edit-supplier'
-  if (!document.getElementById(STYLE_ID)) {
-    const style = document.createElement('style')
-    style.id = STYLE_ID
-    style.textContent = `
-.rms-pro-shell .supplier-invoice-summary-edit-grid{
-  grid-template-columns:repeat(auto-fit,minmax(190px,1fr))!important;
-}
-.rms-pro-shell .supplier-invoice-summary-edit-grid label select{
-  width:100%!important;
-  min-width:0!important;
-}
-.rms-pro-shell .supplier-invoice-summary-edit-grid label span{
-  white-space:nowrap!important;
-}
-`
-    document.head.appendChild(style)
-  }
-}
-
-
-/* v393 supplier journal: invoice supplier is editable from the invoice details card */
-
-
-/* v394 report type permissions */
-if (typeof document !== 'undefined') {
-  const STYLE_ID = 'rms-v394-report-type-permissions'
-  if (!document.getElementById(STYLE_ID)) {
-    const style = document.createElement('style')
-    style.id = STYLE_ID
-    style.textContent = `
-.rms-pro-shell .reports-type-access-card{
-  border-color:#dbeafe!important;
-  background:linear-gradient(180deg,#ffffff 0%,#f8fbff 100%)!important;
-}
-.rms-pro-shell .reports-type-access-grid{
-  display:grid!important;
-  grid-template-columns:repeat(auto-fit,minmax(360px,1fr))!important;
-  gap:12px!important;
-  margin-top:12px!important;
-}
-.rms-pro-shell .reports-type-access-user{
-  padding:12px!important;
-  border:1px solid #e2e8f0!important;
-  border-radius:18px!important;
-  background:#fff!important;
-  box-shadow:0 8px 24px rgba(15,23,42,.04)!important;
-}
-.rms-pro-shell .reports-type-access-user.is-section-closed{
-  background:#fffafa!important;
-  border-color:#fecaca!important;
-}
-.rms-pro-shell .reports-type-access-user-head{
-  display:flex!important;
-  align-items:center!important;
-  justify-content:space-between!important;
-  gap:12px!important;
-  margin-bottom:10px!important;
-}
-.rms-pro-shell .reports-type-access-user-head strong{
-  display:block!important;
-  color:#0f172a!important;
-  font-size:14px!important;
-  font-weight:950!important;
-  line-height:1.2!important;
-}
-.rms-pro-shell .reports-type-access-user-head span{
-  display:block!important;
-  margin-top:3px!important;
-  color:#64748b!important;
-  font-size:12px!important;
-  font-weight:750!important;
-}
-.rms-pro-shell .reports-type-access-user-head em{
-  display:inline-flex!important;
-  align-items:center!important;
-  justify-content:center!important;
-  min-width:86px!important;
-  height:28px!important;
-  padding:0 10px!important;
-  border-radius:999px!important;
-  font-style:normal!important;
-  color:#1d4ed8!important;
-  background:#dbeafe!important;
-  font-size:11px!important;
-  font-weight:950!important;
-  white-space:nowrap!important;
-}
-.rms-pro-shell .reports-type-access-user.is-section-closed .reports-type-access-user-head em{
-  color:#991b1b!important;
-  background:#fee2e2!important;
-}
-.rms-pro-shell .reports-type-access-chip-grid{
-  display:grid!important;
-  grid-template-columns:repeat(auto-fit,minmax(132px,1fr))!important;
-  gap:8px!important;
-}
-.rms-pro-shell .reports-type-access-chip{
-  display:flex!important;
-  align-items:center!important;
-  gap:8px!important;
-  min-height:36px!important;
-  padding:7px 9px!important;
-  border:1px solid #e2e8f0!important;
-  border-radius:13px!important;
-  background:#f8fafc!important;
-  cursor:pointer!important;
-  user-select:none!important;
-}
-.rms-pro-shell .reports-type-access-chip input{
-  width:16px!important;
-  height:16px!important;
-  margin:0!important;
-  accent-color:#2563eb!important;
-}
-.rms-pro-shell .reports-type-access-chip span{
-  color:#64748b!important;
-  font-size:13px!important;
-  font-weight:900!important;
-}
-.rms-pro-shell .reports-type-access-chip b{
-  color:#334155!important;
-  font-size:12px!important;
-  font-weight:850!important;
-  line-height:1.1!important;
-}
-.rms-pro-shell .reports-type-access-chip.is-allowed{
-  border-color:#bfdbfe!important;
-  background:#eff6ff!important;
-}
-.rms-pro-shell .reports-type-access-chip.is-allowed b,
-.rms-pro-shell .reports-type-access-chip.is-allowed span{
-  color:#1d4ed8!important;
-}
-.rms-pro-shell .reports-type-access-chip.is-denied{
-  opacity:.68!important;
-}
-.rms-pro-shell .reports-type-access-empty{
-  grid-column:1 / -1!important;
-  width:100%!important;
-}
-@media(max-width:760px){
-  .rms-pro-shell .reports-type-access-grid{
-    grid-template-columns:1fr!important;
-  }
-  .rms-pro-shell .reports-type-access-chip-grid{
-    grid-template-columns:1fr 1fr!important;
-  }
-}
-`
-    document.head.appendChild(style)
-  }
-}
-
-
-/* v394: per-report-type permissions inside Reports; removed duplicated general reports access card */
-
-
-/* v395 Reports -> Products: restricted users load product purchases through secure RPC with direct/workspace fallback */
-
-
-/* v396 Reports -> Products: All dates auto-compares latest purchase month with previous month for price dynamics */
+/* v390 reports products: unit mismatch detection groups by normalized product name to catch duplicate product cards with different IDs */
