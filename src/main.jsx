@@ -28710,13 +28710,13 @@ function Suppliers({ t, isAdmin = false }) {
         </div>
 
         <div className="card-head suppliers-purchase-items-head"><div><h3>Товары в поступлении</h3><p className="hint">Если товара нет, сначала добавьте его ниже в блоке “Товары”.</p></div><button className="small supplier-add-product-line-btn" disabled={purchaseForm.amount_only} onClick={() => setLineRows(rows => [...rows, { ...emptyLine }])}>{isAzInterface ? '+ Məhsulu əlavə et' : '+ Добавить товар'}</button></div>
-        <div className="table-wrap suppliers-purchase-items-wrap"><table className="suppliers-purchase-items-table suppliers-purchase-price-table"><thead><tr><th>Тип</th><th>Товар</th><th>Кол-во закупа</th><th>Ед. закупа</th><th>Сумма строки</th><th>Цена за ед.</th><th></th></tr></thead><tbody>{purchaseForm.amount_only ? <tr><td colSpan="7" className="hint">Товары отключены: поступление будет сохранено общей суммой.</td></tr> : lineRows.map((row, idx) => <tr key={idx}>
+        <div className="table-wrap suppliers-purchase-items-wrap"><table className="suppliers-purchase-items-table suppliers-purchase-price-table"><thead><tr><th>Тип</th><th>Товар</th><th>Кол-во закупа</th><th>Ед. закупа</th><th>Цена за ед.</th><th>Сумма строки</th><th></th></tr></thead><tbody>{purchaseForm.amount_only ? <tr><td colSpan="7" className="hint">Товары отключены: поступление будет сохранено общей суммой.</td></tr> : lineRows.map((row, idx) => <tr key={idx}>
           <td><select value={row.category} onChange={e => updateLine(idx, { category: e.target.value })}>{PRODUCT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select></td>
           <td style={{minWidth:260}}><select value={row.product_id || ''} onChange={e => selectProductForLine(idx, e.target.value)}><option value="">Выберите товар</option>{productOptionsForRow(row).map(p => <option key={p.id} value={p.id}>{productLabel(p)}</option>)}</select></td>
           <td><input inputMode="decimal" value={row.quantity} onChange={e => updateLine(idx, { quantity: e.target.value })} placeholder="30" /></td>
           <td><select value={row.unit} onChange={e => updateLine(idx, { unit: e.target.value })}>{PURCHASE_UNITS.map(u => <option key={u.value} value={u.value}>{u.label}</option>)}</select></td>
-          <td><input inputMode="decimal" value={row.line_amount ?? ''} onChange={e => updateLine(idx, { line_amount: e.target.value })} placeholder="0.00" /></td>
           <td><div className="supplier-auto-unit-price supplier-price-input-shell"><input inputMode="decimal" value={row.unit_price} onChange={e => updateLine(idx, { unit_price: e.target.value })} placeholder="0.00" />{(() => { const trend = supplierItemInlineTrend(row.product_id, row.unit_price, row.unit); return trend ? <span className={`supplier-inline-price-trend ${trend.direction}`} title={trend.title}>{trend.label}</span> : null })()}</div></td>
+          <td><input inputMode="decimal" value={row.line_amount ?? ''} onChange={e => updateLine(idx, { line_amount: e.target.value })} placeholder="0.00" /></td>
           <td><button className="remove" onClick={() => setLineRows(rows => rows.length === 1 ? [{ ...emptyLine }] : rows.filter((_, i) => i !== idx))}>×</button></td>
         </tr>)}</tbody></table></div>
         <p className="hint">Итого по фактуре: <strong>{fmt(purchaseTotal)}</strong> AZN.</p>
@@ -29293,14 +29293,14 @@ function Suppliers({ t, isAdmin = false }) {
                           {purchaseItemsEditorId === p.id ? <div className="existing-purchase-items-editor">
                             <div className="table-wrap suppliers-purchase-items-wrap">
                               <table className="suppliers-purchase-items-table suppliers-purchase-price-table">
-                                <thead><tr><th>Тип</th><th>Товар</th><th>Количество</th><th>Ед.</th><th>Сумма строки</th><th>Цена за ед.</th><th></th></tr></thead>
+                                <thead><tr><th>Тип</th><th>Товар</th><th>Количество</th><th>Ед.</th><th>Цена за ед.</th><th>Сумма строки</th><th></th></tr></thead>
                                 <tbody>{purchaseItemsDraft.map((row, idx) => <tr key={row.id || idx}>
                                   <td><select value={row.category || PRODUCT_CATEGORIES[0]} onChange={e => updateExistingPurchaseDraft(idx, { category: e.target.value })}>{PRODUCT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select></td>
                                   <td><select value={row.product_id || ''} onChange={e => updateExistingPurchaseDraft(idx, { product_id: e.target.value })}><option value="">Выберите товар</option>{productOptionsForRow(row).map(prod => <option key={prod.id} value={prod.id}>{prod.name}</option>)}</select></td>
                                   <td><input inputMode="decimal" value={row.quantity} onChange={e => updateExistingPurchaseDraft(idx, { quantity: e.target.value })} placeholder="30" /></td>
                                   <td><select value={row.unit || 'kg'} onChange={e => updateExistingPurchaseDraft(idx, { unit: e.target.value })}>{PURCHASE_UNITS.map(u => <option key={u.value} value={u.value}>{u.label}</option>)}</select></td>
-                                  <td><input inputMode="decimal" value={row.line_amount ?? ''} onChange={e => updateExistingPurchaseDraft(idx, { line_amount: e.target.value })} placeholder="0.00" /></td>
                                   <td><div className="supplier-auto-unit-price supplier-price-input-shell"><input inputMode="decimal" value={row.unit_price} onChange={e => updateExistingPurchaseDraft(idx, { unit_price: e.target.value })} placeholder="0.00" />{(() => { const trend = supplierItemInlineTrend(row.product_id, row.unit_price, row.unit, purchaseItemsEditorId); return trend ? <span className={`supplier-inline-price-trend ${trend.direction}`} title={trend.title}>{trend.label}</span> : null })()}</div></td>
+                                  <td><input inputMode="decimal" value={row.line_amount ?? ''} onChange={e => updateExistingPurchaseDraft(idx, { line_amount: e.target.value })} placeholder="0.00" /></td>
                                   <td><button className="remove" onClick={() => setPurchaseItemsDraft(rows => rows.length === 1 ? [{ ...emptyLine, id: crypto.randomUUID?.() || String(Math.random()), quantity: '', unit_price: '', line_amount: '' }] : rows.filter((_, i) => i !== idx))}>×</button></td>
                                 </tr>)}</tbody>
                               </table>
@@ -44822,3 +44822,30 @@ if (typeof document !== 'undefined') {
 
 
 /* v388 reports products: product placeholder is connected to real ReportsProductsView; supports product tab aliases */
+
+
+/* v390 supplier invoice items: price before row amount */
+if (typeof document !== 'undefined') {
+  const STYLE_ID = 'rms-v390-supplier-invoice-items-price-before-sum'
+  if (!document.getElementById(STYLE_ID)) {
+    const style = document.createElement('style')
+    style.id = STYLE_ID
+    style.textContent = `
+.rms-pro-shell .suppliers-purchase-price-table th:nth-child(5),
+.rms-pro-shell .suppliers-purchase-price-table td:nth-child(5){
+  width:190px!important;
+}
+.rms-pro-shell .suppliers-purchase-price-table th:nth-child(6),
+.rms-pro-shell .suppliers-purchase-price-table td:nth-child(6){
+  width:160px!important;
+  text-align:left!important;
+}
+.rms-pro-shell .suppliers-purchase-price-table td:nth-child(5) .supplier-auto-unit-price{
+  width:100%!important;
+  min-width:0!important;
+  max-width:100%!important;
+}
+`
+    document.head.appendChild(style)
+  }
+}
