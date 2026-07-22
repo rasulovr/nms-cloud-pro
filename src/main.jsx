@@ -32814,13 +32814,15 @@ function Reports({ t }) {
   const [rmsRevenueReport, setRmsRevenueReport] = useState({ loading: false, error: '', rows: [], totals: { cash: 0, bank: 0, wolt: 0, revenue: 0 } })
   const [rmsExpensesReport, setRmsExpensesReport] = useState({ loading: false, error: '', rows: [], totals: { amount: 0, transactions: 0, categories: 0 }, byCategory: [], byBranch: [] })
   const [rmsSuppliersReport, setRmsSuppliersReport] = useState({ loading: false, error: '', rows: [], totals: { purchases: 0, payments: 0, balance: 0, suppliers: 0 }, purchases: [], payments: [], priceChanges: [] })
-  const [rmsProductsReport, setRmsProductsReport] = useState({ loading: false, error: '', rows: [], detailRows: [], totals: { amount: 0, products: 0, items: 0, invoices: 0, suppliers: 0 }, categories: [], suppliers: [], bySupplier: [], byCategory: [] })
+  const [rmsProductsReport, setRmsProductsReport] = useState({ loading: false, error: '', rows: [], detailRows: [], totals: { amount: 0, products: 0, items: 0, invoices: 0, suppliers: 0 }, categories: [], suppliers: [], bySupplier: [], byCategory: [], priceDynamics: [], lastPurchaseDynamics: [], priceDynamicsMeta: { currentLabel: '', previousLabel: '', compareAvailable: false } })
   const [productsReportDateFrom, setProductsReportDateFrom] = useState('')
   const [productsReportDateTo, setProductsReportDateTo] = useState('')
   const [productsReportSearch, setProductsReportSearch] = useState('')
   const [productsReportCategory, setProductsReportCategory] = useState('all')
   const [productsReportSupplierId, setProductsReportSupplierId] = useState('all')
   const [productsReportSort, setProductsReportSort] = useState({ field: 'amount', dir: 'desc' })
+  const [productsPriceCompareMode, setProductsPriceCompareMode] = useState('period')
+  const [productsPriceDynamicsTab, setProductsPriceDynamicsTab] = useState('up')
   const [productsReportPage, setProductsReportPage] = useState(1)
   const [productsReportDetailsOpen, setProductsReportDetailsOpen] = useState(false)
   const [supplierReportSort, setSupplierReportSort] = useState({ field: 'balance', dir: 'desc' })
@@ -33105,6 +33107,10 @@ function Reports({ t }) {
     setProductsReportPage(1)
   }, [reportsTab, branchFilter, monthFilter, productsReportDateFrom, productsReportDateTo, productsReportSearch, productsReportCategory, productsReportSupplierId, productsReportSort])
 
+  useEffect(() => {
+    setProductsPriceDynamicsTab('up')
+  }, [reportsTab, branchFilter, monthFilter, productsReportDateFrom, productsReportDateTo, productsPriceCompareMode])
+
   async function loadRmsExpensesReport() {
     setRmsExpensesReport(prev => ({ ...prev, loading: true, error: '' }))
     try {
@@ -33281,151 +33287,251 @@ function Reports({ t }) {
     setRmsProductsReport(prev => ({ ...prev, loading: true, error: '' }))
     try {
       const pageSize = 1000
-      const hasCustomRange = Boolean(productsReportDateFrom || productsReportDateTo)
+      const addDays = (iso, days) => {
+        const base = parseISODateLocal(iso)
+        base.setDate(base.getDate() + days)
+        return toLocalISODate(base)
+      }
+      const daysBetween = (from, toExclusive) => {
+        const a = parseISODateLocal(from)
+        const b = parseISODateLocal(toExclusive)
+        const diff = Math.round((b.getTime() - a.getTime()) / 86400000)
+        return Number.isFinite(diff) && diff > 0 ? diff : 0
+      }
+      const monthStartFromKey = (monthKey) => {
+        const m = String(monthKey || '').match(/^(\d{4})-(\d{2})$/)
+        if (!m) return ''
+        return `${m[1]}-${m[2]}-01`
+      }
+      const previousMonthStart = (monthKey) => {
+        const m = String(monthKey || '').match(/^(\d{4})-(\d{2})$/)
+        if (!m) return ''
+        const year = Number(m[1])
+        const month = Number(m[2])
+        const prevYear = month === 1 ? year - 1 : year
+        const prevMonth = month === 1 ? 12 : month - 1
+        return `${prevYear}-${String(prevMonth).padStart(2, '0')}-01`
+      }
 
-      const buildQuery = (from, to) => {
-        let query = supabase
-          .from('supplier_purchases')
-          .select('id,supplier_id,branch_id,purchase_date,invoice_number,total_amount,comment,created_at,suppliers(id,name),branches(id,name),supplier_purchase_items(id,purchase_id,product_id,quantity,unit,unit_price,total_amount,supplier_products(id,name,category,base_unit))')
-          .is('deleted_at', null)
-
-        if (branchFilter !== 'all') query = query.eq('branch_id', branchFilter)
-
+      const resolveProductReportRange = () => {
+        const hasCustomRange = Boolean(productsReportDateFrom || productsReportDateTo)
         if (hasCustomRange) {
-          if (productsReportDateFrom) query = query.gte('purchase_date', productsReportDateFrom)
-          if (productsReportDateTo) query = query.lte('purchase_date', productsReportDateTo)
-        } else if (/^year:\d{4}$/.test(String(monthFilter || ''))) {
-          const year = String(monthFilter).replace('year:', '')
-          query = query.gte('purchase_date', `${year}-01-01`).lt('purchase_date', `${Number(year) + 1}-01-01`)
-        } else if (/^\d{4}-\d{2}$/.test(String(monthFilter || ''))) {
-          const start = `${monthFilter}-01`
-          const end = rmsNextMonthStart(monthFilter)
-          query = query.gte('purchase_date', start).lt('purchase_date', end)
+          const from = productsReportDateFrom || ''
+          const toInclusive = productsReportDateTo || todayISO()
+          const toExclusive = addDays(toInclusive, 1)
+          if (from && toExclusive) {
+            const span = daysBetween(from, toExclusive)
+            return {
+              current: { from, toExclusive },
+              previous: span > 0 ? { from: addDays(from, -span), toExclusive: from } : null,
+              currentLabel: `${from} — ${toInclusive}`,
+              previousLabel: span > 0 ? `${addDays(from, -span)} — ${addDays(from, -1)}` : 'недоступно',
+              compareAvailable: span > 0,
+            }
+          }
+          return {
+            current: { from, toExclusive },
+            previous: null,
+            currentLabel: `${from || 'начало'} — ${toInclusive}`,
+            previousLabel: 'недоступно',
+            compareAvailable: false,
+          }
+        }
+        if (/^year:\d{4}$/.test(String(monthFilter || ''))) {
+          const year = Number(String(monthFilter).replace('year:', ''))
+          return {
+            current: { from: `${year}-01-01`, toExclusive: `${year + 1}-01-01` },
+            previous: { from: `${year - 1}-01-01`, toExclusive: `${year}-01-01` },
+            currentLabel: `${year} год`,
+            previousLabel: `${year - 1} год`,
+            compareAvailable: true,
+          }
+        }
+        if (/^\d{4}-\d{2}$/.test(String(monthFilter || ''))) {
+          const currentFrom = monthStartFromKey(monthFilter)
+          const currentTo = rmsNextMonthStart(monthFilter)
+          const prevFrom = previousMonthStart(monthFilter)
+          return {
+            current: { from: currentFrom, toExclusive: currentTo },
+            previous: { from: prevFrom, toExclusive: currentFrom },
+            currentLabel: String(monthFilter),
+            previousLabel: prevFrom.slice(0, 7),
+            compareAvailable: true,
+          }
+        }
+        return {
+          current: null,
+          previous: null,
+          currentLabel: 'Все даты',
+          previousLabel: 'недоступно',
+          compareAvailable: false,
+        }
+      }
+
+      const reportRange = resolveProductReportRange()
+
+      const fetchPurchases = async (range) => {
+        const buildQuery = (from, to) => {
+          let query = supabase
+            .from('supplier_purchases')
+            .select('id,supplier_id,branch_id,purchase_date,invoice_number,total_amount,comment,created_at,suppliers(id,name),branches(id,name),supplier_purchase_items(id,purchase_id,product_id,quantity,unit,unit_price,total_amount,supplier_products(id,name,category,base_unit))')
+            .is('deleted_at', null)
+
+          if (branchFilter !== 'all') query = query.eq('branch_id', branchFilter)
+          if (range?.from) query = query.gte('purchase_date', range.from)
+          if (range?.toExclusive) query = query.lt('purchase_date', range.toExclusive)
+
+          return query
+            .order('purchase_date', { ascending: false })
+            .order('created_at', { ascending: false })
+            .range(from, to)
         }
 
-        return query
-          .order('purchase_date', { ascending: false })
-          .order('created_at', { ascending: false })
-          .range(from, to)
+        let from = 0
+        let result = []
+        while (true) {
+          const { data, error } = await buildQuery(from, from + pageSize - 1)
+          if (error) throw error
+          const batch = data || []
+          result = result.concat(batch)
+          if (batch.length < pageSize) break
+          from += pageSize
+          if (from > 50000) break
+        }
+        return result
       }
 
-      let from = 0
-      let purchases = []
-      while (true) {
-        const { data, error } = await buildQuery(from, from + pageSize - 1)
-        if (error) throw error
-        const batch = data || []
-        purchases = purchases.concat(batch)
-        if (batch.length < pageSize) break
-        from += pageSize
-        if (from > 50000) break
-      }
+      const currentPurchases = await fetchPurchases(reportRange.current)
+      const previousPurchases = reportRange.previous ? await fetchPurchases(reportRange.previous) : []
 
       const branchNameById = new Map((branches || []).map(b => [String(b.id), b.name]))
-      const detailRows = []
-      const invoiceIds = new Set()
-      const supplierIds = new Set()
+
+      const buildDetailRows = (purchaseList) => {
+        const rows = []
+        const invoiceIds = new Set()
+        const supplierIds = new Set()
+        ;(purchaseList || []).forEach(purchase => {
+          const supplierId = purchase.supplier_id || purchase.suppliers?.id || ''
+          const supplierName = purchase.suppliers?.name || '—'
+          const branchName = purchase.branches?.name || branchNameById.get(String(purchase.branch_id)) || purchase.branch_id || '—'
+          if (purchase.id) invoiceIds.add(String(purchase.id))
+          if (supplierId) supplierIds.add(String(supplierId))
+
+          ;(purchase.supplier_purchase_items || []).forEach(item => {
+            const product = item.supplier_products || {}
+            const productId = item.product_id || product.id || ''
+            const productName = product.name || item.product_name || '—'
+            const category = product.category || 'Без категории'
+            const unit = item.unit || product.base_unit || 'unit'
+            const baseUnit = product.base_unit || unit || 'unit'
+            const qty = parseNum(item.quantity)
+            const unitPrice = parseNum(item.unit_price)
+            const calculatedAmount = qty * unitPrice
+            const amount = parseNum(item.total_amount || calculatedAmount)
+            const amountDiff = amount - calculatedAmount
+            const baseMultiplier = supplierProductUnitMultiplier(unit, baseUnit)
+            const baseQuantity = baseMultiplier ? qty * baseMultiplier : qty
+            const baseUnitPrice = baseQuantity > 0 ? amount / baseQuantity : supplierProductBaseUnitPrice(unitPrice, unit, baseUnit)
+            if (!productName || productName === '—') return
+            if (!qty && !amount) return
+
+            rows.push({
+              id: item.id || `${purchase.id}-${productId}-${productName}-${unit}`,
+              purchase_id: purchase.id,
+              date: purchase.purchase_date || '',
+              invoice: purchase.invoice_number || '—',
+              branch_id: purchase.branch_id || '',
+              branch_name: branchName,
+              supplier_id: supplierId,
+              supplier_name: supplierName,
+              product_id: productId,
+              product_name: productName,
+              category,
+              unit,
+              base_unit: baseUnit,
+              quantity: qty,
+              base_quantity: baseQuantity,
+              unit_price: unitPrice,
+              base_unit_price: baseUnitPrice,
+              amount,
+              calculated_amount: calculatedAmount,
+              amount_diff: amountDiff,
+            })
+          })
+        })
+        return { rows, invoiceIds, supplierIds }
+      }
+
+      const currentBuilt = buildDetailRows(currentPurchases)
+      const previousBuilt = buildDetailRows(previousPurchases)
+      const detailRows = currentBuilt.rows
+      const previousDetailRows = previousBuilt.rows
+      const invoiceIds = currentBuilt.invoiceIds
+      const supplierIds = currentBuilt.supplierIds
+
       const productMap = new Map()
       const bySupplierMap = new Map()
       const byCategoryMap = new Map()
 
-      ;(purchases || []).forEach(purchase => {
-        const supplierId = purchase.supplier_id || purchase.suppliers?.id || ''
-        const supplierName = purchase.suppliers?.name || '—'
-        const branchName = purchase.branches?.name || branchNameById.get(String(purchase.branch_id)) || purchase.branch_id || '—'
-        if (purchase.id) invoiceIds.add(String(purchase.id))
-        if (supplierId) supplierIds.add(String(supplierId))
+      detailRows.forEach(detail => {
+        const productKey = `${detail.product_id || detail.product_name}::${detail.unit}`
+        const current = productMap.get(productKey) || {
+          product_id: detail.product_id,
+          product_name: detail.product_name,
+          category: detail.category,
+          unit: detail.unit,
+          base_unit: detail.base_unit,
+          quantity: 0,
+          base_quantity: 0,
+          amount: 0,
+          item_count: 0,
+          invoice_ids: new Set(),
+          supplier_ids: new Set(),
+          supplier_names: new Set(),
+          branch_names: new Set(),
+          first_date: '',
+          last_date: '',
+          latest_price: 0,
+          latest_supplier: '',
+          latest_invoice: '',
+        }
+        current.quantity += parseNum(detail.quantity)
+        current.base_quantity += parseNum(detail.base_quantity)
+        current.amount += parseNum(detail.amount)
+        current.item_count += 1
+        if (detail.purchase_id) current.invoice_ids.add(String(detail.purchase_id))
+        if (detail.supplier_id) current.supplier_ids.add(String(detail.supplier_id))
+        if (detail.supplier_name) current.supplier_names.add(detail.supplier_name)
+        if (detail.branch_name) current.branch_names.add(detail.branch_name)
+        if (!current.first_date || String(detail.date).localeCompare(String(current.first_date)) < 0) current.first_date = detail.date
+        if (!current.last_date || String(detail.date).localeCompare(String(current.last_date)) >= 0) {
+          current.last_date = detail.date
+          current.latest_price = detail.unit_price
+          current.latest_supplier = detail.supplier_name
+          current.latest_invoice = detail.invoice || '—'
+        }
+        productMap.set(productKey, current)
 
-        ;(purchase.supplier_purchase_items || []).forEach(item => {
-          const product = item.supplier_products || {}
-          const productId = item.product_id || product.id || ''
-          const productName = product.name || item.product_name || '—'
-          const category = product.category || 'Без категории'
-          const unit = item.unit || product.base_unit || 'unit'
-          const qty = parseNum(item.quantity)
-          const unitPrice = parseNum(item.unit_price)
-          const calculatedAmount = qty * unitPrice
-          const amount = parseNum(item.total_amount || calculatedAmount)
-          const amountDiff = amount - calculatedAmount
-          if (!productName || productName === '—') return
-          if (!qty && !amount) return
+        const supplierKey = detail.supplier_id || detail.supplier_name
+        const supplierRow = bySupplierMap.get(supplierKey) || { supplier_id: detail.supplier_id, name: detail.supplier_name, amount: 0, quantity: 0, items: 0, products: new Set() }
+        supplierRow.amount += parseNum(detail.amount)
+        supplierRow.quantity += parseNum(detail.quantity)
+        supplierRow.items += 1
+        supplierRow.products.add(productKey)
+        bySupplierMap.set(supplierKey, supplierRow)
 
-          const detail = {
-            id: item.id || `${purchase.id}-${productId}-${productName}-${unit}`,
-            purchase_id: purchase.id,
-            date: purchase.purchase_date || '',
-            invoice: purchase.invoice_number || '—',
-            branch_id: purchase.branch_id || '',
-            branch_name: branchName,
-            supplier_id: supplierId,
-            supplier_name: supplierName,
-            product_id: productId,
-            product_name: productName,
-            category,
-            unit,
-            quantity: qty,
-            unit_price: unitPrice,
-            amount,
-            calculated_amount: calculatedAmount,
-            amount_diff: amountDiff,
-          }
-          detailRows.push(detail)
-
-          const productKey = `${productId || productName}::${unit}`
-          const current = productMap.get(productKey) || {
-            product_id: productId,
-            product_name: productName,
-            category,
-            unit,
-            quantity: 0,
-            amount: 0,
-            item_count: 0,
-            invoice_ids: new Set(),
-            supplier_ids: new Set(),
-            supplier_names: new Set(),
-            branch_names: new Set(),
-            first_date: '',
-            last_date: '',
-            latest_price: 0,
-            latest_supplier: '',
-            latest_invoice: '',
-          }
-          current.quantity += qty
-          current.amount += amount
-          current.item_count += 1
-          if (purchase.id) current.invoice_ids.add(String(purchase.id))
-          if (supplierId) current.supplier_ids.add(String(supplierId))
-          if (supplierName) current.supplier_names.add(supplierName)
-          if (branchName) current.branch_names.add(branchName)
-          if (!current.first_date || String(detail.date).localeCompare(String(current.first_date)) < 0) current.first_date = detail.date
-          if (!current.last_date || String(detail.date).localeCompare(String(current.last_date)) >= 0) {
-            current.last_date = detail.date
-            current.latest_price = unitPrice
-            current.latest_supplier = supplierName
-            current.latest_invoice = purchase.invoice_number || '—'
-          }
-          productMap.set(productKey, current)
-
-          const supplierKey = supplierId || supplierName
-          const supplierRow = bySupplierMap.get(supplierKey) || { supplier_id: supplierId, name: supplierName, amount: 0, quantity: 0, items: 0, products: new Set() }
-          supplierRow.amount += amount
-          supplierRow.quantity += qty
-          supplierRow.items += 1
-          supplierRow.products.add(productKey)
-          bySupplierMap.set(supplierKey, supplierRow)
-
-          const categoryRow = byCategoryMap.get(category) || { name: category, amount: 0, quantity: 0, items: 0, products: new Set() }
-          categoryRow.amount += amount
-          categoryRow.quantity += qty
-          categoryRow.items += 1
-          categoryRow.products.add(productKey)
-          byCategoryMap.set(category, categoryRow)
-        })
+        const categoryRow = byCategoryMap.get(detail.category) || { name: detail.category, amount: 0, quantity: 0, items: 0, products: new Set() }
+        categoryRow.amount += parseNum(detail.amount)
+        categoryRow.quantity += parseNum(detail.quantity)
+        categoryRow.items += 1
+        categoryRow.products.add(productKey)
+        byCategoryMap.set(detail.category, categoryRow)
       })
 
       const productRows = Array.from(productMap.values()).map(row => ({
         ...row,
         avg_price: row.quantity ? row.amount / row.quantity : 0,
+        avg_base_price: row.base_quantity ? row.amount / row.base_quantity : 0,
         invoices: row.invoice_ids.size,
         suppliers: row.supplier_ids.size || row.supplier_names.size,
         supplier_names_text: Array.from(row.supplier_names).filter(Boolean).slice(0, 4).join(', '),
@@ -33442,6 +33548,143 @@ function Reports({ t }) {
         products_count: row.products.size,
       })).sort((a, b) => parseNum(b.amount) - parseNum(a.amount))
 
+      const makeProductKey = (row) => row.product_id ? String(row.product_id) : normalizeSalesKey(row.product_name || '')
+      const rawUnitsByProduct = new Map()
+      ;[...detailRows, ...previousDetailRows].forEach(row => {
+        const key = makeProductKey(row)
+        if (!key) return
+        const unitSet = rawUnitsByProduct.get(key) || new Set()
+        if (row.unit) unitSet.add(String(row.unit))
+        rawUnitsByProduct.set(key, unitSet)
+      })
+
+      const buildWeightedSummary = (rows) => {
+        const map = new Map()
+        rows.forEach(row => {
+          const key = makeProductKey(row)
+          if (!key) return
+          if ((rawUnitsByProduct.get(key)?.size || 0) > 1) return
+          const baseQty = parseNum(row.base_quantity)
+          const amount = parseNum(row.amount)
+          if (!(baseQty > 0) || !(amount > 0)) return
+          const current = map.get(key) || {
+            key,
+            product_id: row.product_id || '',
+            product_name: row.product_name || '—',
+            category: row.category || 'Без категории',
+            base_unit: row.base_unit || row.unit || 'unit',
+            quantity: 0,
+            amount: 0,
+            rows: 0,
+            invoices: new Set(),
+            suppliers: new Set(),
+            supplier_ids: new Set(),
+            branches: new Set(),
+            first_date: '',
+            last_date: '',
+            latest_supplier: '',
+            latest_invoice: '',
+          }
+          current.quantity += baseQty
+          current.amount += amount
+          current.rows += 1
+          if (row.purchase_id) current.invoices.add(String(row.purchase_id))
+          if (row.supplier_name) current.suppliers.add(row.supplier_name)
+          if (row.supplier_id) current.supplier_ids.add(String(row.supplier_id))
+          if (row.branch_name) current.branches.add(row.branch_name)
+          if (!current.first_date || String(row.date || '').localeCompare(String(current.first_date || '')) < 0) current.first_date = row.date || ''
+          if (!current.last_date || String(row.date || '').localeCompare(String(current.last_date || '')) >= 0) {
+            current.last_date = row.date || ''
+            current.latest_supplier = row.supplier_name || '—'
+            current.latest_invoice = row.invoice || '—'
+          }
+          map.set(key, current)
+        })
+        return map
+      }
+
+      const currentSummary = buildWeightedSummary(detailRows)
+      const previousSummary = buildWeightedSummary(previousDetailRows)
+
+      const priceDynamics = Array.from(currentSummary.values()).map(current => {
+        const previous = previousSummary.get(current.key)
+        const currentAvg = current.quantity ? current.amount / current.quantity : 0
+        const previousAvg = previous?.quantity ? previous.amount / previous.quantity : 0
+        const changeAmount = previousAvg > 0 ? currentAvg - previousAvg : 0
+        const changePct = previousAvg > 0 ? changeAmount / previousAvg * 100 : null
+        const impact = previousAvg > 0 ? changeAmount * current.quantity : 0
+        const direction = previousAvg > 0 ? (changeAmount > 0 ? 'up' : changeAmount < 0 ? 'down' : 'flat') : 'new'
+        return {
+          ...current,
+          current_price: currentAvg,
+          previous_price: previousAvg,
+          previous_quantity: previous?.quantity || 0,
+          previous_amount: previous?.amount || 0,
+          previous_rows: previous?.rows || 0,
+          changeAmount,
+          changePct,
+          impact,
+          direction,
+          invoices_count: current.invoices.size,
+          suppliers_count: current.suppliers.size,
+          supplier_names_text: Array.from(current.suppliers).slice(0, 4).join(', '),
+          branch_names_text: Array.from(current.branches).slice(0, 4).join(', '),
+        }
+      }).filter(row => row.direction === 'new' || Math.abs(parseNum(row.changeAmount)) > 0.000001)
+        .sort((a, b) => Math.abs(parseNum(b.impact)) - Math.abs(parseNum(a.impact)) || Math.abs(parseNum(b.changePct)) - Math.abs(parseNum(a.changePct)))
+
+      const rowsForLastMode = reportRange.previous ? [...previousDetailRows, ...detailRows] : detailRows
+      const lastGroups = new Map()
+      rowsForLastMode.forEach(row => {
+        const key = makeProductKey(row)
+        if (!key) return
+        if ((rawUnitsByProduct.get(key)?.size || 0) > 1) return
+        const baseQty = parseNum(row.base_quantity)
+        const amount = parseNum(row.amount)
+        if (!(baseQty > 0) || !(amount > 0)) return
+        const list = lastGroups.get(key) || []
+        list.push(row)
+        lastGroups.set(key, list)
+      })
+
+      const lastPurchaseDynamics = Array.from(lastGroups.entries()).map(([key, list]) => {
+        const ordered = list.slice().sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')) || String(b.id || '').localeCompare(String(a.id || '')))
+        const latest = ordered[0]
+        const previous = ordered.find(row => row.id !== latest.id || row.date !== latest.date || row.unit_price !== latest.unit_price) || ordered[1]
+        if (!latest || !previous) return null
+        const latestPrice = parseNum(latest.base_unit_price)
+        const previousPrice = parseNum(previous.base_unit_price)
+        if (!(latestPrice > 0) || !(previousPrice > 0)) return null
+        const changeAmount = latestPrice - previousPrice
+        const changePct = changeAmount / previousPrice * 100
+        const impact = changeAmount * parseNum(latest.base_quantity)
+        return {
+          key,
+          product_id: latest.product_id || '',
+          product_name: latest.product_name || '—',
+          category: latest.category || 'Без категории',
+          base_unit: latest.base_unit || latest.unit || 'unit',
+          quantity: parseNum(latest.base_quantity),
+          amount: parseNum(latest.amount),
+          current_price: latestPrice,
+          previous_price: previousPrice,
+          changeAmount,
+          changePct,
+          impact,
+          direction: changeAmount > 0 ? 'up' : changeAmount < 0 ? 'down' : 'flat',
+          latest_supplier: latest.supplier_name || '—',
+          supplier_names_text: latest.supplier_name || '—',
+          latest_invoice: latest.invoice || '—',
+          last_date: latest.date || '',
+          previous_date: previous.date || '',
+          previous_supplier: previous.supplier_name || '—',
+          previous_invoice: previous.invoice || '—',
+          invoices_count: 1,
+          suppliers_count: latest.supplier_id ? 1 : 0,
+        }
+      }).filter(Boolean).filter(row => Math.abs(parseNum(row.changeAmount)) > 0.000001)
+        .sort((a, b) => Math.abs(parseNum(b.impact)) - Math.abs(parseNum(a.impact)) || Math.abs(parseNum(b.changePct)) - Math.abs(parseNum(a.changePct)))
+
       const categories = Array.from(new Set(productRows.map(row => row.category || 'Без категории'))).sort()
       const suppliersList = supplierRows.map(row => ({ id: row.supplier_id || row.name, name: row.name || '—' }))
 
@@ -33453,9 +33696,9 @@ function Reports({ t }) {
         suppliers: supplierIds.size || supplierRows.length,
       }
 
-      setRmsProductsReport({ loading: false, error: '', rows: productRows, detailRows, totals, categories, suppliers: suppliersList, bySupplier: supplierRows, byCategory: categoryRows })
+      setRmsProductsReport({ loading: false, error: '', rows: productRows, detailRows, totals, categories, suppliers: suppliersList, bySupplier: supplierRows, byCategory: categoryRows, priceDynamics, lastPurchaseDynamics, priceDynamicsMeta: { currentLabel: reportRange.currentLabel, previousLabel: reportRange.previousLabel, compareAvailable: reportRange.compareAvailable } })
     } catch (error) {
-      setRmsProductsReport({ loading: false, error: error?.message || 'Не удалось загрузить отчёт по товарам', rows: [], detailRows: [], totals: { amount: 0, products: 0, items: 0, invoices: 0, suppliers: 0 }, categories: [], suppliers: [], bySupplier: [], byCategory: [] })
+      setRmsProductsReport({ loading: false, error: error?.message || 'Не удалось загрузить отчёт по товарам', rows: [], detailRows: [], totals: { amount: 0, products: 0, items: 0, invoices: 0, suppliers: 0 }, categories: [], suppliers: [], bySupplier: [], byCategory: [], priceDynamics: [], lastPurchaseDynamics: [], priceDynamicsMeta: { currentLabel: '', previousLabel: '', compareAvailable: false } })
     }
   }
 
@@ -34452,6 +34695,45 @@ function Reports({ t }) {
   }, [rmsProductsReport.detailRows])
 
 
+
+
+  const filteredProductPriceDynamics = useMemo(() => {
+    const sourceRows = productsPriceCompareMode === 'last'
+      ? (rmsProductsReport.lastPurchaseDynamics || [])
+      : (rmsProductsReport.priceDynamics || [])
+    const needle = String(productsReportSearch || '').trim().toLowerCase()
+    return (sourceRows || []).filter(row => {
+      const searchOk = !needle || [
+        row.product_name,
+        row.category,
+        row.base_unit,
+        row.supplier_names_text,
+        row.latest_supplier,
+        row.latest_invoice,
+        row.previous_supplier,
+        row.previous_invoice,
+      ].some(value => String(value || '').toLowerCase().includes(needle))
+      const categoryOk = productsReportCategory === 'all' || String(row.category || '') === String(productsReportCategory)
+      const supplierOk = productsReportSupplierId === 'all'
+        || (row.supplier_ids && row.supplier_ids.has && row.supplier_ids.has(String(productsReportSupplierId)))
+        || String(row.supplier_names_text || '').includes(String(productsReportSupplierId))
+        || String(row.latest_supplier || '') === String(productsReportSupplierId)
+      return searchOk && categoryOk && supplierOk
+    })
+  }, [rmsProductsReport.priceDynamics, rmsProductsReport.lastPurchaseDynamics, productsPriceCompareMode, productsReportSearch, productsReportCategory, productsReportSupplierId])
+
+  const productPriceDynamicsUpRows = useMemo(() => filteredProductPriceDynamics.filter(row => row.direction === 'up'), [filteredProductPriceDynamics])
+  const productPriceDynamicsDownRows = useMemo(() => filteredProductPriceDynamics.filter(row => row.direction === 'down'), [filteredProductPriceDynamics])
+  const productPriceDynamicsNewRows = useMemo(() => filteredProductPriceDynamics.filter(row => row.direction === 'new'), [filteredProductPriceDynamics])
+  const activeProductPriceDynamicsRows = productsPriceDynamicsTab === 'down'
+    ? productPriceDynamicsDownRows
+    : (productsPriceDynamicsTab === 'new' ? productPriceDynamicsNewRows : productPriceDynamicsUpRows)
+  const productPriceDynamicsImpactUp = productPriceDynamicsUpRows.reduce((sum, row) => sum + Math.max(0, parseNum(row.impact)), 0)
+  const productPriceDynamicsImpactDown = productPriceDynamicsDownRows.reduce((sum, row) => sum + Math.abs(Math.min(0, parseNum(row.impact))), 0)
+  const productPriceDynamicsModeLabel = productsPriceCompareMode === 'last'
+    ? 'последняя закупка против предыдущей закупки'
+    : `период ${rmsProductsReport.priceDynamicsMeta?.currentLabel || selectedProductPeriodLabel} против ${rmsProductsReport.priceDynamicsMeta?.previousLabel || 'предыдущего периода'}`
+
   const productReportPageSize = 50
   const productReportTotalPages = Math.max(1, Math.ceil(filteredProductReportRows.length / productReportPageSize))
   const safeProductsReportPage = Math.min(Math.max(1, parseNum(productsReportPage) || 1), productReportTotalPages)
@@ -34475,7 +34757,7 @@ function Reports({ t }) {
       <div className="reports-v43-card-head">
         <div>
           <h3>Товары</h3>
-          <p>Статистика по закупкам товаров: количество, сумма, средняя цена, поставщики, накладные и детализация за выбранный период.</p>
+          <p>Статистика по закупкам товаров: количество, сумма, средневзвешенная цена, поставщики, накладные и динамика закупочных цен.</p>
         </div>
         <div className="action-row">
           <button className="ghost small" type="button" onClick={loadRmsProductsReport} disabled={rmsProductsReport.loading}>{rmsProductsReport.loading ? 'Загрузка...' : 'Обновить'}</button>
@@ -34532,6 +34814,48 @@ function Reports({ t }) {
           </table>
         </div>
       </div>}
+
+      <div className="reports-v385-price-dynamics-card">
+        <div className="reports-v43-card-head reports-v385-price-dynamics-head">
+          <div>
+            <h4>Динамика закупочных цен</h4>
+            <p>Основная логика: средневзвешенная цена текущего периода сравнивается с предыдущим сопоставимым периодом по базовой единице. Сортировка — по финансовому влиянию на Food Cost.</p>
+          </div>
+          <div className="reports-v385-mode-switch">
+            <button type="button" className={productsPriceCompareMode === 'period' ? 'primary small' : 'ghost small'} onClick={() => setProductsPriceCompareMode('period')}>Период к периоду</button>
+            <button type="button" className={productsPriceCompareMode === 'last' ? 'primary small' : 'ghost small'} onClick={() => setProductsPriceCompareMode('last')}>Последний закуп</button>
+          </div>
+        </div>
+
+        <div className="reports-v385-price-dynamics-note">
+          <span>Сравнение: <b>{productPriceDynamicsModeLabel}</b></span>
+          {productUnitMismatchRows.length > 0 && <span className="bad">Товары с ошибкой единиц измерения исключены из динамики.</span>}
+        </div>
+
+        <div className="reports-v385-price-dynamics-kpis">
+          <button type="button" className={productsPriceDynamicsTab === 'up' ? 'active bad' : 'bad'} onClick={() => setProductsPriceDynamicsTab('up')}><span>Подорожали</span><b>{productPriceDynamicsUpRows.length}</b><small>влияние +{fmt(productPriceDynamicsImpactUp)} AZN</small></button>
+          <button type="button" className={productsPriceDynamicsTab === 'down' ? 'active good' : 'good'} onClick={() => setProductsPriceDynamicsTab('down')}><span>Подешевели</span><b>{productPriceDynamicsDownRows.length}</b><small>экономия {fmt(productPriceDynamicsImpactDown)} AZN</small></button>
+          <button type="button" className={productsPriceDynamicsTab === 'new' ? 'active neutral' : 'neutral'} onClick={() => setProductsPriceDynamicsTab('new')} disabled={productsPriceCompareMode === 'last'}><span>Новые / без истории</span><b>{productsPriceCompareMode === 'last' ? 0 : productPriceDynamicsNewRows.length}</b><small>нет цены прошлого периода</small></button>
+        </div>
+
+        <div className="table-wrap reports-v385-price-dynamics-table-wrap">
+          <table className="reports-v385-price-dynamics-table">
+            <thead><tr><th>Товар</th><th>Цена раньше</th><th>Цена сейчас</th><th>Изменение</th><th>Кол-во периода</th><th>Влияние</th><th>Поставщик / дата</th></tr></thead>
+            <tbody>
+              {activeProductPriceDynamicsRows.slice(0, 80).map(row => <tr key={`price-dyn-${productsPriceCompareMode}-${row.key || row.product_id || row.product_name}`}>
+                <td><b>{row.product_name}</b><br /><span className="hint">{row.category || '—'} · {row.base_unit || 'ед.'}</span></td>
+                <td>{row.previous_price ? <><b>{fmt(row.previous_price)}</b><br /><span className="hint">AZN / {row.base_unit || 'ед.'}</span></> : <span className="hint">нет истории</span>}</td>
+                <td><b>{fmt(row.current_price)}</b><br /><span className="hint">AZN / {row.base_unit || 'ед.'}</span></td>
+                <td className={row.direction === 'up' ? 'bad' : row.direction === 'down' ? 'good' : ''}>{row.direction === 'new' ? 'новый товар' : <><b>{row.changeAmount > 0 ? '+' : ''}{fmt(row.changeAmount)}</b><br /><span>{row.changePct === null ? '—' : `${row.changePct > 0 ? '+' : ''}${pct(row.changePct)}`}</span></>}</td>
+                <td>{fmt(row.quantity)} {row.base_unit || ''}<br /><span className="hint">{fmt(row.amount)} AZN</span></td>
+                <td className={row.impact > 0 ? 'bad' : row.impact < 0 ? 'good' : ''}><b>{row.impact > 0 ? '+' : ''}{fmt(row.impact)} AZN</b></td>
+                <td>{row.latest_supplier || row.supplier_names_text || '—'}<br /><span className="hint">{row.last_date ? formatDateDMY(row.last_date) : '—'} · {row.latest_invoice || '—'}</span></td>
+              </tr>)}
+              {!activeProductPriceDynamicsRows.length && <tr><td colSpan="7" className="hint">Нет данных для выбранной динамики. Проверьте период, поставщика, категорию или наличие предыдущего периода.</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      </div>
 
       <div className="reports-v353-products-split">
         <div className="reports-v353-mini-card">
@@ -44262,6 +44586,185 @@ if (typeof document !== 'undefined') {
 }
 .rms-pro-shell .supplier-pricebook-final-action-panel span b{
   font-weight:850!important;
+}
+`
+    document.head.appendChild(style)
+  }
+}
+
+
+/* v385 Reports Products: purchase price dynamics */
+if (typeof document !== 'undefined') {
+  const STYLE_ID = 'rms-v385-reports-products-price-dynamics'
+  if (!document.getElementById(STYLE_ID)) {
+    const style = document.createElement('style')
+    style.id = STYLE_ID
+    style.textContent = `
+.rms-pro-shell .reports-v385-price-dynamics-card{
+  margin-top:14px!important;
+  padding:14px!important;
+  border:1px solid #dbeafe!important;
+  border-radius:18px!important;
+  background:linear-gradient(180deg,#f8fbff,#ffffff)!important;
+  box-shadow:0 10px 26px rgba(15,23,42,.045)!important;
+}
+.rms-pro-shell .reports-v385-price-dynamics-head{
+  align-items:flex-start!important;
+  gap:12px!important;
+}
+.rms-pro-shell .reports-v385-price-dynamics-head h4{
+  margin:0 0 4px!important;
+  font-size:17px!important;
+  font-weight:900!important;
+  color:#0f172a!important;
+}
+.rms-pro-shell .reports-v385-price-dynamics-head p{
+  max-width:880px!important;
+  margin:0!important;
+  color:#64748b!important;
+  font-size:13px!important;
+  font-weight:650!important;
+  line-height:1.35!important;
+}
+.rms-pro-shell .reports-v385-mode-switch{
+  display:flex!important;
+  gap:8px!important;
+  flex-wrap:wrap!important;
+  justify-content:flex-end!important;
+}
+.rms-pro-shell .reports-v385-price-dynamics-note{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:space-between!important;
+  gap:10px!important;
+  margin:10px 0 12px!important;
+  padding:9px 11px!important;
+  border:1px solid #e2e8f0!important;
+  border-radius:13px!important;
+  background:#fff!important;
+  color:#64748b!important;
+  font-size:12.5px!important;
+  font-weight:750!important;
+}
+.rms-pro-shell .reports-v385-price-dynamics-note b{
+  color:#0f172a!important;
+  font-weight:900!important;
+}
+.rms-pro-shell .reports-v385-price-dynamics-note .bad{
+  color:#b91c1c!important;
+}
+.rms-pro-shell .reports-v385-price-dynamics-kpis{
+  display:grid!important;
+  grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  gap:10px!important;
+  margin-bottom:12px!important;
+}
+.rms-pro-shell .reports-v385-price-dynamics-kpis button{
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:flex-start!important;
+  justify-content:center!important;
+  min-height:78px!important;
+  padding:12px!important;
+  border:1px solid #e2e8f0!important;
+  border-radius:15px!important;
+  background:#fff!important;
+  text-align:left!important;
+  cursor:pointer!important;
+  box-shadow:0 6px 18px rgba(15,23,42,.035)!important;
+}
+.rms-pro-shell .reports-v385-price-dynamics-kpis button:disabled{
+  cursor:not-allowed!important;
+  opacity:.55!important;
+}
+.rms-pro-shell .reports-v385-price-dynamics-kpis button.active{
+  border-color:#93c5fd!important;
+  box-shadow:0 0 0 3px rgba(59,130,246,.12)!important;
+}
+.rms-pro-shell .reports-v385-price-dynamics-kpis button span{
+  color:#64748b!important;
+  font-size:12px!important;
+  font-weight:850!important;
+}
+.rms-pro-shell .reports-v385-price-dynamics-kpis button b{
+  margin-top:3px!important;
+  color:#0f172a!important;
+  font-size:24px!important;
+  font-weight:950!important;
+}
+.rms-pro-shell .reports-v385-price-dynamics-kpis button small{
+  margin-top:3px!important;
+  color:#64748b!important;
+  font-size:11.5px!important;
+  font-weight:750!important;
+}
+.rms-pro-shell .reports-v385-price-dynamics-kpis button.bad b,
+.rms-pro-shell .reports-v385-price-dynamics-table .bad,
+.rms-pro-shell .reports-v385-price-dynamics-table .bad b{
+  color:#dc2626!important;
+}
+.rms-pro-shell .reports-v385-price-dynamics-kpis button.good b,
+.rms-pro-shell .reports-v385-price-dynamics-table .good,
+.rms-pro-shell .reports-v385-price-dynamics-table .good b{
+  color:#059669!important;
+}
+.rms-pro-shell .reports-v385-price-dynamics-table-wrap{
+  max-height:520px!important;
+  overflow:auto!important;
+  border-radius:15px!important;
+  border:1px solid #e2e8f0!important;
+  background:#fff!important;
+}
+.rms-pro-shell .reports-v385-price-dynamics-table{
+  width:100%!important;
+  border-collapse:separate!important;
+  border-spacing:0!important;
+  min-width:980px!important;
+}
+.rms-pro-shell .reports-v385-price-dynamics-table th{
+  position:sticky!important;
+  top:0!important;
+  z-index:2!important;
+  background:#f8fafc!important;
+  color:#64748b!important;
+  font-size:11px!important;
+  font-weight:950!important;
+  text-transform:uppercase!important;
+  letter-spacing:.03em!important;
+  padding:10px!important;
+  border-bottom:1px solid #e2e8f0!important;
+  text-align:left!important;
+}
+.rms-pro-shell .reports-v385-price-dynamics-table td{
+  padding:10px!important;
+  border-bottom:1px solid #edf2f7!important;
+  color:#0f172a!important;
+  font-size:12.5px!important;
+  font-weight:700!important;
+  vertical-align:middle!important;
+}
+.rms-pro-shell .reports-v385-price-dynamics-table td b{
+  font-weight:900!important;
+}
+.rms-pro-shell .reports-v385-price-dynamics-table .hint{
+  color:#64748b!important;
+  font-size:11.5px!important;
+  font-weight:650!important;
+}
+@media(max-width:1000px){
+  .rms-pro-shell .reports-v385-price-dynamics-head{
+    flex-direction:column!important;
+  }
+  .rms-pro-shell .reports-v385-mode-switch{
+    justify-content:flex-start!important;
+  }
+  .rms-pro-shell .reports-v385-price-dynamics-kpis{
+    grid-template-columns:1fr!important;
+  }
+  .rms-pro-shell .reports-v385-price-dynamics-note{
+    flex-direction:column!important;
+    align-items:flex-start!important;
+  }
 }
 `
     document.head.appendChild(style)
