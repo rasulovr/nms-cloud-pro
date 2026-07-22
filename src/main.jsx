@@ -33581,8 +33581,57 @@ function Reports({ t, permissions = [], isAdmin = false }) {
         }
       }
 
-      const currentPurchases = await fetchPurchases(reportRange.current)
-      const previousPurchases = reportRange.previous ? await fetchPurchases(reportRange.previous) : []
+      let effectiveReportRange = reportRange
+
+      if (
+        productsPriceCompareMode !== 'last' &&
+        !reportRange.compareAvailable &&
+        !productsReportDateFrom &&
+        !productsReportDateTo &&
+        monthFilter === 'all'
+      ) {
+        const allAvailablePurchases = await fetchPurchases({})
+        const validDates = (allAvailablePurchases || [])
+          .map(p => String(p.purchase_date || '').slice(0, 10))
+          .filter(Boolean)
+          .sort()
+
+        const latestDate = validDates[validDates.length - 1] || ''
+        if (latestDate) {
+          const latestMonthStart = `${latestDate.slice(0, 7)}-01`
+          const latestMonthDate = new Date(`${latestMonthStart}T00:00:00`)
+          const nextMonthDate = new Date(latestMonthDate)
+          nextMonthDate.setMonth(nextMonthDate.getMonth() + 1)
+          const prevMonthDate = new Date(latestMonthDate)
+          prevMonthDate.setMonth(prevMonthDate.getMonth() - 1)
+
+          const toIsoDate = (date) => {
+            const y = date.getFullYear()
+            const m = String(date.getMonth() + 1).padStart(2, '0')
+            const d = String(date.getDate()).padStart(2, '0')
+            return `${y}-${m}-${d}`
+          }
+
+          const monthLabel = (date) => {
+            const y = date.getFullYear()
+            const m = String(date.getMonth() + 1).padStart(2, '0')
+            return `${m}/${y}`
+          }
+
+          effectiveReportRange = {
+            ...reportRange,
+            current: { from: latestMonthStart, toExclusive: toIsoDate(nextMonthDate) },
+            previous: { from: toIsoDate(prevMonthDate), toExclusive: latestMonthStart },
+            currentLabel: monthLabel(latestMonthDate),
+            previousLabel: monthLabel(prevMonthDate),
+            compareAvailable: true,
+            autoCompare: true
+          }
+        }
+      }
+
+      const currentPurchases = await fetchPurchases(effectiveReportRange.current)
+      const previousPurchases = effectiveReportRange.previous ? await fetchPurchases(effectiveReportRange.previous) : []
 
       const branchNameById = new Map((branches || []).map(b => [String(b.id), b.name]))
 
@@ -33879,7 +33928,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
       const emptySourceWarning = !detailRows.length && !isAdmin
         ? 'Нет доступных строк закупок для этого пользователя. Проверьте, что в Supabase выполнен secure RPC rms_supplier_purchases_full и что в общих правах открыт раздел “Отчёты”.'
         : ''
-      setRmsProductsReport({ loading: false, error: emptySourceWarning, rows: productRows, detailRows, totals, categories, suppliers: suppliersList, bySupplier: supplierRows, byCategory: categoryRows, priceDynamics, lastPurchaseDynamics, priceDynamicsMeta: { currentLabel: reportRange.currentLabel, previousLabel: reportRange.previousLabel, compareAvailable: reportRange.compareAvailable } })
+      setRmsProductsReport({ loading: false, error: emptySourceWarning, rows: productRows, detailRows, totals, categories, suppliers: suppliersList, bySupplier: supplierRows, byCategory: categoryRows, priceDynamics, lastPurchaseDynamics, priceDynamicsMeta: { currentLabel: effectiveReportRange.currentLabel, previousLabel: effectiveReportRange.previousLabel, compareAvailable: effectiveReportRange.compareAvailable, autoCompare: Boolean(effectiveReportRange.autoCompare) } })
     } catch (error) {
       setRmsProductsReport({ loading: false, error: error?.message || 'Не удалось загрузить отчёт по товарам', rows: [], detailRows: [], totals: { amount: 0, products: 0, items: 0, invoices: 0, suppliers: 0 }, categories: [], suppliers: [], bySupplier: [], byCategory: [], priceDynamics: [], lastPurchaseDynamics: [], priceDynamicsMeta: { currentLabel: '', previousLabel: '', compareAvailable: false } })
     }
@@ -34920,7 +34969,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
 
   const productPriceDynamicsModeLabel = productsPriceCompareMode === 'last'
     ? 'последняя закупка против предыдущей закупки'
-    : `период ${rmsProductsReport.priceDynamicsMeta?.currentLabel || selectedProductPeriodLabel} против ${rmsProductsReport.priceDynamicsMeta?.previousLabel || 'предыдущего периода'}`
+    : `${rmsProductsReport.priceDynamicsMeta?.autoCompare ? 'авто-сравнение: ' : 'период '}${rmsProductsReport.priceDynamicsMeta?.currentLabel || selectedProductPeriodLabel} против ${rmsProductsReport.priceDynamicsMeta?.previousLabel || 'предыдущего периода'}`
 
   const productReportPageSize = 50
   const productReportTotalPages = Math.max(1, Math.ceil(filteredProductReportRows.length / productReportPageSize))
@@ -35003,7 +35052,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
         <div className="reports-v43-card-head reports-v385-price-dynamics-head">
           <div>
             <h4>Динамика закупочных цен</h4>
-            <p>Основная логика: средневзвешенная цена текущего периода сравнивается с предыдущим сопоставимым периодом по базовой единице. Сортировка — по финансовому влиянию на Food Cost.</p>
+            <p>Основная логика: средневзвешенная цена текущего периода сравнивается с предыдущим сопоставимым периодом по базовой единице. Если выбран режим “Все даты”, динамика автоматически сравнивает последний месяц закупок с предыдущим месяцем. Сортировка — по финансовому влиянию на Food Cost.</p>
           </div>
           <div className="reports-v385-mode-switch">
             <button type="button" className={productsPriceCompareMode === 'period' ? 'primary small' : 'ghost small'} onClick={() => setProductsPriceCompareMode('period')}>Период к периоду</button>
@@ -45383,3 +45432,6 @@ if (typeof document !== 'undefined') {
 
 
 /* v395 Reports -> Products: restricted users load product purchases through secure RPC with direct/workspace fallback */
+
+
+/* v396 Reports -> Products: All dates auto-compares latest purchase month with previous month for price dynamics */
