@@ -20753,13 +20753,13 @@ function normalizeProductType(category) {
 const BASE_UNITS = [
   { value: 'kg', label: 'килограмм (kg)' },
   { value: 'g', label: 'грамм (g)' },
-  { value: 'l', label: 'литр (L)' },
   { value: 'ml', label: 'миллилитр (ml)' },
   { value: 'pcs', label: 'штука (pcs)' }
 ]
 function normalizeSupplierBaseUnit(unit) {
   const value = String(unit || '').trim().toLowerCase()
-  return ['kg', 'g', 'l', 'ml', 'pcs'].includes(value) ? value : 'g'
+  if (value === 'l') return 'ml'
+  return ['kg', 'g', 'ml', 'pcs'].includes(value) ? value : 'g'
 }
 const PURCHASE_UNITS = [
   { value: 'kg', label: 'килограмм (kg)' },
@@ -20771,7 +20771,8 @@ const PURCHASE_UNITS = [
 ]
 
 function unitLabel(unit) {
-  if (String(unit || '').trim().toLowerCase() === 'l') return 'литр (L)'
+  const value = String(unit || '').trim().toLowerCase()
+  if (value === 'l') return 'литр (L)'
   return [...BASE_UNITS, ...PURCHASE_UNITS].find(u => u.value === unit)?.label || unit || '—'
 }
 
@@ -34934,6 +34935,7 @@ function Reports({ t }) {
           <span>Жидкие товары показывать:</span>
           <button type="button" className={productsReportLiquidUnit === 'base' ? 'active' : ''} onClick={() => setProductsReportLiquidUnit('base')}>по базе товара</button>
           <button type="button" className={productsReportLiquidUnit === 'l' ? 'active' : ''} onClick={() => setProductsReportLiquidUnit('l')}>в L</button>
+          <em>В базе жидкие товары остаются в ml; L используется только для удобного отображения отчёта.</em>
         </div>
 
         <div className="reports-v385-price-dynamics-kpis">
@@ -44939,3 +44941,25 @@ if (typeof document !== 'undefined') {
 
 
 /* v392 reports products: added L as base unit and liquid display switch for ml -> L in reports */
+
+
+/* v393 reports products: L is display-only, backend base unit remains ml */
+if (typeof document !== 'undefined') {
+  const STYLE_ID = 'rms-v393-reports-products-liter-display-only-note'
+  if (!document.getElementById(STYLE_ID)) {
+    const style = document.createElement('style')
+    style.id = STYLE_ID
+    style.textContent = `
+.rms-pro-shell .reports-v392-liquid-unit-switch em{
+  color:#94a3b8!important;
+  font-size:11.5px!important;
+  font-style:normal!important;
+  font-weight:700!important;
+}
+`
+    document.head.appendChild(style)
+  }
+}
+
+
+/* v393: removed l from saved BASE_UNITS; backend stores liquids as ml, reports can display ml as L */
