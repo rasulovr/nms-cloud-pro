@@ -2292,6 +2292,11 @@ function SecurityRecoveryCenter({ embedded = false } = {}) {
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
   useRmsStatusToast(message)
+
+  useEffect(() => () => {
+    if (purchaseItemsSaveProgressTimerRef.current) clearInterval(purchaseItemsSaveProgressTimerRef.current)
+    if (purchaseItemsSaveProgressHideTimerRef.current) clearTimeout(purchaseItemsSaveProgressHideTimerRef.current)
+  }, [])
   const [preview, setPreview] = useState(null)
   const [previewLoading, setPreviewLoading] = useState(false)
   const [compareResult, setCompareResult] = useState(null)
@@ -19110,8 +19115,9 @@ function Dashboard({ t }) {
   async function calcDashboardRevenueUntilDay(y, m, dayLimit) {
     const daysInMonth = new Date(Number(y), Number(m), 0).getDate()
     const safeDay = Math.max(1, Math.min(Number(dayLimit) || daysInMonth, daysInMonth))
-    const start = monthStart(y, m)
-    const end = safeDay >= daysInMonth ? rmsNextMonthStart(`${Number(y)}-${String(Number(m)).padStart(2, '0')}`) : `${Number(y)}-${String(Number(m)).padStart(2, '0')}-${String(safeDay + 1).padStart(2, '0')}`
+    const monthKey = `${Number(y)}-${String(Number(m)).padStart(2, '0')}`
+    const start = `${monthKey}-01`
+    const end = safeDay >= daysInMonth ? rmsNextMonthStart(monthKey) : `${monthKey}-${String(safeDay + 1).padStart(2, '0')}`
 
     let query = supabase
       .from('daily_revenue')
@@ -19128,6 +19134,35 @@ function Dashboard({ t }) {
     return (data || []).reduce((sum, row) => {
       return sum + parseNum(row.cash_amount) + parseNum(row.bank_amount) + parseNum(row.wolt_amount)
     }, 0)
+  }
+
+  async function calcDashboardLastFilledRevenueDay(y, m, maxDay) {
+    const daysInMonth = new Date(Number(y), Number(m), 0).getDate()
+    const safeMaxDay = Math.max(1, Math.min(Number(maxDay) || daysInMonth, daysInMonth))
+    const monthKey = `${Number(y)}-${String(Number(m)).padStart(2, '0')}`
+    const start = `${monthKey}-01`
+    const end = safeMaxDay >= daysInMonth ? rmsNextMonthStart(monthKey) : `${monthKey}-${String(safeMaxDay + 1).padStart(2, '0')}`
+
+    let query = supabase
+      .from('daily_revenue')
+      .select('branch_id,revenue_date,cash_amount,bank_amount,wolt_amount')
+      .gte('revenue_date', start)
+      .lt('revenue_date', end)
+      .is('deleted_at', null)
+
+    if (branchId !== DASH_ALL_BRANCHES) query = query.eq('branch_id', branchId)
+
+    const { data, error } = await query
+    if (error) throw error
+
+    let lastDay = 0
+    ;(data || []).forEach(row => {
+      const amount = parseNum(row.cash_amount) + parseNum(row.bank_amount) + parseNum(row.wolt_amount)
+      if (amount <= 0) return
+      const day = Number(String(row.revenue_date || '').slice(8, 10))
+      if (day > lastDay) lastDay = day
+    })
+    return lastDay
   }
 
   function emptyDashboardData() {
@@ -19175,16 +19210,24 @@ function Dashboard({ t }) {
 
       if (shouldCompareDayToDay) {
         try {
+          // v361: compare only up to the latest day with entered revenue in the current month.
+          // If today's revenue has not been entered yet, use yesterday / the latest filled day,
+          // so Dashboard does not show an artificially low revenue dynamic.
+          const lastFilledDay = await calcDashboardLastFilledRevenueDay(year, month, currentDay)
+          const comparisonDay = Math.max(1, Math.min(currentDay, lastFilledDay || Math.max(1, currentDay - 1)))
+          const usedPreviousDay = comparisonDay < currentDay
           const [currentMtdRevenue, previousMtdRevenue] = await Promise.all([
-            calcDashboardRevenueUntilDay(year, month, currentDay),
-            calcDashboardRevenueUntilDay(pm.year, pm.month, currentDay)
+            calcDashboardRevenueUntilDay(year, month, comparisonDay),
+            calcDashboardRevenueUntilDay(pm.year, pm.month, comparisonDay)
           ])
 
           comparison = {
             currentRevenue: currentMtdRevenue,
             previousRevenue: previousMtdRevenue,
-            revenueLabel: `день-к-дню · 1-${currentDay}`,
-            revenueTooltip: `День-к-дню: 1-${currentDay} текущего месяца против 1-${currentDay} предыдущего месяца. Предыдущий период: ${fmt(previousMtdRevenue)} AZN`
+            revenueLabel: `день-к-дню · 1-${comparisonDay}${usedPreviousDay ? ' · до последнего заполненного дня' : ''}`,
+            revenueTooltip: usedPreviousDay
+              ? `Сегодняшняя выручка ещё не заполнена. Сравнение считается по последнему заполненному дню: 1-${comparisonDay} текущего месяца против 1-${comparisonDay} предыдущего месяца. Предыдущий период: ${fmt(previousMtdRevenue)} AZN`
+              : `День-к-дню: 1-${comparisonDay} текущего месяца против 1-${comparisonDay} предыдущего месяца. Предыдущий период: ${fmt(previousMtdRevenue)} AZN`
           }
 
           previous = {
@@ -26294,6 +26337,9 @@ function Suppliers({ t, isAdmin = false }) {
   const [editingPurchaseId, setEditingPurchaseId] = useState('')
   const [purchaseItemsEditorId, setPurchaseItemsEditorId] = useState('')
   const [purchaseItemsDraft, setPurchaseItemsDraft] = useState([])
+  const [purchaseItemsSaveProgress, setPurchaseItemsSaveProgress] = useState({ active: false, progress: 0, title: '', detail: '', step: '', status: 'idle' })
+  const purchaseItemsSaveProgressTimerRef = useRef(null)
+  const purchaseItemsSaveProgressHideTimerRef = useRef(null)
   const [viewPurchaseId, setViewPurchaseId] = useState('')
   const [recentPurchasesPageSize, setRecentPurchasesPageSize] = useState(10)
   const [recentPurchasesPage, setRecentPurchasesPage] = useState(1)
@@ -26530,7 +26576,42 @@ function Suppliers({ t, isAdmin = false }) {
     setEInvoiceAdminPage(1)
   }, [eInvoiceListSearch, eInvoiceListSupplierId, eInvoiceListLegalEntityId, eInvoiceAdminPageSize, eInvoiceListExpanded])
 
-  async function fetchAllSupplierPurchasesRows() {
+  function normalizeSupplierPurchasesFullPayload(payload) {
+    if (Array.isArray(payload)) return payload
+    if (typeof payload === 'string') {
+      try {
+        const parsed = JSON.parse(payload)
+        return Array.isArray(parsed) ? parsed : []
+      } catch (_error) {
+        return []
+      }
+    }
+    if (payload && typeof payload === 'object') {
+      if (Array.isArray(payload.rows)) return payload.rows
+      if (Array.isArray(payload.supplier_purchases)) return payload.supplier_purchases
+    }
+    return []
+  }
+
+  async function fetchSupplierPurchasesFullRowsViaRpc() {
+    const { data, error } = await supabase.rpc('rms_supplier_purchases_full', { p_limit: 50000 })
+    if (error) throw error
+    return normalizeSupplierPurchasesFullPayload(data)
+  }
+
+  async function fetchAllSupplierPurchasesRows(options = {}) {
+    const preferRpc = Boolean(options?.preferRpc)
+
+    if (preferRpc) {
+      try {
+        const rpcRows = await fetchSupplierPurchasesFullRowsViaRpc()
+        if (Array.isArray(rpcRows) && rpcRows.length) return rpcRows
+      } catch (_rpcError) {
+        // Fallback to direct ranged reads. Restricted internal users may be blocked by RLS here,
+        // in which case the caller will fall back to rms_suppliers_workspace.
+      }
+    }
+
     const pageSize = 1000
     let from = 0
     let allRows = []
@@ -26551,6 +26632,15 @@ function Suppliers({ t, isAdmin = false }) {
       if (batch.length < pageSize) break
       from += pageSize
       if (from > 50000) break
+    }
+
+    if (!allRows.length && !preferRpc) {
+      try {
+        const rpcRows = await fetchSupplierPurchasesFullRowsViaRpc()
+        if (Array.isArray(rpcRows) && rpcRows.length) return rpcRows
+      } catch (_rpcError) {
+        // keep direct result
+      }
     }
 
     return allRows
@@ -26622,7 +26712,7 @@ function Suppliers({ t, isAdmin = false }) {
         setProducts((ws.supplier_products || []).filter(p => p.is_active !== false))
         setBalances(ws.supplier_balances || [])
         try {
-          const fullPurchases = await fetchAllSupplierPurchasesRows()
+          const fullPurchases = await fetchAllSupplierPurchasesRows({ preferRpc: true })
           setPurchases(Array.isArray(fullPurchases) && fullPurchases.length ? fullPurchases : (ws.supplier_purchases || []))
         } catch (_purchaseFetchError) {
           setPurchases(ws.supplier_purchases || [])
@@ -27348,15 +27438,90 @@ function Suppliers({ t, isAdmin = false }) {
     }))
   }
 
+
+  function clearPurchaseItemsSaveProgressTimers() {
+    if (purchaseItemsSaveProgressTimerRef.current) {
+      clearInterval(purchaseItemsSaveProgressTimerRef.current)
+      purchaseItemsSaveProgressTimerRef.current = null
+    }
+    if (purchaseItemsSaveProgressHideTimerRef.current) {
+      clearTimeout(purchaseItemsSaveProgressHideTimerRef.current)
+      purchaseItemsSaveProgressHideTimerRef.current = null
+    }
+  }
+
+  function beginPurchaseItemsSaveProgress(title = 'Сохранение товаров в накладной', detail = 'Проверка строк и подготовка пересчёта…') {
+    clearPurchaseItemsSaveProgressTimers()
+    setPurchaseItemsSaveProgress({ active: true, progress: 8, title, detail, step: 'Проверка строк', status: 'running' })
+    purchaseItemsSaveProgressTimerRef.current = setInterval(() => {
+      setPurchaseItemsSaveProgress(prev => {
+        if (!prev.active || prev.status !== 'running' || prev.progress >= 88) return prev
+        const increment = prev.progress < 35 ? 6 : prev.progress < 70 ? 4 : 2
+        return { ...prev, progress: Math.min(88, parseNum(prev.progress) + increment) }
+      })
+    }, 300)
+  }
+
+  function updatePurchaseItemsSaveProgress(progress, detail, step = '') {
+    const safeProgress = Math.max(0, Math.min(96, Math.round(Number(progress) || 0)))
+    setPurchaseItemsSaveProgress(prev => ({
+      ...prev,
+      active: true,
+      status: 'running',
+      progress: Math.max(parseNum(prev.progress), safeProgress),
+      detail: detail || prev.detail,
+      step: step || prev.step
+    }))
+  }
+
+  function completePurchaseItemsSaveProgress(detail = 'Товары сохранены. Сумма накладной пересчитана.') {
+    clearPurchaseItemsSaveProgressTimers()
+    setPurchaseItemsSaveProgress(prev => ({
+      ...prev,
+      active: true,
+      progress: 100,
+      title: 'Сохранение завершено',
+      detail,
+      step: 'Готово',
+      status: 'success'
+    }))
+    purchaseItemsSaveProgressHideTimerRef.current = setTimeout(() => {
+      setPurchaseItemsSaveProgress(prev => ({ ...prev, active: false }))
+      purchaseItemsSaveProgressHideTimerRef.current = null
+    }, 1200)
+  }
+
+  function failPurchaseItemsSaveProgress(error) {
+    clearPurchaseItemsSaveProgressTimers()
+    const messageText = error?.message || String(error || 'Не удалось сохранить товары')
+    setPurchaseItemsSaveProgress(prev => ({
+      ...prev,
+      active: true,
+      title: 'Ошибка сохранения',
+      detail: messageText,
+      step: 'Проверьте строки и повторите сохранение',
+      status: 'error'
+    }))
+    purchaseItemsSaveProgressHideTimerRef.current = setTimeout(() => {
+      setPurchaseItemsSaveProgress(prev => ({ ...prev, active: false }))
+      purchaseItemsSaveProgressHideTimerRef.current = null
+    }, 3600)
+  }
+
   function existingPurchaseDraftTotal() {
     return (purchaseItemsDraft || []).reduce((sum, row) => sum + lineTotal(row), 0)
   }
 
   async function saveExistingPurchaseItems(purchase) {
     setMessage('')
+    beginPurchaseItemsSaveProgress('Сохранение товаров в накладной', 'Проверка количества, единиц и цен…')
     try {
       const prepared = normalizeSupplierPurchaseItems(purchaseItemsDraft)
       if (!prepared.length) throw new Error('Добавьте хотя бы один товар с количеством и ценой')
+
+      updatePurchaseItemsSaveProgress(24, `Подготовлено строк: ${prepared.length}`, 'Проверка строк завершена')
+      updatePurchaseItemsSaveProgress(42, 'Передача строк в Supabase…', 'Сохранение товарных строк')
+
       await callSupplierRpc('rms_supplier_purchase_update_secure', {
         p_purchase_id: purchase.id,
         p_supplier_id: purchase.supplier_id,
@@ -27368,10 +27533,14 @@ function Suppliers({ t, isAdmin = false }) {
         p_items: prepared,
         p_manual_amount: null
       }, 'Товары добавлены. Сумма накладной пересчитана по товарам')
+
+      updatePurchaseItemsSaveProgress(86, `Пересчёт суммы накладной: ${fmt(existingPurchaseDraftTotal())} AZN`, 'Пересчёт накладной')
       setPurchaseItemsEditorId('')
       setPurchaseItemsDraft([])
+      completePurchaseItemsSaveProgress('Товары сохранены, сумма накладной пересчитана, данные обновлены.')
     } catch (e) {
       setMessage(e.message || 'Не удалось сохранить товары в накладной')
+      failPurchaseItemsSaveProgress(e)
     }
   }
 
@@ -28031,6 +28200,27 @@ function Suppliers({ t, isAdmin = false }) {
   const safeRecentPurchasesPage = Math.min(Math.max(1, parseNum(recentPurchasesPage) || 1), recentPurchasesTotalPages)
   const recentPurchasesRows = filteredPurchases.slice((safeRecentPurchasesPage - 1) * recentPurchasesPageSizeNumber, safeRecentPurchasesPage * recentPurchasesPageSizeNumber)
 
+  const supplierJournalTotal = filteredPurchases.reduce((acc, p) => {
+    const amount = parseNum(p.total_amount)
+    if (p.deleted_at) {
+      acc.cancelled_amount += amount
+      acc.cancelled_count += 1
+    } else {
+      acc.amount += amount
+      acc.count += 1
+    }
+    return acc
+  }, { amount: 0, count: 0, cancelled_amount: 0, cancelled_count: 0 })
+
+  const supplierJournalSelectedSupplier = purchaseJournalFilters.supplier_id
+    ? activeSuppliers.find(s => String(s.id) === String(purchaseJournalFilters.supplier_id))
+    : null
+
+  const supplierJournalPeriodTitle = journalPeriodLabel()
+  const supplierJournalPeriodDisplayRange = (purchaseJournalFilters.date_from || purchaseJournalFilters.date_to)
+    ? `${purchaseJournalFilters.date_from ? formatDateDMY(purchaseJournalFilters.date_from) : 'начало'} — ${purchaseJournalFilters.date_to ? formatDateDMY(purchaseJournalFilters.date_to) : 'сегодня'}`
+    : supplierJournalPeriodTitle
+
 
   function openPurchaseFromProductSearch(purchaseId) {
     if (!purchaseId) return
@@ -28427,6 +28617,7 @@ function Suppliers({ t, isAdmin = false }) {
 
   return <section className="suppliers-v43-page">
     <SupplierV43Styles />
+    <BackupProgressOverlay state={purchaseItemsSaveProgress} />
     <section className="suppliers-v43-hero">
       <div>
         <h2>{t('suppliers_tab')}</h2>
@@ -28689,34 +28880,76 @@ function Suppliers({ t, isAdmin = false }) {
             <div><b>Прейскурант закупочных цен</b><span>Последняя цена закупа, поставщик, накладная, динамика цены и история закупок.</span></div>
             <em>{supplierProductPriceInfoMap.size} товаров с закупочной историей</em>
           </div>
-          <div className="table-wrap supplier-products-pricebook-wrap"><table className="supplier-products-pricebook-table"><thead><tr><th>Товар</th><th>Цена закупа</th><th>Поставщик</th><th>Динамика</th></tr></thead><tbody>
+          <div className="supplier-pricebook-final-grid">
+            <div className="supplier-pricebook-final-head">
+              <div>Товар</div>
+              <div>Цена закупа</div>
+              <div>Поставщик</div>
+            </div>
+
             {pagedSupplierProducts.map(product => {
               const editing = editingSupplierProductId === product.id
               const priceInfo = supplierProductPriceInfoMap.get(String(product.id))
               const latest = priceInfo?.latest || null
-              const previous = priceInfo?.previous || null
-              const change = parseNum(priceInfo?.changePct)
-              const trendClass = !previous ? 'neutral' : change > 0 ? 'up' : change < 0 ? 'down' : 'same'
               const detailOpen = supplierProductPriceDetailId === product.id
-              return <tr key={product.id} className={detailOpen ? 'supplier-product-price-open-row' : ''}>
-                  <td className="supplier-pricebook-product-cell">{editing ? <div className="supplier-pricebook-product-edit"><input value={supplierProductEditForm.name} onChange={e => setSupplierProductEditForm({...supplierProductEditForm, name:e.target.value})} /><div><select value={supplierProductEditForm.category} onChange={e => setSupplierProductEditForm({...supplierProductEditForm, category:e.target.value})}>{PRODUCT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select><select value={supplierProductEditForm.base_unit} onChange={e => setSupplierProductEditForm({...supplierProductEditForm, base_unit:e.target.value})}>{BASE_UNITS.map(u => <option key={u.value} value={u.value}>{u.label}</option>)}</select></div></div> : <><b>{product.name}</b><br /><span className="supplier-pricebook-product-meta">{product.category || '—'} · {product.base_unit || 'unit'}</span></>}</td>
-                  <td>{latest ? <><b>{fmt(latest.price)} AZN / {latest.unit}</b><br /><span className="hint">≈ {fmt(latest.base_unit_price)} AZN / {priceInfo.baseUnit || product.base_unit}</span></> : <span className="hint">нет закупок</span>}</td>
-                  <td>{latest ? <>{latest.supplier}<br /><span className="hint">{formatDateDMY(latest.date)} · {latest.invoice}</span></> : <span className="hint">—</span>}</td>
-                  <td className="supplier-products-price-action-cell">{editing ? <div className="supplier-products-edit-actions"><button className="small primary" onClick={() => saveSupplierProduct(product)}>OK</button><button className="ghost small" onClick={() => setEditingSupplierProductId('')}>×</button></div> : <div className="supplier-products-price-action-inner">
-                    <div className="supplier-products-trend-slot">{latest ? <span className={`supplier-product-price-trend ${trendClass}`}>{previous ? `${change > 0 ? '↑' : change < 0 ? '↓' : '→'} ${pct(Math.abs(change))}` : 'первая цена'}</span> : <span className="hint">—</span>}</div>
-                    <div className="supplier-products-menu-shell">
-                      <button className={`ghost small supplier-products-ellipsis ${supplierProductActionMenuId === product.id ? 'is-open' : ''}`} type="button" title="Действия" aria-label="Действия" onClick={() => setSupplierProductActionMenuId(id => id === product.id ? '' : product.id)}>…</button>
-                      {supplierProductActionMenuId === product.id && <div className="supplier-products-action-menu">
-                        <button type="button" onClick={() => { setSupplierProductActionMenuId(''); startEditSupplierProduct(product) }}>Редактировать</button>
-                        <button type="button" disabled={!priceInfo?.history?.length} onClick={() => { setSupplierProductActionMenuId(''); setSupplierProductPriceDetailId(product.id) }}>Цены</button>
-                        <button type="button" className="danger" onClick={() => { setSupplierProductActionMenuId(''); deleteSupplierProduct(product) }}>Удалить</button>
-                      </div>}
+              const actionOpen = supplierProductActionMenuId === product.id
+
+              return <React.Fragment key={product.id}>
+                <div className={`supplier-pricebook-final-row ${detailOpen ? 'supplier-product-price-open-row' : ''} ${actionOpen ? 'supplier-product-row-menu-open' : ''}`.trim()}>
+                  <div className="supplier-pricebook-final-product">
+                    {editing ? <div className="supplier-pricebook-product-edit">
+                      <input value={supplierProductEditForm.name} onChange={e => setSupplierProductEditForm({...supplierProductEditForm, name:e.target.value})} />
+                      <div>
+                        <select value={supplierProductEditForm.category} onChange={e => setSupplierProductEditForm({...supplierProductEditForm, category:e.target.value})}>{PRODUCT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select>
+                        <select value={supplierProductEditForm.base_unit} onChange={e => setSupplierProductEditForm({...supplierProductEditForm, base_unit:e.target.value})}>{BASE_UNITS.map(u => <option key={u.value} value={u.value}>{u.label}</option>)}</select>
+                      </div>
+                    </div> : <>
+                      <strong>{product.name}</strong>
+                      <span>{product.category || '—'} · {product.base_unit || 'unit'}</span>
+                    </>}
+                  </div>
+
+                  <div className="supplier-pricebook-final-price">
+                    {latest ? <>
+                      <strong>{fmt(latest.price)} AZN / {latest.unit}</strong>
+                      <span>≈ {fmt(latest.base_unit_price)} AZN / {priceInfo.baseUnit || product.base_unit}</span>
+                    </> : <span>нет закупок</span>}
+                  </div>
+
+                  <div className="supplier-pricebook-final-supplier">
+                    <div className="supplier-pricebook-final-supplier-text">
+                      {latest ? <>
+                        <strong>{latest.supplier}</strong>
+                        <span>{formatDateDMY(latest.date)} · {latest.invoice}</span>
+                      </> : <span>—</span>}
                     </div>
-                  </div>}</td>
-                </tr>
+
+                    {editing ? <div className="supplier-pricebook-final-edit-actions">
+                      <button className="small primary" onClick={() => saveSupplierProduct(product)}>OK</button>
+                      <button className="ghost small" onClick={() => setEditingSupplierProductId('')}>×</button>
+                    </div> : <button
+                      type="button"
+                      className={`supplier-pricebook-final-dots ${actionOpen ? 'is-open' : ''}`}
+                      aria-label="Действия"
+                      title="Действия"
+                      onClick={() => setSupplierProductActionMenuId(id => id === product.id ? '' : product.id)}
+                    >⋯</button>}
+                  </div>
+                </div>
+
+                {!editing && actionOpen && <div className="supplier-pricebook-final-action-row">
+                  <div className="supplier-pricebook-final-action-panel">
+                    <span>Действия с товаром: <b>{product.name}</b></span>
+                    <button type="button" onClick={() => { setSupplierProductActionMenuId(''); startEditSupplierProduct(product) }}>Редактировать</button>
+                    <button type="button" disabled={!priceInfo?.history?.length} onClick={() => { setSupplierProductActionMenuId(''); setSupplierProductPriceDetailId(product.id) }}>Статистика</button>
+                    <button type="button" className="danger" onClick={() => { setSupplierProductActionMenuId(''); deleteSupplierProduct(product) }}>Удалить</button>
+                  </div>
+                </div>}
+              </React.Fragment>
             })}
-            {!filteredSupplierProducts.length && <tr><td colSpan="4" className="hint">Товары не найдены</td></tr>}
-          </tbody></table></div>
+
+            {!filteredSupplierProducts.length && <div className="supplier-pricebook-final-empty">Товары не найдены</div>}
+          </div>
           <div className="supplier-products-pagination"><span className="hint">Показано {filteredSupplierProducts.length ? (safeSupplierProductsPage - 1) * supplierProductsPageSize + 1 : 0}–{Math.min(safeSupplierProductsPage * supplierProductsPageSize, filteredSupplierProducts.length)} из {filteredSupplierProducts.length}</span><div className="action-row"><button className="ghost small" disabled={safeSupplierProductsPage <= 1} onClick={() => setSupplierProductsPage(p => Math.max(1, p - 1))}>← Пред.</button><span className="hint">Страница {safeSupplierProductsPage} / {supplierProductsPageCount}</span><button className="ghost small" disabled={safeSupplierProductsPage >= supplierProductsPageCount} onClick={() => setSupplierProductsPage(p => Math.min(supplierProductsPageCount, p + 1))}>След. →</button></div></div>
         </div>}
       </div>
@@ -28886,14 +29119,14 @@ function Suppliers({ t, isAdmin = false }) {
               <button type="button" className={journalPeriodMode === 'month' ? 'active' : ''} onClick={() => setJournalQuickPeriod('month')}>Месяц</button>
               <button type="button" className={journalPeriodMode === 'all' ? 'active' : ''} onClick={() => setJournalQuickPeriod('all')}>Все</button>
             </div>
-            <details className="supplier-custom-period" open={journalPeriodMode === 'custom'}>
-              <summary>{journalPeriodLabel()}</summary>
+            <div className="supplier-custom-period supplier-custom-period-visible">
+              <strong>Диапазон</strong>
               <div>
                 <DateInput value={purchaseJournalFilters.date_from} onChange={e => { setJournalPeriodMode('custom'); setPurchaseJournalFilters(f => ({...f, date_from: e.target.value})); setRecentPurchasesPage(1) }} />
                 <em>—</em>
                 <DateInput value={purchaseJournalFilters.date_to} onChange={e => { setJournalPeriodMode('custom'); setPurchaseJournalFilters(f => ({...f, date_to: e.target.value})); setRecentPurchasesPage(1) }} />
               </div>
-            </details>
+            </div>
           </div>
           <label><span>Поставщик</span><select value={purchaseJournalFilters.supplier_id} onChange={e => { setPurchaseJournalFilters(f => ({...f, supplier_id: e.target.value})); setRecentPurchasesPage(1) }}><option value="">Все поставщики</option>{activeSuppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
           <label><span>Наш VOEN / VOEN</span><select value={purchaseJournalFilters.legal_entity_id} onChange={e => { setPurchaseJournalFilters(f => ({...f, legal_entity_id: e.target.value})); setRecentPurchasesPage(1) }}><option value="">Все юрлица</option>{legalEntities.map(le => <option key={le.id} value={le.id}>{le.name} · {le.voen}</option>)}</select></label>
@@ -29038,12 +29271,20 @@ function Suppliers({ t, isAdmin = false }) {
                                 </tr>)}</tbody>
                               </table>
                             </div>
+                            {purchaseItemsSaveProgress.active && <div className="supplier-purchase-save-inline-progress">
+                              <div className="supplier-purchase-save-inline-ring" style={{'--progress': Math.round(parseNum(purchaseItemsSaveProgress.progress))}}><span>{Math.round(parseNum(purchaseItemsSaveProgress.progress))}%</span></div>
+                              <div>
+                                <b>{purchaseItemsSaveProgress.title || 'Сохранение товаров'}</b>
+                                <p>{purchaseItemsSaveProgress.detail || 'Операция выполняется…'}</p>
+                                <small>{purchaseItemsSaveProgress.step || 'Не закрывайте страницу'}</small>
+                              </div>
+                            </div>}
                             <div className="existing-purchase-items-footer">
-                              <button className="ghost small supplier-add-product-line-btn" onClick={() => setPurchaseItemsDraft(rows => [...rows, { ...emptyLine, id: crypto.randomUUID?.() || String(Math.random()), quantity: '', unit_price: '', line_amount: '' }])}>{isAzInterface ? '+ Məhsulu əlavə et' : '+ Добавить товар'}</button>
+                              <button className="ghost small supplier-add-product-line-btn" disabled={purchaseItemsSaveProgress.active} onClick={() => setPurchaseItemsDraft(rows => [...rows, { ...emptyLine, id: crypto.randomUUID?.() || String(Math.random()), quantity: '', unit_price: '', line_amount: '' }])}>{isAzInterface ? '+ Məhsulu əlavə et' : '+ Добавить товар'}</button>
                               <div className="existing-purchase-items-total">Новая сумма накладной: <strong>{fmt(existingPurchaseDraftTotal())} AZN</strong></div>
                               <div className="action-row">
-                                <button className="ghost small" onClick={() => { setPurchaseItemsEditorId(''); setPurchaseItemsDraft([]) }}>Отмена</button>
-                                <button className="small supplier-main-action" onClick={() => saveExistingPurchaseItems(p)}>Сохранить товары и пересчитать</button>
+                                <button className="ghost small" disabled={purchaseItemsSaveProgress.active} onClick={() => { setPurchaseItemsEditorId(''); setPurchaseItemsDraft([]) }}>Отмена</button>
+                                <button className="small supplier-main-action" disabled={purchaseItemsSaveProgress.active} onClick={() => saveExistingPurchaseItems(p)}>{purchaseItemsSaveProgress.active ? 'Сохраняется...' : 'Сохранить товары и пересчитать'}</button>
                               </div>
                             </div>
                           </div> : <div className="table-wrap">
@@ -29068,14 +29309,32 @@ function Suppliers({ t, isAdmin = false }) {
                   )}
                 </React.Fragment>
               ))}
-              {!visiblePurchases.length && <tr><td colSpan="8" className="hint">—</td></tr>}
+              {!filteredPurchases.length && <tr><td colSpan="8" className="hint">По выбранным фильтрам поступления не найдены.</td></tr>}
             </tbody>
           </table>
         </div>
-        <div className="action-row" style={{margin:'12px 0 0'}}>
+        <div className="action-row supplier-journal-pagination" style={{margin:'12px 0 0'}}>
           <button className="ghost small" disabled={safeRecentPurchasesPage <= 1} onClick={() => setRecentPurchasesPage(p => Math.max(1, parseNum(p) - 1))}>← Пред.</button>
-          <span className="hint">Страница {safeRecentPurchasesPage} / {recentPurchasesTotalPages} · всего {visiblePurchases.length}</span>
+          <span className="hint">Страница {safeRecentPurchasesPage} / {recentPurchasesTotalPages} · найдено {filteredPurchases.length}</span>
           <button className="ghost small" disabled={safeRecentPurchasesPage >= recentPurchasesTotalPages} onClick={() => setRecentPurchasesPage(p => Math.min(recentPurchasesTotalPages, parseNum(p) + 1))}>След. →</button>
+        </div>
+
+        <div className="supplier-journal-total-card">
+          <div>
+            <span>{supplierJournalSelectedSupplier ? 'Итого по поставщику' : 'Итого по журналу'}</span>
+            <strong>{supplierJournalSelectedSupplier?.name || 'Все поставщики'}</strong>
+            <small>Период: {supplierJournalPeriodTitle}</small>
+          </div>
+          <div>
+            <span>Активных поступлений</span>
+            <strong>{supplierJournalTotal.count}</strong>
+            <small>{supplierJournalTotal.cancelled_count ? `Отменено: ${supplierJournalTotal.cancelled_count} · ${fmt(supplierJournalTotal.cancelled_amount)} AZN` : 'отменённые строки не учитываются'}</small>
+          </div>
+          <div className="supplier-journal-total-amount">
+            <span>Сумма за выбранный период</span>
+            <strong>{fmt(supplierJournalTotal.amount)} AZN</strong>
+            <small>{purchaseJournalFilters.supplier_id ? 'по выбранному поставщику' : 'по текущим фильтрам'}</small>
+          </div>
         </div>
       </div>
     </section>
@@ -29258,6 +29517,68 @@ function DebtsPayments({ t }) {
     return data
   }
 
+  function normalizeDebtSupplierPurchasesFullPayload(payload) {
+    if (Array.isArray(payload)) return payload
+    if (typeof payload === 'string') {
+      try {
+        const parsed = JSON.parse(payload)
+        return Array.isArray(parsed) ? parsed : []
+      } catch (_error) {
+        return []
+      }
+    }
+    if (payload && typeof payload === 'object') {
+      if (Array.isArray(payload.rows)) return payload.rows
+      if (Array.isArray(payload.supplier_purchases)) return payload.supplier_purchases
+    }
+    return []
+  }
+
+  async function fetchDebtSupplierPurchasesFullRows(options = {}) {
+    const preferRpc = Boolean(options?.preferRpc)
+    const fetchRpc = async () => {
+      const { data, error } = await supabase.rpc('rms_supplier_purchases_full', { p_limit: 50000 })
+      if (error) throw error
+      return normalizeDebtSupplierPurchasesFullPayload(data)
+    }
+
+    if (preferRpc) {
+      try {
+        const rpcRows = await fetchRpc()
+        if (Array.isArray(rpcRows) && rpcRows.length) return rpcRows
+      } catch (_rpcError) {}
+    }
+
+    const pageSize = 1000
+    let from = 0
+    let allRows = []
+
+    while (true) {
+      const { data, error } = await supabase
+        .from('supplier_purchases')
+        .select('*, suppliers(name,voen,payment_term_days,credit_limit), legal_entities(name,voen), branches(name), supplier_purchase_items(*, supplier_products(name,category,base_unit))')
+        .order('purchase_date', { ascending: false })
+        .order('created_at', { ascending: false })
+        .range(from, from + pageSize - 1)
+
+      if (error) throw error
+      const batch = data || []
+      allRows = allRows.concat(batch)
+      if (batch.length < pageSize) break
+      from += pageSize
+      if (from > 50000) break
+    }
+
+    if (!allRows.length && !preferRpc) {
+      try {
+        const rpcRows = await fetchRpc()
+        if (Array.isArray(rpcRows) && rpcRows.length) return rpcRows
+      } catch (_rpcError) {}
+    }
+
+    return allRows
+  }
+
   async function load() {
     const isInternal = Boolean(getInternalSessionStorage()?.rms_internal)
 
@@ -29269,7 +29590,12 @@ function DebtsPayments({ t }) {
         setSuppliers(ws.suppliers || [])
         setProducts(ws.supplier_products || [])
         setBalances(ws.supplier_balances || [])
-        setPurchases(ws.supplier_purchases || [])
+        try {
+          const fullPurchases = await fetchDebtSupplierPurchasesFullRows({ preferRpc: true })
+          setPurchases(Array.isArray(fullPurchases) && fullPurchases.length ? fullPurchases : (ws.supplier_purchases || []))
+        } catch (_purchaseFetchError) {
+          setPurchases(ws.supplier_purchases || [])
+        }
         setPayments(wsPayments)
         setOpeningDebts(ws.supplier_opening_debts || [])
         setBranches([])
@@ -29301,7 +29627,12 @@ function DebtsPayments({ t }) {
     setSuppliers(sup || [])
     setProducts(prod || [])
     setBalances(bal || [])
-    setPurchases(pur || [])
+    try {
+      const fullPurchases = await fetchDebtSupplierPurchasesFullRows()
+      setPurchases(Array.isArray(fullPurchases) && fullPurchases.length ? fullPurchases : (pur || []))
+    } catch (_purchaseFetchError) {
+      setPurchases(pur || [])
+    }
     setPayments(pay || [])
     setOpeningDebts(opening || [])
     setSupplierEntityStatuses(statusRows || [])
@@ -32451,6 +32782,9 @@ function Reports({ t }) {
   const [reports, setReports] = useState(() => readAikoSalesReports())
   const [branchMap, setBranchMap] = useState(() => readAikoBranchMap())
   const [reportsTab, setReportsTab] = useState('overview')
+  const productReportTabIds = ['products', 'product', 'goods', 'items', 'stock-products', 'inventory-products', 'product_movement', 'products_movement', 'goods_movement', 'товары']
+  const isProductsReportTab = productReportTabIds.includes(String(reportsTab || '').toLowerCase())
+
   const [branchFilter, setBranchFilter] = useState('all')
   const [departmentFilter, setDepartmentFilter] = useState('all')
   const [monthFilter, setMonthFilter] = useState('all')
@@ -32483,6 +32817,17 @@ function Reports({ t }) {
   const [rmsRevenueReport, setRmsRevenueReport] = useState({ loading: false, error: '', rows: [], totals: { cash: 0, bank: 0, wolt: 0, revenue: 0 } })
   const [rmsExpensesReport, setRmsExpensesReport] = useState({ loading: false, error: '', rows: [], totals: { amount: 0, transactions: 0, categories: 0 }, byCategory: [], byBranch: [] })
   const [rmsSuppliersReport, setRmsSuppliersReport] = useState({ loading: false, error: '', rows: [], totals: { purchases: 0, payments: 0, balance: 0, suppliers: 0 }, purchases: [], payments: [], priceChanges: [] })
+  const [rmsProductsReport, setRmsProductsReport] = useState({ loading: false, error: '', rows: [], detailRows: [], totals: { amount: 0, products: 0, items: 0, invoices: 0, suppliers: 0 }, categories: [], suppliers: [], bySupplier: [], byCategory: [], priceDynamics: [], lastPurchaseDynamics: [], priceDynamicsMeta: { currentLabel: '', previousLabel: '', compareAvailable: false } })
+  const [productsReportDateFrom, setProductsReportDateFrom] = useState('')
+  const [productsReportDateTo, setProductsReportDateTo] = useState('')
+  const [productsReportSearch, setProductsReportSearch] = useState('')
+  const [productsReportCategory, setProductsReportCategory] = useState('all')
+  const [productsReportSupplierId, setProductsReportSupplierId] = useState('all')
+  const [productsReportSort, setProductsReportSort] = useState({ field: 'amount', dir: 'desc' })
+  const [productsPriceCompareMode, setProductsPriceCompareMode] = useState('period')
+  const [productsPriceDynamicsTab, setProductsPriceDynamicsTab] = useState('up')
+  const [productsReportPage, setProductsReportPage] = useState(1)
+  const [productsReportDetailsOpen, setProductsReportDetailsOpen] = useState(false)
   const [supplierReportSort, setSupplierReportSort] = useState({ field: 'balance', dir: 'desc' })
 
   useEffect(() => { writeAikoSalesReports(reports) }, [reports])
@@ -32756,6 +33101,19 @@ function Reports({ t }) {
     loadRmsSuppliersReport()
   }, [reportsTab, branchFilter, monthFilter, branches.length])
 
+  useEffect(() => {
+    if (!isProductsReportTab) return
+    loadRmsProductsReport()
+  }, [reportsTab, isProductsReportTab, branchFilter, monthFilter, productsReportDateFrom, productsReportDateTo, branches.length])
+
+  useEffect(() => {
+    setProductsReportPage(1)
+  }, [reportsTab, isProductsReportTab, branchFilter, monthFilter, productsReportDateFrom, productsReportDateTo, productsReportSearch, productsReportCategory, productsReportSupplierId, productsReportSort])
+
+  useEffect(() => {
+    setProductsPriceDynamicsTab('up')
+  }, [reportsTab, isProductsReportTab, branchFilter, monthFilter, productsReportDateFrom, productsReportDateTo, productsPriceCompareMode])
+
   async function loadRmsExpensesReport() {
     setRmsExpensesReport(prev => ({ ...prev, loading: true, error: '' }))
     try {
@@ -32924,6 +33282,426 @@ function Reports({ t }) {
       setRmsSuppliersReport({ loading: false, error: '', rows, totals, purchases, payments, priceChanges })
     } catch (error) {
       setRmsSuppliersReport({ loading: false, error: error?.message || 'Не удалось загрузить отчёт по поставщикам', rows: [], totals: { purchases: 0, payments: 0, balance: 0, suppliers: 0 }, purchases: [], payments: [], priceChanges: [] })
+    }
+  }
+
+
+  async function loadRmsProductsReport() {
+    setRmsProductsReport(prev => ({ ...prev, loading: true, error: '' }))
+    try {
+      const pageSize = 1000
+      const addDays = (iso, days) => {
+        const base = parseISODateLocal(iso)
+        base.setDate(base.getDate() + days)
+        return toLocalISODate(base)
+      }
+      const daysBetween = (from, toExclusive) => {
+        const a = parseISODateLocal(from)
+        const b = parseISODateLocal(toExclusive)
+        const diff = Math.round((b.getTime() - a.getTime()) / 86400000)
+        return Number.isFinite(diff) && diff > 0 ? diff : 0
+      }
+      const monthStartFromKey = (monthKey) => {
+        const m = String(monthKey || '').match(/^(\d{4})-(\d{2})$/)
+        if (!m) return ''
+        return `${m[1]}-${m[2]}-01`
+      }
+      const previousMonthStart = (monthKey) => {
+        const m = String(monthKey || '').match(/^(\d{4})-(\d{2})$/)
+        if (!m) return ''
+        const year = Number(m[1])
+        const month = Number(m[2])
+        const prevYear = month === 1 ? year - 1 : year
+        const prevMonth = month === 1 ? 12 : month - 1
+        return `${prevYear}-${String(prevMonth).padStart(2, '0')}-01`
+      }
+
+      const resolveProductReportRange = () => {
+        const hasCustomRange = Boolean(productsReportDateFrom || productsReportDateTo)
+        if (hasCustomRange) {
+          const from = productsReportDateFrom || ''
+          const toInclusive = productsReportDateTo || todayISO()
+          const toExclusive = addDays(toInclusive, 1)
+          if (from && toExclusive) {
+            const span = daysBetween(from, toExclusive)
+            return {
+              current: { from, toExclusive },
+              previous: span > 0 ? { from: addDays(from, -span), toExclusive: from } : null,
+              currentLabel: `${from} — ${toInclusive}`,
+              previousLabel: span > 0 ? `${addDays(from, -span)} — ${addDays(from, -1)}` : 'недоступно',
+              compareAvailable: span > 0,
+            }
+          }
+          return {
+            current: { from, toExclusive },
+            previous: null,
+            currentLabel: `${from || 'начало'} — ${toInclusive}`,
+            previousLabel: 'недоступно',
+            compareAvailable: false,
+          }
+        }
+        if (/^year:\d{4}$/.test(String(monthFilter || ''))) {
+          const year = Number(String(monthFilter).replace('year:', ''))
+          return {
+            current: { from: `${year}-01-01`, toExclusive: `${year + 1}-01-01` },
+            previous: { from: `${year - 1}-01-01`, toExclusive: `${year}-01-01` },
+            currentLabel: `${year} год`,
+            previousLabel: `${year - 1} год`,
+            compareAvailable: true,
+          }
+        }
+        if (/^\d{4}-\d{2}$/.test(String(monthFilter || ''))) {
+          const currentFrom = monthStartFromKey(monthFilter)
+          const currentTo = rmsNextMonthStart(monthFilter)
+          const prevFrom = previousMonthStart(monthFilter)
+          return {
+            current: { from: currentFrom, toExclusive: currentTo },
+            previous: { from: prevFrom, toExclusive: currentFrom },
+            currentLabel: String(monthFilter),
+            previousLabel: prevFrom.slice(0, 7),
+            compareAvailable: true,
+          }
+        }
+        return {
+          current: null,
+          previous: null,
+          currentLabel: 'Все даты',
+          previousLabel: 'недоступно',
+          compareAvailable: false,
+        }
+      }
+
+      const reportRange = resolveProductReportRange()
+
+      const fetchPurchases = async (range) => {
+        const buildQuery = (from, to) => {
+          let query = supabase
+            .from('supplier_purchases')
+            .select('id,supplier_id,branch_id,purchase_date,invoice_number,total_amount,comment,created_at,suppliers(id,name),branches(id,name),supplier_purchase_items(id,purchase_id,product_id,quantity,unit,unit_price,total_amount,supplier_products(id,name,category,base_unit))')
+            .is('deleted_at', null)
+
+          if (branchFilter !== 'all') query = query.eq('branch_id', branchFilter)
+          if (range?.from) query = query.gte('purchase_date', range.from)
+          if (range?.toExclusive) query = query.lt('purchase_date', range.toExclusive)
+
+          return query
+            .order('purchase_date', { ascending: false })
+            .order('created_at', { ascending: false })
+            .range(from, to)
+        }
+
+        let from = 0
+        let result = []
+        while (true) {
+          const { data, error } = await buildQuery(from, from + pageSize - 1)
+          if (error) throw error
+          const batch = data || []
+          result = result.concat(batch)
+          if (batch.length < pageSize) break
+          from += pageSize
+          if (from > 50000) break
+        }
+        return result
+      }
+
+      const currentPurchases = await fetchPurchases(reportRange.current)
+      const previousPurchases = reportRange.previous ? await fetchPurchases(reportRange.previous) : []
+
+      const branchNameById = new Map((branches || []).map(b => [String(b.id), b.name]))
+
+      const buildDetailRows = (purchaseList) => {
+        const rows = []
+        const invoiceIds = new Set()
+        const supplierIds = new Set()
+        ;(purchaseList || []).forEach(purchase => {
+          const supplierId = purchase.supplier_id || purchase.suppliers?.id || ''
+          const supplierName = purchase.suppliers?.name || '—'
+          const branchName = purchase.branches?.name || branchNameById.get(String(purchase.branch_id)) || purchase.branch_id || '—'
+          if (purchase.id) invoiceIds.add(String(purchase.id))
+          if (supplierId) supplierIds.add(String(supplierId))
+
+          ;(purchase.supplier_purchase_items || []).forEach(item => {
+            const product = item.supplier_products || {}
+            const productId = item.product_id || product.id || ''
+            const productName = product.name || item.product_name || '—'
+            const category = product.category || 'Без категории'
+            const unit = item.unit || product.base_unit || 'unit'
+            const baseUnit = product.base_unit || unit || 'unit'
+            const qty = parseNum(item.quantity)
+            const unitPrice = parseNum(item.unit_price)
+            const calculatedAmount = qty * unitPrice
+            const amount = parseNum(item.total_amount || calculatedAmount)
+            const amountDiff = amount - calculatedAmount
+            const baseMultiplier = supplierProductUnitMultiplier(unit, baseUnit)
+            const baseQuantity = baseMultiplier ? qty * baseMultiplier : qty
+            const baseUnitPrice = baseQuantity > 0 ? amount / baseQuantity : supplierProductBaseUnitPrice(unitPrice, unit, baseUnit)
+            if (!productName || productName === '—') return
+            if (!qty && !amount) return
+
+            rows.push({
+              id: item.id || `${purchase.id}-${productId}-${productName}-${unit}`,
+              purchase_id: purchase.id,
+              date: purchase.purchase_date || '',
+              invoice: purchase.invoice_number || '—',
+              branch_id: purchase.branch_id || '',
+              branch_name: branchName,
+              supplier_id: supplierId,
+              supplier_name: supplierName,
+              product_id: productId,
+              product_name: productName,
+              category,
+              unit,
+              base_unit: baseUnit,
+              quantity: qty,
+              base_quantity: baseQuantity,
+              unit_price: unitPrice,
+              base_unit_price: baseUnitPrice,
+              amount,
+              calculated_amount: calculatedAmount,
+              amount_diff: amountDiff,
+            })
+          })
+        })
+        return { rows, invoiceIds, supplierIds }
+      }
+
+      const currentBuilt = buildDetailRows(currentPurchases)
+      const previousBuilt = buildDetailRows(previousPurchases)
+      const detailRows = currentBuilt.rows
+      const previousDetailRows = previousBuilt.rows
+      const invoiceIds = currentBuilt.invoiceIds
+      const supplierIds = currentBuilt.supplierIds
+
+      const productMap = new Map()
+      const bySupplierMap = new Map()
+      const byCategoryMap = new Map()
+
+      detailRows.forEach(detail => {
+        const productKey = `${detail.product_id || detail.product_name}::${detail.unit}`
+        const current = productMap.get(productKey) || {
+          product_id: detail.product_id,
+          product_name: detail.product_name,
+          category: detail.category,
+          unit: detail.unit,
+          base_unit: detail.base_unit,
+          quantity: 0,
+          base_quantity: 0,
+          amount: 0,
+          item_count: 0,
+          invoice_ids: new Set(),
+          supplier_ids: new Set(),
+          supplier_names: new Set(),
+          branch_names: new Set(),
+          first_date: '',
+          last_date: '',
+          latest_price: 0,
+          latest_supplier: '',
+          latest_invoice: '',
+        }
+        current.quantity += parseNum(detail.quantity)
+        current.base_quantity += parseNum(detail.base_quantity)
+        current.amount += parseNum(detail.amount)
+        current.item_count += 1
+        if (detail.purchase_id) current.invoice_ids.add(String(detail.purchase_id))
+        if (detail.supplier_id) current.supplier_ids.add(String(detail.supplier_id))
+        if (detail.supplier_name) current.supplier_names.add(detail.supplier_name)
+        if (detail.branch_name) current.branch_names.add(detail.branch_name)
+        if (!current.first_date || String(detail.date).localeCompare(String(current.first_date)) < 0) current.first_date = detail.date
+        if (!current.last_date || String(detail.date).localeCompare(String(current.last_date)) >= 0) {
+          current.last_date = detail.date
+          current.latest_price = detail.unit_price
+          current.latest_supplier = detail.supplier_name
+          current.latest_invoice = detail.invoice || '—'
+        }
+        productMap.set(productKey, current)
+
+        const supplierKey = detail.supplier_id || detail.supplier_name
+        const supplierRow = bySupplierMap.get(supplierKey) || { supplier_id: detail.supplier_id, name: detail.supplier_name, amount: 0, quantity: 0, items: 0, products: new Set() }
+        supplierRow.amount += parseNum(detail.amount)
+        supplierRow.quantity += parseNum(detail.quantity)
+        supplierRow.items += 1
+        supplierRow.products.add(productKey)
+        bySupplierMap.set(supplierKey, supplierRow)
+
+        const categoryRow = byCategoryMap.get(detail.category) || { name: detail.category, amount: 0, quantity: 0, items: 0, products: new Set() }
+        categoryRow.amount += parseNum(detail.amount)
+        categoryRow.quantity += parseNum(detail.quantity)
+        categoryRow.items += 1
+        categoryRow.products.add(productKey)
+        byCategoryMap.set(detail.category, categoryRow)
+      })
+
+      const productRows = Array.from(productMap.values()).map(row => ({
+        ...row,
+        avg_price: row.quantity ? row.amount / row.quantity : 0,
+        avg_base_price: row.base_quantity ? row.amount / row.base_quantity : 0,
+        invoices: row.invoice_ids.size,
+        suppliers: row.supplier_ids.size || row.supplier_names.size,
+        supplier_names_text: Array.from(row.supplier_names).filter(Boolean).slice(0, 4).join(', '),
+        branch_names_text: Array.from(row.branch_names).filter(Boolean).slice(0, 4).join(', '),
+      })).sort((a, b) => parseNum(b.amount) - parseNum(a.amount))
+
+      const supplierRows = Array.from(bySupplierMap.values()).map(row => ({
+        ...row,
+        products_count: row.products.size,
+      })).sort((a, b) => parseNum(b.amount) - parseNum(a.amount))
+
+      const categoryRows = Array.from(byCategoryMap.values()).map(row => ({
+        ...row,
+        products_count: row.products.size,
+      })).sort((a, b) => parseNum(b.amount) - parseNum(a.amount))
+
+      const makeProductKey = (row) => row.product_id ? String(row.product_id) : normalizeSalesKey(row.product_name || '')
+      const rawUnitsByProduct = new Map()
+      ;[...detailRows, ...previousDetailRows].forEach(row => {
+        const key = makeProductKey(row)
+        if (!key) return
+        const unitSet = rawUnitsByProduct.get(key) || new Set()
+        if (row.unit) unitSet.add(String(row.unit))
+        rawUnitsByProduct.set(key, unitSet)
+      })
+
+      const buildWeightedSummary = (rows) => {
+        const map = new Map()
+        rows.forEach(row => {
+          const key = makeProductKey(row)
+          if (!key) return
+          if ((rawUnitsByProduct.get(key)?.size || 0) > 1) return
+          const baseQty = parseNum(row.base_quantity)
+          const amount = parseNum(row.amount)
+          if (!(baseQty > 0) || !(amount > 0)) return
+          const current = map.get(key) || {
+            key,
+            product_id: row.product_id || '',
+            product_name: row.product_name || '—',
+            category: row.category || 'Без категории',
+            base_unit: row.base_unit || row.unit || 'unit',
+            quantity: 0,
+            amount: 0,
+            rows: 0,
+            invoices: new Set(),
+            suppliers: new Set(),
+            supplier_ids: new Set(),
+            branches: new Set(),
+            first_date: '',
+            last_date: '',
+            latest_supplier: '',
+            latest_invoice: '',
+          }
+          current.quantity += baseQty
+          current.amount += amount
+          current.rows += 1
+          if (row.purchase_id) current.invoices.add(String(row.purchase_id))
+          if (row.supplier_name) current.suppliers.add(row.supplier_name)
+          if (row.supplier_id) current.supplier_ids.add(String(row.supplier_id))
+          if (row.branch_name) current.branches.add(row.branch_name)
+          if (!current.first_date || String(row.date || '').localeCompare(String(current.first_date || '')) < 0) current.first_date = row.date || ''
+          if (!current.last_date || String(row.date || '').localeCompare(String(current.last_date || '')) >= 0) {
+            current.last_date = row.date || ''
+            current.latest_supplier = row.supplier_name || '—'
+            current.latest_invoice = row.invoice || '—'
+          }
+          map.set(key, current)
+        })
+        return map
+      }
+
+      const currentSummary = buildWeightedSummary(detailRows)
+      const previousSummary = buildWeightedSummary(previousDetailRows)
+
+      const priceDynamics = Array.from(currentSummary.values()).map(current => {
+        const previous = previousSummary.get(current.key)
+        const currentAvg = current.quantity ? current.amount / current.quantity : 0
+        const previousAvg = previous?.quantity ? previous.amount / previous.quantity : 0
+        const changeAmount = previousAvg > 0 ? currentAvg - previousAvg : 0
+        const changePct = previousAvg > 0 ? changeAmount / previousAvg * 100 : null
+        const impact = previousAvg > 0 ? changeAmount * current.quantity : 0
+        const direction = previousAvg > 0 ? (changeAmount > 0 ? 'up' : changeAmount < 0 ? 'down' : 'flat') : 'new'
+        return {
+          ...current,
+          current_price: currentAvg,
+          previous_price: previousAvg,
+          previous_quantity: previous?.quantity || 0,
+          previous_amount: previous?.amount || 0,
+          previous_rows: previous?.rows || 0,
+          changeAmount,
+          changePct,
+          impact,
+          direction,
+          invoices_count: current.invoices.size,
+          suppliers_count: current.suppliers.size,
+          supplier_names_text: Array.from(current.suppliers).slice(0, 4).join(', '),
+          branch_names_text: Array.from(current.branches).slice(0, 4).join(', '),
+        }
+      }).filter(row => row.direction === 'new' || Math.abs(parseNum(row.changeAmount)) > 0.000001)
+        .sort((a, b) => Math.abs(parseNum(b.impact)) - Math.abs(parseNum(a.impact)) || Math.abs(parseNum(b.changePct)) - Math.abs(parseNum(a.changePct)))
+
+      const rowsForLastMode = reportRange.previous ? [...previousDetailRows, ...detailRows] : detailRows
+      const lastGroups = new Map()
+      rowsForLastMode.forEach(row => {
+        const key = makeProductKey(row)
+        if (!key) return
+        if ((rawUnitsByProduct.get(key)?.size || 0) > 1) return
+        const baseQty = parseNum(row.base_quantity)
+        const amount = parseNum(row.amount)
+        if (!(baseQty > 0) || !(amount > 0)) return
+        const list = lastGroups.get(key) || []
+        list.push(row)
+        lastGroups.set(key, list)
+      })
+
+      const lastPurchaseDynamics = Array.from(lastGroups.entries()).map(([key, list]) => {
+        const ordered = list.slice().sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')) || String(b.id || '').localeCompare(String(a.id || '')))
+        const latest = ordered[0]
+        const previous = ordered.find(row => row.id !== latest.id || row.date !== latest.date || row.unit_price !== latest.unit_price) || ordered[1]
+        if (!latest || !previous) return null
+        const latestPrice = parseNum(latest.base_unit_price)
+        const previousPrice = parseNum(previous.base_unit_price)
+        if (!(latestPrice > 0) || !(previousPrice > 0)) return null
+        const changeAmount = latestPrice - previousPrice
+        const changePct = changeAmount / previousPrice * 100
+        const impact = changeAmount * parseNum(latest.base_quantity)
+        return {
+          key,
+          product_id: latest.product_id || '',
+          product_name: latest.product_name || '—',
+          category: latest.category || 'Без категории',
+          base_unit: latest.base_unit || latest.unit || 'unit',
+          quantity: parseNum(latest.base_quantity),
+          amount: parseNum(latest.amount),
+          current_price: latestPrice,
+          previous_price: previousPrice,
+          changeAmount,
+          changePct,
+          impact,
+          direction: changeAmount > 0 ? 'up' : changeAmount < 0 ? 'down' : 'flat',
+          latest_supplier: latest.supplier_name || '—',
+          supplier_names_text: latest.supplier_name || '—',
+          latest_invoice: latest.invoice || '—',
+          last_date: latest.date || '',
+          previous_date: previous.date || '',
+          previous_supplier: previous.supplier_name || '—',
+          previous_invoice: previous.invoice || '—',
+          invoices_count: 1,
+          suppliers_count: latest.supplier_id ? 1 : 0,
+        }
+      }).filter(Boolean).filter(row => Math.abs(parseNum(row.changeAmount)) > 0.000001)
+        .sort((a, b) => Math.abs(parseNum(b.impact)) - Math.abs(parseNum(a.impact)) || Math.abs(parseNum(b.changePct)) - Math.abs(parseNum(a.changePct)))
+
+      const categories = Array.from(new Set(productRows.map(row => row.category || 'Без категории'))).sort()
+      const suppliersList = supplierRows.map(row => ({ id: row.supplier_id || row.name, name: row.name || '—' }))
+
+      const totals = {
+        amount: detailRows.reduce((sum, row) => sum + parseNum(row.amount), 0),
+        products: productRows.length,
+        items: detailRows.length,
+        invoices: invoiceIds.size,
+        suppliers: supplierIds.size || supplierRows.length,
+      }
+
+      setRmsProductsReport({ loading: false, error: '', rows: productRows, detailRows, totals, categories, suppliers: suppliersList, bySupplier: supplierRows, byCategory: categoryRows, priceDynamics, lastPurchaseDynamics, priceDynamicsMeta: { currentLabel: reportRange.currentLabel, previousLabel: reportRange.previousLabel, compareAvailable: reportRange.compareAvailable } })
+    } catch (error) {
+      setRmsProductsReport({ loading: false, error: error?.message || 'Не удалось загрузить отчёт по товарам', rows: [], detailRows: [], totals: { amount: 0, products: 0, items: 0, invoices: 0, suppliers: 0 }, categories: [], suppliers: [], bySupplier: [], byCategory: [], priceDynamics: [], lastPurchaseDynamics: [], priceDynamicsMeta: { currentLabel: '', previousLabel: '', compareAvailable: false } })
     }
   }
 
@@ -33831,6 +34609,300 @@ function Reports({ t }) {
     </>}
   </div>
 
+
+  const filteredProductReportRows = useMemo(() => {
+    const needle = String(productsReportSearch || '').trim().toLowerCase()
+    const filtered = (rmsProductsReport.rows || []).filter(row => {
+      const searchOk = !needle || [
+        row.product_name,
+        row.category,
+        row.unit,
+        row.supplier_names_text,
+        row.branch_names_text,
+        row.latest_invoice,
+      ].some(value => String(value || '').toLowerCase().includes(needle))
+      const categoryOk = productsReportCategory === 'all' || String(row.category || '') === String(productsReportCategory)
+      const supplierOk = productsReportSupplierId === 'all' || (row.supplier_ids && row.supplier_ids.has && row.supplier_ids.has(String(productsReportSupplierId))) || String(row.supplier_names_text || '').includes(String(productsReportSupplierId))
+      return searchOk && categoryOk && supplierOk
+    })
+    const field = productsReportSort.field || 'amount'
+    const dir = productsReportSort.dir === 'asc' ? 1 : -1
+    return [...filtered].sort((a, b) => {
+      if (field === 'name') return String(a.product_name || '').localeCompare(String(b.product_name || '')) * dir
+      if (field === 'category') return String(a.category || '').localeCompare(String(b.category || '')) * dir
+      return (parseNum(a[field]) - parseNum(b[field])) * dir
+    })
+  }, [rmsProductsReport.rows, productsReportSearch, productsReportCategory, productsReportSupplierId, productsReportSort])
+
+  const filteredProductDetailRows = useMemo(() => {
+    const needle = String(productsReportSearch || '').trim().toLowerCase()
+    return (rmsProductsReport.detailRows || []).filter(row => {
+      const searchOk = !needle || [
+        row.product_name,
+        row.category,
+        row.supplier_name,
+        row.branch_name,
+        row.invoice,
+        row.unit,
+      ].some(value => String(value || '').toLowerCase().includes(needle))
+      const categoryOk = productsReportCategory === 'all' || String(row.category || '') === String(productsReportCategory)
+      const supplierOk = productsReportSupplierId === 'all' || String(row.supplier_id || row.supplier_name) === String(productsReportSupplierId) || String(row.supplier_name || '') === String(productsReportSupplierId)
+      return searchOk && categoryOk && supplierOk
+    }).sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')) || parseNum(b.amount) - parseNum(a.amount))
+  }, [rmsProductsReport.detailRows, productsReportSearch, productsReportCategory, productsReportSupplierId])
+
+  const filteredProductTotals = useMemo(() => ({
+    amount: filteredProductDetailRows.reduce((sum, row) => sum + parseNum(row.amount), 0),
+    products: filteredProductReportRows.length,
+    items: filteredProductDetailRows.length,
+    invoices: new Set(filteredProductDetailRows.map(row => row.purchase_id).filter(Boolean)).size,
+    suppliers: new Set(filteredProductDetailRows.map(row => row.supplier_id || row.supplier_name).filter(Boolean)).size,
+  }), [filteredProductReportRows, filteredProductDetailRows])
+
+
+  const productUnitMismatchRows = useMemo(() => {
+    const map = new Map()
+    ;(rmsProductsReport.detailRows || []).forEach(row => {
+      const key = row.product_id ? String(row.product_id) : normalizeSalesKey(row.product_name || '')
+      if (!key) return
+      const current = map.get(key) || {
+        product_id: row.product_id || '',
+        product_name: row.product_name || '—',
+        units: new Set(),
+        rows: 0,
+        amount: 0,
+        suppliers: new Set(),
+        branches: new Set(),
+        invoices: new Set(),
+        last_date: '',
+      }
+      if (row.unit) current.units.add(row.unit)
+      current.rows += 1
+      current.amount += parseNum(row.amount)
+      if (row.supplier_name) current.suppliers.add(row.supplier_name)
+      if (row.branch_name) current.branches.add(row.branch_name)
+      if (row.purchase_id) current.invoices.add(String(row.purchase_id))
+      if (!current.last_date || String(row.date || '').localeCompare(String(current.last_date || '')) > 0) current.last_date = row.date || ''
+      map.set(key, current)
+    })
+    return Array.from(map.values())
+      .filter(row => row.units.size > 1)
+      .map(row => ({
+        ...row,
+        units_text: Array.from(row.units).join(' / '),
+        suppliers_text: Array.from(row.suppliers).slice(0, 4).join(', '),
+        branches_text: Array.from(row.branches).slice(0, 4).join(', '),
+        invoices_count: row.invoices.size,
+      }))
+      .sort((a, b) => parseNum(b.amount) - parseNum(a.amount))
+  }, [rmsProductsReport.detailRows])
+
+
+
+
+  const filteredProductPriceDynamics = useMemo(() => {
+    const sourceRows = productsPriceCompareMode === 'last'
+      ? (rmsProductsReport.lastPurchaseDynamics || [])
+      : (rmsProductsReport.priceDynamics || [])
+    const needle = String(productsReportSearch || '').trim().toLowerCase()
+    return (sourceRows || []).filter(row => {
+      const searchOk = !needle || [
+        row.product_name,
+        row.category,
+        row.base_unit,
+        row.supplier_names_text,
+        row.latest_supplier,
+        row.latest_invoice,
+        row.previous_supplier,
+        row.previous_invoice,
+      ].some(value => String(value || '').toLowerCase().includes(needle))
+      const categoryOk = productsReportCategory === 'all' || String(row.category || '') === String(productsReportCategory)
+      const supplierOk = productsReportSupplierId === 'all'
+        || (row.supplier_ids && row.supplier_ids.has && row.supplier_ids.has(String(productsReportSupplierId)))
+        || String(row.supplier_names_text || '').includes(String(productsReportSupplierId))
+        || String(row.latest_supplier || '') === String(productsReportSupplierId)
+      return searchOk && categoryOk && supplierOk
+    })
+  }, [rmsProductsReport.priceDynamics, rmsProductsReport.lastPurchaseDynamics, productsPriceCompareMode, productsReportSearch, productsReportCategory, productsReportSupplierId])
+
+  const productPriceDynamicsUpRows = useMemo(() => filteredProductPriceDynamics.filter(row => row.direction === 'up'), [filteredProductPriceDynamics])
+  const productPriceDynamicsDownRows = useMemo(() => filteredProductPriceDynamics.filter(row => row.direction === 'down'), [filteredProductPriceDynamics])
+  const productPriceDynamicsNewRows = useMemo(() => filteredProductPriceDynamics.filter(row => row.direction === 'new'), [filteredProductPriceDynamics])
+  const activeProductPriceDynamicsRows = productsPriceDynamicsTab === 'down'
+    ? productPriceDynamicsDownRows
+    : (productsPriceDynamicsTab === 'new' ? productPriceDynamicsNewRows : productPriceDynamicsUpRows)
+  const productPriceDynamicsImpactUp = productPriceDynamicsUpRows.reduce((sum, row) => sum + Math.max(0, parseNum(row.impact)), 0)
+  const productPriceDynamicsImpactDown = productPriceDynamicsDownRows.reduce((sum, row) => sum + Math.abs(Math.min(0, parseNum(row.impact))), 0)
+
+  const selectedProductPeriodLabel = productsReportDateFrom || productsReportDateTo
+    ? `${productsReportDateFrom || 'начало'} — ${productsReportDateTo || 'сегодня'}`
+    : (monthFilter === 'all' ? 'Все даты' : (/^year:\d{4}$/.test(String(monthFilter || '')) ? `${String(monthFilter).replace('year:', '')} год` : monthFilter))
+
+  const productPriceDynamicsModeLabel = productsPriceCompareMode === 'last'
+    ? 'последняя закупка против предыдущей закупки'
+    : `период ${rmsProductsReport.priceDynamicsMeta?.currentLabel || selectedProductPeriodLabel} против ${rmsProductsReport.priceDynamicsMeta?.previousLabel || 'предыдущего периода'}`
+
+  const productReportPageSize = 50
+  const productReportTotalPages = Math.max(1, Math.ceil(filteredProductReportRows.length / productReportPageSize))
+  const safeProductsReportPage = Math.min(Math.max(1, parseNum(productsReportPage) || 1), productReportTotalPages)
+  const visibleProductReportRows = filteredProductReportRows.slice((safeProductsReportPage - 1) * productReportPageSize, safeProductsReportPage * productReportPageSize)
+  const visibleProductDetailRows = filteredProductDetailRows.slice(0, productsReportDetailsOpen ? 250 : 25)
+
+  const setProductSort = (field) => {
+    setProductsReportSort(prev => ({
+      field,
+      dir: prev.field === field && prev.dir === 'desc' ? 'asc' : 'desc'
+    }))
+  }
+  const productSortHeader = (field, label) => <button type="button" className="reports-v353-sort-btn" onClick={() => setProductSort(field)}>{label}{productsReportSort.field === field ? (productsReportSort.dir === 'desc' ? ' ↓' : ' ↑') : ''}</button>
+
+  const ReportsProductsView = <section className="reports-v43-module-grid reports-v353-products-section">
+    <div className="reports-v43-module-card reports-v43-wide">
+      <div className="reports-v43-card-head">
+        <div>
+          <h3>Отчёт по товарам</h3>
+          <p>Движение товаров, закупочные цены, последние цены, объём закупок и список подорожавших / подешевевших товаров.</p>
+        </div>
+        <div className="action-row">
+          <button className="ghost small" type="button" onClick={loadRmsProductsReport} disabled={rmsProductsReport.loading}>{rmsProductsReport.loading ? 'Загрузка...' : 'Обновить'}</button>
+        </div>
+      </div>
+
+      <div className="reports-v353-product-filters">
+        <label><span>Период с</span><input type="date" value={productsReportDateFrom} onChange={e => setProductsReportDateFrom(e.target.value)} /></label>
+        <label><span>Период по</span><input type="date" value={productsReportDateTo} onChange={e => setProductsReportDateTo(e.target.value)} /></label>
+        <label><span>Категория</span><select value={productsReportCategory} onChange={e => setProductsReportCategory(e.target.value)}><option value="all">Все категории</option>{rmsProductsReport.categories.map(cat => <option key={cat} value={cat}>{cat}</option>)}</select></label>
+        <label><span>Поставщик</span><select value={productsReportSupplierId} onChange={e => setProductsReportSupplierId(e.target.value)}><option value="all">Все поставщики</option>{rmsProductsReport.suppliers.map(s => <option key={s.id || s.name} value={s.id || s.name}>{s.name}</option>)}</select></label>
+        <label className="reports-v353-products-search"><span>Поиск товара / поставщика / накладной</span><input value={productsReportSearch} onChange={e => setProductsReportSearch(e.target.value)} placeholder="Например: киви, кофе, Zaur, 123..." /></label>
+        <div className="reports-v353-products-filter-actions">
+          <button className="ghost small" type="button" onClick={() => { setProductsReportDateFrom(''); setProductsReportDateTo(''); setProductsReportSearch(''); setProductsReportCategory('all'); setProductsReportSupplierId('all') }}>Сбросить</button>
+        </div>
+      </div>
+
+      <div className="reports-v353-period-note">Период: <b>{selectedProductPeriodLabel}</b>{branchFilter !== 'all' && <span> · филиал: <b>{branches.find(b => String(b.id) === String(branchFilter))?.name || 'выбранный филиал'}</b></span>}</div>
+
+      {rmsProductsReport.error && <div className="reports-v43-empty-state"><b>Ошибка загрузки товаров</b><span>{rmsProductsReport.error}</span></div>}
+      {rmsProductsReport.loading && <div className="reports-v43-empty-state"><b>Загрузка товаров...</b><span>Читаю supplier_purchases и supplier_purchase_items за выбранный период.</span></div>}
+
+      <div className="reports-v353-products-kpis">
+        <div className="metric"><span>Сумма закупок</span><strong>{fmt(filteredProductTotals.amount)} AZN</strong><small>по выбранному фильтру</small></div>
+        <div className="metric"><span>Товаров</span><strong>{filteredProductTotals.products}</strong><small>уникальных позиций</small></div>
+        <div className="metric"><span>Строк закупок</span><strong>{filteredProductTotals.items}</strong><small>товарных строк</small></div>
+        <div className="metric"><span>Накладных</span><strong>{filteredProductTotals.invoices}</strong><small>физических поступлений</small></div>
+        <div className="metric"><span>Поставщиков</span><strong>{filteredProductTotals.suppliers}</strong><small>участвовали в закупках</small></div>
+      </div>
+
+      {productUnitMismatchRows.length > 0 && <div className="reports-v355-unit-warning">
+        <div className="reports-v355-unit-warning-head">
+          <div>
+            <h4>Ошибка единиц измерения</h4>
+            <p>Один и тот же товар закупался в разных единицах. Это не объединяется автоматически, чтобы не искажать количество и среднюю цену. Исправьте вручную в накладных / карточке товара.</p>
+          </div>
+          <strong>{productUnitMismatchRows.length} товаров</strong>
+        </div>
+        <div className="table-wrap reports-v355-unit-warning-table-wrap">
+          <table className="reports-v355-unit-warning-table">
+            <thead><tr><th>Товар</th><th>Единицы</th><th>Строк</th><th>Накладных</th><th>Сумма</th><th>Поставщики</th><th>Филиалы</th><th>Последняя дата</th></tr></thead>
+            <tbody>
+              {productUnitMismatchRows.map(row => <tr key={`unit-mismatch-${row.product_id || row.product_name}`}>
+                <td><b>{row.product_name}</b></td>
+                <td><span className="pill bad">{row.units_text}</span></td>
+                <td>{row.rows}</td>
+                <td>{row.invoices_count}</td>
+                <td><b>{fmt(row.amount)} AZN</b></td>
+                <td>{row.suppliers_text || '—'}</td>
+                <td>{row.branches_text || '—'}</td>
+                <td>{row.last_date ? formatDateDMY(row.last_date) : '—'}</td>
+              </tr>)}
+            </tbody>
+          </table>
+        </div>
+      </div>}
+
+      <div className="reports-v385-price-dynamics-card">
+        <div className="reports-v43-card-head reports-v385-price-dynamics-head">
+          <div>
+            <h4>Динамика закупочных цен</h4>
+            <p>Основная логика: средневзвешенная цена текущего периода сравнивается с предыдущим сопоставимым периодом по базовой единице. Сортировка — по финансовому влиянию на Food Cost.</p>
+          </div>
+          <div className="reports-v385-mode-switch">
+            <button type="button" className={productsPriceCompareMode === 'period' ? 'primary small' : 'ghost small'} onClick={() => setProductsPriceCompareMode('period')}>Период к периоду</button>
+            <button type="button" className={productsPriceCompareMode === 'last' ? 'primary small' : 'ghost small'} onClick={() => setProductsPriceCompareMode('last')}>Последний закуп</button>
+          </div>
+        </div>
+
+        <div className="reports-v385-price-dynamics-note">
+          <span>Сравнение: <b>{productPriceDynamicsModeLabel}</b></span>
+          {productUnitMismatchRows.length > 0 && <span className="bad">Товары с ошибкой единиц измерения исключены из динамики.</span>}
+        </div>
+
+        <div className="reports-v385-price-dynamics-kpis">
+          <button type="button" className={productsPriceDynamicsTab === 'up' ? 'active bad' : 'bad'} onClick={() => setProductsPriceDynamicsTab('up')}><span>Подорожали</span><b>{productPriceDynamicsUpRows.length}</b><small>влияние +{fmt(productPriceDynamicsImpactUp)} AZN</small></button>
+          <button type="button" className={productsPriceDynamicsTab === 'down' ? 'active good' : 'good'} onClick={() => setProductsPriceDynamicsTab('down')}><span>Подешевели</span><b>{productPriceDynamicsDownRows.length}</b><small>экономия {fmt(productPriceDynamicsImpactDown)} AZN</small></button>
+          <button type="button" className={productsPriceDynamicsTab === 'new' ? 'active neutral' : 'neutral'} onClick={() => setProductsPriceDynamicsTab('new')} disabled={productsPriceCompareMode === 'last'}><span>Новые / без истории</span><b>{productsPriceCompareMode === 'last' ? 0 : productPriceDynamicsNewRows.length}</b><small>нет цены прошлого периода</small></button>
+        </div>
+
+        <div className="table-wrap reports-v385-price-dynamics-table-wrap">
+          <table className="reports-v385-price-dynamics-table">
+            <thead><tr><th>Товар</th><th>Цена раньше</th><th>Цена сейчас</th><th>Изменение</th><th>Кол-во периода</th><th>Влияние</th><th>Поставщик / дата</th></tr></thead>
+            <tbody>
+              {activeProductPriceDynamicsRows.slice(0, 80).map(row => <tr key={`price-dyn-${productsPriceCompareMode}-${row.key || row.product_id || row.product_name}`}>
+                <td><b>{row.product_name}</b><br /><span className="hint">{row.category || '—'} · {row.base_unit || 'ед.'}</span></td>
+                <td>{row.previous_price ? <><b>{fmt(row.previous_price)}</b><br /><span className="hint">AZN / {row.base_unit || 'ед.'}</span></> : <span className="hint">нет истории</span>}</td>
+                <td><b>{fmt(row.current_price)}</b><br /><span className="hint">AZN / {row.base_unit || 'ед.'}</span></td>
+                <td className={row.direction === 'up' ? 'bad' : row.direction === 'down' ? 'good' : ''}>{row.direction === 'new' ? 'новый товар' : <><b>{row.changeAmount > 0 ? '+' : ''}{fmt(row.changeAmount)}</b><br /><span>{row.changePct === null ? '—' : `${row.changePct > 0 ? '+' : ''}${pct(row.changePct)}`}</span></>}</td>
+                <td>{fmt(row.quantity)} {row.base_unit || ''}<br /><span className="hint">{fmt(row.amount)} AZN</span></td>
+                <td className={row.impact > 0 ? 'bad' : row.impact < 0 ? 'good' : ''}><b>{row.impact > 0 ? '+' : ''}{fmt(row.impact)} AZN</b></td>
+                <td>{row.latest_supplier || row.supplier_names_text || '—'}<br /><span className="hint">{row.last_date ? formatDateDMY(row.last_date) : '—'} · {row.latest_invoice || '—'}</span></td>
+              </tr>)}
+              {!activeProductPriceDynamicsRows.length && <tr><td colSpan="7" className="hint">Нет данных для выбранной динамики. Проверьте период, поставщика, категорию или наличие предыдущего периода.</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="reports-v353-products-split">
+        <div className="reports-v353-mini-card">
+          <div className="reports-v43-card-head"><div><h4>Топ категорий</h4><p>По сумме закупок.</p></div></div>
+          {(rmsProductsReport.byCategory || []).slice(0, 8).map(row => <div className="reports-v353-rank-row" key={`cat-${row.name}`}><span>{row.name}</span><b>{fmt(row.amount)} AZN</b><small>{row.products_count} товаров</small></div>)}
+          {!rmsProductsReport.byCategory.length && <span className="hint">Нет данных по категориям.</span>}
+        </div>
+        <div className="reports-v353-mini-card">
+          <div className="reports-v43-card-head"><div><h4>Топ поставщиков</h4><p>По сумме закупок товаров.</p></div></div>
+          {(rmsProductsReport.bySupplier || []).slice(0, 8).map(row => <div className="reports-v353-rank-row" key={`sup-${row.supplier_id || row.name}`}><span>{row.name}</span><b>{fmt(row.amount)} AZN</b><small>{row.products_count} товаров</small></div>)}
+          {!rmsProductsReport.bySupplier.length && <span className="hint">Нет данных по поставщикам.</span>}
+        </div>
+      </div>
+
+      <div className="table-wrap reports-v353-products-table-wrap" style={{marginTop:14}}>
+        <table className="reports-v353-products-table">
+          <thead><tr><th>{productSortHeader('name', 'Товар')}</th><th>{productSortHeader('category', 'Категория')}</th><th>{productSortHeader('quantity', 'Кол-во')}</th><th>Ед.</th><th>{productSortHeader('amount', 'Сумма')}</th><th>{productSortHeader('avg_price', 'Средняя цена')}</th><th>{productSortHeader('item_count', 'Закупок')}</th><th>Поставщики</th><th>Последняя закупка</th></tr></thead>
+          <tbody>
+            {visibleProductReportRows.map(row => <tr key={`${row.product_id || row.product_name}-${row.unit}`}>
+              <td><b>{row.product_name}</b><br /><span className="hint">{row.branch_names_text || 'Все филиалы'}</span></td>
+              <td>{row.category || '—'}</td>
+              <td><b>{fmt(row.quantity)}</b></td>
+              <td>{row.unit || '—'}</td>
+              <td><b>{fmt(row.amount)} AZN</b></td>
+              <td>{fmt(row.avg_price)} AZN / {row.unit || 'ед.'}</td>
+              <td>{row.item_count} строк<br /><span className="hint">{row.invoices} накл.</span></td>
+              <td>{row.supplier_names_text || '—'}{row.suppliers > 4 && <><br /><span className="hint">+ ещё {row.suppliers - 4}</span></>}</td>
+              <td>{row.last_date ? formatDateDMY(row.last_date) : '—'}<br /><span className="hint">{row.latest_supplier || '—'} · {fmt(row.latest_price)} AZN</span></td>
+            </tr>)}
+            {!filteredProductReportRows.length && <tr><td colSpan="9" className="hint">Нет товаров по выбранному периоду / фильтру.</td></tr>}
+          </tbody>
+        </table>
+      </div>
+
+      {filteredProductReportRows.length > productReportPageSize && <div className="action-row reports-v353-products-pager">
+        <button className="ghost small" disabled={safeProductsReportPage <= 1} onClick={() => setProductsReportPage(p => Math.max(1, parseNum(p) - 1))}>← Пред.</button>
+        <span className="hint">Страница {safeProductsReportPage} / {productReportTotalPages} · найдено {filteredProductReportRows.length}</span>
+        <button className="ghost small" disabled={safeProductsReportPage >= productReportTotalPages} onClick={() => setProductsReportPage(p => Math.min(productReportTotalPages, parseNum(p) + 1))}>След. →</button>
+      </div>}
+
+    </div>
+  </section>
+
   const reportTabs = [
     { id: 'overview', label: 'Обзор', icon: '▣' },
     { id: 'sales', label: 'Продажи', icon: '↗' },
@@ -33887,7 +34959,12 @@ function Reports({ t }) {
   </div>
 
   const ReportModulePlaceholder = ({ title, description }) => {
-    const isBazarReport = String(title || '').toLowerCase().includes('базар')
+    const placeholderTitleLower = String(title || '').toLowerCase()
+    const placeholderDescriptionLower = String(description || '').toLowerCase()
+    const isProductsPlaceholder = placeholderTitleLower.includes('товар') || placeholderDescriptionLower.includes('товар') || placeholderTitleLower.includes('product') || placeholderDescriptionLower.includes('product')
+    if (isProductsPlaceholder) return ReportsProductsView
+
+    const isBazarReport = placeholderTitleLower.includes('базар')
     if (isBazarReport) {
       return <section className="reports-v43-module-grid reports-v225-bazar-section">
         <div className="reports-v43-module-card reports-v43-wide reports-v225-bazar-card-wrap">
@@ -34435,7 +35512,7 @@ function Reports({ t }) {
     {reportsTab === 'expenses' && ReportsExpensesView}
     {reportsTab === 'categories' && <ReportModulePlaceholder title="Расходы по статьям" description="Просмотрзация каждой статьи с drill-down до транзакций." />}
     {reportsTab === 'purchases' && <ReportModulePlaceholder title="Отчёт по закупкам" description="Закупки поставщиков по периодам, филиалам, категориям и фактурам." />}
-    {reportsTab === 'products' && <ReportModulePlaceholder title="Отчёт по товарам" description="Движение товаров, закупочные цены, последние цены и объём закупок." />}
+    {isProductsReportTab && ReportsProductsView}
     {reportsTab === 'suppliers' && ReportsSuppliersView}
     {reportsTab === 'bazar' && <ReportModulePlaceholder title="Отчёт по базару" description="Базар, автоматическое распределение по филиалам и влияние на Food Cost." />}
     {reportsTab === 'export' && <ReportModulePlaceholder title="Экспорт отчётов" description="PDF, печать, CSV/Excel и сохранение выбранного среза." />}
@@ -40000,3 +41077,3714 @@ if (typeof document !== 'undefined') {
     document.head.appendChild(style)
   }
 }
+
+
+/* v350 supplier pricebook: use available empty space, do not compress visible values */
+if (typeof document !== 'undefined') {
+  const STYLE_ID = 'rms-v350-supplier-pricebook-use-space-no-truncate'
+  if (!document.getElementById(STYLE_ID)) {
+    const style = document.createElement('style')
+    style.id = STYLE_ID
+    style.textContent = `
+.rms-pro-shell .supplier-products-pricebook-wrap,
+.rms-pro-shell .supplier-products-admin-list,
+.rms-pro-shell .supplier-products-pricebook-note,
+.rms-pro-shell .supplier-products-pagination{
+  width:100%!important;
+  max-width:100%!important;
+  min-width:0!important;
+  box-sizing:border-box!important;
+  overflow:visible!important;
+}
+.rms-pro-shell .supplier-products-admin-list table.supplier-products-pricebook-table,
+.rms-pro-shell table.supplier-products-pricebook-table{
+  display:block!important;
+  width:100%!important;
+  max-width:100%!important;
+  min-width:0!important;
+  overflow:visible!important;
+  table-layout:auto!important;
+  border-collapse:separate!important;
+  border-spacing:0!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table thead,
+.rms-pro-shell .supplier-products-pricebook-table tbody{
+  display:block!important;
+  width:100%!important;
+  max-width:100%!important;
+  min-width:0!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table thead tr,
+.rms-pro-shell .supplier-products-pricebook-table tbody tr{
+  display:grid!important;
+  grid-template-columns:minmax(0,35fr) minmax(0,23fr) minmax(0,23fr) minmax(150px,19fr)!important;
+  column-gap:0!important;
+  align-items:center!important;
+  width:100%!important;
+  max-width:100%!important;
+  min-width:0!important;
+  box-sizing:border-box!important;
+  border-bottom:1px solid #e5e7eb!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table thead tr{
+  min-height:38px!important;
+  background:#f8fafc!important;
+  border-top:1px solid #e5e7eb!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table tbody tr{
+  min-height:76px!important;
+  background:#fff!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table tbody tr:nth-child(even){
+  background:#fbfdff!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table th,
+.rms-pro-shell .supplier-products-pricebook-table td,
+.rms-pro-shell .supplier-products-pricebook-table th:nth-child(1),
+.rms-pro-shell .supplier-products-pricebook-table td:nth-child(1),
+.rms-pro-shell .supplier-products-pricebook-table th:nth-child(2),
+.rms-pro-shell .supplier-products-pricebook-table td:nth-child(2),
+.rms-pro-shell .supplier-products-pricebook-table th:nth-child(3),
+.rms-pro-shell .supplier-products-pricebook-table td:nth-child(3),
+.rms-pro-shell .supplier-products-pricebook-table th:nth-child(4),
+.rms-pro-shell .supplier-products-pricebook-table td:nth-child(4){
+  display:block!important;
+  width:100%!important;
+  min-width:0!important;
+  max-width:100%!important;
+  box-sizing:border-box!important;
+  padding:9px 7px!important;
+  border:0!important;
+  overflow:visible!important;
+  vertical-align:middle!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table th{
+  font-size:11px!important;
+  line-height:1.08!important;
+  letter-spacing:.02em!important;
+  color:#64748b!important;
+  font-weight:950!important;
+  text-transform:uppercase!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table td{
+  font-size:13px!important;
+  line-height:1.18!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table td:nth-child(1) b,
+.rms-pro-shell .supplier-products-pricebook-table td:nth-child(2) b,
+.rms-pro-shell .supplier-products-pricebook-table td:nth-child(3) b,
+.rms-pro-shell .supplier-products-pricebook-table td:nth-child(2) .hint,
+.rms-pro-shell .supplier-products-pricebook-table td:nth-child(3) .hint{
+  display:block!important;
+  width:auto!important;
+  max-width:none!important;
+  min-width:0!important;
+  overflow:visible!important;
+  text-overflow:clip!important;
+  white-space:nowrap!important;
+  word-break:normal!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table td:nth-child(1) b{
+  font-size:13.8px!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table td:nth-child(2) b{
+  font-size:13.4px!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table td:nth-child(3) b{
+  font-size:13.2px!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table td:nth-child(2) .hint,
+.rms-pro-shell .supplier-products-pricebook-table td:nth-child(3) .hint{
+  font-size:11.6px!important;
+  margin-top:4px!important;
+}
+.rms-pro-shell .supplier-pricebook-product-meta{
+  display:inline-flex!important;
+  width:auto!important;
+  max-width:none!important;
+  margin-top:5px!important;
+  padding:2px 7px!important;
+  font-size:10px!important;
+  line-height:1.05!important;
+  white-space:nowrap!important;
+  overflow:visible!important;
+  text-overflow:clip!important;
+}
+.rms-pro-shell .supplier-products-price-action-cell{
+  width:100%!important;
+  max-width:100%!important;
+  min-width:0!important;
+  overflow:visible!important;
+}
+.rms-pro-shell .supplier-products-price-action-inner{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) 34px!important;
+  gap:8px!important;
+  align-items:center!important;
+  width:100%!important;
+  max-width:100%!important;
+  min-width:0!important;
+  overflow:visible!important;
+}
+.rms-pro-shell .supplier-products-trend-slot{
+  min-width:0!important;
+  max-width:100%!important;
+  overflow:visible!important;
+}
+.rms-pro-shell .supplier-product-price-trend{
+  display:inline-flex!important;
+  max-width:none!important;
+  min-width:0!important;
+  width:auto!important;
+  height:28px!important;
+  padding:0 8px!important;
+  font-size:11px!important;
+  border-radius:999px!important;
+  white-space:nowrap!important;
+  overflow:visible!important;
+  text-overflow:clip!important;
+}
+.rms-pro-shell .supplier-products-menu-shell{
+  display:flex!important;
+  visibility:visible!important;
+  opacity:1!important;
+  position:relative!important;
+  width:34px!important;
+  height:34px!important;
+  min-width:34px!important;
+  max-width:34px!important;
+  align-items:center!important;
+  justify-content:flex-end!important;
+  overflow:visible!important;
+}
+.rms-pro-shell .supplier-products-ellipsis{
+  display:inline-flex!important;
+  visibility:visible!important;
+  opacity:1!important;
+  width:32px!important;
+  min-width:32px!important;
+  max-width:32px!important;
+  height:32px!important;
+  padding:0!important;
+  margin:0!important;
+  border:1px solid #e2e8f0!important;
+  border-radius:11px!important;
+  background:#f8fafc!important;
+  color:#334155!important;
+  align-items:center!important;
+  justify-content:center!important;
+  font-size:22px!important;
+  font-weight:950!important;
+  line-height:1!important;
+  box-shadow:0 1px 2px rgba(15,23,42,.05)!important;
+  cursor:pointer!important;
+}
+.rms-pro-shell .supplier-products-ellipsis:hover,
+.rms-pro-shell .supplier-products-ellipsis.is-open{
+  background:#eff6ff!important;
+  color:#1d4ed8!important;
+  border-color:#bfdbfe!important;
+}
+.rms-pro-shell .supplier-products-action-menu{
+  display:grid!important;
+  position:absolute!important;
+  right:0!important;
+  left:auto!important;
+  top:38px!important;
+  width:168px!important;
+  z-index:450!important;
+  visibility:visible!important;
+  opacity:1!important;
+}
+@media(max-width:1180px){
+  .rms-pro-shell .supplier-products-pricebook-table thead tr,
+  .rms-pro-shell .supplier-products-pricebook-table tbody tr{
+    grid-template-columns:minmax(0,34fr) minmax(0,22fr) minmax(0,22fr) minmax(142px,22fr)!important;
+  }
+  .rms-pro-shell .supplier-products-pricebook-table th,
+  .rms-pro-shell .supplier-products-pricebook-table td{
+    padding-left:5px!important;
+    padding-right:5px!important;
+  }
+}
+@media(max-width:980px){
+  .rms-pro-shell .supplier-products-pricebook-table thead tr,
+  .rms-pro-shell .supplier-products-pricebook-table tbody tr{
+    grid-template-columns:minmax(0,42fr) minmax(0,28fr) minmax(0,30fr)!important;
+  }
+  .rms-pro-shell .supplier-products-pricebook-table th:nth-child(4){
+    display:none!important;
+  }
+  .rms-pro-shell .supplier-products-pricebook-table td:nth-child(4){
+    display:block!important;
+  }
+  .rms-pro-shell .supplier-products-trend-slot{
+    display:none!important;
+  }
+  .rms-pro-shell .supplier-products-price-action-inner{
+    grid-template-columns:34px!important;
+    justify-content:end!important;
+  }
+}
+`
+    document.head.appendChild(style)
+  }
+}
+
+
+/* v351 supplier pricebook: real visible text, wider dynamic cell, no overlap */
+if (typeof document !== 'undefined') {
+  const STYLE_ID = 'rms-v351-supplier-pricebook-text-visible-no-overlap'
+  if (!document.getElementById(STYLE_ID)) {
+    const style = document.createElement('style')
+    style.id = STYLE_ID
+    style.textContent = `
+.rms-pro-shell .supplier-products-pricebook-table thead tr,
+.rms-pro-shell .supplier-products-pricebook-table tbody tr{
+  display:grid!important;
+  grid-template-columns:minmax(0,34fr) minmax(0,24fr) minmax(0,22fr) minmax(176px,20fr)!important;
+  column-gap:0!important;
+  align-items:center!important;
+  width:100%!important;
+  max-width:100%!important;
+  min-width:0!important;
+  box-sizing:border-box!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table th,
+.rms-pro-shell .supplier-products-pricebook-table td{
+  min-width:0!important;
+  max-width:100%!important;
+  box-sizing:border-box!important;
+  padding-left:7px!important;
+  padding-right:7px!important;
+  overflow:visible!important;
+}
+.rms-pro-shell .supplier-pricebook-main-text,
+.rms-pro-shell .supplier-pricebook-price-main,
+.rms-pro-shell .supplier-pricebook-supplier-main{
+  display:inline-block!important;
+  width:auto!important;
+  max-width:none!important;
+  min-width:0!important;
+  overflow:visible!important;
+  text-overflow:clip!important;
+  white-space:nowrap!important;
+  word-break:normal!important;
+  vertical-align:bottom!important;
+  line-height:1.2!important;
+  font-weight:950!important;
+  color:#0f172a!important;
+}
+.rms-pro-shell .supplier-pricebook-main-text{
+  font-size:13.8px!important;
+}
+.rms-pro-shell .supplier-pricebook-price-main{
+  font-size:13.6px!important;
+}
+.rms-pro-shell .supplier-pricebook-supplier-main{
+  font-size:13.3px!important;
+}
+.rms-pro-shell .supplier-pricebook-price-cell .hint,
+.rms-pro-shell .supplier-pricebook-supplier-cell .hint{
+  display:inline-block!important;
+  width:auto!important;
+  max-width:none!important;
+  min-width:0!important;
+  overflow:visible!important;
+  text-overflow:clip!important;
+  white-space:nowrap!important;
+  word-break:normal!important;
+  font-size:11.6px!important;
+  margin-top:4px!important;
+}
+.rms-pro-shell .supplier-pricebook-product-meta{
+  display:inline-flex!important;
+  width:auto!important;
+  max-width:none!important;
+  min-width:0!important;
+  overflow:visible!important;
+  text-overflow:clip!important;
+  white-space:nowrap!important;
+  margin-top:5px!important;
+}
+.rms-pro-shell .supplier-products-price-action-cell{
+  width:100%!important;
+  min-width:0!important;
+  max-width:100%!important;
+  overflow:visible!important;
+}
+.rms-pro-shell .supplier-products-price-action-inner{
+  display:grid!important;
+  grid-template-columns:minmax(92px,1fr) 36px!important;
+  gap:10px!important;
+  align-items:center!important;
+  justify-content:stretch!important;
+  width:100%!important;
+  max-width:100%!important;
+  min-width:0!important;
+  overflow:visible!important;
+}
+.rms-pro-shell .supplier-products-trend-slot{
+  display:flex!important;
+  justify-content:flex-start!important;
+  align-items:center!important;
+  min-width:0!important;
+  max-width:100%!important;
+  overflow:visible!important;
+}
+.rms-pro-shell .supplier-product-price-trend{
+  position:relative!important;
+  z-index:1!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  width:auto!important;
+  min-width:72px!important;
+  max-width:100%!important;
+  height:28px!important;
+  padding:0 9px!important;
+  font-size:11px!important;
+  white-space:nowrap!important;
+  overflow:visible!important;
+  text-overflow:clip!important;
+}
+.rms-pro-shell .supplier-products-menu-shell{
+  position:relative!important;
+  z-index:3!important;
+  width:36px!important;
+  min-width:36px!important;
+  max-width:36px!important;
+  height:34px!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:flex-end!important;
+  overflow:visible!important;
+}
+.rms-pro-shell .supplier-products-ellipsis{
+  width:32px!important;
+  min-width:32px!important;
+  max-width:32px!important;
+  height:32px!important;
+  display:inline-flex!important;
+  visibility:visible!important;
+  opacity:1!important;
+  align-items:center!important;
+  justify-content:center!important;
+}
+@media(max-width:1180px){
+  .rms-pro-shell .supplier-products-pricebook-table thead tr,
+  .rms-pro-shell .supplier-products-pricebook-table tbody tr{
+    grid-template-columns:minmax(0,33fr) minmax(0,23fr) minmax(0,21fr) minmax(168px,23fr)!important;
+  }
+  .rms-pro-shell .supplier-products-pricebook-table th,
+  .rms-pro-shell .supplier-products-pricebook-table td{
+    padding-left:5px!important;
+    padding-right:5px!important;
+  }
+}
+@media(max-width:980px){
+  .rms-pro-shell .supplier-products-pricebook-table thead tr,
+  .rms-pro-shell .supplier-products-pricebook-table tbody tr{
+    grid-template-columns:minmax(0,42fr) minmax(0,28fr) minmax(0,30fr)!important;
+  }
+  .rms-pro-shell .supplier-products-pricebook-table th:nth-child(4){
+    display:none!important;
+  }
+  .rms-pro-shell .supplier-products-pricebook-table td:nth-child(4){
+    display:block!important;
+  }
+  .rms-pro-shell .supplier-products-trend-slot{
+    display:none!important;
+  }
+  .rms-pro-shell .supplier-products-price-action-inner{
+    grid-template-columns:36px!important;
+    justify-content:end!important;
+  }
+}
+`
+    document.head.appendChild(style)
+  }
+}
+
+
+/* v352 supplier pricebook: wider supplier column, full supplier names */
+if (typeof document !== 'undefined') {
+  const STYLE_ID = 'rms-v352-supplier-pricebook-supplier-names-fit'
+  if (!document.getElementById(STYLE_ID)) {
+    const style = document.createElement('style')
+    style.id = STYLE_ID
+    style.textContent = `
+.rms-pro-shell .supplier-products-pricebook-table thead tr,
+.rms-pro-shell .supplier-products-pricebook-table tbody tr{
+  grid-template-columns:minmax(0,30fr) minmax(0,21fr) minmax(0,30fr) minmax(174px,19fr)!important;
+}
+.rms-pro-shell .supplier-pricebook-supplier-cell{
+  min-width:0!important;
+  max-width:100%!important;
+  overflow:visible!important;
+}
+.rms-pro-shell .supplier-pricebook-supplier-main,
+.rms-pro-shell .supplier-pricebook-supplier-cell .hint{
+  display:inline-block!important;
+  width:auto!important;
+  max-width:none!important;
+  min-width:0!important;
+  overflow:visible!important;
+  text-overflow:clip!important;
+  white-space:nowrap!important;
+  word-break:normal!important;
+}
+.rms-pro-shell .supplier-pricebook-supplier-main{
+  font-size:13.4px!important;
+  font-weight:950!important;
+  line-height:1.2!important;
+}
+.rms-pro-shell .supplier-pricebook-supplier-cell .hint{
+  font-size:11.6px!important;
+  line-height:1.2!important;
+  margin-top:4px!important;
+}
+@media(max-width:1180px){
+  .rms-pro-shell .supplier-products-pricebook-table thead tr,
+  .rms-pro-shell .supplier-products-pricebook-table tbody tr{
+    grid-template-columns:minmax(0,29fr) minmax(0,20fr) minmax(0,31fr) minmax(166px,20fr)!important;
+  }
+}
+@media(max-width:980px){
+  .rms-pro-shell .supplier-products-pricebook-table thead tr,
+  .rms-pro-shell .supplier-products-pricebook-table tbody tr{
+    grid-template-columns:minmax(0,38fr) minmax(0,24fr) minmax(0,38fr)!important;
+  }
+}
+`
+    document.head.appendChild(style)
+  }
+}
+
+
+/* v353 Reports -> Products purchase statistics */
+if (typeof document !== 'undefined') {
+  const STYLE_ID = 'rms-v353-reports-products-purchase-stats'
+  if (!document.getElementById(STYLE_ID)) {
+    const style = document.createElement('style')
+    style.id = STYLE_ID
+    style.textContent = `
+.rms-pro-shell .reports-v353-products-section .reports-v43-module-card{
+  overflow:visible!important;
+}
+.rms-pro-shell .reports-v353-product-filters{
+  display:grid!important;
+  grid-template-columns:160px 160px 190px 220px minmax(260px,1fr) auto!important;
+  gap:10px!important;
+  align-items:end!important;
+  margin-top:14px!important;
+}
+.rms-pro-shell .reports-v353-product-filters label{
+  min-width:0!important;
+}
+.rms-pro-shell .reports-v353-product-filters input,
+.rms-pro-shell .reports-v353-product-filters select{
+  width:100%!important;
+  min-width:0!important;
+}
+.rms-pro-shell .reports-v353-products-search{
+  min-width:260px!important;
+}
+.rms-pro-shell .reports-v353-products-filter-actions{
+  display:flex!important;
+  align-items:end!important;
+  justify-content:flex-end!important;
+}
+.rms-pro-shell .reports-v353-period-note{
+  margin-top:10px!important;
+  color:#64748b!important;
+  font-size:13px!important;
+  font-weight:750!important;
+}
+.rms-pro-shell .reports-v353-products-kpis{
+  display:grid!important;
+  grid-template-columns:repeat(5,minmax(0,1fr))!important;
+  gap:10px!important;
+  margin-top:14px!important;
+}
+.rms-pro-shell .reports-v353-products-split{
+  display:grid!important;
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  gap:12px!important;
+  margin-top:14px!important;
+}
+.rms-pro-shell .reports-v353-mini-card{
+  border:1px solid rgba(226,232,240,.92)!important;
+  border-radius:18px!important;
+  background:#fbfdff!important;
+  padding:14px!important;
+}
+.rms-pro-shell .reports-v353-mini-card h4,
+.rms-pro-shell .reports-v353-detail-head h4{
+  margin:0!important;
+  color:#0f172a!important;
+  font-size:16px!important;
+  font-weight:950!important;
+}
+.rms-pro-shell .reports-v353-mini-card p,
+.rms-pro-shell .reports-v353-detail-head p{
+  margin:4px 0 0!important;
+  color:#64748b!important;
+  font-size:12px!important;
+  font-weight:700!important;
+}
+.rms-pro-shell .reports-v353-rank-row{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) auto!important;
+  gap:8px 12px!important;
+  align-items:center!important;
+  padding:9px 0!important;
+  border-top:1px solid #e5e7eb!important;
+}
+.rms-pro-shell .reports-v353-rank-row:first-of-type{
+  border-top:0!important;
+}
+.rms-pro-shell .reports-v353-rank-row span{
+  color:#0f172a!important;
+  font-size:13px!important;
+  font-weight:900!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  white-space:nowrap!important;
+}
+.rms-pro-shell .reports-v353-rank-row b{
+  color:#0f172a!important;
+  font-size:13px!important;
+  font-weight:950!important;
+  white-space:nowrap!important;
+}
+.rms-pro-shell .reports-v353-rank-row small{
+  grid-column:1 / -1!important;
+  color:#64748b!important;
+  font-size:11px!important;
+  font-weight:750!important;
+}
+.rms-pro-shell .reports-v353-products-table-wrap,
+.rms-pro-shell .reports-v353-detail-table-wrap{
+  overflow:auto!important;
+  border-radius:18px!important;
+}
+.rms-pro-shell .reports-v353-products-table{
+  min-width:1180px!important;
+}
+.rms-pro-shell .reports-v353-detail-table{
+  min-width:1080px!important;
+}
+.rms-pro-shell .reports-v353-products-table th,
+.rms-pro-shell .reports-v353-products-table td,
+.rms-pro-shell .reports-v353-detail-table th,
+.rms-pro-shell .reports-v353-detail-table td{
+  vertical-align:top!important;
+  white-space:nowrap!important;
+}
+.rms-pro-shell .reports-v353-products-table td:first-child,
+.rms-pro-shell .reports-v353-detail-table td:nth-child(2){
+  white-space:normal!important;
+  min-width:220px!important;
+}
+.rms-pro-shell .reports-v353-sort-btn{
+  border:0!important;
+  background:transparent!important;
+  color:#64748b!important;
+  font:inherit!important;
+  font-weight:950!important;
+  text-transform:uppercase!important;
+  cursor:pointer!important;
+  padding:0!important;
+}
+.rms-pro-shell .reports-v353-products-pager{
+  justify-content:space-between!important;
+  margin-top:10px!important;
+}
+.rms-pro-shell .reports-v353-detail-head{
+  display:flex!important;
+  justify-content:space-between!important;
+  align-items:flex-end!important;
+  gap:12px!important;
+  margin-top:18px!important;
+  margin-bottom:10px!important;
+}
+@media(max-width:1300px){
+  .rms-pro-shell .reports-v353-product-filters{
+    grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  }
+  .rms-pro-shell .reports-v353-products-search{
+    grid-column:1 / span 2!important;
+  }
+  .rms-pro-shell .reports-v353-products-kpis{
+    grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  }
+}
+@media(max-width:900px){
+  .rms-pro-shell .reports-v353-product-filters,
+  .rms-pro-shell .reports-v353-products-split{
+    grid-template-columns:1fr!important;
+  }
+  .rms-pro-shell .reports-v353-products-search{
+    grid-column:auto!important;
+  }
+  .rms-pro-shell .reports-v353-products-kpis{
+    grid-template-columns:1fr!important;
+  }
+  .rms-pro-shell .reports-v353-detail-head{
+    align-items:flex-start!important;
+    flex-direction:column!important;
+  }
+}
+`
+    document.head.appendChild(style)
+  }
+}
+
+
+/* v355 Reports -> Products: unit mismatch warning instead of auto-merge */
+if (typeof document !== 'undefined') {
+  const STYLE_ID = 'rms-v355-reports-products-unit-mismatch-warning'
+  if (!document.getElementById(STYLE_ID)) {
+    const style = document.createElement('style')
+    style.id = STYLE_ID
+    style.textContent = `
+.rms-pro-shell .reports-v355-unit-warning{
+  margin-top:14px!important;
+  padding:14px!important;
+  border:1px solid rgba(239,68,68,.28)!important;
+  border-radius:18px!important;
+  background:linear-gradient(180deg,rgba(254,242,242,.92),rgba(255,255,255,.96))!important;
+}
+.rms-pro-shell .reports-v355-unit-warning-head{
+  display:flex!important;
+  justify-content:space-between!important;
+  align-items:flex-start!important;
+  gap:14px!important;
+  margin-bottom:12px!important;
+}
+.rms-pro-shell .reports-v355-unit-warning-head h4{
+  margin:0!important;
+  color:#991b1b!important;
+  font-size:16px!important;
+  font-weight:950!important;
+}
+.rms-pro-shell .reports-v355-unit-warning-head p{
+  margin:5px 0 0!important;
+  max-width:920px!important;
+  color:#7f1d1d!important;
+  font-size:12.5px!important;
+  line-height:1.35!important;
+  font-weight:750!important;
+}
+.rms-pro-shell .reports-v355-unit-warning-head strong{
+  white-space:nowrap!important;
+  color:#991b1b!important;
+  background:#fee2e2!important;
+  border:1px solid #fecaca!important;
+  border-radius:999px!important;
+  padding:7px 10px!important;
+  font-size:12px!important;
+  font-weight:950!important;
+}
+.rms-pro-shell .reports-v355-unit-warning-table-wrap{
+  overflow:auto!important;
+  border-radius:14px!important;
+  border:1px solid rgba(254,202,202,.9)!important;
+}
+.rms-pro-shell .reports-v355-unit-warning-table{
+  min-width:980px!important;
+}
+.rms-pro-shell .reports-v355-unit-warning-table th,
+.rms-pro-shell .reports-v355-unit-warning-table td{
+  white-space:nowrap!important;
+  vertical-align:top!important;
+}
+.rms-pro-shell .reports-v355-unit-warning-table td:first-child{
+  white-space:normal!important;
+  min-width:220px!important;
+}
+.rms-pro-shell .reports-v355-unit-warning .pill.bad{
+  background:#fee2e2!important;
+  color:#991b1b!important;
+  border:1px solid #fecaca!important;
+}
+`
+    document.head.appendChild(style)
+  }
+}
+
+
+/* v356 supplier journal: aligned filters + supplier period total */
+if (typeof document !== 'undefined') {
+  const STYLE_ID = 'rms-v356-supplier-journal-aligned-filters-total'
+  if (!document.getElementById(STYLE_ID)) {
+    const style = document.createElement('style')
+    style.id = STYLE_ID
+    style.textContent = `
+.rms-pro-shell .supplier-journal-filterbar{
+  display:grid!important;
+  grid-template-columns:repeat(4,minmax(160px,1fr)) auto 104px!important;
+  align-items:end!important;
+  gap:10px!important;
+  width:100%!important;
+  max-width:100%!important;
+  box-sizing:border-box!important;
+}
+.rms-pro-shell .supplier-journal-period-modern{
+  grid-column:1 / -1!important;
+  min-width:0!important;
+  width:100%!important;
+  display:grid!important;
+  grid-template-columns:110px minmax(360px,520px) minmax(360px,1fr)!important;
+  gap:10px!important;
+  align-items:end!important;
+}
+.rms-pro-shell .supplier-journal-period-modern > span{
+  align-self:center!important;
+  padding-bottom:0!important;
+}
+.rms-pro-shell .supplier-period-pills{
+  height:52px!important;
+  align-items:center!important;
+  padding:6px!important;
+  box-sizing:border-box!important;
+}
+.rms-pro-shell .supplier-period-pills button{
+  height:38px!important;
+}
+.rms-pro-shell .supplier-custom-period{
+  height:52px!important;
+  min-width:0!important;
+  box-sizing:border-box!important;
+}
+.rms-pro-shell .supplier-custom-period summary{
+  height:0!important;
+  min-height:0!important;
+  padding:0!important;
+  overflow:hidden!important;
+  opacity:0!important;
+  pointer-events:none!important;
+}
+.rms-pro-shell .supplier-custom-period summary::after{
+  content:''!important;
+}
+.rms-pro-shell .supplier-custom-period > div{
+  height:52px!important;
+  padding:6px 10px!important;
+  box-sizing:border-box!important;
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) 18px minmax(0,1fr)!important;
+  align-items:center!important;
+}
+.rms-pro-shell .supplier-custom-period input{
+  height:40px!important;
+}
+.rms-pro-shell .supplier-journal-filterbar label{
+  min-width:0!important;
+  width:100%!important;
+}
+.rms-pro-shell .supplier-journal-filterbar label span{
+  min-height:16px!important;
+  display:flex!important;
+  align-items:flex-end!important;
+}
+.rms-pro-shell .supplier-journal-filterbar input,
+.rms-pro-shell .supplier-journal-filterbar select{
+  width:100%!important;
+  min-width:0!important;
+  height:42px!important;
+  box-sizing:border-box!important;
+}
+.rms-pro-shell .supplier-journal-filterbar > button.ghost.small{
+  height:42px!important;
+  align-self:end!important;
+  white-space:nowrap!important;
+}
+.rms-pro-shell .supplier-journal-filter-summary{
+  height:42px!important;
+  align-self:end!important;
+}
+.rms-pro-shell .supplier-journal-pagination{
+  justify-content:space-between!important;
+  gap:12px!important;
+  flex-wrap:wrap!important;
+}
+.rms-pro-shell .supplier-journal-total-card{
+  display:grid!important;
+  grid-template-columns:minmax(0,1.3fr) minmax(0,.9fr) minmax(260px,1fr)!important;
+  gap:12px!important;
+  margin-top:12px!important;
+  padding:14px!important;
+  border:1px solid rgba(37,99,235,.18)!important;
+  border-radius:18px!important;
+  background:linear-gradient(180deg,#ffffff,#f8fbff)!important;
+  box-shadow:0 12px 28px rgba(15,23,42,.035)!important;
+}
+.rms-pro-shell .supplier-journal-total-card > div{
+  padding:12px!important;
+  border:1px solid rgba(226,232,240,.9)!important;
+  border-radius:14px!important;
+  background:#fff!important;
+}
+.rms-pro-shell .supplier-journal-total-card span{
+  display:block!important;
+  color:#64748b!important;
+  font-size:11.5px!important;
+  line-height:1.2!important;
+  font-weight:850!important;
+  margin-bottom:6px!important;
+}
+.rms-pro-shell .supplier-journal-total-card strong{
+  display:block!important;
+  color:#0f172a!important;
+  font-size:18px!important;
+  line-height:1.1!important;
+  font-weight:950!important;
+  white-space:nowrap!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+}
+.rms-pro-shell .supplier-journal-total-card small{
+  display:block!important;
+  margin-top:7px!important;
+  color:#64748b!important;
+  font-size:11.5px!important;
+  line-height:1.25!important;
+  font-weight:750!important;
+}
+.rms-pro-shell .supplier-journal-total-amount{
+  border-color:rgba(37,99,235,.28)!important;
+  background:#eff6ff!important;
+}
+.rms-pro-shell .supplier-journal-total-amount strong{
+  color:#1d4ed8!important;
+  font-size:22px!important;
+}
+@media(max-width:1400px){
+  .rms-pro-shell .supplier-journal-filterbar{
+    grid-template-columns:repeat(2,minmax(0,1fr)) auto 104px!important;
+  }
+  .rms-pro-shell .supplier-journal-period-modern{
+    grid-template-columns:1fr!important;
+  }
+  .rms-pro-shell .supplier-journal-total-card{
+    grid-template-columns:1fr 1fr!important;
+  }
+  .rms-pro-shell .supplier-journal-total-amount{
+    grid-column:1 / -1!important;
+  }
+}
+@media(max-width:900px){
+  .rms-pro-shell .supplier-journal-filterbar,
+  .rms-pro-shell .supplier-journal-total-card{
+    grid-template-columns:1fr!important;
+  }
+  .rms-pro-shell .supplier-journal-total-amount{
+    grid-column:auto!important;
+  }
+}
+`
+    document.head.appendChild(style)
+  }
+}
+
+
+/* v357 Supplier journal: period display box in right top field */
+if (typeof document !== 'undefined') {
+  const STYLE_ID = 'rms-v357-supplier-journal-period-display-box'
+  if (!document.getElementById(STYLE_ID)) {
+    const style = document.createElement('style')
+    style.id = STYLE_ID
+    style.textContent = `
+.rms-pro-shell .supplier-journal-filterbar{
+  display:grid!important;
+  grid-template-columns:repeat(12,minmax(0,1fr))!important;
+  gap:10px!important;
+  align-items:end!important;
+}
+.rms-pro-shell .supplier-journal-period-modern{
+  grid-column:1 / span 7!important;
+  min-width:0!important;
+}
+.rms-pro-shell .supplier-journal-period-display-box{
+  grid-column:8 / span 5!important;
+  min-width:0!important;
+  min-height:58px!important;
+  display:grid!important;
+  align-content:center!important;
+  gap:3px!important;
+  padding:10px 16px!important;
+  border:1px solid rgba(203,213,225,.92)!important;
+  border-radius:15px!important;
+  background:linear-gradient(180deg,#ffffff,#f8fafc)!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.82)!important;
+}
+.rms-pro-shell .supplier-journal-period-display-box span{
+  color:#64748b!important;
+  font-size:11px!important;
+  line-height:1.1!important;
+  font-weight:850!important;
+}
+.rms-pro-shell .supplier-journal-period-display-box strong{
+  color:#0f172a!important;
+  font-size:15px!important;
+  line-height:1.15!important;
+  font-weight:950!important;
+  white-space:nowrap!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+}
+.rms-pro-shell .supplier-journal-period-display-box small{
+  color:#2563eb!important;
+  font-size:12px!important;
+  line-height:1.15!important;
+  font-weight:900!important;
+  white-space:nowrap!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+}
+.rms-pro-shell .supplier-journal-filterbar > label{
+  grid-column:span 2!important;
+  min-width:0!important;
+}
+.rms-pro-shell .supplier-journal-filterbar > button{
+  grid-column:span 2!important;
+  width:100%!important;
+  min-width:0!important;
+}
+.rms-pro-shell .supplier-journal-filter-summary{
+  grid-column:span 2!important;
+  width:100%!important;
+  min-width:0!important;
+}
+@media(max-width:1500px){
+  .rms-pro-shell .supplier-journal-filterbar{
+    grid-template-columns:repeat(6,minmax(0,1fr))!important;
+  }
+  .rms-pro-shell .supplier-journal-period-modern{
+    grid-column:1 / span 3!important;
+  }
+  .rms-pro-shell .supplier-journal-period-display-box{
+    grid-column:4 / span 3!important;
+  }
+  .rms-pro-shell .supplier-journal-filterbar > label,
+  .rms-pro-shell .supplier-journal-filterbar > button,
+  .rms-pro-shell .supplier-journal-filter-summary{
+    grid-column:span 2!important;
+  }
+}
+@media(max-width:900px){
+  .rms-pro-shell .supplier-journal-filterbar{
+    grid-template-columns:1fr!important;
+  }
+  .rms-pro-shell .supplier-journal-period-modern,
+  .rms-pro-shell .supplier-journal-period-display-box,
+  .rms-pro-shell .supplier-journal-filterbar > label,
+  .rms-pro-shell .supplier-journal-filterbar > button,
+  .rms-pro-shell .supplier-journal-filter-summary{
+    grid-column:1 / -1!important;
+  }
+}
+`
+    document.head.appendChild(style)
+  }
+}
+
+
+/* v358 Supplier journal: period field same height + dates selectable */
+if (typeof document !== 'undefined') {
+  const STYLE_ID = 'rms-v358-supplier-journal-period-same-height-selectable'
+  if (!document.getElementById(STYLE_ID)) {
+    const style = document.createElement('style')
+    style.id = STYLE_ID
+    style.textContent = `
+.rms-pro-shell .supplier-journal-period-display-box{
+  display:none!important;
+}
+.rms-pro-shell .supplier-journal-filterbar{
+  display:grid!important;
+  grid-template-columns:repeat(4,minmax(160px,1fr)) auto 104px!important;
+  align-items:end!important;
+  gap:10px!important;
+  width:100%!important;
+  max-width:100%!important;
+  box-sizing:border-box!important;
+}
+.rms-pro-shell .supplier-journal-period-modern{
+  grid-column:1 / -1!important;
+  width:100%!important;
+  min-width:0!important;
+  display:grid!important;
+  grid-template-columns:110px minmax(360px,440px) minmax(430px,1fr)!important;
+  gap:10px!important;
+  align-items:end!important;
+}
+.rms-pro-shell .supplier-journal-period-modern > span{
+  align-self:center!important;
+  padding-bottom:0!important;
+}
+.rms-pro-shell .supplier-period-pills{
+  height:52px!important;
+  align-items:center!important;
+  padding:6px!important;
+  box-sizing:border-box!important;
+}
+.rms-pro-shell .supplier-period-pills button{
+  height:38px!important;
+}
+.rms-pro-shell .supplier-custom-period.supplier-custom-period-visible{
+  height:52px!important;
+  min-width:0!important;
+  width:100%!important;
+  display:grid!important;
+  grid-template-columns:150px minmax(0,1fr)!important;
+  align-items:center!important;
+  gap:10px!important;
+  padding:6px 10px!important;
+  box-sizing:border-box!important;
+  border:1px solid rgba(203,213,225,.92)!important;
+  border-radius:15px!important;
+  background:linear-gradient(180deg,#ffffff,#f8fafc)!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.82)!important;
+}
+.rms-pro-shell .supplier-custom-period.supplier-custom-period-visible strong{
+  color:#0f172a!important;
+  font-size:14px!important;
+  line-height:1.15!important;
+  font-weight:950!important;
+  white-space:nowrap!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+}
+.rms-pro-shell .supplier-custom-period.supplier-custom-period-visible > div{
+  height:40px!important;
+  min-width:0!important;
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) 18px minmax(0,1fr)!important;
+  align-items:center!important;
+  gap:8px!important;
+  padding:0!important;
+  border:0!important;
+  background:transparent!important;
+}
+.rms-pro-shell .supplier-custom-period.supplier-custom-period-visible input{
+  height:40px!important;
+  width:100%!important;
+  min-width:0!important;
+}
+.rms-pro-shell .supplier-custom-period.supplier-custom-period-visible em{
+  display:flex!important;
+  justify-content:center!important;
+  color:#94a3b8!important;
+  font-style:normal!important;
+  font-weight:950!important;
+}
+.rms-pro-shell .supplier-journal-filterbar > label{
+  min-width:0!important;
+  width:100%!important;
+}
+.rms-pro-shell .supplier-journal-filterbar > button.ghost.small{
+  height:42px!important;
+  align-self:end!important;
+}
+.rms-pro-shell .supplier-journal-filter-summary{
+  height:42px!important;
+  align-self:end!important;
+}
+@media(max-width:1500px){
+  .rms-pro-shell .supplier-journal-filterbar{
+    grid-template-columns:repeat(2,minmax(0,1fr)) auto 104px!important;
+  }
+  .rms-pro-shell .supplier-journal-period-modern{
+    grid-template-columns:110px minmax(320px,420px) minmax(360px,1fr)!important;
+  }
+}
+@media(max-width:1100px){
+  .rms-pro-shell .supplier-journal-period-modern{
+    grid-template-columns:1fr!important;
+  }
+  .rms-pro-shell .supplier-custom-period.supplier-custom-period-visible{
+    grid-template-columns:1fr!important;
+    height:auto!important;
+  }
+}
+@media(max-width:900px){
+  .rms-pro-shell .supplier-journal-filterbar{
+    grid-template-columns:1fr!important;
+  }
+}
+`
+    document.head.appendChild(style)
+  }
+}
+
+
+/* v359 Supplier journal: polished compact period row */
+if (typeof document !== 'undefined') {
+  const STYLE_ID = 'rms-v359-supplier-journal-period-polished'
+  if (!document.getElementById(STYLE_ID)) {
+    const style = document.createElement('style')
+    style.id = STYLE_ID
+    style.textContent = `
+.rms-pro-shell .supplier-journal-period-modern{
+  grid-column:1 / -1!important;
+  width:100%!important;
+  min-width:0!important;
+  display:grid!important;
+  grid-template-columns:110px minmax(420px,520px) minmax(460px,1fr)!important;
+  gap:12px!important;
+  align-items:center!important;
+}
+.rms-pro-shell .supplier-journal-period-modern > span{
+  align-self:center!important;
+  padding:0!important;
+  color:#64748b!important;
+  font-size:13px!important;
+  font-weight:950!important;
+}
+.rms-pro-shell .supplier-period-pills{
+  height:52px!important;
+  min-width:0!important;
+  width:100%!important;
+  display:grid!important;
+  grid-template-columns:repeat(4,minmax(0,1fr))!important;
+  align-items:center!important;
+  gap:6px!important;
+  padding:6px!important;
+  box-sizing:border-box!important;
+  border:1px solid rgba(203,213,225,.92)!important;
+  border-radius:16px!important;
+  background:#fff!important;
+}
+.rms-pro-shell .supplier-period-pills button{
+  height:40px!important;
+  min-width:0!important;
+  padding:0 12px!important;
+  border-radius:12px!important;
+  white-space:nowrap!important;
+  font-size:13px!important;
+  font-weight:950!important;
+}
+.rms-pro-shell .supplier-custom-period.supplier-custom-period-visible{
+  height:52px!important;
+  min-height:52px!important;
+  width:100%!important;
+  min-width:0!important;
+  display:grid!important;
+  grid-template-columns:96px minmax(0,1fr)!important;
+  align-items:center!important;
+  gap:10px!important;
+  padding:6px 10px!important;
+  box-sizing:border-box!important;
+  border:1px solid rgba(203,213,225,.92)!important;
+  border-radius:16px!important;
+  background:#fff!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.85)!important;
+}
+.rms-pro-shell .supplier-custom-period.supplier-custom-period-visible strong{
+  display:flex!important;
+  align-items:center!important;
+  height:40px!important;
+  color:#64748b!important;
+  font-size:12px!important;
+  line-height:1!important;
+  font-weight:950!important;
+  white-space:nowrap!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+}
+.rms-pro-shell .supplier-custom-period.supplier-custom-period-visible > div{
+  height:40px!important;
+  min-width:0!important;
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) 20px minmax(0,1fr)!important;
+  align-items:center!important;
+  gap:8px!important;
+  padding:0!important;
+  border:0!important;
+  background:transparent!important;
+}
+.rms-pro-shell .supplier-custom-period.supplier-custom-period-visible input{
+  height:40px!important;
+  width:100%!important;
+  min-width:0!important;
+  border-radius:12px!important;
+  padding:0 12px!important;
+  box-sizing:border-box!important;
+  font-size:13px!important;
+  font-weight:900!important;
+}
+.rms-pro-shell .supplier-custom-period.supplier-custom-period-visible em{
+  height:40px!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  color:#94a3b8!important;
+  font-style:normal!important;
+  font-weight:950!important;
+}
+@media(max-width:1380px){
+  .rms-pro-shell .supplier-journal-period-modern{
+    grid-template-columns:90px minmax(360px,440px) minmax(430px,1fr)!important;
+    gap:10px!important;
+  }
+  .rms-pro-shell .supplier-custom-period.supplier-custom-period-visible{
+    grid-template-columns:82px minmax(0,1fr)!important;
+  }
+}
+@media(max-width:1100px){
+  .rms-pro-shell .supplier-journal-period-modern{
+    grid-template-columns:1fr!important;
+    align-items:stretch!important;
+  }
+  .rms-pro-shell .supplier-journal-period-modern > span{
+    display:none!important;
+  }
+  .rms-pro-shell .supplier-custom-period.supplier-custom-period-visible{
+    grid-template-columns:1fr!important;
+    height:auto!important;
+    min-height:52px!important;
+  }
+  .rms-pro-shell .supplier-custom-period.supplier-custom-period-visible strong{
+    height:auto!important;
+    padding:2px 2px 0!important;
+  }
+}
+`
+    document.head.appendChild(style)
+  }
+}
+
+
+/* v360 Supplier journal: remove inner date fields inside range box */
+if (typeof document !== 'undefined') {
+  const STYLE_ID = 'rms-v360-supplier-journal-period-no-inner-fields'
+  if (!document.getElementById(STYLE_ID)) {
+    const style = document.createElement('style')
+    style.id = STYLE_ID
+    style.textContent = `
+.rms-pro-shell .supplier-custom-period.supplier-custom-period-visible{
+  height:52px!important;
+  min-height:52px!important;
+  overflow:hidden!important;
+}
+.rms-pro-shell .supplier-custom-period.supplier-custom-period-visible > div{
+  height:40px!important;
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) 18px minmax(0,1fr)!important;
+  align-items:center!important;
+  gap:8px!important;
+  padding:0!important;
+  border:0!important;
+  background:transparent!important;
+}
+.rms-pro-shell .supplier-custom-period.supplier-custom-period-visible .date-dmy-wrap{
+  min-height:40px!important;
+  height:40px!important;
+  width:100%!important;
+  min-width:0!important;
+  border:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+  border-radius:0!important;
+}
+.rms-pro-shell .supplier-custom-period.supplier-custom-period-visible .date-dmy-input{
+  min-height:40px!important;
+  height:40px!important;
+  width:100%!important;
+  border:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+  outline:none!important;
+  border-radius:0!important;
+  padding:0 34px 0 4px!important;
+  color:#0f172a!important;
+  font-size:13.5px!important;
+  font-weight:950!important;
+}
+.rms-pro-shell .supplier-custom-period.supplier-custom-period-visible .date-dmy-input:focus{
+  border:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+  outline:none!important;
+}
+.rms-pro-shell .supplier-custom-period.supplier-custom-period-visible .date-dmy-picker-btn{
+  right:0!important;
+  width:30px!important;
+  height:30px!important;
+  border:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+  font-size:15px!important;
+  opacity:.9!important;
+}
+.rms-pro-shell .supplier-custom-period.supplier-custom-period-visible .date-dmy-picker-btn:hover{
+  background:rgba(37,99,235,.08)!important;
+  border-radius:9px!important;
+}
+.rms-pro-shell .supplier-custom-period.supplier-custom-period-visible em{
+  height:40px!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  color:#94a3b8!important;
+  font-style:normal!important;
+  font-weight:950!important;
+}
+`
+    document.head.appendChild(style)
+  }
+}
+
+
+/* v363 supplier invoice save progress */
+if (typeof document !== 'undefined') {
+  const STYLE_ID = 'rms-v363-supplier-invoice-save-progress'
+  if (!document.getElementById(STYLE_ID)) {
+    const style = document.createElement('style')
+    style.id = STYLE_ID
+    style.textContent = `
+.rms-pro-shell .supplier-purchase-save-inline-progress{
+  display:grid!important;
+  grid-template-columns:48px minmax(0,1fr)!important;
+  gap:12px!important;
+  align-items:center!important;
+  margin:12px 0!important;
+  padding:12px 14px!important;
+  border:1px solid rgba(37,99,235,.18)!important;
+  border-radius:18px!important;
+  background:linear-gradient(180deg,#ffffff,#f8fbff)!important;
+  box-shadow:0 14px 28px rgba(15,23,42,.045)!important;
+}
+.rms-pro-shell .supplier-purchase-save-inline-ring{
+  width:48px!important;
+  height:48px!important;
+  border-radius:999px!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  background:conic-gradient(#2563eb calc(var(--progress, 0) * 1%), #e2e8f0 0)!important;
+  position:relative!important;
+}
+.rms-pro-shell .supplier-purchase-save-inline-ring::before{
+  content:''!important;
+  position:absolute!important;
+  inset:5px!important;
+  border-radius:999px!important;
+  background:#fff!important;
+}
+.rms-pro-shell .supplier-purchase-save-inline-ring span{
+  position:relative!important;
+  z-index:1!important;
+  color:#0f172a!important;
+  font-size:11px!important;
+  font-weight:950!important;
+}
+.rms-pro-shell .supplier-purchase-save-inline-progress b{
+  display:block!important;
+  color:#0f172a!important;
+  font-size:14px!important;
+  font-weight:950!important;
+}
+.rms-pro-shell .supplier-purchase-save-inline-progress p{
+  margin:3px 0!important;
+  color:#475569!important;
+  font-size:12px!important;
+  font-weight:800!important;
+}
+.rms-pro-shell .supplier-purchase-save-inline-progress small{
+  display:block!important;
+  color:#2563eb!important;
+  font-size:11px!important;
+  font-weight:900!important;
+}
+.rms-pro-shell .existing-purchase-items-footer button:disabled{
+  opacity:.55!important;
+  cursor:not-allowed!important;
+}
+`
+    document.head.appendChild(style)
+  }
+}
+
+
+/* v365 supplier pricebook: keep actions visible on smaller screens */
+if (typeof document !== 'undefined') {
+  const STYLE_ID = 'rms-v365-supplier-pricebook-mobile-dots-visible'
+  if (!document.getElementById(STYLE_ID)) {
+    const style = document.createElement('style')
+    style.id = STYLE_ID
+    style.textContent = `
+@media(max-width:1500px){
+  .rms-pro-shell .supplier-products-pricebook-wrap,
+  .rms-pro-shell .supplier-products-pricebook-table,
+  .rms-pro-shell .supplier-products-pricebook-table thead,
+  .rms-pro-shell .supplier-products-pricebook-table tbody{
+    overflow:visible!important;
+    max-width:100%!important;
+    min-width:0!important;
+  }
+  .rms-pro-shell .supplier-products-pricebook-table thead tr,
+  .rms-pro-shell .supplier-products-pricebook-table tbody tr{
+    display:grid!important;
+    grid-template-columns:minmax(0,36fr) minmax(0,23fr) minmax(0,33fr) 46px!important;
+    width:100%!important;
+    max-width:100%!important;
+    min-width:0!important;
+    column-gap:0!important;
+    align-items:center!important;
+  }
+  .rms-pro-shell .supplier-products-pricebook-table th:nth-child(4){
+    display:block!important;
+    width:46px!important;
+    max-width:46px!important;
+    min-width:46px!important;
+    padding-left:0!important;
+    padding-right:4px!important;
+    overflow:hidden!important;
+    color:transparent!important;
+  }
+  .rms-pro-shell .supplier-products-pricebook-table th:nth-child(4)::after{
+    content:'•••'!important;
+    color:#64748b!important;
+    display:block!important;
+    text-align:right!important;
+    letter-spacing:1px!important;
+  }
+  .rms-pro-shell .supplier-products-pricebook-table td:nth-child(4),
+  .rms-pro-shell .supplier-products-price-action-cell{
+    display:flex!important;
+    width:46px!important;
+    max-width:46px!important;
+    min-width:46px!important;
+    padding-left:0!important;
+    padding-right:4px!important;
+    justify-content:flex-end!important;
+    align-items:center!important;
+    overflow:visible!important;
+    position:relative!important;
+    z-index:20!important;
+  }
+  .rms-pro-shell .supplier-products-trend-slot{
+    display:none!important;
+  }
+  .rms-pro-shell .supplier-products-price-action-inner{
+    display:flex!important;
+    width:36px!important;
+    min-width:36px!important;
+    max-width:36px!important;
+    justify-content:flex-end!important;
+    align-items:center!important;
+    overflow:visible!important;
+    gap:0!important;
+  }
+  .rms-pro-shell .supplier-products-menu-shell{
+    display:flex!important;
+    visibility:visible!important;
+    opacity:1!important;
+    width:36px!important;
+    min-width:36px!important;
+    max-width:36px!important;
+    height:34px!important;
+    justify-content:flex-end!important;
+    align-items:center!important;
+    position:relative!important;
+    overflow:visible!important;
+    z-index:30!important;
+  }
+  .rms-pro-shell .supplier-products-ellipsis{
+    display:inline-flex!important;
+    visibility:visible!important;
+    opacity:1!important;
+    width:32px!important;
+    min-width:32px!important;
+    max-width:32px!important;
+    height:32px!important;
+    padding:0!important;
+    margin:0!important;
+    align-items:center!important;
+    justify-content:center!important;
+    border:1px solid #e2e8f0!important;
+    border-radius:11px!important;
+    background:#f8fafc!important;
+    color:#334155!important;
+    font-size:22px!important;
+    font-weight:950!important;
+    line-height:1!important;
+    box-shadow:0 1px 2px rgba(15,23,42,.05)!important;
+    cursor:pointer!important;
+  }
+  .rms-pro-shell .supplier-products-action-menu{
+    right:0!important;
+    left:auto!important;
+    top:36px!important;
+    z-index:500!important;
+  }
+}
+@media(max-width:980px){
+  .rms-pro-shell .supplier-products-pricebook-table thead tr,
+  .rms-pro-shell .supplier-products-pricebook-table tbody tr{
+    grid-template-columns:minmax(0,40fr) minmax(0,25fr) minmax(0,35fr) 44px!important;
+  }
+  .rms-pro-shell .supplier-products-pricebook-table td:nth-child(4),
+  .rms-pro-shell .supplier-products-price-action-cell,
+  .rms-pro-shell .supplier-products-pricebook-table th:nth-child(4){
+    display:flex!important;
+    width:44px!important;
+    max-width:44px!important;
+    min-width:44px!important;
+  }
+  .rms-pro-shell .supplier-products-pricebook-table th:nth-child(4){
+    display:block!important;
+  }
+}
+`
+    document.head.appendChild(style)
+  }
+}
+
+
+/* v366 supplier pricebook: fixed visible actions column */
+if (typeof document !== 'undefined') {
+  const STYLE_ID = 'rms-v366-supplier-pricebook-actions-column-fixed'
+  if (!document.getElementById(STYLE_ID)) {
+    const style = document.createElement('style')
+    style.id = STYLE_ID
+    style.textContent = `
+.rms-pro-shell .supplier-products-pricebook-wrap,
+.rms-pro-shell .supplier-products-admin-list table.supplier-products-pricebook-table,
+.rms-pro-shell table.supplier-products-pricebook-table,
+.rms-pro-shell .supplier-products-pricebook-table thead,
+.rms-pro-shell .supplier-products-pricebook-table tbody{
+  width:100%!important;
+  max-width:100%!important;
+  min-width:0!important;
+  overflow:visible!important;
+  table-layout:auto!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table thead tr,
+.rms-pro-shell .supplier-products-pricebook-table tbody tr{
+  display:grid!important;
+  grid-template-columns:minmax(0,35fr) minmax(0,23fr) minmax(0,32fr) 52px!important;
+  width:100%!important;
+  max-width:100%!important;
+  min-width:0!important;
+  column-gap:0!important;
+  align-items:center!important;
+  box-sizing:border-box!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table th,
+.rms-pro-shell .supplier-products-pricebook-table td{
+  min-width:0!important;
+  max-width:100%!important;
+  box-sizing:border-box!important;
+  overflow:visible!important;
+  padding-left:7px!important;
+  padding-right:7px!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table th:nth-child(4){
+  display:flex!important;
+  visibility:visible!important;
+  opacity:1!important;
+  width:52px!important;
+  min-width:52px!important;
+  max-width:52px!important;
+  padding-left:0!important;
+  padding-right:8px!important;
+  justify-content:flex-end!important;
+  align-items:center!important;
+  color:transparent!important;
+  overflow:visible!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table th:nth-child(4)::after{
+  content:'•••'!important;
+  display:block!important;
+  color:#64748b!important;
+  font-weight:950!important;
+  letter-spacing:1px!important;
+  text-align:right!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table td:nth-child(4),
+.rms-pro-shell .supplier-products-price-action-cell{
+  display:flex!important;
+  visibility:visible!important;
+  opacity:1!important;
+  width:52px!important;
+  min-width:52px!important;
+  max-width:52px!important;
+  padding-left:0!important;
+  padding-right:8px!important;
+  align-items:center!important;
+  justify-content:flex-end!important;
+  overflow:visible!important;
+  position:relative!important;
+  z-index:40!important;
+}
+.rms-pro-shell .supplier-products-price-action-inner{
+  display:flex!important;
+  width:36px!important;
+  min-width:36px!important;
+  max-width:36px!important;
+  height:36px!important;
+  align-items:center!important;
+  justify-content:flex-end!important;
+  gap:0!important;
+  overflow:visible!important;
+}
+.rms-pro-shell .supplier-products-trend-slot{
+  display:none!important;
+}
+.rms-pro-shell .supplier-products-menu-shell{
+  display:flex!important;
+  visibility:visible!important;
+  opacity:1!important;
+  position:relative!important;
+  width:36px!important;
+  min-width:36px!important;
+  max-width:36px!important;
+  height:36px!important;
+  align-items:center!important;
+  justify-content:flex-end!important;
+  overflow:visible!important;
+  z-index:60!important;
+}
+.rms-pro-shell .supplier-products-ellipsis{
+  display:inline-flex!important;
+  visibility:visible!important;
+  opacity:1!important;
+  width:34px!important;
+  min-width:34px!important;
+  max-width:34px!important;
+  height:34px!important;
+  padding:0!important;
+  margin:0!important;
+  align-items:center!important;
+  justify-content:center!important;
+  border:1px solid #dbe3ee!important;
+  border-radius:12px!important;
+  background:#f8fafc!important;
+  color:#334155!important;
+  font-size:22px!important;
+  font-weight:950!important;
+  line-height:1!important;
+  box-shadow:0 1px 2px rgba(15,23,42,.05)!important;
+  cursor:pointer!important;
+}
+.rms-pro-shell .supplier-products-ellipsis:hover,
+.rms-pro-shell .supplier-products-ellipsis.is-open{
+  background:#eff6ff!important;
+  color:#1d4ed8!important;
+  border-color:#bfdbfe!important;
+}
+.rms-pro-shell .supplier-products-action-menu{
+  display:grid!important;
+  position:absolute!important;
+  right:0!important;
+  left:auto!important;
+  top:40px!important;
+  width:168px!important;
+  z-index:700!important;
+  visibility:visible!important;
+  opacity:1!important;
+}
+.rms-pro-shell .supplier-pricebook-main-text,
+.rms-pro-shell .supplier-pricebook-price-main,
+.rms-pro-shell .supplier-pricebook-supplier-main,
+.rms-pro-shell .supplier-pricebook-price-cell .hint,
+.rms-pro-shell .supplier-pricebook-supplier-cell .hint{
+  max-width:100%!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  white-space:nowrap!important;
+}
+@media(max-width:1100px){
+  .rms-pro-shell .supplier-products-pricebook-table thead tr,
+  .rms-pro-shell .supplier-products-pricebook-table tbody tr{
+    grid-template-columns:minmax(0,40fr) minmax(0,25fr) minmax(0,35fr) 52px!important;
+  }
+  .rms-pro-shell .supplier-products-pricebook-table th,
+  .rms-pro-shell .supplier-products-pricebook-table td{
+    padding-left:5px!important;
+    padding-right:5px!important;
+  }
+}
+`
+    document.head.appendChild(style)
+  }
+}
+
+
+/* v367 supplier pricebook: actions by clicking product name */
+if (typeof document !== 'undefined') {
+  const STYLE_ID = 'rms-v367-supplier-pricebook-click-name-actions'
+  if (!document.getElementById(STYLE_ID)) {
+    const style = document.createElement('style')
+    style.id = STYLE_ID
+    style.textContent = `
+.rms-pro-shell .supplier-products-pricebook-table thead tr,
+.rms-pro-shell .supplier-products-pricebook-table tbody tr{
+  grid-template-columns:minmax(0,38fr) minmax(0,24fr) minmax(0,30fr) minmax(0,8fr)!important;
+}
+.rms-pro-shell .supplier-pricebook-product-click-cell{
+  position:relative!important;
+  overflow:visible!important;
+  z-index:20!important;
+}
+.rms-pro-shell .supplier-pricebook-name-action-shell{
+  position:relative!important;
+  display:block!important;
+  width:100%!important;
+  max-width:100%!important;
+  min-width:0!important;
+  overflow:visible!important;
+}
+.rms-pro-shell .supplier-pricebook-name-action{
+  display:inline-block!important;
+  width:auto!important;
+  max-width:100%!important;
+  padding:0!important;
+  margin:0!important;
+  border:0!important;
+  background:transparent!important;
+  color:#0f172a!important;
+  font-size:13.8px!important;
+  line-height:1.2!important;
+  font-weight:950!important;
+  text-align:left!important;
+  white-space:nowrap!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  cursor:pointer!important;
+}
+.rms-pro-shell .supplier-pricebook-name-action:hover,
+.rms-pro-shell .supplier-pricebook-name-action.is-open{
+  color:#2563eb!important;
+  text-decoration:underline!important;
+  text-underline-offset:3px!important;
+}
+.rms-pro-shell .supplier-products-name-action-menu{
+  position:absolute!important;
+  left:0!important;
+  right:auto!important;
+  top:30px!important;
+  width:172px!important;
+  z-index:900!important;
+  display:grid!important;
+  visibility:visible!important;
+  opacity:1!important;
+}
+.rms-pro-shell .supplier-products-price-action-cell{
+  display:none!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table th:nth-child(4){
+  display:none!important;
+}
+@media(max-width:1500px){
+  .rms-pro-shell .supplier-products-pricebook-table thead tr,
+  .rms-pro-shell .supplier-products-pricebook-table tbody tr{
+    grid-template-columns:minmax(0,40fr) minmax(0,25fr) minmax(0,35fr)!important;
+  }
+  .rms-pro-shell .supplier-products-pricebook-table th:nth-child(4),
+  .rms-pro-shell .supplier-products-pricebook-table td:nth-child(4){
+    display:none!important;
+  }
+}
+@media(max-width:980px){
+  .rms-pro-shell .supplier-products-name-action-menu{
+    width:164px!important;
+  }
+}
+`
+    document.head.appendChild(style)
+  }
+}
+
+
+/* v368 supplier pricebook: product-name actions open inline, not as overlay */
+if (typeof document !== 'undefined') {
+  const STYLE_ID = 'rms-v368-supplier-pricebook-inline-name-actions'
+  if (!document.getElementById(STYLE_ID)) {
+    const style = document.createElement('style')
+    style.id = STYLE_ID
+    style.textContent = `
+.rms-pro-shell .supplier-products-pricebook-table tbody tr{
+  align-items:center!important;
+}
+.rms-pro-shell .supplier-pricebook-product-click-cell,
+.rms-pro-shell .supplier-pricebook-name-action-shell{
+  position:relative!important;
+  overflow:visible!important;
+  z-index:auto!important;
+}
+.rms-pro-shell .supplier-pricebook-name-action{
+  display:inline-block!important;
+  max-width:100%!important;
+  color:#0f172a!important;
+  font-size:13.8px!important;
+  font-weight:950!important;
+  line-height:1.2!important;
+  text-align:left!important;
+  white-space:nowrap!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  cursor:pointer!important;
+}
+.rms-pro-shell .supplier-pricebook-name-action:hover,
+.rms-pro-shell .supplier-pricebook-name-action.is-open{
+  color:#2563eb!important;
+  text-decoration:underline!important;
+  text-underline-offset:3px!important;
+}
+.rms-pro-shell .supplier-products-name-action-menu{
+  position:static!important;
+  left:auto!important;
+  right:auto!important;
+  top:auto!important;
+  z-index:auto!important;
+  display:flex!important;
+  flex-wrap:wrap!important;
+  align-items:center!important;
+  gap:6px!important;
+  width:100%!important;
+  min-width:0!important;
+  max-width:100%!important;
+  margin-top:8px!important;
+  padding:8px!important;
+  border:1px solid rgba(203,213,225,.9)!important;
+  border-radius:14px!important;
+  background:#ffffff!important;
+  box-shadow:0 8px 20px rgba(15,23,42,.08)!important;
+  visibility:visible!important;
+  opacity:1!important;
+}
+.rms-pro-shell .supplier-products-name-action-menu button{
+  width:auto!important;
+  min-width:0!important;
+  height:30px!important;
+  padding:0 10px!important;
+  border:1px solid #e2e8f0!important;
+  border-radius:10px!important;
+  background:#f8fafc!important;
+  color:#0f172a!important;
+  font-size:11.5px!important;
+  font-weight:900!important;
+  line-height:1!important;
+  white-space:nowrap!important;
+  cursor:pointer!important;
+}
+.rms-pro-shell .supplier-products-name-action-menu button:hover{
+  background:#eff6ff!important;
+  border-color:#bfdbfe!important;
+  color:#1d4ed8!important;
+}
+.rms-pro-shell .supplier-products-name-action-menu button.danger{
+  background:#fff1f2!important;
+  border-color:#fecdd3!important;
+  color:#b91c1c!important;
+}
+.rms-pro-shell .supplier-products-name-action-menu button.danger:hover{
+  background:#ffe4e6!important;
+  color:#991b1b!important;
+}
+.rms-pro-shell .supplier-products-name-action-menu button:disabled{
+  opacity:.45!important;
+  cursor:not-allowed!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table th:nth-child(4),
+.rms-pro-shell .supplier-products-pricebook-table td:nth-child(4),
+.rms-pro-shell .supplier-products-price-action-cell{
+  display:none!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table thead tr,
+.rms-pro-shell .supplier-products-pricebook-table tbody tr{
+  grid-template-columns:minmax(0,40fr) minmax(0,25fr) minmax(0,35fr)!important;
+}
+@media(max-width:980px){
+  .rms-pro-shell .supplier-products-name-action-menu{
+    gap:5px!important;
+    padding:7px!important;
+  }
+  .rms-pro-shell .supplier-products-name-action-menu button{
+    height:29px!important;
+    padding:0 8px!important;
+    font-size:11px!important;
+  }
+}
+`
+    document.head.appendChild(style)
+  }
+}
+
+
+/* v369 supplier pricebook: restore 4 columns, no aggressive compression/wrapping */
+if (typeof document !== 'undefined') {
+  const STYLE_ID = 'rms-v369-supplier-pricebook-four-columns-no-compress'
+  if (!document.getElementById(STYLE_ID)) {
+    const style = document.createElement('style')
+    style.id = STYLE_ID
+    style.textContent = `
+.rms-pro-shell .supplier-products-pricebook-wrap{
+  width:100%!important;
+  max-width:100%!important;
+  min-width:0!important;
+  overflow-x:auto!important;
+  overflow-y:visible!important;
+}
+.rms-pro-shell .supplier-products-admin-list table.supplier-products-pricebook-table,
+.rms-pro-shell table.supplier-products-pricebook-table{
+  display:block!important;
+  width:100%!important;
+  min-width:940px!important;
+  max-width:none!important;
+  table-layout:auto!important;
+  border-collapse:separate!important;
+  border-spacing:0!important;
+  overflow:visible!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table thead,
+.rms-pro-shell .supplier-products-pricebook-table tbody{
+  display:block!important;
+  width:100%!important;
+  min-width:940px!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table thead tr,
+.rms-pro-shell .supplier-products-pricebook-table tbody tr{
+  display:grid!important;
+  grid-template-columns:minmax(260px,34fr) minmax(190px,22fr) minmax(230px,25fr) minmax(150px,19fr)!important;
+  column-gap:0!important;
+  align-items:center!important;
+  width:100%!important;
+  min-width:940px!important;
+  box-sizing:border-box!important;
+  border-bottom:1px solid #e5e7eb!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table th,
+.rms-pro-shell .supplier-products-pricebook-table td{
+  display:block!important;
+  width:100%!important;
+  min-width:0!important;
+  max-width:100%!important;
+  box-sizing:border-box!important;
+  padding:10px 12px!important;
+  border:0!important;
+  overflow:visible!important;
+  vertical-align:middle!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table th:nth-child(4){
+  display:block!important;
+  visibility:visible!important;
+  opacity:1!important;
+  color:#64748b!important;
+  width:100%!important;
+  min-width:0!important;
+  max-width:100%!important;
+  padding:10px 12px!important;
+  overflow:visible!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table th:nth-child(4)::after{
+  content:none!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table td:nth-child(4),
+.rms-pro-shell .supplier-products-price-action-cell{
+  display:block!important;
+  visibility:visible!important;
+  opacity:1!important;
+  width:100%!important;
+  min-width:0!important;
+  max-width:100%!important;
+  padding:10px 12px!important;
+  overflow:visible!important;
+  position:relative!important;
+  z-index:auto!important;
+}
+.rms-pro-shell .supplier-products-price-action-inner{
+  display:flex!important;
+  width:100%!important;
+  min-width:0!important;
+  max-width:100%!important;
+  height:auto!important;
+  align-items:center!important;
+  justify-content:flex-start!important;
+  gap:0!important;
+  overflow:visible!important;
+}
+.rms-pro-shell .supplier-products-trend-slot{
+  display:flex!important;
+  justify-content:flex-start!important;
+  align-items:center!important;
+  width:auto!important;
+  min-width:0!important;
+  max-width:100%!important;
+  overflow:visible!important;
+}
+.rms-pro-shell .supplier-product-price-trend{
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  width:auto!important;
+  min-width:72px!important;
+  max-width:none!important;
+  height:28px!important;
+  padding:0 10px!important;
+  white-space:nowrap!important;
+  overflow:visible!important;
+  text-overflow:clip!important;
+}
+.rms-pro-shell .supplier-pricebook-name-action,
+.rms-pro-shell .supplier-pricebook-main-text,
+.rms-pro-shell .supplier-pricebook-price-main,
+.rms-pro-shell .supplier-pricebook-supplier-main,
+.rms-pro-shell .supplier-pricebook-price-cell .hint,
+.rms-pro-shell .supplier-pricebook-supplier-cell .hint,
+.rms-pro-shell .supplier-pricebook-product-meta{
+  max-width:none!important;
+  overflow:visible!important;
+  text-overflow:clip!important;
+  white-space:nowrap!important;
+  word-break:normal!important;
+}
+.rms-pro-shell .supplier-pricebook-name-action{
+  color:#0f172a!important;
+  text-decoration:none!important;
+}
+.rms-pro-shell .supplier-pricebook-name-action:hover,
+.rms-pro-shell .supplier-pricebook-name-action.is-open{
+  color:#2563eb!important;
+  text-decoration:underline!important;
+  text-underline-offset:3px!important;
+}
+.rms-pro-shell .supplier-products-name-action-menu{
+  position:static!important;
+  display:flex!important;
+  flex-wrap:wrap!important;
+  align-items:center!important;
+  gap:6px!important;
+  width:max-content!important;
+  max-width:100%!important;
+  margin-top:8px!important;
+  padding:8px!important;
+  border:1px solid rgba(203,213,225,.9)!important;
+  border-radius:14px!important;
+  background:#fff!important;
+  box-shadow:0 8px 20px rgba(15,23,42,.08)!important;
+}
+.rms-pro-shell .supplier-products-menu-shell,
+.rms-pro-shell .supplier-products-ellipsis{
+  display:none!important;
+}
+@media(max-width:1100px){
+  .rms-pro-shell .supplier-products-admin-list table.supplier-products-pricebook-table,
+  .rms-pro-shell .supplier-products-pricebook-table thead,
+  .rms-pro-shell .supplier-products-pricebook-table tbody,
+  .rms-pro-shell .supplier-products-pricebook-table thead tr,
+  .rms-pro-shell .supplier-products-pricebook-table tbody tr{
+    min-width:900px!important;
+  }
+  .rms-pro-shell .supplier-products-pricebook-table thead tr,
+  .rms-pro-shell .supplier-products-pricebook-table tbody tr{
+    grid-template-columns:minmax(250px,34fr) minmax(180px,22fr) minmax(220px,25fr) minmax(140px,19fr)!important;
+  }
+}
+`
+    document.head.appendChild(style)
+  }
+}
+
+
+/* v370 supplier pricebook: 4 columns fit container, no cut / no forced horizontal shift */
+if (typeof document !== 'undefined') {
+  const STYLE_ID = 'rms-v370-supplier-pricebook-four-columns-fit-no-cut'
+  if (!document.getElementById(STYLE_ID)) {
+    const style = document.createElement('style')
+    style.id = STYLE_ID
+    style.textContent = `
+.rms-pro-shell .supplier-products-pricebook-wrap,
+.rms-pro-shell .supplier-products-admin-list,
+.rms-pro-shell .supplier-products-admin-list table.supplier-products-pricebook-table,
+.rms-pro-shell table.supplier-products-pricebook-table,
+.rms-pro-shell .supplier-products-pricebook-table thead,
+.rms-pro-shell .supplier-products-pricebook-table tbody{
+  width:100%!important;
+  max-width:100%!important;
+  min-width:0!important;
+  box-sizing:border-box!important;
+  overflow:visible!important;
+}
+.rms-pro-shell .supplier-products-admin-list table.supplier-products-pricebook-table,
+.rms-pro-shell table.supplier-products-pricebook-table{
+  display:block!important;
+  table-layout:auto!important;
+  border-collapse:separate!important;
+  border-spacing:0!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table thead,
+.rms-pro-shell .supplier-products-pricebook-table tbody{
+  display:block!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table thead tr,
+.rms-pro-shell .supplier-products-pricebook-table tbody tr{
+  display:grid!important;
+  grid-template-columns:minmax(0,34fr) minmax(0,23fr) minmax(0,29fr) minmax(112px,14fr)!important;
+  column-gap:0!important;
+  align-items:center!important;
+  width:100%!important;
+  max-width:100%!important;
+  min-width:0!important;
+  box-sizing:border-box!important;
+  border-bottom:1px solid #e5e7eb!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table th,
+.rms-pro-shell .supplier-products-pricebook-table td{
+  display:block!important;
+  width:100%!important;
+  min-width:0!important;
+  max-width:100%!important;
+  box-sizing:border-box!important;
+  padding:10px 8px!important;
+  border:0!important;
+  overflow:visible!important;
+  vertical-align:middle!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table th:nth-child(4),
+.rms-pro-shell .supplier-products-pricebook-table td:nth-child(4),
+.rms-pro-shell .supplier-products-price-action-cell{
+  display:block!important;
+  visibility:visible!important;
+  opacity:1!important;
+  width:100%!important;
+  min-width:0!important;
+  max-width:100%!important;
+  color:inherit!important;
+  overflow:visible!important;
+  padding-left:8px!important;
+  padding-right:8px!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table th:nth-child(4)::after{
+  content:none!important;
+}
+.rms-pro-shell .supplier-products-price-action-inner{
+  display:flex!important;
+  width:100%!important;
+  min-width:0!important;
+  max-width:100%!important;
+  align-items:center!important;
+  justify-content:flex-start!important;
+  overflow:visible!important;
+}
+.rms-pro-shell .supplier-products-trend-slot{
+  display:flex!important;
+  width:auto!important;
+  min-width:0!important;
+  max-width:100%!important;
+  align-items:center!important;
+  justify-content:flex-start!important;
+  overflow:visible!important;
+}
+.rms-pro-shell .supplier-product-price-trend{
+  display:inline-flex!important;
+  width:auto!important;
+  min-width:72px!important;
+  max-width:100%!important;
+  height:28px!important;
+  padding:0 9px!important;
+  align-items:center!important;
+  justify-content:center!important;
+  white-space:nowrap!important;
+  overflow:visible!important;
+  text-overflow:clip!important;
+}
+.rms-pro-shell .supplier-pricebook-name-action,
+.rms-pro-shell .supplier-pricebook-main-text,
+.rms-pro-shell .supplier-pricebook-price-main,
+.rms-pro-shell .supplier-pricebook-supplier-main,
+.rms-pro-shell .supplier-pricebook-price-cell .hint,
+.rms-pro-shell .supplier-pricebook-supplier-cell .hint,
+.rms-pro-shell .supplier-pricebook-product-meta{
+  display:inline-block!important;
+  width:auto!important;
+  max-width:none!important;
+  min-width:0!important;
+  overflow:visible!important;
+  text-overflow:clip!important;
+  white-space:nowrap!important;
+  word-break:normal!important;
+  vertical-align:bottom!important;
+}
+.rms-pro-shell .supplier-pricebook-name-action{
+  border:0!important;
+  background:transparent!important;
+  padding:0!important;
+  margin:0!important;
+  color:#0f172a!important;
+  font-size:13.8px!important;
+  font-weight:950!important;
+  line-height:1.2!important;
+  text-align:left!important;
+  cursor:pointer!important;
+}
+.rms-pro-shell .supplier-pricebook-name-action:hover,
+.rms-pro-shell .supplier-pricebook-name-action.is-open{
+  color:#2563eb!important;
+  text-decoration:underline!important;
+  text-underline-offset:3px!important;
+}
+.rms-pro-shell .supplier-products-name-action-menu{
+  position:static!important;
+  display:flex!important;
+  flex-wrap:wrap!important;
+  align-items:center!important;
+  gap:6px!important;
+  width:max-content!important;
+  max-width:100%!important;
+  margin-top:8px!important;
+  padding:8px!important;
+  border:1px solid rgba(203,213,225,.9)!important;
+  border-radius:14px!important;
+  background:#fff!important;
+  box-shadow:0 8px 20px rgba(15,23,42,.08)!important;
+}
+.rms-pro-shell .supplier-products-menu-shell,
+.rms-pro-shell .supplier-products-ellipsis{
+  display:none!important;
+}
+@media(max-width:1180px){
+  .rms-pro-shell .supplier-products-pricebook-table thead tr,
+  .rms-pro-shell .supplier-products-pricebook-table tbody tr{
+    grid-template-columns:minmax(0,35fr) minmax(0,23fr) minmax(0,30fr) minmax(104px,12fr)!important;
+  }
+  .rms-pro-shell .supplier-products-pricebook-table th,
+  .rms-pro-shell .supplier-products-pricebook-table td{
+    padding-left:6px!important;
+    padding-right:6px!important;
+  }
+}
+`
+    document.head.appendChild(style)
+  }
+}
+
+
+/* v372 supplier pricebook: no dynamic column, ellipsis inside supplier cell */
+if (typeof document !== 'undefined') {
+  const STYLE_ID = 'rms-v372-supplier-pricebook-supplier-cell-ellipsis'
+  if (!document.getElementById(STYLE_ID)) {
+    const style = document.createElement('style')
+    style.id = STYLE_ID
+    style.textContent = `
+.rms-pro-shell .supplier-products-pricebook-wrap,
+.rms-pro-shell .supplier-products-admin-list table.supplier-products-pricebook-table,
+.rms-pro-shell table.supplier-products-pricebook-table,
+.rms-pro-shell .supplier-products-pricebook-table thead,
+.rms-pro-shell .supplier-products-pricebook-table tbody{
+  width:100%!important;
+  max-width:100%!important;
+  min-width:0!important;
+  box-sizing:border-box!important;
+  overflow:visible!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table thead tr,
+.rms-pro-shell .supplier-products-pricebook-table tbody tr{
+  display:grid!important;
+  grid-template-columns:minmax(0,36fr) minmax(0,28fr) minmax(0,36fr)!important;
+  width:100%!important;
+  max-width:100%!important;
+  min-width:0!important;
+  column-gap:0!important;
+  align-items:center!important;
+  box-sizing:border-box!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table th,
+.rms-pro-shell .supplier-products-pricebook-table td{
+  display:block!important;
+  width:100%!important;
+  min-width:0!important;
+  max-width:100%!important;
+  box-sizing:border-box!important;
+  padding:10px 10px!important;
+  border:0!important;
+  overflow:visible!important;
+  white-space:normal!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table th:nth-child(4),
+.rms-pro-shell .supplier-products-pricebook-table td:nth-child(4),
+.rms-pro-shell .supplier-products-price-action-cell,
+.rms-pro-shell .supplier-products-trend-slot,
+.rms-pro-shell .supplier-product-price-trend,
+.rms-pro-shell .supplier-products-name-action-menu{
+  display:none!important;
+}
+.rms-pro-shell .supplier-pricebook-supplier-action-cell{
+  overflow:visible!important;
+  position:relative!important;
+  z-index:30!important;
+}
+.rms-pro-shell .supplier-pricebook-supplier-action-grid{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) 42px!important;
+  gap:8px!important;
+  align-items:center!important;
+  width:100%!important;
+  min-width:0!important;
+  max-width:100%!important;
+  overflow:visible!important;
+}
+.rms-pro-shell .supplier-pricebook-supplier-text{
+  min-width:0!important;
+  overflow:visible!important;
+}
+.rms-pro-shell .supplier-products-action-cell-wrap{
+  position:relative!important;
+  display:flex!important;
+  justify-content:flex-end!important;
+  align-items:center!important;
+  width:42px!important;
+  min-width:42px!important;
+  max-width:42px!important;
+  overflow:visible!important;
+  z-index:50!important;
+}
+.rms-pro-shell .supplier-products-ellipsis{
+  display:inline-flex!important;
+  visibility:visible!important;
+  opacity:1!important;
+  align-items:center!important;
+  justify-content:center!important;
+  width:34px!important;
+  min-width:34px!important;
+  max-width:34px!important;
+  height:34px!important;
+  padding:0!important;
+  margin:0!important;
+  border-radius:12px!important;
+  border:1px solid #dbe2ea!important;
+  background:#fff!important;
+  color:#334155!important;
+  font-size:24px!important;
+  font-weight:950!important;
+  line-height:1!important;
+  box-shadow:0 2px 10px rgba(15,23,42,.05)!important;
+  cursor:pointer!important;
+}
+.rms-pro-shell .supplier-products-ellipsis:hover,
+.rms-pro-shell .supplier-products-ellipsis.is-open{
+  border-color:#93c5fd!important;
+  color:#2563eb!important;
+  background:#eff6ff!important;
+}
+.rms-pro-shell .supplier-products-row-action-menu{
+  position:absolute!important;
+  top:40px!important;
+  right:0!important;
+  left:auto!important;
+  width:170px!important;
+  z-index:900!important;
+  display:grid!important;
+  visibility:visible!important;
+  opacity:1!important;
+}
+.rms-pro-shell .supplier-pricebook-main-text,
+.rms-pro-shell .supplier-pricebook-price-main,
+.rms-pro-shell .supplier-pricebook-supplier-main,
+.rms-pro-shell .supplier-pricebook-price-cell .hint,
+.rms-pro-shell .supplier-pricebook-supplier-cell .hint,
+.rms-pro-shell .supplier-pricebook-product-meta{
+  display:inline-block!important;
+  max-width:none!important;
+  overflow:visible!important;
+  text-overflow:clip!important;
+  white-space:nowrap!important;
+  word-break:normal!important;
+}
+@media(max-width:1180px){
+  .rms-pro-shell .supplier-products-pricebook-table thead tr,
+  .rms-pro-shell .supplier-products-pricebook-table tbody tr{
+    grid-template-columns:minmax(0,36fr) minmax(0,28fr) minmax(0,36fr)!important;
+  }
+  .rms-pro-shell .supplier-products-pricebook-table th,
+  .rms-pro-shell .supplier-products-pricebook-table td{
+    padding-left:7px!important;
+    padding-right:7px!important;
+  }
+}
+`
+    document.head.appendChild(style)
+  }
+}
+
+
+/* v373 fix: show row action menu above table rows */
+if (typeof document !== 'undefined') {
+  const STYLE_ID = 'rms-v373-supplier-pricebook-menu-visible'
+  if (!document.getElementById(STYLE_ID)) {
+    const style = document.createElement('style')
+    style.id = STYLE_ID
+    style.textContent = `
+.rms-pro-shell .supplier-products-pricebook-wrap,
+.rms-pro-shell .supplier-products-pricebook-table,
+.rms-pro-shell .supplier-products-pricebook-table thead,
+.rms-pro-shell .supplier-products-pricebook-table tbody,
+.rms-pro-shell .supplier-products-pricebook-table tr,
+.rms-pro-shell .supplier-products-pricebook-table td{
+  overflow:visible!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table tbody tr{
+  position:relative!important;
+  z-index:1!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table tbody tr.supplier-product-row-menu-open{
+  z-index:500!important;
+}
+.rms-pro-shell .supplier-pricebook-supplier-action-cell,
+.rms-pro-shell .supplier-products-action-cell-wrap{
+  position:relative!important;
+  overflow:visible!important;
+  z-index:600!important;
+}
+.rms-pro-shell .supplier-products-row-action-menu,
+.rms-pro-shell .supplier-products-action-menu.supplier-products-row-action-menu{
+  position:absolute!important;
+  top:calc(100% + 8px)!important;
+  right:0!important;
+  left:auto!important;
+  min-width:180px!important;
+  width:180px!important;
+  display:grid!important;
+  gap:0!important;
+  padding:8px!important;
+  border-radius:16px!important;
+  background:#fff!important;
+  border:1px solid #dbe2ea!important;
+  box-shadow:0 20px 50px rgba(15,23,42,.18)!important;
+  z-index:99999!important;
+  visibility:visible!important;
+  opacity:1!important;
+  transform:none!important;
+}
+.rms-pro-shell .supplier-products-row-action-menu button{
+  position:relative!important;
+  z-index:100000!important;
+  display:flex!important;
+  align-items:center!important;
+  width:100%!important;
+  padding:11px 12px!important;
+  border:0!important;
+  background:transparent!important;
+  text-align:left!important;
+  font-weight:800!important;
+  color:#0f172a!important;
+  border-radius:10px!important;
+}
+.rms-pro-shell .supplier-products-row-action-menu button:hover{
+  background:#f8fafc!important;
+}
+.rms-pro-shell .supplier-products-row-action-menu button.danger{
+  color:#dc2626!important;
+}
+`
+    document.head.appendChild(style)
+  }
+}
+
+
+/* v374 supplier pricebook: ellipsis opens inline action bar, no popup/z-index dependency */
+if (typeof document !== 'undefined') {
+  const STYLE_ID = 'rms-v374-supplier-pricebook-inline-ellipsis-actions'
+  if (!document.getElementById(STYLE_ID)) {
+    const style = document.createElement('style')
+    style.id = STYLE_ID
+    style.textContent = `
+.rms-pro-shell .supplier-pricebook-supplier-action-grid{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) 42px!important;
+  gap:8px!important;
+  align-items:center!important;
+  width:100%!important;
+  min-width:0!important;
+  max-width:100%!important;
+  overflow:visible!important;
+}
+.rms-pro-shell .supplier-products-inline-row-actions{
+  grid-column:1 / -1!important;
+  display:flex!important;
+  flex-wrap:wrap!important;
+  gap:6px!important;
+  align-items:center!important;
+  justify-content:flex-start!important;
+  margin-top:8px!important;
+  padding:8px!important;
+  border:1px solid rgba(203,213,225,.95)!important;
+  border-radius:14px!important;
+  background:#fff!important;
+  box-shadow:0 8px 22px rgba(15,23,42,.08)!important;
+  width:100%!important;
+  max-width:100%!important;
+  box-sizing:border-box!important;
+  position:static!important;
+  visibility:visible!important;
+  opacity:1!important;
+  z-index:auto!important;
+}
+.rms-pro-shell .supplier-products-inline-row-actions button{
+  height:30px!important;
+  padding:0 10px!important;
+  border:1px solid #e2e8f0!important;
+  border-radius:10px!important;
+  background:#f8fafc!important;
+  color:#0f172a!important;
+  font-size:11.5px!important;
+  font-weight:900!important;
+  line-height:1!important;
+  white-space:nowrap!important;
+  cursor:pointer!important;
+}
+.rms-pro-shell .supplier-products-inline-row-actions button:hover{
+  background:#eff6ff!important;
+  border-color:#bfdbfe!important;
+  color:#1d4ed8!important;
+}
+.rms-pro-shell .supplier-products-inline-row-actions button.danger{
+  background:#fff1f2!important;
+  border-color:#fecdd3!important;
+  color:#b91c1c!important;
+}
+.rms-pro-shell .supplier-products-inline-row-actions button.danger:hover{
+  background:#ffe4e6!important;
+  color:#991b1b!important;
+}
+.rms-pro-shell .supplier-products-inline-row-actions button:disabled{
+  opacity:.45!important;
+  cursor:not-allowed!important;
+}
+.rms-pro-shell .supplier-products-row-action-menu,
+.rms-pro-shell .supplier-products-action-menu.supplier-products-row-action-menu{
+  display:none!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table tbody tr.supplier-product-row-menu-open{
+  z-index:auto!important;
+}
+.rms-pro-shell .supplier-products-ellipsis{
+  display:inline-flex!important;
+  visibility:visible!important;
+  opacity:1!important;
+  align-items:center!important;
+  justify-content:center!important;
+  width:34px!important;
+  min-width:34px!important;
+  max-width:34px!important;
+  height:34px!important;
+  padding:0!important;
+  margin:0!important;
+  border-radius:12px!important;
+  border:1px solid #dbe2ea!important;
+  background:#fff!important;
+  color:#334155!important;
+  font-size:24px!important;
+  font-weight:950!important;
+  line-height:1!important;
+  box-shadow:0 2px 10px rgba(15,23,42,.05)!important;
+  cursor:pointer!important;
+}
+.rms-pro-shell .supplier-products-ellipsis:hover,
+.rms-pro-shell .supplier-products-ellipsis.is-open{
+  border-color:#93c5fd!important;
+  color:#2563eb!important;
+  background:#eff6ff!important;
+}
+`
+    document.head.appendChild(style)
+  }
+}
+
+
+/* v375 supplier pricebook: full-width action row instead of tall supplier-cell menu */
+if (typeof document !== 'undefined') {
+  const STYLE_ID = 'rms-v375-supplier-pricebook-full-width-action-row'
+  if (!document.getElementById(STYLE_ID)) {
+    const style = document.createElement('style')
+    style.id = STYLE_ID
+    style.textContent = `
+.rms-pro-shell .supplier-products-inline-row-actions{
+  display:none!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table tbody tr.supplier-products-full-action-row{
+  display:grid!important;
+  grid-template-columns:1fr!important;
+  min-height:auto!important;
+  background:#f8fbff!important;
+  border-bottom:1px solid #e5e7eb!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table tbody tr.supplier-products-full-action-row td{
+  display:block!important;
+  grid-column:1 / -1!important;
+  width:100%!important;
+  max-width:100%!important;
+  padding:8px 10px 12px!important;
+  box-sizing:border-box!important;
+}
+.rms-pro-shell .supplier-products-full-action-panel{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:flex-start!important;
+  gap:8px!important;
+  width:100%!important;
+  max-width:100%!important;
+  box-sizing:border-box!important;
+  padding:9px 10px!important;
+  border:1px solid rgba(203,213,225,.95)!important;
+  border-radius:15px!important;
+  background:#fff!important;
+  box-shadow:0 8px 22px rgba(15,23,42,.055)!important;
+  overflow:hidden!important;
+}
+.rms-pro-shell .supplier-products-full-action-panel span{
+  min-width:0!important;
+  max-width:42%!important;
+  color:#64748b!important;
+  font-size:12px!important;
+  font-weight:850!important;
+  white-space:nowrap!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+}
+.rms-pro-shell .supplier-products-full-action-panel span b{
+  color:#0f172a!important;
+  font-weight:950!important;
+}
+.rms-pro-shell .supplier-products-full-action-panel button{
+  height:32px!important;
+  padding:0 11px!important;
+  border:1px solid #e2e8f0!important;
+  border-radius:10px!important;
+  background:#f8fafc!important;
+  color:#0f172a!important;
+  font-size:11.5px!important;
+  font-weight:900!important;
+  line-height:1!important;
+  white-space:nowrap!important;
+  cursor:pointer!important;
+}
+.rms-pro-shell .supplier-products-full-action-panel button:hover{
+  background:#eff6ff!important;
+  border-color:#bfdbfe!important;
+  color:#1d4ed8!important;
+}
+.rms-pro-shell .supplier-products-full-action-panel button.danger{
+  margin-left:auto!important;
+  background:#fff1f2!important;
+  border-color:#fecdd3!important;
+  color:#b91c1c!important;
+}
+.rms-pro-shell .supplier-products-full-action-panel button.danger:hover{
+  background:#ffe4e6!important;
+  color:#991b1b!important;
+}
+.rms-pro-shell .supplier-products-full-action-panel button:disabled{
+  opacity:.45!important;
+  cursor:not-allowed!important;
+}
+.rms-pro-shell .supplier-pricebook-supplier-action-grid{
+  align-items:center!important;
+}
+@media(max-width:900px){
+  .rms-pro-shell .supplier-products-full-action-panel{
+    flex-wrap:wrap!important;
+  }
+  .rms-pro-shell .supplier-products-full-action-panel span{
+    flex-basis:100%!important;
+    max-width:100%!important;
+  }
+  .rms-pro-shell .supplier-products-full-action-panel button.danger{
+    margin-left:0!important;
+  }
+}
+`
+    document.head.appendChild(style)
+  }
+}
+
+
+/* v376 supplier pricebook: do not shorten product / supplier names */
+if (typeof document !== 'undefined') {
+  const STYLE_ID = 'rms-v376-supplier-pricebook-names-not-shortened'
+  if (!document.getElementById(STYLE_ID)) {
+    const style = document.createElement('style')
+    style.id = STYLE_ID
+    style.textContent = `
+.rms-pro-shell .supplier-products-pricebook-table thead tr,
+.rms-pro-shell .supplier-products-pricebook-table tbody tr{
+  grid-template-columns:minmax(0,34fr) minmax(0,26fr) minmax(0,40fr)!important;
+}
+.rms-pro-shell .supplier-pricebook-product-cell,
+.rms-pro-shell .supplier-pricebook-price-cell,
+.rms-pro-shell .supplier-pricebook-supplier-cell,
+.rms-pro-shell .supplier-pricebook-supplier-action-cell,
+.rms-pro-shell .supplier-pricebook-supplier-text{
+  overflow:visible!important;
+}
+.rms-pro-shell .supplier-pricebook-main-text,
+.rms-pro-shell .supplier-pricebook-price-main,
+.rms-pro-shell .supplier-pricebook-supplier-main,
+.rms-pro-shell .supplier-pricebook-product-meta,
+.rms-pro-shell .supplier-pricebook-price-cell .hint,
+.rms-pro-shell .supplier-pricebook-supplier-cell .hint{
+  display:inline-block!important;
+  width:auto!important;
+  max-width:none!important;
+  min-width:0!important;
+  overflow:visible!important;
+  text-overflow:clip!important;
+  white-space:nowrap!important;
+  word-break:normal!important;
+}
+.rms-pro-shell .supplier-pricebook-supplier-action-grid{
+  grid-template-columns:minmax(0,1fr) 42px!important;
+  gap:10px!important;
+}
+.rms-pro-shell .supplier-products-full-action-panel span{
+  max-width:none!important;
+  overflow:visible!important;
+  text-overflow:clip!important;
+}
+@media(max-width:1180px){
+  .rms-pro-shell .supplier-products-pricebook-table thead tr,
+  .rms-pro-shell .supplier-products-pricebook-table tbody tr{
+    grid-template-columns:minmax(0,34fr) minmax(0,25fr) minmax(0,41fr)!important;
+  }
+}
+`
+    document.head.appendChild(style)
+  }
+}
+
+
+/* v377 supplier pricebook: full supplier name before ellipsis button */
+if (typeof document !== 'undefined') {
+  const STYLE_ID = 'rms-v377-supplier-pricebook-supplier-full-name'
+  if (!document.getElementById(STYLE_ID)) {
+    const style = document.createElement('style')
+    style.id = STYLE_ID
+    style.textContent = `
+.rms-pro-shell .supplier-products-pricebook-table thead tr,
+.rms-pro-shell .supplier-products-pricebook-table tbody tr{
+  grid-template-columns:minmax(0,33fr) minmax(0,25fr) minmax(0,42fr)!important;
+}
+.rms-pro-shell .supplier-pricebook-supplier-action-cell{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  overflow:visible!important;
+}
+.rms-pro-shell .supplier-pricebook-supplier-action-grid{
+  display:inline-grid!important;
+  grid-template-columns:max-content 42px!important;
+  width:auto!important;
+  min-width:0!important;
+  max-width:none!important;
+  gap:10px!important;
+  align-items:center!important;
+  justify-content:center!important;
+  overflow:visible!important;
+}
+.rms-pro-shell .supplier-pricebook-supplier-text{
+  display:block!important;
+  width:max-content!important;
+  min-width:max-content!important;
+  max-width:none!important;
+  overflow:visible!important;
+}
+.rms-pro-shell .supplier-pricebook-supplier-main,
+.rms-pro-shell .supplier-pricebook-supplier-cell .hint,
+.rms-pro-shell .supplier-pricebook-supplier-text .hint{
+  display:inline-block!important;
+  width:auto!important;
+  min-width:max-content!important;
+  max-width:none!important;
+  overflow:visible!important;
+  text-overflow:clip!important;
+  white-space:nowrap!important;
+  word-break:normal!important;
+}
+.rms-pro-shell .supplier-products-action-cell-wrap{
+  width:42px!important;
+  min-width:42px!important;
+  max-width:42px!important;
+  display:flex!important;
+  justify-content:flex-end!important;
+  overflow:visible!important;
+}
+.rms-pro-shell .supplier-products-ellipsis{
+  flex:0 0 34px!important;
+}
+@media(max-width:1180px){
+  .rms-pro-shell .supplier-products-pricebook-table thead tr,
+  .rms-pro-shell .supplier-products-pricebook-table tbody tr{
+    grid-template-columns:minmax(0,32fr) minmax(0,25fr) minmax(0,43fr)!important;
+  }
+}
+`
+    document.head.appendChild(style)
+  }
+}
+
+
+/* v378 supplier pricebook: full supplier name + dots stay inside supplier column */
+if (typeof document !== 'undefined') {
+  const STYLE_ID = 'rms-v378-supplier-pricebook-supplier-name-and-dots-fit'
+  if (!document.getElementById(STYLE_ID)) {
+    const style = document.createElement('style')
+    style.id = STYLE_ID
+    style.textContent = `
+.rms-pro-shell .supplier-products-pricebook-table thead tr,
+.rms-pro-shell .supplier-products-pricebook-table tbody tr{
+  grid-template-columns:minmax(0,32fr) minmax(0,24fr) minmax(0,44fr)!important;
+}
+.rms-pro-shell .supplier-pricebook-supplier-action-cell{
+  display:block!important;
+  width:100%!important;
+  max-width:100%!important;
+  min-width:0!important;
+  overflow:visible!important;
+  box-sizing:border-box!important;
+}
+.rms-pro-shell .supplier-pricebook-supplier-action-grid{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) 42px!important;
+  width:100%!important;
+  max-width:100%!important;
+  min-width:0!important;
+  gap:10px!important;
+  align-items:center!important;
+  justify-content:stretch!important;
+  overflow:visible!important;
+  box-sizing:border-box!important;
+}
+.rms-pro-shell .supplier-pricebook-supplier-text{
+  display:block!important;
+  width:100%!important;
+  max-width:100%!important;
+  min-width:0!important;
+  overflow:visible!important;
+}
+.rms-pro-shell .supplier-pricebook-supplier-main,
+.rms-pro-shell .supplier-pricebook-supplier-cell .hint,
+.rms-pro-shell .supplier-pricebook-supplier-text .hint{
+  display:inline-block!important;
+  width:auto!important;
+  max-width:none!important;
+  min-width:0!important;
+  overflow:visible!important;
+  text-overflow:clip!important;
+  white-space:nowrap!important;
+  word-break:normal!important;
+}
+.rms-pro-shell .supplier-products-action-cell-wrap{
+  display:flex!important;
+  justify-content:flex-end!important;
+  align-items:center!important;
+  width:42px!important;
+  min-width:42px!important;
+  max-width:42px!important;
+  overflow:visible!important;
+  justify-self:end!important;
+}
+.rms-pro-shell .supplier-products-ellipsis{
+  display:inline-flex!important;
+  visibility:visible!important;
+  opacity:1!important;
+  flex:0 0 34px!important;
+  width:34px!important;
+  min-width:34px!important;
+  max-width:34px!important;
+  height:34px!important;
+  margin:0!important;
+  transform:none!important;
+}
+@media(max-width:1180px){
+  .rms-pro-shell .supplier-products-pricebook-table thead tr,
+  .rms-pro-shell .supplier-products-pricebook-table tbody tr{
+    grid-template-columns:minmax(0,31fr) minmax(0,23fr) minmax(0,46fr)!important;
+  }
+}
+`
+    document.head.appendChild(style)
+  }
+}
+
+
+/* v379 supplier pricebook: hard stop ellipsis for supplier name/date */
+if (typeof document !== 'undefined') {
+  const STYLE_ID = 'rms-v379-supplier-pricebook-stop-supplier-ellipsis'
+  if (!document.getElementById(STYLE_ID)) {
+    const style = document.createElement('style')
+    style.id = STYLE_ID
+    style.textContent = `
+.rms-pro-shell .supplier-products-pricebook-table thead tr,
+.rms-pro-shell .supplier-products-pricebook-table tbody tr{
+  grid-template-columns:minmax(0,31fr) minmax(0,24fr) minmax(0,45fr)!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table td.supplier-pricebook-supplier-cell,
+.rms-pro-shell .supplier-products-pricebook-table td.supplier-pricebook-supplier-action-cell{
+  overflow:visible!important;
+  width:100%!important;
+  max-width:100%!important;
+  min-width:0!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table td.supplier-pricebook-supplier-cell .supplier-pricebook-supplier-action-grid{
+  display:grid!important;
+  grid-template-columns:minmax(max-content,1fr) 42px!important;
+  gap:10px!important;
+  align-items:center!important;
+  justify-content:stretch!important;
+  width:100%!important;
+  max-width:100%!important;
+  min-width:0!important;
+  overflow:visible!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table td.supplier-pricebook-supplier-cell .supplier-pricebook-supplier-text{
+  display:block!important;
+  width:auto!important;
+  min-width:max-content!important;
+  max-width:none!important;
+  overflow:visible!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table td.supplier-pricebook-supplier-cell .supplier-pricebook-supplier-main,
+.rms-pro-shell .supplier-products-pricebook-table td.supplier-pricebook-supplier-cell .supplier-pricebook-supplier-text span.supplier-pricebook-supplier-main{
+  display:inline!important;
+  width:auto!important;
+  min-width:0!important;
+  max-width:none!important;
+  overflow:visible!important;
+  text-overflow:clip!important;
+  white-space:nowrap!important;
+  word-break:normal!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table td.supplier-pricebook-supplier-cell .supplier-pricebook-supplier-text .hint,
+.rms-pro-shell .supplier-products-pricebook-table td.supplier-pricebook-supplier-cell span.hint{
+  display:inline-block!important;
+  width:auto!important;
+  min-width:0!important;
+  max-width:none!important;
+  overflow:visible!important;
+  text-overflow:clip!important;
+  white-space:nowrap!important;
+  word-break:normal!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table td.supplier-pricebook-supplier-cell .supplier-products-action-cell-wrap{
+  justify-self:end!important;
+  width:42px!important;
+  min-width:42px!important;
+  max-width:42px!important;
+  overflow:visible!important;
+}
+.rms-pro-shell .supplier-products-pricebook-table td.supplier-pricebook-supplier-cell .supplier-products-ellipsis{
+  display:inline-flex!important;
+  width:34px!important;
+  min-width:34px!important;
+  max-width:34px!important;
+  height:34px!important;
+  flex:0 0 34px!important;
+  overflow:visible!important;
+}
+@media(max-width:1180px){
+  .rms-pro-shell .supplier-products-pricebook-table thead tr,
+  .rms-pro-shell .supplier-products-pricebook-table tbody tr{
+    grid-template-columns:minmax(0,30fr) minmax(0,23fr) minmax(0,47fr)!important;
+  }
+}
+`
+    document.head.appendChild(style)
+  }
+}
+
+
+/* v380 supplier pricebook: clean table, separate fixed actions column */
+if (typeof document !== 'undefined') {
+  const STYLE_ID = 'rms-v380-supplier-pricebook-clean-actions-column'
+  if (!document.getElementById(STYLE_ID)) {
+    const style = document.createElement('style')
+    style.id = STYLE_ID
+    style.textContent = `
+.rms-pro-shell .supplier-products-pricebook-wrap{
+  width:100%!important;
+  max-width:100%!important;
+  min-width:0!important;
+  overflow-x:hidden!important;
+  overflow-y:visible!important;
+  border-radius:18px!important;
+}
+.rms-pro-shell table.supplier-products-pricebook-clean-table,
+.rms-pro-shell .supplier-products-pricebook-clean-table thead,
+.rms-pro-shell .supplier-products-pricebook-clean-table tbody{
+  display:block!important;
+  width:100%!important;
+  max-width:100%!important;
+  min-width:0!important;
+  overflow:visible!important;
+  table-layout:auto!important;
+  border-collapse:separate!important;
+  border-spacing:0!important;
+}
+.rms-pro-shell .supplier-products-pricebook-clean-table thead tr,
+.rms-pro-shell .supplier-products-pricebook-clean-table tbody tr{
+  display:grid!important;
+  grid-template-columns:minmax(0,35fr) minmax(0,28fr) minmax(0,31fr) 56px!important;
+  align-items:center!important;
+  width:100%!important;
+  max-width:100%!important;
+  min-width:0!important;
+  column-gap:0!important;
+  box-sizing:border-box!important;
+  border-bottom:1px solid #e5e7eb!important;
+}
+.rms-pro-shell .supplier-products-pricebook-clean-table th,
+.rms-pro-shell .supplier-products-pricebook-clean-table td{
+  display:block!important;
+  width:100%!important;
+  max-width:100%!important;
+  min-width:0!important;
+  box-sizing:border-box!important;
+  padding:11px 10px!important;
+  border:0!important;
+  overflow:visible!important;
+  vertical-align:middle!important;
+}
+.rms-pro-shell .supplier-products-pricebook-clean-table th:nth-child(4),
+.rms-pro-shell .supplier-products-pricebook-clean-table td:nth-child(4){
+  width:56px!important;
+  min-width:56px!important;
+  max-width:56px!important;
+  padding-left:4px!important;
+  padding-right:8px!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:flex-end!important;
+  overflow:visible!important;
+}
+.rms-pro-shell .supplier-pricebook-main-text,
+.rms-pro-shell .supplier-pricebook-price-main,
+.rms-pro-shell .supplier-pricebook-supplier-main,
+.rms-pro-shell .supplier-pricebook-product-meta,
+.rms-pro-shell .supplier-pricebook-price-cell .hint,
+.rms-pro-shell .supplier-pricebook-supplier-cell .hint{
+  display:inline-block!important;
+  width:auto!important;
+  max-width:100%!important;
+  min-width:0!important;
+  overflow:visible!important;
+  text-overflow:clip!important;
+  white-space:nowrap!important;
+  word-break:normal!important;
+  line-height:1.25!important;
+}
+.rms-pro-shell .supplier-pricebook-product-cell,
+.rms-pro-shell .supplier-pricebook-price-cell,
+.rms-pro-shell .supplier-pricebook-supplier-cell{
+  overflow:visible!important;
+}
+.rms-pro-shell .supplier-products-clean-action-cell{
+  position:relative!important;
+  overflow:visible!important;
+  z-index:30!important;
+}
+.rms-pro-shell .supplier-products-clean-ellipsis{
+  display:inline-flex!important;
+  visibility:visible!important;
+  opacity:1!important;
+  align-items:center!important;
+  justify-content:center!important;
+  width:34px!important;
+  min-width:34px!important;
+  max-width:34px!important;
+  height:34px!important;
+  padding:0!important;
+  margin:0!important;
+  border-radius:12px!important;
+  border:1px solid #dbe2ea!important;
+  background:#fff!important;
+  color:#334155!important;
+  font-size:24px!important;
+  font-weight:950!important;
+  line-height:1!important;
+  box-shadow:0 2px 10px rgba(15,23,42,.05)!important;
+  cursor:pointer!important;
+}
+.rms-pro-shell .supplier-products-clean-ellipsis:hover,
+.rms-pro-shell .supplier-products-clean-ellipsis.is-open{
+  border-color:#93c5fd!important;
+  color:#2563eb!important;
+  background:#eff6ff!important;
+}
+.rms-pro-shell .supplier-products-pricebook-clean-table tbody tr.supplier-products-full-action-row{
+  display:grid!important;
+  grid-template-columns:1fr!important;
+  min-height:auto!important;
+  background:#f8fbff!important;
+}
+.rms-pro-shell .supplier-products-pricebook-clean-table tbody tr.supplier-products-full-action-row td{
+  display:block!important;
+  grid-column:1 / -1!important;
+  width:100%!important;
+  max-width:100%!important;
+  padding:8px 10px 12px!important;
+}
+.rms-pro-shell .supplier-products-full-action-panel{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:flex-start!important;
+  gap:8px!important;
+  width:100%!important;
+  max-width:100%!important;
+  box-sizing:border-box!important;
+  padding:9px 10px!important;
+  border:1px solid rgba(203,213,225,.95)!important;
+  border-radius:15px!important;
+  background:#fff!important;
+  box-shadow:0 8px 22px rgba(15,23,42,.055)!important;
+  overflow:hidden!important;
+}
+.rms-pro-shell .supplier-products-full-action-panel span{
+  min-width:0!important;
+  max-width:42%!important;
+  color:#64748b!important;
+  font-size:12px!important;
+  font-weight:850!important;
+  white-space:nowrap!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+}
+.rms-pro-shell .supplier-products-full-action-panel span b{
+  color:#0f172a!important;
+  font-weight:950!important;
+}
+.rms-pro-shell .supplier-products-full-action-panel button{
+  height:32px!important;
+  padding:0 11px!important;
+  border:1px solid #e2e8f0!important;
+  border-radius:10px!important;
+  background:#f8fafc!important;
+  color:#0f172a!important;
+  font-size:11.5px!important;
+  font-weight:900!important;
+  line-height:1!important;
+  white-space:nowrap!important;
+  cursor:pointer!important;
+}
+.rms-pro-shell .supplier-products-full-action-panel button:hover{
+  background:#eff6ff!important;
+  border-color:#bfdbfe!important;
+  color:#1d4ed8!important;
+}
+.rms-pro-shell .supplier-products-full-action-panel button.danger{
+  margin-left:auto!important;
+  background:#fff1f2!important;
+  border-color:#fecdd3!important;
+  color:#b91c1c!important;
+}
+.rms-pro-shell .supplier-products-full-action-panel button.danger:hover{
+  background:#ffe4e6!important;
+  color:#991b1b!important;
+}
+.rms-pro-shell .supplier-products-action-menu,
+.rms-pro-shell .supplier-products-row-action-menu,
+.rms-pro-shell .supplier-products-inline-row-actions,
+.rms-pro-shell .supplier-products-name-action-menu,
+.rms-pro-shell .supplier-products-trend-slot,
+.rms-pro-shell .supplier-product-price-trend{
+  display:none!important;
+}
+@media(max-width:1180px){
+  .rms-pro-shell .supplier-products-pricebook-clean-table thead tr,
+  .rms-pro-shell .supplier-products-pricebook-clean-table tbody tr{
+    grid-template-columns:minmax(0,34fr) minmax(0,27fr) minmax(0,31fr) 54px!important;
+  }
+  .rms-pro-shell .supplier-products-pricebook-clean-table th,
+  .rms-pro-shell .supplier-products-pricebook-clean-table td{
+    padding-left:8px!important;
+    padding-right:8px!important;
+  }
+  .rms-pro-shell .supplier-products-pricebook-clean-table th:nth-child(4),
+  .rms-pro-shell .supplier-products-pricebook-clean-table td:nth-child(4){
+    width:54px!important;
+    min-width:54px!important;
+    max-width:54px!important;
+    padding-right:7px!important;
+  }
+}
+@media(max-width:900px){
+  .rms-pro-shell .supplier-products-full-action-panel{
+    flex-wrap:wrap!important;
+  }
+  .rms-pro-shell .supplier-products-full-action-panel span{
+    flex-basis:100%!important;
+    max-width:100%!important;
+  }
+  .rms-pro-shell .supplier-products-full-action-panel button.danger{
+    margin-left:0!important;
+  }
+}
+`
+    document.head.appendChild(style)
+  }
+}
+
+
+/* v382 supplier pricebook final: isolated grid, stable dots */
+if (typeof document !== 'undefined') {
+  const STYLE_ID = 'rms-v382-supplier-pricebook-grid-final-dots'
+  if (!document.getElementById(STYLE_ID)) {
+    const style = document.createElement('style')
+    style.id = STYLE_ID
+    style.textContent = `
+.rms-pro-shell .supplier-pricebook-final-grid{
+  width:100%!important;
+  max-width:100%!important;
+  min-width:0!important;
+  overflow:visible!important;
+  border:1px solid #e2e8f0!important;
+  border-radius:18px!important;
+  background:#fff!important;
+}
+.rms-pro-shell .supplier-pricebook-final-head,
+.rms-pro-shell .supplier-pricebook-final-row{
+  display:grid!important;
+  grid-template-columns:minmax(0,36fr) minmax(0,29fr) minmax(0,35fr)!important;
+  align-items:center!important;
+  width:100%!important;
+  max-width:100%!important;
+  min-width:0!important;
+  box-sizing:border-box!important;
+}
+.rms-pro-shell .supplier-pricebook-final-head{
+  min-height:44px!important;
+  border-bottom:1px solid #e2e8f0!important;
+  background:#f8fafc!important;
+  color:#64748b!important;
+  font-size:12px!important;
+  font-weight:950!important;
+  text-transform:uppercase!important;
+  letter-spacing:.03em!important;
+}
+.rms-pro-shell .supplier-pricebook-final-head > div{
+  padding:10px 12px!important;
+  min-width:0!important;
+  box-sizing:border-box!important;
+}
+.rms-pro-shell .supplier-pricebook-final-row{
+  min-height:86px!important;
+  border-bottom:1px solid #e5e7eb!important;
+  background:#fff!important;
+}
+.rms-pro-shell .supplier-pricebook-final-row:nth-child(even){
+  background:#fbfdff!important;
+}
+.rms-pro-shell .supplier-pricebook-final-product,
+.rms-pro-shell .supplier-pricebook-final-price,
+.rms-pro-shell .supplier-pricebook-final-supplier{
+  min-width:0!important;
+  max-width:100%!important;
+  padding:12px!important;
+  box-sizing:border-box!important;
+}
+.rms-pro-shell .supplier-pricebook-final-product,
+.rms-pro-shell .supplier-pricebook-final-price{
+  overflow:visible!important;
+}
+.rms-pro-shell .supplier-pricebook-final-product strong,
+.rms-pro-shell .supplier-pricebook-final-price strong,
+.rms-pro-shell .supplier-pricebook-final-supplier-text strong{
+  display:block!important;
+  width:max-content!important;
+  max-width:none!important;
+  overflow:visible!important;
+  text-overflow:clip!important;
+  white-space:nowrap!important;
+  color:#0f172a!important;
+  font-size:15px!important;
+  line-height:1.22!important;
+  font-weight:950!important;
+}
+.rms-pro-shell .supplier-pricebook-final-product span,
+.rms-pro-shell .supplier-pricebook-final-price span,
+.rms-pro-shell .supplier-pricebook-final-supplier-text span{
+  display:block!important;
+  width:max-content!important;
+  max-width:none!important;
+  margin-top:5px!important;
+  overflow:visible!important;
+  text-overflow:clip!important;
+  white-space:nowrap!important;
+  color:#64748b!important;
+  font-size:12.5px!important;
+  line-height:1.2!important;
+  font-weight:800!important;
+}
+.rms-pro-shell .supplier-pricebook-final-product > span{
+  display:inline-flex!important;
+  width:auto!important;
+  padding:4px 9px!important;
+  border-radius:999px!important;
+  background:#f1f5f9!important;
+}
+.rms-pro-shell .supplier-pricebook-final-supplier{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) 38px!important;
+  align-items:center!important;
+  gap:10px!important;
+  overflow:visible!important;
+}
+.rms-pro-shell .supplier-pricebook-final-supplier-text{
+  min-width:0!important;
+  overflow:visible!important;
+}
+.rms-pro-shell .supplier-pricebook-final-dots{
+  display:inline-flex!important;
+  visibility:visible!important;
+  opacity:1!important;
+  justify-self:end!important;
+  align-items:center!important;
+  justify-content:center!important;
+  width:34px!important;
+  min-width:34px!important;
+  max-width:34px!important;
+  height:34px!important;
+  padding:0!important;
+  margin:0!important;
+  border-radius:12px!important;
+  border:1px solid #dbe2ea!important;
+  background:#fff!important;
+  color:#334155!important;
+  font-size:24px!important;
+  font-weight:950!important;
+  line-height:1!important;
+  box-shadow:0 2px 10px rgba(15,23,42,.05)!important;
+  cursor:pointer!important;
+}
+.rms-pro-shell .supplier-pricebook-final-dots:hover,
+.rms-pro-shell .supplier-pricebook-final-dots.is-open{
+  border-color:#93c5fd!important;
+  color:#2563eb!important;
+  background:#eff6ff!important;
+}
+.rms-pro-shell .supplier-pricebook-final-action-row{
+  display:block!important;
+  width:100%!important;
+  max-width:100%!important;
+  padding:8px 10px 12px!important;
+  border-bottom:1px solid #e5e7eb!important;
+  background:#f8fbff!important;
+  box-sizing:border-box!important;
+}
+.rms-pro-shell .supplier-pricebook-final-action-panel{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:flex-start!important;
+  gap:8px!important;
+  width:100%!important;
+  max-width:100%!important;
+  box-sizing:border-box!important;
+  padding:9px 10px!important;
+  border:1px solid rgba(203,213,225,.95)!important;
+  border-radius:15px!important;
+  background:#fff!important;
+  box-shadow:0 8px 22px rgba(15,23,42,.055)!important;
+  overflow:hidden!important;
+}
+.rms-pro-shell .supplier-pricebook-final-action-panel span{
+  min-width:0!important;
+  max-width:42%!important;
+  color:#64748b!important;
+  font-size:12px!important;
+  font-weight:850!important;
+  white-space:nowrap!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+}
+.rms-pro-shell .supplier-pricebook-final-action-panel span b{
+  color:#0f172a!important;
+  font-weight:950!important;
+}
+.rms-pro-shell .supplier-pricebook-final-action-panel button{
+  height:32px!important;
+  padding:0 11px!important;
+  border:1px solid #e2e8f0!important;
+  border-radius:10px!important;
+  background:#f8fafc!important;
+  color:#0f172a!important;
+  font-size:11.5px!important;
+  font-weight:900!important;
+  line-height:1!important;
+  white-space:nowrap!important;
+  cursor:pointer!important;
+}
+.rms-pro-shell .supplier-pricebook-final-action-panel button:hover{
+  background:#eff6ff!important;
+  border-color:#bfdbfe!important;
+  color:#1d4ed8!important;
+}
+.rms-pro-shell .supplier-pricebook-final-action-panel button.danger{
+  margin-left:auto!important;
+  background:#fff1f2!important;
+  border-color:#fecdd3!important;
+  color:#b91c1c!important;
+}
+.rms-pro-shell .supplier-pricebook-final-action-panel button.danger:hover{
+  background:#ffe4e6!important;
+  color:#991b1b!important;
+}
+.rms-pro-shell .supplier-pricebook-final-edit-actions{
+  display:flex!important;
+  gap:6px!important;
+  justify-content:flex-end!important;
+}
+.rms-pro-shell .supplier-pricebook-final-empty{
+  padding:18px!important;
+  color:#64748b!important;
+  font-weight:800!important;
+}
+@media(max-width:1180px){
+  .rms-pro-shell .supplier-pricebook-final-head,
+  .rms-pro-shell .supplier-pricebook-final-row{
+    grid-template-columns:minmax(0,35fr) minmax(0,28fr) minmax(0,37fr)!important;
+  }
+  .rms-pro-shell .supplier-pricebook-final-product,
+  .rms-pro-shell .supplier-pricebook-final-price,
+  .rms-pro-shell .supplier-pricebook-final-supplier{
+    padding-left:10px!important;
+    padding-right:10px!important;
+  }
+}
+@media(max-width:900px){
+  .rms-pro-shell .supplier-pricebook-final-action-panel{
+    flex-wrap:wrap!important;
+  }
+  .rms-pro-shell .supplier-pricebook-final-action-panel span{
+    flex-basis:100%!important;
+    max-width:100%!important;
+  }
+  .rms-pro-shell .supplier-pricebook-final-action-panel button.danger{
+    margin-left:0!important;
+  }
+}
+`
+    document.head.appendChild(style)
+  }
+}
+
+
+/* v383 supplier pricebook: lighter text, keep bold only for product name */
+if (typeof document !== 'undefined') {
+  const STYLE_ID = 'rms-v383-supplier-pricebook-font-and-statistics-label'
+  if (!document.getElementById(STYLE_ID)) {
+    const style = document.createElement('style')
+    style.id = STYLE_ID
+    style.textContent = `
+.rms-pro-shell .supplier-pricebook-final-product strong{
+  font-weight:950!important;
+}
+.rms-pro-shell .supplier-pricebook-final-price strong,
+.rms-pro-shell .supplier-pricebook-final-supplier-text strong{
+  font-weight:760!important;
+}
+.rms-pro-shell .supplier-pricebook-final-price span,
+.rms-pro-shell .supplier-pricebook-final-supplier-text span{
+  font-weight:650!important;
+}
+.rms-pro-shell .supplier-pricebook-final-action-panel span{
+  font-weight:650!important;
+}
+.rms-pro-shell .supplier-pricebook-final-action-panel span b{
+  font-weight:850!important;
+}
+`
+    document.head.appendChild(style)
+  }
+}
+
+
+/* v385 Reports Products: purchase price dynamics */
+if (typeof document !== 'undefined') {
+  const STYLE_ID = 'rms-v385-reports-products-price-dynamics'
+  if (!document.getElementById(STYLE_ID)) {
+    const style = document.createElement('style')
+    style.id = STYLE_ID
+    style.textContent = `
+.rms-pro-shell .reports-v385-price-dynamics-card{
+  margin-top:14px!important;
+  padding:14px!important;
+  border:1px solid #dbeafe!important;
+  border-radius:18px!important;
+  background:linear-gradient(180deg,#f8fbff,#ffffff)!important;
+  box-shadow:0 10px 26px rgba(15,23,42,.045)!important;
+}
+.rms-pro-shell .reports-v385-price-dynamics-head{
+  align-items:flex-start!important;
+  gap:12px!important;
+}
+.rms-pro-shell .reports-v385-price-dynamics-head h4{
+  margin:0 0 4px!important;
+  font-size:17px!important;
+  font-weight:900!important;
+  color:#0f172a!important;
+}
+.rms-pro-shell .reports-v385-price-dynamics-head p{
+  max-width:880px!important;
+  margin:0!important;
+  color:#64748b!important;
+  font-size:13px!important;
+  font-weight:650!important;
+  line-height:1.35!important;
+}
+.rms-pro-shell .reports-v385-mode-switch{
+  display:flex!important;
+  gap:8px!important;
+  flex-wrap:wrap!important;
+  justify-content:flex-end!important;
+}
+.rms-pro-shell .reports-v385-price-dynamics-note{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:space-between!important;
+  gap:10px!important;
+  margin:10px 0 12px!important;
+  padding:9px 11px!important;
+  border:1px solid #e2e8f0!important;
+  border-radius:13px!important;
+  background:#fff!important;
+  color:#64748b!important;
+  font-size:12.5px!important;
+  font-weight:750!important;
+}
+.rms-pro-shell .reports-v385-price-dynamics-note b{
+  color:#0f172a!important;
+  font-weight:900!important;
+}
+.rms-pro-shell .reports-v385-price-dynamics-note .bad{
+  color:#b91c1c!important;
+}
+.rms-pro-shell .reports-v385-price-dynamics-kpis{
+  display:grid!important;
+  grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  gap:10px!important;
+  margin-bottom:12px!important;
+}
+.rms-pro-shell .reports-v385-price-dynamics-kpis button{
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:flex-start!important;
+  justify-content:center!important;
+  min-height:78px!important;
+  padding:12px!important;
+  border:1px solid #e2e8f0!important;
+  border-radius:15px!important;
+  background:#fff!important;
+  text-align:left!important;
+  cursor:pointer!important;
+  box-shadow:0 6px 18px rgba(15,23,42,.035)!important;
+}
+.rms-pro-shell .reports-v385-price-dynamics-kpis button:disabled{
+  cursor:not-allowed!important;
+  opacity:.55!important;
+}
+.rms-pro-shell .reports-v385-price-dynamics-kpis button.active{
+  border-color:#93c5fd!important;
+  box-shadow:0 0 0 3px rgba(59,130,246,.12)!important;
+}
+.rms-pro-shell .reports-v385-price-dynamics-kpis button span{
+  color:#64748b!important;
+  font-size:12px!important;
+  font-weight:850!important;
+}
+.rms-pro-shell .reports-v385-price-dynamics-kpis button b{
+  margin-top:3px!important;
+  color:#0f172a!important;
+  font-size:24px!important;
+  font-weight:950!important;
+}
+.rms-pro-shell .reports-v385-price-dynamics-kpis button small{
+  margin-top:3px!important;
+  color:#64748b!important;
+  font-size:11.5px!important;
+  font-weight:750!important;
+}
+.rms-pro-shell .reports-v385-price-dynamics-kpis button.bad b,
+.rms-pro-shell .reports-v385-price-dynamics-table .bad,
+.rms-pro-shell .reports-v385-price-dynamics-table .bad b{
+  color:#dc2626!important;
+}
+.rms-pro-shell .reports-v385-price-dynamics-kpis button.good b,
+.rms-pro-shell .reports-v385-price-dynamics-table .good,
+.rms-pro-shell .reports-v385-price-dynamics-table .good b{
+  color:#059669!important;
+}
+.rms-pro-shell .reports-v385-price-dynamics-table-wrap{
+  max-height:520px!important;
+  overflow:auto!important;
+  border-radius:15px!important;
+  border:1px solid #e2e8f0!important;
+  background:#fff!important;
+}
+.rms-pro-shell .reports-v385-price-dynamics-table{
+  width:100%!important;
+  border-collapse:separate!important;
+  border-spacing:0!important;
+  min-width:980px!important;
+}
+.rms-pro-shell .reports-v385-price-dynamics-table th{
+  position:sticky!important;
+  top:0!important;
+  z-index:2!important;
+  background:#f8fafc!important;
+  color:#64748b!important;
+  font-size:11px!important;
+  font-weight:950!important;
+  text-transform:uppercase!important;
+  letter-spacing:.03em!important;
+  padding:10px!important;
+  border-bottom:1px solid #e2e8f0!important;
+  text-align:left!important;
+}
+.rms-pro-shell .reports-v385-price-dynamics-table td{
+  padding:10px!important;
+  border-bottom:1px solid #edf2f7!important;
+  color:#0f172a!important;
+  font-size:12.5px!important;
+  font-weight:700!important;
+  vertical-align:middle!important;
+}
+.rms-pro-shell .reports-v385-price-dynamics-table td b{
+  font-weight:900!important;
+}
+.rms-pro-shell .reports-v385-price-dynamics-table .hint{
+  color:#64748b!important;
+  font-size:11.5px!important;
+  font-weight:650!important;
+}
+@media(max-width:1000px){
+  .rms-pro-shell .reports-v385-price-dynamics-head{
+    flex-direction:column!important;
+  }
+  .rms-pro-shell .reports-v385-mode-switch{
+    justify-content:flex-start!important;
+  }
+  .rms-pro-shell .reports-v385-price-dynamics-kpis{
+    grid-template-columns:1fr!important;
+  }
+  .rms-pro-shell .reports-v385-price-dynamics-note{
+    flex-direction:column!important;
+    align-items:flex-start!important;
+  }
+}
+`
+    document.head.appendChild(style)
+  }
+}
+
+
+/* v386 reports open fix: selectedProductPeriodLabel declared before price dynamics label */
+
+
+/* v387 reports open final fix: selectedProductPeriodLabel is declared before productPriceDynamicsModeLabel */
+
+
+/* v388 reports products: product placeholder is connected to real ReportsProductsView; supports product tab aliases */
