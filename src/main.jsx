@@ -29206,8 +29206,18 @@ function Suppliers({ t, isAdmin = false }) {
                             </div>}
                           </div>
 
-                          <div className="form-grid compact invoice-summary-grid">
+                          <div className="form-grid compact invoice-summary-grid supplier-invoice-summary-edit-grid">
                             <label><span>Дата</span>{editingPurchaseId === p.id && !p.deleted_at ? <DateInput defaultValue={formatDateDMY(p.purchase_date)} onBlur={e => updatePurchase(p.id, { purchase_date: e.target.value })} /> : <strong>{formatDateDMY(p.purchase_date)}</strong>}</label>
+                            <label><span>Поставщик</span>{editingPurchaseId === p.id && !p.deleted_at ? (() => {
+                              const currentSupplierOption = p.supplier_id && !activeSuppliers.some(s => s.id === p.supplier_id)
+                                ? [{ id: p.supplier_id, name: p.suppliers?.name || 'Текущий поставщик' }]
+                                : []
+                              const supplierOptions = [...currentSupplierOption, ...activeSuppliers]
+                              return <select defaultValue={p.supplier_id || ''} onChange={e => updatePurchase(p.id, { supplier_id: e.target.value || null })}>
+                                <option value="">—</option>
+                                {supplierOptions.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                              </select>
+                            })() : <strong>{p.suppliers?.name || '—'}</strong>}</label>
                             <label><span>Приходная накладная</span>{editingPurchaseId === p.id && !p.deleted_at ? <input defaultValue={p.invoice_number || ''} onBlur={e => updatePurchase(p.id, { invoice_number: e.target.value.trim() || null })} /> : <strong>{p.invoice_number || '—'}</strong>}</label>
                             <label><span>Сумма накладной</span>{editingPurchaseId === p.id && !p.deleted_at ? <input inputMode="decimal" defaultValue={fmt(p.total_amount)} onBlur={e => updatePurchase(p.id, { total_amount: e.target.value })} /> : <strong>{fmt(p.total_amount)} AZN</strong>}</label>
                             <label><span>Филиал</span>{editingPurchaseId === p.id && !p.deleted_at ? <select defaultValue={p.branch_id || ''} onBlur={e => updatePurchase(p.id, { branch_id: e.target.value || null })}><option value="">—</option>{branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select> : <strong>{p.branches?.name || '—'}</strong>}</label>
@@ -45025,3 +45035,29 @@ if (typeof document !== 'undefined') {
   setTimeout(applyRmsBrowserBranding, 500)
   setTimeout(applyRmsBrowserBranding, 1500)
 }
+
+
+/* v393 supplier journal: supplier can be edited in invoice view */
+if (typeof document !== 'undefined') {
+  const STYLE_ID = 'rms-v393-supplier-journal-edit-supplier'
+  if (!document.getElementById(STYLE_ID)) {
+    const style = document.createElement('style')
+    style.id = STYLE_ID
+    style.textContent = `
+.rms-pro-shell .supplier-invoice-summary-edit-grid{
+  grid-template-columns:repeat(auto-fit,minmax(190px,1fr))!important;
+}
+.rms-pro-shell .supplier-invoice-summary-edit-grid label select{
+  width:100%!important;
+  min-width:0!important;
+}
+.rms-pro-shell .supplier-invoice-summary-edit-grid label span{
+  white-space:nowrap!important;
+}
+`
+    document.head.appendChild(style)
+  }
+}
+
+
+/* v393 supplier journal: invoice supplier is editable from the invoice details card */
