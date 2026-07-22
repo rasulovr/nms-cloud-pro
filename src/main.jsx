@@ -44770,3 +44770,6 @@ if (typeof document !== 'undefined') {
     document.head.appendChild(style)
   }
 }
+
+
+/* v386 reports open fix: selectedProductPeriodLabel declared before price dynamics label */
