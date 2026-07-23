@@ -33385,7 +33385,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
     setRmsProductsReportProgress({
       active: true,
       progress: 4,
-      title: 'Загрузка отчёта по товарам',
+      title: 'Отчёт по товарам',
       detail: 'Подготовка периода, филиала и фильтров…',
       step: 'Запуск отчёта',
       status: 'running'
@@ -45735,3 +45735,206 @@ if (typeof document !== 'undefined') {
 
 
 /* v400: Reports Products uses compact inline loader; removes full-screen BackupProgressOverlay and reuses all-date purchase load */
+
+
+/* v403 global RMS progress overlay: backup-style loader works outside Backup tab */
+if (typeof document !== 'undefined') {
+  const STYLE_ID = 'rms-v403-global-backup-style-progress-overlay'
+  if (!document.getElementById(STYLE_ID)) {
+    const style = document.createElement('style')
+    style.id = STYLE_ID
+    style.textContent = `
+.backup-progress-overlay,
+.rms-pro-shell .backup-progress-overlay{
+  position:fixed!important;
+  inset:0!important;
+  z-index:12000!important;
+  display:grid!important;
+  place-items:center!important;
+  padding:20px!important;
+  background:rgba(15,23,42,.52)!important;
+  backdrop-filter:blur(7px)!important;
+  animation:backupOverlayIn .18s ease-out!important;
+}
+.backup-progress-card,
+.rms-pro-shell .backup-progress-card{
+  width:min(620px,calc(100vw - 32px))!important;
+  display:grid!important;
+  grid-template-columns:168px minmax(0,1fr)!important;
+  align-items:center!important;
+  gap:24px!important;
+  padding:28px!important;
+  border:1px solid rgba(148,163,184,.28)!important;
+  border-radius:24px!important;
+  background:rgba(255,255,255,.98)!important;
+  box-shadow:0 28px 80px rgba(15,23,42,.28)!important;
+  animation:backupCardIn .24s cubic-bezier(.2,.8,.2,1)!important;
+}
+.backup-progress-ring-wrap,
+.rms-pro-shell .backup-progress-ring-wrap{
+  position:relative!important;
+  width:150px!important;
+  height:150px!important;
+  display:grid!important;
+  place-items:center!important;
+}
+.backup-progress-ring,
+.rms-pro-shell .backup-progress-ring{
+  width:150px!important;
+  height:150px!important;
+  transform:rotate(-90deg)!important;
+  overflow:visible!important;
+}
+.backup-progress-ring circle,
+.rms-pro-shell .backup-progress-ring circle{
+  fill:none!important;
+  stroke-width:10!important;
+}
+.backup-progress-ring-bg,
+.rms-pro-shell .backup-progress-ring-bg{
+  stroke:#e2e8f0!important;
+}
+.backup-progress-ring-value,
+.rms-pro-shell .backup-progress-ring-value{
+  stroke:#2563eb!important;
+  stroke-linecap:round!important;
+  transition:stroke-dashoffset .35s ease, stroke .25s ease!important;
+  filter:drop-shadow(0 0 5px rgba(37,99,235,.28))!important;
+}
+.backup-progress-card.is-success .backup-progress-ring-value,
+.rms-pro-shell .backup-progress-card.is-success .backup-progress-ring-value{
+  stroke:#16a34a!important;
+}
+.backup-progress-card.is-error .backup-progress-ring-value,
+.rms-pro-shell .backup-progress-card.is-error .backup-progress-ring-value{
+  stroke:#dc2626!important;
+}
+.backup-progress-percent,
+.rms-pro-shell .backup-progress-percent{
+  position:absolute!important;
+  inset:0!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:2px!important;
+  color:#0f172a!important;
+}
+.backup-progress-percent strong,
+.rms-pro-shell .backup-progress-percent strong{
+  font-size:42px!important;
+  line-height:1!important;
+  font-weight:900!important;
+  letter-spacing:-2px!important;
+}
+.backup-progress-percent span,
+.rms-pro-shell .backup-progress-percent span{
+  align-self:center!important;
+  margin-top:13px!important;
+  font-size:15px!important;
+  font-weight:800!important;
+  color:#64748b!important;
+}
+.backup-progress-copy,
+.rms-pro-shell .backup-progress-copy{
+  min-width:0!important;
+}
+.backup-progress-eyebrow,
+.rms-pro-shell .backup-progress-eyebrow{
+  display:block!important;
+  margin-bottom:7px!important;
+  font-size:10px!important;
+  font-weight:900!important;
+  letter-spacing:.18em!important;
+  color:#2563eb!important;
+}
+.backup-progress-copy h3,
+.rms-pro-shell .backup-progress-copy h3{
+  margin:0!important;
+  color:#0f172a!important;
+  font-size:26px!important;
+  line-height:1.08!important;
+  font-weight:850!important;
+  letter-spacing:-.04em!important;
+}
+.backup-progress-copy p,
+.rms-pro-shell .backup-progress-copy p{
+  min-height:22px!important;
+  margin:13px 0 22px!important;
+  color:#64748b!important;
+  font-size:14px!important;
+  font-weight:500!important;
+  line-height:1.4!important;
+}
+.backup-progress-track,
+.rms-pro-shell .backup-progress-track{
+  height:10px!important;
+  width:100%!important;
+  overflow:hidden!important;
+  border-radius:999px!important;
+  background:#e2e8f0!important;
+}
+.backup-progress-track>div,
+.rms-pro-shell .backup-progress-track>div{
+  height:100%!important;
+  border-radius:999px!important;
+  background:linear-gradient(90deg,#2563eb,#38bdf8)!important;
+  transition:width .28s ease!important;
+}
+.backup-progress-card.is-success .backup-progress-track>div,
+.rms-pro-shell .backup-progress-card.is-success .backup-progress-track>div{
+  background:linear-gradient(90deg,#16a34a,#4ade80)!important;
+}
+.backup-progress-card.is-error .backup-progress-track>div,
+.rms-pro-shell .backup-progress-card.is-error .backup-progress-track>div{
+  background:linear-gradient(90deg,#dc2626,#fb7185)!important;
+}
+.backup-progress-footer,
+.rms-pro-shell .backup-progress-footer{
+  display:flex!important;
+  justify-content:space-between!important;
+  gap:16px!important;
+  margin-top:12px!important;
+  color:#64748b!important;
+  font-size:12px!important;
+  font-weight:750!important;
+}
+.backup-progress-footer b,
+.rms-pro-shell .backup-progress-footer b{
+  color:#0f172a!important;
+  font-weight:900!important;
+}
+@keyframes backupOverlayIn{
+  from{opacity:0}
+  to{opacity:1}
+}
+@keyframes backupCardIn{
+  from{opacity:0;transform:translateY(10px) scale(.985)}
+  to{opacity:1;transform:translateY(0) scale(1)}
+}
+@media(max-width:620px){
+  .backup-progress-card,
+  .rms-pro-shell .backup-progress-card{
+    grid-template-columns:1fr!important;
+    text-align:center!important;
+    padding:22px!important;
+  }
+  .backup-progress-ring-wrap,
+  .rms-pro-shell .backup-progress-ring-wrap{
+    margin:auto!important;
+  }
+  .backup-progress-footer,
+  .rms-pro-shell .backup-progress-footer{
+    text-align:left!important;
+  }
+  .backup-progress-copy p,
+  .rms-pro-shell .backup-progress-copy p{
+    min-height:0!important;
+  }
+}
+`
+    document.head.appendChild(style)
+  }
+}
+
+
+/* v403: backup-progress CSS is injected globally, so Reports loader is styled like Backup screen */
