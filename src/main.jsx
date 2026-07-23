@@ -16336,6 +16336,43 @@ function useBranches() {
   return branches
 }
 
+
+const RMS_WOLT_EXPENSE_CATEGORY = 'Wolt Comission'
+
+function rmsCompactBusinessName(value) {
+  return String(value || '')
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9А-ЯЁ]/g, '')
+}
+
+function rmsBranchSupportsWolt(branchName) {
+  const compact = rmsCompactBusinessName(branchName)
+  return compact === 'BC1'
+    || compact === 'BC3'
+    || compact === 'BISTRO'
+    || compact.includes('BISTRONOMIA')
+}
+
+function rmsIsWoltCommissionName(value) {
+  const compact = String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[._/\\-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+
+  return compact === 'wolt comission'
+    || compact === 'wolt commission'
+    || compact === 'wolt service fee'
+    || compact === 'комиссия wolt'
+    || compact === 'комиссия вольт'
+    || compact === 'вольт комиссия'
+}
+
+function rmsIsWoltCommissionExpenseRow(row) {
+  return rmsIsWoltCommissionName(row?.expense_categories?.name || row?.custom_category || '')
+}
+
 function Revenue({ t, focusExpense }) {
   const branches = useBranches()
   const [branchId, setBranchId] = useState('')
@@ -16356,6 +16393,13 @@ function Revenue({ t, focusExpense }) {
   const [message, setMessage] = useState('')
   useRmsStatusToast(message)
   const [showRevenueLogModal, setShowRevenueLogModal] = useState(false)
+
+  const selectedBranchName = branches.find(b => String(b.id) === String(branchId))?.name || '—'
+  const woltEnabledForBranch = rmsBranchSupportsWolt(selectedBranchName)
+  const woltCommissionCategory = categories.find(c => rmsIsWoltCommissionName(c?.name))
+  const expenseCategoriesForBranch = woltEnabledForBranch
+    ? categories
+    : categories.filter(c => !rmsIsWoltCommissionName(c?.name))
 
   useEffect(() => {
     if (!focusExpense?.date || !focusExpense?.branchId) return
@@ -16974,7 +17018,8 @@ function Revenue({ t, focusExpense }) {
   async function addRevenueEntry() {
     if (!branchId) return
     setMessage('')
-    const total = parseNum(form.cash_amount) + parseNum(form.bank_amount) + parseNum(form.wolt_amount)
+    const safeWoltAmount = woltEnabledForBranch ? parseNum(form.wolt_amount) : 0
+    const total = parseNum(form.cash_amount) + parseNum(form.bank_amount) + safeWoltAmount
     if (!total && !form.comment.trim()) return setMessage('Введите сумму или комментарий')
 
     const { error } = await supabase.rpc('rms_add_revenue_entry', {
@@ -16982,7 +17027,7 @@ function Revenue({ t, focusExpense }) {
       p_date: date,
       p_cash_amount: parseNum(form.cash_amount),
       p_bank_amount: parseNum(form.bank_amount),
-      p_wolt_amount: parseNum(form.wolt_amount),
+      p_wolt_amount: safeWoltAmount,
       p_comment: form.comment || null
     })
     if (error) return setMessage(error.message)
@@ -17225,20 +17270,24 @@ function Revenue({ t, focusExpense }) {
   const dailyManualExpenseTotal = expenses.filter(e => !e.deleted_at).reduce((s, e) => s + parseNum(e.amount), 0)
   const dailyAdvanceExpenseTotal = advanceExpenses.reduce((s, e) => s + parseNum(e.amount), 0)
   const dailyExpenseTotal = dailyManualExpenseTotal + dailyAdvanceExpenseTotal
+  const dailyWoltCommissionExpense = expenses
+    .filter(e => !e.deleted_at && rmsIsWoltCommissionExpenseRow(e))
+    .reduce((sum, e) => sum + parseNum(e.amount), 0)
+  const dailyCashExpenseTotal = Math.max(0, dailyManualExpenseTotal - dailyWoltCommissionExpense) + dailyAdvanceExpenseTotal
   const dailyInflowTotal = inflows.filter(i => !i.deleted_at).reduce((s, i) => s + parseNum(i.amount), 0)
   const servicePercent = parseNum(serviceForm.service_percent || 10)
   const staffCostPercent = parseNum(serviceForm.staff_cost_percent || 4)
   const serviceBase = serviceForm.enabled && servicePercent > 0 ? dailyRevenueTotal / (1 + servicePercent / 100) : dailyRevenueTotal
   const dailyServiceChargeAmount = serviceForm.enabled && servicePercent > 0 ? dailyRevenueTotal - serviceBase : 0
   const dailyServiceStaffCost = serviceForm.enabled ? serviceBase * staffCostPercent / 100 : 0
-  const formRevenueTotal = parseNum(form.cash_amount) + parseNum(form.bank_amount) + parseNum(form.wolt_amount)
+  const formWoltAmount = woltEnabledForBranch ? parseNum(form.wolt_amount) : 0
+  const formRevenueTotal = parseNum(form.cash_amount) + parseNum(form.bank_amount) + formWoltAmount
   const formServiceBase = serviceForm.enabled && servicePercent > 0 ? formRevenueTotal / (1 + servicePercent / 100) : formRevenueTotal
   const formServiceChargeAmount = serviceForm.enabled && servicePercent > 0 ? formRevenueTotal - formServiceBase : 0
   const formServiceStaffCost = serviceForm.enabled ? formServiceBase * staffCostPercent / 100 : 0
-  const calculatedClosingCash = parseNum(cashForm.opening_cash) + dailyCashRevenue + dailyInflowTotal - dailyExpenseTotal
+  const calculatedClosingCash = parseNum(cashForm.opening_cash) + dailyCashRevenue + dailyInflowTotal - dailyCashExpenseTotal
   const cashDifference = parseNum(cashForm.counted_cash) - calculatedClosingCash
   const recentRevenueLogs = logs.slice(0, 5)
-  const selectedBranchName = branches.find(b => String(b.id) === String(branchId))?.name || '—'
   const activeExpenseRows = expenses.filter(e => !e.deleted_at)
   const activeInflowRows = inflows.filter(i => !i.deleted_at)
   const revenueDayNet = dailyRevenueTotal - dailyExpenseTotal
@@ -17327,13 +17376,18 @@ function Revenue({ t, focusExpense }) {
         <div className="card span-2"><div className="card-head"><div><h3>{t('daily_revenue_title')}</h3><p className="hint">Ввод выручки за выбранный день. Редактирование и удаление открываются во всплывающем окне.</p></div><button className="small primary" onClick={addRevenueEntry}>Добавить</button></div><div className="form-grid">
           <MoneyInput label={t('cash')} value={form.cash_amount} onChange={v => setForm(f => ({ ...f, cash_amount: v }))} />
           <MoneyInput label={t('bank')} value={form.bank_amount} onChange={v => setForm(f => ({ ...f, bank_amount: v }))} />
-          <MoneyInput label={t('wolt')} value={form.wolt_amount} onChange={v => setForm(f => ({ ...f, wolt_amount: v }))} />
-          <label><span>{t('comment')}</span><input value={form.comment} onChange={e => setForm(f => ({ ...f, comment: e.target.value }))} /></label>
+          {woltEnabledForBranch && <MoneyInput label="Wolt — продажи расчётного периода" value={form.wolt_amount} onChange={v => setForm(f => ({ ...f, wolt_amount: v }))} />}
+          <label><span>{t('comment')}</span><input value={form.comment} onChange={e => setForm(f => ({ ...f, comment: e.target.value }))} placeholder={woltEnabledForBranch ? 'Например: Wolt 01–15 июля' : ''} /></label>
           <label><span>Service Charge Общий</span><input value={serviceForm.enabled ? fmt(formServiceChargeAmount) : '0.00'} readOnly /></label>
           <label><span>Service Charge Персонал</span><input value={serviceForm.enabled ? fmt(formServiceStaffCost) : '0.00'} readOnly /></label>
-        </div>{message && <p className="hint">{message}</p>}
+        </div>
+          {woltEnabledForBranch && <div className="revenue-wolt-settlement-note">
+            <b>Wolt учитывается по дате расчёта</b>
+            <span>Вводите валовые продажи за расчётный период до удержания комиссии. В этот же день добавьте расход “Wolt Comission”. Чистую выплату повторно не заносите.</span>
+          </div>}
+          {message && <p className="hint">{message}</p>}
           <div className="table-wrap" style={{marginTop:14}}><table><thead><tr><th>Дата</th><th>{t('cash')}</th><th>{t('bank')}</th><th>{t('wolt')}</th><th>{t('comment')}</th><th>Итого</th><th>Service персоналу</th><th>Статус</th><th></th></tr></thead><tbody>
-            {revenueEntries.map(r => <RevenueEntryRow key={r.id} row={r} serviceEnabled={serviceForm.enabled} servicePercent={servicePercent} staffCostPercent={staffCostPercent} onSave={patch => updateRevenueEntry(r.id, patch)} onCancel={() => cancelRevenueEntry(r.id)} />)}
+            {revenueEntries.map(r => <RevenueEntryRow key={r.id} row={r} woltEnabled={woltEnabledForBranch} serviceEnabled={serviceForm.enabled} servicePercent={servicePercent} staffCostPercent={staffCostPercent} onSave={patch => updateRevenueEntry(r.id, patch)} onCancel={() => cancelRevenueEntry(r.id)} />)}
             {!revenueEntries.length && <tr><td colSpan="9" className="hint">Пока нет добавлений</td></tr>}
           </tbody></table></div>
         </div>
@@ -17342,7 +17396,7 @@ function Revenue({ t, focusExpense }) {
           <div className="card-head"><div><h3>{t('daily_expenses_title')}</h3><p className="hint">Расходы дня. Изменение и удаление выполняются через безопасное окно редактирования.</p></div><div className="actions-row"><button className="small" onClick={addExpense}>+ Добавить</button></div></div>
           <div className="form-grid compact"><label><span>{t('daily_expenses_total')}</span><input value={fmt(dailyExpenseTotal)} readOnly /></label></div>
           <div className="table-wrap"><table><thead><tr><th>Дата</th><th>{t('expense_item')}</th><th>{t('amount')}</th><th>{t('comment')}</th><th>Статус</th><th></th></tr></thead><tbody>
-            {expenses.map(e => <ExpenseRow key={e.id} expense={e} categories={categories} focusExpenseId={focusExpense?.expenseId} onSave={patch => updateExpense(e.id, patch)} onCancel={() => cancelExpense(e.id)} />)}
+            {expenses.map(e => <ExpenseRow key={e.id} expense={e} categories={expenseCategoriesForBranch} focusExpenseId={focusExpense?.expenseId} onSave={patch => updateExpense(e.id, patch)} onCancel={() => cancelExpense(e.id)} />)}
             {advanceExpenses.map(a => <AdvanceExpenseRow key={`adv-${a.id}`} advance={a} />)}
             {!expenses.length && !advanceExpenses.length && <tr><td colSpan="6" className="hint">—</td></tr>}
           </tbody></table></div>
@@ -17362,7 +17416,7 @@ function Revenue({ t, focusExpense }) {
           </tbody></table></div>
         </div>
 
-        <div className="card span-2"><h3>Касса за день</h3><p className="hint">Только наличные: касса на начало + наличная выручка + приходы − расходы. Стартовая касса берётся автоматически, но её можно ввести вручную только после включения галочки.</p>
+        <div className="card span-2"><h3>Касса за день</h3><p className="hint">Только наличные: касса на начало + наличная выручка + приходы − кассовые расходы. Wolt Comission является удержанием агрегатора и наличную кассу не уменьшает.</p>
           <div className="form-grid">
             <label><span>Касса на начало дня</span><input value={manualOpeningCashEnabled ? cashForm.opening_cash : fmt(cashForm.opening_cash)} readOnly={!manualOpeningCashEnabled} inputMode="decimal" onChange={e => setCashForm(f => ({ ...f, opening_cash: e.target.value }))} title={manualOpeningCashEnabled ? 'Ручной старт кассы активирован' : 'Автоматически берётся из кассы конца предыдущего дня'} /></label>
             <label className="checkbox-row"><input type="checkbox" checked={manualOpeningCashEnabled} onChange={e => setManualOpeningCashEnabled(e.target.checked)} /> Ввести стартовую кассу вручную</label>
@@ -17442,7 +17496,7 @@ function Revenue({ t, focusExpense }) {
 }
 
 
-function RevenueEntryRow({ row, serviceEnabled=false, servicePercent=10, staffCostPercent=4, onSave, onCancel }) {
+function RevenueEntryRow({ row, woltEnabled=true, serviceEnabled=false, servicePercent=10, staffCostPercent=4, onSave, onCancel }) {
   const [editing, setEditing] = useState(false)
   const [entryDate, setEntryDate] = useState(row.revenue_date || todayISO())
   const [cash, setCash] = useState(row.cash_amount ?? '')
@@ -17459,13 +17513,14 @@ function RevenueEntryRow({ row, serviceEnabled=false, servicePercent=10, staffCo
   useEffect(() => setComment(row.comment || ''), [row.id, row.comment])
 
   const total = parseNum(row.cash_amount) + parseNum(row.bank_amount) + parseNum(row.wolt_amount)
-  const editedTotal = parseNum(cash) + parseNum(bank) + parseNum(wolt)
+  const editedWolt = woltEnabled ? parseNum(wolt) : parseNum(row.wolt_amount)
+  const editedTotal = parseNum(cash) + parseNum(bank) + editedWolt
   const base = serviceEnabled && servicePercent > 0 ? total / (1 + servicePercent / 100) : total
   const staffCost = serviceEnabled ? base * staffCostPercent / 100 : 0
 
   async function saveChanges() {
     if (!editable) return
-    await onSave({ revenue_date: entryDate, cash_amount: parseNum(cash), bank_amount: parseNum(bank), wolt_amount: parseNum(wolt), comment })
+    await onSave({ revenue_date: entryDate, cash_amount: parseNum(cash), bank_amount: parseNum(bank), wolt_amount: editedWolt, comment })
     setEditing(false)
   }
 
@@ -17500,7 +17555,7 @@ function RevenueEntryRow({ row, serviceEnabled=false, servicePercent=10, staffCo
         <label><span>Дата операции</span><DateInput value={entryDate} disabled={!editable} onChange={e => setEntryDate(e.target.value)} /></label>
         <label><span>Наличные</span><input inputMode="decimal" value={cash} disabled={!editable} onChange={e => setCash(e.target.value)} /></label>
         <label><span>Банк</span><input inputMode="decimal" value={bank} disabled={!editable} onChange={e => setBank(e.target.value)} /></label>
-        <label><span>Wolt</span><input inputMode="decimal" value={wolt} disabled={!editable} onChange={e => setWolt(e.target.value)} /></label>
+        {woltEnabled && <label><span>Wolt — продажи расчётного периода</span><input inputMode="decimal" value={wolt} disabled={!editable} onChange={e => setWolt(e.target.value)} /></label>}
         <label><span>Комментарий</span><input value={comment} disabled={!editable} onChange={e => setComment(e.target.value)} /></label>
         <label><span>Итого</span><input value={fmt(editedTotal)} readOnly /></label>
       </div>
@@ -17653,6 +17708,7 @@ function ExpenseRow({ expense, categories, onSave, onCancel }) {
         <div className="form-grid compact revenue-modal-body">
           <label><span>Дата операции</span><DateInput disabled={!editable} value={expenseDate} onChange={e => setExpenseDate(e.target.value)} /></label>
           <label><span>Статья</span><select disabled={!editable} value={categoryId} onChange={e => setCategoryId(e.target.value)}>
+            {expense.category_id && !categories.some(c => String(c.id) === String(expense.category_id)) && <option value={expense.category_id}>{expense.expense_categories?.name || 'Текущая статья'}</option>}
             {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             <option value="__custom__">Своя статья</option>
           </select></label>
@@ -45938,3 +45994,43 @@ if (typeof document !== 'undefined') {
 
 
 /* v403: backup-progress CSS is injected globally, so Reports loader is styled like Backup screen */
+
+
+/* v404 Wolt settlement workflow */
+if (typeof document !== 'undefined') {
+  const STYLE_ID = 'rms-v404-wolt-settlement-workflow'
+  if (!document.getElementById(STYLE_ID)) {
+    const style = document.createElement('style')
+    style.id = STYLE_ID
+    style.textContent = `
+.rms-pro-shell .revenue-wolt-settlement-note{
+  grid-column:1/-1;
+  display:grid;
+  gap:4px;
+  margin:12px 0 2px;
+  padding:12px 14px;
+  border:1px solid #bfdbfe;
+  border-radius:14px;
+  background:#eff6ff;
+}
+.rms-pro-shell .revenue-wolt-settlement-note b{
+  color:#1e3a8a;
+  font-size:12.5px;
+  font-weight:900;
+}
+.rms-pro-shell .revenue-wolt-settlement-note span{
+  color:#475569;
+  font-size:12px;
+  font-weight:650;
+  line-height:1.4;
+}
+`
+    document.head.appendChild(style)
+  }
+}
+
+
+/* v404: Wolt only BC1/BC3/Bistronomia; settlement-period gross revenue + separate Wolt Comission expense */
+
+
+/* v405: no dedicated Wolt button; Wolt Comission is selected from the standard expense article dropdown */
