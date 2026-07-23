@@ -1935,7 +1935,7 @@ const RMS_BRANCH_TAX_RATE_SETTING = 'branch_tax_rate_v1'
 const RMS_HIDDEN_SALES_KEYS_SETTING = 'hidden_sales_keys'
 const RMS_SALES_NAME_ALIASES_SETTING = 'sales_name_aliases'
 
-const RMS_SOURCE_VERSION = 'main_v257_backup_animated_progress'
+const RMS_SOURCE_VERSION = 'main_v402_products_report_backup_style_loader_ring_fix'
 const RMS_FULL_BACKUP_TABLES = [
   'branches',
   'expense_categories',
@@ -2246,12 +2246,13 @@ function BackupProgressOverlay({ state }) {
     <div className={`backup-progress-card ${isError ? 'is-error' : ''} ${isSuccess ? 'is-success' : ''}`}>
       <div className="backup-progress-ring-wrap">
         <svg className="backup-progress-ring" viewBox="0 0 128 128" aria-hidden="true">
-          <circle className="backup-progress-ring-bg" cx="64" cy="64" r={radius} />
+          <circle className="backup-progress-ring-bg" cx="64" cy="64" r={radius} fill="none" />
           <circle
             className="backup-progress-ring-value"
             cx="64"
             cy="64"
             r={radius}
+            fill="none"
             strokeDasharray={circumference}
             strokeDashoffset={dashOffset}
           />
