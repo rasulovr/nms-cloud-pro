@@ -27273,7 +27273,12 @@ function Suppliers({ t, isAdmin = false }) {
       await load()
       setProductMessage('Товар обновлён')
     } catch (error) {
-      setProductMessage(error?.message || 'Не удалось обновить товар')
+      const msg = String(error?.message || '')
+      if (msg.includes('unsupported base unit') && payload.base_unit === 'l') {
+        setProductMessage('База данных ещё не поддерживает базовую единицу l. Выполните SQL v399 и повторите сохранение.')
+      } else {
+        setProductMessage(error?.message || 'Не удалось обновить товар')
+      }
     } finally {
       stopProgress()
     }
@@ -32906,6 +32911,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
   const [rmsExpensesReport, setRmsExpensesReport] = useState({ loading: false, error: '', rows: [], totals: { amount: 0, transactions: 0, categories: 0 }, byCategory: [], byBranch: [] })
   const [rmsSuppliersReport, setRmsSuppliersReport] = useState({ loading: false, error: '', rows: [], totals: { purchases: 0, payments: 0, balance: 0, suppliers: 0 }, purchases: [], payments: [], priceChanges: [] })
   const [rmsProductsReport, setRmsProductsReport] = useState({ loading: false, error: '', rows: [], detailRows: [], totals: { amount: 0, products: 0, items: 0, invoices: 0, suppliers: 0 }, categories: [], suppliers: [], bySupplier: [], byCategory: [], priceDynamics: [], lastPurchaseDynamics: [], priceDynamicsMeta: { currentLabel: '', previousLabel: '', compareAvailable: false } })
+  const [rmsProductsReportProgress, setRmsProductsReportProgress] = useState({ active: false, progress: 0, title: '', detail: '', step: '', status: 'idle' })
   const [productsReportDateFrom, setProductsReportDateFrom] = useState('')
   const [productsReportDateTo, setProductsReportDateTo] = useState('')
   const [productsReportSearch, setProductsReportSearch] = useState('')
@@ -33374,9 +33380,59 @@ function Reports({ t, permissions = [], isAdmin = false }) {
   }
 
 
+  const beginRmsProductsReportProgress = () => {
+    setRmsProductsReportProgress({
+      active: true,
+      progress: 4,
+      title: 'Загрузка отчёта по товарам',
+      detail: 'Подготовка периода, филиала и фильтров…',
+      step: 'Запуск отчёта',
+      status: 'running'
+    })
+  }
+
+  const updateRmsProductsReportProgress = (progress, detail, step) => {
+    setRmsProductsReportProgress(prev => ({
+      ...prev,
+      active: true,
+      status: 'running',
+      progress: Math.max(parseNum(prev.progress), Math.min(98, progress)),
+      detail: detail || prev.detail,
+      step: step || prev.step
+    }))
+  }
+
+  const completeRmsProductsReportProgress = (detail = 'Отчёт по товарам загружен') => {
+    setRmsProductsReportProgress(prev => ({
+      ...prev,
+      active: true,
+      progress: 100,
+      title: 'Отчёт готов',
+      detail,
+      step: 'Данные обновлены',
+      status: 'success'
+    }))
+    window.setTimeout(() => setRmsProductsReportProgress({ active: false, progress: 0, title: '', detail: '', step: '', status: 'idle' }), 850)
+  }
+
+  const failRmsProductsReportProgress = (error) => {
+    setRmsProductsReportProgress(prev => ({
+      ...prev,
+      active: true,
+      progress: Math.max(12, Math.min(100, parseNum(prev.progress) || 12)),
+      title: 'Ошибка загрузки отчёта',
+      detail: error?.message || 'Не удалось загрузить отчёт по товарам',
+      step: 'Проверьте источник данных',
+      status: 'error'
+    }))
+    window.setTimeout(() => setRmsProductsReportProgress({ active: false, progress: 0, title: '', detail: '', step: '', status: 'idle' }), 2200)
+  }
+
   async function loadRmsProductsReport() {
+    beginRmsProductsReportProgress()
     setRmsProductsReport(prev => ({ ...prev, loading: true, error: '' }))
     try {
+      updateRmsProductsReportProgress(8, 'Проверяю период и доступные источники данных…', 'Подготовка запроса')
       const pageSize = 1000
       const addDays = (iso, days) => {
         const base = parseISODateLocal(iso)
@@ -33460,6 +33516,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
       }
 
       const reportRange = resolveProductReportRange()
+      updateRmsProductsReportProgress(14, 'Период определён. Подключаю источник закупок…', 'Период и фильтры')
 
       const normalizeReportSupplierPurchasesPayload = (payload) => {
         if (Array.isArray(payload)) return payload
@@ -33595,6 +33652,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
         !productsReportDateTo &&
         monthFilter === 'all'
       ) {
+        updateRmsProductsReportProgress(20, 'Режим “Все даты”: ищу последний месяц с закупками…', 'Авто-сравнение периодов')
         const allAvailablePurchases = await fetchPurchases({})
         const validDates = (allAvailablePurchases || [])
           .map(p => String(p.purchase_date || '').slice(0, 10))
@@ -33635,9 +33693,13 @@ function Reports({ t, permissions = [], isAdmin = false }) {
         }
       }
 
+      updateRmsProductsReportProgress(28, 'Читаю накладные и строки товаров за выбранный период…', 'Чтение supplier_purchases')
       const reportPurchases = await fetchPurchases(reportRange.current)
+      updateRmsProductsReportProgress(48, `Загружено накладных: ${(reportPurchases || []).length}. Считаю текущий период динамики…`, 'Текущий период')
       const dynamicsCurrentPurchases = await fetchPurchases(effectiveReportRange.current)
+      updateRmsProductsReportProgress(62, 'Читаю предыдущий период для сравнения цен…', 'Предыдущий период')
       const previousPurchases = effectiveReportRange.previous ? await fetchPurchases(effectiveReportRange.previous) : []
+      updateRmsProductsReportProgress(72, 'Формирую строки товаров, категории, поставщиков и ошибки единиц…', 'Аналитика товаров')
 
       const branchNameById = new Map((branches || []).map(b => [String(b.id), b.name]))
 
@@ -33937,8 +33999,10 @@ function Reports({ t, permissions = [], isAdmin = false }) {
         ? 'Нет доступных строк закупок для этого пользователя. Проверьте, что в Supabase выполнен secure RPC rms_supplier_purchases_full и что в общих правах открыт раздел “Отчёты”.'
         : ''
       setRmsProductsReport({ loading: false, error: emptySourceWarning, rows: productRows, detailRows, totals, categories, suppliers: suppliersList, bySupplier: supplierRows, byCategory: categoryRows, priceDynamics, lastPurchaseDynamics, priceDynamicsMeta: { currentLabel: effectiveReportRange.currentLabel, previousLabel: effectiveReportRange.previousLabel, compareAvailable: effectiveReportRange.compareAvailable, autoCompare: Boolean(effectiveReportRange.autoCompare) } })
+      completeRmsProductsReportProgress(`Загружено: ${productRows.length} товаров, ${detailRows.length} строк закупок, ${invoiceIds.size} накладных`)
     } catch (error) {
       setRmsProductsReport({ loading: false, error: error?.message || 'Не удалось загрузить отчёт по товарам', rows: [], detailRows: [], totals: { amount: 0, products: 0, items: 0, invoices: 0, suppliers: 0 }, categories: [], suppliers: [], bySupplier: [], byCategory: [], priceDynamics: [], lastPurchaseDynamics: [], priceDynamicsMeta: { currentLabel: '', previousLabel: '', compareAvailable: false } })
+      failRmsProductsReportProgress(error)
     }
   }
 
@@ -34994,6 +35058,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
   const productSortHeader = (field, label) => <button type="button" className="reports-v353-sort-btn" onClick={() => setProductSort(field)}>{label}{productsReportSort.field === field ? (productsReportSort.dir === 'desc' ? ' ↓' : ' ↑') : ''}</button>
 
   const ReportsProductsView = <section className="reports-v43-module-grid reports-v353-products-section">
+    <BackupProgressOverlay state={rmsProductsReportProgress} />
     <div className="reports-v43-module-card reports-v43-wide">
       <div className="reports-v43-card-head">
         <div>
@@ -35019,7 +35084,14 @@ function Reports({ t, permissions = [], isAdmin = false }) {
       <div className="reports-v353-period-note">Период: <b>{selectedProductPeriodLabel}</b>{branchFilter !== 'all' && <span> · филиал: <b>{branches.find(b => String(b.id) === String(branchFilter))?.name || 'выбранный филиал'}</b></span>}</div>
 
       {rmsProductsReport.error && <div className="reports-v43-empty-state"><b>Ошибка загрузки товаров</b><span>{rmsProductsReport.error}</span></div>}
-      {rmsProductsReport.loading && <div className="reports-v43-empty-state"><b>Загрузка товаров...</b><span>Читаю supplier_purchases и supplier_purchase_items за выбранный период.</span></div>}
+      {rmsProductsReport.loading && <div className="reports-v399-products-loading-panel">
+        <div className="reports-v399-products-loading-spinner" />
+        <div>
+          <b>{rmsProductsReportProgress.detail || 'Загрузка товаров...'}</b>
+          <span>{rmsProductsReportProgress.step || 'Читаю supplier_purchases и supplier_purchase_items за выбранный период.'}</span>
+        </div>
+        <strong>{Math.round(parseNum(rmsProductsReportProgress.progress)) || 0}%</strong>
+      </div>}
 
       <div className="reports-v353-products-kpis">
         <div className="metric"><span>Сумма закупок</span><strong>{fmt(filteredProductTotals.amount)} AZN</strong><small>по выбранному фильтру</small></div>
@@ -45472,3 +45544,71 @@ if (typeof document !== 'undefined') {
 
 
 /* v398 Reports -> Products: main report and unit mismatch use selected period; auto month compare is isolated to price dynamics only */
+
+
+/* v399 Reports Products: backup-style animated loading progress */
+if (typeof document !== 'undefined') {
+  const STYLE_ID = 'rms-v399-reports-products-loading-progress'
+  if (!document.getElementById(STYLE_ID)) {
+    const style = document.createElement('style')
+    style.id = STYLE_ID
+    style.textContent = `
+.rms-pro-shell .reports-v399-products-loading-panel{
+  display:grid!important;
+  grid-template-columns:44px minmax(0,1fr) 58px!important;
+  align-items:center!important;
+  gap:14px!important;
+  margin:12px 0!important;
+  padding:14px 16px!important;
+  border:1px solid #bfdbfe!important;
+  border-radius:18px!important;
+  background:linear-gradient(135deg,#eff6ff 0%,#ffffff 58%,#f8fbff 100%)!important;
+  box-shadow:0 12px 32px rgba(37,99,235,.09)!important;
+}
+.rms-pro-shell .reports-v399-products-loading-spinner{
+  width:38px!important;
+  height:38px!important;
+  border-radius:50%!important;
+  border:4px solid rgba(37,99,235,.14)!important;
+  border-top-color:#2563eb!important;
+  animation:rms-v399-products-spin .82s linear infinite!important;
+}
+.rms-pro-shell .reports-v399-products-loading-panel b{
+  display:block!important;
+  color:#0f172a!important;
+  font-size:13.5px!important;
+  font-weight:900!important;
+  line-height:1.25!important;
+}
+.rms-pro-shell .reports-v399-products-loading-panel span{
+  display:block!important;
+  margin-top:3px!important;
+  color:#64748b!important;
+  font-size:12px!important;
+  font-weight:750!important;
+  line-height:1.25!important;
+}
+.rms-pro-shell .reports-v399-products-loading-panel strong{
+  justify-self:end!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  width:52px!important;
+  height:32px!important;
+  border-radius:999px!important;
+  color:#1d4ed8!important;
+  background:#dbeafe!important;
+  font-size:12px!important;
+  font-weight:950!important;
+}
+@keyframes rms-v399-products-spin{
+  from{transform:rotate(0deg)}
+  to{transform:rotate(360deg)}
+}
+`
+    document.head.appendChild(style)
+  }
+}
+
+
+/* v399: supplier product liter base unit requires SQL v399; Reports Products uses animated BackupProgressOverlay */
