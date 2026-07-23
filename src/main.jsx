@@ -33645,6 +33645,9 @@ function Reports({ t, permissions = [], isAdmin = false }) {
 
       let effectiveReportRange = reportRange
 
+      let cachedAllPurchases = null
+      const filterCachedPurchases = (rows, range) => sortReportPurchases((rows || []).filter(purchase => purchaseInReportRange(purchase, range || {})))
+
       if (
         productsPriceCompareMode !== 'last' &&
         !reportRange.compareAvailable &&
@@ -33652,9 +33655,9 @@ function Reports({ t, permissions = [], isAdmin = false }) {
         !productsReportDateTo &&
         monthFilter === 'all'
       ) {
-        updateRmsProductsReportProgress(20, 'Режим “Все даты”: ищу последний месяц с закупками…', 'Авто-сравнение периодов')
-        const allAvailablePurchases = await fetchPurchases({})
-        const validDates = (allAvailablePurchases || [])
+        updateRmsProductsReportProgress(20, 'Режим “Все даты”: читаю историю закупок и ищу последний месяц…', 'Авто-сравнение периодов')
+        cachedAllPurchases = await fetchPurchases({})
+        const validDates = (cachedAllPurchases || [])
           .map(p => String(p.purchase_date || '').slice(0, 10))
           .filter(Boolean)
           .sort()
@@ -33693,13 +33696,15 @@ function Reports({ t, permissions = [], isAdmin = false }) {
         }
       }
 
-      updateRmsProductsReportProgress(28, 'Читаю накладные и строки товаров за выбранный период…', 'Чтение supplier_purchases')
-      const reportPurchases = await fetchPurchases(reportRange.current)
-      updateRmsProductsReportProgress(48, `Загружено накладных: ${(reportPurchases || []).length}. Считаю текущий период динамики…`, 'Текущий период')
-      const dynamicsCurrentPurchases = await fetchPurchases(effectiveReportRange.current)
-      updateRmsProductsReportProgress(62, 'Читаю предыдущий период для сравнения цен…', 'Предыдущий период')
-      const previousPurchases = effectiveReportRange.previous ? await fetchPurchases(effectiveReportRange.previous) : []
-      updateRmsProductsReportProgress(72, 'Формирую строки товаров, категории, поставщиков и ошибки единиц…', 'Аналитика товаров')
+      updateRmsProductsReportProgress(36, 'Формирую общий отчёт по выбранному периоду…', 'Чтение закупок')
+      const reportPurchases = cachedAllPurchases ? filterCachedPurchases(cachedAllPurchases, reportRange.current) : await fetchPurchases(reportRange.current)
+      updateRmsProductsReportProgress(56, `Загружено накладных: ${(reportPurchases || []).length}. Считаю текущий период динамики…`, 'Текущий период')
+      const dynamicsCurrentPurchases = cachedAllPurchases ? filterCachedPurchases(cachedAllPurchases, effectiveReportRange.current) : await fetchPurchases(effectiveReportRange.current)
+      updateRmsProductsReportProgress(68, 'Читаю предыдущий период для сравнения цен…', 'Предыдущий период')
+      const previousPurchases = effectiveReportRange.previous
+        ? (cachedAllPurchases ? filterCachedPurchases(cachedAllPurchases, effectiveReportRange.previous) : await fetchPurchases(effectiveReportRange.previous))
+        : []
+      updateRmsProductsReportProgress(78, 'Формирую строки товаров, категории, поставщиков и ошибки единиц…', 'Аналитика товаров')
 
       const branchNameById = new Map((branches || []).map(b => [String(b.id), b.name]))
 
@@ -35084,14 +35089,6 @@ function Reports({ t, permissions = [], isAdmin = false }) {
       <div className="reports-v353-period-note">Период: <b>{selectedProductPeriodLabel}</b>{branchFilter !== 'all' && <span> · филиал: <b>{branches.find(b => String(b.id) === String(branchFilter))?.name || 'выбранный филиал'}</b></span>}</div>
 
       {rmsProductsReport.error && <div className="reports-v43-empty-state"><b>Ошибка загрузки товаров</b><span>{rmsProductsReport.error}</span></div>}
-      {rmsProductsReport.loading && <div className="reports-v399-products-loading-panel">
-        <div className="reports-v399-products-loading-spinner" />
-        <div>
-          <b>{rmsProductsReportProgress.detail || 'Загрузка товаров...'}</b>
-          <span>{rmsProductsReportProgress.step || 'Читаю supplier_purchases и supplier_purchase_items за выбранный период.'}</span>
-        </div>
-        <strong>{Math.round(parseNum(rmsProductsReportProgress.progress)) || 0}%</strong>
-      </div>}
 
       <div className="reports-v353-products-kpis">
         <div className="metric"><span>Сумма закупок</span><strong>{fmt(filteredProductTotals.amount)} AZN</strong><small>по выбранному фильтру</small></div>
@@ -45612,3 +45609,128 @@ if (typeof document !== 'undefined') {
 
 
 /* v399: supplier product liter base unit requires SQL v399; Reports Products uses animated BackupProgressOverlay */
+
+
+/* v400 Reports Products: compact loader, no full-screen black circle */
+if (typeof document !== 'undefined') {
+  const STYLE_ID = 'rms-v400-products-report-compact-loader'
+  if (!document.getElementById(STYLE_ID)) {
+    const style = document.createElement('style')
+    style.id = STYLE_ID
+    style.textContent = `
+.rms-pro-shell .reports-v399-products-loading-panel{
+  display:none!important;
+}
+.rms-pro-shell .reports-v400-products-loading-panel{
+  display:grid!important;
+  grid-template-columns:64px minmax(0,1fr)!important;
+  align-items:center!important;
+  gap:16px!important;
+  margin:14px 0!important;
+  padding:16px 18px!important;
+  border:1px solid #bfdbfe!important;
+  border-radius:20px!important;
+  background:linear-gradient(135deg,#eff6ff 0%,#ffffff 62%,#f8fbff 100%)!important;
+  box-shadow:0 14px 34px rgba(37,99,235,.10)!important;
+  overflow:hidden!important;
+}
+.rms-pro-shell .reports-v400-products-loading-ring{
+  position:relative!important;
+  width:56px!important;
+  height:56px!important;
+  min-width:56px!important;
+  border-radius:50%!important;
+  background:conic-gradient(#2563eb 0deg,#2563eb 92deg,rgba(37,99,235,.13) 92deg 360deg)!important;
+  animation:rms-v400-products-ring 1.15s linear infinite!important;
+}
+.rms-pro-shell .reports-v400-products-loading-ring:after{
+  content:''!important;
+  position:absolute!important;
+  inset:6px!important;
+  border-radius:50%!important;
+  background:#fff!important;
+  box-shadow:inset 0 0 0 1px rgba(191,219,254,.9)!important;
+}
+.rms-pro-shell .reports-v400-products-loading-ring span{
+  position:absolute!important;
+  z-index:2!important;
+  inset:0!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  color:#1d4ed8!important;
+  font-size:11px!important;
+  font-weight:950!important;
+  animation:rms-v400-products-ring-text 1.15s linear infinite reverse!important;
+}
+.rms-pro-shell .reports-v400-products-loading-body{
+  min-width:0!important;
+}
+.rms-pro-shell .reports-v400-products-loading-body b{
+  display:block!important;
+  color:#0f172a!important;
+  font-size:14px!important;
+  font-weight:950!important;
+  line-height:1.25!important;
+}
+.rms-pro-shell .reports-v400-products-loading-body span{
+  display:block!important;
+  margin-top:4px!important;
+  color:#475569!important;
+  font-size:12.5px!important;
+  font-weight:750!important;
+  line-height:1.35!important;
+}
+.rms-pro-shell .reports-v400-products-loading-track{
+  position:relative!important;
+  height:8px!important;
+  margin-top:10px!important;
+  border-radius:999px!important;
+  background:#dbeafe!important;
+  overflow:hidden!important;
+}
+.rms-pro-shell .reports-v400-products-loading-track i{
+  display:block!important;
+  height:100%!important;
+  min-width:6%!important;
+  border-radius:999px!important;
+  background:linear-gradient(90deg,#60a5fa,#2563eb,#60a5fa)!important;
+  background-size:200% 100%!important;
+  animation:rms-v400-products-bar 1.1s ease-in-out infinite!important;
+  transition:width .28s ease!important;
+}
+.rms-pro-shell .reports-v400-products-loading-body em{
+  display:block!important;
+  margin-top:7px!important;
+  color:#64748b!important;
+  font-style:normal!important;
+  font-size:11.5px!important;
+  font-weight:850!important;
+}
+@keyframes rms-v400-products-ring{
+  from{transform:rotate(0deg)}
+  to{transform:rotate(360deg)}
+}
+@keyframes rms-v400-products-ring-text{
+  from{transform:rotate(0deg)}
+  to{transform:rotate(360deg)}
+}
+@keyframes rms-v400-products-bar{
+  0%{background-position:0% 50%}
+  100%{background-position:200% 50%}
+}
+@media(max-width:720px){
+  .rms-pro-shell .reports-v400-products-loading-panel{
+    grid-template-columns:1fr!important;
+  }
+  .rms-pro-shell .reports-v400-products-loading-ring{
+    justify-self:start!important;
+  }
+}
+`
+    document.head.appendChild(style)
+  }
+}
+
+
+/* v400: Reports Products uses compact inline loader; removes full-screen BackupProgressOverlay and reuses all-date purchase load */
