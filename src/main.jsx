@@ -18782,7 +18782,7 @@ function MiniBarChart({ rows, valueKey = 'revenue', labelKey = 'name', title, su
             ? <div
                 className="dash-bar-track dash-bar-track-stacked"
                 title={wolt > 0
-                  ? `Основная выручка: ${fmt(baseRevenue)} ман. · Wolt: ${fmt(wolt)} ман. · Итого: ${fmt(revenueWithWolt)} ман.${showShare ? ` · ${pct(share)} ${shareLabel}` : ''}`
+                  ? `Полная выручка: ${fmt(revenueWithWolt)} ман. · В том числе Wolt: ${fmt(wolt)} ман. · Основная выручка: ${fmt(baseRevenue)} ман.${showShare ? ` · ${pct(share)} ${shareLabel}` : ''}`
                   : `Выручка: ${fmt(revenueWithWolt)} ман.${showShare ? ` · ${pct(share)} от общей выручки` : ''}`
                 }
               >
@@ -18798,10 +18798,10 @@ function MiniBarChart({ rows, valueKey = 'revenue', labelKey = 'name', title, su
             {stackWolt
               ? <>
                   <div className="dash-bar-value-main">
-                    <span>{fmt(wolt > 0 ? baseRevenue : revenueWithWolt)} ман.</span>
+                    <span>{fmt(revenueWithWolt)} ман.</span>
                     {showShare && <em>({pct(share)})</em>}
                   </div>
-                  {wolt > 0 && <small>с Wolt: {fmt(revenueWithWolt)} ман.</small>}
+                  {wolt > 0 && <small>Wolt: {fmt(wolt)} ман.</small>}
                 </>
               : <>
                   <span>{fmt(val)} ман.</span>
@@ -19820,7 +19820,7 @@ function Finance({ t, lang, onGoToExpense }) {
     const daysInMonth = new Date(Number(y), Number(m), 0).getDate()
     let query = supabase
       .from('daily_revenue')
-      .select('branch_id,revenue_date,cash_amount,bank_amount,wolt_amount')
+      .select('branch_id,revenue_date,cash_amount,bank_amount')
       .gte('revenue_date', start)
       .lt('revenue_date', end)
       .is('deleted_at', null)
@@ -19830,6 +19830,7 @@ function Finance({ t, lang, onGoToExpense }) {
     const { data } = await query
     const map = new Map()
     ;(data || []).forEach(r => {
+      // Finance daily chart intentionally excludes Wolt settlement-period revenue.
       const amount = parseNum(r.cash_amount) + parseNum(r.bank_amount)
       map.set(r.revenue_date, parseNum(map.get(r.revenue_date)) + amount)
     })
@@ -46248,3 +46249,6 @@ if (typeof document !== 'undefined') {
 
 
 /* v409: fixes Vite build error from raw CSS; zero-Wolt and section persistence logic retained */
+
+
+/* v410: dashboard main figure is total revenue including Wolt; small line shows Wolt only; Finance daily chart is cash + bank only */
