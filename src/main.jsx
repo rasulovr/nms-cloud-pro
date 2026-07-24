@@ -46147,9 +46147,12 @@ if (typeof document !== 'undefined') {
 .rms-pro-shell .dash-wolt-legend-wolt{
   background:linear-gradient(180deg,#22c1f1,#0284c7)!important;
 }
+.rms-pro-shell .dashboard-chart-card-wolt .dash-bars{
+  gap:4px!important;
+}
 .rms-pro-shell .dash-bar-row-wolt{
   align-items:center!important;
-  min-height:48px!important;
+  min-height:40px!important;
 }
 .rms-pro-shell .dash-bar-track-stacked{
   position:relative!important;
@@ -46216,3 +46219,6 @@ if (typeof document !== 'undefined') {
 
 
 /* v406: Dashboard revenue bars split base revenue and Wolt; secondary line shows total with Wolt */
+
+
+/* v407: reduced vertical spacing between branch revenue rows in Wolt chart only */
