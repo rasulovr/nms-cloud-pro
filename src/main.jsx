@@ -18726,23 +18726,73 @@ function ThemeStyles() {
   `}</style>
 }
 
-function MiniBarChart({ rows, valueKey = 'revenue', labelKey = 'name', title, subtitle, showShare = false }) {
-  const max = Math.max(1, ...rows.map(r => Math.abs(parseNum(r[valueKey]))))
-  const positiveTotal = rows.reduce((s, r) => s + Math.max(0, parseNum(r[valueKey])), 0)
-  const signedTotal = rows.reduce((s, r) => s + parseNum(r[valueKey]), 0)
+function MiniBarChart({ rows, valueKey = 'revenue', labelKey = 'name', title, subtitle, showShare = false, stackWolt = false }) {
+  const rowDisplayValue = row => stackWolt
+    ? parseNum(row.revenueWithWolt ?? row[valueKey])
+    : parseNum(row[valueKey])
+  const max = Math.max(1, ...rows.map(r => Math.abs(rowDisplayValue(r))))
+  const positiveTotal = rows.reduce((s, r) => s + Math.max(0, rowDisplayValue(r)), 0)
+  const signedTotal = rows.reduce((s, r) => s + rowDisplayValue(r), 0)
   const shareBase = valueKey === 'net' ? signedTotal : positiveTotal
-  const shareLabel = valueKey === 'net' ? 'от общей прибыли' : 'от общей выручки'
-  return <div className="card span-2 dashboard-chart-card">
-    <div className="card-head"><div><h3>{title}</h3><p className="hint">{subtitle}</p></div></div>
+  const shareLabel = valueKey === 'net' ? 'от общей прибыли' : 'от общей выручки с Wolt'
+
+  return <div className={`card span-2 dashboard-chart-card ${stackWolt ? 'dashboard-chart-card-wolt' : ''}`}>
+    <div className="card-head">
+      <div>
+        <h3>{title}</h3>
+        <p className="hint">{subtitle}</p>
+        {stackWolt && <div className="dash-wolt-legend" aria-label="Легенда графика">
+          <span><i className="dash-wolt-legend-base" />Основная выручка</span>
+          <span><i className="dash-wolt-legend-wolt" />Wolt</span>
+        </div>}
+      </div>
+    </div>
+
     <div className="dash-bars">
       {rows.map(r => {
-        const val = parseNum(r[valueKey])
+        const val = rowDisplayValue(r)
         const width = Math.max(3, Math.min(100, Math.abs(val) / max * 100))
         const share = shareBase ? val / shareBase * 100 : 0
-        return <div className="dash-bar-row" key={r.id || r[labelKey]}>
+
+        const wolt = stackWolt ? Math.max(0, parseNum(r.woltRevenue)) : 0
+        const baseRevenue = stackWolt
+          ? Math.max(0, parseNum(r.baseRevenue ?? (val - wolt)))
+          : val
+        const revenueWithWolt = stackWolt ? baseRevenue + wolt : val
+        const baseWidth = stackWolt ? Math.max(0, Math.min(100, baseRevenue / max * 100)) : width
+        const woltWidth = stackWolt ? Math.max(0, Math.min(100 - baseWidth, wolt / max * 100)) : 0
+
+        return <div className={`dash-bar-row ${stackWolt ? 'dash-bar-row-wolt' : ''}`} key={r.id || r[labelKey]}>
           <div className="dash-bar-label">{r[labelKey]}</div>
-          <div className="dash-bar-track" title={`${fmt(val)} ман.${showShare ? ` · ${pct(share)} ${shareLabel}` : ''}`}><div className={`dash-bar ${val < 0 ? 'negative' : ''}`} style={{width: `${width}%`}} /></div>
-          <div className={`dash-bar-value ${val < 0 ? 'bad' : ''}`}><span>{fmt(val)} ман.</span>{showShare && <em>({pct(share)})</em>}</div>
+
+          {stackWolt
+            ? <div
+                className="dash-bar-track dash-bar-track-stacked"
+                title={`Основная выручка: ${fmt(baseRevenue)} ман. · Wolt: ${fmt(wolt)} ман. · Итого: ${fmt(revenueWithWolt)} ман.${showShare ? ` · ${pct(share)} ${shareLabel}` : ''}`}
+              >
+                <div className="dash-bar-stack-base" style={{ width: `${baseWidth}%` }} />
+                {wolt > 0 && <div className="dash-bar-stack-wolt" style={{ left: `${baseWidth}%`, width: `${woltWidth}%` }} />}
+              </div>
+            : <div className="dash-bar-track" title={`${fmt(val)} ман.${showShare ? ` · ${pct(share)} ${shareLabel}` : ''}`}>
+                <div className={`dash-bar ${val < 0 ? 'negative' : ''}`} style={{ width: `${width}%` }} />
+              </div>
+          }
+
+          <div className={`dash-bar-value ${val < 0 ? 'bad' : ''} ${stackWolt ? 'dash-bar-value-wolt' : ''}`}>
+            {stackWolt
+              ? <>
+                  <div className="dash-bar-value-main">
+                    <span>{fmt(baseRevenue)} ман.</span>
+                    {showShare && <em>({pct(share)})</em>}
+                  </div>
+                  <small>с Wolt: {fmt(revenueWithWolt)} ман.</small>
+                </>
+              : <>
+                  <span>{fmt(val)} ман.</span>
+                  {showShare && <em>({pct(share)})</em>}
+                </>
+            }
+          </div>
         </div>
       })}
       {!rows.length && <p className="hint">Пока нет данных для графика.</p>}
@@ -19143,6 +19193,9 @@ function Dashboard({ t }) {
     const branchRows = branches.map(b => {
       const rev = revByBranch.get(b.id) || {}
       const revenue = parseNum(rev.total_revenue)
+      const woltRevenue = Math.max(0, parseNum(rev.wolt_amount))
+      const baseRevenue = Math.max(0, parseNum(rev.cash_amount) + parseNum(rev.bank_amount))
+      const revenueWithWolt = baseRevenue + woltRevenue
       const fallbackMonthlyExpenses = parseNum(expByBranch.get(b.id)?.total_expenses)
       const baseExpenses = dashboardDailyExpensesResult?.data ? parseNum(dashboardRawExpenseByBranch.get(b.id)) : fallbackMonthlyExpenses
       const baseSalary = parseNum(salByBranch.get(b.id)?.total_salary)
@@ -19162,7 +19215,21 @@ function Dashboard({ t }) {
       baseTotals.salary += salary
       baseTotals.serviceCost += serviceCost
       baseTotals.tax += tax
-      return { id: b.id, name: b.name, revenue, expenses, salary, serviceCost, tax, totalExpenses: expenses + salary + serviceCost + tax, net, margin: revenue ? net / revenue * 100 : 0 }
+      return {
+        id: b.id,
+        name: b.name,
+        revenue,
+        baseRevenue,
+        woltRevenue,
+        revenueWithWolt,
+        expenses,
+        salary,
+        serviceCost,
+        tax,
+        totalExpenses: expenses + salary + serviceCost + tax,
+        net,
+        margin: revenue ? net / revenue * 100 : 0
+      }
     })
     const dashboardBranchRows = branchId === DASH_ALL_BRANCHES
       ? branchRows
@@ -19404,7 +19471,14 @@ function Dashboard({ t }) {
 
     <section className="dashboard-v25-layout">
       <div className="dashboard-v25-left-stack">
-        <MiniBarChart rows={topBranchRows} valueKey="revenue" title="Выручка по филиалам" subtitle="Сравнение филиалов за выбранный месяц" showShare />
+        <MiniBarChart
+          rows={topBranchRows}
+          valueKey="revenue"
+          title="Выручка по филиалам"
+          subtitle="Сравнение филиалов за выбранный месяц"
+          showShare
+          stackWolt
+        />
         <MiniBarChart rows={netBranchRows} valueKey="net" title="Прибыль по филиалам" subtitle="После расходов, зарплат, service charge и налога" showShare />
       </div>
       <div className="card dashboard-v23-insights dashboard-v25-insights">
@@ -46034,3 +46108,111 @@ if (typeof document !== 'undefined') {
 
 
 /* v405: no dedicated Wolt button; Wolt Comission is selected from the standard expense article dropdown */
+
+
+/* v406 Dashboard branch revenue: base revenue + visually separated Wolt */
+if (typeof document !== 'undefined') {
+  const STYLE_ID = 'rms-v406-dashboard-wolt-revenue-bars'
+  if (!document.getElementById(STYLE_ID)) {
+    const style = document.createElement('style')
+    style.id = STYLE_ID
+    style.textContent = `
+.rms-pro-shell .dashboard-chart-card-wolt .card-head{
+  align-items:flex-start!important;
+}
+.rms-pro-shell .dash-wolt-legend{
+  display:flex!important;
+  align-items:center!important;
+  flex-wrap:wrap!important;
+  gap:22px!important;
+  margin-top:12px!important;
+  color:#64748b!important;
+  font-size:12px!important;
+  font-weight:750!important;
+}
+.rms-pro-shell .dash-wolt-legend span{
+  display:inline-flex!important;
+  align-items:center!important;
+  gap:8px!important;
+}
+.rms-pro-shell .dash-wolt-legend i{
+  width:14px!important;
+  height:14px!important;
+  border-radius:4px!important;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.22)!important;
+}
+.rms-pro-shell .dash-wolt-legend-base{
+  background:linear-gradient(180deg,#64748b,#475569)!important;
+}
+.rms-pro-shell .dash-wolt-legend-wolt{
+  background:linear-gradient(180deg,#22c1f1,#0284c7)!important;
+}
+.rms-pro-shell .dash-bar-row-wolt{
+  align-items:center!important;
+  min-height:48px!important;
+}
+.rms-pro-shell .dash-bar-track-stacked{
+  position:relative!important;
+  height:18px!important;
+  overflow:hidden!important;
+  border-radius:999px!important;
+  background:#dce3ed!important;
+  box-shadow:inset 0 1px 2px rgba(15,23,42,.08)!important;
+}
+.rms-pro-shell .dash-bar-stack-base,
+.rms-pro-shell .dash-bar-stack-wolt{
+  position:absolute!important;
+  top:0!important;
+  bottom:0!important;
+  transition:width .45s ease,left .45s ease!important;
+}
+.rms-pro-shell .dash-bar-stack-base{
+  left:0!important;
+  border-radius:999px 0 0 999px!important;
+  background:linear-gradient(180deg,#64748b,#526176)!important;
+}
+.rms-pro-shell .dash-bar-stack-base:only-child{
+  border-radius:999px!important;
+}
+.rms-pro-shell .dash-bar-stack-wolt{
+  border-radius:0 999px 999px 0!important;
+  background:linear-gradient(180deg,#22c1f1,#0295d1)!important;
+  box-shadow:-1px 0 0 rgba(255,255,255,.22)!important;
+}
+.rms-pro-shell .dash-bar-value-wolt{
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:flex-end!important;
+  justify-content:center!important;
+  gap:3px!important;
+  line-height:1.12!important;
+}
+.rms-pro-shell .dash-bar-value-main{
+  display:flex!important;
+  align-items:baseline!important;
+  justify-content:flex-end!important;
+  gap:10px!important;
+  width:100%!important;
+}
+.rms-pro-shell .dash-bar-value-wolt small{
+  display:block!important;
+  color:#64748b!important;
+  font-size:10.5px!important;
+  font-weight:750!important;
+  white-space:nowrap!important;
+}
+@media(max-width:900px){
+  .rms-pro-shell .dash-bar-row-wolt{
+    grid-template-columns:72px minmax(120px,1fr) minmax(132px,auto)!important;
+  }
+  .rms-pro-shell .dash-bar-value-main{
+    gap:5px!important;
+  }
+}
+`
+    document.head.appendChild(style)
+  }
+}
+
+
+/* v406: Dashboard revenue bars split base revenue and Wolt; secondary line shows total with Wolt */
