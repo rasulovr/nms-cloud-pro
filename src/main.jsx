@@ -18794,7 +18794,7 @@ function MiniBarChart({ rows, valueKey = 'revenue', labelKey = 'name', title, su
               </div>
           }
 
-          <div className={`dash-bar-value ${val < 0 ? 'bad' : ''} ${stackWolt ? 'dash-bar-value-wolt' : ''}`}>
+          <div className={`dash-bar-value ${val < 0 ? 'bad' : ''} ${stackWolt ? 'dash-bar-value-wolt' : ''} ${stackWolt && wolt <= 0 ? 'dash-bar-value-no-wolt' : ''}`}>
             {stackWolt
               ? <>
                   <div className="dash-bar-value-main">
@@ -46220,6 +46220,9 @@ if (typeof document !== 'undefined') {
   font-weight:750!important;
   white-space:nowrap!important;
 }
+.rms-pro-shell .dash-bar-value-wolt.dash-bar-value-no-wolt{
+  gap:0!important;
+}
 @media(max-width:900px){
   .rms-pro-shell .dash-bar-row-wolt{
     grid-template-columns:72px minmax(120px,1fr) minmax(132px,auto)!important;
@@ -46240,10 +46243,8 @@ if (typeof document !== 'undefined') {
 /* v407: reduced vertical spacing between branch revenue rows in Wolt chart only */
 
 
-/* v408: branch rows without Wolt show only one amount; active RMS section survives refresh */
-.rms-pro-shell .dash-bar-value-wolt:not(:has(small)){
-  gap:0!important;
-}
-
 
 /* v408: hide zero-Wolt labels and persist active top-level RMS section in localStorage */
+
+
+/* v409: fixes Vite build error from raw CSS; zero-Wolt and section persistence logic retained */
