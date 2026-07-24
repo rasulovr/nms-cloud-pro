@@ -33178,9 +33178,9 @@ function Reports({ t, permissions = [], isAdmin = false }) {
   }, [salesNameAliases])
 
   useEffect(() => {
-    if (reportsTab !== 'revenue') return
+    if (!['overview', 'revenue'].includes(effectiveReportsTab)) return
     loadRmsRevenueReport()
-  }, [reportsTab, branchFilter, monthFilter, revenueDateFrom, revenueDateTo, branches.length])
+  }, [effectiveReportsTab, branchFilter, monthFilter, revenueDateFrom, revenueDateTo, branches.length])
 
   useEffect(() => {
     setRevenuePage(1)
@@ -33334,9 +33334,9 @@ function Reports({ t, permissions = [], isAdmin = false }) {
   }
 
   useEffect(() => {
-    if (reportsTab !== 'expenses') return
+    if (!['overview', 'expenses'].includes(effectiveReportsTab)) return
     loadRmsExpensesReport()
-  }, [reportsTab, branchFilter, monthFilter, branches.length])
+  }, [effectiveReportsTab, branchFilter, monthFilter, branches.length])
 
   useEffect(() => {
     if (reportsTab !== 'suppliers') return
@@ -33365,7 +33365,10 @@ function Reports({ t, permissions = [], isAdmin = false }) {
         .is('deleted_at', null)
 
       if (branchFilter !== 'all') query = query.eq('branch_id', branchFilter)
-      if (/^\d{4}-\d{2}$/.test(String(monthFilter || ''))) {
+      if (/^year:\d{4}$/.test(String(monthFilter || ''))) {
+        const year = String(monthFilter).replace('year:', '')
+        query = query.gte('expense_date', `${year}-01-01`).lt('expense_date', `${Number(year) + 1}-01-01`)
+      } else if (/^\d{4}-\d{2}$/.test(String(monthFilter || ''))) {
         const start = `${monthFilter}-01`
         const end = rmsNextMonthStart(monthFilter)
         query = query.gte('expense_date', start).lt('expense_date', end)
@@ -35358,7 +35361,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
   </section>
 
   const activeReportTab = reportTabs.find(tab => tab.id === effectiveReportsTab) || reportTabs[0] || REPORTS_ACCESS_TABS[0]
-  const salesKpiTabs = ['overview', 'sales']
+  const salesKpiTabs = ['sales']
   const showSalesKpis = salesKpiTabs.includes(effectiveReportsTab)
 
   const currentMonthKey = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`
@@ -35808,66 +35811,287 @@ function Reports({ t, permissions = [], isAdmin = false }) {
   </section>
 
 
-  const ReportsOverview = <section className="reports-v43-grid">
-    <div className="reports-v43-card reports-v43-chart-card">
-      <div className="reports-v43-card-head">
-        <div>
-          <h3>Динамика показателей</h3>
-          <p>Сводная аналитика по импортированным продажам и текущим фильтрам.</p>
+  const overviewRevenueTotal = parseNum(rmsRevenueReport.totals.revenue)
+  const overviewCashBankRevenue = parseNum(rmsRevenueReport.totals.cash) + parseNum(rmsRevenueReport.totals.bank)
+  const overviewWoltRevenue = parseNum(rmsRevenueReport.totals.wolt)
+  const overviewExpenseTotal = parseNum(rmsExpensesReport.totals.amount)
+  const overviewResult = overviewRevenueTotal - overviewExpenseTotal
+  const overviewMargin = overviewRevenueTotal ? overviewResult / overviewRevenueTotal * 100 : 0
+  const overviewWoltShare = overviewRevenueTotal ? overviewWoltRevenue / overviewRevenueTotal * 100 : 0
+
+  const overviewRevenueDays = useMemo(() => {
+    return new Set((rmsRevenueReport.rows || []).map(row => String(row.revenue_date || '')).filter(Boolean)).size
+  }, [rmsRevenueReport.rows])
+  const overviewAverageRevenue = overviewRevenueDays ? overviewRevenueTotal / overviewRevenueDays : 0
+
+  const overviewExpenseByBranch = useMemo(() => {
+    const map = new Map()
+    ;(rmsExpensesReport.rows || []).forEach(row => {
+      const key = String(row.branch_name || row.branch_id || '—')
+      map.set(key, parseNum(map.get(key)) + parseNum(row.amount))
+    })
+    return map
+  }, [rmsExpensesReport.rows])
+
+  const overviewBranchRows = useMemo(() => {
+    const map = new Map()
+    ;(rmsRevenueReport.rows || []).forEach(row => {
+      const key = String(row.branch_name || row.branch_id || '—')
+      const current = map.get(key) || { name: key, baseRevenue: 0, wolt: 0, revenue: 0, expenses: 0, result: 0, margin: 0 }
+      current.baseRevenue += parseNum(row.cash) + parseNum(row.bank)
+      current.wolt += parseNum(row.wolt)
+      current.revenue += parseNum(row.revenue)
+      map.set(key, current)
+    })
+    ;(rmsExpensesReport.rows || []).forEach(row => {
+      const key = String(row.branch_name || row.branch_id || '—')
+      if (!map.has(key)) map.set(key, { name: key, baseRevenue: 0, wolt: 0, revenue: 0, expenses: 0, result: 0, margin: 0 })
+    })
+    return Array.from(map.values()).map(row => {
+      const expenses = parseNum(overviewExpenseByBranch.get(row.name))
+      const result = parseNum(row.revenue) - expenses
+      return {
+        ...row,
+        expenses,
+        result,
+        margin: row.revenue ? result / row.revenue * 100 : 0
+      }
+    }).sort((a, b) => parseNum(b.revenue) - parseNum(a.revenue))
+  }, [rmsRevenueReport.rows, rmsExpensesReport.rows, overviewExpenseByBranch])
+
+  const overviewDailyRows = useMemo(() => {
+    const map = new Map()
+    ;(rmsRevenueReport.rows || []).forEach(row => {
+      const date = String(row.revenue_date || '').slice(0, 10)
+      if (!date) return
+      const current = map.get(date) || { date, operationalRevenue: 0, expenses: 0, result: 0 }
+      current.operationalRevenue += parseNum(row.cash) + parseNum(row.bank)
+      map.set(date, current)
+    })
+    ;(rmsExpensesReport.rows || []).forEach(row => {
+      const date = String(row.expense_date || '').slice(0, 10)
+      if (!date) return
+      const categoryName = row.category_name || row.expense_categories?.name || row.custom_category || ''
+      if (rmsIsWoltCommissionName(categoryName)) return
+      const current = map.get(date) || { date, operationalRevenue: 0, expenses: 0, result: 0 }
+      current.expenses += parseNum(row.amount)
+      map.set(date, current)
+    })
+    return Array.from(map.values())
+      .sort((a, b) => String(a.date).localeCompare(String(b.date)))
+      .map(row => ({ ...row, result: parseNum(row.operationalRevenue) - parseNum(row.expenses) }))
+  }, [rmsRevenueReport.rows, rmsExpensesReport.rows])
+
+  const overviewTrendMax = Math.max(
+    1,
+    ...overviewDailyRows.map(row => Math.max(parseNum(row.operationalRevenue), parseNum(row.expenses)))
+  )
+  const overviewChartWidth = 860
+  const overviewChartHeight = 250
+  const overviewChartPadX = 42
+  const overviewChartPadTop = 24
+  const overviewChartPadBottom = 36
+  const overviewChartUsableHeight = overviewChartHeight - overviewChartPadTop - overviewChartPadBottom
+  const overviewPoint = (row, index, field) => {
+    const x = overviewDailyRows.length <= 1
+      ? overviewChartWidth / 2
+      : overviewChartPadX + index * ((overviewChartWidth - overviewChartPadX * 2) / (overviewDailyRows.length - 1))
+    const value = Math.max(0, parseNum(row[field]))
+    const y = overviewChartPadTop + overviewChartUsableHeight - (value / overviewTrendMax) * overviewChartUsableHeight
+    return { x, y }
+  }
+  const overviewPath = (field) => overviewDailyRows.map((row, index) => {
+    const point = overviewPoint(row, index, field)
+    return `${index === 0 ? 'M' : 'L'} ${point.x.toFixed(2)} ${point.y.toFixed(2)}`
+  }).join(' ')
+  const overviewRevenuePath = overviewPath('operationalRevenue')
+  const overviewExpensesPath = overviewPath('expenses')
+  const overviewXAxisLabels = overviewDailyRows.filter((_, index, list) => {
+    if (list.length <= 7) return true
+    const step = Math.max(1, Math.floor((list.length - 1) / 6))
+    return index === 0 || index === list.length - 1 || index % step === 0
+  })
+
+  const overviewTopExpenseCategories = (rmsExpensesReport.byCategory || []).slice(0, 6)
+  const overviewLargestExpense = overviewTopExpenseCategories[0] || null
+  const overviewWoltCommission = (rmsExpensesReport.byCategory || [])
+    .filter(row => rmsIsWoltCommissionName(row.name))
+    .reduce((sum, row) => sum + parseNum(row.amount), 0)
+  const overviewBestBranch = overviewBranchRows[0] || null
+  const overviewWeakBranch = [...overviewBranchRows]
+    .filter(row => parseNum(row.revenue) > 0)
+    .sort((a, b) => parseNum(a.margin) - parseNum(b.margin))[0] || null
+  const overviewMaxExpenseCategory = Math.max(1, ...overviewTopExpenseCategories.map(row => parseNum(row.amount)))
+  const overviewLoading = rmsRevenueReport.loading || rmsExpensesReport.loading
+  const overviewError = rmsRevenueReport.error || rmsExpensesReport.error
+
+  const overviewConclusions = [
+    overviewBestBranch && {
+      tone: 'good',
+      title: 'Лидер по выручке',
+      value: overviewBestBranch.name,
+      detail: `${fmt(overviewBestBranch.revenue)} AZN · результат ${fmt(overviewBestBranch.result)} AZN`
+    },
+    overviewLargestExpense && {
+      tone: 'warning',
+      title: 'Крупнейшая статья расходов',
+      value: overviewLargestExpense.name,
+      detail: `${fmt(overviewLargestExpense.amount)} AZN · ${overviewExpenseTotal ? pct(overviewLargestExpense.amount / overviewExpenseTotal * 100) : '0.0%'} расходов`
+    },
+    overviewWeakBranch && {
+      tone: overviewWeakBranch.result < 0 ? 'bad' : 'neutral',
+      title: overviewWeakBranch.result < 0 ? 'Филиал с отрицательным результатом' : 'Минимальная рентабельность',
+      value: overviewWeakBranch.name,
+      detail: `${fmt(overviewWeakBranch.result)} AZN · маржа ${pct(overviewWeakBranch.margin)}`
+    },
+    overviewWoltRevenue > 0 && {
+      tone: 'blue',
+      title: 'Wolt в общей выручке',
+      value: pct(overviewWoltShare),
+      detail: `${fmt(overviewWoltRevenue)} AZN выручки · ${fmt(overviewWoltCommission)} AZN комиссии`
+    }
+  ].filter(Boolean)
+
+  const ReportsOverview = <section className="reports-v411-overview">
+    <style>{`
+      .reports-v411-overview{display:grid;gap:16px}
+      .reports-v411-kpis{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px}
+      .reports-v411-kpi{position:relative;overflow:hidden;min-height:118px;padding:17px;border:1px solid #dbe4ef;border-radius:20px;background:#fff;box-shadow:0 10px 28px rgba(15,23,42,.045)}
+      .reports-v411-kpi:after{content:'';position:absolute;right:-30px;bottom:-38px;width:100px;height:100px;border-radius:50%;background:var(--kpi-soft,#eff6ff)}
+      .reports-v411-kpi span{display:block;color:#64748b;font-size:12px;font-weight:800}
+      .reports-v411-kpi strong{position:relative;z-index:1;display:block;margin-top:9px;color:#0f172a;font-size:25px;line-height:1;font-weight:950;letter-spacing:-.04em}
+      .reports-v411-kpi small{position:relative;z-index:1;display:block;margin-top:10px;color:#64748b;font-size:10.5px;font-weight:750;line-height:1.3}
+      .reports-v411-kpi.green{--kpi-soft:#dcfce7}.reports-v411-kpi.blue{--kpi-soft:#dbeafe}.reports-v411-kpi.purple{--kpi-soft:#ede9fe}.reports-v411-kpi.orange{--kpi-soft:#ffedd5}.reports-v411-kpi.teal{--kpi-soft:#ccfbf1}.reports-v411-kpi.red{--kpi-soft:#fee2e2}
+      .reports-v411-main-grid{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(320px,.75fr);gap:16px;align-items:stretch}
+      .reports-v411-card{min-width:0;padding:20px;border:1px solid #dbe4ef;border-radius:22px;background:#fff;box-shadow:0 12px 30px rgba(15,23,42,.045)}
+      .reports-v411-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:16px}
+      .reports-v411-card-head h3{margin:0;color:#0f172a;font-size:18px;font-weight:950;letter-spacing:-.025em}
+      .reports-v411-card-head p{margin:5px 0 0;color:#64748b;font-size:12px;font-weight:650;line-height:1.35}
+      .reports-v411-period-badge{white-space:nowrap;padding:7px 10px;border-radius:999px;background:#f1f5f9;color:#475569;font-size:10.5px;font-weight:850}
+      .reports-v411-chart{position:relative;height:276px}
+      .reports-v411-chart svg{display:block;width:100%;height:250px;overflow:visible}
+      .reports-v411-grid-line{stroke:#dbe4ef;stroke-width:1;stroke-dasharray:4 6}
+      .reports-v411-line-revenue{fill:none;stroke:#16a34a;stroke-width:4;stroke-linecap:round;stroke-linejoin:round}
+      .reports-v411-line-expenses{fill:none;stroke:#2563eb;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+      .reports-v411-chart-legend{display:flex;gap:18px;align-items:center;margin-top:-2px;color:#64748b;font-size:11px;font-weight:800}
+      .reports-v411-chart-legend span{display:inline-flex;align-items:center;gap:7px}
+      .reports-v411-chart-legend i{width:18px;height:3px;border-radius:999px}.reports-v411-chart-legend .rev{background:#16a34a}.reports-v411-chart-legend .exp{background:#2563eb}
+      .reports-v411-x-label{fill:#64748b;font-size:10px;font-weight:700}
+      .reports-v411-empty{display:grid;place-items:center;min-height:230px;text-align:center;color:#64748b;font-size:12px;font-weight:700}
+      .reports-v411-conclusions{display:grid;gap:10px}
+      .reports-v411-conclusion{display:grid;grid-template-columns:10px minmax(0,1fr);gap:11px;padding:13px 0;border-bottom:1px solid #e8eef5}
+      .reports-v411-conclusion:last-child{border-bottom:0}
+      .reports-v411-conclusion>i{width:9px;height:9px;margin-top:5px;border-radius:50%;background:#94a3b8}
+      .reports-v411-conclusion.good>i{background:#16a34a}.reports-v411-conclusion.warning>i{background:#f59e0b}.reports-v411-conclusion.bad>i{background:#dc2626}.reports-v411-conclusion.blue>i{background:#0ea5e9}
+      .reports-v411-conclusion span{display:block;color:#64748b;font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.04em}
+      .reports-v411-conclusion strong{display:block;margin-top:3px;color:#0f172a;font-size:14px;font-weight:950}
+      .reports-v411-conclusion small{display:block;margin-top:4px;color:#64748b;font-size:11px;font-weight:650;line-height:1.35}
+      .reports-v411-bottom-grid{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(300px,.65fr);gap:16px}
+      .reports-v411-table-wrap{overflow:auto}
+      .reports-v411-table{width:100%;border-collapse:collapse}
+      .reports-v411-table th,.reports-v411-table td{padding:11px 10px;border-bottom:1px solid #e8eef5;text-align:right;white-space:nowrap}
+      .reports-v411-table th:first-child,.reports-v411-table td:first-child{text-align:left}
+      .reports-v411-table th{color:#64748b;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.04em}
+      .reports-v411-table td{color:#0f172a;font-size:11.5px;font-weight:700}
+      .reports-v411-table .good{color:#059669}.reports-v411-table .bad{color:#dc2626}
+      .reports-v411-expenses{display:grid;gap:12px}
+      .reports-v411-expense-row{display:grid;gap:6px}
+      .reports-v411-expense-copy{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+      .reports-v411-expense-copy span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#334155;font-size:11.5px;font-weight:800}
+      .reports-v411-expense-copy b{white-space:nowrap;color:#0f172a;font-size:11.5px;font-weight:950}
+      .reports-v411-expense-track{height:7px;overflow:hidden;border-radius:999px;background:#e8eef5}
+      .reports-v411-expense-track i{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,#64748b,#2563eb)}
+      .reports-v411-status{padding:12px 14px;border:1px solid #bfdbfe;border-radius:16px;background:#eff6ff;color:#1e3a8a;font-size:12px;font-weight:750}
+      .reports-v411-status.bad{border-color:#fecaca;background:#fef2f2;color:#991b1b}
+      @media(max-width:1350px){.reports-v411-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}}
+      @media(max-width:1050px){.reports-v411-main-grid,.reports-v411-bottom-grid{grid-template-columns:1fr}}
+      @media(max-width:720px){.reports-v411-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.reports-v411-card{padding:15px}.reports-v411-kpi strong{font-size:21px}}
+    `}</style>
+
+    {overviewLoading && <div className="reports-v411-status">Обновляю фактическую выручку и расходы RMS за выбранный период…</div>}
+    {overviewError && <div className="reports-v411-status bad">{overviewError}</div>}
+
+    <section className="reports-v411-kpis">
+      <div className="reports-v411-kpi green"><span>Общая выручка</span><strong>{fmt(overviewRevenueTotal)}</strong><small>Cash + Bank + Wolt</small></div>
+      <div className="reports-v411-kpi blue"><span>Расходы</span><strong>{fmt(overviewExpenseTotal)}</strong><small>{rmsExpensesReport.totals.transactions} операций · {rmsExpensesReport.totals.categories} статей</small></div>
+      <div className={`reports-v411-kpi ${overviewResult >= 0 ? 'purple' : 'red'}`}><span>Финансовый результат</span><strong className={overviewResult >= 0 ? 'good' : 'bad'}>{fmt(overviewResult)}</strong><small>Выручка минус расходы RMS</small></div>
+      <div className={`reports-v411-kpi ${overviewMargin >= 0 ? 'orange' : 'red'}`}><span>Рентабельность</span><strong>{pct(overviewMargin)}</strong><small>Результат / общая выручка</small></div>
+      <div className="reports-v411-kpi teal"><span>Средняя выручка / день</span><strong>{fmt(overviewAverageRevenue)}</strong><small>{overviewRevenueDays} дней с выручкой</small></div>
+      {overviewWoltRevenue > 0
+        ? <div className="reports-v411-kpi blue"><span>Доля Wolt</span><strong>{pct(overviewWoltShare)}</strong><small>{fmt(overviewWoltRevenue)} AZN · комиссия {fmt(overviewWoltCommission)}</small></div>
+        : <div className="reports-v411-kpi blue"><span>Активных филиалов</span><strong>{overviewBranchRows.filter(row => row.revenue > 0).length}</strong><small>с выручкой за выбранный период</small></div>}
+    </section>
+
+    <section className="reports-v411-main-grid">
+      <div className="reports-v411-card">
+        <div className="reports-v411-card-head">
+          <div><h3>Операционная динамика по дням</h3><p>Cash + Bank без Wolt. Из расходов исключена Wolt commission, чтобы расчётные выплаты не искажали ежедневную картину.</p></div>
+          <span className="reports-v411-period-badge">{selectedMonthLabel}</span>
         </div>
-        <button className="small ghost" type="button">По дням</button>
+        {overviewDailyRows.length
+          ? <div className="reports-v411-chart">
+              <svg viewBox={`0 0 ${overviewChartWidth} ${overviewChartHeight}`} preserveAspectRatio="none" aria-label="Выручка и расходы по дням">
+                {[0, .25, .5, .75, 1].map(level => {
+                  const y = overviewChartPadTop + overviewChartUsableHeight - level * overviewChartUsableHeight
+                  return <line key={level} x1={overviewChartPadX} x2={overviewChartWidth - overviewChartPadX} y1={y} y2={y} className="reports-v411-grid-line" />
+                })}
+                {overviewRevenuePath && <path d={overviewRevenuePath} className="reports-v411-line-revenue" />}
+                {overviewExpensesPath && <path d={overviewExpensesPath} className="reports-v411-line-expenses" />}
+                {overviewXAxisLabels.map(row => {
+                  const index = overviewDailyRows.findIndex(item => item.date === row.date)
+                  const point = overviewPoint(row, index, 'operationalRevenue')
+                  return <text key={row.date} x={point.x} y={overviewChartHeight - 9} textAnchor="middle" className="reports-v411-x-label">{String(row.date).slice(8,10)}</text>
+                })}
+              </svg>
+              <div className="reports-v411-chart-legend"><span><i className="rev" />Выручка без Wolt</span><span><i className="exp" />Расходы без Wolt commission</span></div>
+            </div>
+          : <div className="reports-v411-empty">Нет ежедневных данных за выбранный период.</div>}
       </div>
-      <div className="reports-v43-lines">
-        <svg viewBox="0 0 900 280" preserveAspectRatio="none" aria-hidden="true">
-          <defs>
-            <linearGradient id="reportsV43Revenue" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#2563eb" stopOpacity=".23"/><stop offset="100%" stopColor="#2563eb" stopOpacity="0"/></linearGradient>
-          </defs>
-          {[0,1,2,3].map(i => <line key={i} x1="34" x2="880" y1={44 + i * 54} y2={44 + i * 54} className="reports-v43-grid-line" />)}
-          <path className="reports-v43-area blue" d="M40 196 C120 178, 150 152, 224 146 C312 139, 330 113, 420 124 C502 134, 520 84, 608 92 C700 101, 716 62, 804 78 C842 84, 862 68, 880 55 L880 240 L40 240 Z" />
-          <path className="reports-v43-line blue" d="M40 196 C120 178, 150 152, 224 146 C312 139, 330 113, 420 124 C502 134, 520 84, 608 92 C700 101, 716 62, 804 78 C842 84, 862 68, 880 55" />
-          <path className="reports-v43-line green" d="M40 218 C126 205, 174 190, 230 176 C310 154, 358 171, 420 154 C500 133, 535 146, 608 127 C690 108, 742 130, 804 111 C842 102, 860 110, 880 91" />
-          <path className="reports-v43-line purple" d="M40 236 C126 228, 184 216, 234 210 C318 198, 342 190, 420 198 C505 206, 548 182, 608 188 C694 195, 730 164, 804 171 C842 174, 860 160, 880 150" />
-        </svg>
-        <div className="reports-v43-legend"><span className="green">Выручка</span><span className="blue">Расходы</span><span className="purple">Прибыль</span></div>
-      </div>
-    </div>
 
-    <div className="reports-v43-card">
-      <div className="reports-v43-card-head">
-        <div>
-          <h3>Структура отчётности</h3>
-          <p>Быстрый переход по ключевым направлениям.</p>
+      <div className="reports-v411-card">
+        <div className="reports-v411-card-head"><div><h3>Ключевые выводы</h3><p>Автоматические управленческие выводы по фактическим данным RMS.</p></div></div>
+        <div className="reports-v411-conclusions">
+          {overviewConclusions.map((item, index) => <div key={`${item.title}-${index}`} className={`reports-v411-conclusion ${item.tone || ''}`}>
+            <i />
+            <div><span>{item.title}</span><strong>{item.value}</strong><small>{item.detail}</small></div>
+          </div>)}
+          {!overviewConclusions.length && <div className="reports-v411-empty">Недостаточно данных для выводов.</div>}
         </div>
       </div>
-      <div className="reports-v43-quick-list">
-        {reportTabs.filter(tab => !['overview','import'].includes(tab.id)).slice(0, 8).map(tab => <button key={`quick-${tab.id}`} type="button" onClick={() => setReportsTab(tab.id)}><span>{tab.icon}</span><b>{tab.label}</b><em>Открыть</em></button>)}
-      </div>
-    </div>
+    </section>
 
-    <div className="reports-v43-card">
-      <div className="reports-v43-card-head"><div><h3>Выручка по филиалам</h3><p>Сводка по импортированным продажам.</p></div></div>
-      <div className="reports-v43-table-wrap">
-        <table>
-          <thead><tr><th>Филиал</th><th>Выручка</th><th>Себестоимость</th><th>Прибыль</th><th>Food Cost</th></tr></thead>
-          <tbody>
-            {(reportBranchRows.length ? reportBranchRows : [{ id:'all', name:selectedBranchLabel, revenue:totals.revenue, cost:totals.cost, profit:totals.profit }]).slice(0, 6).map(r => <tr key={r.id}><td><b>{r.name}</b></td><td>{fmt(r.revenue)}</td><td>{fmt(r.cost)}</td><td className={r.profit >= 0 ? 'good' : 'bad'}>{fmt(r.profit)}</td><td>{r.revenue ? pct(r.cost / r.revenue * 100) : '0.0%'}</td></tr>)}
-          </tbody>
-        </table>
+    <section className="reports-v411-bottom-grid">
+      <div className="reports-v411-card">
+        <div className="reports-v411-card-head"><div><h3>Эффективность филиалов</h3><p>Фактическая выручка, расходы и результат за выбранный период.</p></div></div>
+        <div className="reports-v411-table-wrap">
+          <table className="reports-v411-table">
+            <thead><tr><th>Филиал</th><th>Выручка</th><th>Wolt</th><th>Расходы</th><th>Результат</th><th>Маржа</th></tr></thead>
+            <tbody>
+              {overviewBranchRows.map(row => <tr key={row.name}>
+                <td><b>{row.name}</b></td>
+                <td>{fmt(row.revenue)}</td>
+                <td>{row.wolt > 0 ? fmt(row.wolt) : '—'}</td>
+                <td>{fmt(row.expenses)}</td>
+                <td className={row.result >= 0 ? 'good' : 'bad'}><b>{fmt(row.result)}</b></td>
+                <td className={row.margin >= 0 ? 'good' : 'bad'}>{pct(row.margin)}</td>
+              </tr>)}
+              {!overviewBranchRows.length && <tr><td colSpan="6" className="hint">Нет данных по филиалам.</td></tr>}
+            </tbody>
+          </table>
+        </div>
       </div>
-    </div>
 
-    <div className="reports-v43-card">
-      <div className="reports-v43-card-head"><div><h3>Топ продаж</h3><p>Позиции с максимальной выручкой.</p></div></div>
-      <div className="reports-v43-table-wrap">
-        <table>
-          <thead><tr><th>Позиция</th><th>Выручка</th><th>Прибыль</th><th>FC</th></tr></thead>
-          <tbody>
-            {reportTopRows.map((r, idx) => <tr key={`top-${idx}-${r.name}`}><td><b>{r.name}</b></td><td>{fmt(r.revenue)}</td><td className={r.profit >= 0 ? 'good' : 'bad'}>{fmt(r.profit)}</td><td>{r.revenue ? pct(r.cost / r.revenue * 100) : '0.0%'}</td></tr>)}
-            {!reportTopRows.length && <tr><td colSpan="4" className="hint">Нет импортированных продаж.</td></tr>}
-          </tbody>
-        </table>
+      <div className="reports-v411-card">
+        <div className="reports-v411-card-head"><div><h3>Крупнейшие расходы</h3><p>Статьи с наибольшим влиянием на результат.</p></div></div>
+        <div className="reports-v411-expenses">
+          {overviewTopExpenseCategories.map(row => <div className="reports-v411-expense-row" key={row.name}>
+            <div className="reports-v411-expense-copy"><span title={row.name}>{row.name}</span><b>{fmt(row.amount)}</b></div>
+            <div className="reports-v411-expense-track"><i style={{ width: `${Math.max(3, row.amount / overviewMaxExpenseCategory * 100)}%` }} /></div>
+          </div>)}
+          {!overviewTopExpenseCategories.length && <div className="reports-v411-empty">Расходы за период отсутствуют.</div>}
+        </div>
       </div>
-    </div>
+    </section>
   </section>
 
   const SalesReportView = <section className="reports-v43-sales-view">
@@ -35904,6 +36128,18 @@ function Reports({ t, permissions = [], isAdmin = false }) {
     </div>
   </section>
 
+  const refreshCurrentReport = () => {
+    if (effectiveReportsTab === 'overview') {
+      loadRmsRevenueReport()
+      loadRmsExpensesReport()
+      return
+    }
+    if (effectiveReportsTab === 'revenue') return loadRmsRevenueReport()
+    if (effectiveReportsTab === 'expenses') return loadRmsExpensesReport()
+    if (effectiveReportsTab === 'suppliers') return loadRmsSuppliersReport()
+    if (isProductsReportTab) return loadRmsProductsReport()
+  }
+
   return <section className="reports-v43-page">
     <ReportsV43Styles />
     <section className="reports-v43-hero">
@@ -35918,7 +36154,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
       </div>
     </section>
 
-    <section className="reports-v43-selector">
+    {effectiveReportsTab !== 'overview' && <section className="reports-v43-selector">
       <div className="reports-v43-selector-current">
         <span>{activeReportTab.icon}</span>
         <div>
@@ -35932,14 +36168,15 @@ function Reports({ t, permissions = [], isAdmin = false }) {
           {reportTabs.map(tab => <option key={tab.id} value={tab.id}>{tab.label}</option>)}
         </select>
       </label>
-    </section>
+    </section>}
 
     <section className="reports-v43-filterbar">
       {!reportTabs.length && <div className="soft-alert warning reports-type-access-empty">Для этого пользователя не разрешён ни один тип отчёта. Настройте доступ в “Настройки → Пользователи → Доступ к типам отчётов”.</div>}
+      {effectiveReportsTab === 'overview' && <label><span>Раздел</span><select value={effectiveReportsTab} onChange={e => setReportsTab(e.target.value)}>{reportTabs.map(tab => <option key={tab.id} value={tab.id}>{tab.label}</option>)}</select></label>}
       <label><span>Период</span><select value={monthFilter} onChange={e => { setMonthFilter(e.target.value); setRevenueDateFrom(''); setRevenueDateTo(''); setRevenuePage(1) }}><option value="all">Все годы / все месяцы</option>{yearOptions.length > 0 && <optgroup label="Годы">{yearOptions.map(y => <option key={`year-${y}`} value={`year:${y}`}>{y} год</option>)}</optgroup>}<optgroup label="Месяцы">{!monthOptions.includes(currentMonthKey) && <option value={currentMonthKey}>Текущий месяц · {currentMonthLabel}</option>}{monthOptions.map(m => <option key={m} value={m}>{m}</option>)}</optgroup></select></label>
       <label><span>Филиал</span><select value={branchFilter} onChange={e => setBranchFilter(e.target.value)}><option value="all">Все филиалы</option>{branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label>
-      <label><span>Тип</span><select value={departmentFilter} onChange={e => setDepartmentFilter(e.target.value)}><option value="all">Все</option><option value="Бар">Бар</option><option value="Кухня">Кухня</option><option value="Смешанный">Смешанный</option></select></label>
-      <div className="reports-v43-filter-actions"><button className="ghost small" type="button">Обновить</button><button className="ghost small" type="button">Экспорт</button><button className="small primary" type="button" onClick={() => window.print()}>Печать</button></div>
+      {effectiveReportsTab !== 'overview' && <label><span>Тип</span><select value={departmentFilter} onChange={e => setDepartmentFilter(e.target.value)}><option value="all">Все</option><option value="Бар">Бар</option><option value="Кухня">Кухня</option><option value="Смешанный">Смешанный</option></select></label>}
+      <div className="reports-v43-filter-actions"><button className="ghost small" type="button" onClick={refreshCurrentReport}>Обновить</button><button className="ghost small" type="button">Экспорт</button><button className="small primary" type="button" onClick={() => window.print()}>Печать</button></div>
     </section>
 
     {showSalesKpis && <section className="reports-v43-kpi-row">
@@ -46252,3 +46489,6 @@ if (typeof document !== 'undefined') {
 
 
 /* v410: dashboard main figure is total revenue including Wolt; small line shows Wolt only; Finance daily chart is cash + bank only */
+
+
+/* v411: Reports Overview rebuilt as a relevant RMS management summary using actual revenue and expenses */
