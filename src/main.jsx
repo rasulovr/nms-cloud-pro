@@ -35862,74 +35862,51 @@ function Reports({ t, permissions = [], isAdmin = false }) {
 
   const overviewDailyRows = useMemo(() => {
     const map = new Map()
-    const getRow = date => {
-      const current = map.get(date) || {
-        date,
-        operationalRevenue: 0,
-        expenses: 0,
-        woltRevenue: 0,
-        woltCommission: 0
-      }
-      map.set(date, current)
-      return current
-    }
-
     ;(rmsRevenueReport.rows || []).forEach(row => {
       const date = String(row.revenue_date || '').slice(0, 10)
       if (!date) return
-      const current = getRow(date)
+      const current = map.get(date) || { date, operationalRevenue: 0, expenses: 0, result: 0 }
       current.operationalRevenue += parseNum(row.cash) + parseNum(row.bank)
-      current.woltRevenue += parseNum(row.wolt)
+      map.set(date, current)
     })
-
     ;(rmsExpensesReport.rows || []).forEach(row => {
       const date = String(row.expense_date || '').slice(0, 10)
       if (!date) return
-      const current = getRow(date)
       const categoryName = row.category_name || row.expense_categories?.name || row.custom_category || ''
-      if (rmsIsWoltCommissionName(categoryName)) {
-        current.woltCommission += parseNum(row.amount)
-      } else {
-        current.expenses += parseNum(row.amount)
-      }
+      if (rmsIsWoltCommissionName(categoryName)) return
+      const current = map.get(date) || { date, operationalRevenue: 0, expenses: 0, result: 0 }
+      current.expenses += parseNum(row.amount)
+      map.set(date, current)
     })
-
-    return Array.from(map.values()).sort((a, b) => String(a.date).localeCompare(String(b.date)))
+    return Array.from(map.values())
+      .sort((a, b) => String(a.date).localeCompare(String(b.date)))
+      .map(row => ({ ...row, result: parseNum(row.operationalRevenue) - parseNum(row.expenses) }))
   }, [rmsRevenueReport.rows, rmsExpensesReport.rows])
 
-  const overviewTrendRows = useMemo(() => {
-    if (overviewTrendMode === 'wolt') {
-      return overviewDailyRows.filter(row => parseNum(row.woltRevenue) > 0 || parseNum(row.woltCommission) > 0)
-    }
-    return overviewDailyRows.filter(row => parseNum(row.operationalRevenue) > 0 || parseNum(row.expenses) > 0)
-  }, [overviewDailyRows, overviewTrendMode])
-
-  const overviewTrendConfig = overviewTrendMode === 'wolt'
+  const overviewTrendConfig = overviewTrendMode === 'expenses'
     ? {
-        title: 'Динамика Wolt по датам расчёта',
-        description: 'Wolt-выручка и фактическая Wolt Comission отображаются отдельно от ежедневной операционной выручки.',
-        primaryField: 'woltRevenue',
-        secondaryField: 'woltCommission',
-        primaryLabel: 'Wolt-выручка',
-        secondaryLabel: 'Wolt Comission',
-        emptyText: 'За выбранный период Wolt-операции отсутствуют.'
+        title: 'Динамика расходов по дням',
+        description: 'Ежедневные расходы без Wolt Comission, чтобы расчётные удержания Wolt не искажали операционную картину.',
+        field: 'expenses',
+        label: 'Расходы без Wolt Comission',
+        lineClass: 'reports-v411-line-expenses',
+        legendClass: 'exp',
+        emptyText: 'Нет расходов за выбранный период.'
       }
     : {
-        title: 'Операционная динамика по дням',
-        description: 'Cash + Bank без Wolt. Из расходов исключена Wolt Comission, чтобы расчётные выплаты не искажали ежедневную картину.',
-        primaryField: 'operationalRevenue',
-        secondaryField: 'expenses',
-        primaryLabel: 'Выручка без Wolt',
-        secondaryLabel: 'Расходы без Wolt Comission',
-        emptyText: 'Нет ежедневных данных за выбранный период.'
+        title: 'Динамика выручки по дням',
+        description: 'Cash + Bank без Wolt, чтобы расчётные выплаты Wolt не искажали ежедневную операционную выручку.',
+        field: 'operationalRevenue',
+        label: 'Выручка без Wolt',
+        lineClass: 'reports-v411-line-revenue',
+        legendClass: 'rev',
+        emptyText: 'Нет выручки за выбранный период.'
       }
 
+  const overviewTrendRows = overviewDailyRows.filter(row => parseNum(row[overviewTrendConfig.field]) > 0)
   const overviewTrendMax = Math.max(
     1,
-    ...overviewTrendRows.map(row => Math.max(
-      parseNum(row[overviewTrendConfig.primaryField]),
-      parseNum(row[overviewTrendConfig.secondaryField])
-    ))
+    ...overviewTrendRows.map(row => parseNum(row[overviewTrendConfig.field]))
   )
   const overviewChartWidth = 860
   const overviewChartHeight = 250
@@ -35937,20 +35914,18 @@ function Reports({ t, permissions = [], isAdmin = false }) {
   const overviewChartPadTop = 24
   const overviewChartPadBottom = 36
   const overviewChartUsableHeight = overviewChartHeight - overviewChartPadTop - overviewChartPadBottom
-  const overviewPoint = (row, index, field) => {
+  const overviewPoint = (row, index) => {
     const x = overviewTrendRows.length <= 1
       ? overviewChartWidth / 2
       : overviewChartPadX + index * ((overviewChartWidth - overviewChartPadX * 2) / (overviewTrendRows.length - 1))
-    const value = Math.max(0, parseNum(row[field]))
+    const value = Math.max(0, parseNum(row[overviewTrendConfig.field]))
     const y = overviewChartPadTop + overviewChartUsableHeight - (value / overviewTrendMax) * overviewChartUsableHeight
     return { x, y }
   }
-  const overviewPath = field => overviewTrendRows.map((row, index) => {
-    const point = overviewPoint(row, index, field)
+  const overviewTrendPath = overviewTrendRows.map((row, index) => {
+    const point = overviewPoint(row, index)
     return `${index === 0 ? 'M' : 'L'} ${point.x.toFixed(2)} ${point.y.toFixed(2)}`
   }).join(' ')
-  const overviewPrimaryPath = overviewPath(overviewTrendConfig.primaryField)
-  const overviewSecondaryPath = overviewPath(overviewTrendConfig.secondaryField)
   const overviewXAxisLabels = overviewTrendRows.filter((_, index, list) => {
     if (list.length <= 7) return true
     const step = Math.max(1, Math.floor((list.length - 1) / 6))
@@ -36019,20 +35994,18 @@ function Reports({ t, permissions = [], isAdmin = false }) {
       .reports-v411-card-head h3{margin:0;color:#0f172a;font-size:18px;font-weight:950;letter-spacing:-.025em}
       .reports-v411-card-head p{margin:5px 0 0;color:#64748b;font-size:12px;font-weight:650;line-height:1.35}
       .reports-v411-period-badge{white-space:nowrap;padding:7px 10px;border-radius:999px;background:#f1f5f9;color:#475569;font-size:10.5px;font-weight:850}
-      .reports-v412-chart-actions{display:flex;align-items:center;justify-content:flex-end;gap:9px;flex-wrap:wrap}
-      .reports-v412-chart-switch{display:inline-flex;padding:3px;border:1px solid #dbe4ef;border-radius:12px;background:#f8fafc}
-      .reports-v412-chart-switch button{min-height:32px;padding:6px 12px;border:0;border-radius:9px;background:transparent;color:#64748b;font-size:11px;font-weight:900;cursor:pointer}
-      .reports-v412-chart-switch button.active{background:#fff;color:#0f172a;box-shadow:0 3px 10px rgba(15,23,42,.10)}
+      .reports-v413-chart-actions{display:flex;align-items:center;justify-content:flex-end;gap:9px;flex-wrap:wrap}
+      .reports-v413-chart-switch{display:inline-flex;padding:3px;border:1px solid #dbe4ef;border-radius:12px;background:#f8fafc}
+      .reports-v413-chart-switch button{min-height:32px;padding:6px 12px;border:0;border-radius:9px;background:transparent;color:#64748b;font-size:11px;font-weight:900;cursor:pointer}
+      .reports-v413-chart-switch button.active{background:#fff;color:#0f172a;box-shadow:0 3px 10px rgba(15,23,42,.10)}
       .reports-v411-chart{position:relative;height:276px}
       .reports-v411-chart svg{display:block;width:100%;height:250px;overflow:visible}
       .reports-v411-grid-line{stroke:#dbe4ef;stroke-width:1;stroke-dasharray:4 6}
       .reports-v411-line-revenue{fill:none;stroke:#16a34a;stroke-width:4;stroke-linecap:round;stroke-linejoin:round}
       .reports-v411-line-expenses{fill:none;stroke:#2563eb;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
-      .reports-v411-line-wolt{fill:none;stroke:#0ea5e9;stroke-width:4;stroke-linecap:round;stroke-linejoin:round}
-      .reports-v411-line-wolt-fee{fill:none;stroke:#f59e0b;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
       .reports-v411-chart-legend{display:flex;gap:18px;align-items:center;margin-top:-2px;color:#64748b;font-size:11px;font-weight:800}
       .reports-v411-chart-legend span{display:inline-flex;align-items:center;gap:7px}
-      .reports-v411-chart-legend i{width:18px;height:3px;border-radius:999px}.reports-v411-chart-legend .rev{background:#16a34a}.reports-v411-chart-legend .exp{background:#2563eb}.reports-v411-chart-legend .wolt{background:#0ea5e9}.reports-v411-chart-legend .wolt-fee{background:#f59e0b}
+      .reports-v411-chart-legend i{width:18px;height:3px;border-radius:999px}.reports-v411-chart-legend .rev{background:#16a34a}.reports-v411-chart-legend .exp{background:#2563eb}
       .reports-v411-x-label{fill:#64748b;font-size:10px;font-weight:700}
       .reports-v411-empty{display:grid;place-items:center;min-height:230px;text-align:center;color:#64748b;font-size:12px;font-weight:700}
       .reports-v411-conclusions{display:grid;gap:10px}
@@ -36083,10 +36056,10 @@ function Reports({ t, permissions = [], isAdmin = false }) {
       <div className="reports-v411-card">
         <div className="reports-v411-card-head">
           <div><h3>{overviewTrendConfig.title}</h3><p>{overviewTrendConfig.description}</p></div>
-          <div className="reports-v412-chart-actions">
-            <div className="reports-v412-chart-switch" role="group" aria-label="Выбор типа динамики">
+          <div className="reports-v413-chart-actions">
+            <div className="reports-v413-chart-switch" role="group" aria-label="Выбор графика">
               <button type="button" className={overviewTrendMode === 'revenue' ? 'active' : ''} onClick={() => setOverviewTrendMode('revenue')}>Выручка</button>
-              <button type="button" className={overviewTrendMode === 'wolt' ? 'active' : ''} onClick={() => setOverviewTrendMode('wolt')}>Wolt</button>
+              <button type="button" className={overviewTrendMode === 'expenses' ? 'active' : ''} onClick={() => setOverviewTrendMode('expenses')}>Расходы</button>
             </div>
             <span className="reports-v411-period-badge">{selectedMonthLabel}</span>
           </div>
@@ -36098,18 +36071,14 @@ function Reports({ t, permissions = [], isAdmin = false }) {
                   const y = overviewChartPadTop + overviewChartUsableHeight - level * overviewChartUsableHeight
                   return <line key={level} x1={overviewChartPadX} x2={overviewChartWidth - overviewChartPadX} y1={y} y2={y} className="reports-v411-grid-line" />
                 })}
-                {overviewPrimaryPath && <path d={overviewPrimaryPath} className={overviewTrendMode === 'wolt' ? 'reports-v411-line-wolt' : 'reports-v411-line-revenue'} />}
-                {overviewSecondaryPath && <path d={overviewSecondaryPath} className={overviewTrendMode === 'wolt' ? 'reports-v411-line-wolt-fee' : 'reports-v411-line-expenses'} />}
+                {overviewTrendPath && <path d={overviewTrendPath} className={overviewTrendConfig.lineClass} />}
                 {overviewXAxisLabels.map(row => {
                   const index = overviewTrendRows.findIndex(item => item.date === row.date)
-                  const point = overviewPoint(row, index, overviewTrendConfig.primaryField)
+                  const point = overviewPoint(row, index)
                   return <text key={row.date} x={point.x} y={overviewChartHeight - 9} textAnchor="middle" className="reports-v411-x-label">{overviewDateLabel(row.date)}</text>
                 })}
               </svg>
-              <div className="reports-v411-chart-legend">
-                <span><i className={overviewTrendMode === 'wolt' ? 'wolt' : 'rev'} />{overviewTrendConfig.primaryLabel}</span>
-                <span><i className={overviewTrendMode === 'wolt' ? 'wolt-fee' : 'exp'} />{overviewTrendConfig.secondaryLabel}</span>
-              </div>
+              <div className="reports-v411-chart-legend"><span><i className={overviewTrendConfig.legendClass} />{overviewTrendConfig.label}</span></div>
             </div>
           : <div className="reports-v411-empty">{overviewTrendConfig.emptyText}</div>}
       </div>
@@ -46560,4 +46529,4 @@ if (typeof document !== 'undefined') {
 /* v411: Reports Overview rebuilt as a relevant RMS management summary using actual revenue and expenses */
 
 
-/* v412: Reports Overview chart switches between operational revenue and Wolt settlement dynamics */
+/* v413: Reports Overview returned to v411 and now switches only between Revenue and Expenses */
