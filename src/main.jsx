@@ -4839,11 +4839,23 @@ function App() {
   const [profile, setProfile] = useState(null)
   const [permissions, setPermissions] = useState([])
   const [theme, setThemeState] = useState(localStorage.getItem('rms_theme') || localStorage.getItem('nms_theme') || 'classic')
-  const [section, setSection] = useState('dashboard')
+  const [section, setSection] = useState(() => {
+    try {
+      return localStorage.getItem('rms_last_section_v1') || 'dashboard'
+    } catch {
+      return 'dashboard'
+    }
+  })
   const [revenueFocus, setRevenueFocus] = useState(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => { document.documentElement.lang = lang }, [lang])
+
+  useEffect(() => {
+    try {
+      if (section) localStorage.setItem('rms_last_section_v1', section)
+    } catch {}
+  }, [section])
 
   const setTheme = (value) => {
     const next = value || 'classic'
@@ -18735,13 +18747,14 @@ function MiniBarChart({ rows, valueKey = 'revenue', labelKey = 'name', title, su
   const signedTotal = rows.reduce((s, r) => s + rowDisplayValue(r), 0)
   const shareBase = valueKey === 'net' ? signedTotal : positiveTotal
   const shareLabel = valueKey === 'net' ? 'от общей прибыли' : 'от общей выручки с Wolt'
+  const hasAnyWolt = stackWolt && rows.some(row => parseNum(row.woltRevenue) > 0)
 
   return <div className={`card span-2 dashboard-chart-card ${stackWolt ? 'dashboard-chart-card-wolt' : ''}`}>
     <div className="card-head">
       <div>
         <h3>{title}</h3>
         <p className="hint">{subtitle}</p>
-        {stackWolt && <div className="dash-wolt-legend" aria-label="Легенда графика">
+        {hasAnyWolt && <div className="dash-wolt-legend" aria-label="Легенда графика">
           <span><i className="dash-wolt-legend-base" />Основная выручка</span>
           <span><i className="dash-wolt-legend-wolt" />Wolt</span>
         </div>}
@@ -18768,7 +18781,10 @@ function MiniBarChart({ rows, valueKey = 'revenue', labelKey = 'name', title, su
           {stackWolt
             ? <div
                 className="dash-bar-track dash-bar-track-stacked"
-                title={`Основная выручка: ${fmt(baseRevenue)} ман. · Wolt: ${fmt(wolt)} ман. · Итого: ${fmt(revenueWithWolt)} ман.${showShare ? ` · ${pct(share)} ${shareLabel}` : ''}`}
+                title={wolt > 0
+                  ? `Основная выручка: ${fmt(baseRevenue)} ман. · Wolt: ${fmt(wolt)} ман. · Итого: ${fmt(revenueWithWolt)} ман.${showShare ? ` · ${pct(share)} ${shareLabel}` : ''}`
+                  : `Выручка: ${fmt(revenueWithWolt)} ман.${showShare ? ` · ${pct(share)} от общей выручки` : ''}`
+                }
               >
                 <div className="dash-bar-stack-base" style={{ width: `${baseWidth}%` }} />
                 {wolt > 0 && <div className="dash-bar-stack-wolt" style={{ left: `${baseWidth}%`, width: `${woltWidth}%` }} />}
@@ -18782,10 +18798,10 @@ function MiniBarChart({ rows, valueKey = 'revenue', labelKey = 'name', title, su
             {stackWolt
               ? <>
                   <div className="dash-bar-value-main">
-                    <span>{fmt(baseRevenue)} ман.</span>
+                    <span>{fmt(wolt > 0 ? baseRevenue : revenueWithWolt)} ман.</span>
                     {showShare && <em>({pct(share)})</em>}
                   </div>
-                  <small>с Wolt: {fmt(revenueWithWolt)} ман.</small>
+                  {wolt > 0 && <small>с Wolt: {fmt(revenueWithWolt)} ман.</small>}
                 </>
               : <>
                   <span>{fmt(val)} ман.</span>
@@ -46222,3 +46238,12 @@ if (typeof document !== 'undefined') {
 
 
 /* v407: reduced vertical spacing between branch revenue rows in Wolt chart only */
+
+
+/* v408: branch rows without Wolt show only one amount; active RMS section survives refresh */
+.rms-pro-shell .dash-bar-value-wolt:not(:has(small)){
+  gap:0!important;
+}
+
+
+/* v408: hide zero-Wolt labels and persist active top-level RMS section in localStorage */
