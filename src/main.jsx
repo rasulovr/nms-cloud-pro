@@ -33575,7 +33575,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
       const [{ data: employeeRowsRaw, error: employeesError }, salaryResult, serviceResult] = await Promise.all([
         supabase
           .from('employees')
-          .select('id,branch_id,position,monthly_salary,official_salary,monthly_official_salary,is_active,employment_status')
+          .select('id,branch_id,position,monthly_salary,salary_type,daily_rate,is_active,employment_status')
           .eq('is_active', true),
         (async () => {
           let query = supabase
@@ -33705,7 +33705,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
           const officialSalary = rmsFinanceOfficialSalaryByEmployee()
           const defaultDays = parseNum(localStorage.getItem('rms_dsmf_official_days') || '26') || 26
           const days = parseNum(officialDays[employee.id]) || defaultDays
-          const monthly = parseNum(officialSalary[employee.id]) || parseNum(employee.official_salary) || parseNum(employee.monthly_official_salary) || parseNum(employee.monthly_salary)
+          const monthly = parseNum(officialSalary[employee.id]) || parseNum(employee.monthly_salary)
           const amount = monthly > 0 ? monthly / 26 * days * monthMultiplier : 0
           if (amount <= 0) return
           const branchId = String(employee.branch_id || '')
@@ -47691,3 +47691,6 @@ if (typeof document !== 'undefined') {
 
 
 /* v417: new Reports -> Branch Profitability with Food Cost, payroll, service charge, tax and Wolt analysis */
+
+
+/* v418: profitability employees query uses existing schema columns only */
