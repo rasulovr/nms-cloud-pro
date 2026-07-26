@@ -628,6 +628,7 @@ const SECTIONS = [
 
 const REPORTS_ACCESS_TABS = [
   { id: 'overview', label: 'Обзор', icon: '▣' },
+  { id: 'profitability', label: 'Рентабельность', icon: '◉' },
   { id: 'sales', label: 'Продажи', icon: '↗' },
   { id: 'revenue', label: 'Выручка', icon: '◷' },
   { id: 'expenses', label: 'Расходы', icon: '▥' },
@@ -33010,6 +33011,10 @@ function Reports({ t, permissions = [], isAdmin = false }) {
   const canReadReportTab = (tabId) => {
     if (isAdmin || !hasSpecificReportPermissions) return true
     const row = reportPermissionRows.find(p => p.section === reportPermissionSection(tabId))
+    if (!row && tabId === 'profitability') {
+      const overviewRow = reportPermissionRows.find(p => p.section === reportPermissionSection('overview'))
+      return canReadAccess(overviewRow?.access || 'none')
+    }
     return canReadAccess(row?.access || 'none')
   }
   const reportTabs = REPORTS_ACCESS_TABS.filter(tab => canReadReportTab(tab.id))
@@ -33058,6 +33063,32 @@ function Reports({ t, permissions = [], isAdmin = false }) {
   const [cloudSalesAliasesLoaded, setCloudSalesAliasesLoaded] = useState(false)
   const [rmsRevenueReport, setRmsRevenueReport] = useState({ loading: false, error: '', rows: [], totals: { cash: 0, bank: 0, wolt: 0, revenue: 0 } })
   const [rmsExpensesReport, setRmsExpensesReport] = useState({ loading: false, error: '', rows: [], totals: { amount: 0, transactions: 0, categories: 0 }, byCategory: [], byBranch: [] })
+  const [rmsProfitabilityReport, setRmsProfitabilityReport] = useState({
+    loading: false,
+    error: '',
+    rows: [],
+    totals: {
+      revenue: 0,
+      baseRevenue: 0,
+      woltRevenue: 0,
+      operatingExpenses: 0,
+      foodCost: 0,
+      salary: 0,
+      serviceCost: 0,
+      tax: 0,
+      woltCommission: 0,
+      totalExpenses: 0,
+      net: 0,
+      margin: 0,
+      activeDays: 0,
+      branches: 0
+    },
+    periodLabel: '',
+    source: ''
+  })
+  const [profitabilityMetric, setProfitabilityMetric] = useState('net')
+  const [expandedProfitabilityBranches, setExpandedProfitabilityBranches] = useState(() => new Set())
+
   const [rmsSuppliersReport, setRmsSuppliersReport] = useState({
     loading: false,
     error: '',
@@ -33361,6 +33392,11 @@ function Reports({ t, permissions = [], isAdmin = false }) {
   }, [effectiveReportsTab, branchFilter, monthFilter, branches.length])
 
   useEffect(() => {
+    if (effectiveReportsTab !== 'profitability') return
+    loadRmsProfitabilityReport()
+  }, [effectiveReportsTab, branchFilter, monthFilter, branches.length])
+
+  useEffect(() => {
     if (effectiveReportsTab !== 'suppliers') return
     loadRmsSuppliersReport()
   }, [effectiveReportsTab, branchFilter, monthFilter, supplierReportDateFrom, supplierReportDateTo, branches.length])
@@ -33433,6 +33469,381 @@ function Reports({ t, permissions = [], isAdmin = false }) {
       setRmsExpensesReport({ loading: false, error: '', rows, totals, byCategory, byBranch })
     } catch (error) {
       setRmsExpensesReport({ loading: false, error: error?.message || 'Не удалось загрузить расходы RMS', rows: [], totals: { amount: 0, transactions: 0, categories: 0 }, byCategory: [], byBranch: [] })
+    }
+  }
+
+  async function loadRmsProfitabilityReport() {
+    setRmsProfitabilityReport(prev => ({ ...prev, loading: true, error: '' }))
+
+    const emptyTotals = {
+      revenue: 0,
+      baseRevenue: 0,
+      woltRevenue: 0,
+      operatingExpenses: 0,
+      foodCost: 0,
+      salary: 0,
+      serviceCost: 0,
+      tax: 0,
+      woltCommission: 0,
+      totalExpenses: 0,
+      net: 0,
+      margin: 0,
+      activeDays: 0,
+      branches: 0
+    }
+
+    try {
+      const pageSize = 1000
+      const period = (() => {
+        if (/^year:\d{4}$/.test(String(monthFilter || ''))) {
+          const year = Number(String(monthFilter).replace('year:', ''))
+          return {
+            from: `${year}-01-01`,
+            toExclusive: `${year + 1}-01-01`,
+            label: `${year} год`
+          }
+        }
+        if (/^\d{4}-\d{2}$/.test(String(monthFilter || ''))) {
+          return {
+            from: `${monthFilter}-01`,
+            toExclusive: rmsNextMonthStart(monthFilter),
+            label: monthFilter
+          }
+        }
+        return { from: '', toExclusive: '', label: 'Весь период' }
+      })()
+
+      const applyDateRange = (query, field) => {
+        let next = query
+        if (period.from) next = next.gte(field, period.from)
+        if (period.toExclusive) next = next.lt(field, period.toExclusive)
+        return next
+      }
+
+      const fetchPaged = async (buildQuery) => {
+        let offset = 0
+        let rows = []
+        while (true) {
+          const { data, error } = await buildQuery(offset, offset + pageSize - 1)
+          if (error) throw error
+          const batch = data || []
+          rows = rows.concat(batch)
+          if (batch.length < pageSize) break
+          offset += pageSize
+          if (offset > 50000) break
+        }
+        return rows
+      }
+
+      const fetchRevenueTable = async table => fetchPaged((from, to) => {
+        let query = supabase
+          .from(table)
+          .select(table === 'daily_revenue_entries'
+            ? 'id,branch_id,revenue_date,cash_amount,bank_amount,wolt_amount,comment'
+            : 'branch_id,revenue_date,cash_amount,bank_amount,wolt_amount'
+          )
+          .is('deleted_at', null)
+        query = applyDateRange(query, 'revenue_date')
+        return query.order('revenue_date', { ascending: true }).range(from, to)
+      })
+
+      let revenueRows = await fetchRevenueTable('daily_revenue_entries')
+      let revenueSource = 'daily_revenue_entries'
+      if (!revenueRows.length) {
+        revenueRows = await fetchRevenueTable('daily_revenue')
+        revenueSource = 'daily_revenue'
+      }
+
+      const dailyExpenseRows = await fetchPaged((from, to) => {
+        let query = supabase
+          .from('daily_expenses')
+          .select('id,branch_id,expense_date,amount,comment,custom_category,expense_categories(name)')
+          .is('deleted_at', null)
+        query = applyDateRange(query, 'expense_date')
+        return query.order('expense_date', { ascending: true }).range(from, to)
+      })
+
+      const supplierPurchases = await fetchPaged((from, to) => {
+        let query = supabase
+          .from('supplier_purchases')
+          .select('id,branch_id,purchase_date,total_amount,deleted_at')
+          .is('deleted_at', null)
+        query = applyDateRange(query, 'purchase_date')
+        return query.order('purchase_date', { ascending: true }).range(from, to)
+      })
+
+      const [{ data: employeeRowsRaw, error: employeesError }, salaryResult, serviceResult] = await Promise.all([
+        supabase
+          .from('employees')
+          .select('id,branch_id,position,monthly_salary,official_salary,monthly_official_salary,is_active,employment_status')
+          .eq('is_active', true),
+        (async () => {
+          let query = supabase
+            .from('salary_periods')
+            .select('employee_id,branch_id,salary_month,salary_gross,salary_net')
+          query = applyDateRange(query, 'salary_month')
+          return query
+        })(),
+        (async () => {
+          let query = supabase
+            .from('monthly_branch_service_charge_cost')
+            .select('branch_id,month,staff_cost_amount')
+          query = applyDateRange(query, 'month')
+          return query
+        })()
+      ])
+
+      if (employeesError) throw employeesError
+      const employeeRows = employeeRowsRaw || []
+      const salaryPeriods = salaryResult?.error ? [] : (salaryResult?.data || [])
+      const serviceRows = serviceResult?.error ? [] : (serviceResult?.data || [])
+      const taxSettings = await readRmsAppSetting(RMS_BRANCH_TAX_RATE_SETTING, {})
+
+      const employeeById = new Map(employeeRows.map(row => [String(row.id), row]))
+      const branchNameById = new Map((branches || []).map(row => [String(row.id), row.name]))
+
+      const revenueByBranch = new Map()
+      revenueRows.forEach(row => {
+        const id = String(row.branch_id || '')
+        if (!id) return
+        const current = revenueByBranch.get(id) || {
+          branch_id: id,
+          cash: 0,
+          bank: 0,
+          wolt: 0,
+          revenue: 0,
+          days: new Set()
+        }
+        current.cash += parseNum(row.cash_amount)
+        current.bank += parseNum(row.bank_amount)
+        current.wolt += parseNum(row.wolt_amount)
+        current.revenue += parseNum(row.cash_amount) + parseNum(row.bank_amount) + parseNum(row.wolt_amount)
+        if (row.revenue_date) current.days.add(String(row.revenue_date).slice(0, 10))
+        revenueByBranch.set(id, current)
+      })
+
+      const networkRevenue = Array.from(revenueByBranch.values()).reduce((sum, row) => sum + parseNum(row.revenue), 0)
+      const revenueShareMap = new Map()
+      revenueByBranch.forEach((row, id) => {
+        revenueShareMap.set(id, networkRevenue > 0 ? parseNum(row.revenue) / networkRevenue : 0)
+      })
+
+      const normalizedExpenseName = row => row?.expense_categories?.name || row?.custom_category || 'Прочее'
+      const isTaxLike = value => {
+        const name = normalizeExpenseText(value)
+        return name.includes('налог') || name === 'tax' || name.includes('tax ')
+      }
+      const isServiceChargeLike = value => {
+        const name = normalizeExpenseText(value)
+        return name.includes('service charge') && (name.includes('персонал') || name.includes('staff'))
+      }
+
+      const expensesByBranch = new Map()
+      dailyExpenseRows.forEach(row => {
+        const id = String(row.branch_id || '')
+        if (!id) return
+        const name = normalizedExpenseName(row)
+        if (String(row.comment || '').startsWith('SUPPLIER_PURCHASE_')) return
+        if (isSalaryExpenseName(name)) return
+        if (isTaxLike(name)) return
+        if (isServiceChargeLike(name)) return
+
+        const amount = parseNum(row.amount)
+        const group = rmsFinanceExpenseGroupName(name)
+        const current = expensesByBranch.get(id) || {
+          operating: 0,
+          manualFood: 0,
+          rent: 0,
+          utilities: 0,
+          packaging: 0,
+          household: 0,
+          marketing: 0,
+          maintenance: 0,
+          woltCommission: 0,
+          other: 0,
+          categories: new Map()
+        }
+
+        current.operating += amount
+        if (group === 'food_market') current.manualFood += amount
+        else if (group === 'rent') current.rent += amount
+        else if (group === 'utilities') current.utilities += amount
+        else if (group === 'packaging') current.packaging += amount
+        else if (group === 'household') current.household += amount
+        else if (group === 'marketing') current.marketing += amount
+        else if (group === 'maintenance') current.maintenance += amount
+        else current.other += amount
+
+        if (rmsIsWoltCommissionName(name)) current.woltCommission += amount
+
+        const categoryRow = current.categories.get(name) || { name, amount: 0, transactions: 0 }
+        categoryRow.amount += amount
+        categoryRow.transactions += 1
+        current.categories.set(name, categoryRow)
+        expensesByBranch.set(id, current)
+      })
+
+      const supplierPurchaseTotal = supplierPurchases.reduce((sum, row) => sum + parseNum(row.total_amount), 0)
+
+      const directSalaryByBranch = new Map()
+      let managerSalaryPool = 0
+      if (salaryPeriods.length) {
+        salaryPeriods.forEach(periodRow => {
+          const amount = rmsSalaryPeriodTotal(periodRow)
+          if (amount <= 0) return
+          const employee = employeeById.get(String(periodRow.employee_id)) || {}
+          const branchId = String(periodRow.branch_id || employee.branch_id || '')
+          const manager = !branchId || positionGroup(employee.position) === 'Менеджеры'
+          if (manager) managerSalaryPool += amount
+          else directSalaryByBranch.set(branchId, parseNum(directSalaryByBranch.get(branchId)) + amount)
+        })
+      } else {
+        const uniqueMonths = new Set(revenueRows.map(row => String(row.revenue_date || '').slice(0, 7)).filter(Boolean))
+        const monthMultiplier = Math.max(1, uniqueMonths.size)
+        employeeRows.forEach(employee => {
+          const officialDays = rmsFinanceOfficialDaysByEmployee()
+          const officialSalary = rmsFinanceOfficialSalaryByEmployee()
+          const defaultDays = parseNum(localStorage.getItem('rms_dsmf_official_days') || '26') || 26
+          const days = parseNum(officialDays[employee.id]) || defaultDays
+          const monthly = parseNum(officialSalary[employee.id]) || parseNum(employee.official_salary) || parseNum(employee.monthly_official_salary) || parseNum(employee.monthly_salary)
+          const amount = monthly > 0 ? monthly / 26 * days * monthMultiplier : 0
+          if (amount <= 0) return
+          const branchId = String(employee.branch_id || '')
+          const manager = !branchId || positionGroup(employee.position) === 'Менеджеры'
+          if (manager) managerSalaryPool += amount
+          else directSalaryByBranch.set(branchId, parseNum(directSalaryByBranch.get(branchId)) + amount)
+        })
+      }
+
+      const serviceByBranch = new Map()
+      serviceRows.forEach(row => {
+        const id = String(row.branch_id || '')
+        if (!id) return
+        serviceByBranch.set(id, parseNum(serviceByBranch.get(id)) + parseNum(row.staff_cost_amount))
+      })
+
+      const allBranchIds = new Set([
+        ...(branches || []).map(row => String(row.id || '')),
+        ...Array.from(revenueByBranch.keys()),
+        ...Array.from(expensesByBranch.keys()),
+        ...Array.from(directSalaryByBranch.keys()),
+        ...Array.from(serviceByBranch.keys())
+      ].filter(Boolean))
+
+      const rows = Array.from(allBranchIds).map(id => {
+        const revenueData = revenueByBranch.get(id) || { cash: 0, bank: 0, wolt: 0, revenue: 0, days: new Set() }
+        const expenseData = expensesByBranch.get(id) || {
+          operating: 0,
+          manualFood: 0,
+          rent: 0,
+          utilities: 0,
+          packaging: 0,
+          household: 0,
+          marketing: 0,
+          maintenance: 0,
+          woltCommission: 0,
+          other: 0,
+          categories: new Map()
+        }
+
+        const share = parseNum(revenueShareMap.get(id))
+        const supplierFoodCost = supplierPurchaseTotal * share
+        const foodCost = parseNum(expenseData.manualFood) + supplierFoodCost
+        const directSalary = parseNum(directSalaryByBranch.get(id))
+        const managerSalary = managerSalaryPool * share
+        const salary = directSalary + managerSalary
+        const serviceCost = parseNum(serviceByBranch.get(id))
+        const configuredTaxRate = parseNum(taxSettings?.[id])
+        const taxRate = configuredTaxRate > 0 ? configuredTaxRate : 8
+        const tax = parseNum(revenueData.revenue) * taxRate / 100
+        const totalExpenses = parseNum(expenseData.operating) + supplierFoodCost + salary + serviceCost + tax
+        const net = parseNum(revenueData.revenue) - totalExpenses
+        const activeDays = revenueData.days?.size || 0
+
+        return {
+          id,
+          name: branchNameById.get(id) || id,
+          cash: parseNum(revenueData.cash),
+          bank: parseNum(revenueData.bank),
+          baseRevenue: parseNum(revenueData.cash) + parseNum(revenueData.bank),
+          woltRevenue: parseNum(revenueData.wolt),
+          revenue: parseNum(revenueData.revenue),
+          revenueShare: share * 100,
+          operatingExpenses: parseNum(expenseData.operating),
+          supplierFoodCost,
+          manualFoodCost: parseNum(expenseData.manualFood),
+          foodCost,
+          salary,
+          directSalary,
+          managerSalary,
+          serviceCost,
+          tax,
+          taxRate,
+          woltCommission: parseNum(expenseData.woltCommission),
+          rent: parseNum(expenseData.rent),
+          utilities: parseNum(expenseData.utilities),
+          packaging: parseNum(expenseData.packaging),
+          household: parseNum(expenseData.household),
+          marketing: parseNum(expenseData.marketing),
+          maintenance: parseNum(expenseData.maintenance),
+          other: parseNum(expenseData.other),
+          totalExpenses,
+          net,
+          margin: revenueData.revenue ? net / revenueData.revenue * 100 : 0,
+          expenseRatio: revenueData.revenue ? totalExpenses / revenueData.revenue * 100 : 0,
+          foodCostPct: revenueData.revenue ? foodCost / revenueData.revenue * 100 : 0,
+          salaryPct: revenueData.revenue ? salary / revenueData.revenue * 100 : 0,
+          rentPct: revenueData.revenue ? parseNum(expenseData.rent) / revenueData.revenue * 100 : 0,
+          woltCommissionPct: revenueData.wolt ? parseNum(expenseData.woltCommission) / revenueData.wolt * 100 : 0,
+          activeDays,
+          averageRevenuePerDay: activeDays ? parseNum(revenueData.revenue) / activeDays : 0,
+          netPerDay: activeDays ? net / activeDays : 0,
+          categories: Array.from(expenseData.categories.values()).sort((a, b) => parseNum(b.amount) - parseNum(a.amount))
+        }
+      }).filter(row => row.revenue || row.totalExpenses || row.salary || row.foodCost)
+
+      const visibleRows = branchFilter === 'all'
+        ? rows
+        : rows.filter(row => String(row.id) === String(branchFilter))
+
+      visibleRows.sort((a, b) => parseNum(b.net) - parseNum(a.net))
+
+      const totals = visibleRows.reduce((acc, row) => {
+        acc.revenue += parseNum(row.revenue)
+        acc.baseRevenue += parseNum(row.baseRevenue)
+        acc.woltRevenue += parseNum(row.woltRevenue)
+        acc.operatingExpenses += parseNum(row.operatingExpenses)
+        acc.foodCost += parseNum(row.foodCost)
+        acc.salary += parseNum(row.salary)
+        acc.serviceCost += parseNum(row.serviceCost)
+        acc.tax += parseNum(row.tax)
+        acc.woltCommission += parseNum(row.woltCommission)
+        acc.totalExpenses += parseNum(row.totalExpenses)
+        acc.net += parseNum(row.net)
+        acc.activeDays = Math.max(acc.activeDays, parseNum(row.activeDays))
+        return acc
+      }, { ...emptyTotals })
+
+      totals.margin = totals.revenue ? totals.net / totals.revenue * 100 : 0
+      totals.branches = visibleRows.length
+
+      setRmsProfitabilityReport({
+        loading: false,
+        error: '',
+        rows: visibleRows,
+        totals,
+        periodLabel: period.label,
+        source: `${revenueSource} + daily_expenses + supplier_purchases + salary_periods`
+      })
+    } catch (error) {
+      setRmsProfitabilityReport({
+        loading: false,
+        error: error?.message || 'Не удалось загрузить отчёт по рентабельности',
+        rows: [],
+        totals: emptyTotals,
+        periodLabel: '',
+        source: ''
+      })
     }
   }
 
@@ -36065,6 +36476,146 @@ function Reports({ t, permissions = [], isAdmin = false }) {
     </div>
   </section>
 
+  const profitabilityRows = rmsProfitabilityReport.rows || []
+  const profitabilityTotals = rmsProfitabilityReport.totals || {}
+  const profitabilitySortedRows = useMemo(() => {
+    const rows = [...profitabilityRows]
+    if (profitabilityMetric === 'margin') return rows.sort((a, b) => parseNum(b.margin) - parseNum(a.margin))
+    if (profitabilityMetric === 'revenue') return rows.sort((a, b) => parseNum(b.revenue) - parseNum(a.revenue))
+    return rows.sort((a, b) => parseNum(b.net) - parseNum(a.net))
+  }, [profitabilityRows, profitabilityMetric])
+
+  const profitabilityMetricConfig = profitabilityMetric === 'margin'
+    ? { key: 'margin', label: 'Рентабельность', format: value => pct(value), max: Math.max(1, ...profitabilityRows.map(row => Math.max(0, parseNum(row.margin)))) }
+    : profitabilityMetric === 'revenue'
+      ? { key: 'revenue', label: 'Выручка', format: value => `${fmt(value)} AZN`, max: Math.max(1, ...profitabilityRows.map(row => Math.max(0, parseNum(row.revenue)))) }
+      : { key: 'net', label: 'Чистый результат', format: value => `${fmt(value)} AZN`, max: Math.max(1, ...profitabilityRows.map(row => Math.abs(parseNum(row.net)))) }
+
+  const profitabilityBest = [...profitabilityRows].sort((a, b) => parseNum(b.net) - parseNum(a.net))[0] || null
+  const profitabilityWeak = [...profitabilityRows].sort((a, b) => parseNum(a.net) - parseNum(b.net))[0] || null
+  const profitabilityHighestFood = [...profitabilityRows].filter(row => row.revenue > 0).sort((a, b) => parseNum(b.foodCostPct) - parseNum(a.foodCostPct))[0] || null
+  const profitabilityHighestSalary = [...profitabilityRows].filter(row => row.revenue > 0).sort((a, b) => parseNum(b.salaryPct) - parseNum(a.salaryPct))[0] || null
+
+  const toggleProfitabilityBranch = branchId => {
+    setExpandedProfitabilityBranches(current => {
+      const next = new Set(current)
+      const key = String(branchId)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  }
+
+  const ReportsProfitabilityView = <section className="reports-v417-profitability">
+    <style>{`
+      .reports-v417-profitability{display:grid;gap:16px}
+      .reports-v417-status{padding:13px 15px;border:1px solid #bfdbfe;border-radius:16px;background:#eff6ff;color:#1e3a8a;font-size:12px;font-weight:750}.reports-v417-status.bad{border-color:#fecaca;background:#fef2f2;color:#991b1b}
+      .reports-v417-kpis{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:10px}
+      .reports-v417-kpi{position:relative;overflow:hidden;min-height:106px;padding:15px;border:1px solid #dbe4ef;border-radius:19px;background:#fff;box-shadow:0 9px 24px rgba(15,23,42,.04)}
+      .reports-v417-kpi:after{content:'';position:absolute;right:-32px;bottom:-42px;width:100px;height:100px;border-radius:50%;background:var(--soft,#eff6ff)}
+      .reports-v417-kpi span{display:block;color:#64748b;font-size:10.5px;font-weight:850}.reports-v417-kpi strong{position:relative;z-index:1;display:block;margin-top:9px;color:#0f172a;font-size:21px;font-weight:950;letter-spacing:-.035em}.reports-v417-kpi em{position:relative;z-index:1;display:block;margin-top:7px;color:#94a3b8;font-size:9.8px;font-style:normal;font-weight:750;line-height:1.25}
+      .reports-v417-kpi.green{--soft:#dcfce7}.reports-v417-kpi.red{--soft:#fee2e2}.reports-v417-kpi.blue{--soft:#dbeafe}.reports-v417-kpi.orange{--soft:#ffedd5}.reports-v417-kpi.purple{--soft:#ede9fe}.reports-v417-kpi.teal{--soft:#ccfbf1}
+      .reports-v417-grid{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(330px,.75fr);gap:15px}
+      .reports-v417-card{min-width:0;padding:19px;border:1px solid #dbe4ef;border-radius:21px;background:#fff;box-shadow:0 11px 28px rgba(15,23,42,.04)}
+      .reports-v417-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:15px}.reports-v417-head h3{margin:0;color:#0f172a;font-size:17px;font-weight:950}.reports-v417-head p{margin:5px 0 0;color:#64748b;font-size:11px;font-weight:650;line-height:1.35}
+      .reports-v417-switch{display:inline-flex;padding:3px;border:1px solid #dbe4ef;border-radius:12px;background:#f8fafc}.reports-v417-switch button{padding:7px 11px;border:0;border-radius:9px;background:transparent;color:#64748b;font-size:10.5px;font-weight:900;cursor:pointer}.reports-v417-switch button.active{background:#fff;color:#0f172a;box-shadow:0 3px 10px rgba(15,23,42,.10)}
+      .reports-v417-bars{display:grid;gap:10px}.reports-v417-bar-row{display:grid;grid-template-columns:105px minmax(130px,1fr) 135px;gap:11px;align-items:center}.reports-v417-bar-row>b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#0f172a;font-size:11.5px}.reports-v417-track{position:relative;height:15px;overflow:hidden;border-radius:999px;background:#e2e8f0}.reports-v417-track i{display:block;height:100%;min-width:2px;border-radius:999px;background:linear-gradient(90deg,#64748b,#2563eb)}.reports-v417-track i.bad{background:linear-gradient(90deg,#fb7185,#dc2626)}.reports-v417-value{text-align:right;color:#0f172a;font-size:11px;font-weight:900}.reports-v417-value.bad{color:#dc2626}.reports-v417-value.good{color:#059669}
+      .reports-v417-insights{display:grid;gap:9px}.reports-v417-insight{display:grid;grid-template-columns:10px minmax(0,1fr);gap:10px;padding:11px 0;border-bottom:1px solid #edf2f7}.reports-v417-insight:last-child{border-bottom:0}.reports-v417-insight>i{width:8px;height:8px;margin-top:5px;border-radius:50%;background:#2563eb}.reports-v417-insight.warn>i{background:#f59e0b}.reports-v417-insight.bad>i{background:#dc2626}.reports-v417-insight strong{display:block;color:#0f172a;font-size:12px;font-weight:950}.reports-v417-insight span{display:block;margin-top:4px;color:#64748b;font-size:10.5px;font-weight:650;line-height:1.35}
+      .reports-v417-table-wrap{overflow:auto;border:1px solid #e2e8f0;border-radius:17px}.reports-v417-table{width:100%;border-collapse:collapse}.reports-v417-table th,.reports-v417-table td{padding:11px 9px;border-bottom:1px solid #e8eef5;text-align:right;white-space:nowrap}.reports-v417-table th:first-child,.reports-v417-table td:first-child{text-align:left}.reports-v417-table th{position:sticky;top:0;z-index:1;background:#f8fafc;color:#64748b;font-size:9.4px;font-weight:900;text-transform:uppercase;letter-spacing:.03em}.reports-v417-table td{color:#0f172a;font-size:10.8px;font-weight:700}.reports-v417-table tr:last-child td{border-bottom:0}.reports-v417-table .good{color:#059669}.reports-v417-table .bad{color:#dc2626}.reports-v417-open{padding:5px 8px;border:1px solid #dbe4ef;border-radius:9px;background:#fff;color:#334155;font-size:9.8px;font-weight:850;cursor:pointer}
+      .reports-v417-detail td{padding:0!important;background:#f8fafc}.reports-v417-detail-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:11px;padding:14px}.reports-v417-detail-card{padding:13px;border:1px solid #dbe4ef;border-radius:15px;background:#fff}.reports-v417-detail-card h4{margin:0 0 10px;color:#0f172a;font-size:12px;font-weight:950}.reports-v417-detail-list{display:grid;gap:8px}.reports-v417-detail-list div{display:flex;justify-content:space-between;gap:12px;color:#64748b;font-size:10.5px;font-weight:700}.reports-v417-detail-list b{color:#0f172a;font-weight:900}.reports-v417-warning{margin-top:10px;padding:9px 10px;border-radius:11px;background:#fff7ed;color:#9a3412;font-size:10px;font-weight:750;line-height:1.35}
+      .reports-v417-empty{padding:28px;text-align:center;color:#64748b;font-size:12px;font-weight:700}
+      @media(max-width:1500px){.reports-v417-kpis{grid-template-columns:repeat(4,minmax(0,1fr))}}@media(max-width:1050px){.reports-v417-grid{grid-template-columns:1fr}.reports-v417-detail-grid{grid-template-columns:1fr}}@media(max-width:720px){.reports-v417-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.reports-v417-bar-row{grid-template-columns:80px minmax(90px,1fr) 105px}}
+    `}</style>
+
+    {rmsProfitabilityReport.loading && <div className="reports-v417-status">Считаю выручку, Food Cost, зарплаты, service charge, налоги и чистый результат по филиалам…</div>}
+    {rmsProfitabilityReport.error && <div className="reports-v417-status bad">{rmsProfitabilityReport.error}</div>}
+
+    <section className="reports-v417-kpis">
+      <div className="reports-v417-kpi green"><span>Выручка</span><strong>{fmt(profitabilityTotals.revenue)}</strong><em>Cash + Bank + Wolt</em></div>
+      <div className="reports-v417-kpi blue"><span>Все расходы</span><strong>{fmt(profitabilityTotals.totalExpenses)}</strong><em>{profitabilityTotals.revenue ? pct(profitabilityTotals.totalExpenses / profitabilityTotals.revenue * 100) : '0.0%'} от выручки</em></div>
+      <div className={`reports-v417-kpi ${profitabilityTotals.net >= 0 ? 'purple' : 'red'}`}><span>Чистый результат</span><strong>{fmt(profitabilityTotals.net)}</strong><em>{rmsProfitabilityReport.periodLabel}</em></div>
+      <div className={`reports-v417-kpi ${profitabilityTotals.margin >= 0 ? 'orange' : 'red'}`}><span>Рентабельность</span><strong>{pct(profitabilityTotals.margin)}</strong><em>чистая маржа</em></div>
+      <div className="reports-v417-kpi teal"><span>Food Cost</span><strong>{fmt(profitabilityTotals.foodCost)}</strong><em>{profitabilityTotals.revenue ? pct(profitabilityTotals.foodCost / profitabilityTotals.revenue * 100) : '0.0%'}</em></div>
+      <div className="reports-v417-kpi blue"><span>Зарплаты</span><strong>{fmt(profitabilityTotals.salary)}</strong><em>{profitabilityTotals.revenue ? pct(profitabilityTotals.salary / profitabilityTotals.revenue * 100) : '0.0%'}</em></div>
+      <div className="reports-v417-kpi orange"><span>Wolt Comission</span><strong>{fmt(profitabilityTotals.woltCommission)}</strong><em>Wolt-выручка {fmt(profitabilityTotals.woltRevenue)}</em></div>
+      <div className="reports-v417-kpi green"><span>Филиалов</span><strong>{fmt(profitabilityTotals.branches)}</strong><em>с активностью за период</em></div>
+    </section>
+
+    {!rmsProfitabilityReport.loading && !rmsProfitabilityReport.error && <section className="reports-v417-grid">
+      <div className="reports-v417-card">
+        <div className="reports-v417-head">
+          <div><h3>Сравнение филиалов</h3><p>Рейтинг можно переключать между чистым результатом, рентабельностью и выручкой.</p></div>
+          <div className="reports-v417-switch">
+            <button type="button" className={profitabilityMetric === 'net' ? 'active' : ''} onClick={() => setProfitabilityMetric('net')}>Прибыль</button>
+            <button type="button" className={profitabilityMetric === 'margin' ? 'active' : ''} onClick={() => setProfitabilityMetric('margin')}>Маржа</button>
+            <button type="button" className={profitabilityMetric === 'revenue' ? 'active' : ''} onClick={() => setProfitabilityMetric('revenue')}>Выручка</button>
+          </div>
+        </div>
+        <div className="reports-v417-bars">
+          {profitabilitySortedRows.map(row => {
+            const value = parseNum(row[profitabilityMetricConfig.key])
+            const width = Math.max(2, Math.min(100, Math.abs(value) / profitabilityMetricConfig.max * 100))
+            return <div className="reports-v417-bar-row" key={row.id}>
+              <b title={row.name}>{row.name}</b>
+              <div className="reports-v417-track"><i className={value < 0 ? 'bad' : ''} style={{ width: `${width}%` }} /></div>
+              <div className={`reports-v417-value ${value < 0 ? 'bad' : value > 0 ? 'good' : ''}`}>{profitabilityMetricConfig.format(value)}</div>
+            </div>
+          })}
+          {!profitabilitySortedRows.length && <div className="reports-v417-empty">Нет данных по выбранному периоду.</div>}
+        </div>
+      </div>
+
+      <div className="reports-v417-card">
+        <div className="reports-v417-head"><div><h3>Управленческие выводы</h3><p>Основные отклонения, требующие внимания.</p></div></div>
+        <div className="reports-v417-insights">
+          {profitabilityBest && <div className="reports-v417-insight"><i/><div><strong>Лучший результат: {profitabilityBest.name}</strong><span>{fmt(profitabilityBest.net)} AZN · маржа {pct(profitabilityBest.margin)}</span></div></div>}
+          {profitabilityWeak && <div className={`reports-v417-insight ${profitabilityWeak.net < 0 ? 'bad' : 'warn'}`}><i/><div><strong>Минимальный результат: {profitabilityWeak.name}</strong><span>{fmt(profitabilityWeak.net)} AZN · расходы {pct(profitabilityWeak.expenseRatio)}</span></div></div>}
+          {profitabilityHighestFood && <div className={`reports-v417-insight ${profitabilityHighestFood.foodCostPct > 35 ? 'bad' : 'warn'}`}><i/><div><strong>Максимальный Food Cost: {profitabilityHighestFood.name}</strong><span>{pct(profitabilityHighestFood.foodCostPct)} · {fmt(profitabilityHighestFood.foodCost)} AZN</span></div></div>}
+          {profitabilityHighestSalary && <div className={`reports-v417-insight ${profitabilityHighestSalary.salaryPct > 25 ? 'bad' : 'warn'}`}><i/><div><strong>Максимальная доля зарплат: {profitabilityHighestSalary.name}</strong><span>{pct(profitabilityHighestSalary.salaryPct)} · {fmt(profitabilityHighestSalary.salary)} AZN</span></div></div>}
+        </div>
+      </div>
+    </section>}
+
+    {!rmsProfitabilityReport.loading && !rmsProfitabilityReport.error && <div className="reports-v417-card">
+      <div className="reports-v417-head"><div><h3>Детальная рентабельность филиалов</h3><p>Food Cost включает поставщиков, распределённых по доле выручки, а также базар и продуктовые расходы. Налог берётся из настроек филиала.</p></div><span className="reports-v43-badge">{profitabilityRows.length}</span></div>
+      <div className="reports-v417-table-wrap"><table className="reports-v417-table">
+        <thead><tr><th>Филиал</th><th>Выручка</th><th>Wolt</th><th>Food Cost</th><th>Зарплаты</th><th>Опер. расходы</th><th>Service charge</th><th>Налог</th><th>Все расходы</th><th>Результат</th><th>Маржа</th><th>На день</th><th></th></tr></thead>
+        <tbody>
+          {profitabilityRows.map(row => <React.Fragment key={row.id}>
+            <tr>
+              <td><b>{row.name}</b></td>
+              <td>{fmt(row.revenue)}</td>
+              <td>{row.woltRevenue > 0 ? fmt(row.woltRevenue) : '—'}</td>
+              <td>{fmt(row.foodCost)}<br/><span className={row.foodCostPct > 35 ? 'bad' : 'hint'}>{pct(row.foodCostPct)}</span></td>
+              <td>{fmt(row.salary)}<br/><span className={row.salaryPct > 25 ? 'bad' : 'hint'}>{pct(row.salaryPct)}</span></td>
+              <td>{fmt(row.operatingExpenses)}</td>
+              <td>{fmt(row.serviceCost)}</td>
+              <td>{fmt(row.tax)}<br/><span className="hint">{pct(row.taxRate)}</span></td>
+              <td><b>{fmt(row.totalExpenses)}</b></td>
+              <td className={row.net >= 0 ? 'good' : 'bad'}><b>{fmt(row.net)}</b></td>
+              <td className={row.margin >= 0 ? 'good' : 'bad'}><b>{pct(row.margin)}</b></td>
+              <td>{fmt(row.netPerDay)}</td>
+              <td><button type="button" className="reports-v417-open" onClick={() => toggleProfitabilityBranch(row.id)}>{expandedProfitabilityBranches.has(String(row.id)) ? 'Закрыть' : 'Состав'}</button></td>
+            </tr>
+            {expandedProfitabilityBranches.has(String(row.id)) && <tr className="reports-v417-detail"><td colSpan="13"><div className="reports-v417-detail-grid">
+              <div className="reports-v417-detail-card"><h4>Структура выручки</h4><div className="reports-v417-detail-list">
+                <div><span>Наличные</span><b>{fmt(row.cash)}</b></div><div><span>Банк</span><b>{fmt(row.bank)}</b></div><div><span>Wolt</span><b>{fmt(row.woltRevenue)}</b></div><div><span>Средняя выручка / день</span><b>{fmt(row.averageRevenuePerDay)}</b></div><div><span>Активных дней</span><b>{row.activeDays}</b></div>
+              </div></div>
+              <div className="reports-v417-detail-card"><h4>Структура затрат</h4><div className="reports-v417-detail-list">
+                <div><span>Поставщики</span><b>{fmt(row.supplierFoodCost)}</b></div><div><span>Базар / продукты</span><b>{fmt(row.manualFoodCost)}</b></div><div><span>Аренда</span><b>{fmt(row.rent)}</b></div><div><span>Коммунальные</span><b>{fmt(row.utilities)}</b></div><div><span>Wolt Comission</span><b>{fmt(row.woltCommission)}</b></div>
+              </div></div>
+              <div className="reports-v417-detail-card"><h4>Контроль нормативов</h4><div className="reports-v417-detail-list">
+                <div><span>Food Cost</span><b className={row.foodCostPct > 35 ? 'bad' : 'good'}>{pct(row.foodCostPct)}</b></div><div><span>Зарплаты</span><b className={row.salaryPct > 25 ? 'bad' : 'good'}>{pct(row.salaryPct)}</b></div><div><span>Аренда</span><b className={row.rentPct > 12 ? 'bad' : 'good'}>{pct(row.rentPct)}</b></div><div><span>Wolt комиссия</span><b>{row.woltRevenue > 0 ? pct(row.woltCommissionPct) : '—'}</b></div><div><span>Доля всех расходов</span><b>{pct(row.expenseRatio)}</b></div>
+              </div>
+              {(row.foodCostPct > 35 || row.salaryPct > 25 || row.rentPct > 12 || row.net < 0) && <div className="reports-v417-warning">Есть отклонения от рекомендуемых ориентиров. Откройте расходы филиала и проверьте крупнейшие статьи.</div>}</div>
+            </div></td></tr>}
+          </React.Fragment>)}
+          {!profitabilityRows.length && <tr><td colSpan="13" className="reports-v417-empty">Нет данных по выбранному фильтру.</td></tr>}
+        </tbody>
+      </table></div>
+    </div>}
+  </section>
+
   const supplierReportNormalizedSearch = String(supplierReportSearch || '').trim().toLowerCase()
   const supplierReportNormalizedProductSearch = String(supplierReportProductSearch || '').trim().toLowerCase()
 
@@ -36765,6 +37316,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
       loadRmsExpensesReport()
       return
     }
+    if (effectiveReportsTab === 'profitability') return loadRmsProfitabilityReport()
     if (effectiveReportsTab === 'revenue') return loadRmsRevenueReport()
     if (effectiveReportsTab === 'expenses') return loadRmsExpensesReport()
     if (effectiveReportsTab === 'suppliers') return loadRmsSuppliersReport()
@@ -36806,7 +37358,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
       {effectiveReportsTab === 'overview' && <label><span>Раздел</span><select value={effectiveReportsTab} onChange={e => setReportsTab(e.target.value)}>{reportTabs.map(tab => <option key={tab.id} value={tab.id}>{tab.label}</option>)}</select></label>}
       <label><span>Период</span><select value={monthFilter} onChange={e => { setMonthFilter(e.target.value); setRevenueDateFrom(''); setRevenueDateTo(''); setRevenuePage(1) }}><option value="all">Все годы / все месяцы</option>{yearOptions.length > 0 && <optgroup label="Годы">{yearOptions.map(y => <option key={`year-${y}`} value={`year:${y}`}>{y} год</option>)}</optgroup>}<optgroup label="Месяцы">{!monthOptions.includes(currentMonthKey) && <option value={currentMonthKey}>Текущий месяц · {currentMonthLabel}</option>}{monthOptions.map(m => <option key={m} value={m}>{m}</option>)}</optgroup></select></label>
       <label><span>Филиал</span><select value={branchFilter} onChange={e => setBranchFilter(e.target.value)}><option value="all">Все филиалы</option>{branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label>
-      {effectiveReportsTab !== 'overview' && effectiveReportsTab !== 'suppliers' && !isProductsReportTab && <label><span>Тип</span><select value={departmentFilter} onChange={e => setDepartmentFilter(e.target.value)}><option value="all">Все</option><option value="Бар">Бар</option><option value="Кухня">Кухня</option><option value="Смешанный">Смешанный</option></select></label>}
+      {effectiveReportsTab !== 'overview' && effectiveReportsTab !== 'profitability' && effectiveReportsTab !== 'suppliers' && !isProductsReportTab && <label><span>Тип</span><select value={departmentFilter} onChange={e => setDepartmentFilter(e.target.value)}><option value="all">Все</option><option value="Бар">Бар</option><option value="Кухня">Кухня</option><option value="Смешанный">Смешанный</option></select></label>}
       <div className="reports-v43-filter-actions"><button className="ghost small" type="button" onClick={refreshCurrentReport}>Обновить</button><button className="ghost small" type="button">Экспорт</button><button className="small primary" type="button" onClick={() => window.print()}>Печать</button></div>
     </section>
 
@@ -36815,6 +37367,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
     </section>}
 
     {effectiveReportsTab === 'overview' && ReportsOverview}
+    {effectiveReportsTab === 'profitability' && ReportsProfitabilityView}
     {effectiveReportsTab === 'sales' && SalesReportView}
     {effectiveReportsTab === 'import' && ImportReportView}
     {effectiveReportsTab === 'revenue' && ReportsRevenueView}
@@ -47135,3 +47688,6 @@ if (typeof document !== 'undefined') {
 
 
 /* v416: final supplier analytics build; fixes hook dependency order and removes empty supplier ids */
+
+
+/* v417: new Reports -> Branch Profitability with Food Cost, payroll, service charge, tax and Wolt analysis */
