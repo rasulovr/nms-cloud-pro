@@ -33058,7 +33058,19 @@ function Reports({ t, permissions = [], isAdmin = false }) {
   const [cloudSalesAliasesLoaded, setCloudSalesAliasesLoaded] = useState(false)
   const [rmsRevenueReport, setRmsRevenueReport] = useState({ loading: false, error: '', rows: [], totals: { cash: 0, bank: 0, wolt: 0, revenue: 0 } })
   const [rmsExpensesReport, setRmsExpensesReport] = useState({ loading: false, error: '', rows: [], totals: { amount: 0, transactions: 0, categories: 0 }, byCategory: [], byBranch: [] })
-  const [rmsSuppliersReport, setRmsSuppliersReport] = useState({ loading: false, error: '', rows: [], totals: { purchases: 0, payments: 0, balance: 0, suppliers: 0 }, purchases: [], payments: [], priceChanges: [] })
+  const [rmsSuppliersReport, setRmsSuppliersReport] = useState({
+    loading: false,
+    error: '',
+    rows: [],
+    totals: { purchases: 0, payments: 0, balance: 0, suppliers: 0, invoices: 0, products: 0, averageInvoice: 0, overdue: 0, overLimit: 0 },
+    purchases: [],
+    payments: [],
+    purchaseItems: [],
+    productRows: [],
+    priceChanges: [],
+    priceChangesDown: [],
+    supplierOptions: []
+  })
   const [rmsProductsReport, setRmsProductsReport] = useState({ loading: false, error: '', rows: [], detailRows: [], totals: { amount: 0, products: 0, items: 0, invoices: 0, suppliers: 0 }, categories: [], suppliers: [], bySupplier: [], byCategory: [], priceDynamics: [], lastPurchaseDynamics: [], priceDynamicsMeta: { currentLabel: '', previousLabel: '', compareAvailable: false } })
   const [rmsProductsReportProgress, setRmsProductsReportProgress] = useState({ active: false, progress: 0, title: '', detail: '', step: '', status: 'idle' })
   const [productsReportDateFrom, setProductsReportDateFrom] = useState('')
@@ -33072,6 +33084,15 @@ function Reports({ t, permissions = [], isAdmin = false }) {
   const [productsReportPage, setProductsReportPage] = useState(1)
   const [productsReportDetailsOpen, setProductsReportDetailsOpen] = useState(false)
   const [supplierReportSort, setSupplierReportSort] = useState({ field: 'balance', dir: 'desc' })
+  const [supplierReportTab, setSupplierReportTab] = useState('overview')
+  const [supplierReportGrouping, setSupplierReportGrouping] = useState('month')
+  const [supplierReportSearch, setSupplierReportSearch] = useState('')
+  const [supplierReportProductSearch, setSupplierReportProductSearch] = useState('')
+  const [supplierReportSupplierId, setSupplierReportSupplierId] = useState('all')
+  const [supplierReportDateFrom, setSupplierReportDateFrom] = useState('')
+  const [supplierReportDateTo, setSupplierReportDateTo] = useState('')
+  const [supplierReportPriceTab, setSupplierReportPriceTab] = useState('up')
+  const [expandedSupplierReportIds, setExpandedSupplierReportIds] = useState(() => new Set())
 
   useEffect(() => { writeAikoSalesReports(reports) }, [reports])
   useEffect(() => { writeAikoBranchMap(branchMap) }, [branchMap])
@@ -33340,9 +33361,9 @@ function Reports({ t, permissions = [], isAdmin = false }) {
   }, [effectiveReportsTab, branchFilter, monthFilter, branches.length])
 
   useEffect(() => {
-    if (reportsTab !== 'suppliers') return
+    if (effectiveReportsTab !== 'suppliers') return
     loadRmsSuppliersReport()
-  }, [reportsTab, branchFilter, monthFilter, branches.length])
+  }, [effectiveReportsTab, branchFilter, monthFilter, supplierReportDateFrom, supplierReportDateTo, branches.length])
 
   useEffect(() => {
     if (!isProductsReportTab) return
@@ -33417,117 +33438,438 @@ function Reports({ t, permissions = [], isAdmin = false }) {
 
   async function loadRmsSuppliersReport() {
     setRmsSuppliersReport(prev => ({ ...prev, loading: true, error: '' }))
+
+    const emptyReport = {
+      loading: false,
+      error: '',
+      rows: [],
+      totals: { purchases: 0, payments: 0, balance: 0, suppliers: 0, invoices: 0, products: 0, averageInvoice: 0, overdue: 0, overLimit: 0 },
+      purchases: [],
+      payments: [],
+      purchaseItems: [],
+      productRows: [],
+      priceChanges: [],
+      priceChangesDown: [],
+      supplierOptions: []
+    }
+
     try {
-      let purchasesQuery = supabase
-        .from('supplier_purchases')
-        .select('id,supplier_id,branch_id,purchase_date,invoice_number,total_amount,comment')
-        .is('deleted_at', null)
-      let paymentsQuery = supabase
-        .from('supplier_payments')
-        .select('id,supplier_id,payment_date,amount,invoice_notes,comment')
-      if (branchFilter !== 'all') {
-        purchasesQuery = purchasesQuery.eq('branch_id', branchFilter)
-      }
-      if (/^\d{4}-\d{2}$/.test(String(monthFilter || ''))) {
-        const start = `${monthFilter}-01`
-        const end = rmsNextMonthStart(monthFilter)
-        purchasesQuery = purchasesQuery.gte('purchase_date', start).lt('purchase_date', end)
-        paymentsQuery = paymentsQuery.gte('payment_date', start).lt('payment_date', end)
+      const normalizeArray = (payload, keys = []) => {
+        if (Array.isArray(payload)) return payload
+        if (typeof payload === 'string') {
+          try {
+            const parsed = JSON.parse(payload)
+            if (Array.isArray(parsed)) return parsed
+            for (const key of keys) if (Array.isArray(parsed?.[key])) return parsed[key]
+          } catch (_error) {}
+          return []
+        }
+        if (payload && typeof payload === 'object') {
+          if (Array.isArray(payload.rows)) return payload.rows
+          for (const key of keys) if (Array.isArray(payload[key])) return payload[key]
+        }
+        return []
       }
 
-      const [suppliersRes, balancesRes, purchasesRes, paymentsRes] = await Promise.all([
-        supabase.from('suppliers').select('id,name,payment_term_days,credit_limit,is_active').eq('is_active', true).order('name'),
-        supabase.from('supplier_balances_v2').select('*'),
-        purchasesQuery.order('purchase_date', { ascending: false }),
-        paymentsQuery.order('payment_date', { ascending: false })
-      ])
-      let balanceRows = balancesRes.data || []
-      if (!balanceRows.length || balancesRes.error) {
-        const fallback = await supabase.from('supplier_balances').select('*')
-        balanceRows = (fallback.data || []).map(r => ({ supplier_id: r.supplier_id, balance: r.balance, supplier_name: r.supplier_name }))
-      }
-      const suppliers = suppliersRes.data || []
-      const purchases = (purchasesRes.data || []).map(row => ({ ...row, total_amount: parseNum(row.total_amount) }))
-      const payments = (paymentsRes.data || []).map(row => ({ ...row, amount: parseNum(row.amount) }))
+      const range = (() => {
+        if (supplierReportDateFrom || supplierReportDateTo) {
+          return {
+            from: supplierReportDateFrom || '',
+            to: supplierReportDateTo || ''
+          }
+        }
+        if (/^year:\d{4}$/.test(String(monthFilter || ''))) {
+          const year = Number(String(monthFilter).replace('year:', ''))
+          return { from: `${year}-01-01`, to: `${year}-12-31` }
+        }
+        if (/^\d{4}-\d{2}$/.test(String(monthFilter || ''))) {
+          const start = `${monthFilter}-01`
+          const next = rmsNextMonthStart(monthFilter)
+          const endDate = new Date(`${next}T00:00:00`)
+          endDate.setDate(endDate.getDate() - 1)
+          const end = `${endDate.getFullYear()}-${String(endDate.getMonth() + 1).padStart(2, '0')}-${String(endDate.getDate()).padStart(2, '0')}`
+          return { from: start, to: end }
+        }
+        return { from: '', to: '' }
+      })()
 
-      const purchaseIds = purchases.map(row => row.id).filter(Boolean)
-      let purchaseItems = []
-      for (let offset = 0; offset < purchaseIds.length; offset += 200) {
-        const chunk = purchaseIds.slice(offset, offset + 200)
-        if (!chunk.length) continue
-        const { data: itemRows, error: itemsError } = await supabase
-          .from('supplier_purchase_items')
-          .select('id,purchase_id,product_id,quantity,unit,unit_price,total_amount,supplier_products(id,name,category,base_unit)')
-          .in('purchase_id', chunk)
-        if (itemsError) throw itemsError
-        purchaseItems = purchaseItems.concat(itemRows || [])
+      const inRange = (dateValue) => {
+        const date = String(dateValue || '').slice(0, 10)
+        if (!date) return false
+        if (range.from && date < range.from) return false
+        if (range.to && date > range.to) return false
+        return true
       }
-      const purchaseById = new Map(purchases.map(row => [String(row.id), row]))
-      const supplierById = new Map(suppliers.map(row => [String(row.id), row]))
-      const priceHistoryMap = new Map()
-      purchaseItems.forEach(item => {
-        const purchase = purchaseById.get(String(item.purchase_id))
-        const product = item.supplier_products || {}
-        const price = parseNum(item.unit_price)
-        if (!purchase || !price || !product.id) return
-        const key = `${product.id}::${item.unit || product.base_unit || ''}`
-        if (!priceHistoryMap.has(key)) priceHistoryMap.set(key, { product_id: product.id, product_name: product.name || '—', category: product.category || '—', unit: item.unit || product.base_unit || '', history: [] })
-        priceHistoryMap.get(key).history.push({
-          price,
-          date: purchase.purchase_date,
-          invoice: purchase.invoice_number || '—',
-          supplier_id: purchase.supplier_id,
-          supplier_name: supplierById.get(String(purchase.supplier_id))?.name || '—'
+
+      const isCancelled = row => {
+        const status = String(row?.status || row?.payment_status || '').trim().toLowerCase()
+        return Boolean(
+          row?.deleted_at ||
+          row?.cancelled_at ||
+          row?.canceled_at ||
+          row?.is_cancelled ||
+          row?.is_canceled ||
+          ['cancelled', 'canceled', 'отменено', 'отменен', 'отменён'].includes(status)
+        )
+      }
+
+      let workspace = null
+      try {
+        const wsResult = await fetchRmsSuppliersWorkspace()
+        if (!wsResult?.error && wsResult?.data) workspace = wsResult.data
+      } catch (_error) {}
+
+      const fetchPaged = async (table, selectText, orderField) => {
+        const pageSize = 1000
+        let from = 0
+        let rows = []
+        while (true) {
+          let query = supabase.from(table).select(selectText)
+          if (table === 'supplier_purchases' || table === 'supplier_payments') query = query.is('deleted_at', null)
+          query = query.order(orderField, { ascending: false })
+          const { data, error } = await query.range(from, from + pageSize - 1)
+          if (error) throw error
+          const batch = data || []
+          rows = rows.concat(batch)
+          if (batch.length < pageSize) break
+          from += pageSize
+          if (from > 50000) break
+        }
+        return rows
+      }
+
+      let suppliers = []
+      try {
+        const { data, error } = await supabase
+          .from('suppliers')
+          .select('id,name,voen,payment_term_days,credit_limit,is_active')
+          .order('name')
+        if (error) throw error
+        suppliers = data || []
+      } catch (_error) {
+        suppliers = normalizeArray(workspace?.suppliers, ['suppliers'])
+      }
+
+      let allPurchases = []
+      try {
+        const { data, error } = await supabase.rpc('rms_supplier_purchases_full', { p_limit: 50000 })
+        if (error) throw error
+        allPurchases = normalizeArray(data, ['supplier_purchases'])
+      } catch (_rpcError) {
+        try {
+          allPurchases = await fetchPaged(
+            'supplier_purchases',
+            '*,suppliers(id,name),branches(id,name),supplier_purchase_items(*,supplier_products(id,name,category,base_unit))',
+            'purchase_date'
+          )
+        } catch (_directError) {
+          allPurchases = normalizeArray(workspace?.supplier_purchases, ['supplier_purchases'])
+        }
+      }
+
+      let allPayments = []
+      try {
+        allPayments = await fetchPaged(
+          'supplier_payments',
+          '*,suppliers(id,name),legal_entities(id,name,voen),supplier_e_invoices(invoice_number)',
+          'payment_date'
+        )
+      } catch (_error) {
+        allPayments = normalizeArray(workspace?.supplier_payments, ['supplier_payments'])
+      }
+
+      let balanceRows = []
+      try {
+        const { data, error } = await supabase.from('supplier_balances_v2').select('*')
+        if (error) throw error
+        balanceRows = data || []
+      } catch (_error) {
+        try {
+          const { data } = await supabase.from('supplier_balances').select('*')
+          balanceRows = data || []
+        } catch (_fallbackError) {
+          balanceRows = normalizeArray(workspace?.supplier_balances, ['supplier_balances'])
+        }
+      }
+
+      allPurchases = (allPurchases || []).filter(row => !isCancelled(row))
+      allPayments = (allPayments || []).filter(row =>
+        !row?.deleted_at &&
+        !String(row?.comment || '').includes('v255b: merged into payment')
+      )
+
+      const supplierById = new Map((suppliers || []).map(row => [String(row.id), row]))
+      const branchById = new Map((branches || []).map(row => [String(row.id), row]))
+
+      const normalizePurchase = purchase => {
+        const nestedItems = purchase?.supplier_purchase_items || purchase?.items || purchase?.purchase_items || []
+        const supplierId = purchase?.supplier_id || purchase?.suppliers?.id || ''
+        const branchId = purchase?.branch_id || purchase?.branches?.id || ''
+        const totalFromItems = (nestedItems || []).reduce((sum, item) => {
+          const qty = parseNum(item?.quantity)
+          const price = parseNum(item?.unit_price)
+          return sum + parseNum(item?.total_amount || (qty * price))
+        }, 0)
+        return {
+          ...purchase,
+          supplier_id: supplierId,
+          supplier_name: purchase?.supplier_name || purchase?.suppliers?.name || supplierById.get(String(supplierId))?.name || '—',
+          branch_id: branchId,
+          branch_name: purchase?.branch_name || purchase?.branches?.name || branchById.get(String(branchId))?.name || '—',
+          purchase_date: String(purchase?.purchase_date || '').slice(0, 10),
+          total_amount: parseNum(purchase?.total_amount) || totalFromItems,
+          supplier_purchase_items: Array.isArray(nestedItems) ? nestedItems : []
+        }
+      }
+
+      const normalizedAllPurchases = allPurchases.map(normalizePurchase)
+      const periodPurchases = normalizedAllPurchases
+        .filter(row => {
+          if (!inRange(row.purchase_date) && (range.from || range.to)) return false
+          if (branchFilter !== 'all' && String(row.branch_id || '') !== String(branchFilter)) return false
+          return true
+        })
+        .sort((a, b) => String(b.purchase_date).localeCompare(String(a.purchase_date)))
+
+      const normalizedPayments = allPayments.map(payment => {
+        const supplierId = payment?.supplier_id || payment?.suppliers?.id || ''
+        return {
+          ...payment,
+          supplier_id: supplierId,
+          supplier_name: payment?.supplier_name || payment?.suppliers?.name || supplierById.get(String(supplierId))?.name || '—',
+          payment_date: String(payment?.payment_date || '').slice(0, 10),
+          amount: parseNum(payment?.amount)
+        }
+      })
+
+      const periodPayments = normalizedPayments
+        .filter(row => {
+          if ((range.from || range.to) && !inRange(row.payment_date)) return false
+          if (branchFilter !== 'all' && row.branch_id && String(row.branch_id) !== String(branchFilter)) return false
+          return true
+        })
+        .sort((a, b) => String(b.payment_date).localeCompare(String(a.payment_date)))
+
+      const missingItemPurchaseIds = periodPurchases
+        .filter(row => !Array.isArray(row.supplier_purchase_items) || !row.supplier_purchase_items.length)
+        .map(row => row.id)
+        .filter(Boolean)
+
+      let detachedItems = []
+      if (missingItemPurchaseIds.length) {
+        try {
+          for (let offset = 0; offset < missingItemPurchaseIds.length; offset += 200) {
+            const chunk = missingItemPurchaseIds.slice(offset, offset + 200)
+            const { data, error } = await supabase
+              .from('supplier_purchase_items')
+              .select('*,supplier_products(id,name,category,base_unit)')
+              .in('purchase_id', chunk)
+            if (error) throw error
+            detachedItems = detachedItems.concat(data || [])
+          }
+        } catch (_error) {}
+      }
+
+      const detachedByPurchase = new Map()
+      detachedItems.forEach(item => {
+        const key = String(item.purchase_id || '')
+        if (!detachedByPurchase.has(key)) detachedByPurchase.set(key, [])
+        detachedByPurchase.get(key).push(item)
+      })
+
+      const purchaseItems = []
+      periodPurchases.forEach(purchase => {
+        const items = purchase.supplier_purchase_items?.length
+          ? purchase.supplier_purchase_items
+          : (detachedByPurchase.get(String(purchase.id)) || [])
+        purchase.supplier_purchase_items = items
+
+        items.forEach(item => {
+          const product = item?.supplier_products || item?.product || {}
+          const quantity = parseNum(item?.quantity)
+          const unitPrice = parseNum(item?.unit_price)
+          const totalAmount = parseNum(item?.total_amount) || quantity * unitPrice
+          purchaseItems.push({
+            ...item,
+            purchase_id: purchase.id,
+            purchase_date: purchase.purchase_date,
+            invoice_number: purchase.invoice_number || '—',
+            supplier_id: purchase.supplier_id,
+            supplier_name: purchase.supplier_name,
+            branch_id: purchase.branch_id,
+            branch_name: purchase.branch_name,
+            product_id: item?.product_id || product?.id || '',
+            product_name: item?.product_name || product?.name || 'Без названия',
+            category: item?.category || product?.category || 'Без категории',
+            base_unit: product?.base_unit || '',
+            unit: item?.unit || product?.base_unit || '',
+            quantity,
+            unit_price: unitPrice,
+            total_amount: totalAmount
+          })
         })
       })
-      const priceChanges = Array.from(priceHistoryMap.values()).map(row => {
-        const history = [...row.history].sort((a,b) => String(a.date || '').localeCompare(String(b.date || '')))
-        const first = history[0]
-        const latest = history[history.length - 1]
-        const changeAmount = history.length > 1 ? parseNum(latest.price) - parseNum(first.price) : 0
-        const changePct = history.length > 1 && parseNum(first.price) > 0 ? (changeAmount / parseNum(first.price)) * 100 : 0
-        return { ...row, first, latest, changeAmount, changePct, purchases_count: history.length }
-      }).filter(row => row.purchases_count > 1 && row.changeAmount > 0)
-        .sort((a,b) => parseNum(b.changePct) - parseNum(a.changePct) || parseNum(b.changeAmount) - parseNum(a.changeAmount))
 
-      const balanceMap = new Map()
-      balanceRows.forEach(r => {
-        const key = String(r.supplier_id || '')
-        balanceMap.set(key, (balanceMap.get(key) || 0) + parseNum(r.balance))
+      const productMap = new Map()
+      purchaseItems.forEach(item => {
+        const key = `${item.supplier_id}::${item.product_id || item.product_name}::${item.unit || item.base_unit || ''}`
+        const current = productMap.get(key) || {
+          key,
+          supplier_id: item.supplier_id,
+          supplier_name: item.supplier_name,
+          product_id: item.product_id,
+          product_name: item.product_name,
+          category: item.category,
+          unit: item.unit || item.base_unit || '',
+          quantity: 0,
+          amount: 0,
+          purchases: new Set(),
+          first: null,
+          latest: null,
+          minPrice: null,
+          maxPrice: null
+        }
+
+        current.quantity += parseNum(item.quantity)
+        current.amount += parseNum(item.total_amount)
+        current.purchases.add(String(item.purchase_id))
+        const point = {
+          date: item.purchase_date,
+          price: parseNum(item.unit_price),
+          invoice: item.invoice_number,
+          branch_name: item.branch_name
+        }
+        if (!current.first || String(point.date) < String(current.first.date)) current.first = point
+        if (!current.latest || String(point.date) > String(current.latest.date)) current.latest = point
+        if (point.price > 0 && (current.minPrice === null || point.price < current.minPrice)) current.minPrice = point.price
+        if (point.price > 0 && (current.maxPrice === null || point.price > current.maxPrice)) current.maxPrice = point.price
+        productMap.set(key, current)
       })
 
-      const rows = suppliers.map(s => {
-        const supplierPurchases = purchases.filter(p => String(p.supplier_id) === String(s.id))
-        const supplierPayments = payments.filter(p => String(p.supplier_id) === String(s.id))
-        const purchasesAmount = supplierPurchases.reduce((sum, p) => sum + parseNum(p.total_amount), 0)
-        const paymentsAmount = supplierPayments.reduce((sum, p) => sum + parseNum(p.amount), 0)
-        const balance = parseNum(balanceMap.get(String(s.id)))
-        const lastPurchase = supplierPurchases[0]?.purchase_date || ''
+      const productRows = Array.from(productMap.values()).map(row => {
+        const firstPrice = parseNum(row.first?.price)
+        const latestPrice = parseNum(row.latest?.price)
+        const priceChange = latestPrice - firstPrice
+        const priceChangePct = firstPrice > 0 ? priceChange / firstPrice * 100 : 0
         return {
-          supplier_id: s.id,
-          supplier_name: s.name,
-          payment_term_days: parseNum(s.payment_term_days),
-          credit_limit: parseNum(s.credit_limit),
+          ...row,
+          invoice_count: row.purchases.size,
+          average_price: row.quantity > 0 ? row.amount / row.quantity : 0,
+          first_price: firstPrice,
+          latest_price: latestPrice,
+          price_change: priceChange,
+          price_change_pct: priceChangePct,
+          first_date: row.first?.date || '',
+          latest_date: row.latest?.date || '',
+          latest_invoice: row.latest?.invoice || '—',
+          latest_branch: row.latest?.branch_name || '—'
+        }
+      }).sort((a, b) => parseNum(b.amount) - parseNum(a.amount))
+
+      const priceChanges = productRows
+        .filter(row => row.invoice_count > 1 && row.price_change > 0)
+        .sort((a, b) => parseNum(b.price_change_pct) - parseNum(a.price_change_pct) || parseNum(b.price_change) - parseNum(a.price_change))
+
+      const priceChangesDown = productRows
+        .filter(row => row.invoice_count > 1 && row.price_change < 0)
+        .sort((a, b) => parseNum(a.price_change_pct) - parseNum(b.price_change_pct) || parseNum(a.price_change) - parseNum(b.price_change))
+
+      const balanceMap = new Map()
+      balanceRows.forEach(row => {
+        const id = String(row?.supplier_id || row?.id || '')
+        if (!id) return
+        balanceMap.set(id, parseNum(balanceMap.get(id)) + parseNum(row?.balance ?? row?.current_balance ?? row?.amount))
+      })
+
+      const allSupplierIds = new Set([
+        ...suppliers.map(row => String(row.id || '')),
+        ...periodPurchases.map(row => String(row.supplier_id || '')),
+        ...periodPayments.map(row => String(row.supplier_id || '')),
+        ...Array.from(balanceMap.keys())
+      ].filter(Boolean))
+
+      const todayKey = new Date().toISOString().slice(0, 10)
+      const daysBetween = (from, to) => {
+        if (!from || !to) return 0
+        const a = new Date(`${from}T00:00:00`)
+        const b = new Date(`${to}T00:00:00`)
+        return Math.max(0, Math.floor((b - a) / 86400000))
+      }
+
+      const rows = Array.from(allSupplierIds).map(id => {
+        const supplier = supplierById.get(String(id)) || {}
+        const supplierPurchases = periodPurchases.filter(row => String(row.supplier_id) === String(id))
+        const supplierPayments = periodPayments.filter(row => String(row.supplier_id) === String(id))
+        const supplierProducts = productRows.filter(row => String(row.supplier_id) === String(id))
+        const allSupplierPurchases = normalizedAllPurchases
+          .filter(row => String(row.supplier_id) === String(id))
+          .sort((a, b) => String(b.purchase_date).localeCompare(String(a.purchase_date)))
+
+        const purchasesAmount = supplierPurchases.reduce((sum, row) => sum + parseNum(row.total_amount), 0)
+        const paymentsAmount = supplierPayments.reduce((sum, row) => sum + parseNum(row.amount), 0)
+        const balance = parseNum(balanceMap.get(String(id)))
+        const lastPurchase = allSupplierPurchases[0]?.purchase_date || supplierPurchases[0]?.purchase_date || ''
+        const paymentTermDays = parseNum(supplier.payment_term_days)
+        const creditLimit = parseNum(supplier.credit_limit)
+        const ageDays = daysBetween(lastPurchase, todayKey)
+        const overdue = balance > 0 && paymentTermDays > 0 && ageDays > paymentTermDays
+        const overLimit = balance > 0 && creditLimit > 0 && balance > creditLimit
+
+        return {
+          supplier_id: id,
+          supplier_name: supplier.name || supplierPurchases[0]?.supplier_name || supplierPayments[0]?.supplier_name || '—',
+          voen: supplier.voen || '',
+          payment_term_days: paymentTermDays,
+          credit_limit: creditLimit,
           purchases: purchasesAmount,
           payments: paymentsAmount,
           balance,
           purchase_count: supplierPurchases.length,
           payment_count: supplierPayments.length,
-          last_purchase: lastPurchase
+          product_count: supplierProducts.length,
+          average_invoice: supplierPurchases.length ? purchasesAmount / supplierPurchases.length : 0,
+          last_purchase: lastPurchase,
+          days_since_purchase: ageDays,
+          overdue,
+          over_limit: overLimit,
+          limit_usage: creditLimit > 0 ? balance / creditLimit * 100 : 0,
+          products: supplierProducts.slice(0, 40),
+          invoices: supplierPurchases.slice(0, 30),
+          payment_rows: supplierPayments.slice(0, 30)
         }
-      }).filter(r => r.purchases > 0 || r.payments > 0 || r.balance > 0)
-        .sort((a,b) => b.balance - a.balance)
+      }).filter(row => row.purchases > 0 || row.payments > 0 || row.balance !== 0 || row.product_count > 0)
+        .sort((a, b) => parseNum(b.balance) - parseNum(a.balance) || parseNum(b.purchases) - parseNum(a.purchases))
 
       const totals = {
-        purchases: rows.reduce((sum, r) => sum + parseNum(r.purchases), 0),
-        payments: rows.reduce((sum, r) => sum + parseNum(r.payments), 0),
-        balance: rows.reduce((sum, r) => sum + parseNum(r.balance), 0),
-        suppliers: rows.length
+        purchases: periodPurchases.reduce((sum, row) => sum + parseNum(row.total_amount), 0),
+        payments: periodPayments.reduce((sum, row) => sum + parseNum(row.amount), 0),
+        balance: rows.reduce((sum, row) => sum + parseNum(row.balance), 0),
+        suppliers: rows.length,
+        invoices: periodPurchases.length,
+        products: productRows.length,
+        averageInvoice: periodPurchases.length ? periodPurchases.reduce((sum, row) => sum + parseNum(row.total_amount), 0) / periodPurchases.length : 0,
+        overdue: rows.filter(row => row.overdue).length,
+        overLimit: rows.filter(row => row.over_limit).length
       }
 
-      setRmsSuppliersReport({ loading: false, error: '', rows, totals, purchases, payments, priceChanges })
+      setRmsSuppliersReport({
+        loading: false,
+        error: '',
+        rows,
+        totals,
+        purchases: periodPurchases,
+        payments: periodPayments,
+        purchaseItems,
+        productRows,
+        priceChanges,
+        priceChangesDown,
+        supplierOptions: rows.map(row => ({ id: row.supplier_id, name: row.supplier_name }))
+      })
     } catch (error) {
-      setRmsSuppliersReport({ loading: false, error: error?.message || 'Не удалось загрузить отчёт по поставщикам', rows: [], totals: { purchases: 0, payments: 0, balance: 0, suppliers: 0 }, purchases: [], payments: [], priceChanges: [] })
+      setRmsSuppliersReport({
+        ...emptyReport,
+        error: error?.message || 'Не удалось загрузить отчёт по поставщикам'
+      })
     }
   }
 
@@ -35723,16 +36065,140 @@ function Reports({ t, permissions = [], isAdmin = false }) {
     </div>
   </section>
 
+  const supplierReportNormalizedSearch = String(supplierReportSearch || '').trim().toLowerCase()
+  const supplierReportNormalizedProductSearch = String(supplierReportProductSearch || '').trim().toLowerCase()
+
+  const filteredSupplierReportRows = useMemo(() => {
+    return (rmsSuppliersReport.rows || []).filter(row => {
+      if (supplierReportSupplierId !== 'all' && String(row.supplier_id) !== String(supplierReportSupplierId)) return false
+      if (!supplierReportNormalizedSearch) return true
+      const haystack = [
+        row.supplier_name,
+        row.voen,
+        row.last_purchase,
+        ...(row.products || []).map(product => `${product.product_name} ${product.category}`)
+      ].join(' ').toLowerCase()
+      return haystack.includes(supplierReportNormalizedSearch)
+    })
+  }, [rmsSuppliersReport.rows, supplierReportSupplierId, supplierReportNormalizedSearch])
+
   const sortedSupplierReportRows = useMemo(() => {
     const field = supplierReportSort?.field || 'balance'
     const dir = supplierReportSort?.dir === 'asc' ? 1 : -1
-    return [...(rmsSuppliersReport.rows || [])].sort((a, b) => {
-      const av = parseNum(a?.[field])
-      const bv = parseNum(b?.[field])
-      if (av !== bv) return (av - bv) * dir
+    return [...filteredSupplierReportRows].sort((a, b) => {
+      const numericFields = ['purchases', 'payments', 'balance', 'purchase_count', 'product_count', 'average_invoice', 'limit_usage']
+      if (numericFields.includes(field)) {
+        const av = parseNum(a?.[field])
+        const bv = parseNum(b?.[field])
+        if (av !== bv) return (av - bv) * dir
+      } else {
+        const av = String(a?.[field] || '')
+        const bv = String(b?.[field] || '')
+        const result = av.localeCompare(bv, 'ru')
+        if (result) return result * dir
+      }
       return String(a?.supplier_name || '').localeCompare(String(b?.supplier_name || ''), 'ru')
     })
-  }, [rmsSuppliersReport.rows, supplierReportSort])
+  }, [filteredSupplierReportRows, supplierReportSort])
+
+  const filteredSupplierPurchases = useMemo(() => {
+    return (rmsSuppliersReport.purchases || []).filter(row => {
+      if (supplierReportSupplierId !== 'all' && String(row.supplier_id) !== String(supplierReportSupplierId)) return false
+      if (!supplierReportNormalizedSearch) return true
+      return [
+        row.supplier_name,
+        row.branch_name,
+        row.invoice_number,
+        row.comment
+      ].join(' ').toLowerCase().includes(supplierReportNormalizedSearch)
+    })
+  }, [rmsSuppliersReport.purchases, supplierReportSupplierId, supplierReportNormalizedSearch])
+
+  const filteredSupplierProductRows = useMemo(() => {
+    return (rmsSuppliersReport.productRows || []).filter(row => {
+      if (supplierReportSupplierId !== 'all' && String(row.supplier_id) !== String(supplierReportSupplierId)) return false
+      const query = supplierReportNormalizedProductSearch || supplierReportNormalizedSearch
+      if (!query) return true
+      return [
+        row.supplier_name,
+        row.product_name,
+        row.category,
+        row.unit,
+        row.latest_invoice
+      ].join(' ').toLowerCase().includes(query)
+    })
+  }, [rmsSuppliersReport.productRows, supplierReportSupplierId, supplierReportNormalizedProductSearch, supplierReportNormalizedSearch])
+
+  const filteredSupplierIdSet = useMemo(() => new Set(filteredSupplierReportRows.map(row => String(row.supplier_id))), [filteredSupplierReportRows])
+
+  const filteredSupplierPayments = useMemo(() => {
+    return (rmsSuppliersReport.payments || []).filter(row => {
+      if (!filteredSupplierIdSet.has(String(row.supplier_id))) return false
+      if (!supplierReportNormalizedSearch) return true
+      return [
+        row.supplier_name,
+        row.invoice_notes,
+        row.comment,
+        row.payment_date
+      ].join(' ').toLowerCase().includes(supplierReportNormalizedSearch)
+    })
+  }, [rmsSuppliersReport.payments, filteredSupplierIdSet, supplierReportNormalizedSearch])
+
+  const filteredSupplierTotals = useMemo(() => {
+    const purchases = filteredSupplierPurchases.reduce((sum, row) => sum + parseNum(row.total_amount), 0)
+    const payments = filteredSupplierPayments.reduce((sum, row) => sum + parseNum(row.amount), 0)
+    const balance = filteredSupplierReportRows.reduce((sum, row) => sum + parseNum(row.balance), 0)
+    return {
+      purchases,
+      payments,
+      balance,
+      suppliers: filteredSupplierReportRows.length,
+      invoices: filteredSupplierPurchases.length,
+      products: filteredSupplierProductRows.length,
+      averageInvoice: filteredSupplierPurchases.length ? purchases / filteredSupplierPurchases.length : 0,
+      overdue: filteredSupplierReportRows.filter(row => row.overdue).length,
+      overLimit: filteredSupplierReportRows.filter(row => row.over_limit).length
+    }
+  }, [filteredSupplierPurchases, filteredSupplierPayments, filteredSupplierReportRows, filteredSupplierProductRows])
+
+  const supplierTimelineRows = useMemo(() => {
+    const map = new Map()
+    const groupKey = dateValue => {
+      const date = String(dateValue || '').slice(0, 10)
+      if (supplierReportGrouping === 'year') return date.slice(0, 4)
+      if (supplierReportGrouping === 'month') return date.slice(0, 7)
+      return date
+    }
+    filteredSupplierPurchases.forEach(row => {
+      const key = groupKey(row.purchase_date)
+      if (!key) return
+      const current = map.get(key) || { key, purchases: 0, payments: 0, invoices: 0, paymentCount: 0 }
+      current.purchases += parseNum(row.total_amount)
+      current.invoices += 1
+      map.set(key, current)
+    })
+    ;(filteredSupplierPayments || []).forEach(row => {
+      const key = groupKey(row.payment_date)
+      if (!key) return
+      const current = map.get(key) || { key, purchases: 0, payments: 0, invoices: 0, paymentCount: 0 }
+      current.payments += parseNum(row.amount)
+      current.paymentCount += 1
+      map.set(key, current)
+    })
+    return Array.from(map.values()).sort((a, b) => String(a.key).localeCompare(String(b.key)))
+  }, [filteredSupplierPurchases, filteredSupplierPayments, supplierReportGrouping])
+
+  const supplierTimelineMax = Math.max(1, ...supplierTimelineRows.map(row => Math.max(parseNum(row.purchases), parseNum(row.payments))))
+  const supplierPriceRows = supplierReportPriceTab === 'down'
+    ? (rmsSuppliersReport.priceChangesDown || [])
+    : (rmsSuppliersReport.priceChanges || [])
+
+  const visibleSupplierPriceRows = supplierPriceRows.filter(row => {
+    if (supplierReportSupplierId !== 'all' && String(row.supplier_id) !== String(supplierReportSupplierId)) return false
+    const query = supplierReportNormalizedProductSearch || supplierReportNormalizedSearch
+    if (!query) return true
+    return [row.supplier_name, row.product_name, row.category, row.unit].join(' ').toLowerCase().includes(query)
+  })
 
   const toggleSupplierReportSort = field => {
     setSupplierReportSort(current => current.field === field
@@ -35744,71 +36210,201 @@ function Reports({ t, permissions = [], isAdmin = false }) {
     ? (supplierReportSort.dir === 'desc' ? '▼' : '▲')
     : '↕'
 
-  const ReportsSuppliersView = <section className="reports-v43-module-grid reports-v43-revenue-grid">
-    <div className="reports-v43-module-card reports-v43-wide reports-v43-revenue-card">
-      <div className="reports-v43-card-head reports-v43-revenue-head">
+  const toggleExpandedSupplierReport = supplierId => {
+    setExpandedSupplierReportIds(current => {
+      const next = new Set(current)
+      const key = String(supplierId)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  }
+
+  const supplierReportPeriodLabel = supplierReportDateFrom || supplierReportDateTo
+    ? `${supplierReportDateFrom || '…'} — ${supplierReportDateTo || '…'}`
+    : selectedMonthLabel
+
+  const ReportsSuppliersView = <section className="reports-v414-suppliers">
+    <style>{`
+      .reports-v414-suppliers{display:grid;gap:16px}
+      .reports-v414-shell{padding:20px;border:1px solid #dbe4ef;border-radius:22px;background:#fff;box-shadow:0 12px 30px rgba(15,23,42,.045)}
+      .reports-v414-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:16px}
+      .reports-v414-head h3{margin:0;color:#0f172a;font-size:20px;font-weight:950;letter-spacing:-.03em}
+      .reports-v414-head p{max-width:850px;margin:6px 0 0;color:#64748b;font-size:12.5px;font-weight:650;line-height:1.4}
+      .reports-v414-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+      .reports-v414-filters{display:grid;grid-template-columns:150px 150px minmax(180px,1fr) minmax(220px,1.3fr) minmax(220px,1.3fr) auto;gap:10px;align-items:end;padding:14px;border:1px solid #e2e8f0;border-radius:18px;background:#f8fafc}
+      .reports-v414-filters label{display:grid;gap:6px}.reports-v414-filters label>span{color:#64748b;font-size:10.5px;font-weight:850}
+      .reports-v414-filters input,.reports-v414-filters select{min-width:0}
+      .reports-v414-kpis{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:10px}
+      .reports-v414-kpi{min-height:102px;padding:15px;border:1px solid #dbe4ef;border-radius:18px;background:linear-gradient(145deg,#fff,#f8fafc)}
+      .reports-v414-kpi span{display:block;color:#64748b;font-size:10.5px;font-weight:850}.reports-v414-kpi strong{display:block;margin-top:9px;color:#0f172a;font-size:21px;font-weight:950;letter-spacing:-.035em}.reports-v414-kpi em{display:block;margin-top:7px;color:#94a3b8;font-size:10px;font-style:normal;font-weight:750;line-height:1.25}
+      .reports-v414-tabs{display:flex;gap:7px;flex-wrap:wrap;padding:5px;border:1px solid #dbe4ef;border-radius:15px;background:#f8fafc;width:max-content;max-width:100%}
+      .reports-v414-tabs button{padding:8px 13px;border:0;border-radius:11px;background:transparent;color:#64748b;font-size:11.5px;font-weight:900;cursor:pointer}.reports-v414-tabs button.active{background:#fff;color:#0f172a;box-shadow:0 4px 12px rgba(15,23,42,.10)}
+      .reports-v414-grid{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(320px,.75fr);gap:14px}
+      .reports-v414-card{min-width:0;padding:18px;border:1px solid #dbe4ef;border-radius:20px;background:#fff}
+      .reports-v414-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:14px}.reports-v414-card-head h4{margin:0;color:#0f172a;font-size:16px;font-weight:950}.reports-v414-card-head p{margin:4px 0 0;color:#64748b;font-size:11px;font-weight:650;line-height:1.35}
+      .reports-v414-timeline{display:grid;grid-template-columns:repeat(auto-fit,minmax(62px,1fr));gap:8px;align-items:end;min-height:230px;padding:10px 4px 0}
+      .reports-v414-period-column{display:grid;grid-template-rows:180px auto;gap:8px;min-width:0}.reports-v414-period-bars{display:flex;align-items:flex-end;justify-content:center;gap:4px;height:180px}.reports-v414-period-bars i{display:block;width:min(18px,38%);min-height:2px;border-radius:5px 5px 2px 2px}.reports-v414-period-bars .purchase{background:linear-gradient(180deg,#2563eb,#60a5fa)}.reports-v414-period-bars .payment{background:linear-gradient(180deg,#10b981,#6ee7b7)}
+      .reports-v414-period-column small{overflow:hidden;text-overflow:ellipsis;text-align:center;white-space:nowrap;color:#64748b;font-size:9.5px;font-weight:750}.reports-v414-period-column:hover small{color:#0f172a}
+      .reports-v414-legend{display:flex;gap:15px;align-items:center;margin-top:12px;color:#64748b;font-size:10.5px;font-weight:800}.reports-v414-legend span{display:inline-flex;align-items:center;gap:6px}.reports-v414-legend i{width:14px;height:4px;border-radius:99px}.reports-v414-legend .purchase{background:#2563eb}.reports-v414-legend .payment{background:#10b981}
+      .reports-v414-risk-list{display:grid;gap:9px}.reports-v414-risk{display:grid;grid-template-columns:10px minmax(0,1fr) auto;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid #edf2f7}.reports-v414-risk:last-child{border-bottom:0}.reports-v414-risk>i{width:8px;height:8px;border-radius:50%;background:#f59e0b}.reports-v414-risk.bad>i{background:#dc2626}.reports-v414-risk strong{display:block;color:#0f172a;font-size:11.5px;font-weight:900}.reports-v414-risk small{display:block;margin-top:3px;color:#64748b;font-size:10px;font-weight:650}.reports-v414-risk b{white-space:nowrap;color:#0f172a;font-size:11.5px}
+      .reports-v414-table-wrap{overflow:auto;border:1px solid #e2e8f0;border-radius:16px}.reports-v414-table{width:100%;border-collapse:collapse}.reports-v414-table th,.reports-v414-table td{padding:11px 10px;border-bottom:1px solid #e8eef5;text-align:right;white-space:nowrap}.reports-v414-table th:first-child,.reports-v414-table td:first-child{text-align:left}.reports-v414-table th{position:sticky;top:0;z-index:1;background:#f8fafc;color:#64748b;font-size:9.8px;font-weight:900;text-transform:uppercase;letter-spacing:.035em}.reports-v414-table td{color:#0f172a;font-size:11px;font-weight:700}.reports-v414-table tr:last-child td{border-bottom:0}
+      .reports-v414-table .good{color:#059669}.reports-v414-table .bad{color:#dc2626}.reports-v414-table .warning{color:#d97706}.reports-v414-table button.row-open{padding:5px 8px;border:1px solid #dbe4ef;border-radius:9px;background:#fff;color:#334155;font-size:10px;font-weight:850;cursor:pointer}
+      .reports-v414-expanded td{padding:0!important;background:#f8fafc}.reports-v414-expanded-content{display:grid;grid-template-columns:1.05fr .95fr;gap:12px;padding:14px}.reports-v414-subcard{min-width:0;padding:13px;border:1px solid #dbe4ef;border-radius:15px;background:#fff}.reports-v414-subcard h5{margin:0 0 10px;color:#0f172a;font-size:12px;font-weight:950}
+      .reports-v414-price-switch{display:inline-flex;padding:3px;border:1px solid #dbe4ef;border-radius:11px;background:#f8fafc}.reports-v414-price-switch button{padding:6px 10px;border:0;border-radius:8px;background:transparent;color:#64748b;font-size:10.5px;font-weight:900;cursor:pointer}.reports-v414-price-switch button.active{background:#fff;color:#0f172a;box-shadow:0 2px 8px rgba(15,23,42,.09)}
+      .reports-v414-status{padding:13px 15px;border:1px solid #bfdbfe;border-radius:16px;background:#eff6ff;color:#1e3a8a;font-size:12px;font-weight:750}.reports-v414-status.bad{border-color:#fecaca;background:#fef2f2;color:#991b1b}
+      .reports-v414-empty{padding:28px;text-align:center;color:#64748b;font-size:12px;font-weight:700}
+      @media(max-width:1500px){.reports-v414-kpis{grid-template-columns:repeat(4,minmax(0,1fr))}.reports-v414-filters{grid-template-columns:repeat(3,minmax(0,1fr))}}
+      @media(max-width:1050px){.reports-v414-grid,.reports-v414-expanded-content{grid-template-columns:1fr}.reports-v414-filters{grid-template-columns:repeat(2,minmax(0,1fr))}}
+      @media(max-width:700px){.reports-v414-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.reports-v414-filters{grid-template-columns:1fr}.reports-v414-head{display:grid}.reports-v414-actions{justify-content:flex-start}}
+    `}</style>
+
+    <div className="reports-v414-shell">
+      <div className="reports-v414-head">
         <div>
-          <h3>Отчёт по поставщикам</h3>
-          <p>Сводка по закупкам, оплатам и текущему балансу поставщиков на основе supplier_purchases, supplier_payments и supplier_balances.</p>
+          <h3>Аналитика поставщиков и закупок</h3>
+          <p>Закупки, оплаты, долги, динамика по дням/месяцам/годам, товары каждого поставщика, последние цены и ценовые изменения. Баланс отображается текущий, а закупки и оплаты — по выбранному периоду. Оплаты без привязки к филиалу остаются общесетевыми.</p>
         </div>
-        <div className="reports-v43-revenue-actions">
-          <button className={monthFilter === currentMonthKey ? 'small primary' : 'small ghost'} type="button" onClick={() => setMonthFilter(currentMonthKey)}>Текущий месяц</button>
+        <div className="reports-v414-actions">
+          <button className={monthFilter === currentMonthKey && !supplierReportDateFrom && !supplierReportDateTo ? 'small primary' : 'small ghost'} type="button" onClick={() => { setSupplierReportDateFrom(''); setSupplierReportDateTo(''); setMonthFilter(currentMonthKey) }}>Текущий месяц</button>
           <button className="small ghost" type="button" onClick={loadRmsSuppliersReport}>Обновить</button>
         </div>
       </div>
 
-      <div className="reports-v43-mini-kpis">
-        <div><span>Поставщиков</span><strong>{fmt(rmsSuppliersReport.totals.suppliers)}</strong><em>с активностью / балансом</em></div>
-        <div><span>Закупки</span><strong>{fmt(rmsSuppliersReport.totals.purchases)}</strong><em>за период</em></div>
-        <div><span>Оплаты</span><strong>{fmt(rmsSuppliersReport.totals.payments)}</strong><em>за период</em></div>
-        <div><span>Текущий баланс</span><strong>{fmt(rmsSuppliersReport.totals.balance)}</strong><em>общий долг</em></div>
-        <div><span>Филиал</span><strong>{selectedBranchLabel}</strong><em>текущий фильтр</em></div>
-        <div><span>Период</span><strong>{selectedMonthLabel}</strong><em>текущий фильтр</em></div>
+      <div className="reports-v414-filters">
+        <label><span>Дата с</span><DateInput value={supplierReportDateFrom} onChange={e => setSupplierReportDateFrom(e.target.value)} /></label>
+        <label><span>Дата по</span><DateInput value={supplierReportDateTo} onChange={e => setSupplierReportDateTo(e.target.value)} /></label>
+        <label><span>Поставщик</span><select value={supplierReportSupplierId} onChange={e => setSupplierReportSupplierId(e.target.value)}><option value="all">Все поставщики</option>{rmsSuppliersReport.supplierOptions.map(row => <option key={row.id} value={row.id}>{row.name}</option>)}</select></label>
+        <label><span>Поиск поставщика / фактуры</span><input value={supplierReportSearch} onChange={e => setSupplierReportSearch(e.target.value)} placeholder="Название, VOEN, фактура, филиал…" /></label>
+        <label><span>Поиск товара</span><input value={supplierReportProductSearch} onChange={e => setSupplierReportProductSearch(e.target.value)} placeholder="Товар, категория, единица…" /></label>
+        <button className="small ghost" type="button" onClick={() => { setSupplierReportDateFrom(''); setSupplierReportDateTo(''); setSupplierReportSupplierId('all'); setSupplierReportSearch(''); setSupplierReportProductSearch('') }}>Сбросить</button>
       </div>
+    </div>
 
-      {rmsSuppliersReport.loading && <div className="reports-v43-empty-state"><b>Загрузка поставщиков...</b><span>Идёт чтение supplier_purchases / supplier_payments / supplier_balances.</span></div>}
-      {rmsSuppliersReport.error && <div className="reports-v43-empty-state"><b>Ошибка загрузки</b><span>{rmsSuppliersReport.error}</span></div>}
-      {!rmsSuppliersReport.loading && !rmsSuppliersReport.error && <>
-        <div className="reports-v43-card">
-          <div className="reports-v43-card-head"><div><h3>Сводка по поставщикам</h3><p>Закупки и оплаты за выбранный период + текущий баланс. Нажмите на стрелку в заголовке для сортировки по возрастанию или убыванию.</p></div></div>
-          <div className="reports-v43-table-wrap"><table>
-            <thead><tr><th>Поставщик</th><th><button type="button" className={`reports-sort-button ${supplierReportSort.field === 'purchases' ? 'active' : ''}`} onClick={() => toggleSupplierReportSort('purchases')}><span>Закупки</span><b>{supplierReportSortArrow('purchases')}</b></button></th><th><button type="button" className={`reports-sort-button ${supplierReportSort.field === 'payments' ? 'active' : ''}`} onClick={() => toggleSupplierReportSort('payments')}><span>Оплаты</span><b>{supplierReportSortArrow('payments')}</b></button></th><th><button type="button" className={`reports-sort-button ${supplierReportSort.field === 'balance' ? 'active' : ''}`} onClick={() => toggleSupplierReportSort('balance')}><span>Баланс</span><b>{supplierReportSortArrow('balance')}</b></button></th><th>Последняя закупка</th><th>Срок оплаты</th><th>Кредитный лимит</th></tr></thead>
-            <tbody>
-              {sortedSupplierReportRows.slice(0, 120).map(row => <tr key={row.supplier_id}>
-                <td><b>{row.supplier_name || '—'}</b></td>
+    {rmsSuppliersReport.loading && <div className="reports-v414-status">Загружаю поставщиков, закупки, оплаты, товары и историю цен…</div>}
+    {rmsSuppliersReport.error && <div className="reports-v414-status bad">{rmsSuppliersReport.error}</div>}
+
+    <section className="reports-v414-kpis">
+      <div className="reports-v414-kpi"><span>Поставщиков</span><strong>{fmt(filteredSupplierTotals.suppliers)}</strong><em>с активностью или балансом</em></div>
+      <div className="reports-v414-kpi"><span>Закупки</span><strong>{fmt(filteredSupplierTotals.purchases)}</strong><em>{supplierReportPeriodLabel}</em></div>
+      <div className="reports-v414-kpi"><span>Оплаты</span><strong>{fmt(filteredSupplierTotals.payments)}</strong><em>за выбранный период</em></div>
+      <div className="reports-v414-kpi"><span>Текущий баланс</span><strong className={filteredSupplierTotals.balance > 0 ? 'bad' : 'good'}>{fmt(filteredSupplierTotals.balance)}</strong><em>общий долг поставщикам</em></div>
+      <div className="reports-v414-kpi"><span>Накладных</span><strong>{fmt(filteredSupplierTotals.invoices)}</strong><em>физических поступлений</em></div>
+      <div className="reports-v414-kpi"><span>Товаров</span><strong>{fmt(filteredSupplierTotals.products)}</strong><em>позиции поставщик + товар + ед.</em></div>
+      <div className="reports-v414-kpi"><span>Средняя накладная</span><strong>{fmt(filteredSupplierTotals.averageInvoice)}</strong><em>AZN за поступление</em></div>
+      <div className="reports-v414-kpi"><span>Риски</span><strong>{fmt(filteredSupplierTotals.overdue + filteredSupplierTotals.overLimit)}</strong><em>{filteredSupplierTotals.overdue} просрочек · {filteredSupplierTotals.overLimit} лимитов</em></div>
+    </section>
+
+    <div className="reports-v414-tabs">
+      {[['overview','Обзор'],['purchases','Закупки'],['products','Товары по поставщикам'],['prices','Цены']].map(([id,label]) => <button key={id} type="button" className={supplierReportTab === id ? 'active' : ''} onClick={() => setSupplierReportTab(id)}>{label}</button>)}
+    </div>
+
+    {!rmsSuppliersReport.loading && !rmsSuppliersReport.error && supplierReportTab === 'overview' && <>
+      <section className="reports-v414-grid">
+        <div className="reports-v414-card">
+          <div className="reports-v414-card-head">
+            <div><h4>Динамика закупок и оплат</h4><p>Агрегация по дням, месяцам или годам. Наведите на столбцы для суммы и количества операций.</p></div>
+            <select value={supplierReportGrouping} onChange={e => setSupplierReportGrouping(e.target.value)}><option value="day">По дням</option><option value="month">По месяцам</option><option value="year">По годам</option></select>
+          </div>
+          {supplierTimelineRows.length ? <>
+            <div className="reports-v414-timeline">
+              {supplierTimelineRows.slice(-36).map(row => <div className="reports-v414-period-column" key={row.key} title={`${row.key} · закупки ${fmt(row.purchases)} AZN (${row.invoices}) · оплаты ${fmt(row.payments)} AZN (${row.paymentCount})`}>
+                <div className="reports-v414-period-bars">
+                  <i className="purchase" style={{ height: `${Math.max(2, row.purchases / supplierTimelineMax * 100)}%` }} />
+                  <i className="payment" style={{ height: `${Math.max(2, row.payments / supplierTimelineMax * 100)}%` }} />
+                </div>
+                <small>{row.key}</small>
+              </div>)}
+            </div>
+            <div className="reports-v414-legend"><span><i className="purchase" />Закупки</span><span><i className="payment" />Оплаты</span></div>
+          </> : <div className="reports-v414-empty">Нет операций за выбранный период.</div>}
+        </div>
+
+        <div className="reports-v414-card">
+          <div className="reports-v414-card-head"><div><h4>Долги и риски</h4><p>Текущий баланс, оценка просрочки по последней закупке и превышение кредитного лимита.</p></div></div>
+          <div className="reports-v414-risk-list">
+            {[...filteredSupplierReportRows].filter(row => row.balance > 0).sort((a,b) => parseNum(b.balance)-parseNum(a.balance)).slice(0,10).map(row => <div className={`reports-v414-risk ${row.overdue || row.over_limit ? 'bad' : ''}`} key={row.supplier_id}>
+              <i />
+              <div><strong>{row.supplier_name}</strong><small>{row.overdue ? `Возможная просрочка: ${row.days_since_purchase} дней при сроке ${row.payment_term_days}` : row.over_limit ? `Лимит превышен на ${fmt(row.balance-row.credit_limit)} AZN` : `Последняя закупка: ${row.last_purchase || '—'}`}</small></div>
+              <b>{fmt(row.balance)}</b>
+            </div>)}
+            {!filteredSupplierReportRows.some(row => row.balance > 0) && <div className="reports-v414-empty">Открытых долгов по фильтру нет.</div>}
+          </div>
+        </div>
+      </section>
+
+      <div className="reports-v414-shell">
+        <div className="reports-v414-card-head"><div><h4>Сводка по поставщикам</h4><p>Нажмите «Открыть», чтобы увидеть товары, последние накладные и оплаты конкретного поставщика.</p></div><span className="reports-v43-badge">{sortedSupplierReportRows.length}</span></div>
+        <div className="reports-v414-table-wrap"><table className="reports-v414-table">
+          <thead><tr>
+            <th>Поставщик</th>
+            <th><button type="button" className={`reports-sort-button ${supplierReportSort.field === 'purchases' ? 'active' : ''}`} onClick={() => toggleSupplierReportSort('purchases')}><span>Закупки</span><b>{supplierReportSortArrow('purchases')}</b></button></th>
+            <th><button type="button" className={`reports-sort-button ${supplierReportSort.field === 'payments' ? 'active' : ''}`} onClick={() => toggleSupplierReportSort('payments')}><span>Оплаты</span><b>{supplierReportSortArrow('payments')}</b></button></th>
+            <th><button type="button" className={`reports-sort-button ${supplierReportSort.field === 'balance' ? 'active' : ''}`} onClick={() => toggleSupplierReportSort('balance')}><span>Баланс</span><b>{supplierReportSortArrow('balance')}</b></button></th>
+            <th>Накладных</th><th>Товаров</th><th>Средняя накладная</th><th>Последняя закупка</th><th>Срок / лимит</th><th></th>
+          </tr></thead>
+          <tbody>
+            {sortedSupplierReportRows.slice(0,200).map(row => <React.Fragment key={row.supplier_id}>
+              <tr>
+                <td><b>{row.supplier_name}</b>{row.voen && <><br/><span className="hint">{row.voen}</span></>}</td>
                 <td>{fmt(row.purchases)}</td>
                 <td>{fmt(row.payments)}</td>
                 <td className={row.balance > 0 ? 'bad' : 'good'}><b>{fmt(row.balance)}</b></td>
+                <td>{fmt(row.purchase_count)}</td>
+                <td>{fmt(row.product_count)}</td>
+                <td>{fmt(row.average_invoice)}</td>
                 <td>{row.last_purchase || '—'}</td>
-                <td>{row.payment_term_days ? `${fmt(row.payment_term_days)} дн.` : '—'}</td>
-                <td>{row.credit_limit ? fmt(row.credit_limit) : '—'}</td>
-              </tr>)}
-              {!rmsSuppliersReport.rows.length && <tr><td colSpan="7" className="hint">Пока нет данных по поставщикам за выбранный фильтр.</td></tr>}
-            </tbody>
-          </table></div>
-        </div>
+                <td className={row.overdue || row.over_limit ? 'bad' : row.balance > 0 ? 'warning' : ''}>{row.payment_term_days ? `${row.payment_term_days} дн.` : '—'}<br/><span className="hint">{row.credit_limit ? `лимит ${fmt(row.credit_limit)}` : 'без лимита'}</span></td>
+                <td><button className="row-open" type="button" onClick={() => toggleExpandedSupplierReport(row.supplier_id)}>{expandedSupplierReportIds.has(String(row.supplier_id)) ? 'Закрыть' : 'Открыть'}</button></td>
+              </tr>
+              {expandedSupplierReportIds.has(String(row.supplier_id)) && <tr className="reports-v414-expanded"><td colSpan="10"><div className="reports-v414-expanded-content">
+                <div className="reports-v414-subcard">
+                  <h5>Товары поставщика</h5>
+                  <div className="reports-v414-table-wrap"><table className="reports-v414-table"><thead><tr><th>Товар</th><th>Категория</th><th>Кол-во</th><th>Сумма</th><th>Средняя цена</th><th>Последняя цена</th></tr></thead><tbody>
+                    {(row.products || []).slice(0,20).map(product => <tr key={product.key}><td><b>{product.product_name}</b></td><td>{product.category}</td><td>{fmt(product.quantity)} {product.unit}</td><td>{fmt(product.amount)}</td><td>{fmt(product.average_price)}</td><td>{fmt(product.latest_price)}<br/><span className="hint">{product.latest_date}</span></td></tr>)}
+                    {!row.products?.length && <tr><td colSpan="6" className="hint">Нет товарных строк.</td></tr>}
+                  </tbody></table></div>
+                </div>
+                <div className="reports-v414-subcard">
+                  <h5>Последние накладные и оплаты</h5>
+                  <div className="reports-v414-table-wrap"><table className="reports-v414-table"><thead><tr><th>Дата</th><th>Операция</th><th>Документ</th><th>Сумма</th></tr></thead><tbody>
+                    {[...(row.invoices || []).map(item => ({date:item.purchase_date,type:'Закупка',doc:item.invoice_number || '—',amount:item.total_amount})),...(row.payment_rows || []).map(item => ({date:item.payment_date,type:'Оплата',doc:item.invoice_notes || item.comment || '—',amount:item.amount}))].sort((a,b)=>String(b.date).localeCompare(String(a.date))).slice(0,20).map((item,index)=><tr key={`${item.type}-${item.date}-${index}`}><td>{item.date}</td><td>{item.type}</td><td>{item.doc}</td><td className={item.type==='Оплата'?'good':''}><b>{fmt(item.amount)}</b></td></tr>)}
+                  </tbody></table></div>
+                </div>
+              </div></td></tr>}
+            </React.Fragment>)}
+            {!sortedSupplierReportRows.length && <tr><td colSpan="10" className="hint">Нет данных по выбранному фильтру.</td></tr>}
+          </tbody>
+        </table></div>
+      </div>
+    </>}
 
-        <div className="reports-v43-card" style={{ marginTop: 14 }}>
-          <div className="reports-v43-card-head"><div><h3>Подорожавшие товары</h3><p>Первая закупочная цена отчётного периода сравнивается с последней ценой того же товара и единицы измерения.</p></div><span className="reports-v43-badge">{rmsSuppliersReport.priceChanges.length}</span></div>
-          <div className="reports-v43-table-wrap"><table>
-            <thead><tr><th>Товар</th><th>Категория</th><th>Поставщик</th><th>Первая цена периода</th><th>Последняя цена</th><th>Рост, AZN</th><th>Рост, %</th><th>Последняя закупка</th></tr></thead>
-            <tbody>
-              {rmsSuppliersReport.priceChanges.slice(0, 120).map(row => <tr key={`${row.product_id}-${row.unit}`}>
-                <td><b>{row.product_name}</b></td>
-                <td>{row.category}</td>
-                <td>{row.latest?.supplier_name || '—'}</td>
-                <td>{fmt(row.first?.price)} / {row.unit}</td>
-                <td><b>{fmt(row.latest?.price)} / {row.unit}</b></td>
-                <td className="bad"><b>+{fmt(row.changeAmount)}</b></td>
-                <td className="bad"><b>+{pct(row.changePct)}</b></td>
-                <td>{row.latest?.date || '—'}<br /><span className="hint">{row.latest?.invoice || '—'}</span></td>
-              </tr>)}
-              {!rmsSuppliersReport.priceChanges.length && <tr><td colSpan="8" className="good">За выбранный отчётный период подорожавших товаров не найдено.</td></tr>}
-            </tbody>
-          </table></div>
-        </div>
-      </>}
-    </div>
+    {!rmsSuppliersReport.loading && !rmsSuppliersReport.error && supplierReportTab === 'purchases' && <div className="reports-v414-shell">
+      <div className="reports-v414-card-head"><div><h4>Журнал закупок</h4><p>Все накладные выбранного периода с филиалом, поставщиком, количеством товарных строк и суммой.</p></div><span className="reports-v43-badge">{filteredSupplierPurchases.length}</span></div>
+      <div className="reports-v414-table-wrap"><table className="reports-v414-table"><thead><tr><th>Дата</th><th>Поставщик</th><th>Филиал</th><th>Накладная</th><th>Товаров</th><th>Комментарий</th><th>Сумма</th></tr></thead><tbody>
+        {filteredSupplierPurchases.slice(0,500).map(row => <tr key={row.id}><td>{row.purchase_date}</td><td><b>{row.supplier_name}</b></td><td>{row.branch_name}</td><td>{row.invoice_number || '—'}</td><td>{row.supplier_purchase_items?.length || 0}</td><td>{row.comment || '—'}</td><td><b>{fmt(row.total_amount)}</b></td></tr>)}
+        {!filteredSupplierPurchases.length && <tr><td colSpan="7" className="hint">Закупки не найдены.</td></tr>}
+      </tbody></table></div>
+    </div>}
+
+    {!rmsSuppliersReport.loading && !rmsSuppliersReport.error && supplierReportTab === 'products' && <div className="reports-v414-shell">
+      <div className="reports-v414-card-head"><div><h4>Товары по поставщикам</h4><p>Объём закупок, количество, средняя и последняя цена по каждой связке поставщик + товар + единица измерения.</p></div><span className="reports-v43-badge">{filteredSupplierProductRows.length}</span></div>
+      <div className="reports-v414-table-wrap"><table className="reports-v414-table"><thead><tr><th>Поставщик</th><th>Товар</th><th>Категория</th><th>Ед.</th><th>Накладных</th><th>Количество</th><th>Сумма</th><th>Средняя цена</th><th>Последняя цена</th><th>Изменение</th><th>Последняя закупка</th></tr></thead><tbody>
+        {filteredSupplierProductRows.slice(0,600).map(row => <tr key={row.key}><td><b>{row.supplier_name}</b></td><td><b>{row.product_name}</b></td><td>{row.category}</td><td>{row.unit || '—'}</td><td>{fmt(row.invoice_count)}</td><td>{fmt(row.quantity)}</td><td>{fmt(row.amount)}</td><td>{fmt(row.average_price)}</td><td>{fmt(row.latest_price)}</td><td className={row.price_change > 0 ? 'bad' : row.price_change < 0 ? 'good' : ''}>{row.invoice_count > 1 ? `${row.price_change > 0 ? '+' : ''}${fmt(row.price_change)} · ${row.price_change > 0 ? '+' : ''}${pct(row.price_change_pct)}` : '—'}</td><td>{row.latest_date}<br/><span className="hint">{row.latest_invoice}</span></td></tr>)}
+        {!filteredSupplierProductRows.length && <tr><td colSpan="11" className="hint">Товары не найдены.</td></tr>}
+      </tbody></table></div>
+    </div>}
+
+    {!rmsSuppliersReport.loading && !rmsSuppliersReport.error && supplierReportTab === 'prices' && <div className="reports-v414-shell">
+      <div className="reports-v414-card-head">
+        <div><h4>Изменение закупочных цен</h4><p>Первая цена выбранного периода сравнивается с последней ценой того же товара у того же поставщика и в той же единице.</p></div>
+        <div className="reports-v414-price-switch"><button type="button" className={supplierReportPriceTab==='up'?'active':''} onClick={()=>setSupplierReportPriceTab('up')}>Подорожали ({rmsSuppliersReport.priceChanges.length})</button><button type="button" className={supplierReportPriceTab==='down'?'active':''} onClick={()=>setSupplierReportPriceTab('down')}>Подешевели ({rmsSuppliersReport.priceChangesDown.length})</button></div>
+      </div>
+      <div className="reports-v414-table-wrap"><table className="reports-v414-table"><thead><tr><th>Поставщик</th><th>Товар</th><th>Категория</th><th>Ед.</th><th>Первая цена</th><th>Последняя цена</th><th>Изменение AZN</th><th>Изменение %</th><th>Последняя закупка</th></tr></thead><tbody>
+        {visibleSupplierPriceRows.slice(0,500).map(row => <tr key={row.key}><td><b>{row.supplier_name}</b></td><td><b>{row.product_name}</b></td><td>{row.category}</td><td>{row.unit || '—'}</td><td>{fmt(row.first_price)}</td><td><b>{fmt(row.latest_price)}</b></td><td className={row.price_change > 0 ? 'bad' : 'good'}><b>{row.price_change > 0 ? '+' : ''}{fmt(row.price_change)}</b></td><td className={row.price_change > 0 ? 'bad' : 'good'}><b>{row.price_change > 0 ? '+' : ''}{pct(row.price_change_pct)}</b></td><td>{row.latest_date}<br/><span className="hint">{row.latest_invoice}</span></td></tr>)}
+        {!visibleSupplierPriceRows.length && <tr><td colSpan="9" className="hint">Изменений цен по выбранному фильтру нет.</td></tr>}
+      </tbody></table></div>
+    </div>}
   </section>
 
 
@@ -36210,7 +36806,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
       {effectiveReportsTab === 'overview' && <label><span>Раздел</span><select value={effectiveReportsTab} onChange={e => setReportsTab(e.target.value)}>{reportTabs.map(tab => <option key={tab.id} value={tab.id}>{tab.label}</option>)}</select></label>}
       <label><span>Период</span><select value={monthFilter} onChange={e => { setMonthFilter(e.target.value); setRevenueDateFrom(''); setRevenueDateTo(''); setRevenuePage(1) }}><option value="all">Все годы / все месяцы</option>{yearOptions.length > 0 && <optgroup label="Годы">{yearOptions.map(y => <option key={`year-${y}`} value={`year:${y}`}>{y} год</option>)}</optgroup>}<optgroup label="Месяцы">{!monthOptions.includes(currentMonthKey) && <option value={currentMonthKey}>Текущий месяц · {currentMonthLabel}</option>}{monthOptions.map(m => <option key={m} value={m}>{m}</option>)}</optgroup></select></label>
       <label><span>Филиал</span><select value={branchFilter} onChange={e => setBranchFilter(e.target.value)}><option value="all">Все филиалы</option>{branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label>
-      {effectiveReportsTab !== 'overview' && <label><span>Тип</span><select value={departmentFilter} onChange={e => setDepartmentFilter(e.target.value)}><option value="all">Все</option><option value="Бар">Бар</option><option value="Кухня">Кухня</option><option value="Смешанный">Смешанный</option></select></label>}
+      {effectiveReportsTab !== 'overview' && effectiveReportsTab !== 'suppliers' && !isProductsReportTab && <label><span>Тип</span><select value={departmentFilter} onChange={e => setDepartmentFilter(e.target.value)}><option value="all">Все</option><option value="Бар">Бар</option><option value="Кухня">Кухня</option><option value="Смешанный">Смешанный</option></select></label>}
       <div className="reports-v43-filter-actions"><button className="ghost small" type="button" onClick={refreshCurrentReport}>Обновить</button><button className="ghost small" type="button">Экспорт</button><button className="small primary" type="button" onClick={() => window.print()}>Печать</button></div>
     </section>
 
@@ -46530,3 +47126,12 @@ if (typeof document !== 'undefined') {
 
 
 /* v413: Reports Overview returned to v411 and now switches only between Revenue and Expenses */
+
+
+/* v414: Suppliers report rebuilt with period analytics, supplier drill-down, purchases, products and price changes */
+
+
+/* v415: fixes DateInput handlers, applies supplier/search filters to KPIs and hides irrelevant Type filter */
+
+
+/* v416: final supplier analytics build; fixes hook dependency order and removes empty supplier ids */
