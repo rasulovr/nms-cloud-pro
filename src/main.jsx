@@ -33102,7 +33102,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
     priceChangesDown: [],
     supplierOptions: []
   })
-  const [rmsProductsReport, setRmsProductsReport] = useState({ loading: false, error: '', rows: [], detailRows: [], totals: { amount: 0, products: 0, items: 0, invoices: 0, suppliers: 0 }, categories: [], suppliers: [], bySupplier: [], byCategory: [], priceDynamics: [], lastPurchaseDynamics: [], priceDynamicsMeta: { currentLabel: '', previousLabel: '', compareAvailable: false } })
+  const [rmsProductsReport, setRmsProductsReport] = useState({ loading: false, error: '', rows: [], detailRows: [], totals: { amount: 0, products: 0, items: 0, invoices: 0, suppliers: 0 }, categories: [], suppliers: [], bySupplier: [], byCategory: [], priceDynamics: [], lastPurchaseDynamics: [], priceDynamicsMeta: { currentLabel: '', previousLabel: '', compareAvailable: false }, amountDynamicsMeta: { currentLabel: '', previousLabel: '', compareAvailable: false, autoCompare: false } })
   const [rmsProductsReportProgress, setRmsProductsReportProgress] = useState({ active: false, progress: 0, title: '', detail: '', step: '', status: 'idle' })
   const [productsReportDateFrom, setProductsReportDateFrom] = useState('')
   const [productsReportDateTo, setProductsReportDateTo] = useState('')
@@ -34365,6 +34365,24 @@ function Reports({ t, permissions = [], isAdmin = false }) {
         return `${prevYear}-${String(prevMonth).padStart(2, '0')}-01`
       }
 
+      const shiftIsoByMonths = (iso, months) => {
+        const match = String(iso || '').match(/^(\d{4})-(\d{2})-(\d{2})$/)
+        if (!match) return ''
+        const sourceYear = Number(match[1])
+        const sourceMonth = Number(match[2]) - 1
+        const sourceDay = Number(match[3])
+        const target = new Date(sourceYear, sourceMonth + months, 1)
+        const targetYear = target.getFullYear()
+        const targetMonth = target.getMonth()
+        const maxDay = new Date(targetYear, targetMonth + 1, 0).getDate()
+        const targetDay = Math.min(sourceDay, maxDay)
+        return `${targetYear}-${String(targetMonth + 1).padStart(2, '0')}-${String(targetDay).padStart(2, '0')}`
+      }
+
+      const sameReportRange = (a, b) =>
+        String(a?.from || '') === String(b?.from || '') &&
+        String(a?.toExclusive || '') === String(b?.toExclusive || '')
+
       const resolveProductReportRange = () => {
         const hasCustomRange = Boolean(productsReportDateFrom || productsReportDateTo)
         if (hasCustomRange) {
@@ -34421,6 +34439,49 @@ function Reports({ t, permissions = [], isAdmin = false }) {
       }
 
       const reportRange = resolveProductReportRange()
+      const currentToday = todayISO()
+      const currentCalendarMonth = currentToday.slice(0, 7)
+
+      let amountComparisonRange = {
+        current: reportRange.current,
+        previous: reportRange.previous,
+        currentLabel: reportRange.currentLabel,
+        previousLabel: reportRange.previousLabel,
+        compareAvailable: reportRange.compareAvailable,
+        autoCompare: false
+      }
+
+      if (productsReportDateFrom || productsReportDateTo) {
+        const currentFrom = productsReportDateFrom || ''
+        const currentToInclusive = productsReportDateTo || currentToday
+        const currentToExclusive = addDays(currentToInclusive, 1)
+        if (currentFrom) {
+          const previousFrom = shiftIsoByMonths(currentFrom, -1)
+          const previousToExclusive = shiftIsoByMonths(currentToExclusive, -1)
+          amountComparisonRange = {
+            current: { from: currentFrom, toExclusive: currentToExclusive },
+            previous: previousFrom && previousToExclusive ? { from: previousFrom, toExclusive: previousToExclusive } : null,
+            currentLabel: `${currentFrom} — ${currentToInclusive}`,
+            previousLabel: previousFrom && previousToExclusive ? `${previousFrom} — ${addDays(previousToExclusive, -1)}` : 'недоступно',
+            compareAvailable: Boolean(previousFrom && previousToExclusive),
+            autoCompare: false
+          }
+        }
+      } else if (/^\d{4}-\d{2}$/.test(String(monthFilter || '')) && String(monthFilter) === currentCalendarMonth) {
+        const currentFrom = `${monthFilter}-01`
+        const currentToExclusive = addDays(currentToday, 1)
+        const previousFrom = shiftIsoByMonths(currentFrom, -1)
+        const previousToExclusive = shiftIsoByMonths(currentToExclusive, -1)
+        amountComparisonRange = {
+          current: { from: currentFrom, toExclusive: currentToExclusive },
+          previous: { from: previousFrom, toExclusive: previousToExclusive },
+          currentLabel: `${currentFrom} — ${currentToday}`,
+          previousLabel: `${previousFrom} — ${addDays(previousToExclusive, -1)}`,
+          compareAvailable: true,
+          autoCompare: true
+        }
+      }
+
       updateRmsProductsReportProgress(14, 'Период определён. Подключаю источник закупок…', 'Период и фильтры')
 
       const normalizeReportSupplierPurchasesPayload = (payload) => {
@@ -34554,7 +34615,6 @@ function Reports({ t, permissions = [], isAdmin = false }) {
       const filterCachedPurchases = (rows, range) => sortReportPurchases((rows || []).filter(purchase => purchaseInReportRange(purchase, range || {})))
 
       if (
-        productsPriceCompareMode !== 'last' &&
         !reportRange.compareAvailable &&
         !productsReportDateFrom &&
         !productsReportDateTo &&
@@ -34589,14 +34649,29 @@ function Reports({ t, permissions = [], isAdmin = false }) {
             return `${m}/${y}`
           }
 
-          effectiveReportRange = {
-            ...reportRange,
-            current: { from: latestMonthStart, toExclusive: toIsoDate(nextMonthDate) },
-            previous: { from: toIsoDate(prevMonthDate), toExclusive: latestMonthStart },
-            currentLabel: monthLabel(latestMonthDate),
-            previousLabel: monthLabel(prevMonthDate),
+          const latestPartialToExclusive = addDays(latestDate, 1)
+          const previousPartialFrom = shiftIsoByMonths(latestMonthStart, -1)
+          const previousPartialToExclusive = shiftIsoByMonths(latestPartialToExclusive, -1)
+
+          amountComparisonRange = {
+            current: { from: latestMonthStart, toExclusive: latestPartialToExclusive },
+            previous: { from: previousPartialFrom, toExclusive: previousPartialToExclusive },
+            currentLabel: `${latestMonthStart} — ${latestDate}`,
+            previousLabel: `${previousPartialFrom} — ${addDays(previousPartialToExclusive, -1)}`,
             compareAvailable: true,
             autoCompare: true
+          }
+
+          if (productsPriceCompareMode !== 'last') {
+            effectiveReportRange = {
+              ...reportRange,
+              current: { from: latestMonthStart, toExclusive: toIsoDate(nextMonthDate) },
+              previous: { from: toIsoDate(prevMonthDate), toExclusive: latestMonthStart },
+              currentLabel: monthLabel(latestMonthDate),
+              previousLabel: monthLabel(prevMonthDate),
+              compareAvailable: true,
+              autoCompare: true
+            }
           }
         }
       }
@@ -34609,7 +34684,23 @@ function Reports({ t, permissions = [], isAdmin = false }) {
       const previousPurchases = effectiveReportRange.previous
         ? (cachedAllPurchases ? filterCachedPurchases(cachedAllPurchases, effectiveReportRange.previous) : await fetchPurchases(effectiveReportRange.previous))
         : []
-      updateRmsProductsReportProgress(78, 'Формирую строки товаров, категории, поставщиков и ошибки единиц…', 'Аналитика товаров')
+
+      const resolveAmountPurchases = async range => {
+        if (!range) return []
+        if (sameReportRange(range, reportRange.current)) return reportPurchases
+        if (sameReportRange(range, effectiveReportRange.current)) return dynamicsCurrentPurchases
+        if (sameReportRange(range, effectiveReportRange.previous)) return previousPurchases
+        return cachedAllPurchases ? filterCachedPurchases(cachedAllPurchases, range) : fetchPurchases(range)
+      }
+
+      const amountCurrentPurchases = amountComparisonRange.compareAvailable
+        ? await resolveAmountPurchases(amountComparisonRange.current)
+        : []
+      const amountPreviousPurchases = amountComparisonRange.compareAvailable
+        ? await resolveAmountPurchases(amountComparisonRange.previous)
+        : []
+
+      updateRmsProductsReportProgress(78, 'Формирую строки товаров, категории, поставщиков и динамику суммы закупа…', 'Аналитика товаров')
 
       const branchNameById = new Map((branches || []).map(b => [String(b.id), b.name]))
 
@@ -34672,11 +34763,33 @@ function Reports({ t, permissions = [], isAdmin = false }) {
       const currentBuilt = buildDetailRows(reportPurchases)
       const dynamicsCurrentBuilt = buildDetailRows(dynamicsCurrentPurchases)
       const previousBuilt = buildDetailRows(previousPurchases)
+      const amountCurrentBuilt = buildDetailRows(amountCurrentPurchases)
+      const amountPreviousBuilt = buildDetailRows(amountPreviousPurchases)
       const detailRows = currentBuilt.rows
       const dynamicsCurrentDetailRows = dynamicsCurrentBuilt.rows
       const previousDetailRows = previousBuilt.rows
+      const amountCurrentDetailRows = amountCurrentBuilt.rows
+      const amountPreviousDetailRows = amountPreviousBuilt.rows
       const invoiceIds = currentBuilt.invoiceIds
       const supplierIds = currentBuilt.supplierIds
+
+      const productAmountKey = row => `${row.product_id || row.product_name}::${row.unit}`
+      const buildProductAmountMap = rows => {
+        const map = new Map()
+        ;(rows || []).forEach(row => {
+          const key = productAmountKey(row)
+          const current = map.get(key) || { amount: 0, quantity: 0, rows: 0, invoices: new Set() }
+          current.amount += parseNum(row.amount)
+          current.quantity += parseNum(row.quantity)
+          current.rows += 1
+          if (row.purchase_id) current.invoices.add(String(row.purchase_id))
+          map.set(key, current)
+        })
+        return map
+      }
+
+      const currentAmountMap = buildProductAmountMap(amountCurrentDetailRows)
+      const previousAmountMap = buildProductAmountMap(amountPreviousDetailRows)
 
       const productMap = new Map()
       const bySupplierMap = new Map()
@@ -34737,15 +34850,37 @@ function Reports({ t, permissions = [], isAdmin = false }) {
         byCategoryMap.set(detail.category, categoryRow)
       })
 
-      const productRows = Array.from(productMap.values()).map(row => ({
-        ...row,
-        avg_price: row.quantity ? row.amount / row.quantity : 0,
-        avg_base_price: row.base_quantity ? row.amount / row.base_quantity : 0,
-        invoices: row.invoice_ids.size,
-        suppliers: row.supplier_ids.size || row.supplier_names.size,
-        supplier_names_text: Array.from(row.supplier_names).filter(Boolean).slice(0, 4).join(', '),
-        branch_names_text: Array.from(row.branch_names).filter(Boolean).slice(0, 4).join(', '),
-      })).sort((a, b) => parseNum(b.amount) - parseNum(a.amount))
+      const productRows = Array.from(productMap.values()).map(row => {
+        const key = productAmountKey(row)
+        const currentComparison = currentAmountMap.get(key)
+        const previousComparison = previousAmountMap.get(key)
+        const comparisonCurrentAmount = parseNum(currentComparison?.amount)
+        const comparisonPreviousAmount = parseNum(previousComparison?.amount)
+        const purchaseAmountChange = comparisonCurrentAmount - comparisonPreviousAmount
+        const purchaseAmountChangePct = comparisonPreviousAmount > 0
+          ? purchaseAmountChange / comparisonPreviousAmount * 100
+          : null
+        const purchaseAmountDirection = comparisonPreviousAmount > 0
+          ? (purchaseAmountChange > 0 ? 'up' : purchaseAmountChange < 0 ? 'down' : 'flat')
+          : (comparisonCurrentAmount > 0 ? 'new' : 'none')
+
+        return {
+          ...row,
+          avg_price: row.quantity ? row.amount / row.quantity : 0,
+          avg_base_price: row.base_quantity ? row.amount / row.base_quantity : 0,
+          invoices: row.invoice_ids.size,
+          suppliers: row.supplier_ids.size || row.supplier_names.size,
+          supplier_names_text: Array.from(row.supplier_names).filter(Boolean).slice(0, 4).join(', '),
+          branch_names_text: Array.from(row.branch_names).filter(Boolean).slice(0, 4).join(', '),
+          comparison_current_amount: comparisonCurrentAmount,
+          comparison_previous_amount: comparisonPreviousAmount,
+          comparison_current_invoices: currentComparison?.invoices?.size || 0,
+          comparison_previous_invoices: previousComparison?.invoices?.size || 0,
+          purchase_amount_change: purchaseAmountChange,
+          purchase_amount_change_pct: purchaseAmountChangePct,
+          purchase_amount_direction: purchaseAmountDirection,
+        }
+      }).sort((a, b) => parseNum(b.amount) - parseNum(a.amount))
 
       const supplierRows = Array.from(bySupplierMap.values()).map(row => ({
         ...row,
@@ -34908,10 +35043,10 @@ function Reports({ t, permissions = [], isAdmin = false }) {
       const emptySourceWarning = !detailRows.length && !isAdmin
         ? 'Нет доступных строк закупок для этого пользователя. Проверьте, что в Supabase выполнен secure RPC rms_supplier_purchases_full и что в общих правах открыт раздел “Отчёты”.'
         : ''
-      setRmsProductsReport({ loading: false, error: emptySourceWarning, rows: productRows, detailRows, totals, categories, suppliers: suppliersList, bySupplier: supplierRows, byCategory: categoryRows, priceDynamics, lastPurchaseDynamics, priceDynamicsMeta: { currentLabel: effectiveReportRange.currentLabel, previousLabel: effectiveReportRange.previousLabel, compareAvailable: effectiveReportRange.compareAvailable, autoCompare: Boolean(effectiveReportRange.autoCompare) } })
+      setRmsProductsReport({ loading: false, error: emptySourceWarning, rows: productRows, detailRows, totals, categories, suppliers: suppliersList, bySupplier: supplierRows, byCategory: categoryRows, priceDynamics, lastPurchaseDynamics, priceDynamicsMeta: { currentLabel: effectiveReportRange.currentLabel, previousLabel: effectiveReportRange.previousLabel, compareAvailable: effectiveReportRange.compareAvailable, autoCompare: Boolean(effectiveReportRange.autoCompare) }, amountDynamicsMeta: { currentLabel: amountComparisonRange.currentLabel, previousLabel: amountComparisonRange.previousLabel, compareAvailable: amountComparisonRange.compareAvailable, autoCompare: Boolean(amountComparisonRange.autoCompare) } })
       completeRmsProductsReportProgress(`Загружено: ${productRows.length} товаров, ${detailRows.length} строк закупок, ${invoiceIds.size} накладных`)
     } catch (error) {
-      setRmsProductsReport({ loading: false, error: error?.message || 'Не удалось загрузить отчёт по товарам', rows: [], detailRows: [], totals: { amount: 0, products: 0, items: 0, invoices: 0, suppliers: 0 }, categories: [], suppliers: [], bySupplier: [], byCategory: [], priceDynamics: [], lastPurchaseDynamics: [], priceDynamicsMeta: { currentLabel: '', previousLabel: '', compareAvailable: false } })
+      setRmsProductsReport({ loading: false, error: error?.message || 'Не удалось загрузить отчёт по товарам', rows: [], detailRows: [], totals: { amount: 0, products: 0, items: 0, invoices: 0, suppliers: 0 }, categories: [], suppliers: [], bySupplier: [], byCategory: [], priceDynamics: [], lastPurchaseDynamics: [], priceDynamicsMeta: { currentLabel: '', previousLabel: '', compareAvailable: false }, amountDynamicsMeta: { currentLabel: '', previousLabel: '', compareAvailable: false, autoCompare: false } })
       failRmsProductsReportProgress(error)
     }
   }
@@ -35953,6 +36088,10 @@ function Reports({ t, permissions = [], isAdmin = false }) {
     ? 'последняя закупка против предыдущей закупки'
     : `${rmsProductsReport.priceDynamicsMeta?.autoCompare ? 'авто-сравнение: ' : 'период '}${rmsProductsReport.priceDynamicsMeta?.currentLabel || selectedProductPeriodLabel} против ${rmsProductsReport.priceDynamicsMeta?.previousLabel || 'предыдущего периода'}`
 
+  const productAmountDynamicsModeLabel = rmsProductsReport.amountDynamicsMeta?.compareAvailable
+    ? `${rmsProductsReport.amountDynamicsMeta?.currentLabel || selectedProductPeriodLabel} против ${rmsProductsReport.amountDynamicsMeta?.previousLabel || 'аналогичного периода прошлого месяца'}`
+    : 'предыдущий сопоставимый период недоступен'
+
   const productReportPageSize = 50
   const productReportTotalPages = Math.max(1, Math.ceil(filteredProductReportRows.length / productReportPageSize))
   const safeProductsReportPage = Math.min(Math.max(1, parseNum(productsReportPage) || 1), productReportTotalPages)
@@ -36085,9 +36224,14 @@ function Reports({ t, permissions = [], isAdmin = false }) {
         </div>
       </div>
 
-      <div className="table-wrap reports-v353-products-table-wrap" style={{marginTop:14}}>
+      <div className="reports-v419-amount-dynamics-note">
+        <div><b>Динамика суммы закупа</b><span>{productAmountDynamicsModeLabel}</span></div>
+        <small>Сравнивается общая сумма закупок товара, а не только изменение его цены. Рост может быть связан и с увеличением количества.</small>
+      </div>
+
+      <div className="table-wrap reports-v353-products-table-wrap" style={{marginTop:10}}>
         <table className="reports-v353-products-table">
-          <thead><tr><th>{productSortHeader('name', 'Товар')}</th><th>{productSortHeader('category', 'Категория')}</th><th>{productSortHeader('quantity', 'Кол-во')}</th><th>Ед.</th><th>{productSortHeader('amount', 'Сумма')}</th><th>{productSortHeader('avg_price', 'Средняя цена')}</th><th>{productSortHeader('item_count', 'Закупок')}</th><th>Поставщики</th><th>Последняя закупка</th></tr></thead>
+          <thead><tr><th>{productSortHeader('name', 'Товар')}</th><th>{productSortHeader('category', 'Категория')}</th><th>{productSortHeader('quantity', 'Кол-во')}</th><th>Ед.</th><th>{productSortHeader('amount', 'Сумма')}</th><th>{productSortHeader('purchase_amount_change_pct', 'К прошлому месяцу')}</th><th>{productSortHeader('avg_price', 'Средняя цена')}</th><th>{productSortHeader('item_count', 'Закупок')}</th><th>Поставщики</th><th>Последняя закупка</th></tr></thead>
           <tbody>
             {visibleProductReportRows.map(row => <tr key={`${row.product_id || row.product_name}-${row.unit}`}>
               <td><b>{row.product_name}</b><br /><span className="hint">{row.branch_names_text || 'Все филиалы'}</span></td>
@@ -36095,12 +36239,19 @@ function Reports({ t, permissions = [], isAdmin = false }) {
               <td><b>{fmt(row.quantity)}</b></td>
               <td>{row.unit || '—'}</td>
               <td><b>{fmt(row.amount)} AZN</b></td>
+              <td className={`reports-v419-amount-delta ${row.purchase_amount_direction || 'none'}`}>
+                {row.purchase_amount_direction === 'up' && <><b>▲ +{fmt(row.purchase_amount_change)} AZN</b><span>+{pct(row.purchase_amount_change_pct)}</span><small>{fmt(row.comparison_previous_amount)} → {fmt(row.comparison_current_amount)}</small></>}
+                {row.purchase_amount_direction === 'down' && <><b>▼ {fmt(row.purchase_amount_change)} AZN</b><span>{pct(row.purchase_amount_change_pct)}</span><small>{fmt(row.comparison_previous_amount)} → {fmt(row.comparison_current_amount)}</small></>}
+                {row.purchase_amount_direction === 'flat' && <><b>— без изменений</b><small>{fmt(row.comparison_current_amount)} AZN</small></>}
+                {row.purchase_amount_direction === 'new' && <><b>Новая закупка</b><small>{fmt(row.comparison_current_amount)} AZN · ранее 0</small></>}
+                {row.purchase_amount_direction === 'none' && <span className="hint">нет операций в сравниваемых периодах</span>}
+              </td>
               <td>{fmt(row.avg_price)} AZN / {row.unit || 'ед.'}</td>
               <td>{row.item_count} строк<br /><span className="hint">{row.invoices} накл.</span></td>
               <td>{row.supplier_names_text || '—'}{row.suppliers > 4 && <><br /><span className="hint">+ ещё {row.suppliers - 4}</span></>}</td>
               <td>{row.last_date ? formatDateDMY(row.last_date) : '—'}<br /><span className="hint">{row.latest_supplier || '—'} · {fmt(row.latest_price)} AZN</span></td>
             </tr>)}
-            {!filteredProductReportRows.length && <tr><td colSpan="9" className="hint">Нет товаров по выбранному периоду / фильтру.</td></tr>}
+            {!filteredProductReportRows.length && <tr><td colSpan="10" className="hint">Нет товаров по выбранному периоду / фильтру.</td></tr>}
           </tbody>
         </table>
       </div>
@@ -47694,3 +47845,104 @@ if (typeof document !== 'undefined') {
 
 
 /* v418: profitability employees query uses existing schema columns only */
+
+
+/* v419 Products report: purchase amount change vs analogous previous-month period */
+if (typeof document !== 'undefined') {
+  const STYLE_ID = 'rms-v419-products-purchase-amount-dynamics'
+  if (!document.getElementById(STYLE_ID)) {
+    const style = document.createElement('style')
+    style.id = STYLE_ID
+    style.textContent = `
+.rms-pro-shell .reports-v419-amount-dynamics-note{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:space-between!important;
+  gap:18px!important;
+  margin-top:14px!important;
+  padding:12px 14px!important;
+  border:1px solid #dbe4ef!important;
+  border-radius:15px!important;
+  background:linear-gradient(135deg,#f8fafc,#ffffff)!important;
+}
+.rms-pro-shell .reports-v419-amount-dynamics-note div{
+  min-width:0!important;
+}
+.rms-pro-shell .reports-v419-amount-dynamics-note b{
+  display:block!important;
+  color:#0f172a!important;
+  font-size:12px!important;
+  font-weight:950!important;
+}
+.rms-pro-shell .reports-v419-amount-dynamics-note span{
+  display:block!important;
+  margin-top:3px!important;
+  color:#475569!important;
+  font-size:10.5px!important;
+  font-weight:750!important;
+}
+.rms-pro-shell .reports-v419-amount-dynamics-note small{
+  max-width:480px!important;
+  color:#64748b!important;
+  font-size:10px!important;
+  font-weight:650!important;
+  line-height:1.35!important;
+  text-align:right!important;
+}
+.rms-pro-shell .reports-v419-amount-delta{
+  min-width:158px!important;
+  line-height:1.2!important;
+}
+.rms-pro-shell .reports-v419-amount-delta b,
+.rms-pro-shell .reports-v419-amount-delta span,
+.rms-pro-shell .reports-v419-amount-delta small{
+  display:block!important;
+}
+.rms-pro-shell .reports-v419-amount-delta b{
+  font-size:10.8px!important;
+  font-weight:950!important;
+  white-space:nowrap!important;
+}
+.rms-pro-shell .reports-v419-amount-delta span{
+  margin-top:2px!important;
+  font-size:10px!important;
+  font-weight:900!important;
+}
+.rms-pro-shell .reports-v419-amount-delta small{
+  margin-top:4px!important;
+  color:#64748b!important;
+  font-size:9.5px!important;
+  font-weight:700!important;
+  white-space:nowrap!important;
+}
+.rms-pro-shell .reports-v419-amount-delta.up b,
+.rms-pro-shell .reports-v419-amount-delta.up span{
+  color:#dc2626!important;
+}
+.rms-pro-shell .reports-v419-amount-delta.down b,
+.rms-pro-shell .reports-v419-amount-delta.down span{
+  color:#059669!important;
+}
+.rms-pro-shell .reports-v419-amount-delta.new b{
+  color:#2563eb!important;
+}
+.rms-pro-shell .reports-v419-amount-delta.flat b{
+  color:#475569!important;
+}
+@media(max-width:850px){
+  .rms-pro-shell .reports-v419-amount-dynamics-note{
+    align-items:flex-start!important;
+    flex-direction:column!important;
+  }
+  .rms-pro-shell .reports-v419-amount-dynamics-note small{
+    max-width:none!important;
+    text-align:left!important;
+  }
+}
+`
+    document.head.appendChild(style)
+  }
+}
+
+
+/* v419: product rows show purchase-amount growth/fall against the analogous previous-month period */
