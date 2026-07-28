@@ -3092,7 +3092,7 @@ async function rmsIikoImportParsedRows(fileName, rows, fallback = {}) {
 }
 
 
-function InventoryModule({ t }) {
+function InventoryModule({ t, branches = [] }) {
   const today = todayISO()
   const [activeTab, setActiveTab] = React.useState('overview')
   const [loading, setLoading] = React.useState(false)
@@ -3121,6 +3121,21 @@ function InventoryModule({ t }) {
   const [minStockDraft, setMinStockDraft] = React.useState({})
 
   const emptyLine = { catalog_key: '', quantity: '', unit_cost: '', comment: '' }
+
+  const [receiptDraft, setReceiptDraft] = React.useState({
+    document_date: today,
+    target_location_id: '',
+    reason: 'Начальные остатки',
+    comment: '',
+    items: []
+  })
+  const [receiptLine, setReceiptLine] = React.useState({
+    ...emptyLine,
+    catalog_key: '',
+    manual_name: '',
+    manual_unit: 'kg',
+    manual_type: 'product'
+  })
 
   const [transferDraft, setTransferDraft] = React.useState({
     document_date: today,
@@ -3187,6 +3202,10 @@ function InventoryModule({ t }) {
     setLoading(true)
     setMessage('')
     try {
+      let bootstrapData = null
+      const bootstrapRes = await supabase.rpc('rms_inventory_bootstrap_secure')
+      if (!bootstrapRes.error) bootstrapData = normalizeWorkspace(bootstrapRes.data)
+
       const [
         balanceRes,
         movementRes,
@@ -3199,29 +3218,56 @@ function InventoryModule({ t }) {
       ] = await Promise.all([
         supabase.from('rms_inventory_stock_balance_view').select('*').order('item_name', { ascending: true }).limit(3000),
         supabase.from('rms_stock_movements').select('*').is('deleted_at', null).order('movement_date', { ascending: false }).order('created_at', { ascending: false }).limit(2000),
-        supabase.from('rms_inventory_locations').select('*').eq('is_active', true).order('name', { ascending: true }).limit(200),
-        supabase.from('supplier_products').select('id,name,category,base_unit,is_active').eq('is_active', true).order('name').limit(3000),
-        supabase.from('latest_product_costs').select('*').limit(3000),
-        supabase.from('rms_semi_finished').select('*').eq('is_active', true).order('name').limit(1000),
-        supabase.from('rms_semi_finished_items').select('*').order('created_at').limit(5000),
+        supabase.from('rms_inventory_locations').select('*').eq('is_active', true).order('name', { ascending: true }).limit(300),
+        supabase.from('supplier_products').select('id,name,category,base_unit,is_active').eq('is_active', true).order('name').limit(5000),
+        supabase.from('latest_product_costs').select('*').limit(5000),
+        supabase.from('rms_semi_finished').select('*').eq('is_active', true).order('name').limit(1500),
+        supabase.from('rms_semi_finished_items').select('*').order('created_at').limit(7000),
         supabase.rpc('rms_inventory_workspace_secure', { p_limit: 800 })
       ])
 
       if (balanceRes.error) throw balanceRes.error
       if (movementRes.error) throw movementRes.error
-      if (locationRes.error) throw locationRes.error
-      if (productRes.error) throw productRes.error
       if (costRes.error) throw costRes.error
-      if (semiRes.error) throw semiRes.error
-      if (semiItemRes.error) throw semiItemRes.error
+
+      const bootstrapLocations = Array.isArray(bootstrapData?.locations) ? bootstrapData.locations : []
+      const bootstrapProducts = Array.isArray(bootstrapData?.products) ? bootstrapData.products : []
+      const bootstrapSemis = Array.isArray(bootstrapData?.semis) ? bootstrapData.semis : []
+      const bootstrapSemiItems = Array.isArray(bootstrapData?.semi_items) ? bootstrapData.semi_items : []
+
+      let resolvedLocations = bootstrapLocations.length
+        ? bootstrapLocations
+        : (!locationRes.error ? (locationRes.data || []) : [])
+
+      let resolvedProducts = bootstrapProducts.length
+        ? bootstrapProducts
+        : (!productRes.error ? (productRes.data || []) : [])
+
+      let resolvedSemis = bootstrapSemis.length
+        ? bootstrapSemis
+        : (!semiRes.error ? (semiRes.data || []) : [])
+
+      let resolvedSemiItems = bootstrapSemiItems.length
+        ? bootstrapSemiItems
+        : (!semiItemRes.error ? (semiItemRes.data || []) : [])
+
+      if (!resolvedProducts.length) {
+        try {
+          const wsResult = await fetchRmsSuppliersWorkspace()
+          const ws = normalizeWorkspace(wsResult?.data)
+          if (!wsResult?.error && Array.isArray(ws?.supplier_products)) {
+            resolvedProducts = ws.supplier_products.filter(row => row.is_active !== false)
+          }
+        } catch (_error) {}
+      }
 
       setBalances(balanceRes.data || [])
       setMovements(movementRes.data || [])
-      setLocations(locationRes.data || [])
-      setSupplierProducts(productRes.data || [])
+      setLocations(resolvedLocations)
+      setSupplierProducts(resolvedProducts)
       setLatestCosts(costRes.data || [])
-      setSemis(semiRes.data || [])
-      setSemiItems(semiItemRes.data || [])
+      setSemis(resolvedSemis)
+      setSemiItems(resolvedSemiItems)
 
       if (workspaceRes.error) {
         setWorkspaceReady(false)
@@ -3233,13 +3279,19 @@ function InventoryModule({ t }) {
         setDocuments(Array.isArray(workspace?.documents) ? workspace.documents : [])
         setItemSettings(Array.isArray(workspace?.settings) ? workspace.settings : [])
       }
+
+      if (!bootstrapData && !resolvedLocations.length) {
+        setMessage('Складские локации не найдены. Выполните SQL v421 для автоматического создания филиалов.')
+      } else if (!resolvedProducts.length && !resolvedSemis.length) {
+        setMessage('Справочник товаров пуст. Добавьте товары у поставщиков или создайте позицию вручную при оприходовании.')
+      }
     } catch (error) {
       console.error('inventory operational load error', error)
       setMessage(error?.message || 'Не удалось загрузить склад')
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [branches])
 
   React.useEffect(() => { loadInventory() }, [loadInventory])
 
@@ -3321,7 +3373,7 @@ function InventoryModule({ t }) {
     writeoff: 'Списание',
     production: 'Производство',
     inventory_count: 'Инвентаризация',
-    adjustment: 'Корректировка'
+    adjustment: 'Оприходование / корректировка'
   }[type] || type || 'Документ')
 
   const documentStatusLabel = status => ({
@@ -3437,6 +3489,23 @@ function InventoryModule({ t }) {
         await rmsInventoryMovementCreate(movementPayload(doc, item, locationId, 'production_in', quantity))
         movementsCreated.push({ item: item.item_name, type: 'production_in', quantity })
       }
+    } else if (doc.document_type === 'adjustment') {
+      const locationId = doc.target_location_id || doc.source_location_id
+      if (!locationId) throw new Error('Не указан склад оприходования')
+      const direction = String(doc.metadata?.adjustment_direction || 'in')
+      for (const item of items) {
+        const quantity = parseNum(item.quantity)
+        if (!(quantity > 0)) continue
+        if (direction === 'out') {
+          const sourceBalance = balanceFor(locationId, item.item_name, item.unit)
+          if (parseNum(sourceBalance?.balance_qty) < quantity) {
+            throw new Error(`Недостаточный остаток: ${item.item_name}. Доступно ${fmt(sourceBalance?.balance_qty)} ${item.unit}`)
+          }
+        }
+        const movementType = direction === 'out' ? 'adjustment_out' : 'adjustment_in'
+        await rmsInventoryMovementCreate(movementPayload(doc, item, locationId, movementType, quantity))
+        movementsCreated.push({ item: item.item_name, type: movementType, quantity })
+      }
     } else if (doc.document_type === 'inventory_count') {
       const locationId = doc.source_location_id
       if (!locationId) throw new Error('Не указан склад инвентаризации')
@@ -3494,6 +3563,15 @@ function InventoryModule({ t }) {
       }
       for (const item of items.filter(row => row.movement_role === 'input')) {
         await rmsInventoryMovementCreate(movementPayload({ ...doc, comment: suffix }, item, locationId, 'adjustment_in', item.quantity))
+      }
+    } else if (doc.document_type === 'adjustment') {
+      const locationId = doc.target_location_id || doc.source_location_id
+      const direction = String(doc.metadata?.adjustment_direction || 'in')
+      for (const item of items) {
+        const quantity = parseNum(item.quantity)
+        if (!(quantity > 0)) continue
+        const reverseType = direction === 'out' ? 'adjustment_in' : 'adjustment_out'
+        await rmsInventoryMovementCreate(movementPayload({ ...doc, comment: suffix }, item, locationId, reverseType, quantity))
       }
     } else if (doc.document_type === 'inventory_count') {
       for (const item of items) {
@@ -3558,10 +3636,98 @@ function InventoryModule({ t }) {
   }
 
   const removeDraftLine = (kind, index) => {
-    if (kind === 'transfer') {
+    if (kind === 'receipt') {
+      setReceiptDraft(prev => ({ ...prev, items: prev.items.filter((_, i) => i !== index) }))
+    } else if (kind === 'transfer') {
       setTransferDraft(prev => ({ ...prev, items: prev.items.filter((_, i) => i !== index) }))
     } else {
       setWriteoffDraft(prev => ({ ...prev, items: prev.items.filter((_, i) => i !== index) }))
+    }
+  }
+
+  const addReceiptLine = () => {
+    if (!receiptDraft.target_location_id) return setMessage('Выберите филиал или склад')
+    const quantity = parseNum(receiptLine.quantity)
+    if (!(quantity > 0)) return setMessage('Укажите количество больше 0')
+
+    let item = null
+    if (receiptLine.catalog_key === '__manual__') {
+      const manualName = String(receiptLine.manual_name || '').trim()
+      if (!manualName) return setMessage('Введите название нового товара')
+      item = {
+        item_name: manualName,
+        unit: String(receiptLine.manual_unit || 'unit').trim() || 'unit',
+        item_type: receiptLine.manual_type || 'product',
+        supplier_product_id: null,
+        semi_finished_id: null,
+        category: receiptLine.manual_type === 'semi_finished' ? 'Полуфабрикаты' : 'Новый товар'
+      }
+    } else {
+      item = findCatalogItem(receiptLine.catalog_key)
+      if (!item) return setMessage('Выберите товар или полуфабрикат')
+    }
+
+    const unitCost = parseNum(receiptLine.unit_cost) || unitCostFor(receiptDraft.target_location_id, item)
+    const row = {
+      item_name: item.item_name,
+      item_type: item.item_type,
+      supplier_product_id: item.supplier_product_id || null,
+      semi_finished_id: item.semi_finished_id || null,
+      unit: item.unit || 'unit',
+      quantity,
+      unit_cost: unitCost,
+      total_cost: quantity * unitCost,
+      comment: receiptLine.comment || receiptDraft.reason || 'Оприходование'
+    }
+
+    setReceiptDraft(prev => ({ ...prev, items: [...prev.items, row] }))
+    setReceiptLine({
+      ...emptyLine,
+      catalog_key: '',
+      manual_name: '',
+      manual_unit: 'kg',
+      manual_type: 'product'
+    })
+    setMessage('')
+  }
+
+  const submitReceipt = async postNow => {
+    setBusy(true)
+    setMessage('')
+    try {
+      if (!receiptDraft.target_location_id) throw new Error('Выберите филиал или склад')
+      if (!receiptDraft.items.length) throw new Error('Добавьте хотя бы один товар')
+      await saveOrPostDocument({
+        document_type: 'adjustment',
+        document_date: receiptDraft.document_date,
+        target_location_id: receiptDraft.target_location_id,
+        reason: receiptDraft.reason,
+        comment: receiptDraft.comment || receiptDraft.reason || 'Оприходование товаров',
+        metadata: {
+          adjustment_direction: 'in',
+          operation: receiptDraft.reason === 'Начальные остатки' ? 'opening_balance' : 'receipt'
+        },
+        items: receiptDraft.items
+      }, postNow)
+
+      setReceiptDraft({
+        document_date: today,
+        target_location_id: receiptDraft.target_location_id,
+        reason: receiptDraft.reason,
+        comment: '',
+        items: []
+      })
+      setReceiptLine({
+        ...emptyLine,
+        catalog_key: '',
+        manual_name: '',
+        manual_unit: 'kg',
+        manual_type: 'product'
+      })
+    } catch (error) {
+      setMessage(error?.message || 'Не удалось сохранить оприходование')
+    } finally {
+      setBusy(false)
     }
   }
 
@@ -3886,6 +4052,7 @@ function InventoryModule({ t }) {
 
   const tabs = [
     ['overview', 'Обзор'],
+    ['receipts', 'Оприходование'],
     ['stock', 'Остатки'],
     ['transfers', 'Перемещения'],
     ['writeoffs', 'Списания'],
@@ -3927,6 +4094,7 @@ function InventoryModule({ t }) {
       .inventory-v420-filters{display:flex;gap:9px;flex-wrap:wrap;align-items:end;margin-bottom:13px}.inventory-v420-filters label{display:grid;gap:5px;min-width:155px;flex:1}.inventory-v420-filters label>span{color:#64748b;font-size:10px;font-weight:850}.inventory-v420-filters input,.inventory-v420-filters select{min-width:0}
       .inventory-v420-form-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:11px}.inventory-v420-form-grid label{display:grid;gap:6px}.inventory-v420-form-grid label>span{color:#64748b;font-size:10.5px;font-weight:850}.inventory-v420-form-grid .span-2{grid-column:span 2}.inventory-v420-form-grid .span-all{grid-column:1/-1}
       .inventory-v420-line-builder{display:grid;grid-template-columns:minmax(240px,1.5fr) minmax(120px,.65fr) minmax(120px,.65fr) minmax(190px,1fr) auto;gap:10px;align-items:end;margin-top:13px;padding:13px;border:1px solid #e2e8f0;border-radius:16px;background:#f8fafc}.inventory-v420-line-builder label{display:grid;gap:5px}.inventory-v420-line-builder label>span{color:#64748b;font-size:10px;font-weight:850}
+      .inventory-v421-manual-grid{display:grid;grid-template-columns:1.4fr .7fr .7fr;gap:10px;margin-top:10px;padding:12px;border:1px dashed #cbd5e1;border-radius:14px;background:#fff}.inventory-v421-manual-grid label{display:grid;gap:5px}.inventory-v421-manual-grid label>span{color:#64748b;font-size:10px;font-weight:850}
       .inventory-v420-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:13px}.inventory-v420-actions .primary{min-width:160px}
       .inventory-v420-table-wrap,.inventory-v420-draft-table-wrap{overflow:auto;border:1px solid #e2e8f0;border-radius:16px}.inventory-v420-table{width:100%;border-collapse:collapse}.inventory-v420-table th,.inventory-v420-table td{padding:10px 9px;border-bottom:1px solid #e8eef5;text-align:right;white-space:nowrap}.inventory-v420-table th:first-child,.inventory-v420-table td:first-child{text-align:left}.inventory-v420-table th{position:sticky;top:0;z-index:1;background:#f8fafc;color:#64748b;font-size:9.4px;font-weight:900;text-transform:uppercase;letter-spacing:.03em}.inventory-v420-table td{color:#0f172a;font-size:10.8px;font-weight:700}.inventory-v420-table tr:last-child td{border-bottom:0}.inventory-v420-table td small{display:block;margin-top:3px;color:#94a3b8;font-size:9.5px;font-weight:650}.inventory-v420-table .bad{color:#dc2626}.inventory-v420-table .good{color:#059669}.inventory-v420-table .warn{color:#d97706}
       .inventory-v420-icon-btn{width:28px;height:28px;padding:0;border:1px solid #dbe4ef;border-radius:9px;background:#fff;color:#334155;font-weight:950;cursor:pointer}.inventory-v420-icon-btn.danger{color:#dc2626;border-color:#fecaca}.inventory-v420-empty{padding:26px!important;text-align:center!important;color:#64748b!important;font-size:11px!important;font-weight:700!important}
@@ -3942,11 +4110,13 @@ function InventoryModule({ t }) {
       <div><h2>Склад</h2><p>Полный контур движения товаров и полуфабрикатов: остатки, перемещения между складами и филиалами, списания, производство, инвентаризация, минимальные остатки и журнал всех операций.</p></div>
       <div className="inventory-v420-hero-actions">
         <button className="ghost small" type="button" onClick={loadInventory} disabled={loading || busy}>{loading ? 'Загрузка…' : 'Обновить'}</button>
-        <button className="small primary" type="button" onClick={() => setActiveTab('transfers')}>Новое перемещение</button>
+        <button className="small primary" type="button" onClick={() => setActiveTab('receipts')}>Оприходовать товар</button>
       </div>
     </section>
 
     {!workspaceReady && <div className="inventory-v420-alert">Операционный журнал документов ещё не установлен. Выполните <b>SQL v420</b>. Остатки и старые движения доступны, но черновики, проведение и настройки минимального остатка пока отключены.</div>}
+    {!loading && !locations.length && <div className="inventory-v420-alert bad">Филиалы ещё не созданы как складские локации. Выполните <b>SQL v421</b> и нажмите «Обновить».</div>}
+    {!loading && !catalog.length && <div className="inventory-v420-alert">Справочник товаров пуст. Можно создать первую позицию вручную во вкладке <b>«Оприходование»</b>.</div>}
     {message && <div className={`inventory-v420-alert ${String(message).toLowerCase().includes('ошиб') || String(message).toLowerCase().includes('недостат') ? 'bad' : ''}`}>{message}</div>}
 
     <div className="inventory-v420-tabs">
@@ -3988,6 +4158,53 @@ function InventoryModule({ t }) {
       </div>
     </section>}
 
+    {activeTab === 'receipts' && <section className="inventory-v420-card">
+      <div className="inventory-v420-card-head">
+        <div>
+          <h3>Оприходование и начальные остатки</h3>
+          <p>Используйте этот документ, когда товар ещё не существует на складе. Можно выбрать товар из справочника поставщиков или создать новую складскую позицию вручную.</p>
+        </div>
+      </div>
+
+      <div className="inventory-v420-form-grid">
+        <label><span>Дата</span><input type="date" value={receiptDraft.document_date} onChange={e => setReceiptDraft({ ...receiptDraft, document_date: e.target.value })}/></label>
+        <label><span>Филиал / склад</span><select value={receiptDraft.target_location_id} onChange={e => setReceiptDraft({ ...receiptDraft, target_location_id: e.target.value })}><option value="">Выберите филиал или склад</option>{locations.map(row => <option key={row.id} value={row.id}>{row.name}</option>)}</select></label>
+        <label><span>Операция</span><select value={receiptDraft.reason} onChange={e => setReceiptDraft({ ...receiptDraft, reason: e.target.value })}><option>Начальные остатки</option><option>Ручное оприходование</option><option>Возврат на склад</option><option>Излишек после проверки</option><option>Другое</option></select></label>
+        <label><span>Комментарий</span><input value={receiptDraft.comment} onChange={e => setReceiptDraft({ ...receiptDraft, comment: e.target.value })} placeholder="Документ, причина, примечание"/></label>
+      </div>
+
+      <div className="inventory-v420-line-builder">
+        <label><span>Товар / полуфабрикат</span><select value={receiptLine.catalog_key} onChange={e => {
+          const item = findCatalogItem(e.target.value)
+          setReceiptLine({
+            ...receiptLine,
+            catalog_key: e.target.value,
+            unit_cost: item ? String(unitCostFor(receiptDraft.target_location_id, item) || '') : ''
+          })
+        }}>
+          <option value="">Выберите позицию</option>
+          <option value="__manual__">+ Новый товар вручную</option>
+          {catalog.map(item => <option key={item.key} value={item.key}>{item.item_name} · {item.item_type === 'semi_finished' ? 'полуфабрикат' : item.category || 'товар'} · {item.unit}</option>)}
+        </select></label>
+        <label><span>Количество</span><input type="number" step="0.001" value={receiptLine.quantity} onChange={e => setReceiptLine({ ...receiptLine, quantity: e.target.value })}/></label>
+        <label><span>Цена за ед.</span><input type="number" step="0.0001" value={receiptLine.unit_cost} onChange={e => setReceiptLine({ ...receiptLine, unit_cost: e.target.value })}/></label>
+        <label><span>Комментарий строки</span><input value={receiptLine.comment} onChange={e => setReceiptLine({ ...receiptLine, comment: e.target.value })}/></label>
+        <button className="small primary" type="button" onClick={addReceiptLine}>Добавить</button>
+      </div>
+
+      {receiptLine.catalog_key === '__manual__' && <div className="inventory-v421-manual-grid">
+        <label><span>Название нового товара</span><input value={receiptLine.manual_name} onChange={e => setReceiptLine({ ...receiptLine, manual_name: e.target.value })} placeholder="Например: Мука пшеничная"/></label>
+        <label><span>Единица</span><select value={receiptLine.manual_unit} onChange={e => setReceiptLine({ ...receiptLine, manual_unit: e.target.value })}><option value="kg">kg</option><option value="g">g</option><option value="l">l</option><option value="ml">ml</option><option value="pcs">pcs</option><option value="unit">unit</option></select></label>
+        <label><span>Тип</span><select value={receiptLine.manual_type} onChange={e => setReceiptLine({ ...receiptLine, manual_type: e.target.value })}><option value="product">Товар</option><option value="semi_finished">Полуфабрикат</option></select></label>
+      </div>}
+
+      <div style={{marginTop:13}}>{renderDraftItems(receiptDraft.items, 'receipt')}</div>
+      <div className="inventory-v420-actions">
+        <button className="ghost small" type="button" disabled={busy || !workspaceReady || !locations.length} onClick={() => submitReceipt(false)}>Сохранить черновик</button>
+        <button className="primary small" type="button" disabled={busy || !workspaceReady || !locations.length} onClick={() => submitReceipt(true)}>Провести оприходование</button>
+      </div>
+    </section>}
+
     {activeTab === 'stock' && <section className="inventory-v420-card">
       <div className="inventory-v420-card-head"><div><h3>Остатки по складам и филиалам</h3><p>Установите минимальный остаток для автоматического контроля пополнения.</p></div><span className="inventory-v420-status">{stockRows.length} строк</span></div>
       <div className="inventory-v420-filters">
@@ -4014,7 +4231,7 @@ function InventoryModule({ t }) {
               <td className={qty < 0 ? 'bad' : low ? 'warn' : 'good'}>{qty < 0 ? 'Отрицательный' : low ? 'Ниже минимума' : 'Норма'}</td>
             </tr>
           })}
-          {!stockRows.length && <tr><td colSpan="7" className="inventory-v420-empty">Остатки по фильтру не найдены.</td></tr>}
+          {!stockRows.length && <tr><td colSpan="7" className="inventory-v420-empty">Остатки по фильтру не найдены. Для первого поступления откройте «Оприходование».</td></tr>}
         </tbody>
       </table></div>
     </section>}
@@ -4610,7 +4827,7 @@ function App() {
         {currentCanRead && section === 'finance' && <Finance t={t} lang={lang} onGoToExpense={goToRevenueExpense} />}
         {currentCanRead && section === 'reports' && <Reports t={t} permissions={permissions} isAdmin={isAdmin} />}
         {currentCanRead && section === 'recipes' && <Recipes t={t} />}
-        {currentCanRead && section === 'inventory' && <InventoryModule t={t} />}
+        {currentCanRead && section === 'inventory' && <InventoryModule t={t} branches={branches} />}
         {currentCanRead && section === 'salaries' && <SalaryWorkspace t={t} isAdmin={isAdmin || accessRank(sectionAccess('salaries')) >= accessRank('admin')} />}
         {currentCanRead && section === 'suppliers' && <Suppliers t={t} isAdmin={isAdmin || accessRank(sectionAccess('suppliers')) >= accessRank('admin')} />}
         {currentCanRead && section === 'debts' && <DebtsPayments t={t} />}
@@ -47429,3 +47646,6 @@ if (typeof document !== 'undefined') {
 
 
 /* v420: Inventory rebuilt as full operational warehouse with documents, transfers, write-offs, production and stocktakes */
+
+
+/* v421: branches bootstrap as warehouse locations; supplier products selectable before stock exists; initial receipt added */
