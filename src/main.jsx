@@ -3091,77 +3091,151 @@ async function rmsIikoImportParsedRows(fileName, rows, fallback = {}) {
   return { import_id: importId, inserted, skipped, finalize: finalRes.data }
 }
 
-function InventoryModule({ branchId, branchName }) {
+
+function InventoryModule({ t }) {
+  const today = todayISO()
+  const [activeTab, setActiveTab] = React.useState('overview')
   const [loading, setLoading] = React.useState(false)
+  const [busy, setBusy] = React.useState(false)
+  const [message, setMessage] = React.useState('')
+  useRmsStatusToast(message)
+
   const [balances, setBalances] = React.useState([])
   const [movements, setMovements] = React.useState([])
   const [locations, setLocations] = React.useState([])
-  const [form, setForm] = React.useState({
-    movement_date: new Date().toISOString().slice(0, 10),
-    location_id: '',
-    item_name: '',
-    unit: 'unit',
-    quantity: '',
-    unit_cost: '',
-    movement_type: 'adjustment_in',
-    comment: '',
-  })
-  const [message, setMessage] = React.useState('')
-  useRmsStatusToast(message)
-  const [backfillBusy, setBackfillBusy] = React.useState(false)
-  const [backfillPreview, setBackfillPreview] = React.useState([])
-  const [backfillHealth, setBackfillHealth] = React.useState(null)
-  const [validationHealth, setValidationHealth] = React.useState(null)
-  const [dashboardReport, setDashboardReport] = React.useState(null)
-  const [productionReport, setProductionReport] = React.useState(null)
-  const [writeOffReport, setWriteOffReport] = React.useState(null)
-  const [operationMode, setOperationMode] = React.useState('manual')
-  const [supplierSyncHealth, setSupplierSyncHealth] = React.useState(null)
-  const [bazarSyncHealth, setBazarSyncHealth] = React.useState(null)
-  const [salesConsumptionHealth, setSalesConsumptionHealth] = React.useState(null)
-  const [salesRecipeMappingHealth, setSalesRecipeMappingHealth] = React.useState(null)
-  const [salesConsumptionConsolidatedHealth, setSalesConsumptionConsolidatedHealth] = React.useState(null)
-  const [iikoImportHealth, setIikoImportHealth] = React.useState(null)
-  const [iikoImportConsolidatedHealth, setIikoImportConsolidatedHealth] = React.useState(null)
-  const [salesUnmappedReport, setSalesUnmappedReport] = React.useState(null)
-  const [iikoLatestDashboard, setIikoLatestDashboard] = React.useState(null)
-  const [consumptionDraftReadiness, setConsumptionDraftReadiness] = React.useState(null)
-  const [iikoOperationalHealth, setIikoOperationalHealth] = React.useState(null)
-  const [menuAliasHealth, setMenuAliasHealth] = React.useState(null)
-  const [iikoOperationalAudit, setIikoOperationalAudit] = React.useState(null)
-  const [iikoBranchDateQuality, setIikoBranchDateQuality] = React.useState(null)
-  const [search, setSearch] = React.useState('')
-  const [movementFilter, setMovementFilter] = React.useState('all')
-  const [branchConsumptionSearch, setBranchConsumptionSearch] = React.useState('')
-  const [branchConsumptionMode, setBranchConsumptionMode] = React.useState('incoming')
-  const [transferForm, setTransferForm] = React.useState({
+  const [supplierProducts, setSupplierProducts] = React.useState([])
+  const [latestCosts, setLatestCosts] = React.useState([])
+  const [semis, setSemis] = React.useState([])
+  const [semiItems, setSemiItems] = React.useState([])
+  const [documents, setDocuments] = React.useState([])
+  const [itemSettings, setItemSettings] = React.useState([])
+  const [workspaceReady, setWorkspaceReady] = React.useState(true)
+  const [systemHealth, setSystemHealth] = React.useState(null)
+
+  const [stockSearch, setStockSearch] = React.useState('')
+  const [stockLocationFilter, setStockLocationFilter] = React.useState('all')
+  const [stockStatusFilter, setStockStatusFilter] = React.useState('all')
+  const [movementSearch, setMovementSearch] = React.useState('')
+  const [movementTypeFilter, setMovementTypeFilter] = React.useState('all')
+  const [documentStatusFilter, setDocumentStatusFilter] = React.useState('all')
+  const [minStockDraft, setMinStockDraft] = React.useState({})
+
+  const emptyLine = { catalog_key: '', quantity: '', unit_cost: '', comment: '' }
+
+  const [transferDraft, setTransferDraft] = React.useState({
+    document_date: today,
     source_location_id: '',
     target_location_id: '',
-    item_name: '',
-    unit: 'kg',
-    quantity: '',
-    unit_cost: '',
-    comment: 'Распределение товара по филиалу',
+    comment: '',
+    items: []
   })
+  const [transferLine, setTransferLine] = React.useState({ ...emptyLine })
+
+  const [writeoffDraft, setWriteoffDraft] = React.useState({
+    document_date: today,
+    source_location_id: '',
+    reason: 'Порча',
+    comment: '',
+    items: []
+  })
+  const [writeoffLine, setWriteoffLine] = React.useState({ ...emptyLine })
+
+  const [productionForm, setProductionForm] = React.useState({
+    document_date: today,
+    location_id: '',
+    semi_id: '',
+    output_qty: '',
+    comment: ''
+  })
+
+  const [stocktakeForm, setStocktakeForm] = React.useState({
+    document_date: today,
+    location_id: '',
+    comment: '',
+    rows: []
+  })
+
+  const locationById = React.useMemo(
+    () => Object.fromEntries((locations || []).map(row => [String(row.id), row])),
+    [locations]
+  )
+  const costByProductId = React.useMemo(
+    () => Object.fromEntries((latestCosts || []).map(row => [String(row.product_id), parseNum(row.last_unit_cost || row.unit_cost || row.price)])),
+    [latestCosts]
+  )
+  const semiById = React.useMemo(
+    () => Object.fromEntries((semis || []).map(row => [String(row.id), row])),
+    [semis]
+  )
+  const settingsByKey = React.useMemo(() => {
+    const map = {}
+    ;(itemSettings || []).forEach(row => {
+      map[`${row.location_id}||${row.item_name}||${row.unit}`] = row
+    })
+    return map
+  }, [itemSettings])
+
+  const normalizeWorkspace = payload => {
+    if (!payload) return { documents: [], settings: [] }
+    if (typeof payload === 'string') {
+      try { return JSON.parse(payload) } catch (_error) { return { documents: [], settings: [] } }
+    }
+    return payload
+  }
 
   const loadInventory = React.useCallback(async () => {
     setLoading(true)
     setMessage('')
     try {
-      const [balanceRes, movementRes, locationRes] = await Promise.all([
-        supabase.from('rms_inventory_stock_balance_view').select('*').order('item_name', { ascending: true }).limit(500),
-        supabase.from('rms_stock_movements').select('*').is('deleted_at', null).order('movement_date', { ascending: false }).order('created_at', { ascending: false }).limit(100),
-        supabase.from('rms_inventory_locations').select('*').eq('is_active', true).order('name', { ascending: true }).limit(100),
+      const [
+        balanceRes,
+        movementRes,
+        locationRes,
+        productRes,
+        costRes,
+        semiRes,
+        semiItemRes,
+        workspaceRes
+      ] = await Promise.all([
+        supabase.from('rms_inventory_stock_balance_view').select('*').order('item_name', { ascending: true }).limit(3000),
+        supabase.from('rms_stock_movements').select('*').is('deleted_at', null).order('movement_date', { ascending: false }).order('created_at', { ascending: false }).limit(2000),
+        supabase.from('rms_inventory_locations').select('*').eq('is_active', true).order('name', { ascending: true }).limit(200),
+        supabase.from('supplier_products').select('id,name,category,base_unit,is_active').eq('is_active', true).order('name').limit(3000),
+        supabase.from('latest_product_costs').select('*').limit(3000),
+        supabase.from('rms_semi_finished').select('*').eq('is_active', true).order('name').limit(1000),
+        supabase.from('rms_semi_finished_items').select('*').order('created_at').limit(5000),
+        supabase.rpc('rms_inventory_workspace_secure', { p_limit: 800 })
       ])
+
       if (balanceRes.error) throw balanceRes.error
       if (movementRes.error) throw movementRes.error
       if (locationRes.error) throw locationRes.error
+      if (productRes.error) throw productRes.error
+      if (costRes.error) throw costRes.error
+      if (semiRes.error) throw semiRes.error
+      if (semiItemRes.error) throw semiItemRes.error
+
       setBalances(balanceRes.data || [])
       setMovements(movementRes.data || [])
       setLocations(locationRes.data || [])
-    } catch (err) {
-      console.error('inventory load error', err)
-      setMessage(err?.message || 'Не удалось загрузить склад')
+      setSupplierProducts(productRes.data || [])
+      setLatestCosts(costRes.data || [])
+      setSemis(semiRes.data || [])
+      setSemiItems(semiItemRes.data || [])
+
+      if (workspaceRes.error) {
+        setWorkspaceReady(false)
+        setDocuments([])
+        setItemSettings([])
+      } else {
+        const workspace = normalizeWorkspace(workspaceRes.data)
+        setWorkspaceReady(true)
+        setDocuments(Array.isArray(workspace?.documents) ? workspace.documents : [])
+        setItemSettings(Array.isArray(workspace?.settings) ? workspace.settings : [])
+      }
+    } catch (error) {
+      console.error('inventory operational load error', error)
+      setMessage(error?.message || 'Не удалось загрузить склад')
     } finally {
       setLoading(false)
     }
@@ -3169,1506 +3243,912 @@ function InventoryModule({ branchId, branchName }) {
 
   React.useEffect(() => { loadInventory() }, [loadInventory])
 
-  const cleanupIikoImportProblems = async () => {
-    setBackfillBusy(true)
-    setMessage('')
-    try {
-      const data = await rmsIikoCleanupImportProblems()
-      setMessage(`iiko import cleanup: empty ${data?.empty_deleted || 0}, duplicates ${data?.duplicates_deleted || 0}`)
-      await loadInventoryConsolidatedReports()
-    } catch (err) {
-      console.error('iiko import cleanup problems error', err)
-      setMessage(err?.message || 'Не удалось очистить проблемы iiko import')
-    } finally {
-      setBackfillBusy(false)
-    }
-  }
+  const catalog = React.useMemo(() => {
+    const map = new Map()
 
-  const applyLatestConsumptionBatch = async () => {
-    setBackfillBusy(true)
-    setMessage('')
-    try {
-      const data = await rmsInventoryApplyLatestConsumptionBatch()
-      setMessage(`Последний draft применён: applied ${data?.applied || 0}, remaining ${data?.skipped_or_remaining || 0}`)
-      await loadInventoryConsolidatedReports()
-      await loadInventory()
-    } catch (err) {
-      console.error('apply latest consumption error', err)
-      setMessage(err?.message || 'Не удалось применить последний draft')
-    } finally {
-      setBackfillBusy(false)
-    }
-  }
+    ;(balances || []).forEach(row => {
+      const unit = row.unit || 'unit'
+      const key = `stock::${row.item_name}::${unit}`
+      if (!map.has(key)) {
+        map.set(key, {
+          key,
+          item_name: row.item_name || 'Без названия',
+          unit,
+          item_type: row.item_type || 'product',
+          supplier_product_id: row.supplier_product_id || null,
+          semi_finished_id: row.semi_finished_id || null,
+          category: row.category || '',
+          source: 'stock'
+        })
+      }
+    })
 
-  const cancelLatestConsumptionBatch = async () => {
-    setBackfillBusy(true)
-    setMessage('')
-    try {
-      const data = await rmsInventoryCancelLatestConsumptionBatch()
-      setMessage(`Последний consumption batch отменён: movements ${data?.movements_cancelled || 0}`)
-      await loadInventoryConsolidatedReports()
-      await loadInventory()
-    } catch (err) {
-      console.error('cancel latest consumption error', err)
-      setMessage(err?.message || 'Не удалось отменить последний batch')
-    } finally {
-      setBackfillBusy(false)
-    }
-  }
-
-  const deduplicateIikoRows = async () => {
-    setBackfillBusy(true)
-    setMessage('')
-    try {
-      const data = await rmsIikoDeduplicateSalesItems()
-      setMessage(`Дубли iiko очищены: ${data?.deleted || 0}`)
-      await loadInventoryConsolidatedReports()
-    } catch (err) {
-      console.error('iiko deduplicate error', err)
-      setMessage(err?.message || 'Не удалось очистить дубли iiko')
-    } finally {
-      setBackfillBusy(false)
-    }
-  }
-
-  const normalizeIikoRows = async () => {
-    setBackfillBusy(true)
-    setMessage('')
-    try {
-      const data = await rmsIikoNormalizeImportedRows()
-      setMessage(`iiko строки нормализованы: обновлено ${data?.updated || 0}`)
-      await loadInventoryConsolidatedReports()
-    } catch (err) {
-      console.error('iiko normalize error', err)
-      setMessage(err?.message || 'Не удалось нормализовать iiko строки')
-    } finally {
-      setBackfillBusy(false)
-    }
-  }
-
-  const cleanupEmptyIikoRows = async () => {
-    setBackfillBusy(true)
-    setMessage('')
-    try {
-      const data = await rmsIikoCleanupEmptySalesRows()
-      setMessage(`Пустые iiko строки очищены: ${data?.deleted || 0}`)
-      await loadInventoryConsolidatedReports()
-    } catch (err) {
-      console.error('iiko cleanup error', err)
-      setMessage(err?.message || 'Не удалось очистить пустые iiko строки')
-    } finally {
-      setBackfillBusy(false)
-    }
-  }
-
-  const createSalesConsumptionDraft = async () => {
-    setBackfillBusy(true)
-    setMessage('')
-    try {
-      const data = await rmsInventorySalesConsumptionCreateDraft()
-      setMessage(`Draft создан: batch ${data?.batch_id || '—'}, строк ${data?.items_created || 0}`)
-      await loadInventoryConsolidatedReports()
-    } catch (err) {
-      console.error('sales consumption draft error', err)
-      setMessage(err?.message || 'Не удалось создать draft списания')
-    } finally {
-      setBackfillBusy(false)
-    }
-  }
-
-  const applyInventoryPreset = (type) => {
-    setOperationMode(type)
-    const map = {
-      purchase: { movement_type: 'purchase', comment: 'Приход на склад' },
-      write_off: { movement_type: 'write_off', comment: 'Списание со склада' },
-      transfer_in: { movement_type: 'transfer_in', comment: 'Перемещение на склад' },
-      transfer_out: { movement_type: 'transfer_out', comment: 'Перемещение со склада' },
-      production_in: { movement_type: 'production_in', comment: 'Производство / выпуск полуфабриката' },
-      production_out: { movement_type: 'production_out', comment: 'Производство / расход ингредиентов' },
-      adjustment_in: { movement_type: 'adjustment_in', comment: 'Положительная корректировка' },
-      adjustment_out: { movement_type: 'adjustment_out', comment: 'Отрицательная корректировка' },
-    }
-    const preset = map[type] || map.adjustment_in
-    setForm(prev => ({ ...prev, movement_type: preset.movement_type, comment: preset.comment }))
-  }
-
-  const createMovement = async () => {
-    setLoading(true)
-    setMessage('')
-    try {
-      const payload = { ...form, quantity: parseNum(form.quantity), unit_cost: parseNum(form.unit_cost) }
-      if (!payload.item_name && !payload.supplier_product_id) throw new Error('Укажите товар')
-      if (!payload.quantity) throw new Error('Укажите количество')
-      await rmsInventoryMovementCreate(payload)
-      setMessage('Движение склада сохранено')
-      setForm({ movement_date: new Date().toISOString().slice(0, 10), location_id: '', item_name: '', unit: 'unit', quantity: '', unit_cost: '', movement_type: 'adjustment_in', comment: '' })
-      await loadInventory()
-    } catch (err) {
-      console.error('inventory movement create error', err)
-      setMessage(err?.message || 'Не удалось сохранить движение')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-
-  const createBranchTransfer = async () => {
-    setLoading(true)
-    setMessage('')
-    try {
-      const qty = parseNum(transferForm.quantity)
-      const unitCost = parseNum(transferForm.unit_cost)
-      if (!transferForm.source_location_id) throw new Error('Выберите склад-источник')
-      if (!transferForm.target_location_id) throw new Error('Выберите филиал-получатель')
-      if (transferForm.source_location_id === transferForm.target_location_id) throw new Error('Источник и получатель должны отличаться')
-      if (!String(transferForm.item_name || '').trim()) throw new Error('Укажите товар')
-      if (!(qty > 0)) throw new Error('Укажите количество больше 0')
-
-      const today = new Date().toISOString().slice(0, 10)
-      const sourceLocation = locations.find(l => String(l.id) === String(transferForm.source_location_id))
-      const targetLocation = locations.find(l => String(l.id) === String(transferForm.target_location_id))
-      const comment = `${transferForm.comment || 'Распределение товара по филиалу'} · ${sourceLocation?.name || 'Источник'} → ${targetLocation?.name || 'Филиал'}`
-
-      await rmsInventoryMovementCreate({
-        movement_date: today,
-        location_id: transferForm.source_location_id,
-        item_name: transferForm.item_name.trim(),
-        unit: transferForm.unit || 'unit',
-        quantity: qty,
-        unit_cost: unitCost,
-        movement_type: 'transfer_out',
-        comment,
+    ;(supplierProducts || []).forEach(row => {
+      const unit = row.base_unit || 'unit'
+      const key = `product::${row.id}::${unit}`
+      map.set(key, {
+        key,
+        item_name: row.name,
+        unit,
+        item_type: 'product',
+        supplier_product_id: row.id,
+        semi_finished_id: null,
+        category: row.category || '',
+        source: 'supplier_product'
       })
+    })
 
-      await rmsInventoryMovementCreate({
-        movement_date: today,
-        location_id: transferForm.target_location_id,
-        item_name: transferForm.item_name.trim(),
-        unit: transferForm.unit || 'unit',
-        quantity: qty,
-        unit_cost: unitCost,
-        movement_type: 'transfer_in',
-        comment,
+    ;(semis || []).forEach(row => {
+      const unit = row.output_unit || 'unit'
+      const key = `semi::${row.id}::${unit}`
+      map.set(key, {
+        key,
+        item_name: row.name,
+        unit,
+        item_type: 'semi_finished',
+        supplier_product_id: null,
+        semi_finished_id: row.id,
+        category: 'Полуфабрикаты',
+        source: 'semi'
       })
+    })
 
-      setMessage('Товар распределён по филиалу')
-      setTransferForm({
-        source_location_id: transferForm.source_location_id,
+    return Array.from(map.values()).sort((a, b) =>
+      String(a.item_name || '').localeCompare(String(b.item_name || ''), 'ru')
+    )
+  }, [balances, supplierProducts, semis])
+
+  const findCatalogItem = key => catalog.find(row => row.key === key) || null
+
+  const balanceFor = (locationId, itemName, unit) => {
+    return (balances || []).find(row =>
+      String(row.location_id || '') === String(locationId || '') &&
+      String(row.item_name || '').trim().toLowerCase() === String(itemName || '').trim().toLowerCase() &&
+      String(row.unit || 'unit').trim().toLowerCase() === String(unit || 'unit').trim().toLowerCase()
+    )
+  }
+
+  const unitCostFor = (locationId, item) => {
+    const balance = balanceFor(locationId, item?.item_name, item?.unit)
+    const qty = parseNum(balance?.balance_qty)
+    if (qty > 0) return parseNum(balance?.balance_cost) / qty
+    if (item?.supplier_product_id) return parseNum(costByProductId[String(item.supplier_product_id)])
+    return 0
+  }
+
+  const documentTypeLabel = type => ({
+    transfer: 'Перемещение',
+    writeoff: 'Списание',
+    production: 'Производство',
+    inventory_count: 'Инвентаризация',
+    adjustment: 'Корректировка'
+  }[type] || type || 'Документ')
+
+  const documentStatusLabel = status => ({
+    draft: 'Черновик',
+    posted: 'Проведён',
+    cancelled: 'Отменён',
+    posting: 'Проводится'
+  }[status] || status || '—')
+
+  const movementTypeLabel = type => ({
+    purchase: 'Приход',
+    write_off: 'Списание',
+    transfer_in: 'Перемещение +',
+    transfer_out: 'Перемещение −',
+    production_in: 'Производство +',
+    production_out: 'Производство −',
+    adjustment_in: 'Корректировка +',
+    adjustment_out: 'Корректировка −',
+    sales_consumption: 'Продажи / расход',
+    consumption: 'Расход'
+  }[type] || type || '—')
+
+  const createInventoryDocument = async payload => {
+    const { data, error } = await supabase.rpc('rms_inventory_document_create_secure', { p_payload: payload })
+    if (error) throw error
+    const normalized = normalizeWorkspace(data)
+    if (normalized?.document) return { ...normalized.document, items: normalized.items || [] }
+    return normalized
+  }
+
+  const markDocumentPosted = async (documentId, result = {}) => {
+    const { data, error } = await supabase.rpc('rms_inventory_document_mark_posted_secure', {
+      p_document_id: documentId,
+      p_result: result
+    })
+    if (error) throw error
+    return data
+  }
+
+  const markDocumentCancelled = async (documentId, comment = '') => {
+    const { data, error } = await supabase.rpc('rms_inventory_document_cancel_secure', {
+      p_document_id: documentId,
+      p_comment: comment || null
+    })
+    if (error) throw error
+    return data
+  }
+
+  const movementPayload = (doc, item, locationId, type, quantity) => ({
+    movement_date: doc.document_date || today,
+    location_id: locationId,
+    item_name: item.item_name,
+    unit: item.unit || 'unit',
+    quantity: Math.abs(parseNum(quantity)),
+    unit_cost: parseNum(item.unit_cost),
+    movement_type: type,
+    comment: `[${doc.document_number || 'Склад'}] ${doc.comment || documentTypeLabel(doc.document_type)}${item.comment ? ` · ${item.comment}` : ''}`,
+    source: 'inventory_document',
+    source_id: doc.id,
+    supplier_product_id: item.supplier_product_id || null,
+    semi_finished_id: item.semi_finished_id || null,
+    item_type: item.item_type || 'product'
+  })
+
+  const postDocument = async doc => {
+    if (!doc?.id) throw new Error('Документ не найден')
+    if (doc.status === 'posted') return
+    const items = Array.isArray(doc.items) ? doc.items : []
+    if (!items.length) throw new Error('В документе нет строк')
+
+    const movementsCreated = []
+    if (doc.document_type === 'transfer') {
+      if (!doc.source_location_id || !doc.target_location_id) throw new Error('Не указаны склады перемещения')
+      for (const item of items) {
+        const quantity = parseNum(item.quantity)
+        if (!(quantity > 0)) continue
+        const sourceBalance = balanceFor(doc.source_location_id, item.item_name, item.unit)
+        if (parseNum(sourceBalance?.balance_qty) < quantity) {
+          throw new Error(`Недостаточный остаток: ${item.item_name}. Доступно ${fmt(sourceBalance?.balance_qty)} ${item.unit}`)
+        }
+        await rmsInventoryMovementCreate(movementPayload(doc, item, doc.source_location_id, 'transfer_out', quantity))
+        await rmsInventoryMovementCreate(movementPayload(doc, item, doc.target_location_id, 'transfer_in', quantity))
+        movementsCreated.push({ item: item.item_name, type: 'transfer', quantity })
+      }
+    } else if (doc.document_type === 'writeoff') {
+      if (!doc.source_location_id) throw new Error('Не указан склад списания')
+      for (const item of items) {
+        const quantity = parseNum(item.quantity)
+        if (!(quantity > 0)) continue
+        const sourceBalance = balanceFor(doc.source_location_id, item.item_name, item.unit)
+        if (parseNum(sourceBalance?.balance_qty) < quantity) {
+          throw new Error(`Недостаточный остаток: ${item.item_name}. Доступно ${fmt(sourceBalance?.balance_qty)} ${item.unit}`)
+        }
+        await rmsInventoryMovementCreate(movementPayload(doc, item, doc.source_location_id, 'write_off', quantity))
+        movementsCreated.push({ item: item.item_name, type: 'write_off', quantity })
+      }
+    } else if (doc.document_type === 'production') {
+      const locationId = doc.source_location_id || doc.target_location_id
+      if (!locationId) throw new Error('Не указан склад производства')
+      for (const item of items.filter(row => row.movement_role === 'input')) {
+        const quantity = parseNum(item.quantity)
+        if (!(quantity > 0)) continue
+        const sourceBalance = balanceFor(locationId, item.item_name, item.unit)
+        if (parseNum(sourceBalance?.balance_qty) < quantity) {
+          throw new Error(`Недостаточно для производства: ${item.item_name}. Доступно ${fmt(sourceBalance?.balance_qty)} ${item.unit}`)
+        }
+        await rmsInventoryMovementCreate(movementPayload(doc, item, locationId, 'production_out', quantity))
+        movementsCreated.push({ item: item.item_name, type: 'production_out', quantity })
+      }
+      for (const item of items.filter(row => row.movement_role === 'output')) {
+        const quantity = parseNum(item.quantity)
+        if (!(quantity > 0)) continue
+        await rmsInventoryMovementCreate(movementPayload(doc, item, locationId, 'production_in', quantity))
+        movementsCreated.push({ item: item.item_name, type: 'production_in', quantity })
+      }
+    } else if (doc.document_type === 'inventory_count') {
+      const locationId = doc.source_location_id
+      if (!locationId) throw new Error('Не указан склад инвентаризации')
+      for (const item of items) {
+        const difference = parseNum(item.difference_qty)
+        if (!difference) continue
+        const type = difference > 0 ? 'adjustment_in' : 'adjustment_out'
+        await rmsInventoryMovementCreate(movementPayload(doc, item, locationId, type, Math.abs(difference)))
+        movementsCreated.push({ item: item.item_name, type, quantity: Math.abs(difference) })
+      }
+    } else {
+      throw new Error(`Неподдерживаемый тип документа: ${doc.document_type}`)
+    }
+
+    await markDocumentPosted(doc.id, { movements_created: movementsCreated })
+    setMessage(`${documentTypeLabel(doc.document_type)} проведено: ${doc.document_number || ''}`)
+    await loadInventory()
+  }
+
+  const reverseDocument = async doc => {
+    if (!doc?.id) throw new Error('Документ не найден')
+    const items = Array.isArray(doc.items) ? doc.items : []
+    const suffix = `Отмена ${doc.document_number || ''}`
+
+    if (doc.status === 'draft') {
+      await markDocumentCancelled(doc.id, suffix)
+      setMessage(`Черновик отменён: ${doc.document_number || ''}`)
+      await loadInventory()
+      return
+    }
+
+    if (doc.status !== 'posted') throw new Error('Отменить можно только черновик или проведённый документ')
+
+    if (doc.document_type === 'transfer') {
+      for (const item of items) {
+        const quantity = parseNum(item.quantity)
+        if (!(quantity > 0)) continue
+        await rmsInventoryMovementCreate({
+          ...movementPayload({ ...doc, comment: suffix }, item, doc.target_location_id, 'transfer_out', quantity)
+        })
+        await rmsInventoryMovementCreate({
+          ...movementPayload({ ...doc, comment: suffix }, item, doc.source_location_id, 'transfer_in', quantity)
+        })
+      }
+    } else if (doc.document_type === 'writeoff') {
+      for (const item of items) {
+        const quantity = parseNum(item.quantity)
+        if (!(quantity > 0)) continue
+        await rmsInventoryMovementCreate(movementPayload({ ...doc, comment: suffix }, item, doc.source_location_id, 'adjustment_in', quantity))
+      }
+    } else if (doc.document_type === 'production') {
+      const locationId = doc.source_location_id || doc.target_location_id
+      for (const item of items.filter(row => row.movement_role === 'output')) {
+        await rmsInventoryMovementCreate(movementPayload({ ...doc, comment: suffix }, item, locationId, 'production_out', item.quantity))
+      }
+      for (const item of items.filter(row => row.movement_role === 'input')) {
+        await rmsInventoryMovementCreate(movementPayload({ ...doc, comment: suffix }, item, locationId, 'adjustment_in', item.quantity))
+      }
+    } else if (doc.document_type === 'inventory_count') {
+      for (const item of items) {
+        const difference = parseNum(item.difference_qty)
+        if (!difference) continue
+        const type = difference > 0 ? 'adjustment_out' : 'adjustment_in'
+        await rmsInventoryMovementCreate(movementPayload({ ...doc, comment: suffix }, item, doc.source_location_id, type, Math.abs(difference)))
+      }
+    }
+
+    await markDocumentCancelled(doc.id, suffix)
+    setMessage(`Документ отменён обратными движениями: ${doc.document_number || ''}`)
+    await loadInventory()
+  }
+
+  const saveOrPostDocument = async (payload, postNow) => {
+    if (!workspaceReady) throw new Error('Сначала выполните SQL v420')
+    const doc = await createInventoryDocument(payload)
+    if (postNow) await postDocument(doc)
+    else {
+      setMessage(`Черновик сохранён: ${doc.document_number || ''}`)
+      await loadInventory()
+    }
+    return doc
+  }
+
+  const addDraftLine = (kind) => {
+    const isTransfer = kind === 'transfer'
+    const line = isTransfer ? transferLine : writeoffLine
+    const draft = isTransfer ? transferDraft : writeoffDraft
+    const setDraft = isTransfer ? setTransferDraft : setWriteoffDraft
+    const setLine = isTransfer ? setTransferLine : setWriteoffLine
+    const locationId = draft.source_location_id
+    const item = findCatalogItem(line.catalog_key)
+
+    if (!item) return setMessage('Выберите товар или полуфабрикат')
+    const quantity = parseNum(line.quantity)
+    if (!(quantity > 0)) return setMessage('Укажите количество больше 0')
+    if (!locationId) return setMessage('Выберите склад')
+
+    const balance = balanceFor(locationId, item.item_name, item.unit)
+    if (parseNum(balance?.balance_qty) < quantity) {
+      return setMessage(`Недостаточный остаток: доступно ${fmt(balance?.balance_qty)} ${item.unit}`)
+    }
+
+    const unitCost = parseNum(line.unit_cost) || unitCostFor(locationId, item)
+    const row = {
+      item_name: item.item_name,
+      item_type: item.item_type,
+      supplier_product_id: item.supplier_product_id,
+      semi_finished_id: item.semi_finished_id,
+      unit: item.unit,
+      quantity,
+      unit_cost: unitCost,
+      total_cost: quantity * unitCost,
+      comment: line.comment || ''
+    }
+
+    setDraft({ ...draft, items: [...draft.items, row] })
+    setLine({ ...emptyLine })
+    setMessage('')
+  }
+
+  const removeDraftLine = (kind, index) => {
+    if (kind === 'transfer') {
+      setTransferDraft(prev => ({ ...prev, items: prev.items.filter((_, i) => i !== index) }))
+    } else {
+      setWriteoffDraft(prev => ({ ...prev, items: prev.items.filter((_, i) => i !== index) }))
+    }
+  }
+
+  const submitTransfer = async postNow => {
+    setBusy(true)
+    setMessage('')
+    try {
+      if (!transferDraft.source_location_id || !transferDraft.target_location_id) throw new Error('Выберите источник и получателя')
+      if (transferDraft.source_location_id === transferDraft.target_location_id) throw new Error('Источник и получатель должны отличаться')
+      if (!transferDraft.items.length) throw new Error('Добавьте хотя бы один товар')
+      await saveOrPostDocument({
+        document_type: 'transfer',
+        document_date: transferDraft.document_date,
+        source_location_id: transferDraft.source_location_id,
+        target_location_id: transferDraft.target_location_id,
+        comment: transferDraft.comment || 'Перемещение товаров',
+        items: transferDraft.items
+      }, postNow)
+      setTransferDraft({
+        document_date: today,
+        source_location_id: transferDraft.source_location_id,
         target_location_id: '',
-        item_name: '',
-        unit: 'kg',
-        quantity: '',
-        unit_cost: '',
-        comment: 'Распределение товара по филиалу',
+        comment: '',
+        items: []
       })
+      setTransferLine({ ...emptyLine })
+    } catch (error) {
+      setMessage(error?.message || 'Не удалось сохранить перемещение')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const submitWriteoff = async postNow => {
+    setBusy(true)
+    setMessage('')
+    try {
+      if (!writeoffDraft.source_location_id) throw new Error('Выберите склад')
+      if (!writeoffDraft.items.length) throw new Error('Добавьте хотя бы один товар')
+      await saveOrPostDocument({
+        document_type: 'writeoff',
+        document_date: writeoffDraft.document_date,
+        source_location_id: writeoffDraft.source_location_id,
+        reason: writeoffDraft.reason,
+        comment: writeoffDraft.comment || `Списание: ${writeoffDraft.reason}`,
+        items: writeoffDraft.items
+      }, postNow)
+      setWriteoffDraft({
+        document_date: today,
+        source_location_id: writeoffDraft.source_location_id,
+        reason: 'Порча',
+        comment: '',
+        items: []
+      })
+      setWriteoffLine({ ...emptyLine })
+    } catch (error) {
+      setMessage(error?.message || 'Не удалось сохранить списание')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const productionPreview = React.useMemo(() => {
+    const semi = semiById[String(productionForm.semi_id)]
+    const outputQty = parseNum(productionForm.output_qty)
+    if (!semi || !(outputQty > 0)) return { semi: null, inputs: [], output: null, totalCost: 0 }
+
+    const baseOutput = parseNum(semi.output_qty) || 1
+    const scale = outputQty / baseOutput
+    const rows = (semiItems || []).filter(row => String(row.semi_id) === String(semi.id))
+    let totalCost = 0
+
+    const inputs = rows.map(row => {
+      const quantity = parseNum(row.qty) * scale * (1 + parseNum(row.waste_percent) / 100)
+      const itemType = row.component_type === 'semi' ? 'semi_finished' : 'product'
+      const supplierProductId = row.component_type === 'product' ? row.product_id : null
+      const semiFinishedId = row.component_type === 'semi' ? row.semi_id_ref : null
+      const item = {
+        item_name: row.item_name || 'Компонент',
+        item_type: itemType,
+        supplier_product_id: supplierProductId,
+        semi_finished_id: semiFinishedId,
+        unit: row.unit || 'unit'
+      }
+      const unitCost = row.component_type === 'manual'
+        ? parseNum(row.manual_unit_cost)
+        : unitCostFor(productionForm.location_id, item)
+      const lineCost = quantity * unitCost
+      totalCost += lineCost
+      return {
+        ...item,
+        movement_role: 'input',
+        quantity,
+        unit_cost: unitCost,
+        total_cost: lineCost,
+        comment: `Расход на ${semi.name}`
+      }
+    })
+
+    const output = {
+      item_name: semi.name,
+      item_type: 'semi_finished',
+      supplier_product_id: null,
+      semi_finished_id: semi.id,
+      unit: semi.output_unit || 'unit',
+      movement_role: 'output',
+      quantity: outputQty,
+      unit_cost: outputQty > 0 ? totalCost / outputQty : 0,
+      total_cost: totalCost,
+      comment: 'Выпуск полуфабриката'
+    }
+
+    return { semi, inputs, output, totalCost }
+  }, [productionForm, semiById, semiItems, balances, latestCosts])
+
+  const submitProduction = async postNow => {
+    setBusy(true)
+    setMessage('')
+    try {
+      if (!productionForm.location_id) throw new Error('Выберите склад производства')
+      if (!productionPreview.semi) throw new Error('Выберите полуфабрикат и укажите выход')
+      if (!productionPreview.inputs.length) throw new Error('У полуфабриката нет состава')
+      await saveOrPostDocument({
+        document_type: 'production',
+        document_date: productionForm.document_date,
+        source_location_id: productionForm.location_id,
+        target_location_id: productionForm.location_id,
+        comment: productionForm.comment || `Производство: ${productionPreview.semi.name}`,
+        metadata: {
+          semi_id: productionPreview.semi.id,
+          output_qty: parseNum(productionForm.output_qty)
+        },
+        items: [...productionPreview.inputs, productionPreview.output]
+      }, postNow)
+      setProductionForm({
+        document_date: today,
+        location_id: productionForm.location_id,
+        semi_id: '',
+        output_qty: '',
+        comment: ''
+      })
+    } catch (error) {
+      setMessage(error?.message || 'Не удалось сохранить производство')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const loadStocktakeRows = () => {
+    if (!stocktakeForm.location_id) return setMessage('Выберите склад инвентаризации')
+    const rows = balances
+      .filter(row => String(row.location_id) === String(stocktakeForm.location_id))
+      .sort((a, b) => String(a.item_name || '').localeCompare(String(b.item_name || ''), 'ru'))
+      .map(row => {
+        const expected = parseNum(row.balance_qty)
+        const unitCost = expected ? parseNum(row.balance_cost) / expected : 0
+        return {
+          item_name: row.item_name,
+          item_type: row.item_type || 'product',
+          supplier_product_id: row.supplier_product_id || null,
+          semi_finished_id: row.semi_finished_id || null,
+          unit: row.unit || 'unit',
+          expected_qty: expected,
+          actual_qty: String(expected),
+          difference_qty: 0,
+          unit_cost: unitCost,
+          total_cost: 0,
+          comment: ''
+        }
+      })
+    setStocktakeForm(prev => ({ ...prev, rows }))
+    setMessage(rows.length ? `Загружено позиций: ${rows.length}` : 'На выбранном складе нет остатков')
+  }
+
+  const updateStocktakeActual = (index, value) => {
+    setStocktakeForm(prev => ({
+      ...prev,
+      rows: prev.rows.map((row, i) => {
+        if (i !== index) return row
+        const actual = parseNum(value)
+        const difference = actual - parseNum(row.expected_qty)
+        return {
+          ...row,
+          actual_qty: value,
+          difference_qty: difference,
+          total_cost: Math.abs(difference) * parseNum(row.unit_cost)
+        }
+      })
+    }))
+  }
+
+  const submitStocktake = async postNow => {
+    setBusy(true)
+    setMessage('')
+    try {
+      if (!stocktakeForm.location_id) throw new Error('Выберите склад')
+      if (!stocktakeForm.rows.length) throw new Error('Загрузите остатки для пересчёта')
+      const items = stocktakeForm.rows.map(row => ({
+        ...row,
+        actual_qty: parseNum(row.actual_qty),
+        difference_qty: parseNum(row.actual_qty) - parseNum(row.expected_qty)
+      }))
+      await saveOrPostDocument({
+        document_type: 'inventory_count',
+        document_date: stocktakeForm.document_date,
+        source_location_id: stocktakeForm.location_id,
+        comment: stocktakeForm.comment || 'Инвентаризация склада',
+        items
+      }, postNow)
+      setStocktakeForm({
+        document_date: today,
+        location_id: stocktakeForm.location_id,
+        comment: '',
+        rows: []
+      })
+    } catch (error) {
+      setMessage(error?.message || 'Не удалось сохранить инвентаризацию')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const saveMinStock = async row => {
+    if (!workspaceReady) return setMessage('Сначала выполните SQL v420')
+    const key = `${row.location_id}||${row.item_name}||${row.unit}`
+    const current = settingsByKey[key] || {}
+    const minQty = parseNum(minStockDraft[key] ?? current.min_qty)
+    const targetQty = Math.max(minQty, parseNum(current.target_qty) || minQty)
+    setBusy(true)
+    try {
+      const { error } = await supabase.rpc('rms_inventory_item_setting_save_secure', {
+        p_payload: {
+          location_id: row.location_id,
+          item_name: row.item_name,
+          unit: row.unit || 'unit',
+          item_type: row.item_type || 'product',
+          supplier_product_id: row.supplier_product_id || null,
+          semi_finished_id: row.semi_finished_id || null,
+          min_qty: minQty,
+          target_qty: targetQty,
+          is_active: true
+        }
+      })
+      if (error) throw error
+      setMessage(`Минимальный остаток сохранён: ${row.item_name}`)
       await loadInventory()
-    } catch (err) {
-      console.error('inventory branch transfer error', err)
-      setMessage(err?.message || 'Не удалось распределить товар')
+    } catch (error) {
+      setMessage(error?.message || 'Не удалось сохранить минимальный остаток')
     } finally {
-      setLoading(false)
+      setBusy(false)
     }
   }
 
-  const loadBackfillPreview = async () => {
-    setBackfillBusy(true)
-    setMessage('')
+  const loadSystemHealth = async () => {
+    setBusy(true)
     try {
-      const [data, health] = await Promise.all([
-        rmsInventoryBackfillPreview(),
-        rmsInventoryBackfillDryRun().catch(() => null),
-      ])
-      setBackfillPreview(data || [])
-      setBackfillHealth(health || null)
-      setMessage(`Preview готов: ${data?.length || 0} строк`)
-    } catch (err) {
-      console.error('inventory backfill preview error', err)
-      setMessage(err?.message || 'Не удалось получить preview')
-    } finally {
-      setBackfillBusy(false)
-    }
-  }
-
-  const runBackfill = async () => {
-    setBackfillBusy(true)
-    setMessage('')
-    try {
-      const data = await rmsInventoryBackfillSupplierPurchases(form.location_id || null, 100)
-      setMessage(`Backfill выполнен: создано ${data?.created || 0}, пропущено ${data?.already_linked_skipped || 0}`)
-      await loadInventory()
-      await loadBackfillPreview()
-    } catch (err) {
-      console.error('inventory backfill error', err)
-      setMessage(err?.message || 'Не удалось выполнить backfill')
-    } finally {
-      setBackfillBusy(false)
-    }
-  }
-
-  const loadAutoLinkValidation = async () => {
-    setBackfillBusy(true)
-    setMessage('')
-    try {
-      const data = await rmsInventorySafeValidation()
-      setValidationHealth(data || null)
-      setMessage('Проверка Auto-Link выполнена')
-    } catch (err) {
-      console.error('inventory autolink validation error', err)
-      setMessage(err?.message || 'Не удалось проверить Auto-Link')
-    } finally {
-      setBackfillBusy(false)
-    }
-  }
-
-  const loadInventoryConsolidatedReports = async () => {
-    setBackfillBusy(true)
-    setMessage('')
-    try {
-      const [dash, prod, wo, syncHealth, bazarHealth, salesHealth, salesRecipeHealth, salesConsolidatedHealth, iikoHealth, iikoConsolidated, unmappedReport, latestImportDash, draftReady, operationalHealth, aliasHealth, importAudit, branchDateQuality] = await Promise.all([
+      const [dashboard, supplierSync, bazarSync, consumption] = await Promise.all([
         rmsInventoryDashboardReport().catch(() => null),
-        rmsInventoryProductionPreview().catch(() => null),
-        rmsInventoryWriteOffReport().catch(() => null),
         rmsInventorySupplierStockSyncHealth().catch(() => null),
         rmsInventoryBazarStockSyncHealth().catch(() => null),
-        rmsInventorySalesConsumptionHealth().catch(() => null),
-        rmsInventorySalesRecipeMappingHealth().catch(() => null),
-        rmsInventorySalesConsumptionConsolidatedHealth().catch(() => null),
-        rmsIikoImportHealth().catch(() => null),
-        rmsIikoImportConsolidatedHealth().catch(() => null),
-        rmsInventorySalesUnmappedReport().catch(() => null),
-        rmsIikoLatestImportDashboard().catch(() => null),
-        rmsInventoryConsumptionDraftReadiness().catch(() => null),
-        rmsIikoConsumptionOperationalHealth().catch(() => null),
-        rmsInventoryMenuAliasHealth().catch(() => null),
-        rmsIikoImportOperationalAudit().catch(() => null),
-        rmsIikoBranchDateQuality().catch(() => null),
+        rmsInventorySalesConsumptionConsolidatedHealth().catch(() => null)
       ])
-      setDashboardReport(dash || null)
-      setProductionReport(prod || null)
-      setWriteOffReport(wo || null)
-      setSupplierSyncHealth(syncHealth || null)
-      setBazarSyncHealth(bazarHealth || null)
-      setSalesConsumptionHealth(salesHealth || null)
-      setSalesRecipeMappingHealth(salesRecipeHealth || null)
-      setSalesConsumptionConsolidatedHealth(salesConsolidatedHealth || null)
-      setIikoImportHealth(iikoHealth || null)
-      setIikoImportConsolidatedHealth(iikoConsolidated || null)
-      setSalesUnmappedReport(unmappedReport || null)
-      setIikoLatestDashboard(latestImportDash || null)
-      setConsumptionDraftReadiness(draftReady || null)
-      setIikoOperationalHealth(operationalHealth || null)
-      setMenuAliasHealth(aliasHealth || null)
-      setIikoOperationalAudit(importAudit || null)
-      setIikoBranchDateQuality(branchDateQuality || null)
-      setMessage('Складские отчёты обновлены')
-    } catch (err) {
-      console.error('inventory reports error', err)
-      setMessage(err?.message || 'Не удалось загрузить складские отчёты')
+      setSystemHealth({ dashboard, supplierSync, bazarSync, consumption })
+      setMessage('Системная диагностика склада обновлена')
     } finally {
-      setBackfillBusy(false)
+      setBusy(false)
     }
   }
 
-  const filteredBalances = balances.filter(r => !search || String(r.item_name || '').toLowerCase().includes(search.toLowerCase()) || String(r.location_name || '').toLowerCase().includes(search.toLowerCase()))
-  const filteredMovements = movements.filter(m => {
-    const q = !search || String(m.item_name || '').toLowerCase().includes(search.toLowerCase()) || String(m.comment || '').toLowerCase().includes(search.toLowerCase())
-    const t = movementFilter === 'all' || m.movement_type === movementFilter
-    return q && t
+  const positiveBalances = balances.filter(row => parseNum(row.balance_qty) > 0)
+  const negativeBalances = balances.filter(row => parseNum(row.balance_qty) < 0)
+  const totalStockCost = balances.reduce((sum, row) => sum + parseNum(row.balance_cost), 0)
+  const monthKey = today.slice(0, 7)
+  const currentMonthMovements = movements.filter(row => String(row.movement_date || '').slice(0, 7) === monthKey)
+  const currentMonthWriteoffCost = currentMonthMovements
+    .filter(row => row.movement_type === 'write_off')
+    .reduce((sum, row) => sum + Math.abs(parseNum(row.total_cost || parseNum(row.quantity) * parseNum(row.unit_cost))), 0)
+  const currentMonthTransferCost = currentMonthMovements
+    .filter(row => row.movement_type === 'transfer_out')
+    .reduce((sum, row) => sum + Math.abs(parseNum(row.total_cost || parseNum(row.quantity) * parseNum(row.unit_cost))), 0)
+
+  const stockRows = React.useMemo(() => {
+    const query = String(stockSearch || '').trim().toLowerCase()
+    return (balances || []).filter(row => {
+      if (stockLocationFilter !== 'all' && String(row.location_id) !== String(stockLocationFilter)) return false
+      const key = `${row.location_id}||${row.item_name}||${row.unit}`
+      const setting = settingsByKey[key]
+      const qty = parseNum(row.balance_qty)
+      const minQty = parseNum(setting?.min_qty)
+      const isLow = minQty > 0 && qty <= minQty
+      if (stockStatusFilter === 'positive' && qty <= 0) return false
+      if (stockStatusFilter === 'negative' && qty >= 0) return false
+      if (stockStatusFilter === 'low' && !isLow) return false
+      const haystack = `${row.item_name || ''} ${row.location_name || locationById[String(row.location_id)]?.name || ''} ${row.unit || ''}`.toLowerCase()
+      return !query || haystack.includes(query)
+    })
+  }, [balances, stockSearch, stockLocationFilter, stockStatusFilter, settingsByKey, locationById])
+
+  const lowStockRows = balances.filter(row => {
+    const setting = settingsByKey[`${row.location_id}||${row.item_name}||${row.unit}`]
+    return parseNum(setting?.min_qty) > 0 && parseNum(row.balance_qty) <= parseNum(setting.min_qty)
   })
-  const totalCost = balances.reduce((s, r) => s + parseNum(r.balance_cost), 0)
-  const positiveRows = balances.filter(r => parseNum(r.balance_qty) > 0).length
-  const negativeRows = balances.filter(r => parseNum(r.balance_qty) < 0).length
-  const writeOffCount = movements.filter(m => m.movement_type === 'write_off').length
-  const purchaseCount = movements.filter(m => m.movement_type === 'purchase').length
 
-  const locationById = React.useMemo(() => Object.fromEntries((locations || []).map(l => [String(l.id), l])), [locations])
-  const branchLikeLocations = React.useMemo(() => {
-    const rows = (locations || []).filter(l => {
-      const name = String(l.name || '').toLowerCase()
-      return /bc\s*\d|bistro|branch|filial|филиал/.test(name) || !/central|main|глав|централ|централь/.test(name)
+  const filteredMovements = React.useMemo(() => {
+    const query = String(movementSearch || '').trim().toLowerCase()
+    return (movements || []).filter(row => {
+      if (movementTypeFilter !== 'all' && String(row.movement_type) !== String(movementTypeFilter)) return false
+      const haystack = `${row.item_name || ''} ${row.comment || ''} ${row.location_name || locationById[String(row.location_id)]?.name || ''} ${row.movement_type || ''}`.toLowerCase()
+      return !query || haystack.includes(query)
     })
-    return rows.length ? rows : locations
-  }, [locations])
+  }, [movements, movementSearch, movementTypeFilter, locationById])
 
-  const stockItemsForDistribution = React.useMemo(() => {
-    const q = String(transferForm.source_location_id || '')
-    return (balances || [])
-      .filter(r => !q || String(r.location_id || '') === q)
-      .filter(r => parseNum(r.balance_qty) > 0)
-      .sort((a, b) => String(a.item_name || '').localeCompare(String(b.item_name || ''), 'ru'))
-  }, [balances, transferForm.source_location_id])
+  const filteredDocuments = React.useMemo(() => {
+    return (documents || []).filter(row => documentStatusFilter === 'all' || row.status === documentStatusFilter)
+  }, [documents, documentStatusFilter])
 
-  const inventoryBranchConsumptionRows = React.useMemo(() => {
-    const outgoingTypes = new Set(['write_off', 'transfer_out', 'production_out', 'sales_consumption', 'consumption'])
-    const incomingTypes = new Set(['purchase', 'transfer_in', 'production_in', 'adjustment_in'])
-    const q = String(branchConsumptionSearch || '').trim().toLowerCase()
-    const map = new Map()
+  const recentDocuments = filteredDocuments.slice(0, 20)
+  const stocktakeDifferenceCost = (stocktakeForm.rows || []).reduce(
+    (sum, row) => sum + Math.abs(parseNum(row.difference_qty) * parseNum(row.unit_cost)),
+    0
+  )
 
-    ;(movements || []).filter(m => !m.deleted_at).forEach(m => {
-      const type = String(m.movement_type || '')
-      const isOutgoing = outgoingTypes.has(type) || type.endsWith('_out')
-      const isIncoming = incomingTypes.has(type) || type.endsWith('_in')
-      if (branchConsumptionMode === 'outgoing' && !isOutgoing) return
-      if (branchConsumptionMode === 'incoming' && !isIncoming) return
+  const tabs = [
+    ['overview', 'Обзор'],
+    ['stock', 'Остатки'],
+    ['transfers', 'Перемещения'],
+    ['writeoffs', 'Списания'],
+    ['production', 'Полуфабрикаты'],
+    ['stocktake', 'Инвентаризация'],
+    ['journal', 'Журнал'],
+    ['system', 'Система']
+  ]
 
-      const location = locationById[String(m.location_id || '')]
-      const branch = location?.name || m.location_name || 'Без локации'
-      const item = m.item_name || 'Без названия'
-      const haystack = `${branch} ${item} ${m.comment || ''} ${type}`.toLowerCase()
-      if (q && !haystack.includes(q)) return
+  const renderDraftItems = (items, kind) => <div className="inventory-v420-draft-table-wrap">
+    <table className="inventory-v420-table">
+      <thead><tr><th>Товар</th><th>Тип</th><th>Количество</th><th>Цена</th><th>Сумма</th><th></th></tr></thead>
+      <tbody>
+        {(items || []).map((row, index) => <tr key={`${row.item_name}-${row.unit}-${index}`}>
+          <td><b>{row.item_name}</b><small>{row.comment || ''}</small></td>
+          <td>{row.item_type === 'semi_finished' ? 'Полуфабрикат' : 'Товар'}</td>
+          <td>{fmt(row.quantity)} {row.unit}</td>
+          <td>{fmt(row.unit_cost)}</td>
+          <td><b>{fmt(row.total_cost)}</b></td>
+          <td><button className="inventory-v420-icon-btn danger" type="button" onClick={() => removeDraftLine(kind, index)}>×</button></td>
+        </tr>)}
+        {!items?.length && <tr><td colSpan="6" className="inventory-v420-empty">Строки ещё не добавлены.</td></tr>}
+      </tbody>
+    </table>
+  </div>
 
-      const key = `${branch}||${item}||${m.unit || 'unit'}`
-      const qty = Math.abs(parseNum(m.quantity))
-      const cost = Math.abs(parseNum(m.total_cost || (parseNum(m.quantity) * parseNum(m.unit_cost))))
-      const prev = map.get(key) || { branch, item, unit: m.unit || 'unit', qty: 0, cost: 0, count: 0, last_date: '' }
-      prev.qty += qty
-      prev.cost += cost
-      prev.count += 1
-      if (String(m.movement_date || '') > String(prev.last_date || '')) prev.last_date = m.movement_date
-      map.set(key, prev)
-    })
+  return <div className="rms-pro-shell inventory-v420-root">
+    <style>{`
+      .inventory-v420-root{display:grid;gap:15px}
+      .inventory-v420-hero{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:20px;border:1px solid #dbe4ef;border-radius:23px;background:linear-gradient(135deg,#fff,#f8fafc);box-shadow:0 14px 36px rgba(15,23,42,.05)}
+      .inventory-v420-hero h2{margin:0;color:#0f172a;font-size:28px;font-weight:950;letter-spacing:-.045em}.inventory-v420-hero p{max-width:800px;margin:6px 0 0;color:#64748b;font-size:12.5px;font-weight:650;line-height:1.45}
+      .inventory-v420-hero-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+      .inventory-v420-alert{padding:13px 15px;border:1px solid #fde68a;border-radius:16px;background:#fffbeb;color:#92400e;font-size:12px;font-weight:750;line-height:1.4}
+      .inventory-v420-alert.bad{border-color:#fecaca;background:#fef2f2;color:#991b1b}
+      .inventory-v420-tabs{display:flex;gap:7px;flex-wrap:wrap;padding:5px;border:1px solid #dbe4ef;border-radius:16px;background:#f8fafc;width:max-content;max-width:100%}
+      .inventory-v420-tabs button{padding:8px 13px;border:0;border-radius:11px;background:transparent;color:#64748b;font-size:11.5px;font-weight:900;cursor:pointer}.inventory-v420-tabs button.active{background:#fff;color:#0f172a;box-shadow:0 4px 12px rgba(15,23,42,.10)}
+      .inventory-v420-kpis{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:10px}.inventory-v420-kpi{min-height:104px;padding:15px;border:1px solid #dbe4ef;border-radius:19px;background:#fff;box-shadow:0 9px 24px rgba(15,23,42,.04)}.inventory-v420-kpi span{display:block;color:#64748b;font-size:10.5px;font-weight:850}.inventory-v420-kpi strong{display:block;margin-top:9px;color:#0f172a;font-size:21px;font-weight:950;letter-spacing:-.035em}.inventory-v420-kpi small{display:block;margin-top:7px;color:#94a3b8;font-size:9.8px;font-weight:750;line-height:1.3}.inventory-v420-kpi .bad{color:#dc2626}.inventory-v420-kpi .good{color:#059669}
+      .inventory-v420-grid{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(330px,.8fr);gap:14px}.inventory-v420-card{min-width:0;padding:18px;border:1px solid #dbe4ef;border-radius:21px;background:#fff;box-shadow:0 10px 27px rgba(15,23,42,.04)}.inventory-v420-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:14px}.inventory-v420-card-head h3{margin:0;color:#0f172a;font-size:17px;font-weight:950}.inventory-v420-card-head p{margin:5px 0 0;color:#64748b;font-size:11px;font-weight:650;line-height:1.4}
+      .inventory-v420-filters{display:flex;gap:9px;flex-wrap:wrap;align-items:end;margin-bottom:13px}.inventory-v420-filters label{display:grid;gap:5px;min-width:155px;flex:1}.inventory-v420-filters label>span{color:#64748b;font-size:10px;font-weight:850}.inventory-v420-filters input,.inventory-v420-filters select{min-width:0}
+      .inventory-v420-form-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:11px}.inventory-v420-form-grid label{display:grid;gap:6px}.inventory-v420-form-grid label>span{color:#64748b;font-size:10.5px;font-weight:850}.inventory-v420-form-grid .span-2{grid-column:span 2}.inventory-v420-form-grid .span-all{grid-column:1/-1}
+      .inventory-v420-line-builder{display:grid;grid-template-columns:minmax(240px,1.5fr) minmax(120px,.65fr) minmax(120px,.65fr) minmax(190px,1fr) auto;gap:10px;align-items:end;margin-top:13px;padding:13px;border:1px solid #e2e8f0;border-radius:16px;background:#f8fafc}.inventory-v420-line-builder label{display:grid;gap:5px}.inventory-v420-line-builder label>span{color:#64748b;font-size:10px;font-weight:850}
+      .inventory-v420-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:13px}.inventory-v420-actions .primary{min-width:160px}
+      .inventory-v420-table-wrap,.inventory-v420-draft-table-wrap{overflow:auto;border:1px solid #e2e8f0;border-radius:16px}.inventory-v420-table{width:100%;border-collapse:collapse}.inventory-v420-table th,.inventory-v420-table td{padding:10px 9px;border-bottom:1px solid #e8eef5;text-align:right;white-space:nowrap}.inventory-v420-table th:first-child,.inventory-v420-table td:first-child{text-align:left}.inventory-v420-table th{position:sticky;top:0;z-index:1;background:#f8fafc;color:#64748b;font-size:9.4px;font-weight:900;text-transform:uppercase;letter-spacing:.03em}.inventory-v420-table td{color:#0f172a;font-size:10.8px;font-weight:700}.inventory-v420-table tr:last-child td{border-bottom:0}.inventory-v420-table td small{display:block;margin-top:3px;color:#94a3b8;font-size:9.5px;font-weight:650}.inventory-v420-table .bad{color:#dc2626}.inventory-v420-table .good{color:#059669}.inventory-v420-table .warn{color:#d97706}
+      .inventory-v420-icon-btn{width:28px;height:28px;padding:0;border:1px solid #dbe4ef;border-radius:9px;background:#fff;color:#334155;font-weight:950;cursor:pointer}.inventory-v420-icon-btn.danger{color:#dc2626;border-color:#fecaca}.inventory-v420-empty{padding:26px!important;text-align:center!important;color:#64748b!important;font-size:11px!important;font-weight:700!important}
+      .inventory-v420-doc-list{display:grid;gap:9px}.inventory-v420-doc{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;padding:12px;border:1px solid #e2e8f0;border-radius:15px;background:#fff}.inventory-v420-doc strong{display:block;color:#0f172a;font-size:11.5px;font-weight:950}.inventory-v420-doc span{display:block;margin-top:4px;color:#64748b;font-size:10px;font-weight:700;line-height:1.35}.inventory-v420-doc-actions{display:flex;gap:6px;align-items:center}.inventory-v420-status{display:inline-flex;padding:4px 8px;border-radius:999px;background:#f1f5f9;color:#475569;font-size:9.5px;font-weight:900}.inventory-v420-status.posted{background:#dcfce7;color:#166534}.inventory-v420-status.cancelled{background:#fee2e2;color:#991b1b}.inventory-v420-status.draft{background:#fef3c7;color:#92400e}
+      .inventory-v420-risk-list{display:grid;gap:8px}.inventory-v420-risk{display:grid;grid-template-columns:10px minmax(0,1fr) auto;gap:10px;align-items:center;padding:9px 0;border-bottom:1px solid #edf2f7}.inventory-v420-risk:last-child{border-bottom:0}.inventory-v420-risk>i{width:8px;height:8px;border-radius:50%;background:#f59e0b}.inventory-v420-risk.bad>i{background:#dc2626}.inventory-v420-risk strong{display:block;color:#0f172a;font-size:11px;font-weight:900}.inventory-v420-risk small{display:block;margin-top:3px;color:#64748b;font-size:9.8px;font-weight:650}.inventory-v420-risk b{white-space:nowrap;color:#0f172a;font-size:10.5px}
+      .inventory-v420-production-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin:12px 0}.inventory-v420-production-summary div{padding:11px;border:1px solid #dbe4ef;border-radius:14px;background:#f8fafc}.inventory-v420-production-summary span{display:block;color:#64748b;font-size:9.8px;font-weight:800}.inventory-v420-production-summary b{display:block;margin-top:5px;color:#0f172a;font-size:13px;font-weight:950}
+      .inventory-v420-stocktake-summary{display:flex;gap:9px;flex-wrap:wrap;margin:12px 0}.inventory-v420-stocktake-summary span{padding:7px 10px;border-radius:999px;background:#f1f5f9;color:#475569;font-size:10px;font-weight:850}
+      .inventory-v420-system-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.inventory-v420-system-step{padding:13px;border:1px solid #dbe4ef;border-radius:15px;background:#f8fafc}.inventory-v420-system-step span{display:block;color:#64748b;font-size:9.8px;font-weight:800}.inventory-v420-system-step strong{display:block;margin-top:6px;color:#0f172a;font-size:13px;font-weight:950}
+      @media(max-width:1500px){.inventory-v420-kpis{grid-template-columns:repeat(4,minmax(0,1fr))}}@media(max-width:1100px){.inventory-v420-grid{grid-template-columns:1fr}.inventory-v420-form-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.inventory-v420-line-builder{grid-template-columns:repeat(2,minmax(0,1fr))}.inventory-v420-system-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:720px){.inventory-v420-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.inventory-v420-form-grid,.inventory-v420-line-builder{grid-template-columns:1fr}.inventory-v420-form-grid .span-2{grid-column:auto}.inventory-v420-hero{display:grid}.inventory-v420-hero-actions{justify-content:flex-start}.inventory-v420-production-summary{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    `}</style>
 
-    return Array.from(map.values()).sort((a, b) => b.cost - a.cost || b.qty - a.qty)
-  }, [movements, locationById, branchConsumptionSearch, branchConsumptionMode])
-
-  const inventoryBranchConsumptionTotal = inventoryBranchConsumptionRows.reduce((s, r) => s + parseNum(r.cost), 0)
-  const inventoryBranchConsumptionByBranch = React.useMemo(() => {
-    const map = new Map()
-    inventoryBranchConsumptionRows.forEach(r => {
-      const prev = map.get(r.branch) || { branch: r.branch, qty: 0, cost: 0, items: 0 }
-      prev.qty += parseNum(r.qty)
-      prev.cost += parseNum(r.cost)
-      prev.items += 1
-      map.set(r.branch, prev)
-    })
-    return Array.from(map.values()).sort((a, b) => b.cost - a.cost)
-  }, [inventoryBranchConsumptionRows])
-
-  return (
-    <div className="rms-pro-shell inventory-module-root">
-      <style>{`
-        .rms-pro-shell .inventory-branch-flow-card,
-        .rms-pro-shell .inventory-branch-consumption-card{
-          border:1px solid rgba(226,232,240,.95);
-          border-radius:22px;
-          background:#fff;
-          padding:18px;
-          box-shadow:0 16px 44px rgba(15,23,42,.06);
-          margin:14px 0;
-        }
-        .rms-pro-shell .inventory-branch-transfer-grid{
-          display:grid;
-          grid-template-columns:minmax(180px,1.15fr) minmax(180px,1.15fr) minmax(220px,1.5fr) minmax(120px,.75fr) minmax(110px,.7fr) minmax(150px,.95fr);
-          gap:14px;
-          align-items:end;
-          margin-top:12px;
-        }
-        .rms-pro-shell .inventory-branch-transfer-grid label{
-          display:flex;
-          flex-direction:column;
-          gap:6px;
-          margin:0;
-        }
-        .rms-pro-shell .inventory-branch-transfer-grid label>span{
-          color:#64748b;
-          font-size:12px;
-          font-weight:850;
-        }
-        .rms-pro-shell .inventory-branch-transfer-grid input,
-        .rms-pro-shell .inventory-branch-transfer-grid select{
-          width:100%;
-          min-width:0;
-          height:46px;
-          border-radius:14px;
-          font-size:14px;
-          font-weight:800;
-        }
-        .rms-pro-shell .inventory-branch-transfer-grid select{
-          text-overflow:ellipsis;
-        }
-        .rms-pro-shell .inventory-branch-transfer-grid .span-2{
-          grid-column:1 / -1;
-        }
-        .rms-pro-shell .inventory-branch-transfer-grid .action-row{
-          grid-column:1 / -1;
-          justify-content:flex-start;
-          margin-top:2px;
-        }
-        .rms-pro-shell .inventory-branch-transfer-btn{
-          min-width:260px;
-          height:46px;
-          padding:0 22px!important;
-          white-space:nowrap;
-          overflow:visible!important;
-          background:linear-gradient(135deg,#dc2626,#ef4444)!important;
-          border-color:#dc2626!important;
-          color:#fff!important;
-          box-shadow:0 12px 24px rgba(220,38,38,.22)!important;
-        }
-        .rms-pro-shell .inventory-branch-consumption-card .card-head{
-          display:grid;
-          grid-template-columns:minmax(260px,1fr) minmax(260px,420px);
-          gap:14px;
-          align-items:center;
-        }
-        .rms-pro-shell .inventory-branch-consumption-card .card-head select{
-          width:100%;
-          height:46px;
-          border-radius:14px;
-          font-size:14px;
-          font-weight:850;
-        }
-        .rms-pro-shell .inventory-branch-consumption-search{
-          display:grid;
-          grid-template-columns:minmax(260px,1fr) auto;
-          gap:10px;
-          margin:12px 0;
-        }
-        .rms-pro-shell .inventory-branch-consumption-search input{
-          height:42px;
-          border-radius:13px;
-        }
-        .rms-pro-shell .inventory-branch-consumption-summary{
-          display:grid;
-          grid-template-columns:repeat(4,minmax(0,1fr));
-          gap:10px;
-          margin:12px 0;
-        }
-        .rms-pro-shell .inventory-branch-consumption-pill{
-          border:1px solid #e2e8f0;
-          border-radius:16px;
-          background:#f8fafc;
-          padding:12px;
-          min-width:0;
-        }
-        .rms-pro-shell .inventory-branch-consumption-pill span,
-        .rms-pro-shell .inventory-branch-consumption-pill em{
-          display:block;
-          color:#64748b;
-          font-size:12px;
-          font-weight:750;
-        }
-        .rms-pro-shell .inventory-branch-consumption-pill strong{
-          display:block;
-          margin:5px 0;
-          color:#0f172a;
-          font-size:18px;
-          font-weight:950;
-        }
-        .rms-pro-shell .inventory-branch-consumption-wrap{
-          max-height:520px;
-          overflow:auto;
-        }
-        .rms-pro-shell .inventory-branch-consumption-wrap table{
-          min-width:900px;
-        }
-        @media (max-width:1200px){
-          .rms-pro-shell .inventory-branch-transfer-grid{
-            grid-template-columns:repeat(3,minmax(0,1fr));
-          }
-          .rms-pro-shell .inventory-branch-consumption-summary{
-            grid-template-columns:repeat(2,minmax(0,1fr));
-          }
-        }
-        @media (max-width:980px){
-          .rms-pro-shell .inventory-branch-transfer-grid,
-          .rms-pro-shell .inventory-branch-consumption-card .card-head{
-            grid-template-columns:1fr 1fr;
-          }
-        }
-        @media (max-width:760px){
-          .rms-pro-shell .inventory-branch-transfer-grid,
-          .rms-pro-shell .inventory-branch-consumption-summary,
-          .rms-pro-shell .inventory-branch-consumption-search{
-            grid-template-columns:1fr;
-          }
-          .rms-pro-shell .inventory-branch-transfer-grid .span-2{
-            grid-column:span 1;
-          }
-          .rms-pro-shell .inventory-branch-transfer-grid .action-row{
-            grid-column:span 1;
-          }
-          .rms-pro-shell .inventory-branch-transfer-btn{
-            width:100%;
-            min-width:0;
-          }
-        }
-      `}</style>
-      <div className="topbar">
-        <div>
-          <h2>Склад</h2>
-          <p>Остатки, движения, списания, корректировки, локации и складской фундамент для Food Cost.</p>
-        </div>
-        <div className="action-row">
-          <button className="ghost small" onClick={loadInventory} disabled={loading}>{loading ? 'Загрузка…' : 'Обновить'}</button>
-        </div>
+    <section className="inventory-v420-hero">
+      <div><h2>Склад</h2><p>Полный контур движения товаров и полуфабрикатов: остатки, перемещения между складами и филиалами, списания, производство, инвентаризация, минимальные остатки и журнал всех операций.</p></div>
+      <div className="inventory-v420-hero-actions">
+        <button className="ghost small" type="button" onClick={loadInventory} disabled={loading || busy}>{loading ? 'Загрузка…' : 'Обновить'}</button>
+        <button className="small primary" type="button" onClick={() => setActiveTab('transfers')}>Новое перемещение</button>
       </div>
+    </section>
 
-      <div className="inventory-warning-card">
-        <h3>Складской модуль · стартовый режим</h3>
-        <p>Склад работает как контур движения товара: поступления поставщиков попадают в приход, затем товар можно распределять по филиалам и видеть расход каждого филиала.</p>
-        <div className="inventory-action-grid">
-          <div className="inventory-action-card"><span>Приход</span><strong>ручной / purchase</strong></div>
-          <div className="inventory-action-card"><span>Списание</span><strong>write_off</strong></div>
-          <div className="inventory-action-card"><span>Перемещение</span><strong>transfer</strong></div>
-          <div className="inventory-action-card"><span>Производство</span><strong>production</strong></div>
-        </div>
-      </div>
+    {!workspaceReady && <div className="inventory-v420-alert">Операционный журнал документов ещё не установлен. Выполните <b>SQL v420</b>. Остатки и старые движения доступны, но черновики, проведение и настройки минимального остатка пока отключены.</div>}
+    {message && <div className={`inventory-v420-alert ${String(message).toLowerCase().includes('ошиб') || String(message).toLowerCase().includes('недостат') ? 'bad' : ''}`}>{message}</div>}
 
-      <div className="inventory-control-card">
-        <h3>Контроль движений склада</h3>
-        <p>Склад теперь показывает базовые сигналы: приход, списания, отрицательные остатки и фильтрацию по товару/типу движения.</p>
-        <div className="inventory-control-grid">
-          <div className="inventory-control-step good"><span>Приходы</span><strong>{purchaseCount}</strong></div>
-          <div className="inventory-control-step bad"><span>Списания</span><strong>{writeOffCount}</strong></div>
-          <div className={`inventory-control-step ${negativeRows ? 'bad' : 'good'}`}><span>Отрицательные остатки</span><strong>{negativeRows}</strong></div>
-          <div className="inventory-control-step good"><span>Поставщики → склад</span><strong>Активно / backfill</strong></div>
-        </div>
-      </div>
+    <div className="inventory-v420-tabs">
+      {tabs.map(([id, label]) => <button type="button" key={id} className={activeTab === id ? 'active' : ''} onClick={() => setActiveTab(id)}>{label}</button>)}
+    </div>
 
-      <div className="inventory-supplier-link-card">
-        <h3>Поставщики → Склад</h3>
-        <p>Подготовлена связь поступлений от поставщиков со складскими движениями. Автосоздание движений включим после проверки схемы supplier_purchase_items.</p>
-        <div className="inventory-supplier-link-grid">
-          <div className="inventory-supplier-link-step"><span>Purchase movement</span><strong>RPC готов</strong></div>
-          <div className="inventory-supplier-link-step"><span>Duplicate guard</span><strong>Готово</strong></div>
-          <div className="inventory-supplier-link-step"><span>Backfill view</span><strong>Готово</strong></div>
-          <div className="inventory-supplier-link-step pending"><span>Auto trigger</span><strong>После теста</strong></div>
-        </div>
-      </div>
+    <section className="inventory-v420-kpis">
+      <div className="inventory-v420-kpi"><span>Стоимость остатков</span><strong>{fmt(totalStockCost)}</strong><small>AZN по всем локациям</small></div>
+      <div className="inventory-v420-kpi"><span>Позиции с остатком</span><strong>{positiveBalances.length}</strong><small>товары и полуфабрикаты</small></div>
+      <div className="inventory-v420-kpi"><span>Ниже минимума</span><strong className={lowStockRows.length ? 'bad' : 'good'}>{lowStockRows.length}</strong><small>нужно пополнение</small></div>
+      <div className="inventory-v420-kpi"><span>Отрицательные</span><strong className={negativeBalances.length ? 'bad' : 'good'}>{negativeBalances.length}</strong><small>ошибки движения</small></div>
+      <div className="inventory-v420-kpi"><span>Списания месяца</span><strong>{fmt(currentMonthWriteoffCost)}</strong><small>AZN</small></div>
+      <div className="inventory-v420-kpi"><span>Перемещения месяца</span><strong>{fmt(currentMonthTransferCost)}</strong><small>AZN по исходящим</small></div>
+      <div className="inventory-v420-kpi"><span>Документы</span><strong>{documents.length}</strong><small>{documents.filter(row => row.status === 'draft').length} черновиков</small></div>
+    </section>
 
-      <div className="inventory-schema-check-card">
-        <h3>Supplier Purchase Items · Schema Check</h3>
-        <p>Перед автосвязкой закупок со складом нужно подтвердить реальные колонки supplier_purchase_items. В v149 добавлен schema-check и безопасный backfill-prep без trigger.</p>
-        <div className="inventory-schema-check-grid">
-          <div className="inventory-schema-check-step ready"><span>Schema view</span><strong>Готово</strong></div>
-          <div className="inventory-schema-check-step ready"><span>Mapping check</span><strong>Готово</strong></div>
-          <div className="inventory-schema-check-step ready"><span>Backfill RPC</span><strong>Prepared</strong></div>
-          <div className="inventory-schema-check-step pending"><span>Auto trigger</span><strong>После теста</strong></div>
-        </div>
-      </div>
-
-      <div className="inventory-backfill-card">
-        <h3>Backfill: Поставщики → Склад</h3>
-        <p>Безопасный перенос уже введённых поступлений поставщиков в складские движения. Auto-trigger пока не включён.</p>
-        <div className="action-row" style={{marginTop:12}}>
-          <button className="ghost small" onClick={loadBackfillPreview} disabled={backfillBusy}>{backfillBusy ? 'Проверка…' : 'Preview'}</button>
-          <button className="primary small" onClick={runBackfill} disabled={backfillBusy}>Создать движения</button>
-        </div>
-        {backfillHealth && (
-          <div className="inventory-autolink-health">
-            <span>Готово к переносу: <b>{backfillHealth.can_backfill || 0}</b></span>
-            <span>Уже связано: <b>{backfillHealth.already_linked || 0}</b></span>
-            <span>Недостаточно данных: <b>{backfillHealth.not_ready || 0}</b></span>
-          </div>
-        )}
-        {!!backfillPreview.length && (
-          <div className="table-wrap" style={{marginTop:12}}>
-            <table className="inventory-backfill-table">
-              <thead><tr><th>Товар</th><th>Кол-во</th><th>Ед.</th><th>Цена</th><th>Статус</th></tr></thead>
-              <tbody>
-                {backfillPreview.slice(0, 10).map(r => <tr key={r.purchase_item_id}>
-                  <td><b>{r.item_name || 'Без названия'}</b></td>
-                  <td>{fmt(r.quantity)}</td>
-                  <td>{r.unit || 'unit'}</td>
-                  <td>{fmt(r.unit_cost)}</td>
-                  <td>{r.already_linked ? <span className="inventory-link-chip pending">уже связано</span> : r.can_backfill ? <span className="inventory-link-chip">готово</span> : <span className="inventory-writeoff-chip">недостаточно данных</span>}</td>
-                </tr>)}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-
-      <div className="inventory-autolink-card">
-        <h3>Auto-Link · подготовка</h3>
-        <p>Автоматическая связка поступлений со складом подготовлена как отдельный SQL-шаг. Сейчас активен безопасный ручной режим: preview → backfill → проверка остатков.</p>
-        <div className="inventory-autolink-grid">
-          <div className="inventory-autolink-step ready"><span>Preview</span><strong>Готово</strong></div>
-          <div className="inventory-autolink-step ready"><span>Manual backfill</span><strong>Готово</strong></div>
-          <div className="inventory-autolink-step ready"><span>Duplicate guard</span><strong>Готово</strong></div>
-          <div className="inventory-autolink-step pending"><span>Trigger</span><strong>Отдельно</strong></div>
-        </div>
-      </div>
-
-      <div className="inventory-validation-card">
-        <h3>Auto-Link Validation</h3>
-        <p>Контрольный слой перед автоматическим trigger: проверяет готовность связки поставщиков со складом, количество строк для переноса и текущий статус auto-trigger.</p>
-        <div className="action-row" style={{marginTop:12}}>
-          <button className="ghost small" onClick={loadAutoLinkValidation} disabled={backfillBusy}>{backfillBusy ? 'Проверка…' : 'Проверить Auto-Link'}</button>
-        </div>
-        {validationHealth && (
-          <div className="inventory-validation-grid">
-            <div className="inventory-validation-step ready"><span>Supplier link</span><strong>{validationHealth?.supplier_link?.status || 'prepared'}</strong></div>
-            <div className="inventory-validation-step ready"><span>Can backfill</span><strong>{validationHealth?.backfill_dry_run?.can_backfill || 0}</strong></div>
-            <div className="inventory-validation-step warn"><span>Already linked</span><strong>{validationHealth?.backfill_dry_run?.already_linked || 0}</strong></div>
-            <div className="inventory-validation-step pending"><span>Auto trigger</span><strong>{validationHealth?.auto_trigger || 'not_enabled'}</strong></div>
-          </div>
-        )}
-      </div>
-
-      <div className="inventory-consolidated-card">
-        <h3>Inventory Consolidated Control</h3>
-        <p>Единый контроль склада: остатки, списания, движения, backfill от поставщиков, отрицательные остатки и подготовка production/полуфабрикатов.</p>
-        <div className="action-row" style={{marginTop:12}}>
-          <button className="ghost small" onClick={loadInventoryConsolidatedReports} disabled={backfillBusy}>{backfillBusy ? 'Загрузка…' : 'Обновить складские отчёты'}</button>
-        </div>
-        <div className="inventory-consolidated-grid">
-          <div className="inventory-consolidated-step ready"><span>Остатки</span><strong>{dashboardReport?.balance_rows ?? balances.length}</strong></div>
-          <div className="inventory-consolidated-step warn"><span>Отрицательные</span><strong>{dashboardReport?.negative_stock_rows ?? negativeRows}</strong></div>
-          <div className="inventory-consolidated-step"><span>Списания</span><strong>{writeOffReport?.writeoff_count ?? writeOffCount}</strong></div>
-          <div className="inventory-consolidated-step ready"><span>Backfill ready</span><strong>{dashboardReport?.backfill_can_create ?? backfillHealth?.can_backfill ?? 0}</strong></div>
-          <div className="inventory-consolidated-step pending"><span>Production</span><strong>{productionReport?.status || 'prep'}</strong></div>
-        </div>
-      </div>
-
-      <div className="inventory-supplier-sync-card">
-        <h3>Поступления поставщиков → Склад</h3>
-        <p>После установки SQL v157 строки поступлений поставщиков автоматически создают движение склада типа <b>purchase</b>. При изменении количества/цены движение обновляется, при удалении строки — отключается через deleted_at.</p>
-        <div className="action-row" style={{marginTop:12}}>
-          <button className="ghost small" onClick={loadInventoryConsolidatedReports} disabled={backfillBusy}>{backfillBusy ? 'Проверка…' : 'Проверить синхронизацию'}</button>
-        </div>
-        <div className="inventory-supplier-sync-grid">
-          <div className="inventory-supplier-sync-step ready"><span>Auto insert</span><strong>Готово</strong></div>
-          <div className="inventory-supplier-sync-step ready"><span>Auto update</span><strong>Готово</strong></div>
-          <div className="inventory-supplier-sync-step ready"><span>Auto delete</span><strong>Soft delete</strong></div>
-          <div className="inventory-supplier-sync-step"><span>Linked movements</span><strong>{supplierSyncHealth?.linked_movements ?? dashboardReport?.supplier_auto_link?.supplier_link?.linked_movements ?? 0}</strong></div>
-          <div className="inventory-supplier-sync-step pending"><span>Trigger</span><strong>{supplierSyncHealth?.trigger_status || 'после SQL'}</strong></div>
-        </div>
-      </div>
-
-      <div className="inventory-name-location-card">
-        <h3>Supplier Stock Naming & Location</h3>
-        <p>Если в остатках видно “Без названия” или “Без локации”, нужно выполнить SQL v158: он улучшает определение названия товара и автоматически привязывает приход к складской локации.</p>
-        <div className="inventory-name-location-grid">
-          <div className="inventory-name-location-step ready"><span>Product resolver</span><strong>Улучшен</strong></div>
-          <div className="inventory-name-location-step ready"><span>Supplier product</span><strong>Поиск по ID</strong></div>
-          <div className="inventory-name-location-step ready"><span>Location resolver</span><strong>По branch</strong></div>
-          <div className="inventory-name-location-step"><span>Old rows</span><strong>Resync SQL</strong></div>
-        </div>
-      </div>
-
-      <div className="inventory-branch-location-card">
-        <h3>Branch → Stock Location Mapping</h3>
-        <p>Поступления поставщиков теперь могут попадать на склад конкретного филиала: BC1, BC2, BC3, BC4, BC5 или Bistro. Если филиал не найден, используется Central Warehouse.</p>
-        <div className="inventory-branch-location-grid">
-          <div className="inventory-branch-location-step ready"><span>BC1</span><strong>BC1 Stock</strong></div>
-          <div className="inventory-branch-location-step ready"><span>BC2</span><strong>BC2 Stock</strong></div>
-          <div className="inventory-branch-location-step ready"><span>BC3</span><strong>BC3 Stock</strong></div>
-          <div className="inventory-branch-location-step ready"><span>BC4 / BC5</span><strong>Mapped</strong></div>
-          <div className="inventory-branch-location-step warn"><span>Fallback</span><strong>Central</strong></div>
-        </div>
-      </div>
-
-      <div className="inventory-bazar-sync-card">
-        <h3>Базар → Склад</h3>
-        <p>Ежедневный базар с позициями будет попадать на склад как приход <b>purchase</b>. Если филиал указан — движение попадёт в склад филиала, если нет — в Central Warehouse.</p>
-        <div className="action-row" style={{marginTop:12}}>
-          <button className="ghost small" onClick={loadInventoryConsolidatedReports} disabled={backfillBusy}>{backfillBusy ? 'Проверка…' : 'Проверить базар-синхронизацию'}</button>
-        </div>
-        <div className="inventory-bazar-sync-grid">
-          <div className="inventory-bazar-sync-step ready"><span>Auto insert</span><strong>Готово</strong></div>
-          <div className="inventory-bazar-sync-step ready"><span>Auto update</span><strong>Готово</strong></div>
-          <div className="inventory-bazar-sync-step ready"><span>Auto delete</span><strong>Soft delete</strong></div>
-          <div className="inventory-bazar-sync-step"><span>Linked movements</span><strong>{bazarSyncHealth?.linked_movements ?? 0}</strong></div>
-          <div className="inventory-bazar-sync-step pending"><span>Trigger</span><strong>{bazarSyncHealth?.trigger_status || 'после SQL'}</strong></div>
-        </div>
-      </div>
-
-      <div className="inventory-sales-consumption-card">
-        <h3>iiko Sales → Inventory Consumption</h3>
-        <p>Следующий слой склада: после импорта продаж iiko RMS сможет рассчитать теоретический расход ингредиентов по техкартам и создать складские движения расхода. В v162 включён безопасный prep-режим без автоматического списания.</p>
-        <div className="action-row" style={{marginTop:12}}>
-          <button className="ghost small" onClick={loadInventoryConsolidatedReports} disabled={backfillBusy}>{backfillBusy ? 'Проверка…' : 'Проверить sales consumption'}</button>
-        </div>
-        <div className="inventory-sales-consumption-grid">
-          <div className="inventory-sales-consumption-step ready"><span>Sales schema</span><strong>{salesConsumptionHealth?.sales_schema_status || 'prep'}</strong></div>
-          <div className="inventory-sales-consumption-step ready"><span>Recipe mapping</span><strong>{salesConsumptionHealth?.recipe_mapping_status || 'prep'}</strong></div>
-          <div className="inventory-sales-consumption-step"><span>Batches</span><strong>{salesConsumptionHealth?.batches || 0}</strong></div>
-          <div className="inventory-sales-consumption-step"><span>Consumption rows</span><strong>{salesConsumptionHealth?.items || 0}</strong></div>
-          <div className="inventory-sales-consumption-step pending"><span>Auto write-off</span><strong>Off</strong></div>
-        </div>
-      </div>
-
-      <div className="inventory-sales-preview-card">
-        <h3>iiko Sales Mapping → Recipe Consumption Preview</h3>
-        <p>Preview-слой показывает, сколько строк продаж можно связать с меню и техкартами, и сколько будущих ingredient consumption rows можно рассчитать. Склад пока не списывается.</p>
-        <div className="action-row" style={{marginTop:12}}>
-          <button className="ghost small" onClick={loadInventoryConsolidatedReports} disabled={backfillBusy}>{backfillBusy ? 'Проверка…' : 'Проверить mapping preview'}</button>
-        </div>
-        <div className="inventory-sales-preview-grid">
-          <div className="inventory-sales-preview-step ready"><span>Sales table</span><strong>{salesRecipeMappingHealth?.detected_sales_table || salesConsumptionHealth?.detected_sales_table || '—'}</strong></div>
-          <div className="inventory-sales-preview-step"><span>Mapped sales</span><strong>{salesRecipeMappingHealth?.mapped_sales_rows ?? 0}</strong></div>
-          <div className="inventory-sales-preview-step"><span>Unmapped sales</span><strong>{salesRecipeMappingHealth?.unmapped_sales_rows ?? 0}</strong></div>
-          <div className="inventory-sales-preview-step"><span>Recipe rows</span><strong>{salesRecipeMappingHealth?.recipe_rows ?? 0}</strong></div>
-          <div className="inventory-sales-preview-step pending"><span>Apply write-off</span><strong>Off</strong></div>
-        </div>
-      </div>
-
-      <div className="inventory-sales-apply-card">
-        <h3>Sales Consumption Draft / Apply</h3>
-        <p>Следующий объединённый слой: из preview продаж iiko можно создать draft расхода ингредиентов, проверить его, а затем вручную применить как складское списание. Автоматическое списание выключено.</p>
-        <div className="action-row" style={{marginTop:12}}>
-          <button className="ghost small" onClick={loadInventoryConsolidatedReports} disabled={backfillBusy}>{backfillBusy ? 'Проверка…' : 'Обновить status'}</button>
-          <button className="primary small" onClick={createSalesConsumptionDraft} disabled={backfillBusy}>Создать draft</button>
-        </div>
-        <div className="inventory-sales-apply-grid">
-          <div className="inventory-sales-apply-step ready"><span>Preview rows</span><strong>{salesConsumptionConsolidatedHealth?.preview_rows ?? salesRecipeMappingHealth?.recipe_rows ?? 0}</strong></div>
-          <div className="inventory-sales-apply-step"><span>Draft batches</span><strong>{salesConsumptionConsolidatedHealth?.draft_batches ?? 0}</strong></div>
-          <div className="inventory-sales-apply-step"><span>Draft items</span><strong>{salesConsumptionConsolidatedHealth?.draft_items ?? 0}</strong></div>
-          <div className="inventory-sales-apply-step warn"><span>Applied items</span><strong>{salesConsumptionConsolidatedHealth?.applied_items ?? 0}</strong></div>
-          <div className="inventory-sales-apply-step pending"><span>Auto apply</span><strong>Off</strong></div>
-        </div>
-      </div>
-
-      <div className="inventory-iiko-forward-card">
-        <h3>iiko Import → Mapping → Consumption · Forward Pack</h3>
-        <p>Единый контроль следующего блока: качество импортированных продаж, нормализация строк, unmapped позиции, preview расхода ингредиентов и готовность draft/apply. Auto-writeoff остаётся выключенным.</p>
-        <div className="action-row" style={{marginTop:12}}>
-          <button className="ghost small" onClick={loadInventoryConsolidatedReports} disabled={backfillBusy}>{backfillBusy ? 'Проверка…' : 'Обновить полный status'}</button>
-          <button className="ghost small" onClick={normalizeIikoRows} disabled={backfillBusy}>Нормализовать iiko строки</button>
-          <button className="primary small" onClick={createSalesConsumptionDraft} disabled={backfillBusy}>Создать draft consumption</button>
-        </div>
-        <div className="inventory-iiko-forward-grid">
-          <div className="inventory-iiko-forward-step"><span>Imported rows</span><strong>{iikoImportConsolidatedHealth?.import?.total_rows ?? iikoImportHealth?.total_rows ?? 0}</strong></div>
-          <div className="inventory-iiko-forward-step ready"><span>Valid rows</span><strong>{iikoImportConsolidatedHealth?.import?.valid_rows ?? 0}</strong></div>
-          <div className="inventory-iiko-forward-step warn"><span>Unmapped sales</span><strong>{salesUnmappedReport?.unmapped_count ?? salesRecipeMappingHealth?.unmapped_sales_rows ?? 0}</strong></div>
-          <div className="inventory-iiko-forward-step"><span>Preview rows</span><strong>{iikoImportConsolidatedHealth?.consumption?.preview_rows ?? salesConsumptionConsolidatedHealth?.preview_rows ?? 0}</strong></div>
-          <div className="inventory-iiko-forward-step"><span>Draft items</span><strong>{iikoImportConsolidatedHealth?.consumption?.draft_items ?? salesConsumptionConsolidatedHealth?.draft_items ?? 0}</strong></div>
-          <div className="inventory-iiko-forward-step pending"><span>Auto writeoff</span><strong>Off</strong></div>
-        </div>
-      </div>
-
-      <div className="inventory-v169-consolidated-card">
-        <h3>v169 · iiko Import & Consumption Control</h3>
-        <p>Объединённый слой после v168: сохранение продаж в iiko_sales_items, контроль последнего импорта, защита от дублей, unmapped позиции и readiness для draft consumption. Auto-writeoff остаётся выключенным.</p>
-        <div className="action-row" style={{marginTop:12}}>
-          <button className="ghost small" onClick={loadInventoryConsolidatedReports} disabled={backfillBusy}>{backfillBusy ? 'Проверка…' : 'Обновить v169 status'}</button>
-          <button className="ghost small" onClick={deduplicateIikoRows} disabled={backfillBusy}>Очистить дубли iiko</button>
-          <button className="primary small" onClick={createSalesConsumptionDraft} disabled={backfillBusy}>Создать draft consumption</button>
-        </div>
-        <div className="inventory-v169-consolidated-grid">
-          <div className="inventory-v169-consolidated-step"><span>Latest import</span><strong>{iikoLatestDashboard?.latest_import_status || '—'}</strong></div>
-          <div className="inventory-v169-consolidated-step ready"><span>Valid iiko rows</span><strong>{iikoLatestDashboard?.valid_rows ?? iikoImportHealth?.valid_rows ?? 0}</strong></div>
-          <div className="inventory-v169-consolidated-step warn"><span>Duplicates</span><strong>{iikoLatestDashboard?.duplicate_rows ?? 0}</strong></div>
-          <div className="inventory-v169-consolidated-step warn"><span>Unmapped</span><strong>{salesUnmappedReport?.unmapped_count ?? 0}</strong></div>
-          <div className="inventory-v169-consolidated-step"><span>Draft ready</span><strong>{consumptionDraftReadiness?.ready_rows ?? 0}</strong></div>
-          <div className="inventory-v169-consolidated-step pending"><span>Auto writeoff</span><strong>Off</strong></div>
-        </div>
-      </div>
-
-      <div className="inventory-v170-operational-card">
-        <h3>v170 · Consumption Operational Control</h3>
-        <p>Объединённый operational-слой: alias mapping для iiko названий, контроль готовности техкарт, создание draft, ручное применение последнего batch и быстрая отмена. Auto-writeoff выключен.</p>
-        <div className="action-row" style={{marginTop:12}}>
-          <button className="ghost small" onClick={loadInventoryConsolidatedReports} disabled={backfillBusy}>{backfillBusy ? 'Проверка…' : 'Обновить operational status'}</button>
-          <button className="primary small" onClick={createSalesConsumptionDraft} disabled={backfillBusy}>Создать draft</button>
-          <button className="primary small" onClick={applyLatestConsumptionBatch} disabled={backfillBusy}>Применить последний draft</button>
-          <button className="ghost small danger" onClick={cancelLatestConsumptionBatch} disabled={backfillBusy}>Отменить последний batch</button>
-        </div>
-        <div className="inventory-v170-operational-grid">
-          <div className="inventory-v170-operational-step ready"><span>Valid sales</span><strong>{iikoOperationalHealth?.valid_sales_rows ?? iikoLatestDashboard?.valid_rows ?? 0}</strong></div>
-          <div className="inventory-v170-operational-step"><span>Aliases</span><strong>{menuAliasHealth?.aliases ?? 0}</strong></div>
-          <div className="inventory-v170-operational-step warn"><span>Unmapped</span><strong>{iikoOperationalHealth?.unmapped_sales ?? salesUnmappedReport?.unmapped_count ?? 0}</strong></div>
-          <div className="inventory-v170-operational-step"><span>Draft batches</span><strong>{iikoOperationalHealth?.draft_batches ?? 0}</strong></div>
-          <div className="inventory-v170-operational-step"><span>Applied items</span><strong>{iikoOperationalHealth?.applied_items ?? 0}</strong></div>
-          <div className="inventory-v170-operational-step pending"><span>Auto writeoff</span><strong>Off</strong></div>
-        </div>
-      </div>
-
-      <div className="inventory-v171-hardening-card">
-        <h3>v171 · iiko Import Operational Hardening</h3>
-        <p>Контроль качества реального импорта: дата, филиал, валидные строки, дубли, пустые строки, mapping readiness и draft readiness. Auto-writeoff выключен.</p>
-        <div className="action-row" style={{marginTop:12}}>
-          <button className="ghost small" onClick={loadInventoryConsolidatedReports} disabled={backfillBusy}>{backfillBusy ? 'Проверка…' : 'Обновить hardening status'}</button>
-          <button className="ghost small danger" onClick={cleanupIikoImportProblems} disabled={backfillBusy}>Очистить проблемы импорта</button>
-          <button className="primary small" onClick={createSalesConsumptionDraft} disabled={backfillBusy}>Создать draft</button>
-        </div>
-        <div className="inventory-v171-hardening-grid">
-          <div className="inventory-v171-hardening-step ready"><span>Valid rows</span><strong>{iikoOperationalAudit?.valid_rows ?? 0}</strong></div>
-          <div className="inventory-v171-hardening-step warn"><span>No branch</span><strong>{iikoBranchDateQuality?.rows_without_branch ?? 0}</strong></div>
-          <div className="inventory-v171-hardening-step warn"><span>No date</span><strong>{iikoBranchDateQuality?.rows_without_date ?? 0}</strong></div>
-          <div className="inventory-v171-hardening-step warn"><span>Duplicates</span><strong>{iikoOperationalAudit?.duplicate_groups ?? 0}</strong></div>
-          <div className="inventory-v171-hardening-step"><span>Ready draft</span><strong>{consumptionDraftReadiness?.ready_rows ?? 0}</strong></div>
-          <div className="inventory-v171-hardening-step pending"><span>Auto writeoff</span><strong>Off</strong></div>
-        </div>
-      </div>
-
-      <div className="inventory-filter-row">
-        <input value={search} placeholder="Поиск по товару, локации или комментарию..." onChange={e => setSearch(e.target.value)} />
-        <select value={movementFilter} onChange={e => setMovementFilter(e.target.value)}>
-          <option value="all">Все движения</option>
-          <option value="purchase">Приход</option>
-          <option value="write_off">Списание</option>
-          <option value="transfer_in">Перемещение +</option>
-          <option value="transfer_out">Перемещение −</option>
-          <option value="production_in">Производство +</option>
-          <option value="production_out">Производство −</option>
-          <option value="adjustment_in">Корректировка +</option>
-          <option value="adjustment_out">Корректировка −</option>
-        </select>
-        <button className="ghost small" onClick={() => { setSearch(''); setMovementFilter('all') }}>Сбросить</button>
-      </div>
-
-      <div className="summary-grid inventory-summary-grid">
-        <div className="soft-card inventory-kpi-card"><span>Позиции с остатком</span><strong>{positiveRows}</strong><p className="hint">balance_qty &gt; 0</p></div>
-        <div className="soft-card inventory-kpi-card"><span>Сумма остатков</span><strong>{fmt(totalCost)} AZN</strong><p className="hint">по движениям склада</p></div>
-        <div className="soft-card inventory-kpi-card"><span>Всего движений</span><strong>{movements.length}</strong><p className="hint">последние 100</p></div>
-        <div className="soft-card inventory-kpi-card"><span>Отрицательные остатки</span><strong className={negativeRows ? 'bad' : 'good'}>{negativeRows}</strong><p className="hint">нужна проверка</p></div>
-        <div className="soft-card inventory-kpi-card"><span>Расход филиалов</span><strong>{fmt(inventoryBranchConsumptionTotal)} AZN</strong><p className="hint">по движениям склада</p></div>
-      </div>
-
-      {message && <div className="inventory-message">{message}</div>}
-
-      <div className="inventory-branch-flow-card">
-        <div className="card-head">
-          <div>
-            <h3>Распределение товара по филиалам</h3>
-            <p className="hint">Поступление от поставщиков попадает на склад, затем товар можно перемещать на нужный филиал. Так видно, какой филиал сколько потребляет.</p>
-          </div>
-          <button className="ghost small" onClick={loadInventory} disabled={loading}>Обновить остатки</button>
-        </div>
-
-        <div className="inventory-branch-transfer-grid">
-          <label><span>Склад-источник</span><select value={transferForm.source_location_id} onChange={e => setTransferForm({ ...transferForm, source_location_id: e.target.value, item_name: '', quantity: '', unit_cost: '' })}><option value="">Выберите склад</option>{locations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}</select></label>
-          <label><span>Филиал-получатель</span><select value={transferForm.target_location_id} onChange={e => setTransferForm({ ...transferForm, target_location_id: e.target.value })}><option value="">Выберите филиал</option>{branchLikeLocations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}</select></label>
-          <label><span>Товар на складе</span><select value={transferForm.item_name} onChange={e => {
-            const row = stockItemsForDistribution.find(r => `${r.item_name}||${r.unit}` === e.target.value)
-            setTransferForm({ ...transferForm, item_name: row?.item_name || '', unit: row?.unit || 'unit', unit_cost: row?.balance_qty ? String(parseNum(row.balance_cost) / Math.max(1, parseNum(row.balance_qty))) : '', quantity: '' })
-          }}><option value="">Выберите товар</option>{stockItemsForDistribution.map((r, idx) => <option key={`${r.location_id}-${r.item_name}-${r.unit}-${idx}`} value={`${r.item_name}||${r.unit}`}>{r.item_name} · остаток {fmt(r.balance_qty)} {r.unit}</option>)}</select></label>
-          <label><span>Кол-во</span><input type="number" step="0.001" value={transferForm.quantity} onChange={e => setTransferForm({ ...transferForm, quantity: e.target.value })} /></label>
-          <label><span>Ед.</span><input value={transferForm.unit} onChange={e => setTransferForm({ ...transferForm, unit: e.target.value })} /></label>
-          <label><span>Цена за ед.</span><input type="number" step="0.01" value={transferForm.unit_cost} onChange={e => setTransferForm({ ...transferForm, unit_cost: e.target.value })} /></label>
-          <label className="span-2"><span>Комментарий</span><input value={transferForm.comment} onChange={e => setTransferForm({ ...transferForm, comment: e.target.value })} /></label>
-          <div className="action-row"><button className="primary small inventory-branch-transfer-btn" onClick={createBranchTransfer} disabled={loading}>Распределить на филиал</button></div>
-        </div>
-      </div>
-
-      <div className="inventory-branch-consumption-card">
-        <div className="card-head">
-          <div>
-            <h3>Получено / израсходовано филиалами</h3>
-            <p className="hint">Переключайте режим: сколько филиалы получили со склада и сколько реально израсходовали через списания, производство или расходные движения.</p>
-          </div>
-          <select value={branchConsumptionMode} onChange={e => setBranchConsumptionMode(e.target.value)}>
-            <option value="incoming">Получено филиалами</option>
-            <option value="outgoing">Израсходовано филиалами</option>
-          </select>
-        </div>
-
-        <div className="inventory-branch-consumption-search">
-          <input value={branchConsumptionSearch} onChange={e => setBranchConsumptionSearch(e.target.value)} placeholder="Поиск по филиалу, товару или комментарию..." />
-          <button className="ghost small" onClick={() => setBranchConsumptionSearch('')}>Очистить</button>
-        </div>
-
-        <div className="inventory-branch-consumption-summary">
-          {inventoryBranchConsumptionByBranch.slice(0, 8).map(row => {
-            const share = inventoryBranchConsumptionTotal ? row.cost / inventoryBranchConsumptionTotal * 100 : 0
-            return <div key={row.branch} className="inventory-branch-consumption-pill">
-              <span>{row.branch}</span>
-              <strong>{fmt(row.cost)} AZN</strong>
-              <em>{fmt(share)}% · {row.items} поз.</em>
+    {activeTab === 'overview' && <section className="inventory-v420-grid">
+      <div className="inventory-v420-card">
+        <div className="inventory-v420-card-head"><div><h3>Состояние склада</h3><p>Позиции, требующие внимания: отрицательные остатки и запасы ниже установленного минимума.</p></div></div>
+        <div className="inventory-v420-risk-list">
+          {[...negativeBalances.map(row => ({ ...row, risk: 'negative' })), ...lowStockRows.map(row => ({ ...row, risk: 'low' }))].slice(0, 20).map((row, index) => {
+            const setting = settingsByKey[`${row.location_id}||${row.item_name}||${row.unit}`]
+            return <div className={`inventory-v420-risk ${row.risk === 'negative' ? 'bad' : ''}`} key={`${row.location_id}-${row.item_name}-${row.unit}-${index}`}>
+              <i/><div><strong>{row.item_name}</strong><small>{row.location_name || locationById[String(row.location_id)]?.name || 'Без локации'} · {row.risk === 'negative' ? 'отрицательный остаток' : `минимум ${fmt(setting?.min_qty)} ${row.unit}`}</small></div><b>{fmt(row.balance_qty)} {row.unit}</b>
             </div>
           })}
-          {!inventoryBranchConsumptionByBranch.length && <div className="inventory-branch-consumption-pill"><span>Нет данных</span><strong>0.00 AZN</strong><em>создайте движения</em></div>}
-        </div>
-
-        <div className="table-wrap inventory-branch-consumption-wrap">
-          <table>
-            <thead><tr><th>Филиал / склад</th><th>Товар</th><th>Кол-во</th><th>Сумма</th><th>Движений</th><th>Последняя дата</th><th>Доля</th></tr></thead>
-            <tbody>
-              {inventoryBranchConsumptionRows.slice(0, 80).map(row => {
-                const share = inventoryBranchConsumptionTotal ? row.cost / inventoryBranchConsumptionTotal * 100 : 0
-                return <tr key={`${row.branch}-${row.item}-${row.unit}`}>
-                  <td><b>{row.branch}</b></td>
-                  <td>{row.item}</td>
-                  <td>{fmt(row.qty)} {row.unit}</td>
-                  <td><strong>{fmt(row.cost)} AZN</strong></td>
-                  <td>{row.count}</td>
-                  <td>{row.last_date || '—'}</td>
-                  <td>{fmt(share)}%</td>
-                </tr>
-              })}
-              {!inventoryBranchConsumptionRows.length && <tr><td colSpan="7" className="hint">Нет складских движений для выбранного режима.</td></tr>}
-            </tbody>
-          </table>
+          {!negativeBalances.length && !lowStockRows.length && <div className="inventory-v420-empty">Критических складских сигналов нет.</div>}
         </div>
       </div>
-
-      <div className="inventory-operations-card">
-        <h3>Операции склада</h3>
-        <p>Быстрый выбор сценария движения. Это не автосписание — операции сохраняются вручную и попадают в журнал склада.</p>
-        <div className="inventory-operations-grid">
-          <button className={operationMode === 'purchase' ? 'active' : ''} onClick={() => applyInventoryPreset('purchase')}>+ Приход</button>
-          <button className={operationMode === 'write_off' ? 'active danger' : 'danger'} onClick={() => applyInventoryPreset('write_off')}>− Списание</button>
-          <button className={operationMode === 'transfer_in' ? 'active' : ''} onClick={() => applyInventoryPreset('transfer_in')}>⇢ Перемещение +</button>
-          <button className={operationMode === 'transfer_out' ? 'active danger' : 'danger'} onClick={() => applyInventoryPreset('transfer_out')}>⇠ Перемещение −</button>
-          <button className={operationMode === 'production_in' ? 'active' : ''} onClick={() => applyInventoryPreset('production_in')}>Производство +</button>
-          <button className={operationMode === 'production_out' ? 'active danger' : 'danger'} onClick={() => applyInventoryPreset('production_out')}>Производство −</button>
-          <button className={operationMode === 'adjustment_in' ? 'active' : ''} onClick={() => applyInventoryPreset('adjustment_in')}>Корректировка +</button>
-          <button className={operationMode === 'adjustment_out' ? 'active danger' : 'danger'} onClick={() => applyInventoryPreset('adjustment_out')}>Корректировка −</button>
+      <div className="inventory-v420-card">
+        <div className="inventory-v420-card-head"><div><h3>Последние документы</h3><p>Черновики можно провести, а проведённые документы — отменить обратными движениями.</p></div></div>
+        <div className="inventory-v420-doc-list">
+          {recentDocuments.slice(0, 10).map(doc => <div className="inventory-v420-doc" key={doc.id}>
+            <div><strong>{doc.document_number} · {documentTypeLabel(doc.document_type)}</strong><span>{doc.document_date} · {locationById[String(doc.source_location_id)]?.name || '—'}{doc.target_location_id ? ` → ${locationById[String(doc.target_location_id)]?.name || '—'}` : ''}<br/>{doc.comment || doc.reason || ''}</span></div>
+            <div className="inventory-v420-doc-actions"><span className={`inventory-v420-status ${doc.status}`}>{documentStatusLabel(doc.status)}</span>{doc.status === 'draft' && <button className="small primary" type="button" disabled={busy} onClick={() => postDocument(doc)}>Провести</button>}</div>
+          </div>)}
+          {!recentDocuments.length && <div className="inventory-v420-empty">Документов пока нет.</div>}
         </div>
       </div>
+    </section>}
 
-      <div className="card inventory-form-card">
-        <div className="card-head">
-          <div>
-            <h3>Добавить движение склада</h3>
-            <p className="hint">Ручной режим: приход, списание, корректировка, перемещение или производство.</p>
-          </div>
-        </div>
-        <div className="form-grid">
-          <label><span>Дата</span><DateInput value={formatDateDMY(form.movement_date)} onChange={e => setForm({ ...form, movement_date: e.target.value })} /></label>
-          <label><span>Локация</span><select value={form.location_id} onChange={e => setForm({ ...form, location_id: e.target.value })}><option value="">Без локации</option>{locations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}</select></label>
-          <label><span>Тип движения</span><select value={form.movement_type} onChange={e => setForm({ ...form, movement_type: e.target.value })}><option value="purchase">Приход</option><option value="write_off">Списание</option><option value="transfer_in">Перемещение +</option><option value="transfer_out">Перемещение −</option><option value="production_in">Производство +</option><option value="production_out">Производство −</option><option value="adjustment_in">Корректировка +</option><option value="adjustment_out">Корректировка −</option><option value="adjustment">Корректировка</option></select></label>
-          <label><span>Товар</span><input value={form.item_name} placeholder="Название товара" onChange={e => setForm({ ...form, item_name: e.target.value })} /></label>
-          <label><span>Ед.</span><input value={form.unit} onChange={e => setForm({ ...form, unit: e.target.value })} /></label>
-          <label><span>Кол-во</span><input type="number" step="0.001" value={form.quantity} onChange={e => setForm({ ...form, quantity: e.target.value })} /></label>
-          <label><span>Цена за ед.</span><input type="number" step="0.01" value={form.unit_cost} onChange={e => setForm({ ...form, unit_cost: e.target.value })} /></label>
-          <label className="span-2"><span>Комментарий</span><input value={form.comment} placeholder="Причина / документ / примечание" onChange={e => setForm({ ...form, comment: e.target.value })} /></label>
-          <div className="action-row"><button className="primary small" onClick={createMovement} disabled={loading}>Сохранить движение</button></div>
+    {activeTab === 'stock' && <section className="inventory-v420-card">
+      <div className="inventory-v420-card-head"><div><h3>Остатки по складам и филиалам</h3><p>Установите минимальный остаток для автоматического контроля пополнения.</p></div><span className="inventory-v420-status">{stockRows.length} строк</span></div>
+      <div className="inventory-v420-filters">
+        <label><span>Поиск</span><input value={stockSearch} onChange={e => setStockSearch(e.target.value)} placeholder="Товар, полуфабрикат, склад…" /></label>
+        <label><span>Локация</span><select value={stockLocationFilter} onChange={e => setStockLocationFilter(e.target.value)}><option value="all">Все локации</option>{locations.map(row => <option key={row.id} value={row.id}>{row.name}</option>)}</select></label>
+        <label><span>Статус</span><select value={stockStatusFilter} onChange={e => setStockStatusFilter(e.target.value)}><option value="all">Все остатки</option><option value="positive">Положительные</option><option value="low">Ниже минимума</option><option value="negative">Отрицательные</option></select></label>
+      </div>
+      <div className="inventory-v420-table-wrap"><table className="inventory-v420-table">
+        <thead><tr><th>Товар / полуфабрикат</th><th>Локация</th><th>Остаток</th><th>Стоимость</th><th>Цена / ед.</th><th>Минимум</th><th>Статус</th></tr></thead>
+        <tbody>
+          {stockRows.map((row, index) => {
+            const key = `${row.location_id}||${row.item_name}||${row.unit}`
+            const setting = settingsByKey[key]
+            const qty = parseNum(row.balance_qty)
+            const minQty = parseNum(setting?.min_qty)
+            const low = minQty > 0 && qty <= minQty
+            return <tr key={`${key}-${index}`}>
+              <td><b>{row.item_name}</b><small>{row.item_type === 'semi_finished' ? 'Полуфабрикат' : row.item_type || 'Товар'}</small></td>
+              <td>{row.location_name || locationById[String(row.location_id)]?.name || '—'}</td>
+              <td className={qty < 0 ? 'bad' : low ? 'warn' : 'good'}><b>{fmt(qty)} {row.unit}</b></td>
+              <td>{fmt(row.balance_cost)}</td>
+              <td>{qty ? fmt(parseNum(row.balance_cost) / qty) : '0.00'}</td>
+              <td><div style={{display:'flex',gap:6,alignItems:'center',justifyContent:'flex-end'}}><input style={{width:85}} type="number" step="0.001" value={minStockDraft[key] ?? (setting?.min_qty ?? '')} onChange={e => setMinStockDraft(prev => ({ ...prev, [key]: e.target.value }))}/><button className="inventory-v420-icon-btn" type="button" disabled={busy} onClick={() => saveMinStock(row)}>✓</button></div></td>
+              <td className={qty < 0 ? 'bad' : low ? 'warn' : 'good'}>{qty < 0 ? 'Отрицательный' : low ? 'Ниже минимума' : 'Норма'}</td>
+            </tr>
+          })}
+          {!stockRows.length && <tr><td colSpan="7" className="inventory-v420-empty">Остатки по фильтру не найдены.</td></tr>}
+        </tbody>
+      </table></div>
+    </section>}
+
+    {activeTab === 'transfers' && <section className="inventory-v420-card">
+      <div className="inventory-v420-card-head"><div><h3>Перемещение товаров и полуфабрикатов</h3><p>Один документ создаёт исходящее движение у источника и входящее движение у получателя.</p></div></div>
+      <div className="inventory-v420-form-grid">
+        <label><span>Дата</span><input type="date" value={transferDraft.document_date} onChange={e => setTransferDraft({ ...transferDraft, document_date: e.target.value })}/></label>
+        <label><span>Склад-источник</span><select value={transferDraft.source_location_id} onChange={e => setTransferDraft({ ...transferDraft, source_location_id: e.target.value, items: [] })}><option value="">Выберите</option>{locations.map(row => <option key={row.id} value={row.id}>{row.name}</option>)}</select></label>
+        <label><span>Склад / филиал-получатель</span><select value={transferDraft.target_location_id} onChange={e => setTransferDraft({ ...transferDraft, target_location_id: e.target.value })}><option value="">Выберите</option>{locations.map(row => <option key={row.id} value={row.id}>{row.name}</option>)}</select></label>
+        <label><span>Комментарий</span><input value={transferDraft.comment} onChange={e => setTransferDraft({ ...transferDraft, comment: e.target.value })} placeholder="Причина перемещения"/></label>
+      </div>
+      <div className="inventory-v420-line-builder">
+        <label><span>Товар / полуфабрикат</span><select value={transferLine.catalog_key} onChange={e => {
+          const item = findCatalogItem(e.target.value)
+          setTransferLine({ ...transferLine, catalog_key: e.target.value, unit_cost: item ? String(unitCostFor(transferDraft.source_location_id, item) || '') : '' })
+        }}><option value="">Выберите позицию</option>{catalog.filter(item => {
+          if (!transferDraft.source_location_id) return false
+          return parseNum(balanceFor(transferDraft.source_location_id, item.item_name, item.unit)?.balance_qty) > 0
+        }).map(item => <option key={item.key} value={item.key}>{item.item_name} · {fmt(balanceFor(transferDraft.source_location_id, item.item_name, item.unit)?.balance_qty)} {item.unit}</option>)}</select></label>
+        <label><span>Количество</span><input type="number" step="0.001" value={transferLine.quantity} onChange={e => setTransferLine({ ...transferLine, quantity: e.target.value })}/></label>
+        <label><span>Цена / ед.</span><input type="number" step="0.0001" value={transferLine.unit_cost} onChange={e => setTransferLine({ ...transferLine, unit_cost: e.target.value })}/></label>
+        <label><span>Комментарий строки</span><input value={transferLine.comment} onChange={e => setTransferLine({ ...transferLine, comment: e.target.value })}/></label>
+        <button className="small primary" type="button" onClick={() => addDraftLine('transfer')}>Добавить</button>
+      </div>
+      <div style={{marginTop:13}}>{renderDraftItems(transferDraft.items, 'transfer')}</div>
+      <div className="inventory-v420-actions"><button className="ghost small" type="button" disabled={busy || !workspaceReady} onClick={() => submitTransfer(false)}>Сохранить черновик</button><button className="primary small" type="button" disabled={busy || !workspaceReady} onClick={() => submitTransfer(true)}>Провести перемещение</button></div>
+    </section>}
+
+    {activeTab === 'writeoffs' && <section className="inventory-v420-card">
+      <div className="inventory-v420-card-head"><div><h3>Списание</h3><p>Фиксируйте порчу, срок годности, производственный брак, недостачу, служебное питание и другие причины.</p></div></div>
+      <div className="inventory-v420-form-grid">
+        <label><span>Дата</span><input type="date" value={writeoffDraft.document_date} onChange={e => setWriteoffDraft({ ...writeoffDraft, document_date: e.target.value })}/></label>
+        <label><span>Склад / филиал</span><select value={writeoffDraft.source_location_id} onChange={e => setWriteoffDraft({ ...writeoffDraft, source_location_id: e.target.value, items: [] })}><option value="">Выберите</option>{locations.map(row => <option key={row.id} value={row.id}>{row.name}</option>)}</select></label>
+        <label><span>Причина</span><select value={writeoffDraft.reason} onChange={e => setWriteoffDraft({ ...writeoffDraft, reason: e.target.value })}><option>Порча</option><option>Истечение срока</option><option>Производственный брак</option><option>Недостача</option><option>Служебное питание</option><option>Ошибка учёта</option><option>Другое</option></select></label>
+        <label><span>Комментарий</span><input value={writeoffDraft.comment} onChange={e => setWriteoffDraft({ ...writeoffDraft, comment: e.target.value })}/></label>
+      </div>
+      <div className="inventory-v420-line-builder">
+        <label><span>Товар / полуфабрикат</span><select value={writeoffLine.catalog_key} onChange={e => {
+          const item = findCatalogItem(e.target.value)
+          setWriteoffLine({ ...writeoffLine, catalog_key: e.target.value, unit_cost: item ? String(unitCostFor(writeoffDraft.source_location_id, item) || '') : '' })
+        }}><option value="">Выберите позицию</option>{catalog.filter(item => {
+          if (!writeoffDraft.source_location_id) return false
+          return parseNum(balanceFor(writeoffDraft.source_location_id, item.item_name, item.unit)?.balance_qty) > 0
+        }).map(item => <option key={item.key} value={item.key}>{item.item_name} · {fmt(balanceFor(writeoffDraft.source_location_id, item.item_name, item.unit)?.balance_qty)} {item.unit}</option>)}</select></label>
+        <label><span>Количество</span><input type="number" step="0.001" value={writeoffLine.quantity} onChange={e => setWriteoffLine({ ...writeoffLine, quantity: e.target.value })}/></label>
+        <label><span>Цена / ед.</span><input type="number" step="0.0001" value={writeoffLine.unit_cost} onChange={e => setWriteoffLine({ ...writeoffLine, unit_cost: e.target.value })}/></label>
+        <label><span>Комментарий строки</span><input value={writeoffLine.comment} onChange={e => setWriteoffLine({ ...writeoffLine, comment: e.target.value })}/></label>
+        <button className="small primary" type="button" onClick={() => addDraftLine('writeoff')}>Добавить</button>
+      </div>
+      <div style={{marginTop:13}}>{renderDraftItems(writeoffDraft.items, 'writeoff')}</div>
+      <div className="inventory-v420-actions"><button className="ghost small" type="button" disabled={busy || !workspaceReady} onClick={() => submitWriteoff(false)}>Сохранить черновик</button><button className="primary small" type="button" disabled={busy || !workspaceReady} onClick={() => submitWriteoff(true)}>Провести списание</button></div>
+    </section>}
+
+    {activeTab === 'production' && <section className="inventory-v420-card">
+      <div className="inventory-v420-card-head"><div><h3>Производство полуфабрикатов</h3><p>Состав берётся из утверждённых полуфабрикатов. Ингредиенты списываются, готовый полуфабрикат приходуется по рассчитанной себестоимости.</p></div></div>
+      <div className="inventory-v420-form-grid">
+        <label><span>Дата</span><input type="date" value={productionForm.document_date} onChange={e => setProductionForm({ ...productionForm, document_date: e.target.value })}/></label>
+        <label><span>Склад производства</span><select value={productionForm.location_id} onChange={e => setProductionForm({ ...productionForm, location_id: e.target.value })}><option value="">Выберите</option>{locations.map(row => <option key={row.id} value={row.id}>{row.name}</option>)}</select></label>
+        <label><span>Полуфабрикат</span><select value={productionForm.semi_id} onChange={e => {
+          const semi = semiById[String(e.target.value)]
+          setProductionForm({ ...productionForm, semi_id: e.target.value, output_qty: semi ? String(semi.output_qty || '') : '' })
+        }}><option value="">Выберите</option>{semis.map(row => <option key={row.id} value={row.id}>{row.name} · выход {fmt(row.output_qty)} {row.output_unit}</option>)}</select></label>
+        <label><span>Фактический выход</span><input type="number" step="0.001" value={productionForm.output_qty} onChange={e => setProductionForm({ ...productionForm, output_qty: e.target.value })}/></label>
+        <label className="span-all"><span>Комментарий</span><input value={productionForm.comment} onChange={e => setProductionForm({ ...productionForm, comment: e.target.value })}/></label>
+      </div>
+      <div className="inventory-v420-production-summary">
+        <div><span>Ингредиентов</span><b>{productionPreview.inputs.length}</b></div>
+        <div><span>Себестоимость выпуска</span><b>{fmt(productionPreview.totalCost)} AZN</b></div>
+        <div><span>Цена единицы выхода</span><b>{productionPreview.output ? fmt(productionPreview.output.unit_cost) : '0.00'} AZN</b></div>
+        <div><span>Выход</span><b>{productionPreview.output ? `${fmt(productionPreview.output.quantity)} ${productionPreview.output.unit}` : '—'}</b></div>
+      </div>
+      <div className="inventory-v420-table-wrap"><table className="inventory-v420-table"><thead><tr><th>Компонент</th><th>Количество</th><th>Остаток</th><th>Цена / ед.</th><th>Сумма</th><th>Готовность</th></tr></thead><tbody>
+        {productionPreview.inputs.map((row, index) => {
+          const balance = balanceFor(productionForm.location_id, row.item_name, row.unit)
+          const enough = parseNum(balance?.balance_qty) >= parseNum(row.quantity)
+          return <tr key={`${row.item_name}-${index}`}><td><b>{row.item_name}</b></td><td>{fmt(row.quantity)} {row.unit}</td><td>{fmt(balance?.balance_qty)} {row.unit}</td><td>{fmt(row.unit_cost)}</td><td>{fmt(row.total_cost)}</td><td className={enough ? 'good' : 'bad'}>{enough ? 'Достаточно' : 'Недостаточно'}</td></tr>
+        })}
+        {!productionPreview.inputs.length && <tr><td colSpan="6" className="inventory-v420-empty">Выберите полуфабрикат и склад.</td></tr>}
+      </tbody></table></div>
+      <div className="inventory-v420-actions"><button className="ghost small" type="button" disabled={busy || !workspaceReady} onClick={() => submitProduction(false)}>Сохранить черновик</button><button className="primary small" type="button" disabled={busy || !workspaceReady} onClick={() => submitProduction(true)}>Провести производство</button></div>
+    </section>}
+
+    {activeTab === 'stocktake' && <section className="inventory-v420-card">
+      <div className="inventory-v420-card-head"><div><h3>Инвентаризация</h3><p>Загрузите расчётные остатки, внесите фактическое количество и проведите разницы как складские корректировки.</p></div></div>
+      <div className="inventory-v420-form-grid">
+        <label><span>Дата</span><input type="date" value={stocktakeForm.document_date} onChange={e => setStocktakeForm({ ...stocktakeForm, document_date: e.target.value })}/></label>
+        <label><span>Склад / филиал</span><select value={stocktakeForm.location_id} onChange={e => setStocktakeForm({ ...stocktakeForm, location_id: e.target.value, rows: [] })}><option value="">Выберите</option>{locations.map(row => <option key={row.id} value={row.id}>{row.name}</option>)}</select></label>
+        <label className="span-2"><span>Комментарий</span><input value={stocktakeForm.comment} onChange={e => setStocktakeForm({ ...stocktakeForm, comment: e.target.value })}/></label>
+      </div>
+      <div className="inventory-v420-actions"><button className="ghost small" type="button" onClick={loadStocktakeRows}>Загрузить расчётные остатки</button></div>
+      <div className="inventory-v420-stocktake-summary"><span>Позиций: {stocktakeForm.rows.length}</span><span>Расхождений: {stocktakeForm.rows.filter(row => parseNum(row.difference_qty) !== 0).length}</span><span>Сумма расхождений: {fmt(stocktakeDifferenceCost)} AZN</span></div>
+      <div className="inventory-v420-table-wrap"><table className="inventory-v420-table"><thead><tr><th>Товар</th><th>Ед.</th><th>Расчётный остаток</th><th>Фактический остаток</th><th>Разница</th><th>Сумма разницы</th></tr></thead><tbody>
+        {stocktakeForm.rows.map((row, index) => <tr key={`${row.item_name}-${row.unit}-${index}`}><td><b>{row.item_name}</b></td><td>{row.unit}</td><td>{fmt(row.expected_qty)}</td><td><input style={{width:110}} type="number" step="0.001" value={row.actual_qty} onChange={e => updateStocktakeActual(index, e.target.value)}/></td><td className={parseNum(row.difference_qty) < 0 ? 'bad' : parseNum(row.difference_qty) > 0 ? 'good' : ''}><b>{parseNum(row.difference_qty) > 0 ? '+' : ''}{fmt(row.difference_qty)}</b></td><td>{fmt(Math.abs(parseNum(row.difference_qty)) * parseNum(row.unit_cost))}</td></tr>)}
+        {!stocktakeForm.rows.length && <tr><td colSpan="6" className="inventory-v420-empty">Выберите склад и загрузите остатки.</td></tr>}
+      </tbody></table></div>
+      <div className="inventory-v420-actions"><button className="ghost small" type="button" disabled={busy || !workspaceReady} onClick={() => submitStocktake(false)}>Сохранить черновик</button><button className="primary small" type="button" disabled={busy || !workspaceReady} onClick={() => submitStocktake(true)}>Провести инвентаризацию</button></div>
+    </section>}
+
+    {activeTab === 'journal' && <section className="inventory-v420-grid">
+      <div className="inventory-v420-card">
+        <div className="inventory-v420-card-head"><div><h3>Документы склада</h3><p>История перемещений, списаний, производства и инвентаризаций.</p></div><select value={documentStatusFilter} onChange={e => setDocumentStatusFilter(e.target.value)}><option value="all">Все статусы</option><option value="draft">Черновики</option><option value="posted">Проведённые</option><option value="cancelled">Отменённые</option></select></div>
+        <div className="inventory-v420-doc-list">
+          {filteredDocuments.map(doc => <div className="inventory-v420-doc" key={doc.id}>
+            <div><strong>{doc.document_number} · {documentTypeLabel(doc.document_type)}</strong><span>{doc.document_date} · {doc.items?.length || 0} строк · {locationById[String(doc.source_location_id)]?.name || '—'}{doc.target_location_id ? ` → ${locationById[String(doc.target_location_id)]?.name || '—'}` : ''}<br/>{doc.reason || doc.comment || ''}</span></div>
+            <div className="inventory-v420-doc-actions"><span className={`inventory-v420-status ${doc.status}`}>{documentStatusLabel(doc.status)}</span>{doc.status === 'draft' && <button className="small primary" type="button" disabled={busy} onClick={() => postDocument(doc)}>Провести</button>}{['draft','posted'].includes(doc.status) && <button className="small ghost danger" type="button" disabled={busy} onClick={() => reverseDocument(doc)}>Отменить</button>}</div>
+          </div>)}
+          {!filteredDocuments.length && <div className="inventory-v420-empty">Документы не найдены.</div>}
         </div>
       </div>
-
-      {negativeRows > 0 && (
-        <div className="inventory-negative-alert">
-          <h3>Есть отрицательные остатки</h3>
-          <p>Найдены позиции с отрицательным остатком. Обычно это означает списание/расход без корректного прихода или неправильную локацию.</p>
-        </div>
-      )}
-
-      <div className="card span-2">
-        <div className="card-head"><div><h3>Остатки</h3><p className="hint">Расчёт по движениям склада. Отрицательные остатки требуют проверки.</p></div></div>
-        <div className="table-wrap">
-          <table className="inventory-stock-table">
-            <thead><tr><th>Товар</th><th>Локация</th><th>Ед.</th><th>Остаток</th><th>Сумма</th><th>Последнее движение</th></tr></thead>
-            <tbody>
-              {filteredBalances.map((r, idx) => {
-                const qty = parseNum(r.balance_qty)
-                return <tr key={`${r.location_id}-${r.supplier_product_id || r.product_id || r.item_name}-${idx}`} className={qty < 0 ? 'inventory-negative-row' : ''}>
-                  <td><b>{r.item_name || 'Без названия'}</b></td><td>{r.location_name || 'Без локации'}</td><td>{r.unit || 'unit'}</td>
-                  <td><strong className={qty < 0 ? 'bad' : qty > 0 ? 'good' : ''}>{fmt(qty)}</strong></td><td>{fmt(r.balance_cost)} AZN</td><td>{r.last_movement_date || '—'}</td>
-                </tr>
-              })}
-              {!filteredBalances.length && <tr><td colSpan="6" className="hint">Пока нет складских остатков по выбранному фильтру</td></tr>}
-            </tbody>
-          </table>
-        </div>
+      <div className="inventory-v420-card">
+        <div className="inventory-v420-card-head"><div><h3>Движения склада</h3><p>Фактические приходные и расходные движения, сформировавшие остатки.</p></div></div>
+        <div className="inventory-v420-filters"><label><span>Поиск</span><input value={movementSearch} onChange={e => setMovementSearch(e.target.value)} placeholder="Товар, склад, комментарий…"/></label><label><span>Тип</span><select value={movementTypeFilter} onChange={e => setMovementTypeFilter(e.target.value)}><option value="all">Все движения</option><option value="purchase">Приход</option><option value="transfer_in">Перемещение +</option><option value="transfer_out">Перемещение −</option><option value="write_off">Списание</option><option value="production_in">Производство +</option><option value="production_out">Производство −</option><option value="adjustment_in">Корректировка +</option><option value="adjustment_out">Корректировка −</option></select></label></div>
+        <div className="inventory-v420-table-wrap"><table className="inventory-v420-table"><thead><tr><th>Дата</th><th>Локация</th><th>Товар</th><th>Тип</th><th>Количество</th><th>Сумма</th></tr></thead><tbody>
+          {filteredMovements.slice(0,500).map(row => <tr key={row.id}><td>{row.movement_date}</td><td>{row.location_name || locationById[String(row.location_id)]?.name || '—'}</td><td><b>{row.item_name}</b><small>{row.comment || ''}</small></td><td>{movementTypeLabel(row.movement_type)}</td><td>{fmt(Math.abs(parseNum(row.quantity)))} {row.unit}</td><td>{fmt(Math.abs(parseNum(row.total_cost || parseNum(row.quantity) * parseNum(row.unit_cost))))}</td></tr>)}
+          {!filteredMovements.length && <tr><td colSpan="6" className="inventory-v420-empty">Движения не найдены.</td></tr>}
+        </tbody></table></div>
       </div>
+    </section>}
 
-      <div className="card span-2">
-        <div className="card-head"><div><h3>Журнал движений</h3><p className="hint">Последние 100 движений склада.</p></div></div>
-        <div className="table-wrap">
-          <table className="inventory-movements-table">
-            <thead><tr><th>Дата</th><th>Тип</th><th>Товар</th><th>Кол-во</th><th>Цена</th><th>Сумма</th><th>Комментарий</th></tr></thead>
-            <tbody>
-              {filteredMovements.map(m => <tr key={m.id}><td>{m.movement_date}</td><td><span className={`inventory-move-chip ${m.movement_type}`}>{m.movement_type}</span></td><td><b>{m.item_name || 'Без названия'}</b><br /><span className="hint">{m.unit || 'unit'}</span></td><td>{fmt(m.quantity)}</td><td>{fmt(m.unit_cost)}</td><td>{fmt(m.total_cost)} AZN</td><td>{m.comment || '—'}</td></tr>)}
-              {!filteredMovements.length && <tr><td colSpan="7" className="hint">Пока нет движений склада по выбранному фильтру</td></tr>}
-            </tbody>
-          </table>
-        </div>
+    {activeTab === 'system' && <section className="inventory-v420-card">
+      <div className="inventory-v420-card-head"><div><h3>Системная диагностика</h3><p>Технические проверки синхронизации поставщиков, базара, продаж и складских остатков вынесены из рабочего интерфейса.</p></div><button className="small ghost" type="button" onClick={loadSystemHealth} disabled={busy}>Проверить</button></div>
+      <div className="inventory-v420-system-grid">
+        <div className="inventory-v420-system-step"><span>Остатки</span><strong>{systemHealth?.dashboard?.balance_rows ?? balances.length}</strong></div>
+        <div className="inventory-v420-system-step"><span>Отрицательные</span><strong>{systemHealth?.dashboard?.negative_stock_rows ?? negativeBalances.length}</strong></div>
+        <div className="inventory-v420-system-step"><span>Поставщики → склад</span><strong>{systemHealth?.supplierSync?.trigger_status || '—'}</strong></div>
+        <div className="inventory-v420-system-step"><span>Базар → склад</span><strong>{systemHealth?.bazarSync?.trigger_status || '—'}</strong></div>
+        <div className="inventory-v420-system-step"><span>Продажи preview</span><strong>{systemHealth?.consumption?.preview_rows ?? '—'}</strong></div>
+        <div className="inventory-v420-system-step"><span>Draft списаний</span><strong>{systemHealth?.consumption?.draft_items ?? '—'}</strong></div>
+        <div className="inventory-v420-system-step"><span>Документный контур</span><strong>{workspaceReady ? 'Активен' : 'Нужен SQL v420'}</strong></div>
+        <div className="inventory-v420-system-step"><span>Auto write-off</span><strong>Выключен</strong></div>
       </div>
-    </div>
-  )
-}
-
-
-class RmsSectionErrorBoundary extends React.Component {
-  constructor(props) {
-    super(props)
-    this.state = { hasError: false, message: '' }
-  }
-  static getDerivedStateFromError(error) {
-    return { hasError: true, message: error?.message || 'Render error' }
-  }
-  componentDidCatch(error, info) {
-    console.error('RMS section render error', error, info)
-  }
-  componentDidUpdate(prevProps) {
-    if (prevProps.resetKey !== this.props.resetKey && this.state.hasError) {
-      this.setState({ hasError: false, message: '' })
-    }
-  }
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div className="card" style={{borderColor:'#fecdd3', background:'#fff1f2'}}>
-          <h3>Раздел временно не открылся</h3>
-          <p style={{color:'#9f1239'}}>Ошибка рендера: {this.state.message}</p>
-          <button className="ghost small" onClick={() => this.setState({ hasError:false, message:'' })}>Повторить</button>
-        </div>
-      )
-    }
-    return this.props.children
-  }
-}
-
-
-
-const RMS_AZ_EXTRA_TRANSLATIONS = {
-  'Права доступа': 'Giriş hüquqları',
-  'Добавление пользователей и права доступа.': 'İstifadəçilərin əlavə edilməsi və giriş hüquqları.',
-  'Добавить пользователя': 'İstifadəçi əlavə et',
-  'Пользователь': 'İstifadəçi',
-  'Пользователи': 'İstifadəçilər',
-  'Login': 'Login',
-  'Активен': 'Aktivdir',
-  'Активна': 'Aktivdir',
-  'Да': 'Bəli',
-  'Нет': 'Xeyr',
-  'Новый пароль': 'Yeni parol',
-  'Временный пароль': 'Müvəqqəti parol',
-  'Смена пароля': 'Parolun dəyişdirilməsi',
-  'Применить': 'Tətbiq et',
-  'Показать пароль': 'Parolu göstər',
-  'Скрыть пароль': 'Parolu gizlət',
-  'Пароль изменён и применён': 'Parol dəyişdirildi və tətbiq edildi',
-  'Сохранение...': 'Yadda saxlanılır...',
-  'Статус входа': 'Giriş statusu',
-  'Доступен': 'Giriş açıqdır',
-  'Заблокирован': 'Bloklanıb',
-  'Обнулить блокировку': 'Bloklamanı sıfırla',
-  'Зарплаты': 'Maaşlar',
-  'Скрыть зарплаты менеджеров': 'Menecerlərin maaşlarını gizlət',
-  'Доступ к разделам': 'Bölmələrə giriş',
-  'Нет доступа': 'Giriş yoxdur',
-  'Только просмотр': 'Yalnız baxış',
-  'Только чтение': 'Yalnız oxu',
-  'Редактор': 'Redaktor',
-  'Удалить': 'Sil',
-  'Действия': 'Əməliyyatlar',
-  'Разделы': 'Bölmələr',
-  'Раздел': 'Bölmə',
-  'Режим': 'Rejim',
-  'Администратор': 'Administrator',
-  'Сотрудник': 'Əməkdaş',
-  'Имя': 'Ad',
-  'Сохранить': 'Yadda saxla',
-  'Сохранено': 'Yadda saxlanıldı',
-  'Отмена': 'Ləğv et',
-  'Загрузка...': 'Yüklənir...',
-  'Загрузка…': 'Yüklənir…',
-  'Проверка…': 'Yoxlanılır…',
-  'Создание...': 'Yaradılır...',
-  'Выполняется операция...': 'Əməliyyat icra olunur...',
-  'Выполняется операция': 'Əməliyyat icra olunur',
-  'Подготовка данных…': 'Məlumatlar hazırlanır…',
-  'Операция завершена': 'Əməliyyat tamamlandı',
-  'Операция остановлена': 'Əməliyyat dayandırıldı',
-  'Не закрывайте страницу': 'Səhifəni bağlamayın',
-  'Готово': 'Hazırdır',
-  'Контроль': 'Nəzarət',
-  'Требуется проверка': 'Yoxlama tələb olunur',
-  'Пока нет данных': 'Hələ məlumat yoxdur',
-  'Нет данных': 'Məlumat yoxdur',
-  'Без названия': 'Adsız',
-  'Без категории': 'Kateqoriyasız',
-  'Другое': 'Digər',
-  'Выбрать': 'Seç',
-  'Выбрать дату': 'Tarixi seç',
-  'Дата': 'Tarix',
-  'Год': 'İl',
-  'Месяц': 'Ay',
-  'Филиал': 'Filial',
-  'Все филиалы': 'Bütün filiallar',
-  'Сумма': 'Məbləğ',
-  'Итого': 'Cəmi',
-  'Количество': 'Miqdar',
-  'Кол-во': 'Miqdar',
-  'Цена': 'Qiymət',
-  'Комментарий': 'Şərh',
-  'Наименование': 'Ad',
-  'Название': 'Ad',
-  'Категория': 'Kateqoriya',
-  'Группа': 'Qrup',
-  'Товар': 'Məhsul',
-  'Номенклатура': 'Nomenklatura',
-  'Блюдо': 'Yemək',
-  'Поставщики': 'Təchizatçılar',
-  'Долги и оплаты': 'Borclar və ödənişlər',
-  'Оплата': 'Ödəniş',
-  'Чек': 'Çek',
-  'Заказ': 'Sifariş',
-  'Заказ пуст': 'Sifariş boşdur',
-  'Наличными': 'Nağd',
-  'Банк': 'Bank',
-  'Выручка': 'Dövriyyə',
-  'Финансы': 'Maliyyə',
-  'Отчёты': 'Hesabatlar',
-  'Тех. карты': 'Tex. kartlar',
-  'Склад': 'Anbar',
-  'Посещаемость': 'Davamiyyət',
-  'Авансы': 'Avanslar',
-  'Настройки': 'Parametrlər',
-  'Безопасность и диагностика': 'Təhlükəsizlik və diaqnostika',
-  'Резервное копирование': 'Ehtiyat nüsxələmə',
-  'Пользователи, права доступа и режимы работы': 'İstifadəçilər, giriş hüquqları və iş rejimləri',
-  'Интерфейс': 'İnterfeys',
-  'Вид интерфейса': 'İnterfeys görünüşü',
-  'Язык интерфейса': 'İnterfeys dili',
-  'Классический': 'Klassik',
-  'Современный': 'Müasir',
-  'Статьи расходов': 'Xərc maddələri',
-  'Новая статья расходов': 'Yeni xərc maddəsi',
-  'Добавить статью': 'Maddə əlavə et',
-  'Филиал прибыльный': 'Filial gəlirlidir',
-  'Филиал в убытке': 'Filial zərərlə işləyir',
-  'Чистая прибыль': 'Xalis mənfəət',
-  'Расходы': 'Xərclər',
-  'Налог': 'Vergi',
-  'Налог %': 'Vergi %',
-  'План': 'Plan',
-  'Сравнение': 'Müqayisə',
-  'Маржинальность': 'Marjinallıq',
-  'Прогноз месяца': 'Ay üzrə proqnoz',
-  'Средняя выручка / день': 'Orta gündəlik dövriyyə',
-  'Общая выручка': 'Ümumi dövriyyə',
-  'Расходы по статьям': 'Xərc maddələri üzrə',
-  'Текущий факт': 'Cari fakt',
-  'План выручки': 'Dövriyyə planı',
-  'План прибыли': 'Mənfəət planı',
-  'Сводка выручки': 'Dövriyyə icmalı',
-  'Расходы за выбранную дату': 'Seçilmiş tarix üzrə xərclər',
-  'Выручка за выбранную дату': 'Seçilmiş tarix üzrə dövriyyə',
-  'Период и филиал': 'Dövr və filial',
-  'Скрыть детали': 'Detalları gizlət',
-  'Показать детали': 'Detalları göstər',
-  'МЕНЮ': 'MENYU',
-  'АНАЛИТИКА': 'ANALİTİKA',
-  'ИНСТРУМЕНТЫ': 'ALƏTLƏR',
-  'Dashboard': 'Dashboard',
-  'QR Menu': 'QR Menu',
-  'Loyalty': 'Loyalty',
-  'Бар': 'Bar',
-  'Кухня': 'Mətbəx',
-  'Менеджеры': 'Menecerlər',
-  'Повар': 'Aşpaz',
-  'Менеджер': 'Menecer',
-  'Стьюард': 'Stüard',
-  'С собой': 'Paketlə',
-  'Доставка': 'Çatdırılma',
-  'Ресторан': 'Restoran',
-  'Официант': 'Ofisiant',
-  'Стол': 'Masa',
-  'Возврат': 'Qaytarma',
-  'Тип оплаты': 'Ödəniş növü',
-  'Дата продажи': 'Satış tarixi',
-  'Дата/время': 'Tarix/vaxt',
-  'Количество продаж': 'Satış sayı',
-  'Цена без скидки': 'Endirimsiz qiymət',
-  'Скидка': 'Endirim',
-  'Профиль текущего пользователя': 'Cari istifadəçi profili',
-  'Создать admin-профиль': 'Admin profili yarat',
-  'Лого стартовой страницы': 'Başlanğıc səhifə loqosu',
-  'Предпросмотр': 'Ön baxış',
-  'Выбрать файл': 'Fayl seç',
-  'Сохранить лого': 'Loqonu yadda saxla',
-  'Удалить лого': 'Loqonu sil',
-  'Сохранить налоги': 'Vergiləri yadda saxla',
-  'Сохранить аренду': 'İcarəni yadda saxla',
-  'Арендная плата для прогноза': 'Proqnoz üçün icarə haqqı',
-  'Налогообложение по филиалам': 'Filiallar üzrə vergitutma',
-  'Наши VOEN / юрлица': 'VÖEN-lərimiz / hüquqi şəxslər',
-  'Активные': 'Aktiv',
-
-  'Техкарты, полуфабрикаты, себестоимость и контроль Food Cost по блюдам.': 'Texnoloji kartlar, yarımfabrikatlar, maya dəyəri və yeməklər üzrə Food Cost nəzarəti.',
-  'Все тех. карты': 'Bütün texnoloji kartlar',
-  'Текущие тех. карты': 'Cari texnoloji kartlar',
-  'Создать полуфабрикат': 'Yarımfabrikat yarat',
-  'Создать блюдо': 'Yemək yarat',
-  'ВСЕГО ТЕХ. КАРТ': 'CƏMİ TEXNOLOJİ KART',
-  'АКТИВНЫЕ': 'AKTİV',
-  'позиции меню': 'menyu mövqeyi',
-  'КАТЕГОРИИ': 'KATEQORİYALAR',
-  'группы блюд': 'yemək qrupu',
-  'СР. СЕБЕСТОИМОСТЬ': 'ORTA MAYA DƏYƏRİ',
-  'по блюдам с ценой': 'qiyməti olan yeməklər üzrə',
-  'МАРЖА': 'MARJA',
-  'средняя маржа': 'orta marja',
-  'Актив': 'Aktiv',
-  'Неактивные': 'Qeyri-aktiv',
-  'Импорт': 'İdxal',
-  'Новая тех. карта': 'Yeni texnoloji kart',
-  'Все категории': 'Bütün kateqoriyalar',
-  'Поиск': 'Axtarış',
-  'Поиск по названию или категории...': 'Ad və ya kateqoriya üzrə axtarış...',
-  'Блюдо / Напиток': 'Yemək / İçki',
-  'Себестоимость': 'Maya dəyəri',
-  'Цена продажи': 'Satış qiyməti',
-  'Маржа': 'Marja',
-  'Нет состава': 'Tərkib yoxdur',
-  'Нет цены': 'Qiymət yoxdur',
-  'Нет себест.': 'Maya dəyəri yoxdur',
-  'FC выше нормы': 'FC normadan yüksəkdir',
-  'ОК': 'Normal',
-  'Просмотр': 'Baxış',
-  'Изменить': 'Dəyişdir',
-  'Просмотр тех. карты выбранного блюда.': 'Seçilmiş yeməyin texnoloji kartına baxış.',
-  'Создать / редактировать блюдо': 'Yemək yarat / redaktə et',
-  'Создайте позицию меню или выберите существующую, затем добавьте компоненты тех. карты.': 'Menyu mövqeyi yaradın və ya mövcud mövqeyi seçin, sonra texnoloji kartın komponentlərini əlavə edin.',
-  'Целевой Food Cost %': 'Hədəf Food Cost %',
-  'Фото / URL изображения': 'Şəkil / şəkil URL-i',
-  'Фото блюда': 'Yeməyin şəkli',
-  'Удалить фото': 'Şəkli sil',
-  'Сохранить изменения': 'Dəyişiklikləri yadda saxla',
-  'Удалить тех. карту': 'Texnoloji kartı sil',
-  'Очистить': 'Təmizlə',
-  'Выбрать блюдо для тех. карты': 'Texnoloji kart üçün yemək seç',
-  'Название или категория': 'Ad və ya kateqoriya',
-  'Добавить компонент в тех. карту': 'Texnoloji karta komponent əlavə et',
-  'Компонентом может быть полуфабрикат, товар из закупок или ручной ингредиент.': 'Komponent yarımfabrikat, satınalma məhsulu və ya əl ilə əlavə edilmiş inqrediyent ola bilər.',
-  'Полуфабрикат': 'Yarımfabrikat',
-  'Потери %': 'İtki %',
-  '+ Добавить компонент': '+ Komponent əlavə et',
-  'Состав тех. карты': 'Texnoloji kartın tərkibi',
-  'Вручную': 'Əl ilə',
-  'Ед.': 'Ölçü vahidi',
-  'Валовая прибыль': 'Ümumi mənfəət',
-  'Январь': 'Yanvar',
-  'Февраль': 'Fevral',
-  'Март': 'Mart',
-  'Апрель': 'Aprel',
-  'Май': 'May',
-  'Июнь': 'İyun',
-  'Июль': 'İyul',
-  'Август': 'Avqust',
-  'Сентябрь': 'Sentyabr',
-  'Поставщики, физические поступления, e-qaimə, сверка сумм, оплаты, сроки и лимиты.': 'Təchizatçılar, faktiki daxilolmalar, e-qaimə, məbləğlərin üzləşdirilməsi, ödənişlər, müddətlər və limitlər.',
-  'Экспорт': 'İxrac',
-  'Печать': 'Çap',
-  'Приход товара': 'Mal qəbulu',
-  'физическая накладная': 'fiziki qaimə',
-  'добавляется внутри накладной': 'qaimənin daxilində əlavə olunur',
-  'Сверка': 'Üzləşdirmə',
-  'сумма прихода vs e-qaimə': 'daxilolma məbləği və e-qaimə müqayisəsi',
-  'по e-qaimə / фактуре': 'e-qaimə / faktura üzrə',
-  'Долги': 'Borclar',
-  'сроки и лимиты': 'müddətlər və limitlər',
-  'Активные поставщики': 'Aktiv təchizatçılar',
-  'доступны для выбранных VOEN': 'seçilmiş VÖEN-lər üçün əlçatandır',
-  'Поступления': 'Daxilolmalar',
-  'по видимым накладным': 'görünən qaimələr üzrə',
-  'Оплаты': 'Ödənişlər',
-  'банковские / кассовые платежи': 'bank / kassa ödənişləri',
-  'Долг поставщикам': 'Təchizatçılara borc',
-  'текущий открытый баланс': 'cari açıq balans',
-  'Ожидают e-qaimə': 'e-qaimə gözləyir',
-  'нужна электронная накладная': 'elektron qaimə tələb olunur',
-  'Расхождения': 'Uyğunsuzluqlar',
-  'требуют сверки суммы': 'məbləğin üzləşdirilməsi tələb olunur',
-  'Новый приход товара': 'Yeni mal qəbulu',
-  'Физическое поступление товара. e-qaimə можно добавить сразу или позже.': 'Malın faktiki daxilolması. e-qaimə dərhal və ya sonradan əlavə edilə bilər.',
-  'Приход': 'Daxilolma',
-  'Наш VOEN': 'Bizim VÖEN',
-  'Дата поступления': 'Daxilolma tarixi',
-  '№ приходной накладной': 'Daxilolma qaiməsinin №-si',
-  'Бумажная / физическая накладная': 'Kağız / fiziki qaimə',
-  'Сумма поставки': 'Təchizat məbləği',
-  '№ e-qaimə': 'e-qaimə №-si',
-  'Можно добавить позже': 'Sonradan əlavə etmək olar',
-  'Дата e-qaimə': 'e-qaimə tarixi',
-  'Сумма e-qaimə': 'e-qaimə məbləği',
-  'Ввести только общую сумму поставки без товаров': 'Məhsulları daxil etmədən yalnız ümumi təchizat məbləğini yaz',
-  'Если включена галочка, строки товаров временно не используются. Если галочка выключена, сумма считается по товарам.': 'İşarə aktivdirsə, məhsul sətirləri müvəqqəti istifadə olunmur. İşarə söndürülübsə, məbləğ məhsullar üzrə hesablanır.',
-  'Приходная накладная': 'Daxilolma qaiməsi',
-  'ожидается': 'gözlənilir',
-  'Расхождение': 'Uyğunsuzluq',
-  'Ожидает e-qaimə': 'e-qaimə gözləyir',
-  'Товары в поступлении': 'Daxilolmadakı məhsullar',
-  'Если товара нет, сначала добавьте его ниже в блоке “Товары”.': 'Məhsul yoxdursa, əvvəlcə onu aşağıdakı “Məhsullar” bölməsində əlavə edin.',
-  '+ Строка товара': '+ Məhsulu əlavə et',
-  'Выберите товар': 'Məhsul seçin',
-  'килограмм (kg)': 'kiloqram (kg)',
-  'грамм (g)': 'qram (g)',
-  '+ Сохранить поступление': '+ Daxilolmanı yadda saxla',
-  'Оплата поставщику': 'Təchizatçıya ödəniş',
-  'Оплата привязывается к e-qaimə / фактуре и влияет на баланс поставщика.': 'Ödəniş e-qaimə / fakturaya bağlanır və təchizatçının balansına təsir edir.',
-  'Дата оплаты': 'Ödəniş tarixi',
-  'Сумма оплаты': 'Ödəniş məbləği',
-  'Отметки / номера счёт-фактур': 'Qeydlər / faktura nömrələri',
-  '+ Выбрать e-qaimə': '+ e-qaimə seç / geniş pəncərəni aç',
-  '+ Сохранить оплату': '+ Ödənişi yadda saxla',
-  'Контрагенты': 'Kontragentlər',
-  'Условия оплаты и лимиты используются в Dashboard для проблемных долгов.': 'Ödəniş şərtləri və limitlər Dashboard-da problemli borclar üçün istifadə olunur.',
-  'Имя контрагента': 'Kontragentin adı',
-  'VOEN поставщика': 'Təchizatçının VÖEN-i',
-  'Контакт': 'Əlaqələndirici şəxs',
-  'Телефон': 'Telefon',
-  'Информация': 'Məlumat',
-  'Срок оплаты, дней': 'Ödəniş müddəti, gün',
-  'Кредитный лимит': 'Kredit limiti',
-  'Долг за предыдущий период': 'Əvvəlki dövr üzrə borc',
-  'Наш VOEN для стартового долга': 'Başlanğıc borc üçün bizim VÖEN',
-  'Дата стартового долга': 'Başlanğıc borcun tarixi',
-  'Комментарий к стартовому долгу': 'Başlanğıc borca şərh',
-  'Например: остаток на 01.05': 'Məsələn: 01.05 tarixinə qalıq',
-  '+ Добавить поставщика': '+ Təchizatçı əlavə et',
-  'Товары': 'Məhsullar',
-  'Товар создаётся один раз и потом выбирается в поступлении и в техкарте.': 'Məhsul bir dəfə yaradılır, sonra daxilolmada və texnoloji kartda seçilir.',
-  'Тип': 'Növ',
-  'Базовая ед. для техкарты': 'Texnoloji kart üçün baza vahidi',
-  '+ Добавить товар': '+ Məhsul əlavə et',
-  'Журнал поступлений и сверки': 'Daxilolmalar və üzləşdirmə jurnalı',
-  'Физические накладные, e-qaimə, статусы сверки, расхождения и просмотр деталей.': 'Fiziki qaimələr, e-qaimə, üzləşdirmə statusları, uyğunsuzluqlar və detallara baxış.',
-  'Показать': 'Göstər',
-  'Период': 'Dövr',
-  'Сегодня': 'Bu gün',
-  '7 дней': '7 gün',
-  'Все': 'Hamısı',
-  'Все даты': 'Bütün tarixlər',
-  'Все поставщики': 'Bütün təchizatçılar',
-  'Наш VOEN / VOEN': 'Bizim VÖEN / VÖEN',
-  'Все юрлица': 'Bütün hüquqi şəxslər',
-  'Поиск e-qaimə': 'e-qaimə axtarışı',
-  'Поиск накладной': 'Qaimə axtarışı',
-  '№ прихода': 'Daxilolma №-si',
-  'Сбросить': 'Sıfırla',
-  'Не оплачено': 'Ödənilməyib',
-  'Создать полуфабрикат / заготовку': 'Yarımfabrikat / hazırlıq yarat',
-  '+ Создать': '+ Yarat',
-  'Шаблон Брауни': 'Brauni şablonu',
-  'Полуфабрикат для расчёта': 'Hesablama üçün yarımfabrikat',
-  'Поиск полуфабриката': 'Yarımfabrikat axtarışı',
-  'Например: брауни, крем, соус': 'Məsələn: brauni, krem, sous',
-  'Выход': 'Çıxış',
-  'Себестоимость партии': 'Partiyanın maya dəyəri',
-  'Себестоимость 1 g': '1 g maya dəyəri',
-  'Удалить полуфабрикат': 'Yarımfabrikatı sil',
-  'Состав выбранного полуфабриката': 'Seçilmiş yarımfabrikatın tərkibi',
-  'Кнопка “Изменить” открывает редактирование только выбранного ингредиента прямо в этой же строке.': '“Dəyişdir” düyməsi yalnız seçilmiş inqrediyentin redaktəsini elə həmin sətirdə açır.',
-  'Добавить ингредиент в состав': 'Tərkibə inqrediyent əlavə et',
-  'Сначала выбери или создай полуфабрикат. После создания новый полуфабрикат выбирается автоматически, и сюда можно сразу добавлять ингредиенты.': 'Əvvəlcə yarımfabrikatı seçin və ya yaradın. Yaradıldıqdan sonra yeni yarımfabrikat avtomatik seçilir və buraya dərhal inqrediyent əlavə etmək olar.',
-  'Тип компонента': 'Komponent növü',
-  'Ингредиент из закупок': 'Satınalmalardan inqrediyent',
-  'Ингредиент': 'İnqrediyent',
-  'Выбрать ингредиент': 'İnqrediyent seç',
-  '+ Добавить ингредиент': '+ İnqrediyent əlavə et',
-  'Редактирование тех. карты': 'Texnoloji kartın redaktəsi',
-  'Один редактор для названия, цены, фотографии и состава. Все изменения сохраняются в выбранный menu_item_id.': 'Ad, qiymət, şəkil və tərkib üçün vahid redaktor. Bütün dəyişikliklər seçilmiş menu_item_id üzrə yadda saxlanılır.',
-  'Поиск тех. карты': 'Texnoloji kart axtarışı',
-  'Выбранное блюдо': 'Seçilmiş yemək',
-  'Название блюда': 'Yeməyin adı',
-  'Одно компактное превью. JPG, PNG или WEBP до 6 MB.': 'Bir kompakt ön baxış. JPG, PNG və ya WEBP, maksimum 6 MB.',
-  'Загрузить фото': 'Şəkil yüklə',
-  'URL изображения': 'Şəkil URL-i',
-  'Добавить компонент': 'Komponent əlavə et',
-  'Полуфабрикат, ингредиент из закупок или ручной компонент.': 'Yarımfabrikat, satınalmalardan inqrediyent və ya əl ilə əlavə olunan komponent.',
-  'Выберите или создайте блюдо.': 'Yeməyi seçin və ya yaradın.',
-  'Октябрь': 'Oktyabr',
-  'Ноябрь': 'Noyabr',
-  'Декабрь': 'Dekabr'
-  ,'Поставщики: долги и оплаты': 'Təchizatçılar: borclar və ödənişlər'
-  ,'Основной контроль: долг, просрочка, лимиты, журнал операций и акт сверки.': 'Əsas nəzarət: borc, gecikmə, limitlər, əməliyyat jurnalı və üzləşmə aktı.'
-  ,'Контроль поставщиков': 'Təchizatçılara nəzarət'
-  ,'Ключевые отклонения по поставщикам. Просмотр открываются через акт сверки.': 'Təchizatçılar üzrə əsas kənarlaşmalar. Baxış üzləşmə aktı vasitəsilə açılır.'
-  ,'Обновить': 'Yenilə'
-  ,'Поставщиков': 'Təchizatçı'
-  ,'с активным балансом': 'aktiv balansla'
-  ,'Общий долг': 'Ümumi borc'
-  ,'открытый баланс': 'açıq balans'
-  ,'Просрочено': 'Gecikmiş borc'
-  ,'Лимит': 'Limit'
-  ,'доступный лимит': 'mövcud limit'
-  ,'превышение лимита': 'limit aşımı'
-  ,'Поставщики и долги': 'Təchizatçılar və borclar'
-  ,'Балансы по вашим VOEN / юрлицам. Долги по VOEN. Транзакции и акт сверки открываются в отдельном окне.': 'Sizin VÖEN / hüquqi şəxslər üzrə balanslar. Borclar VÖEN üzrə göstərilir. Əməliyyatlar və üzləşmə aktı ayrıca pəncərədə açılır.'
-  ,'Долг': 'Borc'
-  ,'Переплата': 'Artıq ödəniş'
-  ,'Долга нет': 'Borc yoxdur'
-  ,'Поставщик': 'Təchizatçı'
-  ,'Условия': 'Şərtlər'
-  ,'Статус': 'Status'
-  ,'VOEN не указан': 'VÖEN göstərilməyib'
-  ,'лимит': 'limit'
-  ,'Транзакции': 'Əməliyyatlar'
-  ,'Акт': 'Akt'
-  ,'Итого по VOEN': 'VÖEN üzrə cəmi'
-  ,'Поступления + стартовый долг − оплаты': 'Daxilolmalar + başlanğıc borc − ödənişlər'
-  ,'Скрыть': 'Gizlət'
-  ,'Нет поставщиков по этому VOEN': 'Bu VÖEN üzrə təchizatçı yoxdur'
-  ,'Просрочка и лимиты': 'Gecikmələr və limitlər'
-  ,'Сумма просрочки, превышение лимита и конкретные фактуры.': 'Gecikmə məbləği, limit aşımı və konkret fakturalar.'
-  ,'Фильтр': 'Filtr'
-  ,'Показать все': 'Hamısını göstər'
-  ,'Без фактуры': 'Fakturasız'
-  ,'Стартовый долг': 'Başlanğıc borc'
-  ,'Рейтинг поставщиков': 'Təchizatçı reytinqi'
-  ,'Рейтинг риска по долгу, просрочке, лимиту и открытым фактурам.': 'Borc, gecikmə, limit və açıq fakturalar üzrə risk reytinqi.'
-  ,'Critical': 'Kritik'
-  ,'Normal': 'Normal'
-  ,'Журнал долгов и оплат': 'Borclar və ödənişlər jurnalı'
-  ,'Стартовый долг, поступления и оплаты в одном журнале.': 'Başlanğıc borc, daxilolmalar və ödənişlər vahid jurnalda.'
-  ,'Дата периода': 'Dövrün tarixi'
-  ,'Операция': 'Əməliyyat'
-  ,'Все операции': 'Bütün əməliyyatlar'
-  ,'Итого приход / долг': 'Daxilolma / borc cəmi'
-  ,'Итого оплат': 'Ödənişlərin cəmi'
-  ,'Баланс': 'Balans'
-  ,'Оплата одной суммой по нескольким e-qaimə': 'Bir neçə e-qaimə üzrə vahid məbləğlə ödəniş'
-  ,'Поступление введено общей суммой без детализации товаров': 'Daxilolma məhsullar üzrə detallandırılmadan ümumi məbləğlə daxil edilib'
-  ,'Только admin': 'Yalnız admin'
-  ,'Поступления и оплаты показаны отдельно, чтобы не смешивать операции.': 'Əməliyyatların qarışmaması üçün daxilolmalar və ödənişlər ayrıca göstərilir.'
-  ,'Тип операций': 'Əməliyyat növü'
-  ,'Товары / цены': 'Məhsullar / qiymətlər'
-  ,'За день': 'Gün üzrə'
-  ,'За месяц': 'Ay üzrə'
-  ,'За год': 'İl üzrə'
-  ,'Весь период': 'Bütün dövr'
-  ,'Акт сверки': 'Üzləşmə aktı'
-  ,'Операции, оплаты и остаток по выбранному поставщику / VOEN.': 'Seçilmiş təchizatçı / VÖEN üzrə əməliyyatlar, ödənişlər və qalıq.'
-  ,'PDF / печать': 'PDF / çap'
-  ,'Поиск поставщика': 'Təchizatçı axtarışı'
-  ,'Название или VOEN': 'Ad və ya VÖEN'
-  ,'Все найденные / все поставщики': 'Tapılanların hamısı / bütün təchizatçılar'
-  ,'Наш VOEN / физ. лицо': 'Bizim VÖEN / fiziki şəxs'
-  ,'Все VOEN': 'Bütün VÖEN-lər'
-  ,'Поиск E-qaimə / фактуры': 'E-qaimə / faktura axtarışı'
-  ,'Номер фактуры': 'Faktura nömrəsi'
-  ,'Период с': 'Dövrün başlanğıcı'
-  ,'Период по': 'Dövrün sonu'
-  ,'Название документа': 'Sənədin adı'
-  ,'Акт сверки взаиморасчётов': 'Qarşılıqlı hesablaşmaların üzləşmə aktı'
-  ,'Приход / долг': 'Daxilolma / borc'
-  ,'Остаток': 'Qalıq'
-  ,'Операции не найдены.': 'Əməliyyat tapılmadı.'
-  ,'Закрыть': 'Bağla'
-  ,'Редактировать': 'Redaktə et'
-
-  ,'Текущий месяц': 'Cari ay'
-  ,'Накладная без номера': 'Nömrəsiz qaimə'
-  ,'Создано': 'Yaradılıb'
-  ,'Изменено': 'Dəyişdirilib'
-  ,'Сумма накладной': 'Qaimənin məbləği'
-  ,'Физический приход': 'Fiziki daxilolma'
-  ,'Статус сверки': 'Üzləşdirmə statusu'
-  ,'Добавить e-qaimə к этому приходу': 'Bu daxilolmaya e-qaimə əlavə et'
-  ,'Добавить ещё одну e-qaimə к этому приходу': 'Bu daxilolmaya daha bir e-qaimə əlavə et'
-  ,'Можно привязать несколько электронных накладных к одной физической поставке. Суммы e-qaimə будут суммироваться для сверки.': 'Bir fiziki təchizata bir neçə elektron qaimə bağlamaq olar. Üzləşdirmə üçün e-qaimə məbləğləri cəmlənəcək.'
-  ,'Срок оплаты рассчитывается автоматически по настройкам поставщика.': 'Ödəniş müddəti təchizatçı parametrlərinə əsasən avtomatik hesablanır.'
-  ,'Уже привязано': 'Artıq bağlanıb'
-  ,'После добавления': 'Əlavədən sonra'
-  ,'Сверено': 'Üzləşdirilib'
-  ,'+ Добавить e-qaimə к поступлению': '+ Daxilolmaya e-qaimə əlavə et'
-  ,'Товары в накладной': 'Qaimədəki məhsullar'
-  ,'Можно заменить ручную сумму детализацией по товарам. После сохранения сумма накладной рассчитывается по строкам.': 'Əl ilə daxil edilmiş məbləği məhsullar üzrə detallandırma ilə əvəz etmək olar. Yadda saxlandıqdan sonra qaimənin məbləği sətirlər üzrə hesablanır.'
-  ,'Рассчитается автоматически': 'Avtomatik hesablanacaq'
-  ,'Новая сумма накладной': 'Qaimənin yeni məbləği'
-  ,'Сохранить товары и пересчитать': 'Məhsulları yadda saxla və yenidən hesabla'
-  ,'найдено': 'tapıldı'
-  ,'Пред.': 'Əvvəlki'
-  ,'След.': 'Növbəti'
-  ,'+ Добавить товары в накладную': '+ Qaiməyə məhsullar əlavə et'
-  ,'Редактировать товары': 'Məhsulları redaktə et'
-  ,'Товары не добавлены. Накладная пока рассчитана общей суммой.': 'Məhsullar əlavə edilməyib. Qaimə hələlik ümumi məbləğlə hesablanıb.'
-  ,'← Пред.': '← Əvvəlki'
-  ,'След. →': 'Növbəti →'
-
-  ,'Поставщик / VOEN': 'Təchizatçı / VÖEN'
-  ,'Поставщик/VOEN': 'Təchizatçı / VÖEN'
-  ,'Фактура / отметки': 'Faktura / qeydlər'
-  ,'Фактура/отметки': 'Faktura / qeydlər'
-  ,'фактура / отметки': 'Faktura / qeydlər'
-  ,'фактура/отметки': 'Faktura / qeydlər'
+    </section>}
+  </div>
 }
 
 function rmsBuildAzInterfaceMap() {
@@ -47946,3 +47426,6 @@ if (typeof document !== 'undefined') {
 
 
 /* v419: product rows show purchase-amount growth/fall against the analogous previous-month period */
+
+
+/* v420: Inventory rebuilt as full operational warehouse with documents, transfers, write-offs, production and stocktakes */
