@@ -4368,6 +4368,472 @@ function InventoryModule({ t, branches = [] }) {
   </div>
 }
 
+const RMS_AZ_EXTRA_TRANSLATIONS = {
+  'Права доступа': 'Giriş hüquqları',
+  'Добавление пользователей и права доступа.': 'İstifadəçilərin əlavə edilməsi və giriş hüquqları.',
+  'Добавить пользователя': 'İstifadəçi əlavə et',
+  'Пользователь': 'İstifadəçi',
+  'Пользователи': 'İstifadəçilər',
+  'Login': 'Login',
+  'Активен': 'Aktivdir',
+  'Активна': 'Aktivdir',
+  'Да': 'Bəli',
+  'Нет': 'Xeyr',
+  'Новый пароль': 'Yeni parol',
+  'Временный пароль': 'Müvəqqəti parol',
+  'Смена пароля': 'Parolun dəyişdirilməsi',
+  'Применить': 'Tətbiq et',
+  'Показать пароль': 'Parolu göstər',
+  'Скрыть пароль': 'Parolu gizlət',
+  'Пароль изменён и применён': 'Parol dəyişdirildi və tətbiq edildi',
+  'Сохранение...': 'Yadda saxlanılır...',
+  'Статус входа': 'Giriş statusu',
+  'Доступен': 'Giriş açıqdır',
+  'Заблокирован': 'Bloklanıb',
+  'Обнулить блокировку': 'Bloklamanı sıfırla',
+  'Зарплаты': 'Maaşlar',
+  'Скрыть зарплаты менеджеров': 'Menecerlərin maaşlarını gizlət',
+  'Доступ к разделам': 'Bölmələrə giriş',
+  'Нет доступа': 'Giriş yoxdur',
+  'Только просмотр': 'Yalnız baxış',
+  'Только чтение': 'Yalnız oxu',
+  'Редактор': 'Redaktor',
+  'Удалить': 'Sil',
+  'Действия': 'Əməliyyatlar',
+  'Разделы': 'Bölmələr',
+  'Раздел': 'Bölmə',
+  'Режим': 'Rejim',
+  'Администратор': 'Administrator',
+  'Сотрудник': 'Əməkdaş',
+  'Имя': 'Ad',
+  'Сохранить': 'Yadda saxla',
+  'Сохранено': 'Yadda saxlanıldı',
+  'Отмена': 'Ləğv et',
+  'Загрузка...': 'Yüklənir...',
+  'Загрузка…': 'Yüklənir…',
+  'Проверка…': 'Yoxlanılır…',
+  'Создание...': 'Yaradılır...',
+  'Выполняется операция...': 'Əməliyyat icra olunur...',
+  'Выполняется операция': 'Əməliyyat icra olunur',
+  'Подготовка данных…': 'Məlumatlar hazırlanır…',
+  'Операция завершена': 'Əməliyyat tamamlandı',
+  'Операция остановлена': 'Əməliyyat dayandırıldı',
+  'Не закрывайте страницу': 'Səhifəni bağlamayın',
+  'Готово': 'Hazırdır',
+  'Контроль': 'Nəzarət',
+  'Требуется проверка': 'Yoxlama tələb olunur',
+  'Пока нет данных': 'Hələ məlumat yoxdur',
+  'Нет данных': 'Məlumat yoxdur',
+  'Без названия': 'Adsız',
+  'Без категории': 'Kateqoriyasız',
+  'Другое': 'Digər',
+  'Выбрать': 'Seç',
+  'Выбрать дату': 'Tarixi seç',
+  'Дата': 'Tarix',
+  'Год': 'İl',
+  'Месяц': 'Ay',
+  'Филиал': 'Filial',
+  'Все филиалы': 'Bütün filiallar',
+  'Сумма': 'Məbləğ',
+  'Итого': 'Cəmi',
+  'Количество': 'Miqdar',
+  'Кол-во': 'Miqdar',
+  'Цена': 'Qiymət',
+  'Комментарий': 'Şərh',
+  'Наименование': 'Ad',
+  'Название': 'Ad',
+  'Категория': 'Kateqoriya',
+  'Группа': 'Qrup',
+  'Товар': 'Məhsul',
+  'Номенклатура': 'Nomenklatura',
+  'Блюдо': 'Yemək',
+  'Поставщики': 'Təchizatçılar',
+  'Долги и оплаты': 'Borclar və ödənişlər',
+  'Оплата': 'Ödəniş',
+  'Чек': 'Çek',
+  'Заказ': 'Sifariş',
+  'Заказ пуст': 'Sifariş boşdur',
+  'Наличными': 'Nağd',
+  'Банк': 'Bank',
+  'Выручка': 'Dövriyyə',
+  'Финансы': 'Maliyyə',
+  'Отчёты': 'Hesabatlar',
+  'Тех. карты': 'Tex. kartlar',
+  'Склад': 'Anbar',
+  'Посещаемость': 'Davamiyyət',
+  'Авансы': 'Avanslar',
+  'Настройки': 'Parametrlər',
+  'Безопасность и диагностика': 'Təhlükəsizlik və diaqnostika',
+  'Резервное копирование': 'Ehtiyat nüsxələmə',
+  'Пользователи, права доступа и режимы работы': 'İstifadəçilər, giriş hüquqları və iş rejimləri',
+  'Интерфейс': 'İnterfeys',
+  'Вид интерфейса': 'İnterfeys görünüşü',
+  'Язык интерфейса': 'İnterfeys dili',
+  'Классический': 'Klassik',
+  'Современный': 'Müasir',
+  'Статьи расходов': 'Xərc maddələri',
+  'Новая статья расходов': 'Yeni xərc maddəsi',
+  'Добавить статью': 'Maddə əlavə et',
+  'Филиал прибыльный': 'Filial gəlirlidir',
+  'Филиал в убытке': 'Filial zərərlə işləyir',
+  'Чистая прибыль': 'Xalis mənfəət',
+  'Расходы': 'Xərclər',
+  'Налог': 'Vergi',
+  'Налог %': 'Vergi %',
+  'План': 'Plan',
+  'Сравнение': 'Müqayisə',
+  'Маржинальность': 'Marjinallıq',
+  'Прогноз месяца': 'Ay üzrə proqnoz',
+  'Средняя выручка / день': 'Orta gündəlik dövriyyə',
+  'Общая выручка': 'Ümumi dövriyyə',
+  'Расходы по статьям': 'Xərc maddələri üzrə',
+  'Текущий факт': 'Cari fakt',
+  'План выручки': 'Dövriyyə planı',
+  'План прибыли': 'Mənfəət planı',
+  'Сводка выручки': 'Dövriyyə icmalı',
+  'Расходы за выбранную дату': 'Seçilmiş tarix üzrə xərclər',
+  'Выручка за выбранную дату': 'Seçilmiş tarix üzrə dövriyyə',
+  'Период и филиал': 'Dövr və filial',
+  'Скрыть детали': 'Detalları gizlət',
+  'Показать детали': 'Detalları göstər',
+  'МЕНЮ': 'MENYU',
+  'АНАЛИТИКА': 'ANALİTİKA',
+  'ИНСТРУМЕНТЫ': 'ALƏTLƏR',
+  'Dashboard': 'Dashboard',
+  'QR Menu': 'QR Menu',
+  'Loyalty': 'Loyalty',
+  'Бар': 'Bar',
+  'Кухня': 'Mətbəx',
+  'Менеджеры': 'Menecerlər',
+  'Повар': 'Aşpaz',
+  'Менеджер': 'Menecer',
+  'Стьюард': 'Stüard',
+  'С собой': 'Paketlə',
+  'Доставка': 'Çatdırılma',
+  'Ресторан': 'Restoran',
+  'Официант': 'Ofisiant',
+  'Стол': 'Masa',
+  'Возврат': 'Qaytarma',
+  'Тип оплаты': 'Ödəniş növü',
+  'Дата продажи': 'Satış tarixi',
+  'Дата/время': 'Tarix/vaxt',
+  'Количество продаж': 'Satış sayı',
+  'Цена без скидки': 'Endirimsiz qiymət',
+  'Скидка': 'Endirim',
+  'Профиль текущего пользователя': 'Cari istifadəçi profili',
+  'Создать admin-профиль': 'Admin profili yarat',
+  'Лого стартовой страницы': 'Başlanğıc səhifə loqosu',
+  'Предпросмотр': 'Ön baxış',
+  'Выбрать файл': 'Fayl seç',
+  'Сохранить лого': 'Loqonu yadda saxla',
+  'Удалить лого': 'Loqonu sil',
+  'Сохранить налоги': 'Vergiləri yadda saxla',
+  'Сохранить аренду': 'İcarəni yadda saxla',
+  'Арендная плата для прогноза': 'Proqnoz üçün icarə haqqı',
+  'Налогообложение по филиалам': 'Filiallar üzrə vergitutma',
+  'Наши VOEN / юрлица': 'VÖEN-lərimiz / hüquqi şəxslər',
+  'Активные': 'Aktiv',
+
+  'Техкарты, полуфабрикаты, себестоимость и контроль Food Cost по блюдам.': 'Texnoloji kartlar, yarımfabrikatlar, maya dəyəri və yeməklər üzrə Food Cost nəzarəti.',
+  'Все тех. карты': 'Bütün texnoloji kartlar',
+  'Текущие тех. карты': 'Cari texnoloji kartlar',
+  'Создать полуфабрикат': 'Yarımfabrikat yarat',
+  'Создать блюдо': 'Yemək yarat',
+  'ВСЕГО ТЕХ. КАРТ': 'CƏMİ TEXNOLOJİ KART',
+  'АКТИВНЫЕ': 'AKTİV',
+  'позиции меню': 'menyu mövqeyi',
+  'КАТЕГОРИИ': 'KATEQORİYALAR',
+  'группы блюд': 'yemək qrupu',
+  'СР. СЕБЕСТОИМОСТЬ': 'ORTA MAYA DƏYƏRİ',
+  'по блюдам с ценой': 'qiyməti olan yeməklər üzrə',
+  'МАРЖА': 'MARJA',
+  'средняя маржа': 'orta marja',
+  'Актив': 'Aktiv',
+  'Неактивные': 'Qeyri-aktiv',
+  'Импорт': 'İdxal',
+  'Новая тех. карта': 'Yeni texnoloji kart',
+  'Все категории': 'Bütün kateqoriyalar',
+  'Поиск': 'Axtarış',
+  'Поиск по названию или категории...': 'Ad və ya kateqoriya üzrə axtarış...',
+  'Блюдо / Напиток': 'Yemək / İçki',
+  'Себестоимость': 'Maya dəyəri',
+  'Цена продажи': 'Satış qiyməti',
+  'Маржа': 'Marja',
+  'Нет состава': 'Tərkib yoxdur',
+  'Нет цены': 'Qiymət yoxdur',
+  'Нет себест.': 'Maya dəyəri yoxdur',
+  'FC выше нормы': 'FC normadan yüksəkdir',
+  'ОК': 'Normal',
+  'Просмотр': 'Baxış',
+  'Изменить': 'Dəyişdir',
+  'Просмотр тех. карты выбранного блюда.': 'Seçilmiş yeməyin texnoloji kartına baxış.',
+  'Создать / редактировать блюдо': 'Yemək yarat / redaktə et',
+  'Создайте позицию меню или выберите существующую, затем добавьте компоненты тех. карты.': 'Menyu mövqeyi yaradın və ya mövcud mövqeyi seçin, sonra texnoloji kartın komponentlərini əlavə edin.',
+  'Целевой Food Cost %': 'Hədəf Food Cost %',
+  'Фото / URL изображения': 'Şəkil / şəkil URL-i',
+  'Фото блюда': 'Yeməyin şəkli',
+  'Удалить фото': 'Şəkli sil',
+  'Сохранить изменения': 'Dəyişiklikləri yadda saxla',
+  'Удалить тех. карту': 'Texnoloji kartı sil',
+  'Очистить': 'Təmizlə',
+  'Выбрать блюдо для тех. карты': 'Texnoloji kart üçün yemək seç',
+  'Название или категория': 'Ad və ya kateqoriya',
+  'Добавить компонент в тех. карту': 'Texnoloji karta komponent əlavə et',
+  'Компонентом может быть полуфабрикат, товар из закупок или ручной ингредиент.': 'Komponent yarımfabrikat, satınalma məhsulu və ya əl ilə əlavə edilmiş inqrediyent ola bilər.',
+  'Полуфабрикат': 'Yarımfabrikat',
+  'Потери %': 'İtki %',
+  '+ Добавить компонент': '+ Komponent əlavə et',
+  'Состав тех. карты': 'Texnoloji kartın tərkibi',
+  'Вручную': 'Əl ilə',
+  'Ед.': 'Ölçü vahidi',
+  'Валовая прибыль': 'Ümumi mənfəət',
+  'Январь': 'Yanvar',
+  'Февраль': 'Fevral',
+  'Март': 'Mart',
+  'Апрель': 'Aprel',
+  'Май': 'May',
+  'Июнь': 'İyun',
+  'Июль': 'İyul',
+  'Август': 'Avqust',
+  'Сентябрь': 'Sentyabr',
+  'Поставщики, физические поступления, e-qaimə, сверка сумм, оплаты, сроки и лимиты.': 'Təchizatçılar, faktiki daxilolmalar, e-qaimə, məbləğlərin üzləşdirilməsi, ödənişlər, müddətlər və limitlər.',
+  'Экспорт': 'İxrac',
+  'Печать': 'Çap',
+  'Приход товара': 'Mal qəbulu',
+  'физическая накладная': 'fiziki qaimə',
+  'добавляется внутри накладной': 'qaimənin daxilində əlavə olunur',
+  'Сверка': 'Üzləşdirmə',
+  'сумма прихода vs e-qaimə': 'daxilolma məbləği və e-qaimə müqayisəsi',
+  'по e-qaimə / фактуре': 'e-qaimə / faktura üzrə',
+  'Долги': 'Borclar',
+  'сроки и лимиты': 'müddətlər və limitlər',
+  'Активные поставщики': 'Aktiv təchizatçılar',
+  'доступны для выбранных VOEN': 'seçilmiş VÖEN-lər üçün əlçatandır',
+  'Поступления': 'Daxilolmalar',
+  'по видимым накладным': 'görünən qaimələr üzrə',
+  'Оплаты': 'Ödənişlər',
+  'банковские / кассовые платежи': 'bank / kassa ödənişləri',
+  'Долг поставщикам': 'Təchizatçılara borc',
+  'текущий открытый баланс': 'cari açıq balans',
+  'Ожидают e-qaimə': 'e-qaimə gözləyir',
+  'нужна электронная накладная': 'elektron qaimə tələb olunur',
+  'Расхождения': 'Uyğunsuzluqlar',
+  'требуют сверки суммы': 'məbləğin üzləşdirilməsi tələb olunur',
+  'Новый приход товара': 'Yeni mal qəbulu',
+  'Физическое поступление товара. e-qaimə можно добавить сразу или позже.': 'Malın faktiki daxilolması. e-qaimə dərhal və ya sonradan əlavə edilə bilər.',
+  'Приход': 'Daxilolma',
+  'Наш VOEN': 'Bizim VÖEN',
+  'Дата поступления': 'Daxilolma tarixi',
+  '№ приходной накладной': 'Daxilolma qaiməsinin №-si',
+  'Бумажная / физическая накладная': 'Kağız / fiziki qaimə',
+  'Сумма поставки': 'Təchizat məbləği',
+  '№ e-qaimə': 'e-qaimə №-si',
+  'Можно добавить позже': 'Sonradan əlavə etmək olar',
+  'Дата e-qaimə': 'e-qaimə tarixi',
+  'Сумма e-qaimə': 'e-qaimə məbləği',
+  'Ввести только общую сумму поставки без товаров': 'Məhsulları daxil etmədən yalnız ümumi təchizat məbləğini yaz',
+  'Если включена галочка, строки товаров временно не используются. Если галочка выключена, сумма считается по товарам.': 'İşarə aktivdirsə, məhsul sətirləri müvəqqəti istifadə olunmur. İşarə söndürülübsə, məbləğ məhsullar üzrə hesablanır.',
+  'Приходная накладная': 'Daxilolma qaiməsi',
+  'ожидается': 'gözlənilir',
+  'Расхождение': 'Uyğunsuzluq',
+  'Ожидает e-qaimə': 'e-qaimə gözləyir',
+  'Товары в поступлении': 'Daxilolmadakı məhsullar',
+  'Если товара нет, сначала добавьте его ниже в блоке “Товары”.': 'Məhsul yoxdursa, əvvəlcə onu aşağıdakı “Məhsullar” bölməsində əlavə edin.',
+  '+ Строка товара': '+ Məhsulu əlavə et',
+  'Выберите товар': 'Məhsul seçin',
+  'килограмм (kg)': 'kiloqram (kg)',
+  'грамм (g)': 'qram (g)',
+  '+ Сохранить поступление': '+ Daxilolmanı yadda saxla',
+  'Оплата поставщику': 'Təchizatçıya ödəniş',
+  'Оплата привязывается к e-qaimə / фактуре и влияет на баланс поставщика.': 'Ödəniş e-qaimə / fakturaya bağlanır və təchizatçının balansına təsir edir.',
+  'Дата оплаты': 'Ödəniş tarixi',
+  'Сумма оплаты': 'Ödəniş məbləği',
+  'Отметки / номера счёт-фактур': 'Qeydlər / faktura nömrələri',
+  '+ Выбрать e-qaimə': '+ e-qaimə seç / geniş pəncərəni aç',
+  '+ Сохранить оплату': '+ Ödənişi yadda saxla',
+  'Контрагенты': 'Kontragentlər',
+  'Условия оплаты и лимиты используются в Dashboard для проблемных долгов.': 'Ödəniş şərtləri və limitlər Dashboard-da problemli borclar üçün istifadə olunur.',
+  'Имя контрагента': 'Kontragentin adı',
+  'VOEN поставщика': 'Təchizatçının VÖEN-i',
+  'Контакт': 'Əlaqələndirici şəxs',
+  'Телефон': 'Telefon',
+  'Информация': 'Məlumat',
+  'Срок оплаты, дней': 'Ödəniş müddəti, gün',
+  'Кредитный лимит': 'Kredit limiti',
+  'Долг за предыдущий период': 'Əvvəlki dövr üzrə borc',
+  'Наш VOEN для стартового долга': 'Başlanğıc borc üçün bizim VÖEN',
+  'Дата стартового долга': 'Başlanğıc borcun tarixi',
+  'Комментарий к стартовому долгу': 'Başlanğıc borca şərh',
+  'Например: остаток на 01.05': 'Məsələn: 01.05 tarixinə qalıq',
+  '+ Добавить поставщика': '+ Təchizatçı əlavə et',
+  'Товары': 'Məhsullar',
+  'Товар создаётся один раз и потом выбирается в поступлении и в техкарте.': 'Məhsul bir dəfə yaradılır, sonra daxilolmada və texnoloji kartda seçilir.',
+  'Тип': 'Növ',
+  'Базовая ед. для техкарты': 'Texnoloji kart üçün baza vahidi',
+  '+ Добавить товар': '+ Məhsul əlavə et',
+  'Журнал поступлений и сверки': 'Daxilolmalar və üzləşdirmə jurnalı',
+  'Физические накладные, e-qaimə, статусы сверки, расхождения и просмотр деталей.': 'Fiziki qaimələr, e-qaimə, üzləşdirmə statusları, uyğunsuzluqlar və detallara baxış.',
+  'Показать': 'Göstər',
+  'Период': 'Dövr',
+  'Сегодня': 'Bu gün',
+  '7 дней': '7 gün',
+  'Все': 'Hamısı',
+  'Все даты': 'Bütün tarixlər',
+  'Все поставщики': 'Bütün təchizatçılar',
+  'Наш VOEN / VOEN': 'Bizim VÖEN / VÖEN',
+  'Все юрлица': 'Bütün hüquqi şəxslər',
+  'Поиск e-qaimə': 'e-qaimə axtarışı',
+  'Поиск накладной': 'Qaimə axtarışı',
+  '№ прихода': 'Daxilolma №-si',
+  'Сбросить': 'Sıfırla',
+  'Не оплачено': 'Ödənilməyib',
+  'Создать полуфабрикат / заготовку': 'Yarımfabrikat / hazırlıq yarat',
+  '+ Создать': '+ Yarat',
+  'Шаблон Брауни': 'Brauni şablonu',
+  'Полуфабрикат для расчёта': 'Hesablama üçün yarımfabrikat',
+  'Поиск полуфабриката': 'Yarımfabrikat axtarışı',
+  'Например: брауни, крем, соус': 'Məsələn: brauni, krem, sous',
+  'Выход': 'Çıxış',
+  'Себестоимость партии': 'Partiyanın maya dəyəri',
+  'Себестоимость 1 g': '1 g maya dəyəri',
+  'Удалить полуфабрикат': 'Yarımfabrikatı sil',
+  'Состав выбранного полуфабриката': 'Seçilmiş yarımfabrikatın tərkibi',
+  'Кнопка “Изменить” открывает редактирование только выбранного ингредиента прямо в этой же строке.': '“Dəyişdir” düyməsi yalnız seçilmiş inqrediyentin redaktəsini elə həmin sətirdə açır.',
+  'Добавить ингредиент в состав': 'Tərkibə inqrediyent əlavə et',
+  'Сначала выбери или создай полуфабрикат. После создания новый полуфабрикат выбирается автоматически, и сюда можно сразу добавлять ингредиенты.': 'Əvvəlcə yarımfabrikatı seçin və ya yaradın. Yaradıldıqdan sonra yeni yarımfabrikat avtomatik seçilir və buraya dərhal inqrediyent əlavə etmək olar.',
+  'Тип компонента': 'Komponent növü',
+  'Ингредиент из закупок': 'Satınalmalardan inqrediyent',
+  'Ингредиент': 'İnqrediyent',
+  'Выбрать ингредиент': 'İnqrediyent seç',
+  '+ Добавить ингредиент': '+ İnqrediyent əlavə et',
+  'Редактирование тех. карты': 'Texnoloji kartın redaktəsi',
+  'Один редактор для названия, цены, фотографии и состава. Все изменения сохраняются в выбранный menu_item_id.': 'Ad, qiymət, şəkil və tərkib üçün vahid redaktor. Bütün dəyişikliklər seçilmiş menu_item_id üzrə yadda saxlanılır.',
+  'Поиск тех. карты': 'Texnoloji kart axtarışı',
+  'Выбранное блюдо': 'Seçilmiş yemək',
+  'Название блюда': 'Yeməyin adı',
+  'Одно компактное превью. JPG, PNG или WEBP до 6 MB.': 'Bir kompakt ön baxış. JPG, PNG və ya WEBP, maksimum 6 MB.',
+  'Загрузить фото': 'Şəkil yüklə',
+  'URL изображения': 'Şəkil URL-i',
+  'Добавить компонент': 'Komponent əlavə et',
+  'Полуфабрикат, ингредиент из закупок или ручной компонент.': 'Yarımfabrikat, satınalmalardan inqrediyent və ya əl ilə əlavə olunan komponent.',
+  'Выберите или создайте блюдо.': 'Yeməyi seçin və ya yaradın.',
+  'Октябрь': 'Oktyabr',
+  'Ноябрь': 'Noyabr',
+  'Декабрь': 'Dekabr'
+  ,'Поставщики: долги и оплаты': 'Təchizatçılar: borclar və ödənişlər'
+  ,'Основной контроль: долг, просрочка, лимиты, журнал операций и акт сверки.': 'Əsas nəzarət: borc, gecikmə, limitlər, əməliyyat jurnalı və üzləşmə aktı.'
+  ,'Контроль поставщиков': 'Təchizatçılara nəzarət'
+  ,'Ключевые отклонения по поставщикам. Просмотр открываются через акт сверки.': 'Təchizatçılar üzrə əsas kənarlaşmalar. Baxış üzləşmə aktı vasitəsilə açılır.'
+  ,'Обновить': 'Yenilə'
+  ,'Поставщиков': 'Təchizatçı'
+  ,'с активным балансом': 'aktiv balansla'
+  ,'Общий долг': 'Ümumi borc'
+  ,'открытый баланс': 'açıq balans'
+  ,'Просрочено': 'Gecikmiş borc'
+  ,'Лимит': 'Limit'
+  ,'доступный лимит': 'mövcud limit'
+  ,'превышение лимита': 'limit aşımı'
+  ,'Поставщики и долги': 'Təchizatçılar və borclar'
+  ,'Балансы по вашим VOEN / юрлицам. Долги по VOEN. Транзакции и акт сверки открываются в отдельном окне.': 'Sizin VÖEN / hüquqi şəxslər üzrə balanslar. Borclar VÖEN üzrə göstərilir. Əməliyyatlar və üzləşmə aktı ayrıca pəncərədə açılır.'
+  ,'Долг': 'Borc'
+  ,'Переплата': 'Artıq ödəniş'
+  ,'Долга нет': 'Borc yoxdur'
+  ,'Поставщик': 'Təchizatçı'
+  ,'Условия': 'Şərtlər'
+  ,'Статус': 'Status'
+  ,'VOEN не указан': 'VÖEN göstərilməyib'
+  ,'лимит': 'limit'
+  ,'Транзакции': 'Əməliyyatlar'
+  ,'Акт': 'Akt'
+  ,'Итого по VOEN': 'VÖEN üzrə cəmi'
+  ,'Поступления + стартовый долг − оплаты': 'Daxilolmalar + başlanğıc borc − ödənişlər'
+  ,'Скрыть': 'Gizlət'
+  ,'Нет поставщиков по этому VOEN': 'Bu VÖEN üzrə təchizatçı yoxdur'
+  ,'Просрочка и лимиты': 'Gecikmələr və limitlər'
+  ,'Сумма просрочки, превышение лимита и конкретные фактуры.': 'Gecikmə məbləği, limit aşımı və konkret fakturalar.'
+  ,'Фильтр': 'Filtr'
+  ,'Показать все': 'Hamısını göstər'
+  ,'Без фактуры': 'Fakturasız'
+  ,'Стартовый долг': 'Başlanğıc borc'
+  ,'Рейтинг поставщиков': 'Təchizatçı reytinqi'
+  ,'Рейтинг риска по долгу, просрочке, лимиту и открытым фактурам.': 'Borc, gecikmə, limit və açıq fakturalar üzrə risk reytinqi.'
+  ,'Critical': 'Kritik'
+  ,'Normal': 'Normal'
+  ,'Журнал долгов и оплат': 'Borclar və ödənişlər jurnalı'
+  ,'Стартовый долг, поступления и оплаты в одном журнале.': 'Başlanğıc borc, daxilolmalar və ödənişlər vahid jurnalda.'
+  ,'Дата периода': 'Dövrün tarixi'
+  ,'Операция': 'Əməliyyat'
+  ,'Все операции': 'Bütün əməliyyatlar'
+  ,'Итого приход / долг': 'Daxilolma / borc cəmi'
+  ,'Итого оплат': 'Ödənişlərin cəmi'
+  ,'Баланс': 'Balans'
+  ,'Оплата одной суммой по нескольким e-qaimə': 'Bir neçə e-qaimə üzrə vahid məbləğlə ödəniş'
+  ,'Поступление введено общей суммой без детализации товаров': 'Daxilolma məhsullar üzrə detallandırılmadan ümumi məbləğlə daxil edilib'
+  ,'Только admin': 'Yalnız admin'
+  ,'Поступления и оплаты показаны отдельно, чтобы не смешивать операции.': 'Əməliyyatların qarışmaması üçün daxilolmalar və ödənişlər ayrıca göstərilir.'
+  ,'Тип операций': 'Əməliyyat növü'
+  ,'Товары / цены': 'Məhsullar / qiymətlər'
+  ,'За день': 'Gün üzrə'
+  ,'За месяц': 'Ay üzrə'
+  ,'За год': 'İl üzrə'
+  ,'Весь период': 'Bütün dövr'
+  ,'Акт сверки': 'Üzləşmə aktı'
+  ,'Операции, оплаты и остаток по выбранному поставщику / VOEN.': 'Seçilmiş təchizatçı / VÖEN üzrə əməliyyatlar, ödənişlər və qalıq.'
+  ,'PDF / печать': 'PDF / çap'
+  ,'Поиск поставщика': 'Təchizatçı axtarışı'
+  ,'Название или VOEN': 'Ad və ya VÖEN'
+  ,'Все найденные / все поставщики': 'Tapılanların hamısı / bütün təchizatçılar'
+  ,'Наш VOEN / физ. лицо': 'Bizim VÖEN / fiziki şəxs'
+  ,'Все VOEN': 'Bütün VÖEN-lər'
+  ,'Поиск E-qaimə / фактуры': 'E-qaimə / faktura axtarışı'
+  ,'Номер фактуры': 'Faktura nömrəsi'
+  ,'Период с': 'Dövrün başlanğıcı'
+  ,'Период по': 'Dövrün sonu'
+  ,'Название документа': 'Sənədin adı'
+  ,'Акт сверки взаиморасчётов': 'Qarşılıqlı hesablaşmaların üzləşmə aktı'
+  ,'Приход / долг': 'Daxilolma / borc'
+  ,'Остаток': 'Qalıq'
+  ,'Операции не найдены.': 'Əməliyyat tapılmadı.'
+  ,'Закрыть': 'Bağla'
+  ,'Редактировать': 'Redaktə et'
+
+  ,'Текущий месяц': 'Cari ay'
+  ,'Накладная без номера': 'Nömrəsiz qaimə'
+  ,'Создано': 'Yaradılıb'
+  ,'Изменено': 'Dəyişdirilib'
+  ,'Сумма накладной': 'Qaimənin məbləği'
+  ,'Физический приход': 'Fiziki daxilolma'
+  ,'Статус сверки': 'Üzləşdirmə statusu'
+  ,'Добавить e-qaimə к этому приходу': 'Bu daxilolmaya e-qaimə əlavə et'
+  ,'Добавить ещё одну e-qaimə к этому приходу': 'Bu daxilolmaya daha bir e-qaimə əlavə et'
+  ,'Можно привязать несколько электронных накладных к одной физической поставке. Суммы e-qaimə будут суммироваться для сверки.': 'Bir fiziki təchizata bir neçə elektron qaimə bağlamaq olar. Üzləşdirmə üçün e-qaimə məbləğləri cəmlənəcək.'
+  ,'Срок оплаты рассчитывается автоматически по настройкам поставщика.': 'Ödəniş müddəti təchizatçı parametrlərinə əsasən avtomatik hesablanır.'
+  ,'Уже привязано': 'Artıq bağlanıb'
+  ,'После добавления': 'Əlavədən sonra'
+  ,'Сверено': 'Üzləşdirilib'
+  ,'+ Добавить e-qaimə к поступлению': '+ Daxilolmaya e-qaimə əlavə et'
+  ,'Товары в накладной': 'Qaimədəki məhsullar'
+  ,'Можно заменить ручную сумму детализацией по товарам. После сохранения сумма накладной рассчитывается по строкам.': 'Əl ilə daxil edilmiş məbləği məhsullar üzrə detallandırma ilə əvəz etmək olar. Yadda saxlandıqdan sonra qaimənin məbləği sətirlər üzrə hesablanır.'
+  ,'Рассчитается автоматически': 'Avtomatik hesablanacaq'
+  ,'Новая сумма накладной': 'Qaimənin yeni məbləği'
+  ,'Сохранить товары и пересчитать': 'Məhsulları yadda saxla və yenidən hesabla'
+  ,'найдено': 'tapıldı'
+  ,'Пред.': 'Əvvəlki'
+  ,'След.': 'Növbəti'
+  ,'+ Добавить товары в накладную': '+ Qaiməyə məhsullar əlavə et'
+  ,'Редактировать товары': 'Məhsulları redaktə et'
+  ,'Товары не добавлены. Накладная пока рассчитана общей суммой.': 'Məhsullar əlavə edilməyib. Qaimə hələlik ümumi məbləğlə hesablanıb.'
+  ,'← Пред.': '← Əvvəlki'
+  ,'След. →': 'Növbəti →'
+
+  ,'Поставщик / VOEN': 'Təchizatçı / VÖEN'
+  ,'Поставщик/VOEN': 'Təchizatçı / VÖEN'
+  ,'Фактура / отметки': 'Faktura / qeydlər'
+  ,'Фактура/отметки': 'Faktura / qeydlər'
+  ,'фактура / отметки': 'Faktura / qeydlər'
+  ,'фактура/отметки': 'Faktura / qeydlər'
+}
+
 function rmsBuildAzInterfaceMap() {
   const map = { ...RMS_AZ_EXTRA_TRANSLATIONS }
   Object.keys(I18N.ru || {}).forEach((key) => {
@@ -47649,3 +48115,6 @@ if (typeof document !== 'undefined') {
 
 
 /* v421: branches bootstrap as warehouse locations; supplier products selectable before stock exists; initial receipt added */
+
+
+/* v422: restores RMS_AZ_EXTRA_TRANSLATIONS removed during InventoryModule replacement */
