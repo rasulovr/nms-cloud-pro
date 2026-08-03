@@ -1,814 +1,270 @@
-import React, { useEffect, useMemo, useState } from 'react'
-import { supabase } from './supabase'
-import './QRMenu.css'
+import React, { useEffect, useMemo, useState } from "react";
+import { supabase } from "./supabase";
 
-const fmt = (n) => Number(n || 0).toFixed(2)
-const CASHBACK_PERCENT = 5
-const MAX_REDEEM_PERCENT = 30
+const money = (n) => `${Number(n || 0).toFixed(2)} ₼`;
+const safeText = (v) => String(v ?? "");
 
-const demoPhotos = [
-  'https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=1200&q=80',
-  'https://images.unsplash.com/photo-1555507036-ab794f4afe5e?auto=format&fit=crop&w=1200&q=80',
-  'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=1200&q=80'
-]
+const PAIRINGS = {
+  "ЗАВТРАК": ["КОФЕ", "ХОЛОДНЫЙ КОФЕ", "ЛИМОНАДЫ"],
+  "ЗАКУСКИ": ["ЛИМОНАДЫ", "САЛАТЫ", "ХОЛОДНЫЕ НАПИТКИ"],
+  "СУПЫ": ["ЗАКУСКИ", "ЧАЙ", "САЛАТЫ"],
+  "САЛАТЫ": ["ЛИМОНАДЫ", "ГОРЯЧИЕ БЛЮДА", "ХОЛОДНЫЙ КОФЕ"],
+  "ГОРЯЧИЕ БЛЮДА": ["ЛИМОНАДЫ", "САЛАТЫ", "ХОЛОДНЫЕ НАПИТКИ"],
+  "ПИЦЦА": ["ЛИМОНАДЫ", "САЛАТЫ", "ХОЛОДНЫЕ НАПИТКИ"],
+  "ДЕСЕРТЫ": ["КОФЕ", "ЧАЙ", "ХОЛОДНЫЙ КОФЕ"],
+  "КОФЕ": ["ДЕСЕРТЫ", "ЗАВТРАК"],
+  "ХОЛОДНЫЙ КОФЕ": ["ДЕСЕРТЫ", "ЗАВТРАК"],
+  "ЛИМОНАДЫ": ["САЛАТЫ", "ГОРЯЧИЕ БЛЮДА", "ПИЦЦА"],
+  "ЧАЙ": ["ДЕСЕРТЫ", "ЗАВТРАК"],
+  "ХОЛОДНЫЕ НАПИТКИ": ["ГОРЯЧИЕ БЛЮДА", "ПИЦЦА", "САЛАТЫ"],
+};
+
+function getBakuHour() {
+  return Number(new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Baku",
+    hour: "2-digit",
+    hourCycle: "h23",
+  }).format(new Date()));
+}
+
+function WeatherIcon({ kind, isNight }) {
+  return <div className={`wx-icon wx-${kind}`} aria-hidden="true">
+    <span className="sun"/><span className="moon"/><span className="cloud c1"/><span className="cloud c2"/>
+    <span className="rain r1"/><span className="rain r2"/><span className="rain r3"/>
+    <span className="wind w1"/><span className="wind w2"/>
+  </div>;
+}
+
+function getWeatherOffer(w) {
+  if (!w) return null;
+  const rainy = Number(w.precipitation) >= 1 || [51,53,55,61,63,65,80,81,82,95].includes(Number(w.weatherCode));
+  const hot = Number(w.maxTemperature) >= 30 || Number(w.apparentTemperature) >= 31;
+  const windy = Number(w.windSpeed) >= 9 || Number(w.windGust) >= 14;
+  const cool = Number(w.maxTemperature) <= 17;
+  const cloudy = [2,3,45,48].includes(Number(w.weatherCode));
+  if (rainy) return { kind:"rainy", title:"Сегодня в Баку дождь", text:"Самое время согреться кофе или чаем.", categories:["КОФЕ","ЧАЙ","ДЕСЕРТЫ"] };
+  if (windy) return { kind:"windy", title:"Сегодня в Баку ветрено", text:"Зайдите на чашку капучино в уютный зал.", categories:["КОФЕ","ЧАЙ","ДЕСЕРТЫ"] };
+  if (hot) return { kind:"sunny", title:"В Баку сегодня жарко", text:"Самое время попробовать фирменный лимонад.", categories:["ЛИМОНАДЫ","ХОЛОДНЫЙ КОФЕ","САЛАТЫ"] };
+  if (cool) return { kind:"cool", title:"Сегодня в Баку прохладно", text:"Выберите горячий напиток и свежий десерт.", categories:["КОФЕ","ЧАЙ","ДЕСЕРТЫ"] };
+  if (cloudy) return { kind:"cloudy", title:"Сегодня в Баку пасмурно", text:"Добавьте к заказу любимый кофе или чай.", categories:["КОФЕ","ЧАЙ","ДЕСЕРТЫ"] };
+  return { kind:"sunny", title:"Комфортная погода в Баку", text:"Подходящий день попробовать что-то новое.", categories:["Новинки","ЛИМОНАДЫ","САЛАТЫ"] };
+}
 
 export default function QRMenu() {
-  const params = new URLSearchParams(window.location.search || (window.location.hash.includes('?') ? '?' + window.location.hash.split('?')[1] : ''))
-  const branchId = params.get('branch') || 'BC1'
-  const tableNumber = params.get('table') || ''
-  const isBranchMenu = !tableNumber
+  const params = useMemo(() => new URLSearchParams(window.location.search), []);
+  const branch = safeText(params.get("branch") || "BC1").toUpperCase();
+  const table = safeText(params.get("table") || "1");
+  const [screen, setScreen] = useState("menu");
+  const [menu, setMenu] = useState([]);
+  const [category, setCategory] = useState("Все");
+  const [search, setSearch] = useState("");
+  const [cart, setCart] = useState([]);
+  const [selected, setSelected] = useState(null);
+  const [selectedOption, setSelectedOption] = useState("");
+  const [weather, setWeather] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [notice, setNotice] = useState("");
+  const [order, setOrder] = useState(null);
+  const [session, setSession] = useState(null);
+  const [profile, setProfile] = useState(null);
+  const [phone, setPhone] = useState("");
+  const [otp, setOtp] = useState("");
+  const [otpSent, setOtpSent] = useState(false);
+  const [bonusRequest, setBonusRequest] = useState(0);
+  const [busy, setBusy] = useState(false);
+  const [bakuHour, setBakuHour] = useState(getBakuHour());
+  const isNight = bakuHour >= 19 || bakuHour < 5;
 
-  const [guestSession] = useState(() => {
-    const old = localStorage.getItem('qr_guest_session')
-    if (old) return old
-    const id = crypto.randomUUID()
-    localStorage.setItem('qr_guest_session', id)
-    return id
-  })
+  const flash = (text) => { setNotice(text); window.setTimeout(() => setNotice(""), 3500); };
 
-  const [screen, setScreen] = useState('menu')
-  const [products, setProducts] = useState([])
-  const [category, setCategory] = useState('All')
-  const [ratings, setRatings] = useState({})
-  const [pairings, setPairings] = useState({})
-  const [cart, setCart] = useState([])
-  const [calls, setCalls] = useState([])
-  const [statuses, setStatuses] = useState([])
-  const [bill, setBill] = useState(null)
-  const [billItems, setBillItems] = useState([])
-  const [info, setInfo] = useState(null)
-  const [photo, setPhoto] = useState(null)
-  const [payChoice, setPayChoice] = useState(false)
-  const [paymentDone, setPaymentDone] = useState(false)
-  const [bonusApplied, setBonusApplied] = useState(false)
-  const [paymentSummary, setPaymentSummary] = useState(null)
-  const [ads, setAds] = useState([])
-  const [activeAd, setActiveAd] = useState(null)
+  async function loadMenu() {
+    setLoading(true);
+    const { data, error } = await supabase.rpc("qr_get_public_menu", { p_branch_code: branch });
+    if (error) flash(`Меню временно недоступно: ${error.message}`);
+    setMenu(Array.isArray(data) ? data : []);
+    setLoading(false);
+  }
 
-  const [loyaltyPhone, setLoyaltyPhone] = useState(() => localStorage.getItem('qr_loyalty_phone') || '')
-  const [loyaltyOtp, setLoyaltyOtp] = useState('')
-  const [loyaltyClient, setLoyaltyClient] = useState(null)
-  const [loyaltySession, setLoyaltySession] = useState(null)
-  const [loyaltyToken, setLoyaltyToken] = useState(null)
-  const [loyaltyMessage, setLoyaltyMessage] = useState('')
-  const [billPaymentMessage, setBillPaymentMessage] = useState('')
-  const [loyaltyStep, setLoyaltyStep] = useState('phone')
+  async function loadProfile() {
+    const { data } = await supabase.rpc("qr_get_my_loyalty");
+    setProfile(Array.isArray(data) ? data[0] || null : data || null);
+  }
+
+  async function refreshOrder(token = order?.public_token) {
+    if (!token) return;
+    const { data, error } = await supabase.rpc("qr_get_order", { p_public_token: token });
+    if (!error && data) setOrder(Array.isArray(data) ? data[0] : data);
+  }
 
   useEffect(() => {
-    loadAll()
-    restoreLoyaltySession()
-  }, [])
+    const updateBakuHour = () => setBakuHour(getBakuHour());
+    const timer = window.setInterval(updateBakuHour, 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
 
   useEffect(() => {
-    const channel = supabase.channel(`qr-${branchId}-${tableNumber || 'branch'}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'rms_qr_live_cart' }, loadCart)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'rms_qr_order_status' }, loadStatuses)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'rms_qr_waiter_calls' }, loadCalls)
-      .subscribe()
-    return () => supabase.removeChannel(channel)
-  }, [branchId, tableNumber])
-
-  async function loadAll() {
-    await Promise.all([loadProducts(), loadRatings(), loadPairings(), loadCart(), loadCalls(), loadStatuses(), loadBill(), loadInfo(), loadAds()])
-  }
-
-  async function loadProducts() {
-    const { data, error } = await supabase.from('rms_menu_products').select('*').order('name', { ascending: true })
-    if (error || !data?.length) {
-      setProducts([
-        { id: 'demo-cappuccino', name: 'Cappuccino', category: 'Coffee', description: 'Classic espresso with milk foam.', price: 5.5, image_url: demoPhotos[0] },
-        { id: 'demo-croissant', name: 'Butter Croissant', category: 'Breakfast', description: 'Fresh baked croissant.', price: 4.5, image_url: demoPhotos[1] },
-        { id: 'demo-salad', name: 'Caesar Salad', category: 'Salads', description: 'Romaine, parmesan and dressing.', price: 12, image_url: demoPhotos[2] }
-      ])
-      return
-    }
-    setProducts(data.filter(p => p.is_active !== false && p.is_stop !== true).map((p, i) => ({
-      ...p,
-      id: String(p.id),
-      name: p.name || p.product_name || 'Unnamed',
-      category: p.category || p.category_name || 'Menu',
-      description: p.description || '',
-      price: Number(p.price ?? p.sale_price ?? 0),
-      image_url: p.image_url || p.photo_url || demoPhotos[i % demoPhotos.length]
-    })))
-  }
-
-  async function loadRatings() {
-    const { data } = await supabase.from('rms_qr_dish_ratings').select('product_id,rating')
-    const g = {}
-    ;(data || []).forEach(r => {
-      const id = String(r.product_id)
-      if (!g[id]) g[id] = { sum: 0, count: 0 }
-      g[id].sum += Number(r.rating || 0)
-      g[id].count += 1
-    })
-    const next = {}
-    Object.entries(g).forEach(([k, v]) => next[k] = { avg: v.sum / v.count, count: v.count })
-    setRatings(next)
-  }
-
-  async function loadPairings() {
-    const { data } = await supabase.from('rms_qr_recommendations').select('*').eq('is_active', true)
-    const g = {}
-    ;(data || []).forEach(r => {
-      const id = String(r.product_id)
-      if (!g[id]) g[id] = []
-      g[id].push(r.recommended_product_name || r.recommended_product_id)
-    })
-    setPairings(g)
-  }
-
-  async function loadCart() {
-    if (!tableNumber) { setCart([]); return }
-    const { data } = await supabase.from('rms_qr_live_cart')
-      .select('*').eq('branch_id', branchId).eq('table_number', tableNumber).eq('status', 'draft')
-      .order('created_at')
-    setCart(data || [])
-  }
-
-  async function loadCalls() {
-    if (!tableNumber) { setCalls([]); return }
-    const { data } = await supabase.from('rms_qr_waiter_calls')
-      .select('*').eq('branch_id', branchId).eq('table_number', tableNumber).order('created_at', { ascending: false }).limit(10)
-    setCalls(data || [])
-  }
-
-  async function loadStatuses() {
-    if (!tableNumber) { setStatuses([]); return }
-    const { data } = await supabase.from('rms_qr_order_status')
-      .select('*').eq('branch_id', branchId).eq('table_number', tableNumber).order('created_at', { ascending: false }).limit(10)
-    setStatuses(data || [])
-  }
-
-  async function loadBill() {
-    if (!tableNumber) { setBill(null); setBillItems([]); return }
-    const { data: b } = await supabase.from('rms_qr_live_bills')
-      .select('*').eq('branch_id', branchId).eq('table_number', tableNumber)
-      .in('status', ['open','pending','unpaid']).order('created_at', { ascending: false }).limit(1).maybeSingle()
-    setBill(b || null)
-    if (b?.id) {
-      const { data: items } = await supabase.from('rms_qr_live_bill_items').select('*').eq('bill_id', b.id).order('created_at')
-      setBillItems(items || [])
-    } else {
-      setBillItems([])
-    }
-  }
-
-  async function loadInfo() {
-    const { data } = await supabase.from('rms_qr_info').select('*').eq('branch_id', branchId).maybeSingle()
-    setInfo(data || null)
-  }
-
-  async function loadAds() {
-    const { data } = await supabase.from('rms_qr_ads').select('*').eq('is_active', true).order('created_at', { ascending: false }).limit(5)
-    setAds(data || [])
-    if (data?.length) {
-      setActiveAd(data[0])
-      setTimeout(() => setActiveAd(null), 5000)
-    }
-  }
-
-  async function addToCart(p) {
-    if (!tableNumber) return alert('Это общее меню филиала. Для заказа отсканируйте QR конкретного стола.')
-    const existing = cart.find(x => String(x.product_id) === String(p.id) && x.guest_session === guestSession)
-    if (existing) {
-      const qty = Number(existing.qty || 0) + 1
-      await supabase.from('rms_qr_live_cart').update({ qty, total: qty * Number(existing.price || 0), updated_at: new Date().toISOString() }).eq('id', existing.id)
-    } else {
-      await supabase.from('rms_qr_live_cart').insert({
-        branch_id: branchId, table_number: tableNumber, guest_session: guestSession,
-        product_id: String(p.id), product_name: p.name, category: p.category,
-        qty: 1, price: p.price, total: p.price, status: 'draft'
-      })
-    }
-    setPaymentDone(false)
-    setPaymentSummary(null)
-    loadCart()
-  }
-
-  async function changeQty(item, delta) {
-    const qty = Number(item.qty || 0) + delta
-    if (qty <= 0) await supabase.from('rms_qr_live_cart').delete().eq('id', item.id)
-    else await supabase.from('rms_qr_live_cart').update({ qty, total: qty * Number(item.price || 0), updated_at: new Date().toISOString() }).eq('id', item.id)
-    setPaymentDone(false)
-    setPaymentSummary(null)
-    loadCart()
-  }
-
-  async function requestCartApproval() {
-    if (!tableNumber) return alert('Для заказа нужен QR конкретного стола.')
-    await supabase.from('rms_qr_waiter_calls').insert({
-      branch_id: branchId,
-      table_number: tableNumber,
-      guest_session: guestSession,
-      call_type: 'cart_review',
-      status: 'new',
-      comment: loyaltyClient ? `Подтвердить QR заказ · Loyalty ${loyaltyClient.phone}` : 'Подтвердить общий заказ QR Menu'
-    })
-    await supabase.from('rms_qr_order_status').insert({ branch_id: branchId, table_number: tableNumber, status: 'requested', status_label: 'Запрос отправлен официанту', source: 'qr_shared_cart' })
-    alert('Запрос отправлен официанту.')
-  }
-
-  async function callWaiter(type, comment) {
-    if (!tableNumber) return alert('Вызов официанта доступен только через QR конкретного стола.')
-    await supabase.from('rms_qr_waiter_calls').insert({ branch_id: branchId, table_number: tableNumber, guest_session: guestSession, call_type: type, status: 'new', comment })
-    alert('Запрос отправлен.')
-  }
-
-  async function restoreLoyaltySession() {
-    const sessionId = localStorage.getItem('qr_loyalty_session_id')
-    if (!sessionId) return
-
-    const { data: session } = await supabase
-      .from('rms_loyalty_sessions')
-      .select('*')
-      .eq('id', sessionId)
-      .eq('is_active', true)
-      .gt('expires_at', new Date().toISOString())
-      .maybeSingle()
-
-    if (!session) {
-      localStorage.removeItem('qr_loyalty_session_id')
-      return
-    }
-
-    const { data: client } = await supabase
-      .from('rms_loyalty_clients')
-      .select('*')
-      .eq('id', session.client_id)
-      .maybeSingle()
-
-    if (client) {
-      setLoyaltySession(session)
-      setLoyaltyClient(client)
-      setLoyaltyPhone(client.phone)
-      setLoyaltyStep('verified')
-      await ensureLoyaltyToken(client.id)
-    }
-  }
-
-  async function sendLoyaltyOtp() {
-    const phone = String(loyaltyPhone || '').trim()
-    if (!phone) return setLoyaltyMessage('Введите номер телефона.')
-
-    setLoyaltyMessage('')
-
-    let { data: client } = await supabase
-      .from('rms_loyalty_clients')
-      .select('*')
-      .eq('phone', phone)
-      .maybeSingle()
-
-    if (!client) {
-      const created = await supabase
-        .from('rms_loyalty_clients')
-        .insert({
-          name: 'Гость QR',
-          phone,
-          level: 'new',
-          bonus_balance: 0,
-          total_spent: 0,
-          visits_count: 0,
-          is_active: true,
-          whatsapp_opt_in: true
-        })
-        .select('*')
-        .single()
-
-      if (created.error) {
-        setLoyaltyMessage(created.error.message)
-        return
-      }
-      client = created.data
-    }
-
-    const code = String(Math.floor(1000 + Math.random() * 9000))
-
-    const { error } = await supabase.from('rms_loyalty_otp_codes').insert({
-      phone,
-      code,
-      channel: 'test',
-      guest_session: guestSession,
-      status: 'pending'
-    })
-
-    if (error) {
-      setLoyaltyMessage(error.message)
-      return
-    }
-
-    localStorage.setItem('qr_loyalty_phone', phone)
-    setLoyaltyClient(client)
-    setLoyaltyStep('otp')
-    setLoyaltyMessage(`Тестовый OTP: ${code}. В продакшене этот код уйдёт через WhatsApp/SMS.`)
-  }
-
-  async function verifyLoyaltyOtp() {
-    const phone = String(loyaltyPhone || '').trim()
-    const code = String(loyaltyOtp || '').trim()
-    if (!phone || !code) return setLoyaltyMessage('Введите номер и OTP-код.')
-
-    const { data: otp, error } = await supabase
-      .from('rms_loyalty_otp_codes')
-      .select('*')
-      .eq('phone', phone)
-      .eq('code', code)
-      .eq('status', 'pending')
-      .gt('expires_at', new Date().toISOString())
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle()
-
-    if (error) return setLoyaltyMessage(error.message)
-    if (!otp) return setLoyaltyMessage('Неверный или просроченный OTP-код.')
-
-    const { data: client, error: clientError } = await supabase
-      .from('rms_loyalty_clients')
-      .select('*')
-      .eq('phone', phone)
-      .maybeSingle()
-
-    if (clientError || !client) return setLoyaltyMessage(clientError?.message || 'Клиент не найден.')
-
-    await supabase.from('rms_loyalty_otp_codes').update({ status: 'verified', verified_at: new Date().toISOString() }).eq('id', otp.id)
-    await supabase.from('rms_loyalty_clients').update({ last_verified_at: new Date().toISOString() }).eq('id', client.id)
-
-    const { data: session, error: sessionError } = await supabase
-      .from('rms_loyalty_sessions')
-      .insert({
-        client_id: client.id,
-        phone,
-        guest_session: guestSession,
-        source: 'qr_menu',
-        is_active: true
-      })
-      .select('*')
-      .single()
-
-    if (sessionError) return setLoyaltyMessage(sessionError.message)
-
-    localStorage.setItem('qr_loyalty_session_id', session.id)
-    setLoyaltyClient(client)
-    setLoyaltySession(session)
-    setLoyaltyStep('verified')
-    setLoyaltyMessage('Вы вошли в программу лояльности.')
-    await ensureLoyaltyToken(client.id)
-  }
-
-  async function ensureLoyaltyToken(clientId) {
-    const { data: token } = await supabase
-      .from('rms_loyalty_qr_tokens')
-      .select('*')
-      .eq('client_id', clientId)
-      .eq('status', 'active')
-      .gt('expires_at', new Date().toISOString())
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle()
-
-    if (token) {
-      setLoyaltyToken(token)
-      return token
-    }
-
-    const { data: created } = await supabase
-      .from('rms_loyalty_qr_tokens')
-      .insert({ client_id: clientId, purpose: 'pos_scan', status: 'active' })
-      .select('*')
-      .single()
-
-    setLoyaltyToken(created || null)
-    return created
-  }
-
-  async function generateNewLoyaltyToken() {
-    if (!loyaltyClient) return
-    await supabase.from('rms_loyalty_qr_tokens').update({ status: 'cancelled' }).eq('client_id', loyaltyClient.id).eq('status', 'active')
-    await ensureLoyaltyToken(loyaltyClient.id)
-  }
-
-  async function simulateQrPayment(useBonus = false) {
-    setBillPaymentMessage('')
-
-    if (!loyaltyClient) {
-      setBillPaymentMessage('Для применения бонусов сначала войдите в Loyalty.')
-      setScreen('loyalty')
-      return
-    }
-
-    if (loyaltyStep !== 'verified') {
-      setBillPaymentMessage('Loyalty не подтверждён. Войдите через OTP.')
-      setScreen('loyalty')
-      return
-    }
-
-    const total = visibleBillTotal
-    if (!total) {
-      setBillPaymentMessage('Нет суммы заказа/счёта для оплаты.')
-      return
-    }
-
-    const alreadyRedeemed = Number(paymentSummary?.redeemAmount || 0)
-
-    if (useBonus && (bonusApplied || alreadyRedeemed > 0)) {
-      setBillPaymentMessage('Бонусы уже использованы в этом счёте. Повторное списание невозможно.')
-      return
-    }
-
-    if (useBonus) {
-      const redeemAmount = qrRedeemMax
-
-      if (redeemAmount <= 0) {
-        setBillPaymentMessage('Нет доступных бонусов для списания. Баланс должен быть больше 0, и лимит списания — максимум 30% от чека.')
-        return
-      }
-
-      const netPaidAmount = Math.max(0, total - redeemAmount)
-      const expectedCashback = Number((netPaidAmount * CASHBACK_PERCENT / 100).toFixed(2))
-      const nextBalance = Math.max(0, Number(loyaltyClient.bonus_balance || 0) - redeemAmount)
-
-      const { error: redeemError } = await supabase.from('rms_loyalty_transactions').insert({
-        client_id: loyaltyClient.id,
-        client_name: loyaltyClient.name,
-        client_phone: loyaltyClient.phone,
-        type: 'redeem',
-        amount: -redeemAmount,
-        order_total: total,
-        branch_id: branchId,
-        branch_name: branchId,
-        comment: 'Списание бонусов при оплате через QR Menu'
-      })
-
-      if (redeemError) {
-        setBillPaymentMessage(`Ошибка списания бонусов: ${redeemError.message}`)
-        return
-      }
-
-      const { error: linkError } = await supabase.from('rms_loyalty_order_links').insert({
-        client_id: loyaltyClient.id,
-        order_source: 'qr_menu',
-        order_id: currentOrderId,
-        branch_id: branchId,
-        table_number: tableNumber || null,
-        payment_method: 'qr_bonus_applied',
-        order_total: total,
-        redeem_amount: redeemAmount,
-        net_paid_amount: netPaidAmount,
-        cashback_amount: 0,
-        status: 'pending'
-      })
-
-      if (linkError) {
-        setBillPaymentMessage(`Бонусы списаны, но связь с заказом не сохранилась: ${linkError.message}`)
-      }
-
-      const { data: updated, error: updateError } = await supabase
-        .from('rms_loyalty_clients')
-        .update({
-          bonus_balance: nextBalance,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', loyaltyClient.id)
-        .select('*')
-        .single()
-
-      if (updateError) {
-        setBillPaymentMessage(`Ошибка обновления баланса: ${updateError.message}`)
-        return
-      }
-
-      setLoyaltyClient(updated)
-      setBonusApplied(true)
-      setPaymentDone(false)
-      setPaymentSummary({
-        total,
-        redeemAmount,
-        netPaidAmount,
-        cashback: 0,
-        expectedCashback,
-        newBalance: Number(updated.bonus_balance || 0)
-      })
-      setBillPaymentMessage(`Бонусы применены. Списано: ${fmt(redeemAmount)} AZN. Остаток к оплате: ${fmt(netPaidAmount)} AZN. Cashback будет начислен только после подтверждения оплаты остатка.`)
-      return
-    }
-
-    const redeemAmount = alreadyRedeemed
-    const netPaidAmount = Number(paymentSummary?.netPaidAmount || Math.max(0, total - redeemAmount))
-    const expectedCashback = Number((netPaidAmount * CASHBACK_PERCENT / 100).toFixed(2))
-
-    if (tableNumber) {
-      await supabase.from('rms_qr_waiter_calls').insert({
-        branch_id: branchId,
-        table_number: tableNumber,
-        guest_session: guestSession,
-        call_type: 'payment_confirmation',
-        status: 'new',
-        comment: loyaltyClient
-          ? `Подтвердить оплату остатка ${fmt(netPaidAmount)} AZN · Loyalty ${loyaltyClient.phone}`
-          : `Подтвердить оплату остатка ${fmt(netPaidAmount)} AZN`
-      })
-    }
-
-    setPaymentDone(false)
-    setPaymentSummary({
-      total,
-      redeemAmount,
-      netPaidAmount,
-      cashback: 0,
-      expectedCashback,
-      newBalance: Number(loyaltyClient.bonus_balance || 0)
-    })
-    setBillPaymentMessage(`Запрос на подтверждение оплаты отправлен. Остаток к оплате: ${fmt(netPaidAmount)} AZN. Ожидаемый cashback после подтверждения: ${fmt(expectedCashback)} AZN.`)
-  }
-
-  function logoutLoyalty() {
-    localStorage.removeItem('qr_loyalty_phone')
-    localStorage.removeItem('qr_loyalty_session_id')
-    setLoyaltyPhone('')
-    setLoyaltyOtp('')
-    setLoyaltyClient(null)
-    setLoyaltySession(null)
-    setLoyaltyToken(null)
-    setLoyaltyStep('phone')
-    setLoyaltyMessage('')
-  }
-
-  async function rate(p, rating) {
-    const d = new Date().toISOString().slice(0, 10)
-    const key = `qr_vote_${branchId}_${p.id}_${d}`
-    if (localStorage.getItem(key)) return alert('Вы уже оценили это блюдо сегодня.')
-    const { error } = await supabase.from('rms_qr_dish_ratings').insert({ branch_id: branchId, product_id: String(p.id), product_name: p.name, rating, guest_session: guestSession, rating_date: d })
-    if (error) return alert('Вы уже оценили это блюдо сегодня.')
-    localStorage.setItem(key, '1')
-    loadRatings()
-  }
-
-  async function checkExistingPaidOrder() {
-    if (!loyaltyClient?.id || !visibleBillTotal || !currentOrderId) return
-
-    const { data, error } = await supabase
-      .from('rms_loyalty_order_links')
-      .select('*')
-      .eq('client_id', loyaltyClient.id)
-      .eq('order_source', 'qr_menu')
-      .eq('order_id', currentOrderId)
-      .in('status', ['pending', 'paid'])
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle()
-
-    if (error || !data) return
-
-    const total = Number(data.order_total || visibleBillTotal || 0)
-    const redeemAmount = Number(data.redeem_amount || 0)
-    const netPaidAmount = Number(data.net_paid_amount || Math.max(0, total - redeemAmount))
-    const cashback = Number(data.cashback_amount || 0)
-    const expectedCashback = Number((netPaidAmount * CASHBACK_PERCENT / 100).toFixed(2))
-
-    setPaymentSummary({
-      total,
-      redeemAmount,
-      netPaidAmount,
-      cashback,
-      expectedCashback,
-      newBalance: Number(loyaltyClient.bonus_balance || 0)
-    })
-
-    if (data.status === 'paid') {
-      setPaymentDone(true)
-      setBonusApplied(redeemAmount > 0)
-      setPayChoice(true)
-      setBillPaymentMessage('Этот счёт полностью оплачен. Повторная операция невозможна.')
-      return
-    }
-
-    setPaymentDone(false)
-    setBonusApplied(redeemAmount > 0)
-    setPayChoice(true)
-    setBillPaymentMessage(`Бонусы применены. Остаток к оплате: ${fmt(netPaidAmount)} AZN. Ожидается подтверждение оплаты.`)
-  }
-
-  function resetPaymentState() {
-    setPaymentSummary(null)
-    setBillPaymentMessage('')
-    setPayChoice(false)
-    checkExistingPaidOrder()
-  }
-
-  const categories = useMemo(() => ['All', ...new Set(products.map(p => p.category).filter(Boolean))], [products])
-  const shown = category === 'All' ? products : products.filter(p => p.category === category)
-  const cartTotal = cart.reduce((s, x) => s + Number(x.total || 0), 0)
-  const billTotal = Number(bill?.total || billItems.reduce((s, x) => s + Number(x.total || 0), 0))
-  const loyaltyBalance = Number(loyaltyClient?.bonus_balance || 0)
-  const visibleBillItems = billItems.length ? billItems : cart.map((item) => ({
-    ...item,
-    product_name: item.product_name,
-    qty: item.qty,
-    price: item.price,
-    total: item.total,
-    category: item.category
-  }))
-  const visibleBillTotal = visibleBillItems.reduce((s, x) => s + Number(x.total || 0), 0)
-  const loyaltyOrderBase = visibleBillTotal || billTotal || cartTotal || 0
-  const loyaltyMaxRedeem = Math.min(loyaltyBalance, Number((loyaltyOrderBase * MAX_REDEEM_PERCENT / 100).toFixed(2)))
-  const loyaltyEarnPreview = Number((loyaltyOrderBase * CASHBACK_PERCENT / 100).toFixed(2))
-  const qrRedeemMax = loyaltyClient ? Math.min(Number(loyaltyClient.bonus_balance || 0), Number((visibleBillTotal * 0.30).toFixed(2))) : 0
-  const qrNetPayAfterBonus = Math.max(0, visibleBillTotal - qrRedeemMax)
-  const qrCashbackAfterRedeem = Number((qrNetPayAfterBonus * CASHBACK_PERCENT / 100).toFixed(2))
-  const currentOrderId = bill?.id || `cart-${guestSession}-${branchId}-${tableNumber || 'branch'}`
-  const paidStorageKey = `qr_paid_order_${branchId}_${tableNumber || 'branch'}_${currentOrderId}_${visibleBillTotal}_${loyaltyClient?.id || 'guest'}`
-  const loyaltyScanLink = loyaltyToken?.token
-    ? `${window.location.origin}${window.location.pathname}?loyalty_scan_token=${encodeURIComponent(loyaltyToken.token)}`
-    : ''
-  const loyaltyQrUrl = loyaltyScanLink
-    ? `https://api.qrserver.com/v1/create-qr-code/?size=260x260&margin=12&data=${encodeURIComponent(loyaltyScanLink)}`
-    : ''
+    loadMenu();
+    const stored = sessionStorage.getItem(`rms-order:${branch}:${table}`);
+    if (stored) refreshOrder(stored);
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, current) => {
+      setSession(current);
+      if (current) window.setTimeout(loadProfile, 0); else setProfile(null);
+    });
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session);
+      if (data.session) loadProfile();
+    });
+    return () => sub.subscription.unsubscribe();
+  }, []);
 
   useEffect(() => {
-    checkExistingPaidOrder()
-  }, [loyaltyClient?.id, currentOrderId, visibleBillTotal])
+    const endpoint = "https://api.open-meteo.com/v1/forecast?latitude=40.4093&longitude=49.8671&timezone=Asia%2FBaku&forecast_days=1&current=temperature_2m%2Capparent_temperature%2Cweather_code%2Cwind_speed_10m%2Cwind_gusts_10m&daily=temperature_2m_max%2Cprecipitation_sum&wind_speed_unit=ms";
+    fetch(endpoint).then(r => r.ok ? r.json() : Promise.reject()).then(d => setWeather({
+      temperature:Number(d.current?.temperature_2m || 0), apparentTemperature:Number(d.current?.apparent_temperature || 0),
+      maxTemperature:Number(d.daily?.temperature_2m_max?.[0] || 0), precipitation:Number(d.daily?.precipitation_sum?.[0] || 0),
+      windSpeed:Number(d.current?.wind_speed_10m || 0), windGust:Number(d.current?.wind_gusts_10m || 0), weatherCode:Number(d.current?.weather_code || 0)
+    })).catch(() => setWeather(null));
+  }, []);
 
-  return <div className="qr-page theme-mediterranean">
-    <header className="qr-header">
-      <div className="qr-brand"><b>RMS QR Menu</b><span>{isBranchMenu ? `${branchId} · общее меню филиала` : `${branchId} · стол ${tableNumber}`}</span></div>
-      <nav>
-        <button className={screen==='menu'?'active':''} onClick={() => setScreen('menu')}>Меню</button>
-        {!isBranchMenu && <button className={screen==='cart'?'active':''} onClick={() => setScreen('cart')}>Корзина{cart.length ? ` · ${cart.length}` : ''}</button>}
-        {!isBranchMenu && <button className={screen==='bill'?'active':''} onClick={() => setScreen('bill')}>Счёт</button>}
-        <button className={screen==='loyalty'?'active':''} onClick={() => setScreen('loyalty')}>Loyalty{loyaltyClient ? ` · ${fmt(loyaltyBalance)}` : ''}</button>
-        <button className={screen==='info'?'active':''} onClick={() => setScreen('info')}>Инфо</button>
-      </nav>
-    </header>
+  useEffect(() => {
+    if (!order?.public_token || ["paid","cancelled"].includes(order.status)) return;
+    const timer = window.setInterval(() => refreshOrder(order.public_token), 12000);
+    return () => window.clearInterval(timer);
+  }, [order?.public_token, order?.status]);
 
-    {screen === 'menu' && <>
-      <div className="qr-categories">{categories.map(c => <button key={c} className={c===category?'active':''} onClick={() => setCategory(c)}>{c === 'All' ? 'Все' : c}</button>)}</div>
-      <div className="qr-products">{shown.map(p => {
-        const r = ratings[String(p.id)]
-        const recs = pairings[String(p.id)] || []
-        return <article className="qr-card" key={p.id}>
-          <button className="qr-photo" onClick={() => setPhoto(p)}><img src={p.image_url} alt={p.name} /><span>Увеличить</span></button>
-          <div className="qr-card-body">
-            <div className="qr-card-top"><div><h3>{p.name}</h3><small>{p.category}</small></div><b>{fmt(p.price)} AZN</b></div>
-            <p>{p.description || 'Описание будет добавлено в RMS.'}</p>
-            <RatingStars value={r?.avg || p.rating || 0} count={r?.count} onRate={x => rate(p, x)} />
-            {recs.length ? <div className="qr-recommendations"><span>Рекомендуем:</span><div>{recs.slice(0,3).map(x => <b key={x}>{x}</b>)}</div></div> : null}
-            {!isBranchMenu ? <button className="qr-add-cart" onClick={() => addToCart(p)}>+ Добавить в общий заказ</button> : <button className="qr-add-cart" onClick={() => alert('Для заказа отсканируйте QR конкретного стола.')}>QR стола для заказа</button>}
-          </div>
-        </article>
-      })}</div>
-    </>}
+  useEffect(() => {
+    if (!selected) return;
+    const esc = (e) => e.key === "Escape" && setSelected(null);
+    window.addEventListener("keydown", esc); document.body.style.overflow = "hidden";
+    return () => { window.removeEventListener("keydown", esc); document.body.style.overflow = ""; };
+  }, [selected]);
 
-    {screen === 'cart' && <section className="qr-panel">
-      <h1>Общий заказ стола</h1>
-      <p>Гости за одним столом могут собрать общий заказ. Финальное подтверждение делает персонал.</p>
-      {!cart.length ? <div className="qr-empty"><h3>Корзина пустая</h3><p>Добавьте блюда из меню.</p></div> : <>
-        <div className="qr-bill-list">{cart.map(i => <div className="qr-bill-item" key={i.id}><div><b>{i.product_name}</b><p>{i.category}</p></div><div className="qr-cart-controls"><button onClick={() => changeQty(i,-1)}>-</button><span>{fmt(i.qty)}</span><button onClick={() => changeQty(i,1)}>+</button><b>{fmt(i.total)} AZN</b></div></div>)}</div>
-        <div className="qr-bill-total"><div className="qr-grand-total"><span>Итого</span><b>{fmt(cartTotal)} AZN</b></div></div>
-        <button className="qr-main-action" onClick={requestCartApproval}>Отправить официанту на подтверждение</button>
-      </>}
-      <StatusList statuses={statuses} />
-    </section>}
+  const categories = useMemo(() => ["Все", ...new Set(menu.map(x => x.category_name).filter(Boolean))], [menu]);
+  const shown = useMemo(() => menu.filter(x => (category === "Все" || x.category_name === category) && `${x.name} ${x.description}`.toLowerCase().includes(search.toLowerCase())), [menu, category, search]);
+  const cartTotal = cart.reduce((s, x) => s + Number(x.price) * x.qty, 0);
+  const cartCount = cart.reduce((s, x) => s + x.qty, 0);
+  const wx = useMemo(() => getWeatherOffer(weather), [weather]);
+  const weatherPicks = useMemo(() => wx ? menu.filter(x => wx.categories.includes(x.category_name)).slice(0,3) : [], [menu, wx]);
+  const pairings = useMemo(() => selected ? menu.filter(x => x.id !== selected.id && (PAIRINGS[selected.category_name] || []).includes(x.category_name)).slice(0,3) : [], [menu, selected]);
 
-    {screen === 'bill' && <section className="qr-panel">
-      <div className="qr-section-head"><div><h1>Ваш счёт</h1><p>Счёт подтягивается из RMS/POS.</p></div><button className="qr-refresh" onClick={loadBill}>Обновить</button></div>
-      {!visibleBillItems.length ? <div className="qr-empty"><h3>Открытого счёта пока нет</h3><p>Если заказ собран в корзине, он появится здесь после добавления позиций.</p></div> : <>
-        <div className="qr-bill-list">{visibleBillItems.map(i => <div className="qr-bill-item" key={i.id || i.product_id}><div><b>{i.product_name}</b><p>{i.category || ''}</p></div><div className="qr-bill-price"><span>{fmt(i.qty)} × {fmt(i.price)}</span><b>{fmt(i.total)} AZN</b></div></div>)}</div>
-        <div className="qr-bill-total"><div className="qr-grand-total"><span>Total</span><b>{fmt(visibleBillTotal)} AZN</b></div></div>
-        <div className="qr-payment-box qr-payment-premium">{!payChoice ? <button onClick={() => setPayChoice(true)} disabled={paymentDone}>Оплатить</button> : <>
-          <div className="qr-pay-head">
-            <span>{paymentDone ? 'Paid' : bonusApplied ? 'Bonus applied' : 'Payment'}</span>
-            <h3>{paymentDone ? 'Оплата завершена' : bonusApplied ? 'Остаток ожидает оплаты' : 'Выберите способ оплаты'}</h3>
-          </div>
+  const openProduct = (item) => { setSelected(item); setSelectedOption(""); };
+  const add = (item, optionName = "") => setCart(prev => {
+    const key = `${item.id}:${optionName}`;
+    const found = prev.find(x => x.cart_key === key);
+    return found ? prev.map(x => x.cart_key === key ? {...x, qty:x.qty+1} : x) : [...prev, {...item, cart_key:key, option_name:optionName || null, qty:1}];
+  });
+  const qty = (key, delta) => setCart(prev => prev.map(x => x.cart_key === key ? {...x, qty:x.qty+delta} : x).filter(x => x.qty > 0));
 
-          {billPaymentMessage ? <div className={`qr-payment-message ${paymentDone ? 'success' : bonusApplied ? 'pending' : ''}`}>{billPaymentMessage}</div> : null}
+  async function sendOtp() {
+    const normalized = phone.replace(/\s+/g, "");
+    if (!/^\+994\d{9}$/.test(normalized)) return flash("Введите номер в формате +994XXXXXXXXX");
+    setBusy(true);
+    const { error } = await supabase.auth.signInWithOtp({ phone: normalized });
+    setBusy(false);
+    if (error) return flash(error.message);
+    setOtpSent(true); flash("Код отправлен");
+  }
 
-          {(paymentDone || bonusApplied) && paymentSummary ? <div className={`qr-paid-summary premium ${bonusApplied && !paymentDone ? 'pending' : ''}`}>
-            <div className="qr-paid-total">
-              <span>{paymentDone ? 'Финальный чек' : 'Остаток к оплате'}</span>
-              <b>{paymentDone ? fmt(paymentSummary.total) : fmt(paymentSummary.netPaidAmount)} AZN</b>
-            </div>
-            <div className="qr-paid-grid">
-              <div><span>Сумма счёта</span><b>{fmt(paymentSummary.total)} AZN</b></div>
-              <div><span>Списано бонусов</span><b>{fmt(paymentSummary.redeemAmount)} AZN</b></div>
-              <div><span>{paymentDone ? 'Оплачено' : 'Осталось оплатить'}</span><b>{fmt(paymentSummary.netPaidAmount)} AZN</b></div>
-              <div><span>{paymentDone ? 'Cashback начислен' : 'Cashback после подтверждения'}</span><b>{fmt(paymentDone ? paymentSummary.cashback : paymentSummary.expectedCashback)} AZN</b></div>
-            </div>
-            {!paymentDone ? <button onClick={() => simulateQrPayment(false)}>Отправить запрос на подтверждение оплаты</button> : <button onClick={resetPaymentState}>Закрыть сводку</button>}
-          </div> : <>
-            {loyaltyClient && loyaltyStep === 'verified' ? <div className="qr-bonus-pay-box premium">
-              <div className="qr-bonus-main">
-                <span>Баланс бонусов</span>
-                <b>{fmt(loyaltyBalance)} AZN</b>
-              </div>
-              <div className="qr-bonus-grid">
-                <div><span>Доступно к списанию</span><b>{fmt(qrRedeemMax)} AZN</b></div>
-                <div><span>Сумма счёта</span><b>{fmt(visibleBillTotal)} AZN</b></div>
-                <div><span>К оплате после бонусов</span><b>{fmt(qrNetPayAfterBonus)} AZN</b></div>
-              </div>
-              <button onClick={() => simulateQrPayment(true)} disabled={qrRedeemMax <= 0 || paymentDone || bonusApplied}>Применить бонусы</button>
-            </div> : <div className="qr-bonus-pay-box premium muted">
-              <span>Для списания бонусов нужен вход в Loyalty через OTP.</span>
-              <button onClick={() => setScreen('loyalty')}>Войти в Loyalty</button>
-            </div>}
+  async function verifyOtp() {
+    setBusy(true);
+    const { error } = await supabase.auth.verifyOtp({ phone: phone.replace(/\s+/g, ""), token: otp, type:"sms" });
+    setBusy(false);
+    if (error) return flash("Неверный или просроченный код");
+    setOtpSent(false); setOtp(""); await loadProfile(); flash("Вход выполнен");
+  }
 
-            <button onClick={() => simulateQrPayment(false)} disabled={paymentDone}>Запросить подтверждение оплаты без бонусов</button>
-            <button disabled={paymentDone}>Apple Pay</button><button disabled={paymentDone}>Google Pay</button><button disabled={paymentDone}>Банковская карта</button>
-          </>}
-        </>}</div>
-      </>}
-    </section>}
+  async function createOrder() {
+    if (!cart.length || busy) return;
+    setBusy(true);
+    const items = cart.map(x => ({ menu_item_id:x.id, quantity:x.qty, option_name:x.option_name || null, note:x.note || null }));
+    const { data, error } = await supabase.rpc("qr_create_order", {
+      p_branch_code:branch, p_table_code:table, p_items:items, p_bonus_requested:Number(bonusRequest || 0)
+    });
+    setBusy(false);
+    if (error) return flash(error.message);
+    const created = Array.isArray(data) ? data[0] : data;
+    setOrder(created); setCart([]); setBonusRequest(0); setScreen("bill");
+    sessionStorage.setItem(`rms-order:${branch}:${table}`, created.public_token);
+    flash("Заказ отправлен");
+  }
 
-    {screen === 'loyalty' && <section className="qr-panel qr-loyalty-panel">
-      <div className="qr-section-head">
-        <div>
-          <h1>Loyalty</h1>
-          <p>Войдите по номеру телефона через WhatsApp/SMS OTP. После входа можно видеть баланс, получать cashback и показывать QR-код официанту.</p>
+  async function callWaiter(kind="waiter") {
+    const { error } = await supabase.rpc("qr_create_waiter_call", { p_branch_code:branch, p_table_code:table, p_call_type:kind, p_order_token:order?.public_token || null });
+    flash(error ? error.message : kind === "payment" ? "Запрос оплаты отправлен" : "Официант вызван");
+  }
+
+  const maxBonus = Math.max(0, Math.min(Number(profile?.available_bonus || 0), cartTotal * .30));
+
+  return <div className="qr-app">
+    <style>{CSS}</style>
+    <header><div><span className="eyebrow">BARISTA&CHEF</span><h1>QR MENU</h1><small>{branch} · Стол {table}</small></div><button className="round" onClick={() => setScreen("loyalty")}>♙</button></header>
+    <nav>
+      <button className={screen==="menu"?"active":""} onClick={() => setScreen("menu")}>Меню</button>
+      <button className={screen==="cart"?"active":""} onClick={() => setScreen("cart")}>Заказ {cartCount ? `(${cartCount})` : ""}</button>
+      <button className={screen==="bill"?"active":""} onClick={() => setScreen("bill")}>Счёт</button>
+      <button onClick={() => callWaiter("waiter")}>Вызов</button>
+    </nav>
+    {notice && <div className="toast">{notice}</div>}
+
+    {screen === "menu" && <main>
+      {wx && <section className={`weather ${wx.kind}${isNight ? " night" : ""}`}>
+        <WeatherIcon kind={wx.kind} isNight={isNight}/><div className="weather-copy"><b>{wx.title}</b><p>{wx.text}</p>
+          <div className="metrics"><span>{Math.round(weather.temperature)}°<small>сейчас</small></span><span>{Math.round(weather.windSpeed)} м/с<small>ветер</small></span><span>{Number(weather.precipitation).toFixed(1)} мм<small>осадки</small></span></div>
         </div>
-      </div>
+        <div className="picks">{weatherPicks.map(x => <button key={x.id} onClick={() => openProduct(x)}><img src={x.image_url || FALLBACK} alt=""/><span>{x.name}</span></button>)}</div>
+      </section>}
+      <div className="search"><input value={search} onChange={e => setSearch(e.target.value)} placeholder="Поиск по меню"/></div>
+      <div className="chips">{categories.map(c => <button key={c} className={category===c?"active":""} onClick={() => setCategory(c)}>{c}</button>)}</div>
+      {loading ? <div className="state">Загружаем меню…</div> : !shown.length ? <div className="state">В этой категории пока нет доступных позиций.</div> : <div className="grid">{shown.map(item => <article key={item.id} className="card">
+        <button className="photo" onClick={() => openProduct(item)}><img src={item.image_url || FALLBACK} alt={item.name}/></button>
+        <div className="card-body"><small>{item.category_name}</small><h3>{item.name}</h3>{item.description && <p>{item.description}</p>}<div><b>{money(item.price)}</b><button className="plus" onClick={() => item.options?.length ? openProduct(item) : add(item)}>+</button></div></div>
+      </article>)}</div>}
+    </main>}
 
-      {loyaltyStep !== 'verified' ? <>
-        <div className="qr-loyalty-login">
-          <input value={loyaltyPhone} onChange={(e) => setLoyaltyPhone(e.target.value)} placeholder="+994 XX XXX XX XX" />
-          <button onClick={sendLoyaltyOtp}>Получить код</button>
-        </div>
-        {loyaltyStep === 'otp' ? <div className="qr-loyalty-pin">
-          <input value={loyaltyOtp} onChange={(e) => setLoyaltyOtp(e.target.value)} placeholder="OTP код" inputMode="numeric" maxLength="6" />
-          <button onClick={verifyLoyaltyOtp}>Войти</button>
-        </div> : null}
-      </> : null}
+    {screen === "cart" && <main><h2>Ваш заказ</h2>{!cart.length ? <div className="state">Корзина пока пуста.</div> : <>
+      <div className="lines">{cart.map(x => <div className="line" key={x.cart_key}><img src={x.image_url || FALLBACK} alt=""/><div><b>{x.name}</b>{x.option_name && <small>{x.option_name}</small>}<small>{money(x.price)}</small></div><div className="counter"><button onClick={() => qty(x.cart_key,-1)}>−</button><span>{x.qty}</span><button onClick={() => qty(x.cart_key,1)}>+</button></div></div>)}</div>
+      {session && profile && <section className="bonus"><b>Доступно бонусов: {money(profile.available_bonus)}</b><small>Можно списать до 30% заказа — максимум {money(maxBonus)}</small><input type="number" min="0" max={maxBonus} step="0.1" value={bonusRequest} onChange={e => setBonusRequest(Math.min(maxBonus, Math.max(0, Number(e.target.value))))}/></section>}
+      <div className="total"><span>Итого</span><b>{money(cartTotal)}</b></div><button className="primary" disabled={busy} onClick={createOrder}>{busy ? "Отправляем…" : "Отправить заказ"}</button>
+    </>}</main>}
 
-      {loyaltyMessage ? <div className="qr-loyalty-message">{loyaltyMessage}</div> : null}
+    {screen === "bill" && <main><h2>Счёт</h2>{!order ? <div className="state">Активного заказа нет.</div> : <section className="bill">
+      <div className={`status ${order.status}`}>{({new:"Принят",confirmed:"Подтверждён",preparing:"Готовится",ready:"Готов",payment_requested:"Запрошена оплата",paid:"Оплачен",cancelled:"Отменён"})[order.status] || order.status}</div>
+      <div className="bill-no">Заказ № {order.order_number}</div>
+      {(order.items || []).map((x,i) => <div className="bill-line" key={i}><span>{x.name} × {x.quantity}</span><b>{money(x.line_total)}</b></div>)}
+      <div className="bill-line"><span>Бонусы</span><b>− {money(order.bonus_reserved)}</b></div><div className="total"><span>К оплате</span><b>{money(order.payable_amount)}</b></div>
+      {order.status !== "paid" && order.status !== "cancelled" && <button className="primary" onClick={() => callWaiter("payment")}>Попросить счёт</button>}
+      {order.status === "paid" && <p className="success">Оплата подтверждена. Cashback начислен на денежную часть счёта.</p>}
+    </section>}</main>}
 
-      {loyaltyClient && loyaltyStep === 'verified' ? <>
-        <div className={`qr-loyalty-card ${loyaltyClient.level || 'new'} verified`}>
-          <span>Ваш уровень</span>
-          <h2>{String(loyaltyClient.level || 'new').toUpperCase()}</h2>
-          <p>{loyaltyClient.name || 'Гость'} · {loyaltyClient.phone}</p>
-          <div className="qr-loyalty-balance">
-            <div><small>Баланс</small><b>{fmt(loyaltyBalance)} AZN</b></div>
-            <div><small>Покупки</small><b>{fmt(loyaltyClient.total_spent)} AZN</b></div>
-            <div><small>Визиты</small><b>{loyaltyClient.visits_count || 0}</b></div>
-          </div>
-        </div>
+    {screen === "loyalty" && <main><h2>Loyalty</h2>{!session ? <section className="login"><p>Войдите по номеру телефона, чтобы использовать бонусы и видеть историю.</p><input value={phone} onChange={e => setPhone(e.target.value)} placeholder="+994XXXXXXXXX"/>{otpSent && <input value={otp} onChange={e => setOtp(e.target.value.replace(/\D/g,""))} inputMode="numeric" placeholder="Код из SMS"/>}<button className="primary" disabled={busy} onClick={otpSent ? verifyOtp : sendOtp}>{otpSent ? "Подтвердить код" : "Получить код"}</button></section> : <section className="loyalty-card">
+      <small>{profile?.tier_name || "Member"}</small><strong>{money(profile?.available_bonus)} бонусов</strong><span>{profile?.visits || 0} визитов · {money(profile?.lifetime_spend)} покупок</span>
+      <div className="history">{(profile?.history || []).map((h,i) => <div key={i}><span>{h.description}<small>{new Date(h.created_at).toLocaleDateString("ru-RU")}</small></span><b className={Number(h.amount)>=0?"earn":"redeem"}>{Number(h.amount)>=0?"+":""}{money(h.amount)}</b></div>)}</div>
+      <button className="ghost" onClick={() => supabase.auth.signOut()}>Выйти</button>
+    </section>}</main>}
 
-        <div className="qr-loyalty-rules">
-          <div><span>Cashback</span><b>{CASHBACK_PERCENT}%</b><small>после оплаты QR/POS</small></div>
-          <div><span>Можно списать</span><b>{fmt(loyaltyMaxRedeem)} AZN</b><small>максимум {MAX_REDEEM_PERCENT}% от текущего чека</small></div>
-          <div><span>Будет начислено</span><b>{fmt(loyaltyEarnPreview)} AZN</b><small>по текущему заказу/счёту</small></div>
-        </div>
-
-        <div className="qr-loyalty-token">
-          <span>QR-код для официанта / POS</span>
-          {loyaltyQrUrl ? <div className="qr-token-box"><img src={loyaltyQrUrl} alt="Loyalty QR" /><small>{loyaltyToken?.token?.slice(0, 8).toUpperCase()}</small></div> : <div className="qr-token-box">QR</div>}
-          <p>Официант сканирует этот QR обычной камерой телефона. Откроется RMS Pro → Loyalty POS Scan: можно начислить cashback или списать бонусы при оплате.</p>
-          <button onClick={generateNewLoyaltyToken}>Обновить QR-код</button>
-        </div>
-
-        <button className="qr-loyalty-logout" onClick={logoutLoyalty}>Выйти из Loyalty</button>
-      </> : null}
-    </section>}
-
-    {screen === 'info' && <section className="qr-panel">
-      <h1>Информация</h1>
-      {!isBranchMenu && <div className="qr-call-grid">
-        <button onClick={() => callWaiter('waiter','Позвать официанта')}>Позвать официанта</button>
-        <button onClick={() => callWaiter('bill','Попросить счёт')}>Попросить счёт</button>
-        <button onClick={() => callWaiter('water','Вода')}>Вода</button>
-        <button onClick={() => callWaiter('clean','Убрать стол')}>Убрать стол</button>
-      </div>}
-      <div className="qr-info-grid">
-        <InfoCard title="Wi‑Fi" value={info?.wifi_name || 'RMS Guest'} sub={info?.wifi_password ? `Пароль: ${info.wifi_password}` : ''} />
-        <InfoCard title="Рабочие часы" value={info?.working_hours || '09:00 — 23:00'} />
-        <InfoCard title="Телефон" value={info?.phone || '+994 XX XXX XX XX'} />
-        <InfoCard title="Адрес" value={info?.address || 'Baku'} />
-      </div>
-      <StatusList statuses={statuses} />
-    </section>}
-
-    {activeAd ? <div className="qr-ad-popup" onClick={() => setActiveAd(null)}><div className="qr-ad-card" onClick={e => e.stopPropagation()}><button className="qr-modal-close" onClick={() => setActiveAd(null)}>×</button>{activeAd.image_url ? <img src={activeAd.image_url} alt={activeAd.title} /> : null}<div><h2>{activeAd.title}</h2><p>{activeAd.text}</p></div></div></div> : null}
-
-    {photo ? <div className="qr-modal" onClick={() => setPhoto(null)}><div className="qr-modal-card" onClick={e => e.stopPropagation()}><button className="qr-modal-close" onClick={() => setPhoto(null)}>×</button><img src={photo.image_url} alt={photo.name} /><div><h2>{photo.name}</h2><p>{photo.description}</p><b>{fmt(photo.price)} AZN</b></div></div></div> : null}
-  </div>
+    {selected && <div className="modal" onMouseDown={e => e.target===e.currentTarget && setSelected(null)}><div className="dialog"><button className="close" onClick={() => setSelected(null)}>×</button><img className="hero" src={selected.image_url || FALLBACK} alt={selected.name}/><div className="dialog-copy"><small>{selected.category_name}</small><h2>{selected.name}</h2><p>{selected.description}</p>{selected.options?.length>0 && <div className="options"><b>Выберите вариант</b>{selected.options.map(o => <button className={selectedOption===o?"active":""} key={o} onClick={() => setSelectedOption(o)}>{o}</button>)}</div>}<div className="modal-price"><b>{money(selected.price)}</b><button className="primary" onClick={() => {if(selected.options?.length && !selectedOption)return flash("Выберите вариант");add(selected,selectedOption);flash("Добавлено в заказ");}}>Добавить</button></div>{pairings.length>0 && <><h3>С этим блюдом берут</h3><div className="pairings">{pairings.map(x => <button key={x.id} onClick={() => x.options?.length ? openProduct(x) : add(x)}><img src={x.image_url || FALLBACK} alt=""/><span>{x.name}<b>{money(x.price)}</b></span><i>+</i></button>)}</div></>}</div></div></div>}
+  </div>;
 }
 
-function RatingStars({ value, count, onRate }) {
-  const r = Number(value || 0)
-  const tone = r >= 4.5 ? 'excellent' : r >= 4 ? 'good' : r >= 3 ? 'mid' : r > 0 ? 'low' : 'empty'
-  return <div className={`qr-rating-view ${tone}`}>
-    <div className="qr-stars">
-      {[1,2,3,4,5].map(i => (
-        <button key={i} type="button" className={r >= i ? 'filled' : r >= i - .5 ? 'half' : ''} onClick={() => onRate?.(i)}>★</button>
-      ))}
-      <b>{r ? r.toFixed(1) : '—'}</b>
-    </div>
-    <span>{count ? `${count} оценок` : 'оцените блюдо'}</span>
-  </div>
-}
+const FALLBACK = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='900' height='600'%3E%3Crect width='100%25' height='100%25' fill='%23eee8dc'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%23685f52' font-family='Arial' font-size='36'%3EBARISTA%26CHEF%3C/text%3E%3C/svg%3E";
 
-function StatusList({ statuses }) {
-  return <div className="qr-status-box"><h3>Статус кухни</h3>{!statuses.length ? <p>Активных статусов пока нет.</p> : <div className="qr-status-list">{statuses.map(s => <div key={s.id}><b>{s.status_label || s.status}</b><span>{s.comment || s.source || ''}</span></div>)}</div>}</div>
-}
+const CSS = `
+:root{font-family:Inter,system-ui,-apple-system,sans-serif;color:#17231d;background:#f5f2eb}*{box-sizing:border-box}body{margin:0;background:#f5f2eb}.qr-app{min-height:100vh;padding-bottom:88px}header{display:flex;justify-content:space-between;align-items:center;padding:22px max(20px,calc((100vw - 1180px)/2));background:#183b2c;color:white}h1,h2,h3,p{margin-top:0}header h1{margin:2px 0;font-size:24px;letter-spacing:.12em}.eyebrow{font-size:11px;letter-spacing:.2em;color:#d4b26a}header small{color:#d5ded9}.round{border:1px solid #ffffff55;background:#ffffff10;color:#fff;width:42px;height:42px;border-radius:50%;font-size:22px}nav{position:sticky;top:0;z-index:20;display:flex;justify-content:center;gap:6px;padding:10px;background:#fffffff2;backdrop-filter:blur(12px);box-shadow:0 3px 20px #0000000b}nav button,.chips button{border:0;background:transparent;padding:10px 16px;border-radius:999px;color:#536059;font-weight:700}nav button.active,.chips button.active{background:#183b2c;color:white}main{max-width:1180px;margin:0 auto;padding:24px 20px}.toast{position:fixed;z-index:80;left:50%;bottom:82px;transform:translateX(-50%);background:#17231d;color:#fff;padding:12px 18px;border-radius:12px;box-shadow:0 10px 30px #0004}.weather{position:relative;overflow:hidden;display:grid;grid-template-columns:150px 1fr 340px;gap:18px;align-items:center;padding:22px;border-radius:25px;color:white;margin-bottom:22px;min-height:190px}.weather.sunny{background:linear-gradient(135deg,#df8e31,#f5bd5c)}.weather.windy{background:linear-gradient(135deg,#66889a,#99aeb8)}.weather.rainy{background:linear-gradient(135deg,#3d6177,#7895a7)}.weather.cloudy{background:linear-gradient(135deg,#6e7a82,#a8afb2)}.weather.cool{background:linear-gradient(135deg,#477d8d,#86b4bd)}.weather-copy{z-index:2}.weather-copy b{font-size:24px}.weather-copy p{margin:6px 0 16px}.metrics{display:flex;gap:25px}.metrics span{font-size:17px;font-weight:800}.metrics small{display:block;font-size:10px;text-transform:uppercase;opacity:.72;font-weight:600}.picks{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;z-index:2}.picks button{border:0;background:#ffffff20;padding:7px;border-radius:15px;color:white;text-align:left}.picks img{width:100%;height:66px;object-fit:cover;border-radius:10px}.picks span{display:block;font-size:11px;padding:6px 2px 2px}.wx-icon{position:relative;width:140px;height:130px}.sun{position:absolute;width:70px;height:70px;border-radius:50%;background:#ffd76b;top:10px;left:20px;box-shadow:0 0 0 14px #ffd76b33}.cloud{display:block;position:absolute;width:100px;height:36px;background:#e7eef1;border-radius:30px;left:26px;top:65px;box-shadow:20px -20px 0 -3px #e7eef1,-20px -10px 0 -8px #e7eef1}.c2{left:48px;top:82px;transform:scale(.72);opacity:.75}.wx-windy .sun,.wx-rainy .sun,.wx-cloudy .sun,.wx-cool .sun{display:none}.rain{display:none;position:absolute;width:4px;height:22px;background:#bce8ff;border-radius:4px;top:110px;transform:rotate(16deg)}.wx-rainy .rain{display:block}.r1{left:48px}.r2{left:76px}.r3{left:104px}.wind{display:none;position:absolute;width:95px;height:3px;border-radius:4px;background:#fff;left:10px;top:45px}.wx-windy .cloud{opacity:.85}.wx-windy .wind{display:block;animation:wind 1.6s ease-in-out infinite}.w2{top:105px;left:28px;animation-delay:.5s!important}@keyframes wind{50%{transform:translateX(20px);opacity:.45}}.search input,.login input,.bonus input{width:100%;border:1px solid #d9d6cf;background:white;padding:14px 16px;border-radius:14px;font-size:16px}.chips{display:flex;gap:8px;overflow:auto;padding:14px 0 18px}.chips button{background:#ebe7de;white-space:nowrap}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}.card{overflow:hidden;background:white;border-radius:18px;box-shadow:0 5px 22px #253a2f0d}.photo{display:block;border:0;padding:0;width:100%;background:#eee}.photo img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover}.card-body{padding:14px}.card-body small,.dialog-copy>small{color:#99825a;text-transform:uppercase;font-size:10px;font-weight:800}.card-body h3{margin:5px 0 8px;font-size:17px}.card-body p{font-size:12px;color:#707872;height:45px;overflow:hidden}.card-body>div{display:flex;justify-content:space-between;align-items:center}.plus{border:0;background:#183b2c;color:white;border-radius:50%;width:35px;height:35px;font-size:22px}.state{padding:50px 20px;text-align:center;color:#7b817d;background:white;border-radius:18px}.lines,.bill,.login,.loyalty-card,.bonus{background:white;border-radius:18px;padding:18px}.line{display:grid;grid-template-columns:62px 1fr auto;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid #eee}.line img{width:62px;height:52px;object-fit:cover;border-radius:10px}.line small{display:block;color:#7a807d;margin-top:4px}.counter{display:flex;align-items:center;gap:8px}.counter button{width:30px;height:30px;border:0;border-radius:50%;background:#eee9df;font-size:18px}.total{display:flex;justify-content:space-between;align-items:center;font-size:20px;padding:18px 0}.primary{width:100%;border:0;border-radius:14px;padding:15px;background:#183b2c;color:white;font-size:15px;font-weight:800}.primary:disabled{opacity:.55}.bonus{margin-top:14px;background:#eee8d9}.bonus small{display:block;margin:4px 0 10px}.status{display:inline-block;padding:7px 12px;border-radius:999px;background:#efe6c6;color:#715a12;font-weight:800}.status.paid{background:#dbefe0;color:#236237}.status.cancelled{background:#f4dcdc;color:#8c2d2d}.bill-no{margin:15px 0;color:#7b817d}.bill-line{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid #eee}.success{padding:14px;background:#e3f2e7;border-radius:12px;color:#245f37}.login{max-width:480px}.login input{margin:7px 0}.loyalty-card{max-width:620px;background:linear-gradient(135deg,#183b2c,#2d5b46);color:white}.loyalty-card>small,.loyalty-card>span{display:block;opacity:.74}.loyalty-card>strong{display:block;font-size:30px;margin:8px 0}.history{margin:22px 0;background:#ffffff12;border-radius:14px;padding:6px 14px}.history>div{display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid #ffffff18}.history small{display:block;opacity:.6;margin-top:3px}.earn{color:#a8e5b8}.redeem{color:#ffd0c5}.ghost{border:1px solid #ffffff55;background:transparent;color:white;padding:10px 16px;border-radius:10px}.modal{position:fixed;inset:0;z-index:60;background:#0b1510cc;display:flex;align-items:center;justify-content:center;padding:20px}.dialog{position:relative;display:grid;grid-template-columns:1.08fr .92fr;background:white;border-radius:24px;overflow:hidden;max-width:980px;width:100%;max-height:92vh}.close{position:absolute;right:14px;top:14px;z-index:2;border:0;border-radius:50%;width:40px;height:40px;background:#fff;font-size:26px;box-shadow:0 3px 15px #0002}.hero{width:100%;height:100%;max-height:92vh;object-fit:cover}.dialog-copy{padding:32px;overflow:auto}.dialog-copy h2{font-size:30px;margin:7px 0}.dialog-copy p{color:#69716c;line-height:1.6}.modal-price{display:flex;align-items:center;gap:25px;margin:22px 0}.modal-price>b{font-size:24px}.modal-price .primary{width:auto;padding:12px 24px}.pairings{display:grid;gap:9px}.pairings button{display:grid;grid-template-columns:52px 1fr 28px;gap:10px;align-items:center;text-align:left;border:0;background:#f4f1ea;padding:7px;border-radius:12px}.pairings img{width:52px;height:46px;object-fit:cover;border-radius:8px}.pairings b{display:block;color:#7c6a47;font-size:12px}.pairings i{font-style:normal;font-size:22px}
+.options{display:flex;flex-wrap:wrap;gap:7px;margin:16px 0}.options>b{width:100%;font-size:13px}.options button{border:1px solid #d7d2c8;background:#f4f1ea;padding:9px 11px;border-radius:10px;text-align:left}.options button.active{background:#183b2c;color:#fff;border-color:#183b2c}
+@media(max-width:850px){.weather{grid-template-columns:110px 1fr}.picks{grid-column:1/-1}.grid{grid-template-columns:repeat(2,1fr)}.dialog{grid-template-columns:1fr;overflow:auto}.hero{height:42vh}.dialog-copy{overflow:visible}.wx-icon{transform:scale(.8);transform-origin:left center}}
+@media(max-width:560px){header{padding:17px 16px}nav{justify-content:flex-start;overflow:auto}nav button{padding:9px 12px;white-space:nowrap}main{padding:16px 12px}.weather{display:block;padding:18px;min-height:0}.wx-icon{position:absolute;right:-18px;top:-10px;left:auto;opacity:.72;transform:scale(.72)}.weather-copy{position:relative}.weather-copy b{display:block;max-width:70%;font-size:20px}.weather-copy p{max-width:72%;min-height:42px}.metrics{position:relative;z-index:3;gap:16px;padding-top:10px;margin-top:8px;border-top:1px solid #ffffff35}.metrics span{font-size:14px}.picks{position:relative;margin-top:16px}.picks img{height:58px}.grid{gap:10px}.card-body{padding:11px}.card-body h3{font-size:14px}.card-body p{display:none}.dialog-copy{padding:22px 18px}.dialog-copy h2{font-size:25px}.modal{padding:8px}.line{grid-template-columns:52px 1fr auto}.line img{width:52px;height:48px}}
 
-function InfoCard({ title, value, sub }) {
-  return <div className="qr-info-card"><span>{title}</span><b>{value || '—'}</b>{sub ? <p>{sub}</p> : null}</div>
-}
+/* Production visual sync with the approved QR Menu test build. */
+.round{border-color:#ffffff24;background:#ffffff0b}
+nav{border-bottom:1px solid #183b2c12}
+.weather.night{background:radial-gradient(circle at 15% 15%,#2d4770 0,transparent 24%),linear-gradient(135deg,#071321,#142941 58%,#1d3550);box-shadow:inset 0 1px 0 #ffffff14}
+.weather.night .weather-copy p{color:#d6e0ea}
+.weather.night .picks button{background:#ffffff12;border:1px solid #ffffff12}
+.moon{display:none;position:absolute;width:64px;height:64px;border-radius:50%;background:#f5efcf;top:8px;left:20px;box-shadow:0 0 0 11px #dbe8ff14,0 0 28px #dce8ff55}
+.moon:after{content:"";position:absolute;width:57px;height:57px;border-radius:50%;background:#12263e;left:17px;top:-5px}
+.weather.night .sun{display:none}
+.weather.night .moon{display:block}
+.weather.night .cloud{background:#d3dce6;box-shadow:20px -20px 0 -3px #d3dce6,-20px -10px 0 -8px #d3dce6;opacity:.82}
+.picks img,.photo img,.line img,.hero,.pairings img{object-fit:contain;background:#ecece5}
+@media(max-width:560px){.metrics{padding-top:14px;margin-top:12px;border-top:0}}
+`;
