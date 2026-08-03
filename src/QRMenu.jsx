@@ -1,69 +1,84 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "./supabase";
-
-const money = (n) => `${Number(n || 0).toFixed(2)} ₼`;
-const safeText = (v) => String(v ?? "");
-
-const PAIRINGS = {
-  "ЗАВТРАК": ["КОФЕ", "ХОЛОДНЫЙ КОФЕ", "ЛИМОНАДЫ"],
-  "ЗАКУСКИ": ["ЛИМОНАДЫ", "САЛАТЫ", "ХОЛОДНЫЕ НАПИТКИ"],
-  "СУПЫ": ["ЗАКУСКИ", "ЧАЙ", "САЛАТЫ"],
-  "САЛАТЫ": ["ЛИМОНАДЫ", "ГОРЯЧИЕ БЛЮДА", "ХОЛОДНЫЙ КОФЕ"],
-  "ГОРЯЧИЕ БЛЮДА": ["ЛИМОНАДЫ", "САЛАТЫ", "ХОЛОДНЫЕ НАПИТКИ"],
-  "ПИЦЦА": ["ЛИМОНАДЫ", "САЛАТЫ", "ХОЛОДНЫЕ НАПИТКИ"],
-  "ДЕСЕРТЫ": ["КОФЕ", "ЧАЙ", "ХОЛОДНЫЙ КОФЕ"],
-  "КОФЕ": ["ДЕСЕРТЫ", "ЗАВТРАК"],
-  "ХОЛОДНЫЙ КОФЕ": ["ДЕСЕРТЫ", "ЗАВТРАК"],
-  "ЛИМОНАДЫ": ["САЛАТЫ", "ГОРЯЧИЕ БЛЮДА", "ПИЦЦА"],
-  "ЧАЙ": ["ДЕСЕРТЫ", "ЗАВТРАК"],
-  "ХОЛОДНЫЕ НАПИТКИ": ["ГОРЯЧИЕ БЛЮДА", "ПИЦЦА", "САЛАТЫ"],
+import "./QRMenu.css";
+const pairingCategories = {
+  "\u0417\u0410\u0412\u0422\u0420\u0410\u041A": ["\u041A\u041E\u0424\u0415", "\u0425\u041E\u041B\u041E\u0414\u041D\u042B\u0419 \u041A\u041E\u0424\u0415", "\u041B\u0418\u041C\u041E\u041D\u0410\u0414\u042B"],
+  "\u0417\u0410\u041A\u0423\u0421\u041A\u0418": ["\u041B\u0418\u041C\u041E\u041D\u0410\u0414\u042B", "\u0425\u041E\u041B\u041E\u0414\u041D\u042B\u0415 \u041D\u0410\u041F\u0418\u0422\u041A\u0418", "\u0421\u0410\u041B\u0410\u0422\u042B"],
+  "\u0421\u0423\u041F\u042B": ["\u0417\u0410\u041A\u0423\u0421\u041A\u0418", "\u0427\u0410\u0419", "\u0421\u0410\u041B\u0410\u0422\u042B"],
+  "\u0421\u0410\u041B\u0410\u0422\u042B": ["\u041B\u0418\u041C\u041E\u041D\u0410\u0414\u042B", "\u0425\u041E\u041B\u041E\u0414\u041D\u042B\u0419 \u041A\u041E\u0424\u0415", "\u0413\u041E\u0420\u042F\u0427\u0418\u0415 \u0411\u041B\u042E\u0414\u0410"],
+  "\u0413\u041E\u0420\u042F\u0427\u0418\u0415 \u0411\u041B\u042E\u0414\u0410": ["\u041B\u0418\u041C\u041E\u041D\u0410\u0414\u042B", "\u0421\u0410\u041B\u0410\u0422\u042B", "\u0425\u041E\u041B\u041E\u0414\u041D\u042B\u0415 \u041D\u0410\u041F\u0418\u0422\u041A\u0418"],
+  "\u041F\u0418\u0426\u0426\u0410": ["\u041B\u0418\u041C\u041E\u041D\u0410\u0414\u042B", "\u0421\u0410\u041B\u0410\u0422\u042B", "\u0425\u041E\u041B\u041E\u0414\u041D\u042B\u0415 \u041D\u0410\u041F\u0418\u0422\u041A\u0418"],
+  "\u0414\u0415\u0421\u0415\u0420\u0422\u042B": ["\u041A\u041E\u0424\u0415", "\u0427\u0410\u0419", "\u0425\u041E\u041B\u041E\u0414\u041D\u042B\u0419 \u041A\u041E\u0424\u0415"],
+  "\u041A\u041E\u0424\u0415": ["\u0414\u0415\u0421\u0415\u0420\u0422\u042B", "\u0417\u0410\u0412\u0422\u0420\u0410\u041A"],
+  "\u0425\u041E\u041B\u041E\u0414\u041D\u042B\u0419 \u041A\u041E\u0424\u0415": ["\u0414\u0415\u0421\u0415\u0420\u0422\u042B", "\u0417\u0410\u0412\u0422\u0420\u0410\u041A"],
+  "\u041B\u0418\u041C\u041E\u041D\u0410\u0414\u042B": ["\u0421\u0410\u041B\u0410\u0422\u042B", "\u0413\u041E\u0420\u042F\u0427\u0418\u0415 \u0411\u041B\u042E\u0414\u0410", "\u041F\u0418\u0426\u0426\u0410"],
+  "\u0427\u0410\u0419": ["\u0414\u0415\u0421\u0415\u0420\u0422\u042B", "\u0417\u0410\u0412\u0422\u0420\u0410\u041A"],
+  "\u0425\u041E\u041B\u041E\u0414\u041D\u042B\u0415 \u041D\u0410\u041F\u0418\u0422\u041A\u0418": ["\u0413\u041E\u0420\u042F\u0427\u0418\u0415 \u0411\u041B\u042E\u0414\u0410", "\u041F\u0418\u0426\u0426\u0410", "\u0421\u0410\u041B\u0410\u0422\u042B"],
+  "\u041D\u043E\u0432\u0438\u043D\u043A\u0438": ["\u041A\u041E\u0424\u0415", "\u041B\u0418\u041C\u041E\u041D\u0410\u0414\u042B", "\u0421\u0410\u041B\u0410\u0422\u042B"]
 };
-
+const money = (value) => `${Number(value || 0).toFixed(2)} \u20BC`;
+const photoClass = (product) => product.category === "\u041B\u0418\u041C\u041E\u041D\u0410\u0414\u042B" ? "lemonade-photo" : void 0;
+const normalizeProduct = (item, branch) => ({
+  ...item,
+  id: item.id || item.menu_item_id,
+  name: item.name || "",
+  description: item.description || "",
+  category: item.category_name || item.category || "\u0411\u0435\u0437 \u043A\u0430\u0442\u0435\u0433\u043E\u0440\u0438\u0438",
+  price: Number(item.price ?? item.unit_price ?? (item.line_total && item.quantity ? Number(item.line_total) / Number(item.quantity) : 0)),
+  image: item.image_url || item.image || null,
+  options: Array.isArray(item.options) ? item.options : [],
+  rating: Number(item.rating || 0),
+  branches: [branch]
+});
+const dailyQuotes = [
+  "\u041B\u044E\u0431\u0438\u043C\u044B\u0435 \u0432\u043A\u0443\u0441\u044B \u0434\u0435\u043B\u0430\u044E\u0442 \u0434\u0435\u043D\u044C \u043B\u0443\u0447\u0448\u0435.",
+  "\u0412\u043A\u0443\u0441 \u043D\u0430\u0447\u0438\u043D\u0430\u0435\u0442\u0441\u044F \u0441 \u043D\u0430\u0441\u0442\u0440\u043E\u0435\u043D\u0438\u044F.",
+  "\u0425\u043E\u0440\u043E\u0448\u0438\u0439 \u043A\u043E\u0444\u0435 \u0437\u0430\u0434\u0430\u0451\u0442 \u0440\u0438\u0442\u043C.",
+  "\u0423 \u0434\u043D\u044F \u0434\u043E\u043B\u0436\u0435\u043D \u0431\u044B\u0442\u044C \u0432\u043A\u0443\u0441.",
+  "\u041F\u0430\u0443\u0437\u0430 \u0442\u043E\u0436\u0435 \u043C\u043E\u0436\u0435\u0442 \u0431\u044B\u0442\u044C \u043E\u0441\u043E\u0431\u0435\u043D\u043D\u043E\u0439.",
+  "\u041F\u0440\u043E\u0441\u0442\u044B\u0435 \u043C\u043E\u043C\u0435\u043D\u0442\u044B \u0437\u0430\u043F\u043E\u043C\u0438\u043D\u0430\u044E\u0442\u0441\u044F \u0432\u043A\u0443\u0441\u043E\u043C.",
+  "\u0421\u0435\u0433\u043E\u0434\u043D\u044F \u0441\u0442\u043E\u0438\u0442 \u043F\u043E\u043F\u0440\u043E\u0431\u043E\u0432\u0430\u0442\u044C \u043D\u043E\u0432\u043E\u0435.",
+  "\u041B\u044E\u0431\u0438\u043C\u044B\u0439 \u0441\u0442\u043E\u043B \u0432\u0441\u0435\u0433\u0434\u0430 \u043A\u0441\u0442\u0430\u0442\u0438.",
+  "\u0412\u043A\u0443\u0441 \u2014 \u044D\u0442\u043E \u043D\u0430\u0441\u0442\u0440\u043E\u0435\u043D\u0438\u0435 \u043C\u043E\u043C\u0435\u043D\u0442\u0430.",
+  "\u041D\u0435\u0441\u043F\u0435\u0448\u043D\u043E. \u0421\u0432\u0435\u0436\u043E. \u0421 \u0443\u0434\u043E\u0432\u043E\u043B\u044C\u0441\u0442\u0432\u0438\u0435\u043C.",
+  "\u0425\u043E\u0440\u043E\u0448\u0438\u0439 \u0432\u044B\u0431\u043E\u0440 \u043D\u0430\u0447\u0438\u043D\u0430\u0435\u0442\u0441\u044F \u0437\u0434\u0435\u0441\u044C.",
+  "\u0412\u0440\u0435\u043C\u044F \u0434\u043B\u044F \u0442\u043E\u0433\u043E, \u0447\u0442\u043E \u043D\u0440\u0430\u0432\u0438\u0442\u0441\u044F.",
+  "\u041D\u0435\u043C\u043D\u043E\u0433\u043E \u0432\u043A\u0443\u0441\u0430 \u2014 \u0438 \u0434\u0435\u043D\u044C \u0434\u0440\u0443\u0433\u043E\u0439.",
+  "\u041A\u043E\u0444\u0435. \u041F\u0430\u0443\u0437\u0430. \u041F\u0440\u043E\u0434\u043E\u043B\u0436\u0430\u0435\u043C.",
+  "\u0412\u044B\u0431\u0438\u0440\u0430\u0439\u0442\u0435 \u0441\u0435\u0440\u0434\u0446\u0435\u043C. \u041D\u0430\u0441\u043B\u0430\u0436\u0434\u0430\u0439\u0442\u0435\u0441\u044C \u0432\u043A\u0443\u0441\u043E\u043C.",
+  "\u041A\u0430\u0436\u0434\u044B\u0439 \u0434\u0435\u043D\u044C \u0437\u0430\u0441\u043B\u0443\u0436\u0438\u0432\u0430\u0435\u0442 \u0445\u043E\u0440\u043E\u0448\u0435\u0433\u043E \u0432\u043A\u0443\u0441\u0430."
+];
+function getDailyQuote() {
+  const bakuDay = Number(new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Baku",
+    day: "numeric"
+  }).format(/* @__PURE__ */ new Date()));
+  return dailyQuotes[(bakuDay - 1) % dailyQuotes.length];
+}
 function getBakuHour() {
   return Number(new Intl.DateTimeFormat("en-GB", {
     timeZone: "Asia/Baku",
     hour: "2-digit",
-    hourCycle: "h23",
-  }).format(new Date()));
+    hourCycle: "h23"
+  }).format(/* @__PURE__ */ new Date()));
 }
-
-function WeatherIcon({ kind, isNight }) {
-  return <div className={`wx-icon wx-${kind}`} aria-hidden="true">
-    <span className="sun"/><span className="moon"/><span className="cloud c1"/><span className="cloud c2"/>
-    <span className="rain r1"/><span className="rain r2"/><span className="rain r3"/>
-    <span className="wind w1"/><span className="wind w2"/>
-  </div>;
+function getBakuDayPhase(hour = getBakuHour()) {
+  if (hour >= 5 && hour < 10) return "morning";
+  if (hour >= 10 && hour < 17) return "day";
+  if (hour >= 17 && hour < 19) return "evening";
+  return "night";
 }
-
-function getWeatherOffer(w) {
-  if (!w) return null;
-  const rainy = Number(w.precipitation) >= 1 || [51,53,55,61,63,65,80,81,82,95].includes(Number(w.weatherCode));
-  const hot = Number(w.maxTemperature) >= 30 || Number(w.apparentTemperature) >= 31;
-  const windy = Number(w.windSpeed) >= 9 || Number(w.windGust) >= 14;
-  const cool = Number(w.maxTemperature) <= 17;
-  const cloudy = [2,3,45,48].includes(Number(w.weatherCode));
-  if (rainy) return { kind:"rainy", title:"Сегодня в Баку дождь", text:"Самое время согреться кофе или чаем.", categories:["КОФЕ","ЧАЙ","ДЕСЕРТЫ"] };
-  if (windy) return { kind:"windy", title:"Сегодня в Баку ветрено", text:"Зайдите на чашку капучино в уютный зал.", categories:["КОФЕ","ЧАЙ","ДЕСЕРТЫ"] };
-  if (hot) return { kind:"sunny", title:"В Баку сегодня жарко", text:"Самое время попробовать фирменный лимонад.", categories:["ЛИМОНАДЫ","ХОЛОДНЫЙ КОФЕ","САЛАТЫ"] };
-  if (cool) return { kind:"cool", title:"Сегодня в Баку прохладно", text:"Выберите горячий напиток и свежий десерт.", categories:["КОФЕ","ЧАЙ","ДЕСЕРТЫ"] };
-  if (cloudy) return { kind:"cloudy", title:"Сегодня в Баку пасмурно", text:"Добавьте к заказу любимый кофе или чай.", categories:["КОФЕ","ЧАЙ","ДЕСЕРТЫ"] };
-  return { kind:"sunny", title:"Комфортная погода в Баку", text:"Подходящий день попробовать что-то новое.", categories:["Новинки","ЛИМОНАДЫ","САЛАТЫ"] };
-}
-
 export default function QRMenu() {
-  const params = useMemo(() => new URLSearchParams(window.location.search), []);
-  const branch = safeText(params.get("branch") || "BC1").toUpperCase();
-  const table = safeText(params.get("table") || "1");
+  const [branch, setBranch] = useState("BC1");
+  const [table, setTable] = useState("12");
   const [screen, setScreen] = useState("menu");
-  const [menu, setMenu] = useState([]);
-  const [category, setCategory] = useState("Все");
+  const [category, setCategory] = useState("\u0412\u0441\u0435");
   const [search, setSearch] = useState("");
   const [cart, setCart] = useState([]);
-  const [selected, setSelected] = useState(null);
-  const [selectedOption, setSelectedOption] = useState("");
-  const [weather, setWeather] = useState(null);
-  const [loading, setLoading] = useState(true);
   const [notice, setNotice] = useState("");
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
   const [order, setOrder] = useState(null);
   const [session, setSession] = useState(null);
   const [profile, setProfile] = useState(null);
@@ -71,42 +86,40 @@ export default function QRMenu() {
   const [otp, setOtp] = useState("");
   const [otpSent, setOtpSent] = useState(false);
   const [bonusRequest, setBonusRequest] = useState(0);
-  const [busy, setBusy] = useState(false);
-  const [bakuHour, setBakuHour] = useState(getBakuHour());
-  const isNight = bakuHour >= 19 || bakuHour < 5;
-
-  const flash = (text) => { setNotice(text); window.setTimeout(() => setNotice(""), 3500); };
-
-  async function loadMenu() {
-    setLoading(true);
-    const { data, error } = await supabase.rpc("qr_get_public_menu", { p_branch_code: branch });
-    if (error) flash(`Меню временно недоступно: ${error.message}`);
-    setMenu(Array.isArray(data) ? data : []);
-    setLoading(false);
-  }
-
-  async function loadProfile() {
-    const { data } = await supabase.rpc("qr_get_my_loyalty");
-    setProfile(Array.isArray(data) ? data[0] || null : data || null);
-  }
-
-  async function refreshOrder(token = order?.public_token) {
-    if (!token) return;
-    const { data, error } = await supabase.rpc("qr_get_order", { p_public_token: token });
-    if (!error && data) setOrder(Array.isArray(data) ? data[0] : data);
-  }
-
+  const [selectedProduct, setSelectedProduct] = useState(null);
+  const [weather, setWeather] = useState(null);
+  const [dayPhase, setDayPhase] = useState("day");
+  const [bakuHour, setBakuHour] = useState(12);
+  const dailyQuote = getDailyQuote();
+  const unavailable = useMemo(() => products.filter((item) => item.is_available === false || item.is_stopped).map((item) => item.id), [products]);
   useEffect(() => {
-    const updateBakuHour = () => setBakuHour(getBakuHour());
-    const timer = window.setInterval(updateBakuHour, 60_000);
+    const updatePhase = () => {
+      const hour = getBakuHour();
+      setBakuHour(hour);
+      setDayPhase(getBakuDayPhase(hour));
+    };
+    updatePhase();
+    const timer = window.setInterval(updatePhase, 6e4);
     return () => window.clearInterval(timer);
   }, []);
-
   useEffect(() => {
-    loadMenu();
-    const stored = sessionStorage.getItem(`rms-order:${branch}:${table}`);
-    if (stored) refreshOrder(stored);
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, current) => {
+    const params = new URLSearchParams(window.location.search);
+    setBranch(params.get("branch") || "BC1");
+    setTable(params.get("table") || "12");
+  }, []);
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    supabase.rpc("qr_get_public_menu", { p_branch_code: branch }).then(({ data, error }) => {
+      if (!active) return;
+      if (error) flash(`\u041C\u0435\u043D\u044E \u0432\u0440\u0435\u043C\u0435\u043D\u043D\u043E \u043D\u0435\u0434\u043E\u0441\u0442\u0443\u043F\u043D\u043E: ${error.message}`);
+      setProducts(Array.isArray(data) ? data.map((item) => normalizeProduct(item, branch)) : []);
+      setLoading(false);
+    });
+    return () => { active = false; };
+  }, [branch]);
+  useEffect(() => {
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, current) => {
       setSession(current);
       if (current) window.setTimeout(loadProfile, 0); else setProfile(null);
     });
@@ -114,157 +127,499 @@ export default function QRMenu() {
       setSession(data.session);
       if (data.session) loadProfile();
     });
-    return () => sub.subscription.unsubscribe();
+    return () => authListener.subscription.unsubscribe();
   }, []);
-
   useEffect(() => {
-    const endpoint = "https://api.open-meteo.com/v1/forecast?latitude=40.4093&longitude=49.8671&timezone=Asia%2FBaku&forecast_days=1&current=temperature_2m%2Capparent_temperature%2Cweather_code%2Cwind_speed_10m%2Cwind_gusts_10m&daily=temperature_2m_max%2Cprecipitation_sum&wind_speed_unit=ms";
-    fetch(endpoint).then(r => r.ok ? r.json() : Promise.reject()).then(d => setWeather({
-      temperature:Number(d.current?.temperature_2m || 0), apparentTemperature:Number(d.current?.apparent_temperature || 0),
-      maxTemperature:Number(d.daily?.temperature_2m_max?.[0] || 0), precipitation:Number(d.daily?.precipitation_sum?.[0] || 0),
-      windSpeed:Number(d.current?.wind_speed_10m || 0), windGust:Number(d.current?.wind_gusts_10m || 0), weatherCode:Number(d.current?.weather_code || 0)
-    })).catch(() => setWeather(null));
-  }, []);
-
+    const token = sessionStorage.getItem(`rms-order:${branch}:${table}`);
+    if (token) refreshOrder(token);
+  }, [branch, table]);
   useEffect(() => {
-    if (!order?.public_token || ["paid","cancelled"].includes(order.status)) return;
-    const timer = window.setInterval(() => refreshOrder(order.public_token), 12000);
+    if (!order?.public_token || ["paid", "cancelled"].includes(order.status)) return;
+    const timer = window.setInterval(() => refreshOrder(order.public_token), 12e3);
     return () => window.clearInterval(timer);
   }, [order?.public_token, order?.status]);
-
   useEffect(() => {
-    if (!selected) return;
-    const esc = (e) => e.key === "Escape" && setSelected(null);
-    window.addEventListener("keydown", esc); document.body.style.overflow = "hidden";
-    return () => { window.removeEventListener("keydown", esc); document.body.style.overflow = ""; };
-  }, [selected]);
-
-  const categories = useMemo(() => ["Все", ...new Set(menu.map(x => x.category_name).filter(Boolean))], [menu]);
-  const shown = useMemo(() => menu.filter(x => (category === "Все" || x.category_name === category) && `${x.name} ${x.description}`.toLowerCase().includes(search.toLowerCase())), [menu, category, search]);
-  const cartTotal = cart.reduce((s, x) => s + Number(x.price) * x.qty, 0);
-  const cartCount = cart.reduce((s, x) => s + x.qty, 0);
-  const wx = useMemo(() => getWeatherOffer(weather), [weather]);
-  const weatherPicks = useMemo(() => wx ? menu.filter(x => wx.categories.includes(x.category_name)).slice(0,3) : [], [menu, wx]);
-  const pairings = useMemo(() => selected ? menu.filter(x => x.id !== selected.id && (PAIRINGS[selected.category_name] || []).includes(x.category_name)).slice(0,3) : [], [menu, selected]);
-
-  const openProduct = (item) => { setSelected(item); setSelectedOption(""); };
-  const add = (item, optionName = "") => setCart(prev => {
-    const key = `${item.id}:${optionName}`;
-    const found = prev.find(x => x.cart_key === key);
-    return found ? prev.map(x => x.cart_key === key ? {...x, qty:x.qty+1} : x) : [...prev, {...item, cart_key:key, option_name:optionName || null, qty:1}];
-  });
-  const qty = (key, delta) => setCart(prev => prev.map(x => x.cart_key === key ? {...x, qty:x.qty+delta} : x).filter(x => x.qty > 0));
-
-  async function sendOtp() {
-    const normalized = phone.replace(/\s+/g, "");
-    if (!/^\+994\d{9}$/.test(normalized)) return flash("Введите номер в формате +994XXXXXXXXX");
-    setBusy(true);
-    const { error } = await supabase.auth.signInWithOtp({ phone: normalized });
-    setBusy(false);
-    if (error) return flash(error.message);
-    setOtpSent(true); flash("Код отправлен");
+    let active = true;
+    const directEndpoint = "https://api.open-meteo.com/v1/forecast?latitude=40.4093&longitude=49.8671&timezone=Asia%2FBaku&forecast_days=1&current=temperature_2m%2Capparent_temperature%2Cweather_code%2Cwind_speed_10m%2Cwind_gusts_10m&daily=temperature_2m_max%2Cprecipitation_sum&wind_speed_unit=ms";
+    const normalizeDirectWeather = (data) => ({
+      temperature: Number(data.current?.temperature_2m ?? 0),
+      apparentTemperature: Number(data.current?.apparent_temperature ?? 0),
+      maxTemperature: Number(data.daily?.temperature_2m_max?.[0] ?? data.current?.temperature_2m ?? 0),
+      precipitation: Number(data.daily?.precipitation_sum?.[0] ?? 0),
+      windSpeed: Number(data.current?.wind_speed_10m ?? 0),
+      windGust: Number(data.current?.wind_gusts_10m ?? 0),
+      weatherCode: Number(data.current?.weather_code ?? 0)
+    });
+    fetch("/api/weather").then((response) => response.ok ? response.json() : Promise.reject()).catch(() => fetch(directEndpoint).then((response) => response.ok ? response.json() : Promise.reject()).then(normalizeDirectWeather)).then((data) => {
+      if (active) setWeather(data);
+    }).catch(() => {
+      if (active) setWeather(null);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+  useEffect(() => {
+    if (!selectedProduct) return;
+    const closeOnEscape = (event) => {
+      if (event.key === "Escape") setSelectedProduct(null);
+    };
+    document.body.classList.add("modal-open");
+    window.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.body.classList.remove("modal-open");
+      window.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [selectedProduct]);
+  const availableProducts = useMemo(() => products.filter((product) => {
+    const branchMatch = product.branches.includes(branch);
+    const categoryMatch = category === "\u0412\u0441\u0435" || product.category === category;
+    const text = `${product.name} ${product.description}`.toLowerCase();
+    return branchMatch && categoryMatch && text.includes(search.toLowerCase());
+  }), [products, branch, category, search]);
+  const categories = useMemo(() => ["\u0412\u0441\u0435", ...Array.from(new Set(products.filter((p) => p.branches.includes(branch)).map((p) => p.category)))], [products, branch]);
+  const cartTotal = cart.reduce((sum, item) => sum + item.price * item.qty, 0);
+  const ordered = useMemo(() => (order?.items || []).map((item) => ({ ...normalizeProduct(item, branch), qty: Number(item.quantity || item.qty || 1) })), [order, branch]);
+  const billTotal = Number(order?.total_amount ?? ordered.reduce((sum, item) => sum + item.price * item.qty, 0));
+  const bonusUsed = Number(order?.bonus_reserved || 0);
+  const payable = Number(order?.payable_amount ?? Math.max(0, billTotal - bonusUsed));
+  const cartCount = cart.reduce((sum, item) => sum + item.qty, 0);
+  const loyalty = Boolean(session && profile);
+  const bonus = Number(profile?.available_bonus || 0);
+  const lifetimeSpend = Number(profile?.lifetime_spend || 0);
+  const visits = Number(profile?.visits || 0);
+  const history = Array.isArray(profile?.history) ? profile.history : [];
+  const paid = order?.status === "paid";
+  const status = order?.status || "empty";
+  const maxBonus = Math.max(0, Math.min(bonus, cartTotal * 0.3));
+  const tierProgress = Math.min(100, lifetimeSpend / 2e3 * 100);
+  const weatherOffer = useMemo(() => {
+    if (!weather) return null;
+    const rainy = weather.precipitation >= 1 || [51, 53, 55, 61, 63, 65, 80, 81, 82, 95].includes(weather.weatherCode);
+    const hot = weather.maxTemperature >= 30 || weather.apparentTemperature >= 31;
+    const windy = weather.windSpeed >= 9 || weather.windGust >= 14;
+    const cool = weather.maxTemperature <= 17;
+    const cloudy = [2, 3, 45, 48].includes(weather.weatherCode);
+    if (rainy) return {
+      kind: "rainy",
+      title: "\u0421\u0435\u0433\u043E\u0434\u043D\u044F \u0432 \u0411\u0430\u043A\u0443 \u0434\u043E\u0436\u0434\u044C",
+      text: `\u041E\u0436\u0438\u0434\u0430\u0435\u0442\u0441\u044F \u0434\u043E ${weather.precipitation.toFixed(1)} \u043C\u043C \u043E\u0441\u0430\u0434\u043A\u043E\u0432. \u0422\u0435\u043C\u043F\u0435\u0440\u0430\u0442\u0443\u0440\u0430 \u043E\u043A\u043E\u043B\u043E ${Math.round(weather.temperature)}\xB0.`
+    };
+    if (windy) return {
+      kind: "windy",
+      title: "\u0421\u0435\u0433\u043E\u0434\u043D\u044F \u0432 \u0411\u0430\u043A\u0443 \u0432\u0435\u0442\u0440\u0435\u043D\u043E",
+      text: `\u041F\u043E\u0440\u044B\u0432\u044B \u0434\u043E ${Math.round(weather.windGust)} \u043C/\u0441. \u041E\u0449\u0443\u0449\u0430\u0435\u0442\u0441\u044F \u043A\u0430\u043A ${Math.round(weather.apparentTemperature)}\xB0.`
+    };
+    if (hot) return {
+      kind: "sunny",
+      title: "\u0412 \u0411\u0430\u043A\u0443 \u0441\u0435\u0433\u043E\u0434\u043D\u044F \u0436\u0430\u0440\u043A\u043E",
+      text: `\u0422\u0435\u043C\u043F\u0435\u0440\u0430\u0442\u0443\u0440\u0430 \u043F\u043E\u0434\u043D\u0438\u043C\u0435\u0442\u0441\u044F \u0434\u043E ${Math.round(weather.maxTemperature)}\xB0. \u0421\u0435\u0439\u0447\u0430\u0441 \u043E\u043A\u043E\u043B\u043E ${Math.round(weather.temperature)}\xB0.`
+    };
+    if (cool) return {
+      kind: "cool",
+      title: "\u0412 \u0411\u0430\u043A\u0443 \u0441\u0435\u0433\u043E\u0434\u043D\u044F \u043F\u0440\u043E\u0445\u043B\u0430\u0434\u043D\u043E",
+      text: `\u041E\u043A\u043E\u043B\u043E ${Math.round(weather.temperature)}\xB0, \u043E\u0449\u0443\u0449\u0430\u0435\u0442\u0441\u044F \u043A\u0430\u043A ${Math.round(weather.apparentTemperature)}\xB0.`
+    };
+    if (cloudy) return {
+      kind: "cloudy",
+      title: "\u0421\u0435\u0433\u043E\u0434\u043D\u044F \u0432 \u0411\u0430\u043A\u0443 \u043F\u0430\u0441\u043C\u0443\u0440\u043D\u043E",
+      text: `\u0421\u0435\u0439\u0447\u0430\u0441 \u043E\u043A\u043E\u043B\u043E ${Math.round(weather.temperature)}\xB0. \u041E\u0441\u0430\u0434\u043A\u0438 \u2014 ${weather.precipitation.toFixed(1)} \u043C\u043C.`
+    };
+    return {
+      kind: "sunny",
+      title: "\u041A\u043E\u043C\u0444\u043E\u0440\u0442\u043D\u0430\u044F \u043F\u043E\u0433\u043E\u0434\u0430 \u0432 \u0411\u0430\u043A\u0443",
+      text: `\u0421\u0435\u0439\u0447\u0430\u0441 \u043E\u043A\u043E\u043B\u043E ${Math.round(weather.temperature)}\xB0, \u0431\u0435\u0437 \u0437\u0430\u043C\u0435\u0442\u043D\u044B\u0445 \u043E\u0441\u0430\u0434\u043A\u043E\u0432.`
+    };
+  }, [weather]);
+  const mealRecommendation = useMemo(() => {
+    const moment = bakuHour >= 5 && bakuHour < 11 ? "breakfast" : bakuHour >= 11 && bakuHour < 17 ? "lunch" : "dinner";
+    const momentMeta = {
+      breakfast: {
+        label: "\u0423\u0442\u0440\u0435\u043D\u043D\u0438\u0439 \u0432\u044B\u0431\u043E\u0440",
+        note: "\u041B\u0451\u0433\u043A\u043E\u0435 \u043D\u0430\u0447\u0430\u043B\u043E \u0434\u043D\u044F",
+        keywords: /круас|завтрак|сырник|омлет|шакшук|капучин/i,
+        ids: ["bc-001", "bc-003", "bc-005", "bc-008", "bc-064"]
+      },
+      lunch: {
+        label: "\u0412\u044B\u0431\u043E\u0440 \u043A \u043E\u0431\u0435\u0434\u0443",
+        note: "\u041F\u043E\u0434\u0445\u043E\u0434\u0438\u0442 \u0434\u043B\u044F \u0434\u043D\u0435\u0432\u043D\u043E\u0439 \u043F\u0430\u0443\u0437\u044B",
+        keywords: /салат|хумус|пицц|бургер|наггет/i,
+        ids: ["bc-020", "bc-012", "bc-038", "bc-033", "bc-021", "bc-039", "bc-034"]
+      },
+      dinner: {
+        label: "\u0412\u0435\u0447\u0435\u0440\u043D\u0438\u0439 \u0432\u044B\u0431\u043E\u0440",
+        note: "\u0411\u043E\u043B\u0435\u0435 \u043D\u0430\u0441\u044B\u0449\u0435\u043D\u043D\u044B\u0439 \u0432\u043A\u0443\u0441 \u043A \u0432\u0435\u0447\u0435\u0440\u0443",
+        keywords: /стейк|утк|тоннат|сырн.*тарел|рибай|meat lovers/i,
+        ids: ["bc-022", "bc-047", "bc-016", "bc-045", "bc-037", "bc-024", "bc-046"]
+      }
+    };
+    const meta = momentMeta[moment];
+    const available = products.filter((product2) => product2.branches.includes(branch) && !unavailable.includes(product2.id));
+    const availableById = new Map(available.map((product2) => [product2.id, product2]));
+    const candidates = [
+      ...available.filter((product2) => meta.keywords.test(`${product2.name} ${product2.category}`)),
+      ...meta.ids.map((id) => availableById.get(id)).filter((product2) => Boolean(product2))
+    ].filter((product2, index, list) => index === list.findIndex((item) => item.id === product2.id));
+    if (!candidates.length) return null;
+    const bakuDay = Number(new Intl.DateTimeFormat("en-US", {
+      timeZone: "Asia/Baku",
+      day: "numeric"
+    }).format(/* @__PURE__ */ new Date()));
+    const product = candidates[(bakuDay + Math.floor(bakuHour / 2)) % candidates.length];
+    return { moment, ...meta, product };
+  }, [products, bakuHour, branch, unavailable]);
+  const pairings = useMemo(() => {
+    if (!selectedProduct) return [];
+    const preferred = pairingCategories[selectedProduct.category] || ["\u041B\u0418\u041C\u041E\u041D\u0410\u0414\u042B", "\u041A\u041E\u0424\u0415", "\u0421\u0410\u041B\u0410\u0422\u042B"];
+    return products.filter(
+      (product) => product.id !== selectedProduct.id && product.branches.includes(branch) && !unavailable.includes(product.id) && preferred.includes(product.category)
+    ).sort((a, b) => preferred.indexOf(a.category) - preferred.indexOf(b.category) || b.rating - a.rating).filter((product, index, list) => index === list.findIndex((item) => item.category === product.category)).slice(0, 3);
+  }, [products, selectedProduct, branch, unavailable]);
+  function flash(text) {
+    setNotice(text);
+    window.setTimeout(() => setNotice(""), 2400);
   }
-
-  async function verifyOtp() {
-    setBusy(true);
-    const { error } = await supabase.auth.verifyOtp({ phone: phone.replace(/\s+/g, ""), token: otp, type:"sms" });
-    setBusy(false);
-    if (error) return flash("Неверный или просроченный код");
-    setOtpSent(false); setOtp(""); await loadProfile(); flash("Вход выполнен");
+  function changeQty(product, delta) {
+    if (unavailable.includes(product.id)) return flash("\u041F\u043E\u0437\u0438\u0446\u0438\u044F \u043D\u0430\u0445\u043E\u0434\u0438\u0442\u0441\u044F \u0432 stop-list");
+    setCart((current) => {
+      const line = current.find((item) => item.id === product.id);
+      if (!line && delta > 0) return [...current, { ...product, qty: 1 }];
+      return current.map((item) => item.id === product.id ? { ...item, qty: item.qty + delta } : item).filter((item) => item.qty > 0);
+    });
   }
-
-  async function createOrder() {
+  async function loadProfile() {
+    const { data, error } = await supabase.rpc("qr_get_my_loyalty");
+    if (!error) setProfile(Array.isArray(data) ? data[0] || null : data || null);
+  }
+  async function refreshOrder(token = order?.public_token) {
+    if (!token) return;
+    const { data, error } = await supabase.rpc("qr_get_order", { p_public_token: token });
+    if (!error && data) setOrder(Array.isArray(data) ? data[0] || null : data);
+  }
+  async function sendOrder() {
     if (!cart.length || busy) return;
     setBusy(true);
-    const items = cart.map(x => ({ menu_item_id:x.id, quantity:x.qty, option_name:x.option_name || null, note:x.note || null }));
     const { data, error } = await supabase.rpc("qr_create_order", {
-      p_branch_code:branch, p_table_code:table, p_items:items, p_bonus_requested:Number(bonusRequest || 0)
+      p_branch_code: branch,
+      p_table_code: table,
+      p_items: cart.map((line) => ({ menu_item_id: line.id, quantity: line.qty, option_name: line.option_name || null, note: line.note || null })),
+      p_bonus_requested: Number(bonusRequest || 0)
     });
     setBusy(false);
     if (error) return flash(error.message);
     const created = Array.isArray(data) ? data[0] : data;
-    setOrder(created); setCart([]); setBonusRequest(0); setScreen("bill");
-    sessionStorage.setItem(`rms-order:${branch}:${table}`, created.public_token);
-    flash("Заказ отправлен");
+    setOrder(created);
+    setCart([]);
+    setBonusRequest(0);
+    setScreen("bill");
+    if (created?.public_token) sessionStorage.setItem(`rms-order:${branch}:${table}`, created.public_token);
+    flash("\u0417\u0430\u043A\u0430\u0437 \u043E\u0442\u043F\u0440\u0430\u0432\u043B\u0435\u043D");
   }
-
-  async function callWaiter(kind="waiter") {
-    const { error } = await supabase.rpc("qr_create_waiter_call", { p_branch_code:branch, p_table_code:table, p_call_type:kind, p_order_token:order?.public_token || null });
-    flash(error ? error.message : kind === "payment" ? "Запрос оплаты отправлен" : "Официант вызван");
+  function applyBonus() {
+    if (!loyalty || !cartTotal) return;
+    setBonusRequest(maxBonus);
+    flash(`\u0414\u043B\u044F \u0437\u0430\u043A\u0430\u0437\u0430 \u0431\u0443\u0434\u0435\u0442 \u0437\u0430\u043F\u0440\u043E\u0448\u0435\u043D\u043E ${money(maxBonus)} \u0431\u043E\u043D\u0443\u0441\u043E\u0432`);
   }
-
-  const maxBonus = Math.max(0, Math.min(Number(profile?.available_bonus || 0), cartTotal * .30));
-
-  return <div className="qr-app">
-    <style>{CSS}</style>
-    <header><div><span className="eyebrow">BARISTA&CHEF</span><h1>QR MENU</h1><small>{branch} · Стол {table}</small></div><button className="round" onClick={() => setScreen("loyalty")}>♙</button></header>
-    <nav>
-      <button className={screen==="menu"?"active":""} onClick={() => setScreen("menu")}>Меню</button>
-      <button className={screen==="cart"?"active":""} onClick={() => setScreen("cart")}>Заказ {cartCount ? `(${cartCount})` : ""}</button>
-      <button className={screen==="bill"?"active":""} onClick={() => setScreen("bill")}>Счёт</button>
-      <button onClick={() => callWaiter("waiter")}>Вызов</button>
-    </nav>
-    {notice && <div className="toast">{notice}</div>}
-
-    {screen === "menu" && <main>
-      {wx && <section className={`weather ${wx.kind}${isNight ? " night" : ""}`}>
-        <WeatherIcon kind={wx.kind} isNight={isNight}/><div className="weather-copy"><b>{wx.title}</b><p>{wx.text}</p>
-          <div className="metrics"><span>{Math.round(weather.temperature)}°<small>сейчас</small></span><span>{Math.round(weather.windSpeed)} м/с<small>ветер</small></span><span>{Number(weather.precipitation).toFixed(1)} мм<small>осадки</small></span></div>
+  function cancelBonus() {
+    setBonusRequest(0);
+    flash("\u0421\u043F\u0438\u0441\u0430\u043D\u0438\u0435 \u0431\u043E\u043D\u0443\u0441\u043E\u0432 \u043E\u0442\u043C\u0435\u043D\u0435\u043D\u043E");
+  }
+  async function sendOtp() {
+    const normalized = phone.replace(/\s+/g, "");
+    if (!/^\+994\d{9}$/.test(normalized)) return flash("\u0412\u0432\u0435\u0434\u0438\u0442\u0435 \u043D\u043E\u043C\u0435\u0440 \u0432 \u0444\u043E\u0440\u043C\u0430\u0442\u0435 +994XXXXXXXXX");
+    setBusy(true);
+    const { error } = await supabase.auth.signInWithOtp({ phone: normalized });
+    setBusy(false);
+    if (error) return flash(error.message);
+    setOtpSent(true);
+    flash("\u041A\u043E\u0434 \u043E\u0442\u043F\u0440\u0430\u0432\u043B\u0435\u043D");
+  }
+  async function verifyOtp() {
+    setBusy(true);
+    const { error } = await supabase.auth.verifyOtp({ phone: phone.replace(/\s+/g, ""), token: otp, type: "sms" });
+    setBusy(false);
+    if (error) return flash("\u041D\u0435\u0432\u0435\u0440\u043D\u044B\u0439 \u0438\u043B\u0438 \u043F\u0440\u043E\u0441\u0440\u043E\u0447\u0435\u043D\u043D\u044B\u0439 \u043A\u043E\u0434");
+    setOtpSent(false);
+    setOtp("");
+    await loadProfile();
+    flash("\u0412\u0445\u043E\u0434 \u0432\u044B\u043F\u043E\u043B\u043D\u0435\u043D");
+  }
+  async function callWaiter(kind = "waiter") {
+    const { error } = await supabase.rpc("qr_create_waiter_call", {
+      p_branch_code: branch,
+      p_table_code: table,
+      p_call_type: kind,
+      p_order_token: order?.public_token || null
+    });
+    flash(error ? error.message : kind === "payment" ? "\u0417\u0430\u043F\u0440\u043E\u0441 \u043E\u043F\u043B\u0430\u0442\u044B \u043E\u0442\u043F\u0440\u0430\u0432\u043B\u0435\u043D" : "\u041E\u0444\u0438\u0446\u0438\u0430\u043D\u0442 \u0432\u044B\u0437\u0432\u0430\u043D");
+  }
+  function startNewVisit() {
+    setCart([]);
+    setOrder(null);
+    setBonusRequest(0);
+    sessionStorage.removeItem(`rms-order:${branch}:${table}`);
+    setScreen("menu");
+    flash("\u041D\u043E\u0432\u044B\u0439 \u0432\u0438\u0437\u0438\u0442 \u043E\u0442\u043A\u0440\u044B\u0442");
+  }
+  const atmosphere = weatherOffer?.kind ?? "clear";
+  const recommendationQty = mealRecommendation ? cart.find((line) => line.id === mealRecommendation.product.id)?.qty || 0 : 0;
+  return <main className={`app-shell theme-${dayPhase} weather-theme-${atmosphere}`}>
+      <header className="hero">
+        <div className="brand-mark">RMS <i>PRO</i></div>
+        <div className="hero-copy">
+          <span>BARISTA&CHEF · {branch}</span>
+          <div className="daily-quote">
+            <span aria-hidden="true">“</span>
+            <p>{dailyQuote}</p>
+          </div>
+          <p className="hero-context">Стол {table} · Заказывайте прямо из меню</p>
         </div>
-        <div className="picks">{weatherPicks.map(x => <button key={x.id} onClick={() => openProduct(x)}><img src={x.image_url || FALLBACK} alt=""/><span>{x.name}</span></button>)}</div>
-      </section>}
-      <div className="search"><input value={search} onChange={e => setSearch(e.target.value)} placeholder="Поиск по меню"/></div>
-      <div className="chips">{categories.map(c => <button key={c} className={category===c?"active":""} onClick={() => setCategory(c)}>{c}</button>)}</div>
-      {loading ? <div className="state">Загружаем меню…</div> : !shown.length ? <div className="state">В этой категории пока нет доступных позиций.</div> : <div className="grid">{shown.map(item => <article key={item.id} className="card">
-        <button className="photo" onClick={() => openProduct(item)}><img src={item.image_url || FALLBACK} alt={item.name}/></button>
-        <div className="card-body"><small>{item.category_name}</small><h3>{item.name}</h3>{item.description && <p>{item.description}</p>}<div><b>{money(item.price)}</b><button className="plus" onClick={() => item.options?.length ? openProduct(item) : add(item)}>+</button></div></div>
-      </article>)}</div>}
-    </main>}
+        <div className="table-chip"><small>ВАШ СТОЛ</small><b>{table}</b></div>
+      </header>
 
-    {screen === "cart" && <main><h2>Ваш заказ</h2>{!cart.length ? <div className="state">Корзина пока пуста.</div> : <>
-      <div className="lines">{cart.map(x => <div className="line" key={x.cart_key}><img src={x.image_url || FALLBACK} alt=""/><div><b>{x.name}</b>{x.option_name && <small>{x.option_name}</small>}<small>{money(x.price)}</small></div><div className="counter"><button onClick={() => qty(x.cart_key,-1)}>−</button><span>{x.qty}</span><button onClick={() => qty(x.cart_key,1)}>+</button></div></div>)}</div>
-      {session && profile && <section className="bonus"><b>Доступно бонусов: {money(profile.available_bonus)}</b><small>Можно списать до 30% заказа — максимум {money(maxBonus)}</small><input type="number" min="0" max={maxBonus} step="0.1" value={bonusRequest} onChange={e => setBonusRequest(Math.min(maxBonus, Math.max(0, Number(e.target.value))))}/></section>}
-      <div className="total"><span>Итого</span><b>{money(cartTotal)}</b></div><button className="primary" disabled={busy} onClick={createOrder}>{busy ? "Отправляем…" : "Отправить заказ"}</button>
-    </>}</main>}
+      <nav className="main-nav" aria-label="Разделы QR Menu">
+        {[
+    ["menu", "\u041C\u0435\u043D\u044E"],
+    ["cart", `\u041A\u043E\u0440\u0437\u0438\u043D\u0430${cartCount ? ` \xB7 ${cartCount}` : ""}`],
+    ["bill", "\u0421\u0447\u0451\u0442"],
+    ["loyalty", "Loyalty"],
+    ["info", "\u0418\u043D\u0444\u043E"]
+  ].map(([id, label]) => <button key={id} className={screen === id ? "active" : ""} onClick={() => setScreen(id)}>{label}</button>)}
+      </nav>
 
-    {screen === "bill" && <main><h2>Счёт</h2>{!order ? <div className="state">Активного заказа нет.</div> : <section className="bill">
-      <div className={`status ${order.status}`}>{({new:"Принят",confirmed:"Подтверждён",preparing:"Готовится",ready:"Готов",payment_requested:"Запрошена оплата",paid:"Оплачен",cancelled:"Отменён"})[order.status] || order.status}</div>
-      <div className="bill-no">Заказ № {order.order_number}</div>
-      {(order.items || []).map((x,i) => <div className="bill-line" key={i}><span>{x.name} × {x.quantity}</span><b>{money(x.line_total)}</b></div>)}
-      <div className="bill-line"><span>Бонусы</span><b>− {money(order.bonus_reserved)}</b></div><div className="total"><span>К оплате</span><b>{money(order.payable_amount)}</b></div>
-      {order.status !== "paid" && order.status !== "cancelled" && <button className="primary" onClick={() => callWaiter("payment")}>Попросить счёт</button>}
-      {order.status === "paid" && <p className="success">Оплата подтверждена. Cashback начислен на денежную часть счёта.</p>}
-    </section>}</main>}
+      {notice && <div className="toast">{notice}</div>}
 
-    {screen === "loyalty" && <main><h2>Loyalty</h2>{!session ? <section className="login"><p>Войдите по номеру телефона, чтобы использовать бонусы и видеть историю.</p><input value={phone} onChange={e => setPhone(e.target.value)} placeholder="+994XXXXXXXXX"/>{otpSent && <input value={otp} onChange={e => setOtp(e.target.value.replace(/\D/g,""))} inputMode="numeric" placeholder="Код из SMS"/>}<button className="primary" disabled={busy} onClick={otpSent ? verifyOtp : sendOtp}>{otpSent ? "Подтвердить код" : "Получить код"}</button></section> : <section className="loyalty-card">
-      <small>{profile?.tier_name || "Member"}</small><strong>{money(profile?.available_bonus)} бонусов</strong><span>{profile?.visits || 0} визитов · {money(profile?.lifetime_spend)} покупок</span>
-      <div className="history">{(profile?.history || []).map((h,i) => <div key={i}><span>{h.description}<small>{new Date(h.created_at).toLocaleDateString("ru-RU")}</small></span><b className={Number(h.amount)>=0?"earn":"redeem"}>{Number(h.amount)>=0?"+":""}{money(h.amount)}</b></div>)}</div>
-      <button className="ghost" onClick={() => supabase.auth.signOut()}>Выйти</button>
-    </section>}</main>}
+      {screen === "menu" && <section className="content">
+          <div className="categories">
+            {categories.map((name) => <button className={category === name ? "active" : ""} key={name} onClick={() => setCategory(name)}>{name}</button>)}
+            <label className="search" aria-label="Поиск блюда">
+              <span aria-hidden="true">⌕</span>
+              <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Поиск блюда" />
+            </label>
+          </div>
+          {weatherOffer && <aside className={`weather-offer weather-${weatherOffer.kind}`}>
+              <span className="weather-aurora" aria-hidden="true" />
+              <div className="weather-copy">
+                <WeatherVisual kind={weatherOffer.kind} phase={dayPhase} />
+                <div className="weather-reading">
+                  {weather && <strong className="weather-temperature">{Math.round(weather.temperature)}°</strong>}
+                  <div className="weather-message">
+                    <h3>{weatherOffer.title}</h3>
+                    <p>{weatherOffer.text}</p>
+                  </div>
+                  {weather && <div className="weather-metrics" aria-label="Показатели погоды">
+                      <span><small>ОЩУЩАЕТСЯ</small><b>{Math.round(weather.apparentTemperature)}°</b></span>
+                      <span><small>ВЕТЕР</small><b>{Math.round(weather.windSpeed)} м/с</b></span>
+                      <span><small>ОСАДКИ</small><b>{weather.precipitation.toFixed(1)} мм</b></span>
+                    </div>}
+                </div>
+              </div>
+            </aside>}
+          {mealRecommendation && <aside className={`meal-recommendation meal-${mealRecommendation.moment}`}>
+              <button
+    className="meal-photo"
+    type="button"
+    onClick={() => setSelectedProduct(mealRecommendation.product)}
+    aria-label={`\u041E\u0442\u043A\u0440\u044B\u0442\u044C ${mealRecommendation.product.name}`}
+  >
+                {mealRecommendation.product.image ? <img className={photoClass(mealRecommendation.product)} src={mealRecommendation.product.image} alt={mealRecommendation.product.name} /> : <span>B&amp;C</span>}
+              </button>
+              <div className="meal-copy">
+                <div className="meal-kicker">
+                  <span>{mealRecommendation.label}</span><i /><small>{mealRecommendation.note}</small>
+                </div>
+                <button className="meal-title" type="button" onClick={() => setSelectedProduct(mealRecommendation.product)}>
+                  {mealRecommendation.product.name}
+                </button>
+                {mealRecommendation.product.description && <p>{mealRecommendation.product.description}</p>}
+              </div>
+              <div className="meal-action">
+                <strong>{money(mealRecommendation.product.price)}</strong>
+                {recommendationQty ? <div className="stepper">
+                    <button onClick={() => changeQty(mealRecommendation.product, -1)}>−</button>
+                    <b>{recommendationQty}</b>
+                    <button onClick={() => changeQty(mealRecommendation.product, 1)}>+</button>
+                  </div> : <button className="add" onClick={() => changeQty(mealRecommendation.product, 1)} aria-label={`\u0414\u043E\u0431\u0430\u0432\u0438\u0442\u044C ${mealRecommendation.product.name} \u0432 \u043A\u043E\u0440\u0437\u0438\u043D\u0443`}>
+                    <b>Добавить</b><span aria-hidden="true">+</span>
+                  </button>}
+              </div>
+            </aside>}
+          <div className="product-grid">
+            {availableProducts.map((product) => {
+    const isStopped = unavailable.includes(product.id);
+    const qty = cart.find((line) => line.id === product.id)?.qty || 0;
+    return <article className={`product-card ${isStopped ? "stopped" : ""}`} key={product.id}>
+                  <button className="food-photo" type="button" onClick={() => setSelectedProduct(product)} aria-label={`\u041E\u0442\u043A\u0440\u044B\u0442\u044C \u0444\u043E\u0442\u043E \u0438 \u043E\u043F\u0438\u0441\u0430\u043D\u0438\u0435: ${product.name}`}>
+                    {product.image ? <img className={photoClass(product)} src={product.image} alt={product.name} loading="lazy" /> : <span className="photo-placeholder">B&C</span>}
+                    {product.image && <span className="zoom-hint">Увеличить</span>}
+                    {isStopped && <b>ВРЕМЕННО НЕТ</b>}
+                  </button>
+                  <div className="product-body">
+                    <div className="product-title"><h3>{product.name}</h3></div>
+                    {product.description && <p>{product.description}</p>}
+                    {product.options.length > 0 && <div className="product-options">{product.options.map((option) => <small key={option}>{option}</small>)}</div>}
+                    <div className="product-footer">
+                      <strong>{money(product.price)}</strong>
+                      {qty ? <div className="stepper"><button onClick={() => changeQty(product, -1)}>−</button><b>{qty}</b><button onClick={() => changeQty(product, 1)}>+</button></div> : <button className="add" disabled={isStopped} onClick={() => changeQty(product, 1)} aria-label={`\u0414\u043E\u0431\u0430\u0432\u0438\u0442\u044C ${product.name} \u0432 \u043A\u043E\u0440\u0437\u0438\u043D\u0443`}>
+                          <b>Добавить</b><span aria-hidden="true">+</span>
+                        </button>}
+                    </div>
+                  </div>
+                </article>;
+  })}
+          </div>
+        </section>}
 
-    {selected && <div className="modal" onMouseDown={e => e.target===e.currentTarget && setSelected(null)}><div className="dialog"><button className="close" onClick={() => setSelected(null)}>×</button><img className="hero" src={selected.image_url || FALLBACK} alt={selected.name}/><div className="dialog-copy"><small>{selected.category_name}</small><h2>{selected.name}</h2><p>{selected.description}</p>{selected.options?.length>0 && <div className="options"><b>Выберите вариант</b>{selected.options.map(o => <button className={selectedOption===o?"active":""} key={o} onClick={() => setSelectedOption(o)}>{o}</button>)}</div>}<div className="modal-price"><b>{money(selected.price)}</b><button className="primary" onClick={() => {if(selected.options?.length && !selectedOption)return flash("Выберите вариант");add(selected,selectedOption);flash("Добавлено в заказ");}}>Добавить</button></div>{pairings.length>0 && <><h3>С этим блюдом берут</h3><div className="pairings">{pairings.map(x => <button key={x.id} onClick={() => x.options?.length ? openProduct(x) : add(x)}><img src={x.image_url || FALLBACK} alt=""/><span>{x.name}<b>{money(x.price)}</b></span><i>+</i></button>)}</div></>}</div></div></div>}
-  </div>;
+      {screen === "cart" && <section className="narrow content">
+          <span className="eyebrow">Перед отправкой</span><h2>Ваш заказ</h2>
+          {!cart.length ? <Empty icon="🛒" title="Корзина пока пуста" text="Добавьте блюда из меню — они появятся здесь." action={() => setScreen("menu")} /> : <>
+              <div className="line-list">{cart.map((line) => <OrderLine key={line.id} line={line} controls onMinus={() => changeQty(line, -1)} onPlus={() => changeQty(line, 1)} />)}</div>
+              {loyalty && <div className="bonus-reserved"><span>{bonusRequest > 0 ? "Запрошено бонусов" : `Доступно · до ${money(maxBonus)}`}</span><b>{bonusRequest > 0 ? money(bonusRequest) : money(bonus)}</b></div>}
+              {loyalty && <button className="outline-button full" onClick={bonusRequest > 0 ? cancelBonus : applyBonus}>{bonusRequest > 0 ? "Не использовать бонусы" : "Использовать бонусы · до 30%"}</button>}
+              <div className="total-card"><span>Итого</span><b>{money(cartTotal)}</b></div>
+              <button className="primary-button" disabled={busy} onClick={sendOrder}>{busy ? "Отправляем…" : "Отправить заказ"}</button>
+            </>}
+        </section>}
+
+      {screen === "bill" && <section className="narrow content">
+          <div className="section-heading"><div><span className="eyebrow">Стол {table}</span><h2>Ваш счёт</h2></div>{status !== "empty" && <StatusBadge status={status} />}</div>
+          {!ordered.length ? <Empty icon="🧾" title="Открытого счёта нет" text="После отправки заказа здесь появятся позиции и статус кухни." action={() => setScreen("menu")} /> : <>
+              <div className="line-list">{ordered.map((line) => <OrderLine key={line.id} line={line} />)}</div>
+              {bonusUsed > 0 && <div className="discount-row"><span>Оплата бонусами</span><b>− {money(bonusUsed)}</b></div>}
+              <div className="total-card"><span>К оплате</span><b>{money(payable)}</b></div>
+              {paid ? <div className="payment-success">
+                  <span className="success-icon">✓</span>
+                  <div>
+                    <b>Оплата подтверждена</b>
+                    <p>Оплачено {money(payable)}{bonusUsed > 0 ? ` + ${money(bonusUsed)} бонусами` : ""}</p>
+                    {loyalty && <small>Cashback начислен только на сумму, оплаченную деньгами.</small>}
+                  </div>
+                </div> : <>
+                  <div className="bill-actions">
+                    <button className="primary-button" onClick={() => callWaiter("payment")}>Попросить счёт</button>
+                  </div>
+                </>}
+              {paid && <button className="outline-button full" onClick={startNewVisit}>Начать новый визит</button>}
+              {!paid && <p className="safe-note">Статус оплаты появится только после подтверждения сотрудником.</p>}
+            </>}
+        </section>}
+
+      {screen === "loyalty" && <section className="narrow content">
+          <span className="eyebrow">RMS Loyalty</span><h2>Ваша карта</h2>
+          {!loyalty ? <div className="loyalty-login">
+              <div className="loyalty-symbol">R</div>
+              <h3>{otpSent ? "Введите код из SMS" : "Войдите по номеру телефона"}</h3>
+              <p>{otpSent ? "Код действует ограниченное время." : "Покажем баланс, историю и персональный QR-код."}</p>
+              {!otpSent ? <><input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+994 50 000 00 00" /><button className="primary-button" disabled={busy} onClick={sendOtp}>Получить код</button></> : <><input value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))} placeholder="Код из SMS" inputMode="numeric" /><button className="primary-button" disabled={busy} onClick={verifyOtp}>Войти</button></>}
+            </div> : <>
+              <div className="loyalty-card">
+                <div><span>RMS PRO</span><small>LOYALTY</small></div>
+                <div className="bonus"><small>ДОСТУПНО БОНУСОВ</small><b>{money(bonus)}</b></div>
+                <div className="card-bottom"><span>{profile?.member_code || "RMS MEMBER"}</span><span>{profile?.tier_name || "GOLD"}</span></div>
+              </div>
+              <div className="loyalty-stats">
+                <article><small>УРОВЕНЬ</small><b>{profile?.tier_name || (lifetimeSpend >= 2e3 ? "Platinum" : "Gold")}</b><span>{lifetimeSpend >= 2e3 ? "максимальный уровень" : `${money(Math.max(0, 2e3 - lifetimeSpend))} до Platinum`}</span></article>
+                <article><small>ВИЗИТОВ</small><b>{visits}</b><span>за всё время</span></article>
+                <article><small>CASHBACK</small><b>5%</b><span>с оплаченной суммы</span></article>
+              </div>
+              <div className="tier-progress">
+                <div><span>Gold</span><b>Platinum · 2 000 ₼</b></div>
+                <i><span style={{ width: `${tierProgress}%` }} /></i>
+                <small>Учтено покупок: {money(lifetimeSpend)}</small>
+              </div>
+              {bonusUsed > 0 && !paid && <div className="bonus-reserved">
+                  <span>Зарезервировано для текущего счёта</span>
+                  <b>{money(bonusUsed)}</b>
+                </div>}
+              <div className="qr-token"><div className="qr-fake" aria-label="QR-код участника">{Array.from({ length: 49 }).map((_, i) => <i key={i} className={(i * 7 + i % 3) % 4 ? "on" : ""} />)}</div><div><b>QR для официанта</b><p>{profile?.member_code || "Персональный токен Loyalty"}</p></div></div>
+              <div className="loyalty-rules">
+                <article><span>01</span><div><b>Начисление</b><p>5% только с суммы, фактически оплаченной деньгами.</p></div></article>
+                <article><span>02</span><div><b>Списание</b><p>До 30% счёта, без повторного использования в одном чеке.</p></div></article>
+                <article><span>03</span><div><b>Защита</b><p>Начисление происходит один раз после подтверждения оплаты.</p></div></article>
+              </div>
+              <div className="history-heading"><div><span className="eyebrow">Операции</span><h3>История бонусов</h3></div><small>{history.length} записей</small></div>
+              <div className="loyalty-history">
+                {history.map((entry) => <article key={entry.id}>
+                    <span className={`history-icon ${entry.kind}`}>{entry.kind === "redeem" ? "\u2212" : "+"}</span>
+                    <div><b>{entry.title || entry.description}</b><small>{entry.detail || (entry.created_at ? new Date(entry.created_at).toLocaleDateString("ru-RU") : "")}</small></div>
+                    <strong className={entry.amount < 0 ? "negative" : ""}>{entry.amount > 0 ? "+" : ""}{money(entry.amount)}</strong>
+                  </article>)}
+              </div>
+              <button className="outline-button full" onClick={() => supabase.auth.signOut()}>Выйти</button>
+            </>}
+        </section>}
+
+      {screen === "info" && <section className="narrow content">
+          <span className="eyebrow">Barista&Chef · {branch}</span><h2>Информация</h2>
+          <div className="info-grid">
+            <article><span>◷</span><div><b>Время работы</b><p>Ежедневно · 08:00–23:00</p></div></article>
+            <article><span>⌁</span><div><b>Wi-Fi</b><p>BC-Guest · пароль у официанта</p></div></article>
+            <article><span>◎</span><div><b>Филиал</b><p>Barista&amp;Chef · {branch}</p></div></article>
+            <article><span>◌</span><div><b>Социальные сети</b><p>@baristachef</p></div></article>
+          </div>
+          <button className="primary-button" onClick={() => callWaiter("waiter")}>Позвать официанта</button>
+        </section>}
+
+      {selectedProduct && <div className="product-modal" role="dialog" aria-modal="true" aria-label={selectedProduct.name} onMouseDown={(event) => {
+    if (event.currentTarget === event.target) setSelectedProduct(null);
+  }}>
+          <article className="product-modal-card">
+            <button className="modal-close" onClick={() => setSelectedProduct(null)} aria-label="Закрыть">×</button>
+            <div className="modal-photo">
+              {selectedProduct.image ? <img className={photoClass(selectedProduct)} src={selectedProduct.image} alt={selectedProduct.name} /> : <span className="photo-placeholder">B&C</span>}
+            </div>
+            <div className="modal-content">
+              <span className="eyebrow">{selectedProduct.category}</span>
+              <h2>{selectedProduct.name}</h2>
+              {selectedProduct.description && <p>{selectedProduct.description}</p>}
+              {selectedProduct.options.length > 0 && <div className="modal-options">{selectedProduct.options.map((option) => <small key={option}>{option}</small>)}</div>}
+              <div className="modal-buy">
+                <strong>{money(selectedProduct.price)}</strong>
+                <button disabled={unavailable.includes(selectedProduct.id)} onClick={() => changeQty(selectedProduct, 1)}>
+                  {unavailable.includes(selectedProduct.id) ? "\u0412\u0440\u0435\u043C\u0435\u043D\u043D\u043E \u043D\u0435\u0442" : "\u0414\u043E\u0431\u0430\u0432\u0438\u0442\u044C \u0432 \u0437\u0430\u043A\u0430\u0437"}
+                </button>
+              </div>
+              {pairings.length > 0 && <div className="pairings">
+                  <div><span className="eyebrow">Хорошо сочетается</span><h3>С этим блюдом берут</h3></div>
+                  <div className="pairing-grid">
+                    {pairings.map((product) => <article key={product.id}>
+                        <button className="pairing-photo" onClick={() => setSelectedProduct(product)}>
+                          {product.image ? <img className={photoClass(product)} src={product.image} alt={product.name} /> : <span>B&C</span>}
+                        </button>
+                        <div><b>{product.name}</b><small>{money(product.price)}</small></div>
+                        <button className="pairing-add" onClick={() => changeQty(product, 1)} aria-label={`\u0414\u043E\u0431\u0430\u0432\u0438\u0442\u044C ${product.name}`}>+</button>
+                      </article>)}
+                  </div>
+                </div>}
+            </div>
+          </article>
+        </div>}
+
+      {cartCount > 0 && screen === "menu" && <button className="floating-cart" onClick={() => setScreen("cart")}><span>{cartCount} позиции</span><b>{money(cartTotal)} →</b></button>}
+      <footer><span>Powered by</span><b>RMS PRO</b><small>QR Menu + Loyalty</small></footer>
+    </main>;
 }
-
-const FALLBACK = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='900' height='600'%3E%3Crect width='100%25' height='100%25' fill='%23eee8dc'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%23685f52' font-family='Arial' font-size='36'%3EBARISTA%26CHEF%3C/text%3E%3C/svg%3E";
-
-const CSS = `
-:root{font-family:Inter,system-ui,-apple-system,sans-serif;color:#17231d;background:#f5f2eb}*{box-sizing:border-box}body{margin:0;background:#f5f2eb}.qr-app{min-height:100vh;padding-bottom:88px}header{display:flex;justify-content:space-between;align-items:center;padding:22px max(20px,calc((100vw - 1180px)/2));background:#183b2c;color:white}h1,h2,h3,p{margin-top:0}header h1{margin:2px 0;font-size:24px;letter-spacing:.12em}.eyebrow{font-size:11px;letter-spacing:.2em;color:#d4b26a}header small{color:#d5ded9}.round{border:1px solid #ffffff55;background:#ffffff10;color:#fff;width:42px;height:42px;border-radius:50%;font-size:22px}nav{position:sticky;top:0;z-index:20;display:flex;justify-content:center;gap:6px;padding:10px;background:#fffffff2;backdrop-filter:blur(12px);box-shadow:0 3px 20px #0000000b}nav button,.chips button{border:0;background:transparent;padding:10px 16px;border-radius:999px;color:#536059;font-weight:700}nav button.active,.chips button.active{background:#183b2c;color:white}main{max-width:1180px;margin:0 auto;padding:24px 20px}.toast{position:fixed;z-index:80;left:50%;bottom:82px;transform:translateX(-50%);background:#17231d;color:#fff;padding:12px 18px;border-radius:12px;box-shadow:0 10px 30px #0004}.weather{position:relative;overflow:hidden;display:grid;grid-template-columns:150px 1fr 340px;gap:18px;align-items:center;padding:22px;border-radius:25px;color:white;margin-bottom:22px;min-height:190px}.weather.sunny{background:linear-gradient(135deg,#df8e31,#f5bd5c)}.weather.windy{background:linear-gradient(135deg,#66889a,#99aeb8)}.weather.rainy{background:linear-gradient(135deg,#3d6177,#7895a7)}.weather.cloudy{background:linear-gradient(135deg,#6e7a82,#a8afb2)}.weather.cool{background:linear-gradient(135deg,#477d8d,#86b4bd)}.weather-copy{z-index:2}.weather-copy b{font-size:24px}.weather-copy p{margin:6px 0 16px}.metrics{display:flex;gap:25px}.metrics span{font-size:17px;font-weight:800}.metrics small{display:block;font-size:10px;text-transform:uppercase;opacity:.72;font-weight:600}.picks{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;z-index:2}.picks button{border:0;background:#ffffff20;padding:7px;border-radius:15px;color:white;text-align:left}.picks img{width:100%;height:66px;object-fit:cover;border-radius:10px}.picks span{display:block;font-size:11px;padding:6px 2px 2px}.wx-icon{position:relative;width:140px;height:130px}.sun{position:absolute;width:70px;height:70px;border-radius:50%;background:#ffd76b;top:10px;left:20px;box-shadow:0 0 0 14px #ffd76b33}.cloud{display:block;position:absolute;width:100px;height:36px;background:#e7eef1;border-radius:30px;left:26px;top:65px;box-shadow:20px -20px 0 -3px #e7eef1,-20px -10px 0 -8px #e7eef1}.c2{left:48px;top:82px;transform:scale(.72);opacity:.75}.wx-windy .sun,.wx-rainy .sun,.wx-cloudy .sun,.wx-cool .sun{display:none}.rain{display:none;position:absolute;width:4px;height:22px;background:#bce8ff;border-radius:4px;top:110px;transform:rotate(16deg)}.wx-rainy .rain{display:block}.r1{left:48px}.r2{left:76px}.r3{left:104px}.wind{display:none;position:absolute;width:95px;height:3px;border-radius:4px;background:#fff;left:10px;top:45px}.wx-windy .cloud{opacity:.85}.wx-windy .wind{display:block;animation:wind 1.6s ease-in-out infinite}.w2{top:105px;left:28px;animation-delay:.5s!important}@keyframes wind{50%{transform:translateX(20px);opacity:.45}}.search input,.login input,.bonus input{width:100%;border:1px solid #d9d6cf;background:white;padding:14px 16px;border-radius:14px;font-size:16px}.chips{display:flex;gap:8px;overflow:auto;padding:14px 0 18px}.chips button{background:#ebe7de;white-space:nowrap}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}.card{overflow:hidden;background:white;border-radius:18px;box-shadow:0 5px 22px #253a2f0d}.photo{display:block;border:0;padding:0;width:100%;background:#eee}.photo img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover}.card-body{padding:14px}.card-body small,.dialog-copy>small{color:#99825a;text-transform:uppercase;font-size:10px;font-weight:800}.card-body h3{margin:5px 0 8px;font-size:17px}.card-body p{font-size:12px;color:#707872;height:45px;overflow:hidden}.card-body>div{display:flex;justify-content:space-between;align-items:center}.plus{border:0;background:#183b2c;color:white;border-radius:50%;width:35px;height:35px;font-size:22px}.state{padding:50px 20px;text-align:center;color:#7b817d;background:white;border-radius:18px}.lines,.bill,.login,.loyalty-card,.bonus{background:white;border-radius:18px;padding:18px}.line{display:grid;grid-template-columns:62px 1fr auto;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid #eee}.line img{width:62px;height:52px;object-fit:cover;border-radius:10px}.line small{display:block;color:#7a807d;margin-top:4px}.counter{display:flex;align-items:center;gap:8px}.counter button{width:30px;height:30px;border:0;border-radius:50%;background:#eee9df;font-size:18px}.total{display:flex;justify-content:space-between;align-items:center;font-size:20px;padding:18px 0}.primary{width:100%;border:0;border-radius:14px;padding:15px;background:#183b2c;color:white;font-size:15px;font-weight:800}.primary:disabled{opacity:.55}.bonus{margin-top:14px;background:#eee8d9}.bonus small{display:block;margin:4px 0 10px}.status{display:inline-block;padding:7px 12px;border-radius:999px;background:#efe6c6;color:#715a12;font-weight:800}.status.paid{background:#dbefe0;color:#236237}.status.cancelled{background:#f4dcdc;color:#8c2d2d}.bill-no{margin:15px 0;color:#7b817d}.bill-line{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid #eee}.success{padding:14px;background:#e3f2e7;border-radius:12px;color:#245f37}.login{max-width:480px}.login input{margin:7px 0}.loyalty-card{max-width:620px;background:linear-gradient(135deg,#183b2c,#2d5b46);color:white}.loyalty-card>small,.loyalty-card>span{display:block;opacity:.74}.loyalty-card>strong{display:block;font-size:30px;margin:8px 0}.history{margin:22px 0;background:#ffffff12;border-radius:14px;padding:6px 14px}.history>div{display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid #ffffff18}.history small{display:block;opacity:.6;margin-top:3px}.earn{color:#a8e5b8}.redeem{color:#ffd0c5}.ghost{border:1px solid #ffffff55;background:transparent;color:white;padding:10px 16px;border-radius:10px}.modal{position:fixed;inset:0;z-index:60;background:#0b1510cc;display:flex;align-items:center;justify-content:center;padding:20px}.dialog{position:relative;display:grid;grid-template-columns:1.08fr .92fr;background:white;border-radius:24px;overflow:hidden;max-width:980px;width:100%;max-height:92vh}.close{position:absolute;right:14px;top:14px;z-index:2;border:0;border-radius:50%;width:40px;height:40px;background:#fff;font-size:26px;box-shadow:0 3px 15px #0002}.hero{width:100%;height:100%;max-height:92vh;object-fit:cover}.dialog-copy{padding:32px;overflow:auto}.dialog-copy h2{font-size:30px;margin:7px 0}.dialog-copy p{color:#69716c;line-height:1.6}.modal-price{display:flex;align-items:center;gap:25px;margin:22px 0}.modal-price>b{font-size:24px}.modal-price .primary{width:auto;padding:12px 24px}.pairings{display:grid;gap:9px}.pairings button{display:grid;grid-template-columns:52px 1fr 28px;gap:10px;align-items:center;text-align:left;border:0;background:#f4f1ea;padding:7px;border-radius:12px}.pairings img{width:52px;height:46px;object-fit:cover;border-radius:8px}.pairings b{display:block;color:#7c6a47;font-size:12px}.pairings i{font-style:normal;font-size:22px}
-.options{display:flex;flex-wrap:wrap;gap:7px;margin:16px 0}.options>b{width:100%;font-size:13px}.options button{border:1px solid #d7d2c8;background:#f4f1ea;padding:9px 11px;border-radius:10px;text-align:left}.options button.active{background:#183b2c;color:#fff;border-color:#183b2c}
-@media(max-width:850px){.weather{grid-template-columns:110px 1fr}.picks{grid-column:1/-1}.grid{grid-template-columns:repeat(2,1fr)}.dialog{grid-template-columns:1fr;overflow:auto}.hero{height:42vh}.dialog-copy{overflow:visible}.wx-icon{transform:scale(.8);transform-origin:left center}}
-@media(max-width:560px){header{padding:17px 16px}nav{justify-content:flex-start;overflow:auto}nav button{padding:9px 12px;white-space:nowrap}main{padding:16px 12px}.weather{display:block;padding:18px;min-height:0}.wx-icon{position:absolute;right:-18px;top:-10px;left:auto;opacity:.72;transform:scale(.72)}.weather-copy{position:relative}.weather-copy b{display:block;max-width:70%;font-size:20px}.weather-copy p{max-width:72%;min-height:42px}.metrics{position:relative;z-index:3;gap:16px;padding-top:10px;margin-top:8px;border-top:1px solid #ffffff35}.metrics span{font-size:14px}.picks{position:relative;margin-top:16px}.picks img{height:58px}.grid{gap:10px}.card-body{padding:11px}.card-body h3{font-size:14px}.card-body p{display:none}.dialog-copy{padding:22px 18px}.dialog-copy h2{font-size:25px}.modal{padding:8px}.line{grid-template-columns:52px 1fr auto}.line img{width:52px;height:48px}}
-
-/* Production visual sync with the approved QR Menu test build. */
-.round{border-color:#ffffff24;background:#ffffff0b}
-nav{border-bottom:1px solid #183b2c12}
-.weather.night{background:radial-gradient(circle at 15% 15%,#2d4770 0,transparent 24%),linear-gradient(135deg,#071321,#142941 58%,#1d3550);box-shadow:inset 0 1px 0 #ffffff14}
-.weather.night .weather-copy p{color:#d6e0ea}
-.weather.night .picks button{background:#ffffff12;border:1px solid #ffffff12}
-.moon{display:none;position:absolute;width:64px;height:64px;border-radius:50%;background:#f5efcf;top:8px;left:20px;box-shadow:0 0 0 11px #dbe8ff14,0 0 28px #dce8ff55}
-.moon:after{content:"";position:absolute;width:57px;height:57px;border-radius:50%;background:#12263e;left:17px;top:-5px}
-.weather.night .sun{display:none}
-.weather.night .moon{display:block}
-.weather.night .cloud{background:#d3dce6;box-shadow:20px -20px 0 -3px #d3dce6,-20px -10px 0 -8px #d3dce6;opacity:.82}
-.picks img,.photo img,.line img,.hero,.pairings img{object-fit:contain;background:#ecece5}
-@media(max-width:560px){.metrics{padding-top:14px;margin-top:12px;border-top:0}}
-`;
+function WeatherVisual({ kind, phase }) {
+  const isNight = phase === "night";
+  return <div className={`weather-visual ${kind} ${isNight ? "night-sky" : ""}`} aria-hidden="true">
+      <span className="weather-sun" />
+      {isNight && <span className="weather-moon" />}
+      <span className="weather-cloud cloud-one" />
+      <span className="weather-cloud cloud-two" />
+      <span className="weather-rain rain-one" />
+      <span className="weather-rain rain-two" />
+      <span className="weather-rain rain-three" />
+      <span className="weather-wind wind-one" />
+      <span className="weather-wind wind-two" />
+    </div>;
+}
+function OrderLine({ line, controls, onMinus, onPlus }) {
+  return <article className="order-line"><div className="mini-photo">{line.image ? <img className={photoClass(line)} src={line.image} alt="" /> : <span>B&C</span>}</div><div><b>{line.name}</b><span>{money(line.price)} × {line.qty}</span></div>{controls ? <div className="stepper"><button onClick={onMinus}>−</button><b>{line.qty}</b><button onClick={onPlus}>+</button></div> : <strong>{money(line.price * line.qty)}</strong>}</article>;
+}
+function Empty({ icon, title, text, action }) {
+  return <div className="empty-state"><span>{icon}</span><h3>{title}</h3><p>{text}</p><button className="outline-button" onClick={action}>Перейти в меню</button></div>;
+}
+function StatusBadge({ status }) {
+  const labels = { new: "Заказ получен", requested: "Заказ получен", confirmed: "Подтверждён", preparing: "Готовится", ready: "Заказ готов", payment_requested: "Запрошена оплата", paid: "Оплачен", cancelled: "Отменён" };
+  return <span className={`status ${status}`}><i />{labels[status] || status}</span>;
+}
