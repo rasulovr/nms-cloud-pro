@@ -2690,3 +2690,48 @@ body {
     height: 25px;
   }
 }
+
+/* RMS QR dark-mode contrast hardening: information screen. */
+.app-shell.theme-night .info-grid article > span {
+  color: #d4e1db;
+  opacity: .82;
+  text-shadow: 0 1px 12px rgba(212, 225, 219, .12);
+}
+
+.app-shell.theme-night .info-grid a {
+  color: #dce9e3;
+  text-decoration-color: rgba(220, 233, 227, .42);
+}
+
+.app-shell.theme-night .info-grid a:hover,
+.app-shell.theme-night .info-grid a:focus-visible {
+  color: #f2f7f4;
+}
+
+.app-shell.theme-night .wifi-password-button {
+  color: var(--ink);
+  background: rgba(236, 244, 240, .10);
+  border: 1px solid rgba(236, 244, 240, .12);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.09), 0 8px 24px rgba(0,0,0,.14);
+}
+
+.app-shell.theme-night .wifi-password-button small {
+  color: #dce9e3;
+  opacity: .88;
+}
+
+.app-shell.theme-night .wifi-password-button.revealed small {
+  color: var(--muted);
+  opacity: .82;
+}
+
+.app-shell.theme-night .wifi-password-value {
+  color: #f2f3ef;
+  -webkit-text-fill-color: #f2f3ef;
+}
+
+.app-shell.theme-night .info-grid p,
+.app-shell.theme-night .info-grid .wifi-network {
+  opacity: 1;
+}
+
