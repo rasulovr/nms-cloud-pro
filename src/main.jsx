@@ -2286,7 +2286,7 @@ function getRmsLocalUser() {
     login_name: localUser.login || login,
     email: `${localUser.login || login}@rms.internal`,
     full_name: localUser.full_name || localUser.login || login,
-    role: 'employee',
+    role: localUser.role || (login === 'admin' ? 'admin' : 'employee'),
     is_active: localUser.is_active !== false,
     hide_manager_salary: Boolean(localUser.hide_manager_salary || localUser.hide_manager_salaries),
     hide_manager_salaries: Boolean(localUser.hide_manager_salary || localUser.hide_manager_salaries),
@@ -5137,9 +5137,11 @@ function App() {
   }, [session])
 
   const isInternalSession = Boolean(session?.rms_internal)
-  const isAdmin = !isInternalSession && (!profile || profile?.role === 'admin')
+  const internalLogin = normalizeInternalLogin(session?.user?.login_name || session?.user?.email)
+  const isInternalAdmin = isInternalSession && (profile?.role === 'admin' || internalLogin === 'admin')
+  const isAdmin = isInternalAdmin || (!isInternalSession && (!profile || profile?.role === 'admin'))
   const sectionAccess = (sectionId) => {
-    if (isInternalSession && sectionId === 'settings') return 'none'
+    if (isInternalSession && sectionId === 'settings' && !isInternalAdmin) return 'none'
     if (isAdmin) return 'admin'
     const row = permissions.find(p => p.section === sectionId)
     return row?.access || 'none'
@@ -39218,8 +39220,10 @@ function ReportsV43Styles() {
 }
 
 function Settings({ session, t, theme, setTheme, lang, setLang }) {
-  const settingsAdminOnly = !session?.rms_internal
-  if (!settingsAdminOnly) {
+  const internalLogin = normalizeInternalLogin(session?.user?.login_name || session?.user?.email)
+  const localUser = session?.rms_internal ? getRmsLocalUser() : null
+  const settingsAdminAllowed = !session?.rms_internal || localUser?.role === 'admin' || internalLogin === 'admin'
+  if (!settingsAdminAllowed) {
     return <section><section className="topbar"><div><h2>Настройки</h2><p>Доступ запрещён для обычных пользователей.</p></div></section><div className="card span-2"><h3>Нет доступа</h3><p className="hint">Управление пользователями, правами доступа, бэкапом, восстановлением и очисткой данных доступно только владельцу / admin.</p></div></section>
   }
 
@@ -39364,7 +39368,7 @@ function Settings({ session, t, theme, setTheme, lang, setLang }) {
       email: `${u.login}@rms.internal`,
       login_name: u.login,
       full_name: u.full_name || u.login,
-      role: 'employee',
+      role: u.role || (normalizeInternalLogin(u.login) === 'admin' ? 'admin' : 'employee'),
       is_active: u.is_active !== false,
       hide_manager_salary: Boolean(u.hide_manager_salary || u.hide_manager_salaries),
       hide_manager_salaries: Boolean(u.hide_manager_salary || u.hide_manager_salaries),
