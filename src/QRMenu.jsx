@@ -111,7 +111,7 @@ const uiText = {
     table: "Masa", tableAction: "Menyudan birbaşa sifariş edin", yourTable: "SİZİN MASA",
     information: "Məlumat", hours: "İş saatları", schedule: "B.e.–Şənbə · 09:00–22:00", sunday: "Bazar günü · bağlıdır",
     wifi: "Wi‑Fi", password: "şifrə", branch: "Filial", social: "Sosial şəbəkələr", waiter: "Ofisiant çağır",
-    tapWifi: "Kopyalamaq üçün toxunun", wifiCopied: "Wi‑Fi şifrəsi kopyalandı. Şəbəkəni seçib yapışdırın.",
+    tapWifi: "Şifrəni göstərmək üçün toxunun", wifiCopied: "",
     add: "Əlavə et", addToOrder: "Sifarişə əlavə et", unavailable: "MÜVƏQQƏTİ YOXDUR", zoom: "Böyüt",
     openPhoto: "Foto və təsviri aç", close: "Bağla", pairsEyebrow: "Uyğun seçimlər", pairsTitle: "Bununla birlikdə seçirlər",
     beforeSending: "Göndərməzdən əvvəl", yourOrder: "Sifarişiniz", emptyCart: "Səbət hələ boşdur",
@@ -128,7 +128,7 @@ const uiText = {
     table: "Стол", tableAction: "Закажите прямо из меню", yourTable: "ВАШ СТОЛ",
     information: "Информация", hours: "Время работы", schedule: "Пн–Сб · 09:00–22:00", sunday: "Воскресенье · закрыто",
     wifi: "Wi‑Fi", password: "пароль", branch: "Филиал", social: "Социальные сети", waiter: "Вызвать официанта",
-    tapWifi: "Нажмите, чтобы скопировать", wifiCopied: "Пароль Wi‑Fi скопирован. Выберите сеть и вставьте его.",
+    tapWifi: "Нажмите, чтобы показать пароль", wifiCopied: "",
     add: "Добавить", addToOrder: "Добавить в заказ", unavailable: "ВРЕМЕННО НЕТ", zoom: "Увеличить",
     openPhoto: "Открыть фото и описание", close: "Закрыть", pairsEyebrow: "Хорошо сочетается", pairsTitle: "С этим блюдом берут",
     beforeSending: "Перед отправкой", yourOrder: "Ваш заказ", emptyCart: "Корзина пока пуста",
@@ -145,7 +145,7 @@ const uiText = {
     table: "Table", tableAction: "Order directly from the menu", yourTable: "YOUR TABLE",
     information: "Information", hours: "Opening hours", schedule: "Mon–Sat · 09:00–22:00", sunday: "Sunday · closed",
     wifi: "Wi‑Fi", password: "password", branch: "Branch", social: "Social media", waiter: "Call a waiter",
-    tapWifi: "Tap to copy", wifiCopied: "Wi‑Fi password copied. Select the network and paste it.",
+    tapWifi: "Tap to reveal password", wifiCopied: "",
     add: "Add", addToOrder: "Add to Order", unavailable: "TEMPORARILY UNAVAILABLE", zoom: "Enlarge",
     openPhoto: "Open photo and description", close: "Close", pairsEyebrow: "Pairs well with", pairsTitle: "Recommended with this item",
     beforeSending: "Before sending", yourOrder: "Your order", emptyCart: "Your cart is empty",
@@ -236,7 +236,7 @@ export default function QRMenu() {
   const [table, setTable] = useState("");
   const [screen, setScreen] = useState("menu");
   const [category, setCategory] = useState("\u0412\u0441\u0435");
-  const [search, setSearch] = useState("");
+  const [wifiPasswordVisible, setWifiPasswordVisible] = useState(false);
   const [cart, setCart] = useState([]);
   const [notice, setNotice] = useState("");
   const [products, setProducts] = useState([]);
@@ -302,6 +302,7 @@ export default function QRMenu() {
   }, [branch]);
   useEffect(() => {
     let active = true;
+    setWifiPasswordVisible(false);
     supabase.from("rms_qr_info").select("branch_id,wifi_name,wifi_password,working_hours,instagram").eq("branch_id", branch).maybeSingle().then(({ data }) => {
       if (active) setBranchInfo(data || null);
     });
@@ -368,15 +369,14 @@ export default function QRMenu() {
   const availableProducts = useMemo(() => localizedProducts.filter((product) => {
     const branchMatch = product.branches.includes(branch);
     const categoryMatch = category === "\u0412\u0441\u0435" || product.category === category;
-    const text = `${product.name} ${product.description}`.toLowerCase();
-    return branchMatch && categoryMatch && text.includes(search.toLowerCase());
+    return branchMatch && categoryMatch;
   }).sort((a, b) => {
     const aCategory = categoryOrder[mealMoment].indexOf(a.category);
     const bCategory = categoryOrder[mealMoment].indexOf(b.category);
     const categoryDifference = (aCategory < 0 ? 998 : aCategory) - (bCategory < 0 ? 998 : bCategory);
     if (categoryDifference) return categoryDifference;
     return productMomentRank(a, mealMoment) - productMomentRank(b, mealMoment);
-  }), [localizedProducts, branch, category, search, mealMoment]);
+  }), [localizedProducts, branch, category, mealMoment]);
   const categories = useMemo(() => {
     const present = new Set(products.filter((p) => p.branches.includes(branch)).map((p) => p.category));
     const ordered = categoryOrder[mealMoment].filter((name) => present.has(name));
@@ -485,23 +485,8 @@ export default function QRMenu() {
     setNotice(text);
     window.setTimeout(() => setNotice(""), 2400);
   }
-  async function copyWifiPassword() {
-    const password = String(branchInfo?.wifi_password || "").trim();
-    if (!password) return;
-    try {
-      await navigator.clipboard.writeText(password);
-    } catch {
-      const input = document.createElement("textarea");
-      input.value = password;
-      input.setAttribute("readonly", "");
-      input.style.position = "fixed";
-      input.style.opacity = "0";
-      document.body.appendChild(input);
-      input.select();
-      document.execCommand("copy");
-      input.remove();
-    }
-    flash(t.wifiCopied);
+  function revealWifiPassword() {
+    setWifiPasswordVisible((visible) => !visible);
   }
   function changeQty(product, delta) {
     if (unavailable.includes(product.id)) return flash(t.stoppedNotice);
@@ -643,10 +628,6 @@ export default function QRMenu() {
       {screen === "menu" && <section className="content">
           <div className="categories">
             {categories.map((name) => <button className={category === name ? "active" : ""} key={name} onClick={() => setCategory(name)}>{categoryTranslations[language][name] || categoryLabel(name)}</button>)}
-            <label className="search" aria-label={t.search}>
-              <span aria-hidden="true">⌕</span>
-              <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t.search} />
-            </label>
           </div>
           {mealRecommendation && <aside className={`meal-recommendation meal-${mealRecommendation.moment}`}>
               <button
@@ -787,7 +768,7 @@ export default function QRMenu() {
           <span className="eyebrow">{branchName}</span><h2>{t.information}</h2>
           <div className="info-grid">
             <article><span>◷</span><div><b>{t.hours}</b><p>{t.schedule}<br />{t.sunday}</p></div></article>
-            <article className="wifi-info-card"><span>⌁</span><div><b>{t.wifi}</b><p className="wifi-network">{branchInfo?.wifi_name || "BC-Guest"}</p>{branchInfo?.wifi_password && <button type="button" className="wifi-password-button" onClick={copyWifiPassword} aria-label={t.tapWifi}><span className="wifi-password-mask" aria-hidden="true">••••••••••••</span><small>{t.tapWifi}</small></button>}</div></article>
+            <article className="wifi-info-card"><span>⌁</span><div><b>{t.wifi}</b><p className="wifi-network">{branchInfo?.wifi_name || "BC-Guest"}</p>{branchInfo?.wifi_password && <button type="button" className={`wifi-password-button ${wifiPasswordVisible ? "revealed" : ""}`} onClick={revealWifiPassword} aria-expanded={wifiPasswordVisible} aria-label={t.tapWifi}><span className="wifi-password-value">{wifiPasswordVisible ? branchInfo.wifi_password : "••••••••••••"}</span><small>{t.tapWifi}</small></button>}</div></article>
             <article><span>◎</span><div><b>{t.branch}</b><p>{branchName}</p></div></article>
             <article><span>◌</span><div><b>{t.social}</b><p><a href="https://instagram.com/baristachefaz" target="_blank" rel="noreferrer">@baristachefaz</a></p></div></article>
           </div>
