@@ -82,6 +82,44 @@ const categoryLabel = (value) => {
   const normalized = value.toLocaleLowerCase("ru-RU");
   return normalized.charAt(0).toLocaleUpperCase("ru-RU") + normalized.slice(1);
 };
+const categoryTranslations = {
+  az: {
+    "Все": "Hamısı", "Новинки": "Yeniliklər", "ЗАВТРАК": "Səhər yeməyi", "КОФЕ": "Qəhvə",
+    "ЧАЙ": "Çay", "ХОЛОДНЫЙ КОФЕ": "Soyuq qəhvə", "ДЕСЕРТЫ": "Desertlər", "САЛАТЫ": "Salatlar",
+    "СУПЫ": "Şorbalar", "ГОРЯЧИЕ БЛЮДА": "İsti yeməklər", "ЗАКУСКИ": "Qəlyanaltılar", "ПИЦЦА": "Pizza",
+    "ЛИМОНАДЫ": "Limonadlar", "ХОЛОДНЫЕ НАПИТКИ": "Soyuq içkilər", "EKSTRA KITCHEN": "Əlavələr · Mətbəx",
+    "EKSTRA BAR": "Əlavələr · Bar"
+  },
+  en: {
+    "Все": "All", "Новинки": "New", "ЗАВТРАК": "Breakfast", "КОФЕ": "Coffee", "ЧАЙ": "Tea",
+    "ХОЛОДНЫЙ КОФЕ": "Cold coffee", "ДЕСЕРТЫ": "Desserts", "САЛАТЫ": "Salads", "СУПЫ": "Soups",
+    "ГОРЯЧИЕ БЛЮДА": "Main dishes", "ЗАКУСКИ": "Starters", "ПИЦЦА": "Pizza", "ЛИМОНАДЫ": "Lemonades",
+    "ХОЛОДНЫЕ НАПИТКИ": "Cold drinks", "EKSTRA KITCHEN": "Extras · Kitchen", "EKSTRA BAR": "Extras · Bar"
+  }
+};
+const uiText = {
+  az: {
+    quote: "Günün sözü", menu: "Menyu", cart: "Səbət", bill: "Hesab", info: "Məlumat", soon: "tezliklə",
+    soonMessage: "bölməsi tezliklə istifadəyə veriləcək", search: "Yemək axtar", feels: "Hiss olunur", wind: "Külək",
+    table: "Masa", tableAction: "Menyudan birbaşa sifariş edin", yourTable: "SİZİN MASA",
+    information: "Məlumat", hours: "İş saatları", schedule: "B.e.–Şənbə · 09:00–22:00", sunday: "Bazar günü · bağlıdır",
+    wifi: "Wi‑Fi", password: "şifrə", branch: "Filial", social: "Sosial şəbəkələr", waiter: "Ofisiant çağır",
+    quoteLines: ["Günün dadı olmalıdır.", "Yaxşı qəhvə günün ritmini yaradır.", "Sevdiyiniz dadlar günü gözəlləşdirir.", "Dad əhvaldan başlayır."]
+  },
+  en: {
+    quote: "Quote of the day", menu: "Menu", cart: "Cart", bill: "Bill", info: "Info", soon: "soon",
+    soonMessage: "will be available soon", search: "Search dishes", feels: "Feels like", wind: "Wind",
+    table: "Table", tableAction: "Order directly from the menu", yourTable: "YOUR TABLE",
+    information: "Information", hours: "Opening hours", schedule: "Mon–Sat · 09:00–22:00", sunday: "Sunday · closed",
+    wifi: "Wi‑Fi", password: "password", branch: "Branch", social: "Social media", waiter: "Call a waiter",
+    quoteLines: ["Every day should have flavour.", "Good coffee sets the rhythm of the day.", "Favourite flavours make the day better.", "Flavour starts with a mood."]
+  }
+};
+const weatherTitles = {
+  az: { rainy: "Bakıda bu gün yağışlıdır", windy: "Bakıda bu gün küləklidir", sunny: "Bakıda bu gün günəşlidir", cool: "Bakıda bu gün sərindir", cloudy: "Bakıda bu gün buludludur", clear: "Bakıda hava rahatdır" },
+  en: { rainy: "Rainy in Baku today", windy: "Windy in Baku today", sunny: "Sunny in Baku today", cool: "Cool in Baku today", cloudy: "Cloudy in Baku today", clear: "Pleasant weather in Baku" }
+};
+const displayBranchName = (branch) => branch === "BC1" ? "Barista&Chef R.Behbudov" : `Barista&Chef · ${branch}`;
 const photoClass = (product) => {
   if (product.category === "\u041B\u0418\u041C\u041E\u041D\u0410\u0414\u042B") return "lemonade-photo";
   if (product.category === "\u0425\u041E\u041B\u041E\u0414\u041D\u042B\u0415 \u041D\u0410\u041F\u0418\u0422\u041A\u0418") return "cold-drink-photo";
@@ -166,7 +204,10 @@ export default function QRMenu() {
   const [weather, setWeather] = useState(null);
   const [dayPhase, setDayPhase] = useState("day");
   const [bakuHour, setBakuHour] = useState(12);
-  const dailyQuote = getDailyQuote();
+  const [language, setLanguage] = useState(() => window.localStorage.getItem("rms-qr-language") || "az");
+  const t = uiText[language];
+  const dailyQuote = t.quoteLines[(new Date().getDate() - 1) % t.quoteLines.length];
+  const branchName = displayBranchName(branch);
   const unavailable = useMemo(() => products.filter((item) => item.is_available === false || item.is_stopped).map((item) => item.id), [products]);
   useEffect(() => {
     const updatePhase = () => {
@@ -178,6 +219,10 @@ export default function QRMenu() {
     const timer = window.setInterval(updatePhase, 6e4);
     return () => window.clearInterval(timer);
   }, []);
+  useEffect(() => {
+    window.localStorage.setItem("rms-qr-language", language);
+    document.documentElement.lang = language;
+  }, [language]);
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     setBranch(params.get("branch") || "BC1");
@@ -452,59 +497,64 @@ export default function QRMenu() {
     flash("\u041D\u043E\u0432\u044B\u0439 \u0432\u0438\u0437\u0438\u0442 \u043E\u0442\u043A\u0440\u044B\u0442");
   }
   const atmosphere = weatherOffer?.kind ?? "clear";
+  const weatherTitle = weatherTitles[language][atmosphere];
   const hasTableContext = Boolean(table);
   const recommendationQty = mealRecommendation ? cart.find((line) => line.id === mealRecommendation.product.id)?.qty || 0 : 0;
   return <main className={`app-shell theme-${dayPhase} weather-theme-${atmosphere}`}>
       <header className="hero">
         <div className="brand-mark">RMS <i>PRO</i></div>
+        <div className="language-switch" role="group" aria-label="Language selection">
+          <button className={language === "az" ? "active" : ""} onClick={() => setLanguage("az")}>AZ</button>
+          <button className={language === "en" ? "active" : ""} onClick={() => setLanguage("en")}>EN</button>
+        </div>
         <div className="hero-copy">
-          <span>BARISTA&CHEF · {branch}</span>
+          <span>{branchName}</span>
           <div className="daily-quote">
-            <span className="quote-label">Цитата дня</span>
+            <span className="quote-label">{t.quote}</span>
             <p>{dailyQuote}</p>
           </div>
-          {hasTableContext && <p className="hero-context">Стол {table} · Заказывайте прямо из меню</p>}
+          {hasTableContext && <p className="hero-context">{t.table} {table} · {t.tableAction}</p>}
         </div>
         <div className="hero-side">
-          {weatherOffer && <div className={`hero-weather weather-${weatherOffer.kind}`} aria-label={weatherOffer.title}>
+          {weatherOffer && <div className={`hero-weather weather-${weatherOffer.kind}`} aria-label={weatherTitle}>
               <div className="hero-weather-copy">
                 {weather && <strong>{Math.round(weather.temperature)}°</strong>}
                 <div>
-                  <span>{weatherOffer.title}</span>
-                  {weather && <small>Ощущается {Math.round(weather.apparentTemperature)}° · Ветер {Math.round(weather.windSpeed)} м/с</small>}
+                  <span>{weatherTitle}</span>
+                  {weather && <small>{t.feels} {Math.round(weather.apparentTemperature)}° · {t.wind} {Math.round(weather.windSpeed)} m/s</small>}
                 </div>
               </div>
               <WeatherVisual kind={weatherOffer.kind} phase={dayPhase} />
             </div>}
-          {hasTableContext && <div className="table-chip"><small>ВАШ СТОЛ</small><b>{table}</b></div>}
+          {hasTableContext && <div className="table-chip"><small>{t.yourTable}</small><b>{table}</b></div>}
         </div>
       </header>
 
       <nav className="main-nav" aria-label="Разделы QR Menu">
         {[
-    ["menu", "\u041C\u0435\u043D\u044E"],
-    ["cart", `\u041A\u043E\u0440\u0437\u0438\u043D\u0430${cartCount ? ` \xB7 ${cartCount}` : ""}`],
-    ["bill", "\u0421\u0447\u0451\u0442"],
+    ["menu", t.menu],
+    ["cart", `${t.cart}${cartCount ? ` \xB7 ${cartCount}` : ""}`],
+    ["bill", t.bill],
     ["loyalty", "Loyalty"],
-    ["info", "\u0418\u043D\u0444\u043E"]
+    ["info", t.info]
   ].map(([id, label]) => <button
     key={id}
     className={`${screen === id ? "active" : ""} ${id === "bill" || id === "loyalty" ? "coming-soon" : ""}`}
     onClick={() => {
-      if (id === "bill" || id === "loyalty") return flash(`Раздел «${label}» скоро будет доступен`);
+      if (id === "bill" || id === "loyalty") return flash(`«${label}» ${t.soonMessage}`);
       setScreen(id);
     }}
-  >{label}{(id === "bill" || id === "loyalty") && <small>скоро</small>}</button>)}
+  >{label}{(id === "bill" || id === "loyalty") && <small>{t.soon}</small>}</button>)}
       </nav>
 
       {notice && <div className="toast">{notice}</div>}
 
       {screen === "menu" && <section className="content">
           <div className="categories">
-            {categories.map((name) => <button className={category === name ? "active" : ""} key={name} onClick={() => setCategory(name)}>{categoryLabel(name)}</button>)}
-            <label className="search" aria-label="Поиск блюда">
+            {categories.map((name) => <button className={category === name ? "active" : ""} key={name} onClick={() => setCategory(name)}>{categoryTranslations[language][name] || categoryLabel(name)}</button>)}
+            <label className="search" aria-label={t.search}>
               <span aria-hidden="true">⌕</span>
-              <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Поиск блюда" />
+              <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t.search} />
             </label>
           </div>
           {mealRecommendation && <aside className={`meal-recommendation meal-${mealRecommendation.moment}`}>
@@ -643,14 +693,14 @@ export default function QRMenu() {
         </section>}
 
       {screen === "info" && <section className="narrow content">
-          <span className="eyebrow">Barista&Chef · {branch}</span><h2>Информация</h2>
+          <span className="eyebrow">{branchName}</span><h2>{t.information}</h2>
           <div className="info-grid">
-            <article><span>◷</span><div><b>Время работы</b><p>Ежедневно · 08:00–23:00</p></div></article>
-            <article><span>⌁</span><div><b>Wi-Fi</b><p>BC-Guest · пароль у официанта</p></div></article>
-            <article><span>◎</span><div><b>Филиал</b><p>Barista&amp;Chef · {branch}</p></div></article>
-            <article><span>◌</span><div><b>Социальные сети</b><p>@baristachef</p></div></article>
+            <article><span>◷</span><div><b>{t.hours}</b><p>{t.schedule}<br />{t.sunday}</p></div></article>
+            <article><span>⌁</span><div><b>{t.wifi}</b><p>BC-Guest · {t.password}: <strong>baristachef2020</strong></p></div></article>
+            <article><span>◎</span><div><b>{t.branch}</b><p>{branchName}</p></div></article>
+            <article><span>◌</span><div><b>{t.social}</b><p><a href="https://instagram.com/baristachefaz" target="_blank" rel="noreferrer">@baristachefaz</a></p></div></article>
           </div>
-          <button className="primary-button" onClick={() => callWaiter("waiter")}>Позвать официанта</button>
+          <button className="primary-button" onClick={() => callWaiter("waiter")}>{t.waiter}</button>
         </section>}
 
       {selectedProduct && <div className="product-modal" role="dialog" aria-modal="true" aria-label={selectedProduct.name} onMouseDown={(event) => {
