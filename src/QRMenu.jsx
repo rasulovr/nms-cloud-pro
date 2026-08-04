@@ -162,6 +162,11 @@ const weatherTitles = {
   ru: { rainy: "Сегодня в Баку дождь", windy: "Сегодня в Баку ветрено", sunny: "Сегодня в Баку солнечно", cool: "Сегодня в Баку прохладно", cloudy: "Сегодня в Баку облачно", clear: "Сегодня в Баку приятная погода" },
   en: { rainy: "Rainy in Baku today", windy: "Windy in Baku today", sunny: "Sunny in Baku today", cool: "Cool in Baku today", cloudy: "Cloudy in Baku today", clear: "Pleasant weather in Baku" }
 };
+const nightWeatherTitles = {
+  az: { rainy: "Bakıda yağışlı gecədir", windy: "Bakıda küləkli gecədir", sunny: "Bakıda açıq gecədir", cool: "Bakıda sərin gecədir", cloudy: "Bakıda buludlu gecədir", clear: "Bakıda açıq gecədir" },
+  ru: { rainy: "Дождливая ночь в Баку", windy: "Ветреная ночь в Баку", sunny: "Ясная ночь в Баку", cool: "Прохладная ночь в Баку", cloudy: "Облачная ночь в Баку", clear: "Ясная ночь в Баку" },
+  en: { rainy: "Rainy night in Baku", windy: "Windy night in Baku", sunny: "Clear night in Baku", cool: "Cool night in Baku", cloudy: "Cloudy night in Baku", clear: "Clear night in Baku" }
+};
 const displayBranchName = (branch) => branch === "BC1" ? "Barista&Chef R.Behbudov" : `Barista&Chef · ${branch}`;
 const photoClass = (product) => {
   if (product.category === "\u041B\u0418\u041C\u041E\u041D\u0410\u0414\u042B") return "lemonade-photo";
@@ -578,7 +583,7 @@ export default function QRMenu() {
     flash("\u041D\u043E\u0432\u044B\u0439 \u0432\u0438\u0437\u0438\u0442 \u043E\u0442\u043A\u0440\u044B\u0442");
   }
   const atmosphere = weatherOffer?.kind ?? "clear";
-  const weatherTitle = weatherTitles[language][atmosphere];
+  const weatherTitle = (dayPhase === "night" ? nightWeatherTitles : weatherTitles)[language][atmosphere];
   const hasTableContext = Boolean(table);
   const recommendationQty = mealRecommendation ? cart.find((line) => line.id === mealRecommendation.product.id)?.qty || 0 : 0;
   return <main className={`app-shell theme-${dayPhase} weather-theme-${atmosphere}`}>
