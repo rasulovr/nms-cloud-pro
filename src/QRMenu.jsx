@@ -829,11 +829,43 @@ export default function QRMenu() {
       <footer><span>Powered by</span><b>RMS PRO</b><small>QR Menu + Loyalty</small></footer>
     </main>;
 }
+function getLunarPhase(date = new Date()) {
+  const synodicMonth = 29.53058867;
+  const knownNewMoonUtc = Date.UTC(2000, 0, 6, 18, 14);
+  const daysSinceNewMoon = (date.getTime() - knownNewMoonUtc) / 864e5;
+  const cyclePosition = ((daysSinceNewMoon % synodicMonth) + synodicMonth) % synodicMonth;
+  const phaseIndex = Math.floor((cyclePosition / synodicMonth) * 8 + 0.5) % 8;
+  return [
+    "new",
+    "waxing-crescent",
+    "first-quarter",
+    "waxing-gibbous",
+    "full",
+    "waning-gibbous",
+    "last-quarter",
+    "waning-crescent"
+  ][phaseIndex];
+}
 function WeatherVisual({ kind, phase }) {
   const isNight = phase === "night";
-  return <div className={`weather-visual ${kind} ${isNight ? "night-sky" : ""}`} aria-hidden="true">
+  const lunarPhase = getLunarPhase();
+  const isMoonless = isNight && lunarPhase === "new";
+  const isOvercast = isMoonless && ["cloudy", "rainy"].includes(kind);
+  const sceneClasses = [
+    "weather-visual",
+    kind,
+    isNight ? "night-sky" : "",
+    isMoonless ? "moonless star-sky" : "",
+    isOvercast ? "overcast-sky" : ""
+  ].filter(Boolean).join(" ");
+  return <div className={sceneClasses} aria-hidden="true">
       <span className="weather-sun" />
-      {isNight && <span className="weather-moon" />}
+      {isNight && <span className={`weather-moon moon-${lunarPhase}`}>
+          <i className="moon-crater crater-one" />
+          <i className="moon-crater crater-two" />
+          <i className="moon-crater crater-three" />
+        </span>}
+      {isMoonless && <span className="weather-stars" />}
       <span className="weather-cloud cloud-one" />
       <span className="weather-cloud cloud-two" />
       <span className="weather-rain rain-one" />
