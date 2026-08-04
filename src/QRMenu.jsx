@@ -460,10 +460,10 @@ export default function QRMenu() {
         <div className="hero-copy">
           <span>BARISTA&CHEF · {branch}</span>
           <div className="daily-quote">
-            <span aria-hidden="true">“</span>
+            <span className="quote-label">Цитата дня</span>
             <p>{dailyQuote}</p>
           </div>
-          <p className="hero-context">{hasTableContext ? `Стол ${table} · Заказывайте прямо из меню` : "Общее меню · выберите блюдо по настроению"}</p>
+          {hasTableContext && <p className="hero-context">Стол {table} · Заказывайте прямо из меню</p>}
         </div>
         <div className="hero-side">
           {weatherOffer && <div className={`hero-weather weather-${weatherOffer.kind}`} aria-label={weatherOffer.title}>
