@@ -2915,11 +2915,18 @@ body {
   position: absolute;
   z-index: 2;
   inset: 0;
+  display: none;
   border-radius: 50%;
   background: linear-gradient(145deg, #0a1724, #172d3e);
   opacity: .96;
 }
 .app-shell .moon-full::after { display: none; }
+.app-shell .moon-waxing-crescent::after,
+.app-shell .moon-waning-crescent::after,
+.app-shell .moon-first-quarter::after,
+.app-shell .moon-last-quarter::after,
+.app-shell .moon-waxing-gibbous::after,
+.app-shell .moon-waning-gibbous::after { display: block; }
 .app-shell .moon-waxing-crescent::after { transform: translateX(-14px); }
 .app-shell .moon-waning-crescent::after { transform: translateX(14px); }
 .app-shell .moon-first-quarter::after {
