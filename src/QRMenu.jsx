@@ -17,6 +17,50 @@ const pairingCategories = {
   "\u041D\u043E\u0432\u0438\u043D\u043A\u0438": ["\u041A\u041E\u0424\u0415", "\u041B\u0418\u041C\u041E\u041D\u0410\u0414\u042B", "\u0421\u0410\u041B\u0410\u0422\u042B"]
 };
 const money = (value) => `${Number(value || 0).toFixed(2)} \u20BC`;
+const productionProductOverrides = {
+  "Сырники": { image: "/menu/bc-003-syrniki-full.webp" },
+  "Копчёная Утка и Крем-Чиз": { image: "/menu/bc-004-duck-full.webp" },
+  "Пицца «Чикен Фунги»": { image: "/menu/chicken-funghi-full.webp" },
+  "Грибы": { image: "/menu/extra-mushrooms.webp" },
+  "Сыр": { image: "/menu/extra-cheese.webp" },
+  "Бекон": { image: "/menu/extra-bacon.webp" },
+  "Соусы": { image: "/menu/extra-sauces.webp" },
+  "Фрукты": { image: "/menu/extra-fruits.webp" },
+  "Эспрессо-Тоник": { image: "/menu/bc-068-espresso-tonic-full.webp" },
+  "Bumble Bee": { image: "/menu/bc-069-bumble-bee-full.webp" },
+  "Аффогато": { image: "/menu/bc-070-affogato-full.webp" },
+  "Caramelita": { image: "/menu/bc-071-caramelita-full.webp" },
+  "Холодный Раф": { image: "/menu/bc-072-cold-raf-full.webp" },
+  "Холодный Американо": { image: "/menu/bc-073-cold-americano-full.webp" },
+  "Холодный Латте": { image: "/menu/bc-074-cold-latte-full.webp" },
+  "Персик Фиалка": { image: "/menu/bc-075-peach-violet.webp" },
+  "Ананас Розмарин": { image: "/menu/bc-076-pineapple-rosemary.webp" },
+  "Маракуйя Сумах": { image: "/menu/bc-077-passionfruit-sumac.webp" },
+  "Алоэ Пряный Гранат": { image: "/menu/bc-078-aloe-pomegranate.webp" },
+  "Киви Бум": { image: "/menu/bc-079-kiwi-boom.webp" },
+  "Куркума Имбирь": { image: "/menu/bc-080-turmeric-ginger.webp" },
+  "Клубничный Рай": { image: "/menu/bc-081-strawberry-paradise.webp" },
+  "Юдзу-Лимонад": { image: "/menu/bc-082-yuzu.webp" },
+  "Summer Vibes": { image: "/menu/bc-083-summer-vibes.webp" },
+  "Tropical Vibes": { image: "/menu/bc-084-tropical-vibes.webp" },
+  "Yoda's Love": { image: "/menu/bc-085-yodas-love.webp" },
+  "Special Tea": { image: "/menu/bc-086-tea-tubes.webp" },
+  "Вода": { name: "Вода Sirab", image: "/menu/bc-087-water-full.webp" },
+  "Вода Sirab": { image: "/menu/bc-087-water-full.webp" },
+  "Газированная Вода": { image: "/menu/cold-sparkling-full.webp" },
+  "Соки": { image: "/menu/bc-089-juices-full.webp" },
+  "Кола": { image: "/menu/cold-cola-full.webp" },
+  "Кола Зеро": { image: "/menu/cold-cola-zero-full.webp" },
+  "Фанта": { image: "/menu/cold-fanta-full.webp" },
+  "Спрайт": { image: "/menu/cold-sprite-full.webp" },
+  "Тоник": { image: "/menu/cold-tonic-full.webp" },
+  "Энергетические Напитки": {
+    name: "Red Bull",
+    image: "/menu/bc-095-redbull-full.webp",
+    options: ["Red Bull - 6.00 ₼", "Red Bull Sugar Free - 6.00 ₼", "Red Bull Tropical - 6.00 ₼", "Red Bull Watermelon - 6.00 ₼", "Red Bull Cherry and Forest Fruits - 6.00 ₼"]
+  },
+  "Red Bull": { image: "/menu/bc-095-redbull-full.webp" }
+};
 const categoryLabel = (value) => {
   if (value.toLocaleLowerCase("ru-RU") === "новинки") return "Новинки";
   const normalized = value.toLocaleLowerCase("ru-RU");
@@ -30,18 +74,22 @@ const photoClass = (product) => {
 const photoStyle = (product) => product.image
   ? { "--photo": `url(${JSON.stringify(product.image)})` }
   : undefined;
-const normalizeProduct = (item, branch) => ({
-  ...item,
-  id: item.id || item.menu_item_id,
-  name: item.name || "",
-  description: item.description || "",
-  category: item.category_name || item.category || "\u0411\u0435\u0437 \u043A\u0430\u0442\u0435\u0433\u043E\u0440\u0438\u0438",
-  price: Number(item.price ?? item.unit_price ?? (item.line_total && item.quantity ? Number(item.line_total) / Number(item.quantity) : 0)),
-  image: item.image_url || item.image || null,
-  options: Array.isArray(item.options) ? item.options : [],
-  rating: Number(item.rating || 0),
-  branches: [branch]
-});
+const normalizeProduct = (item, branch) => {
+  const sourceName = item.name || "";
+  const override = productionProductOverrides[sourceName] || {};
+  return {
+    ...item,
+    id: item.id || item.menu_item_id,
+    name: override.name || sourceName,
+    description: item.description || "",
+    category: item.category_name || item.category || "\u0411\u0435\u0437 \u043A\u0430\u0442\u0435\u0433\u043E\u0440\u0438\u0438",
+    price: Number(item.price ?? item.unit_price ?? (item.line_total && item.quantity ? Number(item.line_total) / Number(item.quantity) : 0)),
+    image: override.image || item.image_url || item.image || null,
+    options: override.options || (Array.isArray(item.options) ? item.options : []),
+    rating: Number(item.rating || 0),
+    branches: [branch]
+  };
+};
 const dailyQuotes = [
   "\u041B\u044E\u0431\u0438\u043C\u044B\u0435 \u0432\u043A\u0443\u0441\u044B \u0434\u0435\u043B\u0430\u044E\u0442 \u0434\u0435\u043D\u044C \u043B\u0443\u0447\u0448\u0435.",
   "\u0412\u043A\u0443\u0441 \u043D\u0430\u0447\u0438\u043D\u0430\u0435\u0442\u0441\u044F \u0441 \u043D\u0430\u0441\u0442\u0440\u043E\u0435\u043D\u0438\u044F.",
