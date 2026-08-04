@@ -769,6 +769,50 @@ body {
   .product-body > p { min-height: auto; }
 }
 
+/* QR guest language selector and branch information */
+.language-switch {
+  position: absolute;
+  z-index: 8;
+  top: 18px;
+  left: 50%;
+  padding: 3px;
+  display: flex;
+  gap: 2px;
+  transform: translateX(-50%);
+  background: #ffffff78;
+  border: 1px solid #ffffffa8;
+  border-radius: 999px;
+  box-shadow: 0 8px 24px #27312d18, inset 0 1px 0 #fff;
+  backdrop-filter: blur(18px) saturate(145%);
+}
+.language-switch button {
+  min-width: 34px;
+  height: 27px;
+  padding: 0 8px;
+  color: #6f746f;
+  background: transparent;
+  border: 0;
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 850;
+  letter-spacing: .08em;
+}
+.language-switch button.active {
+  color: #fff;
+  background: #26342f;
+  box-shadow: 0 5px 13px #17221e35;
+}
+.info-grid p strong { color: var(--ink); font-weight: 800; }
+.info-grid a { color: var(--green); font-weight: 800; text-decoration: none; }
+.info-grid a:focus-visible { outline: 2px solid var(--green); outline-offset: 3px; border-radius: 4px; }
+
+@media (max-width: 620px) {
+  .language-switch { top: 13px; }
+  .language-switch button { min-width: 31px; height: 25px; padding-inline: 6px; font-size: 8px; }
+  .info-grid article { align-items: flex-start; }
+  .info-grid p { line-height: 1.55; }
+}
+
 /* Compact iOS-inspired masthead: one glass surface and no nested weather card. */
 .daily-quote .quote-label {
   position: static;
