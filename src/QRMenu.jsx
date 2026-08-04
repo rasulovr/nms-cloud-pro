@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "./supabase";
+import { localizeProduct } from "./qrMenuTranslations";
 import "./QRMenu.css";
 const categoryOrder = {
   breakfast: ["Новинки", "ЗАВТРАК", "КОФЕ", "ЧАЙ", "ХОЛОДНЫЙ КОФЕ", "ДЕСЕРТЫ", "САЛАТЫ", "СУПЫ", "ГОРЯЧИЕ БЛЮДА", "ЗАКУСКИ", "ПИЦЦА", "ЛИМОНАДЫ", "ХОЛОДНЫЕ НАПИТКИ", "EKSTRA KITCHEN", "EKSTRA BAR"],
@@ -110,6 +111,15 @@ const uiText = {
     table: "Masa", tableAction: "Menyudan birbaşa sifariş edin", yourTable: "SİZİN MASA",
     information: "Məlumat", hours: "İş saatları", schedule: "B.e.–Şənbə · 09:00–22:00", sunday: "Bazar günü · bağlıdır",
     wifi: "Wi‑Fi", password: "şifrə", branch: "Filial", social: "Sosial şəbəkələr", waiter: "Ofisiant çağır",
+    tapWifi: "Kopyalamaq üçün toxunun", wifiCopied: "Wi‑Fi şifrəsi kopyalandı. Şəbəkəni seçib yapışdırın.",
+    add: "Əlavə et", addToOrder: "Sifarişə əlavə et", unavailable: "MÜVƏQQƏTİ YOXDUR", zoom: "Böyüt",
+    openPhoto: "Foto və təsviri aç", close: "Bağla", pairsEyebrow: "Uyğun seçimlər", pairsTitle: "Bununla birlikdə seçirlər",
+    beforeSending: "Göndərməzdən əvvəl", yourOrder: "Sifarişiniz", emptyCart: "Səbət hələ boşdur",
+    emptyCartText: "Menyudan məhsul əlavə edin — onlar burada görünəcək.", goToMenu: "Menyuya keç",
+    total: "Cəmi", sendOrder: "Sifarişi göndər", sending: "Göndərilir…", items: "məhsul",
+    scanTable: "Sifariş üçün masanızdakı QR-kodu skan edin", stoppedNotice: "Məhsul stop-listdədir",
+    breakfastChoice: "Səhər seçimi", breakfastNote: "Günə yüngül başlanğıc", lunchChoice: "Nahar seçimi",
+    lunchNote: "Günün fasiləsi üçün uyğundur", dinnerChoice: "Axşam seçimi", dinnerNote: "Axşam üçün daha dolğun dad",
     quoteLines: ["Günün dadı olmalıdır.", "Yaxşı qəhvə günün ritmini yaradır.", "Sevdiyiniz dadlar günü gözəlləşdirir.", "Dad əhvaldan başlayır."]
   },
   ru: {
@@ -118,6 +128,15 @@ const uiText = {
     table: "Стол", tableAction: "Закажите прямо из меню", yourTable: "ВАШ СТОЛ",
     information: "Информация", hours: "Время работы", schedule: "Пн–Сб · 09:00–22:00", sunday: "Воскресенье · закрыто",
     wifi: "Wi‑Fi", password: "пароль", branch: "Филиал", social: "Социальные сети", waiter: "Вызвать официанта",
+    tapWifi: "Нажмите, чтобы скопировать", wifiCopied: "Пароль Wi‑Fi скопирован. Выберите сеть и вставьте его.",
+    add: "Добавить", addToOrder: "Добавить в заказ", unavailable: "ВРЕМЕННО НЕТ", zoom: "Увеличить",
+    openPhoto: "Открыть фото и описание", close: "Закрыть", pairsEyebrow: "Хорошо сочетается", pairsTitle: "С этим блюдом берут",
+    beforeSending: "Перед отправкой", yourOrder: "Ваш заказ", emptyCart: "Корзина пока пуста",
+    emptyCartText: "Добавьте блюда из меню — они появятся здесь.", goToMenu: "Перейти в меню",
+    total: "Итого", sendOrder: "Отправить заказ", sending: "Отправляем…", items: "позиции",
+    scanTable: "Для заказа отсканируйте QR-код на вашем столе", stoppedNotice: "Позиция находится в stop-list",
+    breakfastChoice: "Утренний выбор", breakfastNote: "Лёгкое начало дня", lunchChoice: "Выбор к обеду",
+    lunchNote: "Подходит для дневной паузы", dinnerChoice: "Вечерний выбор", dinnerNote: "Более насыщенный вкус к вечеру",
     quoteLines: ["У дня должен быть вкус.", "Хороший кофе задаёт ритм дня.", "Любимые вкусы делают день лучше.", "Вкус начинается с настроения."]
   },
   en: {
@@ -126,6 +145,15 @@ const uiText = {
     table: "Table", tableAction: "Order directly from the menu", yourTable: "YOUR TABLE",
     information: "Information", hours: "Opening hours", schedule: "Mon–Sat · 09:00–22:00", sunday: "Sunday · closed",
     wifi: "Wi‑Fi", password: "password", branch: "Branch", social: "Social media", waiter: "Call a waiter",
+    tapWifi: "Tap to copy", wifiCopied: "Wi‑Fi password copied. Select the network and paste it.",
+    add: "Add", addToOrder: "Add to Order", unavailable: "TEMPORARILY UNAVAILABLE", zoom: "Enlarge",
+    openPhoto: "Open photo and description", close: "Close", pairsEyebrow: "Pairs well with", pairsTitle: "Recommended with this item",
+    beforeSending: "Before sending", yourOrder: "Your order", emptyCart: "Your cart is empty",
+    emptyCartText: "Add items from the menu and they will appear here.", goToMenu: "Go to menu",
+    total: "Total", sendOrder: "Send order", sending: "Sending…", items: "items",
+    scanTable: "To order, scan the QR code on your table", stoppedNotice: "This item is on the stop list",
+    breakfastChoice: "Morning choice", breakfastNote: "A light start to the day", lunchChoice: "Lunch choice",
+    lunchNote: "Perfect for a midday break", dinnerChoice: "Evening choice", dinnerNote: "A richer flavour for the evening",
     quoteLines: ["Every day should have flavour.", "Good coffee sets the rhythm of the day.", "Favourite flavours make the day better.", "Flavour starts with a mood."]
   }
 };
@@ -146,15 +174,21 @@ const photoStyle = (product) => product.image
 const normalizeProduct = (item, branch) => {
   const sourceName = item.name || "";
   const override = productionProductOverrides[sourceName] || {};
+  const sourceDescription = item.description || "";
+  const sourceOptions = override.options || (Array.isArray(item.options) ? item.options : []);
   return {
     ...item,
     id: item.id || item.menu_item_id,
+    translationKey: sourceName,
+    sourceName: override.name || sourceName,
+    sourceDescription,
+    sourceOptions,
     name: override.name || sourceName,
-    description: item.description || "",
+    description: sourceDescription,
     category: item.category_name || item.category || "\u0411\u0435\u0437 \u043A\u0430\u0442\u0435\u0433\u043E\u0440\u0438\u0438",
     price: Number(item.price ?? item.unit_price ?? (item.line_total && item.quantity ? Number(item.line_total) / Number(item.quantity) : 0)),
     image: override.image || item.image_url || item.image || null,
-    options: override.options || (Array.isArray(item.options) ? item.options : []),
+    options: sourceOptions,
     rating: Number(item.rating || 0),
     branches: [branch]
   };
@@ -216,17 +250,24 @@ export default function QRMenu() {
   const [otpSent, setOtpSent] = useState(false);
   const [bonusRequest, setBonusRequest] = useState(0);
   const [selectedProduct, setSelectedProduct] = useState(null);
+  const [photoFullscreen, setPhotoFullscreen] = useState(false);
   const [weather, setWeather] = useState(null);
+  const [branchInfo, setBranchInfo] = useState(null);
   const [dayPhase, setDayPhase] = useState("day");
   const [bakuHour, setBakuHour] = useState(12);
   const [language, setLanguage] = useState(() => {
     const savedLanguage = window.localStorage.getItem("rms-qr-language");
-    return ["az", "ru", "en"].includes(savedLanguage) ? savedLanguage : "az";
+    if (["az", "ru", "en"].includes(savedLanguage)) return savedLanguage;
+    const browserLanguage = (window.navigator.language || "az").toLowerCase();
+    if (browserLanguage.startsWith("ru")) return "ru";
+    if (browserLanguage.startsWith("en")) return "en";
+    return "az";
   });
   const t = uiText[language];
   const dailyQuote = t.quoteLines[(new Date().getDate() - 1) % t.quoteLines.length];
   const branchName = displayBranchName(branch);
   const unavailable = useMemo(() => products.filter((item) => item.is_available === false || item.is_stopped).map((item) => item.id), [products]);
+  const localizedProducts = useMemo(() => products.map((product) => localizeProduct(product, language)), [products, language]);
   useEffect(() => {
     const updatePhase = () => {
       const hour = getBakuHour();
@@ -240,6 +281,8 @@ export default function QRMenu() {
   useEffect(() => {
     window.localStorage.setItem("rms-qr-language", language);
     document.documentElement.lang = language;
+    setCart((current) => current.map((product) => localizeProduct(product, language)));
+    setSelectedProduct((current) => current ? localizeProduct(current, language) : current);
   }, [language]);
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -254,6 +297,13 @@ export default function QRMenu() {
       if (error) flash(`\u041C\u0435\u043D\u044E \u0432\u0440\u0435\u043C\u0435\u043D\u043D\u043E \u043D\u0435\u0434\u043E\u0441\u0442\u0443\u043F\u043D\u043E: ${error.message}`);
       setProducts(Array.isArray(data) ? data.map((item) => normalizeProduct(item, branch)) : []);
       setLoading(false);
+    });
+    return () => { active = false; };
+  }, [branch]);
+  useEffect(() => {
+    let active = true;
+    supabase.from("rms_qr_info").select("branch_id,wifi_name,wifi_password,working_hours,instagram").eq("branch_id", branch).maybeSingle().then(({ data }) => {
+      if (active) setBranchInfo(data || null);
     });
     return () => { active = false; };
   }, [branch]);
@@ -301,7 +351,8 @@ export default function QRMenu() {
   useEffect(() => {
     if (!selectedProduct) return;
     const closeOnEscape = (event) => {
-      if (event.key === "Escape") setSelectedProduct(null);
+      if (event.key === "Escape" && photoFullscreen) setPhotoFullscreen(false);
+      else if (event.key === "Escape") setSelectedProduct(null);
     };
     document.body.classList.add("modal-open");
     window.addEventListener("keydown", closeOnEscape);
@@ -309,9 +360,12 @@ export default function QRMenu() {
       document.body.classList.remove("modal-open");
       window.removeEventListener("keydown", closeOnEscape);
     };
+  }, [selectedProduct, photoFullscreen]);
+  useEffect(() => {
+    if (!selectedProduct) setPhotoFullscreen(false);
   }, [selectedProduct]);
   const mealMoment = getMealMoment(bakuHour);
-  const availableProducts = useMemo(() => products.filter((product) => {
+  const availableProducts = useMemo(() => localizedProducts.filter((product) => {
     const branchMatch = product.branches.includes(branch);
     const categoryMatch = category === "\u0412\u0441\u0435" || product.category === category;
     const text = `${product.name} ${product.description}`.toLowerCase();
@@ -322,7 +376,7 @@ export default function QRMenu() {
     const categoryDifference = (aCategory < 0 ? 998 : aCategory) - (bCategory < 0 ? 998 : bCategory);
     if (categoryDifference) return categoryDifference;
     return productMomentRank(a, mealMoment) - productMomentRank(b, mealMoment);
-  }), [products, branch, category, search, mealMoment]);
+  }), [localizedProducts, branch, category, search, mealMoment]);
   const categories = useMemo(() => {
     const present = new Set(products.filter((p) => p.branches.includes(branch)).map((p) => p.category));
     const ordered = categoryOrder[mealMoment].filter((name) => present.has(name));
@@ -387,26 +441,26 @@ export default function QRMenu() {
     const moment = getMealMoment(bakuHour);
     const momentMeta = {
       breakfast: {
-        label: "\u0423\u0442\u0440\u0435\u043D\u043D\u0438\u0439 \u0432\u044B\u0431\u043E\u0440",
-        note: "\u041B\u0451\u0433\u043A\u043E\u0435 \u043D\u0430\u0447\u0430\u043B\u043E \u0434\u043D\u044F",
+        label: t.breakfastChoice,
+        note: t.breakfastNote,
         keywords: /круас|завтрак|сырник|омлет|шакшук|капучин/i,
         ids: ["bc-001", "bc-003", "bc-005", "bc-008", "bc-064"]
       },
       lunch: {
-        label: "\u0412\u044B\u0431\u043E\u0440 \u043A \u043E\u0431\u0435\u0434\u0443",
-        note: "\u041F\u043E\u0434\u0445\u043E\u0434\u0438\u0442 \u0434\u043B\u044F \u0434\u043D\u0435\u0432\u043D\u043E\u0439 \u043F\u0430\u0443\u0437\u044B",
+        label: t.lunchChoice,
+        note: t.lunchNote,
         keywords: /салат|хумус|пицц|бургер|наггет/i,
         ids: ["bc-020", "bc-012", "bc-038", "bc-033", "bc-021", "bc-039", "bc-034"]
       },
       dinner: {
-        label: "\u0412\u0435\u0447\u0435\u0440\u043D\u0438\u0439 \u0432\u044B\u0431\u043E\u0440",
-        note: "\u0411\u043E\u043B\u0435\u0435 \u043D\u0430\u0441\u044B\u0449\u0435\u043D\u043D\u044B\u0439 \u0432\u043A\u0443\u0441 \u043A \u0432\u0435\u0447\u0435\u0440\u0443",
+        label: t.dinnerChoice,
+        note: t.dinnerNote,
         keywords: /стейк|утк|тоннат|сырн.*тарел|рибай|meat lovers/i,
         ids: ["bc-022", "bc-047", "bc-016", "bc-045", "bc-037", "bc-024", "bc-046"]
       }
     };
     const meta = momentMeta[moment];
-    const available = products.filter((product2) => product2.branches.includes(branch) && !unavailable.includes(product2.id));
+    const available = localizedProducts.filter((product2) => product2.branches.includes(branch) && !unavailable.includes(product2.id));
     const availableById = new Map(available.map((product2) => [product2.id, product2]));
     const candidates = [
       ...available.filter((product2) => meta.keywords.test(`${product2.name} ${product2.category}`)),
@@ -419,20 +473,38 @@ export default function QRMenu() {
     }).format(/* @__PURE__ */ new Date()));
     const product = candidates[(bakuDay + Math.floor(bakuHour / 2)) % candidates.length];
     return { moment, ...meta, product };
-  }, [products, bakuHour, branch, unavailable]);
+  }, [localizedProducts, bakuHour, branch, unavailable, t]);
   const pairings = useMemo(() => {
     if (!selectedProduct) return [];
     const preferred = pairingCategories[selectedProduct.category] || ["\u041B\u0418\u041C\u041E\u041D\u0410\u0414\u042B", "\u041A\u041E\u0424\u0415", "\u0421\u0410\u041B\u0410\u0422\u042B"];
-    return products.filter(
+    return localizedProducts.filter(
       (product) => product.id !== selectedProduct.id && product.branches.includes(branch) && !unavailable.includes(product.id) && preferred.includes(product.category)
     ).sort((a, b) => preferred.indexOf(a.category) - preferred.indexOf(b.category) || b.rating - a.rating).filter((product, index, list) => index === list.findIndex((item) => item.category === product.category)).slice(0, 3);
-  }, [products, selectedProduct, branch, unavailable]);
+  }, [localizedProducts, selectedProduct, branch, unavailable]);
   function flash(text) {
     setNotice(text);
     window.setTimeout(() => setNotice(""), 2400);
   }
+  async function copyWifiPassword() {
+    const password = String(branchInfo?.wifi_password || "").trim();
+    if (!password) return;
+    try {
+      await navigator.clipboard.writeText(password);
+    } catch {
+      const input = document.createElement("textarea");
+      input.value = password;
+      input.setAttribute("readonly", "");
+      input.style.position = "fixed";
+      input.style.opacity = "0";
+      document.body.appendChild(input);
+      input.select();
+      document.execCommand("copy");
+      input.remove();
+    }
+    flash(t.wifiCopied);
+  }
   function changeQty(product, delta) {
-    if (unavailable.includes(product.id)) return flash("\u041F\u043E\u0437\u0438\u0446\u0438\u044F \u043D\u0430\u0445\u043E\u0434\u0438\u0442\u0441\u044F \u0432 stop-list");
+    if (unavailable.includes(product.id)) return flash(t.stoppedNotice);
     setCart((current) => {
       const line = current.find((item) => item.id === product.id);
       if (!line && delta > 0) return [...current, { ...product, qty: 1 }];
@@ -450,7 +522,7 @@ export default function QRMenu() {
   }
   async function sendOrder() {
     if (!cart.length || busy) return;
-    if (!table) return flash("Для заказа отсканируйте QR-код на вашем столе");
+    if (!table) return flash(t.scanTable);
     setBusy(true);
     const { data, error } = await supabase.rpc("qr_create_order", {
       p_branch_code: branch,
@@ -582,7 +654,7 @@ export default function QRMenu() {
     style={photoStyle(mealRecommendation.product)}
     type="button"
     onClick={() => setSelectedProduct(mealRecommendation.product)}
-    aria-label={`\u041E\u0442\u043A\u0440\u044B\u0442\u044C ${mealRecommendation.product.name}`}
+    aria-label={`${t.openPhoto}: ${mealRecommendation.product.name}`}
   >
                 {mealRecommendation.product.image ? <img className={photoClass(mealRecommendation.product)} src={mealRecommendation.product.image} alt={mealRecommendation.product.name} /> : <span>B&amp;C</span>}
               </button>
@@ -598,11 +670,11 @@ export default function QRMenu() {
               <div className="meal-action">
                 <strong>{money(mealRecommendation.product.price)}</strong>
                 {recommendationQty ? <div className="stepper">
-                    <button className="qty-minus" onClick={() => changeQty(mealRecommendation.product, -1)} aria-label={`Уменьшить количество ${mealRecommendation.product.name}`} />
+                    <button className="qty-minus" onClick={() => changeQty(mealRecommendation.product, -1)} aria-label={`− ${mealRecommendation.product.name}`} />
                     <b>{recommendationQty}</b>
-                    <button className="qty-plus" onClick={() => changeQty(mealRecommendation.product, 1)} aria-label={`Увеличить количество ${mealRecommendation.product.name}`} />
-                  </div> : <button className="add" onClick={() => changeQty(mealRecommendation.product, 1)} aria-label={`\u0414\u043E\u0431\u0430\u0432\u0438\u0442\u044C ${mealRecommendation.product.name} \u0432 \u043A\u043E\u0440\u0437\u0438\u043D\u0443`}>
-                    <b>Добавить</b><span aria-hidden="true">+</span>
+                    <button className="qty-plus" onClick={() => changeQty(mealRecommendation.product, 1)} aria-label={`+ ${mealRecommendation.product.name}`} />
+                  </div> : <button className="add" onClick={() => changeQty(mealRecommendation.product, 1)} aria-label={`${t.add}: ${mealRecommendation.product.name}`}>
+                    <b>{t.add}</b><span aria-hidden="true">+</span>
                   </button>}
               </div>
             </aside>}
@@ -611,10 +683,10 @@ export default function QRMenu() {
     const isStopped = unavailable.includes(product.id);
     const qty = cart.find((line) => line.id === product.id)?.qty || 0;
     return <article className={`product-card ${isStopped ? "stopped" : ""}`} key={product.id}>
-                  <button className="food-photo" style={photoStyle(product)} type="button" onClick={() => setSelectedProduct(product)} aria-label={`\u041E\u0442\u043A\u0440\u044B\u0442\u044C \u0444\u043E\u0442\u043E \u0438 \u043E\u043F\u0438\u0441\u0430\u043D\u0438\u0435: ${product.name}`}>
+                  <button className="food-photo" style={photoStyle(product)} type="button" onClick={() => setSelectedProduct(product)} aria-label={`${t.openPhoto}: ${product.name}`}>
                     {product.image ? <img className={photoClass(product)} src={product.image} alt={product.name} loading="lazy" /> : <span className="photo-placeholder">B&C</span>}
-                    {product.image && <span className="zoom-hint">Увеличить</span>}
-                    {isStopped && <b>ВРЕМЕННО НЕТ</b>}
+                    {product.image && <span className="zoom-hint">{t.zoom}</span>}
+                    {isStopped && <b>{t.unavailable}</b>}
                   </button>
                   <div className="product-body">
                     <div className="product-title"><h3>{product.name}</h3></div>
@@ -622,8 +694,8 @@ export default function QRMenu() {
                     {product.options.length > 0 && <div className="product-options">{product.options.map((option) => <small key={option}>{option}</small>)}</div>}
                     <div className="product-footer">
                       <strong>{money(product.price)}</strong>
-                      {qty ? <div className="stepper"><button className="qty-minus" onClick={() => changeQty(product, -1)} aria-label={`Уменьшить количество ${product.name}`} /><b>{qty}</b><button className="qty-plus" onClick={() => changeQty(product, 1)} aria-label={`Увеличить количество ${product.name}`} /></div> : <button className="add" disabled={isStopped} onClick={() => changeQty(product, 1)} aria-label={`\u0414\u043E\u0431\u0430\u0432\u0438\u0442\u044C ${product.name} \u0432 \u043A\u043E\u0440\u0437\u0438\u043D\u0443`}>
-                          <b>Добавить</b><span aria-hidden="true">+</span>
+                      {qty ? <div className="stepper"><button className="qty-minus" onClick={() => changeQty(product, -1)} aria-label={`− ${product.name}`} /><b>{qty}</b><button className="qty-plus" onClick={() => changeQty(product, 1)} aria-label={`+ ${product.name}`} /></div> : <button className="add" disabled={isStopped} onClick={() => changeQty(product, 1)} aria-label={`${t.add}: ${product.name}`}>
+                          <b>{t.add}</b><span aria-hidden="true">+</span>
                         </button>}
                     </div>
                   </div>
@@ -633,13 +705,13 @@ export default function QRMenu() {
         </section>}
 
       {screen === "cart" && <section className="narrow content">
-          <span className="eyebrow">Перед отправкой</span><h2>Ваш заказ</h2>
-          {!cart.length ? <Empty icon="🛒" title="Корзина пока пуста" text="Добавьте блюда из меню — они появятся здесь." action={() => setScreen("menu")} /> : <>
+          <span className="eyebrow">{t.beforeSending}</span><h2>{t.yourOrder}</h2>
+          {!cart.length ? <Empty icon="🛒" title={t.emptyCart} text={t.emptyCartText} actionLabel={t.goToMenu} action={() => setScreen("menu")} /> : <>
               <div className="line-list">{cart.map((line) => <OrderLine key={line.id} line={line} controls onMinus={() => changeQty(line, -1)} onPlus={() => changeQty(line, 1)} />)}</div>
               {loyalty && <div className="bonus-reserved"><span>{bonusRequest > 0 ? "Запрошено бонусов" : `Доступно · до ${money(maxBonus)}`}</span><b>{bonusRequest > 0 ? money(bonusRequest) : money(bonus)}</b></div>}
               {loyalty && <button className="outline-button full" onClick={bonusRequest > 0 ? cancelBonus : applyBonus}>{bonusRequest > 0 ? "Не использовать бонусы" : "Использовать бонусы · до 30%"}</button>}
-              <div className="total-card"><span>Итого</span><b>{money(cartTotal)}</b></div>
-              <button className="primary-button" disabled={busy} onClick={sendOrder}>{busy ? "Отправляем…" : "Отправить заказ"}</button>
+              <div className="total-card"><span>{t.total}</span><b>{money(cartTotal)}</b></div>
+              <button className="primary-button" disabled={busy} onClick={sendOrder}>{busy ? t.sending : t.sendOrder}</button>
             </>}
         </section>}
 
@@ -715,7 +787,7 @@ export default function QRMenu() {
           <span className="eyebrow">{branchName}</span><h2>{t.information}</h2>
           <div className="info-grid">
             <article><span>◷</span><div><b>{t.hours}</b><p>{t.schedule}<br />{t.sunday}</p></div></article>
-            <article><span>⌁</span><div><b>{t.wifi}</b><p>BC-Guest · {t.password}: <strong>baristachef2020</strong></p></div></article>
+            <article className="wifi-info-card"><span>⌁</span><div><b>{t.wifi}</b><p className="wifi-network">{branchInfo?.wifi_name || "BC-Guest"}</p>{branchInfo?.wifi_password && <button type="button" className="wifi-password-button" onClick={copyWifiPassword} aria-label={t.tapWifi}><span className="wifi-password-mask" aria-hidden="true">••••••••••••</span><small>{t.tapWifi}</small></button>}</div></article>
             <article><span>◎</span><div><b>{t.branch}</b><p>{branchName}</p></div></article>
             <article><span>◌</span><div><b>{t.social}</b><p><a href="https://instagram.com/baristachefaz" target="_blank" rel="noreferrer">@baristachefaz</a></p></div></article>
           </div>
@@ -726,23 +798,23 @@ export default function QRMenu() {
     if (event.currentTarget === event.target) setSelectedProduct(null);
   }}>
           <article className="product-modal-card">
-            <button className="modal-close" onClick={() => setSelectedProduct(null)} aria-label="Закрыть" />
-            <div className="modal-photo" style={photoStyle(selectedProduct)}>
+            <button className="modal-close" onClick={() => setSelectedProduct(null)} aria-label={t.close} />
+            <button className="modal-photo" type="button" style={photoStyle(selectedProduct)} onClick={() => selectedProduct.image && setPhotoFullscreen(true)} aria-label={`${t.zoom}: ${selectedProduct.name}`}>
               {selectedProduct.image ? <img className={photoClass(selectedProduct)} src={selectedProduct.image} alt={selectedProduct.name} /> : <span className="photo-placeholder">B&C</span>}
-            </div>
+            </button>
             <div className="modal-content">
-              <span className="eyebrow">{selectedProduct.category}</span>
+              <span className="eyebrow">{categoryTranslations[language][selectedProduct.category] || categoryLabel(selectedProduct.category)}</span>
               <h2>{selectedProduct.name}</h2>
               {selectedProduct.description && <p>{selectedProduct.description}</p>}
               {selectedProduct.options.length > 0 && <div className="modal-options">{selectedProduct.options.map((option) => <small key={option}>{option}</small>)}</div>}
               <div className="modal-buy">
                 <strong>{money(selectedProduct.price)}</strong>
                 <button disabled={unavailable.includes(selectedProduct.id)} onClick={() => changeQty(selectedProduct, 1)}>
-                  {unavailable.includes(selectedProduct.id) ? "\u0412\u0440\u0435\u043C\u0435\u043D\u043D\u043E \u043D\u0435\u0442" : "\u0414\u043E\u0431\u0430\u0432\u0438\u0442\u044C \u0432 \u0437\u0430\u043A\u0430\u0437"}
+                  {unavailable.includes(selectedProduct.id) ? t.unavailable : t.addToOrder}
                 </button>
               </div>
               {pairings.length > 0 && <div className="pairings">
-                  <div><span className="eyebrow">Хорошо сочетается</span><h3>С этим блюдом берут</h3></div>
+                  <div><span className="eyebrow">{t.pairsEyebrow}</span><h3>{t.pairsTitle}</h3></div>
                   <div className="pairing-grid">
                     {pairings.map((product) => <article key={product.id}>
                         <button className="pairing-photo" style={photoStyle(product)} onClick={() => setSelectedProduct(product)}>
@@ -757,7 +829,12 @@ export default function QRMenu() {
           </article>
         </div>}
 
-      {cartCount > 0 && screen === "menu" && <button className="floating-cart" onClick={() => setScreen("cart")}><span>{cartCount} позиции</span><b>{money(cartTotal)} →</b></button>}
+      {photoFullscreen && selectedProduct?.image && <div className="photo-lightbox" role="dialog" aria-modal="true" aria-label={`${t.zoom}: ${selectedProduct.name}`} onClick={() => setPhotoFullscreen(false)}>
+          <button type="button" className="lightbox-close" onClick={() => setPhotoFullscreen(false)} aria-label={t.close} />
+          <img src={selectedProduct.image} alt={selectedProduct.name} onClick={(event) => event.stopPropagation()} />
+        </div>}
+
+      {cartCount > 0 && screen === "menu" && <button className="floating-cart" onClick={() => setScreen("cart")}><span>{cartCount} {t.items}</span><b>{money(cartTotal)} →</b></button>}
       <footer><span>Powered by</span><b>RMS PRO</b><small>QR Menu + Loyalty</small></footer>
     </main>;
 }
@@ -778,8 +855,8 @@ function WeatherVisual({ kind, phase }) {
 function OrderLine({ line, controls, onMinus, onPlus }) {
   return <article className="order-line"><div className="mini-photo" style={photoStyle(line)}>{line.image ? <img className={photoClass(line)} src={line.image} alt="" /> : <span>B&C</span>}</div><div><b>{line.name}</b><span>{money(line.price)} × {line.qty}</span></div>{controls ? <div className="stepper"><button className="qty-minus" onClick={onMinus} aria-label={`Уменьшить количество ${line.name}`} /><b>{line.qty}</b><button className="qty-plus" onClick={onPlus} aria-label={`Увеличить количество ${line.name}`} /></div> : <strong>{money(line.price * line.qty)}</strong>}</article>;
 }
-function Empty({ icon, title, text, action }) {
-  return <div className="empty-state"><span>{icon}</span><h3>{title}</h3><p>{text}</p><button className="outline-button" onClick={action}>Перейти в меню</button></div>;
+function Empty({ icon, title, text, action, actionLabel = "Перейти в меню" }) {
+  return <div className="empty-state"><span>{icon}</span><h3>{title}</h3><p>{text}</p><button className="outline-button" onClick={action}>{actionLabel}</button></div>;
 }
 function StatusBadge({ status }) {
   const labels = { new: "Заказ получен", requested: "Заказ получен", confirmed: "Подтверждён", preparing: "Готовится", ready: "Заказ готов", payment_requested: "Запрошена оплата", paid: "Оплачен", cancelled: "Отменён" };
