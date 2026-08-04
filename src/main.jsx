@@ -2233,6 +2233,37 @@ function GlobalProgressOverlay() {
   </div>
 }
 
+class RmsSectionErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props)
+    this.state = { error: null }
+  }
+
+  static getDerivedStateFromError(error) {
+    return { error }
+  }
+
+  componentDidUpdate(prevProps) {
+    if (prevProps.resetKey !== this.props.resetKey && this.state.error) {
+      this.setState({ error: null })
+    }
+  }
+
+  componentDidCatch(error, info) {
+    console.error('RMS section render error', error, info)
+  }
+
+  render() {
+    if (!this.state.error) return this.props.children
+
+    return <section className="card span-2">
+      <h3>Раздел временно не загрузился</h3>
+      <p className="hint">Обновите страницу и попробуйте открыть раздел ещё раз.</p>
+      <button type="button" className="small" onClick={() => this.setState({ error: null })}>Повторить</button>
+    </section>
+  }
+}
+
 
 function BackupProgressOverlay({ state }) {
   if (!state?.active) return null
