@@ -769,6 +769,209 @@ body {
   .product-body > p { min-height: auto; }
 }
 
+/* Compact iOS-inspired masthead: one glass surface and no nested weather card. */
+.daily-quote .quote-label {
+  position: static;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 7px;
+  color: #777b77;
+  font-family: inherit;
+  font-size: 7px;
+  font-weight: 650;
+  letter-spacing: .16em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+.daily-quote .quote-label::before {
+  content: "";
+  width: 13px;
+  height: 1px;
+  background: #b2985a;
+}
+
+@media (max-width: 620px) {
+  .app-shell .hero {
+    min-height: 184px;
+    margin: 10px 10px 0;
+    padding: 19px 16px 20px;
+    border-radius: 29px;
+    background:
+      linear-gradient(118deg, rgba(255, 250, 238, .82), rgba(238, 232, 217, .68) 52%, rgba(236, 241, 237, .76)),
+      rgba(245, 245, 240, .72);
+    border: 1px solid rgba(255,255,255,.82);
+    box-shadow:
+      0 22px 54px rgba(57, 50, 37, .12),
+      inset 0 1px 0 rgba(255,255,255,.92),
+      inset 0 -1px 0 rgba(29,29,31,.035);
+    -webkit-backdrop-filter: blur(32px) saturate(145%);
+    backdrop-filter: blur(32px) saturate(145%);
+  }
+  .app-shell .hero::before {
+    width: 210px;
+    height: 210px;
+    right: -48px;
+    top: -76px;
+    background: radial-gradient(circle, rgba(255,216,111,.26), transparent 66%);
+    filter: blur(8px);
+  }
+  .app-shell .hero::after {
+    width: 180px;
+    height: 150px;
+    right: 38px;
+    top: 78px;
+    background: rgba(255,255,255,.32);
+    filter: blur(26px);
+  }
+  .app-shell .brand-mark {
+    left: 17px;
+    top: 18px;
+    font-size: 10px;
+  }
+  .app-shell .hero-copy {
+    width: calc(100% - 145px);
+    margin-top: 37px;
+  }
+  .app-shell .hero-copy > span {
+    font-size: 8px;
+    letter-spacing: .16em;
+    white-space: nowrap;
+  }
+  .app-shell .hero-copy .daily-quote {
+    max-width: 210px;
+    margin: 19px 0 0;
+    padding: 0;
+  }
+  .app-shell .hero-copy .daily-quote p {
+    font-size: clamp(15px, 4.35vw, 18px);
+    font-weight: 420;
+    line-height: 1.22;
+    letter-spacing: -.026em;
+  }
+  .app-shell .daily-quote .quote-label {
+    display: inline-flex;
+    margin-bottom: 8px;
+    font-size: 6px;
+  }
+  .app-shell .hero-context {
+    margin: 9px 0 0;
+    font-size: 6px;
+    letter-spacing: .08em;
+  }
+  .app-shell .hero-side {
+    top: 17px;
+    right: 13px;
+    width: 137px;
+    max-width: 137px;
+  }
+  .app-shell .hero-weather {
+    width: 137px;
+    min-width: 137px;
+    max-width: 137px;
+    grid-template-columns: 61px 82px;
+    gap: 0;
+  }
+  .app-shell .hero-weather-copy {
+    position: relative;
+    z-index: 2;
+    gap: 6px;
+  }
+  .app-shell .hero-weather-copy > strong {
+    font-size: 36px;
+    font-weight: 300;
+    letter-spacing: -.07em;
+  }
+  .app-shell .hero-weather-copy span {
+    max-width: 65px;
+    font-size: 8px;
+    font-weight: 650;
+  }
+  .app-shell .hero-weather-copy small {
+    width: 70px;
+    color: #777773;
+    font-size: 5.8px;
+    line-height: 1.45;
+  }
+  .app-shell .hero-weather .weather-visual {
+    width: 88px;
+    height: 92px;
+    margin: -1px -9px 0 -4px;
+    transform: scale(.86);
+    transform-origin: center;
+    filter: drop-shadow(0 11px 13px rgba(58, 53, 43, .14));
+  }
+  .app-shell .hero-side .table-chip {
+    width: auto;
+    min-width: 65px;
+    height: 27px;
+    margin: 4px 3px 0 auto;
+    padding: 0 9px;
+    gap: 5px;
+    background: rgba(255,255,255,.38);
+    border-color: rgba(255,255,255,.58);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.7);
+  }
+  .app-shell .hero-side .table-chip b { font-size: 13px; }
+
+  .app-shell .main-nav {
+    top: 8px;
+    width: calc(100% - 20px);
+    max-width: none;
+    margin: -13px 10px 0;
+    padding: 5px;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    overflow: hidden;
+    background: rgba(42, 42, 42, .70);
+    border: 1px solid rgba(255,255,255,.24);
+    border-radius: 20px;
+    box-shadow: 0 14px 34px rgba(20,20,20,.18), inset 0 1px 0 rgba(255,255,255,.16);
+    -webkit-backdrop-filter: blur(26px) saturate(150%);
+    backdrop-filter: blur(26px) saturate(150%);
+  }
+  .app-shell .main-nav button {
+    min-width: 0;
+    width: 100%;
+    padding: 9px 2px;
+    overflow: hidden;
+    color: rgba(255,255,255,.72);
+    border-radius: 15px;
+    font-size: clamp(8px, 2.55vw, 10px);
+    text-overflow: ellipsis;
+  }
+  .app-shell .main-nav button.active {
+    color: #1d1d1f;
+    background: rgba(255,255,255,.88);
+    box-shadow: 0 7px 18px rgba(0,0,0,.18), inset 0 1px 0 #fff;
+  }
+  .app-shell .main-nav button.coming-soon { padding-block: 6px; }
+  .app-shell .main-nav button.coming-soon small {
+    margin-top: 2px;
+    font-size: 5px;
+  }
+  .app-shell .content { padding-top: 25px; }
+}
+
+@media (max-width: 390px) {
+  .app-shell .hero { min-height: 178px; }
+  .app-shell .hero-copy { width: calc(100% - 132px); }
+  .app-shell .hero-side { right: 10px; width: 128px; max-width: 128px; }
+  .app-shell .hero-weather {
+    width: 128px;
+    min-width: 128px;
+    max-width: 128px;
+    grid-template-columns: 56px 76px;
+  }
+  .app-shell .hero-weather-copy > strong { font-size: 33px; }
+  .app-shell .hero-weather .weather-visual {
+    width: 82px;
+    height: 88px;
+    transform: scale(.8);
+  }
+  .app-shell .main-nav button { font-size: 8px; }
+}
+
 /* Ambient menu — Baku time and weather form one quiet, adaptive material. */
 .app-shell {
   --scene-from: #f4f5f1;
