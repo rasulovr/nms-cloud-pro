@@ -1981,3 +1981,90 @@ body {
     transform: scale(.7);
   }
 }
+
+/* iOS-style language and category controls: soft selection without hard outlines. */
+.app-shell .brand-mark { display: none; }
+.app-shell .language-switch {
+  left: 22px;
+  transform: none;
+  padding: 3px;
+  gap: 0;
+  background: color-mix(in srgb, var(--surface-strong) 68%, transparent);
+  border: 0;
+  border-radius: 13px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.12), 0 8px 24px rgba(16,22,20,.12);
+  backdrop-filter: blur(24px) saturate(160%);
+  -webkit-backdrop-filter: blur(24px) saturate(160%);
+}
+.app-shell .language-switch button {
+  min-width: 38px;
+  height: 29px;
+  padding: 0 9px;
+  color: color-mix(in srgb, var(--ink) 56%, transparent);
+  border: 0;
+  border-radius: 10px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  transition: color .18s ease, background .18s ease, box-shadow .18s ease, transform .18s ease;
+}
+.app-shell .language-switch button.active {
+  color: var(--ink);
+  background: rgba(255,255,255,.14);
+  box-shadow: 0 1px 5px rgba(8,12,10,.14), inset 0 1px 0 rgba(255,255,255,.16);
+}
+.app-shell .language-switch button:active { transform: scale(.96); }
+.app-shell .language-switch button:focus-visible {
+  outline: 0;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--action-bg) 35%, transparent);
+}
+
+.app-shell .categories {
+  gap: 3px;
+  margin-bottom: 24px;
+  padding: 5px;
+  background: color-mix(in srgb, var(--surface-strong) 55%, transparent);
+  border: 0;
+  border-radius: 18px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.08), 0 10px 28px rgba(20,28,25,.07);
+  backdrop-filter: blur(22px) saturate(150%);
+  -webkit-backdrop-filter: blur(22px) saturate(150%);
+}
+.app-shell .categories > button {
+  min-height: 38px;
+  padding: 8px 14px;
+  color: var(--muted);
+  background: transparent;
+  border: 0;
+  border-radius: 13px;
+  font-size: 11px;
+  font-weight: 620;
+  letter-spacing: -.01em;
+  transition: color .18s ease, background .18s ease, box-shadow .18s ease, transform .18s ease;
+}
+.app-shell .categories > button:hover { color: var(--ink); }
+.app-shell .categories > button.active {
+  color: var(--ink);
+  background: rgba(255,255,255,.12);
+  border: 0;
+  box-shadow: 0 2px 9px rgba(8,12,10,.12), inset 0 1px 0 rgba(255,255,255,.12);
+}
+.app-shell .categories > button:active { transform: scale(.97); }
+.app-shell .categories > button:focus-visible {
+  outline: 0;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--action-bg) 32%, transparent);
+}
+.app-shell .categories .search {
+  height: 38px;
+  background: rgba(255,255,255,.1);
+  border: 0;
+  box-shadow: none;
+}
+
+@media (max-width: 620px) {
+  .app-shell .language-switch { top: 14px; left: 18px; }
+  .app-shell .language-switch button { min-width: 35px; height: 27px; padding-inline: 7px; font-size: 8px; }
+  .app-shell .categories { gap: 2px; margin-bottom: 20px; padding: 4px; border-radius: 17px; }
+  .app-shell .categories > button { min-height: 36px; padding: 8px 13px; font-size: 10px; }
+  .app-shell .categories .search { flex-basis: 36px; width: 36px; height: 36px; }
+}
