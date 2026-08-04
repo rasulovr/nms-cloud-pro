@@ -57,6 +57,7 @@ const defaultProduct = {
 
 export default function RMSQRMenuAdmin() {
   const [tab, setTab] = useState('tables')
+  const [showWifiPassword, setShowWifiPassword] = useState(false)
 
   const [tables, setTables] = useState([])
   const [products, setProducts] = useState([])
@@ -905,7 +906,7 @@ export default function RMSQRMenuAdmin() {
             <div className="form-grid compact">
               <label><span>Филиал</span><select value={info.branch_id} onChange={e => setInfo({ ...info, branch_id: e.target.value })}>{branchOptions.map(b => <option key={b.id} value={b.id}>{b.name || b.id}</option>)}</select></label>
               <label><span>Wi‑Fi</span><input value={info.wifi_name || ''} onChange={e => setInfo({ ...info, wifi_name: e.target.value })} /></label>
-              <label><span>Пароль Wi‑Fi</span><input value={info.wifi_password || ''} onChange={e => setInfo({ ...info, wifi_password: e.target.value })} /></label>
+              <label><span>Пароль Wi‑Fi</span><div className="rms-wifi-password-field"><input type={showWifiPassword ? 'text' : 'password'} value={info.wifi_password || ''} onChange={e => setInfo({ ...info, wifi_password: e.target.value })} autoComplete="new-password" /><button type="button" className="small" onClick={() => setShowWifiPassword(value => !value)}>{showWifiPassword ? 'Скрыть' : 'Показать'}</button></div></label>
               <label><span>Рабочие часы</span><input value={info.working_hours || ''} onChange={e => setInfo({ ...info, working_hours: e.target.value })} /></label>
               <label><span>Телефон</span><input value={info.phone || ''} onChange={e => setInfo({ ...info, phone: e.target.value })} /></label>
               <label><span>Instagram</span><input value={info.instagram || ''} onChange={e => setInfo({ ...info, instagram: e.target.value })} /></label>
