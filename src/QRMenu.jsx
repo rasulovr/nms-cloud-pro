@@ -864,6 +864,8 @@ function WeatherVisual({ kind, phase }) {
     isOvercast ? "overcast-sky" : ""
   ].filter(Boolean).join(" ");
   return <div className={sceneClasses} aria-hidden="true">
+      <span className="weather-ambient" />
+      <span className="weather-orbit" />
       <span className="weather-sun" />
       {isNight && <span className={`weather-moon moon-${lunarPhase}`}>
           <i className="moon-crater crater-one" />
