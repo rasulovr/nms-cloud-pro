@@ -2888,7 +2888,13 @@ body {
   width: 112px;
   height: 100px;
   overflow: visible;
-  filter: drop-shadow(0 14px 20px rgba(13, 39, 61, .2));
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  filter: none;
 }
 .app-shell .weather-sun,
 .app-shell .weather-moon {
@@ -2907,8 +2913,14 @@ body {
 }
 .app-shell .weather-moon {
   overflow: hidden;
-  background: linear-gradient(145deg, #fffde9 0%, #dde8ef 67%, #bccbd6 100%);
-  box-shadow: 0 0 31px rgba(220,239,252,.48), 0 0 0 10px rgba(213,235,250,.05);
+  background:
+    radial-gradient(circle at 30% 25%, rgba(255,255,255,.95) 0 5%, transparent 6%),
+    radial-gradient(circle at 67% 69%, rgba(123,143,157,.13) 0 8%, transparent 9%),
+    linear-gradient(145deg, #fffdec 0%, #e7eef1 52%, #bac8d1 100%);
+  box-shadow:
+    inset -7px -8px 13px rgba(85,108,124,.16),
+    inset 4px 4px 8px rgba(255,255,255,.65),
+    0 0 30px rgba(220,239,252,.42);
 }
 .app-shell .weather-moon::after {
   content: "";
@@ -2917,8 +2929,9 @@ body {
   inset: 0;
   display: none;
   border-radius: 50%;
-  background: linear-gradient(145deg, #0a1724, #172d3e);
-  opacity: .96;
+  background: linear-gradient(145deg, #091723, #142b3b);
+  box-shadow: -2px 0 7px rgba(222,239,247,.14);
+  opacity: .97;
 }
 .app-shell .moon-full::after { display: none; }
 .app-shell .moon-waxing-crescent::after,
