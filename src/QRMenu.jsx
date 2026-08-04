@@ -112,7 +112,7 @@ const uiText = {
     information: "Məlumat", hours: "İş saatları", schedule: "B.e.–Şənbə · 09:00–22:00", sunday: "Bazar günü · bağlıdır",
     wifi: "Wi‑Fi", password: "şifrə", branch: "Filial", social: "Sosial şəbəkələr", waiter: "Ofisiant çağır",
     tapWifi: "Şifrəni göstərmək üçün toxunun", wifiCopied: "",
-    add: "Əlavə et", addToOrder: "Sifarişə əlavə et", unavailable: "MÜVƏQQƏTİ YOXDUR", zoom: "Böyüt",
+    add: "Əlavə et", addToOrder: "Sifarişə əlavə et", added: "Əlavə edildi ✓", addedToOrder: "sifarişə əlavə edildi", unavailable: "MÜVƏQQƏTİ YOXDUR", zoom: "Böyüt",
     openPhoto: "Foto və təsviri aç", close: "Bağla", pairsEyebrow: "Uyğun seçimlər", pairsTitle: "Bununla birlikdə seçirlər",
     beforeSending: "Göndərməzdən əvvəl", yourOrder: "Sifarişiniz", emptyCart: "Səbət hələ boşdur",
     emptyCartText: "Menyudan məhsul əlavə edin — onlar burada görünəcək.", goToMenu: "Menyuya keç",
@@ -129,7 +129,7 @@ const uiText = {
     information: "Информация", hours: "Время работы", schedule: "Пн–Сб · 09:00–22:00", sunday: "Воскресенье · закрыто",
     wifi: "Wi‑Fi", password: "пароль", branch: "Филиал", social: "Социальные сети", waiter: "Вызвать официанта",
     tapWifi: "Нажмите, чтобы показать пароль", wifiCopied: "",
-    add: "Добавить", addToOrder: "Добавить в заказ", unavailable: "ВРЕМЕННО НЕТ", zoom: "Увеличить",
+    add: "Добавить", addToOrder: "Добавить в заказ", added: "Добавлено ✓", addedToOrder: "добавлено в заказ", unavailable: "ВРЕМЕННО НЕТ", zoom: "Увеличить",
     openPhoto: "Открыть фото и описание", close: "Закрыть", pairsEyebrow: "Хорошо сочетается", pairsTitle: "С этим блюдом берут",
     beforeSending: "Перед отправкой", yourOrder: "Ваш заказ", emptyCart: "Корзина пока пуста",
     emptyCartText: "Добавьте блюда из меню — они появятся здесь.", goToMenu: "Перейти в меню",
@@ -146,7 +146,7 @@ const uiText = {
     information: "Information", hours: "Opening hours", schedule: "Mon–Sat · 09:00–22:00", sunday: "Sunday · closed",
     wifi: "Wi‑Fi", password: "password", branch: "Branch", social: "Social media", waiter: "Call a waiter",
     tapWifi: "Tap to reveal password", wifiCopied: "",
-    add: "Add", addToOrder: "Add to Order", unavailable: "TEMPORARILY UNAVAILABLE", zoom: "Enlarge",
+    add: "Add", addToOrder: "Add to Order", added: "Added ✓", addedToOrder: "added to your order", unavailable: "TEMPORARILY UNAVAILABLE", zoom: "Enlarge",
     openPhoto: "Open photo and description", close: "Close", pairsEyebrow: "Pairs well with", pairsTitle: "Recommended with this item",
     beforeSending: "Before sending", yourOrder: "Your order", emptyCart: "Your cart is empty",
     emptyCartText: "Add items from the menu and they will appear here.", goToMenu: "Go to menu",
@@ -239,6 +239,7 @@ export default function QRMenu() {
   const [wifiPasswordVisible, setWifiPasswordVisible] = useState(false);
   const [cart, setCart] = useState([]);
   const [notice, setNotice] = useState("");
+  const [lastAddedId, setLastAddedId] = useState(null);
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -495,6 +496,11 @@ export default function QRMenu() {
       if (!line && delta > 0) return [...current, { ...product, qty: 1 }];
       return current.map((item) => item.id === product.id ? { ...item, qty: item.qty + delta } : item).filter((item) => item.qty > 0);
     });
+    if (delta > 0) {
+      setLastAddedId(product.id);
+      flash(`${product.name} — ${t.addedToOrder}`);
+      window.setTimeout(() => setLastAddedId((current) => current === product.id ? null : current), 1200);
+    }
   }
   async function loadProfile() {
     const { data, error } = await supabase.rpc("qr_get_my_loyalty");
@@ -790,8 +796,8 @@ export default function QRMenu() {
               {selectedProduct.options.length > 0 && <div className="modal-options">{selectedProduct.options.map((option) => <small key={option}>{option}</small>)}</div>}
               <div className="modal-buy">
                 <strong>{money(selectedProduct.price)}</strong>
-                <button disabled={unavailable.includes(selectedProduct.id)} onClick={() => changeQty(selectedProduct, 1)}>
-                  {unavailable.includes(selectedProduct.id) ? t.unavailable : t.addToOrder}
+                <button className={lastAddedId === selectedProduct.id ? "added" : ""} disabled={unavailable.includes(selectedProduct.id)} onClick={() => changeQty(selectedProduct, 1)}>
+                  {unavailable.includes(selectedProduct.id) ? t.unavailable : lastAddedId === selectedProduct.id ? t.added : t.addToOrder}
                 </button>
               </div>
               {pairings.length > 0 && <div className="pairings">
@@ -802,7 +808,7 @@ export default function QRMenu() {
                           {product.image ? <img className={photoClass(product)} src={product.image} alt={product.name} /> : <span>B&C</span>}
                         </button>
                         <div><b>{product.name}</b><small>{money(product.price)}</small></div>
-                        <button className="pairing-add" onClick={() => changeQty(product, 1)} aria-label={`\u0414\u043E\u0431\u0430\u0432\u0438\u0442\u044C ${product.name}`}>+</button>
+                        <button className={`pairing-add ${lastAddedId === product.id ? "added" : ""}`} onClick={() => changeQty(product, 1)} aria-label={`${t.add}: ${product.name}`}>+</button>
                       </article>)}
                   </div>
                 </div>}
@@ -811,8 +817,10 @@ export default function QRMenu() {
         </div>}
 
       {photoFullscreen && selectedProduct?.image && <div className="photo-lightbox" role="dialog" aria-modal="true" aria-label={`${t.zoom}: ${selectedProduct.name}`} onClick={() => setPhotoFullscreen(false)}>
-          <button type="button" className="lightbox-close" onClick={() => setPhotoFullscreen(false)} aria-label={t.close} />
-          <img src={selectedProduct.image} alt={selectedProduct.name} onClick={(event) => event.stopPropagation()} />
+          <div className="photo-popover" onClick={(event) => event.stopPropagation()}>
+            <button type="button" className="lightbox-close" onClick={() => setPhotoFullscreen(false)} aria-label={t.close} />
+            <img src={selectedProduct.image} alt={selectedProduct.name} onClick={() => setPhotoFullscreen(false)} />
+          </div>
         </div>}
 
       {cartCount > 0 && screen === "menu" && <button className="floating-cart" onClick={() => setScreen("cart")}><span>{cartCount} {t.items}</span><b>{money(cartTotal)} →</b></button>}
