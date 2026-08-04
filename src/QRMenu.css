@@ -16,15 +16,6 @@ button { cursor: pointer; }
 body.modal-open { overflow: hidden; }
 
 .app-shell { min-height: 100vh; padding-bottom: 40px; }
-.test-ribbon { position: relative; z-index: 100; min-height: 42px; padding: 8px max(18px, calc((100vw - 1240px) / 2)); display: flex; align-items: center; justify-content: space-between; gap: 16px; background: #fff4cf; color: #5c4510; border-bottom: 1px solid #ead58c; font-size: 13px; }
-.test-ribbon b { margin-right: 8px; padding: 3px 7px; border-radius: 6px; color: white; background: #b7791f; font-size: 11px; letter-spacing: .08em; }
-.test-ribbon button { border: 0; background: transparent; color: #5c4510; font-weight: 800; text-decoration: underline; }
-.test-panel { position: relative; z-index: 90; display: grid; grid-template-columns: 1.2fr repeat(3, 1fr) auto; gap: 14px; align-items: end; padding: 18px max(18px, calc((100vw - 1240px) / 2)); color: #fff; background: #171a16; box-shadow: 0 12px 36px #0003; }
-.test-panel > div { display: grid; gap: 4px; }
-.test-panel .eyebrow { color: #aeb5a8; }
-.test-panel label { display: grid; gap: 6px; font-size: 11px; color: #aeb5a8; text-transform: uppercase; letter-spacing: .09em; }
-.test-panel select { min-width: 110px; padding: 10px 12px; color: #fff; background: #252a24; border: 1px solid #3c433a; border-radius: 10px; outline: none; }
-.test-panel .outline-button { color: white; border-color: #535b50; background: #252a24; }
 
 .hero { position: relative; max-width: 1240px; min-height: 290px; margin: 0 auto; padding: 46px 58px; display: flex; align-items: center; overflow: hidden; color: white; background: radial-gradient(circle at 83% 15%, #456f58 0, transparent 27%), linear-gradient(120deg, #10261f, #1e4739 68%, #162e27); border-radius: 0 0 38px 38px; box-shadow: 0 25px 60px #10261f30; }
 .hero::before, .hero::after { content: ""; position: absolute; border: 1px solid #ffffff1f; border-radius: 50%; }
@@ -66,21 +57,7 @@ body.modal-open { overflow: hidden; }
 .product-card:hover { transform: translateY(-3px); box-shadow: 0 18px 38px #17201814; }
 .food-photo { position: relative; width: 100%; height: 190px; padding: 0; display: grid; place-items: center; overflow: hidden; border: 0; background: linear-gradient(145deg, #e8eadf, #c7cbbd); }
 .food-photo img { width: 100%; height: 100%; object-fit: contain; transition: transform .3s ease; }
-.food-photo img.lemonade-photo,
-.meal-photo img.lemonade-photo,
-.pairing-photo img.lemonade-photo,
-.mini-photo img.lemonade-photo {
-  object-position: center 58%;
-  padding: 9px 8px 4px;
-  transform: scale(.93);
-}
-.modal-photo img.lemonade-photo {
-  object-position: center 58%;
-  padding: 28px 24px 16px;
-  transform: scale(.95);
-}
 .product-card:hover .food-photo img { transform: scale(1.012); }
-.product-card:hover .food-photo img.lemonade-photo { transform: scale(.95); }
 .zoom-hint { position: absolute; left: 12px; bottom: 12px; padding: 6px 9px; color: white; background: #172019b8; border: 1px solid #ffffff2c; border-radius: 8px; opacity: 0; transform: translateY(4px); transition: .2s; font-size: 9px; font-weight: 800; letter-spacing: .06em; backdrop-filter: blur(8px); }
 .food-photo:hover .zoom-hint, .food-photo:focus-visible .zoom-hint { opacity: 1; transform: none; }
 .photo-placeholder { color: #355046; font-family: Georgia, serif; font-size: 28px; font-weight: 700; letter-spacing: .08em; }
@@ -198,7 +175,6 @@ body.modal-open { overflow: hidden; }
 .bill-actions .primary-button { margin: 0; }
 .discount-row { padding: 14px 6px 0; display: flex; justify-content: space-between; color: #557341; font-size: 13px; }
 .safe-note { text-align: center; color: #8b9087; font-size: 11px; }
-.test-payment-button { width: 100%; margin-top: 10px; padding: 12px 18px; color: #70510d; background: #fff4cf; border: 1px dashed #d2a43e; border-radius: 13px; font-weight: 850; }
 .payment-success { margin-top: 12px; padding: 17px; display: flex; align-items: center; gap: 13px; color: #174b31; background: #edf9f0; border: 1px solid #bfe1c8; border-radius: 16px; }
 .payment-success p { margin: 4px 0; color: #467259; font-size: 12px; }
 .payment-success small { color: #688371; font-size: 10px; }
@@ -270,16 +246,11 @@ footer small { padding-left: 7px; border-left: 1px solid #cfd2cb; }
 
 @media (max-width: 980px) {
   .product-grid { grid-template-columns: repeat(2, 1fr); }
-  .test-panel { grid-template-columns: 1fr 1fr; }
   .hero { border-radius: 0; }
   .weather-offer { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 620px) {
-  .test-ribbon { align-items: flex-start; font-size: 11px; }
-  .test-ribbon span { max-width: 72%; }
-  .test-panel { grid-template-columns: 1fr 1fr; padding: 16px; }
-  .test-panel > div, .test-panel .outline-button { grid-column: 1 / -1; }
   .hero { min-height: 230px; padding: 36px 22px 30px; }
   .brand-mark { left: 22px; top: 22px; }
   .hero-copy { width: calc(100% - 72px); margin-top: 42px; }
@@ -337,6 +308,127 @@ footer small { padding-left: 7px; border-left: 1px solid #cfd2cb; }
   .modal-close { position: fixed; }
 }
 
+/* Compact weather belongs to the masthead; the former full-width weather card is retired. */
+.app-shell .hero {
+  min-height: 235px;
+  padding-right: 48px;
+}
+.app-shell .hero-side {
+  position: relative;
+  z-index: 3;
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+.app-shell .hero-weather {
+  min-width: 330px;
+  padding: 14px 16px 14px 19px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 14px;
+  color: var(--ink);
+  background: color-mix(in srgb, var(--surface-strong) 46%, transparent);
+  border: 1px solid color-mix(in srgb, var(--surface-line) 75%, transparent);
+  border-radius: 24px;
+  box-shadow: 0 16px 38px rgba(20, 29, 26, .08), inset 0 1px 0 color-mix(in srgb, var(--surface-line) 78%, transparent);
+  backdrop-filter: blur(18px) saturate(118%);
+}
+.app-shell .hero-weather-copy {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  text-align: right;
+}
+.app-shell .hero-weather-copy > strong {
+  color: var(--ink);
+  font-size: 37px;
+  font-weight: 280;
+  line-height: 1;
+  letter-spacing: -.06em;
+}
+.app-shell .hero-weather-copy > div { display: grid; gap: 4px; }
+.app-shell .hero-weather-copy span {
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 620;
+  line-height: 1.2;
+}
+.app-shell .hero-weather-copy small {
+  color: var(--muted);
+  font-size: 8px;
+  white-space: nowrap;
+}
+.app-shell .hero-weather .weather-visual {
+  width: 72px;
+  height: 72px;
+  flex: 0 0 72px;
+  transform: scale(.7);
+  transform-origin: center;
+  margin: -13px;
+}
+.app-shell .hero-side .table-chip {
+  position: static;
+  flex: 0 0 auto;
+}
+.app-shell.theme-night .hero-weather {
+  background: rgba(31, 42, 43, .42);
+  border-color: rgba(255,255,255,.07);
+  box-shadow: 0 18px 42px rgba(0,0,0,.16), inset 0 1px 0 rgba(255,255,255,.035);
+}
+
+@media (max-width: 900px) {
+  .app-shell .hero { min-height: 220px; padding-right: 30px; }
+  .app-shell .hero-weather { min-width: 0; padding: 11px 13px 11px 15px; }
+  .app-shell .hero-weather-copy small { display: none; }
+  .app-shell .hero-side { gap: 10px; }
+}
+
+@media (max-width: 620px) {
+  .app-shell .hero {
+    min-height: 178px;
+    padding: 25px 18px 23px;
+    align-items: stretch;
+  }
+  .app-shell .hero-copy { width: calc(100% - 118px); margin-top: 34px; }
+  .app-shell .hero-copy .daily-quote p { font-size: 18px; }
+  .app-shell .hero-side {
+    position: absolute;
+    top: 22px;
+    right: 17px;
+    display: grid;
+    justify-items: end;
+    gap: 8px;
+  }
+  .app-shell .hero-weather {
+    min-width: 0;
+    padding: 6px 8px 6px 11px;
+    gap: 7px;
+    border-radius: 18px;
+  }
+  .app-shell .hero-weather-copy { gap: 0; }
+  .app-shell .hero-weather-copy > strong { font-size: 25px; }
+  .app-shell .hero-weather-copy > div { display: none; }
+  .app-shell .hero-weather .weather-visual {
+    width: 50px;
+    height: 50px;
+    flex-basis: 50px;
+    transform: scale(.49);
+    margin: -24px;
+    margin-left: -17px;
+  }
+  .app-shell .hero-side .table-chip {
+    min-width: 78px;
+    height: 42px;
+    padding: 0 11px;
+  }
+  .app-shell .hero-side .table-chip small { font-size: 6px; }
+  .app-shell .hero-side .table-chip b { font-size: 15px; }
+  .app-shell .content { padding-top: 24px; }
+}
+
 /* 2026 Quiet Precision concept — restrained, tactile and content-first. */
 :root {
   --ink: #1d1d1f;
@@ -361,24 +453,6 @@ body {
 }
 
 .app-shell { padding-bottom: 74px; }
-.test-ribbon {
-  min-height: 34px;
-  padding-block: 6px;
-  background: rgba(255, 255, 255, .58);
-  color: #686863;
-  border-bottom: 1px solid rgba(29, 29, 31, .06);
-  font-size: 10px;
-  letter-spacing: .015em;
-  backdrop-filter: saturate(140%) blur(18px);
-}
-.test-ribbon b {
-  padding: 3px 7px;
-  color: #6c5523;
-  background: #eee2bf;
-  border-radius: 999px;
-  font-size: 8px;
-}
-.test-ribbon button { color: #494946; font-weight: 600; text-decoration: none; }
 
 .hero {
   min-height: 270px;
@@ -621,7 +695,6 @@ body {
 @media (max-width: 620px) {
   body { background: radial-gradient(circle at 88% 5%, rgba(208,224,214,.8), transparent 18rem), var(--paper); }
   .app-shell { padding-bottom: 86px; }
-  .test-ribbon { padding-inline: 12px; }
   .hero {
     min-height: 218px;
     margin: 8px 10px 0;
@@ -789,13 +862,6 @@ body {
   --weather-tint: rgba(160, 198, 213, .28);
 }
 
-.app-shell .test-ribbon {
-  color: var(--muted);
-  background: color-mix(in srgb, var(--surface-strong) 86%, transparent);
-  border-color: var(--line);
-}
-.app-shell .test-ribbon button { color: var(--ink); }
-
 .app-shell .hero {
   color: var(--ink);
   background:
@@ -933,10 +999,28 @@ body {
   border: 0;
 }
 .app-shell .stepper button {
+  position: relative;
+  display: grid;
+  place-items: center;
   color: var(--ink);
   background: var(--surface-strong);
   border: 1px solid var(--surface-line);
   box-shadow: 0 6px 16px rgba(20, 27, 24, .07);
+}
+.app-shell .stepper button::before,
+.app-shell .stepper button.qty-plus::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 10px;
+  height: 1.5px;
+  background: currentColor;
+  border-radius: 999px;
+  transform: translate(-50%, -50%);
+}
+.app-shell .stepper button.qty-plus::after {
+  transform: translate(-50%, -50%) rotate(90deg);
 }
 
 .app-shell .floating-cart,
@@ -948,7 +1032,24 @@ body {
 }
 .app-shell .product-modal-card { color: var(--ink); background: var(--surface-solid); border-color: var(--surface-line); }
 .app-shell .pairing-grid article { background: color-mix(in srgb, var(--surface-strong) 78%, transparent); }
-.app-shell .modal-close { color: var(--ink); background: var(--surface-strong); border-color: var(--surface-line); }
+.app-shell .modal-close {
+  color: var(--ink);
+  background: var(--surface-strong);
+  border-color: var(--surface-line);
+}
+.app-shell .modal-close::before,
+.app-shell .modal-close::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 18px;
+  height: 2px;
+  background: currentColor;
+  border-radius: 999px;
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+.app-shell .modal-close::after { transform: translate(-50%, -50%) rotate(-45deg); }
 
 .app-shell.theme-night .weather-sun { filter: saturate(.72) brightness(.88); }
 .app-shell.theme-night .loyalty-card,
@@ -1023,7 +1124,7 @@ body {
   content: "";
   position: absolute;
   z-index: -1;
-  inset: 0;
+  inset: -18px;
   background:
     radial-gradient(ellipse at 68% 128%, rgba(255,255,255,.27), transparent 43%),
     linear-gradient(115deg, rgba(255,255,255,.1), transparent 48%);
@@ -1372,8 +1473,48 @@ body {
   border-radius: 23px;
   box-shadow: 0 16px 34px rgba(24,31,28,.1), inset 0 1px 0 var(--surface-line);
 }
-.meal-photo img { width: 100%; height: 100%; object-fit: contain; transition: transform .4s cubic-bezier(.2,.8,.2,1); }
+.meal-photo img { width: 100%; height: 100%; object-fit: cover; transition: transform .4s cubic-bezier(.2,.8,.2,1); }
 .meal-photo:hover img { transform: scale(1.012); }
+
+/* Fill every photo frame cleanly, matching the approved sauce-card treatment. */
+.food-photo,
+.meal-photo,
+.modal-photo,
+.pairing-photo,
+.mini-photo {
+  position: relative;
+}
+.food-photo img,
+.meal-photo img,
+.modal-photo img,
+.pairing-photo img,
+.mini-photo img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  object-position: center;
+}
+.food-photo > b,
+.food-photo > .zoom-hint { z-index: 2; }
+
+/* Bottles and cans must stay visible from cap to base in every photo frame. */
+.food-photo img.cold-drink-photo,
+.meal-photo img.cold-drink-photo,
+.modal-photo img.cold-drink-photo,
+.pairing-photo img.cold-drink-photo,
+.mini-photo img.cold-drink-photo {
+  object-fit: contain;
+  object-position: center;
+  background: #fff;
+  transform: none;
+}
+
+.product-card:hover .food-photo img.cold-drink-photo,
+.meal-photo:hover img.cold-drink-photo {
+  transform: none;
+}
+
 .meal-copy { min-width: 0; }
 .meal-kicker { display: flex; align-items: center; gap: 8px; color: var(--muted); }
 .meal-kicker span {

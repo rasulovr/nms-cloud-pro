@@ -17,7 +17,19 @@ const pairingCategories = {
   "\u041D\u043E\u0432\u0438\u043D\u043A\u0438": ["\u041A\u041E\u0424\u0415", "\u041B\u0418\u041C\u041E\u041D\u0410\u0414\u042B", "\u0421\u0410\u041B\u0410\u0422\u042B"]
 };
 const money = (value) => `${Number(value || 0).toFixed(2)} \u20BC`;
-const photoClass = (product) => product.category === "\u041B\u0418\u041C\u041E\u041D\u0410\u0414\u042B" ? "lemonade-photo" : void 0;
+const categoryLabel = (value) => {
+  if (value.toLocaleLowerCase("ru-RU") === "новинки") return "Новинки";
+  const normalized = value.toLocaleLowerCase("ru-RU");
+  return normalized.charAt(0).toLocaleUpperCase("ru-RU") + normalized.slice(1);
+};
+const photoClass = (product) => {
+  if (product.category === "\u041B\u0418\u041C\u041E\u041D\u0410\u0414\u042B") return "lemonade-photo";
+  if (product.category === "\u0425\u041E\u041B\u041E\u0414\u041D\u042B\u0415 \u041D\u0410\u041F\u0418\u0422\u041A\u0418") return "cold-drink-photo";
+  return undefined;
+};
+const photoStyle = (product) => product.image
+  ? { "--photo": `url(${JSON.stringify(product.image)})` }
+  : undefined;
 const normalizeProduct = (item, branch) => ({
   ...item,
   id: item.id || item.menu_item_id,
@@ -374,7 +386,19 @@ export default function QRMenu() {
           </div>
           <p className="hero-context">Стол {table} · Заказывайте прямо из меню</p>
         </div>
-        <div className="table-chip"><small>ВАШ СТОЛ</small><b>{table}</b></div>
+        <div className="hero-side">
+          {weatherOffer && <div className={`hero-weather weather-${weatherOffer.kind}`} aria-label={weatherOffer.title}>
+              <div className="hero-weather-copy">
+                {weather && <strong>{Math.round(weather.temperature)}°</strong>}
+                <div>
+                  <span>{weatherOffer.title}</span>
+                  {weather && <small>Ощущается {Math.round(weather.apparentTemperature)}° · Ветер {Math.round(weather.windSpeed)} м/с</small>}
+                </div>
+              </div>
+              <WeatherVisual kind={weatherOffer.kind} phase={dayPhase} />
+            </div>}
+          <div className="table-chip"><small>ВАШ СТОЛ</small><b>{table}</b></div>
+        </div>
       </header>
 
       <nav className="main-nav" aria-label="Разделы QR Menu">
@@ -391,33 +415,16 @@ export default function QRMenu() {
 
       {screen === "menu" && <section className="content">
           <div className="categories">
-            {categories.map((name) => <button className={category === name ? "active" : ""} key={name} onClick={() => setCategory(name)}>{name}</button>)}
+            {categories.map((name) => <button className={category === name ? "active" : ""} key={name} onClick={() => setCategory(name)}>{categoryLabel(name)}</button>)}
             <label className="search" aria-label="Поиск блюда">
               <span aria-hidden="true">⌕</span>
               <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Поиск блюда" />
             </label>
           </div>
-          {weatherOffer && <aside className={`weather-offer weather-${weatherOffer.kind}`}>
-              <span className="weather-aurora" aria-hidden="true" />
-              <div className="weather-copy">
-                <WeatherVisual kind={weatherOffer.kind} phase={dayPhase} />
-                <div className="weather-reading">
-                  {weather && <strong className="weather-temperature">{Math.round(weather.temperature)}°</strong>}
-                  <div className="weather-message">
-                    <h3>{weatherOffer.title}</h3>
-                    <p>{weatherOffer.text}</p>
-                  </div>
-                  {weather && <div className="weather-metrics" aria-label="Показатели погоды">
-                      <span><small>ОЩУЩАЕТСЯ</small><b>{Math.round(weather.apparentTemperature)}°</b></span>
-                      <span><small>ВЕТЕР</small><b>{Math.round(weather.windSpeed)} м/с</b></span>
-                      <span><small>ОСАДКИ</small><b>{weather.precipitation.toFixed(1)} мм</b></span>
-                    </div>}
-                </div>
-              </div>
-            </aside>}
           {mealRecommendation && <aside className={`meal-recommendation meal-${mealRecommendation.moment}`}>
               <button
     className="meal-photo"
+    style={photoStyle(mealRecommendation.product)}
     type="button"
     onClick={() => setSelectedProduct(mealRecommendation.product)}
     aria-label={`\u041E\u0442\u043A\u0440\u044B\u0442\u044C ${mealRecommendation.product.name}`}
@@ -436,9 +443,9 @@ export default function QRMenu() {
               <div className="meal-action">
                 <strong>{money(mealRecommendation.product.price)}</strong>
                 {recommendationQty ? <div className="stepper">
-                    <button onClick={() => changeQty(mealRecommendation.product, -1)}>−</button>
+                    <button className="qty-minus" onClick={() => changeQty(mealRecommendation.product, -1)} aria-label={`Уменьшить количество ${mealRecommendation.product.name}`} />
                     <b>{recommendationQty}</b>
-                    <button onClick={() => changeQty(mealRecommendation.product, 1)}>+</button>
+                    <button className="qty-plus" onClick={() => changeQty(mealRecommendation.product, 1)} aria-label={`Увеличить количество ${mealRecommendation.product.name}`} />
                   </div> : <button className="add" onClick={() => changeQty(mealRecommendation.product, 1)} aria-label={`\u0414\u043E\u0431\u0430\u0432\u0438\u0442\u044C ${mealRecommendation.product.name} \u0432 \u043A\u043E\u0440\u0437\u0438\u043D\u0443`}>
                     <b>Добавить</b><span aria-hidden="true">+</span>
                   </button>}
@@ -449,7 +456,7 @@ export default function QRMenu() {
     const isStopped = unavailable.includes(product.id);
     const qty = cart.find((line) => line.id === product.id)?.qty || 0;
     return <article className={`product-card ${isStopped ? "stopped" : ""}`} key={product.id}>
-                  <button className="food-photo" type="button" onClick={() => setSelectedProduct(product)} aria-label={`\u041E\u0442\u043A\u0440\u044B\u0442\u044C \u0444\u043E\u0442\u043E \u0438 \u043E\u043F\u0438\u0441\u0430\u043D\u0438\u0435: ${product.name}`}>
+                  <button className="food-photo" style={photoStyle(product)} type="button" onClick={() => setSelectedProduct(product)} aria-label={`\u041E\u0442\u043A\u0440\u044B\u0442\u044C \u0444\u043E\u0442\u043E \u0438 \u043E\u043F\u0438\u0441\u0430\u043D\u0438\u0435: ${product.name}`}>
                     {product.image ? <img className={photoClass(product)} src={product.image} alt={product.name} loading="lazy" /> : <span className="photo-placeholder">B&C</span>}
                     {product.image && <span className="zoom-hint">Увеличить</span>}
                     {isStopped && <b>ВРЕМЕННО НЕТ</b>}
@@ -460,7 +467,7 @@ export default function QRMenu() {
                     {product.options.length > 0 && <div className="product-options">{product.options.map((option) => <small key={option}>{option}</small>)}</div>}
                     <div className="product-footer">
                       <strong>{money(product.price)}</strong>
-                      {qty ? <div className="stepper"><button onClick={() => changeQty(product, -1)}>−</button><b>{qty}</b><button onClick={() => changeQty(product, 1)}>+</button></div> : <button className="add" disabled={isStopped} onClick={() => changeQty(product, 1)} aria-label={`\u0414\u043E\u0431\u0430\u0432\u0438\u0442\u044C ${product.name} \u0432 \u043A\u043E\u0440\u0437\u0438\u043D\u0443`}>
+                      {qty ? <div className="stepper"><button className="qty-minus" onClick={() => changeQty(product, -1)} aria-label={`Уменьшить количество ${product.name}`} /><b>{qty}</b><button className="qty-plus" onClick={() => changeQty(product, 1)} aria-label={`Увеличить количество ${product.name}`} /></div> : <button className="add" disabled={isStopped} onClick={() => changeQty(product, 1)} aria-label={`\u0414\u043E\u0431\u0430\u0432\u0438\u0442\u044C ${product.name} \u0432 \u043A\u043E\u0440\u0437\u0438\u043D\u0443`}>
                           <b>Добавить</b><span aria-hidden="true">+</span>
                         </button>}
                     </div>
@@ -564,8 +571,8 @@ export default function QRMenu() {
     if (event.currentTarget === event.target) setSelectedProduct(null);
   }}>
           <article className="product-modal-card">
-            <button className="modal-close" onClick={() => setSelectedProduct(null)} aria-label="Закрыть">×</button>
-            <div className="modal-photo">
+            <button className="modal-close" onClick={() => setSelectedProduct(null)} aria-label="Закрыть" />
+            <div className="modal-photo" style={photoStyle(selectedProduct)}>
               {selectedProduct.image ? <img className={photoClass(selectedProduct)} src={selectedProduct.image} alt={selectedProduct.name} /> : <span className="photo-placeholder">B&C</span>}
             </div>
             <div className="modal-content">
@@ -583,7 +590,7 @@ export default function QRMenu() {
                   <div><span className="eyebrow">Хорошо сочетается</span><h3>С этим блюдом берут</h3></div>
                   <div className="pairing-grid">
                     {pairings.map((product) => <article key={product.id}>
-                        <button className="pairing-photo" onClick={() => setSelectedProduct(product)}>
+                        <button className="pairing-photo" style={photoStyle(product)} onClick={() => setSelectedProduct(product)}>
                           {product.image ? <img className={photoClass(product)} src={product.image} alt={product.name} /> : <span>B&C</span>}
                         </button>
                         <div><b>{product.name}</b><small>{money(product.price)}</small></div>
@@ -614,7 +621,7 @@ function WeatherVisual({ kind, phase }) {
     </div>;
 }
 function OrderLine({ line, controls, onMinus, onPlus }) {
-  return <article className="order-line"><div className="mini-photo">{line.image ? <img className={photoClass(line)} src={line.image} alt="" /> : <span>B&C</span>}</div><div><b>{line.name}</b><span>{money(line.price)} × {line.qty}</span></div>{controls ? <div className="stepper"><button onClick={onMinus}>−</button><b>{line.qty}</b><button onClick={onPlus}>+</button></div> : <strong>{money(line.price * line.qty)}</strong>}</article>;
+  return <article className="order-line"><div className="mini-photo" style={photoStyle(line)}>{line.image ? <img className={photoClass(line)} src={line.image} alt="" /> : <span>B&C</span>}</div><div><b>{line.name}</b><span>{money(line.price)} × {line.qty}</span></div>{controls ? <div className="stepper"><button className="qty-minus" onClick={onMinus} aria-label={`Уменьшить количество ${line.name}`} /><b>{line.qty}</b><button className="qty-plus" onClick={onPlus} aria-label={`Увеличить количество ${line.name}`} /></div> : <strong>{money(line.price * line.qty)}</strong>}</article>;
 }
 function Empty({ icon, title, text, action }) {
   return <div className="empty-state"><span>{icon}</span><h3>{title}</h3><p>{text}</p><button className="outline-button" onClick={action}>Перейти в меню</button></div>;
