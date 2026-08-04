@@ -2881,3 +2881,201 @@ body {
     -webkit-line-clamp: 2;
   }
 }
+
+
+/* Accessible weather scene v4: lunar phases, atmospheric streams, larger navigation. */
+.app-shell .weather-visual {
+  width: 112px;
+  height: 100px;
+  overflow: visible;
+  filter: drop-shadow(0 14px 20px rgba(13, 39, 61, .2));
+}
+.app-shell .weather-sun,
+.app-shell .weather-moon {
+  width: 68px;
+  height: 68px;
+  left: 17px;
+  top: 4px;
+}
+.app-shell .weather-sun {
+  display: block;
+  background:
+    radial-gradient(circle at 34% 30%, rgba(255,255,255,.85) 0 3%, transparent 4%),
+    radial-gradient(circle at 62% 67%, rgba(235,164,35,.2) 0 8%, transparent 9%),
+    linear-gradient(145deg, #fff6ae, #ffd258 64%, #f1ae20);
+  box-shadow: 0 0 30px rgba(255,221,99,.68), 0 0 0 11px rgba(255,239,153,.08);
+}
+.app-shell .weather-moon {
+  overflow: hidden;
+  background: linear-gradient(145deg, #fffde9 0%, #dde8ef 67%, #bccbd6 100%);
+  box-shadow: 0 0 31px rgba(220,239,252,.48), 0 0 0 10px rgba(213,235,250,.05);
+}
+.app-shell .weather-moon::after {
+  content: "";
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  border-radius: 50%;
+  background: linear-gradient(145deg, #0a1724, #172d3e);
+  opacity: .96;
+}
+.app-shell .moon-full::after { display: none; }
+.app-shell .moon-waxing-crescent::after { transform: translateX(-14px); }
+.app-shell .moon-waning-crescent::after { transform: translateX(14px); }
+.app-shell .moon-first-quarter::after {
+  left: 0;
+  right: 50%;
+  border-radius: 68px 0 0 68px;
+}
+.app-shell .moon-last-quarter::after {
+  left: 50%;
+  right: 0;
+  border-radius: 0 68px 68px 0;
+}
+.app-shell .moon-waxing-gibbous::after { transform: translateX(-47px); }
+.app-shell .moon-waning-gibbous::after { transform: translateX(47px); }
+.app-shell .moon-crater {
+  position: absolute;
+  z-index: 1;
+  border-radius: 50%;
+  background: rgba(112,133,149,.22);
+  box-shadow: inset 1px 1px 2px rgba(79,99,116,.22), 1px 1px 1px rgba(255,255,255,.18);
+}
+.app-shell .moon-crater.crater-one { width: 13px; height: 13px; left: 14px; top: 14px; }
+.app-shell .moon-crater.crater-two { width: 8px; height: 8px; right: 13px; top: 25px; }
+.app-shell .moon-crater.crater-three { width: 17px; height: 17px; left: 29px; bottom: 10px; }
+.app-shell .weather-stars {
+  display: none;
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  left: 25px;
+  top: 17px;
+  border-radius: 50%;
+  background: rgba(255,255,255,.88);
+  box-shadow:
+    23px -8px 0 rgba(255,255,255,.55),
+    49px 7px 0 rgba(255,255,255,.8),
+    65px 24px 0 rgba(255,255,255,.48),
+    7px 36px 0 rgba(255,255,255,.62),
+    37px 45px 0 rgba(255,255,255,.72),
+    70px 54px 0 rgba(255,255,255,.5);
+  animation: weatherStars 3.8s ease-in-out infinite;
+}
+.app-shell .weather-visual.star-sky .weather-stars { display: block; }
+.app-shell .weather-visual.moonless .weather-moon { display: none; }
+.app-shell .weather-cloud {
+  width: 94px;
+  height: 17px;
+  left: 8px;
+  top: 61px;
+  border-radius: 999px 58% 999px 42%;
+  background: linear-gradient(90deg, transparent, rgba(247,252,255,.36) 15%, rgba(255,255,255,.88) 52%, rgba(226,239,247,.36) 87%, transparent);
+  box-shadow: 0 7px 16px rgba(23,61,88,.13);
+  filter: blur(.2px);
+  animation: weatherCloudStream 6.5s ease-in-out infinite;
+}
+.app-shell .weather-cloud::before,
+.app-shell .weather-cloud::after { display: none; }
+.app-shell .weather-cloud.cloud-two {
+  width: 82px;
+  height: 13px;
+  left: 20px;
+  top: 40px;
+  border-radius: 999px;
+  opacity: .56;
+  animation-delay: -2.8s;
+}
+.app-shell .weather-visual.cloudy .cloud-two,
+.app-shell .weather-visual.rainy .cloud-two,
+.app-shell .weather-visual.overcast-sky .cloud-two { display: block; }
+.app-shell .weather-visual.sunny .weather-cloud {
+  transform: none;
+  opacity: .34;
+}
+.app-shell .weather-visual.windy .weather-sun { display: block; }
+.app-shell .weather-visual.windy .weather-cloud { display: block; opacity: .28; }
+.app-shell .weather-visual.windy .weather-wind {
+  display: block;
+  left: 4px;
+  width: 102px;
+  height: 18px;
+  border-top: 3px solid rgba(245,252,255,.82);
+  border-radius: 50%;
+  filter: drop-shadow(0 4px 7px rgba(20,62,83,.15));
+}
+.app-shell .weather-visual.windy .wind-one { top: 35px; }
+.app-shell .weather-visual.windy .wind-two { top: 62px; left: 18px; width: 82px; animation-delay: -.7s; }
+.app-shell .weather-visual.night-sky .weather-cloud {
+  background: linear-gradient(90deg, transparent, rgba(127,148,164,.25) 15%, rgba(187,205,216,.7) 52%, rgba(91,116,135,.25) 87%, transparent);
+  box-shadow: 0 8px 18px rgba(0,0,0,.18);
+}
+.app-shell .weather-visual.overcast-sky .weather-stars { display: none; }
+
+.app-shell .language-switch button {
+  min-width: 42px;
+  height: 32px;
+  font-size: 11px;
+  font-weight: 780;
+}
+.app-shell .categories > button {
+  min-height: 42px;
+  padding: 9px 15px;
+  font-size: 13px;
+  font-weight: 720;
+}
+.app-shell .main-nav button {
+  font-size: 13px;
+  font-weight: 740;
+}
+@keyframes weatherCloudStream {
+  0%, 100% { transform: translateX(-4px) scaleX(.96); opacity: .56; }
+  50% { transform: translateX(5px) scaleX(1.04); opacity: .9; }
+}
+@keyframes weatherStars { 50% { opacity: .5; } }
+
+@media (max-width: 620px) {
+  .app-shell .hero-weather .weather-visual {
+    width: 94px;
+    height: 92px;
+    margin: -3px -18px 0 -6px;
+    transform: none;
+  }
+  .app-shell .weather-sun,
+  .app-shell .weather-moon {
+    width: 62px;
+    height: 62px;
+    left: 14px;
+    top: 6px;
+  }
+  .app-shell .weather-cloud { width: 86px; left: 4px; top: 61px; }
+  .app-shell .weather-cloud.cloud-two { width: 72px; left: 15px; top: 42px; }
+  .app-shell .weather-visual.windy .weather-wind { width: 88px; }
+  .app-shell .language-switch button {
+    min-width: 38px;
+    height: 30px;
+    padding-inline: 8px;
+    font-size: 10px;
+  }
+  .app-shell .categories > button {
+    min-height: 40px;
+    padding: 9px 14px;
+    font-size: 12px;
+    font-weight: 720;
+  }
+  .app-shell .main-nav button {
+    padding-inline: 3px;
+    font-size: clamp(10px, 2.8vw, 12px);
+    font-weight: 720;
+  }
+  .app-shell .main-nav button.coming-soon small { font-size: 6px; }
+}
+@media (max-width: 390px) {
+  .app-shell .hero-weather .weather-visual {
+    width: 88px;
+    height: 88px;
+    margin-left: -8px;
+    transform: none;
+  }
+  .app-shell .main-nav button { font-size: 10px; }
+}
