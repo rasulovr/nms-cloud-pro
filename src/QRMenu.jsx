@@ -90,6 +90,12 @@ const categoryTranslations = {
     "ЛИМОНАДЫ": "Limonadlar", "ХОЛОДНЫЕ НАПИТКИ": "Soyuq içkilər", "EKSTRA KITCHEN": "Əlavələr · Mətbəx",
     "EKSTRA BAR": "Əlavələr · Bar"
   },
+  ru: {
+    "Все": "Все", "Новинки": "Новинки", "ЗАВТРАК": "Завтрак", "КОФЕ": "Кофе", "ЧАЙ": "Чай",
+    "ХОЛОДНЫЙ КОФЕ": "Холодный кофе", "ДЕСЕРТЫ": "Десерты", "САЛАТЫ": "Салаты", "СУПЫ": "Супы",
+    "ГОРЯЧИЕ БЛЮДА": "Горячие блюда", "ЗАКУСКИ": "Закуски", "ПИЦЦА": "Пицца", "ЛИМОНАДЫ": "Лимонады",
+    "ХОЛОДНЫЕ НАПИТКИ": "Холодные напитки", "EKSTRA KITCHEN": "Дополнения · Кухня", "EKSTRA BAR": "Дополнения · Бар"
+  },
   en: {
     "Все": "All", "Новинки": "New", "ЗАВТРАК": "Breakfast", "КОФЕ": "Coffee", "ЧАЙ": "Tea",
     "ХОЛОДНЫЙ КОФЕ": "Cold coffee", "ДЕСЕРТЫ": "Desserts", "САЛАТЫ": "Salads", "СУПЫ": "Soups",
@@ -106,6 +112,14 @@ const uiText = {
     wifi: "Wi‑Fi", password: "şifrə", branch: "Filial", social: "Sosial şəbəkələr", waiter: "Ofisiant çağır",
     quoteLines: ["Günün dadı olmalıdır.", "Yaxşı qəhvə günün ritmini yaradır.", "Sevdiyiniz dadlar günü gözəlləşdirir.", "Dad əhvaldan başlayır."]
   },
+  ru: {
+    quote: "Цитата дня", menu: "Меню", cart: "Корзина", bill: "Счёт", info: "Инфо", soon: "скоро",
+    soonMessage: "будет доступен в скором времени", search: "Поиск блюд", feels: "Ощущается", wind: "Ветер",
+    table: "Стол", tableAction: "Закажите прямо из меню", yourTable: "ВАШ СТОЛ",
+    information: "Информация", hours: "Время работы", schedule: "Пн–Сб · 09:00–22:00", sunday: "Воскресенье · закрыто",
+    wifi: "Wi‑Fi", password: "пароль", branch: "Филиал", social: "Социальные сети", waiter: "Вызвать официанта",
+    quoteLines: ["У дня должен быть вкус.", "Хороший кофе задаёт ритм дня.", "Любимые вкусы делают день лучше.", "Вкус начинается с настроения."]
+  },
   en: {
     quote: "Quote of the day", menu: "Menu", cart: "Cart", bill: "Bill", info: "Info", soon: "soon",
     soonMessage: "will be available soon", search: "Search dishes", feels: "Feels like", wind: "Wind",
@@ -117,6 +131,7 @@ const uiText = {
 };
 const weatherTitles = {
   az: { rainy: "Bakıda bu gün yağışlıdır", windy: "Bakıda bu gün küləklidir", sunny: "Bakıda bu gün günəşlidir", cool: "Bakıda bu gün sərindir", cloudy: "Bakıda bu gün buludludur", clear: "Bakıda hava rahatdır" },
+  ru: { rainy: "Сегодня в Баку дождь", windy: "Сегодня в Баку ветрено", sunny: "Сегодня в Баку солнечно", cool: "Сегодня в Баку прохладно", cloudy: "Сегодня в Баку облачно", clear: "Сегодня в Баку приятная погода" },
   en: { rainy: "Rainy in Baku today", windy: "Windy in Baku today", sunny: "Sunny in Baku today", cool: "Cool in Baku today", cloudy: "Cloudy in Baku today", clear: "Pleasant weather in Baku" }
 };
 const displayBranchName = (branch) => branch === "BC1" ? "Barista&Chef R.Behbudov" : `Barista&Chef · ${branch}`;
@@ -204,7 +219,10 @@ export default function QRMenu() {
   const [weather, setWeather] = useState(null);
   const [dayPhase, setDayPhase] = useState("day");
   const [bakuHour, setBakuHour] = useState(12);
-  const [language, setLanguage] = useState(() => window.localStorage.getItem("rms-qr-language") || "az");
+  const [language, setLanguage] = useState(() => {
+    const savedLanguage = window.localStorage.getItem("rms-qr-language");
+    return ["az", "ru", "en"].includes(savedLanguage) ? savedLanguage : "az";
+  });
   const t = uiText[language];
   const dailyQuote = t.quoteLines[(new Date().getDate() - 1) % t.quoteLines.length];
   const branchName = displayBranchName(branch);
@@ -505,6 +523,7 @@ export default function QRMenu() {
         <div className="brand-mark">RMS <i>PRO</i></div>
         <div className="language-switch" role="group" aria-label="Language selection">
           <button className={language === "az" ? "active" : ""} onClick={() => setLanguage("az")}>AZ</button>
+          <button className={language === "ru" ? "active" : ""} onClick={() => setLanguage("ru")}>RU</button>
           <button className={language === "en" ? "active" : ""} onClick={() => setLanguage("en")}>EN</button>
         </div>
         <div className="hero-copy">
