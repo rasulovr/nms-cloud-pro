@@ -1,6 +1,22 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "./supabase";
 import "./QRMenu.css";
+const categoryOrder = {
+  breakfast: ["Новинки", "ЗАВТРАК", "КОФЕ", "ЧАЙ", "ХОЛОДНЫЙ КОФЕ", "ДЕСЕРТЫ", "САЛАТЫ", "СУПЫ", "ГОРЯЧИЕ БЛЮДА", "ЗАКУСКИ", "ПИЦЦА", "ЛИМОНАДЫ", "ХОЛОДНЫЕ НАПИТКИ", "EKSTRA KITCHEN", "EKSTRA BAR"],
+  lunch: ["Новинки", "СУПЫ", "САЛАТЫ", "ГОРЯЧИЕ БЛЮДА", "ЗАКУСКИ", "ПИЦЦА", "ЗАВТРАК", "ДЕСЕРТЫ", "КОФЕ", "ХОЛОДНЫЙ КОФЕ", "ЛИМОНАДЫ", "ЧАЙ", "ХОЛОДНЫЕ НАПИТКИ", "EKSTRA KITCHEN", "EKSTRA BAR"],
+  dinner: ["Новинки", "ГОРЯЧИЕ БЛЮДА", "САЛАТЫ", "ЗАКУСКИ", "ПИЦЦА", "СУПЫ", "ДЕСЕРТЫ", "ЛИМОНАДЫ", "ХОЛОДНЫЕ НАПИТКИ", "КОФЕ", "ЧАЙ", "ХОЛОДНЫЙ КОФЕ", "ЗАВТРАК", "EKSTRA KITCHEN", "EKSTRA BAR"]
+};
+const productPriority = {
+  breakfast: [/капучино.*круассан/i, /сырник/i, /шакшук/i, /омлет/i, /яичниц/i, /нью-йорк.*завтрак/i, /бейгл.*лосос/i, /гранол/i, /овсян.*каш/i],
+  lunch: [/суп/i, /салат/i, /хумус/i, /боул/i, /сэндвич/i, /бургер/i, /пицц/i],
+  dinner: [/стейк/i, /рибай/i, /копч.*утк/i, /утк/i, /meat lovers/i, /четыре сыра/i, /тоннат/i]
+};
+const getMealMoment = (hour) => hour >= 5 && hour < 11 ? "breakfast" : hour >= 11 && hour < 17 ? "lunch" : "dinner";
+const productMomentRank = (product, moment) => {
+  const haystack = `${product.name} ${product.description} ${product.category}`;
+  const index = productPriority[moment].findIndex((pattern) => pattern.test(haystack));
+  return index < 0 ? 999 : index;
+};
 const pairingCategories = {
   "\u0417\u0410\u0412\u0422\u0420\u0410\u041A": ["\u041A\u041E\u0424\u0415", "\u0425\u041E\u041B\u041E\u0414\u041D\u042B\u0419 \u041A\u041E\u0424\u0415", "\u041B\u0418\u041C\u041E\u041D\u0410\u0414\u042B"],
   "\u0417\u0410\u041A\u0423\u0421\u041A\u0418": ["\u041B\u0418\u041C\u041E\u041D\u0410\u0414\u042B", "\u0425\u041E\u041B\u041E\u0414\u041D\u042B\u0415 \u041D\u0410\u041F\u0418\u0422\u041A\u0418", "\u0421\u0410\u041B\u0410\u0422\u042B"],
@@ -130,7 +146,7 @@ function getBakuDayPhase(hour = getBakuHour()) {
 }
 export default function QRMenu() {
   const [branch, setBranch] = useState("BC1");
-  const [table, setTable] = useState("12");
+  const [table, setTable] = useState("");
   const [screen, setScreen] = useState("menu");
   const [category, setCategory] = useState("\u0412\u0441\u0435");
   const [search, setSearch] = useState("");
@@ -165,7 +181,7 @@ export default function QRMenu() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     setBranch(params.get("branch") || "BC1");
-    setTable(params.get("table") || "12");
+    setTable(params.get("table") || "");
   }, []);
   useEffect(() => {
     let active = true;
@@ -231,13 +247,26 @@ export default function QRMenu() {
       window.removeEventListener("keydown", closeOnEscape);
     };
   }, [selectedProduct]);
+  const mealMoment = getMealMoment(bakuHour);
   const availableProducts = useMemo(() => products.filter((product) => {
     const branchMatch = product.branches.includes(branch);
     const categoryMatch = category === "\u0412\u0441\u0435" || product.category === category;
     const text = `${product.name} ${product.description}`.toLowerCase();
     return branchMatch && categoryMatch && text.includes(search.toLowerCase());
-  }), [products, branch, category, search]);
-  const categories = useMemo(() => ["\u0412\u0441\u0435", ...Array.from(new Set(products.filter((p) => p.branches.includes(branch)).map((p) => p.category)))], [products, branch]);
+  }).sort((a, b) => {
+    const aCategory = categoryOrder[mealMoment].indexOf(a.category);
+    const bCategory = categoryOrder[mealMoment].indexOf(b.category);
+    const categoryDifference = (aCategory < 0 ? 998 : aCategory) - (bCategory < 0 ? 998 : bCategory);
+    if (categoryDifference) return categoryDifference;
+    return productMomentRank(a, mealMoment) - productMomentRank(b, mealMoment);
+  }), [products, branch, category, search, mealMoment]);
+  const categories = useMemo(() => {
+    const present = new Set(products.filter((p) => p.branches.includes(branch)).map((p) => p.category));
+    const ordered = categoryOrder[mealMoment].filter((name) => present.has(name));
+    const unknown = [...present].filter((name) => !ordered.includes(name) && !name.toUpperCase().startsWith("EKSTRA"));
+    const extras = [...present].filter((name) => name.toUpperCase().startsWith("EKSTRA"));
+    return ["\u0412\u0441\u0435", ...ordered.filter((name) => !name.toUpperCase().startsWith("EKSTRA")), ...unknown, ...extras];
+  }, [products, branch, mealMoment]);
   const cartTotal = cart.reduce((sum, item) => sum + item.price * item.qty, 0);
   const ordered = useMemo(() => (order?.items || []).map((item) => ({ ...normalizeProduct(item, branch), qty: Number(item.quantity || item.qty || 1) })), [order, branch]);
   const billTotal = Number(order?.total_amount ?? ordered.reduce((sum, item) => sum + item.price * item.qty, 0));
@@ -292,7 +321,7 @@ export default function QRMenu() {
     };
   }, [weather]);
   const mealRecommendation = useMemo(() => {
-    const moment = bakuHour >= 5 && bakuHour < 11 ? "breakfast" : bakuHour >= 11 && bakuHour < 17 ? "lunch" : "dinner";
+    const moment = getMealMoment(bakuHour);
     const momentMeta = {
       breakfast: {
         label: "\u0423\u0442\u0440\u0435\u043D\u043D\u0438\u0439 \u0432\u044B\u0431\u043E\u0440",
@@ -358,6 +387,7 @@ export default function QRMenu() {
   }
   async function sendOrder() {
     if (!cart.length || busy) return;
+    if (!table) return flash("Для заказа отсканируйте QR-код на вашем столе");
     setBusy(true);
     const { data, error } = await supabase.rpc("qr_create_order", {
       p_branch_code: branch,
@@ -422,6 +452,7 @@ export default function QRMenu() {
     flash("\u041D\u043E\u0432\u044B\u0439 \u0432\u0438\u0437\u0438\u0442 \u043E\u0442\u043A\u0440\u044B\u0442");
   }
   const atmosphere = weatherOffer?.kind ?? "clear";
+  const hasTableContext = Boolean(table);
   const recommendationQty = mealRecommendation ? cart.find((line) => line.id === mealRecommendation.product.id)?.qty || 0 : 0;
   return <main className={`app-shell theme-${dayPhase} weather-theme-${atmosphere}`}>
       <header className="hero">
@@ -432,7 +463,7 @@ export default function QRMenu() {
             <span aria-hidden="true">“</span>
             <p>{dailyQuote}</p>
           </div>
-          <p className="hero-context">Стол {table} · Заказывайте прямо из меню</p>
+          <p className="hero-context">{hasTableContext ? `Стол ${table} · Заказывайте прямо из меню` : "Общее меню · выберите блюдо по настроению"}</p>
         </div>
         <div className="hero-side">
           {weatherOffer && <div className={`hero-weather weather-${weatherOffer.kind}`} aria-label={weatherOffer.title}>
@@ -445,7 +476,7 @@ export default function QRMenu() {
               </div>
               <WeatherVisual kind={weatherOffer.kind} phase={dayPhase} />
             </div>}
-          <div className="table-chip"><small>ВАШ СТОЛ</small><b>{table}</b></div>
+          {hasTableContext && <div className="table-chip"><small>ВАШ СТОЛ</small><b>{table}</b></div>}
         </div>
       </header>
 
@@ -456,7 +487,14 @@ export default function QRMenu() {
     ["bill", "\u0421\u0447\u0451\u0442"],
     ["loyalty", "Loyalty"],
     ["info", "\u0418\u043D\u0444\u043E"]
-  ].map(([id, label]) => <button key={id} className={screen === id ? "active" : ""} onClick={() => setScreen(id)}>{label}</button>)}
+  ].map(([id, label]) => <button
+    key={id}
+    className={`${screen === id ? "active" : ""} ${id === "bill" || id === "loyalty" ? "coming-soon" : ""}`}
+    onClick={() => {
+      if (id === "bill" || id === "loyalty") return flash(`Раздел «${label}» скоро будет доступен`);
+      setScreen(id);
+    }}
+  >{label}{(id === "bill" || id === "loyalty") && <small>скоро</small>}</button>)}
       </nav>
 
       {notice && <div className="toast">{notice}</div>}
