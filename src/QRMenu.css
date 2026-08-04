@@ -805,6 +805,36 @@ body {
 .info-grid p strong { color: var(--ink); font-weight: 800; }
 .info-grid a { color: var(--green); font-weight: 800; text-decoration: none; }
 .info-grid a:focus-visible { outline: 2px solid var(--green); outline-offset: 3px; border-radius: 4px; }
+.info-grid .wifi-info-card > div { flex: 1; min-width: 0; }
+.info-grid .wifi-network { color: var(--ink); font-weight: 720; }
+.wifi-password-button {
+  width: 100%;
+  margin-top: 10px;
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--ink);
+  background: color-mix(in srgb, var(--surface-strong) 68%, transparent);
+  border: 0;
+  border-radius: 13px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.14), 0 5px 18px rgba(15,20,18,.08);
+  backdrop-filter: blur(22px) saturate(160%);
+  -webkit-backdrop-filter: blur(22px) saturate(160%);
+  cursor: pointer;
+  transition: transform .16s ease, background .16s ease;
+}
+.wifi-password-button:active { transform: scale(.98); background: color-mix(in srgb, var(--surface-strong) 82%, transparent); }
+.wifi-password-button:focus-visible { outline: 0; box-shadow: 0 0 0 3px color-mix(in srgb, var(--action-bg) 32%, transparent); }
+.wifi-password-mask {
+  filter: blur(3.5px);
+  font-size: 16px;
+  font-weight: 850;
+  letter-spacing: .08em;
+  user-select: none;
+}
+.wifi-password-button small { color: var(--green); font-size: 10px; font-weight: 750; text-align: right; }
 
 @media (max-width: 620px) {
   .language-switch { top: 13px; }
@@ -1720,16 +1750,34 @@ body {
   border-radius: 23px;
   box-shadow: 0 16px 34px rgba(24,31,28,.1), inset 0 1px 0 var(--surface-line);
 }
-.meal-photo img { width: 100%; height: 100%; object-fit: cover; transition: transform .4s cubic-bezier(.2,.8,.2,1); }
+.meal-photo img { width: 100%; height: 100%; object-fit: contain; transition: transform .4s cubic-bezier(.2,.8,.2,1); }
 .meal-photo:hover img { transform: scale(1.012); }
 
-/* Fill every photo frame cleanly, matching the approved sauce-card treatment. */
+/* Show every dish completely; a soft image-derived backdrop fills spare space. */
 .food-photo,
 .meal-photo,
 .modal-photo,
 .pairing-photo,
 .mini-photo {
   position: relative;
+  isolation: isolate;
+  background: color-mix(in srgb, var(--surface-solid) 88%, #d9ddd5);
+}
+.food-photo::before,
+.meal-photo::before,
+.modal-photo::before,
+.pairing-photo::before,
+.mini-photo::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: -14px;
+  background-image: var(--photo);
+  background-position: center;
+  background-size: cover;
+  filter: blur(22px) saturate(.78);
+  opacity: .2;
+  transform: scale(1.08);
 }
 .food-photo img,
 .meal-photo img,
@@ -1739,8 +1787,16 @@ body {
   width: 100%;
   height: 100%;
   display: block;
-  object-fit: cover;
+  position: relative;
+  z-index: 1;
+  object-fit: contain;
   object-position: center;
+}
+.modal-photo {
+  width: 100%;
+  padding: 0;
+  border: 0;
+  cursor: zoom-in;
 }
 .food-photo > b,
 .food-photo > .zoom-hint { z-index: 2; }
@@ -1761,6 +1817,56 @@ body {
 .meal-photo:hover img.cold-drink-photo {
   transform: none;
 }
+.product-card:hover .food-photo img,
+.meal-photo:hover img { transform: none; }
+
+.photo-lightbox {
+  position: fixed;
+  z-index: 1000;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: max(18px, env(safe-area-inset-top)) max(18px, env(safe-area-inset-right)) max(18px, env(safe-area-inset-bottom)) max(18px, env(safe-area-inset-left));
+  background: rgba(7,10,9,.9);
+  backdrop-filter: blur(28px) saturate(130%);
+  -webkit-backdrop-filter: blur(28px) saturate(130%);
+  animation: modalFade .18s ease;
+}
+.photo-lightbox img {
+  width: min(96vw, 1280px);
+  height: min(90vh, 1000px);
+  object-fit: contain;
+  user-select: none;
+  -webkit-user-drag: none;
+  filter: drop-shadow(0 28px 60px rgba(0,0,0,.35));
+}
+.lightbox-close {
+  position: fixed;
+  z-index: 2;
+  top: max(14px, env(safe-area-inset-top));
+  right: max(14px, env(safe-area-inset-right));
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255,255,255,.18);
+  box-shadow: inset 0 1px rgba(255,255,255,.24), 0 8px 26px rgba(0,0,0,.22);
+  backdrop-filter: blur(18px);
+}
+.lightbox-close::before,
+.lightbox-close::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 18px;
+  height: 2px;
+  border-radius: 2px;
+  background: white;
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+.lightbox-close::after { transform: translate(-50%, -50%) rotate(-45deg); }
 
 .meal-copy { min-width: 0; }
 .meal-kicker { display: flex; align-items: center; gap: 8px; color: var(--muted); }
