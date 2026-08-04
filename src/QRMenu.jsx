@@ -786,12 +786,14 @@ export default function QRMenu() {
   }}>
           <article className="product-modal-card">
             <button className="modal-close" onClick={() => setSelectedProduct(null)} aria-label={t.close} />
+            <div className="modal-heading">
+              <span className="eyebrow">{categoryTranslations[language][selectedProduct.category] || categoryLabel(selectedProduct.category)}</span>
+              <h2>{selectedProduct.name}</h2>
+            </div>
             <button className="modal-photo" type="button" style={photoStyle(selectedProduct)} onClick={() => selectedProduct.image && setPhotoFullscreen(true)} aria-label={`${t.zoom}: ${selectedProduct.name}`}>
               {selectedProduct.image ? <img className={photoClass(selectedProduct)} src={selectedProduct.image} alt={selectedProduct.name} /> : <span className="photo-placeholder">B&C</span>}
             </button>
             <div className="modal-content">
-              <span className="eyebrow">{categoryTranslations[language][selectedProduct.category] || categoryLabel(selectedProduct.category)}</span>
-              <h2>{selectedProduct.name}</h2>
               {selectedProduct.description && <p>{selectedProduct.description}</p>}
               {selectedProduct.options.length > 0 && <div className="modal-options">{selectedProduct.options.map((option) => <small key={option}>{option}</small>)}</div>}
               <div className="modal-buy">
