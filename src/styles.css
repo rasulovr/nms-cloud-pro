@@ -3723,3 +3723,7 @@ button:not(.nav):not(.rms-pro-logout):hover{transform:translateY(-1px)!important
   .tech-detail-actions{display:grid;grid-template-columns:repeat(2,1fr)}
   .tech-detail-kpis,.tech-detail-bottom-grid{grid-template-columns:1fr}
 }
+.rms-wifi-password-field{display:flex;align-items:center;gap:8px;width:100%}
+.rms-wifi-password-field input{flex:1;min-width:0}
+.rms-wifi-password-field .small{flex:0 0 auto;white-space:nowrap}
+@media(max-width:620px){.rms-wifi-password-field{align-items:stretch}.rms-wifi-password-field .small{min-height:44px}}
