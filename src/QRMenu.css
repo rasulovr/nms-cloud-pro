@@ -2735,3 +2735,21 @@ body {
   opacity: 1;
 }
 
+
+
+/* RMS QR floating-cart contrast hardening across ambient themes. */
+.app-shell .floating-cart {
+  color: var(--action-fg);
+}
+
+.app-shell .floating-cart span {
+  color: color-mix(in srgb, var(--action-fg) 76%, transparent);
+  -webkit-text-fill-color: currentColor;
+  opacity: 1;
+}
+
+.app-shell .floating-cart b {
+  color: var(--action-fg);
+  -webkit-text-fill-color: currentColor;
+  opacity: 1;
+}
