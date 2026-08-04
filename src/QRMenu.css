@@ -2883,10 +2883,14 @@ body {
 }
 
 
-/* Accessible weather scene v4: lunar phases, atmospheric streams, larger navigation. */
+/* Weather scene v5: quiet kinetic glass, lunar phases and atmospheric streams. */
 .app-shell .weather-visual {
-  width: 112px;
-  height: 100px;
+  --weather-light: rgba(249, 252, 255, .96);
+  --weather-shadow: rgba(8, 20, 31, .94);
+  position: relative;
+  isolation: isolate;
+  width: 118px;
+  height: 104px;
   overflow: visible;
   background: transparent;
   border: 0;
@@ -2896,139 +2900,228 @@ body {
   -webkit-backdrop-filter: none;
   filter: none;
 }
+.app-shell .weather-ambient {
+  position: absolute;
+  z-index: -2;
+  width: 102px;
+  height: 102px;
+  left: 7px;
+  top: -9px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,255,255,.18) 0, rgba(255,255,255,.055) 43%, transparent 70%);
+  filter: blur(8px);
+  animation: weatherBreathe 9s ease-in-out infinite;
+}
+.app-shell .weather-orbit {
+  position: absolute;
+  z-index: -1;
+  width: 82px;
+  height: 82px;
+  left: 16px;
+  top: -1px;
+  border: 1px solid rgba(255,255,255,.11);
+  border-radius: 50%;
+  opacity: .52;
+  -webkit-mask-image: linear-gradient(112deg, transparent 8%, #000 38%, transparent 77%);
+  mask-image: linear-gradient(112deg, transparent 8%, #000 38%, transparent 77%);
+  animation: weatherOrbit 18s linear infinite;
+}
 .app-shell .weather-sun,
 .app-shell .weather-moon {
-  width: 68px;
-  height: 68px;
-  left: 17px;
-  top: 4px;
+  position: absolute;
+  z-index: 1;
+  width: 72px;
+  height: 72px;
+  left: 21px;
+  top: 1px;
+  border-radius: 50%;
+  animation: weatherCelestialFloat 8s ease-in-out infinite;
 }
 .app-shell .weather-sun {
   display: block;
   background:
-    radial-gradient(circle at 34% 30%, rgba(255,255,255,.85) 0 3%, transparent 4%),
-    radial-gradient(circle at 62% 67%, rgba(235,164,35,.2) 0 8%, transparent 9%),
-    linear-gradient(145deg, #fff6ae, #ffd258 64%, #f1ae20);
-  box-shadow: 0 0 30px rgba(255,221,99,.68), 0 0 0 11px rgba(255,239,153,.08);
+    radial-gradient(circle at 31% 25%, rgba(255,255,255,.96) 0 3%, transparent 17%),
+    radial-gradient(circle at 67% 73%, rgba(225,145,30,.16) 0 11%, transparent 34%),
+    linear-gradient(142deg, #fffbd8 0%, #ffe891 38%, #ffc957 75%, #eaa533 100%);
+  box-shadow:
+    inset 7px 7px 16px rgba(255,255,255,.48),
+    inset -8px -9px 18px rgba(191,112,21,.17),
+    0 0 22px rgba(255,213,104,.42),
+    0 0 58px rgba(255,203,87,.2);
+}
+.app-shell .weather-sun::before {
+  content: "";
+  position: absolute;
+  inset: 8px;
+  border-radius: inherit;
+  border: 1px solid rgba(255,255,255,.24);
+  opacity: .7;
+}
+.app-shell .weather-sun::after {
+  content: "";
+  position: absolute;
+  width: 22px;
+  height: 9px;
+  left: 15px;
+  top: 12px;
+  border-radius: 50%;
+  background: rgba(255,255,255,.32);
+  filter: blur(4px);
+  transform: rotate(-34deg);
 }
 .app-shell .weather-moon {
   overflow: hidden;
   background:
-    radial-gradient(circle at 30% 25%, rgba(255,255,255,.95) 0 5%, transparent 6%),
-    radial-gradient(circle at 67% 69%, rgba(123,143,157,.13) 0 8%, transparent 9%),
-    linear-gradient(145deg, #fffdec 0%, #e7eef1 52%, #bac8d1 100%);
+    radial-gradient(circle at 28% 22%, rgba(255,255,255,.95) 0 2%, transparent 15%),
+    radial-gradient(circle at 68% 72%, rgba(125,146,161,.1) 0 8%, transparent 26%),
+    linear-gradient(142deg, #fffdf2 0%, #edf3f5 45%, #c4d0d7 100%);
   box-shadow:
-    inset -7px -8px 13px rgba(85,108,124,.16),
-    inset 4px 4px 8px rgba(255,255,255,.65),
-    0 0 30px rgba(220,239,252,.42);
+    inset 7px 6px 13px rgba(255,255,255,.55),
+    inset -9px -10px 17px rgba(75,100,118,.18),
+    0 0 20px rgba(220,239,252,.24),
+    0 0 48px rgba(190,222,241,.15);
+}
+.app-shell .weather-moon::before {
+  content: "";
+  position: absolute;
+  z-index: 3;
+  width: 26px;
+  height: 10px;
+  left: 14px;
+  top: 10px;
+  border-radius: 50%;
+  background: rgba(255,255,255,.28);
+  filter: blur(4px);
+  transform: rotate(-34deg);
 }
 .app-shell .weather-moon::after {
   content: "";
   position: absolute;
-  z-index: 2;
+  z-index: 4;
   inset: 0;
-  display: none;
   border-radius: 50%;
-  background: linear-gradient(145deg, #091723, #142b3b);
-  box-shadow: -2px 0 7px rgba(222,239,247,.14);
-  opacity: .97;
+  background:
+    radial-gradient(circle at 35% 30%, rgba(24,45,61,.78), rgba(7,19,30,.96) 66%),
+    var(--weather-shadow);
+  box-shadow: inset -1px 0 5px rgba(226,241,249,.08);
+  opacity: .96;
+  transition: transform .8s ease, clip-path .8s ease;
 }
-.app-shell .moon-full::after { display: none; }
-.app-shell .moon-waxing-crescent::after,
-.app-shell .moon-waning-crescent::after,
-.app-shell .moon-first-quarter::after,
-.app-shell .moon-last-quarter::after,
-.app-shell .moon-waxing-gibbous::after,
-.app-shell .moon-waning-gibbous::after { display: block; }
-.app-shell .moon-waxing-crescent::after { transform: translateX(-14px); }
-.app-shell .moon-waning-crescent::after { transform: translateX(14px); }
+.app-shell .moon-full::after { opacity: 0; }
+.app-shell .moon-waxing-crescent::after { transform: translateX(-11px) scale(.96); }
+.app-shell .moon-waning-crescent::after { transform: translateX(11px) scale(.96); }
 .app-shell .moon-first-quarter::after {
-  left: 0;
-  right: 50%;
-  border-radius: 68px 0 0 68px;
+  clip-path: inset(0 50% 0 0 round 72px 0 0 72px);
 }
 .app-shell .moon-last-quarter::after {
-  left: 50%;
-  right: 0;
-  border-radius: 0 68px 68px 0;
+  clip-path: inset(0 0 0 50% round 0 72px 72px 0);
 }
-.app-shell .moon-waxing-gibbous::after { transform: translateX(-47px); }
-.app-shell .moon-waning-gibbous::after { transform: translateX(47px); }
+.app-shell .moon-waxing-gibbous::after { transform: translateX(-49px) scale(.84); }
+.app-shell .moon-waning-gibbous::after { transform: translateX(49px) scale(.84); }
 .app-shell .moon-crater {
   position: absolute;
-  z-index: 1;
+  z-index: 2;
   border-radius: 50%;
-  background: rgba(112,133,149,.22);
-  box-shadow: inset 1px 1px 2px rgba(79,99,116,.22), 1px 1px 1px rgba(255,255,255,.18);
+  background: rgba(102,125,142,.12);
+  box-shadow: inset 1px 1px 3px rgba(67,91,109,.2), 1px 1px 2px rgba(255,255,255,.16);
 }
-.app-shell .moon-crater.crater-one { width: 13px; height: 13px; left: 14px; top: 14px; }
-.app-shell .moon-crater.crater-two { width: 8px; height: 8px; right: 13px; top: 25px; }
-.app-shell .moon-crater.crater-three { width: 17px; height: 17px; left: 29px; bottom: 10px; }
+.app-shell .moon-crater.crater-one { width: 12px; height: 12px; left: 16px; top: 22px; }
+.app-shell .moon-crater.crater-two { width: 7px; height: 7px; right: 14px; top: 17px; }
+.app-shell .moon-crater.crater-three { width: 16px; height: 16px; left: 33px; bottom: 11px; opacity: .66; }
 .app-shell .weather-stars {
   display: none;
   position: absolute;
-  width: 3px;
-  height: 3px;
-  left: 25px;
-  top: 17px;
+  z-index: 0;
+  width: 2px;
+  height: 2px;
+  left: 24px;
+  top: 14px;
   border-radius: 50%;
-  background: rgba(255,255,255,.88);
+  background: rgba(255,255,255,.8);
   box-shadow:
-    23px -8px 0 rgba(255,255,255,.55),
-    49px 7px 0 rgba(255,255,255,.8),
-    65px 24px 0 rgba(255,255,255,.48),
-    7px 36px 0 rgba(255,255,255,.62),
-    37px 45px 0 rgba(255,255,255,.72),
-    70px 54px 0 rgba(255,255,255,.5);
-  animation: weatherStars 3.8s ease-in-out infinite;
+    25px -7px 0 rgba(255,255,255,.46),
+    51px 9px 0 rgba(255,255,255,.75),
+    70px 26px 0 rgba(255,255,255,.38),
+    8px 41px 0 rgba(255,255,255,.55),
+    42px 52px 0 rgba(255,255,255,.64),
+    75px 59px 0 rgba(255,255,255,.42);
+  animation: weatherStars 5.5s ease-in-out infinite;
 }
 .app-shell .weather-visual.star-sky .weather-stars { display: block; }
 .app-shell .weather-visual.moonless .weather-moon { display: none; }
 .app-shell .weather-cloud {
-  width: 94px;
-  height: 17px;
-  left: 8px;
-  top: 61px;
-  border-radius: 999px 58% 999px 42%;
-  background: linear-gradient(90deg, transparent, rgba(247,252,255,.36) 15%, rgba(255,255,255,.88) 52%, rgba(226,239,247,.36) 87%, transparent);
-  box-shadow: 0 7px 16px rgba(23,61,88,.13);
-  filter: blur(.2px);
-  animation: weatherCloudStream 6.5s ease-in-out infinite;
+  z-index: 5;
+  width: 106px;
+  height: 15px;
+  left: 2px;
+  top: 65px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, transparent 0%, rgba(242,249,252,.14) 14%, rgba(253,255,255,.72) 48%, rgba(222,235,243,.26) 79%, transparent 100%);
+  box-shadow: 0 7px 19px rgba(15,43,62,.1);
+  filter: blur(.35px);
+  transform-origin: center;
+  animation: weatherCloudStream 9s cubic-bezier(.45,.05,.55,.95) infinite;
 }
 .app-shell .weather-cloud::before,
 .app-shell .weather-cloud::after { display: none; }
 .app-shell .weather-cloud.cloud-two {
-  width: 82px;
-  height: 13px;
-  left: 20px;
-  top: 40px;
+  width: 91px;
+  height: 10px;
+  left: 18px;
+  top: 44px;
   border-radius: 999px;
-  opacity: .56;
-  animation-delay: -2.8s;
+  opacity: .4;
+  filter: blur(1px);
+  animation-delay: -4.2s;
 }
 .app-shell .weather-visual.cloudy .cloud-two,
 .app-shell .weather-visual.rainy .cloud-two,
 .app-shell .weather-visual.overcast-sky .cloud-two { display: block; }
 .app-shell .weather-visual.sunny .weather-cloud {
   transform: none;
-  opacity: .34;
+  opacity: .24;
 }
-.app-shell .weather-visual.windy .weather-sun { display: block; }
-.app-shell .weather-visual.windy .weather-cloud { display: block; opacity: .28; }
+.app-shell .weather-visual.windy .weather-sun { display: block; opacity: .78; }
+.app-shell .weather-visual.windy .weather-cloud { display: block; opacity: .2; }
 .app-shell .weather-visual.windy .weather-wind {
   display: block;
-  left: 4px;
-  width: 102px;
-  height: 18px;
-  border-top: 3px solid rgba(245,252,255,.82);
+  z-index: 7;
+  left: -2px;
+  width: 112px;
+  height: 12px;
+  border: 0;
+  border-top: 1.5px solid rgba(247,253,255,.72);
   border-radius: 50%;
-  filter: drop-shadow(0 4px 7px rgba(20,62,83,.15));
+  filter: drop-shadow(0 3px 5px rgba(20,62,83,.12));
+  animation: weatherWindFlow 3.8s ease-in-out infinite;
 }
-.app-shell .weather-visual.windy .wind-one { top: 35px; }
-.app-shell .weather-visual.windy .wind-two { top: 62px; left: 18px; width: 82px; animation-delay: -.7s; }
+.app-shell .weather-visual.windy .weather-wind::after {
+  content: "";
+  position: absolute;
+  width: 46%;
+  right: 7%;
+  top: 4px;
+  border-top: 1px solid rgba(247,253,255,.34);
+  border-radius: 50%;
+}
+.app-shell .weather-visual.windy .wind-one { top: 36px; }
+.app-shell .weather-visual.windy .wind-two { top: 65px; left: 15px; width: 92px; animation-delay: -1.3s; }
+.app-shell .weather-rain {
+  z-index: 8;
+  width: 1px;
+  height: 17px;
+  top: 72px;
+  background: linear-gradient(180deg, rgba(210,239,255,.06), rgba(216,241,255,.8));
+  border-radius: 999px;
+  transform: rotate(14deg);
+  animation: weatherRainDrop 1.7s ease-in infinite;
+}
+.app-shell .weather-rain.rain-one { left: 28px; }
+.app-shell .weather-rain.rain-two { left: 55px; animation-delay: -.55s; }
+.app-shell .weather-rain.rain-three { left: 82px; animation-delay: -1.1s; }
 .app-shell .weather-visual.night-sky .weather-cloud {
-  background: linear-gradient(90deg, transparent, rgba(127,148,164,.25) 15%, rgba(187,205,216,.7) 52%, rgba(91,116,135,.25) 87%, transparent);
-  box-shadow: 0 8px 18px rgba(0,0,0,.18);
+  background: linear-gradient(90deg, transparent, rgba(119,145,164,.12) 15%, rgba(195,213,223,.52) 52%, rgba(86,113,133,.17) 87%, transparent);
+  box-shadow: 0 8px 20px rgba(0,0,0,.12);
 }
 .app-shell .weather-visual.overcast-sky .weather-stars { display: none; }
 
@@ -3049,28 +3142,42 @@ body {
   font-weight: 740;
 }
 @keyframes weatherCloudStream {
-  0%, 100% { transform: translateX(-4px) scaleX(.96); opacity: .56; }
-  50% { transform: translateX(5px) scaleX(1.04); opacity: .9; }
+  0%, 100% { transform: translateX(-7px) scaleX(.92); opacity: .36; }
+  50% { transform: translateX(8px) scaleX(1.03); opacity: .78; }
 }
-@keyframes weatherStars { 50% { opacity: .5; } }
+@keyframes weatherCelestialFloat { 50% { transform: translate3d(0,-2px,0); } }
+@keyframes weatherBreathe { 50% { transform: scale(1.08); opacity: .72; } }
+@keyframes weatherOrbit { to { transform: rotate(360deg); } }
+@keyframes weatherStars { 50% { opacity: .38; transform: scale(.98); } }
+@keyframes weatherWindFlow {
+  0%, 100% { transform: translateX(-7px) scaleX(.88); opacity: .22; }
+  50% { transform: translateX(8px) scaleX(1); opacity: .9; }
+}
+@keyframes weatherRainDrop {
+  0% { transform: translate3d(-2px,-8px,0) rotate(14deg) scaleY(.65); opacity: 0; }
+  30% { opacity: .9; }
+  100% { transform: translate3d(3px,12px,0) rotate(14deg) scaleY(1); opacity: 0; }
+}
 
 @media (max-width: 620px) {
   .app-shell .hero-weather .weather-visual {
-    width: 94px;
-    height: 92px;
-    margin: -3px -18px 0 -6px;
+    width: 98px;
+    height: 94px;
+    margin: -3px -16px 0 -8px;
     transform: none;
   }
   .app-shell .weather-sun,
   .app-shell .weather-moon {
-    width: 62px;
-    height: 62px;
-    left: 14px;
-    top: 6px;
+    width: 66px;
+    height: 66px;
+    left: 16px;
+    top: 4px;
   }
-  .app-shell .weather-cloud { width: 86px; left: 4px; top: 61px; }
-  .app-shell .weather-cloud.cloud-two { width: 72px; left: 15px; top: 42px; }
-  .app-shell .weather-visual.windy .weather-wind { width: 88px; }
+  .app-shell .weather-ambient { width: 92px; height: 92px; left: 1px; }
+  .app-shell .weather-orbit { width: 75px; height: 75px; left: 11px; }
+  .app-shell .weather-cloud { width: 92px; left: 1px; top: 63px; }
+  .app-shell .weather-cloud.cloud-two { width: 77px; left: 14px; top: 43px; }
+  .app-shell .weather-visual.windy .weather-wind { width: 96px; }
   .app-shell .language-switch button {
     min-width: 38px;
     height: 30px;
@@ -3092,10 +3199,19 @@ body {
 }
 @media (max-width: 390px) {
   .app-shell .hero-weather .weather-visual {
-    width: 88px;
-    height: 88px;
-    margin-left: -8px;
+    width: 92px;
+    height: 90px;
+    margin-left: -10px;
     transform: none;
   }
   .app-shell .main-nav button { font-size: 10px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-shell .weather-visual *,
+  .app-shell .weather-visual *::before,
+  .app-shell .weather-visual *::after {
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+  }
 }
