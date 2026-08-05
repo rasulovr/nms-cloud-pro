@@ -5,7 +5,7 @@ import "./QRMenu.css";
 const categoryOrder = {
   breakfast: ["Новинки", "ЗАВТРАК", "КОФЕ", "ЧАЙ", "ХОЛОДНЫЙ КОФЕ", "ДЕСЕРТЫ", "САЛАТЫ", "СУПЫ", "ГОРЯЧИЕ БЛЮДА", "ЗАКУСКИ", "ПИЦЦА", "ЛИМОНАДЫ", "ХОЛОДНЫЕ НАПИТКИ", "EKSTRA KITCHEN", "EKSTRA BAR"],
   lunch: ["Новинки", "СУПЫ", "САЛАТЫ", "ГОРЯЧИЕ БЛЮДА", "ЗАКУСКИ", "ПИЦЦА", "ЗАВТРАК", "ДЕСЕРТЫ", "КОФЕ", "ХОЛОДНЫЙ КОФЕ", "ЛИМОНАДЫ", "ЧАЙ", "ХОЛОДНЫЕ НАПИТКИ", "EKSTRA KITCHEN", "EKSTRA BAR"],
-  dinner: ["Новинки", "ГОРЯЧИЕ БЛЮДА", "САЛАТЫ", "ЗАКУСКИ", "ПИЦЦА", "СУПЫ", "ДЕСЕРТЫ", "ЛИМОНАДЫ", "ХОЛОДНЫЕ НАПИТКИ", "КОФЕ", "ЧАЙ", "ХОЛОДНЫЙ КОФЕ", "ЗАВТРАК", "EKSTRA KITCHEN", "EKSTRA BAR"]
+  dinner: ["ГОРЯЧИЕ БЛЮДА", "САЛАТЫ", "ЗАКУСКИ", "ПИЦЦА", "СУПЫ", "Новинки", "ДЕСЕРТЫ", "ЛИМОНАДЫ", "ХОЛОДНЫЕ НАПИТКИ", "КОФЕ", "ЧАЙ", "ХОЛОДНЫЙ КОФЕ", "ЗАВТРАК", "EKSTRA KITCHEN", "EKSTRA BAR"]
 };
 const productPriority = {
   breakfast: [/капучино.*круассан/i, /сырник/i, /шакшук/i, /омлет/i, /яичниц/i, /нью-йорк.*завтрак/i, /бейгл.*лосос/i, /гранол/i, /овсян.*каш/i],
@@ -18,6 +18,14 @@ const productMomentRank = (product, moment) => {
   const index = productPriority[moment].findIndex((pattern) => pattern.test(haystack));
   return index < 0 ? 999 : index;
 };
+const productSearchText = (product) => `${product.name || ""} ${product.sourceName || ""} ${product.translationKey || ""} ${product.description || ""} ${product.sourceDescription || ""} ${product.category || ""}`.toLocaleLowerCase("ru-RU");
+const isBurgerOrSandwich = (product) => /бургер|burger|сэндвич|sandwich|sendviç/.test(productSearchText(product));
+const isDessert = (product) => product.category === "ДЕСЕРТЫ" || /десерт|dessert|şirniyyat/.test(productSearchText(product));
+const isCoffee = (product) => ["КОФЕ", "ХОЛОДНЫЙ КОФЕ"].includes(product.category) || /кофе|coffee|qəhvə|капуч|cappucc|латте|latte|раф|americano|американо|эспрессо|espresso/.test(productSearchText(product));
+const isMainDish = (product) => product.category === "ГОРЯЧИЕ БЛЮДА";
+const isIcedTea = (product) => /айс[\s-]*ти|ice[\s-]*tea|iced[\s-]*tea|soyuq\s+çay/.test(productSearchText(product));
+const isWineOrProsecco = (product) => /вино|wine|şərab|prosecco|просекко/.test(productSearchText(product));
+const isVerifiedAdult = (profile) => profile?.age_verified_18 === true || profile?.is_adult_verified === true;
 const pairingCategories = {
   "\u0417\u0410\u0412\u0422\u0420\u0410\u041A": ["\u041A\u041E\u0424\u0415", "\u0425\u041E\u041B\u041E\u0414\u041D\u042B\u0419 \u041A\u041E\u0424\u0415", "\u041B\u0418\u041C\u041E\u041D\u0410\u0414\u042B"],
   "\u0417\u0410\u041A\u0423\u0421\u041A\u0418": ["\u041B\u0418\u041C\u041E\u041D\u0410\u0414\u042B", "\u0425\u041E\u041B\u041E\u0414\u041D\u042B\u0415 \u041D\u0410\u041F\u0418\u0422\u041A\u0418", "\u0421\u0410\u041B\u0410\u0422\u042B"],
@@ -482,11 +490,36 @@ export default function QRMenu() {
   }, [localizedProducts, bakuHour, branch, unavailable, t]);
   const pairings = useMemo(() => {
     if (!selectedProduct) return [];
-    const preferred = pairingCategories[selectedProduct.category] || ["\u041B\u0418\u041C\u041E\u041D\u0410\u0414\u042B", "\u041A\u041E\u0424\u0415", "\u0421\u0410\u041B\u0410\u0422\u042B"];
+    const moment = getMealMoment(bakuHour);
+    const preferred = pairingCategories[selectedProduct.category] || ["ЛИМОНАДЫ", "КОФЕ", "САЛАТЫ"];
+    const adultVerified = isVerifiedAdult(profile);
+    const pairingRank = (product) => {
+      if (isBurgerOrSandwich(selectedProduct)) {
+        if (isIcedTea(product)) return 0;
+        if (product.category === "ЛИМОНАДЫ") return 1;
+        if (product.category === "ХОЛОДНЫЕ НАПИТКИ") return 2;
+        return 999;
+      }
+      if (isDessert(selectedProduct)) {
+        if (product.category === "КОФЕ") return 0;
+        if (product.category === "ХОЛОДНЫЙ КОФЕ") return moment === "dinner" ? 2 : 1;
+        if (product.category === "ЧАЙ") return 3;
+        return 999;
+      }
+      if (isCoffee(selectedProduct)) return isDessert(product) ? 0 : 999;
+      if (isMainDish(selectedProduct)) {
+        if (moment === "dinner" && adultVerified && isWineOrProsecco(product)) return 0;
+        if (product.category === "ЛИМОНАДЫ") return 1;
+        if (product.category === "ХОЛОДНЫЕ НАПИТКИ") return 2;
+        return 999;
+      }
+      const categoryIndex = preferred.indexOf(product.category);
+      return categoryIndex < 0 ? 999 : categoryIndex;
+    };
     return localizedProducts.filter(
-      (product) => product.id !== selectedProduct.id && product.branches.includes(branch) && !unavailable.includes(product.id) && preferred.includes(product.category)
-    ).sort((a, b) => preferred.indexOf(a.category) - preferred.indexOf(b.category) || b.rating - a.rating).filter((product, index, list) => index === list.findIndex((item) => item.category === product.category)).slice(0, 1);
-  }, [localizedProducts, selectedProduct, branch, unavailable]);
+      (product) => product.id !== selectedProduct.id && product.branches.includes(branch) && !unavailable.includes(product.id) && pairingRank(product) < 999
+    ).sort((a, b) => pairingRank(a) - pairingRank(b) || b.rating - a.rating).slice(0, 1);
+  }, [localizedProducts, selectedProduct, branch, unavailable, bakuHour, profile]);
   function flash(text) {
     setNotice(text);
     window.setTimeout(() => setNotice(""), 2400);
@@ -626,12 +659,9 @@ export default function QRMenu() {
     ["info", t.info]
   ].map(([id, label]) => <button
     key={id}
-    className={`${screen === id ? "active" : ""} ${id === "bill" || id === "loyalty" ? "coming-soon" : ""}`}
-    onClick={() => {
-      if (id === "bill" || id === "loyalty") return flash(`«${label}» ${t.soonMessage}`);
-      setScreen(id);
-    }}
-  >{label}{(id === "bill" || id === "loyalty") && <small>{t.soon}</small>}</button>)}
+    className={screen === id ? "active" : ""}
+    onClick={() => setScreen(id)}
+  >{label}</button>)}
       </nav>
 
       {notice && <div className="toast">{notice}</div>}
