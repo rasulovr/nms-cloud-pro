@@ -493,6 +493,13 @@ export default function QRMenu() {
     const moment = getMealMoment(bakuHour);
     const preferred = pairingCategories[selectedProduct.category] || ["ЛИМОНАДЫ", "КОФЕ", "САЛАТЫ"];
     const adultVerified = isVerifiedAdult(profile);
+    const pairingGroup = (product) => {
+      if (isBurgerOrSandwich(product)) return "burger-or-sandwich";
+      if (isDessert(product)) return "dessert";
+      if (isCoffee(product)) return "coffee";
+      if (isMainDish(product)) return "main-dish";
+      return `category:${product.category}`;
+    };
     const pairingRank = (product) => {
       if (isBurgerOrSandwich(selectedProduct)) {
         if (isIcedTea(product)) return 0;
@@ -516,9 +523,16 @@ export default function QRMenu() {
       const categoryIndex = preferred.indexOf(product.category);
       return categoryIndex < 0 ? 999 : categoryIndex;
     };
-    return localizedProducts.filter(
+    const candidates = localizedProducts.filter(
       (product) => product.id !== selectedProduct.id && product.branches.includes(branch) && !unavailable.includes(product.id) && pairingRank(product) < 999
-    ).sort((a, b) => pairingRank(a) - pairingRank(b) || b.rating - a.rating).slice(0, 1);
+    ).sort((a, b) => pairingRank(a) - pairingRank(b) || b.rating - a.rating || String(a.id).localeCompare(String(b.id)));
+    if (!candidates.length) return [];
+    const sourceGroup = pairingGroup(selectedProduct);
+    const sourceProducts = localizedProducts.filter(
+      (product) => product.branches.includes(branch) && !unavailable.includes(product.id) && pairingGroup(product) === sourceGroup
+    ).sort((a, b) => String(a.id).localeCompare(String(b.id)));
+    const sourceIndex = Math.max(0, sourceProducts.findIndex((product) => product.id === selectedProduct.id));
+    return [candidates[sourceIndex % candidates.length]];
   }, [localizedProducts, selectedProduct, branch, unavailable, bakuHour, profile]);
   function flash(text) {
     setNotice(text);
