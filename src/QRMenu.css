@@ -3067,8 +3067,8 @@ body {
 
 @media (max-width: 760px) {
   .app-shell .hero {
-    min-height: 430px;
-    padding: 26px 18px 24px;
+    min-height: 214px;
+    padding: 20px 18px 18px;
     display: block;
     border-radius: 0 0 34px 34px;
   }
@@ -3083,7 +3083,7 @@ body {
     position: absolute;
     z-index: 7;
     left: 50%;
-    top: 75px;
+    top: 58px;
     width: calc(100% - 72px);
     overflow: hidden;
     font-size: 11px;
@@ -3106,35 +3106,39 @@ body {
     inset: 0;
   }
   .app-shell .hero-weather .weather-visual {
-    left: 7%;
-    top: -7px;
-    transform: scale(2.35);
-    opacity: .78;
+    left: 3%;
+    top: -18px;
+    transform: scale(1.45);
+    opacity: .68;
   }
   .app-shell.theme-night .hero-weather .weather-visual {
     left: auto;
-    right: 2%;
-    top: 16px;
-    transform: scale(2.15);
+    right: 1%;
+    top: -4px;
+    transform: scale(1.35);
     transform-origin: top right;
   }
   .app-shell .weather-stage {
     left: 50%;
-    top: 52%;
+    top: 76px;
     width: calc(100% - 54px);
+    transform: translateX(-50%);
   }
   .app-shell .weather-location {
-    font-size: clamp(31px, 9vw, 42px);
+    margin-bottom: 1px;
+    font-size: clamp(19px, 5.4vw, 23px);
   }
   .app-shell .weather-primary {
-    font-size: clamp(108px, 34vw, 152px);
+    font-size: clamp(68px, 21vw, 86px);
+    line-height: .82;
   }
   .app-shell .weather-condition {
-    margin-top: 14px;
-    font-size: clamp(18px, 5vw, 23px);
+    margin-top: 6px;
+    font-size: clamp(13px, 3.7vw, 16px);
   }
   .app-shell .weather-range {
-    font-size: clamp(17px, 4.7vw, 21px);
+    margin-top: 2px;
+    font-size: clamp(12px, 3.4vw, 14px);
   }
   .app-shell .hero-side .table-chip {
     right: 17px;
@@ -3143,11 +3147,12 @@ body {
 }
 
 @media (max-width: 390px) {
-  .app-shell .hero { min-height: 405px; }
-  .app-shell .weather-location { font-size: 29px; }
-  .app-shell .weather-primary { font-size: 112px; }
-  .app-shell .weather-condition { font-size: 17px; }
-  .app-shell .weather-range { font-size: 16px; }
+  .app-shell .hero { min-height: 204px; }
+  .app-shell .weather-stage { top: 73px; }
+  .app-shell .weather-location { font-size: 18px; }
+  .app-shell .weather-primary { font-size: 66px; }
+  .app-shell .weather-condition { font-size: 12px; }
+  .app-shell .weather-range { font-size: 11px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
