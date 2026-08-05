@@ -485,7 +485,7 @@ export default function QRMenu() {
     const preferred = pairingCategories[selectedProduct.category] || ["\u041B\u0418\u041C\u041E\u041D\u0410\u0414\u042B", "\u041A\u041E\u0424\u0415", "\u0421\u0410\u041B\u0410\u0422\u042B"];
     return localizedProducts.filter(
       (product) => product.id !== selectedProduct.id && product.branches.includes(branch) && !unavailable.includes(product.id) && preferred.includes(product.category)
-    ).sort((a, b) => preferred.indexOf(a.category) - preferred.indexOf(b.category) || b.rating - a.rating).filter((product, index, list) => index === list.findIndex((item) => item.category === product.category)).slice(0, 3);
+    ).sort((a, b) => preferred.indexOf(a.category) - preferred.indexOf(b.category) || b.rating - a.rating).filter((product, index, list) => index === list.findIndex((item) => item.category === product.category)).slice(0, 1);
   }, [localizedProducts, selectedProduct, branch, unavailable]);
   function flash(text) {
     setNotice(text);
