@@ -177,6 +177,7 @@ const nightWeatherTitles = {
 };
 const displayBranchName = (branch) => branch === "BC1" ? "Barista&Chef R.Behbudov" : `Barista&Chef · ${branch}`;
 const photoClass = (product) => {
+  if (String(product.image || "").includes("/menu/bc-087-water-full.webp")) return "water-bottle-photo";
   if (product.category === "\u041B\u0418\u041C\u041E\u041D\u0410\u0414\u042B") return "lemonade-photo";
   if (product.category === "\u0425\u041E\u041B\u041E\u0414\u041D\u042B\u0415 \u041D\u0410\u041F\u0418\u0422\u041A\u0418") return "cold-drink-photo";
   return undefined;
