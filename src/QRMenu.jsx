@@ -167,6 +167,19 @@ const nightWeatherTitles = {
   ru: { rainy: "Дождливая ночь в Баку", windy: "Ветреная ночь в Баку", sunny: "Ясная ночь в Баку", cool: "Прохладная ночь в Баку", cloudy: "Облачная ночь в Баку", clear: "Ясная ночь в Баку" },
   en: { rainy: "Rainy night in Baku", windy: "Windy night in Baku", sunny: "Clear night in Baku", cool: "Cool night in Baku", cloudy: "Cloudy night in Baku", clear: "Clear night in Baku" }
 };
+const weatherConditionTitles = {
+  day: {
+    az: { rainy: "Yağışlı", windy: "Küləkli", sunny: "Əsasən günəşli", cool: "Sərin", cloudy: "Buludlu", clear: "Açıq hava" },
+    ru: { rainy: "Дождь", windy: "Ветрено", sunny: "Преимущественно солнечно", cool: "Прохладно", cloudy: "Облачно", clear: "Ясно" },
+    en: { rainy: "Rainy", windy: "Windy", sunny: "Mostly Sunny", cool: "Cool", cloudy: "Cloudy", clear: "Clear" }
+  },
+  night: {
+    az: { rainy: "Yağışlı gecə", windy: "Küləkli gecə", sunny: "Açıq gecə", cool: "Sərin gecə", cloudy: "Buludlu gecə", clear: "Açıq gecə" },
+    ru: { rainy: "Дождливая ночь", windy: "Ветреная ночь", sunny: "Ясная ночь", cool: "Прохладная ночь", cloudy: "Облачная ночь", clear: "Ясная ночь" },
+    en: { rainy: "Rainy Night", windy: "Windy Night", sunny: "Clear Night", cool: "Cool Night", cloudy: "Cloudy Night", clear: "Clear Night" }
+  }
+};
+const weatherLocationTitles = { az: "Bakı", ru: "Баку", en: "Baku" };
 const displayBranchName = (branch) => branch === "BC1" ? "Barista&Chef R.Behbudov" : `Barista&Chef · ${branch}`;
 const photoClass = (product) => {
   if (product.category === "\u041B\u0418\u041C\u041E\u041D\u0410\u0414\u042B") return "lemonade-photo";
@@ -336,19 +349,33 @@ export default function QRMenu() {
   }, [order?.public_token, order?.status]);
   useEffect(() => {
     let active = true;
-    const directEndpoint = "https://api.open-meteo.com/v1/forecast?latitude=40.4093&longitude=49.8671&timezone=Asia%2FBaku&forecast_days=1&current=temperature_2m%2Capparent_temperature%2Cweather_code%2Cwind_speed_10m%2Cwind_gusts_10m&daily=temperature_2m_max%2Cprecipitation_sum&wind_speed_unit=ms";
+    const directEndpoint = "https://api.open-meteo.com/v1/forecast?latitude=40.4093&longitude=49.8671&timezone=Asia%2FBaku&forecast_days=1&current=temperature_2m%2Capparent_temperature%2Cweather_code%2Cwind_speed_10m%2Cwind_gusts_10m&daily=temperature_2m_max%2Ctemperature_2m_min%2Cprecipitation_sum&wind_speed_unit=ms";
     const normalizeDirectWeather = (data) => ({
       temperature: Number(data.current?.temperature_2m ?? 0),
       apparentTemperature: Number(data.current?.apparent_temperature ?? 0),
       maxTemperature: Number(data.daily?.temperature_2m_max?.[0] ?? data.current?.temperature_2m ?? 0),
+      minTemperature: Number(data.daily?.temperature_2m_min?.[0] ?? data.current?.temperature_2m ?? 0),
       precipitation: Number(data.daily?.precipitation_sum?.[0] ?? 0),
       windSpeed: Number(data.current?.wind_speed_10m ?? 0),
       windGust: Number(data.current?.wind_gusts_10m ?? 0),
       weatherCode: Number(data.current?.weather_code ?? 0)
     });
-    fetch("/api/weather").then((response) => response.ok ? response.json() : Promise.reject()).catch(() => fetch(directEndpoint).then((response) => response.ok ? response.json() : Promise.reject()).then(normalizeDirectWeather)).then((data) => {
-      if (active) setWeather(data);
-    }).catch(() => {
+    fetch("/api/weather")
+      .then((response) => response.ok ? response.json() : Promise.reject())
+      .then(async (data) => {
+        if (Number.isFinite(Number(data?.minTemperature))) return data;
+        try {
+          const response = await fetch(directEndpoint);
+          if (!response.ok) return data;
+          return { ...data, ...normalizeDirectWeather(await response.json()) };
+        } catch {
+          return data;
+        }
+      })
+      .catch(() => fetch(directEndpoint).then((response) => response.ok ? response.json() : Promise.reject()).then(normalizeDirectWeather))
+      .then((data) => {
+        if (active) setWeather(data);
+      }).catch(() => {
       if (active) setWeather(null);
     });
     return () => {
@@ -584,6 +611,7 @@ export default function QRMenu() {
   }
   const atmosphere = weatherOffer?.kind ?? "clear";
   const weatherTitle = (dayPhase === "night" ? nightWeatherTitles : weatherTitles)[language][atmosphere];
+  const weatherCondition = weatherConditionTitles[dayPhase === "night" ? "night" : "day"][language][atmosphere];
   const hasTableContext = Boolean(table);
   const recommendationQty = mealRecommendation ? cart.find((line) => line.id === mealRecommendation.product.id)?.qty || 0 : 0;
   return <main className={`app-shell theme-${dayPhase} weather-theme-${atmosphere}`}>
@@ -604,14 +632,18 @@ export default function QRMenu() {
         </div>
         <div className="hero-side">
           {weatherOffer && <div className={`hero-weather weather-${weatherOffer.kind}`} aria-label={weatherTitle}>
-              <div className="hero-weather-copy">
-                {weather && <strong>{Math.round(weather.temperature)}°</strong>}
-                <div>
-                  <span>{weatherTitle}</span>
-                  {weather && <small>{t.feels} {Math.round(weather.apparentTemperature)}° · {t.wind} {Math.round(weather.windSpeed)} m/s</small>}
-                </div>
+              <div className="weather-sky-layer" aria-hidden="true">
+                <WeatherVisual kind={weatherOffer.kind} phase={dayPhase} />
               </div>
-              <WeatherVisual kind={weatherOffer.kind} phase={dayPhase} />
+              <div className="weather-stage">
+                <span className="weather-location">{weatherLocationTitles[language]}</span>
+                {weather && <strong className="weather-primary">{Math.round(weather.temperature)}°</strong>}
+                <span className="weather-condition">{weatherCondition}</span>
+                {weather && <small className="weather-range">
+                  H:{Math.round(weather.maxTemperature ?? weather.temperature)}°&nbsp;&nbsp;
+                  L:{Math.round(weather.minTemperature ?? weather.apparentTemperature ?? weather.temperature)}°
+                </small>}
+              </div>
             </div>}
           {hasTableContext && <div className="table-chip"><small>{t.yourTable}</small><b>{table}</b></div>}
         </div>

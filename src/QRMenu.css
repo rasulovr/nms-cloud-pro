@@ -2883,6 +2883,282 @@ body {
 }
 
 
+/* Weather masthead v6: immersive sky, large reading and integrated atmosphere. */
+.app-shell .hero {
+  --sky-a: #4e91c8;
+  --sky-b: #82bfe7;
+  --sky-c: #d7ecf8;
+  min-height: 340px;
+  isolation: isolate;
+  color: #fff;
+  background:
+    radial-gradient(circle at 74% 12%, rgba(255,255,255,.88) 0 2%, rgba(255,255,255,.34) 11%, transparent 30%),
+    linear-gradient(152deg, var(--sky-c) 0%, var(--sky-b) 36%, var(--sky-a) 72%, #397cae 100%);
+  box-shadow: 0 28px 70px rgba(37, 86, 121, .2);
+}
+.app-shell.weather-theme-cloudy .hero,
+.app-shell.weather-theme-cool .hero {
+  --sky-a: #66859e;
+  --sky-b: #91adbf;
+  --sky-c: #d6e1e8;
+}
+.app-shell.weather-theme-rainy .hero {
+  --sky-a: #405e76;
+  --sky-b: #718da2;
+  --sky-c: #b4c6d2;
+}
+.app-shell.weather-theme-windy .hero {
+  --sky-a: #4e86aa;
+  --sky-b: #84b5cf;
+  --sky-c: #d7e9f1;
+}
+.app-shell.theme-night .hero {
+  --sky-a: #08182c;
+  --sky-b: #163655;
+  --sky-c: #3a6583;
+  background:
+    radial-gradient(circle at 75% 18%, rgba(219,237,248,.2), transparent 22%),
+    radial-gradient(circle at 20% 32%, rgba(111,167,202,.15), transparent 32%),
+    linear-gradient(155deg, var(--sky-c) 0%, var(--sky-b) 43%, var(--sky-a) 100%);
+  box-shadow: 0 28px 70px rgba(5, 17, 31, .34);
+}
+.app-shell .hero::before {
+  z-index: 0;
+  width: 470px;
+  height: 310px;
+  right: -46px;
+  top: -145px;
+  border: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,255,255,.33), rgba(255,255,255,.09) 34%, transparent 70%);
+  filter: blur(12px);
+  animation: skyLightBreathe 10s ease-in-out infinite;
+}
+.app-shell .hero::after {
+  z-index: 0;
+  width: 76%;
+  height: 86px;
+  right: -7%;
+  top: 40%;
+  border: 0;
+  border-radius: 50%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.2), rgba(255,255,255,.06), transparent);
+  filter: blur(16px);
+  transform: rotate(-12deg);
+  animation: skyCurrent 18s ease-in-out infinite;
+}
+.app-shell .hero-copy {
+  z-index: 4;
+  width: min(390px, 35%);
+}
+.app-shell .hero-copy > span {
+  color: rgba(255,255,255,.88);
+  text-shadow: 0 1px 16px rgba(16,50,75,.2);
+}
+.app-shell .daily-quote {
+  max-width: 350px;
+}
+.app-shell .hero-side {
+  position: static;
+  z-index: 3;
+}
+.app-shell .hero-weather {
+  position: absolute;
+  z-index: 2;
+  inset: 0 0 0 38%;
+  min-width: 0;
+  padding: 0;
+  display: block;
+  color: #fff;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  overflow: hidden;
+}
+.app-shell.theme-night .hero-weather {
+  background: transparent;
+  border: 0;
+}
+.app-shell .weather-sky-layer {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.app-shell .hero-weather .weather-visual {
+  position: absolute;
+  width: 118px;
+  height: 104px;
+  left: 16%;
+  top: 2px;
+  margin: 0;
+  transform: scale(2.65);
+  transform-origin: top left;
+  opacity: .9;
+  filter: drop-shadow(0 18px 30px rgba(42,91,126,.15));
+}
+.app-shell.theme-night .hero-weather .weather-visual {
+  left: auto;
+  right: 8%;
+  top: 18px;
+  transform-origin: top right;
+  opacity: .82;
+}
+.app-shell .weather-stage {
+  position: absolute;
+  z-index: 4;
+  left: 53%;
+  top: 51%;
+  width: min(390px, 62%);
+  display: grid;
+  justify-items: center;
+  color: #fff;
+  text-align: center;
+  transform: translate(-50%, -50%);
+  text-shadow: 0 2px 22px rgba(29,75,108,.25);
+}
+.app-shell .weather-location {
+  margin-bottom: 3px;
+  font-size: clamp(27px, 3vw, 42px);
+  font-weight: 390;
+  line-height: 1;
+  letter-spacing: -.035em;
+}
+.app-shell .weather-primary {
+  display: block;
+  margin-left: .1em;
+  font-size: clamp(96px, 11vw, 154px);
+  font-weight: 190;
+  line-height: .88;
+  letter-spacing: -.085em;
+}
+.app-shell .weather-condition {
+  margin-top: 15px;
+  color: rgba(255,255,255,.88);
+  font-size: clamp(17px, 1.7vw, 24px);
+  font-weight: 620;
+  line-height: 1.1;
+}
+.app-shell .weather-range {
+  margin-top: 4px;
+  color: #fff;
+  font-size: clamp(16px, 1.55vw, 22px);
+  font-weight: 530;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.app-shell .hero-side .table-chip {
+  position: absolute;
+  z-index: 7;
+  right: 28px;
+  bottom: 24px;
+}
+@keyframes skyLightBreathe {
+  50% { transform: scale(1.07); opacity: .8; }
+}
+@keyframes skyCurrent {
+  0%,100% { transform: translateX(-3%) rotate(-12deg); opacity: .48; }
+  50% { transform: translateX(5%) rotate(-9deg); opacity: .82; }
+}
+
+@media (max-width: 760px) {
+  .app-shell .hero {
+    min-height: 430px;
+    padding: 26px 18px 24px;
+    display: block;
+    border-radius: 0 0 34px 34px;
+  }
+  .app-shell .brand-mark { left: 20px; top: 22px; z-index: 8; }
+  .app-shell .language-switch { right: 16px; top: 17px; z-index: 8; }
+  .app-shell .hero-copy {
+    position: static;
+    width: auto;
+    margin: 0;
+  }
+  .app-shell .hero-copy > span {
+    position: absolute;
+    z-index: 7;
+    left: 50%;
+    top: 75px;
+    width: calc(100% - 72px);
+    overflow: hidden;
+    font-size: 11px;
+    text-align: center;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    transform: translateX(-50%);
+  }
+  .app-shell .daily-quote { display: none; }
+  .app-shell .hero-context {
+    position: absolute;
+    z-index: 7;
+    left: 20px;
+    bottom: 26px;
+    max-width: calc(100% - 118px);
+    margin: 0;
+    color: rgba(255,255,255,.78);
+  }
+  .app-shell .hero-weather {
+    inset: 0;
+  }
+  .app-shell .hero-weather .weather-visual {
+    left: 7%;
+    top: -7px;
+    transform: scale(2.35);
+    opacity: .78;
+  }
+  .app-shell.theme-night .hero-weather .weather-visual {
+    left: auto;
+    right: 2%;
+    top: 16px;
+    transform: scale(2.15);
+    transform-origin: top right;
+  }
+  .app-shell .weather-stage {
+    left: 50%;
+    top: 52%;
+    width: calc(100% - 54px);
+  }
+  .app-shell .weather-location {
+    font-size: clamp(31px, 9vw, 42px);
+  }
+  .app-shell .weather-primary {
+    font-size: clamp(108px, 34vw, 152px);
+  }
+  .app-shell .weather-condition {
+    margin-top: 14px;
+    font-size: clamp(18px, 5vw, 23px);
+  }
+  .app-shell .weather-range {
+    font-size: clamp(17px, 4.7vw, 21px);
+  }
+  .app-shell .hero-side .table-chip {
+    right: 17px;
+    bottom: 18px;
+  }
+}
+
+@media (max-width: 390px) {
+  .app-shell .hero { min-height: 405px; }
+  .app-shell .weather-location { font-size: 29px; }
+  .app-shell .weather-primary { font-size: 112px; }
+  .app-shell .weather-condition { font-size: 17px; }
+  .app-shell .weather-range { font-size: 16px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-shell .hero::before,
+  .app-shell .hero::after {
+    animation: none !important;
+  }
+}
+
+
+
 /* Weather scene v5: quiet kinetic glass, lunar phases and atmospheric streams. */
 .app-shell .weather-visual {
   --weather-light: rgba(249, 252, 255, .96);
