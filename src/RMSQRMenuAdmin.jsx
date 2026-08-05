@@ -1,9 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import {
-  Ban,
   Check,
   Copy,
-  Edit3,
   ExternalLink,
   ImagePlus,
   Languages,
@@ -22,43 +20,52 @@ const fmt = (n) => Number(n || 0).toFixed(2)
 const appOrigin = () => window.location.origin
 const imageBucket = 'qr-menu-images'
 const DEFAULT_QR_BRANCHES = ['BC1', 'BC2', 'BC3', 'BC4', 'BC5', 'Bistro']
-const SHARED_MENU_BRANCHES = ['BC1', 'BC2', 'BC4', 'BC5']
+const QR_MENU_BRANCHES = ['BC1', 'BC2', 'BC4', 'BC5']
+const APPROVED_MENU_BRANCH = 'BC1'
+const BRANCH_MENU_SETTING = 'qr_branch_menu_items_v1'
+const APP_SETTINGS_TABLE = 'rms_app_settings'
 
 const QR_ADMIN_TEXT = {
   ru: {
-    title: 'QR Menu', subtitle: 'Филиалы, QR-коды, позиции меню, переводы, фото и stop-list.', refresh: 'Обновить', loading: 'Загрузка...',
+    title: 'QR Menu', subtitle: 'Филиалы, QR-коды и состав меню на основе подтверждённого каталога.', refresh: 'Обновить', loading: 'Загрузка...',
     tables: 'QR и столы', menu: 'Филиалы и меню', recommendations: 'Рекомендации', ratings: 'Рейтинги', bills: 'Счета / оплаты', ads: 'Реклама', calls: 'Вызовы', cart: 'Shared Cart', status: 'Kitchen Status', info: 'Инфо',
-    branchMenus: 'QR Menu по филиалам', sharedCatalog: 'Единый каталог', sharedHint: 'BC1, BC2, BC4 и BC5 используют одно меню без расхождений. Изменение позиции, цены, фото или stop-list применяется ко всем четырём филиалам.',
-    connected: 'Подключено', items: 'позиций', manage: 'Управлять', open: 'Открыть меню', copy: 'Копировать ссылку', copied: 'Ссылка скопирована',
-    catalogue: 'Каталог QR Menu', catalogueHint: 'Компактный список вместо широкой таблицы. Выберите язык предпросмотра и редактируйте позицию в отдельной форме.',
+    branchMenus: 'QR Menu по филиалам', sharedCatalog: 'Эталон: Rashid Behbudova', sharedHint: 'BC1 / Rashid Behbudova — подтверждённый каталог. В меню других филиалов можно добавлять только позиции из этого каталога и удалять их независимо.',
+    connected: 'Подключено', source: 'Эталон', items: 'позиций', manage: 'Управлять', open: 'Открыть меню', copy: 'Копировать ссылку', copied: 'Ссылка скопирована',
+    catalogue: 'Меню выбранного филиала', catalogueHint: 'Название, фото, цена и переводы RU / AZ / EN берутся из подтверждённого QR Menu Rashid Behbudova.',
     allCategories: 'Все категории', allStatuses: 'Все статусы', active: 'Активные', stopped: 'Stop-list', hidden: 'Скрытые', search: 'Поиск по названию, описанию или переводу',
-    addItem: 'Добавить позицию', total: 'Всего', withoutPhoto: 'Без фото', languages: 'Языки', edit: 'Изменить', delete: 'Удалить', noItems: 'Позиции не найдены.',
+    addItem: 'Добавить позицию', addFromApproved: 'Добавить из Rashid Behbudova', total: 'В филиале', approved: 'Подтверждено в BC1', availableToAdd: 'Можно добавить', withoutPhoto: 'Без фото', languages: 'Языки', edit: 'Изменить', delete: 'Удалить', removeFromBranch: 'Убрать из филиала', noItems: 'Позиции не найдены.',
+    pickerTitle: 'Подтверждённые позиции Rashid Behbudova', pickerHint: 'Выберите позицию — она сразу появится только в меню выбранного филиала.', allApprovedAdded: 'Все подтверждённые позиции уже добавлены в этот филиал.', masterHint: 'Состав BC1 является эталонным. Добавление и удаление выполняется в меню остальных филиалов.', migrationRequired: 'Настройки филиальных меню временно недоступны.',
+    addedToBranch: 'Позиция добавлена в меню филиала', removedFromBranch: 'Позиция удалена из меню филиала', confirmRemove: 'Убрать позицию из меню выбранного филиала?',
     editItem: 'Редактирование позиции', addItemTitle: 'Новая позиция', russianSource: 'Русский · основной', autoTranslation: 'AZ и EN · перевод гостевого меню',
     translationHint: 'Азербайджанский и английский варианты автоматически берутся из подтверждённого словаря QR Menu.', name: 'Название', category: 'Категория', description: 'Описание', price: 'Цена', image: 'Изображение', imageLink: 'Ссылка изображения',
     save: 'Сохранить', cancel: 'Отмена', upload: 'Загрузить фото', enabled: 'Активна', available: 'Доступна', stop: 'Stop', preview: 'Предпросмотр', noDescription: 'Описание не заполнено',
     branchPrefix: 'Barista&Chef'
   },
   az: {
-    title: 'QR Menu', subtitle: 'Filiallar, QR-kodlar, menyu mövqeləri, tərcümələr, fotolar və stop-list.', refresh: 'Yenilə', loading: 'Yüklənir...',
+    title: 'QR Menu', subtitle: 'Filiallar, QR-kodlar və təsdiqlənmiş kataloq əsasında menyu tərkibi.', refresh: 'Yenilə', loading: 'Yüklənir...',
     tables: 'QR və masalar', menu: 'Filiallar və menyu', recommendations: 'Tövsiyələr', ratings: 'Reytinqlər', bills: 'Hesablar / ödənişlər', ads: 'Reklam', calls: 'Çağırışlar', cart: 'Shared Cart', status: 'Kitchen Status', info: 'Məlumat',
-    branchMenus: 'Filiallar üzrə QR Menu', sharedCatalog: 'Vahid kataloq', sharedHint: 'BC1, BC2, BC4 və BC5 heç bir fərq olmadan eyni menyudan istifadə edir. Mövqe, qiymət, foto və ya stop-list dəyişikliyi bütün dörd filiala tətbiq olunur.',
-    connected: 'Qoşulub', items: 'mövqe', manage: 'İdarə et', open: 'Menyunu aç', copy: 'Linki köçür', copied: 'Link köçürüldü',
-    catalogue: 'QR Menu kataloqu', catalogueHint: 'Geniş cədvəl əvəzinə kompakt siyahı. Önizləmə dilini seçin və mövqeni ayrıca formadan redaktə edin.',
+    branchMenus: 'Filiallar üzrə QR Menu', sharedCatalog: 'Etalon: Rashid Behbudova', sharedHint: 'BC1 / Rashid Behbudova təsdiqlənmiş kataloqdur. Digər filialların menyusuna yalnız bu kataloqdakı mövqeləri əlavə etmək və onları ayrıca silmək olar.',
+    connected: 'Qoşulub', source: 'Etalon', items: 'mövqe', manage: 'İdarə et', open: 'Menyunu aç', copy: 'Linki köçür', copied: 'Link köçürüldü',
+    catalogue: 'Seçilmiş filialın menyusu', catalogueHint: 'Ad, foto, qiymət və RU / AZ / EN tərcümələri Rashid Behbudova-nın təsdiqlənmiş QR Menu-sundan götürülür.',
     allCategories: 'Bütün kateqoriyalar', allStatuses: 'Bütün statuslar', active: 'Aktiv', stopped: 'Stop-list', hidden: 'Gizli', search: 'Ad, təsvir və ya tərcümə üzrə axtarış',
-    addItem: 'Mövqe əlavə et', total: 'Cəmi', withoutPhoto: 'Fotosuz', languages: 'Dillər', edit: 'Dəyiş', delete: 'Sil', noItems: 'Mövqe tapılmadı.',
+    addItem: 'Mövqe əlavə et', addFromApproved: 'Rashid Behbudova-dan əlavə et', total: 'Filialda', approved: 'BC1-də təsdiqlənib', availableToAdd: 'Əlavə etmək olar', withoutPhoto: 'Fotosuz', languages: 'Dillər', edit: 'Dəyiş', delete: 'Sil', removeFromBranch: 'Filialdan sil', noItems: 'Mövqe tapılmadı.',
+    pickerTitle: 'Rashid Behbudova-nın təsdiqlənmiş mövqeləri', pickerHint: 'Mövqeni seçin — o, dərhal yalnız seçilmiş filialın menyusuna əlavə olunacaq.', allApprovedAdded: 'Bütün təsdiqlənmiş mövqelər artıq bu filiala əlavə edilib.', masterHint: 'BC1-in tərkibi etalondur. Əlavə etmə və silmə digər filialların menyusunda aparılır.', migrationRequired: 'Filial menyusu sazlamaları müvəqqəti əlçatan deyil.',
+    addedToBranch: 'Mövqe filialın menyusuna əlavə edildi', removedFromBranch: 'Mövqe filialın menyusundan silindi', confirmRemove: 'Mövqe seçilmiş filialın menyusundan silinsin?',
     editItem: 'Mövqenin redaktəsi', addItemTitle: 'Yeni mövqe', russianSource: 'Rus dili · əsas', autoTranslation: 'AZ və EN · qonaq menyusunun tərcüməsi',
     translationHint: 'Azərbaycan və ingilis variantları QR Menu-nun təsdiqlənmiş lüğətindən avtomatik götürülür.', name: 'Ad', category: 'Kateqoriya', description: 'Təsvir', price: 'Qiymət', image: 'Şəkil', imageLink: 'Şəkil linki',
     save: 'Yadda saxla', cancel: 'Ləğv et', upload: 'Foto yüklə', enabled: 'Aktivdir', available: 'Mövcuddur', stop: 'Stop', preview: 'Önizləmə', noDescription: 'Təsvir doldurulmayıb',
     branchPrefix: 'Barista&Chef'
   },
   en: {
-    title: 'QR Menu', subtitle: 'Branches, QR codes, menu items, translations, photos and stop list.', refresh: 'Refresh', loading: 'Loading...',
+    title: 'QR Menu', subtitle: 'Branches, QR codes and branch menus based on the approved catalogue.', refresh: 'Refresh', loading: 'Loading...',
     tables: 'QR & tables', menu: 'Branches & menu', recommendations: 'Recommendations', ratings: 'Ratings', bills: 'Bills / payments', ads: 'Advertising', calls: 'Calls', cart: 'Shared Cart', status: 'Kitchen Status', info: 'Info',
-    branchMenus: 'QR Menu by branch', sharedCatalog: 'Shared catalogue', sharedHint: 'BC1, BC2, BC4 and BC5 use the exact same menu. Changes to an item, price, photo or stop list apply to all four branches.',
-    connected: 'Connected', items: 'items', manage: 'Manage', open: 'Open menu', copy: 'Copy link', copied: 'Link copied',
-    catalogue: 'QR Menu catalogue', catalogueHint: 'A compact list replaces the wide table. Choose the preview language and edit each item in a dedicated form.',
+    branchMenus: 'QR Menu by branch', sharedCatalog: 'Source: Rashid Behbudova', sharedHint: 'BC1 / Rashid Behbudova is the approved catalogue. Other branches may add only items from this catalogue and remove them independently.',
+    connected: 'Connected', source: 'Source', items: 'items', manage: 'Manage', open: 'Open menu', copy: 'Copy link', copied: 'Link copied',
+    catalogue: 'Selected branch menu', catalogueHint: 'Names, photos, prices and RU / AZ / EN translations come from the approved Rashid Behbudova QR Menu.',
     allCategories: 'All categories', allStatuses: 'All statuses', active: 'Active', stopped: 'Stop list', hidden: 'Hidden', search: 'Search by name, description or translation',
-    addItem: 'Add item', total: 'Total', withoutPhoto: 'Without photo', languages: 'Languages', edit: 'Edit', delete: 'Delete', noItems: 'No items found.',
+    addItem: 'Add item', addFromApproved: 'Add from Rashid Behbudova', total: 'In branch', approved: 'Approved in BC1', availableToAdd: 'Available to add', withoutPhoto: 'Without photo', languages: 'Languages', edit: 'Edit', delete: 'Delete', removeFromBranch: 'Remove from branch', noItems: 'No items found.',
+    pickerTitle: 'Approved Rashid Behbudova items', pickerHint: 'Select an item and it will be added immediately to this branch only.', allApprovedAdded: 'All approved items are already included in this branch.', masterHint: 'BC1 is the source catalogue. Add and remove items in the other branch menus.', migrationRequired: 'Branch-menu settings are temporarily unavailable.',
+    addedToBranch: 'Item added to the branch menu', removedFromBranch: 'Item removed from the branch menu', confirmRemove: 'Remove this item from the selected branch menu?',
     editItem: 'Edit item', addItemTitle: 'New item', russianSource: 'Russian · source', autoTranslation: 'AZ & EN · guest-menu translations',
     translationHint: 'Azerbaijani and English copy is taken automatically from the approved QR Menu dictionary.', name: 'Name', category: 'Category', description: 'Description', price: 'Price', image: 'Image', imageLink: 'Image URL',
     save: 'Save', cancel: 'Cancel', upload: 'Upload photo', enabled: 'Active', available: 'Available', stop: 'Stop', preview: 'Preview', noDescription: 'No description',
@@ -116,17 +123,6 @@ const defaultInfo = {
   address: ''
 }
 
-const defaultProduct = {
-  name: '',
-  category: '',
-  description: '',
-  price: '',
-  image_url: '',
-  is_active: true,
-  is_available: true,
-  is_stop: false
-}
-
 export default function RMSQRMenuAdmin({ lang = localStorage.getItem('rms_lang') || localStorage.getItem('nms_lang') || 'ru' }) {
   const adminLanguage = normalizeAdminLanguage(lang)
   const ui = QR_ADMIN_TEXT[adminLanguage]
@@ -135,6 +131,8 @@ export default function RMSQRMenuAdmin({ lang = localStorage.getItem('rms_lang')
 
   const [tables, setTables] = useState([])
   const [products, setProducts] = useState([])
+  const [branchMenuLinks, setBranchMenuLinks] = useState([])
+  const [branchMenuReady, setBranchMenuReady] = useState(false)
   const [branches, setBranches] = useState([])
   const [ratings, setRatings] = useState([])
   const [ads, setAds] = useState([])
@@ -150,14 +148,12 @@ export default function RMSQRMenuAdmin({ lang = localStorage.getItem('rms_lang')
 
   const [tableForm, setTableForm] = useState({ branch_id: 'BC1', from: 1, to: 10, prefix: '' })
   const [branchQrForm, setBranchQrForm] = useState({ branch_id: 'BC1' })
-  const [productForm, setProductForm] = useState(defaultProduct)
   const [selectedMenuBranch, setSelectedMenuBranch] = useState('BC1')
   const [menuLanguage, setMenuLanguage] = useState(adminLanguage)
   const [menuSearch, setMenuSearch] = useState('')
   const [menuCategory, setMenuCategory] = useState('all')
-  const [menuStatus, setMenuStatus] = useState('all')
-  const [showCreateProduct, setShowCreateProduct] = useState(false)
-  const [editingDraft, setEditingDraft] = useState(null)
+  const [showProductPicker, setShowProductPicker] = useState(false)
+  const [pickerSearch, setPickerSearch] = useState('')
   const [adForm, setAdForm] = useState({ title: '', text: '', image_url: '', is_active: true })
   const [recForm, setRecForm] = useState({ product_id: '', product_name: '', recommended_product_id: '', recommended_product_name: '' })
   const [statusForm, setStatusForm] = useState({ branch_id: 'BC1', table_number: '1', status: 'preparing', status_label: 'Готовится', comment: '' })
@@ -173,27 +169,54 @@ export default function RMSQRMenuAdmin({ lang = localStorage.getItem('rms_lang')
     })
   }, [branches])
 
-  const menuCategories = useMemo(() => Array.from(new Set(products.map(product => product.category).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'ru')), [products])
+  const assignedProductIds = useMemo(() => {
+    if (selectedMenuBranch === APPROVED_MENU_BRANCH || !branchMenuReady) return new Set(products.map(product => String(product.id)))
+    return new Set(
+      branchMenuLinks
+        .filter(link => String(link.branch_code || '').toUpperCase() === selectedMenuBranch)
+        .map(link => String(link.menu_item_id))
+    )
+  }, [branchMenuLinks, branchMenuReady, products, selectedMenuBranch])
+
+  const branchProducts = useMemo(
+    () => products.filter(product => assignedProductIds.has(String(product.id))),
+    [assignedProductIds, products]
+  )
+
+  const productsAvailableToAdd = useMemo(
+    () => selectedMenuBranch === APPROVED_MENU_BRANCH
+      ? []
+      : products.filter(product => !assignedProductIds.has(String(product.id))),
+    [assignedProductIds, products, selectedMenuBranch]
+  )
+
+  const pickerProducts = useMemo(() => {
+    const needle = pickerSearch.trim().toLocaleLowerCase('ru-RU')
+    if (!needle) return productsAvailableToAdd
+    return productsAvailableToAdd.filter(product => {
+      const translations = ['ru', 'az', 'en'].map(language => productForLanguage(product, language))
+      return translations.some(item => `${item.name || ''} ${item.description || ''} ${product.category || ''}`.toLocaleLowerCase('ru-RU').includes(needle))
+    })
+  }, [pickerSearch, productsAvailableToAdd])
+
+  const menuCategories = useMemo(() => Array.from(new Set(branchProducts.map(product => product.category).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'ru')), [branchProducts])
 
   const filteredProducts = useMemo(() => {
     const needle = menuSearch.trim().toLocaleLowerCase('ru-RU')
-    return products.filter(product => {
+    return branchProducts.filter(product => {
       if (menuCategory !== 'all' && product.category !== menuCategory) return false
-      if (menuStatus === 'active' && (product.is_active === false || product.is_stop === true)) return false
-      if (menuStatus === 'stopped' && product.is_stop !== true) return false
-      if (menuStatus === 'hidden' && product.is_active !== false) return false
       if (!needle) return true
       const translations = ['ru', 'az', 'en'].map(language => productForLanguage(product, language))
       return translations.some(item => `${item.name || ''} ${item.description || ''} ${product.category || ''}`.toLocaleLowerCase('ru-RU').includes(needle))
     })
-  }, [menuCategory, menuSearch, menuStatus, products])
+  }, [branchProducts, menuCategory, menuSearch])
 
   const menuSummary = useMemo(() => ({
-    total: products.length,
-    active: products.filter(product => product.is_active !== false && product.is_stop !== true).length,
-    stopped: products.filter(product => product.is_stop === true).length,
-    withoutPhoto: products.filter(product => !product.image_url).length
-  }), [products])
+    total: branchProducts.length,
+    approved: products.length,
+    availableToAdd: productsAvailableToAdd.length,
+    withoutPhoto: branchProducts.filter(product => !product.image_url).length
+  }), [branchProducts, products.length, productsAvailableToAdd.length])
 
   useEffect(() => {
     setMenuLanguage(adminLanguage)
@@ -205,10 +228,11 @@ export default function RMSQRMenuAdmin({ lang = localStorage.getItem('rms_lang')
 
   async function loadAll() {
     setLoading(true)
+    const approvedProducts = await loadProducts()
     await Promise.all([
       loadBranches(),
       loadTables(),
-      loadProducts(),
+      loadBranchMenuLinks(approvedProducts),
       loadRatings(),
       loadAds(),
       loadBills(),
@@ -238,9 +262,80 @@ export default function RMSQRMenuAdmin({ lang = localStorage.getItem('rms_lang')
   }
 
   async function loadProducts() {
-    const { data, error } = await supabase.from('rms_menu_products').select('*').order('name', { ascending: true })
-    if (error) return
-    setProducts((data || []).map(normalizeProduct))
+    const { data, error } = await supabase.rpc('qr_get_public_menu', { p_branch_code: APPROVED_MENU_BRANCH })
+    if (error) {
+      setMsg(error.message)
+      return []
+    }
+    const approvedProducts = (data || []).map(normalizeProduct)
+    setProducts(approvedProducts)
+    return approvedProducts
+  }
+
+  function defaultBranchMenuLinks(approvedProducts = []) {
+    return QR_MENU_BRANCHES
+      .filter(branchId => branchId !== APPROVED_MENU_BRANCH)
+      .flatMap(branchId => approvedProducts.map(product => ({ branch_code: branchId, menu_item_id: String(product.id) })))
+  }
+
+  function linksFromBranchMenuSetting(value, approvedProducts = []) {
+    const branchesValue = value?.branches && typeof value.branches === 'object' ? value.branches : value
+    if (!branchesValue || typeof branchesValue !== 'object') return defaultBranchMenuLinks(approvedProducts)
+    return QR_MENU_BRANCHES
+      .filter(branchId => branchId !== APPROVED_MENU_BRANCH)
+      .flatMap(branchId => {
+        const ids = Array.isArray(branchesValue[branchId]) ? branchesValue[branchId] : approvedProducts.map(product => String(product.id))
+        return ids.map(menuItemId => ({ branch_code: branchId, menu_item_id: String(menuItemId) }))
+      })
+  }
+
+  function branchMenuSettingFromLinks(links) {
+    const branchesValue = {}
+    QR_MENU_BRANCHES
+      .filter(branchId => branchId !== APPROVED_MENU_BRANCH)
+      .forEach(branchId => {
+        branchesValue[branchId] = links
+          .filter(link => String(link.branch_code || '').toUpperCase() === branchId)
+          .map(link => String(link.menu_item_id))
+      })
+    return { version: 1, source_branch: APPROVED_MENU_BRANCH, branches: branchesValue, updated_at: new Date().toISOString() }
+  }
+
+  async function loadBranchMenuLinks(approvedProducts = []) {
+    const { data, error } = await supabase
+      .from(APP_SETTINGS_TABLE)
+      .select('value')
+      .eq('key', BRANCH_MENU_SETTING)
+      .maybeSingle()
+
+    if (error) {
+      setBranchMenuReady(false)
+      setBranchMenuLinks(defaultBranchMenuLinks(approvedProducts))
+      return
+    }
+
+    setBranchMenuReady(true)
+    setBranchMenuLinks(linksFromBranchMenuSetting(data?.value, approvedProducts))
+  }
+
+  async function saveBranchMenuLinks(nextLinks) {
+    const value = branchMenuSettingFromLinks(nextLinks)
+    const direct = await supabase
+      .from(APP_SETTINGS_TABLE)
+      .upsert({ key: BRANCH_MENU_SETTING, value, updated_at: value.updated_at }, { onConflict: 'key' })
+
+    if (!direct.error) {
+      setBranchMenuReady(true)
+      setBranchMenuLinks(nextLinks)
+      return null
+    }
+
+    const rpc = await supabase.rpc('rms_app_setting_write_secure', { p_key: BRANCH_MENU_SETTING, p_value: value })
+    if (rpc.error) return rpc.error
+
+    setBranchMenuReady(true)
+    setBranchMenuLinks(nextLinks)
+    return null
   }
 
   function normalizeProduct(p) {
@@ -248,7 +343,7 @@ export default function RMSQRMenuAdmin({ lang = localStorage.getItem('rms_lang')
       ...p,
       id: String(p.id),
       name: p.name || p.product_name || p.title || 'Unnamed item',
-      category: p.category || p.category_name || 'Menu',
+      category: p.category_name || p.category || 'Menu',
       description: p.description || p.desc || '',
       price: Number(p.price ?? p.sale_price ?? p.menu_price ?? 0),
       image_url: p.image_url || p.photo_url || p.image || '',
@@ -357,76 +452,69 @@ export default function RMSQRMenuAdmin({ lang = localStorage.getItem('rms_lang')
     }
   }
 
-  async function addProduct() {
-    if (!productForm.name.trim()) {
-      setMsg('Введите название позиции')
-      return
-    }
-
-    const payload = {
-      name: productForm.name.trim(),
-      category: productForm.category.trim() || 'Menu',
-      description: productForm.description.trim(),
-      price: Number(productForm.price || 0),
-      image_url: productForm.image_url.trim(),
-      is_active: productForm.is_active,
-      is_available: productForm.is_available,
-      is_stop: productForm.is_stop
-    }
-
-    const { error } = await supabase.from('rms_menu_products').insert(payload)
-
-    if (error) setMsg(error.message)
-    else {
-      setProductForm(defaultProduct)
-      setShowCreateProduct(false)
-      await loadProducts()
-      setMsg('Позиция добавлена')
-    }
-  }
-
-  async function handleProductImage(file) {
-    if (!file) return
-    setMsg('Загружаю изображение...')
-    const url = await uploadImageFile(file, 'menu')
-    setProductForm(prev => ({ ...prev, image_url: url }))
-    setMsg('Изображение позиции добавлено')
-  }
-
-  async function deleteProduct(id, name) {
-    if (!window.confirm(`Удалить позицию QR Menu: ${name || ''}?`)) return
-    const { error } = await supabase.from('rms_menu_products').delete().eq('id', id)
-    if (error) setMsg(error.message)
-    else {
-      setProducts(prev => prev.filter(p => p.id !== String(id)))
-      setMsg('Позиция удалена')
-    }
-  }
-
-  async function updateProduct(id, patch) {
-    const { error } = await supabase.from('rms_menu_products').update(patch).eq('id', id)
-
-    if (error) {
-      setMsg(error.message)
-      return false
-    }
-
-    setProducts(prev => prev.map(p => p.id === String(id) ? { ...p, ...patch } : p))
-    setMsg('Позиция сохранена')
-    return true
-  }
-
   function branchDisplayName(branchId) {
     const branch = branchOptions.find(option => String(option.id).toUpperCase() === String(branchId).toUpperCase())
     const rawName = String(branch?.name || '').trim()
     if (rawName && rawName.toUpperCase() !== String(branchId).toUpperCase()) return rawName
+    if (String(branchId).toUpperCase() === APPROVED_MENU_BRANCH) return 'Barista&Chef R. Behbudov'
     return `${ui.branchPrefix} · ${branchId}`
+  }
+
+  function branchItemCount(branchId) {
+    if (branchId === APPROVED_MENU_BRANCH || !branchMenuReady) return products.length
+    return branchMenuLinks.filter(link => String(link.branch_code || '').toUpperCase() === branchId).length
   }
 
   function manageBranchMenu(branchId) {
     setSelectedMenuBranch(branchId)
     setBranchQrForm({ branch_id: branchId })
     setTableForm(current => ({ ...current, branch_id: branchId }))
+    setShowProductPicker(false)
+    setPickerSearch('')
+    setMenuCategory('all')
+    setMenuSearch('')
+  }
+
+  async function addProductToBranch(product) {
+    if (!branchMenuReady) {
+      setMsg(ui.migrationRequired)
+      return
+    }
+    if (!product?.id || selectedMenuBranch === APPROVED_MENU_BRANCH) return
+
+    const payload = {
+      branch_code: selectedMenuBranch,
+      menu_item_id: String(product.id)
+    }
+    const exists = branchMenuLinks.some(link => link.branch_code === selectedMenuBranch && String(link.menu_item_id) === String(product.id))
+    const nextLinks = exists ? branchMenuLinks : [...branchMenuLinks, payload]
+    const error = await saveBranchMenuLinks(nextLinks)
+
+    if (error) {
+      setMsg(error.message)
+      return
+    }
+
+    setMsg(`${ui.addedToBranch}: ${productForLanguage(product, menuLanguage).name || product.name}`)
+  }
+
+  async function removeProductFromBranch(product) {
+    if (!branchMenuReady) {
+      setMsg(ui.migrationRequired)
+      return
+    }
+    if (!product?.id || selectedMenuBranch === APPROVED_MENU_BRANCH) return
+    if (!window.confirm(`${ui.confirmRemove}\n${productForLanguage(product, menuLanguage).name || product.name}`)) return
+
+    const nextLinks = branchMenuLinks.filter(link => !(link.branch_code === selectedMenuBranch && String(link.menu_item_id) === String(product.id)))
+    const error = await saveBranchMenuLinks(nextLinks)
+
+    if (error) {
+      setMsg(error.message)
+      return
+    }
+
+    setMsg(`${ui.removedFromBranch}: ${productForLanguage(product, menuLanguage).name || product.name}`)
   }
 
   async function copyBranchUrl(branchId) {
@@ -436,38 +524,6 @@ export default function RMSQRMenuAdmin({ lang = localStorage.getItem('rms_lang')
     } catch {
       setMsg(qrUrl(branchId))
     }
-  }
-
-  function startEditingProduct(product) {
-    setEditingDraft({
-      ...product,
-      price: String(product.price ?? ''),
-      description: product.description || '',
-      image_url: product.image_url || ''
-    })
-  }
-
-  async function saveEditingProduct() {
-    if (!editingDraft?.id || !String(editingDraft.name || '').trim()) return
-    const saved = await updateProduct(editingDraft.id, {
-      name: String(editingDraft.name || '').trim(),
-      category: String(editingDraft.category || '').trim() || 'Menu',
-      description: String(editingDraft.description || '').trim(),
-      price: Number(editingDraft.price || 0),
-      image_url: String(editingDraft.image_url || '').trim(),
-      is_active: editingDraft.is_active !== false,
-      is_available: editingDraft.is_available !== false,
-      is_stop: editingDraft.is_stop === true
-    })
-    if (saved) setEditingDraft(null)
-  }
-
-  async function handleEditingImage(file) {
-    if (!file || !editingDraft?.id) return
-    setMsg('Загружаю изображение...')
-    const imageUrl = await uploadImageFile(file, 'menu')
-    setEditingDraft(current => current ? { ...current, image_url: imageUrl } : current)
-    setMsg('Изображение подготовлено. Нажмите «Сохранить».')
   }
 
   async function saveInfo() {
@@ -731,17 +787,17 @@ export default function RMSQRMenuAdmin({ lang = localStorage.getItem('rms_lang')
               </div>
 
               <div className="qr-branch-grid">
-                {SHARED_MENU_BRANCHES.map(branchId => (
+                {QR_MENU_BRANCHES.map(branchId => (
                   <article className={`qr-branch-card ${selectedMenuBranch === branchId ? 'selected' : ''}`} key={branchId}>
                     <div className="qr-branch-card-top">
                       <div className="qr-branch-code"><Store size={16} /><b>{branchId}</b></div>
-                      <span className="qr-status-chip"><Check size={13} /> {ui.connected}</span>
+                      <span className={`qr-status-chip ${branchId === APPROVED_MENU_BRANCH ? 'source' : ''}`}><Check size={13} /> {branchId === APPROVED_MENU_BRANCH ? ui.source : ui.connected}</span>
                     </div>
                     <div className="qr-branch-card-main">
                       <img src={qrImageUrl(branchId)} alt={`QR ${branchId}`} />
                       <div>
                         <h4>{branchDisplayName(branchId)}</h4>
-                        <p>{products.length} {ui.items}</p>
+                        <p>{branchItemCount(branchId)} {ui.items}</p>
                         <small>RU · AZ · EN</small>
                       </div>
                     </div>
@@ -755,35 +811,30 @@ export default function RMSQRMenuAdmin({ lang = localStorage.getItem('rms_lang')
               </div>
             </div>
 
-            {showCreateProduct && (
-              <div className="card span-2 qr-create-card">
+            {showProductPicker && selectedMenuBranch !== APPROVED_MENU_BRANCH && (
+              <div className="card span-2 qr-picker-card">
                 <div className="qr-admin-card-head compact">
-                  <div><span className="qr-admin-eyebrow"><Plus size={14} /> {ui.addItemTitle}</span><h3>{ui.russianSource}</h3></div>
-                  <button className="qr-icon-button" type="button" onClick={() => setShowCreateProduct(false)} aria-label={ui.cancel}><X size={18} /></button>
-                </div>
-                <div className="qr-editor-grid">
-                  <div className="qr-editor-fields">
-                    <label><span>{ui.name}</span><input value={productForm.name} onChange={event => setProductForm({ ...productForm, name: event.target.value })} /></label>
-                    <div className="qr-two-fields">
-                      <label><span>{ui.category}</span><input value={productForm.category} onChange={event => setProductForm({ ...productForm, category: event.target.value })} /></label>
-                      <label><span>{ui.price}</span><input inputMode="decimal" value={productForm.price} onChange={event => setProductForm({ ...productForm, price: event.target.value })} /></label>
-                    </div>
-                    <label><span>{ui.description}</span><textarea rows="4" value={productForm.description} onChange={event => setProductForm({ ...productForm, description: event.target.value })} /></label>
-                    <label><span>{ui.imageLink}</span><input value={productForm.image_url || ''} onChange={event => setProductForm({ ...productForm, image_url: event.target.value })} /></label>
-                    <label className="qr-upload-button"><ImagePlus size={17} /><span>{ui.upload}</span><input type="file" accept="image/*" onChange={event => handleProductImage(event.target.files?.[0])} /></label>
+                  <div>
+                    <span className="qr-admin-eyebrow"><Plus size={14} /> {branchDisplayName(selectedMenuBranch)}</span>
+                    <h3>{ui.pickerTitle}</h3>
+                    <p>{ui.pickerHint}</p>
                   </div>
-                  <div className="qr-translation-preview">
-                    <span className="qr-admin-eyebrow"><Languages size={14} /> {ui.autoTranslation}</span>
-                    <p>{ui.translationHint}</p>
-                    {['az', 'en'].map(language => {
-                      const translated = productForLanguage(productForm, language)
-                      return <article key={language}><b>{language.toUpperCase()}</b><h4>{translated.name || '—'}</h4><p>{translated.description || ui.noDescription}</p></article>
-                    })}
-                  </div>
+                  <button className="qr-icon-button" type="button" onClick={() => setShowProductPicker(false)} aria-label={ui.cancel}><X size={18} /></button>
                 </div>
-                <div className="qr-form-actions">
-                  <button className="small" type="button" onClick={() => setShowCreateProduct(false)}>{ui.cancel}</button>
-                  <button className="small primary" type="button" onClick={addProduct}>{ui.addItem}</button>
+                <label className="qr-search-box qr-picker-search"><Search size={17} /><input value={pickerSearch} onChange={event => setPickerSearch(event.target.value)} placeholder={ui.search} /></label>
+                {!branchMenuReady && <div className="qr-setup-warning">{ui.migrationRequired}</div>}
+                <div className="qr-picker-list">
+                  {pickerProducts.map(product => {
+                    const translated = productForLanguage(product, menuLanguage)
+                    return (
+                      <article className="qr-picker-row" key={product.id}>
+                        <div className="qr-product-photo">{product.image_url ? <img src={product.image_url} alt="" /> : <ImagePlus size={22} />}</div>
+                        <div className="qr-picker-copy"><h4>{translated.name || product.name}</h4><p>{product.category} · {fmt(product.price)} ₼</p></div>
+                        <button type="button" className="small primary" disabled={!branchMenuReady} onClick={() => addProductToBranch(product)}><Plus size={15} /> {ui.addItem}</button>
+                      </article>
+                    )
+                  })}
+                  {!pickerProducts.length && <div className="qr-empty-list">{ui.allApprovedAdded}</div>}
                 </div>
               </div>
             )}
@@ -793,15 +844,17 @@ export default function RMSQRMenuAdmin({ lang = localStorage.getItem('rms_lang')
                 <div>
                   <span className="qr-admin-eyebrow"><QrCode size={14} /> {branchDisplayName(selectedMenuBranch)}</span>
                   <h3>{ui.catalogue}</h3>
-                  <p>{ui.catalogueHint}</p>
+                  <p>{selectedMenuBranch === APPROVED_MENU_BRANCH ? ui.masterHint : ui.catalogueHint}</p>
                 </div>
-                <button type="button" className="small primary qr-add-product" onClick={() => setShowCreateProduct(true)}><Plus size={16} /> {ui.addItem}</button>
+                {selectedMenuBranch !== APPROVED_MENU_BRANCH && (
+                  <button type="button" className="small primary qr-add-product" onClick={() => setShowProductPicker(current => !current)}><Plus size={16} /> {ui.addFromApproved}</button>
+                )}
               </div>
 
               <div className="qr-menu-summary">
                 <article><span>{ui.total}</span><b>{menuSummary.total}</b></article>
-                <article className="good"><span>{ui.active}</span><b>{menuSummary.active}</b></article>
-                <article className="warn"><span>{ui.stopped}</span><b>{menuSummary.stopped}</b></article>
+                <article className="good"><span>{ui.approved}</span><b>{menuSummary.approved}</b></article>
+                <article className="warn"><span>{ui.availableToAdd}</span><b>{menuSummary.availableToAdd}</b></article>
                 <article><span>{ui.withoutPhoto}</span><b>{menuSummary.withoutPhoto}</b></article>
               </div>
 
@@ -810,12 +863,6 @@ export default function RMSQRMenuAdmin({ lang = localStorage.getItem('rms_lang')
                 <select value={menuCategory} onChange={event => setMenuCategory(event.target.value)}>
                   <option value="all">{ui.allCategories}</option>
                   {menuCategories.map(categoryName => <option key={categoryName} value={categoryName}>{categoryName}</option>)}
-                </select>
-                <select value={menuStatus} onChange={event => setMenuStatus(event.target.value)}>
-                  <option value="all">{ui.allStatuses}</option>
-                  <option value="active">{ui.active}</option>
-                  <option value="stopped">{ui.stopped}</option>
-                  <option value="hidden">{ui.hidden}</option>
                 </select>
                 <div className="qr-language-switch" aria-label={ui.languages}>
                   {['ru', 'az', 'en'].map(language => <button type="button" className={menuLanguage === language ? 'active' : ''} onClick={() => setMenuLanguage(language)} key={language}>{language.toUpperCase()}</button>)}
@@ -826,20 +873,18 @@ export default function RMSQRMenuAdmin({ lang = localStorage.getItem('rms_lang')
                 {filteredProducts.map(product => {
                   const translated = productForLanguage(product, menuLanguage)
                   return (
-                    <article className={`qr-product-row ${product.is_stop ? 'is-stopped' : ''} ${product.is_active === false ? 'is-hidden' : ''}`} key={product.id}>
+                    <article className="qr-product-row" key={product.id}>
                       <div className="qr-product-photo">
                         {product.image_url ? <img src={product.image_url} alt="" /> : <ImagePlus size={22} />}
                       </div>
                       <div className="qr-product-copy">
                         <div className="qr-product-heading"><h4>{translated.name || product.name}</h4><b>{fmt(product.price)} ₼</b></div>
                         <p>{translated.description || ui.noDescription}</p>
-                        <div className="qr-product-meta"><span>{product.category}</span><span>{menuLanguage.toUpperCase()}</span>{product.is_stop && <span className="stop">STOP</span>}{product.is_active === false && <span className="hidden">{ui.hidden}</span>}</div>
+                        <div className="qr-product-meta"><span>{product.category}</span><span>{menuLanguage.toUpperCase()}</span></div>
                       </div>
-                      <div className="qr-product-actions">
-                        <button type="button" onClick={() => updateProduct(product.id, { is_stop: !product.is_stop })} className={product.is_stop ? 'active-stop' : ''} title={ui.stop}><Ban size={17} /></button>
-                        <button type="button" onClick={() => startEditingProduct(product)} title={ui.edit}><Edit3 size={17} /></button>
-                        <button type="button" className="danger" onClick={() => deleteProduct(product.id, product.name)} title={ui.delete}><Trash2 size={17} /></button>
-                      </div>
+                      {selectedMenuBranch !== APPROVED_MENU_BRANCH && (
+                        <div className="qr-product-actions"><button type="button" className="danger" onClick={() => removeProductFromBranch(product)} title={ui.removeFromBranch}><Trash2 size={17} /></button></div>
+                      )}
                     </article>
                   )
                 })}
@@ -847,49 +892,6 @@ export default function RMSQRMenuAdmin({ lang = localStorage.getItem('rms_lang')
               </div>
             </div>
 
-            {editingDraft && (
-              <div className="qr-editor-backdrop" onMouseDown={event => event.currentTarget === event.target && setEditingDraft(null)}>
-                <section className="qr-editor-panel" role="dialog" aria-modal="true" aria-label={ui.editItem}>
-                  <div className="qr-editor-header">
-                    <div><span className="qr-admin-eyebrow"><Edit3 size={14} /> {ui.editItem}</span><h3>{editingDraft.name}</h3></div>
-                    <button className="qr-icon-button" type="button" onClick={() => setEditingDraft(null)} aria-label={ui.cancel}><X size={20} /></button>
-                  </div>
-                  <div className="qr-editor-grid">
-                    <div className="qr-editor-fields">
-                      <span className="qr-section-label">RU · {ui.russianSource}</span>
-                      <label><span>{ui.name}</span><input value={editingDraft.name || ''} onChange={event => setEditingDraft({ ...editingDraft, name: event.target.value })} /></label>
-                      <div className="qr-two-fields">
-                        <label><span>{ui.category}</span><input value={editingDraft.category || ''} onChange={event => setEditingDraft({ ...editingDraft, category: event.target.value })} /></label>
-                        <label><span>{ui.price}</span><input inputMode="decimal" value={editingDraft.price ?? ''} onChange={event => setEditingDraft({ ...editingDraft, price: event.target.value })} /></label>
-                      </div>
-                      <label><span>{ui.description}</span><textarea rows="5" value={editingDraft.description || ''} onChange={event => setEditingDraft({ ...editingDraft, description: event.target.value })} /></label>
-                      <label><span>{ui.imageLink}</span><input value={editingDraft.image_url || ''} onChange={event => setEditingDraft({ ...editingDraft, image_url: event.target.value })} /></label>
-                      <div className="qr-image-editor-row">
-                        <div className="qr-editor-thumb">{editingDraft.image_url ? <img src={editingDraft.image_url} alt="" /> : <ImagePlus size={24} />}</div>
-                        <label className="qr-upload-button"><ImagePlus size={17} /><span>{ui.upload}</span><input type="file" accept="image/*" onChange={event => handleEditingImage(event.target.files?.[0])} /></label>
-                      </div>
-                      <div className="qr-toggle-row">
-                        <label><input type="checkbox" checked={editingDraft.is_active !== false} onChange={event => setEditingDraft({ ...editingDraft, is_active: event.target.checked })} /><span>{ui.enabled}</span></label>
-                        <label><input type="checkbox" checked={editingDraft.is_available !== false} onChange={event => setEditingDraft({ ...editingDraft, is_available: event.target.checked })} /><span>{ui.available}</span></label>
-                        <label><input type="checkbox" checked={editingDraft.is_stop === true} onChange={event => setEditingDraft({ ...editingDraft, is_stop: event.target.checked })} /><span>{ui.stop}</span></label>
-                      </div>
-                    </div>
-                    <div className="qr-translation-preview">
-                      <span className="qr-admin-eyebrow"><Languages size={14} /> {ui.autoTranslation}</span>
-                      <p>{ui.translationHint}</p>
-                      {['az', 'en'].map(language => {
-                        const translated = productForLanguage(editingDraft, language)
-                        return <article key={language}><b>{language.toUpperCase()}</b><h4>{translated.name || '—'}</h4><p>{translated.description || ui.noDescription}</p></article>
-                      })}
-                    </div>
-                  </div>
-                  <div className="qr-editor-footer">
-                    <button className="small" type="button" onClick={() => setEditingDraft(null)}>{ui.cancel}</button>
-                    <button className="small primary" type="button" onClick={saveEditingProduct}>{ui.save}</button>
-                  </div>
-                </section>
-              </div>
-            )}
           </>
         )}
 
