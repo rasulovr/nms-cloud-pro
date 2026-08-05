@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "./supabase";
 import { localizeProduct } from "./qrMenuTranslations";
+import { resolveRecoveredMenuImage, useRecoveredImageFallback } from "./recoveredMenuImages";
 import "./QRMenu.css";
 const categoryOrder = {
   breakfast: ["Новинки", "ЗАВТРАК", "КОФЕ", "ЧАЙ", "ХОЛОДНЫЙ КОФЕ", "ДЕСЕРТЫ", "САЛАТЫ", "СУПЫ", "ГОРЯЧИЕ БЛЮДА", "ЗАКУСКИ", "ПИЦЦА", "ЛИМОНАДЫ", "ХОЛОДНЫЕ НАПИТКИ", "EKSTRA KITCHEN", "EKSTRA BAR"],
@@ -201,7 +202,7 @@ const normalizeProduct = (item, branch) => {
     description: sourceDescription,
     category: item.category_name || item.category || "\u0411\u0435\u0437 \u043A\u0430\u0442\u0435\u0433\u043E\u0440\u0438\u0438",
     price: Number(item.price ?? item.unit_price ?? (item.line_total && item.quantity ? Number(item.line_total) / Number(item.quantity) : 0)),
-    image: override.image || item.image_url || item.image || null,
+    image: override.image || resolveRecoveredMenuImage(item.image_url || item.image),
     options: sourceOptions,
     rating: Number(item.rating || 0),
     branches: [branch]
@@ -693,7 +694,7 @@ export default function QRMenu() {
     onClick={() => setSelectedProduct(mealRecommendation.product)}
     aria-label={`${t.openPhoto}: ${mealRecommendation.product.name}`}
   >
-                {mealRecommendation.product.image ? <img className={photoClass(mealRecommendation.product)} src={mealRecommendation.product.image} alt={mealRecommendation.product.name} /> : <span>B&amp;C</span>}
+                {mealRecommendation.product.image ? <img className={photoClass(mealRecommendation.product)} src={mealRecommendation.product.image} alt={mealRecommendation.product.name} onError={useRecoveredImageFallback} /> : <span>B&amp;C</span>}
               </button>
               <div className="meal-copy">
                 <div className="meal-kicker">
@@ -721,7 +722,7 @@ export default function QRMenu() {
     const qty = cart.find((line) => line.id === product.id)?.qty || 0;
     return <article className={`product-card ${isStopped ? "stopped" : ""}`} key={product.id}>
                   <button className="food-photo" style={photoStyle(product)} type="button" onClick={() => setSelectedProduct(product)} aria-label={`${t.openPhoto}: ${product.name}`}>
-                    {product.image ? <img className={photoClass(product)} src={product.image} alt={product.name} loading="lazy" /> : <span className="photo-placeholder">B&C</span>}
+                    {product.image ? <img className={photoClass(product)} src={product.image} alt={product.name} loading="lazy" onError={useRecoveredImageFallback} /> : <span className="photo-placeholder">B&C</span>}
                     {product.image && <span className="zoom-hint">{t.zoom}</span>}
                     {isStopped && <b>{t.unavailable}</b>}
                   </button>
@@ -841,7 +842,7 @@ export default function QRMenu() {
               <h2>{selectedProduct.name}</h2>
             </div>
             <button className="modal-photo" type="button" style={photoStyle(selectedProduct)} onClick={() => selectedProduct.image && setPhotoFullscreen(true)} aria-label={`${t.zoom}: ${selectedProduct.name}`}>
-              {selectedProduct.image ? <img className={photoClass(selectedProduct)} src={selectedProduct.image} alt={selectedProduct.name} /> : <span className="photo-placeholder">B&C</span>}
+              {selectedProduct.image ? <img className={photoClass(selectedProduct)} src={selectedProduct.image} alt={selectedProduct.name} onError={useRecoveredImageFallback} /> : <span className="photo-placeholder">B&C</span>}
             </button>
             <div className="modal-content">
               {selectedProduct.description && <p>{selectedProduct.description}</p>}
@@ -857,7 +858,7 @@ export default function QRMenu() {
                   <div className="pairing-grid">
                     {pairings.map((product) => <article key={product.id}>
                         <button className="pairing-photo" style={photoStyle(product)} onClick={() => setSelectedProduct(product)}>
-                          {product.image ? <img className={photoClass(product)} src={product.image} alt={product.name} /> : <span>B&C</span>}
+                          {product.image ? <img className={photoClass(product)} src={product.image} alt={product.name} onError={useRecoveredImageFallback} /> : <span>B&C</span>}
                         </button>
                         <div><b>{product.name}</b><small>{money(product.price)}</small></div>
                         <button className={`pairing-add ${lastAddedId === product.id ? "added" : ""}`} onClick={() => changeQty(product, 1)} aria-label={`${t.add}: ${product.name}`}>+</button>
@@ -871,7 +872,7 @@ export default function QRMenu() {
       {photoFullscreen && selectedProduct?.image && <div className="photo-lightbox" role="dialog" aria-modal="true" aria-label={`${t.zoom}: ${selectedProduct.name}`} onClick={() => setPhotoFullscreen(false)}>
           <div className="photo-popover" onClick={(event) => event.stopPropagation()}>
             <button type="button" className="lightbox-close" onClick={() => setPhotoFullscreen(false)} aria-label={t.close} />
-            <img src={selectedProduct.image} alt={selectedProduct.name} onClick={() => setPhotoFullscreen(false)} />
+            <img src={selectedProduct.image} alt={selectedProduct.name} onError={useRecoveredImageFallback} onClick={() => setPhotoFullscreen(false)} />
           </div>
         </div>}
 
@@ -928,7 +929,7 @@ function WeatherVisual({ kind, phase }) {
     </div>;
 }
 function OrderLine({ line, controls, onMinus, onPlus }) {
-  return <article className="order-line"><div className="mini-photo" style={photoStyle(line)}>{line.image ? <img className={photoClass(line)} src={line.image} alt="" /> : <span>B&C</span>}</div><div><b>{line.name}</b><span>{money(line.price)} × {line.qty}</span></div>{controls ? <div className="stepper"><button className="qty-minus" onClick={onMinus} aria-label={`Уменьшить количество ${line.name}`} /><b>{line.qty}</b><button className="qty-plus" onClick={onPlus} aria-label={`Увеличить количество ${line.name}`} /></div> : <strong>{money(line.price * line.qty)}</strong>}</article>;
+  return <article className="order-line"><div className="mini-photo" style={photoStyle(line)}>{line.image ? <img className={photoClass(line)} src={line.image} alt="" onError={useRecoveredImageFallback} /> : <span>B&C</span>}</div><div><b>{line.name}</b><span>{money(line.price)} × {line.qty}</span></div>{controls ? <div className="stepper"><button className="qty-minus" onClick={onMinus} aria-label={`Уменьшить количество ${line.name}`} /><b>{line.qty}</b><button className="qty-plus" onClick={onPlus} aria-label={`Увеличить количество ${line.name}`} /></div> : <strong>{money(line.price * line.qty)}</strong>}</article>;
 }
 function Empty({ icon, title, text, action, actionLabel = "Перейти в меню" }) {
   return <div className="empty-state"><span>{icon}</span><h3>{title}</h3><p>{text}</p><button className="outline-button" onClick={action}>{actionLabel}</button></div>;
