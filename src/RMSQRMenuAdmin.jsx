@@ -22,8 +22,7 @@ const imageBucket = 'qr-menu-images'
 const DEFAULT_QR_BRANCHES = ['BC1', 'BC2', 'BC3', 'BC4', 'BC5', 'Bistro']
 const QR_MENU_BRANCHES = ['BC1', 'BC2', 'BC4', 'BC5']
 const APPROVED_MENU_BRANCH = 'BC1'
-const BRANCH_MENU_SETTING = 'qr_branch_menu_items_v1'
-const APP_SETTINGS_TABLE = 'rms_app_settings'
+const BRANCH_MENU_CONFIG_TABLE = '__QR_BRANCH_MENU_V1__'
 
 const QR_ADMIN_TEXT = {
   ru: {
@@ -258,7 +257,7 @@ export default function RMSQRMenuAdmin({ lang = localStorage.getItem('rms_lang')
 
   async function loadTables() {
     const { data, error } = await supabase.from('rms_qr_tables').select('*').order('branch_id').order('table_number')
-    if (!error) setTables(data || [])
+    if (!error) setTables((data || []).filter(row => String(row.table_number) !== BRANCH_MENU_CONFIG_TABLE))
   }
 
   async function loadProducts() {
@@ -278,35 +277,44 @@ export default function RMSQRMenuAdmin({ lang = localStorage.getItem('rms_lang')
       .flatMap(branchId => approvedProducts.map(product => ({ branch_code: branchId, menu_item_id: String(product.id) })))
   }
 
-  function linksFromBranchMenuSetting(value, approvedProducts = []) {
-    const branchesValue = value?.branches && typeof value.branches === 'object' ? value.branches : value
-    if (!branchesValue || typeof branchesValue !== 'object') return defaultBranchMenuLinks(approvedProducts)
+  function linksFromBranchMenuRows(rows, approvedProducts = []) {
+    const idsByBranch = new Map()
+    ;(rows || []).forEach(row => {
+      try {
+        const parsed = JSON.parse(String(row.qr_code_url || ''))
+        if (Array.isArray(parsed?.ids)) idsByBranch.set(String(row.branch_id).toUpperCase(), parsed.ids.map(String))
+      } catch (_error) {}
+    })
     return QR_MENU_BRANCHES
       .filter(branchId => branchId !== APPROVED_MENU_BRANCH)
       .flatMap(branchId => {
-        const ids = Array.isArray(branchesValue[branchId]) ? branchesValue[branchId] : approvedProducts.map(product => String(product.id))
+        const ids = idsByBranch.has(branchId) ? idsByBranch.get(branchId) : approvedProducts.map(product => String(product.id))
         return ids.map(menuItemId => ({ branch_code: branchId, menu_item_id: String(menuItemId) }))
       })
   }
 
-  function branchMenuSettingFromLinks(links) {
-    const branchesValue = {}
-    QR_MENU_BRANCHES
+  function branchMenuRowsFromLinks(links) {
+    return QR_MENU_BRANCHES
       .filter(branchId => branchId !== APPROVED_MENU_BRANCH)
-      .forEach(branchId => {
-        branchesValue[branchId] = links
+      .map(branchId => {
+        const ids = links
           .filter(link => String(link.branch_code || '').toUpperCase() === branchId)
           .map(link => String(link.menu_item_id))
+        return {
+          branch_id: branchId,
+          table_number: BRANCH_MENU_CONFIG_TABLE,
+          qr_code_url: JSON.stringify({ version: 1, source_branch: APPROVED_MENU_BRANCH, ids }),
+          is_active: false
+        }
       })
-    return { version: 1, source_branch: APPROVED_MENU_BRANCH, branches: branchesValue, updated_at: new Date().toISOString() }
   }
 
   async function loadBranchMenuLinks(approvedProducts = []) {
     const { data, error } = await supabase
-      .from(APP_SETTINGS_TABLE)
-      .select('value')
-      .eq('key', BRANCH_MENU_SETTING)
-      .maybeSingle()
+      .from('rms_qr_tables')
+      .select('branch_id,qr_code_url')
+      .eq('table_number', BRANCH_MENU_CONFIG_TABLE)
+      .in('branch_id', QR_MENU_BRANCHES.filter(branchId => branchId !== APPROVED_MENU_BRANCH))
 
     if (error) {
       setBranchMenuReady(false)
@@ -315,23 +323,14 @@ export default function RMSQRMenuAdmin({ lang = localStorage.getItem('rms_lang')
     }
 
     setBranchMenuReady(true)
-    setBranchMenuLinks(linksFromBranchMenuSetting(data?.value, approvedProducts))
+    setBranchMenuLinks(linksFromBranchMenuRows(data || [], approvedProducts))
   }
 
   async function saveBranchMenuLinks(nextLinks) {
-    const value = branchMenuSettingFromLinks(nextLinks)
-    const direct = await supabase
-      .from(APP_SETTINGS_TABLE)
-      .upsert({ key: BRANCH_MENU_SETTING, value, updated_at: value.updated_at }, { onConflict: 'key' })
-
-    if (!direct.error) {
-      setBranchMenuReady(true)
-      setBranchMenuLinks(nextLinks)
-      return null
-    }
-
-    const rpc = await supabase.rpc('rms_app_setting_write_secure', { p_key: BRANCH_MENU_SETTING, p_value: value })
-    if (rpc.error) return rpc.error
+    const { error } = await supabase
+      .from('rms_qr_tables')
+      .upsert(branchMenuRowsFromLinks(nextLinks), { onConflict: 'branch_id,table_number' })
+    if (error) return error
 
     setBranchMenuReady(true)
     setBranchMenuLinks(nextLinks)

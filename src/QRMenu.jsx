@@ -178,7 +178,7 @@ const nightWeatherTitles = {
 };
 const displayBranchName = (branch) => branch === "BC1" ? "Barista&Chef R.Behbudov" : `Barista&Chef · ${branch}`;
 const branchFilteredMenus = new Set(["BC2", "BC4", "BC5"]);
-const branchMenuSetting = "qr_branch_menu_items_v1";
+const branchMenuConfigTable = "__QR_BRANCH_MENU_V1__";
 const photoClass = (product) => {
   if (String(product.image || "").includes("/menu/bc-087-water-full.webp")) return "water-bottle-photo";
   if (product.category === "\u041B\u0418\u041C\u041E\u041D\u0410\u0414\u042B") return "lemonade-photo";
@@ -312,17 +312,20 @@ export default function QRMenu() {
     setLoading(true);
     const menuRequest = supabase.rpc("qr_get_public_menu", { p_branch_code: branch });
     const branchMenuRequest = branchFilteredMenus.has(branch)
-      ? supabase.from("rms_app_settings").select("value").eq("key", branchMenuSetting).maybeSingle()
+      ? supabase.from("rms_qr_tables").select("qr_code_url").eq("branch_id", branch).eq("table_number", branchMenuConfigTable).maybeSingle()
       : Promise.resolve({ data: null, error: null });
     Promise.all([menuRequest, branchMenuRequest]).then(([menuResult, branchMenuResult]) => {
       if (!active) return;
       const { data, error } = menuResult;
       if (error) flash(`\u041C\u0435\u043D\u044E \u0432\u0440\u0435\u043C\u0435\u043D\u043D\u043E \u043D\u0435\u0434\u043E\u0441\u0442\u0443\u043F\u043D\u043E: ${error.message}`);
       let menuRows = Array.isArray(data) ? data : [];
-      const branchMenuValue = branchMenuResult.data?.value;
-      const branchMenuConfig = branchMenuValue?.branches && typeof branchMenuValue.branches === "object" ? branchMenuValue.branches : branchMenuValue;
-      if (branchFilteredMenus.has(branch) && !branchMenuResult.error && Array.isArray(branchMenuConfig?.[branch])) {
-        const enabledIds = new Set(branchMenuConfig[branch].map((id) => String(id)));
+      let branchMenuIds = null;
+      try {
+        const branchMenuConfig = JSON.parse(String(branchMenuResult.data?.qr_code_url || ""));
+        if (Array.isArray(branchMenuConfig?.ids)) branchMenuIds = branchMenuConfig.ids;
+      } catch (_error) {}
+      if (branchFilteredMenus.has(branch) && !branchMenuResult.error && Array.isArray(branchMenuIds)) {
+        const enabledIds = new Set(branchMenuIds.map((id) => String(id)));
         menuRows = menuRows.filter((item) => enabledIds.has(String(item.id || item.menu_item_id)));
       }
       setProducts(menuRows.map((item) => normalizeProduct(item, branch)));
