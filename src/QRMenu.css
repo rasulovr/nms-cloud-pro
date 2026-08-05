@@ -3215,3 +3215,79 @@ body {
     animation-iteration-count: 1 !important;
   }
 }
+
+
+/* RMS QR dish sheet v4: clean fitted photography, accessible copy, one recommendation. */
+.product-modal .modal-photo {
+  background: var(--surface-solid);
+}
+
+.product-modal .modal-photo::before,
+.product-modal .modal-photo::after {
+  content: none;
+  display: none;
+}
+
+.product-modal .modal-photo img,
+.product-modal .modal-photo img.cold-drink-photo,
+.product-modal .modal-photo img.lemonade-photo {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center;
+  background: var(--surface-solid);
+}
+
+.product-modal .modal-content > p {
+  font-size: 15px;
+  line-height: 1.5;
+  color: color-mix(in srgb, var(--ink) 68%, var(--muted));
+}
+
+.product-modal .pairing-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.product-modal .pairing-grid article:nth-child(n + 2) {
+  display: none;
+}
+
+@media (max-width: 620px) {
+  .product-modal .modal-content > p {
+    font-size: 14px;
+    line-height: 1.48;
+    -webkit-line-clamp: 3;
+  }
+
+  .product-modal .pairing-grid article {
+    min-height: 56px;
+    grid-template-columns: 44px minmax(0, 1fr) 32px;
+  }
+
+  .product-modal .pairing-photo {
+    width: 44px;
+    height: 44px;
+  }
+
+  .product-modal .pairing-grid b {
+    font-size: 12px;
+    line-height: 1.2;
+  }
+
+  .product-modal .pairing-grid small {
+    font-size: 11px;
+  }
+
+  .product-modal .pairing-add {
+    width: 32px;
+    height: 32px;
+  }
+}
+
+@media (max-width: 620px) and (max-height: 700px) {
+  .product-modal .modal-content > p {
+    font-size: 13px;
+    line-height: 1.42;
+    -webkit-line-clamp: 2;
+  }
+}
