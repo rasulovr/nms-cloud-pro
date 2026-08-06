@@ -181,7 +181,10 @@ export function localizeCategory(category, language) {
   if (normalized === normalizedMenuText("Новинки") || normalized === normalizedMenuText("Yeniliklər") || normalized === "new") {
     return { ru: "Новинки", az: "Yeniliklər", en: "New" }[language] || category;
   }
-  return resolveReferenceCategory(category, language) || CLOPOS_CATEGORY_BY_ANY_NAME.get(normalized)?.[language] || category;
+  const value = resolveReferenceCategory(category, language) || CLOPOS_CATEGORY_BY_ANY_NAME.get(normalized)?.[language] || category;
+  // Source POS categories are often upper case; QR Menu always presents them
+  // as readable title-case labels.
+  return formatMenuDescription(value);
 }
 
 export function localizeOption(option, language) {
