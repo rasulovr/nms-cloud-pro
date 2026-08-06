@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "./supabase";
-import { localizeProduct } from "./qrMenuTranslations";
+import { localizeCategory, localizeProduct } from "./qrMenuTranslations";
 import { resolveRecoveredMenuImage, useRecoveredImageFallback } from "./recoveredMenuImages";
 import "./QRMenu.css";
 const categoryOrder = {
@@ -763,7 +763,7 @@ export default function QRMenu() {
               </div>
             </section>}
           <div className="categories">
-            {categories.map((name) => <button className={category === name ? "active" : ""} key={name} onClick={() => setCategory(name)}>{categoryTranslations[language][name] || categoryLabel(name)}</button>)}
+            {categories.map((name) => <button className={category === name ? "active" : ""} key={name} onClick={() => setCategory(name)}>{localizeCategory(name, language) || categoryTranslations[language][name] || categoryLabel(name)}</button>)}
           </div>
           {mealRecommendation && smartRecommendations.length === 0 && <aside className={`meal-recommendation meal-${mealRecommendation.moment}`}>
               <button
@@ -917,7 +917,7 @@ export default function QRMenu() {
           <article className="product-modal-card">
             <button className="modal-close" onClick={() => setSelectedProduct(null)} aria-label={t.close} />
             <div className="modal-heading">
-              <span className="eyebrow">{categoryTranslations[language][selectedProduct.category] || categoryLabel(selectedProduct.category)}</span>
+              <span className="eyebrow">{localizeCategory(selectedProduct.category, language) || categoryTranslations[language][selectedProduct.category] || categoryLabel(selectedProduct.category)}</span>
               <h2>{selectedProduct.name}</h2>
             </div>
             <button className="modal-photo" type="button" style={photoStyle(selectedProduct)} onClick={() => selectedProduct.image && setPhotoFullscreen(true)} aria-label={`${t.zoom}: ${selectedProduct.name}`}>
@@ -978,32 +978,32 @@ function getLunarPhase(date = new Date()) {
 }
 function WeatherVisual({ kind, phase }) {
   const isNight = phase === "night";
-  const lunarPhase = getLunarPhase();
-  const isMoonless = isNight && lunarPhase === "new";
-  const isOvercast = isMoonless && ["cloudy", "rainy"].includes(kind);
-  const sceneClasses = [
-    "weather-visual",
-    kind,
-    isNight ? "night-sky" : "",
-    isMoonless ? "moonless star-sky" : "",
-    isOvercast ? "overcast-sky" : ""
-  ].filter(Boolean).join(" ");
-  return <div className={sceneClasses} aria-hidden="true">
-      <span className="weather-sun" />
-      {isNight && <span className={`weather-moon moon-${lunarPhase}`}>
-          <i className="moon-crater crater-one" />
-          <i className="moon-crater crater-two" />
-          <i className="moon-crater crater-three" />
-        </span>}
-      {isMoonless && <span className="weather-stars" />}
-      <span className="weather-cloud cloud-one" />
-      <span className="weather-cloud cloud-two" />
-      <span className="weather-rain rain-one" />
-      <span className="weather-rain rain-two" />
-      <span className="weather-rain rain-three" />
-      <span className="weather-wind wind-one" />
-      <span className="weather-wind wind-two" />
-    </div>;
+  const showCloud = ["cloudy", "rainy", "cool"].includes(kind);
+  const showRain = kind === "rainy";
+  const showWind = kind === "windy" || kind === "sunny";
+  return <svg className={`weather-visual weather-svg weather-svg-${kind}`} viewBox="0 0 128 104" aria-hidden="true">
+      <defs>
+        <linearGradient id="weatherSun" x1="0" y1="0" x2="1" y2="1"><stop stopColor="#fff0a8" /><stop offset=".5" stopColor="#f8c64f" /><stop offset="1" stopColor="#de9423" /></linearGradient>
+        <linearGradient id="weatherCloud" x1="0" y1="0" x2="1" y2="1"><stop stopColor="#ffffff" /><stop offset="1" stopColor="#dce8ea" /></linearGradient>
+        <linearGradient id="weatherWind" x1="0" y1="0" x2="1" y2="0"><stop stopColor="#7ec3c7" /><stop offset="1" stopColor="#d9eef0" /></linearGradient>
+        <filter id="weatherShadow" x="-40%" y="-40%" width="180%" height="180%"><feDropShadow dx="0" dy="7" stdDeviation="6" floodColor="#284d55" floodOpacity=".18" /></filter>
+      </defs>
+      {!isNight && <g className="weather-svg-sun" filter="url(#weatherShadow)">
+          <g className="weather-svg-rays" stroke="#f4c454" strokeWidth="3.6" strokeLinecap="round">
+            <path d="M80 7v9M80 72v9M47 39h9M104 39h9M57 16l7 7M97 62l7 7M57 63l7-7M97 23l7-7" />
+          </g>
+          <circle cx="80" cy="39" r="23" fill="url(#weatherSun)" />
+          <ellipse cx="72" cy="31" rx="8" ry="5" fill="#fff" opacity=".34" />
+        </g>}
+      {isNight && <g className="weather-svg-moon" filter="url(#weatherShadow)"><path d="M97 18a25 25 0 1 0 2 43A21 21 0 0 1 97 18Z" fill="#f3f5d8" /><circle cx="87" cy="31" r="3" fill="#c8d2c5" opacity=".7" /></g>}
+      {showCloud && <g className="weather-svg-cloud" filter="url(#weatherShadow)" fill="url(#weatherCloud)"><path d="M28 70c-10 0-18-7-18-16 0-8 7-15 16-16 3-11 13-18 25-18 14 0 25 9 27 22 10 1 18 8 18 17 0 7-6 11-15 11H28Z" /></g>}
+      {showWind && <g className="weather-svg-wind" fill="none" stroke="url(#weatherWind)" strokeWidth="5" strokeLinecap="round">
+          <path d="M10 67c18 0 29 1 39 6 15 8 31 9 56 1 7-2 11 0 12 5" />
+          <path d="M8 82c18-5 35-4 49 3 15 7 31 8 54 2" />
+          <path d="M21 96c17-5 31-4 42 1 12 5 25 5 39 0" />
+        </g>}
+      {showRain && <g className="weather-svg-rain" stroke="#6ab7d1" strokeWidth="4" strokeLinecap="round"><path d="M28 79l-5 10M50 79l-5 10M72 79l-5 10" /></g>}
+    </svg>;
 }
 function OrderLine({ line, controls, onMinus, onPlus }) {
   return <article className="order-line"><div className="mini-photo" style={photoStyle(line)}>{line.image ? <img className={photoClass(line)} src={line.image} alt="" onError={useRecoveredImageFallback} /> : <span>B&C</span>}</div><div><b>{line.name}</b><span>{money(line.price)} × {line.qty}</span></div>{controls ? <div className="stepper"><button className="qty-minus" onClick={onMinus} aria-label={`Уменьшить количество ${line.name}`} /><b>{line.qty}</b><button className="qty-plus" onClick={onPlus} aria-label={`Увеличить количество ${line.name}`} /></div> : <strong>{money(line.price * line.qty)}</strong>}</article>;
