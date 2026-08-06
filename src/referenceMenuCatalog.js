@@ -15,6 +15,17 @@ export const formatMenuDescription = (value) => {
   return `${description.slice(0, firstLetter)}${description[firstLetter].toLocaleUpperCase("ru-RU")}${description.slice(firstLetter + 1)}`;
 };
 
+// POS categories frequently arrive in upper case or with arbitrary casing.
+// Keep product copy intact, but present category labels as one readable sentence.
+export const formatMenuCategory = (value, locale = "ru-RU") => {
+  const category = String(value || "").trim();
+  if (!category) return "";
+  const firstLetter = category.search(/\p{L}/u);
+  if (firstLetter < 0) return category;
+  const normalized = category.toLocaleLowerCase(locale);
+  return `${normalized.slice(0, firstLetter)}${normalized[firstLetter].toLocaleUpperCase(locale)}${normalized.slice(firstLetter + 1)}`;
+};
+
 const generatedImages = {
   "Экстра Соус": "/menu/generated/extra-sauce.webp",
   "Сироп": "/menu/generated/syrup.webp",
