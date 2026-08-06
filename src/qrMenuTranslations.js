@@ -197,8 +197,12 @@ export function localizeProduct(product, language) {
   const resolvedTranslation = resolveTranslation({ ...product, sourceName });
   const translationKey = resolvedTranslation?.ruName || product.translationKey || sourceName;
   if (language === "ru") {
-    const name = product.ru_name || product.name_ru || product.translations?.ru?.name || translationKey;
-    const description = formatMenuDescription(product.ru_description ?? product.description_ru ?? product.translations?.ru?.description ?? resolvedTranslation?.translations?.ru?.description ?? "");
+    const name = product.preserveReferenceCopy
+      ? sourceName
+      : product.ru_name || product.name_ru || product.translations?.ru?.name || translationKey;
+    const description = formatMenuDescription(product.preserveReferenceCopy
+      ? product.sourceDescription || product.description || ""
+      : product.ru_description ?? product.description_ru ?? product.translations?.ru?.description ?? resolvedTranslation?.translations?.ru?.description ?? "");
     const options = (product.sourceOptions || product.options || []).map((option) => localizeOption(option, language));
     return {
       ...product,
