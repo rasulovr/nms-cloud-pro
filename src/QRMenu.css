@@ -830,7 +830,7 @@ body {
 .smart-recommendations-heading span { color: var(--ink); font-size: 14px; font-weight: 650; letter-spacing: -.02em; }
 .smart-recommendations-heading p { margin: 3px 0 0; color: var(--muted); font-size: 9px; }
 .smart-recommendations-heading > small { flex: none; padding: 5px 8px; color: var(--muted); background: color-mix(in srgb, var(--surface-solid) 48%, transparent); border-radius: 999px; font-size: 8px; }
-.smart-recommendation-list { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 9px; }
+.smart-recommendation-list { display: grid; grid-template-columns: minmax(0, 1fr); gap: 9px; }
 .smart-recommendation-list > button { min-width: 0; padding: 7px; display: grid; grid-template-columns: 54px minmax(0, 1fr); align-items: center; gap: 9px; color: var(--ink); text-align: left; background: color-mix(in srgb, var(--surface-solid) 56%, transparent); border: 1px solid color-mix(in srgb, var(--surface-line) 82%, transparent); border-radius: 17px; }
 .smart-recommendation-photo { position: relative; isolation: isolate; width: 54px; height: 48px; display: grid; place-items: center; overflow: hidden; background: var(--surface-solid); border-radius: 12px; }
 .smart-recommendation-photo::before { content: ""; position: absolute; z-index: -1; inset: -8px; background-image: var(--photo); background-position: center; background-size: cover; filter: blur(13px); opacity: .18; }
@@ -843,9 +843,9 @@ body {
 @media (max-width: 620px) {
   .app-shell .hero-weather .weather-visual { width: 54px; height: 54px; margin: 0 -2px 0 0; transform: none; }
   .smart-recommendations { margin-bottom: 13px; padding: 13px; border-radius: 21px; }
-  .smart-recommendation-list { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; }
+  .smart-recommendation-list { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; overflow: visible; }
   .smart-recommendation-list::-webkit-scrollbar { display: none; }
-  .smart-recommendation-list > button { min-width: 152px; }
+  .smart-recommendation-list > button { min-width: 0; }
 }
 
 /* QR guest language selector and branch information */
