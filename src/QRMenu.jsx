@@ -138,6 +138,7 @@ const uiText = {
     scanTable: "Sifariş üçün masanızdakı QR-kodu skan edin", stoppedNotice: "Məhsul stop-listdədir",
     breakfastChoice: "Səhər seçimi", breakfastNote: "Günə yüngül başlanğıc", lunchChoice: "Nahar seçimi",
     lunchNote: "Günün fasiləsi üçün uyğundur", dinnerChoice: "Axşam seçimi", dinnerNote: "Axşam üçün daha dolğun dad",
+    smartPicks: "İndi sizin üçün", smartPicksNote: "Günün vaxtına və Bakı havasına uyğun",
     quoteLines: ["Günün dadı olmalıdır.", "Yaxşı qəhvə günün ritmini yaradır.", "Sevdiyiniz dadlar günü gözəlləşdirir.", "Dad əhvaldan başlayır."]
   },
   ru: {
@@ -155,6 +156,7 @@ const uiText = {
     scanTable: "Для заказа отсканируйте QR-код на вашем столе", stoppedNotice: "Позиция находится в stop-list",
     breakfastChoice: "Утренний выбор", breakfastNote: "Лёгкое начало дня", lunchChoice: "Выбор к обеду",
     lunchNote: "Подходит для дневной паузы", dinnerChoice: "Вечерний выбор", dinnerNote: "Более насыщенный вкус к вечеру",
+    smartPicks: "Для вас сейчас", smartPicksNote: "С учётом времени и погоды в Баку",
     quoteLines: ["У дня должен быть вкус.", "Хороший кофе задаёт ритм дня.", "Любимые вкусы делают день лучше.", "Вкус начинается с настроения."]
   },
   en: {
@@ -172,6 +174,7 @@ const uiText = {
     scanTable: "To order, scan the QR code on your table", stoppedNotice: "This item is on the stop list",
     breakfastChoice: "Morning choice", breakfastNote: "A light start to the day", lunchChoice: "Lunch choice",
     lunchNote: "Perfect for a midday break", dinnerChoice: "Evening choice", dinnerNote: "A richer flavour for the evening",
+    smartPicks: "Picked for now", smartPicksNote: "Matched to the time and Baku weather",
     quoteLines: ["Every day should have flavour.", "Good coffee sets the rhythm of the day.", "Favourite flavours make the day better.", "Flavour starts with a mood."]
   }
 };
@@ -521,6 +524,38 @@ export default function QRMenu() {
     const product = candidates[(bakuDay + Math.floor(bakuHour / 2)) % candidates.length];
     return { moment, ...meta, product };
   }, [localizedProducts, bakuHour, branch, unavailable, t]);
+  const smartRecommendations = useMemo(() => {
+    const available = localizedProducts.filter((product) => product.branches.includes(branch) && !unavailable.includes(product.id) && !isWineOrProsecco(product));
+    if (!available.length) return [];
+    const moment = getMealMoment(bakuHour);
+    const momentPatterns = {
+      breakfast: /səhər|завтрак|breakfast|omlet|омлет|şakşuka|шакшук|sırnik|сырник|croissant|круас|qəhvə|кофе|coffee|cappucc|капуч/i,
+      lunch: /salat|салат|salad|şorba|суп|soup|boul|боул|bowl|burger|бургер|pizza|пицц|hummus|хумус/i,
+      dinner: /isti yemək|горяч|main dish|steak|стейк|ördək|утк|duck|pizza|пицц|salat|салат|salad/i
+    };
+    const weatherPatterns = {
+      sunny: /limonad|лимонад|lemonade|soyuq qəhvə|холодн.*кофе|cold coffee|ice tea|iced tea|buzlu çay|salat|салат|salad/i,
+      windy: /qəhvə|кофе|coffee|cappucc|капуч|latte|латте|çay|чай|tea|şorba|суп|soup/i,
+      rainy: /qəhvə|кофе|coffee|cappucc|капуч|latte|латте|çay|чай|tea|şorba|суп|soup|desert|десерт|dessert/i,
+      cool: /qəhvə|кофе|coffee|cappucc|капуч|latte|латте|çay|чай|tea|şorba|суп|soup/i,
+      cloudy: /qəhvə|кофе|coffee|çay|чай|tea|desert|десерт|dessert|salat|салат|salad/i
+    };
+    const weatherPattern = weatherPatterns[weatherOffer?.kind] || weatherPatterns.cloudy;
+    const daySeed = Number(new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Baku", day: "numeric" }).format(new Date()));
+    return available
+      .map((product, index) => {
+        const text = productSearchText(product);
+        const timeMatch = momentPatterns[moment].test(text);
+        const weatherMatch = weatherPattern.test(text);
+        const hasPhoto = Boolean(product.image);
+        return { product, score: (timeMatch ? 5 : 0) + (weatherMatch ? 4 : 0) + (timeMatch && weatherMatch ? 4 : 0) + (hasPhoto ? 1 : 0), index };
+      })
+      .filter((entry) => entry.score > 0)
+      .sort((a, b) => b.score - a.score || ((a.index + daySeed + bakuHour) % available.length) - ((b.index + daySeed + bakuHour) % available.length))
+      .map((entry) => entry.product)
+      .filter((product, index, list) => index === list.findIndex((item) => item.id === product.id))
+      .slice(0, 3);
+  }, [localizedProducts, branch, unavailable, bakuHour, weatherOffer]);
   const pairings = useMemo(() => {
     if (!selectedProduct) return [];
     const moment = getMealMoment(bakuHour);
@@ -714,10 +749,22 @@ export default function QRMenu() {
       {notice && <div className="toast">{notice}</div>}
 
       {screen === "menu" && <section className="content">
+          {smartRecommendations.length > 0 && <section className="smart-recommendations" aria-label={t.smartPicks}>
+              <div className="smart-recommendations-heading">
+                <div><span>{t.smartPicks}</span><p>{t.smartPicksNote}</p></div>
+                <small>{String(bakuHour).padStart(2, "0")}:00</small>
+              </div>
+              <div className="smart-recommendation-list">
+                {smartRecommendations.map((product) => <button type="button" key={product.id} onClick={() => setSelectedProduct(product)}>
+                    <span className="smart-recommendation-photo" style={photoStyle(product)}>{product.image ? <img className={photoClass(product)} src={product.image} alt="" onError={useRecoveredImageFallback} /> : <i>B&amp;C</i>}</span>
+                    <span className="smart-recommendation-copy"><b>{product.name}</b><small>{money(product.price)}</small></span>
+                  </button>)}
+              </div>
+            </section>}
           <div className="categories">
             {categories.map((name) => <button className={category === name ? "active" : ""} key={name} onClick={() => setCategory(name)}>{categoryTranslations[language][name] || categoryLabel(name)}</button>)}
           </div>
-          {mealRecommendation && <aside className={`meal-recommendation meal-${mealRecommendation.moment}`}>
+          {mealRecommendation && smartRecommendations.length === 0 && <aside className={`meal-recommendation meal-${mealRecommendation.moment}`}>
               <button
     className="meal-photo"
     style={photoStyle(mealRecommendation.product)}
@@ -941,8 +988,6 @@ function WeatherVisual({ kind, phase }) {
     isOvercast ? "overcast-sky" : ""
   ].filter(Boolean).join(" ");
   return <div className={sceneClasses} aria-hidden="true">
-      <span className="weather-ambient" />
-      <span className="weather-orbit" />
       <span className="weather-sun" />
       {isNight && <span className={`weather-moon moon-${lunarPhase}`}>
           <i className="moon-crater crater-one" />
