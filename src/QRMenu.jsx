@@ -204,7 +204,10 @@ const photoStyle = (product) => product.image
   : undefined;
 const normalizeProduct = (item, branch) => {
   const sourceName = item.name || "";
-  const reference = resolveReferenceMenuProduct(item);
+  // BC1 is the approved source menu. Never rewrite its curated copy with the
+  // migration catalog; the catalog is only an enrichment layer for copied menus.
+  const preserveReferenceCopy = branch === "BC1";
+  const reference = preserveReferenceCopy ? null : resolveReferenceMenuProduct(item);
   const referenceName = reference?.translations?.ru?.name || sourceName;
   const override = productionProductOverrides[referenceName] || productionProductOverrides[sourceName] || {};
   const sourceDescription = formatMenuDescription(reference?.translations?.ru?.description || item.description || "");
@@ -215,6 +218,7 @@ const normalizeProduct = (item, branch) => {
     translationKey: referenceName,
     sourceName: override.name || referenceName,
     sourceDescription,
+    preserveReferenceCopy,
     sourceOptions,
     name: override.name || referenceName,
     description: sourceDescription,
@@ -348,7 +352,13 @@ export default function QRMenu() {
       }
       setProducts(menuRows.map((item) => normalizeProduct(item, branch)));
       const recommendationRows = Array.isArray(recommendationsResult.data) ? recommendationsResult.data : [];
-      setConfiguredRecommendations(recommendationRows.filter((row) => !row.branch_id || String(row.branch_id) === branch));
+      // BC2/BC4/BC5 are copies of the approved BC1 menu. They inherit BC1's
+      // product-to-product links while still allowing branch-specific overrides.
+      const inheritsBc1Recommendations = ["BC2", "BC4", "BC5"].includes(branch);
+      setConfiguredRecommendations(recommendationRows.filter((row) => {
+        const rowBranch = String(row.branch_id || "");
+        return !rowBranch || rowBranch === branch || (inheritsBc1Recommendations && rowBranch === "BC1");
+      }));
       setLoading(false);
     }).catch((error) => {
       if (!active) return;
@@ -614,13 +624,22 @@ export default function QRMenu() {
     const candidates = localizedProducts.filter(
       (product) => product.id !== selectedProduct.id && product.branches.includes(branch) && !unavailable.includes(product.id) && !isExtraCategory(product) && pairingRank(product) < 999
     ).sort((a, b) => pairingRank(a) - pairingRank(b) || b.rating - a.rating || String(a.id).localeCompare(String(b.id)));
-    if (!candidates.length) return [];
+    if (!candidates.length) {
+      // A dish must never open with an empty recommendation area. Use the same
+      // safe menu groups as BC1 when no saved mapping or specialised rule exists.
+      return localizedProducts
+        .filter((product) => product.id !== selectedProduct.id && product.branches.includes(branch) && !unavailable.includes(product.id) && !isExtraCategory(product) && !isWineOrProsecco(product))
+        .filter((product) => ["ЛИМОНАДЫ", "ХОЛОДНЫЕ НАПИТКИ", "КОФЕ", "ЧАЙ", "ДЕСЕРТЫ"].includes(product.category))
+        .sort((a, b) => b.rating - a.rating || String(a.id).localeCompare(String(b.id)))
+        .slice(0, 3);
+    }
     const sourceGroup = pairingGroup(selectedProduct);
     const sourceProducts = localizedProducts.filter(
       (product) => product.branches.includes(branch) && !unavailable.includes(product.id) && pairingGroup(product) === sourceGroup
     ).sort((a, b) => String(a.id).localeCompare(String(b.id)));
     const sourceIndex = Math.max(0, sourceProducts.findIndex((product) => product.id === selectedProduct.id));
-    return [candidates[sourceIndex % candidates.length]];
+    return Array.from({ length: Math.min(3, candidates.length) }, (_, offset) => candidates[(sourceIndex + offset) % candidates.length])
+      .filter((product, index, list) => index === list.findIndex((item) => item.id === product.id));
   }, [localizedProducts, selectedProduct, branch, unavailable, bakuHour, profile, configuredRecommendations]);
   function flash(text) {
     setNotice(text);
@@ -945,12 +964,6 @@ export default function QRMenu() {
             <div className="modal-content">
               {selectedProduct.description && <p>{selectedProduct.description}</p>}
               {selectedProduct.options.length > 0 && <div className="modal-options">{selectedProduct.options.map((option) => <small key={option}>{option}</small>)}</div>}
-              <div className="modal-buy">
-                <strong>{money(selectedProduct.price)}</strong>
-                <button className={lastAddedId === selectedProduct.id ? "added" : ""} disabled={unavailable.includes(selectedProduct.id)} onClick={() => changeQty(selectedProduct, 1)}>
-                  {unavailable.includes(selectedProduct.id) ? t.unavailable : lastAddedId === selectedProduct.id ? t.added : t.addToOrder}
-                </button>
-              </div>
               {pairings.length > 0 && <div className="pairings">
                   <div><span className="eyebrow">{t.pairsEyebrow}</span><h3>{t.pairsTitle}</h3></div>
                   <div className="pairing-grid">
@@ -963,6 +976,12 @@ export default function QRMenu() {
                       </article>)}
                   </div>
                 </div>}
+              <div className="modal-buy">
+                <strong>{money(selectedProduct.price)}</strong>
+                <button className={lastAddedId === selectedProduct.id ? "added" : ""} disabled={unavailable.includes(selectedProduct.id)} onClick={() => changeQty(selectedProduct, 1)}>
+                  {unavailable.includes(selectedProduct.id) ? t.unavailable : lastAddedId === selectedProduct.id ? t.added : t.addToOrder}
+                </button>
+              </div>
             </div>
           </article>
         </div>}
@@ -1002,24 +1021,28 @@ function WeatherVisual({ kind, phase }) {
   const showWind = kind === "windy" || kind === "sunny";
   return <svg className={`weather-visual weather-svg weather-svg-${kind}`} viewBox="0 0 128 104" aria-hidden="true">
       <defs>
-        <linearGradient id="weatherSun" x1="0" y1="0" x2="1" y2="1"><stop stopColor="#fff0a8" /><stop offset=".5" stopColor="#f8c64f" /><stop offset="1" stopColor="#de9423" /></linearGradient>
-        <linearGradient id="weatherCloud" x1="0" y1="0" x2="1" y2="1"><stop stopColor="#ffffff" /><stop offset="1" stopColor="#dce8ea" /></linearGradient>
-        <linearGradient id="weatherWind" x1="0" y1="0" x2="1" y2="0"><stop stopColor="#7ec3c7" /><stop offset="1" stopColor="#d9eef0" /></linearGradient>
-        <filter id="weatherShadow" x="-40%" y="-40%" width="180%" height="180%"><feDropShadow dx="0" dy="7" stdDeviation="6" floodColor="#284d55" floodOpacity=".18" /></filter>
+        <radialGradient id="weatherSun" cx="34%" cy="27%" r="76%"><stop offset="0" stopColor="#fff9cf" /><stop offset=".28" stopColor="#ffe386" /><stop offset=".7" stopColor="#f7b934" /><stop offset="1" stopColor="#dc811b" /></radialGradient>
+        <linearGradient id="weatherRay" x1="0" y1="0" x2="1" y2="1"><stop stopColor="#ffe596" /><stop offset="1" stopColor="#efa72f" /></linearGradient>
+        <linearGradient id="weatherCloud" x1=".2" y1="0" x2=".72" y2="1"><stop stopColor="#ffffff" /><stop offset=".52" stopColor="#eaf2f3" /><stop offset="1" stopColor="#b7cbd0" /></linearGradient>
+        <linearGradient id="weatherWind" x1="0" y1="0" x2="1" y2="0"><stop stopColor="#a8e2e2" /><stop offset=".48" stopColor="#64bec3" /><stop offset="1" stopColor="#d8f2f1" /></linearGradient>
+        <filter id="weatherShadow" x="-50%" y="-50%" width="200%" height="210%"><feDropShadow dx="0" dy="8" stdDeviation="6" floodColor="#21444d" floodOpacity=".26" /></filter>
+        <filter id="weatherGlow" x="-80%" y="-80%" width="260%" height="260%"><feGaussianBlur stdDeviation="6" /></filter>
       </defs>
       {!isNight && <g className="weather-svg-sun" filter="url(#weatherShadow)">
-          <g className="weather-svg-rays" stroke="#f4c454" strokeWidth="3.6" strokeLinecap="round">
-            <path d="M80 7v9M80 72v9M47 39h9M104 39h9M57 16l7 7M97 62l7 7M57 63l7-7M97 23l7-7" />
+          <circle cx="80" cy="39" r="28" fill="#ffc84f" opacity=".22" filter="url(#weatherGlow)" />
+          <g className="weather-svg-rays" stroke="url(#weatherRay)" strokeWidth="5.4" strokeLinecap="round">
+            <path d="M80 4v10M80 74v10M44 39h10M106 39h10M54 13l8 8M100 66l8 8M54 66l8-8M100 21l8-8" />
           </g>
-          <circle cx="80" cy="39" r="23" fill="url(#weatherSun)" />
-          <ellipse cx="72" cy="31" rx="8" ry="5" fill="#fff" opacity=".34" />
+          <circle cx="80" cy="39" r="24" fill="url(#weatherSun)" />
+          <ellipse cx="71" cy="30" rx="9" ry="6" fill="#fff" opacity=".48" />
+          <path d="M66 55c10 6 24 4 31-6" fill="none" stroke="#c87517" strokeWidth="2" opacity=".2" strokeLinecap="round" />
         </g>}
-      {isNight && <g className="weather-svg-moon" filter="url(#weatherShadow)"><path d="M97 18a25 25 0 1 0 2 43A21 21 0 0 1 97 18Z" fill="#f3f5d8" /><circle cx="87" cy="31" r="3" fill="#c8d2c5" opacity=".7" /></g>}
+      {isNight && <g className="weather-svg-moon" filter="url(#weatherShadow)"><path d="M97 18a25 25 0 1 0 2 43A21 21 0 0 1 97 18Z" fill="#f7f5cf" /><ellipse cx="82" cy="27" rx="7" ry="4" fill="#fff" opacity=".34" /><circle cx="87" cy="39" r="3" fill="#c8d2c5" opacity=".7" /></g>}
       {showCloud && <g className="weather-svg-cloud" filter="url(#weatherShadow)" fill="url(#weatherCloud)"><path d="M28 70c-10 0-18-7-18-16 0-8 7-15 16-16 3-11 13-18 25-18 14 0 25 9 27 22 10 1 18 8 18 17 0 7-6 11-15 11H28Z" /></g>}
-      {showWind && <g className="weather-svg-wind" fill="none" stroke="url(#weatherWind)" strokeWidth="5" strokeLinecap="round">
-          <path d="M10 67c18 0 29 1 39 6 15 8 31 9 56 1 7-2 11 0 12 5" />
-          <path d="M8 82c18-5 35-4 49 3 15 7 31 8 54 2" />
-          <path d="M21 96c17-5 31-4 42 1 12 5 25 5 39 0" />
+      {showWind && <g className="weather-svg-wind" fill="none" strokeLinecap="round">
+          <g stroke="#234f58" strokeWidth="8" opacity=".12" transform="translate(0 3)"><path d="M8 68c18-1 31 1 43 7 16 8 34 8 57 0 7-2 11 0 12 5" /><path d="M7 84c20-5 37-3 51 4 15 7 32 7 55 0" /><path d="M21 98c17-5 31-4 43 1 12 5 25 5 40-1" /></g>
+          <g stroke="url(#weatherWind)" strokeWidth="6"><path d="M8 68c18-1 31 1 43 7 16 8 34 8 57 0 7-2 11 0 12 5" /><path d="M7 84c20-5 37-3 51 4 15 7 32 7 55 0" /><path d="M21 98c17-5 31-4 43 1 12 5 25 5 40-1" /></g>
+          <g stroke="#fff" strokeWidth="1.5" opacity=".5"><path d="M12 66c16 0 27 2 38 7" /><path d="M11 82c16-3 30-2 42 3" /></g>
         </g>}
       {showRain && <g className="weather-svg-rain" stroke="#6ab7d1" strokeWidth="4" strokeLinecap="round"><path d="M28 79l-5 10M50 79l-5 10M72 79l-5 10" /></g>}
     </svg>;
