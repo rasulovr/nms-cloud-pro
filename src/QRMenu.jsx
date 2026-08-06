@@ -26,6 +26,7 @@ const isCoffee = (product) => ["КОФЕ", "ХОЛОДНЫЙ КОФЕ"].includes
 const isMainDish = (product) => product.category === "ГОРЯЧИЕ БЛЮДА";
 const isIcedTea = (product) => /айс[\s-]*ти|ice[\s-]*tea|iced[\s-]*tea|soyuq\s+çay/.test(productSearchText(product));
 const isWineOrProsecco = (product) => /вино|wine|şərab|prosecco|просекко/.test(productSearchText(product));
+const isExtraCategory = (product) => /^(ekstra|extra|əlavə)/i.test(String(product?.category || "").trim());
 const isVerifiedAdult = (profile) => profile?.age_verified_18 === true || profile?.is_adult_verified === true;
 const pairingCategories = {
   "\u0417\u0410\u0412\u0422\u0420\u0410\u041A": ["\u041A\u041E\u0424\u0415", "\u0425\u041E\u041B\u041E\u0414\u041D\u042B\u0419 \u041A\u041E\u0424\u0415", "\u041B\u0418\u041C\u041E\u041D\u0410\u0414\u042B"],
@@ -114,13 +115,13 @@ const categoryTranslations = {
   }
 };
 Object.assign(categoryTranslations.az, {
-  "SƏHƏR YEMƏYİ": "Səhər yeməyi", "QƏHVƏ": "Qəhvə", "ÇAY": "Çay", "SOYUQ QƏHVƏ": "Soyuq qəhvə", "DESERTLƏR": "Desertlər", "SALATLAR": "Salatlar", "ŞORBALAR": "Şorbalar", "İSTİ YEMƏKLƏR": "İsti yeməklər", "QƏLYANALTILAR": "Qəlyanaltılar", "LİMONADLAR": "Limonadlar", "SOYUQ İÇKİLƏR": "Soyuq içkilər", "ƏLAVƏLƏR · MƏTBƏX": "Əlavələr · Mətbəx", "ƏLAVƏLƏR · BAR": "Əlavələr · Bar"
+  "SƏHƏR YEMƏYİ": "Səhər yeməyi", "SƏHƏR YEMƏKLƏRİ": "Səhər yeməkləri", "QƏHVƏ": "Qəhvə", "ÇAY": "Çay", "BUZLU ÇAY": "Buzlu çay", "BUZLU QƏHVƏ": "Buzlu qəhvə", "SOYUQ QƏHVƏ": "Soyuq qəhvə", "DESERTLƏR": "Desertlər", "ŞİRNİYYATLAR": "Şirniyyatlar", "SALATLAR": "Salatlar", "ŞORBALAR": "Şorbalar", "İSTİ YEMƏKLƏR": "İsti yeməklər", "İSTİ İÇKİLƏR": "İsti içkilər", "QƏLYANALTILAR": "Qəlyanaltılar", "LİMONADLAR": "Limonadlar", "KOKTEYLLƏR": "Kokteyllər", "MİLKŞEYKLƏR": "Milkşeyklər", "SOYUQ İÇKİLƏR": "Soyuq içkilər", "UŞAQ MENYUSU": "Uşaq menyusu", "ŞƏRAB": "Şərab", "Chefdən Xüsusi Yeni Menyu": "Şefdən xüsusi yeni menyu", "Rostbifli Yeməklər (Yenılık Chefdən)": "Rostbifli yeməklər · Şefdən yenilik", "Əlavə Mətbəx": "Əlavə mətbəx", "Əlavə Bar": "Əlavə bar", "ƏLAVƏLƏR · MƏTBƏX": "Əlavələr · Mətbəx", "ƏLAVƏLƏR · BAR": "Əlavələr · Bar"
 });
 Object.assign(categoryTranslations.ru, {
-  "SƏHƏR YEMƏYİ": "Завтрак", "QƏHVƏ": "Кофе", "ÇAY": "Чай", "SOYUQ QƏHVƏ": "Холодный кофе", "DESERTLƏR": "Десерты", "SALATLAR": "Салаты", "ŞORBALAR": "Супы", "İSTİ YEMƏKLƏR": "Горячие блюда", "QƏLYANALTILAR": "Закуски", "LİMONADLAR": "Лимонады", "SOYUQ İÇKİLƏR": "Холодные напитки", "ƏLAVƏLƏR · MƏTBƏX": "Дополнения · Кухня", "ƏLAVƏLƏR · BAR": "Дополнения · Бар"
+  "SƏHƏR YEMƏYİ": "Завтрак", "SƏHƏR YEMƏKLƏRİ": "Завтраки", "QƏHVƏ": "Кофе", "ÇAY": "Чай", "BUZLU ÇAY": "Холодный чай", "BUZLU QƏHVƏ": "Холодный кофе", "SOYUQ QƏHVƏ": "Холодный кофе", "DESERTLƏR": "Десерты", "ŞİRNİYYATLAR": "Десерты", "SALATLAR": "Салаты", "ŞORBALAR": "Супы", "İSTİ YEMƏKLƏR": "Горячие блюда", "İSTİ İÇKİLƏR": "Горячие напитки", "QƏLYANALTILAR": "Закуски", "LİMONADLAR": "Лимонады", "KOKTEYLLƏR": "Коктейли", "MİLKŞEYKLƏR": "Милкшейки", "SOYUQ İÇKİLƏR": "Холодные напитки", "UŞAQ MENYUSU": "Детское меню", "ŞƏRAB": "Вино", "Chefdən Xüsusi Yeni Menyu": "Новое меню от шефа", "Rostbifli Yeməklər (Yenılık Chefdən)": "Блюда с ростбифом · Новинки от шефа", "Əlavə Mətbəx": "Экстра кухня", "Əlavə Bar": "Экстра бар", "ƏLAVƏLƏR · MƏTBƏX": "Дополнения · Кухня", "ƏLAVƏLƏR · BAR": "Дополнения · Бар"
 });
 Object.assign(categoryTranslations.en, {
-  "SƏHƏR YEMƏYİ": "Breakfast", "QƏHVƏ": "Coffee", "ÇAY": "Tea", "SOYUQ QƏHVƏ": "Cold coffee", "DESERTLƏR": "Desserts", "SALATLAR": "Salads", "ŞORBALAR": "Soups", "İSTİ YEMƏKLƏR": "Main dishes", "QƏLYANALTILAR": "Starters", "LİMONADLAR": "Lemonades", "SOYUQ İÇKİLƏR": "Cold drinks", "ƏLAVƏLƏR · MƏTBƏX": "Extras · Kitchen", "ƏLAVƏLƏR · BAR": "Extras · Bar"
+  "SƏHƏR YEMƏYİ": "Breakfast", "SƏHƏR YEMƏKLƏRİ": "Breakfast", "QƏHVƏ": "Coffee", "ÇAY": "Tea", "BUZLU ÇAY": "Iced tea", "BUZLU QƏHVƏ": "Iced coffee", "SOYUQ QƏHVƏ": "Cold coffee", "DESERTLƏR": "Desserts", "ŞİRNİYYATLAR": "Desserts", "SALATLAR": "Salads", "ŞORBALAR": "Soups", "İSTİ YEMƏKLƏR": "Main dishes", "İSTİ İÇKİLƏR": "Hot drinks", "QƏLYANALTILAR": "Starters", "LİMONADLAR": "Lemonades", "KOKTEYLLƏR": "Cocktails", "MİLKŞEYKLƏR": "Milkshakes", "SOYUQ İÇKİLƏR": "Cold drinks", "UŞAQ MENYUSU": "Kids menu", "ŞƏRAB": "Wine", "Chefdən Xüsusi Yeni Menyu": "Chef's new specials", "Rostbifli Yeməklər (Yenılık Chefdən)": "Roast beef dishes · Chef's new specials", "Əlavə Mətbəx": "Kitchen extras", "Əlavə Bar": "Bar extras", "ƏLAVƏLƏR · MƏTBƏX": "Extras · Kitchen", "ƏLAVƏLƏR · BAR": "Extras · Bar"
 });
 const uiText = {
   az: {
@@ -257,7 +258,7 @@ function getBakuHour() {
 function getBakuDayPhase(hour = getBakuHour()) {
   if (hour >= 5 && hour < 10) return "morning";
   if (hour >= 10 && hour < 17) return "day";
-  if (hour >= 17 && hour < 19) return "evening";
+  if (hour >= 17 && hour < 21) return "evening";
   return "night";
 }
 export default function QRMenu() {
@@ -510,7 +511,7 @@ export default function QRMenu() {
       }
     };
     const meta = momentMeta[moment];
-    const available = localizedProducts.filter((product2) => product2.branches.includes(branch) && !unavailable.includes(product2.id));
+    const available = localizedProducts.filter((product2) => product2.branches.includes(branch) && !unavailable.includes(product2.id) && !isExtraCategory(product2));
     const availableById = new Map(available.map((product2) => [product2.id, product2]));
     const candidates = [
       ...available.filter((product2) => meta.keywords.test(`${product2.name} ${product2.category}`)),
@@ -525,7 +526,7 @@ export default function QRMenu() {
     return { moment, ...meta, product };
   }, [localizedProducts, bakuHour, branch, unavailable, t]);
   const smartRecommendations = useMemo(() => {
-    const available = localizedProducts.filter((product) => product.branches.includes(branch) && !unavailable.includes(product.id) && !isWineOrProsecco(product));
+    const available = localizedProducts.filter((product) => product.branches.includes(branch) && !unavailable.includes(product.id) && !isWineOrProsecco(product) && !isExtraCategory(product));
     if (!available.length) return [];
     const moment = getMealMoment(bakuHour);
     const momentPatterns = {
@@ -554,7 +555,7 @@ export default function QRMenu() {
       .sort((a, b) => b.score - a.score || ((a.index + daySeed + bakuHour) % available.length) - ((b.index + daySeed + bakuHour) % available.length))
       .map((entry) => entry.product)
       .filter((product, index, list) => index === list.findIndex((item) => item.id === product.id))
-      .slice(0, 3);
+      .slice(0, 1);
   }, [localizedProducts, branch, unavailable, bakuHour, weatherOffer]);
   const pairings = useMemo(() => {
     if (!selectedProduct) return [];
@@ -592,7 +593,7 @@ export default function QRMenu() {
       return categoryIndex < 0 ? 999 : categoryIndex;
     };
     const candidates = localizedProducts.filter(
-      (product) => product.id !== selectedProduct.id && product.branches.includes(branch) && !unavailable.includes(product.id) && pairingRank(product) < 999
+      (product) => product.id !== selectedProduct.id && product.branches.includes(branch) && !unavailable.includes(product.id) && !isExtraCategory(product) && pairingRank(product) < 999
     ).sort((a, b) => pairingRank(a) - pairingRank(b) || b.rating - a.rating || String(a.id).localeCompare(String(b.id)));
     if (!candidates.length) return [];
     const sourceGroup = pairingGroup(selectedProduct);
