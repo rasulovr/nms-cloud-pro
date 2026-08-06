@@ -3565,3 +3565,47 @@ body {
     margin: -8px -14px -8px -4px;
   }
 }
+
+/* Migration regression guards. */
+.app-shell .hero-weather .weather-svg {
+  transform: none;
+  filter: saturate(1.08) contrast(1.02);
+}
+.app-shell .hero-weather .weather-svg-windy {
+  width: 122px;
+}
+.product-modal .pairings {
+  display: block;
+  margin: 12px 0 14px;
+  padding: 13px 0 0;
+  border-top: 1px solid var(--line);
+}
+.product-modal .modal-buy { margin-top: 2px; }
+
+@media (max-width: 620px) {
+  .app-shell .hero-weather .weather-svg,
+  .app-shell .hero-weather .weather-svg-windy {
+    width: 100px;
+    height: 88px;
+    margin: -9px -14px -8px -3px;
+    transform: none;
+  }
+  .product-modal .pairings {
+    display: block;
+    margin: 9px 0 10px;
+    padding-top: 9px;
+  }
+  .product-modal .pairing-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+  }
+  .product-modal .pairing-grid article,
+  .product-modal .pairing-grid article:nth-child(n + 2),
+  .product-modal .pairing-grid article:nth-child(n + 3) {
+    min-width: 0;
+    display: grid;
+    grid-template-columns: 34px minmax(0, 1fr) 25px;
+    gap: 5px;
+  }
+}
