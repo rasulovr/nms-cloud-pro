@@ -308,6 +308,32 @@ footer small { padding-left: 7px; border-left: 1px solid #cfd2cb; }
   .modal-close { position: fixed; }
 }
 
+/* Unified illustrated weather icon. The drawing is native SVG so it stays
+   crisp on Retina screens and keeps one visual language for sun, wind and rain. */
+.app-shell .hero-weather .weather-svg {
+  width: 112px;
+  height: 96px;
+  margin: -12px -12px -10px 2px;
+  overflow: visible;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+.app-shell .weather-svg-sun { transform-origin: 80px 39px; animation: weatherSvgFloat 4.8s ease-in-out infinite; }
+.app-shell .weather-svg-wind { animation: weatherSvgWind 3.4s ease-in-out infinite; }
+.app-shell .weather-svg-rain { animation: weatherSvgRain 1.7s ease-in-out infinite; }
+.app-shell.theme-night .weather-svg-wind { opacity: .78; }
+@keyframes weatherSvgFloat { 50% { transform: translateY(-2px) rotate(1.5deg); } }
+@keyframes weatherSvgWind { 50% { transform: translateX(4px); opacity: .76; } }
+@keyframes weatherSvgRain { 50% { transform: translateY(4px); opacity: .62; } }
+@media (max-width: 620px) {
+  .app-shell .hero-weather .weather-svg {
+    width: 96px;
+    height: 88px;
+    margin: -8px -14px -8px -4px;
+  }
+}
+
 /* Compact weather belongs to the masthead; the former full-width weather card is retired. */
 .app-shell .hero {
   min-height: 235px;
@@ -3518,4 +3544,24 @@ body {
   .app-shell .hero-weather .weather-cloud { width: 46px; left: 28px; top: 47px; }
   .app-shell .hero-weather .weather-wind { width: 66px; left: 7px; }
   .app-shell .hero-weather .weather-visual.windy .wind-two { width: 52px; left: 19px; }
+}
+
+/* Final SVG sizing override. */
+.app-shell .hero-weather .weather-svg {
+  width: 112px;
+  height: 96px;
+  margin: -12px -12px -10px 2px;
+  overflow: visible;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+@media (max-width: 620px) {
+  .app-shell .hero-weather.weather-sunny,
+  .app-shell .hero-weather { grid-template-columns: minmax(0, 1fr) 96px; }
+  .app-shell .hero-weather .weather-svg {
+    width: 96px;
+    height: 88px;
+    margin: -8px -14px -8px -4px;
+  }
 }
