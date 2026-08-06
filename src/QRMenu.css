@@ -68,14 +68,14 @@ body.modal-open { overflow: hidden; }
 .amber { background: linear-gradient(145deg, #ead5a5, #c79a58); } .sand { background: linear-gradient(145deg, #e7d5ba, #c7a476); }
 .berry { background: linear-gradient(145deg, #e4b4b4, #b7646b); } .cocoa { background: linear-gradient(145deg, #d7c3ac, #a67b5b); }
 .coffee { background: linear-gradient(145deg, #d4c1ad, #9b7256); } .matcha { background: linear-gradient(145deg, #d8e6b6, #9cb979); }
-.product-body { padding: 17px; }
+.product-body { min-height: 178px; padding: 17px; display: flex; flex-direction: column; }
 .product-title { display: flex; align-items: start; justify-content: space-between; gap: 8px; }
 .product-title h3 { margin: 0; font-family: Georgia, serif; font-size: 20px; font-weight: 600; }
 .product-title > span { flex: none; padding: 4px 7px; color: #765d17; background: #fff4c7; border-radius: 8px; font-size: 11px; font-weight: 800; }
 .product-body > p { min-height: 56px; margin: 8px 0 14px; color: var(--muted); font-size: 12px; line-height: 1.55; }
 .product-options { margin: -4px 0 14px; display: grid; gap: 4px; }
 .product-options small { color: #54685d; font-size: 10px; line-height: 1.35; }
-.product-footer { display: flex; align-items: center; justify-content: space-between; }
+.product-footer { margin-top: auto; display: flex; align-items: center; justify-content: space-between; }
 .product-footer strong { font-size: 17px; }
 .add { min-width: 112px; height: 38px; padding: 0 14px 0 8px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; color: white; background: linear-gradient(135deg, #244f41, #173a30); border: 1px solid #315f50; border-radius: 12px; box-shadow: 0 8px 18px #1f493c2b, inset 0 1px 0 #ffffff20; transition: transform .18s ease, box-shadow .18s ease; }
 .add:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 10px 22px #1f493c36, inset 0 1px 0 #ffffff2b; }
@@ -284,7 +284,7 @@ footer small { padding-left: 7px; border-left: 1px solid #cfd2cb; }
   .product-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
   .food-photo { height: 135px; }
   .food-photo span { font-size: 54px; }
-  .product-body { padding: 12px; }
+  .product-body { min-height: 184px; padding: 12px; }
   .product-title { display: grid; }
   .product-title h3 { font-size: 17px; }
   .product-title > span { width: fit-content; }
