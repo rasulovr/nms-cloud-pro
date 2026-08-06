@@ -116,6 +116,24 @@ const OPTION_TRANSLATIONS = {
   en: {}
 };
 
+// Clopos imports store Azerbaijani text as their source. Match every known
+// spelling so switching a public menu language is independent of source data.
+const normalizedMenuText = (value) => String(value || "")
+  .toLocaleLowerCase("ru-RU").replace(/[«»“”'’`]/g, "")
+  .replace(/[—–-]/g, " ").replace(/\s+/g, " ").trim();
+const TRANSLATION_BY_ANY_NAME = Object.entries(PRODUCT_TRANSLATIONS).reduce((index, [ruName, translations]) => {
+  index.set(normalizedMenuText(ruName), { ruName, translations });
+  Object.values(translations).forEach((entry) => entry?.name && index.set(normalizedMenuText(entry.name), { ruName, translations }));
+  return index;
+}, new Map());
+const resolveTranslation = (product) => {
+  for (const value of [product.translationKey, product.sourceName, product.name, product.ru_name, product.az_name, product.en_name]) {
+    const match = TRANSLATION_BY_ANY_NAME.get(normalizedMenuText(value));
+    if (match) return match;
+  }
+  return null;
+};
+
 export function localizeOption(option, language) {
   if (language === "en") return option;
   return Object.entries(OPTION_TRANSLATIONS[language] || {}).reduce(
@@ -126,10 +144,11 @@ export function localizeOption(option, language) {
 
 export function localizeProduct(product, language) {
   const sourceName = product.sourceName || product.name || "";
-  const translationKey = product.translationKey || sourceName;
+  const resolvedTranslation = resolveTranslation({ ...product, sourceName });
+  const translationKey = resolvedTranslation?.ruName || product.translationKey || sourceName;
   if (language === "ru") {
-    const name = product.ru_name || sourceName;
-    const description = product.ru_description ?? product.sourceDescription ?? product.description ?? "";
+    const name = product.ru_name || translationKey;
+    const description = product.ru_description ?? product.description_ru ?? product.sourceDescription ?? product.description ?? "";
     const options = (product.sourceOptions || product.options || []).map((option) => localizeOption(option, language));
     return {
       ...product,
@@ -143,7 +162,7 @@ export function localizeProduct(product, language) {
     };
   }
 
-  const languageCopy = PRODUCT_TRANSLATIONS[translationKey]?.[language];
+  const languageCopy = resolvedTranslation?.translations?.[language] || PRODUCT_TRANSLATIONS[translationKey]?.[language];
   const fieldName = product[`${language}_name`] || product[`name_${language}`];
   const fieldDescription = product[`${language}_description`] ?? product[`description_${language}`];
   const name = fieldName || languageCopy?.name || sourceName;
