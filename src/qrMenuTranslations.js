@@ -1,3 +1,5 @@
+import cloposCatalog from "../data/clopos-flight-catalog.json";
+
 // Guest-facing catalogue copy. Russian is the source language used by the
 // current public-menu RPC; AZ/EN values keep the QR menu fully localized
 // without changing the production database schema.
@@ -130,6 +132,18 @@ const OPTION_TRANSLATIONS = {
 const normalizedMenuText = (value) => String(value || "")
   .toLocaleLowerCase("ru-RU").replace(/[«»“”'’`]/g, "")
   .replace(/[—–-]/g, " ").replace(/\s+/g, " ").trim();
+const CLOPOS_TRANSLATION_BY_ANY_NAME = (cloposCatalog.products || []).reduce((index, product) => {
+  const translations = {
+    ru: { name: product.langs?.ru?.name || "", description: product.langs?.ru?.description || "" },
+    az: { name: product.langs?.az?.name || "", description: product.langs?.az?.description || "" },
+    en: { name: product.langs?.en?.name || "", description: product.langs?.en?.description || "" }
+  };
+  const ruName = translations.ru.name || translations.az.name || translations.en.name || product.name;
+  [product.name, ...Object.values(translations).map((entry) => entry.name)].filter(Boolean).forEach((name) => {
+    index.set(normalizedMenuText(name), { ruName, translations });
+  });
+  return index;
+}, new Map());
 const TRANSLATION_BY_ANY_NAME = Object.entries(PRODUCT_TRANSLATIONS).reduce((index, [ruName, translations]) => {
   index.set(normalizedMenuText(ruName), { ruName, translations });
   Object.values(translations).forEach((entry) => entry?.name && index.set(normalizedMenuText(entry.name), { ruName, translations }));
@@ -137,11 +151,35 @@ const TRANSLATION_BY_ANY_NAME = Object.entries(PRODUCT_TRANSLATIONS).reduce((ind
 }, new Map());
 const resolveTranslation = (product) => {
   for (const value of [product.translationKey, product.sourceName, product.name, product.ru_name, product.az_name, product.en_name]) {
-    const match = TRANSLATION_BY_ANY_NAME.get(normalizedMenuText(value));
+    const normalized = normalizedMenuText(value);
+    const match = CLOPOS_TRANSLATION_BY_ANY_NAME.get(normalized) || TRANSLATION_BY_ANY_NAME.get(normalized);
     if (match) return match;
   }
   return null;
 };
+
+const CLOPOS_CATEGORY_BY_ANY_NAME = (cloposCatalog.categories || []).reduce((index, category) => {
+  const translations = {
+    ru: category.langs?.ru?.name || category.name,
+    az: category.langs?.az?.name || category.name,
+    en: category.langs?.en?.name || category.name
+  };
+  [category.name, ...Object.values(translations)].filter(Boolean).forEach((name) => {
+    index.set(normalizedMenuText(name), translations);
+  });
+  return index;
+}, new Map());
+
+export function localizeCategory(category, language) {
+  const normalized = normalizedMenuText(category);
+  if (normalized === normalizedMenuText("Все") || normalized === normalizedMenuText("Hamısı") || normalized === "all") {
+    return { ru: "Все", az: "Hamısı", en: "All" }[language] || category;
+  }
+  if (normalized === normalizedMenuText("Новинки") || normalized === normalizedMenuText("Yeniliklər") || normalized === "new") {
+    return { ru: "Новинки", az: "Yeniliklər", en: "New" }[language] || category;
+  }
+  return CLOPOS_CATEGORY_BY_ANY_NAME.get(normalized)?.[language] || category;
+}
 
 export function localizeOption(option, language) {
   if (language === "en") return option;
