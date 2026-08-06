@@ -352,9 +352,9 @@ export default function QRMenu() {
       }
       setProducts(menuRows.map((item) => normalizeProduct(item, branch)));
       const recommendationRows = Array.isArray(recommendationsResult.data) ? recommendationsResult.data : [];
-      // BC2/BC4/BC5 are copies of the approved BC1 menu. They inherit BC1's
-      // product-to-product links while still allowing branch-specific overrides.
-      const inheritsBc1Recommendations = ["BC2", "BC4", "BC5"].includes(branch);
+      // BC1 is the approved pairing reference. All other QR branches inherit
+      // the same links, while branch-specific records can still be added later.
+      const inheritsBc1Recommendations = branch !== "BC1";
       setConfiguredRecommendations(recommendationRows.filter((row) => {
         const rowBranch = String(row.branch_id || "");
         return !rowBranch || rowBranch === branch || (inheritsBc1Recommendations && rowBranch === "BC1");
@@ -577,13 +577,33 @@ export default function QRMenu() {
   }, [localizedProducts, branch, unavailable, bakuHour, weatherOffer]);
   const pairings = useMemo(() => {
     if (!selectedProduct) return [];
-    const selectedNames = new Set([selectedProduct.id, selectedProduct.name, selectedProduct.sourceName, selectedProduct.translationKey].map(normalizeReferenceText));
+    const referenceProduct = resolveReferenceMenuProduct(selectedProduct);
+    const selectedNames = new Set([
+      selectedProduct.id,
+      selectedProduct.name,
+      selectedProduct.sourceName,
+      selectedProduct.translationKey,
+      referenceProduct?.ruName,
+      ...Object.values(referenceProduct?.translations || {}).map((copy) => copy?.name)
+    ].filter(Boolean).map(normalizeReferenceText));
+    const matchesSelected = (row) => [
+      row.product_id, row.product_name, row.source_product_id, row.source_product_name,
+      row.menu_item_id, row.menu_item_name, row.from_product_id, row.from_product_name
+    ].some((value) => selectedNames.has(normalizeReferenceText(value)));
+    const findRecommendedProduct = (row) => {
+      const candidates = [
+        row.recommended_product_id, row.recommended_product_name, row.target_product_id,
+        row.target_product_name, row.related_product_id, row.related_product_name,
+        row.to_product_id, row.to_product_name
+      ].filter(Boolean).map(normalizeReferenceText);
+      return localizedProducts.find((product) => [
+        product.id, product.name, product.sourceName, product.translationKey,
+        resolveReferenceMenuProduct(product)?.ruName
+      ].filter(Boolean).some((value) => candidates.includes(normalizeReferenceText(value))));
+    };
     const explicitPairings = configuredRecommendations
-      .filter((row) => selectedNames.has(normalizeReferenceText(row.product_id)) || selectedNames.has(normalizeReferenceText(row.product_name)))
-      .map((row) => localizedProducts.find((product) =>
-        String(product.id) === String(row.recommended_product_id || "") ||
-        [product.name, product.sourceName, product.translationKey].some((name) => normalizeReferenceText(name) === normalizeReferenceText(row.recommended_product_name))
-      ))
+      .filter(matchesSelected)
+      .map(findRecommendedProduct)
       .filter((product) => product && product.id !== selectedProduct.id && product.branches.includes(branch) && !unavailable.includes(product.id) && !isExtraCategory(product))
       .filter((product, index, list) => index === list.findIndex((item) => item.id === product.id))
       .slice(0, 3);
