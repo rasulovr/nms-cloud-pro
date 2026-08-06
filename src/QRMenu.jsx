@@ -113,6 +113,15 @@ const categoryTranslations = {
     "ХОЛОДНЫЕ НАПИТКИ": "Cold drinks", "EKSTRA KITCHEN": "Extras · Kitchen", "EKSTRA BAR": "Extras · Bar"
   }
 };
+Object.assign(categoryTranslations.az, {
+  "SƏHƏR YEMƏYİ": "Səhər yeməyi", "QƏHVƏ": "Qəhvə", "ÇAY": "Çay", "SOYUQ QƏHVƏ": "Soyuq qəhvə", "DESERTLƏR": "Desertlər", "SALATLAR": "Salatlar", "ŞORBALAR": "Şorbalar", "İSTİ YEMƏKLƏR": "İsti yeməklər", "QƏLYANALTILAR": "Qəlyanaltılar", "LİMONADLAR": "Limonadlar", "SOYUQ İÇKİLƏR": "Soyuq içkilər", "ƏLAVƏLƏR · MƏTBƏX": "Əlavələr · Mətbəx", "ƏLAVƏLƏR · BAR": "Əlavələr · Bar"
+});
+Object.assign(categoryTranslations.ru, {
+  "SƏHƏR YEMƏYİ": "Завтрак", "QƏHVƏ": "Кофе", "ÇAY": "Чай", "SOYUQ QƏHVƏ": "Холодный кофе", "DESERTLƏR": "Десерты", "SALATLAR": "Салаты", "ŞORBALAR": "Супы", "İSTİ YEMƏKLƏR": "Горячие блюда", "QƏLYANALTILAR": "Закуски", "LİMONADLAR": "Лимонады", "SOYUQ İÇKİLƏR": "Холодные напитки", "ƏLAVƏLƏR · MƏTBƏX": "Дополнения · Кухня", "ƏLAVƏLƏR · BAR": "Дополнения · Бар"
+});
+Object.assign(categoryTranslations.en, {
+  "SƏHƏR YEMƏYİ": "Breakfast", "QƏHVƏ": "Coffee", "ÇAY": "Tea", "SOYUQ QƏHVƏ": "Cold coffee", "DESERTLƏR": "Desserts", "SALATLAR": "Salads", "ŞORBALAR": "Soups", "İSTİ YEMƏKLƏR": "Main dishes", "QƏLYANALTILAR": "Starters", "LİMONADLAR": "Lemonades", "SOYUQ İÇKİLƏR": "Cold drinks", "ƏLAVƏLƏR · MƏTBƏX": "Extras · Kitchen", "ƏLAVƏLƏR · BAR": "Extras · Bar"
+});
 const uiText = {
   az: {
     quote: "Günün sözü", menu: "Menyu", cart: "Səbət", bill: "Hesab", info: "Məlumat", soon: "tezliklə",
