@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "./supabase";
 import { localizeCategory, localizeProduct } from "./qrMenuTranslations";
+import { formatMenuDescription, normalizeReferenceText, resolveReferenceMenuProduct } from "./referenceMenuCatalog";
 import { resolveRecoveredMenuImage, useRecoveredImageFallback } from "./recoveredMenuImages";
 import "./QRMenu.css";
 const categoryOrder = {
@@ -26,7 +27,7 @@ const isCoffee = (product) => ["КОФЕ", "ХОЛОДНЫЙ КОФЕ"].includes
 const isMainDish = (product) => product.category === "ГОРЯЧИЕ БЛЮДА";
 const isIcedTea = (product) => /айс[\s-]*ти|ice[\s-]*tea|iced[\s-]*tea|soyuq\s+çay/.test(productSearchText(product));
 const isWineOrProsecco = (product) => /вино|wine|şərab|prosecco|просекко/.test(productSearchText(product));
-const isExtraCategory = (product) => /^(ekstra|extra|əlavə)/i.test(String(product?.category || "").trim());
+const isExtraCategory = (product) => /^(ekstra|extra|əlavə|экстра|дополн)/i.test(String(product?.category || "").trim());
 const isVerifiedAdult = (profile) => profile?.age_verified_18 === true || profile?.is_adult_verified === true;
 const pairingCategories = {
   "\u0417\u0410\u0412\u0422\u0420\u0410\u041A": ["\u041A\u041E\u0424\u0415", "\u0425\u041E\u041B\u041E\u0414\u041D\u042B\u0419 \u041A\u041E\u0424\u0415", "\u041B\u0418\u041C\u041E\u041D\u0410\u0414\u042B"],
@@ -203,21 +204,23 @@ const photoStyle = (product) => product.image
   : undefined;
 const normalizeProduct = (item, branch) => {
   const sourceName = item.name || "";
-  const override = productionProductOverrides[sourceName] || {};
-  const sourceDescription = item.description || "";
+  const reference = resolveReferenceMenuProduct(item);
+  const referenceName = reference?.translations?.ru?.name || sourceName;
+  const override = productionProductOverrides[referenceName] || productionProductOverrides[sourceName] || {};
+  const sourceDescription = formatMenuDescription(reference?.translations?.ru?.description || item.description || "");
   const sourceOptions = override.options || (Array.isArray(item.options) ? item.options : []);
   return {
     ...item,
     id: item.id || item.menu_item_id,
-    translationKey: sourceName,
-    sourceName: override.name || sourceName,
+    translationKey: referenceName,
+    sourceName: override.name || referenceName,
     sourceDescription,
     sourceOptions,
-    name: override.name || sourceName,
+    name: override.name || referenceName,
     description: sourceDescription,
-    category: item.category_name || item.category || "\u0411\u0435\u0437 \u043A\u0430\u0442\u0435\u0433\u043E\u0440\u0438\u0438",
+    category: reference?.translations?.ru?.category || item.category_name || item.category || "\u0411\u0435\u0437 \u043A\u0430\u0442\u0435\u0433\u043E\u0440\u0438\u0438",
     price: Number(item.price ?? item.unit_price ?? (item.line_total && item.quantity ? Number(item.line_total) / Number(item.quantity) : 0)),
-    image: override.image || resolveRecoveredMenuImage(item.image_url || item.image),
+    image: override.image || resolveRecoveredMenuImage(reference?.image || item.image_url || item.image),
     options: sourceOptions,
     rating: Number(item.rating || 0),
     branches: [branch]
@@ -284,6 +287,7 @@ export default function QRMenu() {
   const [photoFullscreen, setPhotoFullscreen] = useState(false);
   const [weather, setWeather] = useState(null);
   const [branchInfo, setBranchInfo] = useState(null);
+  const [configuredRecommendations, setConfiguredRecommendations] = useState([]);
   const [dayPhase, setDayPhase] = useState("day");
   const [bakuHour, setBakuHour] = useState(12);
   const [language, setLanguage] = useState(() => {
@@ -327,7 +331,8 @@ export default function QRMenu() {
     const branchMenuRequest = branchFilteredMenus.has(branch)
       ? supabase.from("rms_qr_tables").select("qr_code_url").eq("branch_id", branch).eq("table_number", branchMenuConfigTable).maybeSingle()
       : Promise.resolve({ data: null, error: null });
-    Promise.all([menuRequest, branchMenuRequest]).then(([menuResult, branchMenuResult]) => {
+    const recommendationsRequest = supabase.from("rms_qr_recommendations").select("*").eq("is_active", true);
+    Promise.all([menuRequest, branchMenuRequest, recommendationsRequest]).then(([menuResult, branchMenuResult, recommendationsResult]) => {
       if (!active) return;
       const { data, error } = menuResult;
       if (error) flash(`\u041C\u0435\u043D\u044E \u0432\u0440\u0435\u043C\u0435\u043D\u043D\u043E \u043D\u0435\u0434\u043E\u0441\u0442\u0443\u043F\u043D\u043E: ${error.message}`);
@@ -342,11 +347,14 @@ export default function QRMenu() {
         menuRows = menuRows.filter((item) => enabledIds.has(String(item.id || item.menu_item_id)));
       }
       setProducts(menuRows.map((item) => normalizeProduct(item, branch)));
+      const recommendationRows = Array.isArray(recommendationsResult.data) ? recommendationsResult.data : [];
+      setConfiguredRecommendations(recommendationRows.filter((row) => !row.branch_id || String(row.branch_id) === branch));
       setLoading(false);
     }).catch((error) => {
       if (!active) return;
       flash(`\u041C\u0435\u043D\u044E \u0432\u0440\u0435\u043C\u0435\u043D\u043D\u043E \u043D\u0435\u0434\u043E\u0441\u0442\u0443\u043F\u043D\u043E: ${error.message}`);
       setProducts([]);
+      setConfiguredRecommendations([]);
       setLoading(false);
     });
     return () => { active = false; };
@@ -555,10 +563,21 @@ export default function QRMenu() {
       .sort((a, b) => b.score - a.score || ((a.index + daySeed + bakuHour) % available.length) - ((b.index + daySeed + bakuHour) % available.length))
       .map((entry) => entry.product)
       .filter((product, index, list) => index === list.findIndex((item) => item.id === product.id))
-      .slice(0, 1);
+      .slice(0, 3);
   }, [localizedProducts, branch, unavailable, bakuHour, weatherOffer]);
   const pairings = useMemo(() => {
     if (!selectedProduct) return [];
+    const selectedNames = new Set([selectedProduct.id, selectedProduct.name, selectedProduct.sourceName, selectedProduct.translationKey].map(normalizeReferenceText));
+    const explicitPairings = configuredRecommendations
+      .filter((row) => selectedNames.has(normalizeReferenceText(row.product_id)) || selectedNames.has(normalizeReferenceText(row.product_name)))
+      .map((row) => localizedProducts.find((product) =>
+        String(product.id) === String(row.recommended_product_id || "") ||
+        [product.name, product.sourceName, product.translationKey].some((name) => normalizeReferenceText(name) === normalizeReferenceText(row.recommended_product_name))
+      ))
+      .filter((product) => product && product.id !== selectedProduct.id && product.branches.includes(branch) && !unavailable.includes(product.id) && !isExtraCategory(product))
+      .filter((product, index, list) => index === list.findIndex((item) => item.id === product.id))
+      .slice(0, 3);
+    if (explicitPairings.length) return explicitPairings;
     const moment = getMealMoment(bakuHour);
     const preferred = pairingCategories[selectedProduct.category] || ["ЛИМОНАДЫ", "КОФЕ", "САЛАТЫ"];
     const adultVerified = isVerifiedAdult(profile);
@@ -602,7 +621,7 @@ export default function QRMenu() {
     ).sort((a, b) => String(a.id).localeCompare(String(b.id)));
     const sourceIndex = Math.max(0, sourceProducts.findIndex((product) => product.id === selectedProduct.id));
     return [candidates[sourceIndex % candidates.length]];
-  }, [localizedProducts, selectedProduct, branch, unavailable, bakuHour, profile]);
+  }, [localizedProducts, selectedProduct, branch, unavailable, bakuHour, profile, configuredRecommendations]);
   function flash(text) {
     setNotice(text);
     window.setTimeout(() => setNotice(""), 2400);

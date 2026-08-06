@@ -1,4 +1,5 @@
 import cloposCatalog from "../data/clopos-flight-catalog.json";
+import { formatMenuDescription, resolveReferenceCategory, resolveReferenceMenuProduct } from "./referenceMenuCatalog";
 
 // Guest-facing catalogue copy. Russian is the source language used by the
 // current public-menu RPC; AZ/EN values keep the QR menu fully localized
@@ -150,6 +151,8 @@ const TRANSLATION_BY_ANY_NAME = Object.entries(PRODUCT_TRANSLATIONS).reduce((ind
   return index;
 }, new Map());
 const resolveTranslation = (product) => {
+  const reference = resolveReferenceMenuProduct(product);
+  if (reference) return { ruName: reference.ruName, translations: reference.translations, image: reference.image };
   for (const value of [product.translationKey, product.sourceName, product.name, product.ru_name, product.az_name, product.en_name]) {
     const normalized = normalizedMenuText(value);
     const match = CLOPOS_TRANSLATION_BY_ANY_NAME.get(normalized) || TRANSLATION_BY_ANY_NAME.get(normalized);
@@ -178,7 +181,7 @@ export function localizeCategory(category, language) {
   if (normalized === normalizedMenuText("Новинки") || normalized === normalizedMenuText("Yeniliklər") || normalized === "new") {
     return { ru: "Новинки", az: "Yeniliklər", en: "New" }[language] || category;
   }
-  return CLOPOS_CATEGORY_BY_ANY_NAME.get(normalized)?.[language] || category;
+  return resolveReferenceCategory(category, language) || CLOPOS_CATEGORY_BY_ANY_NAME.get(normalized)?.[language] || category;
 }
 
 export function localizeOption(option, language) {
@@ -195,10 +198,11 @@ export function localizeProduct(product, language) {
   const translationKey = resolvedTranslation?.ruName || product.translationKey || sourceName;
   if (language === "ru") {
     const name = product.ru_name || product.name_ru || product.translations?.ru?.name || translationKey;
-    const description = product.ru_description ?? product.description_ru ?? product.translations?.ru?.description ?? resolvedTranslation?.translations?.ru?.description ?? "";
+    const description = formatMenuDescription(product.ru_description ?? product.description_ru ?? product.translations?.ru?.description ?? resolvedTranslation?.translations?.ru?.description ?? "");
     const options = (product.sourceOptions || product.options || []).map((option) => localizeOption(option, language));
     return {
       ...product,
+      image: product.image || resolvedTranslation?.image || null,
       sourceName,
       name,
       description,
@@ -213,10 +217,11 @@ export function localizeProduct(product, language) {
   const fieldName = product[`${language}_name`] || product[`name_${language}`];
   const fieldDescription = product[`${language}_description`] ?? product[`description_${language}`];
   const name = fieldName || languageCopy?.name || sourceName;
-  const description = fieldDescription ?? languageCopy?.description ?? "";
+  const description = formatMenuDescription(fieldDescription ?? languageCopy?.description ?? "");
   const options = (product.sourceOptions || product.options || []).map((option) => localizeOption(option, language));
   return {
     ...product,
+    image: product.image || resolvedTranslation?.image || null,
     sourceName,
     name,
     description,
