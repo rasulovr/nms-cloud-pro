@@ -156,8 +156,8 @@ export function localizeProduct(product, language) {
   const resolvedTranslation = resolveTranslation({ ...product, sourceName });
   const translationKey = resolvedTranslation?.ruName || product.translationKey || sourceName;
   if (language === "ru") {
-    const name = product.ru_name || translationKey;
-    const description = product.ru_description ?? product.description_ru ?? product.sourceDescription ?? product.description ?? "";
+    const name = product.ru_name || product.name_ru || product.translations?.ru?.name || translationKey;
+    const description = product.ru_description ?? product.description_ru ?? product.translations?.ru?.description ?? resolvedTranslation?.translations?.ru?.description ?? "";
     const options = (product.sourceOptions || product.options || []).map((option) => localizeOption(option, language));
     return {
       ...product,
@@ -171,11 +171,11 @@ export function localizeProduct(product, language) {
     };
   }
 
-  const languageCopy = resolvedTranslation?.translations?.[language] || PRODUCT_TRANSLATIONS[translationKey]?.[language];
+  const languageCopy = product.translations?.[language] || resolvedTranslation?.translations?.[language] || PRODUCT_TRANSLATIONS[translationKey]?.[language];
   const fieldName = product[`${language}_name`] || product[`name_${language}`];
   const fieldDescription = product[`${language}_description`] ?? product[`description_${language}`];
   const name = fieldName || languageCopy?.name || sourceName;
-  const description = fieldDescription ?? languageCopy?.description ?? product.sourceDescription ?? product.description ?? "";
+  const description = fieldDescription ?? languageCopy?.description ?? "";
   const options = (product.sourceOptions || product.options || []).map((option) => localizeOption(option, language));
   return {
     ...product,
