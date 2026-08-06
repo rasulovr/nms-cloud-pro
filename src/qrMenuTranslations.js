@@ -7,6 +7,15 @@ const copy = (azName, enName, azDescription = "", enDescription = "") => ({
 });
 
 export const PRODUCT_TRANSLATIONS = {
+  "Жасмин и Манго": copy("Jasmin & Mango", "Jasmine & Mango"),
+  "Мята и Персик": copy("Mentol & Şaftalı", "Mint & Peach"),
+  "Ромашка и Дыня": copy("Çobanyastığı & Yemiş", "Chamomile & Melon"),
+  "Личи и Роза": copy("Lici & Qizilgul", "Lychee & Rose", "Qızılgül və liçi çayı.", "Rose and lychee tea."),
+  "Томатный суп «Гамбино»": copy("Gambino Tomatı şorbası", "Gambino Tomato Soup", "Pomidor, soğan, yaşıl yağ, zeytun tozu və pomidor konfi.", "Tomatoes, onion, herb oil, olive powder and tomato confit."),
+  "Суп с уткой «Маленькая Италия»": copy("Kiçik İtalia Ördək şorbası", "Little Italy Duck Soup", "Qaymaq, pendir, hisə verilmiş ördək filesi, yaşıl yağ və göyərti.", "Cream, cheese, smoked duck fillet, herb oil and herbs."),
+  "Гаспачо": copy("Gaspacho", "Gazpacho", "Pomidor, qırmızı soğan, sarımsaq, bolqar bibəri, avokado və sumaq.", "Tomatoes, red onion, garlic, bell pepper, avocado and sumac."),
+  "Вашингтонский суп из каштанов": copy("Vaşinqton ştatının şabalıd şorbası", "Washington Chestnut Soup", "Şabalıd, qırmızı soğan, qaymaq, muskat qozu, zeytun yağı, mikroyaşıllıq və limon.", "Chestnuts, red onion, cream, nutmeg, olive oil, microgreens and lemon."),
+  "Грибной суп «Энди Уорхол»": copy("Endi Vorhol göbələk şorbası", "Andy Warhol Mushroom Soup", "Şampinyon, kəvər, trüfel yağı, qaymaq və göyərti.", "Mushrooms, leek, truffle oil, cream and herbs."),
   "Капучино и Круассан — Комбо": copy("Kapuçino və kruassan — kombo", "Cappuccino & Croissant Combo"),
   "Рокфеллер Бургер": copy("Rockefeller Burger", "Rockefeller Burger", "İki mal əti kotleti, ikiqat çeddar pendiri, Rockefeller sousu, aysberq kahısı, qırmızı soğan, pomidor, turşu xiyar, oreqanolu kartof fri, ketçup və ballı-xardal sousu.", "Double beef patty, double cheddar, Rockefeller sauce, iceberg lettuce, red onion, tomato, pickles, oregano fries, ketchup and honey mustard sauce."),
   "Сырники": copy("Sırniklər", "Syrniki", "Krem pendir, giləmeyvə sousu, mövsümi giləmeyvələr, püstə və şəkər kirşanı.", "Cream cheese, berry sauce, seasonal berries, pistachios and icing sugar."),
