@@ -808,8 +808,8 @@ export default function QRMenu() {
           <button className={language === "ru" ? "active" : ""} onClick={() => setLanguage("ru")}>RU</button>
           <button className={language === "en" ? "active" : ""} onClick={() => setLanguage("en")}>EN</button>
         </div>
+        <div className="hero-branch-name">{branchName}</div>
         <div className="hero-copy">
-          <span className="branch-name">{branchName}</span>
           <div className="daily-quote">
             <span className="quote-label">{t.quote}</span>
             <p>{dailyQuote}</p>
