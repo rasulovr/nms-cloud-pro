@@ -3718,3 +3718,31 @@ body {
   .smart-recommendation-list > button { grid-template-columns: 65px minmax(0, 1fr); }
   .smart-recommendation-photo { width: 65px; height: 58px; }
 }
+
+
+/* QR Menu mobile correction: weather remains ambient, never a separate icon. */
+.app-shell .hero-weather .weather-visual { display: none !important; }
+
+@media (max-width: 620px) {
+  .app-shell .hero { min-height: 196px; padding: 22px 18px 20px; }
+  .app-shell .language-switch { top: 12px; left: 17px; z-index: 8; }
+  .app-shell .hero-copy { width: calc(100% - 132px); margin-top: 43px; }
+  .app-shell .hero-copy > span { display: block; margin-top: 0; }
+  .app-shell .hero-copy .daily-quote { margin-top: 17px; padding-left: 0; }
+  .app-shell .hero-copy .daily-quote p { font-size: clamp(14px, 4vw, 17px); line-height: 1.22; }
+  .app-shell .hero-side { top: 27px; right: 15px; width: 123px; max-width: 123px; }
+  .app-shell .hero-weather { width: 123px; min-width: 123px; max-width: 123px; grid-template-columns: 1fr; }
+  .app-shell .hero-weather-copy > strong { font-size: 34px; }
+  .app-shell .hero-weather-copy span { max-width: 100px; font-size: 8px; }
+  .app-shell .hero-weather-copy small { width: 105px; font-size: 6px; }
+  .product-card .food-photo { aspect-ratio: 1 / 1.08; }
+  .product-card .food-photo img { object-fit: contain; object-position: center; }
+  .product-card .product-body { min-height: 0; padding: 13px 13px 14px; }
+  .product-card .product-body > p { min-height: 0; margin: 6px 0 8px; }
+  .product-card .product-footer { margin-top: 4px; min-height: 0; padding-top: 0; }
+  .product-modal .modal-content > p { margin-bottom: 10px; }
+  .product-modal .pairing-grid article { grid-template-columns: 44px minmax(0, 1fr) 32px; gap: 8px; }
+  .product-modal .pairing-grid article > div { padding-right: 2px; min-width: 0; }
+  .product-modal .pairing-grid b { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; white-space: normal; line-height: 1.15; }
+  .product-modal .pairing-add { position: static; width: 32px; height: 32px; }
+}
