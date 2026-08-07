@@ -212,14 +212,14 @@ const uiText = {
   }
 };
 const weatherTitles = {
-  az: { rainy: "Bakıda bu gün yağışlıdır", windy: "Bakıda bu gün küləklidir", sunny: "Bakıda bu gün günəşlidir", cool: "Bakıda bu gün sərindir", cloudy: "Bakıda bu gün buludludur", clear: "Bakıda hava rahatdır" },
-  ru: { rainy: "Сегодня в Баку дождь", windy: "Сегодня в Баку ветрено", sunny: "Сегодня в Баку солнечно", cool: "Сегодня в Баку прохладно", cloudy: "Сегодня в Баку облачно", clear: "Сегодня в Баку приятная погода" },
-  en: { rainy: "Rainy in Baku today", windy: "Windy in Baku today", sunny: "Sunny in Baku today", cool: "Cool in Baku today", cloudy: "Cloudy in Baku today", clear: "Pleasant weather in Baku" }
+  az: { rainy: "Yağışlı", windy: "Küləkli", sunny: "Günəşli", cool: "Sərin", cloudy: "Buludlu", clear: "Açıq" },
+  ru: { rainy: "Дождливо", windy: "Ветрено", sunny: "Солнечно", cool: "Прохладно", cloudy: "Пасмурно", clear: "Ясно" },
+  en: { rainy: "Rainy", windy: "Windy", sunny: "Sunny", cool: "Cool", cloudy: "Cloudy", clear: "Clear" }
 };
 const nightWeatherTitles = {
-  az: { rainy: "Bakıda yağışlı gecədir", windy: "Bakıda küləkli gecədir", sunny: "Bakıda açıq gecədir", cool: "Bakıda sərin gecədir", cloudy: "Bakıda buludlu gecədir", clear: "Bakıda açıq gecədir" },
-  ru: { rainy: "Дождливая ночь в Баку", windy: "Ветреная ночь в Баку", sunny: "Ясная ночь в Баку", cool: "Прохладная ночь в Баку", cloudy: "Облачная ночь в Баку", clear: "Ясная ночь в Баку" },
-  en: { rainy: "Rainy night in Baku", windy: "Windy night in Baku", sunny: "Clear night in Baku", cool: "Cool night in Baku", cloudy: "Cloudy night in Baku", clear: "Clear night in Baku" }
+  az: { rainy: "Yağışlı gecə", windy: "Küləkli gecə", sunny: "Açıq gecə", cool: "Sərin gecə", cloudy: "Buludlu gecə", clear: "Açıq gecə" },
+  ru: { rainy: "Дождливая ночь", windy: "Ветреная ночь", sunny: "Ясная ночь", cool: "Прохладная ночь", cloudy: "Облачная ночь", clear: "Ясная ночь" },
+  en: { rainy: "Rainy night", windy: "Windy night", sunny: "Clear night", cool: "Cool night", cloudy: "Cloudy night", clear: "Clear night" }
 };
 const displayBranchName = (branch) => branch === "BC1" ? "Barista&Chef R.Behbudov" : `Barista&Chef · ${branch}`;
 const branchFilteredMenus = new Set(["BC2", "BC4", "BC5"]);
