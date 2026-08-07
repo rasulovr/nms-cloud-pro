@@ -309,6 +309,77 @@ footer small { padding-left: 7px; border-left: 1px solid #cfd2cb; }
   .modal-close { position: fixed; }
 }
 
+/* Header layout: keep navigation, brand and live weather in independent areas. */
+@media (max-width: 620px) {
+  .app-shell .hero {
+    min-height: 178px;
+    padding: 16px 16px 17px;
+    display: block;
+  }
+  .app-shell .brand-mark {
+    left: 16px;
+    top: 17px;
+    font-size: 10px;
+  }
+  .app-shell .language-switch {
+    top: 12px;
+    right: 14px;
+    left: auto;
+    z-index: 10;
+  }
+  .app-shell .language-switch button {
+    min-width: 33px;
+    height: 28px;
+    padding-inline: 6px;
+  }
+  .app-shell .hero-copy {
+    width: calc(100% - 118px);
+    margin-top: 42px;
+  }
+  .app-shell .hero-copy > span { font-size: 8px; }
+  .app-shell .hero-copy .daily-quote { margin: 10px 0 0; }
+  .app-shell .hero-copy .daily-quote p { font-size: 11px; line-height: 1.25; }
+  .app-shell .hero-side {
+    position: absolute;
+    top: 48px;
+    right: 14px;
+    width: 106px;
+    margin: 0;
+  }
+  .app-shell .hero-weather {
+    width: 106px;
+    min-width: 106px;
+    max-width: 106px;
+    padding: 0;
+    justify-content: flex-end;
+    background: transparent;
+    border: 0;
+    box-shadow: none;
+    backdrop-filter: none;
+  }
+  .app-shell .hero-weather-copy {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 3px 6px;
+    align-items: baseline;
+    text-align: right;
+  }
+  .app-shell .hero-weather-copy > strong { font-size: 25px; }
+  .app-shell .hero-weather-copy > div { display: contents; }
+  .app-shell .hero-weather-copy span {
+    font-size: 8px;
+    line-height: 1.12;
+    text-align: right;
+  }
+  .app-shell .hero-weather-copy small {
+    grid-column: 1 / -1;
+    width: auto;
+    font-size: 6px;
+    text-align: right;
+  }
+  .app-shell .hero-weather .weather-visual { display: none !important; }
+}
+
 /* Final mobile layout safeguards. */
 .app-shell .hero-weather .weather-visual { display: none !important; }
 @media (max-width: 620px) {
