@@ -171,7 +171,7 @@ const uiText = {
     scanTable: "Sifariş üçün masanızdakı QR-kodu skan edin", stoppedNotice: "Məhsul stop-listdədir",
     breakfastChoice: "Səhər seçimi", breakfastNote: "Günə yüngül başlanğıc", lunchChoice: "Nahar seçimi",
     lunchNote: "Günün fasiləsi üçün uyğundur", dinnerChoice: "Axşam seçimi", dinnerNote: "Axşam üçün daha dolğun dad",
-    smartPicks: "İndi sınamağın tam vaxtıdır:", smartPicksNote: "",
+    smartPicks: "İndi sınayın", smartPicksNote: "",
     quoteLines: ["Günün dadı olmalıdır.", "Yaxşı qəhvə günün ritmini yaradır.", "Sevdiyiniz dadlar günü gözəlləşdirir.", "Dad əhvaldan başlayır."]
   },
   ru: {
@@ -189,7 +189,7 @@ const uiText = {
     scanTable: "Для заказа отсканируйте QR-код на вашем столе", stoppedNotice: "Позиция находится в stop-list",
     breakfastChoice: "Утренний выбор", breakfastNote: "Лёгкое начало дня", lunchChoice: "Выбор к обеду",
     lunchNote: "Подходит для дневной паузы", dinnerChoice: "Вечерний выбор", dinnerNote: "Более насыщенный вкус к вечеру",
-    smartPicks: "Сейчас самое время попробовать:", smartPicksNote: "",
+    smartPicks: "Попробуйте сейчас", smartPicksNote: "",
     quoteLines: ["У дня должен быть вкус.", "Хороший кофе задаёт ритм дня.", "Любимые вкусы делают день лучше.", "Вкус начинается с настроения."]
   },
   en: {
@@ -207,7 +207,7 @@ const uiText = {
     scanTable: "To order, scan the QR code on your table", stoppedNotice: "This item is on the stop list",
     breakfastChoice: "Morning choice", breakfastNote: "A light start to the day", lunchChoice: "Lunch choice",
     lunchNote: "Perfect for a midday break", dinnerChoice: "Evening choice", dinnerNote: "A richer flavour for the evening",
-    smartPicks: "Now is the perfect time to try:", smartPicksNote: "",
+    smartPicks: "Try it now", smartPicksNote: "",
     quoteLines: ["Every day should have flavour.", "Good coffee sets the rhythm of the day.", "Favourite flavours make the day better.", "Flavour starts with a mood."]
   }
 };
