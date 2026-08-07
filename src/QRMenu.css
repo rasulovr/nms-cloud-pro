@@ -4006,3 +4006,23 @@ body {
   .smart-recommendation-list > button { grid-template-columns: 65px minmax(0, 1fr); }
   .smart-recommendation-photo { width: 65px; height: 58px; }
 }
+
+
+/* Final masthead alignment: language controls stay centered above all hero content. */
+.app-shell .language-switch {
+  position: absolute;
+  z-index: 12;
+  top: 14px;
+  left: 50%;
+  right: auto;
+  transform: translateX(-50%);
+}
+
+@media (max-width: 620px) {
+  .app-shell .language-switch {
+    top: max(10px, env(safe-area-inset-top));
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+  }
+}
