@@ -4431,3 +4431,155 @@ body {
   .app-shell .hero-weather-copy > strong { font-size: 34px; }
   .app-shell .hero-weather-copy small { width: 108px; font-size: 7px; }
 }
+
+
+/* Approved header composition: preserve the reference layout; only palette and moon change by phase. */
+.app-shell .hero-branch-name,
+.app-shell .hero-copy .branch-name { display: none !important; }
+
+.app-shell .hero {
+  min-height: 206px;
+  padding: 28px 58px;
+}
+.app-shell .language-switch {
+  position: absolute;
+  z-index: 12;
+  top: 12px;
+  right: auto;
+  bottom: auto;
+  left: 50%;
+  transform: translateX(-50%);
+}
+.app-shell .hero-copy {
+  position: relative;
+  z-index: 3;
+  width: min(62%, 620px);
+  margin-top: 34px;
+}
+.app-shell .hero-copy .daily-quote {
+  max-width: 390px;
+  margin: 15px 0 10px;
+}
+.app-shell .hero-copy .daily-quote p {
+  font-size: 15px;
+  line-height: 1.32;
+}
+.app-shell .daily-quote .quote-label {
+  margin-bottom: 5px;
+  font-size: 7px;
+}
+
+/* Right weather column from the reference layout. */
+.app-shell .hero-side {
+  position: absolute;
+  z-index: 4;
+  top: 14px;
+  right: 22px;
+  width: 112px;
+}
+.app-shell .hero-weather,
+.app-shell .hero-weather.weather-sunny {
+  width: 112px;
+  min-width: 112px;
+  max-width: 112px;
+  display: block;
+}
+.app-shell .hero-weather-copy,
+.app-shell .hero-weather.weather-sunny .hero-weather-copy {
+  display: grid;
+  grid-template-columns: 1fr;
+  justify-items: center;
+  align-items: center;
+  gap: 4px;
+  text-align: center;
+}
+.app-shell .hero-weather-copy > div {
+  display: grid;
+  width: 100%;
+  justify-items: center;
+  gap: 3px;
+}
+.app-shell .hero-weather-copy > strong,
+.app-shell .hero-weather-copy span,
+.app-shell .hero-weather-copy small {
+  width: 100%;
+  text-align: center;
+}
+.app-shell .hero-weather-copy > strong {
+  display: block;
+  font-size: 34px;
+  line-height: .9;
+  letter-spacing: -.055em;
+}
+.app-shell .hero-weather-copy span {
+  font-size: 10px;
+  line-height: 1.12;
+  white-space: normal;
+}
+.app-shell .hero-weather-copy small {
+  width: 112px;
+  font-size: 7px;
+  line-height: 1.22;
+  white-space: normal;
+}
+
+/* The silhouette is decorative: it follows the phase palette but does not alter the reference layout. */
+.app-shell .hero-weather .weather-visual,
+.app-shell .hero-weather .weather-svg,
+.app-shell .hero-weather .weather-silhouette { display: block !important; }
+.app-shell .hero-weather .weather-silhouette {
+  position: absolute;
+  top: 78px;
+  right: -3px;
+  width: 68px;
+  height: 64px;
+  margin: 0;
+  overflow: visible;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+.app-shell .hero-weather .weather-silhouette .weather-moon {
+  width: 34px;
+  height: 34px;
+  left: 18px;
+  top: 6px;
+  background: #fff;
+  box-shadow: none;
+  opacity: .93;
+}
+.app-shell .hero-weather .weather-silhouette .weather-moon::before {
+  width: 31px;
+  height: 31px;
+  background: #183847;
+  filter: none;
+}
+.app-shell.theme-evening .hero-weather .weather-silhouette .weather-moon::before { background: #385d59; }
+.app-shell.theme-night .hero-weather .weather-silhouette .weather-moon::before { background: #183847; }
+
+@media (max-width: 620px) {
+  .app-shell .hero {
+    min-height: 174px;
+    padding: 17px 16px 18px;
+  }
+  .app-shell .language-switch { top: 11px; }
+  .app-shell .hero-copy {
+    width: min(62%, 270px);
+    margin-top: 29px;
+  }
+  .app-shell .hero-copy .daily-quote { margin: 13px 0 10px; }
+  .app-shell .hero-copy .daily-quote p { font-size: 12px; line-height: 1.25; }
+  .app-shell .daily-quote .quote-label { margin-bottom: 4px; font-size: 5.5px; }
+  .app-shell .hero-side { top: 12px; right: 14px; width: 96px; }
+  .app-shell .hero-weather,
+  .app-shell .hero-weather.weather-sunny { width: 96px; min-width: 96px; max-width: 96px; }
+  .app-shell .hero-weather-copy > strong { font-size: 30px; }
+  .app-shell .hero-weather-copy span { font-size: 9px; }
+  .app-shell .hero-weather-copy small { width: 96px; font-size: 6.5px; }
+  .app-shell .hero-weather .weather-silhouette {
+    top: 69px;
+    right: -2px;
+    width: 68px;
+    height: 64px;
+  }
+}
