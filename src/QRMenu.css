@@ -3774,6 +3774,60 @@ body {
   }
 }
 
+/* Final mobile pairing layout: one item, never overlapping its label. */
+@media (max-width: 620px) {
+  .product-modal .pairing-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+  }
+
+  .product-modal .pairing-grid article,
+  .product-modal .pairing-grid article:nth-child(n + 2),
+  .product-modal .pairing-grid article:nth-child(n + 3) {
+    display: grid;
+    grid-template-columns: 62px minmax(0, 1fr) 34px;
+    align-items: center;
+    gap: 10px;
+    min-height: 64px;
+    padding: 0;
+  }
+
+  .product-modal .pairing-photo {
+    width: 62px;
+    height: 62px;
+    margin: 0;
+    overflow: hidden;
+  }
+
+  .product-modal .pairing-grid article > div {
+    min-width: 0;
+    padding: 0;
+  }
+
+  .product-modal .pairing-grid b {
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    font-size: 13px;
+    line-height: 1.18;
+  }
+
+  .product-modal .pairing-grid small {
+    display: block;
+    margin-top: 3px;
+  }
+
+  .product-modal .pairing-add {
+    width: 34px;
+    height: 34px;
+    min-width: 34px;
+    margin: 0;
+    justify-self: end;
+  }
+}
+
 /* Approved QR Menu masthead: calm background silhouettes instead of weather icons. */
 .app-shell .hero {
   min-height: 206px;
