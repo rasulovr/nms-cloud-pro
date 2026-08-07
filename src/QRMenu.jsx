@@ -10,11 +10,11 @@ const categoryOrder = {
   dinner: ["ГОРЯЧИЕ БЛЮДА", "САЛАТЫ", "ЗАКУСКИ", "ПИЦЦА", "СУПЫ", "ДЕСЕРТЫ", "ЛИМОНАДЫ", "ХОЛОДНЫЕ НАПИТКИ", "КОФЕ", "ЧАЙ", "ХОЛОДНЫЙ КОФЕ", "ЗАВТРАК", "Новинки", "EKSTRA KITCHEN", "EKSTRA BAR"]
 };
 const weatherCategoryBoosts = {
-  sunny: ["ХОЛОДНЫЙ КОФЕ", "ЛИМОНАДЫ", "ХОЛОДНЫЕ НАПИТКИ", "САЛАТЫ"],
-  cloudy: ["КОФЕ", "ЧАЙ", "ДЕСЕРТЫ", "САЛАТЫ"],
-  rainy: ["КОФЕ", "ЧАЙ", "СУПЫ", "ДЕСЕРТЫ"],
-  windy: ["КОФЕ", "ЧАЙ", "СУПЫ", "ГОРЯЧИЕ БЛЮДА"],
-  cool: ["КОФЕ", "ЧАЙ", "СУПЫ", "ГОРЯЧИЕ БЛЮДА"],
+  sunny: ["САЛАТЫ", "ЗАКУСКИ", "ГОРЯЧИЕ БЛЮДА", "ЗАВТРАК"],
+  cloudy: ["СУПЫ", "САЛАТЫ", "ГОРЯЧИЕ БЛЮДА", "ЗАВТРАК"],
+  rainy: ["СУПЫ", "ГОРЯЧИЕ БЛЮДА", "ЗАКУСКИ", "ЗАВТРАК"],
+  windy: ["СУПЫ", "ГОРЯЧИЕ БЛЮДА", "ЗАКУСКИ", "ЗАВТРАК"],
+  cool: ["СУПЫ", "ГОРЯЧИЕ БЛЮДА", "ЗАКУСКИ", "ЗАВТРАК"],
   clear: []
 };
 const getWeatherKind = (weather) => {
@@ -51,6 +51,14 @@ const isMainDish = (product) => product.category === "ГОРЯЧИЕ БЛЮДА"
 const isIcedTea = (product) => /айс[\s-]*ти|ice[\s-]*tea|iced[\s-]*tea|soyuq\s+çay/.test(productSearchText(product));
 const isWineOrProsecco = (product) => /вино|wine|şərab|prosecco|просекко/.test(productSearchText(product));
 const isExtraCategory = (product) => /^(ekstra|extra|əlavə|экстра|дополн)/i.test(String(product?.category || "").trim());
+const isLowPriorityDrink = (product) => /^(КОФЕ|ХОЛОДНЫЙ КОФЕ|ЧАЙ|ЛИМОНАДЫ|ХОЛОДНЫЕ НАПИТКИ)$/i.test(String(product?.category || ""));
+const isBottledOrPackagedDrink = (product) => /вода|water|сок|juice|cola|кола|фанта|fanta|спрайт|sprite|тоник|tonic|red\s*bull|энергет/i.test(productSearchText(product));
+const normalizeCategoryKey = (value) => String(value || "").trim().toLocaleUpperCase("ru-RU").replace(/Ё/g, "Е");
+const contextualRank = (value, order) => {
+  const key = normalizeCategoryKey(value);
+  const index = order.findIndex((name) => normalizeCategoryKey(name) === key);
+  return index < 0 ? 998 : index;
+};
 const isVerifiedAdult = (profile) => profile?.age_verified_18 === true || profile?.is_adult_verified === true;
 const pairingCategories = {
   "\u0417\u0410\u0412\u0422\u0420\u0410\u041A": ["\u041A\u041E\u0424\u0415", "\u0425\u041E\u041B\u041E\u0414\u041D\u042B\u0419 \u041A\u041E\u0424\u0415", "\u041B\u0418\u041C\u041E\u041D\u0410\u0414\u042B"],
@@ -468,18 +476,21 @@ export default function QRMenu() {
     const categoryMatch = category === "\u0412\u0441\u0435" || product.category === category;
     return branchMatch && categoryMatch;
   }).sort((a, b) => {
-    const aCategory = contextualCategoryOrder.indexOf(a.category);
-    const bCategory = contextualCategoryOrder.indexOf(b.category);
-    const categoryDifference = (aCategory < 0 ? 998 : aCategory) - (bCategory < 0 ? 998 : bCategory);
+    const categoryDifference = contextualRank(a.category, contextualCategoryOrder) - contextualRank(b.category, contextualCategoryOrder);
     if (categoryDifference) return categoryDifference;
+    if (category === "Все") {
+      const aPenalty = (isBottledOrPackagedDrink(a) ? 2000 : 0) + (isLowPriorityDrink(a) ? 1000 : 0);
+      const bPenalty = (isBottledOrPackagedDrink(b) ? 2000 : 0) + (isLowPriorityDrink(b) ? 1000 : 0);
+      if (aPenalty !== bPenalty) return aPenalty - bPenalty;
+    }
     return productMomentRank(a, mealMoment) - productMomentRank(b, mealMoment);
   }), [localizedProducts, branch, category, mealMoment, contextualCategoryOrder]);
   const categories = useMemo(() => {
     const present = new Set(products.filter((p) => p.branches.includes(branch)).map((p) => p.category));
-    const ordered = contextualCategoryOrder.filter((name) => present.has(name));
-    const unknown = [...present].filter((name) => !ordered.includes(name) && !name.toUpperCase().startsWith("EKSTRA"));
-    const extras = [...present].filter((name) => name.toUpperCase().startsWith("EKSTRA"));
-    return ["\u0412\u0441\u0435", ...ordered.filter((name) => !name.toUpperCase().startsWith("EKSTRA")), ...unknown, ...extras];
+    const sorted = [...present].sort((a, b) => contextualRank(a, contextualCategoryOrder) - contextualRank(b, contextualCategoryOrder));
+    const standard = sorted.filter((name) => !isExtraCategory({ category: name }));
+    const extras = sorted.filter((name) => isExtraCategory({ category: name }));
+    return ["Все", ...standard, ...extras];
   }, [products, branch, contextualCategoryOrder]);
   const cartTotal = cart.reduce((sum, item) => sum + item.price * item.qty, 0);
   const ordered = useMemo(() => (order?.items || []).map((item) => ({ ...normalizeProduct(item, branch), qty: Number(item.quantity || item.qty || 1) })), [order, branch]);
@@ -572,7 +583,7 @@ export default function QRMenu() {
     return { moment, ...meta, product };
   }, [localizedProducts, bakuHour, branch, unavailable, t]);
   const smartRecommendations = useMemo(() => {
-    const available = localizedProducts.filter((product) => product.branches.includes(branch) && !unavailable.includes(product.id) && !isWineOrProsecco(product) && !isExtraCategory(product));
+    const available = localizedProducts.filter((product) => product.branches.includes(branch) && !unavailable.includes(product.id) && !isWineOrProsecco(product) && !isExtraCategory(product) && !isBottledOrPackagedDrink(product));
     if (!available.length) return [];
     const moment = getMealMoment(bakuHour);
     const momentPatterns = {
