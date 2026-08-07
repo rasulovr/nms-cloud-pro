@@ -4292,3 +4292,142 @@ body {
 .app-shell.theme-night .hero > * { position: relative; z-index: 1; }
 .app-shell.theme-night .hero-weather .weather-moon { display: block !important; }
 .app-shell.theme-night .hero-weather .weather-sun { display: none !important; }
+
+
+/* Approved QR Menu masthead: restore the reference composition.
+   Only the background palette and the moon silhouette vary by time of day. */
+.app-shell .hero {
+  min-height: 174px;
+  padding: 17px 16px 18px;
+  background:
+    radial-gradient(circle at 84% 15%, rgba(118, 173, 125, .45) 0, transparent 28%),
+    linear-gradient(120deg, #10261f, #1e4739 68%, #162e27);
+}
+.app-shell.theme-morning .hero {
+  background:
+    radial-gradient(circle at 84% 15%, rgba(245, 193, 97, .38) 0, transparent 28%),
+    linear-gradient(120deg, #315b50, #5d8669 68%, #365e52);
+}
+.app-shell.theme-day .hero {
+  background:
+    radial-gradient(circle at 84% 15%, rgba(239, 196, 103, .32) 0, transparent 28%),
+    linear-gradient(120deg, #173c32, #2f6755 68%, #214a3d);
+}
+.app-shell.theme-evening .hero {
+  background:
+    radial-gradient(circle at 83% 12%, rgba(237, 180, 108, .32) 0, transparent 28%),
+    linear-gradient(120deg, #203f3c, #385d59 60%, #254340);
+}
+.app-shell.theme-night .hero {
+  background:
+    radial-gradient(circle at 82% 13%, rgba(179, 194, 213, .2) 0, transparent 26%),
+    linear-gradient(120deg, #0d222d, #183847 66%, #112a36);
+}
+.app-shell .hero-branch-name,
+.app-shell .hero-copy .branch-name { display: none !important; }
+.app-shell .language-switch {
+  position: absolute;
+  z-index: 12;
+  top: 11px;
+  right: auto;
+  bottom: auto;
+  left: 50%;
+  transform: translateX(-50%);
+}
+.app-shell .hero-copy {
+  width: min(62%, 620px);
+  margin-top: 29px;
+}
+.app-shell .hero-copy .daily-quote {
+  max-width: 390px;
+  margin: 13px 0 10px;
+}
+.app-shell .hero-copy .daily-quote p {
+  font-size: 12px;
+  line-height: 1.25;
+}
+.app-shell .daily-quote .quote-label {
+  margin-bottom: 4px;
+  font-size: 5.5px;
+}
+.app-shell .hero-side {
+  top: 12px;
+  right: 14px;
+  width: 92px;
+}
+.app-shell .hero-weather,
+.app-shell .hero-weather.weather-sunny {
+  width: 92px;
+  min-width: 92px;
+  max-width: 92px;
+}
+.app-shell .hero-weather-copy,
+.app-shell .hero-weather.weather-sunny .hero-weather-copy {
+  display: grid;
+  grid-template-columns: 1fr;
+  justify-items: center;
+  align-items: center;
+  gap: 4px;
+  text-align: center;
+}
+.app-shell .hero-weather-copy > div { justify-items: center; width: 100%; }
+.app-shell .hero-weather-copy > strong,
+.app-shell .hero-weather-copy span,
+.app-shell .hero-weather-copy small { width: 100%; text-align: center; }
+.app-shell .hero-weather-copy > strong {
+  display: block;
+  font-size: 30px;
+  line-height: .9;
+  letter-spacing: -.055em;
+}
+.app-shell .hero-weather-copy span { font-size: 9px; line-height: 1.12; white-space: normal; }
+.app-shell .hero-weather-copy small { width: 92px; font-size: 6.5px; line-height: 1.22; white-space: normal; }
+.app-shell .hero-weather .weather-visual,
+.app-shell .hero-weather .weather-silhouette,
+.app-shell .hero-weather .weather-svg {
+  display: block !important;
+}
+.app-shell .hero-weather .weather-silhouette {
+  width: 68px;
+  height: 64px;
+  margin: -4px -5px -4px 0;
+  position: relative;
+  overflow: visible;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  filter: none;
+}
+.app-shell .hero-weather .weather-silhouette .weather-sun {
+  width: 35px; height: 35px; left: 17px; top: 5px;
+}
+.app-shell .hero-weather .weather-silhouette .weather-moon {
+  width: 34px; height: 34px; left: 18px; top: 6px;
+  background: #fff;
+  box-shadow: none;
+  opacity: .93;
+}
+.app-shell .hero-weather .weather-silhouette .weather-moon::before {
+  width: 31px; height: 31px;
+  background: #183847;
+  filter: none;
+}
+.app-shell.theme-evening .hero-weather .weather-silhouette .weather-moon::before { background: #385d59; }
+.app-shell.theme-night .hero-weather .weather-silhouette .weather-moon::before { background: #183847; }
+.app-shell .hero-weather .weather-silhouette .weather-cloud {
+  width: 44px; left: 17px; top: 38px;
+}
+.app-shell .hero-weather .weather-silhouette .weather-wind { width: 56px; left: 2px; }
+.app-shell .hero-weather .weather-silhouette .wind-one { top: 38px; }
+.app-shell .hero-weather .weather-silhouette .wind-two { top: 51px; left: 11px; width: 45px; }
+.app-shell .hero-weather .weather-silhouette .weather-rain { top: 52px; }
+@media (min-width: 621px) {
+  .app-shell .hero { min-height: 206px; padding: 28px 58px; }
+  .app-shell .hero-copy { margin-top: 34px; }
+  .app-shell .hero-copy .daily-quote p { font-size: 15px; line-height: 1.32; }
+  .app-shell .hero-side { top: 14px; right: 22px; width: 108px; }
+  .app-shell .hero-weather,
+  .app-shell .hero-weather.weather-sunny { width: 108px; min-width: 108px; max-width: 108px; }
+  .app-shell .hero-weather-copy > strong { font-size: 34px; }
+  .app-shell .hero-weather-copy small { width: 108px; font-size: 7px; }
+}
