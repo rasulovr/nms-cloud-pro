@@ -827,7 +827,6 @@ export default function QRMenu() {
               </div>
               <WeatherVisual kind={weatherOffer.kind} phase={dayPhase} />
             </div>}
-          {hasTableContext && <div className="table-chip"><small>{t.yourTable}</small><b>{table}</b></div>}
         </div>
       </header>
 
