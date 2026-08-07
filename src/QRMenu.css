@@ -309,6 +309,29 @@ footer small { padding-left: 7px; border-left: 1px solid #cfd2cb; }
   .modal-close { position: fixed; }
 }
 
+/* Final mobile layout safeguards. */
+.app-shell .hero-weather .weather-visual { display: none !important; }
+@media (max-width: 620px) {
+  .app-shell .language-switch { top: 12px; left: 17px; z-index: 8; }
+  .app-shell .hero-copy { margin-top: 43px; width: calc(100% - 132px); }
+  .app-shell .hero-copy .daily-quote { margin-top: 17px; padding-left: 0; }
+  .app-shell .hero-copy .daily-quote p { font-size: clamp(14px, 4vw, 17px); line-height: 1.22; }
+  .app-shell .hero-side { top: 28px; right: 15px; width: 123px; max-width: 123px; }
+  .app-shell .hero-weather { width: 123px; min-width: 123px; max-width: 123px; grid-template-columns: 1fr; }
+  .app-shell .hero-weather-copy > strong { font-size: 34px; }
+  .app-shell .hero-weather-copy small { width: 105px; font-size: 6px; }
+  .product-card .food-photo { aspect-ratio: 1 / 1.08; }
+  .product-card .food-photo img { object-fit: contain; object-position: center; }
+  .product-card .product-body { min-height: 0; padding: 13px 13px 14px; }
+  .product-card .product-body > p { min-height: 0; margin: 6px 0 8px; }
+  .product-card .product-footer { min-height: 0; margin-top: 4px; padding-top: 0; }
+  .product-modal .modal-content > p { margin-bottom: 10px; }
+  .product-modal .pairing-grid article { grid-template-columns: 44px minmax(0, 1fr) 32px; gap: 8px; }
+  .product-modal .pairing-grid article > div { min-width: 0; }
+  .product-modal .pairing-grid b { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; white-space: normal; line-height: 1.15; }
+  .product-modal .pairing-add { position: static; width: 32px; height: 32px; }
+}
+
 /* Unified illustrated weather icon. The drawing is native SVG so it stays
    crisp on Retina screens and keeps one visual language for sun, wind and rain. */
 .app-shell .hero-weather .weather-svg {
@@ -404,6 +427,35 @@ footer small { padding-left: 7px; border-left: 1px solid #cfd2cb; }
   background: rgba(31, 42, 43, .42);
   border-color: rgba(255,255,255,.07);
   box-shadow: 0 18px 42px rgba(0,0,0,.16), inset 0 1px 0 rgba(255,255,255,.035);
+}
+
+/* QR Menu mobile correction: weather is ambient, not a separate icon. */
+.app-shell .hero-weather .weather-visual { display: none !important; }
+
+@media (max-width: 620px) {
+  .app-shell .hero { min-height: 196px; padding: 22px 18px 20px; }
+  .app-shell .language-switch { top: 12px; left: 17px; z-index: 4; }
+  .app-shell .hero-copy { width: calc(100% - 132px); margin-top: 43px; }
+  .app-shell .hero-copy > span { display: block; margin-top: 0; }
+  .app-shell .hero-copy .daily-quote { margin-top: 17px; padding-left: 0; }
+  .app-shell .hero-copy .daily-quote p { font-size: clamp(14px, 4vw, 17px); line-height: 1.22; }
+  .app-shell .hero-side { top: 27px; right: 15px; width: 123px; max-width: 123px; }
+  .app-shell .hero-weather { width: 123px; min-width: 123px; max-width: 123px; grid-template-columns: 1fr; }
+  .app-shell .hero-weather-copy > strong { font-size: 34px; }
+  .app-shell .hero-weather-copy span { max-width: 100px; font-size: 8px; }
+  .app-shell .hero-weather-copy small { width: 105px; font-size: 6px; }
+
+  .product-card .food-photo { aspect-ratio: 1 / 1.08; }
+  .product-card .food-photo img { object-fit: contain; object-position: center; }
+  .product-card .product-body { min-height: 0; padding: 13px 13px 14px; }
+  .product-card .product-body > p { min-height: 0; margin: 6px 0 8px; }
+  .product-card .product-footer { margin-top: 4px; min-height: 0; padding-top: 0; }
+
+  .product-modal .modal-content > p { margin-bottom: 10px; }
+  .product-modal .pairing-grid article { grid-template-columns: 44px minmax(0, 1fr) 32px; gap: 8px; }
+  .product-modal .pairing-grid article > div { padding-right: 2px; }
+  .product-modal .pairing-grid b { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; white-space: normal; line-height: 1.15; }
+  .product-modal .pairing-add { position: static; width: 32px; height: 32px; }
 }
 
 @media (max-width: 900px) {
@@ -3583,6 +3635,117 @@ body {
 }
 .product-modal .modal-buy { margin-top: 2px; }
 
+/* Dish sheet: one complete screen, with one unobtrusive pairing. */
+.product-modal-card {
+  height: min(calc(100dvh - 24px), 880px);
+  max-height: calc(100dvh - 24px);
+  grid-template-rows: auto minmax(190px, 41dvh) minmax(0, 1fr);
+  overflow: hidden;
+}
+.modal-heading {
+  padding-block: 18px 10px;
+}
+.modal-heading > h2 {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+.product-modal .modal-photo {
+  min-height: 0;
+  height: 100%;
+  max-height: none;
+}
+.product-modal .modal-content {
+  min-height: 0;
+  padding-block: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.product-modal .modal-content > p {
+  margin: 0 0 7px;
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+.product-modal .modal-options {
+  margin-bottom: 5px;
+  max-height: 22px;
+  overflow: hidden;
+}
+.product-modal .pairings {
+  margin: 6px 0 7px;
+  padding-top: 0;
+  border-top: 0;
+}
+.product-modal .pairing-grid article {
+  min-height: 58px;
+  grid-template-columns: 54px minmax(0, 1fr) 36px;
+  gap: 9px;
+}
+.product-modal .pairing-photo {
+  width: 54px;
+  height: 54px;
+}
+.product-modal .pairing-add {
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  font-size: 21px;
+  line-height: 1;
+}
+.product-modal .modal-buy {
+  margin-top: auto;
+  padding: 9px 0 0;
+}
+
+@media (max-width: 620px) {
+  .product-modal-card {
+    height: calc(100dvh - max(12px, env(safe-area-inset-top) + env(safe-area-inset-bottom)));
+    max-height: calc(100dvh - max(12px, env(safe-area-inset-top) + env(safe-area-inset-bottom)));
+    grid-template-rows: auto minmax(170px, 34dvh) minmax(0, 1fr);
+  }
+  .modal-heading {
+    padding: 13px 60px 8px 17px;
+  }
+  .modal-heading > h2 {
+    font-size: clamp(23px, 6.5vw, 29px);
+    line-height: 1.02;
+  }
+  .product-modal .modal-content {
+    padding: 10px 17px max(12px, env(safe-area-inset-bottom));
+  }
+  .product-modal .modal-content > p {
+    font-size: 13px;
+    line-height: 1.4;
+  }
+  .product-modal .pairings {
+    margin-block: 5px 6px;
+  }
+  .product-modal .pairing-grid article {
+    min-height: 54px;
+    grid-template-columns: 48px minmax(0, 1fr) 34px;
+    gap: 8px;
+  }
+  .product-modal .pairing-photo {
+    width: 48px;
+    height: 48px;
+  }
+  .product-modal .pairing-add {
+    width: 34px;
+    height: 34px;
+    min-width: 34px;
+  }
+  .product-modal .modal-buy {
+    padding-top: 7px;
+  }
+}
+
 @media (max-width: 620px) {
   .app-shell .hero-weather .weather-svg,
   .app-shell .hero-weather .weather-svg-windy {
@@ -3717,32 +3880,4 @@ body {
   .app-shell .hero-weather .weather-silhouette .weather-rain { top: 52px; }
   .smart-recommendation-list > button { grid-template-columns: 65px minmax(0, 1fr); }
   .smart-recommendation-photo { width: 65px; height: 58px; }
-}
-
-
-/* QR Menu mobile correction: weather remains ambient, never a separate icon. */
-.app-shell .hero-weather .weather-visual { display: none !important; }
-
-@media (max-width: 620px) {
-  .app-shell .hero { min-height: 196px; padding: 22px 18px 20px; }
-  .app-shell .language-switch { top: 12px; left: 17px; z-index: 8; }
-  .app-shell .hero-copy { width: calc(100% - 132px); margin-top: 43px; }
-  .app-shell .hero-copy > span { display: block; margin-top: 0; }
-  .app-shell .hero-copy .daily-quote { margin-top: 17px; padding-left: 0; }
-  .app-shell .hero-copy .daily-quote p { font-size: clamp(14px, 4vw, 17px); line-height: 1.22; }
-  .app-shell .hero-side { top: 27px; right: 15px; width: 123px; max-width: 123px; }
-  .app-shell .hero-weather { width: 123px; min-width: 123px; max-width: 123px; grid-template-columns: 1fr; }
-  .app-shell .hero-weather-copy > strong { font-size: 34px; }
-  .app-shell .hero-weather-copy span { max-width: 100px; font-size: 8px; }
-  .app-shell .hero-weather-copy small { width: 105px; font-size: 6px; }
-  .product-card .food-photo { aspect-ratio: 1 / 1.08; }
-  .product-card .food-photo img { object-fit: contain; object-position: center; }
-  .product-card .product-body { min-height: 0; padding: 13px 13px 14px; }
-  .product-card .product-body > p { min-height: 0; margin: 6px 0 8px; }
-  .product-card .product-footer { margin-top: 4px; min-height: 0; padding-top: 0; }
-  .product-modal .modal-content > p { margin-bottom: 10px; }
-  .product-modal .pairing-grid article { grid-template-columns: 44px minmax(0, 1fr) 32px; gap: 8px; }
-  .product-modal .pairing-grid article > div { padding-right: 2px; min-width: 0; }
-  .product-modal .pairing-grid b { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; white-space: normal; line-height: 1.15; }
-  .product-modal .pairing-add { position: static; width: 32px; height: 32px; }
 }
