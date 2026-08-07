@@ -4270,3 +4270,38 @@ body {
     font-size: 9px;
   }
 }
+
+/* Dynamic weather header: visible silhouettes and a theme that follows Baku time. */
+.app-shell .hero-branch-name,
+.app-shell .hero-copy .branch-name { display: none !important; }
+
+.app-shell .hero-weather .weather-visual,
+.app-shell .hero-weather .weather-silhouette,
+.app-shell .hero-weather .weather-svg {
+  display: block !important;
+}
+.app-shell .hero {
+  overflow: hidden;
+  transition: background .35s ease, color .35s ease;
+}
+.app-shell.theme-night .hero {
+  background:
+    radial-gradient(circle at 12% 22%, rgba(255,255,255,.42) 0 1px, transparent 1.6px),
+    radial-gradient(circle at 69% 33%, rgba(255,255,255,.30) 0 1px, transparent 1.6px),
+    linear-gradient(135deg, #102c3b 0%, #183e4c 54%, #274651 100%);
+}
+.app-shell.theme-night .hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(6,22,34,.05), rgba(6,22,34,.26));
+}
+.app-shell.theme-night .hero > * { position: relative; z-index: 1; }
+.app-shell .hero-weather.weather-hot .weather-sun { background: #ffb757; box-shadow: 0 0 0 8px rgba(255,183,87,.17); }
+.app-shell .hero-weather.weather-cloudy .weather-sun,
+.app-shell .hero-weather.weather-rainy .weather-sun { opacity: .42; }
+.app-shell .hero-weather.weather-windy .weather-wind { display: block !important; }
+.app-shell .hero-weather.weather-rainy .weather-rain { display: block; }
+.app-shell.theme-night .hero-weather .weather-moon { display: block !important; }
+.app-shell.theme-night .hero-weather .weather-sun { display: none !important; }
