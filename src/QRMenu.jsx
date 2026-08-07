@@ -809,7 +809,7 @@ export default function QRMenu() {
           <button className={language === "en" ? "active" : ""} onClick={() => setLanguage("en")}>EN</button>
         </div>
         <div className="hero-copy">
-          <span>{branchName}</span>
+          <span className="branch-name">{branchName}</span>
           <div className="daily-quote">
             <span className="quote-label">{t.quote}</span>
             <p>{dailyQuote}</p>
@@ -847,51 +847,9 @@ export default function QRMenu() {
       {notice && <div className="toast">{notice}</div>}
 
       {screen === "menu" && <section className="content">
-          {smartRecommendations.length > 0 && <section className="smart-recommendations" aria-label={t.smartPicks}>
-              <div className="smart-recommendations-heading">
-                <div><span>{t.smartPicks}</span>{t.smartPicksNote && <p>{t.smartPicksNote}</p>}</div>
-                <small>{String(bakuHour).padStart(2, "0")}:00</small>
-              </div>
-              <div className="smart-recommendation-list">
-                {smartRecommendations.map((product) => <button type="button" key={product.id} onClick={() => setSelectedProduct(product)}>
-                    <span className="smart-recommendation-photo" style={photoStyle(product)}>{product.image ? <img className={photoClass(product)} src={product.image} alt="" onError={useRecoveredImageFallback} /> : <i>B&amp;C</i>}</span>
-                    <span className="smart-recommendation-copy"><b>{product.name}</b><small>{money(product.price)}</small></span>
-                  </button>)}
-              </div>
-            </section>}
-          <div className="categories">
+                    <div className="categories">
             {categories.map((name) => <button className={category === name ? "active" : ""} key={name} onClick={() => setCategory(name)}>{localizeCategory(name, language) || categoryTranslations[language][name] || categoryLabel(name)}</button>)}
           </div>
-          {mealRecommendation && smartRecommendations.length === 0 && <aside className={`meal-recommendation meal-${mealRecommendation.moment}`}>
-              <button
-    className="meal-photo"
-    style={photoStyle(mealRecommendation.product)}
-    type="button"
-    onClick={() => setSelectedProduct(mealRecommendation.product)}
-    aria-label={`${t.openPhoto}: ${mealRecommendation.product.name}`}
-  >
-                {mealRecommendation.product.image ? <img className={photoClass(mealRecommendation.product)} src={mealRecommendation.product.image} alt={mealRecommendation.product.name} onError={useRecoveredImageFallback} /> : <span>B&amp;C</span>}
-              </button>
-              <div className="meal-copy">
-                <div className="meal-kicker">
-                  <span>{mealRecommendation.label}</span><i /><small>{mealRecommendation.note}</small>
-                </div>
-                <button className="meal-title" type="button" onClick={() => setSelectedProduct(mealRecommendation.product)}>
-                  {mealRecommendation.product.name}
-                </button>
-                {mealRecommendation.product.description && <p>{mealRecommendation.product.description}</p>}
-              </div>
-              <div className="meal-action">
-                <strong>{money(mealRecommendation.product.price)}</strong>
-                {recommendationQty ? <div className="stepper">
-                    <button className="qty-minus" onClick={() => changeQty(mealRecommendation.product, -1)} aria-label={`− ${mealRecommendation.product.name}`} />
-                    <b>{recommendationQty}</b>
-                    <button className="qty-plus" onClick={() => changeQty(mealRecommendation.product, 1)} aria-label={`+ ${mealRecommendation.product.name}`} />
-                  </div> : <button className="add" onClick={() => changeQty(mealRecommendation.product, 1)} aria-label={`${t.add}: ${mealRecommendation.product.name}`}>
-                    <b>{t.add}</b><span aria-hidden="true">+</span>
-                  </button>}
-              </div>
-            </aside>}
           <div className="product-grid">
             {availableProducts.map((product) => {
     const isStopped = unavailable.includes(product.id);
