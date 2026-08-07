@@ -19,12 +19,13 @@ const weatherCategoryBoosts = {
 };
 const getWeatherKind = (weather) => {
   if (!weather) return "clear";
-  if (weather.precipitation >= 1 || [51, 53, 55, 61, 63, 65, 80, 81, 82, 95].includes(weather.weatherCode)) return "rainy";
+  const code = Number(weather.weatherCode);
+  if ([51, 53, 55, 61, 63, 65, 80, 81, 82, 95].includes(code)) return "rainy";
   if (weather.windSpeed >= 9 || weather.windGust >= 14) return "windy";
-  if (weather.maxTemperature >= 30 || weather.apparentTemperature >= 31) return "sunny";
-  if (weather.maxTemperature <= 17) return "cool";
-  if ([2, 3, 45, 48].includes(weather.weatherCode)) return "cloudy";
-  return "sunny";
+  if ([2, 3, 45, 48].includes(code)) return "cloudy";
+  if (weather.apparentTemperature <= 12 || weather.maxTemperature <= 17) return "cool";
+  if (weather.apparentTemperature >= 34 || weather.maxTemperature >= 32) return "hot";
+  return code === 0 ? "clear" : "sunny";
 };
 const getContextualCategoryOrder = (moment, weatherKind) => {
   const base = categoryOrder[moment] || categoryOrder.lunch;
@@ -212,14 +213,14 @@ const uiText = {
   }
 };
 const weatherTitles = {
-  az: { rainy: "Yağışlı", windy: "Küləkli", sunny: "Günəşli", cool: "Sərin", cloudy: "Buludlu", clear: "Açıq" },
-  ru: { rainy: "Дождливо", windy: "Ветрено", sunny: "Солнечно", cool: "Прохладно", cloudy: "Пасмурно", clear: "Ясно" },
-  en: { rainy: "Rainy", windy: "Windy", sunny: "Sunny", cool: "Cool", cloudy: "Cloudy", clear: "Clear" }
+  az: { rainy: "Yağışlı", windy: "Küləkli", sunny: "Günəşli", hot: "İsti", cool: "Soyuq", cloudy: "Buludlu", clear: "Açıq" },
+  ru: { rainy: "Дождливо", windy: "Ветрено", sunny: "Солнечно", hot: "Жарко", cool: "Холодно", cloudy: "Пасмурно", clear: "Безоблачно" },
+  en: { rainy: "Rainy", windy: "Windy", sunny: "Sunny", hot: "Hot", cool: "Cold", cloudy: "Cloudy", clear: "Clear" }
 };
 const nightWeatherTitles = {
-  az: { rainy: "Yağışlı gecə", windy: "Küləkli gecə", sunny: "Açıq gecə", cool: "Sərin gecə", cloudy: "Buludlu gecə", clear: "Açıq gecə" },
-  ru: { rainy: "Дождливая ночь", windy: "Ветреная ночь", sunny: "Ясная ночь", cool: "Прохладная ночь", cloudy: "Облачная ночь", clear: "Ясная ночь" },
-  en: { rainy: "Rainy night", windy: "Windy night", sunny: "Clear night", cool: "Cool night", cloudy: "Cloudy night", clear: "Clear night" }
+  az: { rainy: "Yağışlı gecə", windy: "Küləkli gecə", sunny: "Açıq gecə", hot: "İsti gecə", cool: "Soyuq gecə", cloudy: "Buludlu gecə", clear: "Açıq gecə" },
+  ru: { rainy: "Дождливая ночь", windy: "Ветреная ночь", sunny: "Ясная ночь", hot: "Тёплая ночь", cool: "Холодная ночь", cloudy: "Облачная ночь", clear: "Безоблачная ночь" },
+  en: { rainy: "Rainy night", windy: "Windy night", sunny: "Clear night", hot: "Warm night", cool: "Cold night", cloudy: "Cloudy night", clear: "Clear night" }
 };
 const displayBranchName = (branch) => branch === "BC1" ? "Barista&Chef R.Behbudov" : `Barista&Chef · ${branch}`;
 const branchFilteredMenus = new Set(["BC2", "BC4", "BC5"]);
@@ -509,41 +510,8 @@ export default function QRMenu() {
   const tierProgress = Math.min(100, lifetimeSpend / 2e3 * 100);
   const weatherOffer = useMemo(() => {
     if (!weather) return null;
-    const rainy = weather.precipitation >= 1 || [51, 53, 55, 61, 63, 65, 80, 81, 82, 95].includes(weather.weatherCode);
-    const hot = weather.maxTemperature >= 30 || weather.apparentTemperature >= 31;
-    const windy = weather.windSpeed >= 9 || weather.windGust >= 14;
-    const cool = weather.maxTemperature <= 17;
-    const cloudy = [2, 3, 45, 48].includes(weather.weatherCode);
-    if (rainy) return {
-      kind: "rainy",
-      title: "\u0421\u0435\u0433\u043E\u0434\u043D\u044F \u0432 \u0411\u0430\u043A\u0443 \u0434\u043E\u0436\u0434\u044C",
-      text: `\u041E\u0436\u0438\u0434\u0430\u0435\u0442\u0441\u044F \u0434\u043E ${weather.precipitation.toFixed(1)} \u043C\u043C \u043E\u0441\u0430\u0434\u043A\u043E\u0432. \u0422\u0435\u043C\u043F\u0435\u0440\u0430\u0442\u0443\u0440\u0430 \u043E\u043A\u043E\u043B\u043E ${Math.round(weather.temperature)}\xB0.`
-    };
-    if (windy) return {
-      kind: "windy",
-      title: "\u0421\u0435\u0433\u043E\u0434\u043D\u044F \u0432 \u0411\u0430\u043A\u0443 \u0432\u0435\u0442\u0440\u0435\u043D\u043E",
-      text: `\u041F\u043E\u0440\u044B\u0432\u044B \u0434\u043E ${Math.round(weather.windGust)} \u043C/\u0441. \u041E\u0449\u0443\u0449\u0430\u0435\u0442\u0441\u044F \u043A\u0430\u043A ${Math.round(weather.apparentTemperature)}\xB0.`
-    };
-    if (hot) return {
-      kind: "sunny",
-      title: "\u0412 \u0411\u0430\u043A\u0443 \u0441\u0435\u0433\u043E\u0434\u043D\u044F \u0436\u0430\u0440\u043A\u043E",
-      text: `\u0422\u0435\u043C\u043F\u0435\u0440\u0430\u0442\u0443\u0440\u0430 \u043F\u043E\u0434\u043D\u0438\u043C\u0435\u0442\u0441\u044F \u0434\u043E ${Math.round(weather.maxTemperature)}\xB0. \u0421\u0435\u0439\u0447\u0430\u0441 \u043E\u043A\u043E\u043B\u043E ${Math.round(weather.temperature)}\xB0.`
-    };
-    if (cool) return {
-      kind: "cool",
-      title: "\u0412 \u0411\u0430\u043A\u0443 \u0441\u0435\u0433\u043E\u0434\u043D\u044F \u043F\u0440\u043E\u0445\u043B\u0430\u0434\u043D\u043E",
-      text: `\u041E\u043A\u043E\u043B\u043E ${Math.round(weather.temperature)}\xB0, \u043E\u0449\u0443\u0449\u0430\u0435\u0442\u0441\u044F \u043A\u0430\u043A ${Math.round(weather.apparentTemperature)}\xB0.`
-    };
-    if (cloudy) return {
-      kind: "cloudy",
-      title: "\u0421\u0435\u0433\u043E\u0434\u043D\u044F \u0432 \u0411\u0430\u043A\u0443 \u043F\u0430\u0441\u043C\u0443\u0440\u043D\u043E",
-      text: `\u0421\u0435\u0439\u0447\u0430\u0441 \u043E\u043A\u043E\u043B\u043E ${Math.round(weather.temperature)}\xB0. \u041E\u0441\u0430\u0434\u043A\u0438 \u2014 ${weather.precipitation.toFixed(1)} \u043C\u043C.`
-    };
-    return {
-      kind: "sunny",
-      title: "\u041A\u043E\u043C\u0444\u043E\u0440\u0442\u043D\u0430\u044F \u043F\u043E\u0433\u043E\u0434\u0430 \u0432 \u0411\u0430\u043A\u0443",
-      text: `\u0421\u0435\u0439\u0447\u0430\u0441 \u043E\u043A\u043E\u043B\u043E ${Math.round(weather.temperature)}\xB0, \u0431\u0435\u0437 \u0437\u0430\u043C\u0435\u0442\u043D\u044B\u0445 \u043E\u0441\u0430\u0434\u043A\u043E\u0432.`
-    };
+    const kind = getWeatherKind(weather);
+    return { kind };
   }, [weather]);
   const mealRecommendation = useMemo(() => {
     const moment = getMealMoment(bakuHour);
@@ -808,7 +776,6 @@ export default function QRMenu() {
           <button className={language === "ru" ? "active" : ""} onClick={() => setLanguage("ru")}>RU</button>
           <button className={language === "en" ? "active" : ""} onClick={() => setLanguage("en")}>EN</button>
         </div>
-        <div className="hero-branch-name">{branchName}</div>
         <div className="hero-copy">
           <div className="daily-quote">
             <span className="quote-label">{t.quote}</span>
