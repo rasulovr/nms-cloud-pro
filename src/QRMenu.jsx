@@ -490,7 +490,7 @@ export default function QRMenu() {
     const sorted = [...present].sort((a, b) => contextualRank(a, contextualCategoryOrder) - contextualRank(b, contextualCategoryOrder));
     const standard = sorted.filter((name) => !isExtraCategory({ category: name }));
     const extras = sorted.filter((name) => isExtraCategory({ category: name }));
-    return ["Все", ...standard, ...extras];
+    return ["\u0412\u0441\u0435", ...standard, ...extras];
   }, [products, branch, contextualCategoryOrder]);
   const cartTotal = cart.reduce((sum, item) => sum + item.price * item.qty, 0);
   const ordered = useMemo(() => (order?.items || []).map((item) => ({ ...normalizeProduct(item, branch), qty: Number(item.quantity || item.qty || 1) })), [order, branch]);
@@ -1025,7 +1025,6 @@ export default function QRMenu() {
               {selectedProduct.description && <p>{selectedProduct.description}</p>}
               {selectedProduct.options.length > 0 && <div className="modal-options">{selectedProduct.options.map((option) => <small key={option}>{option}</small>)}</div>}
               {pairings.length > 0 && <div className="pairings">
-                  <div><span className="eyebrow">{t.pairsEyebrow}</span><h3>{t.pairsTitle}</h3></div>
                   <div className="pairing-grid">
                     {pairings.map((product) => <article key={product.id}>
                         <button className="pairing-photo" style={photoStyle(product)} onClick={() => setSelectedProduct(product)}>
