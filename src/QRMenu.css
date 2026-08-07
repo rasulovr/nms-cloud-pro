@@ -4028,3 +4028,103 @@ body {
     transform: none;
   }
 }
+
+
+/* QR Menu masthead refinement: centered languages, compact weather, centered recommendation image. */
+.app-shell .language-switch {
+  top: 12px;
+  right: auto;
+  bottom: auto;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.app-shell .hero-side {
+  top: 14px;
+  right: 16px;
+  width: 126px;
+}
+.app-shell .hero-weather,
+.app-shell .hero-weather.weather-sunny {
+  width: 126px;
+  min-width: 126px;
+  max-width: 126px;
+}
+.app-shell .hero-weather-copy {
+  display: grid;
+  grid-template-columns: 1fr;
+  justify-items: end;
+  gap: 3px;
+  text-align: right;
+}
+.app-shell .hero-weather-copy > strong {
+  font-size: clamp(28px, 3.5vw, 36px);
+  line-height: .92;
+}
+.app-shell .hero-weather-copy > div {
+  display: grid;
+  justify-items: end;
+  gap: 2px;
+}
+.app-shell .hero-weather-copy span {
+  font-size: 10px;
+  line-height: 1.1;
+  font-weight: 720;
+}
+.app-shell .hero-weather-copy small {
+  width: auto;
+  font-size: 7px;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.smart-recommendation-list > button {
+  grid-template-columns: 1fr;
+  grid-template-rows: 118px auto;
+  justify-items: center;
+  gap: 8px;
+  padding: 10px;
+  text-align: center;
+}
+.smart-recommendation-photo {
+  width: min(154px, 52vw);
+  height: 118px;
+  border-radius: 15px;
+}
+.smart-recommendation-copy {
+  width: 100%;
+  align-items: center;
+}
+.smart-recommendation-copy b,
+.smart-recommendation-copy small { text-align: center; }
+
+@media (max-width: 620px) {
+  .app-shell .language-switch {
+    top: 11px;
+    right: auto;
+    bottom: auto;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+  .app-shell .hero-side {
+    top: 13px;
+    right: 14px;
+    width: 118px;
+  }
+  .app-shell .hero-weather,
+  .app-shell .hero-weather.weather-sunny {
+    width: 118px;
+    min-width: 118px;
+    max-width: 118px;
+  }
+  .app-shell .hero-weather-copy > strong { font-size: 30px; }
+  .app-shell .hero-weather-copy span { font-size: 9px; }
+  .app-shell .hero-weather-copy small { font-size: 6.5px; }
+  .smart-recommendation-list > button {
+    grid-template-rows: 128px auto;
+    padding: 10px;
+  }
+  .smart-recommendation-photo {
+    width: min(166px, 55vw);
+    height: 128px;
+  }
+}
