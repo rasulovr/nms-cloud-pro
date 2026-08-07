@@ -4245,3 +4245,28 @@ body {
     max-width: 92px;
   }
 }
+
+
+/* Branch label belongs to the hero itself, not to the quote column. */
+.app-shell .hero-branch-name {
+  position: absolute;
+  z-index: 3;
+  right: 16px;
+  bottom: 15px;
+  margin: 0;
+  color: var(--lime);
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: .1em;
+  text-align: right;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+@media (max-width: 620px) {
+  .app-shell .hero-branch-name {
+    right: 14px;
+    bottom: 13px;
+    font-size: 9px;
+  }
+}
