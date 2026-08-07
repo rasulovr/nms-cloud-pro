@@ -4008,21 +4008,23 @@ body {
 }
 
 
-/* Final masthead alignment: language controls stay centered above all hero content. */
+/* Final masthead alignment: languages sit clear of the brand and weather. */
 .app-shell .language-switch {
   position: absolute;
   z-index: 12;
-  top: 14px;
-  left: 50%;
-  right: auto;
-  transform: translateX(-50%);
+  top: auto;
+  right: 16px;
+  bottom: 16px;
+  left: auto;
+  transform: none;
 }
 
 @media (max-width: 620px) {
   .app-shell .language-switch {
-    top: max(10px, env(safe-area-inset-top));
-    left: 50%;
-    right: auto;
-    transform: translateX(-50%);
+    top: auto;
+    right: 14px;
+    bottom: max(13px, env(safe-area-inset-bottom));
+    left: auto;
+    transform: none;
   }
 }
