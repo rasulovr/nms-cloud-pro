@@ -5,9 +5,32 @@ import { formatMenuDescription, normalizeReferenceText, resolveReferenceMenuProd
 import { resolveRecoveredMenuImage, useRecoveredImageFallback } from "./recoveredMenuImages";
 import "./QRMenu.css";
 const categoryOrder = {
-  breakfast: ["Новинки", "ЗАВТРАК", "КОФЕ", "ЧАЙ", "ХОЛОДНЫЙ КОФЕ", "ДЕСЕРТЫ", "САЛАТЫ", "СУПЫ", "ГОРЯЧИЕ БЛЮДА", "ЗАКУСКИ", "ПИЦЦА", "ЛИМОНАДЫ", "ХОЛОДНЫЕ НАПИТКИ", "EKSTRA KITCHEN", "EKSTRA BAR"],
-  lunch: ["Новинки", "СУПЫ", "САЛАТЫ", "ГОРЯЧИЕ БЛЮДА", "ЗАКУСКИ", "ПИЦЦА", "ЗАВТРАК", "ДЕСЕРТЫ", "КОФЕ", "ХОЛОДНЫЙ КОФЕ", "ЛИМОНАДЫ", "ЧАЙ", "ХОЛОДНЫЕ НАПИТКИ", "EKSTRA KITCHEN", "EKSTRA BAR"],
-  dinner: ["ГОРЯЧИЕ БЛЮДА", "САЛАТЫ", "ЗАКУСКИ", "ПИЦЦА", "СУПЫ", "Новинки", "ДЕСЕРТЫ", "ЛИМОНАДЫ", "ХОЛОДНЫЕ НАПИТКИ", "КОФЕ", "ЧАЙ", "ХОЛОДНЫЙ КОФЕ", "ЗАВТРАК", "EKSTRA KITCHEN", "EKSTRA BAR"]
+  breakfast: ["ЗАВТРАК", "КОФЕ", "ЧАЙ", "ХОЛОДНЫЙ КОФЕ", "ДЕСЕРТЫ", "САЛАТЫ", "СУПЫ", "ГОРЯЧИЕ БЛЮДА", "ЗАКУСКИ", "ПИЦЦА", "ЛИМОНАДЫ", "ХОЛОДНЫЕ НАПИТКИ", "Новинки", "EKSTRA KITCHEN", "EKSTRA BAR"],
+  lunch: ["СУПЫ", "САЛАТЫ", "ГОРЯЧИЕ БЛЮДА", "ЗАКУСКИ", "ПИЦЦА", "ЗАВТРАК", "ДЕСЕРТЫ", "КОФЕ", "ХОЛОДНЫЙ КОФЕ", "ЛИМОНАДЫ", "ЧАЙ", "ХОЛОДНЫЕ НАПИТКИ", "Новинки", "EKSTRA KITCHEN", "EKSTRA BAR"],
+  dinner: ["ГОРЯЧИЕ БЛЮДА", "САЛАТЫ", "ЗАКУСКИ", "ПИЦЦА", "СУПЫ", "ДЕСЕРТЫ", "ЛИМОНАДЫ", "ХОЛОДНЫЕ НАПИТКИ", "КОФЕ", "ЧАЙ", "ХОЛОДНЫЙ КОФЕ", "ЗАВТРАК", "Новинки", "EKSTRA KITCHEN", "EKSTRA BAR"]
+};
+const weatherCategoryBoosts = {
+  sunny: ["ХОЛОДНЫЙ КОФЕ", "ЛИМОНАДЫ", "ХОЛОДНЫЕ НАПИТКИ", "САЛАТЫ"],
+  cloudy: ["КОФЕ", "ЧАЙ", "ДЕСЕРТЫ", "САЛАТЫ"],
+  rainy: ["КОФЕ", "ЧАЙ", "СУПЫ", "ДЕСЕРТЫ"],
+  windy: ["КОФЕ", "ЧАЙ", "СУПЫ", "ГОРЯЧИЕ БЛЮДА"],
+  cool: ["КОФЕ", "ЧАЙ", "СУПЫ", "ГОРЯЧИЕ БЛЮДА"],
+  clear: []
+};
+const getWeatherKind = (weather) => {
+  if (!weather) return "clear";
+  if (weather.precipitation >= 1 || [51, 53, 55, 61, 63, 65, 80, 81, 82, 95].includes(weather.weatherCode)) return "rainy";
+  if (weather.windSpeed >= 9 || weather.windGust >= 14) return "windy";
+  if (weather.maxTemperature >= 30 || weather.apparentTemperature >= 31) return "sunny";
+  if (weather.maxTemperature <= 17) return "cool";
+  if ([2, 3, 45, 48].includes(weather.weatherCode)) return "cloudy";
+  return "sunny";
+};
+const getContextualCategoryOrder = (moment, weatherKind) => {
+  const base = categoryOrder[moment] || categoryOrder.lunch;
+  const extras = base.filter((name) => /^ekstra/i.test(name));
+  const standard = base.filter((name) => !/^ekstra/i.test(name) && name !== "Новинки");
+  return [...new Set([...(weatherCategoryBoosts[weatherKind] || []), ...standard]), "Новинки", ...extras];
 };
 const productPriority = {
   breakfast: [/капучино.*круассан/i, /сырник/i, /шакшук/i, /омлет/i, /яичниц/i, /нью-йорк.*завтрак/i, /бейгл.*лосос/i, /гранол/i, /овсян.*каш/i],
@@ -140,7 +163,7 @@ const uiText = {
     scanTable: "Sifariş üçün masanızdakı QR-kodu skan edin", stoppedNotice: "Məhsul stop-listdədir",
     breakfastChoice: "Səhər seçimi", breakfastNote: "Günə yüngül başlanğıc", lunchChoice: "Nahar seçimi",
     lunchNote: "Günün fasiləsi üçün uyğundur", dinnerChoice: "Axşam seçimi", dinnerNote: "Axşam üçün daha dolğun dad",
-    smartPicks: "İndi sizin üçün", smartPicksNote: "Günün vaxtına və Bakı havasına uyğun",
+    smartPicks: "İndi sınamağın tam vaxtıdır:", smartPicksNote: "",
     quoteLines: ["Günün dadı olmalıdır.", "Yaxşı qəhvə günün ritmini yaradır.", "Sevdiyiniz dadlar günü gözəlləşdirir.", "Dad əhvaldan başlayır."]
   },
   ru: {
@@ -158,7 +181,7 @@ const uiText = {
     scanTable: "Для заказа отсканируйте QR-код на вашем столе", stoppedNotice: "Позиция находится в stop-list",
     breakfastChoice: "Утренний выбор", breakfastNote: "Лёгкое начало дня", lunchChoice: "Выбор к обеду",
     lunchNote: "Подходит для дневной паузы", dinnerChoice: "Вечерний выбор", dinnerNote: "Более насыщенный вкус к вечеру",
-    smartPicks: "Для вас сейчас", smartPicksNote: "С учётом времени и погоды в Баку",
+    smartPicks: "Сейчас самое время попробовать:", smartPicksNote: "",
     quoteLines: ["У дня должен быть вкус.", "Хороший кофе задаёт ритм дня.", "Любимые вкусы делают день лучше.", "Вкус начинается с настроения."]
   },
   en: {
@@ -176,7 +199,7 @@ const uiText = {
     scanTable: "To order, scan the QR code on your table", stoppedNotice: "This item is on the stop list",
     breakfastChoice: "Morning choice", breakfastNote: "A light start to the day", lunchChoice: "Lunch choice",
     lunchNote: "Perfect for a midday break", dinnerChoice: "Evening choice", dinnerNote: "A richer flavour for the evening",
-    smartPicks: "Picked for now", smartPicksNote: "Matched to the time and Baku weather",
+    smartPicks: "Now is the perfect time to try:", smartPicksNote: "",
     quoteLines: ["Every day should have flavour.", "Good coffee sets the rhythm of the day.", "Favourite flavours make the day better.", "Flavour starts with a mood."]
   }
 };
@@ -435,24 +458,29 @@ export default function QRMenu() {
     if (!selectedProduct) setPhotoFullscreen(false);
   }, [selectedProduct]);
   const mealMoment = getMealMoment(bakuHour);
+  const contextualWeatherKind = useMemo(() => getWeatherKind(weather), [weather]);
+  const contextualCategoryOrder = useMemo(
+    () => getContextualCategoryOrder(mealMoment, contextualWeatherKind),
+    [mealMoment, contextualWeatherKind]
+  );
   const availableProducts = useMemo(() => localizedProducts.filter((product) => {
     const branchMatch = product.branches.includes(branch);
     const categoryMatch = category === "\u0412\u0441\u0435" || product.category === category;
     return branchMatch && categoryMatch;
   }).sort((a, b) => {
-    const aCategory = categoryOrder[mealMoment].indexOf(a.category);
-    const bCategory = categoryOrder[mealMoment].indexOf(b.category);
+    const aCategory = contextualCategoryOrder.indexOf(a.category);
+    const bCategory = contextualCategoryOrder.indexOf(b.category);
     const categoryDifference = (aCategory < 0 ? 998 : aCategory) - (bCategory < 0 ? 998 : bCategory);
     if (categoryDifference) return categoryDifference;
     return productMomentRank(a, mealMoment) - productMomentRank(b, mealMoment);
-  }), [localizedProducts, branch, category, mealMoment]);
+  }), [localizedProducts, branch, category, mealMoment, contextualCategoryOrder]);
   const categories = useMemo(() => {
     const present = new Set(products.filter((p) => p.branches.includes(branch)).map((p) => p.category));
-    const ordered = categoryOrder[mealMoment].filter((name) => present.has(name));
+    const ordered = contextualCategoryOrder.filter((name) => present.has(name));
     const unknown = [...present].filter((name) => !ordered.includes(name) && !name.toUpperCase().startsWith("EKSTRA"));
     const extras = [...present].filter((name) => name.toUpperCase().startsWith("EKSTRA"));
     return ["\u0412\u0441\u0435", ...ordered.filter((name) => !name.toUpperCase().startsWith("EKSTRA")), ...unknown, ...extras];
-  }, [products, branch, mealMoment]);
+  }, [products, branch, contextualCategoryOrder]);
   const cartTotal = cart.reduce((sum, item) => sum + item.price * item.qty, 0);
   const ordered = useMemo(() => (order?.items || []).map((item) => ({ ...normalizeProduct(item, branch), qty: Number(item.quantity || item.qty || 1) })), [order, branch]);
   const billTotal = Number(order?.total_amount ?? ordered.reduce((sum, item) => sum + item.price * item.qty, 0));
@@ -577,7 +605,7 @@ export default function QRMenu() {
       .slice(0, 1);
   }, [localizedProducts, branch, unavailable, bakuHour, weatherOffer]);
   const pairings = useMemo(() => {
-    if (!selectedProduct) return [];
+    if (!selectedProduct || isExtraCategory(selectedProduct)) return [];
     const referenceProduct = resolveReferenceMenuProduct(selectedProduct);
     const selectedNames = new Set([
       selectedProduct.id,
@@ -607,7 +635,7 @@ export default function QRMenu() {
       .map(findRecommendedProduct)
       .filter((product) => product && product.id !== selectedProduct.id && product.branches.includes(branch) && !unavailable.includes(product.id) && !isExtraCategory(product))
       .filter((product, index, list) => index === list.findIndex((item) => item.id === product.id))
-      .slice(0, 3);
+      .slice(0, 1);
     if (explicitPairings.length) return explicitPairings;
     const moment = getMealMoment(bakuHour);
     const preferred = pairingCategories[selectedProduct.category] || ["ЛИМОНАДЫ", "КОФЕ", "САЛАТЫ"];
@@ -652,14 +680,14 @@ export default function QRMenu() {
         .filter((product) => product.id !== selectedProduct.id && product.branches.includes(branch) && !unavailable.includes(product.id) && !isExtraCategory(product) && !isWineOrProsecco(product))
         .filter((product) => ["ЛИМОНАДЫ", "ХОЛОДНЫЕ НАПИТКИ", "КОФЕ", "ЧАЙ", "ДЕСЕРТЫ"].includes(product.category))
         .sort((a, b) => b.rating - a.rating || String(a.id).localeCompare(String(b.id)))
-        .slice(0, 3);
+        .slice(0, 1);
     }
     const sourceGroup = pairingGroup(selectedProduct);
     const sourceProducts = localizedProducts.filter(
       (product) => product.branches.includes(branch) && !unavailable.includes(product.id) && pairingGroup(product) === sourceGroup
     ).sort((a, b) => String(a.id).localeCompare(String(b.id)));
     const sourceIndex = Math.max(0, sourceProducts.findIndex((product) => product.id === selectedProduct.id));
-    return Array.from({ length: Math.min(3, candidates.length) }, (_, offset) => candidates[(sourceIndex + offset) % candidates.length])
+    return Array.from({ length: Math.min(1, candidates.length) }, (_, offset) => candidates[(sourceIndex + offset) % candidates.length])
       .filter((product, index, list) => index === list.findIndex((item) => item.id === product.id));
   }, [localizedProducts, selectedProduct, branch, unavailable, bakuHour, profile, configuredRecommendations]);
   function flash(text) {
@@ -811,7 +839,7 @@ export default function QRMenu() {
       {screen === "menu" && <section className="content">
           {smartRecommendations.length > 0 && <section className="smart-recommendations" aria-label={t.smartPicks}>
               <div className="smart-recommendations-heading">
-                <div><span>{t.smartPicks}</span><p>{t.smartPicksNote}</p></div>
+                <div><span>{t.smartPicks}</span>{t.smartPicksNote && <p>{t.smartPicksNote}</p>}</div>
                 <small>{String(bakuHour).padStart(2, "0")}:00</small>
               </div>
               <div className="smart-recommendation-list">
@@ -1033,33 +1061,13 @@ function WeatherVisual({ kind, phase }) {
   const showCloud = ["cloudy", "rainy", "cool"].includes(kind);
   const showRain = kind === "rainy";
   const showWind = kind === "windy" || kind === "sunny";
-  return <svg className={`weather-visual weather-svg weather-svg-${kind}`} viewBox="0 0 128 104" aria-hidden="true">
-      <defs>
-        <radialGradient id="weatherSun" cx="34%" cy="27%" r="76%"><stop offset="0" stopColor="#fff9cf" /><stop offset=".28" stopColor="#ffe386" /><stop offset=".7" stopColor="#f7b934" /><stop offset="1" stopColor="#dc811b" /></radialGradient>
-        <linearGradient id="weatherRay" x1="0" y1="0" x2="1" y2="1"><stop stopColor="#ffe596" /><stop offset="1" stopColor="#efa72f" /></linearGradient>
-        <linearGradient id="weatherCloud" x1=".2" y1="0" x2=".72" y2="1"><stop stopColor="#ffffff" /><stop offset=".52" stopColor="#eaf2f3" /><stop offset="1" stopColor="#b7cbd0" /></linearGradient>
-        <linearGradient id="weatherWind" x1="0" y1="0" x2="1" y2="0"><stop stopColor="#a8e2e2" /><stop offset=".48" stopColor="#64bec3" /><stop offset="1" stopColor="#d8f2f1" /></linearGradient>
-        <filter id="weatherShadow" x="-50%" y="-50%" width="200%" height="210%"><feDropShadow dx="0" dy="8" stdDeviation="6" floodColor="#21444d" floodOpacity=".26" /></filter>
-        <filter id="weatherGlow" x="-80%" y="-80%" width="260%" height="260%"><feGaussianBlur stdDeviation="6" /></filter>
-      </defs>
-      {!isNight && <g className="weather-svg-sun" filter="url(#weatherShadow)">
-          <circle cx="80" cy="39" r="28" fill="#ffc84f" opacity=".22" filter="url(#weatherGlow)" />
-          <g className="weather-svg-rays" stroke="url(#weatherRay)" strokeWidth="5.4" strokeLinecap="round">
-            <path d="M80 4v10M80 74v10M44 39h10M106 39h10M54 13l8 8M100 66l8 8M54 66l8-8M100 21l8-8" />
-          </g>
-          <circle cx="80" cy="39" r="24" fill="url(#weatherSun)" />
-          <ellipse cx="71" cy="30" rx="9" ry="6" fill="#fff" opacity=".48" />
-          <path d="M66 55c10 6 24 4 31-6" fill="none" stroke="#c87517" strokeWidth="2" opacity=".2" strokeLinecap="round" />
-        </g>}
-      {isNight && <g className="weather-svg-moon" filter="url(#weatherShadow)"><path d="M97 18a25 25 0 1 0 2 43A21 21 0 0 1 97 18Z" fill="#f7f5cf" /><ellipse cx="82" cy="27" rx="7" ry="4" fill="#fff" opacity=".34" /><circle cx="87" cy="39" r="3" fill="#c8d2c5" opacity=".7" /></g>}
-      {showCloud && <g className="weather-svg-cloud" filter="url(#weatherShadow)" fill="url(#weatherCloud)"><path d="M28 70c-10 0-18-7-18-16 0-8 7-15 16-16 3-11 13-18 25-18 14 0 25 9 27 22 10 1 18 8 18 17 0 7-6 11-15 11H28Z" /></g>}
-      {showWind && <g className="weather-svg-wind" fill="none" strokeLinecap="round">
-          <g stroke="#234f58" strokeWidth="8" opacity=".12" transform="translate(0 3)"><path d="M8 68c18-1 31 1 43 7 16 8 34 8 57 0 7-2 11 0 12 5" /><path d="M7 84c20-5 37-3 51 4 15 7 32 7 55 0" /><path d="M21 98c17-5 31-4 43 1 12 5 25 5 40-1" /></g>
-          <g stroke="url(#weatherWind)" strokeWidth="6"><path d="M8 68c18-1 31 1 43 7 16 8 34 8 57 0 7-2 11 0 12 5" /><path d="M7 84c20-5 37-3 51 4 15 7 32 7 55 0" /><path d="M21 98c17-5 31-4 43 1 12 5 25 5 40-1" /></g>
-          <g stroke="#fff" strokeWidth="1.5" opacity=".5"><path d="M12 66c16 0 27 2 38 7" /><path d="M11 82c16-3 30-2 42 3" /></g>
-        </g>}
-      {showRain && <g className="weather-svg-rain" stroke="#6ab7d1" strokeWidth="4" strokeLinecap="round"><path d="M28 79l-5 10M50 79l-5 10M72 79l-5 10" /></g>}
-    </svg>;
+  return <div className={`weather-visual weather-silhouette ${kind} ${isNight ? "night-sky" : "day-sky"}`} aria-hidden="true">
+      {!isNight && <i className="weather-sun" />}
+      {isNight && <i className="weather-moon" />}
+      {showCloud && <><i className="weather-cloud cloud-one" /><i className="weather-cloud cloud-two" /></>}
+      {showWind && <><i className="weather-wind wind-one" /><i className="weather-wind wind-two" /></>}
+      {showRain && <><i className="weather-rain rain-one" /><i className="weather-rain rain-two" /><i className="weather-rain rain-three" /></>}
+    </div>;
 }
 function OrderLine({ line, controls, onMinus, onPlus }) {
   return <article className="order-line"><div className="mini-photo" style={photoStyle(line)}>{line.image ? <img className={photoClass(line)} src={line.image} alt="" onError={useRecoveredImageFallback} /> : <span>B&C</span>}</div><div><b>{line.name}</b><span>{money(line.price)} × {line.qty}</span></div>{controls ? <div className="stepper"><button className="qty-minus" onClick={onMinus} aria-label={`Уменьшить количество ${line.name}`} /><b>{line.qty}</b><button className="qty-plus" onClick={onPlus} aria-label={`Увеличить количество ${line.name}`} /></div> : <strong>{money(line.price * line.qty)}</strong>}</article>;
