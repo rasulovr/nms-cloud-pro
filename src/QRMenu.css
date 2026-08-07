@@ -4128,3 +4128,58 @@ body {
     height: 128px;
   }
 }
+
+
+/* QR Menu header: room for centered languages and a separate weather column. */
+.app-shell .hero-side {
+  top: 12px;
+  right: 14px;
+  width: 78px;
+}
+.app-shell .hero-weather,
+.app-shell .hero-weather.weather-sunny {
+  width: 78px;
+  min-width: 78px;
+  max-width: 78px;
+  display: block;
+}
+.app-shell .hero-weather .weather-visual,
+.app-shell .hero-weather .weather-silhouette,
+.app-shell .hero-weather .weather-svg {
+  display: none !important;
+}
+.app-shell .hero-weather-copy {
+  display: grid;
+  grid-template-columns: 1fr;
+  justify-items: end;
+  gap: 4px;
+  text-align: right;
+}
+.app-shell .hero-weather-copy > strong {
+  display: block;
+  font-size: clamp(27px, 7.5vw, 34px);
+  line-height: .9;
+  letter-spacing: -.055em;
+}
+.app-shell .hero-weather-copy > div {
+  display: grid;
+  justify-items: end;
+  gap: 3px;
+}
+.app-shell .hero-weather-copy span {
+  font-size: 9px;
+  line-height: 1.12;
+  white-space: normal;
+}
+.app-shell .hero-weather-copy small {
+  width: 78px;
+  font-size: 6.5px;
+  line-height: 1.22;
+  white-space: normal;
+}
+@media (max-width: 620px) {
+  .app-shell .hero-side { top: 12px; right: 14px; width: 78px; }
+  .app-shell .hero-weather,
+  .app-shell .hero-weather.weather-sunny { width: 78px; min-width: 78px; max-width: 78px; }
+  .app-shell .hero-weather-copy > strong { font-size: 30px; }
+}
