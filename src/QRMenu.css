@@ -4851,3 +4851,19 @@ body {
     height: 52% !important;
   }
 }
+
+
+/* Compact mobile masthead: no branch name, preserve only table context. */
+@media (max-width: 680px) {
+  .qr-premium-hero.hero { min-height: 380px !important; }
+  .qr-premium-hero .hero-reference-copy { bottom: 100px !important; gap: 9px !important; }
+  .qr-premium-hero .hero-reference-kicker { font-size: 10px !important; }
+  .qr-premium-hero .hero-reference-title { max-width: calc(100vw - 56px) !important; font-size: 31px !important; line-height: 1.05 !important; }
+  .qr-premium-hero .hero-reference-context { font-size: 15px !important; }
+  .qr-premium-hero .hero-reference-weather { bottom: 17px !important; height: 48px !important; padding-top: 12px !important; }
+  .qr-premium-hero .hero-reference-cloud { font-size: 24px !important; }
+  .qr-premium-hero .hero-reference-weather strong { font-size: 22px !important; }
+  .qr-premium-hero .hero-reference-weather i { height: 27px !important; }
+  .qr-premium-hero .hero-reference-weather span:last-child { font-size: 15px !important; }
+  .app-shell .main-nav { margin-top: -14px !important; }
+}
