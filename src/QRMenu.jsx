@@ -801,33 +801,30 @@ export default function QRMenu() {
   const hasTableContext = Boolean(table);
   const recommendationQty = mealRecommendation ? cart.find((line) => line.id === mealRecommendation.product.id)?.qty || 0 : 0;
   return <main className={`app-shell theme-${dayPhase} weather-theme-${atmosphere}`}>
-      <header className="hero">
-        <div className="brand-mark">RMS <i>PRO</i></div>
-        <div className="language-switch" role="group" aria-label="Language selection">
-          <button className={language === "az" ? "active" : ""} onClick={() => setLanguage("az")}>AZ</button>
-          <button className={language === "ru" ? "active" : ""} onClick={() => setLanguage("ru")}>RU</button>
-          <button className={language === "en" ? "active" : ""} onClick={() => setLanguage("en")}>EN</button>
+      <header className="hero qr-premium-hero">
+        <div className="hero-sky" aria-hidden="true">
+          {weatherOffer && <WeatherVisual kind={weatherOffer.kind} phase={dayPhase} />}
         </div>
-        <div className="hero-branch-name">{branchName}</div>
-        <div className="hero-copy">
-          <div className="daily-quote">
-            <span className="quote-label">{t.quote}</span>
-            <p>{dailyQuote}</p>
+        <div className="hero-topline">
+          <div className="brand-mark">BARISTA<span>&amp;</span>CHEF</div>
+          <div className="language-switch" role="group" aria-label="Language selection">
+            <button className={language === "az" ? "active" : ""} onClick={() => setLanguage("az")}>AZ</button>
+            <button className={language === "ru" ? "active" : ""} onClick={() => setLanguage("ru")}>RU</button>
+            <button className={language === "en" ? "active" : ""} onClick={() => setLanguage("en")}>EN</button>
           </div>
-          {hasTableContext && <p className="hero-context">{t.table} {table} · {t.tableAction}</p>}
         </div>
-        <div className="hero-side">
-          {weatherOffer && <div className={`hero-weather weather-${weatherOffer.kind}`} aria-label={weatherTitle}>
-              <div className="hero-weather-copy">
-                {weather && <strong>{Math.round(weather.temperature)}°</strong>}
-                <div>
-                  <span>{weatherTitle}</span>
-                  {weather && <small>{t.feels} {Math.round(weather.apparentTemperature)}° · {t.wind} {Math.round(weather.windSpeed)} m/s</small>}
-                </div>
-              </div>
-              <WeatherVisual kind={weatherOffer.kind} phase={dayPhase} />
-            </div>}
+        <div className="hero-copy">
+          <span className="hero-kicker">QR MENU</span>
+          <div className="hero-branch-name">{branchName}</div>
+          {hasTableContext && <p className="hero-context">{t.table} {table}</p>}
         </div>
+        <button type="button" className="hero-loyalty" onClick={() => setScreen("loyalty")} aria-label="Loyalty">☆</button>
+        {weatherOffer && <div className={`hero-weather weather-${weatherOffer.kind}`} aria-label={weatherTitle}>
+          <div className="hero-weather-copy">
+            {weather && <strong>{Math.round(weather.temperature)}°</strong>}
+            <span>Baku · {weatherTitle}</span>
+          </div>
+        </div>}
       </header>
 
       <nav className="main-nav" aria-label="Разделы QR Menu">
