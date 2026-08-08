@@ -4867,3 +4867,22 @@ body {
   .qr-premium-hero .hero-reference-weather span:last-child { font-size: 15px !important; }
   .app-shell .main-nav { margin-top: -14px !important; }
 }
+
+
+/* Final density pass: hide brand and keep the masthead compact at every viewport. */
+.qr-premium-hero .brand-mark { display: none !important; }
+.qr-premium-hero.hero { min-height: 420px !important; }
+.qr-premium-hero .hero-reference-copy { bottom: 112px !important; gap: 11px !important; }
+.qr-premium-hero .hero-reference-kicker { font-size: 12px !important; }
+.qr-premium-hero .hero-reference-title { font-size: clamp(31px, 3.45vw, 52px) !important; line-height: 1.04 !important; }
+.qr-premium-hero .hero-reference-context { font-size: 18px !important; }
+.qr-premium-hero .hero-reference-weather { bottom: 21px !important; height: 55px !important; padding-top: 15px !important; }
+.qr-premium-hero .hero-reference-weather strong { font-size: 25px !important; }
+.qr-premium-hero .hero-reference-weather span:last-child { font-size: 18px !important; }
+@media (max-width: 680px) {
+  .qr-premium-hero.hero { min-height: 330px !important; }
+  .qr-premium-hero .hero-reference-copy { bottom: 86px !important; }
+  .qr-premium-hero .hero-reference-title { font-size: 28px !important; }
+  .qr-premium-hero .hero-reference-context { font-size: 14px !important; }
+  .qr-premium-hero .hero-reference-weather { bottom: 14px !important; }
+}
