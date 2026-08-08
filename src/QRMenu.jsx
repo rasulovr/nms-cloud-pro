@@ -813,14 +813,17 @@ export default function QRMenu() {
             <button className={language === "en" ? "active" : ""} onClick={() => setLanguage("en")}>EN</button>
           </div>
         </div>
-        <div className="hero-copy">
-          <span className="hero-kicker">QR MENU</span>
-        </div>
         {weatherOffer && <div className={`hero-weather weather-${weatherOffer.kind}`} aria-label={weatherTitle}>
-          <div className="hero-weather-copy">
+          <div className="hero-weather-primary">
             {weather && <strong>{Math.round(weather.temperature)}°</strong>}
-            <span>Baku · {weatherTitle}</span>
+            <span>{weatherTitle}</span>
           </div>
+          {weather && <div className="hero-weather-details">
+            <span>{t.feels} {Math.round(weather.apparentTemperature)}°</span>
+            <i />
+            <span>{t.wind} {Math.round(weather.windSpeed)} m/s</span>
+            {weather.windGust > weather.windSpeed + 2 && <><i /><span>порывы {Math.round(weather.windGust)} m/s</span></>}
+          </div>}
         </div>}
       </header>
 
