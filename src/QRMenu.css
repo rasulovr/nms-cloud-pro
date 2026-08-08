@@ -4950,3 +4950,12 @@ body {
 .app-shell.theme-evening .qr-premium-hero .hero-sky::after {
   background: linear-gradient(90deg, rgba(13,38,62,.2), rgba(13,38,62,.02) 72%) !important;
 }
+
+
+/* Reduce only the selector-to-quote gap on mobile. */
+@media (max-width: 680px) {
+  .qr-premium-hero .hero-reference-copy {
+    top: 88px !important;
+    bottom: auto !important;
+  }
+}
