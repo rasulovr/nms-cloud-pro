@@ -813,18 +813,18 @@ export default function QRMenu() {
             <button className={language === "en" ? "active" : ""} onClick={() => setLanguage("en")}>EN</button>
           </div>
         </div>
-        {weatherOffer && <div className={`hero-weather weather-${weatherOffer.kind}`} aria-label={weatherTitle}>
-          <div className="hero-weather-primary">
-            {weather && <strong>{Math.round(weather.temperature)}°</strong>}
-            <span>{weatherTitle}</span>
-          </div>
-          {weather && <div className="hero-weather-details">
-            <span>{t.feels} {Math.round(weather.apparentTemperature)}°</span>
-            <i />
-            <span>{t.wind} {Math.round(weather.windSpeed)} m/s</span>
-            {weather.windGust > weather.windSpeed + 2 && <><i /><span>порывы {Math.round(weather.windGust)} m/s</span></>}
-          </div>}
-        </div>}
+        <div className="hero-reference-copy">
+          <div className="hero-reference-kicker">BARISTA<span>&amp;</span>CHEF</div>
+          <div className="hero-reference-title">QR MENU</div>
+          <div className="hero-reference-context">Rashid Behbudov · {t.table} {table || 1}</div>
+        </div>
+        <button className="hero-reference-loyalty" type="button" onClick={() => setScreen("loyalty")} aria-label="Loyalty">☆</button>
+        <div className="hero-reference-weather" aria-label={weatherTitle}>
+          <span className="hero-reference-cloud" aria-hidden="true">☁</span>
+          <strong>{weather ? Math.round(weather.temperature) : 18}°</strong>
+          <i />
+          <span>Baku · {weatherTitle}</span>
+        </div>
       </header>
 
       <nav className="main-nav" aria-label="Разделы QR Menu">
