@@ -814,11 +814,10 @@ export default function QRMenu() {
           </div>
         </div>
         <div className="hero-reference-copy">
-          <div className="hero-reference-kicker">BARISTA<span>&amp;</span>CHEF</div>
-          <div className="hero-reference-title">QR MENU</div>
+          <div className="hero-reference-kicker">{t.quote}</div>
+          <div className="hero-reference-title">{t.quoteLines?.[new Date().getDate() % t.quoteLines.length] || "У дня должен быть вкус."}</div>
           <div className="hero-reference-context">Rashid Behbudov · {t.table} {table || 1}</div>
         </div>
-        <button className="hero-reference-loyalty" type="button" onClick={() => setScreen("loyalty")} aria-label="Loyalty">☆</button>
         <div className="hero-reference-weather" aria-label={weatherTitle}>
           <span className="hero-reference-cloud" aria-hidden="true">☁</span>
           <strong>{weather ? Math.round(weather.temperature) : 18}°</strong>
