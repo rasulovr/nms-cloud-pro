@@ -113,3 +113,81 @@
 .app-shell.theme-night .product-card p,
 .app-shell.theme-night .product-card small { color: #b7c7d2 !important; }
 .app-shell.theme-night footer { color: rgba(222, 231, 237, .7) !important; }
+
+
+/* Night contrast: keep every menu surface readable on the dark palette. */
+.app-shell.theme-night .product-card .add,
+.app-shell.theme-night .product-card .stepper,
+.app-shell.theme-night .modal-buy button,
+.app-shell.theme-night .primary-button,
+.app-shell.theme-night .outline-button {
+  background: #e8c8a7 !important;
+  color: #091a29 !important;
+  border-color: rgba(255, 243, 226, .58) !important;
+}
+.app-shell.theme-night .product-card .add b,
+.app-shell.theme-night .product-card .add span,
+.app-shell.theme-night .product-card .stepper b,
+.app-shell.theme-night .product-card .stepper button,
+.app-shell.theme-night .modal-buy button,
+.app-shell.theme-night .primary-button,
+.app-shell.theme-night .outline-button { color: #091a29 !important; }
+.app-shell.theme-night .product-card .add:hover,
+.app-shell.theme-night .product-card .add:focus-visible,
+.app-shell.theme-night .modal-buy button:hover,
+.app-shell.theme-night .primary-button:hover { background: #f4d9bc !important; }
+
+.app-shell.theme-night .product-modal { background: rgba(2, 12, 22, .76) !important; }
+.app-shell.theme-night .product-modal-card {
+  background: #0b2234 !important;
+  border-color: rgba(218, 233, 241, .25) !important;
+  color: #f3f1eb !important;
+}
+.app-shell.theme-night .modal-heading,
+.app-shell.theme-night .modal-content,
+.app-shell.theme-night .modal-buy {
+  background: #0b2234 !important;
+  border-color: rgba(191, 214, 228, .18) !important;
+}
+.app-shell.theme-night .modal-heading h2,
+.app-shell.theme-night .modal-content h2,
+.app-shell.theme-night .modal-content b,
+.app-shell.theme-night .modal-content strong,
+.app-shell.theme-night .modal-buy strong { color: #f7f2e9 !important; }
+.app-shell.theme-night .modal-heading .eyebrow { color: #e7c49e !important; }
+.app-shell.theme-night .modal-content p,
+.app-shell.theme-night .modal-content small { color: #bdd0da !important; }
+.app-shell.theme-night .modal-close {
+  background: rgba(234, 205, 170, .94) !important;
+  border-color: rgba(255, 250, 240, .56) !important;
+}
+.app-shell.theme-night .pairing-grid article,
+.app-shell.theme-night .pairings { background: rgba(30, 56, 70, .84) !important; }
+.app-shell.theme-night .pairing-grid article b { color: #f2f0e9 !important; }
+.app-shell.theme-night .pairing-grid article small { color: #c0d1da !important; }
+.app-shell.theme-night .pairing-add {
+  background: #e8c8a7 !important;
+  color: #091a29 !important;
+  border-color: transparent !important;
+}
+
+.app-shell.theme-night .narrow h2,
+.app-shell.theme-night .section-heading h2,
+.app-shell.theme-night .info-grid b,
+.app-shell.theme-night .info-grid p,
+.app-shell.theme-night .info-grid a { color: #edf2f3 !important; }
+.app-shell.theme-night .info-grid article {
+  background: rgba(15, 39, 55, .86) !important;
+  border-color: rgba(194, 216, 229, .2) !important;
+  box-shadow: 0 14px 30px rgba(0, 0, 0, .22) !important;
+}
+.app-shell.theme-night .info-grid article > span,
+.app-shell.theme-night .info-grid article small { color: #d9e3e7 !important; }
+.app-shell.theme-night .wifi-network { color: #e8c8a7 !important; }
+.app-shell.theme-night .wifi-password-button {
+  background: rgba(69, 90, 91, .68) !important;
+  border-color: rgba(210, 229, 235, .27) !important;
+  color: #f2f5f3 !important;
+}
+.app-shell.theme-night .wifi-password-button span,
+.app-shell.theme-night .wifi-password-button small { color: #f2f5f3 !important; }
