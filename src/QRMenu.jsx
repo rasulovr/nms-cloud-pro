@@ -817,8 +817,7 @@ export default function QRMenu() {
         <div className="hero-reference-copy">
           <div className="hero-reference-kicker">{t.quote}</div>
           <div className="hero-reference-title">{t.quoteLines?.[new Date().getDate() % t.quoteLines.length] || "У дня должен быть вкус."}</div>
-          <div className="hero-reference-context">{t.table} {table || 1}</div>
-        </div>
+          </div>
         <div className="hero-reference-weather" aria-label={weatherTitle}>
           <span className="hero-reference-cloud" aria-hidden="true">☁</span>
           <strong>{weather ? Math.round(weather.temperature) : 18}°</strong>
