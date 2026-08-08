@@ -4887,3 +4887,36 @@ body {
   .qr-premium-hero .hero-reference-weather { bottom: 14px !important; }
 }
 
+
+
+/* Restore weather-led hero effects only; menu section remains untouched. */
+.theme-day .qr-premium-hero.hero {
+  background: linear-gradient(135deg, #438fd7 0%, #72b6e5 52%, #dcecf1 100%) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.52), 0 18px 40px rgba(42,96,137,.16) !important;
+}
+.theme-day .qr-premium-hero .hero-sky {
+  background-image:
+    radial-gradient(ellipse 68% 82% at 84% 92%, rgba(255,223,115,.68) 0%, rgba(255,229,150,.28) 28%, rgba(255,232,186,0) 67%),
+    radial-gradient(ellipse 65% 70% at 16% 22%, rgba(255,255,255,.21) 0%, rgba(255,255,255,0) 72%),
+    linear-gradient(135deg, #438fd7 0%, #75b9e6 56%, #dcecf1 100%) !important;
+  background-position: center !important;
+}
+.theme-day .qr-premium-hero .hero-sky::before {
+  display: block !important;
+  inset: 0 !important;
+  width: auto !important;
+  height: auto !important;
+  top: auto !important;
+  right: auto !important;
+  border-radius: 0 !important;
+  opacity: 1 !important;
+  filter: none !important;
+  box-shadow: none !important;
+  background: linear-gradient(110deg, rgba(18,67,110,.24), transparent 48%, rgba(255,255,255,.1)) !important;
+}
+.theme-day .qr-premium-hero .hero-sky::after {
+  background: linear-gradient(90deg, rgba(10,42,74,.2), rgba(10,42,74,.02) 72%) !important;
+}
+.theme-night .qr-premium-hero.hero {
+  background: linear-gradient(145deg, #071322, #18304a) !important;
+}
