@@ -31,7 +31,10 @@ const getContextualCategoryOrder = (moment, weatherKind) => {
   const base = categoryOrder[moment] || categoryOrder.lunch;
   const extras = base.filter((name) => /^ekstra/i.test(name));
   const standard = base.filter((name) => !/^ekstra/i.test(name) && name !== "Новинки");
-  return [...new Set([...(weatherCategoryBoosts[weatherKind] || []), ...standard]), "Новинки", ...extras];
+  // From 18:00 onward, the time-based dinner sequence is authoritative.
+  // Weather may affect the scene, but must never push daytime categories ahead of dinner.
+  const boosts = moment === "dinner" ? [] : (weatherCategoryBoosts[weatherKind] || []);
+  return [...new Set([...boosts, ...standard]), "Новинки", ...extras];
 };
 const productPriority = {
   breakfast: [/капучино.*круассан/i, /сырник/i, /шакшук/i, /омлет/i, /яичниц/i, /нью-йорк.*завтрак/i, /бейгл.*лосос/i, /гранол/i, /овсян.*каш/i],
