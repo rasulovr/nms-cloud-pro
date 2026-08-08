@@ -815,7 +815,7 @@ export default function QRMenu() {
         </div>
         <div className="hero-copy">
           <span className="hero-kicker">QR MENU</span>
-          <div className="hero-branch-name">{branchName}</div>
+          <div className="hero-branch-name">{String(branchName || "").replace(/^barista\s*&\s*chef\s*/i, "").trim() || branchName}</div>
           {hasTableContext && <p className="hero-context">{t.table} {table}</p>}
         </div>
         <button type="button" className="hero-loyalty" onClick={() => setScreen("loyalty")} aria-label="Loyalty">☆</button>
