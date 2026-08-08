@@ -38,7 +38,7 @@ const productPriority = {
   lunch: [/суп/i, /салат/i, /хумус/i, /боул/i, /сэндвич/i, /бургер/i, /пицц/i],
   dinner: [/сырн.*сет/i, /вителло/i, /тоннат/i, /брускет/i, /бургер/i, /burger/i, /сэндвич/i, /sandwich/i, /стейк/i, /рибай/i, /копч.*утк/i, /утк/i, /meat lovers/i, /четыре сыра/i]
 };
-const getMealMoment = (hour) => hour >= 5 && hour < 12 ? "breakfast" : hour >= 12 && hour < 18 ? "lunch" : "dinner";
+const getMealMoment = (hour) => hour >= 8 && hour < 12 ? "breakfast" : hour >= 12 && hour < 18 ? "lunch" : "dinner";
 const productMomentRank = (product, moment) => {
   const haystack = `${product.name} ${product.description} ${product.category}`;
   const index = productPriority[moment].findIndex((pattern) => pattern.test(haystack));
@@ -295,7 +295,7 @@ function getBakuHour() {
   }).format(/* @__PURE__ */ new Date()));
 }
 function getBakuDayPhase(hour = getBakuHour()) {
-  if (hour >= 5 && hour < 12) return "morning";
+  if (hour >= 8 && hour < 12) return "morning";
   if (hour >= 12 && hour < 18) return "day";
   if (hour >= 18 && hour < 20) return "evening";
   return "night";
