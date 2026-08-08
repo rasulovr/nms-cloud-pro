@@ -4607,3 +4607,150 @@ body {
 }
 .qr-premium-hero .hero-weather-details span { display: inline-block !important; white-space: nowrap !important; }
 .qr-premium-hero .hero-weather-details i { display: inline-block !important; flex: 0 0 3px !important; width: 3px !important; height: 3px !important; margin: 0 2px !important; }
+
+
+/* RMS Pro QR Menu — approved night reference composition */
+.app-shell,
+.app-shell.theme-day,
+.app-shell.theme-night,
+.app-shell.weather-theme-rainy {
+  --menu-bg: #f5f0e7;
+  --paper: #f7f2e9;
+  --card: #fcf8f1;
+  --ink: #102033;
+  --muted: #7d776e;
+  --line: #e5ddd2;
+  --green: #0c1d2d;
+  background: #f5f0e7 !important;
+}
+.qr-premium-hero.hero {
+  position: relative !important;
+  isolation: isolate !important;
+  min-height: 585px !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  color: #f7f3ed !important;
+  background: #081523 !important;
+  border: 0 !important;
+  border-radius: 0 0 32px 32px !important;
+}
+.qr-premium-hero .hero-sky {
+  position: absolute !important;
+  inset: 0 !important;
+  z-index: -1 !important;
+  display: block !important;
+  background-position: center top !important;
+  background-size: cover !important;
+}
+.qr-premium-hero .hero-sky::after {
+  content: "" !important;
+  position: absolute !important;
+  inset: 0 !important;
+  background: linear-gradient(90deg, rgba(3,12,23,.28), rgba(3,12,23,.03) 72%) !important;
+}
+.qr-premium-hero .hero-topline { display: none !important; }
+.qr-premium-hero .hero-reference-copy {
+  position: absolute !important;
+  z-index: 3 !important;
+  left: clamp(34px, 6vw, 92px) !important;
+  bottom: 152px !important;
+  display: grid !important;
+  gap: 18px !important;
+}
+.qr-premium-hero .hero-reference-kicker {
+  color: #f0ccad !important;
+  font-size: 17px !important;
+  font-weight: 520 !important;
+  letter-spacing: .34em !important;
+}
+.qr-premium-hero .hero-reference-kicker span { letter-spacing: .04em !important; }
+.qr-premium-hero .hero-reference-title {
+  color: #f7f6f3 !important;
+  font-size: clamp(64px, 7.2vw, 108px) !important;
+  font-weight: 300 !important;
+  letter-spacing: .025em !important;
+  line-height: .94 !important;
+}
+.qr-premium-hero .hero-reference-context {
+  color: #efc7a7 !important;
+  font-size: 24px !important;
+  font-weight: 350 !important;
+  letter-spacing: .01em !important;
+}
+.qr-premium-hero .hero-reference-loyalty {
+  position: absolute !important;
+  z-index: 4 !important;
+  right: clamp(36px, 7vw, 105px) !important;
+  bottom: 168px !important;
+  width: 94px !important;
+  height: 94px !important;
+  padding: 0 !important;
+  display: grid !important;
+  place-items: center !important;
+  color: #f0caaa !important;
+  font-size: 58px !important;
+  font-weight: 250 !important;
+  line-height: 1 !important;
+  border: 1px solid rgba(235,238,242,.35) !important;
+  border-radius: 50% !important;
+  background: rgba(24,35,49,.42) !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.12) !important;
+  backdrop-filter: blur(8px) !important;
+}
+.qr-premium-hero .hero-reference-weather {
+  position: absolute !important;
+  z-index: 3 !important;
+  left: clamp(34px, 6vw, 92px) !important;
+  right: clamp(34px, 6vw, 92px) !important;
+  bottom: 36px !important;
+  height: 70px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 22px !important;
+  padding-top: 22px !important;
+  color: rgba(244,241,237,.8) !important;
+  border-top: 1px solid rgba(231,235,238,.24) !important;
+}
+.qr-premium-hero .hero-reference-cloud { font-size: 37px !important; line-height: 1 !important; }
+.qr-premium-hero .hero-reference-weather strong { color: #fff !important; font-size: 30px !important; font-weight: 380 !important; }
+.qr-premium-hero .hero-reference-weather i { width: 1px !important; height: 40px !important; background: rgba(232,235,237,.32) !important; }
+.qr-premium-hero .hero-reference-weather span:last-child { font-size: 23px !important; font-weight: 360 !important; }
+.qr-premium-hero .hero-weather { display: none !important; }
+.app-shell .main-nav {
+  position: relative !important;
+  z-index: 5 !important;
+  width: min(940px, calc(100% - 40px)) !important;
+  margin: -23px auto 0 !important;
+  padding: 7px !important;
+  border: 1px solid rgba(255,255,255,.92) !important;
+  border-radius: 999px !important;
+  background: rgba(251,248,242,.97) !important;
+  box-shadow: 0 20px 44px rgba(18,28,40,.12) !important;
+}
+.app-shell .main-nav button { color: #6f746f !important; font-weight: 650 !important; }
+.app-shell .main-nav button.active { color: #fff !important; background: #0a1a27 !important; box-shadow: none !important; }
+.app-shell .content { background: transparent !important; }
+.app-shell .categories {
+  background: rgba(255,251,244,.82) !important;
+  border-color: rgba(239,228,214,.9) !important;
+  box-shadow: 0 12px 35px rgba(28,32,38,.06) !important;
+}
+.app-shell .categories button { color: #897c70 !important; }
+.app-shell .categories button.active { color: #122134 !important; background: #fffdf8 !important; box-shadow: 0 8px 18px rgba(39,35,30,.08) !important; }
+.app-shell .product-card { background: #fcf8f1 !important; border-color: #e8dfd4 !important; box-shadow: 0 15px 35px rgba(36,31,26,.07) !important; }
+.app-shell .product-card h3, .app-shell .product-card strong { color: #102033 !important; }
+.app-shell .product-card p { color: #81796f !important; }
+@media (max-width: 680px) {
+  .qr-premium-hero.hero { min-height: 520px !important; border-radius: 0 0 26px 26px !important; }
+  .qr-premium-hero .hero-reference-copy { left: 28px !important; bottom: 142px !important; gap: 14px !important; }
+  .qr-premium-hero .hero-reference-kicker { font-size: 12px !important; letter-spacing: .31em !important; }
+  .qr-premium-hero .hero-reference-title { font-size: 59px !important; }
+  .qr-premium-hero .hero-reference-context { font-size: 17px !important; }
+  .qr-premium-hero .hero-reference-loyalty { right: 28px !important; bottom: 171px !important; width: 67px !important; height: 67px !important; font-size: 43px !important; }
+  .qr-premium-hero .hero-reference-weather { left: 28px !important; right: 28px !important; bottom: 30px !important; height: 58px !important; gap: 15px !important; padding-top: 17px !important; }
+  .qr-premium-hero .hero-reference-cloud { font-size: 30px !important; }
+  .qr-premium-hero .hero-reference-weather strong { font-size: 26px !important; }
+  .qr-premium-hero .hero-reference-weather i { height: 32px !important; }
+  .qr-premium-hero .hero-reference-weather span:last-child { font-size: 17px !important; }
+  .app-shell .main-nav { width: calc(100% - 28px) !important; margin-top: -18px !important; }
+}
