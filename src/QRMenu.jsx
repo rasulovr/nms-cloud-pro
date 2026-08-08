@@ -5,9 +5,9 @@ import { formatMenuDescription, normalizeReferenceText, resolveReferenceMenuProd
 import { resolveRecoveredMenuImage, useRecoveredImageFallback } from "./recoveredMenuImages";
 import "./QRMenu.css";
 const categoryOrder = {
-  breakfast: ["ЗАВТРАК", "КОФЕ", "ЧАЙ", "ХОЛОДНЫЙ КОФЕ", "ДЕСЕРТЫ", "САЛАТЫ", "СУПЫ", "ГОРЯЧИЕ БЛЮДА", "ЗАКУСКИ", "ПИЦЦА", "ЛИМОНАДЫ", "ХОЛОДНЫЕ НАПИТКИ", "Новинки", "EKSTRA KITCHEN", "EKSTRA BAR"],
-  lunch: ["СУПЫ", "САЛАТЫ", "ГОРЯЧИЕ БЛЮДА", "ЗАКУСКИ", "ПИЦЦА", "ЗАВТРАК", "ДЕСЕРТЫ", "КОФЕ", "ХОЛОДНЫЙ КОФЕ", "ЛИМОНАДЫ", "ЧАЙ", "ХОЛОДНЫЕ НАПИТКИ", "Новинки", "EKSTRA KITCHEN", "EKSTRA BAR"],
-  dinner: ["ГОРЯЧИЕ БЛЮДА", "САЛАТЫ", "ЗАКУСКИ", "ПИЦЦА", "СУПЫ", "ДЕСЕРТЫ", "ЛИМОНАДЫ", "ХОЛОДНЫЕ НАПИТКИ", "КОФЕ", "ЧАЙ", "ХОЛОДНЫЙ КОФЕ", "ЗАВТРАК", "Новинки", "EKSTRA KITCHEN", "EKSTRA BAR"]
+  breakfast: ["ЗАВТРАК", "КОФЕ", "САЛАТЫ", "ЧАЙ", "ХОЛОДНЫЙ КОФЕ", "ДЕСЕРТЫ", "ЗАКУСКИ", "ГОРЯЧИЕ БЛЮДА", "СУПЫ", "ПИЦЦА", "ЛИМОНАДЫ", "ХОЛОДНЫЕ НАПИТКИ", "Новинки", "EKSTRA KITCHEN", "EKSTRA BAR"],
+  lunch: ["САЛАТЫ", "ЗАКУСКИ", "ГОРЯЧИЕ БЛЮДА", "ЛИМОНАДЫ", "ХОЛОДНЫЕ НАПИТКИ", "ПИЦЦА", "СУПЫ", "ЗАВТРАК", "ДЕСЕРТЫ", "КОФЕ", "ХОЛОДНЫЙ КОФЕ", "ЧАЙ", "Новинки", "EKSTRA KITCHEN", "EKSTRA BAR"],
+  dinner: ["ГОРЯЧИЕ БЛЮДА", "ЗАКУСКИ", "САЛАТЫ", "ПИЦЦА", "СУПЫ", "ЛИМОНАДЫ", "ХОЛОДНЫЕ НАПИТКИ", "ДЕСЕРТЫ", "КОФЕ", "ЧАЙ", "ХОЛОДНЫЙ КОФЕ", "ЗАВТРАК", "Новинки", "EKSTRA KITCHEN", "EKSTRA BAR"]
 };
 const weatherCategoryBoosts = {
   sunny: ["САЛАТЫ", "ЗАКУСКИ", "ГОРЯЧИЕ БЛЮДА", "ЗАВТРАК"],
@@ -35,9 +35,9 @@ const getContextualCategoryOrder = (moment, weatherKind) => {
 const productPriority = {
   breakfast: [/капучино.*круассан/i, /сырник/i, /шакшук/i, /омлет/i, /яичниц/i, /нью-йорк.*завтрак/i, /бейгл.*лосос/i, /гранол/i, /овсян.*каш/i],
   lunch: [/суп/i, /салат/i, /хумус/i, /боул/i, /сэндвич/i, /бургер/i, /пицц/i],
-  dinner: [/стейк/i, /рибай/i, /копч.*утк/i, /утк/i, /meat lovers/i, /четыре сыра/i, /тоннат/i]
+  dinner: [/сырн.*сет/i, /вителло/i, /тоннат/i, /брускет/i, /бургер/i, /burger/i, /сэндвич/i, /sandwich/i, /стейк/i, /рибай/i, /копч.*утк/i, /утк/i, /meat lovers/i, /четыре сыра/i]
 };
-const getMealMoment = (hour) => hour >= 5 && hour < 11 ? "breakfast" : hour >= 11 && hour < 17 ? "lunch" : "dinner";
+const getMealMoment = (hour) => hour >= 5 && hour < 12 ? "breakfast" : hour >= 12 && hour < 18 ? "lunch" : "dinner";
 const productMomentRank = (product, moment) => {
   const haystack = `${product.name} ${product.description} ${product.category}`;
   const index = productPriority[moment].findIndex((pattern) => pattern.test(haystack));
@@ -294,9 +294,9 @@ function getBakuHour() {
   }).format(/* @__PURE__ */ new Date()));
 }
 function getBakuDayPhase(hour = getBakuHour()) {
-  if (hour >= 5 && hour < 10) return "morning";
-  if (hour >= 10 && hour < 17) return "day";
-  if (hour >= 17 && hour < 21) return "evening";
+  if (hour >= 5 && hour < 12) return "morning";
+  if (hour >= 12 && hour < 18) return "day";
+  if (hour >= 18 && hour < 20) return "evening";
   return "night";
 }
 export default function QRMenu() {
