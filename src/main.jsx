@@ -26687,6 +26687,7 @@ function SupplierProductPriceHistoryChart({ history = [], baseUnit = '' }) {
 
 function Suppliers({ t, isAdmin = false }) {
   const isAzInterface = t('language_label') === 'İnterfeys dili'
+  const CENTRAL_WAREHOUSE_SELECTION = '__CENTRAL_WAREHOUSE__'
   const branches = useBranches()
   const [legalEntities, setLegalEntities] = useState([])
   const [suppliers, setSuppliers] = useState([])
@@ -27697,6 +27698,12 @@ function Suppliers({ t, isAdmin = false }) {
     try {
       if (!purchaseForm.supplier_id || !purchaseForm.legal_entity_id) throw new Error('Выберите поставщика и VOEN')
       const amountOnly = !!purchaseForm.amount_only
+      const isCentralWarehouse = purchaseForm.branch_id === CENTRAL_WAREHOUSE_SELECTION
+      const branchIdForPurchase = isCentralWarehouse ? null : (purchaseForm.branch_id || null)
+      const purchaseComment = [
+        purchaseForm.comment?.trim(),
+        isCentralWarehouse ? 'Получатель: Склад / Central Warehouse' : ''
+      ].filter(Boolean).join('\n')
 
       if (amountOnly) {
         const manualAmount = parseNum(purchaseForm.manual_amount)
@@ -27704,10 +27711,10 @@ function Suppliers({ t, isAdmin = false }) {
         await callSupplierRpc('rms_supplier_purchase_create_secure', {
           p_supplier_id: purchaseForm.supplier_id,
           p_legal_entity_id: purchaseForm.legal_entity_id,
-          p_branch_id: purchaseForm.branch_id || null,
+          p_branch_id: branchIdForPurchase,
           p_purchase_date: purchaseForm.purchase_date || todayISO(),
           p_invoice_number: purchaseForm.invoice_number.trim() || null,
-          p_comment: supplierCommentWithMeta(purchaseForm.comment?.trim() || 'Поступление введено общей суммой без детализации товаров', { eInvoiceNumber: purchaseForm.e_invoice_number, eInvoiceDate: purchaseForm.e_invoice_date, eInvoiceAmount: purchaseForm.e_invoice_amount }),
+          p_comment: supplierCommentWithMeta(purchaseComment || 'Поступление введено общей суммой без детализации товаров', { eInvoiceNumber: purchaseForm.e_invoice_number, eInvoiceDate: purchaseForm.e_invoice_date, eInvoiceAmount: purchaseForm.e_invoice_amount }),
           p_items: [],
           p_manual_amount: manualAmount
         })
@@ -27732,10 +27739,10 @@ function Suppliers({ t, isAdmin = false }) {
       await callSupplierRpc('rms_supplier_purchase_create_secure', {
         p_supplier_id: purchaseForm.supplier_id,
         p_legal_entity_id: purchaseForm.legal_entity_id,
-        p_branch_id: purchaseForm.branch_id || null,
+        p_branch_id: branchIdForPurchase,
         p_purchase_date: purchaseForm.purchase_date || todayISO(),
         p_invoice_number: purchaseForm.invoice_number.trim() || null,
-        p_comment: supplierCommentWithMeta(purchaseForm.comment.trim() || null, { eInvoiceNumber: purchaseForm.e_invoice_number, eInvoiceDate: purchaseForm.e_invoice_date, eInvoiceAmount: purchaseForm.e_invoice_amount }),
+        p_comment: supplierCommentWithMeta(purchaseComment || null, { eInvoiceNumber: purchaseForm.e_invoice_number, eInvoiceDate: purchaseForm.e_invoice_date, eInvoiceAmount: purchaseForm.e_invoice_amount }),
         p_items: prepared,
         p_manual_amount: null
       })
@@ -29056,7 +29063,7 @@ function Suppliers({ t, isAdmin = false }) {
         <div className="form-grid compact">
           <label><span>Поставщик</span><select value={purchaseForm.supplier_id} onChange={e => setPurchaseForm({...purchaseForm, supplier_id: e.target.value})}>{activeSuppliersForPurchaseLegal.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
           <label><span>Наш VOEN</span><select value={purchaseForm.legal_entity_id} onChange={e => setPurchaseForm({...purchaseForm, legal_entity_id: e.target.value})}>{legalEntities.map(le => <option key={le.id} value={le.id}>{le.name} · {le.voen}</option>)}</select></label>
-          <label><span>Филиал</span><select value={purchaseForm.branch_id} onChange={e => setPurchaseForm({...purchaseForm, branch_id: e.target.value})}>{branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label>
+          <label><span>Куда поступает товар</span><select value={purchaseForm.branch_id} onChange={e => setPurchaseForm({...purchaseForm, branch_id: e.target.value})}><option value={CENTRAL_WAREHOUSE_SELECTION}>Склад / Central Warehouse</option>{branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label>
           <label><span>Дата поступления</span><DateInput value={purchaseForm.purchase_date} onChange={e => setPurchaseForm({...purchaseForm, purchase_date: e.target.value})} /></label>
           <label><span>№ приходной накладной</span><input value={purchaseForm.invoice_number} onChange={e => setPurchaseForm({...purchaseForm, invoice_number: e.target.value})} placeholder="Бумажная / физическая накладная" /></label>
           <label><span>Сумма поставки</span><input inputMode="decimal" disabled={!purchaseForm.amount_only} value={purchaseForm.manual_amount} onChange={e => setPurchaseForm({...purchaseForm, manual_amount: e.target.value})} placeholder="0.00" /></label>
