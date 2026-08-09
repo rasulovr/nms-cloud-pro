@@ -11,6 +11,15 @@ const categoryOrder = {
   evening: ["ГОРЯЧИЕ БЛЮДА", "ЗАКУСКИ", "БУРГЕРЫ", "ПИЦЦА", "СЭНДВИЧИ", "ЛИМОНАДЫ", "ХОЛОДНЫЕ НАПИТКИ", "ВИНО", "ДЕСЕРТЫ", "КОФЕ", "ЧАЙ", "ХОЛОДНЫЙ КОФЕ", "ЗАВТРАК", "Новинки", "EKSTRA KITCHEN", "EKSTRA BAR"],
   night: ["ГОРЯЧИЕ БЛЮДА", "ЗАКУСКИ", "БУРГЕРЫ", "СЭНДВИЧИ", "ПИЦЦА", "СУПЫ", "ЛИМОНАДЫ", "ХОЛОДНЫЕ НАПИТКИ", "ДЕСЕРТЫ", "КОФЕ", "ЧАЙ", "ХОЛОДНЫЙ КОФЕ", "ЗАВТРАК", "Новинки", "EKSTRA KITCHEN", "EKSTRA BAR"]
 };
+const getWeatherKind = (weather) => {
+  if (!weather) return "clear";
+  if (weather.precipitation >= 1 || [51, 53, 55, 61, 63, 65, 80, 81, 82, 95].includes(weather.weatherCode)) return "rainy";
+  if (weather.windSpeed >= 9 || weather.windGust >= 14) return "windy";
+  if (weather.maxTemperature >= 30 || weather.apparentTemperature >= 31) return "sunny";
+  if (weather.maxTemperature <= 17) return "cool";
+  if ([2, 3, 45, 48].includes(weather.weatherCode)) return "cloudy";
+  return "sunny";
+};
 // Weather affects only the header atmosphere; the order always follows Baku time.
 const getContextualCategoryOrder = (moment) => {
   const base = categoryOrder[moment] || categoryOrder.lunch;
