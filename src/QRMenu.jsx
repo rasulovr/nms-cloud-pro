@@ -7,44 +7,27 @@ import "./QRMenu.css";
 import "./QRMenuSchedule.css";
 const categoryOrder = {
   breakfast: ["ЗАВТРАК", "КОФЕ", "САЛАТЫ", "ЧАЙ", "ХОЛОДНЫЙ КОФЕ", "ДЕСЕРТЫ", "ЗАКУСКИ", "ГОРЯЧИЕ БЛЮДА", "СУПЫ", "ПИЦЦА", "ЛИМОНАДЫ", "ХОЛОДНЫЕ НАПИТКИ", "Новинки", "EKSTRA KITCHEN", "EKSTRA BAR"],
-  lunch: ["САЛАТЫ", "ЗАКУСКИ", "ГОРЯЧИЕ БЛЮДА", "ЛИМОНАДЫ", "ХОЛОДНЫЕ НАПИТКИ", "ПИЦЦА", "СУПЫ", "ЗАВТРАК", "ДЕСЕРТЫ", "КОФЕ", "ХОЛОДНЫЙ КОФЕ", "ЧАЙ", "Новинки", "EKSTRA KITCHEN", "EKSTRA BAR"],
-  dinner: ["ГОРЯЧИЕ БЛЮДА", "ЗАКУСКИ", "САЛАТЫ", "ПИЦЦА", "СУПЫ", "ЛИМОНАДЫ", "ХОЛОДНЫЕ НАПИТКИ", "ДЕСЕРТЫ", "КОФЕ", "ЧАЙ", "ХОЛОДНЫЙ КОФЕ", "ЗАВТРАК", "Новинки", "EKSTRA KITCHEN", "EKSTRA BAR"]
+  lunch: ["САЛАТЫ", "БУРГЕРЫ", "СЭНДВИЧИ", "ЗАКУСКИ", "ГОРЯЧИЕ БЛЮДА", "ЛИМОНАДЫ", "ХОЛОДНЫЕ НАПИТКИ", "ПИЦЦА", "СУПЫ", "ЗАВТРАК", "ДЕСЕРТЫ", "КОФЕ", "ХОЛОДНЫЙ КОФЕ", "ЧАЙ", "Новинки", "EKSTRA KITCHEN", "EKSTRA BAR"],
+  evening: ["ГОРЯЧИЕ БЛЮДА", "ЗАКУСКИ", "БУРГЕРЫ", "ПИЦЦА", "СЭНДВИЧИ", "ЛИМОНАДЫ", "ХОЛОДНЫЕ НАПИТКИ", "ВИНО", "ДЕСЕРТЫ", "КОФЕ", "ЧАЙ", "ХОЛОДНЫЙ КОФЕ", "ЗАВТРАК", "Новинки", "EKSTRA KITCHEN", "EKSTRA BAR"],
+  night: ["ГОРЯЧИЕ БЛЮДА", "ЗАКУСКИ", "БУРГЕРЫ", "СЭНДВИЧИ", "ПИЦЦА", "СУПЫ", "ЛИМОНАДЫ", "ХОЛОДНЫЕ НАПИТКИ", "ДЕСЕРТЫ", "КОФЕ", "ЧАЙ", "ХОЛОДНЫЙ КОФЕ", "ЗАВТРАК", "Новинки", "EKSTRA KITCHEN", "EKSTRA BAR"]
 };
-const weatherCategoryBoosts = {
-  sunny: ["САЛАТЫ", "ЗАКУСКИ", "ГОРЯЧИЕ БЛЮДА", "ЗАВТРАК"],
-  cloudy: ["СУПЫ", "САЛАТЫ", "ГОРЯЧИЕ БЛЮДА", "ЗАВТРАК"],
-  rainy: ["СУПЫ", "ГОРЯЧИЕ БЛЮДА", "ЗАКУСКИ", "ЗАВТРАК"],
-  windy: ["СУПЫ", "ГОРЯЧИЕ БЛЮДА", "ЗАКУСКИ", "ЗАВТРАК"],
-  cool: ["СУПЫ", "ГОРЯЧИЕ БЛЮДА", "ЗАКУСКИ", "ЗАВТРАК"],
-  clear: []
-};
-const getWeatherKind = (weather) => {
-  if (!weather) return "clear";
-  if (weather.precipitation >= 1 || [51, 53, 55, 61, 63, 65, 80, 81, 82, 95].includes(weather.weatherCode)) return "rainy";
-  if (weather.windSpeed >= 9 || weather.windGust >= 14) return "windy";
-  if (weather.maxTemperature >= 30 || weather.apparentTemperature >= 31) return "sunny";
-  if (weather.maxTemperature <= 17) return "cool";
-  if ([2, 3, 45, 48].includes(weather.weatherCode)) return "cloudy";
-  return "sunny";
-};
-const getContextualCategoryOrder = (moment, weatherKind) => {
+// Weather affects only the header atmosphere; the order always follows Baku time.
+const getContextualCategoryOrder = (moment) => {
   const base = categoryOrder[moment] || categoryOrder.lunch;
   const extras = base.filter((name) => /^ekstra/i.test(name));
   const standard = base.filter((name) => !/^ekstra/i.test(name) && name !== "Новинки");
-  // From 18:00 onward, the time-based dinner sequence is authoritative.
-  // Weather may affect the scene, but must never push daytime categories ahead of dinner.
-  const boosts = moment === "dinner" ? [] : (weatherCategoryBoosts[weatherKind] || []);
-  return [...new Set([...boosts, ...standard]), "Новинки", ...extras];
+  return [...standard, "Новинки", ...extras];
 };
 const productPriority = {
-  breakfast: [/капучино.*круассан/i, /сырник/i, /шакшук/i, /омлет/i, /яичниц/i, /нью-йорк.*завтрак/i, /бейгл.*лосос/i, /гранол/i, /овсян.*каш/i],
-  lunch: [/суп/i, /салат/i, /хумус/i, /боул/i, /сэндвич/i, /бургер/i, /пицц/i],
-  dinner: [/сырн.*сет/i, /вителло/i, /тоннат/i, /брускет/i, /бургер/i, /burger/i, /сэндвич/i, /sandwich/i, /стейк/i, /рибай/i, /копч.*утк/i, /утк/i, /meat lovers/i, /четыре сыра/i]
+  breakfast: [/капучино.*круассан|cappucc.*croissant|kapuç.*kruassan/i, /сырник|sırnik|syrniki/i, /шакшук|şakşuka|shakshuka/i, /омлет|omlet|omelette/i, /яичниц|yumurta|fried eggs/i, /нью-йорк.*завтрак|new york.*breakfast|nyu-york.*səhər/i, /бейгл.*лосос|bagel.*salmon|beygel.*qızılbalıq/i, /гранол|qranola|granola/i, /овсян.*каш|yulaf.*sıyıq|oatmeal/i],
+  lunch: [/салат|salat|salad/i, /бургер|burger/i, /сэндвич|sandwich|sendviç/i, /хумус|humus|hummus/i, /боул|bowl/i, /закуск|qəlyanalt|starter/i, /лимонад|limonad|lemonade/i],
+  evening: [/стейк|steak|рибай|ribeye/i, /утк|duck|ördək/i, /нарезк|ассорти|platter|selection|сэт|сет|set/i, /бургер|burger/i, /пицц|pizza/i, /сэндвич|sandwich|sendviç/i],
+  night: [/сырн.*сет|cheese.*set|pendir.*set/i, /вителло|vitello|тоннат|tonnato/i, /брускет|bruschett/i, /стейк|steak|рибай|ribeye|утк|duck|ördək/i, /бургер|burger/i, /сэндвич|sandwich|sendviç/i, /пицц|pizza/i]
 };
-const getMealMoment = (hour) => hour >= 8 && hour < 12 ? "breakfast" : hour >= 12 && hour < 18 ? "lunch" : "dinner";
+const getMealMoment = (hour) => hour >= 8 && hour < 12 ? "breakfast" : hour >= 12 && hour < 18 ? "lunch" : hour >= 18 && hour < 20 ? "evening" : "night";
 const productMomentRank = (product, moment) => {
-  const haystack = `${product.name} ${product.description} ${product.category}`;
-  const index = productPriority[moment].findIndex((pattern) => pattern.test(haystack));
+  const haystack = `${product.name || ""} ${product.sourceName || ""} ${product.description || ""} ${product.sourceDescription || ""} ${product.category || ""}`;
+  const index = (productPriority[moment] || []).findIndex((pattern) => pattern.test(haystack));
   return index < 0 ? 999 : index;
 };
 const productSearchText = (product) => `${product.name || ""} ${product.sourceName || ""} ${product.translationKey || ""} ${product.description || ""} ${product.sourceDescription || ""} ${product.category || ""}`.toLocaleLowerCase("ru-RU");
@@ -60,19 +43,21 @@ const isBottledOrPackagedDrink = (product) => /вода|water|сок|juice|cola|
 const normalizeCategoryKey = (value) => {
   const key = String(value || "").trim().toLocaleUpperCase("ru-RU").replace(/Ё/g, "Е");
   const aliases = {
-    "SƏHƏR YEMƏYİ": "ЗАВТРАК",
-    "SƏHƏR YEMƏKLƏRİ": "ЗАВТРАК",
-    "QƏHVƏ": "КОФЕ",
-    "SALATLAR": "САЛАТЫ",
-    "QƏLYANALTILAR": "ЗАКУСКИ",
-    "İSTİ YEMƏKLƏR": "ГОРЯЧИЕ БЛЮДА",
-    "ŞORBALAR": "СУПЫ",
-    "LİMONADLAR": "ЛИМОНАДЫ",
-    "SOYUQ İÇKİLƏR": "ХОЛОДНЫЕ НАПИТКИ",
-    "SOYUQ QƏHVƏ": "ХОЛОДНЫЙ КОФЕ",
-    "BUZLU QƏHVƏ": "ХОЛОДНЫЙ КОФЕ",
-    "ÇAY": "ЧАЙ",
-    "DESERTLƏR": "ДЕСЕРТЫ"
+    "ЗАВТРАК": "ЗАВТРАК", "ЗАВТРАКИ": "ЗАВТРАК", "BREAKFAST": "ЗАВТРАК", "SƏHƏR YEMƏYİ": "ЗАВТРАК", "SƏHƏR YEMƏKLƏRİ": "ЗАВТРАК",
+    "КОФЕ": "КОФЕ", "COFFEE": "КОФЕ", "QƏHVƏ": "КОФЕ",
+    "САЛАТ": "САЛАТЫ", "САЛАТЫ": "САЛАТЫ", "SALAD": "САЛАТЫ", "SALADS": "САЛАТЫ", "SALATLAR": "САЛАТЫ",
+    "ЗАКУСКИ": "ЗАКУСКИ", "ЗАКУСКА": "ЗАКУСКИ", "STARTERS": "ЗАКУСКИ", "STARTER": "ЗАКУСКИ", "QƏLYANALTILAR": "ЗАКУСКИ",
+    "ГОРЯЧИЕ БЛЮДА": "ГОРЯЧИЕ БЛЮДА", "ОСНОВНЫЕ БЛЮДА": "ГОРЯЧИЕ БЛЮДА", "MAIN DISHES": "ГОРЯЧИЕ БЛЮДА", "İSTİ YEMƏKLƏR": "ГОРЯЧИЕ БЛЮДА",
+    "БУРГЕРЫ": "БУРГЕРЫ", "БУРГЕР": "БУРГЕРЫ", "BURGERS": "БУРГЕРЫ", "BURGER": "БУРГЕРЫ",
+    "СЭНДВИЧИ": "СЭНДВИЧИ", "СЕНДВИЧИ": "СЭНДВИЧИ", "SANDWICHES": "СЭНДВИЧИ", "SANDWICH": "СЭНДВИЧИ", "SENDVİÇLƏR": "СЭНДВИЧИ",
+    "ПИЦЦА": "ПИЦЦА", "PIZZA": "ПИЦЦА",
+    "СУПЫ": "СУПЫ", "SOUPS": "СУПЫ", "ŞORBALAR": "СУПЫ",
+    "ЛИМОНАДЫ": "ЛИМОНАДЫ", "LEMONADES": "ЛИМОНАДЫ", "LİMONADLAR": "ЛИМОНАДЫ",
+    "ХОЛОДНЫЕ НАПИТКИ": "ХОЛОДНЫЕ НАПИТКИ", "COLD DRINKS": "ХОЛОДНЫЕ НАПИТКИ", "SOYUQ İÇKİLƏR": "ХОЛОДНЫЕ НАПИТКИ",
+    "ХОЛОДНЫЙ КОФЕ": "ХОЛОДНЫЙ КОФЕ", "ICED COFFEE": "ХОЛОДНЫЙ КОФЕ", "COLD COFFEE": "ХОЛОДНЫЙ КОФЕ", "SOYUQ QƏHVƏ": "ХОЛОДНЫЙ КОФЕ", "BUZLU QƏHVƏ": "ХОЛОДНЫЙ КОФЕ",
+    "ЧАЙ": "ЧАЙ", "TEA": "ЧАЙ", "ÇAY": "ЧАЙ",
+    "ДЕСЕРТЫ": "ДЕСЕРТЫ", "DESSERTS": "ДЕСЕРТЫ", "DESERTLƏR": "ДЕСЕРТЫ", "ŞİRNİYYATLAR": "ДЕСЕРТЫ",
+    "ВИНО": "ВИНО", "WINES": "ВИНО", "WINE": "ВИНО", "ŞƏRAB": "ВИНО"
   };
   return aliases[key] || key;
 };
@@ -275,7 +260,7 @@ const normalizeProduct = (item, branch) => {
     sourceOptions,
     name: override.name || referenceName,
     description: sourceDescription,
-    category: reference?.translations?.ru?.category || item.category_name || item.category || "\u0411\u0435\u0437 \u043A\u0430\u0442\u0435\u0433\u043E\u0440\u0438\u0438",
+    category: normalizeCategoryKey(reference?.translations?.ru?.category || item.category_name || item.category || "Без категории"),
     price: Number(item.price ?? item.unit_price ?? (item.line_total && item.quantity ? Number(item.line_total) / Number(item.quantity) : 0)),
     image: override.image || resolveRecoveredMenuImage(reference?.image || item.image_url || item.image),
     options: sourceOptions,
@@ -490,14 +475,20 @@ export default function QRMenu() {
   const mealMoment = getMealMoment(bakuHour);
   const contextualWeatherKind = useMemo(() => getWeatherKind(weather), [weather]);
   const contextualCategoryOrder = useMemo(
-    () => getContextualCategoryOrder(mealMoment, contextualWeatherKind),
-    [mealMoment, contextualWeatherKind]
+    () => getContextualCategoryOrder(mealMoment),
+    [mealMoment]
   );
   const availableProducts = useMemo(() => localizedProducts.filter((product) => {
     const branchMatch = product.branches.includes(branch);
     const categoryMatch = category === "\u0412\u0441\u0435" || product.category === category;
     return branchMatch && categoryMatch;
   }).sort((a, b) => {
+    const aProductRank = productMomentRank(a, mealMoment);
+    const bProductRank = productMomentRank(b, mealMoment);
+    // "All" starts with the agreed time-specific dishes, not a database category.
+    if (category === "Все" && aProductRank !== bProductRank && (aProductRank < 999 || bProductRank < 999)) {
+      return aProductRank - bProductRank;
+    }
     const categoryDifference = contextualRank(a.category, contextualCategoryOrder) - contextualRank(b.category, contextualCategoryOrder);
     if (categoryDifference) return categoryDifference;
     if (category === "Все") {
@@ -505,7 +496,7 @@ export default function QRMenu() {
       const bPenalty = (isBottledOrPackagedDrink(b) ? 2000 : 0) + (isLowPriorityDrink(b) ? 1000 : 0);
       if (aPenalty !== bPenalty) return aPenalty - bPenalty;
     }
-    return productMomentRank(a, mealMoment) - productMomentRank(b, mealMoment);
+    return aProductRank - bProductRank;
   }), [localizedProducts, branch, category, mealMoment, contextualCategoryOrder]);
   const categories = useMemo(() => {
     const present = new Set(products.filter((p) => p.branches.includes(branch)).map((p) => p.category));
