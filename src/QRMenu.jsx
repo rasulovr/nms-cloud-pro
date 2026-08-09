@@ -238,7 +238,7 @@ const nightWeatherTitles = {
   en: { rainy: "Rainy night", windy: "Windy night", sunny: "Clear night", cool: "Cool night", cloudy: "Cloudy night", clear: "Clear night" }
 };
 const displayBranchName = (branch) => branch === "BC1" ? "Barista&Chef R.Behbudov" : `Barista&Chef · ${branch}`;
-const branchFilteredMenus = new Set(["BC2", "BC4", "BC5"]);
+const branchFilteredMenus = new Set(["BC1", "BC2", "BC4", "BC5"]);
 const branchMenuConfigTable = "__QR_BRANCH_MENU_V1__";
 const photoClass = (product) => {
   if (String(product.image || "").includes("/menu/bc-087-water-full.webp")) return "water-bottle-photo";
@@ -250,28 +250,35 @@ const photoStyle = (product) => product.image
   ? { "--photo": `url(${JSON.stringify(product.image)})` }
   : undefined;
 const normalizeProduct = (item, branch) => {
-  const sourceName = item.name || "";
-  // BC1 is the approved source menu. Never rewrite its curated copy with the
-  // migration catalog; the catalog is only an enrichment layer for copied menus.
-  const preserveReferenceCopy = branch === "BC1";
+  const menuOverride = item.__qr_override && typeof item.__qr_override === "object" ? item.__qr_override : null;
+  const customTranslations = menuOverride?.translations && typeof menuOverride.translations === "object" ? menuOverride.translations : item.translations;
+  const customRu = customTranslations?.ru || {};
+  const sourceName = customRu.name || menuOverride?.name || item.name || "";
+  // A branch-level QR override is intentional guest-facing copy. In that case
+  // do not replace it with the shared migration/reference catalogue.
+  const preserveReferenceCopy = branch === "BC1" || Boolean(menuOverride);
   const reference = preserveReferenceCopy ? null : resolveReferenceMenuProduct(item);
   const referenceName = reference?.translations?.ru?.name || sourceName;
   const override = productionProductOverrides[referenceName] || productionProductOverrides[sourceName] || {};
-  const sourceDescription = formatMenuDescription(reference?.translations?.ru?.description || item.description || "");
-  const sourceOptions = override.options || (Array.isArray(item.options) ? item.options : []);
+  const sourceDescription = formatMenuDescription(
+    customRu.description || menuOverride?.description || reference?.translations?.ru?.description || item.description || ""
+  );
+  const sourceOptions = menuOverride?.options || override.options || (Array.isArray(item.options) ? item.options : []);
   return {
     ...item,
+    ...(menuOverride || {}),
     id: item.id || item.menu_item_id,
     translationKey: referenceName,
-    sourceName: override.name || referenceName,
+    sourceName: customRu.name || override.name || referenceName,
     sourceDescription,
     preserveReferenceCopy,
     sourceOptions,
-    name: override.name || referenceName,
+    translations: customTranslations,
+    name: customRu.name || override.name || referenceName,
     description: sourceDescription,
-    category: normalizeCategoryKey(reference?.translations?.ru?.category || item.category_name || item.category || "Без категории"),
-    price: Number(item.price ?? item.unit_price ?? (item.line_total && item.quantity ? Number(item.line_total) / Number(item.quantity) : 0)),
-    image: override.image || resolveRecoveredMenuImage(reference?.image || item.image_url || item.image),
+    category: normalizeCategoryKey(menuOverride?.category || reference?.translations?.ru?.category || item.category_name || item.category || "Без категории"),
+    price: Number(menuOverride?.price ?? item.price ?? item.unit_price ?? (item.line_total && item.quantity ? Number(item.line_total) / Number(item.quantity) : 0)),
+    image: menuOverride?.image_url || menuOverride?.image || override.image || resolveRecoveredMenuImage(reference?.image || item.image_url || item.image),
     options: sourceOptions,
     rating: Number(item.rating || 0),
     branches: [branch]
@@ -338,6 +345,7 @@ export default function QRMenu() {
   const [photoFullscreen, setPhotoFullscreen] = useState(false);
   const [weather, setWeather] = useState(null);
   const [branchInfo, setBranchInfo] = useState(null);
+  const [configuredBranchName, setConfiguredBranchName] = useState("");
   const [configuredRecommendations, setConfiguredRecommendations] = useState([]);
   const [dayPhase, setDayPhase] = useState("day");
   const [bakuHour, setBakuHour] = useState(12);
@@ -351,7 +359,7 @@ export default function QRMenu() {
   });
   const t = uiText[language];
   const dailyQuote = t.quoteLines[(new Date().getDate() - 1) % t.quoteLines.length];
-  const branchName = displayBranchName(branch);
+  const branchName = configuredBranchName || displayBranchName(branch);
   const unavailable = useMemo(() => products.filter((item) => item.is_available === false || item.is_stopped).map((item) => item.id), [products]);
   const localizedProducts = useMemo(() => products.map((product) => localizeProduct(product, language)), [products, language]);
   useEffect(() => {
@@ -378,6 +386,7 @@ export default function QRMenu() {
   useEffect(() => {
     let active = true;
     setLoading(true);
+    setConfiguredBranchName("");
     const menuRequest = supabase.rpc("qr_get_public_menu", { p_branch_code: branch });
     const branchMenuRequest = branchFilteredMenus.has(branch)
       ? supabase.from("rms_qr_tables").select("qr_code_url").eq("branch_id", branch).eq("table_number", branchMenuConfigTable).maybeSingle()
@@ -388,15 +397,27 @@ export default function QRMenu() {
       const { data, error } = menuResult;
       if (error) flash(`\u041C\u0435\u043D\u044E \u0432\u0440\u0435\u043C\u0435\u043D\u043D\u043E \u043D\u0435\u0434\u043E\u0441\u0442\u0443\u043F\u043D\u043E: ${error.message}`);
       let menuRows = Array.isArray(data) ? data : [];
-      let branchMenuIds = null;
+      let branchMenuConfig = {};
       try {
-        const branchMenuConfig = JSON.parse(String(branchMenuResult.data?.qr_code_url || ""));
-        if (Array.isArray(branchMenuConfig?.ids)) branchMenuIds = branchMenuConfig.ids;
+        const parsed = JSON.parse(String(branchMenuResult.data?.qr_code_url || ""));
+        if (parsed && typeof parsed === "object") branchMenuConfig = parsed;
       } catch (_error) {}
-      if (branchFilteredMenus.has(branch) && !branchMenuResult.error && Array.isArray(branchMenuIds)) {
-        const enabledIds = new Set(branchMenuIds.map((id) => String(id)));
+      setConfiguredBranchName(String(branchMenuConfig?.branch_name || "").trim());
+      const branchMenuIds = Array.isArray(branchMenuConfig?.ids) ? branchMenuConfig.ids.map(String) : null;
+      const menuIds = new Set(menuRows.map((item) => String(item.id || item.menu_item_id)));
+      const matchingConfiguredIds = branchMenuIds ? branchMenuIds.filter((id) => menuIds.has(id)) : [];
+      // Legacy BC5 configuration was saved with BC1 item IDs. Never let an
+      // incompatible configuration hide a working branch menu: apply a filter
+      // only when it has at least one ID from the actual branch menu.
+      if (branchFilteredMenus.has(branch) && !branchMenuResult.error && matchingConfiguredIds.length > 0) {
+        const enabledIds = new Set(matchingConfiguredIds);
         menuRows = menuRows.filter((item) => enabledIds.has(String(item.id || item.menu_item_id)));
       }
+      const menuOverrides = branchMenuConfig?.overrides && typeof branchMenuConfig.overrides === "object" ? branchMenuConfig.overrides : {};
+      menuRows = menuRows.map((item) => ({
+        ...item,
+        __qr_override: menuOverrides[String(item.id || item.menu_item_id)] || null
+      }));
       setProducts(menuRows.map((item) => normalizeProduct(item, branch)));
       const recommendationRows = Array.isArray(recommendationsResult.data) ? recommendationsResult.data : [];
       // BC1 is the approved pairing reference. All other QR branches inherit
