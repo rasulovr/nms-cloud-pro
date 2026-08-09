@@ -962,40 +962,48 @@ export default function RMSQRMenuAdmin({ lang = localStorage.getItem('rms_lang')
               </div>
             </div>
 
-            {editingProduct && productDraft && (
-              <div className="card span-2 qr-product-editor-card">
-                <div className="qr-admin-card-head">
-                  <div>
-                    <span className="qr-admin-eyebrow"><Pencil size={14} /> {branchDisplayName(selectedMenuBranch)}</span>
-                    <h3>{ui.editItem}</h3>
-                    <p>Изменения применяются только к QR Menu выбранного филиала и не затрагивают техкарту или меню других филиалов.</p>
-                  </div>
-                  <button type="button" className="qr-icon-button" onClick={() => { setEditingProduct(null); setProductDraft(null) }} aria-label={ui.cancel}><X size={18} /></button>
-                </div>
-                <div className="form-grid compact">
-                  <label><span>Категория</span><input value={productDraft.category || ''} onChange={e => setProductDraft(current => ({ ...current, category: e.target.value }))} /></label>
-                  <label><span>Цена, ₼</span><input type="number" min="0" step="0.01" value={productDraft.price ?? ''} onChange={e => setProductDraft(current => ({ ...current, price: e.target.value }))} /></label>
-                  <label><span>Фото</span><input type="file" accept="image/*" onChange={e => handleProductImage(e.target.files?.[0])} /></label>
-                  <label><span>Ссылка на фото</span><input value={productDraft.image_url || ''} onChange={e => setProductDraft(current => ({ ...current, image_url: e.target.value }))} /></label>
-                  <label className="span-2"><span>Состав / варианты (каждая строка отдельно)</span><textarea rows="3" value={productDraft.options_text || ''} onChange={e => setProductDraft(current => ({ ...current, options_text: e.target.value }))} /></label>
-                </div>
-                <div className="qr-translation-editor">
-                  {['ru', 'az', 'en'].map(language => (
-                    <div className="qr-translation-editor-column" key={language}>
-                      <b>{language.toUpperCase()}</b>
-                      <label><span>{ui.name}</span><input value={productDraft.translations?.[language]?.name || ''} onChange={e => setProductDraft(current => ({ ...current, translations: { ...current.translations, [language]: { ...current.translations?.[language], name: e.target.value } } }))} /></label>
-                      <label><span>{ui.description}</span><textarea rows="3" value={productDraft.translations?.[language]?.description || ''} onChange={e => setProductDraft(current => ({ ...current, translations: { ...current.translations, [language]: { ...current.translations?.[language], description: e.target.value } } }))} /></label>
+{editingProduct && productDraft && (
+              <div className="qr-product-modal-backdrop" role="presentation" onMouseDown={() => { setEditingProduct(null); setProductDraft(null) }}>
+                <section className="qr-product-modal" role="dialog" aria-modal="true" aria-label={ui.editItem} onMouseDown={event => event.stopPropagation()}>
+                  <header className="qr-product-modal-header">
+                    <div>
+                      <span className="qr-admin-eyebrow"><Pencil size={14} /> {branchDisplayName(selectedMenuBranch)}</span>
+                      <h3>{ui.editItem}</h3>
+                      <p>Изменения применяются только к QR Menu выбранного филиала.</p>
                     </div>
-                  ))}
-                </div>
-                <div className="qr-editor-actions">
-                  <button type="button" className="small" onClick={() => { setEditingProduct(null); setProductDraft(null) }}>{ui.cancel}</button>
-                  <button type="button" className="small primary" onClick={saveProductOverride}>{ui.save}</button>
-                </div>
+                    <button type="button" className="qr-icon-button" onClick={() => { setEditingProduct(null); setProductDraft(null) }} aria-label={ui.cancel}><X size={18} /></button>
+                  </header>
+
+                  <div className="qr-product-modal-body">
+                    <div className="qr-product-modal-basics">
+                      <label><span>Категория</span><input value={productDraft.category || ''} onChange={e => setProductDraft(current => ({ ...current, category: e.target.value }))} /></label>
+                      <label><span>Цена, ₼</span><input type="number" min="0" step="0.01" value={productDraft.price ?? ''} onChange={e => setProductDraft(current => ({ ...current, price: e.target.value }))} /></label>
+                      <label><span>Фото</span><input type="file" accept="image/*" onChange={e => handleProductImage(e.target.files?.[0])} /></label>
+                      <label><span>Ссылка на фото</span><input value={productDraft.image_url || ''} onChange={e => setProductDraft(current => ({ ...current, image_url: e.target.value }))} /></label>
+                    </div>
+
+                    <label className="qr-product-modal-options"><span>Состав / варианты (каждая строка отдельно)</span><textarea rows="2" value={productDraft.options_text || ''} onChange={e => setProductDraft(current => ({ ...current, options_text: e.target.value }))} /></label>
+
+                    <div className="qr-product-modal-translations">
+                      {['ru', 'az', 'en'].map(language => (
+                        <div className="qr-product-modal-language" key={language}>
+                          <b>{language.toUpperCase()}</b>
+                          <label><span>{ui.name}</span><input value={productDraft.translations?.[language]?.name || ''} onChange={e => setProductDraft(current => ({ ...current, translations: { ...current.translations, [language]: { ...current.translations?.[language], name: e.target.value } } }))} /></label>
+                          <label><span>{ui.description}</span><textarea rows="2" value={productDraft.translations?.[language]?.description || ''} onChange={e => setProductDraft(current => ({ ...current, translations: { ...current.translations, [language]: { ...current.translations?.[language], description: e.target.value } } }))} /></label>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <footer className="qr-product-modal-footer">
+                    <button type="button" className="small" onClick={() => { setEditingProduct(null); setProductDraft(null) }}>{ui.cancel}</button>
+                    <button type="button" className="small primary" onClick={saveProductOverride}>{ui.save}</button>
+                  </footer>
+                </section>
               </div>
             )}
 
-            {showProductPicker && selectedMenuBranch !== APPROVED_MENU_BRANCH && (
+                        {showProductPicker && selectedMenuBranch !== APPROVED_MENU_BRANCH && (
               <div className="card span-2 qr-picker-card">
                 <div className="qr-admin-card-head compact">
                   <div>
