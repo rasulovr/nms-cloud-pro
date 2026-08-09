@@ -57,7 +57,25 @@ const isWineOrProsecco = (product) => /вино|wine|şərab|prosecco|просе
 const isExtraCategory = (product) => /^(ekstra|extra|əlavə|экстра|дополн)/i.test(String(product?.category || "").trim());
 const isLowPriorityDrink = (product) => /^(КОФЕ|ХОЛОДНЫЙ КОФЕ|ЧАЙ|ЛИМОНАДЫ|ХОЛОДНЫЕ НАПИТКИ)$/i.test(String(product?.category || ""));
 const isBottledOrPackagedDrink = (product) => /вода|water|сок|juice|cola|кола|фанта|fanta|спрайт|sprite|тоник|tonic|red\s*bull|энергет/i.test(productSearchText(product));
-const normalizeCategoryKey = (value) => String(value || "").trim().toLocaleUpperCase("ru-RU").replace(/Ё/g, "Е");
+const normalizeCategoryKey = (value) => {
+  const key = String(value || "").trim().toLocaleUpperCase("ru-RU").replace(/Ё/g, "Е");
+  const aliases = {
+    "SƏHƏR YEMƏYİ": "ЗАВТРАК",
+    "SƏHƏR YEMƏKLƏRİ": "ЗАВТРАК",
+    "QƏHVƏ": "КОФЕ",
+    "SALATLAR": "САЛАТЫ",
+    "QƏLYANALTILAR": "ЗАКУСКИ",
+    "İSTİ YEMƏKLƏR": "ГОРЯЧИЕ БЛЮДА",
+    "ŞORBALAR": "СУПЫ",
+    "LİMONADLAR": "ЛИМОНАДЫ",
+    "SOYUQ İÇKİLƏR": "ХОЛОДНЫЕ НАПИТКИ",
+    "SOYUQ QƏHVƏ": "ХОЛОДНЫЙ КОФЕ",
+    "BUZLU QƏHVƏ": "ХОЛОДНЫЙ КОФЕ",
+    "ÇAY": "ЧАЙ",
+    "DESERTLƏR": "ДЕСЕРТЫ"
+  };
+  return aliases[key] || key;
+};
 const contextualRank = (value, order) => {
   const key = normalizeCategoryKey(value);
   const index = order.findIndex((name) => normalizeCategoryKey(name) === key);
