@@ -610,7 +610,7 @@ export default function QRMenu() {
         ids: ["bc-022", "bc-047", "bc-016", "bc-045", "bc-037", "bc-024", "bc-046"]
       }
     };
-    const meta = momentMeta[moment];
+    // getMealMoment returns evening/night after 18:00, while the evening menu recommendation is stored as dinner.\n    // Always use the dinner metadata for both later day phases.\n    const meta = momentMeta[moment] || momentMeta.dinner;
     const available = localizedProducts.filter((product2) => product2.branches.includes(branch) && !unavailable.includes(product2.id) && !isExtraCategory(product2));
     const availableById = new Map(available.map((product2) => [product2.id, product2]));
     const candidates = [
