@@ -5326,7 +5326,11 @@ function App() {
         {currentCanRead && section === 'finance' && <Finance t={t} lang={lang} onGoToExpense={goToRevenueExpense} />}
         {currentCanRead && section === 'reports' && <Reports t={t} permissions={permissions} isAdmin={isAdmin} />}
         {currentCanRead && section === 'recipes' && <Recipes t={t} />}
-        {currentCanRead && section === 'inventory' && <InventoryModule t={t} branches={branches} />}
+        {currentCanRead && section === 'inventory' && (
+          <RmsSectionErrorBoundary resetKey={`inventory-${section}`}>
+            <InventoryModule t={t} branches={branches} />
+          </RmsSectionErrorBoundary>
+        )}
         {currentCanRead && section === 'salaries' && <SalaryWorkspace t={t} isAdmin={isAdmin || accessRank(sectionAccess('salaries')) >= accessRank('admin')} />}
         {currentCanRead && section === 'suppliers' && <Suppliers t={t} isAdmin={isAdmin || accessRank(sectionAccess('suppliers')) >= accessRank('admin')} />}
         {currentCanRead && section === 'debts' && <DebtsPayments t={t} />}
