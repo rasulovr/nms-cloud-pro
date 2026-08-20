@@ -3205,31 +3205,23 @@ function InventoryModule({ t, branches = [] }) {
     () => Object.fromEntries((locations || []).map(row => [String(row.id), row])),
     [locations]
   )
-  const centralWarehouseLocation = React.useMemo(
-    () => (locations || []).find(row =>
-      String(row.location_type || '').toLowerCase() === 'central' ||
-      String(row.name || '').trim().toLowerCase() === 'central warehouse'
-    ) || null,
-    [locations]
-  )
-  const transferTargetLocations = React.useMemo(() => {
+  const transferLocations = React.useMemo(() => {
     const allowedNames = new Set(['bc1', 'bc2', 'bc3', 'bc4', 'bc5', 'bistro'])
     return (locations || []).filter(row =>
       row.is_active !== false &&
-      row.branch_id &&
-      allowedNames.has(String(row.name || '').trim().toLowerCase())
+      (
+        String(row.location_type || '').toLowerCase() === 'central' ||
+        String(row.name || '').trim().toLowerCase() === 'central warehouse' ||
+        (row.branch_id && allowedNames.has(String(row.name || '').trim().toLowerCase()))
+      )
     )
   }, [locations])
-  const centralWarehouseId = centralWarehouseLocation?.id || ''
-
-  React.useEffect(() => {
-    if (!centralWarehouseId) return
-    setTransferDraft(prev => (
-      prev.source_location_id === centralWarehouseId
-        ? prev
-        : { ...prev, source_location_id: centralWarehouseId, items: [] }
-    ))
-  }, [centralWarehouseId])
+  const transferTargetLocations = React.useMemo(
+    () => transferLocations.filter(row =>
+      String(row.id || '') !== String(transferDraft.source_location_id || '')
+    ),
+    [transferLocations, transferDraft.source_location_id]
+  )
   const costByProductId = React.useMemo(
     () => Object.fromEntries((latestCosts || []).map(row => [String(row.product_id), parseNum(row.last_unit_cost || row.unit_cost || row.price)])),
     [latestCosts]
@@ -4301,8 +4293,11 @@ function InventoryModule({ t, branches = [] }) {
       <div className="inventory-v420-card-head"><div><h3>Перемещение товаров и полуфабрикатов</h3><p>Один документ создаёт исходящее движение у источника и входящее движение у получателя.</p></div></div>
       <div className="inventory-v420-form-grid">
         <label><span>Дата</span><input type="date" value={transferDraft.document_date} onChange={e => setTransferDraft({ ...transferDraft, document_date: e.target.value })}/></label>
-        <label><span>Склад-источник</span><select value={transferDraft.source_location_id} disabled={Boolean(centralWarehouseId)} onChange={e => setTransferDraft({ ...transferDraft, source_location_id: e.target.value, items: [] })}><option value="">Выберите</option>{centralWarehouseLocation ? <option value={centralWarehouseLocation.id}>{centralWarehouseLocation.name}</option> : locations.map(row => <option key={row.id} value={row.id}>{row.name}</option>)}</select></label>
-        <label><span>Филиал-получатель</span><select value={transferDraft.target_location_id} onChange={e => setTransferDraft({ ...transferDraft, target_location_id: e.target.value })}><option value="">Выберите</option>{transferTargetLocations.map(row => <option key={row.id} value={row.id}>{row.name}</option>)}</select></label>
+        <label><span>Склад / филиал-источник</span><select value={transferDraft.source_location_id} onChange={e => {
+          setTransferDraft({ ...transferDraft, source_location_id: e.target.value, target_location_id: '', items: [] })
+          setTransferLine({ ...emptyLine })
+        }}><option value="">Выберите</option>{transferLocations.map(row => <option key={row.id} value={row.id}>{row.name}</option>)}</select></label>
+        <label><span>Склад / филиал-получатель</span><select value={transferDraft.target_location_id} disabled={!transferDraft.source_location_id} onChange={e => setTransferDraft({ ...transferDraft, target_location_id: e.target.value })}><option value="">Выберите</option>{transferTargetLocations.map(row => <option key={row.id} value={row.id}>{row.name}</option>)}</select></label>
         <label><span>Комментарий</span><input value={transferDraft.comment} onChange={e => setTransferDraft({ ...transferDraft, comment: e.target.value })} placeholder="Причина перемещения"/></label>
       </div>
       <div className="inventory-v420-line-builder">
@@ -4314,7 +4309,7 @@ function InventoryModule({ t, branches = [] }) {
           return parseNum(balanceFor(transferDraft.source_location_id, item.item_name, item.unit)?.balance_qty) > 0
         }).map(item => <option key={item.key} value={item.key}>{item.item_name} · {fmt(balanceFor(transferDraft.source_location_id, item.item_name, item.unit)?.balance_qty)} {item.unit}</option>)}</select></label>
         <label><span>Количество</span><input type="number" step="0.001" value={transferLine.quantity} onChange={e => setTransferLine({ ...transferLine, quantity: e.target.value })}/></label>
-        <label><span>Себестоимость / ед.</span><input type="number" step="0.0001" value={transferLine.unit_cost} readOnly title="Рассчитывается автоматически по остатку Central Warehouse"/></label>
+        <label><span>Себестоимость / ед.</span><input type="number" step="0.0001" value={transferLine.unit_cost} readOnly title="Рассчитывается автоматически по остатку выбранного источника"/></label>
         <label><span>Комментарий строки</span><input value={transferLine.comment} onChange={e => setTransferLine({ ...transferLine, comment: e.target.value })}/></label>
         <button className="small primary" type="button" onClick={() => addDraftLine('transfer')}>Добавить</button>
       </div>
