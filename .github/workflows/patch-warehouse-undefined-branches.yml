@@ -1,0 +1,75 @@
+name: Isolated warehouse fix validation
+
+on:
+  push:
+    branches:
+      - agent/fix-warehouse-undefined-branches
+    paths:
+      - .github/workflows/patch-warehouse-undefined-branches.yml
+
+permissions:
+  contents: write
+
+jobs:
+  patch-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout working branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/fix-warehouse-undefined-branches
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Apply exact warehouse fix
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('src/main.jsx')
+          text = path.read_text(encoding='utf-8')
+          old = '<InventoryModule t={t} branches={branches} />'
+          new = '<InventoryModule t={t} />'
+
+          count = text.count(old)
+          if count != 1:
+              raise SystemExit(f'Expected exactly 1 warehouse render occurrence, found {count}. Refusing to modify file.')
+
+          updated = text.replace(old, new, 1)
+          if updated.count(old) != 0:
+              raise SystemExit('Old warehouse render expression still present after replacement.')
+
+          path.write_text(updated, encoding='utf-8')
+          print('Applied exactly one warehouse render replacement.')
+          PY
+
+      - name: Validate diff scope
+        shell: bash
+        run: |
+          git diff --check
+          test "$(git diff --name-only | wc -l)" -eq 1
+          test "$(git diff --name-only)" = "src/main.jsx"
+          git diff -- src/main.jsx
+
+      - name: Install dependencies without changing lockfiles
+        run: npm install --no-package-lock --ignore-scripts
+
+      - name: Build production frontend
+        run: npm run build
+
+      - name: Commit only validated source change
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- src/main.jsx
+          git diff --cached --check
+          test "$(git diff --cached --name-only | wc -l)" -eq 1
+          test "$(git diff --cached --name-only)" = "src/main.jsx"
+          git commit -m "Fix warehouse undefined branches render crash"
+          git push origin HEAD:agent/fix-warehouse-undefined-branches
