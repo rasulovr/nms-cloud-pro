@@ -29071,14 +29071,6 @@ function Suppliers({ t, isAdmin = false }) {
       </div>
     </section>
 
-    <section className="suppliers-v43-workflow">
-      <div className="active"><span>1</span><b>Приход товара</b><em>физическая накладная</em></div>
-      <div><span>2</span><b>e-qaimə</b><em>добавляется внутри накладной</em></div>
-      <div><span>3</span><b>Сверка</b><em>сумма прихода vs e-qaimə</em></div>
-      <div><span>4</span><b>Оплата</b><em>по e-qaimə / фактуре</em></div>
-      <div><span>5</span><b>Долги</b><em>сроки и лимиты</em></div>
-    </section>
-
     <section className="suppliers-v43-kpi-row">
       {supplierKpiCards.map(card => <div key={card.label} className={`suppliers-v43-kpi ${card.tone}`}>
         <span>{card.icon}</span>
@@ -29099,16 +29091,6 @@ function Suppliers({ t, isAdmin = false }) {
           <label><span>№ e-qaimə</span><input value={purchaseForm.e_invoice_number} onChange={e => setPurchaseForm({...purchaseForm, e_invoice_number: e.target.value})} placeholder="Можно добавить позже" /></label>
           <label><span>Дата e-qaimə</span><DateInput value={purchaseForm.e_invoice_date} onChange={e => setPurchaseForm({...purchaseForm, e_invoice_date: e.target.value})} /></label>
           <label><span>Сумма e-qaimə</span><input inputMode="decimal" value={purchaseForm.e_invoice_amount} onChange={e => setPurchaseForm({...purchaseForm, e_invoice_amount: e.target.value})} placeholder="0.00" /></label>
-        </div>
-        <div className="supplier-amount-only-block">
-          <label className="supplier-amount-only-check">
-            <input type="checkbox" checked={!!purchaseForm.amount_only} onChange={e => setPurchaseForm({...purchaseForm, amount_only: e.target.checked, manual_amount: e.target.checked ? purchaseForm.manual_amount : ''})} />
-            <span className="supplier-amount-only-box" aria-hidden="true">{purchaseForm.amount_only ? '✓' : ''}</span>
-            <span className="supplier-amount-only-copy">
-              <b>Ввести только общую сумму поставки без товаров</b>
-              <small>Если включена галочка, строки товаров временно не используются. Если галочка выключена, сумма считается по товарам.</small>
-            </span>
-          </label>
         </div>
         <div className="supplier-reconcile-preview">
           <div><span>Приходная накладная</span><strong>{fmt(purchaseForm.amount_only ? parseNum(purchaseForm.manual_amount) : purchaseTotal)} AZN</strong></div>
