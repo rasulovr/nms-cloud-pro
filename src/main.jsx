@@ -1936,7 +1936,7 @@ const RMS_BRANCH_TAX_RATE_SETTING = 'branch_tax_rate_v1'
 const RMS_HIDDEN_SALES_KEYS_SETTING = 'hidden_sales_keys'
 const RMS_SALES_NAME_ALIASES_SETTING = 'sales_name_aliases'
 
-const RMS_SOURCE_VERSION = 'main_v402_products_report_backup_style_loader_ring_fix'
+const RMS_SOURCE_VERSION = 'main_v403_inventory_supplier_receipts_visibility_fix'
 const RMS_FULL_BACKUP_TABLES = [
   'branches',
   'expense_categories',
@@ -4093,6 +4093,23 @@ function InventoryModule({ t, branches = [] }) {
     })
   }, [movements, movementSearch, movementTypeFilter, locationById])
 
+  const supplierReceiptRows = React.useMemo(() => {
+    const grouped = new Map()
+    ;(movements || [])
+      .filter(row => row.movement_type === 'purchase' && row.supplier_purchase_id && row.deleted_at == null)
+      .forEach(row => {
+        const id = String(row.supplier_purchase_id)
+        if (!grouped.has(id)) grouped.set(id, { id, movement_date: row.movement_date, created_at: row.created_at, location_id: row.location_id, items: [], total_cost: 0 })
+        const receipt = grouped.get(id)
+        receipt.items.push(row)
+        receipt.total_cost += Math.abs(parseNum(row.total_cost || parseNum(row.quantity) * parseNum(row.unit_cost)))
+        if (String(row.created_at || '') > String(receipt.created_at || '')) receipt.created_at = row.created_at
+      })
+    return Array.from(grouped.values())
+      .sort((a, b) => String(b.created_at || b.movement_date || '').localeCompare(String(a.created_at || a.movement_date || '')))
+      .slice(0, 30)
+  }, [movements])
+
   const filteredDocuments = React.useMemo(() => {
     return (documents || []).filter(row => documentStatusFilter === 'all' || row.status === documentStatusFilter)
   }, [documents, documentStatusFilter])
@@ -4219,6 +4236,20 @@ function InventoryModule({ t, branches = [] }) {
         </div>
       </div>
 
+      <div className="inventory-v420-card" style={{marginBottom:14,boxShadow:'none'}}>
+        <div className="inventory-v420-card-head">
+          <div><h3>Автоматические приходы от поставщиков</h3><p>Эти строки создаются автоматически из накладных поставщиков и уже включены в остаток Central Warehouse.</p></div>
+          <span className="inventory-v420-status">{supplierReceiptRows.length} последних</span>
+        </div>
+        <div className="inventory-v420-doc-list">
+          {supplierReceiptRows.slice(0, 15).map(receipt => <div className="inventory-v420-doc" key={receipt.id}>
+            <div><strong>Поставка № {receipt.id.slice(0, 8)} · {receipt.items.length} поз.</strong><span>{receipt.movement_date} · {locationById[String(receipt.location_id)]?.name || 'Central Warehouse'}<br/>{receipt.items.slice(0, 3).map(row => `${row.item_name} +${fmt(Math.abs(parseNum(row.quantity)))} ${row.unit}`).join(' · ')}{receipt.items.length > 3 ? ` · ещё ${receipt.items.length - 3}` : ''}</span></div>
+            <div className="inventory-v420-doc-actions"><b>{fmt(receipt.total_cost)} AZN</b><span className="inventory-v420-status posted">Поступило</span></div>
+          </div>)}
+          {!supplierReceiptRows.length && <div className="inventory-v420-empty">Автоматические приходы поставщиков пока не найдены.</div>}
+        </div>
+      </div>
+
       <div className="inventory-v420-form-grid">
         <label><span>Дата</span><input type="date" value={receiptDraft.document_date} onChange={e => setReceiptDraft({ ...receiptDraft, document_date: e.target.value })}/></label>
         <label><span>Филиал / склад</span><select value={receiptDraft.target_location_id} onChange={e => setReceiptDraft({ ...receiptDraft, target_location_id: e.target.value })}><option value="">Выберите филиал или склад</option>{locations.map(row => <option key={row.id} value={row.id}>{row.name}</option>)}</select></label>
@@ -4266,7 +4297,7 @@ function InventoryModule({ t, branches = [] }) {
         <label><span>Статус</span><select value={stockStatusFilter} onChange={e => setStockStatusFilter(e.target.value)}><option value="all">Все остатки</option><option value="positive">Положительные</option><option value="low">Ниже минимума</option><option value="negative">Отрицательные</option></select></label>
       </div>
       <div className="inventory-v420-table-wrap"><table className="inventory-v420-table">
-        <thead><tr><th>Товар / полуфабрикат</th><th>Локация</th><th>Остаток</th><th>Стоимость</th><th>Цена / ед.</th><th>Минимум</th><th>Статус</th></tr></thead>
+        <thead><tr><th>Товар / полуфабрикат</th><th>Локация</th><th>Остаток</th><th>Стоимость</th><th>Цена / ед.</th><th>Последнее движение</th><th>Минимум</th><th>Статус</th></tr></thead>
         <tbody>
           {stockRows.map((row, index) => {
             const key = `${row.location_id}||${row.item_name}||${row.unit}`
@@ -4280,6 +4311,7 @@ function InventoryModule({ t, branches = [] }) {
               <td className={qty < 0 ? 'bad' : low ? 'warn' : 'good'}><b>{fmt(qty)} {row.unit}</b></td>
               <td>{fmt(row.balance_cost)}</td>
               <td>{qty ? fmt(parseNum(row.balance_cost) / qty) : '0.00'}</td>
+              <td>{row.last_movement_date || '—'}</td>
               <td><div style={{display:'flex',gap:6,alignItems:'center',justifyContent:'flex-end'}}><input style={{width:85}} type="number" step="0.001" value={minStockDraft[key] ?? (setting?.min_qty ?? '')} onChange={e => setMinStockDraft(prev => ({ ...prev, [key]: e.target.value }))}/><button className="inventory-v420-icon-btn" type="button" disabled={busy} onClick={() => saveMinStock(row)}>✓</button></div></td>
               <td className={qty < 0 ? 'bad' : low ? 'warn' : 'good'}>{qty < 0 ? 'Отрицательный' : low ? 'Ниже минимума' : 'Норма'}</td>
             </tr>
@@ -26740,7 +26772,7 @@ function Suppliers({ t, isAdmin = false }) {
   const [supplierProductActionMenuId, setSupplierProductActionMenuId] = useState('')
   const [editingSupplierProductId, setEditingSupplierProductId] = useState('')
   const [supplierProductEditForm, setSupplierProductEditForm] = useState({ name: '', category: PRODUCT_CATEGORIES[0], base_unit: 'g' })
-  const [purchaseForm, setPurchaseForm] = useState({ supplier_id: '', legal_entity_id: '', branch_id: '', purchase_date: todayISO(), invoice_number: '', e_invoice_number: '', e_invoice_date: '', e_invoice_amount: '', comment: '', amount_only: false, manual_amount: '' })
+  const [purchaseForm, setPurchaseForm] = useState({ supplier_id: '', legal_entity_id: '', branch_id: CENTRAL_WAREHOUSE_SELECTION, purchase_date: todayISO(), invoice_number: '', e_invoice_number: '', e_invoice_date: '', e_invoice_amount: '', comment: '', amount_only: false, manual_amount: '' })
   const emptyLine = { category: PRODUCT_CATEGORIES[0], product_id: '', base_unit: 'kg', quantity: '1', unit: 'kg', unit_price: '', line_amount: '' }
   const [lineRows, setLineRows] = useState([emptyLine])
   const [paymentForm, setPaymentForm] = useState({ supplier_id: '', legal_entity_id: '', payment_date: todayISO(), amount: '', invoice_notes: '', comment: '', e_invoice_id: '', selected_e_invoice_ids: [] })
@@ -27000,7 +27032,7 @@ function Suppliers({ t, isAdmin = false }) {
     if (!paymentForm.legal_entity_id && legalEntities[0]) setPaymentForm(f => ({ ...f, legal_entity_id: legalEntities[0].id }))
     if (!openingDebtForm.legal_entity_id && legalEntities[0]) setOpeningDebtForm(f => ({ ...f, legal_entity_id: legalEntities[0].id }))
     if (!supplierForm.opening_debt_legal_entity_id && legalEntities[0]) setSupplierForm(f => ({ ...f, opening_debt_legal_entity_id: legalEntities[0].id }))
-    if (!purchaseForm.branch_id && branches[0]) setPurchaseForm(f => ({ ...f, branch_id: branches[0].id }))
+    if (purchaseForm.branch_id !== CENTRAL_WAREHOUSE_SELECTION) setPurchaseForm(f => ({ ...f, branch_id: CENTRAL_WAREHOUSE_SELECTION }))
   }, [activeSuppliers, legalEntities, branches])
 
   useEffect(() => {
@@ -27737,7 +27769,7 @@ function Suppliers({ t, isAdmin = false }) {
       if (amountOnly) {
         const manualAmount = parseNum(purchaseForm.manual_amount)
         if (!manualAmount) throw new Error('Введите сумму поставки')
-        await callSupplierRpc('rms_supplier_purchase_create_secure', {
+        const purchaseId = await callSupplierRpc('rms_supplier_purchase_create_secure', {
           p_supplier_id: purchaseForm.supplier_id,
           p_legal_entity_id: purchaseForm.legal_entity_id,
           p_branch_id: branchIdForPurchase,
@@ -27748,7 +27780,9 @@ function Suppliers({ t, isAdmin = false }) {
           p_manual_amount: manualAmount
         })
         setLineRows([{ ...emptyLine }])
-        setPurchaseForm(f => ({ ...f, invoice_number: '', e_invoice_number: '', e_invoice_date: '', e_invoice_amount: '', comment: '', manual_amount: '' }))
+        setPurchaseForm(f => ({ ...f, branch_id: CENTRAL_WAREHOUSE_SELECTION, invoice_number: '', e_invoice_number: '', e_invoice_date: '', e_invoice_amount: '', comment: '', manual_amount: '' }))
+        await load()
+        setMessage(`Поставка ${purchaseId ? `№ ${String(purchaseId).slice(0, 8)}` : ''} сохранена. Общая сумма учтена без складских остатков, поскольку товары не указаны.`)
         return
       }
 
@@ -27765,7 +27799,7 @@ function Suppliers({ t, isAdmin = false }) {
       }
       if (!prepared.length) throw new Error('Добавьте хотя бы один товар в поступление или включите режим ввода общей суммы')
 
-      await callSupplierRpc('rms_supplier_purchase_create_secure', {
+      const purchaseId = await callSupplierRpc('rms_supplier_purchase_create_secure', {
         p_supplier_id: purchaseForm.supplier_id,
         p_legal_entity_id: purchaseForm.legal_entity_id,
         p_branch_id: branchIdForPurchase,
@@ -27776,7 +27810,9 @@ function Suppliers({ t, isAdmin = false }) {
         p_manual_amount: null
       })
       setLineRows([{ ...emptyLine }])
-      setPurchaseForm(f => ({ ...f, invoice_number: '', e_invoice_number: '', e_invoice_date: '', e_invoice_amount: '', comment: '', manual_amount: '' }))
+      setPurchaseForm(f => ({ ...f, branch_id: CENTRAL_WAREHOUSE_SELECTION, invoice_number: '', e_invoice_number: '', e_invoice_date: '', e_invoice_amount: '', comment: '', manual_amount: '' }))
+      await load()
+      setMessage(`Поставка ${purchaseId ? `№ ${String(purchaseId).slice(0, 8)}` : ''} сохранена: ${prepared.length} поз. поступили на Central Warehouse.`)
     } catch (e) { setMessage(e.message) }
   }
 
@@ -29084,7 +29120,7 @@ function Suppliers({ t, isAdmin = false }) {
         <div className="form-grid compact">
           <label><span>Поставщик</span><select value={purchaseForm.supplier_id} onChange={e => setPurchaseForm({...purchaseForm, supplier_id: e.target.value})}>{activeSuppliersForPurchaseLegal.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
           <label><span>Наш VOEN</span><select value={purchaseForm.legal_entity_id} onChange={e => setPurchaseForm({...purchaseForm, legal_entity_id: e.target.value})}>{legalEntities.map(le => <option key={le.id} value={le.id}>{le.name} · {le.voen}</option>)}</select></label>
-          <label><span>Куда поступает товар</span><select value={purchaseForm.branch_id} onChange={e => setPurchaseForm({...purchaseForm, branch_id: e.target.value})}><option value={CENTRAL_WAREHOUSE_SELECTION}>Склад / Central Warehouse</option>{branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label>
+          <label><span>Куда поступает товар</span><select value={CENTRAL_WAREHOUSE_SELECTION} disabled><option value={CENTRAL_WAREHOUSE_SELECTION}>Склад / Central Warehouse</option></select><small>Все новые поставки автоматически поступают на центральный склад.</small></label>
           <label><span>Дата поступления</span><DateInput value={purchaseForm.purchase_date} onChange={e => setPurchaseForm({...purchaseForm, purchase_date: e.target.value})} /></label>
           <label><span>№ приходной накладной</span><input value={purchaseForm.invoice_number} onChange={e => setPurchaseForm({...purchaseForm, invoice_number: e.target.value})} placeholder="Бумажная / физическая накладная" /></label>
           <label><span>Сумма поставки</span><input inputMode="decimal" disabled={!purchaseForm.amount_only} value={purchaseForm.manual_amount} onChange={e => setPurchaseForm({...purchaseForm, manual_amount: e.target.value})} placeholder="0.00" /></label>
