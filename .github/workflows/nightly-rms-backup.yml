@@ -1,0 +1,41 @@
+name: Nightly RMS Pro backup
+
+on:
+  schedule:
+    # GitHub Actions schedules in UTC. 23:00 UTC = 03:00 Asia/Baku.
+    - cron: '0 23 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backup:
+    name: Encrypted database, storage, and source backup
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    concurrency:
+      group: rms-pro-nightly-backup
+      cancel-in-progress: false
+    steps:
+      - name: Check out exact source revision
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Install backup utilities
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends postgresql-client gnupg jq rclone
+
+      - name: Create and upload encrypted backups
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          GOOGLE_DRIVE_CLIENT_ID: ${{ secrets.GOOGLE_DRIVE_CLIENT_ID }}
+          GOOGLE_DRIVE_CLIENT_SECRET: ${{ secrets.GOOGLE_DRIVE_CLIENT_SECRET }}
+          GOOGLE_DRIVE_REFRESH_TOKEN: ${{ secrets.GOOGLE_DRIVE_REFRESH_TOKEN }}
+          GOOGLE_DRIVE_BACKUP_FOLDER_ID: ${{ secrets.GOOGLE_DRIVE_BACKUP_FOLDER_ID }}
+          BACKUP_ENCRYPTION_PASSPHRASE: ${{ secrets.BACKUP_ENCRYPTION_PASSPHRASE }}
+        run: bash scripts/rms-backup.sh
