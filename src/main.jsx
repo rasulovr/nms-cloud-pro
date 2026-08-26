@@ -33302,6 +33302,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
   })
   const [profitabilityMetric, setProfitabilityMetric] = useState('net')
   const [expandedProfitabilityBranches, setExpandedProfitabilityBranches] = useState(() => new Set())
+  const [expandedProfitabilityExpenseGroups, setExpandedProfitabilityExpenseGroups] = useState(() => new Set())
 
   const [rmsSuppliersReport, setRmsSuppliersReport] = useState({
     loading: false,
@@ -33780,7 +33781,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
       const supplierPurchases = await fetchPaged((from, to) => {
         let query = supabase
           .from('supplier_purchases')
-          .select('id,branch_id,purchase_date,total_amount,deleted_at')
+          .select('id,supplier_id,branch_id,purchase_date,invoice_number,total_amount,comment,deleted_at,suppliers(name)')
           .is('deleted_at', null)
         query = applyDateRange(query, 'purchase_date')
         return query.order('purchase_date', { ascending: true }).range(from, to)
@@ -33789,7 +33790,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
       const [{ data: employeeRowsRaw, error: employeesError }, salaryResult, serviceResult] = await Promise.all([
         supabase
           .from('employees')
-          .select('id,branch_id,position,monthly_salary,salary_type,daily_rate,is_active,employment_status')
+          .select('id,branch_id,full_name,position,monthly_salary,salary_type,daily_rate,is_active,employment_status')
           .eq('is_active', true),
         (async () => {
           let query = supabase
@@ -33890,9 +33891,16 @@ function Reports({ t, permissions = [], isAdmin = false }) {
 
         if (rmsIsWoltCommissionName(name)) current.woltCommission += amount
 
-        const categoryRow = current.categories.get(name) || { name, amount: 0, transactions: 0 }
+        const categoryRow = current.categories.get(name) || { name, amount: 0, transactions: 0, details: [] }
         categoryRow.amount += amount
         categoryRow.transactions += 1
+        categoryRow.details.push({
+          id: row.id,
+          date: row.expense_date,
+          description: name,
+          comment: row.comment || '',
+          amount
+        })
         current.categories.set(name, categoryRow)
         expensesByBranch.set(id, current)
       })
@@ -33900,6 +33908,8 @@ function Reports({ t, permissions = [], isAdmin = false }) {
       const supplierPurchaseTotal = supplierPurchases.reduce((sum, row) => sum + parseNum(row.total_amount), 0)
 
       const directSalaryByBranch = new Map()
+      const salaryDetailsByBranch = new Map()
+      const managerSalaryDetails = []
       let managerSalaryPool = 0
       if (salaryPeriods.length) {
         salaryPeriods.forEach(periodRow => {
@@ -33908,8 +33918,22 @@ function Reports({ t, permissions = [], isAdmin = false }) {
           const employee = employeeById.get(String(periodRow.employee_id)) || {}
           const branchId = String(periodRow.branch_id || employee.branch_id || '')
           const manager = !branchId || positionGroup(employee.position) === 'Менеджеры'
-          if (manager) managerSalaryPool += amount
-          else directSalaryByBranch.set(branchId, parseNum(directSalaryByBranch.get(branchId)) + amount)
+          const detail = {
+            id: `salary-${periodRow.employee_id || branchId}-${periodRow.salary_month || ''}`,
+            date: periodRow.salary_month,
+            description: employee.full_name || employee.position || 'Сотрудник',
+            comment: manager ? 'Зарплата менеджмента, распределённая по доле выручки' : (employee.position || 'Начисление зарплаты'),
+            amount
+          }
+          if (manager) {
+            managerSalaryPool += amount
+            managerSalaryDetails.push(detail)
+          } else {
+            directSalaryByBranch.set(branchId, parseNum(directSalaryByBranch.get(branchId)) + amount)
+            const details = salaryDetailsByBranch.get(branchId) || []
+            details.push(detail)
+            salaryDetailsByBranch.set(branchId, details)
+          }
         })
       } else {
         const uniqueMonths = new Set(revenueRows.map(row => String(row.revenue_date || '').slice(0, 7)).filter(Boolean))
@@ -33924,16 +33948,41 @@ function Reports({ t, permissions = [], isAdmin = false }) {
           if (amount <= 0) return
           const branchId = String(employee.branch_id || '')
           const manager = !branchId || positionGroup(employee.position) === 'Менеджеры'
-          if (manager) managerSalaryPool += amount
-          else directSalaryByBranch.set(branchId, parseNum(directSalaryByBranch.get(branchId)) + amount)
+          const detail = {
+            id: `salary-estimate-${employee.id}`,
+            date: period.from || '',
+            description: employee.full_name || employee.position || 'Сотрудник',
+            comment: manager ? 'Расчёт зарплаты менеджмента по доле выручки' : 'Расчёт по месячной ставке и официальным дням',
+            amount
+          }
+          if (manager) {
+            managerSalaryPool += amount
+            managerSalaryDetails.push(detail)
+          } else {
+            directSalaryByBranch.set(branchId, parseNum(directSalaryByBranch.get(branchId)) + amount)
+            const details = salaryDetailsByBranch.get(branchId) || []
+            details.push(detail)
+            salaryDetailsByBranch.set(branchId, details)
+          }
         })
       }
 
       const serviceByBranch = new Map()
+      const serviceDetailsByBranch = new Map()
       serviceRows.forEach(row => {
         const id = String(row.branch_id || '')
         if (!id) return
-        serviceByBranch.set(id, parseNum(serviceByBranch.get(id)) + parseNum(row.staff_cost_amount))
+        const amount = parseNum(row.staff_cost_amount)
+        serviceByBranch.set(id, parseNum(serviceByBranch.get(id)) + amount)
+        const details = serviceDetailsByBranch.get(id) || []
+        details.push({
+          id: `service-${id}-${row.month || ''}`,
+          date: row.month,
+          description: 'Service charge персоналу',
+          comment: 'Расчёт service charge за месяц',
+          amount
+        })
+        serviceDetailsByBranch.set(id, details)
       })
 
       const allBranchIds = new Set([
@@ -33973,6 +34022,44 @@ function Reports({ t, permissions = [], isAdmin = false }) {
         const totalExpenses = parseNum(expenseData.operating) + supplierFoodCost + salary + serviceCost + tax
         const net = parseNum(revenueData.revenue) - totalExpenses
         const activeDays = revenueData.days?.size || 0
+        const supplierDetails = supplierPurchases
+          .map(purchase => ({
+            id: `supplier-${purchase.id}`,
+            date: purchase.purchase_date,
+            description: purchase.suppliers?.name || 'Поставщик',
+            comment: [purchase.invoice_number ? `Фактура: ${purchase.invoice_number}` : '', purchase.comment || '', `Распределено ${pct(share * 100)} от ${fmt(purchase.total_amount)} AZN`].filter(Boolean).join(' · '),
+            amount: parseNum(purchase.total_amount) * share
+          }))
+          .filter(detail => detail.amount !== 0)
+        const salaryDetails = [
+          ...(salaryDetailsByBranch.get(id) || []),
+          ...managerSalaryDetails.map(detail => ({ ...detail, id: `${detail.id}-${id}`, amount: parseNum(detail.amount) * share }))
+        ].filter(detail => detail.amount !== 0)
+        const expenseCategories = [
+          ...(supplierFoodCost ? [{ key: 'supplier-food-cost', name: 'Поставщики / Food Cost', amount: supplierFoodCost, transactions: supplierDetails.length, details: supplierDetails }] : []),
+          ...Array.from(expenseData.categories.values()).map(category => ({
+            key: `daily-${normalizeExpenseText(category.name)}`,
+            name: category.name,
+            amount: parseNum(category.amount),
+            transactions: category.transactions,
+            details: [...(category.details || [])].sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')))
+          })),
+          ...(salary ? [{ key: 'salary', name: 'Зарплаты', amount: salary, transactions: salaryDetails.length, details: salaryDetails }] : []),
+          ...(serviceCost ? [{ key: 'service-charge', name: 'Service charge персоналу', amount: serviceCost, transactions: (serviceDetailsByBranch.get(id) || []).length, details: serviceDetailsByBranch.get(id) || [] }] : []),
+          ...(tax ? [{
+            key: 'tax',
+            name: 'Налог',
+            amount: tax,
+            transactions: 1,
+            details: [{
+              id: `tax-${id}-${period.label}`,
+              date: period.from || '',
+              description: `Налог ${pct(taxRate)}`,
+              comment: `${fmt(revenueData.revenue)} AZN × ${pct(taxRate)}`,
+              amount: tax
+            }]
+          }] : [])
+        ].sort((a, b) => parseNum(b.amount) - parseNum(a.amount) || String(a.name).localeCompare(String(b.name), 'ru'))
 
         return {
           id,
@@ -34012,7 +34099,8 @@ function Reports({ t, permissions = [], isAdmin = false }) {
           activeDays,
           averageRevenuePerDay: activeDays ? parseNum(revenueData.revenue) / activeDays : 0,
           netPerDay: activeDays ? net / activeDays : 0,
-          categories: Array.from(expenseData.categories.values()).sort((a, b) => parseNum(b.amount) - parseNum(a.amount))
+          categories: Array.from(expenseData.categories.values()).sort((a, b) => parseNum(b.amount) - parseNum(a.amount)),
+          expenseCategories
         }
       }).filter(row => row.revenue || row.totalExpenses || row.salary || row.foodCost)
 
@@ -36871,6 +36959,16 @@ function Reports({ t, permissions = [], isAdmin = false }) {
     })
   }
 
+  const toggleProfitabilityExpenseGroup = (branchId, groupKey) => {
+    setExpandedProfitabilityExpenseGroups(current => {
+      const next = new Set(current)
+      const key = `${branchId}::${groupKey}`
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  }
+
   const ReportsProfitabilityView = <section className="reports-v417-profitability">
     <style>{`
       .reports-v417-profitability{display:grid;gap:16px}
@@ -36887,9 +36985,10 @@ function Reports({ t, permissions = [], isAdmin = false }) {
       .reports-v417-bars{display:grid;gap:10px}.reports-v417-bar-row{display:grid;grid-template-columns:105px minmax(130px,1fr) 135px;gap:11px;align-items:center}.reports-v417-bar-row>b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#0f172a;font-size:11.5px}.reports-v417-track{position:relative;height:15px;overflow:hidden;border-radius:999px;background:#e2e8f0}.reports-v417-track i{display:block;height:100%;min-width:2px;border-radius:999px;background:linear-gradient(90deg,#64748b,#2563eb)}.reports-v417-track i.bad{background:linear-gradient(90deg,#fb7185,#dc2626)}.reports-v417-value{text-align:right;color:#0f172a;font-size:11px;font-weight:900}.reports-v417-value.bad{color:#dc2626}.reports-v417-value.good{color:#059669}
       .reports-v417-insights{display:grid;gap:9px}.reports-v417-insight{display:grid;grid-template-columns:10px minmax(0,1fr);gap:10px;padding:11px 0;border-bottom:1px solid #edf2f7}.reports-v417-insight:last-child{border-bottom:0}.reports-v417-insight>i{width:8px;height:8px;margin-top:5px;border-radius:50%;background:#2563eb}.reports-v417-insight.warn>i{background:#f59e0b}.reports-v417-insight.bad>i{background:#dc2626}.reports-v417-insight strong{display:block;color:#0f172a;font-size:12px;font-weight:950}.reports-v417-insight span{display:block;margin-top:4px;color:#64748b;font-size:10.5px;font-weight:650;line-height:1.35}
       .reports-v417-table-wrap{overflow:auto;border:1px solid #e2e8f0;border-radius:17px}.reports-v417-table{width:100%;border-collapse:collapse}.reports-v417-table th,.reports-v417-table td{padding:11px 9px;border-bottom:1px solid #e8eef5;text-align:right;white-space:nowrap}.reports-v417-table th:first-child,.reports-v417-table td:first-child{text-align:left}.reports-v417-table th{position:sticky;top:0;z-index:1;background:#f8fafc;color:#64748b;font-size:9.4px;font-weight:900;text-transform:uppercase;letter-spacing:.03em}.reports-v417-table td{color:#0f172a;font-size:10.8px;font-weight:700}.reports-v417-table tr:last-child td{border-bottom:0}.reports-v417-table .good{color:#059669}.reports-v417-table .bad{color:#dc2626}.reports-v417-open{padding:5px 8px;border:1px solid #dbe4ef;border-radius:9px;background:#fff;color:#334155;font-size:9.8px;font-weight:850;cursor:pointer}
-      .reports-v417-detail td{padding:0!important;background:#f8fafc}.reports-v417-detail-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:11px;padding:14px}.reports-v417-detail-card{padding:13px;border:1px solid #dbe4ef;border-radius:15px;background:#fff}.reports-v417-detail-card h4{margin:0 0 10px;color:#0f172a;font-size:12px;font-weight:950}.reports-v417-detail-list{display:grid;gap:8px}.reports-v417-detail-list div{display:flex;justify-content:space-between;gap:12px;color:#64748b;font-size:10.5px;font-weight:700}.reports-v417-detail-list b{color:#0f172a;font-weight:900}.reports-v417-warning{margin-top:10px;padding:9px 10px;border-radius:11px;background:#fff7ed;color:#9a3412;font-size:10px;font-weight:750;line-height:1.35}
+      .reports-v417-detail>td{padding:0!important;background:#f8fafc}.reports-v417-detail-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:11px;padding:14px}.reports-v417-detail-card{padding:13px;border:1px solid #dbe4ef;border-radius:15px;background:#fff}.reports-v417-detail-card h4{margin:0 0 10px;color:#0f172a;font-size:12px;font-weight:950}.reports-v417-detail-list{display:grid;gap:8px}.reports-v417-detail-list div{display:flex;justify-content:space-between;gap:12px;color:#64748b;font-size:10.5px;font-weight:700}.reports-v417-detail-list b{color:#0f172a;font-weight:900}.reports-v417-warning{margin-top:10px;padding:9px 10px;border-radius:11px;background:#fff7ed;color:#9a3412;font-size:10px;font-weight:750;line-height:1.35}
+      .reports-v417-expenses-card{grid-column:1/-1}.reports-v417-expense-groups{display:grid;gap:7px}.reports-v417-expense-group{overflow:hidden;border:1px solid #e2e8f0;border-radius:12px;background:#fff}.reports-v417-expense-toggle{display:grid;width:100%;grid-template-columns:minmax(180px,1fr) 105px 120px 18px;align-items:center;gap:10px;padding:10px 12px;border:0;background:#fff;color:#0f172a;text-align:left;cursor:pointer}.reports-v417-expense-toggle:hover{background:#f8fafc}.reports-v417-expense-toggle>span:first-child{font-size:11px;font-weight:900}.reports-v417-expense-count{color:#64748b;font-size:9.8px;font-weight:750;text-align:right}.reports-v417-expense-amount{font-size:11px;font-weight:950;text-align:right}.reports-v417-expense-chevron{color:#64748b;font-size:11px;transition:transform .18s ease}.reports-v417-expense-chevron.open{transform:rotate(180deg)}.reports-v417-expense-detail{overflow:auto;border-top:1px solid #e2e8f0;background:#f8fafc}.reports-v417-expense-detail table{width:100%;border-collapse:collapse}.reports-v417-expense-detail th,.reports-v417-expense-detail td{position:static;padding:8px 10px;border-bottom:1px solid #e8eef5;background:transparent;text-align:left;white-space:normal;font-size:9.8px}.reports-v417-expense-detail th{color:#64748b;font-weight:900;text-transform:uppercase}.reports-v417-expense-detail td{color:#334155;font-weight:650}.reports-v417-expense-detail th:last-child,.reports-v417-expense-detail td:last-child{text-align:right;white-space:nowrap}.reports-v417-expense-detail tr:last-child td{border-bottom:0}.reports-v417-expense-total{background:#eff6ff}.reports-v417-expense-empty{padding:10px 12px;color:#64748b;font-size:10px;font-weight:700}
       .reports-v417-empty{padding:28px;text-align:center;color:#64748b;font-size:12px;font-weight:700}
-      @media(max-width:1500px){.reports-v417-kpis{grid-template-columns:repeat(4,minmax(0,1fr))}}@media(max-width:1050px){.reports-v417-grid{grid-template-columns:1fr}.reports-v417-detail-grid{grid-template-columns:1fr}}@media(max-width:720px){.reports-v417-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.reports-v417-bar-row{grid-template-columns:80px minmax(90px,1fr) 105px}}
+      @media(max-width:1500px){.reports-v417-kpis{grid-template-columns:repeat(4,minmax(0,1fr))}}@media(max-width:1050px){.reports-v417-grid{grid-template-columns:1fr}.reports-v417-detail-grid{grid-template-columns:1fr}.reports-v417-expenses-card{grid-column:auto}}@media(max-width:720px){.reports-v417-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.reports-v417-bar-row{grid-template-columns:80px minmax(90px,1fr) 105px}.reports-v417-expense-toggle{grid-template-columns:minmax(125px,1fr) 78px 18px}.reports-v417-expense-count{display:none}}
     `}</style>
 
     {rmsProfitabilityReport.loading && <div className="reports-v417-status">Считаю выручку, Food Cost, зарплаты, service charge, налоги и чистый результат по филиалам…</div>}
@@ -36966,13 +37065,34 @@ function Reports({ t, permissions = [], isAdmin = false }) {
               <div className="reports-v417-detail-card"><h4>Структура выручки</h4><div className="reports-v417-detail-list">
                 <div><span>Наличные</span><b>{fmt(row.cash)}</b></div><div><span>Банк</span><b>{fmt(row.bank)}</b></div><div><span>Wolt</span><b>{fmt(row.woltRevenue)}</b></div><div><span>Средняя выручка / день</span><b>{fmt(row.averageRevenuePerDay)}</b></div><div><span>Активных дней</span><b>{row.activeDays}</b></div>
               </div></div>
-              <div className="reports-v417-detail-card"><h4>Структура затрат</h4><div className="reports-v417-detail-list">
-                <div><span>Поставщики</span><b>{fmt(row.supplierFoodCost)}</b></div><div><span>Базар / продукты</span><b>{fmt(row.manualFoodCost)}</b></div><div><span>Аренда</span><b>{fmt(row.rent)}</b></div><div><span>Коммунальные</span><b>{fmt(row.utilities)}</b></div><div><span>Wolt Comission</span><b>{fmt(row.woltCommission)}</b></div>
-              </div></div>
               <div className="reports-v417-detail-card"><h4>Контроль нормативов</h4><div className="reports-v417-detail-list">
                 <div><span>Food Cost</span><b className={row.foodCostPct > 35 ? 'bad' : 'good'}>{pct(row.foodCostPct)}</b></div><div><span>Зарплаты</span><b className={row.salaryPct > 25 ? 'bad' : 'good'}>{pct(row.salaryPct)}</b></div><div><span>Аренда</span><b className={row.rentPct > 12 ? 'bad' : 'good'}>{pct(row.rentPct)}</b></div><div><span>Wolt комиссия</span><b>{row.woltRevenue > 0 ? pct(row.woltCommissionPct) : '—'}</b></div><div><span>Доля всех расходов</span><b>{pct(row.expenseRatio)}</b></div>
               </div>
               {(row.foodCostPct > 35 || row.salaryPct > 25 || row.rentPct > 12 || row.net < 0) && <div className="reports-v417-warning">Есть отклонения от рекомендуемых ориентиров. Откройте расходы филиала и проверьте крупнейшие статьи.</div>}</div>
+              <div className="reports-v417-detail-card reports-v417-expenses-card">
+                <h4>Все статьи расходов · {(row.expenseCategories || []).length}</h4>
+                <div className="reports-v417-expense-groups">
+                  {(row.expenseCategories || []).map(category => {
+                    const expenseGroupKey = `${row.id}::${category.key}`
+                    const isOpen = expandedProfitabilityExpenseGroups.has(expenseGroupKey)
+                    return <div className="reports-v417-expense-group" key={category.key}>
+                      <button type="button" className="reports-v417-expense-toggle" onClick={() => toggleProfitabilityExpenseGroup(row.id, category.key)}>
+                        <span>{category.name}</span>
+                        <span className="reports-v417-expense-count">{category.transactions || 0} операций</span>
+                        <span className="reports-v417-expense-amount">{fmt(category.amount)} AZN</span>
+                        <span className={`reports-v417-expense-chevron ${isOpen ? 'open' : ''}`}>▼</span>
+                      </button>
+                      {isOpen && <div className="reports-v417-expense-detail">
+                        {(category.details || []).length ? <table><thead><tr><th>Дата</th><th>Операция</th><th>Комментарий / расчёт</th><th>Сумма</th></tr></thead><tbody>
+                          {(category.details || []).map((detail, detailIndex) => <tr key={detail.id || `${category.key}-${detailIndex}`}><td>{detail.date ? formatDateDMY(detail.date) : '—'}</td><td><b>{detail.description || category.name}</b></td><td>{detail.comment || '—'}</td><td><b>{fmt(detail.amount)} AZN</b></td></tr>)}
+                          <tr className="reports-v417-expense-total"><td colSpan="3"><b>Итого по статье</b></td><td><b>{fmt(category.amount)} AZN</b></td></tr>
+                        </tbody></table> : <div className="reports-v417-expense-empty">По статье нет отдельных операций за выбранный период.</div>}
+                      </div>}
+                    </div>
+                  })}
+                  {!(row.expenseCategories || []).length && <div className="reports-v417-expense-empty">За выбранный период расходов нет.</div>}
+                </div>
+              </div>
             </div></td></tr>}
           </React.Fragment>)}
           {!profitabilityRows.length && <tr><td colSpan="13" className="reports-v417-empty">Нет данных по выбранному фильтру.</td></tr>}
