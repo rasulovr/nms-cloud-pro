@@ -467,3 +467,136 @@
     letter-spacing: -.025em !important;
   }
 }
+
+/* Mobile QR Menu: reserve a clear action lane and make the photo controls truly transparent. */
+@media (max-width: 680px) {
+  .app-shell .product-card .product-title {
+    right: 68px !important;
+    bottom: 60px !important;
+  }
+
+  .app-shell .product-card .product-title h3 {
+    display: -webkit-box !important;
+    overflow: hidden !important;
+    -webkit-box-orient: vertical !important;
+    -webkit-line-clamp: 2 !important;
+    font-size: clamp(13px, 3.65vw, 16px) !important;
+    line-height: 1.13 !important;
+  }
+
+  .app-shell .product-card .product-footer > strong {
+    bottom: 15px !important;
+    font-size: clamp(13px, 3.3vw, 15px) !important;
+  }
+
+  .app-shell .product-card .add,
+  .app-shell .product-card .stepper {
+    right: 12px !important;
+    bottom: 12px !important;
+    background: rgba(255, 255, 255, .018) !important;
+    background-image: none !important;
+    border-color: rgba(255, 255, 255, .48) !important;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .14), 0 4px 12px rgba(0, 0, 0, .05) !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+
+  .app-shell .product-card .stepper button {
+    background: rgba(255, 255, 255, .045) !important;
+  }
+
+  .product-modal .modal-photo {
+    flex-basis: clamp(248px, 42dvh, 360px) !important;
+  }
+
+  .product-modal .modal-content {
+    display: flex !important;
+    flex-direction: column !important;
+    padding: 20px 22px calc(112px + env(safe-area-inset-bottom)) !important;
+    overflow: hidden !important;
+  }
+
+  .product-modal .modal-content h2 {
+    flex: none !important;
+    font-size: clamp(23px, 6.1vw, 30px) !important;
+    line-height: 1.06 !important;
+  }
+
+  .product-modal .modal-price {
+    flex: none !important;
+    margin: 8px 0 12px !important;
+    font-size: 25px !important;
+  }
+
+  .product-modal .modal-content > p {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 2px 3px 2px 0 !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain;
+    scrollbar-width: none;
+  }
+
+  .product-modal .modal-content > p::-webkit-scrollbar { display: none; }
+  .product-modal .modal-options { flex: none !important; margin-top: 10px !important; }
+}
+
+/* Visible card-to-dish motion, including the reverse motion when the close control is used. */
+.product-modal {
+  animation: qr-modal-veil-in .36s cubic-bezier(.2, .7, .2, 1) both !important;
+}
+
+.product-modal-card {
+  transform-origin: center bottom !important;
+  animation: qr-dish-enter .52s cubic-bezier(.16, .92, .24, 1) both !important;
+  will-change: transform, opacity, filter;
+}
+
+.product-modal.is-closing {
+  pointer-events: none !important;
+  animation: qr-modal-veil-out .36s ease-in both !important;
+}
+
+.product-modal.is-closing .product-modal-card {
+  animation: qr-dish-leave .36s cubic-bezier(.55, 0, .72, .2) both !important;
+}
+
+@keyframes qr-modal-veil-in {
+  from { opacity: 0; backdrop-filter: blur(0); }
+  to { opacity: 1; }
+}
+
+@keyframes qr-modal-veil-out {
+  from { opacity: 1; }
+  to { opacity: 0; backdrop-filter: blur(0); }
+}
+
+@keyframes qr-dish-enter {
+  0% { opacity: 0; transform: translateY(28dvh) scale(.88); filter: brightness(.68) blur(8px); }
+  68% { opacity: 1; transform: translateY(-7px) scale(1.018); filter: brightness(1) blur(0); }
+  100% { opacity: 1; transform: translateY(0) scale(1); filter: none; }
+}
+
+@keyframes qr-dish-leave {
+  from { opacity: 1; transform: translateY(0) scale(1); filter: none; }
+  to { opacity: 0; transform: translateY(22dvh) scale(.93); filter: brightness(.7) blur(5px); }
+}
+
+@media (max-width: 680px) {
+  .app-shell .product-card:has(.food-photo:active) {
+    transform: scale(.96) !important;
+    filter: none !important;
+  }
+
+  .app-shell .product-card:has(.food-photo:active)::after {
+    opacity: 1 !important;
+    background: rgba(0, 0, 0, .62) !important;
+  }
+
+  .app-shell .product-card:has(.food-photo:active) .food-photo img {
+    transform: scale(1.08) !important;
+    filter: brightness(.76) saturate(1.08) !important;
+  }
+}
