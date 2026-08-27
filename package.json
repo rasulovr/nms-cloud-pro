@@ -1,7 +1,7 @@
 {
   "scripts": {
     "dev": "vite",
-    "build": "node scripts/prepare-dashboard-startup.cjs && node scripts/prepare-finance-products-startup.cjs && node scripts/prepare-lazy-modules.cjs && node scripts/prepare-staged-analytics.cjs && vite build",
+    "build": "node scripts/prepare-dashboard-startup.cjs && node scripts/prepare-finance-products-startup.cjs && node scripts/prepare-lazy-modules.cjs && node scripts/prepare-staged-analytics.cjs && node scripts/prepare-supplier-voen-transfer.cjs && vite build",
     "preview": "vite preview"
   },
   "dependencies": {
