@@ -281,3 +281,37 @@
 .app-shell.theme-night .product-modal .modal-add-button:focus-visible {
   background: rgba(255, 255, 255, .38) !important;
 }
+
+/* Softer glass and independent +/- controls in the dish sheet. */
+.app-shell.theme-night .product-card .add,
+.app-shell.theme-night .product-card .stepper {
+  background: rgba(247, 251, 255, .18) !important;
+  border-color: rgba(255, 255, 255, .5) !important;
+}
+.app-shell.theme-night .product-card .add span {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+.app-shell.theme-night .product-modal .modal-close,
+.app-shell.theme-night .product-modal .modal-add-button {
+  background: rgba(247, 251, 255, .14) !important;
+  border-color: rgba(255, 255, 255, .46) !important;
+}
+.app-shell.theme-night .product-modal .modal-stepper {
+  gap: 8px !important;
+  overflow: visible !important;
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+.app-shell.theme-night .product-modal .modal-stepper button {
+  background: rgba(247, 251, 255, .14) !important;
+  border-color: rgba(255, 255, 255, .42) !important;
+}
+.app-shell.theme-night .product-modal .modal-add-button:hover:not(:disabled),
+.app-shell.theme-night .product-modal .modal-add-button:focus-visible {
+  background: rgba(255, 255, 255, .26) !important;
+}
