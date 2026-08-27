@@ -5580,3 +5580,16 @@ body {
   62% { opacity: 1; transform: translateY(-4px) scale(1.012); filter: brightness(1) blur(0); }
   100% { opacity: 1; transform: translateY(0) scale(1); filter: none; }
 }
+
+/* The image lives in a sibling layer, so use pale glass rather than bare transparency. */
+.app-shell .product-card .add,
+.app-shell .product-card .stepper {
+  background: rgba(247, 251, 255, .38) !important;
+  border: 1px solid rgba(255, 255, 255, .7) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .5), 0 9px 24px rgba(4, 18, 31, .16) !important;
+  backdrop-filter: blur(20px) saturate(125%) !important;
+}
+
+.app-shell .product-card .stepper button {
+  background: rgba(255, 255, 255, .16) !important;
+}
