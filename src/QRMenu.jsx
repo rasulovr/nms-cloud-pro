@@ -900,6 +900,9 @@ export default function QRMenu() {
                     {product.image && <span className="zoom-hint">{t.zoom}</span>}
                     {isStopped && <b>{t.unavailable}</b>}
                   </button>
+                  <span className="card-rating" aria-label={product.rating > 0 ? `Rating ${product.rating}` : "Favorite"}>
+                    <span aria-hidden="true">♡</span>{product.rating > 0 ? Number(product.rating).toFixed(1) : ""}
+                  </span>
                   <div className="product-body">
                     <div className="product-title"><h3>{product.name}</h3></div>
                     {product.description && <p>{product.description}</p>}
