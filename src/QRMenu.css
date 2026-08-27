@@ -5544,3 +5544,39 @@ body {
   background: rgba(255, 255, 255, .14) !important;
   border-color: rgba(255, 255, 255, .22) !important;
 }
+
+/* The add control intentionally shows the photo through it, rather than tinting it blue. */
+.app-shell .product-card .add,
+.app-shell .product-card .stepper {
+  background-color: transparent !important;
+  background-image: none !important;
+  border-color: rgba(255, 255, 255, .62) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .28), 0 8px 22px rgba(0, 0, 0, .1) !important;
+}
+
+.app-shell .product-card .add span,
+.app-shell .product-card .stepper button {
+  background-color: transparent !important;
+  background-image: none !important;
+}
+
+/* A tangible card-to-dish transition when a guest opens a menu item. */
+.product-modal {
+  animation: qrDishBackdropOpen .34s ease-out both !important;
+}
+
+.product-modal-card {
+  transform-origin: 50% 42% !important;
+  animation: qrDishOpen .46s cubic-bezier(.16, .9, .24, 1) both !important;
+}
+
+@keyframes qrDishBackdropOpen {
+  from { opacity: 0; backdrop-filter: blur(0) saturate(100%); }
+  to { opacity: 1; }
+}
+
+@keyframes qrDishOpen {
+  0% { opacity: 0; transform: translateY(68px) scale(.82); filter: brightness(.8) blur(7px); }
+  62% { opacity: 1; transform: translateY(-4px) scale(1.012); filter: brightness(1) blur(0); }
+  100% { opacity: 1; transform: translateY(0) scale(1); filter: none; }
+}
