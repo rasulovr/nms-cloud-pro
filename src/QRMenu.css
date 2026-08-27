@@ -5527,3 +5527,20 @@ body {
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, .14) !important;
   }
 }
+
+
+/* All photo actions use light translucent glass — never a solid dark tile. */
+.app-shell .product-card .add,
+.app-shell .product-card .stepper,
+.product-modal .modal-close,
+.product-modal .modal-rating {
+  background: rgba(255, 255, 255, .17) !important;
+  border: 1px solid rgba(255, 255, 255, .46) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .34), 0 8px 22px rgba(0, 0, 0, .12) !important;
+  backdrop-filter: blur(20px) saturate(135%) !important;
+}
+
+.app-shell .product-card .stepper button {
+  background: rgba(255, 255, 255, .14) !important;
+  border-color: rgba(255, 255, 255, .22) !important;
+}
