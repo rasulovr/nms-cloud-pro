@@ -4959,3 +4959,285 @@ body {
     bottom: auto !important;
   }
 }
+
+/* RMS QR visual menu v5: two cinematic dishes per row with tap-to-focus sheet. */
+.app-shell .content:has(.product-grid) {
+  max-width: 940px !important;
+}
+
+.app-shell .product-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 18px !important;
+}
+
+.app-shell .product-card {
+  position: relative !important;
+  isolation: isolate !important;
+  aspect-ratio: .88 / 1 !important;
+  overflow: hidden !important;
+  color: #fff !important;
+  background: #111 !important;
+  border: 1px solid rgba(255, 255, 255, .12) !important;
+  border-radius: 28px !important;
+  box-shadow: 0 18px 42px rgba(10, 14, 12, .14) !important;
+  transform: translateZ(0) !important;
+  transition: transform .22s ease, box-shadow .22s ease, filter .22s ease !important;
+}
+
+.app-shell .product-card:hover {
+  transform: translateY(-3px) !important;
+  box-shadow: 0 24px 52px rgba(10, 14, 12, .2) !important;
+}
+
+.app-shell .product-card:active {
+  transform: scale(.985) !important;
+  filter: brightness(.84) !important;
+}
+
+.app-shell .product-card .food-photo {
+  position: absolute !important;
+  z-index: 0 !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  aspect-ratio: auto !important;
+  border-radius: inherit !important;
+  background: #1d211f !important;
+}
+
+.app-shell .product-card .food-photo::after {
+  content: "";
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(3, 5, 4, .06) 40%, rgba(3, 5, 4, .18) 56%, rgba(3, 5, 4, .9) 100%);
+}
+
+.app-shell .product-card .food-photo img,
+.app-shell .product-card .food-photo img.cold-drink-photo,
+.app-shell .product-card .food-photo img.lemonade-photo,
+.app-shell .product-card .food-photo img.water-bottle-photo {
+  width: 100% !important;
+  height: 100% !important;
+  max-height: none !important;
+  object-fit: cover !important;
+  object-position: center !important;
+  transition: transform .45s cubic-bezier(.2, .7, .2, 1), filter .22s ease !important;
+}
+
+.app-shell .product-card:hover .food-photo img {
+  transform: scale(1.035) !important;
+}
+
+.app-shell .product-card .zoom-hint {
+  display: none !important;
+}
+
+.app-shell .product-card .card-rating {
+  position: absolute;
+  z-index: 4;
+  top: 16px;
+  left: 16px;
+  min-width: 58px;
+  height: 54px;
+  padding: 0 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  color: #fff;
+  background: rgba(35, 35, 34, .44);
+  border: 1px solid rgba(255, 255, 255, .18);
+  border-radius: 17px;
+  font-size: 15px;
+  font-weight: 650;
+  line-height: 1;
+  pointer-events: none;
+  backdrop-filter: blur(16px) saturate(120%);
+}
+
+.app-shell .product-card .card-rating > span {
+  font-size: 31px;
+  font-weight: 300;
+  line-height: .8;
+}
+
+.app-shell .product-card .product-body {
+  position: absolute !important;
+  z-index: 3 !important;
+  inset: 0 !important;
+  min-height: 0 !important;
+  padding: 18px !important;
+  display: block !important;
+  pointer-events: none !important;
+}
+
+.app-shell .product-card .product-title {
+  position: absolute;
+  left: 18px;
+  right: 18px;
+  bottom: 56px;
+  display: block;
+}
+
+.app-shell .product-card .product-title h3 {
+  margin: 0 !important;
+  color: #fff !important;
+  font-family: inherit !important;
+  font-size: clamp(18px, 2.6vw, 28px) !important;
+  font-weight: 620 !important;
+  line-height: 1.12 !important;
+  letter-spacing: -.025em !important;
+  text-shadow: 0 2px 15px rgba(0, 0, 0, .48) !important;
+}
+
+.app-shell .product-card .product-body > p,
+.app-shell .product-card .product-options {
+  display: none !important;
+}
+
+.app-shell .product-card .product-footer {
+  position: static !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  pointer-events: none !important;
+}
+
+.app-shell .product-card .product-footer > strong {
+  position: absolute;
+  left: 18px;
+  bottom: 19px;
+  color: #fff !important;
+  font-size: clamp(18px, 2.5vw, 26px) !important;
+  font-weight: 720 !important;
+  line-height: 1 !important;
+  text-shadow: 0 2px 15px rgba(0, 0, 0, .48) !important;
+}
+
+.app-shell .product-card .add,
+.app-shell .product-card .stepper {
+  position: absolute !important;
+  z-index: 5 !important;
+  top: 16px !important;
+  right: 16px !important;
+  margin: 0 !important;
+  pointer-events: auto !important;
+}
+
+.app-shell .product-card .add {
+  min-width: 54px !important;
+  width: 54px !important;
+  height: 54px !important;
+  padding: 0 !important;
+  color: #fff !important;
+  background: rgba(35, 35, 34, .54) !important;
+  border: 1px solid rgba(255, 255, 255, .18) !important;
+  border-radius: 17px !important;
+  box-shadow: none !important;
+  backdrop-filter: blur(16px) saturate(120%) !important;
+}
+
+.app-shell .product-card .add b {
+  display: none !important;
+}
+
+.app-shell .product-card .add span {
+  width: auto !important;
+  height: auto !important;
+  color: #fff !important;
+  background: transparent !important;
+  border-radius: 0 !important;
+  font-size: 38px !important;
+  font-weight: 300 !important;
+}
+
+.app-shell .product-card .stepper {
+  height: 54px !important;
+  padding: 4px !important;
+  gap: 2px !important;
+  color: #fff !important;
+  background: rgba(35, 35, 34, .58) !important;
+  border: 1px solid rgba(255, 255, 255, .18) !important;
+  border-radius: 17px !important;
+  backdrop-filter: blur(16px) saturate(120%) !important;
+}
+
+.app-shell .product-card .stepper button {
+  color: #fff !important;
+  background: rgba(255, 255, 255, .14) !important;
+  border-color: transparent !important;
+}
+
+.app-shell .product-card .stepper b {
+  color: #fff !important;
+}
+
+.product-modal {
+  background: rgba(2, 5, 4, .78) !important;
+  backdrop-filter: blur(18px) saturate(82%) !important;
+  animation: qrBackdropIn .22s ease both !important;
+}
+
+.product-modal-card {
+  animation: qrDishFocusIn .3s cubic-bezier(.2, .78, .2, 1) both !important;
+}
+
+@keyframes qrBackdropIn {
+  from { opacity: 0; backdrop-filter: blur(0) saturate(100%); }
+}
+
+@keyframes qrDishFocusIn {
+  from { opacity: 0; transform: translateY(18px) scale(.965); }
+}
+
+@media (max-width: 680px) {
+  .app-shell .content:has(.product-grid) {
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+  }
+
+  .app-shell .product-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+  }
+
+  .app-shell .product-card {
+    aspect-ratio: .82 / 1 !important;
+    border-radius: 20px !important;
+  }
+
+  .app-shell .product-card .card-rating {
+    top: 10px;
+    left: 10px;
+    min-width: 42px;
+    height: 42px;
+    padding: 0 9px;
+    border-radius: 13px;
+    font-size: 11px;
+  }
+
+  .app-shell .product-card .card-rating > span { font-size: 25px; }
+  .app-shell .product-card .product-body { padding: 12px !important; }
+  .app-shell .product-card .product-title { left: 12px; right: 12px; bottom: 43px; }
+  .app-shell .product-card .product-title h3 { font-size: clamp(15px, 4.6vw, 20px) !important; }
+  .app-shell .product-card .product-footer > strong { left: 12px; bottom: 14px; font-size: 17px !important; }
+
+  .app-shell .product-card .add,
+  .app-shell .product-card .stepper {
+    top: 10px !important;
+    right: 10px !important;
+    height: 42px !important;
+    border-radius: 13px !important;
+  }
+
+  .app-shell .product-card .add {
+    min-width: 42px !important;
+    width: 42px !important;
+  }
+
+  .app-shell .product-card .add span { font-size: 31px !important; }
+  .app-shell .product-card .stepper button { width: 25px !important; height: 30px !important; }
+  .app-shell .product-card .stepper b { min-width: 14px !important; font-size: 11px !important; }
+}
