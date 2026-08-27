@@ -913,9 +913,6 @@ export default function QRMenu() {
                     {product.image && <span className="zoom-hint">{t.zoom}</span>}
                     {isStopped && <b>{t.unavailable}</b>}
                   </button>
-                  <span className="card-rating" aria-label={product.rating > 0 ? `Rating ${product.rating}` : "Favorite"}>
-                    <span aria-hidden="true">♡</span>{product.rating > 0 ? Number(product.rating).toFixed(1) : ""}
-                  </span>
                   <div className="product-body">
                     <div className="product-title"><h3>{product.name}</h3></div>
                     {product.description && <p>{product.description}</p>}
@@ -1028,7 +1025,6 @@ export default function QRMenu() {
           <article className="product-modal-card">
             <div className="modal-photo" style={photoStyle(selectedProduct)}>
               {selectedProduct.image ? <img className={photoClass(selectedProduct)} src={selectedProduct.image} alt={selectedProduct.name} onError={useRecoveredImageFallback} /> : <span className="photo-placeholder">B&C</span>}
-              <span className="modal-rating" aria-label={selectedProduct.rating > 0 ? `Rating ${selectedProduct.rating}` : "Favorite"}><span>♡</span>{selectedProduct.rating > 0 ? Number(selectedProduct.rating).toFixed(1) : ""}</span>
               <button className="modal-close" onClick={() => setSelectedProduct(null)} aria-label={t.close}>×</button>
             </div>
             <div className="modal-content">
