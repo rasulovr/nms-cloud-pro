@@ -5241,3 +5241,225 @@ body {
   .app-shell .product-card .stepper button { width: 25px !important; height: 30px !important; }
   .app-shell .product-card .stepper b { min-width: 14px !important; font-size: 11px !important; }
 }
+
+
+/* QR dish sheet: tactile product cards and a focused mobile order view. */
+.app-shell .product-card::after {
+  content: "";
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  background: rgba(0, 0, 0, .38);
+  transition: opacity .16s ease;
+}
+
+.app-shell .product-card:active::after { opacity: 1; }
+
+.modal-rating {
+  position: absolute;
+  z-index: 6;
+  top: 20px;
+  left: 20px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 58px;
+  height: 52px;
+  padding: 0 14px;
+  color: #fff;
+  background: rgba(26, 27, 26, .55);
+  border: 1px solid rgba(255, 255, 255, .15);
+  border-radius: 18px;
+  font-size: 16px;
+  font-weight: 750;
+  backdrop-filter: blur(18px) saturate(110%);
+}
+
+.modal-rating > span { font-size: 32px; font-weight: 300; line-height: 1; }
+
+.modal-close {
+  z-index: 7 !important;
+  display: grid !important;
+  place-items: center !important;
+  width: 52px !important;
+  height: 52px !important;
+  padding: 0 !important;
+  color: #fff !important;
+  background: rgba(26, 27, 26, .55) !important;
+  border: 1px solid rgba(255, 255, 255, .15) !important;
+  border-radius: 18px !important;
+  box-shadow: none !important;
+  font-size: 42px !important;
+  font-weight: 250 !important;
+  line-height: 1 !important;
+  backdrop-filter: blur(18px) saturate(110%);
+}
+
+.modal-category {
+  display: block;
+  margin-bottom: 8px;
+  color: rgba(255, 255, 255, .54);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+}
+
+.modal-price {
+  display: block;
+  margin: 10px 0 23px;
+  color: #f3a23e;
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -.035em;
+}
+
+.modal-stepper {
+  display: inline-grid;
+  grid-template-columns: 54px minmax(38px, 1fr) 54px;
+  align-items: center;
+  min-width: 186px;
+  height: 62px;
+  overflow: hidden;
+  color: #fff;
+  background: #101010;
+  border: 1px solid rgba(255, 255, 255, .13);
+  border-radius: 999px;
+}
+
+.modal-stepper button {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  margin: 0 auto;
+  padding: 0;
+  color: #fff;
+  background: rgba(255, 255, 255, .08);
+  border: 0;
+  border-radius: 50%;
+  font-size: 34px;
+  font-weight: 300;
+  line-height: 1;
+}
+
+.modal-stepper button:disabled { opacity: .3; }
+.modal-stepper b { text-align: center; font-size: 22px; }
+
+.modal-add-button {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  min-height: 62px;
+  padding: 0 23px !important;
+  color: #fff !important;
+  background: #3cc5c9 !important;
+  border: 0 !important;
+  border-radius: 999px !important;
+  box-shadow: none !important;
+  font-size: 16px !important;
+  font-weight: 800 !important;
+}
+
+.modal-add-button b { font-size: inherit; }
+
+@media (max-width: 680px) {
+  .product-modal {
+    z-index: 700 !important;
+    display: block !important;
+    padding: 0 !important;
+    background: rgba(0, 0, 0, .78) !important;
+    backdrop-filter: blur(12px) saturate(80%) !important;
+  }
+
+  .product-modal-card {
+    width: 100% !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+    color: #fff !important;
+    background: #101010 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+  }
+
+  .product-modal .modal-photo {
+    position: relative !important;
+    flex: 0 0 min(54dvh, 520px) !important;
+    width: 100% !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    overflow: hidden;
+    border-radius: 0 0 28px 28px !important;
+    background: #2a2a2a;
+  }
+
+  .product-modal .modal-photo::before,
+  .product-modal .modal-photo::after { display: none !important; }
+
+  .product-modal .modal-photo img {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+    transform: none !important;
+  }
+
+  .product-modal .modal-close { position: absolute !important; top: 22px !important; right: 22px !important; }
+  .product-modal .modal-rating { top: 22px; left: 22px; }
+
+  .product-modal .modal-content {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    padding: 28px 25px 145px !important;
+    overflow-y: auto !important;
+    color: #fff !important;
+    background: #101010 !important;
+  }
+
+  .product-modal .modal-content h2 {
+    margin: 0 !important;
+    color: #fff !important;
+    font-size: clamp(29px, 8vw, 39px) !important;
+    font-weight: 720 !important;
+    letter-spacing: -.045em !important;
+    line-height: 1.03 !important;
+  }
+
+  .product-modal .modal-content > p {
+    max-width: 31ch;
+    margin: 0 !important;
+    color: rgba(255, 255, 255, .58) !important;
+    font-size: 17px !important;
+    line-height: 1.45 !important;
+  }
+
+  .product-modal .modal-options { margin-top: 17px !important; }
+  .product-modal .pairings { display: none !important; }
+
+  .product-modal .modal-buy {
+    position: fixed !important;
+    z-index: 10 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    display: grid !important;
+    grid-template-columns: minmax(0, .72fr) minmax(0, 1.28fr) !important;
+    gap: 12px !important;
+    margin: 0 !important;
+    padding: 15px 22px calc(15px + env(safe-area-inset-bottom)) !important;
+    background: rgba(16, 16, 16, .96) !important;
+    border: 0 !important;
+    box-shadow: 0 -12px 32px rgba(0, 0, 0, .2);
+  }
+
+  .product-modal .modal-add-button { min-width: 0; min-height: 58px; padding: 0 14px !important; font-size: 14px !important; }
+  .product-modal .modal-stepper { min-width: 0; height: 58px; grid-template-columns: 44px minmax(27px, 1fr) 44px; }
+  .product-modal .modal-stepper button { width: 43px; height: 43px; font-size: 30px; }
+  .product-modal .modal-stepper b { font-size: 18px; }
+}
