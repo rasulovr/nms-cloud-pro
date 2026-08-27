@@ -342,6 +342,7 @@ export default function QRMenu() {
   const [otpSent, setOtpSent] = useState(false);
   const [bonusRequest, setBonusRequest] = useState(0);
   const [selectedProduct, setSelectedProduct] = useState(null);
+  const [modalQuantity, setModalQuantity] = useState(1);
   const [photoFullscreen, setPhotoFullscreen] = useState(false);
   const [weather, setWeather] = useState(null);
   const [branchInfo, setBranchInfo] = useState(null);
@@ -502,6 +503,11 @@ export default function QRMenu() {
   useEffect(() => {
     if (!selectedProduct) setPhotoFullscreen(false);
   }, [selectedProduct]);
+  useEffect(() => {
+    if (!selectedProduct) return;
+    const existingQuantity = cart.find((line) => line.id === selectedProduct.id)?.qty || 0;
+    setModalQuantity(Math.max(1, existingQuantity));
+  }, [selectedProduct?.id]);
   const mealMoment = getMealMoment(bakuHour);
   const contextualWeatherKind = useMemo(() => getWeatherKind(weather), [weather]);
   const contextualCategoryOrder = useMemo(
@@ -766,6 +772,13 @@ export default function QRMenu() {
       window.setTimeout(() => setLastAddedId((current) => current === product.id ? null : current), 1200);
     }
   }
+  function addSelectedProductToCart() {
+    if (!selectedProduct || unavailable.includes(selectedProduct.id)) return;
+    const existingQuantity = cart.find((line) => line.id === selectedProduct.id)?.qty || 0;
+    const delta = modalQuantity - existingQuantity;
+    if (delta !== 0) changeQty(selectedProduct, delta);
+    setSelectedProduct(null);
+  }
   async function loadProfile() {
     const { data, error } = await supabase.rpc("qr_get_my_loyalty");
     if (!error) setProfile(Array.isArray(data) ? data[0] || null : data || null);
@@ -1013,15 +1026,15 @@ export default function QRMenu() {
     if (event.currentTarget === event.target) setSelectedProduct(null);
   }}>
           <article className="product-modal-card">
-            <button className="modal-close" onClick={() => setSelectedProduct(null)} aria-label={t.close} />
-            <div className="modal-heading">
-              <span className="eyebrow">{localizeCategory(selectedProduct.category, language) || categoryTranslations[language][selectedProduct.category] || categoryLabel(selectedProduct.category)}</span>
-              <h2>{selectedProduct.name}</h2>
-            </div>
             <div className="modal-photo" style={photoStyle(selectedProduct)}>
               {selectedProduct.image ? <img className={photoClass(selectedProduct)} src={selectedProduct.image} alt={selectedProduct.name} onError={useRecoveredImageFallback} /> : <span className="photo-placeholder">B&C</span>}
+              <span className="modal-rating" aria-label={selectedProduct.rating > 0 ? `Rating ${selectedProduct.rating}` : "Favorite"}><span>♡</span>{selectedProduct.rating > 0 ? Number(selectedProduct.rating).toFixed(1) : ""}</span>
+              <button className="modal-close" onClick={() => setSelectedProduct(null)} aria-label={t.close}>×</button>
             </div>
             <div className="modal-content">
+              <span className="modal-category">{localizeCategory(selectedProduct.category, language) || categoryTranslations[language][selectedProduct.category] || categoryLabel(selectedProduct.category)}</span>
+              <h2>{selectedProduct.name}</h2>
+              <strong className="modal-price">{money(selectedProduct.price)}</strong>
               {selectedProduct.description && <p>{selectedProduct.description}</p>}
               {selectedProduct.options.length > 0 && <div className="modal-options">{selectedProduct.options.map((option) => <small key={option}>{option}</small>)}</div>}
               {pairings.length > 0 && <div className="pairings">
@@ -1036,9 +1049,13 @@ export default function QRMenu() {
                   </div>
                 </div>}
               <div className="modal-buy">
-                <strong>{money(selectedProduct.price)}</strong>
-                <button className={lastAddedId === selectedProduct.id ? "added" : ""} disabled={unavailable.includes(selectedProduct.id)} onClick={() => changeQty(selectedProduct, 1)}>
-                  {unavailable.includes(selectedProduct.id) ? t.unavailable : lastAddedId === selectedProduct.id ? t.added : t.addToOrder}
+                <div className="modal-stepper" aria-label="Quantity">
+                  <button type="button" disabled={unavailable.includes(selectedProduct.id) || modalQuantity <= 1} onClick={() => setModalQuantity((quantity) => Math.max(1, quantity - 1))} aria-label="Decrease quantity">−</button>
+                  <b>{modalQuantity}</b>
+                  <button type="button" disabled={unavailable.includes(selectedProduct.id)} onClick={() => setModalQuantity((quantity) => quantity + 1)} aria-label="Increase quantity">+</button>
+                </div>
+                <button className="modal-add-button" disabled={unavailable.includes(selectedProduct.id)} onClick={addSelectedProductToCart}>
+                  <span>{unavailable.includes(selectedProduct.id) ? t.unavailable : t.addToOrder}</span><b>{money(selectedProduct.price * modalQuantity)}</b>
                 </button>
               </div>
             </div>
