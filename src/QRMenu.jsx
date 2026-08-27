@@ -342,6 +342,7 @@ export default function QRMenu() {
   const [otpSent, setOtpSent] = useState(false);
   const [bonusRequest, setBonusRequest] = useState(0);
   const [selectedProduct, setSelectedProduct] = useState(null);
+  const [isProductClosing, setIsProductClosing] = useState(false);
   const [modalQuantity, setModalQuantity] = useState(1);
   const [photoFullscreen, setPhotoFullscreen] = useState(false);
   const [weather, setWeather] = useState(null);
@@ -491,7 +492,7 @@ export default function QRMenu() {
     if (!selectedProduct) return;
     const closeOnEscape = (event) => {
       if (event.key === "Escape" && photoFullscreen) setPhotoFullscreen(false);
-      else if (event.key === "Escape") setSelectedProduct(null);
+      else if (event.key === "Escape") requestCloseProduct();
     };
     document.body.classList.add("modal-open");
     window.addEventListener("keydown", closeOnEscape);
@@ -772,12 +773,24 @@ export default function QRMenu() {
       window.setTimeout(() => setLastAddedId((current) => current === product.id ? null : current), 1200);
     }
   }
+  function openProduct(product) {
+    setIsProductClosing(false);
+    setSelectedProduct(product);
+  }
+  function requestCloseProduct() {
+    if (!selectedProduct || isProductClosing) return;
+    setIsProductClosing(true);
+    window.setTimeout(() => {
+      setSelectedProduct(null);
+      setIsProductClosing(false);
+    }, 360);
+  }
   function addSelectedProductToCart() {
     if (!selectedProduct || unavailable.includes(selectedProduct.id)) return;
     const existingQuantity = cart.find((line) => line.id === selectedProduct.id)?.qty || 0;
     const delta = modalQuantity - existingQuantity;
     if (delta !== 0) changeQty(selectedProduct, delta);
-    setSelectedProduct(null);
+    requestCloseProduct();
   }
   async function loadProfile() {
     const { data, error } = await supabase.rpc("qr_get_my_loyalty");
@@ -908,7 +921,7 @@ export default function QRMenu() {
     const isStopped = unavailable.includes(product.id);
     const qty = cart.find((line) => line.id === product.id)?.qty || 0;
     return <article className={`product-card ${isStopped ? "stopped" : ""}`} key={product.id}>
-                  <button className="food-photo" style={photoStyle(product)} type="button" onClick={() => setSelectedProduct(product)} aria-label={`${t.openPhoto}: ${product.name}`}>
+                  <button className="food-photo" style={photoStyle(product)} type="button" onClick={() => openProduct(product)} aria-label={`${t.openPhoto}: ${product.name}`}>
                     {product.image ? <img className={photoClass(product)} src={product.image} alt={product.name} loading="lazy" onError={useRecoveredImageFallback} /> : <span className="photo-placeholder">B&C</span>}
                     {product.image && <span className="zoom-hint">{t.zoom}</span>}
                     {isStopped && <b>{t.unavailable}</b>}
@@ -1019,13 +1032,13 @@ export default function QRMenu() {
           <button className="primary-button" onClick={() => callWaiter("waiter")}>{t.waiter}</button>
         </section>}
 
-      {selectedProduct && <div className="product-modal" role="dialog" aria-modal="true" aria-label={selectedProduct.name} onMouseDown={(event) => {
-    if (event.currentTarget === event.target) setSelectedProduct(null);
+      {selectedProduct && <div className={`product-modal ${isProductClosing ? "is-closing" : ""}`} role="dialog" aria-modal="true" aria-label={selectedProduct.name} onMouseDown={(event) => {
+    if (event.currentTarget === event.target) requestCloseProduct();
   }}>
-          <article className="product-modal-card">
+          <article className="product-modal-card" key={selectedProduct.id}>
             <div className="modal-photo" style={photoStyle(selectedProduct)}>
               {selectedProduct.image ? <img className={photoClass(selectedProduct)} src={selectedProduct.image} alt={selectedProduct.name} onError={useRecoveredImageFallback} /> : <span className="photo-placeholder">B&C</span>}
-              <button className="modal-close" onClick={() => setSelectedProduct(null)} aria-label={t.close}>×</button>
+              <button className="modal-close" onClick={requestCloseProduct} aria-label={t.close}>×</button>
             </div>
             <div className="modal-content">
               <span className="modal-category">{localizeCategory(selectedProduct.category, language) || categoryTranslations[language][selectedProduct.category] || categoryLabel(selectedProduct.category)}</span>
@@ -1036,7 +1049,7 @@ export default function QRMenu() {
               {pairings.length > 0 && <div className="pairings">
                   <div className="pairing-grid">
                     {pairings.map((product) => <article key={product.id}>
-                        <button className="pairing-photo" style={photoStyle(product)} onClick={() => setSelectedProduct(product)}>
+                        <button className="pairing-photo" style={photoStyle(product)} onClick={() => openProduct(product)}>
                           {product.image ? <img className={photoClass(product)} src={product.image} alt={product.name} onError={useRecoveredImageFallback} /> : <span>B&C</span>}
                         </button>
                         <div><b>{product.name}</b><small>{money(product.price)}</small></div>
