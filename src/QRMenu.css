@@ -5593,3 +5593,15 @@ body {
 .app-shell .product-card .stepper button {
   background: rgba(255, 255, 255, .16) !important;
 }
+
+/* The compact dish sheet keeps the product name calm and the order area softly rounded. */
+@media (max-width: 680px) {
+  .product-modal .modal-content h2 {
+    font-size: clamp(25px, 6.4vw, 32px) !important;
+    line-height: 1.08 !important;
+  }
+
+  .product-modal .modal-buy {
+    border-radius: 28px 28px 0 0 !important;
+  }
+}
