@@ -6065,3 +6065,20 @@ body {
     top: 49px !important;
   }
 }
+
+
+/* Public QR demo: a clear non-interactive environment marker. */
+.demo-badge {
+  align-self: center;
+  margin-left: 8px;
+  padding: 4px 8px;
+  border: 1px solid rgba(255,255,255,.52);
+  border-radius: 999px;
+  background: rgba(9, 27, 44, .28);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .14em;
+  line-height: 1;
+  backdrop-filter: blur(8px);
+}
