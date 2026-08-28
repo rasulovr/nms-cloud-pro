@@ -924,12 +924,22 @@ export default function QRMenu() {
             <div className="categories">
               {categories.map((name) => <button className={category === name ? "active" : ""} key={name} onClick={() => setCategory(name)}>{localizeCategory(name, language) || categoryTranslations[language][name] || categoryLabel(name)}</button>)}
             </div>
-            <div className="menu-view-toggle" role="group" aria-label={language === "ru" ? "Вид меню" : language === "az" ? "Menyu görünüşü" : "Menu view"}>
-              <button type="button" className={menuView === "grid" ? "active" : ""} onClick={() => setMenuView("grid")} aria-pressed={menuView === "grid"} aria-label={language === "ru" ? "По две позиции в ряду" : language === "az" ? "Hər sırada iki mövqe" : "Two items per row"}>
-                <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" /><rect x="3" y="14" width="7" height="7" rx="1.5" /><rect x="14" y="14" width="7" height="7" rx="1.5" /></svg>
-              </button>
-              <button type="button" className={menuView === "list" ? "active" : ""} onClick={() => setMenuView("list")} aria-pressed={menuView === "list"} aria-label={language === "ru" ? "По одной позиции в ряду" : language === "az" ? "Hər sırada bir mövqe" : "One item per row"}>
-                <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="7" rx="1.5" /><rect x="3" y="14" width="18" height="7" rx="1.5" /></svg>
+            <div className="menu-view-toggle">
+              <button
+                type="button"
+                className="active"
+                onClick={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  setMenuView((current) => current === "grid" ? "list" : "grid");
+                }}
+                aria-label={menuView === "grid"
+                  ? (language === "ru" ? "Показать по одной позиции в ряду" : language === "az" ? "Hər sırada bir mövqe göstər" : "Show one item per row")
+                  : (language === "ru" ? "Показать по две позиции в ряду" : language === "az" ? "Hər sırada iki mövqe göstər" : "Show two items per row")}
+              >
+                {menuView === "grid"
+                  ? <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="7" rx="1.5" /><rect x="3" y="14" width="18" height="7" rx="1.5" /></svg>
+                  : <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" /><rect x="3" y="14" width="7" height="7" rx="1.5" /><rect x="14" y="14" width="7" height="7" rx="1.5" /></svg>}
               </button>
             </div>
           </div>
