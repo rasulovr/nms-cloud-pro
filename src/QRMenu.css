@@ -5888,3 +5888,26 @@ body {
     align-self: center;
   }
 }
+
+
+/* One-button menu view switch: no segmented control and no navigation target. */
+.menu-view-toggle {
+  grid-template-columns: 40px !important;
+  padding: 3px !important;
+}
+
+.menu-view-toggle button {
+  width: 40px !important;
+  height: 40px !important;
+}
+
+@media (max-width: 680px) {
+  .menu-view-toggle {
+    grid-template-columns: 36px !important;
+  }
+
+  .menu-view-toggle button {
+    width: 36px !important;
+    height: 36px !important;
+  }
+}
