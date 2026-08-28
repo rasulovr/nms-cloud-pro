@@ -5911,3 +5911,107 @@ body {
     height: 36px !important;
   }
 }
+
+
+/* One-column menu — selected Gradient composition with a visible two-line description. */
+.app-shell.menu-view-list .product-card .food-photo::after {
+  background: linear-gradient(
+    180deg,
+    rgba(3, 8, 12, .02) 30%,
+    rgba(3, 8, 12, .10) 43%,
+    rgba(3, 10, 17, .70) 70%,
+    rgba(3, 10, 17, .96) 100%
+  ) !important;
+}
+
+.app-shell.menu-view-list .product-card .product-title {
+  left: 22px !important;
+  right: 22px !important;
+  bottom: 112px !important;
+}
+
+.app-shell.menu-view-list .product-card .product-title h3 {
+  max-width: calc(100% - 70px) !important;
+  font-family: Georgia, "Times New Roman", serif !important;
+  font-size: clamp(25px, 4vw, 34px) !important;
+  font-weight: 650 !important;
+  line-height: 1.03 !important;
+  letter-spacing: -.025em !important;
+  text-wrap: balance;
+}
+
+.app-shell.menu-view-list .product-card .product-body > p {
+  position: absolute !important;
+  left: 22px !important;
+  right: 22px !important;
+  bottom: 58px !important;
+  display: -webkit-box !important;
+  max-width: calc(100% - 44px) !important;
+  max-height: 42px !important;
+  margin: 0 !important;
+  overflow: hidden !important;
+  color: rgba(255, 255, 255, .78) !important;
+  font-size: clamp(14px, 2vw, 17px) !important;
+  font-weight: 430 !important;
+  line-height: 1.28 !important;
+  letter-spacing: .005em !important;
+  text-shadow: 0 2px 14px rgba(0, 0, 0, .50) !important;
+  -webkit-box-orient: vertical !important;
+  -webkit-line-clamp: 2 !important;
+}
+
+.app-shell.menu-view-list .product-card .product-footer > strong {
+  left: 22px !important;
+  bottom: 21px !important;
+  color: #f2a447 !important;
+  font-size: clamp(20px, 3vw, 25px) !important;
+  font-weight: 740 !important;
+}
+
+.app-shell.menu-view-list .product-card .add,
+.app-shell.menu-view-list .product-card .stepper {
+  top: auto !important;
+  right: 18px !important;
+  bottom: 16px !important;
+}
+
+@media (max-width: 680px) {
+  .app-shell.menu-view-list .product-card {
+    aspect-ratio: 1.12 / 1 !important;
+  }
+
+  .app-shell.menu-view-list .product-card .product-title {
+    left: 18px !important;
+    right: 18px !important;
+    bottom: 103px !important;
+  }
+
+  .app-shell.menu-view-list .product-card .product-title h3 {
+    max-width: 100% !important;
+    font-size: clamp(22px, 6.7vw, 28px) !important;
+    line-height: 1.04 !important;
+  }
+
+  .app-shell.menu-view-list .product-card .product-body > p {
+    left: 18px !important;
+    right: 18px !important;
+    bottom: 53px !important;
+    max-width: calc(100% - 36px) !important;
+    max-height: 38px !important;
+    font-size: clamp(13px, 3.7vw, 16px) !important;
+    line-height: 1.22 !important;
+  }
+
+  .app-shell.menu-view-list .product-card .product-footer > strong {
+    left: 18px !important;
+    bottom: 17px !important;
+    font-size: 19px !important;
+  }
+
+  .app-shell.menu-view-list .product-card .add,
+  .app-shell.menu-view-list .product-card .stepper {
+    top: auto !important;
+    right: 14px !important;
+    bottom: 12px !important;
+  }
+}
