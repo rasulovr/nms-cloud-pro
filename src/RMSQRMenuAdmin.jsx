@@ -18,7 +18,8 @@ import { localizeProduct } from './qrMenuTranslations'
 import './RMSQRMenuAdmin.css'
 
 const fmt = (n) => Number(n || 0).toFixed(2)
-const appOrigin = () => window.location.origin
+const QR_MENU_PUBLIC_ORIGIN = 'https://app.rms.rest'
+const appOrigin = () => QR_MENU_PUBLIC_ORIGIN
 const imageBucket = 'qr-menu-images'
 const DEFAULT_QR_BRANCHES = ['BC1', 'BC2', 'BC3', 'BC4', 'BC5', 'Bistro']
 const QR_MENU_BRANCHES = ['BC1', 'BC2', 'BC4', 'BC5']
