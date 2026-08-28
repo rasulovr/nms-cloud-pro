@@ -6094,7 +6094,9 @@ body {
   }
 
   .product-modal .modal-add-button {
+    background: transparent !important;
     border: 0 !important;
+    border-radius: 0 !important;
     outline: 0 !important;
     box-shadow: none !important;
     -webkit-appearance: none;
