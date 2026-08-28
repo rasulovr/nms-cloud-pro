@@ -701,3 +701,318 @@
     box-shadow: none !important;
   }
 }
+
+/* Preview design lab: four complete visual directions with one shared interaction language. */
+.qr-design-dock {
+  position: relative;
+  z-index: 54;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(82px, 1fr));
+  gap: 5px;
+  width: min(560px, calc(100% - 32px));
+  margin: -18px auto 0;
+  padding: 5px;
+  overflow-x: auto;
+  background: rgba(248, 249, 246, .54);
+  border: 1px solid rgba(255, 255, 255, .62);
+  border-radius: 22px;
+  box-shadow: 0 18px 42px rgba(16, 36, 48, .13), inset 0 1px 0 rgba(255, 255, 255, .62);
+  -webkit-backdrop-filter: blur(24px) saturate(140%);
+  backdrop-filter: blur(24px) saturate(140%);
+  scrollbar-width: none;
+}
+
+.qr-design-dock::-webkit-scrollbar { display: none; }
+
+.qr-design-dock button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-width: 0;
+  min-height: 42px;
+  padding: 8px 10px;
+  color: rgba(13, 34, 46, .64);
+  background: transparent;
+  border: 0;
+  border-radius: 17px;
+  transition: transform .22s cubic-bezier(.2, .8, .2, 1), color .22s ease, background .22s ease, box-shadow .22s ease;
+}
+
+.qr-design-dock button span { font-size: 17px; line-height: 1; }
+.qr-design-dock button b { overflow: hidden; font-size: 11px; font-weight: 820; letter-spacing: .01em; text-overflow: ellipsis; white-space: nowrap; }
+.qr-design-dock button:hover { color: #102c3c; background: rgba(255, 255, 255, .42); transform: translateY(-1px); }
+.qr-design-dock button:active { transform: scale(.93); }
+.qr-design-dock button.active {
+  color: #fff;
+  background: rgba(14, 42, 57, .88);
+  box-shadow: 0 8px 22px rgba(9, 30, 42, .18), inset 0 1px 0 rgba(255, 255, 255, .18);
+}
+
+.qr-design-dock + .main-nav { margin-top: 10px !important; }
+
+/* Shared motion: fast enough for ordering, visible enough to feel designed. */
+.app-shell .product-grid {
+  animation: qr-grid-reveal .38s cubic-bezier(.18, .82, .25, 1) both;
+}
+
+.app-shell .product-card {
+  animation: qr-card-arrive .5s cubic-bezier(.18, .86, .22, 1) both;
+  animation-delay: calc(var(--card-index, 0) * 28ms);
+  transform-origin: 50% 72%;
+  will-change: transform, opacity;
+}
+
+.app-shell .product-card .food-photo img {
+  transition: transform .48s cubic-bezier(.2, .8, .2, 1), filter .3s ease !important;
+}
+
+.app-shell .product-card:hover .food-photo img { transform: scale(1.025); }
+.app-shell .product-card:has(.food-photo:active) { transform: scale(.974) translateY(2px) !important; }
+.app-shell .product-card:has(.food-photo:active) .food-photo img { transform: scale(1.075) !important; filter: brightness(.72) saturate(1.12) !important; }
+
+.app-shell .product-card.is-added {
+  animation: qr-order-confirm .52s cubic-bezier(.2, .9, .25, 1) both !important;
+}
+
+.app-shell .product-card .stepper.added,
+.app-shell .product-card .add.added {
+  animation: qr-control-confirm .52s cubic-bezier(.16, .9, .24, 1) both !important;
+}
+
+.app-shell .main-nav button,
+.app-shell .categories button,
+.app-shell .menu-view-toggle button,
+.product-modal .modal-close,
+.product-modal .modal-stepper button,
+.product-modal .modal-add-button {
+  transition: transform .2s cubic-bezier(.2, .8, .2, 1), filter .2s ease, background .2s ease, box-shadow .2s ease !important;
+}
+
+.app-shell .main-nav button:active,
+.app-shell .categories button:active,
+.app-shell .menu-view-toggle button:active,
+.product-modal .modal-stepper button:active,
+.product-modal .modal-add-button:active { transform: scale(.94) !important; }
+
+.product-modal .modal-close:active { transform: rotate(90deg) scale(.86) !important; }
+.product-modal-card .modal-photo img { animation: qr-photo-focus .64s cubic-bezier(.18, .85, .2, 1) both; }
+.product-modal.is-closing .modal-photo img { animation: qr-photo-release .34s ease-in both !important; }
+
+@keyframes qr-grid-reveal {
+  from { opacity: .25; transform: translateY(12px); filter: blur(4px); }
+  to { opacity: 1; transform: translateY(0); filter: blur(0); }
+}
+
+@keyframes qr-card-arrive {
+  from { opacity: 0; transform: translateY(24px) scale(.965); filter: saturate(.72); }
+  to { opacity: 1; transform: translateY(0) scale(1); filter: saturate(1); }
+}
+
+@keyframes qr-order-confirm {
+  0%, 100% { transform: scale(1); }
+  46% { transform: scale(.975); filter: brightness(1.12) saturate(1.18); }
+  72% { transform: scale(1.012); }
+}
+
+@keyframes qr-control-confirm {
+  0% { transform: scale(.78); box-shadow: 0 0 0 0 rgba(255, 255, 255, .5); }
+  68% { transform: scale(1.08); box-shadow: 0 0 0 12px rgba(255, 255, 255, 0); }
+  100% { transform: scale(1); }
+}
+
+@keyframes qr-photo-focus {
+  from { transform: scale(1.08); filter: brightness(.75) saturate(.8); }
+  to { transform: scale(1); filter: brightness(1) saturate(1); }
+}
+
+@keyframes qr-photo-release {
+  from { transform: scale(1); filter: brightness(1); }
+  to { transform: scale(1.055); filter: brightness(.65) blur(2px); }
+}
+
+/* 1 — Editorial Glass: airy glass surfaces over the weather atmosphere. */
+.app-shell.design-glass {
+  background-image: linear-gradient(180deg, rgba(228, 241, 244, .18), rgba(242, 239, 229, .62)) !important;
+}
+
+.app-shell.design-glass .main-nav,
+.app-shell.design-glass .categories,
+.app-shell.design-glass .menu-view-toggle {
+  background: rgba(249, 250, 247, .58) !important;
+  border-color: rgba(255, 255, 255, .68) !important;
+  box-shadow: 0 15px 34px rgba(16, 38, 52, .11), inset 0 1px 0 rgba(255, 255, 255, .72) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(142%) !important;
+  backdrop-filter: blur(24px) saturate(142%) !important;
+}
+
+.app-shell.design-glass .product-card .food-photo::after {
+  background: linear-gradient(180deg, rgba(1, 9, 15, .01) 32%, rgba(2, 12, 20, .17) 58%, rgba(2, 12, 20, .9) 100%) !important;
+}
+
+.app-shell.design-glass .product-card .add,
+.app-shell.design-glass .product-card .stepper,
+.app-shell.design-glass .modal-close {
+  background: rgba(244, 249, 250, .16) !important;
+  border-color: rgba(255, 255, 255, .55) !important;
+  -webkit-backdrop-filter: blur(18px) saturate(135%) !important;
+  backdrop-filter: blur(18px) saturate(135%) !important;
+}
+
+/* 2 — Daypart Mood: the current weather and time become the main color system. */
+.app-shell.design-daypart.theme-morning { --design-accent: #d89862; --design-deep: #173d46; }
+.app-shell.design-daypart.theme-day { --design-accent: #f1c58c; --design-deep: #255c78; }
+.app-shell.design-daypart.theme-evening { --design-accent: #df8c6d; --design-deep: #533f61; }
+.app-shell.design-daypart.theme-night { --design-accent: #9fb5dc; --design-deep: #101c39; }
+
+.app-shell.design-daypart {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--design-deep) 76%, #fff), color-mix(in srgb, var(--design-accent) 22%, #eef1ec) 60%, #f5f1e9) !important;
+}
+
+.app-shell.design-daypart .qr-premium-hero.hero { box-shadow: 0 22px 56px color-mix(in srgb, var(--design-deep) 32%, transparent) !important; }
+.app-shell.design-daypart .qr-design-dock button.active,
+.app-shell.design-daypart .main-nav button.active,
+.app-shell.design-daypart .categories button.active {
+  color: #102432 !important;
+  background: var(--design-accent) !important;
+}
+
+.app-shell.design-daypart .main-nav,
+.app-shell.design-daypart .categories,
+.app-shell.design-daypart .menu-view-toggle {
+  color: #fff;
+  background: color-mix(in srgb, var(--design-deep) 72%, transparent) !important;
+  border-color: rgba(255, 255, 255, .25) !important;
+  -webkit-backdrop-filter: blur(22px) saturate(132%) !important;
+  backdrop-filter: blur(22px) saturate(132%) !important;
+}
+
+.app-shell.design-daypart .main-nav button,
+.app-shell.design-daypart .categories button { color: rgba(255, 255, 255, .76) !important; }
+.app-shell.design-daypart .product-card .food-photo::after {
+  background: linear-gradient(180deg, transparent 30%, color-mix(in srgb, var(--design-deep) 28%, transparent) 58%, color-mix(in srgb, var(--design-deep) 92%, #000) 100%) !important;
+}
+.app-shell.design-daypart .product-card .product-footer > strong { color: var(--design-accent) !important; }
+
+/* 3 — Minimal Gallery: warm editorial paper and pale captions. */
+.app-shell.design-gallery {
+  --gallery-ink: #17362f;
+  background: linear-gradient(180deg, #eef3ed 0, #f5f1e8 36%, #eee8dc 100%) !important;
+}
+
+.app-shell.design-gallery .qr-premium-hero.hero {
+  border: 10px solid rgba(250, 248, 242, .64) !important;
+  border-radius: 0 0 42px 42px !important;
+  box-shadow: 0 20px 55px rgba(58, 65, 50, .13) !important;
+}
+
+.app-shell.design-gallery .qr-design-dock,
+.app-shell.design-gallery .main-nav,
+.app-shell.design-gallery .categories,
+.app-shell.design-gallery .menu-view-toggle {
+  background: rgba(253, 250, 243, .84) !important;
+  border-color: rgba(74, 86, 72, .12) !important;
+  box-shadow: 0 12px 30px rgba(58, 65, 50, .09) !important;
+}
+
+.app-shell.design-gallery .qr-design-dock button.active,
+.app-shell.design-gallery .main-nav button.active,
+.app-shell.design-gallery .categories button.active {
+  color: #fff !important;
+  background: var(--gallery-ink) !important;
+}
+
+.app-shell.design-gallery .product-card .food-photo::after {
+  background: linear-gradient(180deg, transparent 30%, rgba(246, 241, 230, .12) 53%, rgba(246, 241, 230, .95) 100%) !important;
+}
+
+.app-shell.design-gallery .product-card .product-title h3,
+.app-shell.design-gallery .product-card .product-body > p { color: var(--gallery-ink) !important; text-shadow: none !important; }
+.app-shell.design-gallery .product-card .product-footer > strong { color: #a8612b !important; text-shadow: none !important; }
+.app-shell.design-gallery .product-card .add,
+.app-shell.design-gallery .product-card .stepper {
+  color: var(--gallery-ink) !important;
+  background: rgba(251, 247, 238, .5) !important;
+  border-color: rgba(23, 54, 47, .28) !important;
+}
+
+.app-shell.design-gallery .product-modal-card { background: #f5f0e6 !important; }
+.app-shell.design-gallery .product-modal .modal-content { color: var(--gallery-ink) !important; background: rgba(245, 240, 230, .92) !important; }
+.app-shell.design-gallery .product-modal .modal-content > p { color: rgba(23, 54, 47, .68) !important; }
+
+/* 4 — Cinematic Menu: deeper contrast, large photography and slower focus. */
+.app-shell.design-cinematic {
+  background: radial-gradient(circle at 86% 5%, #294a4d 0, #101f29 32%, #09131b 72%) !important;
+}
+
+.app-shell.design-cinematic .qr-premium-hero.hero {
+  box-shadow: 0 28px 70px rgba(0, 0, 0, .34) !important;
+}
+
+.app-shell.design-cinematic .qr-premium-hero .hero-sky::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  display: block !important;
+  background: linear-gradient(90deg, rgba(3, 10, 15, .44), rgba(3, 10, 15, .06) 70%, rgba(3, 10, 15, .26));
+}
+
+.app-shell.design-cinematic .qr-design-dock,
+.app-shell.design-cinematic .main-nav,
+.app-shell.design-cinematic .categories,
+.app-shell.design-cinematic .menu-view-toggle {
+  color: #fff;
+  background: rgba(5, 18, 26, .72) !important;
+  border-color: rgba(255, 255, 255, .15) !important;
+  box-shadow: 0 18px 42px rgba(0, 0, 0, .26) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(120%) !important;
+  backdrop-filter: blur(20px) saturate(120%) !important;
+}
+
+.app-shell.design-cinematic .qr-design-dock button,
+.app-shell.design-cinematic .main-nav button,
+.app-shell.design-cinematic .categories button { color: rgba(255, 255, 255, .7) !important; }
+.app-shell.design-cinematic .qr-design-dock button.active,
+.app-shell.design-cinematic .main-nav button.active,
+.app-shell.design-cinematic .categories button.active { color: #07141d !important; background: #e8b875 !important; }
+.app-shell.design-cinematic .product-card { box-shadow: 0 22px 54px rgba(0, 0, 0, .28) !important; }
+.app-shell.design-cinematic .product-card .food-photo::after {
+  background: linear-gradient(180deg, rgba(0, 0, 0, .03) 26%, rgba(2, 8, 12, .16) 48%, rgba(1, 6, 10, .97) 100%) !important;
+}
+.app-shell.design-cinematic .product-card .product-title h3 { font-family: Georgia, "Times New Roman", serif !important; letter-spacing: -.025em !important; }
+.app-shell.design-cinematic .product-card .product-footer > strong { color: #e8b875 !important; }
+.app-shell.design-cinematic .product-card:hover .food-photo img { transform: scale(1.055); filter: contrast(1.06) saturate(1.12); }
+
+@media (max-width: 680px) {
+  .qr-design-dock {
+    grid-template-columns: repeat(4, 78px);
+    justify-content: start;
+    width: min(336px, calc(100% - 24px));
+    margin-top: -14px;
+    border-radius: 19px;
+  }
+
+  .qr-design-dock button { min-height: 38px; padding: 7px 8px; border-radius: 14px; }
+  .qr-design-dock button span { font-size: 15px; }
+  .qr-design-dock button b { font-size: 10px; }
+  .qr-design-dock + .main-nav { margin-top: 8px !important; }
+
+  .app-shell.design-gallery .qr-premium-hero.hero {
+    border-width: 6px !important;
+    border-radius: 0 0 30px 30px !important;
+  }
+
+  .app-shell.design-cinematic .qr-premium-hero .hero-reference-title {
+    font-family: Georgia, "Times New Roman", serif !important;
+    font-size: 25px !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-shell .product-grid,
+  .app-shell .product-card,
+  .app-shell .product-card.is-added,
+  .product-modal,
+  .product-modal-card,
+  .product-modal-card .modal-photo img { animation-duration: .01ms !important; animation-delay: 0ms !important; }
+}
