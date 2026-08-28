@@ -323,6 +323,9 @@ function getBakuDayPhase(hour = getBakuHour()) {
   return "night";
 }
 export default function QRMenu() {
+  // Public demo keeps every guest interaction local: it never creates orders,
+  // calls staff or sends authentication codes.
+  const isDemo = new URLSearchParams(window.location.search).get("demo") === "1" || window.location.pathname === "/demo-qr-menu";
   const [branch, setBranch] = useState("BC1");
   const [table, setTable] = useState("");
   const [screen, setScreen] = useState("menu");
@@ -390,7 +393,7 @@ export default function QRMenu() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     setBranch(params.get("branch") || "BC1");
-    setTable(params.get("table") || "");
+    setTable(params.get("table") || (params.get("demo") === "1" || window.location.pathname === "/demo-qr-menu" ? "DEMO" : ""));
   }, []);
   useEffect(() => {
     let active = true;
@@ -811,6 +814,21 @@ export default function QRMenu() {
   async function sendOrder() {
     if (!cart.length || busy) return;
     if (!table) return flash(t.scanTable);
+    if (isDemo) {
+      setOrder({
+        public_token: "demo-order",
+        status: "new",
+        items: cart.map((line) => ({ ...line, quantity: line.qty })),
+        total_amount: cartTotal,
+        bonus_reserved: 0,
+        payable_amount: cartTotal
+      });
+      setCart([]);
+      setBonusRequest(0);
+      setScreen("bill");
+      flash("Демо-заказ создан — в RMS Pro ничего не отправлено");
+      return;
+    }
     setBusy(true);
     const { data, error } = await supabase.rpc("qr_create_order", {
       p_branch_code: branch,
@@ -838,6 +856,7 @@ export default function QRMenu() {
     flash("\u0421\u043F\u0438\u0441\u0430\u043D\u0438\u0435 \u0431\u043E\u043D\u0443\u0441\u043E\u0432 \u043E\u0442\u043C\u0435\u043D\u0435\u043D\u043E");
   }
   async function sendOtp() {
+    if (isDemo) return flash("Loyalty недоступен в демо-режиме");
     const normalized = phone.replace(/\s+/g, "");
     if (!/^\+994\d{9}$/.test(normalized)) return flash("\u0412\u0432\u0435\u0434\u0438\u0442\u0435 \u043D\u043E\u043C\u0435\u0440 \u0432 \u0444\u043E\u0440\u043C\u0430\u0442\u0435 +994XXXXXXXXX");
     setBusy(true);
@@ -848,6 +867,7 @@ export default function QRMenu() {
     flash("\u041A\u043E\u0434 \u043E\u0442\u043F\u0440\u0430\u0432\u043B\u0435\u043D");
   }
   async function verifyOtp() {
+    if (isDemo) return flash("Loyalty недоступен в демо-режиме");
     setBusy(true);
     const { error } = await supabase.auth.verifyOtp({ phone: phone.replace(/\s+/g, ""), token: otp, type: "sms" });
     setBusy(false);
@@ -858,6 +878,10 @@ export default function QRMenu() {
     flash("\u0412\u0445\u043E\u0434 \u0432\u044B\u043F\u043E\u043B\u043D\u0435\u043D");
   }
   async function callWaiter(kind = "waiter") {
+    if (isDemo) {
+      flash(kind === "payment" ? "Демо: запрос счёта не отправлен" : "Демо: вызов официанта не отправлен");
+      return;
+    }
     const { error } = await supabase.rpc("qr_create_waiter_call", {
       p_branch_code: branch,
       p_table_code: table,
@@ -885,6 +909,7 @@ export default function QRMenu() {
         </div>
         <div className="hero-topline">
           <div className="brand-mark">BARISTA<span>&amp;</span>CHEF</div>
+          {isDemo && <span className="demo-badge">DEMO</span>}
           <div className="language-switch" role="group" aria-label="Language selection">
             <button className={language === "az" ? "active" : ""} onClick={() => setLanguage("az")}>AZ</button>
             <button className={language === "ru" ? "active" : ""} onClick={() => setLanguage("ru")}>RU</button>
