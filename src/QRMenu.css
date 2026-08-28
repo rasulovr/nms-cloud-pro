@@ -6166,52 +6166,38 @@ body {
   }
 }
 
-/* Keep the dish interaction rules last: only animation changes, no layout/theme change. */
-.app-shell .product-card:has(.food-photo:active),
-.app-shell .product-card.is-selected {
-  transform: scale(.972) !important;
-  filter: none !important;
-}
-
-.app-shell .product-card:has(.food-photo:active)::after,
-.app-shell .product-card.is-selected::after {
-  opacity: 1 !important;
-  background: rgba(4, 10, 8, .46) !important;
-}
-
-.app-shell .product-card.is-selected .food-photo img {
-  transform: scale(1.015) !important;
-  filter: none !important;
-}
-
 .product-modal {
-  background: rgba(4, 11, 9, .56) !important;
+  background: rgba(4, 11, 9, .42) !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
-  animation: qrDishBackdropIn .4s cubic-bezier(.2, .72, .3, 1) both !important;
+  animation: qrDishBackdropIn .42s ease-out both !important;
 }
 
 .product-modal-card {
-  animation: qrDishSheetIn .52s cubic-bezier(.2, .8, .24, 1) both !important;
-  will-change: transform, opacity;
+  animation: qrDishFadeIn .48s ease-out both !important;
+  will-change: opacity;
 }
 
-.product-modal .modal-photo { animation: qrDishPhotoIn .46s cubic-bezier(.2, .75, .25, 1) .13s both; }
-.product-modal .modal-content { animation: qrDishContentIn .42s cubic-bezier(.2, .75, .25, 1) .18s both; }
+.product-modal .modal-photo,
+.product-modal .modal-content { animation: none !important; }
 .product-modal.is-closing { animation: qrDishBackdropOut .4s ease-in both !important; }
-.product-modal.is-closing .product-modal-card { animation: qrDishSheetOut .44s cubic-bezier(.5, 0, .84, .15) both !important; }
+.product-modal.is-closing .product-modal-card { animation: qrDishFadeOut .38s ease-in both !important; }
 
-@media (max-width: 680px) {
-  .product-modal-card { animation: qrDishSheetInMobile .58s cubic-bezier(.2, .8, .24, 1) both !important; }
-  .product-modal.is-closing .product-modal-card { animation: qrDishSheetOutMobile .46s cubic-bezier(.5, 0, .84, .15) both !important; }
+@keyframes qrDishFadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes qrDishFadeOut { from { opacity: 1; } to { opacity: 0; } }
+
+/* Selecting a dish must leave the menu card completely unchanged. */
+.app-shell .product-card:active,
+.app-shell .product-card:has(.food-photo:active) {
+  transform: translateZ(0) !important;
+  filter: none !important;
 }
 
-@keyframes qrDishSheetInMobile {
-  from { opacity: 0; transform: translate3d(0, 86vh, 0); }
-  to { opacity: 1; transform: translate3d(0, 0, 0); }
+.app-shell .product-card:active::after,
+.app-shell .product-card:has(.food-photo:active)::after {
+  opacity: 0 !important;
 }
 
-@keyframes qrDishSheetOutMobile {
-  from { opacity: 1; transform: translate3d(0, 0, 0); }
-  to { opacity: 0; transform: translate3d(0, 72vh, 0); }
+.app-shell .product-card:has(.food-photo:active) .food-photo::after {
+  background: linear-gradient(180deg, rgba(3, 5, 4, .06) 40%, rgba(3, 5, 4, .18) 56%, rgba(3, 5, 4, .9) 100%) !important;
 }
