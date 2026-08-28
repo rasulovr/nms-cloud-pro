@@ -5630,3 +5630,52 @@ body {
     bottom: 12px !important;
   }
 }
+
+/* Keep mobile quantity and order actions visually separate on narrow screens. */
+@media (max-width: 680px) {
+  .product-modal .modal-buy {
+    grid-template-columns: minmax(118px, .82fr) minmax(0, 1.18fr) !important;
+    column-gap: 18px !important;
+    padding-inline: 18px !important;
+  }
+
+  .product-modal .modal-stepper {
+    width: 100% !important;
+    min-width: 0 !important;
+    grid-template-columns: 44px minmax(30px, 1fr) 44px !important;
+    overflow: visible !important;
+    background: transparent !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+  }
+
+  .product-modal .modal-stepper button {
+    box-sizing: border-box !important;
+    width: 43px !important;
+    height: 43px !important;
+  }
+
+  .product-modal .modal-add-button {
+    box-sizing: border-box !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    gap: 6px !important;
+    padding-inline: 10px !important;
+    overflow: hidden !important;
+    white-space: nowrap !important;
+  }
+}
+
+@media (max-width: 360px) {
+  .product-modal .modal-buy {
+    grid-template-columns: 116px minmax(0, 1fr) !important;
+    column-gap: 14px !important;
+    padding-inline: 14px !important;
+  }
+
+  .product-modal .modal-add-button {
+    font-size: 13px !important;
+  }
+}
