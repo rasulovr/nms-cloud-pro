@@ -6015,3 +6015,19 @@ body {
     bottom: 12px !important;
   }
 }
+
+
+/* Fix the legacy top coordinate so the Gradient text block is anchored only to the bottom. */
+.app-shell.menu-view-list .product-card .product-title {
+  top: auto !important;
+  height: auto !important;
+  min-height: 0 !important;
+  transform: none !important;
+}
+
+@media (max-width: 680px) {
+  .app-shell.menu-view-list .product-card .product-title {
+    top: auto !important;
+    height: auto !important;
+  }
+}
