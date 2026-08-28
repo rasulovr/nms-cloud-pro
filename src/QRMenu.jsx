@@ -5,6 +5,7 @@ import { formatMenuDescription, normalizeReferenceText, resolveReferenceMenuProd
 import { resolveRecoveredMenuImage, useRecoveredImageFallback } from "./recoveredMenuImages";
 import "./QRMenu.css";
 import "./QRMenuSchedule.css";
+import "./QRMenuEditorialHeader.css";
 const categoryOrder = {
   breakfast: ["ЗАВТРАК", "КОФЕ", "САЛАТЫ", "ЧАЙ", "ХОЛОДНЫЙ КОФЕ", "ДЕСЕРТЫ", "ЗАКУСКИ", "ГОРЯЧИЕ БЛЮДА", "СУПЫ", "ПИЦЦА", "ЛИМОНАДЫ", "ХОЛОДНЫЕ НАПИТКИ", "Новинки", "EKSTRA KITCHEN", "EKSTRA BAR"],
   lunch: ["САЛАТЫ", "БУРГЕРЫ", "СЭНДВИЧИ", "ЗАКУСКИ", "ГОРЯЧИЕ БЛЮДА", "ЛИМОНАДЫ", "ХОЛОДНЫЕ НАПИТКИ", "ПИЦЦА", "СУПЫ", "ЗАВТРАК", "ДЕСЕРТЫ", "КОФЕ", "ХОЛОДНЫЙ КОФЕ", "ЧАЙ", "Новинки", "EKSTRA KITCHEN", "EKSTRA BAR"],
@@ -891,16 +892,12 @@ export default function QRMenu() {
             <button className={language === "en" ? "active" : ""} onClick={() => setLanguage("en")}>EN</button>
           </div>
         </div>
-        <div className="hero-reference-copy">
-          <div className="hero-reference-kicker">{t.quote}</div>
-          <div className="hero-reference-title">{t.quoteLines?.[new Date().getDate() % t.quoteLines.length] || "У дня должен быть вкус."}</div>
-          </div>
-        <div className="hero-reference-weather" aria-label={weatherTitle}>
-          <span className="hero-reference-cloud" aria-hidden="true">☁</span>
-          <strong>{weather ? Math.round(weather.temperature) : 18}°</strong>
-          <i />
-          <span>Baku · {weatherTitle}</span>
+        <div className="hero-editorial-copy">
+          <span>{hasTableContext ? `${t.table} ${table}` : displayBranchName(branch)}</span>
+          <strong>{t.menu}</strong>
+          <i aria-hidden="true" />
         </div>
+        <div className="hero-editorial-mark" aria-hidden="true"><i /><i /><i /></div>
       </header>
 
       <nav className="main-nav" aria-label="Разделы QR Menu">
