@@ -6201,3 +6201,11 @@ body {
 .app-shell .product-card:has(.food-photo:active) .food-photo::after {
   background: linear-gradient(180deg, rgba(3, 5, 4, .06) 40%, rgba(3, 5, 4, .18) 56%, rgba(3, 5, 4, .9) 100%) !important;
 }
+
+/* Preview test: show the requested dish transition even when iOS Reduce Motion is enabled. */
+@media (prefers-reduced-motion: reduce) {
+  .product-modal { animation-duration: .42s !important; }
+  .product-modal-card { animation-duration: .48s !important; }
+  .product-modal.is-closing { animation-duration: .4s !important; }
+  .product-modal.is-closing .product-modal-card { animation-duration: .38s !important; }
+}
