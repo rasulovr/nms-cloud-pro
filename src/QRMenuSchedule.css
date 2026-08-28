@@ -688,3 +688,16 @@
     transform: scale(.975) !important;
   }
 }
+
+
+/* The food photography is the card: leave spacing and rounding, remove its frame. */
+@media (max-width: 680px) {
+  .app-shell .product-card {
+    border: 0 !important;
+    box-shadow: none !important;
+  }
+
+  .app-shell .product-card:hover {
+    box-shadow: none !important;
+  }
+}
