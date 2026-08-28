@@ -1,6 +1,10 @@
 {
   "rewrites": [
     {
+      "source": "/demo-qr-menu",
+      "destination": "/index.html?qr=menu&demo=1"
+    },
+    {
       "source": "/privacy",
       "destination": "/privacy.html"
     },
