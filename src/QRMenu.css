@@ -4959,3 +4959,674 @@ body {
     bottom: auto !important;
   }
 }
+
+/* RMS QR visual menu v5: two cinematic dishes per row with tap-to-focus sheet. */
+.app-shell .content:has(.product-grid) {
+  max-width: 940px !important;
+}
+
+.app-shell .product-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 18px !important;
+}
+
+.app-shell .product-card {
+  position: relative !important;
+  isolation: isolate !important;
+  aspect-ratio: .88 / 1 !important;
+  overflow: hidden !important;
+  color: #fff !important;
+  background: #111 !important;
+  border: 1px solid rgba(255, 255, 255, .12) !important;
+  border-radius: 28px !important;
+  box-shadow: 0 18px 42px rgba(10, 14, 12, .14) !important;
+  transform: translateZ(0) !important;
+  transition: transform .22s ease, box-shadow .22s ease, filter .22s ease !important;
+}
+
+.app-shell .product-card:hover {
+  transform: translateY(-3px) !important;
+  box-shadow: 0 24px 52px rgba(10, 14, 12, .2) !important;
+}
+
+.app-shell .product-card:active {
+  transform: scale(.985) !important;
+  filter: brightness(.84) !important;
+}
+
+.app-shell .product-card .food-photo {
+  position: absolute !important;
+  z-index: 0 !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  aspect-ratio: auto !important;
+  border-radius: inherit !important;
+  background: #1d211f !important;
+}
+
+.app-shell .product-card .food-photo::after {
+  content: "";
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(3, 5, 4, .06) 40%, rgba(3, 5, 4, .18) 56%, rgba(3, 5, 4, .9) 100%);
+}
+
+.app-shell .product-card .food-photo img,
+.app-shell .product-card .food-photo img.cold-drink-photo,
+.app-shell .product-card .food-photo img.lemonade-photo,
+.app-shell .product-card .food-photo img.water-bottle-photo {
+  width: 100% !important;
+  height: 100% !important;
+  max-height: none !important;
+  object-fit: cover !important;
+  object-position: center !important;
+  transition: transform .45s cubic-bezier(.2, .7, .2, 1), filter .22s ease !important;
+}
+
+.app-shell .product-card:hover .food-photo img {
+  transform: scale(1.035) !important;
+}
+
+.app-shell .product-card .zoom-hint {
+  display: none !important;
+}
+
+.app-shell .product-card .card-rating {
+  position: absolute;
+  z-index: 4;
+  top: 16px;
+  left: 16px;
+  min-width: 58px;
+  height: 54px;
+  padding: 0 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  color: #fff;
+  background: rgba(35, 35, 34, .44);
+  border: 1px solid rgba(255, 255, 255, .18);
+  border-radius: 17px;
+  font-size: 15px;
+  font-weight: 650;
+  line-height: 1;
+  pointer-events: none;
+  backdrop-filter: blur(16px) saturate(120%);
+}
+
+.app-shell .product-card .card-rating > span {
+  font-size: 31px;
+  font-weight: 300;
+  line-height: .8;
+}
+
+.app-shell .product-card .product-body {
+  position: absolute !important;
+  z-index: 3 !important;
+  inset: 0 !important;
+  min-height: 0 !important;
+  padding: 18px !important;
+  display: block !important;
+  pointer-events: none !important;
+}
+
+.app-shell .product-card .product-title {
+  position: absolute;
+  left: 18px;
+  right: 18px;
+  bottom: 56px;
+  display: block;
+}
+
+.app-shell .product-card .product-title h3 {
+  margin: 0 !important;
+  color: #fff !important;
+  font-family: inherit !important;
+  font-size: clamp(18px, 2.6vw, 28px) !important;
+  font-weight: 620 !important;
+  line-height: 1.12 !important;
+  letter-spacing: -.025em !important;
+  text-shadow: 0 2px 15px rgba(0, 0, 0, .48) !important;
+}
+
+.app-shell .product-card .product-body > p,
+.app-shell .product-card .product-options {
+  display: none !important;
+}
+
+.app-shell .product-card .product-footer {
+  position: static !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  pointer-events: none !important;
+}
+
+.app-shell .product-card .product-footer > strong {
+  position: absolute;
+  left: 18px;
+  bottom: 19px;
+  color: #fff !important;
+  font-size: clamp(18px, 2.5vw, 26px) !important;
+  font-weight: 720 !important;
+  line-height: 1 !important;
+  text-shadow: 0 2px 15px rgba(0, 0, 0, .48) !important;
+}
+
+.app-shell .product-card .add,
+.app-shell .product-card .stepper {
+  position: absolute !important;
+  z-index: 5 !important;
+  top: 16px !important;
+  right: 16px !important;
+  margin: 0 !important;
+  pointer-events: auto !important;
+}
+
+.app-shell .product-card .add {
+  min-width: 54px !important;
+  width: 54px !important;
+  height: 54px !important;
+  padding: 0 !important;
+  color: #fff !important;
+  background: rgba(35, 35, 34, .54) !important;
+  border: 1px solid rgba(255, 255, 255, .18) !important;
+  border-radius: 17px !important;
+  box-shadow: none !important;
+  backdrop-filter: blur(16px) saturate(120%) !important;
+}
+
+.app-shell .product-card .add b {
+  display: none !important;
+}
+
+.app-shell .product-card .add span {
+  width: auto !important;
+  height: auto !important;
+  color: #fff !important;
+  background: transparent !important;
+  border-radius: 0 !important;
+  font-size: 38px !important;
+  font-weight: 300 !important;
+}
+
+.app-shell .product-card .stepper {
+  height: 54px !important;
+  padding: 4px !important;
+  gap: 2px !important;
+  color: #fff !important;
+  background: rgba(35, 35, 34, .58) !important;
+  border: 1px solid rgba(255, 255, 255, .18) !important;
+  border-radius: 17px !important;
+  backdrop-filter: blur(16px) saturate(120%) !important;
+}
+
+.app-shell .product-card .stepper button {
+  color: #fff !important;
+  background: rgba(255, 255, 255, .14) !important;
+  border-color: transparent !important;
+}
+
+.app-shell .product-card .stepper b {
+  color: #fff !important;
+}
+
+.product-modal {
+  background: rgba(2, 5, 4, .78) !important;
+  backdrop-filter: blur(18px) saturate(82%) !important;
+  animation: qrBackdropIn .22s ease both !important;
+}
+
+.product-modal-card {
+  animation: qrDishFocusIn .3s cubic-bezier(.2, .78, .2, 1) both !important;
+}
+
+@keyframes qrBackdropIn {
+  from { opacity: 0; backdrop-filter: blur(0) saturate(100%); }
+}
+
+@keyframes qrDishFocusIn {
+  from { opacity: 0; transform: translateY(18px) scale(.965); }
+}
+
+@media (max-width: 680px) {
+  .app-shell .content:has(.product-grid) {
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+  }
+
+  .app-shell .product-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+  }
+
+  .app-shell .product-card {
+    aspect-ratio: .82 / 1 !important;
+    border-radius: 20px !important;
+  }
+
+  .app-shell .product-card .card-rating {
+    top: 10px;
+    left: 10px;
+    min-width: 42px;
+    height: 42px;
+    padding: 0 9px;
+    border-radius: 13px;
+    font-size: 11px;
+  }
+
+  .app-shell .product-card .card-rating > span { font-size: 25px; }
+  .app-shell .product-card .product-body { padding: 12px !important; }
+  .app-shell .product-card .product-title { left: 12px; right: 12px; bottom: 43px; }
+  .app-shell .product-card .product-title h3 { font-size: clamp(15px, 4.6vw, 20px) !important; }
+  .app-shell .product-card .product-footer > strong { left: 12px; bottom: 14px; font-size: 17px !important; }
+
+  .app-shell .product-card .add,
+  .app-shell .product-card .stepper {
+    top: 10px !important;
+    right: 10px !important;
+    height: 42px !important;
+    border-radius: 13px !important;
+  }
+
+  .app-shell .product-card .add {
+    min-width: 42px !important;
+    width: 42px !important;
+  }
+
+  .app-shell .product-card .add span { font-size: 31px !important; }
+  .app-shell .product-card .stepper button { width: 25px !important; height: 30px !important; }
+  .app-shell .product-card .stepper b { min-width: 14px !important; font-size: 11px !important; }
+}
+
+
+/* QR dish sheet: tactile product cards and a focused mobile order view. */
+.app-shell .product-card::after {
+  content: "";
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  background: rgba(0, 0, 0, .38);
+  transition: opacity .16s ease;
+}
+
+.app-shell .product-card:active::after { opacity: 1; }
+
+.modal-rating {
+  position: absolute;
+  z-index: 6;
+  top: 20px;
+  left: 20px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 58px;
+  height: 52px;
+  padding: 0 14px;
+  color: #fff;
+  background: rgba(26, 27, 26, .55);
+  border: 1px solid rgba(255, 255, 255, .15);
+  border-radius: 18px;
+  font-size: 16px;
+  font-weight: 750;
+  backdrop-filter: blur(18px) saturate(110%);
+}
+
+.modal-rating > span { font-size: 32px; font-weight: 300; line-height: 1; }
+
+.modal-close {
+  z-index: 7 !important;
+  display: grid !important;
+  place-items: center !important;
+  width: 52px !important;
+  height: 52px !important;
+  padding: 0 !important;
+  color: #fff !important;
+  background: rgba(26, 27, 26, .55) !important;
+  border: 1px solid rgba(255, 255, 255, .15) !important;
+  border-radius: 18px !important;
+  box-shadow: none !important;
+  font-size: 42px !important;
+  font-weight: 250 !important;
+  line-height: 1 !important;
+  backdrop-filter: blur(18px) saturate(110%);
+}
+
+.modal-category {
+  display: block;
+  margin-bottom: 8px;
+  color: rgba(255, 255, 255, .54);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+}
+
+.modal-price {
+  display: block;
+  margin: 10px 0 23px;
+  color: #f3a23e;
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -.035em;
+}
+
+.modal-stepper {
+  display: inline-grid;
+  grid-template-columns: 54px minmax(38px, 1fr) 54px;
+  align-items: center;
+  min-width: 186px;
+  height: 62px;
+  overflow: hidden;
+  color: #fff;
+  background: #101010;
+  border: 1px solid rgba(255, 255, 255, .13);
+  border-radius: 999px;
+}
+
+.modal-stepper button {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  margin: 0 auto;
+  padding: 0;
+  color: #fff;
+  background: rgba(255, 255, 255, .08);
+  border: 0;
+  border-radius: 50%;
+  font-size: 34px;
+  font-weight: 300;
+  line-height: 1;
+}
+
+.modal-stepper button:disabled { opacity: .3; }
+.modal-stepper b { text-align: center; font-size: 22px; }
+
+.modal-add-button {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  min-height: 62px;
+  padding: 0 23px !important;
+  color: #fff !important;
+  background: #3cc5c9 !important;
+  border: 0 !important;
+  border-radius: 999px !important;
+  box-shadow: none !important;
+  font-size: 16px !important;
+  font-weight: 800 !important;
+}
+
+.modal-add-button b { font-size: inherit; }
+
+@media (max-width: 680px) {
+  .product-modal {
+    z-index: 700 !important;
+    display: block !important;
+    padding: 0 !important;
+    background: rgba(0, 0, 0, .78) !important;
+    backdrop-filter: blur(12px) saturate(80%) !important;
+  }
+
+  .product-modal-card {
+    width: 100% !important;
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+    color: #fff !important;
+    background: #101010 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+  }
+
+  .product-modal .modal-photo {
+    position: relative !important;
+    flex: 0 0 min(54dvh, 520px) !important;
+    width: 100% !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    overflow: hidden;
+    border-radius: 0 0 28px 28px !important;
+    background: #2a2a2a;
+  }
+
+  .product-modal .modal-photo::before,
+  .product-modal .modal-photo::after { display: none !important; }
+
+  .product-modal .modal-photo img {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+    transform: none !important;
+  }
+
+  .product-modal .modal-close { position: absolute !important; top: 22px !important; right: 22px !important; }
+  .product-modal .modal-rating { top: 22px; left: 22px; }
+
+  .product-modal .modal-content {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    padding: 28px 25px 145px !important;
+    overflow-y: auto !important;
+    color: #fff !important;
+    background: #101010 !important;
+  }
+
+  .product-modal .modal-content h2 {
+    margin: 0 !important;
+    color: #fff !important;
+    font-size: clamp(29px, 8vw, 39px) !important;
+    font-weight: 720 !important;
+    letter-spacing: -.045em !important;
+    line-height: 1.03 !important;
+  }
+
+  .product-modal .modal-content > p {
+    max-width: 31ch;
+    margin: 0 !important;
+    color: rgba(255, 255, 255, .58) !important;
+    font-size: 17px !important;
+    line-height: 1.45 !important;
+  }
+
+  .product-modal .modal-options { margin-top: 17px !important; }
+  .product-modal .pairings { display: none !important; }
+
+  .product-modal .modal-buy {
+    position: fixed !important;
+    z-index: 10 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    display: grid !important;
+    grid-template-columns: minmax(0, .72fr) minmax(0, 1.28fr) !important;
+    gap: 12px !important;
+    margin: 0 !important;
+    padding: 15px 22px calc(15px + env(safe-area-inset-bottom)) !important;
+    background: rgba(16, 16, 16, .96) !important;
+    border: 0 !important;
+    box-shadow: 0 -12px 32px rgba(0, 0, 0, .2);
+  }
+
+  .product-modal .modal-add-button { min-width: 0; min-height: 58px; padding: 0 14px !important; font-size: 14px !important; }
+  .product-modal .modal-stepper { min-width: 0; height: 58px; grid-template-columns: 44px minmax(27px, 1fr) 44px; }
+  .product-modal .modal-stepper button { width: 43px; height: 43px; font-size: 30px; }
+  .product-modal .modal-stepper b { font-size: 18px; }
+}
+
+
+/* Make selection controls read as glass, and make a press unmistakable before the dish sheet opens. */
+.app-shell .product-card .add,
+.app-shell .product-card .stepper {
+  background: rgba(255, 255, 255, .28) !important;
+  border-color: rgba(255, 255, 255, .38) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .18) !important;
+  backdrop-filter: blur(18px) saturate(118%) !important;
+}
+
+.app-shell .product-card .stepper button {
+  background: rgba(19, 22, 21, .26) !important;
+}
+
+.product-modal .modal-close {
+  background: rgba(255, 242, 224, .42) !important;
+  border-color: rgba(255, 255, 255, .5) !important;
+}
+
+.app-shell .product-card:active,
+.app-shell .product-card:has(.food-photo:active) {
+  transform: scale(.955) !important;
+  filter: brightness(.62) saturate(.82) !important;
+  transition-duration: 0ms !important;
+}
+
+.app-shell .product-card:active::after,
+.app-shell .product-card:has(.food-photo:active)::after {
+  opacity: 1 !important;
+  background: rgba(0, 0, 0, .68) !important;
+}
+
+.app-shell .product-card:has(.food-photo:active) .food-photo::after {
+  background: linear-gradient(180deg, rgba(1, 2, 2, .42) 0%, rgba(1, 2, 2, .72) 100%) !important;
+}
+
+
+/* Keep the dish sheet readable on short phone screens and match the controls' glass treatment. */
+@media (max-width: 680px) {
+  .product-modal .modal-content h2,
+  .product-modal .modal-content > p {
+    display: block !important;
+    overflow: visible !important;
+    -webkit-line-clamp: unset !important;
+    -webkit-box-orient: initial !important;
+    white-space: normal !important;
+    text-overflow: clip !important;
+  }
+
+  .product-modal .modal-stepper {
+    background: rgba(255, 255, 255, .12) !important;
+    border: 1px solid rgba(255, 255, 255, .28) !important;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .16) !important;
+    backdrop-filter: blur(18px) saturate(118%) !important;
+  }
+
+  .product-modal .modal-stepper button {
+    background: rgba(255, 255, 255, .2) !important;
+    border: 1px solid rgba(255, 255, 255, .14) !important;
+    color: #fff !important;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .14) !important;
+  }
+}
+
+
+/* All photo actions use light translucent glass — never a solid dark tile. */
+.app-shell .product-card .add,
+.app-shell .product-card .stepper,
+.product-modal .modal-close,
+.product-modal .modal-rating {
+  background: rgba(255, 255, 255, .17) !important;
+  border: 1px solid rgba(255, 255, 255, .46) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .34), 0 8px 22px rgba(0, 0, 0, .12) !important;
+  backdrop-filter: blur(20px) saturate(135%) !important;
+}
+
+.app-shell .product-card .stepper button {
+  background: rgba(255, 255, 255, .14) !important;
+  border-color: rgba(255, 255, 255, .22) !important;
+}
+
+/* The add control intentionally shows the photo through it, rather than tinting it blue. */
+.app-shell .product-card .add,
+.app-shell .product-card .stepper {
+  background-color: transparent !important;
+  background-image: none !important;
+  border-color: rgba(255, 255, 255, .62) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .28), 0 8px 22px rgba(0, 0, 0, .1) !important;
+}
+
+.app-shell .product-card .add span,
+.app-shell .product-card .stepper button {
+  background-color: transparent !important;
+  background-image: none !important;
+}
+
+/* A tangible card-to-dish transition when a guest opens a menu item. */
+.product-modal {
+  animation: qrDishBackdropOpen .34s ease-out both !important;
+}
+
+.product-modal-card {
+  transform-origin: 50% 42% !important;
+  animation: qrDishOpen .46s cubic-bezier(.16, .9, .24, 1) both !important;
+}
+
+@keyframes qrDishBackdropOpen {
+  from { opacity: 0; backdrop-filter: blur(0) saturate(100%); }
+  to { opacity: 1; }
+}
+
+@keyframes qrDishOpen {
+  0% { opacity: 0; transform: translateY(68px) scale(.82); filter: brightness(.8) blur(7px); }
+  62% { opacity: 1; transform: translateY(-4px) scale(1.012); filter: brightness(1) blur(0); }
+  100% { opacity: 1; transform: translateY(0) scale(1); filter: none; }
+}
+
+/* The image lives in a sibling layer, so use pale glass rather than bare transparency. */
+.app-shell .product-card .add,
+.app-shell .product-card .stepper {
+  background: rgba(247, 251, 255, .38) !important;
+  border: 1px solid rgba(255, 255, 255, .7) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .5), 0 9px 24px rgba(4, 18, 31, .16) !important;
+  backdrop-filter: blur(20px) saturate(125%) !important;
+}
+
+.app-shell .product-card .stepper button {
+  background: rgba(255, 255, 255, .16) !important;
+}
+
+/* The compact dish sheet keeps the product name calm and the order area softly rounded. */
+@media (max-width: 680px) {
+  .product-modal .modal-content h2 {
+    font-size: clamp(25px, 6.4vw, 32px) !important;
+    line-height: 1.08 !important;
+  }
+
+  .product-modal .modal-buy {
+    border-radius: 28px 28px 0 0 !important;
+  }
+}
+
+/* Keep the card action as one clean glass button, positioned away from the title. */
+.app-shell .product-card .add,
+.app-shell .product-card .stepper {
+  top: auto !important;
+  right: 16px !important;
+  bottom: 16px !important;
+  background: rgba(247, 251, 255, .18) !important;
+  border-color: rgba(255, 255, 255, .5) !important;
+}
+.app-shell .product-card .add span {
+  width: auto !important;
+  height: auto !important;
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+@media (max-width: 680px) {
+  .app-shell .product-card .add,
+  .app-shell .product-card .stepper {
+    right: 12px !important;
+    bottom: 12px !important;
+  }
+}
