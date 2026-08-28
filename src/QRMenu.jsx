@@ -787,7 +787,7 @@ export default function QRMenu() {
     window.setTimeout(() => {
       setSelectedProduct(product);
       setOpeningProductId(null);
-    }, 110);
+    }, 190);
   }
   function requestCloseProduct() {
     if (!selectedProduct || isProductClosing) return;
@@ -795,7 +795,7 @@ export default function QRMenu() {
     window.setTimeout(() => {
       setSelectedProduct(null);
       setIsProductClosing(false);
-    }, 360);
+    }, 520);
   }
   function addSelectedProductToCart() {
     if (!selectedProduct || unavailable.includes(selectedProduct.id)) return;

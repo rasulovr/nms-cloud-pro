@@ -5899,7 +5899,7 @@ body {
 }
 
 .app-shell .product-card.is-opening {
-  animation: qrDishCardPress .11s cubic-bezier(.18, .9, .3, 1) both !important;
+  animation: qrDishCardPress .19s cubic-bezier(.22, .7, .3, 1) both !important;
 }
 
 .product-modal {
@@ -5962,7 +5962,7 @@ body {
 
 @keyframes qrDishCardPress {
   from { transform: scale(1) !important; filter: brightness(1) !important; }
-  to { transform: scale(.935) !important; filter: brightness(.72) !important; }
+  to { transform: scale(.975) !important; filter: brightness(.82) !important; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -6188,22 +6188,22 @@ body {
   background: rgba(4, 11, 9, .56) !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
-  animation: qrDishBackdropIn .18s ease-out both !important;
+  animation: qrDishBackdropIn .4s cubic-bezier(.2, .72, .3, 1) both !important;
 }
 
 .product-modal-card {
-  animation: qrDishSheetIn .34s cubic-bezier(.16, .84, .24, 1) both !important;
+  animation: qrDishSheetIn .52s cubic-bezier(.2, .8, .24, 1) both !important;
   will-change: transform, opacity;
 }
 
-.product-modal .modal-photo { animation: qrDishPhotoIn .32s cubic-bezier(.2, .75, .25, 1) .06s both; }
-.product-modal .modal-content { animation: qrDishContentIn .28s cubic-bezier(.2, .75, .25, 1) .1s both; }
-.product-modal.is-closing { animation: qrDishBackdropOut .26s ease-in both !important; }
-.product-modal.is-closing .product-modal-card { animation: qrDishSheetOut .28s cubic-bezier(.5, 0, .84, .15) both !important; }
+.product-modal .modal-photo { animation: qrDishPhotoIn .46s cubic-bezier(.2, .75, .25, 1) .13s both; }
+.product-modal .modal-content { animation: qrDishContentIn .42s cubic-bezier(.2, .75, .25, 1) .18s both; }
+.product-modal.is-closing { animation: qrDishBackdropOut .4s ease-in both !important; }
+.product-modal.is-closing .product-modal-card { animation: qrDishSheetOut .44s cubic-bezier(.5, 0, .84, .15) both !important; }
 
 @media (max-width: 680px) {
-  .product-modal-card { animation: qrDishSheetInMobile .38s cubic-bezier(.16, .84, .24, 1) both !important; }
-  .product-modal.is-closing .product-modal-card { animation: qrDishSheetOutMobile .3s cubic-bezier(.5, 0, .84, .15) both !important; }
+  .product-modal-card { animation: qrDishSheetInMobile .58s cubic-bezier(.2, .8, .24, 1) both !important; }
+  .product-modal.is-closing .product-modal-card { animation: qrDishSheetOutMobile .46s cubic-bezier(.5, 0, .84, .15) both !important; }
 }
 
 @keyframes qrDishSheetInMobile {
