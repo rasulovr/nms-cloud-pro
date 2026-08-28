@@ -4989,10 +4989,6 @@ body {
   box-shadow: 0 24px 52px rgba(10, 14, 12, .2) !important;
 }
 
-.app-shell .product-card:active {
-  transform: scale(.985) !important;
-  filter: brightness(.84) !important;
-}
 
 .app-shell .product-card .food-photo {
   position: absolute !important;
@@ -5255,7 +5251,6 @@ body {
   transition: opacity .16s ease;
 }
 
-.app-shell .product-card:active::after { opacity: 1; }
 
 .modal-rating {
   position: absolute;
@@ -5481,23 +5476,6 @@ body {
 .product-modal .modal-close {
   background: rgba(255, 242, 224, .42) !important;
   border-color: rgba(255, 255, 255, .5) !important;
-}
-
-.app-shell .product-card:active,
-.app-shell .product-card:has(.food-photo:active) {
-  transform: scale(.955) !important;
-  filter: brightness(.62) saturate(.82) !important;
-  transition-duration: 0ms !important;
-}
-
-.app-shell .product-card:active::after,
-.app-shell .product-card:has(.food-photo:active)::after {
-  opacity: 1 !important;
-  background: rgba(0, 0, 0, .68) !important;
-}
-
-.app-shell .product-card:has(.food-photo:active) .food-photo::after {
-  background: linear-gradient(180deg, rgba(1, 2, 2, .42) 0%, rgba(1, 2, 2, .72) 100%) !important;
 }
 
 
@@ -5887,6 +5865,14 @@ body {
   .menu-view-toggle {
     align-self: center;
   }
+}
+
+/* Confirmed QR preview motion: the dish card itself never reacts to a tap.
+   The backdrop and open dish window use the independent Web Animations fade. */
+.product-modal,
+.product-modal-card {
+  animation: none !important;
+  opacity: 0;
 }
 
 
