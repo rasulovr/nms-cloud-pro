@@ -947,7 +947,7 @@ export default function QRMenu() {
             {availableProducts.map((product) => {
     const isStopped = unavailable.includes(product.id);
     const qty = cart.find((line) => line.id === product.id)?.qty || 0;
-    return <article className={`product-card ${isStopped ? "stopped" : ""}`} key={product.id}>
+    return <article className={`product-card ${isStopped ? "stopped" : ""} ${selectedProduct?.id === product.id ? "is-selected" : ""}`} key={product.id}>
                   <button className="food-photo" style={photoStyle(product)} type="button" onClick={() => openProduct(product)} aria-label={`${t.openPhoto}: ${product.name}`}>
                     {product.image ? <img className={photoClass(product)} src={product.image} alt={product.name} loading="lazy" onError={useRecoveredImageFallback} /> : <span className="photo-placeholder">B&C</span>}
                     {product.image && <span className="zoom-hint">{t.zoom}</span>}

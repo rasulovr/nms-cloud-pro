@@ -5875,6 +5875,97 @@ body {
   }
 }
 
+/* QR dish interaction: a clear press, then a fast, lightweight sheet.
+   No image blur or brightness transition is used on the selected dish. */
+.app-shell .product-card {
+  will-change: transform;
+}
+
+.app-shell .product-card:has(.food-photo:active),
+.app-shell .product-card.is-selected {
+  transform: scale(.972) !important;
+  filter: none !important;
+}
+
+.app-shell .product-card:has(.food-photo:active)::after,
+.app-shell .product-card.is-selected::after {
+  opacity: 1 !important;
+  background: rgba(4, 10, 8, .46) !important;
+}
+
+.app-shell .product-card.is-selected .food-photo img {
+  transform: scale(1.015) !important;
+  filter: none !important;
+}
+
+.product-modal {
+  background: rgba(4, 11, 9, .56) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  animation: qrDishBackdropIn .18s ease-out both !important;
+}
+
+.product-modal-card {
+  animation: qrDishSheetIn .34s cubic-bezier(.16, .84, .24, 1) both !important;
+  will-change: transform, opacity;
+}
+
+.product-modal .modal-photo {
+  animation: qrDishPhotoIn .32s cubic-bezier(.2, .75, .25, 1) .06s both;
+}
+
+.product-modal .modal-content {
+  animation: qrDishContentIn .28s cubic-bezier(.2, .75, .25, 1) .1s both;
+}
+
+.product-modal.is-closing {
+  animation: qrDishBackdropOut .26s ease-in both !important;
+}
+
+.product-modal.is-closing .product-modal-card {
+  animation: qrDishSheetOut .28s cubic-bezier(.5, 0, .84, .15) both !important;
+}
+
+@keyframes qrDishBackdropIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes qrDishSheetIn {
+  from { opacity: 0; transform: translate3d(0, 46px, 0); }
+  to { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+
+@keyframes qrDishPhotoIn {
+  from { opacity: 0; transform: translate3d(0, 12px, 0); }
+  to { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+
+@keyframes qrDishContentIn {
+  from { opacity: 0; transform: translate3d(0, 14px, 0); }
+  to { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+
+@keyframes qrDishBackdropOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes qrDishSheetOut {
+  from { opacity: 1; transform: translate3d(0, 0, 0); }
+  to { opacity: 0; transform: translate3d(0, 34px, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-shell .product-card,
+  .app-shell .product-card *,
+  .product-modal,
+  .product-modal * {
+    animation-duration: .001ms !important;
+    transition-duration: .001ms !important;
+  }
+}
+
 @media (max-width: 380px) {
   .qr-premium-hero.hero {
     min-height: 250px !important;
@@ -6065,3 +6156,38 @@ body {
     top: 49px !important;
   }
 }
+
+/* Keep the dish interaction rules last: only animation changes, no layout/theme change. */
+.app-shell .product-card:has(.food-photo:active),
+.app-shell .product-card.is-selected {
+  transform: scale(.972) !important;
+  filter: none !important;
+}
+
+.app-shell .product-card:has(.food-photo:active)::after,
+.app-shell .product-card.is-selected::after {
+  opacity: 1 !important;
+  background: rgba(4, 10, 8, .46) !important;
+}
+
+.app-shell .product-card.is-selected .food-photo img {
+  transform: scale(1.015) !important;
+  filter: none !important;
+}
+
+.product-modal {
+  background: rgba(4, 11, 9, .56) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  animation: qrDishBackdropIn .18s ease-out both !important;
+}
+
+.product-modal-card {
+  animation: qrDishSheetIn .34s cubic-bezier(.16, .84, .24, 1) both !important;
+  will-change: transform, opacity;
+}
+
+.product-modal .modal-photo { animation: qrDishPhotoIn .32s cubic-bezier(.2, .75, .25, 1) .06s both; }
+.product-modal .modal-content { animation: qrDishContentIn .28s cubic-bezier(.2, .75, .25, 1) .1s both; }
+.product-modal.is-closing { animation: qrDishBackdropOut .26s ease-in both !important; }
+.product-modal.is-closing .product-modal-card { animation: qrDishSheetOut .28s cubic-bezier(.5, 0, .84, .15) both !important; }
