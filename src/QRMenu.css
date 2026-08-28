@@ -6078,21 +6078,18 @@ body {
 
   .product-modal .modal-add-button {
     display: flex !important;
-    flex-direction: column !important;
-    align-items: flex-start !important;
+    flex-direction: row !important;
+    align-items: center !important;
     justify-content: center !important;
-    gap: 1px !important;
-    padding: 6px 14px !important;
-    font-size: 12px !important;
-    line-height: 1.12 !important;
+    gap: 0 !important;
+    padding: 0 10px !important;
+    font-size: 13px !important;
+    line-height: 1 !important;
   }
 
-  .product-modal .modal-add-button span,
-  .product-modal .modal-add-button b {
+  .product-modal .modal-add-button span {
     flex: 0 0 auto;
     min-width: 0;
     white-space: nowrap;
   }
-
-  .product-modal .modal-add-button b { font-size: 14px; line-height: 1.08; }
 }

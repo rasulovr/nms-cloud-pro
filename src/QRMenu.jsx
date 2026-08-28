@@ -179,7 +179,7 @@ const uiText = {
     information: "Məlumat", hours: "İş saatları", schedule: "B.e.–Şənbə · 09:00–22:00", sunday: "Bazar günü · bağlıdır",
     wifi: "Wi‑Fi", password: "şifrə", branch: "Filial", social: "Sosial şəbəkələr", waiter: "Ofisiant çağır",
     tapWifi: "Şifrəni göstərmək üçün toxunun", wifiCopied: "",
-    add: "Əlavə et", addToOrder: "Sifarişə əlavə et", added: "Əlavə edildi ✓", addedToOrder: "sifarişə əlavə edildi", unavailable: "MÜVƏQQƏTİ YOXDUR", zoom: "Böyüt",
+    add: "Əlavə et", addToOrder: "Sifarişə əlavə et", addToCart: "Səbətə", added: "Əlavə edildi ✓", addedToOrder: "sifarişə əlavə edildi", unavailable: "MÜVƏQQƏTİ YOXDUR", zoom: "Böyüt",
     openPhoto: "Foto və təsviri aç", close: "Bağla", pairsEyebrow: "Uyğun seçimlər", pairsTitle: "Bununla birlikdə seçirlər",
     beforeSending: "Göndərməzdən əvvəl", yourOrder: "Sifarişiniz", emptyCart: "Səbət hələ boşdur",
     emptyCartText: "Menyudan məhsul əlavə edin — onlar burada görünəcək.", goToMenu: "Menyuya keç",
@@ -197,7 +197,7 @@ const uiText = {
     information: "Информация", hours: "Время работы", schedule: "Пн–Сб · 09:00–22:00", sunday: "Воскресенье · закрыто",
     wifi: "Wi‑Fi", password: "пароль", branch: "Филиал", social: "Социальные сети", waiter: "Вызвать официанта",
     tapWifi: "Нажмите, чтобы показать пароль", wifiCopied: "",
-    add: "Добавить", addToOrder: "Добавить в заказ", added: "Добавлено ✓", addedToOrder: "добавлено в заказ", unavailable: "ВРЕМЕННО НЕТ", zoom: "Увеличить",
+    add: "Добавить", addToOrder: "Добавить в заказ", addToCart: "В корзину", added: "Добавлено ✓", addedToOrder: "добавлено в заказ", unavailable: "ВРЕМЕННО НЕТ", zoom: "Увеличить",
     openPhoto: "Открыть фото и описание", close: "Закрыть", pairsEyebrow: "Хорошо сочетается", pairsTitle: "С этим блюдом берут",
     beforeSending: "Перед отправкой", yourOrder: "Ваш заказ", emptyCart: "Корзина пока пуста",
     emptyCartText: "Добавьте блюда из меню — они появятся здесь.", goToMenu: "Перейти в меню",
@@ -215,7 +215,7 @@ const uiText = {
     information: "Information", hours: "Opening hours", schedule: "Mon–Sat · 09:00–22:00", sunday: "Sunday · closed",
     wifi: "Wi‑Fi", password: "password", branch: "Branch", social: "Social media", waiter: "Call a waiter",
     tapWifi: "Tap to reveal password", wifiCopied: "",
-    add: "Add", addToOrder: "Add to Order", added: "Added ✓", addedToOrder: "added to your order", unavailable: "TEMPORARILY UNAVAILABLE", zoom: "Enlarge",
+    add: "Add", addToOrder: "Add to Order", addToCart: "To cart", added: "Added ✓", addedToOrder: "added to your order", unavailable: "TEMPORARILY UNAVAILABLE", zoom: "Enlarge",
     openPhoto: "Open photo and description", close: "Close", pairsEyebrow: "Pairs well with", pairsTitle: "Recommended with this item",
     beforeSending: "Before sending", yourOrder: "Your order", emptyCart: "Your cart is empty",
     emptyCartText: "Add items from the menu and they will appear here.", goToMenu: "Go to menu",
@@ -1107,7 +1107,7 @@ export default function QRMenu() {
                   <button type="button" disabled={unavailable.includes(selectedProduct.id)} onClick={() => setModalQuantity((quantity) => quantity + 1)} aria-label="Increase quantity">+</button>
                 </div>
                 <button className="modal-add-button" disabled={unavailable.includes(selectedProduct.id)} onClick={addSelectedProductToCart}>
-                  <span>{unavailable.includes(selectedProduct.id) ? t.unavailable : t.addToOrder}</span><b>{money(selectedProduct.price * modalQuantity)}</b>
+                  <span>{unavailable.includes(selectedProduct.id) ? t.unavailable : `${t.addToCart}: ${money(selectedProduct.price * modalQuantity)}`}</span>
                 </button>
               </div>
             </div>
