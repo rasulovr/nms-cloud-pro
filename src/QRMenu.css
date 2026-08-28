@@ -6092,4 +6092,12 @@ body {
     min-width: 0;
     white-space: nowrap;
   }
+
+  .product-modal .modal-add-button {
+    border: 0 !important;
+    outline: 0 !important;
+    box-shadow: none !important;
+    -webkit-appearance: none;
+    appearance: none;
+  }
 }
