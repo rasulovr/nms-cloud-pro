@@ -5,6 +5,7 @@ import { formatMenuDescription, normalizeReferenceText, resolveReferenceMenuProd
 import { resolveRecoveredMenuImage, useRecoveredImageFallback } from "./recoveredMenuImages";
 import "./QRMenu.css";
 import "./QRMenuSchedule.css";
+import "./QRMenuWeatherFocus.css";
 const categoryOrder = {
   breakfast: ["ЗАВТРАК", "КОФЕ", "САЛАТЫ", "ЧАЙ", "ХОЛОДНЫЙ КОФЕ", "ДЕСЕРТЫ", "ЗАКУСКИ", "ГОРЯЧИЕ БЛЮДА", "СУПЫ", "ПИЦЦА", "ЛИМОНАДЫ", "ХОЛОДНЫЕ НАПИТКИ", "Новинки", "EKSTRA KITCHEN", "EKSTRA BAR"],
   lunch: ["САЛАТЫ", "БУРГЕРЫ", "СЭНДВИЧИ", "ЗАКУСКИ", "ГОРЯЧИЕ БЛЮДА", "ЛИМОНАДЫ", "ХОЛОДНЫЕ НАПИТКИ", "ПИЦЦА", "СУПЫ", "ЗАВТРАК", "ДЕСЕРТЫ", "КОФЕ", "ХОЛОДНЫЙ КОФЕ", "ЧАЙ", "Новинки", "EKSTRA KITCHEN", "EKSTRA BAR"],

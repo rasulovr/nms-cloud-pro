@@ -14,7 +14,20 @@
   background-size: cover !important;
 }
 
-.qr-premium-hero .hero-sky .weather-visual { display: none !important; }
+.qr-premium-hero .hero-sky .weather-visual {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  display: block !important;
+  overflow: hidden !important;
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  opacity: 1 !important;
+  transform: none !important;
+}
 
 .app-shell.theme-day.weather-theme-sunny .qr-premium-hero .hero-sky,
 .app-shell.theme-day.weather-theme-clear .qr-premium-hero .hero-sky {
@@ -78,6 +91,125 @@
   inset: 0 !important;
   background: linear-gradient(180deg, rgba(7,20,32,.05), rgba(7,20,32,.22)) !important;
 }
+
+.qr-premium-hero .hero-sky .weather-sun,
+.qr-premium-hero .hero-sky .weather-moon {
+  position: absolute !important;
+  z-index: 2 !important;
+  right: 10% !important;
+  left: auto !important;
+  top: 23% !important;
+  display: block !important;
+  width: 68px !important;
+  height: 68px !important;
+  border-radius: 50% !important;
+  animation: qrWeatherOrbFloat 6s ease-in-out infinite !important;
+}
+
+.qr-premium-hero .hero-sky .weather-sun {
+  background: radial-gradient(circle at 37% 34%, #fffdf0 0 8%, #ffe6a2 32%, #f2bd59 67%, #e9aa40 100%) !important;
+  box-shadow: 0 0 32px 13px rgba(255,214,126,.25), 0 0 85px 32px rgba(255,226,157,.16) !important;
+}
+
+.qr-premium-hero .hero-sky .weather-moon {
+  background: radial-gradient(circle at 38% 34%, #fffef6 0 9%, #e8edf1 47%, #bbc6d0 100%) !important;
+  box-shadow: 0 0 27px 9px rgba(221,235,246,.18), 0 0 72px 24px rgba(185,210,230,.12) !important;
+}
+
+.qr-premium-hero .hero-sky .weather-moon::before {
+  content: "" !important;
+  position: absolute !important;
+  inset: 11px 8px 8px 14px !important;
+  display: block !important;
+  border-radius: 50% !important;
+  background:
+    radial-gradient(circle at 28% 31%, rgba(118,137,153,.20) 0 6%, transparent 7%),
+    radial-gradient(circle at 67% 62%, rgba(118,137,153,.16) 0 8%, transparent 9%),
+    radial-gradient(circle at 57% 23%, rgba(118,137,153,.13) 0 5%, transparent 6%) !important;
+}
+
+.qr-premium-hero .hero-sky .weather-cloud {
+  position: absolute !important;
+  z-index: 3 !important;
+  left: -4% !important;
+  top: 25% !important;
+  display: block !important;
+  width: 46% !important;
+  height: 68px !important;
+  background: rgba(235,242,245,.22) !important;
+  border-radius: 999px !important;
+  box-shadow: 0 20px 55px rgba(24,39,53,.08) !important;
+  filter: blur(7px) !important;
+  opacity: .72 !important;
+  animation: qrWeatherCloudOne 17s ease-in-out infinite alternate !important;
+}
+
+.qr-premium-hero .hero-sky .weather-cloud::before,
+.qr-premium-hero .hero-sky .weather-cloud::after {
+  content: "" !important;
+  position: absolute !important;
+  display: block !important;
+  background: inherit !important;
+  border-radius: 50% !important;
+}
+
+.qr-premium-hero .hero-sky .weather-cloud::before {
+  width: 44% !important;
+  height: 150% !important;
+  left: 17% !important;
+  bottom: 4% !important;
+}
+
+.qr-premium-hero .hero-sky .weather-cloud::after {
+  width: 32% !important;
+  height: 112% !important;
+  right: 15% !important;
+  bottom: 2% !important;
+}
+
+.qr-premium-hero .hero-sky .weather-cloud.cloud-two {
+  left: 58% !important;
+  top: 48% !important;
+  width: 36% !important;
+  height: 54px !important;
+  opacity: .42 !important;
+  transform: scale(.86) !important;
+  animation: qrWeatherCloudTwo 21s ease-in-out infinite alternate !important;
+}
+
+.qr-premium-hero .hero-sky .weather-rain {
+  position: absolute !important;
+  z-index: 4 !important;
+  top: 14% !important;
+  display: block !important;
+  width: 2px !important;
+  height: 55% !important;
+  background: linear-gradient(180deg, transparent, rgba(213,234,244,.58), transparent) !important;
+  border-radius: 99px !important;
+  opacity: .5 !important;
+  transform: rotate(12deg) !important;
+  animation: qrWeatherRain 1.6s linear infinite !important;
+}
+
+.qr-premium-hero .hero-sky .rain-one { left: 20% !important; }
+.qr-premium-hero .hero-sky .rain-two { left: 51% !important; animation-delay: -.55s !important; }
+.qr-premium-hero .hero-sky .rain-three { left: 79% !important; animation-delay: -1.05s !important; }
+
+.qr-premium-hero .hero-sky .weather-wind {
+  position: absolute !important;
+  z-index: 4 !important;
+  left: 9% !important;
+  display: block !important;
+  width: 42% !important;
+  height: 28px !important;
+  border-top: 2px solid rgba(235,245,247,.34) !important;
+  border-radius: 50% !important;
+  opacity: .72 !important;
+  animation: qrWeatherWind 3.2s ease-in-out infinite !important;
+}
+
+.qr-premium-hero .hero-sky .wind-one { top: 39% !important; }
+.qr-premium-hero .hero-sky .wind-two { top: 54% !important; left: 42% !important; animation-delay: -1.4s !important; }
 
 .qr-premium-hero .hero-topline {
   position: absolute !important;
@@ -164,6 +296,30 @@
   to { transform: translate3d(2.5%, 3%, 0) scale(1.04); }
 }
 
+@keyframes qrWeatherOrbFloat {
+  50% { transform: translate3d(0, 4px, 0); }
+}
+
+@keyframes qrWeatherCloudOne {
+  from { transform: translate3d(-5%, 0, 0) scale(1); }
+  to { transform: translate3d(18%, 8px, 0) scale(1.06); }
+}
+
+@keyframes qrWeatherCloudTwo {
+  from { transform: translate3d(8%, 0, 0) scale(.86); }
+  to { transform: translate3d(-18%, -5px, 0) scale(.92); }
+}
+
+@keyframes qrWeatherRain {
+  from { translate: 0 -24%; opacity: 0; }
+  18% { opacity: .5; }
+  to { translate: 0 74%; opacity: 0; }
+}
+
+@keyframes qrWeatherWind {
+  50% { transform: translate3d(22px, 4px, 0); opacity: .4; }
+}
+
 @media (max-width: 680px) {
   .qr-premium-hero.hero {
     min-height: 262px !important;
@@ -195,6 +351,27 @@
   }
 
   .qr-premium-hero .hero-reference-weather span:last-child { font-size: 11px !important; }
+
+  .qr-premium-hero .hero-sky .weather-sun,
+  .qr-premium-hero .hero-sky .weather-moon {
+    right: 8% !important;
+    top: 25% !important;
+    width: 54px !important;
+    height: 54px !important;
+  }
+
+  .qr-premium-hero .hero-sky .weather-cloud {
+    top: 32% !important;
+    width: 55% !important;
+    height: 52px !important;
+  }
+
+  .qr-premium-hero .hero-sky .weather-cloud.cloud-two {
+    left: 62% !important;
+    top: 55% !important;
+    width: 42% !important;
+    height: 42px !important;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
