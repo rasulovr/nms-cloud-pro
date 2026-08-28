@@ -327,6 +327,10 @@ export default function QRMenu() {
   const [table, setTable] = useState("");
   const [screen, setScreen] = useState("menu");
   const [category, setCategory] = useState("\u0412\u0441\u0435");
+  const [menuView, setMenuView] = useState(() => {
+    const savedView = window.localStorage.getItem("rms-qr-menu-view");
+    return savedView === "list" ? "list" : "grid";
+  });
   const [wifiPasswordVisible, setWifiPasswordVisible] = useState(false);
   const [cart, setCart] = useState([]);
   const [notice, setNotice] = useState("");
@@ -380,6 +384,9 @@ export default function QRMenu() {
     setCart((current) => current.map((product) => localizeProduct(product, language)));
     setSelectedProduct((current) => current ? localizeProduct(current, language) : current);
   }, [language]);
+  useEffect(() => {
+    window.localStorage.setItem("rms-qr-menu-view", menuView);
+  }, [menuView]);
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     setBranch(params.get("branch") || "BC1");
@@ -871,7 +878,7 @@ export default function QRMenu() {
   const weatherTitle = (dayPhase === "night" ? nightWeatherTitles : weatherTitles)[language][atmosphere];
   const hasTableContext = Boolean(table);
   const recommendationQty = mealRecommendation ? cart.find((line) => line.id === mealRecommendation.product.id)?.qty || 0 : 0;
-  return <main className={`app-shell theme-${dayPhase} weather-theme-${atmosphere}`}>
+  return <main className={`app-shell theme-${dayPhase} weather-theme-${atmosphere} menu-view-${menuView}`}>
       <header className="hero qr-premium-hero">
         <div className="hero-sky" aria-hidden="true">
           {weatherOffer && <WeatherVisual kind={weatherOffer.kind} phase={dayPhase} />}
@@ -913,8 +920,18 @@ export default function QRMenu() {
       {notice && <div className="toast">{notice}</div>}
 
       {screen === "menu" && <section className="content">
-                    <div className="categories">
-            {categories.map((name) => <button className={category === name ? "active" : ""} key={name} onClick={() => setCategory(name)}>{localizeCategory(name, language) || categoryTranslations[language][name] || categoryLabel(name)}</button>)}
+                    <div className="menu-toolbar">
+            <div className="categories">
+              {categories.map((name) => <button className={category === name ? "active" : ""} key={name} onClick={() => setCategory(name)}>{localizeCategory(name, language) || categoryTranslations[language][name] || categoryLabel(name)}</button>)}
+            </div>
+            <div className="menu-view-toggle" role="group" aria-label={language === "ru" ? "Вид меню" : language === "az" ? "Menyu görünüşü" : "Menu view"}>
+              <button type="button" className={menuView === "grid" ? "active" : ""} onClick={() => setMenuView("grid")} aria-pressed={menuView === "grid"} aria-label={language === "ru" ? "По две позиции в ряду" : language === "az" ? "Hər sırada iki mövqe" : "Two items per row"}>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" /><rect x="3" y="14" width="7" height="7" rx="1.5" /><rect x="14" y="14" width="7" height="7" rx="1.5" /></svg>
+              </button>
+              <button type="button" className={menuView === "list" ? "active" : ""} onClick={() => setMenuView("list")} aria-pressed={menuView === "list"} aria-label={language === "ru" ? "По одной позиции в ряду" : language === "az" ? "Hər sırada bir mövqe" : "One item per row"}>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="7" rx="1.5" /><rect x="3" y="14" width="18" height="7" rx="1.5" /></svg>
+              </button>
+            </div>
           </div>
           <div className="product-grid">
             {availableProducts.map((product) => {
