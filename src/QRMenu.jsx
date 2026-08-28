@@ -346,6 +346,7 @@ export default function QRMenu() {
   const [otpSent, setOtpSent] = useState(false);
   const [bonusRequest, setBonusRequest] = useState(0);
   const [selectedProduct, setSelectedProduct] = useState(null);
+  const [openingProductId, setOpeningProductId] = useState(null);
   const [isProductClosing, setIsProductClosing] = useState(false);
   const [modalQuantity, setModalQuantity] = useState(1);
   const [photoFullscreen, setPhotoFullscreen] = useState(false);
@@ -782,7 +783,11 @@ export default function QRMenu() {
   }
   function openProduct(product) {
     setIsProductClosing(false);
-    setSelectedProduct(product);
+    setOpeningProductId(product.id);
+    window.setTimeout(() => {
+      setSelectedProduct(product);
+      setOpeningProductId(null);
+    }, 110);
   }
   function requestCloseProduct() {
     if (!selectedProduct || isProductClosing) return;
@@ -947,7 +952,7 @@ export default function QRMenu() {
             {availableProducts.map((product) => {
     const isStopped = unavailable.includes(product.id);
     const qty = cart.find((line) => line.id === product.id)?.qty || 0;
-    return <article className={`product-card ${isStopped ? "stopped" : ""} ${selectedProduct?.id === product.id ? "is-selected" : ""}`} key={product.id}>
+    return <article className={`product-card ${isStopped ? "stopped" : ""} ${selectedProduct?.id === product.id ? "is-selected" : ""} ${openingProductId === product.id ? "is-opening" : ""}`} key={product.id}>
                   <button className="food-photo" style={photoStyle(product)} type="button" onClick={() => openProduct(product)} aria-label={`${t.openPhoto}: ${product.name}`}>
                     {product.image ? <img className={photoClass(product)} src={product.image} alt={product.name} loading="lazy" onError={useRecoveredImageFallback} /> : <span className="photo-placeholder">B&C</span>}
                     {product.image && <span className="zoom-hint">{t.zoom}</span>}
