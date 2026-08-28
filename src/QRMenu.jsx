@@ -1,10 +1,18 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "./supabase";
 import { localizeCategory, localizeProduct } from "./qrMenuTranslations";
 import { formatMenuDescription, normalizeReferenceText, resolveReferenceMenuProduct } from "./referenceMenuCatalog";
 import { resolveRecoveredMenuImage, useRecoveredImageFallback } from "./recoveredMenuImages";
 import "./QRMenu.css";
 import "./QRMenuSchedule.css";
+
+const qrDesignThemes = [
+  { id: "glass", icon: "◌", labels: { az: "Şüşə", ru: "Стекло", en: "Glass" } },
+  { id: "daypart", icon: "◐", labels: { az: "Vaxt", ru: "Время", en: "Mood" } },
+  { id: "gallery", icon: "□", labels: { az: "Qalereya", ru: "Галерея", en: "Gallery" } },
+  { id: "cinematic", icon: "◆", labels: { az: "Kino", ru: "Кино", en: "Cinema" } }
+];
+
 const categoryOrder = {
   breakfast: ["ЗАВТРАК", "КОФЕ", "САЛАТЫ", "ЧАЙ", "ХОЛОДНЫЙ КОФЕ", "ДЕСЕРТЫ", "ЗАКУСКИ", "ГОРЯЧИЕ БЛЮДА", "СУПЫ", "ПИЦЦА", "ЛИМОНАДЫ", "ХОЛОДНЫЕ НАПИТКИ", "Новинки", "EKSTRA KITCHEN", "EKSTRA BAR"],
   lunch: ["САЛАТЫ", "БУРГЕРЫ", "СЭНДВИЧИ", "ЗАКУСКИ", "ГОРЯЧИЕ БЛЮДА", "ЛИМОНАДЫ", "ХОЛОДНЫЕ НАПИТКИ", "ПИЦЦА", "СУПЫ", "ЗАВТРАК", "ДЕСЕРТЫ", "КОФЕ", "ХОЛОДНЫЙ КОФЕ", "ЧАЙ", "Новинки", "EKSTRA KITCHEN", "EKSTRA BAR"],
@@ -331,6 +339,10 @@ export default function QRMenu() {
     const savedView = window.localStorage.getItem("rms-qr-menu-view");
     return savedView === "list" ? "list" : "grid";
   });
+  const [designTheme, setDesignTheme] = useState(() => {
+    const savedTheme = window.localStorage.getItem("rms-qr-design-theme");
+    return qrDesignThemes.some((theme) => theme.id === savedTheme) ? savedTheme : "glass";
+  });
   const [wifiPasswordVisible, setWifiPasswordVisible] = useState(false);
   const [cart, setCart] = useState([]);
   const [notice, setNotice] = useState("");
@@ -347,6 +359,7 @@ export default function QRMenu() {
   const [bonusRequest, setBonusRequest] = useState(0);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [isProductClosing, setIsProductClosing] = useState(false);
+  const productCloseTimer = useRef(null);
   const [modalQuantity, setModalQuantity] = useState(1);
   const [photoFullscreen, setPhotoFullscreen] = useState(false);
   const [weather, setWeather] = useState(null);
@@ -387,6 +400,12 @@ export default function QRMenu() {
   useEffect(() => {
     window.localStorage.setItem("rms-qr-menu-view", menuView);
   }, [menuView]);
+  useEffect(() => {
+    window.localStorage.setItem("rms-qr-design-theme", designTheme);
+  }, [designTheme]);
+  useEffect(() => () => {
+    if (productCloseTimer.current) window.clearTimeout(productCloseTimer.current);
+  }, []);
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     setBranch(params.get("branch") || "BC1");
@@ -781,15 +800,17 @@ export default function QRMenu() {
     }
   }
   function openProduct(product) {
+    if (productCloseTimer.current) window.clearTimeout(productCloseTimer.current);
     setIsProductClosing(false);
     setSelectedProduct(product);
   }
   function requestCloseProduct() {
     if (!selectedProduct || isProductClosing) return;
     setIsProductClosing(true);
-    window.setTimeout(() => {
+    productCloseTimer.current = window.setTimeout(() => {
       setSelectedProduct(null);
       setIsProductClosing(false);
+      productCloseTimer.current = null;
     }, 360);
   }
   function addSelectedProductToCart() {
@@ -878,7 +899,7 @@ export default function QRMenu() {
   const weatherTitle = (dayPhase === "night" ? nightWeatherTitles : weatherTitles)[language][atmosphere];
   const hasTableContext = Boolean(table);
   const recommendationQty = mealRecommendation ? cart.find((line) => line.id === mealRecommendation.product.id)?.qty || 0 : 0;
-  return <main className={`app-shell theme-${dayPhase} weather-theme-${atmosphere} menu-view-${menuView}`}>
+  return <main className={`app-shell theme-${dayPhase} weather-theme-${atmosphere} menu-view-${menuView} design-${designTheme}`}>
       <header className="hero qr-premium-hero">
         <div className="hero-sky" aria-hidden="true">
           {weatherOffer && <WeatherVisual kind={weatherOffer.kind} phase={dayPhase} />}
@@ -902,6 +923,19 @@ export default function QRMenu() {
           <span>Baku · {weatherTitle}</span>
         </div>
       </header>
+
+      <div className="qr-design-dock" role="group" aria-label={language === "ru" ? "Вариант дизайна" : language === "az" ? "Dizayn variantı" : "Design theme"}>
+        {qrDesignThemes.map((theme) => <button
+          type="button"
+          key={theme.id}
+          className={designTheme === theme.id ? "active" : ""}
+          onClick={() => setDesignTheme(theme.id)}
+          aria-pressed={designTheme === theme.id}
+        >
+          <span aria-hidden="true">{theme.icon}</span>
+          <b>{theme.labels[language]}</b>
+        </button>)}
+      </div>
 
       <nav className="main-nav" aria-label="Разделы QR Menu">
         {[
@@ -943,11 +977,11 @@ export default function QRMenu() {
               </button>
             </div>
           </div>
-          <div className="product-grid">
-            {availableProducts.map((product) => {
+          <div className="product-grid" key={`${category}-${designTheme}-${menuView}`}>
+            {availableProducts.map((product, productIndex) => {
     const isStopped = unavailable.includes(product.id);
     const qty = cart.find((line) => line.id === product.id)?.qty || 0;
-    return <article className={`product-card ${isStopped ? "stopped" : ""}`} key={product.id}>
+    return <article className={`product-card ${isStopped ? "stopped" : ""} ${lastAddedId === product.id ? "is-added" : ""}`} style={{ "--card-index": Math.min(productIndex, 10) }} key={product.id}>
                   <button className="food-photo" style={photoStyle(product)} type="button" onClick={() => openProduct(product)} aria-label={`${t.openPhoto}: ${product.name}`}>
                     {product.image ? <img className={photoClass(product)} src={product.image} alt={product.name} loading="lazy" onError={useRecoveredImageFallback} /> : <span className="photo-placeholder">B&C</span>}
                     {product.image && <span className="zoom-hint">{t.zoom}</span>}
@@ -959,7 +993,7 @@ export default function QRMenu() {
                     {product.options.length > 0 && <div className="product-options">{product.options.map((option) => <small key={option}>{option}</small>)}</div>}
                     <div className="product-footer">
                       <strong>{money(product.price)}</strong>
-                      {qty ? <div className="stepper"><button className="qty-minus" onClick={() => changeQty(product, -1)} aria-label={`− ${product.name}`} /><b>{qty}</b><button className="qty-plus" onClick={() => changeQty(product, 1)} aria-label={`+ ${product.name}`} /></div> : <button className="add" disabled={isStopped} onClick={() => changeQty(product, 1)} aria-label={`${t.add}: ${product.name}`}>
+                      {qty ? <div className={`stepper ${lastAddedId === product.id ? "added" : ""}`}><button className="qty-minus" onClick={() => changeQty(product, -1)} aria-label={`− ${product.name}`} /><b>{qty}</b><button className="qty-plus" onClick={() => changeQty(product, 1)} aria-label={`+ ${product.name}`} /></div> : <button className={`add ${lastAddedId === product.id ? "added" : ""}`} disabled={isStopped} onClick={() => changeQty(product, 1)} aria-label={`${t.add}: ${product.name}`}>
                           <b>{t.add}</b><span aria-hidden="true">+</span>
                         </button>}
                     </div>
