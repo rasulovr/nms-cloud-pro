@@ -325,7 +325,7 @@ function getBakuDayPhase(hour = getBakuHour()) {
 export default function QRMenu() {
   // Public demo keeps every guest interaction local: it never creates orders,
   // calls staff or sends authentication codes.
-  const isDemo = new URLSearchParams(window.location.search).get("demo") === "1";
+  const isDemo = new URLSearchParams(window.location.search).get("demo") === "1" || window.location.pathname === "/demo-qr-menu";
   const [branch, setBranch] = useState("BC1");
   const [table, setTable] = useState("");
   const [screen, setScreen] = useState("menu");
@@ -393,7 +393,7 @@ export default function QRMenu() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     setBranch(params.get("branch") || "BC1");
-    setTable(params.get("table") || (params.get("demo") === "1" ? "DEMO" : ""));
+    setTable(params.get("table") || (params.get("demo") === "1" || window.location.pathname === "/demo-qr-menu" ? "DEMO" : ""));
   }, []);
   useEffect(() => {
     let active = true;
