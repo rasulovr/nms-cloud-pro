@@ -6078,10 +6078,13 @@ body {
 
   .product-modal .modal-add-button {
     display: flex !important;
-    justify-content: space-between !important;
-    gap: 5px !important;
-    padding-inline: 10px !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    justify-content: center !important;
+    gap: 1px !important;
+    padding: 6px 14px !important;
     font-size: 12px !important;
+    line-height: 1.12 !important;
   }
 
   .product-modal .modal-add-button span,
@@ -6091,5 +6094,5 @@ body {
     white-space: nowrap;
   }
 
-  .product-modal .modal-add-button b { font-size: 14px; }
+  .product-modal .modal-add-button b { font-size: 14px; line-height: 1.08; }
 }
