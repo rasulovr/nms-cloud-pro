@@ -1,0 +1,202 @@
+/* RMS QR Menu — Weather in Focus production header.
+   CSS-only weather atmosphere: no photos, city, buildings or architecture. */
+
+.qr-premium-hero.hero {
+  min-height: 340px !important;
+  background: #91a3ad !important;
+  border-radius: 0 0 30px 30px !important;
+}
+
+.qr-premium-hero .hero-sky {
+  background-image: none !important;
+  background-color: transparent !important;
+  background-position: center !important;
+  background-size: cover !important;
+}
+
+.qr-premium-hero .hero-sky .weather-visual { display: none !important; }
+
+.app-shell.theme-day.weather-theme-sunny .qr-premium-hero .hero-sky,
+.app-shell.theme-day.weather-theme-clear .qr-premium-hero .hero-sky {
+  background:
+    radial-gradient(circle at 78% 24%, rgba(255,250,216,.98) 0 4%, rgba(255,229,157,.66) 12%, transparent 31%),
+    radial-gradient(ellipse at 20% 92%, rgba(255,237,206,.66), transparent 52%),
+    linear-gradient(145deg, #e6cba7 0%, #efd8b7 36%, #c9d8dd 100%) !important;
+}
+
+.app-shell.theme-day.weather-theme-rainy .qr-premium-hero .hero-sky {
+  background:
+    repeating-linear-gradient(105deg, transparent 0 18px, rgba(223,238,244,.13) 19px 20px, transparent 21px 36px),
+    radial-gradient(ellipse at 26% 18%, rgba(235,241,241,.22), transparent 45%),
+    linear-gradient(150deg, #8799a4 0%, #687e8b 45%, #a5b3b8 100%) !important;
+}
+
+.app-shell.theme-day.weather-theme-cloudy .qr-premium-hero .hero-sky,
+.app-shell.theme-day.weather-theme-cool .qr-premium-hero .hero-sky,
+.app-shell.theme-day.weather-theme-windy .qr-premium-hero .hero-sky {
+  background:
+    radial-gradient(ellipse at 16% 12%, rgba(246,244,237,.58), transparent 38%),
+    radial-gradient(ellipse at 82% 74%, rgba(119,139,149,.34), transparent 54%),
+    linear-gradient(145deg, #aebbc0 0%, #d2d5d0 48%, #8da0a9 100%) !important;
+}
+
+.app-shell.theme-evening .qr-premium-hero .hero-sky {
+  background:
+    radial-gradient(ellipse at 76% 92%, rgba(245,170,119,.55), transparent 42%),
+    radial-gradient(ellipse at 24% 14%, rgba(231,221,222,.24), transparent 42%),
+    linear-gradient(145deg, #3f5368 0%, #746d79 48%, #c79077 100%) !important;
+}
+
+.app-shell.theme-night .qr-premium-hero .hero-sky {
+  background:
+    radial-gradient(ellipse at 76% 30%, rgba(151,170,213,.27), transparent 26%),
+    radial-gradient(ellipse at 18% 18%, rgba(92,111,145,.22), transparent 38%),
+    linear-gradient(145deg, #081321 0%, #17283e 50%, #26364e 100%) !important;
+}
+
+.qr-premium-hero .hero-sky::before {
+  content: "" !important;
+  position: absolute !important;
+  inset: -18% -10% auto -12% !important;
+  width: 122% !important;
+  height: 76% !important;
+  display: block !important;
+  border-radius: 50% !important;
+  background:
+    radial-gradient(ellipse at 18% 62%, rgba(255,255,255,.29) 0 13%, transparent 31%),
+    radial-gradient(ellipse at 51% 42%, rgba(255,255,255,.20) 0 16%, transparent 34%),
+    radial-gradient(ellipse at 82% 65%, rgba(255,255,255,.16) 0 15%, transparent 36%) !important;
+  filter: blur(14px) !important;
+  opacity: .9 !important;
+  box-shadow: none !important;
+  animation: qrWeatherCloudDrift 18s ease-in-out infinite alternate !important;
+}
+
+.qr-premium-hero .hero-sky::after {
+  content: "" !important;
+  position: absolute !important;
+  inset: 0 !important;
+  background: linear-gradient(180deg, rgba(7,20,32,.05), rgba(7,20,32,.22)) !important;
+}
+
+.qr-premium-hero .hero-topline {
+  position: absolute !important;
+  z-index: 5 !important;
+  top: 20px !important;
+  right: 24px !important;
+  left: 24px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  pointer-events: none !important;
+}
+
+.qr-premium-hero .brand-mark {
+  position: static !important;
+  display: block !important;
+  color: rgba(255,255,255,.94) !important;
+  font-family: Georgia, "Times New Roman", serif !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  letter-spacing: .08em !important;
+  text-shadow: 0 2px 12px rgba(8,19,30,.22) !important;
+  pointer-events: auto !important;
+}
+
+.qr-premium-hero .language-switch {
+  position: static !important;
+  margin: 0 !important;
+  transform: none !important;
+  pointer-events: auto !important;
+  background: rgba(255,255,255,.15) !important;
+  border-color: rgba(255,255,255,.24) !important;
+}
+
+.qr-premium-hero .language-switch button,
+.qr-premium-hero .language-switch button.active { color: #fff !important; }
+.qr-premium-hero .language-switch button.active { background: rgba(9,24,37,.32) !important; }
+
+.qr-premium-hero .hero-reference-copy { display: none !important; }
+
+.qr-premium-hero .hero-reference-weather {
+  position: absolute !important;
+  z-index: 3 !important;
+  top: 82px !important;
+  right: 24px !important;
+  bottom: auto !important;
+  left: 24px !important;
+  height: auto !important;
+  padding: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 7px !important;
+  color: rgba(255,255,255,.9) !important;
+  border: 0 !important;
+  text-align: center !important;
+}
+
+.qr-premium-hero .hero-reference-cloud,
+.qr-premium-hero .hero-reference-weather i { display: none !important; }
+
+.qr-premium-hero .hero-reference-weather strong {
+  order: 1 !important;
+  color: #fff !important;
+  font-family: Georgia, "Times New Roman", serif !important;
+  font-size: clamp(82px, 10vw, 116px) !important;
+  font-weight: 300 !important;
+  line-height: .88 !important;
+  letter-spacing: -.055em !important;
+  text-shadow: 0 8px 30px rgba(7,18,29,.18) !important;
+}
+
+.qr-premium-hero .hero-reference-weather span:last-child {
+  order: 2 !important;
+  color: rgba(255,255,255,.9) !important;
+  font-size: 13px !important;
+  font-weight: 540 !important;
+  letter-spacing: .02em !important;
+}
+
+@keyframes qrWeatherCloudDrift {
+  from { transform: translate3d(-1.5%, 0, 0) scale(1); }
+  to { transform: translate3d(2.5%, 3%, 0) scale(1.04); }
+}
+
+@media (max-width: 680px) {
+  .qr-premium-hero.hero {
+    min-height: 262px !important;
+    border-radius: 0 0 24px 24px !important;
+  }
+
+  .qr-premium-hero .hero-topline {
+    top: 12px !important;
+    right: 14px !important;
+    left: 14px !important;
+  }
+
+  .qr-premium-hero .brand-mark { font-size: 10px !important; }
+
+  .qr-premium-hero .language-switch {
+    transform: scale(.84) !important;
+    transform-origin: right center !important;
+  }
+
+  .qr-premium-hero .hero-reference-weather {
+    top: 66px !important;
+    right: 16px !important;
+    left: 16px !important;
+    gap: 5px !important;
+  }
+
+  .qr-premium-hero .hero-reference-weather strong {
+    font-size: clamp(72px, 24vw, 92px) !important;
+  }
+
+  .qr-premium-hero .hero-reference-weather span:last-child { font-size: 11px !important; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .qr-premium-hero .hero-sky::before { animation: none !important; }
+}
