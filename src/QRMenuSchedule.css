@@ -673,4 +673,18 @@
   .app-shell .product-modal .modal-stepper button {
     border-radius: 50% !important;
   }
+
+  .app-shell .product-modal .modal-add-button {
+    color: #fff !important;
+    background: rgba(255, 255, 255, .014) !important;
+    border: 1px solid rgba(255, 255, 255, .38) !important;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .11), 0 4px 12px rgba(0, 0, 0, .04) !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+
+  .app-shell .product-modal .modal-add-button:active:not(:disabled) {
+    background: rgba(255, 255, 255, .075) !important;
+    transform: scale(.975) !important;
+  }
 }
