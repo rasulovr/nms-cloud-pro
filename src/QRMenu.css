@@ -4989,11 +4989,6 @@ body {
   box-shadow: 0 24px 52px rgba(10, 14, 12, .2) !important;
 }
 
-.app-shell .product-card:active {
-  transform: scale(.985) !important;
-  filter: brightness(.84) !important;
-}
-
 .app-shell .product-card .food-photo {
   position: absolute !important;
   z-index: 0 !important;
@@ -5255,8 +5250,6 @@ body {
   transition: opacity .16s ease;
 }
 
-.app-shell .product-card:active::after { opacity: 1; }
-
 .modal-rating {
   position: absolute;
   z-index: 6;
@@ -5465,7 +5458,7 @@ body {
 }
 
 
-/* Make selection controls read as glass, and make a press unmistakable before the dish sheet opens. */
+/* Make selection controls read as glass. */
 .app-shell .product-card .add,
 .app-shell .product-card .stepper {
   background: rgba(255, 255, 255, .28) !important;
@@ -5481,23 +5474,6 @@ body {
 .product-modal .modal-close {
   background: rgba(255, 242, 224, .42) !important;
   border-color: rgba(255, 255, 255, .5) !important;
-}
-
-.app-shell .product-card:active,
-.app-shell .product-card:has(.food-photo:active) {
-  transform: scale(.955) !important;
-  filter: brightness(.62) saturate(.82) !important;
-  transition-duration: 0ms !important;
-}
-
-.app-shell .product-card:active::after,
-.app-shell .product-card:has(.food-photo:active)::after {
-  opacity: 1 !important;
-  background: rgba(0, 0, 0, .68) !important;
-}
-
-.app-shell .product-card:has(.food-photo:active) .food-photo::after {
-  background: linear-gradient(180deg, rgba(1, 2, 2, .42) 0%, rgba(1, 2, 2, .72) 100%) !important;
 }
 
 
@@ -5881,27 +5857,6 @@ body {
   will-change: transform;
 }
 
-.app-shell .product-card:has(.food-photo:active),
-.app-shell .product-card.is-selected {
-  transform: scale(.972) !important;
-  filter: none !important;
-}
-
-.app-shell .product-card:has(.food-photo:active)::after,
-.app-shell .product-card.is-selected::after {
-  opacity: 1 !important;
-  background: rgba(4, 10, 8, .46) !important;
-}
-
-.app-shell .product-card.is-selected .food-photo img {
-  transform: scale(1.015) !important;
-  filter: none !important;
-}
-
-.app-shell .product-card.is-opening {
-  animation: qrDishCardPress .19s cubic-bezier(.22, .7, .3, 1) both !important;
-}
-
 .product-modal {
   background: rgba(4, 11, 9, .56) !important;
   backdrop-filter: none !important;
@@ -5958,11 +5913,6 @@ body {
 @keyframes qrDishSheetOut {
   from { opacity: 1; transform: translate3d(0, 0, 0); }
   to { opacity: 0; transform: translate3d(0, 34px, 0); }
-}
-
-@keyframes qrDishCardPress {
-  from { transform: scale(1) !important; filter: brightness(1) !important; }
-  to { transform: scale(.975) !important; filter: brightness(.82) !important; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -6185,22 +6135,6 @@ body {
 
 @keyframes qrDishFadeIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes qrDishFadeOut { from { opacity: 1; } to { opacity: 0; } }
-
-/* Selecting a dish must leave the menu card completely unchanged. */
-.app-shell .product-card:active,
-.app-shell .product-card:has(.food-photo:active) {
-  transform: translateZ(0) !important;
-  filter: none !important;
-}
-
-.app-shell .product-card:active::after,
-.app-shell .product-card:has(.food-photo:active)::after {
-  opacity: 0 !important;
-}
-
-.app-shell .product-card:has(.food-photo:active) .food-photo::after {
-  background: linear-gradient(180deg, rgba(3, 5, 4, .06) 40%, rgba(3, 5, 4, .18) 56%, rgba(3, 5, 4, .9) 100%) !important;
-}
 
 /* Preview test: show the requested dish transition even when iOS Reduce Motion is enabled. */
 @media (prefers-reduced-motion: reduce) {
