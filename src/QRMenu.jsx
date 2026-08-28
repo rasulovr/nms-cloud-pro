@@ -358,8 +358,12 @@ export default function QRMenu() {
   const [otpSent, setOtpSent] = useState(false);
   const [bonusRequest, setBonusRequest] = useState(0);
   const [selectedProduct, setSelectedProduct] = useState(null);
+  const [isProductOpening, setIsProductOpening] = useState(false);
   const [isProductClosing, setIsProductClosing] = useState(false);
   const productCloseTimer = useRef(null);
+  const productOpenFrame = useRef(null);
+  const productOpenPulseTimer = useRef(null);
+  const [openingProductId, setOpeningProductId] = useState(null);
   const [modalQuantity, setModalQuantity] = useState(1);
   const [photoFullscreen, setPhotoFullscreen] = useState(false);
   const [weather, setWeather] = useState(null);
@@ -405,6 +409,8 @@ export default function QRMenu() {
   }, [designTheme]);
   useEffect(() => () => {
     if (productCloseTimer.current) window.clearTimeout(productCloseTimer.current);
+    if (productOpenPulseTimer.current) window.clearTimeout(productOpenPulseTimer.current);
+    if (productOpenFrame.current) window.cancelAnimationFrame(productOpenFrame.current);
   }, []);
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -801,11 +807,26 @@ export default function QRMenu() {
   }
   function openProduct(product) {
     if (productCloseTimer.current) window.clearTimeout(productCloseTimer.current);
+    if (productOpenPulseTimer.current) window.clearTimeout(productOpenPulseTimer.current);
+    if (productOpenFrame.current) window.cancelAnimationFrame(productOpenFrame.current);
     setIsProductClosing(false);
+    setIsProductOpening(true);
+    setOpeningProductId(product.id);
     setSelectedProduct(product);
+    productOpenPulseTimer.current = window.setTimeout(() => {
+      setOpeningProductId((current) => current === product.id ? null : current);
+      productOpenPulseTimer.current = null;
+    }, 320);
+    productOpenFrame.current = window.requestAnimationFrame(() => {
+      productOpenFrame.current = window.requestAnimationFrame(() => {
+        setIsProductOpening(false);
+        productOpenFrame.current = null;
+      });
+    });
   }
   function requestCloseProduct() {
     if (!selectedProduct || isProductClosing) return;
+    setIsProductOpening(false);
     setIsProductClosing(true);
     productCloseTimer.current = window.setTimeout(() => {
       setSelectedProduct(null);
@@ -981,7 +1002,7 @@ export default function QRMenu() {
             {availableProducts.map((product, productIndex) => {
     const isStopped = unavailable.includes(product.id);
     const qty = cart.find((line) => line.id === product.id)?.qty || 0;
-    return <article className={`product-card ${isStopped ? "stopped" : ""} ${lastAddedId === product.id ? "is-added" : ""}`} style={{ "--card-index": Math.min(productIndex, 10) }} key={product.id}>
+    return <article className={`product-card ${isStopped ? "stopped" : ""} ${lastAddedId === product.id ? "is-added" : ""} ${openingProductId === product.id ? "is-opening-source" : ""}`} style={{ "--card-index": Math.min(productIndex, 10) }} key={product.id}>
                   <button className="food-photo" style={photoStyle(product)} type="button" onClick={() => openProduct(product)} aria-label={`${t.openPhoto}: ${product.name}`}>
                     {product.image ? <img className={photoClass(product)} src={product.image} alt={product.name} loading="lazy" onError={useRecoveredImageFallback} /> : <span className="photo-placeholder">B&C</span>}
                     {product.image && <span className="zoom-hint">{t.zoom}</span>}
@@ -1093,7 +1114,7 @@ export default function QRMenu() {
           <button className="primary-button" onClick={() => callWaiter("waiter")}>{t.waiter}</button>
         </section>}
 
-      {selectedProduct && <div className={`product-modal ${isProductClosing ? "is-closing" : ""}`} role="dialog" aria-modal="true" aria-label={selectedProduct.name} onMouseDown={(event) => {
+      {selectedProduct && <div className={`product-modal ${isProductOpening ? "is-opening" : ""} ${isProductClosing ? "is-closing" : ""}`} role="dialog" aria-modal="true" aria-label={selectedProduct.name} onMouseDown={(event) => {
     if (event.currentTarget === event.target) requestCloseProduct();
   }}>
           <article className="product-modal-card" key={selectedProduct.id}>
