@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "./supabase";
 import { localizeCategory, localizeProduct } from "./qrMenuTranslations";
 import { formatMenuDescription, normalizeReferenceText, resolveReferenceMenuProduct } from "./referenceMenuCatalog";
@@ -347,6 +347,8 @@ export default function QRMenu() {
   const [bonusRequest, setBonusRequest] = useState(0);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [isProductClosing, setIsProductClosing] = useState(false);
+  const productModalRef = useRef(null);
+  const productModalCardRef = useRef(null);
   const [modalQuantity, setModalQuantity] = useState(1);
   const [photoFullscreen, setPhotoFullscreen] = useState(false);
   const [weather, setWeather] = useState(null);
@@ -511,6 +513,15 @@ export default function QRMenu() {
   useEffect(() => {
     if (!selectedProduct) setPhotoFullscreen(false);
   }, [selectedProduct]);
+  useLayoutEffect(() => {
+    if (!selectedProduct || isProductClosing) return;
+    const overlay = productModalRef.current;
+    const card = productModalCardRef.current;
+    if (!overlay || !card) return;
+    const options = { duration: 950, easing: "ease-out", fill: "forwards" };
+    overlay.animate([{ opacity: 0 }, { opacity: 1 }], options);
+    card.animate([{ opacity: 0 }, { opacity: 1 }], options);
+  }, [selectedProduct, isProductClosing]);
   useEffect(() => {
     if (!selectedProduct) return;
     const existingQuantity = cart.find((line) => line.id === selectedProduct.id)?.qty || 0;
@@ -786,11 +797,18 @@ export default function QRMenu() {
   }
   function requestCloseProduct() {
     if (!selectedProduct || isProductClosing) return;
+    const overlay = productModalRef.current;
+    const card = productModalCardRef.current;
     setIsProductClosing(true);
+    if (overlay && card) {
+      const options = { duration: 720, easing: "ease-in", fill: "forwards" };
+      overlay.animate([{ opacity: 1 }, { opacity: 0 }], options);
+      card.animate([{ opacity: 1 }, { opacity: 0 }], options);
+    }
     window.setTimeout(() => {
       setSelectedProduct(null);
       setIsProductClosing(false);
-    }, 360);
+    }, 720);
   }
   function addSelectedProductToCart() {
     if (!selectedProduct || unavailable.includes(selectedProduct.id)) return;
@@ -1059,10 +1077,8 @@ export default function QRMenu() {
           <button className="primary-button" onClick={() => callWaiter("waiter")}>{t.waiter}</button>
         </section>}
 
-      {selectedProduct && <div className={`product-modal ${isProductClosing ? "is-closing" : ""}`} role="dialog" aria-modal="true" aria-label={selectedProduct.name} onMouseDown={(event) => {
-    if (event.currentTarget === event.target) requestCloseProduct();
-  }}>
-          <article className="product-modal-card" key={selectedProduct.id}>
+      {selectedProduct && <div ref={productModalRef} className="product-modal" role="dialog" aria-modal="true" aria-label={selectedProduct.name}>
+          <article ref={productModalCardRef} className="product-modal-card" key={selectedProduct.id}>
             <div className="modal-photo" style={photoStyle(selectedProduct)}>
               {selectedProduct.image ? <img className={photoClass(selectedProduct)} src={selectedProduct.image} alt={selectedProduct.name} onError={useRecoveredImageFallback} /> : <span className="photo-placeholder">B&C</span>}
               <button className="modal-close" onClick={requestCloseProduct} aria-label={t.close}>×</button>
