@@ -18,7 +18,6 @@
   filter: none !important;
 }
 
-/* Highest specificity: base QR styles are emitted after imported component CSS. */
 html body .product-modal {
   background: transparent !important;
   background-color: transparent !important;
@@ -26,7 +25,6 @@ html body .product-modal {
   -webkit-backdrop-filter: none !important;
 }
 
-/* Overrides every time-of-day theme, whose selector is more specific. */
 body .app-shell[class*="theme-"] .product-modal[role="dialog"] {
   background: transparent !important;
   background-color: transparent !important;
@@ -34,48 +32,68 @@ body .app-shell[class*="theme-"] .product-modal[role="dialog"] {
   -webkit-backdrop-filter: none !important;
 }
 
-/* Do not darken the source card image to make text readable. */
+/* Never darken food photography. */
+body .app-shell[class*="theme-"] .product-card .food-photo::after,
+body .app-shell[class*="theme-"] .product-card .food-photo img,
+body .app-shell[class*="theme-"] .product-modal .modal-photo,
+body .app-shell[class*="theme-"] .product-modal .modal-photo img {
+  filter: none !important;
+  -webkit-filter: none !important;
+}
 body .app-shell[class*="theme-"] .product-card .food-photo::after {
   background: transparent !important;
 }
 
-
-/* One continuous surface: menu cards no longer introduce their own colour panel. */
-body .app-shell[class*="theme-"] .content {
-  background: transparent !important;
-}
-body .app-shell[class*="theme-"] .product-card {
+/* One continuous visual surface: cards and page use the same background. */
+body .app-shell[class*="theme-"] .content,
+body .app-shell[class*="theme-"] .product-card,
+body .app-shell[class*="theme-"] .product-card .food-photo {
   background: transparent !important;
   border-color: transparent !important;
   box-shadow: none !important;
 }
-body .app-shell[class*="theme-"] .product-card .food-photo {
-  background: transparent !important;
-}
 
-/* Use the available desktop width for the menu catalogue. */
+/* Desktop: exactly three large cards per row. */
 @media (min-width: 1040px) {
   body .app-shell[class*="theme-"] .product-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
-  }
-}
-@media (min-width: 1440px) {
-  body .app-shell[class*="theme-"] .product-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    gap: 24px !important;
   }
 }
 
-/* JSX supplies the single × character; remove the old drawn duplicate. */
+/* Food-category selectors: 80% transparent, without recolouring the rest of the menu. */
+body .app-shell[class*="theme-"] .categories button {
+  color: inherit !important;
+  background: rgba(255,255,255,.20) !important;
+  border-color: rgba(255,255,255,.32) !important;
+  box-shadow: none !important;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+body .app-shell[class*="theme-"] .categories button.active {
+  color: inherit !important;
+  background: rgba(255,255,255,.20) !important;
+  border-color: rgba(255,255,255,.42) !important;
+  box-shadow: none !important;
+}
+
+/* There is one visible close control. */
 body .app-shell[class*="theme-"] .product-modal .modal-close::before,
 body .app-shell[class*="theme-"] .product-modal .modal-close::after {
   content: none !important;
   display: none !important;
 }
 
-/* Wi‑Fi details expand in place and keep the QR scannable. */
+/* Wi‑Fi: click once to reveal SSID, plaintext password and a scannable QR. */
 body .app-shell[class*="theme-"] .wifi-password-button {
   min-height: 48px;
   text-align: left;
+}
+body .app-shell[class*="theme-"] .wifi-password-button.revealed {
+  pointer-events: none;
+}
+body .app-shell[class*="theme-"] .wifi-password-button.revealed small {
+  display: none !important;
 }
 body .app-shell[class*="theme-"] .wifi-details {
   display: grid;
@@ -91,18 +109,18 @@ body .app-shell[class*="theme-"] .wifi-qr {
   width: fit-content;
   display: grid;
   gap: 8px;
-  margin-top: 6px;
+  margin-top: 8px;
   padding: 10px;
   background: #fff;
   border-radius: 12px;
 }
 body .app-shell[class*="theme-"] .wifi-qr canvas {
   display: block;
-  width: 116px;
-  height: 116px;
+  width: 150px;
+  height: 150px;
 }
 body .app-shell[class*="theme-"] .wifi-qr small {
-  max-width: 116px;
+  max-width: 150px;
   color: #1b2420;
   font-size: 10px;
   line-height: 1.25;
