@@ -242,6 +242,7 @@ const branchFilteredMenus = new Set(["BC1", "BC2", "BC4", "BC5"]);
 const branchMenuConfigTable = "__QR_BRANCH_MENU_V1__";
 const baristaChefQrSettingsEndpoint = "https://zzsdcxowhhaxnuliaryb.supabase.co/rest/v1/rpc/qr_get_public_menu_v2";
 const baristaChefQrPublishableKey = "sb_publishable_KadKobelt_Zxq5HF770GFA_zSdTAfec";
+const qrPreviewVariants = new Set(["ceramic", "linen", "noir"]);
 const photoClass = (product) => {
   if (String(product.image || "").includes("/menu/bc-087-water-full.webp")) return "water-bottle-photo";
   if (product.category === "\u041B\u0418\u041C\u041E\u041D\u0410\u0414\u042B") return "lemonade-photo";
@@ -327,6 +328,8 @@ function getBakuDayPhase(hour = getBakuHour()) {
 export default function QRMenu() {
   const requestedTheme = new URLSearchParams(window.location.search).get("theme");
   const hasRequestedTheme = ["travertine", "paper", "olive", "graphite"].includes(requestedTheme);
+  const requestedPreview = new URLSearchParams(window.location.search).get("preview");
+  const previewVariant = qrPreviewVariants.has(requestedPreview) ? requestedPreview : "";
   const [branch, setBranch] = useState("BC1");
   const [table, setTable] = useState("");
   const [screen, setScreen] = useState("menu");
@@ -928,7 +931,7 @@ export default function QRMenu() {
   const weatherTitle = (dayPhase === "night" ? nightWeatherTitles : weatherTitles)[language][atmosphere];
   const hasTableContext = Boolean(table);
   const recommendationQty = mealRecommendation ? cart.find((line) => line.id === mealRecommendation.product.id)?.qty || 0 : 0;
-  return <main className={`app-shell theme-${dayPhase} weather-theme-${atmosphere} menu-view-${menuView} menu-background-${backgroundTheme}`}>
+  return <main className={`app-shell theme-${dayPhase} weather-theme-${atmosphere} menu-view-${menuView} menu-background-${backgroundTheme} ${previewVariant ? `qr-preview-${previewVariant}` : ""}`}>
       <header className="hero qr-premium-hero">
         <div className="hero-sky" aria-hidden="true">
           {weatherOffer && <WeatherVisual kind={weatherOffer.kind} phase={dayPhase} />}
@@ -1102,7 +1105,7 @@ export default function QRMenu() {
           <span className="eyebrow">{branchName}</span><h2>{t.information}</h2>
           <div className="info-grid">
             <article><span>◷</span><div><b>{t.hours}</b><p>{t.schedule}<br />{t.sunday}</p></div></article>
-            <article className="wifi-info-card"><span>⌁</span><div><b>{t.wifi}</b><p className="wifi-network">{branchInfo?.wifi_name || "BC-Guest"}</p>{branchInfo?.wifi_password && <button type="button" className={`wifi-password-button ${wifiPasswordVisible ? "revealed" : ""}`} onClick={revealWifiPassword} aria-expanded={wifiPasswordVisible} aria-label={t.tapWifi}><span className="wifi-password-value">{wifiPasswordVisible ? branchInfo.wifi_password : "••••••••••••"}</span><small>{t.tapWifi}</small></button>}</div></article>
+            <article className="wifi-info-card"><span>⌁</span><div><b>{t.wifi}</b><p className="wifi-network">{branchInfo?.wifi_name || "BC-Guest"}</p>{branchInfo?.wifi_password && <button type="button" className={`wifi-password-button ${wifiPasswordVisible ? "revealed" : ""}`} onClick={revealWifiPassword} aria-expanded={wifiPasswordVisible} aria-label={t.tapWifi}><span className="wifi-password-value">{wifiPasswordVisible ? branchInfo.wifi_password : "••••••••••••"}</span><small>{t.tapWifi}</small></button>}{wifiPasswordVisible && branchInfo?.wifi_password && <WifiQr ssid={branchInfo.wifi_name || "BC-Guest"} password={branchInfo.wifi_password} />}</div></article>
             <article><span>◎</span><div><b>{t.branch}</b><p>{branchName}</p></div></article>
             <article><span>◌</span><div><b>{t.social}</b><p><a href="https://instagram.com/baristachefaz" target="_blank" rel="noreferrer">@baristachefaz</a></p></div></article>
           </div>
@@ -1185,6 +1188,22 @@ function OrderLine({ line, controls, onMinus, onPlus }) {
 }
 function Empty({ icon, title, text, action, actionLabel = "Перейти в меню" }) {
   return <div className="empty-state"><span>{icon}</span><h3>{title}</h3><p>{text}</p><button className="outline-button" onClick={action}>{actionLabel}</button></div>;
+}
+function WifiQr({ ssid, password }) {
+  const canvasRef = useRef(null);
+  const wifiPayload = `WIFI:T:WPA;S:${String(ssid).replace(/[\\;,:]/g, "\\$&")};P:${String(password).replace(/[\\;,:]/g, "\\$&")};;`;
+  useEffect(() => {
+    let disposed = false;
+    const render = () => window.RmsQRCode?.toCanvas?.(canvasRef.current, wifiPayload, { width: 116, margin: 1, errorCorrectionLevel: "M" });
+    if (window.RmsQRCode) { render(); return undefined; }
+    const script = document.createElement("script");
+    script.src = "https://baristachef.rms.rest/assets/qrcode-browser-v1.js";
+    script.async = true;
+    script.onload = () => { if (!disposed) render(); };
+    document.head.appendChild(script);
+    return () => { disposed = true; script.remove(); };
+  }, [wifiPayload]);
+  return <div className="wifi-qr"><canvas ref={canvasRef} /><small>Наведите камеру, чтобы подключиться</small></div>;
 }
 function StatusBadge({ status }) {
   const labels = { new: "Заказ получен", requested: "Заказ получен", confirmed: "Подтверждён", preparing: "Готовится", ready: "Заказ готов", payment_requested: "Запрошена оплата", paid: "Оплачен", cancelled: "Отменён" };
