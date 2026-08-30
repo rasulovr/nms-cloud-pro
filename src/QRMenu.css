@@ -5731,6 +5731,54 @@ body {
   }
 }
 
+/* Background choice must remain independent from the legacy time/weather scene.
+   This is intentionally the final QR Menu cascade. */
+main.app-shell.menu-background-travertine {
+  background: radial-gradient(circle at 8% 5%, rgba(255,255,255,.58), transparent 27rem), linear-gradient(145deg, #e8dfd0, #d6cab8) !important;
+}
+main.app-shell.menu-background-paper {
+  background: radial-gradient(circle at 8% 5%, rgba(255,255,255,.72), transparent 27rem), linear-gradient(145deg, #f4f0e7, #e7dfd1) !important;
+}
+main.app-shell.menu-background-olive {
+  background: radial-gradient(circle at 8% 5%, rgba(255,255,255,.50), transparent 27rem), linear-gradient(145deg, #e3e5d8, #cdd2c0) !important;
+}
+main.app-shell.menu-background-graphite {
+  background: radial-gradient(circle at 82% 3%, rgba(195,159,96,.13), transparent 28rem), linear-gradient(145deg, #202527, #343c3a) !important;
+}
+
+main.app-shell.menu-background-travertine .qr-premium-hero.hero {
+  background: linear-gradient(135deg, #8f806d, #c4b397 55%, #e0d3bf) !important;
+}
+main.app-shell.menu-background-paper .qr-premium-hero.hero {
+  background: linear-gradient(135deg, #b7ad9d, #ded6c9 55%, #f5efe5) !important;
+}
+main.app-shell.menu-background-olive .qr-premium-hero.hero {
+  background: linear-gradient(135deg, #5e715d, #98a087 55%, #d4d5c4) !important;
+}
+main.app-shell.menu-background-graphite .qr-premium-hero.hero {
+  background: linear-gradient(135deg, #1b2020, #3f4742 55%, #655d4e) !important;
+}
+
+main.app-shell.menu-background-travertine .qr-premium-hero .hero-sky {
+  background: radial-gradient(ellipse 72% 82% at 84% 92%, rgba(255,236,202,.46), transparent 68%), linear-gradient(135deg, #8f806d, #c4b397 55%, #e0d3bf) !important;
+}
+main.app-shell.menu-background-paper .qr-premium-hero .hero-sky {
+  background: radial-gradient(ellipse 72% 82% at 84% 92%, rgba(255,255,255,.36), transparent 68%), linear-gradient(135deg, #b7ad9d, #ded6c9 55%, #f5efe5) !important;
+}
+main.app-shell.menu-background-olive .qr-premium-hero .hero-sky {
+  background: radial-gradient(ellipse 72% 82% at 84% 92%, rgba(227,230,204,.26), transparent 68%), linear-gradient(135deg, #5e715d, #98a087 55%, #d4d5c4) !important;
+}
+main.app-shell.menu-background-graphite .qr-premium-hero .hero-sky {
+  background: radial-gradient(ellipse 72% 82% at 84% 92%, rgba(192,158,94,.17), transparent 68%), linear-gradient(135deg, #1b2020, #3f4742 55%, #655d4e) !important;
+}
+
+main.app-shell[class*="menu-background-"] .qr-premium-hero .hero-sky::before,
+main.app-shell[class*="menu-background-"] .qr-premium-hero .hero-sky::after,
+main.app-shell[class*="menu-background-"] .qr-premium-hero .hero-sky .weather-visual {
+  display: none !important;
+  background: none !important;
+}
+
 /* Keep the selected background independent from the legacy weather scene.
    This final cascade is deliberately last: it takes precedence over the
    earlier time-of-day/weather palette rules. */
