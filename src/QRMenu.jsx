@@ -323,6 +323,8 @@ function getBakuDayPhase(hour = getBakuHour()) {
   return "night";
 }
 export default function QRMenu() {
+  const requestedTheme = new URLSearchParams(window.location.search).get("theme");
+  const hasRequestedTheme = ["travertine", "paper", "olive", "graphite"].includes(requestedTheme);
   const [branch, setBranch] = useState("BC1");
   const [table, setTable] = useState("");
   const [screen, setScreen] = useState("menu");
@@ -423,7 +425,9 @@ export default function QRMenu() {
       } catch (_error) {}
       setConfiguredBranchName(String(branchMenuConfig?.branch_name || "").trim());
       setBackgroundTheme(
-        ["travertine", "paper", "olive", "graphite"].includes(branchMenuConfig?.background_theme)
+        hasRequestedTheme
+          ? requestedTheme
+          : ["travertine", "paper", "olive", "graphite"].includes(branchMenuConfig?.background_theme)
           ? branchMenuConfig.background_theme
           : "travertine"
       );
