@@ -38,3 +38,72 @@ body .app-shell[class*="theme-"] .product-modal[role="dialog"] {
 body .app-shell[class*="theme-"] .product-card .food-photo::after {
   background: transparent !important;
 }
+
+
+/* One continuous surface: menu cards no longer introduce their own colour panel. */
+body .app-shell[class*="theme-"] .content {
+  background: transparent !important;
+}
+body .app-shell[class*="theme-"] .product-card {
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+body .app-shell[class*="theme-"] .product-card .food-photo {
+  background: transparent !important;
+}
+
+/* Use the available desktop width for the menu catalogue. */
+@media (min-width: 1040px) {
+  body .app-shell[class*="theme-"] .product-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+}
+@media (min-width: 1440px) {
+  body .app-shell[class*="theme-"] .product-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  }
+}
+
+/* JSX supplies the single × character; remove the old drawn duplicate. */
+body .app-shell[class*="theme-"] .product-modal .modal-close::before,
+body .app-shell[class*="theme-"] .product-modal .modal-close::after {
+  content: none !important;
+  display: none !important;
+}
+
+/* Wi‑Fi details expand in place and keep the QR scannable. */
+body .app-shell[class*="theme-"] .wifi-password-button {
+  min-height: 48px;
+  text-align: left;
+}
+body .app-shell[class*="theme-"] .wifi-details {
+  display: grid;
+  gap: 7px;
+  margin-top: 12px;
+}
+body .app-shell[class*="theme-"] .wifi-details p {
+  margin: 0;
+  font-size: 14px;
+  color: var(--muted);
+}
+body .app-shell[class*="theme-"] .wifi-qr {
+  width: fit-content;
+  display: grid;
+  gap: 8px;
+  margin-top: 6px;
+  padding: 10px;
+  background: #fff;
+  border-radius: 12px;
+}
+body .app-shell[class*="theme-"] .wifi-qr canvas {
+  display: block;
+  width: 116px;
+  height: 116px;
+}
+body .app-shell[class*="theme-"] .wifi-qr small {
+  max-width: 116px;
+  color: #1b2420;
+  font-size: 10px;
+  line-height: 1.25;
+}
