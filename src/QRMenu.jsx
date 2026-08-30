@@ -325,6 +325,26 @@ function getBakuDayPhase(hour = getBakuHour()) {
   if (hour >= 18 && hour < 20) return "evening";
   return "night";
 }
+function WifiQr({ ssid, password }) {
+  const canvasRef = useRef(null);
+  const wifiPayload = `WIFI:T:WPA;S:${String(ssid).replace(/[\\;,:]/g, "\\export default function QRMenu() {")};P:${String(password).replace(/[\\;,:]/g, "\\export default function QRMenu() {")};;`;
+  useEffect(() => {
+    let disposed = false;
+    const render = () => window.RmsQRCode?.toCanvas?.(canvasRef.current, wifiPayload, { width: 116, margin: 1, errorCorrectionLevel: "M" });
+    if (window.RmsQRCode) {
+      render();
+      return undefined;
+    }
+    const script = document.createElement("script");
+    script.src = "https://baristachef.rms.rest/assets/qrcode-browser-v1.js";
+    script.async = true;
+    script.onload = () => { if (!disposed) render(); };
+    document.head.appendChild(script);
+    return () => { disposed = true; script.remove(); };
+  }, [wifiPayload]);
+  return <div className="wifi-qr" aria-label="QR-код Wi-Fi"><canvas ref={canvasRef} /><small>Наведите камеру, чтобы подключиться</small></div>;
+}
+
 export default function QRMenu() {
   const requestedTheme = new URLSearchParams(window.location.search).get("theme");
   const hasRequestedTheme = ["travertine", "paper", "olive", "graphite"].includes(requestedTheme);
@@ -1103,7 +1123,7 @@ export default function QRMenu() {
           <span className="eyebrow">{branchName}</span><h2>{t.information}</h2>
           <div className="info-grid">
             <article><span>◷</span><div><b>{t.hours}</b><p>{t.schedule}<br />{t.sunday}</p></div></article>
-            <article className="wifi-info-card"><span>⌁</span><div><b>{t.wifi}</b><p className="wifi-network">{branchInfo?.wifi_name || "BC-Guest"}</p>{branchInfo?.wifi_password && <button type="button" className={`wifi-password-button ${wifiPasswordVisible ? "revealed" : ""}`} onClick={revealWifiPassword} aria-expanded={wifiPasswordVisible} aria-label={t.tapWifi}><span className="wifi-password-value">{wifiPasswordVisible ? branchInfo.wifi_password : "••••••••••••"}</span><small>{t.tapWifi}</small></button>}</div></article>
+            <article className="wifi-info-card"><span>⌁</span><div><b>{t.wifi}</b><p className="wifi-network">{branchInfo?.wifi_name || "Wi‑Fi"}</p><button type="button" className={`wifi-password-button ${wifiPasswordVisible ? "revealed" : ""}`} onClick={revealWifiPassword} aria-expanded={wifiPasswordVisible} aria-label={t.tapWifi}><span className="wifi-password-value">{wifiPasswordVisible ? (branchInfo?.wifi_password ? `Пароль: ${branchInfo.wifi_password}` : "Пароль не задан") : "Показать SSID, пароль и QR"}</span><small>{wifiPasswordVisible ? "Скрыть" : t.tapWifi}</small></button>{wifiPasswordVisible && <div className="wifi-details">{branchInfo?.wifi_password ? <><p>SSID: {branchInfo?.wifi_name || "Wi‑Fi"}</p><p>Пароль: {branchInfo.wifi_password}</p><WifiQr ssid={branchInfo?.wifi_name || "Wi‑Fi"} password={branchInfo.wifi_password} /></> : <p>Пароль Wi‑Fi пока не задан в настройках QR Menu.</p>}</div>}</div></article>
             <article><span>◎</span><div><b>{t.branch}</b><p>{branchName}</p></div></article>
             <article><span>◌</span><div><b>{t.social}</b><p><a href="https://instagram.com/baristachefaz" target="_blank" rel="noreferrer">@baristachefaz</a></p></div></article>
           </div>
