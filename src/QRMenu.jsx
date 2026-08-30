@@ -354,6 +354,7 @@ export default function QRMenu() {
   const [weather, setWeather] = useState(null);
   const [branchInfo, setBranchInfo] = useState(null);
   const [configuredBranchName, setConfiguredBranchName] = useState("");
+  const [backgroundTheme, setBackgroundTheme] = useState("travertine");
   const [configuredRecommendations, setConfiguredRecommendations] = useState([]);
   const [dayPhase, setDayPhase] = useState("day");
   const [bakuHour, setBakuHour] = useState(12);
@@ -398,10 +399,17 @@ export default function QRMenu() {
     let active = true;
     setLoading(true);
     setConfiguredBranchName("");
+    setBackgroundTheme("travertine");
     const menuRequest = supabase.rpc("qr_get_public_menu", { p_branch_code: branch });
-    const branchMenuRequest = branchFilteredMenus.has(branch)
-      ? supabase.from("rms_qr_tables").select("qr_code_url").eq("branch_id", branch).eq("table_number", branchMenuConfigTable).maybeSingle()
-      : Promise.resolve({ data: null, error: null });
+    // Every branch reads this lightweight configuration so the visual theme
+    // can be controlled independently. The menu-item filter still applies
+    // only to branches that use the approved shared catalogue.
+    const branchMenuRequest = supabase
+      .from("rms_qr_tables")
+      .select("qr_code_url")
+      .eq("branch_id", branch)
+      .eq("table_number", branchMenuConfigTable)
+      .maybeSingle();
     const recommendationsRequest = supabase.from("rms_qr_recommendations").select("*").eq("is_active", true);
     Promise.all([menuRequest, branchMenuRequest, recommendationsRequest]).then(([menuResult, branchMenuResult, recommendationsResult]) => {
       if (!active) return;
@@ -414,6 +422,11 @@ export default function QRMenu() {
         if (parsed && typeof parsed === "object") branchMenuConfig = parsed;
       } catch (_error) {}
       setConfiguredBranchName(String(branchMenuConfig?.branch_name || "").trim());
+      setBackgroundTheme(
+        ["travertine", "paper", "olive", "graphite"].includes(branchMenuConfig?.background_theme)
+          ? branchMenuConfig.background_theme
+          : "travertine"
+      );
       const branchMenuIds = Array.isArray(branchMenuConfig?.ids) ? branchMenuConfig.ids.map(String) : null;
       const menuIds = new Set(menuRows.map((item) => String(item.id || item.menu_item_id)));
       const matchingConfiguredIds = branchMenuIds ? branchMenuIds.filter((id) => menuIds.has(id)) : [];
@@ -896,7 +909,7 @@ export default function QRMenu() {
   const weatherTitle = (dayPhase === "night" ? nightWeatherTitles : weatherTitles)[language][atmosphere];
   const hasTableContext = Boolean(table);
   const recommendationQty = mealRecommendation ? cart.find((line) => line.id === mealRecommendation.product.id)?.qty || 0 : 0;
-  return <main className={`app-shell theme-${dayPhase} weather-theme-${atmosphere} menu-view-${menuView}`}>
+  return <main className={`app-shell theme-${dayPhase} weather-theme-${atmosphere} menu-view-${menuView} menu-background-${backgroundTheme}`}>
       <header className="hero qr-premium-hero">
         <div className="hero-sky" aria-hidden="true">
           {weatherOffer && <WeatherVisual kind={weatherOffer.kind} phase={dayPhase} />}

@@ -124,6 +124,13 @@ const defaultInfo = {
   address: ''
 }
 
+const QR_BACKGROUND_OPTIONS = [
+  { value: 'travertine', label: 'Травертин · тёплый камень' },
+  { value: 'paper', label: 'Меню-бумага · светлый кремовый' },
+  { value: 'olive', label: 'Оливковый · мягкий средиземноморский' },
+  { value: 'graphite', label: 'Графит · вечерний' }
+]
+
 export default function RMSQRMenuAdmin({ lang = localStorage.getItem('rms_lang') || localStorage.getItem('nms_lang') || 'ru' }) {
   const adminLanguage = normalizeAdminLanguage(lang)
   const ui = QR_ADMIN_TEXT[adminLanguage]
@@ -160,6 +167,7 @@ export default function RMSQRMenuAdmin({ lang = localStorage.getItem('rms_lang')
   const [editingProduct, setEditingProduct] = useState(null)
   const [productDraft, setProductDraft] = useState(null)
   const [infoBranchName, setInfoBranchName] = useState('')
+  const [backgroundTheme, setBackgroundTheme] = useState('travertine')
   const [adForm, setAdForm] = useState({ title: '', text: '', image_url: '', is_active: true })
   const [recForm, setRecForm] = useState({ product_id: '', product_name: '', recommended_product_id: '', recommended_product_name: '' })
   const [statusForm, setStatusForm] = useState({ branch_id: 'BC1', table_number: '1', status: 'preparing', status_label: 'Готовится', comment: '' })
@@ -385,6 +393,7 @@ export default function RMSQRMenuAdmin({ lang = localStorage.getItem('rms_lang')
     try { config = JSON.parse(String(configResult.data?.qr_code_url || '')) || {} } catch (_error) {}
     const branchRow = branchOptions.find(item => String(item.id) === branchCode)
     setInfoBranchName(String(config.branch_name || branchRow?.name || branchCode))
+    setBackgroundTheme(QR_BACKGROUND_OPTIONS.some(option => option.value === config.background_theme) ? config.background_theme : 'travertine')
   }
 
   async function loadRecommendations() {
@@ -672,7 +681,7 @@ export default function RMSQRMenuAdmin({ lang = localStorage.getItem('rms_lang')
     const { error: configError } = await supabase.from('rms_qr_tables').upsert({
       branch_id: info.branch_id,
       table_number: BRANCH_MENU_CONFIG_TABLE,
-      qr_code_url: JSON.stringify({ ...config, version: 2, branch_name: String(infoBranchName || info.branch_id).trim() || info.branch_id }),
+      qr_code_url: JSON.stringify({ ...config, version: 2, branch_name: String(infoBranchName || info.branch_id).trim() || info.branch_id, background_theme: backgroundTheme }),
       is_active: false
     }, { onConflict: 'branch_id,table_number' })
     setMsg(configError ? configError.message : 'Информация QR Menu сохранена')
@@ -1366,6 +1375,7 @@ export default function RMSQRMenuAdmin({ lang = localStorage.getItem('rms_lang')
             <div className="form-grid compact">
               <label><span>Филиал</span><select value={info.branch_id} onChange={e => changeInfoBranch(e.target.value)}>{branchOptions.map(b => <option key={b.id} value={b.id}>{b.name || b.id}</option>)}</select></label>
               <label><span>Название филиала в QR Menu</span><input value={infoBranchName || ''} onChange={e => setInfoBranchName(e.target.value)} /></label>
+              <label><span>Фон QR Menu</span><select value={backgroundTheme} onChange={e => setBackgroundTheme(e.target.value)}>{QR_BACKGROUND_OPTIONS.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
               <label><span>Wi‑Fi</span><input value={info.wifi_name || ''} onChange={e => setInfo({ ...info, wifi_name: e.target.value })} /></label>
               <label><span>Пароль Wi‑Fi</span><div className="rms-wifi-password-field"><input type={showWifiPassword ? 'text' : 'password'} value={info.wifi_password || ''} onChange={e => setInfo({ ...info, wifi_password: e.target.value })} autoComplete="new-password" /><button type="button" className="small" onClick={() => setShowWifiPassword(value => !value)}>{showWifiPassword ? 'Скрыть' : 'Показать'}</button></div></label>
               <label><span>Рабочие часы</span><input value={info.working_hours || ''} onChange={e => setInfo({ ...info, working_hours: e.target.value })} /></label>

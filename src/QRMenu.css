@@ -1831,6 +1831,91 @@ body {
 .app-shell.theme-night .weather-offer::after { background: rgba(164, 190, 215, .055); }
 .app-shell.theme-night .weather-aurora { background: rgba(102, 153, 181, .09); }
 .app-shell.theme-night .weather-sun { display: none; }
+
+/* QR Menu backgrounds are selected by the administrator per branch.
+   They intentionally override the old time/weather blue scene only here. */
+.app-shell.menu-background-travertine,
+.app-shell.menu-background-travertine .content {
+  --menu-bg: #e8dfd0;
+  --paper: #e8dfd0;
+  --card: rgba(255, 252, 246, .86);
+  --ink: #312d27;
+  --muted: #71685d;
+  --line: rgba(91, 75, 55, .16);
+  --green: #36473b;
+  background:
+    radial-gradient(circle at 12% 8%, rgba(255,255,255,.72), transparent 26rem),
+    radial-gradient(circle at 89% 27%, rgba(190,169,138,.24), transparent 31rem),
+    linear-gradient(145deg, #efe9df 0%, #e5dacb 100%) !important;
+}
+.app-shell.menu-background-travertine .qr-premium-hero .hero-sky {
+  background: linear-gradient(118deg, rgba(63,55,44,.12), rgba(255,255,255,.08)), linear-gradient(145deg, #d8c7ae, #aa9578) !important;
+}
+
+.app-shell.menu-background-paper,
+.app-shell.menu-background-paper .content {
+  --menu-bg: #f4f0e7;
+  --paper: #f4f0e7;
+  --card: rgba(255,255,252,.9);
+  --ink: #2d302d;
+  --muted: #71736c;
+  --line: rgba(64, 67, 59, .13);
+  --green: #3b4d42;
+  background: radial-gradient(circle at 15% 4%, rgba(255,255,255,.9), transparent 29rem), linear-gradient(140deg, #faf7ef, #eae3d4) !important;
+}
+.app-shell.menu-background-paper .qr-premium-hero .hero-sky {
+  background: linear-gradient(115deg, rgba(51,57,47,.14), rgba(255,255,255,.12)), linear-gradient(145deg, #d8d2c2, #a9a99a) !important;
+}
+
+.app-shell.menu-background-olive,
+.app-shell.menu-background-olive .content {
+  --menu-bg: #e3e5d8;
+  --paper: #e3e5d8;
+  --card: rgba(250,251,244,.86);
+  --ink: #27342b;
+  --muted: #657166;
+  --line: rgba(49, 71, 55, .15);
+  --green: #314a3a;
+  background: radial-gradient(circle at 87% 9%, rgba(205,219,178,.64), transparent 28rem), linear-gradient(145deg, #eff0e5, #d6dac9) !important;
+}
+.app-shell.menu-background-olive .qr-premium-hero .hero-sky {
+  background: linear-gradient(115deg, rgba(21,40,30,.2), rgba(255,255,255,.04)), linear-gradient(145deg, #768a61, #405c49) !important;
+}
+
+.app-shell.menu-background-graphite,
+.app-shell.menu-background-graphite .content {
+  --menu-bg: #202527;
+  --paper: #202527;
+  --card: rgba(39,46,47,.92);
+  --ink: #f1f0e9;
+  --muted: #bec2ba;
+  --line: rgba(255, 255, 255, .12);
+  --green: #d8c294;
+  background: radial-gradient(circle at 78% 7%, rgba(176,145,91,.16), transparent 28rem), linear-gradient(145deg, #171b1d, #323a39) !important;
+}
+.app-shell.menu-background-graphite .qr-premium-hero .hero-sky {
+  background: linear-gradient(115deg, rgba(0,0,0,.3), rgba(223,194,137,.07)), linear-gradient(145deg, #373b39, #171b1d) !important;
+}
+.app-shell.menu-background-graphite .main-nav,
+.app-shell.menu-background-graphite .categories,
+.app-shell.menu-background-graphite .search,
+.app-shell.menu-background-graphite .product-card,
+.app-shell.menu-background-graphite .weather-offer,
+.app-shell.menu-background-graphite .info-grid article,
+.app-shell.menu-background-graphite .order-line,
+.app-shell.menu-background-graphite .empty-state,
+.app-shell.menu-background-graphite .loyalty-login {
+  color: var(--ink) !important;
+  background: var(--card) !important;
+  border-color: var(--line) !important;
+}
+.app-shell.menu-background-graphite .main-nav button,
+.app-shell.menu-background-graphite .categories button,
+.app-shell.menu-background-graphite .search input,
+.app-shell.menu-background-graphite .product-card h3,
+.app-shell.menu-background-graphite .product-card strong { color: var(--ink) !important; }
+.app-shell.menu-background-graphite .product-card p,
+.app-shell.menu-background-graphite .search input::placeholder { color: var(--muted) !important; }
 .app-shell .weather-moon {
   display: none;
   position: absolute;
@@ -5644,6 +5729,26 @@ body {
     overflow: hidden !important;
     white-space: nowrap !important;
   }
+}
+
+/* Keep the selected background independent from the legacy weather scene.
+   This final cascade is deliberately last: it takes precedence over the
+   earlier time-of-day/weather palette rules. */
+main.app-shell.menu-background-travertine {
+  --menu-bg: #e8dfd0 !important; --paper: #e8dfd0 !important; --card: rgba(255,252,246,.86) !important;
+  --ink: #312d27 !important; --muted: #71685d !important; --line: rgba(91,75,55,.16) !important; --green: #36473b !important;
+}
+main.app-shell.menu-background-paper {
+  --menu-bg: #f4f0e7 !important; --paper: #f4f0e7 !important; --card: rgba(255,255,252,.9) !important;
+  --ink: #2d302d !important; --muted: #71736c !important; --line: rgba(64,67,59,.13) !important; --green: #3b4d42 !important;
+}
+main.app-shell.menu-background-olive {
+  --menu-bg: #e3e5d8 !important; --paper: #e3e5d8 !important; --card: rgba(250,251,244,.86) !important;
+  --ink: #27342b !important; --muted: #657166 !important; --line: rgba(49,71,55,.15) !important; --green: #314a3a !important;
+}
+main.app-shell.menu-background-graphite {
+  --menu-bg: #202527 !important; --paper: #202527 !important; --card: rgba(39,46,47,.92) !important;
+  --ink: #f1f0e9 !important; --muted: #bec2ba !important; --line: rgba(255,255,255,.12) !important; --green: #d8c294 !important;
 }
 
 @media (max-width: 360px) {
