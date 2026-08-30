@@ -240,6 +240,8 @@ const nightWeatherTitles = {
 const displayBranchName = (branch) => branch === "BC1" ? "Barista&Chef R.Behbudov" : `Barista&Chef · ${branch}`;
 const branchFilteredMenus = new Set(["BC1", "BC2", "BC4", "BC5"]);
 const branchMenuConfigTable = "__QR_BRANCH_MENU_V1__";
+const baristaChefQrSettingsEndpoint = "https://zzsdcxowhhaxnuliaryb.supabase.co/rest/v1/rpc/qr_get_public_menu_v2";
+const baristaChefQrPublishableKey = "sb_publishable_KadKobelt_Zxq5HF770GFA_zSdTAfec";
 const photoClass = (product) => {
   if (String(product.image || "").includes("/menu/bc-087-water-full.webp")) return "water-bottle-photo";
   if (product.category === "\u041B\u0418\u041C\u041E\u041D\u0410\u0414\u042B") return "lemonade-photo";
@@ -413,7 +415,18 @@ export default function QRMenu() {
       .eq("table_number", branchMenuConfigTable)
       .maybeSingle();
     const recommendationsRequest = supabase.from("rms_qr_recommendations").select("*").eq("is_active", true);
-    Promise.all([menuRequest, branchMenuRequest, recommendationsRequest]).then(([menuResult, branchMenuResult, recommendationsResult]) => {
+    const baristaChefThemeRequest = branch === "BC5"
+      ? fetch(baristaChefQrSettingsEndpoint, {
+          method: "POST",
+          headers: {
+            apikey: baristaChefQrPublishableKey,
+            Authorization: `Bearer ${baristaChefQrPublishableKey}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ p_branch_code: "BC!", p_table_code: null })
+        }).then((response) => response.ok ? response.json() : null).catch(() => null)
+      : Promise.resolve(null);
+    Promise.all([menuRequest, branchMenuRequest, recommendationsRequest, baristaChefThemeRequest]).then(([menuResult, branchMenuResult, recommendationsResult, baristaChefMenu]) => {
       if (!active) return;
       const { data, error } = menuResult;
       if (error) flash(`\u041C\u0435\u043D\u044E \u0432\u0440\u0435\u043C\u0435\u043D\u043D\u043E \u043D\u0435\u0434\u043E\u0441\u0442\u0443\u043F\u043D\u043E: ${error.message}`);
@@ -427,6 +440,8 @@ export default function QRMenu() {
       setBackgroundTheme(
         hasRequestedTheme
           ? requestedTheme
+          : ["travertine", "paper", "olive", "graphite"].includes(baristaChefMenu?.settings?.background_theme)
+          ? baristaChefMenu.settings.background_theme
           : ["travertine", "paper", "olive", "graphite"].includes(branchMenuConfig?.background_theme)
           ? branchMenuConfig.background_theme
           : "travertine"
