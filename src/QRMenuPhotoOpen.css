@@ -33,3 +33,8 @@ body .app-shell[class*="theme-"] .product-modal[role="dialog"] {
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
 }
+
+/* Do not darken the source card image to make text readable. */
+body .app-shell[class*="theme-"] .product-card .food-photo::after {
+  background: transparent !important;
+}
