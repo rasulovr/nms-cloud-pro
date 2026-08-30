@@ -6,3 +6,14 @@
   -webkit-filter: none !important;
   opacity: 1 !important;
 }
+
+/* The opening layer must never put a dark veil over the dish photograph. */
+.product-modal {
+  background: transparent !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+.product-modal-card {
+  animation: none !important;
+  filter: none !important;
+}
