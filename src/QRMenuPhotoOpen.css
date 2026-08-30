@@ -1,0 +1,8 @@
+/* Keep food photography true to the original image during modal opening. */
+.product-modal-card,
+.product-modal-card .modal-photo,
+.product-modal-card .modal-photo img {
+  filter: none !important;
+  -webkit-filter: none !important;
+  opacity: 1 !important;
+}
