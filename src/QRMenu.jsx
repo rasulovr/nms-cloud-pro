@@ -1,4 +1,5 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { supabase } from "./supabase";
 import { localizeCategory, localizeProduct } from "./qrMenuTranslations";
 import { formatMenuDescription, normalizeReferenceText, resolveReferenceMenuProduct } from "./referenceMenuCatalog";
@@ -970,7 +971,7 @@ export default function QRMenu() {
   const hasTableContext = Boolean(table);
   const recommendationQty = mealRecommendation ? cart.find((line) => line.id === mealRecommendation.product.id)?.qty || 0 : 0;
   return <main className={`app-shell theme-${dayPhase} weather-theme-${atmosphere} menu-view-${menuView} menu-background-${backgroundTheme}`}>
-      <header className={`hero qr-premium-hero ${showSpecialOffer && specialOffer ? "has-special-offer" : ""}`}>
+      <header className="hero qr-premium-hero">
         <div className="hero-sky" aria-hidden="true">
           {weatherOffer && <WeatherVisual kind={weatherOffer.kind} phase={dayPhase} />}
         </div>
@@ -986,18 +987,22 @@ export default function QRMenu() {
           <div className="hero-reference-kicker">{t.quote}</div>
           <div className="hero-reference-title">{t.quoteLines?.[new Date().getDate() % t.quoteLines.length] || "У дня должен быть вкус."}</div>
           </div>
-      {showSpecialOffer && specialOffer && <button type="button" className={`qr-special-offer ${isSpecialOfferClosing ? "is-closing" : ""}`} onClick={dismissSpecialOffer} aria-label="Закрыть спецпредложение">
-        {specialOffer.image_url && <img src={specialOffer.image_url} alt="" />}
-        <span className="qr-special-offer-copy"><small>Спецпредложение</small><strong>{specialOffer.title}</strong>{specialOffer.text && <em>{specialOffer.text}</em>}</span>
-      </button>}
 
-        <div className="hero-reference-weather" aria-label={weatherTitle}>
+<div className="hero-reference-weather" aria-label={weatherTitle}>
           <span className="hero-reference-cloud" aria-hidden="true">☁</span>
           <strong>{weather ? Math.round(weather.temperature) : 18}°</strong>
           <i />
           <span>Baku · {weatherTitle}</span>
         </div>
       </header>
+
+      {showSpecialOffer && specialOffer && createPortal(
+        <button type="button" className={`qr-special-offer ${isSpecialOfferClosing ? "is-closing" : ""}`} onClick={dismissSpecialOffer} aria-label="Закрыть спецпредложение">
+          {specialOffer.image_url && <img src={specialOffer.image_url} alt="" />}
+          <span className="qr-special-offer-copy"><small>Спецпредложение</small><strong>{specialOffer.title}</strong>{specialOffer.text && <em>{specialOffer.text}</em>}</span>
+        </button>,
+        document.body
+      )}
 
       <nav className="main-nav" aria-label="Разделы QR Menu">
         {[
@@ -1051,7 +1056,7 @@ export default function QRMenu() {
                   </button>
                   <div className="product-body">
                     <div className="product-title"><h3>{product.name}</h3></div>
-                    {product.description && <p>{product.description}</p>}
+                    
                     {product.options.length > 0 && <div className="product-options">{product.options.map((option) => <small key={option}>{option}</small>)}</div>}
                     <div className="product-footer">
                       <strong>{money(product.price)}</strong>
