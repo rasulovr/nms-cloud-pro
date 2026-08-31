@@ -278,3 +278,16 @@ body .app-shell[class*="theme-"] .product-modal[role="dialog"] .product-modal-ca
 body .app-shell[class*="theme-"] .product-modal[role="dialog"] .product-modal-card.is-closing {
   animation: qrDishCardOut .72s ease-in both !important;
 }
+
+
+/* Card text layers must never tint the dish photograph (grid and list views). */
+html body .app-shell.menu-view-grid .product-card .food-photo::after,
+html body .app-shell.menu-view-list .product-card .food-photo::after,
+html body .app-shell[class*="theme-"] .product-card .food-photo::after,
+html body .app-shell[class*="theme-"] .product-card::after {
+  content: none !important;
+  display: none !important;
+  opacity: 0 !important;
+  background: none !important;
+  filter: none !important;
+}
