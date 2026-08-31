@@ -792,3 +792,87 @@ body .app-shell .product-card .product-footer > strong {
   body > .qr-special-offer .qr-special-offer-copy strong { font-size: 18px !important; }
   body > .qr-special-offer .qr-special-offer-copy em { font-size: 13px !important; }
 }
+
+
+/* Mobile special offer participates in the page flow: header → offer → navigation → categories.
+   It moves every lower section down while visible and releases the space on exit. */
+@media (min-width: 681px) {
+  body .app-shell > .qr-special-offer { display: none !important; }
+}
+@media (max-width: 680px) {
+  body .app-shell > .qr-special-offer {
+    position: relative !important;
+    z-index: 2 !important;
+    top: auto !important;
+    left: auto !important;
+    width: min(calc(100% - 32px), 520px) !important;
+    min-height: 126px !important;
+    height: auto !important;
+    max-height: none !important;
+    display: grid !important;
+    grid-template-columns: 100px minmax(0, 1fr) !important;
+    align-items: center !important;
+    gap: 14px !important;
+    box-sizing: border-box !important;
+    margin: 12px auto 14px !important;
+    padding: 12px !important;
+    overflow: hidden !important;
+    color: #2b302c !important;
+    text-align: left !important;
+    background: rgba(255,253,248,.88) !important;
+    border: 1px solid rgba(255,255,255,.96) !important;
+    border-radius: 28px !important;
+    box-shadow: 0 20px 52px rgba(53,45,34,.16), inset 0 1px 0 rgba(255,255,255,.86) !important;
+    backdrop-filter: blur(20px) saturate(116%) !important;
+    -webkit-backdrop-filter: blur(20px) saturate(116%) !important;
+    animation: qrSpecialOfferFlowIn .42s cubic-bezier(.16,.9,.24,1) both !important;
+  }
+  body .app-shell > .qr-special-offer.is-closing {
+    animation: qrSpecialOfferFlowOut .44s ease-in both !important;
+    pointer-events: none !important;
+  }
+  body .app-shell > .qr-special-offer > img {
+    width: 100px !important;
+    height: 100px !important;
+    display: block !important;
+    object-fit: cover !important;
+    border-radius: 18px !important;
+    box-shadow: 0 10px 24px rgba(39,33,25,.14) !important;
+  }
+}
+@keyframes qrSpecialOfferFlowIn {
+  from { opacity: 0; transform: translateY(-12px) scale(.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes qrSpecialOfferFlowOut {
+  from { opacity: 1; transform: translateY(0) scale(1); }
+  to { opacity: 0; transform: translateY(-10px) scale(.98); }
+}
+
+/* Photo card copy: centred title at the top with a very light glass pill; description stays readable. */
+body .app-shell .product-card .product-body > p {
+  display: block !important;
+}
+body .app-shell .product-card .product-title,
+body .app-shell.menu-view-list .product-card .product-title {
+  top: 14px !important;
+  right: 14px !important;
+  bottom: auto !important;
+  left: 14px !important;
+  width: auto !important;
+  max-width: none !important;
+  display: flex !important;
+  justify-content: center !important;
+  text-align: center !important;
+  pointer-events: none !important;
+}
+body .app-shell .product-card .product-title h3,
+body .app-shell.menu-view-list .product-card .product-title h3 {
+  max-width: 100% !important;
+  padding: 7px 13px !important;
+  color: #2d2b27 !important;
+  text-align: center !important;
+  background: rgba(255,253,248,.56) !important;
+  border-radius: 15px !important;
+  box-shadow: 0 5px 16px rgba(27,25,20,.07) !important;
+}
