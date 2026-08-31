@@ -424,8 +424,8 @@ export default function QRMenu() {
       window.setTimeout(() => {
         setShowSpecialOffer(false);
         setIsSpecialOfferClosing(false);
-      }, 260);
-    }, 6e3);
+      }, 440);
+    }, 5e3);
     return () => window.clearTimeout(timer);
   }, [showSpecialOffer]);
   useEffect(() => {
@@ -856,7 +856,7 @@ export default function QRMenu() {
     window.setTimeout(() => {
       setShowSpecialOffer(false);
       setIsSpecialOfferClosing(false);
-    }, 260);
+    }, 440);
   }
   function changeQty(product, delta) {
     if (unavailable.includes(product.id)) return flash(t.stoppedNotice);
