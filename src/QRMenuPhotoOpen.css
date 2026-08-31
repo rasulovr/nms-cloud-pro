@@ -472,3 +472,92 @@ body .app-shell .qr-special-offer {
     top: 88px;
   }
 }
+
+
+/* Final mobile offer layout — this file is the last QR Menu cascade. */
+@keyframes qrSpecialOfferIn {
+  from { opacity: 0; transform: translate(-50%, -10px) scale(.98); }
+  to { opacity: 1; transform: translate(-50%, 0) scale(1); }
+}
+@keyframes qrSpecialOfferOut {
+  from { opacity: 1; transform: translate(-50%, 0) scale(1); }
+  to { opacity: 0; transform: translate(-50%, -8px) scale(.985); }
+}
+
+@media (max-width: 680px) {
+  /* Three protected bands: language → quote label → offer → weather. */
+  body .app-shell .qr-premium-hero.hero.has-special-offer {
+    position: relative !important;
+    min-height: 312px !important;
+  }
+
+  body .app-shell .qr-premium-hero.hero.has-special-offer .qr-special-offer {
+    position: absolute !important;
+    z-index: 8 !important;
+    top: 102px !important;
+    left: 50% !important;
+    width: min(calc(100vw - 32px), 520px) !important;
+    height: 126px !important;
+    min-height: 126px !important;
+    max-height: 126px !important;
+    box-sizing: border-box !important;
+    grid-template-columns: 100px minmax(0, 1fr) !important;
+    gap: 14px !important;
+    padding: 12px !important;
+    overflow: hidden !important;
+    transform: translateX(-50%);
+  }
+
+  body .app-shell .qr-premium-hero.hero.has-special-offer .qr-special-offer > img {
+    width: 100px !important;
+    height: 100px !important;
+    border-radius: 18px !important;
+  }
+
+  body .app-shell .qr-premium-hero.hero.has-special-offer .hero-reference-weather {
+    z-index: 7 !important;
+    bottom: 9px !important;
+    height: 43px !important;
+  }
+}
+
+/* A food image is the card itself: use every pixel of the tile. */
+body .app-shell .product-card {
+  overflow: hidden !important;
+}
+body .app-shell .product-card .food-photo,
+body .app-shell.menu-view-list .product-card .food-photo {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  aspect-ratio: auto !important;
+}
+body .app-shell .product-card .food-photo img,
+body .app-shell.menu-view-list .product-card .food-photo img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  object-position: center center !important;
+}
+
+@media (max-width: 380px) {
+  body .app-shell .qr-premium-hero.hero.has-special-offer {
+    min-height: 300px !important;
+  }
+
+  body .app-shell .qr-premium-hero.hero.has-special-offer .qr-special-offer {
+    top: 98px !important;
+    height: 118px !important;
+    min-height: 118px !important;
+    max-height: 118px !important;
+    grid-template-columns: 90px minmax(0, 1fr) !important;
+    gap: 12px !important;
+    padding: 10px !important;
+  }
+
+  body .app-shell .qr-premium-hero.hero.has-special-offer .qr-special-offer > img {
+    width: 90px !important;
+    height: 90px !important;
+  }
+}
