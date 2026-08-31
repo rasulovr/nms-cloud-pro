@@ -1,5 +1,4 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 import { supabase } from "./supabase";
 import { localizeCategory, localizeProduct } from "./qrMenuTranslations";
 import { formatMenuDescription, normalizeReferenceText, resolveReferenceMenuProduct } from "./referenceMenuCatalog";
@@ -996,12 +995,11 @@ export default function QRMenu() {
         </div>
       </header>
 
-      {showSpecialOffer && specialOffer && createPortal(
+      {showSpecialOffer && specialOffer && (
         <button type="button" className={`qr-special-offer ${isSpecialOfferClosing ? "is-closing" : ""}`} onClick={dismissSpecialOffer} aria-label="Закрыть спецпредложение">
           {specialOffer.image_url && <img src={specialOffer.image_url} alt="" />}
           <span className="qr-special-offer-copy"><small>Спецпредложение</small><strong>{specialOffer.title}</strong>{specialOffer.text && <em>{specialOffer.text}</em>}</span>
-        </button>,
-        document.body
+        </button>
       )}
 
       <nav className="main-nav" aria-label="Разделы QR Menu">
@@ -1056,7 +1054,7 @@ export default function QRMenu() {
                   </button>
                   <div className="product-body">
                     <div className="product-title"><h3>{product.name}</h3></div>
-                    
+                    {product.description && <p>{product.description}</p>}
                     {product.options.length > 0 && <div className="product-options">{product.options.map((option) => <small key={option}>{option}</small>)}</div>}
                     <div className="product-footer">
                       <strong>{money(product.price)}</strong>
