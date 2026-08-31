@@ -246,3 +246,35 @@ body .app-shell[class*="theme-"] .product-modal[role="dialog"] {
   -webkit-backdrop-filter: blur(10px) saturate(92%) !important;
 }
 /* Deliberately no opacity declaration here: Web Animations controls the 0.95/0.72 s fade. */
+
+
+@keyframes qrModalVeilIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes qrModalVeilOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+@keyframes qrDishCardIn {
+  from { opacity: 0; transform: translateY(16px) scale(.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes qrDishCardOut {
+  from { opacity: 1; transform: translateY(0) scale(1); }
+  to { opacity: 0; transform: translateY(12px) scale(.99); }
+}
+
+/* The slow motion belongs to the window and backdrop only — never to photo brightness. */
+body .app-shell[class*="theme-"] .product-modal[role="dialog"]:not(.is-closing) {
+  animation: qrModalVeilIn .95s ease-out both !important;
+}
+body .app-shell[class*="theme-"] .product-modal[role="dialog"].is-closing {
+  animation: qrModalVeilOut .72s ease-in both !important;
+}
+body .app-shell[class*="theme-"] .product-modal[role="dialog"] .product-modal-card:not(.is-closing) {
+  animation: qrDishCardIn .95s cubic-bezier(.16, .9, .24, 1) both !important;
+}
+body .app-shell[class*="theme-"] .product-modal[role="dialog"] .product-modal-card.is-closing {
+  animation: qrDishCardOut .72s ease-in both !important;
+}
