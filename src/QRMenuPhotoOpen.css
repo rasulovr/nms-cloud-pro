@@ -312,7 +312,7 @@ body .app-shell.menu-view-list .product-card .product-title {
   bottom: auto !important;
 }
 
-/* Configurable guest offer: appear on QR entry, disappear on touch or after four seconds. */
+/* Configurable guest offer: appear on QR entry, disappear on touch or after six seconds. */
 @keyframes qrSpecialOfferIn {
   from { opacity: 0; transform: translate(-50%, -10px) scale(.98); }
   to { opacity: 1; transform: translate(-50%, 0) scale(1); }
@@ -460,4 +460,15 @@ body .app-shell .qr-special-offer-close { display: none !important; }
     border-radius: 16px;
   }
   body .app-shell .qr-special-offer-copy strong { font-size: 18px; }
+}
+
+
+/* Surface the offer in the masthead, directly over the quote area — never over menu cards. */
+body .app-shell .qr-special-offer {
+  top: clamp(100px, 17vh, 150px);
+}
+@media (max-width: 420px) {
+  body .app-shell .qr-special-offer {
+    top: 112px;
+  }
 }
