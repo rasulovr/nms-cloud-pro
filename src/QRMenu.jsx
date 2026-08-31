@@ -997,7 +997,6 @@ export default function QRMenu() {
       {showSpecialOffer && specialOffer && <button type="button" className={`qr-special-offer ${isSpecialOfferClosing ? "is-closing" : ""}`} onClick={dismissSpecialOffer} aria-label="Закрыть спецпредложение">
         {specialOffer.image_url && <img src={specialOffer.image_url} alt="" />}
         <span className="qr-special-offer-copy"><small>Спецпредложение</small><strong>{specialOffer.title}</strong>{specialOffer.text && <em>{specialOffer.text}</em>}</span>
-        <span className="qr-special-offer-close" aria-hidden="true">×</span>
       </button>}
 
       <nav className="main-nav" aria-label="Разделы QR Menu">
