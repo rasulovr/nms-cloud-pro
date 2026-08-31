@@ -379,6 +379,9 @@ export default function QRMenu() {
   const [branchInfo, setBranchInfo] = useState(null);
   const [configuredBranchName, setConfiguredBranchName] = useState("");
   const [backgroundTheme, setBackgroundTheme] = useState("travertine");
+  const [specialOffer, setSpecialOffer] = useState(null);
+  const [showSpecialOffer, setShowSpecialOffer] = useState(false);
+  const [isSpecialOfferClosing, setIsSpecialOfferClosing] = useState(false);
   const [configuredRecommendations, setConfiguredRecommendations] = useState([]);
   const [dayPhase, setDayPhase] = useState("day");
   const [bakuHour, setBakuHour] = useState(12);
@@ -415,6 +418,17 @@ export default function QRMenu() {
     window.localStorage.setItem("rms-qr-menu-view", menuView);
   }, [menuView]);
   useEffect(() => {
+    if (!showSpecialOffer) return undefined;
+    const timer = window.setTimeout(() => {
+      setIsSpecialOfferClosing(true);
+      window.setTimeout(() => {
+        setShowSpecialOffer(false);
+        setIsSpecialOfferClosing(false);
+      }, 260);
+    }, 4e3);
+    return () => window.clearTimeout(timer);
+  }, [showSpecialOffer]);
+  useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     setBranch(params.get("branch") || "BC1");
     setTable(params.get("table") || "");
@@ -424,6 +438,9 @@ export default function QRMenu() {
     setLoading(true);
     setConfiguredBranchName("");
     setBackgroundTheme("travertine");
+    setSpecialOffer(null);
+    setShowSpecialOffer(false);
+    setIsSpecialOfferClosing(false);
     const menuRequest = supabase.rpc("qr_get_public_menu", { p_branch_code: branch });
     // Every branch reads this lightweight configuration so the visual theme
     // can be controlled independently. The menu-item filter still applies
@@ -457,6 +474,13 @@ export default function QRMenu() {
         if (parsed && typeof parsed === "object") branchMenuConfig = parsed;
       } catch (_error) {}
       setConfiguredBranchName(String(branchMenuConfig?.branch_name || "").trim());
+      const configuredSpecialOffer = branchMenuConfig?.special_offer && typeof branchMenuConfig.special_offer === "object"
+        ? branchMenuConfig.special_offer
+        : null;
+      const hasSpecialOffer = Boolean(configuredSpecialOffer?.enabled && (configuredSpecialOffer?.title || configuredSpecialOffer?.text || configuredSpecialOffer?.image_url));
+      setSpecialOffer(configuredSpecialOffer);
+      setShowSpecialOffer(hasSpecialOffer);
+      setIsSpecialOfferClosing(false);
       setBackgroundTheme(
         hasRequestedTheme
           ? requestedTheme
@@ -826,6 +850,14 @@ export default function QRMenu() {
     setNotice(text);
     window.setTimeout(() => setNotice(""), 2400);
   }
+  function dismissSpecialOffer() {
+    if (!showSpecialOffer || isSpecialOfferClosing) return;
+    setIsSpecialOfferClosing(true);
+    window.setTimeout(() => {
+      setShowSpecialOffer(false);
+      setIsSpecialOfferClosing(false);
+    }, 260);
+  }
   function changeQty(product, delta) {
     if (unavailable.includes(product.id)) return flash(t.stoppedNotice);
     setCart((current) => {
@@ -961,6 +993,12 @@ export default function QRMenu() {
           <span>Baku · {weatherTitle}</span>
         </div>
       </header>
+
+      {showSpecialOffer && specialOffer && <button type="button" className={`qr-special-offer ${isSpecialOfferClosing ? "is-closing" : ""}`} onClick={dismissSpecialOffer} aria-label="Закрыть спецпредложение">
+        {specialOffer.image_url && <img src={specialOffer.image_url} alt="" />}
+        <span className="qr-special-offer-copy"><small>Спецпредложение</small><strong>{specialOffer.title}</strong>{specialOffer.text && <em>{specialOffer.text}</em>}</span>
+        <span className="qr-special-offer-close" aria-hidden="true">×</span>
+      </button>}
 
       <nav className="main-nav" aria-label="Разделы QR Menu">
         {[
