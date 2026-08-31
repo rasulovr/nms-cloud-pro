@@ -425,7 +425,7 @@ export default function QRMenu() {
         setShowSpecialOffer(false);
         setIsSpecialOfferClosing(false);
       }, 260);
-    }, 4e3);
+    }, 6e3);
     return () => window.clearTimeout(timer);
   }, [showSpecialOffer]);
   useEffect(() => {
