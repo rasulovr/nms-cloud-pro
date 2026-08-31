@@ -697,3 +697,98 @@ body .app-shell .product-card .product-footer > strong {
   body .app-shell .qr-special-offer-copy strong { font-size: 18px !important; }
   body .app-shell .qr-special-offer-copy em { font-size: 13px !important; }
 }
+
+
+/* Portal popup: rendered directly under body, independent of hero transforms. */
+@media (min-width: 681px) {
+  body > .qr-special-offer { display: none !important; }
+}
+
+@media (max-width: 680px) {
+  body > .qr-special-offer {
+    position: fixed !important;
+    z-index: 2147483000 !important;
+    top: 50% !important;
+    left: 50% !important;
+    width: min(calc(100vw - 40px), 520px) !important;
+    min-height: 132px !important;
+    display: grid !important;
+    grid-template-columns: 104px minmax(0, 1fr) !important;
+    align-items: center !important;
+    gap: 16px !important;
+    box-sizing: border-box !important;
+    padding: 14px !important;
+    overflow: hidden !important;
+    color: #2b302c !important;
+    text-align: left !important;
+    background: rgba(255,253,248,.88) !important;
+    border: 1px solid rgba(255,255,255,.96) !important;
+    border-radius: 28px !important;
+    box-shadow: 0 24px 70px rgba(53,45,34,.22), inset 0 1px 0 rgba(255,255,255,.86) !important;
+    backdrop-filter: blur(20px) saturate(116%) !important;
+    -webkit-backdrop-filter: blur(20px) saturate(116%) !important;
+    animation: qrSpecialOfferIn .42s cubic-bezier(.16,.9,.24,1) both !important;
+  }
+
+  body > .qr-special-offer.is-closing {
+    animation: qrSpecialOfferOut .42s ease-in both !important;
+    pointer-events: none !important;
+  }
+
+  body > .qr-special-offer > img {
+    width: 104px !important;
+    height: 104px !important;
+    display: block !important;
+    object-fit: cover !important;
+    border-radius: 20px !important;
+    box-shadow: 0 10px 24px rgba(39,33,25,.14) !important;
+  }
+
+  body > .qr-special-offer .qr-special-offer-copy {
+    min-width: 0 !important;
+    display: grid !important;
+    gap: 7px !important;
+    align-content: center !important;
+  }
+
+  body > .qr-special-offer .qr-special-offer-copy small {
+    color: #7f837b !important;
+    font-size: 10px !important;
+    font-weight: 760 !important;
+    letter-spacing: .1em !important;
+    text-transform: uppercase !important;
+  }
+
+  body > .qr-special-offer .qr-special-offer-copy strong {
+    color: #292c28 !important;
+    font-size: 20px !important;
+    font-weight: 760 !important;
+    line-height: 1.12 !important;
+  }
+
+  body > .qr-special-offer .qr-special-offer-copy em {
+    color: #666b63 !important;
+    font-size: 14px !important;
+    font-style: normal !important;
+    line-height: 1.2 !important;
+  }
+}
+
+@media (max-width: 380px) {
+  body > .qr-special-offer {
+    width: calc(100vw - 32px) !important;
+    grid-template-columns: 88px minmax(0, 1fr) !important;
+    gap: 12px !important;
+    padding: 12px !important;
+    border-radius: 24px !important;
+  }
+
+  body > .qr-special-offer > img {
+    width: 88px !important;
+    height: 88px !important;
+    border-radius: 17px !important;
+  }
+
+  body > .qr-special-offer .qr-special-offer-copy strong { font-size: 18px !important; }
+  body > .qr-special-offer .qr-special-offer-copy em { font-size: 13px !important; }
+}
