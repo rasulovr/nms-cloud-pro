@@ -405,7 +405,7 @@ export default function QRMenu() {
   const [category, setCategory] = useState("\u0412\u0441\u0435");
   const [menuView, setMenuView] = useState(() => {
     const savedView = window.localStorage.getItem("rms-qr-menu-view");
-    return savedView === "list" ? "list" : "grid";
+    return ["list", "showcase"].includes(savedView) ? savedView : "grid";
   });
   const [cart, setCart] = useState([]);
   const [notice, setNotice] = useState("");
@@ -1056,14 +1056,18 @@ export default function QRMenu() {
                 onClick={(event) => {
                   event.preventDefault();
                   event.stopPropagation();
-                  setMenuView((current) => current === "grid" ? "list" : "grid");
+                  setMenuView((current) => current === "grid" ? "list" : current === "list" ? "showcase" : "grid");
                 }}
                 aria-label={menuView === "grid"
                   ? (language === "ru" ? "Показать по одной позиции в ряду" : language === "az" ? "Hər sırada bir mövqe göstər" : "Show one item per row")
+                  : menuView === "list"
+                  ? (language === "ru" ? "Показать крупное фото с описанием" : language === "az" ? "Böyük foto və təsviri göstər" : "Show large photo with description")
                   : (language === "ru" ? "Показать по две позиции в ряду" : language === "az" ? "Hər sırada iki mövqe göstər" : "Show two items per row")}
               >
                 {menuView === "grid"
                   ? <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="7" rx="1.5" /><rect x="3" y="14" width="18" height="7" rx="1.5" /></svg>
+                  : menuView === "list"
+                  ? <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="11" rx="1.5" /><rect x="3" y="16" width="18" height="5" rx="1.5" /></svg>
                   : <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" /><rect x="3" y="14" width="7" height="7" rx="1.5" /><rect x="14" y="14" width="7" height="7" rx="1.5" /></svg>}
               </button>
             </div>

@@ -950,3 +950,169 @@
   body .app-shell .content > .qr-contextual-special-offer .qr-special-offer-copy strong { font-size: 16px !important; }
   body .app-shell .content > .qr-contextual-special-offer .qr-special-offer-copy em { font-size: 12px !important; }
 }
+
+/* Grid and image-first list stay clean: dish descriptions never sit on top of
+   photography. The third view gives the description its own readable band. */
+.app-shell.menu-view-grid .product-card .product-body > p,
+.app-shell.menu-view-list .product-card .product-body > p {
+  display: none !important;
+}
+
+.app-shell.menu-view-showcase .product-grid {
+  grid-template-columns: minmax(0, 1fr) !important;
+  width: min(100%, 760px) !important;
+  margin-inline: auto !important;
+  gap: 20px !important;
+}
+
+.app-shell.menu-view-showcase .product-card {
+  display: block !important;
+  aspect-ratio: auto !important;
+  overflow: hidden !important;
+  color: #263128 !important;
+  background: #fffdf8 !important;
+  border: 1px solid rgba(255, 255, 255, .94) !important;
+  border-radius: 26px !important;
+  box-shadow: 0 16px 38px rgba(44, 37, 27, .14) !important;
+}
+
+.app-shell.menu-view-showcase .product-card .food-photo {
+  position: relative !important;
+  z-index: 0 !important;
+  inset: auto !important;
+  width: 100% !important;
+  height: auto !important;
+  aspect-ratio: 16 / 10 !important;
+  display: block !important;
+  border-radius: 0 !important;
+  background: #e8e3da !important;
+}
+
+.app-shell.menu-view-showcase .product-card .food-photo::after {
+  content: none !important;
+  display: none !important;
+  opacity: 0 !important;
+  background: none !important;
+}
+
+.app-shell.menu-view-showcase .product-card .food-photo img,
+.app-shell.menu-view-showcase .product-card .food-photo img.cold-drink-photo,
+.app-shell.menu-view-showcase .product-card .food-photo img.lemonade-photo,
+.app-shell.menu-view-showcase .product-card .food-photo img.water-bottle-photo {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  object-position: center !important;
+}
+
+.app-shell.menu-view-showcase .product-card .product-body {
+  position: relative !important;
+  z-index: 3 !important;
+  inset: auto !important;
+  min-height: 0 !important;
+  display: block !important;
+  padding: 17px 18px 16px !important;
+  color: #263128 !important;
+  background: #fffdf8 !important;
+  pointer-events: auto !important;
+}
+
+.app-shell.menu-view-showcase .product-card .product-title {
+  position: static !important;
+  display: block !important;
+  height: auto !important;
+  min-height: 0 !important;
+  margin: 0 0 7px !important;
+  padding: 0 !important;
+  transform: none !important;
+}
+
+.app-shell.menu-view-showcase .product-card .product-title h3 {
+  display: block !important;
+  margin: 0 !important;
+  color: #233027 !important;
+  font-family: Georgia, "Times New Roman", serif !important;
+  font-size: clamp(22px, 3.4vw, 30px) !important;
+  font-weight: 650 !important;
+  line-height: 1.08 !important;
+  letter-spacing: -.025em !important;
+  text-shadow: none !important;
+}
+
+.app-shell.menu-view-showcase .product-card .product-body > p {
+  display: block !important;
+  min-height: 0 !important;
+  margin: 0 0 14px !important;
+  padding: 10px 12px !important;
+  color: #6e7068 !important;
+  background: #f2ede4 !important;
+  border-left: 3px solid #b89b72 !important;
+  border-radius: 0 12px 12px 0 !important;
+  font-size: 14px !important;
+  font-style: normal !important;
+  line-height: 1.42 !important;
+  text-shadow: none !important;
+  -webkit-line-clamp: unset !important;
+}
+
+.app-shell.menu-view-showcase .product-card .product-options {
+  display: none !important;
+}
+
+.app-shell.menu-view-showcase .product-card .product-footer {
+  position: static !important;
+  min-height: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 12px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  pointer-events: auto !important;
+}
+
+.app-shell.menu-view-showcase .product-card .product-footer > strong {
+  position: static !important;
+  color: #b06e27 !important;
+  font-size: 21px !important;
+  font-weight: 760 !important;
+  line-height: 1 !important;
+  text-shadow: none !important;
+}
+
+.app-shell.menu-view-showcase .product-card .add,
+.app-shell.menu-view-showcase .product-card .stepper {
+  position: static !important;
+  z-index: auto !important;
+  flex: 0 0 auto !important;
+  margin: 0 !important;
+  pointer-events: auto !important;
+}
+
+@media (max-width: 680px) {
+  .app-shell.menu-view-showcase .product-grid {
+    width: 100% !important;
+    gap: 16px !important;
+  }
+
+  .app-shell.menu-view-showcase .product-card {
+    border-radius: 22px !important;
+  }
+
+  .app-shell.menu-view-showcase .product-card .food-photo {
+    aspect-ratio: 4 / 3 !important;
+  }
+
+  .app-shell.menu-view-showcase .product-card .product-body {
+    padding: 14px 14px 13px !important;
+  }
+
+  .app-shell.menu-view-showcase .product-card .product-title h3 {
+    font-size: clamp(21px, 6.2vw, 27px) !important;
+  }
+
+  .app-shell.menu-view-showcase .product-card .product-body > p {
+    margin-bottom: 12px !important;
+    font-size: 13px !important;
+  }
+}
