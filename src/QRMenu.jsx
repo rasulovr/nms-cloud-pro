@@ -845,14 +845,7 @@ export default function QRMenu() {
   }
   function requestCloseProduct() {
     if (!selectedProduct || isProductClosing) return;
-    const overlay = productModalRef.current;
-    const card = productModalCardRef.current;
     setIsProductClosing(true);
-    if (overlay && card) {
-      const options = { duration: 720, easing: "ease-in", fill: "forwards" };
-      overlay.animate([{ opacity: 1 }, { opacity: 0 }], options);
-      card.animate([{ opacity: 1 }, { opacity: 0 }], options);
-    }
     window.setTimeout(() => {
       setSelectedProduct(null);
       setIsProductClosing(false);
@@ -1125,8 +1118,8 @@ export default function QRMenu() {
           <button className="primary-button" onClick={() => callWaiter("waiter")}>{t.waiter}</button>
         </section>}
 
-      {selectedProduct && <div ref={productModalRef} className="product-modal" role="dialog" aria-modal="true" aria-label={selectedProduct.name}>
-          <article ref={productModalCardRef} className="product-modal-card" key={selectedProduct.id}>
+      {selectedProduct && <div ref={productModalRef} className={`product-modal ${isProductClosing ? "is-closing" : ""}`} role="dialog" aria-modal="true" aria-label={selectedProduct.name}>
+          <article ref={productModalCardRef} className={`product-modal-card ${isProductClosing ? "is-closing" : ""}`} key={selectedProduct.id}>
             <div className="modal-photo" style={photoStyle(selectedProduct)}>
               {selectedProduct.image ? <img className={photoClass(selectedProduct)} src={selectedProduct.image} alt={selectedProduct.name} onError={useRecoveredImageFallback} /> : <span className="photo-placeholder">B&C</span>}
               <button className="modal-close" onClick={requestCloseProduct} aria-label={t.close}>×</button>
