@@ -561,3 +561,139 @@ body .app-shell.menu-view-list .product-card .food-photo img {
     height: 90px !important;
   }
 }
+
+
+/* QR special offer: separate mobile popup, never part of the masthead layout. */
+@keyframes qrSpecialOfferIn {
+  from { opacity: 0; transform: translate(-50%, -46%) scale(.96); }
+  to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+@keyframes qrSpecialOfferOut {
+  from { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  to { opacity: 0; transform: translate(-50%, -54%) scale(.97); }
+}
+
+@media (min-width: 681px) {
+  body .app-shell .qr-special-offer { display: none !important; }
+}
+
+@media (max-width: 680px) {
+  body .app-shell .qr-premium-hero.hero.has-special-offer {
+    min-height: 182px !important;
+  }
+
+  body .app-shell .qr-premium-hero.hero.has-special-offer .qr-special-offer {
+    position: fixed !important;
+    z-index: 900 !important;
+    top: 50% !important;
+    left: 50% !important;
+    width: min(calc(100vw - 40px), 520px) !important;
+    height: auto !important;
+    min-height: 132px !important;
+    max-height: none !important;
+    grid-template-columns: 104px minmax(0, 1fr) !important;
+    gap: 16px !important;
+    padding: 14px !important;
+    color: #2b302c !important;
+    background: rgba(255, 253, 248, .86) !important;
+    border-color: rgba(255,255,255,.96) !important;
+    border-radius: 28px !important;
+    box-shadow: 0 24px 70px rgba(53,45,34,.20), inset 0 1px 0 rgba(255,255,255,.86) !important;
+    backdrop-filter: blur(20px) saturate(116%) !important;
+    -webkit-backdrop-filter: blur(20px) saturate(116%) !important;
+    animation: qrSpecialOfferIn .42s cubic-bezier(.16,.9,.24,1) both !important;
+  }
+
+  body .app-shell .qr-premium-hero.hero.has-special-offer .qr-special-offer.is-closing {
+    animation: qrSpecialOfferOut .42s ease-in both !important;
+    pointer-events: none !important;
+  }
+
+  body .app-shell .qr-special-offer > img {
+    width: 104px !important;
+    height: 104px !important;
+    border-radius: 20px !important;
+  }
+
+  body .app-shell .qr-special-offer-copy {
+    gap: 7px !important;
+    align-content: center !important;
+  }
+
+  body .app-shell .qr-special-offer-copy small { color: #7f837b !important; }
+  body .app-shell .qr-special-offer-copy strong {
+    color: #292c28 !important;
+    font-size: 20px !important;
+    line-height: 1.12 !important;
+  }
+  body .app-shell .qr-special-offer-copy em {
+    color: #666b63 !important;
+    font-size: 14px !important;
+    line-height: 1.2 !important;
+  }
+}
+
+/* Photo-first alternative for dish cards: food is dominant, card copy is restrained. */
+body .app-shell .product-card .product-body > p {
+  display: none !important;
+}
+
+body .app-shell .product-card .product-title,
+body .app-shell.menu-view-list .product-card .product-title {
+  top: 14px !important;
+  right: 70px !important;
+  bottom: auto !important;
+  left: 14px !important;
+  width: auto !important;
+  max-width: calc(100% - 84px) !important;
+  min-height: 0 !important;
+  padding: 0 !important;
+  text-align: left !important;
+  background: none !important;
+}
+
+body .app-shell .product-card .product-title h3,
+body .app-shell.menu-view-list .product-card .product-title h3 {
+  display: inline-block !important;
+  max-width: 100% !important;
+  margin: 0 !important;
+  padding: 8px 12px !important;
+  overflow: hidden !important;
+  color: #2d2b27 !important;
+  font-family: Georgia, "Times New Roman", serif !important;
+  font-size: clamp(18px, 4.4vw, 24px) !important;
+  font-weight: 650 !important;
+  line-height: 1.06 !important;
+  text-align: left !important;
+  text-overflow: ellipsis !important;
+  text-shadow: none !important;
+  background: rgba(255,253,248,.86) !important;
+  border: 0 !important;
+  border-radius: 15px !important;
+  box-shadow: 0 6px 18px rgba(27,25,20,.10) !important;
+  -webkit-line-clamp: 2 !important;
+}
+
+body .app-shell .product-card .product-footer > strong {
+  padding: 6px 10px !important;
+  color: #f4a343 !important;
+  text-shadow: 0 2px 10px rgba(0,0,0,.35) !important;
+  background: rgba(20,18,15,.16) !important;
+  border-radius: 12px !important;
+}
+
+@media (max-width: 380px) {
+  body .app-shell .qr-special-offer > img {
+    width: 88px !important;
+    height: 88px !important;
+  }
+
+  body .app-shell .qr-special-offer {
+    grid-template-columns: 88px minmax(0, 1fr) !important;
+    gap: 12px !important;
+    padding: 12px !important;
+  }
+
+  body .app-shell .qr-special-offer-copy strong { font-size: 18px !important; }
+  body .app-shell .qr-special-offer-copy em { font-size: 13px !important; }
+}
