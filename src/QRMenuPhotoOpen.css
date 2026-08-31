@@ -469,6 +469,6 @@ body .app-shell .qr-special-offer {
 }
 @media (max-width: 420px) {
   body .app-shell .qr-special-offer {
-    top: 112px;
+    top: 88px;
   }
 }
