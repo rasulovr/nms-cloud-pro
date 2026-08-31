@@ -395,3 +395,69 @@ body .app-shell .qr-special-offer-close {
   border: 1px solid rgba(255,255,255,.28);
   border-radius: 50%;
 }
+
+
+/* Airy, centred special offer — the whole card is the close control. */
+@keyframes qrSpecialOfferIn {
+  from { opacity: 0; transform: translate(-50%, -54%) scale(.96); }
+  to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+@keyframes qrSpecialOfferOut {
+  from { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  to { opacity: 0; transform: translate(-50%, -46%) scale(.97); }
+}
+body .app-shell .qr-special-offer {
+  top: 50%;
+  width: min(calc(100vw - 48px), 520px);
+  min-height: 136px;
+  grid-template-columns: 112px minmax(0, 1fr);
+  gap: 18px;
+  padding: 14px;
+  color: #2b302c;
+  background: rgba(255, 253, 248, .80);
+  border-color: rgba(255,255,255,.96);
+  border-radius: 28px;
+  box-shadow: 0 24px 70px rgba(53, 45, 34, .18), inset 0 1px 0 rgba(255,255,255,.86);
+  backdrop-filter: blur(20px) saturate(116%);
+  -webkit-backdrop-filter: blur(20px) saturate(116%);
+  transform: translate(-50%, -50%);
+}
+body .app-shell .qr-special-offer > img {
+  width: 112px;
+  height: 112px;
+  border-radius: 20px;
+  box-shadow: 0 10px 24px rgba(39,33,25,.14);
+}
+body .app-shell .qr-special-offer-copy {
+  gap: 7px;
+  align-content: center;
+}
+body .app-shell .qr-special-offer-copy small {
+  color: #7f837b;
+}
+body .app-shell .qr-special-offer-copy strong {
+  color: #292c28;
+  font-size: 20px;
+  white-space: normal;
+}
+body .app-shell .qr-special-offer-copy em {
+  color: #666b63;
+  font-size: 14px;
+  white-space: normal;
+}
+body .app-shell .qr-special-offer-close { display: none !important; }
+@media (max-width: 420px) {
+  body .app-shell .qr-special-offer {
+    width: min(calc(100vw - 32px), 390px);
+    min-height: 118px;
+    grid-template-columns: 90px minmax(0, 1fr);
+    gap: 13px;
+    padding: 12px;
+  }
+  body .app-shell .qr-special-offer > img {
+    width: 90px;
+    height: 90px;
+    border-radius: 16px;
+  }
+  body .app-shell .qr-special-offer-copy strong { font-size: 18px; }
+}
