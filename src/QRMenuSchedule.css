@@ -738,7 +738,7 @@
     gap: 14px !important;
     padding: 12px !important;
     overflow: hidden !important;
-    transform: translateX(-50%) !important;
+    transform: translateX(-50%);
   }
 
   body .app-shell .qr-special-offer > img {
@@ -790,5 +790,51 @@
 
   body .app-shell .qr-special-offer-copy em {
     font-size: 12px !important;
+  }
+}
+
+
+/* The offer belongs to the mobile masthead: quote label, offer and weather never overlap. */
+@keyframes qrSpecialOfferIn {
+  from { opacity: 0; transform: translate(-50%, -10px) scale(.98); }
+  to { opacity: 1; transform: translate(-50%, 0) scale(1); }
+}
+@keyframes qrSpecialOfferOut {
+  from { opacity: 1; transform: translate(-50%, 0) scale(1); }
+  to { opacity: 0; transform: translate(-50%, -8px) scale(.985); }
+}
+
+@media (max-width: 680px) {
+  .qr-premium-hero.hero.has-special-offer {
+    position: relative !important;
+    min-height: 312px !important;
+  }
+
+  .qr-premium-hero.hero.has-special-offer .qr-special-offer {
+    position: absolute !important;
+    top: 102px !important;
+    left: 50% !important;
+    transform: translateX(-50%);
+    height: 126px !important;
+    min-height: 126px !important;
+    max-height: 126px !important;
+  }
+
+  .qr-premium-hero.hero.has-special-offer .hero-reference-weather {
+    bottom: 9px !important;
+    height: 43px !important;
+  }
+}
+
+@media (max-width: 380px) {
+  .qr-premium-hero.hero.has-special-offer {
+    min-height: 300px !important;
+  }
+
+  .qr-premium-hero.hero.has-special-offer .qr-special-offer {
+    top: 98px !important;
+    height: 118px !important;
+    min-height: 118px !important;
+    max-height: 118px !important;
   }
 }
