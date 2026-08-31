@@ -701,3 +701,94 @@
     box-shadow: none !important;
   }
 }
+
+
+/* Final QR special-offer placement: mobile only, held between language and weather. */
+@media (min-width: 681px) {
+  body .app-shell .qr-special-offer {
+    display: none !important;
+  }
+
+  body .app-shell.menu-view-grid .product-grid {
+    width: min(60vw, 1260px) !important;
+    max-width: calc(100% - 48px) !important;
+    margin-inline: auto !important;
+    justify-self: center !important;
+  }
+}
+
+@media (max-width: 680px) {
+  /* The hero keeps a reserved band: language (top), offer (middle), weather (bottom). */
+  .qr-premium-hero.hero {
+    min-height: 292px !important;
+  }
+
+  body .app-shell .qr-special-offer {
+    position: fixed !important;
+    z-index: 800 !important;
+    top: 64px !important;
+    left: 50% !important;
+    width: min(calc(100vw - 32px), 520px) !important;
+    height: 126px !important;
+    min-height: 126px !important;
+    max-height: 126px !important;
+    box-sizing: border-box !important;
+    grid-template-columns: 100px minmax(0, 1fr) !important;
+    align-items: center !important;
+    gap: 14px !important;
+    padding: 12px !important;
+    overflow: hidden !important;
+    transform: translateX(-50%) !important;
+  }
+
+  body .app-shell .qr-special-offer > img {
+    width: 100px !important;
+    height: 100px !important;
+    border-radius: 18px !important;
+  }
+
+  body .app-shell .qr-special-offer-copy {
+    min-width: 0 !important;
+    gap: 5px !important;
+  }
+
+  body .app-shell .qr-special-offer-copy small {
+    font-size: 9px !important;
+    line-height: 1 !important;
+  }
+
+  body .app-shell .qr-special-offer-copy strong {
+    font-size: 18px !important;
+    line-height: 1.12 !important;
+  }
+
+  body .app-shell .qr-special-offer-copy em {
+    font-size: 13px !important;
+    line-height: 1.2 !important;
+  }
+}
+
+@media (max-width: 380px) {
+  body .app-shell .qr-special-offer {
+    top: 60px !important;
+    height: 118px !important;
+    min-height: 118px !important;
+    max-height: 118px !important;
+    grid-template-columns: 90px minmax(0, 1fr) !important;
+    gap: 12px !important;
+    padding: 10px !important;
+  }
+
+  body .app-shell .qr-special-offer > img {
+    width: 90px !important;
+    height: 90px !important;
+  }
+
+  body .app-shell .qr-special-offer-copy strong {
+    font-size: 16px !important;
+  }
+
+  body .app-shell .qr-special-offer-copy em {
+    font-size: 12px !important;
+  }
+}
