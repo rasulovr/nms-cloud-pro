@@ -35,6 +35,57 @@ const productPriority = {
   night: [/сырн.*сет|cheese.*set|pendir.*set/i, /вителло|vitello|тоннат|tonnato/i, /брускет|bruschett/i, /стейк|steak|рибай|ribeye|утк|duck|ördək/i, /бургер|burger/i, /сэндвич|sandwich|sendviç/i, /пицц|pizza/i]
 };
 const getMealMoment = (hour) => hour >= 8 && hour < 12 ? "breakfast" : hour >= 12 && hour < 18 ? "lunch" : hour >= 18 && hour < 20 ? "evening" : "night";
+const getContextualOfferCopy = (language, moment, weatherKind) => {
+  const weatherCopy = {
+    az: {
+      rainy: ["Yağışlı günün seçimi", "İsinmək və rahat bir fasilə üçün"],
+      windy: ["Küləkli hava üçün", "İsti və rahat seçim"],
+      cool: ["Sərin hava üçün", "İsti və rahat seçim"],
+      sunny: ["Günün təravətli seçimi", "İsti Bakıda sərin fasilə"],
+      cloudy: ["Bugünün rahat seçimi", "Gözəl fasilə üçün"],
+      clear: ["Bugünün seçimi", "Gözəl fasilə üçün"]
+    },
+    ru: {
+      rainy: ["Выбор для дождливого дня", "Чтобы согреться и сделать паузу"],
+      windy: ["Для ветреной погоды", "Тёплый и уютный выбор"],
+      cool: ["Для прохладного дня", "Тёплый и уютный выбор"],
+      sunny: ["Освежающий выбор дня", "Прохладная пауза в жарком Баку"],
+      cloudy: ["Уютный выбор дня", "Для приятной паузы"],
+      clear: ["Выбор дня", "Для приятной паузы"]
+    },
+    en: {
+      rainy: ["A rainy-day choice", "To warm up and take a pause"],
+      windy: ["For a windy day", "A warm, comforting choice"],
+      cool: ["For a cool day", "A warm, comforting choice"],
+      sunny: ["A refreshing choice", "A cool break in warm Baku"],
+      cloudy: ["Today's comforting choice", "For a pleasant break"],
+      clear: ["Today's choice", "For a pleasant break"]
+    }
+  };
+  const timeCopy = {
+    az: {
+      breakfast: ["Səhər seçimi", "Günə yaxşı zövqlə başlayın"],
+      lunch: ["Nahar seçimi", "Günün ortasında dadlı fasilə"],
+      evening: ["Axşam seçimi", "Axşam üçün zövqlü seçim"],
+      night: ["Axşam üçün seçim", "Gözəl günün dadlı davamı"]
+    },
+    ru: {
+      breakfast: ["Утренний выбор", "Начните день со вкусом"],
+      lunch: ["Выбор на обед", "Вкусная пауза в середине дня"],
+      evening: ["Выбор на вечер", "Вкусный вариант для вашего вечера"],
+      night: ["Выбор к вечеру", "Вкусное продолжение хорошего дня"]
+    },
+    en: {
+      breakfast: ["Morning choice", "Start the day with great taste"],
+      lunch: ["Lunch choice", "A delicious pause in the day"],
+      evening: ["Evening choice", "A tasteful choice for your evening"],
+      night: ["For the evening", "A delicious end to a good day"]
+    }
+  };
+  const hasWeatherPriority = ["rainy", "windy", "cool", "sunny"].includes(weatherKind);
+  return (hasWeatherPriority ? weatherCopy : timeCopy)[language]?.[hasWeatherPriority ? weatherKind : moment]
+    || timeCopy.ru.lunch;
+};
 const productMomentRank = (product, moment) => {
   const haystack = `${product.name || ""} ${product.sourceName || ""} ${product.description || ""} ${product.sourceDescription || ""} ${product.category || ""}`;
   const index = (productPriority[moment] || []).findIndex((pattern) => pattern.test(haystack));
@@ -379,9 +430,6 @@ export default function QRMenu() {
   const [branchInfo, setBranchInfo] = useState(null);
   const [configuredBranchName, setConfiguredBranchName] = useState("");
   const [backgroundTheme, setBackgroundTheme] = useState("travertine");
-  const [specialOffer, setSpecialOffer] = useState(null);
-  const [showSpecialOffer, setShowSpecialOffer] = useState(false);
-  const [isSpecialOfferClosing, setIsSpecialOfferClosing] = useState(false);
   const [configuredRecommendations, setConfiguredRecommendations] = useState([]);
   const [dayPhase, setDayPhase] = useState("day");
   const [bakuHour, setBakuHour] = useState(12);
@@ -418,17 +466,6 @@ export default function QRMenu() {
     window.localStorage.setItem("rms-qr-menu-view", menuView);
   }, [menuView]);
   useEffect(() => {
-    if (!showSpecialOffer) return undefined;
-    const timer = window.setTimeout(() => {
-      setIsSpecialOfferClosing(true);
-      window.setTimeout(() => {
-        setShowSpecialOffer(false);
-        setIsSpecialOfferClosing(false);
-      }, 440);
-    }, 5e3);
-    return () => window.clearTimeout(timer);
-  }, [showSpecialOffer]);
-  useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     setBranch(params.get("branch") || "BC1");
     setTable(params.get("table") || "");
@@ -438,9 +475,6 @@ export default function QRMenu() {
     setLoading(true);
     setConfiguredBranchName("");
     setBackgroundTheme("travertine");
-    setSpecialOffer(null);
-    setShowSpecialOffer(false);
-    setIsSpecialOfferClosing(false);
     const menuRequest = supabase.rpc("qr_get_public_menu", { p_branch_code: branch });
     // Every branch reads this lightweight configuration so the visual theme
     // can be controlled independently. The menu-item filter still applies
@@ -474,13 +508,6 @@ export default function QRMenu() {
         if (parsed && typeof parsed === "object") branchMenuConfig = parsed;
       } catch (_error) {}
       setConfiguredBranchName(String(branchMenuConfig?.branch_name || "").trim());
-      const configuredSpecialOffer = branchMenuConfig?.special_offer && typeof branchMenuConfig.special_offer === "object"
-        ? branchMenuConfig.special_offer
-        : null;
-      const hasSpecialOffer = Boolean(configuredSpecialOffer?.enabled && (configuredSpecialOffer?.title || configuredSpecialOffer?.text || configuredSpecialOffer?.image_url));
-      setSpecialOffer(configuredSpecialOffer);
-      setShowSpecialOffer(hasSpecialOffer);
-      setIsSpecialOfferClosing(false);
       setBackgroundTheme(
         hasRequestedTheme
           ? requestedTheme
@@ -563,13 +590,16 @@ export default function QRMenu() {
       windGust: Number(data.current?.wind_gusts_10m ?? 0),
       weatherCode: Number(data.current?.weather_code ?? 0)
     });
-    fetch("/api/weather").then((response) => response.ok ? response.json() : Promise.reject()).catch(() => fetch(directEndpoint).then((response) => response.ok ? response.json() : Promise.reject()).then(normalizeDirectWeather)).then((data) => {
+    const loadWeather = () => fetch("/api/weather").then((response) => response.ok ? response.json() : Promise.reject()).catch(() => fetch(directEndpoint).then((response) => response.ok ? response.json() : Promise.reject()).then(normalizeDirectWeather)).then((data) => {
       if (active) setWeather(data);
     }).catch(() => {
       if (active) setWeather(null);
     });
+    loadWeather();
+    const timer = window.setInterval(loadWeather, 30 * 60 * 1000);
     return () => {
       active = false;
+      window.clearInterval(timer);
     };
   }, []);
   useEffect(() => {
@@ -760,6 +790,12 @@ export default function QRMenu() {
       // This is a single contextual suggestion, not a catalogue carousel.
       .slice(0, 1);
   }, [localizedProducts, branch, unavailable, bakuHour, weatherOffer]);
+  const contextualSpecialOffer = useMemo(() => {
+    const product = smartRecommendations[0] || mealRecommendation?.product;
+    if (!product) return null;
+    const [eyebrow, description] = getContextualOfferCopy(language, mealMoment, weatherOffer?.kind || "clear");
+    return { product, eyebrow, description };
+  }, [smartRecommendations, mealRecommendation, language, mealMoment, weatherOffer]);
   const pairings = useMemo(() => {
     if (!selectedProduct || isExtraCategory(selectedProduct)) return [];
     const referenceProduct = resolveReferenceMenuProduct(selectedProduct);
@@ -849,14 +885,6 @@ export default function QRMenu() {
   function flash(text) {
     setNotice(text);
     window.setTimeout(() => setNotice(""), 2400);
-  }
-  function dismissSpecialOffer() {
-    if (!showSpecialOffer || isSpecialOfferClosing) return;
-    setIsSpecialOfferClosing(true);
-    window.setTimeout(() => {
-      setShowSpecialOffer(false);
-      setIsSpecialOfferClosing(false);
-    }, 440);
   }
   function changeQty(product, delta) {
     if (unavailable.includes(product.id)) return flash(t.stoppedNotice);
@@ -995,13 +1023,6 @@ export default function QRMenu() {
         </div>
       </header>
 
-      {showSpecialOffer && specialOffer && (
-        <button type="button" className={`qr-special-offer ${isSpecialOfferClosing ? "is-closing" : ""}`} onClick={dismissSpecialOffer} aria-label="Закрыть спецпредложение">
-          {specialOffer.image_url && <img src={specialOffer.image_url} alt="" />}
-          <span className="qr-special-offer-copy"><small>Спецпредложение</small><strong>{specialOffer.title}</strong>{specialOffer.text && <em>{specialOffer.text}</em>}</span>
-        </button>
-      )}
-
       <nav className="main-nav" aria-label="Разделы QR Menu">
         {[
     ["menu", t.menu],
@@ -1019,6 +1040,11 @@ export default function QRMenu() {
       {notice && <div className="toast">{notice}</div>}
 
       {screen === "menu" && <section className="content">
+                    {contextualSpecialOffer && <button type="button" className="qr-special-offer qr-contextual-special-offer" onClick={() => openProduct(contextualSpecialOffer.product)} aria-label={`${t.openPhoto}: ${contextualSpecialOffer.product.name}`}>
+                      {contextualSpecialOffer.product.image && <img src={contextualSpecialOffer.product.image} alt="" onError={useRecoveredImageFallback} />}
+                      <span className="qr-special-offer-copy"><small>{contextualSpecialOffer.eyebrow}</small><strong>{contextualSpecialOffer.product.name}</strong><em>{contextualSpecialOffer.description}</em></span>
+                      <span className="qr-contextual-special-offer-arrow" aria-hidden="true">›</span>
+                    </button>}
                     <div className="menu-toolbar">
             <div className="categories">
               {categories.map((name) => <button className={category === name ? "active" : ""} key={name} onClick={() => setCategory(name)}>{localizeCategory(name, language) || categoryTranslations[language][name] || categoryLabel(name)}</button>)}

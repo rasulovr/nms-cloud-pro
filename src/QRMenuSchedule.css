@@ -838,3 +838,115 @@
     max-height: 118px !important;
   }
 }
+
+/* Persistent contextual recommendation: it sits in the normal mobile flow,
+   between the primary navigation and menu categories. It never behaves as a
+   popup and does not alter the food-photo opening or closing effects. */
+@media (min-width: 681px) {
+  body .app-shell .content > .qr-contextual-special-offer {
+    display: none !important;
+  }
+}
+
+@media (max-width: 680px) {
+  body .app-shell .content > .qr-contextual-special-offer {
+    position: relative !important;
+    z-index: 1 !important;
+    top: auto !important;
+    left: auto !important;
+    width: calc(100% - 32px) !important;
+    min-height: 102px !important;
+    height: auto !important;
+    max-height: none !important;
+    display: grid !important;
+    grid-template-columns: 78px minmax(0, 1fr) 18px !important;
+    align-items: center !important;
+    gap: 12px !important;
+    box-sizing: border-box !important;
+    margin: 12px auto 14px !important;
+    padding: 12px !important;
+    overflow: hidden !important;
+    color: #253128 !important;
+    text-align: left !important;
+    cursor: pointer !important;
+    background: rgba(255, 252, 246, .90) !important;
+    border: 1px solid rgba(255, 255, 255, .92) !important;
+    border-radius: 24px !important;
+    box-shadow: 0 14px 34px rgba(47, 40, 29, .13), inset 0 1px 0 rgba(255, 255, 255, .84) !important;
+    transform: none !important;
+    animation: none !important;
+    backdrop-filter: blur(18px) saturate(112%) !important;
+    -webkit-backdrop-filter: blur(18px) saturate(112%) !important;
+  }
+
+  body .app-shell .content > .qr-contextual-special-offer > img {
+    width: 78px !important;
+    height: 78px !important;
+    display: block !important;
+    object-fit: cover !important;
+    border-radius: 16px !important;
+    box-shadow: 0 8px 18px rgba(42, 34, 24, .13) !important;
+  }
+
+  body .app-shell .content > .qr-contextual-special-offer .qr-special-offer-copy {
+    min-width: 0 !important;
+    display: grid !important;
+    gap: 4px !important;
+  }
+
+  body .app-shell .content > .qr-contextual-special-offer .qr-special-offer-copy small {
+    overflow: hidden !important;
+    color: #777a70 !important;
+    font-size: 10px !important;
+    font-weight: 700 !important;
+    line-height: 1.1 !important;
+    letter-spacing: .08em !important;
+    text-overflow: ellipsis !important;
+    text-transform: uppercase !important;
+    white-space: nowrap !important;
+  }
+
+  body .app-shell .content > .qr-contextual-special-offer .qr-special-offer-copy strong {
+    overflow: hidden !important;
+    color: #263128 !important;
+    font-size: 18px !important;
+    font-weight: 750 !important;
+    line-height: 1.12 !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+
+  body .app-shell .content > .qr-contextual-special-offer .qr-special-offer-copy em {
+    overflow: hidden !important;
+    color: #74766e !important;
+    font-size: 13px !important;
+    font-style: normal !important;
+    line-height: 1.2 !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+
+  body .app-shell .content > .qr-contextual-special-offer .qr-contextual-special-offer-arrow {
+    color: #8e7b62 !important;
+    font-size: 30px !important;
+    font-weight: 300 !important;
+    line-height: 1 !important;
+  }
+}
+
+@media (max-width: 380px) {
+  body .app-shell .content > .qr-contextual-special-offer {
+    grid-template-columns: 70px minmax(0, 1fr) 16px !important;
+    gap: 10px !important;
+    min-height: 94px !important;
+    padding: 10px !important;
+  }
+
+  body .app-shell .content > .qr-contextual-special-offer > img {
+    width: 70px !important;
+    height: 70px !important;
+  }
+
+  body .app-shell .content > .qr-contextual-special-offer .qr-special-offer-copy strong { font-size: 16px !important; }
+  body .app-shell .content > .qr-contextual-special-offer .qr-special-offer-copy em { font-size: 12px !important; }
+}
