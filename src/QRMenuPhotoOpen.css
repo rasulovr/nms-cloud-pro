@@ -4,6 +4,9 @@
 .product-modal-card .modal-photo img {
   filter: none !important;
   -webkit-filter: none !important;
+}
+.product-modal-card .modal-photo,
+.product-modal-card .modal-photo img {
   opacity: 1 !important;
 }
 
@@ -198,10 +201,13 @@ body .app-shell[class*="theme-"] .product-modal,
 body .app-shell[class*="theme-"] .product-modal-card,
 body .app-shell[class*="theme-"] .product-modal .modal-photo,
 body .app-shell[class*="theme-"] .product-modal .modal-photo img {
-  opacity: 1 !important;
   filter: none !important;
   -webkit-filter: none !important;
   mix-blend-mode: normal !important;
+}
+body .app-shell[class*="theme-"] .product-modal .modal-photo,
+body .app-shell[class*="theme-"] .product-modal .modal-photo img {
+  opacity: 1 !important;
 }
 body .app-shell[class*="theme-"] .product-modal .modal-photo::before,
 body .app-shell[class*="theme-"] .product-modal .modal-photo::after {
@@ -215,3 +221,28 @@ body .app-shell[class*="theme-"] .product-modal .modal-photo img {
   background: transparent !important;
   box-shadow: none !important;
 }
+
+
+/* Keep the QR alongside the credentials at every viewport size. */
+body .app-shell[class*="theme-"] .wifi-info-card .wifi-details {
+  grid-template-columns: minmax(0, 1fr) 140px !important;
+  align-items: start !important;
+}
+body .app-shell[class*="theme-"] .wifi-qr {
+  width: 140px !important;
+  height: 140px !important;
+  justify-self: end !important;
+  align-self: start !important;
+}
+body .app-shell[class*="theme-"] .wifi-qr canvas {
+  width: 120px !important;
+  height: 120px !important;
+}
+
+/* Restore the approved slow open/close motion without dimming the dish itself. */
+body .app-shell[class*="theme-"] .product-modal[role="dialog"] {
+  background: rgba(2, 5, 4, .28) !important;
+  backdrop-filter: blur(10px) saturate(92%) !important;
+  -webkit-backdrop-filter: blur(10px) saturate(92%) !important;
+}
+/* Deliberately no opacity declaration here: Web Animations controls the 0.95/0.72 s fade. */
