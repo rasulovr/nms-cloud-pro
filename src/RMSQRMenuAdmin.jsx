@@ -124,6 +124,13 @@ const defaultInfo = {
   address: ''
 }
 
+const defaultSpecialOffer = {
+  enabled: false,
+  title: '',
+  text: '',
+  image_url: ''
+}
+
 const QR_BACKGROUND_OPTIONS = [
   { value: 'travertine', label: 'Травертин · тёплый камень' },
   { value: 'paper', label: 'Меню-бумага · светлый кремовый' },
@@ -168,6 +175,7 @@ export default function RMSQRMenuAdmin({ lang = localStorage.getItem('rms_lang')
   const [productDraft, setProductDraft] = useState(null)
   const [infoBranchName, setInfoBranchName] = useState('')
   const [backgroundTheme, setBackgroundTheme] = useState('travertine')
+  const [specialOffer, setSpecialOffer] = useState(defaultSpecialOffer)
   const [adForm, setAdForm] = useState({ title: '', text: '', image_url: '', is_active: true })
   const [recForm, setRecForm] = useState({ product_id: '', product_name: '', recommended_product_id: '', recommended_product_name: '' })
   const [statusForm, setStatusForm] = useState({ branch_id: 'BC1', table_number: '1', status: 'preparing', status_label: 'Готовится', comment: '' })
@@ -394,6 +402,10 @@ export default function RMSQRMenuAdmin({ lang = localStorage.getItem('rms_lang')
     const branchRow = branchOptions.find(item => String(item.id) === branchCode)
     setInfoBranchName(String(config.branch_name || branchRow?.name || branchCode))
     setBackgroundTheme(QR_BACKGROUND_OPTIONS.some(option => option.value === config.background_theme) ? config.background_theme : 'travertine')
+    setSpecialOffer({
+      ...defaultSpecialOffer,
+      ...(config.special_offer && typeof config.special_offer === 'object' ? config.special_offer : {})
+    })
   }
 
   async function loadRecommendations() {
@@ -670,6 +682,14 @@ export default function RMSQRMenuAdmin({ lang = localStorage.getItem('rms_lang')
     }
   }
 
+  async function handleSpecialOfferImage(file) {
+    if (!file) return
+    setMsg('Загружаю изображение спецпредложения...')
+    const imageUrl = await uploadImageFile(file, 'special-offers')
+    setSpecialOffer(current => ({ ...current, image_url: imageUrl }))
+    setMsg('Изображение спецпредложения добавлено')
+  }
+
   async function saveInfo() {
     const { error } = await supabase.from('rms_qr_info').upsert(info, { onConflict: 'branch_id' })
     if (error) {
@@ -681,7 +701,7 @@ export default function RMSQRMenuAdmin({ lang = localStorage.getItem('rms_lang')
     const { error: configError } = await supabase.from('rms_qr_tables').upsert({
       branch_id: info.branch_id,
       table_number: BRANCH_MENU_CONFIG_TABLE,
-      qr_code_url: JSON.stringify({ ...config, version: 2, branch_name: String(infoBranchName || info.branch_id).trim() || info.branch_id, background_theme: backgroundTheme }),
+      qr_code_url: JSON.stringify({ ...config, version: 2, branch_name: String(infoBranchName || info.branch_id).trim() || info.branch_id, background_theme: backgroundTheme, special_offer: { ...defaultSpecialOffer, ...specialOffer, enabled: Boolean(specialOffer.enabled) } }),
       is_active: false
     }, { onConflict: 'branch_id,table_number' })
     setMsg(configError ? configError.message : 'Информация QR Menu сохранена')
@@ -1376,6 +1396,10 @@ export default function RMSQRMenuAdmin({ lang = localStorage.getItem('rms_lang')
               <label><span>Филиал</span><select value={info.branch_id} onChange={e => changeInfoBranch(e.target.value)}>{branchOptions.map(b => <option key={b.id} value={b.id}>{b.name || b.id}</option>)}</select></label>
               <label><span>Название филиала в QR Menu</span><input value={infoBranchName || ''} onChange={e => setInfoBranchName(e.target.value)} /></label>
               <label><span>Фон QR Menu</span><select value={backgroundTheme} onChange={e => setBackgroundTheme(e.target.value)}>{QR_BACKGROUND_OPTIONS.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>
+              <label><span>Показывать спецпредложение при открытии QR</span><input type="checkbox" checked={Boolean(specialOffer.enabled)} onChange={e => setSpecialOffer(current => ({ ...current, enabled: e.target.checked }))} /></label>
+              <label><span>Заголовок спецпредложения</span><input value={specialOffer.title || ''} onChange={e => setSpecialOffer(current => ({ ...current, title: e.target.value }))} placeholder="Например: Кофе и десерт — специальная цена" /></label>
+              <label><span>Текст спецпредложения</span><input value={specialOffer.text || ''} onChange={e => setSpecialOffer(current => ({ ...current, text: e.target.value }))} placeholder="Короткое пояснение" /></label>
+              <label><span>Изображение спецпредложения</span><input value={specialOffer.image_url || ''} onChange={e => setSpecialOffer(current => ({ ...current, image_url: e.target.value }))} placeholder="https://..." /><input type="file" accept="image/*" onChange={e => handleSpecialOfferImage(e.target.files?.[0])} /></label>
               <label><span>Wi‑Fi</span><input value={info.wifi_name || ''} onChange={e => setInfo({ ...info, wifi_name: e.target.value })} /></label>
               <label><span>Пароль Wi‑Fi</span><div className="rms-wifi-password-field"><input type={showWifiPassword ? 'text' : 'password'} value={info.wifi_password || ''} onChange={e => setInfo({ ...info, wifi_password: e.target.value })} autoComplete="new-password" /><button type="button" className="small" onClick={() => setShowWifiPassword(value => !value)}>{showWifiPassword ? 'Скрыть' : 'Показать'}</button></div></label>
               <label><span>Рабочие часы</span><input value={info.working_hours || ''} onChange={e => setInfo({ ...info, working_hours: e.target.value })} /></label>
