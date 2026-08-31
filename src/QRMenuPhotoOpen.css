@@ -125,3 +125,93 @@ body .app-shell[class*="theme-"] .wifi-qr small {
   font-size: 10px;
   line-height: 1.25;
 }
+
+
+/* Desktop catalogue: three generous cards across sixty percent of the viewport. */
+@media (min-width: 1040px) {
+  body .app-shell[class*="theme-"] .product-grid {
+    width: 60vw !important;
+    max-width: none !important;
+    margin-inline: auto !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+}
+
+/* Wi‑Fi is public in the guest menu: credentials and QR stay visible together. */
+body .app-shell[class*="theme-"] .wifi-info-card .wifi-details {
+  grid-template-columns: minmax(0, 1fr) 170px;
+  align-items: center;
+  gap: 16px;
+  margin-top: 12px;
+}
+body .app-shell[class*="theme-"] .wifi-credentials {
+  display: grid;
+  gap: 10px;
+}
+body .app-shell[class*="theme-"] .wifi-credentials p {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+}
+body .app-shell[class*="theme-"] .wifi-credentials small {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+body .app-shell[class*="theme-"] .wifi-credentials strong {
+  color: var(--ink);
+  font-size: 16px;
+  font-weight: 750;
+  letter-spacing: .01em;
+}
+body .app-shell[class*="theme-"] .wifi-qr {
+  width: 170px;
+  height: 170px;
+  box-sizing: border-box;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  justify-self: center;
+  align-self: center;
+  gap: 0;
+  margin: 0;
+  padding: 10px;
+  text-align: center;
+}
+body .app-shell[class*="theme-"] .wifi-qr canvas {
+  width: 150px;
+  height: 150px;
+}
+body .app-shell[class*="theme-"] .wifi-qr small {
+  display: none;
+}
+@media (max-width: 620px) {
+  body .app-shell[class*="theme-"] .wifi-info-card .wifi-details {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* The open dish must retain the original pixels: no veil, blend mode or shadow. */
+body .app-shell[class*="theme-"] .product-modal,
+body .app-shell[class*="theme-"] .product-modal-card,
+body .app-shell[class*="theme-"] .product-modal .modal-photo,
+body .app-shell[class*="theme-"] .product-modal .modal-photo img {
+  opacity: 1 !important;
+  filter: none !important;
+  -webkit-filter: none !important;
+  mix-blend-mode: normal !important;
+}
+body .app-shell[class*="theme-"] .product-modal .modal-photo::before,
+body .app-shell[class*="theme-"] .product-modal .modal-photo::after {
+  content: none !important;
+  display: none !important;
+  background: none !important;
+  filter: none !important;
+  opacity: 0 !important;
+}
+body .app-shell[class*="theme-"] .product-modal .modal-photo img {
+  background: transparent !important;
+  box-shadow: none !important;
+}
