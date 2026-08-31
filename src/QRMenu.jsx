@@ -970,7 +970,7 @@ export default function QRMenu() {
   const hasTableContext = Boolean(table);
   const recommendationQty = mealRecommendation ? cart.find((line) => line.id === mealRecommendation.product.id)?.qty || 0 : 0;
   return <main className={`app-shell theme-${dayPhase} weather-theme-${atmosphere} menu-view-${menuView} menu-background-${backgroundTheme}`}>
-      <header className="hero qr-premium-hero">
+      <header className={`hero qr-premium-hero ${showSpecialOffer && specialOffer ? "has-special-offer" : ""}`}>
         <div className="hero-sky" aria-hidden="true">
           {weatherOffer && <WeatherVisual kind={weatherOffer.kind} phase={dayPhase} />}
         </div>
@@ -986,6 +986,11 @@ export default function QRMenu() {
           <div className="hero-reference-kicker">{t.quote}</div>
           <div className="hero-reference-title">{t.quoteLines?.[new Date().getDate() % t.quoteLines.length] || "У дня должен быть вкус."}</div>
           </div>
+      {showSpecialOffer && specialOffer && <button type="button" className={`qr-special-offer ${isSpecialOfferClosing ? "is-closing" : ""}`} onClick={dismissSpecialOffer} aria-label="Закрыть спецпредложение">
+        {specialOffer.image_url && <img src={specialOffer.image_url} alt="" />}
+        <span className="qr-special-offer-copy"><small>Спецпредложение</small><strong>{specialOffer.title}</strong>{specialOffer.text && <em>{specialOffer.text}</em>}</span>
+      </button>}
+
         <div className="hero-reference-weather" aria-label={weatherTitle}>
           <span className="hero-reference-cloud" aria-hidden="true">☁</span>
           <strong>{weather ? Math.round(weather.temperature) : 18}°</strong>
@@ -993,11 +998,6 @@ export default function QRMenu() {
           <span>Baku · {weatherTitle}</span>
         </div>
       </header>
-
-      {showSpecialOffer && specialOffer && <button type="button" className={`qr-special-offer ${isSpecialOfferClosing ? "is-closing" : ""}`} onClick={dismissSpecialOffer} aria-label="Закрыть спецпредложение">
-        {specialOffer.image_url && <img src={specialOffer.image_url} alt="" />}
-        <span className="qr-special-offer-copy"><small>Спецпредложение</small><strong>{specialOffer.title}</strong>{specialOffer.text && <em>{specialOffer.text}</em>}</span>
-      </button>}
 
       <nav className="main-nav" aria-label="Разделы QR Menu">
         {[
