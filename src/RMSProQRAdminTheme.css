@@ -1,241 +1,312 @@
 /*
- * RMS Pro visual layer for the SaaS customer edition.
- * Mirrors the existing QR Admin design language without changing QR Admin
- * markup, application logic, permissions, routes or backend modules.
+ * SaaS RMS Pro — visual parity with the approved standalone QR Admin.
+ * Presentation only: routes, permissions, data and module logic are unchanged.
  */
-
 .app.rms-pro-shell {
-  --rms-qr-ink: #0f172a;
-  --rms-qr-muted: #64748b;
-  --rms-qr-line: #e2e8f0;
-  --rms-qr-soft: #f8fafc;
-  --rms-qr-blue: #2563eb;
-  --rms-qr-blue-soft: #eff6ff;
-  --rms-qr-green: #059669;
-  --rms-qr-green-soft: #ecfdf5;
-  --rms-qr-amber: #d97706;
-  --rms-qr-red: #dc2626;
-  background: #f4f7fb !important;
-  color: var(--rms-qr-ink) !important;
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+  --qr-gold:#d49a34;
+  --qr-gold-bright:#efb85d;
+  --qr-gold-muted:#bb8f4b;
+  --qr-bg:#0d1011;
+  --qr-panel:#141719;
+  --qr-panel-2:#111516;
+  --qr-input:#0c1011;
+  --qr-line:#292d31;
+  --qr-line-strong:#353c40;
+  --qr-text:#e8ebec;
+  --qr-heading:#f4f5f6;
+  --qr-muted:#89949b;
+  --qr-success:#77dca8;
+  --qr-danger:#e18b9c;
+  min-height:100vh!important;
+  background:var(--qr-bg)!important;
+  color:var(--qr-text)!important;
+  font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif!important;
 }
 
-/* Shared application frame. QR Admin keeps its existing internal styling. */
+/* Frame and navigation — the same geometry and palette as QR Admin. */
 .app.rms-pro-shell .rms-pro-sidebar.sidebar {
-  width: 264px !important;
-  flex-basis: 264px !important;
-  padding: 20px 15px 16px !important;
-  background: linear-gradient(180deg, #0b1a30 0%, #06172b 58%, #041225 100%) !important;
-  border-right: 1px solid rgba(148, 163, 184, 0.16) !important;
-  box-shadow: 16px 0 48px rgba(15, 23, 42, 0.1) !important;
+  width:245px!important;
+  flex:0 0 245px!important;
+  padding:22px 14px 16px!important;
+  background:var(--qr-panel-2)!important;
+  border-right:1px solid #2a2f32!important;
+  box-shadow:none!important;
 }
-
 .app.rms-pro-shell .rms-pro-brand {
-  min-height: 66px !important;
-  padding: 0 7px 17px !important;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.14) !important;
+  min-height:76px!important;
+  padding:4px 8px 22px!important;
+  border-bottom:1px solid #2a2f32!important;
 }
-
+.app.rms-pro-shell .rms-pro-nav { padding-top:0!important; }
 .app.rms-pro-shell .rms-pro-nav-group-title {
-  margin: 17px 9px 7px !important;
-  color: rgba(203, 213, 225, 0.65) !important;
-  font-size: 10px !important;
-  font-weight: 900 !important;
-  letter-spacing: 0.09em !important;
+  margin:18px 12px 7px!important;
+  color:#727e86!important;
+  font-size:10px!important;
+  font-weight:700!important;
+  letter-spacing:.14em!important;
 }
-
+.app.rms-pro-shell .rms-pro-nav-list { gap:5px!important; }
 .app.rms-pro-shell .rms-pro-nav-item {
-  min-height: 42px !important;
-  padding: 0 12px !important;
-  border: 1px solid transparent !important;
-  border-radius: 11px !important;
-  background: transparent !important;
-  color: rgba(241, 245, 249, 0.88) !important;
-  font-size: 13px !important;
-  font-weight: 760 !important;
+  min-height:42px!important;
+  padding:11px 12px!important;
+  border:0!important;
+  border-radius:10px!important;
+  background:transparent!important;
+  color:#abb4bb!important;
+  font-size:13px!important;
+  font-weight:650!important;
+  box-shadow:none!important;
 }
-
 .app.rms-pro-shell .rms-pro-nav-item:hover {
-  border-color: rgba(96, 165, 250, 0.18) !important;
-  background: rgba(37, 99, 235, 0.1) !important;
+  background:#181b1e!important;
+  color:#fff!important;
 }
-
 .app.rms-pro-shell .rms-pro-nav-item.active {
-  border-color: rgba(96, 165, 250, 0.34) !important;
-  background: linear-gradient(90deg, rgba(37, 99, 235, 0.34), rgba(37, 99, 235, 0.14)) !important;
-  color: #93c5fd !important;
-  box-shadow: inset 3px 0 #2563eb, 0 9px 22px rgba(2, 6, 23, 0.15) !important;
+  background:rgba(212,154,52,.13)!important;
+  color:var(--qr-gold-bright)!important;
+  box-shadow:none!important;
 }
-
 .app.rms-pro-shell .rms-pro-nav-icon {
-  width: 24px !important;
-  height: 24px !important;
-  border-radius: 8px !important;
-  background: rgba(255, 255, 255, 0.05) !important;
+  width:21px!important;
+  height:21px!important;
+  border-radius:0!important;
+  background:transparent!important;
+  color:#747f87!important;
 }
-
+.app.rms-pro-shell .rms-pro-nav-item.active .rms-pro-nav-icon {
+  color:var(--qr-gold-bright)!important;
+}
 .app.rms-pro-shell .rms-pro-user-card {
-  padding: 10px !important;
-  border: 1px solid rgba(148, 163, 184, 0.16) !important;
-  border-radius: 13px !important;
-  background: rgba(15, 23, 42, 0.3) !important;
+  padding:13px!important;
+  border:1px solid #2d3934!important;
+  border-radius:12px!important;
+  background:#151a18!important;
+  box-shadow:none!important;
+}
+.app.rms-pro-shell .rms-pro-avatar,
+.app.rms-pro-shell .rms-pro-top-avatar {
+  background:linear-gradient(145deg,#e0aa55,#a86b22)!important;
+  color:#101213!important;
+}
+.app.rms-pro-shell .rms-pro-user-name { color:#d8dde1!important; }
+.app.rms-pro-shell .rms-pro-user-role { color:#748078!important; }
+.app.rms-pro-shell .rms-pro-account-logout {
+  border-color:#343a3e!important;
+  background:#1a1d20!important;
+  color:#aeb8bf!important;
 }
 
+/* Main canvas. */
 .app.rms-pro-shell .rms-pro-main.main {
-  padding: 0 28px 38px !important;
-  background: linear-gradient(180deg, #f8fafc 0%, #f2f6fb 100%) !important;
+  min-width:0!important;
+  padding:0 32px 40px!important;
+  background:radial-gradient(circle at 85% -15%,rgba(204,139,43,.09),transparent 30%),var(--qr-bg)!important;
+  color:var(--qr-text)!important;
 }
-
 .app.rms-pro-shell .rms-pro-topbar {
-  height: 72px !important;
-  margin: 0 -28px 23px !important;
-  padding: 0 28px !important;
-  border-bottom: 1px solid rgba(203, 213, 225, 0.76) !important;
-  background: rgba(255, 255, 255, 0.9) !important;
-  backdrop-filter: blur(18px) !important;
+  height:72px!important;
+  margin:0 -32px 28px!important;
+  padding:0 32px!important;
+  border-bottom:1px solid var(--qr-line)!important;
+  background:rgba(17,19,21,.96)!important;
+  box-shadow:none!important;
+  backdrop-filter:blur(16px)!important;
 }
-
 .app.rms-pro-shell .rms-pro-topbar-title {
-  color: var(--rms-qr-ink) !important;
-  font-size: 19px !important;
-  font-weight: 850 !important;
-  letter-spacing: -0.035em !important;
+  color:var(--qr-heading)!important;
+  font-size:19px!important;
+  font-weight:760!important;
 }
-
+.app.rms-pro-shell .rms-pro-back,
 .app.rms-pro-shell .rms-pro-top-icon,
 .app.rms-pro-shell .rms-pro-top-user {
-  border: 1px solid var(--rms-qr-line) !important;
-  background: #fff !important;
-  color: #475569 !important;
-  box-shadow: 0 7px 18px rgba(15, 23, 42, 0.04) !important;
+  border:1px solid #30353a!important;
+  border-radius:10px!important;
+  background:#171a1d!important;
+  color:#c5cbd0!important;
+  box-shadow:none!important;
 }
 
-/* RMS content only: do not restyle the QR Admin module itself. */
-.app.rms-pro-shell .rms-pro-main:not(.section-qrmenu) .rms-pro-content {
-  color: var(--rms-qr-ink) !important;
+/* Typography. */
+.app.rms-pro-shell .rms-pro-content,
+.app.rms-pro-shell .rms-pro-content p,
+.app.rms-pro-shell .rms-pro-content label { color:var(--qr-text); }
+.app.rms-pro-shell .rms-pro-content h1,
+.app.rms-pro-shell .rms-pro-content h2,
+.app.rms-pro-shell .rms-pro-content h3,
+.app.rms-pro-shell .rms-pro-content h4,
+.app.rms-pro-shell .rms-pro-content h5 { color:var(--qr-heading)!important; }
+.app.rms-pro-shell .rms-pro-content .topbar,
+.app.rms-pro-shell .rms-pro-content .rms-panel-heading { margin-bottom:24px!important; }
+.app.rms-pro-shell .rms-pro-content .topbar h2,
+.app.rms-pro-shell .rms-pro-content .rms-panel-heading h2 {
+  margin:4px 0 7px!important;
+  color:var(--qr-heading)!important;
+  font-size:clamp(25px,3vw,34px)!important;
+  font-weight:780!important;
+  letter-spacing:-.035em!important;
+}
+.app.rms-pro-shell .rms-pro-content .topbar p,
+.app.rms-pro-shell .rms-pro-content .hint,
+.app.rms-pro-shell .rms-pro-content .muted,
+.app.rms-pro-shell .rms-pro-content small { color:var(--qr-muted)!important; }
+.app.rms-pro-shell .rms-pro-content .eyebrow {
+  color:var(--qr-gold-muted)!important;
+  letter-spacing:.14em!important;
 }
 
-.app.rms-pro-shell .rms-pro-main:not(.section-qrmenu) .topbar {
-  align-items: flex-start !important;
-  margin-bottom: 18px !important;
+/* RMS surfaces. */
+.app.rms-pro-shell .rms-pro-content .card,
+.app.rms-pro-shell .rms-pro-content .panel,
+.app.rms-pro-shell .rms-pro-content .surface,
+.app.rms-pro-shell .rms-pro-content .module-placeholder,
+.app.rms-pro-shell .rms-pro-content .kpi-card,
+.app.rms-pro-shell .rms-pro-content .dash-kpi,
+.app.rms-pro-shell .rms-pro-content .inventory-v420-kpi,
+.app.rms-pro-shell .rms-pro-content .inventory-kpi-card,
+.app.rms-pro-shell .rms-pro-content .dashboard-executive-kpi,
+.app.rms-pro-shell .rms-pro-content .executive-summary-kpi,
+.app.rms-pro-shell .rms-pro-content .branch-performance-kpi,
+.app.rms-pro-shell .rms-pro-content .tech-audit-kpi,
+.app.rms-pro-shell .rms-pro-content .tech-executive-kpi,
+.app.rms-pro-shell .rms-pro-content .menu-profitability-kpi,
+.app.rms-pro-shell .rms-pro-content .tech-profitability-kpi,
+.app.rms-pro-shell .rms-pro-content .revenue-day-kpi>div {
+  border:1px solid var(--qr-line)!important;
+  border-radius:14px!important;
+  background:var(--qr-panel)!important;
+  color:var(--qr-text)!important;
+  box-shadow:none!important;
+}
+.app.rms-pro-shell .rms-pro-content .kpi-card::after,
+.app.rms-pro-shell .rms-pro-content .dash-kpi::after,
+.app.rms-pro-shell .rms-pro-content .card::after { opacity:0!important; }
+.app.rms-pro-shell .rms-pro-content .kpi-card strong,
+.app.rms-pro-shell .rms-pro-content .dash-kpi strong,
+.app.rms-pro-shell .rms-pro-content .inventory-v420-kpi strong,
+.app.rms-pro-shell .rms-pro-content .inventory-kpi-card strong,
+.app.rms-pro-shell .rms-pro-content .dashboard-executive-kpi strong,
+.app.rms-pro-shell .rms-pro-content .executive-summary-kpi strong,
+.app.rms-pro-shell .rms-pro-content .branch-performance-kpi strong,
+.app.rms-pro-shell .rms-pro-content .tech-audit-kpi strong,
+.app.rms-pro-shell .rms-pro-content .tech-executive-kpi strong,
+.app.rms-pro-shell .rms-pro-content .menu-profitability-kpi strong,
+.app.rms-pro-shell .rms-pro-content .tech-profitability-kpi strong {
+  color:var(--qr-heading)!important;
 }
 
-.app.rms-pro-shell .rms-pro-main:not(.section-qrmenu) .topbar h2 {
-  margin: 0 0 5px !important;
-  color: var(--rms-qr-ink) !important;
-  font-size: clamp(24px, 3vw, 32px) !important;
-  font-weight: 850 !important;
-  letter-spacing: -0.045em !important;
+/* Controls. */
+.app.rms-pro-shell .rms-pro-content input:not([type="checkbox"]):not([type="radio"]),
+.app.rms-pro-shell .rms-pro-content select,
+.app.rms-pro-shell .rms-pro-content textarea {
+  border:1px solid var(--qr-line-strong)!important;
+  border-radius:9px!important;
+  background:var(--qr-input)!important;
+  color:#edf0f1!important;
+  box-shadow:none!important;
+}
+.app.rms-pro-shell .rms-pro-content input::placeholder,
+.app.rms-pro-shell .rms-pro-content textarea::placeholder { color:#667179!important; }
+.app.rms-pro-shell .rms-pro-content input:focus,
+.app.rms-pro-shell .rms-pro-content select:focus,
+.app.rms-pro-shell .rms-pro-content textarea:focus {
+  border-color:#bd9147!important;
+  outline:2px solid rgba(212,154,52,.13)!important;
+}
+.app.rms-pro-shell .rms-pro-content button:not(.rms-pro-back):not(.rms-pro-top-icon),
+.app.rms-pro-shell .rms-pro-content .small,
+.app.rms-pro-shell .rms-pro-content .secondary {
+  border:1px solid #3a4045!important;
+  border-radius:9px!important;
+  background:#1a1d20!important;
+  color:#cdd2d7!important;
+  box-shadow:none!important;
+}
+.app.rms-pro-shell .rms-pro-content button:hover {
+  border-color:#765120!important;
+  background:#17191b!important;
+}
+.app.rms-pro-shell .rms-pro-content button.primary,
+.app.rms-pro-shell .rms-pro-content .primary,
+.app.rms-pro-shell .rms-pro-content button.active,
+.app.rms-pro-shell .rms-pro-content .rms-primary {
+  border-color:#b67c28!important;
+  background:linear-gradient(145deg,#dca247,#a76a1c)!important;
+  color:#101112!important;
+  font-weight:760!important;
 }
 
-.app.rms-pro-shell .rms-pro-main:not(.section-qrmenu) .topbar p,
-.app.rms-pro-shell .rms-pro-main:not(.section-qrmenu) .hint {
-  color: var(--rms-qr-muted) !important;
-  line-height: 1.55 !important;
+/* Tables and statuses. */
+.app.rms-pro-shell .rms-pro-content table {
+  border-collapse:collapse!important;
+  color:var(--qr-text)!important;
+}
+.app.rms-pro-shell .rms-pro-content th {
+  border-bottom:1px solid #25292d!important;
+  background:#151719!important;
+  color:#7f868d!important;
+  font-size:11px!important;
+  font-weight:650!important;
+}
+.app.rms-pro-shell .rms-pro-content td {
+  border-bottom-color:#25292d!important;
+  background:transparent!important;
+  color:#c9cdd1!important;
+}
+.app.rms-pro-shell .rms-pro-content tr:hover td {
+  background:rgba(212,154,52,.035)!important;
+}
+.app.rms-pro-shell .rms-pro-content .badge,
+.app.rms-pro-shell .rms-pro-content .chip,
+.app.rms-pro-shell .rms-pro-content .status-chip,
+.app.rms-pro-shell .rms-pro-content .pill {
+  border-color:#33393d!important;
+  background:#20252a!important;
+  color:#aeb6bc!important;
+}
+.app.rms-pro-shell .rms-pro-content .good,
+.app.rms-pro-shell .rms-pro-content .success { color:var(--qr-success)!important; }
+.app.rms-pro-shell .rms-pro-content .bad,
+.app.rms-pro-shell .rms-pro-content .danger,
+.app.rms-pro-shell .rms-pro-content .error { color:var(--qr-danger)!important; }
+.app.rms-pro-shell .readonly-banner {
+  border:1px solid #6f5426!important;
+  border-radius:10px!important;
+  background:#211d14!important;
+  color:#dfae5c!important;
 }
 
-.app.rms-pro-shell .rms-pro-main:not(.section-qrmenu) .card,
-.app.rms-pro-shell .rms-pro-main:not(.section-qrmenu) .module-placeholder {
-  border: 1px solid var(--rms-qr-line) !important;
-  border-radius: 18px !important;
-  background: rgba(255, 255, 255, 0.96) !important;
-  box-shadow: 0 14px 38px rgba(15, 23, 42, 0.045) !important;
+/* Embedded QR Admin merges into the same dark/gold shell. */
+.app.rms-pro-shell .section-qrmenu .qr-admin,
+.app.rms-pro-shell .section-qrmenu .qr-admin .card { color:var(--qr-text)!important; }
+.app.rms-pro-shell .section-qrmenu .qr-admin .card,
+.app.rms-pro-shell .section-qrmenu .qr-menu-card,
+.app.rms-pro-shell .section-qrmenu .qr-code-card {
+  border-color:var(--qr-line)!important;
+  background:var(--qr-panel)!important;
+  box-shadow:none!important;
+}
+.app.rms-pro-shell .section-qrmenu .qr-admin-tabs { border-bottom-color:var(--qr-line)!important; }
+.app.rms-pro-shell .section-qrmenu .qr-admin-tabs button.active {
+  border-color:#b67c28!important;
+  background:rgba(212,154,52,.13)!important;
+  color:var(--qr-gold-bright)!important;
 }
 
-.app.rms-pro-shell .rms-pro-main:not(.section-qrmenu) .card h2,
-.app.rms-pro-shell .rms-pro-main:not(.section-qrmenu) .card h3,
-.app.rms-pro-shell .rms-pro-main:not(.section-qrmenu) .card h4 {
-  color: var(--rms-qr-ink) !important;
-  letter-spacing: -0.035em !important;
-}
-
-.app.rms-pro-shell .rms-pro-main:not(.section-qrmenu) button:not(.rms-pro-back):not(.rms-pro-top-icon):not(.rms-pro-account-logout),
-.app.rms-pro-shell .rms-pro-main:not(.section-qrmenu) .small {
-  min-height: 36px;
-  border: 1px solid var(--rms-qr-line) !important;
-  border-radius: 10px !important;
-  background: #fff !important;
-  color: #475569 !important;
-  font-size: 11px !important;
-  font-weight: 800 !important;
-  box-shadow: none !important;
-}
-
-.app.rms-pro-shell .rms-pro-main:not(.section-qrmenu) button.primary,
-.app.rms-pro-shell .rms-pro-main:not(.section-qrmenu) .primary,
-.app.rms-pro-shell .rms-pro-main:not(.section-qrmenu) button.active {
-  border-color: var(--rms-qr-blue) !important;
-  background: var(--rms-qr-blue) !important;
-  color: #fff !important;
-  box-shadow: 0 8px 20px rgba(37, 99, 235, 0.17) !important;
-}
-
-.app.rms-pro-shell .rms-pro-main:not(.section-qrmenu) input,
-.app.rms-pro-shell .rms-pro-main:not(.section-qrmenu) select,
-.app.rms-pro-shell .rms-pro-main:not(.section-qrmenu) textarea {
-  border: 1px solid var(--rms-qr-line) !important;
-  border-radius: 10px !important;
-  background: #fff !important;
-  color: var(--rms-qr-ink) !important;
-  box-shadow: none !important;
-}
-
-.app.rms-pro-shell .rms-pro-main:not(.section-qrmenu) input:focus,
-.app.rms-pro-shell .rms-pro-main:not(.section-qrmenu) select:focus,
-.app.rms-pro-shell .rms-pro-main:not(.section-qrmenu) textarea:focus {
-  border-color: #93c5fd !important;
-  outline: 3px solid var(--rms-qr-blue-soft) !important;
-}
-
-.app.rms-pro-shell .rms-pro-main:not(.section-qrmenu) table {
-  border-collapse: separate !important;
-  border-spacing: 0 !important;
-}
-
-.app.rms-pro-shell .rms-pro-main:not(.section-qrmenu) th {
-  color: var(--rms-qr-muted) !important;
-  background: var(--rms-qr-soft) !important;
-  font-size: 10px !important;
-  font-weight: 900 !important;
-  letter-spacing: 0.04em !important;
-  text-transform: uppercase !important;
-}
-
-.app.rms-pro-shell .rms-pro-main:not(.section-qrmenu) th,
-.app.rms-pro-shell .rms-pro-main:not(.section-qrmenu) td {
-  border-bottom-color: var(--rms-qr-line) !important;
-}
-
-.app.rms-pro-shell .rms-pro-main:not(.section-qrmenu) .status-chip,
-.app.rms-pro-shell .rms-pro-main:not(.section-qrmenu) .badge,
-.app.rms-pro-shell .rms-pro-main:not(.section-qrmenu) .chip {
-  border-radius: 999px !important;
-  font-size: 10px !important;
-  font-weight: 850 !important;
-}
-
-.app.rms-pro-shell .rms-pro-main:not(.section-qrmenu) .readonly-banner {
-  border: 1px solid #bfdbfe !important;
-  border-radius: 12px !important;
-  background: var(--rms-qr-blue-soft) !important;
-  color: #1d4ed8 !important;
-}
-
-@media (max-width: 900px) {
+@media (max-width:900px) {
   .app.rms-pro-shell .rms-pro-sidebar.sidebar {
-    width: 100% !important;
-    min-height: auto !important;
+    width:100%!important;
+    flex-basis:auto!important;
+    min-height:auto!important;
   }
-
   .app.rms-pro-shell .rms-pro-main.main {
-    padding-right: 16px !important;
-    padding-left: 16px !important;
+    padding-right:16px!important;
+    padding-left:16px!important;
   }
-
   .app.rms-pro-shell .rms-pro-topbar {
-    margin-right: -16px !important;
-    margin-left: -16px !important;
-    padding-right: 16px !important;
-    padding-left: 16px !important;
+    margin-right:-16px!important;
+    margin-left:-16px!important;
+    padding-right:16px!important;
+    padding-left:16px!important;
   }
 }
