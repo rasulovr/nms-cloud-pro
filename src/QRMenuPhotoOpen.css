@@ -245,21 +245,22 @@ body .app-shell[class*="theme-"] .wifi-info-card > div {
 }
 body .app-shell[class*="theme-"] .wifi-info-card .wifi-details {
   display: block !important;
-  padding-right: 134px;
+  padding-right: 126px;
 }
 body .app-shell[class*="theme-"] .wifi-info-card .wifi-qr {
   position: absolute !important;
   top: 0 !important;
   right: 0 !important;
   bottom: 0 !important;
-  width: auto !important;
+  width: 126px !important;
   height: auto !important;
   aspect-ratio: 1;
   margin: 0 !important;
+  padding: 4px !important;
 }
 body .app-shell[class*="theme-"] .wifi-info-card .wifi-qr canvas {
-  width: calc(100% - 20px) !important;
-  height: calc(100% - 20px) !important;
+  width: 118px !important;
+  height: 118px !important;
 }
 
 /* Restore the approved slow open/close motion without dimming the dish itself. */
