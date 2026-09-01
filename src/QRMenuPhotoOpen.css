@@ -937,3 +937,35 @@ body .app-shell.menu-view-list .product-card .product-title h3 {
     transform: translateY(-10px) scale(.98);
   }
 }
+
+
+/* Wi-Fi QR stays exactly within the SSID/password block. */
+body .app-shell[class*="theme-"] .wifi-info-card .wifi-details {
+  --wifi-qr-box: clamp(96px, 24vw, 260px);
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) var(--wifi-qr-box) !important;
+  align-items: start !important;
+  column-gap: 16px !important;
+  padding-right: 0 !important;
+  position: static !important;
+}
+body .app-shell[class*="theme-"] .wifi-info-card .wifi-credentials {
+  min-width: 0 !important;
+}
+body .app-shell[class*="theme-"] .wifi-info-card .wifi-qr {
+  position: static !important;
+  width: var(--wifi-qr-box) !important;
+  height: var(--wifi-qr-box) !important;
+  min-height: 0 !important;
+  aspect-ratio: 1 / 1 !important;
+  justify-self: end !important;
+  align-self: start !important;
+  box-sizing: border-box !important;
+  margin: 0 !important;
+  padding: 4px !important;
+}
+body .app-shell[class*="theme-"] .wifi-info-card .wifi-qr canvas {
+  width: calc(100% - 8px) !important;
+  height: calc(100% - 8px) !important;
+  aspect-ratio: 1 / 1 !important;
+}
