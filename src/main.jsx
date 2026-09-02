@@ -492,7 +492,7 @@ import './styles.css'
 import './rms_dashboard_chart.css'
 import QRMenu from './QRMenu'
 import './QRMenu.css'
-import RMSQRMenuAdmin from './RMSQRMenuAdmin'
+import ClientQRAdmin from './ClientQRAdmin'
 import RMSLoyalty from './RMSLoyalty'
 
 
@@ -5359,7 +5359,7 @@ function App() {
         {currentCanRead && section === 'salaries' && <SalaryWorkspace t={t} isAdmin={isAdmin || accessRank(sectionAccess('salaries')) >= accessRank('admin')} />}
         {currentCanRead && section === 'suppliers' && <Suppliers t={t} isAdmin={isAdmin || accessRank(sectionAccess('suppliers')) >= accessRank('admin')} />}
         {currentCanRead && section === 'debts' && <DebtsPayments t={t} />}
-        {currentCanRead && section === 'qrmenu' && <RMSQRMenuAdmin t={t} />}
+        {currentCanRead && section === 'qrmenu' && <ClientQRAdmin t={t} session={session} profile={profile} access={currentAccess} />}
         {currentCanRead && section === 'loyalty' && <div className="grid">
           <div className="card span-2">
             <RMSLoyalty />
