@@ -5201,6 +5201,7 @@ function rmsBuildClientNotifications({ organizationId, access, loading, error })
 
 function RMSClientExperienceStyles() {
   return <style>{`
+    .rms-pro-mobile-menu,.rms-pro-mobile-overlay{display:none}
     .rms-pro-topbar-actions{position:relative!important}
     .rms-pro-top-icon{position:relative;cursor:pointer!important;transition:background .16s ease,color .16s ease!important}
     .rms-pro-top-icon:hover,.rms-pro-top-icon.active{background:rgba(207,153,66,.13)!important;color:#d49b3d!important}
@@ -5225,7 +5226,42 @@ function RMSClientExperienceStyles() {
     .rms-module-blocked{min-height:calc(100vh - 150px);display:grid;place-items:center;padding:28px;background:#0d1011}.rms-module-blocked-card{width:min(560px,100%);padding:34px;border:1px solid #3b342b;border-radius:18px;background:radial-gradient(circle at 100% 0,rgba(205,151,67,.14),transparent 38%),#131719;color:#e8ecee;text-align:center;box-shadow:0 24px 70px rgba(0,0,0,.22)}.rms-module-blocked-icon{width:52px;height:52px;margin:0 auto 17px;display:grid;place-items:center;border:1px solid #5b482e;border-radius:50%;background:#241d14;color:#d6a04d;font-size:24px}.rms-module-blocked-card h2{margin:0 0 9px!important;color:#f1f3f4!important;font-size:24px}.rms-module-blocked-card p{margin:0;color:#8d979d;line-height:1.6}.rms-module-blocked-card strong{color:#d6a04d}.rms-module-blocked-card button{margin-top:20px;padding:10px 15px;border:1px solid #514633;border-radius:9px;background:#201b14;color:#e3bd7d;cursor:pointer;font-weight:750}
     .rms-agreement-backdrop{position:fixed;z-index:200;inset:0;display:grid;place-items:center;padding:24px;background:rgba(0,0,0,.72);backdrop-filter:blur(8px)}.rms-agreement-modal{width:min(840px,100%);max-height:min(780px,calc(100vh - 48px));overflow:auto;border:1px solid #343a3d;border-radius:18px;background:#111516;color:#dbe0e3;box-shadow:0 30px 100px rgba(0,0,0,.55)}.rms-agreement-head{position:sticky;top:0;display:flex;justify-content:space-between;gap:20px;padding:20px 24px;border-bottom:1px solid #2b3235;background:#111516}.rms-agreement-head h2{margin:0 0 5px!important;color:#f0f2f3!important}.rms-agreement-head p{margin:0;color:#7e898f;font-size:11px}.rms-agreement-copy{padding:24px}.rms-agreement-copy section{margin-bottom:20px}.rms-agreement-copy h3{margin:0 0 7px;color:#d9a252;font-size:13px}.rms-agreement-copy p{margin:0;color:#9ba4a9;font-size:12px;line-height:1.65}
     @media(max-width:980px){.rms-license-grid{grid-template-columns:1fr}.rms-license-bottom{grid-template-columns:1fr}.rms-license-card p{min-height:0}}
-    @media(max-width:640px){.rms-license-hero{display:grid;padding:19px}.rms-license-summary{min-width:0}.rms-license-dates{grid-template-columns:1fr}.rms-top-popover{position:fixed;top:76px;right:14px}.rms-license-hero h2{font-size:23px}}
+    @media(max-width:900px){
+      .app.rms-pro-shell{display:block!important;grid-template-columns:1fr!important;width:100%!important;min-width:0!important;overflow-x:hidden!important}
+      .app.rms-pro-shell .sidebar.rms-pro-sidebar{position:fixed!important;z-index:120!important;inset:0 auto 0 0!important;width:min(86vw,320px)!important;min-width:0!important;height:100dvh!important;min-height:100dvh!important;padding:18px 14px 16px!important;overflow-y:auto!important;border-radius:0!important;transform:translateX(-105%);transition:transform .22s ease!important;box-shadow:24px 0 70px rgba(0,0,0,.48)!important}
+      .app.rms-pro-shell .sidebar.rms-pro-sidebar.mobile-open{transform:translateX(0)}
+      .app.rms-pro-shell .rms-pro-brand{min-height:70px!important;margin-bottom:8px!important;padding:2px 8px 16px!important}
+      .app.rms-pro-shell .rms-pro-nav{gap:12px!important}
+      .app.rms-pro-shell .rms-pro-nav-list{flex-direction:column!important;overflow:visible!important}
+      .app.rms-pro-shell .rms-pro-nav-item{width:100%!important;min-width:0!important}
+      .app.rms-pro-shell .rms-pro-sidebar-bottom{display:flex!important;margin-top:auto!important}
+      .rms-pro-mobile-overlay{display:block;position:fixed;z-index:119;inset:0;width:100%;height:100%;padding:0;border:0;background:rgba(0,0,0,.64);backdrop-filter:blur(3px)}
+      .app.rms-pro-shell .rms-pro-main.main{width:100%!important;min-width:0!important;padding:0!important;overflow-x:hidden!important}
+      .app.rms-pro-shell .rms-pro-topbar{position:sticky!important;top:0!important;z-index:60!important;width:100%!important;height:64px!important;margin:0!important;padding:0 10px!important;gap:8px!important}
+      .rms-pro-mobile-menu{display:grid;width:40px;height:40px;flex:0 0 40px;place-items:center;border:1px solid #30353a;border-radius:10px;background:#171a1d;color:#c5cbd0;cursor:pointer}
+      .rms-pro-mobile-menu svg{width:21px;height:21px}
+      .app.rms-pro-shell .rms-pro-back{width:40px!important;height:40px!important;flex:0 0 40px!important}
+      .app.rms-pro-shell .rms-pro-topbar-title{min-width:0!important;gap:7px!important;font-size:16px!important}
+      .app.rms-pro-shell .rms-pro-topbar-title>span{max-width:min(32vw,150px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+      .app.rms-pro-shell .rms-pro-topbar-actions{margin-left:auto;gap:5px!important;flex:0 0 auto}
+      .app.rms-pro-shell .rms-pro-top-icon{width:38px!important;height:38px!important;flex:0 0 38px!important}
+      .app.rms-pro-shell .rms-pro-top-user{width:40px!important;height:40px!important;min-width:40px!important;padding:0!important;justify-content:center!important;border-radius:10px!important}
+      .app.rms-pro-shell .rms-pro-top-user>span{display:none!important}
+      .app.rms-pro-shell .rms-pro-top-avatar{width:34px!important;height:34px!important}
+      .app.rms-pro-shell .rms-pro-content{width:100%!important;max-width:100%!important;margin:0!important;padding:14px!important;overflow-x:hidden!important}
+      .app.rms-pro-shell .section-qrmenu .rms-pro-content{height:calc(100dvh - 64px)!important;padding:0!important;overflow:hidden!important}
+      .app.rms-pro-shell .section-qrmenu .rms-pro-content>iframe{width:100%!important;height:100%!important;min-height:0!important}
+      .rms-top-popover{position:fixed!important;top:58px!important;right:8px!important;left:8px!important;width:auto!important;max-height:calc(100dvh - 70px)}
+      .rms-help-list,.rms-notification-list{max-height:calc(100dvh - 190px)!important}
+    }
+    @media(max-width:640px){.rms-license-hero{display:grid;padding:19px}.rms-license-summary{min-width:0}.rms-license-dates{grid-template-columns:1fr}.rms-license-hero h2{font-size:23px}}
+    @media(max-width:420px){
+      .app.rms-pro-shell .rms-pro-topbar{padding:0 7px!important}
+      .app.rms-pro-shell .rms-pro-topbar-title{gap:5px!important}
+      .app.rms-pro-shell .rms-pro-topbar-title>span{max-width:23vw}
+      .app.rms-pro-shell .rms-pro-topbar-actions{gap:3px!important}
+      .app.rms-pro-shell .rms-pro-top-user{display:none!important}
+    }
   `}</style>
 }
 
@@ -5331,6 +5367,7 @@ function App() {
   const [clientLicenseRefresh, setClientLicenseRefresh] = useState(0)
   const [topPanel, setTopPanel] = useState(null)
   const [helpQuery, setHelpQuery] = useState('')
+  const [mobileNavOpen, setMobileNavOpen] = useState(false)
   const [readNotificationIds, setReadNotificationIds] = useState(() => {
     try { return JSON.parse(localStorage.getItem(`rms_client_notifications_read_${qrAdminOrganization || 'default'}`) || '[]') }
     catch { return [] }
@@ -5393,6 +5430,13 @@ function App() {
     window.addEventListener('keydown', closeOnEscape)
     return () => window.removeEventListener('keydown', closeOnEscape)
   }, [topPanel])
+
+  useEffect(() => {
+    if (!mobileNavOpen) return undefined
+    const closeOnEscape = event => { if (event.key === 'Escape') setMobileNavOpen(false) }
+    window.addEventListener('keydown', closeOnEscape)
+    return () => window.removeEventListener('keydown', closeOnEscape)
+  }, [mobileNavOpen])
 
   const clientNotifications = useMemo(() => rmsBuildClientNotifications({
     organizationId: qrAdminOrganization,
@@ -5601,7 +5645,7 @@ function App() {
     <button
       key={s.id}
       className={`rms-pro-nav-item ${section === s.id ? 'active' : ''} ${licenseStateForSection(s.id).openable ? '' : 'license-locked'}`}
-      onClick={() => setSection(s.id)}
+      onClick={() => { setSection(s.id); setMobileNavOpen(false) }}
       type="button"
     >
       <span className="rms-pro-nav-icon">{RMS_PRO_SECTION_ICONS[s.id] || '•'}</span>
@@ -5613,7 +5657,7 @@ function App() {
   return (
     <div className={`app rms-pro-shell theme-${theme || 'classic'}`}>
       <RMSInterfaceTranslator lang={lang} />
-      <aside className="sidebar rms-pro-sidebar">
+      <aside className={`sidebar rms-pro-sidebar ${mobileNavOpen ? 'mobile-open' : ''}`} aria-label="Навигация RMS Pro">
         <div className="rms-pro-brand rms-pro-brand-logo-only">
           <div className="rms-pro-logo rms-pro-logo-wide"><ProductLogo compact /></div>
         </div>
@@ -5655,6 +5699,8 @@ function App() {
         </div>
       </aside>
 
+      {mobileNavOpen && <button className="rms-pro-mobile-overlay" type="button" aria-label="Закрыть меню" onClick={() => setMobileNavOpen(false)} />}
+
       <main className={`main rms-pro-main section-${section} ${currentAccess === 'read' ? 'readonly-mode' : ''}`} data-section={section}>
         <DashboardStyles />
         <ThemeStyles />
@@ -5669,6 +5715,7 @@ function App() {
         <GlobalProgressOverlay />
         <div className="rms-pro-topbar">
           <div className="rms-pro-topbar-title">
+            <button className="rms-pro-mobile-menu" type="button" onClick={() => setMobileNavOpen(true)} aria-label="Открыть меню" aria-expanded={mobileNavOpen}><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg></button>
             <button className="rms-pro-back" type="button" onClick={() => setSection(firstOpenableSection)} aria-label="Назад"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M15 6l-6 6 6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg></button>
             <span>{activeTitle}</span>
           </div>
