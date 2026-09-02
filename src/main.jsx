@@ -5043,6 +5043,10 @@ function RMSInterfaceTranslator({ lang }) {
 
 function App() {
   const params = new URLSearchParams(window.location.search)
+  const qrAdminOrganization = params.get('organization') || ''
+  const qrAdminSrc = qrAdminOrganization
+    ? `/qr-admin.html?organization=${encodeURIComponent(qrAdminOrganization)}`
+    : '/qr-admin.html'
 
   const isQRMenu =
     params.get('qr') === 'menu' ||
@@ -5361,7 +5365,7 @@ function App() {
         {currentCanRead && section === 'qrmenu' && (
           <iframe
             title="QR Admin"
-            src="/qr-admin"
+            src={qrAdminSrc}
             style={{ width: '100%', height: 'calc(100vh - 84px)', minHeight: '760px', border: 0, display: 'block', background: '#0d1011' }}
           />
         )}
