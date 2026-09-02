@@ -397,10 +397,12 @@ function WifiQr({ ssid, password }) {
 }
 
 export default function QRMenu() {
-  const requestedTheme = new URLSearchParams(window.location.search).get("theme");
+  const menuParams = new URLSearchParams(window.location.search);
+  const requestedTheme = menuParams.get("theme");
+  const usesQrAdminCatalog = menuParams.get("qr_source") === "admin";
   const hasRequestedTheme = ["travertine", "paper", "olive", "graphite"].includes(requestedTheme);
-  const [branch, setBranch] = useState("BC1");
-  const [table, setTable] = useState("");
+  const [branch] = useState(() => menuParams.get("branch") || "BC1");
+  const [table] = useState(() => menuParams.get("table") || "");
   const [screen, setScreen] = useState("menu");
   const [category, setCategory] = useState("\u0412\u0441\u0435");
   const [menuView, setMenuView] = useState(() => {
@@ -466,16 +468,13 @@ export default function QRMenu() {
     window.localStorage.setItem("rms-qr-menu-view", menuView);
   }, [menuView]);
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    setBranch(params.get("branch") || "BC1");
-    setTable(params.get("table") || "");
-  }, []);
-  useEffect(() => {
     let active = true;
     setLoading(true);
     setConfiguredBranchName("");
     setBackgroundTheme("travertine");
-    const menuRequest = supabase.rpc("qr_get_public_menu", { p_branch_code: branch });
+    const menuRequest = usesQrAdminCatalog
+      ? supabase.rpc("qr_get_public_menu_v2", { p_branch_code: branch, p_table_code: table || null })
+      : supabase.rpc("qr_get_public_menu", { p_branch_code: branch });
     // Every branch reads this lightweight configuration so the visual theme
     // can be controlled independently. The menu-item filter still applies
     // only to branches that use the approved shared catalogue.
@@ -501,16 +500,23 @@ export default function QRMenu() {
       if (!active) return;
       const { data, error } = menuResult;
       if (error) flash(`\u041C\u0435\u043D\u044E \u0432\u0440\u0435\u043C\u0435\u043D\u043D\u043E \u043D\u0435\u0434\u043E\u0441\u0442\u0443\u043F\u043D\u043E: ${error.message}`);
-      let menuRows = Array.isArray(data) ? data : [];
+      const publishedMenu = usesQrAdminCatalog
+        ? Array.isArray(data) ? data[0]?.qr_get_public_menu_v2 || data[0] || null : data
+        : null;
+      let menuRows = usesQrAdminCatalog
+        ? Array.isArray(publishedMenu?.items) ? publishedMenu.items : []
+        : Array.isArray(data) ? data : [];
       let branchMenuConfig = {};
       try {
         const parsed = JSON.parse(String(branchMenuResult.data?.qr_code_url || ""));
         if (parsed && typeof parsed === "object") branchMenuConfig = parsed;
       } catch (_error) {}
-      setConfiguredBranchName(String(branchMenuConfig?.branch_name || "").trim());
+      setConfiguredBranchName(String(publishedMenu?.branch?.name || branchMenuConfig?.branch_name || "").trim());
       setBackgroundTheme(
         hasRequestedTheme
           ? requestedTheme
+          : ["travertine", "paper", "olive", "graphite"].includes(publishedMenu?.settings?.background_theme)
+          ? publishedMenu.settings.background_theme
           : ["travertine", "paper", "olive", "graphite"].includes(baristaChefMenu?.settings?.background_theme)
           ? baristaChefMenu.settings.background_theme
           : ["travertine", "paper", "olive", "graphite"].includes(branchMenuConfig?.background_theme)
@@ -550,7 +556,7 @@ export default function QRMenu() {
       setLoading(false);
     });
     return () => { active = false; };
-  }, [branch]);
+  }, [branch, table, usesQrAdminCatalog]);
   useEffect(() => {
     let active = true;
     supabase.from("rms_qr_info").select("branch_id,wifi_name,wifi_password,working_hours,instagram").eq("branch_id", branch).maybeSingle().then(({ data }) => {

@@ -2,12 +2,27 @@
   const SUPABASE_URL = 'https://zzsdcxowhhaxnuliaryb.supabase.co';
   const PUBLISHABLE_KEY = 'sb_publishable_KadKobelt_Zxq5HF770GFA_zSdTAfec';
   const STORAGE_KEY = 'sb-zzsdcxowhhaxnuliaryb-auth-token';
-  const BARISTACHEF_ORGANIZATION_ID = '1f0abf22-40e8-4324-a071-f21fc2f92c7b';
-  const organizationId = new URLSearchParams(location.search).get('organization');
+  const params = new URLSearchParams(location.search);
+  const organizationId = params.get('organization');
+  const isEmbedded = window.parent !== window || params.get('embedded') === '1';
+  document.documentElement.classList.toggle('rms-qr-embedded', isEmbedded);
   const root = document.getElementById('root');
   const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
   const money = value => Number(value || 0).toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const state = { access:null, summary:null, section:'overview', branches:[], tables:[], catalog:[], orders:[], notice:'', menuEditor:null };
+  let heightFrame = 0;
+
+  function notifyHostHeight() {
+    if (!isEmbedded) return;
+    cancelAnimationFrame(heightFrame);
+    heightFrame = requestAnimationFrame(() => {
+      const height = Math.max(root.scrollHeight, root.offsetHeight, document.body.scrollHeight);
+      window.parent.postMessage({ type:'rms-qr-admin-height', height }, location.origin);
+    });
+  }
+
+  if (isEmbedded && window.ResizeObserver) new ResizeObserver(notifyHostHeight).observe(root);
+  window.addEventListener('load', notifyHostHeight);
 
   function session() {
     try {
@@ -63,18 +78,14 @@
   }
 
   function publicUrl(branch, table) {
-    if (organizationId === BARISTACHEF_ORGANIZATION_ID) {
-      const url = new URL('https://app.rms.rest/');
-      url.searchParams.set('qr', 'menu');
-      url.searchParams.set('branch', branch.code);
-      const backgroundTheme = state.summary?.module_settings?.background_theme;
-      if (['travertine','paper','olive','graphite'].includes(backgroundTheme)) url.searchParams.set('theme', backgroundTheme);
-      if (table?.code) url.searchParams.set('table', table.code);
-      return url.toString();
-    }
-    const url = new URL('/qr-menu', location.origin);
+    const url = new URL('/', location.origin);
+    url.searchParams.set('qr', 'menu');
     url.searchParams.set('branch', branch.code);
-    if (table) url.searchParams.set('table', table.code);
+    url.searchParams.set('qr_source', 'admin');
+    if (organizationId) url.searchParams.set('organization', organizationId);
+    const backgroundTheme = state.summary?.module_settings?.background_theme;
+    if (['travertine','paper','olive','graphite'].includes(backgroundTheme)) url.searchParams.set('theme', backgroundTheme);
+    if (table?.code) url.searchParams.set('table', table.code);
     return url.toString();
   }
 
@@ -88,6 +99,7 @@
     root.innerHTML = `<div class="rms-qr-admin"><aside class="rms-qr-sidebar"><div class="rms-qr-brand"><span>QR</span><div><strong>RMS Menu</strong><small>${esc(state.access.organization_name)}</small></div></div><nav>${[
       ['overview','Обзор','⌂'],['menu','Меню','▦'],['branches','Филиалы и столы','⌘'],['orders','Заказы','▤'],['settings','Оформление','✦']
     ].map(([id,label,icon])=>`<button class="${state.section===id?'active':''}" data-section="${id}"><i>${icon}</i>${label}</button>`).join('')}</nav><div class="rms-qr-license"><small>Активный продукт</small><strong>QR Menu</strong><span>Серверная лицензия</span></div><a href="${esc(returnHref)}">${returnLabel}</a><button type="button" class="rms-secondary small" data-qr-logout>Выйти</button></aside><main class="rms-qr-main">${state.notice?`<div class="rms-notice success">${esc(state.notice)}</div>`:''}${content}</main></div>`;
+    notifyHostHeight();
   }
 
   function overview() {
