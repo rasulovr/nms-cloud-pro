@@ -5051,6 +5051,29 @@ const RMS_LICENSE_PRODUCTS = [
   { key: 'loyalty', aliases: ['loyalty', 'loyalty_program'], name: 'Loyalty', description: 'Клиентская база, уровни, бонусы и история взаимодействий.' }
 ]
 
+const RMS_CORE_SECTION_IDS = new Set([
+  'dashboard', 'revenue', 'finance', 'reports', 'recipes', 'inventory',
+  'salaries', 'suppliers', 'debts', 'licenses', 'settings'
+])
+
+function rmsLicenseSectionState(sectionId, products, resolved) {
+  if (!resolved) return { visible: false, openable: false, product: null }
+  const byKey = Object.fromEntries(products.map(product => [product.key, product]))
+  const rmsActive = Boolean(byKey.rms_pro?.active)
+  if (RMS_CORE_SECTION_IDS.has(sectionId)) {
+    return { visible: rmsActive, openable: rmsActive, product: byKey.rms_pro || null }
+  }
+  if (sectionId === 'qrmenu') {
+    const product = byKey.qr_menu || null
+    return { visible: rmsActive || Boolean(product?.active), openable: Boolean(product?.active), product }
+  }
+  if (sectionId === 'loyalty') {
+    const product = byKey.loyalty || null
+    return { visible: rmsActive || Boolean(product?.active), openable: Boolean(product?.active), product }
+  }
+  return { visible: rmsActive, openable: rmsActive, product: byKey.rms_pro || null }
+}
+
 const RMS_HELP_QUESTIONS = [
   { category: 'Начало работы', question: 'Как выбрать нужный раздел программы?', answer: 'Используйте левое меню RMS Pro. Доступные разделы зависят от роли пользователя и активных лицензий организации.' },
   { category: 'Доступ', question: 'Почему раздел не отображается в меню?', answer: 'Раздел может быть скрыт правами пользователя или неактивной подпиской. Администратор может проверить права в «Настройках», а подписки — в разделе «Лицензии».' },
@@ -5198,6 +5221,8 @@ function RMSClientExperienceStyles() {
     .rms-license-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.rms-license-card{padding:20px;border:1px solid #2d3437;border-radius:15px;background:#131719}.rms-license-card.active{border-color:#34503f}.rms-license-card.inactive{opacity:.82}.rms-license-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}.rms-license-card h3{margin:0 0 7px;color:#eef1f2}.rms-license-card p{min-height:50px;margin:0;color:#7e8990;font-size:11px;line-height:1.5}.rms-license-status{padding:5px 8px;border-radius:99px;background:#342126;color:#de8c98;font-size:9px;font-weight:800;text-transform:uppercase}.rms-license-status.active{background:#163a29;color:#73dba7}.rms-license-status.unknown{background:#252b2e;color:#9ba4a9}.rms-license-plan{display:flex;align-items:center;justify-content:space-between;margin:16px 0 13px;padding:10px 0;border-top:1px solid #293033;border-bottom:1px solid #293033}.rms-license-plan span{color:#7d878d;font-size:10px}.rms-license-plan strong{color:#d8dde0;font-size:12px}.rms-license-dates{display:grid;grid-template-columns:1fr 1fr;gap:10px}.rms-license-dates div{padding:9px;border-radius:9px;background:#0d1112}.rms-license-dates span,.rms-license-dates strong{display:block}.rms-license-dates span{color:#687279;font-size:9px}.rms-license-dates strong{margin-top:5px;color:#cbd1d4;font-size:11px}
     .rms-license-bottom{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(300px,.75fr);gap:14px}.rms-license-panel{padding:21px;border:1px solid #2d3437;border-radius:15px;background:#131719}.rms-license-panel h3{margin:0 0 8px;color:#eef1f2}.rms-license-panel p{margin:0;color:#818c93;font-size:12px;line-height:1.55}.rms-license-actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:17px}.rms-license-primary,.rms-license-secondary{padding:10px 13px;border-radius:9px;cursor:pointer;font-weight:750}.rms-license-primary{border:0;background:linear-gradient(145deg,#dca247,#a76a1c);color:#111}.rms-license-secondary{border:1px solid #394145;background:#1a1f21;color:#d6dadd}.rms-license-meta{display:grid;gap:11px;margin-top:15px}.rms-license-meta div{display:flex;justify-content:space-between;gap:18px;padding-bottom:10px;border-bottom:1px solid #293033}.rms-license-meta span{color:#727d83;font-size:10px}.rms-license-meta strong{color:#d3d8db;font-size:11px;text-align:right}
     .rms-license-loading{min-height:360px;display:grid;place-items:center;color:#8b959b}.rms-license-error{padding:18px;border:1px solid #63333a;border-radius:12px;background:#311b20;color:#e49aa3}
+    .rms-pro-nav-item.license-locked{opacity:.72}.rms-pro-nav-lock{margin-left:auto;display:grid;place-items:center;color:#c9974b}
+    .rms-module-blocked{min-height:calc(100vh - 150px);display:grid;place-items:center;padding:28px;background:#0d1011}.rms-module-blocked-card{width:min(560px,100%);padding:34px;border:1px solid #3b342b;border-radius:18px;background:radial-gradient(circle at 100% 0,rgba(205,151,67,.14),transparent 38%),#131719;color:#e8ecee;text-align:center;box-shadow:0 24px 70px rgba(0,0,0,.22)}.rms-module-blocked-icon{width:52px;height:52px;margin:0 auto 17px;display:grid;place-items:center;border:1px solid #5b482e;border-radius:50%;background:#241d14;color:#d6a04d;font-size:24px}.rms-module-blocked-card h2{margin:0 0 9px!important;color:#f1f3f4!important;font-size:24px}.rms-module-blocked-card p{margin:0;color:#8d979d;line-height:1.6}.rms-module-blocked-card strong{color:#d6a04d}.rms-module-blocked-card button{margin-top:20px;padding:10px 15px;border:1px solid #514633;border-radius:9px;background:#201b14;color:#e3bd7d;cursor:pointer;font-weight:750}
     .rms-agreement-backdrop{position:fixed;z-index:200;inset:0;display:grid;place-items:center;padding:24px;background:rgba(0,0,0,.72);backdrop-filter:blur(8px)}.rms-agreement-modal{width:min(840px,100%);max-height:min(780px,calc(100vh - 48px));overflow:auto;border:1px solid #343a3d;border-radius:18px;background:#111516;color:#dbe0e3;box-shadow:0 30px 100px rgba(0,0,0,.55)}.rms-agreement-head{position:sticky;top:0;display:flex;justify-content:space-between;gap:20px;padding:20px 24px;border-bottom:1px solid #2b3235;background:#111516}.rms-agreement-head h2{margin:0 0 5px!important;color:#f0f2f3!important}.rms-agreement-head p{margin:0;color:#7e898f;font-size:11px}.rms-agreement-copy{padding:24px}.rms-agreement-copy section{margin-bottom:20px}.rms-agreement-copy h3{margin:0 0 7px;color:#d9a252;font-size:13px}.rms-agreement-copy p{margin:0;color:#9ba4a9;font-size:12px;line-height:1.65}
     @media(max-width:980px){.rms-license-grid{grid-template-columns:1fr}.rms-license-bottom{grid-template-columns:1fr}.rms-license-card p{min-height:0}}
     @media(max-width:640px){.rms-license-hero{display:grid;padding:19px}.rms-license-summary{min-width:0}.rms-license-dates{grid-template-columns:1fr}.rms-top-popover{position:fixed;top:76px;right:14px}.rms-license-hero h2{font-size:23px}}
@@ -5210,8 +5235,20 @@ function RMSNotificationsPopover({ notifications, unreadCount, onMarkAll, onClos
     <div className="rms-notification-list">
       {notifications.map(item => <div key={item.id} className={`rms-notification-item ${item.level || 'info'}`}><span className="rms-notification-dot"/><div><strong>{item.title}</strong><span>{item.text}</span></div></div>)}
     </div>
-    <div className="rms-top-popover-head"><button className="rms-popover-link" type="button" onClick={onOpenLicenses}>Открыть лицензии</button><button className="rms-popover-link" type="button" onClick={onMarkAll}>Отметить прочитанными</button></div>
+    <div className="rms-top-popover-head">{onOpenLicenses ? <button className="rms-popover-link" type="button" onClick={onOpenLicenses}>Открыть лицензии</button> : <span/>}<button className="rms-popover-link" type="button" onClick={onMarkAll}>Отметить прочитанными</button></div>
   </div>
+}
+
+function RMSModuleLicenseBlocked({ product, onOpenLicenses }) {
+  const name = product?.name || 'Модуль'
+  return <section className="rms-module-blocked">
+    <article className="rms-module-blocked-card">
+      <div className="rms-module-blocked-icon">!</div>
+      <h2>{name} недоступен</h2>
+      <p>Для вашей организации нет активной подписки на <strong>{name}</strong>. После активации лицензии раздел откроется автоматически.</p>
+      {onOpenLicenses && <button type="button" onClick={onOpenLicenses}>Посмотреть лицензии</button>}
+    </article>
+  </section>
 }
 
 function RMSHelpPopover({ query, setQuery, onClose }) {
@@ -5363,6 +5400,9 @@ function App() {
     loading: clientLicenseLoading,
     error: clientLicenseError
   }), [qrAdminOrganization, clientLicenseState, clientLicenseLoading, clientLicenseError])
+  const clientLicenseProducts = useMemo(() => rmsNormalizeLicenseProducts(clientLicenseState), [clientLicenseState])
+  const clientLicenseResolved = Boolean(clientLicenseState) && !clientLicenseLoading && !clientLicenseError
+  const licenseStateForSection = sectionId => rmsLicenseSectionState(sectionId, clientLicenseProducts, clientLicenseResolved)
   const unreadNotificationCount = clientNotifications.filter(item => !readNotificationIds.includes(item.id)).length
 
   function markClientNotificationsRead() {
@@ -5489,21 +5529,29 @@ function App() {
     const row = permissions.find(p => p.section === sectionId)
     return row?.access || 'none'
   }
-  const visibleSections = SECTIONS.filter(s => canReadAccess(sectionAccess(s.id)))
+  const visibleSections = SECTIONS.filter(s => canReadAccess(sectionAccess(s.id)) && licenseStateForSection(s.id).visible)
   const currentAccess = sectionAccess(section)
   const currentCanRead = canReadAccess(currentAccess)
+  const currentLicenseAccess = licenseStateForSection(section)
+  const currentModuleCanOpen = currentLicenseAccess.openable
+  const currentSectionVisible = visibleSections.some(item => item.id === section)
+  const canRenderCurrentSection = currentCanRead && currentModuleCanOpen
 
   useEffect(() => {
     const urlToken = new URLSearchParams(window.location.search).get('loyalty_scan_token')
-    if (urlToken && section !== 'loyalty') {
+    if (urlToken && licenseStateForSection('loyalty').openable && section !== 'loyalty') {
       setSection('loyalty')
     }
-  }, [section])
+  }, [section, clientLicenseResolved, clientLicenseState])
 
   useEffect(() => {
-    if (!visibleSections.length) return
-    if (!canReadAccess(sectionAccess(section))) setSection(visibleSections[0].id)
-  }, [permissions, profile, section, isInternalSession])
+    if (!clientLicenseResolved || !visibleSections.length) return
+    const currentIsVisible = visibleSections.some(item => item.id === section)
+    if (!currentIsVisible) {
+      const firstOpenable = visibleSections.find(item => licenseStateForSection(item.id).openable)
+      if (firstOpenable) setSection(firstOpenable.id)
+    }
+  }, [permissions, profile, section, isInternalSession, clientLicenseResolved, clientLicenseState])
 
   function goToRevenueExpense(row) {
     if (!row?.expense_date || !row?.branch_id) return
@@ -5544,18 +5592,21 @@ function App() {
     sections: group.ids.map(id => visibleSectionMap[id]).filter(Boolean)
   })).filter(group => group.sections.length)
   const ungroupedSections = visibleSections.filter(s => !RMS_PRO_NAV_GROUPS.some(group => group.ids.includes(s.id)))
+  const firstOpenableSection = visibleSections.find(item => licenseStateForSection(item.id).openable)?.id || section
+  const licensesVisible = visibleSections.some(item => item.id === 'licenses')
   const activeTitle = rmsProSectionTitle(section, t)
   const userName = profile?.full_name || profile?.login_name || session?.user?.email || 'Admin'
   const userInitial = String(userName || 'A').trim().slice(0, 1).toUpperCase()
   const renderProNavButton = (s) => (
     <button
       key={s.id}
-      className={`rms-pro-nav-item ${section === s.id ? 'active' : ''}`}
+      className={`rms-pro-nav-item ${section === s.id ? 'active' : ''} ${licenseStateForSection(s.id).openable ? '' : 'license-locked'}`}
       onClick={() => setSection(s.id)}
       type="button"
     >
       <span className="rms-pro-nav-icon">{RMS_PRO_SECTION_ICONS[s.id] || '•'}</span>
       <span>{t(s.key)}</span>
+      {!licenseStateForSection(s.id).openable && <span className="rms-pro-nav-lock" aria-label="Требуется подписка"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="3.5" y="7" width="9" height="7" rx="1.5" stroke="currentColor"/><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2" stroke="currentColor" strokeLinecap="round"/></svg></span>}
     </button>
   )
 
@@ -5618,7 +5669,7 @@ function App() {
         <GlobalProgressOverlay />
         <div className="rms-pro-topbar">
           <div className="rms-pro-topbar-title">
-            <button className="rms-pro-back" type="button" onClick={() => setSection('dashboard')} aria-label="Назад"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M15 6l-6 6 6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg></button>
+            <button className="rms-pro-back" type="button" onClick={() => setSection(firstOpenableSection)} aria-label="Назад"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M15 6l-6 6 6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg></button>
             <span>{activeTitle}</span>
           </div>
           <div className="rms-pro-topbar-actions">
@@ -5629,40 +5680,44 @@ function App() {
               <span>{isAdmin ? 'Admin' : userName}</span>
               <span>⌄</span>
             </div>
-            {topPanel === 'notifications' && <RMSNotificationsPopover notifications={clientNotifications} unreadCount={unreadNotificationCount} onMarkAll={markClientNotificationsRead} onClose={() => setTopPanel(null)} onOpenLicenses={() => { setSection('licenses'); setTopPanel(null) }} />}
+            {topPanel === 'notifications' && <RMSNotificationsPopover notifications={clientNotifications} unreadCount={unreadNotificationCount} onMarkAll={markClientNotificationsRead} onClose={() => setTopPanel(null)} onOpenLicenses={licensesVisible ? () => { setSection('licenses'); setTopPanel(null) } : null} />}
             {topPanel === 'help' && <RMSHelpPopover query={helpQuery} setQuery={setHelpQuery} onClose={() => setTopPanel(null)} />}
           </div>
         </div>
         <div className="rms-pro-content">
-        {!currentCanRead && <section className="card"><h3>{t('permission_denied')}</h3><p className="hint">Этот раздел скрыт для текущего пользователя.</p></section>}
-        {currentCanRead && currentAccess === 'read' && <div className="readonly-banner">Режим просмотра: редактирование этого раздела отключено.</div>}
-        {currentCanRead && section === 'dashboard' && <Dashboard t={t} />}
-        {currentCanRead && section === 'revenue' && <Revenue t={t} focusExpense={revenueFocus} />}
-        {currentCanRead && section === 'finance' && <Finance t={t} lang={lang} onGoToExpense={goToRevenueExpense} />}
-        {currentCanRead && section === 'reports' && <Reports t={t} permissions={permissions} isAdmin={isAdmin} />}
-        {currentCanRead && section === 'recipes' && <Recipes t={t} />}
-        {currentCanRead && section === 'inventory' && (
+        {clientLicenseLoading && <div className="rms-license-loading">Проверяем лицензии организации…</div>}
+        {!clientLicenseLoading && clientLicenseError && <div className="rms-license-error">{clientLicenseError}</div>}
+        {clientLicenseResolved && !visibleSections.length && <RMSModuleLicenseBlocked product={{ name: 'RMS Pro' }} />}
+        {clientLicenseResolved && currentSectionVisible && !currentCanRead && <section className="card"><h3>{t('permission_denied')}</h3><p className="hint">Этот раздел скрыт для текущего пользователя.</p></section>}
+        {clientLicenseResolved && currentSectionVisible && currentCanRead && !currentModuleCanOpen && <RMSModuleLicenseBlocked product={currentLicenseAccess.product} onOpenLicenses={licensesVisible ? () => setSection('licenses') : null} />}
+        {canRenderCurrentSection && currentAccess === 'read' && <div className="readonly-banner">Режим просмотра: редактирование этого раздела отключено.</div>}
+        {canRenderCurrentSection && section === 'dashboard' && <Dashboard t={t} />}
+        {canRenderCurrentSection && section === 'revenue' && <Revenue t={t} focusExpense={revenueFocus} />}
+        {canRenderCurrentSection && section === 'finance' && <Finance t={t} lang={lang} onGoToExpense={goToRevenueExpense} />}
+        {canRenderCurrentSection && section === 'reports' && <Reports t={t} permissions={permissions} isAdmin={isAdmin} />}
+        {canRenderCurrentSection && section === 'recipes' && <Recipes t={t} />}
+        {canRenderCurrentSection && section === 'inventory' && (
           <RmsSectionErrorBoundary resetKey={`inventory-${section}`}>
             <InventoryModule t={t} branches={branches} />
           </RmsSectionErrorBoundary>
         )}
-        {currentCanRead && section === 'salaries' && <SalaryWorkspace t={t} isAdmin={isAdmin || accessRank(sectionAccess('salaries')) >= accessRank('admin')} />}
-        {currentCanRead && section === 'suppliers' && <Suppliers t={t} isAdmin={isAdmin || accessRank(sectionAccess('suppliers')) >= accessRank('admin')} />}
-        {currentCanRead && section === 'debts' && <DebtsPayments t={t} />}
-        {currentCanRead && section === 'qrmenu' && (
+        {canRenderCurrentSection && section === 'salaries' && <SalaryWorkspace t={t} isAdmin={isAdmin || accessRank(sectionAccess('salaries')) >= accessRank('admin')} />}
+        {canRenderCurrentSection && section === 'suppliers' && <Suppliers t={t} isAdmin={isAdmin || accessRank(sectionAccess('suppliers')) >= accessRank('admin')} />}
+        {canRenderCurrentSection && section === 'debts' && <DebtsPayments t={t} />}
+        {canRenderCurrentSection && section === 'qrmenu' && (
           <iframe
             title="QR Admin"
             src={qrAdminSrc}
             style={{ width: '100%', height: 'calc(100vh - 84px)', minHeight: '760px', border: 0, display: 'block', background: '#0d1011' }}
           />
         )}
-        {currentCanRead && section === 'loyalty' && <div className="grid">
+        {canRenderCurrentSection && section === 'loyalty' && <div className="grid">
           <div className="card span-2">
             <RMSLoyalty />
           </div>
         </div>}
-        {currentCanRead && section === 'licenses' && <RMSLicenseCenter organizationId={qrAdminOrganization} access={clientLicenseState} loading={clientLicenseLoading} error={clientLicenseError} lang={lang} onRefresh={() => setClientLicenseRefresh(value => value + 1)} />}
-        {currentCanRead && section === 'settings' && <RmsSectionErrorBoundary resetKey={`settings-${section}`}><Settings session={session} t={t} theme={theme} setTheme={setTheme} lang={lang} setLang={setLang} /></RmsSectionErrorBoundary>}
+        {canRenderCurrentSection && section === 'licenses' && <RMSLicenseCenter organizationId={qrAdminOrganization} access={clientLicenseState} loading={clientLicenseLoading} error={clientLicenseError} lang={lang} onRefresh={() => setClientLicenseRefresh(value => value + 1)} />}
+        {canRenderCurrentSection && section === 'settings' && <RmsSectionErrorBoundary resetKey={`settings-${section}`}><Settings session={session} t={t} theme={theme} setTheme={setTheme} lang={lang} setLang={setLang} /></RmsSectionErrorBoundary>}
         </div>
       </main>
     </div>
