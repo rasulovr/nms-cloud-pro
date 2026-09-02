@@ -9,6 +9,10 @@
       "destination": "/terms.html"
     },
     {
+      "source": "/qr-admin",
+      "destination": "/qr-admin.html"
+    },
+    {
       "source": "/loyalty/card/:token",
       "destination": "/index.html"
     },
