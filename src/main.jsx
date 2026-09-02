@@ -567,7 +567,7 @@ const I18N = {
     brand_subtitle:'Restaurant Management System', language_label:'Язык интерфейса', login_label:'Login', password_label:'Пароль',
     login_button:'Войти', login_hint:'Вход по внутреннему login. Допустим вход по логину без домена.', login_error:'Неверный логин или пароль', show_password:'Показать пароль',
     logout:'Выйти', revenue_tab:'Выручка', finance_tab:'Финансы', reports_tab:'Отчёты', recipes_tab:'Тех. карты', salaries_tab:'Зарплаты',
-    attendance_tab:'Посещаемость', advances_tab:'Авансы', suppliers_tab:'Поставщики', debts_payments_tab:'Долги и оплаты', qr_menu_tab:'QR Menu', loyalty_tab:'Loyalty', settings_tab:'Настройки', inventory_tab:'Склад',
+    attendance_tab:'Посещаемость', advances_tab:'Авансы', suppliers_tab:'Поставщики', debts_payments_tab:'Долги и оплаты', qr_menu_tab:'QR Menu', loyalty_tab:'Loyalty', licenses_tab:'Лицензии', settings_tab:'Настройки', inventory_tab:'Склад',
     revenue_subtitle:'Ввод выручки и расходов за выбранную дату по филиалу', finance_subtitle:'Аналитика по филиалу, месяцу, выручке и расходам',
     period_branch:'Период и филиал', branch_select:'Филиал', date:'Дата', daily_revenue_title:'Выручка за выбранную дату',
     cash:'Наличными', bank:'Банк', wolt:'Wolt', revenue_summary:'Сводка выручки', total_revenue:'Общая выручка',
@@ -590,7 +590,7 @@ const I18N = {
     brand_subtitle:'Restaurant Management System', language_label:'İnterfeys dili', login_label:'Login', password_label:'Parol',
     login_button:'Daxil ol', login_hint:'Daxili login ilə giriş. Domen yazmadan login istifadə etmək olar.', login_error:'Login və ya parol yanlışdır', show_password:'Parolu göstər',
     logout:'Çıxış', revenue_tab:'Dövriyyə', finance_tab:'Maliyyə', reports_tab:'Hesabatlar', recipes_tab:'Tex. kartlar', salaries_tab:'Maaşlar',
-    attendance_tab:'Davamiyyət', advances_tab:'Avanslar', suppliers_tab:'Təchizatçılar', debts_payments_tab:'Borclar və ödənişlər', qr_menu_tab:'QR Menu', loyalty_tab:'Loyalty', settings_tab:'Ayarlar',
+    attendance_tab:'Davamiyyət', advances_tab:'Avanslar', suppliers_tab:'Təchizatçılar', debts_payments_tab:'Borclar və ödənişlər', qr_menu_tab:'QR Menu', loyalty_tab:'Loyalty', licenses_tab:'Lisenziyalar', settings_tab:'Ayarlar', inventory_tab:'Anbar',
     revenue_subtitle:'Seçilmiş tarix və filial üzrə dövriyyə və xərclər', finance_subtitle:'Filial, ay, dövriyyə və xərclər üzrə analitika',
     period_branch:'Dövr və filial', branch_select:'Filial', date:'Tarix', daily_revenue_title:'Seçilmiş tarixin dövriyyəsi',
     cash:'Nağd', bank:'Bank', wolt:'Wolt', revenue_summary:'Dövriyyə xülasəsi', total_revenue:'Ümumi dövriyyə',
@@ -622,6 +622,7 @@ const SECTIONS = [
   { id: 'debts', key: 'debts_payments_tab' },
   { id: 'qrmenu', key: 'qr_menu_tab' },
   { id: 'loyalty', key: 'loyalty_tab' },
+  { id: 'licenses', key: 'licenses_tab' },
   { id: 'settings', key: 'settings_tab' }
 ]
 
@@ -654,7 +655,7 @@ const THEMES = [
 const RMS_PRO_NAV_GROUPS = [
   { title: 'МЕНЮ', ids: ['dashboard', 'revenue', 'finance', 'recipes', 'inventory', 'salaries', 'suppliers', 'debts'] },
   { title: 'АНАЛИТИКА', ids: ['reports'] },
-  { title: 'ИНСТРУМЕНТЫ', ids: ['qrmenu', 'loyalty', 'settings'] }
+  { title: 'ИНСТРУМЕНТЫ', ids: ['qrmenu', 'loyalty', 'licenses', 'settings'] }
 ]
 
 function RmsIcon({ type }) {
@@ -670,6 +671,7 @@ function RmsIcon({ type }) {
     debts: <svg {...common}><path d="M4 7h16"/><path d="M6 7V5h12v2"/><rect x="5" y="7" width="14" height="12" rx="2"/><path d="M9 12h6"/><path d="M9 15h4"/></svg>,
     qrmenu: <svg {...common}><path d="M4 4h6v6H4z"/><path d="M14 4h6v6h-6z"/><path d="M4 14h6v6H4z"/><path d="M14 14h2.5"/><path d="M19 14h1"/><path d="M14 17h6"/><path d="M17 20h3"/><path d="M14 20h.01"/></svg>,
     loyalty: <svg {...common}><path d="m12 3 2.6 5.3 5.8.8-4.2 4.1 1 5.8-5.2-2.7L6.8 19l1-5.8L3.6 9.1l5.8-.8L12 3Z"/></svg>,
+    licenses: <svg {...common}><path d="M12 3 5 6v5c0 4.7 2.8 8.2 7 10 4.2-1.8 7-5.3 7-10V6l-7-3Z"/><path d="m9 12 2 2 4-4"/></svg>,
     salaries: <svg {...common}><path d="M16 20v-1.5A3.5 3.5 0 0 0 12.5 15h-5A3.5 3.5 0 0 0 4 18.5V20"/><circle cx="10" cy="8" r="3.5"/><path d="M17 8h4"/><path d="M19 6v4"/><path d="M18 14.5h3"/><path d="M18 18h3"/></svg>,
     settings: <svg {...common}><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.88-.34 1.7 1.7 0 0 0-1.03 1.56V21a2 2 0 0 1-4 0v-.07a1.7 1.7 0 0 0-1.03-1.56 1.7 1.7 0 0 0-1.88.34l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.56-1.03H3a2 2 0 0 1 0-4h.04A1.7 1.7 0 0 0 4.6 8.94a1.7 1.7 0 0 0-.34-1.88l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.88.34H9a1.7 1.7 0 0 0 1-1.56V3a2 2 0 0 1 4 0v.04a1.7 1.7 0 0 0 1.03 1.56 1.7 1.7 0 0 0 1.88-.34l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.88V9a1.7 1.7 0 0 0 1.56 1H21a2 2 0 0 1 0 4h-.04A1.7 1.7 0 0 0 19.4 15Z"/></svg>
   }
@@ -688,6 +690,7 @@ const RMS_PRO_SECTION_ICONS = {
   debts: <RmsIcon type="debts" />,
   qrmenu: <RmsIcon type="qrmenu" />,
   loyalty: <RmsIcon type="loyalty" />,
+  licenses: <RmsIcon type="licenses" />,
   settings: <RmsIcon type="settings" />
 }
 
@@ -707,6 +710,7 @@ function rmsProSectionTitle(section, t) {
     debts: t('debts_payments_tab'),
     qrmenu: t('qr_menu_tab'),
     loyalty: t('loyalty_tab'),
+    licenses: t('licenses_tab'),
     settings: t('settings_tab')
   }
   return map[section] || 'RMS Pro'
@@ -5041,6 +5045,219 @@ function RMSInterfaceTranslator({ lang }) {
   return null
 }
 
+const RMS_LICENSE_PRODUCTS = [
+  { key: 'rms_pro', aliases: ['rms_pro', 'rms', 'core'], name: 'RMS Pro', description: 'Управление финансами, складом, персоналом, поставщиками и отчётностью.' },
+  { key: 'qr_menu', aliases: ['qr_menu', 'qr', 'qrmenu'], name: 'QR Menu', description: 'Цифровое меню, филиалы, столы, QR-коды и гостевые заказы.' },
+  { key: 'loyalty', aliases: ['loyalty', 'loyalty_program'], name: 'Loyalty', description: 'Клиентская база, уровни, бонусы и история взаимодействий.' }
+]
+
+const RMS_HELP_QUESTIONS = [
+  { category: 'Начало работы', question: 'Как выбрать нужный раздел программы?', answer: 'Используйте левое меню RMS Pro. Доступные разделы зависят от роли пользователя и активных лицензий организации.' },
+  { category: 'Доступ', question: 'Почему раздел не отображается в меню?', answer: 'Раздел может быть скрыт правами пользователя или неактивной подпиской. Администратор может проверить права в «Настройках», а подписки — в разделе «Лицензии».' },
+  { category: 'Выручка', question: 'Как внести дневную выручку и расходы?', answer: 'Откройте «Выручка», выберите дату и филиал, заполните наличные, банк и доступные каналы продаж. Расходы добавляются ниже отдельными строками.' },
+  { category: 'Склад', question: 'Как проверить остатки и перемещение товаров?', answer: 'В разделе «Склад» выберите склад или филиал. Перемещения выполняются только по разрешённым направлениям и фиксируются сервером.' },
+  { category: 'QR Menu', question: 'Где управлять QR Menu?', answer: 'Откройте «QR Menu». Там доступны каталог, филиалы, столы, QR-коды, оформление и гостевые заказы — если модуль активен.' },
+  { category: 'Лицензии', question: 'Где посмотреть активные подписки и срок действия?', answer: 'В разделе «Лицензии» показаны активные модули, дата активации, завершения и текущий статус каждого продукта.' },
+  { category: 'Уведомления', question: 'Что показывает колокольчик?', answer: 'Колокольчик сообщает о завершении лицензий, недоступных модулях, ошибках проверки подписки и других важных системных предупреждениях.' },
+  { category: 'Права', question: 'Как изменить права сотрудника?', answer: 'Администратор может открыть «Настройки», выбрать пользователя и назначить режим доступа к каждому разделу: просмотр, изменение или администрирование.' }
+]
+
+function rmsBooleanValue(value) {
+  if (typeof value === 'string') return ['true', '1', 'active', 'enabled', 'trial'].includes(value.toLowerCase())
+  return Boolean(value)
+}
+
+function rmsFirstDefined(...values) {
+  return values.find(value => value !== undefined && value !== null && value !== '')
+}
+
+function rmsFindNestedLicense(access, product) {
+  const sources = [access?.products, access?.subscriptions, access?.product_access, access?.licenses]
+  for (const source of sources) {
+    if (Array.isArray(source)) {
+      const row = source.find(item => product.aliases.includes(String(item?.product_code || item?.code || item?.key || item?.product || '').toLowerCase()))
+      if (row) return row
+    } else if (source && typeof source === 'object') {
+      for (const alias of product.aliases) if (source[alias]) return source[alias]
+    }
+  }
+  return null
+}
+
+function rmsNormalizeLicenseProducts(access) {
+  return RMS_LICENSE_PRODUCTS.map(product => {
+    const nested = rmsFindNestedLicense(access, product)
+    const activeValue = rmsFirstDefined(
+      nested?.active,
+      nested?.is_active,
+      nested?.enabled,
+      nested?.status,
+      access?.[`${product.key}_active`],
+      ...product.aliases.map(alias => access?.[`${alias}_active`])
+    )
+    const activationDate = rmsFirstDefined(
+      nested?.activated_at,
+      nested?.starts_at,
+      nested?.start_at,
+      nested?.activation_date,
+      access?.[`${product.key}_activated_at`],
+      access?.[`${product.key}_starts_at`],
+      access?.[`${product.key}_start_at`],
+      access?.[`${product.key}_activation_date`],
+      access?.activated_at,
+      access?.starts_at,
+      access?.valid_from
+    )
+    const expirationDate = rmsFirstDefined(
+      nested?.expires_at,
+      nested?.ends_at,
+      nested?.end_at,
+      nested?.valid_until,
+      nested?.expiration_date,
+      access?.[`${product.key}_expires_at`],
+      access?.[`${product.key}_ends_at`],
+      access?.[`${product.key}_end_at`],
+      access?.[`${product.key}_valid_until`],
+      access?.[`${product.key}_expiration_date`],
+      access?.expires_at,
+      access?.ends_at,
+      access?.valid_until
+    )
+    return {
+      ...product,
+      known: activeValue !== undefined && activeValue !== null && activeValue !== '',
+      active: rmsBooleanValue(activeValue),
+      activationDate,
+      expirationDate,
+      plan: rmsFirstDefined(nested?.plan_name, nested?.plan, nested?.tier, access?.[`${product.key}_plan`], access?.plan_name, access?.plan, 'Стандарт')
+    }
+  })
+}
+
+function rmsDateValue(value, lang = 'ru') {
+  if (!value) return 'Не указана'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return String(value)
+  return date.toLocaleDateString(lang === 'az' ? 'az-AZ' : 'ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' })
+}
+
+function rmsDaysUntil(value) {
+  if (!value) return null
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return null
+  return Math.ceil((date.getTime() - Date.now()) / 86400000)
+}
+
+function rmsBuildClientNotifications({ organizationId, access, loading, error }) {
+  if (loading) return []
+  if (!organizationId) return [{ id: 'organization-missing', level: 'warning', title: 'Не выбрана организация', text: 'Откройте RMS Pro из клиентского кабинета, чтобы проверить лицензии.' }]
+  if (error) return [{ id: 'license-check-error', level: 'danger', title: 'Не удалось проверить лицензии', text: error }]
+  const products = rmsNormalizeLicenseProducts(access)
+  const items = []
+  products.forEach(product => {
+    if (product.known && !product.active) {
+      items.push({ id: `${product.key}-inactive`, level: 'warning', title: `${product.name} не активен`, text: 'Функции этого модуля ограничены текущей лицензией.' })
+      return
+    }
+    if (!product.active) return
+    const days = rmsDaysUntil(product.expirationDate)
+    if (days !== null && days < 0) items.push({ id: `${product.key}-expired`, level: 'danger', title: `Срок ${product.name} завершён`, text: `Лицензия завершилась ${rmsDateValue(product.expirationDate)}.` })
+    else if (days !== null && days <= 7) items.push({ id: `${product.key}-expires-${days}`, level: 'danger', title: `${product.name}: осталось ${days} дн.`, text: `Продлите подписку до ${rmsDateValue(product.expirationDate)}.` })
+    else if (days !== null && days <= 30) items.push({ id: `${product.key}-expires-${days}`, level: 'warning', title: `${product.name}: срок скоро завершится`, text: `Дата завершения — ${rmsDateValue(product.expirationDate)}.` })
+  })
+  const serverNotices = Array.isArray(access?.notifications) ? access.notifications : Array.isArray(access?.notices) ? access.notices : []
+  serverNotices.forEach((notice, index) => items.push({
+    id: String(notice?.id || `server-${index}-${notice?.title || notice?.message || ''}`),
+    level: notice?.level || notice?.type || 'info',
+    title: notice?.title || 'Системное уведомление',
+    text: notice?.message || notice?.text || ''
+  }))
+  if (!items.length) items.push({ id: 'licenses-ok', level: 'success', title: 'Подписки работают нормально', text: 'Критических предупреждений по активным лицензиям нет.' })
+  return items
+}
+
+function RMSClientExperienceStyles() {
+  return <style>{`
+    .rms-pro-topbar-actions{position:relative!important}
+    .rms-pro-top-icon{position:relative;cursor:pointer!important;transition:background .16s ease,color .16s ease!important}
+    .rms-pro-top-icon:hover,.rms-pro-top-icon.active{background:rgba(207,153,66,.13)!important;color:#d49b3d!important}
+    .rms-top-unread{position:absolute;top:3px;right:3px;min-width:16px;height:16px;padding:0 4px;display:grid;place-items:center;border:2px solid #0f1213;border-radius:99px;background:#d65c5c;color:#fff;font-size:8px!important;font-weight:900;line-height:1}
+    .rms-top-popover{position:absolute;z-index:90;top:50px;right:0;width:min(390px,calc(100vw - 28px));overflow:hidden;border:1px solid #32383b;border-radius:16px;background:#111516;color:#e9edef;box-shadow:0 26px 80px rgba(0,0,0,.42)}
+    .rms-help-popover{width:min(470px,calc(100vw - 28px))}
+    .rms-top-popover-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:18px;border-bottom:1px solid #2a3033;background:#0e1213}
+    .rms-top-popover-head h3{margin:0 0 4px;color:#f2f4f5;font-size:16px}.rms-top-popover-head p{margin:0;color:#79848b;font-size:11px}
+    .rms-top-popover-head button,.rms-popover-link{border:0;background:transparent;color:#c99a4e;cursor:pointer;font-weight:750}
+    .rms-notification-list{max-height:430px;overflow:auto;padding:8px}
+    .rms-notification-item{display:grid;grid-template-columns:10px minmax(0,1fr);gap:11px;padding:13px 11px;border-radius:11px}.rms-notification-item:hover{background:#171c1e}
+    .rms-notification-dot{width:8px;height:8px;margin-top:5px;border-radius:50%;background:#7f8a90}.rms-notification-item.success .rms-notification-dot{background:#68d49d}.rms-notification-item.warning .rms-notification-dot{background:#e0a343}.rms-notification-item.danger .rms-notification-dot{background:#e06f78}
+    .rms-notification-item strong,.rms-notification-item span{display:block}.rms-notification-item strong{color:#e6e9eb;font-size:12px}.rms-notification-item span{margin-top:5px;color:#89939a;font-size:11px;line-height:1.45}
+    .rms-help-search{padding:12px;border-bottom:1px solid #293033}.rms-help-search input{width:100%;padding:10px 12px;border:1px solid #353d41;border-radius:9px;background:#0b0f10;color:#eef1f2;outline:none}.rms-help-search input:focus{border-color:#bc8840}
+    .rms-help-list{max-height:470px;overflow:auto;padding:8px 12px 14px}.rms-help-list details{border-bottom:1px solid #252c2f;padding:11px 2px}.rms-help-list summary{display:flex;align-items:center;justify-content:space-between;gap:12px;color:#dce1e4;font-size:12px;font-weight:700;cursor:pointer;list-style:none}.rms-help-list summary::-webkit-details-marker{display:none}.rms-help-list summary:after{content:'+';color:#c9984b;font-size:18px}.rms-help-list details[open] summary:after{content:'−'}.rms-help-list small{display:block;margin-bottom:6px;color:#b8883d;font-size:9px;text-transform:uppercase;letter-spacing:.12em}.rms-help-list p{margin:10px 0 2px;color:#8d979d;font-size:11px;line-height:1.55}
+    .section-licenses .rms-pro-content{background:#0d1011!important;color:#e9edef}
+    .rms-license-page{display:grid;gap:16px}.rms-license-hero{display:flex;align-items:flex-start;justify-content:space-between;gap:24px;padding:26px;border:1px solid #34302a;border-radius:18px;background:radial-gradient(circle at 90% 0,rgba(211,155,62,.16),transparent 35%),#111516}.rms-license-eyebrow{display:block;margin-bottom:8px;color:#bd8d44;font-size:10px;font-weight:800;letter-spacing:.16em}.rms-license-hero h2{margin:0 0 8px!important;color:#f1f3f4!important;font-size:28px}.rms-license-hero p{max-width:720px;margin:0;color:#859098;line-height:1.55}.rms-license-summary{display:grid;min-width:180px;padding:14px 16px;border:1px solid #31503f;border-radius:12px;background:#14221b}.rms-license-summary small{color:#7d8b83}.rms-license-summary strong{margin-top:5px;color:#72dba7;font-size:16px}
+    .rms-license-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.rms-license-card{padding:20px;border:1px solid #2d3437;border-radius:15px;background:#131719}.rms-license-card.active{border-color:#34503f}.rms-license-card.inactive{opacity:.82}.rms-license-card-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}.rms-license-card h3{margin:0 0 7px;color:#eef1f2}.rms-license-card p{min-height:50px;margin:0;color:#7e8990;font-size:11px;line-height:1.5}.rms-license-status{padding:5px 8px;border-radius:99px;background:#342126;color:#de8c98;font-size:9px;font-weight:800;text-transform:uppercase}.rms-license-status.active{background:#163a29;color:#73dba7}.rms-license-status.unknown{background:#252b2e;color:#9ba4a9}.rms-license-plan{display:flex;align-items:center;justify-content:space-between;margin:16px 0 13px;padding:10px 0;border-top:1px solid #293033;border-bottom:1px solid #293033}.rms-license-plan span{color:#7d878d;font-size:10px}.rms-license-plan strong{color:#d8dde0;font-size:12px}.rms-license-dates{display:grid;grid-template-columns:1fr 1fr;gap:10px}.rms-license-dates div{padding:9px;border-radius:9px;background:#0d1112}.rms-license-dates span,.rms-license-dates strong{display:block}.rms-license-dates span{color:#687279;font-size:9px}.rms-license-dates strong{margin-top:5px;color:#cbd1d4;font-size:11px}
+    .rms-license-bottom{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(300px,.75fr);gap:14px}.rms-license-panel{padding:21px;border:1px solid #2d3437;border-radius:15px;background:#131719}.rms-license-panel h3{margin:0 0 8px;color:#eef1f2}.rms-license-panel p{margin:0;color:#818c93;font-size:12px;line-height:1.55}.rms-license-actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:17px}.rms-license-primary,.rms-license-secondary{padding:10px 13px;border-radius:9px;cursor:pointer;font-weight:750}.rms-license-primary{border:0;background:linear-gradient(145deg,#dca247,#a76a1c);color:#111}.rms-license-secondary{border:1px solid #394145;background:#1a1f21;color:#d6dadd}.rms-license-meta{display:grid;gap:11px;margin-top:15px}.rms-license-meta div{display:flex;justify-content:space-between;gap:18px;padding-bottom:10px;border-bottom:1px solid #293033}.rms-license-meta span{color:#727d83;font-size:10px}.rms-license-meta strong{color:#d3d8db;font-size:11px;text-align:right}
+    .rms-license-loading{min-height:360px;display:grid;place-items:center;color:#8b959b}.rms-license-error{padding:18px;border:1px solid #63333a;border-radius:12px;background:#311b20;color:#e49aa3}
+    .rms-agreement-backdrop{position:fixed;z-index:200;inset:0;display:grid;place-items:center;padding:24px;background:rgba(0,0,0,.72);backdrop-filter:blur(8px)}.rms-agreement-modal{width:min(840px,100%);max-height:min(780px,calc(100vh - 48px));overflow:auto;border:1px solid #343a3d;border-radius:18px;background:#111516;color:#dbe0e3;box-shadow:0 30px 100px rgba(0,0,0,.55)}.rms-agreement-head{position:sticky;top:0;display:flex;justify-content:space-between;gap:20px;padding:20px 24px;border-bottom:1px solid #2b3235;background:#111516}.rms-agreement-head h2{margin:0 0 5px!important;color:#f0f2f3!important}.rms-agreement-head p{margin:0;color:#7e898f;font-size:11px}.rms-agreement-copy{padding:24px}.rms-agreement-copy section{margin-bottom:20px}.rms-agreement-copy h3{margin:0 0 7px;color:#d9a252;font-size:13px}.rms-agreement-copy p{margin:0;color:#9ba4a9;font-size:12px;line-height:1.65}
+    @media(max-width:980px){.rms-license-grid{grid-template-columns:1fr}.rms-license-bottom{grid-template-columns:1fr}.rms-license-card p{min-height:0}}
+    @media(max-width:640px){.rms-license-hero{display:grid;padding:19px}.rms-license-summary{min-width:0}.rms-license-dates{grid-template-columns:1fr}.rms-top-popover{position:fixed;top:76px;right:14px}.rms-license-hero h2{font-size:23px}}
+  `}</style>
+}
+
+function RMSNotificationsPopover({ notifications, unreadCount, onMarkAll, onClose, onOpenLicenses }) {
+  return <div className="rms-top-popover" role="dialog" aria-label="Уведомления">
+    <div className="rms-top-popover-head"><div><h3>Уведомления</h3><p>{unreadCount ? `${unreadCount} непрочитанных` : 'Новых предупреждений нет'}</p></div><button type="button" onClick={onClose}>×</button></div>
+    <div className="rms-notification-list">
+      {notifications.map(item => <div key={item.id} className={`rms-notification-item ${item.level || 'info'}`}><span className="rms-notification-dot"/><div><strong>{item.title}</strong><span>{item.text}</span></div></div>)}
+    </div>
+    <div className="rms-top-popover-head"><button className="rms-popover-link" type="button" onClick={onOpenLicenses}>Открыть лицензии</button><button className="rms-popover-link" type="button" onClick={onMarkAll}>Отметить прочитанными</button></div>
+  </div>
+}
+
+function RMSHelpPopover({ query, setQuery, onClose }) {
+  const normalized = String(query || '').trim().toLowerCase()
+  const rows = RMS_HELP_QUESTIONS.filter(item => !normalized || `${item.category} ${item.question} ${item.answer}`.toLowerCase().includes(normalized))
+  return <div className="rms-top-popover rms-help-popover" role="dialog" aria-label="Справка RMS Pro">
+    <div className="rms-top-popover-head"><div><h3>Справка и ответы</h3><p>Краткие инструкции по работе с RMS Pro</p></div><button type="button" onClick={onClose}>×</button></div>
+    <div className="rms-help-search"><input type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder="Найти вопрос или раздел…" autoFocus /></div>
+    <div className="rms-help-list">{rows.length ? rows.map(item => <details key={item.question}><summary><span><small>{item.category}</small>{item.question}</span></summary><p>{item.answer}</p></details>) : <p>По вашему запросу ничего не найдено.</p>}</div>
+  </div>
+}
+
+function RMSLicenseAgreement({ organizationName, onClose }) {
+  return <div className="rms-agreement-backdrop" role="dialog" aria-modal="true" aria-label="Лицензионное соглашение" onMouseDown={event => { if (event.target === event.currentTarget) onClose() }}>
+    <article className="rms-agreement-modal">
+      <div className="rms-agreement-head"><div><h2>Лицензионное соглашение RMS Pro</h2><p>Редакция 1.0 · Лицензиат: {organizationName || 'текущая организация'}</p></div><button className="rms-license-secondary" type="button" onClick={onClose}>Закрыть</button></div>
+      <div className="rms-agreement-copy">
+        <section><h3>1. Предмет соглашения</h3><p>Правообладатель предоставляет Лицензиату ограниченное, неисключительное и непередаваемое право использования активированных модулей RMS Pro в течение оплаченного или согласованного срока лицензии.</p></section>
+        <section><h3>2. Лицензируемые модули</h3><p>Состав доступных функций определяется активными подписками RMS Pro, QR Menu и Loyalty. Неактивные модули могут быть скрыты или работать в ограниченном режиме.</p></section>
+        <section><h3>3. Учётные записи и доступ</h3><p>Лицензиат отвечает за сохранность учётных данных, корректное назначение ролей сотрудникам и все действия, выполненные через его учётные записи.</p></section>
+        <section><h3>4. Данные и конфиденциальность</h3><p>Данные организации используются исключительно для работы системы, предоставления функций, резервного копирования, поддержки и обеспечения безопасности в пределах применимых правил обработки данных.</p></section>
+        <section><h3>5. Ограничения</h3><p>Запрещаются обход серверных ограничений лицензии, передача доступа третьим лицам вне организации, вмешательство в работу сервиса, обратная разработка и использование системы для незаконных действий.</p></section>
+        <section><h3>6. Обновления и поддержка</h3><p>В период активной подписки правообладатель может выпускать обновления, исправления безопасности и изменения интерфейса. Объём поддержки определяется выбранным тарифом и отдельными договорённостями.</p></section>
+        <section><h3>7. Срок и прекращение</h3><p>Соглашение действует с даты активации до даты завершения подписки. После окончания срока доступ к соответствующим модулям может быть ограничен до продления лицензии.</p></section>
+        <section><h3>8. Ответственность</h3><p>Система предоставляется для операционного управления. Лицензиат самостоятельно проверяет финансовые, налоговые и управленческие решения, принятые на основании данных RMS Pro.</p></section>
+      </div>
+    </article>
+  </div>
+}
+
+function RMSLicenseCenter({ organizationId, access, loading, error, lang, onRefresh }) {
+  const [agreementOpen, setAgreementOpen] = useState(false)
+  const products = useMemo(() => rmsNormalizeLicenseProducts(access), [access])
+  const activeCount = products.filter(product => product.active).length
+  const agreementVersion = access?.agreement_version || access?.license_agreement_version || '1.0'
+  const agreementAcceptedAt = access?.agreement_accepted_at || access?.license_agreement_accepted_at
+  if (loading) return <div className="rms-license-loading">Проверяем лицензии организации…</div>
+  return <div className="rms-license-page">
+    <section className="rms-license-hero"><div><span className="rms-license-eyebrow">RMS PRO · УПРАВЛЕНИЕ ПОДПИСКОЙ</span><h2>Лицензии и активные модули</h2><p>Серверный статус продуктов, сроки действия и условия использования для {access?.organization_name || 'текущей организации'}.</p></div><div className="rms-license-summary"><small>Активные подписки</small><strong>{activeCount} из {products.length}</strong></div></section>
+    {error && <div className="rms-license-error">{error}</div>}
+    <section className="rms-license-grid">{products.map(product => <article key={product.key} className={`rms-license-card ${product.active ? 'active' : 'inactive'}`}><div className="rms-license-card-head"><div><h3>{product.name}</h3><p>{product.description}</p></div><span className={`rms-license-status ${product.known ? product.active ? 'active' : '' : 'unknown'}`}>{product.known ? product.active ? 'Активна' : 'Не активна' : 'Не указан'}</span></div><div className="rms-license-plan"><span>Тариф</span><strong>{product.plan}</strong></div><div className="rms-license-dates"><div><span>Дата активации</span><strong>{rmsDateValue(product.activationDate, lang)}</strong></div><div><span>Дата завершения</span><strong>{rmsDateValue(product.expirationDate, lang)}</strong></div></div></article>)}</section>
+    <section className="rms-license-bottom"><article className="rms-license-panel"><h3>Лицензионное соглашение</h3><p>Условия использования RMS Pro и отдельно лицензируемых модулей QR Menu и Loyalty.</p><div className="rms-license-actions"><button className="rms-license-primary" type="button" onClick={() => setAgreementOpen(true)}>Открыть соглашение</button><button className="rms-license-secondary" type="button" onClick={onRefresh}>Обновить статусы</button></div></article><article className="rms-license-panel"><h3>Сведения о лицензии</h3><div className="rms-license-meta"><div><span>Организация</span><strong>{access?.organization_name || 'Не определена'}</strong></div><div><span>ID организации</span><strong>{organizationId || 'Не передан'}</strong></div><div><span>Редакция соглашения</span><strong>{agreementVersion}</strong></div><div><span>Принято</span><strong>{agreementAcceptedAt ? rmsDateValue(agreementAcceptedAt, lang) : 'Ознакомление доступно'}</strong></div></div></article></section>
+    {agreementOpen && <RMSLicenseAgreement organizationName={access?.organization_name} onClose={() => setAgreementOpen(false)} />}
+  </div>
+}
+
 function App() {
   const params = new URLSearchParams(window.location.search)
   const qrAdminOrganization = params.get('organization') || ''
@@ -5071,6 +5288,16 @@ function App() {
   })
   const [revenueFocus, setRevenueFocus] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [clientLicenseState, setClientLicenseState] = useState(null)
+  const [clientLicenseLoading, setClientLicenseLoading] = useState(false)
+  const [clientLicenseError, setClientLicenseError] = useState('')
+  const [clientLicenseRefresh, setClientLicenseRefresh] = useState(0)
+  const [topPanel, setTopPanel] = useState(null)
+  const [helpQuery, setHelpQuery] = useState('')
+  const [readNotificationIds, setReadNotificationIds] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(`rms_client_notifications_read_${qrAdminOrganization || 'default'}`) || '[]') }
+    catch { return [] }
+  })
 
   useEffect(() => { document.documentElement.lang = lang }, [lang])
 
@@ -5087,6 +5314,62 @@ function App() {
   }
 
   useEffect(() => { document.documentElement.dataset.nmsTheme = theme }, [theme])
+
+  useEffect(() => {
+    let cancelled = false
+    async function loadClientLicenses() {
+      if (!qrAdminOrganization) {
+        setClientLicenseState(null)
+        setClientLicenseError('Организация не выбрана. Откройте RMS Pro из клиентского кабинета SaaS.')
+        setClientLicenseLoading(false)
+        return
+      }
+      setClientLicenseLoading(true)
+      setClientLicenseError('')
+      try {
+        const { data, error } = await supabase.rpc('organization_product_access_state', { p_organization_id: qrAdminOrganization })
+        if (error) throw error
+        const accessState = Array.isArray(data) ? data[0] || null : data || null
+        if (!accessState) throw new Error('Сервер не вернул лицензию выбранной организации.')
+        if (!cancelled) setClientLicenseState(accessState)
+      } catch (error) {
+        if (!cancelled) {
+          setClientLicenseState(null)
+          setClientLicenseError(error?.message || 'Не удалось получить серверный статус лицензий.')
+        }
+      } finally {
+        if (!cancelled) setClientLicenseLoading(false)
+      }
+    }
+    loadClientLicenses()
+    return () => { cancelled = true }
+  }, [qrAdminOrganization, session?.user?.id, clientLicenseRefresh])
+
+  useEffect(() => {
+    try { setReadNotificationIds(JSON.parse(localStorage.getItem(`rms_client_notifications_read_${qrAdminOrganization || 'default'}`) || '[]')) }
+    catch { setReadNotificationIds([]) }
+  }, [qrAdminOrganization])
+
+  useEffect(() => {
+    if (!topPanel) return undefined
+    const closeOnEscape = event => { if (event.key === 'Escape') setTopPanel(null) }
+    window.addEventListener('keydown', closeOnEscape)
+    return () => window.removeEventListener('keydown', closeOnEscape)
+  }, [topPanel])
+
+  const clientNotifications = useMemo(() => rmsBuildClientNotifications({
+    organizationId: qrAdminOrganization,
+    access: clientLicenseState,
+    loading: clientLicenseLoading,
+    error: clientLicenseError
+  }), [qrAdminOrganization, clientLicenseState, clientLicenseLoading, clientLicenseError])
+  const unreadNotificationCount = clientNotifications.filter(item => !readNotificationIds.includes(item.id)).length
+
+  function markClientNotificationsRead() {
+    const ids = clientNotifications.map(item => item.id)
+    setReadNotificationIds(ids)
+    try { localStorage.setItem(`rms_client_notifications_read_${qrAdminOrganization || 'default'}`, JSON.stringify(ids)) } catch {}
+  }
 
   useEffect(() => {
     let mounted = true
@@ -5200,6 +5483,7 @@ function App() {
   const isInternalAdmin = isInternalSession && (profile?.role === 'admin' || internalLogin === 'admin')
   const isAdmin = isInternalAdmin || (!isInternalSession && (!profile || profile?.role === 'admin'))
   const sectionAccess = (sectionId) => {
+    if (sectionId === 'licenses') return isAdmin ? 'admin' : 'none'
     if (isInternalSession && sectionId === 'settings' && !isInternalAdmin) return 'none'
     if (isAdmin) return 'admin'
     const row = permissions.find(p => p.section === sectionId)
@@ -5330,6 +5614,7 @@ function App() {
         <DashboardTrendColorStyles />
         <SupplierTotalOnlyCheckboxStyles />
         <RMSProSidebarSatoshiStyles />
+        <RMSClientExperienceStyles />
         <GlobalProgressOverlay />
         <div className="rms-pro-topbar">
           <div className="rms-pro-topbar-title">
@@ -5337,13 +5622,15 @@ function App() {
             <span>{activeTitle}</span>
           </div>
           <div className="rms-pro-topbar-actions">
-            <button className="rms-pro-top-icon" type="button" aria-label="Notifications"><RmsBellIcon /></button>
-            <button className="rms-pro-top-icon" type="button" aria-label="Help"><RmsHelpIcon /></button>
+            <button className={`rms-pro-top-icon ${topPanel === 'notifications' ? 'active' : ''}`} type="button" aria-label="Уведомления" aria-expanded={topPanel === 'notifications'} onClick={() => setTopPanel(current => current === 'notifications' ? null : 'notifications')}><RmsBellIcon />{unreadNotificationCount > 0 && <span className="rms-top-unread">{Math.min(unreadNotificationCount, 9)}</span>}</button>
+            <button className={`rms-pro-top-icon ${topPanel === 'help' ? 'active' : ''}`} type="button" aria-label="Справка" aria-expanded={topPanel === 'help'} onClick={() => setTopPanel(current => current === 'help' ? null : 'help')}><RmsHelpIcon /></button>
             <div className="rms-pro-top-user">
               <div className="rms-pro-top-avatar">{userInitial}</div>
               <span>{isAdmin ? 'Admin' : userName}</span>
               <span>⌄</span>
             </div>
+            {topPanel === 'notifications' && <RMSNotificationsPopover notifications={clientNotifications} unreadCount={unreadNotificationCount} onMarkAll={markClientNotificationsRead} onClose={() => setTopPanel(null)} onOpenLicenses={() => { setSection('licenses'); setTopPanel(null) }} />}
+            {topPanel === 'help' && <RMSHelpPopover query={helpQuery} setQuery={setHelpQuery} onClose={() => setTopPanel(null)} />}
           </div>
         </div>
         <div className="rms-pro-content">
@@ -5374,6 +5661,7 @@ function App() {
             <RMSLoyalty />
           </div>
         </div>}
+        {currentCanRead && section === 'licenses' && <RMSLicenseCenter organizationId={qrAdminOrganization} access={clientLicenseState} loading={clientLicenseLoading} error={clientLicenseError} lang={lang} onRefresh={() => setClientLicenseRefresh(value => value + 1)} />}
         {currentCanRead && section === 'settings' && <RmsSectionErrorBoundary resetKey={`settings-${section}`}><Settings session={session} t={t} theme={theme} setTheme={setTheme} lang={lang} setLang={setLang} /></RmsSectionErrorBoundary>}
         </div>
       </main>
