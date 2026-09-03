@@ -5333,10 +5333,7 @@ function RMSLicenseCenter({ organizationId, access, loading, error, lang, onRefr
 
 function App() {
   const params = new URLSearchParams(window.location.search)
-  const qrAdminOrganization = params.get('organization') || ''
-  const qrAdminSrc = qrAdminOrganization
-    ? `/qr-admin.html?organization=${encodeURIComponent(qrAdminOrganization)}`
-    : '/qr-admin.html'
+  const requestedOrganization = params.get('organization') || ''
 
   const isQRMenu =
     params.get('qr') === 'menu' ||
@@ -5349,6 +5346,10 @@ function App() {
 
   const [lang, setLang, t] = useLang()
   const [session, setSession] = useState(() => getInternalSessionStorage())
+  const [activeOrganizationId, setActiveOrganizationId] = useState(requestedOrganization)
+  const [availableOrganizations, setAvailableOrganizations] = useState([])
+  const [organizationResolutionLoading, setOrganizationResolutionLoading] = useState(!requestedOrganization)
+  const [organizationResolutionError, setOrganizationResolutionError] = useState('')
   const [profile, setProfile] = useState(null)
   const [permissions, setPermissions] = useState([])
   const [theme, setThemeState] = useState(localStorage.getItem('rms_theme') || localStorage.getItem('nms_theme') || 'classic')
@@ -5369,9 +5370,13 @@ function App() {
   const [helpQuery, setHelpQuery] = useState('')
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
   const [readNotificationIds, setReadNotificationIds] = useState(() => {
-    try { return JSON.parse(localStorage.getItem(`rms_client_notifications_read_${qrAdminOrganization || 'default'}`) || '[]') }
+    try { return JSON.parse(localStorage.getItem(`rms_client_notifications_read_${requestedOrganization || 'default'}`) || '[]') }
     catch { return [] }
   })
+
+  const qrAdminSrc = activeOrganizationId
+    ? `/qr-admin.html?organization=${encodeURIComponent(activeOrganizationId)}`
+    : '/qr-admin.html'
 
   useEffect(() => { document.documentElement.lang = lang }, [lang])
 
@@ -5389,10 +5394,82 @@ function App() {
 
   useEffect(() => { document.documentElement.dataset.nmsTheme = theme }, [theme])
 
+  const selectOrganization = (organizationId) => {
+    const nextOrganizationId = String(organizationId || '').trim()
+    if (!nextOrganizationId) return
+    setActiveOrganizationId(nextOrganizationId)
+    setOrganizationResolutionError('')
+    const nextUrl = new URL(window.location.href)
+    nextUrl.searchParams.set('organization', nextOrganizationId)
+    window.history.replaceState({}, '', `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`)
+  }
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function resolveOrganization() {
+      if (!session?.user) {
+        if (!cancelled) {
+          setAvailableOrganizations([])
+          setOrganizationResolutionLoading(false)
+          setOrganizationResolutionError('')
+        }
+        return
+      }
+
+      if (activeOrganizationId) {
+        if (!cancelled) setOrganizationResolutionLoading(false)
+        return
+      }
+
+      if (session?.rms_internal) {
+        if (!cancelled) {
+          setAvailableOrganizations([])
+          setOrganizationResolutionLoading(false)
+          setOrganizationResolutionError('Откройте RMS Pro из клиентского кабинета, чтобы выбрать организацию.')
+        }
+        return
+      }
+
+      setOrganizationResolutionLoading(true)
+      setOrganizationResolutionError('')
+      try {
+        const { data, error } = await supabase
+          .from('organization_members')
+          .select('organization_id, role, is_active, organizations(id, name, slug, status)')
+          .eq('user_id', session.user.id)
+          .eq('is_active', true)
+
+        if (error) throw error
+        const organizations = (Array.isArray(data) ? data : [])
+          .map(member => ({
+            id: member.organization_id,
+            role: member.role,
+            name: member.organizations?.name || 'Организация',
+            slug: member.organizations?.slug || '',
+            status: member.organizations?.status || 'active'
+          }))
+          .filter(organization => organization.id && organization.status === 'active')
+
+        if (cancelled) return
+        setAvailableOrganizations(organizations)
+        if (organizations.length === 1) selectOrganization(organizations[0].id)
+        else if (!organizations.length) setOrganizationResolutionError('Для этого пользователя не найдена активная организация.')
+      } catch (error) {
+        if (!cancelled) setOrganizationResolutionError(error?.message || 'Не удалось загрузить организации пользователя.')
+      } finally {
+        if (!cancelled) setOrganizationResolutionLoading(false)
+      }
+    }
+
+    resolveOrganization()
+    return () => { cancelled = true }
+  }, [session?.user?.id, session?.rms_internal, activeOrganizationId])
+
   useEffect(() => {
     let cancelled = false
     async function loadClientLicenses() {
-      if (!qrAdminOrganization) {
+      if (!activeOrganizationId) {
         setClientLicenseState(null)
         setClientLicenseError('Организация не выбрана. Откройте RMS Pro из клиентского кабинета SaaS.')
         setClientLicenseLoading(false)
@@ -5401,7 +5478,7 @@ function App() {
       setClientLicenseLoading(true)
       setClientLicenseError('')
       try {
-        const { data, error } = await supabase.rpc('organization_product_access_state', { p_organization_id: qrAdminOrganization })
+        const { data, error } = await supabase.rpc('organization_product_access_state', { p_organization_id: activeOrganizationId })
         if (error) throw error
         const accessState = Array.isArray(data) ? data[0] || null : data || null
         if (!accessState) throw new Error('Сервер не вернул лицензию выбранной организации.')
@@ -5417,12 +5494,12 @@ function App() {
     }
     loadClientLicenses()
     return () => { cancelled = true }
-  }, [qrAdminOrganization, session?.user?.id, clientLicenseRefresh])
+  }, [activeOrganizationId, session?.user?.id, clientLicenseRefresh])
 
   useEffect(() => {
-    try { setReadNotificationIds(JSON.parse(localStorage.getItem(`rms_client_notifications_read_${qrAdminOrganization || 'default'}`) || '[]')) }
+    try { setReadNotificationIds(JSON.parse(localStorage.getItem(`rms_client_notifications_read_${activeOrganizationId || 'default'}`) || '[]')) }
     catch { setReadNotificationIds([]) }
-  }, [qrAdminOrganization])
+  }, [activeOrganizationId])
 
   useEffect(() => {
     if (!topPanel) return undefined
@@ -5439,11 +5516,11 @@ function App() {
   }, [mobileNavOpen])
 
   const clientNotifications = useMemo(() => rmsBuildClientNotifications({
-    organizationId: qrAdminOrganization,
+    organizationId: activeOrganizationId,
     access: clientLicenseState,
     loading: clientLicenseLoading,
     error: clientLicenseError
-  }), [qrAdminOrganization, clientLicenseState, clientLicenseLoading, clientLicenseError])
+  }), [activeOrganizationId, clientLicenseState, clientLicenseLoading, clientLicenseError])
   const clientLicenseProducts = useMemo(() => rmsNormalizeLicenseProducts(clientLicenseState), [clientLicenseState])
   const clientLicenseResolved = Boolean(clientLicenseState) && !clientLicenseLoading && !clientLicenseError
   const licenseStateForSection = sectionId => rmsLicenseSectionState(sectionId, clientLicenseProducts, clientLicenseResolved)
@@ -5452,7 +5529,7 @@ function App() {
   function markClientNotificationsRead() {
     const ids = clientNotifications.map(item => item.id)
     setReadNotificationIds(ids)
-    try { localStorage.setItem(`rms_client_notifications_read_${qrAdminOrganization || 'default'}`, JSON.stringify(ids)) } catch {}
+    try { localStorage.setItem(`rms_client_notifications_read_${activeOrganizationId || 'default'}`, JSON.stringify(ids)) } catch {}
   }
 
   useEffect(() => {
@@ -5630,6 +5707,39 @@ function App() {
   if (loading) return <div className="login-screen"><div className="login-card">{t('loading')}</div></div>
   if (!session) return <Login lang={lang} setLang={setLang} t={t} onSignedIn={nextSession => { setSession(nextSession); setLoading(false) }} />
 
+  if (!activeOrganizationId && !session?.rms_internal) {
+    return <div className="login-screen theme-executive rms-organization-screen">
+      <RMSInterfaceTranslator lang={lang} />
+      <ThemeStyles />
+      <ResponsiveAndSettingsStyles />
+      <RMSProV6Styles />
+      <div className="login-card rms-organization-card">
+        <ProductLogo login />
+        <div className="rms-organization-heading">
+          <span>RMS PRO · SAAS</span>
+          <h2>Выберите организацию</h2>
+          <p>Доступные разделы и лицензии будут загружены для выбранной организации.</p>
+        </div>
+        {organizationResolutionLoading && <p className="rms-organization-state">Загружаем организации…</p>}
+        {!organizationResolutionLoading && organizationResolutionError && <p className="bad">{organizationResolutionError}</p>}
+        {!organizationResolutionLoading && availableOrganizations.length > 0 && <div className="rms-organization-list">
+          {availableOrganizations.map(organization => <button key={organization.id} type="button" onClick={() => selectOrganization(organization.id)}>
+            <span className="rms-organization-avatar">{String(organization.name || 'R').slice(0, 1).toUpperCase()}</span>
+            <span><strong>{organization.name}</strong><small>{organization.role || 'member'}{organization.slug ? ` · ${organization.slug}` : ''}</small></span>
+            <b>Открыть →</b>
+          </button>)}
+        </div>}
+        <button className="ghost rms-organization-logout" type="button" onClick={logout}>Выйти из аккаунта</button>
+      </div>
+      <style>{`
+        .rms-organization-screen{padding:24px!important}.rms-organization-card{width:min(620px,100%)!important;max-width:620px!important;padding:34px!important}
+        .rms-organization-heading{text-align:center}.rms-organization-heading span{display:block;margin:8px 0;color:#b98231;font-size:10px;font-weight:900;letter-spacing:.18em}.rms-organization-heading h2{margin:6px 0 8px;color:#172033}.rms-organization-heading p{margin:0 0 22px;color:#718096;font-size:13px;line-height:1.55}
+        .rms-organization-state{text-align:center;color:#718096}.rms-organization-list{display:grid;gap:10px}.rms-organization-list button{width:100%;display:grid;grid-template-columns:44px minmax(0,1fr) auto;align-items:center;gap:12px;padding:13px;border:1px solid #d9e0e8;border-radius:12px;background:#fff;color:#172033;text-align:left;cursor:pointer;transition:border-color .16s ease,box-shadow .16s ease}.rms-organization-list button:hover{border-color:#c28b38;box-shadow:0 10px 25px rgba(15,23,42,.08)}.rms-organization-avatar{width:44px;height:44px;display:grid;place-items:center;border-radius:50%;background:linear-gradient(145deg,#dca247,#a76a1c);color:#151719;font-weight:900}.rms-organization-list strong,.rms-organization-list small{display:block}.rms-organization-list strong{font-size:14px}.rms-organization-list small{margin-top:4px;color:#7d8897;font-size:10px}.rms-organization-list b{color:#b47a28;font-size:11px}.rms-organization-logout{width:100%;margin-top:16px}
+        @media(max-width:640px){.rms-organization-card{padding:22px!important}.rms-organization-list button{grid-template-columns:40px minmax(0,1fr)}.rms-organization-list b{grid-column:2}.rms-organization-avatar{width:40px;height:40px}}
+      `}</style>
+    </div>
+  }
+
   const visibleSectionMap = Object.fromEntries(visibleSections.map(s => [s.id, s]))
   const groupedSections = RMS_PRO_NAV_GROUPS.map(group => ({
     ...group,
@@ -5763,7 +5873,7 @@ function App() {
             <RMSLoyalty />
           </div>
         </div>}
-        {canRenderCurrentSection && section === 'licenses' && <RMSLicenseCenter organizationId={qrAdminOrganization} access={clientLicenseState} loading={clientLicenseLoading} error={clientLicenseError} lang={lang} onRefresh={() => setClientLicenseRefresh(value => value + 1)} />}
+        {canRenderCurrentSection && section === 'licenses' && <RMSLicenseCenter organizationId={activeOrganizationId} access={clientLicenseState} loading={clientLicenseLoading} error={clientLicenseError} lang={lang} onRefresh={() => setClientLicenseRefresh(value => value + 1)} />}
         {canRenderCurrentSection && section === 'settings' && <RmsSectionErrorBoundary resetKey={`settings-${section}`}><Settings session={session} t={t} theme={theme} setTheme={setTheme} lang={lang} setLang={setLang} /></RmsSectionErrorBoundary>}
         </div>
       </main>
