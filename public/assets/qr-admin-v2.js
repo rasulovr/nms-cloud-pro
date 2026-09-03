@@ -9,7 +9,9 @@
   const root = document.getElementById('root');
   const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
   const money = value => Number(value || 0).toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  const state = { access:null, summary:null, section:'overview', branches:[], tables:[], catalog:[], orders:[], notice:'', menuEditor:null };
+  const qrSections = new Set(['overview','menu','branches','orders','settings']);
+  const requestedSection = params.get('section');
+  const state = { access:null, summary:null, section:qrSections.has(requestedSection) ? requestedSection : 'overview', branches:[], tables:[], catalog:[], orders:[], notice:'', menuEditor:null };
   let heightFrame = 0;
 
   function notifyHostHeight() {
@@ -96,9 +98,10 @@
       ? `/rms-pro.html?organization=${encodeURIComponent(organizationId)}`
       : `/?organization=${encodeURIComponent(organizationId)}`;
     const returnLabel = state.access.rms_pro_active ? '← Вернуться в RMS Pro' : '← Кабинет SaaS';
-    root.innerHTML = `<div class="rms-qr-admin"><aside class="rms-qr-sidebar"><div class="rms-qr-brand"><span>QR</span><div><strong>RMS Menu</strong><small>${esc(state.access.organization_name)}</small></div></div><nav>${[
+    const sidebar = isEmbedded ? '' : `<aside class="rms-qr-sidebar"><div class="rms-qr-brand"><span>QR</span><div><strong>RMS Menu</strong><small>${esc(state.access.organization_name)}</small></div></div><nav>${[
       ['overview','Обзор','⌂'],['menu','Меню','▦'],['branches','Филиалы и столы','⌘'],['orders','Заказы','▤'],['settings','Оформление','✦']
-    ].map(([id,label,icon])=>`<button class="${state.section===id?'active':''}" data-section="${id}"><i>${icon}</i>${label}</button>`).join('')}</nav><div class="rms-qr-license"><small>Активный продукт</small><strong>QR Menu</strong><span>Серверная лицензия</span></div><a href="${esc(returnHref)}">${returnLabel}</a><button type="button" class="rms-secondary small" data-qr-logout>Выйти</button></aside><main class="rms-qr-main">${state.notice?`<div class="rms-notice success">${esc(state.notice)}</div>`:''}${content}</main></div>`;
+    ].map(([id,label,icon])=>`<button class="${state.section===id?'active':''}" data-section="${id}"><i>${icon}</i>${label}</button>`).join('')}</nav><div class="rms-qr-license"><small>Активный продукт</small><strong>QR Menu</strong><span>Серверная лицензия</span></div><a href="${esc(returnHref)}">${returnLabel}</a><button type="button" class="rms-secondary small" data-qr-logout>Выйти</button></aside>`;
+    root.innerHTML = `<div class="rms-qr-admin">${sidebar}<main class="rms-qr-main">${state.notice?`<div class="rms-notice success">${esc(state.notice)}</div>`:''}${content}</main></div>`;
     notifyHostHeight();
   }
 
@@ -141,6 +144,16 @@
     shell(content);
     if (state.section==='branches') hydrateQrCodes();
   }
+
+  window.addEventListener('message', event => {
+    if (!isEmbedded || event.origin !== location.origin || event.source !== window.parent) return;
+    if (event.data?.type !== 'rms-qr-admin-section' || !qrSections.has(event.data.section)) return;
+    if (state.section === event.data.section) return;
+    state.section = event.data.section;
+    state.notice = '';
+    state.menuEditor = null;
+    render();
+  });
 
   async function hydrateQrCodes() {
     if (!window.RmsQRCode?.toString) return;
