@@ -5224,6 +5224,18 @@ function RMSClientExperienceStyles() {
     .rms-license-loading{min-height:360px;display:grid;place-items:center;color:#8b959b}.rms-license-error{padding:18px;border:1px solid #63333a;border-radius:12px;background:#311b20;color:#e49aa3}
     .rms-pro-nav-item.license-locked{opacity:.72}.rms-pro-nav-lock{margin-left:auto;display:grid;place-items:center;color:#c9974b}
     .rms-qr-main-submenu{min-height:100%}.rms-qr-main-return{margin-bottom:12px;border:1px solid rgba(203,213,225,.16)!important;background:rgba(255,255,255,.025)!important}.rms-qr-main-return:hover{border-color:rgba(212,154,52,.42)!important}.rms-qr-main-license{display:grid;gap:5px;margin-top:auto;padding:14px;border:1px solid rgba(119,220,168,.2);border-radius:12px;background:rgba(21,26,24,.9)}.rms-qr-main-license small,.rms-qr-main-license span{color:#748078;font-size:10px}.rms-qr-main-license strong{color:#77dca8;font-size:12px}
+    .app.rms-pro-shell.rms-qr-light{background:#f7f4ee!important;color:#24303a!important}
+    .app.rms-pro-shell.rms-qr-light .sidebar.rms-pro-sidebar{background:#f2eee6!important;border-right:1px solid #ddd5c8!important;box-shadow:12px 0 34px rgba(67,54,36,.08)!important}
+    .app.rms-pro-shell.rms-qr-light .rms-pro-brand{border-bottom-color:#ddd5c8!important}
+    .app.rms-pro-shell.rms-qr-light .rms-pro-nav-group-title{color:#857b6a!important}
+    .app.rms-pro-shell.rms-qr-light .rms-pro-nav-item,.app.rms-pro-shell.rms-qr-light .rms-pro-nav-item>span:not(.rms-pro-nav-icon){color:#35414a!important}
+    .app.rms-pro-shell.rms-qr-light .rms-pro-nav-item:hover{background:#e9e2d6!important;border-color:#d7c8b1!important;color:#171d22!important}
+    .app.rms-pro-shell.rms-qr-light .rms-pro-nav-item.active{background:#e2d3b9!important;border-color:#cfb98f!important;box-shadow:inset 3px 0 0 #b77c28!important;color:#6e4915!important}
+    .app.rms-pro-shell.rms-qr-light .rms-pro-nav-icon{background:rgba(84,69,47,.07)!important;color:currentColor!important}
+    .app.rms-pro-shell.rms-qr-light .rms-qr-main-return{background:#fffaf2!important;border-color:#d8cdbc!important;color:#4b5560!important}
+    .app.rms-pro-shell.rms-qr-light .rms-qr-main-license{border-color:#bed8c8;background:#f5fbf7}.app.rms-pro-shell.rms-qr-light .rms-qr-main-license small,.app.rms-pro-shell.rms-qr-light .rms-qr-main-license span{color:#708077}.app.rms-pro-shell.rms-qr-light .rms-qr-main-license strong{color:#18794e}
+    .app.rms-pro-shell.rms-qr-light .rms-pro-sidebar-bottom{border-top-color:#ddd5c8!important}.app.rms-pro-shell.rms-qr-light .rms-pro-user-card{border-color:#d8d0c4!important;background:#fffaf3!important}.app.rms-pro-shell.rms-qr-light .rms-pro-user-name{color:#202930!important}.app.rms-pro-shell.rms-qr-light .rms-pro-user-role{color:#778087!important}.app.rms-pro-shell.rms-qr-light .rms-pro-account-logout{border-color:#d5cdc1!important;background:#f8f4ed!important;color:#59636a!important}
+    .app.rms-pro-shell.rms-qr-light .main.rms-pro-main{background:#f7f4ee!important;color:#24303a!important}.app.rms-pro-shell.rms-qr-light .rms-pro-topbar{background:rgba(255,253,249,.96)!important;border-bottom:1px solid #ded8ce!important;box-shadow:0 4px 18px rgba(67,54,36,.04)!important}.app.rms-pro-shell.rms-qr-light .rms-pro-topbar-title{color:#1f2931!important}.app.rms-pro-shell.rms-qr-light .rms-pro-back,.app.rms-pro-shell.rms-qr-light .rms-pro-top-icon,.app.rms-pro-shell.rms-qr-light .rms-pro-top-user,.app.rms-pro-shell.rms-qr-light .rms-pro-mobile-menu{border-color:#d9d4cb!important;background:#fff!important;color:#4b5660!important}.app.rms-pro-shell.rms-qr-light .rms-top-unread{border-color:#fff!important}.app.rms-pro-shell.rms-qr-light .rms-pro-content{background:#f7f4ee!important}
     .rms-module-blocked{min-height:calc(100vh - 150px);display:grid;place-items:center;padding:28px;background:#0d1011}.rms-module-blocked-card{width:min(560px,100%);padding:34px;border:1px solid #3b342b;border-radius:18px;background:radial-gradient(circle at 100% 0,rgba(205,151,67,.14),transparent 38%),#131719;color:#e8ecee;text-align:center;box-shadow:0 24px 70px rgba(0,0,0,.22)}.rms-module-blocked-icon{width:52px;height:52px;margin:0 auto 17px;display:grid;place-items:center;border:1px solid #5b482e;border-radius:50%;background:#241d14;color:#d6a04d;font-size:24px}.rms-module-blocked-card h2{margin:0 0 9px!important;color:#f1f3f4!important;font-size:24px}.rms-module-blocked-card p{margin:0;color:#8d979d;line-height:1.6}.rms-module-blocked-card strong{color:#d6a04d}.rms-module-blocked-card button{margin-top:20px;padding:10px 15px;border:1px solid #514633;border-radius:9px;background:#201b14;color:#e3bd7d;cursor:pointer;font-weight:750}
     .rms-agreement-backdrop{position:fixed;z-index:200;inset:0;display:grid;place-items:center;padding:24px;background:rgba(0,0,0,.72);backdrop-filter:blur(8px)}.rms-agreement-modal{width:min(840px,100%);max-height:min(780px,calc(100vh - 48px));overflow:auto;border:1px solid #343a3d;border-radius:18px;background:#111516;color:#dbe0e3;box-shadow:0 30px 100px rgba(0,0,0,.55)}.rms-agreement-head{position:sticky;top:0;display:flex;justify-content:space-between;gap:20px;padding:20px 24px;border-bottom:1px solid #2b3235;background:#111516}.rms-agreement-head h2{margin:0 0 5px!important;color:#f0f2f3!important}.rms-agreement-head p{margin:0;color:#7e898f;font-size:11px}.rms-agreement-copy{padding:24px}.rms-agreement-copy section{margin-bottom:20px}.rms-agreement-copy h3{margin:0 0 7px;color:#d9a252;font-size:13px}.rms-agreement-copy p{margin:0;color:#9ba4a9;font-size:12px;line-height:1.65}
     @media(max-width:980px){.rms-license-grid{grid-template-columns:1fr}.rms-license-bottom{grid-template-columns:1fr}.rms-license-card p{min-height:0}}
@@ -5788,7 +5800,7 @@ function App() {
   )
 
   return (
-    <div className={`app rms-pro-shell theme-${theme || 'classic'}`}>
+    <div className={`app rms-pro-shell theme-${theme || 'classic'} ${section === 'qrmenu' ? 'rms-qr-light' : ''}`}>
       <RMSInterfaceTranslator lang={lang} />
       <aside className={`sidebar rms-pro-sidebar ${mobileNavOpen ? 'mobile-open' : ''}`} aria-label="Навигация RMS Pro">
         <div className="rms-pro-brand rms-pro-brand-logo-only">
@@ -5800,7 +5812,7 @@ function App() {
             <div className="rms-pro-nav-group rms-qr-main-submenu">
               <button className="rms-pro-nav-item rms-qr-main-return" type="button" onClick={() => { setQrSubmenuOpen(false); setMobileNavOpen(false) }}>
                 <span className="rms-pro-nav-icon">←</span>
-                <span>Основное меню</span>
+                <span>Вернуться в меню</span>
               </button>
               <div className="rms-pro-nav-group-title">QR MENU</div>
               <div className="rms-pro-nav-list">
