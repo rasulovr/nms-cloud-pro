@@ -5880,15 +5880,6 @@ function App() {
           </>}
         </nav>
 
-        <div className="rms-pro-sidebar-bottom">
-          <div className="rms-pro-user-card">
-            <div className="rms-pro-avatar">{userInitial}</div>
-            <div className="rms-pro-user-info">
-              <div className="rms-pro-user-name">{userName}</div>
-              <div className="rms-pro-user-role">{isAdmin ? t('administrator') : t('employee')}</div>
-            </div>
-          </div>
-        </div>
       </aside>
 
       {mobileNavOpen && <button className="rms-pro-mobile-overlay" type="button" aria-label="Закрыть меню" onClick={() => setMobileNavOpen(false)} />}
