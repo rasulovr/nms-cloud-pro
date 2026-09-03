@@ -5223,6 +5223,7 @@ function RMSClientExperienceStyles() {
     .rms-license-bottom{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(300px,.75fr);gap:14px}.rms-license-panel{padding:21px;border:1px solid #2d3437;border-radius:15px;background:#131719}.rms-license-panel h3{margin:0 0 8px;color:#eef1f2}.rms-license-panel p{margin:0;color:#818c93;font-size:12px;line-height:1.55}.rms-license-actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:17px}.rms-license-primary,.rms-license-secondary{padding:10px 13px;border-radius:9px;cursor:pointer;font-weight:750}.rms-license-primary{border:0;background:linear-gradient(145deg,#dca247,#a76a1c);color:#111}.rms-license-secondary{border:1px solid #394145;background:#1a1f21;color:#d6dadd}.rms-license-meta{display:grid;gap:11px;margin-top:15px}.rms-license-meta div{display:flex;justify-content:space-between;gap:18px;padding-bottom:10px;border-bottom:1px solid #293033}.rms-license-meta span{color:#727d83;font-size:10px}.rms-license-meta strong{color:#d3d8db;font-size:11px;text-align:right}
     .rms-license-loading{min-height:360px;display:grid;place-items:center;color:#8b959b}.rms-license-error{padding:18px;border:1px solid #63333a;border-radius:12px;background:#311b20;color:#e49aa3}
     .rms-pro-nav-item.license-locked{opacity:.72}.rms-pro-nav-lock{margin-left:auto;display:grid;place-items:center;color:#c9974b}
+    .rms-qr-main-submenu{min-height:100%}.rms-qr-main-return{margin-bottom:12px;border:1px solid rgba(203,213,225,.16)!important;background:rgba(255,255,255,.025)!important}.rms-qr-main-return:hover{border-color:rgba(212,154,52,.42)!important}.rms-qr-main-license{display:grid;gap:5px;margin-top:auto;padding:14px;border:1px solid rgba(119,220,168,.2);border-radius:12px;background:rgba(21,26,24,.9)}.rms-qr-main-license small,.rms-qr-main-license span{color:#748078;font-size:10px}.rms-qr-main-license strong{color:#77dca8;font-size:12px}
     .rms-module-blocked{min-height:calc(100vh - 150px);display:grid;place-items:center;padding:28px;background:#0d1011}.rms-module-blocked-card{width:min(560px,100%);padding:34px;border:1px solid #3b342b;border-radius:18px;background:radial-gradient(circle at 100% 0,rgba(205,151,67,.14),transparent 38%),#131719;color:#e8ecee;text-align:center;box-shadow:0 24px 70px rgba(0,0,0,.22)}.rms-module-blocked-icon{width:52px;height:52px;margin:0 auto 17px;display:grid;place-items:center;border:1px solid #5b482e;border-radius:50%;background:#241d14;color:#d6a04d;font-size:24px}.rms-module-blocked-card h2{margin:0 0 9px!important;color:#f1f3f4!important;font-size:24px}.rms-module-blocked-card p{margin:0;color:#8d979d;line-height:1.6}.rms-module-blocked-card strong{color:#d6a04d}.rms-module-blocked-card button{margin-top:20px;padding:10px 15px;border:1px solid #514633;border-radius:9px;background:#201b14;color:#e3bd7d;cursor:pointer;font-weight:750}
     .rms-agreement-backdrop{position:fixed;z-index:200;inset:0;display:grid;place-items:center;padding:24px;background:rgba(0,0,0,.72);backdrop-filter:blur(8px)}.rms-agreement-modal{width:min(840px,100%);max-height:min(780px,calc(100vh - 48px));overflow:auto;border:1px solid #343a3d;border-radius:18px;background:#111516;color:#dbe0e3;box-shadow:0 30px 100px rgba(0,0,0,.55)}.rms-agreement-head{position:sticky;top:0;display:flex;justify-content:space-between;gap:20px;padding:20px 24px;border-bottom:1px solid #2b3235;background:#111516}.rms-agreement-head h2{margin:0 0 5px!important;color:#f0f2f3!important}.rms-agreement-head p{margin:0;color:#7e898f;font-size:11px}.rms-agreement-copy{padding:24px}.rms-agreement-copy section{margin-bottom:20px}.rms-agreement-copy h3{margin:0 0 7px;color:#d9a252;font-size:13px}.rms-agreement-copy p{margin:0;color:#9ba4a9;font-size:12px;line-height:1.65}
     @media(max-width:980px){.rms-license-grid{grid-template-columns:1fr}.rms-license-bottom{grid-template-columns:1fr}.rms-license-card p{min-height:0}}
@@ -5369,16 +5370,29 @@ function App() {
   const [topPanel, setTopPanel] = useState(null)
   const [helpQuery, setHelpQuery] = useState('')
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
+  const [qrAdminSection, setQrAdminSection] = useState('overview')
+  const [qrSubmenuOpen, setQrSubmenuOpen] = useState(false)
+  const qrAdminFrameRef = useRef(null)
   const [readNotificationIds, setReadNotificationIds] = useState(() => {
     try { return JSON.parse(localStorage.getItem(`rms_client_notifications_read_${requestedOrganization || 'default'}`) || '[]') }
     catch { return [] }
   })
 
   const qrAdminSrc = activeOrganizationId
-    ? `/qr-admin.html?organization=${encodeURIComponent(activeOrganizationId)}`
-    : '/qr-admin.html'
+    ? `/qr-admin.html?organization=${encodeURIComponent(activeOrganizationId)}&embedded=1&section=overview`
+    : '/qr-admin.html?embedded=1&section=overview'
+
+  const openQrAdminSection = nextSection => {
+    setQrAdminSection(nextSection)
+    setMobileNavOpen(false)
+    qrAdminFrameRef.current?.contentWindow?.postMessage({ type: 'rms-qr-admin-section', section: nextSection }, window.location.origin)
+  }
 
   useEffect(() => { document.documentElement.lang = lang }, [lang])
+
+  useEffect(() => {
+    if (section !== 'qrmenu') setQrSubmenuOpen(false)
+  }, [section])
 
   useEffect(() => {
     try {
@@ -5748,14 +5762,23 @@ function App() {
   const ungroupedSections = visibleSections.filter(s => !RMS_PRO_NAV_GROUPS.some(group => group.ids.includes(s.id)))
   const firstOpenableSection = visibleSections.find(item => licenseStateForSection(item.id).openable)?.id || section
   const licensesVisible = visibleSections.some(item => item.id === 'licenses')
-  const activeTitle = rmsProSectionTitle(section, t)
+  const qrAdminSections = [
+    { id: 'overview', label: 'Обзор', icon: '⌂' },
+    { id: 'menu', label: 'Меню', icon: '▦' },
+    { id: 'branches', label: 'Филиалы и столы', icon: '⌘' },
+    { id: 'orders', label: 'Заказы', icon: '▤' },
+    { id: 'settings', label: 'Оформление', icon: '✦' }
+  ]
+  const activeTitle = section === 'qrmenu' && qrSubmenuOpen
+    ? `QR Menu · ${qrAdminSections.find(item => item.id === qrAdminSection)?.label || 'Обзор'}`
+    : rmsProSectionTitle(section, t)
   const userName = profile?.full_name || profile?.login_name || session?.user?.email || 'Admin'
   const userInitial = String(userName || 'A').trim().slice(0, 1).toUpperCase()
   const renderProNavButton = (s) => (
     <button
       key={s.id}
       className={`rms-pro-nav-item ${section === s.id ? 'active' : ''} ${licenseStateForSection(s.id).openable ? '' : 'license-locked'}`}
-      onClick={() => { setSection(s.id); setMobileNavOpen(false) }}
+      onClick={() => { setSection(s.id); if (s.id === 'qrmenu') setQrSubmenuOpen(true); setMobileNavOpen(false) }}
       type="button"
     >
       <span className="rms-pro-nav-icon">{RMS_PRO_SECTION_ICONS[s.id] || '•'}</span>
@@ -5773,6 +5796,24 @@ function App() {
         </div>
 
         <nav className="rms-pro-nav">
+          {section === 'qrmenu' && qrSubmenuOpen ? (
+            <div className="rms-pro-nav-group rms-qr-main-submenu">
+              <button className="rms-pro-nav-item rms-qr-main-return" type="button" onClick={() => { setQrSubmenuOpen(false); setMobileNavOpen(false) }}>
+                <span className="rms-pro-nav-icon">←</span>
+                <span>Основное меню</span>
+              </button>
+              <div className="rms-pro-nav-group-title">QR MENU</div>
+              <div className="rms-pro-nav-list">
+                {qrAdminSections.map(item => (
+                  <button key={item.id} className={`rms-pro-nav-item ${qrAdminSection === item.id ? 'active' : ''}`} type="button" onClick={() => openQrAdminSection(item.id)}>
+                    <span className="rms-pro-nav-icon">{item.icon}</span>
+                    <span>{item.label}</span>
+                  </button>
+                ))}
+              </div>
+              <div className="rms-qr-main-license"><small>Активный продукт</small><strong>QR Menu</strong><span>Серверная лицензия</span></div>
+            </div>
+          ) : <>
           {groupedSections.map(group => (
             <div key={group.title} className="rms-pro-nav-group">
               <div className="rms-pro-nav-group-title">{group.title}</div>
@@ -5789,6 +5830,7 @@ function App() {
               </div>
             </div>
           )}
+          </>}
         </nav>
 
         <div className="rms-pro-sidebar-bottom">
@@ -5826,7 +5868,7 @@ function App() {
         <div className="rms-pro-topbar">
           <div className="rms-pro-topbar-title">
             <button className="rms-pro-mobile-menu" type="button" onClick={() => setMobileNavOpen(true)} aria-label="Открыть меню" aria-expanded={mobileNavOpen}><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg></button>
-            <button className="rms-pro-back" type="button" onClick={() => setSection(firstOpenableSection)} aria-label="Назад"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M15 6l-6 6 6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg></button>
+            <button className="rms-pro-back" type="button" onClick={() => { if (section === 'qrmenu' && qrSubmenuOpen) setQrSubmenuOpen(false); else setSection(firstOpenableSection) }} aria-label="Назад"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M15 6l-6 6 6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg></button>
             <span>{activeTitle}</span>
           </div>
           <div className="rms-pro-topbar-actions">
@@ -5863,8 +5905,10 @@ function App() {
         {canRenderCurrentSection && section === 'debts' && <DebtsPayments t={t} />}
         {canRenderCurrentSection && section === 'qrmenu' && (
           <iframe
+            ref={qrAdminFrameRef}
             title="QR Admin"
             src={qrAdminSrc}
+            onLoad={() => qrAdminFrameRef.current?.contentWindow?.postMessage({ type: 'rms-qr-admin-section', section: qrAdminSection }, window.location.origin)}
             style={{ width: '100%', height: 'calc(100vh - 84px)', minHeight: '760px', border: 0, display: 'block', background: '#0d1011' }}
           />
         )}
