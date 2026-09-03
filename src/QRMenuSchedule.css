@@ -958,14 +958,14 @@
   display: none !important;
 }
 
-.app-shell.menu-view-showcase .product-grid {
+body .app-shell.menu-view-showcase .product-grid {
   grid-template-columns: minmax(0, 1fr) !important;
   width: min(100%, 760px) !important;
   margin-inline: auto !important;
   gap: 20px !important;
 }
 
-.app-shell.menu-view-showcase .product-card {
+body .app-shell.menu-view-showcase .product-card {
   display: block !important;
   aspect-ratio: auto !important;
   overflow: hidden !important;
@@ -976,7 +976,7 @@
   box-shadow: 0 16px 38px rgba(44, 37, 27, .14) !important;
 }
 
-.app-shell.menu-view-showcase .product-card .food-photo {
+body .app-shell.menu-view-showcase .product-card .food-photo {
   position: relative !important;
   z-index: 0 !important;
   inset: auto !important;
@@ -988,24 +988,24 @@
   background: #e8e3da !important;
 }
 
-.app-shell.menu-view-showcase .product-card .food-photo::after {
+body .app-shell.menu-view-showcase .product-card .food-photo::after {
   content: none !important;
   display: none !important;
   opacity: 0 !important;
   background: none !important;
 }
 
-.app-shell.menu-view-showcase .product-card .food-photo img,
-.app-shell.menu-view-showcase .product-card .food-photo img.cold-drink-photo,
-.app-shell.menu-view-showcase .product-card .food-photo img.lemonade-photo,
-.app-shell.menu-view-showcase .product-card .food-photo img.water-bottle-photo {
+body .app-shell.menu-view-showcase .product-card .food-photo img,
+body .app-shell.menu-view-showcase .product-card .food-photo img.cold-drink-photo,
+body .app-shell.menu-view-showcase .product-card .food-photo img.lemonade-photo,
+body .app-shell.menu-view-showcase .product-card .food-photo img.water-bottle-photo {
   width: 100% !important;
   height: 100% !important;
   object-fit: cover !important;
   object-position: center !important;
 }
 
-.app-shell.menu-view-showcase .product-card .product-body {
+body .app-shell.menu-view-showcase .product-card .product-body {
   position: relative !important;
   z-index: 3 !important;
   inset: auto !important;
@@ -1017,7 +1017,7 @@
   pointer-events: auto !important;
 }
 
-.app-shell.menu-view-showcase .product-card .product-title {
+body .app-shell.menu-view-showcase .product-card .product-title {
   position: static !important;
   display: block !important;
   height: auto !important;
@@ -1031,7 +1031,7 @@
   transform: none !important;
 }
 
-.app-shell.menu-view-showcase .product-card .product-title h3 {
+body .app-shell.menu-view-showcase .product-card .product-title h3 {
   display: block !important;
   margin: 0 !important;
   color: #233027 !important;
@@ -1048,7 +1048,7 @@
   text-shadow: none !important;
 }
 
-.app-shell.menu-view-showcase .product-card .product-body > p {
+body .app-shell.menu-view-showcase .product-card .product-body > p {
   display: block !important;
   min-height: 0 !important;
   margin: 0 0 14px !important;
@@ -1064,11 +1064,11 @@
   -webkit-line-clamp: unset !important;
 }
 
-.app-shell.menu-view-showcase .product-card .product-options {
+body .app-shell.menu-view-showcase .product-card .product-options {
   display: none !important;
 }
 
-.app-shell.menu-view-showcase .product-card .product-footer {
+body .app-shell.menu-view-showcase .product-card .product-footer {
   position: static !important;
   min-height: 0 !important;
   display: flex !important;
@@ -1080,7 +1080,7 @@
   pointer-events: auto !important;
 }
 
-.app-shell.menu-view-showcase .product-card .product-footer > strong {
+body .app-shell.menu-view-showcase .product-card .product-footer > strong {
   position: static !important;
   padding: 0 !important;
   color: #f2a447 !important;
@@ -1094,8 +1094,8 @@
   text-shadow: none !important;
 }
 
-.app-shell.menu-view-showcase .product-card .add,
-.app-shell.menu-view-showcase .product-card .stepper {
+body .app-shell.menu-view-showcase .product-card .add,
+body .app-shell.menu-view-showcase .product-card .stepper {
   position: static !important;
   z-index: auto !important;
   flex: 0 0 auto !important;
@@ -1103,7 +1103,7 @@
   pointer-events: auto !important;
 }
 
-.app-shell.menu-view-showcase .product-card .add {
+body .app-shell.menu-view-showcase .product-card .add {
   min-width: 52px !important;
   width: 52px !important;
   height: 52px !important;
@@ -1119,13 +1119,13 @@
   -webkit-backdrop-filter: none !important;
 }
 
-.app-shell.menu-view-showcase .product-card .add:hover {
+body .app-shell.menu-view-showcase .product-card .add:hover {
   color: #fff !important;
   background: #d18d2d !important;
   transform: none !important;
 }
 
-.app-shell.menu-view-showcase .product-card .add span {
+body .app-shell.menu-view-showcase .product-card .add span {
   display: block !important;
   width: auto !important;
   height: auto !important;
@@ -1136,7 +1136,7 @@
   line-height: 1 !important;
 }
 
-.app-shell.menu-view-showcase .product-card .stepper {
+body .app-shell.menu-view-showcase .product-card .stepper {
   height: 52px !important;
   padding: 4px !important;
   gap: 4px !important;
@@ -1149,7 +1149,7 @@
   -webkit-backdrop-filter: none !important;
 }
 
-.app-shell.menu-view-showcase .product-card .stepper button {
+body .app-shell.menu-view-showcase .product-card .stepper button {
   width: 38px !important;
   height: 38px !important;
   color: #263128 !important;
@@ -1158,51 +1158,51 @@
   border-radius: 12px !important;
 }
 
-.app-shell.menu-view-showcase .product-card .stepper b {
+body .app-shell.menu-view-showcase .product-card .stepper b {
   min-width: 22px !important;
   color: #263128 !important;
   font-size: 16px !important;
 }
 
 @media (max-width: 680px) {
-  .app-shell.menu-view-showcase .product-grid {
+  body .app-shell.menu-view-showcase .product-grid {
     width: 100% !important;
     gap: 16px !important;
   }
 
-  .app-shell.menu-view-showcase .product-card {
+  body .app-shell.menu-view-showcase .product-card {
     border-radius: 22px !important;
   }
 
-  .app-shell.menu-view-showcase .product-card .food-photo {
+  body .app-shell.menu-view-showcase .product-card .food-photo {
     aspect-ratio: 4 / 3 !important;
   }
 
-  .app-shell.menu-view-showcase .product-card .product-body {
+  body .app-shell.menu-view-showcase .product-card .product-body {
     padding: 14px 14px 13px !important;
   }
 
-  .app-shell.menu-view-showcase .product-card .product-title h3 {
+  body .app-shell.menu-view-showcase .product-card .product-title h3 {
     font-size: clamp(21px, 6.2vw, 27px) !important;
   }
 
-  .app-shell.menu-view-showcase .product-card .product-body > p {
+  body .app-shell.menu-view-showcase .product-card .product-body > p {
     margin-bottom: 12px !important;
     font-size: 13px !important;
   }
 
-  .app-shell.menu-view-showcase .product-card .add,
-  .app-shell.menu-view-showcase .product-card .stepper {
+  body .app-shell.menu-view-showcase .product-card .add,
+  body .app-shell.menu-view-showcase .product-card .stepper {
     height: 48px !important;
   }
 
-  .app-shell.menu-view-showcase .product-card .add {
+  body .app-shell.menu-view-showcase .product-card .add {
     min-width: 48px !important;
     width: 48px !important;
     border-radius: 15px !important;
   }
 
-  .app-shell.menu-view-showcase .product-card .stepper button {
+  body .app-shell.menu-view-showcase .product-card .stepper button {
     width: 35px !important;
     height: 35px !important;
   }
