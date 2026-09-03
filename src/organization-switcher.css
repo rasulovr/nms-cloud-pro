@@ -1,0 +1,65 @@
+.organization-switcher {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 14px;
+  margin: -8px 0 18px;
+  padding: 12px 14px;
+  border: 1px solid #292d31;
+  border-radius: 12px;
+  background: #111315;
+}
+
+.organization-switcher label {
+  display: grid;
+  gap: 6px;
+  min-width: min(360px, 100%);
+  color: #8c949b;
+  font-size: 11px;
+}
+
+.organization-switcher label select { width: 100%; }
+
+.organization-switcher-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  white-space: nowrap;
+  color: #7b8389;
+  font-size: 11px;
+}
+
+.organization-create > div {
+  display: grid;
+  gap: 4px;
+  min-width: 170px;
+}
+
+.organization-create small { color: #7b8389; font-size: 11px; }
+
+.secondary-button {
+  border: 1px solid #3a4045;
+  border-radius: 10px;
+  background: #171a1d;
+  color: #c9cdd1;
+  padding: 12px 16px;
+  cursor: pointer;
+}
+
+.empty .organization-create {
+  margin: 22px auto 0;
+  max-width: 720px;
+  text-align: left;
+}
+
+@media (max-width: 600px) {
+  .organization-switcher {
+    align-items: stretch;
+    flex-direction: column;
+    margin: -4px 0 16px;
+  }
+  .organization-switcher label { min-width: 0; }
+  .organization-switcher-actions { justify-content: space-between; }
+  .organization-create { padding: 14px; }
+  .organization-create > div { width: 100%; }
+}
