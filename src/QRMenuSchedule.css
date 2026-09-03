@@ -849,6 +849,10 @@
 }
 
 @media (max-width: 680px) {
+  body .app-shell .content:has(> .qr-contextual-special-offer) {
+    padding-top: 0 !important;
+  }
+
   body .app-shell .content > .qr-contextual-special-offer {
     position: relative !important;
     z-index: 1 !important;
@@ -1193,17 +1197,50 @@ body .app-shell.menu-view-showcase .product-card .stepper b {
 
   body .app-shell.menu-view-showcase .product-card .add,
   body .app-shell.menu-view-showcase .product-card .stepper {
-    height: 48px !important;
+    height: 38px !important;
   }
 
   body .app-shell.menu-view-showcase .product-card .add {
-    min-width: 48px !important;
-    width: 48px !important;
-    border-radius: 15px !important;
+    min-width: 38px !important;
+    width: 38px !important;
+    border-radius: 12px !important;
+    box-shadow: 0 5px 12px rgba(154, 99, 22, .17) !important;
+  }
+
+  body .app-shell.menu-view-showcase .product-card .add span {
+    font-size: 25px !important;
   }
 
   body .app-shell.menu-view-showcase .product-card .stepper button {
-    width: 35px !important;
-    height: 35px !important;
+    width: 28px !important;
+    height: 28px !important;
+    border-radius: 9px !important;
   }
+
+  body .app-shell.menu-view-showcase .product-card .stepper b {
+    min-width: 18px !important;
+    font-size: 13px !important;
+  }
+}
+
+/* Pressing a dish opens its details without dimming or tinting the photo. */
+html body .app-shell .product-card:has(.food-photo:active)::after,
+html body .app-shell .product-card:has(.food-photo:focus)::after,
+html body .app-shell .product-card:has(.food-photo:focus-visible)::after {
+  content: none !important;
+  display: none !important;
+  opacity: 0 !important;
+  background: none !important;
+  filter: none !important;
+}
+
+html body .app-shell .product-card:has(.food-photo:active) .food-photo img,
+html body .app-shell .product-card:has(.food-photo:focus) .food-photo img,
+html body .app-shell .product-card:has(.food-photo:focus-visible) .food-photo img,
+html body .app-shell .product-card .food-photo:active img,
+html body .app-shell .product-card .food-photo:focus img,
+html body .app-shell .product-card .food-photo:focus-visible img {
+  opacity: 1 !important;
+  filter: none !important;
+  transform: none !important;
 }
