@@ -406,8 +406,8 @@ export default function QRMenu() {
   const [screen, setScreen] = useState("menu");
   const [category, setCategory] = useState("\u0412\u0441\u0435");
   const [menuView, setMenuView] = useState(() => {
-    const savedView = window.localStorage.getItem("rms-qr-menu-view");
-    return ["list", "showcase"].includes(savedView) ? savedView : "grid";
+    const savedView = window.localStorage.getItem("rms-qr-menu-view-v2");
+    return ["grid", "list", "showcase"].includes(savedView) ? savedView : "showcase";
   });
   const [cart, setCart] = useState([]);
   const [notice, setNotice] = useState("");
@@ -465,7 +465,7 @@ export default function QRMenu() {
     setSelectedProduct((current) => current ? localizeProduct(current, language) : current);
   }, [language]);
   useEffect(() => {
-    window.localStorage.setItem("rms-qr-menu-view", menuView);
+    window.localStorage.setItem("rms-qr-menu-view-v2", menuView);
   }, [menuView]);
   useEffect(() => {
     let active = true;
