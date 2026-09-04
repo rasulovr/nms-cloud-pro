@@ -403,10 +403,10 @@ export default function QRMenu() {
   const [table, setTable] = useState("");
   const [screen, setScreen] = useState("menu");
   const [category, setCategory] = useState("\u0412\u0441\u0435");
-  const [menuView, setMenuView] = useState(() => {
-    const savedView = window.localStorage.getItem("rms-qr-menu-view");
-    return ["list", "showcase"].includes(savedView) ? savedView : "grid";
-  });
+  // Open every QR visit with the approved large photo-card layout. Guests can
+  // still switch views during the visit, but an old device preference must not
+  // replace the restaurant's default presentation on the next opening.
+  const [menuView, setMenuView] = useState("list");
   const [cart, setCart] = useState([]);
   const [notice, setNotice] = useState("");
   const [lastAddedId, setLastAddedId] = useState(null);
@@ -462,9 +462,6 @@ export default function QRMenu() {
     setCart((current) => current.map((product) => localizeProduct(product, language)));
     setSelectedProduct((current) => current ? localizeProduct(current, language) : current);
   }, [language]);
-  useEffect(() => {
-    window.localStorage.setItem("rms-qr-menu-view", menuView);
-  }, [menuView]);
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     setBranch(params.get("branch") || "BC1");

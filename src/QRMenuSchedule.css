@@ -1130,3 +1130,56 @@
     font-size: 13px !important;
   }
 }
+
+/* Approved press states: menu cards and their transparent/glass controls keep
+   exactly the same appearance while tapped. The dish sheet's separate enter
+   and leave animations remain unchanged. */
+html body .app-shell .menu-view-toggle button:active,
+html body .app-shell .product-card:active,
+html body .app-shell .product-card:has(.food-photo:active),
+html body .app-shell .product-card .add:active,
+html body .app-shell .product-card .stepper:active,
+html body .app-shell .product-card .stepper button:active:not(:disabled),
+html body .app-shell .product-modal .modal-close:active,
+html body .app-shell .product-modal .modal-add-button:active:not(:disabled),
+html body .app-shell .product-modal .modal-stepper button:active:not(:disabled) {
+  opacity: 1 !important;
+  filter: none !important;
+  transform: none !important;
+}
+
+html body .app-shell .product-card:has(.food-photo:active)::after,
+html body .app-shell .product-card:has(.food-photo:focus)::after,
+html body .app-shell .product-card:has(.food-photo:focus-visible)::after {
+  content: none !important;
+  display: none !important;
+  opacity: 0 !important;
+  background: none !important;
+  filter: none !important;
+}
+
+html body .app-shell .product-card:has(.food-photo:active) .food-photo img,
+html body .app-shell .product-card:has(.food-photo:focus) .food-photo img,
+html body .app-shell .product-card:has(.food-photo:focus-visible) .food-photo img,
+html body .app-shell .product-card .food-photo:active img,
+html body .app-shell .product-card .food-photo:focus img,
+html body .app-shell .product-card .food-photo:focus-visible img {
+  opacity: 1 !important;
+  filter: none !important;
+  transform: none !important;
+}
+
+@media (max-width: 680px) {
+  html body .app-shell .product-card .add:active,
+  html body .app-shell .product-card .stepper:active,
+  html body .app-shell .product-modal .modal-close:active,
+  html body .app-shell .product-modal .modal-add-button:active:not(:disabled),
+  html body .app-shell .product-modal .modal-stepper button:active:not(:disabled) {
+    background: rgba(255, 255, 255, .014) !important;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .11), 0 4px 12px rgba(0, 0, 0, .04) !important;
+  }
+
+  html body .app-shell .product-card .stepper button:active:not(:disabled) {
+    background: rgba(255, 255, 255, .036) !important;
+  }
+}
