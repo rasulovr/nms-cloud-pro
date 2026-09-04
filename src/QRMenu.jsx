@@ -418,7 +418,7 @@ export default function QRMenu() {
   const [order, setOrder] = useState(null);
   const [session, setSession] = useState(null);
   const [profile, setProfile] = useState(null);
-  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
   const [otp, setOtp] = useState("");
   const [otpSent, setOtpSent] = useState(false);
   const [bonusRequest, setBonusRequest] = useState(0);
@@ -963,18 +963,23 @@ export default function QRMenu() {
     flash("\u0421\u043F\u0438\u0441\u0430\u043D\u0438\u0435 \u0431\u043E\u043D\u0443\u0441\u043E\u0432 \u043E\u0442\u043C\u0435\u043D\u0435\u043D\u043E");
   }
   async function sendOtp() {
-    const normalized = phone.replace(/\s+/g, "");
-    if (!/^\+994\d{9}$/.test(normalized)) return flash("\u0412\u0432\u0435\u0434\u0438\u0442\u0435 \u043D\u043E\u043C\u0435\u0440 \u0432 \u0444\u043E\u0440\u043C\u0430\u0442\u0435 +994XXXXXXXXX");
+    const normalized = email.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized)) return flash("\u0412\u0432\u0435\u0434\u0438\u0442\u0435 \u043A\u043E\u0440\u0440\u0435\u043A\u0442\u043D\u044B\u0439 email");
     setBusy(true);
-    const { error } = await supabase.auth.signInWithOtp({ phone: normalized });
+    const { error } = await supabase.auth.signInWithOtp({
+      email: normalized,
+      options: { shouldCreateUser: true }
+    });
     setBusy(false);
     if (error) return flash(error.message);
     setOtpSent(true);
-    flash("\u041A\u043E\u0434 \u043E\u0442\u043F\u0440\u0430\u0432\u043B\u0435\u043D");
+    flash("\u041A\u043E\u0434 \u043E\u0442\u043F\u0440\u0430\u0432\u043B\u0435\u043D \u043D\u0430 email");
   }
   async function verifyOtp() {
+    const normalized = email.trim().toLowerCase();
+    if (!/^\d{6}$/.test(otp)) return flash("\u0412\u0432\u0435\u0434\u0438\u0442\u0435 \u0448\u0435\u0441\u0442\u0438\u0437\u043D\u0430\u0447\u043D\u044B\u0439 \u043A\u043E\u0434");
     setBusy(true);
-    const { error } = await supabase.auth.verifyOtp({ phone: phone.replace(/\s+/g, ""), token: otp, type: "sms" });
+    const { error } = await supabase.auth.verifyOtp({ email: normalized, token: otp, type: "email" });
     setBusy(false);
     if (error) return flash("\u041D\u0435\u0432\u0435\u0440\u043D\u044B\u0439 \u0438\u043B\u0438 \u043F\u0440\u043E\u0441\u0440\u043E\u0447\u0435\u043D\u043D\u044B\u0439 \u043A\u043E\u0434");
     setOtpSent(false);
@@ -1142,9 +1147,9 @@ export default function QRMenu() {
           <span className="eyebrow">RMS Loyalty</span><h2>Ваша карта</h2>
           {!loyalty ? <div className="loyalty-login">
               <div className="loyalty-symbol">R</div>
-              <h3>{otpSent ? "Введите код из SMS" : "Войдите по номеру телефона"}</h3>
-              <p>{otpSent ? "Код действует ограниченное время." : "Покажем баланс, историю и персональный QR-код."}</p>
-              {!otpSent ? <><input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+994 50 000 00 00" /><button className="primary-button" disabled={busy} onClick={sendOtp}>Получить код</button></> : <><input value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))} placeholder="Код из SMS" inputMode="numeric" /><button className="primary-button" disabled={busy} onClick={verifyOtp}>Войти</button></>}
+              <h3>{otpSent ? "Введите код из письма" : "Войдите по email"}</h3>
+              <p>{otpSent ? "Мы отправили шестизначный код на " + email.trim().toLowerCase() + "." : "Покажем баланс, историю и персональный QR-код."}</p>
+              {!otpSent ? <><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@example.com" autoComplete="email" inputMode="email" /><button className="primary-button" disabled={busy} onClick={sendOtp}>Получить код</button></> : <><input value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))} placeholder="Код из письма" inputMode="numeric" autoComplete="one-time-code" maxLength={6} /><button className="primary-button" disabled={busy} onClick={verifyOtp}>Войти</button><button className="outline-button full" disabled={busy} onClick={() => { setOtpSent(false); setOtp(""); }}>Изменить email</button></>}
             </div> : <>
               <div className="loyalty-card">
                 <div><span>RMS PRO</span><small>LOYALTY</small></div>

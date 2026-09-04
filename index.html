@@ -7,7 +7,24 @@
     <link rel="stylesheet" href="/src/RMSProQRAdminTheme.css" />
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <main class="rms-startup">
+        <section class="rms-startup-card" aria-live="polite">
+          <strong>RMS <span>PRO</span></strong>
+          <div class="rms-startup-bar"><i></i></div>
+          <p>Загрузка RMS SaaS…</p>
+        </section>
+      </main>
+    </div>
+    <style>
+      .rms-startup{min-height:100vh;display:grid;place-items:center;padding:24px;background:#f6f9fd;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#10233f}
+      .rms-startup-card{width:min(100%,360px);padding:32px;border:1px solid #dce6f2;border-radius:22px;background:#fff;box-shadow:0 24px 70px rgba(16,35,63,.1);text-align:center}
+      .rms-startup-card strong{display:block;font-size:30px;letter-spacing:.08em}.rms-startup-card strong span{color:#c99a45}
+      .rms-startup-card p{margin:15px 0 0;color:#64748b;font-size:14px;font-weight:700}
+      .rms-startup-bar{height:5px;margin-top:22px;overflow:hidden;border-radius:999px;background:#e5edf6}
+      .rms-startup-bar i{display:block;width:45%;height:100%;border-radius:inherit;background:linear-gradient(90deg,#10233f,#2f6de1);animation:rms-startup 1.15s ease-in-out infinite}
+      @keyframes rms-startup{0%{transform:translateX(-110%)}100%{transform:translateX(245%)}}
+    </style>
     <script>var branches = [];</script>
     <script defer src="/assets/qr-admin-host-v1.js"></script>
     <script type="module">
