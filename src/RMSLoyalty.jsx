@@ -1469,108 +1469,117 @@ export default function RMSLoyalty() {
 function RMSLoyaltyAdmin() {
   const [clients, setClients] = useState([])
   const [transactions, setTransactions] = useState([])
+  const [rules, setRules] = useState([])
   const [selectedClientId, setSelectedClientId] = useState('')
   const [query, setQuery] = useState('')
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState('')
-  const [clientForm, setClientForm] = useState({ name: '', phone: '', birthday: '', notes: '' })
+  const [messageTone, setMessageTone] = useState('info')
+  const [operationQuery, setOperationQuery] = useState('')
+  const [operationType, setOperationType] = useState('all')
   const scannerProfile = getCurrentRmsInternalScannerProfile()
   const scannerOnly = Boolean(scannerProfile)
-  const [activeTab, setActiveTab] = useState(scannerOnly ? 'pos' : 'cards')
+  const [activeTab, setActiveTab] = useState(scannerOnly ? 'pos' : 'overview')
 
   useEffect(() => { loadLoyalty() }, [])
   useEffect(() => { if (scannerOnly && activeTab !== 'pos') setActiveTab('pos') }, [scannerOnly, activeTab])
+  useEffect(() => {
+    if (!selectedClientId && clients[0]?.id) setSelectedClientId(clients[0].id)
+  }, [clients, selectedClientId])
 
   async function loadLoyalty() {
     setLoading(true)
     setMessage('')
-    const [clientsRes, txRes] = await Promise.all([
+    const [clientsRes, txRes, rulesRes] = await Promise.all([
       supabase.from('rms_loyalty_clients').select('*').order('created_at', { ascending: false }),
       supabase.from('rms_loyalty_transactions').select('*').order('created_at', { ascending: false }).limit(300),
+      supabase.from('rms_loyalty_rules').select('*').order('created_at', { ascending: true }).limit(20),
     ])
-    if (clientsRes.error) setMessage(clientsRes.error.message)
-    if (txRes.error) setMessage(txRes.error.message)
+    const firstError = clientsRes.error || txRes.error || rulesRes.error
+    if (firstError) {
+      setMessage(firstError.message)
+      setMessageTone('error')
+    }
     setClients(clientsRes.data || [])
     setTransactions(txRes.data || [])
+    setRules(rulesRes.data || [])
     setLoading(false)
-  }
-
-  async function createClient(e) {
-    e.preventDefault()
-    setMessage('')
-    const phone = clientForm.phone.trim()
-    if (!phone) return setMessage('Укажите номер телефона клиента.')
-
-    const tempClient = { phone, name: clientForm.name.trim() || 'Гость', created_at: new Date().toISOString() }
-    const { error } = await supabase.from('rms_loyalty_clients').insert({
-      name: clientForm.name.trim() || 'Гость',
-      phone,
-      birthday: clientForm.birthday || null,
-      notes: clientForm.notes.trim() || null,
-      level: 'drink_card',
-      bonus_balance: 0,
-      total_spent: 0,
-      visits_count: 0,
-      stamp_count: 0,
-      free_drink_balance: 0,
-      lifetime_drinks: 0,
-      total_drinks: 0,
-      vip_level: 'classic',
-      reward_threshold: 10,
-      available_rewards: 0,
-      card_number: rawCardNumber(tempClient),
-      wallet_token: createWalletToken(tempClient),
-      wallet_enabled: true,
-      is_active: true,
-    })
-
-    if (error) return setMessage(error.message)
-    setClientForm({ name: '', phone: '', birthday: '', notes: '' })
-    await loadLoyalty()
-    setMessage('Клиент добавлен. Карта напитков создана.')
   }
 
   const filteredClients = useMemo(() => {
     const q = query.trim().toLowerCase()
     if (!q) return clients
-    return clients.filter((client) => [client.name, client.phone, client.notes, buildCardNumber(client)]
+    return clients.filter((client) => [client.name, client.email, client.phone, client.notes, buildCardNumber(client)]
       .some((value) => String(value || '').toLowerCase().includes(q)))
   }, [clients, query])
 
   const selectedClient = clients.find((item) => item.id === selectedClientId) || null
+  const activeRule = rules.find((item) => item.is_active !== false) || rules[0] || null
 
   const selectedTransactions = useMemo(() => {
     if (!selectedClientId) return []
     return transactions.filter((item) => item.client_id === selectedClientId).slice(0, 12)
   }, [transactions, selectedClientId])
 
-
   const stats = useMemo(() => {
     const totalClients = clients.length
     const activeClients = clients.filter((item) => item.is_active !== false).length
     const totalStamps = clients.reduce((sum, item) => sum + getStampCount(item), 0)
     const freeDrinks = clients.reduce((sum, item) => sum + getFreeDrinkBalance(item), 0)
-    const totalVisits = clients.reduce((sum, item) => sum + Number(item.visits_count || 0), 0)
+    const totalBalance = clients.reduce((sum, item) => sum + Number(item.bonus_balance || 0), 0)
+    const totalSpent = clients.reduce((sum, item) => sum + Number(item.total_spent || 0), 0)
+    const activeFrom = new Date()
+    activeFrom.setDate(activeFrom.getDate() - 30)
+    const active30 = new Set(transactions
+      .filter((item) => item.client_id && new Date(item.created_at) >= activeFrom)
+      .map((item) => item.client_id)).size
     const earnedStamps = transactions
       .filter((item) => ['drink_stamp', 'pos_drink_stamp'].includes(String(item.type || '')))
       .reduce((sum, item) => sum + Math.max(0, Number(item.amount || 0)), 0)
     const redeemedGifts = Math.abs(transactions
       .filter((item) => ['drink_redeem', 'pos_drink_redeem'].includes(String(item.type || '')))
       .reduce((sum, item) => sum + Math.min(0, Number(item.amount || 0)), 0))
-    return { totalClients, activeClients, totalStamps, freeDrinks, totalVisits, earnedStamps, redeemedGifts }
+    const earnedBonuses = transactions
+      .filter((item) => Number(item.amount || 0) > 0)
+      .reduce((sum, item) => sum + Number(item.amount || 0), 0)
+    const redeemedBonuses = Math.abs(transactions
+      .filter((item) => Number(item.amount || 0) < 0)
+      .reduce((sum, item) => sum + Number(item.amount || 0), 0))
+    return { totalClients, activeClients, active30, totalStamps, freeDrinks, totalBalance, totalSpent, earnedStamps, redeemedGifts, earnedBonuses, redeemedBonuses }
   }, [clients, transactions])
 
+  const filteredTransactions = useMemo(() => {
+    const q = operationQuery.trim().toLowerCase()
+    return transactions.filter((item) => {
+      const type = String(item.type || '')
+      const matchesType = operationType === 'all'
+        || (operationType === 'earn' && Number(item.amount || 0) >= 0)
+        || (operationType === 'redeem' && Number(item.amount || 0) < 0)
+      const matchesQuery = !q || [item.client_name, item.client_phone, item.branch_name, item.branch_id, item.order_id, item.receipt_number, item.comment]
+        .some((value) => String(value || '').toLowerCase().includes(q))
+      return matchesType && matchesQuery
+    })
+  }, [transactions, operationQuery, operationType])
+
+  function openGuestLoyalty() {
+    if (typeof window === 'undefined') return
+    const url = new URL(window.location.origin)
+    url.searchParams.set('qr', 'menu')
+    url.searchParams.set('branch', 'BC1')
+    url.searchParams.set('table', '1')
+    window.open(url.toString(), '_blank', 'noopener,noreferrer')
+  }
 
   if (scannerOnly) {
     return (
-      <div className="loyalty-page drink-mode scanner-only-page">
-        <section className="loyalty-hero drink-hero scanner-hero">
+      <div className="loyalty-page loyalty-admin-v2 scanner-only-page">
+        <section className="loyalty-admin-hero scanner-hero">
           <div>
-            <span className="loyalty-eyebrow">RMS Pro Loyalty · Scanner</span>
-            <h1>Loyalty Scanner</h1>
-            <p>Ограниченный режим: сканировать QR гостя, начислить 1 напиток и видеть операции за сегодня.</p>
+            <span className="loyalty-admin-eyebrow">RMS LOYALTY · POS</span>
+            <h1>Сканер карт</h1>
+            <p>Сканируйте QR-код гостя, начисляйте бонусы и контролируйте операции текущей смены.</p>
           </div>
-          <div className="loyalty-hero-card">
+          <div className="loyalty-admin-status-card">
             <span>Пользователь</span>
             <b>{scannerProfile?.full_name || 'Scanner'}</b>
             <small>{scannerProfile?.branch_id || 'BC1'} · повторное начисление не раньше 10 минут</small>
@@ -1581,110 +1590,320 @@ function RMSLoyaltyAdmin() {
     )
   }
 
+  const tabs = [
+    { id: 'overview', label: 'Обзор' },
+    { id: 'clients', label: 'Клиенты' },
+    { id: 'operations', label: 'Операции' },
+    { id: 'pos', label: 'POS-сканер' },
+    { id: 'analytics', label: 'Аналитика' },
+    { id: 'settings', label: 'Настройки' },
+  ]
+
   return (
-    <div className="loyalty-page drink-mode">
-      <section className="loyalty-hero drink-hero">
-        <div>
-          <span className="loyalty-eyebrow">RMS Pro Loyalty · Drink Card</span>
-          <h1>Карта напитков</h1>
-          <p>Простая схема для старта: клиент покупает напитки, получает отметки, после 10 отметок получает 1 напиток в подарок.</p>
+    <div className="loyalty-page loyalty-admin-v2">
+      <section className="loyalty-admin-hero">
+        <div className="loyalty-admin-hero-copy">
+          <span className="loyalty-admin-eyebrow">RMS LOYALTY</span>
+          <h1>Программа лояльности</h1>
+          <p>Клиенты, бонусные карты, операции и аналитика — в едином пространстве RMS.</p>
+          <div className="loyalty-admin-hero-actions">
+            <button type="button" className="loyalty-admin-primary" onClick={openGuestLoyalty}>Открыть карту гостя</button>
+            <button type="button" className="loyalty-admin-secondary" onClick={loadLoyalty} disabled={loading}>{loading ? 'Обновление…' : 'Обновить данные'}</button>
+          </div>
         </div>
-        <div className="loyalty-hero-card">
-          <span>Правило</span>
-          <b>10 = 1</b>
-          <small>1 напиток = 1 отметка · 10 отметок = 1 подарок</small>
+        <div className="loyalty-admin-status-card">
+          <div className="loyalty-admin-status-line">
+            <span className={`loyalty-admin-live-dot ${activeRule?.is_active === false ? 'off' : ''}`} />
+            <span>{activeRule?.is_active === false ? 'Программа приостановлена' : 'Программа активна'}</span>
+          </div>
+          <b>{activeRule?.name || 'Основная программа'}</b>
+          <small>{activeRule?.rule_type === 'stamp'
+            ? `${Number(activeRule?.reward_threshold || 10)} покупок → подарок`
+            : `${Number(activeRule?.cashback_percent || 5)}% начисление · до ${Number(activeRule?.max_redeem_percent || 30)}% списание`}</small>
         </div>
       </section>
 
-      {message && <div className="loyalty-message">{message}</div>}
+      {message && <div className={`loyalty-message ${messageTone}`}>{message}</div>}
 
-      <div className="loyalty-tabs">
-        <button type="button" className={activeTab === 'cards' ? 'active' : ''} onClick={() => setActiveTab('cards')}>Клиенты и карты</button>
-        <button type="button" className={activeTab === 'pos' ? 'active' : ''} onClick={() => setActiveTab('pos')}>POS Scan</button>
-        <button type="button" className={activeTab === 'analytics' ? 'active' : ''} onClick={() => setActiveTab('analytics')}>Analytics</button>
+      <div className="loyalty-admin-tabs" role="tablist" aria-label="Разделы RMS Loyalty">
+        {tabs.map((tab) => (
+          <button key={tab.id} type="button" role="tab" aria-selected={activeTab === tab.id} className={activeTab === tab.id ? 'active' : ''} onClick={() => setActiveTab(tab.id)}>{tab.label}</button>
+        ))}
       </div>
 
-      {activeTab === 'pos' ? (
+      {activeTab === 'overview' ? (
+        <LoyaltyOverview
+          stats={stats}
+          transactions={transactions}
+          activeRule={activeRule}
+          onNavigate={setActiveTab}
+        />
+      ) : activeTab === 'clients' ? (
+        <LoyaltyClientsWorkspace
+          clients={filteredClients}
+          query={query}
+          setQuery={setQuery}
+          selectedClient={selectedClient}
+          selectedClientId={selectedClientId}
+          setSelectedClientId={setSelectedClientId}
+          selectedTransactions={selectedTransactions}
+          loading={loading}
+          onRefresh={loadLoyalty}
+          onOpenGuest={openGuestLoyalty}
+        />
+      ) : activeTab === 'operations' ? (
+        <LoyaltyOperationsWorkspace
+          transactions={filteredTransactions}
+          query={operationQuery}
+          setQuery={setOperationQuery}
+          type={operationType}
+          setType={setOperationType}
+        />
+      ) : activeTab === 'pos' ? (
         <section className="loyalty-pos-tab">
           <LoyaltyPOSDrinkScan onDone={loadLoyalty} />
         </section>
       ) : activeTab === 'analytics' ? (
         <LoyaltyAnalyticsPanel clients={clients} transactions={transactions} />
+      ) : activeTab === 'settings' ? (
+        <LoyaltyProgramSettings
+          rule={activeRule}
+          onSaved={async (text) => {
+            await loadLoyalty()
+            setMessage(text)
+            setMessageTone('success')
+          }}
+          onError={(text) => {
+            setMessage(text)
+            setMessageTone('error')
+          }}
+        />
       ) : (
-        <div className="loyalty-cards-tab">
-
-      <section className="loyalty-kpis drink-kpis">
-        <div className="loyalty-kpi"><span>Клиенты</span><b>{stats.totalClients}</b><small>в базе карт</small></div>
-        <div className="loyalty-kpi"><span>Активные</span><b>{stats.activeClients}</b><small>можно начислять</small></div>
-        <div className="loyalty-kpi"><span>Начислено</span><b>{stats.earnedStamps}</b><small>напитков по операциям</small></div>
-        <div className="loyalty-kpi"><span>Подарки</span><b>{stats.freeDrinks}</b><small>баланс к выдаче</small></div>
-        <div className="loyalty-kpi"><span>Выдано</span><b>{stats.redeemedGifts}</b><small>подарков списано</small></div>
-        <div className="loyalty-kpi"><span>Текущие отметки</span><b>{stats.totalStamps}</b><small>до следующих подарков</small></div>
-      </section>
-
-      <section className="loyalty-grid drink-grid-main">
-        <div className="loyalty-card loyalty-client-card">
-          <div className="loyalty-card-head compact-client-head">
-            <div><h2>Клиенты Loyalty</h2></div>
-            <button className="loyalty-refresh-icon" onClick={loadLoyalty} disabled={loading} title="Обновить">{loading ? '…' : '↻'}</button>
-          </div>
-          <input className="loyalty-search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Поиск клиента..." />
-          <div className="loyalty-client-list compact-client-list">
-            {filteredClients.map((client) => {
-              const vipInfo = getVipLevelInfo(client)
-              const stampProgress = getStampProgress(client)
-              return (
-              <button key={client.id} className={`loyalty-client-row compact-client-row ${selectedClientId === client.id ? 'active' : ''}`} onClick={() => setSelectedClientId(client.id)}>
-                <div className="compact-client-main">
-                  <div className="compact-client-titleline">
-                    <b>{client.name || 'Гость'}</b>
-                    <span className={`vip-mini-badge vip-${vipInfo.key}`}>{vipInfo.title}</span>
-                  </div>
-                  <span className="compact-client-phone">{formatPhoneDisplay(client.phone)}</span>
-                  <div className="compact-client-progressbar" aria-label={`${stampProgress.filled} из ${stampProgress.threshold}`}>
-                    <i><em style={{ width: `${Math.min(100, Math.max(0, stampProgress.percent))}%` }} /></i>
-                  </div>
-                </div>
-                <div className="compact-client-score">
-                  <strong>{stampProgress.filled} / {stampProgress.threshold}</strong>
-                  <small>{getLifetimeDrinkCount(client)} напитков</small>
-                </div>
-              </button>
-              )
-            })}
-            {!filteredClients.length && <div className="loyalty-empty">Клиенты не найдены.</div>}
-          </div>
-        </div>
-
-        <div className="loyalty-card">
-          <div className="loyalty-card-head"><div><h2>Новый клиент</h2><p>Минимальная регистрация по телефону.</p></div></div>
-          <form className="loyalty-form" onSubmit={createClient}>
-            <label>Имя<input value={clientForm.name} onChange={(e) => setClientForm({ ...clientForm, name: e.target.value })} placeholder="Например: Ruslan" /></label>
-            <label>Телефон<input value={clientForm.phone} onChange={(e) => setClientForm({ ...clientForm, phone: e.target.value })} placeholder="+994..." /></label>
-            <label>День рождения<input type="date" value={clientForm.birthday} onChange={(e) => setClientForm({ ...clientForm, birthday: e.target.value })} /></label>
-            <label>Заметка<textarea value={clientForm.notes} onChange={(e) => setClientForm({ ...clientForm, notes: e.target.value })} placeholder="Предпочтения, любимый филиал, комментарий..." /></label>
-            <button className="loyalty-primary">Добавить клиента</button>
-          </form>
-        </div>
-
-        <div className="loyalty-card wallet-preview-card">
-          <div className="loyalty-card-head"><div><h2>Карта клиента</h2><p>Вид карты на телефоне клиента.</p></div></div>
-          {selectedClient ? (
-            <>
-              <DrinkStampCard client={selectedClient} />
-              <div className="inline-client-history">
-                <div className="inline-client-history-head">
-                  <h3>Последние операции</h3>
-                  <span>{selectedTransactions.length ? `${Math.min(selectedTransactions.length, 8)} операций` : 'нет операций'}</span>
-                </div>
-                <ClientOperationsHistory transactions={selectedTransactions} />
-              </div>
-            </>
-          ) : <div className="loyalty-empty">Выберите клиента из списка.</div>}
-        </div>
-      </section>
-        </div>
+        <LoyaltyOverview stats={stats} transactions={transactions} activeRule={activeRule} onNavigate={setActiveTab} />
       )}
     </div>
   )
+}
+
+function LoyaltyOverview({ stats, transactions, activeRule, onNavigate }) {
+  const recent = transactions.slice(0, 6)
+  const isStamp = activeRule?.rule_type === 'stamp'
+  return (
+    <div className="loyalty-overview">
+      <section className="loyalty-admin-kpis">
+        <button type="button" onClick={() => onNavigate('clients')}>
+          <span>Клиенты</span><b>{stats.totalClients}</b><small>{stats.active30} активных за 30 дней</small>
+        </button>
+        <button type="button" onClick={() => onNavigate('clients')}>
+          <span>Активные карты</span><b>{stats.activeClients}</b><small>{stats.totalClients ? Math.round((stats.activeClients / stats.totalClients) * 100) : 0}% клиентской базы</small>
+        </button>
+        <button type="button" onClick={() => onNavigate('operations')}>
+          <span>Начислено</span><b>{isStamp ? stats.earnedStamps : fmt(stats.earnedBonuses)}</b><small>{isStamp ? 'отметок по операциям' : 'бонусов за весь период'}</small>
+        </button>
+        <button type="button" onClick={() => onNavigate('operations')}>
+          <span>Списано</span><b>{isStamp ? stats.redeemedGifts : fmt(stats.redeemedBonuses)}</b><small>{isStamp ? 'подарков выдано' : 'бонусов использовано'}</small>
+        </button>
+      </section>
+
+      <section className="loyalty-admin-two-column">
+        <div className="loyalty-admin-panel">
+          <div className="loyalty-admin-panel-head">
+            <div><span>АКТИВНОСТЬ</span><h2>Последние операции</h2></div>
+            <button type="button" onClick={() => onNavigate('operations')}>Все операции</button>
+          </div>
+          <div className="loyalty-admin-activity-list">
+            {recent.length ? recent.map((item, index) => (
+              <LoyaltyOperationRow key={item.id || `${item.created_at}-${index}`} item={item} compact />
+            )) : <LoyaltyEmptyState title="Операций пока нет" text="После первого начисления здесь появится история программы." />}
+          </div>
+        </div>
+
+        <div className="loyalty-admin-panel loyalty-program-summary">
+          <div className="loyalty-admin-panel-head">
+            <div><span>ПРОГРАММА</span><h2>{activeRule?.name || 'Основная программа'}</h2></div>
+            <button type="button" onClick={() => onNavigate('settings')}>Настроить</button>
+          </div>
+          <div className="loyalty-program-rule-grid">
+            <div><span>Механика</span><b>{isStamp ? 'Карта отметок' : 'Cashback'}</b></div>
+            <div><span>Начисление</span><b>{isStamp ? '1 отметка' : `${Number(activeRule?.cashback_percent || 5)}%`}</b></div>
+            <div><span>Макс. списание</span><b>{isStamp ? '1 подарок' : `${Number(activeRule?.max_redeem_percent || 30)}%`}</b></div>
+            <div><span>Бонус ко дню рождения</span><b>{fmt(activeRule?.birthday_bonus || 0)}</b></div>
+          </div>
+          <div className="loyalty-email-flow-note">
+            <span>EMAIL OTP</span>
+            <b>Регистрация гостя через QR Menu</b>
+            <p>Гость подтверждает email одноразовым кодом. Карта привязывается к его аккаунту автоматически.</p>
+            <button type="button" onClick={() => onNavigate('clients')}>Управление клиентами</button>
+          </div>
+        </div>
+      </section>
+    </div>
+  )
+}
+
+function LoyaltyClientsWorkspace({ clients, query, setQuery, selectedClient, selectedClientId, setSelectedClientId, selectedTransactions, loading, onRefresh, onOpenGuest }) {
+  return (
+    <section className="loyalty-admin-workspace">
+      <div className="loyalty-onboarding-banner">
+        <div className="loyalty-onboarding-icon">@</div>
+        <div><b>Клиенты регистрируются самостоятельно</b><span>В QR Menu гость вводит email, получает шестизначный код и автоматически создаёт карту RMS Loyalty.</span></div>
+        <button type="button" onClick={onOpenGuest}>Открыть форму гостя</button>
+      </div>
+
+      <div className="loyalty-client-workspace-grid">
+        <div className="loyalty-admin-panel loyalty-client-browser">
+          <div className="loyalty-admin-panel-head">
+            <div><span>БАЗА КЛИЕНТОВ</span><h2>{clients.length} клиентов</h2></div>
+            <button type="button" onClick={onRefresh} disabled={loading}>{loading ? '…' : 'Обновить'}</button>
+          </div>
+          <div className="loyalty-client-search-wrap">
+            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Имя, email, телефон или номер карты" aria-label="Поиск клиента" />
+            {query && <button type="button" onClick={() => setQuery('')} aria-label="Очистить поиск">×</button>}
+          </div>
+          <div className="loyalty-client-list-v2">
+            {clients.length ? clients.map((client) => {
+              const identity = client.email || formatPhoneDisplay(client.phone) || 'Контакт не указан'
+              return (
+                <button key={client.id} type="button" className={selectedClientId === client.id ? 'active' : ''} onClick={() => setSelectedClientId(client.id)}>
+                  <span className="loyalty-client-avatar">{String(client.name || client.email || 'G').slice(0, 1).toUpperCase()}</span>
+                  <span className="loyalty-client-main"><b>{client.name || 'Гость'}</b><small>{identity}</small></span>
+                  <span className="loyalty-client-balance"><b>{fmt(client.bonus_balance)}</b><small>{client.is_active === false ? 'Отключена' : 'Активна'}</small></span>
+                </button>
+              )
+            }) : <LoyaltyEmptyState title="Клиенты не найдены" text={query ? 'Измените запрос или очистите поиск.' : 'Первая карта появится после регистрации гостя в QR Menu.'} />}
+          </div>
+        </div>
+
+        <div className="loyalty-admin-panel loyalty-client-profile">
+          {selectedClient ? (
+            <>
+              <div className="loyalty-profile-head">
+                <span className="loyalty-profile-avatar">{String(selectedClient.name || 'G').slice(0, 1).toUpperCase()}</span>
+                <div><span>КАРТА КЛИЕНТА</span><h2>{selectedClient.name || 'Гость'}</h2><p>{selectedClient.email || formatPhoneDisplay(selectedClient.phone) || 'Контакт не указан'}</p></div>
+                <span className={`loyalty-profile-status ${selectedClient.is_active === false ? 'off' : ''}`}>{selectedClient.is_active === false ? 'Отключена' : 'Активна'}</span>
+              </div>
+              <div className="loyalty-profile-metrics">
+                <div><span>Баланс</span><b>{fmt(selectedClient.bonus_balance)}</b></div>
+                <div><span>Покупки</span><b>{fmt(selectedClient.total_spent)}</b></div>
+                <div><span>Визиты</span><b>{Number(selectedClient.visits_count || 0)}</b></div>
+                <div><span>Уровень</span><b>{selectedClient.vip_level || selectedClient.level || 'Classic'}</b></div>
+              </div>
+              <div className="loyalty-profile-card-number"><span>Номер карты</span><b>{buildCardNumber(selectedClient)}</b></div>
+              <div className="loyalty-profile-history">
+                <div className="loyalty-admin-panel-head"><div><span>ИСТОРИЯ</span><h2>Последние операции</h2></div></div>
+                <div className="loyalty-admin-activity-list">
+                  {selectedTransactions.length ? selectedTransactions.slice(0, 6).map((item, index) => <LoyaltyOperationRow key={item.id || index} item={item} compact />) : <LoyaltyEmptyState title="История пуста" text="У клиента ещё нет начислений и списаний." />}
+                </div>
+              </div>
+            </>
+          ) : <LoyaltyEmptyState title="Выберите клиента" text="Справа появятся баланс, уровень и история карты." />}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function LoyaltyOperationsWorkspace({ transactions, query, setQuery, type, setType }) {
+  return (
+    <section className="loyalty-admin-panel loyalty-operations-panel">
+      <div className="loyalty-admin-panel-head loyalty-operations-head">
+        <div><span>ЖУРНАЛ</span><h2>Операции Loyalty</h2><p>Начисления, списания, корректировки и привязка к филиалу.</p></div>
+        <span className="loyalty-operation-count">{transactions.length} операций</span>
+      </div>
+      <div className="loyalty-operation-filters">
+        <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Клиент, филиал, чек или комментарий" aria-label="Поиск операции" />
+        <select value={type} onChange={(event) => setType(event.target.value)} aria-label="Тип операции">
+          <option value="all">Все операции</option>
+          <option value="earn">Начисления</option>
+          <option value="redeem">Списания</option>
+        </select>
+      </div>
+      <div className="loyalty-operation-table-head"><span>Клиент</span><span>Операция</span><span>Филиал / чек</span><span>Дата</span></div>
+      <div className="loyalty-operation-list">
+        {transactions.length ? transactions.map((item, index) => <LoyaltyOperationRow key={item.id || `${item.created_at}-${index}`} item={item} />) : <LoyaltyEmptyState title="Операции не найдены" text="Измените фильтры или дождитесь первой операции." />}
+      </div>
+    </section>
+  )
+}
+
+function LoyaltyOperationRow({ item, compact = false }) {
+  const meta = txOperationMeta(item)
+  const date = item.created_at ? new Date(item.created_at) : null
+  const validDate = date && !Number.isNaN(date.getTime())
+  return (
+    <div className={`loyalty-operation-row ${compact ? 'compact' : ''}`}>
+      <div className={`loyalty-operation-icon ${meta.kind}`}>{meta.icon}</div>
+      <div className="loyalty-operation-client"><b>{item.client_name || 'Клиент'}</b><small>{item.client_phone || item.comment || 'RMS Loyalty'}</small></div>
+      <div className={`loyalty-operation-value ${meta.kind}`}><b>{meta.label}</b><small>{item.order_total ? `Чек ${fmt(item.order_total)}` : (item.type || 'операция')}</small></div>
+      {!compact && <div className="loyalty-operation-source"><b>{item.branch_name || item.branch_id || '—'}</b><small>{item.receipt_number || item.order_id || 'Без номера чека'}</small></div>}
+      <div className="loyalty-operation-date"><b>{validDate ? date.toLocaleDateString('ru-RU', { day: '2-digit', month: 'short' }) : '—'}</b><small>{validDate ? date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) : ''}</small></div>
+    </div>
+  )
+}
+
+function LoyaltyProgramSettings({ rule, onSaved, onError }) {
+  const [form, setForm] = useState({ name: '', rule_type: 'cashback', cashback_percent: 5, max_redeem_percent: 30, birthday_bonus: 10, is_active: true })
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    setForm({
+      name: rule?.name || 'Основная программа',
+      rule_type: rule?.rule_type || 'cashback',
+      cashback_percent: Number(rule?.cashback_percent ?? 5),
+      max_redeem_percent: Number(rule?.max_redeem_percent ?? 30),
+      birthday_bonus: Number(rule?.birthday_bonus ?? 10),
+      is_active: rule?.is_active !== false,
+    })
+  }, [rule])
+
+  async function saveSettings(event) {
+    event.preventDefault()
+    if (!rule?.id) return onError('Настройки программы ещё не созданы для этой организации.')
+    setSaving(true)
+    const payload = {
+      name: String(form.name || '').trim() || 'Основная программа',
+      rule_type: form.rule_type,
+      cashback_percent: Math.max(0, Math.min(100, Number(form.cashback_percent || 0))),
+      max_redeem_percent: Math.max(0, Math.min(100, Number(form.max_redeem_percent || 0))),
+      birthday_bonus: Math.max(0, Number(form.birthday_bonus || 0)),
+      is_active: Boolean(form.is_active),
+    }
+    const { error } = await supabase.from('rms_loyalty_rules').update(payload).eq('id', rule.id)
+    setSaving(false)
+    if (error) return onError(error.message)
+    onSaved('Настройки RMS Loyalty сохранены.')
+  }
+
+  return (
+    <section className="loyalty-settings-grid">
+      <form className="loyalty-admin-panel loyalty-settings-form" onSubmit={saveSettings}>
+        <div className="loyalty-admin-panel-head"><div><span>ПРОГРАММА</span><h2>Правила начисления</h2><p>Параметры применяются к текущей организации.</p></div></div>
+        {!rule?.id && <div className="loyalty-settings-warning">Для сохранения требуется существующее правило организации. Схема базы в этом Preview не изменяется.</div>}
+        <label>Название программы<input value={form.name} onChange={(event) => setForm((value) => ({ ...value, name: event.target.value }))} /></label>
+        <label>Механика<select value={form.rule_type} onChange={(event) => setForm((value) => ({ ...value, rule_type: event.target.value }))}><option value="cashback">Cashback-бонусы</option><option value="stamp">Карта отметок</option></select></label>
+        <div className="loyalty-settings-row">
+          <label>Процент начисления<input type="number" min="0" max="100" step="0.5" value={form.cashback_percent} onChange={(event) => setForm((value) => ({ ...value, cashback_percent: event.target.value }))} /><span>% от оплаченной суммы</span></label>
+          <label>Максимальное списание<input type="number" min="0" max="100" step="1" value={form.max_redeem_percent} onChange={(event) => setForm((value) => ({ ...value, max_redeem_percent: event.target.value }))} /><span>% суммы чека</span></label>
+        </div>
+        <label>Бонус ко дню рождения<input type="number" min="0" step="1" value={form.birthday_bonus} onChange={(event) => setForm((value) => ({ ...value, birthday_bonus: event.target.value }))} /><span>Размер праздничного начисления клиенту</span></label>
+        <label className="loyalty-settings-toggle"><span><b>Программа активна</b><small>Разрешить новые регистрации и операции</small></span><input type="checkbox" checked={form.is_active} onChange={(event) => setForm((value) => ({ ...value, is_active: event.target.checked }))} /></label>
+        <button className="loyalty-admin-primary" type="submit" disabled={saving || !rule?.id}>{saving ? 'Сохранение…' : 'Сохранить настройки'}</button>
+      </form>
+
+      <div className="loyalty-admin-panel loyalty-settings-info">
+        <div className="loyalty-admin-panel-head"><div><span>ИНТЕГРАЦИЯ</span><h2>Как работает RMS Loyalty</h2></div></div>
+        <div className="loyalty-settings-steps">
+          <div><span>1</span><b>Гость открывает QR Menu</b><p>Вкладка Loyalty доступна в публичном меню кафе.</p></div>
+          <div><span>2</span><b>Подтверждает email</b><p>Одноразовый шестизначный код отправляется через защищённый SMTP.</p></div>
+          <div><span>3</span><b>Получает персональную карту</b><p>Баланс и QR-код привязаны к подтверждённому аккаунту.</p></div>
+          <div><span>4</span><b>POS проводит операцию</b><p>Начисление и списание фиксируются с филиалом, сотрудником и чеком.</p></div>
+        </div>
+        <div className="loyalty-settings-brand-note"><b>Название и оформление кафе</b><p>Берутся из профиля организации и настроек QR Menu. Сам продукт во всех организациях называется RMS Loyalty.</p></div>
+      </div>
+    </section>
+  )
+}
+
+function LoyaltyEmptyState({ title, text }) {
+  return <div className="loyalty-empty-state"><span>◇</span><b>{title}</b><p>{text}</p></div>
 }
