@@ -433,6 +433,8 @@ export default function QRMenu() {
   const [bonusRequest, setBonusRequest] = useState(0);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [isProductClosing, setIsProductClosing] = useState(false);
+  const [dayOfferPhase, setDayOfferPhase] = useState("hidden");
+  const dayOfferShownRef = useRef(false);
   const productModalRef = useRef(null);
   const productModalCardRef = useRef(null);
   const [modalQuantity, setModalQuantity] = useState(1);
@@ -804,6 +806,34 @@ export default function QRMenu() {
     const [eyebrow, description] = getContextualOfferCopy(language, mealMoment, weatherOffer?.kind || "clear", product);
     return { product, eyebrow, description };
   }, [smartRecommendations, mealRecommendation, language, mealMoment, weatherOffer]);
+  useEffect(() => {
+    if (screen !== "menu" || !contextualSpecialOffer || dayOfferShownRef.current) return;
+    dayOfferShownRef.current = true;
+    setDayOfferPhase("visible");
+  }, [screen, contextualSpecialOffer]);
+  useEffect(() => {
+    if (dayOfferPhase !== "visible") return undefined;
+    const timer = window.setTimeout(() => setDayOfferPhase("closing"), 5000);
+    return () => window.clearTimeout(timer);
+  }, [dayOfferPhase]);
+  useEffect(() => {
+    if (dayOfferPhase !== "closing") return undefined;
+    const timer = window.setTimeout(() => setDayOfferPhase("hidden"), 520);
+    return () => window.clearTimeout(timer);
+  }, [dayOfferPhase]);
+  useEffect(() => {
+    if (dayOfferPhase === "hidden") return undefined;
+    const previousOverflow = document.body.style.overflow;
+    const closeOnEscape = (event) => {
+      if (event.key === "Escape") setDayOfferPhase("closing");
+    };
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [dayOfferPhase]);
   const pairings = useMemo(() => {
     if (!selectedProduct || isExtraCategory(selectedProduct)) return [];
     const referenceProduct = resolveReferenceMenuProduct(selectedProduct);
@@ -1048,11 +1078,6 @@ export default function QRMenu() {
       {notice && <div className="toast">{notice}</div>}
 
       {screen === "menu" && <section className="content">
-                    {contextualSpecialOffer && <button type="button" className="qr-special-offer qr-contextual-special-offer" onClick={() => openProduct(contextualSpecialOffer.product)} aria-label={`${t.openPhoto}: ${contextualSpecialOffer.product.name}`}>
-                      {contextualSpecialOffer.product.image && <img src={contextualSpecialOffer.product.image} alt="" onError={useRecoveredImageFallback} />}
-                      <span className="qr-special-offer-copy"><small>{contextualSpecialOffer.eyebrow}</small><strong>{contextualSpecialOffer.product.name}</strong><em>{contextualSpecialOffer.description}</em></span>
-                      <span className="qr-contextual-special-offer-arrow" aria-hidden="true">›</span>
-                    </button>}
                     <div className="menu-toolbar">
             <div className="categories">
               {categories.map((name) => <button className={category === name ? "active" : ""} key={name} onClick={() => setCategory(name)}>{localizeCategory(name, language) || categoryTranslations[language][name] || categoryLabel(name)}</button>)}
@@ -1232,6 +1257,22 @@ export default function QRMenu() {
             </div>
           </article>
         </div>}
+
+      {contextualSpecialOffer && dayOfferPhase !== "hidden" && <button
+        type="button"
+        className={`qr-day-offer-overlay ${dayOfferPhase === "closing" ? "is-closing" : ""}`}
+        onClick={() => setDayOfferPhase("closing")}
+        aria-label={language === "ru" ? "Закрыть предложение дня" : language === "az" ? "Günün təklifini bağla" : "Close today's offer"}
+      >
+        {contextualSpecialOffer.product.image && <img src={contextualSpecialOffer.product.image} alt="" onError={useRecoveredImageFallback} />}
+        <span className="qr-day-offer-shade" aria-hidden="true" />
+        <span className="qr-day-offer-content">
+          <small>{contextualSpecialOffer.eyebrow}</small>
+          <strong>{contextualSpecialOffer.product.name}</strong>
+          <em>{contextualSpecialOffer.description}</em>
+          <span>{language === "ru" ? "Нажмите, чтобы закрыть" : language === "az" ? "Bağlamaq üçün toxunun" : "Tap to close"}</span>
+        </span>
+      </button>}
 
       {cartCount > 0 && screen === "menu" && <button className="floating-cart" onClick={() => setScreen("cart")}><span>{cartCount} {t.items}</span><b>{money(cartTotal)} →</b></button>}
       <footer><span>Powered by</span><b>RMS PRO</b><small>QR Menu + Loyalty</small></footer>
