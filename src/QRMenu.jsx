@@ -35,7 +35,7 @@ const productPriority = {
   night: [/сырн.*сет|cheese.*set|pendir.*set/i, /вителло|vitello|тоннат|tonnato/i, /брускет|bruschett/i, /стейк|steak|рибай|ribeye|утк|duck|ördək/i, /бургер|burger/i, /сэндвич|sandwich|sendviç/i, /пицц|pizza/i]
 };
 const getMealMoment = (hour) => hour >= 8 && hour < 12 ? "breakfast" : hour >= 12 && hour < 18 ? "lunch" : hour >= 18 && hour < 20 ? "evening" : "night";
-const getContextualOfferCopy = (language, moment, weatherKind) => {
+const getContextualOfferCopy = (language, moment, weatherKind, product) => {
   const weatherCopy = {
     az: {
       rainy: ["Yağışlı günün seçimi", "İsinmək və rahat bir fasilə üçün"],
@@ -82,6 +82,17 @@ const getContextualOfferCopy = (language, moment, weatherKind) => {
       night: ["For the evening", "A delicious end to a good day"]
     }
   };
+  const dessertCopy = {
+    az: ["Günün şirin seçimi", "Fasilənizə şirin bir toxunuş"],
+    ru: ["Сладкий выбор дня", "Для приятной паузы с десертом"],
+    en: ["A sweet choice", "A little treat for your break"]
+  };
+  if (isDessert(product)) return dessertCopy[language] || dessertCopy.ru;
+
+  // Weather-led wording such as “refreshing” belongs only to drinks. Food,
+  // salads and breakfast items use the relevant time-of-day recommendation.
+  if (!isLowPriorityDrink(product)) return timeCopy[language]?.[moment] || timeCopy.ru.lunch;
+
   const hasWeatherPriority = ["rainy", "windy", "cool", "sunny"].includes(weatherKind);
   return (hasWeatherPriority ? weatherCopy : timeCopy)[language]?.[hasWeatherPriority ? weatherKind : moment]
     || timeCopy.ru.lunch;
@@ -790,7 +801,7 @@ export default function QRMenu() {
   const contextualSpecialOffer = useMemo(() => {
     const product = smartRecommendations[0] || mealRecommendation?.product;
     if (!product) return null;
-    const [eyebrow, description] = getContextualOfferCopy(language, mealMoment, weatherOffer?.kind || "clear");
+    const [eyebrow, description] = getContextualOfferCopy(language, mealMoment, weatherOffer?.kind || "clear", product);
     return { product, eyebrow, description };
   }, [smartRecommendations, mealRecommendation, language, mealMoment, weatherOffer]);
   const pairings = useMemo(() => {
