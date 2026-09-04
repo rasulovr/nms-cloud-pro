@@ -8,9 +8,6 @@ const fmt = (n) => `${Number(n || 0).toFixed(2)} AZN`
 const intFmt = (n) => `${Number(n || 0).toFixed(0)} ед.`
 
 const VIP_DEFAULT_THRESHOLD = 10
-const DEFAULT_BRAND = 'BARISTA&CHEF'
-const DEFAULT_SUBTITLE = 'COFFEE HOUSE'
-
 const VIP_LEVELS = [
   { key: 'classic', title: 'Classic', min: 0, short: 'CL', threshold: 10, benefit: '10 → 1' },
   { key: 'silver', title: 'Silver', min: 50, short: 'SV', threshold: 9, benefit: '9 → 1' },
@@ -42,10 +39,6 @@ function buildCardNumber(client) {
   return seed.replace(/(\d{3})(\d{3})(\d{3})(\d{1})/, '$1 $2 $3 $4')
 }
 
-function rawCardNumber(client) {
-  return buildCardNumber(client).replace(/\s+/g, '')
-}
-
 function formatPhoneDisplay(phone) {
   const raw = String(phone || '').trim()
   if (!raw) return ''
@@ -54,11 +47,6 @@ function formatPhoneDisplay(phone) {
     return `+994 ${digits.slice(3, 5)} ${digits.slice(5, 8)} ${digits.slice(8, 10)} ${digits.slice(10, 12)}`
   }
   return raw
-}
-
-function createWalletToken(client) {
-  const base = `${client?.id || ''}-${client?.phone || ''}-${client?.created_at || ''}-${Date.now()}`
-  return `bcw_${stableHash(base)}_${Math.random().toString(36).slice(2, 10)}`
 }
 
 function getWalletToken(client) {
@@ -309,9 +297,9 @@ function DrinkStampCard({ client }) {
     <div className="drink-card-wallet-wrap">
       <div className="drink-wallet-card progress-card bc-premium-card-v212">
         <div className="bc-premium-logo-row">
-          <div className="bc-round-logo" aria-label="Barista&Chef">
-            <span className="bc-script-logo">Barista<span>&amp;</span>Chef</span>
-            <small>COFFEE &amp; KITCHEN</small>
+          <div className="bc-round-logo" aria-label="RMS Loyalty">
+            <span className="bc-script-logo">RMS<span>•</span>Loyalty</span>
+            <small>DIGITAL GUEST CARD</small>
           </div>
         </div>
 
@@ -1219,7 +1207,7 @@ function LoyaltyAnalyticsPanel({ clients = [], transactions = [] }) {
       <div className="loyalty-card analytics-head-card">
         <div className="loyalty-card-head">
           <div>
-            <h2>Loyalty Analytics</h2>
+            <h2>Аналитика RMS Loyalty</h2>
             <p>Ключевые показатели программы лояльности и контроль активности по сканированию.</p>
           </div>
           <button type="button" onClick={loadAnalyticsScanRows} disabled={loading}>{loading ? 'Обновление…' : 'Обновить'}</button>
@@ -1230,15 +1218,15 @@ function LoyaltyAnalyticsPanel({ clients = [], transactions = [] }) {
       <section className="loyalty-kpis analytics-kpis">
         <div className="loyalty-kpi"><span>Клиентов</span><b>{analytics.totalClients}</b><small>в базе Loyalty</small></div>
         <div className="loyalty-kpi"><span>Активные 30 дней</span><b>{analytics.activeClients30}</b><small>по scan log</small></div>
-        <div className="loyalty-kpi"><span>Сегодня</span><b>{analytics.todayStamps}</b><small>начислено напитков</small></div>
-        <div className="loyalty-kpi"><span>Этот месяц</span><b>{analytics.monthStamps}</b><small>начислено напитков</small></div>
+        <div className="loyalty-kpi"><span>Сегодня</span><b>{analytics.todayStamps}</b><small>успешных начислений</small></div>
+        <div className="loyalty-kpi"><span>Этот месяц</span><b>{analytics.monthStamps}</b><small>успешных начислений</small></div>
         <div className="loyalty-kpi"><span>Подарков выдано</span><b>{analytics.giftsRedeemed}</b><small>по журналу</small></div>
         <div className="loyalty-kpi"><span>Блокировки</span><b>{analytics.blockedCount}</b><small>cooldown попытки</small></div>
       </section>
 
       <section className="analytics-grid">
         <div className="loyalty-card analytics-card">
-          <div className="loyalty-card-head"><div><h2>VIP уровни</h2><p>Распределение клиентов по уровням Barista&Chef.</p></div></div>
+          <div className="loyalty-card-head"><div><h2>Уровни клиентов</h2><p>Распределение по уровням текущей программы.</p></div></div>
           <div className="vip-analytics-list">
             {analytics.vipDistribution.map((level) => (
               <div className={`vip-analytics-row vip-${level.key}`} key={level.key}>
@@ -1251,7 +1239,7 @@ function LoyaltyAnalyticsPanel({ clients = [], transactions = [] }) {
 
         <div className="loyalty-card analytics-card">
           <div className="loyalty-card-head"><div><h2>TOP клиентов</h2><p>Кто чаще всего использует карту.</p></div></div>
-          <div className="analytics-rank-list">{renderRankRows(analytics.topClients, 'Пока нет начислений.', 'напитков')}</div>
+          <div className="analytics-rank-list">{renderRankRows(analytics.topClients, 'Пока нет начислений.', 'операций')}</div>
         </div>
 
         <div className="loyalty-card analytics-card">
@@ -1323,8 +1311,8 @@ function LoyaltyWalletLanding({ token }) {
     <div className="wallet-public-page">
       <div className="wallet-public-shell">
         <div className="wallet-public-top">
-          <b>Barista&Chef</b>
-          <span>Drink Loyalty Card</span>
+          <b>RMS Loyalty</b>
+          <span>Digital Guest Card</span>
         </div>
 
         {loading && <div className="wallet-public-state">Загрузка карты…</div>}
@@ -1362,81 +1350,28 @@ function readJoinBranchFromLocation() {
   return params.get('branch') || params.get('b') || 'BC1'
 }
 
-function normalizePublicPhone(value) {
-  const raw = String(value || '').trim()
-  if (!raw) return ''
-  const digits = normalizeDigits(raw)
-  if (!digits) return raw
-  if (digits.startsWith('994')) return `+${digits}`
-  if (digits.length === 9) return `+994${digits}`
-  return raw.startsWith('+') ? raw : `+${digits}`
-}
-
 function LoyaltyPublicJoin() {
   const branch = readJoinBranchFromLocation()
-  const [form, setForm] = useState({ name: '', phone: '' })
-  const [client, setClient] = useState(null)
-  const [loading, setLoading] = useState(false)
-  const [message, setMessage] = useState('')
-  const [error, setError] = useState('')
-
-  async function submitJoin(e) {
-    e.preventDefault()
-    setMessage('')
-    setError('')
-    const phone = normalizePublicPhone(form.phone)
-    const name = String(form.name || '').trim() || 'Гость'
-    if (!phone) return setError('Укажите номер телефона.')
-    setLoading(true)
-    try {
-      const { data, error: rpcError } = await supabase.rpc('rms_loyalty_public_join', {
-        p_name: name,
-        p_phone: phone,
-        p_branch_id: branch,
-      })
-      if (rpcError) throw rpcError
-      const row = Array.isArray(data) ? data[0] : data
-      if (!row) throw new Error('Карта не создана. Попробуйте ещё раз.')
-      setClient(row)
-      setMessage('Карта готова.')
-    } catch (err) {
-      setError(err?.message || 'Не удалось создать карту.')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  if (client) {
-    return (
-      <div className="loyalty-public-join-page">
-        <div className="loyalty-public-join-shell">
-          <div className="public-join-brand">
-            <div className="public-join-logo"><span>Barista<span>&amp;Chef</span></span><small>COFFEE HOUSE</small></div>
-            <b>Карта готова</b>
-            <p>Покажите QR на кассе для начисления напитков и выдачи подарков.</p>
-          </div>
-          {message && <div className="public-join-alert">{message}</div>}
-          <div className="public-join-result"><DrinkStampCard client={client} /></div>
-        </div>
-      </div>
-    )
-  }
+  const loyaltyUrl = new URL('/', getPublicOrigin())
+  loyaltyUrl.searchParams.set('qr', 'menu')
+  loyaltyUrl.searchParams.set('branch', branch)
+  loyaltyUrl.searchParams.set('table', '1')
 
   return (
     <div className="loyalty-public-join-page">
       <div className="loyalty-public-join-shell">
         <div className="public-join-brand">
-          <div className="public-join-logo"><span>Barista<span>&amp;Chef</span></span><small>COFFEE HOUSE</small></div>
-          <b>Loyalty Card</b>
-          <p>Введите имя и телефон. Карта откроется сразу после регистрации.</p>
+          <div className="public-join-logo"><span>RMS<span>•</span>Loyalty</span><small>DIGITAL GUEST CARD</small></div>
+          <b>RMS Loyalty</b>
+          <p>Откройте карту гостя в QR Menu и подтвердите email одноразовым кодом.</p>
         </div>
-        <form className="public-join-form" onSubmit={submitJoin}>
-          {error && <div className="public-join-alert error">{error}</div>}
-          <label>Имя<input value={form.name} onChange={(e) => setForm((v) => ({ ...v, name: e.target.value }))} placeholder="Например: Ayxan" /></label>
-          <label>Телефон<input value={form.phone} onChange={(e) => setForm((v) => ({ ...v, phone: e.target.value }))} placeholder="+994..." inputMode="tel" /></label>
-          <button type="submit" disabled={loading}>{loading ? 'Создаём карту…' : 'Получить карту'}</button>
-          <small className="public-join-note">Филиал: {branch}. Если карта уже есть, откроется существующая карта.</small>
-        </form>
+        <div className="public-join-form public-join-email-card">
+          <div className="public-join-email-icon">@</div>
+          <b>Без пароля и SMS</b>
+          <p>Код входа будет отправлен на указанный email. После подтверждения откроется персональная карта.</p>
+          <a href={loyaltyUrl.toString()}>Открыть RMS Loyalty</a>
+          <small className="public-join-note">Филиал: {branch}</small>
+        </div>
       </div>
     </div>
   )

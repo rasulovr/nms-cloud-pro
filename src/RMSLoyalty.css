@@ -1566,7 +1566,11 @@
 
 .loyalty-admin-v2 .loyalty-pos-tab,.loyalty-admin-v2 .loyalty-analytics-panel{min-width:0}
 .loyalty-admin-v2 .loyalty-card{border-color:var(--loy-v2-line);border-radius:20px;box-shadow:0 10px 28px rgba(31,55,88,.055)}
-.loyalty-admin-v2 .analytics-head-card .loyalty-card-head h2:before{content:"RMS ";color:var(--loy-v2-blue)}
+
+.public-join-email-card{justify-items:center;text-align:center}
+.public-join-email-card .public-join-email-icon{display:grid;place-items:center;width:54px;height:54px;border-radius:17px;background:#ef2330;color:#fff;font-size:24px;font-weight:950;box-shadow:0 14px 28px rgba(239,35,48,.22)}
+.public-join-email-card>b{font-size:20px}.public-join-email-card>p{margin:0;color:rgba(255,255,255,.68);font-size:13px;line-height:1.5;font-weight:700}
+.public-join-email-card>a{display:flex;align-items:center;justify-content:center;width:100%;min-height:54px;border-radius:17px;background:#ef2330;color:#fff;text-decoration:none;font-size:16px;font-weight:950;box-shadow:0 18px 34px rgba(239,35,48,.25)}
 
 @media(max-width:1280px){
   .loyalty-admin-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
