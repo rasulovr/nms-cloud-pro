@@ -4,6 +4,17 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>RMS Pro</title>
+    <script>
+      (() => {
+        const host = location.hostname.toLowerCase().replace(/\.$/, '')
+        const slug = host.endsWith('.rms.rest') ? host.slice(0, -9) : ''
+        const reserved = ['www','app','login','auth','api','admin','superadmin','mail','smtp','send','status','support','docs','cdn','assets','static']
+        const params = new URLSearchParams(location.search)
+        if ((/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(slug) && !reserved.includes(slug)) || params.get('qr') === 'menu' || location.pathname.startsWith('/qr-menu') || location.hash.startsWith('#/qr-menu')) {
+          document.documentElement.dataset.qrGuest = 'true'
+        }
+      })()
+    </script>
     <link rel="stylesheet" href="/src/RMSProQRAdminTheme.css" />
   </head>
   <body>
@@ -24,6 +35,11 @@
       .rms-startup-bar{height:5px;margin-top:22px;overflow:hidden;border-radius:999px;background:#e5edf6}
       .rms-startup-bar i{display:block;width:45%;height:100%;border-radius:inherit;background:linear-gradient(90deg,#10233f,#2f6de1);animation:rms-startup 1.15s ease-in-out infinite}
       @keyframes rms-startup{0%{transform:translateX(-110%)}100%{transform:translateX(245%)}}
+      html[data-qr-guest] body{margin:0;background:#e8dfd0}
+      html[data-qr-guest] #root > .rms-startup{background:#e8dfd0;padding:24px;min-height:100dvh}
+      html[data-qr-guest] .rms-startup-card:has(.rms-startup-bar){padding:0;border:0;background:none;box-shadow:none}
+      html[data-qr-guest] .rms-startup-card:has(.rms-startup-bar) > *{display:none}
+      html[data-qr-guest] .rms-startup-card:has(.rms-startup-bar)::after{content:'Загружаем меню…';font-size:14px;color:#71685d}
     </style>
     <script>var branches = [];</script>
     <script defer src="/assets/qr-admin-host-v1.js"></script>
@@ -38,7 +54,13 @@
 
       if (supabaseUrl && supabaseKey) {
         import('/src/tenantDomain.js').then(async ({ prepareTenantDomain }) => {
-          if (await prepareTenantDomain({ root, supabaseUrl, supabaseKey })) return import('/src/main.jsx')
+          const guest = document.documentElement.dataset.qrGuest === 'true'
+          const guestModule = guest ? import('/src/qrEntry.jsx') : null
+          const [ready, qr] = await Promise.all([prepareTenantDomain({ root, supabaseUrl, supabaseKey }), guestModule])
+          if (ready) {
+            if (guest) qr.mountQrMenu(root)
+            else return import('/src/main.jsx')
+          }
         }).catch(() => { root.textContent = 'Не удалось открыть RMS. Обновите страницу.' })
       } else {
         document.body.style.margin = '0'
