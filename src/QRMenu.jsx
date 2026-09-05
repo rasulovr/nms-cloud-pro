@@ -443,6 +443,7 @@ export default function QRMenu() {
   const [isProductClosing, setIsProductClosing] = useState(false);
   const [dayOfferPhase, setDayOfferPhase] = useState("hidden");
   const dayOfferShownRef = useRef(false);
+  const [displayedDayOffer, setDisplayedDayOffer] = useState(null);
   const productModalRef = useRef(null);
   const productModalCardRef = useRef(null);
   const [modalQuantity, setModalQuantity] = useState(1);
@@ -826,10 +827,31 @@ export default function QRMenu() {
     return { product, eyebrow, description };
   }, [smartRecommendations, mealRecommendation, language, mealMoment, weatherOffer]);
   useEffect(() => {
-    if (screen !== "menu" || !contextualSpecialOffer || dayOfferShownRef.current) return;
+    if (screen !== "menu" || selectedProduct || !contextualSpecialOffer?.product?.image || dayOfferShownRef.current) return;
     dayOfferShownRef.current = true;
-    setDayOfferPhase("visible");
-  }, [screen, contextualSpecialOffer]);
+    // Freeze the offer so a weather/language update cannot swap its image mid-display.
+    setDisplayedDayOffer(contextualSpecialOffer);
+    setDayOfferPhase("loading");
+  }, [screen, selectedProduct, contextualSpecialOffer]);
+  useEffect(() => {
+    if (dayOfferPhase !== "loading") return undefined;
+    if (screen !== "menu" || selectedProduct) {
+      setDayOfferPhase("hidden");
+      return undefined;
+    }
+    const timer = window.setTimeout(() => setDayOfferPhase("hidden"), 8000);
+    return () => window.clearTimeout(timer);
+  }, [dayOfferPhase, screen, selectedProduct]);
+  const revealDayOffer = async (event) => {
+    const image = event.currentTarget;
+    try {
+      if (image.decode) await image.decode();
+      if (!image.naturalWidth) throw new Error("Offer image unavailable");
+      setDayOfferPhase((phase) => phase === "loading" ? "visible" : phase);
+    } catch (_) {
+      setDayOfferPhase((phase) => phase === "loading" ? "hidden" : phase);
+    }
+  };
   useEffect(() => {
     if (dayOfferPhase !== "visible") return undefined;
     const timer = window.setTimeout(() => setDayOfferPhase("closing"), 5000);
@@ -841,7 +863,7 @@ export default function QRMenu() {
     return () => window.clearTimeout(timer);
   }, [dayOfferPhase]);
   useEffect(() => {
-    if (dayOfferPhase === "hidden") return undefined;
+    if (dayOfferPhase !== "visible" && dayOfferPhase !== "closing") return undefined;
     const previousOverflow = document.body.style.overflow;
     const closeOnEscape = (event) => {
       if (event.key === "Escape") setDayOfferPhase("closing");
@@ -1282,18 +1304,21 @@ export default function QRMenu() {
           </article>
         </div>}
 
-      {contextualSpecialOffer && dayOfferPhase !== "hidden" && <button
+      {displayedDayOffer && dayOfferPhase !== "hidden" && <button
         type="button"
+        style={dayOfferPhase === "loading" ? { visibility: "hidden", pointerEvents: "none" } : undefined}
+        aria-hidden={dayOfferPhase === "loading" ? true : undefined}
+        tabIndex={dayOfferPhase === "loading" ? -1 : 0}
         className={`qr-day-offer-overlay ${dayOfferPhase === "closing" ? "is-closing" : ""}`}
         onClick={() => setDayOfferPhase("closing")}
         aria-label={language === "ru" ? "Закрыть предложение дня" : language === "az" ? "Günün təklifini bağla" : "Close today's offer"}
       >
-        {contextualSpecialOffer.product.image && <img src={contextualSpecialOffer.product.image} alt="" onError={useRecoveredImageFallback} />}
+        <img src={displayedDayOffer.product.image} alt="" loading="eager" fetchPriority="high" onLoad={revealDayOffer} onError={() => setDayOfferPhase("hidden")} />
         <span className="qr-day-offer-shade" aria-hidden="true" />
         <span className="qr-day-offer-content">
-          <small>{contextualSpecialOffer.eyebrow}</small>
-          <strong>{contextualSpecialOffer.product.name}</strong>
-          <em>{contextualSpecialOffer.description}</em>
+          <small>{displayedDayOffer.eyebrow}</small>
+          <strong>{displayedDayOffer.product.name}</strong>
+          <em>{displayedDayOffer.description}</em>
           <span>{language === "ru" ? "Нажмите, чтобы закрыть" : language === "az" ? "Bağlamaq üçün toxunun" : "Tap to close"}</span>
         </span>
       </button>}
