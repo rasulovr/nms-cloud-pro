@@ -628,6 +628,145 @@
   }
 }
 
+/* Full-screen day offer: frameless, translucent and intentionally temporary. */
+.app-shell .qr-day-offer-overlay {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 2400 !important;
+  width: 100vw !important;
+  width: 100dvw !important;
+  height: 100vh !important;
+  height: 100dvh !important;
+  display: grid !important;
+  place-items: end center !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  color: #fff !important;
+  text-align: left !important;
+  cursor: pointer !important;
+  background: rgba(7, 16, 13, .62) !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  outline: 0 !important;
+  box-shadow: none !important;
+  opacity: 1 !important;
+  transform: none !important;
+  filter: none !important;
+  backdrop-filter: blur(12px) saturate(110%) !important;
+  -webkit-backdrop-filter: blur(12px) saturate(110%) !important;
+  animation: qrDayOfferReveal 520ms cubic-bezier(.22, .8, .24, 1) both !important;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.app-shell .qr-day-offer-overlay:active,
+.app-shell .qr-day-offer-overlay:hover,
+.app-shell .qr-day-offer-overlay:focus {
+  color: #fff !important;
+  background: rgba(7, 16, 13, .62) !important;
+  opacity: 1 !important;
+  transform: none !important;
+  filter: none !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+.app-shell .qr-day-offer-overlay.is-closing {
+  pointer-events: none !important;
+  animation: qrDayOfferDismiss 520ms cubic-bezier(.55, 0, .78, .2) both !important;
+}
+
+.app-shell .qr-day-offer-overlay > img {
+  position: absolute !important;
+  inset: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  display: block !important;
+  object-fit: cover !important;
+  object-position: center !important;
+  opacity: .78 !important;
+  transform: scale(1.035) !important;
+  filter: saturate(.92) contrast(1.02) !important;
+  animation: qrDayOfferImage 5.5s ease-out both !important;
+}
+
+.app-shell .qr-day-offer-shade {
+  position: absolute !important;
+  inset: 0 !important;
+  background:
+    linear-gradient(180deg, rgba(7, 13, 11, .22) 0%, rgba(7, 13, 11, .12) 32%, rgba(7, 13, 11, .84) 100%),
+    rgba(20, 34, 27, .12) !important;
+}
+
+.app-shell .qr-day-offer-content {
+  position: relative !important;
+  z-index: 1 !important;
+  width: min(100%, 760px) !important;
+  display: grid !important;
+  gap: 10px !important;
+  box-sizing: border-box !important;
+  padding: 44px 28px max(42px, calc(env(safe-area-inset-bottom) + 28px)) !important;
+  background: linear-gradient(180deg, transparent, rgba(7, 14, 11, .28)) !important;
+}
+
+.app-shell .qr-day-offer-content small {
+  color: rgba(255, 255, 255, .82) !important;
+  font-size: clamp(12px, 2.8vw, 15px) !important;
+  font-weight: 750 !important;
+  line-height: 1.15 !important;
+  letter-spacing: .16em !important;
+  text-transform: uppercase !important;
+}
+
+.app-shell .qr-day-offer-content strong {
+  max-width: 14ch !important;
+  color: #fff !important;
+  font-family: Georgia, "Times New Roman", serif !important;
+  font-size: clamp(40px, 9vw, 76px) !important;
+  font-weight: 600 !important;
+  line-height: .98 !important;
+  letter-spacing: -.035em !important;
+  text-wrap: balance;
+}
+
+.app-shell .qr-day-offer-content em {
+  color: rgba(255, 255, 255, .9) !important;
+  font-size: clamp(16px, 4vw, 22px) !important;
+  font-style: normal !important;
+  line-height: 1.3 !important;
+}
+
+.app-shell .qr-day-offer-content > span {
+  margin-top: 14px !important;
+  color: rgba(255, 255, 255, .62) !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  letter-spacing: .04em !important;
+}
+
+@keyframes qrDayOfferReveal {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes qrDayOfferDismiss {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes qrDayOfferImage {
+  from { transform: scale(1.035); }
+  to { transform: scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-shell .qr-day-offer-overlay,
+  .app-shell .qr-day-offer-overlay.is-closing,
+  .app-shell .qr-day-offer-overlay > img {
+    animation-duration: 1ms !important;
+  }
+}
+
 /* One quiet glass language for the dish sheet controls and its copy surface. */
 @media (max-width: 680px) {
   .app-shell .product-modal-card {
@@ -1221,6 +1360,74 @@ body .app-shell.menu-view-showcase .product-card .stepper b {
     min-width: 18px !important;
     font-size: 13px !important;
   }
+}
+
+/* Approved press states: menu cards and their transparent/glass controls keep
+   exactly the same appearance while tapped. The dish sheet's separate enter
+   and leave animations remain unchanged. */
+html body .app-shell .menu-view-toggle button:active,
+html body .app-shell .product-card:active,
+html body .app-shell .product-card:has(.food-photo:active),
+html body .app-shell .product-card .add:active,
+html body .app-shell .product-card .stepper:active,
+html body .app-shell .product-card .stepper button:active:not(:disabled),
+html body .app-shell .product-modal .modal-close:active,
+html body .app-shell .product-modal .modal-add-button:active:not(:disabled),
+html body .app-shell .product-modal .modal-stepper button:active:not(:disabled) {
+  opacity: 1 !important;
+  filter: none !important;
+  transform: none !important;
+}
+
+html body .app-shell .product-card:has(.food-photo:active)::after,
+html body .app-shell .product-card:has(.food-photo:focus)::after,
+html body .app-shell .product-card:has(.food-photo:focus-visible)::after {
+  content: none !important;
+  display: none !important;
+  opacity: 0 !important;
+  background: none !important;
+  filter: none !important;
+}
+
+html body .app-shell .product-card:has(.food-photo:active) .food-photo img,
+html body .app-shell .product-card:has(.food-photo:focus) .food-photo img,
+html body .app-shell .product-card:has(.food-photo:focus-visible) .food-photo img,
+html body .app-shell .product-card .food-photo:active img,
+html body .app-shell .product-card .food-photo:focus img,
+html body .app-shell .product-card .food-photo:focus-visible img {
+  opacity: 1 !important;
+  filter: none !important;
+  transform: none !important;
+}
+
+@media (max-width: 680px) {
+  html body .app-shell .product-card .add:active,
+  html body .app-shell .product-card .stepper:active,
+  html body .app-shell .product-modal .modal-close:active,
+  html body .app-shell .product-modal .modal-add-button:active:not(:disabled),
+  html body .app-shell .product-modal .modal-stepper button:active:not(:disabled) {
+    background: rgba(255, 255, 255, .014) !important;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .11), 0 4px 12px rgba(0, 0, 0, .04) !important;
+  }
+
+  html body .app-shell .product-card .stepper button:active:not(:disabled) {
+    background: rgba(255, 255, 255, .036) !important;
+  }
+}
+
+/* Safari can retain :hover after a tap. Keep both hover and press geometry fixed. */
+html body .app-shell .product-card,
+html body .app-shell .product-card:hover,
+html body .app-shell .product-card:active,
+html body .app-shell .product-card .food-photo,
+html body .app-shell .product-card .food-photo:hover,
+html body .app-shell .product-card .food-photo:active,
+html body .app-shell .product-card .food-photo img,
+html body .app-shell .product-card:hover .food-photo img {
+  transform: none !important;
+  filter: none !important;
+  opacity: 1 !important;
+  -webkit-tap-highlight-color: transparent;
 }
 
 /* Pressing a dish opens its details without dimming or tinting the photo. */

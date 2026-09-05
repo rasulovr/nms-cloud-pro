@@ -35,7 +35,7 @@ const productPriority = {
   night: [/сырн.*сет|cheese.*set|pendir.*set/i, /вителло|vitello|тоннат|tonnato/i, /брускет|bruschett/i, /стейк|steak|рибай|ribeye|утк|duck|ördək/i, /бургер|burger/i, /сэндвич|sandwich|sendviç/i, /пицц|pizza/i]
 };
 const getMealMoment = (hour) => hour >= 8 && hour < 12 ? "breakfast" : hour >= 12 && hour < 18 ? "lunch" : hour >= 18 && hour < 20 ? "evening" : "night";
-const getContextualOfferCopy = (language, moment, weatherKind) => {
+const getContextualOfferCopy = (language, moment, weatherKind, product) => {
   const weatherCopy = {
     az: {
       rainy: ["Yağışlı günün seçimi", "İsinmək və rahat bir fasilə üçün"],
@@ -82,6 +82,22 @@ const getContextualOfferCopy = (language, moment, weatherKind) => {
       night: ["For the evening", "A delicious end to a good day"]
     }
   };
+  const dessertCopy = {
+    az: ["Günün şirin seçimi", "Fasilənizə şirin bir toxunuş"],
+    ru: ["Сладкий выбор дня", "Для приятной паузы с десертом"],
+    en: ["A sweet choice", "A little treat for your break"]
+  };
+  if (isDessert(product)) return dessertCopy[language] || dessertCopy.ru;
+
+  // Weather-led wording such as “refreshing” belongs only to drinks. Food,
+  // salads and breakfast items use the relevant time-of-day recommendation.
+  if (!isLowPriorityDrink(product)) return timeCopy[language]?.[moment] || timeCopy.ru.lunch;
+  const coldDrink = /^(ХОЛОДНЫЙ КОФЕ|ЛИМОНАДЫ|ХОЛОДНЫЕ НАПИТКИ)$/i.test(String(product?.category || "")) || isIcedTea(product);
+  // A hot coffee is not a refreshing cold drink, nor is lemonade warming.
+  if ((weatherKind === "sunny" && !coldDrink) || (["rainy", "windy", "cool"].includes(weatherKind) && coldDrink)) {
+    return timeCopy[language]?.[moment] || timeCopy.ru.lunch;
+  }
+
   const hasWeatherPriority = ["rainy", "windy", "cool", "sunny"].includes(weatherKind);
   return (hasWeatherPriority ? weatherCopy : timeCopy)[language]?.[hasWeatherPriority ? weatherKind : moment]
     || timeCopy.ru.lunch;
@@ -424,6 +440,8 @@ export default function QRMenu() {
   const [bonusRequest, setBonusRequest] = useState(0);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [isProductClosing, setIsProductClosing] = useState(false);
+  const [dayOfferPhase, setDayOfferPhase] = useState("hidden");
+  const dayOfferShownRef = useRef(false);
   const productModalRef = useRef(null);
   const productModalCardRef = useRef(null);
   const [modalQuantity, setModalQuantity] = useState(1);
@@ -764,9 +782,12 @@ export default function QRMenu() {
     return { moment, ...meta, product };
   }, [localizedProducts, bakuHour, branch, unavailable, t]);
   const smartRecommendations = useMemo(() => {
-    const available = localizedProducts.filter((product) => product.branches.includes(branch) && !unavailable.includes(product.id) && !isWineOrProsecco(product) && !isExtraCategory(product) && !isBottledOrPackagedDrink(product));
-    if (!available.length) return [];
     const moment = getMealMoment(bakuHour);
+    // Match the dish itself, not incidental words in a long description.
+    const offerIdentity = (product) => `${product.name || ""} ${product.sourceName || ""} ${product.category || ""}`;
+    const isBreakfastDish = (product) => /завтрак|breakfast|səhər|омлет|omelette|omlet|сырник|syrniki|sırnik|шакшук|shakshuka|şakşuka|granola|гранола|овсян|oatmeal/i.test(offerIdentity(product));
+    const available = localizedProducts.filter((product) => product.branches.includes(branch) && !unavailable.includes(product.id) && !isWineOrProsecco(product) && !isExtraCategory(product) && !isBottledOrPackagedDrink(product) && (moment === "breakfast" || !isBreakfastDish(product)));
+    if (!available.length) return [];
     const momentPatterns = {
       breakfast: /səhər|завтрак|breakfast|omlet|омлет|şakşuka|шакшук|sırnik|сырник|croissant|круас|qəhvə|кофе|coffee|cappucc|капуч/i,
       lunch: /salat|салат|salad|şorba|суп|soup|boul|боул|bowl|burger|бургер|pizza|пицц|hummus|хумус/i,
@@ -783,7 +804,7 @@ export default function QRMenu() {
     const daySeed = Number(new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Baku", day: "numeric" }).format(new Date()));
     return available
       .map((product, index) => {
-        const text = productSearchText(product);
+        const text = offerIdentity(product);
         const timeMatch = (momentPatterns[moment] || momentPatterns.dinner).test(text);
         const weatherMatch = weatherPattern.test(text);
         const hasPhoto = Boolean(product.image);
@@ -799,9 +820,37 @@ export default function QRMenu() {
   const contextualSpecialOffer = useMemo(() => {
     const product = smartRecommendations[0] || mealRecommendation?.product;
     if (!product) return null;
-    const [eyebrow, description] = getContextualOfferCopy(language, mealMoment, weatherOffer?.kind || "clear");
+    const [eyebrow, description] = getContextualOfferCopy(language, mealMoment, weatherOffer?.kind || "clear", product);
     return { product, eyebrow, description };
   }, [smartRecommendations, mealRecommendation, language, mealMoment, weatherOffer]);
+  useEffect(() => {
+    if (screen !== "menu" || !contextualSpecialOffer || dayOfferShownRef.current) return;
+    dayOfferShownRef.current = true;
+    setDayOfferPhase("visible");
+  }, [screen, contextualSpecialOffer]);
+  useEffect(() => {
+    if (dayOfferPhase !== "visible") return undefined;
+    const timer = window.setTimeout(() => setDayOfferPhase("closing"), 5000);
+    return () => window.clearTimeout(timer);
+  }, [dayOfferPhase]);
+  useEffect(() => {
+    if (dayOfferPhase !== "closing") return undefined;
+    const timer = window.setTimeout(() => setDayOfferPhase("hidden"), 520);
+    return () => window.clearTimeout(timer);
+  }, [dayOfferPhase]);
+  useEffect(() => {
+    if (dayOfferPhase === "hidden") return undefined;
+    const previousOverflow = document.body.style.overflow;
+    const closeOnEscape = (event) => {
+      if (event.key === "Escape") setDayOfferPhase("closing");
+    };
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [dayOfferPhase]);
   const pairings = useMemo(() => {
     if (!selectedProduct || isExtraCategory(selectedProduct)) return [];
     const referenceProduct = resolveReferenceMenuProduct(selectedProduct);
@@ -1051,11 +1100,6 @@ export default function QRMenu() {
       {notice && <div className="toast">{notice}</div>}
 
       {screen === "menu" && <section className="content">
-                    {contextualSpecialOffer && <button type="button" className="qr-special-offer qr-contextual-special-offer" onClick={() => openProduct(contextualSpecialOffer.product)} aria-label={`${t.openPhoto}: ${contextualSpecialOffer.product.name}`}>
-                      {contextualSpecialOffer.product.image && <img src={contextualSpecialOffer.product.image} alt="" onError={useRecoveredImageFallback} />}
-                      <span className="qr-special-offer-copy"><small>{contextualSpecialOffer.eyebrow}</small><strong>{contextualSpecialOffer.product.name}</strong><em>{contextualSpecialOffer.description}</em></span>
-                      <span className="qr-contextual-special-offer-arrow" aria-hidden="true">›</span>
-                    </button>}
                     <div className="menu-toolbar">
             <div className="categories">
               {categories.map((name) => <button className={category === name ? "active" : ""} key={name} onClick={() => setCategory(name)}>{localizeCategory(name, language) || categoryTranslations[language][name] || categoryLabel(name)}</button>)}
@@ -1235,6 +1279,22 @@ export default function QRMenu() {
             </div>
           </article>
         </div>}
+
+      {contextualSpecialOffer && dayOfferPhase !== "hidden" && <button
+        type="button"
+        className={`qr-day-offer-overlay ${dayOfferPhase === "closing" ? "is-closing" : ""}`}
+        onClick={() => setDayOfferPhase("closing")}
+        aria-label={language === "ru" ? "Закрыть предложение дня" : language === "az" ? "Günün təklifini bağla" : "Close today's offer"}
+      >
+        {contextualSpecialOffer.product.image && <img src={contextualSpecialOffer.product.image} alt="" onError={useRecoveredImageFallback} />}
+        <span className="qr-day-offer-shade" aria-hidden="true" />
+        <span className="qr-day-offer-content">
+          <small>{contextualSpecialOffer.eyebrow}</small>
+          <strong>{contextualSpecialOffer.product.name}</strong>
+          <em>{contextualSpecialOffer.description}</em>
+          <span>{language === "ru" ? "Нажмите, чтобы закрыть" : language === "az" ? "Bağlamaq üçün toxunun" : "Tap to close"}</span>
+        </span>
+      </button>}
 
       {cartCount > 0 && screen === "menu" && <button className="floating-cart" onClick={() => setScreen("cart")}><span>{cartCount} {t.items}</span><b>{money(cartTotal)} →</b></button>}
       <footer><span>Powered by</span><b>RMS PRO</b><small>QR Menu + Loyalty</small></footer>
