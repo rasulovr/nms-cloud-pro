@@ -422,10 +422,8 @@ export default function QRMenu() {
   const [table] = useState(() => menuParams.get("table") || "");
   const [screen, setScreen] = useState("menu");
   const [category, setCategory] = useState("\u0412\u0441\u0435");
-  const [menuView, setMenuView] = useState(() => {
-    const savedView = window.localStorage.getItem("rms-qr-menu-view-v2");
-    return ["grid", "list", "showcase"].includes(savedView) ? savedView : "showcase";
-  });
+  const menuView = "showcase";
+  const categoryDialogRef = useRef(null);
   const [cart, setCart] = useState([]);
   const [notice, setNotice] = useState("");
   const [lastAddedId, setLastAddedId] = useState(null);
@@ -484,9 +482,6 @@ export default function QRMenu() {
     setCart((current) => current.map((product) => localizeProduct(product, language)));
     setSelectedProduct((current) => current ? localizeProduct(current, language) : current);
   }, [language]);
-  useEffect(() => {
-    window.localStorage.setItem("rms-qr-menu-view-v2", menuView);
-  }, [menuView]);
   useEffect(() => {
     let active = true;
     setLoading(true);
@@ -1124,33 +1119,38 @@ export default function QRMenu() {
       {notice && <div className="toast">{notice}</div>}
 
       {screen === "menu" && <section className="content">
-                    <div className="menu-toolbar">
-            <div className="categories">
-              {categories.map((name) => <button className={category === name ? "active" : ""} key={name} onClick={() => setCategory(name)}>{localizeCategory(name, language) || categoryTranslations[language][name] || categoryLabel(name)}</button>)}
-            </div>
-            <div className="menu-view-toggle">
-              <button
-                type="button"
-                className="active"
-                onClick={(event) => {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  setMenuView((current) => current === "grid" ? "list" : current === "list" ? "showcase" : "grid");
-                }}
-                aria-label={menuView === "grid"
-                  ? (language === "ru" ? "Показать по одной позиции в ряду" : language === "az" ? "Hər sırada bir mövqe göstər" : "Show one item per row")
-                  : menuView === "list"
-                  ? (language === "ru" ? "Показать крупное фото с описанием" : language === "az" ? "Böyük foto və təsviri göstər" : "Show large photo with description")
-                  : (language === "ru" ? "Показать по две позиции в ряду" : language === "az" ? "Hər sırada iki mövqe göstər" : "Show two items per row")}
-              >
-                {menuView === "grid"
-                  ? <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="7" rx="1.5" /><rect x="3" y="14" width="18" height="7" rx="1.5" /></svg>
-                  : menuView === "list"
-                  ? <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="11" rx="1.5" /><rect x="3" y="16" width="18" height="5" rx="1.5" /></svg>
-                  : <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" /><rect x="3" y="14" width="7" height="7" rx="1.5" /><rect x="14" y="14" width="7" height="7" rx="1.5" /></svg>}
-              </button>
+          {contextualSpecialOffer && <button type="button" className="qr-special-offer qr-contextual-special-offer" onClick={() => openProduct(contextualSpecialOffer.product)} aria-label={`${t.openPhoto}: ${contextualSpecialOffer.product.name}`}>
+            {contextualSpecialOffer.product.image && <img src={contextualSpecialOffer.product.image} alt="" onError={useRecoveredImageFallback} />}
+            <span className="qr-special-offer-copy"><small>{language === "ru" ? "Блюдо дня" : language === "az" ? "Günün yeməyi" : "Dish of the day"}</small><strong>{contextualSpecialOffer.product.name}</strong><em>{contextualSpecialOffer.description}</em></span>
+            <span className="qr-contextual-special-offer-arrow" aria-hidden="true">›</span>
+          </button>}
+          <div className="menu-toolbar" style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <button type="button" aria-haspopup="dialog" aria-controls="qr-category-dialog" aria-label={language === "ru" ? "Открыть категории" : language === "az" ? "Kateqoriyaları aç" : "Open categories"}
+              onClick={() => categoryDialogRef.current?.showModal()}
+              style={{ flex: "0 0 52px", width: 52, height: 52, display: "grid", placeItems: "center", border: "1px solid var(--line)", borderRadius: 16, background: "var(--card)", color: "var(--ink)" }}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" /></svg>
+            </button>
+            <div className="categories" style={{ flex: 1, minWidth: 0 }}>
+              {categories.slice(1).map((name) => <button type="button" className={category === name ? "active" : ""} key={name} onClick={() => setCategory(name)}>{localizeCategory(name, language) || categoryTranslations[language][name] || categoryLabel(name)}</button>)}
             </div>
           </div>
+          <dialog ref={categoryDialogRef} id="qr-category-dialog" aria-labelledby="qr-category-title"
+            onClick={(event) => { if (event.target === event.currentTarget) categoryDialogRef.current?.close(); }}
+            style={{ width: "min(90vw, 460px)", maxHeight: "75dvh", padding: 0, border: "1px solid var(--line)", borderRadius: 24, background: "var(--paper)", color: "var(--ink)" }}>
+            <div style={{ padding: 22 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
+                <h2 id="qr-category-title" style={{ margin: 0 }}>{language === "ru" ? "Категории" : language === "az" ? "Kateqoriyalar" : "Categories"}</h2>
+                <button type="button" aria-label={language === "ru" ? "Закрыть" : language === "az" ? "Bağla" : "Close"} onClick={() => categoryDialogRef.current?.close()} style={{ width: 44, height: 44, border: 0, borderRadius: 12, background: "var(--card)", color: "var(--ink)", fontSize: 26 }}>×</button>
+              </div>
+              <div style={{ display: "grid", gap: 8, marginTop: 18 }}>
+                {categories.map((name) => <button type="button" key={name} aria-pressed={category === name}
+                  onClick={() => { setCategory(name); categoryDialogRef.current?.close(); }}
+                  style={{ padding: "14px 16px", textAlign: "left", border: "1px solid var(--line)", borderRadius: 12, background: category === name ? "var(--green)" : "var(--card)", color: category === name ? "var(--paper)" : "var(--ink)" }}>
+                  {localizeCategory(name, language) || categoryTranslations[language][name] || categoryLabel(name)}
+                </button>)}
+              </div>
+            </div>
+          </dialog>
           <div className="product-grid">
             {availableProducts.map((product) => {
     const isStopped = unavailable.includes(product.id);
