@@ -1,3 +1,4 @@
+import { getTenantMenu } from "./tenantDomain";
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "./supabase";
 import { localizeCategory, localizeProduct } from "./qrMenuTranslations";
@@ -326,10 +327,10 @@ const normalizeProduct = (item, branch) => {
   const sourceName = customRu.name || menuOverride?.name || item.name || "";
   // A branch-level QR override is intentional guest-facing copy. In that case
   // do not replace it with the shared migration/reference catalogue.
-  const preserveReferenceCopy = branch === "BC1" || Boolean(menuOverride);
+  const preserveReferenceCopy = Boolean(getTenantMenu()) || branch === "BC1" || Boolean(menuOverride);
   const reference = preserveReferenceCopy ? null : resolveReferenceMenuProduct(item);
   const referenceName = reference?.translations?.ru?.name || sourceName;
-  const override = productionProductOverrides[referenceName] || productionProductOverrides[sourceName] || {};
+  const override = getTenantMenu() ? {} : productionProductOverrides[referenceName] || productionProductOverrides[sourceName] || {};
   const sourceDescription = formatMenuDescription(
     customRu.description || menuOverride?.description || reference?.translations?.ru?.description || item.description || ""
   );
@@ -490,20 +491,20 @@ export default function QRMenu() {
     setLoading(true);
     setConfiguredBranchName("");
     setBackgroundTheme("travertine");
-    const menuRequest = usesQrAdminCatalog
+    const menuRequest = getTenantMenu() ? Promise.resolve({ data: getTenantMenu(), error: null }) : usesQrAdminCatalog
       ? supabase.rpc("qr_get_public_menu_v2", { p_branch_code: branch, p_table_code: table || null })
       : supabase.rpc("qr_get_public_menu", { p_branch_code: branch });
     // Every branch reads this lightweight configuration so the visual theme
     // can be controlled independently. The menu-item filter still applies
     // only to branches that use the approved shared catalogue.
-    const branchMenuRequest = supabase
+    const branchMenuRequest = getTenantMenu() ? Promise.resolve({ data: null }) : supabase
       .from("rms_qr_tables")
       .select("qr_code_url")
       .eq("branch_id", branch)
       .eq("table_number", branchMenuConfigTable)
       .maybeSingle();
-    const recommendationsRequest = supabase.from("rms_qr_recommendations").select("*").eq("is_active", true);
-    const baristaChefThemeRequest = branch === "BC5"
+    const recommendationsRequest = getTenantMenu() ? Promise.resolve({ data: [] }) : supabase.from("rms_qr_recommendations").select("*").eq("is_active", true);
+    const baristaChefThemeRequest = !getTenantMenu() && branch === "BC5"
       ? fetch(baristaChefQrSettingsEndpoint, {
           method: "POST",
           headers: {
@@ -529,7 +530,7 @@ export default function QRMenu() {
         const parsed = JSON.parse(String(branchMenuResult.data?.qr_code_url || ""));
         if (parsed && typeof parsed === "object") branchMenuConfig = parsed;
       } catch (_error) {}
-      setConfiguredBranchName(String(publishedMenu?.branch?.name || branchMenuConfig?.branch_name || "").trim());
+      setConfiguredBranchName(String(publishedMenu?.organization?.name || publishedMenu?.branch?.name || branchMenuConfig?.branch_name || "").trim());
       setBackgroundTheme(
         hasRequestedTheme
           ? requestedTheme
@@ -577,6 +578,7 @@ export default function QRMenu() {
   }, [branch, table, usesQrAdminCatalog]);
   useEffect(() => {
     let active = true;
+    if (getTenantMenu()) { setBranchInfo(null); return; }
     supabase.from("rms_qr_info").select("branch_id,wifi_name,wifi_password,working_hours,instagram").eq("branch_id", branch).maybeSingle().then(({ data }) => {
       if (active) setBranchInfo(data || null);
     });

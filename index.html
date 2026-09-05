@@ -37,7 +37,9 @@
         import.meta.env.VITE_SUPABASE_ANON_KEY
 
       if (supabaseUrl && supabaseKey) {
-        import('/src/main.jsx')
+        import('/src/tenantDomain.js').then(async ({ prepareTenantDomain }) => {
+          if (await prepareTenantDomain({ root, supabaseUrl, supabaseKey })) return import('/src/main.jsx')
+        }).catch(() => { root.textContent = 'Не удалось открыть RMS. Обновите страницу.' })
       } else {
         document.body.style.margin = '0'
         document.body.style.background = '#f8fafc'
