@@ -1165,8 +1165,8 @@ export default function QRMenu() {
           <div className="menu-toolbar" style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <button type="button" aria-haspopup="dialog" aria-controls="qr-category-dialog" aria-label={language === "ru" ? "Открыть категории" : language === "az" ? "Kateqoriyaları aç" : "Open categories"}
               onClick={() => categoryDialogRef.current?.showModal()}
-              style={{ flex: "0 0 52px", width: 52, height: 52, display: "grid", placeItems: "center", border: "1px solid var(--line)", borderRadius: 16, background: "var(--card)", color: "var(--ink)" }}>
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" /></svg>
+              style={{ flex: "0 0 52px", width: 52, minWidth: 52, height: 52, padding: 0, margin: 0, boxSizing: "border-box", lineHeight: 1, display: "grid", placeItems: "center", border: "1px solid var(--line)", borderRadius: 16, background: "var(--card)", color: "var(--ink)" }}>
+              <svg style={{ display: "block" }} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" /></svg>
             </button>
             <div className="categories" style={{ flex: 1, minWidth: 0 }}>
               {categories.slice(1).map((name) => <button type="button" className={category === name ? "active" : ""} key={name} onClick={() => setCategory(name)}>{localizeCategory(name, language) || categoryTranslations[language][name] || categoryLabel(name)}</button>)}
@@ -1178,7 +1178,9 @@ export default function QRMenu() {
             <div style={{ padding: 22 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
                 <h2 id="qr-category-title" style={{ margin: 0 }}>{language === "ru" ? "Категории" : language === "az" ? "Kateqoriyalar" : "Categories"}</h2>
-                <button type="button" aria-label={language === "ru" ? "Закрыть" : language === "az" ? "Bağla" : "Close"} onClick={() => categoryDialogRef.current?.close()} style={{ width: 44, height: 44, border: 0, borderRadius: 12, background: "var(--card)", color: "var(--ink)", fontSize: 26 }}>×</button>
+                <button type="button" aria-label={language === "ru" ? "Закрыть" : language === "az" ? "Bağla" : "Close"} onClick={() => categoryDialogRef.current?.close()} style={{ flex: "0 0 44px", width: 44, minWidth: 44, height: 44, padding: 0, margin: 0, boxSizing: "border-box", lineHeight: 1, display: "grid", placeItems: "center", border: 0, borderRadius: 12, background: "var(--card)", color: "var(--ink)" }}>
+                  <svg style={{ display: "block" }} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
+                </button>
               </div>
               <div style={{ display: "grid", gap: 8, marginTop: 18 }}>
                 {categories.map((name) => <button type="button" key={name} aria-pressed={category === name}
