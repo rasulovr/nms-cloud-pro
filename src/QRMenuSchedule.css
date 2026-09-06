@@ -645,7 +645,7 @@
   color: #fff !important;
   text-align: left !important;
   cursor: pointer !important;
-  background: rgba(7, 16, 13, .62) !important;
+  background: #07100d !important;
   border: 0 !important;
   border-radius: 0 !important;
   outline: 0 !important;
@@ -653,8 +653,8 @@
   opacity: 1 !important;
   transform: none !important;
   filter: none !important;
-  backdrop-filter: blur(12px) saturate(110%) !important;
-  -webkit-backdrop-filter: blur(12px) saturate(110%) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
   animation: qrDayOfferReveal 520ms cubic-bezier(.22, .8, .24, 1) both !important;
   -webkit-tap-highlight-color: transparent;
 }
@@ -663,7 +663,7 @@
 .app-shell .qr-day-offer-overlay:hover,
 .app-shell .qr-day-offer-overlay:focus {
   color: #fff !important;
-  background: rgba(7, 16, 13, .62) !important;
+  background: #07100d !important;
   opacity: 1 !important;
   transform: none !important;
   filter: none !important;
@@ -684,7 +684,7 @@
   display: block !important;
   object-fit: cover !important;
   object-position: center !important;
-  opacity: .78 !important;
+  opacity: 1 !important;
   transform: scale(1.035) !important;
   filter: saturate(.92) contrast(1.02) !important;
   animation: qrDayOfferImage 5.5s ease-out both !important;
@@ -1113,7 +1113,7 @@ body .app-shell.menu-view-showcase .product-card {
   aspect-ratio: auto !important;
   overflow: hidden !important;
   color: #263128 !important;
-  background: #fffdf8 !important;
+  background: transparent !important;
   border: 1px solid rgba(255, 255, 255, .94) !important;
   border-radius: 26px !important;
   box-shadow: 0 16px 38px rgba(44, 37, 27, .14) !important;
@@ -1156,7 +1156,9 @@ body .app-shell.menu-view-showcase .product-card .product-body {
   display: block !important;
   padding: 17px 18px 16px !important;
   color: #263128 !important;
-  background: #fffdf8 !important;
+  background: rgba(255, 253, 248, .76) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  backdrop-filter: blur(16px) !important;
   pointer-events: auto !important;
 }
 
