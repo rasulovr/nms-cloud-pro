@@ -1198,7 +1198,7 @@ export default function QRMenu() {
               <div style={{ display: "grid", gap: 8, marginTop: 18 }}>
                 {[categories[0], ...Object.keys(menuGroupLabels.ru), ...categories.slice(1)].map((name) => <button type="button" key={name} aria-pressed={category === name}
                   onClick={() => { setCategory(name); categoryDialogRef.current?.close(); }}
-                  style={{ padding: "14px 16px", textAlign: "left", border: "1px solid var(--line)", borderRadius: 12, background: category === name ? "var(--green)" : "var(--card)", color: category === name ? "var(--paper)" : "var(--ink)" }}>
+                  style={{ padding: "14px 16px", textAlign: "left", border: name.startsWith("group:") ? "1px solid #a7b09a" : "1px solid var(--line)", borderRadius: 12, background: category === name ? "var(--green)" : name.startsWith("group:") ? "#d6ddcc" : "var(--card)", color: category === name ? "var(--paper)" : name.startsWith("group:") ? "#2f4235" : "var(--ink)", fontWeight: name.startsWith("group:") ? 600 : 400 }}>
                   {(menuGroupLabels[language] || menuGroupLabels.ru)[name] || localizeCategory(name, language) || categoryTranslations[language][name] || categoryLabel(name)}
                 </button>)}
               </div>
