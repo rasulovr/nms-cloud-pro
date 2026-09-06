@@ -1562,3 +1562,36 @@ html body .app-shell.menu-view-showcase .product-card .stepper b {
   background: transparent !important;
   border-color: transparent !important;
 }
+
+/* Compact category picker: primary tiles and a two-column category list. */
+#qr-category-dialog .qr-category-picker { background: #f8f5ed; color: #30352c; }
+#qr-category-dialog .qr-category-all {
+  display: flex; align-items: center; justify-content: space-between;
+  width: 100%; min-height: 48px; padding: 10px 0; margin: 18px 0 14px;
+  border: 0; border-top: 1px solid #dcd8cd; border-bottom: 1px solid #dcd8cd;
+  border-radius: 0; background: transparent; color: #30352c; font-size: 15px;
+}
+#qr-category-dialog .qr-category-all span { font-size: 24px; line-height: 1; }
+#qr-category-dialog .qr-category-tiles { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 8px; }
+#qr-category-dialog .qr-category-tile {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px;
+  min-width: 0; min-height: 108px; padding: 14px 4px; margin: 0;
+  border: 1px solid transparent; border-radius: 12px; background: #eae7de; color: #343c30;
+  font-family: Georgia, serif; font-size: 15px; font-weight: 400; line-height: 1.25;
+}
+#qr-category-dialog .qr-category-tile svg { display: block; flex-shrink: 0; }
+#qr-category-dialog .qr-category-tile[aria-pressed="true"] { background: #73754b; color: #fffdf5; border-color: #73754b; }
+#qr-category-dialog .qr-category-show {
+  display: block; width: 100%; min-height: 44px; margin: 12px 0 0; padding: 10px 4px;
+  border: 0; border-radius: 8px; background: transparent; color: #344937; font-size: 14px; font-weight: 600;
+}
+#qr-category-dialog .qr-category-options {
+  display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px;
+  margin-top: 16px; padding-top: 16px; border-top: 1px solid #dcd8cd;
+}
+#qr-category-dialog .qr-category-options button {
+  min-width: 0; min-height: 48px; padding: 12px 10px; margin: 0;
+  border: 1px solid #dcd8cd; border-radius: 12px; background: transparent; color: #30352c;
+  text-align: left; font-size: 14px; line-height: 1.35; font-weight: 400; overflow-wrap: anywhere;
+}
+#qr-category-dialog .qr-category-options button[aria-pressed="true"] { background: #344937; border-color: #344937; color: #fffdf5; }

@@ -475,6 +475,7 @@ export default function QRMenu() {
   const [category, setCategory] = useState("\u0412\u0441\u0435");
   const menuView = "showcase";
   const categoryDialogRef = useRef(null);
+  const [pickerGroup, setPickerGroup] = useState(null);
   const [cart, setCart] = useState([]);
   const [notice, setNotice] = useState("");
   const [lastAddedId, setLastAddedId] = useState(null);
@@ -1177,7 +1178,7 @@ export default function QRMenu() {
           </button>}
           <div className="menu-toolbar" style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <button type="button" aria-haspopup="dialog" aria-controls="qr-category-dialog" aria-label={language === "ru" ? "Открыть категории" : language === "az" ? "Kateqoriyaları aç" : "Open categories"}
-              onClick={() => categoryDialogRef.current?.showModal()}
+              onClick={() => { setPickerGroup(category.startsWith("group:") ? category : getMenuGroup({ category })); categoryDialogRef.current?.showModal(); }}
               style={{ flex: "0 0 52px", width: 52, minWidth: 52, height: 52, padding: 0, margin: 0, boxSizing: "border-box", lineHeight: 1, display: "grid", placeItems: "center", border: "1px solid var(--line)", borderRadius: 16, background: "var(--card)", color: "var(--ink)" }}>
               <svg style={{ display: "block" }} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" /></svg>
             </button>
@@ -1188,17 +1189,31 @@ export default function QRMenu() {
           <dialog ref={categoryDialogRef} id="qr-category-dialog" aria-labelledby="qr-category-title"
             onClick={(event) => { if (event.target === event.currentTarget) categoryDialogRef.current?.close(); }}
             style={{ width: "min(90vw, 460px)", maxHeight: "75dvh", padding: 0, border: "1px solid var(--line)", borderRadius: 24, background: "var(--paper)", color: "var(--ink)" }}>
-            <div style={{ padding: 22 }}>
+            <div className="qr-category-picker" style={{ padding: 22 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16 }}>
                 <h2 id="qr-category-title" style={{ margin: 0 }}>{language === "ru" ? "Категории" : language === "az" ? "Kateqoriyalar" : "Categories"}</h2>
                 <button type="button" aria-label={language === "ru" ? "Закрыть" : language === "az" ? "Bağla" : "Close"} onClick={() => categoryDialogRef.current?.close()} style={{ flex: "0 0 44px", width: 44, minWidth: 44, height: 44, padding: 0, margin: 0, boxSizing: "border-box", lineHeight: 1, display: "grid", placeItems: "center", border: 0, borderRadius: 12, background: "var(--card)", color: "var(--ink)" }}>
                   <svg style={{ display: "block" }} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
                 </button>
               </div>
-              <div style={{ display: "grid", gap: 8, marginTop: 18 }}>
-                {[categories[0], ...Object.keys(menuGroupLabels.ru), ...categories.slice(1)].map((name) => <button type="button" key={name} aria-pressed={category === name}
+              <button className="qr-category-all" type="button" onClick={() => { setCategory("Все"); setPickerGroup(null); categoryDialogRef.current?.close(); }}>
+                {language === "ru" ? "Все меню" : language === "az" ? "Bütün menyu" : "Full menu"}<span aria-hidden="true">›</span>
+              </button>
+              <div className="qr-category-tiles">
+                {Object.keys(menuGroupLabels.ru).map((group) => <button className="qr-category-tile" type="button" key={group} aria-pressed={pickerGroup === group} aria-controls="qr-category-options" onClick={() => { setPickerGroup(group); setCategory(group); }}>
+                  <svg width="32" height="32" viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    {group === "group:drinks" ? <><path d="M6 12h17v8a7 7 0 0 1-7 7h-3a7 7 0 0 1-7-7zM23 13h2a4 4 0 0 1 0 8h-2M4 29h23M11 8V4M17 8V2" /></> : group === "group:food" ? <><circle cx="17" cy="17" r="9"/><circle cx="17" cy="17" r="6"/><path d="M3 3v9m3-9v9M3 9h3M4.5 12v17M29 3v26M29 3c-3 3-3 10 0 12"/></> : <><path d="M4 16l17-9 7 9v12H4zM4 16h24M4 22h24M21 7V4"/><circle cx="21" cy="3" r="1.5"/></>}
+                  </svg>
+                  <span>{(menuGroupLabels[language] || menuGroupLabels.ru)[group]}</span>
+                </button>)}
+              </div>
+              {pickerGroup && <button className="qr-category-show" type="button" onClick={() => { setCategory(pickerGroup); categoryDialogRef.current?.close(); }}>
+                {language === "ru" ? "Показать все" : language === "az" ? "Hamısını göstər" : "Show all"} · {(menuGroupLabels[language] || menuGroupLabels.ru)[pickerGroup]}
+              </button>}
+              <div id="qr-category-options" className="qr-category-options">
+                {categories.slice(1).filter((name) => !pickerGroup || getMenuGroup({ category: name }) === pickerGroup).map((name) => <button type="button" key={name} aria-pressed={category === name}
                   onClick={() => { setCategory(name); categoryDialogRef.current?.close(); }}
-                  style={{ padding: "14px 16px", textAlign: "left", border: name.startsWith("group:") ? "1px solid #a7b09a" : "1px solid var(--line)", borderRadius: 12, background: category === name ? "var(--green)" : name.startsWith("group:") ? "#d6ddcc" : "var(--card)", color: category === name ? "var(--paper)" : name.startsWith("group:") ? "#2f4235" : "var(--ink)", fontWeight: name.startsWith("group:") ? 600 : 400 }}>
+                  >
                   {(menuGroupLabels[language] || menuGroupLabels.ru)[name] || localizeCategory(name, language) || categoryTranslations[language][name] || categoryLabel(name)}
                 </button>)}
               </div>
