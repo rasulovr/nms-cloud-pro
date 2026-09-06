@@ -1164,8 +1164,8 @@ body .app-shell.menu-view-showcase .product-card .product-body {
   padding: 17px 18px 16px !important;
   color: #263128 !important;
   background: rgba(255, 253, 248, .09) !important;
-  -webkit-backdrop-filter: blur(16px) !important;
-  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(1.6px) !important;
+  backdrop-filter: blur(1.6px) !important;
   pointer-events: auto !important;
 }
 
