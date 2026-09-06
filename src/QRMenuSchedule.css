@@ -1483,3 +1483,72 @@ html body .app-shell .product-card .food-photo:focus-visible img {
   filter: none !important;
   transform: none !important;
 }
+
+/* Editorial menu cards: category, serif title and quiet white controls. */
+html body .app-shell.menu-view-showcase .product-card {
+  border-color: rgba(255, 255, 255, .18) !important;
+}
+html body .app-shell.menu-view-showcase .product-card .product-body {
+  padding: 42px 22px 20px !important;
+  text-align: left !important;
+  color: #fffdf8 !important;
+  background: linear-gradient(180deg, rgba(8, 12, 10, 0), rgba(8, 12, 10, .68) 36%, rgba(8, 12, 10, .88)) !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+html body .app-shell.menu-view-showcase .qr-editorial-category {
+  display: block;
+  margin: 0 0 9px;
+  color: rgba(255, 253, 248, .88);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: .18em;
+  line-height: 1.4;
+  text-transform: uppercase;
+}
+html body .app-shell.menu-view-showcase .product-card .product-title h3 {
+  color: #fffdf8 !important;
+  text-align: left !important;
+  font-size: clamp(28px, 6.5vw, 44px) !important;
+  font-weight: 400 !important;
+  line-height: 1.08 !important;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+}
+html body .app-shell.menu-view-showcase .product-card .product-body > p {
+  display: none !important;
+}
+html body .app-shell.menu-view-showcase .product-card .product-footer {
+  margin-top: 12px !important;
+}
+html body .app-shell.menu-view-showcase .product-card .product-footer > strong {
+  color: #fffdf8 !important;
+  font-size: 21px !important;
+  font-weight: 450 !important;
+  letter-spacing: -.02em;
+  font-variant-numeric: tabular-nums;
+}
+html body .app-shell.menu-view-showcase .product-card .add,
+html body .app-shell.menu-view-showcase .product-card .add:hover,
+html body .app-shell.menu-view-showcase .product-card .add:active {
+  width: 48px !important;
+  min-width: 48px !important;
+  height: 48px !important;
+  border-radius: 50% !important;
+  background: rgba(255, 255, 255, .06) !important;
+  border: 1px solid rgba(255, 255, 255, .8) !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+html body .app-shell.menu-view-showcase .product-card .stepper {
+  color: #fffdf8 !important;
+  background: rgba(8, 12, 10, .35) !important;
+  border-color: rgba(255, 255, 255, .65) !important;
+  border-radius: 28px !important;
+}
+html body .app-shell.menu-view-showcase .product-card .stepper button,
+html body .app-shell.menu-view-showcase .product-card .stepper b {
+  color: #fffdf8 !important;
+  background: transparent !important;
+  border-color: transparent !important;
+}

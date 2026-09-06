@@ -1176,6 +1176,7 @@ export default function QRMenu() {
                     {isStopped && <b>{t.unavailable}</b>}
                   </button>
                   <div className="product-body">
+                    <small className="qr-editorial-category">{localizeCategory(product.category, language) || product.category}</small>
                     <div className="product-title"><h3>{product.name}</h3></div>
                     {product.description && <p>{product.description}</p>}
                     {product.options.length > 0 && <div className="product-options">{product.options.map((option) => <small key={option}>{option}</small>)}</div>}
