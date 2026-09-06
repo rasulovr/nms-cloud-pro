@@ -128,7 +128,7 @@ const normalizeCategoryKey = (value) => {
     "ГОРЯЧИЕ БЛЮДА": "ГОРЯЧИЕ БЛЮДА", "ОСНОВНЫЕ БЛЮДА": "ГОРЯЧИЕ БЛЮДА", "MAIN DISHES": "ГОРЯЧИЕ БЛЮДА", "İSTİ YEMƏKLƏR": "ГОРЯЧИЕ БЛЮДА",
     "БУРГЕРЫ": "БУРГЕРЫ", "БУРГЕР": "БУРГЕРЫ", "BURGERS": "БУРГЕРЫ", "BURGER": "БУРГЕРЫ",
     "СЭНДВИЧИ": "СЭНДВИЧИ", "СЕНДВИЧИ": "СЭНДВИЧИ", "SANDWICHES": "СЭНДВИЧИ", "SANDWICH": "СЭНДВИЧИ", "SENDVİÇLƏR": "СЭНДВИЧИ",
-    "ПИЦЦА": "ПИЦЦА", "PIZZA": "ПИЦЦА",
+    "ПИЦЦА": "ПИЦЦА", "PIZZA": "ПИЦЦА", "PİZZA": "ПИЦЦА",
     "СУПЫ": "СУПЫ", "SOUPS": "СУПЫ", "ŞORBALAR": "СУПЫ",
     "ЛИМОНАДЫ": "ЛИМОНАДЫ", "LEMONADES": "ЛИМОНАДЫ", "LİMONADLAR": "ЛИМОНАДЫ",
     "ХОЛОДНЫЕ НАПИТКИ": "ХОЛОДНЫЕ НАПИТКИ", "COLD DRINKS": "ХОЛОДНЫЕ НАПИТКИ", "SOYUQ İÇKİLƏR": "ХОЛОДНЫЕ НАПИТКИ",
@@ -138,6 +138,19 @@ const normalizeCategoryKey = (value) => {
     "ВИНО": "ВИНО", "WINES": "ВИНО", "WINE": "ВИНО", "ŞƏRAB": "ВИНО"
   };
   return aliases[key] || key;
+};
+const menuGroupLabels = {
+  ru: { "group:drinks": "Напитки", "group:food": "Еда", "group:desserts": "Десерты" },
+  az: { "group:drinks": "İçkilər", "group:food": "Yeməklər", "group:desserts": "Desertlər" },
+  en: { "group:drinks": "Drinks", "group:food": "Food", "group:desserts": "Desserts" }
+};
+const getMenuGroup = (product) => {
+  // Match catalog categories only: coffee in a dessert name is not a drink.
+  const category = normalizeCategoryKey(product.category);
+  if (["КОФЕ", "ХОЛОДНЫЙ КОФЕ", "ЧАЙ", "ЛИМОНАДЫ", "ХОЛОДНЫЕ НАПИТКИ", "ВИНО", "НАПИТКИ", "DRINKS", "İÇKİLƏR", "ГОРЯЧИЕ НАПИТКИ", "HOT DRINKS", "İSTİ İÇKİLƏR", "БУЗЛУ ЧАЙ", "BUZLU ÇAY", "ICED TEA", "КОКТЕЙЛИ", "COCKTAILS", "KOKTEYLLƏR", "МИЛКШЕЙКИ", "MILKSHAKES", "MİLKŞEYKLƏR", "ПИВО", "BEER", "PİVƏ"].includes(category)) return "group:drinks";
+  if (["ДЕСЕРТЫ", "ДЕСЕРТ", "DESSERT", "DESERT", "ŞİRNİYYAT"].includes(category)) return "group:desserts";
+  if (["ЗАВТРАК", "САЛАТЫ", "ЗАКУСКИ", "ГОРЯЧИЕ БЛЮДА", "БУРГЕРЫ", "СЭНДВИЧИ", "ПИЦЦА", "СУПЫ", "ЕДА", "FOOD", "YEMƏKLƏR", "ПАСТА", "PASTA", "ГАРНИРЫ", "SIDE DISHES", "ДЕТСКОЕ МЕНЮ", "KIDS MENU", "UŞAQ MENYUSU"].includes(category)) return "group:food";
+  return null;
 };
 // Use catalog categories, never words in names/descriptions (e.g. coffee cake).
 // Unknown categories must remain neutral rather than defaulting to food.
@@ -700,7 +713,7 @@ export default function QRMenu() {
   );
   const availableProducts = useMemo(() => localizedProducts.filter((product) => {
     const branchMatch = product.branches.includes(branch);
-    const categoryMatch = category === "\u0412\u0441\u0435" || product.category === category;
+    const categoryMatch = category === "\u0412\u0441\u0435" || product.category === category || getMenuGroup(product) === category;
     return branchMatch && categoryMatch;
   }).sort((a, b) => {
     const aProductRank = productMomentRank(a, mealMoment);
@@ -1183,10 +1196,10 @@ export default function QRMenu() {
                 </button>
               </div>
               <div style={{ display: "grid", gap: 8, marginTop: 18 }}>
-                {categories.map((name) => <button type="button" key={name} aria-pressed={category === name}
+                {[categories[0], ...Object.keys(menuGroupLabels.ru), ...categories.slice(1)].map((name) => <button type="button" key={name} aria-pressed={category === name}
                   onClick={() => { setCategory(name); categoryDialogRef.current?.close(); }}
                   style={{ padding: "14px 16px", textAlign: "left", border: "1px solid var(--line)", borderRadius: 12, background: category === name ? "var(--green)" : "var(--card)", color: category === name ? "var(--paper)" : "var(--ink)" }}>
-                  {localizeCategory(name, language) || categoryTranslations[language][name] || categoryLabel(name)}
+                  {(menuGroupLabels[language] || menuGroupLabels.ru)[name] || localizeCategory(name, language) || categoryTranslations[language][name] || categoryLabel(name)}
                 </button>)}
               </div>
             </div>
