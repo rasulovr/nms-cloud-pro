@@ -485,6 +485,8 @@ export default function QRMenu() {
   const [order, setOrder] = useState(null);
   const [session, setSession] = useState(null);
   const [profile, setProfile] = useState(null);
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [profileError, setProfileError] = useState("");
   const [email, setEmail] = useState("");
   const [otp, setOtp] = useState("");
   const [otpSent, setOtpSent] = useState(false);
@@ -1045,8 +1047,21 @@ export default function QRMenu() {
     requestCloseProduct();
   }
   async function loadProfile() {
-    const { data, error } = await supabase.rpc("qr_get_my_loyalty");
-    if (!error) setProfile(Array.isArray(data) ? data[0] || null : data || null);
+    setProfileLoading(true);
+    setProfileError("");
+    try {
+      const { data, error } = await supabase.rpc("qr_get_my_loyalty");
+      if (error) throw error;
+      const nextProfile = Array.isArray(data) ? data[0] : data;
+      if (!nextProfile) throw new Error("No loyalty card returned");
+      setProfile(nextProfile);
+      return true;
+    } catch {
+      setProfileError("Вход выполнен, но карта лояльности пока недоступна. Повторно вводить код не нужно.");
+      return false;
+    } finally {
+      setProfileLoading(false);
+    }
   }
   async function refreshOrder(token = order?.public_token) {
     if (!token) return;
@@ -1099,13 +1114,14 @@ export default function QRMenu() {
     const normalized = email.trim().toLowerCase();
     if (!/^\d{6,8}$/.test(otp)) return flash("Введите полный код из письма (6–8 цифр)");
     setBusy(true);
-    const { error } = await supabase.auth.verifyOtp({ email: normalized, token: otp, type: "email" });
+    const { data, error } = await supabase.auth.verifyOtp({ email: normalized, token: otp, type: "email" });
     setBusy(false);
     if (error) return flash("\u041D\u0435\u0432\u0435\u0440\u043D\u044B\u0439 \u0438\u043B\u0438 \u043F\u0440\u043E\u0441\u0440\u043E\u0447\u0435\u043D\u043D\u044B\u0439 \u043A\u043E\u0434");
+    if (!data?.session) return flash("Не удалось подтвердить вход. Попробуйте ещё раз.");
+    setSession(data.session);
     setOtpSent(false);
     setOtp("");
-    await loadProfile();
-    flash("\u0412\u0445\u043E\u0434 \u0432\u044B\u043F\u043E\u043B\u043D\u0435\u043D");
+    if (await loadProfile()) flash("Вход выполнен");
   }
   async function callWaiter(kind = "waiter") {
     const { error } = await supabase.rpc("qr_create_waiter_call", {
@@ -1282,7 +1298,13 @@ export default function QRMenu() {
 
       {screen === "loyalty" && <section className="narrow content">
           <span className="eyebrow">RMS Loyalty</span><h2>Ваша карта</h2>
-          {!loyalty ? <div className="loyalty-login">
+          {session && !profile ? <div className="loyalty-login" aria-live="polite">
+              <div className="loyalty-symbol">R</div>
+              <h3>{profileLoading ? "Загружаем вашу карту" : "Карта временно недоступна"}</h3>
+              <p>{profileLoading ? "Вход подтверждён. Получаем данные лояльности." : profileError || "Повторите загрузку карты."}</p>
+              <button className="primary-button" disabled={profileLoading} onClick={loadProfile}>Повторить загрузку</button>
+              <button className="outline-button full" onClick={() => supabase.auth.signOut()}>Выйти</button>
+            </div> : !loyalty ? <div className="loyalty-login">
               <div className="loyalty-symbol">R</div>
               <h3>{otpSent ? "Введите код из письма" : "Войдите по email"}</h3>
               <p>{otpSent ? "Мы отправили код на " + email.trim().toLowerCase() + "." : "Покажем баланс, историю и персональный QR-код."}</p>
