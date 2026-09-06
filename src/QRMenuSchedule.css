@@ -1111,7 +1111,7 @@ body .app-shell.menu-view-showcase .product-grid {
 body .app-shell.menu-view-showcase .product-card {
   display: grid !important;
   grid-template-columns: minmax(0, 1fr) !important;
-  grid-template-rows: clamp(240px, 62vw, 475px) auto !important;
+  grid-template-rows: clamp(150px, 40vw, 300px) auto !important;
   aspect-ratio: auto !important;
   overflow: hidden !important;
   color: #263128 !important;
@@ -1489,7 +1489,7 @@ html body .app-shell.menu-view-showcase .product-card {
   border-color: rgba(255, 255, 255, .18) !important;
 }
 html body .app-shell.menu-view-showcase .product-card .product-body {
-  padding: 42px 22px 20px !important;
+  padding: 28px 20px 16px !important;
   text-align: left !important;
   color: #fffdf8 !important;
   background: linear-gradient(180deg, rgba(8, 12, 10, 0), rgba(8, 12, 10, .68) 36%, rgba(8, 12, 10, .88)) !important;
@@ -1509,21 +1509,31 @@ html body .app-shell.menu-view-showcase .qr-editorial-category {
 html body .app-shell.menu-view-showcase .product-card .product-title h3 {
   color: #fffdf8 !important;
   text-align: left !important;
-  font-size: clamp(28px, 6.5vw, 44px) !important;
+  font-size: clamp(24px, 5.8vw, 34px) !important;
   font-weight: 400 !important;
   line-height: 1.08 !important;
   overflow-wrap: anywhere;
   text-wrap: balance;
 }
 html body .app-shell.menu-view-showcase .product-card .product-body > p {
-  display: none !important;
+  display: -webkit-box !important;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2 !important;
+  overflow: hidden !important;
+  max-height: 2.8em !important;
+  font-size: 12px !important;
+  line-height: 1.4 !important;
+  color: rgba(255, 253, 248, .92) !important;
+  background: transparent !important;
+  margin: 6px 0 0 !important;
+  padding: 0 !important;
 }
 html body .app-shell.menu-view-showcase .product-card .product-footer {
   margin-top: 12px !important;
 }
 html body .app-shell.menu-view-showcase .product-card .product-footer > strong {
   color: #fffdf8 !important;
-  font-size: 21px !important;
+  font-size: 19px !important;
   font-weight: 450 !important;
   letter-spacing: -.02em;
   font-variant-numeric: tabular-nums;
