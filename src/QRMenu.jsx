@@ -139,6 +139,20 @@ const normalizeCategoryKey = (value) => {
   };
   return aliases[key] || key;
 };
+// Use catalog categories, never words in names/descriptions (e.g. coffee cake).
+// Unknown categories must remain neutral rather than defaulting to food.
+const getDailyOfferLabel = (language, product) => {
+  const category = normalizeCategoryKey(product?.category);
+  const drinks = ["КОФЕ", "ХОЛОДНЫЙ КОФЕ", "ЧАЙ", "ЛИМОНАДЫ", "ХОЛОДНЫЕ НАПИТКИ", "ВИНО"];
+  const dishes = ["ЗАВТРАК", "САЛАТЫ", "ЗАКУСКИ", "ГОРЯЧИЕ БЛЮДА", "БУРГЕРЫ", "СЭНДВИЧИ", "ПИЦЦА", "СУПЫ"];
+  const kind = drinks.includes(category) ? "drink" : category === "ДЕСЕРТЫ" ? "dessert" : dishes.includes(category) ? "dish" : "choice";
+  const labels = {
+    ru: { drink: "Напиток дня", dessert: "Десерт дня", dish: "Блюдо дня", choice: "Выбор дня" },
+    az: { drink: "Günün içkisi", dessert: "Günün deserti", dish: "Günün yeməyi", choice: "Günün seçimi" },
+    en: { drink: "Drink of the day", dessert: "Dessert of the day", dish: "Dish of the day", choice: "Today's choice" }
+  };
+  return (labels[language] || labels.ru)[kind];
+};
 const contextualRank = (value, order) => {
   const key = normalizeCategoryKey(value);
   const index = order.findIndex((name) => normalizeCategoryKey(name) === key);
@@ -1121,7 +1135,7 @@ export default function QRMenu() {
       {screen === "menu" && <section className="content">
           {contextualSpecialOffer && <button type="button" className="qr-special-offer qr-contextual-special-offer" onClick={() => openProduct(contextualSpecialOffer.product)} aria-label={`${t.openPhoto}: ${contextualSpecialOffer.product.name}`}>
             {contextualSpecialOffer.product.image && <img src={contextualSpecialOffer.product.image} alt="" onError={useRecoveredImageFallback} />}
-            <span className="qr-special-offer-copy"><small>{language === "ru" ? "Блюдо дня" : language === "az" ? "Günün yeməyi" : "Dish of the day"}</small><strong>{contextualSpecialOffer.product.name}</strong><em>{contextualSpecialOffer.description}</em></span>
+            <span className="qr-special-offer-copy"><small>{getDailyOfferLabel(language, contextualSpecialOffer.product)}</small><strong>{contextualSpecialOffer.product.name}</strong><em>{contextualSpecialOffer.description}</em></span>
             <span className="qr-contextual-special-offer-arrow" aria-hidden="true">›</span>
           </button>}
           <div className="menu-toolbar" style={{ display: "flex", alignItems: "center", gap: 12 }}>
