@@ -1050,7 +1050,10 @@ export default function QRMenu() {
     setProfileLoading(true);
     setProfileError("");
     try {
-      const { data, error } = await supabase.rpc("qr_get_my_loyalty");
+      const { data, error } = await supabase.rpc("qr_get_my_loyalty", {
+        p_branch_code: branch,
+        p_organization_id: getTenantMenu()?.organization?.id || null
+      });
       if (error) throw error;
       const nextProfile = Array.isArray(data) ? data[0] : data;
       if (!nextProfile) throw new Error("No loyalty card returned");
