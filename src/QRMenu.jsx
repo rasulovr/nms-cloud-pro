@@ -1097,7 +1097,7 @@ export default function QRMenu() {
   }
   async function verifyOtp() {
     const normalized = email.trim().toLowerCase();
-    if (!/^\d{6}$/.test(otp)) return flash("\u0412\u0432\u0435\u0434\u0438\u0442\u0435 \u0448\u0435\u0441\u0442\u0438\u0437\u043D\u0430\u0447\u043D\u044B\u0439 \u043A\u043E\u0434");
+    if (!/^\d{6,8}$/.test(otp)) return flash("Введите полный код из письма (6–8 цифр)");
     setBusy(true);
     const { error } = await supabase.auth.verifyOtp({ email: normalized, token: otp, type: "email" });
     setBusy(false);
@@ -1285,8 +1285,8 @@ export default function QRMenu() {
           {!loyalty ? <div className="loyalty-login">
               <div className="loyalty-symbol">R</div>
               <h3>{otpSent ? "Введите код из письма" : "Войдите по email"}</h3>
-              <p>{otpSent ? "Мы отправили шестизначный код на " + email.trim().toLowerCase() + "." : "Покажем баланс, историю и персональный QR-код."}</p>
-              {!otpSent ? <><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@example.com" autoComplete="email" inputMode="email" /><button className="primary-button" disabled={busy} onClick={sendOtp}>Получить код</button></> : <><input value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))} placeholder="Код из письма" inputMode="numeric" autoComplete="one-time-code" maxLength={6} /><button className="primary-button" disabled={busy} onClick={verifyOtp}>Войти</button><button className="outline-button full" disabled={busy} onClick={() => { setOtpSent(false); setOtp(""); }}>Изменить email</button></>}
+              <p>{otpSent ? "Мы отправили код на " + email.trim().toLowerCase() + "." : "Покажем баланс, историю и персональный QR-код."}</p>
+              {!otpSent ? <><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@example.com" autoComplete="email" inputMode="email" /><button className="primary-button" disabled={busy} onClick={sendOtp}>Получить код</button></> : <><input value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))} placeholder="Код из письма" inputMode="numeric" autoComplete="one-time-code" aria-label="Код из письма" /><button className="primary-button" disabled={busy} onClick={verifyOtp}>Войти</button><button className="outline-button full" disabled={busy} onClick={() => { setOtpSent(false); setOtp(""); }}>Изменить email</button></>}
             </div> : <>
               <div className="loyalty-card">
                 <div><span>RMS PRO</span><small>LOYALTY</small></div>
