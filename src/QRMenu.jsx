@@ -754,8 +754,16 @@ export default function QRMenu() {
   const history = Array.isArray(profile?.history) ? profile.history : [];
   const paid = order?.status === "paid";
   const status = order?.status || "empty";
-  const maxBonus = Math.max(0, Math.min(bonus, cartTotal * 0.3));
-  const tierProgress = Math.min(100, lifetimeSpend / 2e3 * 100);
+  const program = profile?.program;
+  const programSettings = program?.settings;
+  const programEnabled = Boolean(programSettings?.enabled);
+  const cashbackPercent = Number(program?.effective_cashback_percent || 0);
+  const nextTier = program?.next_tier;
+  const tierName = program?.tier_name || "Участник";
+  const tierFloor = Number(program?.tier_threshold || 0);
+  const maxBonus = programEnabled && bonus >= Number(programSettings?.min_redeem_balance || 0)
+    ? Math.max(0, Math.min(bonus, Math.floor(cartTotal * Number(programSettings.max_redeem_percent) + 1e-8) / 100)) : 0;
+  const tierProgress = nextTier ? Math.max(0, Math.min(100, (lifetimeSpend - tierFloor) / Math.max(1, Number(nextTier.min_spend) - tierFloor) * 100)) : 100;
   const weatherOffer = useMemo(() => {
     if (!weather) return null;
     const rainy = weather.precipitation >= 1 || [51, 53, 55, 61, 63, 65, 80, 81, 82, 95].includes(weather.weatherCode);
@@ -1287,7 +1295,7 @@ export default function QRMenu() {
                   <div>
                     <b>Оплата подтверждена</b>
                     <p>Оплачено {money(payable)}{bonusUsed > 0 ? ` + ${money(bonusUsed)} бонусами` : ""}</p>
-                    {loyalty && <small>Cashback начислен только на сумму, оплаченную деньгами.</small>}
+                    {loyalty && <small>Начисление и списание показаны в истории карты.</small>}
                   </div>
                 </div> : <>
                   <div className="bill-actions">
@@ -1310,21 +1318,21 @@ export default function QRMenu() {
             </div> : !loyalty ? <div className="loyalty-login">
               <div className="loyalty-symbol">R</div>
               <h3>{otpSent ? "Введите код из письма" : "Войдите по email"}</h3>
-              <p>{otpSent ? "Мы отправили код на " + email.trim().toLowerCase() + "." : "Покажем баланс, историю и персональный QR-код."}</p>
+              <p>{otpSent ? "Мы отправили код на " + email.trim().toLowerCase() + "." : "Покажем баланс, историю и номер вашей карты."}</p>
               {!otpSent ? <><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@example.com" autoComplete="email" inputMode="email" /><button className="primary-button" disabled={busy} onClick={sendOtp}>Получить код</button></> : <><input value={otp} onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))} placeholder="Код из письма" inputMode="numeric" autoComplete="one-time-code" aria-label="Код из письма" /><button className="primary-button" disabled={busy} onClick={verifyOtp}>Войти</button><button className="outline-button full" disabled={busy} onClick={() => { setOtpSent(false); setOtp(""); }}>Изменить email</button></>}
             </div> : <>
               <div className="loyalty-card">
                 <div><span>RMS PRO</span><small>LOYALTY</small></div>
                 <div className="bonus"><small>ДОСТУПНО БОНУСОВ</small><b>{money(bonus)}</b></div>
-                <div className="card-bottom"><span>{profile?.member_code || "RMS MEMBER"}</span><span>{profile?.tier_name || "GOLD"}</span></div>
+                <div className="card-bottom"><span>{profile?.member_code || "RMS MEMBER"}</span><span>{tierName}</span></div>
               </div>
               <div className="loyalty-stats">
-                <article><small>УРОВЕНЬ</small><b>{profile?.tier_name || (lifetimeSpend >= 2e3 ? "Platinum" : "Gold")}</b><span>{lifetimeSpend >= 2e3 ? "максимальный уровень" : `${money(Math.max(0, 2e3 - lifetimeSpend))} до Platinum`}</span></article>
+                <article><small>УРОВЕНЬ</small><b>{tierName}</b><span>{nextTier ? `${money(Math.max(0, Number(nextTier.min_spend) - lifetimeSpend))} до ${nextTier.name}` : "текущий уровень"}</span></article>
                 <article><small>ВИЗИТОВ</small><b>{visits}</b><span>за всё время</span></article>
-                <article><small>CASHBACK</small><b>5%</b><span>с оплаченной суммы</span></article>
+                <article><small>CASHBACK</small><b>{cashbackPercent}%</b><span>{programEnabled ? "с суммы, оплаченной деньгами" : "программа пока не активна"}</span></article>
               </div>
               <div className="tier-progress">
-                <div><span>Gold</span><b>Platinum · 2 000 ₼</b></div>
+                <div><span>{tierName}</span><b>{nextTier ? `${nextTier.name} · ${money(nextTier.min_spend)}` : "Покупки по карте"}</b></div>
                 <i><span style={{ width: `${tierProgress}%` }} /></i>
                 <small>Учтено покупок: {money(lifetimeSpend)}</small>
               </div>
@@ -1332,11 +1340,11 @@ export default function QRMenu() {
                   <span>Зарезервировано для текущего счёта</span>
                   <b>{money(bonusUsed)}</b>
                 </div>}
-              <div className="qr-token"><div className="qr-fake" aria-label="QR-код участника">{Array.from({ length: 49 }).map((_, i) => <i key={i} className={(i * 7 + i % 3) % 4 ? "on" : ""} />)}</div><div><b>QR для официанта</b><p>{profile?.member_code || "Персональный токен Loyalty"}</p></div></div>
+              <div className="qr-token"><div><b>Номер карты для сотрудника</b><p style={{overflowWrap: "anywhere"}}>{profile?.member_code}</p></div></div>
               <div className="loyalty-rules">
-                <article><span>01</span><div><b>Начисление</b><p>5% только с суммы, фактически оплаченной деньгами.</p></div></article>
-                <article><span>02</span><div><b>Списание</b><p>До 30% счёта, без повторного использования в одном чеке.</p></div></article>
-                <article><span>03</span><div><b>Защита</b><p>Начисление происходит один раз после подтверждения оплаты.</p></div></article>
+                <article><span>01</span><div><b>Начисление</b><p>{programEnabled ? `${cashbackPercent}% с суммы, оплаченной деньгами. Минимальная оплата для начисления: ${money(programSettings.min_purchase)}.` : "Владелец заведения ещё не включил бонусную программу."}</p></div></article>
+                <article><span>02</span><div><b>Списание</b><p>{programEnabled ? `До ${programSettings.max_redeem_percent}% чека. Минимальный баланс для списания: ${money(programSettings.min_redeem_balance)}.` : "Списание пока недоступно."}</p></div></article>
+                <article><span>03</span><div><b>Срок действия</b><p>{programSettings?.expiry_days ? `Новые бонусы действуют ${programSettings.expiry_days} дней с начисления.` : "Новые бонусы без срока действия."} Условия фиксируются при оплате чека.</p></div></article>
               </div>
               <div className="history-heading"><div><span className="eyebrow">Операции</span><h3>История бонусов</h3></div><small>{history.length} записей</small></div>
               <div className="loyalty-history">

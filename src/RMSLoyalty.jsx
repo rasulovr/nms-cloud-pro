@@ -2,6 +2,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from './supabase'
 import './RMSLoyalty.css'
+import LoyaltyBrandSettings from './LoyaltyBrandSettings'
 
 const parseNum = (v) => Number(String(v ?? '0').replace(',', '.')) || 0
 const fmt = (n) => `${Number(n || 0).toFixed(2)} AZN`
@@ -1549,12 +1550,12 @@ function RMSLoyaltyAdmin() {
         <div className="loyalty-admin-status-card">
           <div className="loyalty-admin-status-line">
             <span className={`loyalty-admin-live-dot ${activeRule?.is_active === false ? 'off' : ''}`} />
-            <span>{activeRule?.is_active === false ? 'Программа приостановлена' : 'Программа активна'}</span>
+            <span>{activeRule?.rule_type === 'stamp' ? (activeRule?.is_active === false ? 'Программа приостановлена' : 'Карта отметок') : 'Бонусная программа бренда'}</span>
           </div>
           <b>{activeRule?.name || 'Основная программа'}</b>
           <small>{activeRule?.rule_type === 'stamp'
             ? `${Number(activeRule?.reward_threshold || 10)} покупок → подарок`
-            : `${Number(activeRule?.cashback_percent || 5)}% начисление · до ${Number(activeRule?.max_redeem_percent || 30)}% списание`}</small>
+            : 'Процент и лимиты — в настройках бренда'}</small>
         </div>
       </section>
 
@@ -1601,8 +1602,7 @@ function RMSLoyaltyAdmin() {
       ) : activeTab === 'analytics' ? (
         <LoyaltyAnalyticsPanel clients={clients} transactions={transactions} />
       ) : activeTab === 'settings' ? (
-        <LoyaltyProgramSettings
-          rule={activeRule}
+        <LoyaltyBrandSettings
           onSaved={async (text) => {
             await loadLoyalty()
             setMessage(text)
@@ -1660,9 +1660,9 @@ function LoyaltyOverview({ stats, transactions, activeRule, onNavigate }) {
           </div>
           <div className="loyalty-program-rule-grid">
             <div><span>Механика</span><b>{isStamp ? 'Карта отметок' : 'Cashback'}</b></div>
-            <div><span>Начисление</span><b>{isStamp ? '1 отметка' : `${Number(activeRule?.cashback_percent || 5)}%`}</b></div>
-            <div><span>Макс. списание</span><b>{isStamp ? '1 подарок' : `${Number(activeRule?.max_redeem_percent || 30)}%`}</b></div>
-            <div><span>Бонус ко дню рождения</span><b>{fmt(activeRule?.birthday_bonus || 0)}</b></div>
+            <div><span>Начисление</span><b>{isStamp ? '1 отметка' : 'По условиям бренда'}</b></div>
+            <div><span>Макс. списание</span><b>{isStamp ? '1 подарок' : 'По условиям бренда'}</b></div>
+            <div><span>Условия</span><b>Задаёт владелец</b></div>
           </div>
           <div className="loyalty-email-flow-note">
             <span>EMAIL OTP</span>
@@ -1773,69 +1773,6 @@ function LoyaltyOperationRow({ item, compact = false }) {
       {!compact && <div className="loyalty-operation-source"><b>{item.branch_name || item.branch_id || '—'}</b><small>{item.receipt_number || item.order_id || 'Без номера чека'}</small></div>}
       <div className="loyalty-operation-date"><b>{validDate ? date.toLocaleDateString('ru-RU', { day: '2-digit', month: 'short' }) : '—'}</b><small>{validDate ? date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) : ''}</small></div>
     </div>
-  )
-}
-
-function LoyaltyProgramSettings({ rule, onSaved, onError }) {
-  const [form, setForm] = useState({ name: '', rule_type: 'cashback', cashback_percent: 5, max_redeem_percent: 30, birthday_bonus: 10, is_active: true })
-  const [saving, setSaving] = useState(false)
-
-  useEffect(() => {
-    setForm({
-      name: rule?.name || 'Основная программа',
-      rule_type: rule?.rule_type || 'cashback',
-      cashback_percent: Number(rule?.cashback_percent ?? 5),
-      max_redeem_percent: Number(rule?.max_redeem_percent ?? 30),
-      birthday_bonus: Number(rule?.birthday_bonus ?? 10),
-      is_active: rule?.is_active !== false,
-    })
-  }, [rule])
-
-  async function saveSettings(event) {
-    event.preventDefault()
-    if (!rule?.id) return onError('Настройки программы ещё не созданы для этой организации.')
-    setSaving(true)
-    const payload = {
-      name: String(form.name || '').trim() || 'Основная программа',
-      rule_type: form.rule_type,
-      cashback_percent: Math.max(0, Math.min(100, Number(form.cashback_percent || 0))),
-      max_redeem_percent: Math.max(0, Math.min(100, Number(form.max_redeem_percent || 0))),
-      birthday_bonus: Math.max(0, Number(form.birthday_bonus || 0)),
-      is_active: Boolean(form.is_active),
-    }
-    const { error } = await supabase.from('rms_loyalty_rules').update(payload).eq('id', rule.id)
-    setSaving(false)
-    if (error) return onError(error.message)
-    onSaved('Настройки RMS Loyalty сохранены.')
-  }
-
-  return (
-    <section className="loyalty-settings-grid">
-      <form className="loyalty-admin-panel loyalty-settings-form" onSubmit={saveSettings}>
-        <div className="loyalty-admin-panel-head"><div><span>ПРОГРАММА</span><h2>Правила начисления</h2><p>Параметры применяются к текущей организации.</p></div></div>
-        {!rule?.id && <div className="loyalty-settings-warning">Для сохранения требуется существующее правило организации. Схема базы в этом Preview не изменяется.</div>}
-        <label>Название программы<input value={form.name} onChange={(event) => setForm((value) => ({ ...value, name: event.target.value }))} /></label>
-        <label>Механика<select value={form.rule_type} onChange={(event) => setForm((value) => ({ ...value, rule_type: event.target.value }))}><option value="cashback">Cashback-бонусы</option><option value="stamp">Карта отметок</option></select></label>
-        <div className="loyalty-settings-row">
-          <label>Процент начисления<input type="number" min="0" max="100" step="0.5" value={form.cashback_percent} onChange={(event) => setForm((value) => ({ ...value, cashback_percent: event.target.value }))} /><span>% от оплаченной суммы</span></label>
-          <label>Максимальное списание<input type="number" min="0" max="100" step="1" value={form.max_redeem_percent} onChange={(event) => setForm((value) => ({ ...value, max_redeem_percent: event.target.value }))} /><span>% суммы чека</span></label>
-        </div>
-        <label>Бонус ко дню рождения<input type="number" min="0" step="1" value={form.birthday_bonus} onChange={(event) => setForm((value) => ({ ...value, birthday_bonus: event.target.value }))} /><span>Размер праздничного начисления клиенту</span></label>
-        <label className="loyalty-settings-toggle"><span><b>Программа активна</b><small>Разрешить новые регистрации и операции</small></span><input type="checkbox" checked={form.is_active} onChange={(event) => setForm((value) => ({ ...value, is_active: event.target.checked }))} /></label>
-        <button className="loyalty-admin-primary" type="submit" disabled={saving || !rule?.id}>{saving ? 'Сохранение…' : 'Сохранить настройки'}</button>
-      </form>
-
-      <div className="loyalty-admin-panel loyalty-settings-info">
-        <div className="loyalty-admin-panel-head"><div><span>ИНТЕГРАЦИЯ</span><h2>Как работает RMS Loyalty</h2></div></div>
-        <div className="loyalty-settings-steps">
-          <div><span>1</span><b>Гость открывает QR Menu</b><p>Вкладка Loyalty доступна в публичном меню кафе.</p></div>
-          <div><span>2</span><b>Подтверждает email</b><p>Одноразовый шестизначный код отправляется через защищённый SMTP.</p></div>
-          <div><span>3</span><b>Получает персональную карту</b><p>Баланс и QR-код привязаны к подтверждённому аккаунту.</p></div>
-          <div><span>4</span><b>POS проводит операцию</b><p>Начисление и списание фиксируются с филиалом, сотрудником и чеком.</p></div>
-        </div>
-        <div className="loyalty-settings-brand-note"><b>Название и оформление кафе</b><p>Берутся из профиля организации и настроек QR Menu. Сам продукт во всех организациях называется RMS Loyalty.</p></div>
-      </div>
-    </section>
   )
 }
 
