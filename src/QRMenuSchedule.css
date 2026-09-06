@@ -1109,7 +1109,9 @@ body .app-shell.menu-view-showcase .product-grid {
 }
 
 body .app-shell.menu-view-showcase .product-card {
-  display: block !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) !important;
+  grid-template-rows: clamp(240px, 62vw, 475px) auto !important;
   aspect-ratio: auto !important;
   overflow: hidden !important;
   color: #263128 !important;
@@ -1120,12 +1122,14 @@ body .app-shell.menu-view-showcase .product-card {
 }
 
 body .app-shell.menu-view-showcase .product-card .food-photo {
+  grid-area: 1 / 1 / 3 / 2 !important;
   position: relative !important;
   z-index: 0 !important;
   inset: auto !important;
   width: 100% !important;
-  height: auto !important;
-  aspect-ratio: 16 / 10 !important;
+  height: 100% !important;
+  min-height: 0 !important;
+  aspect-ratio: auto !important;
   display: block !important;
   border-radius: 0 !important;
   background: #e8e3da !important;
@@ -1142,6 +1146,8 @@ body .app-shell.menu-view-showcase .product-card .food-photo img,
 body .app-shell.menu-view-showcase .product-card .food-photo img.cold-drink-photo,
 body .app-shell.menu-view-showcase .product-card .food-photo img.lemonade-photo,
 body .app-shell.menu-view-showcase .product-card .food-photo img.water-bottle-photo {
+  position: absolute !important;
+  inset: 0 !important;
   width: 100% !important;
   height: 100% !important;
   object-fit: cover !important;
@@ -1149,6 +1155,7 @@ body .app-shell.menu-view-showcase .product-card .food-photo img.water-bottle-ph
 }
 
 body .app-shell.menu-view-showcase .product-card .product-body {
+  grid-area: 2 / 1 / 3 / 2 !important;
   position: relative !important;
   z-index: 3 !important;
   inset: auto !important;
@@ -1156,7 +1163,7 @@ body .app-shell.menu-view-showcase .product-card .product-body {
   display: block !important;
   padding: 17px 18px 16px !important;
   color: #263128 !important;
-  background: rgba(255, 253, 248, .76) !important;
+  background: rgba(255, 253, 248, .72) !important;
   -webkit-backdrop-filter: blur(16px) !important;
   backdrop-filter: blur(16px) !important;
   pointer-events: auto !important;
@@ -1309,6 +1316,29 @@ body .app-shell.menu-view-showcase .product-card .stepper b {
   font-size: 16px !important;
 }
 
+/* A single photograph continues behind the frosted caption, without white islands. */
+body .app-shell.menu-view-showcase .product-card .product-title,
+body .app-shell.menu-view-showcase .product-card .product-title h3,
+body .app-shell.menu-view-showcase .product-card .product-body > p,
+body .app-shell.menu-view-showcase .product-card .product-footer > strong {
+  background: transparent !important;
+}
+
+body .app-shell.menu-view-showcase .product-card .product-body > p {
+  color: #3e493f !important;
+}
+
+body .app-shell.menu-view-showcase .product-card .product-footer > strong {
+  color: #704313 !important;
+}
+
+body .app-shell .menu-toolbar > button[aria-controls="qr-category-dialog"] {
+  background: rgba(255, 253, 248, .42) !important;
+  border-color: rgba(255, 255, 255, .55) !important;
+  -webkit-backdrop-filter: blur(14px) !important;
+  backdrop-filter: blur(14px) !important;
+}
+
 @media (max-width: 680px) {
   body .app-shell.menu-view-showcase .product-grid {
     width: 100% !important;
@@ -1320,7 +1350,7 @@ body .app-shell.menu-view-showcase .product-card .stepper b {
   }
 
   body .app-shell.menu-view-showcase .product-card .food-photo {
-    aspect-ratio: 4 / 3 !important;
+    aspect-ratio: auto !important;
   }
 
   body .app-shell.menu-view-showcase .product-card .product-body {
