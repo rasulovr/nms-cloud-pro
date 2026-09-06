@@ -334,6 +334,30 @@ const photoClass = (product) => {
 const photoStyle = (product) => product.image
   ? { "--photo": `url(${JSON.stringify(product.image)})` }
   : undefined;
+// Deduplicate translated imports within this published menu only. Keep the
+// original first item's ID for orders; never merge differently priced variants.
+const uniqueMenuRows = (rows) => {
+  const seen = new Set();
+  return rows.filter((item) => {
+    // Explicit venue overrides may intentionally distinguish otherwise similar items.
+    if (item.__qr_override) return true;
+    const reference = resolveReferenceMenuProduct(item);
+    const name = normalizeReferenceText(reference?.ruName || item.name);
+    if (!name) return true;
+    const key = JSON.stringify([
+      name, Number(item.price ?? item.unit_price ?? 0),
+      item.weight_text ?? null, item.size ?? null, item.volume ?? null,
+      item.variant_id ?? null, item.variant_name ?? null,
+      item.options || [], item.special_price ?? null,
+      item.is_available ?? null, item.is_stopped ?? null,
+      // Only known translation pairs may differ in description/category/image.
+      reference ? null : [item.category_name || item.category, item.description, item.image_url || item.image]
+    ]);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+};
 const normalizeProduct = (item, branch) => {
   const menuOverride = item.__qr_override && typeof item.__qr_override === "object" ? item.__qr_override : null;
   const customTranslations = menuOverride?.translations && typeof menuOverride.translations === "object" ? menuOverride.translations : item.translations;
@@ -567,7 +591,7 @@ export default function QRMenu() {
         ...item,
         __qr_override: menuOverrides[String(item.id || item.menu_item_id)] || null
       }));
-      setProducts(menuRows.map((item) => normalizeProduct(item, branch)));
+      setProducts(uniqueMenuRows(menuRows).map((item) => normalizeProduct(item, branch)));
       const recommendationRows = Array.isArray(recommendationsResult.data) ? recommendationsResult.data : [];
       // BC1 is the approved pairing reference. All other QR branches inherit
       // the same links, while branch-specific records can still be added later.
