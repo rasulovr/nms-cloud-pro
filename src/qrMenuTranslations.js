@@ -196,6 +196,19 @@ export function localizeOption(option, language) {
 }
 
 export function localizeProduct(product, language) {
+  if (product.exact_source) {
+    const copy = product.translations?.[language] || {};
+    const name = copy.name || product.sourceName || product.name;
+    const description = copy.description ?? product.sourceDescription ?? "";
+    const options = (product.sourceOptions || []).map(option => {
+      if (typeof option === "string") return option;
+      // Keep the source's displayed variant name and its own price.
+      return `${option.name} — ${Number(option.price).toFixed(2)} ₼`;
+    });
+    return {...product, name, description, options, displayName:name,
+      displayDescription:description, displayOptions:options};
+  }
+
   const sourceName = product.sourceName || product.name || "";
   const resolvedTranslation = resolveTranslation({ ...product, sourceName });
   const translationKey = resolvedTranslation?.ruName || product.translationKey || sourceName;

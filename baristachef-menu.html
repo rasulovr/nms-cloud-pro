@@ -1,0 +1,11 @@
+<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Barista&Chef — Menu</title></head>
+<body style="margin:0;background:#e8dfd0"><div id="root">Загружаем меню…</div>
+<script type="module">
+import { mountQrMenu } from '/src/qrEntry.jsx';
+const domains={'baristachef.rms.rest':'BC1','baristachef2.rms.rest':'BC2','baristachef4.rms.rest':'BC4','baristachef5.rms.rest':'BC5'};
+const url=new URL(location.href);
+const branch=domains[url.hostname] || (['BC1','BC2','BC4','BC5'].includes(url.searchParams.get('branch')) ? url.searchParams.get('branch') : 'BC1');
+url.searchParams.set('branch',branch);url.searchParams.set('qr','menu');url.searchParams.set('qr_source','admin');
+history.replaceState(null,'',url.pathname+url.search+url.hash);
+mountQrMenu(document.getElementById('root'));
+</script></body></html>

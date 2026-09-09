@@ -353,7 +353,7 @@ const uniqueMenuRows = (rows) => {
   const seen = new Set();
   return rows.filter((item) => {
     // Explicit venue overrides may intentionally distinguish otherwise similar items.
-    if (item.__qr_override) return true;
+    if (item.__qr_override || item.exact_source) return true;
     const reference = resolveReferenceMenuProduct(item);
     const name = normalizeReferenceText(reference?.ruName || item.name);
     if (!name) return true;
@@ -372,6 +372,10 @@ const uniqueMenuRows = (rows) => {
   });
 };
 const normalizeProduct = (item, branch) => {
+  if (item.exact_source) return { ...item, id:item.id || item.menu_item_id,
+    sourceName:item.name, sourceDescription:item.description, sourceOptions:item.options || [],
+    category:item.category_name, price:Number(item.price), image:item.image_url,
+    options:item.options || [], preserveReferenceCopy:true, branches:[branch] };
   const menuOverride = item.__qr_override && typeof item.__qr_override === "object" ? item.__qr_override : null;
   const customTranslations = menuOverride?.translations && typeof menuOverride.translations === "object" ? menuOverride.translations : item.translations;
   const customRu = customTranslations?.ru || {};
@@ -719,6 +723,7 @@ export default function QRMenu() {
     const categoryMatch = category === "\u0412\u0441\u0435" || product.category === category || getMenuGroup(product) === category;
     return branchMatch && categoryMatch;
   }).sort((a, b) => {
+    if (a.exact_source && b.exact_source) return Number(a.sort_order) - Number(b.sort_order);
     const aProductRank = productMomentRank(a, mealMoment);
     const bProductRank = productMomentRank(b, mealMoment);
     // "All" starts with the agreed time-specific dishes, not a database category.
@@ -734,8 +739,13 @@ export default function QRMenu() {
     }
     return aProductRank - bProductRank;
   }), [localizedProducts, branch, category, mealMoment, contextualCategoryOrder]);
+  const exactCategoryLabel = (name) => {
+    const product = products.find(p => p.exact_source && p.category === name);
+    return product ? product.source_category?.meta?.langs?.[language]?.name || name : localizeCategory(name, language);
+  };
   const categories = useMemo(() => {
     const present = new Set(products.filter((p) => p.branches.includes(branch)).map((p) => p.category));
+    if (products.some(p => p.exact_source)) return ["Все", ...present];
     const sorted = [...present].sort((a, b) => contextualRank(a, contextualCategoryOrder) - contextualRank(b, contextualCategoryOrder));
     const standard = sorted.filter((name) => !isExtraCategory({ category: name }));
     const extras = sorted.filter((name) => isExtraCategory({ category: name }));
@@ -1210,7 +1220,7 @@ export default function QRMenu() {
               <svg style={{ display: "block" }} width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" /></svg>
             </button>
             <div className="categories" style={{ flex: 1, minWidth: 0 }}>
-              {categories.slice(1).map((name) => <button type="button" className={category === name ? "active" : ""} key={name} onClick={() => setCategory(name)}>{localizeCategory(name, language) || categoryTranslations[language][name] || categoryLabel(name)}</button>)}
+              {categories.slice(1).map((name) => <button type="button" className={category === name ? "active" : ""} key={name} onClick={() => setCategory(name)}>{exactCategoryLabel(name) || categoryTranslations[language][name] || categoryLabel(name)}</button>)}
             </div>
           </div>
           <dialog ref={categoryDialogRef} id="qr-category-dialog" aria-labelledby="qr-category-title"
@@ -1241,7 +1251,7 @@ export default function QRMenu() {
                 {categories.slice(1).filter((name) => !pickerGroup || getMenuGroup({ category: name }) === pickerGroup).map((name) => <button type="button" key={name} aria-pressed={category === name}
                   onClick={() => { setCategory(name); categoryDialogRef.current?.close(); }}
                   >
-                  {(menuGroupLabels[language] || menuGroupLabels.ru)[name] || localizeCategory(name, language) || categoryTranslations[language][name] || categoryLabel(name)}
+                  {(menuGroupLabels[language] || menuGroupLabels.ru)[name] || exactCategoryLabel(name) || categoryTranslations[language][name] || categoryLabel(name)}
                 </button>)}
               </div>
             </div>
@@ -1257,7 +1267,7 @@ export default function QRMenu() {
                     {isStopped && <b>{t.unavailable}</b>}
                   </button>
                   <div className="product-body">
-                    <small className="qr-editorial-category">{localizeCategory(product.category, language) || product.category}</small>
+                    <small className="qr-editorial-category">{exactCategoryLabel(product.category) || product.category}</small>
                     <div className="product-title"><h3>{product.name}</h3></div>
                     {product.description && <p>{product.description}</p>}
                     {product.options.length > 0 && <div className="product-options">{product.options.map((option) => <small key={option}>{option}</small>)}</div>}
@@ -1376,7 +1386,7 @@ export default function QRMenu() {
               <button className="modal-close" onClick={requestCloseProduct} aria-label={t.close}>×</button>
             </div>
             <div className="modal-content">
-              <span className="modal-category">{localizeCategory(selectedProduct.category, language) || categoryTranslations[language][selectedProduct.category] || categoryLabel(selectedProduct.category)}</span>
+              <span className="modal-category">{exactCategoryLabel(selectedProduct.category) || categoryTranslations[language][selectedProduct.category] || categoryLabel(selectedProduct.category)}</span>
               <h2>{selectedProduct.name}</h2>
               <strong className="modal-price">{money(selectedProduct.price)}</strong>
               {selectedProduct.description && <p>{selectedProduct.description}</p>}
