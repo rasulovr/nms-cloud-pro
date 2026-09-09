@@ -1,0 +1,13 @@
+<!doctype html><html lang="ru"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Перенос меню Barista&Chef</title>
+<style>body{font:16px system-ui;max-width:960px;margin:40px auto;padding:20px;background:#faf8f2;color:#25231e}button,input{font:inherit;padding:12px}button{cursor:pointer}table{border-collapse:collapse;width:100%}td,th{padding:12px;border-bottom:1px solid #ddd;text-align:left}pre{white-space:pre-wrap}button:disabled{opacity:.5}</style>
+<h1>Перенос меню Barista&Chef</h1>
+<p>Состав, описания, варианты и цены из подтверждённых источников. Фотографии сохраняются в хранилище Barista&Chef.</p>
+<table><thead><tr><th>Филиал</th><th>Источник</th><th>Позиций</th></tr></thead><tbody>
+<tr><td>BC1 и BC2</td><td>baristachef3.clopos.menu</td><td>по 160</td></tr>
+<tr><td>BC4</td><td>baristachef.clopos.menu</td><td>176</td></tr>
+<tr><td>BC5</td><td>baristachef2.clopos.menu</td><td>191</td></tr></tbody></table>
+<p><label>Подготовленный файл меню <input id="file" type="file" accept="application/json,.json"></label></p>
+<p><button id="review">Проверить файл и доступ</button> <button id="apply" disabled>Перенести фотографии и применить четыре меню</button></p>
+<p><a href="/">Войти в кабинет</a></p><pre id="status" role="status">Выберите menus.json.</pre>
+<script type="module" src="/assets/qr-exact-import.js"></script></html>
