@@ -48,6 +48,17 @@ function download(name,value) {
   const a=document.createElement('a'); a.href=url; a.download=name; a.click();setTimeout(()=>URL.revokeObjectURL(url),60000);
 }
 document.querySelector('#file').addEventListener('change',()=>{menu=null;apply.disabled=true;});
+document.querySelector('#menu-json').addEventListener('input',()=>{menu=null;apply.disabled=true;});
+document.querySelector('#prepared').addEventListener('click',async()=>{
+  apply.disabled=true;menu=null;
+  try {
+    const value=JSON.parse(document.querySelector('#menu-json').value);validate(value);
+    await request('rpc/organization_qr_admin_state',{p_organization_id:org});
+    await request(`qr_menu_catalog?organization_id=eq.${org}&select=id,source_metadata&limit=1`);
+    menu=value;status.textContent='Проверено: BC1 160, BC2 160, BC4 176, BC5 191. Можно применить.';apply.disabled=false;
+  }catch(error){status.textContent=error.message;}
+});
+
 document.querySelector('#review').addEventListener('click',async()=>{
   apply.disabled=true;menu=null;
   try {
@@ -62,7 +73,7 @@ document.querySelector('#review').addEventListener('click',async()=>{
   } catch(error) {status.textContent=error.message;}
 });
 apply.addEventListener('click',async()=>{
-  apply.disabled=true;document.querySelector('#file').disabled=true;document.querySelector('#review').disabled=true;
+  apply.disabled=true;document.querySelector('#menu-json').disabled=true;document.querySelector('#prepared').disabled=true;document.querySelector('#file').disabled=true;document.querySelector('#review').disabled=true;
   try {
     validate(menu);
     // Save the pre-import state before any menu mutation. Paginate to avoid REST caps.
@@ -117,5 +128,5 @@ apply.addEventListener('click',async()=>{
     }
     status.textContent='Применено и проверено: BC1 — 160, BC2 — 160, BC4 — 176, BC5 — 191. Состав, описания, цены, варианты и локальные фотографии совпадают.';
   }catch(error){status.textContent=error.message;}
-  finally{document.querySelector('#file').disabled=false;document.querySelector('#review').disabled=false;}
+  finally{document.querySelector('#menu-json').disabled=false;document.querySelector('#prepared').disabled=false;document.querySelector('#file').disabled=false;document.querySelector('#review').disabled=false;}
 });
