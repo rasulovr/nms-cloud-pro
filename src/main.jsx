@@ -98,6 +98,16 @@ async function rmsTechMenuItemUpdateRpc(id, patch, comment = '') {
   })
 }
 
+async function rmsCreateMenuItemForForm(payload) {
+  try {
+    const data = await rmsTechMenuItemCreateRpc(payload, 'Создание блюда из RMS: ' + String(getInternalSessionStorage()?.user?.email || 'admin'))
+    if (!data?.id) throw new Error('Сервер не вернул созданное блюдо')
+    return { data, error: null }
+  } catch (error) {
+    return { data: null, error }
+  }
+}
+
 async function rmsTechMenuItemCreateRpc(payload, comment = '') {
   return rmsTechCardRpcCall('rms_tech_menu_item_create_secure', {
     p_payload: payload || {},
@@ -1936,7 +1946,7 @@ const RMS_BRANCH_TAX_RATE_SETTING = 'branch_tax_rate_v1'
 const RMS_HIDDEN_SALES_KEYS_SETTING = 'hidden_sales_keys'
 const RMS_SALES_NAME_ALIASES_SETTING = 'sales_name_aliases'
 
-const RMS_SOURCE_VERSION = 'main_v402_products_report_backup_style_loader_ring_fix'
+const RMS_SOURCE_VERSION = 'main_v403_menu_create_rpc_fix'
 const RMS_FULL_BACKUP_TABLES = [
   'branches',
   'expense_categories',
@@ -21712,7 +21722,7 @@ function Recipes({ t }) {
       return
     }
 
-    const { data, error } = await supabase.from('menu_items').insert({
+    const { data, error } = await rmsCreateMenuItemForForm({
       name: cleanName,
       category: finalMenuForm.category || 'Прочее',
       sale_price: parseNum(finalMenuForm.sale_price),
@@ -21720,7 +21730,7 @@ function Recipes({ t }) {
       image_url: String(finalMenuForm.image_url || '').trim() || null,
       image_storage_path: String(finalMenuForm.image_storage_path || '').trim() || null,
       is_active: true
-    }).select('*').single()
+    })
 
     if (error) return setMessage(error.message)
 
@@ -23772,12 +23782,12 @@ function RecipesLegacy({ t }) {
   async function addMenuItem() {
     setMessage('')
     if (!menuForm.name.trim()) return setMessage('Введите название блюда')
-    const { data, error } = await supabase.from('menu_items').insert({
+    const { data, error } = await rmsCreateMenuItemForForm({
       name: menuForm.name.trim(),
       category: menuForm.category || null,
       sale_price: parseNum(menuForm.sale_price),
       target_food_cost_percent: parseNum(menuForm.target_food_cost_percent) || 30
-    }).select('*').single()
+    })
     if (error) return setMessage(error.message)
     setMenuForm({ name: '', category: 'Кофе', sale_price: '', target_food_cost_percent: '30' })
     await loadBase()
