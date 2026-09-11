@@ -1946,7 +1946,7 @@ const RMS_BRANCH_TAX_RATE_SETTING = 'branch_tax_rate_v1'
 const RMS_HIDDEN_SALES_KEYS_SETTING = 'hidden_sales_keys'
 const RMS_SALES_NAME_ALIASES_SETTING = 'sales_name_aliases'
 
-const RMS_SOURCE_VERSION = 'main_v403_menu_create_rpc_fix'
+const RMS_SOURCE_VERSION = 'main_v404_start_page_tech_card_form_fix'
 const RMS_FULL_BACKUP_TABLES = [
   'branches',
   'expense_categories',
@@ -5069,23 +5069,13 @@ function App() {
   const [profile, setProfile] = useState(null)
   const [permissions, setPermissions] = useState([])
   const [theme, setThemeState] = useState(localStorage.getItem('rms_theme') || localStorage.getItem('nms_theme') || 'classic')
-  const [section, setSection] = useState(() => {
-    try {
-      return localStorage.getItem('rms_last_section_v1') || 'dashboard'
-    } catch {
-      return 'dashboard'
-    }
-  })
+  const [section, setSection] = useState('dashboard')
   const [revenueFocus, setRevenueFocus] = useState(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => { document.documentElement.lang = lang }, [lang])
 
-  useEffect(() => {
-    try {
-      if (section) localStorage.setItem('rms_last_section_v1', section)
-    } catch {}
-  }, [section])
+  useEffect(() => { setSection('dashboard') }, [session?.user?.id])
 
   const setTheme = (value) => {
     const next = value || 'classic'
@@ -5225,7 +5215,7 @@ function App() {
 
   useEffect(() => {
     if (!visibleSections.length) return
-    if (!canReadAccess(sectionAccess(section))) setSection(visibleSections[0].id)
+    if (!canReadAccess(sectionAccess(section))) setSection((visibleSections.find(s => s.id !== 'reports') || visibleSections[0]).id)
   }, [permissions, profile, section, isInternalSession])
 
   function goToRevenueExpense(row) {
@@ -22633,10 +22623,7 @@ function Recipes({ t }) {
             </div>
 
             <div className="tech-editor-picker">
-              <label>
-                <span>Поиск тех. карты</span>
-                <input value={finalSearch} onChange={e => setFinalSearch(e.target.value)} placeholder="Название или категория" />
-              </label>
+
               <label>
                 <span>Выбранное блюдо</span>
                 <select value={selectedMenuId} onChange={e => {
