@@ -3,6 +3,17 @@
 Entries distinguish source changes, recorded deployments and verification.
 Only durable milestones belong here; no copied chat transcript.
 
+## 2026-09-13 — Nigar supplier pagination promoted to production
+- User explicitly authorized production rollout after successful test acceptance.
+- Rollback branch created from the previous stable commit: `rollback/before-nigar-secure-pagination-prod-20260913`.
+- Production schema was audited separately because it is single-tenant and differs from test; test SQL was not copied blindly.
+- Added production-compatible `rms_suppliers_workspace_secure()` and two read indexes; the existing protected paged purchase RPC was retained.
+- Post-DDL controls unchanged: 2,485 purchase headers, 12,575 items, 2,317 active purchases.
+- Security verification: anon execute=false, authenticated execute=true, SECURITY DEFINER with `search_path=public, pg_temp` and internal-user/permission checks.
+- Production frontend commit: `4a0976d32772dc731bd5e9dec3e0fde916ea7d2b`.
+- Production deployment: `dpl_9Xv5CyYbrb3jg9797YJPBdBQfn6o` READY; `app.rms.rest` returned HTTP 200 and no runtime errors were found.
+- Live Nigar login and historical-invoice acceptance remain pending; rollback stays active until confirmation.
+
 ## 2026-09-12 — Nigar supplier pagination fix isolated on test
 - Root cause confirmed: legacy internal/anon workspace path truncated supplier purchase history at a bounded result, while owner/admin path could read older invoices.
 - Production was first restored to original internal authorization so Nigar could continue working.
