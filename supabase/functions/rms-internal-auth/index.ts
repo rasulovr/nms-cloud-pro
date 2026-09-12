@@ -53,6 +53,19 @@ async function sha256(value: string) {
   return Array.from(new Uint8Array(digest)).map(byte => byte.toString(16).padStart(2, '0')).join('')
 }
 
+async function authAdminRequest(supabaseUrl: string, serviceKey: string, path: string, init: RequestInit = {}) {
+  const result = await fetch(`${supabaseUrl}/auth/v1/admin${path}`, {
+    ...init,
+    headers: {
+      apikey: serviceKey,
+      'Content-Type': 'application/json',
+      ...(init.headers || {}),
+    },
+  })
+  if (!result.ok) throw new Error(`Auth admin request failed: ${result.status}`)
+  return await result.json()
+}
+
 Deno.serve(async (request: Request) => {
   const origin = request.headers.get('origin')
   if (request.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders(origin) })
@@ -63,14 +76,16 @@ Deno.serve(async (request: Request) => {
   if (contentLength > 4096) return response(origin, 413, { error: 'Request too large' })
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL') || ''
-  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || defaultKeyFromJsonEnv('SUPABASE_SECRET_KEYS')
-  const anonKey = Deno.env.get('SUPABASE_ANON_KEY') || defaultKeyFromJsonEnv('SUPABASE_PUBLISHABLE_KEYS')
+  const serviceRoleKey = defaultKeyFromJsonEnv('SUPABASE_SECRET_KEYS') || Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
+  const anonKey = defaultKeyFromJsonEnv('SUPABASE_PUBLISHABLE_KEYS') || Deno.env.get('SUPABASE_ANON_KEY') || ''
   if (!supabaseUrl || !serviceRoleKey || !anonKey) return response(origin, 500, { error: 'Authentication service unavailable' })
 
   const admin = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false, autoRefreshToken: false } })
   const publicClient = createClient(supabaseUrl, anonKey, { auth: { persistSession: false, autoRefreshToken: false } })
+  let stage = 'request'
 
   try {
+    stage = 'parse'
     const body = await request.json()
     const login = normalizeLogin(body?.login)
     const password = String(body?.password || '')
@@ -78,12 +93,14 @@ Deno.serve(async (request: Request) => {
       return response(origin, 401, { error: 'Неверный логин или пароль' })
     }
 
+    stage = 'rate_limit'
     const loginHash = await sha256(login)
     const now = Date.now()
     const { data: attempt } = await admin.from('rms_internal_auth_attempts').select('*').eq('login_hash', loginHash).maybeSingle()
     const lockedUntil = attempt?.locked_until ? new Date(attempt.locked_until).getTime() : 0
     if (lockedUntil > now) return response(origin, 429, { error: 'Слишком много попыток. Повторите вход позже.' })
 
+    stage = 'legacy_credentials'
     const { data: setting, error: settingError } = await admin.from('rms_app_settings').select('value').eq('key', 'internal_users_v2').single()
     if (settingError) throw settingError
     const users = setting?.value && typeof setting.value === 'object' ? setting.value : {}
@@ -102,32 +119,40 @@ Deno.serve(async (request: Request) => {
       return response(origin, 401, { error: 'Неверный логин или пароль' })
     }
 
-    const { data: listed, error: listError } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 })
-    if (listError) throw listError
-    const candidates = (listed.users || []).filter(user => normalizeLogin(user.email) === login)
+    stage = 'list_auth_users'
+    const listed = await authAdminRequest(supabaseUrl, serviceRoleKey, '/users?page=1&per_page=100')
+    const candidates = (listed.users || []).filter((user: Record<string, unknown>) => normalizeLogin(user.email) === login)
     let authUser = candidates.find(user => user.email?.toLowerCase() === `${login}@rms.local.az`) || candidates[0]
     const technicalEmail = authUser?.email || `${login}@rms.local.az`
 
     if (!authUser) {
-      const created = await admin.auth.admin.createUser({
-        email: technicalEmail, password, email_confirm: true,
-        app_metadata: { rms_internal_id: internalUser.id, rms_login: login },
+      stage = 'create_auth_user'
+      authUser = await authAdminRequest(supabaseUrl, serviceRoleKey, '/users', {
+        method: 'POST',
+        body: JSON.stringify({
+          email: technicalEmail, password, email_confirm: true,
+          app_metadata: { rms_internal_id: internalUser.id, rms_login: login },
+        }),
       })
-      if (created.error || !created.data.user) throw created.error || new Error('Auth user creation failed')
-      authUser = created.data.user
     } else {
-      const updated = await admin.auth.admin.updateUserById(authUser.id, {
-        password,
-        app_metadata: { ...(authUser.app_metadata || {}), rms_internal_id: internalUser.id, rms_login: login },
+      stage = 'update_auth_user'
+      await authAdminRequest(supabaseUrl, serviceRoleKey, `/users/${authUser.id}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          password,
+          app_metadata: { ...(authUser.app_metadata || {}), rms_internal_id: internalUser.id, rms_login: login },
+        }),
       })
-      if (updated.error) throw updated.error
     }
 
+    stage = 'create_session'
     const signedIn = await publicClient.auth.signInWithPassword({ email: technicalEmail, password })
     if (signedIn.error || !signedIn.data.session) throw signedIn.error || new Error('Session creation failed')
 
+    stage = 'load_permissions'
     const { data: permissionSetting } = await admin.from('rms_app_settings').select('value').eq('key', 'internal_permissions_v2').single()
     const permissions = permissionSetting?.value?.[internalUser.id] || {}
+    stage = 'link_account'
     const linked = await admin.from('rms_internal_auth_accounts').upsert({
       auth_user_id: authUser.id, internal_id: internalUser.id, login, is_admin: false, is_active: true, updated_at: new Date().toISOString(),
     }, { onConflict: 'auth_user_id' })
@@ -140,6 +165,9 @@ Deno.serve(async (request: Request) => {
       permissions,
     })
   } catch (_error) {
-    return response(origin, 500, { error: 'Не удалось выполнить защищённый вход' })
+    const technicalCode = _error instanceof Error && /^Auth admin request failed: \d{3}$/.test(_error.message)
+      ? _error.message.replace('Auth admin request failed: ', 'HTTP_')
+      : 'INTERNAL'
+    return response(origin, 500, { error: 'Не удалось выполнить защищённый вход', code: `AUTH_${stage.toUpperCase()}`, technical_code: technicalCode })
   }
 })
