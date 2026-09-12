@@ -63,7 +63,7 @@ export function rmsSecureAuthTransform(source) {
   result = replaceRange(result, 'const normalizedLogin = normalizeInternalLogin(rawLogin)', 'const { data, error } = await supabase.auth.signInWithPassword', secureLogin)
   result = result.replace(
     "const { data, error } = await supabase.rpc('rms_suppliers_workspace')",
-    "const rpcName = getInternalSessionStorage()?.rms_internal ? 'rms_suppliers_workspace_secure' : 'rms_suppliers_workspace'\\n  const { data, error } = await supabase.rpc(rpcName)"
+    "const rpcName = getInternalSessionStorage()?.rms_internal ? 'rms_suppliers_workspace_secure' : 'rms_suppliers_workspace'\n  const { data, error } = await supabase.rpc(rpcName)"
   )
   result = replaceRange(result, 'async function fetchSupplierPurchasesFullRowsViaRpc() {', 'async function fetchAllSupplierPurchasesRows', `${pagedRead}\n\n  `)
   return result
