@@ -2,9 +2,8 @@
 
 Last updated: 2026-09-12 (UTC)
 Owner: RMS Pro development
-Status: PREPARED, NOT PUBLISHED. GitHub write rejected by automatic approval review.
-Publication blocker: explicit authorization required for internal information in a PUBLIC repository.
-The documentation branch below is planned and has NOT been created.
+Status: canonical handoff active on `docs/rms-project-state`.
+Publication authorized by the user and completed on 2026-09-12.
 
 ## READ FIRST
 - Canonical repository: https://github.com/rasulovr/nms-cloud-pro
@@ -67,7 +66,7 @@ Requirements, acceptance checks and unresolved details: [Tech Cards](docs/RMS_TE
 - v404 chooses an allowed non-Reports section when dashboard is not permitted.
 - v404 removes “Поиск тех. карты” from the creation form.
 - GitHub diff verifies these v404 source changes; functional acceptance still pending.
-- Persistent module documentation and agent handoff rules prepared on 2026-09-12; not yet published.
+- Persistent module documentation and agent handoff rules published on 2026-09-12.
 
 ## CURRENT PROBLEMS
 1. Repeated menu_items RLS error reported after earlier fix; confirm actual deployed asset and failing request.
@@ -97,8 +96,8 @@ Requirements, acceptance checks and unresolved details: [Tech Cards](docs/RMS_TE
 7. Promote STABLE only after relevant checks; record deployment separately from code completion.
 
 ## WORK SCOPE / PERMISSIONS
-- Current request authorizes persistent GitHub project documentation.
-- This task does not authorize new DB mutations, application changes or deployment promotion.
+- Persistent GitHub project documentation was explicitly authorized and published.
+- That authorization does not include DB mutations, application changes or deployment promotion.
 - Earlier task-specific approvals exist; preserve exact target and scope when recovered.
 - Do not ask for permission again when the same concrete action is already authorized.
 - Generic “разрешаю” without a recoverable action is not permission for unrelated targets.
@@ -123,4 +122,3 @@ Requirements, acceptance checks and unresolved details: [Tech Cards](docs/RMS_TE
 - Never declare “done” based only on an intention, build or deployment READY.
 - Archive superseded facts; do not stack multiple contradictory CURRENT sections.
 - The older standalone RMS_PROJECT_STATE.md is historical evidence, not the live authority.
-

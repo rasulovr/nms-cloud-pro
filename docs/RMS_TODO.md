@@ -4,7 +4,7 @@ Do not automatically execute every item. Current user task controls priority.
 
 ## Current
 - [x] Prepare short state and module handoff documents.
-- [ ] Publish reviewed package to GitHub after resolving public-information approval.
+- [x] Publish reviewed package to GitHub after explicit public-repository authorization.
 - [x] Prepare documentation update workflow in AGENTS.md.
 - [ ] Locate any v405 semifinished work already prepared in another session.
 - [ ] Verify v404 with affected restricted internal user.
@@ -29,4 +29,3 @@ Do not automatically execute every item. Current user task controls priority.
 ## Backlog, not current scope
 AI recommendations, upsell, menu scheduling, shared carts/bills, loyalty integration,
 analytics and other previously proposed enhancements require specific task selection.
-

@@ -4,8 +4,8 @@ Entries distinguish source changes, recorded deployments and verification.
 Only durable milestones belong here; no copied chat transcript.
 
 ## 2026-09-12 — Persistent handoff
-- Prepared RMS_PROJECT_STATE.md, AGENTS.md and module documents for docs/rms-project-state.
-- Publication rejected by automatic approval review because destination is public; branch not created.
+- Published RMS_PROJECT_STATE.md, AGENTS.md and module documents to docs/rms-project-state after explicit authorization for the public repository.
+- Documentation commit is separate from the application commit; main and deployments were not changed.
 - Application source checkpoint: c14b3e4ed377a379f8bd0e2629c5828b101ef6ea.
 - Verified GitHub commit diff and successful Vercel status records.
 - No application source or database changes in this documentation task.
@@ -37,4 +37,3 @@ Only durable milestones belong here; no copied chat transcript.
 
 ## Future entry format
 Date / module / source commit / target environment / result / checks / limitations / rollback reference.
-
