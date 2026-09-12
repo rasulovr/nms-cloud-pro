@@ -40,7 +40,7 @@ Status: canonical handoff active on `docs/rms-project-state`.
 ## CURRENT TASK
 Module: Suppliers → purchase journal.
 Goal: Nigar must see all invoices, including those older than the old 500-row workspace boundary.
-Status: screenshot exposed a session-order race and missing protected workspace RPC; both are fixed and server/API/build verification passed. Fresh mobile UI acceptance remains pending.
+Status: FIX VERIFIED ON TEST. User confirmed the corrected Preview works on mobile.
 Priority rule: all further changes and confirmations stay on test Preview until explicit production approval.
 
 ## ROOT CAUSE
@@ -74,11 +74,11 @@ Priority rule: all further changes and confirmations stay on test Preview until 
 - `rms_suppliers_workspace_secure()` was API-tested with Nigar's genuine Auth session: legal entities = 1, suppliers = 1, products = 1, embedded purchases = 0, error = null.
 - Final branch transform contains the secure workspace selection and stores the internal marker before `auth.setSession`; transformed v404 source passed syntax/build validation.
 - Current Preview deployment for commit `4deb2bd` is READY.
-- Remaining check: fresh authenticated mobile UI must show the Suppliers section, 520 records and final invoice `TEST-PAGE-0520`.
+- User completed fresh mobile acceptance and confirmed: «всё ок».
 
 ## CURRENT PROBLEMS
 1. Production still intentionally uses legacy internal authorization and retains the old 500-row limitation for Nigar.
-2. Fresh authenticated Preview UI acceptance after the session/workspace correction has not yet been completed.
+2. Production still requires a separate, explicitly approved migration/deployment; test acceptance alone does not authorize promotion.
 3. Supabase test advisor reports historical project-wide warnings outside this fix; do not broaden this task into unrelated schema cleanup.
 4. v405 semifinished-product redesign remains queued behind this urgent supplier issue.
 5. POS and QR work remain separate; do not mix their deployment targets or databases.
@@ -96,13 +96,12 @@ Priority rule: all further changes and confirmations stay on test Preview until 
 - Never copy passwords, tokens, raw customer or financial data into GitHub.
 
 ## NEXT STEP
-1. Open the newly generated protected Preview link in a fresh browser tab and sign in as test Nigar.
-2. Verify the Suppliers section is visible with no `rms_suppliers_workspace` cache error.
-3. Verify journal count = 520 and final record `TEST-PAGE-0520` dated 2025-04-11.
-4. Check supplier filters and report any visible error; fix and redeploy test only if needed.
-5. After successful test acceptance, prepare a narrow production migration/deployment plan and rollback.
-6. Do not promote until the user separately authorizes the exact production changes.
-7. Update this file and changelog after the result.
+1. Prepare a narrow production migration/deployment plan with an exact rollback point.
+2. Recheck production SQL definitions and compatibility without changing data.
+3. Request separate explicit authorization for the exact production database and frontend changes.
+4. After authorization, apply the protected RPC/auth migration first, verify it, then deploy frontend.
+5. Confirm Nigar sees historical production invoices; rollback immediately if authentication or permissions regress.
+6. Keep financial records, invoices, payments, balances and user permissions unchanged.
 
 ## ROLLBACK
 - Production legacy-access rollback branch: `rollback/before-nigar-legacy-access-20260912`.
