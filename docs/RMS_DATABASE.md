@@ -7,17 +7,17 @@ Read exact deployed definitions before any production migration.
 ## Targets
 - Production Supabase: `meqttgiksyuyffuoghwx`.
 - Test Supabase: `zzsdcxowhhaxnuliaryb`.
-- Current supplier-pagination work is installed only on test.
+- Secure supplier pagination/workspace is installed on test and production; production uses its compatible single-tenant definitions.
 - Never infer production from test or copy credentials into this repository.
 
-## Current test-only supplier/auth objects
+## Current supplier/auth objects
 | Object | Purpose / constraint | Verified state |
 | --- | --- | --- |
 | `rms_internal_auth_accounts` | Maps one Supabase Auth user to one RMS internal user and organization | RLS enabled; direct anon/authenticated grants revoked |
 | `rms_internal_auth_attempts` | Server-side failed-attempt and lockout state | RLS enabled; direct anon/authenticated grants revoked |
 | `rms_supplier_purchases_page_secure(integer, integer)` | Tenant-scoped paged supplier purchase read | SECURITY DEFINER, safe search_path, anon revoked, authenticated granted |
 | `rms_suppliers_workspace_secure()` | Tenant-scoped supplier workspace metadata; purchases loaded separately by page | SECURITY DEFINER, safe search_path, anon revoked, authenticated granted |
-| Edge `rms-internal-auth` | Validates internal password and issues genuine Auth session | Test version 2 ACTIVE |
+| Edge `rms-internal-auth` | Validates internal password and issues genuine Auth session | Test v2 ACTIVE; production v15 ACTIVE |
 
 The paged RPC additionally checks:
 - `auth.uid()` exists.
@@ -39,9 +39,11 @@ The paged RPC additionally checks:
 - Privilege audit:
   - anon RPC execute: false.
   - authenticated RPC execute: true.
+- Production post-DDL counts remained 2,485 purchase headers, 12,575 items and 2,317 active purchases.
+- Production read indexes: `idx_supplier_purchase_items_purchase_id` and `idx_supplier_purchases_page_order`.
   - anon/authenticated direct reads of both internal auth tables: false.
 - `pg_net` was used temporarily for a server-side test and removed afterwards.
-- No production data was copied or changed.
+- Production rollout changed no supplier, invoice, item, payment, balance, revenue or permission rows.
 
 ## Existing domain objects
 | Object | Purpose / constraint |
@@ -71,8 +73,8 @@ The paged RPC additionally checks:
 ## Migration ledger
 | Migration / change | Target | State | Next action |
 | --- | --- | --- | --- |
-| Secure internal Auth linkage + supplier workspace/paging | Test | Applied and API-verified 2026-09-12 | Complete fresh authenticated Preview UI acceptance |
-| Production supplier paging | Production | NOT applied | Prepare narrow plan only after test acceptance and explicit approval |
+| Secure internal Auth linkage + supplier workspace/paging | Test | Applied, API-verified and UI-accepted 2026-09-12 | Keep as validation environment |
+| Secure internal Auth linkage + supplier workspace/paging | Production | Applied and deployment READY 2026-09-13 | Complete live Nigar acceptance |
 | `pos_board_create_table_scoped_idempotent` | Test/staging | Applied 2026-09-11 | Do not rerun based on filename |
 | `pos_kds_item_readiness_and_served_restore` | Test/staging | Applied 2026-09-10 | Retrieve exact SQL before modifying |
 | `baristachef_bc1_isolated_import` | Test/staging | Applied 2026-09-09 | Do not repeat import |
