@@ -20,7 +20,8 @@ Only durable milestones belong here; no copied chat transcript.
 - Added authenticated tenant-scoped `rms_suppliers_workspace_secure()` and fixed session initialization order.
 - Secure workspace API test with Nigar session returned the expected organization-scoped workspace without embedded purchase bulk data.
 - Final source commit: `4deb2bd3ea5c78d7ad8fadbc0f9aaa161855e303`; Preview deployment `dpl_9veE3BrmgthWzAk8HPHH2FJSc4zE` READY.
-- Fresh authenticated mobile journal acceptance remains pending.
+- Fresh authenticated mobile acceptance completed; user confirmed the corrected Preview works («всё ок»).
+- Test fix is accepted. Production promotion remains separate and requires explicit authorization.
 - No production promotion is authorized.
 
 ## 2026-09-12 — Persistent handoff
