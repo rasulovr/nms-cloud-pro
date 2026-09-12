@@ -6,18 +6,19 @@ const secureLogin = `const normalizedLogin = normalizeInternalLogin(rawLogin)
           stopProgress()
           return setError(secureAuth?.error || 'Пользователь не найден или пароль неверный')
         }
-        const { error: sessionError } = await supabase.auth.setSession({ access_token: secureAuth.session.access_token, refresh_token: secureAuth.session.refresh_token })
-        if (sessionError) {
-          stopProgress()
-          return setError('Не удалось создать защищённую сессию')
-        }
         const safeInternalUser = secureAuth.internal_user
         const loginName = safeInternalUser.login || normalizedLogin
         writeJsonStorage(RMS_INTERNAL_USERS_KEY, { [loginName]: safeInternalUser })
         writeJsonStorage(RMS_INTERNAL_PERMISSIONS_KEY, { [safeInternalUser.id]: secureAuth.permissions || {} })
-        await rmsClearSharedLoginGuard(rawLogin)
         const nextInternalSession = { rms_internal: true, access_token: secureAuth.session.access_token, user: { id: safeInternalUser.id || \`rms-\${loginName}\`, email: \`\${loginName}@rms.internal\`, login_name: loginName } }
         setInternalSessionStorage(nextInternalSession)
+        const { error: sessionError } = await supabase.auth.setSession({ access_token: secureAuth.session.access_token, refresh_token: secureAuth.session.refresh_token })
+        if (sessionError) {
+          setInternalSessionStorage(null)
+          stopProgress()
+          return setError('Не удалось создать защищённую сессию')
+        }
+        await rmsClearSharedLoginGuard(rawLogin)
         window.dispatchEvent(new Event('rms-user-settings-updated'))
         stopProgress()
         onSignedIn?.(nextInternalSession)
@@ -60,6 +61,10 @@ export function rmsSecureAuthTransform(source) {
     "const loginGuard = (!rawLogin.includes('@') || /@(rms|nms)\\.local\\.az$/i.test(rawLogin) || /@rms\\.internal$/i.test(rawLogin)) ? { locked: false } : await rmsGetSharedLoginGuardState(rawLogin)"
   )
   result = replaceRange(result, 'const normalizedLogin = normalizeInternalLogin(rawLogin)', 'const { data, error } = await supabase.auth.signInWithPassword', secureLogin)
+  result = result.replace(
+    "const { data, error } = await supabase.rpc('rms_suppliers_workspace')",
+    "const rpcName = getInternalSessionStorage()?.rms_internal ? 'rms_suppliers_workspace_secure' : 'rms_suppliers_workspace'\\n  const { data, error } = await supabase.rpc(rpcName)"
+  )
   result = replaceRange(result, 'async function fetchSupplierPurchasesFullRowsViaRpc() {', 'async function fetchAllSupplierPurchasesRows', `${pagedRead}\n\n  `)
   return result
 }
