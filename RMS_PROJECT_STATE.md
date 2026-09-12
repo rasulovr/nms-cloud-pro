@@ -17,15 +17,15 @@ Status: canonical handoff active on `docs/rms-project-state`.
 
 ## CURRENT STABLE — PRODUCTION
 - Frontend URL: https://app.rms.rest
-- Source commit: `d882bb674b8b0dcbd547b4ef42f038b93e7a391b`.
-- Deployment: `dpl_9ExMg1y3M3MEyMvG1FcZUwxK7M8o` — READY.
+- Source commit: `4a0976d32772dc731bd5e9dec3e0fde916ea7d2b`.
+- Deployment: `dpl_9Xv5CyYbrb3jg9797YJPBdBQfn6o` — READY.
 - Vercel project: `prj_JpEc02KgTnexXmWbAJpK4EMpYM2O`.
 - Supabase production: `meqttgiksyuyffuoghwx`.
-- Authentication: original internal RMS authorization restored so Nigar can work.
-- Runtime errors were not detected after restore.
-- Production database, invoices, finances and permissions were not changed.
-- Rollback branch: `rollback/before-nigar-legacy-access-20260912`.
-- Known limitation: Nigar still receives a truncated old supplier workspace and cannot see all historical invoices.
+- Authentication: protected Edge-backed internal Auth is active; Nigar linkage is created/refreshed after her next successful login.
+- `app.rms.rest` returned HTTP 200 after deployment; no Vercel runtime errors were found.
+- Production supplier records, invoice rows, finances and permissions were not changed; only read-only RPCs and two read indexes were added.
+- Rollback branch: `rollback/before-nigar-secure-pagination-prod-20260913`.
+- Supplier purchases now load through protected 250-row pages instead of the legacy 500-row workspace boundary.
 
 ## WORKING VERSION — TEST ONLY
 - Task branch: `fix/secure-internal-auth-supplier-pagination`.
@@ -40,7 +40,7 @@ Status: canonical handoff active on `docs/rms-project-state`.
 ## CURRENT TASK
 Module: Suppliers → purchase journal.
 Goal: Nigar must see all invoices, including those older than the old 500-row workspace boundary.
-Status: FIX VERIFIED ON TEST. User confirmed the corrected Preview works on mobile.
+Status: TEST ACCEPTED AND PRODUCTION DEPLOYED. Live Nigar acceptance on `app.rms.rest` is pending.
 Priority rule: all further changes and confirmations stay on test Preview until explicit production approval.
 
 ## ROOT CAUSE
@@ -75,10 +75,12 @@ Priority rule: all further changes and confirmations stay on test Preview until 
 - Final branch transform contains the secure workspace selection and stores the internal marker before `auth.setSession`; transformed v404 source passed syntax/build validation.
 - Current Preview deployment for commit `4deb2bd` is READY.
 - User completed fresh mobile acceptance and confirmed: «всё ок».
+- Production database verification after DDL: 2,485 purchases, 12,575 items and 2,317 active purchases unchanged; new secure workspace has safe search_path, anon execute=false, authenticated execute=true.
+- Production bundle verification: secure Auth/workspace/paged RPC markers present; active Supabase client points to production.
 
 ## CURRENT PROBLEMS
-1. Production still intentionally uses legacy internal authorization and retains the old 500-row limitation for Nigar.
-2. Production still requires a separate, explicitly approved migration/deployment; test acceptance alone does not authorize promotion.
+1. Nigar must complete one fresh production login so Edge Auth can create/refresh her technical linkage, then verify historical invoices.
+2. Production promotion is complete; keep rollback ready until Nigar confirms live access and old invoice visibility.
 3. Supabase test advisor reports historical project-wide warnings outside this fix; do not broaden this task into unrelated schema cleanup.
 4. v405 semifinished-product redesign remains queued behind this urgent supplier issue.
 5. POS and QR work remain separate; do not mix their deployment targets or databases.
@@ -96,12 +98,12 @@ Priority rule: all further changes and confirmations stay on test Preview until 
 - Never copy passwords, tokens, raw customer or financial data into GitHub.
 
 ## NEXT STEP
-1. Prepare a narrow production migration/deployment plan with an exact rollback point.
-2. Recheck production SQL definitions and compatibility without changing data.
-3. Request separate explicit authorization for the exact production database and frontend changes.
-4. After authorization, apply the protected RPC/auth migration first, verify it, then deploy frontend.
-5. Confirm Nigar sees historical production invoices; rollback immediately if authentication or permissions regress.
-6. Keep financial records, invoices, payments, balances and user permissions unchanged.
+1. Ask Nigar to close the old tab, open https://app.rms.rest and sign in with her normal production login/password.
+2. Verify Suppliers opens without an RPC/schema-cache error.
+3. Select period «Все» and confirm invoices older than 7 September are visible.
+4. Confirm other permitted sections still open and forbidden sections remain hidden.
+5. If authentication or permissions regress, immediately restore deployment `dpl_9ExMg1y3M3MEyMvG1FcZUwxK7M8o` / rollback branch.
+6. After live acceptance, mark production fix complete and resume the queued v405 semifinished-products task.
 
 ## ROLLBACK
 - Production legacy-access rollback branch: `rollback/before-nigar-legacy-access-20260912`.
