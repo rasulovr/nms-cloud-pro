@@ -4,6 +4,7 @@ const allowedOrigins = new Set([
   'https://app.rms.rest',
   'https://project-83si4-ob5zn7ol5-nms-clouds-projects.vercel.app',
   'https://project-83si4-git-fix-secure-interna-c3a225-nms-clouds-projects.vercel.app',
+  'https://project-83si4-lc243mrus-nms-clouds-projects.vercel.app',
 ])
 const encoder = new TextEncoder()
 
