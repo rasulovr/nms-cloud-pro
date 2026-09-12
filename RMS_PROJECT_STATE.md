@@ -3,106 +3,106 @@
 Last updated: 2026-09-12 (UTC)
 Owner: RMS Pro development
 Status: canonical handoff active on `docs/rms-project-state`.
-Publication authorized by the user and completed on 2026-09-12.
 
 ## READ FIRST
 - Canonical repository: https://github.com/rasulovr/nms-cloud-pro
 - Canonical documentation branch: `docs/rms-project-state`.
-- Always read this file from that branch, even when application checkout is on main.
-- Application branch: `main`; documentation branch is NOT an application development base.
+- Always read this file from that branch, even when application checkout is on `main`.
+- Read `AGENTS.md`, then only the module required for Current Task.
 - GitHub documentation supersedes older chat summaries for recorded state.
-- Fresh code / deployment / database evidence supersedes stale documentation.
-- New user instructions supersede recorded task priorities and permissions.
-- Unknown means unverified; do not invent a commit, deployment, migration or success.
-- Read [AGENTS.md](AGENTS.md), then only the module required for Current Task.
+- Fresh code, deployment and database evidence supersedes stale documentation.
+- New user instructions supersede recorded priorities and permissions.
+- Unknown means unverified; never invent a commit, deployment, migration or success.
+- STABLE is not the same as WORKING or Preview.
 
-## CURRENT STABLE
-- Last reported working checkpoint: v403 — `main_v403_menu_create_rpc_fix`.
-- Code commit: `6e6e487ff3f3fa1cbb2992b4b15b77d59d3ec12c`.
-- Historical production checkpoint: `dpl_ErL55YK5Xp2aSiANjZX1xjo8ENVT`.
-- Evidence: previous handoff dated 2026-09-11 reports READY, RPC transactional test passed.
-- Limitation: subsequent user report repeats menu_items RLS error; NOT a fully accepted release.
-- Fully regression-verified stable release: not established in this handoff.
-- Never roll back automatically to this older checkpoint.
+## CURRENT STABLE — PRODUCTION
+- Frontend URL: https://app.rms.rest
+- Source commit: `d882bb674b8b0dcbd547b4ef42f038b93e7a391b`.
+- Deployment: `dpl_9ExMg1y3M3MEyMvG1FcZUwxK7M8o` — READY.
+- Vercel project: `prj_JpEc02KgTnexXmWbAJpK4EMpYM2O`.
+- Supabase production: `meqttgiksyuyffuoghwx`.
+- Authentication: original internal RMS authorization restored so Nigar can work.
+- Runtime errors were not detected after restore.
+- Production database, invoices, finances and permissions were not changed.
+- Rollback branch: `rollback/before-nigar-legacy-access-20260912`.
+- Known limitation: Nigar still receives a truncated old supplier workspace and cannot see all historical invoices.
 
-## CURRENT CODE / WORKING VERSION
-- Latest application source verified in GitHub: v404.
-- Source marker: `main_v404_start_page_tech_card_form_fix`.
-- Full frontend: `src/main.jsx`.
-- Application commit: `c14b3e4ed377a379f8bd0e2629c5828b101ef6ea`.
-- Commit date: 2026-09-11T16:29:16Z.
-- GitHub reports successful Vercel deployments for project-83si4 and rms-saas-staging.
-- This proves deployment completion, not live alias assignment or user acceptance.
-- v405 / semifinished redesign: requested; saved source, branch and deployment not located.
-- Start new application work from latest verified code, preserving v404 fixes.
-- Before editing, check remote main and concurrent work; v405 may exist outside main.
-- ROLLBACK CANDIDATE: v403 commit above; historical fallback, not an instruction to revert.
-- Documentation commits do not increment the frontend version.
-
-## ENVIRONMENTS
-| Purpose | Address / identifier | Evidence |
-| --- | --- | --- |
-| RMS production | https://app.rms.rest | Established production URL; alias not rechecked this task |
-| RMS Vercel | project-83si4 / prj_JpEc02KgTnexXmWbAJpK4EMpYM2O | Earlier verified handoff |
-| SaaS staging | https://rms-saas-staging.vercel.app | Separate deployment target; do not confuse with RMS |
-| SaaS Vercel | prj_lh1xU1uCWzjAuGUrPjc1jCnAN7dw | Previous project context |
-| Supabase production | UNKNOWN — resolve from production configuration before DB work | src/supabase.js only uses environment variables |
-| Supabase test/staging | zzsdcxowhhaxnuliaryb | Previous applied migration records |
-| POS project address | https://rms-pos-cloud-preview.vercel.app | Not guaranteed to point at latest Preview |
-| Last recorded POS Preview | https://rms-pos-cloud-preview-qv6w6guik-nms-clouds-projects.vercel.app | 2026-09-11 handoff; see module |
-| QR public | https://baristachef.rms.rest | Separate client project, using staging DB historically |
+## WORKING VERSION — TEST ONLY
+- Task branch: `fix/secure-internal-auth-supplier-pagination`.
+- Source commit: `3a90e35de2833b13b0511b669e3eaf61dee15aa5`.
+- Version intent: v405 supplier purchase paged-load fix.
+- Supabase test: `zzsdcxowhhaxnuliaryb`.
+- Preview deployment: `dpl_2Q75DwCzE6GJTy21np9UqQVVk2S5` — READY.
+- Stable Preview alias: https://project-83si4-git-fix-secure-interna-c3a225-nms-clouds-projects.vercel.app
+- Preview build is pinned to test Supabase; production ref is absent from its bundle.
+- Production `main`, production alias and production database were not changed.
 
 ## CURRENT TASK
-Module: Tech Cards → Semi-finished products.
-Goal: creation flow inspired by iiko or equivalent, but simpler and intuitive.
-Status: requested; implementation completion is NOT verified.
-Current user priority: finish persistent GitHub handoff before application changes.
-Task owner: next RMS development session; no exclusive edit lock is claimed here.
-Requirements, acceptance checks and unresolved details: [Tech Cards](docs/RMS_TECH_CARDS_STATE.md).
+Module: Suppliers → purchase journal.
+Goal: Nigar must see all invoices, including those older than the old 500-row workspace boundary.
+Status: backend and access-control verification passed on test; authenticated browser UI acceptance remains pending.
+Priority rule: all further changes and confirmations stay on test Preview until explicit production approval.
 
-## LAST COMPLETED
-- v403 replaced direct dish INSERT with existing secure creation RPC (earlier verified checkpoint).
-- v404 initializes dashboard and avoids restoring the previous Reports screen.
-- v404 chooses an allowed non-Reports section when dashboard is not permitted.
-- v404 removes “Поиск тех. карты” from the creation form.
-- GitHub diff verifies these v404 source changes; functional acceptance still pending.
-- Persistent module documentation and agent handoff rules published on 2026-09-12.
+## ROOT CAUSE
+- Nigar used a legacy internal session backed by the public anon client.
+- The old complete-workspace RPC returned a bounded result; relevant supplier purchases could rank after its first 500 rows.
+- Rasul's admin account used a different authorized path and therefore displayed the older invoices.
+- This is a retrieval/authentication-path defect, not missing or deleted invoice data.
+
+## IMPLEMENTED ON TEST
+- Added genuine Supabase Auth sessions for internal RMS users through Edge Function `rms-internal-auth`.
+- Internal passwords remain validated server-side; password values are not returned to the client.
+- Added private account linkage and server-side failed-attempt tracking.
+- Added tenant-scoped paged RPC `rms_supplier_purchases_page_secure(limit, offset)`.
+- Frontend loads supplier purchases in 250-row pages and combines them before existing filtering/pagination.
+- RPC validates Auth user, internal mapping, organization, active status and `suppliers` read/edit permission.
+- RPC execute is revoked from `public` and `anon`; granted only to `authenticated`.
+- Linkage and attempt tables have RLS enabled and no direct `anon` or `authenticated` table grants.
+
+## TEST EVIDENCE
+- Test-only synthetic dataset: 520 purchases and 520 line items; no production records copied.
+- Real Edge login returned HTTP 200 and created a genuine Supabase session.
+- REST RPC with that session returned rows 1–250 at offset 0 and rows 501–520 at offset 500.
+- Newest test invoice: `TEST-PAGE-0001`, 2026-09-12.
+- Oldest test invoice: `TEST-PAGE-0520`, 2025-04-11.
+- Access audit: anon RPC execute = false; authenticated RPC execute = true.
+- Direct reads of auth-link and attempt tables = false for anon and authenticated.
+- Local production build passed; Preview login page loads without application console errors.
+- Remaining check: authenticated UI must show 520 records and the final old invoice in the journal.
 
 ## CURRENT PROBLEMS
-1. Repeated menu_items RLS error reported after earlier fix; confirm actual deployed asset and failing request.
-2. v404 startup and form changes need checking under the affected restricted internal user.
-3. v405 semifinished work may be in another session/artifact; locate before duplicating it.
-4. Current production DB reference and live v404 alias are not independently verified here.
-5. POS deployed bundle has no confirmed matching Git commit; do not substitute repo main blindly.
-6. QR secondary custom domains were still unconnected in the last verified handoff.
+1. Production still intentionally uses legacy internal authorization and retains the old 500-row limitation for Nigar.
+2. Authenticated Preview UI acceptance has not yet been completed.
+3. Supabase test advisor reports historical project-wide warnings outside this fix; do not broaden this task into unrelated schema cleanup.
+4. v405 semifinished-product redesign remains queued behind this urgent supplier issue.
+5. POS and QR work remain separate; do not mix their deployment targets or databases.
 
 ## DO NOT BREAK
+- Existing production access for Nigar while the test fix is being validated.
 - Internal RMS authentication and section permissions.
+- Tenant isolation and RLS; never expose supplier RPC to anon as a shortcut.
+- Supplier debts, payments, purchases, invoice items and Food Cost allocation.
 - Revenue, attendance, salaries and manager-salary visibility.
-- Supplier debt, purchases and Food Cost allocation.
-- Existing recipe components in rms_final_recipe_components.
-- One canonical menu_item_id for edit, photo, delete and components.
+- Existing recipe components in `rms_final_recipe_components`.
+- One canonical `menu_item_id` for edit, photo, delete and components.
 - Tech-card printing, QR photos and POS integration.
-- Existing data: no duplicate imports, broad deletes, resets or recreated menu items.
-- RLS and tenant isolation; no broad anon policy as a shortcut.
+- Existing data: no broad deletes, resets, duplicate imports or recreated invoices.
+- Never copy passwords, tokens, raw customer or financial data into GitHub.
 
 ## NEXT STEP
-1. Read this file, AGENTS.md and Tech Cards state.
-2. Compare latest remote main against c14b3e4; locate any saved v405 work.
-3. Verify affected user's startup and creation request; identify exact failing operation.
-4. Inspect current semifinished model and flow; research official iiko documentation.
-5. Implement the simplest agreed flow, then verify yield, cost, persistence and editing.
-6. Update working version, exact source commit, test evidence and next action.
-7. Promote STABLE only after relevant checks; record deployment separately from code completion.
+1. Complete authenticated browser acceptance on the protected test Preview.
+2. Verify journal count = 520 and final record `TEST-PAGE-0520` dated 2025-04-11.
+3. Check browser console/network errors and supplier filters.
+4. If any UI defect appears, fix and redeploy test only.
+5. After successful test acceptance, prepare a narrow production migration/deployment plan and rollback.
+6. Do not promote until the user separately authorizes the exact production changes.
+7. Update this file and changelog after the result.
 
-## WORK SCOPE / PERMISSIONS
-- Persistent GitHub project documentation was explicitly authorized and published.
-- That authorization does not include DB mutations, application changes or deployment promotion.
-- Earlier task-specific approvals exist; preserve exact target and scope when recovered.
-- Do not ask for permission again when the same concrete action is already authorized.
-- Generic “разрешаю” without a recoverable action is not permission for unrelated targets.
-- Prior automatic rejections must not be bypassed through an alternate publication channel.
-- No credentials, tokens, PINs, personal records or raw business exports belong in this public repo.
+## ROLLBACK
+- Production legacy-access rollback branch: `rollback/before-nigar-legacy-access-20260912`.
+- Earlier source rollback checkpoint: `c14b3e4ed377a379f8bd0e2629c5828b101ef6ea`.
+- Test changes are isolated on their task branch and separate test Supabase.
+- No automatic production rollback or promotion is authorized.
 
 ## MODULE INDEX
 - [Change history](docs/RMS_CHANGELOG.md)
@@ -116,9 +116,7 @@ Requirements, acceptance checks and unresolved details: [Tech Cards](docs/RMS_TE
 ## UPDATE CONTRACT
 - Keep this file within 100–300 lines; move history to CHANGELOG.
 - Update after every substantial change, test result, deployment, block or task switch.
-- Before ending a session, record saved work location and one concrete next action.
-- Record source commit separately from documentation commit to avoid self-referential SHA.
-- Never replace a newer concurrent update: reread branch head and merge documentation.
-- Never declare “done” based only on an intention, build or deployment READY.
-- Archive superseded facts; do not stack multiple contradictory CURRENT sections.
-- The older standalone RMS_PROJECT_STATE.md is historical evidence, not the live authority.
+- Record STABLE, WORKING and ROLLBACK separately.
+- Record source commit separately from documentation commit.
+- Never replace a newer concurrent update: reread branch head before writing.
+- Never declare done from build or READY status alone.
