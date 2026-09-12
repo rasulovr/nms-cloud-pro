@@ -29,10 +29,10 @@ Status: canonical handoff active on `docs/rms-project-state`.
 
 ## WORKING VERSION — TEST ONLY
 - Task branch: `fix/secure-internal-auth-supplier-pagination`.
-- Source commit: `3a90e35de2833b13b0511b669e3eaf61dee15aa5`.
+- Source commit: `4deb2bd3ea5c78d7ad8fadbc0f9aaa161855e303`.
 - Version intent: v405 supplier purchase paged-load fix.
 - Supabase test: `zzsdcxowhhaxnuliaryb`.
-- Preview deployment: `dpl_2Q75DwCzE6GJTy21np9UqQVVk2S5` — READY.
+- Preview deployment: `dpl_9veE3BrmgthWzAk8HPHH2FJSc4zE` — READY.
 - Stable Preview alias: https://project-83si4-git-fix-secure-interna-c3a225-nms-clouds-projects.vercel.app
 - Preview build is pinned to test Supabase; production ref is absent from its bundle.
 - Production `main`, production alias and production database were not changed.
@@ -40,7 +40,7 @@ Status: canonical handoff active on `docs/rms-project-state`.
 ## CURRENT TASK
 Module: Suppliers → purchase journal.
 Goal: Nigar must see all invoices, including those older than the old 500-row workspace boundary.
-Status: backend and access-control verification passed on test; authenticated browser UI acceptance remains pending.
+Status: screenshot exposed a session-order race and missing protected workspace RPC; both are fixed and server/API/build verification passed. Fresh mobile UI acceptance remains pending.
 Priority rule: all further changes and confirmations stay on test Preview until explicit production approval.
 
 ## ROOT CAUSE
@@ -58,6 +58,8 @@ Priority rule: all further changes and confirmations stay on test Preview until 
 - RPC validates Auth user, internal mapping, organization, active status and `suppliers` read/edit permission.
 - RPC execute is revoked from `public` and `anon`; granted only to `authenticated`.
 - Linkage and attempt tables have RLS enabled and no direct `anon` or `authenticated` table grants.
+- Added tenant-scoped `rms_suppliers_workspace_secure()` for authenticated internal users; it returns only organization data and leaves purchases to the paged RPC.
+- Fixed the login race by storing the internal-session marker and permissions before installing the Supabase Auth session, preventing `onAuthStateChange` from replacing Nigar with a raw `nigar@rms.internal` session.
 
 ## TEST EVIDENCE
 - Test-only synthetic dataset: 520 purchases and 520 line items; no production records copied.
@@ -68,11 +70,15 @@ Priority rule: all further changes and confirmations stay on test Preview until 
 - Access audit: anon RPC execute = false; authenticated RPC execute = true.
 - Direct reads of auth-link and attempt tables = false for anon and authenticated.
 - Local production build passed; Preview login page loads without application console errors.
-- Remaining check: authenticated UI must show 520 records and the final old invoice in the journal.
+- Screenshot verification identified the exact failure state: login succeeded, but the page called missing `rms_suppliers_workspace` and lost internal UI permissions.
+- `rms_suppliers_workspace_secure()` was API-tested with Nigar's genuine Auth session: legal entities = 1, suppliers = 1, products = 1, embedded purchases = 0, error = null.
+- Final branch transform contains the secure workspace selection and stores the internal marker before `auth.setSession`; transformed v404 source passed syntax/build validation.
+- Current Preview deployment for commit `4deb2bd` is READY.
+- Remaining check: fresh authenticated mobile UI must show the Suppliers section, 520 records and final invoice `TEST-PAGE-0520`.
 
 ## CURRENT PROBLEMS
 1. Production still intentionally uses legacy internal authorization and retains the old 500-row limitation for Nigar.
-2. Authenticated Preview UI acceptance has not yet been completed.
+2. Fresh authenticated Preview UI acceptance after the session/workspace correction has not yet been completed.
 3. Supabase test advisor reports historical project-wide warnings outside this fix; do not broaden this task into unrelated schema cleanup.
 4. v405 semifinished-product redesign remains queued behind this urgent supplier issue.
 5. POS and QR work remain separate; do not mix their deployment targets or databases.
@@ -90,10 +96,10 @@ Priority rule: all further changes and confirmations stay on test Preview until 
 - Never copy passwords, tokens, raw customer or financial data into GitHub.
 
 ## NEXT STEP
-1. Complete authenticated browser acceptance on the protected test Preview.
-2. Verify journal count = 520 and final record `TEST-PAGE-0520` dated 2025-04-11.
-3. Check browser console/network errors and supplier filters.
-4. If any UI defect appears, fix and redeploy test only.
+1. Open the newly generated protected Preview link in a fresh browser tab and sign in as test Nigar.
+2. Verify the Suppliers section is visible with no `rms_suppliers_workspace` cache error.
+3. Verify journal count = 520 and final record `TEST-PAGE-0520` dated 2025-04-11.
+4. Check supplier filters and report any visible error; fix and redeploy test only if needed.
 5. After successful test acceptance, prepare a narrow production migration/deployment plan and rollback.
 6. Do not promote until the user separately authorizes the exact production changes.
 7. Update this file and changelog after the result.
