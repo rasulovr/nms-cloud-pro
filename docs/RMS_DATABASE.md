@@ -1,64 +1,91 @@
 # RMS database state
 
 Last consolidated: 2026-09-12.
-This is an evidence inventory, not a live schema dump. No database was queried or mutated
-during handoff setup. Read exact deployed definitions before writing any migration.
+This is an evidence inventory, not a complete schema dump.
+Read exact deployed definitions before any production migration.
 
 ## Targets
-- Production project ref: UNKNOWN; resolve from actual production environment.
-- Test/staging project ref: zzsdcxowhhaxnuliaryb (historical applied-migration record).
-- src/supabase.js reads VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.
-- Never infer production from staging, or copy credentials into these files.
+- Production Supabase: `meqttgiksyuyffuoghwx`.
+- Test Supabase: `zzsdcxowhhaxnuliaryb`.
+- Current supplier-pagination work is installed only on test.
+- Never infer production from test or copy credentials into this repository.
 
-## Objects and contracts
-| Object | Purpose / constraint | Evidence |
+## Current test-only supplier/auth objects
+| Object | Purpose / constraint | Verified state |
 | --- | --- | --- |
-| menu_items | Canonical dish IDs; protected direct writes | v403 incident record |
-| rms_tech_menu_item_create_secure | Existing secure creation RPC | v403 reported successful transaction |
-| rms_final_recipe_components | Authoritative tech-card components | User established rule |
-| recipe_items | Legacy; not tech-card component source | User established rule |
-| rms_recipes_workspace | Restricted-user recipe workspace | Historical v22 fix |
-| rms_suppliers_workspace | Restricted-user supplier workspace | Historical v22 fix |
-| daily_revenue / daily_revenue_entries | Revenue and entries | Historical restore/import |
-| daily_expenses | Daily expenses | Historical restore/import |
-| supplier_purchases / supplier_purchase_items | Invoice headers / lines | Historical restore/import |
-| supplier_payments / supplier_balances_v2 | Payments / debt | Historical restore |
-| employees / employee_attendance | Staff / attendance | Historical restore |
-| salary_periods / salary_advances | Payroll periods / advances | Historical restore |
-| latest_product_costs / supplier_products | Cost references; verify live definitions | Historical project context |
+| `rms_internal_auth_accounts` | Maps one Supabase Auth user to one RMS internal user and organization | RLS enabled; direct anon/authenticated grants revoked |
+| `rms_internal_auth_attempts` | Server-side failed-attempt and lockout state | RLS enabled; direct anon/authenticated grants revoked |
+| `rms_supplier_purchases_page_secure(integer, integer)` | Tenant-scoped paged supplier purchase read | SECURITY DEFINER, safe search_path, anon revoked, authenticated granted |
+| Edge `rms-internal-auth` | Validates internal password and issues genuine Auth session | Test version 1 ACTIVE |
 
-Do not guess function arguments, grants, table columns or semifinished schema from names.
+The paged RPC additionally checks:
+- `auth.uid()` exists.
+- Active internal account mapping exists.
+- Mapping organization matches the RMS settings lookup.
+- Internal user is active.
+- `suppliers` permission is `read` or `edit` unless mapped admin.
+- Purchases, joins and purchase items are filtered by the mapped `organization_id`.
+- Page size is clamped to 1–500 and offset is non-negative.
+
+## Test data and verification
+- Synthetic marker: `RMS_PAGINATION_TEST_ONLY`.
+- 520 purchase headers and 520 purchase items exist only in test.
+- Newest: `TEST-PAGE-0001` dated 2026-09-12.
+- Oldest: `TEST-PAGE-0520` dated 2025-04-11.
+- Real Edge login created Auth user/session for test Nigar linkage.
+- REST RPC with the session returned 250 rows at offset 0 and 20 rows at offset 500.
+- Privilege audit:
+  - anon RPC execute: false.
+  - authenticated RPC execute: true.
+  - anon/authenticated direct reads of both internal auth tables: false.
+- `pg_net` was used temporarily for a server-side test and removed afterwards.
+- No production data was copied or changed.
+
+## Existing domain objects
+| Object | Purpose / constraint |
+| --- | --- |
+| `menu_items` | Canonical dish IDs; protected direct writes |
+| `rms_tech_menu_item_create_secure` | Secure menu-item creation RPC |
+| `rms_final_recipe_components` | Authoritative tech-card components |
+| `recipe_items` | Legacy; not tech-card component source |
+| `rms_recipes_workspace` | Restricted-user recipe workspace |
+| `rms_suppliers_workspace` | Legacy restricted-user supplier workspace; bounded result caused current history defect |
+| `daily_revenue / daily_revenue_entries` | Revenue and entries |
+| `daily_expenses` | Daily expenses |
+| `supplier_purchases / supplier_purchase_items` | Invoice headers and lines |
+| `supplier_payments / supplier_balances_v2` | Payments and debt |
+| `employees / employee_attendance` | Staff and attendance |
+| `salary_periods / salary_advances` | Payroll periods and advances |
+| `latest_product_costs / supplier_products` | Cost references; verify live definitions |
+
+## Security review
+- Supabase advisors were run after the test DDL.
+- The two new auth tables appear under INFO `rls_enabled_no_policy`; this is intentional because direct client access is denied and service-role Edge code owns access.
+- The new paged RPC is intentionally executable by `authenticated` and performs its own mapping/tenant/permission checks.
+- It does not appear among anon-executable SECURITY DEFINER findings.
+- Existing project-wide advisor warnings predate or lie outside this narrow fix; do not modify unrelated policies or indexes without a separate review.
+- Remediation reference: https://supabase.com/docs/guides/database/database-linter
 
 ## Migration ledger
-| Migration / change | Target | Recorded state | Next action |
+| Migration / change | Target | State | Next action |
 | --- | --- | --- | --- |
-| pos_board_create_table_scoped_idempotent | Staging | Applied 2026-09-11 | Do not rerun merely because filename says PENDING_APPROVAL |
-| pos_kds_item_readiness_and_served_restore | Staging | Applied 2026-09-10 | Retrieve exact SQL before modifying |
-| baristachef_bc1_isolated_import | Staging | Applied 2026-09-09 | Do not repeat completed menu import |
-| v403 frontend RPC switch | RMS frontend | Code change only; no DB change reported | Verify current failing request |
+| Secure internal Auth linkage + supplier paging | Test | Applied and API-verified 2026-09-12 | Complete authenticated Preview UI acceptance |
+| Production supplier paging | Production | NOT applied | Prepare narrow plan only after test acceptance and explicit approval |
+| `pos_board_create_table_scoped_idempotent` | Test/staging | Applied 2026-09-11 | Do not rerun based on filename |
+| `pos_kds_item_readiness_and_served_restore` | Test/staging | Applied 2026-09-10 | Retrieve exact SQL before modifying |
+| `baristachef_bc1_isolated_import` | Test/staging | Applied 2026-09-09 | Do not repeat import |
 | v405 semifinished migration | Unknown | No applied migration confirmed | Locate existing work first |
 
-Historical source for POS create-table SQL: server/PENDING_APPROVAL_table_create.sql
-inside earlier prepared package; not present in application main tree.
-Historical readiness package: RMS_POS_dish_readiness_restore_prepared_20260910.zip.
-Do not treat these names as local paths currently available.
-
-## Security invariants
-- RMS can use anon key + internal RMS session; Supabase Auth is not a drop-in replacement.
-- A direct anon INSERT failing RLS can be expected; fix caller/authorized RPC, not broad policies.
-- SECURITY DEFINER functions require safe search_path and scope/permission enforcement.
-- Keep tenant/branch isolation, active-terminal checks and role validation.
-- Historical v214 diagnostics were clean for high-risk findings; this is NOT a current audit.
-- Historical protected anon grants must not be revoked broadly without compatibility checks.
-
-## Repository SQL inventory at c14b3e4
-- src/rms_inventory_atomic_transfer.sql
-- src/rms_loyalty_schema.sql
-This inventory does not prove these files match all deployed migrations.
+## Production safety invariants
+- Production currently remains on legacy internal RMS access.
+- Never expose supplier data through anon or a public SECURITY DEFINER shortcut.
+- Direct anon writes failing RLS can be expected; fix the authorized caller/RPC instead of broad policies.
+- SECURITY DEFINER functions require safe search_path and tenant/permission enforcement.
+- Preserve branch isolation, active-user checks and role validation.
+- No broad delete, reset, duplicated import or automatic test-to-production merge.
 
 ## For every future DB change record
-Exact target ref, migration identifier, durable SQL file/commit, pending/applied state,
+Record exact target ref, migration identifier, durable SQL file/commit, pending/applied state,
 application timestamp, affected RPC/tables/policies, transactional verification,
 rollback strategy and frontend compatibility.
 Never store raw customer records, financial exports, passwords, tokens or PINs.
-
