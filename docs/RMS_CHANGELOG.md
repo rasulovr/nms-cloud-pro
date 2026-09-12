@@ -16,7 +16,11 @@ Only durable milestones belong here; no copied chat transcript.
 - Inserted 520 synthetic test purchases and 520 items, marked test-only; no production records copied.
 - End-to-end Edge login + REST RPC test returned offset 0 (250 rows) and offset 500 (20 rows), including oldest `TEST-PAGE-0520` dated 2025-04-11.
 - Grant audit passed: anon cannot execute the RPC; auth-link and failed-attempt tables are unreadable directly by anon/authenticated.
-- Preview login screen loads; authenticated browser journal acceptance remains pending.
+- A mobile test screenshot confirmed Auth login succeeded but exposed two frontend/backend integration defects: raw Auth session replaced the custom internal session, and the protected workspace RPC was absent.
+- Added authenticated tenant-scoped `rms_suppliers_workspace_secure()` and fixed session initialization order.
+- Secure workspace API test with Nigar session returned the expected organization-scoped workspace without embedded purchase bulk data.
+- Final source commit: `4deb2bd3ea5c78d7ad8fadbc0f9aaa161855e303`; Preview deployment `dpl_9veE3BrmgthWzAk8HPHH2FJSc4zE` READY.
+- Fresh authenticated mobile journal acceptance remains pending.
 - No production promotion is authorized.
 
 ## 2026-09-12 — Persistent handoff
