@@ -50,6 +50,6 @@ export function rmsSecureAuthTransform(source) {
     "const RMS_SOURCE_VERSION = 'main_v405_supplier_purchases_paged_load_fix'"
   )
   result = replaceRange(result, 'const normalizedLogin = normalizeInternalLogin(rawLogin)', 'const { data, error } = await supabase.auth.signInWithPassword', secureLogin)
-  result = replaceRange(result, 'async function fetchSupplierPurchasesFullRowsViaRpc() {', '\n\n  async function fetchAllSupplierPurchasesRows', pagedRead)
+  result = replaceRange(result, 'async function fetchSupplierPurchasesFullRowsViaRpc() {', 'async function fetchAllSupplierPurchasesRows', `${pagedRead}\n\n  `)
   return result
 }
