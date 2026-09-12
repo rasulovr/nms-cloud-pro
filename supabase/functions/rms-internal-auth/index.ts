@@ -1,7 +1,22 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.45.0'
 
-const allowedOrigins = new Set(['https://app.rms.rest'])
+const allowedOrigins = new Set([
+  'https://app.rms.rest',
+  'https://project-83si4-ob5zn7ol5-nms-clouds-projects.vercel.app',
+  'https://project-83si4-git-fix-secure-interna-c3a225-nms-clouds-projects.vercel.app',
+])
 const encoder = new TextEncoder()
+
+function defaultKeyFromJsonEnv(name: string) {
+  const raw = Deno.env.get(name)
+  if (!raw) return ''
+  try {
+    const keys = JSON.parse(raw)
+    return typeof keys?.default === 'string' ? keys.default : ''
+  } catch {
+    return ''
+  }
+}
 
 function corsHeaders(origin: string | null) {
   const allowedOrigin = origin && allowedOrigins.has(origin) ? origin : 'https://app.rms.rest'
@@ -48,14 +63,16 @@ Deno.serve(async (request: Request) => {
   if (contentLength > 4096) return response(origin, 413, { error: 'Request too large' })
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL') || ''
-  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
-  const anonKey = Deno.env.get('SUPABASE_ANON_KEY') || ''
+  const serviceRoleKey = defaultKeyFromJsonEnv('SUPABASE_SECRET_KEYS') || Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
+  const anonKey = defaultKeyFromJsonEnv('SUPABASE_PUBLISHABLE_KEYS') || Deno.env.get('SUPABASE_ANON_KEY') || ''
   if (!supabaseUrl || !serviceRoleKey || !anonKey) return response(origin, 500, { error: 'Authentication service unavailable' })
 
   const admin = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false, autoRefreshToken: false } })
   const publicClient = createClient(supabaseUrl, anonKey, { auth: { persistSession: false, autoRefreshToken: false } })
+  let stage = 'request'
 
   try {
+    stage = 'parse'
     const body = await request.json()
     const login = normalizeLogin(body?.login)
     const password = String(body?.password || '')
@@ -63,16 +80,23 @@ Deno.serve(async (request: Request) => {
       return response(origin, 401, { error: 'Неверный логин или пароль' })
     }
 
+    stage = 'rate_limit'
     const loginHash = await sha256(login)
     const now = Date.now()
     const { data: attempt } = await admin.from('rms_internal_auth_attempts').select('*').eq('login_hash', loginHash).maybeSingle()
     const lockedUntil = attempt?.locked_until ? new Date(attempt.locked_until).getTime() : 0
     if (lockedUntil > now) return response(origin, 429, { error: 'Слишком много попыток. Повторите вход позже.' })
 
-    const { data: setting, error: settingError } = await admin.from('rms_app_settings').select('value').eq('key', 'internal_users_v2').single()
+    stage = 'legacy_credentials'
+    const { data: settings, error: settingError } = await admin.from('rms_app_settings').select('organization_id,value').eq('key', 'internal_users_v2')
     if (settingError) throw settingError
-    const users = setting?.value && typeof setting.value === 'object' ? setting.value : {}
-    const internalUser = users[login]
+    const matches = (settings || []).filter(setting => setting?.value && typeof setting.value === 'object' && setting.value[login])
+    if (matches.length !== 1) {
+      return response(origin, 401, { error: 'Неверный логин или пароль' })
+    }
+    const setting = matches[0]
+    const organizationId = String(setting.organization_id || '')
+    const internalUser = setting.value[login]
     const validUser = internalUser && internalUser.is_active !== false
     const validPassword = validUser && constantTimeEqual(password, String(internalUser.password || ''))
 
@@ -87,36 +111,72 @@ Deno.serve(async (request: Request) => {
       return response(origin, 401, { error: 'Неверный логин или пароль' })
     }
 
-    const { data: listed, error: listError } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 })
-    if (listError) throw listError
-    const candidates = (listed.users || []).filter(user => normalizeLogin(user.email) === login)
-    let authUser = candidates.find(user => user.email?.toLowerCase() === `${login}@rms.local.az`) || candidates[0]
-    const technicalEmail = authUser?.email || `${login}@rms.local.az`
+    stage = 'load_auth_link'
+    const { data: account, error: accountError } = await admin.from('rms_internal_auth_accounts')
+      .select('auth_user_id,technical_email')
+      .eq('organization_id', organizationId)
+      .eq('login', login)
+      .maybeSingle()
+    if (accountError) throw accountError
 
-    if (!authUser) {
+    let authUserId = account?.auth_user_id || ''
+    let technicalEmail = account?.technical_email || `${login}.${organizationId.slice(0, 8)}@rms.internal`
+    if (!authUserId) {
+      stage = 'create_auth_user'
       const created = await admin.auth.admin.createUser({
-        email: technicalEmail, password, email_confirm: true,
-        app_metadata: { rms_internal_id: internalUser.id, rms_login: login },
+        email: technicalEmail,
+        password,
+        email_confirm: true,
+        app_metadata: { rms_internal_id: internalUser.id, rms_login: login, rms_organization_id: organizationId },
       })
       if (created.error || !created.data.user) throw created.error || new Error('Auth user creation failed')
-      authUser = created.data.user
-    } else {
-      const updated = await admin.auth.admin.updateUserById(authUser.id, {
-        password,
-        app_metadata: { ...(authUser.app_metadata || {}), rms_internal_id: internalUser.id, rms_login: login },
+      authUserId = created.data.user.id
+
+      stage = 'link_account'
+      const linked = await admin.from('rms_internal_auth_accounts').insert({
+        auth_user_id: authUserId,
+        organization_id: organizationId,
+        internal_id: internalUser.id,
+        login,
+        technical_email: technicalEmail,
+        is_admin: false,
+        is_active: true,
       })
-      if (updated.error) throw updated.error
+      if (linked.error) throw linked.error
     }
 
-    const signedIn = await publicClient.auth.signInWithPassword({ email: technicalEmail, password })
-    if (signedIn.error || !signedIn.data.session) throw signedIn.error || new Error('Session creation failed')
+    stage = 'create_session'
+    let signedIn = await publicClient.auth.signInWithPassword({ email: technicalEmail, password })
+    if (signedIn.error || !signedIn.data.session) {
+      stage = 'sync_mapped_auth_user'
+      const updated = await admin.auth.admin.updateUserById(authUserId, {
+        password,
+        app_metadata: { rms_internal_id: internalUser.id, rms_login: login, rms_organization_id: organizationId },
+      })
+      if (updated.error) throw updated.error
+      stage = 'create_session_after_sync'
+      signedIn = await publicClient.auth.signInWithPassword({ email: technicalEmail, password })
+      if (signedIn.error || !signedIn.data.session) throw signedIn.error || new Error('Session creation failed')
+    }
+    if (signedIn.data.user?.id !== authUserId) throw new Error('Auth identity mismatch')
 
-    const { data: permissionSetting } = await admin.from('rms_app_settings').select('value').eq('key', 'internal_permissions_v2').single()
+    stage = 'load_permissions'
+    const { data: permissionSetting } = await admin.from('rms_app_settings').select('value')
+      .eq('organization_id', organizationId)
+      .eq('key', 'internal_permissions_v2')
+      .single()
     const permissions = permissionSetting?.value?.[internalUser.id] || {}
-    const linked = await admin.from('rms_internal_auth_accounts').upsert({
-      auth_user_id: authUser.id, internal_id: internalUser.id, login, is_admin: false, is_active: true, updated_at: new Date().toISOString(),
-    }, { onConflict: 'auth_user_id' })
-    if (linked.error) throw linked.error
+
+    if (account) {
+      stage = 'refresh_auth_link'
+      const linked = await admin.from('rms_internal_auth_accounts').update({
+        internal_id: internalUser.id,
+        technical_email: technicalEmail,
+        is_active: true,
+        updated_at: new Date().toISOString(),
+      }).eq('auth_user_id', authUserId)
+      if (linked.error) throw linked.error
+    }
 
     await admin.from('rms_internal_auth_attempts').delete().eq('login_hash', loginHash)
     return response(origin, 200, {
@@ -125,6 +185,6 @@ Deno.serve(async (request: Request) => {
       permissions,
     })
   } catch (_error) {
-    return response(origin, 500, { error: 'Не удалось выполнить защищённый вход' })
+    return response(origin, 500, { error: 'Не удалось выполнить защищённый вход', code: `AUTH_${stage.toUpperCase()}` })
   }
 })
