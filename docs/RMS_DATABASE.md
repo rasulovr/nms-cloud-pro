@@ -16,7 +16,8 @@ Read exact deployed definitions before any production migration.
 | `rms_internal_auth_accounts` | Maps one Supabase Auth user to one RMS internal user and organization | RLS enabled; direct anon/authenticated grants revoked |
 | `rms_internal_auth_attempts` | Server-side failed-attempt and lockout state | RLS enabled; direct anon/authenticated grants revoked |
 | `rms_supplier_purchases_page_secure(integer, integer)` | Tenant-scoped paged supplier purchase read | SECURITY DEFINER, safe search_path, anon revoked, authenticated granted |
-| Edge `rms-internal-auth` | Validates internal password and issues genuine Auth session | Test version 1 ACTIVE |
+| `rms_suppliers_workspace_secure()` | Tenant-scoped supplier workspace metadata; purchases loaded separately by page | SECURITY DEFINER, safe search_path, anon revoked, authenticated granted |
+| Edge `rms-internal-auth` | Validates internal password and issues genuine Auth session | Test version 2 ACTIVE |
 
 The paged RPC additionally checks:
 - `auth.uid()` exists.
@@ -34,6 +35,7 @@ The paged RPC additionally checks:
 - Oldest: `TEST-PAGE-0520` dated 2025-04-11.
 - Real Edge login created Auth user/session for test Nigar linkage.
 - REST RPC with the session returned 250 rows at offset 0 and 20 rows at offset 500.
+- Secure workspace RPC with Nigar session returned 1 legal entity, 1 supplier, 1 product, no embedded purchases and no error.
 - Privilege audit:
   - anon RPC execute: false.
   - authenticated RPC execute: true.
@@ -61,7 +63,7 @@ The paged RPC additionally checks:
 ## Security review
 - Supabase advisors were run after the test DDL.
 - The two new auth tables appear under INFO `rls_enabled_no_policy`; this is intentional because direct client access is denied and service-role Edge code owns access.
-- The new paged RPC is intentionally executable by `authenticated` and performs its own mapping/tenant/permission checks.
+- Both secure supplier RPCs are intentionally executable by `authenticated` and perform their own mapping/tenant/permission checks.
 - It does not appear among anon-executable SECURITY DEFINER findings.
 - Existing project-wide advisor warnings predate or lie outside this narrow fix; do not modify unrelated policies or indexes without a separate review.
 - Remediation reference: https://supabase.com/docs/guides/database/database-linter
@@ -69,7 +71,7 @@ The paged RPC additionally checks:
 ## Migration ledger
 | Migration / change | Target | State | Next action |
 | --- | --- | --- | --- |
-| Secure internal Auth linkage + supplier paging | Test | Applied and API-verified 2026-09-12 | Complete authenticated Preview UI acceptance |
+| Secure internal Auth linkage + supplier workspace/paging | Test | Applied and API-verified 2026-09-12 | Complete fresh authenticated Preview UI acceptance |
 | Production supplier paging | Production | NOT applied | Prepare narrow plan only after test acceptance and explicit approval |
 | `pos_board_create_table_scoped_idempotent` | Test/staging | Applied 2026-09-11 | Do not rerun based on filename |
 | `pos_kds_item_readiness_and_served_restore` | Test/staging | Applied 2026-09-10 | Retrieve exact SQL before modifying |
