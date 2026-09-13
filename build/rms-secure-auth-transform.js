@@ -43,6 +43,54 @@ const pagedRead = `async function fetchSupplierPurchasesFullRowsViaRpc() {
     return allRows
   }`
 
+const verifiedPasswordChange = `  async function changeUserPassword(userId, loginName) {
+    setMsg('')
+    setPasswordStatuses(prev => ({ ...prev, [userId]: { type: 'loading', text: 'Сохранение...' } }))
+    const password = String(passwordEdits[userId] || '').trim()
+    if (!password || password.length < 6) {
+      setPasswordStatuses(prev => ({ ...prev, [userId]: { type: 'error', text: 'Пароль должен быть минимум 6 символов' } }))
+      return setMsg('Пароль должен быть минимум 6 символов')
+    }
+
+    const cloudUsers = await readRmsAppSetting(RMS_INTERNAL_USERS_SETTING, null)
+    const internalUsers = (cloudUsers && typeof cloudUsers === 'object' && !Array.isArray(cloudUsers))
+      ? { ...cloudUsers }
+      : { ...getInternalUsers() }
+    const localLogin = Object.keys(internalUsers).find(k => internalUsers[k]?.id === userId || k === normalizeInternalLogin(loginName))
+    if (localLogin) {
+      if (String(internalUsers[localLogin]?.password || '') === password) {
+        setPasswordStatuses(prev => ({ ...prev, [userId]: { type: 'error', text: 'Введите новый пароль, отличный от текущего' } }))
+        return setMsg('Новый пароль совпадает с текущим и не был изменён')
+      }
+      internalUsers[localLogin] = { ...internalUsers[localLogin], password }
+      try { await persistInternalUsersShared(internalUsers) } catch (e) {
+        setPasswordStatuses(prev => ({ ...prev, [userId]: { type: 'error', text: \`Ошибка облачного сохранения: \${e.message}\` } }))
+        return setMsg(\`Не удалось сохранить пароль в облаке: \${e.message}\`)
+      }
+
+      const verifiedUsers = await readRmsAppSetting(RMS_INTERNAL_USERS_SETTING, null)
+      const verifiedPassword = verifiedUsers && typeof verifiedUsers === 'object'
+        ? String(verifiedUsers[localLogin]?.password || '')
+        : ''
+      if (verifiedPassword !== password) {
+        setPasswordStatuses(prev => ({ ...prev, [userId]: { type: 'error', text: 'Сервер не подтвердил изменение пароля' } }))
+        return setMsg('Пароль не изменён: сервер не подтвердил новое значение')
+      }
+
+      setPasswordEdits(p => ({ ...p, [userId]: '' }))
+      setPasswordStatuses(prev => ({ ...prev, [userId]: { type: 'success', text: 'Пароль изменён и применён' } }))
+      setMsg(\`Пароль пользователя \${localLogin} изменён\`)
+      window.dispatchEvent(new Event('rms-user-settings-updated'))
+      await load()
+      return
+    }
+
+    setPasswordStatuses(prev => ({ ...prev, [userId]: { type: 'error', text: 'Для admin пароль меняется через Supabase Auth' } }))
+    setMsg('Пароль можно менять только у внутренних RMS-пользователей. Для admin используйте Supabase Auth.')
+  }
+
+`
+
 function replaceRange(source, startMarker, endMarker, replacement) {
   const start = source.indexOf(startMarker)
   const end = source.indexOf(endMarker, start)
@@ -54,7 +102,7 @@ export function rmsSecureAuthTransform(source) {
   if (source.includes("supabase.functions.invoke('rms-internal-auth'")) return source
   let result = source.replace(
     "const RMS_SOURCE_VERSION = 'main_v404_start_page_tech_card_form_fix'",
-    "const RMS_SOURCE_VERSION = 'main_v405_supplier_purchases_paged_load_fix'"
+    "const RMS_SOURCE_VERSION = 'main_v406_internal_password_save_verification'"
   )
   result = result.replace(
     'const loginGuard = await rmsGetSharedLoginGuardState(rawLogin)',
@@ -66,5 +114,6 @@ export function rmsSecureAuthTransform(source) {
     "const rpcName = getInternalSessionStorage()?.rms_internal ? 'rms_suppliers_workspace_secure' : 'rms_suppliers_workspace'\n  const { data, error } = await supabase.rpc(rpcName)"
   )
   result = replaceRange(result, 'async function fetchSupplierPurchasesFullRowsViaRpc() {', 'async function fetchAllSupplierPurchasesRows', `${pagedRead}\n\n  `)
+  result = replaceRange(result, '  async function changeUserPassword(userId, loginName) {', '  async function resetUserLoginLock', verifiedPasswordChange)
   return result
 }
