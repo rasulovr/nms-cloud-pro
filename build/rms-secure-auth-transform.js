@@ -102,7 +102,11 @@ export function rmsSecureAuthTransform(source) {
   if (source.includes("supabase.functions.invoke('rms-internal-auth'")) return source
   let result = source.replace(
     "const RMS_SOURCE_VERSION = 'main_v404_start_page_tech_card_form_fix'",
-    "const RMS_SOURCE_VERSION = 'main_v406_internal_password_save_verification'"
+    "const RMS_SOURCE_VERSION = 'main_v407_internal_login_password_normalization'"
+  )
+  result = result.replace(
+    "const rawPassword = String(password || '')",
+    "const rawPassword = String(password || '').trim()"
   )
   result = result.replace(
     'const loginGuard = await rmsGetSharedLoginGuardState(rawLogin)',
