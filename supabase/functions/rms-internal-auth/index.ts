@@ -58,6 +58,7 @@ async function authAdminRequest(supabaseUrl: string, serviceKey: string, path: s
     ...init,
     headers: {
       apikey: serviceKey,
+      Authorization: `Bearer ${serviceKey}`,
       'Content-Type': 'application/json',
       ...(init.headers || {}),
     },
