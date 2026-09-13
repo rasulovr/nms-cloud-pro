@@ -3,6 +3,14 @@
 Entries distinguish source changes, recorded deployments and verification.
 Only durable milestones belong here; no copied chat transcript.
 
+## 2026-09-13 — Internal password-save verification fix
+- Production audit proved repeated admin saves left Nigar's password unchanged while the UI reported success.
+- v406 now reads the authoritative cloud record, rejects a password identical to the current value and verifies the value after saving.
+- Preview commit `3d6a32a47a47ce4033661fe4326c76e646ec4a9e`; deployment `dpl_6JGsYNqCZZ6PYQkpYEvDiyLqNsYm` READY.
+- Production commit `d1a9eb0c312543f07e07333c61a0d245f6ba7dc0`; deployment `dpl_6GvnyMsWaVVm974iKqAGtwuBBgLy` READY.
+- `app.rms.rest` returned HTTP 200; published bundle contains the v406 verification markers; no runtime errors found.
+- Database records, invoices, finances and permissions were not changed by deployment. Admin must now set one genuinely different password and receive server-confirmed success.
+
 ## 2026-09-13 — Nigar supplier pagination promoted to production
 - User explicitly authorized production rollout after successful test acceptance.
 - Rollback branch created from the previous stable commit: `rollback/before-nigar-secure-pagination-prod-20260913`.
