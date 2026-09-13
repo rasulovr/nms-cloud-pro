@@ -1,6 +1,6 @@
 # RMS PRO — CURRENT PROJECT STATE
 
-Last updated: 2026-09-12 (UTC)
+Last updated: 2026-09-13 (UTC)
 Owner: RMS Pro development
 Status: canonical handoff active on `docs/rms-project-state`.
 
@@ -17,12 +17,13 @@ Status: canonical handoff active on `docs/rms-project-state`.
 
 ## CURRENT STABLE — PRODUCTION
 - Frontend URL: https://app.rms.rest
-- Source commit: `4a0976d32772dc731bd5e9dec3e0fde916ea7d2b`.
-- Deployment: `dpl_9Xv5CyYbrb3jg9797YJPBdBQfn6o` — READY.
+- Source commit: `d1a9eb0c312543f07e07333c61a0d245f6ba7dc0`.
+- Deployment: `dpl_6GvnyMsWaVVm974iKqAGtwuBBgLy` — READY.
 - Vercel project: `prj_JpEc02KgTnexXmWbAJpK4EMpYM2O`.
 - Supabase production: `meqttgiksyuyffuoghwx`.
 - Authentication: protected Edge-backed internal Auth is active; Nigar linkage is created/refreshed after her next successful login.
 - `app.rms.rest` returned HTTP 200 after deployment; no Vercel runtime errors were found.
+- v406 fixes false-success password changes: reads fresh cloud users, rejects unchanged passwords and verifies the saved server value.
 - Production supplier records, invoice rows, finances and permissions were not changed; only read-only RPCs and two read indexes were added.
 - Rollback branch: `rollback/before-nigar-secure-pagination-prod-20260913`.
 - Supplier purchases now load through protected 250-row pages instead of the legacy 500-row workspace boundary.
@@ -40,7 +41,7 @@ Status: canonical handoff active on `docs/rms-project-state`.
 ## CURRENT TASK
 Module: Suppliers → purchase journal.
 Goal: Nigar must see all invoices, including those older than the old 500-row workspace boundary.
-Status: TEST ACCEPTED AND PRODUCTION DEPLOYED. Live Nigar acceptance on `app.rms.rest` is pending.
+Status: PASSWORD-SAVE FIX DEPLOYED. Admin must set a genuinely different password once; live Nigar login and historical-invoice acceptance remain pending.
 Priority rule: all further changes and confirmations stay on test Preview until explicit production approval.
 
 ## ROOT CAUSE
@@ -79,7 +80,8 @@ Priority rule: all further changes and confirmations stay on test Preview until 
 - Production bundle verification: secure Auth/workspace/paged RPC markers present; active Supabase client points to production.
 
 ## CURRENT PROBLEMS
-1. Nigar must complete one fresh production login so Edge Auth can create/refresh her technical linkage, then verify historical invoices.
+1. Admin must enter a genuinely different password for Nigar and press «Применить»; v406 must display server-confirmed success.
+2. Nigar must then complete one fresh production login so Edge Auth can create/refresh her technical linkage and verify historical invoices.
 2. Production promotion is complete; keep rollback ready until Nigar confirms live access and old invoice visibility.
 3. Supabase test advisor reports historical project-wide warnings outside this fix; do not broaden this task into unrelated schema cleanup.
 4. v405 semifinished-product redesign remains queued behind this urgent supplier issue.
@@ -99,11 +101,11 @@ Priority rule: all further changes and confirmations stay on test Preview until 
 
 ## NEXT STEP
 1. Ask Nigar to close the old tab, open https://app.rms.rest and sign in with her normal production login/password.
-2. Verify Suppliers opens without an RPC/schema-cache error.
-3. Select period «Все» and confirm invoices older than 7 September are visible.
-4. Confirm other permitted sections still open and forbidden sections remain hidden.
-5. If authentication or permissions regress, immediately restore deployment `dpl_9ExMg1y3M3MEyMvG1FcZUwxK7M8o` / rollback branch.
-6. After live acceptance, mark production fix complete and resume the queued v405 semifinished-products task.
+3. Verify Suppliers opens without an RPC/schema-cache error.
+4. Select period «Все» and confirm invoices older than 7 September are visible.
+5. Confirm other permitted sections still open and forbidden sections remain hidden.
+6. If authentication or permissions regress, restore source commit `4a0976d32772dc731bd5e9dec3e0fde916ea7d2b`.
+7. After live acceptance, mark production fix complete and resume the queued semifinished-products task.
 
 ## ROLLBACK
 - Production legacy-access rollback branch: `rollback/before-nigar-legacy-access-20260912`.
