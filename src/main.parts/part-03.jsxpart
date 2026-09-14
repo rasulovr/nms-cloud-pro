@@ -4361,6 +4361,7 @@ function Recipes({ t }) {
 
   return (
     <section className="tech-page-redesign">
+      <SemiFinishedInlineStyles />
       <section className="topbar tech-page-header">
         <div>
           <h2>Тех. карты</h2>
