@@ -1946,7 +1946,7 @@ const RMS_BRANCH_TAX_RATE_SETTING = 'branch_tax_rate_v1'
 const RMS_HIDDEN_SALES_KEYS_SETTING = 'hidden_sales_keys'
 const RMS_SALES_NAME_ALIASES_SETTING = 'sales_name_aliases'
 
-const RMS_SOURCE_VERSION = 'main_v405_semifinished_batch_yield'
+const RMS_SOURCE_VERSION = 'main_v406_semifinished_terminology'
 const RMS_FULL_BACKUP_TABLES = [
   'branches',
   'expense_categories',
@@ -4753,7 +4753,6 @@ const RMS_AZ_EXTRA_TRANSLATIONS = {
   '№ прихода': 'Daxilolma №-si',
   'Сбросить': 'Sıfırla',
   'Не оплачено': 'Ödənilməyib',
-  'Создать полуфабрикат / заготовку': 'Yarımfabrikat / hazırlıq yarat',
   '+ Создать': '+ Yarat',
   'Шаблон Брауни': 'Brauni şablonu',
   'Полуфабрикат для расчёта': 'Hesablama üçün yarımfabrikat',

@@ -3366,7 +3366,7 @@ function Recipes({ t }) {
 
   const [semiForm, setSemiForm] = useState({
     name: '',
-    category: 'Заготовки / Соусы',
+    category: 'Полуфабрикаты / Соусы',
     output_qty: '',
     output_unit: 'g',
     notes: ''
@@ -3441,7 +3441,7 @@ function Recipes({ t }) {
       const activeMenu = (menu || []).filter(m => m.is_active !== false)
       const dedupedMenu = dedupeMenuItemsForTechCards(activeMenu, finalRows || [])
       setMenuItems(dedupedMenu)
-      setSemis(semiRows || [])
+      setSemis((semiRows || []).map(row => ({ ...row, category: normalizeSemiCategory(row.category) })))
       setSemiItems(semiItemRows || [])
       setFinalItems((finalRows || []).filter(r => r?.is_active !== false && !r?.deleted_at && String(r?.status || '').toLowerCase() !== 'cancelled'))
     } catch (e) {
@@ -3457,6 +3457,13 @@ function Recipes({ t }) {
 
   function semiById(id) {
     return semis.find(s => String(s.id) === String(id))
+  }
+
+  function normalizeSemiCategory(category) {
+    const value = String(category || 'Полуфабрикаты').trim() || 'Полуфабрикаты'
+    return value
+      .replace(/^Заготовки\b/i, 'Полуфабрикаты')
+      .replace(/^Hazırlıqlar\b/i, 'Полуфабрикаты')
   }
 
   function productCost(productId) {
@@ -3631,8 +3638,8 @@ function Recipes({ t }) {
         seen.add(String(id))
         return semiItems.filter(i => String(i.semi_id) === String(id) && i.component_type === 'semi').some(i => reaches(i.semi_id_ref, seen))
       }
-      if (reaches(line.semi_id_ref)) throw new Error('Нельзя включать полуфабрикат в его собственный состав, в том числе через другую заготовку')
-      if (!(parseNum(semiById(line.semi_id_ref)?.output_qty) > 0)) throw new Error('Сначала укажите выход выбранной заготовки')
+      if (reaches(line.semi_id_ref)) throw new Error('Нельзя включать полуфабрикат в его собственный состав, в том числе через другой полуфабрикат')
+      if (!(parseNum(semiById(line.semi_id_ref)?.output_qty) > 0)) throw new Error('Сначала укажите выход выбранного полуфабриката')
     }
   }
 
@@ -3710,11 +3717,11 @@ function Recipes({ t }) {
   const safeTechCardPage = Math.min(Math.max(1, parseNum(techCardPage) || 1), techCardTotalPages)
   const pagedTechCards = filteredTechCards.slice((safeTechCardPage - 1) * techCardPageSizeNumber, safeTechCardPage * techCardPageSizeNumber)
   const semiCategoryOptions = Array.from(new Set([
-    'Заготовки / Соусы',
-    'Заготовки / Мясо',
-    'Заготовки / Рыба',
-    'Заготовки / Овощи',
-    'Заготовки / Выпечка',
+    'Полуфабрикаты / Соусы',
+    'Полуфабрикаты / Мясо',
+    'Полуфабрикаты / Рыба',
+    'Полуфабрикаты / Овощи',
+    'Полуфабрикаты / Выпечка',
     'Напитки / Сиропы',
     'Другое',
     ...semis.map(row => String(row.category || '').trim()).filter(Boolean)
@@ -3732,7 +3739,7 @@ function Recipes({ t }) {
       id: row.id,
       type: 'semi',
       name: row.name,
-      category: String(row.category || (isAzInterface ? 'Hazırlıqlar' : 'Заготовки')).trim(),
+      category: normalizeSemiCategory(row.category),
       meta: `${fmt(semiEffectiveOutputFor(row))} ${row.output_unit} · ${fmt(semiTotalCost(row.id))} AZN`,
       record: row
     }))
@@ -3752,7 +3759,7 @@ function Recipes({ t }) {
       if (!Number.isFinite(parseNum(semiForm.output_qty)) || !(parseNum(semiForm.output_qty) > 0)) throw new Error('Укажите выход готовой партии больше нуля, например 800 г')
       if (semis.some(row => String(row.name).trim().toLowerCase() === semiForm.name.trim().toLowerCase())) throw new Error('Полуфабрикат с таким названием уже есть. Выберите его в списке.')
       const { data, error } = await supabase.from('rms_semi_finished').insert({
-        name: semiForm.name.trim(), category: semiForm.category.trim() || 'Заготовки',
+        name: semiForm.name.trim(), category: normalizeSemiCategory(semiForm.category),
         output_qty: parseNum(semiForm.output_qty), output_unit: semiForm.output_unit || 'g', notes: semiForm.notes || ''
       }).select('*').single()
       if (error) throw error
@@ -3763,7 +3770,7 @@ function Recipes({ t }) {
       setSemiHeaderEditing(false)
       cancelSemiLineEdit()
       setShowSemiCreate(false)
-      setMessage('Заготовка создана. Теперь добавьте ингредиенты на указанную партию.')
+      setMessage('Полуфабрикат создан. Теперь добавьте ингредиенты на указанную партию.')
     })
   }
 
@@ -4606,7 +4613,7 @@ function Recipes({ t }) {
                 <h3>Быстрые действия</h3>
                 <button className="tech-action-line" onClick={() => setTab('final')}><span>＋</span><div><b>Создать тех. карту</b><small>Добавить новое блюдо</small></div><em>›</em></button>
                 <button className="tech-action-line"><span>⇧</span><div><b>Импорт из Excel</b><small>Загрузить тех. карты</small></div><em>›</em></button>
-                <button className="tech-action-line" onClick={() => setTab('semis')}><span>▧</span><div><b>Полуфабрикаты</b><small>Создать заготовки</small></div><em>›</em></button>
+                <button className="tech-action-line" onClick={() => setTab('semis')}><span>▧</span><div><b>Полуфабрикаты</b><small>Создать полуфабрикат</small></div><em>›</em></button>
               </div>
             </aside>
           </div>
@@ -5021,7 +5028,7 @@ function Recipes({ t }) {
               </div>
               <div className="actions-row"><button disabled={semiSaving} className="small primary" onClick={() => updateSemi(selectedSemi.id, semiHeaderDraft)}>{isAzInterface ? 'Yadda saxla' : 'Сохранить параметры'}</button><button className="small" disabled={semiSaving} onClick={() => setSemiHeaderEditing(false)}>{isAzInterface ? 'Ləğv et' : 'Отмена'}</button></div>
             </div> : <button className="small" disabled={semiSaving} onClick={() => { setSemiHeaderDraft({ name:selectedSemi.name, category:selectedSemi.category || '', output_qty:String(selectedSemi.output_qty || ''), output_unit:selectedSemi.output_unit || 'g', notes:selectedSemi.notes || '' }); setSemiHeaderEditing(true) }}>{isAzInterface ? 'Çıxışı və parametrləri dəyiş' : 'Изменить выход и параметры'}</button>}
-            <p className="hint semi-auto-output-hint">{isAzInterface ? 'Bütün inqrediyentləri bir hazır partiya üçün daxil edin. Çıxışı bişirdikdən sonra ölçün.' : 'Указывайте ингредиенты на всю партию. Выход — вес или объём готовой заготовки после приготовления.'}</p>
+            <p className="hint semi-auto-output-hint">{isAzInterface ? 'Bütün inqrediyentləri bir hazır partiya üçün daxil edin. Çıxışı bişirdikdən sonra ölçün.' : 'Указывайте ингредиенты на всю партию. Выход — вес или объём готового полуфабриката после приготовления.'}</p>
             {!selectedSemiEffectiveOutputQty && <p role="alert">{isAzInterface ? 'Maya dəyərini hesablamaq üçün hazır çıxışı qeyd edin.' : 'Укажите готовый выход, чтобы рассчитать себестоимость.'}</p>}
 
             <div className="metric-grid semi-metrics-v315">
