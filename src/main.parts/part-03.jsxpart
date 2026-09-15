@@ -3415,6 +3415,25 @@ function Recipes({ t }) {
     setMessage('')
 
     try {
+      const loadAllActiveMenuItems = async () => {
+        const rows = []
+        const pageSize = 1000
+
+        for (let from = 0; ; from += pageSize) {
+          const { data, error } = await supabase
+            .from('menu_items')
+            .select('*')
+            .eq('is_active', true)
+            .order('name')
+            .order('id')
+            .range(from, from + pageSize - 1)
+
+          if (error) return { data: null, error }
+          rows.push(...(data || []))
+          if ((data || []).length < pageSize) return { data: rows, error: null }
+        }
+      }
+
       const [
         { data: prod, error: prodError },
         { data: latest, error: latestError },
@@ -3425,7 +3444,7 @@ function Recipes({ t }) {
       ] = await Promise.all([
         supabase.from('supplier_products').select('*').eq('is_active', true).order('category').order('name'),
         supabase.from('latest_product_costs').select('*'),
-        supabase.from('menu_items').select('*').eq('is_active', true).order('name'),
+        loadAllActiveMenuItems(),
         supabase.from('rms_semi_finished').select('*').eq('is_active', true).order('name'),
         supabase.from('rms_semi_finished_items').select('*').order('created_at'),
         supabase.from('rms_final_recipe_components').select('*').order('created_at')
