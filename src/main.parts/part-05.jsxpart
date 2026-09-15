@@ -406,6 +406,7 @@ e_price)}</td><td>{fmt(product.latest_price)}<br/><span className="hint">{produc
     if (effectiveReportsTab === 'revenue') return loadRmsRevenueReport()
     if (effectiveReportsTab === 'expenses') return loadRmsExpensesReport()
     if (effectiveReportsTab === 'suppliers') return loadRmsSuppliersReport()
+    if (effectiveReportsTab === 'debts') return loadRmsDebtsReport()
     if (isProductsReportTab) return loadRmsProductsReport()
   }
 
@@ -444,7 +445,7 @@ e_price)}</td><td>{fmt(product.latest_price)}<br/><span className="hint">{produc
       {effectiveReportsTab === 'overview' && <label><span>Раздел</span><select value={effectiveReportsTab} onChange={e => setReportsTab(e.target.value)}>{reportTabs.map(tab => <option key={tab.id} value={tab.id}>{tab.label}</option>)}</select></label>}
       <label><span>Период</span><select value={monthFilter} onChange={e => { setMonthFilter(e.target.value); setRevenueDateFrom(''); setRevenueDateTo(''); setRevenuePage(1) }}><option value="all">Все годы / все месяцы</option>{yearOptions.length > 0 && <optgroup label="Годы">{yearOptions.map(y => <option key={`year-${y}`} value={`year:${y}`}>{y} год</option>)}</optgroup>}<optgroup label="Месяцы">{!monthOptions.includes(currentMonthKey) && <option value={currentMonthKey}>Текущий месяц · {currentMonthLabel}</option>}{monthOptions.map(m => <option key={m} value={m}>{m}</option>)}</optgroup></select></label>
       <label><span>Филиал</span><select value={branchFilter} onChange={e => setBranchFilter(e.target.value)}><option value="all">Все филиалы</option>{branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label>
-      {effectiveReportsTab !== 'overview' && effectiveReportsTab !== 'profitability' && effectiveReportsTab !== 'suppliers' && !isProductsReportTab && <label><span>Тип</span><select value={departmentFilter} onChange={e => setDepartmentFilter(e.target.value)}><option value="all">Все</option><option value="Бар">Бар</option><option value="Кухня">Кухня</option><option value="Смешанный">Смешанный</option></select></label>}
+      {effectiveReportsTab !== 'overview' && effectiveReportsTab !== 'profitability' && effectiveReportsTab !== 'suppliers' && effectiveReportsTab !== 'debts' && !isProductsReportTab && <label><span>Тип</span><select value={departmentFilter} onChange={e => setDepartmentFilter(e.target.value)}><option value="all">Все</option><option value="Бар">Бар</option><option value="Кухня">Кухня</option><option value="Смешанный">Смешанный</option></select></label>}
       <div className="reports-v43-filter-actions"><button className="ghost small" type="button" onClick={refreshCurrentReport}>Обновить</button><button className="ghost small" type="button">Экспорт</button><button className="small primary" type="button" onClick={() => window.print()}>Печать</button></div>
     </section>
 
@@ -462,6 +463,7 @@ e_price)}</td><td>{fmt(product.latest_price)}<br/><span className="hint">{produc
     {effectiveReportsTab === 'purchases' && <ReportModulePlaceholder title="Отчёт по закупкам" description="Закупки поставщиков по периодам, филиалам, категориям и фактурам." />}
     {isProductsReportTab && ReportsProductsView}
     {effectiveReportsTab === 'suppliers' && ReportsSuppliersView}
+    {effectiveReportsTab === 'debts' && ReportsDebtsView}
     {effectiveReportsTab === 'bazar' && <ReportModulePlaceholder title="Отчёт по базару" description="Базар, автоматическое распределение по филиалам и влияние на Food Cost." />}
     {effectiveReportsTab === 'export' && <ReportModulePlaceholder title="Экспорт отчётов" description="PDF, печать, CSV/Excel и сохранение выбранного среза." />}
   </section>

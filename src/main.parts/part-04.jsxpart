@@ -5208,6 +5208,10 @@ function Reports({ t, permissions = [], isAdmin = false }) {
       const overviewRow = reportPermissionRows.find(p => p.section === reportPermissionSection('overview'))
       return canReadAccess(overviewRow?.access || 'none')
     }
+    if (!row && tabId === 'debts') {
+      const suppliersRow = reportPermissionRows.find(p => p.section === reportPermissionSection('suppliers'))
+      return canReadAccess(suppliersRow?.access || 'none')
+    }
     return canReadAccess(row?.access || 'none')
   }
   const reportTabs = REPORTS_ACCESS_TABS.filter(tab => canReadReportTab(tab.id))
@@ -5296,6 +5300,19 @@ function Reports({ t, permissions = [], isAdmin = false }) {
     priceChangesDown: [],
     supplierOptions: []
   })
+  const [rmsDebtsReport, setRmsDebtsReport] = useState({
+    loading: false,
+    error: '',
+    rows: [],
+    supplierOptions: [],
+    voenOptions: [],
+    totals: { debt: 0, suppliers: 0, legalEntities: 0, invoices: 0, eInvoices: 0, payments: 0 }
+  })
+  const [debtSearch, setDebtSearch] = useState('')
+  const [debtSupplierId, setDebtSupplierId] = useState('all')
+  const [debtVoen, setDebtVoen] = useState('all')
+  const [debtPage, setDebtPage] = useState(1)
+  const [debtPageSize, setDebtPageSize] = useState(50)
   const [rmsProductsReport, setRmsProductsReport] = useState({ loading: false, error: '', rows: [], detailRows: [], totals: { amount: 0, products: 0, items: 0, invoices: 0, suppliers: 0 }, categories: [], suppliers: [], bySupplier: [], byCategory: [], priceDynamics: [], lastPurchaseDynamics: [], priceDynamicsMeta: { currentLabel: '', previousLabel: '', compareAvailable: false }, amountDynamicsMeta: { currentLabel: '', previousLabel: '', compareAvailable: false, autoCompare: false } })
   const [rmsProductsReportProgress, setRmsProductsReportProgress] = useState({ active: false, progress: 0, title: '', detail: '', step: '', status: 'idle' })
   const [productsReportDateFrom, setProductsReportDateFrom] = useState('')
@@ -5594,6 +5611,11 @@ function Reports({ t, permissions = [], isAdmin = false }) {
     if (effectiveReportsTab !== 'suppliers') return
     loadRmsSuppliersReport()
   }, [effectiveReportsTab, branchFilter, monthFilter, supplierReportDateFrom, supplierReportDateTo, branches.length])
+
+  useEffect(() => {
+    if (effectiveReportsTab !== 'debts') return
+    loadRmsDebtsReport()
+  }, [effectiveReportsTab, branchFilter, monthFilter, branches.length])
 
   useEffect(() => {
     if (!isProductsReportTab) return
@@ -6561,6 +6583,163 @@ function Reports({ t, permissions = [], isAdmin = false }) {
       setRmsSuppliersReport({
         ...emptyReport,
         error: error?.message || 'Не удалось загрузить отчёт по поставщикам'
+      })
+    }
+  }
+
+  async function loadRmsDebtsReport() {
+    setRmsDebtsReport(prev => ({ ...prev, loading: true, error: '' }))
+
+    const emptyReport = {
+      loading: false,
+      error: '',
+      rows: [],
+      supplierOptions: [],
+      voenOptions: [],
+      totals: { debt: 0, suppliers: 0, legalEntities: 0, invoices: 0, eInvoices: 0, payments: 0 }
+    }
+
+    try {
+      const fetchPaged = async (table, selectText, orderField) => {
+        const pageSize = 1000
+        let from = 0
+        let rows = []
+
+        while (true) {
+          let query = supabase.from(table).select(selectText)
+          if (table === 'supplier_ledger_enterprise_view') query = query.eq('is_active', true)
+          if (table === 'supplier_e_invoices' || table === 'supplier_payments') query = query.is('deleted_at', null)
+          query = query.order(orderField, { ascending: true }).order('id', { ascending: true })
+          const { data, error } = await query.range(from, from + pageSize - 1)
+          if (error) throw error
+          const batch = data || []
+          rows = rows.concat(batch)
+          if (batch.length < pageSize) break
+          from += pageSize
+          if (from > 50000) break
+        }
+
+        return rows
+      }
+
+      const [ledgerRows, eInvoiceRows, linkRows, paymentRows] = await Promise.all([
+        fetchPaged('supplier_ledger_enterprise_view', '*', 'movement_date'),
+        fetchPaged('supplier_e_invoices', 'id,invoice_number,invoice_date,supplier_id,legal_entity_id,branch_id,amount,status,note', 'invoice_date'),
+        fetchPaged('supplier_e_invoice_purchase_links', 'id,e_invoice_id,purchase_id,linked_amount,created_at', 'created_at'),
+        fetchPaged('supplier_payments', 'id,supplier_id,legal_entity_id,e_invoice_id,payment_date,amount,invoice_notes,comment,created_at', 'payment_date')
+      ])
+
+      const eInvoiceById = new Map(eInvoiceRows.map(row => [String(row.id), row]))
+      const eInvoiceNumbersByPurchase = new Map()
+      linkRows.forEach(link => {
+        const purchaseId = String(link.purchase_id || '')
+        const invoice = eInvoiceById.get(String(link.e_invoice_id || ''))
+        if (!purchaseId || !invoice) return
+        const current = eInvoiceNumbersByPurchase.get(purchaseId) || []
+        if (invoice.invoice_number && !current.includes(invoice.invoice_number)) current.push(invoice.invoice_number)
+        eInvoiceNumbersByPurchase.set(purchaseId, current)
+      })
+      const paymentById = new Map(paymentRows.map(row => [String(row.id), row]))
+      const movementRank = { opening_debt: 0, purchase: 1, payment: 2 }
+      const selectedLedger = (ledgerRows || [])
+        .filter(row => branchFilter === 'all' || String(row.branch_id || '') === String(branchFilter))
+        .sort((a, b) => {
+          const byDate = String(a.movement_date || '').localeCompare(String(b.movement_date || ''))
+          if (byDate) return byDate
+          const byCreated = String(a.created_at || '').localeCompare(String(b.created_at || ''))
+          if (byCreated) return byCreated
+          const byType = (movementRank[a.movement_type] ?? 9) - (movementRank[b.movement_type] ?? 9)
+          if (byType) return byType
+          return String(a.id || '').localeCompare(String(b.id || ''))
+        })
+
+      const runningBySupplierVoen = new Map()
+      const normalizedRows = selectedLedger.map((row, ledgerIndex) => {
+        const supplierId = String(row.supplier_id || '')
+        const legalEntityId = String(row.legal_entity_id || '')
+        const groupKey = `${supplierId}::${legalEntityId || row.legal_entity_voen || row.supplier_voen || 'no-voen'}`
+        const balanceBefore = parseNum(runningBySupplierVoen.get(groupKey))
+        const debit = parseNum(row.debit ?? row.debit_amount)
+        const credit = parseNum(row.credit ?? row.credit_amount)
+        const balanceAfter = balanceBefore + debit - credit
+        runningBySupplierVoen.set(groupKey, balanceAfter)
+
+        const payment = row.movement_type === 'payment' ? paymentById.get(String(row.source_id || '')) : null
+        const linkedPurchaseInvoices = row.movement_type === 'purchase'
+          ? (eInvoiceNumbersByPurchase.get(String(row.source_id || '')) || [])
+          : []
+        const paymentEInvoice = payment?.e_invoice_id
+          ? eInvoiceById.get(String(payment.e_invoice_id))
+          : null
+        const eInvoiceNumber = linkedPurchaseInvoices.length
+          ? linkedPurchaseInvoices.join(', ')
+          : (paymentEInvoice?.invoice_number || '')
+
+        return {
+          ...row,
+          ledger_index: ledgerIndex,
+          group_key: groupKey,
+          movement_date: String(row.movement_date || row.ledger_date || '').slice(0, 10),
+          supplier_name: row.supplier_name || '—',
+          legal_entity_name: row.legal_entity_name || 'Без юридического лица',
+          legal_entity_voen: row.legal_entity_voen || row.supplier_voen || '',
+          operation_label: row.movement_type === 'purchase'
+            ? 'Приход'
+            : row.movement_type === 'payment'
+              ? 'Оплата'
+              : row.movement_type === 'opening_debt'
+                ? 'Начальный долг'
+                : (row.movement_type || 'Операция'),
+          incoming_invoice: row.movement_type === 'purchase'
+            ? (row.invoice_number || '—')
+            : '—',
+          e_invoice_number: eInvoiceNumber || '—',
+          debit,
+          credit,
+          balance_before: balanceBefore,
+          balance_after: balanceAfter,
+          payment_comment: payment?.comment || row.comment || row.description || '',
+          payment_invoice_notes: payment?.invoice_notes || row.invoice_notes || ''
+        }
+      })
+
+      const supplierOptions = Array.from(new Map(normalizedRows.map(row => [
+        String(row.supplier_id),
+        { id: row.supplier_id, name: row.supplier_name }
+      ])).values()).sort((a, b) => String(a.name).localeCompare(String(b.name), 'ru'))
+
+      const voenOptions = Array.from(new Map(normalizedRows.map(row => {
+        const key = row.legal_entity_voen || `entity:${row.legal_entity_id || 'none'}`
+        return [key, {
+          id: key,
+          voen: row.legal_entity_voen || '',
+          name: row.legal_entity_name || 'Без юридического лица'
+        }]
+      })).values()).sort((a, b) => String(a.name).localeCompare(String(b.name), 'ru'))
+
+      const latestBalanceByGroup = new Map()
+      normalizedRows.forEach(row => latestBalanceByGroup.set(row.group_key, row.balance_after))
+      const totals = {
+        debt: Array.from(latestBalanceByGroup.values()).reduce((sum, value) => sum + parseNum(value), 0),
+        suppliers: supplierOptions.length,
+        legalEntities: voenOptions.length,
+        invoices: normalizedRows.filter(row => row.movement_type === 'purchase').length,
+        eInvoices: new Set(normalizedRows.map(row => row.e_invoice_number).filter(value => value && value !== '—')).size,
+        payments: normalizedRows.filter(row => row.movement_type === 'payment').length
+      }
+
+      setRmsDebtsReport({
+        loading: false,
+        error: '',
+        rows: normalizedRows,
+        supplierOptions,
+        voenOptions,
+        totals
+      })
+    } catch (error) {
+      setRmsDebtsReport({
+        ...emptyReport,
+        error: error?.message || 'Не удалось загрузить отчёт по долгам'
       })
     }
   }
@@ -9238,6 +9417,178 @@ function Reports({ t, permissions = [], isAdmin = false }) {
   const supplierReportPeriodLabel = supplierReportDateFrom || supplierReportDateTo
     ? `${supplierReportDateFrom || '…'} — ${supplierReportDateTo || '…'}`
     : selectedMonthLabel
+
+  const debtNormalizedSearch = String(debtSearch || '').trim().toLowerCase()
+  const filteredDebtRows = useMemo(() => {
+    return (rmsDebtsReport.rows || []).filter(row => {
+      const date = String(row.movement_date || '').slice(0, 10)
+      if (/^year:\d{4}$/.test(String(monthFilter || ''))) {
+        if (!date.startsWith(String(monthFilter).replace('year:', ''))) return false
+      } else if (/^\d{4}-\d{2}$/.test(String(monthFilter || ''))) {
+        if (!date.startsWith(String(monthFilter))) return false
+      }
+      if (debtSupplierId !== 'all' && String(row.supplier_id) !== String(debtSupplierId)) return false
+      const rowVoenKey = row.legal_entity_voen || `entity:${row.legal_entity_id || 'none'}`
+      if (debtVoen !== 'all' && String(rowVoenKey) !== String(debtVoen)) return false
+      if (!debtNormalizedSearch) return true
+      return [
+        row.supplier_name,
+        row.legal_entity_name,
+        row.legal_entity_voen,
+        row.incoming_invoice,
+        row.e_invoice_number,
+        row.payment_invoice_notes,
+        row.payment_comment
+      ].join(' ').toLowerCase().includes(debtNormalizedSearch)
+    }).sort((a, b) => {
+      const byDate = String(b.movement_date || '').localeCompare(String(a.movement_date || ''))
+      if (byDate) return byDate
+      const byCreated = String(b.created_at || '').localeCompare(String(a.created_at || ''))
+      if (byCreated) return byCreated
+      return String(b.id || '').localeCompare(String(a.id || ''))
+    })
+  }, [rmsDebtsReport.rows, monthFilter, debtSupplierId, debtVoen, debtNormalizedSearch])
+
+  useEffect(() => {
+    setDebtPage(1)
+  }, [monthFilter, branchFilter, debtSupplierId, debtVoen, debtNormalizedSearch, debtPageSize])
+
+  const debtBalanceScopeRows = useMemo(() => {
+    const periodEnd = /^year:\d{4}$/.test(String(monthFilter || ''))
+      ? `${String(monthFilter).replace('year:', '')}-12-31`
+      : /^\d{4}-\d{2}$/.test(String(monthFilter || ''))
+        ? `${String(monthFilter)}-31`
+        : ''
+    return (rmsDebtsReport.rows || []).filter(row => {
+      if (periodEnd && String(row.movement_date || '').slice(0, 10) > periodEnd) return false
+      if (debtSupplierId !== 'all' && String(row.supplier_id) !== String(debtSupplierId)) return false
+      const rowVoenKey = row.legal_entity_voen || `entity:${row.legal_entity_id || 'none'}`
+      if (debtVoen !== 'all' && String(rowVoenKey) !== String(debtVoen)) return false
+      return true
+    })
+  }, [rmsDebtsReport.rows, monthFilter, debtSupplierId, debtVoen])
+
+  const debtLatestByGroup = useMemo(() => {
+    const map = new Map()
+    debtBalanceScopeRows.forEach(row => map.set(row.group_key, row))
+    return map
+  }, [debtBalanceScopeRows])
+
+  const filteredDebtTotals = useMemo(() => {
+    const latestRows = Array.from(debtLatestByGroup.values())
+    return {
+      debt: latestRows.reduce((sum, row) => sum + parseNum(row.balance_after), 0),
+      suppliers: new Set(filteredDebtRows.map(row => String(row.supplier_id || '')).filter(Boolean)).size,
+      legalEntities: new Set(filteredDebtRows.map(row => String(row.legal_entity_id || row.legal_entity_voen || '')).filter(Boolean)).size,
+      invoices: filteredDebtRows.filter(row => row.movement_type === 'purchase').length,
+      eInvoices: new Set(filteredDebtRows.flatMap(row => String(row.e_invoice_number || '').split(',').map(value => value.trim()).filter(value => value && value !== '—'))).size,
+      payments: filteredDebtRows.filter(row => row.movement_type === 'payment').length,
+      purchaseAmount: filteredDebtRows.filter(row => row.movement_type === 'purchase').reduce((sum, row) => sum + parseNum(row.debit), 0),
+      paymentAmount: filteredDebtRows.filter(row => row.movement_type === 'payment').reduce((sum, row) => sum + parseNum(row.credit), 0)
+    }
+  }, [filteredDebtRows, debtLatestByGroup])
+
+  const debtVoenSummary = useMemo(() => {
+    const groups = new Map()
+    Array.from(debtLatestByGroup.values()).forEach(row => {
+      const key = row.legal_entity_voen || `entity:${row.legal_entity_id || 'none'}`
+      const current = groups.get(key) || {
+        key,
+        name: row.legal_entity_name || 'Без юридического лица',
+        voen: row.legal_entity_voen || '',
+        debt: 0,
+        suppliers: new Set()
+      }
+      current.debt += parseNum(row.balance_after)
+      current.suppliers.add(String(row.supplier_id || ''))
+      groups.set(key, current)
+    })
+    return Array.from(groups.values())
+      .map(row => ({ ...row, supplierCount: row.suppliers.size }))
+      .sort((a, b) => parseNum(b.debt) - parseNum(a.debt))
+  }, [debtLatestByGroup])
+
+  const debtPageCount = Math.max(1, Math.ceil(filteredDebtRows.length / debtPageSize))
+  const safeDebtPage = Math.min(debtPage, debtPageCount)
+  const pagedDebtRows = filteredDebtRows.slice((safeDebtPage - 1) * debtPageSize, safeDebtPage * debtPageSize)
+
+  const ReportsDebtsView = <section className="reports-v411-debts">
+    <style>{`
+      .reports-v411-debts{display:grid;gap:15px}.reports-v411-debt-status{padding:13px 15px;border:1px solid #bfdbfe;border-radius:15px;background:#eff6ff;color:#1e3a8a;font-size:12px;font-weight:800}.reports-v411-debt-status.bad{border-color:#fecaca;background:#fef2f2;color:#991b1b}
+      .reports-v411-debt-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:18px 19px;border:1px solid #dbe4ef;border-radius:20px;background:#fff;box-shadow:0 10px 28px rgba(15,23,42,.04)}.reports-v411-debt-head h3{margin:0;color:#0f172a;font-size:18px;font-weight:950}.reports-v411-debt-head p{margin:6px 0 0;color:#64748b;font-size:11px;font-weight:650}
+      .reports-v411-debt-filters{display:grid;grid-template-columns:minmax(180px,.8fr) minmax(190px,1fr) minmax(230px,1.5fr) auto;gap:10px;align-items:end;padding:14px;border:1px solid #dbe4ef;border-radius:18px;background:#fff}.reports-v411-debt-filters label{display:grid;gap:5px}.reports-v411-debt-filters label>span{color:#64748b;font-size:9.5px;font-weight:850}.reports-v411-debt-filters select,.reports-v411-debt-filters input{min-height:40px}
+      .reports-v411-debt-kpis{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px}.reports-v411-debt-kpi{padding:14px;border:1px solid #dbe4ef;border-radius:17px;background:#fff}.reports-v411-debt-kpi span{display:block;color:#64748b;font-size:9.5px;font-weight:850}.reports-v411-debt-kpi strong{display:block;margin-top:7px;color:#0f172a;font-size:19px;font-weight:950}.reports-v411-debt-kpi em{display:block;margin-top:5px;color:#94a3b8;font-size:9px;font-style:normal;font-weight:700}.reports-v411-debt-kpi.debt strong{color:#dc2626}.reports-v411-debt-kpi.paid strong{color:#059669}
+      .reports-v411-voen-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.reports-v411-voen-card{padding:13px 14px;border:1px solid #dbe4ef;border-radius:16px;background:#fff}.reports-v411-voen-card span{display:block;color:#64748b;font-size:9px;font-weight:800}.reports-v411-voen-card b{display:block;margin-top:4px;color:#0f172a;font-size:11.5px}.reports-v411-voen-card strong{display:block;margin-top:8px;color:#dc2626;font-size:16px;font-weight:950}.reports-v411-voen-card em{display:block;margin-top:4px;color:#94a3b8;font-size:9px;font-style:normal}
+      .reports-v411-debt-table-card{overflow:hidden;border:1px solid #dbe4ef;border-radius:20px;background:#fff;box-shadow:0 10px 28px rgba(15,23,42,.04)}.reports-v411-debt-table-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 17px;border-bottom:1px solid #e2e8f0}.reports-v411-debt-table-head h4{margin:0;color:#0f172a;font-size:15px;font-weight:950}.reports-v411-debt-table-head p{margin:4px 0 0;color:#64748b;font-size:10px}.reports-v411-debt-page-size{display:flex;align-items:center;gap:8px;color:#64748b;font-size:10px;font-weight:800}.reports-v411-debt-page-size select{min-height:34px}
+      .reports-v411-debt-table-wrap{overflow:auto}.reports-v411-debt-table{width:100%;min-width:1540px;border-collapse:collapse}.reports-v411-debt-table th,.reports-v411-debt-table td{padding:10px 9px;border-bottom:1px solid #e8eef5;text-align:left;vertical-align:top;white-space:nowrap}.reports-v411-debt-table th{position:sticky;top:0;z-index:1;background:#f8fafc;color:#64748b;font-size:8.8px;font-weight:900;text-transform:uppercase}.reports-v411-debt-table td{color:#334155;font-size:10px;font-weight:650}.reports-v411-debt-table td.money{text-align:right;font-variant-numeric:tabular-nums}.reports-v411-debt-table td.balance{font-weight:950}.reports-v411-debt-table td.balance.positive{color:#dc2626}.reports-v411-debt-table td.balance.negative{color:#059669}.reports-v411-debt-table .operation{display:inline-flex;padding:4px 7px;border-radius:999px;background:#dbeafe;color:#1d4ed8;font-size:9px;font-weight:900}.reports-v411-debt-table .operation.payment{background:#dcfce7;color:#047857}.reports-v411-debt-table .operation.opening{background:#fef3c7;color:#92400e}.reports-v411-debt-table .voen{display:block;margin-top:3px;color:#64748b;font-size:9px}.reports-v411-debt-table .comment{max-width:260px;white-space:normal;line-height:1.3}
+      .reports-v411-debt-pages{display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:12px 15px}.reports-v411-debt-pages span{color:#64748b;font-size:10px;font-weight:800}.reports-v411-debt-empty{padding:30px;text-align:center;color:#64748b;font-size:12px;font-weight:750}
+      @media(max-width:1400px){.reports-v411-debt-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}.reports-v411-voen-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:850px){.reports-v411-debt-filters{grid-template-columns:1fr}.reports-v411-debt-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.reports-v411-voen-grid{grid-template-columns:1fr}.reports-v411-debt-head{display:block}}
+    `}</style>
+
+    <div className="reports-v411-debt-head">
+      <div><h3>Долги по поставщикам и VOEN</h3><p>Хронология приходных накладных, e-qaimə и оплат. Остаток рассчитывается отдельно для каждой пары «поставщик + юридическое лицо».</p></div>
+      <button className="small ghost" type="button" onClick={loadRmsDebtsReport}>Обновить</button>
+    </div>
+
+    <div className="reports-v411-debt-filters">
+      <label><span>Поставщик</span><select value={debtSupplierId} onChange={e => setDebtSupplierId(e.target.value)}><option value="all">Все поставщики</option>{rmsDebtsReport.supplierOptions.map(row => <option key={row.id} value={row.id}>{row.name}</option>)}</select></label>
+      <label><span>Юридическое лицо / VOEN</span><select value={debtVoen} onChange={e => setDebtVoen(e.target.value)}><option value="all">Все VOEN</option>{rmsDebtsReport.voenOptions.map(row => <option key={row.id} value={row.id}>{row.name}{row.voen ? ` · ${row.voen}` : ''}</option>)}</select></label>
+      <label><span>Поиск накладной, e-qaimə или комментария</span><input value={debtSearch} onChange={e => setDebtSearch(e.target.value)} placeholder="Поставщик, VOEN, накладная, e-qaimə…" /></label>
+      <button className="small ghost" type="button" onClick={() => { setDebtSupplierId('all'); setDebtVoen('all'); setDebtSearch('') }}>Сбросить</button>
+    </div>
+
+    {rmsDebtsReport.loading && <div className="reports-v411-debt-status">Загружаю полную историю долгов, накладных, e-qaimə и оплат…</div>}
+    {rmsDebtsReport.error && <div className="reports-v411-debt-status bad">{rmsDebtsReport.error}</div>}
+
+    {!rmsDebtsReport.loading && !rmsDebtsReport.error && <>
+      <div className="reports-v411-debt-kpis">
+        <div className="reports-v411-debt-kpi debt"><span>Оставшийся долг</span><strong>{fmt(filteredDebtTotals.debt)} AZN</strong><em>на конец выбранного периода</em></div>
+        <div className="reports-v411-debt-kpi"><span>Поставщиков</span><strong>{filteredDebtTotals.suppliers}</strong><em>по текущему фильтру</em></div>
+        <div className="reports-v411-debt-kpi"><span>VOEN</span><strong>{filteredDebtTotals.legalEntities}</strong><em>юридических лиц</em></div>
+        <div className="reports-v411-debt-kpi"><span>Приходные накладные</span><strong>{filteredDebtTotals.invoices}</strong><em>{fmt(filteredDebtTotals.purchaseAmount)} AZN</em></div>
+        <div className="reports-v411-debt-kpi"><span>e-qaimə</span><strong>{filteredDebtTotals.eInvoices}</strong><em>привязанных документов</em></div>
+        <div className="reports-v411-debt-kpi paid"><span>Оплаты</span><strong>{filteredDebtTotals.payments}</strong><em>{fmt(filteredDebtTotals.paymentAmount)} AZN</em></div>
+      </div>
+
+      <div className="reports-v411-voen-grid">
+        {debtVoenSummary.map(row => <div className="reports-v411-voen-card" key={row.key}>
+          <span>Юридическое лицо</span><b>{row.name}</b><span>VOEN: {row.voen || 'не указан'}</span>
+          <strong>{fmt(row.debt)} AZN</strong><em>{row.supplierCount} поставщиков</em>
+        </div>)}
+      </div>
+
+      <div className="reports-v411-debt-table-card">
+        <div className="reports-v411-debt-table-head">
+          <div><h4>Реестр накладных и оплат</h4><p>{filteredDebtRows.length} операций · остаток до и после каждой оплаты</p></div>
+          <label className="reports-v411-debt-page-size">Строк <select value={debtPageSize} onChange={e => setDebtPageSize(Number(e.target.value))}><option value="25">25</option><option value="50">50</option><option value="100">100</option></select></label>
+        </div>
+        <div className="reports-v411-debt-table-wrap"><table className="reports-v411-debt-table">
+          <thead><tr><th>Дата</th><th>Поставщик</th><th>Юр. лицо / VOEN</th><th>Операция</th><th>Приходная накладная</th><th>e-qaimə</th><th>Приход</th><th>Оплата</th><th>Остаток на момент оплаты</th><th>Оставшийся долг</th><th>Комментарий</th></tr></thead>
+          <tbody>
+            {pagedDebtRows.map(row => <tr key={row.id}>
+              <td>{row.movement_date ? formatDateDMY(row.movement_date) : '—'}</td>
+              <td><b>{row.supplier_name}</b></td>
+              <td><b>{row.legal_entity_name}</b><span className="voen">{row.legal_entity_voen || 'VOEN не указан'}</span></td>
+              <td><span className={`operation ${row.movement_type === 'payment' ? 'payment' : row.movement_type === 'opening_debt' ? 'opening' : ''}`}>{row.operation_label}</span></td>
+              <td>{row.incoming_invoice}</td>
+              <td>{row.e_invoice_number}</td>
+              <td className="money">{row.debit > 0 ? `${fmt(row.debit)} AZN` : '—'}</td>
+              <td className="money">{row.credit > 0 ? `${fmt(row.credit)} AZN` : '—'}</td>
+              <td className="money balance">{row.movement_type === 'payment' ? `${fmt(row.balance_before)} AZN` : '—'}</td>
+              <td className={`money balance ${row.balance_after > 0 ? 'positive' : row.balance_after < 0 ? 'negative' : ''}`}>{fmt(row.balance_after)} AZN</td>
+              <td className="comment">{row.payment_comment || row.payment_invoice_notes || '—'}</td>
+            </tr>)}
+            {!pagedDebtRows.length && <tr><td colSpan="11" className="reports-v411-debt-empty">По выбранным фильтрам операций не найдено.</td></tr>}
+          </tbody>
+        </table></div>
+        <div className="reports-v411-debt-pages">
+          <button className="small ghost" type="button" disabled={safeDebtPage <= 1} onClick={() => setDebtPage(page => Math.max(1, page - 1))}>Назад</button>
+          <span>Страница {safeDebtPage} из {debtPageCount}</span>
+          <button className="small ghost" type="button" disabled={safeDebtPage >= debtPageCount} onClick={() => setDebtPage(page => Math.min(debtPageCount, page + 1))}>Далее</button>
+        </div>
+      </div>
+    </>}
+  </section>
 
   const ReportsSuppliersView = <section className="reports-v414-suppliers">
     <style>{`

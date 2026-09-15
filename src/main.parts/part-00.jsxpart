@@ -646,6 +646,7 @@ const REPORTS_ACCESS_TABS = [
   { id: 'purchases', label: 'Закупки', icon: '▤' },
   { id: 'products', label: 'Товары', icon: '◇' },
   { id: 'suppliers', label: 'Поставщики', icon: '▱' },
+  { id: 'debts', label: 'Долги', icon: '◫' },
   { id: 'bazar', label: 'Базар', icon: '⌂' },
   { id: 'export', label: 'Экспорт', icon: '⇩' },
   { id: 'import', label: 'Импорт', icon: '⇧' }
@@ -1946,7 +1947,7 @@ const RMS_BRANCH_TAX_RATE_SETTING = 'branch_tax_rate_v1'
 const RMS_HIDDEN_SALES_KEYS_SETTING = 'hidden_sales_keys'
 const RMS_SALES_NAME_ALIASES_SETTING = 'sales_name_aliases'
 
-const RMS_SOURCE_VERSION = 'main_v410_paginated_tech_card_menu'
+const RMS_SOURCE_VERSION = 'main_v411_supplier_debt_report'
 const RMS_FULL_BACKUP_TABLES = [
   'branches',
   'expense_categories',
