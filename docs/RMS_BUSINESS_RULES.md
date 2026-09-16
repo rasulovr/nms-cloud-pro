@@ -2,15 +2,16 @@
 
 Established requirements carried from user decisions. These are behavior contracts,
 not a claim that every current implementation is correct.
-Last consolidated: 2026-09-12. Currency: AZN; branch codes BC1–BC5 and Bistro.
+Last consolidated: 2026-09-16. Currency: AZN; branch codes BC1–BC5 and Bistro.
 Preserve actual branch IDs and verify display-name mappings before imports.
 
 ## Food Cost and supplier purchases
 - Food Cost / закупки и базар includes supplier food purchases, kitchen/bar/coffee/drinks,
   bazar and food write-offs.
-- Supplier purchases enter Food Cost and are allocated among branches by revenue share.
-- Do not additionally enter supplier purchases as daily branch expenses in Revenue.
-- In reports count them once, as Food Cost.
+- Count every supplier purchase once as Food Cost; never mirror it as a daily Revenue expense.
+- Preserve branch-specific invoice attribution where a purchase is explicitly tied to a branch.
+- Use revenue-share allocation only for purchases that current approved logic treats as shared.
+- Do not silently reallocate an explicitly attributed invoice across the network.
 - Take away / packaging: cups, lids, containers, bags, disposable cutlery, takeaway napkins.
 - Хозтовары: cleaning chemicals, gloves, cloths, sponges and cleaning consumables.
 
@@ -32,14 +33,25 @@ Preserve actual branch IDs and verify display-name mappings before imports.
 - If net payout was entered instead, do not expense fee again; prefer gross + separate fee.
 
 ## Service charge, tax and payroll allocation
-- Revenue includes 10% service charge.
-- Staff service-charge expense is 4% of base = gross / 1.10 × 0.04.
-- Do not calculate the staff expense as 4% of service-inclusive gross.
+- Revenue includes 10% customer service charge.
+- Staff service-charge reference amount is 4% of base = gross / 1.10 × 0.04.
+- Do not calculate the staff reference amount as 4% of service-inclusive gross.
+- From Production v413, staff service charge is informational and is excluded from P&L
+  expenses, profit and profitability calculations.
+- Keep the informational value visible where operational detail is required.
 - Preserve established 8% branch revenue tax calculation and current configurable settings;
   this is an application rule, not current tax-law advice.
 - Network tax total is the sum of branch amounts.
 - Manager payroll shared among branches by revenue share under existing logic.
 - Keep official salary/working days and configurable payroll contribution rates separate.
+
+## Monthly forecast
+- For a variable expense article with current-month data, forecast from the current pace:
+  recorded amount × month-days / elapsed-days.
+- Do not replace a current-month pace with a larger historical average.
+- Use historical average only when the current month has no data for that article.
+- Fixed articles continue to follow their configured/current fallback logic.
+- Dashboard, Finance and Reports must use the same P&L inclusion and forecast rules.
 
 ## Salaries and attendance
 - Prior-month balance remains separate from current-period movements.
@@ -69,7 +81,8 @@ Preserve actual branch IDs and verify display-name mappings before imports.
 - Same canonical menu_item_id for photo, delete, edit and components.
 - No duplicate menu_items on save; deleted cards must stay hidden.
 - Preserve printing and QR photo linkage.
-- Semifinished output/cost design is pending; see module acceptance requirements.
+- Preserve the promoted semifinished batch-yield and automatic cost behavior unless
+  a new task explicitly changes it.
 
 ## POS and QR
 - Internal RMS login remains main RMS auth model; POS has separate 4-digit PIN flow.
@@ -80,4 +93,3 @@ Preserve actual branch IDs and verify display-name mappings before imports.
 - Payment success requires verified provider or authorized staff confirmation.
 - Loyalty account displays balance/level/QR; bill stays in separate Bill section.
 - RMS POS, QR Menu, Loyalty and RMS Pro module licensing must remain enforced server-side.
-
