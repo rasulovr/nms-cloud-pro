@@ -314,6 +314,10 @@ async function rmsCalculateNetworkForecastForMonth(y, m, scopeBranchId = 'all') 
     (historicalPurchaseRows || []).filter(r => r.purchase_date >= pm.start && r.purchase_date < pm.end),
     revenueShareMapForMonth(pm.start)
   ))
+  const currentHasPreliminarySupplierAllocation = (currentPurchaseRows || []).some(row => !row?.branch_id)
+  const historyHasPreliminarySupplierAllocation = prevMonths.map(pm => (
+    (historicalPurchaseRows || []).some(row => !row?.branch_id && row.purchase_date >= pm.start && row.purchase_date < pm.end)
+  ))
   const articleHistoryAvg = (name) => rmsForecastAverageNonZero(historyArticleMaps.map(map => map.get(name) || 0))
   const isVariableArticle = (name) => {
     const normalized = normalizeExpenseText(name)
@@ -343,6 +347,14 @@ async function rmsCalculateNetworkForecastForMonth(y, m, scopeBranchId = 'all') 
     } else if (historyValue > 0) {
       amount = historyValue
       note = 'нет текущих данных — среднее прошлых месяцев'
+    }
+    if (name === 'Food Cost / закупки и базар') {
+      const usesPreliminaryAllocation = currentValue > 0
+        ? currentHasPreliminarySupplierAllocation
+        : historyHasPreliminarySupplierAllocation.some(Boolean)
+      if (usesPreliminaryAllocation) {
+        note = `${note}; общие накладные без филиала распределены предварительно по доле выручки — это не подтверждённое поступление на склад`
+      }
     }
     return { name, amount, note }
   }).filter(row => parseNum(row.amount) > 0)
@@ -1629,6 +1641,8 @@ function Dashboard({ t }) {
       // без branch_id распределяются по доле выручки того же периода.
       const supplierTotals = rmsFinanceSupplierTotalsForScope(purchaseRowsForFinance || [], b.id, revenueShareMap)
       const supplierExtra = supplierTotals.food + supplierTotals.packaging + supplierTotals.household + supplierTotals.other
+      const preliminarySupplierTotals = rmsFinanceSupplierTotalsForScope((purchaseRowsForFinance || []).filter(row => !row?.branch_id), b.id, revenueShareMap)
+      const preliminarySupplierExpense = preliminarySupplierTotals.food + preliminarySupplierTotals.packaging + preliminarySupplierTotals.household + preliminarySupplierTotals.other
       // Dashboard считает зарплаты той же логикой, что раздел “Финансы”:
       // прямые сотрудники филиала + распределённая доля менеджеров по доле выручки.
       const calculatedSalary = parseNum(rmsFinancePayrollDetailsForScope(employeeRows || [], b.id, revenueShareMap).totalSalary)
@@ -1653,6 +1667,7 @@ function Dashboard({ t }) {
         tax,
         taxRate,
         totalExpenses: expenses + salary + tax,
+        preliminarySupplierExpense,
         net,
         margin: revenue ? net / revenue * 100 : 0
       }
@@ -1710,7 +1725,8 @@ function Dashboard({ t }) {
     const syncedForecast = await rmsFinanceForecastEngine(y, m, branchId)
     const forecastRevenue = parseNum(syncedForecast.forecastRevenue)
     const forecastProfit = parseNum(syncedForecast.forecastProfit)
-    return { revenue, expenses, net, supplierDebt, supplierDebtRows, branchRows: dashboardBranchRows, forecastRevenue, forecastProfit, forecastDetails: syncedForecast.details || [], forecastExpenses: syncedForecast.forecastExpenses, forecastMargin: syncedForecast.forecastMargin }
+    const preliminarySupplierExpense = dashboardBranchRows.reduce((sum, row) => sum + parseNum(row.preliminarySupplierExpense), 0)
+    return { revenue, expenses, net, supplierDebt, supplierDebtRows, branchRows: dashboardBranchRows, preliminarySupplierExpense, forecastRevenue, forecastProfit, forecastDetails: syncedForecast.details || [], forecastExpenses: syncedForecast.forecastExpenses, forecastMargin: syncedForecast.forecastMargin }
   }
 
   async function calcDashboardRevenueUntilDay(y, m, dayLimit) {
@@ -1774,6 +1790,7 @@ function Dashboard({ t }) {
       supplierDebt: 0,
       supplierDebtRows: [],
       branchRows: [],
+      preliminarySupplierExpense: 0,
       forecastRevenue: 0,
       forecastProfit: 0,
       forecastDetails: [],
@@ -1894,6 +1911,11 @@ function Dashboard({ t }) {
       <div className="dash-kpi dash-kpi-target"><span className="dash-kpi-icon">◎</span><div><em>Прогноз прибыли</em><strong>{fmt(data.forecastProfit)} <small>AZN</small></strong><p>прогноз месяца</p></div></div>
       <div className="dash-kpi dash-kpi-wallet"><span className="dash-kpi-icon">▣</span><div><em>Оплаченная выручка</em><strong>{fmt(cashBalance)} <small>AZN</small></strong><p>наличные + банк за период</p></div></div>
     </section>
+
+    {parseNum(data.preliminarySupplierExpense) > 0 && <div className="card" style={{ marginBottom: 16, padding: '14px 18px' }}>
+      <strong>Предварительное распределение общих закупок: {fmt(data.preliminarySupplierExpense)} AZN</strong>
+      <p className="hint" style={{ margin: '6px 0 0' }}>Накладные без указанного филиала включены в P&amp;L по расчётной доле выручки. Это предварительное распределение, а не подтверждённое поступление на склад. Прямые накладные остаются за указанным филиалом.</p>
+    </div>}
 
     <section className="dashboard-v25-layout">
       <div className="dashboard-v25-left-stack">
@@ -2158,7 +2180,7 @@ function Finance({ t, lang, onGoToExpense }) {
             name: 'Food Cost / Поставщики',
             amountValue: allocated,
             amount: allocated,
-            comment: `${p.invoice_number ? `Поставщики · фактура ${p.invoice_number}` : 'Поставщики'} · ${isDirect ? 'прямая накладная филиала' : `общая накладная · доля выручки ${pct(share * 100)}`}`,
+            comment: `${p.invoice_number ? `Поставщики · фактура ${p.invoice_number}` : 'Поставщики'} · ${isDirect ? 'прямая накладная филиала' : `общая накладная · предварительное распределение по доле выручки ${pct(share * 100)} · не подтверждает склад`}`,
             created_at: p.purchase_date,
             isSupplierPurchase: true
           })
@@ -2679,7 +2701,14 @@ function Finance({ t, lang, onGoToExpense }) {
     const totalFoodCost = allocatedSupplierTotals.food + directMarketFoodCost
     const totalPackagingCost = allocatedSupplierTotals.packaging + directPackagingCost
     const totalHouseholdCost = allocatedSupplierTotals.household + directHouseholdCost
-    if (totalFoodCost > 0) map.set('Food Cost / закупки и базар', totalFoodCost)
+    const preliminarySupplierTotals = rmsFinanceSupplierTotalsForScope((purchaseRows || []).filter(row => !row?.branch_id), branchId, revenueShares.map)
+    const preliminarySupplierExpense = preliminarySupplierTotals.food + preliminarySupplierTotals.packaging + preliminarySupplierTotals.household + preliminarySupplierTotals.other
+    if (totalFoodCost > 0) map.set('Food Cost / закупки и базар', {
+      amount: totalFoodCost,
+      note: preliminarySupplierExpense > 0
+        ? `включает ${fmt(preliminarySupplierExpense)} AZN предварительного распределения общих накладных по доле выручки; не подтверждает поступление на склад`
+        : ''
+    })
     if (totalPackagingCost > 0) map.set('Take away / packaging', totalPackagingCost)
     if (totalHouseholdCost > 0) map.set('Хозтовары', totalHouseholdCost)
     if (allocatedSupplierTotals.other > 0) map.set('Закупки поставщиков / прочее', allocatedSupplierTotals.other)
@@ -2739,7 +2768,7 @@ function Finance({ t, lang, onGoToExpense }) {
     }
     const financeFormulaAuditRows = [
       { name: 'Выручка', amount: currentForFinance.revenue, note: 'monthly_branch_revenue' },
-      { name: 'Операционные расходы', amount: currentForFinance.expenses, note: 'daily_expenses без supplier mirror и salary-like строк + распределённые supplier purchases' },
+      { name: 'Операционные расходы', amount: currentForFinance.expenses, note: 'daily_expenses без supplier mirror и salary-like строк + предварительно распределённые по выручке общие supplier purchases' },
       { name: 'Зарплаты', amount: currentForFinance.salary, note: 'единая payroll-логика с долей менеджеров' },
       { name: 'Service charge персоналу (справочно)', amount: currentForFinance.serviceCost, note: 'monthly_branch_service_charge_cost; не входит в расходы и прибыль' },
       { name: `Налог ${fmt(currentForFinance.taxRate || TAX_RATE)}%`, amount: currentForFinance.tax, note: 'процент налогообложения по настройкам филиала' },
