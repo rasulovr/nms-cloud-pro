@@ -1966,7 +1966,7 @@ const RMS_BRANCH_TAX_RATE_SETTING = 'branch_tax_rate_v1'
 const RMS_HIDDEN_SALES_KEYS_SETTING = 'hidden_sales_keys'
 const RMS_SALES_NAME_ALIASES_SETTING = 'sales_name_aliases'
 
-const RMS_SOURCE_VERSION = 'preview_v414_shared_supplier_allocation'
+const RMS_SOURCE_VERSION = 'preview_v415_preliminary_shared_allocation'
 const RMS_FULL_BACKUP_TABLES = [
   'branches',
   'expense_categories',
