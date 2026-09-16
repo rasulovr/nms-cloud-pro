@@ -10,7 +10,8 @@ Preserve actual branch IDs and verify display-name mappings before imports.
   bazar and food write-offs.
 - Count every supplier purchase once as Food Cost; never mirror it as a daily Revenue expense.
 - Preserve branch-specific invoice attribution where a purchase is explicitly tied to a branch.
-- Use revenue-share allocation only for purchases that current approved logic treats as shared.
+- A supplier purchase without `branch_id` is shared: allocate it by branch revenue / total network revenue for the same period.
+- Use each historical month's own revenue shares when shared purchases enter a historical forecast fallback.
 - Do not silently reallocate an explicitly attributed invoice across the network.
 - Take away / packaging: cups, lids, containers, bags, disposable cutlery, takeaway napkins.
 - Хозтовары: cleaning chemicals, gloves, cloths, sponges and cleaning consumables.
@@ -39,9 +40,9 @@ Preserve actual branch IDs and verify display-name mappings before imports.
 - From Production v413, staff service charge is informational and is excluded from P&L
   expenses, profit and profitability calculations.
 - Keep the informational value visible where operational detail is required.
-- Preserve established 8% branch revenue tax calculation and current configurable settings;
+- Preserve the current configurable tax rate for each branch (8% default only when no positive setting exists);
   this is an application rule, not current tax-law advice.
-- Network tax total is the sum of branch amounts.
+- Actual and forecast network tax totals are the sum of branch amounts calculated with each branch's rate.
 - Manager payroll shared among branches by revenue share under existing logic.
 - Keep official salary/working days and configurable payroll contribution rates separate.
 
