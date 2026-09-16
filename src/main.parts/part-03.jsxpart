@@ -275,7 +275,8 @@ async function rmsCalculateNetworkForecastForMonth(y, m, scopeBranchId = 'all') 
     const key = String(name || 'Прочее').trim() || 'Прочее'
     map.set(key, parseNum(map.get(key)) + parseNum(amount))
   }
-  const supplierShareForScope = branchFilter ? parseNum(revenueShareMap.get(branchFilter)) : 1
+  // Закупки не распределяются по доле выручки: берём только накладные филиала.
+  const supplierShareForScope = 1
   const buildArticleMap = (expenseRows = [], purchaseRows = [], supplierShare = 1) => {
     const map = new Map()
     ;(expenseRows || []).forEach(row => {
@@ -296,12 +297,12 @@ async function rmsCalculateNetworkForecastForMonth(y, m, scopeBranchId = 'all') 
   }
   const currentArticleMap = buildArticleMap(
     (currentExpenseRows || []).filter(filterByBranch),
-    currentPurchaseRows || [],
+    (currentPurchaseRows || []).filter(filterByBranch),
     supplierShareForScope
   )
   const historyArticleMaps = prevMonths.map(pm => buildArticleMap(
     (historicalExpenseRows || []).filter(r => r.expense_date >= pm.start && r.expense_date < pm.end).filter(filterByBranch),
-    (historicalPurchaseRows || []).filter(r => r.purchase_date >= pm.start && r.purchase_date < pm.end),
+    (historicalPurchaseRows || []).filter(r => r.purchase_date >= pm.start && r.purchase_date < pm.end).filter(filterByBranch),
     supplierShareForScope
   ))
   const articleHistoryAvg = (name) => rmsForecastAverageNonZero(historyArticleMaps.map(map => map.get(name) || 0))
@@ -1591,8 +1592,12 @@ function Dashboard({ t }) {
       const baseSalary = parseNum(salByBranch.get(b.id)?.total_salary)
       const serviceCost = parseNum(svcByBranch.get(b.id)?.staff_cost_amount)
       const tax = revenue * TAX_RATE / 100
-      const supplierShare = revenueShareMap.get(b.id) || 0
-      const supplierTotals = rmsFinanceAllocatedSupplierTotals(purchaseRowsForFinance || [], supplierShare)
+      // Приходная накладная относится к указанному в ней филиалу. Накладные
+      // без branch_id не распределяем по выручке, чтобы не завышать/занижать P&L.
+      const supplierTotals = rmsFinanceAllocatedSupplierTotals(
+        (purchaseRowsForFinance || []).filter(p => String(p.branch_id || '') === String(b.id)),
+        1
+      )
       const supplierExtra = supplierTotals.food + supplierTotals.packaging + supplierTotals.household + supplierTotals.other
       // Dashboard считает зарплаты той же логикой, что раздел “Финансы”:
       // прямые сотрудники филиала + распределённая доля менеджеров по доле выручки.

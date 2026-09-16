@@ -5259,7 +5259,14 @@ function Reports({ t, permissions = [], isAdmin = false }) {
   const [cloudHiddenSalesLoaded, setCloudHiddenSalesLoaded] = useState(false)
   const [cloudSalesAliasesLoaded, setCloudSalesAliasesLoaded] = useState(false)
   const [rmsRevenueReport, setRmsRevenueReport] = useState({ loading: false, error: '', rows: [], totals: { cash: 0, bank: 0, wolt: 0, revenue: 0 } })
-  const [rmsExpensesReport, setRmsExpensesReport] = useState({ loading: false, error: '', rows: [], totals: { amount: 0, transactions: 0, categories: 0 }, byCategory: [], byBranch: [] })
+  const [rmsExpensesReport, setRmsExpensesReport] = useState({
+    loading: false,
+    error: '',
+    rows: [],
+    totals: { amount: 0, operating: 0, suppliers: 0, salary: 0, tax: 0, serviceCharge: 0, unallocated: 0, transactions: 0, categories: 0 },
+    byCategory: [],
+    byBranch: []
+  })
   const [rmsProfitabilityReport, setRmsProfitabilityReport] = useState({
     loading: false,
     error: '',
@@ -5633,35 +5640,166 @@ function Reports({ t, permissions = [], isAdmin = false }) {
   async function loadRmsExpensesReport() {
     setRmsExpensesReport(prev => ({ ...prev, loading: true, error: '' }))
     try {
-      let query = supabase
-        .from('daily_expenses')
-        .select('id,branch_id,expense_date,amount,comment,custom_category,expense_categories(name)')
-        .is('deleted_at', null)
-
-      if (branchFilter !== 'all') query = query.eq('branch_id', branchFilter)
-      if (/^year:\d{4}$/.test(String(monthFilter || ''))) {
-        const year = String(monthFilter).replace('year:', '')
-        query = query.gte('expense_date', `${year}-01-01`).lt('expense_date', `${Number(year) + 1}-01-01`)
-      } else if (/^\d{4}-\d{2}$/.test(String(monthFilter || ''))) {
-        const start = `${monthFilter}-01`
-        const end = rmsNextMonthStart(monthFilter)
-        query = query.gte('expense_date', start).lt('expense_date', end)
+      const period = (() => {
+        if (/^year:\d{4}$/.test(String(monthFilter || ''))) {
+          const year = String(monthFilter).replace('year:', '')
+          return { from: `${year}-01-01`, to: `${Number(year) + 1}-01-01` }
+        }
+        if (/^\d{4}-\d{2}$/.test(String(monthFilter || ''))) return { from: `${monthFilter}-01`, to: rmsNextMonthStart(monthFilter) }
+        return { from: '', to: '' }
+      })()
+      const applyRange = (query, field) => {
+        let next = query
+        if (period.from) next = next.gte(field, period.from)
+        if (period.to) next = next.lt(field, period.to)
+        return next
       }
-
-      const { data, error } = await query.order('expense_date', { ascending: false })
-      if (error) throw error
+      const fetchRows = async buildQuery => {
+        const { data, error } = await buildQuery().range(0, 49999)
+        if (error) throw error
+        return data || []
+      }
+      const [dailyRows, supplierRows, revenueRows, salaryRows, serviceRows, employeeResult] = await Promise.all([
+        fetchRows(() => applyRange(supabase.from('daily_expenses').select('id,branch_id,expense_date,amount,comment,custom_category,expense_categories(name)').is('deleted_at', null).order('expense_date', { ascending: false }), 'expense_date')),
+        fetchRows(() => applyRange(supabase.from('supplier_purchases').select('id,branch_id,purchase_date,invoice_number,total_amount,comment,suppliers(name)').is('deleted_at', null).order('purchase_date', { ascending: false }), 'purchase_date')),
+        fetchRows(() => applyRange(supabase.from('daily_revenue_entries').select('branch_id,revenue_date,cash_amount,bank_amount,wolt_amount').is('deleted_at', null), 'revenue_date')),
+        fetchRows(() => applyRange(supabase.from('salary_periods').select('employee_id,branch_id,salary_month,salary_gross,salary_net'), 'salary_month')),
+        fetchRows(() => supabase.from('monthly_branch_service_charge_cost').select('branch_id,month,staff_cost_amount')),
+        supabase.from('employees').select('id,branch_id,full_name,position,monthly_salary,is_active').eq('is_active', true)
+      ])
+      if (employeeResult.error) throw employeeResult.error
 
       const branchNameById = new Map((branches || []).map(b => [String(b.id), b.name]))
-      const rows = (data || []).map(row => ({
-        ...row,
-        branch_name: branchNameById.get(String(row.branch_id)) || row.branch_id || '—',
-        category_name: row?.expense_categories?.name || row?.custom_category || 'Прочее',
-        amount: parseNum(row.amount)
-      }))
+      const branchAllowed = id => branchFilter === 'all' || String(id || '') === String(branchFilter)
+      const rows = []
+      const pushRow = row => {
+        if (row.is_unallocated ? branchFilter === 'all' : branchAllowed(row.branch_id)) rows.push(row)
+      }
+
+      ;(dailyRows || []).forEach(row => {
+        const category = row?.expense_categories?.name || row?.custom_category || 'Прочее'
+        if (String(row?.comment || '').startsWith('SUPPLIER_PURCHASE_') || isSalaryExpenseName(category) || isDsmfExpenseName(category)) return
+        pushRow({
+          id: `daily-${row.id}`,
+          source: 'Операционные расходы',
+          branch_id: row.branch_id,
+          branch_name: branchNameById.get(String(row.branch_id)) || row.branch_id || '—',
+          expense_date: row.expense_date,
+          category_name: category,
+          comment: row.comment || '',
+          amount: parseNum(row.amount),
+          bucket: 'operating'
+        })
+      })
+      ;(supplierRows || []).forEach(row => {
+        const assigned = Boolean(row.branch_id)
+        pushRow({
+          id: `supplier-${row.id}`,
+          source: 'Приходная накладная',
+          branch_id: row.branch_id,
+          branch_name: assigned ? (branchNameById.get(String(row.branch_id)) || row.branch_id) : 'Не распределено',
+          expense_date: row.purchase_date,
+          category_name: assigned ? 'Поставщики / Food Cost' : 'Нераспределённые закупки',
+          comment: [row.suppliers?.name || 'Поставщик', row.invoice_number ? `Фактура: ${row.invoice_number}` : '', row.comment || ''].filter(Boolean).join(' · '),
+          amount: parseNum(row.total_amount),
+          bucket: assigned ? 'suppliers' : 'unallocated',
+          is_unallocated: !assigned
+        })
+      })
+
+      const revenueByBranch = new Map()
+      ;(revenueRows || []).forEach(row => {
+        const id = String(row.branch_id || '')
+        if (!id) return
+        revenueByBranch.set(id, parseNum(revenueByBranch.get(id)) + parseNum(row.cash_amount) + parseNum(row.bank_amount) + parseNum(row.wolt_amount))
+      })
+      const totalRevenue = Array.from(revenueByBranch.values()).reduce((sum, amount) => sum + parseNum(amount), 0)
+      const revenueShareMap = new Map()
+      revenueByBranch.forEach((amount, branchId) => revenueShareMap.set(branchId, totalRevenue > 0 ? parseNum(amount) / totalRevenue : 0))
+      const employeeById = new Map((employeeResult.data || []).map(row => [String(row.id), row]))
+      const salaryByBranch = new Map()
+      let managerSalaryPool = 0
+      if ((salaryRows || []).length) {
+        ;(salaryRows || []).forEach(row => {
+          const employee = employeeById.get(String(row.employee_id)) || {}
+          const branchId = String(row.branch_id || employee.branch_id || '')
+          const amount = rmsSalaryPeriodTotal(row)
+          if (!amount) return
+          if (!branchId || positionGroup(employee.position) === 'Менеджеры') managerSalaryPool += amount
+          else salaryByBranch.set(branchId, parseNum(salaryByBranch.get(branchId)) + amount)
+        })
+      } else {
+        // Официальные дни и ставки могут отличаться от поля monthly_salary.
+        // Для текущего периода используем ту же формулу, что «Финансы» и Dashboard.
+      }
+      const allSalaryBranchIds = new Set([...revenueByBranch.keys(), ...salaryByBranch.keys(), ...(branches || []).map(row => String(row.id))])
+      allSalaryBranchIds.forEach(branchId => {
+        const calculatedPayroll = !(salaryRows || []).length
+          ? rmsFinancePayrollDetailsForScope(employeeResult.data || [], branchId, revenueShareMap)
+          : null
+        const direct = calculatedPayroll ? parseNum(calculatedPayroll.directSalary) : parseNum(salaryByBranch.get(branchId))
+        const managerPart = calculatedPayroll
+          ? parseNum(calculatedPayroll.managersSalary)
+          : (totalRevenue > 0 ? managerSalaryPool * parseNum(revenueByBranch.get(branchId)) / totalRevenue : 0)
+        const amount = direct + managerPart
+        if (!amount) return
+        pushRow({
+          id: `salary-${branchId}-${monthFilter}`,
+          source: 'Начисление',
+          branch_id: branchId,
+          branch_name: branchNameById.get(branchId) || branchId,
+          expense_date: period.from || '',
+          category_name: 'Зарплаты (начислено)',
+          comment: managerPart ? `Прямые сотрудники: ${fmt(direct)}; менеджмент: ${fmt(managerPart)}` : 'Начисление по сотрудникам филиала',
+          amount,
+          bucket: 'salary'
+        })
+      })
+      const serviceMonthAllowed = value => {
+        const month = String(value || '')
+        if (!monthFilter || monthFilter === 'all') return true
+        if (/^year:\d{4}$/.test(String(monthFilter))) return month.startsWith(String(monthFilter).replace('year:', ''))
+        return month === String(monthFilter)
+      }
+      ;(serviceRows || []).filter(row => serviceMonthAllowed(row.month)).forEach(row => {
+        const amount = parseNum(row.staff_cost_amount)
+        if (!amount) return
+        pushRow({
+          id: `service-${row.branch_id}-${row.month}`,
+          source: 'Справочно',
+          branch_id: row.branch_id,
+          branch_name: branchNameById.get(String(row.branch_id)) || row.branch_id || '—',
+          expense_date: row.month || '',
+          category_name: 'Service charge персоналу',
+          comment: 'Показывается отдельно: не входит в расходы и чистую прибыль',
+          amount,
+          bucket: 'serviceCharge',
+          informational: true
+        })
+      })
+      const taxSettings = await readRmsAppSetting(RMS_BRANCH_TAX_RATE_SETTING, {})
+      revenueByBranch.forEach((revenue, branchId) => {
+        const configuredRate = parseNum(taxSettings?.[branchId])
+        const rate = configuredRate > 0 ? configuredRate : 8
+        const amount = parseNum(revenue) * rate / 100
+        if (!amount) return
+        pushRow({
+          id: `tax-${branchId}-${monthFilter}`,
+          source: 'Расчёт',
+          branch_id: branchId,
+          branch_name: branchNameById.get(branchId) || branchId,
+          expense_date: period.from || '',
+          category_name: 'Налог',
+          comment: `${fmt(revenue)} AZN × ${pct(rate)}`,
+          amount,
+          bucket: 'tax'
+        })
+      })
 
       const byCategoryMap = new Map()
       const byBranchMap = new Map()
       rows.forEach(row => {
+        if (row.informational) return
         const cat = row.category_name || 'Прочее'
         const prevCat = byCategoryMap.get(cat) || { name: cat, amount: 0, transactions: 0 }
         prevCat.amount += parseNum(row.amount)
@@ -5677,14 +5815,18 @@ function Reports({ t, permissions = [], isAdmin = false }) {
 
       const byCategory = Array.from(byCategoryMap.values()).sort((a, b) => b.amount - a.amount)
       const byBranch = Array.from(byBranchMap.values()).sort((a, b) => b.amount - a.amount)
-      const totals = {
-        amount: rows.reduce((sum, row) => sum + parseNum(row.amount), 0),
-        transactions: rows.length,
-        categories: byCategory.length
-      }
+      const totals = rows.reduce((acc, row) => {
+        const amount = parseNum(row.amount)
+        if (!row.informational) {
+          acc.amount += amount
+          acc.transactions += 1
+        }
+        if (Object.prototype.hasOwnProperty.call(acc, row.bucket)) acc[row.bucket] += amount
+        return acc
+      }, { amount: 0, operating: 0, suppliers: 0, salary: 0, tax: 0, serviceCharge: 0, unallocated: 0, transactions: 0, categories: byCategory.length })
       setRmsExpensesReport({ loading: false, error: '', rows, totals, byCategory, byBranch })
     } catch (error) {
-      setRmsExpensesReport({ loading: false, error: error?.message || 'Не удалось загрузить расходы RMS', rows: [], totals: { amount: 0, transactions: 0, categories: 0 }, byCategory: [], byBranch: [] })
+      setRmsExpensesReport({ loading: false, error: error?.message || 'Не удалось загрузить расходы RMS', rows: [], totals: { amount: 0, operating: 0, suppliers: 0, salary: 0, tax: 0, serviceCharge: 0, unallocated: 0, transactions: 0, categories: 0 }, byCategory: [], byBranch: [] })
     }
   }
 
@@ -5906,8 +6048,6 @@ function Reports({ t, permissions = [], isAdmin = false }) {
         expensesByBranch.set(id, current)
       })
 
-      const supplierPurchaseTotal = supplierPurchases.reduce((sum, row) => sum + parseNum(row.total_amount), 0)
-
       const directSalaryByBranch = new Map()
       const salaryDetailsByBranch = new Map()
       const managerSalaryDetails = []
@@ -6011,7 +6151,10 @@ function Reports({ t, permissions = [], isAdmin = false }) {
         }
 
         const share = parseNum(revenueShareMap.get(id))
-        const supplierFoodCost = supplierPurchaseTotal * share
+        // Накладная — расход конкретного филиала. Не переносим её на другие
+        // филиалы по доле выручки: записи без branch_id остаются нераспределёнными.
+        const supplierRowsForBranch = supplierPurchases.filter(purchase => String(purchase.branch_id || '') === id)
+        const supplierFoodCost = supplierRowsForBranch.reduce((sum, purchase) => sum + parseNum(purchase.total_amount), 0)
         const foodCost = parseNum(expenseData.manualFood) + supplierFoodCost
         const directSalary = parseNum(directSalaryByBranch.get(id))
         const managerSalary = managerSalaryPool * share
@@ -6023,13 +6166,13 @@ function Reports({ t, permissions = [], isAdmin = false }) {
         const totalExpenses = parseNum(expenseData.operating) + supplierFoodCost + salary + serviceCost + tax
         const net = parseNum(revenueData.revenue) - totalExpenses
         const activeDays = revenueData.days?.size || 0
-        const supplierDetails = supplierPurchases
+        const supplierDetails = supplierRowsForBranch
           .map(purchase => ({
             id: `supplier-${purchase.id}`,
             date: purchase.purchase_date,
             description: purchase.suppliers?.name || 'Поставщик',
-            comment: [purchase.invoice_number ? `Фактура: ${purchase.invoice_number}` : '', purchase.comment || '', `Распределено ${pct(share * 100)} от ${fmt(purchase.total_amount)} AZN`].filter(Boolean).join(' · '),
-            amount: parseNum(purchase.total_amount) * share
+            comment: [purchase.invoice_number ? `Фактура: ${purchase.invoice_number}` : '', purchase.comment || ''].filter(Boolean).join(' · '),
+            amount: parseNum(purchase.total_amount)
           }))
           .filter(detail => detail.amount !== 0)
         const salaryDetails = [
@@ -9030,8 +9173,8 @@ function Reports({ t, permissions = [], isAdmin = false }) {
     <div className="reports-v43-module-card reports-v43-wide reports-v43-revenue-card">
       <div className="reports-v43-card-head reports-v43-revenue-head">
         <div>
-          <h3>Отчёт по расходам RMS</h3>
-          <p>Данные берутся из таблицы daily_expenses. Ниже — общая сумма, разбивка по статьям и журнал транзакций.</p>
+          <h3>Полный отчёт по расходам RMS</h3>
+          <p>Все статьи P&amp;L: операционные расходы, приходные накладные, начисленные зарплаты и налог. Service charge показывается отдельно и не уменьшает прибыль.</p>
         </div>
         <div className="reports-v43-revenue-actions">
           <button className={monthFilter === currentMonthKey ? 'small primary' : 'small ghost'} type="button" onClick={() => setMonthFilter(currentMonthKey)}>Текущий месяц</button>
@@ -9041,18 +9184,24 @@ function Reports({ t, permissions = [], isAdmin = false }) {
 
       <div className="reports-v43-mini-kpis reports-v43-expenses-kpis">
         <div><span>Итого расходов</span><strong>{fmt(rmsExpensesReport.totals.amount)}</strong><em>по текущему фильтру</em></div>
-        <div><span>Статей</span><strong>{fmt(rmsExpensesReport.totals.categories)}</strong><em>уникальные категории</em></div>
-        <div><span>Филиал</span><strong>{selectedBranchLabel}</strong><em>текущий фильтр</em></div>
-        <div><span>Период</span><strong>{selectedMonthLabel}</strong><em>текущий фильтр</em></div>
-        <div><span>Средний расход</span><strong>{fmt(rmsExpensesReport.totals.transactions ? rmsExpensesReport.totals.amount / rmsExpensesReport.totals.transactions : 0)}</strong><em>на транзакцию</em></div>
+        <div><span>Операционные</span><strong>{fmt(rmsExpensesReport.totals.operating)}</strong><em>все статьи daily expenses</em></div>
+        <div><span>Закупки / Food Cost</span><strong>{fmt(rmsExpensesReport.totals.suppliers)}</strong><em>накладные выбранного филиала</em></div>
+        <div><span>Зарплаты</span><strong>{fmt(rmsExpensesReport.totals.salary)}</strong><em>начислено за период</em></div>
+        <div><span>Налог</span><strong>{fmt(rmsExpensesReport.totals.tax)}</strong><em>расчёт от выручки</em></div>
+        <div><span>Service charge</span><strong>{fmt(rmsExpensesReport.totals.serviceCharge)}</strong><em>справочно, не P&amp;L-расход</em></div>
+        <div><span>Статей</span><strong>{fmt(rmsExpensesReport.totals.categories)}</strong><em>{selectedBranchLabel} · {selectedMonthLabel}</em></div>
       </div>
 
-      {rmsExpensesReport.loading && <div className="reports-v43-empty-state"><b>Загрузка расходов...</b><span>Идёт чтение daily_expenses.</span></div>}
+      {rmsExpensesReport.loading && <div className="reports-v43-empty-state"><b>Загрузка расходов...</b><span>Собираю операции, накладные, зарплаты и налоги.</span></div>}
       {rmsExpensesReport.error && <div className="reports-v43-empty-state"><b>Ошибка загрузки</b><span>{rmsExpensesReport.error}</span></div>}
       {!rmsExpensesReport.loading && !rmsExpensesReport.error && <>
+        {rmsExpensesReport.totals.unallocated > 0 && <div className="reports-v43-empty-state" style={{ textAlign: 'left', padding: '12px 14px', marginBottom: 14 }}>
+          <b>Нераспределённые накладные: {fmt(rmsExpensesReport.totals.unallocated)} AZN</b>
+          <span>Они включены только в сводку «Все филиалы» и не приписаны ни одному филиалу. Укажите филиал в этих приходных накладных для точного P&amp;L каждого филиала.</span>
+        </div>}
         <div className="reports-v43-expenses-stack">
           <div className="reports-v43-card reports-v43-expense-wide-card">
-            <div className="reports-v43-card-head"><div><h3>Расходы по статьям</h3><p>Сумма и количество транзакций по каждой категории.</p></div></div>
+            <div className="reports-v43-card-head"><div><h3>Расходы по статьям</h3><p>Включены все источники, которые формируют P&amp;L филиала.</p></div></div>
             <div className="reports-v43-table-wrap"><table>
               <thead><tr><th>Статья</th><th>Транзакций</th><th>Сумма</th><th>% от общего</th></tr></thead>
               <tbody>
@@ -9074,12 +9223,12 @@ function Reports({ t, permissions = [], isAdmin = false }) {
         </div>
 
         <div className="reports-v43-card" style={{ marginTop: 14 }}>
-          <div className="reports-v43-card-head"><div><h3>Журнал расходов</h3><p>Построчная детализация из daily_expenses.</p></div></div>
+          <div className="reports-v43-card-head"><div><h3>Журнал расходов</h3><p>Построчная детализация с указанием источника каждой суммы.</p></div></div>
           <div className="reports-v43-table-wrap"><table>
-            <thead><tr><th>Дата</th><th>Филиал</th><th>Статья</th><th>Комментарий</th><th>Сумма</th></tr></thead>
+            <thead><tr><th>Дата</th><th>Источник</th><th>Филиал</th><th>Статья</th><th>Комментарий</th><th>Сумма</th></tr></thead>
             <tbody>
-              {rmsExpensesReport.rows.slice(0, 120).map(row => <tr key={row.id}><td>{row.expense_date || '—'}</td><td><b>{row.branch_name || '—'}</b></td><td>{row.category_name || '—'}</td><td>{row.comment || '—'}</td><td><b>{fmt(row.amount)}</b></td></tr>)}
-              {!rmsExpensesReport.rows.length && <tr><td colSpan="5" className="hint">Пока нет данных по расходам за выбранный фильтр.</td></tr>}
+              {rmsExpensesReport.rows.slice(0, 120).map(row => <tr key={row.id}><td>{row.expense_date || '—'}</td><td>{row.source || '—'}</td><td><b>{row.branch_name || '—'}</b></td><td>{row.category_name || '—'}</td><td>{row.comment || '—'}</td><td><b>{fmt(row.amount)}</b></td></tr>)}
+              {!rmsExpensesReport.rows.length && <tr><td colSpan="6" className="hint">Пока нет данных по расходам за выбранный фильтр.</td></tr>}
             </tbody>
           </table></div>
         </div>
