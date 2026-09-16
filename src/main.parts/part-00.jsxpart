@@ -1500,6 +1500,25 @@ const rmsFinanceAllocatedSupplierTotals = (purchaseRows = [], share = 1) => {
   }
 }
 
+const rmsFinanceSupplierTotalsForScope = (purchaseRows = [], selectedBranchId = 'all', revenueShareMap = new Map()) => {
+  if (!selectedBranchId || selectedBranchId === 'all' || selectedBranchId === '__all__') {
+    return rmsFinanceAllocatedSupplierTotals(purchaseRows || [], 1)
+  }
+
+  const branchKey = String(selectedBranchId)
+  const directRows = (purchaseRows || []).filter(row => String(row?.branch_id || '') === branchKey)
+  const sharedRows = (purchaseRows || []).filter(row => !row?.branch_id)
+  const direct = rmsFinanceAllocatedSupplierTotals(directRows, 1)
+  const shared = rmsFinanceAllocatedSupplierTotals(sharedRows, parseNum(revenueShareMap.get(branchKey)))
+
+  return {
+    food: parseNum(direct.food) + parseNum(shared.food),
+    packaging: parseNum(direct.packaging) + parseNum(shared.packaging),
+    household: parseNum(direct.household) + parseNum(shared.household),
+    other: parseNum(direct.other) + parseNum(shared.other)
+  }
+}
+
 const rmsFinanceOfficialDaysByEmployee = () => {
   try { return JSON.parse(localStorage.getItem('rms_employee_official_days') || '{}') } catch (_e) { return {} }
 }
@@ -1947,7 +1966,7 @@ const RMS_BRANCH_TAX_RATE_SETTING = 'branch_tax_rate_v1'
 const RMS_HIDDEN_SALES_KEYS_SETTING = 'hidden_sales_keys'
 const RMS_SALES_NAME_ALIASES_SETTING = 'sales_name_aliases'
 
-const RMS_SOURCE_VERSION = 'main_v413_forecast_current_pace'
+const RMS_SOURCE_VERSION = 'preview_v414_shared_supplier_allocation'
 const RMS_FULL_BACKUP_TABLES = [
   'branches',
   'expense_categories',
