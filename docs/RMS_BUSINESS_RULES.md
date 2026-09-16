@@ -11,6 +11,8 @@ Preserve actual branch IDs and verify display-name mappings before imports.
 - Count every supplier purchase once as Food Cost; never mirror it as a daily Revenue expense.
 - Preserve branch-specific invoice attribution where a purchase is explicitly tied to a branch.
 - A supplier purchase without `branch_id` is shared: allocate it by branch revenue / total network revenue for the same period.
+- Revenue-share allocation of a purchase without `branch_id` is preliminary only; label it explicitly and never present it as a confirmed warehouse receipt or confirmed branch attribution.
+- A purchase with an explicit `branch_id` is confirmed for that branch and remains 100% attributed to it.
 - Use each historical month's own revenue shares when shared purchases enter a historical forecast fallback.
 - Do not silently reallocate an explicitly attributed invoice across the network.
 - Take away / packaging: cups, lids, containers, bags, disposable cutlery, takeaway napkins.
