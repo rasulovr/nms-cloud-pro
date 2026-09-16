@@ -5691,22 +5691,6 @@ function Reports({ t, permissions = [], isAdmin = false }) {
           bucket: 'operating'
         })
       })
-      ;(supplierRows || []).forEach(row => {
-        const assigned = Boolean(row.branch_id)
-        pushRow({
-          id: `supplier-${row.id}`,
-          source: 'Приходная накладная',
-          branch_id: row.branch_id,
-          branch_name: assigned ? (branchNameById.get(String(row.branch_id)) || row.branch_id) : 'Не распределено',
-          expense_date: row.purchase_date,
-          category_name: assigned ? 'Поставщики / Food Cost' : 'Нераспределённые закупки',
-          comment: [row.suppliers?.name || 'Поставщик', row.invoice_number ? `Фактура: ${row.invoice_number}` : '', row.comment || ''].filter(Boolean).join(' · '),
-          amount: parseNum(row.total_amount),
-          bucket: assigned ? 'suppliers' : 'unallocated',
-          is_unallocated: !assigned
-        })
-      })
-
       const revenueByBranch = new Map()
       ;(revenueRows || []).forEach(row => {
         const id = String(row.branch_id || '')
@@ -5716,6 +5700,27 @@ function Reports({ t, permissions = [], isAdmin = false }) {
       const totalRevenue = Array.from(revenueByBranch.values()).reduce((sum, amount) => sum + parseNum(amount), 0)
       const revenueShareMap = new Map()
       revenueByBranch.forEach((amount, branchId) => revenueShareMap.set(branchId, totalRevenue > 0 ? parseNum(amount) / totalRevenue : 0))
+      ;(supplierRows || []).forEach(row => {
+        const assignedBranchId = String(row.branch_id || '')
+        const targets = assignedBranchId
+          ? [{ branchId: assignedBranchId, share: 1, shared: false }]
+          : Array.from(revenueShareMap.entries()).map(([branchId, share]) => ({ branchId, share: parseNum(share), shared: true }))
+        targets.forEach(target => {
+          const amount = parseNum(row.total_amount) * target.share
+          if (amount <= 0) return
+          pushRow({
+            id: `supplier-${row.id}-${target.branchId}`,
+            source: 'Приходная накладная',
+            branch_id: target.branchId,
+            branch_name: branchNameById.get(target.branchId) || target.branchId,
+            expense_date: row.purchase_date,
+            category_name: 'Поставщики / Food Cost',
+            comment: [row.suppliers?.name || 'Поставщик', row.invoice_number ? `Фактура: ${row.invoice_number}` : '', row.comment || '', target.shared ? `Общая накладная · доля выручки ${pct(target.share * 100)}` : 'Прямая накладная филиала'].filter(Boolean).join(' · '),
+            amount,
+            bucket: 'suppliers'
+          })
+        })
+      })
       const employeeById = new Map((employeeResult.data || []).map(row => [String(row.id), row]))
       const salaryByBranch = new Map()
       let managerSalaryPool = 0
@@ -6151,10 +6156,10 @@ function Reports({ t, permissions = [], isAdmin = false }) {
         }
 
         const share = parseNum(revenueShareMap.get(id))
-        // Накладная — расход конкретного филиала. Не переносим её на другие
-        // филиалы по доле выручки: записи без branch_id остаются нераспределёнными.
-        const supplierRowsForBranch = supplierPurchases.filter(purchase => String(purchase.branch_id || '') === id)
-        const supplierFoodCost = supplierRowsForBranch.reduce((sum, purchase) => sum + parseNum(purchase.total_amount), 0)
+        const directSupplierRows = supplierPurchases.filter(purchase => String(purchase.branch_id || '') === id)
+        const sharedSupplierRows = supplierPurchases.filter(purchase => !purchase.branch_id)
+        const supplierFoodCost = directSupplierRows.reduce((sum, purchase) => sum + parseNum(purchase.total_amount), 0)
+          + sharedSupplierRows.reduce((sum, purchase) => sum + parseNum(purchase.total_amount) * share, 0)
         const foodCost = parseNum(expenseData.manualFood) + supplierFoodCost
         const directSalary = parseNum(directSalaryByBranch.get(id))
         const managerSalary = managerSalaryPool * share
@@ -6166,14 +6171,22 @@ function Reports({ t, permissions = [], isAdmin = false }) {
         const totalExpenses = parseNum(expenseData.operating) + supplierFoodCost + salary + tax
         const net = parseNum(revenueData.revenue) - totalExpenses
         const activeDays = revenueData.days?.size || 0
-        const supplierDetails = supplierRowsForBranch
-          .map(purchase => ({
+        const supplierDetails = [
+          ...directSupplierRows.map(purchase => ({
             id: `supplier-${purchase.id}`,
             date: purchase.purchase_date,
             description: purchase.suppliers?.name || 'Поставщик',
-            comment: [purchase.invoice_number ? `Фактура: ${purchase.invoice_number}` : '', purchase.comment || ''].filter(Boolean).join(' · '),
+            comment: [purchase.invoice_number ? `Фактура: ${purchase.invoice_number}` : '', purchase.comment || '', 'Прямая накладная филиала'].filter(Boolean).join(' · '),
             amount: parseNum(purchase.total_amount)
+          })),
+          ...sharedSupplierRows.map(purchase => ({
+            id: `supplier-shared-${purchase.id}-${id}`,
+            date: purchase.purchase_date,
+            description: purchase.suppliers?.name || 'Поставщик',
+            comment: [purchase.invoice_number ? `Фактура: ${purchase.invoice_number}` : '', purchase.comment || '', `Общая накладная · доля выручки ${pct(share * 100)}`].filter(Boolean).join(' · '),
+            amount: parseNum(purchase.total_amount) * share
           }))
+        ]
           .filter(detail => detail.amount !== 0)
         const salaryDetails = [
           ...(salaryDetailsByBranch.get(id) || []),
