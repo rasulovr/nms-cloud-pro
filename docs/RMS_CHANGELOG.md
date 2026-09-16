@@ -3,6 +3,39 @@
 Entries distinguish source changes, recorded deployments and verification.
 Only durable milestones belong here; no copied chat transcript.
 
+
+## 2026-09-16 — Production v413 forecast and P&L correction
+- User authorized publication of only the three verified changed source parts.
+- Source version: `main_v413_forecast_current_pace`.
+- Production source commit: `88f383b6e3d36f37127a6bb4053b25fa41a256a1`.
+- Production deployment: `dpl_7Dc6SrJeaYZHGG1y91YmFviM34UN` — READY.
+- Rollback branch: `rollback/pre-v413-20260916` at `77f8bd0c16238d3a1c2bc1e3ed0b2b9ead0ee727`.
+- Variable expenses now use current-month pace whenever current data exists; history is fallback only.
+- Staff service charge remains informational but is excluded from P&L expenses, profit and margin.
+- Dashboard, Finance and Reports use the same v413 inclusion logic.
+- GitHub `main` and the Vercel deployment SHA were verified equal.
+- `app.rms.rest` opened the internal-login form without application console errors.
+- No error/fatal runtime logs were returned for the checked 24-hour window.
+- No database, schema, RLS or production-data change was made by v413.
+
+## 2026-09-16 — v412 complete expense ledger
+- Initial v412 commit `013ce73cc64dde44e9d24067ab95d02b2f957b57` failed Production build because source-part boundaries were invalid.
+- Corrected commit `77f8bd0c16238d3a1c2bc1e3ed0b2b9ead0ee727` deployed as `dpl_82Q5SiFVJdETZnwcNWjs2ixvSLKa` — READY.
+- Completed expense-ledger presentation and branch-specific supplier-purchase attribution.
+- The corrected v412 commit is the immediate pre-v413 rollback point.
+
+## 2026-09-15 — v411 supplier debt report
+- Production commit `ff43372174afe1a56107ed7960039245c3d76dbf`.
+- Deployment `dpl_EFLsZoZ9JkHDZ2pYggUsZa935xQV` — READY.
+- Added supplier debt reporting by VOEN with invoice and payment balances.
+
+## 2026-09-14 — Tech Cards v405–v410 production sequence
+- v405 Production commit `ad724a77b0a4e977c0e3c94c8fb6827fef5e9363`; deployment `dpl_D7TQ7rXw2uo8t2g59mqxDLxUEzGM` READY.
+- Semifinished terminology and ingredient/output flow were subsequently refined.
+- v409 commit `ae75ff953f8f52e77cb7174e969adc56643e78b9`; deployment `dpl_5FdL6zRyN9xryxXwty9ZGmgzBzba` READY.
+- v410 commit `395f129730aa7df237695210921a440295ec901d`; deployment `dpl_4StA4PfX28tiagsh14hVAw9mwSW6` READY.
+- v410 fixed Tech Cards catalogue loading beyond the previous 1,000-item boundary.
+
 ## 2026-09-13 — Internal password-save verification fix
 - Production audit proved repeated admin saves left Nigar's password unchanged while the UI reported success.
 - v406 now reads the authoritative cloud record, rejects a password identical to the current value and verifies the value after saving.
