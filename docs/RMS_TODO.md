@@ -1,31 +1,37 @@
 # RMS task queue
-Last updated: 2026-09-12.
-Do not automatically execute every item. Current user task controls priority.
+Last updated: 2026-09-16.
+Do not automatically execute every item. The current explicit user task controls priority.
 
 ## Current
-- [x] Prepare short state and module handoff documents.
-- [x] Publish reviewed package to GitHub after explicit public-repository authorization.
-- [x] Prepare documentation update workflow in AGENTS.md.
-- [ ] Locate any v405 semifinished work already prepared in another session.
-- [ ] Verify v404 with affected restricted internal user.
-- [ ] Reproduce remaining menu_items RLS error and fix exact authorized call path.
-- [ ] Redesign semifinished creation with clear output and cost calculation.
-- [ ] Verify save/reopen/edit, permissions, printing and QR photos.
-- [ ] Record exact source commit, deployed checkpoint and accepted stable release.
+- [x] Verify GitHub `main` after Production v413.
+- [x] Verify the active Vercel Production deployment and source SHA.
+- [x] Verify that `app.rms.rest` opens without application console errors.
+- [x] Update the canonical v413 handoff, business rules and change history.
+- [ ] Select the next product task only from a new explicit user request.
 
-## Continuity gaps
-- [ ] Resolve live production Supabase reference read-only before DB work.
-- [ ] Verify current app.rms.rest alias and source commit.
+## Verified continuity
+- [x] Canonical documentation branch: `docs/rms-project-state`.
+- [x] Production source: `88f383b6e3d36f37127a6bb4053b25fa41a256a1`.
+- [x] Production deployment: `dpl_7Dc6SrJeaYZHGG1y91YmFviM34UN` — READY.
+- [x] Immediate rollback: `rollback/pre-v413-20260916` at `77f8bd0c16238d3a1c2bc1e3ed0b2b9ead0ee727`.
+- [x] Update root state and relevant module documentation after each substantial result.
+
+## Product follow-ups — not active until explicitly selected
+- [ ] Run authenticated acceptance of v413 figures for the user-selected branch/month.
+- [ ] Reproduce any remaining `menu_items` RLS error with the affected restricted user.
+- [ ] Verify Tech Cards save/reopen/edit, permissions, printing and QR photo linkage after v410.
+- [ ] Confirm current Nigar access and historical supplier-invoice visibility only if the user reopens that task.
+- [ ] August/September 2026 revenue/expense import: preserve prior rows and exclude Bazar.
 - [ ] Match current POS and QR deployed packages to durable source refs.
-- [ ] Update both root state and module after each substantial result.
-
-## Separate outstanding requests; completion not assumed
-- [ ] August/September 2026 revenue/expense import: preserve prior rows, exclude Bazar.
-- [ ] POS authenticated table creation verification.
+- [ ] POS authenticated table-creation verification.
 - [ ] Secondary QR domains connection and root-path verification.
-- [ ] QR variants: server-backed option selection when explicitly resumed.
 - [ ] Continue QR → waiter confirmation → kitchen/bar end-to-end verification.
 
-## Backlog, not current scope
+## Backlog
 AI recommendations, upsell, menu scheduling, shared carts/bills, loyalty integration,
-analytics and other previously proposed enhancements require specific task selection.
+analytics and other proposed enhancements require specific task selection.
+
+## Safety
+- No automatic Production deployment, database mutation, rollback or branch merge.
+- Reverify live refs before each write.
+- Keep POS, QR Menu, SaaS/Loyalty and RMS Pro deployment targets separate.
