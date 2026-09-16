@@ -5715,9 +5715,10 @@ function Reports({ t, permissions = [], isAdmin = false }) {
             branch_name: branchNameById.get(target.branchId) || target.branchId,
             expense_date: row.purchase_date,
             category_name: 'Поставщики / Food Cost',
-            comment: [row.suppliers?.name || 'Поставщик', row.invoice_number ? `Фактура: ${row.invoice_number}` : '', row.comment || '', target.shared ? `Общая накладная · доля выручки ${pct(target.share * 100)}` : 'Прямая накладная филиала'].filter(Boolean).join(' · '),
+            comment: [row.suppliers?.name || 'Поставщик', row.invoice_number ? `Фактура: ${row.invoice_number}` : '', row.comment || '', target.shared ? `Общая накладная · предварительное распределение по доле выручки ${pct(target.share * 100)} · не подтверждает склад` : 'Прямая накладная филиала'].filter(Boolean).join(' · '),
             amount,
-            bucket: 'suppliers'
+            bucket: 'suppliers',
+            allocation_status: target.shared ? 'preliminary' : 'confirmed'
           })
         })
       })
@@ -6183,8 +6184,9 @@ function Reports({ t, permissions = [], isAdmin = false }) {
             id: `supplier-shared-${purchase.id}-${id}`,
             date: purchase.purchase_date,
             description: purchase.suppliers?.name || 'Поставщик',
-            comment: [purchase.invoice_number ? `Фактура: ${purchase.invoice_number}` : '', purchase.comment || '', `Общая накладная · доля выручки ${pct(share * 100)}`].filter(Boolean).join(' · '),
-            amount: parseNum(purchase.total_amount) * share
+            comment: [purchase.invoice_number ? `Фактура: ${purchase.invoice_number}` : '', purchase.comment || '', `Общая накладная · предварительное распределение по доле выручки ${pct(share * 100)} · не подтверждает склад`].filter(Boolean).join(' · '),
+            amount: parseNum(purchase.total_amount) * share,
+            allocation_status: 'preliminary'
           }))
         ]
           .filter(detail => detail.amount !== 0)
@@ -9361,7 +9363,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
     </section>}
 
     {!rmsProfitabilityReport.loading && !rmsProfitabilityReport.error && <div className="reports-v417-card">
-      <div className="reports-v417-head"><div><h3>Детальная рентабельность филиалов</h3><p>Food Cost включает накладные, привязанные к филиалу, а также базар и продуктовые расходы. Service charge показан справочно и не входит в расходы и прибыль. Налог берётся из настроек филиала.</p></div><span className="reports-v43-badge">{profitabilityRows.length}</span></div>
+      <div className="reports-v417-head"><div><h3>Детальная рентабельность филиалов</h3><p>Food Cost включает прямые накладные филиала. Общие накладные без филиала распределяются предварительно по доле выручки и не подтверждают поступление на склад. Service charge показан справочно и не входит в расходы и прибыль. Налог берётся из настроек филиала.</p></div><span className="reports-v43-badge">{profitabilityRows.length}</span></div>
       <div className="reports-v417-table-wrap"><table className="reports-v417-table">
         <thead><tr><th>Филиал</th><th>Выручка</th><th>Wolt</th><th>Food Cost</th><th>Зарплаты</th><th>Опер. расходы</th><th>Service charge</th><th>Налог</th><th>Все расходы</th><th>Результат</th><th>Маржа</th><th>На день</th><th></th></tr></thead>
         <tbody>
