@@ -325,8 +325,8 @@ async function rmsCalculateNetworkForecastForMonth(y, m, scopeBranchId = 'all') 
     if (currentValue > 0) {
       if (isVariableArticle(name)) {
         const paced = currentValue * dailyFactor
-        amount = Math.max(paced, historyValue)
-        note = historyValue > paced ? 'из среднего прошлых месяцев' : `текущий темп месяца: ${fmt(currentValue)} × ${dailyFactor.toFixed(2)}`
+        amount = paced
+        note = `текущий темп месяца: ${fmt(currentValue)} × ${dailyFactor.toFixed(2)}; история используется только при отсутствии текущих данных`
       } else {
         amount = currentValue
         note = 'из раздела “Расходы по статьям” за текущий месяц'
@@ -413,8 +413,6 @@ async function rmsCalculateNetworkForecastForMonth(y, m, scopeBranchId = 'all') 
   })
   const supplierTotalsForManagerShare = rmsFinancePurchaseTotalsByGroup(currentPurchaseRows || [])
   const supplierTotalForManagerShare = parseNum(supplierTotalsForManagerShare.food) + parseNum(supplierTotalsForManagerShare.packaging) + parseNum(supplierTotalsForManagerShare.household) + parseNum(supplierTotalsForManagerShare.other)
-  const serviceByBranchForManagerShare = new Map()
-  ;(svcRows || []).forEach(row => serviceByBranchForManagerShare.set(row.branch_id, parseNum(serviceByBranchForManagerShare.get(row.branch_id)) + parseNum(row.staff_cost_amount)))
   const managerAllocationShareMap = new Map()
   const positiveProfitParts = (branchIds || []).map(id => {
     const rev = (revRows || []).find(r => r.branch_id === id)
@@ -424,7 +422,6 @@ async function rmsCalculateNetworkForecastForMonth(y, m, scopeBranchId = 'all') 
     const preliminaryProfit = branchRevenue
       - parseNum(branchExpenseCurrentMap.get(id))
       - supplierTotalForManagerShare * revenueShare
-      - parseNum(serviceByBranchForManagerShare.get(id))
       - branchRevenue * TAX_RATE / 100
       - directSalaryForBranch
       - parseNum(rentMap?.[id])
@@ -550,9 +547,14 @@ async function rmsCalculateNetworkForecastForMonth(y, m, scopeBranchId = 'all') 
     { name: 'Зарплата', amount: salaryForecast, note: salaryForecastNote, keepVisible: true },
     { name: 'Аренда', amount: rentForecast, note: configuredRent > 0 ? 'фиксированная аренда из настроек филиалов' : rentCurrent > 0 ? 'из текущих расходов, так как аренда в настройках не заполнена' : rentHistory > 0 ? 'среднее прошлых месяцев, так как аренда в настройках не заполнена' : 'не заполнена в настройках и нет истории' },
     { name: 'DSMF', amount: dsmfForecast, note: dsmfForecastNote, keepVisible: true },
-    { name: 'Service charge персоналу', amount: serviceForecast, note: serviceForecastNote },
     { name: `Налог ${TAX_RATE}%`, amount: taxForecast, note: 'от прогнозной выручки' }
   ].filter(row => row.keepVisible || parseNum(row.amount) > 0)
+  const informationalDetails = serviceForecast > 0 ? [{
+    name: 'Service charge персоналу (справочно)',
+    amount: serviceForecast,
+    note: `${serviceForecastNote}; не входит в расходы и расчёт прибыли`,
+    type: 'informational'
+  }] : []
 
   const forecastExpenseMap = new Map()
   ;[...articleDetails, ...fixedDetails].forEach(row => {
@@ -574,7 +576,8 @@ async function rmsCalculateNetworkForecastForMonth(y, m, scopeBranchId = 'all') 
   const forecastMargin = forecastRevenue > 0 ? forecastProfit / forecastRevenue * 100 : 0
   const details = [
     { name: 'Прогноз выручки', amount: forecastRevenue, type: 'revenue', note: `${fmt(avg)} × ${monthDays} дней` },
-    ...forecastExpenseRows.sort((a, b) => parseNum(b.amount) - parseNum(a.amount))
+    ...forecastExpenseRows.sort((a, b) => parseNum(b.amount) - parseNum(a.amount)),
+    ...informationalDetails
   ]
 
   return { forecastRevenue, forecastProfit, avg, forecastExpenses, forecastMargin, details }
@@ -588,7 +591,7 @@ async function rmsFinanceForecastEngine(y, m, scopeBranchId = 'all') {
   const details = Array.isArray(raw?.details) ? raw.details : []
   const revenueRow = details.find(r => r?.type === 'revenue')
   const forecastRevenueFromDetails = revenueRow ? parseNum(revenueRow.amount) : forecastRevenue
-  const expenseRows = details.filter(r => r?.type !== 'revenue')
+  const expenseRows = details.filter(r => !['revenue', 'informational'].includes(r?.type))
   const forecastExpensesFromDetails = expenseRows.reduce((sum, row) => sum + parseNum(row.amount), 0)
   const forecastProfitFromDetails = forecastRevenueFromDetails - forecastExpensesFromDetails
   const normalizedProfit = Math.abs(forecastProfitFromDetails - forecastProfit) <= 0.01 ? forecastProfit : forecastProfitFromDetails
@@ -1604,7 +1607,7 @@ function Dashboard({ t }) {
       const calculatedSalary = parseNum(rmsFinancePayrollDetailsForScope(employeeRows || [], b.id, revenueShareMap).totalSalary)
       const salary = calculatedSalary > 0 ? calculatedSalary : baseSalary
       const expenses = baseExpenses + supplierExtra
-      const net = revenue - expenses - salary - serviceCost - tax
+      const net = revenue - expenses - salary - tax
       baseTotals.revenue += revenue
       baseTotals.expenses += expenses
       baseTotals.salary += salary
@@ -1621,7 +1624,7 @@ function Dashboard({ t }) {
         salary,
         serviceCost,
         tax,
-        totalExpenses: expenses + salary + serviceCost + tax,
+        totalExpenses: expenses + salary + tax,
         net,
         margin: revenue ? net / revenue * 100 : 0
       }
@@ -1874,7 +1877,7 @@ function Dashboard({ t }) {
           showShare
           stackWolt
         />
-        <MiniBarChart rows={netBranchRows} valueKey="net" title="Прибыль по филиалам" subtitle="После расходов, зарплат, service charge и налога" showShare />
+        <MiniBarChart rows={netBranchRows} valueKey="net" title="Прибыль по филиалам" subtitle="После расходов, зарплат и налога; service charge показан справочно" showShare />
       </div>
       <div className="card dashboard-v23-insights dashboard-v25-insights">
         <div className="card-head"><div><h3>Ключевые выводы</h3><p className="hint">Автоматический summary по выбранному месяцу</p></div></div>
@@ -2267,10 +2270,9 @@ function Finance({ t, lang, onGoToExpense }) {
     const revenue = parseNum(branchStats?.revenue)
     const operatingExpenses = parseNum(branchStats?.expenses)
     const salaryAmount = parseNum(branchStats?.salary)
-    const serviceAmount = parseNum(branchStats?.serviceCost)
     const taxAmount = parseNum(branchStats?.tax)
     const net = parseNum(branchStats?.net)
-    const totalBurden = operatingExpenses + salaryAmount + serviceAmount + taxAmount
+    const totalBurden = operatingExpenses + salaryAmount + taxAmount
 
     if (revenue <= 0 && totalBurden > 0) {
       rows.push({
@@ -2303,15 +2305,6 @@ function Finance({ t, lang, onGoToExpense }) {
       revenue,
       limit: 25,
       recommendation: 'Сверить график смен с фактической выручкой, переработки и количество сотрудников по должностям.'
-    })
-
-    financeAddAiPercent(rows, {
-      branchName,
-      indicator: 'Service charge персоналу',
-      amount: serviceAmount,
-      revenue,
-      limit: 5,
-      recommendation: 'Проверить процент service charge персоналу и соответствие фактической выручке.'
     })
 
     const rent = financeExpenseGroupTotal(expenseRows, 'rent')
@@ -2569,7 +2562,7 @@ function Finance({ t, lang, onGoToExpense }) {
       return sum + rowRevenue * (rate / 100)
     }, 0)
     const effectiveTaxRate = revenue > 0 ? tax / revenue * 100 : (branch !== ALL_BRANCHES ? financeTaxRateForBranch(branch, taxRates) : TAX_RATE)
-    const net = revenue - expenses - salary - serviceCost - tax
+    const net = revenue - expenses - salary - tax
 
     const syncedForecast = await rmsFinanceForecastEngine(y, m, branch)
     const avg = parseNum(syncedForecast.avg)
@@ -2703,15 +2696,13 @@ function Finance({ t, lang, onGoToExpense }) {
     }
 
     const financeActualBreakdownRows = [...expenseRows]
-    if (currentForFinance.serviceCost > 0) financeActualBreakdownRows.push({ name: 'Service charge персоналу', amount: currentForFinance.serviceCost })
     if (currentForFinance.tax > 0) financeActualBreakdownRows.push({ name: `Налог ${fmt(currentForFinance.taxRate || TAX_RATE)}%`, amount: currentForFinance.tax })
     const financeActualExpenseTotal = financeActualBreakdownRows.reduce((sum, row) => sum + parseNum(row.amount), 0)
     const financeUnifiedNet = parseNum(currentForFinance.revenue) - financeActualExpenseTotal
-    const financeLegacyFormulaTotal = parseNum(currentForFinance.expenses) + parseNum(currentForFinance.salary) + parseNum(currentForFinance.serviceCost) + parseNum(currentForFinance.tax)
     const financeFormulaDiff = financeUnifiedNet - parseNum(currentForFinance.net)
     currentForFinance = {
       ...currentForFinance,
-      expenses: Math.max(0, financeActualExpenseTotal - parseNum(currentForFinance.salary) - parseNum(currentForFinance.serviceCost) - parseNum(currentForFinance.tax)),
+      expenses: Math.max(0, financeActualExpenseTotal - parseNum(currentForFinance.salary) - parseNum(currentForFinance.tax)),
       totalExpenses: financeActualExpenseTotal,
       net: financeUnifiedNet,
       formulaMode: 'unified_v76'
@@ -2720,7 +2711,7 @@ function Finance({ t, lang, onGoToExpense }) {
       { name: 'Выручка', amount: currentForFinance.revenue, note: 'monthly_branch_revenue' },
       { name: 'Операционные расходы', amount: currentForFinance.expenses, note: 'daily_expenses без supplier mirror и salary-like строк + распределённые supplier purchases' },
       { name: 'Зарплаты', amount: currentForFinance.salary, note: 'единая payroll-логика с долей менеджеров' },
-      { name: 'Service charge персоналу', amount: currentForFinance.serviceCost, note: 'monthly_branch_service_charge_cost' },
+      { name: 'Service charge персоналу (справочно)', amount: currentForFinance.serviceCost, note: 'monthly_branch_service_charge_cost; не входит в расходы и прибыль' },
       { name: `Налог ${fmt(currentForFinance.taxRate || TAX_RATE)}%`, amount: currentForFinance.tax, note: 'процент налогообложения по настройкам филиала' },
       { name: 'Итого расходов по единой формуле', amount: financeActualExpenseTotal, note: 'сумма статей в “Расходы по статьям”' },
       { name: 'Чистая прибыль', amount: currentForFinance.net, note: 'выручка − все расходы' },
@@ -2731,7 +2722,7 @@ function Finance({ t, lang, onGoToExpense }) {
 
     const forecastRows = currentForFinance.forecastDetails || []
     const forecastRevenueFromRows = parseNum((forecastRows.find(r => r.type === 'revenue') || {}).amount) || parseNum(currentForFinance.forecastRevenue)
-    const forecastExpenseRows = forecastRows.filter(r => r.type !== 'revenue')
+    const forecastExpenseRows = forecastRows.filter(r => !['revenue', 'informational'].includes(r.type))
     const forecastExpenseSum = forecastExpenseRows.reduce((sum, row) => sum + parseNum(row.amount), 0)
     const forecastProfitByRows = forecastRevenueFromRows - forecastExpenseSum
     const forecastProfitDiff = forecastProfitByRows - parseNum(currentForFinance.forecastProfit)
@@ -2843,7 +2834,7 @@ function Finance({ t, lang, onGoToExpense }) {
       setAiRows(combinedRows.length ? combinedRows : [{
         branchName: 'Вся сеть',
         indicator: 'Данные не распознаны',
-        fact: `Выручка ${fmt(currentForFinance.revenue)} AZN · расходы ${fmt(currentForFinance.expenses + currentForFinance.salary + currentForFinance.serviceCost + currentForFinance.tax)} AZN`,
+        fact: `Выручка ${fmt(currentForFinance.revenue)} AZN · расходы ${fmt(currentForFinance.expenses + currentForFinance.salary + currentForFinance.tax)} AZN`,
         norm: 'Требуется проверка',
         deviation: '—',
         level: 'warning',
@@ -2860,7 +2851,7 @@ function Finance({ t, lang, onGoToExpense }) {
       setAiRows(singleRows.length ? singleRows : [{
         branchName: branches.find(b => b.id === branchId)?.name || 'Филиал',
         indicator: 'Данные не распознаны',
-        fact: `Выручка ${fmt(currentForFinance.revenue)} AZN · расходы ${fmt(currentForFinance.expenses + currentForFinance.salary + currentForFinance.serviceCost + currentForFinance.tax)} AZN`,
+        fact: `Выручка ${fmt(currentForFinance.revenue)} AZN · расходы ${fmt(currentForFinance.expenses + currentForFinance.salary + currentForFinance.tax)} AZN`,
         norm: 'Требуется проверка',
         deviation: '—',
         level: 'warning',
@@ -2877,13 +2868,13 @@ function Finance({ t, lang, onGoToExpense }) {
   const aiPriority = { critical: 0, warning: 1, ok: 2 }
   const sortedAiRows = [...aiRows].sort((a, b) => (aiPriority[a.level] ?? 9) - (aiPriority[b.level] ?? 9))
   const visibleAiRows = sortedAiRows.slice(0, 5)
-  // Единая логика с Dashboard: в расходах учитываем операционные расходы, зарплаты, service charge и налог.
+  // Единая логика с Dashboard: service charge показывается справочно и не входит в P&L.
   const financeBreakdownTotal = (breakdown || []).reduce((sum, r) => sum + parseNum(r.amount), 0)
   const financeTotalExpenses = financeBreakdownTotal > 0
     ? financeBreakdownTotal
-    : parseNum(stats.expenses) + parseNum(stats.salary) + parseNum(stats.serviceCost) + parseNum(stats.tax)
+    : parseNum(stats.expenses) + parseNum(stats.salary) + parseNum(stats.tax)
   const financeNet = parseNum(stats.revenue) - financeTotalExpenses
-  const financePreviousExpenses = parseNum(stats.previous?.expenses) + parseNum(stats.previous?.salary) + parseNum(stats.previous?.serviceCost) + parseNum(stats.previous?.tax)
+  const financePreviousExpenses = parseNum(stats.previous?.expenses) + parseNum(stats.previous?.salary) + parseNum(stats.previous?.tax)
   const financePreviousNet = parseNum(stats.previous?.revenue) - financePreviousExpenses
   const profitChange = financePreviousNet ? ((financeNet - financePreviousNet) / Math.abs(financePreviousNet) * 100) : 0
   const financeProfitability = stats.revenue ? financeNet / stats.revenue * 100 : 0

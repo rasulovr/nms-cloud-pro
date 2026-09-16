@@ -6163,7 +6163,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
         const configuredTaxRate = parseNum(taxSettings?.[id])
         const taxRate = configuredTaxRate > 0 ? configuredTaxRate : 8
         const tax = parseNum(revenueData.revenue) * taxRate / 100
-        const totalExpenses = parseNum(expenseData.operating) + supplierFoodCost + salary + serviceCost + tax
+        const totalExpenses = parseNum(expenseData.operating) + supplierFoodCost + salary + tax
         const net = parseNum(revenueData.revenue) - totalExpenses
         const activeDays = revenueData.days?.size || 0
         const supplierDetails = supplierRowsForBranch
@@ -6189,7 +6189,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
             details: [...(category.details || [])].sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')))
           })),
           ...(salary ? [{ key: 'salary', name: 'Зарплаты', amount: salary, transactions: salaryDetails.length, details: salaryDetails }] : []),
-          ...(serviceCost ? [{ key: 'service-charge', name: 'Service charge персоналу', amount: serviceCost, transactions: (serviceDetailsByBranch.get(id) || []).length, details: serviceDetailsByBranch.get(id) || [] }] : []),
+          ...(serviceCost ? [{ key: 'service-charge', name: 'Service charge персоналу (справочно, не входит в P&L)', amount: serviceCost, transactions: (serviceDetailsByBranch.get(id) || []).length, details: serviceDetailsByBranch.get(id) || [], informational: true }] : []),
           ...(tax ? [{
             key: 'tax',
             name: 'Налог',
@@ -9348,7 +9348,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
     </section>}
 
     {!rmsProfitabilityReport.loading && !rmsProfitabilityReport.error && <div className="reports-v417-card">
-      <div className="reports-v417-head"><div><h3>Детальная рентабельность филиалов</h3><p>Food Cost включает поставщиков, распределённых по доле выручки, а также базар и продуктовые расходы. Налог берётся из настроек филиала.</p></div><span className="reports-v43-badge">{profitabilityRows.length}</span></div>
+      <div className="reports-v417-head"><div><h3>Детальная рентабельность филиалов</h3><p>Food Cost включает накладные, привязанные к филиалу, а также базар и продуктовые расходы. Service charge показан справочно и не входит в расходы и прибыль. Налог берётся из настроек филиала.</p></div><span className="reports-v43-badge">{profitabilityRows.length}</span></div>
       <div className="reports-v417-table-wrap"><table className="reports-v417-table">
         <thead><tr><th>Филиал</th><th>Выручка</th><th>Wolt</th><th>Food Cost</th><th>Зарплаты</th><th>Опер. расходы</th><th>Service charge</th><th>Налог</th><th>Все расходы</th><th>Результат</th><th>Маржа</th><th>На день</th><th></th></tr></thead>
         <tbody>
@@ -9377,7 +9377,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
               </div>
               {(row.foodCostPct > 35 || row.salaryPct > 25 || row.rentPct > 12 || row.net < 0) && <div className="reports-v417-warning">Есть отклонения от рекомендуемых ориентиров. Откройте расходы филиала и проверьте крупнейшие статьи.</div>}</div>
               <div className="reports-v417-detail-card reports-v417-expenses-card">
-                <h4>Все статьи расходов · {(row.expenseCategories || []).length}</h4>
+                <h4>Статьи P&amp;L и справочные показатели · {(row.expenseCategories || []).length}</h4>
                 <div className="reports-v417-expense-groups">
                   {(row.expenseCategories || []).map(category => {
                     const expenseGroupKey = `${row.id}::${category.key}`
