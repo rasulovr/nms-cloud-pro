@@ -1167,6 +1167,7 @@ function MiniBarChart({ rows, valueKey = 'revenue', labelKey = 'name', title, su
   const hasAnyWolt = stackWolt && rows.some(row => parseNum(row.woltRevenue) > 0)
   const chartTotal = isProfitChart ? signedTotal : positiveTotal
   const chartStatus = isProfitChart ? (chartTotal >= 0 ? 'Общая прибыль' : 'Общий убыток') : 'Выручка сети'
+  const resultShareLabel = chartTotal < 0 ? 'доля общего убытка' : 'доля общей прибыли'
 
   return <div className={`card span-2 dashboard-chart-card ${stackWolt ? 'dashboard-chart-card-wolt dashboard-chart-card-revenue' : ''} ${isProfitChart ? 'dashboard-chart-card-profit' : ''}`}>
     <div className="card-head dashboard-chart-card-head">
@@ -1185,6 +1186,7 @@ function MiniBarChart({ rows, valueKey = 'revenue', labelKey = 'name', title, su
       {rows.map((r, index) => {
         const val = rowDisplayValue(r)
         const width = Math.max(3, Math.min(100, Math.abs(val) / max * 100))
+        const resultWidth = val === 0 ? 0 : Math.max(3, Math.min(50, Math.abs(val) / max * 50))
         const share = shareBase ? val / shareBase * 100 : 0
 
         const wolt = stackWolt ? Math.max(0, parseNum(r.woltRevenue)) : 0
@@ -1196,7 +1198,7 @@ function MiniBarChart({ rows, valueKey = 'revenue', labelKey = 'name', title, su
         const woltWidth = stackWolt ? Math.max(0, Math.min(100 - baseWidth, wolt / max * 100)) : 0
 
         return <div className={`dash-bar-row ${stackWolt ? 'dash-bar-row-wolt' : ''} ${val < 0 ? 'is-negative' : 'is-positive'} ${index === 0 ? 'is-leading' : ''}`} key={r.id || r[labelKey]}>
-          <div className="dash-bar-label"><i>{index + 1}</i><span>{r[labelKey]}</span></div>
+          <div className="dash-bar-label"><i>{index + 1}</i><span>{r[labelKey]}{isProfitChart && <small>{val < 0 ? 'убыток' : val > 0 ? 'прибыль' : 'без результата'}</small>}</span></div>
 
           {stackWolt
             ? <div
@@ -1209,9 +1211,17 @@ function MiniBarChart({ rows, valueKey = 'revenue', labelKey = 'name', title, su
                 <div className="dash-bar-stack-base" style={{ width: `${baseWidth}%` }} />
                 {wolt > 0 && <div className="dash-bar-stack-wolt" style={{ left: `${baseWidth}%`, width: `${woltWidth}%` }} />}
               </div>
-            : <div className="dash-bar-track" title={`${fmt(val)} ман.${showShare ? ` · ${pct(share)} ${shareLabel}` : ''}`}>
-                <div className={`dash-bar ${val < 0 ? 'negative' : ''}`} style={{ width: `${width}%` }} />
-              </div>
+            : isProfitChart
+              ? <div className="dash-bar-track dash-profit-track" title={`${fmt(val)} ман.${showShare ? ` · ${pct(share)} ${resultShareLabel}` : ''}`}>
+                  <i className="dash-profit-zero" aria-hidden="true" />
+                  <div
+                    className={`dash-profit-bar ${val < 0 ? 'negative' : val > 0 ? 'positive' : 'neutral'}`}
+                    style={val < 0 ? { right: '50%', width: `${resultWidth}%` } : { left: '50%', width: `${resultWidth}%` }}
+                  />
+                </div>
+              : <div className="dash-bar-track" title={`${fmt(val)} ман.${showShare ? ` · ${pct(share)} ${shareLabel}` : ''}`}>
+                  <div className={`dash-bar ${val < 0 ? 'negative' : ''}`} style={{ width: `${width}%` }} />
+                </div>
           }
 
           <div className={`dash-bar-value ${val < 0 ? 'bad' : ''} ${stackWolt ? 'dash-bar-value-wolt' : ''} ${stackWolt && wolt <= 0 ? 'dash-bar-value-no-wolt' : ''}`}>
@@ -1982,11 +1992,11 @@ function Dashboard({ t }) {
     <section className="dashboard-v23-kpis dashboard-v29-kpis">
       <div className="dash-kpi dash-kpi-blue"><span className="dash-kpi-icon">↗</span><div><em>Выручка за месяц</em><strong>{fmt(data.revenue)} <small>AZN</small></strong><p className="dash-trend-value" style={{ color: revenueChange >= 0 ? '#10b981' : '#ef4444', fontWeight: 900 }} title={revenueCompareTooltip}>{revenueChange >= 0 ? '▲' : '▼'} {pct(Math.abs(revenueChange))}</p></div></div>
       <div className="dash-kpi dash-kpi-purple"><span className="dash-kpi-icon">▥</span><div><em>Расходы</em><strong>{fmt(data.expenses)} <small>AZN</small></strong><p>{data.revenue ? pct(data.expenses / data.revenue * 100) : '0.0%'} от выручки</p></div></div>
-      <div className="dash-kpi dash-kpi-green"><span className="dash-kpi-icon">▟</span><div><em>Чистая прибыль</em><strong>{fmt(data.net)} <small>AZN</small></strong><p className={profitChange >= 0 ? 'good' : 'bad'}>{profitChange >= 0 ? '▲' : '▼'} {pct(Math.abs(profitChange))}</p></div></div>
-      <div className="dash-kpi dash-kpi-red"><span className="dash-kpi-icon">%</span><div><em>Рентабельность</em><strong>{pct(data.revenue ? data.net / data.revenue * 100 : 0)}</strong><p>маржа чистой прибыли</p></div></div>
+      <div className={`dash-kpi dash-kpi-green ${data.net < 0 ? 'dash-kpi-negative' : ''}`}><span className="dash-kpi-icon">▟</span><div><em>Чистая прибыль</em><strong>{fmt(data.net)} <small>AZN</small></strong><p className={profitChange >= 0 ? 'good' : 'bad'}>{profitChange >= 0 ? '▲' : '▼'} {pct(Math.abs(profitChange))}</p></div></div>
+      <div className={`dash-kpi dash-kpi-red ${data.net < 0 ? 'dash-kpi-negative' : ''}`}><span className="dash-kpi-icon">%</span><div><em>Рентабельность</em><strong>{pct(data.revenue ? data.net / data.revenue * 100 : 0)}</strong><p>маржа чистой прибыли</p></div></div>
       <div className="dash-kpi dash-kpi-forecast"><span className="dash-kpi-icon">◌</span><div><em>Food Cost</em><strong>{pct(foodCostPct)}</strong><p>{fmt(data.foodCostAmount)} AZN</p></div></div>
       <div className="dash-kpi dash-kpi-forecast"><span className="dash-kpi-icon">⌁</span><div><em>Прогноз выручки</em><strong>{fmt(data.forecastRevenue)} <small>AZN</small></strong><p>до конца месяца</p></div></div>
-      <div className="dash-kpi dash-kpi-target"><span className="dash-kpi-icon">◎</span><div><em>Прогноз прибыли</em><strong>{fmt(data.forecastProfit)} <small>AZN</small></strong><p>прогноз месяца</p></div></div>
+      <div className={`dash-kpi dash-kpi-target ${data.forecastProfit < 0 ? 'dash-kpi-negative' : ''}`}><span className="dash-kpi-icon">◎</span><div><em>Прогноз прибыли</em><strong>{fmt(data.forecastProfit)} <small>AZN</small></strong><p>прогноз месяца</p></div></div>
       <div className="dash-kpi dash-kpi-wallet"><span className="dash-kpi-icon">▣</span><div><em>Оплаченная выручка</em><strong>{fmt(cashBalance)} <small>AZN</small></strong><p>наличные + банк за период</p></div></div>
     </section>
 
@@ -2030,7 +2040,10 @@ function Dashboard({ t }) {
 
     <div className="card dashboard-v416-expense-table">
       <div className="card-head"><div><h3>Все статьи расходов</h3><p className="hint">Сумма, доля расходов и доля выручки</p></div></div>
-      <div className="table-wrap"><table><thead><tr><th>Статья</th><th>Сумма</th><th>% расходов</th><th>% выручки</th></tr></thead><tbody>{expenseRows.map(row => <tr key={row.name}><td>{row.name}</td><td><b>{fmt(row.amount)} AZN</b></td><td>{pct(parseNum(row.amount) / expenseChartTotal * 100)}</td><td>{pct(data.revenue ? parseNum(row.amount) / data.revenue * 100 : 0)}</td></tr>)}{!expenseRows.length && <tr><td colSpan="4" className="hint">Нет расходов за выбранный период.</td></tr>}</tbody></table></div>
+      <div className="table-wrap"><table><thead><tr><th>Статья</th><th>Сумма</th><th>% расходов</th><th>% выручки</th></tr></thead><tbody>{expenseRows.map((row, index) => {
+        const expenseShare = parseNum(row.amount) / expenseChartTotal * 100
+        return <tr key={row.name}><td><span className="dashboard-expense-name"><i style={{background: expensePalette[index % expensePalette.length]}} />{row.name}</span></td><td><b>{fmt(row.amount)} AZN</b></td><td><span className="dashboard-expense-share"><b>{pct(expenseShare)}</b><i><u style={{width: `${Math.max(2, expenseShare)}%`, background: expensePalette[index % expensePalette.length]}} /></i></span></td><td>{pct(data.revenue ? parseNum(row.amount) / data.revenue * 100 : 0)}</td></tr>
+      })}{!expenseRows.length && <tr><td colSpan="4" className="hint">Нет расходов за выбранный период.</td></tr>}</tbody></table></div>
     </div>
 
     {parseNum(data.preliminarySupplierExpense) > 0 && <div className="card" style={{ marginBottom: 16, padding: '14px 18px' }}>

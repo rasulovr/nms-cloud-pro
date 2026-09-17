@@ -18,5 +18,9 @@ assert.ok(dashboard.includes('dashboard-chart-card-profit'), 'Branch profit char
 assert.ok(dashboard.includes('dashboard-chart-total'), 'Branch chart total summary is missing')
 assert.ok(styles.includes('v417 executive dashboard — premium charts'), 'Dashboard v417 visual layer is missing')
 assert.ok(styles.includes('Dashboard branch comparison — visual refinement'), 'Branch comparison visual layer is missing')
+assert.ok(dashboard.includes('dash-profit-zero'), 'Dashboard v419 profit/loss zero axis is missing')
+assert.ok(dashboard.includes('dashboard-expense-share'), 'Dashboard v419 expense share visualization is missing')
+assert.ok(dashboard.includes('dash-kpi-negative'), 'Dashboard v419 negative KPI state is missing')
+assert.ok(styles.includes('.dash-profit-track'), 'Dashboard v419 diverging profit chart styles are missing')
 
-console.log('Dashboard v418 source checks passed')
+console.log('Dashboard v419 source checks passed')
