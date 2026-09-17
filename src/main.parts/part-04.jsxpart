@@ -5307,6 +5307,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
     priceChangesDown: [],
     supplierOptions: []
   })
+  const rmsSuppliersReportRequestRef = useRef(0)
   const [rmsDebtsReport, setRmsDebtsReport] = useState({
     loading: false,
     error: '',
@@ -6309,6 +6310,8 @@ function Reports({ t, permissions = [], isAdmin = false }) {
   }
 
   async function loadRmsSuppliersReport() {
+    const requestId = rmsSuppliersReportRequestRef.current + 1
+    rmsSuppliersReportRequestRef.current = requestId
     setRmsSuppliersReport(prev => ({ ...prev, loading: true, error: '' }))
 
     const emptyReport = {
@@ -6724,6 +6727,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
         overLimit: rows.filter(row => row.over_limit).length
       }
 
+      if (requestId !== rmsSuppliersReportRequestRef.current) return
       setRmsSuppliersReport({
         loading: false,
         error: '',
@@ -6738,6 +6742,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
         supplierOptions: rows.map(row => ({ id: row.supplier_id, name: row.supplier_name }))
       })
     } catch (error) {
+      if (requestId !== rmsSuppliersReportRequestRef.current) return
       setRmsSuppliersReport({
         ...emptyReport,
         error: error?.message || 'Не удалось загрузить отчёт по поставщикам'
@@ -9891,4 +9896,4 @@ function Reports({ t, permissions = [], isAdmin = false }) {
                 <div className="reports-v414-subcard">
                   <h5>Товары поставщика</h5>
                   <div className="reports-v414-table-wrap"><table className="reports-v414-table"><thead><tr><th>Товар</th><th>Категория</th><th>Кол-во</th><th>Сумма</th><th>Средняя цена</th><th>Последняя цена</th></tr></thead><tbody>
-                    {(row.products || []).slice(0,20).map(product => <tr key={product.key}><td><b>{product.product_name}</b></td><td>{product.category}</td><td>{fmt(product.quantity)} {product.unit}</td><td>{fmt(product.amount)}</td><td>{fmt(product.averag
+                    {(row.products || []).slice(0,20).map(product => <tr key={product.key}><td><b>{product.product_name}</b></td><td>{product.category}</td><td>{fmt(product.quantity)} {product.unit}</td><td>{fmt(product.amount)}</td><td>{fmt(product.average_price
