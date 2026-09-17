@@ -14,6 +14,9 @@ assert.ok(dashboard.includes("expenseGrowthSort === 'percent'"), 'Expense growth
 assert.ok(dashboard.includes("name: 'Остальные статьи'"), 'Small expense categories must be grouped in the chart')
 assert.ok(dashboard.includes('finance-line-chart-average'), 'Daily revenue average guide is missing')
 assert.ok(dashboard.includes(' C ${middleX.toFixed(1)}'), 'Daily revenue chart must use a smooth curve')
+assert.ok(dashboard.includes('dashboard-chart-card-profit'), 'Branch profit chart visual state is missing')
+assert.ok(dashboard.includes('dashboard-chart-total'), 'Branch chart total summary is missing')
 assert.ok(styles.includes('v417 executive dashboard — premium charts'), 'Dashboard v417 visual layer is missing')
+assert.ok(styles.includes('Dashboard branch comparison — visual refinement'), 'Branch comparison visual layer is missing')
 
-console.log('Dashboard v417 source checks passed')
+console.log('Dashboard v418 source checks passed')

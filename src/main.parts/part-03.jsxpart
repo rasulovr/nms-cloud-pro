@@ -1155,6 +1155,7 @@ function ThemeStyles() {
 }
 
 function MiniBarChart({ rows, valueKey = 'revenue', labelKey = 'name', title, subtitle, showShare = false, stackWolt = false }) {
+  const isProfitChart = valueKey === 'net'
   const rowDisplayValue = row => stackWolt
     ? parseNum(row.revenueWithWolt ?? row[valueKey])
     : parseNum(row[valueKey])
@@ -1164,9 +1165,11 @@ function MiniBarChart({ rows, valueKey = 'revenue', labelKey = 'name', title, su
   const shareBase = valueKey === 'net' ? signedTotal : positiveTotal
   const shareLabel = valueKey === 'net' ? 'от общей прибыли' : 'от общей выручки с Wolt'
   const hasAnyWolt = stackWolt && rows.some(row => parseNum(row.woltRevenue) > 0)
+  const chartTotal = isProfitChart ? signedTotal : positiveTotal
+  const chartStatus = isProfitChart ? (chartTotal >= 0 ? 'Общая прибыль' : 'Общий убыток') : 'Выручка сети'
 
-  return <div className={`card span-2 dashboard-chart-card ${stackWolt ? 'dashboard-chart-card-wolt' : ''}`}>
-    <div className="card-head">
+  return <div className={`card span-2 dashboard-chart-card ${stackWolt ? 'dashboard-chart-card-wolt dashboard-chart-card-revenue' : ''} ${isProfitChart ? 'dashboard-chart-card-profit' : ''}`}>
+    <div className="card-head dashboard-chart-card-head">
       <div>
         <h3>{title}</h3>
         <p className="hint">{subtitle}</p>
@@ -1175,10 +1178,11 @@ function MiniBarChart({ rows, valueKey = 'revenue', labelKey = 'name', title, su
           <span><i className="dash-wolt-legend-wolt" />Wolt</span>
         </div>}
       </div>
+      <div className={`dashboard-chart-total ${chartTotal < 0 ? 'bad' : 'good'}`}><span>{chartStatus}</span><strong>{fmt(chartTotal)} <small>AZN</small></strong></div>
     </div>
 
     <div className="dash-bars">
-      {rows.map(r => {
+      {rows.map((r, index) => {
         const val = rowDisplayValue(r)
         const width = Math.max(3, Math.min(100, Math.abs(val) / max * 100))
         const share = shareBase ? val / shareBase * 100 : 0
@@ -1191,8 +1195,8 @@ function MiniBarChart({ rows, valueKey = 'revenue', labelKey = 'name', title, su
         const baseWidth = stackWolt ? Math.max(0, Math.min(100, baseRevenue / max * 100)) : width
         const woltWidth = stackWolt ? Math.max(0, Math.min(100 - baseWidth, wolt / max * 100)) : 0
 
-        return <div className={`dash-bar-row ${stackWolt ? 'dash-bar-row-wolt' : ''}`} key={r.id || r[labelKey]}>
-          <div className="dash-bar-label">{r[labelKey]}</div>
+        return <div className={`dash-bar-row ${stackWolt ? 'dash-bar-row-wolt' : ''} ${val < 0 ? 'is-negative' : 'is-positive'} ${index === 0 ? 'is-leading' : ''}`} key={r.id || r[labelKey]}>
+          <div className="dash-bar-label"><i>{index + 1}</i><span>{r[labelKey]}</span></div>
 
           {stackWolt
             ? <div
@@ -1214,14 +1218,14 @@ function MiniBarChart({ rows, valueKey = 'revenue', labelKey = 'name', title, su
             {stackWolt
               ? <>
                   <div className="dash-bar-value-main">
-                    <span>{fmt(revenueWithWolt)} ман.</span>
-                    {showShare && <em>({pct(share)})</em>}
+                    <span>{fmt(revenueWithWolt)} <small>AZN</small></span>
+                    {showShare && <em>{pct(share)}</em>}
                   </div>
-                  {wolt > 0 && <small>Wolt: {fmt(wolt)} ман.</small>}
+                  {wolt > 0 && <small>Wolt: {fmt(wolt)} AZN</small>}
                 </>
               : <>
-                  <span>{fmt(val)} ман.</span>
-                  {showShare && <em>({pct(share)})</em>}
+                  <span>{fmt(val)} <small>AZN</small></span>
+                  {showShare && <em>{pct(share)}</em>}
                 </>
             }
           </div>
