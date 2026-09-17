@@ -10,5 +10,10 @@ for (const marker of ['Food Cost', 'Структура расходов', 'Вс�
 assert.ok(dashboard.includes("rmsFinanceSupplierTotalsForScope(purchaseRowsForFinance || [], branchId, revenueShareMap)"), 'Supplier purchases must follow the shared-allocation rule')
 assert.ok(dashboard.includes("String(row?.comment || '').startsWith('SUPPLIER_PURCHASE_')"), 'Mirrored supplier expenses must be excluded')
 assert.ok(styles.includes('.dashboard-v416-grid'), 'Dashboard v416 responsive styles are missing')
+assert.ok(dashboard.includes("expenseGrowthSort === 'percent'"), 'Expense growth amount/percent sorting is missing')
+assert.ok(dashboard.includes("name: 'Остальные статьи'"), 'Small expense categories must be grouped in the chart')
+assert.ok(dashboard.includes('finance-line-chart-average'), 'Daily revenue average guide is missing')
+assert.ok(dashboard.includes(' C ${middleX.toFixed(1)}'), 'Daily revenue chart must use a smooth curve')
+assert.ok(styles.includes('v417 executive dashboard — premium charts'), 'Dashboard v417 visual layer is missing')
 
-console.log('Dashboard v416 source checks passed')
+console.log('Dashboard v417 source checks passed')

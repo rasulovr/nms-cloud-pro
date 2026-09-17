@@ -1293,10 +1293,19 @@ function DailyRevenueLineChart({ rows = [], title = 'Выручка по дня�
     const y = pad.top + chartH - (parseNum(r.amount) / max * chartH)
     return { ...r, x, y }
   })
-  const path = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ')
+  const path = points.length
+    ? points.slice(1).reduce((curve, point, index) => {
+        const previousPoint = points[index]
+        const middleX = (previousPoint.x + point.x) / 2
+        return `${curve} C ${middleX.toFixed(1)} ${previousPoint.y.toFixed(1)}, ${middleX.toFixed(1)} ${point.y.toFixed(1)}, ${point.x.toFixed(1)} ${point.y.toFixed(1)}`
+      }, `M ${points[0].x.toFixed(1)} ${points[0].y.toFixed(1)}`)
+    : ''
   const areaPath = points.length ? `${path} L ${points[points.length - 1].x.toFixed(1)} ${pad.top + chartH} L ${points[0].x.toFixed(1)} ${pad.top + chartH} Z` : ''
   const yTicks = [0, 0.25, 0.5, 0.75, 1]
   const bestPoint = points.find(p => parseNum(p.amount) === parseNum(best.amount) && parseNum(p.amount) > 0)
+  const latestPoint = points[points.length - 1]
+  const averageY = pad.top + chartH - (Math.min(max, avg) / max * chartH)
+  const axisLabelStep = Math.max(1, Math.ceil(points.length / 8))
 
   const AmountBlock = ({ value, suffix = 'AZN' }) => (
     <div className="metric-amount">
@@ -1306,27 +1315,36 @@ function DailyRevenueLineChart({ rows = [], title = 'Выручка по дня�
   )
 
   return <div className={`card span-2 finance-daily-revenue-chart ${className}`.trim()}>
-    <div className="card-head"><div><h3>{title}</h3><p className="hint">{subtitle}</p></div></div>
+    <div className="card-head finance-line-chart-head"><div><h3>{title}</h3><p className="hint">{subtitle}</p></div>{rows.length > 0 && <div className="finance-line-chart-head-meta"><span><i />Среднее: <b>{fmt(avg)} AZN</b></span><span>{activeDays} активных дней</span></div>}</div>
     <div className="finance-line-chart-wrap">
       {rows.length ? <svg className="finance-line-chart-svg" viewBox={`0 0 ${width} ${height}`} role="img" aria-label={title} preserveAspectRatio="none">
         <defs>
           <linearGradient id="financeDailyRevenueGradient" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#2563eb" stopOpacity="0.24" />
-            <stop offset="58%" stopColor="#2563eb" stopOpacity="0.11" />
-            <stop offset="100%" stopColor="#2563eb" stopOpacity="0.02" />
+            <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.30" />
+            <stop offset="54%" stopColor="#60a5fa" stopOpacity="0.12" />
+            <stop offset="100%" stopColor="#dbeafe" stopOpacity="0.01" />
           </linearGradient>
+          <linearGradient id="financeDailyRevenueStroke" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stopColor="#1d4ed8" />
+            <stop offset="55%" stopColor="#2563eb" />
+            <stop offset="100%" stopColor="#06b6d4" />
+          </linearGradient>
+          <filter id="financeDailyRevenueGlow" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="5" stdDeviation="5" floodColor="#2563eb" floodOpacity=".28" /></filter>
         </defs>
+        <rect className="finance-line-chart-plot" x={pad.left} y={pad.top} width={chartW} height={chartH} rx="16" />
         {yTicks.map(tick => {
           const y = pad.top + chartH - tick * chartH
           const label = max * tick
           return <g key={tick}>
             <line className="finance-line-chart-grid" x1={pad.left} y1={y} x2={width - pad.right} y2={y} />
-            <text className="finance-line-chart-label" x={pad.left - 10} y={y + 4} textAnchor="end">{label >= 1000 ? `${Math.round(label / 1000)}k` : Math.round(label)}</text>
+            <text className="finance-line-chart-label" x={pad.left - 11} y={y + 4} textAnchor="end">{label >= 1000 ? `${Number((label / 1000).toFixed(1))}k` : Math.round(label)}</text>
           </g>
         })}
         <line className="finance-line-chart-axis" x1={pad.left} y1={pad.top + chartH} x2={width - pad.right} y2={pad.top + chartH} />
+        {avg > 0 && <g className="finance-line-chart-average"><line x1={pad.left} y1={averageY} x2={width - pad.right} y2={averageY} /><text x={width - pad.right - 8} y={averageY - 7} textAnchor="end">среднее {fmt(avg)}</text></g>}
         {areaPath && <path className="finance-line-chart-area" d={areaPath} fill="url(#financeDailyRevenueGradient)" />}
-        {path && <path className="finance-line-chart-line" d={path} />}
+        {path && <path className="finance-line-chart-line" d={path} stroke="url(#financeDailyRevenueStroke)" filter="url(#financeDailyRevenueGlow)" />}
+        {points.map((point, index) => <circle key={`point-${point.date || point.day || index}`} className="finance-line-chart-data-point" cx={point.x} cy={point.y} r="3.2"><title>{formatDayMonth(point)}: {fmt(point.amount)} AZN</title></circle>)}
         {bestPoint && <g key={`best-${bestPoint.date}-${bestPoint.amount}`}>
           <line className="finance-line-chart-guide" x1={bestPoint.x} y1={Math.max(pad.top, bestPoint.y)} x2={bestPoint.x} y2={pad.top + chartH} />
           <g className="finance-line-chart-tooltip" transform={`translate(${Math.max(56, Math.min(width - 100, bestPoint.x - 44))}, ${Math.max(2, bestPoint.y - 62)})`}>
@@ -1335,8 +1353,10 @@ function DailyRevenueLineChart({ rows = [], title = 'Выручка по дня�
             <text className="finance-line-chart-tooltip-date" x="44" y="36" textAnchor="middle">{formatDayMonth(bestPoint)}</text>
           </g>
         </g>}
+        {latestPoint && <g className="finance-line-chart-latest"><circle cx={latestPoint.x} cy={latestPoint.y} r="9" /><circle cx={latestPoint.x} cy={latestPoint.y} r="4" /></g>}
         {points.map((p, i) => {
           const anchor = i === 0 ? 'start' : i === points.length - 1 ? 'end' : 'middle'
+          if (i !== 0 && i !== points.length - 1 && i % axisLabelStep !== 0) return null
           return <text key={`x-${p.date || p.day || i}`} className="finance-line-chart-x-label" x={p.x} y={height - 11} textAnchor={anchor}>{formatChartXAxisLabel(p)}</text>
         })}
       </svg> : <p className="hint">Пока нет данных по выручке за выбранный месяц.</p>}
@@ -1519,6 +1539,7 @@ function Dashboard({ t }) {
   const [month, setMonth] = useState(now.getMonth() + 1)
   const [data, setData] = useState(null)
   const [dailyRevenueRows, setDailyRevenueRows] = useState([])
+  const [expenseGrowthSort, setExpenseGrowthSort] = useState('amount')
 
   useEffect(() => { load() }, [year, month, branchId, branches.length])
 
@@ -1914,16 +1935,26 @@ function Dashboard({ t }) {
   const foodCostPct = data.revenue ? parseNum(data.foodCostAmount) / data.revenue * 100 : 0
   const expenseRows = data.expenseRows || []
   const previousExpenseMap = new Map((data.previous?.expenseRows || []).map(row => [row.name, parseNum(row.amount)]))
-  const expenseGrowthRows = expenseRows.map(row => {
+  const expenseGrowthCandidates = expenseRows.map(row => {
     const previousAmount = parseNum(previousExpenseMap.get(row.name))
     const growthAmount = parseNum(row.amount) - previousAmount
     const growthPct = previousAmount > 0 ? growthAmount / previousAmount * 100 : (row.amount > 0 ? 100 : 0)
     return { ...row, previousAmount, growthAmount, growthPct }
-  }).filter(row => row.growthAmount > 0).sort((a, b) => b.growthAmount - a.growthAmount).slice(0, 7)
+  }).filter(row => row.growthAmount > 0)
+  const expenseGrowthRows = [...expenseGrowthCandidates]
+    .sort((a, b) => expenseGrowthSort === 'percent' ? b.growthPct - a.growthPct : b.growthAmount - a.growthAmount)
+    .slice(0, 7)
+  const maxExpenseGrowth = Math.max(1, ...expenseGrowthRows.map(row => expenseGrowthSort === 'percent' ? row.growthPct : row.growthAmount))
   const expenseChartTotal = expenseRows.reduce((sum, row) => sum + parseNum(row.amount), 0) || 1
   const expensePalette = ['#2563eb','#7c3aed','#10b981','#f59e0b','#ef4444','#06b6d4','#ec4899','#64748b']
+  const sortedExpenseRows = [...expenseRows].sort((a, b) => parseNum(b.amount) - parseNum(a.amount))
+  const visibleExpenseRows = sortedExpenseRows.slice(0, 7)
+  const otherExpenseAmount = sortedExpenseRows.slice(7).reduce((sum, row) => sum + parseNum(row.amount), 0)
+  const expenseChartRows = otherExpenseAmount > 0
+    ? [...visibleExpenseRows, { name: 'Остальные статьи', amount: otherExpenseAmount }]
+    : visibleExpenseRows
   let expenseGradientOffset = 0
-  const expenseDonutGradient = `conic-gradient(${expenseRows.slice(0, 8).map((row, index) => {
+  const expenseDonutGradient = `conic-gradient(from -35deg, ${expenseChartRows.map((row, index) => {
     const start = expenseGradientOffset
     expenseGradientOffset += parseNum(row.amount) / expenseChartTotal * 100
     return `${expensePalette[index % expensePalette.length]} ${start}% ${expenseGradientOffset}%`
@@ -1955,10 +1986,10 @@ function Dashboard({ t }) {
       <div className="dash-kpi dash-kpi-wallet"><span className="dash-kpi-icon">▣</span><div><em>Оплаченная выручка</em><strong>{fmt(cashBalance)} <small>AZN</small></strong><p>наличные + банк за период</p></div></div>
     </section>
 
-    <section className="dashboard-v416-comparison">
-      <div><span>Выручка к прошлому месяцу</span><strong className={revenueChange >= 0 ? 'good' : 'bad'}>{revenueChange >= 0 ? '▲' : '▼'} {pct(Math.abs(revenueChange))}</strong><em>{fmt(revenueCompareCurrent - revenueComparePrevious)} AZN</em></div>
-      <div><span>Прибыль к прошлому месяцу</span><strong className={profitChange >= 0 ? 'good' : 'bad'}>{profitChange >= 0 ? '▲' : '▼'} {pct(Math.abs(profitChange))}</strong><em>{fmt(data.net - parseNum(data.previous?.net))} AZN</em></div>
-      <div><span>Расходы к прошлому месяцу</span><strong className={expenseChange <= 0 ? 'good' : 'bad'}>{expenseChange >= 0 ? '▲' : '▼'} {pct(Math.abs(expenseChange))}</strong><em>{fmt(data.expenses - parseNum(data.previous?.expenses))} AZN</em></div>
+    <section className="dashboard-v416-comparison" aria-label="Сравнение с предыдущим месяцем">
+      <div className={revenueChange >= 0 ? 'is-positive' : 'is-negative'}><span>Выручка к прошлому месяцу</span><strong className={revenueChange >= 0 ? 'good' : 'bad'}>{revenueChange >= 0 ? '▲' : '▼'} {pct(Math.abs(revenueChange))}</strong><em>{fmt(revenueCompareCurrent - revenueComparePrevious)} AZN</em><i><b style={{width: `${Math.min(100, Math.abs(revenueChange))}%`}} /></i></div>
+      <div className={profitChange >= 0 ? 'is-positive' : 'is-negative'}><span>Прибыль к прошлому месяцу</span><strong className={profitChange >= 0 ? 'good' : 'bad'}>{profitChange >= 0 ? '▲' : '▼'} {pct(Math.abs(profitChange))}</strong><em>{fmt(data.net - parseNum(data.previous?.net))} AZN</em><i><b style={{width: `${Math.min(100, Math.abs(profitChange))}%`}} /></i></div>
+      <div className={expenseChange <= 0 ? 'is-positive' : 'is-negative'}><span>Расходы к прошлому месяцу</span><strong className={expenseChange <= 0 ? 'good' : 'bad'}>{expenseChange >= 0 ? '▲' : '▼'} {pct(Math.abs(expenseChange))}</strong><em>{fmt(data.expenses - parseNum(data.previous?.expenses))} AZN</em><i><b style={{width: `${Math.min(100, Math.abs(expenseChange))}%`}} /></i></div>
     </section>
 
     <DailyRevenueLineChart rows={dailyRevenueRows} title="Выручка по дням" subtitle={branchId === DASH_ALL_BRANCHES ? 'Суммарная динамика сети за выбранный месяц' : `Динамика филиала ${selectedBranchName}`} />
@@ -1967,13 +1998,29 @@ function Dashboard({ t }) {
       <div className="card dashboard-v416-expense-chart">
         <div className="card-head"><div><h3>Структура расходов</h3><p className="hint">Доля каждой статьи в общих расходах</p></div></div>
         <div className="dashboard-v416-donut-layout">
-          <div className="dashboard-v416-donut" style={{background: expenseDonutGradient}}><div><strong>{fmt(data.expenses)}</strong><span>AZN</span></div></div>
-          <div className="dashboard-v416-legend">{expenseRows.slice(0, 8).map((row, index) => <div key={row.name}><i style={{background: expensePalette[index % expensePalette.length]}} /><span>{row.name}</span><b>{pct(parseNum(row.amount) / expenseChartTotal * 100)}</b></div>)}</div>
+          <div className="dashboard-v416-donut" style={{background: expenseDonutGradient}}><div><span>Все расходы</span><strong>{fmt(data.expenses)}</strong><small>AZN</small></div></div>
+          <div className="dashboard-v416-legend">{expenseChartRows.map((row, index) => {
+            const share = parseNum(row.amount) / expenseChartTotal * 100
+            return <div key={row.name}>
+              <i style={{background: expensePalette[index % expensePalette.length]}} />
+              <span>{row.name}<small>{fmt(row.amount)} AZN</small></span>
+              <b>{pct(share)}</b>
+              <em><u style={{width: `${Math.max(3, share)}%`, background: expensePalette[index % expensePalette.length]}} /></em>
+            </div>
+          })}</div>
         </div>
       </div>
       <div className="card dashboard-v416-growth">
-        <div className="card-head"><div><h3>Топ подорожавших статей</h3><p className="hint">Рост относительно предыдущего месяца</p></div></div>
-        <div className="dashboard-v416-growth-list">{expenseGrowthRows.map(row => <div key={row.name}><span>{row.name}<small>{fmt(row.previousAmount)} → {fmt(row.amount)} AZN</small></span><b>+{fmt(row.growthAmount)} AZN</b><em>+{pct(row.growthPct)}</em></div>)}{!expenseGrowthRows.length && <p className="hint">Рост расходов не обнаружен.</p>}</div>
+        <div className="card-head dashboard-v416-growth-head"><div><h3>Топ подорожавших статей</h3><p className="hint">Рост относительно предыдущего месяца</p></div><div className="dashboard-v416-sort" role="group" aria-label="Сортировка роста расходов"><button type="button" className={expenseGrowthSort === 'amount' ? 'active' : ''} onClick={() => setExpenseGrowthSort('amount')}>По сумме</button><button type="button" className={expenseGrowthSort === 'percent' ? 'active' : ''} onClick={() => setExpenseGrowthSort('percent')}>По %</button></div></div>
+        <div className="dashboard-v416-growth-list">{expenseGrowthRows.map((row, index) => {
+          const barValue = expenseGrowthSort === 'percent' ? row.growthPct : row.growthAmount
+          return <div key={row.name}>
+            <i>{index + 1}</i>
+            <span>{row.name}<small>{fmt(row.previousAmount)} → {fmt(row.amount)} AZN</small><u><b style={{width: `${Math.max(5, barValue / maxExpenseGrowth * 100)}%`}} /></u></span>
+            <b>+{fmt(row.growthAmount)} AZN</b>
+            <em>+{pct(row.growthPct)}</em>
+          </div>
+        })}{!expenseGrowthRows.length && <p className="hint">Рост расходов не обнаружен.</p>}</div>
       </div>
     </section>
 
