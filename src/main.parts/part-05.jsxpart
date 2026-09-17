@@ -1,4 +1,4 @@
-e_price)}</td><td>{fmt(product.latest_price)}<br/><span className="hint">{product.latest_date}</span></td></tr>)}
+)}</td><td>{fmt(product.latest_price)}<br/><span className="hint">{product.latest_date}</span></td></tr>)}
                     {!row.products?.length && <tr><td colSpan="6" className="hint">Нет товарных строк.</td></tr>}
                   </tbody></table></div>
                 </div>
