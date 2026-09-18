@@ -9314,6 +9314,9 @@ function Suppliers({ t, isAdmin = false }) {
   const [purchaseItemsSaveProgress, setPurchaseItemsSaveProgress] = useState({ active: false, progress: 0, title: '', detail: '', step: '', status: 'idle' })
   const purchaseItemsSaveProgressTimerRef = useRef(null)
   const purchaseItemsSaveProgressHideTimerRef = useRef(null)
+  const [purchaseCreatePending, setPurchaseCreatePending] = useState(false)
+  const purchaseCreateInFlightRef = useRef(false)
+  const purchaseCreateRequestKeyRef = useRef('')
   const [viewPurchaseId, setViewPurchaseId] = useState('')
   const [recentPurchasesPageSize, setRecentPurchasesPageSize] = useState(10)
   const [recentPurchasesPage, setRecentPurchasesPage] = useState(1)
@@ -9329,6 +9332,9 @@ function Suppliers({ t, isAdmin = false }) {
   useRmsStatusToast(paymentMessage)
   const [productMessage, setProductMessage] = useState('')
   useRmsStatusToast(productMessage)
+  useEffect(() => {
+    if (!purchaseCreateInFlightRef.current) purchaseCreateRequestKeyRef.current = ''
+  }, [purchaseForm, lineRows])
   const [paymentEInvoiceSearch, setPaymentEInvoiceSearch] = useState('')
   const [selectedJournalPaymentIds, setSelectedJournalPaymentIds] = useState([])
   const [supplierAdminExpanded, setSupplierAdminExpanded] = useState(false)
@@ -10266,6 +10272,18 @@ function Suppliers({ t, isAdmin = false }) {
   }
 
   async function addPurchase() {
+    if (purchaseCreateInFlightRef.current) {
+      setMessage('Поступление уже сохраняется. Дождитесь завершения операции.')
+      return
+    }
+
+    purchaseCreateInFlightRef.current = true
+    setPurchaseCreatePending(true)
+    if (!purchaseCreateRequestKeyRef.current) {
+      purchaseCreateRequestKeyRef.current = crypto.randomUUID?.() || `supplier-purchase-${Date.now()}-${Math.random().toString(16).slice(2)}`
+    }
+    const requestKey = purchaseCreateRequestKeyRef.current
+
     setMessage('')
     try {
       if (!purchaseForm.supplier_id || !purchaseForm.legal_entity_id) throw new Error('Выберите поставщика и VOEN')
@@ -10280,7 +10298,7 @@ function Suppliers({ t, isAdmin = false }) {
       if (amountOnly) {
         const manualAmount = parseNum(purchaseForm.manual_amount)
         if (!manualAmount) throw new Error('Введите сумму поставки')
-        await callSupplierRpc('rms_supplier_purchase_create_secure', {
+        await callSupplierRpc('rms_supplier_purchase_create_idempotent', {
           p_supplier_id: purchaseForm.supplier_id,
           p_legal_entity_id: purchaseForm.legal_entity_id,
           p_branch_id: branchIdForPurchase,
@@ -10288,8 +10306,10 @@ function Suppliers({ t, isAdmin = false }) {
           p_invoice_number: purchaseForm.invoice_number.trim() || null,
           p_comment: supplierCommentWithMeta(purchaseComment || 'Поступление введено общей суммой без детализации товаров', { eInvoiceNumber: purchaseForm.e_invoice_number, eInvoiceDate: purchaseForm.e_invoice_date, eInvoiceAmount: purchaseForm.e_invoice_amount }),
           p_items: [],
-          p_manual_amount: manualAmount
+          p_manual_amount: manualAmount,
+          p_request_key: requestKey
         })
+        purchaseCreateRequestKeyRef.current = ''
         setLineRows([{ ...emptyLine }])
         setPurchaseForm(f => ({ ...f, invoice_number: '', e_invoice_number: '', e_invoice_date: '', e_invoice_amount: '', comment: '', manual_amount: '' }))
         return
@@ -10308,7 +10328,7 @@ function Suppliers({ t, isAdmin = false }) {
       }
       if (!prepared.length) throw new Error('Добавьте хотя бы один товар в поступление или включите режим ввода общей суммы')
 
-      await callSupplierRpc('rms_supplier_purchase_create_secure', {
+      await callSupplierRpc('rms_supplier_purchase_create_idempotent', {
         p_supplier_id: purchaseForm.supplier_id,
         p_legal_entity_id: purchaseForm.legal_entity_id,
         p_branch_id: branchIdForPurchase,
@@ -10316,11 +10336,18 @@ function Suppliers({ t, isAdmin = false }) {
         p_invoice_number: purchaseForm.invoice_number.trim() || null,
         p_comment: supplierCommentWithMeta(purchaseComment || null, { eInvoiceNumber: purchaseForm.e_invoice_number, eInvoiceDate: purchaseForm.e_invoice_date, eInvoiceAmount: purchaseForm.e_invoice_amount }),
         p_items: prepared,
-        p_manual_amount: null
+        p_manual_amount: null,
+        p_request_key: requestKey
       })
+      purchaseCreateRequestKeyRef.current = ''
       setLineRows([{ ...emptyLine }])
       setPurchaseForm(f => ({ ...f, invoice_number: '', e_invoice_number: '', e_invoice_date: '', e_invoice_amount: '', comment: '', manual_amount: '' }))
-    } catch (e) { setMessage(e.message) }
+    } catch (e) {
+      setMessage(e.message)
+    } finally {
+      purchaseCreateInFlightRef.current = false
+      setPurchaseCreatePending(false)
+    }
   }
 
   async function recalcPurchaseTotal(purchaseId) {
