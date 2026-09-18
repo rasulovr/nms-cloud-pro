@@ -180,7 +180,7 @@ function rmsForecastPreviousMonths(y, m, count = 3) {
 function rmsForecastSumExpenseGroups(rows = []) {
   return (rows || []).reduce((map, r) => {
     const name = r?.expense_categories?.name || r?.custom_category || ''
-    if (isSalaryExpenseName(name) || isDsmfExpenseName(name)) return map
+    if (isSalaryExpenseName(name) || isDsmfExpenseName(name) || isBazarExpenseName(name)) return map
     const group = rmsFinanceExpenseGroupName(name)
     map[group] = parseNum(map[group]) + parseNum(r.amount)
     return map
@@ -294,7 +294,7 @@ async function rmsCalculateNetworkForecastForMonth(y, m, scopeBranchId = 'all') 
       const group = rmsFinanceExpenseGroupName(name)
       // DSMF ручной/оплаченный из daily_expenses не должен попадать в прогноз.
       // В прогнозе DSMF считается только как начисленный DSMF по официальным зарплатам сотрудников.
-      if (isSalaryExpenseName(name) || isDsmfExpenseName(name) || group === 'rent') return
+      if (isSalaryExpenseName(name) || isDsmfExpenseName(name) || isBazarExpenseName(name) || group === 'rent') return
       addArticle(map, articleNameForExpense(row), row.amount)
     })
     const supplierTotals = rmsFinanceSupplierTotalsForScope(purchaseRows || [], selectedBranchId, shareMap)
@@ -314,9 +314,9 @@ async function rmsCalculateNetworkForecastForMonth(y, m, scopeBranchId = 'all') 
     (historicalPurchaseRows || []).filter(r => r.purchase_date >= pm.start && r.purchase_date < pm.end),
     revenueShareMapForMonth(pm.start)
   ))
-  const currentHasPreliminarySupplierAllocation = (currentPurchaseRows || []).some(row => !row?.branch_id)
+  const currentHasPreliminarySupplierAllocation = (currentPurchaseRows || []).length > 0
   const historyHasPreliminarySupplierAllocation = prevMonths.map(pm => (
-    (historicalPurchaseRows || []).some(row => !row?.branch_id && row.purchase_date >= pm.start && row.purchase_date < pm.end)
+    (historicalPurchaseRows || []).some(row => row.purchase_date >= pm.start && row.purchase_date < pm.end)
   ))
   const articleHistoryAvg = (name) => rmsForecastAverageNonZero(historyArticleMaps.map(map => map.get(name) || 0))
   const isVariableArticle = (name) => {
@@ -353,7 +353,7 @@ async function rmsCalculateNetworkForecastForMonth(y, m, scopeBranchId = 'all') 
         ? currentHasPreliminarySupplierAllocation
         : historyHasPreliminarySupplierAllocation.some(Boolean)
       if (usesPreliminaryAllocation) {
-        note = `${note}; общие накладные без филиала распределены предварительно по доле выручки — это не подтверждённое поступление на склад`
+        note = `${note}; все накладные поставщиков распределены по доле выручки филиала — исходная привязка филиала не используется для P&L`
       }
     }
     return { name, amount, note }
@@ -429,7 +429,7 @@ async function rmsCalculateNetworkForecastForMonth(y, m, scopeBranchId = 'all') 
     const bid = row?.branch_id
     if (!bid) return
     const name = row?.expense_categories?.name || row?.custom_category || ''
-    if (isSalaryExpenseName(name) || isDsmfExpenseName(name)) return
+    if (isSalaryExpenseName(name) || isDsmfExpenseName(name) || isBazarExpenseName(name)) return
     branchExpenseCurrentMap.set(bid, parseNum(branchExpenseCurrentMap.get(bid)) + parseNum(row.amount))
   })
   const managerAllocationShareMap = new Map()
@@ -1633,13 +1633,13 @@ function Dashboard({ t }) {
     ;(revRows || []).forEach(r => revenueShareMap.set(r.branch_id, baseRevenueTotal > 0 ? parseNum(r.total_revenue) / baseRevenueTotal : 0))
 
     // v43 fix: Dashboard expenses must match Finance.
-    // Finance uses real daily_expenses excluding supplier mirror rows and salary-like manual rows,
-    // then adds allocated supplier purchases, calculated salaries, service charge and 8% tax separately.
+    // Finance uses real daily_expenses excluding supplier mirror rows, manual Bazar and salary-like rows,
+    // then adds all supplier purchases allocated by revenue share, calculated salaries and tax separately.
     const dashboardRawExpenseByBranch = new Map()
     ;(dashboardDailyExpensesResult?.data || []).forEach(r => {
       const name = r.expense_categories?.name || r.custom_category || t('new_expense')
       if (String(r?.comment || '').startsWith('SUPPLIER_PURCHASE_')) return
-      if (isSalaryExpenseName(name)) return
+      if (isSalaryExpenseName(name) || isBazarExpenseName(name)) return
       dashboardRawExpenseByBranch.set(r.branch_id, (dashboardRawExpenseByBranch.get(r.branch_id) || 0) + parseNum(r.amount))
     })
 
@@ -1672,12 +1672,11 @@ function Dashboard({ t }) {
       const configuredTaxRate = parseNum(branchTaxSetting?.[b.id])
       const taxRate = configuredTaxRate > 0 ? configuredTaxRate : DEFAULT_TAX_RATE
       const tax = revenue * taxRate / 100
-      // Прямые накладные остаются расходом указанного филиала. Общие накладные
-      // без branch_id распределяются по доле выручки того же периода.
+      // Привязка накладных к филиалам пока неточная: все поставки сети,
+      // включая Zaur Bazar, распределяются по доле выручки того же периода.
       const supplierTotals = rmsFinanceSupplierTotalsForScope(purchaseRowsForFinance || [], b.id, revenueShareMap)
       const supplierExtra = supplierTotals.food + supplierTotals.packaging + supplierTotals.household + supplierTotals.other
-      const preliminarySupplierTotals = rmsFinanceSupplierTotalsForScope((purchaseRowsForFinance || []).filter(row => !row?.branch_id), b.id, revenueShareMap)
-      const preliminarySupplierExpense = preliminarySupplierTotals.food + preliminarySupplierTotals.packaging + preliminarySupplierTotals.household + preliminarySupplierTotals.other
+      const preliminarySupplierExpense = supplierExtra
       // Dashboard считает зарплаты той же логикой, что раздел “Финансы”:
       // прямые сотрудники филиала + распределённая доля менеджеров по доле выручки.
       const calculatedSalary = parseNum(rmsFinancePayrollDetailsForScope(employeeRows || [], b.id, revenueShareMap).totalSalary)
@@ -1765,7 +1764,7 @@ function Dashboard({ t }) {
     ;(dashboardDailyExpensesResult?.data || []).forEach(row => {
       if (branchId !== DASH_ALL_BRANCHES && String(row.branch_id || '') !== String(branchId)) return
       const name = row.expense_categories?.name || row.custom_category || t('new_expense')
-      if (String(row?.comment || '').startsWith('SUPPLIER_PURCHASE_') || isSalaryExpenseName(name)) return
+      if (String(row?.comment || '').startsWith('SUPPLIER_PURCHASE_') || isSalaryExpenseName(name) || isBazarExpenseName(name)) return
       expenseArticleMap.set(name, parseNum(expenseArticleMap.get(name)) + parseNum(row.amount))
     })
     const supplierTotalsForDashboard = rmsFinanceSupplierTotalsForScope(purchaseRowsForFinance || [], branchId, revenueShareMap)
@@ -2047,8 +2046,8 @@ function Dashboard({ t }) {
     </div>
 
     {parseNum(data.preliminarySupplierExpense) > 0 && <div className="card" style={{ marginBottom: 16, padding: '14px 18px' }}>
-      <strong>Предварительное распределение общих закупок: {fmt(data.preliminarySupplierExpense)} AZN</strong>
-      <p className="hint" style={{ margin: '6px 0 0' }}>Накладные без указанного филиала включены в P&amp;L по расчётной доле выручки. Это предварительное распределение, а не подтверждённое поступление на склад. Прямые накладные остаются за указанным филиалом.</p>
+      <strong>Распределённые закупки поставщиков: {fmt(data.preliminarySupplierExpense)} AZN</strong>
+      <p className="hint" style={{ margin: '6px 0 0' }}>Все накладные поставщиков, включая Zaur Bazar, распределены между филиалами по доле выручки. Ручная статья «Базар» в P&amp;L не включается.</p>
     </div>}
 
     <section className="dashboard-v25-layout">
@@ -2221,6 +2220,7 @@ function Finance({ t, lang, onGoToExpense }) {
 
       let rows = (data || [])
         .filter(row => !String(row?.comment || '').startsWith('SUPPLIER_PURCHASE_'))
+        .filter(row => !isBazarExpenseName(financeExpenseRowName(row)))
         .map(row => ({
           ...row,
           name: financeExpenseRowName(row),
@@ -2298,12 +2298,9 @@ function Finance({ t, lang, onGoToExpense }) {
             return
           }
 
-          const isDirect = String(p.branch_id || '') === String(branchId)
-          const isShared = !p.branch_id
-          if (!isDirect && !isShared) return
           const branchRevenue = parseNum(revenueMap.get(branchId))
           const share = totalRevenue > 0 ? branchRevenue / totalRevenue : 0
-          const allocated = Number((foodTotal * (isDirect ? 1 : share)).toFixed(2))
+          const allocated = Number((foodTotal * share).toFixed(2))
           if (allocated <= 0) return
 
           supplierRows.push({
@@ -2314,7 +2311,7 @@ function Finance({ t, lang, onGoToExpense }) {
             name: 'Food Cost / Поставщики',
             amountValue: allocated,
             amount: allocated,
-            comment: `${p.invoice_number ? `Поставщики · фактура ${p.invoice_number}` : 'Поставщики'} · ${isDirect ? 'прямая накладная филиала' : `общая накладная · предварительное распределение по доле выручки ${pct(share * 100)} · не подтверждает склад`}`,
+            comment: `${p.invoice_number ? `Поставщики · фактура ${p.invoice_number}` : 'Поставщики'} · распределено по доле выручки ${pct(share * 100)}; исходная привязка филиала не используется для P&L`,
             created_at: p.purchase_date,
             isSupplierPurchase: true
           })
@@ -2817,6 +2814,7 @@ function Finance({ t, lang, onGoToExpense }) {
         name: r.expense_categories?.name || r.custom_category || t('new_expense'),
         amount: parseNum(r.amount)
       }))
+      .filter(r => !isBazarExpenseName(r.name))
     const directMarketFoodCost = financeExpenseGroupTotal(rawExpenseRows, 'food_market')
     const directPackagingCost = financeExpenseGroupTotal(rawExpenseRows, 'packaging')
     const directHouseholdCost = financeExpenseGroupTotal(rawExpenseRows, 'household')
@@ -2835,12 +2833,11 @@ function Finance({ t, lang, onGoToExpense }) {
     const totalFoodCost = allocatedSupplierTotals.food + directMarketFoodCost
     const totalPackagingCost = allocatedSupplierTotals.packaging + directPackagingCost
     const totalHouseholdCost = allocatedSupplierTotals.household + directHouseholdCost
-    const preliminarySupplierTotals = rmsFinanceSupplierTotalsForScope((purchaseRows || []).filter(row => !row?.branch_id), branchId, revenueShares.map)
-    const preliminarySupplierExpense = preliminarySupplierTotals.food + preliminarySupplierTotals.packaging + preliminarySupplierTotals.household + preliminarySupplierTotals.other
+    const preliminarySupplierExpense = allocatedSupplierExpenseTotal
     if (totalFoodCost > 0) map.set('Food Cost / закупки и базар', {
       amount: totalFoodCost,
       note: preliminarySupplierExpense > 0
-        ? `включает ${fmt(preliminarySupplierExpense)} AZN предварительного распределения общих накладных по доле выручки; не подтверждает поступление на склад`
+        ? `включает ${fmt(preliminarySupplierExpense)} AZN поставок, распределённых по доле выручки; исходная привязка филиала не используется для P&L`
         : ''
     })
     if (totalPackagingCost > 0) map.set('Take away / packaging', totalPackagingCost)
@@ -2902,7 +2899,7 @@ function Finance({ t, lang, onGoToExpense }) {
     }
     const financeFormulaAuditRows = [
       { name: 'Выручка', amount: currentForFinance.revenue, note: 'monthly_branch_revenue' },
-      { name: 'Операционные расходы', amount: currentForFinance.expenses, note: 'daily_expenses без supplier mirror и salary-like строк + предварительно распределённые по выручке общие supplier purchases' },
+      { name: 'Операционные расходы', amount: currentForFinance.expenses, note: 'daily_expenses без supplier mirror, ручного Базара и salary-like строк + все supplier purchases по доле выручки' },
       { name: 'Зарплаты', amount: currentForFinance.salary, note: 'единая payroll-логика с долей менеджеров' },
       { name: 'Service charge персоналу (справочно)', amount: currentForFinance.serviceCost, note: 'monthly_branch_service_charge_cost; не входит в расходы и прибыль' },
       { name: `Налог ${fmt(currentForFinance.taxRate || TAX_RATE)}%`, amount: currentForFinance.tax, note: 'процент налогообложения по настройкам филиала' },
@@ -2979,7 +2976,7 @@ function Finance({ t, lang, onGoToExpense }) {
         const branchExpenseMap = new Map()
         ;(rows || []).filter(r => r.branch_id === branch.id).forEach(r => {
           const name = r.expense_categories?.name || r.custom_category || t('new_expense')
-          if (isDsmfExpenseName(name) || isSalaryExpenseName(name)) return
+          if (isDsmfExpenseName(name) || isSalaryExpenseName(name) || isBazarExpenseName(name)) return
           branchExpenseMap.set(name, (branchExpenseMap.get(name) || 0) + parseNum(r.amount))
         })
         const branchRawExpenseRows = [...branchExpenseMap.entries()].map(([name, amount]) => ({ name, amount }))

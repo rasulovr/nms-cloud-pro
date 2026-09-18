@@ -5679,7 +5679,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
 
       ;(dailyRows || []).forEach(row => {
         const category = row?.expense_categories?.name || row?.custom_category || 'Прочее'
-        if (String(row?.comment || '').startsWith('SUPPLIER_PURCHASE_') || isSalaryExpenseName(category) || isDsmfExpenseName(category)) return
+        if (String(row?.comment || '').startsWith('SUPPLIER_PURCHASE_') || isSalaryExpenseName(category) || isDsmfExpenseName(category) || isBazarExpenseName(category)) return
         pushRow({
           id: `daily-${row.id}`,
           source: 'Операционные расходы',
@@ -5702,10 +5702,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
       const revenueShareMap = new Map()
       revenueByBranch.forEach((amount, branchId) => revenueShareMap.set(branchId, totalRevenue > 0 ? parseNum(amount) / totalRevenue : 0))
       ;(supplierRows || []).forEach(row => {
-        const assignedBranchId = String(row.branch_id || '')
-        const targets = assignedBranchId
-          ? [{ branchId: assignedBranchId, share: 1, shared: false }]
-          : Array.from(revenueShareMap.entries()).map(([branchId, share]) => ({ branchId, share: parseNum(share), shared: true }))
+        const targets = Array.from(revenueShareMap.entries()).map(([branchId, share]) => ({ branchId, share: parseNum(share) }))
         targets.forEach(target => {
           const amount = parseNum(row.total_amount) * target.share
           if (amount <= 0) return
@@ -5716,10 +5713,10 @@ function Reports({ t, permissions = [], isAdmin = false }) {
             branch_name: branchNameById.get(target.branchId) || target.branchId,
             expense_date: row.purchase_date,
             category_name: 'Поставщики / Food Cost',
-            comment: [row.suppliers?.name || 'Поставщик', row.invoice_number ? `Фактура: ${row.invoice_number}` : '', row.comment || '', target.shared ? `Общая накладная · предварительное распределение по доле выручки ${pct(target.share * 100)} · не подтверждает склад` : 'Прямая накладная филиала'].filter(Boolean).join(' · '),
+            comment: [row.suppliers?.name || 'Поставщик', row.invoice_number ? `Фактура: ${row.invoice_number}` : '', row.comment || '', `Распределено по доле выручки ${pct(target.share * 100)}; исходная привязка филиала не используется для P&L`].filter(Boolean).join(' · '),
             amount,
             bucket: 'suppliers',
-            allocation_status: target.shared ? 'preliminary' : 'confirmed'
+            allocation_status: 'preliminary'
           })
         })
       })
@@ -6010,6 +6007,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
         const name = normalizedExpenseName(row)
         if (String(row.comment || '').startsWith('SUPPLIER_PURCHASE_')) return
         if (isSalaryExpenseName(name)) return
+        if (isBazarExpenseName(name)) return
         if (isTaxLike(name)) return
         if (isServiceChargeLike(name)) return
 
@@ -6158,10 +6156,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
         }
 
         const share = parseNum(revenueShareMap.get(id))
-        const directSupplierRows = supplierPurchases.filter(purchase => String(purchase.branch_id || '') === id)
-        const sharedSupplierRows = supplierPurchases.filter(purchase => !purchase.branch_id)
-        const supplierFoodCost = directSupplierRows.reduce((sum, purchase) => sum + parseNum(purchase.total_amount), 0)
-          + sharedSupplierRows.reduce((sum, purchase) => sum + parseNum(purchase.total_amount) * share, 0)
+        const supplierFoodCost = supplierPurchases.reduce((sum, purchase) => sum + parseNum(purchase.total_amount) * share, 0)
         const foodCost = parseNum(expenseData.manualFood) + supplierFoodCost
         const directSalary = parseNum(directSalaryByBranch.get(id))
         const managerSalary = managerSalaryPool * share
@@ -6173,23 +6168,14 @@ function Reports({ t, permissions = [], isAdmin = false }) {
         const totalExpenses = parseNum(expenseData.operating) + supplierFoodCost + salary + tax
         const net = parseNum(revenueData.revenue) - totalExpenses
         const activeDays = revenueData.days?.size || 0
-        const supplierDetails = [
-          ...directSupplierRows.map(purchase => ({
-            id: `supplier-${purchase.id}`,
+        const supplierDetails = supplierPurchases.map(purchase => ({
+            id: `supplier-allocated-${purchase.id}-${id}`,
             date: purchase.purchase_date,
             description: purchase.suppliers?.name || 'Поставщик',
-            comment: [purchase.invoice_number ? `Фактура: ${purchase.invoice_number}` : '', purchase.comment || '', 'Прямая накладная филиала'].filter(Boolean).join(' · '),
-            amount: parseNum(purchase.total_amount)
-          })),
-          ...sharedSupplierRows.map(purchase => ({
-            id: `supplier-shared-${purchase.id}-${id}`,
-            date: purchase.purchase_date,
-            description: purchase.suppliers?.name || 'Поставщик',
-            comment: [purchase.invoice_number ? `Фактура: ${purchase.invoice_number}` : '', purchase.comment || '', `Общая накладная · предварительное распределение по доле выручки ${pct(share * 100)} · не подтверждает склад`].filter(Boolean).join(' · '),
+            comment: [purchase.invoice_number ? `Фактура: ${purchase.invoice_number}` : '', purchase.comment || '', `Распределено по доле выручки ${pct(share * 100)}; исходная привязка филиала не используется для P&L`].filter(Boolean).join(' · '),
             amount: parseNum(purchase.total_amount) * share,
             allocation_status: 'preliminary'
           }))
-        ]
           .filter(detail => detail.amount !== 0)
         const salaryDetails = [
           ...(salaryDetailsByBranch.get(id) || []),
@@ -9205,7 +9191,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
       <div className="reports-v43-mini-kpis reports-v43-expenses-kpis">
         <div><span>Итого расходов</span><strong>{fmt(rmsExpensesReport.totals.amount)}</strong><em>по текущему фильтру</em></div>
         <div><span>Операционные</span><strong>{fmt(rmsExpensesReport.totals.operating)}</strong><em>все статьи daily expenses</em></div>
-        <div><span>Закупки / Food Cost</span><strong>{fmt(rmsExpensesReport.totals.suppliers)}</strong><em>накладные выбранного филиала</em></div>
+        <div><span>Закупки / Food Cost</span><strong>{fmt(rmsExpensesReport.totals.suppliers)}</strong><em>доля филиала по выручке</em></div>
         <div><span>Зарплаты</span><strong>{fmt(rmsExpensesReport.totals.salary)}</strong><em>начислено за период</em></div>
         <div><span>Налог</span><strong>{fmt(rmsExpensesReport.totals.tax)}</strong><em>расчёт от выручки</em></div>
         <div><span>Service charge</span><strong>{fmt(rmsExpensesReport.totals.serviceCharge)}</strong><em>справочно, не P&amp;L-расход</em></div>
@@ -9368,7 +9354,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
     </section>}
 
     {!rmsProfitabilityReport.loading && !rmsProfitabilityReport.error && <div className="reports-v417-card">
-      <div className="reports-v417-head"><div><h3>Детальная рентабельность филиалов</h3><p>Food Cost включает прямые накладные филиала. Общие накладные без филиала распределяются предварительно по доле выручки и не подтверждают поступление на склад. Service charge показан справочно и не входит в расходы и прибыль. Налог берётся из настроек филиала.</p></div><span className="reports-v43-badge">{profitabilityRows.length}</span></div>
+      <div className="reports-v417-head"><div><h3>Детальная рентабельность филиалов</h3><p>Все накладные поставщиков, включая Zaur Bazar, распределяются между филиалами по доле выручки. Ручная статья «Базар» исключена. Service charge показан справочно и не входит в расходы и прибыль. Налог берётся из настроек филиала.</p></div><span className="reports-v43-badge">{profitabilityRows.length}</span></div>
       <div className="reports-v417-table-wrap"><table className="reports-v417-table">
         <thead><tr><th>Филиал</th><th>Выручка</th><th>Wolt</th><th>Food Cost</th><th>Зарплаты</th><th>Опер. расходы</th><th>Service charge</th><th>Налог</th><th>Все расходы</th><th>Результат</th><th>Маржа</th><th>На день</th><th></th></tr></thead>
         <tbody>

@@ -1501,21 +1501,21 @@ const rmsFinanceAllocatedSupplierTotals = (purchaseRows = [], share = 1) => {
 }
 
 const rmsFinanceSupplierTotalsForScope = (purchaseRows = [], selectedBranchId = 'all', revenueShareMap = new Map()) => {
+  const networkTotals = rmsFinanceAllocatedSupplierTotals(purchaseRows || [], 1)
   if (!selectedBranchId || selectedBranchId === 'all' || selectedBranchId === '__all__') {
-    return rmsFinanceAllocatedSupplierTotals(purchaseRows || [], 1)
+    return networkTotals
   }
 
   const branchKey = String(selectedBranchId)
-  const directRows = (purchaseRows || []).filter(row => String(row?.branch_id || '') === branchKey)
-  const sharedRows = (purchaseRows || []).filter(row => !row?.branch_id)
-  const direct = rmsFinanceAllocatedSupplierTotals(directRows, 1)
-  const shared = rmsFinanceAllocatedSupplierTotals(sharedRows, parseNum(revenueShareMap.get(branchKey)))
+  // Привязка накладной к филиалу пока не считается достаточно точной для P&L.
+  // Поэтому все поставки сети, включая Zaur Bazar, распределяются по доле выручки.
+  const share = parseNum(revenueShareMap.get(branchKey))
 
   return {
-    food: parseNum(direct.food) + parseNum(shared.food),
-    packaging: parseNum(direct.packaging) + parseNum(shared.packaging),
-    household: parseNum(direct.household) + parseNum(shared.household),
-    other: parseNum(direct.other) + parseNum(shared.other)
+    food: parseNum(networkTotals.food) * share,
+    packaging: parseNum(networkTotals.packaging) * share,
+    household: parseNum(networkTotals.household) * share,
+    other: parseNum(networkTotals.other) * share
   }
 }
 
