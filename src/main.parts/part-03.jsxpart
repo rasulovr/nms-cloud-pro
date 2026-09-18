@@ -1155,6 +1155,7 @@ function ThemeStyles() {
 }
 
 function MiniBarChart({ rows, valueKey = 'revenue', labelKey = 'name', title, subtitle, showShare = false, stackWolt = false }) {
+  const isProfitChart = valueKey === 'net'
   const rowDisplayValue = row => stackWolt
     ? parseNum(row.revenueWithWolt ?? row[valueKey])
     : parseNum(row[valueKey])
@@ -1164,9 +1165,12 @@ function MiniBarChart({ rows, valueKey = 'revenue', labelKey = 'name', title, su
   const shareBase = valueKey === 'net' ? signedTotal : positiveTotal
   const shareLabel = valueKey === 'net' ? 'от общей прибыли' : 'от общей выручки с Wolt'
   const hasAnyWolt = stackWolt && rows.some(row => parseNum(row.woltRevenue) > 0)
+  const chartTotal = isProfitChart ? signedTotal : positiveTotal
+  const chartStatus = isProfitChart ? (chartTotal >= 0 ? 'Общая прибыль' : 'Общий убыток') : 'Выручка сети'
+  const resultShareLabel = chartTotal < 0 ? 'доля общего убытка' : 'доля общей прибыли'
 
-  return <div className={`card span-2 dashboard-chart-card ${stackWolt ? 'dashboard-chart-card-wolt' : ''}`}>
-    <div className="card-head">
+  return <div className={`card span-2 dashboard-chart-card ${stackWolt ? 'dashboard-chart-card-wolt dashboard-chart-card-revenue' : ''} ${isProfitChart ? 'dashboard-chart-card-profit' : ''}`}>
+    <div className="card-head dashboard-chart-card-head">
       <div>
         <h3>{title}</h3>
         <p className="hint">{subtitle}</p>
@@ -1175,12 +1179,14 @@ function MiniBarChart({ rows, valueKey = 'revenue', labelKey = 'name', title, su
           <span><i className="dash-wolt-legend-wolt" />Wolt</span>
         </div>}
       </div>
+      <div className={`dashboard-chart-total ${chartTotal < 0 ? 'bad' : 'good'}`}><span>{chartStatus}</span><strong>{fmt(chartTotal)} <small>AZN</small></strong></div>
     </div>
 
     <div className="dash-bars">
-      {rows.map(r => {
+      {rows.map((r, index) => {
         const val = rowDisplayValue(r)
         const width = Math.max(3, Math.min(100, Math.abs(val) / max * 100))
+        const resultWidth = val === 0 ? 0 : Math.max(3, Math.min(50, Math.abs(val) / max * 50))
         const share = shareBase ? val / shareBase * 100 : 0
 
         const wolt = stackWolt ? Math.max(0, parseNum(r.woltRevenue)) : 0
@@ -1191,8 +1197,8 @@ function MiniBarChart({ rows, valueKey = 'revenue', labelKey = 'name', title, su
         const baseWidth = stackWolt ? Math.max(0, Math.min(100, baseRevenue / max * 100)) : width
         const woltWidth = stackWolt ? Math.max(0, Math.min(100 - baseWidth, wolt / max * 100)) : 0
 
-        return <div className={`dash-bar-row ${stackWolt ? 'dash-bar-row-wolt' : ''}`} key={r.id || r[labelKey]}>
-          <div className="dash-bar-label">{r[labelKey]}</div>
+        return <div className={`dash-bar-row ${stackWolt ? 'dash-bar-row-wolt' : ''} ${val < 0 ? 'is-negative' : 'is-positive'} ${index === 0 ? 'is-leading' : ''}`} key={r.id || r[labelKey]}>
+          <div className="dash-bar-label"><i>{index + 1}</i><span>{r[labelKey]}{isProfitChart && <small>{val < 0 ? 'убыток' : val > 0 ? 'прибыль' : 'без результата'}</small>}</span></div>
 
           {stackWolt
             ? <div
@@ -1205,23 +1211,31 @@ function MiniBarChart({ rows, valueKey = 'revenue', labelKey = 'name', title, su
                 <div className="dash-bar-stack-base" style={{ width: `${baseWidth}%` }} />
                 {wolt > 0 && <div className="dash-bar-stack-wolt" style={{ left: `${baseWidth}%`, width: `${woltWidth}%` }} />}
               </div>
-            : <div className="dash-bar-track" title={`${fmt(val)} ман.${showShare ? ` · ${pct(share)} ${shareLabel}` : ''}`}>
-                <div className={`dash-bar ${val < 0 ? 'negative' : ''}`} style={{ width: `${width}%` }} />
-              </div>
+            : isProfitChart
+              ? <div className="dash-bar-track dash-profit-track" title={`${fmt(val)} ман.${showShare ? ` · ${pct(share)} ${resultShareLabel}` : ''}`}>
+                  <i className="dash-profit-zero" aria-hidden="true" />
+                  <div
+                    className={`dash-profit-bar ${val < 0 ? 'negative' : val > 0 ? 'positive' : 'neutral'}`}
+                    style={val < 0 ? { right: '50%', width: `${resultWidth}%` } : { left: '50%', width: `${resultWidth}%` }}
+                  />
+                </div>
+              : <div className="dash-bar-track" title={`${fmt(val)} ман.${showShare ? ` · ${pct(share)} ${shareLabel}` : ''}`}>
+                  <div className={`dash-bar ${val < 0 ? 'negative' : ''}`} style={{ width: `${width}%` }} />
+                </div>
           }
 
           <div className={`dash-bar-value ${val < 0 ? 'bad' : ''} ${stackWolt ? 'dash-bar-value-wolt' : ''} ${stackWolt && wolt <= 0 ? 'dash-bar-value-no-wolt' : ''}`}>
             {stackWolt
               ? <>
                   <div className="dash-bar-value-main">
-                    <span>{fmt(revenueWithWolt)} ман.</span>
-                    {showShare && <em>({pct(share)})</em>}
+                    <span>{fmt(revenueWithWolt)} <small>AZN</small></span>
+                    {showShare && <em>{pct(share)}</em>}
                   </div>
-                  {wolt > 0 && <small>Wolt: {fmt(wolt)} ман.</small>}
+                  {wolt > 0 && <small>Wolt: {fmt(wolt)} AZN</small>}
                 </>
               : <>
-                  <span>{fmt(val)} ман.</span>
-                  {showShare && <em>({pct(share)})</em>}
+                  <span>{fmt(val)} <small>AZN</small></span>
+                  {showShare && <em>{pct(share)}</em>}
                 </>
             }
           </div>
@@ -1293,10 +1307,19 @@ function DailyRevenueLineChart({ rows = [], title = 'Выручка по дня�
     const y = pad.top + chartH - (parseNum(r.amount) / max * chartH)
     return { ...r, x, y }
   })
-  const path = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ')
+  const path = points.length
+    ? points.slice(1).reduce((curve, point, index) => {
+        const previousPoint = points[index]
+        const middleX = (previousPoint.x + point.x) / 2
+        return `${curve} C ${middleX.toFixed(1)} ${previousPoint.y.toFixed(1)}, ${middleX.toFixed(1)} ${point.y.toFixed(1)}, ${point.x.toFixed(1)} ${point.y.toFixed(1)}`
+      }, `M ${points[0].x.toFixed(1)} ${points[0].y.toFixed(1)}`)
+    : ''
   const areaPath = points.length ? `${path} L ${points[points.length - 1].x.toFixed(1)} ${pad.top + chartH} L ${points[0].x.toFixed(1)} ${pad.top + chartH} Z` : ''
   const yTicks = [0, 0.25, 0.5, 0.75, 1]
   const bestPoint = points.find(p => parseNum(p.amount) === parseNum(best.amount) && parseNum(p.amount) > 0)
+  const latestPoint = points[points.length - 1]
+  const averageY = pad.top + chartH - (Math.min(max, avg) / max * chartH)
+  const axisLabelStep = Math.max(1, Math.ceil(points.length / 8))
 
   const AmountBlock = ({ value, suffix = 'AZN' }) => (
     <div className="metric-amount">
@@ -1306,27 +1329,36 @@ function DailyRevenueLineChart({ rows = [], title = 'Выручка по дня�
   )
 
   return <div className={`card span-2 finance-daily-revenue-chart ${className}`.trim()}>
-    <div className="card-head"><div><h3>{title}</h3><p className="hint">{subtitle}</p></div></div>
+    <div className="card-head finance-line-chart-head"><div><h3>{title}</h3><p className="hint">{subtitle}</p></div>{rows.length > 0 && <div className="finance-line-chart-head-meta"><span><i />Среднее: <b>{fmt(avg)} AZN</b></span><span>{activeDays} активных дней</span></div>}</div>
     <div className="finance-line-chart-wrap">
       {rows.length ? <svg className="finance-line-chart-svg" viewBox={`0 0 ${width} ${height}`} role="img" aria-label={title} preserveAspectRatio="none">
         <defs>
           <linearGradient id="financeDailyRevenueGradient" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#2563eb" stopOpacity="0.24" />
-            <stop offset="58%" stopColor="#2563eb" stopOpacity="0.11" />
-            <stop offset="100%" stopColor="#2563eb" stopOpacity="0.02" />
+            <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.30" />
+            <stop offset="54%" stopColor="#60a5fa" stopOpacity="0.12" />
+            <stop offset="100%" stopColor="#dbeafe" stopOpacity="0.01" />
           </linearGradient>
+          <linearGradient id="financeDailyRevenueStroke" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stopColor="#1d4ed8" />
+            <stop offset="55%" stopColor="#2563eb" />
+            <stop offset="100%" stopColor="#06b6d4" />
+          </linearGradient>
+          <filter id="financeDailyRevenueGlow" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="5" stdDeviation="5" floodColor="#2563eb" floodOpacity=".28" /></filter>
         </defs>
+        <rect className="finance-line-chart-plot" x={pad.left} y={pad.top} width={chartW} height={chartH} rx="16" />
         {yTicks.map(tick => {
           const y = pad.top + chartH - tick * chartH
           const label = max * tick
           return <g key={tick}>
             <line className="finance-line-chart-grid" x1={pad.left} y1={y} x2={width - pad.right} y2={y} />
-            <text className="finance-line-chart-label" x={pad.left - 10} y={y + 4} textAnchor="end">{label >= 1000 ? `${Math.round(label / 1000)}k` : Math.round(label)}</text>
+            <text className="finance-line-chart-label" x={pad.left - 11} y={y + 4} textAnchor="end">{label >= 1000 ? `${Number((label / 1000).toFixed(1))}k` : Math.round(label)}</text>
           </g>
         })}
         <line className="finance-line-chart-axis" x1={pad.left} y1={pad.top + chartH} x2={width - pad.right} y2={pad.top + chartH} />
+        {avg > 0 && <g className="finance-line-chart-average"><line x1={pad.left} y1={averageY} x2={width - pad.right} y2={averageY} /><text x={width - pad.right - 8} y={averageY - 7} textAnchor="end">среднее {fmt(avg)}</text></g>}
         {areaPath && <path className="finance-line-chart-area" d={areaPath} fill="url(#financeDailyRevenueGradient)" />}
-        {path && <path className="finance-line-chart-line" d={path} />}
+        {path && <path className="finance-line-chart-line" d={path} stroke="url(#financeDailyRevenueStroke)" filter="url(#financeDailyRevenueGlow)" />}
+        {points.map((point, index) => <circle key={`point-${point.date || point.day || index}`} className="finance-line-chart-data-point" cx={point.x} cy={point.y} r="3.2"><title>{formatDayMonth(point)}: {fmt(point.amount)} AZN</title></circle>)}
         {bestPoint && <g key={`best-${bestPoint.date}-${bestPoint.amount}`}>
           <line className="finance-line-chart-guide" x1={bestPoint.x} y1={Math.max(pad.top, bestPoint.y)} x2={bestPoint.x} y2={pad.top + chartH} />
           <g className="finance-line-chart-tooltip" transform={`translate(${Math.max(56, Math.min(width - 100, bestPoint.x - 44))}, ${Math.max(2, bestPoint.y - 62)})`}>
@@ -1335,8 +1367,10 @@ function DailyRevenueLineChart({ rows = [], title = 'Выручка по дня�
             <text className="finance-line-chart-tooltip-date" x="44" y="36" textAnchor="middle">{formatDayMonth(bestPoint)}</text>
           </g>
         </g>}
+        {latestPoint && <g className="finance-line-chart-latest"><circle cx={latestPoint.x} cy={latestPoint.y} r="9" /><circle cx={latestPoint.x} cy={latestPoint.y} r="4" /></g>}
         {points.map((p, i) => {
           const anchor = i === 0 ? 'start' : i === points.length - 1 ? 'end' : 'middle'
+          if (i !== 0 && i !== points.length - 1 && i % axisLabelStep !== 0) return null
           return <text key={`x-${p.date || p.day || i}`} className="finance-line-chart-x-label" x={p.x} y={height - 11} textAnchor={anchor}>{formatChartXAxisLabel(p)}</text>
         })}
       </svg> : <p className="hint">Пока нет данных по выручке за выбранный месяц.</p>}
@@ -1519,6 +1553,7 @@ function Dashboard({ t }) {
   const [month, setMonth] = useState(now.getMonth() + 1)
   const [data, setData] = useState(null)
   const [dailyRevenueRows, setDailyRevenueRows] = useState([])
+  const [expenseGrowthSort, setExpenseGrowthSort] = useState('amount')
 
   useEffect(() => { load() }, [year, month, branchId, branches.length])
 
@@ -1726,7 +1761,27 @@ function Dashboard({ t }) {
     const forecastRevenue = parseNum(syncedForecast.forecastRevenue)
     const forecastProfit = parseNum(syncedForecast.forecastProfit)
     const preliminarySupplierExpense = dashboardBranchRows.reduce((sum, row) => sum + parseNum(row.preliminarySupplierExpense), 0)
-    return { revenue, expenses, net, supplierDebt, supplierDebtRows, branchRows: dashboardBranchRows, preliminarySupplierExpense, forecastRevenue, forecastProfit, forecastDetails: syncedForecast.details || [], forecastExpenses: syncedForecast.forecastExpenses, forecastMargin: syncedForecast.forecastMargin }
+    const expenseArticleMap = new Map()
+    ;(dashboardDailyExpensesResult?.data || []).forEach(row => {
+      if (branchId !== DASH_ALL_BRANCHES && String(row.branch_id || '') !== String(branchId)) return
+      const name = row.expense_categories?.name || row.custom_category || t('new_expense')
+      if (String(row?.comment || '').startsWith('SUPPLIER_PURCHASE_') || isSalaryExpenseName(name)) return
+      expenseArticleMap.set(name, parseNum(expenseArticleMap.get(name)) + parseNum(row.amount))
+    })
+    const supplierTotalsForDashboard = rmsFinanceSupplierTotalsForScope(purchaseRowsForFinance || [], branchId, revenueShareMap)
+    const supplierFood = parseNum(supplierTotalsForDashboard.food)
+    if (supplierFood > 0) expenseArticleMap.set('Поставщики / закупки', supplierFood)
+    const salaryTotal = dashboardBranchRows.reduce((sum, row) => sum + parseNum(row.salary), 0)
+    const taxTotal = dashboardBranchRows.reduce((sum, row) => sum + parseNum(row.tax), 0)
+    if (salaryTotal > 0) expenseArticleMap.set('Зарплаты', salaryTotal)
+    if (taxTotal > 0) expenseArticleMap.set('Налог', taxTotal)
+    const expenseRows = Array.from(expenseArticleMap, ([name, amount]) => ({ name, amount }))
+      .filter(row => row.amount > 0)
+      .sort((a, b) => b.amount - a.amount)
+    const foodCostAmount = expenseRows
+      .filter(row => rmsFinanceExpenseGroupName(row.name) === 'food_market' || row.name === 'Поставщики / закупки')
+      .reduce((sum, row) => sum + parseNum(row.amount), 0)
+    return { revenue, expenses, net, supplierDebt, supplierDebtRows, branchRows: dashboardBranchRows, preliminarySupplierExpense, forecastRevenue, forecastProfit, forecastDetails: syncedForecast.details || [], forecastExpenses: syncedForecast.forecastExpenses, forecastMargin: syncedForecast.forecastMargin, expenseRows, foodCostAmount }
   }
 
   async function calcDashboardRevenueUntilDay(y, m, dayLimit) {
@@ -1796,6 +1851,8 @@ function Dashboard({ t }) {
       forecastDetails: [],
       forecastExpenses: 0,
       forecastMargin: 0,
+      expenseRows: [],
+      foodCostAmount: 0,
       previous: { revenue: 0, expenses: 0, net: 0, supplierDebt: 0, branchRows: [] },
       comparison: { currentRevenue: 0, previousRevenue: 0, revenueLabel: 'к прошлому месяцу' }
     }
@@ -1888,12 +1945,42 @@ function Dashboard({ t }) {
   const selectedBranchName = selectedBranchRow?.name || branches.find(b => String(b.id) === String(branchId))?.name || 'Филиал'
   const selectedBranchExpenseRatio = selectedBranchRow?.revenue ? selectedBranchRow.totalExpenses / selectedBranchRow.revenue * 100 : 0
   const selectedBranchMargin = selectedBranchRow?.revenue ? selectedBranchRow.net / selectedBranchRow.revenue * 100 : 0
+  const expenseChange = data.previous?.expenses ? (data.expenses - data.previous.expenses) / Math.abs(data.previous.expenses) * 100 : 0
+  const foodCostPct = data.revenue ? parseNum(data.foodCostAmount) / data.revenue * 100 : 0
+  const expenseRows = data.expenseRows || []
+  const previousExpenseMap = new Map((data.previous?.expenseRows || []).map(row => [row.name, parseNum(row.amount)]))
+  const expenseGrowthCandidates = expenseRows.map(row => {
+    const previousAmount = parseNum(previousExpenseMap.get(row.name))
+    const growthAmount = parseNum(row.amount) - previousAmount
+    const growthPct = previousAmount > 0 ? growthAmount / previousAmount * 100 : (row.amount > 0 ? 100 : 0)
+    return { ...row, previousAmount, growthAmount, growthPct }
+  }).filter(row => row.growthAmount > 0)
+  const expenseGrowthRows = [...expenseGrowthCandidates]
+    .sort((a, b) => expenseGrowthSort === 'percent' ? b.growthPct - a.growthPct : b.growthAmount - a.growthAmount)
+    .slice(0, 7)
+  const maxExpenseGrowth = Math.max(1, ...expenseGrowthRows.map(row => expenseGrowthSort === 'percent' ? row.growthPct : row.growthAmount))
+  const expenseChartTotal = expenseRows.reduce((sum, row) => sum + parseNum(row.amount), 0) || 1
+  const expensePalette = ['#2563eb','#7c3aed','#10b981','#f59e0b','#ef4444','#06b6d4','#ec4899','#64748b']
+  const sortedExpenseRows = [...expenseRows].sort((a, b) => parseNum(b.amount) - parseNum(a.amount))
+  const visibleExpenseRows = sortedExpenseRows.slice(0, 7)
+  const otherExpenseAmount = sortedExpenseRows.slice(7).reduce((sum, row) => sum + parseNum(row.amount), 0)
+  const expenseChartRows = otherExpenseAmount > 0
+    ? [...visibleExpenseRows, { name: 'Остальные статьи', amount: otherExpenseAmount }]
+    : visibleExpenseRows
+  let expenseGradientOffset = 0
+  const expenseDonutGradient = `conic-gradient(from -35deg, ${expenseChartRows.map((row, index) => {
+    const start = expenseGradientOffset
+    expenseGradientOffset += parseNum(row.amount) / expenseChartTotal * 100
+    return `${expensePalette[index % expensePalette.length]} ${start}% ${expenseGradientOffset}%`
+  }).join(',') || '#e2e8f0 0 100%'})`
+  const today = new Date()
+  const isIncompleteMonth = Number(year) === today.getFullYear() && Number(month) === today.getMonth() + 1 && today.getDate() < new Date(year, month, 0).getDate()
 
   return <section id="dashboardPage" className="rms-executive-dashboard">
     <section className="dashboard-v23-head">
       <div>
         <h2>Dashboard</h2>
-        <p>Обзор ключевых показателей вашего бизнеса за выбранный период.</p>
+        <p>Обзор ключевых показателей вашего бизнеса за выбранный период. {isIncompleteMonth && <span className="dashboard-period-badge">Неполный месяц</span>}</p>
       </div>
       <div className="dashboard-v23-filters">
         <label><span>Филиал</span><select value={branchId} onChange={e => setBranchId(e.target.value)}><option value={DASH_ALL_BRANCHES}>Все рестораны</option>{branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label>
@@ -1905,12 +1992,59 @@ function Dashboard({ t }) {
     <section className="dashboard-v23-kpis dashboard-v29-kpis">
       <div className="dash-kpi dash-kpi-blue"><span className="dash-kpi-icon">↗</span><div><em>Выручка за месяц</em><strong>{fmt(data.revenue)} <small>AZN</small></strong><p className="dash-trend-value" style={{ color: revenueChange >= 0 ? '#10b981' : '#ef4444', fontWeight: 900 }} title={revenueCompareTooltip}>{revenueChange >= 0 ? '▲' : '▼'} {pct(Math.abs(revenueChange))}</p></div></div>
       <div className="dash-kpi dash-kpi-purple"><span className="dash-kpi-icon">▥</span><div><em>Расходы</em><strong>{fmt(data.expenses)} <small>AZN</small></strong><p>{data.revenue ? pct(data.expenses / data.revenue * 100) : '0.0%'} от выручки</p></div></div>
-      <div className="dash-kpi dash-kpi-green"><span className="dash-kpi-icon">▟</span><div><em>Чистая прибыль</em><strong>{fmt(data.net)} <small>AZN</small></strong><p className={profitChange >= 0 ? 'good' : 'bad'}>{profitChange >= 0 ? '▲' : '▼'} {pct(Math.abs(profitChange))}</p></div></div>
-      <div className="dash-kpi dash-kpi-red"><span className="dash-kpi-icon">%</span><div><em>Рентабельность</em><strong>{pct(data.revenue ? data.net / data.revenue * 100 : 0)}</strong><p>маржа чистой прибыли</p></div></div>
+      <div className={`dash-kpi dash-kpi-green ${data.net < 0 ? 'dash-kpi-negative' : ''}`}><span className="dash-kpi-icon">▟</span><div><em>Чистая прибыль</em><strong>{fmt(data.net)} <small>AZN</small></strong><p className={profitChange >= 0 ? 'good' : 'bad'}>{profitChange >= 0 ? '▲' : '▼'} {pct(Math.abs(profitChange))}</p></div></div>
+      <div className={`dash-kpi dash-kpi-red ${data.net < 0 ? 'dash-kpi-negative' : ''}`}><span className="dash-kpi-icon">%</span><div><em>Рентабельность</em><strong>{pct(data.revenue ? data.net / data.revenue * 100 : 0)}</strong><p>маржа чистой прибыли</p></div></div>
+      <div className="dash-kpi dash-kpi-forecast"><span className="dash-kpi-icon">◌</span><div><em>Food Cost</em><strong>{pct(foodCostPct)}</strong><p>{fmt(data.foodCostAmount)} AZN</p></div></div>
       <div className="dash-kpi dash-kpi-forecast"><span className="dash-kpi-icon">⌁</span><div><em>Прогноз выручки</em><strong>{fmt(data.forecastRevenue)} <small>AZN</small></strong><p>до конца месяца</p></div></div>
-      <div className="dash-kpi dash-kpi-target"><span className="dash-kpi-icon">◎</span><div><em>Прогноз прибыли</em><strong>{fmt(data.forecastProfit)} <small>AZN</small></strong><p>прогноз месяца</p></div></div>
+      <div className={`dash-kpi dash-kpi-target ${data.forecastProfit < 0 ? 'dash-kpi-negative' : ''}`}><span className="dash-kpi-icon">◎</span><div><em>Прогноз прибыли</em><strong>{fmt(data.forecastProfit)} <small>AZN</small></strong><p>прогноз месяца</p></div></div>
       <div className="dash-kpi dash-kpi-wallet"><span className="dash-kpi-icon">▣</span><div><em>Оплаченная выручка</em><strong>{fmt(cashBalance)} <small>AZN</small></strong><p>наличные + банк за период</p></div></div>
     </section>
+
+    <section className="dashboard-v416-comparison" aria-label="Сравнение с предыдущим месяцем">
+      <div className={revenueChange >= 0 ? 'is-positive' : 'is-negative'}><span>Выручка к прошлому месяцу</span><strong className={revenueChange >= 0 ? 'good' : 'bad'}>{revenueChange >= 0 ? '▲' : '▼'} {pct(Math.abs(revenueChange))}</strong><em>{fmt(revenueCompareCurrent - revenueComparePrevious)} AZN</em><i><b style={{width: `${Math.min(100, Math.abs(revenueChange))}%`}} /></i></div>
+      <div className={profitChange >= 0 ? 'is-positive' : 'is-negative'}><span>Прибыль к прошлому месяцу</span><strong className={profitChange >= 0 ? 'good' : 'bad'}>{profitChange >= 0 ? '▲' : '▼'} {pct(Math.abs(profitChange))}</strong><em>{fmt(data.net - parseNum(data.previous?.net))} AZN</em><i><b style={{width: `${Math.min(100, Math.abs(profitChange))}%`}} /></i></div>
+      <div className={expenseChange <= 0 ? 'is-positive' : 'is-negative'}><span>Расходы к прошлому месяцу</span><strong className={expenseChange <= 0 ? 'good' : 'bad'}>{expenseChange >= 0 ? '▲' : '▼'} {pct(Math.abs(expenseChange))}</strong><em>{fmt(data.expenses - parseNum(data.previous?.expenses))} AZN</em><i><b style={{width: `${Math.min(100, Math.abs(expenseChange))}%`}} /></i></div>
+    </section>
+
+    <DailyRevenueLineChart rows={dailyRevenueRows} title="Выручка по дням" subtitle={branchId === DASH_ALL_BRANCHES ? 'Суммарная динамика сети за выбранный месяц' : `Динамика филиала ${selectedBranchName}`} />
+
+    <section className="dashboard-v416-grid">
+      <div className="card dashboard-v416-expense-chart">
+        <div className="card-head"><div><h3>Структура расходов</h3><p className="hint">Доля каждой статьи в общих расходах</p></div></div>
+        <div className="dashboard-v416-donut-layout">
+          <div className="dashboard-v416-donut" style={{background: expenseDonutGradient}}><div><span>Все расходы</span><strong>{fmt(data.expenses)}</strong><small>AZN</small></div></div>
+          <div className="dashboard-v416-legend">{expenseChartRows.map((row, index) => {
+            const share = parseNum(row.amount) / expenseChartTotal * 100
+            return <div key={row.name}>
+              <i style={{background: expensePalette[index % expensePalette.length]}} />
+              <span>{row.name}<small>{fmt(row.amount)} AZN</small></span>
+              <b>{pct(share)}</b>
+              <em><u style={{width: `${Math.max(3, share)}%`, background: expensePalette[index % expensePalette.length]}} /></em>
+            </div>
+          })}</div>
+        </div>
+      </div>
+      <div className="card dashboard-v416-growth">
+        <div className="card-head dashboard-v416-growth-head"><div><h3>Топ подорожавших статей</h3><p className="hint">Рост относительно предыдущего месяца</p></div><div className="dashboard-v416-sort" role="group" aria-label="Сортировка роста расходов"><button type="button" className={expenseGrowthSort === 'amount' ? 'active' : ''} onClick={() => setExpenseGrowthSort('amount')}>По сумме</button><button type="button" className={expenseGrowthSort === 'percent' ? 'active' : ''} onClick={() => setExpenseGrowthSort('percent')}>По %</button></div></div>
+        <div className="dashboard-v416-growth-list">{expenseGrowthRows.map((row, index) => {
+          const barValue = expenseGrowthSort === 'percent' ? row.growthPct : row.growthAmount
+          return <div key={row.name}>
+            <i>{index + 1}</i>
+            <span>{row.name}<small>{fmt(row.previousAmount)} → {fmt(row.amount)} AZN</small><u><b style={{width: `${Math.max(5, barValue / maxExpenseGrowth * 100)}%`}} /></u></span>
+            <b>+{fmt(row.growthAmount)} AZN</b>
+            <em>+{pct(row.growthPct)}</em>
+          </div>
+        })}{!expenseGrowthRows.length && <p className="hint">Рост расходов не обнаружен.</p>}</div>
+      </div>
+    </section>
+
+    <div className="card dashboard-v416-expense-table">
+      <div className="card-head"><div><h3>Все статьи расходов</h3><p className="hint">Сумма, доля расходов и доля выручки</p></div></div>
+      <div className="table-wrap"><table><thead><tr><th>Статья</th><th>Сумма</th><th>% расходов</th><th>% выручки</th></tr></thead><tbody>{expenseRows.map((row, index) => {
+        const expenseShare = parseNum(row.amount) / expenseChartTotal * 100
+        return <tr key={row.name}><td><span className="dashboard-expense-name"><i style={{background: expensePalette[index % expensePalette.length]}} />{row.name}</span></td><td><b>{fmt(row.amount)} AZN</b></td><td><span className="dashboard-expense-share"><b>{pct(expenseShare)}</b><i><u style={{width: `${Math.max(2, expenseShare)}%`, background: expensePalette[index % expensePalette.length]}} /></i></span></td><td>{pct(data.revenue ? parseNum(row.amount) / data.revenue * 100 : 0)}</td></tr>
+      })}{!expenseRows.length && <tr><td colSpan="4" className="hint">Нет расходов за выбранный период.</td></tr>}</tbody></table></div>
+    </div>
 
     {parseNum(data.preliminarySupplierExpense) > 0 && <div className="card" style={{ marginBottom: 16, padding: '14px 18px' }}>
       <strong>Предварительное распределение общих закупок: {fmt(data.preliminarySupplierExpense)} AZN</strong>
