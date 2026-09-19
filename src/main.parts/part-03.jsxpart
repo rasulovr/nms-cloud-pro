@@ -1505,7 +1505,9 @@ async function rmsLoadDailyRevenueRowsForChart(y, m, selectedBranchId = '__all__
   if (error) throw error
   const map = new Map()
   ;(data || []).forEach(row => {
-    const value = parseNum(row.cash_amount) + parseNum(row.bank_amount) + parseNum(row.wolt_amount)
+    // Daily operating analytics intentionally exclude Wolt. Wolt remains part of
+    // the dashboard's total revenue, Food Cost, profit and forecast calculations.
+    const value = parseNum(row.cash_amount) + parseNum(row.bank_amount)
     map.set(row.revenue_date, parseNum(map.get(row.revenue_date)) + value)
   })
   return Array.from({ length: count }, (_, index) => {
@@ -2005,7 +2007,7 @@ function Dashboard({ t }) {
       <div className={expenseChange <= 0 ? 'is-positive' : 'is-negative'}><span>Расходы к прошлому месяцу</span><strong className={expenseChange <= 0 ? 'good' : 'bad'}>{expenseChange >= 0 ? '▲' : '▼'} {pct(Math.abs(expenseChange))}</strong><em>{fmt(data.expenses - parseNum(data.previous?.expenses))} AZN</em><i><b style={{width: `${Math.min(100, Math.abs(expenseChange))}%`}} /></i></div>
     </section>
 
-    <DailyRevenueLineChart rows={dailyRevenueRows} title="Выручка по дням" subtitle={branchId === DASH_ALL_BRANCHES ? 'Суммарная динамика сети за выбранный месяц' : `Динамика филиала ${selectedBranchName}`} />
+    <DailyRevenueLineChart rows={dailyRevenueRows} title="Выручка по дням" subtitle={branchId === DASH_ALL_BRANCHES ? 'Суммарная динамика сети за выбранный месяц · без Wolt' : `Динамика филиала ${selectedBranchName} · без Wolt`} />
 
     <section className="dashboard-v416-grid">
       <div className="card dashboard-v416-expense-chart">
