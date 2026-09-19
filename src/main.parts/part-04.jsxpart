@@ -5191,7 +5191,7 @@ function ReportsBazarDailyFullCardV220() {
 }
 
 function Reports({ t, permissions = [], isAdmin = false }) {
-  const branches = useBranches()
+  const branches = useBranches(true)
   const [reports, setReports] = useState(() => readAikoSalesReports())
   const [branchMap, setBranchMap] = useState(() => readAikoBranchMap())
   const [reportsTab, setReportsTab] = useState('overview')
@@ -5679,7 +5679,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
 
       ;(dailyRows || []).forEach(row => {
         const category = row?.expense_categories?.name || row?.custom_category || 'Прочее'
-        if (String(row?.comment || '').startsWith('SUPPLIER_PURCHASE_') || isSalaryExpenseName(category) || isDsmfExpenseName(category) || isBazarExpenseName(category)) return
+        if (String(row?.comment || '').startsWith('SUPPLIER_PURCHASE_') || isSalaryExpenseName(category) || isDsmfExpenseName(category) || isBazarExpenseName(category) || isServiceChargeStaffExpenseName(category)) return
         pushRow({
           id: `daily-${row.id}`,
           source: 'Операционные расходы',
@@ -5765,20 +5765,20 @@ function Reports({ t, permissions = [], isAdmin = false }) {
         if (/^year:\d{4}$/.test(String(monthFilter))) return month.startsWith(String(monthFilter).replace('year:', ''))
         return month === String(monthFilter)
       }
-      ;(serviceRows || []).filter(row => serviceMonthAllowed(row.month)).forEach(row => {
+      const enabledServiceBranchIds = new Set((branches || []).filter(branch => branch.service_charge_enabled).map(branch => String(branch.id)))
+      ;(serviceRows || []).filter(row => serviceMonthAllowed(row.month) && enabledServiceBranchIds.has(String(row.branch_id))).forEach(row => {
         const amount = parseNum(row.staff_cost_amount)
         if (!amount) return
         pushRow({
           id: `service-${row.branch_id}-${row.month}`,
-          source: 'Справочно',
+          source: 'Начисление',
           branch_id: row.branch_id,
           branch_name: branchNameById.get(String(row.branch_id)) || row.branch_id || '—',
           expense_date: row.month || '',
           category_name: 'Service charge персоналу',
-          comment: 'Показывается отдельно: не входит в расходы и чистую прибыль',
+          comment: 'Отдельная статья расходов филиала',
           amount,
-          bucket: 'serviceCharge',
-          informational: true
+          bucket: 'serviceCharge'
         })
       })
       const taxSettings = await readRmsAppSetting(RMS_BRANCH_TAX_RATE_SETTING, {})
@@ -5958,7 +5958,9 @@ function Reports({ t, permissions = [], isAdmin = false }) {
       if (employeesError) throw employeesError
       const employeeRows = employeeRowsRaw || []
       const salaryPeriods = salaryResult?.error ? [] : (salaryResult?.data || [])
-      const serviceRows = serviceResult?.error ? [] : (serviceResult?.data || [])
+      const enabledServiceBranchIds = new Set((branches || []).filter(branch => branch.service_charge_enabled).map(branch => String(branch.id)))
+      const serviceRows = (serviceResult?.error ? [] : (serviceResult?.data || []))
+        .filter(row => enabledServiceBranchIds.has(String(row.branch_id)))
       const taxSettings = await readRmsAppSetting(RMS_BRANCH_TAX_RATE_SETTING, {})
 
       const employeeById = new Map(employeeRows.map(row => [String(row.id), row]))
@@ -6165,7 +6167,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
         const configuredTaxRate = parseNum(taxSettings?.[id])
         const taxRate = configuredTaxRate > 0 ? configuredTaxRate : 8
         const tax = parseNum(revenueData.revenue) * taxRate / 100
-        const totalExpenses = parseNum(expenseData.operating) + supplierFoodCost + salary + tax
+        const totalExpenses = parseNum(expenseData.operating) + supplierFoodCost + salary + serviceCost + tax
         const net = parseNum(revenueData.revenue) - totalExpenses
         const activeDays = revenueData.days?.size || 0
         const supplierDetails = supplierPurchases.map(purchase => ({
@@ -6191,7 +6193,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
             details: [...(category.details || [])].sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')))
           })),
           ...(salary ? [{ key: 'salary', name: 'Зарплаты', amount: salary, transactions: salaryDetails.length, details: salaryDetails }] : []),
-          ...(serviceCost ? [{ key: 'service-charge', name: 'Service charge персоналу (справочно, не входит в P&L)', amount: serviceCost, transactions: (serviceDetailsByBranch.get(id) || []).length, details: serviceDetailsByBranch.get(id) || [], informational: true }] : []),
+          ...(serviceCost ? [{ key: 'service-charge', name: 'Service charge персоналу', amount: serviceCost, transactions: (serviceDetailsByBranch.get(id) || []).length, details: serviceDetailsByBranch.get(id) || [] }] : []),
           ...(tax ? [{
             key: 'tax',
             name: 'Налог',

@@ -24,11 +24,11 @@ assert.ok(shared.includes('food: parseNum(networkTotals.food) * share'), 'Every 
 assert.ok(!shared.includes('const directRows = (purchaseRows || []).filter'), 'Branch-tagged supplier purchases must not bypass revenue allocation')
 
 assert.ok(finance.includes('isSalaryExpenseName(name) || isBazarExpenseName(name)'), 'Dashboard must exclude manual Bazar expenses')
-assert.ok(finance.includes('totalExpenses: expenses + salary + tax'), 'Dashboard total expenses must continue to include tax')
+assert.ok(finance.includes('totalExpenses: expenses + salary + serviceCost + tax'), 'Dashboard total expenses must include service charge and tax')
 assert.ok(finance.includes('const preliminarySupplierExpense = allocatedSupplierExpenseTotal'), 'Finance must describe the complete allocated supplier amount')
 assert.ok(reports.includes('const targets = Array.from(revenueShareMap.entries())'), 'Expense report must allocate every supplier invoice across revenue branches')
 assert.ok(reports.includes('const supplierFoodCost = supplierPurchases.reduce'), 'Profitability report must use network supplier purchases')
 assert.ok(reports.includes('if (isBazarExpenseName(name)) return'), 'Reports must exclude manual Bazar expenses')
-assert.ok(reports.includes('const totalExpenses = parseNum(expenseData.operating) + supplierFoodCost + salary + tax'), 'Branch profitability must continue to include tax')
+assert.ok(reports.includes('const totalExpenses = parseNum(expenseData.operating) + supplierFoodCost + salary + serviceCost + tax'), 'Branch profitability must include service charge and tax')
 
 console.log('Supplier revenue allocation v421 checks passed')

@@ -180,7 +180,7 @@ function rmsForecastPreviousMonths(y, m, count = 3) {
 function rmsForecastSumExpenseGroups(rows = []) {
   return (rows || []).reduce((map, r) => {
     const name = r?.expense_categories?.name || r?.custom_category || ''
-    if (isSalaryExpenseName(name) || isDsmfExpenseName(name) || isBazarExpenseName(name)) return map
+    if (isSalaryExpenseName(name) || isDsmfExpenseName(name) || isBazarExpenseName(name) || isServiceChargeStaffExpenseName(name)) return map
     const group = rmsFinanceExpenseGroupName(name)
     map[group] = parseNum(map[group]) + parseNum(r.amount)
     return map
@@ -294,7 +294,7 @@ async function rmsCalculateNetworkForecastForMonth(y, m, scopeBranchId = 'all') 
       const group = rmsFinanceExpenseGroupName(name)
       // DSMF ручной/оплаченный из daily_expenses не должен попадать в прогноз.
       // В прогнозе DSMF считается только как начисленный DSMF по официальным зарплатам сотрудников.
-      if (isSalaryExpenseName(name) || isDsmfExpenseName(name) || isBazarExpenseName(name) || group === 'rent') return
+      if (isSalaryExpenseName(name) || isDsmfExpenseName(name) || isBazarExpenseName(name) || isServiceChargeStaffExpenseName(name) || group === 'rent') return
       addArticle(map, articleNameForExpense(row), row.amount)
     })
     const supplierTotals = rmsFinanceSupplierTotalsForScope(purchaseRows || [], selectedBranchId, shareMap)
@@ -585,15 +585,9 @@ async function rmsCalculateNetworkForecastForMonth(y, m, scopeBranchId = 'all') 
     { name: 'Зарплата', amount: salaryForecast, note: salaryForecastNote, keepVisible: true },
     { name: 'Аренда', amount: rentForecast, note: configuredRent > 0 ? 'фиксированная аренда из настроек филиалов' : rentCurrent > 0 ? 'из текущих расходов, так как аренда в настройках не заполнена' : rentHistory > 0 ? 'среднее прошлых месяцев, так как аренда в настройках не заполнена' : 'не заполнена в настройках и нет истории' },
     { name: 'DSMF', amount: dsmfForecast, note: dsmfForecastNote, keepVisible: true },
+    { name: 'Service charge персоналу', amount: serviceForecast, note: serviceForecastNote },
     { name: `Налог ${fmt(effectiveForecastTaxRate)}%`, amount: taxForecast, note: selectedBranchId === 'all' ? 'сумма налогов по ставке каждого филиала от его прогнозной выручки' : 'ставка выбранного филиала от прогнозной выручки' }
   ].filter(row => row.keepVisible || parseNum(row.amount) > 0)
-  const informationalDetails = serviceForecast > 0 ? [{
-    name: 'Service charge персоналу (справочно)',
-    amount: serviceForecast,
-    note: `${serviceForecastNote}; не входит в расходы и расчёт прибыли`,
-    type: 'informational'
-  }] : []
-
   const forecastExpenseMap = new Map()
   ;[...articleDetails, ...fixedDetails].forEach(row => {
     const key = String(row?.name || 'Прочее').trim() || 'Прочее'
@@ -614,8 +608,7 @@ async function rmsCalculateNetworkForecastForMonth(y, m, scopeBranchId = 'all') 
   const forecastMargin = forecastRevenue > 0 ? forecastProfit / forecastRevenue * 100 : 0
   const details = [
     { name: 'Прогноз выручки', amount: forecastRevenue, type: 'revenue', note: `${fmt(avg)} × ${monthDays} дней` },
-    ...forecastExpenseRows.sort((a, b) => parseNum(b.amount) - parseNum(a.amount)),
-    ...informationalDetails
+    ...forecastExpenseRows.sort((a, b) => parseNum(b.amount) - parseNum(a.amount))
   ]
 
   return { forecastRevenue, forecastProfit, avg, forecastExpenses, forecastMargin, details }
@@ -1545,7 +1538,7 @@ function rmsSalaryPeriodTotal(row = {}) {
 
 function Dashboard({ t }) {
   const DEFAULT_TAX_RATE = 8
-  const branches = useBranches()
+  const branches = useBranches(true)
   const DASH_ALL_BRANCHES = '__all__'
   const now = new Date()
   const [branchId, setBranchId] = useState(DASH_ALL_BRANCHES)
@@ -1639,7 +1632,7 @@ function Dashboard({ t }) {
     ;(dashboardDailyExpensesResult?.data || []).forEach(r => {
       const name = r.expense_categories?.name || r.custom_category || t('new_expense')
       if (String(r?.comment || '').startsWith('SUPPLIER_PURCHASE_')) return
-      if (isSalaryExpenseName(name) || isBazarExpenseName(name)) return
+      if (isSalaryExpenseName(name) || isBazarExpenseName(name) || isServiceChargeStaffExpenseName(name)) return
       dashboardRawExpenseByBranch.set(r.branch_id, (dashboardRawExpenseByBranch.get(r.branch_id) || 0) + parseNum(r.amount))
     })
 
@@ -1668,7 +1661,7 @@ function Dashboard({ t }) {
       const fallbackMonthlyExpenses = parseNum(expByBranch.get(b.id)?.total_expenses)
       const baseExpenses = dashboardDailyExpensesResult?.data ? parseNum(dashboardRawExpenseByBranch.get(b.id)) : fallbackMonthlyExpenses
       const baseSalary = parseNum(salByBranch.get(b.id)?.total_salary)
-      const serviceCost = parseNum(svcByBranch.get(b.id)?.staff_cost_amount)
+      const serviceCost = b.service_charge_enabled ? parseNum(svcByBranch.get(b.id)?.staff_cost_amount) : 0
       const configuredTaxRate = parseNum(branchTaxSetting?.[b.id])
       const taxRate = configuredTaxRate > 0 ? configuredTaxRate : DEFAULT_TAX_RATE
       const tax = revenue * taxRate / 100
@@ -1682,7 +1675,7 @@ function Dashboard({ t }) {
       const calculatedSalary = parseNum(rmsFinancePayrollDetailsForScope(employeeRows || [], b.id, revenueShareMap).totalSalary)
       const salary = calculatedSalary > 0 ? calculatedSalary : baseSalary
       const expenses = baseExpenses + supplierExtra
-      const net = revenue - expenses - salary - tax
+      const net = revenue - expenses - salary - serviceCost - tax
       baseTotals.revenue += revenue
       baseTotals.expenses += expenses
       baseTotals.salary += salary
@@ -1700,7 +1693,7 @@ function Dashboard({ t }) {
         serviceCost,
         tax,
         taxRate,
-        totalExpenses: expenses + salary + tax,
+        totalExpenses: expenses + salary + serviceCost + tax,
         preliminarySupplierExpense,
         net,
         margin: revenue ? net / revenue * 100 : 0
@@ -1764,15 +1757,23 @@ function Dashboard({ t }) {
     ;(dashboardDailyExpensesResult?.data || []).forEach(row => {
       if (branchId !== DASH_ALL_BRANCHES && String(row.branch_id || '') !== String(branchId)) return
       const name = row.expense_categories?.name || row.custom_category || t('new_expense')
-      if (String(row?.comment || '').startsWith('SUPPLIER_PURCHASE_') || isSalaryExpenseName(name) || isBazarExpenseName(name)) return
+      if (String(row?.comment || '').startsWith('SUPPLIER_PURCHASE_') || isSalaryExpenseName(name) || isBazarExpenseName(name) || isServiceChargeStaffExpenseName(name)) return
       expenseArticleMap.set(name, parseNum(expenseArticleMap.get(name)) + parseNum(row.amount))
     })
     const supplierTotalsForDashboard = rmsFinanceSupplierTotalsForScope(purchaseRowsForFinance || [], branchId, revenueShareMap)
     const supplierFood = parseNum(supplierTotalsForDashboard.food)
     if (supplierFood > 0) expenseArticleMap.set('Поставщики / закупки', supplierFood)
+    const supplierPackaging = parseNum(supplierTotalsForDashboard.packaging)
+    const supplierHousehold = parseNum(supplierTotalsForDashboard.household)
+    const supplierOther = parseNum(supplierTotalsForDashboard.other)
+    if (supplierPackaging > 0) expenseArticleMap.set('Take away / packaging', supplierPackaging)
+    if (supplierHousehold > 0) expenseArticleMap.set('Хозтовары', supplierHousehold)
+    if (supplierOther > 0) expenseArticleMap.set('Закупки поставщиков / прочее', supplierOther)
     const salaryTotal = dashboardBranchRows.reduce((sum, row) => sum + parseNum(row.salary), 0)
+    const serviceCostTotal = dashboardBranchRows.reduce((sum, row) => sum + parseNum(row.serviceCost), 0)
     const taxTotal = dashboardBranchRows.reduce((sum, row) => sum + parseNum(row.tax), 0)
     if (salaryTotal > 0) expenseArticleMap.set('Зарплаты', salaryTotal)
+    if (serviceCostTotal > 0) expenseArticleMap.set('Service charge персоналу', serviceCostTotal)
     if (taxTotal > 0) expenseArticleMap.set('Налог', taxTotal)
     const expenseRows = Array.from(expenseArticleMap, ([name, amount]) => ({ name, amount }))
       .filter(row => row.amount > 0)
@@ -2098,7 +2099,7 @@ function Finance({ t, lang, onGoToExpense }) {
     return value > 0 ? value : TAX_RATE
   }
 
-  const branches = useBranches()
+  const branches = useBranches(true)
   const now = new Date()
   const [branchId, setBranchId] = useState(ALL_BRANCHES)
   const [year, setYear] = useState(now.getFullYear())
@@ -2734,7 +2735,8 @@ function Finance({ t, lang, onGoToExpense }) {
     const revenue = (revRows || []).reduce((s, r) => s + parseNum(r.total_revenue), 0)
     const expenses = (expRows || []).reduce((s, r) => s + parseNum(r.total_expenses), 0)
     const salary = (salRows || []).reduce((s, r) => s + rmsSalaryPeriodTotal(r), 0)
-    const serviceCost = (svcRows || []).reduce((s, r) => s + parseNum(r.staff_cost_amount), 0)
+    const enabledServiceBranchIds = new Set((branches || []).filter(b => b.service_charge_enabled).map(b => String(b.id)))
+    const serviceCost = (svcRows || []).filter(r => enabledServiceBranchIds.has(String(r.branch_id))).reduce((s, r) => s + parseNum(r.staff_cost_amount), 0)
     const cash = (revRows || []).reduce((s, r) => s + parseNum(r.cash_amount), 0)
     const bank = (revRows || []).reduce((s, r) => s + parseNum(r.bank_amount), 0)
     const wolt = (revRows || []).reduce((s, r) => s + parseNum(r.wolt_amount), 0)
@@ -2746,7 +2748,7 @@ function Finance({ t, lang, onGoToExpense }) {
       return sum + rowRevenue * (rate / 100)
     }, 0)
     const effectiveTaxRate = revenue > 0 ? tax / revenue * 100 : (branch !== ALL_BRANCHES ? financeTaxRateForBranch(branch, taxRates) : TAX_RATE)
-    const net = revenue - expenses - salary - tax
+    const net = revenue - expenses - salary - serviceCost - tax
 
     const syncedForecast = await rmsFinanceForecastEngine(y, m, branch)
     const avg = parseNum(syncedForecast.avg)
@@ -2858,6 +2860,12 @@ function Finance({ t, lang, onGoToExpense }) {
           : ''
       })
     }
+    if (parseNum(current.serviceCost) > 0) {
+      map.set('Service charge персоналу', {
+        amount: parseNum(current.serviceCost),
+        note: 'отдельная статья расходов только для филиалов с включённым service charge'
+      })
+    }
 
     let expenseRows = [...map.entries()].map(([name, value]) => (
       value && typeof value === 'object'
@@ -2901,7 +2909,7 @@ function Finance({ t, lang, onGoToExpense }) {
       { name: 'Выручка', amount: currentForFinance.revenue, note: 'monthly_branch_revenue' },
       { name: 'Операционные расходы', amount: currentForFinance.expenses, note: 'daily_expenses без supplier mirror, ручного Базара и salary-like строк + все supplier purchases по доле выручки' },
       { name: 'Зарплаты', amount: currentForFinance.salary, note: 'единая payroll-логика с долей менеджеров' },
-      { name: 'Service charge персоналу (справочно)', amount: currentForFinance.serviceCost, note: 'monthly_branch_service_charge_cost; не входит в расходы и прибыль' },
+      { name: 'Service charge персоналу', amount: currentForFinance.serviceCost, note: 'monthly_branch_service_charge_cost; отдельная статья расходов' },
       { name: `Налог ${fmt(currentForFinance.taxRate || TAX_RATE)}%`, amount: currentForFinance.tax, note: 'процент налогообложения по настройкам филиала' },
       { name: 'Итого расходов по единой формуле', amount: financeActualExpenseTotal, note: 'сумма статей в “Расходы по статьям”' },
       { name: 'Чистая прибыль', amount: currentForFinance.net, note: 'выручка − все расходы' },

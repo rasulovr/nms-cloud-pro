@@ -1406,6 +1406,11 @@ const isSalaryExpenseName = (value) => {
   const name = normalizeExpenseText(value)
   return name.includes('зарплат') || name.includes('salary') || name.includes('emek haqq') || name.includes('əmək haqq')
 }
+const isServiceChargeStaffExpenseName = (value) => {
+  const name = normalizeExpenseText(value)
+  return (name.includes('service') || name.includes('сервис'))
+    && (name.includes('персонал') || name.includes('staff') || name.includes('сотрудник'))
+}
 const RMS_LOGIN_GUARD_KEY = 'rms_login_guard_v1'
 const RMS_LOGIN_MAX_FAILED_ATTEMPTS = 5
 const RMS_LOGIN_LOCK_MS = 5 * 60 * 1000
