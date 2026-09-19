@@ -2663,6 +2663,36 @@ function Finance({ t, lang, onGoToExpense }) {
     let directDsmf = 0
     let managersDsmf = 0
 
+    const accruedRows = (salaryPeriodRows || []).filter(row => rmsSalaryPeriodTotal(row) > 0)
+    if (accruedRows.length) {
+      const employeeById = new Map((employeeRows || []).map(employee => [String(employee.id), employee]))
+      ;(accruedRows || []).forEach(row => {
+        const accrued = rmsSalaryPeriodTotal(row)
+        const employee = employeeById.get(String(row.employee_id)) || {}
+        const periodBranchId = row.branch_id || employee.branch_id
+        const isManager = !periodBranchId || positionGroup(employee.position) === 'Менеджеры'
+        const dsmf = statutoryRestaurantOfficialPayrollCost(accrued).total
+        if (isManager) {
+          managersSalary += accrued
+          managersDsmf += dsmf
+        } else if (selectedBranchId === ALL_BRANCHES || String(periodBranchId) === String(selectedBranchId)) {
+          directSalary += accrued
+          directDsmf += dsmf
+        }
+      })
+
+      const share = selectedBranchId === ALL_BRANCHES ? 1 : parseNum(revenueShareMap.get(selectedBranchId))
+      return {
+        directSalary,
+        managersSalary: selectedBranchId === ALL_BRANCHES ? managersSalary : managersSalary * share,
+        totalSalary: directSalary + (selectedBranchId === ALL_BRANCHES ? managersSalary : managersSalary * share),
+        directDsmf,
+        managersDsmf: selectedBranchId === ALL_BRANCHES ? managersDsmf : managersDsmf * share,
+        totalDsmf: directDsmf + (selectedBranchId === ALL_BRANCHES ? managersDsmf : managersDsmf * share),
+        managerShare: share
+      }
+    }
+
     ;(employeeRows || []).forEach(e => {
       const base = parseNum(baseMap.get(e.id))
       if (base <= 0) return

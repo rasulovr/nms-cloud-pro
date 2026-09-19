@@ -2045,6 +2045,12 @@ function Settings({ session, t, theme, setTheme, lang, setLang }) {
   const [advanceImportRows, setAdvanceImportRows] = useState([])
   const [advanceImportBusy, setAdvanceImportBusy] = useState(false)
   const [advanceImportReport, setAdvanceImportReport] = useState(null)
+  const [payrollImportText, setPayrollImportText] = useState('')
+  const [payrollImportRows, setPayrollImportRows] = useState([])
+  const [payrollImportBusy, setPayrollImportBusy] = useState(false)
+  const [payrollImportReport, setPayrollImportReport] = useState(null)
+  const [payrollImportYear, setPayrollImportYear] = useState('2026')
+  const [payrollImportMonth, setPayrollImportMonth] = useState('8')
   const [iikoConnections, setIikoConnections] = useState([])
   const [iikoSyncLogs, setIikoSyncLogs] = useState([])
   const [iikoForm, setIikoForm] = useState({ branch_id: '', organization_id: '', terminal_group_id: '', sync_enabled: true })
@@ -3492,6 +3498,204 @@ function Settings({ session, t, theme, setTheme, lang, setLang }) {
     }
   }
 
+  function parsePayrollImport(textValue = payrollImportText) {
+    const source = String(textValue || '').replace(/^\uFEFF/, '')
+    const lines = source.split(/\r?\n/).map(l => l.trim()).filter(Boolean)
+    const parsed = []
+    if (!lines.length) {
+      setPayrollImportRows([])
+      setPayrollImportReport({ errors: ['Пока нет данных для распознавания'] })
+      return []
+    }
+
+    const first = splitImportLine(lines[0]).map(x => normalizeImportValue(x))
+    const hasCsvHeader = first.includes('branch') && first.includes('name') && first.includes('salary')
+    if (!hasCsvHeader) {
+      setPayrollImportRows([])
+      setPayrollImportReport({ errors: ['Нужен CSV: branch,position,name,salary,advance. Поле position необязательно.'] })
+      return []
+    }
+
+    const header = first
+    const idxBranch = header.indexOf('branch')
+    const idxPosition = header.indexOf('position')
+    const idxName = header.indexOf('name')
+    const idxSalary = header.indexOf('salary')
+    const idxAdvance = header.indexOf('advance')
+    lines.slice(1).forEach((line, idx) => {
+      const cells = splitImportLine(line)
+      const branch = String(cells[idxBranch] || '').trim()
+      const position = idxPosition >= 0 ? String(cells[idxPosition] || '').trim() : ''
+      const name = cleanImportEmployeeName(cells[idxName] || '')
+      const salary = parseNum(cells[idxSalary])
+      const advance = idxAdvance >= 0 ? parseNum(cells[idxAdvance]) : 0
+      if (branch && name && salary >= 0 && advance >= 0) parsed.push({ branch, position, name, salary, advance, line: idx + 2 })
+    })
+
+    setPayrollImportRows(parsed)
+    setPayrollImportReport({ errors: parsed.length ? [] : ['Не удалось распознать начисления. Проверьте филиал, имя и сумму зарплаты.'] })
+    return parsed
+  }
+
+  async function importPayrollToRms() {
+    setMsg('')
+    const rows = payrollImportRows.length ? payrollImportRows : parsePayrollImport()
+    if (!rows.length) return setMsg('Нет распознанных строк начислений')
+    const year = Number(payrollImportYear)
+    const month = Number(payrollImportMonth)
+    if (!year || !month) return setMsg('Укажите год и месяц для импорта начислений')
+    const monthDate = monthStart(year, month)
+    const monthEndDate = `${year}-${String(month)}-${String(daysInMonth(year, month))}`
+    const periodLabel = `${I18N.ru.months[month - 1]} ${year}`
+    if (!window.confirm(`Импортировать начисления и авансы за ${periodLabel}: ${rows.length} сотрудников?`)) return
+
+    setPayrollImportBusy(true)
+    const report = { imported: 0, skipped: 0, createdEmployees: 0, replacedAdvances: 0, salaryTotal: 0, advanceTotal: 0, errors: [] }
+    const importAdvanceComment = `Импорт из Excel: аванс за ${periodLabel}`
+    const importSalaryComment = `Импорт из Excel: начисление за ${periodLabel}`
+
+    try {
+      const { data: existingEmployees, error: empError } = await supabase
+        .from('employees')
+        .select('id, full_name, branch_id, position, monthly_salary, daily_rate, salary_type, is_active, employment_status')
+      if (empError) throw empError
+
+      for (const row of rows) {
+        const branch = findImportBranch(row.branch)
+        if (!branch.matched) {
+          report.skipped += 1
+          report.errors.push(`Строка ${row.line}: филиал не найден — ${row.branch}`)
+          continue
+        }
+
+        let employee = findEmployeeForAttendance(existingEmployees || [], row, branch.branch_id)
+        if (!employee) {
+          const { data: createdEmployee, error: createEmployeeError } = await supabase
+            .from('employees')
+            .insert({
+              full_name: row.name,
+              position: row.position || null,
+              branch_id: branch.branch_id || null,
+              salary_type: 'monthly',
+              monthly_salary: 0,
+              daily_rate: 0,
+              is_active: false,
+              employment_status: 'terminated',
+              hired_at: monthDate,
+              terminated_at: monthEndDate
+            })
+            .select('id, full_name, branch_id, position, monthly_salary, daily_rate, salary_type, is_active, employment_status')
+            .single()
+          if (createEmployeeError) {
+            report.skipped += 1
+            report.errors.push(`Строка ${row.line}: не удалось создать архивную карточку ${row.name}: ${createEmployeeError.message}`)
+            continue
+          }
+          employee = createdEmployee
+          existingEmployees.push(createdEmployee)
+          report.createdEmployees += 1
+        }
+
+        const { data: previousSalary, error: salaryReadError } = await supabase
+          .from('salary_periods')
+          .select('*')
+          .eq('employee_id', employee.id)
+          .eq('salary_month', monthDate)
+          .maybeSingle()
+        if (salaryReadError) {
+          report.skipped += 1
+          report.errors.push(`${row.name}: ${salaryReadError.message}`)
+          continue
+        }
+
+        const { data: importedAdvances, error: advancesReadError } = await supabase
+          .from('salary_advances')
+          .select('id')
+          .eq('employee_id', employee.id)
+          .gte('advance_date', monthDate)
+          .lte('advance_date', monthEndDate)
+          .eq('comment', importAdvanceComment)
+          .or('is_cancelled.is.null,is_cancelled.eq.false')
+        if (advancesReadError) {
+          report.skipped += 1
+          report.errors.push(`${row.name}: ${advancesReadError.message}`)
+          continue
+        }
+        if (importedAdvances?.length) {
+          const { error: cancelError } = await supabase
+            .from('salary_advances')
+            .update({ is_cancelled: true, comment: `Отменено перед повторным импортом: ${importAdvanceComment}` })
+            .in('id', importedAdvances.map(item => item.id))
+          if (cancelError) {
+            report.skipped += 1
+            report.errors.push(`${row.name}: ${cancelError.message}`)
+            continue
+          }
+          report.replacedAdvances += importedAdvances.length
+        }
+
+        if (parseNum(row.advance) > 0) {
+          const { error: advanceError } = await supabase.from('salary_advances').insert({
+            employee_id: employee.id,
+            branch_id: employee.branch_id || branch.branch_id || null,
+            advance_date: monthEndDate,
+            amount: parseNum(row.advance),
+            comment: importAdvanceComment
+          })
+          if (advanceError) {
+            report.skipped += 1
+            report.errors.push(`${row.name}: ${advanceError.message}`)
+            continue
+          }
+        }
+
+        const { data: allAdvances, error: allAdvancesError } = await supabase
+          .from('salary_advances')
+          .select('amount')
+          .eq('employee_id', employee.id)
+          .gte('advance_date', monthDate)
+          .lte('advance_date', monthEndDate)
+          .or('is_cancelled.is.null,is_cancelled.eq.false')
+        if (allAdvancesError) {
+          report.skipped += 1
+          report.errors.push(`${row.name}: ${allAdvancesError.message}`)
+          continue
+        }
+        const advanceTotal = (allAdvances || []).reduce((sum, item) => sum + parseNum(item.amount), 0)
+        const gross = parseNum(row.salary)
+        const deduction = parseNum(previousSalary?.deduction_amount)
+        const { error: salaryError } = await supabase.from('salary_periods').upsert({
+          employee_id: employee.id,
+          branch_id: employee.branch_id || branch.branch_id || null,
+          salary_month: monthDate,
+          worked_days: parseNum(previousSalary?.worked_days),
+          salary_gross: gross,
+          salary_net: gross - advanceTotal - deduction,
+          advance_amount: advanceTotal,
+          deduction_amount: deduction,
+          card_payment: parseNum(previousSalary?.card_payment),
+          cash_payment: parseNum(previousSalary?.cash_payment),
+          comment: importSalaryComment
+        }, { onConflict: 'employee_id,salary_month' })
+        if (salaryError) {
+          report.skipped += 1
+          report.errors.push(`${row.name}: ${salaryError.message}`)
+          continue
+        }
+        report.imported += 1
+        report.salaryTotal += gross
+        report.advanceTotal += parseNum(row.advance)
+      }
+      setPayrollImportReport(report)
+      setMsg(`Импорт начислений завершён. Сотрудников: ${report.imported}, начислено: ${fmt(report.salaryTotal)} AZN, авансов: ${fmt(report.advanceTotal)} AZN, создано архивных: ${report.createdEmployees}, пропущено: ${report.skipped}.`)
+    } catch (e) {
+      setMsg(e.message || String(e))
+      setPayrollImportReport({ ...report, errors: [...report.errors, e.message || String(e)] })
+    } finally {
+      setPayrollImportBusy(false)
+    }
+  }
+
   async function importEmployeesToRms() {
     setMsg('')
     const rows = employeeImportRows.length ? employeeImportRows : parseEmployeeImport()
@@ -3937,6 +4141,7 @@ function Settings({ session, t, theme, setTheme, lang, setLang }) {
         {settingsTab === 'security' && <div className="span-2 settings-security-center"><SecurityRecoveryCenter embedded /></div>}
 
         {settingsTab === 'import' && <>
+          <div className="card span-2"><div className="card-head"><div><h3>Импорт начислений и авансов</h3><p className="hint">Загружает фактические начисления прямо в зарплатный период. Ставки действующих сотрудников не меняются. Отсутствующие сотрудники создаются как архивные карточки только для выбранного периода.</p></div><button className="small primary" disabled={payrollImportBusy || !payrollImportRows.length} onClick={importPayrollToRms}>{payrollImportBusy ? 'Импорт...' : 'Импортировать начисления'}</button></div><div className="form-grid compact"><label><span>Год</span><input value={payrollImportYear} onChange={e => setPayrollImportYear(e.target.value)} /></label><label><span>Месяц</span><select value={payrollImportMonth} onChange={e => setPayrollImportMonth(e.target.value)}>{I18N.ru.months.map((m, idx) => <option key={m} value={idx + 1}>{m}</option>)}</select></label><label><span>Распознать вставленный текст</span><button type="button" className="small" disabled={payrollImportBusy} onClick={() => parsePayrollImport()}>Распознать начисления</button></label></div><label><span>Вставить начисления и авансы</span><textarea rows="8" value={payrollImportText} onChange={e => { setPayrollImportText(e.target.value); setPayrollImportReport(null) }} placeholder={"branch,position,name,salary,advance\nBC1,Бариста,Иса,173.08,0"} /></label><div className="mini-grid"><div className="metric"><span>Распознано</span><strong>{payrollImportRows.length}</strong></div><div className="metric"><span>Начислено</span><strong>{fmt(payrollImportRows.reduce((s, r) => s + parseNum(r.salary), 0))}</strong></div><div className="metric"><span>Авансы</span><strong>{fmt(payrollImportRows.reduce((s, r) => s + parseNum(r.advance), 0))}</strong></div></div>{payrollImportReport?.errors?.length > 0 && <div className="notice"><b>Ошибки / предупреждения</b>{payrollImportReport.errors.slice(0, 12).map((e, i) => <p key={i} className="bad">{e}</p>)}{payrollImportReport.errors.length > 12 && <p className="hint">Показаны первые 12 ошибок из {payrollImportReport.errors.length}</p>}</div>}{payrollImportRows.length > 0 && <div className="table-wrap" style={{marginTop:12}}><table><thead><tr><th>Филиал</th><th>Сотрудник</th><th>Должность</th><th>Начислено</th><th>Авансы</th></tr></thead><tbody>{payrollImportRows.slice(0, 80).map((r, idx) => <tr key={`${r.line}-${idx}`}><td>{r.branch}</td><td><b>{r.name}</b></td><td>{r.position || '—'}</td><td>{fmt(r.salary)}</td><td>{fmt(r.advance)}</td></tr>)}{payrollImportRows.length > 80 && <tr><td colSpan="5" className="hint">Показаны первые 80 строк из {payrollImportRows.length}</td></tr>}</tbody></table></div>}<p className="hint">Авансы фиксируются последним днём выбранного месяца с пометкой «Импорт из Excel». Повторный импорт заменяет только ранее импортированные авансы.</p></div>
           <div className="card span-2"><div className="card-head"><div><h3>Импорт сотрудников</h3><p className="hint">Импортирует только постоянные данные: филиал, должность, имя сотрудника и оклад. Начисления, авансы, остатки и рабочие дни не импортируются.</p></div><button className="small primary" disabled={employeeImportBusy || !employeeImportRows.length} onClick={importEmployeesToRms}>{employeeImportBusy ? 'Импорт...' : 'Импортировать сотрудников'}</button></div><div className="form-grid compact"><label><span>CSV / TXT файл</span><input type="file" accept=".csv,.txt,text/csv,text/plain" disabled={employeeImportBusy} onChange={handleEmployeeImportFile} /></label><label><span>Распознать вставленный текст</span><button type="button" className="small" disabled={employeeImportBusy} onClick={() => parseEmployeeImport()}>Распознать</button></label></div><label><span>Вставить список сотрудников</span><textarea rows="8" value={employeeImportText} onChange={e => { setEmployeeImportText(e.target.value); setEmployeeImportReport(null) }} placeholder={"branch,position,name,salary\nB1-Xaqani,Повар,Элвин,700"} /></label><div className="mini-grid"><div className="metric"><span>Распознано</span><strong>{employeeImportRows.length}</strong></div><div className="metric"><span>Будет импортировано</span><strong>{employeeImportRows.length}</strong></div><div className="metric"><span>Режим</span><strong>Сотрудники</strong></div></div>{msg && <p className={`hint ${msg === t('saved') || String(msg).toLowerCase().includes('сохран') ? 'save-status' : 'good'}`}>{msg}</p>}{employeeImportReport?.errors?.length > 0 && <div className="notice"><b>Ошибки / предупреждения</b>{employeeImportReport.errors.slice(0, 12).map((e, i) => <p key={i} className="bad">{e}</p>)}{employeeImportReport.errors.length > 12 && <p className="hint">Показаны первые 12 ошибок из {employeeImportReport.errors.length}</p>}</div>}{employeeImportRows.length > 0 && <div className="table-wrap" style={{marginTop:12}}><table><thead><tr><th>Филиал</th><th>Должность</th><th>Сотрудник</th><th>Оклад</th></tr></thead><tbody>{employeeImportRows.slice(0, 80).map((r, idx) => <tr key={`${r.line}-${idx}`}><td>{r.branch}</td><td>{r.position}</td><td><b>{r.name}</b></td><td>{fmt(r.salary)}</td></tr>)}{employeeImportRows.length > 80 && <tr><td colSpan="4" className="hint">Показаны первые 80 строк из {employeeImportRows.length}</td></tr>}</tbody></table></div>}<p className="hint">Если сотрудник уже есть в этом филиале, будут обновлены должность и оклад. Если сотрудника нет — он будет создан.</p></div>
 
           <div className="card span-2">
