@@ -1968,8 +1968,23 @@ const RMS_APP_SETTINGS_TABLE = 'rms_app_settings'
 const RMS_CUSTOM_LOGO_KEY = 'custom_logo'
 const RMS_BRANCH_RENT_FORECAST_SETTING = 'branch_rent_forecast_v1'
 const RMS_BRANCH_TAX_RATE_SETTING = 'branch_tax_rate_v1'
+const RMS_BANK_COMMISSION_RATE_SETTING = 'bank_commission_rate_v1'
 const RMS_HIDDEN_SALES_KEYS_SETTING = 'hidden_sales_keys'
 const RMS_SALES_NAME_ALIASES_SETTING = 'sales_name_aliases'
+
+const RMS_DEFAULT_BANK_COMMISSION_RATE = 2
+const rmsBankCommissionRate = (value) => {
+  const parsed = parseNum(value)
+  return Math.min(100, Math.max(0, Number.isFinite(parsed) ? parsed : RMS_DEFAULT_BANK_COMMISSION_RATE))
+}
+const rmsNetRevenueParts = (row = {}, rate = RMS_DEFAULT_BANK_COMMISSION_RATE) => {
+  const cash = parseNum(row.cash_amount)
+  const bank = parseNum(row.bank_amount)
+  const wolt = parseNum(row.wolt_amount)
+  const commissionRate = rmsBankCommissionRate(rate)
+  const bankCommission = bank * commissionRate / 100
+  return { cash, bank, wolt, bankCommission, revenue: cash + bank - bankCommission + wolt }
+}
 
 const RMS_SOURCE_VERSION = 'preview_v415_preliminary_shared_allocation'
 const RMS_FULL_BACKUP_TABLES = [

@@ -7,8 +7,8 @@ const loader = source.match(/async function rmsLoadDailyRevenueRowsForChart[\s\S
 assert.ok(loader, 'daily revenue chart loader must exist')
 assert.match(
   loader,
-  /const value = parseNum\(row\.cash_amount\) \+ parseNum\(row\.bank_amount\)/,
-  'daily chart must use cash + bank'
+  /rmsNetRevenueParts\(\{ \.\.\.row, wolt_amount: 0 \}, bankCommissionRate\)/,
+  'daily chart must use cash plus bank after commission'
 )
 assert.doesNotMatch(
   loader,
@@ -24,8 +24,8 @@ assert.match(
 
 assert.match(
   source,
-  /const revenue = parseNum\(rev\.total_revenue\)/,
-  'overall dashboard revenue must keep the full revenue total'
+  /const revenueParts = rmsNetRevenueParts\(rev, bankCommissionRate\)[\s\S]*?const revenue = revenueParts\.revenue/,
+  'overall dashboard revenue must include Wolt and deduct bank commission'
 )
 
 assert.match(

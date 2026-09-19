@@ -228,7 +228,8 @@ async function rmsCalculateNetworkForecastForMonth(y, m, scopeBranchId = 'all') 
     { data: historicalSalaryPeriodRows },
     { data: branchesRaw },
     branchRentSetting,
-    branchTaxSetting
+    branchTaxSetting,
+    bankCommissionSetting
   ] = await Promise.all([
     supabase.from('monthly_branch_revenue').select('branch_id,total_revenue,cash_amount,bank_amount,wolt_amount').eq('month', monthDate),
     supabase.from('monthly_branch_service_charge_cost').select('branch_id,staff_cost_amount').eq('month', monthDate),
@@ -236,7 +237,7 @@ async function rmsCalculateNetworkForecastForMonth(y, m, scopeBranchId = 'all') 
     supabase.from('supplier_purchases').select('branch_id,purchase_date,total_amount,supplier_purchase_items(total_amount,supplier_products(name,category))').gte('purchase_date', monthDate).lt('purchase_date', monthEnd).is('deleted_at', null),
     supabase.from('daily_expenses').select('branch_id,expense_date,amount,custom_category,expense_categories(name)').gte('expense_date', historyStart).lt('expense_date', historyEnd).is('deleted_at', null),
     supabase.from('supplier_purchases').select('branch_id,purchase_date,total_amount,supplier_purchase_items(total_amount,supplier_products(name,category))').gte('purchase_date', historyStart).lt('purchase_date', historyEnd).is('deleted_at', null),
-    supabase.from('monthly_branch_revenue').select('branch_id,month,total_revenue').gte('month', historyStart).lt('month', historyEnd),
+    supabase.from('monthly_branch_revenue').select('branch_id,month,total_revenue,cash_amount,bank_amount,wolt_amount').gte('month', historyStart).lt('month', historyEnd),
     supabase.from('employees').select('id,branch_id,position,monthly_salary,salary_type,daily_rate,is_active,employment_status').eq('is_active', true),
     supabase.from('salary_periods').select('branch_id,salary_month,salary_gross,salary_net').eq('salary_month', monthDate),
     supabase.from('salary_periods').select('branch_id,salary_month,salary_gross,salary_net').gte('salary_month', historyStart).lt('salary_month', historyEnd),
@@ -244,8 +245,11 @@ async function rmsCalculateNetworkForecastForMonth(y, m, scopeBranchId = 'all') 
     supabase.from('salary_periods').select('employee_id,branch_id,salary_month,salary_gross,salary_net,card_payment,cash_payment,advance_amount,deduction_amount,previous_balance_amount,employees(id,branch_id,position,is_active,employment_status)').gte('salary_month', historyStart).lt('salary_month', historyEnd),
     supabase.from('branches').select('id,name,service_charge_enabled,service_charge_percent,service_staff_cost_percent').eq('is_active', true),
     readRmsAppSetting(RMS_BRANCH_RENT_FORECAST_SETTING, {}),
-    readRmsAppSetting(RMS_BRANCH_TAX_RATE_SETTING, {})
+    readRmsAppSetting(RMS_BRANCH_TAX_RATE_SETTING, {}),
+    readRmsAppSetting(RMS_BANK_COMMISSION_RATE_SETTING, RMS_DEFAULT_BANK_COMMISSION_RATE)
   ])
+
+  const bankCommissionRate = rmsBankCommissionRate(bankCommissionSetting)
 
   const branchIds = (branchesRaw || []).map(b => b.id)
   const selectedBranchId = scopeBranchId === '__all__' ? 'all' : (scopeBranchId || 'all')
@@ -253,15 +257,15 @@ async function rmsCalculateNetworkForecastForMonth(y, m, scopeBranchId = 'all') 
   const filterByBranch = row => !branchFilter || String(row?.branch_id || '') === branchFilter
 
   const revenueRows = (revRows || []).filter(filterByBranch)
-  const revenue = revenueRows.reduce((s, r) => s + parseNum(r.total_revenue), 0)
-  const networkRevenue = (revRows || []).reduce((s, r) => s + parseNum(r.total_revenue), 0)
+  const revenue = revenueRows.reduce((s, r) => s + rmsNetRevenueParts(r, bankCommissionRate).revenue, 0)
+  const networkRevenue = (revRows || []).reduce((s, r) => s + rmsNetRevenueParts(r, bankCommissionRate).revenue, 0)
   const revenueShareMap = new Map()
-  ;(revRows || []).forEach(r => revenueShareMap.set(String(r.branch_id), networkRevenue > 0 ? parseNum(r.total_revenue) / networkRevenue : 0))
+  ;(revRows || []).forEach(r => revenueShareMap.set(String(r.branch_id), networkRevenue > 0 ? rmsNetRevenueParts(r, bankCommissionRate).revenue / networkRevenue : 0))
   const revenueShareMapForMonth = (monthStartDate) => {
     const rows = (historicalRevenueRows || []).filter(row => String(row.month || '').slice(0, 10) === String(monthStartDate))
-    const total = rows.reduce((sum, row) => sum + parseNum(row.total_revenue), 0)
+    const total = rows.reduce((sum, row) => sum + rmsNetRevenueParts(row, bankCommissionRate).revenue, 0)
     const map = new Map()
-    rows.forEach(row => map.set(String(row.branch_id), total > 0 ? parseNum(row.total_revenue) / total : 0))
+    rows.forEach(row => map.set(String(row.branch_id), total > 0 ? rmsNetRevenueParts(row, bankCommissionRate).revenue / total : 0))
     return map
   }
 
@@ -542,7 +546,7 @@ async function rmsCalculateNetworkForecastForMonth(y, m, scopeBranchId = 'all') 
     return branchRevenueForecast * rate
   }
   const serviceForecast = selectedBranchId === 'all'
-    ? (revRows || []).reduce((sum, row) => sum + serviceForecastForBranch(row.branch_id, row.total_revenue), 0)
+    ? (revRows || []).reduce((sum, row) => sum + serviceForecastForBranch(row.branch_id, rmsNetRevenueParts(row, bankCommissionRate).revenue), 0)
     : serviceForecastForBranch(selectedBranchId, revenue)
   const serviceForecastNote = selectedBranchId === 'all'
     ? 'пропорционально прогнозной выручке только по филиалам, где включён service charge'
@@ -552,7 +556,7 @@ async function rmsCalculateNetworkForecastForMonth(y, m, scopeBranchId = 'all') 
   const taxSettings = branchTaxSetting && typeof branchTaxSetting === 'object' ? branchTaxSetting : {}
   const taxForecastParts = selectedBranchId === 'all'
     ? (revRows || []).map(row => {
-        const currentBranchRevenue = parseNum(row.total_revenue)
+        const currentBranchRevenue = rmsNetRevenueParts(row, bankCommissionRate).revenue
         const branchForecastRevenue = currentBranchRevenue / Math.max(1, passed) * monthDays
         const configuredRate = parseNum(taxSettings?.[row.branch_id])
         const rate = configuredRate > 0 ? configuredRate : DEFAULT_TAX_RATE
@@ -1501,13 +1505,18 @@ async function rmsLoadDailyRevenueRowsForChart(y, m, selectedBranchId = '__all__
     .select('branch_id,revenue_date,cash_amount,bank_amount,wolt_amount')
     .gte('revenue_date', start).lt('revenue_date', end).is('deleted_at', null)
   if (selectedBranchId && selectedBranchId !== '__all__') query = query.eq('branch_id', selectedBranchId)
-  const { data, error } = await query
+  const [{ data, error }, bankCommissionSetting] = await Promise.all([
+    query,
+    readRmsAppSetting(RMS_BANK_COMMISSION_RATE_SETTING, RMS_DEFAULT_BANK_COMMISSION_RATE)
+  ])
   if (error) throw error
+  const bankCommissionRate = rmsBankCommissionRate(bankCommissionSetting)
   const map = new Map()
   ;(data || []).forEach(row => {
     // Daily operating analytics intentionally exclude Wolt. Wolt remains part of
     // the dashboard's total revenue, Food Cost, profit and forecast calculations.
-    const value = parseNum(row.cash_amount) + parseNum(row.bank_amount)
+    const parts = rmsNetRevenueParts({ ...row, wolt_amount: 0 }, bankCommissionRate)
+    const value = parts.revenue
     map.set(row.revenue_date, parseNum(map.get(row.revenue_date)) + value)
   })
   return Array.from({ length: count }, (_, index) => {
@@ -1553,7 +1562,8 @@ function Dashboard({ t }) {
       paymentsResult,
       employeeResult,
       salaryPeriodResult,
-      branchTaxSetting
+      branchTaxSetting,
+      bankCommissionSetting
     ] = await Promise.all([
       supabase.from('monthly_branch_revenue').select('*').eq('month', monthDate),
       supabase.from('monthly_branch_expenses').select('*').eq('month', monthDate),
@@ -1567,8 +1577,11 @@ function Dashboard({ t }) {
       supabase.from('supplier_payments').select('supplier_id,amount'),
       supabase.from('employees').select('id,branch_id,position,monthly_salary,salary_type,daily_rate,is_active,employment_status').eq('is_active', true),
       supabase.from('salary_periods').select('employee_id,branch_id,salary_gross,salary_net,card_payment,cash_payment,advance_amount,deduction_amount,previous_balance_amount').eq('salary_month', monthDate),
-      readRmsAppSetting(RMS_BRANCH_TAX_RATE_SETTING, {})
+      readRmsAppSetting(RMS_BRANCH_TAX_RATE_SETTING, {}),
+      readRmsAppSetting(RMS_BANK_COMMISSION_RATE_SETTING, RMS_DEFAULT_BANK_COMMISSION_RATE)
     ])
+
+    const bankCommissionRate = rmsBankCommissionRate(bankCommissionSetting)
 
     const suppliersRaw = suppliersResult?.data || []
     const purchaseRowsForFinance = monthPurchasesResult?.data || []
@@ -1608,9 +1621,9 @@ function Dashboard({ t }) {
     const expByBranch = new Map((expRows || []).map(r => [r.branch_id, r]))
     const salByBranch = new Map(); (salRows || []).forEach(r => { const key = r.branch_id || ''; const current = salByBranch.get(key) || { branch_id:key, total_salary:0 }; current.total_salary += parseNum(r.salary_gross); salByBranch.set(key, current) })
     const svcByBranch = new Map((svcRows || []).map(r => [r.branch_id, r]))
-    const baseRevenueTotal = (revRows || []).reduce((s, r) => s + parseNum(r.total_revenue), 0)
+    const baseRevenueTotal = (revRows || []).reduce((s, r) => s + rmsNetRevenueParts(r, bankCommissionRate).revenue, 0)
     const revenueShareMap = new Map()
-    ;(revRows || []).forEach(r => revenueShareMap.set(r.branch_id, baseRevenueTotal > 0 ? parseNum(r.total_revenue) / baseRevenueTotal : 0))
+    ;(revRows || []).forEach(r => revenueShareMap.set(r.branch_id, baseRevenueTotal > 0 ? rmsNetRevenueParts(r, bankCommissionRate).revenue / baseRevenueTotal : 0))
 
     // v43 fix: Dashboard expenses must match Finance.
     // Finance uses real daily_expenses excluding supplier mirror rows, manual Bazar and salary-like rows,
@@ -1654,9 +1667,10 @@ function Dashboard({ t }) {
     const baseTotals = { revenue: 0, expenses: 0, salary: 0, serviceCost: 0, tax: 0 }
     const branchRows = branches.map(b => {
       const rev = revByBranch.get(b.id) || {}
-      const revenue = parseNum(rev.total_revenue)
+      const revenueParts = rmsNetRevenueParts(rev, bankCommissionRate)
+      const revenue = revenueParts.revenue
       const woltRevenue = Math.max(0, parseNum(rev.wolt_amount))
-      const baseRevenue = Math.max(0, parseNum(rev.cash_amount) + parseNum(rev.bank_amount))
+      const baseRevenue = Math.max(0, revenueParts.cash + revenueParts.bank - revenueParts.bankCommission)
       const revenueWithWolt = baseRevenue + woltRevenue
       const fallbackMonthlyExpenses = parseNum(expByBranch.get(b.id)?.total_expenses)
       const baseExpenses = dashboardDailyExpensesResult?.data ? parseNum(dashboardRawExpenseByBranch.get(b.id)) : fallbackMonthlyExpenses
@@ -1694,6 +1708,8 @@ function Dashboard({ t }) {
         serviceCost,
         tax,
         taxRate,
+        bankCommission: revenueParts.bankCommission,
+        bankCommissionRate,
         totalExpenses: expenses + salary + serviceCost + tax,
         preliminarySupplierExpense,
         net,
@@ -1801,11 +1817,15 @@ function Dashboard({ t }) {
 
     if (branchId !== DASH_ALL_BRANCHES) query = query.eq('branch_id', branchId)
 
-    const { data, error } = await query
+    const [{ data, error }, bankCommissionSetting] = await Promise.all([
+      query,
+      readRmsAppSetting(RMS_BANK_COMMISSION_RATE_SETTING, RMS_DEFAULT_BANK_COMMISSION_RATE)
+    ])
     if (error) throw error
+    const bankCommissionRate = rmsBankCommissionRate(bankCommissionSetting)
 
     return (data || []).reduce((sum, row) => {
-      return sum + parseNum(row.cash_amount) + parseNum(row.bank_amount) + parseNum(row.wolt_amount)
+      return sum + rmsNetRevenueParts(row, bankCommissionRate).revenue
     }, 0)
   }
 
@@ -1825,12 +1845,16 @@ function Dashboard({ t }) {
 
     if (branchId !== DASH_ALL_BRANCHES) query = query.eq('branch_id', branchId)
 
-    const { data, error } = await query
+    const [{ data, error }, bankCommissionSetting] = await Promise.all([
+      query,
+      readRmsAppSetting(RMS_BANK_COMMISSION_RATE_SETTING, RMS_DEFAULT_BANK_COMMISSION_RATE)
+    ])
     if (error) throw error
+    const bankCommissionRate = rmsBankCommissionRate(bankCommissionSetting)
 
     let lastDay = 0
     ;(data || []).forEach(row => {
-      const amount = parseNum(row.cash_amount) + parseNum(row.bank_amount) + parseNum(row.wolt_amount)
+      const amount = rmsNetRevenueParts(row, bankCommissionRate).revenue
       if (amount <= 0) return
       const day = Number(String(row.revenue_date || '').slice(8, 10))
       if (day > lastDay) lastDay = day
@@ -2262,9 +2286,11 @@ function Finance({ t, lang, onGoToExpense }) {
           .gte('revenue_date', start)
           .lt('revenue_date', end)
 
+        const bankCommissionRate = rmsBankCommissionRate(await readRmsAppSetting(RMS_BANK_COMMISSION_RATE_SETTING, RMS_DEFAULT_BANK_COMMISSION_RATE))
+
         const revenueMap = new Map()
         ;(revenueRows || []).forEach(r => {
-          const amount = parseNum(r.cash_amount) + parseNum(r.bank_amount)
+          const amount = rmsNetRevenueParts({ ...r, wolt_amount: 0 }, bankCommissionRate).revenue
           revenueMap.set(r.branch_id, parseNum(revenueMap.get(r.branch_id)) + amount)
         })
         const totalRevenue = Array.from(revenueMap.values()).reduce((s, v) => s + parseNum(v), 0)
@@ -2372,10 +2398,14 @@ function Finance({ t, lang, onGoToExpense }) {
 
   async function financeRevenueSharesForMonth(y, m) {
     const monthDate = monthStart(y, m)
-    const { data } = await supabase.from('monthly_branch_revenue').select('branch_id,total_revenue').eq('month', monthDate)
-    const total = (data || []).reduce((s, r) => s + parseNum(r.total_revenue), 0)
+    const [{ data }, bankCommissionSetting] = await Promise.all([
+      supabase.from('monthly_branch_revenue').select('branch_id,total_revenue,cash_amount,bank_amount,wolt_amount').eq('month', monthDate),
+      readRmsAppSetting(RMS_BANK_COMMISSION_RATE_SETTING, RMS_DEFAULT_BANK_COMMISSION_RATE)
+    ])
+    const bankCommissionRate = rmsBankCommissionRate(bankCommissionSetting)
+    const total = (data || []).reduce((s, r) => s + rmsNetRevenueParts(r, bankCommissionRate).revenue, 0)
     const map = new Map()
-    ;(data || []).forEach(r => map.set(r.branch_id, total > 0 ? parseNum(r.total_revenue) / total : 0))
+    ;(data || []).forEach(r => map.set(r.branch_id, total > 0 ? rmsNetRevenueParts(r, bankCommissionRate).revenue / total : 0))
     return { total, map }
   }
 
@@ -2395,11 +2425,15 @@ function Finance({ t, lang, onGoToExpense }) {
 
     if (selectedBranchId !== ALL_BRANCHES) query = query.eq('branch_id', selectedBranchId)
 
-    const { data } = await query
+    const [{ data }, bankCommissionSetting] = await Promise.all([
+      query,
+      readRmsAppSetting(RMS_BANK_COMMISSION_RATE_SETTING, RMS_DEFAULT_BANK_COMMISSION_RATE)
+    ])
+    const bankCommissionRate = rmsBankCommissionRate(bankCommissionSetting)
     const map = new Map()
     ;(data || []).forEach(r => {
       // Finance daily chart intentionally excludes Wolt settlement-period revenue.
-      const amount = parseNum(r.cash_amount) + parseNum(r.bank_amount)
+      const amount = rmsNetRevenueParts({ ...r, wolt_amount: 0 }, bankCommissionRate).revenue
       map.set(r.revenue_date, parseNum(map.get(r.revenue_date)) + amount)
     })
 
@@ -2761,9 +2795,16 @@ function Finance({ t, lang, onGoToExpense }) {
       svcQuery = svcQuery.eq('branch_id', branch)
     }
 
-    const [{ data: revRows }, { data: expRows }, { data: salRows }, { data: svcRows }] = await Promise.all([revQuery, expQuery, salQuery, svcQuery])
+    const [{ data: revRows }, { data: expRows }, { data: salRows }, { data: svcRows }, bankCommissionSetting] = await Promise.all([
+      revQuery,
+      expQuery,
+      salQuery,
+      svcQuery,
+      readRmsAppSetting(RMS_BANK_COMMISSION_RATE_SETTING, RMS_DEFAULT_BANK_COMMISSION_RATE)
+    ])
+    const bankCommissionRate = rmsBankCommissionRate(bankCommissionSetting)
 
-    const revenue = (revRows || []).reduce((s, r) => s + parseNum(r.total_revenue), 0)
+    const revenue = (revRows || []).reduce((s, r) => s + rmsNetRevenueParts(r, bankCommissionRate).revenue, 0)
     const expenses = (expRows || []).reduce((s, r) => s + parseNum(r.total_expenses), 0)
     const salary = (salRows || []).reduce((s, r) => s + rmsSalaryPeriodTotal(r), 0)
     const enabledServiceBranchIds = new Set((branches || []).filter(b => b.service_charge_enabled).map(b => String(b.id)))
@@ -2771,10 +2812,11 @@ function Finance({ t, lang, onGoToExpense }) {
     const cash = (revRows || []).reduce((s, r) => s + parseNum(r.cash_amount), 0)
     const bank = (revRows || []).reduce((s, r) => s + parseNum(r.bank_amount), 0)
     const wolt = (revRows || []).reduce((s, r) => s + parseNum(r.wolt_amount), 0)
+    const bankCommission = (revRows || []).reduce((s, r) => s + rmsNetRevenueParts(r, bankCommissionRate).bankCommission, 0)
 
     const taxRates = await financeBranchTaxRates()
     const tax = (revRows || []).reduce((sum, row) => {
-      const rowRevenue = parseNum(row.total_revenue)
+      const rowRevenue = rmsNetRevenueParts(row, bankCommissionRate).revenue
       const rate = financeTaxRateForBranch(row.branch_id || branch, taxRates)
       return sum + rowRevenue * (rate / 100)
     }, 0)
@@ -2786,7 +2828,7 @@ function Finance({ t, lang, onGoToExpense }) {
     const forecastRevenue = parseNum(syncedForecast.forecastRevenue)
     const forecastProfit = parseNum(syncedForecast.forecastProfit)
 
-    return { revenue, expenses, salary, serviceCost, cash, bank, wolt, tax, taxRate: effectiveTaxRate, gross: revenue, net, avg, forecastRevenue, forecastProfit, forecastDetails: syncedForecast.details || [], forecastExpenses: syncedForecast.forecastExpenses, forecastMargin: syncedForecast.forecastMargin }
+    return { revenue, expenses, salary, serviceCost, cash, bank, wolt, bankCommission, bankCommissionRate, tax, taxRate: effectiveTaxRate, gross: revenue, net, avg, forecastRevenue, forecastProfit, forecastDetails: syncedForecast.details || [], forecastExpenses: syncedForecast.forecastExpenses, forecastMargin: syncedForecast.forecastMargin }
   }
 
 
@@ -2805,11 +2847,15 @@ function Finance({ t, lang, onGoToExpense }) {
 
     if (branchId !== ALL_BRANCHES) query = query.eq('branch_id', branchId)
 
-    const { data, error } = await query
+    const [{ data, error }, bankCommissionSetting] = await Promise.all([
+      query,
+      readRmsAppSetting(RMS_BANK_COMMISSION_RATE_SETTING, RMS_DEFAULT_BANK_COMMISSION_RATE)
+    ])
     if (error) throw error
+    const bankCommissionRate = rmsBankCommissionRate(bankCommissionSetting)
 
     return (data || []).reduce((sum, row) => {
-      return sum + parseNum(row.cash_amount) + parseNum(row.bank_amount) + parseNum(row.wolt_amount)
+      return sum + rmsNetRevenueParts(row, bankCommissionRate).revenue
     }, 0)
   }
 
@@ -3106,7 +3152,7 @@ function Finance({ t, lang, onGoToExpense }) {
   const financePreviousNet = parseNum(stats.previous?.revenue) - financePreviousExpenses
   const profitChange = financePreviousNet ? ((financeNet - financePreviousNet) / Math.abs(financePreviousNet) * 100) : 0
   const financeProfitability = stats.revenue ? financeNet / stats.revenue * 100 : 0
-  const financePaidRevenue = parseNum(stats.cash) + parseNum(stats.bank)
+  const financePaidRevenue = parseNum(stats.cash) + parseNum(stats.bank) - parseNum(stats.bankCommission)
   const financeFoodCostAmount = (breakdown || []).filter(r => financeExpenseGroupName(r.name) === 'food_market' || String(r.name || '').toLowerCase().includes('food cost')).reduce((sum, r) => sum + parseNum(r.amount), 0)
   const financePackagingAmount = (breakdown || []).filter(r => financeExpenseGroupName(r.name) === 'packaging').reduce((sum, r) => sum + parseNum(r.amount), 0)
   const financeSalaryPct = stats.revenue ? parseNum(stats.salary) / parseNum(stats.revenue) * 100 : 0
@@ -9552,15 +9598,19 @@ function Suppliers({ t, isAdmin = false }) {
   )
 
   async function revenueDistributionForSupplierDate(expenseDate) {
-    const { data } = await supabase
-      .from('daily_revenue')
-      .select('branch_id,cash_amount,bank_amount,wolt_amount')
-      .eq('revenue_date', expenseDate)
+    const [{ data }, bankCommissionSetting] = await Promise.all([
+      supabase
+        .from('daily_revenue')
+        .select('branch_id,cash_amount,bank_amount,wolt_amount')
+        .eq('revenue_date', expenseDate),
+      readRmsAppSetting(RMS_BANK_COMMISSION_RATE_SETTING, RMS_DEFAULT_BANK_COMMISSION_RATE)
+    ])
+    const bankCommissionRate = rmsBankCommissionRate(bankCommissionSetting)
 
     const revenueByBranch = (data || [])
       .map(r => ({
         branch_id: r.branch_id,
-        revenue: parseNum(r.cash_amount) + parseNum(r.bank_amount) + parseNum(r.wolt_amount)
+        revenue: rmsNetRevenueParts(r, bankCommissionRate).revenue
       }))
       .filter(r => r.branch_id && r.revenue > 0)
 

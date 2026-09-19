@@ -2019,6 +2019,7 @@ function Settings({ session, t, theme, setTheme, lang, setLang }) {
   const [serviceSettings, setServiceSettings] = useState({ enabled: false, service_percent: '10', staff_cost_percent: '4' })
   const [branchRentSettings, setBranchRentSettings] = useState({})
   const [branchTaxSettings, setBranchTaxSettings] = useState({})
+  const [bankCommissionRate, setBankCommissionRate] = useState(String(RMS_DEFAULT_BANK_COMMISSION_RATE))
   const [fullName, setFullName] = useState('')
   const [legalForm, setLegalForm] = useState({ name: '', voen: '' })
   const [newUser, setNewUser] = useState({ login: '', password: '', full_name: '' })
@@ -2182,6 +2183,8 @@ function Settings({ session, t, theme, setTheme, lang, setLang }) {
     setBranchRentSettings(rentSettings && typeof rentSettings === 'object' ? rentSettings : {})
     const taxSettings = await readRmsAppSetting(RMS_BRANCH_TAX_RATE_SETTING, {})
     setBranchTaxSettings(taxSettings && typeof taxSettings === 'object' ? taxSettings : {})
+    const savedBankCommissionRate = await readRmsAppSetting(RMS_BANK_COMMISSION_RATE_SETTING, RMS_DEFAULT_BANK_COMMISSION_RATE)
+    setBankCommissionRate(String(rmsBankCommissionRate(savedBankCommissionRate)))
     if (!serviceBranchId && br?.[0]) setServiceBranchId(br[0].id)
     if (!iikoForm.branch_id && br?.[0]) setIikoForm(prev => ({ ...prev, branch_id: br[0].id }))
   }
@@ -2621,6 +2624,14 @@ function Settings({ session, t, theme, setTheme, lang, setLang }) {
     if (error) return setMsg('Не удалось сохранить налоги филиалов: ' + (error.message || String(error)))
     setBranchTaxSettings(normalized)
     setMsg('Проценты налогообложения филиалов сохранены')
+  }
+
+  async function saveBankCommissionRate() {
+    const normalized = rmsBankCommissionRate(bankCommissionRate)
+    const { error } = await writeRmsAppSetting(RMS_BANK_COMMISSION_RATE_SETTING, normalized)
+    if (error) return setMsg('Не удалось сохранить комиссию банка: ' + (error.message || String(error)))
+    setBankCommissionRate(String(normalized))
+    setMsg(`Комиссия банка ${fmt(normalized)}% сохранена`)
   }
 
 
@@ -3867,6 +3878,8 @@ function Settings({ session, t, theme, setTheme, lang, setLang }) {
           <div className="card span-2"><div className="card-head"><div><h3>Текущие филиалы</h3><p className="hint">Отключённый филиал исчезает из списков новых операций. Его выручка, расходы, документы и отчёты за прошлые периоды сохраняются.</p></div></div><div className="table-wrap"><table><thead><tr><th>Филиал</th><th>Статус</th><th></th></tr></thead><tbody>{branches.map(branch => <tr key={branch.id}><td><b>{branch.name}</b></td><td>{branch.is_active !== false ? 'Активен' : 'Отключён'}</td><td className="table-actions"><button type="button" className={branch.is_active !== false ? 'ghost small' : 'small primary'} onClick={() => setBranchActive(branch, branch.is_active === false)}>{branch.is_active !== false ? 'Отключить' : 'Включить'}</button></td></tr>)}</tbody></table></div></div>
 
           <div className="card span-2"><div className="card-head"><div><h3>Налогообложение по филиалам</h3><p className="hint">У каждого филиала может быть свой процент налога. Используется в “Финансы ресторанов” для расчёта чистой прибыли.</p></div><button className="small primary" onClick={saveBranchTaxSettings}>Сохранить налоги</button></div><div className="table-wrap"><table><thead><tr><th>Филиал</th><th>Налог, %</th></tr></thead><tbody>{branches.map(b => <tr key={b.id}><td><b>{b.name}</b></td><td><MoneyInput label="" value={branchTaxSettings?.[b.id] ?? '8'} onChange={v => setBranchTaxSettings(prev => ({ ...prev, [b.id]: v }))} /></td></tr>)}</tbody></table></div><p className="hint">Если поле пустое — используется стандартный налог 8%. Для филиалов с другим режимом укажите нужный процент.</p></div>
+
+          <div className="card span-2"><div className="card-head"><div><h3>Комиссия банка за безнал</h3><p className="hint">Из безналичной выручки автоматически вычитается комиссия банка. Исходная сумма безнала сохраняется; чистая выручка, налог, прибыль, прогнозы и графики считаются уже после комиссии.</p></div><button className="small primary" onClick={saveBankCommissionRate}>Сохранить комиссию</button></div><div className="form-grid compact"><MoneyInput label="Комиссия банка, %" value={bankCommissionRate} onChange={setBankCommissionRate} /></div><p className="hint">Текущее правило: безнал × (1 − {fmt(rmsBankCommissionRate(bankCommissionRate))}%). Значение можно изменить от 0% до 100%.</p></div>
 
           <div className="card span-2"><div className="card-head"><div><h3>Арендная плата для прогноза</h3><p className="hint">Эти суммы не добавляются в расходы дня. Они используются только в прогнозе месяца, чтобы аренда учитывалась сразу, даже если фактическую строку аренды ещё не внесли.</p></div><button className="small primary" onClick={saveBranchRentSettings}>Сохранить аренду</button></div><div className="table-wrap"><table><thead><tr><th>Филиал</th><th>Аренда / месяц, AZN</th></tr></thead><tbody>{branches.map(b => <tr key={b.id}><td><b>{b.name}</b></td><td><MoneyInput label="" value={branchRentSettings?.[b.id] || ''} onChange={v => setBranchRentSettings(prev => ({ ...prev, [b.id]: v }))} /></td></tr>)}</tbody></table></div><p className="hint">Если аренда здесь заполнена, прогноз использует её. Если нет — берёт аренду из текущего месяца, а если её ещё нет — среднее прошлых месяцев.</p></div>
         </>}
