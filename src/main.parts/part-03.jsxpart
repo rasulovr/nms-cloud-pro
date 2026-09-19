@@ -432,27 +432,12 @@ async function rmsCalculateNetworkForecastForMonth(y, m, scopeBranchId = 'all') 
     if (isSalaryExpenseName(name) || isDsmfExpenseName(name) || isBazarExpenseName(name)) return
     branchExpenseCurrentMap.set(bid, parseNum(branchExpenseCurrentMap.get(bid)) + parseNum(row.amount))
   })
+  // Начисления менеджерской группы распределяются между филиалами только
+  // пропорционально выручке выбранного периода. Та же карта долей используется
+  // для текущего месяца, прогноза и сравнений, чтобы отчёты не расходились.
   const managerAllocationShareMap = new Map()
-  const positiveProfitParts = (branchIds || []).map(id => {
-    const rev = (revRows || []).find(r => r.branch_id === id)
-    const branchRevenue = parseNum(rev?.total_revenue)
-    const revenueShare = parseNum(revenueShareMap.get(id))
-    const supplierTotalsForBranch = rmsFinanceSupplierTotalsForScope(currentPurchaseRows || [], id, revenueShareMap)
-    const supplierTotalForBranch = parseNum(supplierTotalsForBranch.food) + parseNum(supplierTotalsForBranch.packaging) + parseNum(supplierTotalsForBranch.household) + parseNum(supplierTotalsForBranch.other)
-    const configuredTaxRate = parseNum(branchTaxSetting?.[id])
-    const branchTaxRate = configuredTaxRate > 0 ? configuredTaxRate : DEFAULT_TAX_RATE
-    const directSalaryForBranch = parseNum(currentDirectSalaryByBranchFromPeriods.get(id)) || parseNum(activeDirectSalaryByBranch.get(id))
-    const preliminaryProfit = branchRevenue
-      - parseNum(branchExpenseCurrentMap.get(id))
-      - supplierTotalForBranch
-      - branchRevenue * branchTaxRate / 100
-      - directSalaryForBranch
-      - parseNum(rentMap?.[id])
-    return { id, value: Math.max(0, preliminaryProfit), revenueShare }
-  })
-  const positiveProfitTotal = positiveProfitParts.reduce((sum, row) => sum + parseNum(row.value), 0)
-  positiveProfitParts.forEach(row => {
-    managerAllocationShareMap.set(row.id, positiveProfitTotal > 0 ? parseNum(row.value) / positiveProfitTotal : parseNum(row.revenueShare))
+  ;(branchIds || []).forEach(id => {
+    managerAllocationShareMap.set(id, parseNum(revenueShareMap.get(id)))
   })
   const salarySummaryTotal = (directByBranch = new Map(), managersTotal = 0, selectedId = selectedBranchId) => {
     if (selectedId === 'all') {
@@ -514,9 +499,9 @@ async function rmsCalculateNetworkForecastForMonth(y, m, scopeBranchId = 'all') 
   const allocatedManagersForSelected = parseNum(payrollManagersSalary) || 0
   const salaryForecast = currentPeriodSalary || activeEmployeeSalary || currentMonthlySalary || currentExpenseSalary || salaryHistory || payrollSummarySalary
   const salaryForecastNote = currentPeriodSalary > 0
-    ? `из “Зарплаты → Сотрудники → Сводка по филиалам”: используется колонка “Начислено”; зарплата менеджеров распределена по доле предварительной прибыли филиалов и не суммируется дважды${selectedBranchId !== 'all' && allocatedManagersForSelected > 0 ? ` · доля менеджеров ${fmt(allocatedManagersForSelected)} AZN · коэффициент ${pct(managerShareForSelected * 100)}` : ''}`
+    ? `из “Зарплаты → Сотрудники → Сводка по филиалам”: используется колонка “Начислено”; зарплата менеджеров распределена по доле выручки филиалов и не суммируется дважды${selectedBranchId !== 'all' && allocatedManagersForSelected > 0 ? ` · доля менеджеров ${fmt(allocatedManagersForSelected)} AZN · коэффициент ${pct(managerShareForSelected * 100)}` : ''}`
     : activeEmployeeSalary > 0
-      ? `нет закрытой сводки за месяц — расчёт по активным сотрудникам: зарплата филиала + доля менеджеров по предварительной прибыли; менеджеры не суммируются дважды${selectedBranchId !== 'all' ? ` · коэффициент ${pct(managerShareForSelected * 100)}` : ''}`
+      ? `нет закрытой сводки за месяц — расчёт по активным сотрудникам: зарплата филиала + доля менеджеров по выручке; менеджеры не суммируются дважды${selectedBranchId !== 'all' ? ` · коэффициент ${pct(managerShareForSelected * 100)}` : ''}`
       : currentMonthlySalary > 0
         ? 'из месячного расчёта зарплат за текущий месяц'
         : currentExpenseSalary > 0
@@ -1619,7 +1604,7 @@ function Dashboard({ t }) {
     const salaryPeriodRows = salaryPeriodResult?.data || []
     const revByBranch = new Map((revRows || []).map(r => [r.branch_id, r]))
     const expByBranch = new Map((expRows || []).map(r => [r.branch_id, r]))
-    const salByBranch = new Map(); (salRows || []).forEach(r => { const key = r.branch_id || ''; const current = salByBranch.get(key) || { branch_id:key, total_salary:0 }; current.total_salary += rmsSalaryPeriodTotal(r); salByBranch.set(key, current) })
+    const salByBranch = new Map(); (salRows || []).forEach(r => { const key = r.branch_id || ''; const current = salByBranch.get(key) || { branch_id:key, total_salary:0 }; current.total_salary += parseNum(r.salary_gross); salByBranch.set(key, current) })
     const svcByBranch = new Map((svcRows || []).map(r => [r.branch_id, r]))
     const baseRevenueTotal = (revRows || []).reduce((s, r) => s + parseNum(r.total_revenue), 0)
     const revenueShareMap = new Map()
@@ -1650,6 +1635,19 @@ function Dashboard({ t }) {
       if (isManager) dashboardManagersSalary += salaryBase
       else dashboardDirectSalaryByBranch.set(e.branch_id, (dashboardDirectSalaryByBranch.get(e.branch_id) || 0) + salaryBase)
     })
+    const dashboardEmployeeById = new Map((employeeRows || []).map(e => [String(e.id), e]))
+    const dashboardAccruedSalaryByBranch = new Map()
+    let dashboardAccruedManagersSalary = 0
+    ;(salaryPeriodRows || []).forEach(periodRow => {
+      const accrued = parseNum(periodRow.salary_gross)
+      if (accrued <= 0) return
+      const employee = dashboardEmployeeById.get(String(periodRow.employee_id)) || {}
+      const periodBranchId = String(periodRow.branch_id || employee.branch_id || '')
+      const isManager = !periodBranchId || positionGroup(employee.position) === 'Менеджеры'
+      if (isManager) dashboardAccruedManagersSalary += accrued
+      else dashboardAccruedSalaryByBranch.set(periodBranchId, parseNum(dashboardAccruedSalaryByBranch.get(periodBranchId)) + accrued)
+    })
+    const hasAccruedSalaryPeriods = (salaryPeriodRows || []).length > 0
 
     const baseTotals = { revenue: 0, expenses: 0, salary: 0, serviceCost: 0, tax: 0 }
     const branchRows = branches.map(b => {
@@ -1670,10 +1668,11 @@ function Dashboard({ t }) {
       const supplierTotals = rmsFinanceSupplierTotalsForScope(purchaseRowsForFinance || [], b.id, revenueShareMap)
       const supplierExtra = supplierTotals.food + supplierTotals.packaging + supplierTotals.household + supplierTotals.other
       const preliminarySupplierExpense = supplierExtra
-      // Dashboard считает зарплаты той же логикой, что раздел “Финансы”:
-      // прямые сотрудники филиала + распределённая доля менеджеров по доле выручки.
-      const calculatedSalary = parseNum(rmsFinancePayrollDetailsForScope(employeeRows || [], b.id, revenueShareMap).totalSalary)
-      const salary = calculatedSalary > 0 ? calculatedSalary : baseSalary
+      // Фактические расходы на зарплату берутся из колонки “Начислено”.
+      // Менеджерская группа распределяется по доле выручки выбранного месяца.
+      const accruedSalary = parseNum(dashboardAccruedSalaryByBranch.get(String(b.id))) + dashboardAccruedManagersSalary * parseNum(revenueShareMap.get(b.id))
+      const calculatedSalary = parseNum(dashboardDirectSalaryByBranch.get(b.id)) + dashboardManagersSalary * parseNum(revenueShareMap.get(b.id))
+      const salary = hasAccruedSalaryPeriods ? accruedSalary : (calculatedSalary > 0 ? calculatedSalary : baseSalary)
       const expenses = baseExpenses + supplierExtra
       const net = revenue - expenses - salary - serviceCost - tax
       baseTotals.revenue += revenue
