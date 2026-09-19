@@ -125,13 +125,15 @@ function Login({ lang, setLang, t, onSignedIn }) {
   </div></div>
 }
 
-function useBranches() {
+function useBranches(includeInactive = false) {
   const [branches, setBranches] = useState([])
   useEffect(() => {
     let alive = true
 
     async function loadBranches() {
-      const { data, error } = await supabase.from('branches').select('*').eq('is_active', true).order('name')
+      let query = supabase.from('branches').select('*').order('name')
+      if (!includeInactive) query = query.eq('is_active', true)
+      const { data, error } = await query
       if (!error && data?.length) {
         if (alive) setBranches(data || [])
         return
@@ -155,7 +157,7 @@ function useBranches() {
 
     loadBranches()
     return () => { alive = false }
-  }, [])
+  }, [includeInactive])
   return branches
 }
 

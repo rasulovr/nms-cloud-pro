@@ -2131,7 +2131,7 @@ function Settings({ session, t, theme, setTheme, lang, setLang }) {
       supabase.from('user_profiles').select('*').order('created_at'),
       supabase.from('legal_entities').select('*').order('name'),
       supabase.from('user_permissions').select('*'),
-      supabase.from('branches').select('id,name,service_charge_enabled,service_charge_percent,service_staff_cost_percent').eq('is_active', true).order('name'),
+      supabase.from('branches').select('id,name,is_active,service_charge_enabled,service_charge_percent,service_staff_cost_percent').order('name'),
       supabase.from('expense_categories').select('*').order('name')
     ])
 
@@ -2579,6 +2579,18 @@ function Settings({ session, t, theme, setTheme, lang, setLang }) {
     if (error) return setMsg(error.message)
     setMsg('Настройка service charge сохранена')
     load()
+  }
+
+  async function setBranchActive(branch, isActive) {
+    if (!branch?.id) return
+    const action = isActive ? 'вернуть в активные' : 'отключить для новых операций'
+    if (!window.confirm(`${action} филиал «${branch.name}»? История и прежние операции останутся без изменений.`)) return
+    const { error } = await supabase.from('branches').update({ is_active: Boolean(isActive) }).eq('id', branch.id)
+    if (error) return setMsg(error.message)
+    setMsg(isActive
+      ? `Филиал «${branch.name}» снова доступен в новых операциях`
+      : `Филиал «${branch.name}» отключён для новых операций; история сохранена`)
+    await load()
   }
 
   async function saveBranchRentSettings() {
@@ -3646,6 +3658,8 @@ function Settings({ session, t, theme, setTheme, lang, setLang }) {
             </div>
           </div>
           <div className="card span-2"><div className="card-head"><div><h3>Настройка service charge филиала</h3><p className="hint">Выберите филиал и один раз включите service charge. В разделе “Выручка” сумма для персонала будет считаться автоматически в конце строки.</p></div><button className="small primary" onClick={saveBranchServiceSettings}>Сохранить</button></div><div className="form-grid compact"><label><span>Филиал</span><select value={serviceBranchId} onChange={e => setServiceBranchId(e.target.value)}>{branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label><label className="checkbox-row"><input type="checkbox" checked={serviceSettings.enabled} onChange={e => setServiceSettings(s => ({...s, enabled: e.target.checked}))} /> Учитывать service charge</label><MoneyInput label="Service charge % в счёте" value={serviceSettings.service_percent} onChange={v => setServiceSettings(s => ({...s, service_percent: v}))} /><MoneyInput label="% затрат персоналу от базы" value={serviceSettings.staff_cost_percent} onChange={v => setServiceSettings(s => ({...s, staff_cost_percent: v}))} /></div></div>
+
+          <div className="card span-2"><div className="card-head"><div><h3>Текущие филиалы</h3><p className="hint">Отключённый филиал исчезает из списков новых операций. Его выручка, расходы, документы и отчёты за прошлые периоды сохраняются.</p></div></div><div className="table-wrap"><table><thead><tr><th>Филиал</th><th>Статус</th><th></th></tr></thead><tbody>{branches.map(branch => <tr key={branch.id}><td><b>{branch.name}</b></td><td>{branch.is_active !== false ? 'Активен' : 'Отключён'}</td><td className="table-actions"><button type="button" className={branch.is_active !== false ? 'ghost small' : 'small primary'} onClick={() => setBranchActive(branch, branch.is_active === false)}>{branch.is_active !== false ? 'Отключить' : 'Включить'}</button></td></tr>)}</tbody></table></div></div>
 
           <div className="card span-2"><div className="card-head"><div><h3>Налогообложение по филиалам</h3><p className="hint">У каждого филиала может быть свой процент налога. Используется в “Финансы ресторанов” для расчёта чистой прибыли.</p></div><button className="small primary" onClick={saveBranchTaxSettings}>Сохранить налоги</button></div><div className="table-wrap"><table><thead><tr><th>Филиал</th><th>Налог, %</th></tr></thead><tbody>{branches.map(b => <tr key={b.id}><td><b>{b.name}</b></td><td><MoneyInput label="" value={branchTaxSettings?.[b.id] ?? '8'} onChange={v => setBranchTaxSettings(prev => ({ ...prev, [b.id]: v }))} /></td></tr>)}</tbody></table></div><p className="hint">Если поле пустое — используется стандартный налог 8%. Для филиалов с другим режимом укажите нужный процент.</p></div>
 
