@@ -4,6 +4,7 @@
     "test:dashboard-v416": "node scripts/test-dashboard-v416.mjs",
     "test:supplier-allocation-v421": "node scripts/test-supplier-revenue-allocation-v421.mjs",
     "test:service-charge-branches-v423": "node scripts/test-service-charge-branches-v423.mjs",
+    "test:salary-allocation-v424": "node scripts/test-salary-revenue-allocation-v424.mjs",
     "test:supplier-idempotency-v420": "node scripts/test-supplier-purchase-idempotency-v420.mjs",
     "dev": "npm run assemble && vite",
     "build": "npm run assemble && vite build",
