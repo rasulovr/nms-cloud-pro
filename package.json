@@ -11,6 +11,7 @@
     "test:bank-commission-v428": "node scripts/test-bank-commission-v428.mjs",
     "test:dashboard-request-race-v429": "node scripts/test-dashboard-request-race-v429.mjs",
     "test:daily-ledger-v430": "node scripts/test-daily-ledger-v430.mjs",
+    "test:forecast-tax-dedup-v431": "node scripts/test-forecast-tax-dedup-v431.mjs",
     "test:supplier-idempotency-v420": "node scripts/test-supplier-purchase-idempotency-v420.mjs",
     "dev": "npm run assemble && vite",
     "build": "npm run assemble && vite build",
