@@ -635,6 +635,37 @@ async function rmsFinanceForecastEngine(y, m, scopeBranchId = 'all') {
   }
 }
 
+// Daily revenue is the source of truth for an in-progress month.  The monthly
+// tables are rollups and can be rebuilt asynchronously, so using them alone
+// briefly produced zero P&L on Dashboard after a new daily entry was saved.
+function rmsAggregateRevenueByBranch(rows = []) {
+  const map = new Map()
+  ;(rows || []).forEach(row => {
+    const id = String(row?.branch_id || '')
+    if (!id) return
+    const current = map.get(id) || { branch_id: row.branch_id, cash_amount: 0, bank_amount: 0, wolt_amount: 0 }
+    current.cash_amount += parseNum(row.cash_amount)
+    current.bank_amount += parseNum(row.bank_amount)
+    current.wolt_amount += parseNum(row.wolt_amount)
+    map.set(id, current)
+  })
+  return [...map.values()]
+}
+
+function rmsServiceChargeStaffCostFromDailyRevenue(rows = [], branches = []) {
+  const branchMap = new Map((branches || []).map(branch => [String(branch.id), branch]))
+  return (rows || []).reduce((sum, row) => {
+    const branch = branchMap.get(String(row?.branch_id || ''))
+    if (!branch?.service_charge_enabled) return sum
+    const servicePercent = parseNum(branch.service_charge_percent || 10)
+    const staffPercent = parseNum(branch.service_staff_cost_percent || 0)
+    if (servicePercent <= 0 || staffPercent <= 0) return sum
+    const grossRevenue = parseNum(row.cash_amount) + parseNum(row.bank_amount) + parseNum(row.wolt_amount)
+    const serviceBase = grossRevenue / (1 + servicePercent / 100)
+    return sum + serviceBase * staffPercent / 100
+  }, 0)
+}
+
 function DashboardStyles() {
   return <style>{`
     .dashboard-hero { align-items: center; }
@@ -1552,6 +1583,7 @@ function Dashboard({ t }) {
     const monthEnd = new Date(Number(y), Number(m), 1).toISOString().slice(0, 10)
     const [
       { data: revRows },
+      dashboardDailyRevenueResult,
       { data: expRows },
       dashboardDailyExpensesResult,
       { data: salRows },
@@ -1567,6 +1599,7 @@ function Dashboard({ t }) {
       bankCommissionSetting
     ] = await Promise.all([
       supabase.from('monthly_branch_revenue').select('*').eq('month', monthDate),
+      supabase.from('daily_revenue').select('branch_id,cash_amount,bank_amount,wolt_amount').gte('revenue_date', monthDate).lt('revenue_date', monthEnd).is('deleted_at', null),
       supabase.from('monthly_branch_expenses').select('*').eq('month', monthDate),
       supabase.from('daily_expenses').select('branch_id, amount, comment, custom_category, expense_categories(name)').gte('expense_date', monthDate).lt('expense_date', monthEnd).is('deleted_at', null),
       supabase.from('salary_periods').select('branch_id,salary_gross,salary_net').eq('salary_month', monthDate),
@@ -1618,13 +1651,14 @@ function Dashboard({ t }) {
     })
     const employeeRows = employeeResult?.data || []
     const salaryPeriodRows = salaryPeriodResult?.data || []
-    const revByBranch = new Map((revRows || []).map(r => [r.branch_id, r]))
+    const effectiveRevenueRows = rmsAggregateRevenueByBranch((dashboardDailyRevenueResult?.data || []).length ? dashboardDailyRevenueResult.data : (revRows || []))
+    const revByBranch = new Map(effectiveRevenueRows.map(r => [r.branch_id, r]))
     const expByBranch = new Map((expRows || []).map(r => [r.branch_id, r]))
     const salByBranch = new Map(); (salRows || []).forEach(r => { const key = r.branch_id || ''; const current = salByBranch.get(key) || { branch_id:key, total_salary:0 }; current.total_salary += parseNum(r.salary_gross); salByBranch.set(key, current) })
     const svcByBranch = new Map((svcRows || []).map(r => [r.branch_id, r]))
-    const baseRevenueTotal = (revRows || []).reduce((s, r) => s + rmsNetRevenueParts(r, bankCommissionRate).revenue, 0)
+    const baseRevenueTotal = effectiveRevenueRows.reduce((s, r) => s + rmsNetRevenueParts(r, bankCommissionRate).revenue, 0)
     const revenueShareMap = new Map()
-    ;(revRows || []).forEach(r => revenueShareMap.set(r.branch_id, baseRevenueTotal > 0 ? rmsNetRevenueParts(r, bankCommissionRate).revenue / baseRevenueTotal : 0))
+    ;effectiveRevenueRows.forEach(r => revenueShareMap.set(r.branch_id, baseRevenueTotal > 0 ? rmsNetRevenueParts(r, bankCommissionRate).revenue / baseRevenueTotal : 0))
 
     // v43 fix: Dashboard expenses must match Finance.
     // Finance uses real daily_expenses excluding supplier mirror rows, manual Bazar and salary-like rows,
@@ -1676,7 +1710,10 @@ function Dashboard({ t }) {
       const fallbackMonthlyExpenses = parseNum(expByBranch.get(b.id)?.total_expenses)
       const baseExpenses = dashboardDailyExpensesResult?.data ? parseNum(dashboardRawExpenseByBranch.get(b.id)) : fallbackMonthlyExpenses
       const baseSalary = parseNum(salByBranch.get(b.id)?.total_salary)
-      const serviceCost = b.service_charge_enabled ? parseNum(svcByBranch.get(b.id)?.staff_cost_amount) : 0
+      const branchDailyRevenue = (dashboardDailyRevenueResult?.data || []).filter(row => String(row.branch_id) === String(b.id))
+      const serviceCost = branchDailyRevenue.length
+        ? rmsServiceChargeStaffCostFromDailyRevenue(branchDailyRevenue, branches)
+        : (b.service_charge_enabled ? parseNum(svcByBranch.get(b.id)?.staff_cost_amount) : 0)
       const configuredTaxRate = parseNum(branchTaxSetting?.[b.id])
       const taxRate = configuredTaxRate > 0 ? configuredTaxRate : DEFAULT_TAX_RATE
       const tax = revenue * taxRate / 100
@@ -2404,8 +2441,9 @@ function Finance({ t, lang, onGoToExpense }) {
 
   async function financeRevenueSharesForMonth(y, m) {
     const monthDate = monthStart(y, m)
+    const monthEnd = rmsNextMonthStart(`${Number(y)}-${String(Number(m)).padStart(2, '0')}`)
     const [{ data }, bankCommissionSetting] = await Promise.all([
-      supabase.from('monthly_branch_revenue').select('branch_id,total_revenue,cash_amount,bank_amount,wolt_amount').eq('month', monthDate),
+      supabase.from('daily_revenue').select('branch_id,cash_amount,bank_amount,wolt_amount').gte('revenue_date', monthDate).lt('revenue_date', monthEnd).is('deleted_at', null),
       readRmsAppSetting(RMS_BANK_COMMISSION_RATE_SETTING, RMS_DEFAULT_BANK_COMMISSION_RATE)
     ])
     const bankCommissionRate = rmsBankCommissionRate(bankCommissionSetting)
@@ -2789,7 +2827,12 @@ function Finance({ t, lang, onGoToExpense }) {
   async function calcFor(branch, y, m) {
     const monthDate = monthStart(y, m)
 
-    let revQuery = supabase.from('monthly_branch_revenue').select('*').eq('month', monthDate)
+    let revQuery = supabase
+      .from('daily_revenue')
+      .select('branch_id,cash_amount,bank_amount,wolt_amount')
+      .gte('revenue_date', monthDate)
+      .lt('revenue_date', rmsNextMonthStart(`${Number(y)}-${String(Number(m)).padStart(2, '0')}`))
+      .is('deleted_at', null)
     let expQuery = supabase.from('monthly_branch_expenses').select('*').eq('month', monthDate)
     let salQuery = supabase.from('salary_periods').select('branch_id,salary_gross,salary_net').eq('salary_month', monthDate)
     let svcQuery = supabase.from('monthly_branch_service_charge_cost').select('*').eq('month', monthDate)
@@ -2814,7 +2857,10 @@ function Finance({ t, lang, onGoToExpense }) {
     const expenses = (expRows || []).reduce((s, r) => s + parseNum(r.total_expenses), 0)
     const salary = (salRows || []).reduce((s, r) => s + rmsSalaryPeriodTotal(r), 0)
     const enabledServiceBranchIds = new Set((branches || []).filter(b => b.service_charge_enabled).map(b => String(b.id)))
-    const serviceCost = (svcRows || []).filter(r => enabledServiceBranchIds.has(String(r.branch_id))).reduce((s, r) => s + parseNum(r.staff_cost_amount), 0)
+    const dynamicServiceCost = rmsServiceChargeStaffCostFromDailyRevenue(revRows || [], branches)
+    const serviceCost = dynamicServiceCost > 0
+      ? dynamicServiceCost
+      : (svcRows || []).filter(r => enabledServiceBranchIds.has(String(r.branch_id))).reduce((s, r) => s + parseNum(r.staff_cost_amount), 0)
     const cash = (revRows || []).reduce((s, r) => s + parseNum(r.cash_amount), 0)
     const bank = (revRows || []).reduce((s, r) => s + parseNum(r.bank_amount), 0)
     const wolt = (revRows || []).reduce((s, r) => s + parseNum(r.wolt_amount), 0)
