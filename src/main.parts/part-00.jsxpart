@@ -1402,6 +1402,10 @@ const isDsmfExpenseName = (value) => {
   const name = normalizeExpenseText(value)
   return name.includes('dsmf') || name.includes('dmsf') || name.includes('дсмф') || name.includes('дмсф') || name.includes('соц') || name.includes('sosial') || name.includes('social')
 }
+const isTaxExpenseName = (value) => {
+  const name = normalizeExpenseText(value)
+  return name.includes('налог') || name.includes('vergi') || name === 'tax' || name.startsWith('tax ')
+}
 const isSalaryExpenseName = (value) => {
   const name = normalizeExpenseText(value)
   return name.includes('зарплат') || name.includes('salary') || name.includes('emek haqq') || name.includes('əmək haqq')
