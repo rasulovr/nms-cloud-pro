@@ -180,7 +180,7 @@ function rmsForecastPreviousMonths(y, m, count = 3) {
 function rmsForecastSumExpenseGroups(rows = []) {
   return (rows || []).reduce((map, r) => {
     const name = r?.expense_categories?.name || r?.custom_category || ''
-    if (isSalaryExpenseName(name) || isDsmfExpenseName(name) || isBazarExpenseName(name) || isServiceChargeStaffExpenseName(name)) return map
+    if (isSalaryExpenseName(name) || isDsmfExpenseName(name) || isTaxExpenseName(name) || isBazarExpenseName(name) || isServiceChargeStaffExpenseName(name)) return map
     const group = rmsFinanceExpenseGroupName(name)
     map[group] = parseNum(map[group]) + parseNum(r.amount)
     return map
@@ -296,9 +296,9 @@ async function rmsCalculateNetworkForecastForMonth(y, m, scopeBranchId = 'all') 
       if (String(row?.comment || '').startsWith('SUPPLIER_PURCHASE_')) return
       const name = row?.expense_categories?.name || row?.custom_category || ''
       const group = rmsFinanceExpenseGroupName(name)
-      // DSMF ручной/оплаченный из daily_expenses не должен попадать в прогноз.
-      // В прогнозе DSMF считается только как начисленный DSMF по официальным зарплатам сотрудников.
-      if (isSalaryExpenseName(name) || isDsmfExpenseName(name) || isBazarExpenseName(name) || isServiceChargeStaffExpenseName(name) || group === 'rent') return
+      // Налог и DSMF из daily_expenses не должны попадать в прогноз вторично:
+      // налог считается от прогнозной выручки, DSMF — от официальных зарплат.
+      if (isSalaryExpenseName(name) || isDsmfExpenseName(name) || isTaxExpenseName(name) || isBazarExpenseName(name) || isServiceChargeStaffExpenseName(name) || group === 'rent') return
       addArticle(map, articleNameForExpense(row), row.amount)
     })
     const supplierTotals = rmsFinanceSupplierTotalsForScope(purchaseRows || [], selectedBranchId, shareMap)
