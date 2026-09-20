@@ -1543,6 +1543,7 @@ function Dashboard({ t }) {
   const [data, setData] = useState(null)
   const [dailyRevenueRows, setDailyRevenueRows] = useState([])
   const [expenseGrowthSort, setExpenseGrowthSort] = useState('amount')
+  const loadRequestRef = useRef(0)
 
   useEffect(() => { load() }, [year, month, branchId, branches.length])
 
@@ -1884,6 +1885,9 @@ function Dashboard({ t }) {
   }
 
   async function load() {
+    // Filter changes may start a new load before the previous one finishes.
+    // Only the newest request may update the Dashboard state.
+    const requestId = ++loadRequestRef.current
     try {
       const current = await calcMonth(year, month)
       const pm = prevMonth(year, month)
@@ -1946,9 +1950,11 @@ function Dashboard({ t }) {
         console.error('Dashboard daily chart load failed:', chartError)
       }
 
+      if (requestId !== loadRequestRef.current) return
       setDailyRevenueRows(dailyChartRows || [])
       setData({ ...current, previous, comparison })
     } catch (error) {
+      if (requestId !== loadRequestRef.current) return
       console.error('Dashboard load failed:', error)
       setDailyRevenueRows([])
       setData(emptyDashboardData())

@@ -9,6 +9,7 @@
     "test:finance-accrued-payroll-v426": "node scripts/test-finance-accrued-payroll-v426.mjs",
     "test:payroll-import-v427": "node scripts/test-payroll-import-v427.mjs",
     "test:bank-commission-v428": "node scripts/test-bank-commission-v428.mjs",
+    "test:dashboard-request-race-v429": "node scripts/test-dashboard-request-race-v429.mjs",
     "test:supplier-idempotency-v420": "node scripts/test-supplier-purchase-idempotency-v420.mjs",
     "dev": "npm run assemble && vite",
     "build": "npm run assemble && vite build",
