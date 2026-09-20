@@ -2065,7 +2065,6 @@ function Dashboard({ t }) {
       <div className="dash-kpi dash-kpi-forecast"><span className="dash-kpi-icon">◌</span><div><em>Food Cost</em><strong>{pct(foodCostPct)}</strong><p>{fmt(data.foodCostAmount)} AZN</p></div></div>
       <div className="dash-kpi dash-kpi-forecast"><span className="dash-kpi-icon">⌁</span><div><em>Прогноз выручки</em><strong>{fmt(data.forecastRevenue)} <small>AZN</small></strong><p>до конца месяца</p></div></div>
       <div className={`dash-kpi dash-kpi-target ${data.forecastProfit < 0 ? 'dash-kpi-negative' : ''}`}><span className="dash-kpi-icon">◎</span><div><em>Прогноз прибыли</em><strong>{fmt(data.forecastProfit)} <small>AZN</small></strong><p>прогноз месяца</p></div></div>
-      <div className="dash-kpi dash-kpi-wallet"><span className="dash-kpi-icon">▣</span><div><em>Оплаченная выручка</em><strong>{fmt(cashBalance)} <small>AZN</small></strong><p>наличные + банк за период</p></div></div>
     </section>
 
     <section className="dashboard-v416-comparison" aria-label="Сравнение с предыдущим месяцем">
