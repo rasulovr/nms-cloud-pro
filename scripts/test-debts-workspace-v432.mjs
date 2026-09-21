@@ -11,7 +11,15 @@ const checks = [
   ['supplier debt table', 'debt-main-table'],
   ['operations tab', "debtWorkspaceTab === 'operations'"],
   ['analytics tab', "debtWorkspaceTab === 'analytics'"],
-  ['debt formula explanation', 'стартовый долг + поступления − оплаты']
+  ['debt formula explanation', 'стартовый долг + поступления − оплаты'],
+  ['supplier statement A4 window', 'Акт сверки взаиморасчётов'],
+  ['full supplier history', 'Вся история операций'],
+  ['debt before payment column', 'Долг до оплаты'],
+  ['running debt column', 'Остаток долга'],
+  ['total payments in statement', 'Общая сумма оплат'],
+  ['supplier invoice A4 window', 'function openSupplierPurchaseA4'],
+  ['invoice A4 print format', '@page{size:A4 portrait'],
+  ['invoice A4 actions', 'Просмотр A4']
 ]
 
 for (const [label, token] of checks) {
