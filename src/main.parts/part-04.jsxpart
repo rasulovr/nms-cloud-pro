@@ -1889,6 +1889,9 @@ function DebtsPayments({ t }) {
   const [supplierProductInvoicePage, setSupplierProductInvoicePage] = useState(1)
   const [supplierCompactPlanExpanded, setSupplierCompactPlanExpanded] = useState(false)
   const [supplierCompactFollowUpExpanded, setSupplierCompactFollowUpExpanded] = useState(false)
+  const [debtWorkspaceTab, setDebtWorkspaceTab] = useState('overview')
+  const [debtWorkspaceSearch, setDebtWorkspaceSearch] = useState('')
+  const [debtWorkspaceStatus, setDebtWorkspaceStatus] = useState('all')
   const [supplierFollowUps, setSupplierFollowUps] = useState(() => readJsonStorage('rms_supplier_followups_v1', {}))
   const [editingOpeningDebtId, setEditingOpeningDebtId] = useState('')
   const [openingDebtEditForm, setOpeningDebtEditForm] = useState({ debt_date: todayISO(), amount: '', invoice_notes: '', comment: '' })
@@ -3204,6 +3207,32 @@ function DebtsPayments({ t }) {
     return acc
   }, { total: 0, overdue: 0, inProgress: 0, waiting: 0, closed: 0, critical: 0 }), [supplierControlRows])
 
+  const debtWorkspaceRows = useMemo(() => {
+    const query = String(debtWorkspaceSearch || '').trim().toLowerCase()
+    return (supplierAging.rows || [])
+      .filter(row => {
+        if (!query) return true
+        return `${row.supplier_name || ''} ${row.legal_entity_name || ''}`.toLowerCase().includes(query)
+      })
+      .filter(row => {
+        if (debtWorkspaceStatus === 'critical') return row.riskLevel === 'critical'
+        if (debtWorkspaceStatus === 'overdue') return parseNum(row.overdueAmount) > 0
+        if (debtWorkspaceStatus === 'current') return parseNum(row.overdueAmount) <= 0 && row.riskLevel !== 'critical'
+        return true
+      })
+      .sort((a, b) => {
+        const weight = { critical: 3, warning: 2, normal: 1 }
+        return (weight[b.riskLevel] || 0) - (weight[a.riskLevel] || 0)
+          || parseNum(b.overdueAmount) - parseNum(a.overdueAmount)
+          || parseNum(b.balance) - parseNum(a.balance)
+      })
+  }, [supplierAging.rows, debtWorkspaceSearch, debtWorkspaceStatus])
+
+  const debtDueSoonAmount = useMemo(() => (supplierAging.rows || []).reduce((sum, row) => {
+    const days = supplierCalendarDaysUntil(row.nearestDue)
+    return days !== null && days >= 0 && days <= 7 ? sum + parseNum(row.balance) : sum
+  }, 0), [supplierAging.rows])
+
   function supplierCalendarDaysUntil(dateText) {
     if (!dateText) return null
     const due = new Date(`${dateText}T00:00:00`)
@@ -3734,26 +3763,42 @@ function DebtsPayments({ t }) {
     w.print()
   }
 
-  return <section>
-    <section className="topbar"><div><h2>Поставщики: долги и оплаты</h2><p>Основной контроль: долг, просрочка, лимиты, журнал операций и акт сверки.</p></div></section>
+  return <section className="debt-workspace">
+    <section className="topbar debt-workspace-topbar"><div><h2>Долги поставщикам</h2><p>Кому должны, сколько просрочено и какие оплаты требуют внимания.</p></div><button className="small" onClick={load}>Обновить</button></section>
 
     <section className="card span-2 supplier-control-center-card">
-      <div className="card-head">
-        <div>
-          <h3>Контроль поставщиков</h3>
-          <p className="hint">Ключевые отклонения по поставщикам. Просмотр открываются через акт сверки.</p>
-        </div>
-        <div className="action-row" style={{gap:8}}><button className="small" onClick={load}>Обновить</button></div>
-      </div>
       <div className="debt-kpi-grid">
-        <DebtKpiCard tone="muted" label="Поставщиков" value={debtIntelligence.supplierCount} sub="с активным балансом" />
-        <DebtKpiCard tone="danger" label="Общий долг" value={`${fmt(debtIntelligence.totalDebt)} AZN`} sub="открытый баланс" />
+        <DebtKpiCard tone="danger" label="Всего должны" value={`${fmt(debtIntelligence.totalDebt)} AZN`} sub={`${debtIntelligence.supplierCount} ${isAzInterface ? 'təchizatçı' : 'поставщиков'}`} />
         <DebtKpiCard tone="danger" label="Просрочено" value={`${fmt(debtIntelligence.overdueDebt)} AZN`} sub={`${debtIntelligence.overdueSupplierCount} ${isAzInterface ? 'təchizatçı' : 'поставщиков'}`} />
-        <DebtKpiCard tone="info" label="Лимит" value={debtIntelligence.availableLimit >= 0 ? `${fmt(debtIntelligence.availableLimit)} AZN` : `${fmt(Math.abs(debtIntelligence.availableLimit))} AZN`} sub={debtIntelligence.availableLimit >= 0 ? 'доступный лимит' : 'превышение лимита'} />
+        <DebtKpiCard tone="info" label="К оплате в 7 дней" value={`${fmt(debtDueSoonAmount)} AZN`} sub="по ближайшим срокам" />
+        <DebtKpiCard tone="muted" label="Критичные" value={supplierAging.totals.critical} sub="30+ дней или превышен лимит" />
       </div>
 
+      <nav className="debt-workspace-tabs" aria-label="Разделы долгов">
+        <button className={debtWorkspaceTab === 'overview' ? 'active' : ''} onClick={() => setDebtWorkspaceTab('overview')}>Долги</button>
+        <button className={debtWorkspaceTab === 'entities' ? 'active' : ''} onClick={() => setDebtWorkspaceTab('entities')}>По VOEN</button>
+        <button className={debtWorkspaceTab === 'operations' ? 'active' : ''} onClick={() => setDebtWorkspaceTab('operations')}>История операций</button>
+        <button className={debtWorkspaceTab === 'analytics' ? 'active' : ''} onClick={() => setDebtWorkspaceTab('analytics')}>Дополнительно</button>
+      </nav>
+
+      {debtWorkspaceTab === 'overview' && <div className="debt-overview-panel">
+        <div className="debt-workspace-toolbar">
+          <label className="debt-workspace-search"><span>Поиск</span><input value={debtWorkspaceSearch} onChange={e => setDebtWorkspaceSearch(e.target.value)} placeholder="Поставщик или наше юрлицо" /></label>
+          <label><span>Статус</span><select value={debtWorkspaceStatus} onChange={e => setDebtWorkspaceStatus(e.target.value)}><option value="all">Все долги</option><option value="critical">Критичные</option><option value="overdue">Просроченные</option><option value="current">В срок</option></select></label>
+          <div className="debt-result-count"><b>{debtWorkspaceRows.length}</b><span>позиций</span></div>
+        </div>
+        <div className="table-wrap debt-main-table-wrap"><table className="debt-main-table"><thead><tr><th>Поставщик</th><th>Наше юрлицо / VOEN</th><th>Долг</th><th>Просрочено</th><th>Ближайший срок</th><th>Фактуры</th><th>Статус</th><th></th></tr></thead><tbody>{debtWorkspaceRows.map(row => {
+          const supplier = suppliers.find(item => item.id === row.supplier_id)
+          const dueDays = supplierCalendarDaysUntil(row.nearestDue)
+          const statusText = row.riskLevel === 'critical' ? 'Критично' : parseNum(row.overdueAmount) > 0 ? 'Просрочено' : 'В срок'
+          const statusClass = row.riskLevel === 'critical' ? 'critical' : parseNum(row.overdueAmount) > 0 ? 'overdue' : 'current'
+          return <tr key={row.key} className={`debt-main-row debt-main-row-${statusClass}`}><td><b>{row.supplier_name}</b><span>{supplier?.voen || 'VOEN поставщика не указан'}</span></td><td><b>{row.legal_entity_name}</b><span>{legalEntities.find(le => le.id === row.legal_entity_id)?.voen || '—'}</span></td><td><strong>{fmt(row.balance)} AZN</strong></td><td className={parseNum(row.overdueAmount) > 0 ? 'bad' : 'hint'}><b>{parseNum(row.overdueAmount) > 0 ? `${fmt(row.overdueAmount)} AZN` : 'Нет'}</b>{parseNum(row.maxOverdueDays) > 0 && <span>{row.maxOverdueDays} дн.</span>}</td><td><b>{row.nearestDue ? formatDateDMY(row.nearestDue) : 'Не указан'}</b><span>{dueDays === null ? 'нет срока оплаты' : dueDays < 0 ? `${Math.abs(dueDays)} дн. назад` : dueDays === 0 ? 'сегодня' : `через ${dueDays} дн.`}</span></td><td><b>{row.unpaidCount}</b></td><td><span className={`debt-status-badge ${statusClass}`}>{statusText}</span></td><td><div className="debt-row-actions"><button className="small" onClick={() => { setDebtWorkspaceTab('entities'); openTransactions(row.supplier_id, 'purchases', row.legal_entity_id) }}>Операции</button><button className="small primary" onClick={() => { setDebtWorkspaceTab('operations'); openSupplierStatement(supplier, row.legal_entity_id) }}>Акт сверки</button></div></td></tr>
+        })}{!debtWorkspaceRows.length && <tr><td colSpan="8"><div className="debt-empty-state"><b>Долги не найдены</b><span>Измените поиск или фильтр статуса.</span></div></td></tr>}</tbody></table></div>
+        <p className="debt-formula-note"><b>Как считается долг:</b> стартовый долг + поступления − оплаты. Красным отмечены просроченные или превышающие кредитный лимит позиции.</p>
+      </div>}
+
       {/* v276: “Поставщики и долги” moved directly after supplier control KPIs. */}
-      <div className="card span-2">
+      {debtWorkspaceTab === 'entities' && <div className="card span-2 debt-entity-panel">
         <div className="card-head"><div><h3>Поставщики и долги</h3><p className="hint">Балансы по вашим VOEN / юрлицам. Долги по VOEN. Транзакции и акт сверки открываются в отдельном окне.</p></div></div>
         {legalEntities.map(le => {
           const list = suppliersForLegalEntity(le.id)
@@ -3804,9 +3849,9 @@ function DebtsPayments({ t }) {
         <div className="card" style={{marginTop:12}}><h4>Журнал изменений</h4><p className="hint">Любое редактирование и отключение стартового долга фиксируется по времени и пользователю.</p><div className="table-wrap"><table><thead><tr><th>Дата</th><th>Пользователь</th><th>Действие</th><th>Было</th><th>Стало</th></tr></thead><tbody>{visibleTransactionLogs.map(l => <tr key={l.id}><td>{formatDT(l.created_at)}</td><td>{l.user_email || l.user_id || '—'}</td><td>{l.action}</td><td><span className="hint">{l.old_value || '—'}</span></td><td>{l.new_value || '—'}</td></tr>)}{!visibleTransactionLogs.length && <tr><td colSpan="5" className="hint">Изменений пока нет.</td></tr>}</tbody></table></div></div>
       </div></div>, document.body)}</div>
         })}
-      </div>
+      </div>}
 
-      <div style={{marginTop:16, display:'grid', gap:14}}>
+      {debtWorkspaceTab === 'analytics' && <div style={{marginTop:16, display:'grid', gap:14}}>
         <div className="card soft-card supplier-product-invoice-search-card">
           <div className="card-head">
             <div>
@@ -3930,10 +3975,10 @@ function DebtsPayments({ t }) {
             </table>
           </div>
         </div>
-      </div>
+      </div>}
     </section>
 
-    <section className="grid">
+    {debtWorkspaceTab === 'operations' && <section className="grid debt-operations-view">
       <div className="card span-2"><div className="card-head"><div><h3>Журнал долгов и оплат</h3><p className="hint">Стартовый долг, поступления и оплаты в одном журнале.</p></div><label style={{display:'flex',alignItems:'center',gap:8}}><span className="hint">Показать</span><select value={commonOpsPageSize} onChange={e => { setCommonOpsPageSize(Number(e.target.value)); setCommonOpsPage(1) }}><option value={10}>10</option><option value={20}>20</option><option value={30}>30</option><option value={50}>50</option></select></label></div>
         <div className="form-grid compact">
           <label><span>Период</span><select value={commonOpsPeriod} onChange={e => { setCommonOpsPeriod(e.target.value); setCommonOpsPage(1) }}><option value="day">День</option><option value="week">Неделя</option><option value="month">Месяц</option><option value="range">Диапазон дат</option><option value="all">Весь период</option></select></label>
@@ -4292,7 +4337,7 @@ function DebtsPayments({ t }) {
         }
       `}</style>
 
-    </section>
+    </section>}
   </section>
 }
 
