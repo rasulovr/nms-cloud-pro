@@ -2446,9 +2446,13 @@ function Finance({ t, lang, onGoToExpense }) {
       readRmsAppSetting(RMS_BANK_COMMISSION_RATE_SETTING, RMS_DEFAULT_BANK_COMMISSION_RATE)
     ])
     const bankCommissionRate = rmsBankCommissionRate(bankCommissionSetting)
-    const total = (data || []).reduce((s, r) => s + rmsNetRevenueParts(r, bankCommissionRate).revenue, 0)
+    // daily_revenue has one row per day. Aggregate first: setting a share for
+    // every raw row leaves only the last day of a branch in the Map and makes
+    // its supplier and manager allocations far too small.
+    const effectiveRows = rmsAggregateRevenueByBranch(data || [])
+    const total = effectiveRows.reduce((s, r) => s + rmsNetRevenueParts(r, bankCommissionRate).revenue, 0)
     const map = new Map()
-    ;(data || []).forEach(r => map.set(r.branch_id, total > 0 ? rmsNetRevenueParts(r, bankCommissionRate).revenue / total : 0))
+    ;effectiveRows.forEach(r => map.set(String(r.branch_id), total > 0 ? rmsNetRevenueParts(r, bankCommissionRate).revenue / total : 0))
     return { total, map }
   }
 
