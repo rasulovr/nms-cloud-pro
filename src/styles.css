@@ -3,6 +3,152 @@
   --bg:#f5f2ec;--panel:#fffaf2;--ink:#17251d;--muted:#68736b;--line:#e4dccf;
   --accent:#233d2c;--accent2:#c9a96a;--danger:#9b2d2d;
 }
+
+/* RMS Pro v432 — focused supplier debt workspace */
+.debt-workspace-topbar{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:16px;
+}
+.debt-workspace .supplier-control-center-card{
+  padding:20px;
+}
+.debt-workspace-tabs{
+  display:flex;
+  gap:6px;
+  margin:18px 0 16px;
+  padding:5px;
+  overflow-x:auto;
+  border:1px solid #e2e8f0;
+  border-radius:14px;
+  background:#f8fafc;
+}
+.debt-workspace-tabs button{
+  min-height:42px;
+  padding:9px 16px;
+  border:0;
+  border-radius:10px;
+  background:transparent;
+  color:#64748b;
+  font-weight:700;
+  white-space:nowrap;
+  cursor:pointer;
+}
+.debt-workspace-tabs button.active{
+  background:#fff;
+  color:#0f172a;
+  box-shadow:0 3px 12px rgba(15,23,42,.08);
+}
+.debt-overview-panel{
+  padding-top:2px;
+}
+.debt-workspace-toolbar{
+  display:grid;
+  grid-template-columns:minmax(280px,1fr) minmax(190px,240px) auto;
+  align-items:end;
+  gap:12px;
+  margin-bottom:14px;
+}
+.debt-workspace-toolbar label span{
+  display:block;
+  margin-bottom:6px;
+  color:#64748b;
+  font-size:13px;
+  font-weight:700;
+}
+.debt-workspace-toolbar input,
+.debt-workspace-toolbar select{
+  width:100%;
+  min-height:44px;
+}
+.debt-result-count{
+  min-width:92px;
+  min-height:44px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+  padding:0 14px;
+  border:1px solid #e2e8f0;
+  border-radius:12px;
+  color:#64748b;
+  background:#fff;
+}
+.debt-result-count b{color:#0f172a;font-size:18px}
+.debt-main-table-wrap{
+  border:1px solid #e2e8f0;
+  border-radius:16px;
+  overflow:auto;
+}
+.debt-main-table{min-width:1050px}
+.debt-main-table td{vertical-align:middle}
+.debt-main-table td > span,
+.debt-main-table td > b + span{
+  display:block;
+  margin-top:4px;
+  color:#64748b;
+  font-size:12px;
+}
+.debt-main-row td:first-child{
+  border-left:3px solid transparent;
+}
+.debt-main-row-critical td:first-child{border-left-color:#dc2626}
+.debt-main-row-overdue td:first-child{border-left-color:#f59e0b}
+.debt-main-row-current td:first-child{border-left-color:#22c55e}
+.debt-status-badge{
+  display:inline-flex!important;
+  align-items:center;
+  min-height:28px;
+  margin:0!important;
+  padding:4px 9px;
+  border-radius:999px;
+  font-size:12px!important;
+  font-weight:800;
+}
+.debt-status-badge.critical{color:#b91c1c;background:#fee2e2}
+.debt-status-badge.overdue{color:#9a5b00;background:#fef3c7}
+.debt-status-badge.current{color:#166534;background:#dcfce7}
+.debt-row-actions{
+  display:flex;
+  justify-content:flex-end;
+  gap:6px;
+}
+.debt-formula-note{
+  margin:12px 2px 0;
+  color:#64748b;
+  font-size:13px;
+}
+.debt-empty-state{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:5px;
+  padding:36px 16px;
+  color:#64748b;
+}
+.debt-empty-state b{color:#0f172a;font-size:16px}
+.debt-entity-panel{margin-top:4px}
+.debt-operations-view{margin-top:16px}
+
+@media (max-width:900px){
+  .debt-workspace-topbar{align-items:flex-start}
+  .debt-workspace .supplier-control-center-card{padding:14px}
+  .debt-workspace-tabs{margin-top:14px}
+  .debt-workspace-toolbar{grid-template-columns:1fr 1fr}
+  .debt-workspace-search{grid-column:1/-1}
+  .debt-result-count{min-width:0}
+}
+
+@media (max-width:600px){
+  .debt-workspace-topbar{display:block}
+  .debt-workspace-topbar > button{margin-top:10px}
+  .debt-workspace-tabs{margin-left:-4px;margin-right:-4px}
+  .debt-workspace-tabs button{min-height:40px;padding:8px 12px}
+  .debt-workspace-toolbar{grid-template-columns:1fr}
+  .debt-workspace-search{grid-column:auto}
+  .debt-result-count{justify-content:flex-start}
+}
 *{box-sizing:border-box}
 body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;background:var(--bg);color:var(--ink)}
 .hidden{display:none!important}
