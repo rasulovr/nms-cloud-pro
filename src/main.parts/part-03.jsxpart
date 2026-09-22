@@ -9727,6 +9727,28 @@ function Suppliers({ t, isAdmin = false }) {
   }
 
   async function fetchSupplierPurchasesFullRowsViaRpc() {
+    // Internal users must read purchases through the permission-checked,
+    // paged RPC. A single 50k-row JSON response can exceed the database
+    // statement timeout and silently leave the UI with its 500-row fallback.
+    if (getInternalSessionStorage()?.rms_internal) {
+      const pageSize = 500
+      let offset = 0
+      let rows = []
+
+      while (true) {
+        const { data, error } = await supabase.rpc('rms_supplier_purchases_page_secure', {
+          p_limit: pageSize,
+          p_offset: offset
+        })
+        if (error) throw error
+
+        const batch = normalizeSupplierPurchasesFullPayload(data)
+        rows = rows.concat(batch)
+        if (batch.length < pageSize || offset + batch.length >= 50000) return rows
+        offset += batch.length
+      }
+    }
+
     const { data, error } = await supabase.rpc('rms_supplier_purchases_full', { p_limit: 50000 })
     if (error) throw error
     return normalizeSupplierPurchasesFullPayload(data)
