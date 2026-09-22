@@ -9740,7 +9740,7 @@ function Suppliers({ t, isAdmin = false }) {
     while (true) {
       const { data, error } = await supabase
         .from('supplier_purchases')
-        .select('*, suppliers(name), legal_entities(name,voen), branches(name), supplier_purchase_items(*, supplier_products(name,base_unit,category))')
+        .select('*, suppliers(id,name,voen), legal_entities(name,voen), branches(name), supplier_purchase_items(*, supplier_products(name,base_unit,category))')
         .order('purchase_date', { ascending: false })
         .order('created_at', { ascending: false })
         .range(from, from + pageSize - 1)
@@ -9870,7 +9870,7 @@ function Suppliers({ t, isAdmin = false }) {
       supabase.from('suppliers').select('*').order('name'),
       supabase.from('supplier_products').select('*').eq('is_active', true).order('category').order('name'),
       supabase.from('supplier_balances_v2').select('*').order('supplier_name'),
-      supabase.from('supplier_purchases').select('*, suppliers(name), legal_entities(name,voen), branches(name), supplier_purchase_items(*, supplier_products(name,base_unit,category))').order('purchase_date', { ascending: false }).order('created_at', { ascending: false }).limit(500),
+      supabase.from('supplier_purchases').select('*, suppliers(id,name,voen), legal_entities(name,voen), branches(name), supplier_purchase_items(*, supplier_products(name,base_unit,category))').order('purchase_date', { ascending: false }).order('created_at', { ascending: false }).limit(500),
       supabase.from('supplier_payments').select('*, suppliers(name), legal_entities(name,voen), supplier_e_invoices(invoice_number)').order('payment_date', { ascending: false }).order('created_at', { ascending: false }).limit(500),
       supabase.from('supplier_opening_debts').select('*, suppliers(name), legal_entities(name,voen)').eq('is_active', true).order('debt_date', { ascending: false }).order('created_at', { ascending: false }).limit(500),
       supabase.from('supplier_legal_entity_status').select('*'),
