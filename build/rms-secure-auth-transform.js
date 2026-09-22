@@ -77,6 +77,14 @@ const verifiedPasswordChange = `  async function changeUserPassword(userId, logi
         return setMsg('Пароль не изменён: сервер не подтвердил новое значение')
       }
 
+      const { data: syncedAuth, error: syncedAuthError } = await supabase.functions.invoke('rms-internal-auth', {
+        body: { login: localLogin, password }
+      })
+      if (syncedAuthError || !syncedAuth?.session || syncedAuth?.internal_user?.id !== userId) {
+        setPasswordStatuses(prev => ({ ...prev, [userId]: { type: 'error', text: 'Пароль сохранён, но защищённый вход не синхронизирован' } }))
+        return setMsg(syncedAuth?.error || syncedAuthError?.message || 'Не удалось синхронизировать защищённый вход')
+      }
+
       setPasswordEdits(p => ({ ...p, [userId]: '' }))
       setPasswordStatuses(prev => ({ ...prev, [userId]: { type: 'success', text: 'Пароль изменён и применён' } }))
       setMsg(\`Пароль пользователя \${localLogin} изменён\`)
@@ -87,6 +95,24 @@ const verifiedPasswordChange = `  async function changeUserPassword(userId, logi
 
     setPasswordStatuses(prev => ({ ...prev, [userId]: { type: 'error', text: 'Для admin пароль меняется через Supabase Auth' } }))
     setMsg('Пароль можно менять только у внутренних RMS-пользователей. Для admin используйте Supabase Auth.')
+  }
+
+  async function syncUserAuth(userId, loginName) {
+    const login = normalizeInternalLogin(loginName)
+    setPasswordStatuses(prev => ({ ...prev, [userId]: { type: 'loading', text: 'Синхронизация входа...' } }))
+    const cloudUsers = await readRmsAppSetting(RMS_INTERNAL_USERS_SETTING, null)
+    const internalUser = cloudUsers && typeof cloudUsers === 'object' ? cloudUsers[login] : null
+    const password = String(internalUser?.password || '')
+    if (!internalUser?.id || !password) {
+      setPasswordStatuses(prev => ({ ...prev, [userId]: { type: 'error', text: 'Не найдены данные для синхронизации входа' } }))
+      return
+    }
+    const { data, error } = await supabase.functions.invoke('rms-internal-auth', { body: { login, password } })
+    if (error || !data?.session || data?.internal_user?.id !== userId) {
+      setPasswordStatuses(prev => ({ ...prev, [userId]: { type: 'error', text: data?.error || error?.message || 'Синхронизация входа не выполнена' } }))
+      return
+    }
+    setPasswordStatuses(prev => ({ ...prev, [userId]: { type: 'success', text: 'Защищённый вход синхронизирован' } }))
   }
 
 `
