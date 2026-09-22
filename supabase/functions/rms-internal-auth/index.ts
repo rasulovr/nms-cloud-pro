@@ -58,12 +58,24 @@ async function authAdminRequest(supabaseUrl: string, serviceKey: string, path: s
     ...init,
     headers: {
       apikey: serviceKey,
+      ...(serviceKey.startsWith('sb_secret_') ? {} : { Authorization: `Bearer ${serviceKey}` }),
       'Content-Type': 'application/json',
       ...(init.headers || {}),
     },
   })
   if (!result.ok) throw new Error(`Auth admin request failed: ${result.status}`)
   return await result.json()
+}
+
+async function listAllAuthUsers(supabaseUrl: string, serviceKey: string) {
+  const users: Record<string, any>[] = []
+  for (let page = 1; page <= 100; page += 1) {
+    const listed = await authAdminRequest(supabaseUrl, serviceKey, `/users?page=${page}&per_page=100`)
+    const pageUsers = Array.isArray(listed.users) ? listed.users : []
+    users.push(...pageUsers)
+    if (pageUsers.length < 100) break
+  }
+  return users
 }
 
 Deno.serve(async (request: Request) => {
@@ -76,8 +88,8 @@ Deno.serve(async (request: Request) => {
   if (contentLength > 4096) return response(origin, 413, { error: 'Request too large' })
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL') || ''
-  const serviceRoleKey = defaultKeyFromJsonEnv('SUPABASE_SECRET_KEYS') || Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || ''
-  const anonKey = defaultKeyFromJsonEnv('SUPABASE_PUBLISHABLE_KEYS') || Deno.env.get('SUPABASE_ANON_KEY') || ''
+  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || defaultKeyFromJsonEnv('SUPABASE_SECRET_KEYS') || ''
+  const anonKey = Deno.env.get('SUPABASE_ANON_KEY') || defaultKeyFromJsonEnv('SUPABASE_PUBLISHABLE_KEYS') || ''
   if (!supabaseUrl || !serviceRoleKey || !anonKey) return response(origin, 500, { error: 'Authentication service unavailable' })
 
   const admin = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false, autoRefreshToken: false } })
@@ -87,6 +99,74 @@ Deno.serve(async (request: Request) => {
   try {
     stage = 'parse'
     const body = await request.json()
+
+    if (body?.action === 'sync_all_internal_users') {
+      stage = 'authorize_sync'
+      const authorization = request.headers.get('authorization') || ''
+      const accessToken = authorization.replace(/^Bearer\s+/i, '')
+      const verified = await admin.auth.getUser(accessToken)
+      const requesterEmail = String(verified.data.user?.email || '').toLowerCase()
+      if (verified.error || requesterEmail !== 'rasulovr@gmail.com') {
+        return response(origin, 403, { error: 'Forbidden' })
+      }
+
+      stage = 'sync_all_users'
+      const { data: setting, error: settingError } = await admin.from('rms_app_settings').select('value').eq('key', 'internal_users_v2').single()
+      if (settingError) throw settingError
+      const users = setting?.value && typeof setting.value === 'object' ? setting.value : {}
+      const authUsers = await listAllAuthUsers(supabaseUrl, serviceRoleKey)
+      let created = 0
+      let updated = 0
+      let linked = 0
+      const failures: string[] = []
+
+      for (const [rawLogin, rawUser] of Object.entries(users)) {
+        const login = normalizeLogin(rawLogin)
+        const internalUser = rawUser as Record<string, any>
+        const password = String(internalUser?.password || '')
+        if (!login || internalUser?.is_active === false || !internalUser?.id || !password) continue
+        try {
+          const candidates = authUsers.filter(user => normalizeLogin(user.email) === login)
+          let authUser = candidates.find(user => String(user.email || '').toLowerCase() === `${login}@rms.local.az`) || candidates[0]
+          const technicalEmail = String(authUser?.email || `${login}@rms.local.az`)
+          if (!authUser) {
+            authUser = await authAdminRequest(supabaseUrl, serviceRoleKey, '/users', {
+              method: 'POST',
+              body: JSON.stringify({
+                email: technicalEmail, password, email_confirm: true,
+                app_metadata: { rms_internal_id: internalUser.id, rms_login: login },
+              }),
+            })
+            authUsers.push(authUser)
+            created += 1
+          } else {
+            await authAdminRequest(supabaseUrl, serviceRoleKey, `/users/${authUser.id}`, {
+              method: 'PUT',
+              body: JSON.stringify({
+                password,
+                app_metadata: { ...(authUser.app_metadata || {}), rms_internal_id: internalUser.id, rms_login: login },
+              }),
+            })
+            updated += 1
+          }
+
+          const linkResult = await admin.from('rms_internal_auth_accounts').upsert({
+            auth_user_id: authUser.id, internal_id: internalUser.id, login,
+            is_admin: false, is_active: true, updated_at: new Date().toISOString(),
+          }, { onConflict: 'auth_user_id' })
+          if (linkResult.error) throw linkResult.error
+          linked += 1
+          await admin.from('rms_internal_auth_attempts').delete().eq('login_hash', await sha256(login))
+        } catch (_syncError) {
+          failures.push(login)
+        }
+      }
+
+      return response(origin, failures.length ? 207 : 200, {
+        ok: failures.length === 0, created, updated, linked, failed_count: failures.length, failed_logins: failures,
+      })
+    }
+
     const login = normalizeLogin(body?.login)
     const password = String(body?.password || '')
     if (!/^[a-z0-9._-]{2,64}$/.test(login) || password.length < 1 || password.length > 256) {
@@ -119,30 +199,71 @@ Deno.serve(async (request: Request) => {
       return response(origin, 401, { error: 'Неверный логин или пароль' })
     }
 
-    stage = 'list_auth_users'
-    const listed = await authAdminRequest(supabaseUrl, serviceRoleKey, '/users?page=1&per_page=100')
-    const candidates = (listed.users || []).filter((user: Record<string, unknown>) => normalizeLogin(user.email) === login)
-    let authUser = candidates.find(user => user.email?.toLowerCase() === `${login}@rms.local.az`) || candidates[0]
-    const technicalEmail = authUser?.email || `${login}@rms.local.az`
+    stage = 'lookup_auth_link'
+    const { data: existingLink, error: existingLinkError } = await admin
+      .from('rms_internal_auth_accounts')
+      .select('auth_user_id')
+      .eq('login', login)
+      .maybeSingle()
+    if (existingLinkError) throw existingLinkError
 
-    if (!authUser) {
-      stage = 'create_auth_user'
-      authUser = await authAdminRequest(supabaseUrl, serviceRoleKey, '/users', {
-        method: 'POST',
-        body: JSON.stringify({
-          email: technicalEmail, password, email_confirm: true,
-          app_metadata: { rms_internal_id: internalUser.id, rms_login: login },
-        }),
-      })
-    } else {
-      stage = 'update_auth_user'
-      await authAdminRequest(supabaseUrl, serviceRoleKey, `/users/${authUser.id}`, {
-        method: 'PUT',
-        body: JSON.stringify({
+    let authUser: Record<string, any> | null = null
+    let technicalEmail = `${login}@rms.local.az`
+
+    if (existingLink?.auth_user_id) {
+      try {
+        stage = 'load_linked_auth_user'
+        const linkedUser = await admin.auth.admin.getUserById(existingLink.auth_user_id)
+        if (linkedUser.error || !linkedUser.data.user) throw linkedUser.error || new Error('Linked Auth user not found')
+        authUser = linkedUser.data.user as Record<string, any>
+        technicalEmail = String(authUser.email || technicalEmail)
+
+        stage = 'update_auth_user'
+        const updatedUser = await admin.auth.admin.updateUserById(authUser.id, {
           password,
           app_metadata: { ...(authUser.app_metadata || {}), rms_internal_id: internalUser.id, rms_login: login },
-        }),
+        })
+        if (updatedUser.error || !updatedUser.data.user) throw updatedUser.error || new Error('Auth user update failed')
+        authUser = updatedUser.data.user as Record<string, any>
+      } catch (linkedAuthError) {
+        if (login !== 'nigar') throw linkedAuthError
+
+        stage = 'create_replacement_auth_user'
+        technicalEmail = 'nigar.auth@rms.local.az'
+        const replacementUser = await admin.auth.admin.createUser({
+          email: technicalEmail,
+          password,
+          email_confirm: true,
+          app_metadata: { rms_internal_id: internalUser.id, rms_login: login },
+        })
+        if (replacementUser.error || !replacementUser.data.user) {
+          throw replacementUser.error || new Error('Replacement Auth user creation failed')
+        }
+        authUser = replacementUser.data.user as Record<string, any>
+
+        stage = 'switch_auth_link'
+        const switchedLink = await admin
+          .from('rms_internal_auth_accounts')
+          .update({
+            auth_user_id: authUser.id,
+            internal_id: internalUser.id,
+            is_admin: false,
+            is_active: true,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('login', login)
+        if (switchedLink.error) throw switchedLink.error
+      }
+    } else {
+      stage = 'create_auth_user'
+      const createdUser = await admin.auth.admin.createUser({
+        email: technicalEmail,
+        password,
+        email_confirm: true,
+        app_metadata: { rms_internal_id: internalUser.id, rms_login: login },
       })
+      if (createdUser.error || !createdUser.data.user) throw createdUser.error || new Error('Auth user creation failed')
+      authUser = createdUser.data.user as Record<string, any>
     }
 
     stage = 'create_session'
