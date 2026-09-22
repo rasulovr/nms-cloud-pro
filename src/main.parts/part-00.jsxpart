@@ -1997,6 +1997,22 @@ const setInternalSessionStorage = (session) => {
   } catch (_e) {}
 }
 
+const recoverInternalSessionFromAuth = (authSession) => {
+  const metadata = authSession?.user?.app_metadata || {}
+  const internalId = String(metadata.rms_internal_id || '').trim()
+  const login = normalizeInternalLogin(metadata.rms_login || authSession?.user?.email)
+  if (!internalId || !login) return null
+  return {
+    rms_internal: true,
+    access_token: authSession.access_token,
+    user: {
+      id: internalId,
+      email: `${login}@rms.internal`,
+      login_name: login
+    }
+  }
+}
+
 const RMS_APP_SETTINGS_TABLE = 'rms_app_settings'
 const RMS_CUSTOM_LOGO_KEY = 'custom_logo'
 const RMS_BRANCH_RENT_FORECAST_SETTING = 'branch_rent_forecast_v1'
@@ -5220,7 +5236,9 @@ function App() {
         }
 
         const { data } = await supabase.auth.getSession()
-        if (mounted) setSession(data.session || null)
+        const recoveredInternal = recoverInternalSessionFromAuth(data.session)
+        if (recoveredInternal) setInternalSessionStorage(recoveredInternal)
+        if (mounted) setSession(recoveredInternal || data.session || null)
       } finally {
         if (mounted) setLoading(false)
       }
@@ -5230,7 +5248,14 @@ function App() {
 
     const { data: sub } = supabase.auth.onAuthStateChange((event, nextSession) => {
       if (event === 'PASSWORD_RECOVERY') setPasswordRecovery(true)
-      if (!getInternalSessionStorage()?.rms_internal && mounted) setSession(nextSession || null)
+      const storedInternal = getInternalSessionStorage()
+      if (storedInternal?.rms_internal) {
+        if (mounted) setSession(storedInternal)
+        return
+      }
+      const recoveredInternal = recoverInternalSessionFromAuth(nextSession)
+      if (recoveredInternal) setInternalSessionStorage(recoveredInternal)
+      if (mounted) setSession(recoveredInternal || nextSession || null)
     })
     return () => {
       mounted = false
@@ -5317,7 +5342,7 @@ function App() {
   const isInternalSession = Boolean(session?.rms_internal)
   const internalLogin = normalizeInternalLogin(session?.user?.login_name || session?.user?.email)
   const isInternalAdmin = isInternalSession && (profile?.role === 'admin' || internalLogin === 'admin')
-  const isAdmin = isInternalAdmin || (!isInternalSession && (!profile || profile?.role === 'admin'))
+  const isAdmin = isInternalAdmin || (!isInternalSession && profile?.role === 'admin')
   const sectionAccess = (sectionId) => {
     if (isInternalSession && sectionId === 'settings' && !isInternalAdmin) return 'none'
     if (isAdmin) return 'admin'
@@ -5353,9 +5378,10 @@ function App() {
     setSection('revenue')
   }
 
-  function logout() {
+  async function logout() {
     if (session?.rms_internal) {
       setInternalSessionStorage(null)
+      await supabase.auth.signOut()
       setSession(null)
       setProfile(null)
       setPermissions([])
