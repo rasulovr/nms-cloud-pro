@@ -3782,8 +3782,20 @@ function Recipes({ t }) {
       if (semiItemsError) throw semiItemsError
       if (finalError) throw finalError
 
+      // Internal RMS employees can read the ingredient catalogue, but RLS may
+      // intentionally hide the direct latest_product_costs view. In that case
+      // use the same permission-checked workspace RPC as the legacy recipes
+      // screen so a tech card does not silently show every component as 0.00.
+      let resolvedCosts = latest || []
+      if (!resolvedCosts.length && getInternalSessionStorage()?.rms_internal) {
+        const workspace = await fetchRmsRecipesWorkspace()
+        if (!workspace.error && Array.isArray(workspace.data?.latest_product_costs)) {
+          resolvedCosts = workspace.data.latest_product_costs
+        }
+      }
+
       setProducts((prod || []).map(p => ({ ...p, category: normalizeProductType(p.category) })))
-      setCosts(latest || [])
+      setCosts(resolvedCosts)
       const activeMenu = (menu || []).filter(m => m.is_active !== false)
       const dedupedMenu = dedupeMenuItemsForTechCards(activeMenu, finalRows || [])
       setMenuItems(dedupedMenu)
