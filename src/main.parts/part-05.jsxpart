@@ -3967,6 +3967,7 @@ function Settings({ session, t, theme, setTheme, lang, setLang }) {
                       <span className="user-admin-label">Статус входа</span>
                       {guardState.locked ? <div><strong className="bad">Заблокирован</strong><div className="hint">Осталось: {rmsFormatLockTime(guardState.remainingMs)}</div></div> : guardState.attempts > 0 ? <div><strong>Попыток: {guardState.attempts}</strong><div className="hint">До блокировки: {Math.max(0, RMS_LOGIN_MAX_FAILED_ATTEMPTS - guardState.attempts)}</div></div> : <span className="good">Доступен</span>}
                       <button className="small" style={{marginTop:8}} onClick={() => resetUserLoginLock(userLogin, u.id)}>Обнулить счётчик попыток</button>
+                      {u.role !== 'admin' && <button className="small" style={{marginTop:8, marginLeft:6}} onClick={() => syncUserAuth(u.id, userLogin)}>Синхронизировать вход</button>}
                     </div>
                   </div>
 
