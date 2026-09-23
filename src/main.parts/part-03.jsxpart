@@ -9469,6 +9469,7 @@ function Suppliers({ t, isAdmin = false }) {
   const [viewPurchaseId, setViewPurchaseId] = useState('')
   const [recentPurchasesPageSize, setRecentPurchasesPageSize] = useState(10)
   const [recentPurchasesPage, setRecentPurchasesPage] = useState(1)
+  const [purchaseJournalFocusId, setPurchaseJournalFocusId] = useState('')
   const [purchaseJournalFilters, setPurchaseJournalFilters] = useState({ date_from: '', date_to: '', supplier_id: '', legal_entity_id: '', e_invoice: '', invoice: '' })
   const [journalPeriodMode, setJournalPeriodMode] = useState('all')
   const [transactionSupplierId, setTransactionSupplierId] = useState('')
@@ -9732,21 +9733,38 @@ function Suppliers({ t, isAdmin = false }) {
     // statement timeout and silently leave the UI with its 500-row fallback.
     if (getInternalSessionStorage()?.rms_internal) {
       const pageSize = 500
-      let offset = 0
-      let rows = []
+      const fetchPage = async (offset) => {
+        let lastError = null
+        for (let attempt = 0; attempt < 2; attempt += 1) {
+          const { data, error } = await supabase.rpc('rms_supplier_purchases_page_secure', { p_limit: pageSize, p_offset: offset })
+          if (!error) return data
+          lastError = error
+        }
+        throw lastError || new Error('Не удалось загрузить страницу поступлений')
+      }
 
-      while (true) {
-        const { data, error } = await supabase.rpc('rms_supplier_purchases_page_secure', {
-          p_limit: pageSize,
-          p_offset: offset
-        })
-        if (error) throw error
+      const firstPayload = await fetchPage(0)
+      const firstRows = normalizeSupplierPurchasesFullPayload(firstPayload)
+      const totalCount = Number(firstPayload?.total_count)
+      if (Number.isFinite(totalCount) && totalCount >= 0) {
+        const offsets = []
+        for (let offset = pageSize; offset < totalCount; offset += pageSize) offsets.push(offset)
+        const remainingPayloads = await Promise.all(offsets.map(offset => fetchPage(offset)))
+        const rows = [firstRows, ...remainingPayloads.map(normalizeSupplierPurchasesFullPayload)].flat()
+        if (rows.length < totalCount) throw new Error(`Загружено ${rows.length} из ${totalCount} поступлений`)
+        return rows.slice(0, totalCount)
+      }
 
-        const batch = normalizeSupplierPurchasesFullPayload(data)
+      let offset = firstRows.length
+      let rows = firstRows
+      while (firstRows.length === pageSize && offset < 50000) {
+        const payload = await fetchPage(offset)
+        const batch = normalizeSupplierPurchasesFullPayload(payload)
         rows = rows.concat(batch)
-        if (batch.length < pageSize || offset + batch.length >= 50000) return rows
+        if (batch.length < pageSize) break
         offset += batch.length
       }
+      return rows
     }
 
     const { data, error } = await supabase.rpc('rms_supplier_purchases_full', { p_limit: 50000 })
@@ -9761,9 +9779,10 @@ function Suppliers({ t, isAdmin = false }) {
       try {
         const rpcRows = await fetchSupplierPurchasesFullRowsViaRpc()
         if (Array.isArray(rpcRows) && rpcRows.length) return rpcRows
-      } catch (_rpcError) {
-        // Fallback to direct ranged reads. Restricted internal users may be blocked by RLS here,
-        // in which case the caller will fall back to rms_suppliers_workspace.
+      } catch (rpcError) {
+        // Never report the 500-row workspace snapshot as the complete journal.
+        // Restricted internal users cannot safely fall back to direct table reads.
+        throw rpcError
       }
     }
 
@@ -9869,8 +9888,9 @@ function Suppliers({ t, isAdmin = false }) {
         try {
           const fullPurchases = await fetchAllSupplierPurchasesRows({ preferRpc: true })
           setPurchases(Array.isArray(fullPurchases) && fullPurchases.length ? fullPurchases : (ws.supplier_purchases || []))
-        } catch (_purchaseFetchError) {
-          setPurchases(ws.supplier_purchases || [])
+        } catch (purchaseFetchError) {
+          setPurchases([])
+          setMessage(purchaseFetchError?.message || 'Не удалось загрузить полный журнал поступлений. Обновите страницу.')
         }
         try {
           const fullPayments = await fetchAllSupplierPaymentsRows()
