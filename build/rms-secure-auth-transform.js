@@ -28,17 +28,37 @@ const secureLogin = `const normalizedLogin = normalizeInternalLogin(rawLogin)
       `
 
 const pagedRead = `async function fetchSupplierPurchasesFullRowsViaRpc() {
-    const pageSize = 250
-    let offset = 0
-    let allRows = []
-    while (true) {
-      const { data, error } = await supabase.rpc('rms_supplier_purchases_page_secure', { p_limit: pageSize, p_offset: offset })
-      if (error) throw error
-      const batch = normalizeSupplierPurchasesFullPayload(data)
+    const pageSize = 500
+    const fetchPage = async (offset) => {
+      let lastError = null
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        const { data, error } = await supabase.rpc('rms_supplier_purchases_page_secure', { p_limit: pageSize, p_offset: offset })
+        if (!error) return data
+        lastError = error
+      }
+      throw lastError || new Error('Не удалось загрузить страницу поступлений')
+    }
+
+    const firstPayload = await fetchPage(0)
+    const firstRows = normalizeSupplierPurchasesFullPayload(firstPayload)
+    const totalCount = Number(firstPayload?.total_count)
+    if (Number.isFinite(totalCount) && totalCount >= 0) {
+      const offsets = []
+      for (let offset = pageSize; offset < totalCount; offset += pageSize) offsets.push(offset)
+      const remainingPayloads = await Promise.all(offsets.map(offset => fetchPage(offset)))
+      const allRows = [firstRows, ...remainingPayloads.map(normalizeSupplierPurchasesFullPayload)].flat()
+      if (allRows.length < totalCount) throw new Error(\`Загружено \${allRows.length} из \${totalCount} поступлений\`)
+      return allRows.slice(0, totalCount)
+    }
+
+    let offset = firstRows.length
+    let allRows = firstRows
+    while (firstRows.length === pageSize && offset < 50000) {
+      const payload = await fetchPage(offset)
+      const batch = normalizeSupplierPurchasesFullPayload(payload)
       allRows = allRows.concat(batch)
       if (batch.length < pageSize) break
-      offset += pageSize
-      if (offset > 50000) break
+      offset += batch.length
     }
     return allRows
   }`
