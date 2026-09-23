@@ -40,12 +40,14 @@ returns jsonb
 language plpgsql
 security definer
 set search_path = public, pg_temp
+set statement_timeout = '30s'
 as $function$
 declare
   v_account public.rms_internal_auth_accounts%rowtype;
   v_user jsonb;
   v_permission text;
   v_result jsonb;
+  v_total_count bigint;
 begin
   if auth.uid() is null then
     raise exception 'Authentication required' using errcode = '42501';
@@ -73,8 +75,11 @@ begin
     end if;
   end if;
 
+  select count(*) into v_total_count
+  from public.supplier_purchases;
+
   select coalesce(
-    jsonb_agg(to_jsonb(row_data) order by row_data.purchase_date desc nulls last, row_data.created_at desc nulls last),
+    jsonb_agg(to_jsonb(row_data) order by row_data.purchase_date desc nulls last, row_data.created_at desc nulls last, row_data.id),
     '[]'::jsonb
   ) into v_result
   from (
@@ -101,12 +106,12 @@ begin
     left join public.suppliers s on s.id = p.supplier_id
     left join public.legal_entities le on le.id = p.legal_entity_id
     left join public.branches b on b.id = p.branch_id
-    order by p.purchase_date desc nulls last, p.created_at desc nulls last
+    order by p.purchase_date desc nulls last, p.created_at desc nulls last, p.id
     limit greatest(1, least(coalesce(p_limit, 250), 500))
     offset greatest(0, coalesce(p_offset, 0))
   ) row_data;
 
-  return v_result;
+  return jsonb_build_object('rows', v_result, 'total_count', v_total_count);
 end;
 $function$;
 
@@ -119,6 +124,9 @@ create index if not exists idx_supplier_purchase_items_purchase_id
 
 create index if not exists idx_supplier_purchases_page_order
   on public.supplier_purchases (purchase_date desc, created_at desc);
+
+create index if not exists idx_supplier_purchases_page_order_v2
+  on public.supplier_purchases (purchase_date desc, created_at desc, id);
 
 create or replace function public.rms_suppliers_workspace_secure()
 returns jsonb
