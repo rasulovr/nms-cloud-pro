@@ -63,6 +63,41 @@ const pagedRead = `async function fetchSupplierPurchasesFullRowsViaRpc() {
     return allRows
   }`
 
+const verifiedAuthBootstrap = `const bootAuth = async () => {
+      try {
+        await hydrateRmsInternalAuthFromCloud()
+        const storedInternal = getInternalSessionStorage()
+        const { data, error: sessionError } = await supabase.auth.getSession()
+        if (sessionError) throw sessionError
+
+        const authSession = data?.session || null
+        const recoveredInternal = recoverInternalSessionFromAuth(authSession)
+        if (storedInternal?.rms_internal && !recoveredInternal) setInternalSessionStorage(null)
+        if (recoveredInternal) setInternalSessionStorage(recoveredInternal)
+        if (mounted) setSession(recoveredInternal || authSession || null)
+      } catch (_authError) {
+        if (getInternalSessionStorage()?.rms_internal) setInternalSessionStorage(null)
+        if (mounted) setSession(null)
+      } finally {
+        if (mounted) setLoading(false)
+      }
+    }
+
+`
+
+const verifiedAuthStateChange = `    const { data: sub } = supabase.auth.onAuthStateChange((event, nextSession) => {
+      if (event === 'PASSWORD_RECOVERY') setPasswordRecovery(true)
+      const recoveredInternal = recoverInternalSessionFromAuth(nextSession)
+      if (recoveredInternal) {
+        setInternalSessionStorage(recoveredInternal)
+        if (mounted) setSession(recoveredInternal)
+        return
+      }
+      if (getInternalSessionStorage()?.rms_internal) setInternalSessionStorage(null)
+      if (mounted) setSession(nextSession || null)
+    })
+`
+
 const verifiedPasswordChange = `  async function changeUserPassword(userId, loginName) {
     setMsg('')
     setPasswordStatuses(prev => ({ ...prev, [userId]: { type: 'loading', text: 'Сохранение...' } }))
@@ -165,8 +200,21 @@ export function rmsSecureAuthTransform(source) {
   result = replaceRange(result, 'const normalizedLogin = normalizeInternalLogin(rawLogin)', 'const { data, error } = await supabase.auth.signInWithPassword', secureLogin)
   result = result.replace(
     "const { data, error } = await supabase.rpc('rms_suppliers_workspace')",
-    "const rpcName = getInternalSessionStorage()?.rms_internal ? 'rms_suppliers_workspace_secure' : 'rms_suppliers_workspace'\n  const { data, error } = await supabase.rpc(rpcName)"
+    `const storedInternal = getInternalSessionStorage()
+  if (storedInternal?.rms_internal) {
+    const { data: authData } = await supabase.auth.getSession()
+    const verifiedInternal = recoverInternalSessionFromAuth(authData?.session)
+    if (!verifiedInternal) {
+      setInternalSessionStorage(null)
+      return { data: null, error: new Error('Защищённая сессия истекла. Войдите снова.') }
+    }
+    setInternalSessionStorage(verifiedInternal)
+  }
+  const rpcName = getInternalSessionStorage()?.rms_internal ? 'rms_suppliers_workspace_secure' : 'rms_suppliers_workspace'
+  const { data, error } = await supabase.rpc(rpcName)`
   )
+  result = replaceRange(result, 'const bootAuth = async () => {', '    bootAuth()', verifiedAuthBootstrap)
+  result = replaceRange(result, '    const { data: sub } = supabase.auth.onAuthStateChange', '    return () => {', verifiedAuthStateChange)
   result = replaceRange(result, 'async function fetchSupplierPurchasesFullRowsViaRpc() {', 'async function fetchAllSupplierPurchasesRows', `${pagedRead}\n\n  `)
   result = replaceRange(result, '  async function changeUserPassword(userId, loginName) {', '  async function resetUserLoginLock', verifiedPasswordChange)
   return result
