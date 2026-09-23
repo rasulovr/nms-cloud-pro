@@ -552,6 +552,7 @@ setMessage(e.message)
     if (mode === 'all') {
       from = ''
     }
+    setPurchaseJournalFocusId('')
     setJournalPeriodMode(mode)
     setPurchaseJournalFilters(f => ({ ...f, date_from: from, date_to: mode === 'all' ? '' : to }))
     setRecentPurchasesPage(1)
@@ -602,6 +603,7 @@ setMessage(e.message)
 
   const filteredPurchases = visiblePurchases.filter(p => {
     const f = purchaseJournalFilters || {}
+    if (purchaseJournalFocusId && String(p.id) !== String(purchaseJournalFocusId)) return false
     if (f.date_from && String(p.purchase_date || '') < f.date_from) return false
     if (f.date_to && String(p.purchase_date || '') > f.date_to) return false
     if (f.supplier_id && String(p.supplier_id) !== String(f.supplier_id)) return false
@@ -648,6 +650,19 @@ setMessage(e.message)
     const purchase = visiblePurchases.find(p => String(p.id) === String(purchaseId))
     if (!purchase) return
     openSupplierPurchaseA4(purchase, purchaseLinkedEInvoices(purchase.id))
+  }
+  function goToPurchaseFromProductSearch(purchaseId) {
+    if (!purchaseId) return
+    const purchase = visiblePurchases.find(p => String(p.id) === String(purchaseId))
+    if (!purchase) return
+    setPurchaseJournalFocusId(String(purchase.id))
+    setPurchaseJournalFilters({ date_from: '', date_to: '', supplier_id: '', legal_entity_id: '', e_invoice: '', invoice: '' })
+    setJournalPeriodMode('all')
+    setRecentPurchasesPage(1)
+    setViewPurchaseId(String(purchase.id))
+    window.requestAnimationFrame(() => {
+      document.getElementById('supplier-purchase-journal')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
   }
   function suppliersForLegalEntity(entityId) {
     const ids = new Set(purchases.filter(p => p.legal_entity_id === entityId).map(p => p.supplier_id))
@@ -1455,7 +1470,7 @@ setMessage(e.message)
                 <td>{fmt(row.quantity)} {row.unit}</td>
                 <td>{fmt(row.unit_price)} AZN</td>
                 <td><b>{fmt(row.total_amount)} AZN</b></td>
-                <td><button className="ghost small" type="button" onClick={() => openPurchaseFromProductSearch(row.purchase_id)}>{isAzInterface ? 'Baxış' : 'Просмотр'}</button></td>
+                <td><div className="action-row"><button className="ghost small" type="button" onClick={() => openPurchaseFromProductSearch(row.purchase_id)}>{isAzInterface ? 'Baxış' : 'Просмотр'}</button><button className="small" type="button" onClick={() => goToPurchaseFromProductSearch(row.purchase_id)}>{isAzInterface ? 'Keç' : 'Перейти'}</button></div></td>
               </tr>)}
               {!supplierProductInvoiceSearch && <tr><td colSpan="9" className="hint">{isAzInterface ? 'Axtarış üçün məhsulun, təchizatçının və ya qaimənin adını daxil edin.' : 'Введите название товара, поставщика или номер накладной.'}</td></tr>}
               {supplierProductInvoiceSearch && !supplierProductInvoiceRows.length && <tr><td colSpan="9" className="hint">{isAzInterface ? 'Uyğun alış tapılmadı.' : 'Подходящие закупки не найдены.'}</td></tr>}
@@ -1473,7 +1488,7 @@ setMessage(e.message)
       {/* v260: Standalone “Список e-qaimə” removed.
           e-qaimə is managed inside “Журнал поступлений и сверки”. */}
 
-     <div className="card span-2">
+     <div className="card span-2" id="supplier-purchase-journal">
         <div className="card-head">
           <div>
             <h3>Журнал поступлений и сверки</h3>
@@ -1501,17 +1516,17 @@ setMessage(e.message)
             <div className="supplier-custom-period supplier-custom-period-visible">
               <strong>Диапазон</strong>
               <div>
-                <DateInput value={purchaseJournalFilters.date_from} onChange={e => { setJournalPeriodMode('custom'); setPurchaseJournalFilters(f => ({...f, date_from: e.target.value})); setRecentPurchasesPage(1) }} />
+                <DateInput value={purchaseJournalFilters.date_from} onChange={e => { setPurchaseJournalFocusId(''); setJournalPeriodMode('custom'); setPurchaseJournalFilters(f => ({...f, date_from: e.target.value})); setRecentPurchasesPage(1) }} />
                 <em>—</em>
-                <DateInput value={purchaseJournalFilters.date_to} onChange={e => { setJournalPeriodMode('custom'); setPurchaseJournalFilters(f => ({...f, date_to: e.target.value})); setRecentPurchasesPage(1) }} />
+                <DateInput value={purchaseJournalFilters.date_to} onChange={e => { setPurchaseJournalFocusId(''); setJournalPeriodMode('custom'); setPurchaseJournalFilters(f => ({...f, date_to: e.target.value})); setRecentPurchasesPage(1) }} />
               </div>
             </div>
           </div>
-          <label><span>Поставщик</span><select value={purchaseJournalFilters.supplier_id} onChange={e => { setPurchaseJournalFilters(f => ({...f, supplier_id: e.target.value})); setRecentPurchasesPage(1) }}><option value="">Все поставщики</option>{activeSuppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
-          <label><span>Наш VOEN / VOEN</span><select value={purchaseJournalFilters.legal_entity_id} onChange={e => { setPurchaseJournalFilters(f => ({...f, legal_entity_id: e.target.value})); setRecentPurchasesPage(1) }}><option value="">Все юрлица</option>{legalEntities.map(le => <option key={le.id} value={le.id}>{le.name} · {le.voen}</option>)}</select></label>
-          <label><span>Поиск e-qaimə</span><input value={purchaseJournalFilters.e_invoice} onChange={e => { setPurchaseJournalFilters(f => ({...f, e_invoice: e.target.value})); setRecentPurchasesPage(1) }} placeholder="№ e-qaimə" /></label>
-          <label><span>Поиск накладной</span><input value={purchaseJournalFilters.invoice} onChange={e => { setPurchaseJournalFilters(f => ({...f, invoice: e.target.value})); setRecentPurchasesPage(1) }} placeholder="№ прихода" /></label>
-          <button className="ghost small" type="button" onClick={() => { setPurchaseJournalFilters({ date_from: '', date_to: '', supplier_id: '', legal_entity_id: '', e_invoice: '', invoice: '' }); setJournalPeriodMode('all'); setRecentPurchasesPage(1) }}>Сбросить</button>
+          <label><span>Поставщик</span><select value={purchaseJournalFilters.supplier_id} onChange={e => { setPurchaseJournalFocusId(''); setPurchaseJournalFilters(f => ({...f, supplier_id: e.target.value})); setRecentPurchasesPage(1) }}><option value="">Все поставщики</option>{activeSuppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
+          <label><span>Наш VOEN / VOEN</span><select value={purchaseJournalFilters.legal_entity_id} onChange={e => { setPurchaseJournalFocusId(''); setPurchaseJournalFilters(f => ({...f, legal_entity_id: e.target.value})); setRecentPurchasesPage(1) }}><option value="">Все юрлица</option>{legalEntities.map(le => <option key={le.id} value={le.id}>{le.name} · {le.voen}</option>)}</select></label>
+          <label><span>Поиск e-qaimə</span><input value={purchaseJournalFilters.e_invoice} onChange={e => { setPurchaseJournalFocusId(''); setPurchaseJournalFilters(f => ({...f, e_invoice: e.target.value})); setRecentPurchasesPage(1) }} placeholder="№ e-qaimə" /></label>
+          <label><span>Поиск накладной</span><input value={purchaseJournalFilters.invoice} onChange={e => { setPurchaseJournalFocusId(''); setPurchaseJournalFilters(f => ({...f, invoice: e.target.value})); setRecentPurchasesPage(1) }} placeholder="№ прихода" /></label>
+          <button className="ghost small" type="button" onClick={() => { setPurchaseJournalFocusId(''); setPurchaseJournalFilters({ date_from: '', date_to: '', supplier_id: '', legal_entity_id: '', e_invoice: '', invoice: '' }); setJournalPeriodMode('all'); setRecentPurchasesPage(1) }}>Сбросить</button>
           <div className="supplier-journal-filter-summary"><b>{filteredPurchases.length}</b><span>найдено</span></div>
         </div>
         <div className="table-wrap">
