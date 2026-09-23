@@ -3873,3 +3873,37 @@ button:not(.nav):not(.rms-pro-logout):hover{transform:translateY(-1px)!important
 .rms-wifi-password-field input{flex:1;min-width:0}
 .rms-wifi-password-field .small{flex:0 0 auto;white-space:nowrap}
 @media(max-width:620px){.rms-wifi-password-field{align-items:stretch}.rms-wifi-password-field .small{min-height:44px}}
+
+/* v434: expose both product-search invoice actions in the existing markup */
+.rms-pro-shell .supplier-product-invoice-search-card .supplier-product-invoice-search-table th:last-child,
+.rms-pro-shell .supplier-product-invoice-search-card .supplier-product-invoice-search-table td:last-child{
+  width:190px!important;
+  min-width:190px!important;
+  max-width:190px!important;
+  padding-left:6px!important;
+  padding-right:10px!important;
+  overflow:visible!important;
+  white-space:nowrap!important;
+}
+.rms-pro-shell .supplier-product-invoice-search-card .supplier-product-invoice-search-table td:last-child > div.action-row{
+  display:grid!important;
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  align-items:center!important;
+  gap:6px!important;
+  width:174px!important;
+  min-width:174px!important;
+  margin-left:auto!important;
+  overflow:visible!important;
+}
+.rms-pro-shell .supplier-product-invoice-search-card .supplier-product-invoice-search-table td:last-child > div.action-row > button.small{
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  width:100%!important;
+  min-width:0!important;
+  padding-left:7px!important;
+  padding-right:7px!important;
+  white-space:nowrap!important;
+  visibility:visible!important;
+  opacity:1!important;
+}
