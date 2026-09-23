@@ -15641,6 +15641,45 @@ function RMSProV6Styles() {
 .rms-pro-shell .supplier-products-pricebook-note span{
   max-width:720px!important;
 }
+
+/* v434 supplier product search: keep both invoice actions visible */
+.rms-pro-shell .supplier-product-invoice-search-wrap{
+  width:100%!important;
+  max-width:100%!important;
+  overflow-x:auto!important;
+}
+.rms-pro-shell .supplier-product-invoice-search-table{
+  width:100%!important;
+  min-width:1180px!important;
+  table-layout:auto!important;
+}
+.rms-pro-shell .supplier-product-invoice-search-table th:last-child,
+.rms-pro-shell .supplier-product-invoice-search-table td.supplier-product-invoice-actions-cell{
+  width:190px!important;
+  min-width:190px!important;
+  max-width:190px!important;
+  padding-left:6px!important;
+  padding-right:10px!important;
+  text-align:right!important;
+  white-space:nowrap!important;
+  overflow:visible!important;
+}
+.rms-pro-shell .supplier-product-invoice-actions{
+  display:grid!important;
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  align-items:center!important;
+  gap:6px!important;
+  width:174px!important;
+  min-width:174px!important;
+  margin-left:auto!important;
+}
+.rms-pro-shell .supplier-product-invoice-actions button.small{
+  width:100%!important;
+  min-width:0!important;
+  padding-left:7px!important;
+  padding-right:7px!important;
+  white-space:nowrap!important;
+}
 @media(max-width:900px){
   .rms-pro-shell .supplier-products-form-footer{
     align-items:stretch!important;
