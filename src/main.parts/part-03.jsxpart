@@ -9749,8 +9749,15 @@ function Suppliers({ t, isAdmin = false }) {
       if (Number.isFinite(totalCount) && totalCount >= 0) {
         const offsets = []
         for (let offset = pageSize; offset < totalCount; offset += pageSize) offsets.push(offset)
-        const remainingPayloads = await Promise.all(offsets.map(offset => fetchPage(offset)))
-        const rows = [firstRows, ...remainingPayloads.map(normalizeSupplierPurchasesFullPayload)].flat()
+        // Keep large JSON responses off the main thread in controlled bursts.
+        // Parsing every 500-row page at once can make low-powered browsers show
+        // "Page Unresponsive" even though the database requests succeed.
+        const rows = [...firstRows]
+        for (const offset of offsets) {
+          const payload = await fetchPage(offset)
+          rows.push(...normalizeSupplierPurchasesFullPayload(payload))
+          await new Promise(resolve => setTimeout(resolve, 0))
+        }
         if (rows.length < totalCount) throw new Error(`Загружено ${rows.length} из ${totalCount} поступлений`)
         return rows.slice(0, totalCount)
       }
@@ -9885,6 +9892,9 @@ function Suppliers({ t, isAdmin = false }) {
         setSuppliers(ws.suppliers || [])
         setProducts((ws.supplier_products || []).filter(p => p.is_active !== false))
         setBalances(ws.supplier_balances || [])
+        // Paint the workspace snapshot immediately, then replace it with the
+        // complete journal once all pages have arrived.
+        setPurchases(ws.supplier_purchases || [])
         try {
           const fullPurchases = await fetchAllSupplierPurchasesRows({ preferRpc: true })
           setPurchases(Array.isArray(fullPurchases) && fullPurchases.length ? fullPurchases : (ws.supplier_purchases || []))
@@ -10016,30 +10026,18 @@ function Suppliers({ t, isAdmin = false }) {
     return [...sameType, ...otherTypes]
   }
   function productPriceTrend(productId) {
-    const rows = []
-    ;(purchases || []).forEach(p => {
-      ;(p.supplier_purchase_items || []).forEach(i => {
-        if (i.product_id === productId) {
-          rows.push({
-            date: p.purchase_date || p.created_at || '',
-            invoice: p.invoice_number || '',
-            price: parseNum(i.price_per_base_unit || i.unit_price),
-            unit_price: parseNum(i.unit_price),
-            total: parseNum(i.total_amount)
-          })
-        }
-      })
-    })
-    rows.sort((a, b) => String(b.date).localeCompare(String(a.date)))
-    const current = rows[0]
-    const previous = rows[1]
+    const history = supplierProductPriceInfoMap.get(String(productId))?.history || []
+    const current = history[0]
+    const previous = history[1]
     if (!current) return { label: 'нет закупки', className: 'hint' }
-    if (!previous || !previous.price) return { label: `${fmt(current.price)} · первая цена`, className: 'hint' }
-    const diff = current.price - previous.price
-    const pctChange = previous.price ? diff / previous.price * 100 : 0
+    const currentPrice = parseNum(current.base_unit_price || current.price)
+    const previousPrice = parseNum(previous?.base_unit_price || previous?.price)
+    if (!previous || !previousPrice) return { label: `${fmt(currentPrice)} · первая цена`, className: 'hint' }
+    const diff = currentPrice - previousPrice
+    const pctChange = previousPrice ? diff / previousPrice * 100 : 0
     const sign = diff > 0 ? '+' : ''
     return {
-      label: `${fmt(current.price)} / ${current.invoice || current.date} · ${sign}${fmt(diff)} (${sign}${pct(pctChange)})`,
+      label: `${fmt(currentPrice)} / ${current.invoice || current.date} · ${sign}${fmt(diff)} (${sign}${pct(pctChange)})`,
       className: diff > 0 ? 'bad' : diff < 0 ? 'good' : 'hint'
     }
   }
@@ -10048,31 +10046,15 @@ function Suppliers({ t, isAdmin = false }) {
     const currentPrice = parseNum(currentUnitPrice)
     if (!productId || !(currentPrice > 0)) return null
 
-    const history = []
-    ;(purchases || []).forEach(p => {
-      if (excludePurchaseId && String(p.id) === String(excludePurchaseId)) return
-      ;(p.supplier_purchase_items || []).forEach(item => {
-        if (String(item.product_id || '') !== String(productId)) return
-        const itemUnit = String(item.unit || item.supplier_products?.base_unit || '')
-        if (unit && itemUnit && itemUnit !== String(unit)) return
-        const price = parseNum(item.unit_price || item.price_per_base_unit)
-        if (!(price > 0)) return
-        history.push({
-          price,
-          unit: itemUnit,
-          date: p.purchase_date || p.created_at || '',
-          created_at: p.created_at || '',
-          invoice: p.invoice_number || ''
-        })
-      })
+    // supplierProductPriceInfoMap is built once per purchases update. Looking
+    // up one product here avoids rescanning all 32k+ purchase items on every
+    // keystroke and for every visible invoice row.
+    const previous = (supplierProductPriceInfoMap.get(String(productId))?.history || []).find(item => {
+      if (excludePurchaseId && String(item.purchase_id) === String(excludePurchaseId)) return false
+      const itemUnit = String(item.unit || '')
+      if (unit && itemUnit && itemUnit !== String(unit)) return false
+      return parseNum(item.price) > 0
     })
-
-    history.sort((a, b) => {
-      const dateCompare = String(b.date).localeCompare(String(a.date))
-      return dateCompare || String(b.created_at).localeCompare(String(a.created_at))
-    })
-
-    const previous = history[0]
     if (!previous?.price) return null
 
     const changePct = ((currentPrice - previous.price) / previous.price) * 100
