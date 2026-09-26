@@ -179,8 +179,8 @@ function rmsForecastPreviousMonths(y, m, count = 3) {
 
 function rmsForecastSumExpenseGroups(rows = []) {
   return (rows || []).reduce((map, r) => {
-    const name = r?.expense_categories?.name || r?.custom_category || ''
-    if (isSalaryExpenseName(name) || isDsmfExpenseName(name) || isTaxExpenseName(name) || isBazarExpenseName(name) || isServiceChargeStaffExpenseName(name)) return map
+    const name = financeExpenseNameFromRow(r)
+    if (isSalaryExpenseName(name) || isDsmfExpenseName(name) || isNonOperatingTaxExpenseRow(r) || isBoltSettlementExpenseRow(r) || isBazarExpenseName(name) || isServiceChargeStaffExpenseName(name)) return map
     const group = rmsFinanceExpenseGroupName(name)
     map[group] = parseNum(map[group]) + parseNum(r.amount)
     return map
@@ -300,11 +300,11 @@ async function rmsCalculateNetworkForecastForMonth(y, m, scopeBranchId = 'all') 
     const map = new Map()
     ;(expenseRows || []).forEach(row => {
       if (String(row?.comment || '').startsWith('SUPPLIER_PURCHASE_')) return
-      const name = row?.expense_categories?.name || row?.custom_category || ''
+      const name = financeExpenseNameFromRow(row)
       const group = rmsFinanceExpenseGroupName(name)
       // Налог и DSMF из daily_expenses не должны попадать в прогноз вторично:
       // налог считается от прогнозной выручки, DSMF — от официальных зарплат.
-      if (isSalaryExpenseName(name) || isDsmfExpenseName(name) || isTaxExpenseName(name) || isBazarExpenseName(name) || isServiceChargeStaffExpenseName(name) || group === 'rent') return
+      if (isSalaryExpenseName(name) || isDsmfExpenseName(name) || isNonOperatingTaxExpenseRow(row) || isBoltSettlementExpenseRow(row) || isBazarExpenseName(name) || isServiceChargeStaffExpenseName(name) || group === 'rent') return
       addArticle(map, articleNameForExpense(row), row.amount)
     })
     const supplierTotals = rmsFinanceSupplierTotalsForScope(purchaseRows || [], selectedBranchId, shareMap)
@@ -560,28 +560,31 @@ async function rmsCalculateNetworkForecastForMonth(y, m, scopeBranchId = 'all') 
       ? 'пропорционально прогнозной выручке выбранного филиала; service charge включён в настройках филиала'
       : 'service charge не учитывается: в настройках выбранного филиала галочка выключена')
   const taxSettings = branchTaxSetting && typeof branchTaxSetting === 'object' ? branchTaxSetting : {}
+  const grossTurnoverByBranch = row => parseNum(row?.cash_amount) + parseNum(row?.bank_amount) + parseNum(row?.wolt_amount)
+  const grossTurnover = revenueRows.reduce((sum, row) => sum + grossTurnoverByBranch(row), 0)
+  const grossTurnoverForecast = grossTurnover / Math.max(1, passed) * monthDays
   const taxForecastParts = selectedBranchId === 'all'
     ? revenueRows.map(row => {
-        const currentBranchRevenue = rmsNetRevenueParts(row, bankCommissionRate).revenue
+        const currentBranchRevenue = grossTurnoverByBranch(row)
         const branchForecastRevenue = currentBranchRevenue / Math.max(1, passed) * monthDays
         const configuredRate = parseNum(taxSettings?.[row.branch_id])
         const rate = configuredRate > 0 ? configuredRate : DEFAULT_TAX_RATE
         return { revenue: branchForecastRevenue, rate, amount: branchForecastRevenue * rate / 100 }
       })
     : [{
-        revenue: forecastRevenue,
+        revenue: grossTurnoverForecast,
         rate: parseNum(taxSettings?.[selectedBranchId]) > 0 ? parseNum(taxSettings?.[selectedBranchId]) : DEFAULT_TAX_RATE,
-        amount: forecastRevenue * (parseNum(taxSettings?.[selectedBranchId]) > 0 ? parseNum(taxSettings?.[selectedBranchId]) : DEFAULT_TAX_RATE) / 100
+        amount: grossTurnoverForecast * (parseNum(taxSettings?.[selectedBranchId]) > 0 ? parseNum(taxSettings?.[selectedBranchId]) : DEFAULT_TAX_RATE) / 100
       }]
   const taxForecast = taxForecastParts.reduce((sum, row) => sum + parseNum(row.amount), 0)
-  const effectiveForecastTaxRate = forecastRevenue > 0 ? taxForecast / forecastRevenue * 100 : DEFAULT_TAX_RATE
+  const effectiveForecastTaxRate = grossTurnoverForecast > 0 ? taxForecast / grossTurnoverForecast * 100 : DEFAULT_TAX_RATE
 
   const fixedDetails = [
     { name: 'Зарплата', amount: salaryForecast, note: salaryForecastNote, keepVisible: true },
     { name: 'Аренда', amount: rentForecast, note: configuredRent > 0 ? 'фиксированная аренда из настроек филиалов' : rentCurrent > 0 ? 'из текущих расходов, так как аренда в настройках не заполнена' : rentHistory > 0 ? 'среднее прошлых месяцев, так как аренда в настройках не заполнена' : 'не заполнена в настройках и нет истории' },
     { name: 'DSMF', amount: dsmfForecast, note: dsmfForecastNote, keepVisible: true },
     { name: 'Service charge персоналу', amount: serviceForecast, note: serviceForecastNote },
-    { name: `Налог ${fmt(effectiveForecastTaxRate)}%`, amount: taxForecast, note: selectedBranchId === 'all' ? 'сумма налогов по ставке каждого филиала от его прогнозной выручки' : 'ставка выбранного филиала от прогнозной выручки' }
+    { name: `Налог с оборота ${fmt(effectiveForecastTaxRate)}%`, amount: taxForecast, note: selectedBranchId === 'all' ? 'расчёт от оборота по ставке каждого филиала' : 'расчёт от оборота выбранного филиала' }
   ].filter(row => row.keepVisible || parseNum(row.amount) > 0)
   const forecastExpenseMap = new Map()
   ;[...articleDetails, ...fixedDetails].forEach(row => {
@@ -1683,8 +1686,15 @@ function Dashboard({ t }) {
     // Finance uses real daily_expenses excluding supplier mirror rows, manual Bazar and salary-like rows,
     // then adds all supplier purchases allocated by revenue share, calculated salaries and tax separately.
     const dashboardRawExpenseByBranch = new Map()
+    const dashboardTaxPaidByBranch = new Map()
     ;(dashboardDailyExpensesResult?.data || []).forEach(r => {
-      const name = r.expense_categories?.name || r.custom_category || t('new_expense')
+      if (isBoltSettlementExpenseRow(r)) return
+      if (isTaxPaymentExpenseRow(r)) {
+        dashboardTaxPaidByBranch.set(r.branch_id, parseNum(dashboardTaxPaidByBranch.get(r.branch_id)) + parseNum(r.amount))
+        return
+      }
+      if (isNonOperatingTaxExpenseRow(r)) return
+      const name = financeExpenseNameFromRow(r) || t('new_expense')
       if (String(r?.comment || '').startsWith('SUPPLIER_PURCHASE_')) return
       if (isSalaryExpenseName(name) || isBazarExpenseName(name) || isServiceChargeStaffExpenseName(name)) return
       dashboardRawExpenseByBranch.set(r.branch_id, (dashboardRawExpenseByBranch.get(r.branch_id) || 0) + parseNum(r.amount))
@@ -1735,7 +1745,12 @@ function Dashboard({ t }) {
         : (b.service_charge_enabled ? parseNum(svcByBranch.get(b.id)?.staff_cost_amount) : 0)
       const configuredTaxRate = parseNum(branchTaxSetting?.[b.id])
       const taxRate = configuredTaxRate > 0 ? configuredTaxRate : DEFAULT_TAX_RATE
-      const tax = revenue * taxRate / 100
+      const grossTurnover = parseNum(rev.cash_amount) + parseNum(rev.bank_amount) + parseNum(rev.wolt_amount)
+      const taxCalculated = grossTurnover * taxRate / 100
+      const taxPaid = parseNum(dashboardTaxPaidByBranch.get(b.id))
+      // Фактическая оплата vergi не является дополнительным расходом P&L:
+      // налог уже учитывается один раз по ставке от оборота.
+      const tax = taxCalculated
       // Привязка накладных к филиалам пока неточная: все поставки сети,
       // включая Zaur Bazar, распределяются по доле выручки того же периода.
       const supplierTotals = rmsFinanceSupplierTotalsForScope(purchaseRowsForFinance || [], b.id, revenueShareMap)
@@ -1764,6 +1779,8 @@ function Dashboard({ t }) {
         salary,
         serviceCost,
         tax,
+        taxCalculated,
+        taxPaid,
         taxRate,
         bankCommission: revenueParts.bankCommission,
         bankCommissionRate,
@@ -1831,7 +1848,10 @@ function Dashboard({ t }) {
     ;(dashboardDailyExpensesResult?.data || []).forEach(row => {
       if (!rmsBranchInRevenueScope(row, activeBranchIds)) return
       if (branchId !== DASH_ALL_BRANCHES && String(row.branch_id || '') !== String(branchId)) return
-      const name = row.expense_categories?.name || row.custom_category || t('new_expense')
+      if (isBoltSettlementExpenseRow(row)) return
+      if (isTaxPaymentExpenseRow(row)) return
+      if (isNonOperatingTaxExpenseRow(row)) return
+      const name = financeExpenseNameFromRow(row) || t('new_expense')
       if (String(row?.comment || '').startsWith('SUPPLIER_PURCHASE_') || isSalaryExpenseName(name) || isBazarExpenseName(name) || isServiceChargeStaffExpenseName(name)) return
       expenseArticleMap.set(name, parseNum(expenseArticleMap.get(name)) + parseNum(row.amount))
     })
@@ -1846,10 +1866,10 @@ function Dashboard({ t }) {
     if (supplierOther > 0) expenseArticleMap.set('Закупки поставщиков / прочее', supplierOther)
     const salaryTotal = dashboardBranchRows.reduce((sum, row) => sum + parseNum(row.salary), 0)
     const serviceCostTotal = dashboardBranchRows.reduce((sum, row) => sum + parseNum(row.serviceCost), 0)
-    const taxTotal = dashboardBranchRows.reduce((sum, row) => sum + parseNum(row.tax), 0)
+    const taxCalculatedTotal = dashboardBranchRows.reduce((sum, row) => sum + parseNum(row.taxCalculated), 0)
     if (salaryTotal > 0) expenseArticleMap.set('Зарплаты', salaryTotal)
     if (serviceCostTotal > 0) expenseArticleMap.set('Service charge персоналу', serviceCostTotal)
-    if (taxTotal > 0) expenseArticleMap.set('Налог', taxTotal)
+    if (taxCalculatedTotal > 0) expenseArticleMap.set('Налог с оборота', taxCalculatedTotal)
     const expenseRows = Array.from(expenseArticleMap, ([name, amount]) => ({ name, amount }))
       .filter(row => row.amount > 0)
       .sort((a, b) => b.amount - a.amount)
@@ -2864,18 +2884,21 @@ function Finance({ t, lang, onGoToExpense }) {
       .lt('revenue_date', rmsNextMonthStart(`${Number(y)}-${String(Number(m)).padStart(2, '0')}`))
       .is('deleted_at', null)
     let expQuery = supabase.from('monthly_branch_expenses').select('*').eq('month', monthDate)
+    let taxPaymentQuery = supabase.from('daily_expenses').select('branch_id,amount,comment,custom_category,expense_categories(name)').gte('expense_date', monthDate).lt('expense_date', rmsNextMonthStart(`${Number(y)}-${String(Number(m)).padStart(2, '0')}`)).is('deleted_at', null)
     let salQuery = supabase.from('salary_periods').select('branch_id,salary_gross,salary_net').eq('salary_month', monthDate)
     let svcQuery = supabase.from('monthly_branch_service_charge_cost').select('*').eq('month', monthDate)
 
     if (branch !== ALL_BRANCHES) {
       expQuery = expQuery.eq('branch_id', branch)
+      taxPaymentQuery = taxPaymentQuery.eq('branch_id', branch)
       salQuery = salQuery.eq('branch_id', branch)
       svcQuery = svcQuery.eq('branch_id', branch)
     }
 
-    const [{ data: revRows }, { data: expRows }, { data: salRows }, { data: svcRows }, bankCommissionSetting] = await Promise.all([
+    const [{ data: revRows }, { data: expRows }, { data: taxPaymentRows }, { data: salRows }, { data: svcRows }, bankCommissionSetting] = await Promise.all([
       revQuery,
       expQuery,
+      taxPaymentQuery,
       salQuery,
       svcQuery,
       readRmsAppSetting(RMS_BANK_COMMISSION_RATE_SETTING, RMS_DEFAULT_BANK_COMMISSION_RATE)
@@ -2899,12 +2922,17 @@ function Finance({ t, lang, onGoToExpense }) {
     const bankCommission = scopedRevenueRows.reduce((s, r) => s + rmsNetRevenueParts(r, bankCommissionRate).bankCommission, 0)
 
     const taxRates = await financeBranchTaxRates()
-    const tax = scopedRevenueRows.reduce((sum, row) => {
-      const rowRevenue = rmsNetRevenueParts(row, bankCommissionRate).revenue
+    const grossTurnover = scopedRevenueRows.reduce((sum, row) => sum + parseNum(row.cash_amount) + parseNum(row.bank_amount) + parseNum(row.wolt_amount), 0)
+    const taxCalculated = scopedRevenueRows.reduce((sum, row) => {
+      const rowRevenue = parseNum(row.cash_amount) + parseNum(row.bank_amount) + parseNum(row.wolt_amount)
       const rate = financeTaxRateForBranch(row.branch_id || branch, taxRates)
       return sum + rowRevenue * (rate / 100)
     }, 0)
-    const effectiveTaxRate = revenue > 0 ? tax / revenue * 100 : (branch !== ALL_BRANCHES ? financeTaxRateForBranch(branch, taxRates) : TAX_RATE)
+    const taxPaid = (taxPaymentRows || []).filter(row => rmsBranchInRevenueScope(row, activeBranchIds) && isTaxPaymentExpenseRow(row)).reduce((sum, row) => sum + parseNum(row.amount), 0)
+    // Оплаченный vergi показываем отдельно для справки, но прибыль уменьшает
+    // только расчёт налога с оборота, чтобы не учитывать оплату повторно.
+    const tax = taxCalculated
+    const effectiveTaxRate = grossTurnover > 0 ? taxCalculated / grossTurnover * 100 : (branch !== ALL_BRANCHES ? financeTaxRateForBranch(branch, taxRates) : TAX_RATE)
     const net = revenue - expenses - salary - serviceCost - tax
 
     const syncedForecast = await rmsFinanceForecastEngine(y, m, branch)
@@ -2912,7 +2940,7 @@ function Finance({ t, lang, onGoToExpense }) {
     const forecastRevenue = parseNum(syncedForecast.forecastRevenue)
     const forecastProfit = parseNum(syncedForecast.forecastProfit)
 
-    return { revenue, expenses, salary, serviceCost, cash, bank, wolt, bankCommission, bankCommissionRate, activeBranchIds: [...activeBranchIds], tax, taxRate: effectiveTaxRate, gross: revenue, net, avg, forecastRevenue, forecastProfit, forecastDetails: syncedForecast.details || [], forecastExpenses: syncedForecast.forecastExpenses, forecastMargin: syncedForecast.forecastMargin }
+    return { revenue, grossTurnover, expenses, salary, serviceCost, cash, bank, wolt, bankCommission, bankCommissionRate, activeBranchIds: [...activeBranchIds], tax, taxCalculated, taxPaid, taxRate: effectiveTaxRate, gross: revenue, net, avg, forecastRevenue, forecastProfit, forecastDetails: syncedForecast.details || [], forecastExpenses: syncedForecast.forecastExpenses, forecastMargin: syncedForecast.forecastMargin }
   }
 
 
@@ -2977,9 +3005,11 @@ function Finance({ t, lang, onGoToExpense }) {
     const rawExpenseRows = (rows || [])
       .filter(row => rmsBranchInRevenueScope(row, new Set(current.activeBranchIds)))
       .filter(r => !String(r?.comment || '').startsWith('SUPPLIER_PURCHASE_'))
+      .filter(r => !isBoltSettlementExpenseRow(r))
+      .filter(r => !isNonOperatingTaxExpenseRow(r))
       .map(r => ({
         branch_id: r.branch_id,
-        name: r.expense_categories?.name || r.custom_category || t('new_expense'),
+        name: financeExpenseNameFromRow(r) || t('new_expense'),
         amount: parseNum(r.amount)
       }))
       .filter(r => !isBazarExpenseName(r.name))
@@ -3067,7 +3097,8 @@ function Finance({ t, lang, onGoToExpense }) {
     }
 
     const financeActualBreakdownRows = [...expenseRows]
-    if (currentForFinance.tax > 0) financeActualBreakdownRows.push({ name: `Налог ${fmt(currentForFinance.taxRate || TAX_RATE)}%`, amount: currentForFinance.tax })
+    if (parseNum(currentForFinance.taxCalculated) > 0) financeActualBreakdownRows.push({ name: `Налог с оборота ${fmt(currentForFinance.taxRate || TAX_RATE)}%`, amount: parseNum(currentForFinance.taxCalculated) })
+    if (parseNum(currentForFinance.taxPaid) > 0) financeActualBreakdownRows.push({ name: 'Оплаченный налог (справочно, вне прибыли)', amount: parseNum(currentForFinance.taxPaid) })
     const financeActualExpenseTotal = financeActualBreakdownRows.reduce((sum, row) => sum + parseNum(row.amount), 0)
     const financeUnifiedNet = parseNum(currentForFinance.revenue) - financeActualExpenseTotal
     const financeFormulaDiff = financeUnifiedNet - parseNum(currentForFinance.net)
@@ -3083,7 +3114,8 @@ function Finance({ t, lang, onGoToExpense }) {
       { name: 'Операционные расходы', amount: currentForFinance.expenses, note: 'daily_expenses без supplier mirror, ручного Базара и salary-like строк + все supplier purchases по доле выручки' },
       { name: 'Зарплаты', amount: currentForFinance.salary, note: 'единая payroll-логика с долей менеджеров' },
       { name: 'Service charge персоналу', amount: currentForFinance.serviceCost, note: 'monthly_branch_service_charge_cost; отдельная статья расходов' },
-      { name: `Налог ${fmt(currentForFinance.taxRate || TAX_RATE)}%`, amount: currentForFinance.tax, note: 'процент налогообложения по настройкам филиала' },
+      { name: `Налог с оборота ${fmt(currentForFinance.taxRate || TAX_RATE)}%`, amount: parseNum(currentForFinance.taxCalculated), note: 'расчёт по ставке от оборота из настроек филиала' },
+      { name: 'Оплаченный налог (справочно)', amount: parseNum(currentForFinance.taxPaid), note: 'фактические tax/Vergi платежи; не вычитаются из прибыли, налог уже рассчитан по ставке от оборота' },
       { name: 'Итого расходов по единой формуле', amount: financeActualExpenseTotal, note: 'сумма статей в “Расходы по статьям”' },
       { name: 'Чистая прибыль', amount: currentForFinance.net, note: 'выручка − все расходы' },
       { name: 'Контроль расхождения legacy/net', amount: financeFormulaDiff, note: Math.abs(financeFormulaDiff) <= 0.01 ? 'OK: формулы совпадают' : 'исправлено единой формулой v76' }
@@ -3255,7 +3287,7 @@ function Finance({ t, lang, onGoToExpense }) {
   const financeFoodCostPct = stats.revenue ? financeFoodCostAmount / parseNum(stats.revenue) * 100 : 0
   const financeTotalExpensePct = stats.revenue ? financeTotalExpenses / parseNum(stats.revenue) * 100 : 0
   const financeServicePct = stats.revenue ? parseNum(stats.serviceCost) / parseNum(stats.revenue) * 100 : 0
-  const financeTaxPct = stats.revenue ? parseNum(stats.tax) / parseNum(stats.revenue) * 100 : 0
+  const financeTaxPct = stats.grossTurnover ? parseNum(stats.taxCalculated) / parseNum(stats.grossTurnover) * 100 : parseNum(stats.taxRate)
   const financeExpenseRowsAll = (breakdown || [])
     .filter(r => parseNum(r.amount) > 0)
     .sort((a, b) => parseNum(b.amount) - parseNum(a.amount))
@@ -3453,7 +3485,7 @@ function Finance({ t, lang, onGoToExpense }) {
             <div><span>Фонд оплаты труда</span><b>{pct(financeSalaryPct)}</b><em>{fmt(stats.salary)} AZN</em></div>
             <div><span>Операционные расходы</span><b>{pct(financeTotalExpensePct)}</b><em>{fmt(financeTotalExpenses)} AZN</em></div>
             <div><span>Service charge</span><b>{pct(financeServicePct)}</b><em>{fmt(stats.serviceCost)} AZN</em></div>
-            <div><span>Налог</span><b>{pct(financeTaxPct)}</b><em>{fmt(stats.tax)} AZN</em></div>
+            <div><span>Налог с оборота</span><b>{pct(financeTaxPct)} ставка</b><em>{fmt(stats.tax)} AZN; оплачено vergi отдельно: {fmt(stats.taxPaid)} AZN (не уменьшает прибыль)</em></div>
             <div><span>Чистая маржа</span><b>{pct(financeProfitability)}</b><em className={financeProfitability >= 0 ? 'good' : 'bad'}>{fmt(financeNet)} AZN</em></div>
           </div>
         </div>

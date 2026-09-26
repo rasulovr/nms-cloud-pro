@@ -6,7 +6,7 @@ const forecast = fs.readFileSync(new URL('../src/main.parts/part-03.jsxpart', im
 const engine = forecast.match(/async function rmsCalculateNetworkForecastForMonth[\s\S]*?\n}\n\nasync function rmsFinanceForecastEngine/)?.[0] || ''
 
 assert.match(common, /const isTaxExpenseName = \(value\) => \{[\s\S]*?name\.includes\('налог'\)[\s\S]*?name\.includes\('vergi'\)/, 'Tax labels must be recognized across Russian and Azerbaijani data')
-assert.match(engine, /isTaxExpenseName\(name\).*?group === 'rent'/, 'Historical tax rows must not enter forecast article history')
-assert.match(engine, /isTaxExpenseName\(name\).*?isServiceChargeStaffExpenseName\(name\)/, 'Tax rows must stay separate from the calculated turnover-tax line')
+assert.match(forecast, /isSalaryExpenseName\(name\) \|\| isDsmfExpenseName\(name\) \|\| isNonOperatingTaxExpenseRow\(r\)/, 'Historical tax rows must not enter forecast operating expenses')
+assert.match(engine, /isNonOperatingTaxExpenseRow\(row\).*?group === 'rent'/, 'Tax rows must stay separate from the calculated turnover-tax line')
 
 console.log('Forecast v431 tax de-duplication checks passed')

@@ -5782,7 +5782,37 @@ function Reports({ t, permissions = [], isAdmin = false }) {
       }
 
       ;(dailyRows || []).forEach(row => {
-        const category = row?.expense_categories?.name || row?.custom_category || 'Прочее'
+        if (isBoltSettlementExpenseRow(row)) {
+          pushRow({
+            id: `bolt-settlement-${row.id}`,
+            source: 'Оплата ранее учтённых поездок',
+            branch_id: row.branch_id,
+            branch_name: branchNameById.get(String(row.branch_id)) || row.branch_id || '—',
+            expense_date: row.expense_date,
+            category_name: 'Bolt — оплата поездок',
+            comment: row.comment || '',
+            amount: parseNum(row.amount),
+            informational: true
+          })
+          return
+        }
+        if (isTaxPaymentExpenseRow(row)) {
+          pushRow({
+            id: `tax-paid-${row.id}`,
+            source: 'Оплата налога',
+            branch_id: row.branch_id,
+            branch_name: branchNameById.get(String(row.branch_id)) || row.branch_id || '—',
+            expense_date: row.expense_date,
+            category_name: 'Оплаченный налог',
+            comment: row.comment || '',
+            amount: parseNum(row.amount),
+            bucket: 'taxPaid',
+            informational: true
+          })
+          return
+        }
+        if (isNonOperatingTaxExpenseRow(row)) return
+        const category = financeExpenseNameFromRow(row)
         if (String(row?.comment || '').startsWith('SUPPLIER_PURCHASE_') || isSalaryExpenseName(category) || isDsmfExpenseName(category) || isBazarExpenseName(category) || isServiceChargeStaffExpenseName(category)) return
         pushRow({
           id: `daily-${row.id}`,
@@ -5897,8 +5927,8 @@ function Reports({ t, permissions = [], isAdmin = false }) {
           branch_id: branchId,
           branch_name: branchNameById.get(branchId) || branchId,
           expense_date: period.from || '',
-          category_name: 'Налог',
-          comment: `${fmt(revenue)} AZN × ${pct(rate)}`,
+          category_name: 'Налог с оборота',
+          comment: `${fmt(revenue)} AZN × ${pct(rate)} от оборота`,
           amount,
           bucket: 'tax'
         })
@@ -6096,25 +6126,32 @@ function Reports({ t, permissions = [], isAdmin = false }) {
         revenueShareMap.set(id, networkRevenue > 0 ? parseNum(row.revenue) / networkRevenue : 0)
       })
 
-      const normalizedExpenseName = row => row?.expense_categories?.name || row?.custom_category || 'Прочее'
-      const isTaxLike = value => {
-        const name = normalizeExpenseText(value)
-        return name.includes('налог') || name === 'tax' || name.includes('tax ')
-      }
+      const normalizedExpenseName = row => financeExpenseNameFromRow(row)
       const isServiceChargeLike = value => {
         const name = normalizeExpenseText(value)
         return name.includes('service charge') && (name.includes('персонал') || name.includes('staff'))
       }
 
       const expensesByBranch = new Map()
+      const taxPaidByBranch = new Map()
+      const taxPaymentDetailsByBranch = new Map()
       dailyExpenseRows.forEach(row => {
         const id = String(row.branch_id || '')
         if (!id) return
+        if (isTaxPaymentExpenseRow(row)) {
+          const amount = parseNum(row.amount)
+          taxPaidByBranch.set(id, parseNum(taxPaidByBranch.get(id)) + amount)
+          const details = taxPaymentDetailsByBranch.get(id) || []
+          details.push({ id: `tax-payment-${row.id}`, date: row.expense_date, description: 'Оплаченный налог', comment: row.comment || '', amount })
+          taxPaymentDetailsByBranch.set(id, details)
+          return
+        }
+        if (isNonOperatingTaxExpenseRow(row)) return
+        if (isBoltSettlementExpenseRow(row)) return
         const name = normalizedExpenseName(row)
         if (String(row.comment || '').startsWith('SUPPLIER_PURCHASE_')) return
         if (isSalaryExpenseName(name)) return
         if (isBazarExpenseName(name)) return
-        if (isTaxLike(name)) return
         if (isServiceChargeLike(name)) return
 
         const amount = parseNum(row.amount)
@@ -6270,7 +6307,11 @@ function Reports({ t, permissions = [], isAdmin = false }) {
         const serviceCost = parseNum(serviceByBranch.get(id))
         const configuredTaxRate = parseNum(taxSettings?.[id])
         const taxRate = configuredTaxRate > 0 ? configuredTaxRate : 8
-        const tax = parseNum(revenueData.revenue) * taxRate / 100
+        const taxCalculated = parseNum(revenueData.revenue) * taxRate / 100
+        const taxPaid = parseNum(taxPaidByBranch.get(id))
+        // Отдельная vergi-оплата не уменьшает прибыль повторно; налог с оборота
+        // уже учтён ниже по установленной ставке.
+        const tax = taxCalculated
         const totalExpenses = parseNum(expenseData.operating) + supplierFoodCost + salary + serviceCost + tax
         const net = parseNum(revenueData.revenue) - totalExpenses
         const activeDays = revenueData.days?.size || 0
@@ -6298,19 +6339,20 @@ function Reports({ t, permissions = [], isAdmin = false }) {
           })),
           ...(salary ? [{ key: 'salary', name: 'Зарплаты', amount: salary, transactions: salaryDetails.length, details: salaryDetails }] : []),
           ...(serviceCost ? [{ key: 'service-charge', name: 'Service charge персоналу', amount: serviceCost, transactions: (serviceDetailsByBranch.get(id) || []).length, details: serviceDetailsByBranch.get(id) || [] }] : []),
-          ...(tax ? [{
+          ...(taxCalculated ? [{
             key: 'tax',
-            name: 'Налог',
-            amount: tax,
+            name: 'Налог с оборота',
+            amount: taxCalculated,
             transactions: 1,
             details: [{
               id: `tax-${id}-${period.label}`,
               date: period.from || '',
-              description: `Налог ${pct(taxRate)}`,
-              comment: `${fmt(revenueData.revenue)} AZN × ${pct(taxRate)}`,
-              amount: tax
+              description: `Налог с оборота ${pct(taxRate)}`,
+              comment: `${fmt(revenueData.revenue)} AZN × ${pct(taxRate)} от оборота`,
+              amount: taxCalculated
             }]
           }] : [])
+          ,...(taxPaid ? [{ key: 'tax-paid', name: 'Оплаченный налог', amount: taxPaid, transactions: (taxPaymentDetailsByBranch.get(id) || []).length, details: taxPaymentDetailsByBranch.get(id) || [] }] : [])
         ].sort((a, b) => parseNum(b.amount) - parseNum(a.amount) || String(a.name).localeCompare(String(b.name), 'ru'))
 
         return {
@@ -6331,6 +6373,8 @@ function Reports({ t, permissions = [], isAdmin = false }) {
           managerSalary,
           serviceCost,
           tax,
+          taxCalculated,
+          taxPaid,
           taxRate,
           woltCommission: parseNum(expenseData.woltCommission),
           rent: parseNum(expenseData.rent),
@@ -9299,7 +9343,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
         <div><span>Операционные</span><strong>{fmt(rmsExpensesReport.totals.operating)}</strong><em>все статьи daily expenses</em></div>
         <div><span>Закупки / Food Cost</span><strong>{fmt(rmsExpensesReport.totals.suppliers)}</strong><em>доля филиала по выручке</em></div>
         <div><span>Зарплаты</span><strong>{fmt(rmsExpensesReport.totals.salary)}</strong><em>начислено за период</em></div>
-        <div><span>Налог</span><strong>{fmt(rmsExpensesReport.totals.tax)}</strong><em>расчёт от выручки</em></div>
+        <div><span>Налог с оборота</span><strong>{fmt(rmsExpensesReport.totals.tax)}</strong><em>расчёт от выручки</em></div>
         <div><span>Service charge</span><strong>{fmt(rmsExpensesReport.totals.serviceCharge)}</strong><em>справочно, не P&amp;L-расход</em></div>
         <div><span>Статей</span><strong>{fmt(rmsExpensesReport.totals.categories)}</strong><em>{selectedBranchLabel} · {selectedMonthLabel}</em></div>
       </div>
@@ -9460,9 +9504,9 @@ function Reports({ t, permissions = [], isAdmin = false }) {
     </section>}
 
     {!rmsProfitabilityReport.loading && !rmsProfitabilityReport.error && <div className="reports-v417-card">
-      <div className="reports-v417-head"><div><h3>Детальная рентабельность филиалов</h3><p>Все накладные поставщиков, включая Zaur Bazar, распределяются между филиалами по доле выручки. Ручная статья «Базар» исключена. Service charge показан справочно и не входит в расходы и прибыль. Налог берётся из настроек филиала.</p></div><span className="reports-v43-badge">{profitabilityRows.length}</span></div>
+      <div className="reports-v417-head"><div><h3>Детальная рентабельность филиалов</h3><p>Все накладные поставщиков, включая Zaur Bazar, распределяются между филиалами по доле выручки. Ручная статья «Базар» исключена. Service charge показан справочно и не входит в расходы и прибыль. Налог с оборота берётся из настроек филиала.</p></div><span className="reports-v43-badge">{profitabilityRows.length}</span></div>
       <div className="reports-v417-table-wrap"><table className="reports-v417-table">
-        <thead><tr><th>Филиал</th><th>Выручка</th><th>Wolt</th><th>Food Cost</th><th>Зарплаты</th><th>Опер. расходы</th><th>Service charge</th><th>Налог</th><th>Все расходы</th><th>Результат</th><th>Маржа</th><th>На день</th><th></th></tr></thead>
+        <thead><tr><th>Филиал</th><th>Выручка</th><th>Wolt</th><th>Food Cost</th><th>Зарплаты</th><th>Опер. расходы</th><th>Service charge</th><th>Налог с оборота</th><th>Все расходы</th><th>Результат</th><th>Маржа</th><th>На день</th><th></th></tr></thead>
         <tbody>
           {profitabilityRows.map(row => <React.Fragment key={row.id}>
             <tr>

@@ -7,6 +7,7 @@
     "test:salary-allocation-v424": "node scripts/test-salary-revenue-allocation-v424.mjs",
     "test:dashboard-daily-revenue-v425": "node scripts/test-dashboard-daily-revenue-v425.mjs",
     "test:finance-accrued-payroll-v426": "node scripts/test-finance-accrued-payroll-v426.mjs",
+    "test:turnover-tax-dedup-v433": "node scripts/test-turnover-tax-dedup-v433.mjs",
     "test:payroll-import-v427": "node scripts/test-payroll-import-v427.mjs",
     "test:bank-commission-v428": "node scripts/test-bank-commission-v428.mjs",
     "test:dashboard-request-race-v429": "node scripts/test-dashboard-request-race-v429.mjs",

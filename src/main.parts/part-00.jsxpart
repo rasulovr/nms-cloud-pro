@@ -587,7 +587,7 @@ const I18N = {
     add_expense:'+ Статья расхода', daily_expenses_total:'Итого расходов за дату', expense_item:'Статья расхода', amount:'Сумма', comment:'Комментарий',
     year:'Год', month:'Месяц', tax_rate:'Налог %', planned_revenue:'План выручки', planned_profit:'План прибыли',
     expense_breakdown:'Расходы по статьям', current_result:'Текущий факт', gross_profit:'Валовая прибыль', total_expenses:'Расходы',
-    tax_amount:'Налог', net_profit:'Чистая прибыль', profitable:'Филиал прибыльный', loss:'Филиал в убытке', comparison:'Сравнение',
+    tax_amount:'Налог с оборота', net_profit:'Чистая прибыль', profitable:'Филиал прибыльный', loss:'Филиал в убытке', comparison:'Сравнение',
     prev_month_revenue:'Выручка прошлого месяца', revenue_change_pct:'Изменение выручки', profit_change_pct:'Изменение прибыли',
     margins:'Маржинальность', expense_pct:'Расходы %', net_margin:'Маржа чистой прибыли', plan_status:'План',
     revenue_plan_progress:'Выполнение плана выручки', profit_plan_progress:'Выполнение плана прибыли', module_coming:'Раздел будет добавлен следующим этапом.',
@@ -610,7 +610,7 @@ const I18N = {
     add_expense:'+ Xərc maddəsi', daily_expenses_total:'Tarixin xərcləri cəmi', expense_item:'Xərc maddəsi', amount:'Məbləğ', comment:'Şərh',
     year:'İl', month:'Ay', tax_rate:'Vergi %', planned_revenue:'Dövriyyə planı', planned_profit:'Mənfəət planı',
     expense_breakdown:'Xərclər maddələr üzrə', current_result:'Cari fakt', gross_profit:'Brüt mənfəət', total_expenses:'Xərclər',
-    tax_amount:'Vergi', net_profit:'Xalis mənfəət', profitable:'Filial mənfəətlidir', loss:'Filial zərərlə işləyir', comparison:'Müqayisə',
+    tax_amount:'Dövriyyədən vergi', net_profit:'Xalis mənfəət', profitable:'Filial mənfəətlidir', loss:'Filial zərərlə işləyir', comparison:'Müqayisə',
     prev_month_revenue:'Keçən ayın dövriyyəsi', revenue_change_pct:'Dövriyyə dəyişikliyi', profit_change_pct:'Mənfəət dəyişikliyi',
     margins:'Marjalar', expense_pct:'Xərclər %', net_margin:'Xalis mənfəət marjası', plan_status:'Plan',
     revenue_plan_progress:'Dövriyyə planının icrası', profit_plan_progress:'Mənfəət planının icrası', module_coming:'Bölmə növbəti mərhələdə əlavə olunacaq.',
@@ -1405,6 +1405,39 @@ const isDsmfExpenseName = (value) => {
 const isTaxExpenseName = (value) => {
   const name = normalizeExpenseText(value)
   return name.includes('налог') || name.includes('vergi') || name === 'tax' || name.startsWith('tax ')
+}
+const isMisfiledNonTaxExpenseInTaxCategory = (row) => {
+  const comment = normalizeExpenseText(row?.comment)
+  if (!comment) return false
+  return /(\bvoda\b|\bwater\b|вод[аы]|\bsteward\b|стюард|микрозелен|mikrozelen|\bxleb\b|\bbread\b|хлеб|зелень|cistka|чистк|kanaliz|вытяж|viteshki)/i.test(comment)
+}
+const isTaxPaymentExpenseRow = (row) => {
+  const name = row?.expense_categories?.name || row?.custom_category || ''
+  if (!isTaxExpenseName(name) || isMisfiledNonTaxExpenseInTaxCategory(row)) return false
+  const normalizedName = normalizeExpenseText(name)
+  const comment = normalizeExpenseText(row?.comment)
+  return normalizedName === 'налоги'
+    || normalizedName === 'vergi'
+    || /(оплат|уплат|payment|paid tax|tax paid|settlement)/i.test(`${normalizedName} ${comment}`)
+}
+const isNonOperatingTaxExpenseRow = (row) => {
+  const name = row?.expense_categories?.name || row?.custom_category || ''
+  return isTaxExpenseName(name) && !isMisfiledNonTaxExpenseInTaxCategory(row)
+}
+const financeExpenseNameFromRow = (row) => {
+  const name = row?.expense_categories?.name || row?.custom_category || ''
+  if (isTaxExpenseName(name) && isMisfiledNonTaxExpenseInTaxCategory(row)) {
+    return /(\bvoda\b|\bwater\b|вод[аы])/i.test(normalizeExpenseText(row?.comment)) ? 'Коммунальные' : 'Прочее'
+  }
+  return name || 'Прочее'
+}
+const isBoltSettlementExpenseRow = (row) => {
+  const name = normalizeExpenseText(row?.expense_categories?.name || row?.custom_category || '')
+  const comment = normalizeExpenseText(row?.comment)
+  const text = `${name} ${comment}`
+  const mentionsBolt = text.includes('bolt') || text.includes('болт')
+  const mentionsPayment = /(оплат|платеж|payment|settlement|invoice|счет|счёт)/i.test(text)
+  return mentionsBolt && mentionsPayment
 }
 const isSalaryExpenseName = (value) => {
   const name = normalizeExpenseText(value)
