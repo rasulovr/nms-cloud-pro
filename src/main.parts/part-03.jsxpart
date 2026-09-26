@@ -215,6 +215,7 @@ async function rmsCalculateNetworkForecastForMonth(y, m, scopeBranchId = 'all') 
 
   const [
     { data: revRows },
+    { data: dailyRevenueRows },
     { data: svcRows },
     { data: currentExpenseRows },
     { data: currentPurchaseRows },
@@ -232,6 +233,7 @@ async function rmsCalculateNetworkForecastForMonth(y, m, scopeBranchId = 'all') 
     bankCommissionSetting
   ] = await Promise.all([
     supabase.from('monthly_branch_revenue').select('branch_id,total_revenue,cash_amount,bank_amount,wolt_amount').eq('month', monthDate),
+    supabase.from('daily_revenue').select('branch_id,cash_amount,bank_amount,wolt_amount').gte('revenue_date', monthDate).lt('revenue_date', monthEnd).is('deleted_at', null),
     supabase.from('monthly_branch_service_charge_cost').select('branch_id,staff_cost_amount').eq('month', monthDate),
     supabase.from('daily_expenses').select('branch_id,expense_date,amount,custom_category,expense_categories(name)').gte('expense_date', monthDate).lt('expense_date', monthEnd).is('deleted_at', null),
     supabase.from('supplier_purchases').select('branch_id,purchase_date,total_amount,supplier_purchase_items(total_amount,supplier_products(name,category))').gte('purchase_date', monthDate).lt('purchase_date', monthEnd).is('deleted_at', null),
@@ -243,24 +245,28 @@ async function rmsCalculateNetworkForecastForMonth(y, m, scopeBranchId = 'all') 
     supabase.from('salary_periods').select('branch_id,salary_month,salary_gross,salary_net').gte('salary_month', historyStart).lt('salary_month', historyEnd),
     supabase.from('salary_periods').select('employee_id,branch_id,salary_month,salary_gross,salary_net,card_payment,cash_payment,advance_amount,deduction_amount,previous_balance_amount,employees(id,branch_id,position,is_active,employment_status)').eq('salary_month', monthDate),
     supabase.from('salary_periods').select('employee_id,branch_id,salary_month,salary_gross,salary_net,card_payment,cash_payment,advance_amount,deduction_amount,previous_balance_amount,employees(id,branch_id,position,is_active,employment_status)').gte('salary_month', historyStart).lt('salary_month', historyEnd),
-    supabase.from('branches').select('id,name,service_charge_enabled,service_charge_percent,service_staff_cost_percent').eq('is_active', true),
+    supabase.from('branches').select('id,name,service_charge_enabled,service_charge_percent,service_staff_cost_percent'),
     readRmsAppSetting(RMS_BRANCH_RENT_FORECAST_SETTING, {}),
     readRmsAppSetting(RMS_BRANCH_TAX_RATE_SETTING, {}),
     readRmsAppSetting(RMS_BANK_COMMISSION_RATE_SETTING, RMS_DEFAULT_BANK_COMMISSION_RATE)
   ])
 
   const bankCommissionRate = rmsBankCommissionRate(bankCommissionSetting)
-
-  const branchIds = (branchesRaw || []).map(b => b.id)
+  const currentRevenueRows = rmsAggregateRevenueByBranch((dailyRevenueRows || []).length ? dailyRevenueRows : revRows)
+  const activeBranchIds = rmsRevenueBranchIds(currentRevenueRows, bankCommissionRate)
+  const branchIds = (branchesRaw || []).filter(b => activeBranchIds.has(String(b.id))).map(b => b.id)
   const selectedBranchId = scopeBranchId === '__all__' ? 'all' : (scopeBranchId || 'all')
   const branchFilter = selectedBranchId === 'all' ? null : String(selectedBranchId)
-  const filterByBranch = row => !branchFilter || String(row?.branch_id || '') === branchFilter
+  if (!activeBranchIds.size || (branchFilter && !activeBranchIds.has(branchFilter))) {
+    return { forecastRevenue: 0, forecastProfit: 0, avg: 0, forecastExpenses: 0, forecastMargin: 0, details: [] }
+  }
+  const filterByBranch = row => (branchFilter ? String(row?.branch_id || '') === branchFilter : rmsBranchInRevenueScope(row, activeBranchIds))
 
-  const revenueRows = (revRows || []).filter(filterByBranch)
+  const revenueRows = currentRevenueRows.filter(filterByBranch)
   const revenue = revenueRows.reduce((s, r) => s + rmsNetRevenueParts(r, bankCommissionRate).revenue, 0)
-  const networkRevenue = (revRows || []).reduce((s, r) => s + rmsNetRevenueParts(r, bankCommissionRate).revenue, 0)
+  const networkRevenue = currentRevenueRows.filter(row => activeBranchIds.has(String(row.branch_id))).reduce((s, r) => s + rmsNetRevenueParts(r, bankCommissionRate).revenue, 0)
   const revenueShareMap = new Map()
-  ;(revRows || []).forEach(r => revenueShareMap.set(String(r.branch_id), networkRevenue > 0 ? rmsNetRevenueParts(r, bankCommissionRate).revenue / networkRevenue : 0))
+  ;currentRevenueRows.forEach(r => revenueShareMap.set(String(r.branch_id), networkRevenue > 0 && activeBranchIds.has(String(r.branch_id)) ? rmsNetRevenueParts(r, bankCommissionRate).revenue / networkRevenue : 0))
   const revenueShareMapForMonth = (monthStartDate) => {
     const rows = (historicalRevenueRows || []).filter(row => String(row.month || '').slice(0, 10) === String(monthStartDate))
     const total = rows.reduce((sum, row) => sum + rmsNetRevenueParts(row, bankCommissionRate).revenue, 0)
@@ -446,8 +452,8 @@ async function rmsCalculateNetworkForecastForMonth(y, m, scopeBranchId = 'all') 
   const salarySummaryTotal = (directByBranch = new Map(), managersTotal = 0, selectedId = selectedBranchId) => {
     if (selectedId === 'all') {
       let directTotal = 0
-      directByBranch.forEach(value => { directTotal += parseNum(value) })
-      return directTotal + parseNum(managersTotal)
+      directByBranch.forEach((value, id) => { if (activeBranchIds.has(String(id))) directTotal += parseNum(value) })
+      return directTotal + (activeBranchIds.size ? parseNum(managersTotal) : 0)
     }
     const direct = parseNum(directByBranch.get(selectedId))
     const managerShare = parseNum(managerAllocationShareMap.get(selectedId))
@@ -491,7 +497,7 @@ async function rmsCalculateNetworkForecastForMonth(y, m, scopeBranchId = 'all') 
     const specialValue = rmsForecastSumSpecialExpenses((historicalExpenseRows || []).filter(r => r.expense_date >= pm.start && r.expense_date < pm.end).filter(filterByBranch)).salary
     return periodValue || monthlyValue || specialValue
   })
-  const payrollDetails = rmsFinancePayrollDetailsForScope(effectiveEmployeeRows || [], selectedBranchId, managerAllocationShareMap)
+  const payrollDetails = rmsFinancePayrollDetailsForScope((effectiveEmployeeRows || []).filter(row => isForecastManagerEmployee(row) ? activeBranchIds.size > 0 : activeBranchIds.has(String(row.branch_id))), selectedBranchId, managerAllocationShareMap)
   const payrollSummarySalary = parseNum(payrollDetails.totalSalary)
   const payrollManagersSalary = parseNum(payrollDetails.managersSalary)
   const activeEmployeeSalary = salarySummaryFromEmployees(effectiveEmployeeRows || [], selectedBranchId)
@@ -546,7 +552,7 @@ async function rmsCalculateNetworkForecastForMonth(y, m, scopeBranchId = 'all') 
     return branchRevenueForecast * rate
   }
   const serviceForecast = selectedBranchId === 'all'
-    ? (revRows || []).reduce((sum, row) => sum + serviceForecastForBranch(row.branch_id, rmsNetRevenueParts(row, bankCommissionRate).revenue), 0)
+    ? revenueRows.reduce((sum, row) => sum + serviceForecastForBranch(row.branch_id, rmsNetRevenueParts(row, bankCommissionRate).revenue), 0)
     : serviceForecastForBranch(selectedBranchId, revenue)
   const serviceForecastNote = selectedBranchId === 'all'
     ? 'пропорционально прогнозной выручке только по филиалам, где включён service charge'
@@ -555,7 +561,7 @@ async function rmsCalculateNetworkForecastForMonth(y, m, scopeBranchId = 'all') 
       : 'service charge не учитывается: в настройках выбранного филиала галочка выключена')
   const taxSettings = branchTaxSetting && typeof branchTaxSetting === 'object' ? branchTaxSetting : {}
   const taxForecastParts = selectedBranchId === 'all'
-    ? (revRows || []).map(row => {
+    ? revenueRows.map(row => {
         const currentBranchRevenue = rmsNetRevenueParts(row, bankCommissionRate).revenue
         const branchForecastRevenue = currentBranchRevenue / Math.max(1, passed) * monthDays
         const configuredRate = parseNum(taxSettings?.[row.branch_id])
@@ -650,6 +656,16 @@ function rmsAggregateRevenueByBranch(rows = []) {
     map.set(id, current)
   })
   return [...map.values()]
+}
+
+function rmsRevenueBranchIds(rows = [], bankCommissionRate = RMS_DEFAULT_BANK_COMMISSION_RATE) {
+  return new Set(rmsAggregateRevenueByBranch(rows)
+    .filter(row => rmsNetRevenueParts(row, bankCommissionRate).revenue > 0)
+    .map(row => String(row.branch_id)))
+}
+
+function rmsBranchInRevenueScope(row, activeIds) {
+  return !row?.branch_id || activeIds.has(String(row.branch_id))
 }
 
 function rmsServiceChargeStaffCostFromDailyRevenue(rows = [], branches = []) {
@@ -1572,6 +1588,7 @@ function Dashboard({ t }) {
   const [year, setYear] = useState(now.getFullYear())
   const [month, setMonth] = useState(now.getMonth() + 1)
   const [data, setData] = useState(null)
+  const [visibleBranchIds, setVisibleBranchIds] = useState([])
   const [dailyRevenueRows, setDailyRevenueRows] = useState([])
   const [expenseGrowthSort, setExpenseGrowthSort] = useState('amount')
   const loadRequestRef = useRef(0)
@@ -1618,7 +1635,7 @@ function Dashboard({ t }) {
     const bankCommissionRate = rmsBankCommissionRate(bankCommissionSetting)
 
     const suppliersRaw = suppliersResult?.data || []
-    const purchaseRowsForFinance = monthPurchasesResult?.data || []
+    let purchaseRowsForFinance = monthPurchasesResult?.data || []
     const purchasesRaw = allPurchasesResult?.data || []
     const paymentsRaw = paymentsResult?.data || []
     let supplierRows = supplierResult?.data || []
@@ -1652,6 +1669,8 @@ function Dashboard({ t }) {
     const employeeRows = employeeResult?.data || []
     const salaryPeriodRows = salaryPeriodResult?.data || []
     const effectiveRevenueRows = rmsAggregateRevenueByBranch((dashboardDailyRevenueResult?.data || []).length ? dashboardDailyRevenueResult.data : (revRows || []))
+    const activeBranchIds = rmsRevenueBranchIds(effectiveRevenueRows, bankCommissionRate)
+    if (!activeBranchIds.size) purchaseRowsForFinance = []
     const revByBranch = new Map(effectiveRevenueRows.map(r => [r.branch_id, r]))
     const expByBranch = new Map((expRows || []).map(r => [r.branch_id, r]))
     const salByBranch = new Map(); (salRows || []).forEach(r => { const key = r.branch_id || ''; const current = salByBranch.get(key) || { branch_id:key, total_salary:0 }; current.total_salary += parseNum(r.salary_gross); salByBranch.set(key, current) })
@@ -1700,7 +1719,7 @@ function Dashboard({ t }) {
     const hasAccruedSalaryPeriods = (salaryPeriodRows || []).length > 0
 
     const baseTotals = { revenue: 0, expenses: 0, salary: 0, serviceCost: 0, tax: 0 }
-    const branchRows = branches.map(b => {
+    const branchRows = branches.filter(b => activeBranchIds.has(String(b.id))).map(b => {
       const rev = revByBranch.get(b.id) || {}
       const revenueParts = rmsNetRevenueParts(rev, bankCommissionRate)
       const revenue = revenueParts.revenue
@@ -1810,6 +1829,7 @@ function Dashboard({ t }) {
     const preliminarySupplierExpense = dashboardBranchRows.reduce((sum, row) => sum + parseNum(row.preliminarySupplierExpense), 0)
     const expenseArticleMap = new Map()
     ;(dashboardDailyExpensesResult?.data || []).forEach(row => {
+      if (!rmsBranchInRevenueScope(row, activeBranchIds)) return
       if (branchId !== DASH_ALL_BRANCHES && String(row.branch_id || '') !== String(branchId)) return
       const name = row.expense_categories?.name || row.custom_category || t('new_expense')
       if (String(row?.comment || '').startsWith('SUPPLIER_PURCHASE_') || isSalaryExpenseName(name) || isBazarExpenseName(name) || isServiceChargeStaffExpenseName(name)) return
@@ -1836,7 +1856,7 @@ function Dashboard({ t }) {
     const foodCostAmount = expenseRows
       .filter(row => rmsFinanceExpenseGroupName(row.name) === 'food_market' || row.name === 'Поставщики / закупки')
       .reduce((sum, row) => sum + parseNum(row.amount), 0)
-    return { revenue, expenses, net, supplierDebt, supplierDebtRows, branchRows: dashboardBranchRows, preliminarySupplierExpense, forecastRevenue, forecastProfit, forecastDetails: syncedForecast.details || [], forecastExpenses: syncedForecast.forecastExpenses, forecastMargin: syncedForecast.forecastMargin, expenseRows, foodCostAmount }
+    return { revenue, expenses, net, supplierDebt, supplierDebtRows, branchRows: dashboardBranchRows, activeBranchIds: [...activeBranchIds], preliminarySupplierExpense, forecastRevenue, forecastProfit, forecastDetails: syncedForecast.details || [], forecastExpenses: syncedForecast.forecastExpenses, forecastMargin: syncedForecast.forecastMargin, expenseRows, foodCostAmount }
   }
 
   async function calcDashboardRevenueUntilDay(y, m, dayLimit) {
@@ -1908,6 +1928,7 @@ function Dashboard({ t }) {
       supplierDebt: 0,
       supplierDebtRows: [],
       branchRows: [],
+      activeBranchIds: [],
       preliminarySupplierExpense: 0,
       forecastRevenue: 0,
       forecastProfit: 0,
@@ -1927,6 +1948,10 @@ function Dashboard({ t }) {
     const requestId = ++loadRequestRef.current
     try {
       const current = await calcMonth(year, month)
+      if (branchId !== DASH_ALL_BRANCHES && !current.activeBranchIds.includes(String(branchId))) {
+        if (requestId === loadRequestRef.current) setBranchId(DASH_ALL_BRANCHES)
+        return
+      }
       const pm = prevMonth(year, month)
 
       let previous = emptyDashboardData()
@@ -1989,6 +2014,7 @@ function Dashboard({ t }) {
 
       if (requestId !== loadRequestRef.current) return
       setDailyRevenueRows(dailyChartRows || [])
+      setVisibleBranchIds(current.activeBranchIds)
       setData({ ...current, previous, comparison })
     } catch (error) {
       if (requestId !== loadRequestRef.current) return
@@ -2051,7 +2077,7 @@ function Dashboard({ t }) {
         <p>Обзор ключевых показателей вашего бизнеса за выбранный период. {isIncompleteMonth && <span className="dashboard-period-badge">Неполный месяц</span>}</p>
       </div>
       <div className="dashboard-v23-filters">
-        <label><span>Филиал</span><select value={branchId} onChange={e => setBranchId(e.target.value)}><option value={DASH_ALL_BRANCHES}>Все рестораны</option>{branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label>
+        <label><span>Филиал</span><select value={branchId} onChange={e => setBranchId(e.target.value)}><option value={DASH_ALL_BRANCHES}>Все рестораны</option>{branches.filter(b => visibleBranchIds.includes(String(b.id))).map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label>
         <label><span>{t('year')}</span><select value={year} onChange={e => setYear(Number(e.target.value))}>{defaultYears().map(y => <option key={y} value={y}>{y}</option>)}</select></label>
         <label><span>{t('month')}</span><select value={month} onChange={e => setMonth(Number(e.target.value))}>{I18N.ru.months.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}</select></label>
       </div>
@@ -2287,6 +2313,7 @@ function Finance({ t, lang, onGoToExpense }) {
       if (error) throw error
 
       let rows = (data || [])
+        .filter(row => rmsBranchInRevenueScope(row, new Set(stats?.activeBranchIds || [])))
         .filter(row => !String(row?.comment || '').startsWith('SUPPLIER_PURCHASE_'))
         .filter(row => !isBazarExpenseName(financeExpenseRowName(row)))
         .map(row => ({
@@ -2449,7 +2476,7 @@ function Finance({ t, lang, onGoToExpense }) {
     // daily_revenue has one row per day. Aggregate first: setting a share for
     // every raw row leaves only the last day of a branch in the Map and makes
     // its supplier and manager allocations far too small.
-    const effectiveRows = rmsAggregateRevenueByBranch(data || [])
+    const effectiveRows = rmsAggregateRevenueByBranch(data || []).filter(row => rmsNetRevenueParts(row, bankCommissionRate).revenue > 0)
     const total = effectiveRows.reduce((s, r) => s + rmsNetRevenueParts(r, bankCommissionRate).revenue, 0)
     const map = new Map()
     ;effectiveRows.forEach(r => map.set(String(r.branch_id), total > 0 ? rmsNetRevenueParts(r, bankCommissionRate).revenue / total : 0))
@@ -2830,7 +2857,7 @@ function Finance({ t, lang, onGoToExpense }) {
   async function calcFor(branch, y, m) {
     const monthDate = monthStart(y, m)
 
-    let revQuery = supabase
+    const revQuery = supabase
       .from('daily_revenue')
       .select('branch_id,cash_amount,bank_amount,wolt_amount')
       .gte('revenue_date', monthDate)
@@ -2841,7 +2868,6 @@ function Finance({ t, lang, onGoToExpense }) {
     let svcQuery = supabase.from('monthly_branch_service_charge_cost').select('*').eq('month', monthDate)
 
     if (branch !== ALL_BRANCHES) {
-      revQuery = revQuery.eq('branch_id', branch)
       expQuery = expQuery.eq('branch_id', branch)
       salQuery = salQuery.eq('branch_id', branch)
       svcQuery = svcQuery.eq('branch_id', branch)
@@ -2855,22 +2881,25 @@ function Finance({ t, lang, onGoToExpense }) {
       readRmsAppSetting(RMS_BANK_COMMISSION_RATE_SETTING, RMS_DEFAULT_BANK_COMMISSION_RATE)
     ])
     const bankCommissionRate = rmsBankCommissionRate(bankCommissionSetting)
+    const activeBranchIds = rmsRevenueBranchIds(revRows || [], bankCommissionRate)
+    const scopedRevenueRows = (revRows || []).filter(row => activeBranchIds.has(String(row.branch_id)) && (branch === ALL_BRANCHES || String(row.branch_id) === String(branch)))
+    const inScope = row => rmsBranchInRevenueScope(row, activeBranchIds)
 
-    const revenue = (revRows || []).reduce((s, r) => s + rmsNetRevenueParts(r, bankCommissionRate).revenue, 0)
-    const expenses = (expRows || []).reduce((s, r) => s + parseNum(r.total_expenses), 0)
-    const salary = (salRows || []).reduce((s, r) => s + rmsSalaryPeriodTotal(r), 0)
+    const revenue = scopedRevenueRows.reduce((s, r) => s + rmsNetRevenueParts(r, bankCommissionRate).revenue, 0)
+    const expenses = (expRows || []).filter(inScope).reduce((s, r) => s + parseNum(r.total_expenses), 0)
+    const salary = (salRows || []).filter(inScope).reduce((s, r) => s + rmsSalaryPeriodTotal(r), 0)
     const enabledServiceBranchIds = new Set((branches || []).filter(b => b.service_charge_enabled).map(b => String(b.id)))
-    const dynamicServiceCost = rmsServiceChargeStaffCostFromDailyRevenue(revRows || [], branches)
+    const dynamicServiceCost = rmsServiceChargeStaffCostFromDailyRevenue(scopedRevenueRows, branches)
     const serviceCost = dynamicServiceCost > 0
       ? dynamicServiceCost
-      : (svcRows || []).filter(r => enabledServiceBranchIds.has(String(r.branch_id))).reduce((s, r) => s + parseNum(r.staff_cost_amount), 0)
-    const cash = (revRows || []).reduce((s, r) => s + parseNum(r.cash_amount), 0)
-    const bank = (revRows || []).reduce((s, r) => s + parseNum(r.bank_amount), 0)
-    const wolt = (revRows || []).reduce((s, r) => s + parseNum(r.wolt_amount), 0)
-    const bankCommission = (revRows || []).reduce((s, r) => s + rmsNetRevenueParts(r, bankCommissionRate).bankCommission, 0)
+      : (svcRows || []).filter(r => inScope(r) && enabledServiceBranchIds.has(String(r.branch_id))).reduce((s, r) => s + parseNum(r.staff_cost_amount), 0)
+    const cash = scopedRevenueRows.reduce((s, r) => s + parseNum(r.cash_amount), 0)
+    const bank = scopedRevenueRows.reduce((s, r) => s + parseNum(r.bank_amount), 0)
+    const wolt = scopedRevenueRows.reduce((s, r) => s + parseNum(r.wolt_amount), 0)
+    const bankCommission = scopedRevenueRows.reduce((s, r) => s + rmsNetRevenueParts(r, bankCommissionRate).bankCommission, 0)
 
     const taxRates = await financeBranchTaxRates()
-    const tax = (revRows || []).reduce((sum, row) => {
+    const tax = scopedRevenueRows.reduce((sum, row) => {
       const rowRevenue = rmsNetRevenueParts(row, bankCommissionRate).revenue
       const rate = financeTaxRateForBranch(row.branch_id || branch, taxRates)
       return sum + rowRevenue * (rate / 100)
@@ -2883,7 +2912,7 @@ function Finance({ t, lang, onGoToExpense }) {
     const forecastRevenue = parseNum(syncedForecast.forecastRevenue)
     const forecastProfit = parseNum(syncedForecast.forecastProfit)
 
-    return { revenue, expenses, salary, serviceCost, cash, bank, wolt, bankCommission, bankCommissionRate, tax, taxRate: effectiveTaxRate, gross: revenue, net, avg, forecastRevenue, forecastProfit, forecastDetails: syncedForecast.details || [], forecastExpenses: syncedForecast.forecastExpenses, forecastMargin: syncedForecast.forecastMargin }
+    return { revenue, expenses, salary, serviceCost, cash, bank, wolt, bankCommission, bankCommissionRate, activeBranchIds: [...activeBranchIds], tax, taxRate: effectiveTaxRate, gross: revenue, net, avg, forecastRevenue, forecastProfit, forecastDetails: syncedForecast.details || [], forecastExpenses: syncedForecast.forecastExpenses, forecastMargin: syncedForecast.forecastMargin }
   }
 
 
@@ -2920,6 +2949,10 @@ function Finance({ t, lang, onGoToExpense }) {
     const monthDate = monthStart(year, month)
 
     const current = await calcFor(branchId, year, month)
+    if (branchId !== ALL_BRANCHES && !current.activeBranchIds.includes(String(branchId))) {
+      setBranchId(ALL_BRANCHES)
+      return
+    }
     const pm = prevMonth(year, month)
     const previous = await calcFor(branchId, pm.year, pm.month)
     const dailyChartRows = await loadDailyRevenueRowsForChart(year, month, branchId)
@@ -2938,10 +2971,11 @@ function Finance({ t, lang, onGoToExpense }) {
 
     const [{ data: rows }, { data: purchaseRows }, { data: employeeRows }, { data: salaryPeriodRows }, { data: salaryPaymentRows }] = await Promise.all([expQuery, purQuery, empQuery, salaryPeriodQuery, salaryPaymentQuery])
     const revenueShares = await financeRevenueSharesForMonth(year, month)
-    const allocatedSupplierTotals = rmsFinanceSupplierTotalsForScope(purchaseRows || [], branchId, revenueShares.map)
+    const allocatedSupplierTotals = rmsFinanceSupplierTotalsForScope(current.activeBranchIds.length ? (purchaseRows || []) : [], branchId, revenueShares.map)
     const allocatedSupplierExpenseTotal = allocatedSupplierTotals.food + allocatedSupplierTotals.packaging + allocatedSupplierTotals.household + allocatedSupplierTotals.other
 
     const rawExpenseRows = (rows || [])
+      .filter(row => rmsBranchInRevenueScope(row, new Set(current.activeBranchIds)))
       .filter(r => !String(r?.comment || '').startsWith('SUPPLIER_PURCHASE_'))
       .map(r => ({
         branch_id: r.branch_id,
@@ -2978,7 +3012,14 @@ function Finance({ t, lang, onGoToExpense }) {
     if (totalHouseholdCost > 0) map.set('Хозтовары', totalHouseholdCost)
     if (allocatedSupplierTotals.other > 0) map.set('Закупки поставщиков / прочее', allocatedSupplierTotals.other)
 
-    const payrollDetails = financePayrollDetailsForScope(employeeRows || [], salaryPeriodRows || [], branchId, revenueShares.map)
+    const scopedEmployeeRows = (employeeRows || []).filter(row => (!row.branch_id || positionGroup(row.position) === 'Менеджеры') ? current.activeBranchIds.length > 0 : current.activeBranchIds.includes(String(row.branch_id)))
+    const scopedEmployeeById = new Map((employeeRows || []).map(row => [String(row.id), row]))
+    const scopedSalaryPeriodRows = (salaryPeriodRows || []).filter(row => {
+      const employee = scopedEmployeeById.get(String(row.employee_id))
+      if (employee && (!employee.branch_id || positionGroup(employee.position) === 'Менеджеры')) return current.activeBranchIds.length > 0
+      return rmsBranchInRevenueScope({ branch_id: row.branch_id || employee?.branch_id }, new Set(current.activeBranchIds))
+    })
+    const payrollDetails = financePayrollDetailsForScope(scopedEmployeeRows, scopedSalaryPeriodRows, branchId, revenueShares.map)
     const calculatedDsmfByBranch = financeDsmfForEmployees(employeeRows || [], salaryPeriodRows || [], revenueShares.map)
     const calculatedDsmfTotal = parseNum(payrollDetails.totalDsmf)
     // В фактической таблице “Расходы по статьям” DSMF берётся только из ручных расходов daily_expenses.
@@ -3111,7 +3152,7 @@ function Finance({ t, lang, onGoToExpense }) {
       })
 
       const branchAiRows = []
-      for (const branch of branches) {
+      for (const branch of branches.filter(b => current.activeBranchIds.includes(String(b.id)))) {
         const branchStats = await calcFor(branch.id, year, month)
         const branchExpenseMap = new Map()
         ;(rows || []).filter(r => r.branch_id === branch.id).forEach(r => {
@@ -3353,7 +3394,7 @@ function Finance({ t, lang, onGoToExpense }) {
           <label><span>{t('branch_select')}</span>
             <select value={branchId} onChange={e => setBranchId(e.target.value)}>
               <option value={ALL_BRANCHES}>Все рестораны</option>
-              {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+              {branches.filter(b => stats?.activeBranchIds?.includes(String(b.id))).map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
             </select>
           </label>
           <label><span>{t('year')}</span><select value={year} onChange={e => setYear(Number(e.target.value))}>{defaultYears().map(y => <option key={y} value={y}>{y}</option>)}</select></label>
