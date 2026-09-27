@@ -9,10 +9,14 @@ const checks = [
   ['clear debt heading', 'Долги поставщикам'],
   ['supplier or entity search', 'debtWorkspaceSearch'],
   ['status filter', 'debtWorkspaceStatus'],
-  ['supplier debt table', 'debt-main-table'],
+  ['supplier A4 debt table', 'debt-sheet-table'],
+  ['monthly receipts', 'Поступило за месяц'],
+  ['monthly payments', 'Оплачено за месяц'],
+  ['VOEN debt summary', 'debt-voen-summary'],
+  ['full payment ledger pagination', "fetchDebtLedgerRows('supplier_payments'"],
   ['operations tab', "debtWorkspaceTab === 'operations'"],
   ['analytics tab', "debtWorkspaceTab === 'analytics'"],
-  ['debt formula explanation', 'стартовый долг + поступления − оплаты'],
+  ['debt formula explanation', 'стартовый долг + все поступления − все оплаты'],
   ['supplier statement A4 window', 'Акт сверки взаиморасчётов'],
   ['full supplier history', 'Вся история операций'],
   ['debt before payment column', 'Долг до оплаты'],
@@ -33,7 +37,7 @@ for (const token of ["RMS_BUSINESS_TIME_ZONE = 'Asia/Baku'", 'const todayISO = (
   if (!sharedSource.includes(token)) throw new Error(`Missing Baku business date rule: ${token}`)
 }
 
-for (const token of ['.debt-workspace-tabs', '.debt-status-badge', '@media (max-width:600px)']) {
+for (const token of ['.debt-workspace-tabs', '.debt-a4-sheet', '@media (max-width:600px)']) {
   if (!styles.includes(token)) throw new Error(`Missing responsive debt style: ${token}`)
 }
 

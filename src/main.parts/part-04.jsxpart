@@ -1918,6 +1918,8 @@ function DebtsPayments({ t }) {
   const [debtWorkspaceTab, setDebtWorkspaceTab] = useState('overview')
   const [debtWorkspaceSearch, setDebtWorkspaceSearch] = useState('')
   const [debtWorkspaceStatus, setDebtWorkspaceStatus] = useState('all')
+  const [debtSheetLegalEntityId, setDebtSheetLegalEntityId] = useState('all')
+  const [debtSheetSupplierId, setDebtSheetSupplierId] = useState('all')
   const [supplierFollowUps, setSupplierFollowUps] = useState(() => readJsonStorage('rms_supplier_followups_v1', {}))
   const [editingOpeningDebtId, setEditingOpeningDebtId] = useState('')
   const [openingDebtEditForm, setOpeningDebtEditForm] = useState({ debt_date: todayISO(), amount: '', invoice_notes: '', comment: '' })
@@ -2021,6 +2023,18 @@ function DebtsPayments({ t }) {
     return allRows
   }
 
+  async function fetchDebtLedgerRows(table, columns, orderColumn) {
+    const rows = []
+    for (let from = 0; ; from += 1000) {
+      const { data, error } = await supabase.from(table).select(columns)
+        .order(orderColumn, { ascending: false }).range(from, from + 999)
+      if (error) throw error
+      rows.push(...(data || []))
+      if ((data || []).length < 1000) break
+    }
+    return rows
+  }
+
   async function load() {
     const isInternal = Boolean(getInternalSessionStorage()?.rms_internal)
 
@@ -2038,8 +2052,10 @@ function DebtsPayments({ t }) {
         } catch (_purchaseFetchError) {
           setPurchases(ws.supplier_purchases || [])
         }
-        setPayments(wsPayments)
-        setOpeningDebts(ws.supplier_opening_debts || [])
+        try { setPayments((await fetchDebtLedgerRows('supplier_payments', '*', 'payment_date')).filter(p => !p.deleted_at && !String(p.comment || '').includes('v255b: merged into payment'))) }
+        catch (_paymentFetchError) { setPayments(wsPayments) }
+        try { setOpeningDebts(await fetchDebtLedgerRows('supplier_opening_debts', '*', 'debt_date')) }
+        catch (_openingFetchError) { setOpeningDebts(ws.supplier_opening_debts || []) }
         setBranches([])
         setSupplierEntityStatuses([])
         setTransactionLogs([])
@@ -2075,8 +2091,10 @@ function DebtsPayments({ t }) {
     } catch (_purchaseFetchError) {
       setPurchases(pur || [])
     }
-    setPayments(pay || [])
-    setOpeningDebts(opening || [])
+    try { setPayments((await fetchDebtLedgerRows('supplier_payments', '*', 'payment_date')).filter(p => !p.deleted_at && !String(p.comment || '').includes('v255b: merged into payment'))) }
+    catch (_paymentFetchError) { setPayments((pay || []).filter(p => !p.deleted_at && !String(p.comment || '').includes('v255b: merged into payment'))) }
+    try { setOpeningDebts(await fetchDebtLedgerRows('supplier_opening_debts', '*', 'debt_date')) }
+    catch (_openingFetchError) { setOpeningDebts(opening || []) }
     setSupplierEntityStatuses(statusRows || [])
     setTransactionLogs(logs || [])
     setSupplierAuditRows(auditRows || [])
@@ -3119,6 +3137,65 @@ function DebtsPayments({ t }) {
     return { rows, filteredRows, totals, buckets }
   }, [legalEntities, suppliers, purchases, payments, openingDebts, supplierEntityStatuses, supplierRiskFilter])
 
+  const debtSheet = useMemo(() => {
+    const month = todayISO().slice(0, 7)
+    const supplierMap = new Map((suppliers || []).map(s => [s.id, s]))
+    const entityMap = new Map((legalEntities || []).map(le => [le.id, le]))
+    const rows = new Map()
+    const ensure = (supplierId, legalEntityId) => {
+      if (!isSupplierActiveForLegal(supplierId, legalEntityId)) return null
+      const key = `${supplierId || 'none'}::${legalEntityId || 'none'}`
+      if (!rows.has(key)) rows.set(key, {
+        key, supplierId, legalEntityId: legalEntityId || '',
+        supplierName: supplierMap.get(supplierId)?.name || 'Поставщик',
+        entityName: entityMap.get(legalEntityId)?.name || 'Без VOEN',
+        entityVoen: entityMap.get(legalEntityId)?.voen || '',
+        received: 0, paid: 0, balance: 0, overdue: 0
+      })
+      return rows.get(key)
+    }
+    ;(openingDebts || []).filter(d => d.is_active !== false).forEach(d => {
+      const row = ensure(d.supplier_id, d.legal_entity_id)
+      if (row) row.balance += parseNum(d.amount)
+    })
+    ;(purchases || []).filter(p => !p.deleted_at).forEach(p => {
+      const row = ensure(p.supplier_id, p.legal_entity_id)
+      if (!row) return
+      const amount = parseNum(p.total_amount)
+      row.balance += amount
+      if (String(p.purchase_date || '').startsWith(month)) row.received += amount
+    })
+    ;(payments || []).forEach(p => {
+      const row = ensure(p.supplier_id, p.legal_entity_id)
+      if (!row) return
+      const amount = parseNum(p.amount)
+      row.balance -= amount
+      if (String(p.payment_date || '').startsWith(month)) row.paid += amount
+    })
+    ;(supplierAging.rows || []).forEach(aging => {
+      const row = rows.get(aging.key)
+      if (row) row.overdue = parseNum(aging.overdueAmount)
+    })
+    const allRows = [...rows.values()]
+      .filter(row => Math.abs(row.balance) > 0.004 || row.received > 0.004 || row.paid > 0.004)
+      .sort((a, b) => a.supplierName.localeCompare(b.supplierName, 'ru') || a.entityName.localeCompare(b.entityName, 'ru'))
+    const entityTotals = (legalEntities || []).map(le => ({
+      ...le,
+      debt: allRows.filter(row => row.legalEntityId === le.id).reduce((sum, row) => sum + Math.max(0, row.balance), 0)
+    }))
+    const visibleRows = allRows.filter(row =>
+      (debtSheetLegalEntityId === 'all' || row.legalEntityId === debtSheetLegalEntityId) &&
+      (debtSheetSupplierId === 'all' || row.supplierId === debtSheetSupplierId)
+    )
+    const sum = (items, field) => items.reduce((total, row) => total + parseNum(row[field]), 0)
+    return {
+      month, entityTotals, visibleRows,
+      totalDebt: allRows.reduce((total, row) => total + Math.max(0, row.balance), 0),
+      received: sum(allRows, 'received'), paid: sum(allRows, 'paid'), overdue: sum(allRows, 'overdue'),
+      visibleTotals: { received: sum(visibleRows, 'received'), paid: sum(visibleRows, 'paid'), balance: sum(visibleRows, 'balance') }
+    }
+  }, [legalEntities, suppliers, purchases, payments, openingDebts, supplierEntityStatuses, supplierAging.rows, debtSheetLegalEntityId, debtSheetSupplierId])
+
   const supplierFollowUpMap = useMemo(() => supplierFollowUps || {}, [supplierFollowUps])
 
   function supplierFollowUpKey(row) {
@@ -3826,11 +3903,15 @@ function DebtsPayments({ t }) {
     <section className="topbar debt-workspace-topbar"><div><h2>Долги поставщикам</h2><p>Кому должны, сколько просрочено и какие оплаты требуют внимания.</p></div><button className="small" onClick={load}>Обновить</button></section>
 
     <section className="card span-2 supplier-control-center-card">
+      <div className="debt-summary-head"><h3>Сводка долгов</h3><span>{new Date(`${debtSheet.month}-01T12:00:00`).toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' })}</span></div>
       <div className="debt-kpi-grid">
-        <DebtKpiCard tone="danger" label="Всего должны" value={`${fmt(debtIntelligence.totalDebt)} AZN`} sub={`${debtIntelligence.supplierCount} ${isAzInterface ? 'təchizatçı' : 'поставщиков'}`} />
-        <DebtKpiCard tone="danger" label="Просрочено" value={`${fmt(debtIntelligence.overdueDebt)} AZN`} sub={`${debtIntelligence.overdueSupplierCount} ${isAzInterface ? 'təchizatçı' : 'поставщиков'}`} />
-        <DebtKpiCard tone="info" label="К оплате в 7 дней" value={`${fmt(debtDueSoonAmount)} AZN`} sub="по ближайшим срокам" />
-        <DebtKpiCard tone="muted" label="Критичные" value={supplierAging.totals.critical} sub="30+ дней или превышен лимит" />
+        <DebtKpiCard tone="danger" label="Общий долг" value={`${fmt(debtSheet.totalDebt)} AZN`} sub="Текущий остаток поставщикам" />
+        <DebtKpiCard tone="info" label="Оплачено за месяц" value={`${fmt(debtSheet.paid)} AZN`} sub="Оплаты поставщикам" />
+        <DebtKpiCard tone="info" label="Поступило за месяц" value={`${fmt(debtSheet.received)} AZN`} sub="Приходы поставщиков" />
+        <DebtKpiCard tone="danger" label="Просрочено" value={`${fmt(debtSheet.overdue)} AZN`} sub="Неоплаченные суммы после срока" />
+      </div>
+      <div className="debt-voen-summary" aria-label="Долги по VOEN">
+        {debtSheet.entityTotals.map(entity => <div className="debt-voen-card" key={entity.id}><span>{entity.name}</span><small>VOEN {entity.voen || '—'}</small><strong>{fmt(entity.debt)} AZN</strong></div>)}
       </div>
 
       <nav className="debt-workspace-tabs" aria-label="Разделы долгов">
@@ -3841,19 +3922,17 @@ function DebtsPayments({ t }) {
       </nav>
 
       {debtWorkspaceTab === 'overview' && <div className="debt-overview-panel">
-        <div className="debt-workspace-toolbar">
-          <label className="debt-workspace-search"><span>Поиск</span><input value={debtWorkspaceSearch} onChange={e => setDebtWorkspaceSearch(e.target.value)} placeholder="Поставщик или наше юрлицо" /></label>
-          <label><span>Статус</span><select value={debtWorkspaceStatus} onChange={e => setDebtWorkspaceStatus(e.target.value)}><option value="all">Все долги</option><option value="critical">Критичные</option><option value="overdue">Просроченные</option><option value="current">В срок</option></select></label>
-          <div className="debt-result-count"><b>{debtWorkspaceRows.length}</b><span>позиций</span></div>
+        <div className="debt-sheet-filters">
+          <label><span>VOEN</span><select value={debtSheetLegalEntityId} onChange={e => setDebtSheetLegalEntityId(e.target.value)}><option value="all">Все VOEN</option>{legalEntities.map(le => <option key={le.id} value={le.id}>{le.name} · {le.voen || '—'}</option>)}</select></label>
+          <label><span>Поставщик</span><select value={debtSheetSupplierId} onChange={e => setDebtSheetSupplierId(e.target.value)}><option value="all">Все поставщики</option>{activeSuppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
+          <span className="debt-sheet-count">{debtSheet.visibleRows.length} позиций</span>
         </div>
-        <div className="table-wrap debt-main-table-wrap"><table className="debt-main-table"><thead><tr><th>Поставщик</th><th>Наше юрлицо / VOEN</th><th>Долг</th><th>Просрочено</th><th>Ближайший срок</th><th>Фактуры</th><th>Статус</th><th></th></tr></thead><tbody>{debtWorkspaceRows.map(row => {
-          const supplier = suppliers.find(item => item.id === row.supplier_id)
-          const dueDays = supplierCalendarDaysUntil(row.nearestDue)
-          const statusText = row.riskLevel === 'critical' ? 'Критично' : parseNum(row.overdueAmount) > 0 ? 'Просрочено' : 'В срок'
-          const statusClass = row.riskLevel === 'critical' ? 'critical' : parseNum(row.overdueAmount) > 0 ? 'overdue' : 'current'
-          return <tr key={row.key} className={`debt-main-row debt-main-row-${statusClass}`}><td><b>{row.supplier_name}</b><span>{supplier?.voen || 'VOEN поставщика не указан'}</span></td><td><b>{row.legal_entity_name}</b><span>{legalEntities.find(le => le.id === row.legal_entity_id)?.voen || '—'}</span></td><td><strong>{fmt(row.balance)} AZN</strong></td><td className={parseNum(row.overdueAmount) > 0 ? 'bad' : 'hint'}><b>{parseNum(row.overdueAmount) > 0 ? `${fmt(row.overdueAmount)} AZN` : 'Нет'}</b>{parseNum(row.maxOverdueDays) > 0 && <span>{row.maxOverdueDays} дн.</span>}</td><td><b>{row.nearestDue ? formatDateDMY(row.nearestDue) : 'Не указан'}</b><span>{dueDays === null ? 'нет срока оплаты' : dueDays < 0 ? `${Math.abs(dueDays)} дн. назад` : dueDays === 0 ? 'сегодня' : `через ${dueDays} дн.`}</span></td><td><b>{row.unpaidCount}</b></td><td><span className={`debt-status-badge ${statusClass}`}>{statusText}</span></td><td><div className="debt-row-actions"><button className="small" onClick={() => { setDebtWorkspaceTab('entities'); openTransactions(row.supplier_id, 'purchases', row.legal_entity_id) }}>Операции</button><button className="small primary" onClick={() => { setDebtWorkspaceTab('operations'); openSupplierStatement(supplier, row.legal_entity_id) }}>Акт сверки</button></div></td></tr>
-        })}{!debtWorkspaceRows.length && <tr><td colSpan="8"><div className="debt-empty-state"><b>Долги не найдены</b><span>Измените поиск или фильтр статуса.</span></div></td></tr>}</tbody></table></div>
-        <p className="debt-formula-note"><b>Как считается долг:</b> стартовый долг + поступления − оплаты. Красным отмечены просроченные или превышающие кредитный лимит позиции.</p>
+        <div className="debt-a4-sheet">
+          <header className="debt-sheet-heading"><div><small>RMS PRO · ПОСТАВЩИКИ</small><h3>Реестр долгов</h3><p>Поступления и оплаты за {new Date(`${debtSheet.month}-01T12:00:00`).toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' })}; остаток на сегодня.</p></div><div className="debt-sheet-mark">A4</div></header>
+          <div className="debt-sheet-meta"><span>{debtSheetLegalEntityId === 'all' ? 'Все VOEN' : legalEntities.find(le => le.id === debtSheetLegalEntityId)?.name || 'VOEN'}</span><span>{debtSheetSupplierId === 'all' ? 'Все поставщики' : suppliers.find(s => s.id === debtSheetSupplierId)?.name || 'Поставщик'}</span></div>
+          <div className="debt-sheet-table-wrap"><table className="debt-sheet-table"><thead><tr><th>Поставщик</th><th>Поступило за месяц</th><th>Оплачено за месяц</th><th>Остаток долга</th></tr></thead><tbody>{debtSheet.visibleRows.map(row => <tr key={row.key}><td><strong>{row.supplierName}</strong><small>{row.entityName} · VOEN {row.entityVoen || '—'}</small></td><td>{fmt(row.received)}</td><td>{fmt(row.paid)}</td><td className={row.balance > 0.004 ? 'bad' : row.balance < -0.004 ? 'good' : ''}><strong>{fmt(row.balance)}</strong></td></tr>)}{!debtSheet.visibleRows.length && <tr><td colSpan="4" className="debt-sheet-empty">По выбранным фильтрам операций и остатков нет.</td></tr>}</tbody><tfoot><tr><th>Итого</th><th>{fmt(debtSheet.visibleTotals.received)}</th><th>{fmt(debtSheet.visibleTotals.paid)}</th><th>{fmt(debtSheet.visibleTotals.balance)}</th></tr></tfoot></table></div>
+          <footer>Остаток = стартовый долг + все поступления − все оплаты. Отрицательная сумма означает переплату. Суммы в AZN.</footer>
+        </div>
       </div>}
 
       {/* v276: “Поставщики и долги” moved directly after supplier control KPIs. */}

@@ -14,6 +14,36 @@
 .debt-workspace .supplier-control-center-card{
   padding:20px;
 }
+.debt-summary-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin-bottom:14px}
+.debt-summary-head h3{margin:0;font-size:20px}
+.debt-summary-head span{color:#64748b;text-transform:capitalize}
+.debt-voen-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;margin-top:14px}
+.debt-voen-card{display:flex;flex-direction:column;gap:4px;padding:14px 16px;border:1px solid #e2e8f0;border-radius:14px;background:#f8fafc}
+.debt-voen-card span{font-weight:700;color:#334155}
+.debt-voen-card small{color:#64748b}
+.debt-voen-card strong{margin-top:6px;font-size:20px;color:#0f172a}
+.debt-sheet-filters{display:flex;align-items:end;justify-content:center;gap:12px;flex-wrap:wrap;margin:18px 0}
+.debt-sheet-filters label{width:min(280px,100%);font-weight:700}
+.debt-sheet-filters select{min-height:43px}
+.debt-sheet-count{padding:12px;color:#64748b}
+.debt-a4-sheet{width:min(100%,794px);min-height:1123px;margin:0 auto;padding:44px 46px;background:#fff;color:#17251d;border:1px solid #e2e8f0;box-shadow:0 16px 40px rgba(15,23,42,.1)}
+.debt-sheet-heading{display:flex;justify-content:space-between;gap:20px;border-bottom:2px solid #17251d;padding-bottom:20px}
+.debt-sheet-heading small{font-size:11px;letter-spacing:.12em;font-weight:800;color:#64748b}
+.debt-sheet-heading h3{font-size:28px;line-height:1.2;margin:10px 0}
+.debt-sheet-heading p{font-size:13px;color:#64748b;margin:0}
+.debt-sheet-mark{font-size:13px;font-weight:800;color:#94a3b8}
+.debt-sheet-meta{display:flex;gap:9px;flex-wrap:wrap;padding:18px 0 22px}
+.debt-sheet-meta span{padding:7px 11px;border-radius:999px;background:#f1f5f9;font-size:12px;font-weight:700}
+.debt-sheet-table-wrap{overflow-x:auto}
+.debt-sheet-table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;font-size:12px}
+.debt-sheet-table th,.debt-sheet-table td{padding:12px 8px;border-bottom:1px solid #e2e8f0}
+.debt-sheet-table thead th{background:#f8fafc;color:#475569;font-size:11px;line-height:1.35;text-align:right}
+.debt-sheet-table th:first-child,.debt-sheet-table td:first-child{text-align:left;width:40%}
+.debt-sheet-table td:not(:first-child),.debt-sheet-table tfoot th:not(:first-child){text-align:right;white-space:nowrap}
+.debt-sheet-table td small{display:block;margin-top:4px;font-size:10px;color:#64748b}
+.debt-sheet-table tfoot th{border-top:2px solid #17251d;background:#f8fafc;font-size:12px}
+.debt-sheet-table .debt-sheet-empty{text-align:center;padding:32px;color:#64748b}
+.debt-a4-sheet footer{margin-top:24px;font-size:11px;line-height:1.5;color:#64748b}
 .debt-workspace-tabs{
   display:flex;
   gap:6px;
@@ -141,6 +171,9 @@
 }
 
 @media (max-width:600px){
+  .debt-a4-sheet{min-height:0;padding:22px 14px}
+  .debt-sheet-table{min-width:560px}
+  .debt-sheet-heading h3{font-size:23px}
   .debt-workspace-topbar{display:block}
   .debt-workspace-topbar > button{margin-top:10px}
   .debt-workspace-tabs{margin-left:-4px;margin-right:-4px}
