@@ -27,6 +27,7 @@
 .debt-sheet-filters select{min-height:43px}
 .debt-sheet-count{padding:12px;color:#64748b}
 .debt-a4-sheet{width:min(100%,794px);min-height:1123px;margin:0 auto;padding:44px 46px;background:#fff;color:#17251d;border:1px solid #e2e8f0;box-shadow:0 16px 40px rgba(15,23,42,.1)}
+.debt-a4-sheet + .debt-a4-sheet{margin-top:24px}
 .debt-sheet-heading{display:flex;justify-content:space-between;gap:20px;border-bottom:2px solid #17251d;padding-bottom:20px}
 .debt-sheet-heading small{font-size:11px;letter-spacing:.12em;font-weight:800;color:#64748b}
 .debt-sheet-heading h3{font-size:28px;line-height:1.2;margin:10px 0}
@@ -43,7 +44,18 @@
 .debt-sheet-table td small{display:block;margin-top:4px;font-size:10px;color:#64748b}
 .debt-sheet-table tfoot th{border-top:2px solid #17251d;background:#f8fafc;font-size:12px}
 .debt-sheet-table .debt-sheet-empty{text-align:center;padding:32px;color:#64748b}
-.debt-a4-sheet footer{margin-top:24px;font-size:11px;line-height:1.5;color:#64748b}
+.debt-a4-sheet footer{display:flex;justify-content:space-between;gap:16px;margin-top:auto;padding-top:24px;font-size:11px;line-height:1.5;color:#64748b}
+.debt-a4-sheet footer b{white-space:nowrap}
+.rms-pro-shell .debt-workspace .debt-kpi-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+.rms-pro-shell .debt-workspace .debt-kpi-value{font-size:clamp(17px,1.5vw,22px);overflow:visible;text-overflow:clip;white-space:normal;overflow-wrap:anywhere}
+.rms-pro-shell .debt-workspace .debt-a4-sheet{display:flex;flex-direction:column}
+@media(max-width:900px){.rms-pro-shell .debt-workspace .debt-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:600px){.rms-pro-shell .debt-workspace .debt-kpi-grid{grid-template-columns:1fr}}
+@media print{
+  @page{size:A4;margin:0}
+  .debt-a4-sheet{width:210mm;min-height:297mm;max-height:297mm;margin:0!important;box-shadow:none;border:0;break-after:page}
+  .debt-a4-sheet:last-child{break-after:auto}
+}
 .debt-workspace-tabs{
   display:flex;
   gap:6px;

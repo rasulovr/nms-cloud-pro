@@ -3174,7 +3174,7 @@ function DebtsPayments({ t }) {
     })
     ;(supplierAging.rows || []).forEach(aging => {
       const row = rows.get(aging.key)
-      if (row) row.overdue = parseNum(aging.overdueAmount)
+      if (row && parseNum(aging.term_days) > 0) row.overdue = parseNum(aging.overdueAmount)
     })
     const allRows = [...rows.values()]
       .filter(row => Math.abs(row.balance) > 0.004 || row.received > 0.004 || row.paid > 0.004)
@@ -3195,6 +3195,7 @@ function DebtsPayments({ t }) {
       visibleTotals: { received: sum(visibleRows, 'received'), paid: sum(visibleRows, 'paid'), balance: sum(visibleRows, 'balance') }
     }
   }, [legalEntities, suppliers, purchases, payments, openingDebts, supplierEntityStatuses, supplierAging.rows, debtSheetLegalEntityId, debtSheetSupplierId])
+  const debtSheetPages = Array.from({ length: Math.max(1, Math.ceil(debtSheet.visibleRows.length / 16)) }, (_, page) => debtSheet.visibleRows.slice(page * 16, (page + 1) * 16))
 
   const supplierFollowUpMap = useMemo(() => supplierFollowUps || {}, [supplierFollowUps])
 
@@ -3927,12 +3928,12 @@ function DebtsPayments({ t }) {
           <label><span>Поставщик</span><select value={debtSheetSupplierId} onChange={e => setDebtSheetSupplierId(e.target.value)}><option value="all">Все поставщики</option>{activeSuppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
           <span className="debt-sheet-count">{debtSheet.visibleRows.length} позиций</span>
         </div>
-        <div className="debt-a4-sheet">
+        {debtSheetPages.map((pageRows, pageIndex) => <div className="debt-a4-sheet" key={pageIndex}>
           <header className="debt-sheet-heading"><div><small>RMS PRO · ПОСТАВЩИКИ</small><h3>Реестр долгов</h3><p>Поступления и оплаты за {new Date(`${debtSheet.month}-01T12:00:00`).toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' })}; остаток на сегодня.</p></div><div className="debt-sheet-mark">A4</div></header>
           <div className="debt-sheet-meta"><span>{debtSheetLegalEntityId === 'all' ? 'Все VOEN' : legalEntities.find(le => le.id === debtSheetLegalEntityId)?.name || 'VOEN'}</span><span>{debtSheetSupplierId === 'all' ? 'Все поставщики' : suppliers.find(s => s.id === debtSheetSupplierId)?.name || 'Поставщик'}</span></div>
-          <div className="debt-sheet-table-wrap"><table className="debt-sheet-table"><thead><tr><th>Поставщик</th><th>Поступило за месяц</th><th>Оплачено за месяц</th><th>Остаток долга</th></tr></thead><tbody>{debtSheet.visibleRows.map(row => <tr key={row.key}><td><strong>{row.supplierName}</strong><small>{row.entityName} · VOEN {row.entityVoen || '—'}</small></td><td>{fmt(row.received)}</td><td>{fmt(row.paid)}</td><td className={row.balance > 0.004 ? 'bad' : row.balance < -0.004 ? 'good' : ''}><strong>{fmt(row.balance)}</strong></td></tr>)}{!debtSheet.visibleRows.length && <tr><td colSpan="4" className="debt-sheet-empty">По выбранным фильтрам операций и остатков нет.</td></tr>}</tbody><tfoot><tr><th>Итого</th><th>{fmt(debtSheet.visibleTotals.received)}</th><th>{fmt(debtSheet.visibleTotals.paid)}</th><th>{fmt(debtSheet.visibleTotals.balance)}</th></tr></tfoot></table></div>
-          <footer>Остаток = стартовый долг + все поступления − все оплаты. Отрицательная сумма означает переплату. Суммы в AZN.</footer>
-        </div>
+          <div className="debt-sheet-table-wrap"><table className="debt-sheet-table"><thead><tr><th>Поставщик</th><th>Поступило за месяц</th><th>Оплачено за месяц</th><th>Остаток долга</th></tr></thead><tbody>{pageRows.map(row => <tr key={row.key}><td><strong>{row.supplierName}</strong><small>{row.entityName} · VOEN {row.entityVoen || '—'}</small></td><td>{fmt(row.received)}</td><td>{fmt(row.paid)}</td><td className={row.balance > 0.004 ? 'bad' : row.balance < -0.004 ? 'good' : ''}><strong>{fmt(row.balance)}</strong></td></tr>)}{!pageRows.length && <tr><td colSpan="4" className="debt-sheet-empty">По выбранным фильтрам операций и остатков нет.</td></tr>}</tbody>{pageIndex === debtSheetPages.length - 1 && <tfoot><tr><th>Итого</th><th>{fmt(debtSheet.visibleTotals.received)}</th><th>{fmt(debtSheet.visibleTotals.paid)}</th><th>{fmt(debtSheet.visibleTotals.balance)}</th></tr></tfoot>}</table></div>
+          <footer><span>Остаток = стартовый долг + все поступления − все оплаты. Отрицательная сумма означает переплату. Суммы в AZN.</span><b>{pageIndex + 1} / {debtSheetPages.length}</b></footer>
+        </div>)}
       </div>}
 
       {/* v276: “Поставщики и долги” moved directly after supplier control KPIs. */}
