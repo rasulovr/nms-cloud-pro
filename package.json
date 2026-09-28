@@ -16,6 +16,7 @@
     "test:debts-workspace-v432": "node scripts/test-debts-workspace-v432.mjs",
     "test:forecast-tax-dedup-v431": "node scripts/test-forecast-tax-dedup-v431.mjs",
     "test:supplier-idempotency-v420": "node scripts/test-supplier-purchase-idempotency-v420.mjs",
+    "test:supplier-save-performance-v434": "node scripts/test-supplier-save-performance-v434.mjs",
     "dev": "npm run assemble && vite",
     "build": "npm run assemble && vite build",
     "preview": "vite preview"

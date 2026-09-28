@@ -10498,14 +10498,49 @@ function Suppliers({ t, isAdmin = false }) {
     }
   }
 
-  async function callSupplierRpc(name, args, okMessage = t('saved'), messageSetter = setMessage) {
+  function mergeSupplierPurchaseSnapshot(currentRows, refreshedPurchase) {
+    if (!refreshedPurchase?.id) return currentRows
+    return [
+      refreshedPurchase,
+      ...(currentRows || []).filter(row => String(row.id) !== String(refreshedPurchase.id))
+    ].sort((a, b) => {
+      const dateDiff = String(b.purchase_date || '').localeCompare(String(a.purchase_date || ''))
+      if (dateDiff) return dateDiff
+      return String(b.created_at || '').localeCompare(String(a.created_at || ''))
+    })
+  }
+
+  async function refreshSupplierPurchaseSnapshot(purchaseId) {
+    const { data: ws, error } = await fetchRmsSuppliersWorkspace()
+    if (error) throw error
+    if (!ws) throw new Error('Empty RMS suppliers workspace')
+
+    // A save only needs the changed purchase and current balance. Keep the
+    // already loaded full journal in memory instead of downloading all ~5k
+    // purchases again in 500-row pages.
+    setBalances(ws.supplier_balances || [])
+    const refreshedPurchase = (ws.supplier_purchases || []).find(row => String(row.id) === String(purchaseId))
+    if (refreshedPurchase) setPurchases(currentRows => mergeSupplierPurchaseSnapshot(currentRows, refreshedPurchase))
+    return refreshedPurchase || null
+  }
+
+  async function callSupplierRpc(name, args, okMessage = t('saved'), messageSetter = setMessage, options = {}) {
     const { data, error } = await supabase.rpc(name, args)
     if (error) {
       const msg = error.message || 'Supplier secure RPC error'
       messageSetter(msg)
       throw error
     }
-    await load()
+    if (options.refreshMode === 'purchase') {
+      try {
+        await refreshSupplierPurchaseSnapshot(options.purchaseId || data)
+      } catch (_refreshError) {
+        // The mutation is already committed. Never make the user retry a
+        // successful save just because the lightweight UI refresh failed.
+      }
+    } else if (options.refreshMode !== 'none') {
+      await load()
+    }
     messageSetter(okMessage)
     return data
   }
@@ -10558,7 +10593,7 @@ function Suppliers({ t, isAdmin = false }) {
           p_items: [],
           p_manual_amount: manualAmount,
           p_request_key: requestKey
-        })
+        }, t('saved'), setMessage, { refreshMode: 'purchase' })
         purchaseCreateRequestKeyRef.current = ''
         setLineRows([{ ...emptyLine }])
         setPurchaseForm(f => ({ ...f, invoice_number: '', e_invoice_number: '', e_invoice_date: '', e_invoice_amount: '', comment: '', manual_amount: '' }))
@@ -10588,7 +10623,7 @@ function Suppliers({ t, isAdmin = false }) {
         p_items: prepared,
         p_manual_amount: null,
         p_request_key: requestKey
-      })
+      }, t('saved'), setMessage, { refreshMode: 'purchase' })
       purchaseCreateRequestKeyRef.current = ''
       setLineRows([{ ...emptyLine }])
       setPurchaseForm(f => ({ ...f, invoice_number: '', e_invoice_number: '', e_invoice_date: '', e_invoice_amount: '', comment: '', manual_amount: '' }))
@@ -10615,7 +10650,7 @@ function Suppliers({ t, isAdmin = false }) {
       p_comment: current.comment || null,
       p_items: items,
       p_manual_amount: null
-    })
+    }, t('saved'), setMessage, { refreshMode: 'purchase', purchaseId })
     return items.reduce((sum, item) => sum + parseNum(item.quantity) * parseNum(item.unit_price), 0)
   }
 
@@ -10638,9 +10673,8 @@ function Suppliers({ t, isAdmin = false }) {
         p_comment: patch.comment ?? current.comment ?? null,
         p_items: null,
         p_manual_amount: hasManualAmountPatch ? manualAmount : null
-      })
+      }, 'Поступление обновлено', setMessage, { refreshMode: 'purchase', purchaseId: id })
       setMessage('Поступление обновлено')
-      await load()
     } catch (e) { setMessage(e.message) }
   }
 
@@ -10661,7 +10695,7 @@ function Suppliers({ t, isAdmin = false }) {
         p_comment: current.comment || null,
         p_items: items,
         p_manual_amount: null
-      })
+      }, t('saved'), setMessage, { refreshMode: 'purchase', purchaseId })
     } catch (e) { setMessage(e.message) }
   }
 
@@ -10794,7 +10828,7 @@ function Suppliers({ t, isAdmin = false }) {
         p_comment: purchase.comment || null,
         p_items: prepared,
         p_manual_amount: null
-      }, 'Товары добавлены. Сумма накладной пересчитана по товарам')
+      }, 'Товары добавлены. Сумма накладной пересчитана по товарам', setMessage, { refreshMode: 'purchase', purchaseId: purchase.id })
 
       updatePurchaseItemsSaveProgress(86, `Пересчёт суммы накладной: ${fmt(existingPurchaseDraftTotal())} AZN`, 'Пересчёт накладной')
       setPurchaseItemsEditorId('')
