@@ -5082,6 +5082,9 @@ function rmsTranslateDynamicAzText(text) {
 
 function RMSInterfaceTranslator({ lang }) {
   useEffect(() => {
+    // Russian text is the source language. Scanning the whole page after every
+    // receipt keystroke is unnecessary and can stall the supplier form.
+    if (lang !== 'az') return undefined
     let frame = 0
     let applying = false
 
