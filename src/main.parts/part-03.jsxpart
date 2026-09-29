@@ -9479,6 +9479,28 @@ function SupplierProductPriceHistoryChart({ history = [], baseUnit = '' }) {
   </div>
 }
 
+// Build once when invoices/links change; never scan the full ledger per draft edit.
+function buildSupplierInvoiceIndex(invoices, links) {
+  const invoiceById = new Map()
+  for (const invoice of invoices || []) {
+    const key = String(invoice.id)
+    if (!invoiceById.has(key)) invoiceById.set(key, invoice)
+  }
+  const linksByPurchase = new Map()
+  const invoicesByPurchase = new Map()
+  for (const link of links || []) {
+    const key = String(link.purchase_id)
+    if (!linksByPurchase.has(key)) linksByPurchase.set(key, [])
+    linksByPurchase.get(key).push(link)
+    const invoice = invoiceById.get(String(link.e_invoice_id))
+    if (invoice) {
+      if (!invoicesByPurchase.has(key)) invoicesByPurchase.set(key, [])
+      invoicesByPurchase.get(key).push({ ...invoice, link })
+    }
+  }
+  return { linksByPurchase, invoicesByPurchase }
+}
+
 function Suppliers({ t, isAdmin = false }) {
   const isAzInterface = t('language_label') === 'İnterfeys dili'
   const CENTRAL_WAREHOUSE_SELECTION = '__CENTRAL_WAREHOUSE__'
@@ -9564,6 +9586,15 @@ function Suppliers({ t, isAdmin = false }) {
   const [editingSupplierId, setEditingSupplierId] = useState('')
   const [supplierEditForm, setSupplierEditForm] = useState({ name: '', voen: '', contact_person: '', phone: '', info: '', payment_term_days: '', credit_limit: '' })
 
+  const supplierInvoiceIndex = useMemo(() => buildSupplierInvoiceIndex(eInvoices, eInvoiceLinks), [eInvoices, eInvoiceLinks])
+  const productOptionElements = useMemo(() => {
+    const byCategory = new Map()
+    for (const category of PRODUCT_CATEGORIES) {
+      const ordered = [...products.filter(p => normalizeProductType(p.category) === category), ...products.filter(p => normalizeProductType(p.category) !== category)]
+      byCategory.set(category, ordered.map(p => <option key={p.id} value={p.id}>{p.name}</option>))
+    }
+    return byCategory
+  }, [products])
   const activeSuppliers = useMemo(() => (suppliers || []).filter(s => s.is_active !== false), [suppliers])
   const supplierEntityStatusMap = useMemo(() => new Map((supplierEntityStatuses || []).map(r => [supplierEntityKey(r.supplier_id, r.legal_entity_id), r.is_active !== false])), [supplierEntityStatuses])
   function isSupplierActiveForLegal(supplierId, legalEntityId) {
