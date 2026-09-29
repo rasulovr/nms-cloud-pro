@@ -144,8 +144,9 @@ setMessage(e.message)
     if (transactionPeriod === 'year') return sameISOYear(dateStr, anchor)
     return true
   }
-  const supplierTransactions = allTransactions().filter(r => (!transactionSupplierId || r.supplier_id === transactionSupplierId) && periodOk(r.date))
-  const lastTransactions = allTransactions().slice(0, 10)
+  const transactionRows = useMemo(() => allTransactions(), [openingDebts, purchases, payments, suppliers, legalEntities])
+  const supplierTransactions = transactionRows.filter(r => (!transactionSupplierId || r.supplier_id === transactionSupplierId) && periodOk(r.date))
+  const lastTransactions = transactionRows.slice(0, 10)
 
   function supplierMetaFromComment(comment) {
     const raw = String(comment || '')
@@ -585,7 +586,7 @@ setMessage(e.message)
   }
 
   const recentPurchasesPageSizeNumber = parseNum(recentPurchasesPageSize) || 10
-  const visiblePurchases = (purchases || []).filter(p => !p.deleted_at && activeSupplierIds.has(p.supplier_id) && isSupplierActiveForLegal(p.supplier_id, p.legal_entity_id))
+  const visiblePurchases = useMemo(() => (purchases || []).filter(p => !p.deleted_at && activeSupplierIds.has(p.supplier_id) && isSupplierActiveForLegal(p.supplier_id, p.legal_entity_id)), [purchases, activeSupplierIds, suppliers, supplierEntityStatusMap])
 
   function purchaseJournalSearchText(p) {
     const linkedInvoices = typeof purchaseLinkedEInvoices === 'function' ? purchaseLinkedEInvoices(p.id) : []
@@ -778,15 +779,11 @@ setMessage(e.message)
 
 
   function purchaseEInvoiceLinks(purchaseId) {
-    return (eInvoiceLinks || []).filter(link => String(link.purchase_id) === String(purchaseId))
+    return supplierInvoiceIndex.linksByPurchase.get(String(purchaseId)) || []
   }
 
   function purchaseLinkedEInvoices(purchaseId) {
-    const links = purchaseEInvoiceLinks(purchaseId)
-    return links.map(link => {
-      const inv = eInvoices.find(row => String(row.id) === String(link.e_invoice_id))
-      return inv ? { ...inv, link } : null
-    }).filter(Boolean)
+    return supplierInvoiceIndex.invoicesByPurchase.get(String(purchaseId)) || []
   }
 
   function purchaseLinkedEInvoicesTotal(purchaseId) {
@@ -1009,11 +1006,18 @@ setMessage(e.message)
     }
   }
 
-  const supplierReconciliationRows = (visiblePurchases || []).map(p => ({ ...p, reconciliation: supplierPurchaseReconciliation(p) }))
-  const supplierWaitingEInvoice = supplierReconciliationRows.filter(p => !purchaseLinkedEInvoices(p.id).length && p.reconciliation.status === 'Ожидает e-qaimə').length
-  const supplierMatchedEInvoice = supplierReconciliationRows.filter(p => purchaseReconciliationByEInvoices(p).status === 'Сверено').length
-  const supplierMismatchEInvoice = supplierReconciliationRows.filter(p => purchaseReconciliationByEInvoices(p).status === 'Расхождение').length
-  const supplierPurchasesAmount = (visiblePurchases || []).filter(p => !p.deleted_at).reduce((sum, p) => sum + parseNum(p.total_amount), 0)
+  const { supplierWaitingEInvoice, supplierMatchedEInvoice, supplierMismatchEInvoice, supplierPurchasesAmount } = useMemo(() => {
+    let supplierWaitingEInvoice = 0, supplierMatchedEInvoice = 0, supplierMismatchEInvoice = 0, supplierPurchasesAmount = 0
+    for (const purchase of visiblePurchases) {
+      const legacy = supplierPurchaseReconciliation(purchase)
+      const reconciliation = purchaseReconciliationByEInvoices(purchase)
+      if (!purchaseLinkedEInvoices(purchase.id).length && legacy.status === 'Ожидает e-qaimə') supplierWaitingEInvoice++
+      if (reconciliation.status === 'Сверено') supplierMatchedEInvoice++
+      if (reconciliation.status === 'Расхождение') supplierMismatchEInvoice++
+      supplierPurchasesAmount += parseNum(purchase.total_amount)
+    }
+    return { supplierWaitingEInvoice, supplierMatchedEInvoice, supplierMismatchEInvoice, supplierPurchasesAmount }
+  }, [visiblePurchases, supplierInvoiceIndex])
   const supplierPaymentsAmount = (payments || []).reduce((sum, p) => sum + parseNum(p.amount), 0)
   const supplierEInvoiceDebtAmount = (eInvoices || []).filter(inv => !inv.deleted_at).reduce((sum, inv) => sum + Math.max(0, parseNum(inv.amount) - parseNum(inv.paid_amount)), 0)
   const supplierLegacyBalanceAmount = (balances || []).reduce((sum, b) => sum + Math.max(0, parseNum(b.balance)), 0)
@@ -1072,7 +1076,7 @@ setMessage(e.message)
         <div className="card-head suppliers-purchase-items-head"><div><h3>Товары в поступлении</h3><p className="hint">Если товара нет, сначала добавьте его ниже в блоке “Товары”.</p></div><button className="small supplier-add-product-line-btn" disabled={purchaseForm.amount_only} onClick={() => setLineRows(rows => [...rows, { ...emptyLine }])}>{isAzInterface ? '+ Məhsulu əlavə et' : '+ Добавить товар'}</button></div>
         <div className="table-wrap suppliers-purchase-items-wrap"><table className="suppliers-purchase-items-table suppliers-purchase-price-table"><thead><tr><th>Тип</th><th>Товар</th><th>Кол-во закупа</th><th>Ед. закупа</th><th>Цена за ед.</th><th>Сумма строки</th><th></th></tr></thead><tbody>{purchaseForm.amount_only ? <tr><td colSpan="7" className="hint">Товары отключены: поступление будет сохранено общей суммой.</td></tr> : lineRows.map((row, idx) => <tr key={idx}>
           <td><select value={row.category} onChange={e => updateLine(idx, { category: e.target.value })}>{PRODUCT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select></td>
-          <td style={{minWidth:260}}><select value={row.product_id || ''} onChange={e => selectProductForLine(idx, e.target.value)}><option value="">Выберите товар</option>{productOptionsForRow(row).map(p => <option key={p.id} value={p.id}>{productLabel(p)}</option>)}</select></td>
+          <td style={{minWidth:260}}><select value={row.product_id || ''} onChange={e => selectProductForLine(idx, e.target.value)}><option value="">Выберите товар</option>{productOptionElements.get(row.category || PRODUCT_CATEGORIES[0])}</select></td>
           <td><input inputMode="decimal" value={row.quantity} onChange={e => updateLine(idx, { quantity: e.target.value })} placeholder="30" /></td>
           <td><select value={row.unit} onChange={e => updateLine(idx, { unit: e.target.value })}>{PURCHASE_UNITS.map(u => <option key={u.value} value={u.value}>{u.label}</option>)}</select></td>
           <td><div className="supplier-auto-unit-price supplier-price-input-shell"><input inputMode="decimal" value={row.unit_price} onChange={e => updateLine(idx, { unit_price: e.target.value })} placeholder="0.00" />{(() => { const trend = supplierItemInlineTrend(row.product_id, row.unit_price, row.unit); return trend ? <span className={`supplier-inline-price-trend ${trend.direction}`} title={trend.title}>{trend.label}</span> : null })()}</div></td>
@@ -1666,7 +1670,7 @@ setMessage(e.message)
                                 <thead><tr><th>Тип</th><th>Товар</th><th>Количество</th><th>Ед.</th><th>Цена за ед.</th><th>Сумма строки</th><th></th></tr></thead>
                                 <tbody>{purchaseItemsDraft.map((row, idx) => <tr key={row.id || idx}>
                                   <td><select value={row.category || PRODUCT_CATEGORIES[0]} onChange={e => updateExistingPurchaseDraft(idx, { category: e.target.value })}>{PRODUCT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}</select></td>
-                                  <td><select value={row.product_id || ''} onChange={e => updateExistingPurchaseDraft(idx, { product_id: e.target.value })}><option value="">Выберите товар</option>{productOptionsForRow(row).map(prod => <option key={prod.id} value={prod.id}>{prod.name}</option>)}</select></td>
+                                  <td><select value={row.product_id || ''} onChange={e => updateExistingPurchaseDraft(idx, { product_id: e.target.value })}><option value="">Выберите товар</option>{productOptionElements.get(row.category || PRODUCT_CATEGORIES[0])}</select></td>
                                   <td><input inputMode="decimal" value={row.quantity} onChange={e => updateExistingPurchaseDraft(idx, { quantity: e.target.value })} placeholder="30" /></td>
                                   <td><select value={row.unit || 'kg'} onChange={e => updateExistingPurchaseDraft(idx, { unit: e.target.value })}>{PURCHASE_UNITS.map(u => <option key={u.value} value={u.value}>{u.label}</option>)}</select></td>
                                   <td><div className="supplier-auto-unit-price supplier-price-input-shell"><input inputMode="decimal" value={row.unit_price} onChange={e => updateExistingPurchaseDraft(idx, { unit_price: e.target.value })} placeholder="0.00" />{(() => { const trend = supplierItemInlineTrend(row.product_id, row.unit_price, row.unit, purchaseItemsEditorId); return trend ? <span className={`supplier-inline-price-trend ${trend.direction}`} title={trend.title}>{trend.label}</span> : null })()}</div></td>
