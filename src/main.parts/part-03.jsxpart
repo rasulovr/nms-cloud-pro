@@ -9501,6 +9501,19 @@ function buildSupplierInvoiceIndex(invoices, links) {
   return { linksByPurchase, invoicesByPurchase }
 }
 
+function SupplierDraftNumberInput({ value, onCommit, placeholder = '0.00' }) {
+  const currentValue = String(value ?? '')
+  const [draft, setDraft] = useState(currentValue)
+  useEffect(() => setDraft(currentValue), [currentValue])
+  return <input
+    inputMode="decimal"
+    value={draft}
+    onChange={event => setDraft(event.target.value)}
+    onBlur={() => { if (draft !== currentValue) onCommit(draft) }}
+    placeholder={placeholder}
+  />
+}
+
 function Suppliers({ t, isAdmin = false }) {
   const isAzInterface = t('language_label') === 'İnterfeys dili'
   const CENTRAL_WAREHOUSE_SELECTION = '__CENTRAL_WAREHOUSE__'
