@@ -198,7 +198,7 @@ function rmsIsWoltCommissionExpenseRow(row) {
   return rmsIsWoltCommissionName(row?.expense_categories?.name || row?.custom_category || '')
 }
 
-function Revenue({ t, focusExpense }) {
+function Revenue({ t, focusExpense, isAdmin = false }) {
   const branches = useBranches()
   const [branchId, setBranchId] = useState('')
   const [date, setDate] = useState(todayISO())
@@ -962,8 +962,16 @@ function Revenue({ t, focusExpense }) {
 
   async function updateExpense(id, patch) {
     const current = expenses.find(e => e.id === id)
-    if (!current || current.deleted_at) return
+    if (!current || current.deleted_at) return false
     setMessage('')
+    const access = expenseEditAccess(current, {
+      isAdmin,
+      withinWindow: canEditWithinWeek(current),
+      automaticallyAllocated: isBazarExpenseName(expenseNameFromPatch(current, {}))
+    })
+    if (!access.editable) { setMessage('Редактирование закрыто'); return false }
+    patch = expenseEditPatch(current, patch, access)
+    if (!Object.keys(patch).length) return true
     const user = await currentUserMeta()
     const nextExpense = hydrateExpenseForLocalState(current, patch)
     const nextExpenseName = expenseNameFromPatch(current, patch)
@@ -981,6 +989,7 @@ function Revenue({ t, focusExpense }) {
         await Promise.all([loadMonthStats(branchId, nextExpense.expense_date || date), loadLogs(branchId, nextExpense.expense_date || date)])
         await load()
         setMessage('Базар распределён между филиалами по доле выручки')
+        return true
       } catch (error) {
         setMessage(error?.message || 'Не удалось распределить Базар')
         const { data: refreshedExpenses } = await supabase
@@ -991,36 +1000,47 @@ function Revenue({ t, focusExpense }) {
           .order('created_at')
         setExpenses(refreshedExpenses || [])
       }
-      return
+      return false
     }
 
-    setExpenses(prev => prev.map(e => e.id === id ? nextExpense : e))
     const { error } = await supabase.rpc('rms_expense_update_secure', {
       p_id: id,
       p_patch: patch
     })
     if (error) {
-      setExpenses(prev => prev.map(e => e.id === id ? current : e))
-      return setMessage(error.message)
+      setMessage(error.message)
+      return false
     }
 
-    await Promise.all([loadMonthStats(branchId, date), loadLogs(branchId, date)])
-    await load()
+    setExpenses(prev => prev.map(e => e.id === id ? nextExpense : e))
+    try {
+      await Promise.all([loadMonthStats(branchId, date), loadLogs(branchId, date)])
+      await load()
+    } catch {
+      setMessage('Расход сохранён. Не удалось обновить экран; обновите страницу.')
+      return true
+    }
     setMessage('Расход сохранён')
+    return true
   }
 
   async function cancelExpense(id) {
     const current = expenses.find(e => e.id === id)
-    if (!current || current.deleted_at) return
+    if (!current || current.deleted_at || !canEditWithinWeek(current)) return false
     const user = await currentUserMeta()
     const payload = { deleted_at: new Date().toISOString(), deleted_by: user.user_id, updated_by: user.user_id }
-    setExpenses(prev => prev.map(e => e.id === id ? { ...e, ...payload } : e))
     const { error } = await supabase.rpc('rms_expense_cancel_secure', {
       p_id: id,
       p_reason: 'Отменено из интерфейса RMS'
     })
-    if (error) return setMessage(error.message)
-    await Promise.all([loadMonthStats(branchId, date), loadLogs(branchId, date)])
+    if (error) { setMessage(error.message); return false }
+    setExpenses(prev => prev.map(e => e.id === id ? { ...e, ...payload } : e))
+    try {
+      await Promise.all([loadMonthStats(branchId, date), loadLogs(branchId, date)])
+    } catch {
+      setMessage('Расход удалён. Не удалось обновить экран; обновите страницу.')
+    }
+    return true
   }
 
   async function addInflow() {
@@ -1221,7 +1241,7 @@ function Revenue({ t, focusExpense }) {
           <div className="card-head"><div><h3>{t('daily_expenses_title')}</h3><p className="hint">Расходы дня. Изменение и удаление выполняются через безопасное окно редактирования.</p></div><div className="actions-row"><button className="small" onClick={addExpense}>+ Добавить</button></div></div>
           <div className="form-grid compact"><label><span>{t('daily_expenses_total')}</span><input value={fmt(dailyExpenseTotal)} readOnly /></label></div>
           <div className="table-wrap"><table><thead><tr><th>Дата</th><th>{t('expense_item')}</th><th>{t('amount')}</th><th>{t('comment')}</th><th>Статус</th><th></th></tr></thead><tbody>
-            {expenses.map(e => <ExpenseRow key={e.id} expense={e} categories={expenseCategoriesForBranch} focusExpenseId={focusExpense?.expenseId} onSave={patch => updateExpense(e.id, patch)} onCancel={() => cancelExpense(e.id)} />)}
+            {expenses.map(e => <ExpenseRow key={e.id} expense={e} isAdmin={isAdmin} categories={expenseCategoriesForBranch} focusExpenseId={focusExpense?.expenseId} onSave={patch => updateExpense(e.id, patch)} onCancel={() => cancelExpense(e.id)} />)}
             {advanceExpenses.map(a => <AdvanceExpenseRow key={`adv-${a.id}`} advance={a} />)}
             {!expenses.length && !advanceExpenses.length && <tr><td colSpan="6" className="hint">—</td></tr>}
           </tbody></table></div>

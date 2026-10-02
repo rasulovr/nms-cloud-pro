@@ -498,6 +498,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { createPortal } from 'react-dom'
 import { supabase } from './supabase'
+import { expenseEditAccess, expenseEditPatch } from './expenseEditPolicy.mjs'
 import './styles.css'
 import './rms_dashboard_chart.css'
 import QRMenu from './QRMenu'
@@ -5535,7 +5536,7 @@ function App() {
         {!currentCanRead && <section className="card"><h3>{t('permission_denied')}</h3><p className="hint">Этот раздел скрыт для текущего пользователя.</p></section>}
         {currentCanRead && currentAccess === 'read' && <div className="readonly-banner">Режим просмотра: редактирование этого раздела отключено.</div>}
         {currentCanRead && section === 'dashboard' && <Dashboard t={t} />}
-        {currentCanRead && section === 'revenue' && <Revenue t={t} focusExpense={revenueFocus} />}
+        {currentCanRead && section === 'revenue' && <Revenue t={t} focusExpense={revenueFocus} isAdmin={isAdmin} />}
         {currentCanRead && section === 'finance' && <Finance t={t} lang={lang} onGoToExpense={goToRevenueExpense} />}
         {currentCanRead && section === 'reports' && <Reports t={t} permissions={permissions} isAdmin={isAdmin} />}
         {currentCanRead && section === 'recipes' && <Recipes t={t} />}

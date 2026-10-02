@@ -1,0 +1,16 @@
+import assert from 'node:assert/strict'
+import { readFile, readdir } from 'node:fs/promises'
+const html = await readFile('dist/index.html','utf8')
+assert.match(html, /Content-Security-Policy/)
+assert.match(html, /connect-src 'none'/)
+assert.doesNotMatch(html, /main\.generated/)
+const files = await readdir('dist/assets')
+const bundle = (await Promise.all(files.map(file => readFile(`dist/assets/${file}`,'utf8')))).join('\n')
+assert.doesNotMatch(bundle, /supabase\.co|createClient|recalcExistingBazarExpenseForDate|SUPABASE_SERVICE_ROLE_KEY|VITE_SUPABASE/)
+assert.match(bundle, /synthetic-expense/)
+assert.match(bundle, /rms_expense_update_secure/)
+const hosting = JSON.parse(await readFile('vercel.json','utf8'))
+assert.deepEqual(hosting.builds,[{src:'package.json',use:'@vercel/static-build',config:{distDir:'dist'}}])
+assert.equal((await readdir('dist')).includes('api'),false)
+assert.equal((await readdir('dist')).includes('menu'),false)
+console.log('Isolated Preview checks passed: static-only output, synthetic fixture, no Supabase client or live project endpoint')
