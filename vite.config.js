@@ -1,9 +1,12 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { rmsSecureAuthTransform } from './build/rms-secure-auth-transform.js'
+import { adminExpensePreviewPlugin } from './build/admin-expense-preview.js'
 
 export default defineConfig({
+  publicDir: false,
   plugins: [
+    adminExpensePreviewPlugin(),
     {
       name: 'rms-secure-internal-auth',
       enforce: 'pre',

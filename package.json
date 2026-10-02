@@ -19,7 +19,12 @@
     "test:supplier-save-performance-v434": "node scripts/test-supplier-save-performance-v434.mjs",
     "dev": "npm run assemble && vite",
     "build": "npm run assemble && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:admin-expense-preview": "node scripts/test-admin-expense-preview.mjs",
+    "test:admin-expense-browser": "node scripts/test-admin-expense-browser.mjs",
+    "test:admin-expense-handlers": "node scripts/test-admin-expense-handlers.mjs",
+    "test:admin-expense-isolation": "node scripts/test-admin-expense-isolation.mjs",
+    "vercel-build": "npm run test:admin-expense-preview && npm run test:admin-expense-handlers && npm run build && npm run test:admin-expense-isolation"
   },
   "dependencies": {
     "@vitejs/plugin-react": "^4.3.0",
@@ -30,5 +35,7 @@
     "@supabase/supabase-js": "^2.45.0",
     "lucide-react": "^0.468.0"
   },
-  "devDependencies": {}
+  "devDependencies": {
+    "playwright": "1.62.1"
+  }
 }
