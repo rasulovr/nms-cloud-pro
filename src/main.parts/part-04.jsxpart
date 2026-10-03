@@ -52,6 +52,15 @@ setMessage(e.message)
     const requestKey = paymentRequestKeyRef.current.key
 
     try {
+      const { data: existingRequestRow, error: existingRequestError } = await supabase
+        .from('supplier_payments')
+        .select('id')
+        .eq('request_key', requestKey)
+        .is('deleted_at', null)
+        .maybeSingle()
+      if (existingRequestError) throw existingRequestError
+      const paymentAlreadyExists = Boolean(existingRequestRow)
+
       let latestById = new Map()
       if (selectedRealInvoices.length > 0) {
         const { data: latestRows, error: latestError } = await supabase
@@ -106,23 +115,25 @@ setMessage(e.message)
           p_request_key: requestKey
         }, t('saved'), setPaymentMessage)
 
-        let remainingPayment = amount
-        for (const inv of selectedRealInvoices) {
-          if (remainingPayment <= 0) break
-          const dbInv = latestById.get(String(inv.e_invoice_id)) || [...(eInvoices || []), ...(paymentCreateEInvoices || [])].find(row => row.id === inv.e_invoice_id)
-          const invoiceRemaining = Math.max(0, parseNum(dbInv?.amount) - parseNum(dbInv?.paid_amount))
-          const payAmount = Math.min(invoiceRemaining, remainingPayment)
-          if (payAmount <= 0) continue
+        if (!paymentAlreadyExists) {
+          let remainingPayment = amount
+          for (const inv of selectedRealInvoices) {
+            if (remainingPayment <= 0) break
+            const dbInv = latestById.get(String(inv.e_invoice_id)) || [...(eInvoices || []), ...(paymentCreateEInvoices || [])].find(row => row.id === inv.e_invoice_id)
+            const invoiceRemaining = Math.max(0, parseNum(dbInv?.amount) - parseNum(dbInv?.paid_amount))
+            const payAmount = Math.min(invoiceRemaining, remainingPayment)
+            if (payAmount <= 0) continue
 
-          await supabase
-            .from('supplier_e_invoices')
-            .update({
-              paid_amount: parseNum(dbInv?.paid_amount) + payAmount,
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', inv.e_invoice_id)
+            await supabase
+              .from('supplier_e_invoices')
+              .update({
+                paid_amount: parseNum(dbInv?.paid_amount) + payAmount,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', inv.e_invoice_id)
 
-          remainingPayment -= payAmount
+            remainingPayment -= payAmount
+          }
         }
       } else {
         const selectedOne = selectedAllInvoices[0] || selectedRealInvoices[0] || null
@@ -139,7 +150,7 @@ setMessage(e.message)
           p_e_invoice_id: updateInvoiceId,
           p_request_key: requestKey
         }, t('saved'), setPaymentMessage)
-        if (updateInvoiceId) {
+        if (updateInvoiceId && !paymentAlreadyExists) {
           const inv = latestById.get(String(updateInvoiceId)) || eInvoices.find(row => row.id === updateInvoiceId)
           const nextPaid = Math.min(parseNum(inv?.amount), parseNum(inv?.paid_amount) + amount)
           await supabase.from('supplier_e_invoices').update({ paid_amount: nextPaid, updated_at: new Date().toISOString() }).eq('id', updateInvoiceId)
