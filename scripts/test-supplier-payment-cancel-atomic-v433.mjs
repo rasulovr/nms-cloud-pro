@@ -3,7 +3,8 @@ import fs from 'node:fs'
 const source = fs.readFileSync(new URL('../src/main.generated.jsx', import.meta.url), 'utf8')
 const cancelSql = fs.readFileSync(new URL('../src/rms_supplier_payment_cancel_atomic_v433.sql', import.meta.url), 'utf8')
 const createSql = fs.readFileSync(new URL('../src/rms_supplier_payment_idempotency_v433.sql', import.meta.url), 'utf8')
-const duplicateSql = fs.readFileSync(new URL('../src/rms_supplier_payment_duplicate_guard_v434.sql', import.meta.url), 'utf8')
+const duplicateSql = fs.readFileSync(new URL('../src/rms_supplier_payment_duplicate_guard_v436.sql', import.meta.url), 'utf8')
+const accessSql = fs.readFileSync(new URL('../src/rms_supplier_payment_rpc_access_v435.sql', import.meta.url), 'utf8')
 
 const checks = [
   ['both payment cancellation paths use atomic batch RPC', (source.match(/rms_supplier_payment_cancel_batch_secure/g) || []).length === 2],
@@ -17,6 +18,7 @@ const checks = [
   ['create retries return the original request result', createSql.includes('Request key was already used for different payment data')],
   ['identical active payloads are serialized across sessions', duplicateSql.includes('supplier-payment-signature:') && duplicateSql.includes('ux_supplier_payments_active_signature')],
   ['signature check matches full payment payload', duplicateSql.includes('e_invoice_id is not distinct from p_e_invoice_id') && duplicateSql.includes('request_signature')],
+  ['clients cannot bypass the guarded write RPCs', accessSql.includes('rms_supplier_payment_create_secure') && accessSql.includes('rms_supplier_payment_cancel_secure') && accessSql.includes('from public, anon, authenticated')],
 ]
 
 let failed = false
