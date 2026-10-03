@@ -113,7 +113,7 @@ begin
   for update;
 
   if found then
-    return v_duplicate_id;
+    raise exception using errcode = '23505', message = format('Identical active supplier payment already exists: %s', v_duplicate_id);
   end if;
 
   v_payment_id := public.rms_supplier_payment_create_secure(
