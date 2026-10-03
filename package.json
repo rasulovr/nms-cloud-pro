@@ -18,8 +18,10 @@
     "test:supplier-idempotency-v420": "node scripts/test-supplier-purchase-idempotency-v420.mjs",
     "test:supplier-save-performance-v434": "node scripts/test-supplier-save-performance-v434.mjs",
     "dev": "npm run assemble && vite",
-    "build": "npm run assemble && vite build",
-    "preview": "vite preview"
+    "build": "npm run assemble && npm run test:supplier-payment-idempotency-v433 && npm run test:supplier-payment-cancel-atomic-v433 && vite build",
+    "preview": "vite preview",
+    "test:supplier-payment-idempotency-v433": "node scripts/test-supplier-payment-idempotency-v433.mjs",
+    "test:supplier-payment-cancel-atomic-v433": "node scripts/test-supplier-payment-cancel-atomic-v433.mjs"
   },
   "dependencies": {
     "@vitejs/plugin-react": "^4.3.0",
