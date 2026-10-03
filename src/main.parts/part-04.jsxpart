@@ -1572,7 +1572,7 @@ setMessage(e.message)
                           </div>
 
                           <div className="form-grid compact invoice-summary-grid supplier-invoice-summary-edit-grid">
-                            <label><span>Дата</span>{editingPurchaseId === p.id && !p.deleted_at ? <DateInput defaultValue={formatDateDMY(p.purchase_date)} onBlur={e => updatePurchase(p.id, { purchase_date: e.target.value })} /> : <strong>{formatDateDMY(p.purchase_date)}</strong>}</label>
+                            <label><span>Дата</span>{editingPurchaseId === p.id && !p.deleted_at ? <DateInput value={p.purchase_date || ''} onChange={e => updatePurchase(p.id, { purchase_date: e.target.value })} /> : <strong>{formatDateDMY(p.purchase_date)}</strong>}</label>
                             <label><span>Поставщик</span>{editingPurchaseId === p.id && !p.deleted_at ? (() => {
                               const currentSupplierOption = p.supplier_id && !activeSuppliers.some(s => s.id === p.supplier_id)
                                 ? [{ id: p.supplier_id, name: p.suppliers?.name || 'Текущий поставщик' }]
