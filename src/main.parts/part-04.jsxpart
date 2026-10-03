@@ -2551,9 +2551,10 @@ function DebtsPayments({ t }) {
     const reason = askSupplierCancelReason('Удаление оплаты поставщику')
     if (reason === null) return
     try {
-      await callSupplierRpc('rms_supplier_payment_cancel_secure', {
-        p_payment_id: row.id,
-        p_reason: reason
+      await callSupplierRpc('rms_supplier_payment_cancel_batch_secure', {
+        p_payment_ids: [row.id],
+        p_reason: reason,
+        p_request_key: globalThis.crypto?.randomUUID?.() || `cancel-${row.id}-${Date.now()}`
       }, 'Оплата удалена из активного баланса')
       setEditingPaymentTransactionId('')
     } catch (e) {
