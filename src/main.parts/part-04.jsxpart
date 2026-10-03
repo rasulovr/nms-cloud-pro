@@ -28,6 +28,28 @@ setMessage(e.message)
 
     if (!paymentSupplierId || !amount) return setPaymentMessage('Выберите поставщика и сумму оплаты')
     if (!paymentLegalEntityId) return setPaymentMessage('Выберите наш VOEN / юрлицо для оплаты')
+    if (paymentSaveInFlightRef.current) return
+
+    paymentSaveInFlightRef.current = true
+    setPaymentSaving(true)
+    const requestSignature = JSON.stringify({
+      supplier_id: paymentSupplierId,
+      legal_entity_id: paymentLegalEntityId,
+      payment_date: paymentForm.payment_date || todayISO(),
+      amount: Number(amount).toFixed(2),
+      invoice_ids: selectedAllInvoices.map(inv => String(inv.e_invoice_id || inv.number || '')),
+      invoice_notes: paymentForm.invoice_notes.trim(),
+      comment: paymentForm.comment.trim(),
+      e_invoice_id: paymentForm.e_invoice_id || selectedAllInvoices[0]?.e_invoice_id || null
+    })
+    if (!paymentRequestKeyRef.current || paymentRequestKeyRef.current.signature !== requestSignature) {
+      const cryptoApi = typeof globalThis !== 'undefined' ? globalThis.crypto : null
+      const requestKey = cryptoApi?.randomUUID
+        ? cryptoApi.randomUUID()
+        : `supplier-payment-${Date.now()}-${Math.random().toString(36).slice(2)}`
+      paymentRequestKeyRef.current = { signature: requestSignature, key: requestKey }
+    }
+    const requestKey = paymentRequestKeyRef.current.key
 
     try {
       let latestById = new Map()
@@ -73,14 +95,15 @@ setMessage(e.message)
           `Оплата одной суммой по e-qaimə: ${invoiceNumbers.join(', ')}`
         ].filter(Boolean).join(' | ')
 
-        await callSupplierRpc('rms_supplier_payment_create_secure', {
+        await callSupplierRpc('rms_supplier_payment_create_idempotent', {
           p_supplier_id: paymentSupplierId,
           p_legal_entity_id: paymentLegalEntityId || null,
           p_payment_date: paymentForm.payment_date || todayISO(),
           p_amount: amount,
           p_invoice_notes: invoiceNotes || null,
           p_comment: multiComment || null,
-          p_e_invoice_id: null
+          p_e_invoice_id: null,
+          p_request_key: requestKey
         }, t('saved'), setPaymentMessage)
 
         let remainingPayment = amount
@@ -106,14 +129,15 @@ setMessage(e.message)
         const updateInvoiceId = paymentForm.e_invoice_id || selectedOne?.e_invoice_id || null
         const invoiceNotes = paymentForm.invoice_notes.trim() || selectedOne?.number || null
 
-        await callSupplierRpc('rms_supplier_payment_create_secure', {
+        await callSupplierRpc('rms_supplier_payment_create_idempotent', {
           p_supplier_id: paymentSupplierId,
           p_legal_entity_id: paymentLegalEntityId || null,
           p_payment_date: paymentForm.payment_date || todayISO(),
           p_amount: amount,
           p_invoice_notes: invoiceNotes,
           p_comment: paymentForm.comment.trim() || null,
-          p_e_invoice_id: updateInvoiceId
+          p_e_invoice_id: updateInvoiceId,
+          p_request_key: requestKey
         }, t('saved'), setPaymentMessage)
         if (updateInvoiceId) {
           const inv = latestById.get(String(updateInvoiceId)) || eInvoices.find(row => row.id === updateInvoiceId)
@@ -121,11 +145,16 @@ setMessage(e.message)
           await supabase.from('supplier_e_invoices').update({ paid_amount: nextPaid, updated_at: new Date().toISOString() }).eq('id', updateInvoiceId)
         }
       }
+      await load()
       setPaymentForm({ supplier_id: '', legal_entity_id: legalEntities[0]?.id || '', payment_date: todayISO(), amount: '', invoice_notes: '', comment: '', e_invoice_id: '', selected_e_invoice_ids: [] })
       setShowPaymentCreateOverlay(false)
-      await load()
+      paymentRequestKeyRef.current = null
       setPaymentMessage(t('saved'))
     } catch (e) { setPaymentMessage(e.message) }
+    finally {
+      paymentSaveInFlightRef.current = false
+      setPaymentSaving(false)
+    }
   }
 
   const purchaseTotal = purchaseForm.amount_only ? parseNum(purchaseForm.manual_amount) : lineRows.reduce((s, r) => s + lineTotal(r), 0)
@@ -1104,7 +1133,7 @@ setMessage(e.message)
         </div>
         {/* v272: старый встроенный список выбора нескольких e-qaimə полностью удалён.
             Используем только большое overlay-окно выбора e-qaimə. */}
-        <div className="supplier-form-footer"><div className="supplier-form-footer-status">{paymentMessage && <p className={`hint ${paymentMessage === t('saved') ? 'save-status' : 'bad'}`}>{paymentMessage}</p>}</div><button className="small supplier-save-action" onClick={savePayment}>+ Сохранить оплату</button></div>
+        <div className="supplier-form-footer"><div className="supplier-form-footer-status">{paymentMessage && <p className={`hint ${paymentMessage === t('saved') ? 'save-status' : 'bad'}`}>{paymentMessage}</p>}</div><button className="small supplier-save-action" disabled={paymentSaving} onClick={savePayment}>{paymentSaving ? 'Сохранение...' : '+ Сохранить оплату'}</button></div>
       </div>
 
       {showPaymentCreateOverlay && <div
@@ -1151,7 +1180,7 @@ setMessage(e.message)
 
           <div className="supplier-modal-footer">
             <div className="supplier-modal-footer-left">{(paymentForm.selected_e_invoice_ids || []).length > 0 && <span className="hint">Выбрано: <b>{paymentForm.selected_e_invoice_ids.length}</b> · сумма: <b>{fmt(selectedPaymentCreateTotal || paymentForm.amount)} AZN</b></span>}{paymentMessage && <p className={`hint ${paymentMessage === t('saved') ? 'save-status' : 'bad'}`}>{paymentMessage}</p>}</div>
-            <div className="supplier-modal-footer-actions"><button className="ghost small" onClick={() => setShowPaymentCreateOverlay(false)}>Закрыть</button><button className="small supplier-save-action" onClick={savePayment}>+ Сохранить оплату</button></div>
+            <div className="supplier-modal-footer-actions"><button className="ghost small" onClick={() => setShowPaymentCreateOverlay(false)}>Закрыть</button><button className="small supplier-save-action" disabled={paymentSaving} onClick={savePayment}>{paymentSaving ? 'Сохранение...' : '+ Сохранить оплату'}</button></div>
           </div>
         </div>
       </div>}
