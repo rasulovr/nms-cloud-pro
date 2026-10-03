@@ -161,7 +161,7 @@ function RecipesStyles() {
 
 function rmsForecastMonthWindow(y, m) {
   const start = monthStart(y, m)
-  const end = new Date(Number(y), Number(m), 1).toISOString().slice(0, 10)
+  const end = rmsNextMonthStart(start.slice(0, 7))
   return { start, end }
 }
 
@@ -1600,7 +1600,7 @@ function Dashboard({ t }) {
 
   async function calcMonth(y, m) {
     const monthDate = monthStart(y, m)
-    const monthEnd = new Date(Number(y), Number(m), 1).toISOString().slice(0, 10)
+    const monthEnd = rmsNextMonthStart(monthDate.slice(0, 7))
     const [
       { data: revRows },
       dashboardDailyRevenueResult,
@@ -2274,8 +2274,8 @@ function Finance({ t, lang, onGoToExpense }) {
 
   function expenseDetailDateInPeriod(dateStr) {
     if (!dateStr) return false
-    const d = new Date(dateStr)
-    const anchor = new Date(expenseDetailDate || todayISO())
+    const d = parseISODateLocal(dateStr)
+    const anchor = parseISODateLocal(expenseDetailDate || todayISO())
     if (expenseDetailPeriod === 'day') return dateStr === (expenseDetailDate || todayISO())
     if (expenseDetailPeriod === 'week') {
       const a = new Date(anchor)
@@ -2289,8 +2289,8 @@ function Finance({ t, lang, onGoToExpense }) {
     }
     if (expenseDetailPeriod === 'month') return d.getFullYear() === anchor.getFullYear() && d.getMonth() === anchor.getMonth()
     if (expenseDetailPeriod === 'range') {
-      const from = expenseDetailDateFrom ? new Date(expenseDetailDateFrom) : null
-      const to = expenseDetailDateTo ? new Date(expenseDetailDateTo) : null
+      const from = expenseDetailDateFrom ? parseISODateLocal(expenseDetailDateFrom) : null
+      const to = expenseDetailDateTo ? parseISODateLocal(expenseDetailDateTo) : null
       if (from) from.setHours(0, 0, 0, 0)
       if (to) to.setHours(23, 59, 59, 999)
       return (!from || d >= from) && (!to || d <= to)
@@ -2312,7 +2312,7 @@ function Finance({ t, lang, onGoToExpense }) {
     setExpenseDetailPeriod('month')
     setExpenseDetailDate(monthStart(year, month))
     setExpenseDetailDateFrom(monthStart(year, month))
-    setExpenseDetailDateTo(new Date(Number(year), Number(month), 0).toISOString().slice(0, 10))
+    setExpenseDetailDateTo(monthRangeFromISODate(monthStart(year, month)).to)
     setExpenseDetail({ name: selectedName, rows: [], total: 0, loading: true, error: '' })
 
     try {
