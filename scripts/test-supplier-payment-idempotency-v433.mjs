@@ -6,7 +6,7 @@ const duplicateSql = fs.readFileSync(new URL('../src/rms_supplier_payment_duplic
 
 const saveHandler = source.slice(source.indexOf('async function savePayment()'), source.indexOf('const purchaseTotal', source.indexOf('async function savePayment()')))
 const checks = [
-  ['payment form blocks a second in-flight save', saveHandler.includes('paymentSaveInFlightRef.current') && saveHandler.includes('paymentSaving')],
+  ['payment form blocks a second in-flight save', saveHandler.includes('paymentSaveInFlightRef.current') && saveHandler.includes('setPaymentSaving(true)') && saveHandler.includes('setPaymentSaving(false)')],
   ['both payment paths use the idempotent RPC', (saveHandler.match(/rms_supplier_payment_create_idempotent/g) || []).length === 2],
   ['both payment paths send the same request key', (saveHandler.match(/p_request_key: requestKey/g) || []).length === 2],
   ['request key binds to the complete payment payload', saveHandler.includes('requestSignature') && saveHandler.includes('paymentRequestKeyRef.current')],
