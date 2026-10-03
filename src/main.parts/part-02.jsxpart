@@ -174,6 +174,7 @@ function rmsCompactBusinessName(value) {
 function rmsBranchSupportsWolt(branchName) {
   const compact = rmsCompactBusinessName(branchName)
   return compact === 'BC1'
+    || compact === 'BC2'
     || compact === 'BC3'
     || compact === 'BISTRO'
     || compact.includes('BISTRONOMIA')
