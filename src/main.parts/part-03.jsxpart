@@ -9544,6 +9544,9 @@ function Suppliers({ t, isAdmin = false }) {
   const emptyLine = { category: PRODUCT_CATEGORIES[0], product_id: '', base_unit: 'kg', quantity: '1', unit: 'kg', unit_price: '', line_amount: '' }
   const [lineRows, setLineRows] = useState([emptyLine])
   const [paymentForm, setPaymentForm] = useState({ supplier_id: '', legal_entity_id: '', payment_date: todayISO(), amount: '', invoice_notes: '', comment: '', e_invoice_id: '', selected_e_invoice_ids: [] })
+  const paymentSaveInFlightRef = useRef(false)
+  const paymentRequestKeyRef = useRef(null)
+  const [paymentSaving, setPaymentSaving] = useState(false)
   const [showPaymentCreateOverlay, setShowPaymentCreateOverlay] = useState(false)
   const [paymentCreateLoading, setPaymentCreateLoading] = useState(false)
   const [paymentCreateEInvoices, setPaymentCreateEInvoices] = useState([])
@@ -10533,9 +10536,10 @@ function Suppliers({ t, isAdmin = false }) {
     const reason = window.prompt('Причина удаления оплаты', 'Ошибочная оплата поставщику')
     if (reason === null) return
     try {
-      await callSupplierRpc('rms_supplier_payment_cancel_secure', {
-        p_payment_id: payment.id,
-        p_reason: String(reason || '').trim() || 'Ошибочная оплата поставщику'
+      await callSupplierRpc('rms_supplier_payment_cancel_batch_secure', {
+        p_payment_ids: [payment.id],
+        p_reason: String(reason || '').trim() || 'Ошибочная оплата поставщику',
+        p_request_key: globalThis.crypto?.randomUUID?.() || `cancel-${payment.id}-${Date.now()}`
       }, 'Оплата удалена из активного баланса')
     } catch (e) {
       setMessage(e.message || 'Не удалось удалить оплату')
