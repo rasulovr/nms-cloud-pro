@@ -18,11 +18,15 @@
     "test:supplier-idempotency-v420": "node scripts/test-supplier-purchase-idempotency-v420.mjs",
     "test:supplier-save-performance-v434": "node scripts/test-supplier-save-performance-v434.mjs",
     "dev": "npm run assemble && vite",
-    "build": "npm run assemble && npm run test:wolt-branch-eligibility && npm run test:supplier-payment-idempotency-v433 && npm run test:supplier-payment-cancel-atomic-v433 && vite build",
+    "build": "npm run assemble && npm run test:wolt-branch-eligibility && npm run test:supplier-payment-idempotency-v433 && npm run test:supplier-payment-cancel-atomic-v433 && npm run test:payroll-client && npm run test:payroll-atomic && npm run test:payroll-handlers && vite build && node scripts/build-payroll-preview-fixture.mjs",
     "preview": "vite preview",
     "test:supplier-payment-idempotency-v433": "node scripts/test-supplier-payment-idempotency-v433.mjs",
     "test:supplier-payment-cancel-atomic-v433": "node scripts/test-supplier-payment-cancel-atomic-v433.mjs",
-    "test:wolt-branch-eligibility": "node scripts/test-wolt-branch-eligibility.mjs"
+    "test:wolt-branch-eligibility": "node scripts/test-wolt-branch-eligibility.mjs",
+    "test:payroll-atomic": "node scripts/test-payroll-atomic.mjs",
+    "test:payroll-client": "node scripts/test-payroll-client.mjs",
+    "test:payroll-handlers": "HANDLERS_ONLY=1 node scripts/test-payroll-browser.mjs",
+    "test:payroll-browser": "node scripts/test-payroll-browser.mjs"
   },
   "dependencies": {
     "@vitejs/plugin-react": "^4.3.0",
@@ -33,5 +37,9 @@
     "@supabase/supabase-js": "^2.45.0",
     "lucide-react": "^0.468.0"
   },
-  "devDependencies": {}
+  "devDependencies": {
+    "@electric-sql/pglite": "0.3.14",
+    "esbuild": "0.21.5",
+    "playwright": "1.62.1"
+  }
 }
