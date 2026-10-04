@@ -14,9 +14,10 @@ export function payrollWriteError(error) {
   if (error?.code === 'PGRST202' || /rms_(payroll_write_atomic|reclassify_salary_advance).*(schema cache|not find|does not exist)/i.test(text)) {
     return 'Сохранение зарплаты недоступно: обновление базы ещё не установлено. Операция не отправлена в старый журнал.'
   }
-  if (error?.code === '42501' || /active linked RMS administrator/.test(text)) {
+  if (/active linked RMS administrator/.test(text)) {
     return 'Недостаточно прав для изменения зарплаты. Требуется активный администратор RMS с правом записи зарплаты.'
   }
+  if (error?.code === '42501') return 'Запись отклонена настройками доступа к данным. Изменения не сохранены. Сообщите администратору RMS.'
   if (error?.code === '40001') return 'Данные изменились после загрузки. Обновите список и проверьте суммы перед повтором.'
   if (/fetch|network|connection|timeout/i.test(text)) return 'Не удалось подтвердить сохранение. Повторите ту же операцию: ключ запроса защищает от дубля.'
   return `Операция не сохранена: ${text}`

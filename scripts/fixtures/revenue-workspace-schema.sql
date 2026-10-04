@@ -1,7 +1,7 @@
 -- Minimal synthetic tables required by the existing read-only revenue workspace.
 -- This fixture contains no production rows.
 alter table public.employees add column full_name text, add column position text;
-create table public.branches(id uuid primary key,name text);
+create table if not exists public.branches(id uuid primary key,name text);
 create table public.daily_revenue_entries(id uuid,branch_id uuid,revenue_date date,created_at timestamptz default now());
 create table public.daily_cash_register(id uuid,branch_id uuid,cash_date date);
 create table public.expense_categories(id uuid,name text,is_active boolean);

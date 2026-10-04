@@ -16,15 +16,8 @@ let passed=0
 const test=async(name,fn)=>{await fn();passed++;console.log('PASS '+name)}
 const fail=async(key,op,match)=>{const before=await snapshot();await assert.rejects(()=>write(key,op),match);assert.deepEqual(await snapshot(),before)}
 try{
- await db.exec(await fs.readFile(new URL('./fixtures/payroll-atomic-schema.sql',import.meta.url),'utf8'))
- await db.exec(`alter table public.salary_advances add column cancelled_at timestamptz,add column cancelled_by uuid,add column cancel_comment text;
- alter table public.salary_payments add column cancelled_at timestamptz,add column cancelled_by uuid,add column cancel_comment text;
- alter table public.audit_logs enable row level security;
- create function public.protect_salary_advance_24h() returns trigger language plpgsql security definer set search_path=public as $$begin
- if tg_op='UPDATE' and not old.is_cancelled and new.is_cancelled and new.employee_id is not distinct from old.employee_id and new.branch_id is not distinct from old.branch_id and new.advance_date=old.advance_date and new.amount=old.amount and new.operation_type=old.operation_type then return new;end if;
- if old.created_at<now()-interval '24 hours' then raise exception 'Age-locked advance';end if;return new;end;$$;
- create trigger trg_salary_advances_24h_update before update on public.salary_advances for each row execute function public.protect_salary_advance_24h();
- create trigger trg_salary_advances_updated_at before update on public.salary_advances for each row execute function public.set_updated_at();
+ await db.exec(await fs.readFile(new URL('./fixtures/payroll-reclassification-schema.sql',import.meta.url),'utf8'))
+ await db.exec(`insert into branches values('${branch}','Synthetic branch');
  insert into auth.users values('${uid}'),('${outsider}');insert into public.rms_internal_auth_accounts values('${uid}',true,true);
  insert into public.user_profiles values('${uid}',true,'admin'),('${outsider}',true,'admin');insert into public.employees values('${employee}','${branch}');
  insert into public.salary_periods(id,employee_id,branch_id,salary_month,salary_gross,salary_net,advance_amount,card_payment,cash_payment,deduction_amount,previous_balance_amount,comment) values
@@ -32,14 +25,13 @@ try{
  ('${target}','${employee}','${branch}','2026-09-01',100,100,0,10,12,0,0,'Keep September provenance');
  insert into public.salary_advances(id,employee_id,branch_id,advance_date,amount,comment,created_at) values('${source}','${employee}','${branch}','2026-10-02',120,'Original source_key=synthetic-original; full provenance',now()-interval '5 days');`)
  await db.exec(await fs.readFile(new URL('../supabase/migrations/20261004062655_payroll_atomic_period_updates.sql',import.meta.url),'utf8'))
- await db.exec(`create or replace function auth.uid() returns uuid language sql stable as $$select coalesce(nullif(current_setting('request.jwt.claim.sub',true),''),(nullif(current_setting('request.jwt.claims',true),'')::jsonb->>'sub'))::uuid$$;`)
  // PGlite cannot demote its bootstrap postgres. Alias only the migration's
  // temporary member target to an isolated schema-owning, non-superuser role.
  await db.exec(`create role synthetic_installer nosuperuser createrole bypassrls;
  do $$declare r record; begin
  for r in select schemaname,tablename from pg_tables where schemaname in ('public','auth','rms_payroll_private') loop
  execute format('alter table %I.%I owner to synthetic_installer',r.schemaname,r.tablename); end loop;
- for r in select n.nspname,p.proname,pg_get_function_identity_arguments(p.oid) as args from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname in ('public','auth','rms_payroll_private') loop
+ for r in select n.nspname,p.proname,pg_get_function_identity_arguments(p.oid) as args from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname in ('public','rms_payroll_private') loop
  execute format('alter function %I.%I(%s) owner to synthetic_installer',r.nspname,r.proname,r.args); end loop;
  end;$$;
  alter schema rms_payroll_private owner to synthetic_installer;
@@ -66,12 +58,39 @@ try{
  await db.exec(await fs.readFile(new URL('./fixtures/revenue-workspace-schema.sql',import.meta.url),'utf8'))
  await db.exec(await fs.readFile(new URL('./fixtures/revenue-workspace-before.sql',import.meta.url),'utf8'))
  await db.exec(await fs.readFile(new URL('../supabase/migrations/20261004095829_payroll_reclassification_cash_readback.sql',import.meta.url),'utf8'))
- await db.exec(`insert into branches values('${branch}','Synthetic branch');insert into daily_expenses(id,branch_id,expense_date,amount) values(gen_random_uuid(),'${branch}','2026-10-02',9);`)
+ await db.exec(`insert into daily_expenses(id,branch_id,expense_date,amount) values(gen_random_uuid(),'${branch}','2026-10-02',9);`)
  const cashView=()=>scalar("select public.rms_revenue_day_workspace($1,'2026-10-02')",[branch])
  const dayTotal=w=>w.expenses.reduce((s,r)=>s+Number(r.amount),0)+w.salary_advances.reduce((s,r)=>s+Number(r.amount),0)+w.salary_correction_expenses.reduce((s,r)=>s+Number(r.amount),0)
  await admin()
  const cashBefore=await cashView()
  assert.equal(dayTotal(cashBefore),129);assert.equal(Number(cashBefore.month_stats.expenses),129)
+ await test('exact production audit trigger reproduces auth-schema failure and rolls back every journal',async()=>{
+  await fail('trigger-before',await operation(source,1),e=>e.code==='42501'&&/schema auth/.test(e.message)&&/set_salary_advance_audit/.test(e.where||''))
+ })
+ const triggerMetadata=()=>scalar(`select jsonb_build_object('function',(select jsonb_build_object('owner',proowner,'definer',prosecdef,'acl',proacl,'config',proconfig) from pg_proc where oid='public.set_salary_advance_audit()'::regprocedure),'triggers',(select jsonb_agg(pg_get_triggerdef(oid) order by tgname) from pg_trigger where tgrelid='public.salary_advances'::regclass and not tgisinternal))`)
+ const legacyAudit=async()=>{
+  const results=[];await root()
+  for(const [sub,json,supplied] of [[uid,'',false],['',JSON.stringify({sub:uid}),false],['','',false],['','not-json',true]]){
+   await db.query("select set_config('request.jwt.claim.sub',$1,false),set_config('request.jwt.claims',$2,false)",[sub,json])
+   await db.exec('begin;')
+   try{
+    const a=(await db.query('insert into public.salary_advances(employee_id,branch_id,advance_date,amount,created_by,updated_by) values($1,$2,$3,1,$4,$4) returning *',[employee,branch,'2026-10-02',supplied?outsider:null])).rows[0]
+    results.push({created_by:a.created_by,updated_by:a.updated_by,timestamps:!!a.created_at&&!!a.updated_at})
+    if(json!=='not-json'){
+     const u=(await db.query('update public.salary_advances set is_cancelled=true where id=$1 returning *',[a.id])).rows[0]
+     results.push({updated_by:u.updated_by,cancelled_by:u.cancelled_by,timestamp:!!u.cancelled_at,created_preserved:u.created_by===a.created_by})
+    }
+   }finally{await db.exec('rollback;')}
+  }
+  await db.query("select set_config('request.jwt.claim.sub',$1,false),set_config('request.jwt.claims','',false)",[uid]);await admin();return results
+ }
+ await test('trigger fix preserves owner, ACL, invoker, order, legacy audit fields and lazy JWT evaluation',async()=>{
+  const before=await snapshot(),metadata=await triggerMetadata(),legacy=await legacyAudit()
+  await db.exec('reset role;set role synthetic_installer;')
+  await db.exec(await fs.readFile(new URL('../supabase/migrations/20261004123609_payroll_reclassification_trigger_actor.sql',import.meta.url),'utf8'))
+  await admin();assert.deepEqual(await triggerMetadata(),metadata);assert.deepEqual(await legacyAudit(),legacy);assert.deepEqual(await snapshot(),before)
+  assert.equal(await scalar("select has_schema_privilege('rms_payroll_reclassifier','auth','USAGE')"),false)
+ })
  await test('capability and executor privilege boundary',async()=>{
   assert.equal(await scalar('select public.rms_payroll_can_write()'),true)
   assert.equal(await scalar("select pg_has_role('authenticated','rms_payroll_reclassifier','MEMBER')"),false)
@@ -84,7 +103,7 @@ try{
   for(const [label,sub,json] of [['legacy',uid,JSON.stringify({sub:outsider})],['json','',JSON.stringify({sub:uid})],['legacy-short-circuit',uid,'not-json']]){
    await claims(sub,json);assert.equal(await scalar('select auth.uid()'),uid)
    await db.exec('begin;')
-   try{const r=await write('jwt-'+label,op);assert.equal(r.operation.payment.created_by,uid);assert.equal(r.operation.advance.cancelled_by,uid)}finally{await db.exec('rollback;')}
+   try{const r=await write('jwt-'+label,op);assert.equal(r.operation.payment.created_by,uid);assert.equal(r.operation.advance.cancelled_by,uid);assert.equal(r.operation.advance.updated_by,uid);assert.equal(r.operation.residual_advance.created_by,uid);assert.equal(r.operation.residual_advance.updated_by,uid);assert.equal(r.operation.advance.created_by,op.expected.created_by);assert.equal(r.operation.advance.created_at,op.expected.created_at);assert.ok(r.operation.advance.cancelled_at&&r.operation.advance.updated_at)}finally{await db.exec('rollback;')}
   }
   for(const [label,sub,json,code] of [['empty','','','28000'],['missing-sub','','{}','28000'],['invalid-sub','not-uuid','', '22P02'],['invalid-json','','not-json','22P02'],['unlinked',outsider,JSON.stringify({sub:uid}),'42501']]){
    await claims(sub,json);await assert.rejects(()=>write('jwt-denied-'+label,op),e=>e.code===code)
