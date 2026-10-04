@@ -7458,6 +7458,13 @@ function Salaries({ t, view = 'employees', isAdmin = false }) {
   const [usePreviousSalaryBalance, setUsePreviousSalaryBalance] = useState(false)
   const [expandedPaymentGroups, setExpandedPaymentGroups] = useState({})
   const [message, setMessage] = useState('')
+  const [accrualPatchText, setAccrualPatchText] = useState('')
+  const [accrualPatchRows, setAccrualPatchRows] = useState([])
+  const [payrollSaving, setPayrollSaving] = useState(false)
+  const payrollInFlightRef = useRef(false)
+  const payrollRequestRef = useRef(null)
+  const salaryEditRequestRef = useRef(null)
+  const accrualRequestRef = useRef(null)
   useRmsStatusToast(message)
   const [employeeInfoId, setEmployeeInfoId] = useState('')
   const [employeeHistoryTick, setEmployeeHistoryTick] = useState(0)
@@ -7657,7 +7664,7 @@ function Salaries({ t, view = 'employees', isAdmin = false }) {
         } else {
           setMessage(empError?.message || salError?.message || advError?.message || payError?.message || previousDisplayPayError?.message || dsmfError?.message || prevSalError?.message || prevPayError?.message)
           setRows([])
-          return
+          return false
         }
       } else {
         empRows = emp || []
@@ -7707,11 +7714,38 @@ function Salaries({ t, view = 'employees', isAdmin = false }) {
     setDsmfRows(dsmfExpenseRows || [])
     if (!paymentForm.employee_id && visibleMappedRows[0]) setPaymentForm(f => ({ ...f, employee_id: visibleMappedRows[0].employee_id }))
     await loadEmployeeFiles(visibleMappedRows.map(r => r.employee_id))
+    return true
+  }
+
+  function previewAccrualPatch() {
+    try {
+      const operations = matchedAccrualOperations(accrualPatchText)
+      setAccrualPatchRows(operations)
+      setMessage(`Проверено строк: ${operations.length}. Сохранение изменит только указанные дни и начисления.`)
+    } catch (error) { setAccrualPatchRows([]); setMessage(error.message) }
+  }
+
+  async function saveAccrualPatch() {
+    if (payrollInFlightRef.current || !accrualPatchRows.length) return
+    payrollInFlightRef.current = true
+    setPayrollSaving(true)
+    setMessage('')
+    let committed = false
+    try {
+      await writePayrollAtomic(supabase, payrollRequestKey(accrualRequestRef, accrualPatchRows), accrualPatchRows)
+      committed = true
+      accrualRequestRef.current = null
+      setAccrualPatchText('')
+      setAccrualPatchRows([])
+      const loaded = await load()
+      setMessage(loaded ? 'Сопоставленные начисления сохранены. Ставки, выплаты и исходные комментарии сохранены.' : 'Начисления сохранены, но список не обновился. Обновите страницу.')
+    } catch (error) { setMessage(committed ? 'Операция сохранена, но список не обновился. Обновите страницу.' : payrollWriteError(error)) }
+    finally { payrollInFlightRef.current = false; setPayrollSaving(false) }
   }
 
   async function recalcSalaryRow(row, updatedEmployee = row.employees, patch = {}) {
     const workedDays = 'worked_days' in patch ? parseNum(patch.worked_days) : parseNum(row.worked_days)
-    const gross = 'salary_gross' in patch ? parseNum(patch.salary_gross) : calcGrossSalary(updatedEmployee, workedDays)
+    const gross = 'salary_gross' in patch ? parseNum(patch.salary_gross) : (Object.keys(patch).length ? parseNum(row.salary_gross) : calcGrossSalary(updatedEmployee, workedDays))
     const advance = parseNum(row.advance_amount)
     const deduction = 'deduction_amount' in patch ? parseNum(patch.deduction_amount) : parseNum(row.deduction_amount)
     const payload = {
@@ -7725,9 +7759,24 @@ function Salaries({ t, view = 'employees', isAdmin = false }) {
       salary_net: gross - advance - deduction,
       card_payment: 'card_payment' in patch ? parseNum(patch.card_payment) : parseNum(row.card_payment),
       cash_payment: 'cash_payment' in patch ? parseNum(patch.cash_payment) : parseNum(row.cash_payment),
-      comment: 'comment' in patch ? patch.comment : (row.comment || '')
+      comment: 'comment' in patch ? patch.comment : (row.comment ?? null)
     }
-    const { error } = await supabase.from('salary_periods').upsert(payload, { onConflict: 'employee_id,salary_month' })
+    if (row.id) {
+      const changes = {}
+      const expected = {}
+      for (const key of ['worked_days','salary_gross','deduction_amount','card_payment','cash_payment','comment']) {
+        if (payload[key] !== row[key]) { changes[key] = payload[key]; expected[key] = row[key] }
+      }
+      if (!Object.keys(changes).length) return null
+      try {
+        const operations = [{ type: 'period_patch', id: row.id, employee_id: row.employee_id,
+          branch_id: row.branch_id || null, salary_month: monthDate, expected, patch: changes }]
+        await writePayrollAtomic(supabase, payrollRequestKey(salaryEditRequestRef, operations), operations)
+        salaryEditRequestRef.current = null
+        return null
+      } catch (error) { return { message: payrollWriteError(error) } }
+    }
+    const { error } = await supabase.from('salary_periods').insert(payload).select('id').single()
     return error
   }
 
@@ -7898,7 +7947,7 @@ function Salaries({ t, view = 'employees', isAdmin = false }) {
     const table = txn.txn_type === 'advance' ? 'salary_advances' : 'salary_payments'
     const payload = { ...patch }
     if ('amount' in payload) payload.amount = parseNum(payload.amount)
-    const { error } = await supabase.from(table).update(payload).eq('id', txn.id)
+    const { error } = await supabase.from(table).update(payload).eq('id', txn.id).select('id').single()
     if (error) return setMessage(error.message)
     for (const [field, next] of Object.entries(payload)) {
       const before = field === 'date' ? txn.date : txn[field]
@@ -8021,132 +8070,83 @@ function Salaries({ t, view = 'employees', isAdmin = false }) {
   }
 
   async function addSalaryPayment() {
+    if (payrollInFlightRef.current) return
     setMessage('')
-    const employeeId = paymentForm.employee_id
-    const row = rows.find(r => r.employee_id === employeeId)
+    const row = rows.find(r => r.employee_id === paymentForm.employee_id)
     if (!row) return setMessage('Выберите сотрудника')
-
     const previousAmount = usePreviousSalaryBalance ? parseNum(paymentForm.previous_amount) : 0
     const currentAmount = parseNum(paymentForm.amount)
     const manualPreviousBalance = useManualPreviousSalaryBalance ? parseNum(paymentForm.manual_previous_balance) : 0
+    if ([previousAmount, currentAmount, manualPreviousBalance].some(value => !Number.isFinite(value) || value < 0)) return setMessage('Введите неотрицательные суммы')
     if (!manualPreviousBalance && !previousAmount && !currentAmount) return setMessage('Введите сумму выплаты или ручной остаток прошлого месяца')
-
     const paymentDate = paymentForm.payment_date || todayISO()
     const method = paymentForm.method || 'cash'
     const commentBase = paymentForm.comment || 'Выплата зарплаты'
-
     const previous = prevMonth(year, month)
     const previousMonthDate = monthStart(previous.year, previous.month)
-
-    if (manualPreviousBalance > 0) {
-      const { data: existingPreviousSalary } = await supabase
-        .from('salary_periods')
-        .select('*')
-        .eq('employee_id', employeeId)
-        .eq('salary_month', previousMonthDate)
-        .maybeSingle()
-
-      const { error: manualBalanceError } = await supabase.from('salary_periods').upsert({
-        employee_id: employeeId,
-        branch_id: row.branch_id || null,
-        salary_month: previousMonthDate,
-        worked_days: parseNum(existingPreviousSalary?.worked_days),
-        salary_gross: manualPreviousBalance,
-        advance_amount: parseNum(existingPreviousSalary?.advance_amount),
-        deduction_amount: parseNum(existingPreviousSalary?.deduction_amount),
-        salary_net: manualPreviousBalance - parseNum(existingPreviousSalary?.advance_amount) - parseNum(existingPreviousSalary?.deduction_amount),
-        card_payment: parseNum(existingPreviousSalary?.card_payment),
-        cash_payment: parseNum(existingPreviousSalary?.cash_payment),
-        comment: 'Ручной ввод остатка зарплаты прошлого месяца'
-      }, { onConflict: 'employee_id,salary_month' })
-      if (manualBalanceError) return setMessage(manualBalanceError.message)
+    const base = { employee_id: row.employee_id, branch_id: row.branch_id || null }
+    const intent = JSON.stringify({ ...base, monthDate, previousMonthDate, paymentDate, method, commentBase,
+      previousAmount, currentAmount, manualPreviousBalance })
+    const prepared = payrollRequestRef.current?.intent === intent ? payrollRequestRef.current : null
+    if (payrollRequestRef.current?.uncertain && !prepared) {
+      return setMessage('Не удалось подтвердить предыдущую выплату. Сначала повторите её с прежними полями, чтобы проверить сохранение без дубля.')
     }
-
+    const operations = []
     let previousPaidAmount = 0
     let previousExcessToAdvance = 0
-    if (previousAmount > 0) {
-      const previousDebt = Math.max(0, parseNum(row.opening_balance) + manualPreviousBalance)
-      previousPaidAmount = Math.min(previousAmount, previousDebt || previousAmount)
-      previousExcessToAdvance = Math.max(0, previousAmount - previousPaidAmount)
-
-      if (previousPaidAmount > 0) {
-        const { error: previousPayError } = await supabase.from('salary_payments').insert({
-          employee_id: employeeId,
-          branch_id: row.branch_id || null,
-          salary_month: previousMonthDate,
-          payment_date: paymentDate,
-          amount: previousPaidAmount,
-          method,
-          comment: `${commentBase} · оплата остатка прошлого месяца`
-        })
-        if (previousPayError) return setMessage(previousPayError.message)
+    let previousDebt = Math.max(0, Math.round(parseNum(row.opening_balance) * 100) / 100)
+    payrollInFlightRef.current = true
+    setPayrollSaving(true)
+    let committed = false
+    try {
+      if (prepared?.operations) {
+        operations.push(...prepared.operations)
+        previousPaidAmount = prepared.previousPaidAmount
+        previousExcessToAdvance = prepared.previousExcessToAdvance
+      } else {
+      if (manualPreviousBalance > 0) {
+        const { data: prior, error } = await supabase.from('salary_periods').select('*')
+          .eq('employee_id', row.employee_id).eq('salary_month', previousMonthDate).single()
+        if (error) throw error
+        operations.push({ type: 'accrual_patch', id: prior.id, employee_id: prior.employee_id,
+          branch_id: prior.branch_id, salary_month: previousMonthDate,
+          expected: { updated_at: prior.updated_at, salary_gross: Number(prior.salary_gross) }, patch: { salary_gross: manualPreviousBalance } })
+        previousDebt = Math.max(0, Math.round((parseNum(row.opening_balance) - parseNum(prior.salary_gross) + manualPreviousBalance) * 100) / 100)
       }
-
-      if (previousExcessToAdvance > 0) {
-        const { error: previousAdvanceError } = await supabase.from('salary_advances').insert({
-          employee_id: employeeId,
-          branch_id: row.branch_id || null,
-          advance_date: paymentDate,
-          amount: previousExcessToAdvance,
-          comment: `${commentBase} · превышение оплаты прошлого долга перенесено в аванс`
-        })
-        if (previousAdvanceError) return setMessage(previousAdvanceError.message)
+      previousPaidAmount = Math.min(previousAmount, previousDebt)
+      previousExcessToAdvance = Math.max(0, Math.round((previousAmount - previousPaidAmount) * 100) / 100)
+      if (previousPaidAmount > 0) operations.push({ ...base, type: 'payment', salary_month: previousMonthDate,
+        payment_date: paymentDate, amount: previousPaidAmount, method, expected_prior_debt: previousDebt,
+        debt_month: monthDate, comment: `${commentBase} · оплата остатка прошлого месяца` })
+      if (previousExcessToAdvance > 0) operations.push({ ...base, type: 'advance', advance_date: paymentDate,
+        amount: previousExcessToAdvance, expected_prior_debt: 0, debt_month: monthDate,
+        comment: `${commentBase} · превышение оплаты прошлого долга перенесено в аванс` })
+      if (currentAmount > 0) operations.push({ ...base, type: 'payment', salary_month: monthDate,
+        payment_date: paymentDate, amount: currentAmount, method, comment: `${commentBase} · оплата зарплаты выбранного месяца` })
       }
+      const requestKey = payrollRequestKey(payrollRequestRef, operations)
+      payrollRequestRef.current = { ...payrollRequestRef.current, intent, operations, previousPaidAmount, previousExcessToAdvance }
+      await writePayrollAtomic(supabase, requestKey, operations)
+      committed = true
+      payrollRequestRef.current = null
+      setPaymentForm(f => ({ ...f, manual_previous_balance: '', previous_amount: '', amount: '', comment: '' }))
+      setUseManualPreviousSalaryBalance(false)
+      setUsePreviousSalaryBalance(false)
+      const loaded = await load()
+      const parts = []
+      if (manualPreviousBalance > 0) parts.push(`сохранено начисление прошлого месяца: ${fmt(manualPreviousBalance)} AZN`)
+      if (previousPaidAmount > 0) parts.push(`закрыт остаток прошлого месяца: ${fmt(previousPaidAmount)} AZN`)
+      if (previousExcessToAdvance > 0) parts.push(`превышение перенесено в аванс: ${fmt(previousExcessToAdvance)} AZN`)
+      if (currentAmount > 0) parts.push(`оплата выбранного месяца: ${fmt(currentAmount)} AZN`)
+      setMessage(loaded ? parts.join(' · ') : 'Операция сохранена, но список не обновился. Обновите страницу.')
+    } catch (error) {
+      if (!committed && payrollRequestRef.current) {
+        if (error?.code === '40001') payrollRequestRef.current = null
+        else if (error?.code === 'PAYROLL_UNCONFIRMED' || /network|fetch|connection|timeout/i.test(error?.message || '')) payrollRequestRef.current.uncertain = true
+      }
+      setMessage(committed ? 'Операция сохранена, но список не обновился. Обновите страницу.' : payrollWriteError(error))
     }
-
-    if (currentAmount > 0) {
-      const { error: currentPayError } = await supabase.from('salary_payments').insert({
-        employee_id: employeeId,
-        branch_id: row.branch_id || null,
-        salary_month: monthDate,
-        payment_date: paymentDate,
-        amount: currentAmount,
-        method,
-        comment: `${commentBase} · оплата зарплаты выбранного месяца`
-      })
-      if (currentPayError) return setMessage(currentPayError.message)
-    }
-
-    const start = monthDate
-    const end = monthEnd
-    const [{ data: existing }, { data: advanceRows }, { data: payRows }] = await Promise.all([
-      supabase.from('salary_periods').select('*').eq('employee_id', employeeId).eq('salary_month', monthDate).maybeSingle(),
-      supabase.from('salary_advances').select('amount').eq('employee_id', employeeId).gte('advance_date', start).lte('advance_date', end).or('is_cancelled.is.null,is_cancelled.eq.false'),
-      supabase.from('salary_payments').select('amount').eq('employee_id', employeeId).eq('salary_month', monthDate).or('is_cancelled.is.null,is_cancelled.eq.false')
-    ])
-
-    const advance = (advanceRows || []).reduce((sum, a) => sum + parseNum(a.amount), 0)
-    const paid = (payRows || []).reduce((sum, p) => sum + parseNum(p.amount), 0)
-    const gross = parseNum(existing?.salary_gross || row.salary_gross)
-    const deduction = parseNum(existing?.deduction_amount || row.deduction_amount)
-    const net = gross - advance - deduction
-
-    const { error: salaryError } = await supabase.from('salary_periods').upsert({
-      employee_id: employeeId,
-      branch_id: row.branch_id || null,
-      salary_month: monthDate,
-      worked_days: parseNum(existing?.worked_days || row.worked_days),
-      salary_gross: gross,
-      salary_net: net,
-      advance_amount: advance,
-      deduction_amount: deduction,
-      card_payment: method === 'bank' ? paid : parseNum(existing?.card_payment || row.card_payment),
-      cash_payment: method === 'cash' ? paid : parseNum(existing?.cash_payment || row.cash_payment),
-      comment: existing?.comment || 'Автообновление после выплаты зарплаты'
-    }, { onConflict: 'employee_id,salary_month' })
-    if (salaryError) return setMessage(salaryError.message)
-
-    setPaymentForm(f => ({ ...f, manual_previous_balance: '', previous_amount: '', amount: '', comment: '' }))
-    setUseManualPreviousSalaryBalance(false)
-    setUsePreviousSalaryBalance(false)
-    await load()
-
-    const parts = []
-    if (manualPreviousBalance > 0) parts.push(`сохранён ручной долг прошлого месяца: ${fmt(manualPreviousBalance)} AZN`)
-    if (previousPaidAmount > 0) parts.push(`закрыт остаток прошлого месяца: ${fmt(previousPaidAmount)} AZN`)
-    if (previousExcessToAdvance > 0) parts.push(`превышение перенесено в аванс: ${fmt(previousExcessToAdvance)} AZN`)
-    if (currentAmount > 0) parts.push(`оплата выбранного месяца: ${fmt(currentAmount)} AZN`)
-    setMessage(parts.join(' · '))
+    finally { payrollInFlightRef.current = false; setPayrollSaving(false) }
   }
 
   async function cancelSalaryPayment(payment) {
@@ -8156,7 +8156,7 @@ function Salaries({ t, view = 'employees', isAdmin = false }) {
       is_cancelled: true,
       cancelled_at: new Date().toISOString(),
       cancel_comment: 'Отменено через раздел зарплаты'
-    }).eq('id', payment.id)
+    }).eq('id', payment.id).select('id').single()
     if (error) return setMessage(error.message)
     await load()
     setMessage('Выплата отменена и исключена из расчётов')
@@ -8722,7 +8722,7 @@ function Salaries({ t, view = 'employees', isAdmin = false }) {
         <h3>Выплата зарплаты за выбранный месяц</h3>
         {message && <p className={`hint ${message.includes('сохранён') ? 'save-status' : message.includes('закрыт') || message.includes('оплата') || message.includes('обновлена') ? 'good' : 'bad'}`}>{message}</p>}
         <p className="hint">Например, зарплату за апрель можно выплатить 1 или 2 мая — она всё равно закроет апрель. Остаток прошлого месяца можно сначала внести вручную через галочку, а оплату этого остатка — отдельной галочкой. Эти суммы не попадают в авансы текущего месяца.</p>
-        <div className="form-grid compact">
+        <fieldset disabled={payrollSaving} className="form-grid compact" style={{border:0,padding:0,margin:0}}>
           <label><span>Филиал / группа</span><select value={paymentBranchId} onChange={e => { setPaymentBranchId(e.target.value); const first = rows.find(r => e.target.value === 'all' || employeeGroupId(r.employees) === e.target.value); setPaymentForm(f => ({ ...f, employee_id: first?.employee_id || '' })) }}><option value="all">Все филиалы и менеджеры</option>{staffGroupOptions(branches).map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label><label><span>Сотрудник</span><select value={paymentForm.employee_id} onChange={e => setPaymentForm({ ...paymentForm, employee_id: e.target.value })}>{paymentRows.map(r => <option key={r.employee_id} value={r.employee_id}>{employeeGroupName(r.employees)} · {r.employees?.full_name}</option>)}</select></label>
           <label><span>Дата выплаты</span><DateInput value={paymentForm.payment_date} onChange={e => { setPaymentForm({ ...paymentForm, payment_date: e.target.value }); setDailyPaymentDate(e.target.value) }} /></label>
           <label><span>Оплата зарплаты выбранного месяца</span><input inputMode="decimal" value={paymentForm.amount} onChange={e => setPaymentForm({ ...paymentForm, amount: e.target.value })} /></label>
@@ -8741,8 +8741,8 @@ function Salaries({ t, view = 'employees', isAdmin = false }) {
           </div>
 
           <label style={{gridColumn:'span 2'}}><span>Комментарий</span><input value={paymentForm.comment} onChange={e => setPaymentForm({ ...paymentForm, comment: e.target.value })} placeholder="Например: закрытие зарплаты за апрель" /></label>
-          <div style={{gridColumn:'span 2'}}><button className="primary" onClick={addSalaryPayment}>+ Сохранить операцию</button></div>
-        </div>
+          <div style={{gridColumn:'span 2'}}><button className="primary" disabled={payrollSaving} onClick={addSalaryPayment}>{payrollSaving ? 'Сохранение...' : '+ Сохранить операцию'}</button></div>
+        </fieldset>
         {selectedPaymentRow && <div className="mini-grid" style={{marginTop:12}}>
           <div className="metric"><span>Итого к оплате</span><strong className={selectedTotalDebt > 0 ? 'bad' : ''}>{selectedPaymentCanSee ? fmt(selectedTotalDebt) : maskedMoney}</strong></div>
           <div className="metric"><span>Долг / остаток прошлого месяца</span><strong>{selectedPaymentCanSee ? fmt(selectedOpeningDebt) : maskedMoney}</strong></div>
@@ -8875,6 +8875,14 @@ function Salaries({ t, view = 'employees', isAdmin = false }) {
         <p className="hint">DSMF автоматически попадает в расходы филиалов как статья “DSMF”. В сумму включены обязательства работодателя и удержания сотрудника, если их фактически покрывает ресторан.</p>
       </div>
 
+      {isAdmin && <div className="card span-2">
+        <details><summary>Обновить сопоставленные начисления</summary>
+          <p className="hint">Только существующие периоды по ID сотрудника, филиалу и месяцу. Поля patch: worked_days и salary_gross; expected содержит updated_at и исходные значения этих полей. Ставки сотрудников, прошлые остатки, удержания, выплаты и комментарии не меняются.</p>
+          <label><span>JSON сопоставленных строк</span><textarea rows="5" value={accrualPatchText} disabled={payrollSaving} onChange={e => { setAccrualPatchText(e.target.value); setAccrualPatchRows([]) }} /></label>
+          <div className="action-row"><button className="small" disabled={payrollSaving} onClick={previewAccrualPatch}>Проверить строки</button><button className="small primary" disabled={payrollSaving || !accrualPatchRows.length} onClick={saveAccrualPatch}>Сохранить {accrualPatchRows.length} строк</button></div>
+          {!!accrualPatchRows.length && <div className="table-wrap"><table><thead><tr><th>Период</th><th>ID сотрудника</th><th>Дни: было → станет</th><th>Начислено: было → станет</th></tr></thead><tbody>{accrualPatchRows.map(r => <tr key={r.id}><td>{r.salary_month}</td><td>{r.employee_id}</td><td>{'worked_days' in r.patch ? `${r.expected.worked_days} → ${r.patch.worked_days}` : 'Без изменения'}</td><td>{'salary_gross' in r.patch ? `${fmt(r.expected.salary_gross)} → ${fmt(r.patch.salary_gross)}` : 'Без изменения'}</td></tr>)}</tbody></table></div>}
+        </details>
+      </div>}
       <div className="card span-2">
         <div className="card-head"><h3>Зарплаты сотрудников</h3><button className="small primary" onClick={printSalaryEmployeesPdf}>PDF / печать</button></div>
         {salaryGroups.map(group => {
@@ -9051,6 +9059,10 @@ function Advances({ t }) {
   const [profiles, setProfiles] = useState([])
   const [form, setForm] = useState({ employee_id: '', advance_date: todayISO(), amount: '', comment: '' })
   const [message, setMessage] = useState('')
+  const [advanceSaving, setAdvanceSaving] = useState(false)
+  const advanceInFlightRef = useRef(false)
+  const advanceRequestRef = useRef(null)
+  const reconcileRequestRef = useRef(null)
   useRmsStatusToast(message)
   const [editAdvanceId, setEditAdvanceId] = useState('')
   const [editAdvanceForm, setEditAdvanceForm] = useState({ advance_date: '', amount: '', comment: '' })
@@ -9094,19 +9106,20 @@ function Advances({ t }) {
     const [
       { data: emp, error: empError },
       { data: adv, error: advError },
-      { data: sal },
-      { data: pay },
+      { data: sal, error: salError },
+      { data: pay, error: payError },
       { data: prof }
     ] = await Promise.all([empQ, advQ, salQ, payQ, supabase.from('user_profiles').select('id, full_name, email, login_name')])
-    if (empError || advError) {
-      setMessage(empError?.message || advError?.message)
-      return
+    if (empError || advError || salError || payError) {
+      setMessage(empError?.message || advError?.message || salError?.message || payError?.message)
+      return false
     }
     setEmployees(emp || [])
     setAdvances(adv || [])
     setSalaryPeriods(sal || [])
     setSalaryPayments(pay || [])
     setProfiles(prof || [])
+    return true
   }
 
   function userName(id) {
@@ -9121,53 +9134,53 @@ function Advances({ t }) {
     return `Создано: ${formatDT(row.created_at)} · ${userName(row.created_by)}`
   }
 
-  async function refreshSalaryForEmployee(employeeId) {
-    const emp = employees.find(e => e.id === employeeId)
-    if (!emp) return
-    const [{ data: existing }, { data: advanceRows }] = await Promise.all([
-      supabase.from('salary_periods').select('*').eq('employee_id', employeeId).eq('salary_month', monthDate).maybeSingle(),
-      supabase.from('salary_advances').select('amount').eq('employee_id', employeeId).gte('advance_date', monthDate).lte('advance_date', monthEnd).or('is_cancelled.is.null,is_cancelled.eq.false')
-    ])
-    const advanceTotal = (advanceRows || []).reduce((s, r) => s + parseNum(r.amount), 0)
-    const gross = parseNum(existing?.salary_gross)
-    const deduction = parseNum(existing?.deduction_amount)
-    const net = gross - advanceTotal - deduction
-    await supabase.from('salary_periods').upsert({
-      employee_id: employeeId,
-      branch_id: emp.branch_id || null,
-      salary_month: monthDate,
-      worked_days: parseNum(existing?.worked_days),
-      salary_gross: gross,
-      advance_amount: advanceTotal,
-      deduction_amount: deduction,
-      card_payment: parseNum(existing?.card_payment),
-      cash_payment: parseNum(existing?.cash_payment),
-      salary_net: net,
-      comment: existing?.comment || ''
-    }, { onConflict: 'employee_id,salary_month' })
+  async function refreshSalaryForEmployee(employeeId, date = monthDate) {
+    const targetMonth = `${String(date).slice(0, 7)}-01`
+    const { data: period, error } = await supabase.from('salary_periods').select('*')
+      .eq('employee_id', employeeId).eq('salary_month', targetMonth).single()
+    if (error) throw error
+    const operations = [{ type: 'reconcile', id: period.id, employee_id: employeeId,
+      branch_id: period.branch_id, salary_month: targetMonth }]
+    return writePayrollAtomic(supabase, payrollRequestKey(reconcileRequestRef, operations), operations)
+  }
+
+  async function reconcileAdvancePeriod(row) {
+    if (advanceInFlightRef.current) return
+    advanceInFlightRef.current = true
+    setAdvanceSaving(true)
+    setMessage('')
+    let committed = false
+    try {
+      await refreshSalaryForEmployee(row.employee_id, row.advance_date)
+      committed = true
+      reconcileRequestRef.current = null
+      const loaded = await load()
+      setMessage(loaded ? 'Остаток обновлён по существующему журналу. Новая выплата не создавалась.' : 'Остаток сохранён, но список не обновился. Обновите страницу.')
+    } catch (error) { setMessage(committed ? 'Операция сохранена, но список не обновился. Обновите страницу.' : payrollWriteError(error)) }
+    finally { advanceInFlightRef.current = false; setAdvanceSaving(false) }
   }
 
   async function addAdvance() {
+    if (advanceInFlightRef.current) return
     setMessage('')
     const emp = employees.find(e => e.id === form.employee_id)
     if (!emp) return setMessage('Выберите сотрудника')
     const amount = parseNum(form.amount)
-    if (!amount) return setMessage('Введите сумму аванса')
-    const user = await currentUserMeta()
-    const { error } = await supabase.from('salary_advances').insert({
-      employee_id: emp.id,
-      branch_id: emp.branch_id || null,
-      advance_date: form.advance_date || todayISO(),
-      amount,
-      comment: form.comment || null,
-      created_by: user.user_id,
-      updated_by: user.user_id
-    })
-    if (error) return setMessage(error.message)
-    await refreshSalaryForEmployee(emp.id)
-    setForm(f => ({ ...f, amount: '', comment: '' }))
-    await load()
-    setMessage(t('saved'))
+    if (!Number.isFinite(amount) || amount <= 0) return setMessage('Введите положительную сумму аванса')
+    const operations = [{ type: 'advance', employee_id: emp.id, branch_id: emp.branch_id || null,
+      advance_date: form.advance_date || todayISO(), amount, comment: form.comment || null }]
+    advanceInFlightRef.current = true
+    setAdvanceSaving(true)
+    let committed = false
+    try {
+      await writePayrollAtomic(supabase, payrollRequestKey(advanceRequestRef, operations), operations)
+      committed = true
+      advanceRequestRef.current = null
+      setForm(f => ({ ...f, amount: '', comment: '' }))
+      const loaded = await load()
+      setMessage(loaded ? t('saved') : 'Аванс сохранён, но список не обновился. Обновите страницу.')
+    } catch (error) { setMessage(committed ? 'Операция сохранена, но список не обновился. Обновите страницу.' : payrollWriteError(error)) }
+    finally { advanceInFlightRef.current = false; setAdvanceSaving(false) }
   }
 
   function startEditAdvance(row) {
@@ -9197,9 +9210,12 @@ function Advances({ t }) {
       updated_at: new Date().toISOString(),
       updated_by: user.user_id
     }
-    const { error } = await supabase.from('salary_advances').update(payload).eq('id', row.id)
+    const { error } = await supabase.from('salary_advances').update(payload).eq('id', row.id).select('id').single()
     if (error) return setMessage(error.message)
-    await refreshSalaryForEmployee(row.employee_id)
+    try {
+      await refreshSalaryForEmployee(row.employee_id, row.advance_date)
+      if (editAdvanceForm.advance_date.slice(0, 7) !== row.advance_date.slice(0, 7)) await refreshSalaryForEmployee(row.employee_id, editAdvanceForm.advance_date)
+    } catch (error) { return setMessage(`Изменение аванса сохранено, но остаток не обновлён. ${payrollWriteError(error)}`) }
     cancelEditAdvance()
     await load()
     setMessage(t('saved'))
@@ -9218,9 +9234,10 @@ function Advances({ t }) {
       updated_at: new Date().toISOString(),
       updated_by: user.user_id,
       cancel_comment: 'Отменено через журнал авансов'
-    }).eq('id', row.id)
+    }).eq('id', row.id).select('id').single()
     if (error) return setMessage(error.message)
-    await refreshSalaryForEmployee(row.employee_id)
+    try { await refreshSalaryForEmployee(row.employee_id, row.advance_date) }
+    catch (error) { return setMessage(`Аванс отменён, но остаток не обновлён. ${payrollWriteError(error)}`) }
     await load()
     setMessage(t('saved'))
   }
@@ -9263,14 +9280,14 @@ function Advances({ t }) {
     <section className="grid">
       <div className="card span-2">
         <h3>Новый аванс</h3>
-        <div className="form-grid compact">
+        <fieldset disabled={advanceSaving} className="form-grid compact" style={{border:0,padding:0,margin:0}}>
           <label><span>Филиал / группа</span><select value={advanceGroupId} onChange={e => setAdvanceGroupId(e.target.value)}>{staffGroupOptions(branches).map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label>
           <label><span>Сотрудник</span><select value={form.employee_id} onChange={e => setForm({...form, employee_id: e.target.value})}>{formEmployees.map(e => <option key={e.id} value={e.id}>{positionGroup(e.position)} · {e.full_name}</option>)}</select></label>
           <label><span>Дата</span><DateInput value={form.advance_date} onChange={e => setForm({...form, advance_date: e.target.value})} /></label>
           <label><span>Сумма</span><input value={form.amount} onChange={e => setForm({...form, amount: e.target.value})} placeholder="0.00" /></label>
           <label><span>Комментарий</span><input value={form.comment} onChange={e => setForm({...form, comment: e.target.value})} placeholder="Например: аванс за первую половину месяца" /></label>
-        </div><br />
-        <button className="small" onClick={addAdvance}>+ Добавить аванс</button>
+        </fieldset><br />
+        <button className="small" disabled={advanceSaving} onClick={addAdvance}>{advanceSaving ? 'Сохранение...' : '+ Добавить аванс'}</button>
       </div>
 
       <div className="card span-2">
@@ -9308,7 +9325,8 @@ function Advances({ t }) {
                   <button className="small" onClick={() => saveAdvance(a)}>Сохранить</button>
                   <button className="small ghost" onClick={cancelEditAdvance}>Отмена</button>
                 </> : <>
-                  <button className="small" disabled={a.is_cancelled} onClick={() => startEditAdvance(a)}>Редактировать</button>
+                  <button className="small ghost" disabled={advanceSaving} onClick={() => reconcileAdvancePeriod(a)}>Обновить остаток</button>
+                  <button className="small" disabled={a.is_cancelled || advanceSaving} onClick={() => startEditAdvance(a)}>Редактировать</button>
                   <button className="remove" disabled={a.is_cancelled} onClick={() => deleteAdvance(a)}>×</button>
                 </>}
               </td>
