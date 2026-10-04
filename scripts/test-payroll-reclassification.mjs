@@ -31,7 +31,38 @@ try{
  ('${current}','${employee}','${branch}','2026-10-01',1000,873,120,16,37,7,81,'Keep October provenance'),
  ('${target}','${employee}','${branch}','2026-09-01',100,100,0,10,12,0,0,'Keep September provenance');
  insert into public.salary_advances(id,employee_id,branch_id,advance_date,amount,comment,created_at) values('${source}','${employee}','${branch}','2026-10-02',120,'Original source_key=synthetic-original; full provenance',now()-interval '5 days');`)
- for(const file of ['20261004062655_payroll_atomic_period_updates.sql','20261004083647_payroll_advance_reclassification.sql'])await db.exec(await fs.readFile(new URL('../supabase/migrations/'+file,import.meta.url),'utf8'))
+ await db.exec(await fs.readFile(new URL('../supabase/migrations/20261004062655_payroll_atomic_period_updates.sql',import.meta.url),'utf8'))
+ await db.exec(`create or replace function auth.uid() returns uuid language sql stable as $$select coalesce(nullif(current_setting('request.jwt.claim.sub',true),''),(nullif(current_setting('request.jwt.claims',true),'')::jsonb->>'sub'))::uuid$$;`)
+ // PGlite cannot demote its bootstrap postgres. Alias only the migration's
+ // temporary member target to an isolated schema-owning, non-superuser role.
+ await db.exec(`create role synthetic_installer nosuperuser createrole bypassrls;
+ do $$declare r record; begin
+ for r in select schemaname,tablename from pg_tables where schemaname in ('public','auth','rms_payroll_private') loop
+ execute format('alter table %I.%I owner to synthetic_installer',r.schemaname,r.tablename); end loop;
+ for r in select n.nspname,p.proname,pg_get_function_identity_arguments(p.oid) as args from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname in ('public','auth','rms_payroll_private') loop
+ execute format('alter function %I.%I(%s) owner to synthetic_installer',r.nspname,r.proname,r.args); end loop;
+ end;$$;
+ alter schema rms_payroll_private owner to synthetic_installer;
+ grant usage,create on schema public,auth to synthetic_installer; set role synthetic_installer;`)
+ assert.equal(await scalar("select rolsuper from pg_roles where rolname=current_user"),false)
+ const installation=await fs.readFile(new URL('../supabase/migrations/20261004083647_payroll_advance_reclassification.sql',import.meta.url),'utf8')
+ assert.equal((installation.match(/(?:to|from) postgres;/g)||[]).length,2)
+ const aliasedInstallation=installation.replace(/(to|from) postgres;/g,'$1 synthetic_installer;')
+ const earlyRevoke=aliasedInstallation.replace('revoke rms_payroll_reclassifier from synthetic_installer;','').replace('grant execute on function rms_payroll_private.reclassify_advance(text,jsonb) to authenticated;', 'revoke rms_payroll_reclassifier from synthetic_installer;\ngrant execute on function rms_payroll_private.reclassify_advance(text,jsonb) to authenticated;')
+ await db.exec('begin;')
+ await assert.rejects(()=>db.exec(earlyRevoke),e=>e.code==='42501')
+ await db.exec('rollback;')
+ assert.equal(await scalar("select to_regrole('rms_payroll_reclassifier')"),null)
+ assert.equal(await scalar("select to_regclass('rms_payroll_private.reclassifications')"),null)
+ await db.exec(aliasedInstallation)
+ const membership=(await db.query("select member::regrole::text,admin_option,inherit_option,set_option from pg_auth_members where roleid='rms_payroll_reclassifier'::regrole")).rows
+ assert.deepEqual(membership,[{member:'synthetic_installer',admin_option:true,inherit_option:false,set_option:false}])
+ assert.equal(await scalar("select pg_has_role('synthetic_installer','rms_payroll_reclassifier','USAGE')"),false)
+ assert.equal(await scalar("select pg_has_role('synthetic_installer','rms_payroll_reclassifier','SET')"),false)
+ assert.equal(await scalar("select has_schema_privilege('rms_payroll_reclassifier','auth','USAGE')"),false)
+ assert.equal(await scalar("select has_function_privilege('rms_payroll_reclassifier','auth.uid()','EXECUTE')"),true)
+ passed++;console.log('PASS hosted non-superuser installation, old-order rollback, exact residual admin flags and no auth schema access')
+ await db.exec('reset role;')
  await db.exec(await fs.readFile(new URL('./fixtures/revenue-workspace-schema.sql',import.meta.url),'utf8'))
  await db.exec(await fs.readFile(new URL('./fixtures/revenue-workspace-before.sql',import.meta.url),'utf8'))
  await db.exec(await fs.readFile(new URL('../supabase/migrations/20261004095829_payroll_reclassification_cash_readback.sql',import.meta.url),'utf8'))
@@ -46,6 +77,19 @@ try{
   assert.equal(await scalar("select pg_has_role('authenticated','rms_payroll_reclassifier','MEMBER')"),false)
   assert.equal((await db.query('update public.salary_advances set amount=1 where id=$1 returning id',[source])).rows.length,0)
   await root();const r=(await db.query("select rolcanlogin,rolsuper,rolbypassrls,rolcreaterole from pg_roles where rolname='rms_payroll_reclassifier'")).rows[0];assert.ok(Object.values(r).every(v=>v===false));await admin()
+ })
+ await test('both trusted JWT formats match auth.uid; caller payload cannot choose actor; malformed/unlinked claims fail closed',async()=>{
+  const before=await snapshot(),op={...await operation(source,1),actor_id:outsider,user_id:outsider,is_admin:true}
+  const claims=async(sub,json)=>{await db.query("select set_config('request.jwt.claim.sub',$1,false),set_config('request.jwt.claims',$2,false)",[sub,json])}
+  for(const [label,sub,json] of [['legacy',uid,JSON.stringify({sub:outsider})],['json','',JSON.stringify({sub:uid})],['legacy-short-circuit',uid,'not-json']]){
+   await claims(sub,json);assert.equal(await scalar('select auth.uid()'),uid)
+   await db.exec('begin;')
+   try{const r=await write('jwt-'+label,op);assert.equal(r.operation.payment.created_by,uid);assert.equal(r.operation.advance.cancelled_by,uid)}finally{await db.exec('rollback;')}
+  }
+  for(const [label,sub,json,code] of [['empty','','','28000'],['missing-sub','','{}','28000'],['invalid-sub','not-uuid','', '22P02'],['invalid-json','','not-json','22P02'],['unlinked',outsider,JSON.stringify({sub:uid}),'42501']]){
+   await claims(sub,json);await assert.rejects(()=>write('jwt-denied-'+label,op),e=>e.code===code)
+  }
+  await claims(uid,'');await admin();assert.deepEqual(await snapshot(),before)
  })
  await test('invalid amount, reason, date and stale reviewed records fail without any writes',async()=>{
   for(const amount of [0,-1,1.111,121])await fail('invalid-'+amount,{...await operation(),amount},/amount|exceeds/)

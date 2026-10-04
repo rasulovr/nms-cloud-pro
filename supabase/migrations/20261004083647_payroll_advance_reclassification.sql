@@ -3,8 +3,8 @@
 -- advance edit guard stay unchanged. The original journal is retained intact.
 create role rms_payroll_reclassifier nologin noinherit nosuperuser nocreatedb nocreaterole noreplication nobypassrls;
 grant rms_payroll_reclassifier to postgres;
-grant usage on schema public, auth, rms_payroll_private to rms_payroll_reclassifier;
-grant execute on function auth.uid(), rms_payroll_private.can_write() to rms_payroll_reclassifier;
+grant usage on schema public, rms_payroll_private to rms_payroll_reclassifier;
+grant execute on function rms_payroll_private.can_write() to rms_payroll_reclassifier;
 grant select on public.salary_advances, public.salary_payments, public.salary_periods to rms_payroll_reclassifier;
 grant update(is_cancelled,cancelled_at,cancelled_by,cancel_comment) on public.salary_advances to rms_payroll_reclassifier;
 grant insert(employee_id,branch_id,advance_date,amount,comment,operation_type,created_by,updated_by) on public.salary_advances to rms_payroll_reclassifier;
@@ -41,7 +41,10 @@ returns jsonb language plpgsql security definer
 set search_path=pg_catalog,public
 as $fn$
 declare
-  v_uid uuid := auth.uid();
+  -- Same server-set JWT subject resolution as Supabase auth.uid(); the
+  -- executor needs no auth-schema access. Caller payload is never consulted.
+  v_uid uuid := coalesce(nullif(current_setting('request.jwt.claim.sub',true),''),
+    (nullif(current_setting('request.jwt.claims',true),'')::jsonb->>'sub'))::uuid;
   v_key text := btrim(p_request_key);
   v_saved rms_payroll_private.reclassifications%rowtype;
   v_source public.salary_advances%rowtype;
@@ -150,11 +153,10 @@ end;
 $fn$;
 revoke all on function rms_payroll_private.reclassify_advance(text,jsonb) from public,anon,authenticated;
 -- A fixed private transaction runs as a non-login, non-bypass role, with only
--- the listed columns available and RLS still enforced. No user gets this role.
+-- the listed columns available and RLS still enforced. No app user gets it.
 grant create on schema rms_payroll_private to rms_payroll_reclassifier;
 alter function rms_payroll_private.reclassify_advance(text,jsonb) owner to rms_payroll_reclassifier;
 revoke create on schema rms_payroll_private from rms_payroll_reclassifier;
-revoke rms_payroll_reclassifier from postgres;
 grant execute on function rms_payroll_private.reclassify_advance(text,jsonb) to authenticated;
 create function public.rms_reclassify_salary_advance(p_request_key text,p_operation jsonb)
 returns jsonb language sql security invoker set search_path=pg_catalog
@@ -166,4 +168,9 @@ returns boolean language sql stable security invoker set search_path=pg_catalog
 as $fn$ select rms_payroll_private.can_write(); $fn$;
 revoke all on function public.rms_payroll_can_write() from public,anon;
 grant execute on function public.rms_payroll_can_write() to authenticated;
+-- Supabase postgres is not a superuser: retain temporary owner membership
+-- until grants and SQL wrapper validation finish, then revoke that grant.
+-- PostgreSQL retains its automatic creator ADMIN-only grant, with neither
+-- INHERIT nor SET. This residual installer authority requires explicit approval.
+revoke rms_payroll_reclassifier from postgres;
 notify pgrst,'reload schema';
