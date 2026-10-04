@@ -13,7 +13,7 @@ CREATE OR REPLACE FUNCTION auth.uid()
  LANGUAGE sql
  STABLE
 AS $function$
-  select 
+  select
   coalesce(
     nullif(current_setting('request.jwt.claim.sub', true), ''),
     (nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'sub')
@@ -242,4 +242,3 @@ alter table public.audit_logs enable row level security;
 grant select,insert on public.audit_logs to authenticated;
 create policy audit_read on public.audit_logs for select to authenticated using(true);
 create policy audit_insert on public.audit_logs for insert to authenticated with check(true);
-
