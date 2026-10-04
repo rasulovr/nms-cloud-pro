@@ -9044,7 +9044,187 @@ function Salaries({ t, view = 'employees', isAdmin = false }) {
     </section>
   </section>
 }
+// Capability is server-derived. Local profile/section flags are not authority.
+function usePayrollCorrectionAccess(client = supabase) {
+  const [allowed, setAllowed] = useState(false)
+  useEffect(() => {
+    let active = true
+    Promise.resolve(client.rpc('rms_payroll_can_write')).then(({ data, error }) => {
+      if (active) setAllowed(!error && data === true)
+    }).catch(() => { if (active) setAllowed(false) })
+    return () => { active = false }
+  }, [client])
+  return allowed
+}
+
+function AdvanceReclassificationDialog({ advanceId, employeeName, onClose, onCommitted, client = supabase }) {
+  const [snapshot, setSnapshot] = useState(null)
+  const [correctionForm, setCorrectionForm] = useState({ salary_month: '', amount: '', reason: '' })
+  const [preview, setPreview] = useState(null)
+  const [busy, setBusy] = useState(false)
+  const [attempted, setAttempted] = useState(false)
+  const [result, setResult] = useState(null)
+  const [correctionMessage, setCorrectionMessage] = useState('')
+  const correctionRequestRef = useRef(null)
+  const correctionInFlightRef = useRef(false)
+  const correctionResultRef = useRef(null)
+  const correctionReadRef = useRef(0)
+  const correctionDialogRef = useRef(null)
+  const correctionMountedRef = useRef(true)
+
+  useEffect(() => {
+    correctionMountedRef.current = true
+    refreshCorrectionSource()
+    return () => { correctionMountedRef.current = false; correctionReadRef.current++ }
+  }, [advanceId])
+
+  React.useLayoutEffect(() => {
+    const previousFocus = document.activeElement
+    const dialog = correctionDialogRef.current
+    dialog?.focus()
+    return () => { previousFocus?.focus?.() }
+  }, [])
+
+  // Stage switches remove the clicked control. Keep keyboard events inside
+  // the dialog before the next paint so Escape and focus trapping still work.
+  React.useLayoutEffect(() => {
+    correctionDialogRef.current?.focus()
+  }, [preview, result])
+
+  useEffect(() => {
+    const warnBeforeLeave = event => {
+      if (correctionInFlightRef.current || (correctionRequestRef.current && correctionRequestRef.current.uncertain !== false)) { event.preventDefault(); event.returnValue = '' }
+    }
+    window.addEventListener('beforeunload', warnBeforeLeave)
+    return () => window.removeEventListener('beforeunload', warnBeforeLeave)
+  }, [])
+
+  function closeCorrection() {
+    if (correctionInFlightRef.current || (correctionRequestRef.current && correctionRequestRef.current.uncertain !== false)) return
+    onClose()
+  }
+
+  function correctionKeyboard(event) {
+    if (event.key === 'Escape') { event.preventDefault(); closeCorrection() }
+    if (event.key !== 'Tab') return
+    const elements = Array.from(correctionDialogRef.current?.querySelectorAll('button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex="0"]') || [])
+    if (!elements.length) { event.preventDefault(); return }
+    const first = elements[0], last = elements[elements.length - 1]
+    if (event.shiftKey && (document.activeElement === first || document.activeElement === correctionDialogRef.current)) { event.preventDefault(); last.focus() }
+    else if (!event.shiftKey && (document.activeElement === last || document.activeElement === correctionDialogRef.current)) { event.preventDefault(); first.focus() }
+  }
+
+  async function refreshCorrectionSource() {
+    if (correctionInFlightRef.current || correctionRequestRef.current) return
+    const read = ++correctionReadRef.current
+    setBusy(true)
+    setCorrectionMessage('')
+    setPreview(null)
+    try {
+      const fresh = await loadAdvanceReclassification(client, advanceId)
+      if (!correctionMountedRef.current || read !== correctionReadRef.current) return
+      setSnapshot(fresh)
+      setCorrectionForm(form => ({ ...form, salary_month: fresh.settlementPeriods.some(row => row.salary_month === form.salary_month) ? form.salary_month : fresh.settlementPeriods[0]?.salary_month || '' }))
+      if (!fresh.settlementPeriods.length) setCorrectionMessage('Нет более раннего зарплатного периода этого сотрудника и филиала. Исправление недоступно.')
+    } catch (error) {
+      if (correctionMountedRef.current && read === correctionReadRef.current) { setSnapshot(null); setCorrectionMessage(payrollWriteError(error)) }
+    } finally { if (correctionMountedRef.current && read === correctionReadRef.current) setBusy(false) }
+  }
+
+  async function previewCorrection(event) {
+    event?.preventDefault()
+    if (correctionInFlightRef.current || correctionRequestRef.current || busy || !snapshot) return
+    correctionInFlightRef.current = true
+    setBusy(true)
+    setCorrectionMessage('')
+    try {
+      // Re-read immediately before preview; save checks these exact full rows.
+      const fresh = await loadAdvanceReclassification(client, advanceId)
+      const operation = prepareAdvanceReclassification(fresh, correctionForm)
+      if (!correctionMountedRef.current) return
+      setSnapshot(fresh)
+      setPreview(operation)
+    } catch (error) { if (correctionMountedRef.current) setCorrectionMessage(payrollWriteError(error)) }
+    finally { correctionInFlightRef.current = false; if (correctionMountedRef.current) setBusy(false) }
+  }
+
+  async function saveCorrection() {
+    if (correctionInFlightRef.current || correctionResultRef.current || !preview) return
+    correctionInFlightRef.current = true
+    setBusy(true)
+    setCorrectionMessage('')
+    setAttempted(true)
+    // Freeze both the full operation and key before sending. A lost response
+    // must replay this request, never rebuild from newly read source rows.
+    if (!correctionRequestRef.current) {
+      const identity = { current: null }
+      correctionRequestRef.current = { key: payrollRequestKey(identity, [preview]), operation: JSON.parse(JSON.stringify(preview)) }
+    }
+    const request = correctionRequestRef.current
+    request.uncertain = true
+    let committed = false
+    try {
+      const confirmed = await reclassifySalaryAdvance(client, request.key, request.operation)
+      committed = true
+      correctionResultRef.current = confirmed.operation
+      correctionRequestRef.current = null
+      if (!correctionMountedRef.current) return
+      setResult(confirmed.operation)
+      setAttempted(false)
+      const refreshed = await onCommitted(confirmed.operation)
+      if (correctionMountedRef.current) setCorrectionMessage(refreshed === false ? 'Исправление сохранено, но список не обновился. Обновите страницу.' : 'Исправление подтверждено. Нового расхода денег нет.')
+    } catch (error) {
+      if (!correctionMountedRef.current) return
+      if (!committed && ['42501', '28000', '22023', '22003', '23503', '23505', '23514', 'P0001', 'PGRST202'].includes(error?.code)) request.uncertain = false
+      if (!committed && error?.code === '40001') {
+        // A confirmed stale rejection is rolled back. Allow a fresh preview.
+        correctionRequestRef.current = null
+        setAttempted(false)
+        setPreview(null)
+        setSnapshot(null)
+      }
+      setCorrectionMessage(committed ? 'Исправление сохранено, но список не обновился. Обновите страницу.' : payrollWriteError(error))
+    } finally { correctionInFlightRef.current = false; if (correctionMountedRef.current) setBusy(false) }
+  }
+
+  const source = preview?.expected || snapshot?.advance
+  const sourceAmount = Number(source?.amount || 0)
+  const residualAmount = preview ? (Math.round(sourceAmount * 100) - Math.round(preview.amount * 100)) / 100 : 0
+  const closeDisabled = busy || (attempted && !result && correctionRequestRef.current?.uncertain !== false)
+  return createPortal(<div style={{position:'fixed',inset:0,zIndex:2400,background:'rgba(15,23,42,.55)',display:'grid',placeItems:'center',padding:16}}>
+    <section ref={correctionDialogRef} role="dialog" aria-modal="true" aria-labelledby="advance-correction-title" tabIndex={-1} onKeyDown={correctionKeyboard} className="card" style={{width:'min(700px,100%)',maxHeight:'calc(100vh - 32px)',overflowY:'auto',margin:0,padding:24,background:'#fff'}}>
+      <div className="card-head"><div><h3 id="advance-correction-title">Аванс → зарплата прошлого месяца</h3><p>{employeeName || 'Сотрудник'} · дата выдачи {source?.advance_date || 'загружается'}</p></div><button type="button" className="ghost small" disabled={closeDisabled} onClick={closeCorrection} aria-label="Закрыть исправление">×</button></div>
+      <p className="notice">Исправляется назначение уже выданных наличных. Дата выдачи и общая сумма денег не меняются. Нового расхода денег нет.</p>
+      {correctionMessage && <p role="status" className={result ? 'save-status' : 'bad'}>{correctionMessage}</p>}
+      {!result && !preview && <form onSubmit={previewCorrection}>
+        {source && <p>Исходный аванс: <strong>{fmt(sourceAmount)} AZN</strong> · {source.advance_date}</p>}
+        <fieldset disabled={busy || !snapshot?.settlementPeriods.length} style={{border:0,padding:0,margin:0}} className="form-grid compact">
+          <label><span>Зарплатный месяц для погашения</span><select required value={correctionForm.salary_month} onChange={event => setCorrectionForm(form => ({...form,salary_month:event.target.value}))}><option value="">Выберите месяц</option>{snapshot?.settlementPeriods.map(period => <option key={period.id} value={period.salary_month}>{period.salary_month.slice(0,7)}</option>)}</select></label>
+          <label><span>Из аванса в погашение зарплаты, AZN</span><input required inputMode="decimal" autoComplete="off" value={correctionForm.amount} onChange={event => setCorrectionForm(form => ({...form,amount:event.target.value}))} placeholder="0.00" /></label>
+          <label style={{gridColumn:'1 / -1'}}><span>Причина исправления</span><textarea required minLength={3} maxLength={1000} rows={3} value={correctionForm.reason} onChange={event => setCorrectionForm(form => ({...form,reason:event.target.value}))} /></label>
+        </fieldset>
+        <div className="action-row" style={{marginTop:16}}><button type="button" className="ghost small" disabled={busy} onClick={refreshCorrectionSource}>Обновить исходные данные</button><button type="submit" className="small primary" disabled={busy || !snapshot?.settlementPeriods.length}>{busy ? 'Проверка...' : 'Предпросмотр исправления'}</button></div>
+      </form>}
+      {!result && preview && <div>
+        <div className="table-wrap"><table><thead><tr><th>Назначение</th><th>Было, AZN</th><th>Станет, AZN</th></tr></thead><tbody>
+          <tr><td>Аванс за {preview.expected_periods.advance.salary_month.slice(0,7)}</td><td>{fmt(sourceAmount)}</td><td>{fmt(residualAmount)}</td></tr>
+          <tr><td>Погашение зарплаты за {preview.salary_month.slice(0,7)}</td><td>0.00</td><td>{fmt(preview.amount)}</td></tr>
+          <tr><td><b>Всего выдано {source.advance_date}</b></td><td><b>{fmt(sourceAmount)}</b></td><td><b>{fmt(sourceAmount)}</b></td></tr>
+        </tbody></table></div>
+        <p>Причина: {preview.reason}</p>
+        <p className="hint">Исходная запись останется в истории как исправленная. {residualAmount > 0 ? 'Остаток будет отдельным авансом с прежней датой выдачи.' : 'Остатка аванса не будет.'} Перенос и связанные записи фиксируются в аудите.</p>
+        {attempted && <p className="notice">{correctionRequestRef.current?.uncertain === false ? 'Запрос отклонён без сохранения. Можно закрыть окно или повторить тот же запрос.' : 'Запрос уже отправлялся. До подтверждения повторяйте эту же операцию.'} Суммы, исходные данные и ключ запроса сохранены.</p>}
+        <div className="action-row" style={{marginTop:16}}>{!attempted && <button type="button" className="ghost small" disabled={busy} onClick={() => setPreview(null)}>Назад к полям</button>}<button type="button" className="small primary" disabled={busy} onClick={saveCorrection}>{busy ? 'Подтверждение...' : attempted ? 'Повторить тот же запрос' : 'Подтвердить исправление'}</button></div>
+      </div>}
+      {result && <div className="notice" role="status"><p><b>Исправление сохранено</b></p><p>Погашение зарплаты: {fmt(result.payment.amount)} AZN · {result.payment.salary_month.slice(0,7)}. Остаток аванса: {fmt(result.residual_advance?.amount || 0)} AZN.</p><p>Дата выдачи: {result.payment.payment_date}. Нового расхода денег нет.</p><details><summary>Связанные записи и аудит</summary><p style={{overflowWrap:'anywhere'}}>Исходный аванс: {result.advance.id}<br />Выплата: {result.payment.id}<br />{result.residual_advance && <>Остаток аванса: {result.residual_advance.id}<br /></>}Запись аудита: {result.audit_id}</p></details></div>}
+      <div className="action-row" style={{marginTop:16,justifyContent:'flex-end'}}><button type="button" className="ghost small" disabled={closeDisabled} onClick={closeCorrection}>{result ? 'Закрыть' : 'Отмена'}</button></div>
+    </section>
+  </div>, document.body)
+}
+
 function Advances({ t }) {
+  const canCorrectAdvance = usePayrollCorrectionAccess()
+  const [correctionAdvance, setCorrectionAdvance] = useState(null)
   const branches = useBranches()
   const current = new Date()
   const [year, setYear] = useState(current.getFullYear())
@@ -9276,6 +9456,7 @@ function Advances({ t }) {
   const pagedAdvances = displayedAdvances.slice((safeAdvancePage - 1) * advancePageSize, safeAdvancePage * advancePageSize)
 
   return <section>
+    {correctionAdvance && <AdvanceReclassificationDialog advanceId={correctionAdvance.id} employeeName={correctionAdvance.employees?.full_name} onClose={() => setCorrectionAdvance(null)} onCommitted={async () => { const refreshed = await load(); setMessage(refreshed ? 'Исправление подтверждено. Нового расхода денег нет.' : 'Исправление сохранено, но список не обновился. Обновите страницу.'); return refreshed }} />}
     <section className="topbar"><div><h2>{t('advances_tab')}</h2><p>Каждая выплата аванса фиксируется отдельной строкой с датой, сотрудником, суммой и комментарием.</p></div></section>
     <section className="grid">
       <div className="card span-2">
@@ -9327,6 +9508,7 @@ function Advances({ t }) {
                 </> : <>
                   <button className="small ghost" disabled={advanceSaving} onClick={() => reconcileAdvancePeriod(a)}>Обновить остаток</button>
                   <button className="small" disabled={a.is_cancelled || advanceSaving} onClick={() => startEditAdvance(a)}>Редактировать</button>
+                  {canCorrectAdvance && <button className="small ghost" disabled={a.is_cancelled || advanceSaving || editAdvanceId !== ''} onClick={() => setCorrectionAdvance(a)}>Исправить назначение</button>}
                   <button className="remove" disabled={a.is_cancelled} onClick={() => deleteAdvance(a)}>×</button>
                 </>}
               </td>
