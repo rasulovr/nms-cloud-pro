@@ -9078,12 +9078,18 @@ function AdvanceReclassificationDialog({ advanceId, employeeName, onClose, onCom
     return () => { correctionMountedRef.current = false; correctionReadRef.current++ }
   }, [advanceId])
 
-  useEffect(() => {
+  React.useLayoutEffect(() => {
     const previousFocus = document.activeElement
     const dialog = correctionDialogRef.current
     dialog?.focus()
     return () => { previousFocus?.focus?.() }
   }, [])
+
+  // Stage switches remove the clicked control. Keep keyboard events inside
+  // the dialog before the next paint so Escape and focus trapping still work.
+  React.useLayoutEffect(() => {
+    correctionDialogRef.current?.focus()
+  }, [preview, result])
 
   useEffect(() => {
     const warnBeforeLeave = event => {

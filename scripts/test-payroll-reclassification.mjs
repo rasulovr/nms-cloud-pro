@@ -32,7 +32,15 @@ try{
  ('${target}','${employee}','${branch}','2026-09-01',100,100,0,10,12,0,0,'Keep September provenance');
  insert into public.salary_advances(id,employee_id,branch_id,advance_date,amount,comment,created_at) values('${source}','${employee}','${branch}','2026-10-02',120,'Original source_key=synthetic-original; full provenance',now()-interval '5 days');`)
  for(const file of ['20261004062655_payroll_atomic_period_updates.sql','20261004083647_payroll_advance_reclassification.sql'])await db.exec(await fs.readFile(new URL('../supabase/migrations/'+file,import.meta.url),'utf8'))
+ await db.exec(await fs.readFile(new URL('./fixtures/revenue-workspace-schema.sql',import.meta.url),'utf8'))
+ await db.exec(await fs.readFile(new URL('./fixtures/revenue-workspace-before.sql',import.meta.url),'utf8'))
+ await db.exec(await fs.readFile(new URL('../supabase/migrations/20261004095829_payroll_reclassification_cash_readback.sql',import.meta.url),'utf8'))
+ await db.exec(`insert into branches values('${branch}','Synthetic branch');insert into daily_expenses(id,branch_id,expense_date,amount) values(gen_random_uuid(),'${branch}','2026-10-02',9);`)
+ const cashView=()=>scalar("select public.rms_revenue_day_workspace($1,'2026-10-02')",[branch])
+ const dayTotal=w=>w.expenses.reduce((s,r)=>s+Number(r.amount),0)+w.salary_advances.reduce((s,r)=>s+Number(r.amount),0)+w.salary_correction_expenses.reduce((s,r)=>s+Number(r.amount),0)
  await admin()
+ const cashBefore=await cashView()
+ assert.equal(dayTotal(cashBefore),129);assert.equal(Number(cashBefore.month_stats.expenses),129)
  await test('capability and executor privilege boundary',async()=>{
   assert.equal(await scalar('select public.rms_payroll_can_write()'),true)
   assert.equal(await scalar("select pg_has_role('authenticated','rms_payroll_reclassifier','MEMBER')"),false)
@@ -57,6 +65,7 @@ try{
   assert.equal(Number(r.residual_advance.amount),96);assert.equal(Number(r.payment.amount),24);assert.equal(r.payment.method,'cash');assert.equal(r.payment.salary_month,'2026-09-01');assert.equal(r.payment.payment_date,'2026-10-02');assert.equal(r.residual_advance.advance_date,'2026-10-02');assert.equal(Number(r.advance_period.advance_amount),96);assert.equal(Number(r.advance_period.salary_net),897)
   for(const field of ['salary_gross','deduction_amount','cash_payment','card_payment','previous_balance_amount','comment','created_by','created_at']){assert.equal(r.advance_period[field],originalOp.expected_periods.advance[field],field);assert.equal(r.settlement_period[field],originalOp.expected_periods.settlement[field],field)}
   assert.equal(Number(await scalar("select (select coalesce(sum(amount),0) from salary_advances where advance_date='2026-10-02' and not is_cancelled)+(select coalesce(sum(amount),0) from salary_payments where payment_date='2026-10-02' and not is_cancelled)")),120)
+  const w=await cashView();assert.equal(dayTotal(w),129);assert.equal(Number(w.month_stats.expenses),129);assert.equal(Number(w.month_stats.reclassification_cash),24);assert.equal(w.salary_correction_expenses.length,1);assert.equal(w.salary_correction_expenses[0].original_advance_id,source);assert.equal(w.salary_correction_expenses[0].payment_date,'2026-10-02');assert.equal(w.salary_correction_expenses[0].id,source);assert.equal('salary_month' in w.salary_correction_expenses[0],false);assert.equal('audit_id' in w.salary_correction_expenses[0],false);assert.equal('payment_id' in w.salary_correction_expenses[0],false);assert.deepEqual(Object.keys(w.salary_correction_expenses[0]).sort(),['id','employee_id','branch_id','payment_date','amount','original_advance_id','employees','branches'].sort());assert.equal(Number(w.month_stats.reclassification_advance_cash),96)
  })
  await test('lost-response and double-click retries do not duplicate journals or audit',async()=>{
   const before=await snapshot(),replay=await write('partial-split',originalOp);assert.equal(replay.replayed,true);assert.deepEqual(replay.operation,result.operation);assert.deepEqual(await snapshot(),before)
@@ -67,6 +76,8 @@ try{
   const op={...await operation(result.operation.residual_advance.id,96),payment_date:'2030-01-01',method:'bank'},r=(await write('full-split',op)).operation
   assert.equal(r.residual_advance,null);assert.equal(r.payment.payment_date,'2026-10-02');assert.equal(r.payment.method,'cash');assert.equal(Number(r.advance_period.advance_amount),0)
   await assert.rejects(()=>write('partial-split',originalOp),/journals changed/)
+  const w=await cashView();assert.equal(dayTotal(w),129);assert.equal(Number(w.month_stats.expenses),129);assert.equal(Number(w.month_stats.reclassification_cash),120);assert.equal(w.salary_advances.length,0);assert.equal(w.salary_correction_expenses.length,2)
+  const otherDay=await scalar("select public.rms_revenue_day_workspace($1,'2026-10-03')",[branch]);assert.equal(dayTotal(otherDay),0);assert.equal(Number(otherDay.month_stats.reclassification_cash),120)
  })
  await test('full before/after audit exists and private requests are immutable to authenticated callers',async()=>{
   await root();const a=await scalar("select to_jsonb(a) from public.audit_logs a where table_name='salary_advance_reclassification' and new_data->>'request_key'='partial-split'");assert.equal(a.user_id,uid);assert.equal(a.old_data.advance.id,source);assert.equal(a.new_data.payment.id,result.operation.payment.id);assert.ok(a.old_data.advance_period);assert.ok(a.old_data.settlement_period)
@@ -87,6 +98,11 @@ try{
   const residual=await scalar('select id from salary_advances where not is_cancelled limit 1'),op=await operation(residual,1)
   await root();await db.exec(`create function public.fail_audit_fixture() returns trigger language plpgsql as $$begin if new.table_name='salary_advance_reclassification' then raise exception 'Injected audit failure';end if;return new;end;$$;create trigger test_audit_failure before insert on audit_logs for each row execute function public.fail_audit_fixture()`);await admin();await fail('audit-rollback',op,/Injected audit failure/)
   await root();await db.exec('drop trigger test_audit_failure on audit_logs');await admin()
+ })
+ await test('cash readback includes only verified linked active cash corrections, never token-only impostors',async()=>{
+  const before=await cashView();await root();await db.exec(`insert into salary_payments(employee_id,branch_id,salary_month,payment_date,amount,method,comment) values('${employee}','${branch}','2026-09-01','2026-10-02',999,'cash','source_key=payroll-reclass:fake:payment;');`);await admin();assert.deepEqual(await cashView(),before)
+  await root();await db.exec(`update salary_payments set is_cancelled=true where id='${result.operation.payment.id}'`);await admin();const after=await cashView();assert.equal(dayTotal(after),dayTotal(before)-24);assert.equal(Number(after.month_stats.expenses),Number(before.month_stats.expenses)-24)
+  const otherBranch=await scalar("select public.rms_revenue_day_workspace('20000000-0000-0000-0000-000000000099','2026-10-02')");assert.equal(dayTotal(otherBranch),0);assert.equal(Number(otherBranch.month_stats.reclassification_cash),0)
  })
  console.log(`Payroll reclassification PostgreSQL integration: ${passed} tests passed`)
 }finally{await db.close()}

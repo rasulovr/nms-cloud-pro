@@ -75,6 +75,17 @@ function harness() {
 const checks = []
 async function test(name, run) { await run(); checks.push(name); console.log('PASS '+name) }
 if(process.env.EXPORT_FIXTURE_ONLY !== '1') {
+ await test('preview/back/result transitions restore dialog focus before paint',()=>{
+  const effect = component.match(/React\.useLayoutEffect\(\(\) => \{\s*correctionDialogRef\.current\?\.focus\(\)\s*\}, \[preview, result\]\)/)?.[0]
+  assert.ok(effect, 'Stage transitions must restore dialog focus with a layout effect')
+  let focused=0;const correctionDialogRef={current:{focus(){focused++}}}
+  for(const [preview,result] of [[null,null],[{},null],[null,null],[{},{}]]) {
+   const React={useLayoutEffect(callback,deps){assert.deepEqual(deps,[preview,result]);callback()}}
+   new Function('React','correctionDialogRef','preview','result',effect)(React,correctionDialogRef,preview,result)
+  }
+  assert.equal(focused,4)
+  assert.ok(component.includes('React.useLayoutEffect(() => {\n    const previousFocus = document.activeElement'), 'Original trigger focus must be captured before stage focus')
+ })
  await test('fresh base-row reads preserve the entire source and both period snapshots', async()=>{
   const c=harness();const snapshot=await api.loadAdvanceReclassification(c.client,seed.advance.id)
   assert.deepEqual(snapshot,seed);assert.equal(c.reads.length,2);assert.deepEqual(c.reads[0],{table:'salary_advances',columns:'*',filters:[['id',seed.advance.id]]})
@@ -135,7 +146,7 @@ if(process.env.EXPORT_FIXTURE_ONLY==='1' || process.env.BROWSER==='1') {
  if(process.env.BROWSER==='1') {
   const {chromium}=await import('playwright');const browser=await chromium.launch({headless:true,executablePath:process.env.CHROMIUM_PATH || '/usr/bin/chromium',args:['--no-sandbox']});const page=await browser.newPage({viewport:{width:1200,height:900}})
   await page.route('**/*',route=>route.fulfill({contentType:'text/html',body:html}))
-  await page.goto('http://synthetic.test/');await page.getByRole('button',{name:'Исправить назначение'}).click();const dialog=page.getByRole('dialog');await dialog.getByLabel('Из аванса в погашение зарплаты, AZN').fill('60');await dialog.getByLabel('Причина исправления').fill('Synthetic test correction');await dialog.getByRole('button',{name:'Предпросмотр исправления'}).click();await dialog.getByRole('button',{name:'Подтвердить исправление'}).waitFor();await page.screenshot({path:path.join(evidence,'reclassification-preview.png'),fullPage:true});await dialog.getByRole('button',{name:'Подтвердить исправление'}).click();await dialog.getByText('Исправление сохранено',{exact:true}).waitFor();assert.equal(await page.evaluate(()=>window.__correction.commits.length),1);await page.screenshot({path:path.join(evidence,'reclassification-confirmed.png'),fullPage:true});await dialog.getByRole('button',{name:'Закрыть',exact:true}).click();assert.equal(await page.getByRole('dialog').count(),0)
+  await page.goto('http://synthetic.test/');await page.getByRole('button',{name:'Исправить назначение'}).click();const dialog=page.getByRole('dialog');await dialog.getByLabel('Из аванса в погашение зарплаты, AZN').fill('60');await dialog.getByLabel('Причина исправления').fill('Synthetic test correction');await dialog.getByRole('button',{name:'Предпросмотр исправления'}).click();await dialog.getByRole('button',{name:'Подтвердить исправление'}).waitFor();await page.screenshot({path:path.join(evidence,'reclassification-preview.png'),fullPage:true});assert.equal(await dialog.evaluate(el=>el===document.activeElement),true);await dialog.getByRole('button',{name:'Назад к полям',exact:true}).click();assert.equal(await dialog.evaluate(el=>el===document.activeElement),true);assert.equal(await dialog.getByLabel('Из аванса в погашение зарплаты, AZN').inputValue(),'60');await page.keyboard.press('Escape');assert.equal(await page.getByRole('dialog').count(),0);assert.equal(await page.getByRole('button',{name:'Исправить назначение'}).evaluate(el=>el===document.activeElement),true);await page.getByRole('button',{name:'Исправить назначение'}).click();await dialog.getByLabel('Из аванса в погашение зарплаты, AZN').fill('60');await dialog.getByLabel('Причина исправления').fill('Synthetic test correction');await dialog.getByRole('button',{name:'Предпросмотр исправления'}).click();await dialog.getByRole('button',{name:'Подтвердить исправление'}).click();await dialog.getByText('Исправление сохранено',{exact:true}).waitFor();assert.equal(await page.evaluate(()=>window.__correction.commits.length),1);await page.screenshot({path:path.join(evidence,'reclassification-confirmed.png'),fullPage:true});await dialog.getByRole('button',{name:'Закрыть',exact:true}).click();assert.equal(await page.getByRole('dialog').count(),0)
   await page.goto('http://synthetic.test/?allowed=false');assert.equal(await page.getByRole('button',{name:'Исправить назначение'}).count(),0)
   await browser.close();console.log('Browser rendering and confirmation checks passed')
  }

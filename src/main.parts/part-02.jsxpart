@@ -199,6 +199,35 @@ function rmsIsWoltCommissionExpenseRow(row) {
   return rmsIsWoltCommissionName(row?.expense_categories?.name || row?.custom_category || '')
 }
 
+// Only server-linked reclassifications belong here; ordinary salary payments
+// are deliberately outside this correction-specific cash conservation delta.
+function rmsRevenueCorrectionSnapshot(workspace, activeBranchId, activeDate) {
+  if (!Array.isArray(workspace?.salary_correction_expenses) || !Array.isArray(workspace?.salary_advances)
+      || workspace?.month_stats?.reclassification_cash == null || workspace?.month_stats?.reclassification_advance_cash == null) {
+    throw new Error('Не удалось подтвердить расходы по исправлениям зарплаты. Обновление базы или повторная загрузка обязательны.')
+  }
+  const monthTotal = Number(workspace.month_stats.reclassification_cash)
+  const monthAdvanceTotal = Number(workspace.month_stats.reclassification_advance_cash)
+  if (!Number.isFinite(monthTotal) || monthTotal < 0 || !Number.isFinite(monthAdvanceTotal) || monthAdvanceTotal < 0) throw new Error('Некорректная месячная сумма авансов или исправлений зарплаты')
+  const advances = workspace.salary_advances.filter(row => row.is_cancelled !== true)
+  if (advances.some(row => !row.id || row.branch_id !== activeBranchId || row.advance_date !== activeDate || !Number.isFinite(Number(row.amount)) || Number(row.amount) < 0)) throw new Error('Не удалось подтвердить авансы за выбранные дату и филиал')
+  if (advances.reduce((sum,row) => sum + Number(row.amount), 0) > monthAdvanceTotal + 0.005) throw new Error('Авансы за день превышают месячную сумму')
+  const byOriginalAdvance = new Map()
+  for (const row of workspace.salary_correction_expenses) {
+    if (row.is_cancelled === true) continue
+    if (!row.id || row.id !== row.original_advance_id || !row.employee_id || row.branch_id !== activeBranchId || row.payment_date !== activeDate
+        || !Number.isFinite(Number(row.amount)) || Number(row.amount) <= 0 || (row.method && row.method !== 'cash')) {
+      throw new Error('Не удалось подтвердить дату, филиал или связь исправления зарплаты с исходным авансом')
+    }
+    const prior = byOriginalAdvance.get(row.id)
+    if (prior && (Number(prior.amount) !== Number(row.amount) || prior.original_advance_id !== row.original_advance_id)) throw new Error('Противоречивые строки исправления зарплаты')
+    byOriginalAdvance.set(row.id, row)
+  }
+  const rows = [...byOriginalAdvance.values()]
+  if (rows.reduce((sum,row) => sum + Number(row.amount), 0) > monthTotal + 0.005) throw new Error('Сумма исправлений за день превышает месячную')
+  return { rows, monthTotal, advances, monthAdvanceTotal }
+}
+
 function Revenue({ t, focusExpense }) {
   const branches = useBranches()
   const [branchId, setBranchId] = useState('')
@@ -212,6 +241,10 @@ function Revenue({ t, focusExpense }) {
   const [revenueEntries, setRevenueEntries] = useState([])
   const [expenses, setExpenses] = useState([])
   const [advanceExpenses, setAdvanceExpenses] = useState([])
+  const [correctionExpenses, setCorrectionExpenses] = useState([])
+  const [correctionReadyKey, setCorrectionReadyKey] = useState('')
+  const [correctionLoadError, setCorrectionLoadError] = useState('')
+  const revenueLoadRef = useRef(0)
   const [inflows, setInflows] = useState([])
   const [categories, setCategories] = useState([])
   const [monthStats, setMonthStats] = useState({ cash: 0, bank: 0, wolt: 0, revenue: 0, expenses: 0, inflows: 0, serviceCharge: 0, serviceCost: 0 })
@@ -730,11 +763,19 @@ function Revenue({ t, focusExpense }) {
 
   async function load() {
     if (!branchId) return
+    const request = ++revenueLoadRef.current
+    const isCurrent = () => request === revenueLoadRef.current
+    setCorrectionReadyKey('')
+    setCorrectionLoadError('')
+    try {
+    const { data: ws, error: workspaceError } = await fetchRmsRevenueWorkspace(branchId, date)
+    if (!isCurrent()) return false
+    if (workspaceError) throw workspaceError
+    const correction = rmsRevenueCorrectionSnapshot(ws, branchId, date)
     const isInternal = Boolean(getInternalSessionStorage()?.rms_internal)
 
     if (isInternal) {
-      const { data: ws, error } = await fetchRmsRevenueWorkspace(branchId, date)
-      if (!error && ws) {
+      if (ws) {
         setRevenueEntries(ws.revenue_entries || [])
         const cash = ws.cash_register || null
         let openingCash = cash?.opening_cash ?? ''
@@ -748,19 +789,22 @@ function Revenue({ t, focusExpense }) {
           staff_cost_percent: ws.branch_settings?.service_staff_cost_percent ?? '4'
         })
         setExpenses(ws.expenses || [])
-        setAdvanceExpenses(ws.salary_advances || [])
+        setAdvanceExpenses(correction.advances)
+        setCorrectionExpenses(correction.rows)
         setInflows(ws.inflows || [])
         setCategories(ws.expense_categories || [])
         setLogs(ws.logs || [])
         setMonthStats(ws.month_stats || { cash: 0, bank: 0, wolt: 0, revenue: 0, expenses: 0, inflows: 0, serviceCharge: 0, serviceCost: 0 })
-        return
+        setCorrectionReadyKey(`${branchId}|${date}`)
+        return true
       }
-      setMessage(error?.message || 'Нет доступа к выручке')
     }
 
     const { data: revEntries } = await supabase.from('daily_revenue_entries').select('*').eq('branch_id', branchId).eq('revenue_date', date).order('created_at')
+    if (!isCurrent()) return false
     setRevenueEntries(revEntries || [])
     const { data: cash } = await supabase.from('daily_cash_register').select('*').eq('branch_id', branchId).eq('cash_date', date).maybeSingle()
+    if (!isCurrent()) return false
     let openingCash = cash?.opening_cash ?? ''
     if (!cash) {
       const { data: prevCash } = await supabase
@@ -771,6 +815,7 @@ function Revenue({ t, focusExpense }) {
         .order('cash_date', { ascending: false })
         .limit(1)
         .maybeSingle()
+    if (!isCurrent()) return false
       openingCash = prevCash ? (prevCash.counted_cash ?? prevCash.closing_cash ?? '') : ''
     }
     setCashRow(cash || null)
@@ -781,26 +826,36 @@ function Revenue({ t, focusExpense }) {
       .select('id, service_charge_enabled, service_charge_percent, service_staff_cost_percent')
       .eq('id', branchId)
       .maybeSingle()
+    if (!isCurrent()) return false
     setServiceForm({
       enabled: Boolean(activeBranch?.service_charge_enabled),
       service_percent: activeBranch?.service_charge_percent ?? '10',
       staff_cost_percent: activeBranch?.service_staff_cost_percent ?? '4'
     })
     const { data: exp } = await supabase.from('daily_expenses').select('*, expense_categories(name)').eq('branch_id', branchId).eq('expense_date', date).order('created_at')
+    if (!isCurrent()) return false
     setExpenses(exp || [])
-    const { data: advExp } = await supabase
-      .from('salary_advances')
-      .select('*, employees(full_name, position), branches(name)')
-      .eq('branch_id', branchId)
-      .eq('advance_date', date)
-      .or('is_cancelled.is.null,is_cancelled.eq.false')
-      .order('created_at')
-    setAdvanceExpenses(advExp || [])
+    // Original/residual advances and their linked corrections share one RPC snapshot.
+    setAdvanceExpenses(correction.advances)
     const { data: inc } = await supabase.from('daily_cash_inflows').select('*').eq('branch_id', branchId).eq('inflow_date', date).order('created_at')
+    if (!isCurrent()) return false
     setInflows(inc || [])
     const { data: cats } = await supabase.from('expense_categories').select('*').eq('is_active', true).order('name')
+    if (!isCurrent()) return false
     setCategories(cats || [])
-    await Promise.all([loadMonthStats(branchId, date), loadLogs(branchId, date)])
+    setCorrectionExpenses(correction.rows)
+    const [monthLoaded] = await Promise.all([loadMonthStats(branchId, date, correction), loadLogs(branchId, date)])
+    if (!isCurrent()) return false
+    if (monthLoaded === false) return false
+    setCorrectionReadyKey(`${branchId}|${date}`)
+    return true
+    } catch (error) {
+      if (!isCurrent()) return false
+      setCorrectionExpenses([])
+      setCorrectionReadyKey('')
+      setCorrectionLoadError(`Расчёт кассы недоступен: ${error?.message || String(error)}`)
+      return false
+    }
   }
 
   async function loadLogs(activeBranchId = branchId, activeDate = date) {
@@ -814,31 +869,48 @@ function Revenue({ t, focusExpense }) {
     setLogs(data || [])
   }
 
-  async function loadMonthStats(activeBranchId = branchId, activeDate = date) {
-    if (!activeBranchId) return
-    if (getInternalSessionStorage()?.rms_internal) {
-      const { data: ws } = await fetchRmsRevenueWorkspace(activeBranchId, activeDate)
-      setMonthStats(ws?.month_stats || { cash: 0, bank: 0, wolt: 0, revenue: 0, expenses: 0, inflows: 0, serviceCharge: 0, serviceCost: 0 })
-      return
+  async function loadMonthStats(activeBranchId = branchId, activeDate = date, correctionMonthSnapshot) {
+    if (!activeBranchId) return false
+    const request = revenueLoadRef.current
+    try {
+    if (correctionMonthSnapshot === undefined || getInternalSessionStorage()?.rms_internal) {
+      const { data: ws, error } = await fetchRmsRevenueWorkspace(activeBranchId, activeDate)
+      if (request !== revenueLoadRef.current) return false
+      if (error) throw error
+      const correction = rmsRevenueCorrectionSnapshot(ws, activeBranchId, activeDate)
+      correctionMonthSnapshot = correction
+      if (getInternalSessionStorage()?.rms_internal) {
+        // The workspace monthly total already includes linked corrections.
+        setMonthStats(ws.month_stats)
+        return true
+      }
     }
+    const { monthTotal: correctionMonthTotal, monthAdvanceTotal } = correctionMonthSnapshot
     const ym = monthKeyFromDate(activeDate)
     const start = `${ym}-01`
     const end = rmsNextMonthStart(ym)
-    const [{ data: monthRows }, { data: expRows }, { data: advRows }, { data: inflowRows }, { data: svcRows }] = await Promise.all([
+    const [{ data: monthRows }, { data: expRows }, { data: inflowRows }, { data: svcRows }] = await Promise.all([
       supabase.from('daily_revenue').select('*').eq('branch_id', activeBranchId).gte('revenue_date', start).lt('revenue_date', end).is('deleted_at', null),
       supabase.from('daily_expenses').select('amount').eq('branch_id', activeBranchId).gte('expense_date', start).lt('expense_date', end).is('deleted_at', null),
-      supabase.from('salary_advances').select('amount').eq('branch_id', activeBranchId).gte('advance_date', start).lt('advance_date', end).or('is_cancelled.is.null,is_cancelled.eq.false'),
       supabase.from('daily_cash_inflows').select('amount').eq('branch_id', activeBranchId).gte('inflow_date', start).lt('inflow_date', end).is('deleted_at', null),
       supabase.from('monthly_branch_service_charge_cost').select('*').eq('branch_id', activeBranchId).eq('month', start)
     ])
+    if (request !== revenueLoadRef.current) return false
     const cash = (monthRows || []).reduce((s, r) => s + parseNum(r.cash_amount), 0)
     const bank = (monthRows || []).reduce((s, r) => s + parseNum(r.bank_amount), 0)
     const wolt = (monthRows || []).reduce((s, r) => s + parseNum(r.wolt_amount), 0)
-    const expenses = (expRows || []).reduce((s, r) => s + parseNum(r.amount), 0) + (advRows || []).reduce((s, r) => s + parseNum(r.amount), 0)
+    const expenses = (expRows || []).reduce((s, r) => s + parseNum(r.amount), 0) + monthAdvanceTotal + correctionMonthTotal
     const inflows = (inflowRows || []).reduce((s, r) => s + parseNum(r.amount), 0)
     const serviceCharge = (svcRows || []).reduce((s, r) => s + parseNum(r.service_charge_amount), 0)
     const serviceCost = (svcRows || []).reduce((s, r) => s + parseNum(r.staff_cost_amount), 0)
-    setMonthStats({ cash, bank, wolt, revenue: cash + bank + wolt, expenses, inflows, serviceCharge, serviceCost })
+    setMonthStats({ cash, bank, wolt, revenue: cash + bank + wolt, expenses, inflows, serviceCharge, serviceCost, reclassification_cash: correctionMonthTotal, reclassification_advance_cash: monthAdvanceTotal })
+    return true
+    } catch (error) {
+      if (request !== revenueLoadRef.current) return false
+      setCorrectionReadyKey('')
+      setCorrectionLoadError(`Расчёт кассы недоступен: ${error?.message || String(error)}`)
+      return false
+    }
   }
 
   async function addRevenueEntry() {
@@ -900,7 +972,7 @@ function Revenue({ t, focusExpense }) {
   }
 
   async function saveCashRegister() {
-    if (!branchId) return
+    if (!branchId || correctionReadyKey !== `${branchId}|${date}` || correctionLoadError) return setMessage('Сначала загрузите подтверждённые расходы по исправлениям зарплаты')
     const calculatedClosingCash = parseNum(cashForm.opening_cash) + dailyCashRevenue + dailyInflowTotal - dailyExpenseTotal
     const { data, error } = await supabase.rpc('rms_cash_register_save_secure', {
       p_branch_id: branchId,
@@ -1095,11 +1167,12 @@ function Revenue({ t, focusExpense }) {
   const dailyRevenueTotal = dailyCashRevenue + dailyBankRevenue + dailyWoltRevenue
   const dailyManualExpenseTotal = expenses.filter(e => !e.deleted_at).reduce((s, e) => s + parseNum(e.amount), 0)
   const dailyAdvanceExpenseTotal = advanceExpenses.reduce((s, e) => s + parseNum(e.amount), 0)
-  const dailyExpenseTotal = dailyManualExpenseTotal + dailyAdvanceExpenseTotal
+  const dailyCorrectionExpenseTotal = correctionExpenses.reduce((sum, row) => sum + parseNum(row.amount), 0)
+  const dailyExpenseTotal = dailyManualExpenseTotal + dailyAdvanceExpenseTotal + dailyCorrectionExpenseTotal
   const dailyWoltCommissionExpense = expenses
     .filter(e => !e.deleted_at && rmsIsWoltCommissionExpenseRow(e))
     .reduce((sum, e) => sum + parseNum(e.amount), 0)
-  const dailyCashExpenseTotal = Math.max(0, dailyManualExpenseTotal - dailyWoltCommissionExpense) + dailyAdvanceExpenseTotal
+  const dailyCashExpenseTotal = Math.max(0, dailyManualExpenseTotal - dailyWoltCommissionExpense) + dailyAdvanceExpenseTotal + dailyCorrectionExpenseTotal
   const dailyInflowTotal = inflows.filter(i => !i.deleted_at).reduce((s, i) => s + parseNum(i.amount), 0)
   const servicePercent = parseNum(serviceForm.service_percent || 10)
   const staffCostPercent = parseNum(serviceForm.staff_cost_percent || 4)
@@ -1139,6 +1212,7 @@ function Revenue({ t, focusExpense }) {
   }
 
   function exportRevenueDayCsv() {
+    if (correctionReadyKey !== `${branchId}|${date}` || correctionLoadError) return
     const rows = [
       ['RMS Revenue day report'],
       ['Дата', date],
@@ -1163,6 +1237,7 @@ function Revenue({ t, focusExpense }) {
       ['Расходы'],
       ['Дата', 'Статья', 'Сумма', 'Комментарий', 'Статус'],
       ...expenses.map(e => [e.expense_date, expenseNameFromRow(e) || '', fmt(e.amount), e.comment || '', e.deleted_at ? 'Удалено' : 'Активно']),
+      ...correctionExpenses.map(row => [row.payment_date, `Зарплата из исправленного аванса — ${row.employees?.full_name || 'Сотрудник'}`, fmt(row.amount), `Исходный аванс: ${row.original_advance_id}`, 'Исправление назначения; нового расхода нет']),
       [],
       ['Приходы наличных'],
       ['Дата', 'Источник', 'Сумма', 'Комментарий', 'Статус'],
@@ -1172,14 +1247,25 @@ function Revenue({ t, focusExpense }) {
   }
 
   function printRevenueDayReport() {
+    if (correctionReadyKey !== `${branchId}|${date}` || correctionLoadError) return
     const win = window.open('', '_blank')
     if (!win) return
     const revenueRows = revenueEntries.map(r => `<tr class="${r.deleted_at ? 'muted' : ''}"><td>${r.revenue_date}</td><td>${fmt(r.cash_amount)}</td><td>${fmt(r.bank_amount)}</td><td>${fmt(r.wolt_amount)}</td><td>${fmt(parseNum(r.cash_amount) + parseNum(r.bank_amount) + parseNum(r.wolt_amount))}</td><td>${r.comment || ''}</td><td>${r.deleted_at ? 'Удалено' : 'Активно'}</td></tr>`).join('')
     const expenseRows = expenses.map(e => `<tr class="${e.deleted_at ? 'muted' : ''}"><td>${e.expense_date}</td><td>${expenseNameFromRow(e) || ''}</td><td>${fmt(e.amount)}</td><td>${e.comment || ''}</td><td>${e.deleted_at ? 'Удалено' : 'Активно'}</td></tr>`).join('')
+    const escapeCorrectionHtml = value => String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]))
+    const correctionRows = correctionExpenses.map(row => `<tr><td>${escapeCorrectionHtml(row.payment_date)}</td><td>Зарплата из исправленного аванса — ${escapeCorrectionHtml(row.employees?.full_name || 'Сотрудник')}</td><td>${fmt(row.amount)}</td><td>Исходный аванс: ${escapeCorrectionHtml(row.original_advance_id)}</td><td>Исправление назначения; нового расхода нет</td></tr>`).join('')
     const inflowRows = inflows.map(i => `<tr class="${i.deleted_at ? 'muted' : ''}"><td>${i.inflow_date}</td><td>${i.source || ''}</td><td>${fmt(i.amount)}</td><td>${i.comment || ''}</td><td>${i.deleted_at ? 'Удалено' : 'Активно'}</td></tr>`).join('')
-    win.document.write(`<!doctype html><html><head><title>Revenue day report</title><style>body{font-family:Arial,sans-serif;margin:28px;color:#172033}h1{margin:0 0 4px}h2{margin-top:26px}table{width:100%;border-collapse:collapse;margin-top:10px}th,td{border:1px solid #d8dde8;padding:8px;text-align:left;font-size:12px}th{background:#f3f5f8}.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:18px 0}.kpi{border:1px solid #d8dde8;border-radius:12px;padding:12px}.kpi span{display:block;color:#667085;font-size:12px}.kpi b{font-size:18px}.muted{color:#8a93a3;text-decoration:line-through}@media print{button{display:none}}</style></head><body><button onclick="window.print()">Печать</button><h1>Отчёт по выручке за день</h1><div>${selectedBranchName} · ${date}</div><div class="kpis"><div class="kpi"><span>Выручка</span><b>${fmt(dailyRevenueTotal)} AZN</b></div><div class="kpi"><span>Расходы</span><b>${fmt(dailyExpenseTotal)} AZN</b></div><div class="kpi"><span>Приходы наличных</span><b>${fmt(dailyInflowTotal)} AZN</b></div><div class="kpi"><span>Расхождение кассы</span><b>${fmt(cashDifference)} AZN</b></div></div><h2>Выручка</h2><table><thead><tr><th>Дата</th><th>Наличные</th><th>Банк</th><th>Wolt</th><th>Итого</th><th>Комментарий</th><th>Статус</th></tr></thead><tbody>${revenueRows || '<tr><td colspan="7">Нет строк</td></tr>'}</tbody></table><h2>Расходы</h2><table><thead><tr><th>Дата</th><th>Статья</th><th>Сумма</th><th>Комментарий</th><th>Статус</th></tr></thead><tbody>${expenseRows || '<tr><td colspan="5">Нет строк</td></tr>'}</tbody></table><h2>Приходы наличных</h2><table><thead><tr><th>Дата</th><th>Источник</th><th>Сумма</th><th>Комментарий</th><th>Статус</th></tr></thead><tbody>${inflowRows || '<tr><td colspan="5">Нет строк</td></tr>'}</tbody></table></body></html>`)
+    win.document.write(`<!doctype html><html><head><title>Revenue day report</title><style>body{font-family:Arial,sans-serif;margin:28px;color:#172033}h1{margin:0 0 4px}h2{margin-top:26px}table{width:100%;border-collapse:collapse;margin-top:10px}th,td{border:1px solid #d8dde8;padding:8px;text-align:left;font-size:12px}th{background:#f3f5f8}.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:18px 0}.kpi{border:1px solid #d8dde8;border-radius:12px;padding:12px}.kpi span{display:block;color:#667085;font-size:12px}.kpi b{font-size:18px}.muted{color:#8a93a3;text-decoration:line-through}@media print{button{display:none}}</style></head><body><button onclick="window.print()">Печать</button><h1>Отчёт по выручке за день</h1><div>${selectedBranchName} · ${date}</div><div class="kpis"><div class="kpi"><span>Выручка</span><b>${fmt(dailyRevenueTotal)} AZN</b></div><div class="kpi"><span>Расходы</span><b>${fmt(dailyExpenseTotal)} AZN</b></div><div class="kpi"><span>Приходы наличных</span><b>${fmt(dailyInflowTotal)} AZN</b></div><div class="kpi"><span>Расхождение кассы</span><b>${fmt(cashDifference)} AZN</b></div></div><h2>Выручка</h2><table><thead><tr><th>Дата</th><th>Наличные</th><th>Банк</th><th>Wolt</th><th>Итого</th><th>Комментарий</th><th>Статус</th></tr></thead><tbody>${revenueRows || '<tr><td colspan="7">Нет строк</td></tr>'}</tbody></table><h2>Расходы</h2><table><thead><tr><th>Дата</th><th>Статья</th><th>Сумма</th><th>Комментарий</th><th>Статус</th></tr></thead><tbody>${expenseRows + correctionRows || '<tr><td colspan="5">Нет строк</td></tr>'}</tbody></table><h2>Приходы наличных</h2><table><thead><tr><th>Дата</th><th>Источник</th><th>Сумма</th><th>Комментарий</th><th>Статус</th></tr></thead><tbody>${inflowRows || '<tr><td colspan="5">Нет строк</td></tr>'}</tbody></table></body></html>`)
     win.document.close()
   }
+
+  if (correctionReadyKey !== `${branchId}|${date}` || correctionLoadError) return <section id="revenuePage">
+    <section className="topbar"><h2>{t('revenue_tab')}</h2></section>
+    <div className="card"><div className="form-grid compact"><label><span>{t('branch_select')}</span><select value={branchId} onChange={event => setBranchId(event.target.value)}>{branches.map(branch => <option key={branch.id} value={branch.id}>{branch.name}</option>)}</select></label><label><span>{t('date')}</span><DateInput value={date} onChange={event => setDate(event.target.value)} /></label></div>
+      <p role={correctionLoadError ? 'alert' : 'status'} className={correctionLoadError ? 'bad' : 'hint'}>{correctionLoadError || 'Загрузка подтверждённых расходов и кассы...'}</p>
+      {correctionLoadError && <button className="small" onClick={load}>Повторить загрузку</button>}
+    </div>
+  </section>
 
   return (
     <section id="revenuePage">
@@ -1224,7 +1310,8 @@ function Revenue({ t, focusExpense }) {
           <div className="table-wrap"><table><thead><tr><th>Дата</th><th>{t('expense_item')}</th><th>{t('amount')}</th><th>{t('comment')}</th><th>Статус</th><th></th></tr></thead><tbody>
             {expenses.map(e => <ExpenseRow key={e.id} expense={e} categories={expenseCategoriesForBranch} focusExpenseId={focusExpense?.expenseId} onSave={patch => updateExpense(e.id, patch)} onCancel={() => cancelExpense(e.id)} />)}
             {advanceExpenses.map(a => <AdvanceExpenseRow key={`adv-${a.id}`} advance={a} />)}
-            {!expenses.length && !advanceExpenses.length && <tr><td colSpan="6" className="hint">—</td></tr>}
+            {correctionExpenses.map(row => <tr key={`salary-correction-${row.id}`} className="system-row"><td>{row.payment_date}</td><td>Зарплата из исправленного аванса — {row.employees?.full_name || 'Сотрудник'}</td><td><strong>{fmt(row.amount)}</strong></td><td style={{overflowWrap:'anywhere'}}>Исходный аванс: {row.original_advance_id}</td><td>Исправление назначения; нового расхода нет</td><td><span className="hint">Только просмотр</span></td></tr>)}
+            {!expenses.length && !advanceExpenses.length && !correctionExpenses.length && <tr><td colSpan="6" className="hint">—</td></tr>}
           </tbody></table></div>
         </div>
 
