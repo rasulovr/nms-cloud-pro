@@ -551,9 +551,14 @@ async function rmsCalculateNetworkForecastForMonth(y, m, scopeBranchId = 'all') 
     const rate = actualRate > 0 ? actualRate : configuredRate
     return branchRevenueForecast * rate
   }
+  // Keep the existing net-bank forecast convention, excluding only Wolt.
+  const serviceEligibleRevenue = row => {
+    const parts = rmsNetRevenueParts(row, bankCommissionRate)
+    return parts.cash + parts.bank - parts.bankCommission
+  }
   const serviceForecast = selectedBranchId === 'all'
-    ? revenueRows.reduce((sum, row) => sum + serviceForecastForBranch(row.branch_id, rmsNetRevenueParts(row, bankCommissionRate).revenue), 0)
-    : serviceForecastForBranch(selectedBranchId, revenue)
+    ? revenueRows.reduce((sum, row) => sum + serviceForecastForBranch(row.branch_id, serviceEligibleRevenue(row)), 0)
+    : serviceForecastForBranch(selectedBranchId, revenueRows.reduce((sum, row) => sum + serviceEligibleRevenue(row), 0))
   const serviceForecastNote = selectedBranchId === 'all'
     ? 'пропорционально прогнозной выручке только по филиалам, где включён service charge'
     : (branchServiceConfigMap.get(String(selectedBranchId))?.enabled
@@ -679,7 +684,8 @@ function rmsServiceChargeStaffCostFromDailyRevenue(rows = [], branches = []) {
     const servicePercent = parseNum(branch.service_charge_percent || 10)
     const staffPercent = parseNum(branch.service_staff_cost_percent || 0)
     if (servicePercent <= 0 || staffPercent <= 0) return sum
-    const grossRevenue = parseNum(row.cash_amount) + parseNum(row.bank_amount) + parseNum(row.wolt_amount)
+    // Wolt delivery receipts do not carry service charge for staff.
+    const grossRevenue = parseNum(row.cash_amount) + parseNum(row.bank_amount)
     const serviceBase = grossRevenue / (1 + servicePercent / 100)
     return sum + serviceBase * staffPercent / 100
   }, 0)
