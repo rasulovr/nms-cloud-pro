@@ -1176,13 +1176,15 @@ function Revenue({ t, focusExpense }) {
   const dailyInflowTotal = inflows.filter(i => !i.deleted_at).reduce((s, i) => s + parseNum(i.amount), 0)
   const servicePercent = parseNum(serviceForm.service_percent || 10)
   const staffCostPercent = parseNum(serviceForm.staff_cost_percent || 4)
-  const serviceBase = serviceForm.enabled && servicePercent > 0 ? dailyRevenueTotal / (1 + servicePercent / 100) : dailyRevenueTotal
-  const dailyServiceChargeAmount = serviceForm.enabled && servicePercent > 0 ? dailyRevenueTotal - serviceBase : 0
+  const dailyServiceRevenue = dailyCashRevenue + dailyBankRevenue
+  const serviceBase = serviceForm.enabled && servicePercent > 0 ? dailyServiceRevenue / (1 + servicePercent / 100) : dailyServiceRevenue
+  const dailyServiceChargeAmount = serviceForm.enabled && servicePercent > 0 ? dailyServiceRevenue - serviceBase : 0
   const dailyServiceStaffCost = serviceForm.enabled ? serviceBase * staffCostPercent / 100 : 0
   const formWoltAmount = woltEnabledForBranch ? parseNum(form.wolt_amount) : 0
   const formRevenueTotal = parseNum(form.cash_amount) + parseNum(form.bank_amount) + formWoltAmount
-  const formServiceBase = serviceForm.enabled && servicePercent > 0 ? formRevenueTotal / (1 + servicePercent / 100) : formRevenueTotal
-  const formServiceChargeAmount = serviceForm.enabled && servicePercent > 0 ? formRevenueTotal - formServiceBase : 0
+  const formServiceRevenue = parseNum(form.cash_amount) + parseNum(form.bank_amount)
+  const formServiceBase = serviceForm.enabled && servicePercent > 0 ? formServiceRevenue / (1 + servicePercent / 100) : formServiceRevenue
+  const formServiceChargeAmount = serviceForm.enabled && servicePercent > 0 ? formServiceRevenue - formServiceBase : 0
   const formServiceStaffCost = serviceForm.enabled ? formServiceBase * staffCostPercent / 100 : 0
   const calculatedClosingCash = parseNum(cashForm.opening_cash) + dailyCashRevenue + dailyInflowTotal - dailyCashExpenseTotal
   const cashDifference = parseNum(cashForm.counted_cash) - calculatedClosingCash
@@ -1428,7 +1430,8 @@ function RevenueEntryRow({ row, woltEnabled=true, serviceEnabled=false, serviceP
   const total = parseNum(row.cash_amount) + parseNum(row.bank_amount) + parseNum(row.wolt_amount)
   const editedWolt = woltEnabled ? parseNum(wolt) : parseNum(row.wolt_amount)
   const editedTotal = parseNum(cash) + parseNum(bank) + editedWolt
-  const base = serviceEnabled && servicePercent > 0 ? total / (1 + servicePercent / 100) : total
+  const serviceRevenue = parseNum(row.cash_amount) + parseNum(row.bank_amount)
+  const base = serviceEnabled && servicePercent > 0 ? serviceRevenue / (1 + servicePercent / 100) : serviceRevenue
   const staffCost = serviceEnabled ? base * staffCostPercent / 100 : 0
 
   async function saveChanges() {
