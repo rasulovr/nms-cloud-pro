@@ -1604,7 +1604,7 @@ function Dashboard({ t }) {
 
   useEffect(() => { load() }, [year, month, branchId, branches.length])
 
-  async function calcMonth(y, m) {
+  async function calcMonth(y, m, { includeForecast = true } = {}) {
     const monthDate = monthStart(y, m)
     const monthEnd = rmsNextMonthStart(monthDate.slice(0, 7))
     const [
@@ -1622,7 +1622,8 @@ function Dashboard({ t }) {
       employeeResult,
       salaryPeriodResult,
       branchTaxSetting,
-      bankCommissionSetting
+      bankCommissionSetting,
+      syncedForecast
     ] = await Promise.all([
       supabase.from('monthly_branch_revenue').select('*').eq('month', monthDate),
       supabase.from('daily_revenue').select('branch_id,cash_amount,bank_amount,wolt_amount').gte('revenue_date', monthDate).lt('revenue_date', monthEnd).is('deleted_at', null),
@@ -1638,7 +1639,10 @@ function Dashboard({ t }) {
       supabase.from('employees').select('id,branch_id,position,monthly_salary,salary_type,daily_rate,is_active,employment_status').eq('is_active', true),
       supabase.from('salary_periods').select('employee_id,branch_id,salary_gross,salary_net,card_payment,cash_payment,advance_amount,deduction_amount,previous_balance_amount').eq('salary_month', monthDate),
       readRmsAppSetting(RMS_BRANCH_TAX_RATE_SETTING, {}),
-      readRmsAppSetting(RMS_BANK_COMMISSION_RATE_SETTING, RMS_DEFAULT_BANK_COMMISSION_RATE)
+      readRmsAppSetting(RMS_BANK_COMMISSION_RATE_SETTING, RMS_DEFAULT_BANK_COMMISSION_RATE),
+      // Forecast is independent of the actual-month calculations. Previous-month
+      // forecast fields are not rendered by Dashboard, so do not fetch them.
+      includeForecast ? rmsFinanceForecastEngine(y, m, branchId) : Promise.resolve({})
     ])
 
     const bankCommissionRate = rmsBankCommissionRate(bankCommissionSetting)
@@ -1846,7 +1850,6 @@ function Dashboard({ t }) {
     })
     const supplierDebtRows = Array.from(supplierRiskMap.values()).sort((a,b) => b.value - a.value)
     const supplierDebt = supplierDebtRows.reduce((s, r) => s + r.value, 0)
-    const syncedForecast = await rmsFinanceForecastEngine(y, m, branchId)
     const forecastRevenue = parseNum(syncedForecast.forecastRevenue)
     const forecastProfit = parseNum(syncedForecast.forecastProfit)
     const preliminarySupplierExpense = dashboardBranchRows.reduce((sum, row) => sum + parseNum(row.preliminarySupplierExpense), 0)
@@ -1973,19 +1976,26 @@ function Dashboard({ t }) {
     // Only the newest request may update the Dashboard state.
     const requestId = ++loadRequestRef.current
     try {
-      const current = await calcMonth(year, month)
+      const pm = prevMonth(year, month)
+      // Start independent reads together. Attach optional-read error handlers
+      // immediately so a rejected background read cannot escape unhandled.
+      const [current, previousResult, dailyChartRows] = await Promise.all([
+        calcMonth(year, month),
+        calcMonth(pm.year, pm.month, { includeForecast: false }).catch(previousError => {
+          console.error('Dashboard previous month load failed:', previousError)
+          return emptyDashboardData()
+        }),
+        rmsLoadDailyRevenueRowsForChart(year, month, branchId === DASH_ALL_BRANCHES ? '__all__' : branchId).catch(chartError => {
+          console.error('Dashboard daily chart load failed:', chartError)
+          return []
+        })
+      ])
+      if (requestId !== loadRequestRef.current) return
       if (branchId !== DASH_ALL_BRANCHES && !current.activeBranchIds.includes(String(branchId))) {
-        if (requestId === loadRequestRef.current) setBranchId(DASH_ALL_BRANCHES)
+        setBranchId(DASH_ALL_BRANCHES)
         return
       }
-      const pm = prevMonth(year, month)
-
-      let previous = emptyDashboardData()
-      try {
-        previous = await calcMonth(pm.year, pm.month)
-      } catch (previousError) {
-        console.error('Dashboard previous month load failed:', previousError)
-      }
+      let previous = previousResult
 
       let comparison = {
         currentRevenue: current.revenue,
@@ -2029,13 +2039,6 @@ function Dashboard({ t }) {
         } catch (comparisonError) {
           console.error('Dashboard day-to-day revenue comparison failed:', comparisonError)
         }
-      }
-
-      let dailyChartRows = []
-      try {
-        dailyChartRows = await rmsLoadDailyRevenueRowsForChart(year, month, branchId === DASH_ALL_BRANCHES ? '__all__' : branchId)
-      } catch (chartError) {
-        console.error('Dashboard daily chart load failed:', chartError)
       }
 
       if (requestId !== loadRequestRef.current) return

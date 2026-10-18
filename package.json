@@ -29,7 +29,8 @@
     "test:payroll-browser": "node scripts/test-payroll-browser.mjs",
     "test:payroll-reclassification": "node scripts/test-payroll-reclassification.mjs",
     "test:payroll-reclassification-client": "node scripts/test-payroll-reclassification-client.mjs",
-    "test:payroll-reclassification-cash-client": "node scripts/test-payroll-reclassification-cash-client.mjs"
+    "test:payroll-reclassification-cash-client": "node scripts/test-payroll-reclassification-cash-client.mjs",
+    "test:dashboard-opening-performance": "node scripts/test-dashboard-opening-performance.mjs"
   },
   "dependencies": {
     "@vitejs/plugin-react": "^4.3.0",
