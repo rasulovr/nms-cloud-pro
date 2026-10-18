@@ -30,7 +30,9 @@
     "test:payroll-reclassification": "node scripts/test-payroll-reclassification.mjs",
     "test:payroll-reclassification-client": "node scripts/test-payroll-reclassification-client.mjs",
     "test:payroll-reclassification-cash-client": "node scripts/test-payroll-reclassification-cash-client.mjs",
-    "test:dashboard-opening-performance": "node scripts/test-dashboard-opening-performance.mjs"
+    "test:dashboard-opening-performance": "node scripts/test-dashboard-opening-performance.mjs",
+    "test:dashboard-load-scope": "node scripts/test-dashboard-load-scope.mjs",
+    "test:dashboard-forecast-read-reuse": "node scripts/test-dashboard-forecast-read-reuse.mjs"
   },
   "dependencies": {
     "@vitejs/plugin-react": "^4.3.0",

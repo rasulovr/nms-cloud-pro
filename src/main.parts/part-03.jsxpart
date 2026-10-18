@@ -205,7 +205,7 @@ function rmsForecastBranchRentTotal(branchRentMap = {}, branchIds = []) {
   return (branchIds || Object.keys(branchRentMap || {})).reduce((sum, id) => sum + parseNum(branchRentMap?.[id]), 0)
 }
 
-async function rmsCalculateNetworkForecastForMonth(y, m, scopeBranchId = 'all') {
+async function rmsCalculateNetworkForecastForMonth(y, m, scopeBranchId = 'all', readOnce = (_key, read) => read()) {
   const DEFAULT_TAX_RATE = 8
   const { start: monthDate, end: monthEnd } = rmsForecastMonthWindow(y, m)
   const now = new Date()
@@ -233,22 +233,22 @@ async function rmsCalculateNetworkForecastForMonth(y, m, scopeBranchId = 'all') 
     bankCommissionSetting
   ] = await Promise.all([
     supabase.from('monthly_branch_revenue').select('branch_id,total_revenue,cash_amount,bank_amount,wolt_amount').eq('month', monthDate),
-    supabase.from('daily_revenue').select('branch_id,cash_amount,bank_amount,wolt_amount').gte('revenue_date', monthDate).lt('revenue_date', monthEnd).is('deleted_at', null),
+    readOnce(`monthly-daily-revenue:${monthDate}`, () => supabase.from('daily_revenue').select('branch_id,cash_amount,bank_amount,wolt_amount').gte('revenue_date', monthDate).lt('revenue_date', monthEnd).is('deleted_at', null)),
     supabase.from('monthly_branch_service_charge_cost').select('branch_id,staff_cost_amount').eq('month', monthDate),
     supabase.from('daily_expenses').select('branch_id,expense_date,amount,custom_category,expense_categories(name)').gte('expense_date', monthDate).lt('expense_date', monthEnd).is('deleted_at', null),
     supabase.from('supplier_purchases').select('branch_id,purchase_date,total_amount,supplier_purchase_items(total_amount,supplier_products(name,category))').gte('purchase_date', monthDate).lt('purchase_date', monthEnd).is('deleted_at', null),
     supabase.from('daily_expenses').select('branch_id,expense_date,amount,custom_category,expense_categories(name)').gte('expense_date', historyStart).lt('expense_date', historyEnd).is('deleted_at', null),
     supabase.from('supplier_purchases').select('branch_id,purchase_date,total_amount,supplier_purchase_items(total_amount,supplier_products(name,category))').gte('purchase_date', historyStart).lt('purchase_date', historyEnd).is('deleted_at', null),
     supabase.from('monthly_branch_revenue').select('branch_id,month,total_revenue,cash_amount,bank_amount,wolt_amount').gte('month', historyStart).lt('month', historyEnd),
-    supabase.from('employees').select('id,branch_id,position,monthly_salary,salary_type,daily_rate,is_active,employment_status').eq('is_active', true),
+    readOnce('active-employees', () => supabase.from('employees').select('id,branch_id,position,monthly_salary,salary_type,daily_rate,is_active,employment_status').eq('is_active', true)),
     supabase.from('salary_periods').select('branch_id,salary_month,salary_gross,salary_net').eq('salary_month', monthDate),
     supabase.from('salary_periods').select('branch_id,salary_month,salary_gross,salary_net').gte('salary_month', historyStart).lt('salary_month', historyEnd),
     supabase.from('salary_periods').select('employee_id,branch_id,salary_month,salary_gross,salary_net,card_payment,cash_payment,advance_amount,deduction_amount,previous_balance_amount,employees(id,branch_id,position,is_active,employment_status)').eq('salary_month', monthDate),
     supabase.from('salary_periods').select('employee_id,branch_id,salary_month,salary_gross,salary_net,card_payment,cash_payment,advance_amount,deduction_amount,previous_balance_amount,employees(id,branch_id,position,is_active,employment_status)').gte('salary_month', historyStart).lt('salary_month', historyEnd),
     supabase.from('branches').select('id,name,service_charge_enabled,service_charge_percent,service_staff_cost_percent'),
     readRmsAppSetting(RMS_BRANCH_RENT_FORECAST_SETTING, {}),
-    readRmsAppSetting(RMS_BRANCH_TAX_RATE_SETTING, {}),
-    readRmsAppSetting(RMS_BANK_COMMISSION_RATE_SETTING, RMS_DEFAULT_BANK_COMMISSION_RATE)
+    readOnce('setting:branch-tax', () => readRmsAppSetting(RMS_BRANCH_TAX_RATE_SETTING, {})),
+    readOnce('setting:bank-commission', () => readRmsAppSetting(RMS_BANK_COMMISSION_RATE_SETTING, RMS_DEFAULT_BANK_COMMISSION_RATE))
   ])
 
   const bankCommissionRate = rmsBankCommissionRate(bankCommissionSetting)
@@ -396,7 +396,11 @@ async function rmsCalculateNetworkForecastForMonth(y, m, scopeBranchId = 'all') 
     if (daily > 0) return daily * 26
     return 0
   }
-  const staffSnapshotResult = await fetchRmsStaffWorkspaceSnapshot(monthDate).catch(() => ({ data: null }))
+  // The snapshot is a fallback only. With both direct sources available its
+  // payload is unused, so avoid an extra serialized RPC on the critical path.
+  const staffSnapshotResult = (employeeRows || []).length && (currentSalaryPeriodRows || []).length
+    ? { data: null }
+    : await fetchRmsStaffWorkspaceSnapshot(monthDate).catch(() => ({ data: null }))
   const staffSnapshot = staffSnapshotResult?.data || null
   const snapshotEmployees = Array.isArray(staffSnapshot?.employees) ? staffSnapshot.employees : []
   const snapshotSalaryPeriods = Array.isArray(staffSnapshot?.salary_periods) ? staffSnapshot.salary_periods : []
@@ -617,8 +621,8 @@ async function rmsCalculateNetworkForecastForMonth(y, m, scopeBranchId = 'all') 
   return { forecastRevenue, forecastProfit, avg, forecastExpenses, forecastMargin, details }
 }
 
-async function rmsFinanceForecastEngine(y, m, scopeBranchId = 'all') {
-  const raw = await rmsCalculateNetworkForecastForMonth(y, m, scopeBranchId)
+async function rmsFinanceForecastEngine(y, m, scopeBranchId = 'all', readOnce = (_key, read) => read()) {
+  const raw = await rmsCalculateNetworkForecastForMonth(y, m, scopeBranchId, readOnce)
   const forecastRevenue = parseNum(raw?.forecastRevenue)
   const forecastExpenses = parseNum(raw?.forecastExpenses)
   const forecastProfit = parseNum(raw?.forecastProfit)
@@ -1552,7 +1556,7 @@ function MonthlySalesLineChart({ rows = [], title = 'Продажи по мес�
   </div>
 }
 
-async function rmsLoadDailyRevenueRowsForChart(y, m, selectedBranchId = '__all__') {
+async function rmsLoadDailyRevenueRowsForChart(y, m, selectedBranchId = '__all__', readOnce = (_key, read) => read()) {
   const monthKey = `${Number(y)}-${String(Number(m)).padStart(2, '0')}`
   const start = `${monthKey}-01`
   const end = rmsNextMonthStart(monthKey)
@@ -1563,7 +1567,7 @@ async function rmsLoadDailyRevenueRowsForChart(y, m, selectedBranchId = '__all__
   if (selectedBranchId && selectedBranchId !== '__all__') query = query.eq('branch_id', selectedBranchId)
   const [{ data, error }, bankCommissionSetting] = await Promise.all([
     query,
-    readRmsAppSetting(RMS_BANK_COMMISSION_RATE_SETTING, RMS_DEFAULT_BANK_COMMISSION_RATE)
+    readOnce('setting:bank-commission', () => readRmsAppSetting(RMS_BANK_COMMISSION_RATE_SETTING, RMS_DEFAULT_BANK_COMMISSION_RATE))
   ])
   if (error) throw error
   const bankCommissionRate = rmsBankCommissionRate(bankCommissionSetting)
@@ -1590,7 +1594,7 @@ function rmsSalaryPeriodTotal(row = {}) {
 
 function Dashboard({ t }) {
   const DEFAULT_TAX_RATE = 8
-  const branches = useBranches(true)
+  const { branches, loaded: branchesLoaded } = useBranches(true, true)
   const DASH_ALL_BRANCHES = '__all__'
   const now = new Date()
   const [branchId, setBranchId] = useState(DASH_ALL_BRANCHES)
@@ -1601,10 +1605,15 @@ function Dashboard({ t }) {
   const [dailyRevenueRows, setDailyRevenueRows] = useState([])
   const [expenseGrowthSort, setExpenseGrowthSort] = useState('amount')
   const loadRequestRef = useRef(0)
+  const loadedSelectionRef = useRef('')
+  const selectionKey = `${year}/${month}/${branchId}`
 
-  useEffect(() => { load() }, [year, month, branchId, branches.length])
+  useEffect(() => {
+    if (branchesLoaded) load()
+    return () => { loadRequestRef.current += 1 }
+  }, [year, month, branchId, branches.length, branchesLoaded])
 
-  async function calcMonth(y, m, { includeForecast = true } = {}) {
+  async function calcMonth(y, m, { includeForecast = true, readOnce = (_key, read) => read() } = {}) {
     const monthDate = monthStart(y, m)
     const monthEnd = rmsNextMonthStart(monthDate.slice(0, 7))
     const [
@@ -1626,23 +1635,23 @@ function Dashboard({ t }) {
       syncedForecast
     ] = await Promise.all([
       supabase.from('monthly_branch_revenue').select('*').eq('month', monthDate),
-      supabase.from('daily_revenue').select('branch_id,cash_amount,bank_amount,wolt_amount').gte('revenue_date', monthDate).lt('revenue_date', monthEnd).is('deleted_at', null),
+      readOnce(`monthly-daily-revenue:${monthDate}`, () => supabase.from('daily_revenue').select('branch_id,cash_amount,bank_amount,wolt_amount').gte('revenue_date', monthDate).lt('revenue_date', monthEnd).is('deleted_at', null)),
       supabase.from('monthly_branch_expenses').select('*').eq('month', monthDate),
       supabase.from('daily_expenses').select('branch_id, amount, comment, custom_category, expense_categories(name)').gte('expense_date', monthDate).lt('expense_date', monthEnd).is('deleted_at', null),
       supabase.from('salary_periods').select('branch_id,salary_gross,salary_net').eq('salary_month', monthDate),
       supabase.from('monthly_branch_service_charge_cost').select('*').eq('month', monthDate),
-      supabase.from('supplier_balances_v2').select('*'),
-      supabase.from('suppliers').select('id,name,payment_term_days,credit_limit,is_active').eq('is_active', true),
+      readOnce('supplier-balances-v2', () => supabase.from('supplier_balances_v2').select('*')),
+      readOnce('active-suppliers', () => supabase.from('suppliers').select('id,name,payment_term_days,credit_limit,is_active').eq('is_active', true)),
       supabase.from('supplier_purchases').select('id,supplier_id,branch_id,purchase_date,invoice_number,total_amount,deleted_at,supplier_purchase_items(total_amount,supplier_products(name,category))').gte('purchase_date', monthDate).lt('purchase_date', monthEnd).is('deleted_at', null),
-      supabase.from('supplier_purchases').select('id,supplier_id,purchase_date,invoice_number,total_amount,deleted_at').is('deleted_at', null),
-      supabase.from('supplier_payments').select('supplier_id,amount'),
-      supabase.from('employees').select('id,branch_id,position,monthly_salary,salary_type,daily_rate,is_active,employment_status').eq('is_active', true),
+      readOnce('supplier-purchase-history', () => supabase.from('supplier_purchases').select('id,supplier_id,purchase_date,invoice_number,total_amount,deleted_at').is('deleted_at', null)),
+      readOnce('supplier-payment-history', () => supabase.from('supplier_payments').select('supplier_id,amount')),
+      readOnce('active-employees', () => supabase.from('employees').select('id,branch_id,position,monthly_salary,salary_type,daily_rate,is_active,employment_status').eq('is_active', true)),
       supabase.from('salary_periods').select('employee_id,branch_id,salary_gross,salary_net,card_payment,cash_payment,advance_amount,deduction_amount,previous_balance_amount').eq('salary_month', monthDate),
-      readRmsAppSetting(RMS_BRANCH_TAX_RATE_SETTING, {}),
-      readRmsAppSetting(RMS_BANK_COMMISSION_RATE_SETTING, RMS_DEFAULT_BANK_COMMISSION_RATE),
+      readOnce('setting:branch-tax', () => readRmsAppSetting(RMS_BRANCH_TAX_RATE_SETTING, {})),
+      readOnce('setting:bank-commission', () => readRmsAppSetting(RMS_BANK_COMMISSION_RATE_SETTING, RMS_DEFAULT_BANK_COMMISSION_RATE)),
       // Forecast is independent of the actual-month calculations. Previous-month
       // forecast fields are not rendered by Dashboard, so do not fetch them.
-      includeForecast ? rmsFinanceForecastEngine(y, m, branchId) : Promise.resolve({})
+      includeForecast ? rmsFinanceForecastEngine(y, m, branchId, readOnce) : Promise.resolve({})
     ])
 
     const bankCommissionRate = rmsBankCommissionRate(bankCommissionSetting)
@@ -1654,7 +1663,7 @@ function Dashboard({ t }) {
     let supplierRows = supplierResult?.data || []
 
     if (!supplierRows.length || supplierResult?.error) {
-      const fallback = await supabase.from('supplier_balances').select('*')
+      const fallback = await readOnce('supplier-balances-fallback', () => supabase.from('supplier_balances').select('*'))
       supplierRows = (fallback.data || []).map(r => ({
         supplier_id: r.supplier_id,
         supplier_name: r.supplier_name,
@@ -1888,7 +1897,7 @@ function Dashboard({ t }) {
     return { revenue, expenses, net, supplierDebt, supplierDebtRows, branchRows: dashboardBranchRows, activeBranchIds: [...activeBranchIds], preliminarySupplierExpense, forecastRevenue, forecastProfit, forecastDetails: syncedForecast.details || [], forecastExpenses: syncedForecast.forecastExpenses, forecastMargin: syncedForecast.forecastMargin, expenseRows, foodCostAmount }
   }
 
-  async function calcDashboardRevenueUntilDay(y, m, dayLimit) {
+  async function calcDashboardRevenueUntilDay(y, m, dayLimit, readOnce = (_key, read) => read()) {
     const daysInMonth = new Date(Number(y), Number(m), 0).getDate()
     const safeDay = Math.max(1, Math.min(Number(dayLimit) || daysInMonth, daysInMonth))
     const monthKey = `${Number(y)}-${String(Number(m)).padStart(2, '0')}`
@@ -1906,7 +1915,7 @@ function Dashboard({ t }) {
 
     const [{ data, error }, bankCommissionSetting] = await Promise.all([
       query,
-      readRmsAppSetting(RMS_BANK_COMMISSION_RATE_SETTING, RMS_DEFAULT_BANK_COMMISSION_RATE)
+      readOnce('setting:bank-commission', () => readRmsAppSetting(RMS_BANK_COMMISSION_RATE_SETTING, RMS_DEFAULT_BANK_COMMISSION_RATE))
     ])
     if (error) throw error
     const bankCommissionRate = rmsBankCommissionRate(bankCommissionSetting)
@@ -1916,7 +1925,7 @@ function Dashboard({ t }) {
     }, 0)
   }
 
-  async function calcDashboardLastFilledRevenueDay(y, m, maxDay) {
+  async function calcDashboardLastFilledRevenueDay(y, m, maxDay, readOnce = (_key, read) => read()) {
     const daysInMonth = new Date(Number(y), Number(m), 0).getDate()
     const safeMaxDay = Math.max(1, Math.min(Number(maxDay) || daysInMonth, daysInMonth))
     const monthKey = `${Number(y)}-${String(Number(m)).padStart(2, '0')}`
@@ -1934,7 +1943,7 @@ function Dashboard({ t }) {
 
     const [{ data, error }, bankCommissionSetting] = await Promise.all([
       query,
-      readRmsAppSetting(RMS_BANK_COMMISSION_RATE_SETTING, RMS_DEFAULT_BANK_COMMISSION_RATE)
+      readOnce('setting:bank-commission', () => readRmsAppSetting(RMS_BANK_COMMISSION_RATE_SETTING, RMS_DEFAULT_BANK_COMMISSION_RATE))
     ])
     if (error) throw error
     const bankCommissionRate = rmsBankCommissionRate(bankCommissionSetting)
@@ -1971,24 +1980,68 @@ function Dashboard({ t }) {
     }
   }
 
+  async function loadDashboardComparison(pm, readOnce) {
+    const today = new Date()
+    const isCurrentSelectedMonth = Number(year) === today.getFullYear() && Number(month) === today.getMonth() + 1
+    const daysInSelectedMonth = new Date(Number(year), Number(month), 0).getDate()
+    const currentDay = today.getDate()
+    const shouldCompareDayToDay = isCurrentSelectedMonth && currentDay < daysInSelectedMonth
+
+    if (shouldCompareDayToDay) {
+      try {
+        // v361: compare only up to the latest day with entered revenue in the current month.
+        // If today's revenue has not been entered yet, use yesterday / the latest filled day,
+        // so Dashboard does not show an artificially low revenue dynamic.
+        const lastFilledDay = await calcDashboardLastFilledRevenueDay(year, month, currentDay, readOnce)
+        const comparisonDay = Math.max(1, Math.min(currentDay, lastFilledDay || Math.max(1, currentDay - 1)))
+        const usedPreviousDay = comparisonDay < currentDay
+        const [currentMtdRevenue, previousMtdRevenue] = await Promise.all([
+          calcDashboardRevenueUntilDay(year, month, comparisonDay, readOnce),
+          calcDashboardRevenueUntilDay(pm.year, pm.month, comparisonDay, readOnce)
+        ])
+
+        return {
+          currentRevenue: currentMtdRevenue,
+          previousRevenue: previousMtdRevenue,
+          revenueLabel: `день-к-дню · 1-${comparisonDay}${usedPreviousDay ? ' · до последнего заполненного дня' : ''}`,
+          revenueTooltip: usedPreviousDay
+            ? `Сегодняшняя выручка ещё не заполнена. Сравнение считается по последнему заполненному дню: 1-${comparisonDay} текущего месяца против 1-${comparisonDay} предыдущего месяца. Предыдущий период: ${fmt(previousMtdRevenue)} AZN`
+            : `День-к-дню: 1-${comparisonDay} текущего месяца против 1-${comparisonDay} предыдущего месяца. Предыдущий период: ${fmt(previousMtdRevenue)} AZN`
+        }
+      } catch (comparisonError) {
+        console.error('Dashboard day-to-day revenue comparison failed:', comparisonError)
+      }
+    }
+    return null
+  }
+
   async function load() {
     // Filter changes may start a new load before the previous one finishes.
     // Only the newest request may update the Dashboard state.
     const requestId = ++loadRequestRef.current
+    // Share only identical reads inside this load. A new filter/load gets a
+    // fresh scope: no persistent cache, stale values, or cross-user reuse.
+    const reads = new Map()
+    const readOnce = (key, read) => {
+      if (!reads.has(key)) reads.set(key, Promise.resolve().then(read))
+      return reads.get(key)
+    }
     try {
       const pm = prevMonth(year, month)
       // Start independent reads together. Attach optional-read error handlers
       // immediately so a rejected background read cannot escape unhandled.
-      const [current, previousResult, dailyChartRows] = await Promise.all([
-        calcMonth(year, month),
-        calcMonth(pm.year, pm.month, { includeForecast: false }).catch(previousError => {
+      const [current, previousResult, dailyChartRows, comparisonResult] = await Promise.all([
+        calcMonth(year, month, { readOnce }),
+        calcMonth(pm.year, pm.month, { includeForecast: false, readOnce }).catch(previousError => {
           console.error('Dashboard previous month load failed:', previousError)
           return emptyDashboardData()
         }),
-        rmsLoadDailyRevenueRowsForChart(year, month, branchId === DASH_ALL_BRANCHES ? '__all__' : branchId).catch(chartError => {
+        rmsLoadDailyRevenueRowsForChart(year, month, branchId === DASH_ALL_BRANCHES ? '__all__' : branchId, readOnce).catch(chartError => {
           console.error('Dashboard daily chart load failed:', chartError)
           return []
-        })
+        }),
+        // MTD comparison does not depend on the forecast or monthly KPIs.
+        loadDashboardComparison(pm, readOnce)
       ])
       if (requestId !== loadRequestRef.current) return
       if (branchId !== DASH_ALL_BRANCHES && !current.activeBranchIds.includes(String(branchId))) {
@@ -2004,56 +2057,27 @@ function Dashboard({ t }) {
         revenueTooltip: `Сравнение с предыдущим месяцем: ${fmt(current.revenue)} AZN против ${fmt(previous.revenue)} AZN`
       }
 
-      const today = new Date()
-      const isCurrentSelectedMonth = Number(year) === today.getFullYear() && Number(month) === today.getMonth() + 1
-      const daysInSelectedMonth = new Date(Number(year), Number(month), 0).getDate()
-      const currentDay = today.getDate()
-      const shouldCompareDayToDay = isCurrentSelectedMonth && currentDay < daysInSelectedMonth
-
-      if (shouldCompareDayToDay) {
-        try {
-          // v361: compare only up to the latest day with entered revenue in the current month.
-          // If today's revenue has not been entered yet, use yesterday / the latest filled day,
-          // so Dashboard does not show an artificially low revenue dynamic.
-          const lastFilledDay = await calcDashboardLastFilledRevenueDay(year, month, currentDay)
-          const comparisonDay = Math.max(1, Math.min(currentDay, lastFilledDay || Math.max(1, currentDay - 1)))
-          const usedPreviousDay = comparisonDay < currentDay
-          const [currentMtdRevenue, previousMtdRevenue] = await Promise.all([
-            calcDashboardRevenueUntilDay(year, month, comparisonDay),
-            calcDashboardRevenueUntilDay(pm.year, pm.month, comparisonDay)
-          ])
-
-          comparison = {
-            currentRevenue: currentMtdRevenue,
-            previousRevenue: previousMtdRevenue,
-            revenueLabel: `день-к-дню · 1-${comparisonDay}${usedPreviousDay ? ' · до последнего заполненного дня' : ''}`,
-            revenueTooltip: usedPreviousDay
-              ? `Сегодняшняя выручка ещё не заполнена. Сравнение считается по последнему заполненному дню: 1-${comparisonDay} текущего месяца против 1-${comparisonDay} предыдущего месяца. Предыдущий период: ${fmt(previousMtdRevenue)} AZN`
-              : `День-к-дню: 1-${comparisonDay} текущего месяца против 1-${comparisonDay} предыдущего месяца. Предыдущий период: ${fmt(previousMtdRevenue)} AZN`
-          }
-
-          previous = {
-            ...previous,
-            revenue: previousMtdRevenue
-          }
-        } catch (comparisonError) {
-          console.error('Dashboard day-to-day revenue comparison failed:', comparisonError)
-        }
+      if (comparisonResult) {
+        comparison = comparisonResult
+        previous = { ...previous, revenue: comparisonResult.previousRevenue }
       }
 
       if (requestId !== loadRequestRef.current) return
       setDailyRevenueRows(dailyChartRows || [])
       setVisibleBranchIds(current.activeBranchIds)
+      loadedSelectionRef.current = selectionKey
       setData({ ...current, previous, comparison })
     } catch (error) {
       if (requestId !== loadRequestRef.current) return
       console.error('Dashboard load failed:', error)
       setDailyRevenueRows([])
+      loadedSelectionRef.current = selectionKey
       setData(emptyDashboardData())
     }
   }
 
   if (!data) return <div className="module-placeholder">{t('loading')}</div>
+  const isLoadingSelection = loadedSelectionRef.current !== selectionKey
   const revenueCompareCurrent = parseNum(data.comparison?.currentRevenue ?? data.revenue)
   const revenueComparePrevious = parseNum(data.comparison?.previousRevenue ?? data.previous?.revenue)
   const revenueCompareLabel = data.comparison?.revenueLabel || 'месяц-к-месяцу'
@@ -2112,6 +2136,7 @@ function Dashboard({ t }) {
       </div>
     </section>
 
+    {isLoadingSelection ? <div className="module-placeholder" role="status">{t('loading')}</div> : <>
     <section className="dashboard-v23-kpis dashboard-v29-kpis">
       <div className="dash-kpi dash-kpi-blue"><span className="dash-kpi-icon">↗</span><div><em>Выручка за месяц</em><strong>{fmt(data.revenue)} <small>AZN</small></strong><p className="dash-trend-value" style={{ color: revenueChange >= 0 ? '#10b981' : '#ef4444', fontWeight: 900 }} title={revenueCompareTooltip}>{revenueChange >= 0 ? '▲' : '▼'} {pct(Math.abs(revenueChange))}</p></div></div>
       <div className="dash-kpi dash-kpi-purple"><span className="dash-kpi-icon">▥</span><div><em>Расходы</em><strong>{fmt(data.expenses)} <small>AZN</small></strong><p>{data.revenue ? pct(data.expenses / data.revenue * 100) : '0.0%'} от выручки</p></div></div>
@@ -2204,6 +2229,7 @@ function Dashboard({ t }) {
         </div>
       </div>
     </section>
+    </>}
   </section>
 }
 
