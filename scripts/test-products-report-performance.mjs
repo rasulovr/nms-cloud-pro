@@ -21,7 +21,7 @@ const sourceRows=Array.from({length:1204},(_,i)=>{
 }).sort((a,b)=>b.purchase_date.localeCompare(a.purchase_date)||b.created_at.localeCompare(a.created_at)||a.id.localeCompare(b.id))
 const unitHelpers=fs.readFileSync('src/main.parts/part-00.jsxpart','utf8').split('// v257')[0]
 function loadCode(source){const begin=source.indexOf('  const beginRmsProductsReportProgress');return source.slice(begin,source.indexOf('\n  useEffect(() => {\n    if (!branches.length) return',begin))}
-function harness(source,{scope='all',month='all',from='',to='',mode='period',data=sourceRows,rpcFails=false,directFails=false,accessDenied=false,rpcStatus=0,directStatus=0,workspaceStatus=0,lag=0}={},shared){
+function harness(source,{scope='all',month='all',from='',to='',mode='period',data=sourceRows,rpcFails=false,directFails=false,mainProjectionFails=false,failDirectAfter=Infinity,accessDenied=false,rpcStatus=0,directStatus=0,workspaceStatus=0,lag=0}={},shared){
   const state=shared||{report:{},progress:{},request:{current:0},timer:{current:null},timers:new Map(),timerCounter:0,writes:[]}
   const calls=[];let active=0,maxActive=0
   const context={Date,Map,Set,Promise,console,
@@ -42,7 +42,7 @@ function harness(source,{scope='all',month='all',from='',to='',mode='period',dat
       return rpcFails?{data:null,error:new Error('Synthetic RPC unavailable')}:{data:clone(data),error:null}
     },from(table){const filters=[];let start=0,end=999;const q=new Proxy({}, {get(_,key){if(key==='then')return (ok,no)=>{calls.push({kind:'direct',table,start,end});let rows=data;
         for(const [op,k,v]of filters){if(op==='eq')rows=rows.filter(r=>r[k]===v);if(op==='gte')rows=rows.filter(r=>r[k]>=v);if(op==='lt')rows=rows.filter(r=>r[k]<v);if(op==='is')rows=rows.filter(r=>r[k]==null)}
-        return Promise.resolve(directStatus?{data:null,error:{message:'Forbidden'},status:directStatus}:directFails?{data:null,error:Error('Synthetic direct unavailable')}:{data:clone(rows.slice(start,end+1)),error:null}).then(ok,no)}
+        return Promise.resolve(directStatus?{data:null,error:{message:'Forbidden'},status:directStatus}:(directFails||start>=failDirectAfter||(mainProjectionFails&&filters.some(([op,value])=>op==='select'&&value.includes('cancelled_at'))))?{data:null,error:Error('Synthetic direct unavailable')}:{data:clone(rows.slice(start,end+1)),error:null}).then(ok,no)}
         return (...args)=>{if(key==='range')[start,end]=args;else filters.push([key,...args]);return q}}});return q}}
   }
   vm.createContext(context);vm.runInContext(unitHelpers+loadCode(source)+';globalThis.load = loadRmsProductsReport',context)
@@ -56,8 +56,38 @@ for(const options of [{},{scope:'b1'},{month:'2026-10'},{month:'2026-09'},{month
 
 }
 for(const fallback of [{rpcFails:true},{rpcFails:true,directFails:true}]){
-  const old=harness(baseline,{month:'2026-10',...fallback}),next=harness(candidate,{month:'2026-10',...fallback});await old.load();await next.load();assert.deepEqual(next.result(),old.result(),'legacy fallback equivalence');equivalenceCases++
+const old=harness(baseline,{month:'2026-10',...fallback}),next=harness(candidate,{month:'2026-10',...fallback});await old.load();await next.load();assert.deepEqual(next.result(),old.result(),'legacy fallback equivalence');equivalenceCases++
 }
+// Nested item order is explicit in full RPC but unspecified in direct/workspace
+// fallback. Both fallback paths must reproduce full-source results, including
+// equal-date items and amount/price comparisons, without sorting purchase ties.
+const item=(id,price)=>({id,product_id:'source-tie',quantity:2,unit:'kg',unit_price:price,total_amount:price*2,supplier_products:{name:'Synthetic source tie',category:'Parity',base_unit:'kg'}})
+const tiedPurchase=(id,date,prices)=>({id,supplier_id:'s0',branch_id:'b0',purchase_date:date,created_at:'2026-10-18T00:00:00Z',invoice_number:id,suppliers:{name:'Synthetic supplier 0'},deleted_at:null,supplier_purchase_items:[item('00000000-0000-0000-0000-000000000001',prices[0]),item('ffffffff-ffff-ffff-ffff-ffffffffffff',prices[1])]})
+const fullSource=[tiedPurchase('purchase-z','2026-10-18',[1,9]),tiedPurchase('purchase-a','2026-10-18',[2,8]),...clone(sourceRows),tiedPurchase('purchase-prior','2026-09-18',[3,7])]
+for(const p of fullSource)p.supplier_purchase_items.sort((a,b)=>a.id<b.id?-1:a.id>b.id?1:0)
+const fallbackSource=clone(fullSource);for(const p of fallbackSource)p.supplier_purchase_items.reverse()
+const inputBefore=serialize(fallbackSource)
+let sourcePathCases=0
+for(const options of [{},{month:'2026-10'},{scope:'b0'},{from:'2026-09-01',to:'2026-10-18'},{mode:'last'}]){
+ const reference=harness(baseline,{...options,data:fullSource});await reference.load()
+ for(const fallback of [{rpcFails:true},{rpcFails:true,mainProjectionFails:true},{rpcFails:true,directFails:true},{rpcFails:true,failDirectAfter:1000}]){
+  const test=harness(candidate,{...options,data:fallbackSource,...fallback});await test.load()
+  assert.deepEqual(test.result(),reference.result(),'full-source parity '+JSON.stringify({options,fallback}))
+  assert.equal(test.result().rows.find(r=>r.product_id==='source-tie').latest_price,8,'purchase ties retain original order')
+  if(!options.month&&!options.scope&&!options.from&&!options.mode&&!fallback.directFails)assert.ok(test.calls.filter(c=>c.kind==='direct').some(c=>c.start===1000),'fallback completes multiple pages')
+  sourcePathCases++
+ }
+}
+assert.equal(serialize(fallbackSource),inputBefore,'fallback normalization never mutates supplied rows')
+// Exercise the normalization itself without the harness cloning its source.
+const normalizeStart=candidate.indexOf('      const orderFallbackPurchaseItemsLikeFullRpc =')
+const normalizeEnd=candidate.indexOf('      const isProductsReportAccessError',normalizeStart)
+const immutable=clone(fallbackSource.slice(0,2));immutable.forEach(p=>{Object.freeze(p.supplier_purchase_items);Object.freeze(p)});Object.freeze(immutable)
+const normalized=vm.runInNewContext(candidate.slice(normalizeStart,normalizeEnd)+';orderFallbackPurchaseItemsLikeFullRpc(input)',{input:immutable})
+assert.deepEqual(Array.from(normalized,p=>p.id),['purchase-z','purchase-a'])
+assert.equal(normalized[0].supplier_purchase_items[0].id,'00000000-0000-0000-0000-000000000001')
+assert.notEqual(normalized[0],immutable[0]);assert.notEqual(normalized[0].supplier_purchase_items,immutable[0].supplier_purchase_items)
+
 const old=harness(baseline,{month:'2026-10'}),next=harness(candidate,{month:'2026-10'});await old.load();await next.load()
 assert.equal(next.calls.filter(c=>c.kind==='rpc').length,1,'one raw history read per report load')
 const beforeReads=old.calls.filter(c=>c.kind==='rpc').length
@@ -107,4 +137,4 @@ function view(source,report,overrides={}){
 }
 for(const options of [{},{productsReportSearch:'product 1'},{productsReportCategory:'Category 2'},{productsReportSupplierId:'s1'},{productsReportSort:{field:'name',dir:'asc'}},{productsReportSort:{field:'quantity',dir:'desc'}},{productsReportPage:2},{productsReportPage:999},{productsPriceCompareMode:'last'},{productsPriceDynamicsTab:'down'}])assert.deepEqual(view(candidate,next.state.report,options),view(baseline,old.state.report,options),'view parity '+JSON.stringify(options))
 
-console.log(JSON.stringify({fixtureOnly:true,equivalenceCases,currentMonthFullReadsBefore:beforeReads,currentMonthFullReadsAfter:1,viewCases:10,staleAndTimers:'passed',permissionDenial:'terminal',financialAndMetadataParity:'exact'}))
+console.log(JSON.stringify({fixtureOnly:true,equivalenceCases,sourcePathCases,currentMonthFullReadsBefore:beforeReads,currentMonthFullReadsAfter:1,viewCases:10,staleAndTimers:'passed',permissionDenial:'terminal',financialAndMetadataParity:'exact'}))

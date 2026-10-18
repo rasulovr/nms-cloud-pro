@@ -7444,6 +7444,17 @@ function Reports({ t, permissions = [], isAdmin = false }) {
         String(b.created_at || '').localeCompare(String(a.created_at || ''))
       )
 
+      const orderFallbackPurchaseItemsLikeFullRpc = rows => (rows || []).map(purchase => {
+        if (!Array.isArray(purchase?.supplier_purchase_items)) return purchase
+        // The full RPC orders nested items by UUID id ASC. Match that contract
+        // in fallback sources only; keep purchase order/ties and source objects intact.
+        return { ...purchase, supplier_purchase_items: [...purchase.supplier_purchase_items].sort((a, b) => {
+          const left = String(a.id || '')
+          const right = String(b.id || '')
+          return left < right ? -1 : left > right ? 1 : 0
+        }) }
+      })
+
       const isProductsReportAccessError = error =>
         ['42501', 'PGRST301', 'PGRST302', 'PGRST303'].includes(String(error?.code || '')) ||
         [401, 403].includes(Number(error?.status)) ||
@@ -7501,7 +7512,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
             from += pageSize
             if (from > 50000) break
           }
-          return result
+          return orderFallbackPurchaseItemsLikeFullRpc(result)
         }
 
         try {
@@ -7521,7 +7532,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
           const readError = productsReportReadError(error, status)
           if (readError) throw readError
           if (!data || typeof data !== 'object') throw new Error('Empty RMS suppliers workspace')
-          return normalizeReportSupplierPurchasesPayload(data.supplier_purchases || [])
+          return orderFallbackPurchaseItemsLikeFullRpc(normalizeReportSupplierPurchasesPayload(data.supplier_purchases || []))
         })()
         return workspacePurchasesPromise
       }
