@@ -5429,7 +5429,7 @@ function ReportsBazarDailyFullCardV220() {
 }
 
 function Reports({ t, permissions = [], isAdmin = false }) {
-  const branches = useBranches(true)
+  const { branches, loaded: reportBranchesLoaded } = useBranches(true, true)
   const [reports, setReports] = useState(() => readAikoSalesReports())
   const [branchMap, setBranchMap] = useState(() => readAikoBranchMap())
   const [reportsTab, setReportsTab] = useState('overview')
@@ -5559,7 +5559,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
   const [debtVoen, setDebtVoen] = useState('all')
   const [debtPage, setDebtPage] = useState(1)
   const [debtPageSize, setDebtPageSize] = useState(50)
-  const [rmsProductsReport, setRmsProductsReport] = useState({ loading: false, error: '', rows: [], detailRows: [], totals: { amount: 0, products: 0, items: 0, invoices: 0, suppliers: 0 }, categories: [], suppliers: [], bySupplier: [], byCategory: [], priceDynamics: [], lastPurchaseDynamics: [], priceDynamicsMeta: { currentLabel: '', previousLabel: '', compareAvailable: false }, amountDynamicsMeta: { currentLabel: '', previousLabel: '', compareAvailable: false, autoCompare: false } })
+  const [rmsProductsReportData, setRmsProductsReport] = useState({ loading: false, error: '', rows: [], detailRows: [], totals: { amount: 0, products: 0, items: 0, invoices: 0, suppliers: 0 }, categories: [], suppliers: [], bySupplier: [], byCategory: [], priceDynamics: [], lastPurchaseDynamics: [], priceDynamicsMeta: { currentLabel: '', previousLabel: '', compareAvailable: false }, amountDynamicsMeta: { currentLabel: '', previousLabel: '', compareAvailable: false, autoCompare: false } })
   const [rmsProductsReportProgress, setRmsProductsReportProgress] = useState({ active: false, progress: 0, title: '', detail: '', step: '', status: 'idle' })
   const [productsReportDateFrom, setProductsReportDateFrom] = useState('')
   const [productsReportDateTo, setProductsReportDateTo] = useState('')
@@ -5571,6 +5571,15 @@ function Reports({ t, permissions = [], isAdmin = false }) {
   const [productsPriceDynamicsTab, setProductsPriceDynamicsTab] = useState('up')
   const [productsReportPage, setProductsReportPage] = useState(1)
   const [productsReportDetailsOpen, setProductsReportDetailsOpen] = useState(false)
+  const rmsProductsReportRequestRef = useRef(0)
+  const rmsProductsReportProgressTimerRef = useRef(null)
+  const productsReportSelectionKey = JSON.stringify([branchFilter, monthFilter, productsReportDateFrom, productsReportDateTo])
+  // Hide the previous selection before effects/network work start. Refreshing
+  // the same selection can keep its existing rows visible beneath progress.
+  const rmsProductsReport = rmsProductsReportData.selectionKey === productsReportSelectionKey
+    ? rmsProductsReportData
+    : { loading: true, error: '', rows: [], detailRows: [], totals: { amount: 0, products: 0, items: 0, invoices: 0, suppliers: 0 }, categories: [], suppliers: [], bySupplier: [], byCategory: [], priceDynamics: [], lastPurchaseDynamics: [], priceDynamicsMeta: {}, amountDynamicsMeta: {} }
+
   const [supplierReportSort, setSupplierReportSort] = useState({ field: 'balance', dir: 'desc' })
   const [supplierReportTab, setSupplierReportTab] = useState('overview')
   const [supplierReportGrouping, setSupplierReportGrouping] = useState('month')
@@ -5864,9 +5873,13 @@ function Reports({ t, permissions = [], isAdmin = false }) {
   }, [effectiveReportsTab, branchFilter, monthFilter, branches.length])
 
   useEffect(() => {
-    if (!isProductsReportTab) return
+    if (!isProductsReportTab || !reportBranchesLoaded) return
     loadRmsProductsReport()
-  }, [reportsTab, isProductsReportTab, branchFilter, monthFilter, productsReportDateFrom, productsReportDateTo, branches.length])
+    return () => {
+      rmsProductsReportRequestRef.current += 1
+      window.clearTimeout(rmsProductsReportProgressTimerRef.current)
+    }
+  }, [isProductsReportTab, reportBranchesLoaded, productsReportSelectionKey])
 
   useEffect(() => {
     setProductsReportPage(1)
@@ -7179,6 +7192,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
 
 
   const beginRmsProductsReportProgress = () => {
+    window.clearTimeout(rmsProductsReportProgressTimerRef.current)
     setRmsProductsReportProgress({
       active: true,
       progress: 4,
@@ -7189,7 +7203,8 @@ function Reports({ t, permissions = [], isAdmin = false }) {
     })
   }
 
-  const updateRmsProductsReportProgress = (progress, detail, step) => {
+  const updateRmsProductsReportProgress = (requestId, progress, detail, step) => {
+    if (requestId !== rmsProductsReportRequestRef.current) return
     setRmsProductsReportProgress(prev => ({
       ...prev,
       active: true,
@@ -7200,7 +7215,8 @@ function Reports({ t, permissions = [], isAdmin = false }) {
     }))
   }
 
-  const completeRmsProductsReportProgress = (detail = 'Отчёт по товарам загружен') => {
+  const completeRmsProductsReportProgress = (requestId, detail = 'Отчёт по товарам загружен') => {
+    if (requestId !== rmsProductsReportRequestRef.current) return
     setRmsProductsReportProgress(prev => ({
       ...prev,
       active: true,
@@ -7210,10 +7226,13 @@ function Reports({ t, permissions = [], isAdmin = false }) {
       step: 'Данные обновлены',
       status: 'success'
     }))
-    window.setTimeout(() => setRmsProductsReportProgress({ active: false, progress: 0, title: '', detail: '', step: '', status: 'idle' }), 850)
+    rmsProductsReportProgressTimerRef.current = window.setTimeout(() => {
+      if (requestId === rmsProductsReportRequestRef.current) setRmsProductsReportProgress({ active: false, progress: 0, title: '', detail: '', step: '', status: 'idle' })
+    }, 850)
   }
 
-  const failRmsProductsReportProgress = (error) => {
+  const failRmsProductsReportProgress = (requestId, error) => {
+    if (requestId !== rmsProductsReportRequestRef.current) return
     setRmsProductsReportProgress(prev => ({
       ...prev,
       active: true,
@@ -7223,14 +7242,19 @@ function Reports({ t, permissions = [], isAdmin = false }) {
       step: 'Проверьте источник данных',
       status: 'error'
     }))
-    window.setTimeout(() => setRmsProductsReportProgress({ active: false, progress: 0, title: '', detail: '', step: '', status: 'idle' }), 2200)
+    rmsProductsReportProgressTimerRef.current = window.setTimeout(() => {
+      if (requestId === rmsProductsReportRequestRef.current) setRmsProductsReportProgress({ active: false, progress: 0, title: '', detail: '', step: '', status: 'idle' })
+    }, 2200)
   }
 
   async function loadRmsProductsReport() {
+    if (!reportBranchesLoaded) return
+    const requestId = ++rmsProductsReportRequestRef.current
+    const isCurrent = () => requestId === rmsProductsReportRequestRef.current
     beginRmsProductsReportProgress()
     setRmsProductsReport(prev => ({ ...prev, loading: true, error: '' }))
     try {
-      updateRmsProductsReportProgress(8, 'Проверяю период и доступные источники данных…', 'Подготовка запроса')
+      updateRmsProductsReportProgress(requestId, 8, 'Проверяю период и доступные источники данных…', 'Подготовка запроса')
       const pageSize = 1000
       const addDays = (iso, days) => {
         const base = parseISODateLocal(iso)
@@ -7375,7 +7399,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
         }
       }
 
-      updateRmsProductsReportProgress(14, 'Период определён. Подключаю источник закупок…', 'Период и фильтры')
+      updateRmsProductsReportProgress(requestId, 14, 'Период определён. Подключаю источник закупок…', 'Период и фильтры')
 
       const normalizeReportSupplierPurchasesPayload = (payload) => {
         if (Array.isArray(payload)) return payload
@@ -7420,10 +7444,38 @@ function Reports({ t, permissions = [], isAdmin = false }) {
         String(b.created_at || '').localeCompare(String(a.created_at || ''))
       )
 
-      const fetchPurchasesFromSecureRpc = async () => {
-        const { data, error } = await supabase.rpc('rms_supplier_purchases_full', { p_limit: 50000 })
-        if (error) throw error
-        return normalizeReportSupplierPurchasesPayload(data)
+      const orderFallbackPurchaseItemsLikeFullRpc = rows => (rows || []).map(purchase => {
+        if (!Array.isArray(purchase?.supplier_purchase_items)) return purchase
+        // The full RPC orders nested items by UUID id ASC. Match that contract
+        // in fallback sources only; keep purchase order/ties and source objects intact.
+        return { ...purchase, supplier_purchase_items: [...purchase.supplier_purchase_items].sort((a, b) => {
+          const left = String(a.id || '')
+          const right = String(b.id || '')
+          return left < right ? -1 : left > right ? 1 : 0
+        }) }
+      })
+
+      const isProductsReportAccessError = error =>
+        ['42501', 'PGRST301', 'PGRST302', 'PGRST303'].includes(String(error?.code || '')) ||
+        [401, 403].includes(Number(error?.status)) ||
+        /permission denied|access denied|authentication required|account is not linked/i.test(String(error?.message || ''))
+      const productsReportReadError = (error, status) => {
+        if ([401, 403].includes(Number(status))) {
+          return Object.assign(new Error(error?.message || 'Доступ к источнику закупок запрещён'), { code: error?.code, status: Number(status) })
+        }
+        return error
+      }
+      let securePurchasesPromise
+      const fetchPurchasesFromSecureRpc = () => {
+        // A real promise (not a Supabase thenable) executes once for all current,
+        // previous and amount-comparison ranges. Each refresh gets a fresh scope.
+        if (!securePurchasesPromise) securePurchasesPromise = (async () => {
+          const { data, error, status } = await supabase.rpc('rms_supplier_purchases_full', { p_limit: 50000 })
+          const readError = productsReportReadError(error, status)
+          if (readError) throw readError
+          return normalizeReportSupplierPurchasesPayload(data)
+        })()
+        return securePurchasesPromise
       }
 
       const fetchPurchasesFromDirectTables = async (range) => {
@@ -7450,38 +7502,58 @@ function Reports({ t, permissions = [], isAdmin = false }) {
           let from = 0
           let result = []
           while (true) {
-            const { data, error } = await buildQuery(from, from + pageSize - 1)
-            if (error) throw error
+            if (!isCurrent()) throw new Error('Загрузка отчёта отменена')
+            const { data, error, status } = await buildQuery(from, from + pageSize - 1)
+            const readError = productsReportReadError(error, status)
+            if (readError) throw readError
             const batch = data || []
             result = result.concat(batch)
             if (batch.length < pageSize) break
             from += pageSize
             if (from > 50000) break
           }
-          return result
+          return orderFallbackPurchaseItemsLikeFullRpc(result)
         }
 
         try {
           return await fetchBySelect(selectMain)
         } catch (_error) {
+          if (!isCurrent() || isProductsReportAccessError(_error)) throw _error
           return fetchBySelect(selectFallback)
         }
       }
 
-      const fetchPurchasesFromWorkspace = async () => {
-        const workspace = await fetchRmsSuppliersWorkspace()
-        if (workspace?.error) throw workspace.error
-        return normalizeReportSupplierPurchasesPayload(workspace?.data?.supplier_purchases || [])
+      let workspacePurchasesPromise
+      const fetchPurchasesFromWorkspace = () => {
+        if (!workspacePurchasesPromise) workspacePurchasesPromise = (async () => {
+          // Same workspace RPC/projection as the existing fallback helper, but
+          // retain HTTP status so a denial cannot be mistaken for empty data.
+          const { data, error, status } = await supabase.rpc('rms_suppliers_workspace')
+          const readError = productsReportReadError(error, status)
+          if (readError) throw readError
+          if (!data || typeof data !== 'object') throw new Error('Empty RMS suppliers workspace')
+          return orderFallbackPurchaseItemsLikeFullRpc(normalizeReportSupplierPurchasesPayload(data.supplier_purchases || []))
+        })()
+        return workspacePurchasesPromise
       }
 
-      const fetchPurchases = async (range) => {
+      const purchasesByRange = new Map()
+      const fetchPurchases = (range) => {
+        const key = JSON.stringify([range?.from || '', range?.toExclusive || ''])
+        if (!purchasesByRange.has(key)) purchasesByRange.set(key, readPurchases(range))
+        return purchasesByRange.get(key)
+      }
+      const readPurchases = async (range) => {
+        if (!isCurrent()) throw new Error('Загрузка отчёта отменена')
         let fullRows = []
 
         try {
           fullRows = await fetchPurchasesFromSecureRpc()
         } catch (_rpcError) {
+          if (!isCurrent() || isProductsReportAccessError(_rpcError)) throw _rpcError
           fullRows = []
         }
+        if (!isCurrent()) throw new Error('Загрузка отчёта отменена')
 
         if (Array.isArray(fullRows) && fullRows.length) {
           return sortReportPurchases(fullRows.filter(purchase => purchaseInReportRange(purchase, range)))
@@ -7492,12 +7564,16 @@ function Reports({ t, permissions = [], isAdmin = false }) {
           if (Array.isArray(directRows) && directRows.length) {
             return sortReportPurchases(directRows.filter(purchase => purchaseInReportRange(purchase, range)))
           }
-        } catch (_directError) {}
+        } catch (_directError) {
+          if (!isCurrent() || isProductsReportAccessError(_directError)) throw _directError
+        }
 
+        if (!isCurrent()) throw new Error('Загрузка отчёта отменена')
         try {
           const workspaceRows = await fetchPurchasesFromWorkspace()
           return sortReportPurchases(workspaceRows.filter(purchase => purchaseInReportRange(purchase, range)))
         } catch (_workspaceError) {
+          if (!isCurrent() || isProductsReportAccessError(_workspaceError)) throw _workspaceError
           return []
         }
       }
@@ -7513,7 +7589,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
         !productsReportDateTo &&
         monthFilter === 'all'
       ) {
-        updateRmsProductsReportProgress(20, 'Режим “Все даты”: читаю историю закупок и ищу последний месяц…', 'Авто-сравнение периодов')
+        updateRmsProductsReportProgress(requestId, 20, 'Режим “Все даты”: читаю историю закупок и ищу последний месяц…', 'Авто-сравнение периодов')
         cachedAllPurchases = await fetchPurchases({})
         const validDates = (cachedAllPurchases || [])
           .map(p => String(p.purchase_date || '').slice(0, 10))
@@ -7569,11 +7645,11 @@ function Reports({ t, permissions = [], isAdmin = false }) {
         }
       }
 
-      updateRmsProductsReportProgress(36, 'Формирую общий отчёт по выбранному периоду…', 'Чтение закупок')
+      updateRmsProductsReportProgress(requestId, 36, 'Формирую общий отчёт по выбранному периоду…', 'Чтение закупок')
       const reportPurchases = cachedAllPurchases ? filterCachedPurchases(cachedAllPurchases, reportRange.current) : await fetchPurchases(reportRange.current)
-      updateRmsProductsReportProgress(56, `Загружено накладных: ${(reportPurchases || []).length}. Считаю текущий период динамики…`, 'Текущий период')
+      updateRmsProductsReportProgress(requestId, 56, `Загружено накладных: ${(reportPurchases || []).length}. Считаю текущий период динамики…`, 'Текущий период')
       const dynamicsCurrentPurchases = cachedAllPurchases ? filterCachedPurchases(cachedAllPurchases, effectiveReportRange.current) : await fetchPurchases(effectiveReportRange.current)
-      updateRmsProductsReportProgress(68, 'Читаю предыдущий период для сравнения цен…', 'Предыдущий период')
+      updateRmsProductsReportProgress(requestId, 68, 'Читаю предыдущий период для сравнения цен…', 'Предыдущий период')
       const previousPurchases = effectiveReportRange.previous
         ? (cachedAllPurchases ? filterCachedPurchases(cachedAllPurchases, effectiveReportRange.previous) : await fetchPurchases(effectiveReportRange.previous))
         : []
@@ -7593,7 +7669,8 @@ function Reports({ t, permissions = [], isAdmin = false }) {
         ? await resolveAmountPurchases(amountComparisonRange.previous)
         : []
 
-      updateRmsProductsReportProgress(78, 'Формирую строки товаров, категории, поставщиков и динамику суммы закупа…', 'Аналитика товаров')
+      if (!isCurrent()) return
+      updateRmsProductsReportProgress(requestId, 78, 'Формирую строки товаров, категории, поставщиков и динамику суммы закупа…', 'Аналитика товаров')
 
       const branchNameById = new Map((branches || []).map(b => [String(b.id), b.name]))
 
@@ -7653,11 +7730,16 @@ function Reports({ t, permissions = [], isAdmin = false }) {
         return { rows, invoiceIds, supplierIds }
       }
 
-      const currentBuilt = buildDetailRows(reportPurchases)
-      const dynamicsCurrentBuilt = buildDetailRows(dynamicsCurrentPurchases)
-      const previousBuilt = buildDetailRows(previousPurchases)
-      const amountCurrentBuilt = buildDetailRows(amountCurrentPurchases)
-      const amountPreviousBuilt = buildDetailRows(amountPreviousPurchases)
+      const builtByPurchases = new Map()
+      const buildDetailRowsOnce = purchases => {
+        if (!builtByPurchases.has(purchases)) builtByPurchases.set(purchases, buildDetailRows(purchases))
+        return builtByPurchases.get(purchases)
+      }
+      const currentBuilt = buildDetailRowsOnce(reportPurchases)
+      const dynamicsCurrentBuilt = buildDetailRowsOnce(dynamicsCurrentPurchases)
+      const previousBuilt = buildDetailRowsOnce(previousPurchases)
+      const amountCurrentBuilt = buildDetailRowsOnce(amountCurrentPurchases)
+      const amountPreviousBuilt = buildDetailRowsOnce(amountPreviousPurchases)
       const detailRows = currentBuilt.rows
       const dynamicsCurrentDetailRows = dynamicsCurrentBuilt.rows
       const previousDetailRows = previousBuilt.rows
@@ -7936,11 +8018,13 @@ function Reports({ t, permissions = [], isAdmin = false }) {
       const emptySourceWarning = !detailRows.length && !isAdmin
         ? 'Нет доступных строк закупок для этого пользователя. Проверьте, что в Supabase выполнен secure RPC rms_supplier_purchases_full и что в общих правах открыт раздел “Отчёты”.'
         : ''
-      setRmsProductsReport({ loading: false, error: emptySourceWarning, rows: productRows, detailRows, totals, categories, suppliers: suppliersList, bySupplier: supplierRows, byCategory: categoryRows, priceDynamics, lastPurchaseDynamics, priceDynamicsMeta: { currentLabel: effectiveReportRange.currentLabel, previousLabel: effectiveReportRange.previousLabel, compareAvailable: effectiveReportRange.compareAvailable, autoCompare: Boolean(effectiveReportRange.autoCompare) }, amountDynamicsMeta: { currentLabel: amountComparisonRange.currentLabel, previousLabel: amountComparisonRange.previousLabel, compareAvailable: amountComparisonRange.compareAvailable, autoCompare: Boolean(amountComparisonRange.autoCompare) } })
-      completeRmsProductsReportProgress(`Загружено: ${productRows.length} товаров, ${detailRows.length} строк закупок, ${invoiceIds.size} накладных`)
+      if (!isCurrent()) return
+      setRmsProductsReport({ selectionKey: productsReportSelectionKey, loading: false, error: emptySourceWarning, rows: productRows, detailRows, totals, categories, suppliers: suppliersList, bySupplier: supplierRows, byCategory: categoryRows, priceDynamics, lastPurchaseDynamics, priceDynamicsMeta: { currentLabel: effectiveReportRange.currentLabel, previousLabel: effectiveReportRange.previousLabel, compareAvailable: effectiveReportRange.compareAvailable, autoCompare: Boolean(effectiveReportRange.autoCompare) }, amountDynamicsMeta: { currentLabel: amountComparisonRange.currentLabel, previousLabel: amountComparisonRange.previousLabel, compareAvailable: amountComparisonRange.compareAvailable, autoCompare: Boolean(amountComparisonRange.autoCompare) } })
+      completeRmsProductsReportProgress(requestId, `Загружено: ${productRows.length} товаров, ${detailRows.length} строк закупок, ${invoiceIds.size} накладных`)
     } catch (error) {
-      setRmsProductsReport({ loading: false, error: error?.message || 'Не удалось загрузить отчёт по товарам', rows: [], detailRows: [], totals: { amount: 0, products: 0, items: 0, invoices: 0, suppliers: 0 }, categories: [], suppliers: [], bySupplier: [], byCategory: [], priceDynamics: [], lastPurchaseDynamics: [], priceDynamicsMeta: { currentLabel: '', previousLabel: '', compareAvailable: false }, amountDynamicsMeta: { currentLabel: '', previousLabel: '', compareAvailable: false, autoCompare: false } })
-      failRmsProductsReportProgress(error)
+      if (!isCurrent()) return
+      setRmsProductsReport({ selectionKey: productsReportSelectionKey, loading: false, error: error?.message || 'Не удалось загрузить отчёт по товарам', rows: [], detailRows: [], totals: { amount: 0, products: 0, items: 0, invoices: 0, suppliers: 0 }, categories: [], suppliers: [], bySupplier: [], byCategory: [], priceDynamics: [], lastPurchaseDynamics: [], priceDynamicsMeta: { currentLabel: '', previousLabel: '', compareAvailable: false }, amountDynamicsMeta: { currentLabel: '', previousLabel: '', compareAvailable: false, autoCompare: false } })
+      failRmsProductsReportProgress(requestId, error)
     }
   }
 

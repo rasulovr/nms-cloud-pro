@@ -17,7 +17,7 @@ assert.ok(!reports.includes('Service charge персоналу (справочн
 assert.ok(hooks.includes('function useBranches(includeInactive = false, withStatus = false)'), 'Branch hook must support historical inactive branches')
 assert.ok(hooks.includes("if (!includeInactive) query = query.eq('is_active', true)"), 'New-operation branch lists must contain active branches only')
 assert.ok(dashboard.includes('const branches = useBranches(true)'), 'Dashboard and Finance must keep archived branches in history')
-assert.ok(reports.includes('const branches = useBranches(true)'), 'Reports must keep archived branches in history')
+assert.match(reports, /const \{ branches, loaded: reportBranchesLoaded \} = useBranches\(true, true\)/, 'Reports must keep archived branches and wait for their loading status')
 assert.ok(settings.includes("update({ is_active: Boolean(isActive) })"), 'Settings must archive/reactivate branches without deleting them')
 assert.ok(settings.includes('История и прежние операции останутся без изменений'), 'Branch archive confirmation must explain history preservation')
 
