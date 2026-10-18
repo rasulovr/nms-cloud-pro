@@ -19,7 +19,7 @@ function harness(source, { lag = 20, previousFails = false, currentFails = false
   let stateIndex = 0
   const context = {
     console: {error(){}}, Date, Map, Set, Promise,
-    useBranches: () => [{id:"b1",name:"Fixture Branch",service_charge_enabled:false}], useRef: () => ({current:0}), useEffect(){},
+    useBranches: (_includeInactive, withStatus) => {const branches=[{id:"b1",name:"Fixture Branch",service_charge_enabled:false}];return withStatus ? {branches,loaded:true} : branches}, useRef: () => ({current:0}), useEffect(){},
     useState(initial) { const index=stateIndex++; return [initial, value => writes.push({index,value})] },
     monthStart: (y,m) => `${y}-${String(m).padStart(2,'0')}-01`,
     rmsNextMonthStart: key => { const d=new Date(key+'-01'); d.setMonth(d.getMonth()+1); return d.toISOString().slice(0,10) },

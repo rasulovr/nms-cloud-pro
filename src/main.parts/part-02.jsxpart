@@ -125,8 +125,9 @@ function Login({ lang, setLang, t, onSignedIn }) {
   </div></div>
 }
 
-function useBranches(includeInactive = false) {
+function useBranches(includeInactive = false, withStatus = false) {
   const [branches, setBranches] = useState([])
+  const [loaded, setLoaded] = useState(false)
   useEffect(() => {
     let alive = true
 
@@ -155,10 +156,12 @@ function useBranches(includeInactive = false) {
       if (alive) setBranches(Array.from(map.values()).sort((a, b) => String(a.name).localeCompare(String(b.name))))
     }
 
-    loadBranches()
+    loadBranches().catch(error => console.error('Branch load failed:', error)).finally(() => {
+      if (alive) setLoaded(true)
+    })
     return () => { alive = false }
   }, [includeInactive])
-  return branches
+  return withStatus ? { branches, loaded } : branches
 }
 
 
