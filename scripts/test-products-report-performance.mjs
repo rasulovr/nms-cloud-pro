@@ -25,7 +25,7 @@ function harness(source,{scope='all',month='all',from='',to='',mode='period',dat
   const state=shared||{report:{},progress:{},request:{current:0},timer:{current:null},timers:new Map(),timerCounter:0,writes:[]}
   const calls=[];let active=0,maxActive=0
   const context={Date,Map,Set,Promise,console,
-    branchFilter:scope,monthFilter:month,productsReportDateFrom:from,productsReportDateTo:to,productsPriceCompareMode:mode,isAdmin:true,
+    branchFilter:scope,monthFilter:month,productsReportDateFrom:from,productsReportDateTo:to,productsPriceCompareMode:mode,isAdmin:false,
     reportBranchesLoaded:true,productsReportSelectionKey:JSON.stringify([scope,month,from,to]),
     rmsProductsReportRequestRef:state.request,rmsProductsReportProgressTimerRef:state.timer,
     branches:[0,1,2].map(i=>({id:'b'+i,name:'Synthetic branch '+i})),

@@ -5879,7 +5879,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
       rmsProductsReportRequestRef.current += 1
       window.clearTimeout(rmsProductsReportProgressTimerRef.current)
     }
-  }, [isProductsReportTab, reportBranchesLoaded, productsReportSelectionKey])
+  }, [isProductsReportTab, reportBranchesLoaded, productsReportSelectionKey, isAdmin])
 
   useEffect(() => {
     setProductsReportPage(1)
@@ -7465,11 +7465,87 @@ function Reports({ t, permissions = [], isAdmin = false }) {
         }
         return error
       }
+      // The compact endpoint is invoker/RLS-bound and independently confirms an
+      // existing admin profile. Other roles keep the original source path.
+      // One union covers every current/previous comparison without fetching
+      // unrelated history; All Dates deliberately remains unbounded.
+      const compactRanges = [reportRange.current, reportRange.previous, amountComparisonRange.current, amountComparisonRange.previous].filter(Boolean)
+      const compactRangeFrom = reportRange.current && compactRanges.length && compactRanges.every(range => range.from)
+        ? compactRanges.map(range => range.from).sort()[0] : null
+      const compactRangeTo = reportRange.current && compactRanges.length && compactRanges.every(range => range.toExclusive)
+        ? compactRanges.map(range => range.toExclusive).sort().slice(-1)[0] : null
+      let compactSourceComplete = false
+      const invalidCompactSource = () => Object.assign(new Error('Источник товарного отчёта вернул неполные данные. Обновите отчёт.'), { code: 'RMS_REPORT_INCOMPLETE' })
+      const validateCompactSource = data => {
+        const count = value => Number.isSafeInteger(value) && value >= 0
+        const textOrNull = value => value === null || typeof value === 'string'
+        const numberOrNull = value => value === null || (typeof value === 'number' && Number.isFinite(value))
+        const fields = (row, names) => names.every(name => Object.prototype.hasOwnProperty.call(row, name))
+        const relation = row => row === null || (row && typeof row === 'object' && fields(row, ['name']) && textOrNull(row.name))
+        if (!data || data.version !== 1 || !count(data.source_count)) throw invalidCompactSource()
+        if (data.legacyRequired === true) {
+          const limit = data.reason === 'global_source_limit' && data.source_count > 50000 && data.matching_count === null
+          const unsupported = ['ambiguous_purchase_order', 'missing_product_metadata'].includes(data.reason) &&
+            data.source_count <= 50000 && count(data.matching_count) && data.matching_count <= data.source_count
+          if (data.complete !== false || (!limit && !unsupported) || !Array.isArray(data.rows) || data.rows.length ||
+            data.purchase_count !== 0 || data.item_count !== 0) throw invalidCompactSource()
+          return null
+        }
+        if (data.complete !== true || data.legacyRequired !== false || !Array.isArray(data.rows) || data.source_count > 50000 ||
+          !count(data.matching_count) || data.matching_count > data.source_count ||
+          !count(data.purchase_count) || data.purchase_count !== data.rows.length || data.matching_count !== data.purchase_count ||
+          !count(data.item_count)) throw invalidCompactSource()
+        const purchases = new Set()
+        const items = new Set()
+        for (const purchase of data.rows) {
+          if (!purchase || typeof purchase.id !== 'string' || !purchase.id || purchases.has(purchase.id) ||
+            !fields(purchase, ['supplier_id', 'branch_id', 'purchase_date', 'created_at', 'invoice_number', 'deleted_at', 'suppliers', 'branches']) ||
+            !['supplier_id', 'branch_id', 'purchase_date', 'created_at', 'invoice_number', 'deleted_at'].every(key => textOrNull(purchase[key])) ||
+            (purchase.purchase_date !== null && !/^\d{4}-\d{2}-\d{2}$/.test(purchase.purchase_date)) ||
+            !relation(purchase.suppliers) || !relation(purchase.branches) || !Array.isArray(purchase.supplier_purchase_items)) throw invalidCompactSource()
+          purchases.add(purchase.id)
+          for (const item of purchase.supplier_purchase_items) {
+            if (!item || typeof item.id !== 'string' || !item.id || items.has(item.id) ||
+              !fields(item, ['product_id', 'quantity', 'unit', 'unit_price', 'total_amount', 'supplier_products']) ||
+              typeof item.product_id !== 'string' || !item.product_id || !textOrNull(item.unit) ||
+              !['quantity', 'unit_price', 'total_amount'].every(key => numberOrNull(item[key])) ||
+              !item.supplier_products || !fields(item.supplier_products, ['name', 'category', 'base_unit']) ||
+              typeof item.supplier_products.name !== 'string' || !item.supplier_products.name ||
+              !textOrNull(item.supplier_products.category) || !textOrNull(item.supplier_products.base_unit)) throw invalidCompactSource()
+            items.add(item.id)
+          }
+        }
+        if (items.size !== data.item_count) throw invalidCompactSource()
+        return data.rows
+      }
       let securePurchasesPromise
       const fetchPurchasesFromSecureRpc = () => {
         // A real promise (not a Supabase thenable) executes once for all current,
         // previous and amount-comparison ranges. Each refresh gets a fresh scope.
         if (!securePurchasesPromise) securePurchasesPromise = (async () => {
+          if (isAdmin) {
+            try {
+              const compact = await supabase.rpc('rms_products_report_source_v1', {
+                p_date_from: compactRangeFrom,
+                p_date_to_exclusive: compactRangeTo,
+                p_branch_id: branchFilter === 'all' ? null : branchFilter
+              })
+              if (!isCurrent()) throw new Error('Загрузка отчёта отменена')
+              const compactError = productsReportReadError(compact.error, compact.status)
+              if (compactError) throw compactError
+              const rows = validateCompactSource(compact.data)
+              if (rows !== null) {
+                compactSourceComplete = true
+                return rows
+              }
+            } catch (error) {
+              // A denial or an unverifiable response must never become a
+              // successful, less restricted or partial fallback result.
+              if (!isCurrent() || isProductsReportAccessError(error) || error?.code === 'RMS_REPORT_INCOMPLETE') throw error
+              // Missing/unavailable endpoint keeps the existing deploy/rollback
+              // path. Explicit source ambiguity also uses that path unchanged.
+            }
+          }
           const { data, error, status } = await supabase.rpc('rms_supplier_purchases_full', { p_limit: 50000 })
           const readError = productsReportReadError(error, status)
           if (readError) throw readError
@@ -7550,12 +7626,12 @@ function Reports({ t, permissions = [], isAdmin = false }) {
         try {
           fullRows = await fetchPurchasesFromSecureRpc()
         } catch (_rpcError) {
-          if (!isCurrent() || isProductsReportAccessError(_rpcError)) throw _rpcError
+          if (!isCurrent() || isProductsReportAccessError(_rpcError) || _rpcError?.code === 'RMS_REPORT_INCOMPLETE') throw _rpcError
           fullRows = []
         }
         if (!isCurrent()) throw new Error('Загрузка отчёта отменена')
 
-        if (Array.isArray(fullRows) && fullRows.length) {
+        if (compactSourceComplete || (Array.isArray(fullRows) && fullRows.length)) {
           return sortReportPurchases(fullRows.filter(purchase => purchaseInReportRange(purchase, range)))
         }
 

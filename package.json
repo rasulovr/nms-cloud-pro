@@ -33,7 +33,9 @@
     "test:dashboard-opening-performance": "node scripts/test-dashboard-opening-performance.mjs",
     "test:dashboard-load-scope": "node scripts/test-dashboard-load-scope.mjs",
     "test:dashboard-forecast-read-reuse": "node scripts/test-dashboard-forecast-read-reuse.mjs",
-    "test:products-report-performance": "node scripts/test-products-report-performance.mjs"
+    "test:products-report-performance": "node scripts/test-products-report-performance.mjs",
+    "test:products-report-compact-client": "node scripts/test-products-report-compact-client.mjs",
+    "test:products-report-source-v1": "node scripts/test-products-report-source-v1.mjs"
   },
   "dependencies": {
     "@vitejs/plugin-react": "^4.3.0",
