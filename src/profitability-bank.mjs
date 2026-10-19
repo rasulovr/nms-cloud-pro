@@ -134,6 +134,7 @@ export function buildBankReport(report, selectedIds, sourceDataset = null) {
       }
       const names = new Map(branch.categories.map(category => [category.key, category]))
       names.set('salary', { key: 'salary', name: 'Зарплаты' })
+      if (!names.has('supplier-food-cost')) names.set('supplier-food-cost', { key: 'supplier-food-cost', name: 'FoodCost · закупки' })
       names.set('sheets-household', { key: 'sheets-household', name: 'ХозТовары · Google Sheets' })
       branch.categories = [...names.values()].filter(category => category.informational || branch.monthly.some(row => Object.hasOwn(row.categories, category.key))).map(category => category.informational ? category : { ...category, amount: branch.monthly.reduce((sum, row) => sum + num(row.categories[category.key]), 0) })
       branch.totals = branch.monthly.reduce((sum, row) => ({ revenue: sum.revenue + row.revenue, expenses: sum.expenses + row.expenses, net: sum.net + row.net }), { revenue: 0, expenses: 0, net: 0 })
