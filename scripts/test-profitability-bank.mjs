@@ -48,3 +48,6 @@ assert.doesNotMatch(loader,/salaryResult\?\.error \? \[\]/,'failed payroll reads
 assert.match(loader,/offset > 50000\) throw/,'truncation must fail closed')
 assert.match(loader,/allRows: rows/,'bank multi-branch filter must use unfiltered engine rows')
 console.log('Bank profitability: period, deduplication, allocations, tax, salary estimate, reconciliation, negative results, coverage and fail-closed checks passed')
+const printCss=fs.readFileSync(new URL('../src/profitability-bank.css',import.meta.url),'utf8')
+assert.match(printCss,/@page rms-bank-report\{size:A4 landscape;margin:12mm\}/)
+assert.doesNotMatch(printCss,/@page\s*\{/,'bank paper size must not change other reports')
