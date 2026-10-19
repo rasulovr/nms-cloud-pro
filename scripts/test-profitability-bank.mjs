@@ -59,7 +59,7 @@ assert.doesNotMatch(printCss,/@page\s*\{/,'bank paper size must not change other
 // after open/write and before close, and printing must await font readiness.
 const component=fs.readFileSync(new URL('../src/ProfitabilityBankReport.jsx',import.meta.url),'utf8')
 const printFunction=component.slice(component.indexOf('export function printBankDocument'),component.indexOf('export default function'))
-  .replace('export function','function').replace('renderToStaticMarkup(<BankDocument model={model}/>)',"'test-report'")
+  .replace('export function','function').replace('renderToStaticMarkup(<ExternalBankDocument model={model}/>)',"'test-report'")
 const calls=[];let finishFonts, loadPromise
 const popup={onload:null,focus(){calls.push('focus')},print(){calls.push('print')}}
 popup.document={fonts:{ready:new Promise(resolve=>{finishFonts=resolve})},
