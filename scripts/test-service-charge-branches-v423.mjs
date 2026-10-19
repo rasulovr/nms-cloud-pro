@@ -11,7 +11,7 @@ assert.ok(shared.includes('isServiceChargeStaffExpenseName'), 'Manual service-ch
 assert.ok(dashboard.includes("expenseArticleMap.set('Service charge персоналу', serviceCostTotal)"), 'Dashboard must expose service charge as its own expense article')
 assert.ok(dashboard.includes('revenue - expenses - salary - serviceCost - tax'), 'Dashboard profit must subtract service charge')
 assert.ok(dashboard.includes("{ name: 'Service charge персоналу', amount: serviceForecast"), 'Profit forecast must include service charge as an expense')
-assert.ok(reports.includes('supplierFoodCost + salary + serviceCost + tax'), 'Profitability report must subtract service charge')
+assert.ok(reports.includes('allocatedSupplierTotal + salary + serviceCost + tax'), 'Profitability report must subtract service charge')
 assert.ok(!reports.includes('Service charge персоналу (справочно, не входит в P&L)'), 'Service charge must not be informational-only')
 
 assert.ok(hooks.includes('function useBranches(includeInactive = false, withStatus = false)'), 'Branch hook must support historical inactive branches')

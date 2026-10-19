@@ -13,7 +13,7 @@ export function reportMonths(from, toExclusive) {
   }
   return months.length && `${cursor}-01` === toExclusive ? months : []
 }
-// Snapshot stays in browser memory; no database writes or financial constants.
+// Legacy validation retained for synthetic fixtures; live2025 source uses the protected RMS snapshot reader.
 export function validateBankSourceDataset(dataset) {
   if (!dataset || dataset.currency !== 'AZN' || !Number.isInteger(dataset.year) || dataset.year < 2000 || dataset.year > 2100 || !Array.isArray(dataset.rows) || dataset.rows.length !== 24) throw new Error('Нужны 24 строки: 12 месяцев по BC4 и Crescent, валюта AZN.')
   const seen = new Set()
@@ -38,6 +38,7 @@ export function buildBankReport(report, selectedIds, sourceDataset = null) {
   const ids = [...new Set(selectedIds.map(String))]
   if (!months.length || !ids.length) return null
   const input = report.bankInputs || {}
+  sourceDataset ||= input.sourceDataset || null
   const revenue = input.revenueRows || []
   const payroll = input.salaryPeriods || []
   const makeMonth = month => ({ month, cash: 0, bank: 0, wolt: 0, revenue: 0, expenses: 0, net: 0, margin: null, categories: {}, taxPaid: 0, revenueDays: 0, salaryRows: 0 })
@@ -115,7 +116,7 @@ export function buildBankReport(report, selectedIds, sourceDataset = null) {
         const existingHousehold = branch.categories.filter(category => bankExpenseGroup(category) === 'household').reduce((sum, category) => sum + num(row.categories[category.key]), 0)
         const food = num(row.categories['supplier-food-cost'])
         const moved = source.household - existingHousehold
-        if (moved < -0.005 || food < moved - 0.005) {
+        if ((moved < -0.005 && sourceDataset.version !== 2) || food < moved - 0.005) {
           branch.reconciled = false
           branch.warnings.push(`${row.month}: ХозТовары Sheets нельзя безопасно выделить из имеющегося FoodCost; требуется сверка состава закупок.`)
           continue
@@ -170,6 +171,9 @@ export function buildBankReport(report, selectedIds, sourceDataset = null) {
       ...(missingHousehold.length ? [`${branch.name}: не выделены данные ХозТоваров за ${missingHousehold.join(', ')}. Они могут находиться внутри общей суммы закупок ФудКост; нулевой расход не подтверждён.`] : [])
     ]
   })
+  if (input.sourceRequired2025 && !sourceDataset) coverageBlockers.push('Проверенный постоянный источник начислений2025 ещё не сохранён; банковский экспорт заблокирован.')
+  const partialMonths = (input.partialPayrollMonths || []).filter(month => months.includes(month) && !(sourceDataset?.version === 2 && sourceDataset.complete && branchReports.every(branch => branch.monthly.find(row => row.month === month)?.sheetSource)))
+  if (partialMonths.length) coverageBlockers.push(`Начисления за ${partialMonths.join(', ')} перенесены частично. Наличие отдельных строк не подтверждает полноту зарплатного листа; банковский экспорт заблокирован до сверки остальных строк.`)
   return { sourceDataset, sourceAdjustments, months, branches: branchReports, combined: { id: 'combined', name: 'Совокупно: ' + branchReports.map(row => row.name).join(' + '), monthly: combinedMonths, categories: [...categoryMap.values()], totals }, period: report.period, source: report.source, generatedAt: report.loadedAt, reconciled, coverageBlockers, exportable: reconciled && !coverageBlockers.length, payrollEstimated: input.payrollEstimated, selectedIds: ids }
 }
 
@@ -183,6 +187,7 @@ export function bankExpenseGroup(category) {
   if (category.key === 'salary') return 'salary'
   if (category.key === 'tax') return 'dsmf-tax'
   if (category.key === 'supplier-food-cost') return 'food'
+  if (category.key === 'supplier-household') return 'household'
   const name = String(category.name || '').toLowerCase().replace(/ё/g, 'е')
   if (category.key === 'service-charge' || /service\s*charge|сервис.*чардж/.test(name)) return 'service'
   if (/коммун|элект|^свет$|^газ$|^вода$|utilities|electric|water|kommunal/.test(name)) return 'utilities'

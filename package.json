@@ -18,7 +18,7 @@
     "test:supplier-idempotency-v420": "node scripts/test-supplier-purchase-idempotency-v420.mjs",
     "test:supplier-save-performance-v434": "node scripts/test-supplier-save-performance-v434.mjs",
     "dev": "npm run assemble && vite",
-    "build": "npm run assemble && npm run test:profitability-bank && npm run test:wolt-branch-eligibility && npm run test:supplier-payment-idempotency-v433 && npm run test:supplier-payment-cancel-atomic-v433 && npm run test:payroll-client && npm run test:payroll-atomic && npm run test:payroll-handlers && npm run test:payroll-reclassification && npm run test:payroll-reclassification-client && npm run test:payroll-reclassification-cash-client && vite build && node scripts/build-payroll-preview-fixture.mjs",
+    "build": "npm run assemble && npm run test:profitability-bank && npm run test:wolt-branch-eligibility && npm run test:supplier-payment-idempotency-v433 && npm run test:supplier-payment-cancel-atomic-v433 && npm run test:payroll-client && npm run test:payroll-atomic && npm run test:payroll-handlers && npm run test:payroll-reclassification && npm run test:payroll-reclassification-client && npm run test:payroll-reclassification-cash-client && npm run test:profitability-persistent-sources && npm run test:bank-report-2025-source && vite build && node scripts/build-payroll-preview-fixture.mjs",
     "preview": "vite preview",
     "test:supplier-payment-idempotency-v433": "node scripts/test-supplier-payment-idempotency-v433.mjs",
     "test:supplier-payment-cancel-atomic-v433": "node scripts/test-supplier-payment-cancel-atomic-v433.mjs",
@@ -35,7 +35,9 @@
     "test:dashboard-forecast-read-reuse": "node scripts/test-dashboard-forecast-read-reuse.mjs",
     "test:products-report-performance": "node scripts/test-products-report-performance.mjs",
     "test:profitability-bank": "node scripts/test-profitability-bank.mjs",
-    "test:profitability-bank-browser": "node scripts/test-profitability-bank-browser.mjs"
+    "test:profitability-bank-browser": "node scripts/test-profitability-bank-browser.mjs",
+    "test:profitability-persistent-sources": "node scripts/test-profitability-persistent-sources.mjs",
+    "test:bank-report-2025-source": "node scripts/test-bank-report-2025-source.mjs"
   },
   "dependencies": {
     "@vitejs/plugin-react": "^4.3.0",

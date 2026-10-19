@@ -6226,12 +6226,15 @@ function Reports({ t, permissions = [], isAdmin = false }) {
         return query.order('purchase_date', { ascending: true }).order('id', { ascending: true }).range(from, to)
       })
 
+      const bank2025Source = await loadBank2025Snapshot(supabase, period)
+      const purchaseClassifications = new Map(supplierPurchases.map(purchase => [purchase.id, purchaseReportClassification(purchase)]))
+
       const [employeeRows, salaryPeriods, rawServiceRows] = await Promise.all([
         fetchPaged((from, to) => supabase.from('employees')
           .select('id,branch_id,full_name,position,monthly_salary,salary_type,daily_rate,is_active,employment_status')
           .eq('is_active', true).order('id').range(from, to)),
         fetchPaged((from, to) => applyDateRange(supabase.from('salary_periods')
-          .select('employee_id,branch_id,salary_month,salary_gross,salary_net'), 'salary_month')
+          .select('employee_id,branch_id,salary_month,salary_gross,salary_net,comment'), 'salary_month')
           .order('salary_month').order('employee_id').range(from, to)),
         fetchPaged((from, to) => applyDateRange(supabase.from('monthly_branch_service_charge_cost')
           .select('branch_id,month,staff_cost_amount'), 'month')
@@ -6443,20 +6446,22 @@ function Reports({ t, permissions = [], isAdmin = false }) {
         }
 
         const share = parseNum(revenueShareMap.get(id))
-        const supplierFoodCost = supplierPurchases.reduce((sum, purchase) => sum + parseNum(purchase.total_amount) * share, 0)
+        const allocatedSupplierTotal = supplierPurchases.reduce((sum, purchase) => sum + parseNum(purchase.total_amount) * share, 0)
+        const supplierHousehold = supplierPurchases.filter(purchase => purchaseClassifications.get(purchase.id)?.category === 'household').reduce((sum, purchase) => sum + parseNum(purchase.total_amount) * share, 0)
+        const supplierFoodCost = allocatedSupplierTotal - supplierHousehold
         const foodCost = parseNum(expenseData.manualFood) + supplierFoodCost
         const directSalary = parseNum(directSalaryByBranch.get(id))
         const managerSalary = managerSalaryPool * share
         const salary = directSalary + managerSalary
         const serviceCost = parseNum(serviceByBranch.get(id))
         const configuredTaxRate = parseNum(taxSettings?.[id])
-        const taxRate = configuredTaxRate > 0 ? configuredTaxRate : 8
+        const taxRate = bankScopeTaxRate(id, configuredTaxRate, period.from, period.toExclusive)
         const taxCalculated = parseNum(revenueData.revenue) * taxRate / 100
         const taxPaid = parseNum(taxPaidByBranch.get(id))
         // Отдельная vergi-оплата не уменьшает прибыль повторно; налог с оборота
         // уже учтён ниже по установленной ставке.
         const tax = taxCalculated
-        const totalExpenses = parseNum(expenseData.operating) + supplierFoodCost + salary + serviceCost + tax
+        const totalExpenses = parseNum(expenseData.operating) + allocatedSupplierTotal + salary + serviceCost + tax
         const net = parseNum(revenueData.revenue) - totalExpenses
         const activeDays = revenueData.days?.size || 0
         const supplierDetails = supplierPurchases.map(purchase => ({
@@ -6465,15 +6470,19 @@ function Reports({ t, permissions = [], isAdmin = false }) {
             description: purchase.suppliers?.name || 'Поставщик',
             comment: [purchase.invoice_number ? `Фактура: ${purchase.invoice_number}` : '', purchase.comment || '', `Распределено по доле выручки ${pct(share * 100)}; исходная привязка филиала не используется для P&L`].filter(Boolean).join(' · '),
             amount: parseNum(purchase.total_amount) * share,
-            allocation_status: 'preliminary'
+            allocation_status: 'preliminary',
+            source_classification: purchaseClassifications.get(purchase.id)
           }))
           .filter(detail => detail.amount !== 0)
+        const supplierFoodDetails = supplierDetails.filter(detail => !detail.source_classification)
+        const supplierHouseholdDetails = supplierDetails.filter(detail => detail.source_classification?.category === 'household')
         const salaryDetails = [
           ...(salaryDetailsByBranch.get(id) || []),
           ...managerSalaryDetails.map(detail => ({ ...detail, id: `${detail.id}-${id}`, amount: parseNum(detail.amount) * share }))
         ].filter(detail => detail.amount !== 0)
         const expenseCategories = [
-          ...(supplierFoodCost ? [{ key: 'supplier-food-cost', name: 'Поставщики / Food Cost', amount: supplierFoodCost, transactions: supplierDetails.length, details: supplierDetails }] : []),
+          ...(supplierFoodCost ? [{ key: 'supplier-food-cost', name: 'Поставщики / Food Cost', amount: supplierFoodCost, transactions: supplierFoodDetails.length, details: supplierFoodDetails }] : []),
+          ...(supplierHouseholdDetails.length ? [{ key: 'supplier-household', name: 'ХозТовары · закупки по источнику', amount: supplierHousehold, transactions: supplierHouseholdDetails.length, details: supplierHouseholdDetails }] : []),
           ...Array.from(expenseData.categories.values()).map(category => ({
             key: `daily-${normalizeExpenseText(category.name)}`,
             name: category.name,
@@ -6524,7 +6533,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
           rent: parseNum(expenseData.rent),
           utilities: parseNum(expenseData.utilities),
           packaging: parseNum(expenseData.packaging),
-          household: parseNum(expenseData.household),
+          household: parseNum(expenseData.household) + supplierHousehold,
           marketing: parseNum(expenseData.marketing),
           maintenance: parseNum(expenseData.maintenance),
           other: parseNum(expenseData.other),
@@ -6575,7 +6584,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
         period,
         periodKey: profitabilityPeriodKey,
         loadedAt: new Date().toISOString(),
-        bankInputs: { revenueRows, salaryPeriods, payrollEstimated: !salaryPeriods.length, branchNames: Object.fromEntries(branchNameById), warnings: [] },
+        bankInputs: { sourceDataset: bank2025Source, sourceRequired2025: isBank2025Period(period), revenueRows, salaryPeriods, partialPayrollMonths: partialHistoricalPayrollMonths(salaryPeriods), payrollEstimated: !salaryPeriods.length, branchNames: Object.fromEntries(branchNameById), warnings: [] },
         loading: false,
         error: '',
         rows: visibleRows,
@@ -9727,7 +9736,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
     </section>}
 
     {!rmsProfitabilityReport.loading && !rmsProfitabilityReport.error && <div className="reports-v417-card">
-      <div className="reports-v417-head"><div><h3>Детальная рентабельность филиалов</h3><p>Все накладные поставщиков, включая Zaur Bazar, распределяются между филиалами по доле выручки. Ручная статья «Базар» исключена. Service charge персоналу включён в расходы и расчётный результат действующего отчёта. Налог с оборота берётся из настроек филиала.</p></div><span className="reports-v43-badge">{profitabilityRows.length}</span></div>
+      <div className="reports-v417-head"><div><h3>Детальная рентабельность филиалов</h3><p>Все накладные поставщиков, включая Zaur Bazar, распределяются между филиалами по доле выручки. Проверенные ХозТовары выделяются из закупок без нового расхода. Ручная статья «Базар» исключена. Service charge персоналу включён в расходы и расчётный результат действующего отчёта. Налог с оборота берётся из настроек филиала.</p></div><span className="reports-v43-badge">{profitabilityRows.length}</span></div>
       <div className="reports-v417-table-wrap"><table className="reports-v417-table">
         <thead><tr><th>Филиал</th><th>Выручка</th><th>Wolt</th><th>Food Cost</th><th>Зарплаты</th><th>Опер. расходы</th><th>Service charge</th><th>Налог с оборота</th><th>Все расходы</th><th>Результат</th><th>Маржа</th><th>На день</th><th></th></tr></thead>
         <tbody>
