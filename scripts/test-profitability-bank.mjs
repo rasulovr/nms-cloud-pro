@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
+import vm from 'node:vm'
 import { buildBankReport, reportMonths } from '../src/profitability-bank.mjs'
 assert.equal(reportMonths('2025-10-01','2026-10-01').length,12)
 assert.deepEqual(reportMonths('2025-01-01','2027-01-01'),[])
@@ -47,7 +48,29 @@ assert.match(loader,/requestId !== rmsProfitabilityRequestRef.current/)
 assert.doesNotMatch(loader,/salaryResult\?\.error \? \[\]/,'failed payroll reads must not become zero')
 assert.match(loader,/offset > 50000\) throw/,'truncation must fail closed')
 assert.match(loader,/allRows: rows/,'bank multi-branch filter must use unfiltered engine rows')
-console.log('Bank profitability: period, deduplication, allocations, tax, salary estimate, reconciliation, negative results, coverage and fail-closed checks passed')
 const printCss=fs.readFileSync(new URL('../src/profitability-bank.css',import.meta.url),'utf8')
 assert.match(printCss,/@page rms-bank-report\{size:A4 landscape;margin:12mm\}/)
 assert.doesNotMatch(printCss,/@page\s*\{/,'bank paper size must not change other reports')
+
+// document.open() erases Window event handlers. The load handler must be installed
+// after open/write and before close, and printing must await font readiness.
+const component=fs.readFileSync(new URL('../src/ProfitabilityBankReport.jsx',import.meta.url),'utf8')
+const printFunction=component.slice(component.indexOf('export function printBankDocument'),component.indexOf('export default function'))
+  .replace('export function','function').replace('renderToStaticMarkup(<BankDocument model={model}/>)',"'test-report'")
+const calls=[];let finishFonts, loadPromise
+const popup={onload:null,focus(){calls.push('focus')},print(){calls.push('print')}}
+popup.document={fonts:{ready:new Promise(resolve=>{finishFonts=resolve})},
+  open(){calls.push('open');popup.onload=null},
+  write(html){calls.push('write');assert.match(html,/test-report/)},
+  close(){calls.push('close');if(popup.onload)loadPromise=popup.onload()}}
+const context=vm.createContext({window:{open:()=>popup},bankPrintStyles:'/* test */'})
+vm.runInContext(printFunction,context)
+assert.equal(context.printBankDocument({exportable:true,period:{from:'2025-01-01'}}),'')
+assert.ok(loadPromise,'document.open must not erase the print callback')
+assert.deepEqual(calls,['open','write','close'],'print must await fonts')
+finishFonts();await loadPromise
+assert.deepEqual(calls,['open','write','close','focus','print'])
+context.window.open=()=>null
+assert.match(context.printBankDocument({exportable:true}),/заблокировал/)
+assert.match(context.printBankDocument(null),/загрузите/)
+console.log('Bank profitability checks passed: monthly reconciliation, exclusions, coverage, named print page and popup print lifecycle')

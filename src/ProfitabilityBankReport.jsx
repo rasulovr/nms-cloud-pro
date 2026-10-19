@@ -53,12 +53,12 @@ export function printBankDocument(model) {
   const popup = window.open('', '_blank')
   if (!popup) return 'Браузер заблокировал окно печати. Разрешите всплывающие окна для RMS Pro и повторите.'
   const styles = `<style>${bankPrintStyles}</style>`
+  popup.document.open()
+  popup.document.write(`<!doctype html><html lang="ru"><head><meta charset="utf-8"><title>RMS Pro — Рентабельность ${model.period.from}</title>${styles}</head><body class="bank-print-body">${renderToStaticMarkup(<BankDocument model={model}/>)}</body></html>`)
   popup.onload = async () => {
     try { await popup.document.fonts.ready; popup.focus(); popup.print() }
     catch { /* The complete printable report remains open for the browser's Print command. */ }
   }
-  popup.document.open()
-  popup.document.write(`<!doctype html><html lang="ru"><head><meta charset="utf-8"><title>RMS Pro — Рентабельность ${model.period.from}</title>${styles}</head><body class="bank-print-body">${renderToStaticMarkup(<BankDocument model={model}/>)}</body></html>`)
   popup.document.close()
   // Stylesheets and fonts must finish before opening the native PDF/print dialog.
   return ''
