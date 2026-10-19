@@ -104,5 +104,42 @@ export function buildBankReport(report, selectedIds) {
   }))
   const totals = combinedMonths.reduce((sum, row) => ({ revenue: sum.revenue + row.revenue, expenses: sum.expenses + row.expenses, net: sum.net + row.net }), { revenue: 0, expenses: 0, net: 0 })
   totals.margin = totals.revenue ? totals.net / totals.revenue * 100 : null
-  return { months, branches: branchReports, combined: { id: 'combined', name: 'Совокупно: ' + branchReports.map(row => row.name).join(' + '), monthly: combinedMonths, categories: [...categoryMap.values()], totals }, period: report.period, source: report.source, generatedAt: report.loadedAt, exportable: branchReports.every(row => row.reconciled), payrollEstimated: input.payrollEstimated, selectedIds: ids }
+  return { months, branches: branchReports, combined: { id: 'combined', name: 'Совокупно: ' + branchReports.map(row => row.name).join(' + '), monthly: combinedMonths, categories: [...categoryMap.values()], totals }, period: report.period, source: report.source, generatedAt: report.loadedAt, exportable: branchReports.every(row => row.reconciled && groupBankExpenses(row).reconciled) && groupBankExpenses({ monthly: combinedMonths, categories: [...categoryMap.values()], totals }).reconciled, payrollEstimated: input.payrollEstimated, selectedIds: ids }
+}
+
+// Presentation-only grouping. Original monthly categories and totals stay intact.
+export const BANK_EXPENSE_GROUPS = [
+  ['salary', 'Зарплаты'], ['rent', 'Аренда'], ['food', 'ФудКост'],
+  ['household', 'ХозТовары'], ['dsmf-tax', 'DSMF+Налог'], ['taxi', 'Такси'], ['other', 'Прочие']
+]
+export function bankExpenseGroup(category) {
+  if (category.informational || category.key === 'tax-paid') return null
+  if (category.key === 'salary') return 'salary'
+  if (category.key === 'tax') return 'dsmf-tax'
+  if (category.key === 'supplier-food-cost') return 'food'
+  const name = String(category.name || '').toLowerCase().replace(/ё/g, 'е')
+  // Fees/service/partner costs never masquerade as payroll, food or taxes.
+  if (/комисс|commission|service|сервис|wolt|partner|партнер/.test(name)) return 'other'
+  if (/\bd[sm]{2}f\b|дсмф|дмсф|социальн.*взнос|social.*contribution|sosial.*sığorta/.test(name)) return 'dsmf-tax'
+  if (/аренд|\brent\b|icar[əe]|arenda/.test(name)) return 'rent'
+  if (/такси|\btaxi\b|\bbolt\b|болт/.test(name)) return 'taxi'
+  if (/хоз|хим|перчат|тряп|губк|моющ|уборк|cleaning|household/.test(name)) return 'household'
+  if (/фудкост|food\s*cost|продукт|закуп|кухня|кофе|напит|списан|^бар$/.test(name)) return 'food'
+  return 'other'
+}
+export function groupBankExpenses(section) {
+  const groups = BANK_EXPENSE_GROUPS.map(([key, name]) => ({ key, name, amount: 0, sources: [] }))
+  const byKey = new Map(groups.map(group => [group.key, group]))
+  const monthly = section.monthly.map(row => ({ month: row.month, categories: Object.fromEntries(groups.map(group => [group.key, 0])) }))
+  for (const category of section.categories) {
+    const key = bankExpenseGroup(category)
+    if (!key) continue
+    const group = byKey.get(key)
+    group.amount += num(category.amount)
+    group.sources.push({ name: category.name, amount: num(category.amount) })
+    section.monthly.forEach((row, index) => { monthly[index].categories[key] += num(row.categories[category.key]) })
+  }
+  const reconciled = Math.abs(groups.reduce((sum, group) => sum + group.amount, 0) - section.totals.expenses) < 0.01
+    && monthly.every((row, index) => Math.abs(Object.values(row.categories).reduce((sum, value) => sum + value, 0) - section.monthly[index].expenses) < 0.01)
+  return { groups, monthly, reconciled }
 }

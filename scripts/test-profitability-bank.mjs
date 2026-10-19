@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import vm from 'node:vm'
-import { buildBankReport, reportMonths } from '../src/profitability-bank.mjs'
+import { buildBankReport, reportMonths, BANK_EXPENSE_GROUPS, bankExpenseGroup, groupBankExpenses } from '../src/profitability-bank.mjs'
 assert.equal(reportMonths('2025-10-01','2026-10-01').length,12)
 assert.deepEqual(reportMonths('2025-01-01','2027-01-01'),[])
 assert.deepEqual(reportMonths('',''),[])
@@ -74,3 +74,23 @@ context.window.open=()=>null
 assert.match(context.printBankDocument({exportable:true}),/заблокировал/)
 assert.match(context.printBankDocument(null),/загрузите/)
 console.log('Bank profitability checks passed: monthly reconciliation, exclusions, coverage, named print page and popup print lifecycle')
+
+assert.deepEqual(BANK_EXPENSE_GROUPS.map(([,name])=>name),['Зарплаты','Аренда','ФудКост','ХозТовары','DSMF+Налог','Такси','Прочие'])
+for(const [name,key] of [['DSMF','dsmf-tax'],['DMSF','dsmf-tax'],['Аренда','rent'],['Хозтовары','household'],['Такси','taxi'],['Wolt комиссия','other'],['Банковская комиссия','other'],['Service charge персоналу','other'],['Партнёрские расходы','other'],['Упаковка','other'],['Социальные сети SMM','other']]) assert.equal(bankExpenseGroup({key:'daily-'+name,name}),key,name)
+assert.equal(bankExpenseGroup({key:'salary',name:'Зарплаты'}),'salary')
+assert.equal(bankExpenseGroup({key:'daily-advance',name:'Аванс'}),'other','advances must not be relabeled as salary')
+assert.equal(bankExpenseGroup({key:'tax-paid',name:'Оплаченный налог'}),null)
+const beforeGrouping=structuredClone(report)
+for(const section of [...report.branches,report.combined]) {
+ const grouped=groupBankExpenses(section)
+ assert.equal(grouped.groups.length,7)
+ assert.equal(grouped.reconciled,true)
+ assert.ok(Math.abs(grouped.groups.reduce((sum,g)=>sum+g.amount,0)-section.totals.expenses)<1e-9)
+ grouped.monthly.forEach((month,i)=>assert.ok(Math.abs(Object.values(month.categories).reduce((a,b)=>a+b,0)-section.monthly[i].expenses)<1e-9))
+}
+assert.deepEqual(report,beforeGrouping,'grouping must not change revenue, expense, net, margin or originals')
+assert.equal(groupBankExpenses(report.branches[0]).groups.find(g=>g.key==='dsmf-tax').amount,24,'paid tax must not be added')
+assert.equal(groupBankExpenses(report.branches[0]).groups.find(g=>g.key==='other').amount,40,'Wolt and service charge retained')
+assert.doesNotMatch(component,/<th>Оплаченный налог|money\(row.taxPaid\)/,'paid-tax column must be absent from shared screen/print component')
+assert.match(component,/grouped.groups.map/)
+console.log('Seven expense groups: exact names, monthly/branch/network conservation, tax payment exclusion and shared display checks passed')
