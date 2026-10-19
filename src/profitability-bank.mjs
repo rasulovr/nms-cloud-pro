@@ -111,7 +111,7 @@ export function buildBankReport(report, selectedIds, sourceDataset = null) {
   if (sourceDataset) {
     for (const branch of branchReports) {
       for (const row of branch.monthly) {
-        const source = sourceDataset.rows.find(item => item.branchId === branch.id && item.month === row.month)
+        const source = row.month.startsWith('2025-') ? sourceDataset.rows.find(item => item.branchId === branch.id && item.month === row.month) : null
         if (!source) continue
         const existingHousehold = branch.categories.filter(category => bankExpenseGroup(category) === 'household').reduce((sum, category) => sum + num(row.categories[category.key]), 0)
         const food = num(row.categories['supplier-food-cost'])
@@ -165,7 +165,7 @@ export function buildBankReport(report, selectedIds, sourceDataset = null) {
   const coverageBlockers = branchReports.flatMap(branch => {
     const missingPayroll = branch.monthly.filter(row => !row.salaryRows && !row.sheetSource).map(row => row.month)
     const missingHousehold = groupBankExpenses(branch).monthly.filter(row => !row.hasData.household).map(row => row.month)
-    const missingSource = sourceDataset ? branch.monthly.filter(row => !row.sheetSource).map(row => row.month) : []
+    const missingSource = sourceDataset ? branch.monthly.filter(row => row.month.startsWith('2025-') && !row.sheetSource).map(row => row.month) : []
     return [
       ...(missingSource.length ? [`${branch.name}: в загруженном источнике Sheets нет применимых данных за ${missingSource.join(', ')}. Экспорт заблокирован; подстановка из другого года не допускается.`] : []),
       ...(missingPayroll.length ? [`${branch.name}: нет начислений зарплаты с привязкой к филиалу за ${missingPayroll.join(', ')}. Распределённые суммы менеджмента или оценка не заменяют отсутствующие начисления.`] : []),

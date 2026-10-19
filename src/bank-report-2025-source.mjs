@@ -1,9 +1,9 @@
-import { BANK_BRANCH_IDS } from './profitability-bank.mjs'
+import { BANK_BRANCH_IDS, reportMonths } from './profitability-bank.mjs'
 export const BANK_2025_SNAPSHOT_TYPE = 'bank_report_2025_source_v1'
 export const BANK_2025_SNAPSHOT_SCOPE = 'profitability:2025:bc4-crescent'
 const sourceUrl = /^https:\/\/docs\.google\.com\/spreadsheets\/d\/[A-Za-z0-9_-]+\/edit#gid=\d+&range=[A-Z]{1,3}[1-9]\d*(?::[A-Z]{1,3}[1-9]\d*)?$/
 export function isBank2025Period(period) {
-  return /^2025-(0[1-9]|1[0-2])-01$/.test(period?.from || '') && period.toExclusive > period.from && period.toExclusive <= '2026-01-01'
+  return reportMonths(period?.from, period?.toExclusive).some(month => month.startsWith('2025-'))
 }
 export function validateBank2025Snapshot(record) {
   const data = record?.snapshot_data
