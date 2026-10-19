@@ -5528,6 +5528,9 @@ function Reports({ t, permissions = [], isAdmin = false }) {
     periodLabel: '',
     source: ''
   })
+  const [profitabilityBankPeriod, setProfitabilityBankPeriod] = useState('')
+  const profitabilityPeriodKey = profitabilityBankPeriod || monthFilter
+  const rmsProfitabilityRequestRef = useRef(0)
   const [profitabilityMetric, setProfitabilityMetric] = useState('net')
   const [expandedProfitabilityBranches, setExpandedProfitabilityBranches] = useState(() => new Set())
   const [expandedProfitabilityExpenseGroups, setExpandedProfitabilityExpenseGroups] = useState(() => new Set())
@@ -5860,7 +5863,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
   useEffect(() => {
     if (effectiveReportsTab !== 'profitability') return
     loadRmsProfitabilityReport()
-  }, [effectiveReportsTab, branchFilter, monthFilter, branches.length])
+  }, [effectiveReportsTab, branchFilter, profitabilityPeriodKey, branches.length])
 
   useEffect(() => {
     if (effectiveReportsTab !== 'suppliers') return
@@ -6116,6 +6119,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
   }
 
   async function loadRmsProfitabilityReport() {
+    const requestId = ++rmsProfitabilityRequestRef.current
     setRmsProfitabilityReport(prev => ({ ...prev, loading: true, error: '' }))
 
     const emptyTotals = {
@@ -6138,19 +6142,24 @@ function Reports({ t, permissions = [], isAdmin = false }) {
     try {
       const pageSize = 1000
       const period = (() => {
-        if (/^year:\d{4}$/.test(String(monthFilter || ''))) {
-          const year = Number(String(monthFilter).replace('year:', ''))
+        if (/^annual:\d{4}-\d{2}$/.test(String(profitabilityPeriodKey || ''))) {
+          const start = String(profitabilityPeriodKey).slice(7)
+          const [year, month] = start.split('-').map(Number)
+          return { from: `${start}-01`, toExclusive: `${year + 1}-${String(month).padStart(2, '0')}-01`, label: `12 месяцев с ${start}` }
+        }
+        if (/^year:\d{4}$/.test(String(profitabilityPeriodKey || ''))) {
+          const year = Number(String(profitabilityPeriodKey).replace('year:', ''))
           return {
             from: `${year}-01-01`,
             toExclusive: `${year + 1}-01-01`,
             label: `${year} год`
           }
         }
-        if (/^\d{4}-\d{2}$/.test(String(monthFilter || ''))) {
+        if (/^\d{4}-\d{2}$/.test(String(profitabilityPeriodKey || ''))) {
           return {
-            from: `${monthFilter}-01`,
-            toExclusive: rmsNextMonthStart(monthFilter),
-            label: monthFilter
+            from: `${profitabilityPeriodKey}-01`,
+            toExclusive: rmsNextMonthStart(profitabilityPeriodKey),
+            label: profitabilityPeriodKey
           }
         }
         return { from: '', toExclusive: '', label: 'Весь период' }
@@ -6173,7 +6182,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
           rows = rows.concat(batch)
           if (batch.length < pageSize) break
           offset += pageSize
-          if (offset > 50000) break
+          if (offset > 50000) throw new Error('Слишком большой объём данных: отчёт не сформирован, чтобы не показать неполный итог.')
         }
         return rows
       }
@@ -6187,7 +6196,9 @@ function Reports({ t, permissions = [], isAdmin = false }) {
           )
           .is('deleted_at', null)
         query = applyDateRange(query, 'revenue_date')
-        return query.order('revenue_date', { ascending: true }).range(from, to)
+        query = query.order('revenue_date', { ascending: true }).order('branch_id', { ascending: true })
+        if (table === 'daily_revenue_entries') query = query.order('id', { ascending: true })
+        return query.range(from, to)
       })
 
       let revenueRows = await fetchRevenueTable('daily_revenue_entries')
@@ -6203,7 +6214,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
           .select('id,branch_id,expense_date,amount,comment,custom_category,expense_categories(name)')
           .is('deleted_at', null)
         query = applyDateRange(query, 'expense_date')
-        return query.order('expense_date', { ascending: true }).range(from, to)
+        return query.order('expense_date', { ascending: true }).order('id', { ascending: true }).range(from, to)
       })
 
       const supplierPurchases = await fetchPaged((from, to) => {
@@ -6212,36 +6223,22 @@ function Reports({ t, permissions = [], isAdmin = false }) {
           .select('id,supplier_id,branch_id,purchase_date,invoice_number,total_amount,comment,deleted_at,suppliers(name)')
           .is('deleted_at', null)
         query = applyDateRange(query, 'purchase_date')
-        return query.order('purchase_date', { ascending: true }).range(from, to)
+        return query.order('purchase_date', { ascending: true }).order('id', { ascending: true }).range(from, to)
       })
 
-      const [{ data: employeeRowsRaw, error: employeesError }, salaryResult, serviceResult] = await Promise.all([
-        supabase
-          .from('employees')
+      const [employeeRows, salaryPeriods, rawServiceRows] = await Promise.all([
+        fetchPaged((from, to) => supabase.from('employees')
           .select('id,branch_id,full_name,position,monthly_salary,salary_type,daily_rate,is_active,employment_status')
-          .eq('is_active', true),
-        (async () => {
-          let query = supabase
-            .from('salary_periods')
-            .select('employee_id,branch_id,salary_month,salary_gross,salary_net')
-          query = applyDateRange(query, 'salary_month')
-          return query
-        })(),
-        (async () => {
-          let query = supabase
-            .from('monthly_branch_service_charge_cost')
-            .select('branch_id,month,staff_cost_amount')
-          query = applyDateRange(query, 'month')
-          return query
-        })()
+          .eq('is_active', true).order('id').range(from, to)),
+        fetchPaged((from, to) => applyDateRange(supabase.from('salary_periods')
+          .select('employee_id,branch_id,salary_month,salary_gross,salary_net'), 'salary_month')
+          .order('salary_month').order('employee_id').range(from, to)),
+        fetchPaged((from, to) => applyDateRange(supabase.from('monthly_branch_service_charge_cost')
+          .select('branch_id,month,staff_cost_amount'), 'month')
+          .order('month').order('branch_id').range(from, to))
       ])
-
-      if (employeesError) throw employeesError
-      const employeeRows = employeeRowsRaw || []
-      const salaryPeriods = salaryResult?.error ? [] : (salaryResult?.data || [])
       const enabledServiceBranchIds = new Set((branches || []).filter(branch => branch.service_charge_enabled).map(branch => String(branch.id)))
-      const serviceRows = (serviceResult?.error ? [] : (serviceResult?.data || []))
-        .filter(row => enabledServiceBranchIds.has(String(row.branch_id)))
+      const serviceRows = rawServiceRows.filter(row => enabledServiceBranchIds.has(String(row.branch_id)))
       const taxSettings = await readRmsAppSetting(RMS_BRANCH_TAX_RATE_SETTING, {})
 
       const employeeById = new Map(employeeRows.map(row => [String(row.id), row]))
@@ -6572,7 +6569,13 @@ function Reports({ t, permissions = [], isAdmin = false }) {
       totals.margin = totals.revenue ? totals.net / totals.revenue * 100 : 0
       totals.branches = visibleRows.length
 
+      if (requestId !== rmsProfitabilityRequestRef.current) return
       setRmsProfitabilityReport({
+        allRows: rows,
+        period,
+        periodKey: profitabilityPeriodKey,
+        loadedAt: new Date().toISOString(),
+        bankInputs: { revenueRows, salaryPeriods, payrollEstimated: !salaryPeriods.length, branchNames: Object.fromEntries(branchNameById), warnings: [] },
         loading: false,
         error: '',
         rows: visibleRows,
@@ -6581,6 +6584,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
         source: `${revenueSource} + daily_expenses + supplier_purchases + salary_periods`
       })
     } catch (error) {
+      if (requestId !== rmsProfitabilityRequestRef.current) return
       setRmsProfitabilityReport({
         loading: false,
         error: error?.message || 'Не удалось загрузить отчёт по рентабельности',
@@ -9623,7 +9627,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
     ? { key: 'margin', label: 'Рентабельность', format: value => pct(value), max: Math.max(1, ...profitabilityRows.map(row => Math.max(0, parseNum(row.margin)))) }
     : profitabilityMetric === 'revenue'
       ? { key: 'revenue', label: 'Выручка', format: value => `${fmt(value)} AZN`, max: Math.max(1, ...profitabilityRows.map(row => Math.max(0, parseNum(row.revenue)))) }
-      : { key: 'net', label: 'Чистый результат', format: value => `${fmt(value)} AZN`, max: Math.max(1, ...profitabilityRows.map(row => Math.abs(parseNum(row.net)))) }
+      : { key: 'net', label: 'Расчётный результат', format: value => `${fmt(value)} AZN`, max: Math.max(1, ...profitabilityRows.map(row => Math.abs(parseNum(row.net)))) }
 
   const profitabilityBest = [...profitabilityRows].sort((a, b) => parseNum(b.net) - parseNum(a.net))[0] || null
   const profitabilityWeak = [...profitabilityRows].sort((a, b) => parseNum(a.net) - parseNum(b.net))[0] || null
@@ -9651,6 +9655,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
   }
 
   const ReportsProfitabilityView = <section className="reports-v417-profitability">
+    <ProfitabilityBankReport report={rmsProfitabilityReport} branches={branches} periodKey={profitabilityPeriodKey} onPeriodChange={setProfitabilityBankPeriod}/>
     <style>{`
       .reports-v417-profitability{display:grid;gap:16px}
       .reports-v417-status{padding:13px 15px;border:1px solid #bfdbfe;border-radius:16px;background:#eff6ff;color:#1e3a8a;font-size:12px;font-weight:750}.reports-v417-status.bad{border-color:#fecaca;background:#fef2f2;color:#991b1b}
@@ -9672,14 +9677,14 @@ function Reports({ t, permissions = [], isAdmin = false }) {
       @media(max-width:1500px){.reports-v417-kpis{grid-template-columns:repeat(4,minmax(0,1fr))}}@media(max-width:1050px){.reports-v417-grid{grid-template-columns:1fr}.reports-v417-detail-grid{grid-template-columns:1fr}.reports-v417-expenses-card{grid-column:auto}}@media(max-width:720px){.reports-v417-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.reports-v417-bar-row{grid-template-columns:80px minmax(90px,1fr) 105px}.reports-v417-expense-toggle{grid-template-columns:minmax(125px,1fr) 78px 18px}.reports-v417-expense-count{display:none}}
     `}</style>
 
-    {rmsProfitabilityReport.loading && <div className="reports-v417-status">Считаю выручку, Food Cost, зарплаты, service charge, налоги и чистый результат по филиалам…</div>}
+    {rmsProfitabilityReport.loading && <div className="reports-v417-status">Считаю выручку, Food Cost, зарплаты, service charge, налоги и расчётный результат по филиалам…</div>}
     {rmsProfitabilityReport.error && <div className="reports-v417-status bad">{rmsProfitabilityReport.error}</div>}
 
     <section className="reports-v417-kpis">
       <div className="reports-v417-kpi green"><span>Выручка</span><strong>{fmt(profitabilityTotals.revenue)}</strong><em>Cash + Bank + Wolt</em></div>
       <div className="reports-v417-kpi blue"><span>Все расходы</span><strong>{fmt(profitabilityTotals.totalExpenses)}</strong><em>{profitabilityTotals.revenue ? pct(profitabilityTotals.totalExpenses / profitabilityTotals.revenue * 100) : '0.0%'} от выручки</em></div>
-      <div className={`reports-v417-kpi ${profitabilityTotals.net >= 0 ? 'purple' : 'red'}`}><span>Чистый результат</span><strong>{fmt(profitabilityTotals.net)}</strong><em>{rmsProfitabilityReport.periodLabel}</em></div>
-      <div className={`reports-v417-kpi ${profitabilityTotals.margin >= 0 ? 'orange' : 'red'}`}><span>Рентабельность</span><strong>{pct(profitabilityTotals.margin)}</strong><em>чистая маржа</em></div>
+      <div className={`reports-v417-kpi ${profitabilityTotals.net >= 0 ? 'purple' : 'red'}`}><span>Расчётный результат</span><strong>{fmt(profitabilityTotals.net)}</strong><em>{rmsProfitabilityReport.periodLabel}</em></div>
+      <div className={`reports-v417-kpi ${profitabilityTotals.margin >= 0 ? 'orange' : 'red'}`}><span>Рентабельность</span><strong>{pct(profitabilityTotals.margin)}</strong><em>расчётная маржа</em></div>
       <div className="reports-v417-kpi teal"><span>Food Cost</span><strong>{fmt(profitabilityTotals.foodCost)}</strong><em>{profitabilityTotals.revenue ? pct(profitabilityTotals.foodCost / profitabilityTotals.revenue * 100) : '0.0%'}</em></div>
       <div className="reports-v417-kpi blue"><span>Зарплаты</span><strong>{fmt(profitabilityTotals.salary)}</strong><em>{profitabilityTotals.revenue ? pct(profitabilityTotals.salary / profitabilityTotals.revenue * 100) : '0.0%'}</em></div>
       <div className="reports-v417-kpi orange"><span>Wolt Comission</span><strong>{fmt(profitabilityTotals.woltCommission)}</strong><em>Wolt-выручка {fmt(profitabilityTotals.woltRevenue)}</em></div>
@@ -9722,7 +9727,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
     </section>}
 
     {!rmsProfitabilityReport.loading && !rmsProfitabilityReport.error && <div className="reports-v417-card">
-      <div className="reports-v417-head"><div><h3>Детальная рентабельность филиалов</h3><p>Все накладные поставщиков, включая Zaur Bazar, распределяются между филиалами по доле выручки. Ручная статья «Базар» исключена. Service charge показан справочно и не входит в расходы и прибыль. Налог с оборота берётся из настроек филиала.</p></div><span className="reports-v43-badge">{profitabilityRows.length}</span></div>
+      <div className="reports-v417-head"><div><h3>Детальная рентабельность филиалов</h3><p>Все накладные поставщиков, включая Zaur Bazar, распределяются между филиалами по доле выручки. Ручная статья «Базар» исключена. Service charge персоналу включён в расходы и расчётный результат действующего отчёта. Налог с оборота берётся из настроек филиала.</p></div><span className="reports-v43-badge">{profitabilityRows.length}</span></div>
       <div className="reports-v417-table-wrap"><table className="reports-v417-table">
         <thead><tr><th>Филиал</th><th>Выручка</th><th>Wolt</th><th>Food Cost</th><th>Зарплаты</th><th>Опер. расходы</th><th>Service charge</th><th>Налог с оборота</th><th>Все расходы</th><th>Результат</th><th>Маржа</th><th>На день</th><th></th></tr></thead>
         <tbody>
