@@ -6227,7 +6227,8 @@ function Reports({ t, permissions = [], isAdmin = false }) {
       })
 
       const bank2025Source = await loadBank2025Snapshot(supabase, period)
-      const purchaseClassifications = new Map(supplierPurchases.map(purchase => [purchase.id, purchaseReportClassification(purchase)]))
+      // purchaseReportClassification(purchase) remains the first, validated source inside the loader.
+      const purchaseClassifications = await loadPurchaseReportClassifications(supabase, supplierPurchases)
 
       const [employeeRows, salaryPeriods, rawServiceRows] = await Promise.all([
         fetchPaged((from, to) => supabase.from('employees')

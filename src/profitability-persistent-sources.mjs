@@ -1,3 +1,4 @@
+import { classifyPurchaseItems, loadCompletePurchaseItems } from './purchase-items-classification.mjs'
 // Classifications are read from existing imported purchase provenance.
 // No supplier-name heuristics, financial constants, new expenses or source-store.
 export const PURCHASE_CLASSIFICATION_PREFIX = 'RMS_REPORT_CLASSIFICATION_V1:'
@@ -28,4 +29,14 @@ export function partialHistoricalPayrollMonths(periods) {
   // An audited net-zero subset must never certify that the entire month is complete.
   return [...new Set(periods.filter(row => String(row.comment || '').includes('net-zero historical source'))
     .map(row => String(row.salary_month || '').slice(0, 7)).filter(month => /^\d{4}-\d{2}$/.test(month)))].sort()
+}
+
+// Markers take precedence. Query only already date-filtered, unmarked2026 purchase IDs.
+export async function loadPurchaseReportClassifications(client, purchases) {
+  const classifications = new Map(purchases.map(purchase => [purchase.id, purchaseReportClassification(purchase)]))
+  const candidates = purchases.filter(purchase => !classifications.get(purchase.id)
+    && purchase.purchase_date >= '2026-01-01' && purchase.purchase_date < '2027-01-01')
+  const grouped = await loadCompletePurchaseItems(client, candidates)
+  candidates.forEach(purchase => classifications.set(purchase.id, classifyPurchaseItems(purchase, grouped.get(purchase.id), true)))
+  return classifications
 }

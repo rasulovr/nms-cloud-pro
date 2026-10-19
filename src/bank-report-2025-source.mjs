@@ -11,6 +11,8 @@ export function validateBank2025Snapshot(record) {
     || data?.version !== 2 || data.year !== 2025 || data.currency !== 'AZN' || data.status !== 'verified'
     || data.managerMethodApproved !== true || !data.managerMethod || !Number.isFinite(Date.parse(data.verifiedAt))
     || !Array.isArray(data.rows) || data.rows.length !== 24) throw new Error('Нет полного проверенного источника отчёта за 2025')
+  const hasFoodCost = data.rows.some(row => Object.hasOwn(row, 'foodCost'))
+  if (hasFoodCost && (data.foodCostMethodApproved !== true || !data.foodCostMethod || data.rows.some(row => !Object.hasOwn(row, 'foodCost')))) throw new Error('Нужен полный согласованный источник ФудКоста 2025')
   const keys = new Set()
   const rows = data.rows.map(row => {
     const key = `${row.branchId}:${row.month}`, evidence = row.payrollEvidence
@@ -23,11 +25,27 @@ export function validateBank2025Snapshot(record) {
       || !Array.isArray(evidence.sourceUrls) || !evidence.sourceUrls.length || evidence.sourceUrls.some(url => !sourceUrl.test(url))) throw new Error('Поимённые начисления 2025 не полностью сверены')
     if (!sourceUrl.test(row.householdSourceUrl || '') || !/^[A-Z]{1,3}[1-9]\d*$/.test(row.householdCell || '')
       || typeof row.householdFormula !== 'string' || !row.householdFormula.startsWith('=')) throw new Error('Не подтверждён источник ХозТоваров 2025')
-    return { branchId:row.branchId,month:row.month,salary:row.salary,salaryBase:row.salaryBase,managerIncluded:row.managerIncluded,household:row.household,
+    let foodFields = {}
+    if (hasFoodCost) {
+      const f = row.foodCostEvidence
+      const valid = value => typeof value === 'number' && Number.isFinite(value) && value >= 0
+      const components = f?.components
+      if (!valid(row.foodCost) || !/^AL(?:8|10)$/.test(row.foodCostCell || '') || !row.foodCostSourceUrl?.endsWith('&range='+row.foodCostCell) || !sourceUrl.test(row.foodCostSourceUrl || '')
+        || typeof row.foodCostFormula !== 'string' || !row.foodCostFormula.startsWith('=')
+        || !sourceUrl.test(f?.sourceUrl || '') || !valid(f?.numerator) || !valid(f?.denominator) || !f.denominator
+        || !valid(f?.pool) || f.excludesHouseholdCell !== 'Summ!F4' || f.excludesSalaryTax !== true
+        || !Array.isArray(components) || components.length !== 3
+        || new Set(components.map(c => c.cell)).size !== 3
+        || components.some(c => !['Summ!F2','Summ!F3','Summ!F10'].includes(c.cell) || !valid(c.amount))
+        || Math.abs(components.reduce((sum,c) => sum+c.amount,0)-f.pool) > 0.005
+        || Math.abs(f.pool*f.numerator/f.denominator-row.foodCost) > 0.005) throw new Error('Не подтверждён ФудКост 2025 без ХозТоваров')
+      foodFields = {foodCost:row.foodCost,foodCostCell:row.foodCostCell,foodCostFormula:row.foodCostFormula,foodCostSourceUrl:row.foodCostSourceUrl,foodCostEvidence:f}
+    }
+    return { ...foodFields, branchId:row.branchId,month:row.month,salary:row.salary,salaryBase:row.salaryBase,managerIncluded:row.managerIncluded,household:row.household,
       sourceUrl:evidence.sourceUrls[0],salaryCell:'D · поимённые начисления',salaryFormula:'Сумма начислений D + согласованное распределение менеджмента',
       householdSourceUrl:row.householdSourceUrl,householdCell:row.householdCell,householdFormula:row.householdFormula,payrollEvidence:evidence }
   })
-  return { year:2025,currency:'AZN',version:2,complete:true,persistent:true,snapshotId:record.id,verifiedAt:data.verifiedAt,managerMethod:data.managerMethod,rows,
+  return { year:2025,currency:'AZN',version:2,complete:true,persistent:true,snapshotId:record.id,verifiedAt:data.verifiedAt,managerMethod:data.managerMethod,foodCostMethod:hasFoodCost?data.foodCostMethod:null,rows,
     warnings:Array.isArray(data.warnings)?data.warnings.map(String):[],exclusions:Array.isArray(data.exclusions)?data.exclusions:[] }
 }
 export async function loadBank2025Snapshot(client, period) {

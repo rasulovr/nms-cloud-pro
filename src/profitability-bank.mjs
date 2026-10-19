@@ -124,13 +124,15 @@ export function buildBankReport(report, selectedIds, sourceDataset = null) {
         const previousSalary = num(row.categories.salary)
         const salaryDelta = source.salary - previousSalary
         row.categories.salary = source.salary
-        row.categories['supplier-food-cost'] = food - moved
+        const previousFoodCost = food - moved
+        const foodCostDelta = Object.hasOwn(source,'foodCost') ? source.foodCost - previousFoodCost : 0
+        row.categories['supplier-food-cost'] = previousFoodCost + foodCostDelta
         row.categories['sheets-household'] = moved
         row.sheetSource = source
-        row.expenses += salaryDelta
-        row.net -= salaryDelta
+        row.expenses += salaryDelta + foodCostDelta
+        row.net -= salaryDelta + foodCostDelta
         row.margin = row.revenue ? row.net / row.revenue * 100 : null
-        sourceAdjustments.push({ branchId: branch.id, branchName: branch.name, month: row.month, previousSalary, salary: source.salary, salaryDelta, household: source.household, movedFromFood: moved, source })
+        sourceAdjustments.push({ branchId: branch.id, branchName: branch.name, month: row.month, previousSalary, salary: source.salary, salaryDelta, previousFoodCost, foodCost: row.categories['supplier-food-cost'], foodCostDelta, expenseDelta: salaryDelta + foodCostDelta, household: source.household, movedFromFood: moved, source })
       }
       const names = new Map(branch.categories.map(category => [category.key, category]))
       names.set('salary', { key: 'salary', name: 'Зарплаты' })

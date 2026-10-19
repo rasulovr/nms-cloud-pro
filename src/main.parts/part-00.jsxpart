@@ -496,7 +496,7 @@ async function rmsTechCardAuditRecent(limit = 50) {
 /* RMS v43 SUPPLIERS FINAL CLEAN SINGLE E-QAIME FORM - no payment term fields inside purchase e-qaime block */
 import ProfitabilityBankReport from './ProfitabilityBankReport'
 import { loadBank2025Snapshot, isBank2025Period } from './bank-report-2025-source.mjs'
-import { purchaseReportClassification, bankScopeTaxRate, partialHistoricalPayrollMonths } from './profitability-persistent-sources.mjs'
+import { purchaseReportClassification, loadPurchaseReportClassifications, bankScopeTaxRate, partialHistoricalPayrollMonths } from './profitability-persistent-sources.mjs'
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { createPortal } from 'react-dom'
