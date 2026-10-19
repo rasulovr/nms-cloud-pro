@@ -110,7 +110,7 @@ export function buildBankReport(report, selectedIds) {
 // Presentation-only grouping. Original monthly categories and totals stay intact.
 export const BANK_EXPENSE_GROUPS = [
   ['salary', 'Зарплаты'], ['rent', 'Аренда'], ['food', 'ФудКост'],
-  ['household', 'ХозТовары'], ['dsmf-tax', 'DSMF+Налог'], ['taxi', 'Такси'], ['other', 'Прочие']
+  ['household', 'ХозТовары'], ['dsmf-tax', 'DSMF+Налог'], ['taxi', 'Такси'], ['service', 'Сервис чардж'], ['utilities', 'Коммунальные'], ['other', 'Прочие']
 ]
 export function bankExpenseGroup(category) {
   if (category.informational || category.key === 'tax-paid') return null
@@ -118,7 +118,9 @@ export function bankExpenseGroup(category) {
   if (category.key === 'tax') return 'dsmf-tax'
   if (category.key === 'supplier-food-cost') return 'food'
   const name = String(category.name || '').toLowerCase().replace(/ё/g, 'е')
-  // Fees/service/partner costs never masquerade as payroll, food or taxes.
+  if (category.key === 'service-charge' || /service\s*charge|сервис.*чардж/.test(name)) return 'service'
+  if (/коммун|элект|^свет$|^газ$|^вода$|utilities|electric|water|kommunal/.test(name)) return 'utilities'
+  // Fees/partner costs never masquerade as payroll, food or taxes.
   if (/комисс|commission|service|сервис|wolt|partner|партнер/.test(name)) return 'other'
   if (/\bd[sm]{2}f\b|дсмф|дмсф|социальн.*взнос|social.*contribution|sosial.*sığorta/.test(name)) return 'dsmf-tax'
   if (/аренд|\brent\b|icar[əe]|arenda/.test(name)) return 'rent'
