@@ -13,7 +13,27 @@ export function reportMonths(from, toExclusive) {
   }
   return months.length && `${cursor}-01` === toExclusive ? months : []
 }
-export function buildBankReport(report, selectedIds) {
+// Snapshot stays in browser memory; no database writes or financial constants.
+export function validateBankSourceDataset(dataset) {
+  if (!dataset || dataset.currency !== 'AZN' || !Number.isInteger(dataset.year) || dataset.year < 2000 || dataset.year > 2100 || !Array.isArray(dataset.rows) || dataset.rows.length !== 24) throw new Error('Нужны 24 строки: 12 месяцев по BC4 и Crescent, валюта AZN.')
+  const seen = new Set()
+  const rows = dataset.rows.map(row => {
+    const branchId = row.branch === 'BC4' ? BANK_BRANCH_IDS[0] : row.branch === 'Crescent/BC5' ? BANK_BRANCH_IDS[1] : null
+    if (!branchId || !new RegExp(`^${dataset.year}-(0[1-9]|1[0-2])$`).test(row.month)) throw new Error('Неверный филиал или месяц источника.')
+    const key = `${branchId}:${row.month}`
+    if (seen.has(key)) throw new Error('Повтор филиала и месяца в источнике.')
+    seen.add(key)
+    for (const field of ['salary', 'household', 'salaryBase', 'managerIncluded']) if (typeof row[field] !== 'number' || !Number.isFinite(row[field]) || row[field] < 0) throw new Error(`Некорректная сумма ${field}.`)
+    if (Math.abs(row.salary - row.salaryBase - row.managerIncluded) > 0.01) throw new Error('Зарплата не сходится с базой и включённым менеджментом.')
+    if (!/^https:\/\/docs\.google\.com\/spreadsheets\/d\/[a-zA-Z0-9_-]+\/edit#gid=\d+(?:&range=[A-Z0-9:]+)?$/.test(row.sourceUrl || '')) throw new Error('Нужна ссылка на конкретный лист Google Sheets.')
+    for (const field of ['salaryCell', 'householdCell']) if (!/^[A-Z]{1,3}[1-9][0-9]*$/.test(row[field] || '')) throw new Error('Не указана ячейка источника.')
+    const formula = value => typeof value === 'string' ? value : value?.formulaValue
+    if (![row.salaryFormula, row.householdFormula].every(value => typeof formula(value) === 'string' && formula(value).startsWith('='))) throw new Error('Не указана формула источника.')
+    return { ...row, branchId, salaryFormula: formula(row.salaryFormula), householdFormula: formula(row.householdFormula) }
+  })
+  return { year: dataset.year, currency: 'AZN', rows, warnings: Array.isArray(dataset.warnings) ? dataset.warnings.map(String) : [] }
+}
+export function buildBankReport(report, selectedIds, sourceDataset = null) {
   const months = reportMonths(report.period?.from, report.period?.toExclusive)
   const ids = [...new Set(selectedIds.map(String))]
   if (!months.length || !ids.length) return null
@@ -86,6 +106,40 @@ export function buildBankReport(report, selectedIds) {
     if (!reconciled) warnings.push('Помесячный итог не совпадает с действующим расчётом рентабельности. Экспорт заблокирован.')
     return { id, name: source.name, monthly, categories: [...categoryMap.values()], totals, warnings: [...new Set(warnings)], reconciled: reconciled && allocationValid && Boolean(original), share: num(source.revenueShare), taxRate: num(source.taxRate), available: Boolean(original) }
   })
+  const sourceAdjustments = []
+  if (sourceDataset) {
+    for (const branch of branchReports) {
+      for (const row of branch.monthly) {
+        const source = sourceDataset.rows.find(item => item.branchId === branch.id && item.month === row.month)
+        if (!source) continue
+        const existingHousehold = branch.categories.filter(category => bankExpenseGroup(category) === 'household').reduce((sum, category) => sum + num(row.categories[category.key]), 0)
+        const food = num(row.categories['supplier-food-cost'])
+        const moved = source.household - existingHousehold
+        if (moved < -0.005 || food < moved - 0.005) {
+          branch.reconciled = false
+          branch.warnings.push(`${row.month}: ХозТовары Sheets нельзя безопасно выделить из имеющегося FoodCost; требуется сверка состава закупок.`)
+          continue
+        }
+        const previousSalary = num(row.categories.salary)
+        const salaryDelta = source.salary - previousSalary
+        row.categories.salary = source.salary
+        row.categories['supplier-food-cost'] = food - moved
+        row.categories['sheets-household'] = moved
+        row.sheetSource = source
+        row.expenses += salaryDelta
+        row.net -= salaryDelta
+        row.margin = row.revenue ? row.net / row.revenue * 100 : null
+        sourceAdjustments.push({ branchId: branch.id, branchName: branch.name, month: row.month, previousSalary, salary: source.salary, salaryDelta, household: source.household, movedFromFood: moved, source })
+      }
+      const names = new Map(branch.categories.map(category => [category.key, category]))
+      names.set('salary', { key: 'salary', name: 'Зарплаты' })
+      names.set('sheets-household', { key: 'sheets-household', name: 'ХозТовары · Google Sheets' })
+      branch.categories = [...names.values()].filter(category => category.informational || branch.monthly.some(row => Object.hasOwn(row.categories, category.key))).map(category => category.informational ? category : { ...category, amount: branch.monthly.reduce((sum, row) => sum + num(row.categories[category.key]), 0) })
+      branch.totals = branch.monthly.reduce((sum, row) => ({ revenue: sum.revenue + row.revenue, expenses: sum.expenses + row.expenses, net: sum.net + row.net }), { revenue: 0, expenses: 0, net: 0 })
+      branch.totals.margin = branch.totals.revenue ? branch.totals.net / branch.totals.revenue * 100 : null
+      branch.warnings = branch.warnings.filter(warning => !branch.monthly.some(row => row.sheetSource && warning.startsWith(`${row.month}: нет начислений salary_periods`)))
+    }
+  }
   const combinedMonths = months.map((month, index) => {
     const row = makeMonth(month)
     branchReports.forEach(branch => {
@@ -107,14 +161,16 @@ export function buildBankReport(report, selectedIds) {
   const reconciled = branchReports.every(row => row.reconciled && groupBankExpenses(row).reconciled)
     && groupBankExpenses({ monthly: combinedMonths, categories: [...categoryMap.values()], totals }).reconciled
   const coverageBlockers = branchReports.flatMap(branch => {
-    const missingPayroll = branch.monthly.filter(row => !row.salaryRows).map(row => row.month)
+    const missingPayroll = branch.monthly.filter(row => !row.salaryRows && !row.sheetSource).map(row => row.month)
     const missingHousehold = groupBankExpenses(branch).monthly.filter(row => !row.hasData.household).map(row => row.month)
+    const missingSource = sourceDataset ? branch.monthly.filter(row => !row.sheetSource).map(row => row.month) : []
     return [
+      ...(missingSource.length ? [`${branch.name}: в загруженном источнике Sheets нет применимых данных за ${missingSource.join(', ')}. Экспорт заблокирован; подстановка из другого года не допускается.`] : []),
       ...(missingPayroll.length ? [`${branch.name}: нет начислений зарплаты с привязкой к филиалу за ${missingPayroll.join(', ')}. Распределённые суммы менеджмента или оценка не заменяют отсутствующие начисления.`] : []),
       ...(missingHousehold.length ? [`${branch.name}: не выделены данные ХозТоваров за ${missingHousehold.join(', ')}. Они могут находиться внутри общей суммы закупок ФудКост; нулевой расход не подтверждён.`] : [])
     ]
   })
-  return { months, branches: branchReports, combined: { id: 'combined', name: 'Совокупно: ' + branchReports.map(row => row.name).join(' + '), monthly: combinedMonths, categories: [...categoryMap.values()], totals }, period: report.period, source: report.source, generatedAt: report.loadedAt, reconciled, coverageBlockers, exportable: reconciled && !coverageBlockers.length, payrollEstimated: input.payrollEstimated, selectedIds: ids }
+  return { sourceDataset, sourceAdjustments, months, branches: branchReports, combined: { id: 'combined', name: 'Совокупно: ' + branchReports.map(row => row.name).join(' + '), monthly: combinedMonths, categories: [...categoryMap.values()], totals }, period: report.period, source: report.source, generatedAt: report.loadedAt, reconciled, coverageBlockers, exportable: reconciled && !coverageBlockers.length, payrollEstimated: input.payrollEstimated, selectedIds: ids }
 }
 
 // Presentation-only grouping. Original monthly categories and totals stay intact.
