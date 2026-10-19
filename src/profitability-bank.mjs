@@ -104,7 +104,17 @@ export function buildBankReport(report, selectedIds) {
   }))
   const totals = combinedMonths.reduce((sum, row) => ({ revenue: sum.revenue + row.revenue, expenses: sum.expenses + row.expenses, net: sum.net + row.net }), { revenue: 0, expenses: 0, net: 0 })
   totals.margin = totals.revenue ? totals.net / totals.revenue * 100 : null
-  return { months, branches: branchReports, combined: { id: 'combined', name: 'Совокупно: ' + branchReports.map(row => row.name).join(' + '), monthly: combinedMonths, categories: [...categoryMap.values()], totals }, period: report.period, source: report.source, generatedAt: report.loadedAt, exportable: branchReports.every(row => row.reconciled && groupBankExpenses(row).reconciled) && groupBankExpenses({ monthly: combinedMonths, categories: [...categoryMap.values()], totals }).reconciled, payrollEstimated: input.payrollEstimated, selectedIds: ids }
+  const reconciled = branchReports.every(row => row.reconciled && groupBankExpenses(row).reconciled)
+    && groupBankExpenses({ monthly: combinedMonths, categories: [...categoryMap.values()], totals }).reconciled
+  const coverageBlockers = branchReports.flatMap(branch => {
+    const missingPayroll = branch.monthly.filter(row => !row.salaryRows).map(row => row.month)
+    const missingHousehold = groupBankExpenses(branch).monthly.filter(row => !row.hasData.household).map(row => row.month)
+    return [
+      ...(missingPayroll.length ? [`${branch.name}: нет начислений зарплаты с привязкой к филиалу за ${missingPayroll.join(', ')}. Распределённые суммы менеджмента или оценка не заменяют отсутствующие начисления.`] : []),
+      ...(missingHousehold.length ? [`${branch.name}: не выделены данные ХозТоваров за ${missingHousehold.join(', ')}. Они могут находиться внутри общей суммы закупок ФудКост; нулевой расход не подтверждён.`] : [])
+    ]
+  })
+  return { months, branches: branchReports, combined: { id: 'combined', name: 'Совокупно: ' + branchReports.map(row => row.name).join(' + '), monthly: combinedMonths, categories: [...categoryMap.values()], totals }, period: report.period, source: report.source, generatedAt: report.loadedAt, reconciled, coverageBlockers, exportable: reconciled && !coverageBlockers.length, payrollEstimated: input.payrollEstimated, selectedIds: ids }
 }
 
 // Presentation-only grouping. Original monthly categories and totals stay intact.
@@ -132,14 +142,17 @@ export function bankExpenseGroup(category) {
 export function groupBankExpenses(section) {
   const groups = BANK_EXPENSE_GROUPS.map(([key, name]) => ({ key, name, amount: 0, sources: [] }))
   const byKey = new Map(groups.map(group => [group.key, group]))
-  const monthly = section.monthly.map(row => ({ month: row.month, categories: Object.fromEntries(groups.map(group => [group.key, 0])) }))
+  const monthly = section.monthly.map(row => ({ month: row.month, categories: Object.fromEntries(groups.map(group => [group.key, 0])), hasData: Object.fromEntries(groups.map(group => [group.key, false])) }))
   for (const category of section.categories) {
     const key = bankExpenseGroup(category)
     if (!key) continue
     const group = byKey.get(key)
     group.amount += num(category.amount)
     group.sources.push({ name: category.name, amount: num(category.amount) })
-    section.monthly.forEach((row, index) => { monthly[index].categories[key] += num(row.categories[category.key]) })
+    section.monthly.forEach((row, index) => {
+      monthly[index].categories[key] += num(row.categories[category.key])
+      if (Object.prototype.hasOwnProperty.call(row.categories, category.key)) monthly[index].hasData[key] = true
+    })
   }
   const reconciled = Math.abs(groups.reduce((sum, group) => sum + group.amount, 0) - section.totals.expenses) < 0.01
     && monthly.every((row, index) => Math.abs(Object.values(row.categories).reduce((sum, value) => sum + value, 0) - section.monthly[index].expenses) < 0.01)

@@ -19,7 +19,10 @@ const input = {
 }
 const report=buildBankReport(input,['a','b','a'])
 assert.equal(report.branches.length,2,'duplicate branch ids must not double-count')
-assert.equal(report.exportable,true)
+assert.equal(report.reconciled,true)
+assert.equal(report.exportable,false,'missing payroll/household coverage must block bank export')
+assert.ok(report.coverageBlockers.some(text=>text.includes('ХозТоваров')))
+assert.ok(report.coverageBlockers.some(text=>text.includes('начислений зарплаты')))
 assert.equal(report.combined.totals.revenue,400)
 assert.equal(report.combined.totals.expenses,172)
 assert.equal(report.combined.totals.net,228)
@@ -32,7 +35,7 @@ assert.equal(report.branches[0].monthly[1].categories.salary,20)
 assert.equal(report.branches[1].monthly[1].margin,null,'zero revenue does not imply a zero margin')
 assert.equal(report.branches[0].share,30,'selected pair must not rebase whole-network allocation')
 assert.ok(report.branches[0].warnings.some(text=>text.includes('нет начислений')))
-const duplicateCategories=structuredClone(input); duplicateCategories.allRows[0].expenseCategories[2].amount=10; duplicateCategories.allRows[0].expenseCategories[2].details[0].amount=10; duplicateCategories.allRows[0].expenseCategories.push({key:'daily-wolt',name:'WOLT',amount:10,details:[{date:'2025-01-01',amount:10}]}); const dedup=buildBankReport(duplicateCategories,['a']); assert.equal(dedup.branches[0].categories.filter(c=>c.key==='daily-wolt').length,1); assert.equal(dedup.branches[0].categories.find(c=>c.key==='daily-wolt').amount,20); assert.equal(dedup.exportable,true)
+const duplicateCategories=structuredClone(input); duplicateCategories.allRows[0].expenseCategories[2].amount=10; duplicateCategories.allRows[0].expenseCategories[2].details[0].amount=10; duplicateCategories.allRows[0].expenseCategories.push({key:'daily-wolt',name:'WOLT',amount:10,details:[{date:'2025-01-01',amount:10}]}); const dedup=buildBankReport(duplicateCategories,['a']); assert.equal(dedup.branches[0].categories.filter(c=>c.key==='daily-wolt').length,1); assert.equal(dedup.branches[0].categories.find(c=>c.key==='daily-wolt').amount,20); assert.equal(dedup.reconciled,true)
 const mismatch=structuredClone(input); mismatch.allRows[0].totalExpenses=200
 assert.equal(buildBankReport(mismatch,['a']).exportable,false,'unreconciled export must fail closed')
 const undated=structuredClone(input); undated.allRows[0].expenseCategories[0].details[0].date=''
@@ -95,3 +98,21 @@ assert.doesNotMatch(component,/<th>Оплаченный налог|money\(row.ta
 assert.match(component,/grouped.groups.map/)
 assert.equal(groupBankExpenses(report.branches[0]).groups.find(g=>g.key==='service').amount,20,'service charge separated once')
 console.log('Nine expense groups: exact names, monthly/branch/network conservation, tax payment exclusion and shared display checks passed')
+
+const coverage=groupBankExpenses(report.branches[0])
+assert.equal(coverage.groups.find(group=>group.key==='household').sources.length,0)
+assert.equal(coverage.monthly[0].hasData.household,false,'missing separate household data must not masquerade as a recorded zero')
+assert.equal(coverage.monthly[1].hasData.other,false,'absence of monthly source entries is not a recorded zero')
+const zeroSection={monthly:[{month:'2025-01',categories:{'daily-household':0},expenses:0}],categories:[{key:'daily-household',name:'Хозтовары',amount:0}],totals:{expenses:0}}
+assert.equal(groupBankExpenses(zeroSection).monthly[0].hasData.household,true,'an explicitly recorded zero remains distinguishable')
+assert.match(component,/row.hasData\[category.key\] \? money/)
+console.log('Missing expense coverage versus explicitly recorded zero: passed')
+
+const covered=structuredClone(input)
+covered.bankInputs.salaryPeriods=['a','b'].flatMap(branch_id=>['2025-01','2025-02'].map(month=>({branch_id,salary_month:month+'-01'})))
+covered.allRows.forEach(branch=>branch.expenseCategories.push({key:'daily-household',name:'Хозтовары',amount:0,details:['2025-01','2025-02'].map(month=>({date:month+'-01',amount:0}))}))
+const coveredModel=buildBankReport(covered,['a','b'])
+assert.equal(coveredModel.exportable,true,'explicitly present payroll and household records pass coverage guard')
+assert.deepEqual(coveredModel.combined.totals,report.combined.totals,'coverage guard must not alter money')
+assert.match(component,/Банковский экспорт заблокирован: неполные исходные данные/)
+console.log('Incomplete bank coverage fails closed without changing arithmetic: passed')
