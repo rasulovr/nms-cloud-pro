@@ -19,7 +19,20 @@ assert.doesNotMatch(internal,/INTERNAL_PRIVATE_SENTINEL|Источники и м
 assert.doesNotMatch(external,/<a[ >]|mailto:|href=/)
 for(const label of ['BC4','AZN','2025-10','Зарплаты','Аренда','ФудКост','ХозТовары','DSMF+Налог','Такси','Сервис чардж','Коммунальные','Прочие','Расчётный результат','полнота выручки не подтверждена']) assert.ok(external.includes(label),label)
 assert.ok(!external.includes('1 500,00 AZN'),'exclusions outside selected months must not be included')
-assert.equal((external.match(/<svg/g)||[]).length,2)
+assert.equal((external.match(/<svg/g)||[]).length,4)
+assert.equal((external.match(/aria-label="Расчётная маржа по месяцам, проценты"/g)||[]).length,2)
+assert.match(external,/Сформировано/)
+assert.doesNotMatch(external,/Approved|Verified|проверено RMS/i)
+for (const margin of [null,0,-25,150]) {
+  const edge=structuredClone(model)
+  for (const sec of [edge.combined,...edge.branches]) sec.monthly[0].margin=margin
+  const markup=render(edge,true,false)
+  assert.doesNotMatch(markup,/NaN|Infinity/)
+  assert.match(markup,/2025-10/)
+  if(margin===-25) assert.match(markup,/#d44459/)
+}
+assert.equal((external.match(/class="bank-expense-block"/g)||[]).length,2)
+assert.ok(external.indexOf('bank-expense-appendix') > external.lastIndexOf('bank-report-section'),'expense appendix follows all summary sections')
 assert.deepEqual(model,before,'presentation must not mutate accounting model')
 let opens=0,html=''
 global.window={open(){opens++;return{document:{open(){},write(value){html=value},close(){}}}}}
