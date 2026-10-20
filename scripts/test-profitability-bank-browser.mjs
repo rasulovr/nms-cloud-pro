@@ -29,14 +29,14 @@ assert.equal(await popup.locator('.bank-controls').count(),0)
 await page.locator('.bank-controls fieldset input').first().uncheck();assert.equal(await page.locator('.bank-report-section').count(),2)
 await page.locator('.bank-controls fieldset input').nth(1).uncheck();assert.equal(await page.locator('#profitability-bank-export').isDisabled(),true)
 await page.locator('.bank-controls fieldset input').first().check();assert.equal(await page.locator('#profitability-bank-export').isEnabled(),true)
-await page.getByLabel('С месяца',{exact:true}).fill('2025-10');await page.getByLabel('По месяц',{exact:true}).fill('2026-02');
+await page.getByLabel('Начало: год',{exact:true}).selectOption('2025');await page.getByLabel('Начало: месяц',{exact:true}).selectOption('09');
+await page.getByLabel('Конец: год',{exact:true}).selectOption('2026');await page.getByLabel('Конец: месяц',{exact:true}).selectOption('09');
 assert.equal(await page.evaluate(()=>window.lastPeriod),undefined,'editing must not apply');
-await page.getByRole('button',{name:'Применить период'}).click();assert.equal(await page.evaluate(()=>window.lastPeriod),'range:2025-10:2026-02');
+await page.getByRole('button',{name:'Применить период'}).click();assert.equal(await page.evaluate(()=>window.lastPeriod),'range:2025-09:2026-09');
 assert.equal(await page.locator('.bank-controls fieldset input').first().isChecked(),true);
 assert.equal(await page.locator('.bank-controls fieldset input').nth(1).isChecked(),false);
-await page.getByLabel('По месяц',{exact:true}).fill('2025-09');assert.equal(await page.getByRole('button',{name:'Применить период'}).isDisabled(),true);
-await page.getByLabel('С месяца',{exact:true}).fill('');assert.equal(await page.getByRole('button',{name:'Применить период'}).isDisabled(),true);
-await page.getByLabel('С месяца',{exact:true}).fill('2025-10');await page.getByLabel('По месяц',{exact:true}).fill('2025-10');await page.getByRole('button',{name:'Применить период'}).click();assert.equal(await page.evaluate(()=>window.lastPeriod),'range:2025-10:2025-10');
+await page.getByLabel('Конец: год',{exact:true}).selectOption('2025');await page.getByLabel('Конец: месяц',{exact:true}).selectOption('08');assert.equal(await page.getByRole('button',{name:'Применить период'}).isDisabled(),true);
+await page.getByLabel('Конец: месяц',{exact:true}).selectOption('09');await page.getByRole('button',{name:'Применить период'}).click();assert.equal(await page.evaluate(()=>window.lastPeriod),'range:2025-09:2025-09');
 assert.doesNotMatch(await page.locator('body').innerText(),/Источники и методика|Мостик источников|Данные загружены|Предварительно|Для рассмотрения банком/);
 await page.setViewportSize({width:390,height:844});await page.screenshot({path:path.join(out,'mobile.png'),fullPage:true});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth),true,'mobile must not overflow viewport')
 assert.deepEqual(errors,[])

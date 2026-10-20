@@ -5896,12 +5896,6 @@ function Reports({ t, permissions = [], isAdmin = false }) {
     setRmsExpensesReport(prev => ({ ...prev, loading: true, error: '' }))
     try {
       const period = (() => {
-        if (String(profitabilityPeriodKey || '').startsWith('range:')) {
-          const [, start, end] = profitabilityPeriodKey.split(':')
-          const selectedPeriod = manualPeriod(start, end)
-          if (!selectedPeriod) throw new Error('Некорректный период отчёта.')
-          return selectedPeriod
-        }
         if (/^year:\d{4}$/.test(String(monthFilter || ''))) {
           const year = String(monthFilter).replace('year:', '')
           return { from: `${year}-01-01`, to: `${Number(year) + 1}-01-01` }
@@ -6126,7 +6120,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
 
   async function loadRmsProfitabilityReport() {
     const requestId = ++rmsProfitabilityRequestRef.current
-    setRmsProfitabilityReport(prev => ({ ...prev, loading: true, error: '' }))
+    setRmsProfitabilityReport(prev => ({ ...prev, periodKey: profitabilityPeriodKey, loading: true, error: '' }))
 
     const emptyTotals = {
       revenue: 0,
@@ -6148,6 +6142,12 @@ function Reports({ t, permissions = [], isAdmin = false }) {
     try {
       const pageSize = 1000
       const period = (() => {
+        if (String(profitabilityPeriodKey || '').startsWith('range:')) {
+          const [, start, end] = profitabilityPeriodKey.split(':')
+          const selectedPeriod = manualPeriod(start, end)
+          if (!selectedPeriod) throw new Error('Некорректный период отчёта.')
+          return selectedPeriod
+        }
         if (/^annual:\d{4}-\d{2}$/.test(String(profitabilityPeriodKey || ''))) {
           const start = String(profitabilityPeriodKey).slice(7)
           const [year, month] = start.split('-').map(Number)
@@ -6602,6 +6602,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
     } catch (error) {
       if (requestId !== rmsProfitabilityRequestRef.current) return
       setRmsProfitabilityReport({
+        periodKey: profitabilityPeriodKey,
         loading: false,
         error: error?.message || 'Не удалось загрузить отчёт по рентабельности',
         rows: [],
@@ -9671,7 +9672,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
   }
 
   const ReportsProfitabilityView = <section className="reports-v417-profitability">
-    <ProfitabilityBankReport report={rmsProfitabilityReport} branches={branches} periodKey={profitabilityPeriodKey} onPeriodChange={setProfitabilityBankPeriod}/>
+    <ProfitabilityBankReport availableYears={yearOptions} report={rmsProfitabilityReport} branches={branches} periodKey={profitabilityPeriodKey} onPeriodChange={value => value === profitabilityPeriodKey ? loadRmsProfitabilityReport() : setProfitabilityBankPeriod(value)}/>
   </section>
 
   const supplierReportNormalizedSearch = String(supplierReportSearch || '').trim().toLowerCase()

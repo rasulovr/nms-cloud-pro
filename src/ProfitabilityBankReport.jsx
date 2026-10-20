@@ -61,6 +61,14 @@ export function ExternalBankDocument({ model }) {
 
   </article>
 }
+const MONTH_LABELS = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь']
+function MonthPicker({ label, value, onChange, years }) {
+  const [year, month] = value.split('-')
+  return <div style={{display:'flex',flexWrap:'wrap',gap:8,alignItems:'end'}}>
+    <label>{label}: год<select style={{minWidth:100,width:"auto"}} aria-label={`${label}: год`} value={year} onChange={event => onChange(`${event.target.value}-${month || '01'}`)}>{years.map(item => <option key={item} value={item}>{item}</option>)}</select></label>
+    <label>Месяц<select style={{minWidth:140,width:"auto"}} aria-label={`${label}: месяц`} value={month} onChange={event => onChange(`${year}-${event.target.value}`)}>{MONTH_LABELS.map((name,index) => <option key={name} value={String(index+1).padStart(2,'0')}>{name}</option>)}</select></label>
+  </div>
+}
 export function printBankDocument(model) {
   if (!model?.exportable) return 'Сначала загрузите отчёт, проверьте сверку итогов и полноту исходных данных.'
   const popup = window.open('', '_blank')
@@ -76,16 +84,20 @@ export function printBankDocument(model) {
   // Stylesheets and fonts must finish before opening the native PDF/print dialog.
   return ''
 }
-export default function ProfitabilityBankReport({ report, branches, onPeriodChange, periodKey }) {
+export default function ProfitabilityBankReport({ report, branches, onPeriodChange, periodKey, availableYears = [] }) {
   const [selected, setSelected] = useState(BANK_BRANCH_IDS)
   const initial = periodMonths(report.period)
   const [start, setStart] = useState(initial.start)
   const [end, setEnd] = useState(initial.end)
   useEffect(() => {
+    if (!report.period || report.error) return
     const next = periodMonths(report.period)
     setStart(next.start); setEnd(next.end)
   }, [report.period?.from, report.period?.toExclusive])
   const chosenPeriod = manualPeriod(start, end)
+  const yearNow = new Date().getFullYear()
+  const years = Array.from(new Set([yearNow - 3, yearNow - 2, yearNow - 1, yearNow, yearNow + 1, ...availableYears.map(Number), Number(start.slice(0,4)), Number(end.slice(0,4)), ...(report.bankInputs?.revenueRows || []).map(row => Number(String(row.revenue_date).slice(0,4)))]))
+    .filter(year => year >= 2000 && year <= 2100).sort((a,b) => b-a)
   const stale = report.periodKey !== periodKey
   const applyPeriod = () => {
     if (!chosenPeriod || report.loading) return
@@ -97,8 +109,8 @@ export default function ProfitabilityBankReport({ report, branches, onPeriodChan
   const exportReport = () => setError(printBankDocument(report.loading || report.error || report.periodKey !== periodKey ? null : model))
   return <section className="bank-workspace"><div className="bank-controls"><div><h2>Управленческий отчёт</h2><p>По выбранным филиалам и совокупно · помесячно · AZN</p></div>
     <div className="bank-control-row">
-      <label>С месяца<input aria-label="С месяца" type="month" min="2000-01" max="2100-12" value={start} onChange={event => setStart(event.target.value)}/></label>
-      <label>По месяц<input aria-label="По месяц" type="month" min="2000-01" max="2100-12" value={end} onChange={event => setEnd(event.target.value)}/></label>
+      <MonthPicker label="Начало" value={start} onChange={setStart} years={years}/>
+      <MonthPicker label="Конец" value={end} onChange={setEnd} years={years}/>
       <button type="button" disabled={!chosenPeriod || report.loading} onClick={applyPeriod}>Применить период</button>
       <button id="profitability-bank-export" type="button" disabled={report.loading || !!report.error || stale || !model?.exportable} onClick={exportReport}>PDF / печать</button>
     </div>
@@ -106,6 +118,6 @@ export default function ProfitabilityBankReport({ report, branches, onPeriodChan
     <fieldset><legend>Филиалы отчёта</legend>{branches.map(branch => <label key={branch.id}><input type="checkbox" checked={selected.includes(String(branch.id))} onChange={event => setSelected(current => event.target.checked ? [...current, String(branch.id)] : current.filter(id => id !== String(branch.id)))}/>{branch.name}</label>)}</fieldset>
     <p className="bank-meta">Полные календарные месяцы, включая начальный и конечный.</p></div>
     {error && <p role="alert" className="bank-disclosure">{error}</p>}
-    {report.loading || stale ? <p role="status">Загружаю расчёт…</p> : report.error ? <p role="alert">Отчёт не сформирован: {report.error}</p> : model ? <BankDocument model={model}/> : <p>Выберите филиалы и период.</p>}
+    {report.error && !report.loading ? <p role="alert">Отчёт не сформирован: {report.error}. Повторите загрузку кнопкой «Применить период».</p> : report.loading || stale ? <p role="status">Загружаю расчёт…</p> : model ? <BankDocument model={model}/> : <p>Выберите филиалы и период.</p>}
   </section>
 }
