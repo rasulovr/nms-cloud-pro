@@ -9671,8 +9671,140 @@ function Reports({ t, permissions = [], isAdmin = false }) {
     })
   }
 
+  const ReportsProfitabilityAnalytics = <section className="reports-v417-profitability" aria-label="Аналитика RMS по филиалам">
+    <style>{`
+      .reports-v417-profitability{display:grid;gap:16px}
+      .reports-v417-status{padding:13px 15px;border:1px solid #bfdbfe;border-radius:16px;background:#eff6ff;color:#1e3a8a;font-size:12px;font-weight:750}.reports-v417-status.bad{border-color:#fecaca;background:#fef2f2;color:#991b1b}
+      .reports-v417-kpis{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:10px}
+      .reports-v417-kpi{position:relative;overflow:hidden;min-height:106px;padding:15px;border:1px solid #dbe4ef;border-radius:19px;background:#fff;box-shadow:0 9px 24px rgba(15,23,42,.04)}
+      .reports-v417-kpi:after{content:'';position:absolute;right:-32px;bottom:-42px;width:100px;height:100px;border-radius:50%;background:var(--soft,#eff6ff)}
+      .reports-v417-kpi span{display:block;color:#64748b;font-size:10.5px;font-weight:850}.reports-v417-kpi strong{position:relative;z-index:1;display:block;margin-top:9px;color:#0f172a;font-size:21px;font-weight:950;letter-spacing:-.035em}.reports-v417-kpi em{position:relative;z-index:1;display:block;margin-top:7px;color:#94a3b8;font-size:9.8px;font-style:normal;font-weight:750;line-height:1.25}
+      .reports-v417-kpi.green{--soft:#dcfce7}.reports-v417-kpi.red{--soft:#fee2e2}.reports-v417-kpi.blue{--soft:#dbeafe}.reports-v417-kpi.orange{--soft:#ffedd5}.reports-v417-kpi.purple{--soft:#ede9fe}.reports-v417-kpi.teal{--soft:#ccfbf1}
+      .reports-v417-grid{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(330px,.75fr);gap:15px}
+      .reports-v417-card{min-width:0;padding:19px;border:1px solid #dbe4ef;border-radius:21px;background:#fff;box-shadow:0 11px 28px rgba(15,23,42,.04)}
+      .reports-v417-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:15px}.reports-v417-head h3{margin:0;color:#0f172a;font-size:17px;font-weight:950}.reports-v417-head p{margin:5px 0 0;color:#64748b;font-size:11px;font-weight:650;line-height:1.35}
+      .reports-v417-switch{display:inline-flex;padding:3px;border:1px solid #dbe4ef;border-radius:12px;background:#f8fafc}.reports-v417-switch button{padding:7px 11px;border:0;border-radius:9px;background:transparent;color:#64748b;font-size:10.5px;font-weight:900;cursor:pointer}.reports-v417-switch button.active{background:#fff;color:#0f172a;box-shadow:0 3px 10px rgba(15,23,42,.10)}
+      .reports-v417-bars{display:grid;gap:10px}.reports-v417-bar-row{display:grid;grid-template-columns:105px minmax(130px,1fr) 135px;gap:11px;align-items:center}.reports-v417-bar-row>b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#0f172a;font-size:11.5px}.reports-v417-track{position:relative;height:15px;overflow:hidden;border-radius:999px;background:#e2e8f0}.reports-v417-track i{display:block;height:100%;min-width:2px;border-radius:999px;background:linear-gradient(90deg,#64748b,#2563eb)}.reports-v417-track i.bad{background:linear-gradient(90deg,#fb7185,#dc2626)}.reports-v417-value{text-align:right;color:#0f172a;font-size:11px;font-weight:900}.reports-v417-value.bad{color:#dc2626}.reports-v417-value.good{color:#059669}
+      .reports-v417-insights{display:grid;gap:9px}.reports-v417-insight{display:grid;grid-template-columns:10px minmax(0,1fr);gap:10px;padding:11px 0;border-bottom:1px solid #edf2f7}.reports-v417-insight:last-child{border-bottom:0}.reports-v417-insight>i{width:8px;height:8px;margin-top:5px;border-radius:50%;background:#2563eb}.reports-v417-insight.warn>i{background:#f59e0b}.reports-v417-insight.bad>i{background:#dc2626}.reports-v417-insight strong{display:block;color:#0f172a;font-size:12px;font-weight:950}.reports-v417-insight span{display:block;margin-top:4px;color:#64748b;font-size:10.5px;font-weight:650;line-height:1.35}
+      .reports-v417-table-wrap{overflow:auto;border:1px solid #e2e8f0;border-radius:17px}.reports-v417-table{width:100%;border-collapse:collapse}.reports-v417-table th,.reports-v417-table td{padding:11px 9px;border-bottom:1px solid #e8eef5;text-align:right;white-space:nowrap}.reports-v417-table th:first-child,.reports-v417-table td:first-child{text-align:left}.reports-v417-table th{position:sticky;top:0;z-index:1;background:#f8fafc;color:#64748b;font-size:9.4px;font-weight:900;text-transform:uppercase;letter-spacing:.03em}.reports-v417-table td{color:#0f172a;font-size:10.8px;font-weight:700}.reports-v417-table tr:last-child td{border-bottom:0}.reports-v417-table .good{color:#059669}.reports-v417-table .bad{color:#dc2626}.reports-v417-open{padding:5px 8px;border:1px solid #dbe4ef;border-radius:9px;background:#fff;color:#334155;font-size:9.8px;font-weight:850;cursor:pointer}
+      .reports-v417-detail>td{padding:0!important;background:#f8fafc}.reports-v417-detail-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:11px;padding:14px}.reports-v417-detail-card{padding:13px;border:1px solid #dbe4ef;border-radius:15px;background:#fff}.reports-v417-detail-card h4{margin:0 0 10px;color:#0f172a;font-size:12px;font-weight:950}.reports-v417-detail-list{display:grid;gap:8px}.reports-v417-detail-list div{display:flex;justify-content:space-between;gap:12px;color:#64748b;font-size:10.5px;font-weight:700}.reports-v417-detail-list b{color:#0f172a;font-weight:900}.reports-v417-warning{margin-top:10px;padding:9px 10px;border-radius:11px;background:#fff7ed;color:#9a3412;font-size:10px;font-weight:750;line-height:1.35}
+      .reports-v417-expenses-card{grid-column:1/-1}.reports-v417-expense-groups{display:grid;gap:7px}.reports-v417-expense-group{overflow:hidden;border:1px solid #e2e8f0;border-radius:12px;background:#fff}.reports-v417-expense-toggle{display:grid;width:100%;grid-template-columns:minmax(180px,1fr) 105px 120px 18px;align-items:center;gap:10px;padding:10px 12px;border:0;background:#fff;color:#0f172a;text-align:left;cursor:pointer}.reports-v417-expense-toggle:hover{background:#f8fafc}.reports-v417-expense-toggle>span:first-child{font-size:11px;font-weight:900}.reports-v417-expense-count{color:#64748b;font-size:9.8px;font-weight:750;text-align:right}.reports-v417-expense-amount{font-size:11px;font-weight:950;text-align:right}.reports-v417-expense-chevron{color:#64748b;font-size:11px;transition:transform .18s ease}.reports-v417-expense-chevron.open{transform:rotate(180deg)}.reports-v417-expense-detail{overflow:auto;border-top:1px solid #e2e8f0;background:#f8fafc}.reports-v417-expense-detail table{width:100%;border-collapse:collapse}.reports-v417-expense-detail th,.reports-v417-expense-detail td{position:static;padding:8px 10px;border-bottom:1px solid #e8eef5;background:transparent;text-align:left;white-space:normal;font-size:9.8px}.reports-v417-expense-detail th{color:#64748b;font-weight:900;text-transform:uppercase}.reports-v417-expense-detail td{color:#334155;font-weight:650}.reports-v417-expense-detail th:last-child,.reports-v417-expense-detail td:last-child{text-align:right;white-space:nowrap}.reports-v417-expense-detail tr:last-child td{border-bottom:0}.reports-v417-expense-total{background:#eff6ff}.reports-v417-expense-empty{padding:10px 12px;color:#64748b;font-size:10px;font-weight:700}
+      .reports-v417-empty{padding:28px;text-align:center;color:#64748b;font-size:12px;font-weight:700}
+      @media(max-width:1500px){.reports-v417-kpis{grid-template-columns:repeat(4,minmax(0,1fr))}}@media(max-width:1050px){.reports-v417-grid{grid-template-columns:1fr}.reports-v417-detail-grid{grid-template-columns:1fr}.reports-v417-expenses-card{grid-column:auto}}@media(max-width:720px){.reports-v417-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.reports-v417-bar-row{grid-template-columns:80px minmax(90px,1fr) 105px}.reports-v417-expense-toggle{grid-template-columns:minmax(125px,1fr) 78px 18px}.reports-v417-expense-count{display:none}}
+    `}</style>
+
+    {rmsProfitabilityReport.loading && <div className="reports-v417-status">Считаю выручку, Food Cost, зарплаты, service charge, налоги и чистый результат по филиалам…</div>}
+    {rmsProfitabilityReport.error && <div className="reports-v417-status bad">{rmsProfitabilityReport.error}</div>}
+
+    <section className="reports-v417-kpis">
+      <div className="reports-v417-kpi green"><span>Выручка</span><strong>{fmt(profitabilityTotals.revenue)}</strong><em>Cash + Bank + Wolt</em></div>
+      <div className="reports-v417-kpi blue"><span>Все расходы</span><strong>{fmt(profitabilityTotals.totalExpenses)}</strong><em>{profitabilityTotals.revenue ? pct(profitabilityTotals.totalExpenses / profitabilityTotals.revenue * 100) : '0.0%'} от выручки</em></div>
+      <div className={`reports-v417-kpi ${profitabilityTotals.net >= 0 ? 'purple' : 'red'}`}><span>Чистый результат</span><strong>{fmt(profitabilityTotals.net)}</strong><em>{rmsProfitabilityReport.periodLabel}</em></div>
+      <div className={`reports-v417-kpi ${profitabilityTotals.margin >= 0 ? 'orange' : 'red'}`}><span>Рентабельность</span><strong>{pct(profitabilityTotals.margin)}</strong><em>чистая маржа</em></div>
+      <div className="reports-v417-kpi teal"><span>Food Cost</span><strong>{fmt(profitabilityTotals.foodCost)}</strong><em>{profitabilityTotals.revenue ? pct(profitabilityTotals.foodCost / profitabilityTotals.revenue * 100) : '0.0%'}</em></div>
+      <div className="reports-v417-kpi blue"><span>Зарплаты</span><strong>{fmt(profitabilityTotals.salary)}</strong><em>{profitabilityTotals.revenue ? pct(profitabilityTotals.salary / profitabilityTotals.revenue * 100) : '0.0%'}</em></div>
+      <div className="reports-v417-kpi orange"><span>Wolt Comission</span><strong>{fmt(profitabilityTotals.woltCommission)}</strong><em>Wolt-выручка {fmt(profitabilityTotals.woltRevenue)}</em></div>
+      <div className="reports-v417-kpi green"><span>Филиалов</span><strong>{fmt(profitabilityTotals.branches)}</strong><em>с активностью за период</em></div>
+    </section>
+
+    {!rmsProfitabilityReport.loading && !rmsProfitabilityReport.error && <section className="reports-v417-grid">
+      <div className="reports-v417-card">
+        <div className="reports-v417-head">
+          <div><h3>Сравнение филиалов</h3><p>Рейтинг можно переключать между чистым результатом, рентабельностью и выручкой.</p></div>
+          <div className="reports-v417-switch">
+            <button type="button" className={profitabilityMetric === 'net' ? 'active' : ''} onClick={() => setProfitabilityMetric('net')}>Прибыль</button>
+            <button type="button" className={profitabilityMetric === 'margin' ? 'active' : ''} onClick={() => setProfitabilityMetric('margin')}>Маржа</button>
+            <button type="button" className={profitabilityMetric === 'revenue' ? 'active' : ''} onClick={() => setProfitabilityMetric('revenue')}>Выручка</button>
+          </div>
+        </div>
+        <div className="reports-v417-bars">
+          {profitabilitySortedRows.map(row => {
+            const value = parseNum(row[profitabilityMetricConfig.key])
+            const width = Math.max(2, Math.min(100, Math.abs(value) / profitabilityMetricConfig.max * 100))
+            return <div className="reports-v417-bar-row" key={row.id}>
+              <b title={row.name}>{row.name}</b>
+              <div className="reports-v417-track"><i className={value < 0 ? 'bad' : ''} style={{ width: `${width}%` }} /></div>
+              <div className={`reports-v417-value ${value < 0 ? 'bad' : value > 0 ? 'good' : ''}`}>{profitabilityMetricConfig.format(value)}</div>
+            </div>
+          })}
+          {!profitabilitySortedRows.length && <div className="reports-v417-empty">Нет данных по выбранному периоду.</div>}
+        </div>
+      </div>
+
+      <div className="reports-v417-card">
+        <div className="reports-v417-head"><div><h3>Управленческие выводы</h3><p>Основные отклонения, требующие внимания.</p></div></div>
+        <div className="reports-v417-insights">
+          {profitabilityBest && <div className="reports-v417-insight"><i/><div><strong>Лучший результат: {profitabilityBest.name}</strong><span>{fmt(profitabilityBest.net)} AZN · маржа {pct(profitabilityBest.margin)}</span></div></div>}
+          {profitabilityWeak && <div className={`reports-v417-insight ${profitabilityWeak.net < 0 ? 'bad' : 'warn'}`}><i/><div><strong>Минимальный результат: {profitabilityWeak.name}</strong><span>{fmt(profitabilityWeak.net)} AZN · расходы {pct(profitabilityWeak.expenseRatio)}</span></div></div>}
+          {profitabilityHighestFood && <div className={`reports-v417-insight ${profitabilityHighestFood.foodCostPct > 35 ? 'bad' : 'warn'}`}><i/><div><strong>Максимальный Food Cost: {profitabilityHighestFood.name}</strong><span>{pct(profitabilityHighestFood.foodCostPct)} · {fmt(profitabilityHighestFood.foodCost)} AZN</span></div></div>}
+          {profitabilityHighestSalary && <div className={`reports-v417-insight ${profitabilityHighestSalary.salaryPct > 25 ? 'bad' : 'warn'}`}><i/><div><strong>Максимальная доля зарплат: {profitabilityHighestSalary.name}</strong><span>{pct(profitabilityHighestSalary.salaryPct)} · {fmt(profitabilityHighestSalary.salary)} AZN</span></div></div>}
+        </div>
+      </div>
+    </section>}
+
+    {!rmsProfitabilityReport.loading && !rmsProfitabilityReport.error && <div className="reports-v417-card">
+      <div className="reports-v417-head"><div><h3>Детальная рентабельность филиалов</h3><p>{rmsProfitabilityReport.periodLabel}</p></div><span className="reports-v43-badge">{profitabilityRows.length}</span></div>
+      <div className="reports-v417-table-wrap"><table className="reports-v417-table">
+        <thead><tr><th>Филиал</th><th>Выручка</th><th>Wolt</th><th>Food Cost</th><th>Зарплаты</th><th>Опер. расходы</th><th>Service charge</th><th>Налог с оборота</th><th>Все расходы</th><th>Результат</th><th>Маржа</th><th>На день</th><th></th></tr></thead>
+        <tbody>
+          {profitabilityRows.map(row => <React.Fragment key={row.id}>
+            <tr>
+              <td><b>{row.name}</b></td>
+              <td>{fmt(row.revenue)}</td>
+              <td>{row.woltRevenue > 0 ? fmt(row.woltRevenue) : '—'}</td>
+              <td>{fmt(row.foodCost)}<br/><span className={row.foodCostPct > 35 ? 'bad' : 'hint'}>{pct(row.foodCostPct)}</span></td>
+              <td>{fmt(row.salary)}<br/><span className={row.salaryPct > 25 ? 'bad' : 'hint'}>{pct(row.salaryPct)}</span></td>
+              <td>{fmt(row.operatingExpenses)}</td>
+              <td>{fmt(row.serviceCost)}</td>
+              <td>{fmt(row.tax)}<br/><span className="hint">{pct(row.taxRate)}</span></td>
+              <td><b>{fmt(row.totalExpenses)}</b></td>
+              <td className={row.net >= 0 ? 'good' : 'bad'}><b>{fmt(row.net)}</b></td>
+              <td className={row.margin >= 0 ? 'good' : 'bad'}><b>{pct(row.margin)}</b></td>
+              <td>{fmt(row.netPerDay)}</td>
+              <td><button type="button" className="reports-v417-open" onClick={() => toggleProfitabilityBranch(row.id)}>{expandedProfitabilityBranches.has(String(row.id)) ? 'Закрыть' : 'Состав'}</button></td>
+            </tr>
+            {expandedProfitabilityBranches.has(String(row.id)) && <tr className="reports-v417-detail"><td colSpan="13"><div className="reports-v417-detail-grid">
+              <div className="reports-v417-detail-card"><h4>Структура выручки</h4><div className="reports-v417-detail-list">
+                <div><span>Наличные</span><b>{fmt(row.cash)}</b></div><div><span>Банк</span><b>{fmt(row.bank)}</b></div><div><span>Wolt</span><b>{fmt(row.woltRevenue)}</b></div><div><span>Средняя выручка / день</span><b>{fmt(row.averageRevenuePerDay)}</b></div><div><span>Активных дней</span><b>{row.activeDays}</b></div>
+              </div></div>
+              <div className="reports-v417-detail-card"><h4>Контроль нормативов</h4><div className="reports-v417-detail-list">
+                <div><span>Food Cost</span><b className={row.foodCostPct > 35 ? 'bad' : 'good'}>{pct(row.foodCostPct)}</b></div><div><span>Зарплаты</span><b className={row.salaryPct > 25 ? 'bad' : 'good'}>{pct(row.salaryPct)}</b></div><div><span>Аренда</span><b className={row.rentPct > 12 ? 'bad' : 'good'}>{pct(row.rentPct)}</b></div><div><span>Wolt комиссия</span><b>{row.woltRevenue > 0 ? pct(row.woltCommissionPct) : '—'}</b></div><div><span>Доля всех расходов</span><b>{pct(row.expenseRatio)}</b></div>
+              </div>
+              {(row.foodCostPct > 35 || row.salaryPct > 25 || row.rentPct > 12 || row.net < 0) && <div className="reports-v417-warning">Есть отклонения от рекомендуемых ориентиров. Откройте расходы филиала и проверьте крупнейшие статьи.</div>}</div>
+              <div className="reports-v417-detail-card reports-v417-expenses-card">
+                <h4>Статьи P&amp;L и справочные показатели · {(row.expenseCategories || []).length}</h4>
+                <div className="reports-v417-expense-groups">
+                  {(row.expenseCategories || []).map(category => {
+                    const expenseGroupKey = `${row.id}::${category.key}`
+                    const isOpen = expandedProfitabilityExpenseGroups.has(expenseGroupKey)
+                    return <div className="reports-v417-expense-group" key={category.key}>
+                      <button type="button" className="reports-v417-expense-toggle" onClick={() => toggleProfitabilityExpenseGroup(row.id, category.key)}>
+                        <span>{category.name}</span>
+                        <span className="reports-v417-expense-count">{category.transactions || 0} операций</span>
+                        <span className="reports-v417-expense-amount">{fmt(category.amount)} AZN</span>
+                        <span className={`reports-v417-expense-chevron ${isOpen ? 'open' : ''}`}>▼</span>
+                      </button>
+                      {isOpen && <div className="reports-v417-expense-detail">
+                        {(category.details || []).length ? <table><thead><tr><th>Дата</th><th>Операция</th><th>Комментарий / расчёт</th><th>Сумма</th></tr></thead><tbody>
+                          {(category.details || []).map((detail, detailIndex) => <tr key={detail.id || `${category.key}-${detailIndex}`}><td>{detail.date ? formatDateDMY(detail.date) : '—'}</td><td><b>{detail.description || category.name}</b></td><td>{detail.comment || '—'}</td><td><b>{fmt(detail.amount)} AZN</b></td></tr>)}
+                          <tr className="reports-v417-expense-total"><td colSpan="3"><b>Итого по статье</b></td><td><b>{fmt(category.amount)} AZN</b></td></tr>
+                        </tbody></table> : <div className="reports-v417-expense-empty">По статье нет отдельных операций за выбранный период.</div>}
+                      </div>}
+                    </div>
+                  })}
+                  {!(row.expenseCategories || []).length && <div className="reports-v417-expense-empty">За выбранный период расходов нет.</div>}
+                </div>
+              </div>
+            </div></td></tr>}
+          </React.Fragment>)}
+          {!profitabilityRows.length && <tr><td colSpan="13" className="reports-v417-empty">Нет данных по выбранному фильтру.</td></tr>}
+        </tbody>
+      </table></div>
+    </div>}
+  </section>
+
   const ReportsProfitabilityView = <section className="reports-v417-profitability">
-    <ProfitabilityBankReport availableYears={yearOptions} report={rmsProfitabilityReport} branches={branches} periodKey={profitabilityPeriodKey} onPeriodChange={value => value === profitabilityPeriodKey ? loadRmsProfitabilityReport() : setProfitabilityBankPeriod(value)}/>
+    <ProfitabilityBankReport availableYears={yearOptions} report={rmsProfitabilityReport} branches={branches} periodKey={profitabilityPeriodKey} onPeriodChange={value => value === profitabilityPeriodKey ? loadRmsProfitabilityReport() : setProfitabilityBankPeriod(value)}>{ReportsProfitabilityAnalytics}</ProfitabilityBankReport>
   </section>
 
   const supplierReportNormalizedSearch = String(supplierReportSearch || '').trim().toLowerCase()

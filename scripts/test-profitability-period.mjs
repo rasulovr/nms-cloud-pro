@@ -11,10 +11,12 @@ assert.deepEqual(reportMonths('2025-13-01','2026-01-01'),[])
 assert.deepEqual(reportMonths('2025-01-15','2025-02-01'),[])
 const source=fs.readFileSync(new URL('../src/main.parts/part-04.jsxpart',import.meta.url),'utf8')
 const view=source.slice(source.indexOf('const ReportsProfitabilityView'),source.indexOf('const supplierReportNormalizedSearch'))
-assert.doesNotMatch(view,/Сравнение филиалов|Управленческие выводы|Детальная рентабельность|reports-v417-kpis/)
+assert.match(view,/ReportsProfitabilityAnalytics/)
+assert.match(source,/Сравнение филиалов/)
+assert.match(source,/Детальная рентабельность филиалов/)
 assert.match(view,/ProfitabilityBankReport/)
 assert.match(source,/const selectedPeriod = manualPeriod\(start, end\)/)
-console.log('Manual month range PASS: inclusive bounds, leap/cross-year, >12 months, malformed/reversed/empty validation, legacy dashboard removed.')
+console.log('Manual month range PASS: inclusive bounds, leap/cross-year, >12 months, malformed/reversed/empty validation, interactive branch analytics retained separately from bank export.')
 
 const loader = source.slice(source.indexOf('  async function loadRmsProfitabilityReport()'), source.indexOf('  async function loadRmsSuppliersReport()'))
 const expenses = source.slice(source.indexOf('  async function loadRmsExpensesReport()'), source.indexOf('  async function loadRmsProfitabilityReport()'))
@@ -40,7 +42,7 @@ function createLoaderHarness({source,initialKey='range:2025-09:2026-09',onState=
  const context={rmsProfitabilityRequestRef:{current:0},setRmsProfitabilityReport:value=>{state.report=typeof value==='function'?value(state.report):value;onState(state.report)},branches:BANK_BRANCH_IDS.map((id,i)=>({id,name:'Synthetic '+i})),branchFilter:'all',monthFilter:'',manualPeriod,parseNum:v=>Number(v)||0,bankScopeTaxRate,partialHistoricalPayrollMonths,pct:String,fmt:String,RMS_BRANCH_TAX_RATE_SETTING:'test',readRmsAppSetting:async()=>({}),loadBank2025Snapshot:async()=>null,loadPurchaseReportClassifications:async()=>new Map(),isBank2025Period:()=>false}
  context.supabase={from(table){const query={table,filters:[]};state.queries.push(query);const chain={select(){return chain},is(){return chain},eq(){return chain},order(){return chain},gte(field,value){query.filters.push(['gte',field,value]);return chain},lt(field,value){query.filters.push(['lt',field,value]);return chain},async range(){const gate=state.gate;state.gate=null;if(gate)await gate;if(state.fail)return {data:null,error:new Error('Synthetic read failed')};let data=table==='daily_revenue_entries'?rows:[];data=data.filter(row=>query.filters.every(([op,field,value])=>op==='gte'?row[field]>=value:row[field]<value));return {data,error:null}}};return chain}}
  state.run=()=>{const scope={...context,profitabilityPeriodKey:state.key};return new Function(...Object.keys(scope),`return (${loader})()`)(...Object.values(scope))}
- state.load=key=>{state.key=key;return state.run()};state.queryLog=state.queries;state.requestRef=context.rmsProfitabilityRequestRef;state.setFailure=value=>{state.fail=value}
+ state.load=key=>{state.key=key;return state.run()};state.setBranch=value=>{context.branchFilter=value};state.queryLog=state.queries;state.requestRef=context.rmsProfitabilityRequestRef;state.setFailure=value=>{state.fail=value}
  return state
 }
 async function testFullLoader(){
@@ -48,6 +50,7 @@ async function testFullLoader(){
  const model=buildBankReport(h.report,BANK_BRANCH_IDS);assert.equal(model.months.length,13);assert.equal(model.branches.length,2);assert.equal(model.combined.totals.revenue,3900)
  const fields={daily_revenue_entries:'revenue_date',daily_expenses:'expense_date',supplier_purchases:'purchase_date',salary_periods:'salary_month',monthly_branch_service_charge_cost:'month'}
  for(const [table,field]of Object.entries(fields)){const q=h.queries.find(q=>q.table===table);assert.ok(q,table);assert.deepEqual(q.filters,[['gte',field,'2025-09-01'],['lt',field,'2026-10-01']])}
+ h.setBranch(BANK_BRANCH_IDS[0]);await h.run();assert.equal(h.report.rows.length,1);assert.equal(h.report.rows[0].id,BANK_BRANCH_IDS[0]);assert.equal(h.report.totals.revenue,1950);assert.equal(h.report.allRows.length,2);h.setBranch('all');await h.run();assert.equal(h.report.rows.length,2);assert.equal(h.report.totals.revenue,3900)
  h.fail=true;await h.run();assert.equal(h.report.loading,false);assert.equal(h.report.periodKey,h.key);assert.equal(h.report.error,'Synthetic read failed')
  h.fail=false;await h.run();assert.equal(h.report.error,'');assert.equal(buildBankReport(h.report,BANK_BRANCH_IDS).months.length,13)
  let release;h.gate=new Promise(resolve=>release=resolve);const stale=h.run();h.key='range:2026-09:2026-09';await h.run();const newest=h.report;assert.equal(newest.periodKey,h.key);release();await stale;assert.equal(h.report,newest);assert.equal(buildBankReport(h.report,BANK_BRANCH_IDS).months.length,1)

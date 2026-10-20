@@ -84,7 +84,7 @@ export function printBankDocument(model) {
   // Stylesheets and fonts must finish before opening the native PDF/print dialog.
   return ''
 }
-export default function ProfitabilityBankReport({ report, branches, onPeriodChange, periodKey, availableYears = [] }) {
+export default function ProfitabilityBankReport({ report, branches, onPeriodChange, periodKey, availableYears = [], children }) {
   const [selected, setSelected] = useState(BANK_BRANCH_IDS)
   const initial = periodMonths(report.period)
   const [start, setStart] = useState(initial.start)
@@ -117,6 +117,7 @@ export default function ProfitabilityBankReport({ report, branches, onPeriodChan
     {!chosenPeriod && <p role="alert">Укажите начальный и конечный месяц. Конец периода должен быть не раньше начала.</p>}
     <fieldset><legend>Филиалы отчёта</legend>{branches.map(branch => <label key={branch.id}><input type="checkbox" checked={selected.includes(String(branch.id))} onChange={event => setSelected(current => event.target.checked ? [...current, String(branch.id)] : current.filter(id => id !== String(branch.id)))}/>{branch.name}</label>)}</fieldset>
     <p className="bank-meta">Полные календарные месяцы, включая начальный и конечный.</p></div>
+    {!report.loading && !report.error && !stale && children}
     {error && <p role="alert" className="bank-disclosure">{error}</p>}
     {report.error && !report.loading ? <p role="alert">Отчёт не сформирован: {report.error}. Повторите загрузку кнопкой «Применить период».</p> : report.loading || stale ? <p role="status">Загружаю расчёт…</p> : model ? <BankDocument model={model}/> : <p>Выберите филиалы и период.</p>}
   </section>
