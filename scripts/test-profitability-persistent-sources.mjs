@@ -1,0 +1,22 @@
+import assert from 'node:assert/strict'
+import fs from 'node:fs'
+import {purchaseReportClassification, PURCHASE_CLASSIFICATION_PREFIX, bankScopeTaxRate, partialHistoricalPayrollMonths, BANK_TAX_BRANCH_IDS} from '../src/profitability-persistent-sources.mjs'
+import {buildBankReport, groupBankExpenses} from '../src/profitability-bank.mjs'
+const purchase={id:'synthetic-purchase',purchase_date:'2025-09-01',total_amount:100,comment:'Existing import provenance'}
+const marker={version:1,category:'household',purchaseId:purchase.id,date:purchase.purchase_date,amount:100,classificationSource:'https://docs.google.com/spreadsheets/d/synthetic/edit#gid=1&range=D10',receiptSource:'https://docs.google.com/spreadsheets/d/synthetic/edit#gid=2&range=C4',verifiedAt:'2026-10-19T00:00:00Z'}
+const marked={...purchase,comment:purchase.comment+'\n'+PURCHASE_CLASSIFICATION_PREFIX+JSON.stringify(marker)}
+assert.equal(purchaseReportClassification(purchase),null,'unmarked supplier names must not infer household')
+assert.deepEqual(purchaseReportClassification(marked),marker)
+for(const mutate of [p=>p.total_amount=101,p=>p.purchase_date='2025-09-02',p=>p.id='other',p=>p.comment+='\n'+PURCHASE_CLASSIFICATION_PREFIX+JSON.stringify(marker),p=>p.comment=PURCHASE_CLASSIFICATION_PREFIX+'{}',p=>p.comment=PURCHASE_CLASSIFICATION_PREFIX+'broken']) {const p=structuredClone(marked);mutate(p);assert.throws(()=>purchaseReportClassification(p))}
+for(const id of BANK_TAX_BRANCH_IDS) for(const setting of [0,4,8,12]) assert.equal(bankScopeTaxRate(id,setting,'2025-01-01','2026-01-01'),8)
+assert.equal(bankScopeTaxRate('unrelated-branch',4),4,'other branches preserve existing tax setting')
+assert.equal(bankScopeTaxRate('unrelated-branch',0),8,'existing fallback unchanged')
+assert.deepEqual(partialHistoricalPayrollMonths([{salary_month:'2025-09-01',comment:'Google Sheets; net-zero historical source'},{salary_month:'2025-09-01',comment:'net-zero historical source'},{salary_month:'2025-10-01',comment:'ordinary payroll'}]),['2025-09'])
+const rows=['2025-09','2026-09'];
+for (const month of rows) {
+ const id=BANK_TAX_BRANCH_IDS[0],end=month.slice(0,5)+'10-01', tax=month.startsWith('2025')?24:12;
+ const report={period:{from:month+'-01',toExclusive:end},bankInputs:{revenueRows:[{branch_id:id,revenue_date:month+'-01',cash_amount:100,bank_amount:100,wolt_amount:100}],salaryPeriods:[{branch_id:id,salary_month:month+'-01'}]},allRows:[{id,name:'Synthetic',revenue:300,totalExpenses:100+tax,net:200-tax,revenueShare:25,taxRate:bankScopeTaxRate(id,4,month+'-01',end),expenseCategories:[{key:'supplier-food-cost',name:'FoodCost',amount:25,details:[{date:month+'-01',amount:25}]},{key:'supplier-household',name:'ХозТовары',amount:25,details:[{date:month+'-01',amount:25}]},{key:'rent',name:'Аренда',amount:50,details:[{date:month+'-02',amount:50}]},{key:'tax',name:'Налог',amount:tax,details:[]},{key:'tax-paid',name:'Оплачено',amount:14,details:[{date:month+'-03',amount:14}]}]}]}
+ const model=buildBankReport(report,[id]);assert.equal(model.reconciled,true);assert.equal(model.combined.totals.expenses,100+tax);assert.equal(model.branches[0].monthly[0].categories.tax,tax,'2025 tax8% on gross; 2026 existing setting unchanged');const g=groupBankExpenses(model.combined);assert.equal(g.groups.find(g=>g.key==='household').amount,25);assert.equal(g.groups.find(g=>g.key==='rent').amount,50,'actual paid rent, no fixed-rate extrapolation');assert.equal(g.groups.find(g=>g.key==='dsmf-tax').amount,tax,'paid tax not double counted');report.bankInputs.partialPayrollMonths=[month];assert.equal(buildBankReport(report,[id]).exportable,false,'net-zero subset cannot certify full monthly payroll')
+}
+const source=fs.readFileSync(new URL('../src/main.parts/part-04.jsxpart',import.meta.url),'utf8');const loader=source.slice(source.indexOf('  async function loadRmsProfitabilityReport()'),source.indexOf('  async function loadRmsSuppliersReport()'));assert.match(loader,/purchaseReportClassification\(purchase\)/);assert.match(loader,/operating\) \+ allocatedSupplierTotal \+ salary/);assert.match(loader,/household: parseNum\(expenseData.household\) \+ supplierHousehold/);assert.match(loader,/partialPayrollMonths: partialHistoricalPayrollMonths/);assert.doesNotMatch(loader,/branch_rent_forecast|RMS_BRANCH_RENT|rentSettings/)
+console.log('Persistent purchase classification, stale provenance rejection, source conservation, partial payroll guard, paid rent and scoped 8% tax passed')

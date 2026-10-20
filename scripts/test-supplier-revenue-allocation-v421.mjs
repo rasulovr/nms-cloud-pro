@@ -27,8 +27,11 @@ assert.ok(finance.includes('isSalaryExpenseName(name) || isBazarExpenseName(name
 assert.ok(finance.includes('totalExpenses: expenses + salary + serviceCost + tax'), 'Dashboard total expenses must include service charge and tax')
 assert.ok(finance.includes('const preliminarySupplierExpense = allocatedSupplierExpenseTotal'), 'Finance must describe the complete allocated supplier amount')
 assert.ok(reports.includes('const targets = Array.from(revenueShareMap.entries())'), 'Expense report must allocate every supplier invoice across revenue branches')
-assert.ok(reports.includes('const supplierFoodCost = supplierPurchases.reduce'), 'Profitability report must use network supplier purchases')
+assert.ok(reports.includes('const allocatedSupplierTotal = supplierPurchases.reduce'), 'Profitability report must use network supplier purchases')
 assert.ok(reports.includes('if (isBazarExpenseName(name)) return'), 'Reports must exclude manual Bazar expenses')
-assert.ok(reports.includes('const totalExpenses = parseNum(expenseData.operating) + supplierFoodCost + salary + serviceCost + tax'), 'Branch profitability must include service charge and tax')
+assert.ok(reports.includes('const totalExpenses = parseNum(expenseData.operating) + allocatedSupplierTotal + salary + serviceCost + tax'), 'Branch profitability must include service charge and tax')
+
+assert.ok(reports.includes('const supplierFoodCost = allocatedSupplierTotal - supplierHousehold'), 'Household must be reclassified inside the same supplier total')
+assert.ok(reports.includes("key: 'supplier-household'"), 'Verified household must remain in expense categories exactly once')
 
 console.log('Supplier revenue allocation v421 checks passed')

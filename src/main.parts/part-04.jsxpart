@@ -5528,6 +5528,9 @@ function Reports({ t, permissions = [], isAdmin = false }) {
     periodLabel: '',
     source: ''
   })
+  const [profitabilityBankPeriod, setProfitabilityBankPeriod] = useState('')
+  const profitabilityPeriodKey = profitabilityBankPeriod || monthFilter
+  const rmsProfitabilityRequestRef = useRef(0)
   const [profitabilityMetric, setProfitabilityMetric] = useState('net')
   const [expandedProfitabilityBranches, setExpandedProfitabilityBranches] = useState(() => new Set())
   const [expandedProfitabilityExpenseGroups, setExpandedProfitabilityExpenseGroups] = useState(() => new Set())
@@ -5860,7 +5863,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
   useEffect(() => {
     if (effectiveReportsTab !== 'profitability') return
     loadRmsProfitabilityReport()
-  }, [effectiveReportsTab, branchFilter, monthFilter, branches.length])
+  }, [effectiveReportsTab, branchFilter, profitabilityPeriodKey, branches.length])
 
   useEffect(() => {
     if (effectiveReportsTab !== 'suppliers') return
@@ -6116,7 +6119,8 @@ function Reports({ t, permissions = [], isAdmin = false }) {
   }
 
   async function loadRmsProfitabilityReport() {
-    setRmsProfitabilityReport(prev => ({ ...prev, loading: true, error: '' }))
+    const requestId = ++rmsProfitabilityRequestRef.current
+    setRmsProfitabilityReport(prev => ({ ...prev, periodKey: profitabilityPeriodKey, loading: true, error: '' }))
 
     const emptyTotals = {
       revenue: 0,
@@ -6138,19 +6142,30 @@ function Reports({ t, permissions = [], isAdmin = false }) {
     try {
       const pageSize = 1000
       const period = (() => {
-        if (/^year:\d{4}$/.test(String(monthFilter || ''))) {
-          const year = Number(String(monthFilter).replace('year:', ''))
+        if (String(profitabilityPeriodKey || '').startsWith('range:')) {
+          const [, start, end] = profitabilityPeriodKey.split(':')
+          const selectedPeriod = manualPeriod(start, end)
+          if (!selectedPeriod) throw new Error('Некорректный период отчёта.')
+          return selectedPeriod
+        }
+        if (/^annual:\d{4}-\d{2}$/.test(String(profitabilityPeriodKey || ''))) {
+          const start = String(profitabilityPeriodKey).slice(7)
+          const [year, month] = start.split('-').map(Number)
+          return { from: `${start}-01`, toExclusive: `${year + 1}-${String(month).padStart(2, '0')}-01`, label: `12 месяцев с ${start}` }
+        }
+        if (/^year:\d{4}$/.test(String(profitabilityPeriodKey || ''))) {
+          const year = Number(String(profitabilityPeriodKey).replace('year:', ''))
           return {
             from: `${year}-01-01`,
             toExclusive: `${year + 1}-01-01`,
             label: `${year} год`
           }
         }
-        if (/^\d{4}-\d{2}$/.test(String(monthFilter || ''))) {
+        if (/^\d{4}-\d{2}$/.test(String(profitabilityPeriodKey || ''))) {
           return {
-            from: `${monthFilter}-01`,
-            toExclusive: rmsNextMonthStart(monthFilter),
-            label: monthFilter
+            from: `${profitabilityPeriodKey}-01`,
+            toExclusive: rmsNextMonthStart(profitabilityPeriodKey),
+            label: profitabilityPeriodKey
           }
         }
         return { from: '', toExclusive: '', label: 'Весь период' }
@@ -6173,7 +6188,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
           rows = rows.concat(batch)
           if (batch.length < pageSize) break
           offset += pageSize
-          if (offset > 50000) break
+          if (offset > 50000) throw new Error('Слишком большой объём данных: отчёт не сформирован, чтобы не показать неполный итог.')
         }
         return rows
       }
@@ -6187,7 +6202,9 @@ function Reports({ t, permissions = [], isAdmin = false }) {
           )
           .is('deleted_at', null)
         query = applyDateRange(query, 'revenue_date')
-        return query.order('revenue_date', { ascending: true }).range(from, to)
+        query = query.order('revenue_date', { ascending: true }).order('branch_id', { ascending: true })
+        if (table === 'daily_revenue_entries') query = query.order('id', { ascending: true })
+        return query.range(from, to)
       })
 
       let revenueRows = await fetchRevenueTable('daily_revenue_entries')
@@ -6203,7 +6220,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
           .select('id,branch_id,expense_date,amount,comment,custom_category,expense_categories(name)')
           .is('deleted_at', null)
         query = applyDateRange(query, 'expense_date')
-        return query.order('expense_date', { ascending: true }).range(from, to)
+        return query.order('expense_date', { ascending: true }).order('id', { ascending: true }).range(from, to)
       })
 
       const supplierPurchases = await fetchPaged((from, to) => {
@@ -6212,36 +6229,26 @@ function Reports({ t, permissions = [], isAdmin = false }) {
           .select('id,supplier_id,branch_id,purchase_date,invoice_number,total_amount,comment,deleted_at,suppliers(name)')
           .is('deleted_at', null)
         query = applyDateRange(query, 'purchase_date')
-        return query.order('purchase_date', { ascending: true }).range(from, to)
+        return query.order('purchase_date', { ascending: true }).order('id', { ascending: true }).range(from, to)
       })
 
-      const [{ data: employeeRowsRaw, error: employeesError }, salaryResult, serviceResult] = await Promise.all([
-        supabase
-          .from('employees')
-          .select('id,branch_id,full_name,position,monthly_salary,salary_type,daily_rate,is_active,employment_status')
-          .eq('is_active', true),
-        (async () => {
-          let query = supabase
-            .from('salary_periods')
-            .select('employee_id,branch_id,salary_month,salary_gross,salary_net')
-          query = applyDateRange(query, 'salary_month')
-          return query
-        })(),
-        (async () => {
-          let query = supabase
-            .from('monthly_branch_service_charge_cost')
-            .select('branch_id,month,staff_cost_amount')
-          query = applyDateRange(query, 'month')
-          return query
-        })()
-      ])
+      const bank2025Source = await loadBank2025Snapshot(supabase, period)
+      // purchaseReportClassification(purchase) remains the first, validated source inside the loader.
+      const purchaseClassifications = await loadPurchaseReportClassifications(supabase, supplierPurchases)
 
-      if (employeesError) throw employeesError
-      const employeeRows = employeeRowsRaw || []
-      const salaryPeriods = salaryResult?.error ? [] : (salaryResult?.data || [])
+      const [employeeRows, salaryPeriods, rawServiceRows] = await Promise.all([
+        fetchPaged((from, to) => supabase.from('employees')
+          .select('id,branch_id,full_name,position,monthly_salary,salary_type,daily_rate,is_active,employment_status')
+          .eq('is_active', true).order('id').range(from, to)),
+        fetchPaged((from, to) => applyDateRange(supabase.from('salary_periods')
+          .select('employee_id,branch_id,salary_month,salary_gross,salary_net,comment'), 'salary_month')
+          .order('salary_month').order('employee_id').range(from, to)),
+        fetchPaged((from, to) => applyDateRange(supabase.from('monthly_branch_service_charge_cost')
+          .select('branch_id,month,staff_cost_amount'), 'month')
+          .order('month').order('branch_id').range(from, to))
+      ])
       const enabledServiceBranchIds = new Set((branches || []).filter(branch => branch.service_charge_enabled).map(branch => String(branch.id)))
-      const serviceRows = (serviceResult?.error ? [] : (serviceResult?.data || []))
-        .filter(row => enabledServiceBranchIds.has(String(row.branch_id)))
+      const serviceRows = rawServiceRows.filter(row => enabledServiceBranchIds.has(String(row.branch_id)))
       const taxSettings = await readRmsAppSetting(RMS_BRANCH_TAX_RATE_SETTING, {})
 
       const employeeById = new Map(employeeRows.map(row => [String(row.id), row]))
@@ -6446,20 +6453,22 @@ function Reports({ t, permissions = [], isAdmin = false }) {
         }
 
         const share = parseNum(revenueShareMap.get(id))
-        const supplierFoodCost = supplierPurchases.reduce((sum, purchase) => sum + parseNum(purchase.total_amount) * share, 0)
+        const allocatedSupplierTotal = supplierPurchases.reduce((sum, purchase) => sum + parseNum(purchase.total_amount) * share, 0)
+        const supplierHousehold = supplierPurchases.filter(purchase => purchaseClassifications.get(purchase.id)?.category === 'household').reduce((sum, purchase) => sum + parseNum(purchase.total_amount) * share, 0)
+        const supplierFoodCost = allocatedSupplierTotal - supplierHousehold
         const foodCost = parseNum(expenseData.manualFood) + supplierFoodCost
         const directSalary = parseNum(directSalaryByBranch.get(id))
         const managerSalary = managerSalaryPool * share
         const salary = directSalary + managerSalary
         const serviceCost = parseNum(serviceByBranch.get(id))
         const configuredTaxRate = parseNum(taxSettings?.[id])
-        const taxRate = configuredTaxRate > 0 ? configuredTaxRate : 8
+        const taxRate = bankScopeTaxRate(id, configuredTaxRate, period.from, period.toExclusive)
         const taxCalculated = parseNum(revenueData.revenue) * taxRate / 100
         const taxPaid = parseNum(taxPaidByBranch.get(id))
         // Отдельная vergi-оплата не уменьшает прибыль повторно; налог с оборота
         // уже учтён ниже по установленной ставке.
         const tax = taxCalculated
-        const totalExpenses = parseNum(expenseData.operating) + supplierFoodCost + salary + serviceCost + tax
+        const totalExpenses = parseNum(expenseData.operating) + allocatedSupplierTotal + salary + serviceCost + tax
         const net = parseNum(revenueData.revenue) - totalExpenses
         const activeDays = revenueData.days?.size || 0
         const supplierDetails = supplierPurchases.map(purchase => ({
@@ -6468,15 +6477,19 @@ function Reports({ t, permissions = [], isAdmin = false }) {
             description: purchase.suppliers?.name || 'Поставщик',
             comment: [purchase.invoice_number ? `Фактура: ${purchase.invoice_number}` : '', purchase.comment || '', `Распределено по доле выручки ${pct(share * 100)}; исходная привязка филиала не используется для P&L`].filter(Boolean).join(' · '),
             amount: parseNum(purchase.total_amount) * share,
-            allocation_status: 'preliminary'
+            allocation_status: 'preliminary',
+            source_classification: purchaseClassifications.get(purchase.id)
           }))
           .filter(detail => detail.amount !== 0)
+        const supplierFoodDetails = supplierDetails.filter(detail => !detail.source_classification)
+        const supplierHouseholdDetails = supplierDetails.filter(detail => detail.source_classification?.category === 'household')
         const salaryDetails = [
           ...(salaryDetailsByBranch.get(id) || []),
           ...managerSalaryDetails.map(detail => ({ ...detail, id: `${detail.id}-${id}`, amount: parseNum(detail.amount) * share }))
         ].filter(detail => detail.amount !== 0)
         const expenseCategories = [
-          ...(supplierFoodCost ? [{ key: 'supplier-food-cost', name: 'Поставщики / Food Cost', amount: supplierFoodCost, transactions: supplierDetails.length, details: supplierDetails }] : []),
+          ...(supplierFoodCost ? [{ key: 'supplier-food-cost', name: 'Поставщики / Food Cost', amount: supplierFoodCost, transactions: supplierFoodDetails.length, details: supplierFoodDetails }] : []),
+          ...(supplierHouseholdDetails.length ? [{ key: 'supplier-household', name: 'ХозТовары · закупки по источнику', amount: supplierHousehold, transactions: supplierHouseholdDetails.length, details: supplierHouseholdDetails }] : []),
           ...Array.from(expenseData.categories.values()).map(category => ({
             key: `daily-${normalizeExpenseText(category.name)}`,
             name: category.name,
@@ -6527,7 +6540,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
           rent: parseNum(expenseData.rent),
           utilities: parseNum(expenseData.utilities),
           packaging: parseNum(expenseData.packaging),
-          household: parseNum(expenseData.household),
+          household: parseNum(expenseData.household) + supplierHousehold,
           marketing: parseNum(expenseData.marketing),
           maintenance: parseNum(expenseData.maintenance),
           other: parseNum(expenseData.other),
@@ -6572,7 +6585,13 @@ function Reports({ t, permissions = [], isAdmin = false }) {
       totals.margin = totals.revenue ? totals.net / totals.revenue * 100 : 0
       totals.branches = visibleRows.length
 
+      if (requestId !== rmsProfitabilityRequestRef.current) return
       setRmsProfitabilityReport({
+        allRows: rows,
+        period,
+        periodKey: profitabilityPeriodKey,
+        loadedAt: new Date().toISOString(),
+        bankInputs: { sourceDataset: bank2025Source, sourceRequired2025: isBank2025Period(period), revenueRows, salaryPeriods, partialPayrollMonths: partialHistoricalPayrollMonths(salaryPeriods), payrollEstimated: !salaryPeriods.length, branchNames: Object.fromEntries(branchNameById), warnings: [] },
         loading: false,
         error: '',
         rows: visibleRows,
@@ -6581,7 +6600,9 @@ function Reports({ t, permissions = [], isAdmin = false }) {
         source: `${revenueSource} + daily_expenses + supplier_purchases + salary_periods`
       })
     } catch (error) {
+      if (requestId !== rmsProfitabilityRequestRef.current) return
       setRmsProfitabilityReport({
+        periodKey: profitabilityPeriodKey,
         loading: false,
         error: error?.message || 'Не удалось загрузить отчёт по рентабельности',
         rows: [],
@@ -9610,6 +9631,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
     </div>
   </section>
 
+  const [profitabilityExpanded, setProfitabilityExpanded] = useState(false)
   const profitabilityRows = rmsProfitabilityReport.rows || []
   const profitabilityTotals = rmsProfitabilityReport.totals || {}
   const profitabilitySortedRows = useMemo(() => {
@@ -9623,7 +9645,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
     ? { key: 'margin', label: 'Рентабельность', format: value => pct(value), max: Math.max(1, ...profitabilityRows.map(row => Math.max(0, parseNum(row.margin)))) }
     : profitabilityMetric === 'revenue'
       ? { key: 'revenue', label: 'Выручка', format: value => `${fmt(value)} AZN`, max: Math.max(1, ...profitabilityRows.map(row => Math.max(0, parseNum(row.revenue)))) }
-      : { key: 'net', label: 'Чистый результат', format: value => `${fmt(value)} AZN`, max: Math.max(1, ...profitabilityRows.map(row => Math.abs(parseNum(row.net)))) }
+      : { key: 'net', label: 'Расчётный результат', format: value => `${fmt(value)} AZN`, max: Math.max(1, ...profitabilityRows.map(row => Math.abs(parseNum(row.net)))) }
 
   const profitabilityBest = [...profitabilityRows].sort((a, b) => parseNum(b.net) - parseNum(a.net))[0] || null
   const profitabilityWeak = [...profitabilityRows].sort((a, b) => parseNum(a.net) - parseNum(b.net))[0] || null
@@ -9650,7 +9672,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
     })
   }
 
-  const ReportsProfitabilityView = <section className="reports-v417-profitability">
+  const ReportsProfitabilityAnalytics = <section className="reports-v417-profitability" aria-label="Аналитика RMS по филиалам">
     <style>{`
       .reports-v417-profitability{display:grid;gap:16px}
       .reports-v417-status{padding:13px 15px;border:1px solid #bfdbfe;border-radius:16px;background:#eff6ff;color:#1e3a8a;font-size:12px;font-weight:750}.reports-v417-status.bad{border-color:#fecaca;background:#fef2f2;color:#991b1b}
@@ -9722,7 +9744,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
     </section>}
 
     {!rmsProfitabilityReport.loading && !rmsProfitabilityReport.error && <div className="reports-v417-card">
-      <div className="reports-v417-head"><div><h3>Детальная рентабельность филиалов</h3><p>Все накладные поставщиков, включая Zaur Bazar, распределяются между филиалами по доле выручки. Ручная статья «Базар» исключена. Service charge показан справочно и не входит в расходы и прибыль. Налог с оборота берётся из настроек филиала.</p></div><span className="reports-v43-badge">{profitabilityRows.length}</span></div>
+      <div className="reports-v417-head"><div><h3>Детальная рентабельность филиалов</h3><p>{rmsProfitabilityReport.periodLabel}</p></div><span className="reports-v43-badge">{profitabilityRows.length}</span></div>
       <div className="reports-v417-table-wrap"><table className="reports-v417-table">
         <thead><tr><th>Филиал</th><th>Выручка</th><th>Wolt</th><th>Food Cost</th><th>Зарплаты</th><th>Опер. расходы</th><th>Service charge</th><th>Налог с оборота</th><th>Все расходы</th><th>Результат</th><th>Маржа</th><th>На день</th><th></th></tr></thead>
         <tbody>
@@ -9750,7 +9772,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
                 <div><span>Food Cost</span><b className={row.foodCostPct > 35 ? 'bad' : 'good'}>{pct(row.foodCostPct)}</b></div><div><span>Зарплаты</span><b className={row.salaryPct > 25 ? 'bad' : 'good'}>{pct(row.salaryPct)}</b></div><div><span>Аренда</span><b className={row.rentPct > 12 ? 'bad' : 'good'}>{pct(row.rentPct)}</b></div><div><span>Wolt комиссия</span><b>{row.woltRevenue > 0 ? pct(row.woltCommissionPct) : '—'}</b></div><div><span>Доля всех расходов</span><b>{pct(row.expenseRatio)}</b></div>
               </div>
               {(row.foodCostPct > 35 || row.salaryPct > 25 || row.rentPct > 12 || row.net < 0) && <div className="reports-v417-warning">Есть отклонения от рекомендуемых ориентиров. Откройте расходы филиала и проверьте крупнейшие статьи.</div>}</div>
-              <div className="reports-v417-detail-card reports-v417-expenses-card">
+              {profitabilityExpanded && <div className="reports-v417-detail-card reports-v417-expenses-card">
                 <h4>Статьи P&amp;L и справочные показатели · {(row.expenseCategories || []).length}</h4>
                 <div className="reports-v417-expense-groups">
                   {(row.expenseCategories || []).map(category => {
@@ -9773,13 +9795,17 @@ function Reports({ t, permissions = [], isAdmin = false }) {
                   })}
                   {!(row.expenseCategories || []).length && <div className="reports-v417-expense-empty">За выбранный период расходов нет.</div>}
                 </div>
-              </div>
+              </div>}
             </div></td></tr>}
           </React.Fragment>)}
           {!profitabilityRows.length && <tr><td colSpan="13" className="reports-v417-empty">Нет данных по выбранному фильтру.</td></tr>}
         </tbody>
       </table></div>
     </div>}
+  </section>
+
+  const ReportsProfitabilityView = <section className="reports-v417-profitability">
+    <ProfitabilityBankReport expanded={profitabilityExpanded} onExpandedChange={setProfitabilityExpanded} availableYears={yearOptions} report={rmsProfitabilityReport} branches={branches} periodKey={profitabilityPeriodKey} onPeriodChange={value => value === profitabilityPeriodKey ? loadRmsProfitabilityReport() : setProfitabilityBankPeriod(value)}>{ReportsProfitabilityAnalytics}</ProfitabilityBankReport>
   </section>
 
   const supplierReportNormalizedSearch = String(supplierReportSearch || '').trim().toLowerCase()

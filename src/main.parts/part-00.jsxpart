@@ -494,6 +494,10 @@ async function rmsTechCardAuditRecent(limit = 50) {
 /* RMS v81 Finance Real User View - hides synthetic model charts from user finance screen */
 /* RMS v63 Supplier Payment Calendar - payment calendar, due reminders and follow-up control persistence */
 /* RMS v43 SUPPLIERS FINAL CLEAN SINGLE E-QAIME FORM - no payment term fields inside purchase e-qaime block */
+import ProfitabilityBankReport from './ProfitabilityBankReport'
+import { manualPeriod } from './profitability-period.mjs'
+import { loadBank2025Snapshot, isBank2025Period } from './bank-report-2025-source.mjs'
+import { purchaseReportClassification, loadPurchaseReportClassifications, bankScopeTaxRate, partialHistoricalPayrollMonths } from './profitability-persistent-sources.mjs'
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { createPortal } from 'react-dom'
