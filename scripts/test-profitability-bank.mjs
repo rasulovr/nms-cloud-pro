@@ -3,7 +3,7 @@ import fs from 'node:fs'
 import vm from 'node:vm'
 import { buildBankReport, reportMonths, BANK_EXPENSE_GROUPS, bankExpenseGroup, groupBankExpenses } from '../src/profitability-bank.mjs'
 assert.equal(reportMonths('2025-10-01','2026-10-01').length,12)
-assert.deepEqual(reportMonths('2025-01-01','2027-01-01'),[])
+assert.equal(reportMonths('2025-01-01','2027-01-01').length,24)
 assert.deepEqual(reportMonths('',''),[])
 const input = {
   period: {from:'2025-01-01',toExclusive:'2025-03-01'},
@@ -114,7 +114,7 @@ covered.allRows.forEach(branch=>branch.expenseCategories.push({key:'daily-househ
 const coveredModel=buildBankReport(covered,['a','b'])
 assert.equal(coveredModel.exportable,true,'explicitly present payroll and household records pass coverage guard')
 assert.deepEqual(coveredModel.combined.totals,report.combined.totals,'coverage guard must not alter money')
-assert.match(component,/Банковский экспорт заблокирован: неполные исходные данные/)
+assert.match(component,/PDF недоступен:/)
 console.log('Incomplete bank coverage fails closed without changing arithmetic: passed')
 
 // Synthetic snapshot only: never include private financial values in source control.
@@ -155,5 +155,5 @@ assert.equal(buildBankReport(mappedInput,[BANK_BRANCH_IDS[0]],later).exportable,
 assert.ok(buildBankReport(mappedInput,[BANK_BRANCH_IDS[0]],later).coverageBlockers.some(text=>text.includes('Sheets')))
 const uiSource=fs.readFileSync(new URL('../src/ProfitabilityBankReport.jsx',import.meta.url),'utf8')
 assert.doesNotMatch(uiSource,/applySource|setSourceDataset|type="file"/,'ordinary interface reads persistent RMS data without transient JSON overrides')
-assert.match(uiSource,/Постоянные данные RMS/)
+assert.doesNotMatch(uiSource,/Постоянные данные RMS/)
 console.log('Persistent RMS source controls replace transient upload override: passed')

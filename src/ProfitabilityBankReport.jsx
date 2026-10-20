@@ -1,22 +1,11 @@
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { BANK_BRANCH_IDS, buildBankReport, groupBankExpenses } from './profitability-bank.mjs'
+import { manualPeriod, periodMonths } from './profitability-period.mjs'
 import './profitability-bank.css'
 import bankPrintStyles from './profitability-bank.css?raw'
 const money = value => new Intl.NumberFormat('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value)
 const percent = value => value == null ? '—' : `${money(value)}%`
-const METHOD = [
-  'Управленческий расчёт RMS Pro по имеющимся записям, не аудированная отчётность и не подтверждённая полная чистая прибыль. «—» в статьях расходов означает отсутствие отдельно выделенных данных; нулевые суммы из имеющихся записей также не подтверждают полноту периода. Полнота расходов, начислений, DSMF и комиссий требует сверки.',
-  'Статьи сгруппированы в девять строк: Зарплаты, Аренда, ФудКост, ХозТовары, DSMF+Налог, Такси, Сервис чардж, Коммунальные, Прочие. Прочие включают все остальные учтённые движком расходы, в том числе Wolt/банковские комиссии и партнёрские расходы; их состав и суммы приведены под таблицей. Группировка не меняет расходы и результат.',
-  'DSMF+Налог объединяет расчётный налог с оборота и уже включённые действующим движком расходы DSMF. Для DSMF источник — расходные записи: статус начисления требует сверки. Отдельные выплаты не добавляются; оплаты налога не входят в расходы. Зарплаты — только зарплатная статья расчёта, без повторного добавления авансов.',
-  'Выручка = Cash + Bank + Wolt до комиссий. Расходы включают операционные статьи, распределённые закупки, зарплату, service charge персоналу и расчётный налог с оборота. Прибыль (расчётный результат) = выручка − эти расходы; маржа = результат / выручка. Нулевой оборот: маржа не определена.',
-  'Все закупки поставщиков и зарплата менеджмента распределены по доле выручки филиала во всей сети за выбранный период. В помесячной раскладке сохранена эта доля периода, а не пересчитана доля каждого месяца. Совокупный итог — сумма выбранных филиалов, без повторного распределения на них всей сети.',
-  'Food Cost здесь основан на закупках, а не на движении запасов/себестоимости продаж. Ручной «Базар», зеркала закупок, выплаты зарплат и расчёты Bolt, уже учтённые как расходы, исключаются действующим движком. Авансы не добавлены повторно.',
-  'В этом отчёте для BC4 и Crescent применяется указанная владельцем учётная ставка 8% полной выручки во всех месяцах. Для остальных филиалов сохранены настройки. Оплаченный налог (Vergi) справочный и повторно не уменьшает результат. Wolt-комиссия, банковская комиссия, DSMF и аренда включены только в том виде, в котором их учитывает действующий отчёт: автоматического восстановления недостающих сумм нет.',
-  'Service charge персоналу включён в фактический расчёт расходов этого окна. Аренда учитывается по фактически оплаченным суммам записей расходов каждого месяца, включая доплаты. Фиксированная ставка прогноза не используется.',
-  'Начисления берутся из salary_periods. Если за весь период их нет, текущий движок оценивает зарплату по активным сотрудникам, ставкам и официальным дням; месячная разбивка такой оценки равномерная по месяцам с выручкой сети. Наличие отдельных начислений не доказывает полноту payroll. Исторические ставки и состав сотрудников требуют проверки.',
-  'Выручка берётся из daily_revenue_entries, а при полном отсутствии записей за период — из daily_revenue. Источники не складываются между собой. При частичном заполнении entries пропуски не дополняются автоматически.'
-]
 function Trend({ rows }) {
   const values = rows.flatMap(row => [row.revenue, row.expenses, row.net])
   const min = Math.min(0, ...values), max = Math.max(1, ...values), range = max - min
@@ -31,7 +20,7 @@ function Trend({ rows }) {
 }
 function ExpenseTable({ section, months, external = false }) {
   const grouped = groupBankExpenses(section)
-  return <><div className="bank-table-scroll"><table className="bank-expense-table"><caption>Расходы по статьям, AZN · суммы входят в итог один раз</caption><thead><tr><th>Статья</th>{months.map(month => <th key={month}>{month.slice(5)}.{month.slice(2,4)}</th>)}<th>Итого</th></tr></thead><tbody>{grouped.groups.map(category => <tr key={category.key}><th>{category.name}</th>{grouped.monthly.map(row => <td key={row.month}>{row.hasData[category.key] ? money(row.categories[category.key]) : '—'}</td>)}<td>{category.sources.length ? money(category.amount) : '—'}</td></tr>)}<tr className="bank-total"><th>Все расходы</th>{section.monthly.map(row => <td key={row.month}>{money(row.expenses)}</td>)}<td>{money(section.totals.expenses)}</td></tr></tbody></table></div><p className="bank-meta">«—» — нет отдельно выделенных данных, это не подтверждённый нулевой расход. Закупки с проверенной классификацией ХозТоваров выделены из ФудКост без увеличения общих расходов. Доля распределения всей сети за период сохранена.</p>{!external && <p className="bank-meta">Прочие: {grouped.groups.find(group => group.key === 'other').sources.filter(source => source.amount !== 0).map(source => `${source.name} — ${money(source.amount)} AZN`).join('; ') || 'нет учтённых сумм'}.</p>}</>
+  return <><div className="bank-table-scroll"><table className="bank-expense-table"><caption>Расходы по статьям, AZN · суммы входят в итог один раз</caption><thead><tr><th>Статья</th>{months.map(month => <th key={month}>{month.slice(5)}.{month.slice(2,4)}</th>)}<th>Итого</th></tr></thead><tbody>{grouped.groups.map(category => <tr key={category.key}><th>{category.name}</th>{grouped.monthly.map(row => <td key={row.month}>{row.hasData[category.key] ? money(row.categories[category.key]) : '—'}</td>)}<td>{category.sources.length ? money(category.amount) : '—'}</td></tr>)}<tr className="bank-total"><th>Все расходы</th>{section.monthly.map(row => <td key={row.month}>{money(row.expenses)}</td>)}<td>{money(section.totals.expenses)}</td></tr></tbody></table></div><p className="bank-meta">«—» — нет отдельно выделенных данных.</p>{!external && <p className="bank-meta">Прочие: {grouped.groups.find(group => group.key === 'other').sources.filter(source => source.amount !== 0).map(source => `${source.name} — ${money(source.amount)} AZN`).join('; ') || 'нет учтённых сумм'}.</p>}</>
 }
 function Section({ section, months, external = false }) {
   return <section className="bank-report-section"><h2>{section.name}</h2><div className="bank-kpis"><div>Выручка<strong>{money(section.totals.revenue)} AZN</strong></div><div>Расходы<strong>{money(section.totals.expenses)} AZN</strong></div><div>Прибыль · расчётный результат<strong>{money(section.totals.net)} AZN</strong></div><div>Расчётная маржа<strong>{percent(section.totals.margin)}</strong></div></div>
@@ -46,12 +35,7 @@ function Section({ section, months, external = false }) {
   </section>
 }
 export function BankDocument({ model }) {
-  return <article className="bank-document"><header><p className="bank-eyebrow">RMS PRO · УПРАВЛЕНЧЕСКАЯ ОТЧЁТНОСТЬ</p><h1>Рентабельность филиалов</h1><p>{model.period.from} — {new Date(Date.parse(`${model.period.toExclusive}T00:00:00Z`) - 86400000).toISOString().slice(0,10)} · AZN</p><p className="bank-meta">Данные загружены: {model.generatedAt ? new Date(model.generatedAt).toLocaleString('ru-RU') : 'не указано'} · Предварительно, полнота не подтверждена</p></header>
-    <div className="bank-disclosure">Для рассмотрения банком. Расчёт по доступным данным; не подтверждает полную чистую прибыль. Перед передачей сверьте пропуски, начисления аренды, зарплату, DSMF и комиссии.</div>
-    <div className="bank-warnings" role="alert" hidden={!model.coverageBlockers?.length}><h3>Банковский экспорт заблокирован: неполные исходные данные</h3><p>Ниже только расчёт по доступным записям. Это не полная прибыль; требуется восстановить и сверить исторические источники.</p><ul>{model.coverageBlockers?.map((text, index) => <li key={index}>{text}</li>)}</ul></div>
-    <Section section={model.combined} months={model.months}/>{model.branches.map(branch => <Section key={branch.id} section={branch} months={model.months}/>)}
-    <section className="bank-method"><h2>Источники и методика</h2><p>Источник: {model.source} + monthly_branch_service_charge_cost; настройки налогов и текущие данные сотрудников. Период и выбранные филиалы указаны выше. Исходные финансовые записи не изменены. Применённые замены источника перечислены ниже.</p>{model.sourceDataset && <><h3>Источник Google Sheets за {model.sourceDataset.year}</h3><p>Проверенный источник2025 автоматически загружен из защищённого хранилища отчётов RMS. Зарплата каждого покрытого месяца 2025 года полностью заменяет зарплатную статью RMS, включая прежнее распределение менеджмента. Зарплата 2026 года остаётся по действующим данным RMS. В зарплате 2025 используются месячные начисления D и согласованное распределение менеджмента. Менеджмент уже входит в итог и повторно не добавляется. ХозТовары выделены из закупок. Если согласован отдельный источник ФудКоста 2025, применяется его месячная сумма без повторного вычитания ХозТоваров; изменение расходов показано отдельно. Без такого источника общая сумма закупок сохранена. Источники и исключения приведены ниже.</p><p>Версия источника RMS: {model.sourceDataset.snapshotId || model.sourceDataset.digest || 'не указана'}</p><p>Распределение менеджмента: {model.sourceDataset.managerMethod || 'согласно источнику'}</p><ul>{(model.sourceDataset.exclusions || []).map((item, index) => <li key={`exclusion:${index}`}>{typeof item === 'string' ? item : item.description || JSON.stringify(item)}</li>)}</ul><ul>{model.sourceDataset.warnings.map((warning, index) => <li key={index}>{warning}</li>)}</ul><div className="bank-table-scroll"><table className="bank-source-table"><caption>Мостик источников и изменений, AZN</caption><thead><tr><th>Филиал / месяц</th><th>Зарплата RMS</th><th>Зарплата Sheets</th><th>Изменение зарплаты</th><th>ФудКост после выделения ХозТоваров</th><th>ФудКост Sheets</th><th>Изменение ФудКоста</th><th>Изменение расходов всего</th><th>Менеджмент внутри Sheets</th><th>ХозТовары из FoodCost</th><th>Источник / ячейки</th></tr></thead><tbody>{model.sourceAdjustments.map(row => <tr key={`${row.branchId}:${row.month}`}><th>{row.branchName} / {row.month}</th><td>{money(row.previousSalary)}</td><td>{money(row.salary)}</td><td>{money(row.salaryDelta)}</td><td>{money(row.previousFoodCost)}</td><td>{row.source.foodCostSourceUrl ? money(row.foodCost) : "—"}</td><td>{money(row.foodCostDelta)}</td><td>{money(row.expenseDelta)}</td><td>{money(row.source.managerIncluded)}</td><td>{money(row.movedFromFood)}</td><td><a href={row.source.sourceUrl} target="_blank" rel="noreferrer">Google Sheets · {row.source.salaryCell}</a>{row.source.householdSourceUrl && <><br/><a href={row.source.householdSourceUrl} target="_blank" rel="noreferrer">ХозТовары · {row.source.householdCell}</a></>}{row.source.foodCostSourceUrl && <><br/><a href={row.source.foodCostSourceUrl} target="_blank" rel="noreferrer">ФудКост · {row.source.foodCostCell}</a><br/>{row.source.foodCostFormula}</>}<br/>{row.source.salaryFormula}<br/>{row.source.householdFormula}</td></tr>)}</tbody></table></div></> }<h3>Базовая методика RMS</h3><p>При загруженном источнике Sheets описанная выше месячная замена зарплаты и выделение ХозТоваров имеют приоритет над базовым распределением этих статей.</p><ol>{METHOD.map((text, i) => <li key={i}>{text}</li>)}</ol><p>Сверка: помесячные выручка, расходы и результат {model.reconciled ? 'совпадают' : 'НЕ совпадают'} {model.sourceDataset ? 'с исходным расчётом RMS плюс явно показанные изменения зарплаты и согласованного ФудКоста Sheets; ХозТовары повторно не вычитаются' : 'с итогом существующего расчёта по каждому выбранному филиалу'}. Округление только при отображении; возможна разница копеек при сложении округлённых ячеек.</p></section>
-  </article>
+  return <ExternalBankDocument model={model}/>
 }
 // External output is allowlisted, not a CSS-hidden copy of the internal audit.
 function ExternalCoverage({ section }) {
@@ -61,7 +45,6 @@ function ExternalCoverage({ section }) {
   return <div className="bank-warnings"><h3>Ограничения данных</h3>
     {!!gaps.length && <p>Дни с записями выручки: {gaps.map(row => `${row.month}: ${row.revenueDays}`).join('; ')}. За остальные дни полнота выручки не подтверждена.</p>}
     {!!missingPayroll.length && <p>Полнота начислений зарплаты не подтверждена за {missingPayroll.map(row => row.month).join(', ')}.</p>}
-    {!!section.warnings?.length && <p>В исходных данных есть ограничения покрытия; расчёт не подтверждает полную чистую прибыль.</p>}
   </div>
 }
 export function ExternalBankDocument({ model }) {
@@ -69,24 +52,13 @@ export function ExternalBankDocument({ model }) {
   const branches = model.branches.map((branch, index) => ({ ...branch,
     name: branch.id === BANK_BRANCH_IDS[0] ? 'BC4' : branch.id === BANK_BRANCH_IDS[1] ? 'Crescent' : `Выбранный филиал ${index + 1}` }))
   const combined = { ...model.combined, name: 'Совокупно: ' + branches.map(branch => branch.name).join(' + ') }
-  const exclusions = model.sourceDataset?.exclusions || []
-  const periodExclusions = exclusions.filter(item => item && typeof item === 'object' && model.months.includes(item.month))
-  const exclusionTotal = periodExclusions.length && periodExclusions.every(item => Number.isFinite(item.amount) && item.amount >= 0)
-    ? periodExclusions.reduce((sum, item) => sum + item.amount, 0) : null
-  return <article className="bank-document bank-external-document"><header><p className="bank-eyebrow">RMS PRO · УПРАВЛЕНЧЕСКАЯ ОТЧЁТНОСТЬ</p><h1>Рентабельность филиалов</h1>
+  return <article className="bank-document bank-external-document"><header><p className="bank-eyebrow">RMS PRO · УПРАВЛЕНЧЕСКИЙ ОТЧЁТ</p><h1>Рентабельность филиалов</h1>
     <p>{model.period.from} — {new Date(Date.parse(`${model.period.toExclusive}T00:00:00Z`) - 86400000).toISOString().slice(0,10)} · AZN</p>
-    <p className="bank-meta">Данные на {model.generatedAt ? new Date(model.generatedAt).toLocaleString('ru-RU') : 'дату, не указанную в отчёте'}.</p></header>
-    <div className="bank-disclosure">Управленческий расчёт по доступным данным, не аудированная отчётность. Полнота чистой прибыли не подтверждена; ограничения данных приведены ниже.</div>
-    {!model.exportable && <div className="bank-warnings" role="alert">Передача отчёта заблокирована: исходные данные неполны или итоги не прошли сверку.</div>}
+    </header>
+    {!model.exportable && <p className="bank-meta" role="status">PDF недоступен: {model.reconciled ? 'есть недостающие данные за выбранный период.' : 'итоги не прошли сверку.'}</p>}
     <Section section={combined} months={model.months} external/>{branches.map(branch => <Section key={branch.id} section={branch} months={model.months} external/>)}
-    <section className="bank-method"><h2>Основа расчёта</h2>
-      <p>Выручка включает наличные, банковские поступления и Wolt до комиссий. Расчётный результат — выручка за вычетом учтённых расходов. Прочие включают комиссии и остальные учтённые расходы. Суммы в AZN; округление при отображении.</p>
-      <p>Закупки и зарплата менеджмента распределяются по доле выручки филиала во всей сети за период; для согласованных месячных источников используются их суммы. ФудКост отражает закупки, а не себестоимость продаж с учётом запасов. Аренда — фактически оплаченные суммы. Зарплата и сервис чардж учитываются без повторного добавления авансов.</p>
-      <p>Налог с оборота включён по указанной для филиала ставке; DSMF и комиссии — в пределах имеющихся записей. Оплаченный налог повторно не вычитается. Отсутствующие суммы автоматически не восстанавливаются.</p>
-      {!!exclusions.length && <p>Начисления {model.sourceDataset.year} приведены с согласованными исключениями{exclusionTotal != null ? `: ${money(exclusionTotal)} AZN в исходных данных за выбранные месяцы` : ''}. Исключения уже учтены; детали доступны по запросу.</p>}
-      {!!model.sourceDataset?.warnings?.length && <p>Источник начислений содержит дополнительные оговорки, требующие уточнения перед использованием отчёта.</p>}
-      {model.payrollEstimated && <p>Зарплата включает расчётную оценку; исторические ставки и состав сотрудников требуют проверки.</p>}
-    </section>
+    {model.payrollEstimated && <p className="bank-meta">Зарплата включает расчётную оценку.</p>}
+
   </article>
 }
 export function printBankDocument(model) {
@@ -106,12 +78,34 @@ export function printBankDocument(model) {
 }
 export default function ProfitabilityBankReport({ report, branches, onPeriodChange, periodKey }) {
   const [selected, setSelected] = useState(BANK_BRANCH_IDS)
-  const [start, setStart] = useState(`${new Date().getFullYear()}-01`)
+  const initial = periodMonths(report.period)
+  const [start, setStart] = useState(initial.start)
+  const [end, setEnd] = useState(initial.end)
+  useEffect(() => {
+    const next = periodMonths(report.period)
+    setStart(next.start); setEnd(next.end)
+  }, [report.period?.from, report.period?.toExclusive])
+  const chosenPeriod = manualPeriod(start, end)
+  const stale = report.periodKey !== periodKey
+  const applyPeriod = () => {
+    if (!chosenPeriod || report.loading) return
+    setError('')
+    onPeriodChange(chosenPeriod.key)
+  }
   const [error, setError] = useState('')
   const model = useMemo(() => buildBankReport(report, selected), [report, selected])
   const exportReport = () => setError(printBankDocument(report.loading || report.error || report.periodKey !== periodKey ? null : model))
-  return <section className="bank-workspace"><div className="bank-controls"><div><h2>Отчёт для банка</h2><p>Отдельно по выбранным филиалам и совокупно · помесячно · AZN</p></div><div className="bank-control-row"><label>Первый месяц года<input type="month" value={start} onChange={event => setStart(event.target.value)}/></label><button type="button" disabled={!/^\d{4}-\d{2}$/.test(start) || report.loading} onClick={() => onPeriodChange(`annual:${start}`)}>Показать 12 месяцев</button><button id="profitability-bank-export" type="button" disabled={report.loading || !!report.error || report.periodKey !== periodKey || !model?.exportable} onClick={exportReport}>PDF для передачи / печать</button></div><fieldset><legend>Филиалы банковского отчёта (независимо от общего фильтра)</legend>{branches.map(branch => <label key={branch.id}><input type="checkbox" checked={selected.includes(String(branch.id))} onChange={event => setSelected(current => event.target.checked ? [...current, String(branch.id)] : current.filter(id => id !== String(branch.id)))}/>{branch.name}</label>)}</fieldset><p className="bank-meta">Показанный период: {report.periodLabel || report.period?.from || 'не выбран'}. По умолчанию BC4 и BC5 / Crescent. Распределение расходов сохраняет базу всей сети, даже если выбраны два филиала.</p></div>
-    <div className="bank-source-controls"><h3>Постоянные данные RMS</h3><p className="bank-meta">Для2025 используются полные месячные начисления из проверенного источника Google Sheets, сохранённого в RMS; текущий зарплатный учёт не изменяется. ХозТовары выделяются из существующих закупок только по сохранённой сверке конкретной даты, суммы и ячейки Sheets; новый расход не добавляется. Частичный импорт не подтверждает полноту зарплатного листа. Аренда учитывается по фактически оплаченным суммам каждого месяца. Для BC4 и Crescent налог составляет 8% полной выручки, включая Cash, Bank и Wolt до комиссий, в каждом месяце2025. Расчёт2026 сохраняет прежние настройки.</p></div>
-    {error && <p role="alert" className="bank-disclosure">{error}</p>}{report.loading ? <p role="status">Загружаю расчёт; экспорт временно недоступен…</p> : report.error ? <p role="alert">Отчёт не сформирован: {report.error}</p> : model ? <BankDocument model={model}/> : <p>Выберите филиалы и период: месяц, календарный год или любые 12 последовательных месяцев.</p>}
+  return <section className="bank-workspace"><div className="bank-controls"><div><h2>Управленческий отчёт</h2><p>По выбранным филиалам и совокупно · помесячно · AZN</p></div>
+    <div className="bank-control-row">
+      <label>С месяца<input aria-label="С месяца" type="month" min="2000-01" max="2100-12" value={start} onChange={event => setStart(event.target.value)}/></label>
+      <label>По месяц<input aria-label="По месяц" type="month" min="2000-01" max="2100-12" value={end} onChange={event => setEnd(event.target.value)}/></label>
+      <button type="button" disabled={!chosenPeriod || report.loading} onClick={applyPeriod}>Применить период</button>
+      <button id="profitability-bank-export" type="button" disabled={report.loading || !!report.error || stale || !model?.exportable} onClick={exportReport}>PDF / печать</button>
+    </div>
+    {!chosenPeriod && <p role="alert">Укажите начальный и конечный месяц. Конец периода должен быть не раньше начала.</p>}
+    <fieldset><legend>Филиалы отчёта</legend>{branches.map(branch => <label key={branch.id}><input type="checkbox" checked={selected.includes(String(branch.id))} onChange={event => setSelected(current => event.target.checked ? [...current, String(branch.id)] : current.filter(id => id !== String(branch.id)))}/>{branch.name}</label>)}</fieldset>
+    <p className="bank-meta">Полные календарные месяцы, включая начальный и конечный.</p></div>
+    {error && <p role="alert" className="bank-disclosure">{error}</p>}
+    {report.loading || stale ? <p role="status">Загружаю расчёт…</p> : report.error ? <p role="alert">Отчёт не сформирован: {report.error}</p> : model ? <BankDocument model={model}/> : <p>Выберите филиалы и период.</p>}
   </section>
 }

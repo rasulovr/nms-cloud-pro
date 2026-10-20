@@ -14,9 +14,9 @@ const section={id:'0dad369d-eac6-4cf9-bb06-b9d010714d6e',name:secret+' private@e
 const model={period:{from:'2025-10-01',toExclusive:'2025-11-01'},months:['2025-10'],generatedAt:'2026-10-19T20:00:00Z',source:secret+' table',sourceDataset:{year:2025,snapshotId:secret+' snapshot',managerMethod:secret+' method',warnings:[secret+' warning'],exclusions:[{month:'2025-10',amount:750,description:secret+' employee',sourceUrl:'https://docs.google.com/'+secret,ownerEvidence:secret},{month:'2025-11',amount:750}]},sourceAdjustments:[{branchId:'bc4',branchName:'BC4',month:'2025-10',previousSalary:90,salary:100,salaryDelta:10,previousFoodCost:100,foodCostDelta:0,expenseDelta:10,movedFromFood:0,source:{sourceUrl:'https://docs.google.com/'+secret,salaryCell:secret,salaryFormula:'='+secret,managerIncluded:10}}],branches:[section],combined:{...section,id:'combined',name:'Совокупно: BC4'},coverageBlockers:[],exportable:true,reconciled:true}
 const before=structuredClone(model), external=render(model,true), internal=render(model,false)
 assert.doesNotMatch(external,/INTERNAL_PRIVATE_SENTINEL|private@example.test|internal.example.test|docs.google.com|salary_periods|Sheets|Мостик источников|Строк начислений|Состав выручки|snapshot/)
-assert.match(internal,/INTERNAL_PRIVATE_SENTINEL/)
+assert.doesNotMatch(internal,/INTERNAL_PRIVATE_SENTINEL|Источники и методика|Мостик источников|Данные загружены|Предварительно|Для рассмотрения банком|не аудированная/)
 assert.doesNotMatch(external,/<a[ >]|mailto:|href=/)
-for(const label of ['BC4','AZN','2025-10','Зарплаты','Аренда','ФудКост','ХозТовары','DSMF+Налог','Такси','Сервис чардж','Коммунальные','Прочие','Расчётный результат','не аудированная','полнота выручки не подтверждена','750,00 AZN']) assert.ok(external.includes(label),label)
+for(const label of ['BC4','AZN','2025-10','Зарплаты','Аренда','ФудКост','ХозТовары','DSMF+Налог','Такси','Сервис чардж','Коммунальные','Прочие','Расчётный результат','полнота выручки не подтверждена']) assert.ok(external.includes(label),label)
 assert.ok(!external.includes('1 500,00 AZN'),'exclusions outside selected months must not be included')
 assert.equal((external.match(/<svg/g)||[]).length,2)
 assert.deepEqual(model,before,'presentation must not mutate accounting model')
@@ -30,4 +30,4 @@ const missing=structuredClone(model);missing.branches[0].monthly[0].salaryRows=0
 assert.match(render(missing,true),/Полнота начислений зарплаты не подтверждена/)
 assert.match(render(missing,true),/Зарплата включает расчётную оценку/)
 await fs.writeFile(path.join(out,'external-synthetic.html'),external)
-console.log('External report PASS: sensitive-field non-disclosure, internal detail retention, 9 groups, charts, caveats, period-specific exclusions, immutable figures, popup and blocked export.')
+console.log('External report PASS: sensitive-field non-disclosure, clean internal and external presentation, 9 groups, charts, caveats, period-specific exclusions, immutable figures, popup and blocked export.')

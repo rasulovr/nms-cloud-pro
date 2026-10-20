@@ -3,10 +3,10 @@
 export const BANK_BRANCH_IDS = ['0dad369d-eac6-4cf9-bb06-b9d010714d6e', 'e7e0f06a-610f-499b-9e9a-e1f2e2c23410']
 const num = value => Number.isFinite(Number(value)) ? Number(value) : 0
 export function reportMonths(from, toExclusive) {
-  if (!/^\d{4}-\d{2}-01$/.test(from || '') || !/^\d{4}-\d{2}-01$/.test(toExclusive || '')) return []
+  if (!/^\d{4}-(0[1-9]|1[0-2])-01$/.test(from || '') || !/^\d{4}-(0[1-9]|1[0-2])-01$/.test(toExclusive || '')) return []
   const months = []
   let cursor = from.slice(0, 7)
-  while (`${cursor}-01` < toExclusive && months.length < 12) {
+  while (`${cursor}-01` < toExclusive && months.length < 1212) {
     months.push(cursor)
     const [year, month] = cursor.split('-').map(Number)
     cursor = `${month === 12 ? year + 1 : year}-${String(month === 12 ? 1 : month + 1).padStart(2, '0')}`
