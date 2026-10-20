@@ -6128,6 +6128,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
       serviceCost: 0,
       tax: 0,
       woltCommission: 0,
+      bankCommission: 0,
       totalExpenses: 0,
       net: 0,
       margin: 0,
@@ -6243,7 +6244,9 @@ function Reports({ t, permissions = [], isAdmin = false }) {
       const serviceRows = (serviceResult?.error ? [] : (serviceResult?.data || []))
         .filter(row => enabledServiceBranchIds.has(String(row.branch_id)))
       const taxSettings = await readRmsAppSetting(RMS_BRANCH_TAX_RATE_SETTING, {})
+      const bankCommissionRate = rmsBankCommissionRate(await readRmsAppSetting(RMS_BANK_COMMISSION_RATE_SETTING, RMS_DEFAULT_BANK_COMMISSION_RATE))
 
+      const profitSupplierPurchases = rmsProfitPurchaseRows(supplierPurchases, dailyExpenseRows)
       const employeeById = new Map(employeeRows.map(row => [String(row.id), row]))
       const branchNameById = new Map((branches || []).map(row => [String(row.id), row.name]))
 
@@ -6268,9 +6271,13 @@ function Reports({ t, permissions = [], isAdmin = false }) {
       })
 
       const networkRevenue = Array.from(revenueByBranch.values()).reduce((sum, row) => sum + parseNum(row.revenue), 0)
+      // Display and turnover tax retain gross receipts. Shared costs use the same
+      // post-bank-commission revenue basis as Dashboard and Finance.
+      const netRevenueForAllocation = row => rmsNetRevenueParts({ cash_amount: row.cash, bank_amount: row.bank, wolt_amount: row.wolt }, bankCommissionRate).revenue
+      const networkNetRevenue = Array.from(revenueByBranch.values()).reduce((sum, row) => sum + netRevenueForAllocation(row), 0)
       const revenueShareMap = new Map()
       revenueByBranch.forEach((row, id) => {
-        revenueShareMap.set(id, networkRevenue > 0 ? parseNum(row.revenue) / networkRevenue : 0)
+        revenueShareMap.set(id, networkNetRevenue > 0 ? netRevenueForAllocation(row) / networkNetRevenue : 0)
       })
 
       const normalizedExpenseName = row => financeExpenseNameFromRow(row)
@@ -6446,7 +6453,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
         }
 
         const share = parseNum(revenueShareMap.get(id))
-        const supplierFoodCost = supplierPurchases.reduce((sum, purchase) => sum + parseNum(purchase.total_amount) * share, 0)
+        const supplierFoodCost = profitSupplierPurchases.reduce((sum, purchase) => sum + parseNum(purchase.total_amount) * share, 0)
         const foodCost = parseNum(expenseData.manualFood) + supplierFoodCost
         const directSalary = parseNum(directSalaryByBranch.get(id))
         const managerSalary = managerSalaryPool * share
@@ -6459,10 +6466,11 @@ function Reports({ t, permissions = [], isAdmin = false }) {
         // Отдельная vergi-оплата не уменьшает прибыль повторно; налог с оборота
         // уже учтён ниже по установленной ставке.
         const tax = taxCalculated
-        const totalExpenses = parseNum(expenseData.operating) + supplierFoodCost + salary + serviceCost + tax
+        const bankCommission = rmsNetRevenueParts({ bank_amount: revenueData.bank }, bankCommissionRate).bankCommission
+        const totalExpenses = parseNum(expenseData.operating) + supplierFoodCost + salary + serviceCost + tax + bankCommission
         const net = parseNum(revenueData.revenue) - totalExpenses
         const activeDays = revenueData.days?.size || 0
-        const supplierDetails = supplierPurchases.map(purchase => ({
+        const supplierDetails = profitSupplierPurchases.map(purchase => ({
             id: `supplier-allocated-${purchase.id}-${id}`,
             date: purchase.purchase_date,
             description: purchase.suppliers?.name || 'Поставщик',
@@ -6486,6 +6494,19 @@ function Reports({ t, permissions = [], isAdmin = false }) {
           })),
           ...(salary ? [{ key: 'salary', name: 'Зарплаты', amount: salary, transactions: salaryDetails.length, details: salaryDetails }] : []),
           ...(serviceCost ? [{ key: 'service-charge', name: 'Service charge персоналу', amount: serviceCost, transactions: (serviceDetailsByBranch.get(id) || []).length, details: serviceDetailsByBranch.get(id) || [] }] : []),
+          ...(bankCommission ? [{
+            key: 'bank-commission',
+            name: 'Банковская комиссия',
+            amount: bankCommission,
+            transactions: 1,
+            details: [{
+              id: `bank-commission-${id}-${period.label}`,
+              date: period.from || '',
+              description: `Банковская комиссия ${pct(bankCommissionRate)}`,
+              comment: `${fmt(revenueData.bank)} AZN × ${pct(bankCommissionRate)} по настроенной ставке; расчёт, не подтверждение банковского списания`,
+              amount: bankCommission
+            }]
+          }] : []),
           ...(taxCalculated ? [{
             key: 'tax',
             name: 'Налог с оборота',
@@ -6523,6 +6544,8 @@ function Reports({ t, permissions = [], isAdmin = false }) {
           taxCalculated,
           taxPaid,
           taxRate,
+          bankCommission,
+          bankCommissionRate,
           woltCommission: parseNum(expenseData.woltCommission),
           rent: parseNum(expenseData.rent),
           utilities: parseNum(expenseData.utilities),
@@ -6563,6 +6586,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
         acc.serviceCost += parseNum(row.serviceCost)
         acc.tax += parseNum(row.tax)
         acc.woltCommission += parseNum(row.woltCommission)
+        acc.bankCommission += parseNum(row.bankCommission)
         acc.totalExpenses += parseNum(row.totalExpenses)
         acc.net += parseNum(row.net)
         acc.activeDays = Math.max(acc.activeDays, parseNum(row.activeDays))

@@ -235,10 +235,10 @@ async function rmsCalculateNetworkForecastForMonth(y, m, scopeBranchId = 'all', 
     supabase.from('monthly_branch_revenue').select('branch_id,total_revenue,cash_amount,bank_amount,wolt_amount').eq('month', monthDate),
     readOnce(`monthly-daily-revenue:${monthDate}`, () => supabase.from('daily_revenue').select('branch_id,cash_amount,bank_amount,wolt_amount').gte('revenue_date', monthDate).lt('revenue_date', monthEnd).is('deleted_at', null)),
     supabase.from('monthly_branch_service_charge_cost').select('branch_id,staff_cost_amount').eq('month', monthDate),
-    supabase.from('daily_expenses').select('branch_id,expense_date,amount,custom_category,expense_categories(name)').gte('expense_date', monthDate).lt('expense_date', monthEnd).is('deleted_at', null),
-    supabase.from('supplier_purchases').select('branch_id,purchase_date,total_amount,supplier_purchase_items(total_amount,supplier_products(name,category))').gte('purchase_date', monthDate).lt('purchase_date', monthEnd).is('deleted_at', null),
-    supabase.from('daily_expenses').select('branch_id,expense_date,amount,custom_category,expense_categories(name)').gte('expense_date', historyStart).lt('expense_date', historyEnd).is('deleted_at', null),
-    supabase.from('supplier_purchases').select('branch_id,purchase_date,total_amount,supplier_purchase_items(total_amount,supplier_products(name,category))').gte('purchase_date', historyStart).lt('purchase_date', historyEnd).is('deleted_at', null),
+    supabase.from('daily_expenses').select('id,branch_id,expense_date,amount,comment,custom_category,expense_categories(name)').gte('expense_date', monthDate).lt('expense_date', monthEnd).is('deleted_at', null),
+    supabase.from('supplier_purchases').select('id,comment,branch_id,purchase_date,total_amount,supplier_purchase_items(total_amount,supplier_products(name,category))').gte('purchase_date', monthDate).lt('purchase_date', monthEnd).is('deleted_at', null),
+    supabase.from('daily_expenses').select('id,branch_id,expense_date,amount,comment,custom_category,expense_categories(name)').gte('expense_date', historyStart).lt('expense_date', historyEnd).is('deleted_at', null),
+    supabase.from('supplier_purchases').select('id,comment,branch_id,purchase_date,total_amount,supplier_purchase_items(total_amount,supplier_products(name,category))').gte('purchase_date', historyStart).lt('purchase_date', historyEnd).is('deleted_at', null),
     supabase.from('monthly_branch_revenue').select('branch_id,month,total_revenue,cash_amount,bank_amount,wolt_amount').gte('month', historyStart).lt('month', historyEnd),
     readOnce('active-employees', () => supabase.from('employees').select('id,branch_id,position,monthly_salary,salary_type,daily_rate,is_active,employment_status').eq('is_active', true)),
     supabase.from('salary_periods').select('branch_id,salary_month,salary_gross,salary_net').eq('salary_month', monthDate),
@@ -316,12 +316,12 @@ async function rmsCalculateNetworkForecastForMonth(y, m, scopeBranchId = 'all', 
   }
   const currentArticleMap = buildArticleMap(
     (currentExpenseRows || []).filter(filterByBranch),
-    currentPurchaseRows || [],
+    rmsProfitPurchaseRows(currentPurchaseRows || [], (currentExpenseRows || []).filter(row => rmsBranchInRevenueScope(row, activeBranchIds))),
     revenueShareMap
   )
   const historyArticleMaps = prevMonths.map(pm => buildArticleMap(
     (historicalExpenseRows || []).filter(r => r.expense_date >= pm.start && r.expense_date < pm.end).filter(filterByBranch),
-    (historicalPurchaseRows || []).filter(r => r.purchase_date >= pm.start && r.purchase_date < pm.end),
+    rmsProfitPurchaseRows(historicalPurchaseRows || [], (historicalExpenseRows || []).filter(row => rmsBranchInRevenueScope(row, activeBranchIds))).filter(r => r.purchase_date >= pm.start && r.purchase_date < pm.end),
     revenueShareMapForMonth(pm.start)
   ))
   const currentHasPreliminarySupplierAllocation = (currentPurchaseRows || []).length > 0
@@ -1637,12 +1637,12 @@ function Dashboard({ t }) {
       supabase.from('monthly_branch_revenue').select('*').eq('month', monthDate),
       readOnce(`monthly-daily-revenue:${monthDate}`, () => supabase.from('daily_revenue').select('branch_id,cash_amount,bank_amount,wolt_amount').gte('revenue_date', monthDate).lt('revenue_date', monthEnd).is('deleted_at', null)),
       supabase.from('monthly_branch_expenses').select('*').eq('month', monthDate),
-      supabase.from('daily_expenses').select('branch_id, amount, comment, custom_category, expense_categories(name)').gte('expense_date', monthDate).lt('expense_date', monthEnd).is('deleted_at', null),
+      supabase.from('daily_expenses').select('id, branch_id, expense_date, amount, comment, custom_category, expense_categories(name)').gte('expense_date', monthDate).lt('expense_date', monthEnd).is('deleted_at', null),
       supabase.from('salary_periods').select('branch_id,salary_gross,salary_net').eq('salary_month', monthDate),
       supabase.from('monthly_branch_service_charge_cost').select('*').eq('month', monthDate),
       readOnce('supplier-balances-v2', () => supabase.from('supplier_balances_v2').select('*')),
       readOnce('active-suppliers', () => supabase.from('suppliers').select('id,name,payment_term_days,credit_limit,is_active').eq('is_active', true)),
-      supabase.from('supplier_purchases').select('id,supplier_id,branch_id,purchase_date,invoice_number,total_amount,deleted_at,supplier_purchase_items(total_amount,supplier_products(name,category))').gte('purchase_date', monthDate).lt('purchase_date', monthEnd).is('deleted_at', null),
+      supabase.from('supplier_purchases').select('id,comment,supplier_id,branch_id,purchase_date,invoice_number,total_amount,deleted_at,supplier_purchase_items(total_amount,supplier_products(name,category))').gte('purchase_date', monthDate).lt('purchase_date', monthEnd).is('deleted_at', null),
       readOnce('supplier-purchase-history', () => supabase.from('supplier_purchases').select('id,supplier_id,purchase_date,invoice_number,total_amount,deleted_at').is('deleted_at', null)),
       readOnce('supplier-payment-history', () => supabase.from('supplier_payments').select('supplier_id,amount')),
       readOnce('active-employees', () => supabase.from('employees').select('id,branch_id,position,monthly_salary,salary_type,daily_rate,is_active,employment_status').eq('is_active', true)),
@@ -1692,6 +1692,7 @@ function Dashboard({ t }) {
     const salaryPeriodRows = salaryPeriodResult?.data || []
     const effectiveRevenueRows = rmsAggregateRevenueByBranch((dashboardDailyRevenueResult?.data || []).length ? dashboardDailyRevenueResult.data : (revRows || []))
     const activeBranchIds = rmsRevenueBranchIds(effectiveRevenueRows, bankCommissionRate)
+    purchaseRowsForFinance = rmsProfitPurchaseRows(purchaseRowsForFinance, (dashboardDailyExpensesResult?.data || []).filter(row => rmsBranchInRevenueScope(row, activeBranchIds)))
     if (!activeBranchIds.size) purchaseRowsForFinance = []
     const revByBranch = new Map(effectiveRevenueRows.map(r => [r.branch_id, r]))
     const expByBranch = new Map((expRows || []).map(r => [r.branch_id, r]))
@@ -3022,18 +3023,18 @@ function Finance({ t, lang, onGoToExpense }) {
     setDailyRevenueRows(dailyChartRows)
     const start = monthDate
     const end = rmsNextMonthStart(`${Number(year)}-${String(Number(month)).padStart(2, '0')}`)
-    let expQuery = supabase.from('daily_expenses').select('branch_id, amount, comment, custom_category, expense_categories(name)').gte('expense_date', start).lt('expense_date', end).is('deleted_at', null)
-    let purQuery = supabase.from('supplier_purchases').select('branch_id, total_amount, supplier_purchase_items(total_amount, supplier_products(name,category))').gte('purchase_date', start).lt('purchase_date', end).is('deleted_at', null)
+    let expQuery = supabase.from('daily_expenses').select('id, branch_id, expense_date, amount, comment, custom_category, expense_categories(name)').gte('expense_date', start).lt('expense_date', end).is('deleted_at', null)
+    let purQuery = supabase.from('supplier_purchases').select('id, comment, purchase_date, branch_id, total_amount, supplier_purchase_items(total_amount, supplier_products(name,category))').gte('purchase_date', start).lt('purchase_date', end).is('deleted_at', null)
     let empQuery = supabase.from('employees').select('id, branch_id, position, monthly_salary, salary_type, daily_rate, is_active, employment_status').eq('is_active', true)
     let salaryPeriodQuery = supabase.from('salary_periods').select('employee_id, branch_id, salary_gross, salary_net, card_payment, cash_payment, advance_amount, deduction_amount, previous_balance_amount').eq('salary_month', monthDate)
     let salaryPaymentQuery = supabase.from('salary_payments').select('employee_id, branch_id, amount').eq('salary_month', monthDate).or('is_cancelled.is.null,is_cancelled.eq.false')
 
-    if (branchId !== ALL_BRANCHES) {
-      expQuery = expQuery.eq('branch_id', branchId)
-    }
-
-    const [{ data: rows }, { data: purchaseRows }, { data: employeeRows }, { data: salaryPeriodRows }, { data: salaryPaymentRows }] = await Promise.all([expQuery, purQuery, empQuery, salaryPeriodQuery, salaryPaymentQuery])
+    // Keep network expense provenance available for supplier mirror reconciliation.
+    const [{ data: networkExpenseRows }, { data: rawPurchaseRows }, { data: employeeRows }, { data: salaryPeriodRows }, { data: salaryPaymentRows }] = await Promise.all([expQuery, purQuery, empQuery, salaryPeriodQuery, salaryPaymentQuery])
+    const rows = (networkExpenseRows || []).filter(row => branchId === ALL_BRANCHES || String(row.branch_id) === String(branchId))
     const revenueShares = await financeRevenueSharesForMonth(year, month)
+    const networkActiveBranchIds = new Set([...revenueShares.map].filter(([, share]) => parseNum(share) > 0).map(([id]) => String(id)))
+    const purchaseRows = rmsProfitPurchaseRows(rawPurchaseRows || [], (networkExpenseRows || []).filter(row => rmsBranchInRevenueScope(row, networkActiveBranchIds)))
     const allocatedSupplierTotals = rmsFinanceSupplierTotalsForScope(current.activeBranchIds.length ? (purchaseRows || []) : [], branchId, revenueShares.map)
     const allocatedSupplierExpenseTotal = allocatedSupplierTotals.food + allocatedSupplierTotals.packaging + allocatedSupplierTotals.household + allocatedSupplierTotals.other
 
@@ -3133,8 +3134,8 @@ function Finance({ t, lang, onGoToExpense }) {
 
     const financeActualBreakdownRows = [...expenseRows]
     if (parseNum(currentForFinance.taxCalculated) > 0) financeActualBreakdownRows.push({ name: `Налог с оборота ${fmt(currentForFinance.taxRate || TAX_RATE)}%`, amount: parseNum(currentForFinance.taxCalculated) })
-    if (parseNum(currentForFinance.taxPaid) > 0) financeActualBreakdownRows.push({ name: 'Оплаченный налог (справочно, вне прибыли)', amount: parseNum(currentForFinance.taxPaid) })
-    const financeActualExpenseTotal = financeActualBreakdownRows.reduce((sum, row) => sum + parseNum(row.amount), 0)
+    if (parseNum(currentForFinance.taxPaid) > 0) financeActualBreakdownRows.push({ name: 'Оплаченный налог (справочно, вне прибыли)', amount: parseNum(currentForFinance.taxPaid), informational: true })
+    const financeActualExpenseTotal = financeActualBreakdownRows.filter(row => !row.informational).reduce((sum, row) => sum + parseNum(row.amount), 0)
     const financeUnifiedNet = parseNum(currentForFinance.revenue) - financeActualExpenseTotal
     const financeFormulaDiff = financeUnifiedNet - parseNum(currentForFinance.net)
     currentForFinance = {
