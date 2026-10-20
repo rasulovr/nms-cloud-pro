@@ -9631,6 +9631,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
     </div>
   </section>
 
+  const [profitabilityExpanded, setProfitabilityExpanded] = useState(false)
   const profitabilityRows = rmsProfitabilityReport.rows || []
   const profitabilityTotals = rmsProfitabilityReport.totals || {}
   const profitabilitySortedRows = useMemo(() => {
@@ -9771,7 +9772,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
                 <div><span>Food Cost</span><b className={row.foodCostPct > 35 ? 'bad' : 'good'}>{pct(row.foodCostPct)}</b></div><div><span>Зарплаты</span><b className={row.salaryPct > 25 ? 'bad' : 'good'}>{pct(row.salaryPct)}</b></div><div><span>Аренда</span><b className={row.rentPct > 12 ? 'bad' : 'good'}>{pct(row.rentPct)}</b></div><div><span>Wolt комиссия</span><b>{row.woltRevenue > 0 ? pct(row.woltCommissionPct) : '—'}</b></div><div><span>Доля всех расходов</span><b>{pct(row.expenseRatio)}</b></div>
               </div>
               {(row.foodCostPct > 35 || row.salaryPct > 25 || row.rentPct > 12 || row.net < 0) && <div className="reports-v417-warning">Есть отклонения от рекомендуемых ориентиров. Откройте расходы филиала и проверьте крупнейшие статьи.</div>}</div>
-              <div className="reports-v417-detail-card reports-v417-expenses-card">
+              {profitabilityExpanded && <div className="reports-v417-detail-card reports-v417-expenses-card">
                 <h4>Статьи P&amp;L и справочные показатели · {(row.expenseCategories || []).length}</h4>
                 <div className="reports-v417-expense-groups">
                   {(row.expenseCategories || []).map(category => {
@@ -9794,7 +9795,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
                   })}
                   {!(row.expenseCategories || []).length && <div className="reports-v417-expense-empty">За выбранный период расходов нет.</div>}
                 </div>
-              </div>
+              </div>}
             </div></td></tr>}
           </React.Fragment>)}
           {!profitabilityRows.length && <tr><td colSpan="13" className="reports-v417-empty">Нет данных по выбранному фильтру.</td></tr>}
@@ -9804,7 +9805,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
   </section>
 
   const ReportsProfitabilityView = <section className="reports-v417-profitability">
-    <ProfitabilityBankReport availableYears={yearOptions} report={rmsProfitabilityReport} branches={branches} periodKey={profitabilityPeriodKey} onPeriodChange={value => value === profitabilityPeriodKey ? loadRmsProfitabilityReport() : setProfitabilityBankPeriod(value)}>{ReportsProfitabilityAnalytics}</ProfitabilityBankReport>
+    <ProfitabilityBankReport expanded={profitabilityExpanded} onExpandedChange={setProfitabilityExpanded} availableYears={yearOptions} report={rmsProfitabilityReport} branches={branches} periodKey={profitabilityPeriodKey} onPeriodChange={value => value === profitabilityPeriodKey ? loadRmsProfitabilityReport() : setProfitabilityBankPeriod(value)}>{ReportsProfitabilityAnalytics}</ProfitabilityBankReport>
   </section>
 
   const supplierReportNormalizedSearch = String(supplierReportSearch || '').trim().toLowerCase()
