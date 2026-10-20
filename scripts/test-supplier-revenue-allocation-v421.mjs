@@ -27,7 +27,10 @@ assert.ok(finance.includes('isSalaryExpenseName(name) || isBazarExpenseName(name
 assert.ok(finance.includes('totalExpenses: expenses + salary + serviceCost + tax'), 'Dashboard total expenses must include service charge and tax')
 assert.ok(finance.includes('const preliminarySupplierExpense = allocatedSupplierExpenseTotal'), 'Finance must describe the complete allocated supplier amount')
 assert.ok(reports.includes('const targets = Array.from(revenueShareMap.entries())'), 'Expense report must allocate every supplier invoice across revenue branches')
-assert.ok(reports.includes('const supplierFoodCost = supplierPurchases.reduce'), 'Profitability report must use network supplier purchases')
+// The P&L pool now removes only proven same-source household mirrors before allocation.
+assert.ok(reports.includes('const profitSupplierPurchases = rmsProfitPurchaseRows(supplierPurchases, dailyExpenseRows)'), 'Profitability must reconcile the network purchase pool against its source expenses')
+assert.ok(reports.includes('const supplierFoodCost = profitSupplierPurchases.reduce'), 'Profitability report must allocate the reconciled network supplier pool')
+assert.ok(reports.includes('const supplierDetails = profitSupplierPurchases.map'), 'Supplier drilldown must use the same reconciled purchase pool')
 assert.ok(reports.includes('if (isBazarExpenseName(name)) return'), 'Reports must exclude manual Bazar expenses')
 assert.ok(reports.includes('const totalExpenses = parseNum(expenseData.operating) + supplierFoodCost + salary + serviceCost + tax'), 'Branch profitability must include service charge and tax')
 
