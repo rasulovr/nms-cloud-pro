@@ -73,13 +73,17 @@ export function ExternalBankDocument({ model, expanded = false }) {
 
   </article>
 }
-const MONTH_LABELS = ['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь']
-function MonthPicker({ label, value, onChange, years }) {
-  const [year, month] = value.split('-')
-  return <div style={{display:'flex',flexWrap:'wrap',gap:8,alignItems:'end'}}>
-    <label>{label}: год<select style={{minWidth:100,width:"auto"}} aria-label={`${label}: год`} value={year} onChange={event => onChange(`${event.target.value}-${month || '01'}`)}>{years.map(item => <option key={item} value={item}>{item}</option>)}</select></label>
-    <label>Месяц<select style={{minWidth:140,width:"auto"}} aria-label={`${label}: месяц`} value={month} onChange={event => onChange(`${year}-${event.target.value}`)}>{MONTH_LABELS.map((name,index) => <option key={name} value={String(index+1).padStart(2,'0')}>{name}</option>)}</select></label>
-  </div>
+const monthLabel = value => {
+  if (!/^\d{4}-\d{2}$/.test(value || '')) return 'Не выбран'
+  return new Intl.DateTimeFormat('ru-RU', { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(new Date(`${value}-01T00:00:00Z`)).replace(' г.', '')
+}
+function presetMonths(preset) {
+  const parts = new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: '2-digit', timeZone: 'Asia/Baku' }).formatToParts(new Date())
+  const year = Number(parts.find(part => part.type === 'year').value)
+  const month = Number(parts.find(part => part.type === 'month').value)
+  const current = `${year}-${String(month).padStart(2, '0')}`
+  const previous = `${month === 1 ? year - 1 : year}-${String(month === 1 ? 12 : month - 1).padStart(2, '0')}`
+  return preset === 'previous' ? { start: previous, end: previous } : { start: preset === 'year' ? `${year}-01` : current, end: current }
 }
 export function printBankDocument(model, expanded = false) {
   if (!model?.exportable) return 'Сначала загрузите отчёт, проверьте сверку итогов и полноту исходных данных.'
@@ -99,42 +103,61 @@ export function printBankDocument(model, expanded = false) {
 export default function ProfitabilityBankReport({ report, branches, onPeriodChange, periodKey, availableYears = [], children, expanded: expandedProp, onExpandedChange }) {
   const [internalExpanded, setInternalExpanded] = useState(false)
   const expanded = expandedProp === undefined ? internalExpanded : expandedProp
-  const changeExpanded = value => { setInternalExpanded(value); onExpandedChange?.(value) }
+  const [draftExpanded, setDraftExpanded] = useState(expanded)
   const [selected, setSelected] = useState(BANK_BRANCH_IDS)
+  const [draftSelected, setDraftSelected] = useState(BANK_BRANCH_IDS)
+  const [search, setSearch] = useState('')
+  const [branchOpen, setBranchOpen] = useState(false)
   const initial = periodMonths(report.period)
   const [start, setStart] = useState(initial.start)
   const [end, setEnd] = useState(initial.end)
+  const [error, setError] = useState('')
   useEffect(() => {
     if (!report.period || report.error) return
     const next = periodMonths(report.period)
     setStart(next.start); setEnd(next.end)
   }, [report.period?.from, report.period?.toExclusive])
+  useEffect(() => { setDraftExpanded(expanded) }, [expanded])
   const chosenPeriod = manualPeriod(start, end)
-  const yearNow = new Date().getFullYear()
-  const years = Array.from(new Set([yearNow - 3, yearNow - 2, yearNow - 1, yearNow, yearNow + 1, ...availableYears.map(Number), Number(start.slice(0,4)), Number(end.slice(0,4)), ...(report.bankInputs?.revenueRows || []).map(row => Number(String(row.revenue_date).slice(0,4)))]))
-    .filter(year => year >= 2000 && year <= 2100).sort((a,b) => b-a)
+  const appliedPeriod = periodMonths(report.period)
+  const pending = start !== appliedPeriod.start || end !== appliedPeriod.end || draftExpanded !== expanded || [...draftSelected].sort().join('|') !== [...selected].sort().join('|')
   const stale = report.periodKey !== periodKey
+  const model = useMemo(() => buildBankReport(report, selected), [report, selected])
+  const branchNames = ids => branches.filter(branch => ids.includes(String(branch.id))).map(branch => branch.name)
+  const chosenNames = branchNames(draftSelected)
+  const appliedNames = branchNames(selected)
+  const visibleBranches = branches.filter(branch => branch.name.toLocaleLowerCase('ru').includes(search.trim().toLocaleLowerCase('ru')))
+  const allSelected = branches.length > 0 && branches.every(branch => draftSelected.includes(String(branch.id)))
   const applyPeriod = () => {
-    if (!chosenPeriod || report.loading) return
-    setError('')
+    if (!chosenPeriod || !draftSelected.length || report.loading) return
+    setError(''); setBranchOpen(false)
+    setSelected([...draftSelected]); setInternalExpanded(draftExpanded); onExpandedChange?.(draftExpanded)
     onPeriodChange(chosenPeriod.key)
   }
-  const [error, setError] = useState('')
-  const model = useMemo(() => buildBankReport(report, selected), [report, selected])
-  const exportReport = () => setError(printBankDocument(report.loading || report.error || report.periodKey !== periodKey ? null : model, expanded))
-  return <section className="bank-workspace"><div className="bank-controls"><div><h2>Управленческий отчёт</h2><p>По выбранным филиалам и совокупно · помесячно · AZN</p></div>
-    <div className="bank-control-row">
-      <MonthPicker label="Начало" value={start} onChange={setStart} years={years}/>
-      <MonthPicker label="Конец" value={end} onChange={setEnd} years={years}/>
-      <button type="button" disabled={!chosenPeriod || report.loading} onClick={applyPeriod}>Применить период</button>
-      <button id="profitability-bank-export" type="button" disabled={report.loading || !!report.error || stale || !model?.exportable} onClick={exportReport}>PDF / печать</button>
+  const choosePreset = preset => { const next = presetMonths(preset); setStart(next.start); setEnd(next.end) }
+  const exportReport = () => setError(printBankDocument(report.loading || report.error || stale || pending ? null : model, expanded))
+  return <section className="bank-workspace"><div className="bank-controls bank-filter-panel">
+    <div className="bank-filter-heading"><div><p className="bank-filter-eyebrow">АНАЛИТИКА / ОТЧЁТЫ</p><h2>Управленческий отчёт</h2><p>Рентабельность филиалов и сети · AZN</p></div><span className="bank-filter-badge">По месяцам</span></div>
+    <div className="bank-filter-grid">
+      <div className="bank-period-field"><span className="bank-field-label" id="bank-period-label">Период отчёта</span>
+        <div className="bank-month-range" role="group" aria-labelledby="bank-period-label"><label><span>С</span><input type="month" aria-label="Начальный месяц" min="2000-01" max="2100-12" value={start} disabled={report.loading} onChange={event => setStart(event.target.value)}/></label><span className="bank-range-divider" aria-hidden="true">→</span><label><span>По</span><input type="month" aria-label="Конечный месяц" min="2000-01" max="2100-12" value={end} disabled={report.loading} onChange={event => setEnd(event.target.value)}/></label></div>
+        <div className="bank-period-presets" aria-label="Быстрый выбор периода">{[['current','Текущий месяц'],['previous','Прошлый месяц'],['year','С начала года']].map(([key,label]) => <button key={key} type="button" disabled={report.loading} onClick={() => choosePreset(key)}>{label}</button>)}</div>
+      </div>
+      <div className="bank-branch-field"><span className="bank-field-label" id="bank-branch-label">Филиалы</span>
+        <div className="bank-branch-picker" onKeyDown={event => { if (event.key === 'Escape') { setBranchOpen(false); event.currentTarget.querySelector('button')?.focus() } }}>
+          <button type="button" className="bank-branch-trigger" aria-labelledby="bank-branch-label bank-branch-value" aria-expanded={branchOpen} aria-controls="bank-branch-options" disabled={report.loading} onClick={() => setBranchOpen(!branchOpen)}><span id="bank-branch-value">{chosenNames.length ? chosenNames.length <= 2 ? chosenNames.join(', ') : `Выбрано филиалов: ${chosenNames.length}` : 'Выберите филиалы'}</span><span className="bank-branch-count">{chosenNames.length}</span><span aria-hidden="true">⌄</span></button>
+          {branchOpen && <div id="bank-branch-options" className="bank-branch-popover"><input type="search" aria-label="Поиск филиала" placeholder="Найти филиал…" value={search} onChange={event => setSearch(event.target.value)}/><label className="bank-select-all"><input type="checkbox" checked={allSelected} onChange={event => setDraftSelected(event.target.checked ? branches.map(branch => String(branch.id)) : [])}/><span>Выбрать все</span><small>{branches.length}</small></label><div className="bank-branch-list">{visibleBranches.map(branch => <label key={branch.id}><input type="checkbox" checked={draftSelected.includes(String(branch.id))} onChange={event => setDraftSelected(current => event.target.checked ? [...new Set([...current,String(branch.id)])] : current.filter(id => id !== String(branch.id)))}/><span>{branch.name}</span></label>)}{!visibleBranches.length && <p>Филиалы не найдены</p>}</div><div className="bank-branch-footer"><span>Выбрано: {chosenNames.length} из {branches.length}</span><button type="button" onClick={() => setBranchOpen(false)}>Готово</button></div></div>}
+        </div><p className="bank-field-hint">По каждому филиалу и совокупно</p>
+      </div>
+      <div className="bank-detail-field"><span className="bank-field-label" id="bank-detail-label">Детализация</span><div className="bank-detail-segments" role="group" aria-labelledby="bank-detail-label"><button type="button" aria-pressed={!draftExpanded} disabled={report.loading} onClick={() => setDraftExpanded(false)}>Краткий</button><button type="button" aria-pressed={draftExpanded} disabled={report.loading} onClick={() => setDraftExpanded(true)}>Расширенный</button></div><p className="bank-field-hint">{draftExpanded ? 'Со статьями расходов' : 'Ключевые показатели и динамика'}</p></div>
     </div>
-    {!chosenPeriod && <p role="alert">Укажите начальный и конечный месяц. Конец периода должен быть не раньше начала.</p>}
-    <label><input type="checkbox" aria-label="Расширенный отчёт" checked={expanded} onChange={event => changeExpanded(event.target.checked)}/>Расширенный отчёт</label>
-    <fieldset><legend>Филиалы отчёта</legend>{branches.map(branch => <label key={branch.id}><input type="checkbox" checked={selected.includes(String(branch.id))} onChange={event => setSelected(current => event.target.checked ? [...current, String(branch.id)] : current.filter(id => id !== String(branch.id)))}/>{branch.name}</label>)}</fieldset>
-    <p className="bank-meta">Полные календарные месяцы, включая начальный и конечный.</p></div>
+    <div className="bank-filter-bottom"><p className="bank-field-hint">Полные календарные месяцы, включая начальный и конечный.</p><div className="bank-filter-actions"><button className="bank-generate" type="button" disabled={!chosenPeriod || !draftSelected.length || report.loading} onClick={applyPeriod}>{report.loading ? 'Формирование…' : 'Сформировать'}</button><button className="bank-export" id="profitability-bank-export" type="button" disabled={report.loading || !!report.error || stale || pending || !model?.exportable} onClick={exportReport}>PDF / печать</button></div></div>
+    {!chosenPeriod && <p className="bank-filter-alert" role="alert">Укажите начальный и конечный месяц. Конец периода должен быть не раньше начала.</p>}
+    {!draftSelected.length && <p className="bank-filter-alert" role="alert">Выберите хотя бы один филиал.</p>}
+    <div className={`bank-applied-summary${pending ? ' is-pending' : ''}`} aria-live="polite"><span>{report.loading || stale ? 'Формируется отчёт…' : report.error ? 'Отчёт не сформирован' : `В отчёте: ${monthLabel(appliedPeriod.start)} — ${monthLabel(appliedPeriod.end)} · ${appliedNames.join(', ')} · ${expanded ? 'Расширенный' : 'Краткий'}`}</span>{pending && <strong>Есть изменения. Нажмите «Сформировать».</strong>}</div>
+  </div>
     {!report.loading && !report.error && !stale && children}
     {error && <p role="alert" className="bank-disclosure">{error}</p>}
-    {report.error && !report.loading ? <p role="alert">Отчёт не сформирован: {report.error}. Повторите загрузку кнопкой «Применить период».</p> : report.loading || stale ? <p role="status">Загружаю расчёт…</p> : model ? <BankDocument model={model} expanded={expanded}/> : <p>Выберите филиалы и период.</p>}
+    {report.error && !report.loading ? <p role="alert">Отчёт не сформирован: {report.error}. Повторите загрузку кнопкой «Сформировать».</p> : report.loading || stale ? <p role="status">Загружаю расчёт…</p> : model ? <BankDocument model={model} expanded={expanded}/> : <p>Выберите филиалы и период.</p>}
   </section>
 }

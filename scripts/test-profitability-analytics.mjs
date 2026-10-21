@@ -14,7 +14,7 @@ const {render,Analytics}=require(path.join(root,'render.cjs'))
 const row=(id,revenue,net)=>({id,name:id,revenue,net,totalExpenses:revenue-net,margin:net/revenue*100,expenseCategories:[]})
 const report={periodKey:'range:2026-05:2026-05',period:{from:'2026-05-01',toExclusive:'2026-06-01'},periodLabel:'2026-05',rows:[row('BC4',100,20),row('BC5',200,30)],totals:{revenue:300,totalExpenses:250,net:50,branches:2}}
 const before=structuredClone(report),html=render(report)
-for(const text of ['Сравнение филиалов','Детальная рентабельность филиалов','BC4','BC5','100.00','200.00','300.00','Начало: год'])assert.ok(html.includes(text),text)
+for(const text of ['Сравнение филиалов','Детальная рентабельность филиалов','BC4','BC5','100.00','200.00','300.00','Начальный месяц'])assert.ok(html.includes(text),text)
 assert.ok(html.indexOf('bank-controls')<html.indexOf('aria-label="Аналитика RMS'))
 assert.ok(!render({...report,loading:true}).includes('Детальная рентабельность филиалов'))
 assert.ok(!render({...report,error:'Synthetic error'}).includes('Детальная рентабельность филиалов'))

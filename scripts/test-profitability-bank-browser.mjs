@@ -14,7 +14,7 @@ const report={period:{from:'2025-01-01',toExclusive:'2026-01-01'},periodKey:'yea
 createRoot(document.getElementById('root')).render(<ProfitabilityBankReport report={report} branches={ids.map((id,i)=>({id,name:names[i]}))} periodKey='year:2025' onPeriodChange={value=>window.lastPeriod=value}/>);`
 await fs.writeFile(path.join(out,'entry.jsx'),fixture)
 await build({entryPoints:[path.join(out,'entry.jsx')],outfile:path.join(out,'bank.js'),bundle:true,jsx:'automatic',plugins:[{name:'raw-css',setup(builder){builder.onLoad({filter:/\.css\?raw$/},async args=>({contents:await fs.readFile(args.path.replace(/\?raw$/,''),'utf8'),loader:'text'}))}}]})
-await fs.writeFile(path.join(out,'index.html'),'<html><meta charset="utf-8"><link rel="stylesheet" href="bank.css"><div id="root"></div><script src="bank.js"></script></html>')
+await fs.writeFile(path.join(out,'index.html'),'<html><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><style>body{margin:0;padding:32px;background:#f1f4f2}*{box-sizing:border-box}@media(max-width:600px){body{padding:12px}}</style><link rel="stylesheet" href="bank.css"><div id="root"></div><script src="bank.js"></script></html>')
 if (process.env.BANK_BUILD_FIXTURE_ONLY === '1') { console.log('Synthetic bank fixture built: '+out); process.exit(0) }
 const browser=await chromium.launch({headless:true,executablePath:process.env.CHROMIUM_PATH||'/usr/bin/chromium',args:['--no-sandbox']});const page=await browser.newPage({viewport:{width:1440,height:1100}})
 const errors=[];page.on('pageerror',e=>errors.push(e.message));await page.goto('file://'+path.join(out,'index.html'));await page.locator('.bank-document').waitFor()
@@ -26,17 +26,48 @@ assert.doesNotMatch(await popup.locator('body').innerText(),/SYNTHETIC TEST DATA
 assert.match(await popup.locator('body').innerText(),/не аудированная|Ограничения данных/)
 assert.equal(await popup.locator('.bank-external-document').count(),1)
 assert.equal(await popup.locator('.bank-controls').count(),0)
-await page.locator('.bank-controls fieldset input').first().uncheck();assert.equal(await page.locator('.bank-report-section').count(),2)
-await page.locator('.bank-controls fieldset input').nth(1).uncheck();assert.equal(await page.locator('#profitability-bank-export').isDisabled(),true)
-await page.locator('.bank-controls fieldset input').first().check();assert.equal(await page.locator('#profitability-bank-export').isEnabled(),true)
-await page.getByLabel('Начало: год',{exact:true}).selectOption('2025');await page.getByLabel('Начало: месяц',{exact:true}).selectOption('09');
-await page.getByLabel('Конец: год',{exact:true}).selectOption('2026');await page.getByLabel('Конец: месяц',{exact:true}).selectOption('09');
-assert.equal(await page.evaluate(()=>window.lastPeriod),undefined,'editing must not apply');
-await page.getByRole('button',{name:'Применить период'}).click();assert.equal(await page.evaluate(()=>window.lastPeriod),'range:2025-09:2026-09');
-assert.equal(await page.locator('.bank-controls fieldset input').first().isChecked(),true);
-assert.equal(await page.locator('.bank-controls fieldset input').nth(1).isChecked(),false);
-await page.getByLabel('Конец: год',{exact:true}).selectOption('2025');await page.getByLabel('Конец: месяц',{exact:true}).selectOption('08');assert.equal(await page.getByRole('button',{name:'Применить период'}).isDisabled(),true);
-await page.getByLabel('Конец: месяц',{exact:true}).selectOption('09');await page.getByRole('button',{name:'Применить период'}).click();assert.equal(await page.evaluate(()=>window.lastPeriod),'range:2025-09:2025-09');
+// Draft filters do not change the displayed report until Generate is used.
+await page.getByRole('button',{name:/Филиалы/}).click();
+await page.getByLabel('Поиск филиала').fill('BC4');
+assert.equal(await page.locator('.bank-branch-list label').count(),1);
+await page.locator('.bank-branch-list input').first().uncheck();
+assert.equal(await page.locator('.bank-report-section').count(),3);
+assert.equal(await page.locator('#profitability-bank-export').isDisabled(),true);
+await page.getByRole('button',{name:'Готово'}).click();
+await page.getByRole('button',{name:'Сформировать',exact:true}).click();
+assert.equal(await page.locator('.bank-report-section').count(),2);
+assert.equal(await page.locator('#profitability-bank-export').isEnabled(),true);
+await page.getByRole('button',{name:/Филиалы/}).click();
+await page.getByLabel('Поиск филиала').fill('');
+await page.getByLabel('Выбрать все').check();
+await page.getByLabel('Выбрать все').uncheck();
+assert.equal(await page.getByRole('button',{name:'Сформировать',exact:true}).isDisabled(),true);
+await page.getByLabel('Выбрать все').check();
+await page.getByRole('button',{name:'Готово'}).click();
+await page.getByRole('button',{name:'Сформировать',exact:true}).click();
+assert.equal(await page.locator('.bank-report-section').count(),3);
+assert.equal(await page.locator('.bank-expense-appendix').count(),0);
+await page.getByRole('button',{name:'Расширенный',exact:true}).click();
+assert.equal(await page.locator('.bank-expense-appendix').count(),0);
+assert.equal(await page.locator('#profitability-bank-export').isDisabled(),true);
+await page.getByRole('button',{name:'Сформировать',exact:true}).click();
+assert.equal(await page.locator('.bank-expense-appendix').count(),1);
+await page.getByLabel('Начальный месяц',{exact:true}).fill('2025-09');
+await page.getByLabel('Конечный месяц',{exact:true}).fill('2026-09');
+await page.getByRole('button',{name:'Сформировать',exact:true}).click();
+assert.equal(await page.evaluate(()=>window.lastPeriod),'range:2025-09:2026-09');
+assert.equal(await page.locator('#profitability-bank-export').isDisabled(),true,'old report must not be exported under new draft period');
+await page.getByLabel('Конечный месяц',{exact:true}).fill('2025-08');
+assert.equal(await page.getByRole('button',{name:'Сформировать',exact:true}).isDisabled(),true);
+await page.getByLabel('Конечный месяц',{exact:true}).fill('2025-09');
+await page.getByRole('button',{name:'Сформировать',exact:true}).click();
+assert.equal(await page.evaluate(()=>window.lastPeriod),'range:2025-09:2025-09');
+await page.getByRole('button',{name:'С начала года',exact:true}).click();
+assert.match(await page.getByLabel('Начальный месяц').inputValue(),/^\d{4}-01$/);
+// Restore initial period for a clean screenshot.
+await page.getByLabel('Начальный месяц').fill('2025-01');await page.getByLabel('Конечный месяц').fill('2025-12');
+await page.getByRole('button',{name:'Краткий',exact:true}).click();await page.getByRole('button',{name:'Сформировать',exact:true}).click();
+await page.screenshot({path:path.join(out,'desktop.png'),fullPage:true});
 assert.doesNotMatch(await page.locator('body').innerText(),/Источники и методика|Мостик источников|Данные загружены|Предварительно|Для рассмотрения банком/);
 await page.setViewportSize({width:390,height:844});await page.screenshot({path:path.join(out,'mobile.png'),fullPage:true});assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth),true,'mobile must not overflow viewport')
 assert.deepEqual(errors,[])
