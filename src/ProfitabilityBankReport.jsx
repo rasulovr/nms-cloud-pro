@@ -1,9 +1,11 @@
+import {MONTHLY_COLUMNS,monthlyViewRows,monthlyText,monthlyLabel} from './report-monthly-view.mjs'
 import React, { useEffect, useMemo, useState } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { BANK_BRANCH_IDS, buildBankReport, groupBankExpenses } from './profitability-bank.mjs'
 import { manualPeriod, periodMonths } from './profitability-period.mjs'
 import './profitability-bank.css'
 import bankPrintStyles from './profitability-bank.css?raw'
+const currentReportLanguage = () => { try { return localStorage.getItem('rms_lang') || localStorage.getItem('nms_lang') || 'ru' } catch { return 'ru' } }
 const money = value => new Intl.NumberFormat('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value)
 const percent = value => value == null ? '—' : `${money(value)}%`
 function Trend({ rows }) {
@@ -29,15 +31,20 @@ function MarginTrend({ rows }) {
     {rows.map((row,i) => <g key={row.month}>{Number.isFinite(row.margin) && <rect x={x(i)-9} y={Math.min(y(0),y(row.margin))} width="18" height={Math.max(1,Math.abs(y(0)-y(row.margin)))} rx="3" fill={row.margin < 0 ? '#d44459' : '#10a6a0'}/>}{(i % Math.max(1,Math.ceil(rows.length / 7)) === 0 || i === rows.length - 1) && <text x={x(i)} y="124" textAnchor="middle" fontSize="12" fill="#52627a">{row.month.slice(5)}.{row.month.slice(2,4)}</text>}</g>)}
   </svg></div>
 }
-function ExpenseTable({ section, months, external = false }) {
+function ExpenseTable({ section, months, external = false, monthly = true }) {
   const grouped = groupBankExpenses(section)
-  return <><div className="bank-table-scroll"><table className="bank-expense-table"><caption>Расходы по статьям, AZN · суммы входят в итог один раз</caption><thead><tr><th>Статья</th>{months.map(month => <th key={month}>{month.slice(5)}.{month.slice(2,4)}</th>)}<th>Итого</th></tr></thead><tbody>{grouped.groups.map(category => <tr key={category.key}><th>{category.name}</th>{grouped.monthly.map(row => <td key={row.month}>{row.hasData[category.key] ? money(row.categories[category.key]) : '—'}</td>)}<td>{category.sources.length ? money(category.amount) : '—'}</td></tr>)}<tr className="bank-total"><th>Все расходы</th>{section.monthly.map(row => <td key={row.month}>{money(row.expenses)}</td>)}<td>{money(section.totals.expenses)}</td></tr></tbody></table></div><p className="bank-meta">«—» — нет отдельно выделенных данных.</p>{!external && <p className="bank-meta">Прочие: {grouped.groups.find(group => group.key === 'other').sources.filter(source => source.amount !== 0).map(source => `${source.name} — ${money(source.amount)} AZN`).join('; ') || 'нет учтённых сумм'}.</p>}</>
+  return <><div className="bank-table-scroll"><table className="bank-expense-table"><caption>Расходы по статьям, AZN · суммы входят в итог один раз</caption><thead><tr><th>Статья</th>{monthly && months.map(month => <th key={month}>{month.slice(5)}.{month.slice(2,4)}</th>)}<th>Итого</th></tr></thead><tbody>{grouped.groups.map(category => <tr key={category.key}><th>{category.name}</th>{monthly && grouped.monthly.map(row => <td key={row.month}>{row.hasData[category.key] ? money(row.categories[category.key]) : '—'}</td>)}<td>{category.sources.length ? money(category.amount) : '—'}</td></tr>)}<tr className="bank-total"><th>Все расходы</th>{monthly && section.monthly.map(row => <td key={row.month}>{money(row.expenses)}</td>)}<td>{money(section.totals.expenses)}</td></tr></tbody></table></div><p className="bank-meta">«—» — нет отдельно выделенных данных.</p>{!external && <p className="bank-meta">Прочие: {grouped.groups.find(group => group.key === 'other').sources.filter(source => source.amount !== 0).map(source => `${source.name} — ${money(source.amount)} AZN`).join('; ') || 'нет учтённых сумм'}.</p>}</>
 }
-function Section({ section, months, external = false, expanded = false }) {
+function MonthlyOverview({ section, monthly, lang }) {
+  const t=text=>monthlyText(text,lang)
+  const rows=monthlyViewRows(section,monthly)
+  return <div className="bank-table-scroll"><table className="bank-monthly-overview"><caption>{t(monthly ? "Помесячные итоги, AZN" : "Итоги периода, AZN")}</caption><thead><tr><th>{t(monthly ? "Месяц" : "Период")}</th><th>{t("Выручка")}</th>{MONTHLY_COLUMNS.map(([key,label])=><th key={key}>{t(label)}</th>)}<th>{t("Расходы")}</th><th>{t("Расчётный результат")}</th><th>{t("Маржа")}</th></tr></thead><tbody>{rows.map(row=><tr key={row.month || 'period'}><th data-month={row.month || undefined}>{row.month?monthlyLabel(row.month,lang):t("Весь период")}</th><td>{money(row.revenue)}</td>{MONTHLY_COLUMNS.map(([key])=><td key={key}>{row.displayPresent[key]?money(row.displayCategories[key]):'—'}</td>)}<td>{money(row.expenses)}</td><td>{money(row.net)}</td><td>{percent(row.margin)}</td></tr>)}</tbody>{monthly && <tfoot><tr><th>{t("Итого")}</th><td>{money(section.totals.revenue)}</td>{MONTHLY_COLUMNS.map(([key])=>{const total=monthlyViewRows(section,false)[0];return <td key={key}>{total.displayPresent[key]?money(total.displayCategories[key]):'—'}</td>})}<td>{money(section.totals.expenses)}</td><td>{money(section.totals.net)}</td><td>{percent(section.totals.margin)}</td></tr></tfoot>}</table><p className="bank-meta">{t("Закупки не равны себестоимости потребления. «—» — нет отдельно выделенных данных.")}</p></div>
+}
+function Section({ section, months, external = false, expanded = false, monthly = true, lang = 'ru' }) {
   return <section className="bank-report-section"><h2>{section.name}</h2><div className="bank-kpis"><div>Выручка<strong>{money(section.totals.revenue)} AZN</strong></div><div>Расходы<strong>{money(section.totals.expenses)} AZN</strong></div><div>Расчётный результат<strong>{money(section.totals.net)} AZN</strong></div><div>Расчётная маржа<strong>{percent(section.totals.margin)}</strong></div></div>
     {section.id !== 'combined' && <p className="bank-meta">Доля филиала в выручке всей сети за период: {percent(section.share)} · Налог: {percent(section.taxRate)}</p>}
-    <div className="bank-visuals"><Trend rows={section.monthly}/><MarginTrend rows={section.monthly}/></div>
-    <div className="bank-table-scroll"><table><caption>Помесячные итоги, AZN</caption><thead><tr><th>Месяц</th><th>Выручка</th><th>Расходы</th><th>Расчётный результат</th><th>Маржа</th>{!external && section.id !== 'combined' && <><th>Дней выручки</th><th>Строк начислений¹</th></>}</tr></thead><tbody>{section.monthly.map(row => <tr key={row.month}><th>{row.month}</th><td>{money(row.revenue)}</td><td>{money(row.expenses)}</td><td>{money(row.net)}</td><td>{percent(row.margin)}</td>{!external && section.id !== 'combined' && <><td>{row.revenueDays}</td><td>{row.sheetSource ? 'Sheets' : row.salaryRows}</td></>}</tr>)}</tbody></table></div>
+    {monthly && <div className="bank-visuals"><Trend rows={section.monthly}/><MarginTrend rows={section.monthly}/></div>}
+    <MonthlyOverview section={section} monthly={monthly} lang={lang}/>
     {!external && <p className="bank-meta">¹ Число записей RMS с привязкой к филиалу не подтверждает полноту. «Sheets» означает замену итогом соответствующего месяца из загруженного источника.</p>}
     {!external && <div className="bank-table-scroll"><table><caption>Состав выручки до комиссий, AZN</caption><thead><tr><th>Месяц</th><th>Cash</th><th>Bank</th><th>Wolt</th><th>Итого</th></tr></thead><tbody>{section.monthly.map(row => <tr key={row.month}><th>{row.month}</th><td>{money(row.cash)}</td><td>{money(row.bank)}</td><td>{money(row.wolt)}</td><td>{money(row.revenue)}</td></tr>)}</tbody></table></div>}
     {expanded && <ExpenseTable section={section} months={months} external={external}/>}
@@ -45,8 +52,8 @@ function Section({ section, months, external = false, expanded = false }) {
     {external && <ExternalCoverage section={section}/>}
   </section>
 }
-export function BankDocument({ model, expanded = false }) {
-  return <ExternalBankDocument model={model} expanded={expanded}/>
+export function BankDocument({ model, expanded = false, monthly = true, lang = currentReportLanguage() }) {
+  return <ExternalBankDocument model={model} expanded={expanded} monthly={monthly} lang={lang}/>
 }
 // External output is allowlisted, not a CSS-hidden copy of the internal audit.
 function ExternalCoverage({ section }) {
@@ -58,7 +65,7 @@ function ExternalCoverage({ section }) {
     {!!missingPayroll.length && <p>Полнота начислений зарплаты не подтверждена за {missingPayroll.map(row => row.month).join(', ')}.</p>}
   </div>
 }
-export function ExternalBankDocument({ model, expanded = false }) {
+export function ExternalBankDocument({ model, expanded = false, monthly = true, lang = currentReportLanguage() }) {
   // Only public branch labels enter the external document, never free-form metadata.
   const branches = model.branches.map((branch, index) => ({ ...branch,
     name: branch.id === BANK_BRANCH_IDS[0] ? 'BC4' : branch.id === BANK_BRANCH_IDS[1] ? 'Crescent' : `Выбранный филиал ${index + 1}` }))
@@ -67,8 +74,8 @@ export function ExternalBankDocument({ model, expanded = false }) {
     <p>{model.period.from} — {new Date(Date.parse(`${model.period.toExclusive}T00:00:00Z`) - 86400000).toISOString().slice(0,10)} · AZN</p>
     <p className="bank-header-note">Управленческий расчёт · не аудиторское заключение</p></header>
     {!model.exportable && <p className="bank-meta" role="status">PDF недоступен: {model.reconciled ? 'есть недостающие данные за выбранный период.' : 'итоги не прошли сверку.'}</p>}
-    <Section section={combined} months={model.months} external/>{branches.map(branch => <Section key={branch.id} section={branch} months={model.months} external/>)}
-    {expanded && <div className="bank-expense-appendix"><h2>Расширенный отчёт · статьи расходов</h2>{[combined,...branches].map(section => <div className="bank-expense-block" key={section.id}><h3>{section.name}</h3><ExpenseTable section={section} months={model.months} external/></div>)}</div>}
+    <Section section={combined} months={model.months} external monthly={monthly} lang={lang}/>{branches.map(branch => <Section key={branch.id} section={branch} months={model.months} external monthly={monthly} lang={lang}/>)}
+    {expanded && <div className="bank-expense-appendix"><h2>Расширенный отчёт · статьи расходов</h2>{[combined,...branches].map(section => <div className="bank-expense-block" key={section.id}><h3>{section.name}</h3><ExpenseTable section={section} months={model.months} external monthly={monthly} lang={lang}/></div>)}</div>}
     {model.payrollEstimated && <p className="bank-meta">Зарплата включает расчётную оценку.</p>}
 
   </article>
@@ -85,13 +92,13 @@ function presetMonths(preset) {
   const previous = `${month === 1 ? year - 1 : year}-${String(month === 1 ? 12 : month - 1).padStart(2, '0')}`
   return preset === 'previous' ? { start: previous, end: previous } : { start: preset === 'year' ? `${year}-01` : current, end: current }
 }
-export function printBankDocument(model, expanded = false) {
+export function printBankDocument(model, expanded = false, monthly = true, lang = currentReportLanguage()) {
   if (!model?.exportable) return 'Сначала загрузите отчёт, проверьте сверку итогов и полноту исходных данных.'
   const popup = window.open('', '_blank')
   if (!popup) return 'Браузер заблокировал окно печати. Разрешите всплывающие окна для RMS Pro и повторите.'
   const styles = `<style>${bankPrintStyles}</style>`
   popup.document.open()
-  popup.document.write(`<!doctype html><html lang="ru"><head><meta charset="utf-8"><title>RMS Pro — Рентабельность ${model.period.from}</title>${styles}</head><body class="bank-print-body">${renderToStaticMarkup(<ExternalBankDocument model={model} expanded={expanded}/>)}</body></html>`)
+  popup.document.write(`<!doctype html><html lang="ru"><head><meta charset="utf-8"><title>RMS Pro — Рентабельность ${model.period.from}</title>${styles}</head><body class="bank-print-body">${renderToStaticMarkup(<ExternalBankDocument model={model} expanded={expanded} monthly={monthly} lang={lang}/>)}</body></html>`)
   popup.onload = async () => {
     try { await popup.document.fonts.ready; popup.focus(); popup.print() }
     catch { /* The complete printable report remains open for the browser's Print command. */ }
@@ -104,6 +111,10 @@ export default function ProfitabilityBankReport({ report, branches, onPeriodChan
   const [internalExpanded, setInternalExpanded] = useState(false)
   const expanded = expandedProp === undefined ? internalExpanded : expandedProp
   const [draftExpanded, setDraftExpanded] = useState(expanded)
+  const [monthly,setMonthly]=useState(true)
+  const [draftMonthly,setDraftMonthly]=useState(true)
+  const viewLang=currentReportLanguage()
+  const monthlyT=text=>monthlyText(text,viewLang)
   const [selected, setSelected] = useState(BANK_BRANCH_IDS)
   const [draftSelected, setDraftSelected] = useState(BANK_BRANCH_IDS)
   const [search, setSearch] = useState('')
@@ -120,7 +131,7 @@ export default function ProfitabilityBankReport({ report, branches, onPeriodChan
   useEffect(() => { setDraftExpanded(expanded) }, [expanded])
   const chosenPeriod = manualPeriod(start, end)
   const appliedPeriod = periodMonths(report.period)
-  const pending = start !== appliedPeriod.start || end !== appliedPeriod.end || draftExpanded !== expanded || [...draftSelected].sort().join('|') !== [...selected].sort().join('|')
+  const pending = draftMonthly !== monthly || start !== appliedPeriod.start || end !== appliedPeriod.end || draftExpanded !== expanded || [...draftSelected].sort().join('|') !== [...selected].sort().join('|')
   const stale = report.periodKey !== periodKey
   const model = useMemo(() => buildBankReport(report, selected), [report, selected])
   const branchNames = ids => branches.filter(branch => ids.includes(String(branch.id))).map(branch => branch.name)
@@ -131,13 +142,13 @@ export default function ProfitabilityBankReport({ report, branches, onPeriodChan
   const applyPeriod = () => {
     if (!chosenPeriod || !draftSelected.length || report.loading) return
     setError(''); setBranchOpen(false)
-    setSelected([...draftSelected]); setInternalExpanded(draftExpanded); onExpandedChange?.(draftExpanded)
+    setMonthly(draftMonthly); setSelected([...draftSelected]); setInternalExpanded(draftExpanded); onExpandedChange?.(draftExpanded)
     onPeriodChange(chosenPeriod.key)
   }
   const choosePreset = preset => { const next = presetMonths(preset); setStart(next.start); setEnd(next.end) }
-  const exportReport = () => setError(printBankDocument(report.loading || report.error || stale || pending ? null : model, expanded))
+  const exportReport = () => setError(printBankDocument(report.loading || report.error || stale || pending ? null : model, expanded, monthly, viewLang))
   return <section className="bank-workspace"><div className="bank-controls bank-filter-panel">
-    <div className="bank-filter-heading"><div><p className="bank-filter-eyebrow">АНАЛИТИКА / ОТЧЁТЫ</p><h2>Управленческий отчёт</h2><p>Рентабельность филиалов и сети · AZN</p></div><span className="bank-filter-badge">По месяцам</span></div>
+    <div className="bank-filter-heading"><div><p className="bank-filter-eyebrow">АНАЛИТИКА / ОТЧЁТЫ</p><h2>Управленческий отчёт</h2><p>Рентабельность филиалов и сети · AZN</p></div><span className="bank-filter-badge">{monthlyT(monthly ? "Помесячно" : "За период")}</span></div>
     <div className="bank-filter-grid">
       <div className="bank-period-field"><span className="bank-field-label" id="bank-period-label">Период отчёта</span>
         <div className="bank-month-range" role="group" aria-labelledby="bank-period-label"><label><span>С</span><input type="month" aria-label="Начальный месяц" min="2000-01" max="2100-12" value={start} disabled={report.loading} onChange={event => setStart(event.target.value)}/></label><span className="bank-range-divider" aria-hidden="true">→</span><label><span>По</span><input type="month" aria-label="Конечный месяц" min="2000-01" max="2100-12" value={end} disabled={report.loading} onChange={event => setEnd(event.target.value)}/></label></div>
@@ -151,13 +162,14 @@ export default function ProfitabilityBankReport({ report, branches, onPeriodChan
       </div>
       <div className="bank-detail-field"><span className="bank-field-label" id="bank-detail-label">Детализация</span><div className="bank-detail-segments" role="group" aria-labelledby="bank-detail-label"><button type="button" aria-pressed={!draftExpanded} disabled={report.loading} onClick={() => setDraftExpanded(false)}>Краткий</button><button type="button" aria-pressed={draftExpanded} disabled={report.loading} onClick={() => setDraftExpanded(true)}>Расширенный</button></div><p className="bank-field-hint">{draftExpanded ? 'Со статьями расходов' : 'Ключевые показатели и динамика'}</p></div>
     </div>
+    <label className="bank-monthly-toggle"><input type="checkbox" checked={draftMonthly} disabled={report.loading} onChange={event=>setDraftMonthly(event.target.checked)}/><span>{monthlyT("Помесячно")}</span><small>{monthlyT("Все месяцы выбранного периода в одном отчёте")}</small></label>
     <div className="bank-filter-bottom"><p className="bank-field-hint">Полные календарные месяцы, включая начальный и конечный.</p><div className="bank-filter-actions"><button className="bank-generate" type="button" disabled={!chosenPeriod || !draftSelected.length || report.loading} onClick={applyPeriod}>{report.loading ? 'Формирование…' : 'Сформировать'}</button><button className="bank-export" id="profitability-bank-export" type="button" disabled={report.loading || !!report.error || stale || pending || !model?.exportable} onClick={exportReport}>PDF / печать</button></div></div>
     {!chosenPeriod && <p className="bank-filter-alert" role="alert">Укажите начальный и конечный месяц. Конец периода должен быть не раньше начала.</p>}
     {!draftSelected.length && <p className="bank-filter-alert" role="alert">Выберите хотя бы один филиал.</p>}
-    <div className={`bank-applied-summary${pending ? ' is-pending' : ''}`} aria-live="polite"><span>{report.loading || stale ? 'Формируется отчёт…' : report.error ? 'Отчёт не сформирован' : `В отчёте: ${monthLabel(appliedPeriod.start)} — ${monthLabel(appliedPeriod.end)} · ${appliedNames.join(', ')} · ${expanded ? 'Расширенный' : 'Краткий'}`}</span>{pending && <strong>Есть изменения. Нажмите «Сформировать».</strong>}</div>
+    <div className={`bank-applied-summary${pending ? ' is-pending' : ''}`} aria-live="polite"><span>{report.loading || stale ? 'Формируется отчёт…' : report.error ? 'Отчёт не сформирован' : `В отчёте: ${monthLabel(appliedPeriod.start)} — ${monthLabel(appliedPeriod.end)} · ${appliedNames.join(', ')} · ${expanded ? 'Расширенный' : 'Краткий'} · ${monthlyT(monthly ? 'Помесячно' : 'За период')}`}</span>{pending && <strong>Есть изменения. Нажмите «Сформировать».</strong>}</div>
   </div>
     {!report.loading && !report.error && !stale && children}
     {error && <p role="alert" className="bank-disclosure">{error}</p>}
-    {report.error && !report.loading ? <p role="alert">Отчёт не сформирован: {report.error}. Повторите загрузку кнопкой «Сформировать».</p> : report.loading || stale ? <p role="status">Загружаю расчёт…</p> : model ? <BankDocument model={model} expanded={expanded}/> : <p>Выберите филиалы и период.</p>}
+    {report.error && !report.loading ? <p role="alert">Отчёт не сформирован: {report.error}. Повторите загрузку кнопкой «Сформировать».</p> : report.loading || stale ? <p role="status">Загружаю расчёт…</p> : model ? <BankDocument model={model} expanded={expanded} monthly={monthly} lang={viewLang}/> : <p>Выберите филиалы и период.</p>}
   </section>
 }

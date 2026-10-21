@@ -59,14 +59,14 @@ assert.doesNotMatch(printCss,/@page\s*\{/,'bank paper size must not change other
 // after open/write and before close, and printing must await font readiness.
 const component=fs.readFileSync(new URL('../src/ProfitabilityBankReport.jsx',import.meta.url),'utf8')
 const printFunction=component.slice(component.indexOf('export function printBankDocument'),component.indexOf('export default function'))
-  .replace('export function','function').replace('renderToStaticMarkup(<ExternalBankDocument model={model} expanded={expanded}/>)',"'test-report'")
+  .replace('export function','function').replace('renderToStaticMarkup(<ExternalBankDocument model={model} expanded={expanded} monthly={monthly} lang={lang}/>)',"'test-report'")
 const calls=[];let finishFonts, loadPromise
 const popup={onload:null,focus(){calls.push('focus')},print(){calls.push('print')}}
 popup.document={fonts:{ready:new Promise(resolve=>{finishFonts=resolve})},
   open(){calls.push('open');popup.onload=null},
   write(html){calls.push('write');assert.match(html,/test-report/)},
   close(){calls.push('close');if(popup.onload)loadPromise=popup.onload()}}
-const context=vm.createContext({window:{open:()=>popup},bankPrintStyles:'/* test */'})
+const context=vm.createContext({window:{open:()=>popup},bankPrintStyles:'/* test */',currentReportLanguage:()=> 'ru'})
 vm.runInContext(printFunction,context)
 assert.equal(context.printBankDocument({exportable:true,period:{from:'2025-01-01'}}),'')
 assert.ok(loadPromise,'document.open must not erase the print callback')
