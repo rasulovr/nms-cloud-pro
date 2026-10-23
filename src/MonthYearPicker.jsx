@@ -3,8 +3,8 @@ import { createPortal } from 'react-dom'
 import './month-year-picker.css'
 
 const text = {
-  ru: { month: 'Месяц', year: 'Год', title: 'Месяц и год', reset: 'Сбросить', done: 'Готово', close: 'Отмена', all: 'Все годы / все месяцы', mode: 'Период', monthly: 'Месяц', yearly: 'Год', hint: 'Сбросить к текущему месяцу' },
-  az: { month: 'Ay', year: 'İl', title: 'Ay və il', reset: 'Sıfırla', done: 'Hazır', close: 'Ləğv et', all: 'Bütün illər / aylar', mode: 'Dövr', monthly: 'Ay', yearly: 'İl', hint: 'Cari aya sıfırla' }
+  ru: { month: 'Месяц', year: 'Год', title: 'Месяц и год', choose: 'Выбрать месяц и год', reset: 'Сбросить', done: 'Готово', close: 'Отмена', all: 'Все годы / все месяцы', mode: 'Период', monthly: 'Месяц', yearly: 'Год', hint: 'Сбросить к текущему месяцу' },
+  az: { month: 'Ay', year: 'İl', title: 'Ay və il', choose: 'Ay və il seçin', reset: 'Sıfırla', done: 'Hazır', close: 'Ləğv et', all: 'Bütün illər / aylar', mode: 'Dövr', monthly: 'Ay', yearly: 'İl', hint: 'Cari aya sıfırla' }
 }
 export function currentBakuMonth(now = new Date()) {
   const parts = new Intl.DateTimeFormat('en', { timeZone: 'Asia/Baku', year: 'numeric', month: '2-digit' }).formatToParts(now)
@@ -47,7 +47,7 @@ const Wheel = forwardRef(function Wheel({ items, value, onChange, label }, forwa
   </div>
 })
 
-export default function MonthYearPicker({ value, onChange, lang = 'ru', label, disabled = false, minYear = 2000, maxYear = 2100 }) {
+export default function MonthYearPicker({ value, onChange, lang = 'ru', label, triggerLabel, disabled = false, minYear = 2000, maxYear = 2100 }) {
   const words = text[lang === 'az' ? 'az' : 'ru']
   const normalize = source => {
     const input = valid(source) ? source : currentBakuMonth()
@@ -72,7 +72,7 @@ export default function MonthYearPicker({ value, onChange, lang = 'ru', label, d
   const years = Array.from({ length: maxYear - minYear + 1 }, (_, i) => ({ value: String(minYear + i), label: String(minYear + i) }))
   const months = monthNames[lang === 'az' ? 'az' : 'ru'].map((label, i) => ({ value: String(i + 1).padStart(2, '0'), label }))
   return <>
-    <button className="rms-month-trigger" ref={trigger} type="button" disabled={disabled} aria-label={`${label || words.title}: ${labelMonth(normalize(value), lang)}`} aria-haspopup="dialog" aria-expanded={open} onClick={() => { setDraft(normalize(value)); setOpen(true) }}><span>{labelMonth(normalize(value), lang)}</span><span aria-hidden="true">▾</span></button>
+    <button className="rms-month-trigger" ref={trigger} type="button" disabled={disabled} aria-label={triggerLabel || `${label || words.title}: ${labelMonth(normalize(value), lang)}`} aria-haspopup="dialog" aria-expanded={open} onClick={() => { setDraft(normalize(value)); setOpen(true) }}><span>{triggerLabel || labelMonth(normalize(value), lang)}</span><span aria-hidden="true">▾</span></button>
     {open && createPortal(<div className="rms-month-overlay" onClick={event => { if (event.target === event.currentTarget) close() }}>
       <div className="rms-month-dialog" ref={dialog} role="dialog" aria-modal="true" aria-labelledby={`${id}-title`} onKeyDown={event => {
         if (event.key === 'Escape') { event.preventDefault(); close() }
@@ -98,7 +98,7 @@ export function ReportMonthPeriod({ value, onChange, years = [], lang = 'ru', di
   const yearValues = [...new Set([...years.map(String), currentBakuMonth().slice(0, 4), ...(mode === 'year' ? [String(value).slice(5)] : [])])].sort().reverse()
   return <div className="rms-report-period">
     <select aria-label={words.mode} value={mode} disabled={disabled} onChange={event => onChange(event.target.value === 'all' ? 'all' : event.target.value === 'year' ? `year:${currentBakuMonth().slice(0, 4)}` : currentBakuMonth())}><option value="all">{words.all}</option><option value="month">{words.monthly}</option>{(allowYear || mode === 'year') && <option value="year">{words.yearly}</option>}</select>
-    {mode === 'month' && <MonthYearPicker value={value} onChange={onChange} lang={lang} disabled={disabled}/>}
+    <MonthYearPicker value={mode === 'year' ? `${String(value).slice(5)}-${currentBakuMonth().slice(5)}` : value} triggerLabel={mode === 'month' ? undefined : words.choose} onChange={onChange} lang={lang} disabled={disabled}/>
     {mode === 'year' && <select aria-label={words.year} value={String(value).slice(5)} disabled={disabled} onChange={event => onChange(`year:${event.target.value}`)}>{yearValues.map(year => <option key={year} value={year}>{year}</option>)}</select>}
   </div>
 }
