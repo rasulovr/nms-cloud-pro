@@ -5513,6 +5513,8 @@ function Reports({ t, permissions = [], isAdmin = false }) {
   const [branchFilter, setBranchFilter] = useState('all')
   const [departmentFilter, setDepartmentFilter] = useState('all')
   const [monthFilter, setMonthFilter] = useState('all')
+  const [profitabilitySelection, setProfitabilitySelection] = useState(() => ({ ...defaultMonthRange(), branchIds: undefined }))
+  const profitabilityRequestId = React.useRef(0)
   const [rmsRevenuePeriodOptions, setRmsRevenuePeriodOptions] = useState({ months: [], years: [] })
   const [revenueDateFrom, setRevenueDateFrom] = useState('')
   const [revenueDateTo, setRevenueDateTo] = useState('')
@@ -5903,7 +5905,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
   useEffect(() => {
     if (effectiveReportsTab !== 'profitability') return
     loadRmsProfitabilityReport()
-  }, [effectiveReportsTab, branchFilter, monthFilter, branches.length])
+  }, [effectiveReportsTab, profitabilitySelection, branches.length])
 
   useEffect(() => {
     if (effectiveReportsTab !== 'suppliers') return
@@ -6159,6 +6161,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
   }
 
   async function loadRmsProfitabilityReport() {
+    const requestId = ++profitabilityRequestId.current
     setRmsProfitabilityReport(prev => ({ ...prev, loading: true, error: '' }))
 
     const emptyTotals = {
@@ -6181,24 +6184,13 @@ function Reports({ t, permissions = [], isAdmin = false }) {
 
     try {
       const pageSize = 1000
-      const period = (() => {
-        if (/^year:\d{4}$/.test(String(monthFilter || ''))) {
-          const year = Number(String(monthFilter).replace('year:', ''))
-          return {
-            from: `${year}-01-01`,
-            toExclusive: `${year + 1}-01-01`,
-            label: `${year} год`
-          }
-        }
-        if (/^\d{4}-\d{2}$/.test(String(monthFilter || ''))) {
-          return {
-            from: `${monthFilter}-01`,
-            toExclusive: rmsNextMonthStart(monthFilter),
-            label: monthFilter
-          }
-        }
-        return { from: '', toExclusive: '', label: 'Весь период' }
-      })()
+      const checkedPeriod = validateMonthRange(profitabilitySelection.from, profitabilitySelection.to)
+      if (!checkedPeriod.valid) throw new Error('Выберите корректный диапазон полных месяцев.')
+      const period = {
+        from: profitabilitySelection.from,
+        toExclusive: checkedPeriod.toExclusive,
+        label: `${profitabilitySelection.from} — ${profitabilitySelection.to}`
+      }
 
       const applyDateRange = (query, field) => {
         let next = query
@@ -6605,9 +6597,8 @@ function Reports({ t, permissions = [], isAdmin = false }) {
         }
       }).filter(row => row.revenue || row.totalExpenses || row.salary || row.foodCost)
 
-      const visibleRows = branchFilter === 'all'
-        ? rows
-        : rows.filter(row => String(row.id) === String(branchFilter))
+      const selectedProfitabilityIds = profitabilitySelection.branchIds == null ? null : new Set(profitabilitySelection.branchIds.map(String))
+      const visibleRows = selectedProfitabilityIds == null ? rows : rows.filter(row => selectedProfitabilityIds.has(String(row.id)))
 
       visibleRows.sort((a, b) => parseNum(b.net) - parseNum(a.net))
 
@@ -6631,6 +6622,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
       totals.margin = totals.revenue ? totals.net / totals.revenue * 100 : 0
       totals.branches = visibleRows.length
 
+      if (requestId !== profitabilityRequestId.current) return
       setRmsProfitabilityReport({
         loading: false,
         error: '',
@@ -6641,6 +6633,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
         source: `${revenueSource} + daily_expenses + supplier_purchases + salary_periods`
       })
     } catch (error) {
+      if (requestId !== profitabilityRequestId.current) return
       setRmsProfitabilityReport({
         loading: false,
         error: error?.message || 'Не удалось загрузить отчёт по рентабельности',
@@ -9711,7 +9704,6 @@ function Reports({ t, permissions = [], isAdmin = false }) {
   }
 
   const ReportsProfitabilityView = <section className="reports-v417-profitability">
-    <ProfitabilitySummary report={rmsProfitabilityReport} lang={t('language_label') === 'İnterfeys dili' ? 'az' : 'ru'} />
     <style>{`
       .reports-v417-profitability{display:grid;gap:16px}
       .reports-v417-status{padding:13px 15px;border:1px solid #bfdbfe;border-radius:16px;background:#eff6ff;color:#1e3a8a;font-size:12px;font-weight:750}.reports-v417-status.bad{border-color:#fecaca;background:#fef2f2;color:#991b1b}

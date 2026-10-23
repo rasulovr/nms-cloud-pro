@@ -1,0 +1,47 @@
+import React, {useMemo,useState} from 'react'
+import {renderToStaticMarkup} from 'react-dom/server'
+import {buildProfitabilitySummary} from './profitability-summary.mjs'
+import './profitability-reference.css'
+import printCss from './profitability-reference.css?raw'
+const AZ={'Рентабельность филиалов':'Filialların rentabelliyi','RMS PRO · УПРАВЛЕНЧЕСКИЙ ОТЧЁТ':'RMS PRO · İDARƏETMƏ HESABATI','Управленческий расчёт · не аудиторское заключение':'İdarəetmə hesablaması · auditor rəyi deyil','Совокупно: ':'Ümumi: ','Выручка':'Gəlir','Расходы':'Xərclər','Расчётный результат':'Hesablanmış nəticə','Расчётная маржа':'Hesablanmış marja','Расчётная маржа по месяцам, %':'Aylar üzrə hesablanmış marja, %','Помесячные итоги, AZN':'Aylıq yekunlar, AZN','Месяц':'Ay','Маржа':'Marja','Ограничения данных':'Məlumat məhdudiyyətləri','Нет записей выручки: ':'Gəlir qeydləri yoxdur: ','Помесячные расходы не согласованы с итогом периода.':'Aylıq xərclər dövrün yekunu ilə uyğunlaşdırılmayıb.','Отсутствующие записи не считаются нулём.':'Çatışmayan qeydlər sıfır sayılmır.','Сформировано в RMS Pro':'RMS Pro-da hazırlanıb','Управленческие данные':'İdarəetmə məlumatları','Печать / PDF':'Çap / PDF','Статьи расходов':'Xərc maddələri','Статья':'Maddə','Сумма, AZN':'Məbləğ, AZN','Не удалось открыть печать. Разрешите всплывающее окно для RMS.':'Çap pəncərəsi açılmadı. RMS üçün açılan pəncərəyə icazə verin.','Нет данных за выбранный период.':'Seçilmiş dövr üzrə məlumat yoxdur.','Загрузка отчёта…':'Hesabat yüklənir…','По текущим данным RMS. Распределения сохраняют методику выбранного периода; расчёт не подтверждает полноту первичных источников.':'Cari RMS məlumatları əsasında. Bölgü seçilmiş dövrün metodikasını saxlayır; hesablama ilkin mənbələrin tamlığını təsdiq etmir.'}
+const tr=(lang,text)=>lang==='az'?(AZ[text]||text):text
+const fmt=(v,lang)=>new Intl.NumberFormat(lang==='az'?'az-AZ':'ru-RU',{minimumFractionDigits:2,maximumFractionDigits:2}).format(v)
+const margin=(values)=>values.revenue ? values.net/values.revenue*100 : null
+function usable(row,section){const hasRevenue=row.revenueRecords!==0&&row.revenueComplete!==false;return {revenue:hasRevenue,expenses:section.reconciled&&(row.revenueRecords>0||row.hasExpenseDetails||Object.keys(row.categories||{}).some(key=>key!=='tax')),net:section.reconciled&&hasRevenue}}
+function Charts({section,lang}){
+ const t=text=>tr(lang,text),rows=section.monthly
+ const candidates=rows.flatMap(row=>{const ok=usable(row,section);return [ok.revenue?row.revenue:null,ok.expenses?row.expenses:null,ok.net?row.net:null].filter(Number.isFinite)})
+ const low=Math.min(0,...candidates),high=Math.max(1,...candidates),y=value=>140-(value-low)/(high-low)*112,x=i=>45+i*610/Math.max(1,rows.length-1)
+ const margins=rows.map(row=>usable(row,section).net?margin(row):null),minMargin=Math.min(0,...margins.filter(Number.isFinite)),maxMargin=Math.max(1,...margins.filter(Number.isFinite)),ym=v=>140-(v-minMargin)/(maxMargin-minMargin)*112
+ return <div className="reference-charts"><div><svg viewBox="0 0 700 180" role="img" aria-label={t('Помесячные итоги, AZN')}>
+ {[low,(low+high)/2,high].map((v,i)=><g key={i}><line x1="45" x2="655" y1={y(v)} y2={y(v)} stroke="#d8e2ef"/><text x="40" y={y(v)+3} textAnchor="end">{Math.round(v).toLocaleString(lang==='az'?'az-AZ':'ru-RU')}</text></g>)}
+ {[['revenue','#2864ff','Выручка'],['expenses','#e99000','Расходы'],['net','#11843c','Расчётный результат']].map(([key,color])=><g key={key}>{rows.map((r,i)=>{const ok=usable(r,section)[key];const prev=rows[i-1];return ok?<g key={r.month}>{i>0&&usable(prev,section)[key]&&<line x1={x(i-1)} y1={y(prev[key])} x2={x(i)} y2={y(r[key])} stroke={color} strokeWidth="2"/>}<circle cx={x(i)} cy={y(r[key])} r="2.6" fill={color}/></g>:null})}</g>)}
+ {rows.map((r,i)=><text key={r.month} x={x(i)} y="162" textAnchor="middle">{r.month.slice(5)}.{r.month.slice(2,4)}</text>)}
+ </svg><div className="reference-legend">{[['#2864ff','Выручка'],['#e99000','Расходы'],['#11843c','Расчётный результат']].map(([color,label])=><span key={label} style={{color}}>● {t(label)}</span>)}<span>AZN</span></div></div>
+ <div><h4>{t('Расчётная маржа по месяцам, %')}</h4><svg viewBox="0 0 700 180" role="img" aria-label={t('Расчётная маржа по месяцам, %')}>
+ {[minMargin,maxMargin].map((v,i)=><g key={i}><line x1="45" x2="655" y1={ym(v)} y2={ym(v)} stroke="#d8e2ef"/><text x="40" y={ym(v)+3} textAnchor="end">{Math.round(v)}%</text></g>)}
+ {rows.map((r,i)=><g key={r.month}>{margins[i]!=null&&<rect x={x(i)-Math.min(10,200/Math.max(1,rows.length))} width={Math.min(20,400/Math.max(1,rows.length))} y={Math.min(ym(0),ym(margins[i]))} height={Math.max(1,Math.abs(ym(margins[i])-ym(0)))} rx="2" fill={margins[i]<0?'#c54454':'#11a8a4'}/>}<text x={x(i)} y="162" textAnchor="middle">{r.month.slice(5)}.{r.month.slice(2,4)}</text></g>)}
+ </svg></div></div>
+}
+function Section({section,lang,expanded}){
+ const t=text=>tr(lang,text),m=value=>fmt(value,lang),p=margin(section.period)
+ const missing=section.monthly.filter(row=>row.revenueRecords===0||row.revenueComplete===false).map(row=>row.month)
+ return <section className="reference-section"><h2>{section.name}</h2><div className="reference-kpis">{[['Выручка',m(section.period.revenue)+' AZN'],['Расходы',m(section.period.expenses)+' AZN'],['Расчётный результат',m(section.period.net)+' AZN'],['Расчётная маржа',p==null?'—':m(p)+'%']].map(([label,value])=><div key={label}><span>{t(label)}</span><strong>{value}</strong></div>)}</div>
+ <Charts section={section} lang={lang}/><div className="reference-table-scroll"><table><caption>{t('Помесячные итоги, AZN')}</caption><thead><tr>{['Месяц','Выручка','Расходы','Расчётный результат','Маржа'].map(label=><th key={label}>{t(label)}</th>)}</tr></thead><tbody>{section.monthly.map(row=>{const ok=usable(row,section),pct=ok.net?margin(row):null;return <tr key={row.month}><th>{row.month}</th><td>{ok.revenue?m(row.revenue):'—'}</td><td>{ok.expenses?m(row.expenses):'—'}</td><td>{ok.net?m(row.net):'—'}</td><td>{pct==null?'—':m(pct)+'%'}</td></tr>})}</tbody></table></div>
+ {(missing.length>0||!section.reconciled)&&<aside className="reference-warning"><strong>{t('Ограничения данных')}</strong>{missing.length>0&&<p>{t('Нет записей выручки: ')}{missing.join(', ')}. {t('Отсутствующие записи не считаются нулём.')}</p>}{!section.reconciled&&<p>{t('Помесячные расходы не согласованы с итогом периода.')}</p>}</aside>}
+ {expanded&&section.categories?.length>0&&<div className="reference-table-scroll"><table><caption>{t('Статьи расходов')}</caption><thead><tr><th>{t('Статья')}</th><th>{t('Сумма, AZN')}</th></tr></thead><tbody>{section.categories.map(row=><tr key={row.key}><th>{row.name}</th><td>{m(row.amount)}</td></tr>)}</tbody></table></div>}
+ </section>
+}
+export function ProfitabilityReferenceDocument({model,periodLabel,lang='ru',expanded=false}){
+ const t=text=>tr(lang,text),combined={name:t('Совокупно: ')+model.branches.map(row=>row.name).join(' + '),period:model.total,monthly:model.monthly,reconciled:model.reconciled}
+ return <article className="reference-report" lang={lang}><header><div className="reference-stamp">RMS PRO<strong>{t('Сформировано в RMS Pro')}</strong><span>{t('Управленческие данные')}</span></div><p className="reference-eyebrow">{t('RMS PRO · УПРАВЛЕНЧЕСКИЙ ОТЧЁТ')}</p><h1>{t('Рентабельность филиалов')}</h1><p>{periodLabel} · AZN</p><p className="reference-disclaimer">{t('Управленческий расчёт · не аудиторское заключение')}</p></header>
+ <Section section={combined} lang={lang} expanded={expanded}/>{model.branches.map(section=><Section key={section.id} section={section} lang={lang} expanded={expanded}/>)}<p className="reference-source-note">{t('По текущим данным RMS. Распределения сохраняют методику выбранного периода; расчёт не подтверждает полноту первичных источников.')}</p></article>
+}
+export default function ProfitabilityReferenceReport({report,lang='ru'}){
+ const [expanded,setExpanded]=useState(false),[printError,setPrintError]=useState(''),model=useMemo(()=>buildProfitabilitySummary(report),[report]),t=text=>tr(lang,text)
+ const print=()=>{const win=window.open('','_blank');if(!win){setPrintError(t('Не удалось открыть печать. Разрешите всплывающее окно для RMS.'));return}setPrintError('');const markup=renderToStaticMarkup(<ProfitabilityReferenceDocument model={model} periodLabel={report.periodLabel} lang={lang} expanded={expanded}/>);win.document.open();win.document.write('<!doctype html><html><head><meta charset="utf-8"><title>RMS Pro</title><style>'+printCss+'</style></head><body>'+markup+'</body></html>');win.document.close();win.focus();win.requestAnimationFrame(()=>win.requestAnimationFrame(()=>win.print()))}
+ if(report.loading)return <p role="status">{t('Загрузка отчёта…')}</p>
+ if(report.error)return <p role="alert">{report.error}</p>
+ if(!model.branches.length)return <p>{t('Нет данных за выбранный период.')}</p>
+ return <div className="reference-workspace"><div className="reference-actions"><button type="button" aria-pressed={expanded} onClick={()=>setExpanded(!expanded)}>{t('Статьи расходов')}</button><button type="button" onClick={print}>{t('Печать / PDF')}</button></div>{printError&&<p role="alert">{printError}</p>}<ProfitabilityReferenceDocument model={model} periodLabel={report.periodLabel} lang={lang} expanded={expanded}/></div>
+}
