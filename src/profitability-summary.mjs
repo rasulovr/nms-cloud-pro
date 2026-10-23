@@ -52,6 +52,6 @@ export function buildProfitabilitySummary(report = {}) {
     return {id:source.id,name:source.name,period,monthly,categories,issues,reconciled:!issues.length}
   })
   const total = branches.reduce((sum,row)=>({revenue:sum.revenue+row.period.revenue,expenses:sum.expenses+row.period.expenses,net:sum.net+row.period.net}),{revenue:0,expenses:0,net:0})
-  const monthly = keys.map(month => branches.reduce((sum,branch)=>{const row=branch.monthly.find(row=>row.month===month);return {...sum,revenue:sum.revenue+row.revenue,expenses:sum.expenses+row.expenses,net:sum.net+row.net,revenueRecords:sum.revenueRecords+row.revenueRecords,hasExpenseDetails:sum.hasExpenseDetails||Object.keys(row.categories).some(key=>key!=='tax')}}, {month,revenue:0,expenses:0,net:0,revenueRecords:0,hasExpenseDetails:false}))
+  const monthly = keys.map(month => branches.reduce((sum,branch)=>{const row=branch.monthly.find(row=>row.month===month);return {...sum,revenue:sum.revenue+row.revenue,expenses:sum.expenses+row.expenses,net:sum.net+row.net,revenueRecords:sum.revenueRecords+row.revenueRecords,hasExpenseDetails:sum.hasExpenseDetails||Object.keys(row.categories).some(key=>key!=='tax'),revenueComplete:sum.revenueComplete && row.revenueRecords > 0}}, {month,revenue:0,expenses:0,net:0,revenueRecords:0,hasExpenseDetails:false,revenueComplete:true}))
   return {branches,total,monthly,months:keys,reconciled:branches.length>0 && branches.every(row=>row.reconciled)}
 }
