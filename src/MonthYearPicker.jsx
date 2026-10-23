@@ -12,7 +12,12 @@ export function currentBakuMonth(now = new Date()) {
 }
 const valid = value => /^\d{4}-(0[1-9]|1[0-2])$/.test(String(value))
 const clamp = (n, min, max) => Math.max(min, Math.min(max, n))
-const labelMonth = (value, lang) => new Intl.DateTimeFormat(lang === 'az' ? 'az-AZ' : 'ru-RU', { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(new Date(`${value}-01T12:00:00Z`))
+const monthNames = {
+  ru: ['январь','февраль','март','апрель','май','июнь','июль','август','сентябрь','октябрь','ноябрь','декабрь'],
+  az: ['yanvar','fevral','mart','aprel','may','iyun','iyul','avqust','sentyabr','oktyabr','noyabr','dekabr']
+}
+// Explicit names also work in browsers without Azerbaijani ICU locale data.
+const labelMonth = (value, lang) => `${monthNames[lang === 'az' ? 'az' : 'ru'][Number(value.slice(5)) - 1]} ${value.slice(0, 4)}`
 
 const Wheel = forwardRef(function Wheel({ items, value, onChange, label }, forwardedRef) {
   const ref = useRef(null)
@@ -65,7 +70,7 @@ export default function MonthYearPicker({ value, onChange, lang = 'ru', label, d
   // External navigation/filter changes discard stale uncommitted choices.
   useEffect(() => { setOpen(false); setDraft(normalize(value)) }, [value])
   const years = Array.from({ length: maxYear - minYear + 1 }, (_, i) => ({ value: String(minYear + i), label: String(minYear + i) }))
-  const months = Array.from({ length: 12 }, (_, i) => ({ value: String(i + 1).padStart(2, '0'), label: new Intl.DateTimeFormat(lang === 'az' ? 'az-AZ' : 'ru-RU', { month: 'long', timeZone: 'UTC' }).format(new Date(Date.UTC(2020, i, 1))) }))
+  const months = monthNames[lang === 'az' ? 'az' : 'ru'].map((label, i) => ({ value: String(i + 1).padStart(2, '0'), label }))
   return <>
     <button className="rms-month-trigger" ref={trigger} type="button" disabled={disabled} aria-label={`${label || words.title}: ${labelMonth(normalize(value), lang)}`} aria-haspopup="dialog" aria-expanded={open} onClick={() => { setDraft(normalize(value)); setOpen(true) }}><span>{labelMonth(normalize(value), lang)}</span><span aria-hidden="true">▾</span></button>
     {open && createPortal(<div className="rms-month-overlay" onClick={event => { if (event.target === event.currentTarget) close() }}>
