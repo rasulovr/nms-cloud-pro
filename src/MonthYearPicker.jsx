@@ -47,7 +47,7 @@ const Wheel = forwardRef(function Wheel({ items, value, onChange, label }, forwa
   </div>
 })
 
-export default function MonthYearPicker({ value, onChange, lang = 'ru', label, triggerLabel, disabled = false, minYear = 2000, maxYear = 2100 }) {
+export default function MonthYearPicker({ value, onChange, lang = 'ru', label, triggerLabel, dialogClassName = '', disabled = false, minYear = 2000, maxYear = 2100 }) {
   const words = text[lang === 'az' ? 'az' : 'ru']
   const normalize = source => {
     const input = valid(source) ? source : currentBakuMonth()
@@ -74,7 +74,7 @@ export default function MonthYearPicker({ value, onChange, lang = 'ru', label, t
   return <>
     <button className="rms-month-trigger" ref={trigger} type="button" disabled={disabled} aria-label={triggerLabel || `${label || words.title}: ${labelMonth(normalize(value), lang)}`} aria-haspopup="dialog" aria-expanded={open} onClick={() => { setDraft(normalize(value)); setOpen(true) }}><span>{triggerLabel || labelMonth(normalize(value), lang)}</span><span aria-hidden="true">▾</span></button>
     {open && createPortal(<div className="rms-month-overlay" onClick={event => { if (event.target === event.currentTarget) close() }}>
-      <div className="rms-month-dialog" ref={dialog} role="dialog" aria-modal="true" aria-labelledby={`${id}-title`} onKeyDown={event => {
+      <div className={`rms-month-dialog ${dialogClassName}`} ref={dialog} role="dialog" aria-modal="true" aria-labelledby={`${id}-title`} onKeyDown={event => {
         if (event.key === 'Escape') { event.preventDefault(); close() }
         if (event.key === 'Tab') {
           const nodes = [...dialog.current.querySelectorAll('button:not(:disabled),[tabindex="0"]')]
