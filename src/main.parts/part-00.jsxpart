@@ -1,3 +1,4 @@
+import ProfitabilitySummary from './ProfitabilitySummary.jsx'
 import { ReportMonthPeriod } from './MonthYearPicker.jsx'
 
 

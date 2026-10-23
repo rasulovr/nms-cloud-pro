@@ -6637,6 +6637,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
         rows: visibleRows,
         totals,
         periodLabel: period.label,
+        summaryInputs: { period, revenueRows },
         source: `${revenueSource} + daily_expenses + supplier_purchases + salary_periods`
       })
     } catch (error) {
@@ -9710,6 +9711,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
   }
 
   const ReportsProfitabilityView = <section className="reports-v417-profitability">
+    <ProfitabilitySummary report={rmsProfitabilityReport} lang={t('language_label') === 'İnterfeys dili' ? 'az' : 'ru'} />
     <style>{`
       .reports-v417-profitability{display:grid;gap:16px}
       .reports-v417-status{padding:13px 15px;border:1px solid #bfdbfe;border-radius:16px;background:#eff6ff;color:#1e3a8a;font-size:12px;font-weight:750}.reports-v417-status.bad{border-color:#fecaca;background:#fef2f2;color:#991b1b}
