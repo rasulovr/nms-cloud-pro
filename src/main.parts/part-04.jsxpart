@@ -6294,6 +6294,8 @@ function Reports({ t, permissions = [], isAdmin = false }) {
       const dailyExpenseRows = adjusted.dailyExpenseRows
       const supplierPurchases = adjusted.supplierPurchases
       const bankEvidence = await resolveBankEvidence(componentRecords, reviewedInputs, bankCommissionRate)
+      // Validate protected evidence against raw records before applying report-only exclusions.
+      revenueRows = adjusted.revenueRows
       const monthlyBasis = buildMonthlyAllocationBasis(revenueRows.filter(row => isAuditedMonth(row.revenue_date)), row => {
         const bank = row.bank_amount == null || String(row.bank_amount).trim() === '' ? NaN : Number(row.bank_amount)
         if (bank === 0) return { verified: true, grossBank: 0, netBank: 0 }
