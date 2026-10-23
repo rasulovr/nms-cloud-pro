@@ -6663,7 +6663,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
         rows: visibleRows,
         totals,
         periodLabel: period.label,
-        summaryInputs: { period, revenueRows, coverageIssues, mixedBasis, sourceChecks: reviewed.validated.map(r => ({month:r.source.month,readAt:r.source.source?.readAt})) },
+        summaryInputs: { period, revenueRows, coverageIssues, periodStatuses: reviewed.periodStatuses, mixedBasis, sourceChecks: reviewed.validated.map(r => ({month:r.source.month,readAt:r.source.source?.readAt})) },
         source: `${revenueSource} + daily_expenses + supplier_purchases + salary_periods`
       })
     } catch (error) {

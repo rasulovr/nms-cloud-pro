@@ -1,4 +1,5 @@
-// Presentation only. Never replaces period totals or recalculates allocation shares.
+// Presentation only. Explicit reviewed closed periods split operating comparison
+// from disclosed costs; underlying totals and allocation shares stay unchanged.
 const amount = value => Number.isFinite(Number(value)) ? Number(value) : 0
 const monthOf = value => /^\d{4}-(0[1-9]|1[0-2])(?:-|$)/.test(String(value || '')) ? String(value).slice(0, 7) : null
 const close = (a, b) => Math.abs(a - b) < 0.005
@@ -57,17 +58,45 @@ export function buildProfitabilitySummary(report = {}) {
       row.profitAvailable = row.coverageIssues.every(issue => issue.severity === 'preliminary')
       row.expensesAvailable = row.profitAvailable
       if (!row.profitAvailable) row.net = null
+      const status=(report.summaryInputs?.periodStatuses||[]).find(s=>String(s.branchId)===String(source.id)&&s.month===row.month)
+      if(status){
+        const details=categories.flatMap(c=>c.key==='tax'?[]:(c.details||[])).filter(d=>monthOf(d.date)===row.month&&amount(d.amount)!==0)
+        const expected=status.target.expectedExpenseRows.filter(d=>amount(d.amount)!==0),expectedById=new Map(expected.map(d=>[String(d.id),d]))
+        const exact=!issues.length&&row.revenueRecords===0&&close(row.expenses,status.target.disclosedExpenseTotal)&&details.length===expected.length&&new Set(details.map(d=>String(d.id))).size===details.length&&details.every(d=>expectedById.has(String(d.id))&&close(amount(d.amount),amount(expectedById.get(String(d.id)).amount)))
+        if(!exact){issues.push({reason:'closed-period-computed-costs-mismatch',month:row.month});row.profitAvailable=false;row.expensesAvailable=false;row.net=null}
+        else if(row.profitAvailable){row.operatingExcluded=true;row.disclosedExpenses=row.expenses;row.disclosedDetails=expected;row.revenueObservation='absent_not_zero';row.net=null;row.profitAvailable=false}
+      }
     })
-    period.profitAvailable = !report.summaryInputs?.mixedBasis && !issues.length && monthly.every(row => row.profitAvailable && row.revenueRecords > 0)
-    period.expensesAvailable = !report.summaryInputs?.mixedBasis && !issues.length && monthly.every(row => row.expensesAvailable)
+    monthly.forEach(row=>{row.includingDisclosedExpenses=row.profitAvailable&&row.revenueRecords>0?row.net:null})
+    const operatingMonths=monthly.filter(row=>!row.operatingExcluded)
+    period.disclosedExpenses=monthly.reduce((sum,row)=>sum+amount(row.disclosedExpenses),0)
+    period.operatingExcluded=operatingMonths.length===0&&monthly.some(row=>row.operatingExcluded)
+    period.hasClosedPeriods=monthly.some(row=>row.operatingExcluded)
+    if(period.hasClosedPeriods){period.expenses-=period.disclosedExpenses;period.net=period.revenue-period.expenses}
+    period.profitAvailable = !report.summaryInputs?.mixedBasis && !issues.length && operatingMonths.length>0 && operatingMonths.every(row => row.profitAvailable && row.revenueRecords > 0)
+    period.expensesAvailable = !report.summaryInputs?.mixedBasis && !issues.length && operatingMonths.every(row => row.expensesAvailable)
     if (!period.profitAvailable) period.net = null
+    period.includingDisclosedExpenses=period.profitAvailable?period.net-period.disclosedExpenses:null
     return {id:source.id,name:source.name,period,monthly,categories,issues,coverageIssues,reconciled:!issues.length}
   })
-  const total = branches.reduce((sum,row)=>({revenue:sum.revenue+row.period.revenue,expenses:sum.expenses+row.period.expenses,net:sum.net+(row.period.net || 0)}),{revenue:0,expenses:0,net:0})
-  const monthly = keys.map(month => branches.reduce((sum,branch)=>{const row=branch.monthly.find(row=>row.month===month);return {...sum,revenue:sum.revenue+row.revenue,expenses:sum.expenses+row.expenses,net:sum.net+(row.net || 0),profitAvailable:sum.profitAvailable && row.profitAvailable,expensesAvailable:sum.expensesAvailable && row.expensesAvailable,coverageIssues:[...sum.coverageIssues,...(row.coverageIssues||[])],revenueRecords:sum.revenueRecords+row.revenueRecords,hasExpenseDetails:sum.hasExpenseDetails||Object.keys(row.categories).some(key=>key!=='tax'),revenueComplete:sum.revenueComplete && row.revenueRecords > 0}}, {month,revenue:0,expenses:0,net:0,profitAvailable:true,expensesAvailable:true,coverageIssues:[],revenueRecords:0,hasExpenseDetails:false,revenueComplete:true}))
-  total.profitAvailable = branches.length > 0 && branches.every(row => row.period.profitAvailable)
+  const activeBranches=branches.filter(row=>!row.period.operatingExcluded)
+  const total = branches.reduce((sum,row)=>({revenue:sum.revenue+row.period.revenue,expenses:sum.expenses+row.period.expenses,net:sum.net+(row.period.net || 0),disclosedExpenses:sum.disclosedExpenses+row.period.disclosedExpenses,hasClosedPeriods:sum.hasClosedPeriods||row.period.hasClosedPeriods}),{revenue:0,expenses:0,net:0,disclosedExpenses:0,hasClosedPeriods:false})
+  const monthly=keys.map(month=>{
+    const sum={month,revenue:0,expenses:0,net:0,profitAvailable:true,expensesAvailable:true,coverageIssues:[],revenueRecords:0,hasExpenseDetails:false,revenueComplete:true,disclosedExpenses:0,closedPeriods:[],operatingCount:0}
+    for(const branch of branches){const row=branch.monthly.find(r=>r.month===month);sum.coverageIssues.push(...(row.coverageIssues||[]))
+      if(row.operatingExcluded){sum.disclosedExpenses+=row.disclosedExpenses;sum.closedPeriods.push({branchId:branch.id,name:branch.name,month,expenses:row.disclosedExpenses});continue}
+      sum.operatingCount++;sum.revenue+=row.revenue;sum.expenses+=row.expenses;sum.net+=row.net||0;sum.profitAvailable&&=row.profitAvailable;sum.expensesAvailable&&=row.expensesAvailable;sum.revenueRecords+=row.revenueRecords;sum.hasExpenseDetails||=Object.keys(row.categories).some(key=>key!=='tax');sum.revenueComplete&&=row.revenueRecords>0
+    }
+    sum.hasClosedPeriods=sum.closedPeriods.length>0;sum.operatingExcluded=sum.operatingCount===0&&sum.hasClosedPeriods
+    sum.profitAvailable&&=sum.operatingCount>0&&sum.revenueComplete
+    if(!sum.profitAvailable)sum.net=null
+    sum.includingDisclosedExpenses=sum.profitAvailable?sum.net-sum.disclosedExpenses:null
+    return sum
+  })
+  total.operatingExcluded=activeBranches.length===0&&total.hasClosedPeriods
+  total.profitAvailable = activeBranches.length > 0 && branches.every(row=>row.reconciled&&row.period.expensesAvailable) && activeBranches.every(row => row.period.profitAvailable)
   total.expensesAvailable = branches.length > 0 && branches.every(row => row.period.expensesAvailable)
   if (!total.profitAvailable) total.net = null
-  monthly.forEach(row => { if (!row.profitAvailable) row.net = null })
+  total.includingDisclosedExpenses=total.profitAvailable?total.net-total.disclosedExpenses:null
   return {branches,total,monthly,mixedBasis:!!report.summaryInputs?.mixedBasis,sourceChecks:report.summaryInputs?.sourceChecks||[],months:keys,reconciled:branches.length>0 && branches.every(row=>row.reconciled)}
 }

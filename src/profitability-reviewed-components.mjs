@@ -71,7 +71,21 @@ export async function resolveComponentRecords(records,input){
   if(result.valid)validated.push(result);else held.push(result)
  }
  const ambiguous=new Set(held.filter(h=>h.reason==='duplicate-snapshot-scope').map(h=>h.month+':'+h.componentKey))
- return {validated:validated.filter(r=>!ambiguous.has(r.source.month+':'+r.source.componentKey)),held}
+ const periodStatuses=[],statusCounts=new Map()
+ for(const record of records)if(record.snapshot_data?.kind==='branch_period_status'){const key=String(record.snapshot_data.month)+':'+String(record.snapshot_data.branchId);statusCounts.set(key,(statusCounts.get(key)||0)+1)}
+ for(const record of records){
+  const s=record.snapshot_data;if(s?.kind!=='branch_period_status')continue
+  const fail=reason=>held.push({month:s.month,branchId:s.branchId,reason,severity:'blocking_runtime_basis'})
+  if(record.snapshot_type!==COMPONENT_SNAPSHOT_TYPE||s.version!==2||!/^\d{4}-(0[1-9]|1[0-2])$/.test(s.month)||!s.branchId||record.snapshot_scope!==`profitability-components:${s.month}:branch-status:${s.branchId}`||statusCounts.get(s.month+':'+s.branchId)!==1||s.status!=='verified'||s.operatingStatus!=='closed_nonoperating'||s.revenueObservation!=='absent_not_zero'||s.comparisonPolicy!=='exclude_operating_disclose_costs'||!s.approvalRef||!Array.isArray(s.evidence?.messageIds)||!s.evidence.messageIds.length||!s.evidence.confirmedAt){fail('invalid-closed-period-status');continue}
+  const target=s.target,actualRevenue=input.revenueRows.filter(r=>String(r.branch_id)===String(s.branchId)&&String(r.revenue_date).slice(0,7)===s.month),actualExpenses=input.dailyExpenseRows.filter(r=>String(r.branch_id)===String(s.branchId)&&String(r.expense_date).slice(0,7)===s.month)
+  if(!target||target.inputsFingerprint!==await componentInputsFingerprint(input,s.month)||!Array.isArray(target.expectedRevenueIds)||target.expectedRevenueIds.length||actualRevenue.length||!Array.isArray(target.expenseIds)||!Array.isArray(target.expectedExpenseRows)||new Set(target.expenseIds).size!==target.expenseIds.length||target.expenseIds.length!==actualExpenses.length||target.expectedExpenseRows.length!==actualExpenses.length||!Number.isFinite(target.disclosedExpenseTotal)){fail('changed-closed-period-inputs');continue}
+  const expected=new Map(target.expectedExpenseRows.map(r=>[String(r.id),r]))
+  const knownAmount=r=>r.amount!=null&&String(r.amount).trim()!==''&&Number.isFinite(Number(r.amount))
+  const exact=actualExpenses.every(knownAmount)&&target.expectedExpenseRows.every(knownAmount)&&expected.size===actualExpenses.length&&actualExpenses.every(r=>target.expenseIds.includes(r.id)&&expected.has(String(r.id))&&fields.dailyExpenseRows.every(k=>JSON.stringify(canonical(normalizeField(k,r[k])))===JSON.stringify(canonical(normalizeField(k,expected.get(String(r.id))[k])))))
+  if(!exact||Math.abs(actualExpenses.reduce((sum,r)=>sum+Number(r.amount),0)-target.disclosedExpenseTotal)>1e-8){fail('closed-period-expense-evidence-mismatch');continue}
+  periodStatuses.push({...s,snapshotId:record.id})
+ }
+ return {validated:validated.filter(r=>!ambiguous.has(r.source.month+':'+r.source.componentKey)),held,periodStatuses}
 }
 export async function readComponentRecords(client,from,toExclusive){
  let rows=[]
@@ -99,7 +113,7 @@ export async function resolveCoverageManifests(records,input,from,toExclusive){
   if(s.month!==month||s.status!=='verified'||!s.approvalRef||s.inputsFingerprint!==await componentInputsFingerprint(input,month)||!Array.isArray(s.expectedScopes)||!Array.isArray(s.holds)){issue('stale-or-invalid-coverage-manifest');continue}
   for(const scope of s.expectedScopes){
    const matches=records.filter(r=>r.snapshot_scope===scope)
-   if(!String(scope).startsWith(`profitability-components:${month}:`)||matches.length!==1||matches[0].snapshot_type!==COMPONENT_SNAPSHOT_TYPE||matches[0].snapshot_data?.version!==2||!['component_adjustment','bank_basis_evidence'].includes(matches[0].snapshot_data?.kind)||matches[0].snapshot_data?.status!=='verified')issue('missing-or-ambiguous-required-component')
+   if(!String(scope).startsWith(`profitability-components:${month}:`)||matches.length!==1||matches[0].snapshot_type!==COMPONENT_SNAPSHOT_TYPE||matches[0].snapshot_data?.version!==2||!['component_adjustment','bank_basis_evidence','branch_period_status'].includes(matches[0].snapshot_data?.kind)||matches[0].snapshot_data?.status!=='verified')issue('missing-or-ambiguous-required-component')
   }
   for(const hold of s.holds){
    if(!['blocking_runtime_basis','blocking_collision','preliminary'].includes(hold.severity)||!hold.reason){issue('invalid-coverage-hold');continue}
