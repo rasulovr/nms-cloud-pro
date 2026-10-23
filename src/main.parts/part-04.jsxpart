@@ -6233,16 +6233,16 @@ function Reports({ t, permissions = [], isAdmin = false }) {
         revenueSource = 'daily_revenue'
       }
 
-      const dailyExpenseRows = await fetchPaged((from, to) => {
+      const rawDailyExpenseRows = await fetchPaged((from, to) => {
         let query = supabase
           .from('daily_expenses')
-          .select('id,branch_id,expense_date,amount,comment,custom_category,expense_categories(name)')
+          .select('id,branch_id,expense_date,amount,category_id,comment,custom_category,expense_categories(name)')
           .is('deleted_at', null)
         query = applyDateRange(query, 'expense_date')
         return query.order('expense_date', { ascending: true }).range(from, to)
       })
 
-      const supplierPurchases = await fetchPaged((from, to) => {
+      const rawSupplierPurchases = await fetchPaged((from, to) => {
         let query = supabase
           .from('supplier_purchases')
           .select('id,supplier_id,branch_id,purchase_date,invoice_number,total_amount,comment,deleted_at,suppliers(name)')
@@ -6284,6 +6284,32 @@ function Reports({ t, permissions = [], isAdmin = false }) {
       ])
       const bankCommissionRate = rmsBankCommissionRate(bankCommissionSetting)
 
+      const isAuditedMonth = date => String(date || '').slice(0, 7) >= '2026-01' && String(date || '').slice(0, 7) <= '2026-09'
+      const hasAuditedMonths = period.from < '2026-10-01' && period.toExclusive > '2026-01-01'
+      const mixedBasis = hasAuditedMonths && (period.from < '2026-01-01' || period.toExclusive > '2026-10-01')
+      const reviewedInputs = { revenueRows, dailyExpenseRows: rawDailyExpenseRows, supplierPurchases: rawSupplierPurchases }
+      const componentRecords = hasAuditedMonths ? await readComponentRecords(supabase, period.from < '2026-01-01' ? '2026-01-01' : period.from, period.toExclusive > '2026-10-01' ? '2026-10-01' : period.toExclusive) : []
+      const reviewed = await resolveComponentRecords(componentRecords, reviewedInputs)
+      const adjusted = buildReviewedAdjustments(reviewed.validated, reviewedInputs)
+      const dailyExpenseRows = adjusted.dailyExpenseRows
+      const supplierPurchases = adjusted.supplierPurchases
+      const bankEvidence = await resolveBankEvidence(componentRecords, reviewedInputs, bankCommissionRate)
+      const monthlyBasis = buildMonthlyAllocationBasis(revenueRows.filter(row => isAuditedMonth(row.revenue_date)), row => {
+        const bank = row.bank_amount == null || String(row.bank_amount).trim() === '' ? NaN : Number(row.bank_amount)
+        if (bank === 0) return { verified: true, grossBank: 0, netBank: 0 }
+        const marker = rmsReportBankBasis(row)
+        return marker ? { verified: true, grossBank: bank, netBank: bank * (1 - bankCommissionRate / 100) } : bankEvidence.byId.get(String(row.id)) || null
+      })
+      const coverageIssues = [...reviewed.held, ...adjusted.held, ...monthlyBasis.issues, ...bankEvidence.issues, ...await resolveCoverageManifests(componentRecords, reviewedInputs, period.from, period.toExclusive)]
+      for (const bucket of monthlyBasis.months.values()) if (!bucket.complete || !(bucket.networkAllocationRevenue > 0)) coverageIssues.push({month: bucket.month, reason: 'incomplete-network-allocation-basis', severity: 'blocking_runtime_basis'})
+      for (const date of [...supplierPurchases.map(r => r.purchase_date), ...salaryPeriods.map(r => r.salary_month)]) if (isAuditedMonth(date) && !monthlyBasis.months.has(String(date || '').slice(0, 7))) coverageIssues.push({month: String(date || '').slice(0, 7), reason: 'missing-network-allocation-basis', severity: 'blocking_runtime_basis'})
+      const monthlyShare = (date, branchId) => monthlyBasis.months.get(String(date || '').slice(0, 7))?.shares.get(String(branchId))
+      const allocationShare = (date, branchId) => {
+        if (!isAuditedMonth(date)) return parseNum(revenueShareMap.get(String(branchId)))
+        const share = monthlyShare(date, branchId)
+        return Number.isFinite(share) ? share : 0
+      }
+
       const employeeById = new Map(employeeRows.map(row => [String(row.id), row]))
       const branchNameById = new Map((branches || []).map(row => [String(row.id), row.name]))
 
@@ -6301,7 +6327,8 @@ function Reports({ t, permissions = [], isAdmin = false }) {
           bankCommissionDetails: [],
           days: new Set()
         }
-        const bankFee = rmsReportBankCommissionDetail(row, bankCommissionRate)
+        const reviewedBank = bankEvidence.byId.get(String(row.id))
+        const bankFee = reviewedBank?.feeExpenseAllowed === false ? null : rmsReportBankCommissionDetail(row, bankCommissionRate) || (reviewedBank?.feeExpenseAllowed ? {id: `bank-commission-${row.id}`, date: row.revenue_date, description: 'Комиссия банка за безнал', comment: 'По проверенной базе банковской выручки', amount: reviewedBank.grossBank * bankCommissionRate / 100} : null)
         if (bankFee) {
           current.bankCommission += bankFee.amount
           current.bankCommissionDetails.push(bankFee)
@@ -6320,7 +6347,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
         revenueShareMap.set(id, networkRevenue > 0 ? parseNum(row.revenue) / networkRevenue : 0)
       })
 
-      const normalizedExpenseName = row => financeExpenseNameFromRow(row)
+      const normalizedExpenseName = row => ({utilities: 'Коммунальные', household: 'Хозяйственные товары', partner_fee: 'Partner Fee', other: 'Прочее'}[row.reviewedCategory] || financeExpenseNameFromRow(row))
       const isServiceChargeLike = value => {
         const name = normalizeExpenseText(value)
         return name.includes('service charge') && (name.includes('персонал') || name.includes('staff'))
@@ -6349,7 +6376,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
         if (isServiceChargeLike(name)) return
 
         const amount = parseNum(row.amount)
-        const group = rmsFinanceExpenseGroupName(name)
+        const group = row.reviewedCategory || rmsFinanceExpenseGroupName(name)
         const current = expensesByBranch.get(id) || {
           operating: 0,
           manualFood: 0,
@@ -6493,10 +6520,11 @@ function Reports({ t, permissions = [], isAdmin = false }) {
         }
 
         const share = parseNum(revenueShareMap.get(id))
-        const supplierFoodCost = supplierPurchases.reduce((sum, purchase) => sum + parseNum(purchase.total_amount) * share, 0)
+        const supplierFoodCost = supplierPurchases.filter(p => !p.reviewedCategory || p.reviewedCategory === 'food_market').reduce((sum, purchase) => sum + parseNum(purchase.total_amount) * allocationShare(purchase.purchase_date, id), 0)
+        const supplierHouseholdCost = supplierPurchases.filter(p => p.reviewedCategory === 'household').reduce((sum, purchase) => sum + parseNum(purchase.total_amount) * allocationShare(purchase.purchase_date, id), 0)
         const foodCost = parseNum(expenseData.manualFood) + supplierFoodCost
         const directSalary = parseNum(directSalaryByBranch.get(id))
-        const managerSalary = managerSalaryPool * share
+        const managerSalary = managerSalaryDetails.reduce((sum, detail) => sum + parseNum(detail.amount) * allocationShare(detail.date, id), 0)
         const salary = directSalary + managerSalary
         const serviceCost = parseNum(serviceByBranch.get(id))
         const configuredTaxRate = parseNum(taxSettings?.[id])
@@ -6507,25 +6535,29 @@ function Reports({ t, permissions = [], isAdmin = false }) {
         // уже учтён ниже по установленной ставке.
         const tax = taxCalculated
         const bankCommission = parseNum(revenueData.bankCommission)
-        const totalExpenses = parseNum(expenseData.operating) + supplierFoodCost + salary + serviceCost + tax + bankCommission
+        const totalExpenses = parseNum(expenseData.operating) + supplierFoodCost + supplierHouseholdCost + salary + serviceCost + tax + bankCommission
         const net = parseNum(revenueData.revenue) - totalExpenses
         const activeDays = revenueData.days?.size || 0
-        const supplierDetails = supplierPurchases.map(purchase => ({
+        const allocatedSupplierDetails = supplierPurchases.map(purchase => ({
             id: `supplier-allocated-${purchase.id}-${id}`,
             date: purchase.purchase_date,
             description: purchase.suppliers?.name || 'Поставщик',
-            comment: [purchase.invoice_number ? `Фактура: ${purchase.invoice_number}` : '', purchase.comment || '', `Распределено по доле выручки ${pct(share * 100)}; исходная привязка филиала не используется для P&L`].filter(Boolean).join(' · '),
-            amount: parseNum(purchase.total_amount) * share,
+            comment: [purchase.invoice_number ? `Фактура: ${purchase.invoice_number}` : '', purchase.comment || '', isAuditedMonth(purchase.purchase_date) ? `Распределено по месячной базе наличные + банк после подтверждённой комиссии + Wolt: ${pct(allocationShare(purchase.purchase_date, id) * 100)}` : `Предварительно: прежняя доля выручки выбранного периода ${pct(share * 100)}`].filter(Boolean).join(' · '),
+            amount: parseNum(purchase.total_amount) * allocationShare(purchase.purchase_date, id),
+            category: purchase.reviewedCategory || 'food_market',
             allocation_status: 'preliminary'
           }))
           .filter(detail => detail.amount !== 0)
+        const supplierDetails = allocatedSupplierDetails.filter(detail => detail.category === 'food_market')
+        const householdDetails = allocatedSupplierDetails.filter(detail => detail.category === 'household')
         const salaryDetails = [
           ...(salaryDetailsByBranch.get(id) || []),
-          ...managerSalaryDetails.map(detail => ({ ...detail, id: `${detail.id}-${id}`, amount: parseNum(detail.amount) * share }))
+          ...managerSalaryDetails.map(detail => ({ ...detail, id: `${detail.id}-${id}`, amount: parseNum(detail.amount) * allocationShare(detail.date, id) }))
         ].filter(detail => detail.amount !== 0)
         const expenseCategories = [
           ...(bankCommission ? [{ key: 'bank-commission', name: 'Комиссия банка за безнал', amount: bankCommission, transactions: revenueData.bankCommissionDetails.length, details: revenueData.bankCommissionDetails }] : []),
           ...(supplierFoodCost ? [{ key: 'supplier-food-cost', name: 'Поставщики / Food Cost', amount: supplierFoodCost, transactions: supplierDetails.length, details: supplierDetails }] : []),
+          ...(supplierHouseholdCost ? [{ key: 'supplier-household', name: 'Хозяйственные товары / поставщики', amount: supplierHouseholdCost, transactions: householdDetails.length, details: householdDetails }] : []),
           ...Array.from(expenseData.categories.values()).map(category => ({
             key: `daily-${normalizeExpenseText(category.name)}`,
             name: category.name,
@@ -6577,7 +6609,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
           rent: parseNum(expenseData.rent),
           utilities: parseNum(expenseData.utilities),
           packaging: parseNum(expenseData.packaging),
-          household: parseNum(expenseData.household),
+          household: parseNum(expenseData.household) + supplierHouseholdCost,
           marketing: parseNum(expenseData.marketing),
           maintenance: parseNum(expenseData.maintenance),
           other: parseNum(expenseData.other),
@@ -6595,7 +6627,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
           categories: Array.from(expenseData.categories.values()).sort((a, b) => parseNum(b.amount) - parseNum(a.amount)),
           expenseCategories
         }
-      }).filter(row => row.revenue || row.totalExpenses || row.salary || row.foodCost)
+      }).filter(row => row.activeDays || row.revenue || row.totalExpenses || row.salary || row.foodCost)
 
       const selectedProfitabilityIds = profitabilitySelection.branchIds == null ? null : new Set(profitabilitySelection.branchIds.map(String))
       const visibleRows = selectedProfitabilityIds == null ? rows : rows.filter(row => selectedProfitabilityIds.has(String(row.id)))
@@ -6629,7 +6661,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
         rows: visibleRows,
         totals,
         periodLabel: period.label,
-        summaryInputs: { period, revenueRows },
+        summaryInputs: { period, revenueRows, coverageIssues, mixedBasis, sourceChecks: reviewed.validated.map(r => ({month:r.source.month,readAt:r.source.source?.readAt})) },
         source: `${revenueSource} + daily_expenses + supplier_purchases + salary_periods`
       })
     } catch (error) {

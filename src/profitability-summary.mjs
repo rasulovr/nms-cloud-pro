@@ -49,9 +49,25 @@ export function buildProfitabilitySummary(report = {}) {
     const sums = monthly.reduce((sum,row)=>({revenue:sum.revenue+row.revenue,expenses:sum.expenses+row.expenses,net:sum.net+row.net}),{revenue:0,expenses:0,net:0})
     const period = {revenue:amount(source.revenue),expenses:amount(source.totalExpenses),net:amount(source.net)}
     if (!close(sums.revenue,period.revenue) || !close(sums.expenses,period.expenses) || !close(sums.net,period.net)) issues.push({reason:'period-mismatch'})
-    return {id:source.id,name:source.name,period,monthly,categories,issues,reconciled:!issues.length}
+    const coverageIssues = (report.summaryInputs?.coverageIssues || []).filter(issue => !issue.branchId || String(issue.branchId) === String(source.id))
+    monthly.forEach(row => {
+      row.calculationMode = row.month >= '2026-01' && row.month <= '2026-09' ? 'reviewed-components' : 'legacy-preliminary'
+      row.coverageIssues = coverageIssues.filter(issue => !issue.month || issue.month === row.month)
+      if (row.calculationMode === 'legacy-preliminary') row.coverageIssues.push({month:row.month,severity:'preliminary',reason:'legacy-period-allocation',detail:'Предварительный расчёт по прежней методике периода; источник не входит в сверку января–сентября 2026.'})
+      row.profitAvailable = row.coverageIssues.every(issue => issue.severity === 'preliminary')
+      row.expensesAvailable = row.profitAvailable
+      if (!row.profitAvailable) row.net = null
+    })
+    period.profitAvailable = !report.summaryInputs?.mixedBasis && !issues.length && monthly.every(row => row.profitAvailable && row.revenueRecords > 0)
+    period.expensesAvailable = !report.summaryInputs?.mixedBasis && !issues.length && monthly.every(row => row.expensesAvailable)
+    if (!period.profitAvailable) period.net = null
+    return {id:source.id,name:source.name,period,monthly,categories,issues,coverageIssues,reconciled:!issues.length}
   })
-  const total = branches.reduce((sum,row)=>({revenue:sum.revenue+row.period.revenue,expenses:sum.expenses+row.period.expenses,net:sum.net+row.period.net}),{revenue:0,expenses:0,net:0})
-  const monthly = keys.map(month => branches.reduce((sum,branch)=>{const row=branch.monthly.find(row=>row.month===month);return {...sum,revenue:sum.revenue+row.revenue,expenses:sum.expenses+row.expenses,net:sum.net+row.net,revenueRecords:sum.revenueRecords+row.revenueRecords,hasExpenseDetails:sum.hasExpenseDetails||Object.keys(row.categories).some(key=>key!=='tax'),revenueComplete:sum.revenueComplete && row.revenueRecords > 0}}, {month,revenue:0,expenses:0,net:0,revenueRecords:0,hasExpenseDetails:false,revenueComplete:true}))
-  return {branches,total,monthly,months:keys,reconciled:branches.length>0 && branches.every(row=>row.reconciled)}
+  const total = branches.reduce((sum,row)=>({revenue:sum.revenue+row.period.revenue,expenses:sum.expenses+row.period.expenses,net:sum.net+(row.period.net || 0)}),{revenue:0,expenses:0,net:0})
+  const monthly = keys.map(month => branches.reduce((sum,branch)=>{const row=branch.monthly.find(row=>row.month===month);return {...sum,revenue:sum.revenue+row.revenue,expenses:sum.expenses+row.expenses,net:sum.net+(row.net || 0),profitAvailable:sum.profitAvailable && row.profitAvailable,expensesAvailable:sum.expensesAvailable && row.expensesAvailable,coverageIssues:[...sum.coverageIssues,...(row.coverageIssues||[])],revenueRecords:sum.revenueRecords+row.revenueRecords,hasExpenseDetails:sum.hasExpenseDetails||Object.keys(row.categories).some(key=>key!=='tax'),revenueComplete:sum.revenueComplete && row.revenueRecords > 0}}, {month,revenue:0,expenses:0,net:0,profitAvailable:true,expensesAvailable:true,coverageIssues:[],revenueRecords:0,hasExpenseDetails:false,revenueComplete:true}))
+  total.profitAvailable = branches.length > 0 && branches.every(row => row.period.profitAvailable)
+  total.expensesAvailable = branches.length > 0 && branches.every(row => row.period.expensesAvailable)
+  if (!total.profitAvailable) total.net = null
+  monthly.forEach(row => { if (!row.profitAvailable) row.net = null })
+  return {branches,total,monthly,mixedBasis:!!report.summaryInputs?.mixedBasis,sourceChecks:report.summaryInputs?.sourceChecks||[],months:keys,reconciled:branches.length>0 && branches.every(row=>row.reconciled)}
 }
