@@ -123,7 +123,7 @@ export async function resolveCoverageManifests(records,input,from,toExclusive){
  return issues
 }
 
-export async function resolveBankEvidence(records,input,configuredRate){
+export async function resolveBankEvidence(records,input,configuredRate,hasExplicitBasis=()=>false){
  const byId=new Map(),issues=[],seenMonths=new Set(),revenueById=new Map(input.revenueRows.map(r=>[String(r.id),r]))
  for(const record of records){
   const s=record.snapshot_data
@@ -139,6 +139,17 @@ export async function resolveBankEvidence(records,input,configuredRate){
    byId.set(String(entry.id),{month:s.month,verified:true,grossBank:Number(row.bank_amount),netBank:Number(row.bank_amount)*(1-configuredRate/100),feeExpenseAllowed:entry.commissionPolicy==='apply_configured_rate',sourceUrl:entry.sourceUrl})
    if(entry.commissionPolicy==='held_existing_fee_overlap')issues.push({month:s.month,branchId:String(row.branch_id),reason:'bank_fee_overlap_unresolved',severity:'blocking_runtime_basis'})
   }
+ }
+ // Later periods must not display profit as if an unverified bank fee were zero.
+ const missing=new Set()
+ for(const row of input.revenueRows){
+  const month=String(row.revenue_date||'').slice(0,7)
+  if(month<'2026-10')continue
+  const bank=row.bank_amount==null||String(row.bank_amount).trim()===''?NaN:Number(row.bank_amount)
+  if(bank===0)continue
+  if(Number.isFinite(bank)&&(hasExplicitBasis(row)||byId.get(String(row.id))?.verified))continue
+  const branchId=String(row.branch_id||''),key=month+':'+branchId
+  if(!missing.has(key)){missing.add(key);issues.push({month,branchId,reason:'missing-bank-basis',severity:'blocking_runtime_basis'})}
  }
  return {byId,issues}
 }
