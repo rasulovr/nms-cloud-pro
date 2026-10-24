@@ -6288,12 +6288,13 @@ function Reports({ t, permissions = [], isAdmin = false }) {
       const hasAuditedMonths = period.from < '2026-10-01' && period.toExclusive > '2026-01-01'
       const mixedBasis = hasAuditedMonths && (period.from < '2026-01-01' || period.toExclusive > '2026-10-01')
       const reviewedInputs = { revenueRows, dailyExpenseRows: rawDailyExpenseRows, supplierPurchases: rawSupplierPurchases }
-      const componentRecords = hasAuditedMonths ? await readComponentRecords(supabase, period.from < '2026-01-01' ? '2026-01-01' : period.from, period.toExclusive > '2026-10-01' ? '2026-10-01' : period.toExclusive) : []
+      const protectedRecords = await readComponentRecords(supabase, period.from, period.toExclusive)
+      const componentRecords = protectedRecords.filter(record => isAuditedMonth(record.snapshot_data?.month))
       const reviewed = await resolveComponentRecords(componentRecords, reviewedInputs)
       const adjusted = buildReviewedAdjustments(reviewed.validated, reviewedInputs)
       const dailyExpenseRows = adjusted.dailyExpenseRows
       const supplierPurchases = adjusted.supplierPurchases
-      const bankEvidence = await resolveBankEvidence(componentRecords, reviewedInputs, bankCommissionRate)
+      const bankEvidence = await resolveBankEvidence(protectedRecords, reviewedInputs, bankCommissionRate, row => !!rmsReportBankBasis(row))
       // Validate protected evidence against raw records before applying report-only exclusions.
       revenueRows = adjusted.revenueRows
       const monthlyBasis = buildMonthlyAllocationBasis(revenueRows.filter(row => isAuditedMonth(row.revenue_date)), row => {
