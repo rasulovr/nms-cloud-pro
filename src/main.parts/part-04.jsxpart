@@ -6566,7 +6566,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
             id: `supplier-allocated-${purchase.id}-${id}`,
             date: purchase.purchase_date,
             description: purchase.suppliers?.name || 'Поставщик',
-            comment: [purchase.invoice_number ? `Фактура: ${purchase.invoice_number}` : '', purchase.comment || '', isAuditedMonth(purchase.purchase_date) ? `Распределено по месячной базе наличные + банк после подтверждённой комиссии + Wolt: ${pct(allocationShare(purchase.purchase_date, id) * 100)}` : `Предварительно: месячная доля записанной выручки до комиссии ${pct(allocationShare(purchase.purchase_date, id) * 100)}`].filter(Boolean).join(' · '),
+            comment: [purchase.invoice_number ? `Фактура: ${purchase.invoice_number}` : '', purchase.comment || '', isAuditedMonth(purchase.purchase_date) ? `Распределено по месячной базе наличные + банк после подтверждённой комиссии + Wolt: ${pct(allocationShare(purchase.purchase_date, id) * 100)}` : String(purchase.purchase_date || '').slice(0, 7) < '2026-01' ? `Предварительно: прежняя доля выручки выбранного периода ${pct(share * 100)}` : `Предварительно: месячная доля записанной выручки до комиссии ${pct(allocationShare(purchase.purchase_date, id) * 100)}`].filter(Boolean).join(' · '),
             amount: parseNum(purchase.total_amount) * allocationShare(purchase.purchase_date, id),
             category: purchase.reviewedCategory || 'food_market',
             allocation_status: 'preliminary'
