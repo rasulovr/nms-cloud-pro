@@ -6308,7 +6308,8 @@ function Reports({ t, permissions = [], isAdmin = false }) {
       for (const date of [...supplierPurchases.map(r => r.purchase_date), ...salaryPeriods.map(r => r.salary_month)]) if (isAuditedMonth(date) && !monthlyBasis.months.has(String(date || '').slice(0, 7))) coverageIssues.push({month: String(date || '').slice(0, 7), reason: 'missing-network-allocation-basis', severity: 'blocking_runtime_basis'})
       const monthlyShare = (date, branchId) => monthlyBasis.months.get(String(date || '').slice(0, 7))?.shares.get(String(branchId))
       const allocationShare = (date, branchId) => {
-        if (!isAuditedMonth(date)) return parseNum(revenueShareMap.get(String(branchId)))
+        if (String(date || '').slice(0, 7) < '2026-01') return parseNum(revenueShareMap.get(String(branchId)))
+        if (!isAuditedMonth(date)) return parseNum(legacyMonthlyShares.get(String(date || '').slice(0, 7))?.get(String(branchId)))
         const share = monthlyShare(date, branchId)
         return Number.isFinite(share) ? share : 0
       }
@@ -6349,6 +6350,26 @@ function Reports({ t, permissions = [], isAdmin = false }) {
       revenueByBranch.forEach((row, id) => {
         revenueShareMap.set(id, networkRevenue > 0 ? parseNum(row.revenue) / networkRevenue : 0)
       })
+
+      // Preserve the preliminary gross basis, but isolate each operation month.
+      const legacyMonthlyRevenue = new Map()
+      revenueRows.filter(row => String(row.revenue_date || '').slice(0, 7) >= '2026-10').forEach(row => {
+        const month = String(row.revenue_date || '').slice(0, 7)
+        const bucket = legacyMonthlyRevenue.get(month) || new Map()
+        const id = String(row.branch_id || '')
+        if (!id) return
+        bucket.set(id, parseNum(bucket.get(id)) + (parseNum(row.cash_amount) + parseNum(row.bank_amount) + parseNum(row.wolt_amount)))
+        legacyMonthlyRevenue.set(month, bucket)
+      })
+      const legacyMonthlyShares = new Map([...legacyMonthlyRevenue].map(([month, bucket]) => {
+        const total = [...bucket.values()].reduce((sum, amount) => sum + amount, 0)
+        if (!(total > 0)) coverageIssues.push({month, reason: 'missing-network-allocation-basis', severity: 'blocking_runtime_basis'})
+        return [month, new Map([...bucket].map(([id, amount]) => [id, total > 0 ? amount / total : 0]))]
+      }))
+      for (const date of [...supplierPurchases.map(row => row.purchase_date), ...salaryPeriods.map(row => row.salary_month)]) {
+        const month = String(date || '').slice(0, 7)
+        if (month >= '2026-10' && !legacyMonthlyShares.has(month)) coverageIssues.push({month, reason: 'missing-network-allocation-basis', severity: 'blocking_runtime_basis'})
+      }
 
       const normalizedExpenseName = row => ({utilities: 'Коммунальные', household: 'Хозяйственные товары', partner_fee: 'Partner Fee', other: 'Прочее'}[row.reviewedCategory] || financeExpenseNameFromRow(row))
       const isServiceChargeLike = value => {
@@ -6545,7 +6566,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
             id: `supplier-allocated-${purchase.id}-${id}`,
             date: purchase.purchase_date,
             description: purchase.suppliers?.name || 'Поставщик',
-            comment: [purchase.invoice_number ? `Фактура: ${purchase.invoice_number}` : '', purchase.comment || '', isAuditedMonth(purchase.purchase_date) ? `Распределено по месячной базе наличные + банк после подтверждённой комиссии + Wolt: ${pct(allocationShare(purchase.purchase_date, id) * 100)}` : `Предварительно: прежняя доля выручки выбранного периода ${pct(share * 100)}`].filter(Boolean).join(' · '),
+            comment: [purchase.invoice_number ? `Фактура: ${purchase.invoice_number}` : '', purchase.comment || '', isAuditedMonth(purchase.purchase_date) ? `Распределено по месячной базе наличные + банк после подтверждённой комиссии + Wolt: ${pct(allocationShare(purchase.purchase_date, id) * 100)}` : String(purchase.purchase_date || '').slice(0, 7) < '2026-01' ? `Предварительно: прежняя доля выручки выбранного периода ${pct(share * 100)}` : `Предварительно: месячная доля записанной выручки до комиссии ${pct(allocationShare(purchase.purchase_date, id) * 100)}`].filter(Boolean).join(' · '),
             amount: parseNum(purchase.total_amount) * allocationShare(purchase.purchase_date, id),
             category: purchase.reviewedCategory || 'food_market',
             allocation_status: 'preliminary'
