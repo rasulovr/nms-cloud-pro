@@ -1,3 +1,4 @@
+import {normalizeReviewedGoodsPurchases} from './profitability-bank-goods.mjs'
 // Read-only component evidence adapter. No financial amounts or source IDs are
 // embedded in this module; evidence is read through authenticated storage.
 export const COMPONENT_SNAPSHOT_TYPE='reviewed_month_components_v1'
@@ -22,6 +23,11 @@ export async function componentInputsFingerprint(input,month){
  }
  const bytes=new TextEncoder().encode(JSON.stringify(canonical(selected)))
  return [...new Uint8Array(await globalThis.crypto.subtle.digest('SHA-256',bytes))].map(b=>b.toString(16).padStart(2,'0')).join('')
+}
+export async function bankInputsFingerprintV3(input,month,goodsProof){
+ if(month<'2026-10')throw Error('Unsupported bank v3 period')
+ const supplierPurchases=normalizeReviewedGoodsPurchases(input,month,goodsProof)
+ return componentInputsFingerprint({...input,supplierPurchases},month)
 }
 export function validateComponentRecord(record,fingerprint){
  const s=record?.snapshot_data,fail=reason=>({valid:false,reason,month:s?.month,componentKey:s?.componentKey})
@@ -127,10 +133,13 @@ export async function resolveBankEvidence(records,input,configuredRate,hasExplic
  const byId=new Map(),issues=[],seenMonths=new Set(),revenueById=new Map(input.revenueRows.map(r=>[String(r.id),r]))
  for(const record of records){
   const s=record.snapshot_data
-  if(s?.kind!=='bank_basis_evidence'||s.version!==2)continue
+  if(s?.kind!=='bank_basis_evidence'||![2,3].includes(s.version))continue
   const fail=reason=>issues.push({month:s.month,reason,severity:'blocking_runtime_basis'})
   if(seenMonths.has(s.month)){fail('duplicate-bank-evidence');for(const [id,e] of byId)if(e.month===s.month)byId.delete(id);continue}seenMonths.add(s.month)
-  if(record.snapshot_type!==COMPONENT_SNAPSHOT_TYPE||record.snapshot_scope!==`profitability-components:${s.month}:bank-basis`||s.status!=='verified'||!s.approvalRef||s.expectedBankCommissionRate!==configuredRate||s.inputsFingerprint!==await componentInputsFingerprint(input,s.month)||!Array.isArray(s.entries)){fail('stale-or-invalid-bank-evidence');continue}
+  let fingerprint
+  if(s.version===3){try{fingerprint=await bankInputsFingerprintV3(input,s.month,s.goodsProof)}catch{fail('stale-or-invalid-bank-evidence');continue}}
+  else fingerprint=await componentInputsFingerprint(input,s.month)
+  if(record.snapshot_type!==COMPONENT_SNAPSHOT_TYPE||record.snapshot_scope!==`profitability-components:${s.month}:bank-basis`||s.status!=='verified'||!s.approvalRef||s.expectedBankCommissionRate!==configuredRate||s.inputsFingerprint!==fingerprint||!Array.isArray(s.entries)){fail('stale-or-invalid-bank-evidence');continue}
   for(const entry of s.entries){
    const row=revenueById.get(String(entry.id)),expected=entry.expectedRow
    const keys=['branch_id','revenue_date','cash_amount','bank_amount','wolt_amount']

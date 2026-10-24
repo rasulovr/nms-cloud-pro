@@ -6289,6 +6289,9 @@ function Reports({ t, permissions = [], isAdmin = false }) {
       const mixedBasis = hasAuditedMonths && (period.from < '2026-01-01' || period.toExclusive > '2026-10-01')
       const reviewedInputs = { revenueRows, dailyExpenseRows: rawDailyExpenseRows, supplierPurchases: rawSupplierPurchases }
       const protectedRecords = await readComponentRecords(supabase, period.from, period.toExclusive)
+      const goodsPurchaseIds = [...new Set(protectedRecords.filter(record => record.snapshot_data?.kind === 'bank_basis_evidence' && record.snapshot_data?.version === 3).flatMap(record => (record.snapshot_data.goodsProof?.headers || []).map(row => String(row.id))))]
+      if (goodsPurchaseIds.length > 7) throw new Error('Превышен лимит проверки товарной детализации.')
+      reviewedInputs.supplierPurchaseItems = goodsPurchaseIds.length ? await fetchPaged((from, to) => supabase.from('supplier_purchase_items').select('id,purchase_id,product_id,quantity,unit,unit_price,total_amount,supplier_products(id,name,category,base_unit)').in('purchase_id', goodsPurchaseIds).order('id', { ascending: true }).range(from, to)) : []
       const componentRecords = protectedRecords.filter(record => isAuditedMonth(record.snapshot_data?.month))
       const reviewed = await resolveComponentRecords(componentRecords, reviewedInputs)
       const adjusted = buildReviewedAdjustments(reviewed.validated, reviewedInputs)
