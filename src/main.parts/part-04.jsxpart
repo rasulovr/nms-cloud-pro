@@ -6223,7 +6223,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
           )
           .is('deleted_at', null)
         query = applyDateRange(query, 'revenue_date')
-        return query.order('revenue_date', { ascending: true }).range(from, to)
+        return query.order('revenue_date', { ascending: true }).order('id', { ascending: true }).range(from, to)
       })
 
       let revenueRows = await fetchRevenueTable('daily_revenue_entries')
@@ -6239,7 +6239,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
           .select('id,branch_id,expense_date,amount,category_id,comment,custom_category,expense_categories(name)')
           .is('deleted_at', null)
         query = applyDateRange(query, 'expense_date')
-        return query.order('expense_date', { ascending: true }).range(from, to)
+        return query.order('expense_date', { ascending: true }).order('id', { ascending: true }).range(from, to)
       })
 
       const rawSupplierPurchases = await fetchPaged((from, to) => {
@@ -6248,7 +6248,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
           .select('id,supplier_id,branch_id,purchase_date,invoice_number,total_amount,comment,deleted_at,suppliers(name)')
           .is('deleted_at', null)
         query = applyDateRange(query, 'purchase_date')
-        return query.order('purchase_date', { ascending: true }).range(from, to)
+        return query.order('purchase_date', { ascending: true }).order('id', { ascending: true }).range(from, to)
       })
 
       const [{ data: employeeRowsRaw, error: employeesError }, salaryResult, serviceResult] = await Promise.all([
