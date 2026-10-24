@@ -89,6 +89,10 @@ export async function resolveComponentRecords(records,input){
   const knownAmount=r=>r.amount!=null&&String(r.amount).trim()!==''&&Number.isFinite(Number(r.amount))
   const exact=actualExpenses.every(knownAmount)&&target.expectedExpenseRows.every(knownAmount)&&expected.size===actualExpenses.length&&actualExpenses.every(r=>target.expenseIds.includes(r.id)&&expected.has(String(r.id))&&fields.dailyExpenseRows.every(k=>JSON.stringify(canonical(normalizeField(k,r[k],r)))===JSON.stringify(canonical(normalizeField(k,expected.get(String(r.id))[k],expected.get(String(r.id)))))))
   if(!exact||Math.abs(actualExpenses.reduce((sum,r)=>sum+Number(r.amount),0)-target.disclosedExpenseTotal)>1e-8){fail('closed-period-expense-evidence-mismatch');continue}
+  if(s.presentation){
+   const p=s.presentation,ids=target.expenseIds
+   if(p.policy!=='omit_closed_cost_disclosure'||!p.approvalRef||!Array.isArray(p.expectedExpenseIds)||p.expectedExpenseIds.length!==ids.length||new Set(p.expectedExpenseIds).size!==ids.length||!ids.every(id=>p.expectedExpenseIds.includes(id))||p.expectedExpenseTotal!==target.disclosedExpenseTotal){fail('invalid-closed-period-presentation');continue}
+  }
   periodStatuses.push({...s,snapshotId:record.id})
  }
  return {validated:validated.filter(r=>!ambiguous.has(r.source.month+':'+r.source.componentKey)),held,periodStatuses}
