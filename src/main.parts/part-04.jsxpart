@@ -5428,6 +5428,49 @@ function ReportsBazarDailyFullCardV220() {
   )
 }
 
+// Opt-in provenance for imported bank revenue normalized to gross. Never infer
+// gross/net from branch names, dates, URLs, or an unstructured comment.
+function rmsReportBankBasis(row) {
+  const prefix = 'RMS_BANK_BASIS_V1='
+  const comment = String(row?.comment || '')
+  if (!comment.includes('RMS_BANK_BASIS_V1')) return null
+  const fail = () => { throw new Error('Некорректная или устаревшая отметка базы банковской выручки. Проверьте импорт перед расчётом рентабельности.') }
+  if (comment.split('RMS_BANK_BASIS_V1').length !== 2) return fail()
+  const lines = comment.split(/\r?\n/).filter(line => line.startsWith(prefix))
+  if (lines.length !== 1) return fail()
+  let marker
+  try { marker = JSON.parse(lines[0].slice(prefix.length)) } catch { return fail() }
+  if (!marker || marker.version !== 1 || marker.basis !== 'gross'
+    || typeof marker.branchId !== 'string' || !marker.branchId
+    || marker.branchId !== String(row.branch_id || '')
+    || typeof marker.date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(marker.date)
+    || marker.date !== String(row.revenue_date || '').slice(0, 10)
+    || typeof marker.grossAmount !== 'number' || !Number.isFinite(marker.grossAmount) || marker.grossAmount < 0
+    || row.bank_amount == null || String(row.bank_amount).trim() === ''
+    || !Number.isFinite(Number(row.bank_amount)) || marker.grossAmount !== Number(row.bank_amount)
+    || typeof marker.source !== 'string' || !marker.source.trim() || marker.source !== row.source
+    || typeof marker.externalId !== 'string' || !marker.externalId.trim() || marker.externalId !== row.external_id
+    || typeof marker.sourceUrl !== 'string') return fail()
+  try {
+    const url = new URL(marker.sourceUrl)
+    if (url.protocol !== 'https:' || url.username || url.password) return fail()
+  } catch { return fail() }
+  return marker
+}
+
+function rmsReportBankCommissionDetail(row, rate) {
+  const marker = rmsReportBankBasis(row)
+  if (!marker) return null
+  const amount = marker.grossAmount * rmsBankCommissionRate(rate) / 100
+  return {
+    id: `bank-commission-${row.id || marker.externalId}`,
+    date: marker.date,
+    description: 'Комиссия банка за безнал',
+    comment: `Начислено на валовую банковскую выручку по ставке ${rmsBankCommissionRate(rate)}%`,
+    amount
+  }
+}
+
 function Reports({ t, permissions = [], isAdmin = false }) {
   const { branches, loaded: reportBranchesLoaded } = useBranches(true, true)
   const [reports, setReports] = useState(() => readAikoSalesReports())
@@ -5470,6 +5513,8 @@ function Reports({ t, permissions = [], isAdmin = false }) {
   const [branchFilter, setBranchFilter] = useState('all')
   const [departmentFilter, setDepartmentFilter] = useState('all')
   const [monthFilter, setMonthFilter] = useState('all')
+  const [profitabilitySelection, setProfitabilitySelection] = useState(() => ({ ...defaultMonthRange(), branchIds: undefined }))
+  const profitabilityRequestId = React.useRef(0)
   const [rmsRevenuePeriodOptions, setRmsRevenuePeriodOptions] = useState({ months: [], years: [] })
   const [revenueDateFrom, setRevenueDateFrom] = useState('')
   const [revenueDateTo, setRevenueDateTo] = useState('')
@@ -5860,7 +5905,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
   useEffect(() => {
     if (effectiveReportsTab !== 'profitability') return
     loadRmsProfitabilityReport()
-  }, [effectiveReportsTab, branchFilter, monthFilter, branches.length])
+  }, [effectiveReportsTab, profitabilitySelection, branches.length])
 
   useEffect(() => {
     if (effectiveReportsTab !== 'suppliers') return
@@ -6116,6 +6161,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
   }
 
   async function loadRmsProfitabilityReport() {
+    const requestId = ++profitabilityRequestId.current
     setRmsProfitabilityReport(prev => ({ ...prev, loading: true, error: '' }))
 
     const emptyTotals = {
@@ -6128,6 +6174,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
       serviceCost: 0,
       tax: 0,
       woltCommission: 0,
+      bankCommission: 0,
       totalExpenses: 0,
       net: 0,
       margin: 0,
@@ -6137,24 +6184,13 @@ function Reports({ t, permissions = [], isAdmin = false }) {
 
     try {
       const pageSize = 1000
-      const period = (() => {
-        if (/^year:\d{4}$/.test(String(monthFilter || ''))) {
-          const year = Number(String(monthFilter).replace('year:', ''))
-          return {
-            from: `${year}-01-01`,
-            toExclusive: `${year + 1}-01-01`,
-            label: `${year} год`
-          }
-        }
-        if (/^\d{4}-\d{2}$/.test(String(monthFilter || ''))) {
-          return {
-            from: `${monthFilter}-01`,
-            toExclusive: rmsNextMonthStart(monthFilter),
-            label: monthFilter
-          }
-        }
-        return { from: '', toExclusive: '', label: 'Весь период' }
-      })()
+      const checkedPeriod = validateMonthRange(profitabilitySelection.from, profitabilitySelection.to)
+      if (!checkedPeriod.valid) throw new Error('Выберите корректный диапазон полных месяцев.')
+      const period = {
+        from: profitabilitySelection.from,
+        toExclusive: checkedPeriod.toExclusive,
+        label: `${profitabilitySelection.from} — ${profitabilitySelection.to}`
+      }
 
       const applyDateRange = (query, field) => {
         let next = query
@@ -6182,8 +6218,8 @@ function Reports({ t, permissions = [], isAdmin = false }) {
         let query = supabase
           .from(table)
           .select(table === 'daily_revenue_entries'
-            ? 'id,branch_id,revenue_date,cash_amount,bank_amount,wolt_amount,comment'
-            : 'branch_id,revenue_date,cash_amount,bank_amount,wolt_amount'
+            ? 'id,source,external_id,branch_id,revenue_date,cash_amount,bank_amount,wolt_amount,comment'
+            : 'id,source,external_id,branch_id,revenue_date,cash_amount,bank_amount,wolt_amount,comment'
           )
           .is('deleted_at', null)
         query = applyDateRange(query, 'revenue_date')
@@ -6197,16 +6233,16 @@ function Reports({ t, permissions = [], isAdmin = false }) {
         revenueSource = 'daily_revenue'
       }
 
-      const dailyExpenseRows = await fetchPaged((from, to) => {
+      const rawDailyExpenseRows = await fetchPaged((from, to) => {
         let query = supabase
           .from('daily_expenses')
-          .select('id,branch_id,expense_date,amount,comment,custom_category,expense_categories(name)')
+          .select('id,branch_id,expense_date,amount,category_id,comment,custom_category,expense_categories(name)')
           .is('deleted_at', null)
         query = applyDateRange(query, 'expense_date')
         return query.order('expense_date', { ascending: true }).range(from, to)
       })
 
-      const supplierPurchases = await fetchPaged((from, to) => {
+      const rawSupplierPurchases = await fetchPaged((from, to) => {
         let query = supabase
           .from('supplier_purchases')
           .select('id,supplier_id,branch_id,purchase_date,invoice_number,total_amount,comment,deleted_at,suppliers(name)')
@@ -6242,7 +6278,39 @@ function Reports({ t, permissions = [], isAdmin = false }) {
       const enabledServiceBranchIds = new Set((branches || []).filter(branch => branch.service_charge_enabled).map(branch => String(branch.id)))
       const serviceRows = (serviceResult?.error ? [] : (serviceResult?.data || []))
         .filter(row => enabledServiceBranchIds.has(String(row.branch_id)))
-      const taxSettings = await readRmsAppSetting(RMS_BRANCH_TAX_RATE_SETTING, {})
+      const [taxSettings, bankCommissionSetting] = await Promise.all([
+        readRmsAppSetting(RMS_BRANCH_TAX_RATE_SETTING, {}),
+        readRmsAppSetting(RMS_BANK_COMMISSION_RATE_SETTING, RMS_DEFAULT_BANK_COMMISSION_RATE)
+      ])
+      const bankCommissionRate = rmsBankCommissionRate(bankCommissionSetting)
+
+      const isAuditedMonth = date => String(date || '').slice(0, 7) >= '2026-01' && String(date || '').slice(0, 7) <= '2026-09'
+      const hasAuditedMonths = period.from < '2026-10-01' && period.toExclusive > '2026-01-01'
+      const mixedBasis = hasAuditedMonths && (period.from < '2026-01-01' || period.toExclusive > '2026-10-01')
+      const reviewedInputs = { revenueRows, dailyExpenseRows: rawDailyExpenseRows, supplierPurchases: rawSupplierPurchases }
+      const componentRecords = hasAuditedMonths ? await readComponentRecords(supabase, period.from < '2026-01-01' ? '2026-01-01' : period.from, period.toExclusive > '2026-10-01' ? '2026-10-01' : period.toExclusive) : []
+      const reviewed = await resolveComponentRecords(componentRecords, reviewedInputs)
+      const adjusted = buildReviewedAdjustments(reviewed.validated, reviewedInputs)
+      const dailyExpenseRows = adjusted.dailyExpenseRows
+      const supplierPurchases = adjusted.supplierPurchases
+      const bankEvidence = await resolveBankEvidence(componentRecords, reviewedInputs, bankCommissionRate)
+      // Validate protected evidence against raw records before applying report-only exclusions.
+      revenueRows = adjusted.revenueRows
+      const monthlyBasis = buildMonthlyAllocationBasis(revenueRows.filter(row => isAuditedMonth(row.revenue_date)), row => {
+        const bank = row.bank_amount == null || String(row.bank_amount).trim() === '' ? NaN : Number(row.bank_amount)
+        if (bank === 0) return { verified: true, grossBank: 0, netBank: 0 }
+        const marker = rmsReportBankBasis(row)
+        return marker ? { verified: true, grossBank: bank, netBank: bank * (1 - bankCommissionRate / 100) } : bankEvidence.byId.get(String(row.id)) || null
+      })
+      const coverageIssues = [...reviewed.held, ...adjusted.held, ...monthlyBasis.issues, ...bankEvidence.issues, ...await resolveCoverageManifests(componentRecords, reviewedInputs, period.from, period.toExclusive)]
+      for (const bucket of monthlyBasis.months.values()) if (!bucket.complete || !(bucket.networkAllocationRevenue > 0)) coverageIssues.push({month: bucket.month, reason: 'incomplete-network-allocation-basis', severity: 'blocking_runtime_basis'})
+      for (const date of [...supplierPurchases.map(r => r.purchase_date), ...salaryPeriods.map(r => r.salary_month)]) if (isAuditedMonth(date) && !monthlyBasis.months.has(String(date || '').slice(0, 7))) coverageIssues.push({month: String(date || '').slice(0, 7), reason: 'missing-network-allocation-basis', severity: 'blocking_runtime_basis'})
+      const monthlyShare = (date, branchId) => monthlyBasis.months.get(String(date || '').slice(0, 7))?.shares.get(String(branchId))
+      const allocationShare = (date, branchId) => {
+        if (!isAuditedMonth(date)) return parseNum(revenueShareMap.get(String(branchId)))
+        const share = monthlyShare(date, branchId)
+        return Number.isFinite(share) ? share : 0
+      }
 
       const employeeById = new Map(employeeRows.map(row => [String(row.id), row]))
       const branchNameById = new Map((branches || []).map(row => [String(row.id), row.name]))
@@ -6257,7 +6325,15 @@ function Reports({ t, permissions = [], isAdmin = false }) {
           bank: 0,
           wolt: 0,
           revenue: 0,
+          bankCommission: 0,
+          bankCommissionDetails: [],
           days: new Set()
+        }
+        const reviewedBank = bankEvidence.byId.get(String(row.id))
+        const bankFee = reviewedBank?.feeExpenseAllowed === false ? null : rmsReportBankCommissionDetail(row, bankCommissionRate) || (reviewedBank?.feeExpenseAllowed ? {id: `bank-commission-${row.id}`, date: row.revenue_date, description: 'Комиссия банка за безнал', comment: 'По проверенной базе банковской выручки', amount: reviewedBank.grossBank * bankCommissionRate / 100} : null)
+        if (bankFee) {
+          current.bankCommission += bankFee.amount
+          current.bankCommissionDetails.push(bankFee)
         }
         current.cash += parseNum(row.cash_amount)
         current.bank += parseNum(row.bank_amount)
@@ -6273,7 +6349,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
         revenueShareMap.set(id, networkRevenue > 0 ? parseNum(row.revenue) / networkRevenue : 0)
       })
 
-      const normalizedExpenseName = row => financeExpenseNameFromRow(row)
+      const normalizedExpenseName = row => ({utilities: 'Коммунальные', household: 'Хозяйственные товары', partner_fee: 'Partner Fee', other: 'Прочее'}[row.reviewedCategory] || financeExpenseNameFromRow(row))
       const isServiceChargeLike = value => {
         const name = normalizeExpenseText(value)
         return name.includes('service charge') && (name.includes('персонал') || name.includes('staff'))
@@ -6302,7 +6378,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
         if (isServiceChargeLike(name)) return
 
         const amount = parseNum(row.amount)
-        const group = rmsFinanceExpenseGroupName(name)
+        const group = row.reviewedCategory || rmsFinanceExpenseGroupName(name)
         const current = expensesByBranch.get(id) || {
           operating: 0,
           manualFood: 0,
@@ -6446,10 +6522,11 @@ function Reports({ t, permissions = [], isAdmin = false }) {
         }
 
         const share = parseNum(revenueShareMap.get(id))
-        const supplierFoodCost = supplierPurchases.reduce((sum, purchase) => sum + parseNum(purchase.total_amount) * share, 0)
+        const supplierFoodCost = supplierPurchases.filter(p => !p.reviewedCategory || p.reviewedCategory === 'food_market').reduce((sum, purchase) => sum + parseNum(purchase.total_amount) * allocationShare(purchase.purchase_date, id), 0)
+        const supplierHouseholdCost = supplierPurchases.filter(p => p.reviewedCategory === 'household').reduce((sum, purchase) => sum + parseNum(purchase.total_amount) * allocationShare(purchase.purchase_date, id), 0)
         const foodCost = parseNum(expenseData.manualFood) + supplierFoodCost
         const directSalary = parseNum(directSalaryByBranch.get(id))
-        const managerSalary = managerSalaryPool * share
+        const managerSalary = managerSalaryDetails.reduce((sum, detail) => sum + parseNum(detail.amount) * allocationShare(detail.date, id), 0)
         const salary = directSalary + managerSalary
         const serviceCost = parseNum(serviceByBranch.get(id))
         const configuredTaxRate = parseNum(taxSettings?.[id])
@@ -6459,24 +6536,30 @@ function Reports({ t, permissions = [], isAdmin = false }) {
         // Отдельная vergi-оплата не уменьшает прибыль повторно; налог с оборота
         // уже учтён ниже по установленной ставке.
         const tax = taxCalculated
-        const totalExpenses = parseNum(expenseData.operating) + supplierFoodCost + salary + serviceCost + tax
+        const bankCommission = parseNum(revenueData.bankCommission)
+        const totalExpenses = parseNum(expenseData.operating) + supplierFoodCost + supplierHouseholdCost + salary + serviceCost + tax + bankCommission
         const net = parseNum(revenueData.revenue) - totalExpenses
         const activeDays = revenueData.days?.size || 0
-        const supplierDetails = supplierPurchases.map(purchase => ({
+        const allocatedSupplierDetails = supplierPurchases.map(purchase => ({
             id: `supplier-allocated-${purchase.id}-${id}`,
             date: purchase.purchase_date,
             description: purchase.suppliers?.name || 'Поставщик',
-            comment: [purchase.invoice_number ? `Фактура: ${purchase.invoice_number}` : '', purchase.comment || '', `Распределено по доле выручки ${pct(share * 100)}; исходная привязка филиала не используется для P&L`].filter(Boolean).join(' · '),
-            amount: parseNum(purchase.total_amount) * share,
+            comment: [purchase.invoice_number ? `Фактура: ${purchase.invoice_number}` : '', purchase.comment || '', isAuditedMonth(purchase.purchase_date) ? `Распределено по месячной базе наличные + банк после подтверждённой комиссии + Wolt: ${pct(allocationShare(purchase.purchase_date, id) * 100)}` : `Предварительно: прежняя доля выручки выбранного периода ${pct(share * 100)}`].filter(Boolean).join(' · '),
+            amount: parseNum(purchase.total_amount) * allocationShare(purchase.purchase_date, id),
+            category: purchase.reviewedCategory || 'food_market',
             allocation_status: 'preliminary'
           }))
           .filter(detail => detail.amount !== 0)
+        const supplierDetails = allocatedSupplierDetails.filter(detail => detail.category === 'food_market')
+        const householdDetails = allocatedSupplierDetails.filter(detail => detail.category === 'household')
         const salaryDetails = [
           ...(salaryDetailsByBranch.get(id) || []),
-          ...managerSalaryDetails.map(detail => ({ ...detail, id: `${detail.id}-${id}`, amount: parseNum(detail.amount) * share }))
+          ...managerSalaryDetails.map(detail => ({ ...detail, id: `${detail.id}-${id}`, amount: parseNum(detail.amount) * allocationShare(detail.date, id) }))
         ].filter(detail => detail.amount !== 0)
         const expenseCategories = [
+          ...(bankCommission ? [{ key: 'bank-commission', name: 'Комиссия банка за безнал', amount: bankCommission, transactions: revenueData.bankCommissionDetails.length, details: revenueData.bankCommissionDetails }] : []),
           ...(supplierFoodCost ? [{ key: 'supplier-food-cost', name: 'Поставщики / Food Cost', amount: supplierFoodCost, transactions: supplierDetails.length, details: supplierDetails }] : []),
+          ...(supplierHouseholdCost ? [{ key: 'supplier-household', name: 'Хозяйственные товары / поставщики', amount: supplierHouseholdCost, transactions: householdDetails.length, details: householdDetails }] : []),
           ...Array.from(expenseData.categories.values()).map(category => ({
             key: `daily-${normalizeExpenseText(category.name)}`,
             name: category.name,
@@ -6511,7 +6594,8 @@ function Reports({ t, permissions = [], isAdmin = false }) {
           woltRevenue: parseNum(revenueData.wolt),
           revenue: parseNum(revenueData.revenue),
           revenueShare: share * 100,
-          operatingExpenses: parseNum(expenseData.operating),
+          operatingExpenses: parseNum(expenseData.operating) + bankCommission,
+          bankCommission,
           supplierFoodCost,
           manualFoodCost: parseNum(expenseData.manualFood),
           foodCost,
@@ -6527,7 +6611,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
           rent: parseNum(expenseData.rent),
           utilities: parseNum(expenseData.utilities),
           packaging: parseNum(expenseData.packaging),
-          household: parseNum(expenseData.household),
+          household: parseNum(expenseData.household) + supplierHouseholdCost,
           marketing: parseNum(expenseData.marketing),
           maintenance: parseNum(expenseData.maintenance),
           other: parseNum(expenseData.other),
@@ -6545,11 +6629,10 @@ function Reports({ t, permissions = [], isAdmin = false }) {
           categories: Array.from(expenseData.categories.values()).sort((a, b) => parseNum(b.amount) - parseNum(a.amount)),
           expenseCategories
         }
-      }).filter(row => row.revenue || row.totalExpenses || row.salary || row.foodCost)
+      }).filter(row => row.activeDays || row.revenue || row.totalExpenses || row.salary || row.foodCost)
 
-      const visibleRows = branchFilter === 'all'
-        ? rows
-        : rows.filter(row => String(row.id) === String(branchFilter))
+      const selectedProfitabilityIds = profitabilitySelection.branchIds == null ? null : new Set(profitabilitySelection.branchIds.map(String))
+      const visibleRows = selectedProfitabilityIds == null ? rows : rows.filter(row => selectedProfitabilityIds.has(String(row.id)))
 
       visibleRows.sort((a, b) => parseNum(b.net) - parseNum(a.net))
 
@@ -6563,6 +6646,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
         acc.serviceCost += parseNum(row.serviceCost)
         acc.tax += parseNum(row.tax)
         acc.woltCommission += parseNum(row.woltCommission)
+        acc.bankCommission += parseNum(row.bankCommission)
         acc.totalExpenses += parseNum(row.totalExpenses)
         acc.net += parseNum(row.net)
         acc.activeDays = Math.max(acc.activeDays, parseNum(row.activeDays))
@@ -6572,15 +6656,18 @@ function Reports({ t, permissions = [], isAdmin = false }) {
       totals.margin = totals.revenue ? totals.net / totals.revenue * 100 : 0
       totals.branches = visibleRows.length
 
+      if (requestId !== profitabilityRequestId.current) return
       setRmsProfitabilityReport({
         loading: false,
         error: '',
         rows: visibleRows,
         totals,
         periodLabel: period.label,
+        summaryInputs: { period, revenueRows, coverageIssues, periodStatuses: reviewed.periodStatuses, mixedBasis, sourceChecks: reviewed.validated.map(r => ({month:r.source.month,readAt:r.source.source?.readAt})) },
         source: `${revenueSource} + daily_expenses + supplier_purchases + salary_periods`
       })
     } catch (error) {
+      if (requestId !== profitabilityRequestId.current) return
       setRmsProfitabilityReport({
         loading: false,
         error: error?.message || 'Не удалось загрузить отчёт по рентабельности',
@@ -8942,7 +9029,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
   const SalesTableBlock = <div className="card span-2">
     <div className="card-head"><div><h3>Общая таблица продаж</h3><p className="hint">В общем режиме продажи агрегируются по всей сети без разбивки по филиалам. Себестоимость считается только из техкарт. Если техкарта пока не заполнена, себестоимость остаётся 0.</p></div></div>
     <div className="form-grid compact">
-      <label><span>Месяц</span><select value={monthFilter} onChange={e => { setMonthFilter(e.target.value); setExpandedSalesRows(false); setSalesRowsPage(1) }}><option value="all">Все месяцы</option>{monthOptions.map(m => <option key={m} value={m}>{m}</option>)}</select></label>
+      <label><span>Месяц</span><ReportMonthPeriod value={monthFilter} allowYear={false} lang={t('language_label') === 'İnterfeys dili' ? 'az' : 'ru'} onChange={value => { setMonthFilter(value); setExpandedSalesRows(false); setSalesRowsPage(1) }} /></label>
       <label><span>Филиал</span><select value={branchFilter} onChange={e => { setBranchFilter(e.target.value); setExpandedSalesRows(false); setSalesRowsPage(1) }}><option value="all">Все филиалы</option>{branchOptions.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}</select></label>
       <label><span>Тип</span><select value={departmentFilter} onChange={e => { setDepartmentFilter(e.target.value); setExpandedSalesRows(false); setSalesRowsPage(1) }}><option value="all">Бар + Кухня</option><option value="Бар">Бар</option><option value="Кухня">Кухня</option></select></label>
       <label><span>Умный поиск по блюдам и напиткам</span><input value={salesTableSearch} onChange={e => { setSalesTableSearch(e.target.value); setExpandedSalesRows(false); setSalesRowsPage(1) }} placeholder="burger, кофе, чай, салат..." /></label>
@@ -9798,7 +9885,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
     </section>}
 
     {!rmsProfitabilityReport.loading && !rmsProfitabilityReport.error && <div className="reports-v417-card">
-      <div className="reports-v417-head"><div><h3>Детальная рентабельность филиалов</h3><p>Все накладные поставщиков, включая Zaur Bazar, распределяются между филиалами по доле выручки. Ручная статья «Базар» исключена. Service charge показан справочно и не входит в расходы и прибыль. Налог с оборота берётся из настроек филиала.</p></div><span className="reports-v43-badge">{profitabilityRows.length}</span></div>
+      <div className="reports-v417-head"><div><h3>Детальная рентабельность филиалов</h3><p>Все накладные поставщиков, включая Zaur Bazar, распределяются между филиалами по доле выручки. Ручная статья «Базар» исключена. Service charge показан справочно и не входит в расходы и прибыль. Налог с оборота берётся из настроек филиала. Для импортов с подтверждённой валовой базой банковская комиссия показана отдельным расходом; налог и распределение затрат считаются от валовой выручки.</p></div><span className="reports-v43-badge">{profitabilityRows.length}</span></div>
       <div className="reports-v417-table-wrap"><table className="reports-v417-table">
         <thead><tr><th>Филиал</th><th>Выручка</th><th>Wolt</th><th>Food Cost</th><th>Зарплаты</th><th>Опер. расходы</th><th>Service charge</th><th>Налог с оборота</th><th>Все расходы</th><th>Результат</th><th>Маржа</th><th>На день</th><th></th></tr></thead>
         <tbody>

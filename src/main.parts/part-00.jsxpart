@@ -1,3 +1,10 @@
+import {buildMonthlyAllocationBasis} from './profitability-allocation.mjs'
+import {readComponentRecords, resolveComponentRecords, resolveCoverageManifests, resolveBankEvidence} from './profitability-reviewed-components.mjs'
+import {buildReviewedAdjustments} from './profitability-adjustments.mjs'
+import ProfitabilityReferenceReport from './ProfitabilityReferenceReport.jsx'
+import RangeBranchFilters from './RangeBranchFilters.jsx'
+import { defaultMonthRange, validateMonthRange } from './profitability-range.mjs'
+import { ReportMonthPeriod } from './MonthYearPicker.jsx'
 
 
 /* v389 reports products: global unit helpers for Reports -> Products */

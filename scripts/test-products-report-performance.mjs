@@ -19,7 +19,12 @@ const sourceRows=Array.from({length:1204},(_,i)=>{
     supplier_purchase_items:[{id:'item-'+i,product_id:'product-'+product,quantity,unit:i%17===0?'g':'kg',unit_price:price,total_amount:i%7===0?0:quantity*price,supplier_products:{name:'Synthetic product '+product,category:'Category '+product%4,base_unit:'kg'}},
       ...(i%13===0?[{id:'zero-'+i,product_id:'zero',quantity:0,unit:'pcs',unit_price:0,total_amount:0,supplier_products:{name:'Zero line',base_unit:'pcs'}}]:[])]}
 }).sort((a,b)=>b.purchase_date.localeCompare(a.purchase_date)||b.created_at.localeCompare(a.created_at)||a.id.localeCompare(b.id))
-const unitHelpers=fs.readFileSync('src/main.parts/part-00.jsxpart','utf8').split('// v257')[0]
+const unitSource=fs.readFileSync('src/main.parts/part-00.jsxpart','utf8')
+const unitStart=unitSource.indexOf('function supplierProductUnitMultiplier(')
+assert.ok(unitStart>=0,'Products unit helpers must remain available')
+// Finance/UI imports may precede these helpers; the VM exercises only the
+// unchanged Products helpers, not unrelated application module imports.
+const unitHelpers=unitSource.slice(unitStart).split('// v257')[0]
 function loadCode(source){const begin=source.indexOf('  const beginRmsProductsReportProgress');return source.slice(begin,source.indexOf('\n  useEffect(() => {\n    if (!branches.length) return',begin))}
 function harness(source,{scope='all',month='all',from='',to='',mode='period',data=sourceRows,rpcFails=false,directFails=false,mainProjectionFails=false,failDirectAfter=Infinity,accessDenied=false,rpcStatus=0,directStatus=0,workspaceStatus=0,lag=0}={},shared){
   const state=shared||{report:{},progress:{},request:{current:0},timer:{current:null},timers:new Map(),timerCounter:0,writes:[]}
