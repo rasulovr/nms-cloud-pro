@@ -10,7 +10,7 @@ const fields={
  supplierPurchases:['id','supplier_id','branch_id','purchase_date','invoice_number','total_amount','comment','deleted_at','suppliers']
 }
 const numericFields=new Set(['cash_amount','bank_amount','wolt_amount','amount','total_amount'])
-const normalizeField=(key,value)=>{if(value==null)return null;if(numericFields.has(key)){const n=Number(value);if(value===''||!Number.isFinite(n))throw Error('Invalid numeric fingerprint field: '+key);return n}return value}
+const normalizeField=(key,value,row)=>{if(key==='expense_categories'&&value===null&&row?.category_id===null)return {name:null};if(value==null)return null;if(numericFields.has(key)){const n=Number(value);if(value===''||!Number.isFinite(n))throw Error('Invalid numeric fingerprint field: '+key);return n}return value}
 const canonical=value=>Array.isArray(value)?value.map(canonical).sort((a,b)=>JSON.stringify(a)<JSON.stringify(b)?-1:JSON.stringify(a)>JSON.stringify(b)?1:0):value&&typeof value==='object'?Object.fromEntries(Object.keys(value).sort().map(k=>[k,canonical(value[k])])):value
 export async function componentInputsFingerprint(input,month){
  const selected={}
@@ -18,7 +18,7 @@ export async function componentInputsFingerprint(input,month){
   if(!Array.isArray(input[key]))throw Error('Incomplete component inputs: '+key)
   const rows=input[key].filter(r=>String(r[date]||'').slice(0,7)===month)
   if(rows.some(r=>!r.id)||new Set(rows.map(r=>r.id)).size!==rows.length)throw Error('Missing or duplicate input identity: '+key)
-  selected[key]=rows.map(row=>Object.fromEntries(fields[key].map(k=>[k,normalizeField(k,row[k])])))
+  selected[key]=rows.map(row=>Object.fromEntries(fields[key].map(k=>[k,normalizeField(k,row[k],row)])))
  }
  const bytes=new TextEncoder().encode(JSON.stringify(canonical(selected)))
  return [...new Uint8Array(await globalThis.crypto.subtle.digest('SHA-256',bytes))].map(b=>b.toString(16).padStart(2,'0')).join('')
@@ -81,7 +81,7 @@ export async function resolveComponentRecords(records,input){
   if(!target||target.inputsFingerprint!==await componentInputsFingerprint(input,s.month)||!Array.isArray(target.expectedRevenueIds)||target.expectedRevenueIds.length||actualRevenue.length||!Array.isArray(target.expenseIds)||!Array.isArray(target.expectedExpenseRows)||new Set(target.expenseIds).size!==target.expenseIds.length||target.expenseIds.length!==actualExpenses.length||target.expectedExpenseRows.length!==actualExpenses.length||!Number.isFinite(target.disclosedExpenseTotal)){fail('changed-closed-period-inputs');continue}
   const expected=new Map(target.expectedExpenseRows.map(r=>[String(r.id),r]))
   const knownAmount=r=>r.amount!=null&&String(r.amount).trim()!==''&&Number.isFinite(Number(r.amount))
-  const exact=actualExpenses.every(knownAmount)&&target.expectedExpenseRows.every(knownAmount)&&expected.size===actualExpenses.length&&actualExpenses.every(r=>target.expenseIds.includes(r.id)&&expected.has(String(r.id))&&fields.dailyExpenseRows.every(k=>JSON.stringify(canonical(normalizeField(k,r[k])))===JSON.stringify(canonical(normalizeField(k,expected.get(String(r.id))[k])))))
+  const exact=actualExpenses.every(knownAmount)&&target.expectedExpenseRows.every(knownAmount)&&expected.size===actualExpenses.length&&actualExpenses.every(r=>target.expenseIds.includes(r.id)&&expected.has(String(r.id))&&fields.dailyExpenseRows.every(k=>JSON.stringify(canonical(normalizeField(k,r[k],r)))===JSON.stringify(canonical(normalizeField(k,expected.get(String(r.id))[k],expected.get(String(r.id)))))))
   if(!exact||Math.abs(actualExpenses.reduce((sum,r)=>sum+Number(r.amount),0)-target.disclosedExpenseTotal)>1e-8){fail('closed-period-expense-evidence-mismatch');continue}
   periodStatuses.push({...s,snapshotId:record.id})
  }
