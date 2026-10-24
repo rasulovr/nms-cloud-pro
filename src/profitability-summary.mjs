@@ -18,6 +18,7 @@ export function buildProfitabilitySummary(report = {}) {
       cursor = `${month === 12 ? year + 1 : year}-${String(month === 12 ? 1 : month + 1).padStart(2, '0')}`
     }
   }
+  const mixedBasisBlocksTotals = !!report.summaryInputs?.mixedBasis && !(report.summaryInputs?.monthlyAllocationIsolated === true && from >= '2026-01')
   const keys = [...months].filter(key => (!from || key >= from) && (!to || key < to)).sort()
   const branches = rows.map(source => {
     const monthly = keys.map(month => ({month, revenue:0, expenses:0, net:0, revenueRecords:0, categories:{}}))
@@ -73,8 +74,8 @@ export function buildProfitabilitySummary(report = {}) {
     period.operatingExcluded=operatingMonths.length===0&&monthly.some(row=>row.operatingExcluded)
     period.hasClosedPeriods=monthly.some(row=>row.operatingExcluded)
     if(period.hasClosedPeriods){period.expenses-=period.disclosedExpenses;period.net=period.revenue-period.expenses}
-    period.profitAvailable = !report.summaryInputs?.mixedBasis && !issues.length && operatingMonths.length>0 && operatingMonths.every(row => row.profitAvailable && row.revenueRecords > 0)
-    period.expensesAvailable = !report.summaryInputs?.mixedBasis && !issues.length && operatingMonths.every(row => row.expensesAvailable)
+    period.profitAvailable = !mixedBasisBlocksTotals && !issues.length && operatingMonths.length>0 && operatingMonths.every(row => row.profitAvailable && row.revenueRecords > 0)
+    period.expensesAvailable = !mixedBasisBlocksTotals && !issues.length && operatingMonths.every(row => row.expensesAvailable)
     if (!period.profitAvailable) period.net = null
     period.includingDisclosedExpenses=period.profitAvailable?period.net-period.disclosedExpenses:null
     return {id:source.id,name:source.name,period,monthly,categories,issues,coverageIssues,reconciled:!issues.length}
@@ -98,5 +99,5 @@ export function buildProfitabilitySummary(report = {}) {
   total.expensesAvailable = branches.length > 0 && branches.every(row => row.period.expensesAvailable)
   if (!total.profitAvailable) total.net = null
   total.includingDisclosedExpenses=total.profitAvailable?total.net-total.disclosedExpenses:null
-  return {branches,total,monthly,mixedBasis:!!report.summaryInputs?.mixedBasis,sourceChecks:report.summaryInputs?.sourceChecks||[],months:keys,reconciled:branches.length>0 && branches.every(row=>row.reconciled)}
+  return {branches,total,monthly,mixedBasis:!!report.summaryInputs?.mixedBasis,mixedBasisBlocksTotals,sourceChecks:report.summaryInputs?.sourceChecks||[],months:keys,reconciled:branches.length>0 && branches.every(row=>row.reconciled)}
 }
