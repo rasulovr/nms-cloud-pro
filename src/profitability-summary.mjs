@@ -65,7 +65,7 @@ export function buildProfitabilitySummary(report = {}) {
         const expected=status.target.expectedExpenseRows.filter(d=>amount(d.amount)!==0),expectedById=new Map(expected.map(d=>[String(d.id),d]))
         const exact=!issues.length&&row.revenueRecords===0&&close(row.expenses,status.target.disclosedExpenseTotal)&&details.length===expected.length&&new Set(details.map(d=>String(d.id))).size===details.length&&details.every(d=>expectedById.has(String(d.id))&&close(amount(d.amount),amount(expectedById.get(String(d.id)).amount)))
         if(!exact){issues.push({reason:'closed-period-computed-costs-mismatch',month:row.month});row.profitAvailable=false;row.expensesAvailable=false;row.net=null}
-        else if(row.profitAvailable){row.operatingExcluded=true;row.disclosedExpenses=row.expenses;row.disclosedDetails=expected;row.revenueObservation='absent_not_zero';row.net=null;row.profitAvailable=false}
+        else if(row.profitAvailable){row.operatingExcluded=true;row.disclosedExpenses=row.expenses;row.disclosedDetails=expected;row.revenueObservation='absent_not_zero';row.disclosureOmitted=status.presentation?.policy==='omit_closed_cost_disclosure';row.net=null;row.profitAvailable=false}
       }
     })
     monthly.forEach(row=>{row.includingDisclosedExpenses=row.profitAvailable&&row.revenueRecords>0?row.net:null})
@@ -78,14 +78,16 @@ export function buildProfitabilitySummary(report = {}) {
     period.expensesAvailable = !mixedBasisBlocksTotals && !issues.length && operatingMonths.every(row => row.expensesAvailable)
     if (!period.profitAvailable) period.net = null
     period.includingDisclosedExpenses=period.profitAvailable?period.net-period.disclosedExpenses:null
-    return {id:source.id,name:source.name,period,monthly,categories,issues,coverageIssues,reconciled:!issues.length}
+    const omittedIds=new Set(monthly.filter(row=>row.disclosureOmitted).flatMap(row=>row.disclosedDetails.map(detail=>String(detail.id))))
+    const displayedCategories=omittedIds.size?categories.map(category=>{const removed=(category.details||[]).filter(detail=>omittedIds.has(String(detail.id)));return {...category,amount:category.amount-removed.reduce((sum,detail)=>sum+amount(detail.amount),0),details:(category.details||[]).filter(detail=>!omittedIds.has(String(detail.id)))}}).filter(category=>category.amount!==0||category.details.length):categories
+    return {id:source.id,name:source.name,period,monthly,categories:displayedCategories,issues,coverageIssues,reconciled:!issues.length}
   })
   const activeBranches=branches.filter(row=>!row.period.operatingExcluded)
   const total = branches.reduce((sum,row)=>({revenue:sum.revenue+row.period.revenue,expenses:sum.expenses+row.period.expenses,net:sum.net+(row.period.net || 0),disclosedExpenses:sum.disclosedExpenses+row.period.disclosedExpenses,hasClosedPeriods:sum.hasClosedPeriods||row.period.hasClosedPeriods}),{revenue:0,expenses:0,net:0,disclosedExpenses:0,hasClosedPeriods:false})
   const monthly=keys.map(month=>{
     const sum={month,revenue:0,expenses:0,net:0,profitAvailable:true,expensesAvailable:true,coverageIssues:[],revenueRecords:0,hasExpenseDetails:false,revenueComplete:true,disclosedExpenses:0,closedPeriods:[],operatingCount:0}
     for(const branch of branches){const row=branch.monthly.find(r=>r.month===month);sum.coverageIssues.push(...(row.coverageIssues||[]))
-      if(row.operatingExcluded){sum.disclosedExpenses+=row.disclosedExpenses;sum.closedPeriods.push({branchId:branch.id,name:branch.name,month,expenses:row.disclosedExpenses});continue}
+      if(row.operatingExcluded){sum.disclosedExpenses+=row.disclosedExpenses;sum.closedPeriods.push({branchId:branch.id,name:branch.name,month,expenses:row.disclosedExpenses,disclosureOmitted:row.disclosureOmitted});continue}
       sum.operatingCount++;sum.revenue+=row.revenue;sum.expenses+=row.expenses;sum.net+=row.net||0;sum.profitAvailable&&=row.profitAvailable;sum.expensesAvailable&&=row.expensesAvailable;sum.revenueRecords+=row.revenueRecords;sum.hasExpenseDetails||=Object.keys(row.categories).some(key=>key!=='tax');sum.revenueComplete&&=row.revenueRecords>0
     }
     sum.hasClosedPeriods=sum.closedPeriods.length>0;sum.operatingExcluded=sum.operatingCount===0&&sum.hasClosedPeriods

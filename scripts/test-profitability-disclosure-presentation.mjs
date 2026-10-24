@@ -1,0 +1,15 @@
+import assert from 'node:assert/strict'
+import {componentInputsFingerprint,resolveComponentRecords} from '../src/profitability-reviewed-components.mjs'
+import {buildProfitabilitySummary} from '../src/profitability-summary.mjs'
+const row={id:'expense-a',branch_id:'branch-a',expense_date:'2026-09-03',amount:50,category_id:null,comment:null,custom_category:null,expense_categories:null}
+const input={revenueRows:[],dailyExpenseRows:[row],supplierPurchases:[]}
+const target={inputsFingerprint:await componentInputsFingerprint(input,'2026-09'),expectedRevenueIds:[],expenseIds:[row.id],expectedExpenseRows:[row],disclosedExpenseTotal:50}
+const record={id:'status-a',snapshot_type:'reviewed_month_components_v1',snapshot_scope:'profitability-components:2026-09:branch-status:branch-a',snapshot_data:{kind:'branch_period_status',version:2,month:'2026-09',branchId:'branch-a',status:'verified',operatingStatus:'closed_nonoperating',revenueObservation:'absent_not_zero',comparisonPolicy:'exclude_operating_disclose_costs',approvalRef:'original-approval',evidence:{messageIds:['closed'],confirmedAt:'2026-10-01'},target}}
+const base=await resolveComponentRecords([record],input);assert.equal(base.periodStatuses.length,1)
+record.snapshot_data.presentation={policy:'omit_closed_cost_disclosure',approvalRef:'presentation-approval',expectedExpenseIds:[row.id],expectedExpenseTotal:50}
+const resolved=await resolveComponentRecords([record],input);assert.equal(resolved.periodStatuses.length,1)
+const report={rows:[{id:'branch-a',name:'A',revenue:0,totalExpenses:50,net:-50,taxRate:0,expenseCategories:[{key:'other',name:'Other',amount:50,details:[{id:row.id,date:row.expense_date,amount:50}]}]}],summaryInputs:{period:{from:'2026-09-01',toExclusive:'2026-10-01'},revenueRows:[],periodStatuses:base.periodStatuses}}
+const before=buildProfitabilitySummary(report);report.summaryInputs.periodStatuses=resolved.periodStatuses;const after=buildProfitabilitySummary(report);assert.deepEqual(after.total,before.total);assert.deepEqual(after.branches[0].period,before.branches[0].period);assert.equal(after.branches[0].monthly[0].disclosureOmitted,true);assert.equal(after.branches[0].categories.length,0);assert.equal(before.branches[0].categories[0].amount,50);assert.equal(after.branches[0].monthly[0].expenses,50)
+for(const change of [{approvalRef:''},{expectedExpenseIds:['other']},{expectedExpenseIds:['expense-a','expense-a']},{expectedExpenseTotal:51},{policy:'other'}]){const bad=structuredClone(record);Object.assign(bad.snapshot_data.presentation,change);const r=await resolveComponentRecords([bad],input);assert.equal(r.periodStatuses.length,0);assert(r.held.some(x=>x.reason==='invalid-closed-period-presentation'))}
+const changed=structuredClone(input);changed.dailyExpenseRows[0].amount=51;assert.equal((await resolveComponentRecords([record],changed)).periodStatuses.length,0)
+console.log('PASS disclosure presentation: exact approved proof, unchanged accounting, original disclosure retained without policy, invalid/stale guards')
