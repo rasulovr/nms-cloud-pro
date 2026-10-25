@@ -16,7 +16,7 @@ const frozen=JSON.stringify(model)
 for(const lang of ['ru','az']){
  const html=renderToStaticMarkup(React.createElement(ProfitabilityReferenceDocument,{model,periodLabel:'test period',lang}))
  const label=lang==='ru'?'Предварительно':'İlkin'
- assert.equal((html.match(/class="reference-preliminary-badge"/g)||[]).length,2)
+ assert.equal((html.match(/class="reference-preliminary-badge"/g)||[]).length,8)
  assert.equal((html.match(/class="reference-chart-status"/g)||[]).length,2)
  assert.equal((html.match(/class="reference-preliminary-inline"/g)||[]).length,2)
  assert.match(html,new RegExp(label));assert.match(html,/10\.26\*/);assert.doesNotMatch(html,/09\.26\*/)
@@ -27,6 +27,6 @@ for(const lang of ['ru','az']){
 assert.equal(JSON.stringify(model),frozen,'Rendering must not mutate financial model')
 const source=fs.readFileSync('src/ProfitabilityReferenceReport.jsx','utf8')
 assert.match(source,/renderToStaticMarkup\(<ProfitabilityReferenceDocument/,'Print must use same status-aware document')
-const onlyHistorical={...model,branches:[{...section,monthly:[historical]}],monthly:[historical],mixedBasis:false}
+const verifiedPeriod={revenue:100,expenses:60,net:40,profitAvailable:true,expensesAvailable:true};const onlyHistorical={...model,total:verifiedPeriod,branches:[{...section,period:verifiedPeriod,monthly:[historical]}],monthly:[historical],mixedBasis:false}
 assert.doesNotMatch(renderToStaticMarkup(React.createElement(ProfitabilityReferenceDocument,{model:onlyHistorical})),/reference-preliminary-badge|reference-chart-status/)
 console.log('PASS preliminary UI: RU/AZ rows, chart markers, aggregate explanations, historical values, print renderer and nonmutation')
