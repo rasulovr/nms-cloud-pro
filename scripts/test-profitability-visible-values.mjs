@@ -36,5 +36,6 @@ for(const lang of ['ru','az']){
  assert.ok(html.indexOf('reference-table-scroll')<html.indexOf('reference-preliminary-note'))
  assert.equal((html.match(/<caption>(Статьи расходов|Xərc maddələri)/g)||[]).length,3,'Network and branch expense details')
 }
+const taxReport={rows:[{id:'tax-only',name:'Tax only',revenue:100,totalExpenses:2,net:98,taxRate:2,expenseCategories:[{key:'tax',name:'Tax',amount:2,details:[]}]}],summaryInputs:{period:{from:'2026-09-01',toExclusive:'2026-10-01'},revenueRows:[{branch_id:'tax-only',revenue_date:'2026-09-01',cash_amount:100,bank_amount:0,wolt_amount:0}]}};const taxModel=buildProfitabilitySummary(taxReport);const taxHtml=renderToStaticMarkup(React.createElement(module.exports.ProfitabilityReferenceDocument,{model:taxModel}));assert.equal((taxHtml.match(/98,00 AZN/g)||[]).length,2,'Tax-only expense/result shown consistently for branch and network')
 assert.equal(JSON.stringify(model),frozen)
 console.log('PASS visible values: stale bank evidence, mixed months, network, branches, unchanged guards/model, missing revenue, closed periods, finite/null checks, RU/AZ, graphs and shared PDF renderer')
