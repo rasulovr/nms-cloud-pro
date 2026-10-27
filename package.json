@@ -1,6 +1,7 @@
 {
   "scripts": {
     "assemble": "node scripts/assemble-main.mjs",
+    "test:supplier-opening-performance": "node scripts/test-supplier-opening-performance.mjs",
     "test:dashboard-v416": "node scripts/test-dashboard-v416.mjs",
     "test:supplier-allocation-v421": "node scripts/test-supplier-revenue-allocation-v421.mjs",
     "test:service-charge-branches-v423": "node scripts/test-service-charge-branches-v423.mjs",
