@@ -5,12 +5,17 @@ const sql = fs.readFileSync(new URL('../src/rms_supplier_payment_idempotency_v43
 const duplicateSql = fs.readFileSync(new URL('../src/rms_supplier_payment_duplicate_guard_v436.sql', import.meta.url), 'utf8')
 
 const saveHandler = source.slice(source.indexOf('async function savePayment()'), source.indexOf('const purchaseTotal', source.indexOf('async function savePayment()')))
+const paymentSaveDisabled = [...source.matchAll(/disabled=\{([^}]+)\} onClick=\{savePayment\}/g)].map(match => match[1])
+const paymentButtonsStaySafe = paymentSaveDisabled.length === 2 && paymentSaveDisabled.every(expression => {
+  const disabled = new Function('paymentSaving', 'supplierDataState', `return (${expression})`)
+  return disabled(true, 'ready') && disabled(true, 'loading') && disabled(false, 'loading') && disabled(false, 'error') && !disabled(false, 'ready')
+})
 const checks = [
   ['payment form blocks a second in-flight save', saveHandler.includes('paymentSaveInFlightRef.current') && saveHandler.includes('setPaymentSaving(true)') && saveHandler.includes('setPaymentSaving(false)')],
   ['both payment paths use the idempotent RPC', (saveHandler.match(/rms_supplier_payment_create_idempotent/g) || []).length === 2],
   ['both payment paths send the same request key', (saveHandler.match(/p_request_key: requestKey/g) || []).length === 2],
   ['request key binds to the complete payment payload', saveHandler.includes('requestSignature') && saveHandler.includes('paymentRequestKeyRef.current')],
-  ['save buttons are disabled while the payment is pending', (source.match(/disabled={paymentSaving}/g) || []).length === 2],
+  ['save buttons are disabled while the payment is pending', paymentButtonsStaySafe],
   ['database serializes identical request retries', sql.includes('pg_advisory_xact_lock(hashtextextended(v_request_key, 0))')],
   ['database enforces unique request keys', sql.includes('ux_supplier_payments_request_key')],
   ['database blocks identical active payloads across request keys', duplicateSql.includes('ux_supplier_payments_active_signature') && duplicateSql.includes('supplier-payment-signature:')],

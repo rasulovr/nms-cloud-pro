@@ -9755,6 +9755,11 @@ function Suppliers({ t, isAdmin = false }) {
   const branches = useBranches()
   const [legalEntities, setLegalEntities] = useState([])
   const [suppliers, setSuppliers] = useState([])
+  const [supplierDataState, setSupplierDataState] = useState('loading')
+  const [supplierDataError, setSupplierDataError] = useState('')
+  const supplierLoadGeneration = useRef(0)
+  const supplierMounted = useRef(false)
+  const supplierDataReady = useRef(false)
   const [products, setProducts] = useState([])
   const [balances, setBalances] = useState([])
   const [purchases, setPurchases] = useState([])
@@ -10049,7 +10054,15 @@ function Suppliers({ t, isAdmin = false }) {
   }
 
 
-  useEffect(() => { load() }, [])
+  useEffect(() => {
+    supplierMounted.current = true
+    load()
+    return () => {
+      supplierMounted.current = false
+      supplierDataReady.current = false
+      supplierLoadGeneration.current += 1
+    }
+  }, [])
   useEffect(() => {
     if (!purchaseForm.supplier_id && activeSuppliers[0]) setPurchaseForm(f => ({ ...f, supplier_id: activeSuppliers[0].id }))
     if (!paymentForm.supplier_id && activeSuppliers[0]) setPaymentForm(f => ({ ...f, supplier_id: activeSuppliers[0].id }))
@@ -10082,7 +10095,7 @@ function Suppliers({ t, isAdmin = false }) {
     return []
   }
 
-  async function fetchSupplierPurchasesFullRowsViaRpc() {
+  async function fetchSupplierPurchasesFullRowsViaRpc(assertCurrent = () => {}) {
     // Internal users must read purchases through the permission-checked,
     // paged RPC. A single 50k-row JSON response can exceed the database
     // statement timeout and silently leave the UI with its 500-row fallback.
@@ -10091,7 +10104,9 @@ function Suppliers({ t, isAdmin = false }) {
       const fetchPage = async (offset) => {
         let lastError = null
         for (let attempt = 0; attempt < 2; attempt += 1) {
+          assertCurrent()
           const { data, error } = await supabase.rpc('rms_supplier_purchases_page_secure', { p_limit: pageSize, p_offset: offset })
+          assertCurrent()
           if (!error) return data
           lastError = error
         }
@@ -10119,7 +10134,7 @@ function Suppliers({ t, isAdmin = false }) {
 
       let offset = firstRows.length
       let rows = firstRows
-      while (firstRows.length === pageSize && offset < 50000) {
+      while (firstRows.length === pageSize) {
         const payload = await fetchPage(offset)
         const batch = normalizeSupplierPurchasesFullPayload(payload)
         rows = rows.concat(batch)
@@ -10129,18 +10144,21 @@ function Suppliers({ t, isAdmin = false }) {
       return rows
     }
 
+    assertCurrent()
     const { data, error } = await supabase.rpc('rms_supplier_purchases_full', { p_limit: 50000 })
+    assertCurrent()
     if (error) throw error
     return normalizeSupplierPurchasesFullPayload(data)
   }
 
   async function fetchAllSupplierPurchasesRows(options = {}) {
     const preferRpc = Boolean(options?.preferRpc)
+    const assertCurrent = options.assertCurrent || (() => {})
 
     if (preferRpc) {
       try {
-        const rpcRows = await fetchSupplierPurchasesFullRowsViaRpc()
-        if (Array.isArray(rpcRows) && rpcRows.length) return rpcRows
+        const rpcRows = await fetchSupplierPurchasesFullRowsViaRpc(assertCurrent)
+        if (Array.isArray(rpcRows)) return rpcRows
       } catch (rpcError) {
         // Never report the 500-row workspace snapshot as the complete journal.
         // Restricted internal users cannot safely fall back to direct table reads.
@@ -10153,13 +10171,16 @@ function Suppliers({ t, isAdmin = false }) {
     let allRows = []
 
     while (true) {
+      assertCurrent()
       const { data, error } = await supabase
         .from('supplier_purchases')
         .select('*, suppliers(id,name,voen), legal_entities(name,voen), branches(name), supplier_purchase_items(*, supplier_products(name,base_unit,category))')
         .order('purchase_date', { ascending: false })
         .order('created_at', { ascending: false })
+        .order('id', { ascending: true })
         .range(from, from + pageSize - 1)
 
+      assertCurrent()
       if (error) throw error
 
       const batch = data || []
@@ -10167,14 +10188,15 @@ function Suppliers({ t, isAdmin = false }) {
 
       if (batch.length < pageSize) break
       from += pageSize
-      if (from > 50000) break
+
     }
 
     if (!allRows.length && !preferRpc) {
       try {
-        const rpcRows = await fetchSupplierPurchasesFullRowsViaRpc()
+        const rpcRows = await fetchSupplierPurchasesFullRowsViaRpc(assertCurrent)
         if (Array.isArray(rpcRows) && rpcRows.length) return rpcRows
       } catch (_rpcError) {
+        assertCurrent()
         // keep direct result
       }
     }
@@ -10182,20 +10204,23 @@ function Suppliers({ t, isAdmin = false }) {
     return allRows
   }
 
-  async function fetchAllSupplierPaymentsRows() {
+  async function fetchAllSupplierPaymentsRows(assertCurrent = () => {}) {
     const pageSize = 1000
     let from = 0
     let allRows = []
 
     while (true) {
+      assertCurrent()
       const { data, error } = await supabase
         .from('supplier_payments')
         .select('*, suppliers(name), legal_entities(name,voen), supplier_e_invoices(invoice_number)')
         .is('deleted_at', null)
         .order('payment_date', { ascending: false })
         .order('created_at', { ascending: false })
+        .order('id', { ascending: true })
         .range(from, from + pageSize - 1)
 
+      assertCurrent()
       if (error) throw error
 
       const batch = data || []
@@ -10203,26 +10228,29 @@ function Suppliers({ t, isAdmin = false }) {
 
       if (batch.length < pageSize) break
       from += pageSize
-      if (from > 50000) break
+
     }
 
     return allRows.filter(p => !p.deleted_at && !String(p.comment || '').includes('v255b: merged into payment'))
   }
 
-  async function fetchAllSupplierEInvoicesRows() {
+  async function fetchAllSupplierEInvoicesRows(assertCurrent = () => {}) {
     const pageSize = 1000
     let from = 0
     let allRows = []
 
     while (true) {
+      assertCurrent()
       const { data, error } = await supabase
         .from('supplier_e_invoices')
         .select('*, suppliers(name), legal_entities(name,voen), branches(name)')
         .is('deleted_at', null)
         .order('invoice_date', { ascending: false })
         .order('created_at', { ascending: false })
+        .order('id', { ascending: true })
         .range(from, from + pageSize - 1)
 
+      assertCurrent()
       if (error) throw error
 
       const batch = data || []
@@ -10230,7 +10258,7 @@ function Suppliers({ t, isAdmin = false }) {
 
       if (batch.length < pageSize) break
       from += pageSize
-      if (from > 50000) break
+
     }
 
     return allRows
@@ -10238,92 +10266,105 @@ function Suppliers({ t, isAdmin = false }) {
 
 
   async function load() {
+    const generation = ++supplierLoadGeneration.current
+    const current = () => supplierMounted.current && supplierLoadGeneration.current === generation
+    const assertCurrent = () => {
+      if (!current()) throw Object.assign(new Error('Supplier load superseded'), { name: 'AbortError' })
+    }
+    if (!current()) return
+    supplierDataReady.current = false
+    setSupplierDataState('loading')
+    setSupplierDataError('')
     const isInternal = Boolean(getInternalSessionStorage()?.rms_internal)
-
-    if (isInternal) {
-      const { data: ws, error } = await fetchRmsSuppliersWorkspace()
-      if (!error && ws) {
-        setLegalEntities(ws.legal_entities || [])
-        setSuppliers(ws.suppliers || [])
-        setProducts((ws.supplier_products || []).filter(p => p.is_active !== false))
-        setBalances(ws.supplier_balances || [])
-        // Paint the workspace snapshot immediately, then replace it with the
-        // complete journal once all pages have arrived.
-        setPurchases(ws.supplier_purchases || [])
-        try {
-          const fullPurchases = await fetchAllSupplierPurchasesRows({ preferRpc: true })
-          setPurchases(Array.isArray(fullPurchases) && fullPurchases.length ? fullPurchases : (ws.supplier_purchases || []))
-        } catch (purchaseFetchError) {
-          setPurchases([])
-          setMessage(purchaseFetchError?.message || 'Не удалось загрузить полный журнал поступлений. Обновите страницу.')
-        }
-        try {
-          const fullPayments = await fetchAllSupplierPaymentsRows()
-          const wsPayments = (ws.supplier_payments || []).filter(p => !p.deleted_at && !String(p.comment || '').includes('v255b: merged into payment'))
-          setPayments(Array.isArray(fullPayments) && fullPayments.length ? fullPayments : wsPayments)
-        } catch (_paymentFetchError) {
-          setPayments((ws.supplier_payments || []).filter(p => !p.deleted_at && !String(p.comment || '').includes('v255b: merged into payment')))
-        }
-        setOpeningDebts(ws.supplier_opening_debts || [])
-        const [{ data: statusRows }, { data: eInv }, { data: eLinks }] = await Promise.all([
-          supabase.from('supplier_legal_entity_status').select('*'),
-          supabase.from('supplier_e_invoices').select('*, suppliers(name), legal_entities(name,voen), branches(name)').is('deleted_at', null).order('invoice_date', { ascending: false }).limit(500),
-          supabase.from('supplier_e_invoice_purchase_links').select('*, supplier_purchases(id,invoice_number,purchase_date,total_amount,branch_id,branches(name))')
-        ])
-        setSupplierEntityStatuses(statusRows || [])
-        try {
-          const fullEInvoices = await fetchAllSupplierEInvoicesRows()
-          setEInvoices(Array.isArray(fullEInvoices) && fullEInvoices.length ? fullEInvoices : (eInv || []))
-        } catch (_eInvoiceFetchError) {
-          setEInvoices(eInv || [])
-        }
-        setEInvoiceLinks(eLinks || [])
-        setProfiles(ws.user_profiles || [])
-        return
+    const read = async (query) => {
+      assertCurrent()
+      const { data, error } = await query
+      assertCurrent()
+      if (error) throw error
+      return data || []
+    }
+    const readPages = async (queryFactory) => {
+      const rows = []
+      const pageSize = 1000
+      for (let offset = 0; ; offset += pageSize) {
+        assertCurrent()
+        const batch = await read(queryFactory().range(offset, offset + pageSize - 1))
+        rows.push(...batch)
+        if (batch.length < pageSize) return rows
       }
-      setMessage(error?.message || 'Нет доступа к поставщикам')
     }
+    // Run small directory reads independently: unrelated purchase history must
+    // not gate the supplier selector. Internal sessions retain the workspace
+    // permission boundary; never fall through to direct tables on denial.
+    try {
+      let workspace = null
+      const directory = isInternal
+        ? (async () => {
+            const { data: ws, error } = await fetchRmsSuppliersWorkspace()
+            assertCurrent()
+            if (error || !ws) throw error || new Error('Нет доступа к поставщикам')
+            workspace = ws
+            setLegalEntities(ws.legal_entities || [])
+            setSuppliers(ws.suppliers || [])
+            setProducts((ws.supplier_products || []).filter(p => p.is_active !== false))
+            setBalances(ws.supplier_balances || [])
+            setProfiles(ws.user_profiles || [])
+          })()
+        : Promise.all([
+            read(supabase.from('suppliers').select('*').order('name')).then(rows => { assertCurrent(); setSuppliers(rows) }),
+            read(supabase.from('legal_entities').select('*').eq('is_active', true).order('name')).then(rows => { assertCurrent(); setLegalEntities(rows) }),
+            read(supabase.from('supplier_products').select('*').eq('is_active', true).order('category').order('name')).then(rows => { assertCurrent(); setProducts(rows) }),
+            read(supabase.from('supplier_balances_v2').select('*').order('supplier_name')).then(rows => { assertCurrent(); setBalances(rows) }),
+            read(supabase.from('user_profiles').select('id, full_name')).then(rows => { assertCurrent(); setProfiles(rows) })
+          ])
+      // Independent datasets no longer form a purchases -> payments -> invoices
+      // waterfall. Do not fetch the first 500 rows twice or publish a partial
+      // workspace snapshot as the full journal / full filtered totals.
+      const history = async () => {
+        const [allPurchases, allPayments, allInvoices, statuses, links, allOpeningDebts] = await Promise.all([
+          fetchAllSupplierPurchasesRows({ preferRpc: isInternal, assertCurrent }),
+          fetchAllSupplierPaymentsRows(assertCurrent).catch(error => {
+            assertCurrent()
+            // The workspace is a complete fallback only below its 500-row cap.
+            if (!isInternal || !Array.isArray(workspace?.supplier_payments) || workspace.supplier_payments.length >= 500) throw error
+            return workspace.supplier_payments.filter(p => !p.deleted_at && !String(p.comment || '').includes('v255b: merged into payment'))
+          }),
+          fetchAllSupplierEInvoicesRows(assertCurrent),
+          readPages(() => supabase.from('supplier_legal_entity_status').select('*').order('supplier_id').order('legal_entity_id')),
+          readPages(() => supabase.from('supplier_e_invoice_purchase_links').select('*, supplier_purchases(id,invoice_number,purchase_date,total_amount,branch_id,branches(name))').order('id')),
+          readPages(() => {
+            const query = supabase.from('supplier_opening_debts').select('*, suppliers(name), legal_entities(name,voen)')
+            return (isInternal ? query.is('deleted_at', null) : query.eq('is_active', true)).order('debt_date', { ascending: false }).order('created_at', { ascending: false }).order('id')
+          })
+        ])
+        assertCurrent()
+        return { allPurchases, allPayments, allInvoices, statuses, links, allOpeningDebts }
+      }
+      // Internal history starts only after the permission-checked workspace.
+      const completeHistory = isInternal ? directory.then(history) : history()
+      const [, result] = await Promise.all([directory, completeHistory])
+      assertCurrent()
+      setPurchases(result.allPurchases)
+      setPayments(result.allPayments)
+      setEInvoices(result.allInvoices)
+      setSupplierEntityStatuses(result.statuses)
+      setEInvoiceLinks(result.links)
+      setOpeningDebts(result.allOpeningDebts)
+      supplierDataReady.current = true
+      setSupplierDataState('ready')
+    } catch (error) {
+      if (!current()) return
+      // Invalidate other pending reads in this generation on any failure.
+      supplierLoadGeneration.current += 1
+      setSupplierDataError(error?.message || 'Не удалось загрузить полный журнал поступлений')
+      setSupplierDataState('error')
+    }
+  }
 
-    const [{ data: le }, { data: sup }, { data: prod }, { data: bal }, { data: pur }, { data: pay }, { data: opening }, { data: statusRows }, { data: prof }, { data: eInv }, { data: eLinks }] = await Promise.all([
-      supabase.from('legal_entities').select('*').eq('is_active', true).order('name'),
-      supabase.from('suppliers').select('*').order('name'),
-      supabase.from('supplier_products').select('*').eq('is_active', true).order('category').order('name'),
-      supabase.from('supplier_balances_v2').select('*').order('supplier_name'),
-      supabase.from('supplier_purchases').select('*, suppliers(id,name,voen), legal_entities(name,voen), branches(name), supplier_purchase_items(*, supplier_products(name,base_unit,category))').order('purchase_date', { ascending: false }).order('created_at', { ascending: false }).limit(500),
-      supabase.from('supplier_payments').select('*, suppliers(name), legal_entities(name,voen), supplier_e_invoices(invoice_number)').order('payment_date', { ascending: false }).order('created_at', { ascending: false }).limit(500),
-      supabase.from('supplier_opening_debts').select('*, suppliers(name), legal_entities(name,voen)').eq('is_active', true).order('debt_date', { ascending: false }).order('created_at', { ascending: false }).limit(500),
-      supabase.from('supplier_legal_entity_status').select('*'),
-      supabase.from('user_profiles').select('id, full_name'),
-      supabase.from('supplier_e_invoices').select('*, suppliers(name), legal_entities(name,voen), branches(name)').is('deleted_at', null).order('invoice_date', { ascending: false }).limit(500),
-      supabase.from('supplier_e_invoice_purchase_links').select('*, supplier_purchases(id,invoice_number,purchase_date,total_amount,branch_id,branches(name))')
-    ])
-    setLegalEntities(le || [])
-    setSuppliers(sup || [])
-    setProducts(prod || [])
-    setBalances(bal || [])
-    try {
-      const fullPurchases = await fetchAllSupplierPurchasesRows()
-      setPurchases(Array.isArray(fullPurchases) && fullPurchases.length ? fullPurchases : (pur || []))
-    } catch (_purchaseFetchError) {
-      setPurchases(pur || [])
-    }
-    try {
-      const fullPayments = await fetchAllSupplierPaymentsRows()
-      const basePayments = (pay || []).filter(p => !p.deleted_at && !String(p.comment || '').includes('v255b: merged into payment'))
-      setPayments(Array.isArray(fullPayments) && fullPayments.length ? fullPayments : basePayments)
-    } catch (_paymentFetchError) {
-      setPayments((pay || []).filter(p => !p.deleted_at && !String(p.comment || '').includes('v255b: merged into payment')))
-    }
-    setOpeningDebts(opening || [])
-    setSupplierEntityStatuses(statusRows || [])
-    try {
-      const fullEInvoices = await fetchAllSupplierEInvoicesRows()
-      setEInvoices(Array.isArray(fullEInvoices) && fullEInvoices.length ? fullEInvoices : (eInv || []))
-    } catch (_eInvoiceFetchError) {
-      setEInvoices(eInv || [])
-    }
-    setEInvoiceLinks(eLinks || [])
-    setProfiles(prof || [])
+  function requireSupplierData() {
+    if (supplierDataReady.current) return true
+    setMessage('Дождитесь полной загрузки данных поставщиков. При ошибке повторите загрузку журнала.')
+    return false
   }
 
   function userName(id) {
@@ -10438,6 +10479,7 @@ function Suppliers({ t, isAdmin = false }) {
   }
 
   async function addSupplier() {
+    if (!requireSupplierData()) return
     setMessage('')
     if (!supplierForm.name.trim()) return setMessage('Введите имя контрагента')
     const openingAmount = parseNum(supplierForm.opening_debt_amount)
@@ -10486,6 +10528,7 @@ function Suppliers({ t, isAdmin = false }) {
     }
   }
   async function updateSupplier(id, patch) {
+    if (!requireSupplierData()) return
     setMessage('')
     const { error } = await supabase.from('suppliers').update(patch).eq('id', id)
     if (error) setMessage(error.message); else { setSuppliers(prev => (prev || []).map(s => s.id === id ? { ...s, ...patch } : s)); await load(); notifySuppliersUpdated() }
@@ -10512,6 +10555,7 @@ function Suppliers({ t, isAdmin = false }) {
   }
 
   async function saveSupplierEdit(supplier) {
+    if (!requireSupplierData()) return
     if (!isAdmin) return setMessage('Редактирование поставщика доступно только администратору')
     if (!supplier?.id) return
     if (!String(supplierEditForm.name || '').trim()) return setMessage('Введите имя контрагента')
@@ -10627,6 +10671,7 @@ function Suppliers({ t, isAdmin = false }) {
   }
 
   async function setSupplierLegalStatus(supplier, legalEntityId, isActive) {
+    if (!requireSupplierData()) return
     if (!isAdmin) return setMessage('Изменение активности по VOEN доступно только администратору')
     if (!supplier?.id || !legalEntityId) return
     const le = legalEntities.find(x => x.id === legalEntityId)
@@ -10645,6 +10690,7 @@ function Suppliers({ t, isAdmin = false }) {
   }
 
   async function deleteOrDeactivateSupplier(supplier) {
+    if (!requireSupplierData()) return
     if (!isAdmin) return setMessage('Удаление или деактивация поставщика доступна только администратору')
     if (!supplier?.id) return
     const count = supplierTransactionCount(supplier.id)
@@ -10668,6 +10714,7 @@ function Suppliers({ t, isAdmin = false }) {
   }
 
   async function activateSupplier(supplier) {
+    if (!requireSupplierData()) return
     if (!isAdmin) return setMessage('Активация поставщика доступна только администратору')
     if (!supplier?.id) return
     setMessage('')
@@ -10679,6 +10726,7 @@ function Suppliers({ t, isAdmin = false }) {
   }
 
   async function addProductFromForm() {
+    if (!requireSupplierData()) return
     setProductMessage('')
     if (!productForm.name.trim()) return setProductMessage('Введите товар')
     const stopProgress = startGlobalProgress('Сохранение товара...')
@@ -10703,6 +10751,7 @@ function Suppliers({ t, isAdmin = false }) {
   }
 
   async function saveSupplierProduct(product) {
+    if (!requireSupplierData()) return
     const name = String(supplierProductEditForm.name || '').trim()
     if (!name) return setProductMessage('Введите название товара')
     const payload = {
@@ -10741,6 +10790,7 @@ function Suppliers({ t, isAdmin = false }) {
   }
 
   async function deleteSupplierProduct(product) {
+    if (!requireSupplierData()) return
     if (!window.confirm(`Удалить товар “${product.name}”?`)) return
     const reason = window.prompt('Причина удаления товара', 'Ошибочно созданный товар')
     if (reason === null) return
@@ -10767,6 +10817,7 @@ function Suppliers({ t, isAdmin = false }) {
   }
 
   async function cancelSupplierPaymentFromPurchaseJournal(payment) {
+    if (!requireSupplierData()) return
     if (!window.confirm('Удалить ошибочную оплату? Сумма будет возвращена в долг поставщика, а операция останется в журнале.')) return
     const reason = window.prompt('Причина удаления оплаты', 'Ошибочная оплата поставщику')
     if (reason === null) return
@@ -10840,6 +10891,7 @@ function Suppliers({ t, isAdmin = false }) {
   }
 
   async function addPurchase() {
+    if (!requireSupplierData()) return
     if (purchaseCreateInFlightRef.current) {
       setMessage('Поступление уже сохраняется. Дождитесь завершения операции.')
       return
@@ -10919,6 +10971,7 @@ function Suppliers({ t, isAdmin = false }) {
   }
 
   async function recalcPurchaseTotal(purchaseId) {
+    if (!requireSupplierData()) return
     const current = purchases.find(p => p.id === purchaseId)
     if (!current) return 0
     const items = normalizeSupplierPurchaseItems(current.supplier_purchase_items || [])
@@ -10938,6 +10991,7 @@ function Suppliers({ t, isAdmin = false }) {
   }
 
   async function updatePurchase(id, patch) {
+    if (!requireSupplierData()) return
     const current = purchases.find(p => p.id === id)
     if (!current) return setMessage('Поступление не найдено')
     try {
@@ -10962,6 +11016,7 @@ function Suppliers({ t, isAdmin = false }) {
   }
 
   async function updatePurchaseItem(purchaseId, item, patch) {
+    if (!requireSupplierData()) return
     const current = purchases.find(p => p.id === purchaseId)
     if (!current) return setMessage('Поступление не найдено')
     const nextRows = (current.supplier_purchase_items || []).map(row => row.id === item.id ? { ...row, ...patch } : row)
@@ -11092,6 +11147,7 @@ function Suppliers({ t, isAdmin = false }) {
   }
 
   async function saveExistingPurchaseItems(purchase) {
+    if (!requireSupplierData()) return
     setMessage('')
     beginPurchaseItemsSaveProgress('Сохранение товаров в накладной', 'Проверка количества, единиц и цен…')
     try {
@@ -11124,6 +11180,7 @@ function Suppliers({ t, isAdmin = false }) {
   }
 
   async function softDeletePurchase(id) {
+    if (!requireSupplierData()) return
     if (!window.confirm('Отменить поступление? Оно будет зачёркнуто и не будет учитываться в финансах.')) return
     const reason = window.prompt('Причина отмены операции', 'Отмена поступления поставщика')
     if (reason === null) return
@@ -11137,6 +11194,7 @@ function Suppliers({ t, isAdmin = false }) {
 
   function startPayment(supplierId, legalEntityId = '') { setPaymentForm({ supplier_id: supplierId, legal_entity_id: legalEntityId || legalEntities[0]?.id || '', payment_date: todayISO(), amount: '', invoice_notes: '', comment: '' }) }
   async function addOpeningDebt() {
+    if (!requireSupplierData()) return
     setMessage('')
     if (!openingDebtForm.supplier_id) return setMessage('Выберите поставщика')
     const amount = parseNum(openingDebtForm.amount)

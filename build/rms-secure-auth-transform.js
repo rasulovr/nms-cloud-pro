@@ -27,12 +27,14 @@ const secureLogin = `const normalizedLogin = normalizeInternalLogin(rawLogin)
 
       `
 
-const pagedRead = `async function fetchSupplierPurchasesFullRowsViaRpc() {
+const pagedRead = `async function fetchSupplierPurchasesFullRowsViaRpc(assertCurrent = () => {}) {
     const pageSize = 500
     const fetchPage = async (offset) => {
       let lastError = null
       for (let attempt = 0; attempt < 2; attempt += 1) {
+        assertCurrent()
         const { data, error } = await supabase.rpc('rms_supplier_purchases_page_secure', { p_limit: pageSize, p_offset: offset })
+        assertCurrent()
         if (!error) return data
         lastError = error
       }
@@ -53,7 +55,7 @@ const pagedRead = `async function fetchSupplierPurchasesFullRowsViaRpc() {
 
     let offset = firstRows.length
     let allRows = firstRows
-    while (firstRows.length === pageSize && offset < 50000) {
+    while (firstRows.length === pageSize) {
       const payload = await fetchPage(offset)
       const batch = normalizeSupplierPurchasesFullPayload(payload)
       allRows = allRows.concat(batch)
@@ -215,7 +217,7 @@ export function rmsSecureAuthTransform(source) {
   )
   result = replaceRange(result, 'const bootAuth = async () => {', '    bootAuth()', verifiedAuthBootstrap)
   result = replaceRange(result, '    const { data: sub } = supabase.auth.onAuthStateChange', '    return () => {', verifiedAuthStateChange)
-  result = replaceRange(result, 'async function fetchSupplierPurchasesFullRowsViaRpc() {', 'async function fetchAllSupplierPurchasesRows', `${pagedRead}\n\n  `)
+  result = replaceRange(result, 'async function fetchSupplierPurchasesFullRowsViaRpc(assertCurrent = () => {}) {', 'async function fetchAllSupplierPurchasesRows', `${pagedRead}\n\n  `)
   result = replaceRange(result, '  async function changeUserPassword(userId, loginName) {', '  async function resetUserLoginLock', verifiedPasswordChange)
   return result
 }
