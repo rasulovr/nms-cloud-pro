@@ -1330,3 +1330,11 @@ html body .app-shell .product-card .food-photo:focus-visible img {
     animation-duration: 1ms !important;
   }
 }
+
+/* BC1 trial: a static evening-blue quote header, independent of the clock. */
+main.app-shell .qr-premium-hero.qr-header-evening-blue.hero {
+  background: linear-gradient(135deg, #17385b, #285b83 55%, #527e9e) !important;
+}
+main.app-shell .qr-premium-hero.qr-header-evening-blue .hero-sky {
+  background: radial-gradient(ellipse 72% 82% at 84% 92%, rgba(181,215,242,.46), transparent 68%), linear-gradient(135deg, #17385b, #285b83 55%, #527e9e) !important;
+}
