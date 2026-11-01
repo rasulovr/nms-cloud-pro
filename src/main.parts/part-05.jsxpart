@@ -2681,36 +2681,45 @@ function Settings({ session, t, theme, setTheme, lang, setLang }) {
     }
   }
 
-  async function importBackup(event) {
+  // Inspection only: never pass uploaded backups to a database or localStorage.
+  async function inspectBackupFile(event, full) {
     const file = event.target.files?.[0]
     event.target.value = ''
     if (!file) return
-    setMsg('')
-    let parsed
-    try {
-      parsed = JSON.parse(await file.text())
-    } catch (_e) {
-      return setMsg('Не удалось прочитать JSON-файл бэкапа')
+    const blocked = 'Восстановление JSON из браузера отключено: требуется проверенная резервная копия и отдельная процедура восстановления. Данные базы и localStorage не изменены.'
+    if (file.size > 50 * 1024 * 1024) {
+      return setMsg(`Файл превышает лимит 50 MiB и не был прочитан. ${blocked}`)
     }
-    const ok = window.confirm('Восстановление сначала очистит текущие операционные данные и затем загрузит данные из бэкапа. Продолжить?')
-    if (!ok) return
-    setBackupBusy(true)
-    beginBackupProgress('Восстановление операций', 'Передача операционного бэкапа в Supabase…', true)
     try {
-      const { error } = await supabase.rpc('nms_restore_operational_data', { p_backup: parsed })
-      if (error) {
-        failBackupProgress(error)
-        return setMsg(error.message)
+      const parsed = JSON.parse(await file.text())
+      const isObject = value => value !== null && typeof value === 'object' && !Array.isArray(value)
+      if (!isObject(parsed)) throw new Error('Корень JSON должен быть объектом.')
+      if (full && (parsed.backup_type !== 'rms_full_restore_backup' || !isObject(parsed.tables))) {
+        throw new Error('Ожидается полный RMS-бэкап с объектом tables.')
       }
-      updateBackupProgress(96, 'Проверка восстановленных данных…', 'Финальная проверка')
-      completeBackupProgress('Операционные данные восстановлены', 'Бэкап успешно загружен в RMS')
-      setMsg('Бэкап восстановлен')
+      if (!full && parsed.backup_type === 'rms_full_restore_backup') {
+        throw new Error('Полный RMS-бэкап нужно проверять в поле полного бэкапа.')
+      }
+      if (parsed.tables !== undefined && !isObject(parsed.tables)) throw new Error('Поле tables должно быть объектом.')
+      const tables = parsed.tables ?? Object.fromEntries(Object.entries(parsed).filter(([, value]) => Array.isArray(value)))
+      const names = Object.keys(tables)
+      if (!names.length) throw new Error('Не найдены массивы строк таблиц.')
+      if (names.some(name => !Array.isArray(tables[name]) || tables[name].some(row => !isObject(row)))) {
+        throw new Error('Каждая таблица должна содержать массив объектов строк.')
+      }
+      if (parsed.table_errors !== undefined && !isObject(parsed.table_errors)) throw new Error('Поле table_errors должно быть объектом.')
+      if (parsed.local_storage !== undefined && (!isObject(parsed.local_storage) || Object.values(parsed.local_storage).some(value => value !== null && typeof value !== 'string'))) {
+        throw new Error('Некорректная структура local_storage.')
+      }
+      const partial = Object.keys(parsed.table_errors || {}).length > 0 || (full && RMS_FULL_BACKUP_TABLES.some(name => !Object.hasOwn(tables, name)))
+      setMsg(`${partial ? 'Архив неполный или содержит ошибки экспорта.' : 'Структура JSON проверена; пригодность к восстановлению не подтверждена.'} Таблиц: ${names.length}. ${blocked}`)
     } catch (error) {
-      failBackupProgress(error)
-      setMsg(error?.message || 'Не удалось восстановить операционный бэкап')
-    } finally {
-      setBackupBusy(false)
+      setMsg(`Проверка файла не пройдена: ${error instanceof SyntaxError ? 'Некорректный JSON.' : error?.message || 'Не удалось прочитать файл.'} ${blocked}`)
     }
+  }
+
+  async function importBackup(event) {
+    return inspectBackupFile(event, false)
   }
 
   function downloadRmsJsonFile(filename, payload) {
@@ -2754,15 +2763,6 @@ function Settings({ session, t, theme, setTheme, lang, setLang }) {
     return storage
   }
 
-  function restoreLocalBackupState(storage = {}) {
-    Object.entries(storage || {}).forEach(([key, value]) => {
-      try {
-        if (value === null || value === undefined) localStorage.removeItem(key)
-        else localStorage.setItem(key, String(value))
-      } catch (_e) {}
-    })
-  }
-
   async function exportFullRmsBackup() {
     setMsg('')
     setBackupBusy(true)
@@ -2801,7 +2801,7 @@ function Settings({ session, t, theme, setTheme, lang, setLang }) {
         errorCount ? 'Бэкап завершён с предупреждениями' : 'Полный бэкап RMS готов',
         errorCount ? `${errorCount} таблиц не удалось прочитать. Подробности сохранены в table_errors.` : 'Все доступные таблицы и локальные настройки сохранены в JSON-файл'
       )
-      setMsg(errorCount ? `Полный бэкап скачан, но ${errorCount} таблиц не удалось прочитать. Подробности внутри JSON в table_errors.` : 'Полный бэкап RMS скачан. Его можно использовать для восстановления данных RMS.')
+      setMsg(errorCount ? `Полный бэкап скачан, но ${errorCount} таблиц не удалось прочитать. Подробности внутри JSON в table_errors.` : 'Полный бэкап RMS скачан. Пригодность к восстановлению требует отдельной проверки.')
     } catch (error) {
       failBackupProgress(error)
       setMsg(error?.message || 'Не удалось создать полный бэкап RMS')
@@ -2810,87 +2810,8 @@ function Settings({ session, t, theme, setTheme, lang, setLang }) {
     }
   }
 
-  async function clearTableForRestore(table) {
-    const key = RMS_FULL_BACKUP_TABLE_KEY(table)
-    return supabase.from(table).delete().not(key, 'is', null)
-  }
-
-  async function insertRowsForRestore(table, rows) {
-    const list = rows || []
-    const chunkSize = 500
-    for (let i = 0; i < list.length; i += chunkSize) {
-      const chunk = list.slice(i, i + chunkSize)
-      if (!chunk.length) continue
-      const { error } = await supabase.from(table).insert(chunk)
-      if (error) return { error }
-    }
-    return { error: null }
-  }
-
   async function importFullRmsBackup(event) {
-    const file = event.target.files?.[0]
-    event.target.value = ''
-    if (!file) return
-    setMsg('')
-    let parsed
-    try {
-      parsed = JSON.parse(await file.text())
-    } catch (_e) {
-      return setMsg('Не удалось прочитать JSON-файл полного бэкапа')
-    }
-    if (parsed?.backup_type !== 'rms_full_restore_backup' || !parsed?.tables) {
-      return setMsg('Это не полный RMS-бэкап. Для старого операционного бэкапа используйте кнопку восстановления операционных данных.')
-    }
-
-    const confirmText = window.prompt('Полное восстановление удалит текущие данные RMS и загрузит данные из бэкапа. Введите ВОССТАНОВИТЬ для продолжения.')
-    if (confirmText !== 'ВОССТАНОВИТЬ') return setMsg('Восстановление отменено')
-
-    setBackupBusy(true)
-    beginBackupProgress('Полное восстановление RMS', 'Подготовка таблиц к восстановлению…')
-    const restoreErrors = []
-    const tablesInBackup = Object.keys(parsed.tables || {})
-    const deleteOrder = RMS_FULL_BACKUP_CHILD_FIRST_TABLES.filter(t => tablesInBackup.includes(t))
-    const insertOrder = [...deleteOrder].reverse()
-    const totalSteps = Math.max(1, deleteOrder.length + insertOrder.length + 1)
-    let completedSteps = 0
-
-    try {
-      for (const table of deleteOrder) {
-        updateBackupProgress(2 + Math.round((completedSteps / totalSteps) * 92), `Очистка таблицы: ${table}`, `Этап ${completedSteps + 1} из ${totalSteps}`)
-        const { error } = await clearTableForRestore(table)
-        if (error) restoreErrors.push(`${table}: очистка — ${error.message || String(error)}`)
-        completedSteps += 1
-        updateBackupProgress(2 + Math.round((completedSteps / totalSteps) * 92), `Таблица подготовлена: ${table}`, `Этап ${completedSteps} из ${totalSteps}`)
-      }
-
-      for (const table of insertOrder) {
-        const rows = parsed.tables?.[table] || []
-        updateBackupProgress(2 + Math.round((completedSteps / totalSteps) * 92), `Восстановление таблицы: ${table}`, `${rows.length.toLocaleString('ru-RU')} строк`)
-        if (rows.length) {
-          const { error } = await insertRowsForRestore(table, rows)
-          if (error) restoreErrors.push(`${table}: загрузка — ${error.message || String(error)}`)
-        }
-        completedSteps += 1
-        updateBackupProgress(2 + Math.round((completedSteps / totalSteps) * 92), `Восстановлена таблица: ${table}`, `Этап ${completedSteps} из ${totalSteps}`)
-      }
-
-      updateBackupProgress(97, 'Восстановление локальных настроек и сессии…', 'Финальная синхронизация')
-      restoreLocalBackupState(parsed.local_storage || {})
-
-      if (restoreErrors.length) {
-        completeBackupProgress('Восстановление завершено с предупреждениями', `${restoreErrors.length} операций завершились с ошибками`)
-        setMsg(`Восстановление завершено с предупреждениями: ${restoreErrors.slice(0, 4).join(' | ')}${restoreErrors.length > 4 ? ' ...' : ''}`)
-      } else {
-        completeBackupProgress('Полный бэкап восстановлен', 'Данные и настройки RMS успешно загружены')
-        setMsg('Полный RMS-бэкап восстановлен. Перезагрузите страницу, чтобы обновить сессию, лого и отчёты.')
-      }
-      load()
-    } catch (error) {
-      failBackupProgress(error)
-      setMsg(error?.message || 'Не удалось восстановить полный RMS-бэкап')
-    } finally {
-      setBackupBusy(false)
-    }
+    return inspectBackupFile(event, true)
   }
 
   async function clearOperationalData() {
@@ -4049,13 +3970,13 @@ function Settings({ session, t, theme, setTheme, lang, setLang }) {
               <button type="button" className="small primary" disabled={backupBusy} onClick={exportFullRmsBackup}>{backupBusy ? 'Выполняется...' : 'Скачать полный бэкап RMS'}</button>
             </div>
             <div className="notice">
-              <b>Для полного восстановления</b>
-              <p className="hint">Этот файл восстанавливает данные RMS в Supabase. Код проекта GitHub, Vercel env-переменные и домен нужно хранить отдельно, потому что браузер не имеет безопасного доступа к GitHub/Vercel-токенам.</p>
+              <b>Проверка архива без восстановления</b>
+              <p className="hint">Файл содержит экспорт данных RMS. Восстановление JSON из браузера отключено. Код проекта GitHub, Vercel env-переменные и домен нужно хранить отдельно, потому что браузер не имеет безопасного доступа к GitHub/Vercel-токенам.</p>
             </div>
             <div className="form-grid compact">
-              <label><span>Восстановить полный RMS-бэкап</span><input type="file" accept="application/json,.json" disabled={backupBusy} onChange={importFullRmsBackup} /></label>
+              <label><span>Проверить полный RMS-бэкап</span><input type="file" accept="application/json,.json" disabled={backupBusy} onChange={importFullRmsBackup} /></label>
             </div>
-            <p className="hint">Перед восстановлением система попросит ввести ВОССТАНОВИТЬ. Текущие данные будут очищены и заменены данными из файла.</p>
+            <p className="hint">Оба поля JSON выполняют только локальную проверку структуры. Восстановление отключено; данные базы и localStorage не изменяются.</p>
           </div>
 
           <div className="card span-2">
@@ -4067,7 +3988,7 @@ function Settings({ session, t, theme, setTheme, lang, setLang }) {
             </div>
             <div className="form-grid compact">
               <label><span>Операционный бэкап</span><button type="button" className="small" disabled={backupBusy} onClick={exportBackup}>{backupBusy ? 'Выполняется...' : 'Скачать операционный JSON'}</button></label>
-              <label><span>Восстановить операционный бэкап</span><input type="file" accept="application/json,.json" disabled={backupBusy} onChange={importBackup} /></label>
+              <label><span>Проверить операционный бэкап</span><input type="file" accept="application/json,.json" disabled={backupBusy} onChange={importBackup} /></label>
               <label><span>Очистка</span><input value={clearConfirm} onChange={e => setClearConfirm(e.target.value)} placeholder="Введите ОЧИСТИТЬ" /></label>
             </div>
             <button type="button" className="danger" disabled={backupBusy} onClick={clearOperationalData}>Очистить всю операционную информацию</button>
