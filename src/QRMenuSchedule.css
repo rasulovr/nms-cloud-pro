@@ -1338,3 +1338,8 @@ main.app-shell .qr-premium-hero.qr-header-graphite-glass.hero {
 main.app-shell .qr-premium-hero.qr-header-graphite-glass .hero-sky {
   background: radial-gradient(ellipse at 84% 28%, rgba(160,178,207,.80) 0%, rgba(118,140,171,.47) 26%, transparent 61%), linear-gradient(125deg, #182129 0%, #2d3d4d 50%, #283443 100%) !important;
 }
+
+/* BC1 only: a light cool-gray backdrop; keep component surfaces unchanged. */
+main.app-shell:has(> .qr-header-graphite-glass) {
+  background: radial-gradient(circle at 8% 5%, rgba(255,255,255,.58), transparent 27rem), linear-gradient(145deg, #e7ebee, #d6dde2) !important;
+}
