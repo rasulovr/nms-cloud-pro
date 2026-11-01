@@ -1032,10 +1032,12 @@ export default function QRMenu() {
     flash("\u041D\u043E\u0432\u044B\u0439 \u0432\u0438\u0437\u0438\u0442 \u043E\u0442\u043A\u0440\u044B\u0442");
   }
   const atmosphere = weatherOffer?.kind ?? "clear";
+  // BC1 keeps its daytime palette; the real phase still drives weather and motion.
+  const visualThemePhase = branch === "BC1" ? "day" : dayPhase;
   const weatherTitle = (dayPhase === "night" ? nightWeatherTitles : weatherTitles)[language][atmosphere];
   const hasTableContext = Boolean(table);
   const recommendationQty = mealRecommendation ? cart.find((line) => line.id === mealRecommendation.product.id)?.qty || 0 : 0;
-  return <main className={`app-shell theme-${dayPhase} weather-theme-${atmosphere} menu-view-${menuView} menu-background-${backgroundTheme}`}>
+  return <main data-motion-phase={branch === "BC1" ? dayPhase : undefined} className={`app-shell theme-${visualThemePhase} weather-theme-${atmosphere} menu-view-${menuView} menu-background-${backgroundTheme}`}>
       <header className="hero qr-premium-hero">
         <div className="hero-sky" aria-hidden="true">
           {weatherOffer && <WeatherVisual kind={weatherOffer.kind} phase={dayPhase} />}
