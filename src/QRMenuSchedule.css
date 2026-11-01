@@ -1331,10 +1331,10 @@ html body .app-shell .product-card .food-photo:focus-visible img {
   }
 }
 
-/* BC1 trial: a static evening-blue quote header, independent of the clock. */
-main.app-shell .qr-premium-hero.qr-header-evening-blue.hero {
-  background: linear-gradient(135deg, #17385b, #285b83 55%, #527e9e) !important;
+/* BC1: a static graphite-glass quote header, independent of the clock. */
+main.app-shell .qr-premium-hero.qr-header-graphite-glass.hero {
+  background: radial-gradient(ellipse at 84% 28%, rgba(160,178,207,.80) 0%, rgba(118,140,171,.47) 26%, transparent 61%), linear-gradient(125deg, #182129 0%, #2d3d4d 50%, #283443 100%) !important;
 }
-main.app-shell .qr-premium-hero.qr-header-evening-blue .hero-sky {
-  background: radial-gradient(ellipse 72% 82% at 84% 92%, rgba(181,215,242,.46), transparent 68%), linear-gradient(135deg, #17385b, #285b83 55%, #527e9e) !important;
+main.app-shell .qr-premium-hero.qr-header-graphite-glass .hero-sky {
+  background: radial-gradient(ellipse at 84% 28%, rgba(160,178,207,.80) 0%, rgba(118,140,171,.47) 26%, transparent 61%), linear-gradient(125deg, #182129 0%, #2d3d4d 50%, #283443 100%) !important;
 }
