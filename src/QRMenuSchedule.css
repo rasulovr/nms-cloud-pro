@@ -1344,14 +1344,16 @@ main.app-shell:has(> .qr-header-graphite-glass) {
   background: radial-gradient(circle at 8% 5%, rgba(255,255,255,.58), transparent 27rem), linear-gradient(145deg, #e7ebee, #d6dde2) !important;
 }
 
-/* BC1 showcase: softer editorial lettering and a light photo-edge fade. */
-main.app-shell.menu-view-showcase:has(> .qr-header-graphite-glass) .product-title h3 {
+/* BC1 cards: a shared serif family with view-specific sizing and weight. */
+main.app-shell:has(> .qr-header-graphite-glass) .product-card .product-title h3 {
   font-family: "Palatino Linotype", "Book Antiqua", Palatino, Georgia, "Noto Serif", serif !important;
+}
+main.app-shell.menu-view-showcase:has(> .qr-header-graphite-glass) .product-title h3 {
   font-weight: 500 !important;
   line-height: 1.16 !important;
   letter-spacing: -.015em !important;
 }
-html body main.app-shell.menu-view-showcase:has(> .qr-header-graphite-glass) .product-card .food-photo::after {
+html body main.app-shell:has(> .qr-header-graphite-glass) .product-card .food-photo::after {
   content: "" !important;
   display: block !important;
   position: absolute;
@@ -1359,5 +1361,5 @@ html body main.app-shell.menu-view-showcase:has(> .qr-header-graphite-glass) .pr
   z-index: 1;
   pointer-events: none;
   opacity: 1 !important;
-  background: linear-gradient(to top, rgba(255,253,248,.26), transparent 18%), linear-gradient(to right, rgba(255,253,248,.12), transparent 12%, transparent 88%, rgba(255,253,248,.12)) !important;
+  background: radial-gradient(ellipse at center, transparent 42%, rgba(18,24,29,.12) 72%, rgba(18,24,29,.42) 100%) !important;
 }
