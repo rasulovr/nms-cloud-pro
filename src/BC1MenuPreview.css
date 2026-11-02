@@ -1,0 +1,341 @@
+/* BC1 unified menu only. Production background and product detail remain inherited. */
+
+body .app-shell[data-bc1-browse="menu"] .menu-toolbar {
+  display:flex !important;
+  gap:10px !important;
+  align-items:center !important;
+  width:100% !important;
+  margin:0 0 20px !important;
+  min-width:0 !important;
+}
+
+body .app-shell[data-bc1-browse="menu"] .categories {
+  min-width:0 !important;
+  display:flex !important;
+  flex:1 !important;
+  gap:8px !important;
+  overflow-x:auto !important;
+  margin:0 !important;
+  padding:3px 0 !important;
+}
+
+body .app-shell[data-bc1-browse="menu"] .categories button {
+  flex-shrink:0 !important;
+  padding:12px 16px !important;
+  min-height:44px !important;
+  font-size:12px !important;
+  font-weight:500 !important;
+  color:#625b55 !important;
+  background:#eeeae6 !important;
+  border:0 !important;
+  border-radius:14px !important;
+  box-shadow:none !important;
+}
+
+body .app-shell[data-bc1-browse="menu"] .categories button.active {
+  background:#35302c !important;
+  color:#fff !important;
+}
+
+body .app-shell[data-bc1-browse="menu"] .menu-view-toggle {
+  flex-shrink:0 !important;
+  margin:0 !important;
+  padding:0 !important;
+  background:transparent !important;
+  border:0 !important;
+  box-shadow:none !important;
+}
+
+body .app-shell[data-bc1-browse="menu"] .menu-view-toggle button {
+  width:44px !important;
+  height:44px !important;
+  color:#625b55 !important;
+  background:#fff !important;
+  border:1px solid #eae5e0 !important;
+  border-radius:14px !important;
+  box-shadow:none !important;
+}
+
+body .app-shell[data-bc1-browse="menu"] .product-grid {
+  gap:18px !important;
+  align-items:stretch !important;
+}
+
+body .app-shell[data-bc1-browse="menu"].menu-view-grid .product-grid {
+  grid-template-columns:repeat(4,minmax(0,1fr)) !important;
+}
+
+body .app-shell[data-bc1-browse="menu"].menu-view-list .product-grid,
+body .app-shell[data-bc1-browse="menu"].menu-view-showcase .product-grid {
+  grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+}
+
+body .app-shell[data-bc1-browse="menu"] .product-card {
+  display:flex !important;
+  flex-direction:column !important;
+  aspect-ratio:auto !important;
+  min-height:0 !important;
+  height:auto !important;
+  padding:0 !important;
+  color:#302c29 !important;
+  background:#fff !important;
+  border:0 !important;
+  border-radius:22px !important;
+  box-shadow:none !important;
+  transform:none !important;
+  overflow:hidden !important;
+}
+
+body .app-shell[data-bc1-browse="menu"] .product-card:hover {
+  transform:none !important;
+  box-shadow:0 6px 20px #302c2908 !important;
+}
+
+body .app-shell[data-bc1-browse="menu"] .product-card::before,
+body .app-shell[data-bc1-browse="menu"] .product-card::after,
+body .app-shell[data-bc1-browse="menu"] .product-card .food-photo::before,
+body .app-shell[data-bc1-browse="menu"] .product-card .food-photo::after {
+  display:none !important;
+}
+
+body .app-shell[data-bc1-browse="menu"] .product-card .food-photo {
+  position:relative !important;
+  inset:auto !important;
+  width:100% !important;
+  height:auto !important;
+  aspect-ratio:1.18 !important;
+  min-height:0 !important;
+  display:block !important;
+  border-radius:0 !important;
+  background:#eeeae6 !important;
+  overflow:hidden !important;
+}
+
+body .app-shell[data-bc1-browse="menu"] .product-card .food-photo img {
+  position:static !important;
+  width:100% !important;
+  height:100% !important;
+  object-fit:cover !important;
+  transform:none !important;
+  filter:none !important;
+  border-radius:0 !important;
+}
+
+body .app-shell[data-bc1-browse="menu"] .product-card .product-body {
+  position:static !important;
+  inset:auto !important;
+  display:flex !important;
+  flex-direction:column !important;
+  flex:1 !important;
+  gap:10px !important;
+  min-width:0 !important;
+  padding:14px !important;
+  pointer-events:auto !important;
+  background:#fff !important;
+}
+
+body .app-shell[data-bc1-browse="menu"] .product-card .product-title {
+  position:static !important;
+  inset:auto !important;
+  display:block !important;
+  max-width:100% !important;
+  width:100% !important;
+  padding:0 !important;
+  min-height:0 !important;
+  text-align:left !important;
+  background:none !important;
+  transform:none !important;
+}
+
+body .app-shell[data-bc1-browse="menu"] .product-card .product-title h3 {
+  display:block !important;
+  overflow:visible !important;
+  width:100% !important;
+  max-width:100% !important;
+  margin:0 !important;
+  padding:0 !important;
+  font:500 16px/1.3 Arial, sans-serif !important;
+  letter-spacing:-.2px !important;
+  color:#302c29 !important;
+  background:none !important;
+  border:0 !important;
+  border-radius:0 !important;
+  box-shadow:none !important;
+  text-align:left !important;
+  text-shadow:none !important;
+  -webkit-line-clamp:unset !important;
+  overflow-wrap:anywhere !important;
+}
+
+body .app-shell[data-bc1-browse="menu"] .product-card .product-body > p {
+  position:static !important;
+  inset:auto !important;
+  margin:0 !important;
+  padding:0 !important;
+  font:400 13px/1.45 Arial, sans-serif !important;
+  color:#77716c !important;
+  background:none !important;
+  text-shadow:none !important;
+  -webkit-line-clamp:unset !important;
+  max-height:none !important;
+}
+
+body .app-shell[data-bc1-browse="menu"].menu-view-grid .product-card .product-body > p,
+body .app-shell[data-bc1-browse="menu"].menu-view-list .product-card .product-body > p,
+body .app-shell[data-bc1-browse="menu"] .product-card .product-options {
+  display:none !important;
+}
+
+body .app-shell[data-bc1-browse="menu"].menu-view-showcase .product-card .product-body > p {
+  display:block !important;
+}
+
+body .app-shell[data-bc1-browse="menu"] .product-card .product-footer {
+  position:static !important;
+  display:flex !important;
+  align-items:center !important;
+  justify-content:space-between !important;
+  flex-wrap:wrap !important;
+  gap:6px !important;
+  min-height:44px !important;
+  margin:auto 0 0 !important;
+  padding:0 !important;
+  pointer-events:auto !important;
+}
+
+body .app-shell[data-bc1-browse="menu"] .product-card .product-footer > strong {
+  position:static !important;
+  inset:auto !important;
+  margin:0 !important;
+  padding:0 !important;
+  font:600 15px/1.2 Arial, sans-serif !important;
+  color:#302c29 !important;
+  background:none !important;
+  text-shadow:none !important;
+  white-space:nowrap !important;
+}
+
+body .app-shell[data-bc1-browse="menu"] .product-card .add {
+  position:static !important;
+  inset:auto !important;
+  min-width:44px !important;
+  width:44px !important;
+  height:44px !important;
+  margin:0 0 0 auto !important;
+  padding:0 !important;
+  color:#fff !important;
+  background:#b68e76 !important;
+  border:0 !important;
+  border-radius:13px !important;
+  box-shadow:none !important;
+  backdrop-filter:none !important;
+}
+
+body .app-shell[data-bc1-browse="menu"] .product-card .add span {
+  font:300 27px/1 Arial, sans-serif !important;
+  color:#fff !important;
+  background:transparent !important;
+}
+
+body .app-shell[data-bc1-browse="menu"] .product-card .stepper {
+  position:static !important;
+  inset:auto !important;
+  height:40px !important;
+  min-height:40px !important;
+  display:flex !important;
+  gap:0 !important;
+  padding:2px !important;
+  color:#302c29 !important;
+  background:#f1ede9 !important;
+  border:0 !important;
+  border-radius:12px !important;
+  box-shadow:none !important;
+  backdrop-filter:none !important;
+}
+
+body .app-shell[data-bc1-browse="menu"] .product-card .stepper button {
+  width:32px !important;
+  height:36px !important;
+  min-width:32px !important;
+  color:#625b55 !important;
+  background:transparent !important;
+  border:0 !important;
+  box-shadow:none !important;
+}
+
+body .app-shell[data-bc1-browse="menu"] .menu-toolbar {
+  margin-bottom:16px !important;
+  gap:8px !important;
+}
+
+body .app-shell[data-bc1-browse="menu"] .product-grid {
+  gap:12px !important;
+}
+
+body .app-shell[data-bc1-browse="menu"].menu-view-grid .product-grid {
+  grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+}
+
+body .app-shell[data-bc1-browse="menu"].menu-view-list .product-grid,
+body .app-shell[data-bc1-browse="menu"].menu-view-showcase .product-grid {
+  grid-template-columns:minmax(0,1fr) !important;
+}
+
+body .app-shell[data-bc1-browse="menu"] .product-card {
+  border-radius:18px !important;
+}
+
+body .app-shell[data-bc1-browse="menu"] .product-card .product-body {
+  padding:12px !important;
+  gap:10px !important;
+}
+
+body .app-shell[data-bc1-browse="menu"] .product-card .product-title h3 {
+  font-size:14px !important;
+  line-height:1.35 !important;
+}
+
+body .app-shell[data-bc1-browse="menu"] .product-card .product-footer > strong {
+  font-size:14px !important;
+}
+
+/* Shell background/pseudo-elements deliberately inherit the exact PR49 rule. */
+body .app-shell[data-bc1-browse] { padding-bottom: 112px !important; }
+body .app-shell[data-bc1-browse] .main-nav.bc1-browse-nav { position: fixed !important; top: auto !important; bottom: 0 !important; left: 0 !important; right: 0 !important; z-index: 50 !important; width: 100% !important; max-width: none !important; margin: 0 !important; padding: 9px max(8px, calc((100vw - 760px)/2)) calc(9px + env(safe-area-inset-bottom)) !important; display: grid !important; grid-template-columns: repeat(5, minmax(0,1fr)) !important; gap: 0 !important; border: 0 !important; border-top: 1px solid #eae5df !important; border-radius: 0 !important; background: #fff !important; box-shadow: none !important; overflow: visible !important; }
+body .app-shell[data-bc1-browse] .main-nav.bc1-browse-nav button { display: flex !important; flex-direction: column !important; align-items: center !important; justify-content: center !important; gap: 6px !important; min-width: 0 !important; min-height: 52px !important; padding: 3px 2px !important; border: 0 !important; background: transparent !important; color: #7b736c !important; box-shadow: none !important; font: 400 10px/1.2 Arial, sans-serif !important; white-space: normal !important; }
+body .app-shell[data-bc1-browse] .main-nav.bc1-browse-nav button.active { color: #976e55 !important; background: transparent !important; }
+body .app-shell[data-bc1-browse] .bc1-catalog { width: 100% !important; max-width: 1120px !important; margin: 0 auto !important; padding: 8px 24px 32px !important; }
+body .app-shell[data-bc1-browse="menu"] .product-grid { width: 100% !important; max-width: none !important; gap: 18px !important; }
+body .app-shell[data-bc1-browse="menu"].menu-view-grid .product-grid { grid-template-columns: repeat(4,minmax(0,1fr)) !important; }
+body .app-shell[data-bc1-browse="menu"].menu-view-list .product-grid,
+body .app-shell[data-bc1-browse="menu"].menu-view-showcase .product-grid { grid-template-columns: repeat(2,minmax(0,1fr)) !important; }
+body .app-shell[data-bc1-browse="menu"] .product-card .product-title h3 { font-size: 16px !important; }
+body .app-shell[data-bc1-browse="menu"] .product-card .stepper b { min-width: 20px !important; color: #302c29 !important; font: 600 13px/1.2 Arial, sans-serif !important; }
+body .app-shell[data-bc1-browse="menu"] .categories { background: transparent !important; border: 0 !important; box-shadow: none !important; border-radius: 0 !important; }
+body .app-shell[data-bc1-browse="menu"] .floating-cart { bottom: 88px !important; color: #fff !important; background: #302c29 !important; border: 0 !important; border-radius: 16px !important; }
+
+
+body .app-shell[data-bc1-browse] .bc1-special-offer {
+  width: calc(100% - 48px); max-width: 1072px; margin: 20px auto 12px;
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  overflow: hidden; border-radius: 24px; background: #fff; color: #302c29;
+  font-family: Arial, Helvetica, sans-serif;
+}
+.bc1-special-offer img { width: 100%; height: 210px; display: block; object-fit: cover; object-position: center 46%; }
+.bc1-special-offer > div { padding: 28px; align-self: center; }
+body .app-shell[data-bc1-browse] .bc1-special-offer h2 { margin: 0; font: 600 25px/1.2 Arial, sans-serif; letter-spacing: -.7px; color: #302c29; }
+.bc1-special-offer p { margin: 10px 0 0; font: 400 14px/1.5 Arial, sans-serif; color: #80746a; }
+body .app-shell[data-bc1-browse] :is(.bc1-catalog, .bc1-browse-nav) button:focus-visible { outline: 3px solid #88644e !important; outline-offset: 3px !important; }
+@media (max-width: 680px) {
+  body .app-shell[data-bc1-browse] .bc1-special-offer { display: block; width: calc(100% - 28px); margin: 14px auto 14px; border-radius: 22px; }
+  .bc1-special-offer img { height: 158px; }
+  .bc1-special-offer > div { padding: 14px 18px 18px; }
+  body .app-shell[data-bc1-browse] .bc1-special-offer h2 { font-size: 22px; }
+  .bc1-special-offer p { margin-top: 8px; font-size: 13px; }
+  body .app-shell[data-bc1-browse] .bc1-catalog { padding: 4px 14px 24px !important; }
+  body .app-shell[data-bc1-browse="menu"] .product-grid { gap: 12px !important; }
+  body .app-shell[data-bc1-browse="menu"].menu-view-grid .product-grid { grid-template-columns: repeat(2,minmax(0,1fr)) !important; }
+  body .app-shell[data-bc1-browse="menu"].menu-view-list .product-grid,
+  body .app-shell[data-bc1-browse="menu"].menu-view-showcase .product-grid { grid-template-columns: minmax(0,1fr) !important; }
+  body .app-shell[data-bc1-browse="menu"] .product-card .product-title h3 { font-size: 14px !important; }
+}
