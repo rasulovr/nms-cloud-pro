@@ -8,6 +8,10 @@ import "./QRMenuPhotoOpen.css";
 import "./QRMenuSchedule.css";
 import "./QRMenuProductDetail.css";
 import BC1ProductFacts from "./BC1ProductFacts";
+import BC1SpecialOffer from "./BC1SpecialOffer";
+import { Utensils, ShoppingBag, ReceiptText, BadgePercent, Info } from "lucide-react";
+import "./BC1MenuPreview.css";
+const bc1NavIcons = { menu: Utensils, cart: ShoppingBag, bill: ReceiptText, loyalty: BadgePercent, info: Info };
 const categoryOrder = {
   breakfast: ["ЗАВТРАК", "КОФЕ", "САЛАТЫ", "ЧАЙ", "ХОЛОДНЫЙ КОФЕ", "ДЕСЕРТЫ", "ЗАКУСКИ", "ГОРЯЧИЕ БЛЮДА", "СУПЫ", "ПИЦЦА", "ЛИМОНАДЫ", "ХОЛОДНЫЕ НАПИТКИ", "Новинки", "EKSTRA KITCHEN", "EKSTRA BAR"],
   lunch: ["САЛАТЫ", "БУРГЕРЫ", "СЭНДВИЧИ", "ЗАКУСКИ", "ГОРЯЧИЕ БЛЮДА", "ЛИМОНАДЫ", "ХОЛОДНЫЕ НАПИТКИ", "ПИЦЦА", "СУПЫ", "ЗАВТРАК", "ДЕСЕРТЫ", "КОФЕ", "ХОЛОДНЫЙ КОФЕ", "ЧАЙ", "Новинки", "EKSTRA KITCHEN", "EKSTRA BAR"],
@@ -416,10 +420,9 @@ export default function QRMenu() {
   const [table, setTable] = useState("");
   const [screen, setScreen] = useState("menu");
   const [category, setCategory] = useState("\u0412\u0441\u0435");
-  // Open every QR visit with the approved large photo-card layout. Guests can
-  // still switch views during the visit, but an old device preference must not
-  // replace the restaurant's default presentation on the next opening.
-  const [menuView, setMenuView] = useState("list");
+  // BC1 opens the reference two-column catalog; other branches retain PR49
+  // defaults. All three view choices remain available during the visit.
+  const [menuView, setMenuView] = useState(() => (new URLSearchParams(window.location.search).get("branch") || "BC1") === "BC1" ? "grid" : "list");
   const [cart, setCart] = useState([]);
   const [notice, setNotice] = useState("");
   const [lastAddedId, setLastAddedId] = useState(null);
@@ -441,6 +444,7 @@ export default function QRMenu() {
   const productModalCardRef = useRef(null);
   const productCloseTimerRef = useRef(null);
   const productReturnFocusRef = useRef(null);
+  const browseScrollRef = useRef(0);
   const [modalQuantity, setModalQuantity] = useState(1);
   const [photoFullscreen, setPhotoFullscreen] = useState(false);
   const [weather, setWeather] = useState(null);
@@ -1073,7 +1077,26 @@ export default function QRMenu() {
   const weatherTitle = (dayPhase === "night" ? nightWeatherTitles : weatherTitles)[language][atmosphere];
   const hasTableContext = Boolean(table);
   const recommendationQty = mealRecommendation ? cart.find((line) => line.id === mealRecommendation.product.id)?.qty || 0 : 0;
-  return <main data-motion-phase={branch === "BC1" ? dayPhase : undefined} className={`app-shell theme-${visualThemePhase} weather-theme-${atmosphere} menu-view-${menuView} menu-background-${backgroundTheme}`}>
+  const bc1Browse = branch === "BC1" && screen === "menu";
+  function navigateBc1(next) {
+    if (screen === "menu") browseScrollRef.current = window.scrollY;
+    setScreen(next);
+    window.requestAnimationFrame(() => window.scrollTo({ top: next === "menu" ? browseScrollRef.current : 0, behavior: "instant" }));
+  }
+  const navigation = <nav className={`main-nav${bc1Browse ? " bc1-browse-nav" : ""}`} aria-label="Разделы QR Menu">
+        {[
+    ["menu", t.menu],
+    ["cart", `${t.cart}${cartCount ? ` \xB7 ${cartCount}` : ""}`],
+    ["bill", t.bill],
+    ["loyalty", "Loyalty"],
+    ["info", t.info]
+  ].map(([id, label]) => <button
+    key={id}
+    className={screen === id ? "active" : ""}
+    onClick={() => branch === "BC1" ? navigateBc1(id) : setScreen(id)}
+  >{bc1Browse && React.createElement(bc1NavIcons[id], { size: 20, "aria-hidden": true })}{label}</button>)}
+      </nav>;
+  return <main data-bc1-browse={bc1Browse ? screen : undefined} data-motion-phase={branch === "BC1" ? dayPhase : undefined} className={`app-shell theme-${visualThemePhase} weather-theme-${atmosphere} menu-view-${menuView} menu-background-${backgroundTheme}`}>
       <header className={`hero qr-premium-hero${branch === "BC1" ? " qr-header-graphite-glass" : ""}`}>
         <div className="hero-sky" aria-hidden="true">
           {weatherOffer && <WeatherVisual kind={weatherOffer.kind} phase={dayPhase} />}
@@ -1099,23 +1122,11 @@ export default function QRMenu() {
         </div>
       </header>
 
-      <nav className="main-nav" aria-label="Разделы QR Menu">
-        {[
-    ["menu", t.menu],
-    ["cart", `${t.cart}${cartCount ? ` \xB7 ${cartCount}` : ""}`],
-    ["bill", t.bill],
-    ["loyalty", "Loyalty"],
-    ["info", t.info]
-  ].map(([id, label]) => <button
-    key={id}
-    className={screen === id ? "active" : ""}
-    onClick={() => setScreen(id)}
-  >{label}</button>)}
-      </nav>
+      {!bc1Browse && navigation}
 
-      {notice && <div className="toast">{notice}</div>}
+      {bc1Browse && <BC1SpecialOffer language={language} />}
 
-      {screen === "menu" && <section className="content">
+      {screen === "menu" && <section className={`content${branch === "BC1" ? " bc1-catalog" : ""}`}>
                     <div className="menu-toolbar">
             <div className="categories">
               {categories.map((name) => <button className={category === name ? "active" : ""} key={name} onClick={() => setCategory(name)}>{localizeCategory(name, language) || categoryTranslations[language][name] || categoryLabel(name)}</button>)}
@@ -1168,6 +1179,10 @@ export default function QRMenu() {
   })}
           </div>
         </section>}
+
+      {bc1Browse && navigation}
+
+      {notice && <div className="toast">{notice}</div>}
 
       {screen === "cart" && <section className="narrow content">
           <span className="eyebrow">{t.beforeSending}</span><h2>{t.yourOrder}</h2>
