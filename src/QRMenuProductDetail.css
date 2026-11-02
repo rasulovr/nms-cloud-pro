@@ -1,0 +1,76 @@
+/* BC1 photo detail only; menu cards and other branches are unchanged. */
+html body .app-shell[class*="theme-"] .product-modal.bc1-product-detail[role="dialog"] {
+  position: fixed !important; inset: 0 !important; z-index: 2000 !important;
+  display: block !important; width: 100% !important; height: 100vh !important; height: 100dvh !important;
+  padding: 0 !important; margin: 0 !important; overflow-y: auto !important;
+  backdrop-filter: none !important; -webkit-backdrop-filter: none !important;
+  overscroll-behavior: contain; background: #fff !important; scrollbar-width: none;
+}
+html body .app-shell .bc1-product-detail .product-modal-card {
+  position: relative !important; display: block !important; width: 100% !important;
+  max-width: none !important; min-height: 100% !important; max-height: none !important;
+  margin: 0 !important; padding: 0 !important; border: 0 !important; border-radius: 0 !important;
+  overflow: visible !important; background: #fff !important; box-shadow: none !important;
+}
+html body .app-shell .bc1-product-detail .modal-photo {
+  position: relative !important; inset: auto !important; display: block !important;
+  width: 100% !important; height: 49vh !important; height: 49svh !important;
+  min-height: 280px !important; max-height: 620px !important; aspect-ratio: auto !important;
+  margin: 0 !important; padding: 0 !important; border-radius: 0 !important; overflow: hidden !important;
+  background: #e4e8e9 !important;
+}
+html body .app-shell .bc1-product-detail .modal-photo img {
+  width: 100% !important; height: 100% !important; max-height: none !important;
+  object-fit: cover !important; object-position: center !important; border-radius: 0 !important;
+}
+html body .app-shell .bc1-product-detail .modal-close {
+  position: fixed !important; top: max(16px, env(safe-area-inset-top)) !important;
+  left: max(16px, env(safe-area-inset-left)) !important; right: auto !important;
+  z-index: 20 !important; display: grid !important; place-items: center;
+  width: 46px !important; height: 46px !important; min-width: 46px !important;
+  padding: 0 !important; border: 1px solid #ffffff80 !important; border-radius: 50% !important;
+  background: #ffffffb8 !important; color: #232a2d !important; backdrop-filter: blur(12px);
+  box-shadow: 0 3px 16px #00000015 !important;
+}
+html body .app-shell .bc1-product-detail .modal-close::before,
+html body .app-shell .bc1-product-detail .modal-close::after { content: none !important; }
+html body .app-shell .bc1-product-detail .modal-content {
+  position: relative !important; z-index: 2 !important; display: flex !important; flex-direction: column;
+  gap: 0 !important; width: 100% !important; max-width: none !important; min-height: 0 !important;
+  margin: -38px 0 0 !important; padding: 28px 24px max(30px, env(safe-area-inset-bottom)) !important;
+  border-radius: 36px 36px 0 0 !important; box-sizing: border-box; background: #fff !important;
+  color: #252b30 !important; text-align: center !important;
+}
+html body .app-shell .bc1-product-detail .modal-content > * { width: 100%; max-width: 720px; margin-left: auto !important; margin-right: auto !important; box-sizing: border-box; }
+html body .app-shell .bc1-product-detail .modal-category { color: #717b82 !important; font: 500 11px/1.4 system-ui,sans-serif !important; letter-spacing: .08em; margin-bottom: 10px !important; }
+html body .app-shell .bc1-product-detail .modal-content h2 {
+  margin-top: 0 !important; margin-bottom: 12px !important; padding: 0 !important;
+  font: 650 clamp(24px, 6.3vw, 30px)/1.2 "Noto Sans", system-ui, sans-serif !important;
+  letter-spacing: -.025em !important; color: #252b30 !important; text-align: center !important;
+  text-shadow: none !important; overflow-wrap: anywhere;
+}
+html body .app-shell .bc1-product-detail .modal-content > p { margin-top: 0 !important; margin-bottom: 22px !important; font: 400 14px/1.6 "Noto Sans",system-ui,sans-serif !important; color: #6b747b !important; text-align: center !important; }
+html body .app-shell .bc1-product-detail .modal-price { display: none !important; }
+html body .app-shell .bc1-product-detail .bc1-detail-facts { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); margin-top: 0; margin-bottom: 24px; border-top: 1px solid #e5e8ea; }
+html body .app-shell .bc1-product-detail .bc1-detail-facts > div { padding: 16px 10px; border-bottom: 1px solid #e5e8ea; }
+html body .app-shell .bc1-product-detail .bc1-detail-facts > div:nth-child(2),
+html body .app-shell .bc1-product-detail .bc1-detail-facts > div:nth-child(5) { border-left: 1px solid #e5e8ea; }
+html body .app-shell .bc1-product-detail .bc1-detail-allergens { grid-column: 1/-1; }
+html body .app-shell .bc1-product-detail .bc1-detail-facts dt { color: #707a82; font: 400 12px/1.5 "Noto Sans",system-ui,sans-serif; }
+html body .app-shell .bc1-product-detail .bc1-detail-facts dd { margin: 6px 0 0; color: #283239; font: 600 15px/1.4 "Noto Sans",system-ui,sans-serif; overflow-wrap: anywhere; }
+html body .app-shell .bc1-product-detail .modal-buy { order: 9; position: static !important; display: grid !important; grid-template-columns: auto minmax(0,1fr) !important; gap: 12px !important; margin-top: 0 !important; padding: 0 !important; background: transparent !important; }
+html body .app-shell .bc1-product-detail .modal-stepper { display: flex !important; min-height: 52px !important; border: 1px solid #e0e4e5 !important; border-radius: 16px !important; background: #f4f6f6 !important; color: #263238 !important; }
+html body .app-shell .bc1-product-detail .modal-stepper button { min-width: 40px !important; min-height: 52px !important; color: #263238 !important; }
+html body .app-shell .bc1-product-detail .modal-add-button { width: 100% !important; min-height: 52px !important; padding: 12px !important; border: 0 !important; border-radius: 16px !important; background: #273f35 !important; color: #fff !important; font: 600 14px/1.4 "Noto Sans",system-ui,sans-serif !important; white-space: normal !important; }
+html body .app-shell .bc1-product-detail .pairings { order: 10; margin-top: 28px !important; padding-top: 20px; border-top: 1px solid #e5e8ea; }
+html body .app-shell .bc1-product-detail button:focus-visible { outline: 3px solid #368365 !important; outline-offset: 3px !important; }
+@media (max-width: 360px) {
+  html body .app-shell .bc1-product-detail .modal-content { padding-left: 18px !important; padding-right: 18px !important; }
+  html body .app-shell .bc1-product-detail .modal-buy { grid-template-columns: 1fr !important; }
+  html body .app-shell .bc1-product-detail .modal-stepper { justify-self: center; }
+}
+
+/* Temporary, explicitly fictional examples; never replace actual dish facts. */
+html body .app-shell .bc1-product-detail .bc1-detail-demo { margin-bottom: 24px; padding: 16px; border: 2px dashed #9b7026; border-radius: 16px; background: #fff5dc; color: #593d13; text-align: left; font: 400 14px/1.5 system-ui,sans-serif; }
+html body .app-shell .bc1-product-detail .bc1-detail-demo strong { display: block; font-weight: 750; }
+html body .app-shell .bc1-product-detail .bc1-detail-demo p { margin: 8px 0 0; }
