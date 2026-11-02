@@ -1343,3 +1343,21 @@ main.app-shell .qr-premium-hero.qr-header-graphite-glass .hero-sky {
 main.app-shell:has(> .qr-header-graphite-glass) {
   background: radial-gradient(circle at 8% 5%, rgba(255,255,255,.58), transparent 27rem), linear-gradient(145deg, #e7ebee, #d6dde2) !important;
 }
+
+/* BC1 showcase: softer editorial lettering and a light photo-edge fade. */
+main.app-shell.menu-view-showcase:has(> .qr-header-graphite-glass) .product-title h3 {
+  font-family: "Palatino Linotype", "Book Antiqua", Palatino, Georgia, "Noto Serif", serif !important;
+  font-weight: 500 !important;
+  line-height: 1.16 !important;
+  letter-spacing: -.015em !important;
+}
+html body main.app-shell.menu-view-showcase:has(> .qr-header-graphite-glass) .product-card .food-photo::after {
+  content: "" !important;
+  display: block !important;
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  opacity: 1 !important;
+  background: linear-gradient(to top, rgba(255,253,248,.26), transparent 18%), linear-gradient(to right, rgba(255,253,248,.12), transparent 12%, transparent 88%, rgba(255,253,248,.12)) !important;
+}
