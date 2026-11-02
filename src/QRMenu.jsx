@@ -6,6 +6,8 @@ import { resolveRecoveredMenuImage, useRecoveredImageFallback } from "./recovere
 import "./QRMenu.css";
 import "./QRMenuPhotoOpen.css";
 import "./QRMenuSchedule.css";
+import "./QRMenuProductDetail.css";
+import BC1ProductFacts from "./BC1ProductFacts";
 const categoryOrder = {
   breakfast: ["ЗАВТРАК", "КОФЕ", "САЛАТЫ", "ЧАЙ", "ХОЛОДНЫЙ КОФЕ", "ДЕСЕРТЫ", "ЗАКУСКИ", "ГОРЯЧИЕ БЛЮДА", "СУПЫ", "ПИЦЦА", "ЛИМОНАДЫ", "ХОЛОДНЫЕ НАПИТКИ", "Новинки", "EKSTRA KITCHEN", "EKSTRA BAR"],
   lunch: ["САЛАТЫ", "БУРГЕРЫ", "СЭНДВИЧИ", "ЗАКУСКИ", "ГОРЯЧИЕ БЛЮДА", "ЛИМОНАДЫ", "ХОЛОДНЫЕ НАПИТКИ", "ПИЦЦА", "СУПЫ", "ЗАВТРАК", "ДЕСЕРТЫ", "КОФЕ", "ХОЛОДНЫЙ КОФЕ", "ЧАЙ", "Новинки", "EKSTRA KITCHEN", "EKSTRA BAR"],
@@ -437,6 +439,8 @@ export default function QRMenu() {
   const dayOfferShownRef = useRef(false);
   const productModalRef = useRef(null);
   const productModalCardRef = useRef(null);
+  const productCloseTimerRef = useRef(null);
+  const productReturnFocusRef = useRef(null);
   const [modalQuantity, setModalQuantity] = useState(1);
   const [photoFullscreen, setPhotoFullscreen] = useState(false);
   const [weather, setWeather] = useState(null);
@@ -625,6 +629,33 @@ export default function QRMenu() {
       window.removeEventListener("keydown", closeOnEscape);
     };
   }, [selectedProduct, photoFullscreen]);
+  useEffect(() => () => window.clearTimeout(productCloseTimerRef.current), []);
+  useEffect(() => {
+    if (branch !== "BC1" || !selectedProduct) return;
+    const body = document.body;
+    const previous = { position: body.style.position, top: body.style.top, width: body.style.width, overflow: body.style.overflow };
+    const scrollY = window.scrollY;
+    Object.assign(body.style, { position: "fixed", top: `-${scrollY}px`, width: "100%", overflow: "hidden" });
+    const trapFocus = (event) => {
+      if (event.key !== "Tab") return;
+      const controls = [...productModalRef.current.querySelectorAll('button:not(:disabled), a[href], input:not(:disabled), [tabindex="0"]')].filter((node) => node.getClientRects().length);
+      const first = controls[0], last = controls[controls.length - 1];
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+    };
+    document.addEventListener("keydown", trapFocus);
+    return () => {
+      Object.assign(body.style, previous);
+      window.scrollTo(0, scrollY);
+      document.removeEventListener("keydown", trapFocus);
+      if (productReturnFocusRef.current?.isConnected) productReturnFocusRef.current.focus({ preventScroll: true });
+    };
+  }, [branch, Boolean(selectedProduct)]);
+  useEffect(() => {
+    if (branch !== "BC1" || !selectedProduct) return;
+    productModalRef.current?.scrollTo(0, 0);
+    productModalRef.current?.querySelector(".modal-close")?.focus({ preventScroll: true });
+  }, [branch, selectedProduct?.id]);
   useEffect(() => {
     if (!selectedProduct) setPhotoFullscreen(false);
   }, [selectedProduct]);
@@ -928,7 +959,7 @@ export default function QRMenu() {
     if (unavailable.includes(product.id)) return flash(t.stoppedNotice);
     setCart((current) => {
       const line = current.find((item) => item.id === product.id);
-      if (!line && delta > 0) return [...current, { ...product, qty: 1 }];
+      if (!line && delta > 0) return [...current, { ...product, qty: branch === "BC1" ? delta : 1 }];
       return current.map((item) => item.id === product.id ? { ...item, qty: item.qty + delta } : item).filter((item) => item.qty > 0);
     });
     if (delta > 0) {
@@ -938,16 +969,21 @@ export default function QRMenu() {
     }
   }
   function openProduct(product) {
+    if (branch === "BC1") {
+      window.clearTimeout(productCloseTimerRef.current);
+      if (!selectedProduct) productReturnFocusRef.current = document.activeElement;
+    }
     setIsProductClosing(false);
     setSelectedProduct(product);
   }
   function requestCloseProduct() {
     if (!selectedProduct || isProductClosing) return;
     setIsProductClosing(true);
-    window.setTimeout(() => {
+    const closeTimer = window.setTimeout(() => {
       setSelectedProduct(null);
       setIsProductClosing(false);
     }, 720);
+    if (branch === "BC1") productCloseTimerRef.current = closeTimer;
   }
   function addSelectedProductToCart() {
     if (!selectedProduct || unavailable.includes(selectedProduct.id)) return;
@@ -1223,17 +1259,19 @@ export default function QRMenu() {
           <button className="primary-button" onClick={() => callWaiter("waiter")}>{t.waiter}</button>
         </section>}
 
-      {selectedProduct && <div ref={productModalRef} className={`product-modal ${isProductClosing ? "is-closing" : ""}`} role="dialog" aria-modal="true" aria-label={selectedProduct.name}>
+      {selectedProduct && <div ref={productModalRef} className={`product-modal${branch === "BC1" ? " bc1-product-detail" : ""} ${isProductClosing ? "is-closing" : ""}`} role="dialog" aria-modal="true" aria-label={selectedProduct.name}>
+          {branch === "BC1" && <button className="modal-close" onClick={requestCloseProduct} aria-label={t.close}><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="m14 5-7 7 7 7M7 12h14" /></svg></button>}
           <article ref={productModalCardRef} className={`product-modal-card ${isProductClosing ? "is-closing" : ""}`} key={selectedProduct.id}>
             <div className="modal-photo" style={photoStyle(selectedProduct)}>
               {selectedProduct.image ? <img className={photoClass(selectedProduct)} src={selectedProduct.image} alt={selectedProduct.name} onError={useRecoveredImageFallback} /> : <span className="photo-placeholder">B&C</span>}
-              <button className="modal-close" onClick={requestCloseProduct} aria-label={t.close}>×</button>
+              {branch !== "BC1" && <button className="modal-close" onClick={requestCloseProduct} aria-label={t.close}>×</button>}
             </div>
             <div className="modal-content">
               <span className="modal-category">{localizeCategory(selectedProduct.category, language) || categoryTranslations[language][selectedProduct.category] || categoryLabel(selectedProduct.category)}</span>
               <h2>{selectedProduct.name}</h2>
               <strong className="modal-price">{money(selectedProduct.price)}</strong>
               {selectedProduct.description && <p>{selectedProduct.description}</p>}
+              {branch === "BC1" && <BC1ProductFacts language={language} />}
               {selectedProduct.options.length > 0 && <div className="modal-options">{selectedProduct.options.map((option) => <small key={option}>{option}</small>)}</div>}
               {pairings.length > 0 && <div className="pairings">
                   <div className="pairing-grid">
