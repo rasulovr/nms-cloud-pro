@@ -407,3 +407,14 @@ body .app-shell[data-bc1-browse] .bc1-special-offer-action { z-index: 2; }
   body .app-shell[data-bc1-browse] .bc1-special-labels { padding: 18px; gap: 10px; }
   body .app-shell[data-bc1-browse] .bc1-special-labels h3 { font-size: 22px; }
 }
+
+/* Two real items, each opening its existing detail and individual price. */
+body .app-shell[data-bc1-browse] .bc1-offer-components { margin: 0 14px 18px; padding: 16px; border-radius: 18px; background: white; color: #302c29; }
+.bc1-offer-components[hidden] { display: none; }
+.bc1-offer-components p { margin: 0 0 10px; font-size: 14px; }
+body .app-shell[data-bc1-browse] .bc1-offer-components button { display: flex; align-items: center; justify-content: space-between; gap: 16px; width: 100%; min-height: 48px; padding: 12px; margin: 6px 0; border: 0; border-radius: 12px; background: #f3f0ed; color: #302c29; text-align: left; font: inherit; cursor: pointer; }
+.bc1-offer-components button span { overflow-wrap: anywhere; }
+.bc1-offer-components button strong { white-space: nowrap; }
+.bc1-offer-components button:focus-visible { outline: 2px solid #88644e; outline-offset: 2px; }
+/* Keep both featured servings in view at every card width. */
+body .app-shell[data-bc1-browse] .bc1-special-offer { background-size: contain; background-color: #211e1a; }
