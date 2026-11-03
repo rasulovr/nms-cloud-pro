@@ -223,8 +223,10 @@ body .app-shell[data-bc1-browse="menu"] .product-card .add {
   height:44px !important;
   margin:0 0 0 auto !important;
   padding:0 !important;
-  color:#fff !important;
-  background:#b68e76 !important;
+  display:grid !important;
+  place-items:center !important;
+  color:#80604d !important;
+  background:transparent !important;
   border:0 !important;
   border-radius:13px !important;
   box-shadow:none !important;
@@ -232,9 +234,14 @@ body .app-shell[data-bc1-browse="menu"] .product-card .add {
 }
 
 body .app-shell[data-bc1-browse="menu"] .product-card .add span {
-  font:300 27px/1 Arial, sans-serif !important;
-  color:#fff !important;
-  background:transparent !important;
+  display:grid !important;
+  place-items:center !important;
+  width:30px !important;
+  height:30px !important;
+  border-radius:9px !important;
+  font:300 23px/1 Arial, sans-serif !important;
+  color:#80604d !important;
+  background:#f1e9e3 !important;
 }
 
 body .app-shell[data-bc1-browse="menu"] .product-card .stepper {
