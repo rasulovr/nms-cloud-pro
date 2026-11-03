@@ -4,7 +4,7 @@ const labels = {
   az: { open: "Yeməklərə bax", separate: "Hər məhsuldan bir ədəd", add: "Seti əlavə et", close: "Bağla" },
   en: { open: "View items", separate: "One of each item", add: "Add set", close: "Collapse" },
 };
-const defaultImage = "/menu/bc1-williams-pineapple-offer.webp";
+const defaultImage = "/menu/bc1-williams-cinematic.svg";
 function OfferCard({ image = defaultImage, language, products = [], formatPrice, onOpen, onAdd, addDisabled = false }) {
   const [expanded, setExpanded] = useState(false);
   const detailsId = useId();

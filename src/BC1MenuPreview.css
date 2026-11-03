@@ -436,45 +436,50 @@ body .app-shell[data-bc1-browse] .bc1-offer-components .bc1-add-set { justify-co
 .bc1-offer-strip:focus-visible { outline: 2px solid #88644e; outline-offset: -2px; }
 .bc1-offer-slide { flex: 0 0 min(86%, 440px); min-width: 0; scroll-snap-align: start; }
 .bc1-offer-slide:only-child { flex-basis: min(100%, 440px); }
-/* Editorial: a shallow photo card with all copy inside the image area. */
+/* Cinematic reference: full-bleed photography and proportional typesetting. */
 .bc1-offer-slide { container-type: inline-size; }
 body .app-shell[data-bc1-browse] .bc1-offer-slide .bc1-special-offer {
-  width: 100%; height: auto; min-height: 148px; aspect-ratio: 2.35;
-  margin: 0; border-radius: 18px; background-color: #211e1a;
-  background-size: auto 100%; background-position: right center;
+  width: 100%; height: auto; min-height: 0; aspect-ratio: 1053 / 387;
+  margin: 0; border-radius: clamp(12px, 3.42cqw, 36px); background-color: #211e1a;
+  background-size: cover; background-position: center; background-repeat: no-repeat;
 }
 body .app-shell[data-bc1-browse] .bc1-offer-slide .bc1-special-offer > img {
   position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none;
 }
 body .app-shell[data-bc1-browse] .bc1-offer-slide .bc1-special-offer::before {
-  background: linear-gradient(90deg, #16130ff2 0%, #16130fe0 26%, #16130f8c 45%, #16130f00 67%);
+  background: linear-gradient(90deg, #15120f55 0%, #15120f22 35%, #15120f00 65%);
 }
 body .app-shell[data-bc1-browse] .bc1-offer-slide .bc1-special-labels {
-  inset: 0 auto 0 0; width: 49%; box-sizing: border-box;
-  padding: clamp(12px, 4cqw, 18px); padding-right: 0;
-  justify-content: center; align-items: flex-start; gap: 6px;
+  inset: 0; width: 100%; box-sizing: border-box;
+  padding: 3.5cqw 5.13cqw 4.5cqw;
+  justify-content: flex-start; align-items: flex-start; gap: 1.25cqw;
   text-align: left; pointer-events: none;
 }
 body .app-shell[data-bc1-browse] .bc1-offer-slide .bc1-special-labels h3 {
-  flex: none; display: block; overflow: visible; margin: 0;
-  font: 400 clamp(16px, 5.3cqw, 25px)/1.04 Georgia, "Times New Roman", serif;
-  letter-spacing: .02em; text-transform: uppercase; overflow-wrap: anywhere;
+  flex: none; width: 64%; margin: 0; color: #f8f4ec;
+  font: 500 clamp(10px, 3.04cqw, 32px)/1.2 Arial, Helvetica, sans-serif;
+  letter-spacing: .24em; text-transform: uppercase; overflow-wrap: anywhere;
 }
 body .app-shell[data-bc1-browse] .bc1-offer-slide .bc1-special-subtitle {
-  margin: 0; color: #fff8ee;
-  font: italic 400 clamp(11px, 3.3cqw, 15px)/1.15 Georgia, "Times New Roman", serif;
-  text-shadow: 0 1px 3px #0009; overflow-wrap: anywhere;
+  width: 64%; margin: 0; color: #f8f4ec;
+  font: 400 clamp(9px, 2.09cqw, 22px)/1.2 Arial, Helvetica, sans-serif;
+  letter-spacing: .12em; text-shadow: 0 1px 3px #0009; overflow-wrap: anywhere;
+}
+body .app-shell[data-bc1-browse] .bc1-offer-slide .bc1-special-labels::after {
+  content: ""; display: block; flex: none; width: 5.9cqw; height: 1px;
+  margin-top: 1.1cqw; background: #ded2b5; order: 0;
 }
 body .app-shell[data-bc1-browse] .bc1-offer-slide .bc1-special-price {
-  max-width: 100%; margin: 3px 0 0; padding: 7px 0 0; position: relative;
-  font: 400 clamp(16px, 4.7cqw, 22px)/1.1 Georgia, "Times New Roman", serif;
-  letter-spacing: .02em; white-space: nowrap;
+  position: absolute; left: 5.13cqw; bottom: 4.5cqw;
+  max-width: 45%; margin: 0; padding: 0; color: #f4edd9;
+  font: 400 clamp(17px, 4.75cqw, 50px)/1 Georgia, "Times New Roman", serif;
+  letter-spacing: 0; white-space: nowrap;
 }
-body .app-shell[data-bc1-browse] .bc1-offer-slide .bc1-special-price::before {
-  content: ""; position: absolute; top: 0; left: 0; width: 24px; height: 1px; background: #dfbd80;
-}
+body .app-shell[data-bc1-browse] .bc1-offer-slide .bc1-special-price::before { content: none; }
 body .app-shell[data-bc1-browse] .bc1-offer-slide .bc1-offer-components { margin: 10px 0 0; }
 /* Bound unusually long future offer names so price stays inside the photo. */
 body .app-shell[data-bc1-browse] .bc1-offer-slide .bc1-special-labels :is(h3, .bc1-special-subtitle) {
   display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; flex-shrink: 0;
 }
+/* Override legacy align-self:center so absolute caption fills the card. */
+body .app-shell[data-bc1-browse] .bc1-offer-slide .bc1-special-labels { height: 100%; align-self: stretch; }
