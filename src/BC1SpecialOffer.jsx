@@ -4,8 +4,8 @@ const labels = {
   az: { open: "Yeməklərə bax", separate: "Hər məhsuldan bir ədəd", add: "Seti əlavə et", close: "Bağla" },
   en: { open: "View items", separate: "One of each item", add: "Add set", close: "Collapse" },
 };
-const image = "/menu/bc1-williams-pineapple-offer.webp";
-export default function BC1SpecialOffer({ language, products = [], formatPrice, onOpen, onAdd, addDisabled = false }) {
+const defaultImage = "/menu/bc1-williams-pineapple-offer.webp";
+function OfferCard({ image = defaultImage, language, products = [], formatPrice, onOpen, onAdd, addDisabled = false }) {
   const [expanded, setExpanded] = useState(false);
   const detailsId = useId();
   if (products.length !== 2) return null;
@@ -28,4 +28,23 @@ export default function BC1SpecialOffer({ language, products = [], formatPrice, 
       <button type="button" onClick={() => setExpanded(false)}>{t.close}</button>
     </section>
   </>;
+}
+
+// The live menu currently supplies one real offer. Additional entries must carry
+// their own actual products and actions; fixtures never populate this list.
+export default function BC1SpecialOffer({ offers, ...props }) {
+  const entries = offers || [{ id: "williams-pineapple", ...props }];
+  const visible = entries.filter(offer => offer.products?.length === 2);
+  if (!visible.length) return null;
+  const name = { ru: "Специальные предложения", az: "Xüsusi təkliflər", en: "Special offers" };
+  return <div className="bc1-offer-strip" role="region" aria-label={name[props.language] || name.en} tabIndex={0}
+    onKeyDown={event => {
+      if (event.target !== event.currentTarget || !["ArrowLeft", "ArrowRight"].includes(event.key)) return;
+      event.preventDefault();
+      event.currentTarget.scrollBy({ left: (event.key === "ArrowRight" ? 1 : -1) * event.currentTarget.clientWidth * .85, behavior: "smooth" });
+    }}>
+    {visible.map(offer => <div className="bc1-offer-slide" key={offer.id}>
+      <OfferCard {...props} {...offer} />
+    </div>)}
+  </div>;
 }
