@@ -15,7 +15,11 @@ function OfferCard({ image = defaultImage, language, products = [], formatPrice,
   return <>
     <section className="bc1-special-offer" aria-label={title} style={{ backgroundImage: `url(${JSON.stringify(image)})` }}>
       <img src={image} alt="" />
-      <div className="bc1-special-labels"><h3>{title}</h3><strong className="bc1-special-price">{formatPrice(total)}</strong></div>
+      <div className="bc1-special-labels">
+        <h3>{products[0].name}</h3>
+        <p className="bc1-special-subtitle">{products[1].name}</p>
+        <strong className="bc1-special-price">{formatPrice(total)}</strong>
+      </div>
       <button className="bc1-special-offer-action" type="button" onClick={() => setExpanded(value => !value)} aria-expanded={expanded} aria-controls={detailsId} aria-label={`${t.open}: ${title}`} />
     </section>
     <section className="bc1-offer-components" id={detailsId} hidden={!expanded} aria-label={t.open}>
