@@ -356,3 +356,23 @@ body .app-shell[data-bc1-browse] .bc1-special-offer-action {
   border: 0; border-radius: inherit; background: transparent; box-shadow: none; cursor: pointer;
 }
 body .app-shell[data-bc1-browse] .bc1-special-offer-action:focus-visible { outline: 3px solid #88644e; outline-offset: -4px; }
+
+/* Editorial dish copy with its actual price alongside, without promo labels. */
+body .app-shell[data-bc1-browse] .bc1-special-offer h3 {
+  margin: 0; color: #302c29; font: 500 clamp(24px, 2.2vw, 32px)/1.18 Georgia, "Times New Roman", serif;
+  letter-spacing: -.35px; overflow-wrap: anywhere;
+}
+.bc1-special-summary { display: flex; align-items: flex-start; gap: 18px; margin-top: 12px; }
+.bc1-special-summary p {
+  flex: 1; min-width: 0; margin: 0; color: #675b52; font: 400 15px/1.55 Georgia, "Times New Roman", serif;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; overflow-wrap: anywhere;
+}
+.bc1-special-summary .bc1-special-price {
+  flex: none; max-width: 45%; margin: 0 0 0 auto; color: #302c29; font: 600 18px/1.4 Arial, sans-serif;
+  font-variant-numeric: tabular-nums; overflow-wrap: anywhere;
+}
+@media (max-width: 680px) {
+  .bc1-special-summary { gap: 12px; }
+  .bc1-special-summary p { margin: 0; font-size: 14px; }
+  .bc1-special-summary .bc1-special-price { font-size: 17px; }
+}
