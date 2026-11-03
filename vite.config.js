@@ -1,17 +1,2 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
-import { rmsSecureAuthTransform } from './build/rms-secure-auth-transform.js'
-
-export default defineConfig({
-  plugins: [
-    {
-      name: 'rms-secure-internal-auth',
-      enforce: 'pre',
-      transform(source, id) {
-        if (!id.replaceAll('\\', '/').endsWith('/src/main.generated.jsx')) return null
-        return { code: rmsSecureAuthTransform(source), map: null }
-      }
-    },
-    react()
-  ]
-})
+import {defineConfig} from 'vite';import react from '@vitejs/plugin-react';import path from 'node:path';
+export default defineConfig({plugins:[{name:'isolated-test-only',enforce:'pre',resolveId(source,importer){if(importer?.endsWith('/src/QRMenu.jsx')){if(source==='./supabase')return path.resolve('preview-second-offer/mock.js');if(source==='./BC1SpecialOffer')return path.resolve('preview-second-offer/Offer.jsx')}}},react()],build:{rollupOptions:{input:path.resolve('index.html')}},server:{host:'127.0.0.1',port:4204,strictPort:true}});
