@@ -346,3 +346,13 @@ body .app-shell[data-bc1-browse] :is(.bc1-catalog, .bc1-browse-nav) button:focus
   body .app-shell[data-bc1-browse="menu"].menu-view-showcase .product-grid { grid-template-columns: minmax(0,1fr) !important; }
   body .app-shell[data-bc1-browse="menu"] .product-card .product-title h3 { font-size: 14px !important; }
 }
+
+body .app-shell[data-bc1-browse] .bc1-special-offer { position: relative; }
+.bc1-special-offer h3 { margin: 12px 0 0; font: 600 19px/1.3 Arial, sans-serif; overflow-wrap: anywhere; }
+.bc1-special-offer p { overflow-wrap: anywhere; }
+.bc1-special-price { display: block; margin-top: 12px; font: 600 18px/1.3 Arial, sans-serif; }
+body .app-shell[data-bc1-browse] .bc1-special-offer-action {
+  position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; padding: 0;
+  border: 0; border-radius: inherit; background: transparent; box-shadow: none; cursor: pointer;
+}
+body .app-shell[data-bc1-browse] .bc1-special-offer-action:focus-visible { outline: 3px solid #88644e; outline-offset: -4px; }

@@ -688,6 +688,12 @@ export default function QRMenu() {
     () => getContextualCategoryOrder(mealMoment),
     [mealMoment]
   );
+  const specialOfferProduct = useMemo(() => {
+    if (branch !== "BC1" || loading) return null;
+    const eligible = localizedProducts.filter((product) => product.branches.includes(branch)
+      && !unavailable.includes(product.id) && !isExtraCategory(product) && product.image);
+    return eligible.find((product) => product.id === "bc-003") || eligible[0] || null;
+  }, [localizedProducts, branch, loading, unavailable]);
   const availableProducts = useMemo(() => localizedProducts.filter((product) => {
     const branchMatch = product.branches.includes(branch);
     const categoryMatch = category === "\u0412\u0441\u0435" || product.category === category;
@@ -1130,7 +1136,7 @@ export default function QRMenu() {
 
       {!bc1Browse && navigation}
 
-      {bc1Browse && <BC1SpecialOffer language={language} />}
+      {bc1Browse && <BC1SpecialOffer language={language} product={specialOfferProduct} price={specialOfferProduct ? money(specialOfferProduct.price) : ""} onOpen={openProduct} />}
 
       {screen === "menu" && <section className={`content${branch === "BC1" ? " bc1-catalog" : ""}`}>
                     <div className="menu-toolbar">
