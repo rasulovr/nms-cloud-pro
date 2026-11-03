@@ -9,6 +9,7 @@ import "./QRMenuSchedule.css";
 import "./QRMenuProductDetail.css";
 import BC1ProductFacts from "./BC1ProductFacts";
 import BC1SpecialOffer from "./BC1SpecialOffer";
+import { startBakuWeather, currentWeatherPresentation } from "./bc1Weather";
 import { Utensils, ShoppingBag, ReceiptText, BadgePercent, Info } from "lucide-react";
 import "./BC1MenuPreview.css";
 const bc1NavIcons = { menu: Utensils, cart: ShoppingBag, bill: ReceiptText, loyalty: BadgePercent, info: Info };
@@ -448,6 +449,7 @@ export default function QRMenu() {
   const [modalQuantity, setModalQuantity] = useState(1);
   const [photoFullscreen, setPhotoFullscreen] = useState(false);
   const [weather, setWeather] = useState(null);
+  const [weatherStatus, setWeatherStatus] = useState("loading");
   const [branchInfo, setBranchInfo] = useState(null);
   const [configuredBranchName, setConfiguredBranchName] = useState("");
   const [backgroundTheme, setBackgroundTheme] = useState("travertine");
@@ -597,6 +599,9 @@ export default function QRMenu() {
     return () => window.clearInterval(timer);
   }, [order?.public_token, order?.status]);
   useEffect(() => {
+    if ((new URLSearchParams(window.location.search).get("branch") || "BC1") === "BC1") {
+      return startBakuWeather((next, status) => { setWeather(next); setWeatherStatus(status); });
+    }
     let active = true;
     const directEndpoint = "https://api.open-meteo.com/v1/forecast?latitude=40.4093&longitude=49.8671&timezone=Asia%2FBaku&forecast_days=1&current=temperature_2m%2Capparent_temperature%2Cweather_code%2Cwind_speed_10m%2Cwind_gusts_10m&daily=temperature_2m_max%2Cprecipitation_sum&wind_speed_unit=ms";
     const normalizeDirectWeather = (data) => ({
@@ -1074,7 +1079,8 @@ export default function QRMenu() {
   const atmosphere = weatherOffer?.kind ?? "clear";
   // BC1 keeps its daytime palette; the real phase still drives weather and motion.
   const visualThemePhase = branch === "BC1" ? "day" : dayPhase;
-  const weatherTitle = (dayPhase === "night" ? nightWeatherTitles : weatherTitles)[language][atmosphere];
+  const currentWeather = currentWeatherPresentation(weather, weatherStatus, language, dayPhase === "night");
+  const weatherTitle = branch === "BC1" ? currentWeather.label : (dayPhase === "night" ? nightWeatherTitles : weatherTitles)[language][atmosphere];
   const hasTableContext = Boolean(table);
   const recommendationQty = mealRecommendation ? cart.find((line) => line.id === mealRecommendation.product.id)?.qty || 0 : 0;
   const bc1Browse = branch === "BC1" && screen === "menu";
@@ -1115,8 +1121,8 @@ export default function QRMenu() {
           </div>
 
 <div className="hero-reference-weather" aria-label={weatherTitle}>
-          <span className="hero-reference-cloud" aria-hidden="true">☁</span>
-          <strong>{weather ? Math.round(weather.temperature) : 18}°</strong>
+          <span className="hero-reference-cloud" aria-hidden="true">{branch === "BC1" ? currentWeather.icon : "☁"}</span>
+          <strong>{weather ? `${Math.round(weather.temperature)}°` : branch === "BC1" ? "—" : "18°"}</strong>
           <i />
           <span>Baku · {weatherTitle}</span>
         </div>
