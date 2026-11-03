@@ -688,11 +688,12 @@ export default function QRMenu() {
     () => getContextualCategoryOrder(mealMoment),
     [mealMoment]
   );
-  const specialOfferProduct = useMemo(() => {
-    if (branch !== "BC1" || loading) return null;
-    const eligible = localizedProducts.filter((product) => product.branches.includes(branch)
-      && !unavailable.includes(product.id) && !isExtraCategory(product) && product.image);
-    return eligible.find((product) => product.id === "bc-003") || eligible[0] || null;
+  const specialOfferProducts = useMemo(() => {
+    if (branch !== "BC1" || loading) return [];
+    const ids = ["b769d1a8-fe80-430e-9df0-62f0ed82ebb0", "91d2c7d5-e397-4ed1-ae62-d6d5443fa13c"];
+    const products = ids.map(id => localizedProducts.find(product => product.id === id
+      && product.branches.includes(branch) && !unavailable.includes(id)));
+    return products.every(Boolean) ? products : [];
   }, [localizedProducts, branch, loading, unavailable]);
   const availableProducts = useMemo(() => localizedProducts.filter((product) => {
     const branchMatch = product.branches.includes(branch);
@@ -1136,7 +1137,7 @@ export default function QRMenu() {
 
       {!bc1Browse && navigation}
 
-      {bc1Browse && <BC1SpecialOffer language={language} product={specialOfferProduct} price={specialOfferProduct ? money(specialOfferProduct.price) : ""} onOpen={openProduct} />}
+      {bc1Browse && <BC1SpecialOffer language={language} products={specialOfferProducts} formatPrice={money} onOpen={openProduct} />}
 
       {screen === "menu" && <section className={`content${branch === "BC1" ? " bc1-catalog" : ""}`}>
                     <div className="menu-toolbar">
