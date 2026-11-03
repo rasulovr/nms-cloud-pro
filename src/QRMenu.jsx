@@ -692,7 +692,8 @@ export default function QRMenu() {
     if (branch !== "BC1" || loading) return [];
     const ids = ["b769d1a8-fe80-430e-9df0-62f0ed82ebb0", "91d2c7d5-e397-4ed1-ae62-d6d5443fa13c"];
     const products = ids.map(id => localizedProducts.find(product => product.id === id
-      && product.branches.includes(branch) && !unavailable.includes(id)));
+      && product.branches.includes(branch) && !unavailable.includes(id)
+      && Number.isFinite(product.price) && product.price >= 0));
     return products.every(Boolean) ? products : [];
   }, [localizedProducts, branch, loading, unavailable]);
   const availableProducts = useMemo(() => localizedProducts.filter((product) => {
@@ -984,6 +985,22 @@ export default function QRMenu() {
       window.setTimeout(() => setLastAddedId((current) => current === product.id ? null : current), 1200);
     }
   }
+  function addSpecialOffer() {
+    if (branch !== "BC1" || specialOfferProducts.length !== 2) return;
+    setCart(current => {
+      // One atomic update: either both real lines advance or neither does.
+      if (specialOfferProducts.some(product => unavailable.includes(product.id)
+        || (current.find(line => line.id === product.id)?.qty || 0) >= 99)) return current;
+      const next = current.map(line => {
+        const product = specialOfferProducts.find(item => item.id === line.id);
+        return product ? { ...line, price: product.price, qty: line.qty + 1 } : line;
+      });
+      for (const product of specialOfferProducts) {
+        if (!current.some(line => line.id === product.id)) next.push({ ...product, qty: 1 });
+      }
+      return next;
+    });
+  }
   function openProduct(product) {
     if (branch === "BC1") {
       window.clearTimeout(productCloseTimerRef.current);
@@ -1137,7 +1154,7 @@ export default function QRMenu() {
 
       {!bc1Browse && navigation}
 
-      {bc1Browse && <BC1SpecialOffer language={language} products={specialOfferProducts} formatPrice={money} onOpen={openProduct} />}
+      {bc1Browse && <BC1SpecialOffer language={language} products={specialOfferProducts} formatPrice={money} onOpen={openProduct} onAdd={addSpecialOffer} addDisabled={specialOfferProducts.some(product => (cart.find(line => line.id === product.id)?.qty || 0) >= 99)} />}
 
       {screen === "menu" && <section className={`content${branch === "BC1" ? " bc1-catalog" : ""}`}>
                     <div className="menu-toolbar">
