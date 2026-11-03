@@ -377,16 +377,33 @@ body .app-shell[data-bc1-browse] .bc1-special-offer h3 {
   .bc1-special-summary .bc1-special-price { font-size: 17px; }
 }
 
-/* Local photo-overlay variant: retain the existing card's layout dimensions. */
+/* Classic photo feature: title left, price right, no description or frames. */
 body .app-shell[data-bc1-browse] .bc1-special-offer {
-  background-size: cover; background-position: center; background-repeat: no-repeat;
+  height: 310px; display: block; background-size: cover; background-position: center; background-repeat: no-repeat;
 }
-.bc1-special-offer > img { opacity: 0; }
-.bc1-special-offer > div {
-  position: relative; background: rgba(255, 252, 247, .86);
-  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+.bc1-special-offer > img { opacity: 0; width: 100%; height: 100%; }
+.bc1-special-offer::before {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(0deg, rgba(0,0,0,.7), transparent 58%);
 }
-.bc1-special-summary .bc1-special-price {
-  background: rgba(255, 255, 255, .74); box-shadow: 0 0 0 6px rgba(255, 255, 255, .74); border-radius: 5px;
+body .app-shell[data-bc1-browse] .bc1-special-labels {
+  position: absolute; left: 0; right: 0; bottom: 0; padding: 22px;
+  display: flex; align-items: flex-end; gap: 16px; min-width: 0;
+  background: transparent; backdrop-filter: none; -webkit-backdrop-filter: none;
+}
+body .app-shell[data-bc1-browse] .bc1-special-labels :is(h3, .bc1-special-price) {
+  margin: 0; padding: 0; border: 0; background: transparent; color: #fff; box-shadow: none;
+  text-shadow: 0 1px 3px #0006;
+}
+body .app-shell[data-bc1-browse] .bc1-special-labels h3 {
+  flex: 1; min-width: 0; font: 400 25px/1.12 Georgia, serif; letter-spacing: -.25px;
+  overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; overflow: hidden;
+}
+body .app-shell[data-bc1-browse] .bc1-special-labels .bc1-special-price {
+  flex: none; max-width: 36%; font: 500 17px/1.3 Arial, sans-serif; overflow-wrap: anywhere;
 }
 body .app-shell[data-bc1-browse] .bc1-special-offer-action { z-index: 2; }
+@media (max-width: 350px) {
+  body .app-shell[data-bc1-browse] .bc1-special-labels { padding: 18px; gap: 10px; }
+  body .app-shell[data-bc1-browse] .bc1-special-labels h3 { font-size: 22px; }
+}
