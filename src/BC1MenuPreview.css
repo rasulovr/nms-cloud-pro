@@ -430,3 +430,18 @@ body .app-shell[data-bc1-browse] .bc1-special-labels { flex-direction: column; a
 body .app-shell[data-bc1-browse] .bc1-special-labels .bc1-special-price { max-width: 100%; font-size: 18px; }
 body .app-shell[data-bc1-browse] .bc1-offer-components .bc1-add-set { justify-content: center; background: #b68e76; color: #241e1a; }
 .bc1-offer-components button:disabled { opacity: .5; cursor: not-allowed; }
+
+/* Native horizontal offer strip; a single real offer stays a single card. */
+.bc1-offer-strip { display: flex; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; overscroll-behavior-x: contain; padding: 0 14px 8px; margin: 14px 0; align-items: flex-start; scrollbar-width: thin; }
+.bc1-offer-strip:focus-visible { outline: 2px solid #88644e; outline-offset: -2px; }
+.bc1-offer-slide { flex: 0 0 min(86%, 440px); min-width: 0; scroll-snap-align: start; }
+.bc1-offer-slide:only-child { flex-basis: min(100%, 440px); }
+body .app-shell[data-bc1-browse] .bc1-offer-slide .bc1-special-offer { width: 100%; height: 220px; margin: 0; border-radius: 18px; }
+body .app-shell[data-bc1-browse] .bc1-offer-slide .bc1-special-labels { padding: 12px 14px; gap: 4px; }
+body .app-shell[data-bc1-browse] .bc1-offer-slide .bc1-special-labels h3 { font-size: 16px; line-height: 1.2; }
+body .app-shell[data-bc1-browse] .bc1-offer-slide .bc1-special-price { font-size: 16px; }
+body .app-shell[data-bc1-browse] .bc1-offer-slide .bc1-offer-components { margin: 10px 0 0; }
+@media (max-width: 350px) {
+ body .app-shell[data-bc1-browse] .bc1-offer-slide .bc1-special-offer { height: 200px; }
+ body .app-shell[data-bc1-browse] .bc1-offer-slide .bc1-special-labels h3 { font-size: 15px; }
+}
