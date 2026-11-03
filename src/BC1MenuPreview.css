@@ -436,12 +436,45 @@ body .app-shell[data-bc1-browse] .bc1-offer-components .bc1-add-set { justify-co
 .bc1-offer-strip:focus-visible { outline: 2px solid #88644e; outline-offset: -2px; }
 .bc1-offer-slide { flex: 0 0 min(86%, 440px); min-width: 0; scroll-snap-align: start; }
 .bc1-offer-slide:only-child { flex-basis: min(100%, 440px); }
-body .app-shell[data-bc1-browse] .bc1-offer-slide .bc1-special-offer { width: 100%; height: 220px; margin: 0; border-radius: 18px; }
-body .app-shell[data-bc1-browse] .bc1-offer-slide .bc1-special-labels { padding: 12px 14px; gap: 4px; }
-body .app-shell[data-bc1-browse] .bc1-offer-slide .bc1-special-labels h3 { font-size: 16px; line-height: 1.2; }
-body .app-shell[data-bc1-browse] .bc1-offer-slide .bc1-special-price { font-size: 16px; }
+/* Editorial: a shallow photo card with all copy inside the image area. */
+.bc1-offer-slide { container-type: inline-size; }
+body .app-shell[data-bc1-browse] .bc1-offer-slide .bc1-special-offer {
+  width: 100%; height: auto; min-height: 148px; aspect-ratio: 2.35;
+  margin: 0; border-radius: 18px; background-color: #211e1a;
+  background-size: auto 100%; background-position: right center;
+}
+body .app-shell[data-bc1-browse] .bc1-offer-slide .bc1-special-offer > img {
+  position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none;
+}
+body .app-shell[data-bc1-browse] .bc1-offer-slide .bc1-special-offer::before {
+  background: linear-gradient(90deg, #16130ff2 0%, #16130fe0 26%, #16130f8c 45%, #16130f00 67%);
+}
+body .app-shell[data-bc1-browse] .bc1-offer-slide .bc1-special-labels {
+  inset: 0 auto 0 0; width: 49%; box-sizing: border-box;
+  padding: clamp(12px, 4cqw, 18px); padding-right: 0;
+  justify-content: center; align-items: flex-start; gap: 6px;
+  text-align: left; pointer-events: none;
+}
+body .app-shell[data-bc1-browse] .bc1-offer-slide .bc1-special-labels h3 {
+  flex: none; display: block; overflow: visible; margin: 0;
+  font: 400 clamp(16px, 5.3cqw, 25px)/1.04 Georgia, "Times New Roman", serif;
+  letter-spacing: .02em; text-transform: uppercase; overflow-wrap: anywhere;
+}
+body .app-shell[data-bc1-browse] .bc1-offer-slide .bc1-special-subtitle {
+  margin: 0; color: #fff8ee;
+  font: italic 400 clamp(11px, 3.3cqw, 15px)/1.15 Georgia, "Times New Roman", serif;
+  text-shadow: 0 1px 3px #0009; overflow-wrap: anywhere;
+}
+body .app-shell[data-bc1-browse] .bc1-offer-slide .bc1-special-price {
+  max-width: 100%; margin: 3px 0 0; padding: 7px 0 0; position: relative;
+  font: 400 clamp(16px, 4.7cqw, 22px)/1.1 Georgia, "Times New Roman", serif;
+  letter-spacing: .02em; white-space: nowrap;
+}
+body .app-shell[data-bc1-browse] .bc1-offer-slide .bc1-special-price::before {
+  content: ""; position: absolute; top: 0; left: 0; width: 24px; height: 1px; background: #dfbd80;
+}
 body .app-shell[data-bc1-browse] .bc1-offer-slide .bc1-offer-components { margin: 10px 0 0; }
-@media (max-width: 350px) {
- body .app-shell[data-bc1-browse] .bc1-offer-slide .bc1-special-offer { height: 200px; }
- body .app-shell[data-bc1-browse] .bc1-offer-slide .bc1-special-labels h3 { font-size: 15px; }
+/* Bound unusually long future offer names so price stays inside the photo. */
+body .app-shell[data-bc1-browse] .bc1-offer-slide .bc1-special-labels :is(h3, .bc1-special-subtitle) {
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; flex-shrink: 0;
 }
