@@ -418,3 +418,15 @@ body .app-shell[data-bc1-browse] .bc1-offer-components button { display: flex; a
 .bc1-offer-components button:focus-visible { outline: 2px solid #88644e; outline-offset: 2px; }
 /* Keep both featured servings in view at every card width. */
 body .app-shell[data-bc1-browse] .bc1-special-offer { background-size: contain; background-color: #211e1a; }
+
+/* Compact, centered offer typography. Total uses the two current menu prices. */
+body .app-shell[data-bc1-browse] .bc1-special-labels { justify-content: center; text-align: center; }
+body .app-shell[data-bc1-browse] .bc1-special-labels h3 { flex: 0 1 auto; font-size: 19px; line-height: 1.25; }
+@media (max-width: 350px) {
+  body .app-shell[data-bc1-browse] .bc1-special-labels h3 { font-size: 17px; }
+}
+
+body .app-shell[data-bc1-browse] .bc1-special-labels { flex-direction: column; align-items: center; gap: 6px; }
+body .app-shell[data-bc1-browse] .bc1-special-labels .bc1-special-price { max-width: 100%; font-size: 18px; }
+body .app-shell[data-bc1-browse] .bc1-offer-components .bc1-add-set { justify-content: center; background: #b68e76; color: #241e1a; }
+.bc1-offer-components button:disabled { opacity: .5; cursor: not-allowed; }
