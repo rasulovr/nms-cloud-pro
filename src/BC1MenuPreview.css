@@ -376,3 +376,17 @@ body .app-shell[data-bc1-browse] .bc1-special-offer h3 {
   .bc1-special-summary p { margin: 0; font-size: 14px; }
   .bc1-special-summary .bc1-special-price { font-size: 17px; }
 }
+
+/* Local photo-overlay variant: retain the existing card's layout dimensions. */
+body .app-shell[data-bc1-browse] .bc1-special-offer {
+  background-size: cover; background-position: center; background-repeat: no-repeat;
+}
+.bc1-special-offer > img { opacity: 0; }
+.bc1-special-offer > div {
+  position: relative; background: rgba(255, 252, 247, .86);
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+}
+.bc1-special-summary .bc1-special-price {
+  background: rgba(255, 255, 255, .74); box-shadow: 0 0 0 6px rgba(255, 255, 255, .74); border-radius: 5px;
+}
+body .app-shell[data-bc1-browse] .bc1-special-offer-action { z-index: 2; }
