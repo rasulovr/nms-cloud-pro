@@ -1,16 +1,21 @@
 import React from "react";
 
 const copy = {
-  ru: { title: "Спецпредложение", note: "Макет блока. Действующее предложение не подтверждено." },
-  az: { title: "Xüsusi təklif", note: "Blokun maketi. Aktiv təklif təsdiqlənməyib." },
-  en: { title: "Special offer", note: "Preview block. No active offer has been confirmed." }
+  ru: { title: "Спецпредложение", note: "Блюдо из меню · обычная цена", open: "Открыть блюдо" },
+  az: { title: "Xüsusi təklif", note: "Menyudan seçim · adi qiymət", open: "Yeməyə bax" },
+  en: { title: "Special offer", note: "From our menu · regular price", open: "View dish" }
 };
 
-// A clearly labeled layout preview, not a claim that a promotion is available.
-export default function BC1SpecialOffer({ language }) {
+// Feature only an available item from the loaded menu, without inventing an offer.
+export default function BC1SpecialOffer({ language, product, price, onOpen }) {
   const t = copy[language] || copy.en;
+  if (!product) return null;
   return <section className="bc1-special-offer" aria-label={t.title}>
-    <img src="/menu/generated/special-coffee.webp" alt="" />
-    <div><h2>{t.title}</h2><p>{t.note}</p></div>
+    <img src={product.image} alt="" />
+    <div><h2>{t.title}</h2><h3>{product.name}</h3>
+      {product.description && <p>{product.description}</p>}
+      <strong className="bc1-special-price">{price}</strong><p>{t.note}</p>
+    </div>
+    <button className="bc1-special-offer-action" type="button" onClick={() => onOpen(product)} aria-label={`${t.open}: ${product.name}`} />
   </section>;
 }
