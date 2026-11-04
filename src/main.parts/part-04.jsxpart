@@ -6255,14 +6255,15 @@ function Reports({ t, permissions = [], isAdmin = false }) {
         return query.order('expense_date', { ascending: true }).order('id', { ascending: true }).range(from, to)
       })
 
-      const rawSupplierPurchases = await fetchPaged((from, to) => {
+      const allSupplierPurchaseRows = await fetchPaged((from, to) => {
         let query = supabase
           .from('supplier_purchases')
           .select('id,supplier_id,branch_id,purchase_date,invoice_number,total_amount,comment,deleted_at,suppliers(name)')
-          .is('deleted_at', null)
         query = applyDateRange(query, 'purchase_date')
         return query.order('purchase_date', { ascending: true }).order('id', { ascending: true }).range(from, to)
       })
+
+      const rawSupplierPurchases = allSupplierPurchaseRows.filter(row => row.deleted_at == null)
 
       const [employeeRows, salaryPeriods, allServiceRows] = await Promise.all([
         fetchPaged((from, to) => supabase.from('employees')
@@ -6286,7 +6287,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
       const isAuditedMonth = date => String(date || '').slice(0, 7) >= '2026-01' && String(date || '').slice(0, 7) <= '2026-09'
       const hasAuditedMonths = period.from < '2026-10-01' && period.toExclusive > '2026-01-01'
       const mixedBasis = hasAuditedMonths && (period.from < '2026-01-01' || period.toExclusive > '2026-10-01')
-      const reviewedInputs = { revenueRows, dailyExpenseRows: rawDailyExpenseRows, supplierPurchases: rawSupplierPurchases, salaryPeriods, serviceRows, employeeRows, branchRows: branches }
+      const reviewedInputs = { revenueRows, dailyExpenseRows: rawDailyExpenseRows, supplierPurchases: rawSupplierPurchases, supplierPurchaseRows: allSupplierPurchaseRows, salaryPeriods, serviceRows, employeeRows, branchRows: branches }
       const protectedRecords = await readComponentRecords(supabase, period.from, period.toExclusive)
       const goodsPurchaseIds = [...new Set(protectedRecords.filter(record => record.snapshot_data?.kind === 'bank_basis_evidence' && record.snapshot_data?.version === 3).flatMap(record => (record.snapshot_data.goodsProof?.headers || []).map(row => String(row.id))))]
       reviewedInputs.supplierPurchaseItems = []
@@ -6461,11 +6462,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
           const amount = Number(periodRow.salary_gross)
           if (!Number.isFinite(amount) || amount <= 0) return
           const employee = employeeById.get(String(periodRow.employee_id)) || {}
-          // Jan–Sep previously loaded active employees only. Preserve that
-          // allocation eligibility while resolving identities from the full list.
-          const allocationEmployee = isAuditedMonth(periodRow.salary_month) && employee.is_active !== true ? {} : employee
-          const branchId = String(periodRow.branch_id || allocationEmployee.branch_id || '')
-          const manager = !branchId || positionGroup(allocationEmployee.position) === 'Менеджеры'
+          const {branchId, manager} = resolveProfitabilityPayrollAllocation(periodRow, employee)
           const detail = {
             id: `salary-${periodRow.employee_id || branchId}-${periodRow.salary_month || ''}`,
             date: periodRow.salary_month,

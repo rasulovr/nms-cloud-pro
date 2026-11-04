@@ -33,7 +33,7 @@ async function load(source, data, fault=false) {
  }
  const context={supabase:{from:table=>new Query(table)},pageSize:1000,applyDateRange:q=>q}
  vm.createContext(context)
- const out=await vm.runInContext(`(async()=>{${source};return {revenueRows,dailyExpenseRows:rawDailyExpenseRows,supplierPurchases:rawSupplierPurchases}})()`,context)
+ const out=await vm.runInContext(`(async()=>{${source};return {revenueRows,dailyExpenseRows:rawDailyExpenseRows,supplierPurchases:rawSupplierPurchases,supplierPurchaseRows:allSupplierPurchaseRows}})()`,context)
  return {out,orders}
 }
 const fixed=await load(querySource,fixture)
@@ -54,3 +54,10 @@ const fallback=await load(querySource,{...fixture,daily_revenue_entries:[],daily
 assert.equal(fallback.out.revenueRows.length,3107)
 assert.deepEqual(JSON.parse(JSON.stringify(expected(fallback.out.revenueRows))),expected(fixture.daily_revenue_entries))
 console.log('PASS profitability pagination: full row parity for 3 sources, multi-page date ties, revenue fallback, old-order reproduction and intact identity guard')
+
+const deletedFixture={...fixture,supplier_purchases:fixture.supplier_purchases.map((row,i)=>({...row,deleted_at:i%3===0?'2026-10-01T00:00:00Z':null}))}
+const withDeleted=await load(querySource,deletedFixture)
+assert.equal(withDeleted.out.supplierPurchaseRows.length,3107,'coverage includes deleted rows across every page')
+assert.equal(withDeleted.out.supplierPurchases.length,2071,'calculation still receives only active purchases')
+assert.ok(withDeleted.out.supplierPurchases.every(row=>row.deleted_at===null))
+console.log('PASS purchase pagination: full source coverage including 1036 deleted rows; active calculation remains 2071 rows')

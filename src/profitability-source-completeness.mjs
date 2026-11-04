@@ -1,3 +1,5 @@
+import {resolveProfitabilityPayrollAllocation} from './profitability-payroll-allocation.mjs'
+import {ordinaryCoverageIssues} from './profitability-ordinary-coverage.mjs'
 import {isMonth, nextMonth} from './profitability-range.mjs'
 
 export function reportMonths(from, toExclusive) {
@@ -82,7 +84,7 @@ export function expectedCoverageIssues(manifest, input, month, records = []) {
   const equal = (a,b) => JSON.stringify(a) === JSON.stringify(b)
   const sorted = values => [...values].sort((a,b)=>JSON.stringify(a).localeCompare(JSON.stringify(b)))
   if (!proof) { fail('missing-expected-source-registry'); return issues }
-  if (proof.version!==1 || proof.month!==month || proof.status!=='verified' || !text(proof.approvalRef) || !text(proof.source?.fileId) || !text(proof.source?.readAt) || !Array.isArray(proof.source.cells) || !proof.source.cells.length || !proof.source.cells.every(text) || !['branches','payroll','service','components'].every(key=>Array.isArray(proof[key]))) {
+  if (proof.version!==2 || proof.month!==month || proof.status!=='verified' || !text(proof.approvalRef) || !text(proof.source?.fileId) || !text(proof.source?.readAt) || !Array.isArray(proof.source.cells) || !proof.source.cells.length || !proof.source.cells.every(text) || !['branches','payroll','service','components'].every(key=>Array.isArray(proof[key]))) {
     fail('invalid-expected-source-registry'); return issues
   }
   for (const key of ['branches','payroll','service','components']) {
@@ -100,6 +102,7 @@ export function expectedCoverageIssues(manifest, input, month, records = []) {
   for (const [rows,date] of [[input.revenueRows,'revenue_date'],[input.dailyExpenseRows,'expense_date']]) {
     if (inMonth(rows,date).some(row=>!branchIds.includes(String(row.branch_id)))) fail('unregistered-branch-source-row')
   }
+  issues.push(...ordinaryCoverageIssues(proof,input,month))
   const actualPayroll=inMonth(input.salaryPeriods || [],'salary_month')
   const employees=new Map((input.employeeRows || []).map(row=>[String(row.id),row]))
   const payrollFields=['id','employee_id','branch_id','salary_month','salary_gross','employeeBranchId','employeePosition']
@@ -113,7 +116,7 @@ export function expectedCoverageIssues(manifest, input, month, records = []) {
   for (const branch of proof.branches) {
     const revenue=Array.isArray(branch.revenueIds)?branch.revenueIds:[]
     const expenses=Array.isArray(branch.expenseIds)?branch.expenseIds:[]
-    const hasCosts=expenses.length || proof.payroll.some(row=>row.branch_id===branch.id) || proof.service.some(row=>row.branch_id===branch.id) || proof.components.some(row=>row.branchId===branch.id)
+    const hasCosts=expenses.length || proof.payroll.some(row=>{const allocation=resolveProfitabilityPayrollAllocation(row,{branch_id:row.employeeBranchId,position:row.employeePosition});return !allocation.manager && allocation.branchId===branch.id}) || proof.service.some(row=>row.branch_id===branch.id) || proof.components.some(row=>row.branchId===branch.id)
     if (!['operating','expense_only','excluded'].includes(branch.status) || (branch.status==='operating' && !revenue.length) || (branch.status!=='operating' && (!text(branch.reason) || revenue.length)) || (branch.status==='expense_only' && !hasCosts) || (branch.status==='excluded' && hasCosts)) fail('invalid-expected-branch-disposition')
   }
   const centralIds=actualPayroll.filter(row=>row.branch_id==null).map(row=>row.id)

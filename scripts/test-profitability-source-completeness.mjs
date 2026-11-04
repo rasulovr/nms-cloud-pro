@@ -7,7 +7,7 @@ import {COMPONENT_SNAPSHOT_TYPE, componentInputsFingerprint, resolveCoverageMani
 import {buildReviewedAdjustments} from '../src/profitability-adjustments.mjs'
 
 assert.deepEqual(reportMonths('2026-12-01','2027-03-01'),['2026-12','2027-01','2027-02'])
-const inputFor = month => ({branchRows:[{id:'a'},{id:'b'}],revenueRows:['a','b'].map((branch_id,i)=>({id:`r${i}`,branch_id,revenue_date:month+'-01',cash_amount:100,bank_amount:100,wolt_amount:0})),dailyExpenseRows:[],supplierPurchases:[],employeeRows:[{id:'e',is_active:false}],salaryPeriods:[{id:'s',employee_id:'e',branch_id:'a',salary_month:month+'-01',salary_gross:0,salary_net:500}],serviceRows:[{branch_id:'b',month:month+'-01',staff_cost_amount:0}]})
+const inputFor = month => ({branchRows:[{id:'a'},{id:'b'}],revenueRows:['a','b'].map((branch_id,i)=>({id:`r${i}`,branch_id,revenue_date:month+'-01',cash_amount:100,bank_amount:100,wolt_amount:0})),dailyExpenseRows:[],supplierPurchases:[],supplierPurchaseRows:[],employeeRows:[{id:'e',is_active:false}],salaryPeriods:[{id:'s',employee_id:'e',branch_id:'a',salary_month:month+'-01',salary_gross:0,salary_net:500}],serviceRows:[{branch_id:'b',month:month+'-01',staff_cost_amount:0}]})
 for (const month of ['2026-10','2026-12','2027-01','2028-02']) {
  const input=inputFor(month), end=reportMonths(month+'-01',month==='2028-02'?'2028-03-01':month==='2027-01'?'2027-02-01':month==='2026-12'?'2027-01-01':'2026-11-01')
  const to=month==='2028-02'?'2028-03-01':month==='2027-01'?'2027-02-01':month==='2026-12'?'2027-01-01':'2026-11-01'

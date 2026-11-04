@@ -1,3 +1,4 @@
+import {resolveProfitabilityPayrollAllocation} from '../src/profitability-payroll-allocation.mjs'
 import {registryFixture} from './profitability-registry-fixture.mjs'
 import {accrualInputsFingerprint} from '../src/profitability-source-completeness.mjs'
 import {bankInputsFingerprintV4} from '../src/profitability-reviewed-components.mjs'
@@ -37,7 +38,7 @@ async function run(row, { fallback = false, rate = 3, overrides = {}, failTable 
   if (makeRecords) tables.rms_data_snapshots = await makeRecords(tables)
   const ctx = vm.createContext({
     validateMonthRange, readComponentRecords, resolveComponentRecords, resolveCoverageManifests, resolveBankEvidence,
-    buildReviewedAdjustments, buildMonthlyAllocationBasis, profitabilityAccrualIssues,
+    buildReviewedAdjustments, buildMonthlyAllocationBasis, profitabilityAccrualIssues, resolveProfitabilityPayrollAllocation,
     profitabilityRequestId:{current:0}, profitabilitySelection:selection,
     URL, console, parseNum: v => Number(v) || 0,
     RMS_BRANCH_TAX_RATE_SETTING: 'tax', RMS_BANK_COMMISSION_RATE_SETTING: 'bank',
@@ -148,7 +149,7 @@ const baselineTables={
  salary_periods:[{id:'period-a',employee_id:'person-a',branch_id:'branch-a',salary_month:'2040-03-01',salary_gross:100},{id:'period-b',employee_id:'person-b',branch_id:'branch-b',salary_month:'2040-03-01',salary_gross:80}],
  monthly_branch_service_charge_cost:[{branch_id:'branch-b',month:'2040-03-01',staff_cost_amount:10}]
 }
-const inputs=tables=>({branchRows:integrationBranches,revenueRows:tables.daily_revenue_entries,dailyExpenseRows:tables.daily_expenses,supplierPurchases:tables.supplier_purchases,employeeRows:tables.employees,salaryPeriods:tables.salary_periods,serviceRows:tables.monthly_branch_service_charge_cost})
+const inputs=tables=>({branchRows:integrationBranches,revenueRows:tables.daily_revenue_entries,dailyExpenseRows:tables.daily_expenses,supplierPurchases:tables.supplier_purchases.filter(row=>row.deleted_at==null),supplierPurchaseRows:tables.supplier_purchases,employeeRows:tables.employees,salaryPeriods:tables.salary_periods,serviceRows:tables.monthly_branch_service_charge_cost})
 const expectedRegistry=registryFixture(inputs(baselineTables),'2040-03')
 expectedRegistry.components=['dsmf','partner_fee'].map(category=>({sourceKey:`source-${category}`,scope:`profitability-components:2040-03:${category}`,componentKey:category,action:'add_missing_branch',category,branchId:'branch-a',amount:25}))
 async function completeRecords(tables){
@@ -274,3 +275,81 @@ for(let m=1;m<=9;m++){
  }
 }
 console.log('PASS Jan-Sep inactive payroll allocation matches deployed active-only metadata eligibility: period branch stays direct; missing period branch stays pooled, regardless of current inactive employee branch/manager role')
+
+// Independent expected sources stay frozen while every target-derived proof is
+// freshly recomputed by completeRecords. This must not conceal a target edit.
+const ordinaryTables=structuredClone(baselineTables)
+ordinaryTables.daily_expenses=[{id:'ordinary-rent',branch_id:'branch-a',expense_date:'2040-03-12',amount:30,category_id:'rent',custom_category:null,comment:'Synthetic rent',expense_categories:{name:'Аренда'}}]
+ordinaryTables.supplier_purchases=[
+ {id:'warehouse',supplier_id:'s1',branch_id:null,purchase_date:'2040-03-12',invoice_number:'W1',total_amount:40,comment:'Synthetic warehouse',deleted_at:null,suppliers:{name:'Synthetic supplier'}},
+ {id:'branch-purchase',supplier_id:'s1',branch_id:'branch-b',purchase_date:'2040-03-13',invoice_number:'B1',total_amount:10,comment:null,deleted_at:null,suppliers:{name:'Synthetic supplier'}},
+ {id:'deleted-purchase',supplier_id:'s1',branch_id:null,purchase_date:'2040-03-14',invoice_number:'D1',total_amount:90,comment:'Synthetic cancelled',deleted_at:'2040-03-15T00:00:00Z',suppliers:{name:'Synthetic supplier'}}
+]
+const ordinaryRegistry=registryFixture(inputs(ordinaryTables),'2040-03')
+ordinaryRegistry.components=structuredClone(expectedRegistry.components)
+async function ordinaryReport(mutate=()=>{},mutateProof=()=>{}) {
+ return integrated({mutateTables:t=>{Object.assign(t,structuredClone(ordinaryTables));mutate(t)},mutateRecords:records=>{records.at(-1).snapshot_data.expectedCoverage=structuredClone(ordinaryRegistry);mutateProof(records.at(-1).snapshot_data.expectedCoverage)}})
+}
+const ordinaryClean=await ordinaryReport()
+assert.deepEqual(ordinaryClean.result.summaryInputs.coverageIssues,[])
+assert.equal(ordinaryClean.display.period.net,1460,'Only active purchases 50 and rent 30 reduce baseline 1540; deleted 90 stays excluded')
+for (const [name,mutate,reason] of [
+ ['revenue amount',t=>t.daily_revenue_entries[0].cash_amount++,'revenue'],
+ ['revenue channel',t=>{t.daily_revenue_entries[0].cash_amount--;t.daily_revenue_entries[0].wolt_amount++},'revenue'],
+ ['revenue source',t=>t.daily_revenue_entries[0].external_id='replacement','revenue'],
+ ['revenue removed',t=>t.daily_revenue_entries.pop(),'revenue'],
+ ['expense amount',t=>t.daily_expenses[0].amount++,'expenses'],
+ ['expense category',t=>t.daily_expenses[0].expense_categories.name='Ремонт','expenses'],
+ ['expense branch',t=>t.daily_expenses[0].branch_id='branch-b','expenses'],
+ ['expense removed',t=>t.daily_expenses=[],'expenses'],
+ ['warehouse purchase removed',t=>t.supplier_purchases.shift(),'purchases'],
+ ['all purchases removed',t=>t.supplier_purchases=[],'purchases'],
+ ['purchase amount',t=>t.supplier_purchases[0].total_amount++,'purchases'],
+ ['purchase supplier',t=>t.supplier_purchases[0].supplier_id='other','purchases'],
+ ['purchase warehouse reassignment',t=>t.supplier_purchases[0].branch_id='branch-a','purchases'],
+ ['purchase period',t=>t.supplier_purchases[0].purchase_date='2040-04-12','purchases'],
+ ['new purchase',t=>t.supplier_purchases.push({...t.supplier_purchases[0],id:'new'}),'purchases'],
+ ['active soft delete',t=>t.supplier_purchases[0].deleted_at='2040-03-16T00:00:00Z','purchases'],
+ ['deleted resurrection',t=>t.supplier_purchases[2].deleted_at=null,'purchases'],
+ ['deleted exclusion removed',t=>t.supplier_purchases.pop(),'purchases'],
+ ['deleted amount',t=>t.supplier_purchases[2].total_amount++,'purchases']
+]) {
+ const v=await ordinaryReport(mutate)
+ assert.ok(v.result.summaryInputs.coverageIssues.some(i=>i.reason===`expected-${reason}-source-coverage-mismatch`),name)
+ assert.equal(v.display.period.net,null,name)
+ assert.ok(!v.result.summaryInputs.coverageIssues.some(i=>['stale-or-invalid-coverage-manifest','stale-or-missing-accrual-coverage','invalid-required-bank-evidence','invalid-required-component'].includes(i.reason)),name+' must be held despite fresh fingerprints')
+}
+await assert.rejects(ordinaryReport(t=>t.supplier_purchases.push({...t.supplier_purchases[0]})),/duplicate input identity/)
+for (const edit of [p=>p.version=1,p=>delete p.revenue,p=>delete p.expenses,p=>delete p.purchases,p=>p.purchases[2].reason='',p=>p.purchases[0].sourceCells=[]]) {
+ const v=await ordinaryReport(()=>{},edit);assert.equal(v.display.period.net,null)
+}
+console.log('PASS independent ordinary source coverage: 19 target mutations with fresh fingerprints; duplicate identity prevents fingerprint refresh still block; exact active/null-branch/deleted purchases and exclusions; old or incomplete registry fails closed')
+
+// A branch with no revenue still incurs direct payroll via employee fallback.
+const fallbackBranches=[...integrationBranches,{id:'payroll-only',name:'Payroll only'}]
+for (const role of ['cook','manager','Администратор']) {
+ const t=structuredClone(baselineTables)
+ t.employees.push({id:'fallback-person',branch_id:'payroll-only',position:role,is_active:true})
+ t.salary_periods.push({id:'fallback-period',employee_id:'fallback-person',branch_id:null,salary_month:'2040-03-01',salary_gross:40})
+ const registry=registryFixture({...inputs(t),branchRows:fallbackBranches},'2040-03')
+ registry.components=structuredClone(expectedRegistry.components)
+ const opts={branchRows:fallbackBranches,mutateTables:data=>Object.assign(data,structuredClone(t)),mutateRecords:records=>{
+  const manifest=records.at(-1).snapshot_data;manifest.expectedCoverage=structuredClone(registry)
+  manifest.reviewChecks.push(...['payroll','dsmf','partner_fee','other'].map(category=>({branchId:'payroll-only',category,status:'verified',approvalRef:'synthetic-review',sourceRef:'synthetic-source'})))
+ }}
+ const v=await integrated(opts),b=v.result.rows.find(r=>r.id==='payroll-only')
+ if(role==='cook') {
+  assert.equal(b.salary,40);assert.equal(b.managerSalary,0)
+  assert.ok(v.result.summaryInputs.coverageIssues.some(i=>i.reason==='invalid-expected-branch-disposition'),'excluded branch cannot hide employee-fallback direct payroll')
+  registry.branches.find(b=>b.id==='payroll-only').status='expense_only'
+  const corrected=await integrated(opts)
+  assert.deepEqual(corrected.result.summaryInputs.coverageIssues,[])
+  assert.equal(corrected.result.rows.find(r=>r.id==='payroll-only').salary,40)
+ } else {
+  assert.deepEqual(v.result.summaryInputs.coverageIssues,[])
+  assert.equal(b?.salary ?? 0,0)
+  assert.equal(v.result.rows.find(r=>r.id==='branch-a').managerSalary,30)
+  assert.equal(v.result.rows.find(r=>r.id==='branch-b').managerSalary,10)
+ }
+}
+console.log('PASS disposition uses actual shared payroll resolver: active null-period cook incurs direct cost; manager aliases retain 75/25 pool allocation; no forced null-to-pool policy')

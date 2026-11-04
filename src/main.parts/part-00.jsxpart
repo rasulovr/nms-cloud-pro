@@ -1,3 +1,4 @@
+import {resolveProfitabilityPayrollAllocation, profitabilityManagerPosition} from './profitability-payroll-allocation.mjs'
 import {profitabilityAccrualIssues} from './profitability-source-completeness.mjs'
 import {buildMonthlyAllocationBasis} from './profitability-allocation.mjs'
 import {readComponentRecords, resolveComponentRecords, resolveCoverageManifests, resolveBankEvidence} from './profitability-reviewed-components.mjs'
@@ -1914,7 +1915,7 @@ const employeeGroupName = (emp) => {
 const staffGroupOptions = (branches) => [{ id: STAFF_GROUP_MANAGERS, name: 'Менеджеры' }, ...branches]
 const positionGroup = (position) => {
   const p = String(position || '').trim().toLowerCase()
-  if (p.includes('менедж') || p.includes('управ') || p.includes('директор') || p.includes('админ') || p.includes('закуп') || p.includes('smm') || p.includes('шеф-бар') || p.includes('шеф бар') || p.includes('brand') || p.includes('manager') || p.includes('director') || p.includes('admin')) return 'Менеджеры'
+  if (profitabilityManagerPosition(position)) return 'Менеджеры'
   if (p.includes('повар') || p.includes('кух') || p.includes('кухар') || p.includes('су-шеф') || p.includes('су шеф') || p.includes('шеф-повар') || p.includes('шеф повар') || p.includes('chef') || p.includes('cook') || p.includes('kitchen') || p.includes('aşpaz') || p.includes('ashpaz') || p.includes('povar')) return 'Повар'
   if (p.includes('бар') || p.includes('бариста') || p.includes('бармен') || p.includes('сервис') || p.includes('servis') || p.includes('service') || p.includes('barista') || p.includes('barmen')) return 'Бар'
   if (p.includes('стюард') || p.includes('стьюард') || p.includes('стюарт') || p.includes('стьюарт') || p.includes('stew')) return 'Стьюарт'
