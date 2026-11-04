@@ -1,0 +1,6 @@
+/* Preview only: one full-width snap page, original card dimensions within it. */
+.bc1-centered-preview { min-width: 0; }
+.bc1-centered-preview .bc1-offer-strip { box-sizing: border-box; padding-inline: 0; gap: 0; }
+.bc1-centered-preview .bc1-offer-slide { flex-basis: 100%; container-type: normal; scroll-snap-align: center; scroll-snap-stop: always; }
+.bc1-centered-preview .bc1-page-inner { width: var(--preview-card-width); margin-inline: auto; container-type: inline-size; }
+@media (prefers-reduced-motion: reduce) { .bc1-centered-preview .bc1-offer-strip { scroll-behavior: auto; } }
