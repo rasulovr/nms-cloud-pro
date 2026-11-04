@@ -483,3 +483,13 @@ body .app-shell[data-bc1-browse] .bc1-offer-slide .bc1-special-labels :is(h3, .b
 }
 /* Override legacy align-self:center so absolute caption fills the card. */
 body .app-shell[data-bc1-browse] .bc1-offer-slide .bc1-special-labels { height: 100%; align-self: stretch; }
+
+/* Offer paging: one full-width snap page, original card dimensions within it. */
+.bc1-paged-offers { min-width: 0; }
+.bc1-paged-offers .bc1-offer-strip { box-sizing: border-box; padding-inline: 0; gap: 0; }
+.bc1-paged-offers .bc1-offer-slide { flex-basis: 100%; container-type: normal; scroll-snap-align: center; scroll-snap-stop: always; }
+.bc1-paged-offers .bc1-page-inner { width: var(--preview-card-width); margin-inline: auto; container-type: inline-size; }
+@media (prefers-reduced-motion: reduce) { .bc1-paged-offers .bc1-offer-strip { scroll-behavior: auto; } }
+body .app-shell[data-bc1-browse] .bc1-offer-slide .bc1-single-offer::before {
+  background: linear-gradient(90deg, #15120fbb 0%, #15120f66 45%, #15120f00 80%);
+}

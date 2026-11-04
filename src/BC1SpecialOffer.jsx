@@ -1,4 +1,5 @@
-import React, { useId, useState } from "react";
+import React, { useId, useState, useRef } from "react";
+import {useOfferPaging} from "./bc1OfferPaging";
 const labels = {
   ru: { open: "Посмотреть блюда", separate: "По одной каждой позиции", add: "Добавить сет", close: "Свернуть" },
   az: { open: "Yeməklərə bax", separate: "Hər məhsuldan bir ədəd", add: "Seti əlavə et", close: "Bağla" },
@@ -8,21 +9,22 @@ const defaultImage = "/menu/bc1-williams-cinematic.svg";
 function OfferCard({ image = defaultImage, language, products = [], formatPrice, onOpen, onAdd, addDisabled = false }) {
   const [expanded, setExpanded] = useState(false);
   const detailsId = useId();
-  if (products.length !== 2) return null;
+  if (![1,2].includes(products.length)) return null;
+  const single = products.length === 1;
   const t = labels[language] || labels.en;
   const total = products.reduce((sum, product) => sum + product.price, 0);
   const title = products.map(product => product.name).join(" + ");
   return <>
-    <section className="bc1-special-offer" aria-label={title} style={{ backgroundImage: `url(${JSON.stringify(image)})` }}>
+    <section className={`bc1-special-offer${single ? " bc1-single-offer" : ""}`} aria-label={title} style={{ backgroundImage: `url(${JSON.stringify(image)})` }}>
       <img src={image} alt="" />
       <div className="bc1-special-labels">
         <h3>{products[0].name}</h3>
-        <p className="bc1-special-subtitle">{products[1].name}</p>
+        {!single && <p className="bc1-special-subtitle">{products[1].name}</p>}
         <strong className="bc1-special-price">{formatPrice(total)}</strong>
       </div>
-      <button className="bc1-special-offer-action" type="button" onClick={() => setExpanded(value => !value)} aria-expanded={expanded} aria-controls={detailsId} aria-label={`${t.open}: ${title}`} />
+      <button className="bc1-special-offer-action" type="button" onClick={() => single ? onOpen(products[0]) : setExpanded(value => !value)} aria-expanded={single ? undefined : expanded} aria-controls={single ? undefined : detailsId} aria-label={`${t.open}: ${title}`} />
     </section>
-    <section className="bc1-offer-components" id={detailsId} hidden={!expanded} aria-label={t.open}>
+    {!single && <section className="bc1-offer-components" id={detailsId} hidden={!expanded} aria-label={t.open}>
       <p>{t.separate}</p>
       {products.map(product => <button key={product.id} type="button" onClick={() => onOpen(product)}>
         <span>{product.name}</span>
@@ -30,25 +32,26 @@ function OfferCard({ image = defaultImage, language, products = [], formatPrice,
       </button>)}
       <button className="bc1-add-set" type="button" disabled={addDisabled} onClick={onAdd}>{t.add} · {formatPrice(total)}</button>
       <button type="button" onClick={() => setExpanded(false)}>{t.close}</button>
-    </section>
+    </section>}
   </>;
 }
 
-// The live menu currently supplies one real offer. Additional entries must carry
-// their own actual products and actions; fixtures never populate this list.
+// Every offer carries its actual products and actions; no synthetic fallback.
 export default function BC1SpecialOffer({ offers, ...props }) {
+  const host=useRef(null);
+  useOfferPaging(host, offers?.length ?? 1);
   const entries = offers || [{ id: "williams-pineapple", ...props }];
-  const visible = entries.filter(offer => offer.products?.length === 2);
+  const visible = entries.filter(offer => [1,2].includes(offer.products?.length));
   if (!visible.length) return null;
   const name = { ru: "Специальные предложения", az: "Xüsusi təkliflər", en: "Special offers" };
-  return <div className="bc1-offer-strip" role="region" aria-label={name[props.language] || name.en} tabIndex={0}
+  return <div ref={host} className="bc1-paged-offers"><div className="bc1-offer-strip" role="region" aria-label={name[props.language] || name.en} tabIndex={0}
     onKeyDown={event => {
       if (event.target !== event.currentTarget || !["ArrowLeft", "ArrowRight"].includes(event.key)) return;
       event.preventDefault();
-      event.currentTarget.scrollBy({ left: (event.key === "ArrowRight" ? 1 : -1) * event.currentTarget.clientWidth * .85, behavior: "smooth" });
+      event.currentTarget.scrollBy({ left: (event.key === "ArrowRight" ? 1 : -1) * event.currentTarget.clientWidth, behavior: "smooth" });
     }}>
     {visible.map(offer => <div className="bc1-offer-slide" key={offer.id}>
-      <OfferCard {...props} {...offer} />
+      <div className="bc1-page-inner"><OfferCard {...props} {...offer} /></div>
     </div>)}
-  </div>;
+  </div></div>;
 }
