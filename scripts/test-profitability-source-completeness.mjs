@@ -1,3 +1,4 @@
+import {registryFixture} from './profitability-registry-fixture.mjs'
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import vm from 'node:vm'
@@ -6,7 +7,7 @@ import {COMPONENT_SNAPSHOT_TYPE, componentInputsFingerprint, resolveCoverageMani
 import {buildReviewedAdjustments} from '../src/profitability-adjustments.mjs'
 
 assert.deepEqual(reportMonths('2026-12-01','2027-03-01'),['2026-12','2027-01','2027-02'])
-const inputFor = month => ({revenueRows:['a','b'].map((branch_id,i)=>({id:`r${i}`,branch_id,revenue_date:month+'-01',cash_amount:100,bank_amount:100,wolt_amount:0})),dailyExpenseRows:[],supplierPurchases:[],employeeRows:[{id:'e',is_active:false}],salaryPeriods:[{id:'s',employee_id:'e',branch_id:'a',salary_month:month+'-01',salary_gross:0,salary_net:500}],serviceRows:[{branch_id:'b',month:month+'-01',staff_cost_amount:0}]})
+const inputFor = month => ({branchRows:[{id:'a'},{id:'b'}],revenueRows:['a','b'].map((branch_id,i)=>({id:`r${i}`,branch_id,revenue_date:month+'-01',cash_amount:100,bank_amount:100,wolt_amount:0})),dailyExpenseRows:[],supplierPurchases:[],employeeRows:[{id:'e',is_active:false}],salaryPeriods:[{id:'s',employee_id:'e',branch_id:'a',salary_month:month+'-01',salary_gross:0,salary_net:500}],serviceRows:[{branch_id:'b',month:month+'-01',staff_cost_amount:0}]})
 for (const month of ['2026-10','2026-12','2027-01','2028-02']) {
  const input=inputFor(month), end=reportMonths(month+'-01',month==='2028-02'?'2028-03-01':month==='2027-01'?'2027-02-01':month==='2026-12'?'2027-01-01':'2026-11-01')
  const to=month==='2028-02'?'2028-03-01':month==='2027-01'?'2027-02-01':month==='2026-12'?'2027-01-01':'2026-11-01'
@@ -14,7 +15,7 @@ for (const month of ['2026-10','2026-12','2027-01','2028-02']) {
  assert.equal(profitabilityAccrualIssues(input,month+'-01',to,new Set(['b'])).length,0,'zero is observed, inactive employee resolved by ID')
  const missing=await resolveCoverageManifests([],input,month+'-01',to)
  assert.equal(missing[0].reason,'missing-coverage-manifest')
- const manifest={snapshot_type:COMPONENT_SNAPSHOT_TYPE,snapshot_scope:`profitability-components:${month}:coverage`,snapshot_data:{kind:'coverage_manifest',version:2,month,status:'verified',approvalRef:'test',inputsFingerprint:await componentInputsFingerprint(input,month),accrualInputsFingerprint:await accrualInputsFingerprint(input,month),expectedScopes:[],holds:[],reviewChecks:['a','b'].flatMap(branchId=>['payroll','dsmf','partner_fee','other'].map(category=>({branchId,category,status:'verified',approvalRef:'review',sourceRef:'source'})))}}
+ const manifest={snapshot_type:COMPONENT_SNAPSHOT_TYPE,snapshot_scope:`profitability-components:${month}:coverage`,snapshot_data:{kind:'coverage_manifest',version:2,month,expectedCoverage:registryFixture(input,month),status:'verified',approvalRef:'test',inputsFingerprint:await componentInputsFingerprint(input,month),accrualInputsFingerprint:await accrualInputsFingerprint(input,month),expectedScopes:[],holds:[],reviewChecks:['a','b'].flatMap(branchId=>['payroll','dsmf','partner_fee','other'].map(category=>({branchId,category,status:'verified',approvalRef:'review',sourceRef:'source'})))}}
  assert.deepEqual(await resolveCoverageManifests([manifest],input,month+'-01',to),[])
  const changed={...input,salaryPeriods:[{...input.salaryPeriods[0],salary_gross:20}]}
  assert.ok((await resolveCoverageManifests([manifest],changed,month+'-01',to)).some(i=>i.reason==='stale-or-missing-accrual-coverage'))

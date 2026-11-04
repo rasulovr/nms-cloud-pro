@@ -6286,7 +6286,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
       const isAuditedMonth = date => String(date || '').slice(0, 7) >= '2026-01' && String(date || '').slice(0, 7) <= '2026-09'
       const hasAuditedMonths = period.from < '2026-10-01' && period.toExclusive > '2026-01-01'
       const mixedBasis = hasAuditedMonths && (period.from < '2026-01-01' || period.toExclusive > '2026-10-01')
-      const reviewedInputs = { revenueRows, dailyExpenseRows: rawDailyExpenseRows, supplierPurchases: rawSupplierPurchases, salaryPeriods, serviceRows, employeeRows }
+      const reviewedInputs = { revenueRows, dailyExpenseRows: rawDailyExpenseRows, supplierPurchases: rawSupplierPurchases, salaryPeriods, serviceRows, employeeRows, branchRows: branches }
       const protectedRecords = await readComponentRecords(supabase, period.from, period.toExclusive)
       const goodsPurchaseIds = [...new Set(protectedRecords.filter(record => record.snapshot_data?.kind === 'bank_basis_evidence' && record.snapshot_data?.version === 3).flatMap(record => (record.snapshot_data.goodsProof?.headers || []).map(row => String(row.id))))]
       reviewedInputs.supplierPurchaseItems = []
@@ -6308,7 +6308,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
         const marker = rmsReportBankBasis(row)
         return marker ? { verified: true, grossBank: bank, netBank: bank * (1 - bankCommissionRate / 100) } : bankEvidence.byId.get(String(row.id)) || null
       })
-      const coverageIssues = [...profitabilityAccrualIssues(reviewedInputs, period.from, period.toExclusive, enabledServiceBranchIds), ...reviewed.held, ...adjusted.held, ...monthlyBasis.issues, ...bankEvidence.issues, ...await resolveCoverageManifests(componentRecords, reviewedInputs, period.from, period.toExclusive)]
+      const coverageIssues = [...profitabilityAccrualIssues(reviewedInputs, period.from, period.toExclusive, enabledServiceBranchIds), ...reviewed.held, ...adjusted.held, ...monthlyBasis.issues, ...bankEvidence.issues, ...await resolveCoverageManifests(componentRecords, reviewedInputs, period.from, period.toExclusive, bankCommissionRate)]
       for (const bucket of monthlyBasis.months.values()) if (!bucket.complete || !(bucket.networkAllocationRevenue > 0)) coverageIssues.push({month: bucket.month, reason: 'incomplete-network-allocation-basis', severity: 'blocking_runtime_basis'})
       for (const date of [...supplierPurchases.map(r => r.purchase_date), ...salaryPeriods.map(r => r.salary_month)]) if (isAuditedMonth(date) && !monthlyBasis.months.has(String(date || '').slice(0, 7))) coverageIssues.push({month: String(date || '').slice(0, 7), reason: 'missing-network-allocation-basis', severity: 'blocking_runtime_basis'})
       const monthlyShare = (date, branchId) => monthlyBasis.months.get(String(date || '').slice(0, 7))?.shares.get(String(branchId))

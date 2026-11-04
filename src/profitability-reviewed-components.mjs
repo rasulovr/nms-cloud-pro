@@ -1,3 +1,4 @@
+import {buildReviewedAdjustments} from './profitability-adjustments.mjs'
 import {reportMonths, accrualInputsFingerprint, futureCoverageIssues} from './profitability-source-completeness.mjs'
 import {normalizeReviewedGoodsPurchases} from './profitability-bank-goods.mjs'
 // Read-only component evidence adapter. No financial amounts or source IDs are
@@ -115,22 +116,33 @@ export async function readComponentRecords(client,from,toExclusive){
  throw Error('Reviewed component read limit exceeded')
 }
 
-export async function resolveCoverageManifests(records,input,from,toExclusive){
+export async function resolveCoverageManifests(records,input,from,toExclusive,configuredBankRate){
  const issues=[]
  // Every selected month after the evidence contract began requires coverage.
  for(const month of reportMonths(from,toExclusive).filter(month=>month>='2026-01')){
-  const manifests=records.filter(r=>r.snapshot_type===COMPONENT_SNAPSHOT_TYPE&&r.snapshot_scope===`profitability-components:${month}:coverage`&&r.snapshot_data?.kind==='coverage_manifest'&&r.snapshot_data?.version===2)
+  const manifests=records.filter(r=>r.snapshot_type===COMPONENT_SNAPSHOT_TYPE&&r.snapshot_scope===`profitability-components:${month}:coverage`)
   const issue=reason=>issues.push({month,reason,severity:'blocking_runtime_basis'})
   if(manifests.length!==1){issue(manifests.length?'duplicate-coverage-manifest':'missing-coverage-manifest');continue}
-  const s=manifests[0].snapshot_data
-  if(s.month!==month||s.status!=='verified'||!s.approvalRef||s.inputsFingerprint!==await componentInputsFingerprint(input,month)||!Array.isArray(s.expectedScopes)||!Array.isArray(s.holds)){issue('stale-or-invalid-coverage-manifest');continue}
+  const s=manifests[0].snapshot_data || {}
+  if(s.kind!=='coverage_manifest'||s.version!==2||s.month!==month||s.status!=='verified'||!s.approvalRef||s.inputsFingerprint!==await componentInputsFingerprint(input,month)||!Array.isArray(s.expectedScopes)||new Set(s.expectedScopes).size!==s.expectedScopes.length||!Array.isArray(s.holds)){issue('stale-or-invalid-coverage-manifest');continue}
   if(month>='2026-10'){
-   issues.push(...futureCoverageIssues(s,input,month))
+   issues.push(...futureCoverageIssues(s,input,month,records))
    if(!s.accrualInputsFingerprint || s.accrualInputsFingerprint!==await accrualInputsFingerprint(input,month))issue('stale-or-missing-accrual-coverage')
   }
   for(const scope of s.expectedScopes){
    const matches=records.filter(r=>r.snapshot_scope===scope)
-   if(!String(scope).startsWith(`profitability-components:${month}:`)||matches.length!==1||matches[0].snapshot_type!==COMPONENT_SNAPSHOT_TYPE||matches[0].snapshot_data?.version!==2||!['component_adjustment','bank_basis_evidence','branch_period_status'].includes(matches[0].snapshot_data?.kind)||matches[0].snapshot_data?.status!=='verified')issue('missing-or-ambiguous-required-component')
+   if(!String(scope).startsWith(`profitability-components:${month}:`)||matches.length!==1||matches[0].snapshot_type!==COMPONENT_SNAPSHOT_TYPE||matches[0].snapshot_data?.month!==month||matches[0].snapshot_data?.status!=='verified'){issue('missing-or-ambiguous-required-component');continue}
+   const record=matches[0],kind=record.snapshot_data.kind,version=record.snapshot_data.version
+   if(kind==='bank_basis_evidence' && [2,3,4].includes(version)){
+    if(!Number.isFinite(configuredBankRate)){issue('missing-bank-validation-rate');continue}
+    const bank=await resolveBankEvidence([record],input,configuredBankRate,()=>true)
+    if(bank.issues.length)issue('invalid-required-bank-evidence')
+   }else if(['component_adjustment','branch_period_status'].includes(kind) && version===2){
+    const reviewed=await resolveComponentRecords(records,input)
+    const adjusted=buildReviewedAdjustments(reviewed.validated,input)
+    const accepted=kind==='component_adjustment'?reviewed.validated.some(item=>item.snapshotId===record.id):reviewed.periodStatuses.some(item=>item.snapshotId===record.id)
+    if(!accepted || adjusted.held.some(item=>item.month===month && item.componentKey===record.snapshot_data.componentKey))issue('invalid-required-component')
+   }else issue('unsupported-required-component-contract')
   }
   for(const hold of s.holds){
    if(!['blocking_runtime_basis','blocking_collision','preliminary'].includes(hold.severity)||!hold.reason){issue('invalid-coverage-hold');continue}

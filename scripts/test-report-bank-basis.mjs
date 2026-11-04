@@ -1,3 +1,8 @@
+import {registryFixture} from './profitability-registry-fixture.mjs'
+import {accrualInputsFingerprint} from '../src/profitability-source-completeness.mjs'
+import {bankInputsFingerprintV4} from '../src/profitability-reviewed-components.mjs'
+import {buildProfitabilitySummary} from '../src/profitability-summary.mjs'
+import {presentProfitabilitySection} from '../src/profitability-presentation.mjs'
 import {validateMonthRange} from '../src/profitability-range.mjs'
 import {componentInputsFingerprint, ALLOCATION_BASIS, COMPONENT_SNAPSHOT_TYPE, readComponentRecords, resolveComponentRecords, resolveCoverageManifests, resolveBankEvidence} from '../src/profitability-reviewed-components.mjs'
 import {buildReviewedAdjustments} from '../src/profitability-adjustments.mjs'
@@ -18,7 +23,7 @@ const rateHelper = common.slice(common.indexOf('const RMS_DEFAULT_BANK_COMMISSIO
 const base = { id: 'synthetic-row', source: 'fixture-import', external_id: 'fixture-transaction', branch_id: 'branch-a', revenue_date: '2040-03-10', cash_amount: 300, bank_amount: 1000, wolt_amount: 200, comment: 'Original provenance' }
 const marker = { version: 1, basis: 'gross', branchId: base.branch_id, date: base.revenue_date, grossAmount: base.bank_amount, sourceUrl: 'https://example.com/synthetic-source', source: base.source, externalId: base.external_id }
 const marked = (changes = {}) => ({ ...base, comment: `${base.comment}\nRMS_BANK_BASIS_V1=${JSON.stringify({ ...marker, ...changes })}` })
-async function run(row, { fallback = false, rate = 3, overrides = {}, failTable = null, makeRecords = null } = {}) {
+async function run(row, { fallback = false, rate = 3, overrides = {}, failTable = null, makeRecords = null, branchRows = [{id:'branch-a',name:'Fixture A'},{id:'branch-b',name:'Fixture B'}] } = {}) {
   let result
   const selections = []
   const tables = {
@@ -36,14 +41,22 @@ async function run(row, { fallback = false, rate = 3, overrides = {}, failTable 
     URL, console, parseNum: v => Number(v) || 0,
     RMS_BRANCH_TAX_RATE_SETTING: 'tax', RMS_BANK_COMMISSION_RATE_SETTING: 'bank',
     readRmsAppSetting: async (key, defaultValue) => key === 'tax' ? { 'branch-a': 10 } : rate === 'default' ? defaultValue : rate,
-    monthFilter: 'all', branchFilter: 'all', branches: [{ id: 'branch-a', name: 'Fixture A' }, { id: 'branch-b', name: 'Fixture B' }],
+    monthFilter: 'all', branchFilter: 'all', branches: branchRows,
     setRmsProfitabilityReport: value => { if (typeof value !== 'function') result = value },
     rmsIsWoltCommissionName: () => false,
     rmsSalaryPeriodTotal: p => p.salary_gross, positionGroup: s => s,
     pct: v => String(v), fmt: v => String(v),
     supabase: { from(table) {
-      const query = { then(resolve) { return Promise.resolve({ data: failTable===table ? null : tables[table] || [], error: failTable===table ? {message:'source read failed'} : null }).then(resolve) } }
-      for (const name of ['select', 'is', 'gte', 'lt', 'order', 'range', 'eq', 'like']) query[name] = (...args) => { if (name === 'select') selections.push([table, args[0]]); return query }
+      const filters=[]
+      const query = { then(resolve) { const data=(tables[table] || []).filter(row=>filters.every(filter=>filter(row))); return Promise.resolve({ data: failTable===table ? null : data, error: failTable===table ? {message:'source read failed'} : null }).then(resolve) } }
+      for (const name of ['select', 'is', 'gte', 'lt', 'order', 'range', 'eq', 'like']) query[name] = (...args) => {
+        if (name === 'select') selections.push([table, args[0]])
+        if(name==='gte')filters.push(row=>row[args[0]]>=args[1])
+        if(name==='lt')filters.push(row=>row[args[0]]<args[1])
+        if(name==='is')filters.push(row=>row[args[0]]==args[1])
+        if(name==='eq')filters.push(row=>row[args[0]]===args[1])
+        return query
+      }
       return query
     } }
   })
@@ -123,3 +136,64 @@ assert.equal(componentBranch.expenseCategories.find(row=>row.name==='DSMF').amou
 assert.equal(componentBranch.expenseCategories.find(row=>row.name==='Partner Fee').amount,25)
 assert.equal(components.rows.reduce((sum,row)=>sum+row.supplierFoodCost,0),297,'all pool amounts conserved')
 console.log('PASS future report components: DSMF, Partner Fee, source-declared pool basis, ordinary allocation unchanged')
+
+// A complete report with mandatory v4 bank evidence, DSMF/Partner Fee, payroll,
+// service accruals and an independent expected source registry.
+const integrationBranches=[{id:'branch-a',name:'A'},{id:'branch-b',name:'B',service_charge_enabled:true}]
+const baselineTables={
+ daily_revenue_entries:[{...base}, {...base,id:'b-revenue',branch_id:'branch-b',cash_amount:500,bank_amount:0,wolt_amount:0}],
+ daily_expenses:[],supplier_purchases:[],
+ employees:[{id:'person-a',branch_id:'branch-a',position:'cook'},{id:'person-b',branch_id:'branch-b',position:'barista'},{id:'existing-other',branch_id:'branch-b',position:'barista'}],
+ salary_periods:[{id:'period-a',employee_id:'person-a',branch_id:'branch-a',salary_month:'2040-03-01',salary_gross:100},{id:'period-b',employee_id:'person-b',branch_id:'branch-b',salary_month:'2040-03-01',salary_gross:80}],
+ monthly_branch_service_charge_cost:[{branch_id:'branch-b',month:'2040-03-01',staff_cost_amount:10}]
+}
+const inputs=tables=>({branchRows:integrationBranches,revenueRows:tables.daily_revenue_entries,dailyExpenseRows:tables.daily_expenses,supplierPurchases:tables.supplier_purchases,employeeRows:tables.employees,salaryPeriods:tables.salary_periods,serviceRows:tables.monthly_branch_service_charge_cost})
+const expectedRegistry=registryFixture(inputs(baselineTables),'2040-03')
+expectedRegistry.components=['dsmf','partner_fee'].map(category=>({sourceKey:`source-${category}`,scope:`profitability-components:2040-03:${category}`,componentKey:category,action:'add_missing_branch',category,branchId:'branch-a',amount:25}))
+async function completeRecords(tables){
+ const input=inputs(tables),month='2040-03',fingerprint=await componentInputsFingerprint(input,month)
+ const records=['dsmf','partner_fee'].map(category=>({id:category,snapshot_type:COMPONENT_SNAPSHOT_TYPE,snapshot_scope:`profitability-components:${month}:${category}`,snapshot_data:{kind:'component_adjustment',version:2,month,componentKey:category,status:'verified',approvalRef:'review',source:{fileId:'source',gid:0,cells:[category],readAt:'2040-04-01',recomputedAmount:25},target:{inputsFingerprint:fingerprint,representationIds:[],excludedIds:[],expectedRows:[]},category,action:'add_missing_branch',scope:'branch',branchId:'branch-a',amount:25}}))
+ records.push({id:'bank',snapshot_type:COMPONENT_SNAPSHOT_TYPE,snapshot_scope:`profitability-components:${month}:bank-basis`,snapshot_data:{kind:'bank_basis_evidence',version:4,month,status:'verified',approvalRef:'review',expectedBankCommissionRate:3,inputsFingerprint:await bankInputsFingerprintV4(input,month),entries:input.revenueRows.map(row=>({id:row.id,expectedRow:{...row},basis:'gross',commissionPolicy:'apply_configured_rate',collisionIds:[],sourceUrl:'https://example.com/source'}))}})
+ records.push({id:'coverage',snapshot_type:COMPONENT_SNAPSHOT_TYPE,snapshot_scope:`profitability-components:${month}:coverage`,snapshot_data:{kind:'coverage_manifest',version:2,month,status:'verified',approvalRef:'review',inputsFingerprint:fingerprint,accrualInputsFingerprint:await accrualInputsFingerprint(input,month),expectedCoverage:structuredClone(expectedRegistry),expectedScopes:records.map(record=>record.snapshot_scope),holds:[],reviewChecks:integrationBranches.flatMap(branch=>['payroll','dsmf','partner_fee','other'].map(category=>({branchId:branch.id,category,status:'verified',approvalRef:'review',sourceRef:'source'})))}})
+ return records
+}
+async function integrated({mutateTables=()=>{},mutateRecords=()=>{},branchRows=integrationBranches}={}){
+ const tables=structuredClone(baselineTables);mutateTables(tables)
+ const {result}=await run(base,{overrides:tables,branchRows,makeRecords:async current=>{const records=await completeRecords(current);mutateRecords(records);return records}})
+ assert.equal(result.error,'')
+ const model=buildProfitabilitySummary(result)
+ return {result,model,display:presentProfitabilitySection({period:model.total,monthly:model.monthly,reconciled:model.reconciled})}
+}
+const complete=await integrated()
+assert.deepEqual(complete.result.summaryInputs.coverageIssues,[])
+assert.equal(complete.model.total.profitAvailable,true)
+assert.equal(complete.display.period.net,1540) // 2000 - salaries180 - DSMF/partner50 - bank30 - tax190 - service10
+assert.equal(complete.result.rows.find(row=>row.id==='branch-a').expenseCategories.find(row=>row.name==='DSMF').amount,25)
+const blocked=async(options,reason)=>{
+ const value=await integrated(options)
+ assert.ok(value.result.summaryInputs.coverageIssues.some(issue=>issue.reason===reason),JSON.stringify(value.result.summaryInputs.coverageIssues))
+ assert.equal(value.model.total.profitAvailable,false)
+ assert.equal(value.display.period.net,null)
+}
+await blocked({mutateRecords:rows=>delete rows.at(-1).snapshot_data.expectedCoverage},'missing-expected-source-registry')
+await blocked({mutateTables:t=>t.salary_periods.pop()},'expected-payroll-coverage-mismatch')
+await blocked({mutateTables:t=>t.salary_periods[1].employee_id='existing-other'},'expected-payroll-coverage-mismatch')
+await blocked({mutateTables:t=>t.salary_periods[1].salary_gross++},'expected-payroll-coverage-mismatch')
+await blocked({mutateTables:t=>t.salary_periods[1].salary_month='2040-04-01'},'expected-payroll-coverage-mismatch')
+await blocked({mutateTables:t=>t.monthly_branch_service_charge_cost[0].staff_cost_amount++},'expected-service-accrual-coverage-mismatch')
+await blocked({mutateTables:t=>t.employees[1].position='Менеджеры'},'expected-payroll-coverage-mismatch')
+await blocked({mutateTables:t=>{t.daily_revenue_entries=t.daily_revenue_entries.filter(r=>r.branch_id!=='branch-b');t.salary_periods.pop();t.monthly_branch_service_charge_cost=[]}},'expected-branch-revenue-coverage-mismatch')
+await blocked({branchRows:integrationBranches.slice(0,1)},'expected-branch-catalog-mismatch')
+for(const id of ['bank','dsmf','partner_fee'])await blocked({mutateRecords:rows=>rows.find(row=>row.id===id).snapshot_data.version=99},'unsupported-required-component-contract')
+for(const id of ['dsmf','partner_fee'])await blocked({mutateRecords:rows=>rows.find(row=>row.id===id).snapshot_data.version=4},'unsupported-required-component-contract')
+await blocked({mutateRecords:rows=>rows.find(row=>row.id==='bank').snapshot_data.inputsFingerprint='stale'},'invalid-required-bank-evidence')
+await blocked({mutateRecords:rows=>rows.find(row=>row.id==='dsmf').snapshot_data.target.inputsFingerprint='stale'},'invalid-required-component')
+await blocked({mutateRecords:rows=>rows.at(-1).snapshot_data.accrualInputsFingerprint='stale'},'stale-or-missing-accrual-coverage')
+console.log('PASS full loader + mandatory bank v4 + manifest + DSMF/Partner Fee/payroll/service: exact registry coverage, missing person/branch, existing-ID substitution, gross/month/role/service changes, kind-specific versions and stale proofs block UI')
+
+await blocked({mutateRecords:rows=>{const s=rows.find(row=>row.id==='dsmf').snapshot_data;s.amount=26;s.source.recomputedAmount=26}},'expected-component-accrual-coverage-mismatch')
+
+await blocked({mutateRecords:rows=>rows.at(-1).snapshot_data.version=99},'stale-or-invalid-coverage-manifest')
+await blocked({mutateRecords:rows=>rows.at(-1).snapshot_data.expectedCoverage.branches=[null]},'ambiguous-expected-source-identities')
+await blocked({mutateRecords:rows=>rows.at(-1).snapshot_data.expectedScopes=rows.at(-1).snapshot_data.expectedScopes.filter(scope=>!scope.endsWith(':dsmf'))},'missing-required-registry-component')
+console.log('PASS registry-derived accrual amount, missing mandatory registry scope and malformed/unknown manifest contracts')

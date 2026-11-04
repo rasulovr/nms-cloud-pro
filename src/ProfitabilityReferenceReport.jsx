@@ -8,6 +8,16 @@ const AZ={'Нет данных':'Məlumat yoxdur','Недостаточно да
 const STATUS_AZ={'Нужно подтвердить базу банковской комиссии. До подтверждения результат и маржа недоступны.':'Bank komissiyasının bazası təsdiqlənməlidir. Təsdiqədək nəticə və marja göstərilmir.','Предварительно':'İlkin','* Предварительно: расчёт не подтверждает окончательную прибыль и маржу.':'* İlkin: hesablama yekun mənfəəti və marjanı təsdiqləmir.','Предварительные месяцы: ':'İlkin aylar: ','Показан расчёт по доступным записям. Полнота и спорные компоненты требуют уточнения; результат и маржа не являются подтверждённой прибылью.':'Mövcud qeydlər üzrə hesablama göstərilir. Tamlıq və mübahisəli komponentlər dəqiqləşdirilməlidir; nəticə və marja təsdiqlənmiş mənfəət deyil.'}
 const coverageMessage=(issue,lang)=>{
  const labels={
+  'missing-required-registry-component':['Компонент ожидаемого реестра отсутствует в обязательных проверках.','Gözlənilən reyestr komponenti məcburi yoxlamalara daxil edilməyib.'],
+  'missing-expected-source-registry':['Нет проверенного ожидаемого реестра филиалов и начислений.','Filialların və hesablamaların yoxlanılmış gözlənilən reyestri yoxdur.'],
+  'invalid-expected-source-registry':['Ожидаемый реестр неполон или не подтверждён.','Gözlənilən reyestr natamamdır və ya təsdiqlənməyib.'],
+  'ambiguous-expected-source-identities':['В ожидаемом реестре отсутствуют или повторяются идентификаторы источника.','Gözlənilən reyestrdə mənbə identifikatorları yoxdur və ya təkrarlanır.'],
+  'expected-branch-catalog-mismatch':['Состав филиалов отличается от проверенного реестра.','Filialların siyahısı yoxlanılmış reyestrdən fərqlənir.'],
+  'expected-branch-revenue-coverage-mismatch':['Набор записей выручки филиала не совпадает с ожидаемым.','Filialın gəlir qeydləri gözlənilən siyahı ilə uyğun gəlmir.'],
+  'expected-branch-expense-coverage-mismatch':['Набор записей расходов филиала не совпадает с ожидаемым.','Filialın xərc qeydləri gözlənilən siyahı ilə uyğun gəlmir.'],
+  'expected-payroll-coverage-mismatch':['Реестр зарплат не совпадает: проверьте сотрудника, период, сумму и распределение.','Maaş reyestri uyğun gəlmir: əməkdaşı, dövrü, məbləği və bölgünü yoxlayın.'],
+  'expected-service-accrual-coverage-mismatch':['Начисления service charge отличаются от ожидаемого реестра.','Service charge hesablamaları gözlənilən reyestrdən fərqlənir.'],
+  'expected-component-accrual-coverage-mismatch':['Проверенные компоненты расходов отличаются от ожидаемого реестра.','Yoxlanılmış xərc komponentləri gözlənilən reyestrdən fərqlənir.'],
   'missing-coverage-manifest':['Не подтверждена полнота источников месяца.','Ay üzrə mənbələrin tamlığı təsdiqlənməyib.'],
   'stale-or-missing-accrual-coverage':['Начисления или данные сотрудников изменились; нужна повторная сверка.','Hesablamalar və ya əməkdaş məlumatları dəyişib; yenidən yoxlama lazımdır.'],
   'missing-payroll-accruals':['Отсутствуют начисления зарплаты за месяц. Текущие оклады не заменяют начисления.','Ay üzrə maaş hesablamaları yoxdur. Cari maaşlar hesablamaları əvəz etmir.'],
