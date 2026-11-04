@@ -3,7 +3,7 @@ import {accrualInputsFingerprint} from '../src/profitability-source-completeness
 import {bankInputsFingerprintV4} from '../src/profitability-reviewed-components.mjs'
 import {buildProfitabilitySummary} from '../src/profitability-summary.mjs'
 import {presentProfitabilitySection} from '../src/profitability-presentation.mjs'
-import {validateMonthRange} from '../src/profitability-range.mjs'
+import {validateMonthRange,fullMonthRange} from '../src/profitability-range.mjs'
 import {componentInputsFingerprint, ALLOCATION_BASIS, COMPONENT_SNAPSHOT_TYPE, readComponentRecords, resolveComponentRecords, resolveCoverageManifests, resolveBankEvidence} from '../src/profitability-reviewed-components.mjs'
 import {buildReviewedAdjustments} from '../src/profitability-adjustments.mjs'
 import {buildMonthlyAllocationBasis} from '../src/profitability-allocation.mjs'
@@ -19,11 +19,12 @@ const loaderStart = source.indexOf('  async function loadRmsProfitabilityReport(
 const loaderEnd = source.indexOf('\n  }', source.indexOf('    } catch (error) {', loaderStart)) + 5
 const loader = source.slice(loaderStart, loaderEnd)
 const expenseHelpers=common.slice(common.indexOf('const normalizeExpenseText ='),common.indexOf('const RMS_LOGIN_GUARD_KEY'))
+const groupHelper=common.slice(common.indexOf('const rmsFinanceExpenseGroupName ='),common.indexOf('const rmsFinanceSupplierProductGroup ='))
 const rateHelper = common.slice(common.indexOf('const RMS_DEFAULT_BANK_COMMISSION_RATE'), common.indexOf('const rmsNetRevenueParts'))
 const base = { id: 'synthetic-row', source: 'fixture-import', external_id: 'fixture-transaction', branch_id: 'branch-a', revenue_date: '2040-03-10', cash_amount: 300, bank_amount: 1000, wolt_amount: 200, comment: 'Original provenance' }
 const marker = { version: 1, basis: 'gross', branchId: base.branch_id, date: base.revenue_date, grossAmount: base.bank_amount, sourceUrl: 'https://example.com/synthetic-source', source: base.source, externalId: base.external_id }
 const marked = (changes = {}) => ({ ...base, comment: `${base.comment}\nRMS_BANK_BASIS_V1=${JSON.stringify({ ...marker, ...changes })}` })
-async function run(row, { fallback = false, rate = 3, overrides = {}, failTable = null, makeRecords = null, branchRows = [{id:'branch-a',name:'Fixture A'},{id:'branch-b',name:'Fixture B'}] } = {}) {
+async function run(row, { fallback = false, rate = 3, overrides = {}, failTable = null, makeRecords = null, selection = {from:'2040-03-01',to:'2040-03-31',branchIds:['branch-a','branch-b']}, branchRows = [{id:'branch-a',name:'Fixture A'},{id:'branch-b',name:'Fixture B'}] } = {}) {
   let result
   const selections = []
   const tables = {
@@ -37,7 +38,7 @@ async function run(row, { fallback = false, rate = 3, overrides = {}, failTable 
   const ctx = vm.createContext({
     validateMonthRange, readComponentRecords, resolveComponentRecords, resolveCoverageManifests, resolveBankEvidence,
     buildReviewedAdjustments, buildMonthlyAllocationBasis, profitabilityAccrualIssues,
-    profitabilityRequestId:{current:0}, profitabilitySelection:{from:'2040-03-01',to:'2040-03-31',branchIds:['branch-a','branch-b']},
+    profitabilityRequestId:{current:0}, profitabilitySelection:selection,
     URL, console, parseNum: v => Number(v) || 0,
     RMS_BRANCH_TAX_RATE_SETTING: 'tax', RMS_BANK_COMMISSION_RATE_SETTING: 'bank',
     readRmsAppSetting: async (key, defaultValue) => key === 'tax' ? { 'branch-a': 10 } : rate === 'default' ? defaultValue : rate,
@@ -60,7 +61,7 @@ async function run(row, { fallback = false, rate = 3, overrides = {}, failTable 
       return query
     } }
   })
-  vm.runInContext(`${expenseHelpers}\n${rateHelper}\n${helpers}\n${loader}\nthis.load = loadRmsProfitabilityReport`, ctx)
+  vm.runInContext(`${expenseHelpers}\n${groupHelper}\n${rateHelper}\n${helpers}\n${loader}\nthis.load = loadRmsProfitabilityReport`, ctx)
   await ctx.load()
   return { result: JSON.parse(JSON.stringify(result)), selections }
 }
@@ -159,7 +160,7 @@ async function completeRecords(tables){
 }
 async function integrated({mutateTables=()=>{},mutateRecords=()=>{},branchRows=integrationBranches}={}){
  const tables=structuredClone(baselineTables);mutateTables(tables)
- const {result}=await run(base,{overrides:tables,branchRows,makeRecords:async current=>{const records=await completeRecords(current);mutateRecords(records);return records}})
+ const {result}=await run(base,{overrides:tables,branchRows,selection:{from:'2040-03-01',to:'2040-03-31',branchIds:branchRows.map(branch=>branch.id)},makeRecords:async current=>{const records=await completeRecords(current);mutateRecords(records);return records}})
  assert.equal(result.error,'')
  const model=buildProfitabilitySummary(result)
  return {result,model,display:presentProfitabilitySection({period:model.total,monthly:model.monthly,reconciled:model.reconciled})}
@@ -197,3 +198,79 @@ await blocked({mutateRecords:rows=>rows.at(-1).snapshot_data.version=99},'stale-
 await blocked({mutateRecords:rows=>rows.at(-1).snapshot_data.expectedCoverage.branches=[null]},'ambiguous-expected-source-identities')
 await blocked({mutateRecords:rows=>rows.at(-1).snapshot_data.expectedScopes=rows.at(-1).snapshot_data.expectedScopes.filter(scope=>!scope.endsWith(':dsmf'))},'missing-required-registry-component')
 console.log('PASS registry-derived accrual amount, missing mandatory registry scope and malformed/unknown manifest contracts')
+
+// Historical numeric compatibility and explicit fail-closed differences.
+async function historicalPayroll(month,mutate=()=>{}) {
+ const range=fullMonthRange(month,month),date=month+'-01'
+ const tables={daily_revenue_entries:[{id:'h-a',branch_id:'branch-a',revenue_date:date,cash_amount:100,bank_amount:0,wolt_amount:0},{id:'h-b',branch_id:'branch-b',revenue_date:date,cash_amount:100,bank_amount:0,wolt_amount:0}],daily_expenses:[],supplier_purchases:[],employees:[{id:'h-person-a',branch_id:'branch-a',position:'cook',is_active:true},{id:'h-person-b',branch_id:'branch-b',position:'barista',is_active:true}],salary_periods:[{id:'h-period-a',employee_id:'h-person-a',branch_id:'branch-a',salary_month:date,salary_gross:10,salary_net:5},{id:'h-period-b',employee_id:'h-person-b',branch_id:'branch-b',salary_month:date,salary_gross:20,salary_net:10}],monthly_branch_service_charge_cost:[]}
+ mutate(tables)
+ const {result}=await run(base,{selection:{...range,branchIds:['branch-a','branch-b']},overrides:tables,makeRecords:async current=>[{id:'h-coverage',snapshot_type:COMPONENT_SNAPSHOT_TYPE,snapshot_scope:`profitability-components:${month}:coverage`,snapshot_data:{version:2,kind:'coverage_manifest',month,status:'verified',approvalRef:'historical-approval',inputsFingerprint:await componentInputsFingerprint({revenueRows:current.daily_revenue_entries,dailyExpenseRows:[],supplierPurchases:[]},month),expectedScopes:[],holds:[]}}]})
+ assert.equal(result.error,'')
+ const model=buildProfitabilitySummary(result)
+ return {result,display:presentProfitabilitySection({period:model.total,monthly:model.monthly,reconciled:model.reconciled})}
+}
+for(let m=1;m<=9;m++){
+ const value=await historicalPayroll(`2026-${String(m).padStart(2,'0')}`)
+ assert.deepEqual(value.result.summaryInputs.coverageIssues,[])
+ assert.equal(value.display.period.net,152,'Historical positive gross, active employees: 200 revenue - 30 payroll - 18 tax')
+}
+for(const [mutate,reason] of [
+ [t=>t.salary_periods[0].salary_gross=null,'invalid-payroll-accrual'],
+ [t=>t.salary_periods[0].salary_gross='','invalid-payroll-accrual'],
+ [t=>delete t.salary_periods[0].salary_gross,'invalid-payroll-accrual'],
+ [t=>t.salary_periods[0].salary_gross=0,'historical-payroll-basis-review-required'],
+ [t=>{t.salary_periods=[];t.employees[0].monthly_salary=9999},'missing-payroll-accruals']
+]){
+ const value=await historicalPayroll('2026-09',mutate)
+ assert.ok(value.result.summaryInputs.coverageIssues.some(issue=>issue.reason===reason))
+ assert.equal(value.display.period.net,null,'Historical basis changes must not silently restate net profit')
+}
+const zeroHistorical=await historicalPayroll('2026-09',t=>{t.salary_periods[0].salary_gross=0;t.salary_periods[0].salary_net=0})
+assert.equal(zeroHistorical.display.period.net,162,'Observed gross/net zero retains old zero behavior')
+console.log('PASS historical full-loader Jan-Sep numeric parity on positive accruals; null/blank/missing gross, zero-gross positive-net, previous estimates explicitly block; genuine zero remains zero')
+
+// Misleading is_active=true does not decide monthly operation or exclusion.
+const dispositionBranches=[...integrationBranches,{id:'expense-only',name:'Synthetic closed branch',is_active:true},{id:'excluded-branch',name:'Synthetic excluded branch',is_active:true}]
+const dispositionTables=structuredClone(baselineTables)
+dispositionTables.daily_expenses.push({id:'closed-dsmf',branch_id:'expense-only',expense_date:'2040-03-01',amount:15,category_id:null,custom_category:'DSMF',comment:'Synthetic historical obligation',expense_categories:null})
+dispositionTables.employees.push({id:'central-manager',branch_id:null,position:'Менеджеры'})
+dispositionTables.salary_periods.push({id:'central-period',employee_id:'central-manager',branch_id:null,salary_month:'2040-03-01',salary_gross:40})
+const dispositionRegistry=registryFixture({...inputs(dispositionTables),branchRows:dispositionBranches},'2040-03')
+dispositionRegistry.components=structuredClone(expectedRegistry.components)
+const dispositionOptions={branchRows:dispositionBranches,mutateTables:t=>Object.assign(t,structuredClone(dispositionTables)),mutateRecords:rows=>{
+ const manifest=rows.at(-1).snapshot_data
+ manifest.expectedCoverage=structuredClone(dispositionRegistry)
+ manifest.reviewChecks=dispositionBranches.flatMap(branch=>['payroll','dsmf','partner_fee','other'].map(category=>({branchId:branch.id,category,status:'verified',approvalRef:'synthetic-review',sourceRef:'synthetic-source'})))
+}}
+const disposition=await integrated(dispositionOptions)
+assert.deepEqual(disposition.result.summaryInputs.coverageIssues,[])
+assert.equal(disposition.result.rows.find(row=>row.id==='expense-only').totalExpenses,15,'expense-only costs are not silently dropped')
+assert.equal(disposition.result.rows.reduce((sum,row)=>sum+row.salary,0),220,'central payroll pool is allocated once with existing policy')
+assert.equal(disposition.display.period.net,null,'no-revenue costs need the existing closed-period presentation/accounting decision, not an inferred exclusion')
+await blocked({...dispositionOptions,mutateRecords:rows=>{dispositionOptions.mutateRecords(rows);delete rows.at(-1).snapshot_data.expectedCoverage.centralPayroll}},'expected-central-payroll-coverage-mismatch')
+await blocked({...dispositionOptions,mutateRecords:rows=>{dispositionOptions.mutateRecords(rows);rows.at(-1).snapshot_data.expectedCoverage.branches.find(branch=>branch.id==='expense-only').status='excluded'}},'invalid-expected-branch-disposition')
+await blocked({...dispositionOptions,mutateRecords:rows=>{dispositionOptions.mutateRecords(rows);delete rows.at(-1).snapshot_data.expectedCoverage.branches.find(branch=>branch.id==='excluded-branch').reason}},'invalid-expected-branch-disposition')
+const unknownTables=structuredClone(baselineTables);unknownTables.daily_revenue_entries.push({...base,id:'unknown-row',branch_id:'outside-catalog'})
+await blocked({mutateTables:t=>Object.assign(t,unknownTables),mutateRecords:rows=>rows.at(-1).snapshot_data.reviewChecks.push(...['payroll','dsmf','partner_fee','other'].map(category=>({branchId:'outside-catalog',category,status:'verified',approvalRef:'review',sourceRef:'source'})))},'unregistered-branch-source-row')
+console.log('PASS monthly branch dispositions: expense-only costs preserved despite active flag, justified exclusions, explicit central payroll scope/conservation, missing central scope and unknown branch blocked')
+
+for(let m=1;m<=9;m++){
+ const month=`2026-${String(m).padStart(2,'0')}`
+ // Deployed Jan-Sep: inactive employees were absent from the metadata map.
+ // Period branch present -> direct; no period branch -> network pool, even if
+ // the inactive employee's current record now names a branch or manager role.
+ for(const periodBranch of ['branch-a',null]){
+  const value=await historicalPayroll(month,t=>{
+   t.employees[0]={...t.employees[0],is_active:false,position:'Менеджеры',branch_id:'branch-b'}
+   t.salary_periods[0].branch_id=periodBranch
+  })
+  assert.deepEqual(value.result.summaryInputs.coverageIssues,[])
+  assert.equal(value.display.period.net,152)
+  const a=value.result.rows.find(row=>row.id==='branch-a'),b=value.result.rows.find(row=>row.id==='branch-b')
+  assert.equal(a.salary,periodBranch?10:5)
+  assert.equal(b.salary,periodBranch?20:25)
+  assert.equal(a.managerSalary,periodBranch?0:5)
+  assert.equal(b.managerSalary,periodBranch?0:5)
+ }
+}
+console.log('PASS Jan-Sep inactive payroll allocation matches deployed active-only metadata eligibility: period branch stays direct; missing period branch stays pooled, regardless of current inactive employee branch/manager role')

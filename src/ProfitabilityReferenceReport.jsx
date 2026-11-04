@@ -8,6 +8,10 @@ const AZ={'Нет данных':'Məlumat yoxdur','Недостаточно да
 const STATUS_AZ={'Нужно подтвердить базу банковской комиссии. До подтверждения результат и маржа недоступны.':'Bank komissiyasının bazası təsdiqlənməlidir. Təsdiqədək nəticə və marja göstərilmir.','Предварительно':'İlkin','* Предварительно: расчёт не подтверждает окончательную прибыль и маржу.':'* İlkin: hesablama yekun mənfəəti və marjanı təsdiqləmir.','Предварительные месяцы: ':'İlkin aylar: ','Показан расчёт по доступным записям. Полнота и спорные компоненты требуют уточнения; результат и маржа не являются подтверждённой прибылью.':'Mövcud qeydlər üzrə hesablama göstərilir. Tamlıq və mübahisəli komponentlər dəqiqləşdirilməlidir; nəticə və marja təsdiqlənmiş mənfəət deyil.'}
 const coverageMessage=(issue,lang)=>{
  const labels={
+  'historical-payroll-basis-review-required':['Исторический расчёт зарплаты использовал другую базу или состав сотрудников. Итог заблокирован до отдельной сверки закрытого месяца.','Tarixi maaş hesablamasında fərqli baza və ya əməkdaş siyahısı istifadə edilib. Bağlanmış ay ayrıca yoxlanılana qədər yekun bloklanıb.'],
+  'unregistered-branch-source-row':['Есть записи филиала, отсутствующего в ожидаемом составе.','Gözlənilən siyahıda olmayan filialın qeydləri var.'],
+  'invalid-expected-branch-disposition':['Не подтверждён статус филиала за месяц или его исключение.','Filialın ay üzrə statusu və ya istisnası təsdiqlənməyib.'],
+  'expected-central-payroll-coverage-mismatch':['Общий фонд зарплаты не совпадает с подтверждённым реестром.','Ümumi maaş fondu təsdiqlənmiş reyestrlə uyğun gəlmir.'],
   'missing-required-registry-component':['Компонент ожидаемого реестра отсутствует в обязательных проверках.','Gözlənilən reyestr komponenti məcburi yoxlamalara daxil edilməyib.'],
   'missing-expected-source-registry':['Нет проверенного ожидаемого реестра филиалов и начислений.','Filialların və hesablamaların yoxlanılmış gözlənilən reyestri yoxdur.'],
   'invalid-expected-source-registry':['Ожидаемый реестр неполон или не подтверждён.','Gözlənilən reyestr natamamdır və ya təsdiqlənməyib.'],

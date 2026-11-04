@@ -1,3 +1,4 @@
+import {bankExpenseCandidates} from './profitability-bank-expense-scope.mjs'
 import {buildReviewedAdjustments} from './profitability-adjustments.mjs'
 import {reportMonths, accrualInputsFingerprint, futureCoverageIssues} from './profitability-source-completeness.mjs'
 import {normalizeReviewedGoodsPurchases} from './profitability-bank-goods.mjs'
@@ -33,8 +34,13 @@ export async function bankInputsFingerprintV3(input,month,goodsProof){
 }
 // v4 binds the bank decision to revenue and potential expense collisions only.
 // Legacy evidence is NOT upgraded or reinterpreted; it must be reviewed again.
-export async function bankInputsFingerprintV4(input,month){
- return componentInputsFingerprint({...input,supplierPurchases:[]},month)
+export async function bankInputsFingerprintV4(input,month,expenseScope){
+ // Existing v4 proofs retain byte-for-byte semantics; narrowing is explicit.
+ if(expenseScope===undefined)return componentInputsFingerprint({...input,supplierPurchases:[]},month)
+ const dailyExpenseRows=bankExpenseCandidates(input,month,expenseScope)
+ const inputsFingerprint=await componentInputsFingerprint({...input,dailyExpenseRows,supplierPurchases:[]},month)
+ const bytes=new TextEncoder().encode(JSON.stringify(canonical({contract:'bank-v4-expense-scope-v1',expenseScope,inputsFingerprint})))
+ return [...new Uint8Array(await globalThis.crypto.subtle.digest('SHA-256',bytes))].map(b=>b.toString(16).padStart(2,'0')).join('')
 }
 export function validateComponentRecord(record,fingerprint){
  const s=record?.snapshot_data,fail=reason=>({valid:false,reason,month:s?.month,componentKey:s?.componentKey})
@@ -160,7 +166,7 @@ export async function resolveBankEvidence(records,input,configuredRate,hasExplic
   const fail=reason=>issues.push({month:s.month,reason,severity:'blocking_runtime_basis'})
   if(seenMonths.has(s.month)){fail('duplicate-bank-evidence');for(const [id,e] of byId)if(e.month===s.month)byId.delete(id);continue}seenMonths.add(s.month)
   let fingerprint
-  if(s.version===4)fingerprint=await bankInputsFingerprintV4(input,s.month)
+  if(s.version===4){try{fingerprint=await bankInputsFingerprintV4(input,s.month,s.expenseScope)}catch{fail('stale-or-invalid-bank-evidence');continue}}
   else if(s.version===3){try{fingerprint=await bankInputsFingerprintV3(input,s.month,s.goodsProof)}catch{fail('stale-or-invalid-bank-evidence');continue}}
   else fingerprint=await componentInputsFingerprint(input,s.month)
   if(record.snapshot_type!==COMPONENT_SNAPSHOT_TYPE||record.snapshot_scope!==`profitability-components:${s.month}:bank-basis`||s.status!=='verified'||!s.approvalRef||s.expectedBankCommissionRate!==configuredRate||s.inputsFingerprint!==fingerprint||!Array.isArray(s.entries)){fail('stale-or-invalid-bank-evidence');continue}

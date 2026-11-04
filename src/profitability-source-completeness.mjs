@@ -25,6 +25,8 @@ export function profitabilityAccrualIssues(input, from, toExclusive, serviceBran
     if (seen.has(key)) fail(month, 'duplicate-payroll-accrual')
     seen.add(key)
     if (!knownAmount(row.salary_gross)) fail(month, 'invalid-payroll-accrual')
+    // Historical net fallback is not silently replaced with a zero accrual.
+    if (month>='2026-01' && month<='2026-09' && knownAmount(row.salary_gross) && Number(row.salary_gross)===0 && Number(row.salary_net)>0) fail(month,'historical-payroll-basis-review-required')
   }
   const serviceSeen = new Set()
   for (const row of input.serviceRows) {
@@ -95,6 +97,9 @@ export function expectedCoverageIssues(manifest, input, month, records = []) {
       if (!Array.isArray(expected) || !expected.every(text) || !unique(expected) || !equal(sorted(expected),sorted(actual))) fail(`expected-branch-${field==='revenueIds'?'revenue':'expense'}-coverage-mismatch`)
     }
   }
+  for (const [rows,date] of [[input.revenueRows,'revenue_date'],[input.dailyExpenseRows,'expense_date']]) {
+    if (inMonth(rows,date).some(row=>!branchIds.includes(String(row.branch_id)))) fail('unregistered-branch-source-row')
+  }
   const actualPayroll=inMonth(input.salaryPeriods || [],'salary_month')
   const employees=new Map((input.employeeRows || []).map(row=>[String(row.id),row]))
   const payrollFields=['id','employee_id','branch_id','salary_month','salary_gross','employeeBranchId','employeePosition']
@@ -105,6 +110,18 @@ export function expectedCoverageIssues(manifest, input, month, records = []) {
   const serviceValues=row=>[row.branch_id,row.month,Number(row.staff_cost_amount)]
   const validService=row=>branchIds.includes(row.branch_id) && row.month===month+'-01' && typeof row.staff_cost_amount==='number' && knownAmount(row.staff_cost_amount)
   if (!proof.service.every(validService) || !unique(proof.service.map(row=>row.branch_id)) || !equal(sorted(proof.service.map(serviceValues)),sorted(inMonth(input.serviceRows || [],'month').map(serviceValues)))) fail('expected-service-accrual-coverage-mismatch')
+  for (const branch of proof.branches) {
+    const revenue=Array.isArray(branch.revenueIds)?branch.revenueIds:[]
+    const expenses=Array.isArray(branch.expenseIds)?branch.expenseIds:[]
+    const hasCosts=expenses.length || proof.payroll.some(row=>row.branch_id===branch.id) || proof.service.some(row=>row.branch_id===branch.id) || proof.components.some(row=>row.branchId===branch.id)
+    if (!['operating','expense_only','excluded'].includes(branch.status) || (branch.status==='operating' && !revenue.length) || (branch.status!=='operating' && (!text(branch.reason) || revenue.length)) || (branch.status==='expense_only' && !hasCosts) || (branch.status==='excluded' && hasCosts)) fail('invalid-expected-branch-disposition')
+  }
+  const centralIds=actualPayroll.filter(row=>row.branch_id==null).map(row=>row.id)
+  const expectedCentral=proof.payroll.filter(row=>row.branch_id===null).map(row=>row.id)
+  const central=proof.centralPayroll
+  if (centralIds.length || expectedCentral.length || central) {
+    if (!central || !text(central.sourceKey) || !text(central.reason) || !Array.isArray(central.periodIds) || !unique(central.periodIds) || !equal(sorted(central.periodIds),sorted(centralIds)) || !equal(sorted(central.periodIds),sorted(expectedCentral))) fail('expected-central-payroll-coverage-mismatch')
+  }
   const componentValues=row=>[row.scope,row.componentKey,row.action,row.category,row.branchId??null,row.amount??null]
   const actualComponents=records.filter(record=>record.snapshot_data?.kind==='component_adjustment' && record.snapshot_data.month===month).map(record=>componentValues({...record.snapshot_data,scope:record.snapshot_scope}))
   const componentFields=['scope','componentKey','action','category','branchId','amount']

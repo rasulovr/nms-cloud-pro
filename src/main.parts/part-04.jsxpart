@@ -6461,8 +6461,11 @@ function Reports({ t, permissions = [], isAdmin = false }) {
           const amount = Number(periodRow.salary_gross)
           if (!Number.isFinite(amount) || amount <= 0) return
           const employee = employeeById.get(String(periodRow.employee_id)) || {}
-          const branchId = String(periodRow.branch_id || employee.branch_id || '')
-          const manager = !branchId || positionGroup(employee.position) === 'Менеджеры'
+          // Jan–Sep previously loaded active employees only. Preserve that
+          // allocation eligibility while resolving identities from the full list.
+          const allocationEmployee = isAuditedMonth(periodRow.salary_month) && employee.is_active !== true ? {} : employee
+          const branchId = String(periodRow.branch_id || allocationEmployee.branch_id || '')
+          const manager = !branchId || positionGroup(allocationEmployee.position) === 'Менеджеры'
           const detail = {
             id: `salary-${periodRow.employee_id || branchId}-${periodRow.salary_month || ''}`,
             date: periodRow.salary_month,
