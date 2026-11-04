@@ -696,6 +696,10 @@ export default function QRMenu() {
       && Number.isFinite(product.price) && product.price >= 0));
     return products.every(Boolean) ? products : [];
   }, [localizedProducts, branch, loading, unavailable]);
+  const breakfastOfferProduct = useMemo(() => localizedProducts.find(product =>
+    product.id === "4cf13bd6-975c-4123-b944-474944a95af2" && product.branches.includes(branch)
+    && !unavailable.includes(product.id) && Number.isFinite(product.price) && product.price >= 0),
+    [localizedProducts, branch, unavailable]);
   const availableProducts = useMemo(() => localizedProducts.filter((product) => {
     const branchMatch = product.branches.includes(branch);
     const categoryMatch = category === "\u0412\u0441\u0435" || product.category === category;
@@ -976,6 +980,7 @@ export default function QRMenu() {
     if (unavailable.includes(product.id)) return flash(t.stoppedNotice);
     setCart((current) => {
       const line = current.find((item) => item.id === product.id);
+      if (branch === "BC1" && product.id === "4cf13bd6-975c-4123-b944-474944a95af2" && (line?.qty || 0) + delta > 99) return current;
       if (!line && delta > 0) return [...current, { ...product, qty: branch === "BC1" ? delta : 1 }];
       return current.map((item) => item.id === product.id ? { ...item, qty: item.qty + delta } : item).filter((item) => item.qty > 0);
     });
@@ -1154,7 +1159,11 @@ export default function QRMenu() {
 
       {!bc1Browse && navigation}
 
-      {bc1Browse && <BC1SpecialOffer language={language} products={specialOfferProducts} formatPrice={money} onOpen={openProduct} onAdd={addSpecialOffer} addDisabled={specialOfferProducts.some(product => (cart.find(line => line.id === product.id)?.qty || 0) >= 99)} />}
+      {bc1Browse && <BC1SpecialOffer language={language} formatPrice={money} onOpen={openProduct} offers={[
+        ...(specialOfferProducts.length === 2 ? [{ id: "williams-pineapple", products: specialOfferProducts, onAdd: addSpecialOffer,
+          addDisabled: specialOfferProducts.some(product => (cart.find(line => line.id === product.id)?.qty || 0) >= 99) }] : []),
+        ...(breakfastOfferProduct ? [{ id: "croissant-cappuccino", products: [breakfastOfferProduct], image: breakfastOfferProduct.image }] : [])
+      ]} />}
 
       {screen === "menu" && <section className={`content${branch === "BC1" ? " bc1-catalog" : ""}`}>
                     <div className="menu-toolbar">
@@ -1333,7 +1342,7 @@ export default function QRMenu() {
                 <div className="modal-stepper" aria-label="Quantity">
                   <button type="button" disabled={unavailable.includes(selectedProduct.id) || modalQuantity <= 1} onClick={() => setModalQuantity((quantity) => Math.max(1, quantity - 1))} aria-label="Decrease quantity">−</button>
                   <b>{modalQuantity}</b>
-                  <button type="button" disabled={unavailable.includes(selectedProduct.id)} onClick={() => setModalQuantity((quantity) => quantity + 1)} aria-label="Increase quantity">+</button>
+                  <button type="button" disabled={unavailable.includes(selectedProduct.id) || (branch === "BC1" && selectedProduct.id === "4cf13bd6-975c-4123-b944-474944a95af2" && modalQuantity >= 99)} onClick={() => setModalQuantity((quantity) => Math.min(quantity + 1, branch === "BC1" && selectedProduct.id === "4cf13bd6-975c-4123-b944-474944a95af2" ? 99 : Infinity))} aria-label="Increase quantity">+</button>
                 </div>
                 <button className="modal-add-button" disabled={unavailable.includes(selectedProduct.id)} onClick={addSelectedProductToCart}>
                   <span>{unavailable.includes(selectedProduct.id) ? t.unavailable : `${t.addToCart}: ${money(selectedProduct.price * modalQuantity)}`}</span>
