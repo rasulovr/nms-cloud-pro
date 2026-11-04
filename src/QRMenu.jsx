@@ -1342,7 +1342,7 @@ export default function QRMenu() {
                 <div className="modal-stepper" aria-label="Quantity">
                   <button type="button" disabled={unavailable.includes(selectedProduct.id) || modalQuantity <= 1} onClick={() => setModalQuantity((quantity) => Math.max(1, quantity - 1))} aria-label="Decrease quantity">−</button>
                   <b>{modalQuantity}</b>
-                  <button type="button" disabled={unavailable.includes(selectedProduct.id) || (selectedProduct.id === "4cf13bd6-975c-4123-b944-474944a95af2" && modalQuantity >= 99)} onClick={() => setModalQuantity((quantity) => Math.min(quantity + 1, selectedProduct.id === "4cf13bd6-975c-4123-b944-474944a95af2" ? 99 : Infinity))} aria-label="Increase quantity">+</button>
+                  <button type="button" disabled={unavailable.includes(selectedProduct.id) || (branch === "BC1" && selectedProduct.id === "4cf13bd6-975c-4123-b944-474944a95af2" && modalQuantity >= 99)} onClick={() => setModalQuantity((quantity) => Math.min(quantity + 1, branch === "BC1" && selectedProduct.id === "4cf13bd6-975c-4123-b944-474944a95af2" ? 99 : Infinity))} aria-label="Increase quantity">+</button>
                 </div>
                 <button className="modal-add-button" disabled={unavailable.includes(selectedProduct.id)} onClick={addSelectedProductToCart}>
                   <span>{unavailable.includes(selectedProduct.id) ? t.unavailable : `${t.addToCart}: ${money(selectedProduct.price * modalQuantity)}`}</span>
