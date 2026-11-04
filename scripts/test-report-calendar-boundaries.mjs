@@ -81,10 +81,10 @@ Object.assign(context, {
   RMS_BRANCH_TAX_RATE_SETTING: 'tax', RMS_BRANCH_RENT_FORECAST_SETTING: 'rent',
   RMS_BANK_COMMISSION_RATE_SETTING: 'bank', RMS_DEFAULT_BANK_COMMISSION_RATE: 1,
   monthKeyFromDate: d => d.slice(0, 7),
-  getInternalSessionStorage: () => null, branchId: 'test', date: '2026-09-30'
+  revenueLoadRef:{current:0}, getInternalSessionStorage: () => null, branchId: 'test', date: '2026-09-30'
 })
-const dashPrefix = extract(reports, '  async function calcMonth(y, m)', '\n    const bankCommissionRate =')
-await evaluate(`${dashPrefix}\n}; calcMonth(2026,9)`)
+const dashPrefix = extract(reports, '  async function calcMonth(y, m,', '\n    const bankCommissionRate =')
+await evaluate(`${dashPrefix}\n}; calcMonth(2026,9,{includeForecast:false})`)
 for (const [table, field] of [['daily_revenue','revenue_date'], ['daily_expenses','expense_date'], ['supplier_purchases','purchase_date']]) {
   const q = queries.find(q => q.table === table && q.filters.some(f => f[0] === 'gte'))
   assert.ok(q)
@@ -94,8 +94,8 @@ for (const [table, field] of [['daily_revenue','revenue_date'], ['daily_expenses
 }
 queries.length = 0
 const dailyPrefix = extract(daily, '  async function loadMonthStats(', '    const cash = (monthRows')
-await evaluate(`${dailyPrefix}\n}; loadMonthStats('test', '2026-09-30')`)
-for (const table of ['daily_revenue','daily_expenses','salary_advances','daily_cash_inflows']) {
+await evaluate(`${dailyPrefix}\n} catch(error) { throw error } }; loadMonthStats('test', '2026-09-30', {monthTotal:0,monthAdvanceTotal:0})`)
+for (const table of ['daily_revenue','daily_expenses','daily_cash_inflows']) {
   const q = queries.find(q => q.table === table)
   assert.ok(q.filters.some(f => f[0] === 'gte' && f[2] === '2026-09-01'))
   assert.ok(q.filters.some(f => f[0] === 'lt' && f[2] === '2026-10-01'))

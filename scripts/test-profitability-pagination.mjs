@@ -5,7 +5,7 @@ import { componentInputsFingerprint } from '../src/profitability-reviewed-compon
 
 const part = fs.readFileSync('src/main.parts/part-04.jsxpart', 'utf8')
 const start = part.indexOf('      const fetchPaged = async (buildQuery) =>', part.indexOf('  async function loadRmsProfitabilityReport()'))
-const end = part.indexOf('      const [{ data: employeeRowsRaw', start)
+const end = part.indexOf('      const [employeeRows, salaryPeriods', start)
 assert.ok(start >= 0 && end > start)
 const querySource = part.slice(start, end)
 const configs = [['daily_revenue_entries','revenue_date'], ['daily_expenses','expense_date'], ['supplier_purchases','purchase_date']]

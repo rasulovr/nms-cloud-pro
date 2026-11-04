@@ -5,9 +5,9 @@ export const isPreliminary = row => row.displayPreliminary === true || row.calcu
 function project(row, {hasRevenue, hasExpenses, reconciled}) {
   const revenueAvailable = !row.operatingExcluded && hasRevenue && finite(row.revenue)
   const expensesAvailable = !row.operatingExcluded && hasExpenses && finite(row.expenses)
-  const netAvailable = revenueAvailable && expensesAvailable
+  const netAvailable = revenueAvailable && expensesAvailable && row.profitAvailable !== false && reconciled
   // The same arithmetic already used by the report. This is explicitly a result
-  // of recorded components, NOT an assertion that missing components are zero.
+  // of recorded components. Blocking coverage issues must remain blocked in UI/PDF.
   const calculatedNet = netAvailable ? row.revenue - row.expenses : null
   return {...row, verifiedNet: row.net, net: calculatedNet,
     displayRevenueAvailable: revenueAvailable, displayExpensesAvailable: expensesAvailable,

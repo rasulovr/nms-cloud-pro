@@ -6,7 +6,7 @@ export function buildReviewedAdjustments(validated,input){
  const expenseById=new Map(input.dailyExpenseRows.map(r=>[String(r.id),r]))
  const purchaseById=new Map(input.supplierPurchases.map(r=>[String(r.id),r]))
  const excludedExpenses=new Set(),excludedPurchases=new Set(),expenseGroups=new Map(),purchaseGroups=new Map(),branchAdditions=[],poolAdditions=[],held=[]
- const labels={food_market:'Базар / проверенный компонент',partner_fee:'Partner Fee',household:'Хозяйственные товары'}
+ const labels={food_market:'Базар / проверенный компонент',partner_fee:'Partner Fee',dsmf:'DSMF',household:'Хозяйственные товары'}
  const conflicts=new Set(),claims=new Map()
  const allTargets=new Map()
  for(const entry of validated)for(const id of [...(entry.source.target.representationIds||[]),...(entry.source.target.excludedIds||[])]){const list=allTargets.get(String(id))||[];list.push(entry);allTargets.set(String(id),list)}

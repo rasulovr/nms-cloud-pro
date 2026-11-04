@@ -1,3 +1,4 @@
+import {reportMonths, accrualInputsFingerprint, futureCoverageIssues} from './profitability-source-completeness.mjs'
 import {normalizeReviewedGoodsPurchases} from './profitability-bank-goods.mjs'
 // Read-only component evidence adapter. No financial amounts or source IDs are
 // embedded in this module; evidence is read through authenticated storage.
@@ -29,6 +30,11 @@ export async function bankInputsFingerprintV3(input,month,goodsProof){
  const supplierPurchases=normalizeReviewedGoodsPurchases(input,month,goodsProof)
  return componentInputsFingerprint({...input,supplierPurchases},month)
 }
+// v4 binds the bank decision to revenue and potential expense collisions only.
+// Legacy evidence is NOT upgraded or reinterpreted; it must be reviewed again.
+export async function bankInputsFingerprintV4(input,month){
+ return componentInputsFingerprint({...input,supplierPurchases:[]},month)
+}
 export function validateComponentRecord(record,fingerprint){
  const s=record?.snapshot_data,fail=reason=>({valid:false,reason,month:s?.month,componentKey:s?.componentKey})
  if(record?.snapshot_type!==COMPONENT_SNAPSHOT_TYPE||s?.kind!==COMPONENT_KIND||s?.version!==2)return fail('unsupported-contract')
@@ -38,7 +44,7 @@ export function validateComponentRecord(record,fingerprint){
  if(!s.target||s.target.inputsFingerprint!==fingerprint)return fail('changed-target-inputs')
  if(!Array.isArray(s.target.representationIds)||!Array.isArray(s.target.excludedIds)||!Array.isArray(s.target.expectedRows))return fail('missing-target-provenance')
  if(['add_missing_pool','reallocate_existing_pool','replace_source_pool'].includes(s.action)&&!['food_market','household'].includes(s.category))return fail('unsupported-pool-category')
- if(!(s.action==='exclude_revenue_duplicate'&&s.category==='revenue')&&!['food_market','household','partner_fee','utilities','other','rent','packaging','marketing','maintenance'].includes(s.category))return fail('unsupported-component-category')
+ if(!(s.action==='exclude_revenue_duplicate'&&s.category==='revenue')&&!['food_market','household','partner_fee','dsmf','utilities','other','rent','packaging','marketing','maintenance'].includes(s.category))return fail('unsupported-component-category')
  if(['exclude_duplicate','exclude_revenue_duplicate'].includes(s.action)){
   if(s.action==='exclude_revenue_duplicate'&&s.category!=='revenue')return fail('invalid-revenue-category')
   if(s.scope!=='branch'||!s.branchId||s.target.excludedIds.length!==1||s.target.representationIds.length!==1||s.target.excludedIds[0]===s.target.representationIds[0]||s.target.expectedRows.length<2)return fail('invalid-duplicate-evidence')
@@ -111,16 +117,17 @@ export async function readComponentRecords(client,from,toExclusive){
 
 export async function resolveCoverageManifests(records,input,from,toExclusive){
  const issues=[]
- // Only the explicitly reviewed historical window requires the new evidence
- // contract. This boundary contains no financial values or source identities.
- for(let m=1;m<=9;m++){
-  const month=`2026-${String(m).padStart(2,'0')}`,day=month+'-01'
-  if(day<from||day>=toExclusive)continue
+ // Every selected month after the evidence contract began requires coverage.
+ for(const month of reportMonths(from,toExclusive).filter(month=>month>='2026-01')){
   const manifests=records.filter(r=>r.snapshot_type===COMPONENT_SNAPSHOT_TYPE&&r.snapshot_scope===`profitability-components:${month}:coverage`&&r.snapshot_data?.kind==='coverage_manifest'&&r.snapshot_data?.version===2)
   const issue=reason=>issues.push({month,reason,severity:'blocking_runtime_basis'})
   if(manifests.length!==1){issue(manifests.length?'duplicate-coverage-manifest':'missing-coverage-manifest');continue}
   const s=manifests[0].snapshot_data
   if(s.month!==month||s.status!=='verified'||!s.approvalRef||s.inputsFingerprint!==await componentInputsFingerprint(input,month)||!Array.isArray(s.expectedScopes)||!Array.isArray(s.holds)){issue('stale-or-invalid-coverage-manifest');continue}
+  if(month>='2026-10'){
+   issues.push(...futureCoverageIssues(s,input,month))
+   if(!s.accrualInputsFingerprint || s.accrualInputsFingerprint!==await accrualInputsFingerprint(input,month))issue('stale-or-missing-accrual-coverage')
+  }
   for(const scope of s.expectedScopes){
    const matches=records.filter(r=>r.snapshot_scope===scope)
    if(!String(scope).startsWith(`profitability-components:${month}:`)||matches.length!==1||matches[0].snapshot_type!==COMPONENT_SNAPSHOT_TYPE||matches[0].snapshot_data?.version!==2||!['component_adjustment','bank_basis_evidence','branch_period_status'].includes(matches[0].snapshot_data?.kind)||matches[0].snapshot_data?.status!=='verified')issue('missing-or-ambiguous-required-component')
@@ -137,11 +144,12 @@ export async function resolveBankEvidence(records,input,configuredRate,hasExplic
  const byId=new Map(),issues=[],seenMonths=new Set(),revenueById=new Map(input.revenueRows.map(r=>[String(r.id),r]))
  for(const record of records){
   const s=record.snapshot_data
-  if(s?.kind!=='bank_basis_evidence'||![2,3].includes(s.version))continue
+  if(s?.kind!=='bank_basis_evidence'||![2,3,4].includes(s.version))continue
   const fail=reason=>issues.push({month:s.month,reason,severity:'blocking_runtime_basis'})
   if(seenMonths.has(s.month)){fail('duplicate-bank-evidence');for(const [id,e] of byId)if(e.month===s.month)byId.delete(id);continue}seenMonths.add(s.month)
   let fingerprint
-  if(s.version===3){try{fingerprint=await bankInputsFingerprintV3(input,s.month,s.goodsProof)}catch{fail('stale-or-invalid-bank-evidence');continue}}
+  if(s.version===4)fingerprint=await bankInputsFingerprintV4(input,s.month)
+  else if(s.version===3){try{fingerprint=await bankInputsFingerprintV3(input,s.month,s.goodsProof)}catch{fail('stale-or-invalid-bank-evidence');continue}}
   else fingerprint=await componentInputsFingerprint(input,s.month)
   if(record.snapshot_type!==COMPONENT_SNAPSHOT_TYPE||record.snapshot_scope!==`profitability-components:${s.month}:bank-basis`||s.status!=='verified'||!s.approvalRef||s.expectedBankCommissionRate!==configuredRate||s.inputsFingerprint!==fingerprint||!Array.isArray(s.entries)){fail('stale-or-invalid-bank-evidence');continue}
   for(const entry of s.entries){

@@ -22,6 +22,6 @@ assert.ok(dashboard.includes('const accrued = parseNum(periodRow.salary_gross)')
 assert.ok(dashboard.includes('dashboardAccruedManagersSalary * parseNum(revenueShareMap.get(b.id))'), 'Dashboard must allocate accrued manager salary by revenue share')
 assert.ok(dashboard.includes('const salary = hasAccruedSalaryPeriods ? accruedSalary'), 'Accrued salary periods must take precedence over configured employee salaries')
 assert.ok(!dashboard.includes('зарплата менеджеров распределена по доле предварительной прибыли'), 'Preliminary-profit salary allocation must be removed')
-assert.ok(reports.includes('const managerSalary = managerSalaryPool * share'), 'Profitability report must keep revenue-share manager allocation')
+assert.ok(reports.includes('const managerSalary = managerSalaryDetails.reduce((sum, detail) => sum + parseNum(detail.amount) * allocationShare(detail.date, id), 0)'), 'Profitability report must keep revenue-share manager allocation')
 
 console.log('Salary revenue allocation v424 checks passed')

@@ -6217,11 +6217,12 @@ function Reports({ t, permissions = [], isAdmin = false }) {
         while (true) {
           const { data, error } = await buildQuery(offset, offset + pageSize - 1)
           if (error) throw error
-          const batch = data || []
+          if (!Array.isArray(data)) throw new Error('Неполный ответ источника рентабельности')
+          const batch = data
           rows = rows.concat(batch)
           if (batch.length < pageSize) break
           offset += pageSize
-          if (offset > 50000) break
+          if (offset > 50000) throw new Error('Превышен лимит чтения рентабельности')
         }
         return rows
       }
@@ -6263,33 +6264,19 @@ function Reports({ t, permissions = [], isAdmin = false }) {
         return query.order('purchase_date', { ascending: true }).order('id', { ascending: true }).range(from, to)
       })
 
-      const [{ data: employeeRowsRaw, error: employeesError }, salaryResult, serviceResult] = await Promise.all([
-        supabase
-          .from('employees')
+      const [employeeRows, salaryPeriods, allServiceRows] = await Promise.all([
+        fetchPaged((from, to) => supabase.from('employees')
           .select('id,branch_id,full_name,position,monthly_salary,salary_type,daily_rate,is_active,employment_status')
-          .eq('is_active', true),
-        (async () => {
-          let query = supabase
-            .from('salary_periods')
-            .select('employee_id,branch_id,salary_month,salary_gross,salary_net')
-          query = applyDateRange(query, 'salary_month')
-          return query
-        })(),
-        (async () => {
-          let query = supabase
-            .from('monthly_branch_service_charge_cost')
-            .select('branch_id,month,staff_cost_amount')
-          query = applyDateRange(query, 'month')
-          return query
-        })()
+          .order('id', { ascending: true }).range(from, to)),
+        fetchPaged((from, to) => applyDateRange(supabase.from('salary_periods')
+          .select('id,employee_id,branch_id,salary_month,salary_gross,salary_net'), 'salary_month')
+          .order('salary_month', { ascending: true }).order('id', { ascending: true }).range(from, to)),
+        fetchPaged((from, to) => applyDateRange(supabase.from('monthly_branch_service_charge_cost')
+          .select('branch_id,month,staff_cost_amount'), 'month')
+          .order('month', { ascending: true }).order('branch_id', { ascending: true }).range(from, to))
       ])
-
-      if (employeesError) throw employeesError
-      const employeeRows = employeeRowsRaw || []
-      const salaryPeriods = salaryResult?.error ? [] : (salaryResult?.data || [])
       const enabledServiceBranchIds = new Set((branches || []).filter(branch => branch.service_charge_enabled).map(branch => String(branch.id)))
-      const serviceRows = (serviceResult?.error ? [] : (serviceResult?.data || []))
-        .filter(row => enabledServiceBranchIds.has(String(row.branch_id)))
+      const serviceRows = allServiceRows.filter(row => enabledServiceBranchIds.has(String(row.branch_id)))
       const [taxSettings, bankCommissionSetting] = await Promise.all([
         readRmsAppSetting(RMS_BRANCH_TAX_RATE_SETTING, {}),
         readRmsAppSetting(RMS_BANK_COMMISSION_RATE_SETTING, RMS_DEFAULT_BANK_COMMISSION_RATE)
@@ -6299,12 +6286,15 @@ function Reports({ t, permissions = [], isAdmin = false }) {
       const isAuditedMonth = date => String(date || '').slice(0, 7) >= '2026-01' && String(date || '').slice(0, 7) <= '2026-09'
       const hasAuditedMonths = period.from < '2026-10-01' && period.toExclusive > '2026-01-01'
       const mixedBasis = hasAuditedMonths && (period.from < '2026-01-01' || period.toExclusive > '2026-10-01')
-      const reviewedInputs = { revenueRows, dailyExpenseRows: rawDailyExpenseRows, supplierPurchases: rawSupplierPurchases }
+      const reviewedInputs = { revenueRows, dailyExpenseRows: rawDailyExpenseRows, supplierPurchases: rawSupplierPurchases, salaryPeriods, serviceRows, employeeRows }
       const protectedRecords = await readComponentRecords(supabase, period.from, period.toExclusive)
       const goodsPurchaseIds = [...new Set(protectedRecords.filter(record => record.snapshot_data?.kind === 'bank_basis_evidence' && record.snapshot_data?.version === 3).flatMap(record => (record.snapshot_data.goodsProof?.headers || []).map(row => String(row.id))))]
-      if (goodsPurchaseIds.length > 7) throw new Error('Превышен лимит проверки товарной детализации.')
-      reviewedInputs.supplierPurchaseItems = goodsPurchaseIds.length ? await fetchPaged((from, to) => supabase.from('supplier_purchase_items').select('id,purchase_id,product_id,quantity,unit,unit_price,total_amount,supplier_products(id,name,category,base_unit)').in('purchase_id', goodsPurchaseIds).order('id', { ascending: true }).range(from, to)) : []
-      const componentRecords = protectedRecords.filter(record => isAuditedMonth(record.snapshot_data?.month))
+      reviewedInputs.supplierPurchaseItems = []
+      for (let offset = 0; offset < goodsPurchaseIds.length; offset += 100) {
+        const ids = goodsPurchaseIds.slice(offset, offset + 100)
+        reviewedInputs.supplierPurchaseItems.push(...await fetchPaged((from, to) => supabase.from('supplier_purchase_items').select('id,purchase_id,product_id,quantity,unit,unit_price,total_amount,supplier_products(id,name,category,base_unit)').in('purchase_id', ids).order('id', { ascending: true }).range(from, to)))
+      }
+      const componentRecords = protectedRecords
       const reviewed = await resolveComponentRecords(componentRecords, reviewedInputs)
       const adjusted = buildReviewedAdjustments(reviewed.validated, reviewedInputs)
       const dailyExpenseRows = adjusted.dailyExpenseRows
@@ -6312,13 +6302,13 @@ function Reports({ t, permissions = [], isAdmin = false }) {
       const bankEvidence = await resolveBankEvidence(protectedRecords, reviewedInputs, bankCommissionRate, row => !!rmsReportBankBasis(row))
       // Validate protected evidence against raw records before applying report-only exclusions.
       revenueRows = adjusted.revenueRows
-      const monthlyBasis = buildMonthlyAllocationBasis(revenueRows.filter(row => isAuditedMonth(row.revenue_date)), row => {
+      const monthlyBasis = buildMonthlyAllocationBasis(revenueRows.filter(row => String(row.revenue_date || '').slice(0, 7) >= '2026-01'), row => {
         const bank = row.bank_amount == null || String(row.bank_amount).trim() === '' ? NaN : Number(row.bank_amount)
         if (bank === 0) return { verified: true, grossBank: 0, netBank: 0 }
         const marker = rmsReportBankBasis(row)
         return marker ? { verified: true, grossBank: bank, netBank: bank * (1 - bankCommissionRate / 100) } : bankEvidence.byId.get(String(row.id)) || null
       })
-      const coverageIssues = [...reviewed.held, ...adjusted.held, ...monthlyBasis.issues, ...bankEvidence.issues, ...await resolveCoverageManifests(componentRecords, reviewedInputs, period.from, period.toExclusive)]
+      const coverageIssues = [...profitabilityAccrualIssues(reviewedInputs, period.from, period.toExclusive, enabledServiceBranchIds), ...reviewed.held, ...adjusted.held, ...monthlyBasis.issues, ...bankEvidence.issues, ...await resolveCoverageManifests(componentRecords, reviewedInputs, period.from, period.toExclusive)]
       for (const bucket of monthlyBasis.months.values()) if (!bucket.complete || !(bucket.networkAllocationRevenue > 0)) coverageIssues.push({month: bucket.month, reason: 'incomplete-network-allocation-basis', severity: 'blocking_runtime_basis'})
       for (const date of [...supplierPurchases.map(r => r.purchase_date), ...salaryPeriods.map(r => r.salary_month)]) if (isAuditedMonth(date) && !monthlyBasis.months.has(String(date || '').slice(0, 7))) coverageIssues.push({month: String(date || '').slice(0, 7), reason: 'missing-network-allocation-basis', severity: 'blocking_runtime_basis'})
       const monthlyShare = (date, branchId) => monthlyBasis.months.get(String(date || '').slice(0, 7))?.shares.get(String(branchId))
@@ -6328,6 +6318,12 @@ function Reports({ t, permissions = [], isAdmin = false }) {
         const share = monthlyShare(date, branchId)
         return Number.isFinite(share) ? share : 0
       }
+
+      // Reviewed pools declare their allocation basis; never silently apply the
+      // preliminary gross basis to a pool approved against verified net bank.
+      const purchaseAllocationShare = (purchase, branchId) => purchase.reviewedProvenance?.allocationBasis
+        ? parseNum(monthlyShare(purchase.purchase_date, branchId))
+        : allocationShare(purchase.purchase_date, branchId)
 
       const employeeById = new Map(employeeRows.map(row => [String(row.id), row]))
       const branchNameById = new Map((branches || []).map(row => [String(row.id), row.name]))
@@ -6386,7 +6382,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
         if (month >= '2026-10' && !legacyMonthlyShares.has(month)) coverageIssues.push({month, reason: 'missing-network-allocation-basis', severity: 'blocking_runtime_basis'})
       }
 
-      const normalizedExpenseName = row => ({utilities: 'Коммунальные', household: 'Хозяйственные товары', partner_fee: 'Partner Fee', other: 'Прочее'}[row.reviewedCategory] || financeExpenseNameFromRow(row))
+      const normalizedExpenseName = row => ({utilities: 'Коммунальные', household: 'Хозяйственные товары', partner_fee: 'Partner Fee', dsmf: 'DSMF', other: 'Прочее'}[row.reviewedCategory] || financeExpenseNameFromRow(row))
       const isServiceChargeLike = value => {
         const name = normalizeExpenseText(value)
         return name.includes('service charge') && (name.includes('персонал') || name.includes('staff'))
@@ -6398,7 +6394,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
       dailyExpenseRows.forEach(row => {
         const id = String(row.branch_id || '')
         if (!id) return
-        if (isTaxPaymentExpenseRow(row)) {
+        if (row.reviewedCategory !== 'dsmf' && isTaxPaymentExpenseRow(row)) {
           const amount = parseNum(row.amount)
           taxPaidByBranch.set(id, parseNum(taxPaidByBranch.get(id)) + amount)
           const details = taxPaymentDetailsByBranch.get(id) || []
@@ -6406,7 +6402,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
           taxPaymentDetailsByBranch.set(id, details)
           return
         }
-        if (isNonOperatingTaxExpenseRow(row)) return
+        if (row.reviewedCategory !== 'dsmf' && isNonOperatingTaxExpenseRow(row)) return
         if (isBoltSettlementExpenseRow(row)) return
         const name = normalizedExpenseName(row)
         if (String(row.comment || '').startsWith('SUPPLIER_PURCHASE_')) return
@@ -6462,8 +6458,8 @@ function Reports({ t, permissions = [], isAdmin = false }) {
       let managerSalaryPool = 0
       if (salaryPeriods.length) {
         salaryPeriods.forEach(periodRow => {
-          const amount = rmsSalaryPeriodTotal(periodRow)
-          if (amount <= 0) return
+          const amount = Number(periodRow.salary_gross)
+          if (!Number.isFinite(amount) || amount <= 0) return
           const employee = employeeById.get(String(periodRow.employee_id)) || {}
           const branchId = String(periodRow.branch_id || employee.branch_id || '')
           const manager = !branchId || positionGroup(employee.position) === 'Менеджеры'
@@ -6472,36 +6468,6 @@ function Reports({ t, permissions = [], isAdmin = false }) {
             date: periodRow.salary_month,
             description: employee.full_name || employee.position || 'Сотрудник',
             comment: manager ? 'Зарплата менеджмента, распределённая по доле выручки' : (employee.position || 'Начисление зарплаты'),
-            amount
-          }
-          if (manager) {
-            managerSalaryPool += amount
-            managerSalaryDetails.push(detail)
-          } else {
-            directSalaryByBranch.set(branchId, parseNum(directSalaryByBranch.get(branchId)) + amount)
-            const details = salaryDetailsByBranch.get(branchId) || []
-            details.push(detail)
-            salaryDetailsByBranch.set(branchId, details)
-          }
-        })
-      } else {
-        const uniqueMonths = new Set(revenueRows.map(row => String(row.revenue_date || '').slice(0, 7)).filter(Boolean))
-        const monthMultiplier = Math.max(1, uniqueMonths.size)
-        employeeRows.forEach(employee => {
-          const officialDays = rmsFinanceOfficialDaysByEmployee()
-          const officialSalary = rmsFinanceOfficialSalaryByEmployee()
-          const defaultDays = parseNum(localStorage.getItem('rms_dsmf_official_days') || '26') || 26
-          const days = parseNum(officialDays[employee.id]) || defaultDays
-          const monthly = parseNum(officialSalary[employee.id]) || parseNum(employee.monthly_salary)
-          const amount = monthly > 0 ? monthly / 26 * days * monthMultiplier : 0
-          if (amount <= 0) return
-          const branchId = String(employee.branch_id || '')
-          const manager = !branchId || positionGroup(employee.position) === 'Менеджеры'
-          const detail = {
-            id: `salary-estimate-${employee.id}`,
-            date: period.from || '',
-            description: employee.full_name || employee.position || 'Сотрудник',
-            comment: manager ? 'Расчёт зарплаты менеджмента по доле выручки' : 'Расчёт по месячной ставке и официальным дням',
             amount
           }
           if (manager) {
@@ -6559,8 +6525,8 @@ function Reports({ t, permissions = [], isAdmin = false }) {
         }
 
         const share = parseNum(revenueShareMap.get(id))
-        const supplierFoodCost = supplierPurchases.filter(p => !p.reviewedCategory || p.reviewedCategory === 'food_market').reduce((sum, purchase) => sum + parseNum(purchase.total_amount) * allocationShare(purchase.purchase_date, id), 0)
-        const supplierHouseholdCost = supplierPurchases.filter(p => p.reviewedCategory === 'household').reduce((sum, purchase) => sum + parseNum(purchase.total_amount) * allocationShare(purchase.purchase_date, id), 0)
+        const supplierFoodCost = supplierPurchases.filter(p => !p.reviewedCategory || p.reviewedCategory === 'food_market').reduce((sum, purchase) => sum + parseNum(purchase.total_amount) * purchaseAllocationShare(purchase, id), 0)
+        const supplierHouseholdCost = supplierPurchases.filter(p => p.reviewedCategory === 'household').reduce((sum, purchase) => sum + parseNum(purchase.total_amount) * purchaseAllocationShare(purchase, id), 0)
         const foodCost = parseNum(expenseData.manualFood) + supplierFoodCost
         const directSalary = parseNum(directSalaryByBranch.get(id))
         const managerSalary = managerSalaryDetails.reduce((sum, detail) => sum + parseNum(detail.amount) * allocationShare(detail.date, id), 0)
@@ -6581,8 +6547,8 @@ function Reports({ t, permissions = [], isAdmin = false }) {
             id: `supplier-allocated-${purchase.id}-${id}`,
             date: purchase.purchase_date,
             description: purchase.suppliers?.name || 'Поставщик',
-            comment: [purchase.invoice_number ? `Фактура: ${purchase.invoice_number}` : '', purchase.comment || '', isAuditedMonth(purchase.purchase_date) ? `Распределено по месячной базе наличные + банк после подтверждённой комиссии + Wolt: ${pct(allocationShare(purchase.purchase_date, id) * 100)}` : String(purchase.purchase_date || '').slice(0, 7) < '2026-01' ? `Предварительно: прежняя доля выручки выбранного периода ${pct(share * 100)}` : `Предварительно: месячная доля записанной выручки до комиссии ${pct(allocationShare(purchase.purchase_date, id) * 100)}`].filter(Boolean).join(' · '),
-            amount: parseNum(purchase.total_amount) * allocationShare(purchase.purchase_date, id),
+            comment: [purchase.invoice_number ? `Фактура: ${purchase.invoice_number}` : '', purchase.comment || '', (isAuditedMonth(purchase.purchase_date) || purchase.reviewedProvenance?.allocationBasis) ? `Распределено по месячной базе наличные + банк после подтверждённой комиссии + Wolt: ${pct(purchaseAllocationShare(purchase, id) * 100)}` : String(purchase.purchase_date || '').slice(0, 7) < '2026-01' ? `Предварительно: прежняя доля выручки выбранного периода ${pct(share * 100)}` : `Предварительно: месячная доля записанной выручки до комиссии ${pct(purchaseAllocationShare(purchase, id) * 100)}`].filter(Boolean).join(' · '),
+            amount: parseNum(purchase.total_amount) * purchaseAllocationShare(purchase, id),
             category: purchase.reviewedCategory || 'food_market',
             allocation_status: 'preliminary'
           }))
