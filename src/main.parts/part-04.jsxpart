@@ -5620,7 +5620,7 @@ async function readRmsProfitabilitySnapshot(branches, profitabilitySelection) {
       try {
         operational = buildOperationalProfitability({...reviewedInputs,periodStatuses:reviewed.periodStatuses,revenueRows:adjusted.revenueRows,dailyExpenseRows:adjusted.dailyExpenseRows,supplierPurchases:adjusted.supplierPurchases}, {
           period,branchIds:profitabilitySelection.branchIds,bankRate:bankCommissionRate,taxSettings,
-          expenseName:row=>({dsmf:'DSMF',partner_fee:'Partner Fee',other:'Прочее',household:'Хозяйственные товары',utilities:'Коммунальные'}[row.reviewedCategory]||financeExpenseNameFromRow(row)),
+          expenseName:row=>financeExpenseDisplayName({dsmf:'DSMF',partner_fee:'Partner Fee',other:'Прочее',household:'Хозяйственные товары',utilities:'Коммунальные'}[row.reviewedCategory]||financeExpenseNameFromRow(row)),
           excludeExpense:row=>{
             if(row.reviewedCategory==='dsmf'||row.reviewedCategory==='partner_fee')return false
             const name=financeExpenseNameFromRow(row)
@@ -5769,7 +5769,8 @@ async function readRmsProfitabilitySnapshot(branches, profitabilitySelection) {
 
         if (rmsIsWoltCommissionName(name)) current.woltCommission += amount
 
-        const categoryRow = current.categories.get(name) || { name, amount: 0, transactions: 0, details: [] }
+        const displayName = financeExpenseDisplayName(name)
+        const categoryRow = current.categories.get(displayName) || { name: displayName, amount: 0, transactions: 0, details: [] }
         categoryRow.amount += amount
         categoryRow.transactions += 1
         categoryRow.details.push({
@@ -5779,7 +5780,7 @@ async function readRmsProfitabilitySnapshot(branches, profitabilitySelection) {
           comment: row.comment || '',
           amount
         })
-        current.categories.set(name, categoryRow)
+        current.categories.set(displayName, categoryRow)
         expensesByBranch.set(id, current)
       })
 

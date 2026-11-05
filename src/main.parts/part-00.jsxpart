@@ -1445,6 +1445,8 @@ const financeExpenseNameFromRow = (row) => {
   }
   return name || 'Прочее'
 }
+// Report labels only: keep source names intact for financial classification.
+const financeExpenseDisplayName = (name) => /^(dsmf|dmsf)$/i.test(String(name || '').trim()) ? 'DSMF' : name
 const isBoltSettlementExpenseRow = (row) => {
   const name = normalizeExpenseText(row?.expense_categories?.name || row?.custom_category || '')
   const comment = normalizeExpenseText(row?.comment)
