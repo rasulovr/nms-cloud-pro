@@ -1,9 +1,10 @@
+import {buildOperationalProfitability} from '../src/profitability-operational.mjs'
 import {captureProvisionalProfit} from '../src/profitability-provisional.mjs'
 import {resolveProfitabilityPayrollAllocation} from '../src/profitability-payroll-allocation.mjs'
 import {registryFixture} from './profitability-registry-fixture.mjs'
 import {accrualInputsFingerprint} from '../src/profitability-source-completeness.mjs'
 import {bankInputsFingerprintV4} from '../src/profitability-reviewed-components.mjs'
-import {buildProfitabilitySummary} from '../src/profitability-summary.mjs'
+import {buildReviewedProfitabilitySummary as buildProfitabilitySummary} from '../src/profitability-summary.mjs'
 import {presentProfitabilitySection} from '../src/profitability-presentation.mjs'
 import {validateMonthRange,fullMonthRange} from '../src/profitability-range.mjs'
 import {componentInputsFingerprint, ALLOCATION_BASIS, COMPONENT_SNAPSHOT_TYPE, readComponentRecords, resolveComponentRecords, resolveCoverageManifests, resolveBankEvidence} from '../src/profitability-reviewed-components.mjs'
@@ -39,7 +40,7 @@ async function run(row, { fallback = false, rate = 3, overrides = {}, failTable 
   if (makeRecords) tables.rms_data_snapshots = await makeRecords(tables)
   const ctx = vm.createContext({
     validateMonthRange, readComponentRecords, resolveComponentRecords, resolveCoverageManifests, resolveBankEvidence,
-    buildReviewedAdjustments, buildMonthlyAllocationBasis, profitabilityAccrualIssues, resolveProfitabilityPayrollAllocation, captureProvisionalProfit,
+    buildReviewedAdjustments, buildMonthlyAllocationBasis, profitabilityAccrualIssues, resolveProfitabilityPayrollAllocation, captureProvisionalProfit, buildOperationalProfitability, rmsServiceChargeStaffCostFromDailyRevenue:()=>0, isServiceChargeStaffExpenseName:()=>false,
     profitabilityRequestId:{current:0}, profitabilitySelection:selection,
     URL, console, parseNum: v => Number(v) || 0,
     RMS_BRANCH_TAX_RATE_SETTING: 'tax', RMS_BANK_COMMISSION_RATE_SETTING: 'bank',
@@ -354,3 +355,19 @@ for (const role of ['cook','manager','Администратор']) {
  }
 }
 console.log('PASS disposition uses actual shared payroll resolver: active null-period cook incurs direct cost; manager aliases retain 75/25 pool allocation; no forced null-to-pool policy')
+
+// Operational output is separate from the strict source-review projections above.
+const operationalSurface=(await import('../src/profitability-surface.mjs')).profitabilitySurface
+const ordinaryMissing=(await run(base)).result
+assert.equal(ordinaryMissing.operational.error,undefined)
+assert.equal(operationalSurface(ordinaryMissing).net,1480,'bank fee30 + supplier100 + payroll200 + tax190 deducted without manifest')
+const componentOperational=components.operational.model.branches.find(b=>b.id==='branch-a')
+assert.equal(componentOperational.categories.find(c=>c.name==='DSMF').amount,25)
+assert.equal(componentOperational.categories.find(c=>c.name==='Partner Fee').amount,25)
+for(const table of ['salary_periods','daily_expenses','supplier_purchases']){
+ const r=(await run(base,{failTable:table})).result;assert.ok(r.error);assert.equal(operationalSurface(r).net,null)
+}
+const noVerification=(await run(base,{failTable:'rms_data_snapshots'})).result
+assert.equal(operationalSurface(noVerification).net,1480)
+assert.ok(noVerification.summaryInputs.coverageIssues.some(i=>i.reason==='verification-read-error'))
+console.log('PASS actual loader operational surface: ordinary bank fee without manifest, verified DSMF/Partner Fee retained, financial query failures unavailable, verification query failure separately disclosed')

@@ -1,10 +1,13 @@
 import {buildProfitabilitySummary} from './profitability-summary.mjs'
-export const PROFIT_UNAVAILABLE = 'Недостаточно данных'
+export const PROFIT_UNAVAILABLE = 'Расчёт недоступен'
 export function formatVerifiedProfit(value, formatter) {
   return typeof value==='number' && Number.isFinite(value) ? formatter(value) : PROFIT_UNAVAILABLE
 }
 export function profitReasonText(reason) {
   const labels={
+    'missing-recorded-payroll':'За месяц нет записанных начислений зарплаты; оценка по текущим окладам не добавлена.',
+    'verification-read-error':'Результат рассчитан; сведения о сверке источников не удалось загрузить.',
+    'operational-calculation-error':'Расчёт остановлен из-за ошибки суммы или базы распределения.',
     'loading-profitability-sources':'Загружаются данные выбранного месяца.',
     'profitability-source-read-error':'Не удалось полностью прочитать источники. Расчёт недоступен до успешной загрузки.',
     'missing-profitability-source-state':'Источники расчёта ещё не загружены.',
@@ -14,7 +17,7 @@ export function profitReasonText(reason) {
     'stale-or-invalid-bank-evidence':'Банковская база изменилась после сверки; комиссия требует повторной проверки.',
     'missing-bank-basis':'Не подтверждено, включена ли комиссия в банковскую выручку.',
     'incomplete-network-allocation-basis':'Не полностью подтверждена база распределения общих расходов между филиалами.',
-    'missing-network-allocation-basis':'Нет выручки, необходимой для распределения общих расходов.',
+    'missing-network-allocation-basis':'Независимая сверка базы распределения общих расходов не завершена.',
     'partial-reporting-month':'Месяц ещё не завершён: показаны только загруженные данные.',
     'unsafe-provisional-calculation':'Невозможно получить достоверный расчёт даже предварительно: проверьте суммы и базу распределения.',
     'missing-revenue-observations':'Нет записей выручки за выбранный период; отсутствие данных не считается нулём.',
@@ -44,6 +47,7 @@ export function profitReasonText(reason) {
   return 'Есть неразрешённое расхождение в первичных источниках.'
 }
 export function profitStatusText(profit,metric='net') {
+  if(profit.mode==='october-dashboard')return metric==='margin'?'Маржа':'Прибыль'
   if(!profit.available)return metric==='margin'?'Маржа: расчёт недоступен':'Прибыль: расчёт недоступен'
   if(profit.verified)return metric==='margin'?'Подтверждённая маржа':'Подтверждённая прибыль'
   if(profit.basis==='before-unverified-bank-commission')return metric==='margin'?'Предварительная маржа до комиссии':'Предварительный результат до комиссии'
@@ -54,6 +58,12 @@ export function profitabilitySurface(report,now=new Date()) {
   if (!report || report.loading) return {...blocked,reasons:['loading-profitability-sources']}
   if (report.error) return {...blocked,reasons:['profitability-source-read-error']}
   if (!report.summaryInputs?.period || !Array.isArray(report.summaryInputs.coverageIssues)) return {...blocked,reasons:['missing-profitability-source-state']}
+  if(report.operational?.error)return {...blocked,error:report.operational.error,reasons:['operational-calculation-error']}
+  if(report.operational?.model){
+    const model=buildProfitabilitySummary(report)
+    const project=(p,issues)=>({mode:'october-dashboard',available:p.profitAvailable,verified:false,preliminary:false,net:p.profitAvailable?p.net:null,margin:p.profitAvailable&&p.revenue>0?p.net/p.revenue*100:null,revenue:p.revenue,expenses:p.expenses,basis:'october-dashboard',reasons:[...new Set(issues.map(i=>i.reason||i.code).filter(Boolean))]})
+    return {...project(model.total,model.total.coverageIssues),branches:model.branches.map(b=>({id:b.id,name:b.name,...project(b.period,b.period.coverageIssues)}))}
+  }
   const model=buildProfitabilitySummary(report),period=report.summaryInputs.period
   const issues=report.summaryInputs.coverageIssues
   const partial=period.toExclusive>now.toISOString().slice(0,10)
@@ -73,12 +83,14 @@ export function profitabilitySurface(report,now=new Date()) {
 }
 export function profitabilityTrend(current,previous) {
   // Do not compare an attested result with a provisional result as if equivalent.
-  if (!current?.verified || !previous?.verified) return {delta:null,percent:null}
+  if (!(current?.mode==='october-dashboard'&&previous?.mode==='october-dashboard'&&current.available&&previous.available) && (!current?.verified || !previous?.verified)) return {delta:null,percent:null}
   return {delta:current.net-previous.net,percent:previous.net!==0?(current.net-previous.net)/Math.abs(previous.net)*100:null}
 }
 
 export function profitBasisText(profit,formatter=String) {
+  if(profit.error)return profit.error
   if(!profit.available)return 'Расчёт недоступен: источники или база распределения требуют проверки.'
+  if(profit.mode==='october-dashboard')return `Выручка после банковской комиссии ${formatter(profit.revenue)} − расходы ${formatter(profit.expenses)} AZN. Зарплата по начислениям; закупки и менеджмент распределены по месячной доле выручки после комиссии.`
   return `База расчёта: выручка ${formatter(profit.revenue)} − учтённые расходы ${formatter(profit.expenses)} AZN.` + (profit.basis==='before-unverified-bank-commission'?' Неподтверждённая часть банковской комиссии не вычтена. Это результат до комиссии, а не окончательная прибыль.':'')
 }
 export function profitDisclosureText(profit,formatter=String) {

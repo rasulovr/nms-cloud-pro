@@ -1,9 +1,15 @@
+import {operationalSummary} from './profitability-operational.mjs'
 // Presentation only. Explicit reviewed closed periods split operating comparison
 // from disclosed costs; underlying totals and allocation shares stay unchanged.
 const amount = value => Number.isFinite(Number(value)) ? Number(value) : 0
 const monthOf = value => /^\d{4}-(0[1-9]|1[0-2])(?:-|$)/.test(String(value || '')) ? String(value).slice(0, 7) : null
 const close = (a, b) => Math.abs(a - b) < 0.005
 export function buildProfitabilitySummary(report = {}) {
+  if(report.operational?.model)return operationalSummary(report)
+  if(report.operational?.error)return {branches:[],total:{},monthly:[],months:[],reconciled:false}
+  return buildReviewedProfitabilitySummary(report)
+}
+export function buildReviewedProfitabilitySummary(report = {}) {
   const rows = report.rows || []
   const revenue = report.summaryInputs?.revenueRows || []
   const months = new Set(revenue.map(row => monthOf(row.revenue_date)).filter(Boolean))

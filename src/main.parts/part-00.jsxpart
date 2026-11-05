@@ -1,3 +1,4 @@
+import {buildOperationalProfitability} from './profitability-operational.mjs'
 import {captureProvisionalProfit} from './profitability-provisional.mjs'
 import {profitabilitySurface, profitabilityTrend, formatVerifiedProfit, profitStatusText, profitReasonText, profitBasisText, profitDisclosureText} from './profitability-surface.mjs'
 import {resolveProfitabilityPayrollAllocation, profitabilityManagerPosition} from './profitability-payroll-allocation.mjs'
@@ -2173,16 +2174,17 @@ const RMS_FULL_BACKUP_LOCAL_KEYS = [
 ]
 
 
-async function readRmsAppSetting(key, fallback = null) {
+async function readRmsAppSetting(key, fallback = null, strict = false) {
   try {
     const { data, error } = await supabase
       .from(RMS_APP_SETTINGS_TABLE)
       .select('value')
       .eq('key', key)
       .maybeSingle()
-    if (error) return fallback
+    if (error) { if(strict) throw error; return fallback }
     return data?.value ?? fallback
   } catch (_e) {
+    if(strict) throw _e
     return fallback
   }
 }

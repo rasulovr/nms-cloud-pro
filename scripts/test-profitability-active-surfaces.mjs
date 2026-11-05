@@ -12,7 +12,7 @@ const provisional=profitabilitySurface({...report,provisional:{available:true,so
 const blocked=profitabilitySurface(report),valid=profitabilitySurface({...report,summaryInputs:{...report.summaryInputs,coverageIssues:[]}})
 assert.equal(blocked.net,null);assert.equal(valid.net,60)
 assert.equal(profitabilityTrend(valid,blocked).percent,null)
-for(const n of [null,undefined,NaN,Infinity,'50014'])assert.equal(formatVerifiedProfit(n,String),'Недостаточно данных')
+for(const n of [null,undefined,NaN,Infinity,'50014'])assert.equal(formatVerifiedProfit(n,String),'Расчёт недоступен')
 assert.equal(formatVerifiedProfit(0,String),'0')
 function render(name,profit,branch='__all__') {
  let start=part.indexOf(`function ${name}(`),end=part.indexOf('\nfunction ',start+10)
@@ -40,11 +40,11 @@ function render(name,profit,branch='__all__') {
  if(name==='Finance'){ctx.qaExports.exportFinanceMonthlyCsv();ctx.qaExports.printFinanceMonthlyReport()}
  return {html,csv,printed}
 }
-for(const name of ['Dashboard','Finance'])for(const branch of ['__all__','A'])for(const profit of [blocked,profitabilitySurface(null),profitabilitySurface({error:'read failed'}),provisional,{...provisional,net:0,margin:0},valid]) {
+for(const name of ['Dashboard','Finance'])for(const branch of ['__all__','A'])for(const profit of [blocked,profitabilitySurface(null),profitabilitySurface({error:'read failed'}),{...valid,mode:'october-dashboard',verified:false,preliminary:false,basis:'october-dashboard'},provisional,{...provisional,net:0,margin:0},valid]) {
  const out=render(name,profit,branch)
  for(const [kind,text] of Object.entries(out).filter(([,v])=>v!==undefined)){
   assert.doesNotMatch(text,/50014[.,]32/,`${name}/${branch}/${kind}: legacy result escaped`)
-  if(!profit.available || kind==='html')assert.match(text,/Недостаточно данных/,`${name}/${kind}: unverified prior month trend must not become zero`)
+  if(!profit.available || kind==='html')assert.match(text,/Расчёт недоступен/,`${name}/${kind}: unverified prior month trend must not become zero`)
   if(!profit.available)assert.doesNotMatch(text,/data-chart="net"/,`${name}: blocked profit chart`)
  }
  if(profit.available)assert.match(out.html,profit.net===0?/0\.00/:/60\.00/)

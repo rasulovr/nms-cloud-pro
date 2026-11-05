@@ -5594,25 +5594,40 @@ async function readRmsProfitabilitySnapshot(branches, profitabilitySelection) {
       const enabledServiceBranchIds = new Set((branches || []).filter(branch => branch.service_charge_enabled).map(branch => String(branch.id)))
       const serviceRows = allServiceRows.filter(row => enabledServiceBranchIds.has(String(row.branch_id)))
       const [taxSettings, bankCommissionSetting] = await Promise.all([
-        readRmsAppSetting(RMS_BRANCH_TAX_RATE_SETTING, {}),
-        readRmsAppSetting(RMS_BANK_COMMISSION_RATE_SETTING, RMS_DEFAULT_BANK_COMMISSION_RATE)
+        readRmsAppSetting(RMS_BRANCH_TAX_RATE_SETTING, {}, true),
+        readRmsAppSetting(RMS_BANK_COMMISSION_RATE_SETTING, RMS_DEFAULT_BANK_COMMISSION_RATE, true)
       ])
+      if(bankCommissionSetting==null||String(bankCommissionSetting).trim()===''||!Number.isFinite(Number(bankCommissionSetting))||Number(bankCommissionSetting)<0||Number(bankCommissionSetting)>100)throw Error('Некорректная ставка банковской комиссии')
       const bankCommissionRate = rmsBankCommissionRate(bankCommissionSetting)
 
       const isAuditedMonth = date => String(date || '').slice(0, 7) >= '2026-01' && String(date || '').slice(0, 7) <= '2026-09'
       const hasAuditedMonths = period.from < '2026-10-01' && period.toExclusive > '2026-01-01'
       const mixedBasis = hasAuditedMonths && (period.from < '2026-01-01' || period.toExclusive > '2026-10-01')
       const reviewedInputs = { revenueRows, dailyExpenseRows: rawDailyExpenseRows, supplierPurchases: rawSupplierPurchases, supplierPurchaseRows: allSupplierPurchaseRows, salaryPeriods, serviceRows, employeeRows, branchRows: branches }
-      const protectedRecords = await readComponentRecords(supabase, period.from, period.toExclusive)
+      let verificationReadError = false
+      const protectedRecords = await readComponentRecords(supabase, period.from, period.toExclusive).catch(()=>{verificationReadError=true;return []})
       const goodsPurchaseIds = [...new Set(protectedRecords.filter(record => record.snapshot_data?.kind === 'bank_basis_evidence' && record.snapshot_data?.version === 3).flatMap(record => (record.snapshot_data.goodsProof?.headers || []).map(row => String(row.id))))]
       reviewedInputs.supplierPurchaseItems = []
       for (let offset = 0; offset < goodsPurchaseIds.length; offset += 100) {
         const ids = goodsPurchaseIds.slice(offset, offset + 100)
-        reviewedInputs.supplierPurchaseItems.push(...await fetchPaged((from, to) => supabase.from('supplier_purchase_items').select('id,purchase_id,product_id,quantity,unit,unit_price,total_amount,supplier_products(id,name,category,base_unit)').in('purchase_id', ids).order('id', { ascending: true }).range(from, to)))
+        reviewedInputs.supplierPurchaseItems.push(...await fetchPaged((from, to) => supabase.from('supplier_purchase_items').select('id,purchase_id,product_id,quantity,unit,unit_price,total_amount,supplier_products(id,name,category,base_unit)').in('purchase_id', ids).order('id', { ascending: true }).range(from, to)).catch(()=>{verificationReadError=true;return []}))
       }
       const componentRecords = protectedRecords
       const reviewed = await resolveComponentRecords(componentRecords, reviewedInputs)
       const adjusted = buildReviewedAdjustments(reviewed.validated, reviewedInputs)
+      // Keep validated source corrections; only the accounting/verification coupling changes.
+      let operational
+      try {
+        operational = buildOperationalProfitability({...reviewedInputs,revenueRows:adjusted.revenueRows,dailyExpenseRows:adjusted.dailyExpenseRows,supplierPurchases:adjusted.supplierPurchases}, {
+          period,branchIds:profitabilitySelection.branchIds,bankRate:bankCommissionRate,taxSettings,
+          expenseName:row=>({dsmf:'DSMF',partner_fee:'Partner Fee',other:'Прочее',household:'Хозяйственные товары',utilities:'Коммунальные'}[row.reviewedCategory]||financeExpenseNameFromRow(row)),
+          excludeExpense:row=>{
+            if(row.reviewedCategory==='dsmf'||row.reviewedCategory==='partner_fee')return false
+            const name=financeExpenseNameFromRow(row)
+            return isBoltSettlementExpenseRow(row)||isTaxPaymentExpenseRow(row)||isNonOperatingTaxExpenseRow(row)||String(row.comment||'').startsWith('SUPPLIER_PURCHASE_')||isSalaryExpenseName(name)||isBazarExpenseName(name)||isServiceChargeStaffExpenseName(name)
+          },serviceCost:rmsServiceChargeStaffCostFromDailyRevenue
+        })
+      } catch(error) { operational = {error:error.message} }
       const dailyExpenseRows = adjusted.dailyExpenseRows
       const supplierPurchases = adjusted.supplierPurchases
       const bankEvidence = await resolveBankEvidence(protectedRecords, reviewedInputs, bankCommissionRate, row => !!rmsReportBankBasis(row))
@@ -5624,7 +5639,7 @@ async function readRmsProfitabilitySnapshot(branches, profitabilitySelection) {
         const marker = rmsReportBankBasis(row)
         return marker ? { verified: true, grossBank: bank, netBank: bank * (1 - bankCommissionRate / 100) } : bankEvidence.byId.get(String(row.id)) || null
       })
-      const coverageIssues = [...profitabilityAccrualIssues(reviewedInputs, period.from, period.toExclusive, enabledServiceBranchIds), ...reviewed.held, ...adjusted.held, ...monthlyBasis.issues, ...bankEvidence.issues, ...await resolveCoverageManifests(componentRecords, reviewedInputs, period.from, period.toExclusive, bankCommissionRate)]
+      const coverageIssues = [...(verificationReadError?[{reason:"verification-read-error",severity:"preliminary"}]:[]), ...profitabilityAccrualIssues(reviewedInputs, period.from, period.toExclusive, enabledServiceBranchIds), ...reviewed.held, ...adjusted.held, ...monthlyBasis.issues, ...bankEvidence.issues, ...await resolveCoverageManifests(componentRecords, reviewedInputs, period.from, period.toExclusive, bankCommissionRate)]
       for (const bucket of monthlyBasis.months.values()) if (!bucket.complete || !(bucket.networkAllocationRevenue > 0)) coverageIssues.push({month: bucket.month, reason: 'incomplete-network-allocation-basis', severity: 'blocking_runtime_basis'})
       for (const date of [...supplierPurchases.map(r => r.purchase_date), ...salaryPeriods.map(r => r.salary_month)]) if (isAuditedMonth(date) && !monthlyBasis.months.has(String(date || '').slice(0, 7))) coverageIssues.push({month: String(date || '').slice(0, 7), reason: 'missing-network-allocation-basis', severity: 'blocking_runtime_basis'})
       const monthlyShare = (date, branchId) => monthlyBasis.months.get(String(date || '').slice(0, 7))?.shares.get(String(branchId))
@@ -5991,6 +6006,7 @@ async function readRmsProfitabilitySnapshot(branches, profitabilitySelection) {
         rows: visibleRows,
         totals,
         provisional,
+        operational,
         periodLabel: period.label,
         summaryInputs: { period, revenueRows, coverageIssues, periodStatuses: reviewed.periodStatuses, mixedBasis, monthlyAllocationIsolated: period.from >= '2026-01-01', sourceChecks: reviewed.validated.map(r => ({month:r.source.month,readAt:r.source.source?.readAt})) },
         source: `${revenueSource} + daily_expenses + supplier_purchases + salary_periods`
@@ -6648,7 +6664,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
           bucket: 'serviceCharge'
         })
       })
-      const taxSettings = await readRmsAppSetting(RMS_BRANCH_TAX_RATE_SETTING, {})
+      const taxSettings = await readRmsAppSetting(RMS_BRANCH_TAX_RATE_SETTING, {}, true)
       revenueByBranch.forEach((revenue, branchId) => {
         const configuredRate = parseNum(taxSettings?.[branchId])
         const rate = configuredRate > 0 ? configuredRate : 8

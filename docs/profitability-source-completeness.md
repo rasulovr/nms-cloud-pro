@@ -1,8 +1,18 @@
 # Profitability source completeness
 
+## Current operational behavior (2026-11-05)
+
+The user explicitly requested the October Dashboard accounting contract for ordinary figures in every month. `profitability-operational.mjs` computes it independently of attestation availability: bank commission at the existing configured rate; suppliers and management payroll allocated by monthly revenue after commission; payroll gross only; service charge from daily receipts and existing branch settings; accrued turnover tax once. Confirmed component corrections (including DSMF and Partner Fee) remain applied after the existing validators succeed. No real records, rates, identities, or evidence are generated or changed.
+
+Dashboard, Finance, Reports, charts, CSV and print consume the operational model. `verified` remains separate and is not inferred from a computable number. Missing/stale coverage metadata produces a consolidated source-review list, not a blocked financial result. Metadata read failure is disclosed separately. Financial query failure, incomplete pagination, invalid amounts/rates or a positive pool without an allocation denominator remain genuine calculation errors. Empty records are not an observed zero. Paid tax is informational, not a second expense. No current-salary estimates or salary-net fallback are restored.
+
+The pre-existing Dashboard convention excluding branches without positive revenue from the operating comparison is preserved; their recorded costs are disclosed separately (for example, September BC3 210). Display branch filtering never changes network allocation denominators. Multi-month ranges sum independently calculated months.
+
+The strict evidence contracts documented below still govern verification and reviewed corrections. They no longer gate ordinary operational figures. `buildReviewedProfitabilitySummary` retains the strict projection for review tests; `buildProfitabilitySummary` uses the operational model for current screens. The build runs 24 financial regression scripts plus the existing payroll checks.
+
 Prepared against production commit `9d151045db9af0db5b25e5b824be6f653b631ca6`, deployment `dpl_AyvKpX9edsBYsx3AP9h1jW5hgvyF` (app.rms.rest). This patch changes reporting code only. No migration, data reconciliation, setting change, deployment, or automatic evidence conversion is included.
 
-## Behavior
+## Strict source-review model (separate from the operational UI)
 
 - Read salary periods, employees (including inactive employees), and service charge with stable pagination. Errors, null responses, and exhausted read limits fail the report instead of returning partial totals.
 - Use salary_gross only in the profitability report. Observed zero stays zero; net balances, advances, payments, current salary rates and official-day estimates cannot substitute for accruals. Employee/period identities and duplicate employee-month rows are checked. The existing management allocation policy remains in place.

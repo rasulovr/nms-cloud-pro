@@ -3,13 +3,13 @@
 const finite = value => typeof value === 'number' && Number.isFinite(value)
 export const isPreliminary = row => row.displayPreliminary === true || row.calculationMode === 'legacy-preliminary' || (row.coverageIssues || []).some(issue => issue.reason === 'legacy-period-allocation')
 function project(row, {hasRevenue, hasExpenses, reconciled}) {
-  const revenueAvailable = !row.operatingExcluded && hasRevenue && finite(row.revenue)
-  const expensesAvailable = !row.operatingExcluded && hasExpenses && finite(row.expenses)
+  const revenueAvailable = !row.operatingExcluded && (hasRevenue||row.calculationReady===true) && finite(row.revenue)
+  const expensesAvailable = !row.operatingExcluded && (hasExpenses||row.calculationReady===true) && finite(row.expenses)
   const netAvailable = revenueAvailable && expensesAvailable && row.profitAvailable !== false && reconciled
   // The same arithmetic already used by the report. This is explicitly a result
   // of recorded components. Blocking coverage issues must remain blocked in UI/PDF.
   const calculatedNet = netAvailable ? row.revenue - row.expenses : null
-  return {...row, verifiedNet: row.net, net: calculatedNet,
+  return {...row, verifiedNet: row.calculationReady ? null : row.net, net: calculatedNet,
     displayRevenueAvailable: revenueAvailable, displayExpensesAvailable: expensesAvailable,
     displayProfitAvailable: netAvailable,
     displayPreliminary: !row.operatingExcluded && (isPreliminary(row) || row.profitAvailable === false || row.expensesAvailable === false || !reconciled || row.revenueComplete === false)}

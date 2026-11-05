@@ -29,7 +29,7 @@ const built=await build({entryPoints:['src/ProfitabilityReferenceReport.jsx'],bu
 const module={exports:{}};new Function('require','module','exports',built.outputFiles[0].text)(require,module,module.exports)
 for(const lang of ['ru','az']){
  const html=renderToStaticMarkup(React.createElement(module.exports.ProfitabilityReferenceDocument,{model,periodLabel:'September–October',lang,expanded:true}))
- assert.match(html,/360[,.]00 AZN/);assert.doesNotMatch(html,/240[,.]00 AZN/);assert.match(html,lang==='ru'?/Недостаточно данных/:/Məlumat kifayət deyil/)
+ assert.match(html,/360[,.]00 AZN/);assert.doesNotMatch(html,/240[,.]00 AZN/);assert.match(html,lang==='ru'?/Расчёт недоступен/:/Məlumat kifayət deyil/)
  assert.doesNotMatch(html,/>—<|>NaN<|Infinity/)
  assert.match(html,lang==='ru'?/Нужно уточнить/:/Dəqiqləşdirilməlidir/)
  assert.match(html,/stroke-dasharray="4 3"/)

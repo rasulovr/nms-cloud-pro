@@ -1611,7 +1611,7 @@ function useVerifiedProfitability(year, month, branchId, branches, loaded = true
   return {...value.current,trend:profitabilityTrend(value.current,value.previous)}
 }
 function ProfitabilitySourceNotice({profit}) {
-  return <aside role="status" className="hint"><strong>{profit.available?profitStatusText(profit):'Расчёт недоступен'}</strong><p>{profitBasisText(profit,fmt)}</p>{profit.reasons.length>0&&<details><summary>{profit.available?'Почему расчёт предварительный':'Что мешает расчёту'}</summary><ul>{[...new Set(profit.reasons.map(profitReasonText))].map(reason=><li key={reason}>{reason}</li>)}</ul></details>}</aside>
+  return <aside role="status" className="hint"><strong>{profit.available?profitStatusText(profit):'Расчёт недоступен'}</strong><p>{profitBasisText(profit,fmt)}</p>{profit.reasons.length>0&&<details><summary>{profit.available?'Вопросы к источникам — отдельно от расчёта':'Что мешает расчёту'}</summary><ul>{[...new Set(profit.reasons.map(profitReasonText))].map(reason=><li key={reason}>{reason}</li>)}</ul></details>}</aside>
 }
 
 function Dashboard({ t }) {
@@ -2163,8 +2163,8 @@ function Dashboard({ t }) {
 
     {isLoadingSelection ? <div className="module-placeholder" role="status">{t('loading')}</div> : <>
     <section className="dashboard-v23-kpis dashboard-v29-kpis">
-      <div className="dash-kpi dash-kpi-blue"><span className="dash-kpi-icon">↗</span><div><em>Выручка за месяц</em><strong>{fmt(data.revenue)} <small>AZN</small></strong><p className="dash-trend-value" style={{ color: revenueChange >= 0 ? '#10b981' : '#ef4444', fontWeight: 900 }} title={revenueCompareTooltip}>{revenueChange >= 0 ? '▲' : '▼'} {pct(Math.abs(revenueChange))}</p></div></div>
-      <div className="dash-kpi dash-kpi-purple"><span className="dash-kpi-icon">▥</span><div><em>Расходы</em><strong>{fmt(data.expenses)} <small>AZN</small></strong><p>{data.revenue ? pct(data.expenses / data.revenue * 100) : '0.0%'} от выручки</p></div></div>
+      <div className="dash-kpi dash-kpi-blue"><span className="dash-kpi-icon">↗</span><div><em>Выручка за месяц</em><strong>{fmt(verifiedProfit.mode==='october-dashboard'&&verifiedProfit.available?verifiedProfit.revenue:data.revenue)} <small>AZN</small></strong><p className="dash-trend-value" style={{ color: revenueChange >= 0 ? '#10b981' : '#ef4444', fontWeight: 900 }} title={revenueCompareTooltip}>{revenueChange >= 0 ? '▲' : '▼'} {pct(Math.abs(revenueChange))}</p></div></div>
+      <div className="dash-kpi dash-kpi-purple"><span className="dash-kpi-icon">▥</span><div><em>Расходы</em><strong>{fmt(verifiedProfit.mode==='october-dashboard'&&verifiedProfit.available?verifiedProfit.expenses:data.expenses)} <small>AZN</small></strong><p>{data.revenue ? pct(data.expenses / data.revenue * 100) : '0.0%'} от выручки</p></div></div>
       <div className={`dash-kpi dash-kpi-green ${verifiedProfit.net != null && verifiedProfit.net < 0 ? 'dash-kpi-negative' : ''}`}><span className="dash-kpi-icon">▟</span><div><em>{profitStatusText(verifiedProfit)}</em><strong>{formatVerifiedProfit(verifiedProfit.net,fmt)} <small>AZN</small></strong><p className={profitChange >= 0 ? 'good' : 'bad'}>{formatVerifiedProfit(profitChange,pct)}</p></div></div>
       <div className={`dash-kpi dash-kpi-red ${verifiedProfit.net != null && verifiedProfit.net < 0 ? 'dash-kpi-negative' : ''}`}><span className="dash-kpi-icon">%</span><div><em>{profitStatusText(verifiedProfit,'margin')}</em><strong>{formatVerifiedProfit(verifiedProfit.margin,pct)}</strong><p>по указанной базе расчёта</p></div></div>
       <div className="dash-kpi dash-kpi-forecast"><span className="dash-kpi-icon">◌</span><div><em>Food Cost</em><strong>{pct(foodCostPct)}</strong><p>{fmt(data.foodCostAmount)} AZN</p></div></div>
@@ -3147,7 +3147,7 @@ function Finance({ t, lang, onGoToExpense }) {
 
     const financeActualBreakdownRows = [...expenseRows]
     if (parseNum(currentForFinance.taxCalculated) > 0) financeActualBreakdownRows.push({ name: `Налог с оборота ${fmt(currentForFinance.taxRate || TAX_RATE)}%`, amount: parseNum(currentForFinance.taxCalculated) })
-    if (parseNum(currentForFinance.taxPaid) > 0) financeActualBreakdownRows.push({ name: 'Оплаченный налог (справочно, вне прибыли)', amount: parseNum(currentForFinance.taxPaid) })
+    // Paid turnover tax remains in the informational breakdown only; do not expense it twice.
     const financeActualExpenseTotal = financeActualBreakdownRows.reduce((sum, row) => sum + parseNum(row.amount), 0)
     const financeUnifiedNet = parseNum(currentForFinance.revenue) - financeActualExpenseTotal
     const financeFormulaDiff = financeUnifiedNet - parseNum(currentForFinance.net)
@@ -3319,9 +3319,9 @@ function Finance({ t, lang, onGoToExpense }) {
   const aiPriority = { critical: 0, warning: 1, ok: 2 }
   const sortedAiRows = aiRows.filter(row=>!['Чистый убыток месяца','Расходы выше выручки'].includes(row.indicator)).sort((a, b) => (aiPriority[a.level] ?? 9) - (aiPriority[b.level] ?? 9))
   const visibleAiRows = sortedAiRows.slice(0, 5)
-  // Единая логика с Dashboard: service charge показывается справочно и не входит в P&L.
+  // Recorded payroll, service charge and accrued turnover tax are included once.
   const financeBreakdownTotal = (breakdown || []).reduce((sum, r) => sum + parseNum(r.amount), 0)
-  const financeTotalExpenses = financeBreakdownTotal > 0
+  const financeTotalExpenses = verifiedProfit.mode === 'october-dashboard' && verifiedProfit.available ? verifiedProfit.expenses : financeBreakdownTotal > 0
     ? financeBreakdownTotal
     : parseNum(stats.expenses) + parseNum(stats.salary) + parseNum(stats.tax)
   const financeNet = verifiedProfit.net
@@ -3358,7 +3358,7 @@ function Finance({ t, lang, onGoToExpense }) {
       }).join(', ')})`
     : 'conic-gradient(#94a3b8 0 100%)'
   const financeMonthSummary = {
-    revenue: parseNum(stats.revenue),
+    revenue: verifiedProfit.mode === 'october-dashboard' && verifiedProfit.available ? verifiedProfit.revenue : parseNum(stats.revenue),
     paidRevenue: financePaidRevenue,
     expenses: financeTotalExpenses,
     net: financeNet,
