@@ -1,3 +1,4 @@
+import {actualProfitabilityView,isClosedProfitabilityMonth,formatProfitabilityComparison} from '../src/profitability-metrics.mjs'
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import vm from 'node:vm'
@@ -14,18 +15,18 @@ assert.equal(blocked.net,null);assert.equal(valid.net,60)
 assert.equal(profitabilityTrend(valid,blocked).percent,null)
 for(const n of [null,undefined,NaN,Infinity,'50014'])assert.equal(formatVerifiedProfit(n,String),'Расчёт недоступен')
 assert.equal(formatVerifiedProfit(0,String),'0')
-function render(name,profit,branch='__all__') {
+function render(name,profit,branch='__all__',selectedMonth=10) {
  let start=part.indexOf(`function ${name}(`),end=part.indexOf('\nfunction ',start+10)
  let code=part.slice(start,end<0?undefined:end)
  if(name==='Finance')code=code.replace('\n  return (','\n  globalThis.qaExports={exportFinanceMonthlyCsv,printFinanceMonthlyReport};\n  return (')
  let state=0,csv,printed
  const props={t:x=>x,lang:'ru'}
  const ctx=vm.createContext({defaultYears:()=>[2026],MONTHS:Array(12).fill("Synthetic"),React,console,Date,Math,Number,String,Map,Set,JSON,Intl,
-  useState:initial=>{const index=state++;return [index===0?branch:index===1?2026:index===2?10:initial===null?legacy:initial,()=>{}]},
-  useEffect:()=>{},useMemo:f=>f(),useRef:initial=>({current:initial===''?`2026/10/${branch}`:initial}),
+  useState:initial=>{const index=state++;return [index===0?branch:index===1?2026:index===2?selectedMonth:initial===null?legacy:initial,()=>{}]},
+  useEffect:()=>{},useMemo:f=>f(),useRef:initial=>({current:initial===''?`2026/${selectedMonth}/${branch}`:initial}),
   useBranches:()=>({branches:[{id:'A',name:'Synthetic A'}],loaded:true}),
   useVerifiedProfitability:()=>({...profit,trend:profitabilityTrend(profit,blocked)}),
-  formatVerifiedProfit,profitStatusText,profitReasonText,profitBasisText,profitDisclosureText,parseNum:v=>Number(v)||0,fmt:v=>(Number(v)||0).toFixed(2),pct:v=>(Number(v)||0).toFixed(2)+'%',
+  isBazarExpenseName:()=>false,actualProfitabilityView,isClosedProfitabilityMonth,formatProfitabilityComparison,formatVerifiedProfit,profitStatusText,profitReasonText,profitBasisText,profitDisclosureText,parseNum:v=>Number(v)||0,fmt:v=>(Number(v)||0).toFixed(2),pct:v=>(Number(v)||0).toFixed(2)+'%',
   monthStart:(y,m)=>`${y}-${String(m).padStart(2,'0')}-01`,todayISO:()=> '2026-11-05',normalizeExpenseText:v=>String(v||'').toLowerCase(),rmsFinanceExpenseGroupName:()=>'',rmsNextMonthStart:()=> '2026-11-01',
   I18N:{ru:{months:Array(12).fill('Synthetic')}},
   ProfitabilitySourceNotice:({profit})=>React.createElement('p',{},profit.available?'Verified':profit.reasons.join(', ')),
@@ -34,17 +35,18 @@ function render(name,profit,branch='__all__') {
   window:{open:()=>({document:{write:html=>printed=html,close:()=>{}}})},
   document:{body:{appendChild:()=>{},removeChild:()=>{}},createElement:()=>({remove:()=>{},click:()=>{},set href(v){},set download(v){}})},URL:{createObjectURL:()=>'',revokeObjectURL:()=>{}},Blob:class {constructor(v){csv=v.join('')}},
  })
- const notice=part.slice(part.indexOf('function ProfitabilitySourceNotice('),part.indexOf('\nfunction ',part.indexOf('function ProfitabilitySourceNotice(')+10))
+ const notice=part.slice(part.indexOf('function ProfitabilitySourceNotice('),part.indexOf('\nfunction Dashboard('))
  vm.runInContext(transformSync(notice+'\n'+code+`\nglobalThis.Component=${name}`,{loader:'jsx'}).code,ctx)
  const html=renderToStaticMarkup(React.createElement(ctx.Component,props))
- if(name==='Finance'){ctx.qaExports.exportFinanceMonthlyCsv();ctx.qaExports.printFinanceMonthlyReport()}
+ if(name==='Finance'&&ctx.qaExports){ctx.qaExports.exportFinanceMonthlyCsv();ctx.qaExports.printFinanceMonthlyReport()}
+ if(name==='Finance'&&!profit.available)assert.equal(ctx.qaExports,undefined,'No exports while actual sources are unavailable')
  return {html,csv,printed}
 }
 for(const name of ['Dashboard','Finance'])for(const branch of ['__all__','A'])for(const profit of [blocked,profitabilitySurface(null),profitabilitySurface({error:'read failed'}),{...valid,mode:'october-dashboard',verified:false,preliminary:false,basis:'october-dashboard'},provisional,{...provisional,net:0,margin:0},valid]) {
  const out=render(name,profit,branch)
  for(const [kind,text] of Object.entries(out).filter(([,v])=>v!==undefined)){
   assert.doesNotMatch(text,/50014[.,]32/,`${name}/${branch}/${kind}: legacy result escaped`)
-  if(!profit.available || kind==='html')assert.match(text,/Расчёт недоступен/,`${name}/${kind}: unverified prior month trend must not become zero`)
+  if(!profit.available)assert.match(text,/Расчёт недоступен/,`${name}/${kind}: unverified prior month trend must not become zero`)
   if(!profit.available)assert.doesNotMatch(text,/data-chart="net"/,`${name}: blocked profit chart`)
  }
  if(profit.available)assert.match(out.html,profit.net===0?/0\.00/:/60\.00/)
@@ -78,3 +80,19 @@ console.log('PASS real shared hook: selection invalidation, deferred source read
 
 const imports=fs.readFileSync("src/main.parts/part-00.jsxpart","utf8").split("\n").filter(line=>line.includes("from './profitability-surface.mjs'" )).join("\n")
 for(const name of ["profitBasisText","profitDisclosureText","profitStatusText","profitReasonText"])assert.ok(imports.includes(name),`Production must import ${name}`)
+
+const unified={...valid,mode:'october-dashboard',verified:false,preliminary:false,basis:'october-dashboard',salary:10,serviceCost:0,tax:0,grossTurnover:100,foodCostAmount:50,expenseRows:[{name:'Зарплаты',amount:10},{name:'Поставщики / Food Cost',amount:50},{name:'Корректировка',amount:-20}],disclosedExpenseRows:[{name:'Закрытый период',amount:7}]}
+legacy.forecastProfit=11985.34
+for(const name of ['Dashboard','Finance']){
+ const out=render(name,unified)
+ assert.match(out.html,/40.00%/,'expense percentage must use operational40/100')
+ assert.doesNotMatch(out.html,/83.09%/,'legacy percentage cannot leak')
+ assert.doesNotMatch(out.html,/11985.34|Прогноз прибыли/,'closed month must not display forecast')
+ for(const text of Object.values(out).filter(v=>v!==undefined))assert.match(text,/-20.00/,'negative adjustment preserved in every surface')
+ if(name==='Finance')for(const text of [out.csv,out.printed]){assert.match(text,/50.00/);assert.match(text,/10.00/);assert.match(text,/7.00/);assert.doesNotMatch(text,/11985.34|Прогноз прибыли/)}
+}
+console.log('PASS actual UI/export consistency: unified articles50+10-20=40, expense ratio40%, disclosed cost7 separate, closed-month forecast absent')
+
+legacy.selectionKey='2026/11/__all__';legacy.forecastProfit=200
+for(const name of ['Dashboard','Finance']){const out=render(name,unified,'__all__',11);assert.match(out.html,/Прогноз прибыли/);assert.match(out.html,/200.00/)}
+console.log('PASS current-month forecast preserved while closed-month forecast is suppressed')

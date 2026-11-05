@@ -5605,7 +5605,7 @@ async function readRmsProfitabilitySnapshot(branches, profitabilitySelection) {
       const mixedBasis = hasAuditedMonths && (period.from < '2026-01-01' || period.toExclusive > '2026-10-01')
       const reviewedInputs = { revenueRows, dailyExpenseRows: rawDailyExpenseRows, supplierPurchases: rawSupplierPurchases, supplierPurchaseRows: allSupplierPurchaseRows, salaryPeriods, serviceRows, employeeRows, branchRows: branches }
       let verificationReadError = false
-      const protectedRecords = await readComponentRecords(supabase, period.from, period.toExclusive).catch(()=>{verificationReadError=true;return []})
+      const protectedRecords = await readComponentRecords(supabase, period.from, period.toExclusive)
       const goodsPurchaseIds = [...new Set(protectedRecords.filter(record => record.snapshot_data?.kind === 'bank_basis_evidence' && record.snapshot_data?.version === 3).flatMap(record => (record.snapshot_data.goodsProof?.headers || []).map(row => String(row.id))))]
       reviewedInputs.supplierPurchaseItems = []
       for (let offset = 0; offset < goodsPurchaseIds.length; offset += 100) {
@@ -5625,7 +5625,7 @@ async function readRmsProfitabilitySnapshot(branches, profitabilitySelection) {
             if(row.reviewedCategory==='dsmf'||row.reviewedCategory==='partner_fee')return false
             const name=financeExpenseNameFromRow(row)
             return isBoltSettlementExpenseRow(row)||isTaxPaymentExpenseRow(row)||isNonOperatingTaxExpenseRow(row)||String(row.comment||'').startsWith('SUPPLIER_PURCHASE_')||isSalaryExpenseName(name)||isBazarExpenseName(name)||isServiceChargeStaffExpenseName(name)
-          },serviceCost:rmsServiceChargeStaffCostFromDailyRevenue
+          },paidTax:row=>row.reviewedCategory!=='dsmf'&&isTaxPaymentExpenseRow(row),serviceCost:rmsServiceChargeStaffCostFromDailyRevenue
         })
       } catch(error) { operational = {error:error.message} }
       const dailyExpenseRows = adjusted.dailyExpenseRows

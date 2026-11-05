@@ -368,6 +368,9 @@ for(const table of ['salary_periods','daily_expenses','supplier_purchases']){
  const r=(await run(base,{failTable:table})).result;assert.ok(r.error);assert.equal(operationalSurface(r).net,null)
 }
 const noVerification=(await run(base,{failTable:'rms_data_snapshots'})).result
-assert.equal(operationalSurface(noVerification).net,1480)
-assert.ok(noVerification.summaryInputs.coverageIssues.some(i=>i.reason==='verification-read-error'))
-console.log('PASS actual loader operational surface: ordinary bank fee without manifest, verified DSMF/Partner Fee retained, financial query failures unavailable, verification query failure separately disclosed')
+assert.equal(operationalSurface(noVerification).net,null)
+assert.ok(noVerification.error)
+const lostMoney=(await run(base,{overrides:structuredClone(baselineTables),branchRows:integrationBranches,makeRecords:completeRecords,failTable:'rms_data_snapshots'})).result
+assert.equal(operationalSurface(lostMoney).net,null,'A failed monetary-correction read must not turn1550 into1600')
+assert.ok(lostMoney.error)
+console.log('PASS actual loader operational surface: ordinary bank fee without manifest, verified DSMF/Partner Fee retained, financial query failures unavailable, monetary correction query failure blocks recalculation without dropping costs')

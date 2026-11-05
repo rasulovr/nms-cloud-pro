@@ -1,3 +1,4 @@
+import {operationalMetrics} from './profitability-metrics.mjs'
 import {buildProfitabilitySummary} from './profitability-summary.mjs'
 export const PROFIT_UNAVAILABLE = 'Расчёт недоступен'
 export function formatVerifiedProfit(value, formatter) {
@@ -62,7 +63,7 @@ export function profitabilitySurface(report,now=new Date()) {
   if(report.operational?.model){
     const model=buildProfitabilitySummary(report)
     const project=(p,issues)=>({mode:'october-dashboard',available:p.profitAvailable,verified:false,preliminary:false,net:p.profitAvailable?p.net:null,margin:p.profitAvailable&&p.revenue>0?p.net/p.revenue*100:null,revenue:p.revenue,expenses:p.expenses,basis:'october-dashboard',reasons:[...new Set(issues.map(i=>i.reason||i.code).filter(Boolean))]})
-    return {...project(model.total,model.total.coverageIssues),branches:model.branches.map(b=>({id:b.id,name:b.name,...project(b.period,b.period.coverageIssues)}))}
+    return {...operationalMetrics(model),...project(model.total,model.total.coverageIssues),branches:model.branches.map(b=>({id:b.id,name:b.name,...operationalMetrics(model,b.id),...project(b.period,b.period.coverageIssues)}))}
   }
   const model=buildProfitabilitySummary(report),period=report.summaryInputs.period
   const issues=report.summaryInputs.coverageIssues

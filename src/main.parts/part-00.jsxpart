@@ -1,3 +1,4 @@
+import {actualProfitabilityView,isClosedProfitabilityMonth,formatProfitabilityComparison} from './profitability-metrics.mjs'
 import {buildOperationalProfitability} from './profitability-operational.mjs'
 import {captureProvisionalProfit} from './profitability-provisional.mjs'
 import {profitabilitySurface, profitabilityTrend, formatVerifiedProfit, profitStatusText, profitReasonText, profitBasisText, profitDisclosureText} from './profitability-surface.mjs'

@@ -6,7 +6,7 @@ const amount=(value,label)=>{
   if(!['number','string'].includes(typeof value)||String(value).trim()===''||!Number.isFinite(Number(value)))throw Error(`Некорректная сумма: ${label}`)
   return Number(value)
 }
-export function buildOperationalProfitability(input,{period,branchIds=null,bankRate,taxSettings={},expenseName,excludeExpense,serviceCost}) {
+export function buildOperationalProfitability(input,{period,branchIds=null,bankRate,taxSettings={},expenseName,excludeExpense,serviceCost,paidTax=()=>false}) {
   const rate=amount(bankRate,'ставка банковской комиссии')
   if(rate<0||rate>100)throw Error('Некорректная ставка банковской комиссии')
   for(const b of input.branchRows||[])for(const key of ['service_charge_percent','service_staff_cost_percent'])if(b[key]!=null)amount(b[key],key)
@@ -18,15 +18,15 @@ export function buildOperationalProfitability(input,{period,branchIds=null,bankR
     const revenue=select(input.revenueRows,'revenue_date',month),expenses=select(input.dailyExpenseRows,'expense_date',month),purchases=select(input.supplierPurchases,'purchase_date',month).filter(p=>p.deleted_at==null),payroll=select(input.salaryPeriods,'salary_month',month)
     const ids=new Set([...revenue,...expenses,...payroll].map(r=>String(r.branch_id||'')).filter(Boolean))
     for(const id of ids)if(!byId.has(id))throw Error(`Неизвестный филиал в расчёте ${month}`)
-    const buckets=new Map([...byId].map(([id,b])=>[id,{id,name:b.name,month,revenue:0,grossRevenue:0,bankCommission:0,revenueRecords:0,categories:{},details:[],salary:0,serviceCost:0,tax:0,supplierFoodCost:0}]))
+    const buckets=new Map([...byId].map(([id,b])=>[id,{id,name:b.name,month,revenue:0,grossRevenue:0,bankCommission:0,cash:0,bank:0,wolt:0,revenueRecords:0,categories:{},details:[],salary:0,serviceCost:0,tax:0,taxPaid:0,supplierFoodCost:0}]))
     const add=(b,key,name,value,date,id)=>{b.categories[key]=(b.categories[key]||0)+value;b.details.push({key,name,amount:value,date,id})}
     for(const r of revenue){
       const b=buckets.get(String(r.branch_id));if(!b)throw Error(`Неизвестный филиал выручки ${month}`)
       const cash=amount(r.cash_amount,'наличные'),bank=amount(r.bank_amount,'банк'),wolt=amount(r.wolt_amount,'Wolt')
-      const fee=bank*rate/100;b.grossRevenue+=cash+bank+wolt;b.bankCommission+=fee;b.revenue+=cash+bank+wolt-fee;b.revenueRecords++
+      const fee=bank*rate/100;b.cash+=cash;b.bank+=bank;b.wolt+=wolt;b.grossRevenue+=cash+bank+wolt;b.bankCommission+=fee;b.revenue+=cash+bank+wolt-fee;b.revenueRecords++
     }
     const network=[...buckets.values()].reduce((s,b)=>s+b.revenue,0)
-    for(const r of expenses){const value=amount(r.amount,'расход');if(excludeExpense(r))continue;const b=buckets.get(String(r.branch_id));if(!b)throw Error(`Расход без базы филиала ${month}`);const name=expenseName(r)||'Прочее';add(b,'daily-'+name,name,value,r.expense_date,r.id)}
+    for(const r of expenses){const value=amount(r.amount,'расход');if(paidTax(r)){const b=buckets.get(String(r.branch_id));if(b)b.taxPaid+=value}if(excludeExpense(r))continue;const b=buckets.get(String(r.branch_id));if(!b)throw Error(`Расход без базы филиала ${month}`);const name=expenseName(r)||'Прочее';add(b,'daily-'+name,name,value,r.expense_date,r.id)}
     const pool=purchases.reduce((s,p)=>s+amount(p.total_amount,'закупка'),0)
     let managerPool=0;const seen=new Set()
     for(const r of payroll){
