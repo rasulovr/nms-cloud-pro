@@ -3,11 +3,12 @@ import fs from 'node:fs'
 import vm from 'node:vm'
 import {createRequire} from 'node:module'
 import {transformSync} from 'esbuild'
-import {profitabilitySurface,profitabilityTrend,formatVerifiedProfit} from '../src/profitability-surface.mjs'
+import {profitabilitySurface,profitabilityTrend,formatVerifiedProfit,profitStatusText,profitReasonText,profitBasisText,profitDisclosureText} from '../src/profitability-surface.mjs'
 const require=createRequire(import.meta.url),React=require('react'),{renderToStaticMarkup}=require('react-dom/server')
 const part=fs.readFileSync('src/main.parts/part-03.jsxpart','utf8')
 const legacy={net:50014.3208,revenue:295837.3476,expenses:245823.0268,totalExpenses:245823.0268,branchRows:[{id:'A',name:'Synthetic A',net:50014.3208,revenue:295837.3476,totalExpenses:245823.0268}],previous:{net:100,revenue:100,expenses:50,branchRows:[]},expenseRows:[]}
 const report={rows:[{id:'A',name:'Synthetic A',revenue:100,totalExpenses:40,net:60,taxRate:0,expenseCategories:[{key:'salary',name:'Salary',amount:40,details:[{date:'2026-10-01',amount:40}]}]}],summaryInputs:{period:{from:'2026-10-01',toExclusive:'2026-11-01'},monthlyAllocationIsolated:true,revenueRows:[{id:'r',branch_id:'A',revenue_date:'2026-10-01',cash_amount:100,bank_amount:0,wolt_amount:0}],coverageIssues:[{month:'2026-10',reason:'missing-coverage-manifest',severity:'blocking_runtime_basis'}]}}
+const provisional=profitabilitySurface({...report,provisional:{available:true,sourceComplete:true,allocationComplete:true,net:60,revenue:100,expenses:40,basis:'before-unverified-bank-commission',branches:[{id:'A',available:true,net:60,revenue:100,expenses:40,basis:'before-unverified-bank-commission'}]}})
 const blocked=profitabilitySurface(report),valid=profitabilitySurface({...report,summaryInputs:{...report.summaryInputs,coverageIssues:[]}})
 assert.equal(blocked.net,null);assert.equal(valid.net,60)
 assert.equal(profitabilityTrend(valid,blocked).percent,null)
@@ -24,7 +25,7 @@ function render(name,profit,branch='__all__') {
   useEffect:()=>{},useMemo:f=>f(),useRef:initial=>({current:initial===''?`2026/10/${branch}`:initial}),
   useBranches:()=>({branches:[{id:'A',name:'Synthetic A'}],loaded:true}),
   useVerifiedProfitability:()=>({...profit,trend:profitabilityTrend(profit,blocked)}),
-  formatVerifiedProfit,parseNum:v=>Number(v)||0,fmt:v=>(Number(v)||0).toFixed(2),pct:v=>(Number(v)||0).toFixed(2)+'%',
+  formatVerifiedProfit,profitStatusText,profitReasonText,profitBasisText,profitDisclosureText,parseNum:v=>Number(v)||0,fmt:v=>(Number(v)||0).toFixed(2),pct:v=>(Number(v)||0).toFixed(2)+'%',
   monthStart:(y,m)=>`${y}-${String(m).padStart(2,'0')}-01`,todayISO:()=> '2026-11-05',normalizeExpenseText:v=>String(v||'').toLowerCase(),rmsFinanceExpenseGroupName:()=>'',rmsNextMonthStart:()=> '2026-11-01',
   I18N:{ru:{months:Array(12).fill('Synthetic')}},
   ProfitabilitySourceNotice:({profit})=>React.createElement('p',{},profit.available?'Verified':profit.reasons.join(', ')),
@@ -33,19 +34,21 @@ function render(name,profit,branch='__all__') {
   window:{open:()=>({document:{write:html=>printed=html,close:()=>{}}})},
   document:{body:{appendChild:()=>{},removeChild:()=>{}},createElement:()=>({remove:()=>{},click:()=>{},set href(v){},set download(v){}})},URL:{createObjectURL:()=>'',revokeObjectURL:()=>{}},Blob:class {constructor(v){csv=v.join('')}},
  })
- vm.runInContext(transformSync(code+`\nglobalThis.Component=${name}`,{loader:'jsx'}).code,ctx)
+ const notice=part.slice(part.indexOf('function ProfitabilitySourceNotice('),part.indexOf('\nfunction ',part.indexOf('function ProfitabilitySourceNotice(')+10))
+ vm.runInContext(transformSync(notice+'\n'+code+`\nglobalThis.Component=${name}`,{loader:'jsx'}).code,ctx)
  const html=renderToStaticMarkup(React.createElement(ctx.Component,props))
  if(name==='Finance'){ctx.qaExports.exportFinanceMonthlyCsv();ctx.qaExports.printFinanceMonthlyReport()}
  return {html,csv,printed}
 }
-for(const name of ['Dashboard','Finance'])for(const branch of ['__all__','A'])for(const profit of [blocked,profitabilitySurface(null),profitabilitySurface({error:'read failed'}),valid]) {
+for(const name of ['Dashboard','Finance'])for(const branch of ['__all__','A'])for(const profit of [blocked,profitabilitySurface(null),profitabilitySurface({error:'read failed'}),provisional,{...provisional,net:0,margin:0},valid]) {
  const out=render(name,profit,branch)
  for(const [kind,text] of Object.entries(out).filter(([,v])=>v!==undefined)){
   assert.doesNotMatch(text,/50014[.,]32/,`${name}/${branch}/${kind}: legacy result escaped`)
   if(!profit.available || kind==='html')assert.match(text,/Недостаточно данных/,`${name}/${kind}: unverified prior month trend must not become zero`)
   if(!profit.available)assert.doesNotMatch(text,/data-chart="net"/,`${name}: blocked profit chart`)
  }
- if(profit.available)assert.match(out.html,/60\.00/)
+ if(profit.available)assert.match(out.html,profit.net===0?/0\.00/:/60\.00/)
+ if(profit.preliminary)for(const text of Object.values(out).filter(v=>v!==undefined)){assert.match(text,/Предварительный результат до комиссии/);assert.match(text,/не вычтена/);assert.doesNotMatch(text,/missing-coverage-manifest/)}
 }
 assert.ok(!part.includes('const financeNet = parseNum(stats.revenue) - financeTotalExpenses'),'No arithmetic resurrection')
 console.log('PASS actual Dashboard/Finance JSX: cards, margin, trend, branch/chart, CSV, print; blocked/loading/errors/valid zero-safe canonical result; legacy 50014.3208 cannot escape')
@@ -72,3 +75,6 @@ assert.equal(call(11).net,null,'month switch hides old result synchronously')
 assert.equal(call(11,'A').net,null,'branch switch hides old result synchronously')
 cleanup?.()
 console.log('PASS real shared hook: selection invalidation, deferred source reads, stale request rejection, current-only result, branch/month switching')
+
+const imports=fs.readFileSync("src/main.parts/part-00.jsxpart","utf8").split("\n").filter(line=>line.includes("from './profitability-surface.mjs'" )).join("\n")
+for(const name of ["profitBasisText","profitDisclosureText","profitStatusText","profitReasonText"])assert.ok(imports.includes(name),`Production must import ${name}`)

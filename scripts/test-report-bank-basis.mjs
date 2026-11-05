@@ -1,3 +1,4 @@
+import {captureProvisionalProfit} from '../src/profitability-provisional.mjs'
 import {resolveProfitabilityPayrollAllocation} from '../src/profitability-payroll-allocation.mjs'
 import {registryFixture} from './profitability-registry-fixture.mjs'
 import {accrualInputsFingerprint} from '../src/profitability-source-completeness.mjs'
@@ -38,7 +39,7 @@ async function run(row, { fallback = false, rate = 3, overrides = {}, failTable 
   if (makeRecords) tables.rms_data_snapshots = await makeRecords(tables)
   const ctx = vm.createContext({
     validateMonthRange, readComponentRecords, resolveComponentRecords, resolveCoverageManifests, resolveBankEvidence,
-    buildReviewedAdjustments, buildMonthlyAllocationBasis, profitabilityAccrualIssues, resolveProfitabilityPayrollAllocation,
+    buildReviewedAdjustments, buildMonthlyAllocationBasis, profitabilityAccrualIssues, resolveProfitabilityPayrollAllocation, captureProvisionalProfit,
     profitabilityRequestId:{current:0}, profitabilitySelection:selection,
     URL, console, parseNum: v => Number(v) || 0,
     RMS_BRANCH_TAX_RATE_SETTING: 'tax', RMS_BANK_COMMISSION_RATE_SETTING: 'bank',

@@ -5974,12 +5974,23 @@ async function readRmsProfitabilitySnapshot(branches, profitabilitySelection) {
       totals.margin = totals.revenue ? totals.net / totals.revenue * 100 : 0
       totals.branches = visibleRows.length
 
+      // Historical/reviewed net-bank pools must have a known allocation base.
+      // Future ordinary pools keep their existing gross-month allocation rule.
+      const allocationComplete = !coverageIssues.some(issue =>
+        ['incomplete-network-allocation-basis','missing-network-allocation-basis'].includes(issue.reason) &&
+        (isAuditedMonth(issue.month) || supplierPurchases.some(p=>String(p.purchase_date).slice(0,7)===issue.month && p.reviewedProvenance?.allocationBasis))) &&
+        [...supplierPurchases.filter(p=>Number(p.total_amount)!==0).map(p=>p.purchase_date),...managerSalaryDetails.map(p=>p.date)].every(date=>
+          revenueRows.filter(r=>String(r.revenue_date).slice(0,7)===String(date).slice(0,7)).reduce((sum,r)=>sum+parseNum(r.cash_amount)+parseNum(r.bank_amount)+parseNum(r.wolt_amount),0)>0)
+      const bankBasisConfirmed = revenueRows.every(row=>Number(row.bank_amount)===0 || !!rmsReportBankBasis(row) || bankEvidence.byId.has(String(row.id)))
+      const provisional = captureProvisionalProfit({rows:visibleRows,totals,input:reviewedInputs,revenueRows,period,coverageIssues,allocationComplete,bankBasisConfirmed})
+
       if (requestId !== profitabilityRequestId.current) return
       setRmsProfitabilityReport({
         loading: false,
         error: '',
         rows: visibleRows,
         totals,
+        provisional,
         periodLabel: period.label,
         summaryInputs: { period, revenueRows, coverageIssues, periodStatuses: reviewed.periodStatuses, mixedBasis, monthlyAllocationIsolated: period.from >= '2026-01-01', sourceChecks: reviewed.validated.map(r => ({month:r.source.month,readAt:r.source.source?.readAt})) },
         source: `${revenueSource} + daily_expenses + supplier_purchases + salary_periods`

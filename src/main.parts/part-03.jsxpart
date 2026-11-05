@@ -1611,7 +1611,7 @@ function useVerifiedProfitability(year, month, branchId, branches, loaded = true
   return {...value.current,trend:profitabilityTrend(value.current,value.previous)}
 }
 function ProfitabilitySourceNotice({profit}) {
-  return <p role="status" className="hint">{profit.available?'Прибыль и маржа: по проверенному отчёту рентабельности.':'Прибыль и маржа недоступны: полнота источников не подтверждена. Откройте «Отчёты → Рентабельность».'}{!profit.available && <span> {profit.error || profit.reasons.join(', ')}</span>}</p>
+  return <aside role="status" className="hint"><strong>{profit.available?profitStatusText(profit):'Расчёт недоступен'}</strong><p>{profitBasisText(profit,fmt)}</p>{profit.reasons.length>0&&<details><summary>{profit.available?'Почему расчёт предварительный':'Что мешает расчёту'}</summary><ul>{[...new Set(profit.reasons.map(profitReasonText))].map(reason=><li key={reason}>{reason}</li>)}</ul></details>}</aside>
 }
 
 function Dashboard({ t }) {
@@ -2165,8 +2165,8 @@ function Dashboard({ t }) {
     <section className="dashboard-v23-kpis dashboard-v29-kpis">
       <div className="dash-kpi dash-kpi-blue"><span className="dash-kpi-icon">↗</span><div><em>Выручка за месяц</em><strong>{fmt(data.revenue)} <small>AZN</small></strong><p className="dash-trend-value" style={{ color: revenueChange >= 0 ? '#10b981' : '#ef4444', fontWeight: 900 }} title={revenueCompareTooltip}>{revenueChange >= 0 ? '▲' : '▼'} {pct(Math.abs(revenueChange))}</p></div></div>
       <div className="dash-kpi dash-kpi-purple"><span className="dash-kpi-icon">▥</span><div><em>Расходы</em><strong>{fmt(data.expenses)} <small>AZN</small></strong><p>{data.revenue ? pct(data.expenses / data.revenue * 100) : '0.0%'} от выручки</p></div></div>
-      <div className={`dash-kpi dash-kpi-green ${verifiedProfit.net != null && verifiedProfit.net < 0 ? 'dash-kpi-negative' : ''}`}><span className="dash-kpi-icon">▟</span><div><em>Чистая прибыль</em><strong>{formatVerifiedProfit(verifiedProfit.net,fmt)} <small>AZN</small></strong><p className={profitChange >= 0 ? 'good' : 'bad'}>{formatVerifiedProfit(profitChange,pct)}</p></div></div>
-      <div className={`dash-kpi dash-kpi-red ${verifiedProfit.net != null && verifiedProfit.net < 0 ? 'dash-kpi-negative' : ''}`}><span className="dash-kpi-icon">%</span><div><em>Рентабельность</em><strong>{formatVerifiedProfit(verifiedProfit.margin,pct)}</strong><p>маржа чистой прибыли</p></div></div>
+      <div className={`dash-kpi dash-kpi-green ${verifiedProfit.net != null && verifiedProfit.net < 0 ? 'dash-kpi-negative' : ''}`}><span className="dash-kpi-icon">▟</span><div><em>{profitStatusText(verifiedProfit)}</em><strong>{formatVerifiedProfit(verifiedProfit.net,fmt)} <small>AZN</small></strong><p className={profitChange >= 0 ? 'good' : 'bad'}>{formatVerifiedProfit(profitChange,pct)}</p></div></div>
+      <div className={`dash-kpi dash-kpi-red ${verifiedProfit.net != null && verifiedProfit.net < 0 ? 'dash-kpi-negative' : ''}`}><span className="dash-kpi-icon">%</span><div><em>{profitStatusText(verifiedProfit,'margin')}</em><strong>{formatVerifiedProfit(verifiedProfit.margin,pct)}</strong><p>по указанной базе расчёта</p></div></div>
       <div className="dash-kpi dash-kpi-forecast"><span className="dash-kpi-icon">◌</span><div><em>Food Cost</em><strong>{pct(foodCostPct)}</strong><p>{fmt(data.foodCostAmount)} AZN</p></div></div>
       <div className="dash-kpi dash-kpi-forecast"><span className="dash-kpi-icon">⌁</span><div><em>Прогноз выручки</em><strong>{fmt(data.forecastRevenue)} <small>AZN</small></strong><p>до конца месяца</p></div></div>
       <div className={`dash-kpi dash-kpi-target ${data.forecastProfit < 0 ? 'dash-kpi-negative' : ''}`}><span className="dash-kpi-icon">◎</span><div><em>Прогноз прибыли</em><strong>{fmt(data.forecastProfit)} <small>AZN</small></strong><p>прогноз месяца</p></div></div>
@@ -2233,7 +2233,7 @@ function Dashboard({ t }) {
           showShare
           stackWolt
         />
-        {verifiedProfit.available ? <MiniBarChart rows={netBranchRows} valueKey="net" title="Прибыль по филиалам" subtitle="По проверенному отчёту рентабельности" showShare /> : <ProfitabilitySourceNotice profit={verifiedProfit} />}
+        {verifiedProfit.available ? <MiniBarChart rows={netBranchRows} valueKey="net" title={profitStatusText(verifiedProfit)+' по филиалам'} subtitle="По указанной базе расчёта; ограничения перечислены выше" showShare /> : <ProfitabilitySourceNotice profit={verifiedProfit} />}
       </div>
       <div className="card dashboard-v23-insights dashboard-v25-insights">
         <div className="card-head"><div><h3>Ключевые выводы</h3><p className="hint">Автоматический summary по выбранному месяцу</p></div></div>
@@ -2241,15 +2241,15 @@ function Dashboard({ t }) {
           {branchId === DASH_ALL_BRANCHES ? <>
             <div><span>Рост выручки</span><strong className={revenueChange >= 0 ? 'good' : 'bad'}>{revenueChange >= 0 ? '▲' : '▼'} {pct(Math.abs(revenueChange))}</strong><em>сравнение периода</em></div>
             <div><span>Лучший филиал по выручке</span><strong>{topBranchRows[0]?.name || '—'}</strong><em>{topBranchRows[0] ? `${fmt(topBranchRows[0].revenue)} AZN` : 'нет данных'}</em></div>
-            <div><span>Лучший филиал по прибыли</span><strong>{bestBranch?.name || '—'}</strong><em>{bestBranch ? `${fmt(bestBranch.net)} AZN` : 'нет данных'}</em></div>
+            <div><span>Лучший филиал: {profitStatusText(verifiedProfit).toLowerCase()}</span><strong>{bestBranch?.name || '—'}</strong><em>{bestBranch ? `${fmt(bestBranch.net)} AZN` : 'нет данных'}</em></div>
             <div><span>Прогноз прибыли</span><strong className={data.forecastProfit >= 0 ? 'good' : 'bad'}>{fmt(data.forecastProfit)} AZN</strong><em>с учётом расходов</em></div>
             <div><span>Проблемные долги</span><strong className="bad">{fmt(data.supplierDebt)} AZN</strong><em>просрочка или лимит</em></div>
           </> : <>
             <div><span>Рост выручки филиала</span><strong className={revenueChange >= 0 ? 'good' : 'bad'}>{revenueChange >= 0 ? '▲' : '▼'} {pct(Math.abs(revenueChange))}</strong><em>{selectedBranchName} к прошлому месяцу</em></div>
             <div><span>Выручка филиала</span><strong>{fmt(selectedBranchRow?.revenue || 0)} AZN</strong><em>{selectedBranchName}</em></div>
-            <div><span>Прибыль филиала</span><strong className={(selectedBranchRow?.net || 0) >= 0 ? 'good' : 'bad'}>{formatVerifiedProfit(selectedBranchProfit?.net,fmt)} AZN</strong><em>после расходов и налогов</em></div>
+            <div><span>{profitStatusText(selectedBranchProfit||verifiedProfit)} филиала</span><strong className={(selectedBranchRow?.net || 0) >= 0 ? 'good' : 'bad'}>{formatVerifiedProfit(selectedBranchProfit?.net,fmt)} AZN</strong><em>по указанной базе расчёта</em></div>
             <div><span>Расходы филиала</span><strong>{fmt(selectedBranchRow?.totalExpenses || 0)} AZN</strong><em>{pct(selectedBranchExpenseRatio)} от выручки</em></div>
-            <div><span>Маржа филиала</span><strong className={selectedBranchMargin >= 0 ? 'good' : 'bad'}>{formatVerifiedProfit(selectedBranchMargin,pct)}</strong><em>чистая рентабельность</em></div>
+            <div><span>{profitStatusText(selectedBranchProfit||verifiedProfit,'margin')}</span><strong className={selectedBranchMargin >= 0 ? 'good' : 'bad'}>{formatVerifiedProfit(selectedBranchMargin,pct)}</strong><em>по указанной базе расчёта</em></div>
           </>}
         </div>
       </div>
@@ -3385,7 +3385,7 @@ function Finance({ t, lang, onGoToExpense }) {
   ].filter(Boolean)
   const activeFinanceHealthFlags = financeHealthFlags.filter(f => f.active)
   const financeHealthLevel = activeFinanceHealthFlags.some(f => f.level === 'bad') ? 'bad' : activeFinanceHealthFlags.length ? 'warn' : 'ok'
-  const financeHealthLabel = !verifiedProfit.available ? 'Прибыль не подтверждена: недостаточно данных' : financeHealthLevel === 'ok' ? 'Финансы: OK' : financeHealthLevel === 'bad' ? 'Финансы: критично' : 'Финансы: внимание'
+  const financeHealthLabel = !verifiedProfit.available ? 'Расчёт недоступен' : !verifiedProfit.verified ? profitStatusText(verifiedProfit) : financeHealthLevel === 'ok' ? 'Финансы: OK' : financeHealthLevel === 'bad' ? 'Финансы: критично' : 'Финансы: внимание'
   const financeTopExpenseDrivers = financeExpenseRowsAll.slice(0, 3)
   const financePrimaryExpenseDriver = financeTopExpenseDrivers[0]
   const financeExpenseRowsForTable = showAllFinanceExpenseRows ? financeExpenseRowsAll : financeExpenseRowsAll.slice(0, 10)
@@ -3432,9 +3432,9 @@ function Finance({ t, lang, onGoToExpense }) {
       ['Раздел', 'Показатель', 'Значение'],
       ['KPI', 'Выручка', fmt(financeMonthSummary.revenue)],
       ['KPI', 'Операционные расходы', fmt(financeMonthSummary.expenses)],
-      ['Проверка', 'Полнота источников', verifiedProfit.available?'Подтверждено':verifiedProfit.reasons.join(', ')],
-      ['KPI', 'Чистая прибыль', formatVerifiedProfit(financeMonthSummary.net,fmt)],
-      ['KPI', 'Маржа', formatVerifiedProfit(financeMonthSummary.margin,pct)],
+      ['Проверка', 'Полнота источников', profitDisclosureText(verifiedProfit,fmt)],
+      ['KPI', profitStatusText(verifiedProfit), formatVerifiedProfit(financeMonthSummary.net,fmt)],
+      ['KPI', profitStatusText(verifiedProfit,'margin'), formatVerifiedProfit(financeMonthSummary.margin,pct)],
       ['KPI', 'Food Cost', pct(financeMonthSummary.foodCostPct)],
       ['KPI', 'Зарплаты', pct(financeMonthSummary.salaryPct)],
       ['Прогноз', 'Прогноз выручки', fmt(financeMonthSummary.forecastRevenue)],
@@ -3453,7 +3453,7 @@ function Finance({ t, lang, onGoToExpense }) {
     const expenseRowsHtml = financeExpenseRowsAll.map(r => `<tr><td>${r.name}</td><td>${fmt(r.amount)}</td><td>${pct(financeTotalExpenses ? parseNum(r.amount) / financeTotalExpenses * 100 : 0)}</td></tr>`).join('') || '<tr><td colspan="3">Пока нет данных</td></tr>'
     const anomalyRowsHtml = sortedAiRows.slice(0, 10).map(r => `<tr><td>${r.branchName}</td><td>${r.indicator}</td><td>${r.fact}</td><td>${r.deviation}</td><td>${r.recommendation}</td></tr>`).join('') || '<tr><td colspan="5">Отклонения не найдены</td></tr>'
     const driverRowsHtml = financeTopExpenseDrivers.map(r => `<tr><td>${r.name}</td><td>${fmt(r.amount)}</td><td>${pct(financeTotalExpenses ? parseNum(r.amount) / financeTotalExpenses * 100 : 0)}</td></tr>`).join('') || '<tr><td colspan="3">Пока нет данных</td></tr>'
-    const html = `<!doctype html><html><head><meta charset="utf-8"><title>Finance report</title><style>body{font-family:Arial,sans-serif;padding:28px;color:#111827}h1{margin:0 0 6px}p{color:#64748b}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:18px 0}.kpi{border:1px solid #e5e7eb;border-radius:12px;padding:12px}.kpi span{display:block;color:#64748b;font-size:12px}.kpi b{font-size:20px}.status{display:inline-block;border:1px solid #e5e7eb;border-radius:999px;padding:6px 10px;font-weight:700;margin-top:8px}table{width:100%;border-collapse:collapse;margin-top:10px}th,td{border-bottom:1px solid #e5e7eb;padding:8px;text-align:left}th{background:#f8fafc}.section{margin-top:22px}@media print{button{display:none}}</style></head><body><h1>Финансовый отчёт</h1><p>${monthName} ${year} · ${branchId === ALL_BRANCHES ? 'Все рестораны' : financeBranchNameById(branchId)}</p><span class="status">${financeHealthLabel}</span><div class="grid"><div class="kpi"><span>Выручка</span><b>${fmt(financeMonthSummary.revenue)} AZN</b></div><div class="kpi"><span>Расходы</span><b>${fmt(financeMonthSummary.expenses)} AZN</b></div><div class="kpi"><span>Чистая прибыль</span><b>${formatVerifiedProfit(financeMonthSummary.net,fmt)} AZN</b></div><div class="kpi"><span>Маржа</span><b>${formatVerifiedProfit(financeMonthSummary.margin,pct)}</b></div></div><div class="section"><h2>Главные драйверы расходов</h2><table><thead><tr><th>Статья</th><th>Сумма</th><th>Доля расходов</th></tr></thead><tbody>${driverRowsHtml}</tbody></table></div><div class="section"><h2>Расходы по статьям</h2><table><thead><tr><th>Статья</th><th>Сумма</th><th>Доля расходов</th></tr></thead><tbody>${expenseRowsHtml}</tbody></table></div><div class="section"><h2>Отклонения</h2><table><thead><tr><th>Филиал</th><th>Показатель</th><th>Факт</th><th>Отклонение</th><th>Рекомендация</th></tr></thead><tbody>${anomalyRowsHtml}</tbody></table></div><script>window.print()</script></body></html>`
+    const html = `<!doctype html><html><head><meta charset="utf-8"><title>Finance report</title><style>body{font-family:Arial,sans-serif;padding:28px;color:#111827}h1{margin:0 0 6px}p{color:#64748b}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:18px 0}.kpi{border:1px solid #e5e7eb;border-radius:12px;padding:12px}.kpi span{display:block;color:#64748b;font-size:12px}.kpi b{font-size:20px}.status{display:inline-block;border:1px solid #e5e7eb;border-radius:999px;padding:6px 10px;font-weight:700;margin-top:8px}table{width:100%;border-collapse:collapse;margin-top:10px}th,td{border-bottom:1px solid #e5e7eb;padding:8px;text-align:left}th{background:#f8fafc}.section{margin-top:22px}@media print{button{display:none}}</style></head><body><h1>Финансовый отчёт</h1><p>${monthName} ${year} · ${branchId === ALL_BRANCHES ? 'Все рестораны' : financeBranchNameById(branchId)}</p><span class="status">${financeHealthLabel}</span><p>${profitDisclosureText(verifiedProfit,fmt)}</p><div class="grid"><div class="kpi"><span>Выручка</span><b>${fmt(financeMonthSummary.revenue)} AZN</b></div><div class="kpi"><span>Расходы</span><b>${fmt(financeMonthSummary.expenses)} AZN</b></div><div class="kpi"><span>${profitStatusText(verifiedProfit)}</span><b>${formatVerifiedProfit(financeMonthSummary.net,fmt)} AZN</b></div><div class="kpi"><span>${profitStatusText(verifiedProfit,'margin')}</span><b>${formatVerifiedProfit(financeMonthSummary.margin,pct)}</b></div></div><div class="section"><h2>Главные драйверы расходов</h2><table><thead><tr><th>Статья</th><th>Сумма</th><th>Доля расходов</th></tr></thead><tbody>${driverRowsHtml}</tbody></table></div><div class="section"><h2>Расходы по статьям</h2><table><thead><tr><th>Статья</th><th>Сумма</th><th>Доля расходов</th></tr></thead><tbody>${expenseRowsHtml}</tbody></table></div><div class="section"><h2>Отклонения</h2><table><thead><tr><th>Филиал</th><th>Показатель</th><th>Факт</th><th>Отклонение</th><th>Рекомендация</th></tr></thead><tbody>${anomalyRowsHtml}</tbody></table></div><script>window.print()</script></body></html>`
     const win = window.open('', '_blank')
     if (!win) return
     win.document.write(html)
@@ -3493,8 +3493,8 @@ function Finance({ t, lang, onGoToExpense }) {
       <section className="dashboard-v23-kpis dashboard-v29-kpis finance-dashboard-kpis finance-pro-kpis">
         <div className="dash-kpi dash-kpi-blue"><span className="dash-kpi-icon">↗</span><div><em>Выручка</em><strong>{fmt(financeMonthSummary.revenue)} <small>AZN</small></strong><p className="dash-trend-value" style={{ color: revChange >= 0 ? '#10b981' : '#ef4444', fontWeight: 900 }} title={financeRevenueCompareTooltip}>{revChange >= 0 ? '▲' : '▼'} {pct(Math.abs(revChange))}</p></div></div>
         <div className="dash-kpi dash-kpi-purple"><span className="dash-kpi-icon">▥</span><div><em>Операционные расходы</em><strong>{fmt(financeMonthSummary.expenses)} <small>AZN</small></strong><p>{pct(financeMonthSummary.revenue ? financeMonthSummary.expenses / financeMonthSummary.revenue * 100 : 0)} от выручки</p></div></div>
-        <div className="dash-kpi dash-kpi-green"><span className="dash-kpi-icon">▟</span><div><em>Чистая прибыль</em><strong className={financeMonthSummary.net >= 0 ? 'good' : 'bad'}>{formatVerifiedProfit(financeMonthSummary.net,fmt)} <small>AZN</small></strong><p className={profitChange >= 0 ? 'good' : 'bad'}>{formatVerifiedProfit(profitChange,pct)}</p></div></div>
-        <div className="dash-kpi dash-kpi-red"><span className="dash-kpi-icon">%</span><div><em>Маржа</em><strong>{formatVerifiedProfit(financeMonthSummary.margin,pct)}</strong><p>чистая прибыль / выручка</p></div></div>
+        <div className="dash-kpi dash-kpi-green"><span className="dash-kpi-icon">▟</span><div><em>{profitStatusText(verifiedProfit)}</em><strong className={financeMonthSummary.net >= 0 ? 'good' : 'bad'}>{formatVerifiedProfit(financeMonthSummary.net,fmt)} <small>AZN</small></strong><p className={profitChange >= 0 ? 'good' : 'bad'}>{formatVerifiedProfit(profitChange,pct)}</p></div></div>
+        <div className="dash-kpi dash-kpi-red"><span className="dash-kpi-icon">%</span><div><em>{profitStatusText(verifiedProfit,'margin')}</em><strong>{formatVerifiedProfit(financeMonthSummary.margin,pct)}</strong><p>результат / выручка расчёта</p></div></div>
         <div className="dash-kpi dash-kpi-forecast"><span className="dash-kpi-icon">◌</span><div><em>Food Cost</em><strong>{pct(financeMonthSummary.foodCostPct)}</strong><p>{fmt(financeMonthSummary.foodCostAmount)} AZN</p></div></div>
         <div className="dash-kpi dash-kpi-wallet"><span className="dash-kpi-icon">◍</span><div><em>Зарплаты</em><strong>{pct(financeMonthSummary.salaryPct)}</strong><p>{fmt(financeMonthSummary.salaryAmount)} AZN</p></div></div>
         <div className="dash-kpi dash-kpi-target"><span className="dash-kpi-icon">◎</span><div><em>Прогноз прибыли</em><strong className={financeMonthSummary.forecastProfit >= 0 ? 'good' : 'bad'}>{fmt(financeMonthSummary.forecastProfit)} <small>AZN</small></strong><p>до конца месяца</p></div></div>
@@ -3537,7 +3537,7 @@ function Finance({ t, lang, onGoToExpense }) {
             <div><span>Операционные расходы</span><b>{pct(financeTotalExpensePct)}</b><em>{fmt(financeTotalExpenses)} AZN</em></div>
             <div><span>Service charge</span><b>{pct(financeServicePct)}</b><em>{fmt(stats.serviceCost)} AZN</em></div>
             <div><span>Налог с оборота</span><b>{pct(financeTaxPct)} ставка</b><em>{fmt(stats.tax)} AZN; оплачено vergi отдельно: {fmt(stats.taxPaid)} AZN (не уменьшает прибыль)</em></div>
-            <div><span>Чистая маржа</span><b>{formatVerifiedProfit(financeProfitability,pct)}</b><em className={financeProfitability >= 0 ? 'good' : 'bad'}>{formatVerifiedProfit(financeNet,fmt)} AZN</em></div>
+            <div><span>{profitStatusText(verifiedProfit,'margin')}</span><b>{formatVerifiedProfit(financeProfitability,pct)}</b><em className={financeProfitability >= 0 ? 'good' : 'bad'}>{formatVerifiedProfit(financeNet,fmt)} AZN</em></div>
           </div>
         </div>
 
