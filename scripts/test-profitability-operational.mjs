@@ -29,3 +29,18 @@ const common=fs.readFileSync('src/main.parts/part-00.jsxpart','utf8'),start=comm
 const q={select(){return this},eq(){return this},maybeSingle:async()=>({error:Error('synthetic setting read failure')})};const c=vm.createContext({supabase:{from:()=>q},RMS_APP_SETTINGS_TABLE:'settings'});vm.runInContext(common.slice(start,end)+';globalThis.read=readRmsAppSetting',c)
 await assert.rejects(c.read('bank',2,true),/synthetic setting read failure/);assert.equal(await c.read('bank',2),2)
 console.log('PASS operational October contract Jan-Nov: net-bank allocation, payroll gross-only, service/tax inputs, no paid-tax double count, metadata independence, observed zero vs empty, invalid values and unavailable allocation, single branch/range, strict setting errors')
+
+// A branch does not become non-operating merely because its revenue is absent/zero.
+const costOnly={...zero,revenueRows:[],dailyExpenseRows:[{id:'cost',branch_id:'b',expense_date:'2026-10-15',amount:25,kind:'dsmf'}]}
+assert.equal(run(costOnly).surface.net,-25)
+assert.equal(run(costOnly,{...opts,branchIds:['b']}).surface.net,-25)
+assert.equal(run({...costOnly,revenueRows:zero.revenueRows}).surface.net,-25)
+const withTrading={...costOnly,revenueRows:base.revenueRows}
+assert.equal(run(withTrading).surface.net,157,'cost-only branch reduces network result alongside trading branches')
+const explicitClosed={...withTrading,periodStatuses:[{month:'2026-10',branchId:'b',operatingStatus:'closed_nonoperating',comparisonPolicy:'exclude_operating_disclose_costs'}]}
+// A real validator only accepts absent revenue for a closed status.
+explicitClosed.revenueRows=base.revenueRows.filter(r=>r.branch_id==='a')
+const excluded=run(explicitClosed);assert.equal(excluded.surface.net,90);assert.equal(excluded.model.total.disclosedExpenses,25)
+const anotherMonth={...costOnly,periodStatuses:[{...explicitClosed.periodStatuses[0],month:'2026-09'}]};assert.equal(run(anotherMonth).surface.net,-25,'historical decision cannot leak into October')
+const signed={...costOnly,revenueRows:[{...zero.revenueRows[0],cash_amount:-100}]};assert.equal(run(signed).surface.net,-117,'negative revenue and signed tax remain in totals')
+console.log('PASS expense-only/zero/negative-revenue branches: network/single branch costs retained; explicit reviewed historical exclusion isolated by month')

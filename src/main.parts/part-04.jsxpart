@@ -5618,7 +5618,7 @@ async function readRmsProfitabilitySnapshot(branches, profitabilitySelection) {
       // Keep validated source corrections; only the accounting/verification coupling changes.
       let operational
       try {
-        operational = buildOperationalProfitability({...reviewedInputs,revenueRows:adjusted.revenueRows,dailyExpenseRows:adjusted.dailyExpenseRows,supplierPurchases:adjusted.supplierPurchases}, {
+        operational = buildOperationalProfitability({...reviewedInputs,periodStatuses:reviewed.periodStatuses,revenueRows:adjusted.revenueRows,dailyExpenseRows:adjusted.dailyExpenseRows,supplierPurchases:adjusted.supplierPurchases}, {
           period,branchIds:profitabilitySelection.branchIds,bankRate:bankCommissionRate,taxSettings,
           expenseName:row=>({dsmf:'DSMF',partner_fee:'Partner Fee',other:'Прочее',household:'Хозяйственные товары',utilities:'Коммунальные'}[row.reviewedCategory]||financeExpenseNameFromRow(row)),
           excludeExpense:row=>{

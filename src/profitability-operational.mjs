@@ -11,6 +11,8 @@ export function buildOperationalProfitability(input,{period,branchIds=null,bankR
   if(rate<0||rate>100)throw Error('Некорректная ставка банковской комиссии')
   for(const b of input.branchRows||[])for(const key of ['service_charge_percent','service_staff_cost_percent'])if(b[key]!=null)amount(b[key],key)
   const months=reportMonths(period.from,period.toExclusive),branches=input.branchRows||[]
+  // Only statuses validated by resolveComponentRecords may exclude a closed period.
+  const closedPeriods=new Set((input.periodStatuses||[]).filter(s=>s.operatingStatus==='closed_nonoperating'&&s.comparisonPolicy==='exclude_operating_disclose_costs').map(s=>s.month+':'+String(s.branchId)))
   const employeeMap=new Map((input.employeeRows||[]).filter(e=>e.is_active===true).map(e=>[String(e.id),e]))
   const byId=new Map(branches.map(b=>[String(b.id),b])),monthly=[],warnings=[],disclosures=[]
   const select=(rows,key,month)=>(rows||[]).filter(r=>String(r[key]).slice(0,7)===month)
@@ -48,9 +50,9 @@ export function buildOperationalProfitability(input,{period,branchIds=null,bankR
       if(configured<0||configured>100)throw Error('Некорректная ставка налога')
       b.tax=b.grossRevenue*(configured>0?configured:8)/100;add(b,'tax','Налог с оборота',b.tax,month+'-01','tax-'+month+'-'+b.id)
       b.expenses=Object.values(b.categories).reduce((s,v)=>s+v,0);b.net=b.revenue-b.expenses
-      // The old Dashboard excluded non-operating (no positive revenue) branches.
-      // Keep their actual costs visible separately; do not silently reallocate them.
-      b.operatingExcluded=b.revenue<=0 && (b.expenses!==0||b.revenueRecords===0)
+      // Zero/negative revenue does not erase costs. Preserve only explicit reviewed
+      // closed-period exclusions; a completely empty branch is not observed zero.
+      b.operatingExcluded=closedPeriods.has(month+':'+b.id) || (!b.revenueRecords&&b.expenses===0)
       if(b.operatingExcluded&&b.expenses!==0)disclosures.push({month,branchId:b.id,name:b.name,expenses:b.expenses})
       Object.assign(b,{calculationReady:true,profitAvailable:!b.operatingExcluded,expensesAvailable:!b.operatingExcluded,hasExpenseDetails:true,revenueComplete:true,coverageIssues:[],disclosedExpenses:b.operatingExcluded?b.expenses:0})
       monthly.push(b)
