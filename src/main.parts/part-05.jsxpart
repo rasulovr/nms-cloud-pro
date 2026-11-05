@@ -402,7 +402,7 @@
       loadRmsExpensesReport()
       return
     }
-    if (effectiveReportsTab === 'profitability') return loadRmsProfitabilityReport()
+    if (effectiveReportsTab === 'profitability') return refreshRmsProfitabilityReport()
     if (effectiveReportsTab === 'revenue') return loadRmsRevenueReport()
     if (effectiveReportsTab === 'expenses') return loadRmsExpensesReport()
     if (effectiveReportsTab === 'suppliers') return loadRmsSuppliersReport()

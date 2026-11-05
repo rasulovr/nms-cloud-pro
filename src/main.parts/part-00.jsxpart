@@ -1,3 +1,4 @@
+import {profitabilitySurface, profitabilityTrend, formatVerifiedProfit} from './profitability-surface.mjs'
 import {resolveProfitabilityPayrollAllocation, profitabilityManagerPosition} from './profitability-payroll-allocation.mjs'
 import {profitabilityAccrualIssues} from './profitability-source-completeness.mjs'
 import {buildMonthlyAllocationBasis} from './profitability-allocation.mjs'

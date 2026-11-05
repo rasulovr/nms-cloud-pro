@@ -10,7 +10,7 @@ Prepared against production commit `9d151045db9af0db5b25e5b824be6f653b631ca6`, d
 - Require a coverage manifest for every selected month from January 2026 onward, including future years. October 2026 onward additionally requires the accrual fingerprint and per-branch review checks below. Historical manifests retain their existing contract; their fingerprints do not prove salary immutability. The stronger expected registry is not retroactively required for January–September.
 - Ordinary source purchases and management salaries keep their existing period-specific allocation methods. Reviewed pools use their explicitly approved net-bank allocation basis, independently for each operation month. All-network denominators remain independent of the display branch filter.
 - UI, charts and shared print/PDF rendering do not reconstruct numeric net/margin when the canonical calculation is blocked. Recorded revenue and expenses remain inspectable, with coverage explanations.
-- The build runs 21 financial regression scripts in addition to its previous checks.
+- The build runs 22 financial regression scripts in addition to its previous checks.
 
 ## Evidence contract additions (no database/schema writes)
 
@@ -66,3 +66,11 @@ The paginated purchase read now includes deleted rows in `supplierPurchaseRows` 
 `resolveProfitabilityPayrollAllocation` is shared by the loader and branch disposition validation. It preserves period branch fallback to employee branch, the exact existing manager-position aliases, and Jan–Sep active-only metadata eligibility. A null-period active cook whose employee branch is B therefore incurs direct costs at B; B cannot be excluded as cost-free. A manager's payroll remains a revenue-share pool, including when their employee branch is set. `centralPayroll` denotes null-period source rows, not necessarily management pool membership.
 
 Validation includes 19 target mutations with all fingerprints refreshed and expected sources unchanged, duplicate identities rejected before fingerprint refresh, explicit deleted-exclusion tests, and full-loader branch allocation assertions. Primary-source accuracy of a newly approved registry still requires human/source review: agreement with an incorrectly approved independent registry cannot establish the real-world truth.
+
+## Active Dashboard/Finance regression (2026-11-05)
+
+Production 6686252 rendered the canonical report only at Reports → Profitability. Dashboard.calcMonth and Finance independently calculated net without consuming coverage. Read-only October replay of the actual Dashboard loader reproduced net 50014.32080000004 = 295837.3475999999 revenue after bank commission − 245823.02679999993 expenses. No stale-cache explanation is required. ReportsProfitabilityView in part-04 is unused; it was not the active cause.
+
+The report loader is now exposed as readRmsProfitabilitySnapshot and shared with Dashboard/Finance through useVerifiedProfitability. Those surfaces consume canonical verified net/margin/branch values instead of gating or reconstructing legacy arithmetic. The prior-month comparison requires verified values for both months. Loading, errors and changes of month/branch synchronously withhold the old result; late responses are ignored. Cards, margin, branch comparisons, chart/ranking, Finance CSV/print and status disclose missing coverage. Forecasts remain explicitly forecasts and expense/revenue diagnostics retain their existing basis. Legacy formula audit is explicitly labelled as unverified arithmetic, not profit; legacy net-loss AI claims are removed.
+
+Actual report-loader replay with read-only October sources yielded null canonical/surface net with missing-coverage-manifest and bank-basis holds. Its underlying unverified arithmetic was 54432.8732; this is not confirmed profit. Dashboard's separate calculation reproduced the user's 50014.3208. The user's precise screen was not independently observed. No financial records or identity mappings were changed. This release fixes the active display bypass, not the unresolved October source reconciliation.

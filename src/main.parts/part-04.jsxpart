@@ -5483,695 +5483,10 @@ function rmsReportBankCommissionDetail(row, rate) {
   }
 }
 
-function Reports({ t, permissions = [], isAdmin = false }) {
-  const { branches, loaded: reportBranchesLoaded } = useBranches(true, true)
-  const [reports, setReports] = useState(() => readAikoSalesReports())
-  const [branchMap, setBranchMap] = useState(() => readAikoBranchMap())
-  const [reportsTab, setReportsTab] = useState('overview')
-  const [overviewTrendMode, setOverviewTrendMode] = useState('revenue')
-
-  const reportPermissionRows = Array.isArray(permissions)
-    ? permissions.filter(p => String(p.section || '').startsWith(REPORT_PERMISSION_PREFIX))
-    : []
-  const hasSpecificReportPermissions = reportPermissionRows.length > 0
-  const canReadReportTab = (tabId) => {
-    if (isAdmin || !hasSpecificReportPermissions) return true
-    const row = reportPermissionRows.find(p => p.section === reportPermissionSection(tabId))
-    if (!row && tabId === 'profitability') {
-      const overviewRow = reportPermissionRows.find(p => p.section === reportPermissionSection('overview'))
-      return canReadAccess(overviewRow?.access || 'none')
-    }
-    if (!row && tabId === 'debts') {
-      const suppliersRow = reportPermissionRows.find(p => p.section === reportPermissionSection('suppliers'))
-      return canReadAccess(suppliersRow?.access || 'none')
-    }
-    return canReadAccess(row?.access || 'none')
-  }
-  const reportTabs = REPORTS_ACCESS_TABS.filter(tab => canReadReportTab(tab.id))
-  const reportTabIdsKey = reportTabs.map(tab => tab.id).join('|')
-  const effectiveReportsTab = reportTabs.some(tab => tab.id === reportsTab)
-    ? reportsTab
-    : (reportTabs[0]?.id || '')
-
-  React.useEffect(() => {
-    if (effectiveReportsTab && effectiveReportsTab !== reportsTab) {
-      setReportsTab(effectiveReportsTab)
-    }
-  }, [effectiveReportsTab, reportsTab, reportTabIdsKey])
-
-  const productReportTabIds = ['products', 'product', 'goods', 'items', 'stock-products', 'inventory-products', 'product_movement', 'products_movement', 'goods_movement', 'товары']
-  const isProductsReportTab = productReportTabIds.includes(String(effectiveReportsTab || reportsTab || '').toLowerCase())
-
-  const [branchFilter, setBranchFilter] = useState('all')
-  const [departmentFilter, setDepartmentFilter] = useState('all')
-  const [monthFilter, setMonthFilter] = useState('all')
-  const [profitabilitySelection, setProfitabilitySelection] = useState(() => ({ ...defaultMonthRange(), branchIds: undefined }))
-  const profitabilityRequestId = React.useRef(0)
-  const [rmsRevenuePeriodOptions, setRmsRevenuePeriodOptions] = useState({ months: [], years: [] })
-  const [revenueDateFrom, setRevenueDateFrom] = useState('')
-  const [revenueDateTo, setRevenueDateTo] = useState('')
-  const [revenuePage, setRevenuePage] = useState(1)
-  const [salesSort, setSalesSort] = useState({ field: 'revenue', dir: 'desc' })
-  const [importBranchId, setImportBranchId] = useState('auto')
-  const [importText, setImportText] = useState('')
-  const [busy, setBusy] = useState(false)
-  const [message, setMessage] = useState('')
-  useRmsStatusToast(message)
-  const [expandedSalesRows, setExpandedSalesRows] = useState(false)
-  const [salesTableSearch, setSalesTableSearch] = useState('')
-  const [salesRowsPage, setSalesRowsPage] = useState(1)
-  const [expandedReportsTable, setExpandedReportsTable] = useState(false)
-  const [expandedAiTables, setExpandedAiTables] = useState({})
-  const [aiTopLimit, setAiTopLimit] = useState(10)
-  const [aiOutsiderLimit, setAiOutsiderLimit] = useState(10)
-  const [salesAiQuery, setSalesAiQuery] = useState('')
-  const [salesAiExportMode, setSalesAiExportMode] = useState('prices')
-  const [hiddenSalesKeys, setHiddenSalesKeys] = useState(() => readAikoHiddenSalesKeys())
-  const [salesNameAliases, setSalesNameAliases] = useState(() => readAikoSalesNameAliases())
-  const [showHiddenSalesItems, setShowHiddenSalesItems] = useState(false)
-  const [recipeCostMap, setRecipeCostMap] = useState({})
-  const [cloudSyncStatus, setCloudSyncStatus] = useState('')
-  const [cloudHiddenSalesLoaded, setCloudHiddenSalesLoaded] = useState(false)
-  const [cloudSalesAliasesLoaded, setCloudSalesAliasesLoaded] = useState(false)
-  const [rmsRevenueReport, setRmsRevenueReport] = useState({ loading: false, error: '', rows: [], totals: { cash: 0, bank: 0, wolt: 0, revenue: 0 } })
-  const [rmsExpensesReport, setRmsExpensesReport] = useState({
-    loading: false,
-    error: '',
-    rows: [],
-    totals: { amount: 0, operating: 0, suppliers: 0, salary: 0, tax: 0, serviceCharge: 0, unallocated: 0, transactions: 0, categories: 0 },
-    byCategory: [],
-    byBranch: []
-  })
-  const [rmsProfitabilityReport, setRmsProfitabilityReport] = useState({
-    loading: false,
-    error: '',
-    rows: [],
-    totals: {
-      revenue: 0,
-      baseRevenue: 0,
-      woltRevenue: 0,
-      operatingExpenses: 0,
-      foodCost: 0,
-      salary: 0,
-      serviceCost: 0,
-      tax: 0,
-      woltCommission: 0,
-      totalExpenses: 0,
-      net: 0,
-      margin: 0,
-      activeDays: 0,
-      branches: 0
-    },
-    periodLabel: '',
-    source: ''
-  })
-  const [profitabilityMetric, setProfitabilityMetric] = useState('net')
-  const [expandedProfitabilityBranches, setExpandedProfitabilityBranches] = useState(() => new Set())
-  const [expandedProfitabilityExpenseGroups, setExpandedProfitabilityExpenseGroups] = useState(() => new Set())
-
-  const [rmsSuppliersReport, setRmsSuppliersReport] = useState({
-    loading: false,
-    error: '',
-    rows: [],
-    totals: { purchases: 0, payments: 0, balance: 0, suppliers: 0, invoices: 0, products: 0, averageInvoice: 0, overdue: 0, overLimit: 0 },
-    purchases: [],
-    payments: [],
-    purchaseItems: [],
-    productRows: [],
-    priceChanges: [],
-    priceChangesDown: [],
-    supplierOptions: []
-  })
-  const rmsSuppliersReportRequestRef = useRef(0)
-  const [rmsDebtsReport, setRmsDebtsReport] = useState({
-    loading: false,
-    error: '',
-    rows: [],
-    supplierOptions: [],
-    voenOptions: [],
-    totals: { debt: 0, suppliers: 0, legalEntities: 0, invoices: 0, eInvoices: 0, payments: 0 }
-  })
-  const [debtSearch, setDebtSearch] = useState('')
-  const [debtSupplierId, setDebtSupplierId] = useState('all')
-  const [debtVoen, setDebtVoen] = useState('all')
-  const [debtPage, setDebtPage] = useState(1)
-  const [debtPageSize, setDebtPageSize] = useState(50)
-  const [rmsProductsReportData, setRmsProductsReport] = useState({ loading: false, error: '', rows: [], detailRows: [], totals: { amount: 0, products: 0, items: 0, invoices: 0, suppliers: 0 }, categories: [], suppliers: [], bySupplier: [], byCategory: [], priceDynamics: [], lastPurchaseDynamics: [], priceDynamicsMeta: { currentLabel: '', previousLabel: '', compareAvailable: false }, amountDynamicsMeta: { currentLabel: '', previousLabel: '', compareAvailable: false, autoCompare: false } })
-  const [rmsProductsReportProgress, setRmsProductsReportProgress] = useState({ active: false, progress: 0, title: '', detail: '', step: '', status: 'idle' })
-  const [productsReportDateFrom, setProductsReportDateFrom] = useState('')
-  const [productsReportDateTo, setProductsReportDateTo] = useState('')
-  const [productsReportSearch, setProductsReportSearch] = useState('')
-  const [productsReportCategory, setProductsReportCategory] = useState('all')
-  const [productsReportSupplierId, setProductsReportSupplierId] = useState('all')
-  const [productsReportSort, setProductsReportSort] = useState({ field: 'amount', dir: 'desc' })
-  const [productsPriceCompareMode, setProductsPriceCompareMode] = useState('period')
-  const [productsPriceDynamicsTab, setProductsPriceDynamicsTab] = useState('up')
-  const [productsReportPage, setProductsReportPage] = useState(1)
-  const [productsReportDetailsOpen, setProductsReportDetailsOpen] = useState(false)
-  const rmsProductsReportRequestRef = useRef(0)
-  const rmsProductsReportProgressTimerRef = useRef(null)
-  const productsReportSelectionKey = JSON.stringify([branchFilter, monthFilter, productsReportDateFrom, productsReportDateTo])
-  // Hide the previous selection before effects/network work start. Refreshing
-  // the same selection can keep its existing rows visible beneath progress.
-  const rmsProductsReport = rmsProductsReportData.selectionKey === productsReportSelectionKey
-    ? rmsProductsReportData
-    : { loading: true, error: '', rows: [], detailRows: [], totals: { amount: 0, products: 0, items: 0, invoices: 0, suppliers: 0 }, categories: [], suppliers: [], bySupplier: [], byCategory: [], priceDynamics: [], lastPurchaseDynamics: [], priceDynamicsMeta: {}, amountDynamicsMeta: {} }
-
-  const [supplierReportSort, setSupplierReportSort] = useState({ field: 'balance', dir: 'desc' })
-  const [supplierReportTab, setSupplierReportTab] = useState('overview')
-  const [supplierReportGrouping, setSupplierReportGrouping] = useState('month')
-  const [supplierReportSearch, setSupplierReportSearch] = useState('')
-  const [supplierReportProductSearch, setSupplierReportProductSearch] = useState('')
-  const [supplierReportSupplierId, setSupplierReportSupplierId] = useState('all')
-  const [supplierReportDateFrom, setSupplierReportDateFrom] = useState('')
-  const [supplierReportDateTo, setSupplierReportDateTo] = useState('')
-  const [supplierReportPriceTab, setSupplierReportPriceTab] = useState('up')
-  const [expandedSupplierReportIds, setExpandedSupplierReportIds] = useState(() => new Set())
-
-  useEffect(() => { writeAikoSalesReports(reports) }, [reports])
-  useEffect(() => { writeAikoBranchMap(branchMap) }, [branchMap])
-  useEffect(() => {
-    const normalized = normalizeHiddenSalesKeys(hiddenSalesKeys)
-    writeAikoHiddenSalesKeys(normalized)
-    if (!cloudHiddenSalesLoaded) return
-    writeRmsAppSetting(RMS_HIDDEN_SALES_KEYS_SETTING, normalized).then(({ error }) => {
-      if (error) setCloudSyncStatus('Внимание: скрытые позиции пока сохраняются только в браузере. Проверьте таблицу rms_app_settings и RLS policies в Supabase.')
-    }).catch(() => setCloudSyncStatus('Внимание: скрытые позиции пока сохраняются только в браузере. Проверьте таблицу rms_app_settings в Supabase.'))
-  }, [hiddenSalesKeys, cloudHiddenSalesLoaded])
-
-  useEffect(() => {
-    writeAikoSalesNameAliases(salesNameAliases)
-    if (!cloudSalesAliasesLoaded) return
-    writeRmsAppSetting(RMS_SALES_NAME_ALIASES_SETTING, salesNameAliases || {})
-  }, [salesNameAliases, cloudSalesAliasesLoaded])
-
-  useEffect(() => {
-    let cancelled = false
-    async function loadSalesAliasesCloud() {
-      const cloudAliases = await readRmsAppSetting(RMS_SALES_NAME_ALIASES_SETTING, {})
-      if (!cancelled && cloudAliases && typeof cloudAliases === 'object') {
-        setSalesNameAliases(prev => ({ ...(cloudAliases || {}), ...(prev || {}) }))
-      }
-      if (!cancelled) setCloudSalesAliasesLoaded(true)
-    }
-    loadSalesAliasesCloud()
-    return () => { cancelled = true }
-  }, [])
-
-  useEffect(() => {
-    let cancelled = false
-    async function loadHiddenKeysCloud() {
-      const cloudKeys = await readRmsAppSetting(RMS_HIDDEN_SALES_KEYS_SETTING, [])
-      if (!cancelled && Array.isArray(cloudKeys) && cloudKeys.length) {
-        setHiddenSalesKeys(prev => normalizeHiddenSalesKeys([...(prev || []), ...cloudKeys]))
-      }
-      if (!cancelled) setCloudHiddenSalesLoaded(true)
-    }
-    loadHiddenKeysCloud()
-    return () => { cancelled = true }
-  }, [])
-
-  useEffect(() => {
-    let cancelled = false
-    async function loadCloudReports() {
-      const { data, error } = await readAikoSalesReportsCloud()
-      if (cancelled) return
-      if (error) {
-        setCloudSyncStatus('Внимание: таблица rms_sales_reports в Supabase не найдена/недоступна. Отчёты временно хранятся только в браузере и могут пропасть при открытии нового Vercel preview-домена. Для постоянного хранения создайте таблицу rms_sales_reports.')
-        return
-      }
-      if (data?.length) {
-        setReports(prev => mergeAikoReports(prev, data))
-        setCloudSyncStatus('Отчёты синхронизированы с Supabase')
-      } else if (reports.length) {
-        const saved = await writeAikoSalesReportsCloud(reports)
-        if (!saved.error && !cancelled) setCloudSyncStatus('Локальные отчёты отправлены в Supabase')
-      }
-    }
-    loadCloudReports()
-    return () => { cancelled = true }
-  }, [])
-
-  useEffect(() => {
-    async function loadRecipeCosts() {
-      try {
-        let menuItems = []
-        let recipeRows = []
-        let costs = []
-        const workspace = await fetchRmsRecipesWorkspace()
-        if (workspace.data) {
-          menuItems = workspace.data.menu_items || []
-          recipeRows = workspace.data.recipe_items || []
-          costs = workspace.data.latest_product_costs || []
-        } else {
-          const [{ data: items }, { data: rows }, { data: latest }] = await Promise.all([
-            supabase.from('menu_items').select('id,name').eq('is_active', true),
-            supabase.from('recipe_items').select('menu_item_id,product_id,quantity,waste_percent'),
-            supabase.from('latest_product_costs').select('product_id,price_per_base_unit')
-          ])
-          menuItems = items || []
-          recipeRows = rows || []
-          costs = latest || []
-        }
-        const costByProduct = new Map((costs || []).map(c => [String(c.product_id), parseNum(c.price_per_base_unit)]))
-        const map = {}
-        ;(menuItems || []).forEach(item => {
-          const recipeCost = (recipeRows || [])
-            .filter(row => String(row.menu_item_id) === String(item.id))
-            .reduce((sum, row) => sum + parseNum(row.quantity) * parseNum(costByProduct.get(String(row.product_id))) * (1 + parseNum(row.waste_percent) / 100), 0)
-          map[normalizeSalesKey(item.name)] = recipeCost > 0 ? recipeCost : 0
-        })
-        Object.entries(salesNameAliases || {}).forEach(([oldKey, canonicalName]) => {
-          const targetKey = normalizeSalesKey(canonicalName)
-          if (targetKey && Object.prototype.hasOwnProperty.call(map, targetKey)) map[oldKey] = map[targetKey]
-        })
-        setRecipeCostMap(map)
-      } catch (_e) {
-        setRecipeCostMap({})
-      }
-    }
-    loadRecipeCosts()
-  }, [salesNameAliases])
-
-  useEffect(() => {
-    if (!['overview', 'revenue'].includes(effectiveReportsTab)) return
-    loadRmsRevenueReport()
-  }, [effectiveReportsTab, branchFilter, monthFilter, revenueDateFrom, revenueDateTo, branches.length])
-
-  useEffect(() => {
-    setRevenuePage(1)
-  }, [reportsTab, branchFilter, monthFilter, revenueDateFrom, revenueDateTo])
-
-  async function loadRmsRevenuePeriodOptions() {
-    try {
-      const collect = (rows = []) => {
-        const months = new Set()
-        const years = new Set()
-        ;(rows || []).forEach(row => {
-          const d = String(row?.revenue_date || '').slice(0, 10)
-          const month = d.slice(0, 7)
-          const year = d.slice(0, 4)
-          if (/^\d{4}-\d{2}$/.test(month)) months.add(month)
-          if (/^\d{4}$/.test(year)) years.add(year)
-        })
-        return { months, years }
-      }
-
-      async function fetchRevenueDates(tableName) {
-        const pageSize = 1000
-        let from = 0
-        let allRows = []
-        while (true) {
-          const { data, error } = await supabase
-            .from(tableName)
-            .select('revenue_date')
-            .is('deleted_at', null)
-            .order('revenue_date', { ascending: false })
-            .range(from, from + pageSize - 1)
-
-          if (error) throw error
-          const batch = data || []
-          allRows = allRows.concat(batch)
-          if (batch.length < pageSize) break
-          from += pageSize
-          if (from > 50000) break
-        }
-        return allRows
-      }
-
-      const [entriesRows, legacyRows] = await Promise.all([
-        fetchRevenueDates('daily_revenue_entries'),
-        fetchRevenueDates('daily_revenue')
-      ])
-
-      const entries = collect(entriesRows)
-      const legacy = collect(legacyRows)
-      const months = Array.from(new Set([...entries.months, ...legacy.months])).sort().reverse()
-      const years = Array.from(new Set([...entries.years, ...legacy.years])).sort().reverse()
-      setRmsRevenuePeriodOptions({ months, years })
-    } catch (error) {
-      // Period selector is diagnostic/UX only. Revenue loading below remains the source of truth.
-      setRmsRevenuePeriodOptions(prev => prev || { months: [], years: [] })
-    }
-  }
-
-  useEffect(() => {
-    loadRmsRevenuePeriodOptions()
-  }, [])
-
-  async function loadRmsRevenueReport() {
-    setRmsRevenueReport(prev => ({ ...prev, loading: true, error: '' }))
-    try {
-      const pageSize = 1000
-
-      const buildRevenueQuery = (tableName, from, to) => {
-        let query = supabase
-          .from(tableName)
-          .select(tableName === 'daily_revenue_entries'
-            ? 'id,branch_id,revenue_date,cash_amount,bank_amount,wolt_amount,comment'
-            : 'branch_id,revenue_date,cash_amount,bank_amount,wolt_amount'
-          )
-          .is('deleted_at', null)
-
-        if (branchFilter !== 'all') query = query.eq('branch_id', branchFilter)
-
-        const hasCustomRevenueRange = Boolean(revenueDateFrom || revenueDateTo)
-        if (hasCustomRevenueRange) {
-          if (revenueDateFrom) query = query.gte('revenue_date', revenueDateFrom)
-          if (revenueDateTo) query = query.lte('revenue_date', revenueDateTo)
-        } else if (/^year:\d{4}$/.test(String(monthFilter || ''))) {
-          const year = String(monthFilter).replace('year:', '')
-          query = query.gte('revenue_date', `${year}-01-01`).lt('revenue_date', `${Number(year) + 1}-01-01`)
-        } else if (/^\d{4}-\d{2}$/.test(String(monthFilter || ''))) {
-          const start = `${monthFilter}-01`
-          const end = rmsNextMonthStart(monthFilter)
-          query = query.gte('revenue_date', start).lt('revenue_date', end)
-        }
-
-        return query
-          .order('revenue_date', { ascending: false })
-          .order('branch_id', { ascending: true })
-          .range(from, to)
-      }
-
-      async function fetchAllRevenueRows(tableName) {
-        let from = 0
-        let allRows = []
-        while (true) {
-          const { data, error } = await buildRevenueQuery(tableName, from, from + pageSize - 1)
-          if (error) throw error
-          const batch = data || []
-          allRows = allRows.concat(batch)
-          if (batch.length < pageSize) break
-          from += pageSize
-          if (from > 50000) break
-        }
-        return allRows
-      }
-
-      let data = await fetchAllRevenueRows('daily_revenue_entries')
-      let sourceTable = 'daily_revenue_entries'
-
-      // Fallback for old databases where only daily_revenue aggregate rows exist.
-      if (!data.length) {
-        data = await fetchAllRevenueRows('daily_revenue')
-        sourceTable = 'daily_revenue'
-      }
-
-      const branchNameById = new Map((branches || []).map(b => [String(b.id), b.name]))
-      const rows = (data || []).map(row => {
-        const cash = parseNum(row.cash_amount)
-        const bank = parseNum(row.bank_amount)
-        const wolt = parseNum(row.wolt_amount)
-        return {
-          ...row,
-          source_table: sourceTable,
-          branch_name: branchNameById.get(String(row.branch_id)) || row.branch_id || '—',
-          cash,
-          bank,
-          wolt,
-          revenue: cash + bank + wolt
-        }
-      })
-
-      const totals = rows.reduce((acc, row) => {
-        acc.cash += parseNum(row.cash)
-        acc.bank += parseNum(row.bank)
-        acc.wolt += parseNum(row.wolt)
-        acc.revenue += parseNum(row.revenue)
-        return acc
-      }, { cash: 0, bank: 0, wolt: 0, revenue: 0 })
-
-      setRmsRevenueReport({ loading: false, error: '', rows, totals })
-      loadRmsRevenuePeriodOptions()
-    } catch (error) {
-      setRmsRevenueReport({ loading: false, error: error?.message || 'Не удалось загрузить выручку RMS', rows: [], totals: { cash: 0, bank: 0, wolt: 0, revenue: 0 } })
-    }
-  }
-
-  useEffect(() => {
-    if (!['overview', 'expenses'].includes(effectiveReportsTab)) return
-    loadRmsExpensesReport()
-  }, [effectiveReportsTab, branchFilter, monthFilter, branches.length])
-
-  useEffect(() => {
-    if (effectiveReportsTab !== 'profitability') return
-    loadRmsProfitabilityReport()
-  }, [effectiveReportsTab, profitabilitySelection, branches.length])
-
-  useEffect(() => {
-    if (effectiveReportsTab !== 'suppliers') return
-    loadRmsSuppliersReport()
-  }, [effectiveReportsTab, branchFilter, monthFilter, supplierReportDateFrom, supplierReportDateTo, branches.length])
-
-  useEffect(() => {
-    if (effectiveReportsTab !== 'debts') return
-    loadRmsDebtsReport()
-  }, [effectiveReportsTab, branchFilter, monthFilter, branches.length])
-
-  useEffect(() => {
-    if (!isProductsReportTab || !reportBranchesLoaded) return
-    loadRmsProductsReport()
-    return () => {
-      rmsProductsReportRequestRef.current += 1
-      window.clearTimeout(rmsProductsReportProgressTimerRef.current)
-    }
-  }, [isProductsReportTab, reportBranchesLoaded, productsReportSelectionKey])
-
-  useEffect(() => {
-    setProductsReportPage(1)
-  }, [reportsTab, isProductsReportTab, branchFilter, monthFilter, productsReportDateFrom, productsReportDateTo, productsReportSearch, productsReportCategory, productsReportSupplierId, productsReportSort])
-
-  useEffect(() => {
-    setProductsPriceDynamicsTab('up')
-  }, [reportsTab, isProductsReportTab, branchFilter, monthFilter, productsReportDateFrom, productsReportDateTo, productsPriceCompareMode])
-
-  async function loadRmsExpensesReport() {
-    setRmsExpensesReport(prev => ({ ...prev, loading: true, error: '' }))
-    try {
-      const period = (() => {
-        if (/^year:\d{4}$/.test(String(monthFilter || ''))) {
-          const year = String(monthFilter).replace('year:', '')
-          return { from: `${year}-01-01`, to: `${Number(year) + 1}-01-01` }
-        }
-        if (/^\d{4}-\d{2}$/.test(String(monthFilter || ''))) return { from: `${monthFilter}-01`, to: rmsNextMonthStart(monthFilter) }
-        return { from: '', to: '' }
-      })()
-      const applyRange = (query, field) => {
-        let next = query
-        if (period.from) next = next.gte(field, period.from)
-        if (period.to) next = next.lt(field, period.to)
-        return next
-      }
-      const fetchRows = async buildQuery => {
-        const { data, error } = await buildQuery().range(0, 49999)
-        if (error) throw error
-        return data || []
-      }
-      const [dailyRows, supplierRows, revenueRows, salaryRows, serviceRows, employeeResult] = await Promise.all([
-        fetchRows(() => applyRange(supabase.from('daily_expenses').select('id,branch_id,expense_date,amount,comment,custom_category,expense_categories(name)').is('deleted_at', null).order('expense_date', { ascending: false }), 'expense_date')),
-        fetchRows(() => applyRange(supabase.from('supplier_purchases').select('id,branch_id,purchase_date,invoice_number,total_amount,comment,suppliers(name)').is('deleted_at', null).order('purchase_date', { ascending: false }), 'purchase_date')),
-        fetchRows(() => applyRange(supabase.from('daily_revenue_entries').select('branch_id,revenue_date,cash_amount,bank_amount,wolt_amount').is('deleted_at', null), 'revenue_date')),
-        fetchRows(() => applyRange(supabase.from('salary_periods').select('employee_id,branch_id,salary_month,salary_gross,salary_net'), 'salary_month')),
-        fetchRows(() => supabase.from('monthly_branch_service_charge_cost').select('branch_id,month,staff_cost_amount')),
-        supabase.from('employees').select('id,branch_id,full_name,position,monthly_salary,is_active').eq('is_active', true)
-      ])
-      if (employeeResult.error) throw employeeResult.error
-
-      const branchNameById = new Map((branches || []).map(b => [String(b.id), b.name]))
-      const branchAllowed = id => branchFilter === 'all' || String(id || '') === String(branchFilter)
-      const rows = []
-      const pushRow = row => {
-        if (row.is_unallocated ? branchFilter === 'all' : branchAllowed(row.branch_id)) rows.push(row)
-      }
-
-      ;(dailyRows || []).forEach(row => {
-        if (isBoltSettlementExpenseRow(row)) {
-          pushRow({
-            id: `bolt-settlement-${row.id}`,
-            source: 'Оплата ранее учтённых поездок',
-            branch_id: row.branch_id,
-            branch_name: branchNameById.get(String(row.branch_id)) || row.branch_id || '—',
-            expense_date: row.expense_date,
-            category_name: 'Bolt — оплата поездок',
-            comment: row.comment || '',
-            amount: parseNum(row.amount),
-            informational: true
-          })
-          return
-        }
-        if (isTaxPaymentExpenseRow(row)) {
-          pushRow({
-            id: `tax-paid-${row.id}`,
-            source: 'Оплата налога',
-            branch_id: row.branch_id,
-            branch_name: branchNameById.get(String(row.branch_id)) || row.branch_id || '—',
-            expense_date: row.expense_date,
-            category_name: 'Оплаченный налог',
-            comment: row.comment || '',
-            amount: parseNum(row.amount),
-            bucket: 'taxPaid',
-            informational: true
-          })
-          return
-        }
-        if (isNonOperatingTaxExpenseRow(row)) return
-        const category = financeExpenseNameFromRow(row)
-        if (String(row?.comment || '').startsWith('SUPPLIER_PURCHASE_') || isSalaryExpenseName(category) || isDsmfExpenseName(category) || isBazarExpenseName(category) || isServiceChargeStaffExpenseName(category)) return
-        pushRow({
-          id: `daily-${row.id}`,
-          source: 'Операционные расходы',
-          branch_id: row.branch_id,
-          branch_name: branchNameById.get(String(row.branch_id)) || row.branch_id || '—',
-          expense_date: row.expense_date,
-          category_name: category,
-          comment: row.comment || '',
-          amount: parseNum(row.amount),
-          bucket: 'operating'
-        })
-      })
-      const revenueByBranch = new Map()
-      ;(revenueRows || []).forEach(row => {
-        const id = String(row.branch_id || '')
-        if (!id) return
-        revenueByBranch.set(id, parseNum(revenueByBranch.get(id)) + parseNum(row.cash_amount) + parseNum(row.bank_amount) + parseNum(row.wolt_amount))
-      })
-      const totalRevenue = Array.from(revenueByBranch.values()).reduce((sum, amount) => sum + parseNum(amount), 0)
-      const revenueShareMap = new Map()
-      revenueByBranch.forEach((amount, branchId) => revenueShareMap.set(branchId, totalRevenue > 0 ? parseNum(amount) / totalRevenue : 0))
-      ;(supplierRows || []).forEach(row => {
-        const targets = Array.from(revenueShareMap.entries()).map(([branchId, share]) => ({ branchId, share: parseNum(share) }))
-        targets.forEach(target => {
-          const amount = parseNum(row.total_amount) * target.share
-          if (amount <= 0) return
-          pushRow({
-            id: `supplier-${row.id}-${target.branchId}`,
-            source: 'Приходная накладная',
-            branch_id: target.branchId,
-            branch_name: branchNameById.get(target.branchId) || target.branchId,
-            expense_date: row.purchase_date,
-            category_name: 'Поставщики / Food Cost',
-            comment: [row.suppliers?.name || 'Поставщик', row.invoice_number ? `Фактура: ${row.invoice_number}` : '', row.comment || '', `Распределено по доле выручки ${pct(target.share * 100)}; исходная привязка филиала не используется для P&L`].filter(Boolean).join(' · '),
-            amount,
-            bucket: 'suppliers',
-            allocation_status: 'preliminary'
-          })
-        })
-      })
-      const employeeById = new Map((employeeResult.data || []).map(row => [String(row.id), row]))
-      const salaryByBranch = new Map()
-      let managerSalaryPool = 0
-      if ((salaryRows || []).length) {
-        ;(salaryRows || []).forEach(row => {
-          const employee = employeeById.get(String(row.employee_id)) || {}
-          const branchId = String(row.branch_id || employee.branch_id || '')
-          const amount = rmsSalaryPeriodTotal(row)
-          if (!amount) return
-          if (!branchId || positionGroup(employee.position) === 'Менеджеры') managerSalaryPool += amount
-          else salaryByBranch.set(branchId, parseNum(salaryByBranch.get(branchId)) + amount)
-        })
-      } else {
-        // Официальные дни и ставки могут отличаться от поля monthly_salary.
-        // Для текущего периода используем ту же формулу, что «Финансы» и Dashboard.
-      }
-      const allSalaryBranchIds = new Set([...revenueByBranch.keys(), ...salaryByBranch.keys(), ...(branches || []).map(row => String(row.id))])
-      allSalaryBranchIds.forEach(branchId => {
-        const calculatedPayroll = !(salaryRows || []).length
-          ? rmsFinancePayrollDetailsForScope(employeeResult.data || [], branchId, revenueShareMap)
-          : null
-        const direct = calculatedPayroll ? parseNum(calculatedPayroll.directSalary) : parseNum(salaryByBranch.get(branchId))
-        const managerPart = calculatedPayroll
-          ? parseNum(calculatedPayroll.managersSalary)
-          : (totalRevenue > 0 ? managerSalaryPool * parseNum(revenueByBranch.get(branchId)) / totalRevenue : 0)
-        const amount = direct + managerPart
-        if (!amount) return
-        pushRow({
-          id: `salary-${branchId}-${monthFilter}`,
-          source: 'Начисление',
-          branch_id: branchId,
-          branch_name: branchNameById.get(branchId) || branchId,
-          expense_date: period.from || '',
-          category_name: 'Зарплаты (начислено)',
-          comment: managerPart ? `Прямые сотрудники: ${fmt(direct)}; менеджмент: ${fmt(managerPart)}` : 'Начисление по сотрудникам филиала',
-          amount,
-          bucket: 'salary'
-        })
-      })
-      const serviceMonthAllowed = value => {
-        const month = String(value || '')
-        if (!monthFilter || monthFilter === 'all') return true
-        if (/^year:\d{4}$/.test(String(monthFilter))) return month.startsWith(String(monthFilter).replace('year:', ''))
-        return month === String(monthFilter)
-      }
-      const enabledServiceBranchIds = new Set((branches || []).filter(branch => branch.service_charge_enabled).map(branch => String(branch.id)))
-      ;(serviceRows || []).filter(row => serviceMonthAllowed(row.month) && enabledServiceBranchIds.has(String(row.branch_id))).forEach(row => {
-        const amount = parseNum(row.staff_cost_amount)
-        if (!amount) return
-        pushRow({
-          id: `service-${row.branch_id}-${row.month}`,
-          source: 'Начисление',
-          branch_id: row.branch_id,
-          branch_name: branchNameById.get(String(row.branch_id)) || row.branch_id || '—',
-          expense_date: row.month || '',
-          category_name: 'Service charge персоналу',
-          comment: 'Отдельная статья расходов филиала',
-          amount,
-          bucket: 'serviceCharge'
-        })
-      })
-      const taxSettings = await readRmsAppSetting(RMS_BRANCH_TAX_RATE_SETTING, {})
-      revenueByBranch.forEach((revenue, branchId) => {
-        const configuredRate = parseNum(taxSettings?.[branchId])
-        const rate = configuredRate > 0 ? configuredRate : 8
-        const amount = parseNum(revenue) * rate / 100
-        if (!amount) return
-        pushRow({
-          id: `tax-${branchId}-${monthFilter}`,
-          source: 'Расчёт',
-          branch_id: branchId,
-          branch_name: branchNameById.get(branchId) || branchId,
-          expense_date: period.from || '',
-          category_name: 'Налог с оборота',
-          comment: `${fmt(revenue)} AZN × ${pct(rate)} от оборота`,
-          amount,
-          bucket: 'tax'
-        })
-      })
-
-      const byCategoryMap = new Map()
-      const byBranchMap = new Map()
-      rows.forEach(row => {
-        if (row.informational) return
-        const cat = row.category_name || 'Прочее'
-        const prevCat = byCategoryMap.get(cat) || { name: cat, amount: 0, transactions: 0 }
-        prevCat.amount += parseNum(row.amount)
-        prevCat.transactions += 1
-        byCategoryMap.set(cat, prevCat)
-
-        const branch = row.branch_name || '—'
-        const prevBranch = byBranchMap.get(branch) || { name: branch, amount: 0, transactions: 0 }
-        prevBranch.amount += parseNum(row.amount)
-        prevBranch.transactions += 1
-        byBranchMap.set(branch, prevBranch)
-      })
-
-      const byCategory = Array.from(byCategoryMap.values()).sort((a, b) => b.amount - a.amount)
-      const byBranch = Array.from(byBranchMap.values()).sort((a, b) => b.amount - a.amount)
-      const totals = rows.reduce((acc, row) => {
-        const amount = parseNum(row.amount)
-        if (!row.informational) {
-          acc.amount += amount
-          acc.transactions += 1
-        }
-        if (Object.prototype.hasOwnProperty.call(acc, row.bucket)) acc[row.bucket] += amount
-        return acc
-      }, { amount: 0, operating: 0, suppliers: 0, salary: 0, tax: 0, serviceCharge: 0, unallocated: 0, transactions: 0, categories: byCategory.length })
-      setRmsExpensesReport({ loading: false, error: '', rows, totals, byCategory, byBranch })
-    } catch (error) {
-      setRmsExpensesReport({ loading: false, error: error?.message || 'Не удалось загрузить расходы RMS', rows: [], totals: { amount: 0, operating: 0, suppliers: 0, salary: 0, tax: 0, serviceCharge: 0, unallocated: 0, transactions: 0, categories: 0 }, byCategory: [], byBranch: [] })
-    }
-  }
-
+async function readRmsProfitabilitySnapshot(branches, profitabilitySelection) {
+  const profitabilityRequestId = {current: 0}
+  let result
+  const setRmsProfitabilityReport = value => { if (typeof value !== 'function') result = value }
   async function loadRmsProfitabilityReport() {
     const requestId = ++profitabilityRequestId.current
     setRmsProfitabilityReport(prev => ({ ...prev, loading: true, error: '' }))
@@ -6680,6 +5995,706 @@ function Reports({ t, permissions = [], isAdmin = false }) {
         source: ''
       })
     }
+  }
+
+  await loadRmsProfitabilityReport()
+  return result
+}
+
+function Reports({ t, permissions = [], isAdmin = false }) {
+  const { branches, loaded: reportBranchesLoaded } = useBranches(true, true)
+  const [reports, setReports] = useState(() => readAikoSalesReports())
+  const [branchMap, setBranchMap] = useState(() => readAikoBranchMap())
+  const [reportsTab, setReportsTab] = useState('overview')
+  const [overviewTrendMode, setOverviewTrendMode] = useState('revenue')
+
+  const reportPermissionRows = Array.isArray(permissions)
+    ? permissions.filter(p => String(p.section || '').startsWith(REPORT_PERMISSION_PREFIX))
+    : []
+  const hasSpecificReportPermissions = reportPermissionRows.length > 0
+  const canReadReportTab = (tabId) => {
+    if (isAdmin || !hasSpecificReportPermissions) return true
+    const row = reportPermissionRows.find(p => p.section === reportPermissionSection(tabId))
+    if (!row && tabId === 'profitability') {
+      const overviewRow = reportPermissionRows.find(p => p.section === reportPermissionSection('overview'))
+      return canReadAccess(overviewRow?.access || 'none')
+    }
+    if (!row && tabId === 'debts') {
+      const suppliersRow = reportPermissionRows.find(p => p.section === reportPermissionSection('suppliers'))
+      return canReadAccess(suppliersRow?.access || 'none')
+    }
+    return canReadAccess(row?.access || 'none')
+  }
+  const reportTabs = REPORTS_ACCESS_TABS.filter(tab => canReadReportTab(tab.id))
+  const reportTabIdsKey = reportTabs.map(tab => tab.id).join('|')
+  const effectiveReportsTab = reportTabs.some(tab => tab.id === reportsTab)
+    ? reportsTab
+    : (reportTabs[0]?.id || '')
+
+  React.useEffect(() => {
+    if (effectiveReportsTab && effectiveReportsTab !== reportsTab) {
+      setReportsTab(effectiveReportsTab)
+    }
+  }, [effectiveReportsTab, reportsTab, reportTabIdsKey])
+
+  const productReportTabIds = ['products', 'product', 'goods', 'items', 'stock-products', 'inventory-products', 'product_movement', 'products_movement', 'goods_movement', 'товары']
+  const isProductsReportTab = productReportTabIds.includes(String(effectiveReportsTab || reportsTab || '').toLowerCase())
+
+  const [branchFilter, setBranchFilter] = useState('all')
+  const [departmentFilter, setDepartmentFilter] = useState('all')
+  const [monthFilter, setMonthFilter] = useState('all')
+  const [profitabilitySelection, setProfitabilitySelection] = useState(() => ({ ...defaultMonthRange(), branchIds: undefined }))
+  const profitabilityRequestId = React.useRef(0)
+  const [rmsRevenuePeriodOptions, setRmsRevenuePeriodOptions] = useState({ months: [], years: [] })
+  const [revenueDateFrom, setRevenueDateFrom] = useState('')
+  const [revenueDateTo, setRevenueDateTo] = useState('')
+  const [revenuePage, setRevenuePage] = useState(1)
+  const [salesSort, setSalesSort] = useState({ field: 'revenue', dir: 'desc' })
+  const [importBranchId, setImportBranchId] = useState('auto')
+  const [importText, setImportText] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [message, setMessage] = useState('')
+  useRmsStatusToast(message)
+  const [expandedSalesRows, setExpandedSalesRows] = useState(false)
+  const [salesTableSearch, setSalesTableSearch] = useState('')
+  const [salesRowsPage, setSalesRowsPage] = useState(1)
+  const [expandedReportsTable, setExpandedReportsTable] = useState(false)
+  const [expandedAiTables, setExpandedAiTables] = useState({})
+  const [aiTopLimit, setAiTopLimit] = useState(10)
+  const [aiOutsiderLimit, setAiOutsiderLimit] = useState(10)
+  const [salesAiQuery, setSalesAiQuery] = useState('')
+  const [salesAiExportMode, setSalesAiExportMode] = useState('prices')
+  const [hiddenSalesKeys, setHiddenSalesKeys] = useState(() => readAikoHiddenSalesKeys())
+  const [salesNameAliases, setSalesNameAliases] = useState(() => readAikoSalesNameAliases())
+  const [showHiddenSalesItems, setShowHiddenSalesItems] = useState(false)
+  const [recipeCostMap, setRecipeCostMap] = useState({})
+  const [cloudSyncStatus, setCloudSyncStatus] = useState('')
+  const [cloudHiddenSalesLoaded, setCloudHiddenSalesLoaded] = useState(false)
+  const [cloudSalesAliasesLoaded, setCloudSalesAliasesLoaded] = useState(false)
+  const [rmsRevenueReport, setRmsRevenueReport] = useState({ loading: false, error: '', rows: [], totals: { cash: 0, bank: 0, wolt: 0, revenue: 0 } })
+  const [rmsExpensesReport, setRmsExpensesReport] = useState({
+    loading: false,
+    error: '',
+    rows: [],
+    totals: { amount: 0, operating: 0, suppliers: 0, salary: 0, tax: 0, serviceCharge: 0, unallocated: 0, transactions: 0, categories: 0 },
+    byCategory: [],
+    byBranch: []
+  })
+  const [rmsProfitabilityReport, setRmsProfitabilityReport] = useState({
+    loading: false,
+    error: '',
+    rows: [],
+    totals: {
+      revenue: 0,
+      baseRevenue: 0,
+      woltRevenue: 0,
+      operatingExpenses: 0,
+      foodCost: 0,
+      salary: 0,
+      serviceCost: 0,
+      tax: 0,
+      woltCommission: 0,
+      totalExpenses: 0,
+      net: 0,
+      margin: 0,
+      activeDays: 0,
+      branches: 0
+    },
+    periodLabel: '',
+    source: ''
+  })
+  const [profitabilityMetric, setProfitabilityMetric] = useState('net')
+  const [expandedProfitabilityBranches, setExpandedProfitabilityBranches] = useState(() => new Set())
+  const [expandedProfitabilityExpenseGroups, setExpandedProfitabilityExpenseGroups] = useState(() => new Set())
+
+  const [rmsSuppliersReport, setRmsSuppliersReport] = useState({
+    loading: false,
+    error: '',
+    rows: [],
+    totals: { purchases: 0, payments: 0, balance: 0, suppliers: 0, invoices: 0, products: 0, averageInvoice: 0, overdue: 0, overLimit: 0 },
+    purchases: [],
+    payments: [],
+    purchaseItems: [],
+    productRows: [],
+    priceChanges: [],
+    priceChangesDown: [],
+    supplierOptions: []
+  })
+  const rmsSuppliersReportRequestRef = useRef(0)
+  const [rmsDebtsReport, setRmsDebtsReport] = useState({
+    loading: false,
+    error: '',
+    rows: [],
+    supplierOptions: [],
+    voenOptions: [],
+    totals: { debt: 0, suppliers: 0, legalEntities: 0, invoices: 0, eInvoices: 0, payments: 0 }
+  })
+  const [debtSearch, setDebtSearch] = useState('')
+  const [debtSupplierId, setDebtSupplierId] = useState('all')
+  const [debtVoen, setDebtVoen] = useState('all')
+  const [debtPage, setDebtPage] = useState(1)
+  const [debtPageSize, setDebtPageSize] = useState(50)
+  const [rmsProductsReportData, setRmsProductsReport] = useState({ loading: false, error: '', rows: [], detailRows: [], totals: { amount: 0, products: 0, items: 0, invoices: 0, suppliers: 0 }, categories: [], suppliers: [], bySupplier: [], byCategory: [], priceDynamics: [], lastPurchaseDynamics: [], priceDynamicsMeta: { currentLabel: '', previousLabel: '', compareAvailable: false }, amountDynamicsMeta: { currentLabel: '', previousLabel: '', compareAvailable: false, autoCompare: false } })
+  const [rmsProductsReportProgress, setRmsProductsReportProgress] = useState({ active: false, progress: 0, title: '', detail: '', step: '', status: 'idle' })
+  const [productsReportDateFrom, setProductsReportDateFrom] = useState('')
+  const [productsReportDateTo, setProductsReportDateTo] = useState('')
+  const [productsReportSearch, setProductsReportSearch] = useState('')
+  const [productsReportCategory, setProductsReportCategory] = useState('all')
+  const [productsReportSupplierId, setProductsReportSupplierId] = useState('all')
+  const [productsReportSort, setProductsReportSort] = useState({ field: 'amount', dir: 'desc' })
+  const [productsPriceCompareMode, setProductsPriceCompareMode] = useState('period')
+  const [productsPriceDynamicsTab, setProductsPriceDynamicsTab] = useState('up')
+  const [productsReportPage, setProductsReportPage] = useState(1)
+  const [productsReportDetailsOpen, setProductsReportDetailsOpen] = useState(false)
+  const rmsProductsReportRequestRef = useRef(0)
+  const rmsProductsReportProgressTimerRef = useRef(null)
+  const productsReportSelectionKey = JSON.stringify([branchFilter, monthFilter, productsReportDateFrom, productsReportDateTo])
+  // Hide the previous selection before effects/network work start. Refreshing
+  // the same selection can keep its existing rows visible beneath progress.
+  const rmsProductsReport = rmsProductsReportData.selectionKey === productsReportSelectionKey
+    ? rmsProductsReportData
+    : { loading: true, error: '', rows: [], detailRows: [], totals: { amount: 0, products: 0, items: 0, invoices: 0, suppliers: 0 }, categories: [], suppliers: [], bySupplier: [], byCategory: [], priceDynamics: [], lastPurchaseDynamics: [], priceDynamicsMeta: {}, amountDynamicsMeta: {} }
+
+  const [supplierReportSort, setSupplierReportSort] = useState({ field: 'balance', dir: 'desc' })
+  const [supplierReportTab, setSupplierReportTab] = useState('overview')
+  const [supplierReportGrouping, setSupplierReportGrouping] = useState('month')
+  const [supplierReportSearch, setSupplierReportSearch] = useState('')
+  const [supplierReportProductSearch, setSupplierReportProductSearch] = useState('')
+  const [supplierReportSupplierId, setSupplierReportSupplierId] = useState('all')
+  const [supplierReportDateFrom, setSupplierReportDateFrom] = useState('')
+  const [supplierReportDateTo, setSupplierReportDateTo] = useState('')
+  const [supplierReportPriceTab, setSupplierReportPriceTab] = useState('up')
+  const [expandedSupplierReportIds, setExpandedSupplierReportIds] = useState(() => new Set())
+
+  useEffect(() => { writeAikoSalesReports(reports) }, [reports])
+  useEffect(() => { writeAikoBranchMap(branchMap) }, [branchMap])
+  useEffect(() => {
+    const normalized = normalizeHiddenSalesKeys(hiddenSalesKeys)
+    writeAikoHiddenSalesKeys(normalized)
+    if (!cloudHiddenSalesLoaded) return
+    writeRmsAppSetting(RMS_HIDDEN_SALES_KEYS_SETTING, normalized).then(({ error }) => {
+      if (error) setCloudSyncStatus('Внимание: скрытые позиции пока сохраняются только в браузере. Проверьте таблицу rms_app_settings и RLS policies в Supabase.')
+    }).catch(() => setCloudSyncStatus('Внимание: скрытые позиции пока сохраняются только в браузере. Проверьте таблицу rms_app_settings в Supabase.'))
+  }, [hiddenSalesKeys, cloudHiddenSalesLoaded])
+
+  useEffect(() => {
+    writeAikoSalesNameAliases(salesNameAliases)
+    if (!cloudSalesAliasesLoaded) return
+    writeRmsAppSetting(RMS_SALES_NAME_ALIASES_SETTING, salesNameAliases || {})
+  }, [salesNameAliases, cloudSalesAliasesLoaded])
+
+  useEffect(() => {
+    let cancelled = false
+    async function loadSalesAliasesCloud() {
+      const cloudAliases = await readRmsAppSetting(RMS_SALES_NAME_ALIASES_SETTING, {})
+      if (!cancelled && cloudAliases && typeof cloudAliases === 'object') {
+        setSalesNameAliases(prev => ({ ...(cloudAliases || {}), ...(prev || {}) }))
+      }
+      if (!cancelled) setCloudSalesAliasesLoaded(true)
+    }
+    loadSalesAliasesCloud()
+    return () => { cancelled = true }
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    async function loadHiddenKeysCloud() {
+      const cloudKeys = await readRmsAppSetting(RMS_HIDDEN_SALES_KEYS_SETTING, [])
+      if (!cancelled && Array.isArray(cloudKeys) && cloudKeys.length) {
+        setHiddenSalesKeys(prev => normalizeHiddenSalesKeys([...(prev || []), ...cloudKeys]))
+      }
+      if (!cancelled) setCloudHiddenSalesLoaded(true)
+    }
+    loadHiddenKeysCloud()
+    return () => { cancelled = true }
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    async function loadCloudReports() {
+      const { data, error } = await readAikoSalesReportsCloud()
+      if (cancelled) return
+      if (error) {
+        setCloudSyncStatus('Внимание: таблица rms_sales_reports в Supabase не найдена/недоступна. Отчёты временно хранятся только в браузере и могут пропасть при открытии нового Vercel preview-домена. Для постоянного хранения создайте таблицу rms_sales_reports.')
+        return
+      }
+      if (data?.length) {
+        setReports(prev => mergeAikoReports(prev, data))
+        setCloudSyncStatus('Отчёты синхронизированы с Supabase')
+      } else if (reports.length) {
+        const saved = await writeAikoSalesReportsCloud(reports)
+        if (!saved.error && !cancelled) setCloudSyncStatus('Локальные отчёты отправлены в Supabase')
+      }
+    }
+    loadCloudReports()
+    return () => { cancelled = true }
+  }, [])
+
+  useEffect(() => {
+    async function loadRecipeCosts() {
+      try {
+        let menuItems = []
+        let recipeRows = []
+        let costs = []
+        const workspace = await fetchRmsRecipesWorkspace()
+        if (workspace.data) {
+          menuItems = workspace.data.menu_items || []
+          recipeRows = workspace.data.recipe_items || []
+          costs = workspace.data.latest_product_costs || []
+        } else {
+          const [{ data: items }, { data: rows }, { data: latest }] = await Promise.all([
+            supabase.from('menu_items').select('id,name').eq('is_active', true),
+            supabase.from('recipe_items').select('menu_item_id,product_id,quantity,waste_percent'),
+            supabase.from('latest_product_costs').select('product_id,price_per_base_unit')
+          ])
+          menuItems = items || []
+          recipeRows = rows || []
+          costs = latest || []
+        }
+        const costByProduct = new Map((costs || []).map(c => [String(c.product_id), parseNum(c.price_per_base_unit)]))
+        const map = {}
+        ;(menuItems || []).forEach(item => {
+          const recipeCost = (recipeRows || [])
+            .filter(row => String(row.menu_item_id) === String(item.id))
+            .reduce((sum, row) => sum + parseNum(row.quantity) * parseNum(costByProduct.get(String(row.product_id))) * (1 + parseNum(row.waste_percent) / 100), 0)
+          map[normalizeSalesKey(item.name)] = recipeCost > 0 ? recipeCost : 0
+        })
+        Object.entries(salesNameAliases || {}).forEach(([oldKey, canonicalName]) => {
+          const targetKey = normalizeSalesKey(canonicalName)
+          if (targetKey && Object.prototype.hasOwnProperty.call(map, targetKey)) map[oldKey] = map[targetKey]
+        })
+        setRecipeCostMap(map)
+      } catch (_e) {
+        setRecipeCostMap({})
+      }
+    }
+    loadRecipeCosts()
+  }, [salesNameAliases])
+
+  useEffect(() => {
+    if (!['overview', 'revenue'].includes(effectiveReportsTab)) return
+    loadRmsRevenueReport()
+  }, [effectiveReportsTab, branchFilter, monthFilter, revenueDateFrom, revenueDateTo, branches.length])
+
+  useEffect(() => {
+    setRevenuePage(1)
+  }, [reportsTab, branchFilter, monthFilter, revenueDateFrom, revenueDateTo])
+
+  async function loadRmsRevenuePeriodOptions() {
+    try {
+      const collect = (rows = []) => {
+        const months = new Set()
+        const years = new Set()
+        ;(rows || []).forEach(row => {
+          const d = String(row?.revenue_date || '').slice(0, 10)
+          const month = d.slice(0, 7)
+          const year = d.slice(0, 4)
+          if (/^\d{4}-\d{2}$/.test(month)) months.add(month)
+          if (/^\d{4}$/.test(year)) years.add(year)
+        })
+        return { months, years }
+      }
+
+      async function fetchRevenueDates(tableName) {
+        const pageSize = 1000
+        let from = 0
+        let allRows = []
+        while (true) {
+          const { data, error } = await supabase
+            .from(tableName)
+            .select('revenue_date')
+            .is('deleted_at', null)
+            .order('revenue_date', { ascending: false })
+            .range(from, from + pageSize - 1)
+
+          if (error) throw error
+          const batch = data || []
+          allRows = allRows.concat(batch)
+          if (batch.length < pageSize) break
+          from += pageSize
+          if (from > 50000) break
+        }
+        return allRows
+      }
+
+      const [entriesRows, legacyRows] = await Promise.all([
+        fetchRevenueDates('daily_revenue_entries'),
+        fetchRevenueDates('daily_revenue')
+      ])
+
+      const entries = collect(entriesRows)
+      const legacy = collect(legacyRows)
+      const months = Array.from(new Set([...entries.months, ...legacy.months])).sort().reverse()
+      const years = Array.from(new Set([...entries.years, ...legacy.years])).sort().reverse()
+      setRmsRevenuePeriodOptions({ months, years })
+    } catch (error) {
+      // Period selector is diagnostic/UX only. Revenue loading below remains the source of truth.
+      setRmsRevenuePeriodOptions(prev => prev || { months: [], years: [] })
+    }
+  }
+
+  useEffect(() => {
+    loadRmsRevenuePeriodOptions()
+  }, [])
+
+  async function loadRmsRevenueReport() {
+    setRmsRevenueReport(prev => ({ ...prev, loading: true, error: '' }))
+    try {
+      const pageSize = 1000
+
+      const buildRevenueQuery = (tableName, from, to) => {
+        let query = supabase
+          .from(tableName)
+          .select(tableName === 'daily_revenue_entries'
+            ? 'id,branch_id,revenue_date,cash_amount,bank_amount,wolt_amount,comment'
+            : 'branch_id,revenue_date,cash_amount,bank_amount,wolt_amount'
+          )
+          .is('deleted_at', null)
+
+        if (branchFilter !== 'all') query = query.eq('branch_id', branchFilter)
+
+        const hasCustomRevenueRange = Boolean(revenueDateFrom || revenueDateTo)
+        if (hasCustomRevenueRange) {
+          if (revenueDateFrom) query = query.gte('revenue_date', revenueDateFrom)
+          if (revenueDateTo) query = query.lte('revenue_date', revenueDateTo)
+        } else if (/^year:\d{4}$/.test(String(monthFilter || ''))) {
+          const year = String(monthFilter).replace('year:', '')
+          query = query.gte('revenue_date', `${year}-01-01`).lt('revenue_date', `${Number(year) + 1}-01-01`)
+        } else if (/^\d{4}-\d{2}$/.test(String(monthFilter || ''))) {
+          const start = `${monthFilter}-01`
+          const end = rmsNextMonthStart(monthFilter)
+          query = query.gte('revenue_date', start).lt('revenue_date', end)
+        }
+
+        return query
+          .order('revenue_date', { ascending: false })
+          .order('branch_id', { ascending: true })
+          .range(from, to)
+      }
+
+      async function fetchAllRevenueRows(tableName) {
+        let from = 0
+        let allRows = []
+        while (true) {
+          const { data, error } = await buildRevenueQuery(tableName, from, from + pageSize - 1)
+          if (error) throw error
+          const batch = data || []
+          allRows = allRows.concat(batch)
+          if (batch.length < pageSize) break
+          from += pageSize
+          if (from > 50000) break
+        }
+        return allRows
+      }
+
+      let data = await fetchAllRevenueRows('daily_revenue_entries')
+      let sourceTable = 'daily_revenue_entries'
+
+      // Fallback for old databases where only daily_revenue aggregate rows exist.
+      if (!data.length) {
+        data = await fetchAllRevenueRows('daily_revenue')
+        sourceTable = 'daily_revenue'
+      }
+
+      const branchNameById = new Map((branches || []).map(b => [String(b.id), b.name]))
+      const rows = (data || []).map(row => {
+        const cash = parseNum(row.cash_amount)
+        const bank = parseNum(row.bank_amount)
+        const wolt = parseNum(row.wolt_amount)
+        return {
+          ...row,
+          source_table: sourceTable,
+          branch_name: branchNameById.get(String(row.branch_id)) || row.branch_id || '—',
+          cash,
+          bank,
+          wolt,
+          revenue: cash + bank + wolt
+        }
+      })
+
+      const totals = rows.reduce((acc, row) => {
+        acc.cash += parseNum(row.cash)
+        acc.bank += parseNum(row.bank)
+        acc.wolt += parseNum(row.wolt)
+        acc.revenue += parseNum(row.revenue)
+        return acc
+      }, { cash: 0, bank: 0, wolt: 0, revenue: 0 })
+
+      setRmsRevenueReport({ loading: false, error: '', rows, totals })
+      loadRmsRevenuePeriodOptions()
+    } catch (error) {
+      setRmsRevenueReport({ loading: false, error: error?.message || 'Не удалось загрузить выручку RMS', rows: [], totals: { cash: 0, bank: 0, wolt: 0, revenue: 0 } })
+    }
+  }
+
+  useEffect(() => {
+    if (!['overview', 'expenses'].includes(effectiveReportsTab)) return
+    loadRmsExpensesReport()
+  }, [effectiveReportsTab, branchFilter, monthFilter, branches.length])
+
+  useEffect(() => {
+    if (effectiveReportsTab !== 'profitability') return
+    refreshRmsProfitabilityReport()
+  }, [effectiveReportsTab, profitabilitySelection, branches.length])
+
+  useEffect(() => {
+    if (effectiveReportsTab !== 'suppliers') return
+    loadRmsSuppliersReport()
+  }, [effectiveReportsTab, branchFilter, monthFilter, supplierReportDateFrom, supplierReportDateTo, branches.length])
+
+  useEffect(() => {
+    if (effectiveReportsTab !== 'debts') return
+    loadRmsDebtsReport()
+  }, [effectiveReportsTab, branchFilter, monthFilter, branches.length])
+
+  useEffect(() => {
+    if (!isProductsReportTab || !reportBranchesLoaded) return
+    loadRmsProductsReport()
+    return () => {
+      rmsProductsReportRequestRef.current += 1
+      window.clearTimeout(rmsProductsReportProgressTimerRef.current)
+    }
+  }, [isProductsReportTab, reportBranchesLoaded, productsReportSelectionKey])
+
+  useEffect(() => {
+    setProductsReportPage(1)
+  }, [reportsTab, isProductsReportTab, branchFilter, monthFilter, productsReportDateFrom, productsReportDateTo, productsReportSearch, productsReportCategory, productsReportSupplierId, productsReportSort])
+
+  useEffect(() => {
+    setProductsPriceDynamicsTab('up')
+  }, [reportsTab, isProductsReportTab, branchFilter, monthFilter, productsReportDateFrom, productsReportDateTo, productsPriceCompareMode])
+
+  async function loadRmsExpensesReport() {
+    setRmsExpensesReport(prev => ({ ...prev, loading: true, error: '' }))
+    try {
+      const period = (() => {
+        if (/^year:\d{4}$/.test(String(monthFilter || ''))) {
+          const year = String(monthFilter).replace('year:', '')
+          return { from: `${year}-01-01`, to: `${Number(year) + 1}-01-01` }
+        }
+        if (/^\d{4}-\d{2}$/.test(String(monthFilter || ''))) return { from: `${monthFilter}-01`, to: rmsNextMonthStart(monthFilter) }
+        return { from: '', to: '' }
+      })()
+      const applyRange = (query, field) => {
+        let next = query
+        if (period.from) next = next.gte(field, period.from)
+        if (period.to) next = next.lt(field, period.to)
+        return next
+      }
+      const fetchRows = async buildQuery => {
+        const { data, error } = await buildQuery().range(0, 49999)
+        if (error) throw error
+        return data || []
+      }
+      const [dailyRows, supplierRows, revenueRows, salaryRows, serviceRows, employeeResult] = await Promise.all([
+        fetchRows(() => applyRange(supabase.from('daily_expenses').select('id,branch_id,expense_date,amount,comment,custom_category,expense_categories(name)').is('deleted_at', null).order('expense_date', { ascending: false }), 'expense_date')),
+        fetchRows(() => applyRange(supabase.from('supplier_purchases').select('id,branch_id,purchase_date,invoice_number,total_amount,comment,suppliers(name)').is('deleted_at', null).order('purchase_date', { ascending: false }), 'purchase_date')),
+        fetchRows(() => applyRange(supabase.from('daily_revenue_entries').select('branch_id,revenue_date,cash_amount,bank_amount,wolt_amount').is('deleted_at', null), 'revenue_date')),
+        fetchRows(() => applyRange(supabase.from('salary_periods').select('employee_id,branch_id,salary_month,salary_gross,salary_net'), 'salary_month')),
+        fetchRows(() => supabase.from('monthly_branch_service_charge_cost').select('branch_id,month,staff_cost_amount')),
+        supabase.from('employees').select('id,branch_id,full_name,position,monthly_salary,is_active').eq('is_active', true)
+      ])
+      if (employeeResult.error) throw employeeResult.error
+
+      const branchNameById = new Map((branches || []).map(b => [String(b.id), b.name]))
+      const branchAllowed = id => branchFilter === 'all' || String(id || '') === String(branchFilter)
+      const rows = []
+      const pushRow = row => {
+        if (row.is_unallocated ? branchFilter === 'all' : branchAllowed(row.branch_id)) rows.push(row)
+      }
+
+      ;(dailyRows || []).forEach(row => {
+        if (isBoltSettlementExpenseRow(row)) {
+          pushRow({
+            id: `bolt-settlement-${row.id}`,
+            source: 'Оплата ранее учтённых поездок',
+            branch_id: row.branch_id,
+            branch_name: branchNameById.get(String(row.branch_id)) || row.branch_id || '—',
+            expense_date: row.expense_date,
+            category_name: 'Bolt — оплата поездок',
+            comment: row.comment || '',
+            amount: parseNum(row.amount),
+            informational: true
+          })
+          return
+        }
+        if (isTaxPaymentExpenseRow(row)) {
+          pushRow({
+            id: `tax-paid-${row.id}`,
+            source: 'Оплата налога',
+            branch_id: row.branch_id,
+            branch_name: branchNameById.get(String(row.branch_id)) || row.branch_id || '—',
+            expense_date: row.expense_date,
+            category_name: 'Оплаченный налог',
+            comment: row.comment || '',
+            amount: parseNum(row.amount),
+            bucket: 'taxPaid',
+            informational: true
+          })
+          return
+        }
+        if (isNonOperatingTaxExpenseRow(row)) return
+        const category = financeExpenseNameFromRow(row)
+        if (String(row?.comment || '').startsWith('SUPPLIER_PURCHASE_') || isSalaryExpenseName(category) || isDsmfExpenseName(category) || isBazarExpenseName(category) || isServiceChargeStaffExpenseName(category)) return
+        pushRow({
+          id: `daily-${row.id}`,
+          source: 'Операционные расходы',
+          branch_id: row.branch_id,
+          branch_name: branchNameById.get(String(row.branch_id)) || row.branch_id || '—',
+          expense_date: row.expense_date,
+          category_name: category,
+          comment: row.comment || '',
+          amount: parseNum(row.amount),
+          bucket: 'operating'
+        })
+      })
+      const revenueByBranch = new Map()
+      ;(revenueRows || []).forEach(row => {
+        const id = String(row.branch_id || '')
+        if (!id) return
+        revenueByBranch.set(id, parseNum(revenueByBranch.get(id)) + parseNum(row.cash_amount) + parseNum(row.bank_amount) + parseNum(row.wolt_amount))
+      })
+      const totalRevenue = Array.from(revenueByBranch.values()).reduce((sum, amount) => sum + parseNum(amount), 0)
+      const revenueShareMap = new Map()
+      revenueByBranch.forEach((amount, branchId) => revenueShareMap.set(branchId, totalRevenue > 0 ? parseNum(amount) / totalRevenue : 0))
+      ;(supplierRows || []).forEach(row => {
+        const targets = Array.from(revenueShareMap.entries()).map(([branchId, share]) => ({ branchId, share: parseNum(share) }))
+        targets.forEach(target => {
+          const amount = parseNum(row.total_amount) * target.share
+          if (amount <= 0) return
+          pushRow({
+            id: `supplier-${row.id}-${target.branchId}`,
+            source: 'Приходная накладная',
+            branch_id: target.branchId,
+            branch_name: branchNameById.get(target.branchId) || target.branchId,
+            expense_date: row.purchase_date,
+            category_name: 'Поставщики / Food Cost',
+            comment: [row.suppliers?.name || 'Поставщик', row.invoice_number ? `Фактура: ${row.invoice_number}` : '', row.comment || '', `Распределено по доле выручки ${pct(target.share * 100)}; исходная привязка филиала не используется для P&L`].filter(Boolean).join(' · '),
+            amount,
+            bucket: 'suppliers',
+            allocation_status: 'preliminary'
+          })
+        })
+      })
+      const employeeById = new Map((employeeResult.data || []).map(row => [String(row.id), row]))
+      const salaryByBranch = new Map()
+      let managerSalaryPool = 0
+      if ((salaryRows || []).length) {
+        ;(salaryRows || []).forEach(row => {
+          const employee = employeeById.get(String(row.employee_id)) || {}
+          const branchId = String(row.branch_id || employee.branch_id || '')
+          const amount = rmsSalaryPeriodTotal(row)
+          if (!amount) return
+          if (!branchId || positionGroup(employee.position) === 'Менеджеры') managerSalaryPool += amount
+          else salaryByBranch.set(branchId, parseNum(salaryByBranch.get(branchId)) + amount)
+        })
+      } else {
+        // Официальные дни и ставки могут отличаться от поля monthly_salary.
+        // Для текущего периода используем ту же формулу, что «Финансы» и Dashboard.
+      }
+      const allSalaryBranchIds = new Set([...revenueByBranch.keys(), ...salaryByBranch.keys(), ...(branches || []).map(row => String(row.id))])
+      allSalaryBranchIds.forEach(branchId => {
+        const calculatedPayroll = !(salaryRows || []).length
+          ? rmsFinancePayrollDetailsForScope(employeeResult.data || [], branchId, revenueShareMap)
+          : null
+        const direct = calculatedPayroll ? parseNum(calculatedPayroll.directSalary) : parseNum(salaryByBranch.get(branchId))
+        const managerPart = calculatedPayroll
+          ? parseNum(calculatedPayroll.managersSalary)
+          : (totalRevenue > 0 ? managerSalaryPool * parseNum(revenueByBranch.get(branchId)) / totalRevenue : 0)
+        const amount = direct + managerPart
+        if (!amount) return
+        pushRow({
+          id: `salary-${branchId}-${monthFilter}`,
+          source: 'Начисление',
+          branch_id: branchId,
+          branch_name: branchNameById.get(branchId) || branchId,
+          expense_date: period.from || '',
+          category_name: 'Зарплаты (начислено)',
+          comment: managerPart ? `Прямые сотрудники: ${fmt(direct)}; менеджмент: ${fmt(managerPart)}` : 'Начисление по сотрудникам филиала',
+          amount,
+          bucket: 'salary'
+        })
+      })
+      const serviceMonthAllowed = value => {
+        const month = String(value || '')
+        if (!monthFilter || monthFilter === 'all') return true
+        if (/^year:\d{4}$/.test(String(monthFilter))) return month.startsWith(String(monthFilter).replace('year:', ''))
+        return month === String(monthFilter)
+      }
+      const enabledServiceBranchIds = new Set((branches || []).filter(branch => branch.service_charge_enabled).map(branch => String(branch.id)))
+      ;(serviceRows || []).filter(row => serviceMonthAllowed(row.month) && enabledServiceBranchIds.has(String(row.branch_id))).forEach(row => {
+        const amount = parseNum(row.staff_cost_amount)
+        if (!amount) return
+        pushRow({
+          id: `service-${row.branch_id}-${row.month}`,
+          source: 'Начисление',
+          branch_id: row.branch_id,
+          branch_name: branchNameById.get(String(row.branch_id)) || row.branch_id || '—',
+          expense_date: row.month || '',
+          category_name: 'Service charge персоналу',
+          comment: 'Отдельная статья расходов филиала',
+          amount,
+          bucket: 'serviceCharge'
+        })
+      })
+      const taxSettings = await readRmsAppSetting(RMS_BRANCH_TAX_RATE_SETTING, {})
+      revenueByBranch.forEach((revenue, branchId) => {
+        const configuredRate = parseNum(taxSettings?.[branchId])
+        const rate = configuredRate > 0 ? configuredRate : 8
+        const amount = parseNum(revenue) * rate / 100
+        if (!amount) return
+        pushRow({
+          id: `tax-${branchId}-${monthFilter}`,
+          source: 'Расчёт',
+          branch_id: branchId,
+          branch_name: branchNameById.get(branchId) || branchId,
+          expense_date: period.from || '',
+          category_name: 'Налог с оборота',
+          comment: `${fmt(revenue)} AZN × ${pct(rate)} от оборота`,
+          amount,
+          bucket: 'tax'
+        })
+      })
+
+      const byCategoryMap = new Map()
+      const byBranchMap = new Map()
+      rows.forEach(row => {
+        if (row.informational) return
+        const cat = row.category_name || 'Прочее'
+        const prevCat = byCategoryMap.get(cat) || { name: cat, amount: 0, transactions: 0 }
+        prevCat.amount += parseNum(row.amount)
+        prevCat.transactions += 1
+        byCategoryMap.set(cat, prevCat)
+
+        const branch = row.branch_name || '—'
+        const prevBranch = byBranchMap.get(branch) || { name: branch, amount: 0, transactions: 0 }
+        prevBranch.amount += parseNum(row.amount)
+        prevBranch.transactions += 1
+        byBranchMap.set(branch, prevBranch)
+      })
+
+      const byCategory = Array.from(byCategoryMap.values()).sort((a, b) => b.amount - a.amount)
+      const byBranch = Array.from(byBranchMap.values()).sort((a, b) => b.amount - a.amount)
+      const totals = rows.reduce((acc, row) => {
+        const amount = parseNum(row.amount)
+        if (!row.informational) {
+          acc.amount += amount
+          acc.transactions += 1
+        }
+        if (Object.prototype.hasOwnProperty.call(acc, row.bucket)) acc[row.bucket] += amount
+        return acc
+      }, { amount: 0, operating: 0, suppliers: 0, salary: 0, tax: 0, serviceCharge: 0, unallocated: 0, transactions: 0, categories: byCategory.length })
+      setRmsExpensesReport({ loading: false, error: '', rows, totals, byCategory, byBranch })
+    } catch (error) {
+      setRmsExpensesReport({ loading: false, error: error?.message || 'Не удалось загрузить расходы RMS', rows: [], totals: { amount: 0, operating: 0, suppliers: 0, salary: 0, tax: 0, serviceCharge: 0, unallocated: 0, transactions: 0, categories: 0 }, byCategory: [], byBranch: [] })
+    }
+  }
+
+  async function refreshRmsProfitabilityReport() {
+    const requestId = ++profitabilityRequestId.current
+    setRmsProfitabilityReport({loading:true,error:'',rows:[],totals:{}})
+    const result = await readRmsProfitabilitySnapshot(branches, profitabilitySelection)
+    if (requestId === profitabilityRequestId.current) setRmsProfitabilityReport(result)
   }
 
   async function loadRmsSuppliersReport() {

@@ -1592,6 +1592,28 @@ function rmsSalaryPeriodTotal(row = {}) {
   return gross > 0 ? gross : net
 }
 
+// Shared live source read for every actual-profit surface. Selection identity
+// invalidates display synchronously; late requests cannot restore old profit.
+function useVerifiedProfitability(year, month, branchId, branches, loaded = true) {
+  const key = JSON.stringify([year,month,branchId,(branches || []).map(b=>[b.id,b.service_charge_enabled])])
+  const [state,setState] = useState(null)
+  useEffect(()=>{
+    let current=true
+    if (!loaded) return ()=>{current=false}
+    const range=(y,m)=>({from:monthStart(y,m),to:`${y}-${String(m).padStart(2,'0')}-${new Date(y,m,0).getDate()}`,branchIds:branchId==='__all__'?null:[branchId]})
+    const prior=new Date(Number(year),Number(month)-2,1)
+    Promise.all([readRmsProfitabilitySnapshot(branches,range(year,month)),readRmsProfitabilitySnapshot(branches,range(prior.getFullYear(),prior.getMonth()+1))])
+      .then(([report,previous])=>{if(current)setState({key,current:profitabilitySurface(report),previous:profitabilitySurface(previous)})})
+      .catch(error=>{if(current)setState({key,current:profitabilitySurface({error:String(error)}),previous:profitabilitySurface(null)})})
+    return ()=>{current=false}
+  },[key,loaded])
+  const value=loaded && state?.key===key?state:{current:profitabilitySurface(null),previous:profitabilitySurface(null)}
+  return {...value.current,trend:profitabilityTrend(value.current,value.previous)}
+}
+function ProfitabilitySourceNotice({profit}) {
+  return <p role="status" className="hint">{profit.available?'Прибыль и маржа: по проверенному отчёту рентабельности.':'Прибыль и маржа недоступны: полнота источников не подтверждена. Откройте «Отчёты → Рентабельность».'}{!profit.available && <span> {profit.error || profit.reasons.join(', ')}</span>}</p>
+}
+
 function Dashboard({ t }) {
   const DEFAULT_TAX_RATE = 8
   const { branches, loaded: branchesLoaded } = useBranches(true, true)
@@ -1601,6 +1623,7 @@ function Dashboard({ t }) {
   const [year, setYear] = useState(now.getFullYear())
   const [month, setMonth] = useState(now.getMonth() + 1)
   const [data, setData] = useState(null)
+  const verifiedProfit = useVerifiedProfitability(year,month,branchId,branches,branchesLoaded)
   const [visibleBranchIds, setVisibleBranchIds] = useState([])
   const [dailyRevenueRows, setDailyRevenueRows] = useState([])
   const [expenseGrowthSort, setExpenseGrowthSort] = useState('amount')
@@ -2083,15 +2106,16 @@ function Dashboard({ t }) {
   const revenueCompareLabel = data.comparison?.revenueLabel || 'месяц-к-месяцу'
   const revenueCompareTooltip = data.comparison?.revenueTooltip || `Сравнение: ${fmt(revenueCompareCurrent)} AZN против ${fmt(revenueComparePrevious)} AZN`
   const revenueChange = revenueComparePrevious ? (revenueCompareCurrent - revenueComparePrevious) / revenueComparePrevious * 100 : 0
-  const profitChange = data.previous?.net ? (data.net - data.previous.net) / Math.abs(data.previous.net) * 100 : 0
+  const profitChange = verifiedProfit.trend.percent
   const topBranchRows = data.branchRows.filter(r => r.revenue || r.net).sort((a,b) => b.revenue - a.revenue)
-  const netBranchRows = data.branchRows.filter(r => r.revenue || r.net).sort((a,b) => b.net - a.net)
+  const netBranchRows = verifiedProfit.available ? verifiedProfit.branches.filter(r => r.available).sort((a,b) => b.net - a.net) : []
   const bestBranch = netBranchRows[0]
   const cashBalance = data.revenue
   const selectedBranchRow = branchId === DASH_ALL_BRANCHES ? null : (data.branchRows[0] || null)
   const selectedBranchName = selectedBranchRow?.name || branches.find(b => String(b.id) === String(branchId))?.name || 'Филиал'
   const selectedBranchExpenseRatio = selectedBranchRow?.revenue ? selectedBranchRow.totalExpenses / selectedBranchRow.revenue * 100 : 0
-  const selectedBranchMargin = selectedBranchRow?.revenue ? selectedBranchRow.net / selectedBranchRow.revenue * 100 : 0
+  const selectedBranchProfit = verifiedProfit.branches.find(r=>String(r.id)===String(branchId))
+  const selectedBranchMargin = selectedBranchProfit?.margin
   const expenseChange = data.previous?.expenses ? (data.expenses - data.previous.expenses) / Math.abs(data.previous.expenses) * 100 : 0
   const foodCostPct = data.revenue ? parseNum(data.foodCostAmount) / data.revenue * 100 : 0
   const expenseRows = data.expenseRows || []
@@ -2124,6 +2148,7 @@ function Dashboard({ t }) {
   const isIncompleteMonth = Number(year) === today.getFullYear() && Number(month) === today.getMonth() + 1 && today.getDate() < new Date(year, month, 0).getDate()
 
   return <section id="dashboardPage" className="rms-executive-dashboard">
+    <ProfitabilitySourceNotice profit={verifiedProfit}/>
     <section className="dashboard-v23-head">
       <div>
         <h2>Dashboard</h2>
@@ -2140,8 +2165,8 @@ function Dashboard({ t }) {
     <section className="dashboard-v23-kpis dashboard-v29-kpis">
       <div className="dash-kpi dash-kpi-blue"><span className="dash-kpi-icon">↗</span><div><em>Выручка за месяц</em><strong>{fmt(data.revenue)} <small>AZN</small></strong><p className="dash-trend-value" style={{ color: revenueChange >= 0 ? '#10b981' : '#ef4444', fontWeight: 900 }} title={revenueCompareTooltip}>{revenueChange >= 0 ? '▲' : '▼'} {pct(Math.abs(revenueChange))}</p></div></div>
       <div className="dash-kpi dash-kpi-purple"><span className="dash-kpi-icon">▥</span><div><em>Расходы</em><strong>{fmt(data.expenses)} <small>AZN</small></strong><p>{data.revenue ? pct(data.expenses / data.revenue * 100) : '0.0%'} от выручки</p></div></div>
-      <div className={`dash-kpi dash-kpi-green ${data.net < 0 ? 'dash-kpi-negative' : ''}`}><span className="dash-kpi-icon">▟</span><div><em>Чистая прибыль</em><strong>{fmt(data.net)} <small>AZN</small></strong><p className={profitChange >= 0 ? 'good' : 'bad'}>{profitChange >= 0 ? '▲' : '▼'} {pct(Math.abs(profitChange))}</p></div></div>
-      <div className={`dash-kpi dash-kpi-red ${data.net < 0 ? 'dash-kpi-negative' : ''}`}><span className="dash-kpi-icon">%</span><div><em>Рентабельность</em><strong>{pct(data.revenue ? data.net / data.revenue * 100 : 0)}</strong><p>маржа чистой прибыли</p></div></div>
+      <div className={`dash-kpi dash-kpi-green ${verifiedProfit.net != null && verifiedProfit.net < 0 ? 'dash-kpi-negative' : ''}`}><span className="dash-kpi-icon">▟</span><div><em>Чистая прибыль</em><strong>{formatVerifiedProfit(verifiedProfit.net,fmt)} <small>AZN</small></strong><p className={profitChange >= 0 ? 'good' : 'bad'}>{formatVerifiedProfit(profitChange,pct)}</p></div></div>
+      <div className={`dash-kpi dash-kpi-red ${verifiedProfit.net != null && verifiedProfit.net < 0 ? 'dash-kpi-negative' : ''}`}><span className="dash-kpi-icon">%</span><div><em>Рентабельность</em><strong>{formatVerifiedProfit(verifiedProfit.margin,pct)}</strong><p>маржа чистой прибыли</p></div></div>
       <div className="dash-kpi dash-kpi-forecast"><span className="dash-kpi-icon">◌</span><div><em>Food Cost</em><strong>{pct(foodCostPct)}</strong><p>{fmt(data.foodCostAmount)} AZN</p></div></div>
       <div className="dash-kpi dash-kpi-forecast"><span className="dash-kpi-icon">⌁</span><div><em>Прогноз выручки</em><strong>{fmt(data.forecastRevenue)} <small>AZN</small></strong><p>до конца месяца</p></div></div>
       <div className={`dash-kpi dash-kpi-target ${data.forecastProfit < 0 ? 'dash-kpi-negative' : ''}`}><span className="dash-kpi-icon">◎</span><div><em>Прогноз прибыли</em><strong>{fmt(data.forecastProfit)} <small>AZN</small></strong><p>прогноз месяца</p></div></div>
@@ -2149,7 +2174,7 @@ function Dashboard({ t }) {
 
     <section className="dashboard-v416-comparison" aria-label="Сравнение с предыдущим месяцем">
       <div className={revenueChange >= 0 ? 'is-positive' : 'is-negative'}><span>Выручка к прошлому месяцу</span><strong className={revenueChange >= 0 ? 'good' : 'bad'}>{revenueChange >= 0 ? '▲' : '▼'} {pct(Math.abs(revenueChange))}</strong><em>{fmt(revenueCompareCurrent - revenueComparePrevious)} AZN</em><i><b style={{width: `${Math.min(100, Math.abs(revenueChange))}%`}} /></i></div>
-      <div className={profitChange >= 0 ? 'is-positive' : 'is-negative'}><span>Прибыль к прошлому месяцу</span><strong className={profitChange >= 0 ? 'good' : 'bad'}>{profitChange >= 0 ? '▲' : '▼'} {pct(Math.abs(profitChange))}</strong><em>{fmt(data.net - parseNum(data.previous?.net))} AZN</em><i><b style={{width: `${Math.min(100, Math.abs(profitChange))}%`}} /></i></div>
+      <div className={profitChange >= 0 ? 'is-positive' : 'is-negative'}><span>Прибыль к прошлому месяцу</span><strong className={profitChange >= 0 ? 'good' : 'bad'}>{formatVerifiedProfit(profitChange,pct)}</strong><em>{formatVerifiedProfit(verifiedProfit.trend.delta,fmt)} AZN</em>{profitChange != null && <i><b style={{width: `${Math.min(100, Math.abs(profitChange))}%`}} /></i>}</div>
       <div className={expenseChange <= 0 ? 'is-positive' : 'is-negative'}><span>Расходы к прошлому месяцу</span><strong className={expenseChange <= 0 ? 'good' : 'bad'}>{expenseChange >= 0 ? '▲' : '▼'} {pct(Math.abs(expenseChange))}</strong><em>{fmt(data.expenses - parseNum(data.previous?.expenses))} AZN</em><i><b style={{width: `${Math.min(100, Math.abs(expenseChange))}%`}} /></i></div>
     </section>
 
@@ -2208,7 +2233,7 @@ function Dashboard({ t }) {
           showShare
           stackWolt
         />
-        <MiniBarChart rows={netBranchRows} valueKey="net" title="Прибыль по филиалам" subtitle="После расходов, зарплат и налога; service charge показан справочно" showShare />
+        {verifiedProfit.available ? <MiniBarChart rows={netBranchRows} valueKey="net" title="Прибыль по филиалам" subtitle="По проверенному отчёту рентабельности" showShare /> : <ProfitabilitySourceNotice profit={verifiedProfit} />}
       </div>
       <div className="card dashboard-v23-insights dashboard-v25-insights">
         <div className="card-head"><div><h3>Ключевые выводы</h3><p className="hint">Автоматический summary по выбранному месяцу</p></div></div>
@@ -2222,9 +2247,9 @@ function Dashboard({ t }) {
           </> : <>
             <div><span>Рост выручки филиала</span><strong className={revenueChange >= 0 ? 'good' : 'bad'}>{revenueChange >= 0 ? '▲' : '▼'} {pct(Math.abs(revenueChange))}</strong><em>{selectedBranchName} к прошлому месяцу</em></div>
             <div><span>Выручка филиала</span><strong>{fmt(selectedBranchRow?.revenue || 0)} AZN</strong><em>{selectedBranchName}</em></div>
-            <div><span>Прибыль филиала</span><strong className={(selectedBranchRow?.net || 0) >= 0 ? 'good' : 'bad'}>{fmt(selectedBranchRow?.net || 0)} AZN</strong><em>после расходов и налогов</em></div>
+            <div><span>Прибыль филиала</span><strong className={(selectedBranchRow?.net || 0) >= 0 ? 'good' : 'bad'}>{formatVerifiedProfit(selectedBranchProfit?.net,fmt)} AZN</strong><em>после расходов и налогов</em></div>
             <div><span>Расходы филиала</span><strong>{fmt(selectedBranchRow?.totalExpenses || 0)} AZN</strong><em>{pct(selectedBranchExpenseRatio)} от выручки</em></div>
-            <div><span>Маржа филиала</span><strong className={selectedBranchMargin >= 0 ? 'good' : 'bad'}>{pct(selectedBranchMargin)}</strong><em>чистая рентабельность</em></div>
+            <div><span>Маржа филиала</span><strong className={selectedBranchMargin >= 0 ? 'good' : 'bad'}>{formatVerifiedProfit(selectedBranchMargin,pct)}</strong><em>чистая рентабельность</em></div>
           </>}
         </div>
       </div>
@@ -2247,12 +2272,13 @@ function Finance({ t, lang, onGoToExpense }) {
     return value > 0 ? value : TAX_RATE
   }
 
-  const branches = useBranches(true)
+  const {branches,loaded:branchesLoaded} = useBranches(true, true)
   const now = new Date()
   const [branchId, setBranchId] = useState(ALL_BRANCHES)
   const [year, setYear] = useState(now.getFullYear())
   const [month, setMonth] = useState(now.getMonth() + 1)
   const [stats, setStats] = useState(null)
+  const verifiedProfit = useVerifiedProfitability(year,month,branchId,branches,branchesLoaded)
   const [breakdown, setBreakdown] = useState([])
   const [dailyRevenueRows, setDailyRevenueRows] = useState([])
   const [aiRows, setAiRows] = useState([])
@@ -2726,19 +2752,7 @@ function Finance({ t, lang, onGoToExpense }) {
         norm: 'Расходы < выручки',
         deviation: `+${fmt(totalBurden - revenue)} AZN`,
         level: 'critical',
-        recommendation: 'Филиал сработал в минус. Проверь аренду, зарплаты, закупки и корректность загрузки выручки.'
-      })
-    }
-
-    if (net < 0) {
-      rows.push({
-        branchName,
-        indicator: 'Чистый убыток месяца',
-        fact: `${fmt(net)} AZN`,
-        norm: '≥ 0 AZN',
-        deviation: `-${fmt(Math.abs(net))} AZN`,
-        level: Math.abs(net) >= Math.max(1000, revenue * 0.1) ? 'critical' : 'warning',
-        recommendation: 'Проверь показатели месяца и причины убытка. Сигнал показывается даже при неполных данных по расходам.'
+        recommendation: 'По доступным статьям расходы превышают выручку. Окончательный результат требует проверки полноты источников.'
       })
     }
 
@@ -3152,7 +3166,7 @@ function Finance({ t, lang, onGoToExpense }) {
       { name: `Налог с оборота ${fmt(currentForFinance.taxRate || TAX_RATE)}%`, amount: parseNum(currentForFinance.taxCalculated), note: 'расчёт по ставке от оборота из настроек филиала' },
       { name: 'Оплаченный налог (справочно)', amount: parseNum(currentForFinance.taxPaid), note: 'фактические tax/Vergi платежи; не вычитаются из прибыли, налог уже рассчитан по ставке от оборота' },
       { name: 'Итого расходов по единой формуле', amount: financeActualExpenseTotal, note: 'сумма статей в “Расходы по статьям”' },
-      { name: 'Чистая прибыль', amount: currentForFinance.net, note: 'выручка − все расходы' },
+      { name: 'Непроверенная разница legacy (не прибыль)', amount: currentForFinance.net, note: 'Диагностика прежней формулы; подтверждённый результат берётся из отчёта рентабельности' },
       { name: 'Контроль расхождения legacy/net', amount: financeFormulaDiff, note: Math.abs(financeFormulaDiff) <= 0.01 ? 'OK: формулы совпадают' : 'исправлено единой формулой v76' }
     ]
     setFinanceFormulaAudit(financeFormulaAuditRows)
@@ -3303,18 +3317,18 @@ function Finance({ t, lang, onGoToExpense }) {
   const financeRevenueCompareTooltip = stats.comparison?.revenueTooltip || `Сравнение: ${fmt(financeRevenueCompareCurrent)} AZN против ${fmt(financeRevenueComparePrevious)} AZN`
   const revChange = financeRevenueComparePrevious ? ((financeRevenueCompareCurrent - financeRevenueComparePrevious) / financeRevenueComparePrevious * 100) : 0
   const aiPriority = { critical: 0, warning: 1, ok: 2 }
-  const sortedAiRows = [...aiRows].sort((a, b) => (aiPriority[a.level] ?? 9) - (aiPriority[b.level] ?? 9))
+  const sortedAiRows = aiRows.filter(row=>!['Чистый убыток месяца','Расходы выше выручки'].includes(row.indicator)).sort((a, b) => (aiPriority[a.level] ?? 9) - (aiPriority[b.level] ?? 9))
   const visibleAiRows = sortedAiRows.slice(0, 5)
   // Единая логика с Dashboard: service charge показывается справочно и не входит в P&L.
   const financeBreakdownTotal = (breakdown || []).reduce((sum, r) => sum + parseNum(r.amount), 0)
   const financeTotalExpenses = financeBreakdownTotal > 0
     ? financeBreakdownTotal
     : parseNum(stats.expenses) + parseNum(stats.salary) + parseNum(stats.tax)
-  const financeNet = parseNum(stats.revenue) - financeTotalExpenses
+  const financeNet = verifiedProfit.net
   const financePreviousExpenses = parseNum(stats.previous?.expenses) + parseNum(stats.previous?.salary) + parseNum(stats.previous?.tax)
   const financePreviousNet = parseNum(stats.previous?.revenue) - financePreviousExpenses
-  const profitChange = financePreviousNet ? ((financeNet - financePreviousNet) / Math.abs(financePreviousNet) * 100) : 0
-  const financeProfitability = stats.revenue ? financeNet / stats.revenue * 100 : 0
+  const profitChange = verifiedProfit.trend.percent
+  const financeProfitability = verifiedProfit.margin
   const financePaidRevenue = parseNum(stats.cash) + parseNum(stats.bank) - parseNum(stats.bankCommission)
   const financeFoodCostAmount = (breakdown || []).filter(r => financeExpenseGroupName(r.name) === 'food_market' || String(r.name || '').toLowerCase().includes('food cost')).reduce((sum, r) => sum + parseNum(r.amount), 0)
   const financePackagingAmount = (breakdown || []).filter(r => financeExpenseGroupName(r.name) === 'packaging').reduce((sum, r) => sum + parseNum(r.amount), 0)
@@ -3371,7 +3385,7 @@ function Finance({ t, lang, onGoToExpense }) {
   ].filter(Boolean)
   const activeFinanceHealthFlags = financeHealthFlags.filter(f => f.active)
   const financeHealthLevel = activeFinanceHealthFlags.some(f => f.level === 'bad') ? 'bad' : activeFinanceHealthFlags.length ? 'warn' : 'ok'
-  const financeHealthLabel = financeHealthLevel === 'ok' ? 'Финансы: OK' : financeHealthLevel === 'bad' ? 'Финансы: критично' : 'Финансы: внимание'
+  const financeHealthLabel = !verifiedProfit.available ? 'Прибыль не подтверждена: недостаточно данных' : financeHealthLevel === 'ok' ? 'Финансы: OK' : financeHealthLevel === 'bad' ? 'Финансы: критично' : 'Финансы: внимание'
   const financeTopExpenseDrivers = financeExpenseRowsAll.slice(0, 3)
   const financePrimaryExpenseDriver = financeTopExpenseDrivers[0]
   const financeExpenseRowsForTable = showAllFinanceExpenseRows ? financeExpenseRowsAll : financeExpenseRowsAll.slice(0, 10)
@@ -3418,8 +3432,9 @@ function Finance({ t, lang, onGoToExpense }) {
       ['Раздел', 'Показатель', 'Значение'],
       ['KPI', 'Выручка', fmt(financeMonthSummary.revenue)],
       ['KPI', 'Операционные расходы', fmt(financeMonthSummary.expenses)],
-      ['KPI', 'Чистая прибыль', fmt(financeMonthSummary.net)],
-      ['KPI', 'Маржа', pct(financeMonthSummary.margin)],
+      ['Проверка', 'Полнота источников', verifiedProfit.available?'Подтверждено':verifiedProfit.reasons.join(', ')],
+      ['KPI', 'Чистая прибыль', formatVerifiedProfit(financeMonthSummary.net,fmt)],
+      ['KPI', 'Маржа', formatVerifiedProfit(financeMonthSummary.margin,pct)],
       ['KPI', 'Food Cost', pct(financeMonthSummary.foodCostPct)],
       ['KPI', 'Зарплаты', pct(financeMonthSummary.salaryPct)],
       ['Прогноз', 'Прогноз выручки', fmt(financeMonthSummary.forecastRevenue)],
@@ -3438,7 +3453,7 @@ function Finance({ t, lang, onGoToExpense }) {
     const expenseRowsHtml = financeExpenseRowsAll.map(r => `<tr><td>${r.name}</td><td>${fmt(r.amount)}</td><td>${pct(financeTotalExpenses ? parseNum(r.amount) / financeTotalExpenses * 100 : 0)}</td></tr>`).join('') || '<tr><td colspan="3">Пока нет данных</td></tr>'
     const anomalyRowsHtml = sortedAiRows.slice(0, 10).map(r => `<tr><td>${r.branchName}</td><td>${r.indicator}</td><td>${r.fact}</td><td>${r.deviation}</td><td>${r.recommendation}</td></tr>`).join('') || '<tr><td colspan="5">Отклонения не найдены</td></tr>'
     const driverRowsHtml = financeTopExpenseDrivers.map(r => `<tr><td>${r.name}</td><td>${fmt(r.amount)}</td><td>${pct(financeTotalExpenses ? parseNum(r.amount) / financeTotalExpenses * 100 : 0)}</td></tr>`).join('') || '<tr><td colspan="3">Пока нет данных</td></tr>'
-    const html = `<!doctype html><html><head><meta charset="utf-8"><title>Finance report</title><style>body{font-family:Arial,sans-serif;padding:28px;color:#111827}h1{margin:0 0 6px}p{color:#64748b}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:18px 0}.kpi{border:1px solid #e5e7eb;border-radius:12px;padding:12px}.kpi span{display:block;color:#64748b;font-size:12px}.kpi b{font-size:20px}.status{display:inline-block;border:1px solid #e5e7eb;border-radius:999px;padding:6px 10px;font-weight:700;margin-top:8px}table{width:100%;border-collapse:collapse;margin-top:10px}th,td{border-bottom:1px solid #e5e7eb;padding:8px;text-align:left}th{background:#f8fafc}.section{margin-top:22px}@media print{button{display:none}}</style></head><body><h1>Финансовый отчёт</h1><p>${monthName} ${year} · ${branchId === ALL_BRANCHES ? 'Все рестораны' : financeBranchNameById(branchId)}</p><span class="status">${financeHealthLabel}</span><div class="grid"><div class="kpi"><span>Выручка</span><b>${fmt(financeMonthSummary.revenue)} AZN</b></div><div class="kpi"><span>Расходы</span><b>${fmt(financeMonthSummary.expenses)} AZN</b></div><div class="kpi"><span>Чистая прибыль</span><b>${fmt(financeMonthSummary.net)} AZN</b></div><div class="kpi"><span>Маржа</span><b>${pct(financeMonthSummary.margin)}</b></div></div><div class="section"><h2>Главные драйверы расходов</h2><table><thead><tr><th>Статья</th><th>Сумма</th><th>Доля расходов</th></tr></thead><tbody>${driverRowsHtml}</tbody></table></div><div class="section"><h2>Расходы по статьям</h2><table><thead><tr><th>Статья</th><th>Сумма</th><th>Доля расходов</th></tr></thead><tbody>${expenseRowsHtml}</tbody></table></div><div class="section"><h2>Отклонения</h2><table><thead><tr><th>Филиал</th><th>Показатель</th><th>Факт</th><th>Отклонение</th><th>Рекомендация</th></tr></thead><tbody>${anomalyRowsHtml}</tbody></table></div><script>window.print()</script></body></html>`
+    const html = `<!doctype html><html><head><meta charset="utf-8"><title>Finance report</title><style>body{font-family:Arial,sans-serif;padding:28px;color:#111827}h1{margin:0 0 6px}p{color:#64748b}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:18px 0}.kpi{border:1px solid #e5e7eb;border-radius:12px;padding:12px}.kpi span{display:block;color:#64748b;font-size:12px}.kpi b{font-size:20px}.status{display:inline-block;border:1px solid #e5e7eb;border-radius:999px;padding:6px 10px;font-weight:700;margin-top:8px}table{width:100%;border-collapse:collapse;margin-top:10px}th,td{border-bottom:1px solid #e5e7eb;padding:8px;text-align:left}th{background:#f8fafc}.section{margin-top:22px}@media print{button{display:none}}</style></head><body><h1>Финансовый отчёт</h1><p>${monthName} ${year} · ${branchId === ALL_BRANCHES ? 'Все рестораны' : financeBranchNameById(branchId)}</p><span class="status">${financeHealthLabel}</span><div class="grid"><div class="kpi"><span>Выручка</span><b>${fmt(financeMonthSummary.revenue)} AZN</b></div><div class="kpi"><span>Расходы</span><b>${fmt(financeMonthSummary.expenses)} AZN</b></div><div class="kpi"><span>Чистая прибыль</span><b>${formatVerifiedProfit(financeMonthSummary.net,fmt)} AZN</b></div><div class="kpi"><span>Маржа</span><b>${formatVerifiedProfit(financeMonthSummary.margin,pct)}</b></div></div><div class="section"><h2>Главные драйверы расходов</h2><table><thead><tr><th>Статья</th><th>Сумма</th><th>Доля расходов</th></tr></thead><tbody>${driverRowsHtml}</tbody></table></div><div class="section"><h2>Расходы по статьям</h2><table><thead><tr><th>Статья</th><th>Сумма</th><th>Доля расходов</th></tr></thead><tbody>${expenseRowsHtml}</tbody></table></div><div class="section"><h2>Отклонения</h2><table><thead><tr><th>Филиал</th><th>Показатель</th><th>Факт</th><th>Отклонение</th><th>Рекомендация</th></tr></thead><tbody>${anomalyRowsHtml}</tbody></table></div><script>window.print()</script></body></html>`
     const win = window.open('', '_blank')
     if (!win) return
     win.document.write(html)
@@ -3453,6 +3468,7 @@ function Finance({ t, lang, onGoToExpense }) {
           <p>{branchId === ALL_BRANCHES ? 'Единая управленческая картина по сети.' : 'Финансовая картина выбранного филиала.'}</p>
           <div className="finance-health-row">
             <span className={`finance-health-pill ${financeHealthLevel}`}>{financeHealthLabel}</span>
+            <ProfitabilitySourceNotice profit={verifiedProfit}/>
             {activeFinanceHealthFlags.slice(0, 3).map(flag => <span key={flag.label} className={`finance-health-pill ${flag.level}`}>{flag.label}</span>)}
           </div>
         </div>
@@ -3477,8 +3493,8 @@ function Finance({ t, lang, onGoToExpense }) {
       <section className="dashboard-v23-kpis dashboard-v29-kpis finance-dashboard-kpis finance-pro-kpis">
         <div className="dash-kpi dash-kpi-blue"><span className="dash-kpi-icon">↗</span><div><em>Выручка</em><strong>{fmt(financeMonthSummary.revenue)} <small>AZN</small></strong><p className="dash-trend-value" style={{ color: revChange >= 0 ? '#10b981' : '#ef4444', fontWeight: 900 }} title={financeRevenueCompareTooltip}>{revChange >= 0 ? '▲' : '▼'} {pct(Math.abs(revChange))}</p></div></div>
         <div className="dash-kpi dash-kpi-purple"><span className="dash-kpi-icon">▥</span><div><em>Операционные расходы</em><strong>{fmt(financeMonthSummary.expenses)} <small>AZN</small></strong><p>{pct(financeMonthSummary.revenue ? financeMonthSummary.expenses / financeMonthSummary.revenue * 100 : 0)} от выручки</p></div></div>
-        <div className="dash-kpi dash-kpi-green"><span className="dash-kpi-icon">▟</span><div><em>Чистая прибыль</em><strong className={financeMonthSummary.net >= 0 ? 'good' : 'bad'}>{fmt(financeMonthSummary.net)} <small>AZN</small></strong><p className={profitChange >= 0 ? 'good' : 'bad'}>{profitChange >= 0 ? '▲' : '▼'} {pct(Math.abs(profitChange))}</p></div></div>
-        <div className="dash-kpi dash-kpi-red"><span className="dash-kpi-icon">%</span><div><em>Маржа</em><strong>{pct(financeMonthSummary.margin)}</strong><p>чистая прибыль / выручка</p></div></div>
+        <div className="dash-kpi dash-kpi-green"><span className="dash-kpi-icon">▟</span><div><em>Чистая прибыль</em><strong className={financeMonthSummary.net >= 0 ? 'good' : 'bad'}>{formatVerifiedProfit(financeMonthSummary.net,fmt)} <small>AZN</small></strong><p className={profitChange >= 0 ? 'good' : 'bad'}>{formatVerifiedProfit(profitChange,pct)}</p></div></div>
+        <div className="dash-kpi dash-kpi-red"><span className="dash-kpi-icon">%</span><div><em>Маржа</em><strong>{formatVerifiedProfit(financeMonthSummary.margin,pct)}</strong><p>чистая прибыль / выручка</p></div></div>
         <div className="dash-kpi dash-kpi-forecast"><span className="dash-kpi-icon">◌</span><div><em>Food Cost</em><strong>{pct(financeMonthSummary.foodCostPct)}</strong><p>{fmt(financeMonthSummary.foodCostAmount)} AZN</p></div></div>
         <div className="dash-kpi dash-kpi-wallet"><span className="dash-kpi-icon">◍</span><div><em>Зарплаты</em><strong>{pct(financeMonthSummary.salaryPct)}</strong><p>{fmt(financeMonthSummary.salaryAmount)} AZN</p></div></div>
         <div className="dash-kpi dash-kpi-target"><span className="dash-kpi-icon">◎</span><div><em>Прогноз прибыли</em><strong className={financeMonthSummary.forecastProfit >= 0 ? 'good' : 'bad'}>{fmt(financeMonthSummary.forecastProfit)} <small>AZN</small></strong><p>до конца месяца</p></div></div>
@@ -3521,7 +3537,7 @@ function Finance({ t, lang, onGoToExpense }) {
             <div><span>Операционные расходы</span><b>{pct(financeTotalExpensePct)}</b><em>{fmt(financeTotalExpenses)} AZN</em></div>
             <div><span>Service charge</span><b>{pct(financeServicePct)}</b><em>{fmt(stats.serviceCost)} AZN</em></div>
             <div><span>Налог с оборота</span><b>{pct(financeTaxPct)} ставка</b><em>{fmt(stats.tax)} AZN; оплачено vergi отдельно: {fmt(stats.taxPaid)} AZN (не уменьшает прибыль)</em></div>
-            <div><span>Чистая маржа</span><b>{pct(financeProfitability)}</b><em className={financeProfitability >= 0 ? 'good' : 'bad'}>{fmt(financeNet)} AZN</em></div>
+            <div><span>Чистая маржа</span><b>{formatVerifiedProfit(financeProfitability,pct)}</b><em className={financeProfitability >= 0 ? 'good' : 'bad'}>{formatVerifiedProfit(financeNet,fmt)} AZN</em></div>
           </div>
         </div>
 
