@@ -42,9 +42,21 @@ export async function bankInputsFingerprintV4(input,month,expenseScope){
  const bytes=new TextEncoder().encode(JSON.stringify(canonical({contract:'bank-v4-expense-scope-v1',expenseScope,inputsFingerprint})))
  return [...new Uint8Array(await globalThis.crypto.subtle.digest('SHA-256',bytes))].map(b=>b.toString(16).padStart(2,'0')).join('')
 }
+// Explicit opt-in for re-reviewed fixed branch accruals. Keep legacy v2 hashes
+// unchanged. Purchases/revenue do not determine these fixed amounts; every
+// monthly expense still participates, so a new representation must be reviewed.
+export async function fixedBranchInputsFingerprint(input,source){
+ if(source?.version!==3||source.action!=='add_missing_branch'||source.scope!=='branch'||!source.branchId||!['dsmf','partner_fee'].includes(source.category)||source.target?.fingerprintContract!=='fixed-branch-expenses-v1')throw Error('Unsupported fixed branch evidence')
+ if(!Array.isArray(input.revenueRows)||!Array.isArray(input.supplierPurchases))throw Error('Incomplete component inputs')
+ const expenseFingerprint=await componentInputsFingerprint({...input,revenueRows:[],supplierPurchases:[]},source.month)
+ const evidence={contract:source.target.fingerprintContract,month:source.month,branchId:source.branchId,category:source.category,action:source.action,amount:source.amount,source:source.source,expenseFingerprint}
+ const bytes=new TextEncoder().encode(JSON.stringify(canonical(evidence)))
+ return [...new Uint8Array(await globalThis.crypto.subtle.digest('SHA-256',bytes))].map(b=>b.toString(16).padStart(2,'0')).join('')
+}
 export function validateComponentRecord(record,fingerprint){
  const s=record?.snapshot_data,fail=reason=>({valid:false,reason,month:s?.month,componentKey:s?.componentKey})
- if(record?.snapshot_type!==COMPONENT_SNAPSHOT_TYPE||s?.kind!==COMPONENT_KIND||s?.version!==2)return fail('unsupported-contract')
+ if(record?.snapshot_type!==COMPONENT_SNAPSHOT_TYPE||s?.kind!==COMPONENT_KIND||![2,3].includes(s?.version))return fail('unsupported-contract')
+ if(s.version===3&&(s.action!=='add_missing_branch'||s.scope!=='branch'||!s.branchId||!['dsmf','partner_fee'].includes(s.category)||s.target?.fingerprintContract!=='fixed-branch-expenses-v1'||!s.revalidation?.approvalRef||!s.revalidation?.verifiedAt))return fail('unsupported-fixed-branch-contract')
  if(!/^\d{4}-(0[1-9]|1[0-2])$/.test(s.month)||!s.componentKey||record.snapshot_scope!==`profitability-components:${s.month}:${s.componentKey}`)return fail('invalid-scope')
  if(s.status!=='verified')return fail('source-held')
  if(!s.approvalRef||!s.source?.fileId||s.source.gid==null||!Array.isArray(s.source.cells)||!s.source.cells.length||!s.source.readAt)return fail('missing-source-provenance')
@@ -82,11 +94,13 @@ export async function resolveComponentRecords(records,input){
  for(const record of records){
   const s=record.snapshot_data
   // Legacy full-month snapshots are intentionally not consumed by this adapter.
-  if(s?.kind!==COMPONENT_KIND||s.version!==2)continue
+  if(s?.kind!==COMPONENT_KIND||![2,3].includes(s.version))continue
   const scope=record.snapshot_scope
   if(seen.has(scope)){held.push({month:s.month,componentKey:s.componentKey,reason:'duplicate-snapshot-scope'});continue}seen.add(scope)
-  if(!fingerprints.has(s.month))fingerprints.set(s.month,await componentInputsFingerprint(input,s.month))
-  const result=validateComponentRecord(record,fingerprints.get(s.month))
+  let fingerprint
+  if(s.version===3){try{fingerprint=await fixedBranchInputsFingerprint(input,s)}catch{held.push({month:s.month,componentKey:s.componentKey,reason:'invalid-fixed-branch-inputs'});continue}}
+  else {if(!fingerprints.has(s.month))fingerprints.set(s.month,await componentInputsFingerprint(input,s.month));fingerprint=fingerprints.get(s.month)}
+  const result=validateComponentRecord(record,fingerprint)
   if(result.valid)validated.push(result);else held.push(result)
  }
  const ambiguous=new Set(held.filter(h=>h.reason==='duplicate-snapshot-scope').map(h=>h.month+':'+h.componentKey))
@@ -143,7 +157,7 @@ export async function resolveCoverageManifests(records,input,from,toExclusive,co
     if(!Number.isFinite(configuredBankRate)){issue('missing-bank-validation-rate');continue}
     const bank=await resolveBankEvidence([record],input,configuredBankRate,()=>true)
     if(bank.issues.length)issue('invalid-required-bank-evidence')
-   }else if(['component_adjustment','branch_period_status'].includes(kind) && version===2){
+   }else if((kind==='component_adjustment' && [2,3].includes(version)) || (kind==='branch_period_status' && version===2)){
     const reviewed=await resolveComponentRecords(records,input)
     const adjusted=buildReviewedAdjustments(reviewed.validated,input)
     const accepted=kind==='component_adjustment'?reviewed.validated.some(item=>item.snapshotId===record.id):reviewed.periodStatuses.some(item=>item.snapshotId===record.id)
@@ -192,3 +206,4 @@ export async function resolveBankEvidence(records,input,configuredRate,hasExplic
  }
  return {byId,issues}
 }
+
