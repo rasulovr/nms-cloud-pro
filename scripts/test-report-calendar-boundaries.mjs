@@ -1,3 +1,4 @@
+import {futureRevenueMonth,unavailableRevenueForecast} from '../src/revenue-period.mjs'
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import vm from 'node:vm'
@@ -22,7 +23,8 @@ const extract = (source, start, end) => {
   assert.ok(a >= 0 && b > a, `Missing source: ${start}`)
   return source.slice(a, b)
 }
-const context = vm.createContext({ Date, Intl, console })
+// Keep the query-prefix fixture historical; future forecasts intentionally do not read.
+const context = vm.createContext({ Date, Intl, console, unavailableRevenueForecast, futureRevenueMonth:(y,m)=>futureRevenueMonth(y,m,new Date('2027-02-01T12:00:00Z')) })
 vm.runInContext([
   extract(common, 'const pad2 =', 'const sameISODate ='),
   extract(common, 'const monthStart =', '\n'),

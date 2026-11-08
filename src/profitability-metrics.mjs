@@ -15,7 +15,7 @@ export function actualProfitabilityView(legacy,profit,previous) {
   return {...legacy,...profit,expenses:profit.expenses,totalExpenses:profit.expenses,
     branchRows:profit.branches||[],expenseRows:profit.expenseRows||[],
     previous:previous?.available?{...previous,expenses:previous.expenses,expenseRows:previous.expenseRows||[]}:null,
-    comparison:null}
+    comparison:legacy?.comparison || null}
 }
 export function isClosedProfitabilityMonth(year,month,now=new Date()) {
   return Number(year)*12+Number(month)<now.getFullYear()*12+now.getMonth()+1

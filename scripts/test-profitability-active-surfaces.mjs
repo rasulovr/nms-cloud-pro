@@ -1,3 +1,4 @@
+import {revenueComparisonValues} from '../src/revenue-period.mjs'
 import {actualProfitabilityView,isClosedProfitabilityMonth,formatProfitabilityComparison} from '../src/profitability-metrics.mjs'
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
@@ -21,7 +22,7 @@ function render(name,profit,branch='__all__',selectedMonth=10) {
  if(name==='Finance')code=code.replace('\n  return (','\n  globalThis.qaExports={exportFinanceMonthlyCsv,printFinanceMonthlyReport};\n  return (')
  let state=0,csv,printed
  const props={t:x=>x,lang:'ru'}
- const ctx=vm.createContext({defaultYears:()=>[2026],MONTHS:Array(12).fill("Synthetic"),React,console,Date,Math,Number,String,Map,Set,JSON,Intl,
+ const ctx=vm.createContext({revenueComparisonValues,defaultYears:()=>[2026],MONTHS:Array(12).fill("Synthetic"),React,console,Date,Math,Number,String,Map,Set,JSON,Intl,
   useState:initial=>{const index=state++;return [index===0?branch:index===1?2026:index===2?selectedMonth:initial===null?legacy:initial,()=>{}]},
   useEffect:()=>{},useMemo:f=>f(),useRef:initial=>({current:initial===''?`2026/${selectedMonth}/${branch}`:initial}),
   useBranches:()=>({branches:[{id:'A',name:'Synthetic A'}],loaded:true}),
@@ -59,7 +60,7 @@ console.log('PASS actual Dashboard/Finance JSX: cards, margin, trend, branch/cha
 // the previous selection. No mounted old profit may survive the new selection.
 const hookCode=part.slice(part.indexOf('function useVerifiedProfitability('),part.indexOf('function ProfitabilitySourceNotice('))
 let hookState=null,cleanup,lastDeps,requests=[]
-const hookCtx=vm.createContext({Date,JSON,Number,String,Promise,profitabilitySurface,profitabilityTrend,
+const hookCtx=vm.createContext({revenueComparisonValues,Date,JSON,Number,String,Promise,profitabilitySurface,profitabilityTrend,
  monthStart:(y,m)=>`${y}-${String(m).padStart(2,'0')}-01`,
  useState:()=>[hookState,v=>{hookState=v}],
  useEffect:(effect,deps)=>{const key=JSON.stringify(deps);if(lastDeps!==key){cleanup?.();cleanup=effect();lastDeps=key}},
@@ -96,3 +97,19 @@ console.log('PASS actual UI/export consistency: unified articles50+10-20=40, exp
 legacy.selectionKey='2026/11/__all__';legacy.forecastProfit=200
 for(const name of ['Dashboard','Finance']){const out=render(name,unified,'__all__',11);assert.match(out.html,/Прогноз прибыли/);assert.match(out.html,/200.00/)}
 console.log('PASS current-month forecast preserved while closed-month forecast is suppressed')
+
+legacy.comparison={available:true,currentRevenue:101,previousRevenue:100,revenueLabel:'1–7 ноя / 1–7 окт',revenueTooltip:'Synthetic matched seven-day periods'}
+for(const name of ['Dashboard','Finance']) {
+ const out=render(name,unified,'__all__',11)
+ assert.match(out.html,/1.00%/,'matched MTD percentage survives actual adapter and JSX')
+ assert.match(out.html,/Synthetic matched seven-day periods/)
+}
+legacy.comparison={available:false,currentRevenue:null,previousRevenue:null,revenueLabel:'Сравнение недоступно',revenueTooltip:'Synthetic missing observations'}
+legacy.forecastAvailable=false
+for(const name of ['Dashboard','Finance']) {
+ const out=render(name,unified,'__all__',11)
+ assert.match(out.html,/color:#64748b/,'missing revenue comparison must be neutral')
+ assert.doesNotMatch(out.html,/200.00/,'unavailable forecast cannot render stale numeric result')
+ if(name==='Finance')assert.doesNotMatch(out.csv,/200.00/,'CSV cannot render stale forecast')
+}
+console.log('PASS current-month JSX and export: matched-period trend survives adapter; missing comparison neutral; unavailable forecast withheld')
