@@ -2,6 +2,7 @@
   "scripts": {
     "assemble": "node scripts/assemble-main.mjs",
     "test:supplier-opening-performance": "node scripts/test-supplier-opening-performance.mjs",
+    "test:mobile-revenue-chart": "node scripts/test-mobile-revenue-chart.mjs",
     "test:dashboard-v416": "node scripts/test-dashboard-v416.mjs",
     "test:supplier-allocation-v421": "node scripts/test-supplier-revenue-allocation-v421.mjs",
     "test:service-charge-branches-v423": "node scripts/test-service-charge-branches-v423.mjs",
@@ -19,7 +20,7 @@
     "test:supplier-idempotency-v420": "node scripts/test-supplier-purchase-idempotency-v420.mjs",
     "test:supplier-save-performance-v434": "node scripts/test-supplier-save-performance-v434.mjs",
     "dev": "npm run assemble && vite",
-    "build": "npm run assemble && npm run test:financial-regressions && npm run test:wolt-branch-eligibility && npm run test:supplier-payment-idempotency-v433 && npm run test:supplier-payment-cancel-atomic-v433 && npm run test:payroll-client && npm run test:payroll-atomic && npm run test:payroll-handlers && npm run test:payroll-reclassification && npm run test:payroll-reclassification-client && npm run test:payroll-reclassification-cash-client && vite build && node scripts/build-payroll-preview-fixture.mjs",
+    "build": "npm run assemble && npm run test:mobile-revenue-chart && npm run test:financial-regressions && npm run test:wolt-branch-eligibility && npm run test:supplier-payment-idempotency-v433 && npm run test:supplier-payment-cancel-atomic-v433 && npm run test:payroll-client && npm run test:payroll-atomic && npm run test:payroll-handlers && npm run test:payroll-reclassification && npm run test:payroll-reclassification-client && npm run test:payroll-reclassification-cash-client && vite build && node scripts/build-payroll-preview-fixture.mjs",
     "preview": "vite preview",
     "test:supplier-payment-idempotency-v433": "node scripts/test-supplier-payment-idempotency-v433.mjs",
     "test:supplier-payment-cancel-atomic-v433": "node scripts/test-supplier-payment-cancel-atomic-v433.mjs",

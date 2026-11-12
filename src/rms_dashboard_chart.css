@@ -399,3 +399,46 @@
   .rms-pro-shell .finance-line-chart-summary .metric-number,
   .finance-line-chart-summary .metric-number{font-size:28px!important;}
 }
+
+/* Measured SVG coordinates keep text at CSS-pixel size instead of squeezing it. */
+.rms-pro-shell .revenue-chart-responsive.finance-daily-revenue-chart { min-width:0; }
+.rms-pro-shell .revenue-chart-responsive .revenue-chart-plot-frame { width:100%; min-width:0; }
+.rms-pro-shell .revenue-chart-responsive .finance-line-chart-svg { width:100%!important; height:260px!important; touch-action:pan-y; cursor:crosshair; }
+.rms-pro-shell .revenue-chart-responsive .finance-line-chart-label,
+.rms-pro-shell .revenue-chart-responsive .finance-line-chart-x-label { font-size:12px!important; }
+.rms-pro-shell .revenue-chart-responsive .revenue-chart-selection { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:baseline; gap:6px 12px; padding:8px 0; color:#334155; font-size:14px; }
+.rms-pro-shell .revenue-chart-responsive .revenue-chart-selection strong { color:#0f172a; font-size:24px; font-variant-numeric:tabular-nums; }
+.rms-pro-shell .revenue-chart-responsive .revenue-chart-selection small { font-size:12px; color:#64748b; }
+.rms-pro-shell .revenue-chart-responsive .revenue-chart-scrubber { display:block; font-size:12px; color:#64748b; }
+.rms-pro-shell .revenue-chart-responsive .revenue-chart-scrubber input { display:block; width:100%; height:44px; padding:0; margin:0; accent-color:#2563eb; cursor:pointer; }
+.rms-pro-shell .revenue-chart-responsive .revenue-chart-table { margin-top:16px; color:#334155; font-size:14px; }
+.rms-pro-shell .revenue-chart-responsive .revenue-chart-table summary { cursor:pointer; padding:12px 0; min-height:44px; box-sizing:border-box; font-weight:700; }
+.rms-pro-shell .revenue-chart-responsive .revenue-chart-table table { width:100%; min-width:0; border-collapse:collapse; }
+.rms-pro-shell .revenue-chart-responsive .revenue-chart-table th,
+.rms-pro-shell .revenue-chart-responsive .revenue-chart-table td { padding:10px 4px; border-bottom:1px solid #e2e8f0; text-align:left; font-size:13px; }
+.rms-pro-shell .revenue-chart-responsive .revenue-chart-table td,
+.rms-pro-shell .revenue-chart-responsive .revenue-chart-table thead th:last-child { text-align:right; font-variant-numeric:tabular-nums; }
+@media(max-width:760px) {
+  .rms-pro-shell .revenue-chart-responsive.finance-daily-revenue-chart { padding:14px!important; border-radius:18px!important; }
+  .rms-pro-shell .revenue-chart-responsive .finance-line-chart-wrap { padding:12px!important; margin-top:12px!important; border-radius:14px!important; box-shadow:none!important; }
+  .rms-pro-shell .revenue-chart-responsive .finance-line-chart-head { display:block!important; }
+  .rms-pro-shell .revenue-chart-responsive .finance-line-chart-head h3 { font-size:19px!important; }
+  .rms-pro-shell .revenue-chart-responsive .finance-line-chart-head .hint { font-size:13px!important; }
+  .rms-pro-shell .revenue-chart-responsive .finance-line-chart-head-meta { margin-top:10px; justify-content:flex-start!important; }
+  .rms-pro-shell .revenue-chart-responsive .finance-line-chart-head-meta span { white-space:normal; font-size:12px; }
+  .rms-pro-shell .revenue-chart-responsive .finance-line-chart-average text { display:none; }
+  .rms-pro-shell .revenue-chart-responsive .finance-line-chart-summary { grid-template-columns:1fr!important; gap:0!important; margin-top:12px!important; }
+  .rms-pro-shell .revenue-chart-responsive .finance-line-chart-summary .metric { display:flex!important; flex-wrap:wrap!important; align-items:center!important; justify-content:space-between!important; gap:8px 12px!important; min-height:64px!important; height:auto!important; padding:12px 0!important; border:0!important; border-bottom:1px solid #e2e8f0!important; border-radius:0!important; background:transparent!important; box-shadow:none!important; }
+  .rms-pro-shell .revenue-chart-responsive .finance-line-chart-summary .finance-kpi-icon { display:none!important; }
+  .rms-pro-shell .revenue-chart-responsive .finance-line-chart-summary .metric-copy { padding:0!important; min-height:0!important; max-width:100%!important; }
+  .rms-pro-shell .revenue-chart-responsive .finance-line-chart-summary .metric-title { font-size:13px!important; line-height:1.4!important; font-weight:600!important; }
+  .rms-pro-shell .revenue-chart-responsive .finance-line-chart-summary .metric-title br { display:none; }
+  .rms-pro-shell .revenue-chart-responsive .finance-line-chart-summary .metric-amount { width:auto!important; margin:0!important; gap:4px!important; align-self:center!important; }
+  .rms-pro-shell .revenue-chart-responsive .finance-line-chart-summary .metric-number { font-size:20px!important; line-height:1.2!important; letter-spacing:-.02em!important; white-space:nowrap!important; }
+  .rms-pro-shell .revenue-chart-responsive .finance-line-chart-summary .metric-currency { font-size:11px!important; }
+  .rms-pro-shell .revenue-chart-responsive .finance-line-chart-summary .metric-date,
+  .rms-pro-shell .revenue-chart-responsive .finance-line-chart-summary .metric-weekday { margin-top:2px!important; font-size:12px!important; line-height:1.4!important; }
+}
+
+.rms-pro-shell .revenue-chart-responsive .finance-line-chart-area { fill:var(--revenue-chart-fill)!important; }
+.rms-pro-shell .revenue-chart-responsive .finance-line-chart-line { stroke:var(--revenue-chart-stroke)!important; }
