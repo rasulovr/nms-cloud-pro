@@ -45,81 +45,45 @@
   </section>
 
 
-  const overviewRevenueTotal = parseNum(rmsRevenueReport.totals.revenue)
-  const overviewCashBankRevenue = parseNum(rmsRevenueReport.totals.cash) + parseNum(rmsRevenueReport.totals.bank)
-  const overviewWoltRevenue = parseNum(rmsRevenueReport.totals.wolt)
-  const overviewExpenseTotal = parseNum(rmsExpensesReport.totals.amount)
-  const overviewResult = overviewRevenueTotal - overviewExpenseTotal
-  const overviewMargin = overviewRevenueTotal ? overviewResult / overviewRevenueTotal * 100 : 0
+  const overviewModel = overviewProfitView(currentOverviewSnapshot)
+  const overviewProfit = overviewModel.profit
+  const overviewRevenueTotal = overviewProfit.available ? overviewProfit.revenue : null
+  const overviewWoltRevenue = overviewProfit.available ? overviewProfit.woltRevenue : 0
+  const overviewExpenseTotal = overviewProfit.available ? overviewProfit.expenses : null
+  const overviewResult = overviewProfit.net
+  const overviewMargin = overviewProfit.margin
   const overviewWoltShare = overviewRevenueTotal ? overviewWoltRevenue / overviewRevenueTotal * 100 : 0
-
-  const overviewRevenueDays = useMemo(() => {
-    return new Set((rmsRevenueReport.rows || []).map(row => String(row.revenue_date || '')).filter(Boolean)).size
-  }, [rmsRevenueReport.rows])
-  const overviewAverageRevenue = overviewRevenueDays ? overviewRevenueTotal / overviewRevenueDays : 0
-
-  const overviewExpenseByBranch = useMemo(() => {
-    const map = new Map()
-    ;(rmsExpensesReport.rows || []).forEach(row => {
-      const key = String(row.branch_name || row.branch_id || '—')
-      map.set(key, parseNum(map.get(key)) + parseNum(row.amount))
-    })
-    return map
-  }, [rmsExpensesReport.rows])
-
-  const overviewBranchRows = useMemo(() => {
-    const map = new Map()
-    ;(rmsRevenueReport.rows || []).forEach(row => {
-      const key = String(row.branch_name || row.branch_id || '—')
-      const current = map.get(key) || { name: key, baseRevenue: 0, wolt: 0, revenue: 0, expenses: 0, result: 0, margin: 0 }
-      current.baseRevenue += parseNum(row.cash) + parseNum(row.bank)
-      current.wolt += parseNum(row.wolt)
-      current.revenue += parseNum(row.revenue)
-      map.set(key, current)
-    })
-    ;(rmsExpensesReport.rows || []).forEach(row => {
-      const key = String(row.branch_name || row.branch_id || '—')
-      if (!map.has(key)) map.set(key, { name: key, baseRevenue: 0, wolt: 0, revenue: 0, expenses: 0, result: 0, margin: 0 })
-    })
-    return Array.from(map.values()).map(row => {
-      const expenses = parseNum(overviewExpenseByBranch.get(row.name))
-      const result = parseNum(row.revenue) - expenses
-      return {
-        ...row,
-        expenses,
-        result,
-        margin: row.revenue ? result / row.revenue * 100 : 0
-      }
-    }).sort((a, b) => parseNum(b.revenue) - parseNum(a.revenue))
-  }, [rmsRevenueReport.rows, rmsExpensesReport.rows, overviewExpenseByBranch])
-
+  const overviewRevenueDays = new Set(overviewModel.revenueRows.map(row => row.revenue_date)).size
+  const overviewAverageRevenue = overviewRevenueDays ? overviewRevenueTotal / overviewRevenueDays : null
+  const overviewBranchRows = overviewModel.branches
   const overviewDailyRows = useMemo(() => {
     const map = new Map()
-    ;(rmsRevenueReport.rows || []).forEach(row => {
+    ;overviewModel.revenueRows.forEach(row => {
       const date = String(row.revenue_date || '').slice(0, 10)
       if (!date) return
       const current = map.get(date) || { date, operationalRevenue: 0, expenses: 0, result: 0 }
-      current.operationalRevenue += parseNum(row.cash) + parseNum(row.bank)
+      current.operationalRevenue += parseNum(row.cash_amount) + parseNum(row.bank_amount)
       map.set(date, current)
     })
-    ;(rmsExpensesReport.rows || []).forEach(row => {
-      const date = String(row.expense_date || '').slice(0, 10)
-      if (!date) return
-      const categoryName = row.category_name || row.expense_categories?.name || row.custom_category || ''
-      if (rmsIsWoltCommissionName(categoryName)) return
-      const current = map.get(date) || { date, operationalRevenue: 0, expenses: 0, result: 0 }
-      current.expenses += parseNum(row.amount)
-      map.set(date, current)
+    ;overviewModel.expenseRows.forEach(category => {
+      if (rmsIsWoltCommissionName(category.name)) return
+      for (const row of category.details || []) {
+        const date = String(row.date || '').slice(0, 10)
+        if (!date) continue
+        const current = map.get(date) || {date, operationalRevenue: 0, expenses: 0, result: 0}
+        current.expenses += parseNum(row.amount)
+        map.set(date, current)
+      }
     })
     return Array.from(map.values())
       .sort((a, b) => String(a.date).localeCompare(String(b.date)))
       .map(row => ({ ...row, result: parseNum(row.operationalRevenue) - parseNum(row.expenses) }))
-  }, [rmsRevenueReport.rows, rmsExpensesReport.rows])
+  }, [currentOverviewSnapshot])
 
   const overviewTrendConfig = overviewTrendMode === 'expenses'
     ? {
         title: 'Динамика расходов по дням',
-        description: 'Ежедневные расходы без Wolt Comission, чтобы расчётные удержания Wolt не искажали операционную картину.',
+        description: 'Расходы без Wolt Comission. Месячные начисления и распределённые закупки показаны первым числом месяца, не датой оплаты.',
         field: 'expenses',
         label: 'Расходы без Wolt Comission',
         lineClass: 'reports-v411-line-expenses',
@@ -171,9 +135,9 @@
     return value
   }
 
-  const overviewTopExpenseCategories = (rmsExpensesReport.byCategory || []).slice(0, 6)
+  const overviewTopExpenseCategories = overviewModel.expenseRows.slice(0, 6)
   const overviewLargestExpense = overviewTopExpenseCategories[0] || null
-  const overviewWoltCommission = (rmsExpensesReport.byCategory || [])
+  const overviewWoltCommission = overviewModel.expenseRows
     .filter(row => rmsIsWoltCommissionName(row.name))
     .reduce((sum, row) => sum + parseNum(row.amount), 0)
   const overviewBestBranch = overviewBranchRows[0] || null
@@ -181,8 +145,8 @@
     .filter(row => parseNum(row.revenue) > 0)
     .sort((a, b) => parseNum(a.margin) - parseNum(b.margin))[0] || null
   const overviewMaxExpenseCategory = Math.max(1, ...overviewTopExpenseCategories.map(row => parseNum(row.amount)))
-  const overviewLoading = rmsRevenueReport.loading || rmsExpensesReport.loading
-  const overviewError = rmsRevenueReport.error || rmsExpensesReport.error
+  const overviewLoading = !currentOverviewSnapshot
+  const overviewError = currentOverviewSnapshot?.error || ''
 
   const overviewConclusions = [
     overviewBestBranch && {
@@ -273,13 +237,14 @@
 
     {overviewLoading && <div className="reports-v411-status">Обновляю фактическую выручку и расходы RMS за выбранный период…</div>}
     {overviewError && <div className="reports-v411-status bad">{overviewError}</div>}
+    {!overviewLoading && <ProfitabilitySourceNotice profit={overviewProfit} />}
 
     <section className="reports-v411-kpis">
-      <div className="reports-v411-kpi green"><span>Общая выручка</span><strong>{fmt(overviewRevenueTotal)}</strong><small>Cash + Bank + Wolt</small></div>
-      <div className="reports-v411-kpi blue"><span>Расходы</span><strong>{fmt(overviewExpenseTotal)}</strong><small>{rmsExpensesReport.totals.transactions} операций · {rmsExpensesReport.totals.categories} статей</small></div>
-      <div className={`reports-v411-kpi ${overviewResult >= 0 ? 'purple' : 'red'}`}><span>Финансовый результат</span><strong className={overviewResult >= 0 ? 'good' : 'bad'}>{fmt(overviewResult)}</strong><small>Выручка минус расходы RMS</small></div>
-      <div className={`reports-v411-kpi ${overviewMargin >= 0 ? 'orange' : 'red'}`}><span>Рентабельность</span><strong>{pct(overviewMargin)}</strong><small>Результат / общая выручка</small></div>
-      <div className="reports-v411-kpi teal"><span>Средняя выручка / день</span><strong>{fmt(overviewAverageRevenue)}</strong><small>{overviewRevenueDays} дней с выручкой</small></div>
+      <div className="reports-v411-kpi green"><span>Общая выручка</span><strong>{formatVerifiedProfit(overviewRevenueTotal, fmt)}</strong><small>После банковской комиссии</small></div>
+      <div className="reports-v411-kpi blue"><span>Расходы</span><strong>{formatVerifiedProfit(overviewExpenseTotal, fmt)}</strong><small>{overviewModel.expenseRows.length} статей · как в «Финансах»</small></div>
+      <div className={`reports-v411-kpi ${overviewResult >= 0 ? 'purple' : 'red'}`}><span>Финансовый результат</span><strong className={overviewResult >= 0 ? 'good' : 'bad'}>{formatVerifiedProfit(overviewResult, fmt)}</strong><small>Единый расчёт с «Финансами»</small></div>
+      <div className={`reports-v411-kpi ${overviewMargin >= 0 ? 'orange' : 'red'}`}><span>Рентабельность</span><strong>{formatVerifiedProfit(overviewMargin, pct)}</strong><small>Результат / общая выручка</small></div>
+      <div className="reports-v411-kpi teal"><span>Средняя выручка / день</span><strong>{formatVerifiedProfit(overviewAverageRevenue, fmt)}</strong><small>{overviewRevenueDays} дней с выручкой</small></div>
       {overviewWoltRevenue > 0
         ? <div className="reports-v411-kpi blue"><span>Доля Wolt</span><strong>{pct(overviewWoltShare)}</strong><small>{fmt(overviewWoltRevenue)} AZN · комиссия {fmt(overviewWoltCommission)}</small></div>
         : <div className="reports-v411-kpi blue"><span>Активных филиалов</span><strong>{overviewBranchRows.filter(row => row.revenue > 0).length}</strong><small>с выручкой за выбранный период</small></div>}
@@ -317,7 +282,7 @@
       </div>
 
       <div className="reports-v411-card">
-        <div className="reports-v411-card-head"><div><h3>Ключевые выводы</h3><p>Автоматические управленческие выводы по фактическим данным RMS.</p></div></div>
+        <div className="reports-v411-card-head"><div><h3>Ключевые выводы</h3><p>Выводы по той же базе расчёта, что и «Финансы».</p></div></div>
         <div className="reports-v411-conclusions">
           {overviewConclusions.map((item, index) => <div key={`${item.title}-${index}`} className={`reports-v411-conclusion ${item.tone || ''}`}>
             <i />
@@ -330,7 +295,7 @@
 
     <section className="reports-v411-bottom-grid">
       <div className="reports-v411-card">
-        <div className="reports-v411-card-head"><div><h3>Эффективность филиалов</h3><p>Фактическая выручка, расходы и результат за выбранный период.</p></div></div>
+        <div className="reports-v411-card-head"><div><h3>Эффективность филиалов</h3><p>Выручка после банковской комиссии, расходы и результат за выбранный период.</p></div></div>
         <div className="reports-v411-table-wrap">
           <table className="reports-v411-table">
             <thead><tr><th>Филиал</th><th>Выручка</th><th>Wolt</th><th>Расходы</th><th>Результат</th><th>Маржа</th></tr></thead>
@@ -398,8 +363,7 @@
 
   const refreshCurrentReport = () => {
     if (effectiveReportsTab === 'overview') {
-      loadRmsRevenueReport()
-      loadRmsExpensesReport()
+      setOverviewRevision(value => value + 1)
       return
     }
     if (effectiveReportsTab === 'profitability') return refreshRmsProfitabilityReport()
