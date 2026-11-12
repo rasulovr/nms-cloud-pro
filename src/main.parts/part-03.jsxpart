@@ -1329,6 +1329,24 @@ function MiniBarChart({ rows, valueKey = 'revenue', labelKey = 'name', title, su
 
 
 function DailyRevenueLineChart({ rows = [], title = 'Выручка по дням', subtitle = '', className = '', firstSummary = 'revenue', mode = 'daily', dailyRows = [] }) {
+  const plotRef = useRef(null)
+  const [plotWidth, setPlotWidth] = useState(320)
+  const [selectedKey, setSelectedKey] = useState(null)
+  const chartId = React.useId().replace(/:/g, '')
+  const rowKey = (row, index) => `${mode}:${row.date || row.day || index}`
+  useEffect(() => {
+    const node = plotRef.current
+    if (!node) return
+    const measure = () => setPlotWidth(Math.max(180, Math.round(node.getBoundingClientRect().width)))
+    measure()
+    if (typeof ResizeObserver === 'undefined') {
+      window.addEventListener('resize', measure)
+      return () => window.removeEventListener('resize', measure)
+    }
+    const observer = new ResizeObserver(measure)
+    observer.observe(node)
+    return () => observer.disconnect()
+  }, [])
   const values = rows.map(r => parseNum(r.amount))
   const kpiRows = (Array.isArray(dailyRows) && dailyRows.length ? dailyRows : rows)
     .map(r => ({ ...r, amount: parseNum(r.amount) }))
@@ -1346,7 +1364,7 @@ function DailyRevenueLineChart({ rows = [], title = 'Выручка по дня�
   const formatDayMonth = (row) => {
     if (isMonthlyMode) return formatChartXAxisLabel(row)
     if (!row?.date) return row?.day && row.day !== '—' ? String(row.day) : '—'
-    const d = new Date(`${formatDateDMY(row.date)}T12:00:00`)
+    const d = new Date(`${String(row.date).slice(0, 10)}T12:00:00`)
     if (Number.isNaN(d.getTime())) return row?.day && row.day !== '—' ? String(row.day) : '—'
     return `${d.getDate()} ${monthNamesRu[d.getMonth()]}`
   }
@@ -1377,9 +1395,9 @@ function DailyRevenueLineChart({ rows = [], title = 'Выручка по дня�
   const weekdayRows = Array.from(weekdayStats.values()).filter(r => r.count > 0)
   const bestWeekday = weekdayRows.reduce((top, r) => parseNum(r.avg) > parseNum(top.avg) ? r : top, { name: '—', avg: 0, count: 0 })
   const worstWeekday = weekdayRows.reduce((low, r) => !low.count || parseNum(r.avg) < parseNum(low.avg) ? r : low, { name: '—', avg: 0, count: 0 })
-  const width = 1000
-  const height = 300
-  const pad = { left: 48, right: 48, top: 30, bottom: 42 }
+  const width = plotWidth
+  const height = 260
+  const pad = { left: 44, right: 16, top: 24, bottom: 32 }
   const chartW = width - pad.left - pad.right
   const chartH = height - pad.top - pad.bottom
   const count = Math.max(1, rows.length - 1)
@@ -1398,9 +1416,17 @@ function DailyRevenueLineChart({ rows = [], title = 'Выручка по дня�
   const areaPath = points.length ? `${path} L ${points[points.length - 1].x.toFixed(1)} ${pad.top + chartH} L ${points[0].x.toFixed(1)} ${pad.top + chartH} Z` : ''
   const yTicks = [0, 0.25, 0.5, 0.75, 1]
   const bestPoint = points.find(p => parseNum(p.amount) === parseNum(best.amount) && parseNum(p.amount) > 0)
-  const latestPoint = points[points.length - 1]
   const averageY = pad.top + chartH - (Math.min(max, avg) / max * chartH)
-  const axisLabelStep = Math.max(1, Math.ceil(points.length / 8))
+  const axisLabelStep = Math.max(1, Math.ceil(points.length / Math.max(2, Math.floor(chartW / 60))))
+  const selectedIndex = points.findIndex((row, index) => rowKey(row, index) === selectedKey)
+  const activeIndex = selectedIndex >= 0 ? selectedIndex : Math.max(0, points.length - 1)
+  const selectedPoint = points[activeIndex]
+  const selectFromPointer = event => {
+    const rect = event.currentTarget.getBoundingClientRect()
+    const x = (event.clientX - rect.left) * width / rect.width
+    const index = Math.max(0, Math.min(points.length - 1, Math.round((x - pad.left) / chartW * count)))
+    if (points[index]) setSelectedKey(rowKey(points[index], index))
+  }
 
   const AmountBlock = ({ value, suffix = 'AZN' }) => (
     <div className="metric-amount">
@@ -1409,22 +1435,26 @@ function DailyRevenueLineChart({ rows = [], title = 'Выручка по дня�
     </div>
   )
 
-  return <div className={`card span-2 finance-daily-revenue-chart ${className}`.trim()}>
+  return <div className={`card span-2 finance-daily-revenue-chart revenue-chart-responsive ${className}`.trim()}>
     <div className="card-head finance-line-chart-head"><div><h3>{title}</h3><p className="hint">{subtitle}</p></div>{rows.length > 0 && <div className="finance-line-chart-head-meta"><span><i />Среднее: <b>{fmt(avg)} AZN</b></span><span>{activeDays} активных дней</span></div>}</div>
     <div className="finance-line-chart-wrap">
-      {rows.length ? <svg className="finance-line-chart-svg" viewBox={`0 0 ${width} ${height}`} role="img" aria-label={title} preserveAspectRatio="none">
+      {selectedPoint && <div className="revenue-chart-selection" aria-live="polite">
+        <span>{formatDayMonth(selectedPoint)}</span><strong>{fmt(selectedPoint.amount)} <small>AZN</small></strong>
+      </div>}
+      <div ref={plotRef} className="revenue-chart-plot-frame">
+      {rows.length ? <svg className="finance-line-chart-svg" viewBox={`0 0 ${width} ${height}`} role="img" aria-label={title} preserveAspectRatio="xMidYMid meet" onPointerDown={selectFromPointer} onPointerMove={event => { if (event.buttons === 1) selectFromPointer(event) }}>
         <defs>
-          <linearGradient id="financeDailyRevenueGradient" x1="0" y1="0" x2="0" y2="1">
+          <linearGradient id={`${chartId}-financeDailyRevenueGradient`} x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.30" />
             <stop offset="54%" stopColor="#60a5fa" stopOpacity="0.12" />
             <stop offset="100%" stopColor="#dbeafe" stopOpacity="0.01" />
           </linearGradient>
-          <linearGradient id="financeDailyRevenueStroke" x1="0" y1="0" x2="1" y2="0">
+          <linearGradient id={`${chartId}-financeDailyRevenueStroke`} x1="0" y1="0" x2="1" y2="0">
             <stop offset="0%" stopColor="#1d4ed8" />
             <stop offset="55%" stopColor="#2563eb" />
             <stop offset="100%" stopColor="#06b6d4" />
           </linearGradient>
-          <filter id="financeDailyRevenueGlow" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="5" stdDeviation="5" floodColor="#2563eb" floodOpacity=".28" /></filter>
+          <filter id={`${chartId}-financeDailyRevenueGlow`} x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="5" stdDeviation="5" floodColor="#2563eb" floodOpacity=".28" /></filter>
         </defs>
         <rect className="finance-line-chart-plot" x={pad.left} y={pad.top} width={chartW} height={chartH} rx="16" />
         {yTicks.map(tick => {
@@ -1436,11 +1466,11 @@ function DailyRevenueLineChart({ rows = [], title = 'Выручка по дня�
           </g>
         })}
         <line className="finance-line-chart-axis" x1={pad.left} y1={pad.top + chartH} x2={width - pad.right} y2={pad.top + chartH} />
-        {avg > 0 && <g className="finance-line-chart-average"><line x1={pad.left} y1={averageY} x2={width - pad.right} y2={averageY} /><text x={width - pad.right - 8} y={averageY - 7} textAnchor="end">среднее {fmt(avg)}</text></g>}
-        {areaPath && <path className="finance-line-chart-area" d={areaPath} fill="url(#financeDailyRevenueGradient)" />}
-        {path && <path className="finance-line-chart-line" d={path} stroke="url(#financeDailyRevenueStroke)" filter="url(#financeDailyRevenueGlow)" />}
+        {avg > 0 && !isMonthlyMode && <g className="finance-line-chart-average"><line x1={pad.left} y1={averageY} x2={width - pad.right} y2={averageY} /><text x={width - pad.right - 8} y={averageY - 7} textAnchor="end">среднее {fmt(avg)}</text></g>}
+        {areaPath && <path className="finance-line-chart-area" d={areaPath} style={{'--revenue-chart-fill': `url(#${chartId}-financeDailyRevenueGradient)`}} />}
+        {path && <path className="finance-line-chart-line" d={path} style={{'--revenue-chart-stroke': `url(#${chartId}-financeDailyRevenueStroke)`}} filter={`url(#${chartId}-financeDailyRevenueGlow)`} />}
         {points.map((point, index) => <circle key={`point-${point.date || point.day || index}`} className="finance-line-chart-data-point" cx={point.x} cy={point.y} r="3.2"><title>{formatDayMonth(point)}: {fmt(point.amount)} AZN</title></circle>)}
-        {bestPoint && <g key={`best-${bestPoint.date}-${bestPoint.amount}`}>
+        {width >= 600 && bestPoint && <g key={`best-${bestPoint.date}-${bestPoint.amount}`}>
           <line className="finance-line-chart-guide" x1={bestPoint.x} y1={Math.max(pad.top, bestPoint.y)} x2={bestPoint.x} y2={pad.top + chartH} />
           <g className="finance-line-chart-tooltip" transform={`translate(${Math.max(56, Math.min(width - 100, bestPoint.x - 44))}, ${Math.max(2, bestPoint.y - 62)})`}>
             <rect className="finance-line-chart-tooltip-box" x="0" y="0" width="88" height="46" rx="10" />
@@ -1448,26 +1478,34 @@ function DailyRevenueLineChart({ rows = [], title = 'Выручка по дня�
             <text className="finance-line-chart-tooltip-date" x="44" y="36" textAnchor="middle">{formatDayMonth(bestPoint)}</text>
           </g>
         </g>}
-        {latestPoint && <g className="finance-line-chart-latest"><circle cx={latestPoint.x} cy={latestPoint.y} r="9" /><circle cx={latestPoint.x} cy={latestPoint.y} r="4" /></g>}
+        {selectedPoint && <g className="finance-line-chart-latest"><line className="finance-line-chart-guide" x1={selectedPoint.x} x2={selectedPoint.x} y1={pad.top} y2={pad.top + chartH}/><circle cx={selectedPoint.x} cy={selectedPoint.y} r="7" /><circle cx={selectedPoint.x} cy={selectedPoint.y} r="4" /></g>}
         {points.map((p, i) => {
           const anchor = i === 0 ? 'start' : i === points.length - 1 ? 'end' : 'middle'
-          if (i !== 0 && i !== points.length - 1 && i % axisLabelStep !== 0) return null
+          if (i !== 0 && i !== points.length - 1 && (i % axisLabelStep !== 0 || points.length - 1 - i < axisLabelStep / 2)) return null
           return <text key={`x-${p.date || p.day || i}`} className="finance-line-chart-x-label" x={p.x} y={height - 11} textAnchor={anchor}>{formatChartXAxisLabel(p)}</text>
         })}
       </svg> : <p className="hint">Пока нет данных по выручке за выбранный месяц.</p>}
+      </div>
+      {rows.length > 1 && <label className="revenue-chart-scrubber">
+        <span>{isMonthlyMode ? 'Выберите месяц' : 'Выберите день'} или нажмите на график</span>
+        <input type="range" min="0" max={rows.length - 1} step="1" value={activeIndex}
+          aria-label={isMonthlyMode ? 'Месяц на графике' : 'День на графике'}
+          aria-valuetext={`${formatDayMonth(selectedPoint)}: ${fmt(selectedPoint.amount)} AZN`}
+          onChange={event => { const index = Number(event.target.value); setSelectedKey(rowKey(points[index], index)) }} />
+      </label>}
       <div className="finance-line-chart-summary">
         {firstSummary === 'activeDays' ? <div className="metric metric-active-days">
           <span className="finance-kpi-icon" aria-hidden="true">◷</span>
-          <div className="metric-copy"><div className="metric-title">Дней с<br />выручкой</div></div>
+          <div className="metric-copy"><div className="metric-title">Дней с <br />выручкой</div></div>
           <AmountBlock value={activeDays} suffix="дней" />
         </div> : <div className="metric metric-revenue">
           <span className="finance-kpi-icon" aria-hidden="true">↗</span>
-          <div className="metric-copy"><div className="metric-title">{isMonthlyMode ? <>Весь<br />период</> : <>Выручка за<br />месяц</>}</div></div>
+          <div className="metric-copy"><div className="metric-title">{isMonthlyMode ? <>Весь <br />период</> : <>Выручка за <br />месяц</>}</div></div>
           <AmountBlock value={isMonthlyMode ? kpiTotal : total} />
         </div>}
         <div className="metric metric-average">
           <span className="finance-kpi-icon" aria-hidden="true">▣</span>
-          <div className="metric-copy"><div className="metric-title">Средняя<br />выручка / день</div></div>
+          <div className="metric-copy"><div className="metric-title">Средняя <br />выручка / день</div></div>
           <AmountBlock value={avg} />
         </div>
         <div className="metric metric-best-day">
@@ -1477,15 +1515,21 @@ function DailyRevenueLineChart({ rows = [], title = 'Выручка по дня�
         </div>
         <div className="metric metric-best-weekday">
           <span className="finance-kpi-icon" aria-hidden="true">☆</span>
-          <div className="metric-copy"><div className="metric-title">Лучший день<br />недели</div><div className="metric-weekday">{bestWeekday.count ? bestWeekday.name : '—'}</div></div>
+          <div className="metric-copy"><div className="metric-title">Лучший день <br />недели</div><div className="metric-weekday">{bestWeekday.count ? bestWeekday.name : '—'}</div></div>
           <AmountBlock value={bestWeekday.avg} />
         </div>
         <div className="metric metric-worst">
           <span className="finance-kpi-icon" aria-hidden="true">↘</span>
-          <div className="metric-copy"><div className="metric-title">Худший день<br />недели</div><div className="metric-weekday">{worstWeekday.count ? worstWeekday.name : '—'}</div></div>
+          <div className="metric-copy"><div className="metric-title">Худший день <br />недели</div><div className="metric-weekday">{worstWeekday.count ? worstWeekday.name : '—'}</div></div>
           <AmountBlock value={worstWeekday.avg} />
         </div>
       </div>
+      {rows.length > 0 && <details className="revenue-chart-table">
+        <summary>Все значения · {rows.length}</summary>
+        <table><thead><tr><th>{isMonthlyMode ? 'Месяц' : 'Дата'}</th><th>Выручка, AZN</th></tr></thead>
+          <tbody>{rows.map((row, index) => <tr key={rowKey(row, index)}><th>{formatDayMonth(row)}</th><td>{fmt(row.amount)}</td></tr>)}</tbody>
+        </table>
+      </details>}
     </div>
   </div>
 }
