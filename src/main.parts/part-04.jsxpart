@@ -6071,6 +6071,18 @@ function Reports({ t, permissions = [], isAdmin = false }) {
   const [branchFilter, setBranchFilter] = useState('all')
   const [departmentFilter, setDepartmentFilter] = useState('all')
   const [monthFilter, setMonthFilter] = useState('all')
+  const [overviewSnapshot, setOverviewSnapshot] = useState(null)
+  const [overviewRevision, setOverviewRevision] = useState(0)
+  const overviewKey = JSON.stringify([monthFilter, branchFilter, overviewRevision, branches])
+  const currentOverviewSnapshot = reportBranchesLoaded && effectiveReportsTab === 'overview' && overviewSnapshot?.key === overviewKey ? overviewSnapshot.report : null
+  useEffect(() => {
+    if (effectiveReportsTab !== 'overview' || !reportBranchesLoaded) return
+    let active = true
+    readOverviewProfit(supabase, readRmsProfitabilitySnapshot, branches, monthFilter, branchFilter)
+      .then(report => { if (active) setOverviewSnapshot({key: overviewKey, report}) })
+      .catch(error => { if (active) setOverviewSnapshot({key: overviewKey, report: {error: error.message}}) })
+    return () => { active = false; setOverviewSnapshot(null) }
+  }, [effectiveReportsTab, reportBranchesLoaded, overviewKey])
   const [profitabilitySelection, setProfitabilitySelection] = useState(() => ({ ...defaultMonthRange(), branchIds: undefined }))
   const profitabilityRequestId = React.useRef(0)
   const [rmsRevenuePeriodOptions, setRmsRevenuePeriodOptions] = useState({ months: [], years: [] })
@@ -6300,7 +6312,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
   }, [salesNameAliases])
 
   useEffect(() => {
-    if (!['overview', 'revenue'].includes(effectiveReportsTab)) return
+    if (effectiveReportsTab !== 'revenue') return
     loadRmsRevenueReport()
   }, [effectiveReportsTab, branchFilter, monthFilter, revenueDateFrom, revenueDateTo, branches.length])
 
@@ -6456,7 +6468,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
   }
 
   useEffect(() => {
-    if (!['overview', 'expenses'].includes(effectiveReportsTab)) return
+    if (effectiveReportsTab !== 'expenses') return
     loadRmsExpensesReport()
   }, [effectiveReportsTab, branchFilter, monthFilter, branches.length])
 
