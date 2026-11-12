@@ -92,12 +92,12 @@ export default function MonthYearPicker({ value, onChange, lang = 'ru', label, t
 }
 
 // Preserve existing all/year report modes; only monthly selection changes UI.
-export function ReportMonthPeriod({ value, onChange, years = [], lang = 'ru', disabled = false, allowYear = true }) {
+export function ReportMonthPeriod({ value, onChange, years = [], lang = 'ru', disabled = false, allowYear = true, showModeSelect = true }) {
   const words = text[lang === 'az' ? 'az' : 'ru']
   const mode = value === 'all' ? 'all' : String(value).startsWith('year:') ? 'year' : 'month'
   const yearValues = [...new Set([...years.map(String), currentBakuMonth().slice(0, 4), ...(mode === 'year' ? [String(value).slice(5)] : [])])].sort().reverse()
   return <div className="rms-report-period">
-    <select aria-label={words.mode} value={mode} disabled={disabled} onChange={event => onChange(event.target.value === 'all' ? 'all' : event.target.value === 'year' ? `year:${currentBakuMonth().slice(0, 4)}` : currentBakuMonth())}><option value="all">{words.all}</option><option value="month">{words.monthly}</option>{(allowYear || mode === 'year') && <option value="year">{words.yearly}</option>}</select>
+    {showModeSelect && <select aria-label={words.mode} value={mode} disabled={disabled} onChange={event => onChange(event.target.value === 'all' ? 'all' : event.target.value === 'year' ? `year:${currentBakuMonth().slice(0, 4)}` : currentBakuMonth())}><option value="all">{words.all}</option><option value="month">{words.monthly}</option>{(allowYear || mode === 'year') && <option value="year">{words.yearly}</option>}</select>}
     <MonthYearPicker value={mode === 'year' ? `${String(value).slice(5)}-${currentBakuMonth().slice(5)}` : value} triggerLabel={mode === 'month' ? undefined : words.choose} onChange={onChange} lang={lang} disabled={disabled}/>
     {mode === 'year' && <select aria-label={words.year} value={String(value).slice(5)} disabled={disabled} onChange={event => onChange(`year:${event.target.value}`)}>{yearValues.map(year => <option key={year} value={year}>{year}</option>)}</select>}
   </div>
