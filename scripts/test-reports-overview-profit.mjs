@@ -57,3 +57,14 @@ requests[2](report);await new Promise(r=>setImmediate(r));assert.equal(render(),
 revision++;assert.equal(render(),null);cleanup()
 requests[3](report);await new Promise(r=>setImmediate(r));assert.notEqual(saved?.key,JSON.stringify(['2026-11','a',revision,branches]))
 console.log('PASS actual Overview deferred effect: month/branch/refresh invalidation, stale-response and unmount rejection')
+// Reopening must issue a fresh read, and an error must be retryable.
+race.effectiveReportsTab='sales';render()
+const beforeReopen=requests.length
+race.effectiveReportsTab='overview';assert.equal(render(),null)
+assert.equal(requests.length,beforeReopen+1)
+requests.at(-1)({error:'source unavailable'});await new Promise(r=>setImmediate(r))
+assert.equal(render().error,'source unavailable')
+revision++;assert.equal(render(),null)
+requests.at(-1)(report);await new Promise(r=>setImmediate(r));assert.equal(render(),report)
+cleanup()
+console.log('PASS Overview reopen fresh read, error visibility and explicit retry recovery')
