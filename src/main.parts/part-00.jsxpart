@@ -11,7 +11,7 @@ import {readComponentRecords, resolveComponentRecords, resolveCoverageManifests,
 import {buildReviewedAdjustments} from './profitability-adjustments.mjs'
 import ProfitabilityReferenceReport from './ProfitabilityReferenceReport.jsx'
 import RangeBranchFilters from './RangeBranchFilters.jsx'
-import { defaultMonthRange, validateMonthRange } from './profitability-range.mjs'
+import { currentBakuMonth, defaultMonthRange, validateMonthRange } from './profitability-range.mjs'
 import { ReportMonthPeriod } from './MonthYearPicker.jsx'
 
 

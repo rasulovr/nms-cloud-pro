@@ -5554,29 +5554,35 @@ async function readRmsProfitabilitySnapshot(branches, profitabilitySelection) {
         return query.order('revenue_date', { ascending: true }).order('id', { ascending: true }).range(from, to)
       })
 
-      let revenueRows = await fetchRevenueTable('daily_revenue_entries')
-      let revenueSource = 'daily_revenue_entries'
-      if (!revenueRows.length) {
-        revenueRows = await fetchRevenueTable('daily_revenue')
-        revenueSource = 'daily_revenue'
-      }
-
-      const rawDailyExpenseRows = await fetchPaged((from, to) => {
-        let query = supabase
-          .from('daily_expenses')
-          .select('id,branch_id,expense_date,amount,category_id,comment,custom_category,expense_categories(name)')
-          .is('deleted_at', null)
-        query = applyDateRange(query, 'expense_date')
-        return query.order('expense_date', { ascending: true }).order('id', { ascending: true }).range(from, to)
-      })
-
-      const allSupplierPurchaseRows = await fetchPaged((from, to) => {
-        let query = supabase
-          .from('supplier_purchases')
-          .select('id,supplier_id,branch_id,purchase_date,invoice_number,total_amount,comment,deleted_at,suppliers(name)')
-        query = applyDateRange(query, 'purchase_date')
-        return query.order('purchase_date', { ascending: true }).order('id', { ascending: true }).range(from, to)
-      })
+      // Independent sources overlap on the network; each still reads every page.
+      // Promise.all rejects on any source failure, so partial totals cannot escape.
+      const [revenueResult, rawDailyExpenseRows, allSupplierPurchaseRows] = await Promise.all([
+        (async () => {
+          let revenueRows = await fetchRevenueTable('daily_revenue_entries')
+          let revenueSource = 'daily_revenue_entries'
+          if (!revenueRows.length) {
+            revenueRows = await fetchRevenueTable('daily_revenue')
+            revenueSource = 'daily_revenue'
+          }
+          return { revenueRows, revenueSource }
+        })(),
+        fetchPaged((from, to) => {
+          let query = supabase
+            .from('daily_expenses')
+            .select('id,branch_id,expense_date,amount,category_id,comment,custom_category,expense_categories(name)')
+            .is('deleted_at', null)
+          query = applyDateRange(query, 'expense_date')
+          return query.order('expense_date', { ascending: true }).order('id', { ascending: true }).range(from, to)
+        }),
+        fetchPaged((from, to) => {
+          let query = supabase
+            .from('supplier_purchases')
+            .select('id,supplier_id,branch_id,purchase_date,invoice_number,total_amount,comment,deleted_at,suppliers(name)')
+          query = applyDateRange(query, 'purchase_date')
+          return query.order('purchase_date', { ascending: true }).order('id', { ascending: true }).range(from, to)
+        })
+      ])
+      let { revenueRows, revenueSource } = revenueResult
 
       const rawSupplierPurchases = allSupplierPurchaseRows.filter(row => row.deleted_at == null)
 
@@ -6068,9 +6074,10 @@ function Reports({ t, permissions = [], isAdmin = false }) {
   const productReportTabIds = ['products', 'product', 'goods', 'items', 'stock-products', 'inventory-products', 'product_movement', 'products_movement', 'goods_movement', 'товары']
   const isProductsReportTab = productReportTabIds.includes(String(effectiveReportsTab || reportsTab || '').toLowerCase())
 
+  const needsSalesData = effectiveReportsTab === 'sales' || effectiveReportsTab === 'import'
   const [branchFilter, setBranchFilter] = useState('all')
   const [departmentFilter, setDepartmentFilter] = useState('all')
-  const [monthFilter, setMonthFilter] = useState('all')
+  const [monthFilter, setMonthFilter] = useState(() => currentBakuMonth())
   const [overviewSnapshot, setOverviewSnapshot] = useState(null)
   const [overviewRevision, setOverviewRevision] = useState(0)
   const overviewKey = JSON.stringify([monthFilter, branchFilter, overviewRevision, branches])
@@ -6224,6 +6231,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
   }, [salesNameAliases, cloudSalesAliasesLoaded])
 
   useEffect(() => {
+    if (!needsSalesData) return
     let cancelled = false
     async function loadSalesAliasesCloud() {
       const cloudAliases = await readRmsAppSetting(RMS_SALES_NAME_ALIASES_SETTING, {})
@@ -6234,9 +6242,10 @@ function Reports({ t, permissions = [], isAdmin = false }) {
     }
     loadSalesAliasesCloud()
     return () => { cancelled = true }
-  }, [])
+  }, [needsSalesData])
 
   useEffect(() => {
+    if (!needsSalesData) return
     let cancelled = false
     async function loadHiddenKeysCloud() {
       const cloudKeys = await readRmsAppSetting(RMS_HIDDEN_SALES_KEYS_SETTING, [])
@@ -6247,9 +6256,10 @@ function Reports({ t, permissions = [], isAdmin = false }) {
     }
     loadHiddenKeysCloud()
     return () => { cancelled = true }
-  }, [])
+  }, [needsSalesData])
 
   useEffect(() => {
+    if (!needsSalesData) return
     let cancelled = false
     async function loadCloudReports() {
       const { data, error } = await readAikoSalesReportsCloud()
@@ -6268,9 +6278,11 @@ function Reports({ t, permissions = [], isAdmin = false }) {
     }
     loadCloudReports()
     return () => { cancelled = true }
-  }, [])
+  }, [needsSalesData])
 
   useEffect(() => {
+    if (!needsSalesData) return
+    let cancelled = false
     async function loadRecipeCosts() {
       try {
         let menuItems = []
@@ -6303,13 +6315,14 @@ function Reports({ t, permissions = [], isAdmin = false }) {
           const targetKey = normalizeSalesKey(canonicalName)
           if (targetKey && Object.prototype.hasOwnProperty.call(map, targetKey)) map[oldKey] = map[targetKey]
         })
-        setRecipeCostMap(map)
+        if (!cancelled) setRecipeCostMap(map)
       } catch (_e) {
-        setRecipeCostMap({})
+        if (!cancelled) setRecipeCostMap({})
       }
     }
     loadRecipeCosts()
-  }, [salesNameAliases])
+    return () => { cancelled = true }
+  }, [needsSalesData, salesNameAliases])
 
   useEffect(() => {
     if (effectiveReportsTab !== 'revenue') return
@@ -6374,8 +6387,8 @@ function Reports({ t, permissions = [], isAdmin = false }) {
   }
 
   useEffect(() => {
-    loadRmsRevenuePeriodOptions()
-  }, [])
+    if (effectiveReportsTab !== 'overview') loadRmsRevenuePeriodOptions()
+  }, [effectiveReportsTab === 'overview'])
 
   async function loadRmsRevenueReport() {
     setRmsRevenueReport(prev => ({ ...prev, loading: true, error: '' }))
@@ -9391,7 +9404,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
   const salesKpiTabs = ['sales']
   const showSalesKpis = salesKpiTabs.includes(effectiveReportsTab)
 
-  const currentMonthKey = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`
+  const currentMonthKey = currentBakuMonth()
   const currentMonthLabel = currentMonthKey
   const selectedMonthLabel = monthFilter === 'all' ? 'Все месяцы' : (/^year:\d{4}$/.test(String(monthFilter || '')) ? `${String(monthFilter).replace('year:', '')} год` : monthFilter)
   const selectedBranchLabel = branchFilter === 'all' ? 'Все филиалы' : (branches.find(b => String(b.id) === String(branchFilter))?.name || 'Выбранный филиал')

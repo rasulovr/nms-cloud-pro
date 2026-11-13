@@ -405,7 +405,7 @@
     </section>}
 
     {effectiveReportsTab === 'profitability' && <RangeBranchFilters value={profitabilitySelection} selectedBranchIds={profitabilitySelection.branchIds} branches={branches} lang={t('language_label') === 'İnterfeys dili' ? 'az' : 'ru'} disabled={rmsProfitabilityReport.loading} onApply={selection => setProfitabilitySelection(selection)} />}
-    {effectiveReportsTab !== 'profitability' && <section className="reports-v43-filterbar">
+    {effectiveReportsTab !== 'profitability' && <section className={`reports-v43-filterbar${effectiveReportsTab === 'overview' ? ' reports-overview-filters' : ''}`}>
       {!reportTabs.length && <div className="soft-alert warning reports-type-access-empty">Для этого пользователя не разрешён ни один тип отчёта. Настройте доступ в “Настройки → Пользователи → Доступ к типам отчётов”.</div>}
       {effectiveReportsTab === 'overview' && <label><span>Раздел</span><select value={effectiveReportsTab} onChange={e => setReportsTab(e.target.value)}>{reportTabs.map(tab => <option key={tab.id} value={tab.id}>{tab.label}</option>)}</select></label>}
       <label><span>Период</span><ReportMonthPeriod showModeSelect={false} value={monthFilter} years={yearOptions} lang={t('language_label') === 'İnterfeys dili' ? 'az' : 'ru'} onChange={value => { setMonthFilter(value); setRevenueDateFrom(''); setRevenueDateTo(''); setRevenuePage(1) }} /></label>
@@ -1625,6 +1625,13 @@ function ReportsV43Styles() {
 .reports-v43-tabs button.active { background:linear-gradient(135deg,#2563eb,#1d4ed8); color:#fff; border-color:rgba(37,99,235,.78); box-shadow:0 16px 30px rgba(37,99,235,.22); }
 .reports-v43-tabs button.active span { color:#fff; background:rgba(255,255,255,.16); }
 .reports-v43-filterbar { display:grid; grid-template-columns:minmax(180px,.9fr) minmax(220px,1.1fr) minmax(180px,.8fr) auto; gap:12px; align-items:end; padding:14px; border:1px solid rgba(226,232,240,.92); border-radius:20px; background:rgba(255,255,255,.92); box-shadow:0 18px 42px rgba(15,23,42,.04); }
+/* Keep the branch beside the intrinsic-width period control in Overview. */
+.reports-v43-filterbar.reports-overview-filters { display:flex; flex-wrap:wrap; }
+.reports-overview-filters > label { flex:0 1 auto; min-width:0; }
+.reports-overview-filters > label:first-of-type { width:220px; }
+.reports-overview-filters > label:nth-of-type(3) { width:240px; }
+.reports-overview-filters > .reports-v43-filter-actions { margin-left:auto; }
+@media (max-width:900px){.reports-overview-filters > label { flex:1 1 100%; width:100% !important; }.reports-overview-filters > .reports-v43-filter-actions { margin-left:0; flex-wrap:wrap; }}
 .reports-v43-filterbar label { display:flex; flex-direction:column; gap:7px; margin:0; }
 .reports-v43-filterbar label span { color:#64748b; font-size:12px; font-weight:850; }
 .reports-v43-filterbar select, .reports-v43-page select, .reports-v43-page input, .reports-v43-page textarea { height:46px; border-radius:14px; border:1px solid rgba(203,213,225,.92); background:#fff; color:#0f172a; font-weight:760; outline:none; }
