@@ -36,3 +36,9 @@ test('timeout aborts in-flight financial reads',async()=>{
  await makeHandler({createClient:()=>client,env:{RMS_EQAIME_REVIEW_SCOPE:JSON.stringify(config),VITE_SUPABASE_URL:'https://synthetic.invalid',VITE_SUPABASE_ANON_KEY:'synthetic'},timeoutMs:2})({method:'GET',headers:{authorization:'Bearer '+token},query:{}},res)
  assert.equal(res.code,503);assert.equal(aborted,2);assert.deepEqual(res.body,{error:'Review unavailable'})
 })
+test('actual CommonJS route entry cold-starts and returns JSON 401',async()=>{
+ const {createRequire}=await import('node:module');const handler=createRequire(import.meta.url)('../api/eqaime/review.js')
+ const headers={};const res={setHeader(k,v){headers[k]=v},status(s){this.code=s;return this},end(s){this.body=JSON.parse(s)}}
+ await handler({method:'GET',headers:{},query:{}},res)
+ assert.equal(res.code,401);assert.deepEqual(res.body,{error:'Authentication required'});assert.match(headers['Content-Type'],/application\/json/)
+})
