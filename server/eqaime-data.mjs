@@ -16,6 +16,7 @@ export async function readPaged(makeQuery, { maxRows = 10000, signal } = {}) {
 export async function loadScopedRegister(client, entityId, options = {}) {
   if (!entityId) throw new Error('Scope required')
   const scoped = table => client.from(table).select(({supplier_e_invoices:'id,legal_entity_id,supplier_id,amount,status,invoice_number,invoice_date,deleted_at',supplier_payments:'id,legal_entity_id,supplier_id,amount,payment_date,invoice_notes,deleted_at',supplier_purchases:'id,legal_entity_id,supplier_id,total_amount,deleted_at'})[table]).eq('legal_entity_id', entityId).is('deleted_at', null).order('id')
+  options.onStage?.('invoices_payments')
   const [invoices, payments] = await Promise.all([
     readPaged(() => scoped('supplier_e_invoices'), options),
     readPaged(() => scoped('supplier_payments'), options),
@@ -23,12 +24,15 @@ export async function loadScopedRegister(client, entityId, options = {}) {
   const links = [], purchases = [], suppliers = []
   const cap = rows => { if (rows.length > 10000) throw new Error('Превышен предел чтения') }
   const chunks = values => Array.from({length: Math.ceil(values.length / 100)}, (_,i) => values.slice(i*100,i*100+100))
+  options.onStage?.('links')
   for (const ids of chunks(invoices.map(x => x.id))) {
     links.push(...await readPaged(() => client.from('supplier_e_invoice_purchase_links').select('id,e_invoice_id,purchase_id,linked_amount').in('e_invoice_id', ids).order('id'), options)); cap(links)
   }
+  options.onStage?.('purchases')
   for (const ids of chunks([...new Set(links.map(x => x.purchase_id).filter(Boolean))])) {
     purchases.push(...await readPaged(() => scoped('supplier_purchases').in('id', ids), options)); cap(purchases)
   }
+  options.onStage?.('suppliers')
   for (const ids of chunks([...new Set([...invoices,...payments].map(x => x.supplier_id).filter(Boolean))])) {
     suppliers.push(...await readPaged(() => client.from('suppliers').select('id,name').in('id', ids).order('id'), options)); cap(suppliers)
   }

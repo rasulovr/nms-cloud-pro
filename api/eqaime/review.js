@@ -13,6 +13,7 @@ module.exports = async function review(req, res) {
     res.setHeader('CDN-Cache-Control','no-store')
     res.setHeader('X-Content-Type-Options','nosniff')
     res.setHeader('Content-Type','application/json; charset=utf-8')
-    return res.status(503).end(JSON.stringify({error:'Review unavailable'}))
+    console.warn(JSON.stringify({code:'EQ_STARTUP',stage:'startup'}))
+    return res.status(503).end(JSON.stringify({error:'Review unavailable',code:'EQ_STARTUP',stage:'startup'}))
   }
 }
