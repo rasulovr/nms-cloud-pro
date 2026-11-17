@@ -9,6 +9,14 @@ export async function loadEqaimeRegister(client, {signal, request = fetch} = {})
     throw new Error((response.status===401?'Требуется подтверждённая сервером сессия':response.status===403?'Доступ к этому подразделу не разрешён':'Реестр временно недоступен')+(code?` [${code}]`:''))
   }
   const report=await response.json()
-  if(!report || report.status!=='blocked' || report.confirmedDebt!==null || report.primaryCoverage!==null || !Array.isArray(report.rows) || !Array.isArray(report.payments)) throw new Error('Некорректный ответ реестра')
+  if(!report || report.status!=='blocked' || report.confirmedDebt!==null || report.primaryCoverage!==null || !Array.isArray(report.rows) || !Array.isArray(report.payments) || !Array.isArray(report.groups)) throw new Error('Некорректный ответ реестра')
+  const rowIds=new Set(report.rows.map(x=>x.id)),groupIds=new Set(),children=new Set()
+  if(rowIds.size!==report.rows.length || rowIds.has(undefined))throw new Error('Некорректный состав реестра')
+  for(const group of report.groups){
+    if(!group.id || groupIds.has(group.id) || !Array.isArray(group.childIds) || !group.childIds.length || group.primaryAmount!==null)throw new Error('Некорректная группировка реестра')
+    groupIds.add(group.id)
+    for(const id of group.childIds){if(!rowIds.has(id)||children.has(id))throw new Error('Некорректные связи группы');children.add(id)}
+  }
+  if(children.size!==rowIds.size)throw new Error('Неполная группировка реестра')
   return report
 }

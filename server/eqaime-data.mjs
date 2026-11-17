@@ -1,3 +1,4 @@
+import {groupRegister,uniquePayments} from './eqaime-grouping.mjs'
 const PAGE = 500
 export async function readPaged(makeQuery, { maxRows = 10000, signal } = {}) {
   const rows = []
@@ -15,7 +16,7 @@ export async function readPaged(makeQuery, { maxRows = 10000, signal } = {}) {
 }
 export async function loadScopedRegister(client, entityId, options = {}) {
   if (!entityId) throw new Error('Scope required')
-  const scoped = table => client.from(table).select(({supplier_e_invoices:'id,legal_entity_id,supplier_id,amount,status,invoice_number,invoice_date,deleted_at',supplier_payments:'id,legal_entity_id,supplier_id,amount,payment_date,invoice_notes,deleted_at',supplier_purchases:'id,legal_entity_id,supplier_id,total_amount,deleted_at'})[table]).eq('legal_entity_id', entityId).is('deleted_at', null).order('id')
+  const scoped = table => client.from(table).select(({supplier_e_invoices:'id,legal_entity_id,supplier_id,amount,status,invoice_number,invoice_date,deleted_at',supplier_payments:'id,legal_entity_id,supplier_id,amount,payment_date,invoice_notes,deleted_at',supplier_purchases:'id,legal_entity_id,supplier_id,total_amount,purchase_date,invoice_number,deleted_at'})[table]).eq('legal_entity_id', entityId).is('deleted_at', null).order('id')
   options.onStage?.('invoices_payments')
   const [invoices, payments] = await Promise.all([
     readPaged(() => scoped('supplier_e_invoices'), options),
@@ -78,9 +79,9 @@ export function analyzeRegister(input, entityId) {
     if(a===null || a<0){valid=false;reasons.push('Некорректная сумма карточки')}
     const delta=valid && clean && !reasons.length ? Math.round((a-linked)*10000)/10000 : null
     if(delta!==null && Math.abs(delta)>0.02) reasons.push('Сумма карточки отличается от суммы связей')
-    return {...x,supplierName:names.get(x.supplier_id)||'Неизвестный поставщик',linkedAmount:valid?linked:null,delta,reasons:[...new Set(reasons)],confirmedDebt:null,approval:'Не проверено по первичному документу'}
+    return {...x,internalLinks:links.map(l=>({id:l.id,purchase_id:l.purchase_id,linked_amount:l.linked_amount,purchaseAmount:purchases.get(l.purchase_id)?.total_amount??null,purchaseNumber:purchases.get(l.purchase_id)?.invoice_number||null,purchaseDate:purchases.get(l.purchase_id)?.purchase_date||null})),supplierName:names.get(x.supplier_id)||'Неизвестный поставщик',linkedAmount:valid?linked:null,delta,reasons:[...new Set(reasons)],confirmedDebt:null,approval:'Не проверено по первичному документу'}
   })
-  return { rows, payments:payments.map(x=>({...x,supplierName:names.get(x.supplier_id)||'Неизвестный поставщик'})), confirmedDebt:null,
+  return { rows, groups:groupRegister(rows), payments:uniquePayments(payments).map(x=>({...x,supplierName:names.get(x.supplier_id)||'Неизвестный поставщик'})), confirmedDebt:null,
     readAt: new Date(input.readAt || Date.now()).toISOString(), status:'blocked', source:'RMS register only', primaryCoverage:null,
     invoiceRange:dateRange(rows,'invoice_date'),paymentRange:dateRange(payments,'payment_date') }
 }
