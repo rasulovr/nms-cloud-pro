@@ -4,12 +4,19 @@ const commit='698b42390efa1d03b0cb170b08853f4dc842bec8'
 const path='src/main.parts/part-03.jsxpart'
 const expected='15cf656162938a6c57f76b47223afcbf60d3ee6d'
 const origin='https://github.com/rasulovr/nms-cloud-pro.git'
-export function readPinnedForecastBaseline(run=execFileSync){
+export function readPinnedForecastBaseline(run=execFileSync,environment=process.env){
   const options={encoding:'utf8',timeout:30000,maxBuffer:2*1024*1024,stdio:['ignore','pipe','pipe']}
   let content
   try{content=run('git',['show',`${commit}:${path}`],options)}catch{
-    if(run('git',['remote','get-url','origin'],options).trim()!==origin)throw Error('Pinned baseline: unexpected origin')
-    run('git',['fetch','--no-tags','--depth=1','origin',commit],{...options,env:{...process.env,GIT_TERMINAL_PROMPT:'0'}})
+    let fetchSource='origin'
+    const remotes=run('git',['remote'],options).trim().split(/\s+/).filter(Boolean)
+    if(remotes.includes('origin')){
+      if(run('git',['remote','get-url','origin'],options).trim()!==origin)throw Error('Pinned baseline: unexpected origin')
+    }else{
+      if(environment.VERCEL!=='1'||environment.VERCEL_GIT_REPO_OWNER!=='rasulovr'||environment.VERCEL_GIT_REPO_SLUG!=='nms-cloud-pro')throw Error('Pinned baseline: unverified CI checkout')
+      fetchSource=origin
+    }
+    run('git',['fetch','--no-tags','--depth=1',fetchSource,commit],{...options,env:{...environment,GIT_TERMINAL_PROMPT:'0'}})
     content=run('git',['show',`${commit}:${path}`],options)
   }
   const bytes=Buffer.from(content,'utf8')
