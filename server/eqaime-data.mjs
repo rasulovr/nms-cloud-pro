@@ -1,3 +1,4 @@
+import {readBatches} from './eqaime-batches.mjs'
 import {groupRegister,uniquePayments} from './eqaime-grouping.mjs'
 const PAGE = 500
 export async function readPaged(makeQuery, { maxRows = 10000, signal } = {}) {
@@ -22,21 +23,14 @@ export async function loadScopedRegister(client, entityId, options = {}) {
     readPaged(() => scoped('supplier_e_invoices'), options),
     readPaged(() => scoped('supplier_payments'), options),
   ])
-  const links = [], purchases = [], suppliers = []
-  const cap = rows => { if (rows.length > 10000) throw new Error('Превышен предел чтения') }
   const chunks = values => Array.from({length: Math.ceil(values.length / 100)}, (_,i) => values.slice(i*100,i*100+100))
+  const batchOptions={signal:options.signal,maxRows:10000,concurrency:3}
   options.onStage?.('links')
-  for (const ids of chunks(invoices.map(x => x.id))) {
-    links.push(...await readPaged(() => client.from('supplier_e_invoice_purchase_links').select('id,e_invoice_id,purchase_id,linked_amount').in('e_invoice_id', ids).order('id'), options)); cap(links)
-  }
+  const links=await readBatches(chunks(invoices.map(x=>x.id)),(ids,signal)=>readPaged(()=>client.from('supplier_e_invoice_purchase_links').select('id,e_invoice_id,purchase_id,linked_amount').in('e_invoice_id',ids).order('id'),{...options,signal}),batchOptions)
   options.onStage?.('purchases')
-  for (const ids of chunks([...new Set(links.map(x => x.purchase_id).filter(Boolean))])) {
-    purchases.push(...await readPaged(() => scoped('supplier_purchases').in('id', ids), options)); cap(purchases)
-  }
+  const purchases=await readBatches(chunks([...new Set(links.map(x=>x.purchase_id).filter(Boolean))]),(ids,signal)=>readPaged(()=>scoped('supplier_purchases').in('id',ids),{...options,signal}),batchOptions)
   options.onStage?.('suppliers')
-  for (const ids of chunks([...new Set([...invoices,...payments].map(x => x.supplier_id).filter(Boolean))])) {
-    suppliers.push(...await readPaged(() => client.from('suppliers').select('id,name').in('id', ids).order('id'), options)); cap(suppliers)
-  }
+  const suppliers=await readBatches(chunks([...new Set([...invoices,...payments].map(x=>x.supplier_id).filter(Boolean))]),(ids,signal)=>readPaged(()=>client.from('suppliers').select('id,name').in('id',ids).order('id'),{...options,signal}),batchOptions)
   const invoiceIds = new Set(invoices.map(x=>x.id))
   if(links.some(x=>!invoiceIds.has(x.e_invoice_id))) throw new Error('Unexpected invoice link')
   // Defense in depth: all reads use the caller JWT and existing RLS.
