@@ -8,7 +8,8 @@ export function parseScope(raw){
   if(!v || v.version!==1 || v.enabled!==true || !uuid.test(v.allowedAuthUserId||'') || !uuid.test(v.legalEntityId||'') || Object.keys(v).some(k=>!['version','enabled','allowedAuthUserId','legalEntityId'].includes(k))) throw Error('Configuration unavailable')
   return v
 }
-export function makeHandler({createClient,env,timeoutMs=15000,maxBytes=2000000,diagnosticSink,loadPrivateSnapshot}){
+export function makeHandler({createClient,env,timeoutMs=15000,maxBytes=3000000,diagnosticSink,loadPrivateSnapshot}){
+  if(!Number.isSafeInteger(maxBytes)||maxBytes<2||maxBytes>3000000)throw Error('Response limit unavailable');
   return async(req,res)=>{
     res.setHeader('Cache-Control','private, no-store, max-age=0')
     res.setHeader('Vercel-CDN-Cache-Control','no-store')
