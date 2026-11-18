@@ -16,13 +16,19 @@ export function projectBalances(snapshot,entityId){
   for(const [number,total] of allocations){if(total<=0n||total>units(invoiceRows.find(i=>i.invoiceNumber===number).amount))throw Error('Invalid allocated amount')}
   return {supplierKey:g.supplierKey,displayName:g.displayName,bankScopeAvailable:g.bankScopeAvailable,invoiceCount:invoiceRows.length,paymentCount:paymentRows.length,reviewCount,eligibleInvoiceAmount:format(eligible),observedPaymentAmount:g.bankScopeAvailable?format(paid):null,matchedPaymentAmount:g.bankScopeAvailable?format(matched):null,unallocatedPaymentAmount:g.bankScopeAvailable?format(paid-matched):null,matchedPaymentCount,unallocatedPaymentCount:paymentRows.length-matchedPaymentCount,observedDifference:g.bankScopeAvailable?format(eligible-matched):null,finalDebt:null,invoices:invoiceRows,payments:paymentRows};
  });
+ const notices=new Map();
+ if(snapshot.allocationWarnings!==undefined){
+  if(!Array.isArray(snapshot.allocationWarnings)||snapshot.allocationWarnings.length>1000)throw Error('Invalid allocation warnings');
+  for(const w of snapshot.allocationWarnings){if(w.kind!=='additional_unverified_payment_outside_scope'||typeof w.invoiceNumber!=='string'||!invoices.has(w.invoiceNumber)||notices.has(w.invoiceNumber))throw Error('Invalid allocation warning');notices.set(w.invoiceNumber,'Есть сведения о дополнительной неподтверждённой оплате вне этой выборки. Предварительная разница не является подтверждённым долгом.')}
+ }
  const settlements=verifyGroups(snapshot,snapshot.settlementGroups||[]);
  for(const g of projected){
   g.settlementGroups=settlements.filter(e=>e.supplierKey===g.supplierKey).map(e=>({...e,paymentDates:[...new Set(e.paymentIds.map(id=>g.payments.find(p=>p.id===id).date))].sort()}));
   const paymentGroups=new Map(g.settlementGroups.flatMap(e=>e.paymentIds.map(id=>[id,e.id])));
   const grouped=g.settlementGroups.reduce((n,e)=>n+units(e.amount),0n);
   if(grouped){g.matchedPaymentAmount=format(units(g.matchedPaymentAmount)+grouped);g.unallocatedPaymentAmount=format(units(g.unallocatedPaymentAmount)-grouped);g.observedDifference=format(units(g.eligibleInvoiceAmount)-units(g.matchedPaymentAmount));g.matchedPaymentCount+=paymentGroups.size;g.unallocatedPaymentCount-=paymentGroups.size}
-  g.payments=g.payments.map(p=>({...p,settlementGroupId:paymentGroups.get(p.id)||null}));
+  g.allocationWarnings=g.invoices.filter(i=>notices.has(i.invoiceNumber)).map(i=>({invoiceNumber:i.invoiceNumber,notice:notices.get(i.invoiceNumber)}));
+  g.payments=g.payments.map(p=>({...p,settlementGroupId:paymentGroups.get(p.id)||null,allocationNotice:notices.get(p.verifiedInvoiceNumber)||null}));
  }
  return projected;
 }
