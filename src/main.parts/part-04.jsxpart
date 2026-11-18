@@ -3984,7 +3984,7 @@ function DebtsPayments({ t }) {
 
       </>}
       <nav className="debt-workspace-tabs" aria-label="Разделы долгов">
-        <button className={debtWorkspaceTab === 'eqaime-review' ? 'active' : ''} onClick={() => setDebtWorkspaceTab('eqaime-review')}>E-qaimə · Руслан</button>
+        <button className={debtWorkspaceTab === 'eqaime-review' ? 'active' : ''} onClick={() => setDebtWorkspaceTab('eqaime-review')}>E-qaimə</button>
         <button className={debtWorkspaceTab === 'overview' ? 'active' : ''} onClick={() => setDebtWorkspaceTab('overview')}>Долги</button>
         <button className={debtWorkspaceTab === 'entities' ? 'active' : ''} onClick={() => setDebtWorkspaceTab('entities')}>По VOEN</button>
         <button className={debtWorkspaceTab === 'operations' ? 'active' : ''} onClick={() => setDebtWorkspaceTab('operations')}>История операций</button>
