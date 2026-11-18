@@ -38,3 +38,11 @@ const {makeHandler}=await import('../server/eqaime-api.mjs');
 for(const maxBytes of [0,1,3000001,Infinity,NaN,'3000000'])assert.throws(()=>makeHandler({maxBytes}));
 assert.equal(typeof makeHandler({maxBytes:3000000}),'function');
 console.log('Bounded API response limit regressions PASS');
+
+assert.deepEqual(observedStatus(inv,e,c).observedRemainder,{amount:'0.00',provisional:true,basis:'verified_observed_payments_only'});
+assert.equal(observedStatus(inv,{...e,amount:'50'},c).observedRemainder.amount,'50.00');
+assert.equal(observedStatus({...inv,primaryAmount:'100.0001'},{...e,amount:'50'},c).observedRemainder.amount,'50.0001');
+for(const ev of [undefined,{...e,kind:'group'},{...e,identityVerified:false}])assert.equal(observedStatus(inv,ev,c).observedRemainder,undefined);
+assert.equal(observedStatus(inv,{...e,amount:'101'},c).observedRemainder,null);
+assert.equal(observedStatus({...inv,sourceReviewRequired:true},e,c).observedRemainder,undefined);
+console.log('Provisional remainder exact-decimal regressions PASS');
