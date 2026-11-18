@@ -1,0 +1,10 @@
+import {build} from 'esbuild';import {renderToStaticMarkup} from 'react-dom/server';import React from 'react';import assert from 'node:assert/strict';import fs from 'node:fs';
+const out=new URL('../.primary-render-test.mjs',import.meta.url);
+try{
+await build({entryPoints:['src/EqaimePrimaryRegister.jsx','src/EqaimeBankPayments.jsx'],bundle:true,platform:'node',format:'esm',external:['react'],outdir:'.primary-render-test',outExtension:{'.js':'.mjs'}});
+const {default:Primary}=await import('../.primary-render-test/EqaimePrimaryRegister.mjs');const {default:Bank}=await import('../.primary-render-test/EqaimeBankPayments.mjs');
+const r={id:'demo',invoiceNumber:'MT990100000001',supplierName:'Demo',primaryAmount:'2330.9500',receiptDate:null,sourceStatus:'Passiv',sourceReviewRequired:true,reviewReasons:['source_status_requires_review'],confirmedDebt:null,description:'Внутренняя накладная 123',paymentStatus:{state:'partial_or_unknown',label:'Недостаточно сведений'}};
+const html=renderToStaticMarkup(React.createElement(Primary,{rows:[r]}));assert(html.includes('2330,9500'));assert(html.includes('Не подтверждена'));assert(html.includes('Не включать в расчёт.'));assert(html.includes('Внутренняя накладная 123'));assert(html.includes('partial_or_unknown'));assert(!html.includes('fully_confirmed'));
+const bh=renderToStaticMarkup(React.createElement(Bank,{client:{}}));assert(bh.includes('Читаю банковские операции'));const bankSource=fs.readFileSync('src/EqaimeBankPayments.jsx','utf8');assert(bankSource.includes('Номера электронных e-qaimə'));assert(bankSource.includes('частичные')||bankSource.includes('Частичные'));
+const workspace=fs.readFileSync('src/EqaimeWorkspace.jsx','utf8');assert(!workspace.includes('ExistingRmsReview'));assert(!workspace.includes('Проверка накладных'));assert(workspace.includes('Банковские оплаты'));console.log('Primary/bank SSR and two-section tests PASS');
+}finally{fs.rmSync('.primary-render-test',{recursive:true,force:true})}

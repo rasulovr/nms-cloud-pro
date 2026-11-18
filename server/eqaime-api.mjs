@@ -1,3 +1,5 @@
+import {enrichWithPrimary} from './eqaime-primary.mjs'
+import {privateSourceLoader} from './eqaime-primary-source.mjs'
 import {emitDiagnostic} from './eqaime-diagnostics.mjs'
 import {loadScopedRegister,analyzeRegister} from './eqaime-data.mjs'
 const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
@@ -6,7 +8,7 @@ export function parseScope(raw){
   if(!v || v.version!==1 || v.enabled!==true || !uuid.test(v.allowedAuthUserId||'') || !uuid.test(v.legalEntityId||'') || Object.keys(v).some(k=>!['version','enabled','allowedAuthUserId','legalEntityId'].includes(k))) throw Error('Configuration unavailable')
   return v
 }
-export function makeHandler({createClient,env,timeoutMs=15000,maxBytes=2000000,diagnosticSink}){
+export function makeHandler({createClient,env,timeoutMs=15000,maxBytes=2000000,diagnosticSink,loadPrivateSnapshot}){
   return async(req,res)=>{
     res.setHeader('Cache-Control','private, no-store, max-age=0')
     res.setHeader('Vercel-CDN-Cache-Control','no-store')
@@ -35,9 +37,12 @@ export function makeHandler({createClient,env,timeoutMs=15000,maxBytes=2000000,d
         if(error || !data?.user || data.user.is_anonymous){return {status:401,body:{error:'Authentication required',...emitDiagnostic('EQ_AUTH',stage,diagnosticSink)}}}
         if(data.user.id!==scope.allowedAuthUserId)return {status:403,body:{error:'Access denied',...emitDiagnostic('EQ_ACCESS',stage,diagnosticSink)}}
         if(controller.signal.aborted)throw Error('Aborted')
-        const input=await loadScopedRegister(client,scope.legalEntityId,{signal:controller.signal,maxRows:10000,onStage:value=>{stage=value}})
+        const loader=loadPrivateSnapshot||privateSourceLoader(client,env.RMS_EQAIME_PRIMARY_SOURCE,scope)
+        const input=loader?null:await loadScopedRegister(client,scope.legalEntityId,{signal:controller.signal,maxRows:10000,onStage:value=>{stage=value}})
         stage='analysis'
-        const report=analyzeRegister(input,scope.legalEntityId)
+        // Primary view never needs internal card sums or bank rows in this response.
+        const base=input?analyzeRegister(input,scope.legalEntityId):{rows:[],groups:[],payments:[],confirmedDebt:null,readAt:new Date().toISOString(),status:'blocked',source:'primary e-qaimə',primaryCoverage:null,invoiceRange:null,paymentRange:null}
+        const report=await enrichWithPrimary(base,{entityId:scope.legalEntityId,signal:controller.signal,loadPrivateSnapshot:loader})
         // Private scope configuration is never returned to the browser.
         for(const row of [...report.rows,...report.payments])delete row.legal_entity_id
         stage='response'
