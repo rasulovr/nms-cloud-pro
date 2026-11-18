@@ -10,3 +10,7 @@
 
 .eqaime-balance-columns{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px}.eqaime-balance-columns td{overflow-wrap:anywhere}@media(max-width:800px){.eqaime-balance-columns{grid-template-columns:1fr}}
 .eqaime-balance-columns table{min-width:0;table-layout:fixed}.eqaime-balance-columns th:first-child,.eqaime-balance-columns th:last-child{width:24%}.eqaime-balance-columns td,.eqaime-balance-columns th{padding:10px;overflow-wrap:anywhere}
+/* Vertical scrolling remains native; intentional horizontal swipe archives a row. */
+.eqaime-archive-swipe { touch-action: pan-y; }
+.eqaime-archive-row button { min-height: 44px; }
+.eqaime-review h4[tabindex]:focus { outline: 2px solid currentColor; outline-offset: 4px; }
