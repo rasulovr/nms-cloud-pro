@@ -4,6 +4,7 @@ export function documentRows(rows,{search='',from='',to=''}={}){
 export function compactPaymentLabel(r){
  const p=r.paymentStatus||{};
  if(r.sourceReviewRequired)return 'Требует проверки';
+ if(p.state==='paid_observed')return '✓ Оплачено';
  if(p.state==='payment_not_found')return 'Оплата не найдена';
  if(p.label?.startsWith('Частичная оплата'))return 'Частичная оплата';
  if(p.label?.startsWith('Оплата подтверждена по имеющимся'))return 'Оплата найдена';

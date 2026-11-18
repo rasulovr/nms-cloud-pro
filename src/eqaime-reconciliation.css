@@ -2,7 +2,7 @@
 
 .eqaime-child{border-top:1px solid #d8e1dd;margin-top:12px;padding:10px 0}.eqaime-child strong{overflow-wrap:anywhere}.eqaime-table details summary{cursor:pointer;font-weight:600}.eqaime-child li{margin:6px 0}
 .eqaime-payment-status{display:inline-block;padding:5px 8px;border-radius:6px;font-weight:600;white-space:normal}
-.eqaime-payment-status.fully_confirmed{background:#dcfce7;color:#166534}
+.eqaime-payment-status.fully_confirmed,.eqaime-payment-status.paid_observed{background:#dcfce7;color:#166534}
 .eqaime-payment-status.unpaid_confirmed,.eqaime-payment-status.payment_not_found{background:#fee2e2;color:#991b1b}
 .eqaime-payment-status.partial_or_unknown{background:#fef3c7;color:#854d0e}
 

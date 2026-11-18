@@ -13,7 +13,7 @@ export function observedStatus(invoice,evidence,coverage){
  if(!decimal(evidence.amount)||!decimal(invoice.primaryAmount)||!Array.isArray(evidence.paymentDates)||!evidence.paymentDates.length||evidence.paymentDates.some(d=>!validDate(d)))return yellow('Доказательство оплаты требует проверки');
  const paid=units(evidence.amount),due=units(invoice.primaryAmount);
  const result=yellow(paid===due?'Оплата подтверждена по имеющимся банковским документам':paid<due?'Частичная оплата по имеющимся банковским документам':'Сумма найденных оплат требует проверки',evidence.amount);
- return {...result,observedRemainder:paid<=due?{amount:formatUnits(due-paid),provisional:true,basis:'verified_observed_payments_only'}:null,paymentDates:[...new Set(evidence.paymentDates)].sort()};
+ return {...result,...(paid===due&&due>0n?{state:'paid_observed',label:'Оплачено по совпадению номера и суммы в имеющихся банковских документах'}:{}),observedRemainder:paid<=due?{amount:formatUnits(due-paid),provisional:true,basis:'verified_observed_payments_only'}:null,paymentDates:[...new Set(evidence.paymentDates)].sort()};
 }
 export function checkedHistoricalEvidence(snapshot){
  const h=snapshot.historicalPaymentEvidence;

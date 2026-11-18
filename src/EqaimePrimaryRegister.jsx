@@ -8,7 +8,7 @@ export default function PrimaryRegister({rows}){
  const update=(setter,value)=>{setter(value);setPage(1)};
  return <section aria-label="Первичные электронные счета" className="eqaime-review">
  <h3>E-qaimə из портала</h3><p>Дата накладной и сумма — из портала. Новые накладные сверху.</p>
- <p className="hint">Остатки предварительные, только по найденным проверенным оплатам. Это не подтверждённый долг: выписки неполные, возможные возвраты не учтены. Нажмите на статус или описание для подробностей.</p>
+ <p className="hint">Зелёный «Оплачено» — совпали номер e-qaimə и сумма проверенных платежей в доступной выборке. Остатки предварительные, только по найденным проверенным оплатам. Это не подтверждённый долг: выписки неполные, возможные возвраты не учтены. Нажмите на статус или описание для подробностей.</p>
  <div className="eqaime-filters"><label>Поиск первички<input value={search} onChange={e=>update(setSearch,e.target.value)}/></label><label>Дата накладной с<input type="date" value={from} onChange={e=>update(setFrom,e.target.value)}/></label><label>Дата накладной по<input type="date" value={to} onChange={e=>update(setTo,e.target.value)}/></label><button onClick={()=>{setFrom('');setTo('');setSearch('');setPage(1)}}>Сбросить фильтры</button></div>
  {invalid&&<p role="alert">Дата начала должна быть не позже даты окончания.</p>}
  <p>Документов: {visible.length}. Спорных документов: {visible.filter(r=>r.sourceReviewRequired).length}.</p>

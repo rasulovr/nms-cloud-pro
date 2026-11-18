@@ -4,8 +4,8 @@ import {bankPage} from '../server/eqaime-bank.mjs';
 const inv={invoiceNumber:'AA123',primaryAmount:'100.0000',sourceReviewRequired:false};
 const c={referencesChecked:true};
 const e={invoiceNumber:'AA123',kind:'single',identityVerified:true,referencesVerified:true,amount:'100.00',paymentDates:['2026-11-01']};
-assert.equal(observedStatus(inv,e,c).state,'partial_or_unknown');
-assert.match(observedStatus(inv,e,c).label,/подтверждена/);
+assert.equal(observedStatus(inv,e,c).state,'paid_observed');
+assert.match(observedStatus(inv,e,c).label,/совпадению номера и суммы/);
 assert.match(observedStatus(inv,{...e,amount:'50'},c).label,/Частичная/);
 assert.equal(observedStatus(inv,{...e,kind:'group'},c).confirmedPaidAmount,null);
 assert.equal(observedStatus(inv,undefined,c).label,'Оплата не найдена в доступных выписках');
@@ -46,3 +46,10 @@ for(const ev of [undefined,{...e,kind:'group'},{...e,identityVerified:false}])as
 assert.equal(observedStatus(inv,{...e,amount:'101'},c).observedRemainder,null);
 assert.equal(observedStatus({...inv,sourceReviewRequired:true},e,c).observedRemainder,undefined);
 console.log('Provisional remainder exact-decimal regressions PASS');
+
+// Green is the user's matching rule, not a claim of current settled debt.
+assert.match(observedStatus(inv,e,c).coverageNotice,/Возвраты/);
+for(const patch of [{amount:'99.99'},{amount:'100.01'},{kind:'group'},{invoiceNumber:'OTHER'},{identityVerified:false},{referencesVerified:false}])assert.notEqual(observedStatus(inv,{...e,...patch},c).state,'paid_observed');
+assert.notEqual(observedStatus({...inv,primaryAmount:'100.0001'},e,c).state,'paid_observed');
+assert.notEqual(observedStatus({...inv,primaryAmount:'0'},{...e,amount:'0'},c).state,'paid_observed');
+console.log('Exact observed payment green / no rounding / no group allocation regressions PASS');
