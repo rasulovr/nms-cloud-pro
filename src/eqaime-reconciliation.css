@@ -7,3 +7,6 @@
 .eqaime-payment-status.partial_or_unknown{background:#fef3c7;color:#854d0e}
 
 .eqaime-status-details summary,.eqaime-description-details summary{cursor:pointer;max-width:28rem}.eqaime-detail-content{min-width:220px;max-width:34rem;padding:8px 0}.eqaime-detail-content p{margin:6px 0}.eqaime-entity-choice{display:inline-flex;gap:8px;align-items:center;margin:8px 12px}.eqaime-description-details p{white-space:pre-wrap;overflow-wrap:anywhere}
+
+.eqaime-balance-columns{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px}.eqaime-balance-columns td{overflow-wrap:anywhere}@media(max-width:800px){.eqaime-balance-columns{grid-template-columns:1fr}}
+.eqaime-balance-columns table{min-width:0;table-layout:fixed}.eqaime-balance-columns th:first-child,.eqaime-balance-columns th:last-child{width:24%}.eqaime-balance-columns td,.eqaime-balance-columns th{padding:10px;overflow-wrap:anywhere}
