@@ -1,6 +1,8 @@
+import {comparisonUnits,assertMoneyPolicy} from './eqaime-money.mjs';
 // A full group settlement never creates per-invoice bank allocations.
 const units=s=>{if(typeof s!=='string'||!/^\d+(\.\d{1,8})?$/.test(s))throw Error('Amount');const [a,b='']=s.split('.');return BigInt(a)*100000000n+BigInt(b.padEnd(8,'0'))};
 export function verifyGroups(snapshot,evidence){
+ assertMoneyPolicy(snapshot.monetaryPolicy);
  if(!Array.isArray(evidence)||evidence.length>10000)throw Error('Groups');
  const invoices=new Map(),payments=new Map(),usedPayments=new Set(),usedInvoices=new Set(),groupIds=new Set();
  for(const g of snapshot.groups){
@@ -14,7 +16,7 @@ export function verifyGroups(snapshot,evidence){
   const ps=e.paymentIds.map(id=>{const p=payments.get(id);if(!p||usedPayments.has(id))throw Error('Unknown or reused payment');return p});
   const identities=new Set([...is,...ps].map(x=>x.supplierKey));if(identities.size!==1)throw Error('Cross-identity group');
   const references=new Set(ps.flatMap(x=>x.electronicInvoiceNumbers));if(references.size!==e.invoiceNumbers.length||e.invoiceNumbers.some(n=>!references.has(n)))throw Error('References mismatch');
-  const due=is.reduce((n,i)=>n+units(i.amount),0n),paid=ps.reduce((n,p)=>n+units(p.amount),0n);if(due<=0n||due!==paid||paid!==units(e.amount))throw Error('Group sum mismatch');
+  const due=is.reduce((n,i)=>n+comparisonUnits(i.amount,snapshot.monetaryPolicy),0n),paid=ps.reduce((n,p)=>n+units(p.amount),0n);if(due<=0n||due!==paid||paid!==units(e.amount))throw Error('Group sum mismatch');
   for(const i of is)usedInvoices.add(i.invoiceNumber);for(const p of ps)usedPayments.add(p.id);
   results.push({id:e.id,supplierKey:is[0].supplierKey,invoiceNumbers:[...e.invoiceNumbers],paymentIds:[...e.paymentIds],amount:e.amount,individualAllocation:null});
  }

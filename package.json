@@ -43,7 +43,7 @@
     "test:eqaime-api": "node --test scripts/test-eqaime-api.mjs",
     "test:eqaime-grouping": "node --test scripts/test-eqaime-grouping.mjs",
     "test:eqaime-batches": "node --test scripts/test-eqaime-batches.mjs",
-    "test:eqaime-primary": "node --test scripts/test-eqaime-primary.mjs scripts/test-eqaime-primary-auth.mjs scripts/test-eqaime-primary-source.mjs scripts/test-eqaime-bank.mjs && node scripts/test-eqaime-primary-render.mjs && node scripts/test-observed-status.mjs && node scripts/test-eqaime-display.mjs && node scripts/test-eqaime-balances.mjs && node scripts/test-settlement-groups.mjs",
+    "test:eqaime-primary": "node --test scripts/test-eqaime-primary.mjs scripts/test-eqaime-primary-auth.mjs scripts/test-eqaime-primary-source.mjs scripts/test-eqaime-bank.mjs && node scripts/test-eqaime-primary-render.mjs && node scripts/test-observed-status.mjs && node scripts/test-eqaime-display.mjs && node scripts/test-eqaime-balances.mjs && node scripts/test-settlement-groups.mjs && node scripts/test-eqaime-money.mjs",
     "test:read-canary": "node --test scripts/test-read-canary-gate.mjs scripts/test-read-canary-probe.mjs",
     "test:preview-identity": "node --test scripts/test-preview-identity.mjs"
   },

@@ -1,3 +1,4 @@
+import {comparisonUnits,monetaryValues} from './eqaime-money.mjs';
 // Read-only historical evidence, deliberately distinct from current-debt accounting.
 const decimal=v=>typeof v==='string'&&/^\d+(\.\d{1,8})?$/.test(v);
 const validDate=d=>{if(typeof d!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(d))return false;const t=new Date(d+'T00:00:00Z');return !Number.isNaN(t.valueOf())&&t.toISOString().slice(0,10)===d};
@@ -11,9 +12,9 @@ export function observedStatus(invoice,evidence,coverage){
  if(evidence.reason==='payment_outside_selected_rms_supplier_scope')return yellow('Сведения об оплате вне выбранного списка поставщиков: требуется проверка');
  if(evidence.invoiceNumber!==invoice.invoiceNumber||evidence.kind!=='single'||evidence.identityVerified!==true||evidence.referencesVerified!==true)return yellow('Найден платёж: распределение / получатель требуют проверки');
  if(!decimal(evidence.amount)||!decimal(invoice.primaryAmount)||!Array.isArray(evidence.paymentDates)||!evidence.paymentDates.length||evidence.paymentDates.some(d=>!validDate(d)))return yellow('Доказательство оплаты требует проверки');
- const paid=units(evidence.amount),due=units(invoice.primaryAmount);
+ const paid=units(evidence.amount),due=comparisonUnits(invoice.primaryAmount,coverage?.monetaryPolicy);
  const result=yellow(paid===due?'Оплата подтверждена по имеющимся банковским документам':paid<due?'Частичная оплата по имеющимся банковским документам':'Сумма найденных оплат требует проверки',evidence.amount);
- return {...result,...(paid===due&&due>0n?{state:'paid_observed',label:'Оплачено по совпадению номера и суммы в имеющихся банковских документах'}:{}),observedRemainder:paid<=due?{amount:formatUnits(due-paid),provisional:true,basis:'verified_observed_payments_only'}:null,paymentDates:[...new Set(evidence.paymentDates)].sort()};
+ return {...result,...monetaryValues(invoice.primaryAmount,coverage?.monetaryPolicy),...(paid===due&&due>0n?{state:'paid_observed',label:'Оплачено по совпадению номера и суммы в имеющихся банковских документах'}:{}),observedRemainder:paid<=due?{amount:formatUnits(due-paid),provisional:true,basis:'verified_observed_payments_only'}:null,paymentDates:[...new Set(evidence.paymentDates)].sort()};
 }
 export function checkedHistoricalEvidence(snapshot){
  const h=snapshot.historicalPaymentEvidence;
