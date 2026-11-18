@@ -1,0 +1,19 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {createHash} from 'node:crypto';
+import {makeIdentityHandler} from '../server/eqaime-preview-identity.mjs';import {checkPreviewIdentity} from '../src/preview/identity-check.mjs';
+const id='11111111-1111-4111-8111-111111111111',other='22222222-2222-4222-8222-222222222222';
+const digest=createHash('sha256').update(id).digest('hex');
+const base={VERCEL_ENV:'preview',VITE_SUPABASE_URL:'https://example.invalid',VITE_SUPABASE_ANON_KEY:'public',RMS_EQAIME_REVIEW_SCOPE:JSON.stringify({version:1,enabled:true,allowedAuthUserId:id,legalEntityId:other})};
+async function invoke({env=base,user={id},error=null,method='GET',headers={authorization:'Bearer '+'x'.repeat(25)},query={},pending=false}={}){let calls=0;const response={headers:{},setHeader(k,v){this.headers[k]=v},status(s){this.code=s;return this},end(b){this.body=JSON.parse(b)}};await makeIdentityHandler({env,expectedDigest:digest,timeoutMs:5,createClient:()=>{calls++;return {auth:{getUser:()=>pending?new Promise(()=>{}):Promise.resolve({data:{user},error})}}}})({method,headers,query},response);return {...response,calls}}
+test('production and unset environments unavailable without auth read',async()=>{for(const name of ['production','development',undefined]){const r=await invoke({env:{...base,VERCEL_ENV:name}});assert.equal(r.code,404);assert.equal(r.calls,0)}});
+test('trusted mapped identity only returns MATCH',async()=>{const r=await invoke();assert.equal(r.code,200);assert.deepEqual(r.body,{state:'MATCH'});assert.match(r.headers['Cache-Control'],/no-store/);assert(!JSON.stringify(r.body).includes(id))});
+test('other identity is MISMATCH',async()=>assert.deepEqual((await invoke({user:{id:other}})).body,{state:'MISMATCH'}));
+test('anonymous, missing user and auth failure rejected',async()=>{for(const args of [{user:{id,is_anonymous:true}},{user:null},{error:{message:'private details'}}])assert.equal((await invoke(args)).code,401)});
+test('scope must match independently reviewed mapping',async()=>{const r=await invoke({env:{...base,RMS_EQAIME_REVIEW_SCOPE:base.RMS_EQAIME_REVIEW_SCOPE.replace(id,other)}});assert.equal(r.code,503);assert.equal(r.calls,0)});
+test('bad requests never invoke auth',async()=>{for(const args of [{method:'POST'},{headers:{}},{headers:{authorization:'Bearer '+'x'.repeat(25),'sec-fetch-site':'cross-site'}},{query:{id}}])assert.equal((await invoke(args)).calls,0)});
+test('timeouts redact and close',async()=>assert.deepEqual((await invoke({pending:true})).body,{state:'UNAVAILABLE'}));
+function client(ids=[id,id]){return {auth:{getUser:async()=>({data:{user:{id:ids.shift()||id}}}),getSession:async()=>({data:{session:{access_token:'synthetic-test-only',user:{id}}}})}}}
+test('client sends same-origin request, returns only state',async()=>{const value=await checkPreviewIdentity(client(),{request:async(url,opts)=>{assert.equal(url,'/api/eqaime/preview-identity');assert.equal(opts.cache,'no-store');assert.equal(opts.credentials,'same-origin');return {status:200,json:async()=>({state:'MATCH'})}}});assert.equal(value,'MATCH')});
+test('changed session discards MATCH',async()=>assert.equal(await checkPreviewIdentity(client([id,other]),{request:async()=>({status:200,json:async()=>({state:'MATCH'})})}),'SESSION_CHANGED'));
+test('untrusted payload, exception, HTTP error cannot MATCH',async()=>{for(const request of [async()=>({status:500,json:async()=>({state:'MATCH'})}),async()=>({status:200,json:async()=>({state:'evil'})}),async()=>{throw Error('private')}])assert.equal(await checkPreviewIdentity(client(),{request}),'UNAVAILABLE')});
+
+test('session bearer belongs to the same identity before request',async()=>{const c=client();c.auth.getSession=async()=>({data:{session:{access_token:'synthetic',user:{id:other}}}});let called=false;assert.equal(await checkPreviewIdentity(c,{request:async()=>{called=true}}),'SESSION_CHANGED');assert.equal(called,false)});

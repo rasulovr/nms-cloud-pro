@@ -6,7 +6,7 @@ import { rmsSecureAuthTransform } from './build/rms-secure-auth-transform.js'
 export default defineConfig(({command,mode})=>{
  const canary=readCanaryBuildGate({command,mode,env:process.env});
  return {
-  define:{__RMS_READ_CANARY_ENABLED__:JSON.stringify(canary.enabled),__RMS_CANARY_OWNER_DIGEST__:JSON.stringify(canary.ownerDigest)},
+  define:{__RMS_PREVIEW_IDENTITY_ENABLED__:JSON.stringify(process.env.VERCEL_ENV==='preview'),__RMS_READ_CANARY_ENABLED__:JSON.stringify(canary.enabled),__RMS_CANARY_OWNER_DIGEST__:JSON.stringify(canary.ownerDigest)},
   plugins: [
     {
       name: 'rms-secure-internal-auth',
