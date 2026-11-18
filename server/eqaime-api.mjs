@@ -1,3 +1,4 @@
+import {applyGroupStatuses} from './eqaime-group-status.mjs'
 import {enrichWithPrimary} from './eqaime-primary.mjs'
 import {privateSourceLoader} from './eqaime-primary-source.mjs'
 import {emitDiagnostic} from './eqaime-diagnostics.mjs'
@@ -43,7 +44,13 @@ export function makeHandler({createClient,env,timeoutMs=15000,maxBytes=3000000,d
         stage='analysis'
         // Primary view never needs internal card sums or bank rows in this response.
         const base=input?analyzeRegister(input,scope.legalEntityId):{rows:[],groups:[],payments:[],confirmedDebt:null,readAt:new Date().toISOString(),status:'blocked',source:'primary e-qaimə',primaryCoverage:null,invoiceRange:null,paymentRange:null}
-        const report=await enrichWithPrimary(base,{entityId:scope.legalEntityId,signal:controller.signal,loadPrivateSnapshot:loader})
+        let report=await enrichWithPrimary(base,{entityId:scope.legalEntityId,signal:controller.signal,loadPrivateSnapshot:loader})
+        if(env.RMS_EQAIME_BALANCE_SOURCE){
+          const balanceLoader=privateSourceLoader(client,env.RMS_EQAIME_BALANCE_SOURCE,scope);
+          const balance=await balanceLoader({entityId:scope.legalEntityId,signal:controller.signal});
+          for(const [name,raw] of [['primary',env.RMS_EQAIME_PRIMARY_SOURCE],['bank',env.RMS_EQAIME_BANK_SOURCE]])if(!raw||!privateSourceLoader(client,raw,scope)||JSON.parse(raw).sha256!==balance.sourceHashes?.[name])throw Error('Source binding changed');
+          report=applyGroupStatuses(report,balance,scope.legalEntityId);
+        }
         // Private scope configuration is never returned to the browser.
         for(const row of [...report.rows,...report.payments])delete row.legal_entity_id
         stage='response'
