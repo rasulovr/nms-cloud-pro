@@ -38,3 +38,9 @@ test('malformed sibling allocation invalidates every shared bank-payment match',
  for(const input of [e,{B:e.B,A:e.A}]){const safe=safePaymentEvidence(input);for(const invoiceNumber of ['A','B'])assert.equal(paymentStatus({invoiceNumber,primaryAmount:'100.00'},safe[invoiceNumber]).state,'partial_or_unknown')}
  }
 });
+
+
+test('recipient name only from verified statement field; missing name never guessed',()=>{
+ const s=projectBank({...snapshot,rows:[{...row(0),recipientName:'Example LLC',recipientNameStatus:'verified_statement_field'},{...row(1),recipientName:'Unverified name'},{...row(2),recipientName:'x'.repeat(301),recipientNameStatus:'verified_statement_field'}]},entity);
+ assert.equal(s.rows[0].recipientName,'Example LLC');assert.equal(s.rows[1].recipientName,null);assert.equal(s.rows[2].recipientName,null);assert.equal(bankPage(s,{search:'Example LLC'}).total,1);
+});
