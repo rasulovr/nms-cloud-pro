@@ -8,8 +8,8 @@ export function makeBankHandler({createClient,env,timeoutMs=15000,loadSnapshot})
   const send=(s,b)=>res.status(s).end(JSON.stringify(b));
   if(req.method!=='GET')return send(405,{error:'Unavailable'});if(req.headers?.['sec-fetch-site']==='cross-site')return send(403,{error:'Access denied'});
   const authorization=req.headers?.authorization;if(typeof authorization!=='string'||!/^Bearer [A-Za-z0-9_.-]{20,8192}$/.test(authorization))return send(401,{error:'Authentication required'});
-  const q=req.query||{};if(Object.keys(q).some(k=>!['page','from','to','search'].includes(k))||Object.values(q).some(v=>typeof v!=='string'))return send(400,{error:'Invalid filters'});
-  const filters={page:q.page?Number(q.page):1,pageSize:100,from:q.from||'',to:q.to||'',search:q.search||''};try{bankPage({rows:[],coverage:{}},filters)}catch{return send(400,{error:'Invalid filters'})}
+  const q=req.query||{};if(Object.keys(q).some(k=>!['page','from','to','search','supplier'].includes(k))||Object.values(q).some(v=>typeof v!=='string'))return send(400,{error:'Invalid filters'});
+  const filters={page:q.page?Number(q.page):1,pageSize:100,from:q.from||'',to:q.to||'',search:q.search||'',supplier:q.supplier||''};try{bankPage({rows:[],coverage:{}},filters)}catch{return send(400,{error:'Invalid filters'})}
   const controller=new AbortController();let timer;
   try{
    const result=await Promise.race([(async()=>{

@@ -1,0 +1,2 @@
+import React from 'react';
+export default function SupplierSelect({options=[],value,onChange}){return <label>Поставщик<select value={value} onChange={e=>onChange(e.target.value)}><option value="">Все поставщики</option>{options.map((x,i)=><option key={x.supplierKey} value={x.supplierKey}>{x.displayName}{options.filter(y=>y.displayName===x.displayName).length>1?' (отдельный контрагент '+(i+1)+')':''}</option>)}</select></label>}

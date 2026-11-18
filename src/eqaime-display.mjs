@@ -1,5 +1,5 @@
-export function documentRows(rows,{search='',from='',to=''}={}){
- return rows.filter(r=>`${r.invoiceNumber} ${r.supplierName}`.toLocaleLowerCase().includes(search.toLocaleLowerCase())&&(!from||r.documentDate&&r.documentDate>=from)&&(!to||r.documentDate&&r.documentDate<=to)).sort((a,b)=>String(b.documentDate||'').localeCompare(String(a.documentDate||''))||a.invoiceNumber.localeCompare(b.invoiceNumber));
+export function documentRows(rows,{search='',from='',to='',supplier=''}={}){
+ return rows.filter(r=>(!supplier||r.supplierKey===supplier)&&`${r.invoiceNumber} ${r.supplierName} ${r.description||''}`.toLocaleLowerCase().includes(search.toLocaleLowerCase())&&(!from||r.documentDate&&r.documentDate>=from)&&(!to||r.documentDate&&r.documentDate<=to)).sort((a,b)=>String(b.documentDate||'').localeCompare(String(a.documentDate||''))||a.invoiceNumber.localeCompare(b.invoiceNumber));
 }
 export function compactPaymentLabel(r){
  const p=r.paymentStatus||{};

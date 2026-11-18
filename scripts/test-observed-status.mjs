@@ -13,7 +13,7 @@ assert.equal(observedStatus(inv,undefined,undefined).state,'partial_or_unknown')
 assert.equal(observedStatus({...inv,sourceReviewRequired:true},e,c).confirmedPaidAmount,null);
 assert.equal(observedStatus(inv,{...e,identityVerified:false},c).confirmedPaidAmount,null);
 assert.throws(()=>checkedHistoricalEvidence({historicalPaymentEvidence:{version:1}}));
-const rows=['supplier_company','excluded','review',undefined].map((v,i)=>({id:String(i),date:'2026-01-01',purpose:'',electronicInvoiceNumbers:[],visibilityClass:v}));
+const rows=['supplier_company','excluded','review',undefined].map((v,i)=>({id:String(i),amount:'1.00',date:'2026-01-01',purpose:'',electronicInvoiceNumbers:[],visibilityClass:v}));
 assert.equal(bankPage({rows,coverage:{}}).total,1);
 assert.equal(bankPage({rows,coverage:{}}).hiddenCount,3);
 console.log('11 observed-status/filter assertions PASS');
