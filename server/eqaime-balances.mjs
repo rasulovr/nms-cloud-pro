@@ -29,6 +29,7 @@ export function projectBalances(snapshot,entityId){
   const paymentGroups=new Map(g.settlementGroups.flatMap(e=>e.paymentIds.map(id=>[id,e.id])));
   const grouped=g.settlementGroups.reduce((n,e)=>n+units(e.amount),0n);
   if(grouped){g.matchedPaymentAmount=format(units(g.matchedPaymentAmount)+grouped);g.unallocatedPaymentAmount=format(units(g.unallocatedPaymentAmount)-grouped);g.observedDifference=format(units(g.eligibleInvoiceAmount)-units(g.matchedPaymentAmount));g.matchedPaymentCount+=paymentGroups.size;g.unallocatedPaymentCount-=paymentGroups.size}
+  const adjustment=g.settlementGroups.reduce((n,e)=>{const v=e.comparisonAdjustment||'0';return n+(v.startsWith('-')?-units(v.slice(1)):units(v))},0n);g.comparisonAdjustment=g.bankScopeAvailable?format(adjustment):null;g.unadjustedObservedDifference=g.observedDifference;if(g.bankScopeAvailable)g.observedDifference=format(units(g.eligibleInvoiceAmount)-units(g.matchedPaymentAmount)-adjustment);
   g.allocationWarnings=g.invoices.filter(i=>notices.has(i.invoiceNumber)).map(i=>({invoiceNumber:i.invoiceNumber,notice:notices.get(i.invoiceNumber)}));
   g.payments=g.payments.map(p=>({...p,settlementGroupId:paymentGroups.get(p.id)||null,allocationNotice:notices.get(p.verifiedInvoiceNumber)||null}));
  }

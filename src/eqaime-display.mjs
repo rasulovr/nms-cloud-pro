@@ -4,6 +4,7 @@ export function documentRows(rows,{search='',from='',to='',supplier=''}={}){
 export function compactPaymentLabel(r){
  const p=r.paymentStatus||{};
  if(r.sourceReviewRequired)return 'Требует проверки';
+ if(p.state==='paid_observed'&&p.groupSettlement?.comparisonRule==='WHOLE_AZN_GROUP_TRUNCATE')return '✓ Оплачено по целым AZN';
  if(p.state==='paid_observed'&&p.groupSettlement)return '✓ Оплачено в группе';
  if(p.state==='paid_observed')return '✓ Оплачено';
  if(p.state==='payment_not_found')return 'Оплата не найдена';

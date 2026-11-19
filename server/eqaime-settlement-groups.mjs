@@ -1,8 +1,8 @@
-import {comparisonUnits,assertMoneyPolicy} from './eqaime-money.mjs';
+import {comparisonUnits,assertMoneyPolicy,formatUnits} from './eqaime-money.mjs';
 // A full group settlement never creates per-invoice bank allocations.
 const units=s=>{if(typeof s!=='string'||!/^\d+(\.\d{1,8})?$/.test(s))throw Error('Amount');const [a,b='']=s.split('.');return BigInt(a)*100000000n+BigInt(b.padEnd(8,'0'))};
 export function verifyGroups(snapshot,evidence){
- assertMoneyPolicy(snapshot.monetaryPolicy);
+ assertMoneyPolicy(snapshot.monetaryPolicy);if(snapshot.wholeComparisonPolicy!==undefined&&snapshot.wholeComparisonPolicy!=='WHOLE_AZN_GROUP_TRUNCATE')throw Error('Unknown whole policy');
  if(!Array.isArray(evidence)||evidence.length>10000)throw Error('Groups');
  const invoices=new Map(),payments=new Map(),usedPayments=new Set(),usedInvoices=new Set(),groupIds=new Set();
  for(const g of snapshot.groups){
@@ -11,14 +11,16 @@ export function verifyGroups(snapshot,evidence){
  }
  const results=[];
  for(const e of evidence){
-  if(typeof e.id!=='string'||!e.id||groupIds.has(e.id)||!Array.isArray(e.invoiceNumbers)||e.invoiceNumbers.length<2||!Array.isArray(e.paymentIds)||!e.paymentIds.length||new Set(e.invoiceNumbers).size!==e.invoiceNumbers.length||new Set(e.paymentIds).size!==e.paymentIds.length)throw Error('Invalid group');groupIds.add(e.id);
+  if(typeof e.id!=='string'||!e.id||groupIds.has(e.id)||!Array.isArray(e.invoiceNumbers)||e.invoiceNumbers.length<(e.comparisonRule==='WHOLE_AZN_GROUP_TRUNCATE'?1:2)||!Array.isArray(e.paymentIds)||!e.paymentIds.length||new Set(e.invoiceNumbers).size!==e.invoiceNumbers.length||new Set(e.paymentIds).size!==e.paymentIds.length)throw Error('Invalid group');groupIds.add(e.id);
   const is=e.invoiceNumbers.map(n=>{const i=invoices.get(n);if(!i||i.reviewRequired||usedInvoices.has(n))throw Error('Unknown, disputed or reused invoice');return i});
   const ps=e.paymentIds.map(id=>{const p=payments.get(id);if(!p||usedPayments.has(id))throw Error('Unknown or reused payment');return p});
   const identities=new Set([...is,...ps].map(x=>x.supplierKey));if(identities.size!==1)throw Error('Cross-identity group');
   const references=new Set(ps.flatMap(x=>x.electronicInvoiceNumbers));if(references.size!==e.invoiceNumbers.length||e.invoiceNumbers.some(n=>!references.has(n)))throw Error('References mismatch');
-  const due=is.reduce((n,i)=>n+comparisonUnits(i.amount,snapshot.monetaryPolicy),0n),paid=ps.reduce((n,p)=>n+units(p.amount),0n);if(due<=0n||due!==paid||paid!==units(e.amount))throw Error('Group sum mismatch');
+  const whole=e.comparisonRule==='WHOLE_AZN_GROUP_TRUNCATE';if(e.comparisonRule!==undefined&&!['EXACT_CENT','WHOLE_AZN_GROUP_TRUNCATE'].includes(e.comparisonRule))throw Error('Unknown comparison rule');if(whole&&snapshot.wholeComparisonPolicy!=='WHOLE_AZN_GROUP_TRUNCATE')throw Error('Missing whole policy');
+  const rawDue=is.reduce((n,i)=>n+units(i.amount),0n);
+  const due=is.reduce((n,i)=>n+comparisonUnits(i.amount,snapshot.monetaryPolicy),0n),paid=ps.reduce((n,p)=>n+units(p.amount),0n);if(due<=0n||paid<=0n||(whole?rawDue/100000000n!==paid/100000000n:due!==paid)||paid!==units(e.amount))throw Error('Group sum mismatch');
   for(const i of is)usedInvoices.add(i.invoiceNumber);for(const p of ps)usedPayments.add(p.id);
-  results.push({id:e.id,supplierKey:is[0].supplierKey,invoiceNumbers:[...e.invoiceNumbers],paymentIds:[...e.paymentIds],amount:e.amount,individualAllocation:null});
+  results.push({id:e.id,supplierKey:is[0].supplierKey,invoiceNumbers:[...e.invoiceNumbers],paymentIds:[...e.paymentIds],amount:e.amount,individualAllocation:null,...(whole?{comparisonRule:e.comparisonRule,sourceInvoiceTotal:formatUnits(rawDue),bankTotal:formatUnits(paid),sourceDifference:formatUnits(rawDue-paid),comparisonAdjustment:formatUnits(due-paid),wholeInvoiceAmount:(rawDue/100000000n).toString(),wholeBankAmount:(paid/100000000n).toString()}: {})});
  }
  return results;
 }
