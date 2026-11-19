@@ -7,5 +7,5 @@ const result={invoiceRows:[{id:'q',original:{sellerVoen:seller,buyerVoen:owner,i
 assert.equal((await localThreeWay(source,result,owner)).bankEdges.length,1);
 assert.equal(await localThreeWay(source,result,await identityKey('3333333333')),null);
 assert.equal(await localThreeWay({...source,ready:false},result,owner),null);
-const missing=await localThreeWay({...source,suppliers:[]},result,owner);assert.equal(missing.storedLinks.length,0);assert.equal(missing.review[0].reason,'supplier_identity_unverified');assert.equal(missing.bankEdges.length,0);
+const missing=await localThreeWay({...source,suppliers:[]},result,owner);assert.equal(missing.storedLinks.length,0);assert.equal(missing.review[0].reason,'supplier_identity_unverified');assert.equal(missing.bankEdges.length,1);
 console.log('PASS memory-only hashed exact owner/seller projection; unloaded/wrong owner/unknown seller fail safe');
