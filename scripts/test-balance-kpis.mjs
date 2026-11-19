@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import {balanceKpis,balanceTone} from '../src/eqaime-balance-kpis.mjs';
+const g=(id,d,p='70.00',scope=true)=>({supplierKey:id,observedDifference:d,eligibleInvoiceAmount:'100.00',observedPaymentAmount:p,matchedPaymentAmount:'60.00',bankScopeAvailable:scope,invoiceCount:2,paymentCount:1,reviewCount:0});
+const debt=g('a','40.00'),over=g('b','-30.00','130.00'),unknown=g('c',null,'0.00',false),zero=g('d','0.00','100.00');
+const input=[debt,over,unknown,zero],before=JSON.stringify(input),k=balanceKpis(input);
+assert.equal(k.invoiceAmount,'400.00');assert.equal(k.paymentAmount,'300.00');assert.equal(k.grossDebt,'-40.00');assert.equal(k.overpayment,'30.00');assert.equal(k.unknownCount,1);
+assert.deepEqual(input,JSON.parse(before));assert.equal(balanceTone(debt),'debt');assert.equal(balanceTone(over),'overpayment');assert.equal(balanceTone(unknown),'unknown');assert.equal(balanceTone(zero),'zero');
+assert.equal(balanceKpis([unknown]).grossDebt,null);assert.equal(balanceKpis([unknown]).paymentAmount,null);assert.equal(balanceKpis([]).grossDebt,null);assert.equal(balanceKpis([]).invoiceAmount,null);
+assert.equal(balanceKpis([debt]).paymentAmount,'70.00');assert.equal(balanceKpis([over]).grossDebt,'0.00');
+assert.equal(balanceKpis([{...debt,eligibleInvoiceAmount:'1010.9997'}]).invoiceAmount,'1010.9997');
+console.log('balance KPI: exact totals, gross/no netting, unknown, filter, immutability PASS');
