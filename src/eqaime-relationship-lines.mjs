@@ -16,6 +16,15 @@ export function relationshipRowState(group,kind,row,edges){
   return {tone:kind==='i'&&!requested?'red':'yellow',label:kind==='i'?'Оплата не найдена':'Связь не подтверждена'};
  }
  if(kind==='i'&&row.reviewRequired)return {tone:'yellow',label:'Требует проверки'};
- const known=kind==='p'?(row.verifiedInvoiceNumber||row.settlementGroupId):group.settlementGroups?.some(c=>c.invoiceNumbers.includes(row.invoiceNumber));
+ const known=kind==='p'?(row.verifiedInvoiceNumber||row.settlementGroupId):(row.verifiedIndividualLink===true||group.settlementGroups?.some(c=>c.invoiceNumbers.includes(row.invoiceNumber)));
  return {tone:visible||known?'neutral':'yellow',label:visible?'Связь найдена':known?'Связь вне текущей страницы':'Нет связи на этой странице'};
+}
+
+// Read the complete server-reviewed component, never sum the visible lines.
+export function selectedDifference(group,selected){
+ if(!group.referenceRule||!selected)return null;
+ const row=selected.kind==='i'?group.invoices?.find(i=>i.invoiceNumber===selected.id):selected.kind==='p'?group.payments?.find(p=>p.id===selected.id):null;
+ const m=row?.referenceMatch;if(!m||m.state!=='difference'||m.reason||!Array.isArray(m.invoiceNumbers)||!m.invoiceNumbers.length||!Array.isArray(m.paymentIds)||!m.paymentIds.length)return null;
+ const d=m.difference;if(typeof d!=='string'||! /^-?\d+\.\d{2}$/.test(d)||Number(d)===0)return null;
+ return {difference:d,grouped:m.invoiceNumbers.length>1};
 }

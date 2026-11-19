@@ -41,5 +41,6 @@ export function balancePage(groups,{supplier='',page=1}={}){
  if(!supplier)return {...base,groups:groups.map(({invoices,payments,...g})=>g)};
  const g=groups.find(x=>x.supplierKey===supplier);if(!g)throw Error('Unknown supplier');
  const pages=Math.max(1,Math.ceil(Math.max(g.invoices.length,g.payments.length)/100));
- return {...base,group:{...g,invoices:g.invoices.slice((page-1)*100,page*100),payments:g.payments.slice((page-1)*100,page*100)},page,pages};
+ const individual=new Set(g.payments.map(p=>p.verifiedInvoiceNumber).filter(Boolean));
+ return {...base,group:{...g,invoices:g.invoices.slice((page-1)*100,page*100).map(i=>individual.has(i.invoiceNumber)?{...i,verifiedIndividualLink:true}:i),payments:g.payments.slice((page-1)*100,page*100)},page,pages};
 }
