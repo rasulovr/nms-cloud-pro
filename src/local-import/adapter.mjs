@@ -5,3 +5,6 @@ export function portalImport(workbook,{sourceName,fileSha256}){const parsed=norm
  return {kind:'portal',invoices,payments:[],review:parsed.errors,excluded:[],coverage:{complete:false},ownerVoens:[parsed.buyer.id],duplicateCount:parsed.duplicateCount,conflictCount:parsed.conflictCount};}
 export function appendBatch(workspace,batch){if(workspace.files.some(f=>f.hash===batch.hash))return {workspace,duplicateFile:true};if(workspace.files.length>=50)throw Error('Не более 50 файлов в одном локальном наборе.');const next={version:1,files:[...workspace.files,batch]};if(JSON.stringify(next).length>15000000)throw Error('Локальный набор слишком большой (15 МБ).');return {workspace:next,duplicateFile:false}}
 export const emptyWorkspace=()=>({version:1,files:[]});
+
+export function activeFiles(workspace){return workspace.files.filter(f=>!f.excludedFromReconciliation)}
+export function setSourceExcluded(workspace,hash,excluded){if(typeof excluded!=='boolean'||!workspace.files.some(f=>f.hash===hash))throw Error('Неизвестный источник');return {...workspace,files:workspace.files.map(f=>f.hash===hash?{...f,excludedFromReconciliation:excluded}:f)}}

@@ -1,3 +1,4 @@
+import {exactDecimal} from './decimal.mjs';
 // Pure browser module. No I/O, persistence, network, or implicit identity inference.
 const TOKEN=/^(?:MT\d{12}|EB[A-Z]{2}\d{6})$/;
 const VOEN=/^(?:\d{10}|voen:[a-f0-9]{64})$/;
@@ -8,7 +9,7 @@ const readAmount=x=>{try{return cents(x)}catch{return null}};
 const refs=p=>Array.isArray(p.invoiceNumbers)?[...new Set(p.invoiceNumbers.filter(x=>typeof x==='string'))].sort():[];
 const candidates=p=>Array.isArray(p.unverifiedReferenceCandidates)?[...new Set(p.unverifiedReferenceCandidates.filter(x=>typeof x==='string'&&TOKEN.test(x)))].sort():[];
 const date=x=>/^\d{4}-\d{2}-\d{2}$/.test(str(x))&&!Number.isNaN(Date.parse(x))&&new Date(x).toISOString().slice(0,10)===x;
-const fingerprint=(r,type)=>JSON.stringify(type==='invoice'?[r.buyerVoen,r.sellerVoen,r.invoiceNumber,r.amount,r.comparisonAmount,r.currency,r.date,r.status,r.identityVerified,r.reviewRequired]:[r.ownerVoen,r.recipientVoen,r.amount,r.currency,r.date,r.direction,r.identityVerified,r.referenceEvidenceComplete,r.reviewRequired,refs(r),candidates(r)]);
+const fingerprint=(r,type)=>JSON.stringify(type==='invoice'?[r.buyerVoen,r.sellerVoen,r.invoiceNumber,exactDecimal(r.amount),exactDecimal(r.comparisonAmount),r.currency,r.date,r.status,r.identityVerified,r.reviewRequired]:[r.ownerVoen,r.recipientVoen,exactDecimal(r.amount),r.currency,r.date,r.direction,r.identityVerified,r.referenceEvidenceComplete,r.reviewRequired,refs(r),candidates(r)]);
 function dedupe(rows,type){const map=new Map(),out=[];let duplicates=0;rows.forEach((raw,index)=>{const r=structuredClone(raw);const key=type==='invoice'?str(r.buyerVoen)+'|'+str(r.invoiceNumber):(r.bankTransactionId&&r.bankAccountKey?str(r.ownerVoen)+'|'+r.bankAccountKey+'|'+r.bankTransactionId:null);const existing=key&&map.get(key);if(existing){duplicates++;existing.originals.push(r);if(existing.fingerprint!==fingerprint(r,type)){existing.reasons.add('conflicting_duplicate');if(type==='payment'){existing.refs=[...new Set([...existing.refs,...refs(r)])];existing.candidates=[...new Set([...existing.candidates,...candidates(r)])];}}return;}const item={key:key||type+'-unidentified-'+index,id:type+'-'+out.length,raw:r,originals:[r],fingerprint:fingerprint(r,type),reasons:new Set(),refs:type==='payment'?refs(r):[],candidates:type==='payment'?candidates(r):[],value:readAmount(type==='invoice'?r.comparisonAmount:r.amount)};if(!key)item.reasons.add('missing_stable_transaction_identity');out.push(item);if(key)map.set(key,item);});return{rows:out,duplicates};}
 /** Inputs must come from reviewed parsers, not user-edited identity guesses.
  * selectedOwnerVoen is mandatory; foreign-owner rows are excluded, never mixed.
