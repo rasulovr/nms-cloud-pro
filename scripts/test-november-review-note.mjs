@@ -1,0 +1,6 @@
+import assert from 'node:assert/strict';import {referenceStatuses} from '../server/eqaime-exact-reference.mjs';
+const key='supplier-045b11af-874f-47fd-9d61-061cd5104c20',number='MT261110839142';
+function run({supplier=key,invoice=number,match=null,review=false,covered=true}={}){return referenceStatuses({primaryRows:[{supplierKey:supplier,invoiceNumber:invoice,comparisonAmount:'1166.40',sourceReviewRequired:review}]},[{supplierKey:supplier,referenceRule:'EXACT_REFERENCE_CENTS',bankScopeAvailable:covered,invoices:[{invoiceNumber:invoice,referenceMatch:match}]}]).primaryRows[0]}
+const x=run();assert.equal(x.paymentStatus.state,'payment_not_found');assert.equal(x.paymentStatus.reviewPresentation,true);assert.equal(x.paymentStatus.reviewAmount,'1166.40');assert.equal(x.paymentStatus.confirmedPaidAmount,undefined);assert.equal(x.paymentStatus.referenceMatch,undefined);assert.equal(x.confirmedDebt,null);
+for(const arg of [{supplier:'other'},{invoice:'MT260110048865'},{review:true},{covered:false},{match:{state:'equal',invoiceNumbers:[number],amount:'1166.40',invoiceAmount:'1166.40',difference:'0.00',paymentDates:[]}}])assert.equal(run(arg).paymentStatus.reviewPresentation,undefined);
+console.log('November-only yellow presentation preserves missing-payment state/no fake amount/link; unrelated/supplier/review/paid gates PASS');
