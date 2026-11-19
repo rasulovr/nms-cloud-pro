@@ -7,7 +7,7 @@ export function makeIdentityHandler({createClient,env,timeoutMs=8000,expectedDig
  return async(req,res)=>{
   for(const k of ['Cache-Control','CDN-Cache-Control','Vercel-CDN-Cache-Control'])res.setHeader(k,'private, no-store, max-age=0');
   res.setHeader('Content-Type','application/json');res.setHeader('X-Content-Type-Options','nosniff');
-  const send=(s,state)=>res.status(s).end(JSON.stringify({state}));
+  const send=(s,state,scopeEntityHash)=>res.status(s).end(JSON.stringify({state,...(state==='MATCH'&&scopeEntityHash?{scopeEntityHash}:{})}));
   if(env.VERCEL_ENV!=='preview')return send(404,'UNAVAILABLE');
   if(req.method!=='GET')return send(405,'UNAVAILABLE');
   if(req.headers?.['sec-fetch-site']==='cross-site')return send(403,'UNAVAILABLE');
@@ -24,7 +24,8 @@ export function makeIdentityHandler({createClient,env,timeoutMs=8000,expectedDig
    const result=await Promise.race([client.auth.getUser(authorization.slice(7)),new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error()),timeoutMs)})]);
    const user=result.data?.user;
    if(result.error||!user||user.is_anonymous||typeof user.id!=='string')return send(401,'SIGN_IN_REQUIRED');
-   return send(200,user.id===scope.allowedAuthUserId&&hash(user.id)===expectedDigest?'MATCH':'MISMATCH');
+   const matched=user.id===scope.allowedAuthUserId&&hash(user.id)===expectedDigest;
+   return send(200,matched?'MATCH':'MISMATCH',matched?'entity-sha256:v1:'+hash('rms-eqaime-legal-entity-v1:'+scope.legalEntityId):undefined);
   }catch{return send(503,'UNAVAILABLE')}finally{clearTimeout(timer)}
  };
 }

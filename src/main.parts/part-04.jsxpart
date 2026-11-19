@@ -3991,7 +3991,7 @@ function DebtsPayments({ t }) {
         <button className={debtWorkspaceTab === 'analytics' ? 'active' : ''} onClick={() => setDebtWorkspaceTab('analytics')}>Дополнительно</button>
       </nav>
 
-      {debtWorkspaceTab === 'eqaime-review' && <EqaimeReconciliation client={supabase} />}
+      {debtWorkspaceTab === 'eqaime-review' && <EqaimeReconciliation client={supabase} rmsSource={__RMS_PREVIEW_IDENTITY_ENABLED__ ? {legalEntities}:null} />}
       {debtWorkspaceTab === 'overview' && <div className="debt-overview-panel">
         <div className="debt-sheet-filters">
           <label><span>VOEN</span><select value={debtSheetLegalEntityId} onChange={e => setDebtSheetLegalEntityId(e.target.value)}><option value="all">Все VOEN</option>{legalEntities.map(le => <option key={le.id} value={le.id}>{le.name} · {le.voen || '—'}</option>)}</select></label>
