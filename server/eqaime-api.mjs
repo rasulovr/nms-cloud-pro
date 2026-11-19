@@ -1,3 +1,4 @@
+import {packPrimaryStatuses} from '../src/eqaime-wire.mjs';
 import {referenceGroups} from './eqaime-reference-source.mjs'
 import {referenceStatuses} from './eqaime-exact-reference.mjs'
 import {projectCard} from './eqaime-card.mjs'
@@ -44,7 +45,8 @@ export function makeHandler({createClient,env,timeoutMs=15000,maxBytes=3000000,d
         if(error || !data?.user || data.user.is_anonymous){return {status:401,body:{error:'Authentication required',...emitDiagnostic('EQ_AUTH',stage,diagnosticSink)}}}
         if(data.user.id!==scope.allowedAuthUserId)return {status:403,body:{error:'Access denied',...emitDiagnostic('EQ_ACCESS',stage,diagnosticSink)}}
         if(controller.signal.aborted)throw Error('Aborted')
-        const loader=loadPrivateSnapshot||privateSourceLoader(client,env.RMS_EQAIME_PRIMARY_SOURCE,scope)
+        const originalLoader=loadPrivateSnapshot||privateSourceLoader(client,env.RMS_EQAIME_PRIMARY_SOURCE,scope)
+        let primarySnapshot;const loader=originalLoader?async args=>(primarySnapshot=await originalLoader(args)):null;
         const input=loader?null:await loadScopedRegister(client,scope.legalEntityId,{signal:controller.signal,maxRows:10000,onStage:value=>{stage=value}})
         stage='analysis'
         // Primary view never needs internal card sums or bank rows in this response.
@@ -55,11 +57,12 @@ export function makeHandler({createClient,env,timeoutMs=15000,maxBytes=3000000,d
           const balance=await balanceLoader({entityId:scope.legalEntityId,signal:controller.signal});
           for(const [name,raw] of [['primary',env.RMS_EQAIME_PRIMARY_SOURCE],['bank',env.RMS_EQAIME_BANK_SOURCE]])if(!raw||!privateSourceLoader(client,raw,scope)||JSON.parse(raw).sha256!==balance.sourceHashes?.[name])throw Error('Source binding changed');
           report=applyGroupStatuses(report,balance,scope.legalEntityId);
-          if(env.VERCEL_ENV==='preview')report=referenceStatuses(report,await referenceGroups(balance,{client,env,scope,signal:controller.signal}));
+          if(env.VERCEL_ENV==='preview')report=referenceStatuses(report,await referenceGroups(balance,{client,env,scope,signal:controller.signal,primarySnapshot}));
         }
         // Private scope configuration is never returned to the browser.
         for(const row of [...report.rows,...report.payments])delete row.legal_entity_id
         stage='response'
+        if(env.VERCEL_ENV==='preview')report=packPrimaryStatuses(report);
         if(Buffer.byteLength(JSON.stringify(report),'utf8')>maxBytes){failureCode='EQ_PAYLOAD';throw Error('Payload limit')}
         return {status:200,body:report}
       }

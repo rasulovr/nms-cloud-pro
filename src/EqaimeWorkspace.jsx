@@ -1,3 +1,4 @@
+import {unpackPrimaryStatuses} from './eqaime-wire.mjs';
 import './eqaime-reconciliation.css';
 import React,{useEffect,useState} from 'react';
 import PrimaryRegister from './EqaimePrimaryRegister.jsx';
@@ -5,6 +6,7 @@ import BankPayments from './EqaimeBankPayments.jsx';
 import EqaimeBalances from './EqaimeBalances.jsx';
 import {loadEqaimeRegister} from './eqaime-register.mjs';
 function validatePrimary(report){
+ report=unpackPrimaryStatuses(report);
  if(!['connected','not_connected'].includes(report.primarySourceStatus)||!Array.isArray(report.primaryRows))throw Error('Некорректный источник первички');
  const ids=new Set();for(const r of report.primaryRows){if(!r.id||ids.has(r.id)||typeof r.primaryAmount!=='string'||!/^\d+(\.\d+)?$/.test(r.primaryAmount)||r.confirmedDebt!==null||typeof r.sourceReviewRequired!=='boolean'||!Array.isArray(r.reviewReasons)||r.sourceReviewRequired!==(r.reviewReasons.length>0)||(r.receiptDate!==null&&(!/^\d{4}-\d{2}-\d{2}$/.test(r.receiptDate)||r.receiptDateStatus!=='verified')))throw Error('Некорректный документ первички');ids.add(r.id)}
  if(report.primarySourceStatus==='not_connected'&&report.primaryRows.length)throw Error('Не подтверждён источник');return report;
