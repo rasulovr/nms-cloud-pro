@@ -1,3 +1,5 @@
+import {referenceGroups} from './eqaime-reference-source.mjs'
+import {referenceStatuses} from './eqaime-exact-reference.mjs'
 import {projectCard} from './eqaime-card.mjs'
 import {projectBalances} from './eqaime-balances.mjs'
 import {applyCardStatuses} from './eqaime-card-status.mjs'
@@ -53,13 +55,7 @@ export function makeHandler({createClient,env,timeoutMs=15000,maxBytes=3000000,d
           const balance=await balanceLoader({entityId:scope.legalEntityId,signal:controller.signal});
           for(const [name,raw] of [['primary',env.RMS_EQAIME_PRIMARY_SOURCE],['bank',env.RMS_EQAIME_BANK_SOURCE]])if(!raw||!privateSourceLoader(client,raw,scope)||JSON.parse(raw).sha256!==balance.sourceHashes?.[name])throw Error('Source binding changed');
           report=applyGroupStatuses(report,balance,scope.legalEntityId);
-          if(env.VERCEL_ENV==='preview'&&env.RMS_EQAIME_CARD_SOURCE){
-            const cardLoader=privateSourceLoader(client,env.RMS_EQAIME_CARD_SOURCE,scope,{maxSourceBytes:100000});if(!cardLoader)throw Error('Card unavailable');
-            const snapshot=await cardLoader({entityId:scope.legalEntityId,signal:controller.signal});
-            const groups=projectBalances(balance,scope.legalEntityId),group=groups.find(g=>g.supplierKey===snapshot.supplierKey);if(!group)throw Error('Card supplier unavailable');
-            const card=projectCard(snapshot,{entityId:scope.legalEntityId,balanceSha256:JSON.parse(env.RMS_EQAIME_BALANCE_SOURCE).sha256,group,allPaymentIds:groups.flatMap(g=>g.payments.map(p=>p.id))});
-            report=applyCardStatuses(report,card);
-          }
+          if(env.VERCEL_ENV==='preview')report=referenceStatuses(report,await referenceGroups(balance,{client,env,scope,signal:controller.signal}));
         }
         // Private scope configuration is never returned to the browser.
         for(const row of [...report.rows,...report.payments])delete row.legal_entity_id

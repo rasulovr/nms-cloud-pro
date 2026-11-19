@@ -7,6 +7,7 @@ export function compactPaymentLabel(r){
  if(p.state==='paid_observed'&&p.groupSettlement?.comparisonRule==='WHOLE_AZN_GROUP_TRUNCATE')return '✓ Оплачено по целым AZN';
  if(p.state==='paid_observed'&&p.groupSettlement)return '✓ Оплачено в группе';
  if(p.state==='paid_observed')return '✓ Оплачено';
+ if(p.referenceMatch&&p.state!=='paid_observed')return 'Сумма отличается';
  if(p.state==='payment_not_found')return 'Оплата не найдена';
  if(p.label?.startsWith('Частичная оплата'))return 'Частичная оплата';
  if(p.label?.startsWith('Оплата подтверждена по имеющимся'))return 'Оплата найдена';
