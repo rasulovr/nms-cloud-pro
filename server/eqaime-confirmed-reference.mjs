@@ -61,3 +61,39 @@ export function applyApprovedReferenceCompletion(groups,bank,primaryRows,env,sco
  if(!result)return groups;
  return groups.map(g=>g!==result.group?g:{...g,payments:g.payments.map(p=>p!==result.payment?p:{...p,electronicInvoiceNumbers:result.numbers,referenceEvidenceIncomplete:false,referenceBasis:'owner_confirmed_group_completion',referenceCorrection:result.correction})});
 }
+
+const approvedStandalone='4a1e9ca07f122a50aa01f84bfd1375d2bbb56cc7d97af29de67f8ebb721fdd9c';
+const withoutSeries=/(?<![A-Z0-9])\d{12}(?![A-Z0-9])/g;
+export function approvedStandaloneFingerprint(env,scope,raw,p,i,q,correction){
+ const prefix=bindingScope(env,scope);
+ return prefix?digest(['approved-standalone-series-v1',...prefix,p.id,p.date,cash(p.amount),normalizedPurpose(raw.purpose),identity(raw.recipientName),correction,i.invoiceNumber,i.date,cash(i.sourceAmount),cash(i.comparisonAmount),identity(q.supplierName),q.sourceStatus]):null;
+}
+
+// One explicitly checked and approved case where the memo omitted the series.
+// Binding includes exactly one unlinked invoice and one immutable bank row.
+export function applyApprovedStandaloneCompletion(groups,bank,primaryRows,env,scope){
+ if(!bindingScope(env,scope))return groups;
+ const rawById=new Map(bank.rows.map(r=>[r.id,r])), pr=new Map(primaryRows.map(r=>[r.invoiceNumber,r]));
+ if(rawById.size!==bank.rows.length||pr.size!==primaryRows.length)return groups;
+ const invoices=groups.flatMap(g=>g.invoices), payments=groups.flatMap(g=>g.payments);
+ if(new Set(payments.map(p=>p.id)).size!==payments.length)return groups;
+ let match=null;
+ for(const g of groups){
+  if(!g.bankScopeAvailable)continue;
+  for(const p of g.payments){
+   const raw=rawById.get(p.id);
+   if(!raw||raw.visibilityClass!=='supplier_company'||raw.recipientNameStatus!=='verified_statement_field'||!identity(raw.recipientName)||p.supplementary||p.referenceEvidenceIncomplete!==true||p.referenceBasis!=='source_exact_or_whitespace'||p.electronicInvoiceNumbers?.length!==0||raw.date!==p.date||u(raw.amount)!==u(p.amount))continue;
+   const tokens=[...normalizedPurpose(raw.purpose).matchAll(withoutSeries)];if(tokens.length!==1)continue;
+   const from=tokens[0][0],to='MT'+from;
+   const candidates=invoices.filter(i=>i.invoiceNumber.endsWith(from));
+   if(candidates.length!==1||candidates[0].invoiceNumber!==to||!g.invoices.includes(candidates[0])||payments.some(x=>x!==p&&x.electronicInvoiceNumbers.includes(to)))continue;
+   const i=candidates[0],q=pr.get(to),correction={from,to};
+   if(i.reviewRequired!==false||!q||!identity(q.supplierName)||q.sourceReviewRequired!==false||q.reviewReasons?.length!==0||q.documentDate!==i.date||u(q.primaryAmount)!==u(i.sourceAmount)||u(i.comparisonAmount)!==u(p.amount))continue;
+   if(approvedStandaloneFingerprint(env,scope,raw,p,i,q,correction)!==approvedStandalone)continue;
+   if(match)return groups;
+   match={g,p,correction};
+  }
+ }
+ if(!match)return groups;
+ return groups.map(g=>g!==match.g?g:{...g,payments:g.payments.map(p=>p!==match.p?p:{...p,electronicInvoiceNumbers:[match.correction.to],referenceEvidenceIncomplete:false,referenceBasis:'owner_confirmed_group_completion',referenceCorrection:match.correction})});
+}
