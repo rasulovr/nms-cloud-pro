@@ -1,4 +1,5 @@
 import {appendIncremental} from './eqaime-incremental-source.mjs';
+import {applyApprovedReferenceCompletion} from './eqaime-confirmed-reference.mjs';
 import {checkedHistoricalEvidence} from './eqaime-observed-status.mjs';
 import {projectPrimary} from './eqaime-primary.mjs';
 import {applyReferenceEvidence} from './eqaime-reference-evidence.mjs';
@@ -22,5 +23,5 @@ export async function referenceGroups(snapshot,{client,env,scope,signal,bankSnap
  groups=groups.map(g=>({...g,invoices:g.invoices.map(i=>g.supplierKey!==pilot&&unresolved.has(i.invoiceNumber)?{...i,priorUnresolvedPaymentEvidence:true}:i)}));
  groups=applyReferenceEvidence(groups,bank);
  if(incremental){const sourceHashes=Object.fromEntries(['PRIMARY','BANK','BALANCE','CARD'].map(name=>{const raw=env['RMS_EQAIME_'+name+'_SOURCE'];if(!raw)throw Error('Missing baseline source');return [name.toLowerCase(),JSON.parse(raw).sha256]}));groups=appendIncremental(groups,incremental,{entityId:scope.legalEntityId,sourceHashes})}
- return reconcileReferences(groups,rows);
+ return reconcileReferences(applyApprovedReferenceCompletion(groups,bank,rows,env,scope),rows);
 }
