@@ -2,13 +2,15 @@
 export function relationshipGraph(group){
  const invoices=group.invoices||[],payments=group.payments||[],byNumber=new Map(invoices.map(i=>[i.invoiceNumber,i])),edges=[];
  for(const p of payments){let allowed=[],tone='neutral';if(group.referenceRule){const c=p.referenceMatch;if(c&&c.state!=='review'&&c.paymentIds?.includes(p.id)){allowed=c.invoiceNumbers||[];tone=c.state==='equal'?'green':'yellow'}}else if(p.verifiedInvoiceNumber)allowed=[p.verifiedInvoiceNumber];else {const c=group.settlementGroups?.find(c=>c.id===p.settlementGroupId&&c.paymentIds?.includes(p.id));if(c)allowed=c.invoiceNumbers||[]}
-  for(const n of new Set(p.electronicInvoiceNumbers||[])){const i=byNumber.get(n);if(i&&!i.reviewRequired&&allowed.includes(n))edges.push({invoiceNumber:n,paymentId:p.id,tone})}
+  for(const n of new Set(p.referenceMatch?.ownerDirected===true?p.referenceMatch.invoiceNumbers:(p.electronicInvoiceNumbers||[]))){const i=byNumber.get(n);if(i&&(!i.reviewRequired||p.referenceMatch?.observedOnly===true)&&allowed.includes(n))edges.push({invoiceNumber:n,paymentId:p.id,tone})}
  }
  return {invoices,payments,edges};
 }
 export function relationshipRowState(group,kind,row,edges){
  const visible=edges.some(e=>kind==='i'?e.invoiceNumber===row.invoiceNumber:e.paymentId===row.id),match=row.referenceMatch;
  if(group.referenceRule){
+  if(match?.ownerDirected)return {tone:'yellow',label:visible?'Связано по указанию владельца':'Связь вне текущей страницы'};
+  if(match?.observedOnly)return {tone:'yellow',label:visible?'Платёж найден; версия фактуры под проверкой':'Связь вне текущей страницы'};
   if(kind==='i'&&(row.reviewRequired||!group.bankScopeAvailable))return {tone:'yellow',label:'Требует проверки'};
   if(match?.state==='equal'||match?.state==='difference')return {tone:match.state==='equal'?'green':'yellow',label:visible?(match.state==='equal'?'Номер и сумма совпали':'Сумма отличается'):'Связь вне текущей страницы'};
   if(kind==='i'&&!match&&row.priorUnresolvedPaymentEvidence)return {tone:'yellow',label:'Найден платёж; связь требует проверки'};
@@ -27,5 +29,5 @@ export function selectedDifference(group,selected){
  const row=selected.kind==='i'?group.invoices?.find(i=>i.invoiceNumber===selected.id):selected.kind==='p'?group.payments?.find(p=>p.id===selected.id):null;
  const m=row?.referenceMatch;if(!m||m.state!=='difference'||m.reason||!Array.isArray(m.invoiceNumbers)||!m.invoiceNumbers.length||!Array.isArray(m.paymentIds)||!m.paymentIds.length)return null;
  const d=m.difference;if(typeof d!=='string'||! /^-?\d+\.\d{2}$/.test(d)||Number(d)===0)return null;
- return {difference:d,grouped:m.invoiceNumbers.length>1};
+ return {difference:d,grouped:m.invoiceNumbers.length>1,...(m.observedOnly||m.ownerDirected?{sourceStatusWarning:m.sourceStatusWarning}:{})};
 }

@@ -3,6 +3,8 @@ export function documentRows(rows,{search='',from='',to='',supplier=''}={}){
 }
 export function compactPaymentLabel(r){
  const p=r.paymentStatus||{};
+ if(p.referenceMatch?.ownerDirected){const d=p.referenceMatch.difference;return d?.startsWith('-')?'Недоплата '+d.slice(1).replace('.',',')+' AZN':'Переплата '+String(d).replace('.',',')+' AZN';}
+ if(p.referenceMatch?.observedOnly){const d=p.referenceMatch.difference;return d?.startsWith('-')?'Недоплата '+d.slice(1).replace('.',',')+' AZN':'Платёж найден; версия фактуры под проверкой';}
  if(r.sourceReviewRequired)return 'Требует проверки';
  if(p.state==='paid_observed'&&p.groupSettlement?.comparisonRule==='WHOLE_AZN_GROUP_TRUNCATE')return '✓ Оплачено по целым AZN';
  if(p.state==='paid_observed'&&p.groupSettlement)return '✓ Оплачено в группе';
