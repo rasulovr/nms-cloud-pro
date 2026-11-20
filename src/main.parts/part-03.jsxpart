@@ -2169,7 +2169,7 @@ function Dashboard({ t }) {
 
     <section className="dashboard-v416-grid">
       <div className="card dashboard-v416-expense-chart">
-        <div className="card-head"><div><h3>Структура расходов</h3><p className="hint">Размер сегмента — по модулю суммы; корректировки сохранены со знаком</p></div></div>
+        <div className="card-head"><div><h3>Структура расходов</h3><p className="hint">Размер сегмента — по модулю суммы; корректировки сохранены со знаком</p>{verifiedProfit.novemberPayrollBasis && <p className="hint" role="status">{verifiedProfit.novemberPayrollBasis}</p>}</div></div>
         <div className="dashboard-v416-donut-layout">
           <div className="dashboard-v416-donut" style={{background: expenseDonutGradient}}><div><span>Все расходы</span><strong>{fmt(data.expenses)}</strong><small>AZN</small></div></div>
           <div className="dashboard-v416-legend">{expenseChartRows.map((row, index) => {
@@ -2362,7 +2362,7 @@ function Finance({ t, lang, onGoToExpense }) {
     setExpenseDetailDateFrom(monthStart(year, month))
     setExpenseDetailDateTo(monthRangeFromISODate(monthStart(year, month)).to)
     if(Array.isArray(item.details)) {
-      const rows=item.details.map((d,index)=>({...d,id:String(d.id)+'-'+index,expense_date:d.date,name:selectedName,amountValue:d.amount,comment:'Детализация текущего расчёта',isGroupedFoodCost:true}))
+      const rows=item.details.map((d,index)=>({...d,id:String(d.id)+'-'+index,expense_date:d.date,name:selectedName,amountValue:d.amount,comment:(item.key==='salary' && String(d.id).startsWith('report-payroll-2026-11-') && verifiedProfit.novemberPayrollBasis) || 'Детализация текущего расчёта',isGroupedFoodCost:true}))
       setExpenseDetail({name:selectedName,rows,total:item.amount,loading:false,error:''})
       return
     }
@@ -3465,7 +3465,7 @@ function Finance({ t, lang, onGoToExpense }) {
 
       <section className="finance-intel-grid">
         <div className="finance-intel-card">
-          <div className="finance-card-title"><div><h3>Структура расходов</h3><p>Размер сегмента — по модулю; суммы со знаком</p></div></div>
+          <div className="finance-card-title"><div><h3>Структура расходов</h3><p>Размер сегмента — по модулю; суммы со знаком</p>{verifiedProfit.novemberPayrollBasis && <p className="hint" role="status">{verifiedProfit.novemberPayrollBasis}</p>}</div></div>
           <div className="finance-donut-layout">
             <div className="finance-donut" style={{ background: financeExpenseDonutGradient }}><div><strong>{fmt(financeTotalExpenses)}</strong><span>AZN</span></div></div>
             <div className="finance-donut-list">

@@ -5442,6 +5442,9 @@ function ReportsBazarDailyFullCardV220() {
 
 // Opt-in provenance for imported bank revenue normalized to gross. Never infer
 // gross/net from branch names, dates, URLs, or an unstructured comment.
+// Same-origin report source is a static dependency (also injected by the report VM fixture).
+import {containsNovemberPayroll,readNovemberPayrollReport} from './november-payroll-report.mjs'
+
 function rmsReportBankBasis(row) {
   const prefix = 'RMS_BANK_BASIS_V1='
   const comment = String(row?.comment || '')
@@ -5610,6 +5613,8 @@ async function readRmsProfitabilitySnapshot(branches, profitabilitySelection) {
       const hasAuditedMonths = period.from < '2026-10-01' && period.toExclusive > '2026-01-01'
       const mixedBasis = hasAuditedMonths && (period.from < '2026-01-01' || period.toExclusive > '2026-10-01')
       const reviewedInputs = { revenueRows, dailyExpenseRows: rawDailyExpenseRows, supplierPurchases: rawSupplierPurchases, supplierPurchaseRows: allSupplierPurchaseRows, salaryPeriods, serviceRows, employeeRows, branchRows: branches }
+      const novemberPayrollReport=containsNovemberPayroll(period.from,period.toExclusive)?await readNovemberPayrollReport(supabase,branches):null
+
       let verificationReadError = false
       const protectedRecords = await readComponentRecords(supabase, period.from, period.toExclusive)
       const goodsPurchaseIds = [...new Set(protectedRecords.filter(record => record.snapshot_data?.kind === 'bank_basis_evidence' && record.snapshot_data?.version === 3).flatMap(record => (record.snapshot_data.goodsProof?.headers || []).map(row => String(row.id))))]
@@ -5624,7 +5629,7 @@ async function readRmsProfitabilitySnapshot(branches, profitabilitySelection) {
       // Keep validated source corrections; only the accounting/verification coupling changes.
       let operational
       try {
-        operational = buildOperationalProfitability({...reviewedInputs,periodStatuses:reviewed.periodStatuses,revenueRows:adjusted.revenueRows,dailyExpenseRows:adjusted.dailyExpenseRows,supplierPurchases:adjusted.supplierPurchases}, {
+        operational = buildOperationalProfitability({...reviewedInputs,novemberPayrollReport,periodStatuses:reviewed.periodStatuses,revenueRows:adjusted.revenueRows,dailyExpenseRows:adjusted.dailyExpenseRows,supplierPurchases:adjusted.supplierPurchases}, {
           period,branchIds:profitabilitySelection.branchIds,bankRate:bankCommissionRate,taxSettings,
           expenseName:row=>financeExpenseDisplayName({dsmf:'DSMF',partner_fee:'Partner Fee',other:'Прочее',household:'Хозяйственные товары',utilities:'Коммунальные'}[row.reviewedCategory]||financeExpenseNameFromRow(row)),
           excludeExpense:row=>{
@@ -5796,6 +5801,7 @@ async function readRmsProfitabilitySnapshot(branches, profitabilitySelection) {
       let managerSalaryPool = 0
       if (salaryPeriods.length) {
         salaryPeriods.forEach(periodRow => {
+          if(novemberPayrollReport&&String(periodRow.salary_month).slice(0,7)==='2026-11')return
           const amount = Number(periodRow.salary_gross)
           if (!Number.isFinite(amount) || amount <= 0) return
           const employee = employeeById.get(String(periodRow.employee_id)) || {}
@@ -5867,7 +5873,8 @@ async function readRmsProfitabilitySnapshot(branches, profitabilitySelection) {
         const foodCost = parseNum(expenseData.manualFood) + supplierFoodCost
         const directSalary = parseNum(directSalaryByBranch.get(id))
         const managerSalary = managerSalaryDetails.reduce((sum, detail) => sum + parseNum(detail.amount) * allocationShare(detail.date, id), 0)
-        const salary = directSalary + managerSalary
+        const reportSalary = (novemberPayrollReport?.branchCents[id]??0)/100
+        const salary = directSalary + managerSalary + reportSalary
         const serviceCost = parseNum(serviceByBranch.get(id))
         const configuredTaxRate = parseNum(taxSettings?.[id])
         const taxRate = configuredTaxRate > 0 ? configuredTaxRate : 8
@@ -5894,6 +5901,7 @@ async function readRmsProfitabilitySnapshot(branches, profitabilitySelection) {
         const householdDetails = allocatedSupplierDetails.filter(detail => detail.category === 'household')
         const salaryDetails = [
           ...(salaryDetailsByBranch.get(id) || []),
+          ...(reportSalary ? [{id:'report-payroll-2026-11-'+id,date:novemberPayrollReport.asOf,description:'Google Sheets · Начисление',comment:novemberPayrollReport.basis,amount:reportSalary}] : []),
           ...managerSalaryDetails.map(detail => ({ ...detail, id: `${detail.id}-${id}`, amount: parseNum(detail.amount) * allocationShare(detail.date, id) }))
         ].filter(detail => detail.amount !== 0)
         const expenseCategories = [
@@ -6015,7 +6023,7 @@ async function readRmsProfitabilitySnapshot(branches, profitabilitySelection) {
         provisional,
         operational,
         periodLabel: period.label,
-        summaryInputs: { period, revenueRows, coverageIssues, periodStatuses: reviewed.periodStatuses, mixedBasis, monthlyAllocationIsolated: period.from >= '2026-01-01', sourceChecks: reviewed.validated.map(r => ({month:r.source.month,readAt:r.source.source?.readAt})) },
+        summaryInputs: { period, revenueRows, coverageIssues, novemberPayrollBasis:novemberPayrollReport?.basis, periodStatuses: reviewed.periodStatuses, mixedBasis, monthlyAllocationIsolated: period.from >= '2026-01-01', sourceChecks: reviewed.validated.map(r => ({month:r.source.month,readAt:r.source.source?.readAt})) },
         source: `${revenueSource} + daily_expenses + supplier_purchases + salary_periods`
       })
     } catch (error) {
@@ -6629,6 +6637,17 @@ function Reports({ t, permissions = [], isAdmin = false }) {
           })
         })
       })
+      const novemberPayrollReport = monthFilter === '2026-11'
+        ? await readNovemberPayrollReport(supabase,branches)
+        : null
+      if(novemberPayrollReport){
+        for(const [branch_id,cents] of Object.entries(novemberPayrollReport.branchCents)){
+          if(!cents)continue
+          pushRow({id:'report-payroll-2026-11-'+branch_id,source:'Google Sheets · Начисление',
+            branch_id,branch_name:branchNameById.get(branch_id)||'—',expense_date:novemberPayrollReport.asOf,
+            category_name:'Зарплаты (начислено)',comment:novemberPayrollReport.basis,amount:cents/100,bucket:'salary'})
+        }
+      }else{
       const employeeById = new Map((employeeResult.data || []).map(row => [String(row.id), row]))
       const salaryByBranch = new Map()
       let managerSalaryPool = 0
@@ -6668,6 +6687,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
           bucket: 'salary'
         })
       })
+      }
       const serviceMonthAllowed = value => {
         const month = String(value || '')
         if (!monthFilter || monthFilter === 'all') return true
@@ -6737,7 +6757,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
         if (Object.prototype.hasOwnProperty.call(acc, row.bucket)) acc[row.bucket] += amount
         return acc
       }, { amount: 0, operating: 0, suppliers: 0, salary: 0, tax: 0, serviceCharge: 0, unallocated: 0, transactions: 0, categories: byCategory.length })
-      setRmsExpensesReport({ loading: false, error: '', rows, totals, byCategory, byBranch })
+      setRmsExpensesReport({ loading: false, error: '', rows, totals, byCategory, byBranch, novemberPayrollBasis:novemberPayrollReport?.basis })
     } catch (error) {
       setRmsExpensesReport({ loading: false, error: error?.message || 'Не удалось загрузить расходы RMS', rows: [], totals: { amount: 0, operating: 0, suppliers: 0, salary: 0, tax: 0, serviceCharge: 0, unallocated: 0, transactions: 0, categories: 0 }, byCategory: [], byBranch: [] })
     }
@@ -9727,6 +9747,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
       {rmsExpensesReport.loading && <div className="reports-v43-empty-state"><b>Загрузка расходов...</b><span>Собираю операции, накладные, зарплаты и налоги.</span></div>}
       {rmsExpensesReport.error && <div className="reports-v43-empty-state"><b>Ошибка загрузки</b><span>{rmsExpensesReport.error}</span></div>}
       {!rmsExpensesReport.loading && !rmsExpensesReport.error && <>
+        {monthFilter==='2026-11'&&rmsExpensesReport.novemberPayrollBasis&&<p role="status" className="hint">{rmsExpensesReport.novemberPayrollBasis}</p>}
         {rmsExpensesReport.totals.unallocated > 0 && <div className="reports-v43-empty-state" style={{ textAlign: 'left', padding: '12px 14px', marginBottom: 14 }}>
           <b>Нераспределённые накладные: {fmt(rmsExpensesReport.totals.unallocated)} AZN</b>
           <span>Они включены только в сводку «Все филиалы» и не приписаны ни одному филиалу. Укажите филиал в этих приходных накладных для точного P&amp;L каждого филиала.</span>
@@ -9832,6 +9853,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
 
     {rmsProfitabilityReport.loading && <div className="reports-v417-status">Считаю выручку, Food Cost, зарплаты, service charge, налоги и чистый результат по филиалам…</div>}
     {rmsProfitabilityReport.error && <div className="reports-v417-status bad">{rmsProfitabilityReport.error}</div>}
+    {!rmsProfitabilityReport.loading&&!rmsProfitabilityReport.error&&rmsProfitabilityReport.summaryInputs?.novemberPayrollBasis&&<p role="status" className="hint">{rmsProfitabilityReport.summaryInputs.novemberPayrollBasis}</p>}
 
     <section className="reports-v417-kpis">
       <div className="reports-v417-kpi green"><span>Выручка</span><strong>{fmt(profitabilityTotals.revenue)}</strong><em>Cash + Bank + Wolt</em></div>
