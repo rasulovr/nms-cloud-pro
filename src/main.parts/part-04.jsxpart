@@ -5442,6 +5442,9 @@ function ReportsBazarDailyFullCardV220() {
 
 // Opt-in provenance for imported bank revenue normalized to gross. Never infer
 // gross/net from branch names, dates, URLs, or an unstructured comment.
+// Same-origin report source is a static dependency (also injected by the report VM fixture).
+import {containsNovemberPayroll,readNovemberPayrollReport} from './november-payroll-report.mjs'
+
 function rmsReportBankBasis(row) {
   const prefix = 'RMS_BANK_BASIS_V1='
   const comment = String(row?.comment || '')
@@ -5610,7 +5613,6 @@ async function readRmsProfitabilitySnapshot(branches, profitabilitySelection) {
       const hasAuditedMonths = period.from < '2026-10-01' && period.toExclusive > '2026-01-01'
       const mixedBasis = hasAuditedMonths && (period.from < '2026-01-01' || period.toExclusive > '2026-10-01')
       const reviewedInputs = { revenueRows, dailyExpenseRows: rawDailyExpenseRows, supplierPurchases: rawSupplierPurchases, supplierPurchaseRows: allSupplierPurchaseRows, salaryPeriods, serviceRows, employeeRows, branchRows: branches }
-      const {containsNovemberPayroll,readNovemberPayrollReport}=await import('./november-payroll-report.mjs')
       const novemberPayrollReport=containsNovemberPayroll(period.from,period.toExclusive)?await readNovemberPayrollReport(supabase,branches):null
 
       let verificationReadError = false
@@ -6636,7 +6638,7 @@ function Reports({ t, permissions = [], isAdmin = false }) {
         })
       })
       const novemberPayrollReport = monthFilter === '2026-11'
-        ? await (await import('./november-payroll-report.mjs')).readNovemberPayrollReport(supabase,branches)
+        ? await readNovemberPayrollReport(supabase,branches)
         : null
       if(novemberPayrollReport){
         for(const [branch_id,cents] of Object.entries(novemberPayrollReport.branchCents)){
