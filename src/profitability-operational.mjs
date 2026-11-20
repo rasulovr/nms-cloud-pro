@@ -30,20 +30,26 @@ export function buildOperationalProfitability(input,{period,branchIds=null,bankR
     const network=[...buckets.values()].reduce((s,b)=>s+b.revenue,0)
     for(const r of expenses){const value=amount(r.amount,'расход');if(paidTax(r)){const b=buckets.get(String(r.branch_id));if(b)b.taxPaid+=value}if(excludeExpense(r))continue;const b=buckets.get(String(r.branch_id));if(!b)throw Error(`Расход без базы филиала ${month}`);const name=expenseName(r)||'Прочее';add(b,'daily-'+name,name,value,r.expense_date,r.id)}
     const pool=purchases.reduce((s,p)=>s+amount(p.total_amount,'закупка'),0)
+    const reportPayroll=month==='2026-11'?input.novemberPayrollReport:null
     let managerPool=0;const seen=new Set()
-    for(const r of payroll){
+    for(const r of reportPayroll?[]:payroll){
       const value=amount(r.salary_gross,'начисленная зарплата');if(value<0)throw Error('Отрицательное начисление зарплаты')
       const key=String(r.employee_id);if(!key||key==='undefined'||seen.has(key))throw Error(`Неоднозначное начисление сотрудника ${month}`);seen.add(key)
       const employee=employeeMap.get(key)||{},id=String(r.branch_id||employee.branch_id||'')
       if(!id||profitabilityManagerPosition(employee.position))managerPool+=value
       else {const b=buckets.get(id);if(!b)throw Error(`Неизвестный филиал зарплаты ${month}`);b.salary+=value;add(b,'salary','Зарплаты',value,r.salary_month,r.id)}
     }
-    if(!payroll.length&&revenue.length)warnings.push({month,reason:'missing-recorded-payroll',severity:'preliminary'})
+    if(!reportPayroll&&!payroll.length&&revenue.length)warnings.push({month,reason:'missing-recorded-payroll',severity:'preliminary'})
     if(!(network>0)&&(pool!==0||managerPool!==0))throw Error(`Нет выручки для распределения закупок или зарплаты менеджмента за ${month}`)
     for(const b of buckets.values()){
       const share=network>0?b.revenue/network:0
       b.supplierFoodCost=pool*share;add(b,'supplier-food-cost','Поставщики / Food Cost',b.supplierFoodCost,month+'-01','purchases-'+month+'-'+b.id)
-      b.salary+=managerPool*share;add(b,'salary','Зарплаты',managerPool*share,month+'-01','managers-'+month+'-'+b.id)
+      if(reportPayroll){
+        b.salary=(reportPayroll.branchCents[b.id]??0)/100
+        if(b.salary>0)add(b,'salary','Зарплаты',b.salary,reportPayroll.asOf,'report-payroll-'+month+'-'+b.id)
+      }else{
+        b.salary+=managerPool*share;add(b,'salary','Зарплаты',managerPool*share,month+'-01','managers-'+month+'-'+b.id)
+      }
       const rows=revenue.filter(r=>String(r.branch_id)===b.id)
       b.serviceCost=amount(serviceCost(rows,branches),'service charge');add(b,'service-charge','Service charge персоналу',b.serviceCost,month+'-01','service-'+month+'-'+b.id)
       const configured=taxSettings[b.id]==null?0:amount(taxSettings[b.id],'ставка налога')

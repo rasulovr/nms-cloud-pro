@@ -63,7 +63,7 @@ export function profitabilitySurface(report,now=new Date()) {
   if(report.operational?.model){
     const model=buildProfitabilitySummary(report)
     const project=(p,issues)=>({mode:'october-dashboard',available:p.profitAvailable,verified:false,preliminary:false,net:p.profitAvailable?p.net:null,margin:p.profitAvailable&&p.revenue>0?p.net/p.revenue*100:null,revenue:p.revenue,expenses:p.expenses,basis:'october-dashboard',reasons:[...new Set(issues.map(i=>i.reason||i.code).filter(Boolean))]})
-    return {...operationalMetrics(model),...project(model.total,model.total.coverageIssues),branches:model.branches.map(b=>({id:b.id,name:b.name,...operationalMetrics(model,b.id),...project(b.period,b.period.coverageIssues)}))}
+    return {...operationalMetrics(model),...project(model.total,model.total.coverageIssues),...(report.summaryInputs.novemberPayrollBasis?{novemberPayrollBasis:report.summaryInputs.novemberPayrollBasis}:{}),branches:model.branches.map(b=>({id:b.id,name:b.name,...operationalMetrics(model,b.id),...project(b.period,b.period.coverageIssues)}))}
   }
   const model=buildProfitabilitySummary(report),period=report.summaryInputs.period
   const issues=report.summaryInputs.coverageIssues
@@ -91,6 +91,7 @@ export function profitabilityTrend(current,previous) {
 export function profitBasisText(profit,formatter=String) {
   if(profit.error)return profit.error
   if(!profit.available)return 'Расчёт недоступен: источники или база распределения требуют проверки.'
+  if(profit.mode==='october-dashboard'&&profit.novemberPayrollBasis)return `Выручка после банковской комиссии ${formatter(profit.revenue)} − расходы ${formatter(profit.expenses)} AZN. ${profit.novemberPayrollBasis}`
   if(profit.mode==='october-dashboard')return `Выручка после банковской комиссии ${formatter(profit.revenue)} − расходы ${formatter(profit.expenses)} AZN. Зарплата по начислениям; закупки и менеджмент распределены по месячной доле выручки после комиссии.`
   return `База расчёта: выручка ${formatter(profit.revenue)} − учтённые расходы ${formatter(profit.expenses)} AZN.` + (profit.basis==='before-unverified-bank-commission'?' Неподтверждённая часть банковской комиссии не вычтена. Это результат до комиссии, а не окончательная прибыль.':'')
 }
