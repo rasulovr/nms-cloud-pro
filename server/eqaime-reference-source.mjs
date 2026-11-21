@@ -1,3 +1,6 @@
+import {applyApprovedHistoricalReallocation} from './eqaime-historic-reallocation.mjs';
+import {applyOneApprovedStatus} from './eqaime-approved-settlement-status.mjs';
+import {appendVerifiedArchive} from './eqaime-archive-source.mjs';
 import {appendIncremental} from './eqaime-incremental-source.mjs';
 import {applyApprovedReallocation} from './eqaime-confirmed-reallocation.mjs';
 import {applyApprovedReferenceCompletion,applyApprovedStandaloneCompletion} from './eqaime-confirmed-reference.mjs';
@@ -15,7 +18,7 @@ export async function referenceGroups(snapshot,{client,env,scope,signal,bankSnap
  for(const name of ['BANK','PRIMARY'])if(!env[`RMS_EQAIME_${name}_SOURCE`]||JSON.parse(env[`RMS_EQAIME_${name}_SOURCE`]).sha256!==snapshot.sourceHashes?.[name.toLowerCase()])throw Error('Source binding');
  const load=(raw,maxSourceBytes)=>{const loader=privateSourceLoader(client,raw,scope,maxSourceBytes?{maxSourceBytes}:undefined);if(!loader)throw Error('Source unavailable');return loader({entityId:scope.legalEntityId,signal})};
  // Reuse already authenticated route inputs; independent remaining reads run concurrently.
- const [bank,primary,cardSource,incremental]=await Promise.all([bankSnapshot||load(env.RMS_EQAIME_BANK_SOURCE,20000000),primarySnapshot||load(env.RMS_EQAIME_PRIMARY_SOURCE),env.RMS_EQAIME_CARD_SOURCE?load(env.RMS_EQAIME_CARD_SOURCE,100000):null,env.RMS_EQAIME_INCREMENTAL_SOURCE?load(env.RMS_EQAIME_INCREMENTAL_SOURCE,100000):null]);
+ const [bank,primary,cardSource,incremental,archive]=await Promise.all([bankSnapshot||load(env.RMS_EQAIME_BANK_SOURCE,20000000),primarySnapshot||load(env.RMS_EQAIME_PRIMARY_SOURCE),env.RMS_EQAIME_CARD_SOURCE?load(env.RMS_EQAIME_CARD_SOURCE,100000):null,env.RMS_EQAIME_INCREMENTAL_SOURCE?load(env.RMS_EQAIME_INCREMENTAL_SOURCE,100000):null,env.RMS_EQAIME_ARCHIVE_SOURCE?load(env.RMS_EQAIME_ARCHIVE_SOURCE,32000):null]);
  projectBank(bank,scope.legalEntityId);
  if(cardSource){const group=groups.find(g=>g.supplierKey===cardSource.supplierKey);if(!group)throw Error('Card supplier');pilot=cardSource.supplierKey;const card=projectCard(cardSource,{entityId:scope.legalEntityId,balanceSha256:JSON.parse(env.RMS_EQAIME_BALANCE_SOURCE).sha256,group,allPaymentIds:groups.flatMap(g=>g.payments.map(p=>p.id))});groups=groups.map(g=>g!==group?g:{...g,payments:[...g.payments,...card.additionalPayments.map(p=>({id:p.id,date:p.date,amount:p.amount,recipientName:p.recipientName,electronicInvoiceNumbers:[p.invoiceNumber],verifiedInvoiceNumber:null,supplementary:true,sourceLabel:p.sourceLabel,bankRecipientName:p.recipientName}))]})}
  const rows=projectPrimary(primary,scope.legalEntityId),historical=checkedHistoricalEvidence(primary),primaryNumbers=new Set(rows.map(r=>r.invoiceNumber));
@@ -26,5 +29,9 @@ export async function referenceGroups(snapshot,{client,env,scope,signal,bankSnap
  if(incremental){const sourceHashes=Object.fromEntries(['PRIMARY','BANK','BALANCE','CARD'].map(name=>{const raw=env['RMS_EQAIME_'+name+'_SOURCE'];if(!raw)throw Error('Missing baseline source');return [name.toLowerCase(),JSON.parse(raw).sha256]}));groups=appendIncremental(groups,incremental,{entityId:scope.legalEntityId,sourceHashes})}
  groups=applyApprovedReferenceCompletion(groups,bank,rows,env,scope);
  groups=applyApprovedReallocation(groups,bank,rows,env,scope);
- return reconcileReferences(applyApprovedStandaloneCompletion(groups,bank,rows,env,scope),rows);
+ groups=applyApprovedHistoricalReallocation(groups,bank,rows,env,scope);
+ groups=applyOneApprovedStatus(groups,bank,rows,env,scope);
+ groups=applyApprovedStandaloneCompletion(groups,bank,rows,env,scope);
+ if(archive){const sourceHashes=Object.fromEntries(['PRIMARY','BANK','BALANCE','CARD','INCREMENTAL'].map(name=>[name.toLowerCase(),JSON.parse(env['RMS_EQAIME_'+name+'_SOURCE']).sha256]));groups=appendVerifiedArchive(groups,rows,archive,{entityId:scope.legalEntityId,sourceHashes})}
+ return reconcileReferences(groups,rows);
 }
