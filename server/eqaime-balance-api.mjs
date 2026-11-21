@@ -1,5 +1,5 @@
 import {referenceGroups} from './eqaime-reference-source.mjs';
-import {withAgreedBalance} from './eqaime-agreed-balance.mjs';
+import {withAgreedBalance,withAgreedOpenBalances} from './eqaime-agreed-balance.mjs';
 import {parseScope} from './eqaime-api.mjs';
 import {privateSourceLoader} from './eqaime-primary-source.mjs';
 import {projectBalances,balancePage} from './eqaime-balances.mjs';
@@ -18,7 +18,7 @@ export function makeBalanceHandler({createClient,env,timeoutMs=15000,loadSnapsho
     const {data,error}=await client.auth.getUser(authorization.slice(7));if(error||!data?.user||data.user.is_anonymous)return {status:401,body:{error:'Authentication required'}};if(data.user.id!==scope.allowedAuthUserId)return {status:403,body:{error:'Access denied'}};if(controller.signal.aborted)throw Error();
     const loader=loadSnapshot||privateSourceLoader(client,env.RMS_EQAIME_BALANCE_SOURCE,scope,{maxSourceBytes:2500000});
     if(!loader)return {status:200,body:{groups:[],coverage:{complete:false},sourceStatus:'not_connected'}};
-    const snapshot=await loader({entityId:scope.legalEntityId,signal:controller.signal});if(controller.signal.aborted)throw Error();for(const [name,raw] of [['primary',env.RMS_EQAIME_PRIMARY_SOURCE],['bank',env.RMS_EQAIME_BANK_SOURCE]]){if(!raw||!privateSourceLoader(client,raw,scope)||JSON.parse(raw).sha256!==snapshot.sourceHashes?.[name])throw Error('Source changed')}const groups=await referenceGroups(snapshot,{client,env,scope,signal:controller.signal});const body=balancePage(withAgreedBalance(groups,env,scope),filters);if(Buffer.byteLength(JSON.stringify(body))>2000000)throw Error();return {status:200,body};
+    const snapshot=await loader({entityId:scope.legalEntityId,signal:controller.signal});if(controller.signal.aborted)throw Error();for(const [name,raw] of [['primary',env.RMS_EQAIME_PRIMARY_SOURCE],['bank',env.RMS_EQAIME_BANK_SOURCE]]){if(!raw||!privateSourceLoader(client,raw,scope)||JSON.parse(raw).sha256!==snapshot.sourceHashes?.[name])throw Error('Source changed')}const groups=await referenceGroups(snapshot,{client,env,scope,signal:controller.signal});const body=balancePage(withAgreedOpenBalances(withAgreedBalance(groups,env,scope),env,scope),filters);if(Buffer.byteLength(JSON.stringify(body))>2000000)throw Error();return {status:200,body};
    })(),new Promise((_,reject)=>{timer=setTimeout(()=>{controller.abort();reject(Error())},timeoutMs)})]);return send(result.status,result.body);
   }catch{return send(503,{error:'Balance source unavailable'})}finally{clearTimeout(timer);controller.abort()}
  };
