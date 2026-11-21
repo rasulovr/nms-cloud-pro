@@ -1,0 +1,10 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {createHash} from 'node:crypto';import {privateSourceLoader} from '../server/eqaime-primary-source.mjs';
+const scope={legalEntityId:'entity',allowedAuthUserId:'owner'},bytes=Buffer.from(JSON.stringify({version:1,legalEntityId:'entity',rows:[]}));
+const config={version:1,enabled:true,...scope,bucket:'private-test',object:'snapshots/demo.json',sha256:createHash('sha256').update(bytes).digest('hex')};
+function fixture(options={}){let reads=0;const client={storage:{getBucket:async()=>({data:{id:config.bucket,public:!!options.public}}),from:()=>({download:async()=>{reads++;return {data:options.blob||new Blob([bytes])}}})}};return {client,reads:()=>reads}}
+test('disabled default does not create a reader',()=>assert.equal(privateSourceLoader({},'',scope),undefined));
+test('scope, extra configuration and unsafe paths rejected',()=>{for(const edit of [{legalEntityId:'other'},{allowedAuthUserId:'other'},{object:'../secret'},{object:'snapshots/a.json?x'},{extra:true},{sha256:'bad'}])assert.throws(()=>privateSourceLoader({},JSON.stringify({...config,...edit}),scope))});
+test('public bucket denied before object read',async()=>{const f=fixture({public:true});await assert.rejects(privateSourceLoader(f.client,JSON.stringify(config),scope)({entityId:'entity'}));assert.equal(f.reads(),0)});
+test('exact private object with pinned checksum accepted',async()=>{const f=fixture();const s=await privateSourceLoader(f.client,JSON.stringify(config),scope)({entityId:'entity'});assert.equal(s.legalEntityId,'entity')});
+test('changed content, oversized content rejected',async()=>{for(const blob of [new Blob(['changed']),new Blob(['x'.repeat(2500001)])]){const f=fixture({blob});await assert.rejects(privateSourceLoader(f.client,JSON.stringify(config),scope)({entityId:'entity'}))}});
+test('aborted request never downloads',async()=>{const f=fixture();const c=new AbortController();c.abort();await assert.rejects(privateSourceLoader(f.client,JSON.stringify(config),scope)({entityId:'entity',signal:c.signal}));assert.equal(f.reads(),0)});

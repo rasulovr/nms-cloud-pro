@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import {localThreeWay}from '../src/local-import/three-way-adapter.mjs';
+import {identityKey}from '../src/local-import/identity.mjs';
+const owner=await identityKey('1111111111'),seller=await identityKey('2222222222');
+const source={ready:true,legalEntities:[{id:'e',voen:'1111111111'}],suppliers:[{id:'s',voen:'2222222222'}],purchases:[{id:'p',supplier_id:'s',legal_entity_id:'e',total_amount:'10'}],invoices:[{id:'i',invoice_number:'MT260110000001',legal_entity_id:'e',supplier_id:'s'}],links:[{id:'l',purchase_id:'p',e_invoice_id:'i',linked_amount:'10'}]};
+const result={invoiceRows:[{id:'q',original:{sellerVoen:seller,buyerVoen:owner,invoiceNumber:'MT260110000001',amount:'10.0000',status:'accepted',date:'2026-01-01'},reasons:[]}],paymentRows:[{id:'b',original:{ownerVoen:owner,recipientVoen:seller,amount:'10',date:'2026-01-02'}}],edges:[{paymentId:'b',invoiceId:'q'}]};
+assert.equal((await localThreeWay(source,result,owner)).bankEdges.length,1);
+assert.equal(await localThreeWay(source,result,await identityKey('3333333333')),null);
+assert.equal(await localThreeWay({...source,ready:false},result,owner),null);
+const missing=await localThreeWay({...source,suppliers:[]},result,owner);assert.equal(missing.storedLinks.length,0);assert.equal(missing.review[0].reason,'supplier_identity_unverified');assert.equal(missing.bankEdges.length,1);
+console.log('PASS memory-only hashed exact owner/seller projection; unloaded/wrong owner/unknown seller fail safe');

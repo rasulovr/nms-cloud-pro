@@ -3970,6 +3970,7 @@ function DebtsPayments({ t }) {
     <section className="topbar debt-workspace-topbar"><div><h2>Долги поставщикам</h2><p>Кому должны, сколько просрочено и какие оплаты требуют внимания.</p></div><button className="small" onClick={load}>Обновить</button></section>
 
     <section className="card span-2 supplier-control-center-card">
+      {debtWorkspaceTab !== 'eqaime-review' && <>
       <div className="debt-summary-head"><h3>Сводка долгов</h3><span>{new Date(`${debtSheet.month}-01T12:00:00`).toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' })}</span></div>
       <div className="debt-kpi-grid">
         <DebtKpiCard tone="danger" label="Общий долг" value={`${fmt(debtSheet.totalDebt)} AZN`} sub="Текущий остаток поставщикам" />
@@ -3981,13 +3982,16 @@ function DebtsPayments({ t }) {
         {debtSheet.entityTotals.map(entity => <div className="debt-voen-card" key={entity.id}><span>{entity.name}</span><small>VOEN {entity.voen || '—'}</small><strong>{fmt(entity.debt)} AZN</strong></div>)}
       </div>
 
+      </>}
       <nav className="debt-workspace-tabs" aria-label="Разделы долгов">
+        <button className={debtWorkspaceTab === 'eqaime-review' ? 'active' : ''} onClick={() => setDebtWorkspaceTab('eqaime-review')}>E-qaimə</button>
         <button className={debtWorkspaceTab === 'overview' ? 'active' : ''} onClick={() => setDebtWorkspaceTab('overview')}>Долги</button>
         <button className={debtWorkspaceTab === 'entities' ? 'active' : ''} onClick={() => setDebtWorkspaceTab('entities')}>По VOEN</button>
         <button className={debtWorkspaceTab === 'operations' ? 'active' : ''} onClick={() => setDebtWorkspaceTab('operations')}>История операций</button>
         <button className={debtWorkspaceTab === 'analytics' ? 'active' : ''} onClick={() => setDebtWorkspaceTab('analytics')}>Дополнительно</button>
       </nav>
 
+      {debtWorkspaceTab === 'eqaime-review' && <EqaimeReconciliation client={supabase} rmsSource={__RMS_PREVIEW_IDENTITY_ENABLED__ ? {legalEntities}:null} />}
       {debtWorkspaceTab === 'overview' && <div className="debt-overview-panel">
         <div className="debt-sheet-filters">
           <label><span>VOEN</span><select value={debtSheetLegalEntityId} onChange={e => setDebtSheetLegalEntityId(e.target.value)}><option value="all">Все VOEN</option>{legalEntities.map(le => <option key={le.id} value={le.id}>{le.name} · {le.voen || '—'}</option>)}</select></label>

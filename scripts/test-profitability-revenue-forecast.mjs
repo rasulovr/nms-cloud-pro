@@ -1,4 +1,4 @@
-import {execFileSync} from 'node:child_process'
+import {readPinnedForecastBaseline} from './lib/pinned-forecast-baseline.mjs'
 import {profitabilityManagerPosition} from '../src/profitability-payroll-allocation.mjs'
 import fs from 'node:fs'
 import vm from 'node:vm'
@@ -191,7 +191,7 @@ assert.equal(zero.forecastAvailable,true)
 assert.equal(zero.forecastRevenue,0)
 console.log('PASS actual forecast engine: network and selected branch, complete-day numerator, partial day truncation, missing branch/read errors, zero observations, unchanged expense pipeline executes')
 
-const baseline=execFileSync('git',['show','698b42390efa1d03b0cb170b08853f4dc842bec8:src/main.parts/part-03.jsxpart'],{encoding:'utf8'})
+const baseline=readPinnedForecastBaseline()
 for(const options of [{},{partial:true}]) {
  const before=await harness(baseline,common,options).api.forecast(2026,10,'__all__')
  const after=await harness(candidate,common,options).api.forecast(2026,10,'__all__')
