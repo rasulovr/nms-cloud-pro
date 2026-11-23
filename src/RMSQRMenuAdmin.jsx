@@ -16,6 +16,12 @@ import {
 import { supabase } from './supabase'
 import { localizeProduct } from './qrMenuTranslations'
 import './RMSQRMenuAdmin.css'
+import { BC4_CATALOG_VERSION, projectBC4, localizeBC4 } from './bc4MenuProjection.mjs'
+const bc4SnapshotLabel = {
+  ru: 'Каталог Clopos BC4 · только просмотр. Цены и варианты берутся из снимка.',
+  az: 'Clopos BC4 kataloqu · yalnız baxış. Qiymətlər və variantlar saxlanılmış nüsxədən götürülür.',
+  en: 'Clopos BC4 catalogue · read-only. Prices and options come from the snapshot.'
+}
 
 const fmt = (n) => Number(n || 0).toFixed(2)
 const QR_MENU_PUBLIC_ORIGIN = 'https://app.rms.rest'
@@ -77,6 +83,7 @@ const QR_ADMIN_TEXT = {
 const normalizeAdminLanguage = (value) => ['ru', 'az', 'en'].includes(value) ? value : 'ru'
 
 function productForLanguage(product, language) {
+  if (product.bc4Projected) return localizeBC4(product, language)
   return localizeProduct({
     ...product,
     translationKey: product.name,
@@ -164,6 +171,16 @@ export default function RMSQRMenuAdmin({ lang = localStorage.getItem('rms_lang')
   const [tableForm, setTableForm] = useState({ branch_id: 'BC1', from: 1, to: 10, prefix: '' })
   const [branchQrForm, setBranchQrForm] = useState({ branch_id: 'BC1' })
   const [selectedMenuBranch, setSelectedMenuBranch] = useState('BC1')
+  const showingBC4Snapshot = selectedMenuBranch === 'BC4' && import.meta.env.VITE_BC4_CART_CATALOG === BC4_CATALOG_VERSION
+  const [bc4SnapshotRows, setBC4SnapshotRows] = useState(null)
+  useEffect(() => {
+    if (!showingBC4Snapshot || bc4SnapshotRows) return
+    let active = true
+    import('./bc4InPlaceCatalogue.json').then(({default: snapshot}) => projectBC4(snapshot)).then(rows => {
+      if (active) setBC4SnapshotRows(rows.map(row=>({...row, category:row.categoryNames.ru, image_url:row.image})))
+    }).catch(() => { if (active) setBC4SnapshotRows([]) })
+    return () => { active = false }
+  }, [showingBC4Snapshot, bc4SnapshotRows])
   const [menuLanguage, setMenuLanguage] = useState(adminLanguage)
   const [menuSearch, setMenuSearch] = useState('')
   const [menuCategory, setMenuCategory] = useState('all')
@@ -201,15 +218,15 @@ export default function RMSQRMenuAdmin({ lang = localStorage.getItem('rms_lang')
   }, [branchMenuLinks, branchMenuReady, products, selectedMenuBranch])
 
   const branchProducts = useMemo(
-    () => activeBranchProducts || products.filter(product => assignedProductIds.has(String(product.id))),
-    [activeBranchProducts, assignedProductIds, products]
+    () => showingBC4Snapshot ? bc4SnapshotRows || [] : activeBranchProducts || products.filter(product => assignedProductIds.has(String(product.id))),
+    [showingBC4Snapshot, bc4SnapshotRows, activeBranchProducts, assignedProductIds, products]
   )
 
   const productsAvailableToAdd = useMemo(
-    () => selectedMenuBranch === APPROVED_MENU_BRANCH
+    () => showingBC4Snapshot || selectedMenuBranch === APPROVED_MENU_BRANCH
       ? []
       : products.filter(product => !assignedProductIds.has(String(product.id))),
-    [assignedProductIds, products, selectedMenuBranch]
+    [assignedProductIds, products, selectedMenuBranch, showingBC4Snapshot]
   )
 
   const pickerProducts = useMemo(() => {
@@ -556,6 +573,7 @@ export default function RMSQRMenuAdmin({ lang = localStorage.getItem('rms_lang')
   }
 
   function openProductEditor(product) {
+    if (showingBC4Snapshot) return
     const translations = product.translations && typeof product.translations === 'object' ? product.translations : {}
     setEditingProduct(product)
     setProductDraft({
@@ -583,7 +601,7 @@ export default function RMSQRMenuAdmin({ lang = localStorage.getItem('rms_lang')
   }
 
   async function saveProductOverride() {
-    if (!productDraft?.id) return
+    if (showingBC4Snapshot || !productDraft?.id) return
     const { data, error: readError } = await supabase
       .from('rms_qr_tables')
       .select('qr_code_url')
@@ -632,6 +650,7 @@ export default function RMSQRMenuAdmin({ lang = localStorage.getItem('rms_lang')
   }
 
   async function addProductToBranch(product) {
+    if (showingBC4Snapshot) return
     if (!branchMenuReady) {
       setMsg(ui.migrationRequired)
       return
@@ -655,6 +674,7 @@ export default function RMSQRMenuAdmin({ lang = localStorage.getItem('rms_lang')
   }
 
   async function removeProductFromBranch(product) {
+    if (showingBC4Snapshot) return
     if (!branchMenuReady) {
       setMsg(ui.migrationRequired)
       return
@@ -1033,7 +1053,7 @@ export default function RMSQRMenuAdmin({ lang = localStorage.getItem('rms_lang')
               </div>
             )}
 
-                        {showProductPicker && selectedMenuBranch !== APPROVED_MENU_BRANCH && (
+                        {!showingBC4Snapshot && showProductPicker && selectedMenuBranch !== APPROVED_MENU_BRANCH && (
               <div className="card span-2 qr-picker-card">
                 <div className="qr-admin-card-head compact">
                   <div>
@@ -1066,17 +1086,17 @@ export default function RMSQRMenuAdmin({ lang = localStorage.getItem('rms_lang')
                 <div>
                   <span className="qr-admin-eyebrow"><QrCode size={14} /> {branchDisplayName(selectedMenuBranch)}</span>
                   <h3>{ui.catalogue}</h3>
-                  <p>{selectedMenuBranch === APPROVED_MENU_BRANCH ? ui.masterHint : ui.catalogueHint}</p>
+                  <p>{showingBC4Snapshot ? bc4SnapshotLabel[lang] || bc4SnapshotLabel.ru : selectedMenuBranch === APPROVED_MENU_BRANCH ? ui.masterHint : ui.catalogueHint}</p>
                 </div>
-                {selectedMenuBranch !== APPROVED_MENU_BRANCH && selectedMenuBranch !== 'BC5' && (
+                {!showingBC4Snapshot && selectedMenuBranch !== APPROVED_MENU_BRANCH && selectedMenuBranch !== 'BC5' && (
                   <button type="button" className="small primary qr-add-product" onClick={() => setShowProductPicker(current => !current)}><Plus size={16} /> {ui.addFromApproved}</button>
                 )}
               </div>
 
               <div className="qr-menu-summary">
                 <article><span>{ui.total}</span><b>{menuSummary.total}</b></article>
-                <article className="good"><span>{ui.approved}</span><b>{menuSummary.approved}</b></article>
-                <article className="warn"><span>{ui.availableToAdd}</span><b>{menuSummary.availableToAdd}</b></article>
+                {!showingBC4Snapshot && <article className="good"><span>{ui.approved}</span><b>{menuSummary.approved}</b></article>}
+                {!showingBC4Snapshot && <article className="warn"><span>{ui.availableToAdd}</span><b>{menuSummary.availableToAdd}</b></article>}
                 <article><span>{ui.withoutPhoto}</span><b>{menuSummary.withoutPhoto}</b></article>
               </div>
 
@@ -1100,13 +1120,14 @@ export default function RMSQRMenuAdmin({ lang = localStorage.getItem('rms_lang')
                         {product.image_url ? <img src={product.image_url} alt="" /> : <ImagePlus size={22} />}
                       </div>
                       <div className="qr-product-copy">
-                        <div className="qr-product-heading"><h4>{translated.name || product.name}</h4><b>{fmt(product.price)} ₼</b></div>
+                        <div className="qr-product-heading"><h4>{translated.name || product.name}</h4><b>{product.bc4Projected && product.price===null ? "—" : `${fmt(product.price)} ₼`}</b></div>
+                        {product.bc4Projected && product.variants.length>0 && <p>{product.variants.map(option=>`${option.label}: ${option.cents===null?"—":fmt(option.cents/100)+" ₼"}`).join(" · ")}</p>}
                         <p>{translated.description || ui.noDescription}</p>
                         <div className="qr-product-meta"><span>{product.category}</span><span>{menuLanguage.toUpperCase()}</span></div>
                       </div>
                       <div className="qr-product-actions">
-                        <button type="button" onClick={() => openProductEditor(product)} title={ui.edit}><Pencil size={17} /></button>
-                        {selectedMenuBranch !== APPROVED_MENU_BRANCH && selectedMenuBranch !== 'BC5' && (
+                        {!showingBC4Snapshot && <button type="button" onClick={() => openProductEditor(product)} title={ui.edit}><Pencil size={17} /></button>}
+                        {!showingBC4Snapshot && selectedMenuBranch !== APPROVED_MENU_BRANCH && selectedMenuBranch !== 'BC5' && (
                           <button type="button" className="danger" onClick={() => removeProductFromBranch(product)} title={ui.removeFromBranch}><Trash2 size={17} /></button>
                         )}
                       </div>
