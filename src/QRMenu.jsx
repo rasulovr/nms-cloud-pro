@@ -1,4 +1,4 @@
-import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import React, { lazy, Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "./supabase";
 import { localizeCategory, localizeProduct } from "./qrMenuTranslations";
 import { formatMenuDescription, normalizeReferenceText, resolveReferenceMenuProduct } from "./referenceMenuCatalog";
@@ -12,6 +12,8 @@ import BC1SpecialOffer from "./BC1SpecialOffer";
 import { startBakuWeather, currentWeatherPresentation } from "./bc1Weather";
 import { Utensils, ShoppingBag, ReceiptText, BadgePercent, Info } from "lucide-react";
 import "./BC1MenuPreview.css";
+const BC4CartOnly = lazy(() => import("./BC4CartOnly"));
+import { useBC4Cart } from "./bc4CartModel.mjs";
 const bc1NavIcons = { menu: Utensils, cart: ShoppingBag, bill: ReceiptText, loyalty: BadgePercent, info: Info };
 const categoryOrder = {
   breakfast: ["ЗАВТРАК", "КОФЕ", "САЛАТЫ", "ЧАЙ", "ХОЛОДНЫЙ КОФЕ", "ДЕСЕРТЫ", "ЗАКУСКИ", "ГОРЯЧИЕ БЛЮДА", "СУПЫ", "ПИЦЦА", "ЛИМОНАДЫ", "ХОЛОДНЫЕ НАПИТКИ", "Новинки", "EKSTRA KITCHEN", "EKSTRA BAR"],
@@ -415,6 +417,10 @@ function WifiQr({ ssid, password }) {
 }
 
 export default function QRMenu() {
+  return useBC4Cart(window.location.search, import.meta.env.VITE_BC4_CART_CATALOG) ? <Suspense fallback={null}><BC4CartOnly /></Suspense> : <LegacyQRMenu />;
+}
+
+function LegacyQRMenu() {
   const requestedTheme = new URLSearchParams(window.location.search).get("theme");
   const hasRequestedTheme = ["travertine", "paper", "olive", "graphite"].includes(requestedTheme);
   const [branch, setBranch] = useState("BC1");
