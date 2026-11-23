@@ -32,7 +32,6 @@
           "copyStatus": "live_full"
         }
       },
-      "description": "Чёрный трюфель, трюфельный соус, котлета для бургера 150 г и сыр камамбер.",
       "price": 19.9,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "19.9",
@@ -71,7 +70,6 @@
           "copyStatus": "live_full"
         }
       },
-      "description": "Куриные бедра , стручковая фасоль, шпинат, лимонно-сливочный соус, тосты",
       "price": 16.9,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "16.9",
@@ -90,14 +88,14 @@
       "translations": {
         "ru": {
           "name": "New York Roast Beef, Demi-Glace & Golden Potatoes",
-          "description": "Ростбиф с апельсиновым демигласом, золотистый картофель, черри томаты, микрозелень, сливочный соус из тунца.",
+          "description": "Ростбиф с апельсиновым демигласом, золотистый картофель, черри томаты, микрозелень, сливоч",
           "category": "Блюда с Ростбифом (Новинка от Шеф-повара)",
           "liveVerified": false,
           "copyStatus": "live_prefix_only"
         },
         "az": {
           "name": "New York Roast Beef, Demi-Glace & Golden Potatoes",
-          "description": "Portağallı demi-qlas sousu ilə rostbif, qızılı kartof, çerri pomidorlar, mikroyaşıllar və tuna əsaslı qaymaqlı sous",
+          "description": "Portağallı demi-qlas sousu ilə rostbif, qızılı kartof, çerri pomidorlar, mikroyaşıllar və ",
           "category": "Rostbifli Yeməklər (Yenılık Chefdən)",
           "liveVerified": false,
           "copyStatus": "live_prefix_only"
@@ -106,11 +104,10 @@
           "name": "New York Roast Beef, Demi-Glace & Golden Potatoes",
           "description": "Roast beef with orange demi-glace, golden potatoes, cherry tomatoes, microgreens, and creamy tuna sauce",
           "category": "Roast Beef Dishes (New from the Chef)",
-          "liveVerified": false,
-          "copyStatus": "live_prefix_only"
+          "liveVerified": true,
+          "copyStatus": "live_full"
         }
       },
-      "description": "Ростбиф с апельсиновым демигласом, золотистый картофель, черри томаты, микрозелень, сливочный соус из тунца.",
       "price": 16.0,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "16",
@@ -149,7 +146,6 @@
           "copyStatus": "live_full"
         }
       },
-      "description": "Пицца с ростбифом, моцареллой и сливочной основой, сверху микрозелень",
       "price": 18.9,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "18.9",
@@ -175,20 +171,19 @@
         },
         "az": {
           "name": "Sendviç Vest Sayd",
-          "description": "Rostbif, çiabatta, aysberq kahı, turşu xiyar, mikroyaşıllar, üzərinə sumaq və küncüt səpilir",
+          "description": "Rostbif, çiabatta, aysberq kahı, turşu xiyar, mikroyaşıllar, üzərinə sumaq və küncüt səpil",
           "category": "Rostbifli Yeməklər (Yenılık Chefdən)",
           "liveVerified": false,
           "copyStatus": "live_prefix_only"
         },
         "en": {
           "name": "Sandwich West Side",
-          "description": "Roast beef, ciabatta, iceberg lettuce, pickles, microgreens, sprinkled with sumach and sesame",
+          "description": "Roast beef, ciabatta, iceberg lettuce, pickles, microgreens, sprinkled with sumach and ses",
           "category": "Roast Beef Dishes (New from the Chef)",
           "liveVerified": false,
           "copyStatus": "live_prefix_only"
         }
       },
-      "description": "Ростбиф, чиабатта, айсберг, соленные огурцы, микрозелень, посыпается сумахом и кунжутом",
       "price": 14.0,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "14",
@@ -227,7 +222,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "крем чиз, ягодный соус, сезонные ягоды, фисташки, сахарная пудра.",
       "price": 11.2,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "11.2",
@@ -266,7 +260,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "Бейгл, крем чиз, лосось, пармезан, сумах, кунжут.",
       "price": 11.9,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "11.9",
@@ -305,7 +298,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "Болгарский перец, томаты, лук, яйца, микс зелени, кориандр, пита, сумах.",
       "price": 10.9,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "10.9",
@@ -324,27 +316,26 @@
       "translations": {
         "ru": {
           "name": "Копченая Утка & Крем Чиз",
-          "description": "диетический тост, копченая утка, крем чиз, микс салата, вишнёвый соус, томат конфи, сливовый чатни, сумах, зеленое масло.",
+          "description": "диетический тост, копченая утка, крем чиз, микс салата, вишнёвый соус, томат конфи, сливов",
           "category": "ЗАВТРАК",
           "liveVerified": false,
           "copyStatus": "live_prefix_only"
         },
         "az": {
           "name": "Hisə verilmiş Ördək & Krem çız",
-          "description": "dietik tost, hisə verilmiş ördək, krem çız, miks salat, albalı sous, konfi tomat, gavalı çatnisi , sumaq, yaşıl yağ.",
+          "description": "dietik tost, hisə verilmiş ördək, krem çız, miks salat, albalı sous, konfi tomat, gavalı ç",
           "category": "SƏHƏR YEMƏKLƏRİ",
           "liveVerified": false,
           "copyStatus": "live_prefix_only"
         },
         "en": {
           "name": "Smoked duck & Cream cheese",
-          "description": "Dietary toast, smoked duck, cream cheese, mix lettuce, tomatoes confit, plum chutney , sumac, green oil.",
+          "description": "Dietary toast, smoked duck, cream cheese, mix lettuce, tomatoes confit, plum chutney , sum",
           "category": "BREAKFAST",
           "liveVerified": false,
           "copyStatus": "live_prefix_only"
         }
       },
-      "description": "диетический тост, копченая утка, крем чиз, микс салата, вишнёвый соус, томат конфи, сливовый чатни, сумах, зеленое масло.",
       "price": 12.9,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "12.9",
@@ -363,27 +354,26 @@
       "translations": {
         "ru": {
           "name": "Нью-Йоркский Завтрак",
-          "description": "Бейгл с кремчизом, сумах, лосось (копченый) (50-60 г), огурцы, помидоры черри, авокадо, яйцо пашот, микс салата, долька лимона в дополнении с семечками, микрозеленью и кунжутом, яблочная заправка.",
+          "description": "Бейгл с кремчизом, сумах, лосось (копченый) (50-60 г), огурцы, помидоры черри, авокадо, яй",
           "category": "ЗАВТРАК",
           "liveVerified": false,
           "copyStatus": "live_prefix_only"
         },
         "az": {
           "name": "Nyu-York Səhər Yeməyi",
-          "description": "Krem pendirli bagel, qızılbalıq (hisə verilmiş) (50-60 q), xiyar, çerri pomidoru, avokado, paşot yumurta, kahı qarışığı, limon dilimi, əlavə olaraq toxum, mikroyaşıl və küncüt , sumaq, alma sousu.",
+          "description": "Krem pendirli bagel, qızılbalıq (hisə verilmiş) (50-60 q), xiyar, çerri pomidoru, avokado,",
           "category": "SƏHƏR YEMƏKLƏRİ",
           "liveVerified": false,
           "copyStatus": "live_prefix_only"
         },
         "en": {
           "name": "New York Breakfast",
-          "description": "Bagel with cream cheese, sumac, salmon (smoked) (50-60 g), cucumbers, cherry tomatoes, avocado, poached egg, salad mix, lemon wedge with seeds, microgreens and sesame seeds, apple dressing.",
+          "description": "Bagel with cream cheese, sumac, salmon (smoked) (50-60 g), cucumbers, cherry tomatoes, avo",
           "category": "BREAKFAST",
           "liveVerified": false,
           "copyStatus": "live_prefix_only"
         }
       },
-      "description": "Бейгл с кремчизом, сумах, лосось (копченый) (50-60 г), огурцы, помидоры черри, авокадо, яйцо пашот, микс салата, долька лимона в дополнении с семечками, микрозеленью и кунжутом, яблочная заправка.",
       "price": 19.9,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "19.9",
@@ -402,7 +392,7 @@
       "translations": {
         "ru": {
           "name": "Яйцо Пашот & Фета Мусс",
-          "description": "диетический тост, фета мусс, шпинат, яйцо пашот, апельсин, зелёное масло, микс зелени, сумах.",
+          "description": "диетический тост, фета мусс, шпинат, яйцо пашот, апельсин, зелёное масло, микс зелени, сум",
           "category": "ЗАВТРАК",
           "liveVerified": false,
           "copyStatus": "live_prefix_only"
@@ -422,7 +412,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "диетический тост, фета мусс, шпинат, яйцо пашот, апельсин, зелёное масло, микс зелени, сумах.",
       "price": 9.9,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "9.9",
@@ -461,7 +450,6 @@
           "copyStatus": "live_full"
         }
       },
-      "description": "Хумус, томаты, яйцо пашот, авокадо, микс зелени, зелёное масло, пита , сумах.",
       "price": 10.9,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "10.9",
@@ -500,7 +488,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "Творог, ягоды сезонные, ягодный соус, фисташки, сливки.",
       "price": 8.9,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "8.9",
@@ -539,7 +526,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "Ванильные панкейки, нутелла, кленовый сироп, маршмэллоу.",
       "price": 8.9,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "8.9",
@@ -558,7 +544,7 @@
       "translations": {
         "ru": {
           "name": "Тост Инжир & Руккола",
-          "description": "диетический тост, фета мусс, сумах, руккола, инжир, вишнёвый соус, кедровые орехи, зеленое масло.",
+          "description": "диетический тост, фета мусс, сумах, руккола, инжир, вишнёвый соус, кедровые орехи, зеленое",
           "category": "ЗАВТРАК",
           "liveVerified": false,
           "copyStatus": "live_prefix_only"
@@ -578,7 +564,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "диетический тост, фета мусс, сумах, руккола, инжир, вишнёвый соус, кедровые орехи, зеленое масло.",
       "price": 8.9,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "8.9",
@@ -617,7 +602,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "диетический тост, томаты, авокадо, микс зелени, зелёное масло, сумах.",
       "price": 8.9,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "8.9",
@@ -656,7 +640,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "диетический тост, томаты, авокадо, микс зелени, зелёное масло, сыр моцарелла, сумах.",
       "price": 9.9,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "9.9",
@@ -695,7 +678,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "Белый тост, копчёный мусс, бекон, глазунья, микс зелени, зелёное масло, сумах.",
       "price": 11.9,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "11.9",
@@ -734,7 +716,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "яйца, молоко, соль, микс зелени, сумах, зелёное масло.",
       "price": 6.9,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "6.9",
@@ -773,7 +754,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "Яйца, сумах, масло зеленое, микс зелени.",
       "price": 5.9,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "5.9",
@@ -792,27 +772,26 @@
       "translations": {
         "ru": {
           "name": "Гранола",
-          "description": "Традиционный американский завтрак, содержащий овсяную крупу, подается с фруктами (банан, яблоки), посыпанный семенами чиа, миндальными лепестками, с обычным, альтернативным молоком или водой на выбор гостя.",
+          "description": "Традиционный американский завтрак, содержащий овсяную крупу, подается с фруктами (банан, я",
           "category": "ЗАВТРАК",
           "liveVerified": false,
           "copyStatus": "live_prefix_only"
         },
         "az": {
           "name": "Qranola",
-          "description": "Ənənəvi Amerika səhər yeməyi yulaf ezmesi, meyvələrlə (banan, alma), çia toxumu, badam lopaları ilə səpilir, qonağın seçiminə uyğun olaraq adi, alternativ süd və ya su ilə verilir.",
+          "description": "Ənənəvi Amerika səhər yeməyi yulaf ezmesi, meyvələrlə (banan, alma), çia toxumu, badam lop",
           "category": "SƏHƏR YEMƏKLƏRİ",
           "liveVerified": false,
           "copyStatus": "live_prefix_only"
         },
         "en": {
           "name": "Granola",
-          "description": "A traditional American breakfast containing oatmeal, served with fruit (banana, apples), sprinkled with chia seeds, almond petals, with regular, alternative milk or water at the guest's choice.",
+          "description": "A traditional American breakfast containing oatmeal, served with fruit (banana, apples), s",
           "category": "BREAKFAST",
           "liveVerified": false,
           "copyStatus": "live_prefix_only"
         }
       },
-      "description": "Традиционный американский завтрак, содержащий овсяную крупу, подается с фруктами (банан, яблоки), посыпанный семенами чиа, миндальными лепестками, с обычным, альтернативным молоком или водой на выбор гостя.",
       "price": 8.9,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "8.9",
@@ -851,7 +830,6 @@
           "copyStatus": "live_full"
         }
       },
-      "description": "Овсяные хлопья, молоко, масло сливочное, сахар, ваниль.",
       "price": 5.9,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "5.9",
@@ -890,7 +868,6 @@
           "copyStatus": "live_full"
         }
       },
-      "description": "Копчёный лосось, креветки, авокадо и лимон, трюфельное сливочное масло, варёные яйца, скрамбл с салатом, омлет с салатом, круассаны, нутелла, крем-чиз, панкейки, эклеры с заварным кремом и фисташками, хлеб бриошь, безлимитный чай",
       "price": 39.0,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "39",
@@ -929,7 +906,6 @@
           "copyStatus": "live_full"
         }
       },
-      "description": "",
       "price": 18.0,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "18",
@@ -968,7 +944,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "Нутовый мусс, фисташки, копчёная паприка, цедра лимона, оливковое масло, пита, сумах.",
       "price": 9.9,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "9.9",
@@ -1007,7 +982,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "Сырный мусс из вяленых томатов, оливковая пудра, паприка, томат конфи, жареная пита.",
       "price": 9.9,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "9.9",
@@ -1046,7 +1020,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "картофель фри, сумах, трюфельное масло, пармезан, медово-горчичный соус, кетчуп.",
       "price": 10.2,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "10.2",
@@ -1085,7 +1058,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "",
       "price": 16.9,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "16.9",
@@ -1104,27 +1076,26 @@
       "translations": {
         "ru": {
           "name": "Сырная тарелка",
-          "description": "Сыр блю, пармезан, камамбер, мини моцарелла, халуми на гриле. Подаётся с инжиром, сушёной курагой, сушёной вишней, кешью, а также с конфитюром из грейпфрута и розмарина.",
+          "description": "Сыр блю, пармезан, камамбер, мини моцарелла, халуми на гриле. Подаётся с инжиром, сушёной ",
           "category": "ЗАКУСКИ",
           "liveVerified": false,
           "copyStatus": "live_prefix_only"
         },
         "az": {
           "name": "Pendir lövhəsi",
-          "description": "Blu pendir, parmezan, kamamber və qril hallumi. Əncir, quru ərik, qurudulmuş albalı, keşyu və qreypfrut-rozmarin konfitürü ilə təqdim olunur.",
+          "description": "Blu pendir, parmezan, kamamber və qril hallumi. Əncir, quru ərik, qurudulmuş albalı, keşyu",
           "category": "QƏLYANALTILAR",
           "liveVerified": false,
           "copyStatus": "live_prefix_only"
         },
         "en": {
           "name": "Cheese platter",
-          "description": "Blue cheese, Parmesan, Camembert, and grilled halloumi. Served with figs, dried apricots, dried cherries, cashews, and grapefruit & rosemary confiture.",
+          "description": "Blue cheese, Parmesan, Camembert, and grilled halloumi. Served with figs, dried apricots, ",
           "category": "SNACKS",
           "liveVerified": false,
           "copyStatus": "live_prefix_only"
         }
       },
-      "description": "Сыр блю, пармезан, камамбер, мини моцарелла, халуми на гриле. Подаётся с инжиром, сушёной курагой, сушёной вишней, кешью, а также с конфитюром из грейпфрута и розмарина.",
       "price": 19.0,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "19",
@@ -1143,14 +1114,14 @@
       "translations": {
         "ru": {
           "name": "Тост Бликер-Стрит",
-          "description": "Тост диетический, копченный мусс, руккола, рибай мясо, кунжутная заправка, томаты конфи, кунжут, сумах.",
+          "description": "Тост диетический, копченный мусс, руккола, рибай мясо, кунжутная заправка, томаты конфи, к",
           "category": "ЗАКУСКИ",
           "liveVerified": false,
           "copyStatus": "live_prefix_only"
         },
         "az": {
           "name": "Tost Bliker Strit",
-          "description": "Dietik tost, hisə verilmiş muss, rukkola, ribay əti, kücüt sousu, tomat konfi, küncüt, sumaq.",
+          "description": "Dietik tost, hisə verilmiş muss, rukkola, ribay əti, kücüt sousu, tomat konfi, küncüt, sum",
           "category": "QƏLYANALTILAR",
           "liveVerified": false,
           "copyStatus": "live_prefix_only"
@@ -1163,7 +1134,6 @@
           "copyStatus": "live_full"
         }
       },
-      "description": "Тост диетический, копченный мусс, руккола, рибай мясо, кунжутная заправка, томаты конфи, кунжут, сумах.",
       "price": 13.9,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "13.9",
@@ -1202,7 +1172,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "Куриное филе в панировке, медово-горчичный соус, соус от шефа.",
       "price": 9.9,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "9.9",
@@ -1241,7 +1210,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "Картофель по-деревенски, копчёная паприка, розмарин, свит чили соус",
       "price": 8.9,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "8.9",
@@ -1280,7 +1248,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "Шампиньоны, лук порей, трюфельное масло, сливки, микс зелени.",
       "price": 8.2,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "8.2",
@@ -1319,7 +1286,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "Томаты, лук порей, зелёное масло, пудра из оливок, томат конфи.",
       "price": 8.2,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "8.2",
@@ -1358,7 +1324,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "Сливки, сыр, картофель, копчёное утиное филе, зелёное масло, микс зелени.",
       "price": 9.9,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "9.9",
@@ -1377,27 +1342,26 @@
       "translations": {
         "ru": {
           "name": "Салат Медисон Гарден",
-          "description": "Микс салата, яблоко зелёное и красное, авокадо, яблочная заправка, семена подсолнуха, тыквенные семечки, сливовый чатни.",
+          "description": "Микс салата, яблоко зелёное и красное, авокадо, яблочная заправка, семена подсолнуха, тыкв",
           "category": "САЛАТЫ",
           "liveVerified": false,
           "copyStatus": "live_prefix_only"
         },
         "az": {
           "name": "Salat Medison Garden",
-          "description": "Miks salat, yaşıl və qırmızı alma, avokado, alma sousu, balqabağ toxumu, günəbaxan toxumu, gavalı çatnisi.",
+          "description": "Miks salat, yaşıl və qırmızı alma, avokado, alma sousu, balqabağ toxumu, günəbaxan toxumu,",
           "category": "SALATLAR",
           "liveVerified": false,
           "copyStatus": "live_prefix_only"
         },
         "en": {
           "name": "Salad Medison Garden",
-          "description": "Mix salad, green & red apple, avocado, apple dressing, sunflower & pumpkin seeds, plum chutney.",
+          "description": "Mix salad, green & red apple, avocado, apple dressing, sunflower & pumpkin seeds, plum chu",
           "category": "SALADS",
           "liveVerified": false,
           "copyStatus": "live_prefix_only"
         }
       },
-      "description": "Микс салата, яблоко зелёное и красное, авокадо, яблочная заправка, семена подсолнуха, тыквенные семечки, сливовый чатни.",
       "price": 11.9,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "11.9",
@@ -1416,27 +1380,26 @@
       "translations": {
         "ru": {
           "name": "Салат Органик Сохо",
-          "description": "Микс салата, куриное филе в паприке, киноа, цветная капуста, авокадо жареное, апельсиновая заправка, цедра апельсина.",
+          "description": "Микс салата, куриное филе в паприке, киноа, цветная капуста, авокадо жареное, апельсиновая",
           "category": "САЛАТЫ",
           "liveVerified": false,
           "copyStatus": "live_prefix_only"
         },
         "az": {
           "name": "Salat Orqanik Soho",
-          "description": "Miks salat, toyuq filesi paprikalı, kinoa, gül kələmi, qızardılmış avokado, portağal sousu, portağal qabığı.",
+          "description": "Miks salat, toyuq filesi paprikalı, kinoa, gül kələmi, qızardılmış avokado, portağal sousu",
           "category": "SALATLAR",
           "liveVerified": false,
           "copyStatus": "live_prefix_only"
         },
         "en": {
           "name": "Salad Organic Soho",
-          "description": "Mix salad, chicken fillet with paprika, quinoa, cauliflower, fried avocado, orange dressing, orange peel.",
+          "description": "Mix salad, chicken fillet with paprika, quinoa, cauliflower, fried avocado, orange dressin",
           "category": "SALADS",
           "liveVerified": false,
           "copyStatus": "live_prefix_only"
         }
       },
-      "description": "Микс салата, куриное филе в паприке, киноа, цветная капуста, авокадо жареное, апельсиновая заправка, цедра апельсина.",
       "price": 15.9,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "15.9",
@@ -1455,27 +1418,26 @@
       "translations": {
         "ru": {
           "name": "Салат Уолл Стрит",
-          "description": "Руккола, рибай филе, красный лук, болгарский перец, томаты черри, копчёный мусс, пудра из оливок, кунжутная заправка, чипсы из тоста.",
+          "description": "Руккола, рибай филе, красный лук, болгарский перец, томаты черри, копчёный мусс, пудра из ",
           "category": "САЛАТЫ",
           "liveVerified": false,
           "copyStatus": "live_prefix_only"
         },
         "az": {
           "name": "Salat Uol Strit",
-          "description": "Rukkola, ribay əti, qırmızı soğan, bolqar bibər, tomat çerri, hisə verilmiş muss, zeytun tozu, kücüt sousu, tost çipsi.",
+          "description": "Rukkola, ribay əti, qırmızı soğan, bolqar bibər, tomat çerri, hisə verilmiş muss, zeytun t",
           "category": "SALATLAR",
           "liveVerified": false,
           "copyStatus": "live_prefix_only"
         },
         "en": {
           "name": "Salad Wall Street",
-          "description": "Arugula, ribeye, red onion, bell pepper, cherry tomatoes, smoke mousse, olive powder, sesame dressing, toast chips.",
+          "description": "Arugula, ribeye, red onion, bell pepper, cherry tomatoes, smoke mousse, olive powder, sesa",
           "category": "SALADS",
           "liveVerified": false,
           "copyStatus": "live_prefix_only"
         }
       },
-      "description": "Руккола, рибай филе, красный лук, болгарский перец, томаты черри, копчёный мусс, пудра из оливок, кунжутная заправка, чипсы из тоста.",
       "price": 17.9,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "17.9",
@@ -1494,27 +1456,26 @@
       "translations": {
         "ru": {
           "name": "Салат Центральный Парк",
-          "description": "Микс салата, копчёное утиное филе, красный лук, вишнёвая заправка, фета мусс, ягоды, наршараб, цедра апельсина.",
+          "description": "Микс салата, копчёное утиное филе, красный лук, вишнёвая заправка, фета мусс, ягоды, нарша",
           "category": "САЛАТЫ",
           "liveVerified": false,
           "copyStatus": "live_prefix_only"
         },
         "az": {
           "name": "Salat Mərkəzi Park",
-          "description": "Miks salat, hisə verilmiş ördək filesi, qırmızı soğan, albalı sous, feta mussu, giləmeyvə, narşərab, portağal qabığı.",
+          "description": "Miks salat, hisə verilmiş ördək filesi, qırmızı soğan, albalı sous, feta mussu, giləmeyvə,",
           "category": "SALATLAR",
           "liveVerified": false,
           "copyStatus": "live_prefix_only"
         },
         "en": {
           "name": "Salad Central Park",
-          "description": "Mix salad, smoked duck fillet, red onion, cherry dressing, feta mousse, berries, narsharab, orange peel.",
+          "description": "Mix salad, smoked duck fillet, red onion, cherry dressing, feta mousse, berries, narsharab",
           "category": "SALADS",
           "liveVerified": false,
           "copyStatus": "live_prefix_only"
         }
       },
-      "description": "Микс салата, копчёное утиное филе, красный лук, вишнёвая заправка, фета мусс, ягоды, наршараб, цедра апельсина.",
       "price": 18.0,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "18",
@@ -1533,14 +1494,14 @@
       "translations": {
         "ru": {
           "name": "Боул",
-          "description": "Микс салата, огурцы, оливки, болгарский перец, киноа, томаты черри, кукуруза, хумус, паприка, кунжутная заправка, картофель, семечки, микрозелень.",
+          "description": "Микс салата, огурцы, оливки, болгарский перец, киноа, томаты черри, кукуруза, хумус, папри",
           "category": "САЛАТЫ",
           "liveVerified": false,
           "copyStatus": "live_prefix_only"
         },
         "az": {
           "name": "Boul",
-          "description": "Miks salat, xiyar, zeytun, rəngli bibər, kinoa, tomat çerri, qarğıdalı, humus, paprika, küncüt sousu, kartof, küncüt, toxum, mikroyaşıllar.",
+          "description": "Miks salat, xiyar, zeytun, rəngli bibər, kinoa, tomat çerri, qarğıdalı, humus, paprika, kü",
           "category": "SALATLAR",
           "liveVerified": false,
           "copyStatus": "live_prefix_only"
@@ -1549,11 +1510,10 @@
           "name": "Bowl",
           "description": "Salad mix, cucumbers, olives, bell peppers, quinoa, cherry tomatoes, corn, hummus, paprika, sesame dressing, potatoes, seeds, microgreens.",
           "category": "SALADS",
-          "liveVerified": false,
-          "copyStatus": "live_prefix_only"
+          "liveVerified": true,
+          "copyStatus": "live_full"
         }
       },
-      "description": "Микс салата, огурцы, оливки, болгарский перец, киноа, томаты черри, кукуруза, хумус, паприка, кунжутная заправка, картофель, семечки, микрозелень.",
       "price": null,
       "sourceOptionPrices": [
         [
@@ -1600,7 +1560,7 @@
         },
         "az": {
           "name": "Trump Steyk",
-          "description": "Ribay 250-260 gr, tərəvəzlər (balqabaq, göbələk, badımcan, bolqar bibəri, albalı pomidorları), BBQ s...",
+          "description": "Ribay 250-260 gr, tərəvəzlər (balqabaq, göbələk, badımcan, bolqar bibəri, albalı pomidorla",
           "category": "İSTİ YEMƏKLƏR",
           "liveVerified": false,
           "copyStatus": "live_prefix_only"
@@ -1613,7 +1573,6 @@
           "copyStatus": "live_full"
         }
       },
-      "description": "Рибай 250-260 гр, овощи на гриле (кабачки, грибы, баклажан, болгарский перец, томаты черри), барбекю соус, тар-тар соус, микс зелени, морская соль, сумах.",
       "price": 30.9,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "30.9",
@@ -1652,7 +1611,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "Мясо, пармезан, грибы, сливки, сыр моцарелла, микро зелень, пита, сумах.",
       "price": 19.0,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "19",
@@ -1691,7 +1649,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "Чиабатта, руккола, мусс копченный, помидоры, салями, сыр моцарелла, сумах, кунжут.",
       "price": 8.9,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "8.9",
@@ -1730,7 +1687,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "Куриное филе, айоли, айсберг, красный лук, томаты, маринованные огурцы, кукуруза, кунжут.",
       "price": 12.4,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "12.4",
@@ -1749,14 +1705,14 @@
       "translations": {
         "ru": {
           "name": "Сэндвич Северный Нью-Йорк",
-          "description": "Рибай филе, мусс из хрена, айсберг, красный лук, томаты, маринованные огурцы, сыр чеддер, кунжут.",
+          "description": "Рибай филе, мусс из хрена, айсберг, красный лук, томаты, маринованные огурцы, сыр чеддер, ",
           "category": "ГОРЯЧИЕ БЛЮДА",
           "liveVerified": false,
           "copyStatus": "live_prefix_only"
         },
         "az": {
           "name": "Sendviç Şimali Nyu York",
-          "description": "ibay əti, qıtıqotu mussu, aysberq, qırmızı soğan, tomat, turşu xiyar, çedder pendiri, küncüt.",
+          "description": "ibay əti, qıtıqotu mussu, aysberq, qırmızı soğan, tomat, turşu xiyar, çedder pendiri, künc",
           "category": "İSTİ YEMƏKLƏR",
           "liveVerified": false,
           "copyStatus": "live_prefix_only"
@@ -1769,7 +1725,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "Рибай филе, мусс из хрена, айсберг, красный лук, томаты, маринованные огурцы, сыр чеддер, кунжут.",
       "price": 12.9,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "12.9",
@@ -1788,27 +1743,26 @@
       "translations": {
         "ru": {
           "name": "Сэндвич Южный Джерси",
-          "description": "Копчёное утиное филе, крем чиз, айсберг, красный лук, томаты, маринованные огурцы, томаты конфи, кунжут.",
+          "description": "Копчёное утиное филе, крем чиз, айсберг, красный лук, томаты, маринованные огурцы, томаты ",
           "category": "ГОРЯЧИЕ БЛЮДА",
           "liveVerified": false,
           "copyStatus": "live_prefix_only"
         },
         "az": {
           "name": "Sendviç Cənubi Cersi",
-          "description": "Hisə verilmiş ördək filesi, krem çiz, aysberq, qırmızı soğan, tomat, turşu xiyar, tomat konfi, küncüt.",
+          "description": "Hisə verilmiş ördək filesi, krem çiz, aysberq, qırmızı soğan, tomat, turşu xiyar, tomat ko",
           "category": "İSTİ YEMƏKLƏR",
           "liveVerified": false,
           "copyStatus": "live_prefix_only"
         },
         "en": {
           "name": "Sandwich South Jersey",
-          "description": "Smoke duck fillet, cream cheese, iceberg, red onion, tomatoes, pickles, confit tomatoes, sesame.",
+          "description": "Smoke duck fillet, cream cheese, iceberg, red onion, tomatoes, pickles, confit tomatoes, s",
           "category": "HOT DISHES",
           "liveVerified": false,
           "copyStatus": "live_prefix_only"
         }
       },
-      "description": "Копчёное утиное филе, крем чиз, айсберг, красный лук, томаты, маринованные огурцы, томаты конфи, кунжут.",
       "price": 13.9,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "13.9",
@@ -1847,7 +1801,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "Пита, фалафель, горчица, сумах, хумус, айсберг, красный лук, томаты, маринованные огурцы.",
       "price": 9.9,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "9.9",
@@ -1886,7 +1839,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "Пита, рибай мясо, крем чиз, сыр чеддер, сумах, микрозелень.",
       "price": 14.9,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "14.9",
@@ -1905,27 +1857,26 @@
       "translations": {
         "ru": {
           "name": "Вильямс Бургер Бекон Вишня",
-          "description": "Котлета из мраморной говядины, сумах, чеддер, бекон, карамелизированный с вишней лук, соус от шефа, айсберг, красный лук, томаты, маринованные огурцы, картофель фри с паприкой, медово-горчичный соус, кетчуп.",
+          "description": "Котлета из мраморной говядины, сумах, чеддер, бекон, карамелизированный с вишней лук, соус",
           "category": "ГОРЯЧИЕ БЛЮДА",
           "liveVerified": false,
           "copyStatus": "live_prefix_only"
         },
         "az": {
           "name": "Vilyams Bekon Alballı Burger",
-          "description": "Mal əti kotleti, çedder pendiri, sumaq, şefdən xüsusi sous, aysberq, qırmızı soğan, tomat, turşu xiyar, bekon, karamelizə olunmuş albalılı soğan, ketçup, bal-xardal sousu, paprikalı fri kartof.",
+          "description": "Mal əti kotleti, çedder pendiri, sumaq, şefdən xüsusi sous, aysberq, qırmızı soğan, tomat,",
           "category": "İSTİ YEMƏKLƏR",
           "liveVerified": false,
           "copyStatus": "live_prefix_only"
         },
         "en": {
           "name": "Williams Bacon Cherry",
-          "description": "Beef cutlet, cheddar, sumac, caramelized onion with cherry, bacon, iceberg, red onion, tomatoes, pickles, chef sauce, honey mustard, ketchup, paprika fries.",
+          "description": "Beef cutlet, cheddar, sumac, caramelized onion with cherry, bacon, iceberg, red onion, tom",
           "category": "HOT DISHES",
           "liveVerified": false,
           "copyStatus": "live_prefix_only"
         }
       },
-      "description": "Котлета из мраморной говядины, сумах, чеддер, бекон, карамелизированный с вишней лук, соус от шефа, айсберг, красный лук, томаты, маринованные огурцы, картофель фри с паприкой, медово-горчичный соус, кетчуп.",
       "price": 15.2,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "15.2",
@@ -1944,27 +1895,26 @@
       "translations": {
         "ru": {
           "name": "Вильямс Бургер со сливочными грибами",
-          "description": "Котлета из мраморной говядины, чеддер, грибной соус, соус от шефа, айсберг, красный лук, томаты, маринованные огурцы, картофель фри, медово-горчичный соус, кетчуп, сумах.",
+          "description": "Котлета из мраморной говядины, чеддер, грибной соус, соус от шефа, айсберг, красный лук, т",
           "category": "ГОРЯЧИЕ БЛЮДА",
           "liveVerified": false,
           "copyStatus": "live_prefix_only"
         },
         "az": {
           "name": "Vilyams Qaymaqlı Göbələkli Burger",
-          "description": "Mal əti kotleti, çedder pendiri, şefdən xüsusi sous, aysberq, qırmızı soğan, tomat, turşu xiyar, göbələkli sous, kartof fri, ketçup, bal-xardal sousu, sumaq.",
+          "description": "Mal əti kotleti, çedder pendiri, şefdən xüsusi sous, aysberq, qırmızı soğan, tomat, turşu ",
           "category": "İSTİ YEMƏKLƏR",
           "liveVerified": false,
           "copyStatus": "live_prefix_only"
         },
         "en": {
           "name": "Williams creamy mushroom",
-          "description": "Beef cutlet, cheddar, mushroom sauce, iceberg, red onion, tomatoes, pickles, chef sauce, fries, honey mustard, ketchup, sumac.",
+          "description": "Beef cutlet, cheddar, mushroom sauce, iceberg, red onion, tomatoes, pickles, chef sauce, f",
           "category": "HOT DISHES",
           "liveVerified": false,
           "copyStatus": "live_prefix_only"
         }
       },
-      "description": "Котлета из мраморной говядины, чеддер, грибной соус, соус от шефа, айсберг, красный лук, томаты, маринованные огурцы, картофель фри, медово-горчичный соус, кетчуп, сумах.",
       "price": 16.2,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "16.2",
@@ -1983,27 +1933,26 @@
       "translations": {
         "ru": {
           "name": "Вильямс Бургер",
-          "description": "Котлета из мраморной говядины, чеддер, соус от шефа, айсберг, красный лук, томаты, маринованные огурцы, картофель фри, сумах, медово-горчичный соус, кетчуп.",
+          "description": "Котлета из мраморной говядины, чеддер, соус от шефа, айсберг, красный лук, томаты, маринов",
           "category": "ГОРЯЧИЕ БЛЮДА",
           "liveVerified": false,
           "copyStatus": "live_prefix_only"
         },
         "az": {
           "name": "Vilyams Burger",
-          "description": "Mal əti kotleti, çedder pendiri, şefdən xüsusi sous, aysberq, qırmızı soğan, tomat, turşu xiyar, kartof fri, ketçup, bal-xardal sousu, sumaq.",
+          "description": "Mal əti kotleti, çedder pendiri, şefdən xüsusi sous, aysberq, qırmızı soğan, tomat, turşu ",
           "category": "İSTİ YEMƏKLƏR",
           "liveVerified": false,
           "copyStatus": "live_prefix_only"
         },
         "en": {
           "name": "Williams Burger",
-          "description": "Beef cutlet, cheddar, iceberg, sumac, red onion, tomatoes, pickles, chef sauce, fries, honey mustard, ketchup.",
+          "description": "Beef cutlet, cheddar, iceberg, sumac, red onion, tomatoes, pickles, chef sauce, fries, hon",
           "category": "HOT DISHES",
           "liveVerified": false,
           "copyStatus": "live_prefix_only"
         }
       },
-      "description": "Котлета из мраморной говядины, чеддер, соус от шефа, айсберг, красный лук, томаты, маринованные огурцы, картофель фри, сумах, медово-горчичный соус, кетчуп.",
       "price": 14.2,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "14.2",
@@ -2022,27 +1971,26 @@
       "translations": {
         "ru": {
           "name": "Рокфеллер Бургер",
-          "description": "Двойная котлета из говядины, двойной сыр чеддер, соус рокфеллер, айсберг, красный лук, томат, маринованный огурец, картофель фри с орегано, кетчуп, медово-горчичный соус.",
+          "description": "Двойная котлета из говядины, двойной сыр чеддер, соус рокфеллер, айсберг, красный лук, том",
           "category": "ГОРЯЧИЕ БЛЮДА",
           "liveVerified": false,
           "copyStatus": "live_prefix_only"
         },
         "az": {
           "name": "Rokfeller Burger",
-          "description": "Ikili mal əti kotleti, ikili çedder pendiri, rokfeller sous, aysberq, qırmızı soğan, tomat, turşu xiyar, oregano, kartof fri, ketçup, bal-xardal sousu.",
+          "description": "Ikili mal əti kotleti, ikili çedder pendiri, rokfeller sous, aysberq, qırmızı soğan, tomat",
           "category": "İSTİ YEMƏKLƏR",
           "liveVerified": false,
           "copyStatus": "live_prefix_only"
         },
         "en": {
           "name": "Rockefeller Burger",
-          "description": "Double beef patty, double cheddar cheese, Rockefeller sauce, iceberg, red onion, tomatoes, pickled cucumber, oregano fries, ketchup, honey mustard sauce.",
+          "description": "Double beef patty, double cheddar cheese, Rockefeller sauce, iceberg, red onion, tomatoes,",
           "category": "HOT DISHES",
           "liveVerified": false,
           "copyStatus": "live_prefix_only"
         }
       },
-      "description": "Двойная котлета из говядины, двойной сыр чеддер, соус рокфеллер, айсберг, красный лук, томат, маринованный огурец, картофель фри с орегано, кетчуп, медово-горчичный соус.",
       "price": 19.9,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "19.9",
@@ -2061,27 +2009,26 @@
       "translations": {
         "ru": {
           "name": "Рузвельт Бургер",
-          "description": "Куриное филе, ананас, соус от шефа, айсберг, красный лук, томаты, маринованные огурцы, картофель фри, медово-горчичный соус, кетчуп,сумах.",
+          "description": "Куриное филе, ананас, соус от шефа, айсберг, красный лук, томаты, маринованные огурцы, кар",
           "category": "ГОРЯЧИЕ БЛЮДА",
           "liveVerified": false,
           "copyStatus": "live_prefix_only"
         },
         "az": {
           "name": "Ruzvelt Burger",
-          "description": "Toyuq filesi, ananas, şefdən xüsusi sous, aysberq, qırmızı soğan, tomat, turşu xiyar, kartof fri,sumaq, ketçup, bal-xardal sousu.",
+          "description": "Toyuq filesi, ananas, şefdən xüsusi sous, aysberq, qırmızı soğan, tomat, turşu xiyar, kart",
           "category": "İSTİ YEMƏKLƏR",
           "liveVerified": false,
           "copyStatus": "live_prefix_only"
         },
         "en": {
           "name": "Roosevelt burger",
-          "description": "Chicken fillet, pineapple, chef sauce, iceberg, red onion, tomatoes, pickles, fries, honey mustard, ketchup, sumac.",
+          "description": "Chicken fillet, pineapple, chef sauce, iceberg, red onion, tomatoes, pickles, fries, honey",
           "category": "HOT DISHES",
           "liveVerified": false,
           "copyStatus": "live_prefix_only"
         }
       },
-      "description": "Куриное филе, ананас, соус от шефа, айсберг, красный лук, томаты, маринованные огурцы, картофель фри, медово-горчичный соус, кетчуп,сумах.",
       "price": 10.9,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "10.9",
@@ -2100,27 +2047,26 @@
       "translations": {
         "ru": {
           "name": "Чарлзстон Бургер",
-          "description": "Курица в панировке, соус от шефа, айсберг, красный лук, томаты, маринованные огурцы, картофель фри, медово-горчичный соус, кетчуп, сумах.",
+          "description": "Курица в панировке, соус от шефа, айсберг, красный лук, томаты, маринованные огурцы, карто",
           "category": "ГОРЯЧИЕ БЛЮДА",
           "liveVerified": false,
           "copyStatus": "live_prefix_only"
         },
         "az": {
           "name": "Çarlston burgeri",
-          "description": "Xırçıldayan toyuq filesi, şefdən xüsusi sous, aysberq, qırmızı soğan, tomat, turşu xiyar, kartof fri, ketçup,sumaq, bal-xardal sousu.",
+          "description": "Xırçıldayan toyuq filesi, şefdən xüsusi sous, aysberq, qırmızı soğan, tomat, turşu xiyar, ",
           "category": "İSTİ YEMƏKLƏR",
           "liveVerified": false,
           "copyStatus": "live_prefix_only"
         },
         "en": {
           "name": "Charleston Burger",
-          "description": "Breaded chicken, chef sauce, sumac , iceberg, red onion, tomatoes, pickles, fries, honey mustard, ketchup.",
+          "description": "Breaded chicken, chef sauce, sumac , iceberg, red onion, tomatoes, pickles, fries, honey m",
           "category": "HOT DISHES",
           "liveVerified": false,
           "copyStatus": "live_prefix_only"
         }
       },
-      "description": "Курица в панировке, соус от шефа, айсберг, красный лук, томаты, маринованные огурцы, картофель фри, медово-горчичный соус, кетчуп, сумах.",
       "price": 12.2,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "12.2",
@@ -2139,14 +2085,14 @@
       "translations": {
         "ru": {
           "name": "Гринвич Бургер",
-          "description": "вегетарианская котлета (фасоль, нут, грибы, лук), хумус, грибной соус на основе из растительных сливок, айсберг , красный лук, томаты, маринованные огурцы, картофель по-деревенски, паприка, медово-горчичный соус, кетчуп.",
+          "description": "вегетарианская котлета (фасоль, нут, грибы, лук), хумус, грибной соус на основе из растите",
           "category": "ГОРЯЧИЕ БЛЮДА",
           "liveVerified": false,
           "copyStatus": "live_prefix_only"
         },
         "az": {
           "name": "Grinviç Burger",
-          "description": "Vegeterian kotleti (paxla, noxud, göbələk, soğan), humus, tərəvəz kreminə əsaslanan göbələk sousu, a...",
+          "description": "Vegeterian kotleti (paxla, noxud, göbələk, soğan), humus, tərəvəz kreminə əsaslanan göbələ",
           "category": "İSTİ YEMƏKLƏR",
           "liveVerified": false,
           "copyStatus": "live_prefix_only"
@@ -2159,7 +2105,6 @@
           "copyStatus": "live_full"
         }
       },
-      "description": "вегетарианская котлета (фасоль, нут, грибы, лук), хумус, грибной соус на основе из растительных сливок, айсберг , красный лук, томаты, маринованные огурцы, картофель по-деревенски, паприка, медово-горчичный соус, кетчуп.",
       "price": 9.9,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "9.9",
@@ -2185,7 +2130,7 @@
         },
         "az": {
           "name": "Vegan Grinviç",
-          "description": "Vegeterian kotleti (paxla, noxud, göbələk, soğan), humus, miks salat, tomat, turşu xiyar, qarğıdalı,...",
+          "description": "Vegeterian kotleti (paxla, noxud, göbələk, soğan), humus, miks salat, tomat, turşu xiyar, ",
           "category": "İSTİ YEMƏKLƏR",
           "liveVerified": false,
           "copyStatus": "live_prefix_only"
@@ -2198,7 +2143,6 @@
           "copyStatus": "live_full"
         }
       },
-      "description": "Вегетарианская котлета, сумах (фасоль, нут, грибы, лук), хумус, микс салат, маринованые огурцы, томаты черри, кукуруза, кунжутная заправка, кунжут, картофель по-деревенски, паприка, семечки, медово-горчичный соус, кетчуп.",
       "price": 12.0,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "12",
@@ -2237,7 +2181,6 @@
           "copyStatus": "live_full"
         }
       },
-      "description": "Куриное филе, киноа, сумах, брокколи, свит чили, соевый соус, микс зелени, барбекю соус, сумах.",
       "price": 16.9,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "16.9",
@@ -2276,7 +2219,6 @@
           "copyStatus": "live_full"
         }
       },
-      "description": "Утиное филе, пита (5 шт. ), вишневая заправка, зеленый лук, огурцы свежие, микрозелень, сумах.",
       "price": 21.9,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "21.9",
@@ -2295,27 +2237,26 @@
       "translations": {
         "ru": {
           "name": "Нарезка Парк Авеню",
-          "description": "Рибай нарезанный, киноа, грибы, соевый соус, томаты черри, барбекю соус, микс зелени, сумах, кунжут.",
+          "description": "Рибай нарезанный, киноа, грибы, соевый соус, томаты черри, барбекю соус, микс зелени, сума",
           "category": "ГОРЯЧИЕ БЛЮДА",
           "liveVerified": false,
           "copyStatus": "live_prefix_only"
         },
         "az": {
           "name": "Park Avenyu Ət",
-          "description": "Ribay əti, kinoa, göbələk, soya sousu, çerri tomat, barbekyu sousu, göyərti, sumaq, küncüt.",
+          "description": "Ribay əti, kinoa, göbələk, soya sousu, çerri tomat, barbekyu sousu, göyərti, sumaq, küncüt",
           "category": "İSTİ YEMƏKLƏR",
           "liveVerified": false,
           "copyStatus": "live_prefix_only"
         },
         "en": {
           "name": "Park Avenue Meat",
-          "description": "Ribeye, quinoa, mushroom, soy sauce, tomatoes cherry, barbecue sauce, greens, sumac, sesame.",
+          "description": "Ribeye, quinoa, mushroom, soy sauce, tomatoes cherry, barbecue sauce, greens, sumac, sesam",
           "category": "HOT DISHES",
           "liveVerified": false,
           "copyStatus": "live_prefix_only"
         }
       },
-      "description": "Рибай нарезанный, киноа, грибы, соевый соус, томаты черри, барбекю соус, микс зелени, сумах, кунжут.",
       "price": 18.9,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "18.9",
@@ -2354,7 +2295,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "Пицца соус, сыр моцарелла.",
       "price": 14.4,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "14.4",
@@ -2393,7 +2333,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "Пицца соус, сыр моцарелла, грибы шампиньоны.",
       "price": 14.9,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "14.9",
@@ -2432,7 +2371,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "пицца соус, сыр моцарелла, грибы, оливки, болгарский перец, куриное филе",
       "price": 16.9,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "16.9",
@@ -2471,7 +2409,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "пицца соус, сыр моцарелла, куриное филе, кукуруза, соус Барбекю, кунжут",
       "price": 16.4,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "16.4",
@@ -2510,7 +2447,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "пицца соус, сыр моцарелла, грибы, салями",
       "price": 17.9,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "17.9",
@@ -2549,7 +2485,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "пицца соус, сыр моцарелла, салями, соус пепперони",
       "price": 17.4,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "17.4",
@@ -2588,7 +2523,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "пицца соус, сыр моцарелла, салями, перец чили",
       "price": 17.9,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "17.9",
@@ -2627,7 +2561,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "пицца соус, сыр моцарелла, сыр чеддар, сыр пармезан, сыр блю",
       "price": 20.9,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "20.9",
@@ -2666,7 +2599,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "пицца соус, сыр моцарелла, грибы, оливки, лук, рибай мясо",
       "price": 18.9,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "18.9",
@@ -2705,7 +2637,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "пицца соус, сыр моцарелла, копчёное утиное филе, микрозелень",
       "price": 19.9,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "19.9",
@@ -2744,7 +2675,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "Тоффи, мороженное, крамбл, сахарная пудра, карамельный соус.",
       "price": 11.2,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "11.2",
@@ -2783,7 +2713,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "Семена чиа, соевое молоко, сезонные ягоды, персиковый сироп, фисташки, фрукты.",
       "price": 7.9,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "7.9",
@@ -2822,7 +2751,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "Заварной крем, ягоды сезонные, сахарная пудра, миндальные лепестки, ягодный топпинг.",
       "price": 9.2,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "9.2",
@@ -2861,7 +2789,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "Добавки: банан / ягоды, соус карамельный / ягодный / шоколадный",
       "price": 7.0,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "7",
@@ -2900,7 +2827,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "Сладкий крем чиз мусс, крамбл, сезонные ягоды, ягодный соус, сахарная пудра.",
       "price": 11.2,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "11.2",
@@ -2939,7 +2865,6 @@
           "copyStatus": "live_prefix_only"
         }
       },
-      "description": "Ореховый кейк, сладкий крем чиз, манго-маракуйя соус, крамбл, сахарная пудра.",
       "price": 10.2,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "10.2",
@@ -2978,7 +2903,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "Мороженое, ягодный соус, сезонные ягоды, сахарная пудра, крамбл.",
       "price": 12.9,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "12.9",
@@ -2997,27 +2921,26 @@
       "translations": {
         "ru": {
           "name": "Круассан",
-          "description": "Хрустящий круассан, мороженное / взбитые сливки, банан / ягоды, соус карамельный / ягодный / шоколадный, лепестки миндаля, крошка крамбл",
+          "description": "Хрустящий круассан, мороженное / взбитые сливки, банан / ягоды, соус карамельный / ягодный",
           "category": "ДЕСЕРТЫ",
           "liveVerified": false,
           "copyStatus": "live_prefix_only"
         },
         "az": {
           "name": "Kruassan",
-          "description": "Xırtıldayan kruasan, banan / giləmeyvələr, karamel / giləmeyvə / şokolad sousu, badam ləçəkləri, crumbl",
+          "description": "Xırtıldayan kruasan, banan / giləmeyvələr, karamel / giləmeyvə / şokolad sousu, badam ləçə",
           "category": "ŞİRNİYYATLAR",
           "liveVerified": false,
           "copyStatus": "live_prefix_only"
         },
         "en": {
           "name": "Croissant",
-          "description": "Crispy croissant, banana / berries, caramel / berry / chocolate sauce, almond petals, crumble",
+          "description": "Crispy croissant, banana / berries, caramel / berry / chocolate sauce, almond petals, crum",
           "category": "DESSERTS",
           "liveVerified": false,
           "copyStatus": "live_prefix_only"
         }
       },
-      "description": "Хрустящий круассан, мороженное / взбитые сливки, банан / ягоды, соус карамельный / ягодный / шоколадный, лепестки миндаля, крошка крамбл",
       "price": 8.9,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "8.9",
@@ -3036,14 +2959,14 @@
       "translations": {
         "ru": {
           "name": "Монро Брауни",
-          "description": "Двойной шоколадный торт, ванильное мороженое, подаётся со съедобным листом золота или серебра",
+          "description": "Двойной шоколадный торт, ванильное мороженое, подаётся со съедобным листом золота или сере",
           "category": "ДЕСЕРТЫ",
           "liveVerified": false,
           "copyStatus": "live_prefix_only"
         },
         "az": {
           "name": "Monro Brauni",
-          "description": "İkiqat şokoladlı tort, vanilli dondurma, üzərinə yeyilə bilən qızıl və ya gümüş yarpaqla təqdim olunur",
+          "description": "İkiqat şokoladlı tort, vanilli dondurma, üzərinə yeyilə bilən qızıl və ya gümüş yarpaqla t",
           "category": "ŞİRNİYYATLAR",
           "liveVerified": false,
           "copyStatus": "live_prefix_only"
@@ -3056,7 +2979,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "Двойной шоколадный торт, ванильное мороженое, подаётся со съедобным листом золота или серебра",
       "price": 16.9,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "16.9",
@@ -3095,7 +3017,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "",
       "price": 4.0,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "4",
@@ -3134,7 +3055,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "",
       "price": 5.0,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "5",
@@ -3173,7 +3093,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "",
       "price": 5.9,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "5.9",
@@ -3212,7 +3131,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "",
       "price": 5.5,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "5.5",
@@ -3251,7 +3169,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "",
       "price": 6.5,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "6.5",
@@ -3290,7 +3207,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "",
       "price": 6.7,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "6.7",
@@ -3329,7 +3245,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "",
       "price": 6.9,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "6.9",
@@ -3368,7 +3283,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "",
       "price": 7.5,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "7.5",
@@ -3387,14 +3301,14 @@
       "translations": {
         "ru": {
           "name": "Раф",
-          "description": "Ванильный, Медовый, Шоколадный, Пряный, Банан, Персик Фиалка, Пивной, Ореховый, Куркума имбирь, Пряный гранат, Шоколад кокос, Имбирный пряник, Миндаль, Айриш, Карамель, Солёная карамель, Лаванда, Макадамия.",
+          "description": "Ванильный, Медовый, Шоколадный, Пряный, Банан, Персик Фиалка, Пивной, Ореховый, Куркума им",
           "category": "КОФЕ",
           "liveVerified": false,
           "copyStatus": "live_prefix_only"
         },
         "az": {
           "name": "Raf Qəhvə",
-          "description": "vanilli, ballı, şokolad, ədviyyatlı, şaftalı bənövşə, pivəli, fındıqlı, zəncəfil sarıkök, ədviyyatlı...",
+          "description": "vanilli, ballı, şokolad, ədviyyatlı, şaftalı bənövşə, pivəli, fındıqlı, zəncəfil sarıkök, ",
           "category": "QƏHVƏ",
           "liveVerified": false,
           "copyStatus": "live_prefix_only"
@@ -3407,7 +3321,6 @@
           "copyStatus": "live_full"
         }
       },
-      "description": "Ванильный, Медовый, Шоколадный, Пряный, Банан, Персик Фиалка, Пивной, Ореховый, Куркума имбирь, Пряный гранат, Шоколад кокос, Имбирный пряник, Миндаль, Айриш, Карамель, Солёная карамель, Лаванда, Макадамия.",
       "price": 7.9,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "7.9",
@@ -3446,7 +3359,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "",
       "price": 7.0,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "7",
@@ -3485,7 +3397,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "",
       "price": 7.0,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "7",
@@ -3524,7 +3435,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "",
       "price": 7.0,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "7",
@@ -3563,7 +3473,6 @@
           "copyStatus": "live_full"
         }
       },
-      "description": "",
       "price": 8.0,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "8",
@@ -3602,7 +3511,6 @@
           "copyStatus": "live_full"
         }
       },
-      "description": "",
       "price": 8.0,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "8",
@@ -3641,7 +3549,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "",
       "price": 6.0,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "6",
@@ -3680,7 +3587,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "Грейпфрут свежий, маракуйя, лимон, апельсин сок, тоник.",
       "price": 8.0,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "8",
@@ -3719,7 +3625,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "",
       "price": 8.9,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "8.9",
@@ -3758,7 +3663,6 @@
           "copyStatus": "live_full"
         }
       },
-      "description": "Персик, маракуя, вишня и сок лимона",
       "price": 7.0,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "7",
@@ -3797,7 +3701,6 @@
           "copyStatus": "live_full"
         }
       },
-      "description": "Ананас, маракуя, личий и сок лимона",
       "price": 7.0,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "7",
@@ -3836,7 +3739,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "персик, фиалка, лимон, газированная вода",
       "price": 7.0,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "7",
@@ -3875,7 +3777,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "ананас, розмарин, лимон, газированная вода",
       "price": 6.5,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "6.5",
@@ -3914,7 +3815,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "маракуйя, сумах, лимон, газированная вода",
       "price": 7.9,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "7.9",
@@ -3953,7 +3853,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "алоэ, микс из пряностей, гранат, лимон, газированная вода",
       "price": 6.0,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "6",
@@ -3992,7 +3891,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "киви свежий, маракуйя, лимон, ананасовый сок",
       "price": 8.0,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "8",
@@ -4031,7 +3929,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "куркума, имбирь, лимон, газированная вода",
       "price": 6.0,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "6",
@@ -4070,7 +3967,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "юзу, огурец, газированная вода",
       "price": 6.9,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "6.9",
@@ -4109,7 +4005,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "ананасовый сок, сливки, кокос",
       "price": 7.0,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "7",
@@ -4148,7 +4043,6 @@
           "copyStatus": "live_full"
         }
       },
-      "description": "Огурец, лимон, юдзу",
       "price": 7.0,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "7",
@@ -4187,7 +4081,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "",
       "price": 7.2,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "7.2",
@@ -4226,7 +4119,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "",
       "price": 6.9,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "6.9",
@@ -4265,7 +4157,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "",
       "price": 6.9,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "6.9",
@@ -4304,7 +4195,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "",
       "price": 9.9,
       "sourceOptionPrices": [
         [
@@ -4396,7 +4286,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "Белое / Красное вино, микс пряностей, яблоко, апельсин, лимон, гранат",
       "price": 6.9,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "6.9",
@@ -4435,7 +4324,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "джин, свежий огурец, юзу пюре, газированная вода",
       "price": 9.0,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "9",
@@ -4474,7 +4362,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "",
       "price": 7.0,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "7",
@@ -4513,7 +4400,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "",
       "price": 7.0,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "7",
@@ -4552,7 +4438,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "",
       "price": 7.0,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "7",
@@ -4591,7 +4476,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "бурбон, кофе, сладкие сливки, коричневый сахар",
       "price": 7.9,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "7.9",
@@ -4630,7 +4514,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "белый ром, вишнёвый сок, лимон, сахар",
       "price": 7.9,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "7.9",
@@ -4669,7 +4552,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "белый ром, яичный белок, сумах, маракуйя, имбирь",
       "price": 8.9,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "8.9",
@@ -4708,7 +4590,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "вино, микс пряностей, яблоко, апельсин",
       "price": 7.9,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "7.9",
@@ -4747,7 +4628,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "ром, чай, кардамон",
       "price": 7.9,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "7.9",
@@ -4786,7 +4666,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "",
       "price": 12.9,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "12.9",
@@ -4825,7 +4704,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "апельсин, ананас, Jagermeister",
       "price": 8.9,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "8.9",
@@ -4864,7 +4742,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "jagermeister, лимон, сахар",
       "price": 7.0,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "7",
@@ -4903,7 +4780,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "",
       "price": 4.9,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "4.9",
@@ -4942,7 +4818,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "",
       "price": 9.9,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "9.9",
@@ -4981,7 +4856,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "",
       "price": 9.9,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "9.9",
@@ -5020,7 +4894,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "",
       "price": 8.0,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "8",
@@ -5059,7 +4932,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "",
       "price": 8.0,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "8",
@@ -5098,7 +4970,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "",
       "price": 8.0,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "8",
@@ -5137,7 +5008,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "",
       "price": 8.0,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "8",
@@ -5176,7 +5046,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "",
       "price": 8.0,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "8",
@@ -5215,7 +5084,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "",
       "price": 8.0,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "8",
@@ -5254,7 +5122,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "",
       "price": 9.9,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "9.9",
@@ -5293,7 +5160,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "Мусс чизкейк, молоко, овсяное печенье, пюре манго/микс ягод, эспрессо",
       "price": 8.9,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "8.9",
@@ -5332,7 +5198,6 @@
           "copyStatus": "live_full"
         }
       },
-      "description": "Освежающий кофейный напиток, кофе и тоник.",
       "price": 6.0,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "6",
@@ -5371,7 +5236,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "Карамельно апельсиновый сок с шотом эспрессо.",
       "price": 6.0,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "6",
@@ -5410,7 +5274,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "",
       "price": 7.0,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "7",
@@ -5449,7 +5312,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "",
       "price": 7.0,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "7",
@@ -5488,7 +5350,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "",
       "price": 6.9,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "6.9",
@@ -5527,7 +5388,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "",
       "price": 6.0,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "6",
@@ -5566,7 +5426,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "",
       "price": 6.9,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "6.9",
@@ -5605,7 +5464,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "",
       "price": 4.2,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "4.2",
@@ -5644,7 +5502,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "",
       "price": 4.2,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "4.2",
@@ -5683,7 +5540,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "",
       "price": 4.0,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "4",
@@ -5722,7 +5578,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "",
       "price": 5.0,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "5",
@@ -5761,7 +5616,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "",
       "price": 5.0,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "5",
@@ -5800,7 +5654,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "",
       "price": 5.0,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "5",
@@ -5839,7 +5692,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "",
       "price": 5.0,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "5",
@@ -5878,7 +5730,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "",
       "price": 4.0,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "4",
@@ -5917,7 +5768,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "",
       "price": 6.0,
       "sourceOptionPrices": [
         [
@@ -5981,7 +5831,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "",
       "price": 5.2,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "5.2",
@@ -6020,7 +5869,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "",
       "price": 69.9,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "69.9",
@@ -6059,7 +5907,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "",
       "price": 69.9,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "69.9",
@@ -6098,7 +5945,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "",
       "price": 40.0,
       "sourceOptionPrices": [
         [
@@ -6158,7 +6004,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "бокал",
       "price": 7.9,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "7.9",
@@ -6197,7 +6042,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "бокал",
       "price": 7.9,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "7.9",
@@ -6236,7 +6080,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "бокал",
       "price": 7.9,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "7.9",
@@ -6275,7 +6118,6 @@
           "copyStatus": "live_full"
         }
       },
-      "description": "",
       "price": 2.0,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "2",
@@ -6314,7 +6156,6 @@
           "copyStatus": "live_full"
         }
       },
-      "description": "",
       "price": 1.0,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "1",
@@ -6353,7 +6194,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "",
       "price": 3.0,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "3",
@@ -6392,7 +6232,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "",
       "price": 3.0,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "3",
@@ -6431,7 +6270,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "",
       "price": 5.0,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "5",
@@ -6470,7 +6308,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "карамель, шоколад, ягодный",
       "price": 1.5,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "1.5",
@@ -6509,7 +6346,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "яблоко, банан, апельсин, ягоды",
       "price": 2.5,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "2.5",
@@ -6548,7 +6384,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "",
       "price": 1.5,
       "sourceOptionPrices": [
         [
@@ -6616,7 +6451,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "",
       "price": 1.5,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "1.5",
@@ -6655,7 +6489,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "",
       "price": 1.9,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "1.9",
@@ -6694,7 +6527,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "",
       "price": 3.0,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "3",
@@ -6733,7 +6565,6 @@
           "copyStatus": "live_full"
         }
       },
-      "description": "",
       "price": 2.0,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "2",
@@ -6772,7 +6603,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "",
       "price": 2.0,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "2",
@@ -6811,7 +6641,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "",
       "price": 2.0,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "2",
@@ -6850,7 +6679,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "",
       "price": 2.0,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "2",
@@ -6889,7 +6717,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "",
       "price": 3.0,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "3",
@@ -6928,7 +6755,6 @@
           "copyStatus": "live_full"
         }
       },
-      "description": "кокосовое, банановое, соевое, миндальное, фундучное, овсяное.",
       "price": 3.0,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "3",
@@ -6967,7 +6793,6 @@
           "copyStatus": "matches_visible_card"
         }
       },
-      "description": "",
       "price": 1.5,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "1.5",
@@ -7006,7 +6831,6 @@
           "copyStatus": "live_full"
         }
       },
-      "description": "",
       "price": null,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "",
@@ -7045,7 +6869,6 @@
           "copyStatus": "live_full"
         }
       },
-      "description": "Чёрный трюфель, трюфельный соус, котлета для бургера 150 г и сыр камамбер.",
       "price": 19.9,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "19.9",
@@ -7084,7 +6907,6 @@
           "copyStatus": "live_full"
         }
       },
-      "description": "Куриные бедра , стручковая фасоль, шпинат, лимонно-сливочный соус, тосты",
       "price": 16.9,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "16.9",
@@ -7103,27 +6925,26 @@
       "translations": {
         "ru": {
           "name": "Рокфеллер Бургер",
-          "description": "Двойная котлета из говядины, двойной сыр чеддер, соус рокфеллер, айсберг, красный лук, томаты, маринованный огурец, картофель фри с орегано, кетчуп, медово-горчичный соус.",
+          "description": "Двойная котлета из говядины, двойной сыр чеддер, соус рокфеллер, айсберг, красный лук, том",
           "category": "Новинки",
           "liveVerified": false,
           "copyStatus": "live_prefix_only"
         },
         "az": {
           "name": "Rokfeller Burger",
-          "description": "Ikili mal əti kotleti, ikili çedder pendiri, rokfeller sous, aysberq, qırmızı soğan, tomat, turşu xiyar, oregano, kartof fri, ketçup, bal-xardal sousu.",
+          "description": "Ikili mal əti kotleti, ikili çedder pendiri, rokfeller sous, aysberq, qırmızı soğan, tomat",
           "category": "Yeniliklər",
           "liveVerified": false,
           "copyStatus": "live_prefix_only"
         },
         "en": {
           "name": "Rockefeller Burger",
-          "description": "Double beef patty, double cheddar cheese, Rockefeller sauce, iceberg, red onion, tomatoes, pickled cucumber, oregano fries, ketchup, honey mustard sauce.",
+          "description": "Double beef patty, double cheddar cheese, Rockefeller sauce, iceberg, red onion, tomatoes,",
           "category": "New Items",
           "liveVerified": false,
           "copyStatus": "live_prefix_only"
         }
       },
-      "description": "Двойная котлета из говядины, двойной сыр чеддер, соус рокфеллер, айсберг, красный лук, томаты, маринованный огурец, картофель фри с орегано, кетчуп, медово-горчичный соус.",
       "price": 19.9,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "19.9",
@@ -7142,27 +6963,26 @@
       "translations": {
         "ru": {
           "name": "Сырная тарелка",
-          "description": "Сыр блю, пармезан, камамбер, мини моцарелла, халуми на гриле. Подаётся с инжиром, сушёной курагой, сушёной вишней, кешью, а также с конфитюром из грейпфрута и розмарина.",
+          "description": "Сыр блю, пармезан, камамбер, мини моцарелла, халуми на гриле. Подаётся с инжиром, сушёной ",
           "category": "Новинки",
           "liveVerified": false,
           "copyStatus": "live_prefix_only"
         },
         "az": {
           "name": "Pendir lövhəsi",
-          "description": "Blu pendir, parmezan, kamamber və qril hallumi. Əncir, quru ərik, qurudulmuş albalı, keşyu və qreypfrut-rozmarin konfitürü ilə təqdim olunur.",
+          "description": "Blu pendir, parmezan, kamamber və qril hallumi. Əncir, quru ərik, qurudulmuş albalı, keşyu",
           "category": "Yeniliklər",
           "liveVerified": false,
           "copyStatus": "live_prefix_only"
         },
         "en": {
           "name": "Cheese platter",
-          "description": "Blue cheese, Parmesan, Camembert, and grilled halloumi. Served with figs, dried apricots, dried cherries, cashews, and grapefruit & rosemary confiture.",
+          "description": "Blue cheese, Parmesan, Camembert, and grilled halloumi. Served with figs, dried apricots, ",
           "category": "New Items",
           "liveVerified": false,
           "copyStatus": "live_prefix_only"
         }
       },
-      "description": "Сыр блю, пармезан, камамбер, мини моцарелла, халуми на гриле. Подаётся с инжиром, сушёной курагой, сушёной вишней, кешью, а также с конфитюром из грейпфрута и розмарина.",
       "price": 19.0,
       "sourceOptionPrices": [],
       "sourcePriceVisible": "19",
