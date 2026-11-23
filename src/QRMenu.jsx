@@ -14,9 +14,9 @@ import { Utensils, ShoppingBag, ReceiptText, BadgePercent, Info } from "lucide-r
 import "./BC1MenuPreview.css";
 import { useBC4Projection, projectBC4, localizeBC4, selectedBC4, changeBC4Cart } from "./bc4MenuProjection.mjs";
 const bc4CopyOnly = {
-  ru:{choose:"Выберите вариант",pending:"Цена не подтверждена",addon:"Бесплатная добавка",addonNeedsItem:"Сначала добавьте блюдо или напиток",cart:"Корзина для расчёта суммы. Заказ не отправляется."},
-  az:{choose:"Variant seçin",pending:"Qiymət təsdiqlənməyib",addon:"Pulsuz əlavə",addonNeedsItem:"Əvvəlcə yemək və ya içki əlavə edin",cart:"Səbət yalnız məbləği hesablamaq üçündür. Sifariş göndərilmir."},
-  en:{choose:"Choose an option",pending:"Price not confirmed",addon:"Free add-on",addonNeedsItem:"Add a dish or drink first",cart:"Use the cart to calculate your total. Orders are not sent."},
+  ru:{choose:"Выберите вариант",pending:"Цена не подтверждена",addon:"Бесплатная добавка",addonNeedsItem:"Сначала добавьте блюдо или напиток",cart:"Корзина для расчёта суммы. Заказ не отправляется. Сервисный сбор (10%) не включён."},
+  az:{choose:"Variant seçin",pending:"Qiymət təsdiqlənməyib",addon:"Pulsuz əlavə",addonNeedsItem:"Əvvəlcə yemək və ya içki əlavə edin",cart:"Səbət yalnız məbləği hesablamaq üçündür. Sifariş göndərilmir. Xidmət haqqı (10%) daxil deyil."},
+  en:{choose:"Choose an option",pending:"Price not confirmed",addon:"Free add-on",addonNeedsItem:"Add a dish or drink first",cart:"Use the cart to calculate your total. Orders are not sent. Service charge (10%) is not included."},
 };
 const bc1NavIcons = { menu: Utensils, cart: ShoppingBag, bill: ReceiptText, loyalty: BadgePercent, info: Info };
 const categoryOrder = {
@@ -1036,8 +1036,8 @@ export default function QRMenu() {
     });
   }
   function openProduct(product) {
+    if (branch === "BC1" || bc4Only) window.clearTimeout(productCloseTimerRef.current);
     if (branch === "BC1") {
-      window.clearTimeout(productCloseTimerRef.current);
       if (!selectedProduct) productReturnFocusRef.current = document.activeElement;
     }
     setIsProductClosing(false);
@@ -1051,12 +1051,12 @@ export default function QRMenu() {
       setSelectedProduct(null);
       setIsProductClosing(false);
     }, 720);
-    if (branch === "BC1") productCloseTimerRef.current = closeTimer;
+    if (branch === "BC1" || bc4Only) productCloseTimerRef.current = closeTimer;
   }
   function addSelectedProductToCart() {
     if (!selectedProduct || unavailable.includes(selectedProduct.id)) return;
     if (bc4Only) {
-      if (!bc4ModalLine || (bc4ModalLine.addon && !hasPaidBC4Item)) return;
+      if (isProductClosing || !bc4ModalLine || (bc4ModalLine.addon && !hasPaidBC4Item)) return;
       changeQty(bc4ModalLine, modalQuantity);
       requestCloseProduct();
       return;
