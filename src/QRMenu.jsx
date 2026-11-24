@@ -10,6 +10,8 @@ import "./QRMenuProductDetail.css";
 import BC1ProductFacts from "./BC1ProductFacts";
 import { ApprovedPhotoViewer, ApprovedMenuSettings, menuDesignText, useApprovedMenuPrefs } from "./ApprovedQRMenuDesign";
 import "./ApprovedQRMenuDesign.css";
+import {projectBC5,adjustBowl,bowlLine,bowlOptions} from "./bc5MenuProjection.mjs";
+import "./bc5Bowl.css";
 import BC1SpecialOffer from "./BC1SpecialOffer";
 import { startBakuWeather, currentWeatherPresentation } from "./bc1Weather";
 import { Utensils, ShoppingBag, ReceiptText, BadgePercent, Info, Settings } from "lucide-react";
@@ -430,8 +432,12 @@ export default function QRMenu() {
   const approvedMenuDesign = true;
   const approvedPrefs = useApprovedMenuPrefs(approvedMenuDesign);
   const [designPhoto, setDesignPhoto] = useState(null);
-  const bc4Only = String(new URLSearchParams(window.location.search).get("branch") || "").trim().toUpperCase() === "BC4";
+  const branchQuery = new URLSearchParams(window.location.search).getAll("branch");
+  const bc5Only = branchQuery.length === 1 && branchQuery[0].trim().toUpperCase() === "BC5";
+  const bc4Only = String(branchQuery[0] || "").trim().toUpperCase() === "BC4";
+  const cartOnly = bc4Only || bc5Only;
   const [bc4Variant, setBc4Variant] = useState("");
+  const [bowlCounts,setBowlCounts]=useState({});
   const [table, setTable] = useState("");
   const [screen, setScreen] = useState("menu");
   const [category, setCategory] = useState("\u0412\u0441\u0435");
@@ -486,7 +492,12 @@ export default function QRMenu() {
   const unavailable = useMemo(() => products.filter((item) => item.is_available === false || item.is_stopped).map((item) => item.id), [products]);
   const localizeCurrentProduct = (product) => product.bc4Projected ? localizeBC4(product, language) : localizeProduct(product, language);
   const localizedProducts = useMemo(() => products.map(localizeCurrentProduct), [products, language]);
-  const bc4Labels = bc4CopyOnly[language] || bc4CopyOnly.ru;
+  const baseCartLabels = bc4CopyOnly[language] || bc4CopyOnly.ru;
+  const bc4Labels = bc5Only ? {...baseCartLabels,cart:({
+    ru:"Корзина для расчёта суммы. Заказ не отправляется.",
+    az:"Səbət yalnız məbləği hesablamaq üçündür. Sifariş göndərilmir.",
+    en:"Use the cart to calculate your total. Orders are not sent."
+  })[language]} : baseCartLabels;
   useEffect(() => {
     const updatePhase = () => {
       const hour = getBakuHour();
@@ -505,7 +516,7 @@ export default function QRMenu() {
   }, [language]);
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    setBranch(bc4Only ? "BC4" : params.get("branch") || "BC1");
+    setBranch(bc5Only ? "BC5" : bc4Only ? "BC4" : params.get("branch") || "BC1");
     setTable(params.get("table") || "");
   }, []);
   useEffect(() => {
@@ -513,7 +524,7 @@ export default function QRMenu() {
     setLoading(true);
     setConfiguredBranchName("");
     setBackgroundTheme("travertine");
-    const menuRequest = bc4Only ? Promise.resolve({ data: [] }) : supabase.rpc("qr_get_public_menu", { p_branch_code: branch });
+    const menuRequest = cartOnly ? Promise.resolve({ data: [] }) : supabase.rpc("qr_get_public_menu", { p_branch_code: branch });
     // Every branch reads this lightweight configuration so the visual theme
     // can be controlled independently. The menu-item filter still applies
     // only to branches that use the approved shared catalogue.
@@ -535,7 +546,9 @@ export default function QRMenu() {
           body: JSON.stringify({ p_branch_code: "BC!", p_table_code: null })
         }).then((response) => response.ok ? response.json() : null).catch(() => null)
       : Promise.resolve(null);
-    const bc4SourceRequest = bc4Only && branch === "BC4"
+    const bc4SourceRequest = bc5Only && branch === "BC5"
+      ? import("./bc5InPlaceCatalogue.json").then(({ default: catalog }) => projectBC5(catalog)).catch(() => [])
+      : bc4Only && branch === "BC4"
       ? import("./bc4InPlaceCatalogue.json").then(({ default: catalog }) => projectBC4(catalog)).catch(() => [])
       : Promise.resolve(null);
     Promise.all([menuRequest, branchMenuRequest, recommendationsRequest, baristaChefThemeRequest, bc4SourceRequest]).then(([menuResult, branchMenuResult, recommendationsResult, baristaChefMenu, bc4Source]) => {
@@ -573,7 +586,7 @@ export default function QRMenu() {
         ...item,
         __qr_override: menuOverrides[String(item.id || item.menu_item_id)] || null
       }));
-      setProducts(bc4Source ?? (bc4Only ? [] : menuRows.map((item) => normalizeProduct(item, branch))));
+      setProducts(bc4Source ?? (cartOnly ? [] : menuRows.map((item) => normalizeProduct(item, branch))));
       if (bc4Source && !bc4Source.length) flash(t.unavailable);
       const recommendationRows = Array.isArray(recommendationsResult.data) ? recommendationsResult.data : [];
       // BC1 is the approved pairing reference. All other QR branches inherit
@@ -612,7 +625,7 @@ export default function QRMenu() {
     return () => authListener.subscription.unsubscribe();
   }, []);
   useEffect(() => {
-    if (bc4Only) return;
+    if (cartOnly) return;
     const token = sessionStorage.getItem(`rms-order:${branch}:${table}`);
     if (token) refreshOrder(token);
   }, [branch, table]);
@@ -746,18 +759,18 @@ export default function QRMenu() {
   }), [localizedProducts, branch, category, mealMoment, contextualCategoryOrder]);
   const categories = useMemo(() => {
     const present = new Set(products.filter((p) => p.branches.includes(branch)).map((p) => p.category));
-    if (bc4Only) return ["Все", ...present];
+    if (cartOnly) return ["Все", ...present];
     const sorted = [...present].sort((a, b) => contextualRank(a, contextualCategoryOrder) - contextualRank(b, contextualCategoryOrder));
     const standard = sorted.filter((name) => !isExtraCategory({ category: name }));
     const extras = sorted.filter((name) => isExtraCategory({ category: name }));
     return ["\u0412\u0441\u0435", ...standard, ...extras];
-  }, [products, branch, contextualCategoryOrder, bc4Only]);
-  const cartTotal = bc4Only ? cart.reduce((sum, item) => sum + item.unitCents * item.qty, 0) / 100 : cart.reduce((sum, item) => sum + item.price * item.qty, 0);
-  const bc4ModalLine = selectedBC4(selectedProduct, bc4Variant);
+  }, [products, branch, contextualCategoryOrder, cartOnly]);
+  const cartTotal = cartOnly ? cart.reduce((sum, item) => sum + item.unitCents * item.qty, 0) / 100 : cart.reduce((sum, item) => sum + item.price * item.qty, 0);
+  const bc4ModalLine = selectedProduct?.bc5Bowl ? bowlLine(selectedProduct,bowlCounts,language,true) : selectedBC4(selectedProduct, bc4Variant);
   const hasPaidBC4Item = cart.some(item => item.bc4Projected && !item.addon);
-  const categoryText = (name) => (bc4Only ? products.find(p=>p.category===name)?.categoryNames?.[language] : undefined) || localizeCategory(name, language) || categoryTranslations[language][name] || categoryLabel(name);
+  const categoryText = (name) => (cartOnly ? products.find(p=>p.category===name)?.categoryNames?.[language] : undefined) || localizeCategory(name, language) || categoryTranslations[language][name] || categoryLabel(name);
   const shownPrice = (p) => p.bc4Projected ? (p.addon ? bc4Labels.addon : p.price !== null ? money(p.price) : p.variants.length ? bc4Labels.choose : bc4Labels.pending) : money(p.price);
-  const modalPurchasePrice = selectedProduct && (bc4Only ? bc4ModalLine ? money(bc4ModalLine.unitCents * modalQuantity / 100) : shownPrice(selectedProduct) : money(selectedProduct.price * modalQuantity));
+  const modalPurchasePrice = selectedProduct && (cartOnly ? bc4ModalLine ? money(bc4ModalLine.unitCents * modalQuantity / 100) : shownPrice(selectedProduct) : money(selectedProduct.price * modalQuantity));
   const ordered = useMemo(() => (order?.items || []).map((item) => ({ ...normalizeProduct(item, branch), qty: Number(item.quantity || item.qty || 1) })), [order, branch]);
   const billTotal = Number(order?.total_amount ?? ordered.reduce((sum, item) => sum + item.price * item.qty, 0));
   const bonusUsed = Number(order?.bonus_reserved || 0);
@@ -1008,10 +1021,10 @@ export default function QRMenu() {
   }
   function changeQty(product, delta, explicitModalQuantity = false) {
     if (unavailable.includes(product.id)) return flash(t.stoppedNotice);
-    if (bc4Only) {
+    if (cartOnly) {
       if (!product.bc4Projected) return;
-      if (!product.lineKey && product.variants.length) { if (delta>0) openProduct(product); return; }
-      const line = selectedBC4(product,product.variantId||"");
+      if (!product.lineKey && (product.variants.length || product.bc5Bowl)) { if (delta>0) openProduct(product); return; }
+      const line = product.bc5Bowl ? bowlLine(product,product.bowlCounts,language,true) : selectedBC4(product,product.variantId||"");
       if (!line) return flash(bc4Labels.pending);
       if (line.addon && delta>0 && !hasPaidBC4Item) return flash(bc4Labels.addonNeedsItem);
       setCart(current=>changeBC4Cart(current,line,delta));
@@ -1051,7 +1064,8 @@ export default function QRMenu() {
       if (!selectedProduct) productReturnFocusRef.current = document.activeElement;
     }
     setIsProductClosing(false);
-    setBc4Variant("");
+    setBc4Variant(product.presetFirst?product.variants[0]?.id||"": "");
+    setBowlCounts({});
     setSelectedProduct(product);
   }
   function requestCloseProduct() {
@@ -1065,7 +1079,7 @@ export default function QRMenu() {
   }
   function addSelectedProductToCart() {
     if (!selectedProduct || unavailable.includes(selectedProduct.id)) return;
-    if (bc4Only) {
+    if (cartOnly) {
       if (isProductClosing || !bc4ModalLine || (bc4ModalLine.addon && !hasPaidBC4Item)) return;
       changeQty(bc4ModalLine, modalQuantity);
       requestCloseProduct();
@@ -1086,7 +1100,7 @@ export default function QRMenu() {
     if (!error && data) setOrder(Array.isArray(data) ? data[0] || null : data);
   }
   async function sendOrder() {
-    if (bc4Only || branch === "BC4" || !cart.length || busy) return;
+    if (cartOnly || branch === "BC4" || !cart.length || busy) return;
     if (!table) return flash(t.scanTable);
     setBusy(true);
     const { data, error } = await supabase.rpc("qr_create_order", {
@@ -1166,11 +1180,11 @@ export default function QRMenu() {
   }
   const prefsText = menuDesignText[language] || menuDesignText.en;
   const fixedGuestNavigation = approvedMenuDesign || bc1Browse;
-  const navigation = <nav className={`main-nav${fixedGuestNavigation ? " bc1-browse-nav" : ""}${bc4Only ? " bc4-preview-nav" : ""}`} aria-label="Разделы QR Menu">
+  const navigation = <nav className={`main-nav${fixedGuestNavigation ? " bc1-browse-nav" : ""}${cartOnly ? " bc4-preview-nav" : ""}`} aria-label="Разделы QR Menu">
         {[
     ["menu", t.menu],
     ["cart", `${t.cart}${cartCount ? ` \xB7 ${cartCount}` : ""}`],
-    ...(!bc4Only ? [["bill", t.bill], ["loyalty", "Loyalty"]] : []),
+    ...(!cartOnly ? [["bill", t.bill], ["loyalty", "Loyalty"]] : []),
     ["info", t.info],
     ...(approvedMenuDesign ? [["settings", prefsText.title]] : [])
   ].map(([id, label]) => <button
@@ -1275,13 +1289,13 @@ export default function QRMenu() {
       {notice && <div className="toast">{notice}</div>}
 
       {screen === "cart" && <section className="narrow content">
-          <span className="eyebrow">{bc4Only ? bc4Labels.cart : t.beforeSending}</span><h2>{bc4Only ? t.cart : t.yourOrder}</h2>
+          <span className="eyebrow">{cartOnly ? bc4Labels.cart : t.beforeSending}</span><h2>{cartOnly ? t.cart : t.yourOrder}</h2>
           {!cart.length ? <Empty icon="🛒" title={t.emptyCart} text={t.emptyCartText} actionLabel={t.goToMenu} action={() => setScreen("menu")} /> : <>
               <div className="line-list">{cart.map((line) => <OrderLine key={line.lineKey || line.id} line={line} controls onMinus={() => changeQty(line, -1)} onPlus={() => changeQty(line, 1)} />)}</div>
-              {!bc4Only && loyalty && <div className="bonus-reserved"><span>{bonusRequest > 0 ? "Запрошено бонусов" : `Доступно · до ${money(maxBonus)}`}</span><b>{bonusRequest > 0 ? money(bonusRequest) : money(bonus)}</b></div>}
-              {!bc4Only && loyalty && <button className="outline-button full" onClick={bonusRequest > 0 ? cancelBonus : applyBonus}>{bonusRequest > 0 ? "Не использовать бонусы" : "Использовать бонусы · до 30%"}</button>}
+              {!cartOnly && loyalty && <div className="bonus-reserved"><span>{bonusRequest > 0 ? "Запрошено бонусов" : `Доступно · до ${money(maxBonus)}`}</span><b>{bonusRequest > 0 ? money(bonusRequest) : money(bonus)}</b></div>}
+              {!cartOnly && loyalty && <button className="outline-button full" onClick={bonusRequest > 0 ? cancelBonus : applyBonus}>{bonusRequest > 0 ? "Не использовать бонусы" : "Использовать бонусы · до 30%"}</button>}
               <div className="total-card"><span>{t.total}</span><b>{money(cartTotal)}</b></div>
-              {!bc4Only && <button className="primary-button" disabled={busy} onClick={sendOrder}>{busy ? t.sending : t.sendOrder}</button>}
+              {!cartOnly && <button className="primary-button" disabled={busy} onClick={sendOrder}>{busy ? t.sending : t.sendOrder}</button>}
             </>}
         </section>}
 
@@ -1390,7 +1404,16 @@ export default function QRMenu() {
               {selectedProduct.bc4Projected && selectedProduct.variants.length>0 && <div className="modal-options"><select aria-label={bc4Labels.choose} value={bc4Variant} onChange={event=>setBc4Variant(event.target.value)}>
                 <option value="">{bc4Labels.choose}</option>{selectedProduct.variants.map(option=><option key={option.id} value={option.id} disabled={option.cents===null}>{option.label}{option.cents===null?"":` · ${money(option.cents/100)}`}</option>)}
               </select></div>}
-              {selectedProduct.options.length > 0 && <div className="modal-options">{selectedProduct.options.map((option) => <small key={option}>{option}</small>)}</div>}
+              {selectedProduct.bc5Bowl && <fieldset className="modal-options bc5-bowl-choices">
+    <legend>{language==="ru"?"Выбор добавки":language==="en"?"Choice of Add-On":"Əlavə seçimi"}</legend>
+    {bowlOptions.map(o=>{const label=o.labels[language]||o.labels.ru;const n=bowlCounts[o.id]||0;
+      return <div key={o.id}><span>{label} <small>+ {money(o.cents/100)}</small></span>
+      <button type="button" aria-label={"− "+label} disabled={!n} onClick={()=>setBowlCounts(a=>adjustBowl(a,o.id,-1,true))}>−</button>
+      <output aria-label={label}>{n}</output>
+      <button type="button" aria-label={"+ "+label} disabled={Object.values(bowlCounts).reduce((a,b)=>a+b,0)>=4} onClick={()=>setBowlCounts(a=>adjustBowl(a,o.id,1,true))}>+</button></div>;
+    })}
+  </fieldset>}
+  {selectedProduct.options.length > 0 && <div className="modal-options">{selectedProduct.options.map((option) => <small key={option}>{option}</small>)}</div>}
               {pairings.length > 0 && <div className="pairings">
                   <div className="pairing-grid">
                     {pairings.map((product) => <article key={product.id}>
@@ -1404,7 +1427,7 @@ export default function QRMenu() {
                 </div>}
               {approvedMenuDesign ? <div className="modal-buy review-price-pill">
                 <button className="review-price-minus" type="button" aria-label={prefsText.minus} disabled={unavailable.includes(selectedProduct.id)||modalQuantity<=1} onClick={()=>setModalQuantity(q=>Math.max(1,q-1))}>−</button>
-                <button type="button" className="modal-add-button" disabled={unavailable.includes(selectedProduct.id) || (bc4Only && (!bc4ModalLine || (bc4ModalLine.addon && !hasPaidBC4Item)))} aria-label={t.addToCart+" × "+modalQuantity+", "+modalPurchasePrice} onClick={addSelectedProductToCart}>
+                <button type="button" className="modal-add-button" disabled={unavailable.includes(selectedProduct.id) || (cartOnly && (!bc4ModalLine || (bc4ModalLine.addon && !hasPaidBC4Item)))} aria-label={t.addToCart+" × "+modalQuantity+", "+modalPurchasePrice} onClick={addSelectedProductToCart}>
                   <span>{unavailable.includes(selectedProduct.id)?t.unavailable:modalPurchasePrice}</span>
                 </button>
                 <button className="review-price-plus" type="button" aria-label={prefsText.plus} disabled={unavailable.includes(selectedProduct.id)||(branch==="BC1"&&selectedProduct.id==="4cf13bd6-975c-4123-b944-474944a95af2"&&modalQuantity>=99)} onClick={()=>setModalQuantity(q=>Math.min(q+1,branch==="BC1"&&selectedProduct.id==="4cf13bd6-975c-4123-b944-474944a95af2"?99:Infinity))}>+</button>
@@ -1414,8 +1437,8 @@ export default function QRMenu() {
                   <b>{modalQuantity}</b>
                   <button type="button" disabled={unavailable.includes(selectedProduct.id) || (branch === "BC1" && selectedProduct.id === "4cf13bd6-975c-4123-b944-474944a95af2" && modalQuantity >= 99)} onClick={() => setModalQuantity((quantity) => Math.min(quantity + 1, branch === "BC1" && selectedProduct.id === "4cf13bd6-975c-4123-b944-474944a95af2" ? 99 : Infinity))} aria-label="Increase quantity">+</button>
                 </div>
-                <button className="modal-add-button" disabled={unavailable.includes(selectedProduct.id) || (bc4Only && (!bc4ModalLine || (bc4ModalLine.addon && !hasPaidBC4Item)))} onClick={addSelectedProductToCart}>
-                  <span>{unavailable.includes(selectedProduct.id) ? t.unavailable : `${t.addToCart}: ${bc4Only ? bc4ModalLine ? money(bc4ModalLine.unitCents * modalQuantity/100) : shownPrice(selectedProduct) : money(selectedProduct.price * modalQuantity)}`}</span>
+                <button className="modal-add-button" disabled={unavailable.includes(selectedProduct.id) || (cartOnly && (!bc4ModalLine || (bc4ModalLine.addon && !hasPaidBC4Item)))} onClick={addSelectedProductToCart}>
+                  <span>{unavailable.includes(selectedProduct.id) ? t.unavailable : `${t.addToCart}: ${cartOnly ? bc4ModalLine ? money(bc4ModalLine.unitCents * modalQuantity/100) : shownPrice(selectedProduct) : money(selectedProduct.price * modalQuantity)}`}</span>
                 </button>
               </div>}
             </div>
@@ -1423,7 +1446,7 @@ export default function QRMenu() {
         </div>}
       {approvedMenuDesign && designPhoto && selectedProduct && <ApprovedPhotoViewer photo={designPhoto} language={language} onDismiss={()=>setDesignPhoto(null)} />}
 
-      {!bc4Only && contextualSpecialOffer && dayOfferPhase !== "hidden" && <button
+      {!cartOnly && contextualSpecialOffer && dayOfferPhase !== "hidden" && <button
         type="button"
         className={`qr-day-offer-overlay ${dayOfferPhase === "closing" ? "is-closing" : ""}`}
         onClick={() => setDayOfferPhase("closing")}
