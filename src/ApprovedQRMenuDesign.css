@@ -1,0 +1,212 @@
+
+/* Owner review: replace only the bottom fact row. Keep original card geometry. */
+html body .app-shell[data-approved-qr-design] .bc1-product-detail .bc1-detail-facts > div:nth-child(4),
+html body .app-shell[data-approved-qr-design] .bc1-product-detail .bc1-detail-facts > div:nth-child(5) { display: none; }
+html body .app-shell[data-approved-qr-design] .bc1-product-detail .bc1-detail-facts { margin-bottom: 0; }
+html body .app-shell[data-approved-qr-design] .bc1-product-detail .modal-buy { margin-top: 4px !important; }
+/* The new bottom row keeps quantity and its priced action together on narrow screens. */
+@media (max-width: 360px) {
+  html body .app-shell[data-approved-qr-design] .bc1-product-detail .modal-buy { grid-template-columns: auto minmax(0,1fr) !important; gap: 8px !important; }
+}
+
+html body .app-shell[data-approved-qr-design] .bc1-product-detail .modal-buy.review-price-pill {
+  display:grid!important;grid-template-columns:minmax(52px,1fr) minmax(0,2fr) minmax(52px,1fr)!important;
+  grid-template-areas:"minus price plus";gap:0!important;align-items:stretch;
+  min-height:52px;border-radius:16px;overflow:hidden;background:#273f35!important;
+}
+html body .app-shell[data-approved-qr-design] .bc1-product-detail .review-price-pill button {
+  width:100%!important;height:auto!important;min-height:52px!important;min-width:0!important;
+  border:0!important;border-radius:0!important;margin:0!important;padding:5px!important;
+  color:#fff!important;background:transparent!important;box-shadow:none!important;
+}
+html body .app-shell[data-approved-qr-design] .bc1-product-detail .review-price-pill .review-price-minus {grid-area:minus;border-right:1px solid #fff3!important}
+html body .app-shell[data-approved-qr-design] .bc1-product-detail .review-price-pill .review-price-plus {grid-area:plus;border-left:1px solid #fff3!important}
+html body .app-shell[data-approved-qr-design] .bc1-product-detail .review-price-pill .modal-add-button {grid-area:price;text-align:center;white-space:normal!important}
+html body .app-shell[data-approved-qr-design] .bc1-product-detail .review-price-pill :is(.review-price-minus,.review-price-plus) {font:600 23px/1 system-ui,sans-serif}
+html body .app-shell[data-approved-qr-design] .bc1-product-detail .review-price-pill button:disabled {opacity:.48}
+html body .app-shell[data-approved-qr-design] .bc1-product-detail .review-price-pill button:focus-visible {outline:2px solid white!important;outline-offset:-4px!important}
+
+/* Integrated purchase control only: uninterrupted pill and momentary press. */
+html body .app-shell[data-approved-qr-design] .bc1-product-detail .review-price-pill .review-price-minus {border-right:0!important}
+html body .app-shell[data-approved-qr-design] .bc1-product-detail .review-price-pill .review-price-plus {border-left:0!important}
+html body .app-shell[data-approved-qr-design] .bc1-product-detail .review-price-pill button:not(:disabled) {
+  transition: transform 120ms ease-out, box-shadow 120ms ease-out, background-color 120ms ease-out!important;
+  touch-action: manipulation;
+}
+html body .app-shell[data-approved-qr-design] .bc1-product-detail .review-price-pill button:not(:disabled):active {
+  transform:translateY(1px) scale(.985)!important;background-color:#ffffff16!important;
+  box-shadow:inset 0 2px 5px #0005!important;transition-duration:55ms!important;
+}
+@media(prefers-reduced-motion:reduce){
+  html body .app-shell[data-approved-qr-design] .bc1-product-detail .review-price-pill button:not(:disabled) {transition:none!important}
+  html body .app-shell[data-approved-qr-design] .bc1-product-detail .review-price-pill button:not(:disabled):active {transform:none!important}
+}
+
+/* Short Safari viewports: keep the existing buy pill in flow, docking it
+   only if it would otherwise fall below the usable bottom of the card. */
+@media (max-width:600px) and (max-height:759px) and (min-height:440px) {
+  html body .app-shell[data-approved-qr-design] .bc1-product-detail .modal-content {overflow:visible!important}
+  html body .app-shell[data-approved-qr-design] .bc1-product-detail .modal-buy.review-price-pill {
+    position:sticky!important;
+    bottom:max(8px,env(safe-area-inset-bottom));
+    z-index:8;
+  }
+}
+
+html body .app-shell[data-approved-qr-design] .bc1-product-detail .modal-photo .review-photo-open {
+  appearance:none;position:absolute;inset:0;z-index:5;box-sizing:border-box;width:100%;height:100%;
+  padding:0;margin:0;border:0;border-radius:0;background:transparent;cursor:zoom-in;
+}
+html body .app-shell[data-approved-qr-design] .bc1-product-detail .modal-photo .review-photo-open:focus-visible {
+  outline:3px solid #fff!important;outline-offset:-5px!important;
+}
+dialog.review-full-photo:not([open]) {display:none}
+dialog.review-full-photo[open] {
+  position:fixed;inset:0;box-sizing:border-box;width:100%;height:100vh;height:100dvh;
+  max-width:none;max-height:none;margin:0;border:0;
+  padding: max(8px,env(safe-area-inset-top)) max(8px,env(safe-area-inset-right)) max(8px,env(safe-area-inset-bottom)) max(8px,env(safe-area-inset-left));
+  display:grid;place-items:center;overflow:hidden;background:#151515;color:#fff;
+}
+dialog.review-full-photo::backdrop {background:#151515}
+dialog.review-full-photo > img {display:block;width:100%;height:100%;min-height:0;min-width:0;object-fit:contain;object-position:center}
+dialog.review-full-photo > button {
+  position:absolute;top:max(12px,env(safe-area-inset-top));right:max(12px,env(safe-area-inset-right));
+  appearance:none;border-radius:50%;border:1px solid #fff7;background:#202020e8;color:#fff;
+  width:48px;height:48px;padding:0;font:400 32px/1 system-ui,sans-serif;cursor:pointer;
+}
+dialog.review-full-photo > button:focus-visible {outline:2px solid #fff;outline-offset:3px}
+
+dialog.review-full-photo[open] {padding:0}
+dialog.review-full-photo > img {
+  position:absolute;inset:0;object-fit:cover;touch-action:none;user-select:none;-webkit-user-select:none;
+  -webkit-user-drag:none;cursor:grab;
+}
+dialog.review-full-photo > img:active {cursor:grabbing}
+
+@keyframes reviewPhotoFadeOut { from {opacity:var(--review-photo-fade-from,1)} to {opacity:0} }
+@keyframes reviewPhotoBackdropFadeOut { from {opacity:var(--review-photo-backdrop-from,1)} to {opacity:0} }
+@media (prefers-reduced-motion:no-preference) {
+  dialog.review-full-photo[open],dialog.review-full-photo[open]::backdrop {animation:qrModalVeilIn .95s ease-out both}
+  dialog.review-full-photo[open][data-photo-closing="true"] {animation:reviewPhotoFadeOut .72s ease-in both}
+  dialog.review-full-photo[open][data-photo-closing="true"]::backdrop {animation:reviewPhotoBackdropFadeOut .72s ease-in both}
+}
+
+/* Only the horizontal category strip: text tabs on a quiet bronze baseline. */
+html body .app-shell[data-approved-qr-design][data-bc1-browse="menu"] .menu-toolbar > .categories {
+  border-bottom:1px solid #a986692b!important;
+}
+html body .app-shell[data-approved-qr-design][data-bc1-browse="menu"] .menu-toolbar > .categories > button,
+html body .app-shell[data-approved-qr-design][data-bc1-browse="menu"] .menu-toolbar > .categories > button.active {
+  position:relative;border:0!important;border-radius:0!important;
+  background:transparent!important;box-shadow:none!important;
+}
+html body .app-shell[data-approved-qr-design][data-bc1-browse="menu"] .menu-toolbar > .categories > button.active {
+  color:#765139!important;
+}
+html body .app-shell[data-approved-qr-design][data-bc1-browse="menu"] .menu-toolbar > .categories > button.active::after {
+  content:"";position:absolute;left:11px;right:11px;bottom:2px;
+  height:2px;border-radius:2px;background:#a77a55;pointer-events:none;
+}
+
+html body .app-shell[data-approved-qr-design] .bc1-product-detail .modal-photo .review-photo-open:not(:disabled)::after {
+  content:"";width:24px;height:24px;box-sizing:content-box;padding:4px;
+  background-color:#171e28a3;background-repeat:no-repeat;background-position:center;background-size:21px 21px;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23fff' stroke-width='1.75' stroke-linecap='round'%3E%3Ccircle cx='10.5' cy='10.5' r='6.5'/%3E%3Cpath d='m15 15 5 5M8 10.5h5m-2.5-2.5v5'/%3E%3C/svg%3E");
+}
+dialog.review-full-photo .review-photo-directions {
+  position:absolute;right:max(14px,env(safe-area-inset-right));bottom:max(15px,env(safe-area-inset-bottom));
+  display:grid;grid-template-columns:repeat(3,44px);grid-template-rows:repeat(3,44px);
+  grid-template-areas:". up ." "left . right" ". down .";gap:0;
+  pointer-events:none;
+}
+dialog.review-full-photo .review-photo-directions button {
+  appearance:none;display:grid;place-items:center;min-width:44px;min-height:44px;width:44px;height:44px;padding:0;
+  pointer-events:auto;touch-action:manipulation;border-radius:50%;border:1px solid #fff6;background:#181c25a8;color:#fff;cursor:pointer;
+}
+dialog.review-full-photo .review-photo-directions button:focus-visible {outline:2px solid #fff;outline-offset:2px}
+dialog.review-full-photo .review-photo-directions button[aria-disabled="true"] {opacity:.38;cursor:default}
+dialog.review-full-photo .review-photo-directions [data-move=up]{grid-area:up}
+dialog.review-full-photo .review-photo-directions [data-move=down]{grid-area:down}
+dialog.review-full-photo .review-photo-directions [data-move=left]{grid-area:left}
+dialog.review-full-photo .review-photo-directions [data-move=right]{grid-area:right}
+dialog.review-full-photo .review-photo-directions [data-move=up] svg{transform:rotate(-90deg)}
+dialog.review-full-photo .review-photo-directions [data-move=down] svg{transform:rotate(90deg)}
+dialog.review-full-photo .review-photo-directions [data-move=left] svg{transform:rotate(180deg)}
+html body .app-shell[data-approved-qr-design] .bc1-product-detail .modal-buy.review-price-pill {background:#2d3d4d!important}
+html body .app-shell[data-approved-qr-design] .bc1-product-detail .review-price-pill :is(.review-price-minus,.review-price-plus):not(:disabled):active {
+  transform:translateY(2px) scale(.93)!important;background-color:#ffffff3a!important;
+  box-shadow:inset 0 3px 8px #0009!important;transition-duration:42ms!important;
+}
+@media(prefers-reduced-motion:reduce){
+  html body .app-shell[data-approved-qr-design] .bc1-product-detail .review-price-pill :is(.review-price-minus,.review-price-plus):not(:disabled):active {
+    transform:none!important;transition:none!important;
+  }
+}
+
+dialog.review-full-photo .review-photo-directions {top:50%;left:50%;right:auto;bottom:auto;transform:translate(-50%,-50%);margin:0}
+html body .app-shell[data-approved-qr-design][data-bc1-browse] .main-nav.bc1-browse-nav {grid-template-columns:repeat(6,minmax(0,1fr))!important}
+html body .app-shell[data-approved-qr-design][data-bc1-browse] .main-nav.bc1-browse-nav > button {text-align:center!important;justify-self:stretch}
+html body .app-shell[data-approved-qr-design] .review-settings {box-sizing:border-box;width:min(100%,580px);padding:20px;background:#fffaf4;color:#392f27;border-radius:18px}
+html body .app-shell[data-approved-qr-design] .review-settings h2 {color:inherit;margin:0 0 16px}
+html body .app-shell[data-approved-qr-design] .review-settings fieldset {display:grid;gap:5px;margin:0 0 16px;padding:6px 10px 10px;border:1px solid #ddd2c6;border-radius:12px;min-width:0}
+html body .app-shell[data-approved-qr-design] .review-settings legend {font-size:15px;font-weight:650;padding:0 5px}
+html body .app-shell[data-approved-qr-design] .review-settings label {display:flex;align-items:center;gap:9px;min-height:44px;font-size:15px;cursor:pointer}
+html body .app-shell[data-approved-qr-design] .review-settings input {accent-color:#875d42;width:18px;height:18px}
+html body .app-shell[data-approved-qr-design] .review-settings [data-color] {width:17px;height:17px;border-radius:50%;border:1px solid #978b7f;background:#dbe2e7}
+html body .app-shell[data-approved-qr-design] .review-settings [data-color=paper]{background:#f1eadd}
+html body .app-shell[data-approved-qr-design] .review-settings [data-color=olive]{background:#cbd4ba}
+html body .app-shell[data-approved-qr-design] .review-settings [data-color=graphite]{background:#36383b}
+html body .app-shell[data-approved-qr-design] .review-settings button {min-height:44px;background:#f4eee6;color:#392f27;border:1px solid #d6c7b9;border-radius:10px;padding:6px 12px;margin:0 6px 5px 0}
+
+/* Unboxed, stroked controls with unchanged touch geometry. */
+html body .app-shell[data-approved-qr-design] .bc1-product-detail .modal-photo .review-photo-open:not(:disabled)::after {
+  background-color:transparent;filter:drop-shadow(0 1px 2px #151515b8);
+}
+dialog.review-full-photo .review-photo-directions button {
+  position:relative;background:transparent;border:0;border-radius:0;box-shadow:none;
+}
+dialog.review-full-photo .review-photo-directions button svg {visibility:hidden}
+dialog.review-full-photo .review-photo-directions button::before {
+  content:"";position:absolute;width:19px;height:19px;inset:0;margin:auto;pointer-events:none;
+  background:center/contain no-repeat url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23fff' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 12h15m-5-5 5 5-5 5'/%3E%3C/svg%3E");
+  filter:drop-shadow(0 1px 2px #151515d0);
+}
+dialog.review-full-photo .review-photo-directions [data-move=up]::before {transform:rotate(-90deg)}
+dialog.review-full-photo .review-photo-directions [data-move=down]::before {transform:rotate(90deg)}
+dialog.review-full-photo .review-photo-directions [data-move=left]::before {transform:rotate(180deg)}
+
+/* Taller mobile screens have room to absorb free space immediately before the
+   existing buy row. No overlay is used, so short screens still scroll. */
+@supports (min-height: 100dvh) and (height: 1svh) {
+  @media (max-width:600px) and (min-height:760px) {
+    html body .app-shell[data-approved-qr-design] .bc1-product-detail .modal-content {
+      min-height: calc(100dvh - clamp(280px, 49svh, 620px) + 38px) !important;
+      padding-bottom: max(8px, env(safe-area-inset-bottom)) !important;
+    }
+    html body .app-shell[data-approved-qr-design] .bc1-product-detail .modal-buy {
+      margin-top: auto !important;
+    }
+  }
+}
+
+/* Stop the inherited description flex-grow from consuming the new free space. */
+@supports (min-height: 100dvh) and (height: 1svh) {
+  @media (max-width:600px) and (min-height:760px) {
+    html body .app-shell[data-approved-qr-design] .bc1-product-detail .modal-content {
+      justify-content: flex-start !important;
+    }
+    html body .app-shell[data-approved-qr-design] .bc1-product-detail .modal-content > p {
+      flex-grow: 0 !important;
+    }
+  }
+}
+
+@media (max-width:600px) and (min-height:760px) {html body .app-shell[data-approved-qr-design] .bc1-product-detail .modal-buy.review-price-pill{margin-top:auto!important}}
+
+/* The fullscreen controls remain centered after removing their outlines. */
+
+html body .app-shell[data-approved-qr-design] .bc1-browse-nav > button {overflow-wrap:anywhere;}
+
+html body .app-shell[data-approved-qr-design] .review-weather-forecast{display:block;font:inherit;font-size:.82em;margin-top:.18em;line-height:1.2}
+
+html body .app-shell[data-approved-qr-design][data-bc1-browse]{padding-bottom:max(112px, calc(88px + env(safe-area-inset-bottom)))!important}

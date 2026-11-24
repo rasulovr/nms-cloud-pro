@@ -8,11 +8,13 @@ import "./QRMenuPhotoOpen.css";
 import "./QRMenuSchedule.css";
 import "./QRMenuProductDetail.css";
 import BC1ProductFacts from "./BC1ProductFacts";
+import { ApprovedPhotoViewer, ApprovedMenuSettings, menuDesignText, useApprovedMenuPrefs } from "./ApprovedQRMenuDesign";
+import "./ApprovedQRMenuDesign.css";
 import BC1SpecialOffer from "./BC1SpecialOffer";
 import { startBakuWeather, currentWeatherPresentation } from "./bc1Weather";
-import { Utensils, ShoppingBag, ReceiptText, BadgePercent, Info } from "lucide-react";
+import { Utensils, ShoppingBag, ReceiptText, BadgePercent, Info, Settings } from "lucide-react";
 import "./BC1MenuPreview.css";
-const bc1NavIcons = { menu: Utensils, cart: ShoppingBag, bill: ReceiptText, loyalty: BadgePercent, info: Info };
+const bc1NavIcons = { menu: Utensils, cart: ShoppingBag, bill: ReceiptText, loyalty: BadgePercent, info: Info, settings: Settings };
 const categoryOrder = {
   breakfast: ["ЗАВТРАК", "КОФЕ", "САЛАТЫ", "ЧАЙ", "ХОЛОДНЫЙ КОФЕ", "ДЕСЕРТЫ", "ЗАКУСКИ", "ГОРЯЧИЕ БЛЮДА", "СУПЫ", "ПИЦЦА", "ЛИМОНАДЫ", "ХОЛОДНЫЕ НАПИТКИ", "Новинки", "EKSTRA KITCHEN", "EKSTRA BAR"],
   lunch: ["САЛАТЫ", "БУРГЕРЫ", "СЭНДВИЧИ", "ЗАКУСКИ", "ГОРЯЧИЕ БЛЮДА", "ЛИМОНАДЫ", "ХОЛОДНЫЕ НАПИТКИ", "ПИЦЦА", "СУПЫ", "ЗАВТРАК", "ДЕСЕРТЫ", "КОФЕ", "ХОЛОДНЫЙ КОФЕ", "ЧАЙ", "Новинки", "EKSTRA KITCHEN", "EKSTRA BAR"],
@@ -418,12 +420,17 @@ export default function QRMenu() {
   const requestedTheme = new URLSearchParams(window.location.search).get("theme");
   const hasRequestedTheme = ["travertine", "paper", "olive", "graphite"].includes(requestedTheme);
   const [branch, setBranch] = useState("BC1");
+  // QRMenu is the public guest QR entry only; admin never imports it.
+  const approvedMenuDesign = true;
+  const approvedPrefs = useApprovedMenuPrefs(approvedMenuDesign);
+  const [designPhoto, setDesignPhoto] = useState(null);
   const [table, setTable] = useState("");
   const [screen, setScreen] = useState("menu");
   const [category, setCategory] = useState("\u0412\u0441\u0435");
-  // BC1 opens the reference two-column catalog; other branches retain PR49
-  // defaults. All three view choices remain available during the visit.
-  const [menuView, setMenuView] = useState(() => (new URLSearchParams(window.location.search).get("branch") || "BC1") === "BC1" ? "grid" : "list");
+  // The approved default is two columns; guest selections are device-local.
+  const [legacyMenuView, setLegacyMenuView] = useState(() => (new URLSearchParams(window.location.search).get("branch") || "BC1") === "BC1" ? "grid" : "list");
+  const menuView = approvedMenuDesign ? approvedPrefs.view : legacyMenuView;
+  const setMenuView = approvedMenuDesign ? approvedPrefs.setView : setLegacyMenuView;
   const [cart, setCart] = useState([]);
   const [notice, setNotice] = useState("");
   const [lastAddedId, setLastAddedId] = useState(null);
@@ -452,7 +459,8 @@ export default function QRMenu() {
   const [weatherStatus, setWeatherStatus] = useState("loading");
   const [branchInfo, setBranchInfo] = useState(null);
   const [configuredBranchName, setConfiguredBranchName] = useState("");
-  const [backgroundTheme, setBackgroundTheme] = useState("travertine");
+  const [configuredBackgroundTheme, setBackgroundTheme] = useState("travertine");
+  const backgroundTheme = approvedMenuDesign && approvedPrefs.color !== "original" ? approvedPrefs.color : configuredBackgroundTheme;
   const [configuredRecommendations, setConfiguredRecommendations] = useState([]);
   const [dayPhase, setDayPhase] = useState("day");
   const [bakuHour, setBakuHour] = useState(12);
@@ -640,7 +648,7 @@ export default function QRMenu() {
   }, [selectedProduct, photoFullscreen]);
   useEffect(() => () => window.clearTimeout(productCloseTimerRef.current), []);
   useEffect(() => {
-    if (branch !== "BC1" || !selectedProduct) return;
+    if ((!approvedMenuDesign && branch !== "BC1") || !selectedProduct) return;
     const body = document.body;
     const previous = { position: body.style.position, top: body.style.top, width: body.style.width, overflow: body.style.overflow };
     const scrollY = window.scrollY;
@@ -659,12 +667,12 @@ export default function QRMenu() {
       document.removeEventListener("keydown", trapFocus);
       if (productReturnFocusRef.current?.isConnected) productReturnFocusRef.current.focus({ preventScroll: true });
     };
-  }, [branch, Boolean(selectedProduct)]);
+  }, [branch, approvedMenuDesign, Boolean(selectedProduct)]);
   useEffect(() => {
-    if (branch !== "BC1" || !selectedProduct) return;
+    if ((!approvedMenuDesign && branch !== "BC1") || !selectedProduct) return;
     productModalRef.current?.scrollTo(0, 0);
     productModalRef.current?.querySelector(".modal-close")?.focus({ preventScroll: true });
-  }, [branch, selectedProduct?.id]);
+  }, [branch, approvedMenuDesign, selectedProduct?.id]);
   useEffect(() => {
     if (!selectedProduct) setPhotoFullscreen(false);
   }, [selectedProduct]);
@@ -976,12 +984,12 @@ export default function QRMenu() {
     setNotice(text);
     window.setTimeout(() => setNotice(""), 2400);
   }
-  function changeQty(product, delta) {
+  function changeQty(product, delta, explicitModalQuantity = false) {
     if (unavailable.includes(product.id)) return flash(t.stoppedNotice);
     setCart((current) => {
       const line = current.find((item) => item.id === product.id);
       if (branch === "BC1" && product.id === "4cf13bd6-975c-4123-b944-474944a95af2" && (line?.qty || 0) + delta > 99) return current;
-      if (!line && delta > 0) return [...current, { ...product, qty: branch === "BC1" ? delta : 1 }];
+      if (!line && delta > 0) return [...current, { ...product, qty: branch === "BC1" || explicitModalQuantity ? delta : 1 }];
       return current.map((item) => item.id === product.id ? { ...item, qty: item.qty + delta } : item).filter((item) => item.qty > 0);
     });
     if (delta > 0) {
@@ -1007,7 +1015,7 @@ export default function QRMenu() {
     });
   }
   function openProduct(product) {
-    if (branch === "BC1") {
+    if (approvedMenuDesign || branch === "BC1") {
       window.clearTimeout(productCloseTimerRef.current);
       if (!selectedProduct) productReturnFocusRef.current = document.activeElement;
     }
@@ -1021,13 +1029,13 @@ export default function QRMenu() {
       setSelectedProduct(null);
       setIsProductClosing(false);
     }, 720);
-    if (branch === "BC1") productCloseTimerRef.current = closeTimer;
+    if (approvedMenuDesign || branch === "BC1") productCloseTimerRef.current = closeTimer;
   }
   function addSelectedProductToCart() {
     if (!selectedProduct || unavailable.includes(selectedProduct.id)) return;
     const existingQuantity = cart.find((line) => line.id === selectedProduct.id)?.qty || 0;
     const delta = modalQuantity - existingQuantity;
-    if (delta !== 0) changeQty(selectedProduct, delta);
+    if (delta !== 0) changeQty(selectedProduct, delta, approvedMenuDesign);
     requestCloseProduct();
   }
   async function loadProfile() {
@@ -1112,27 +1120,31 @@ export default function QRMenu() {
   const weatherTitle = branch === "BC1" ? currentWeather.label : (dayPhase === "night" ? nightWeatherTitles : weatherTitles)[language][atmosphere];
   const hasTableContext = Boolean(table);
   const recommendationQty = mealRecommendation ? cart.find((line) => line.id === mealRecommendation.product.id)?.qty || 0 : 0;
-  const bc1Browse = branch === "BC1" && screen === "menu";
+  const bc1Browse = (approvedMenuDesign || branch === "BC1") && screen === "menu";
   function navigateBc1(next) {
     if (screen === "menu") browseScrollRef.current = window.scrollY;
     setScreen(next);
     window.requestAnimationFrame(() => window.scrollTo({ top: next === "menu" ? browseScrollRef.current : 0, behavior: "instant" }));
   }
-  const navigation = <nav className={`main-nav${bc1Browse ? " bc1-browse-nav" : ""}`} aria-label="Разделы QR Menu">
+  const prefsText = menuDesignText[language] || menuDesignText.en;
+  const fixedGuestNavigation = approvedMenuDesign || bc1Browse;
+  const navigation = <nav className={`main-nav${fixedGuestNavigation ? " bc1-browse-nav" : ""}`} aria-label="Разделы QR Menu">
         {[
     ["menu", t.menu],
     ["cart", `${t.cart}${cartCount ? ` \xB7 ${cartCount}` : ""}`],
     ["bill", t.bill],
     ["loyalty", "Loyalty"],
-    ["info", t.info]
+    ["info", t.info],
+    ...(approvedMenuDesign ? [["settings", prefsText.title]] : [])
   ].map(([id, label]) => <button
     key={id}
     className={screen === id ? "active" : ""}
-    onClick={() => branch === "BC1" ? navigateBc1(id) : setScreen(id)}
-  >{bc1Browse && React.createElement(bc1NavIcons[id], { size: 20, "aria-hidden": true })}{label}</button>)}
+    aria-current={screen === id ? "page" : undefined}
+    onClick={() => approvedMenuDesign || branch === "BC1" ? navigateBc1(id) : setScreen(id)}
+  >{fixedGuestNavigation && React.createElement(bc1NavIcons[id], { size: 20, "aria-hidden": true })}{label}</button>)}
       </nav>;
-  return <main data-bc1-browse={bc1Browse ? screen : undefined} data-motion-phase={branch === "BC1" ? dayPhase : undefined} className={`app-shell theme-${visualThemePhase} weather-theme-${atmosphere} menu-view-${menuView} menu-background-${backgroundTheme}`}>
-      <header className={`hero qr-premium-hero${branch === "BC1" ? " qr-header-graphite-glass" : ""}`}>
+  return <main data-approved-qr-design={approvedMenuDesign ? "true" : undefined} data-bc1-browse={fixedGuestNavigation ? screen : undefined} data-motion-phase={branch === "BC1" ? dayPhase : undefined} className={`app-shell theme-${visualThemePhase} weather-theme-${atmosphere} menu-view-${menuView} menu-background-${backgroundTheme}`}>
+      <header className={`hero qr-premium-hero${approvedMenuDesign || branch === "BC1" ? " qr-header-graphite-glass" : ""}`}>
         <div className="hero-sky" aria-hidden="true">
           {weatherOffer && <WeatherVisual kind={weatherOffer.kind} phase={dayPhase} />}
         </div>
@@ -1145,7 +1157,7 @@ export default function QRMenu() {
           </div>
         </div>
         <div className="hero-reference-copy">
-          <div className="hero-reference-kicker">{t.quote}</div>
+          {!approvedMenuDesign && <div className="hero-reference-kicker">{t.quote}</div>}
           <div className="hero-reference-title">{t.quoteLines?.[new Date().getDate() % t.quoteLines.length] || "У дня должен быть вкус."}</div>
           </div>
 
@@ -1153,19 +1165,21 @@ export default function QRMenu() {
           <span className="hero-reference-cloud" aria-hidden="true">{branch === "BC1" ? currentWeather.icon : "☁"}</span>
           <strong>{weather ? `${Math.round(weather.temperature)}°` : branch === "BC1" ? "—" : "18°"}</strong>
           <i />
-          <span>Baku · {weatherTitle}</span>
+          <span>Baku · {weatherTitle}{approvedMenuDesign && Number.isFinite(weather?.maxTemperature) && <small className="review-weather-forecast">
+            {language==="ru"?"Днём до":language==="az"?"Gün ərzində":"Today up to"} {Math.round(weather.maxTemperature)}°
+          </small>}</span>
         </div>
       </header>
 
-      {!bc1Browse && navigation}
+      {!fixedGuestNavigation && navigation}
 
-      {bc1Browse && <BC1SpecialOffer language={language} formatPrice={money} onOpen={openProduct} offers={[
+      {bc1Browse && branch === "BC1" && <BC1SpecialOffer language={language} formatPrice={money} onOpen={openProduct} offers={[
         ...(specialOfferProducts.length === 2 ? [{ id: "williams-pineapple", products: specialOfferProducts, onAdd: addSpecialOffer,
           addDisabled: specialOfferProducts.some(product => (cart.find(line => line.id === product.id)?.qty || 0) >= 99) }] : []),
         ...(breakfastOfferProduct ? [{ id: "croissant-cappuccino", products: [breakfastOfferProduct], image: breakfastOfferProduct.image }] : [])
       ]} />}
 
-      {screen === "menu" && <section className={`content${branch === "BC1" ? " bc1-catalog" : ""}`}>
+      {screen === "menu" && <section className={`content${approvedMenuDesign || branch === "BC1" ? " bc1-catalog" : ""}`}>
                     <div className="menu-toolbar">
             <div className="categories">
               {categories.map((name) => <button className={category === name ? "active" : ""} key={name} onClick={() => setCategory(name)}>{localizeCategory(name, language) || categoryTranslations[language][name] || categoryLabel(name)}</button>)}
@@ -1219,7 +1233,7 @@ export default function QRMenu() {
           </div>
         </section>}
 
-      {bc1Browse && navigation}
+      {fixedGuestNavigation && navigation}
 
       {notice && <div className="toast">{notice}</div>}
 
@@ -1302,7 +1316,9 @@ export default function QRMenu() {
             </>}
         </section>}
 
+      {approvedMenuDesign && screen === "settings" && <ApprovedMenuSettings prefs={approvedPrefs} text={prefsText} onBack={()=>navigateBc1("menu")} />}
       {screen === "info" && <section className="narrow content">
+          {approvedMenuDesign && <small>{language==="ru"?"Данные о погоде:":language==="az"?"Hava məlumatı:":"Weather data:"} <a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer">Open-Meteo</a> · <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a> · {language==="ru"?"Температура округлена":language==="az"?"Temperatur yuvarlaqlaşdırılıb":"Temperature rounded"}</small>}
           <span className="eyebrow">{branchName}</span><h2>{t.information}</h2>
           <div className="info-grid">
             <article><span>◷</span><div><b>{t.hours}</b><p>{t.schedule}<br />{t.sunday}</p></div></article>
@@ -1313,19 +1329,27 @@ export default function QRMenu() {
           <button className="primary-button" onClick={() => callWaiter("waiter")}>{t.waiter}</button>
         </section>}
 
-      {selectedProduct && <div ref={productModalRef} className={`product-modal${branch === "BC1" ? " bc1-product-detail" : ""} ${isProductClosing ? "is-closing" : ""}`} role="dialog" aria-modal="true" aria-label={selectedProduct.name}>
-          {branch === "BC1" && <button className="modal-close" onClick={requestCloseProduct} aria-label={t.close}><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="m14 5-7 7 7 7M7 12h14" /></svg></button>}
+      {selectedProduct && <div ref={productModalRef} className={`product-modal${approvedMenuDesign || branch === "BC1" ? " bc1-product-detail" : ""} ${isProductClosing ? "is-closing" : ""}`} role="dialog" aria-modal="true" aria-label={selectedProduct.name}>
+          {(approvedMenuDesign || branch === "BC1") && <button className="modal-close" onClick={requestCloseProduct} aria-label={t.close}><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="m14 5-7 7 7 7M7 12h14" /></svg></button>}
           <article ref={productModalCardRef} className={`product-modal-card ${isProductClosing ? "is-closing" : ""}`} key={selectedProduct.id}>
             <div className="modal-photo" style={photoStyle(selectedProduct)}>
               {selectedProduct.image ? <img className={photoClass(selectedProduct)} src={selectedProduct.image} alt={selectedProduct.name} onError={useRecoveredImageFallback} /> : <span className="photo-placeholder">B&C</span>}
-              {branch !== "BC1" && <button className="modal-close" onClick={requestCloseProduct} aria-label={t.close}>×</button>}
+              {approvedMenuDesign && selectedProduct.image && typeof HTMLDialogElement !== "undefined" && typeof HTMLDialogElement.prototype.showModal === "function" && <button type="button" className="review-photo-open" disabled={isProductClosing}
+                aria-label={language==="ru"?"Открыть фото на весь экран":language==="az"?"Şəkli tam ekranda aç":"View photo full screen"}
+                onClick={event=>{
+                  const trigger=event.currentTarget;
+                  const photo=trigger.parentElement.querySelector("img");
+                  const url=photo?.currentSrc || photo?.src;
+                  if(url && photo.naturalWidth) setDesignPhoto({url,label:selectedProduct.name,trigger});
+                }} />}
+              {!approvedMenuDesign && branch !== "BC1" && <button className="modal-close" onClick={requestCloseProduct} aria-label={t.close}>×</button>}
             </div>
             <div className="modal-content">
               <span className="modal-category">{localizeCategory(selectedProduct.category, language) || categoryTranslations[language][selectedProduct.category] || categoryLabel(selectedProduct.category)}</span>
               <h2>{selectedProduct.name}</h2>
               <strong className="modal-price">{money(selectedProduct.price)}</strong>
               {selectedProduct.description && <p>{selectedProduct.description}</p>}
-              {branch === "BC1" && <BC1ProductFacts language={language} />}
+              {(approvedMenuDesign || branch === "BC1") && <BC1ProductFacts language={language} />}
               {selectedProduct.options.length > 0 && <div className="modal-options">{selectedProduct.options.map((option) => <small key={option}>{option}</small>)}</div>}
               {pairings.length > 0 && <div className="pairings">
                   <div className="pairing-grid">
@@ -1338,7 +1362,13 @@ export default function QRMenu() {
                       </article>)}
                   </div>
                 </div>}
-              <div className="modal-buy">
+              {approvedMenuDesign ? <div className="modal-buy review-price-pill">
+                <button className="review-price-minus" type="button" aria-label={prefsText.minus} disabled={unavailable.includes(selectedProduct.id)||modalQuantity<=1} onClick={()=>setModalQuantity(q=>Math.max(1,q-1))}>−</button>
+                <button type="button" className="modal-add-button" disabled={unavailable.includes(selectedProduct.id)} aria-label={t.addToCart+" × "+modalQuantity+", "+money(selectedProduct.price*modalQuantity)} onClick={addSelectedProductToCart}>
+                  <span>{unavailable.includes(selectedProduct.id)?t.unavailable:money(selectedProduct.price*modalQuantity)}</span>
+                </button>
+                <button className="review-price-plus" type="button" aria-label={prefsText.plus} disabled={unavailable.includes(selectedProduct.id)||(branch==="BC1"&&selectedProduct.id==="4cf13bd6-975c-4123-b944-474944a95af2"&&modalQuantity>=99)} onClick={()=>setModalQuantity(q=>Math.min(q+1,branch==="BC1"&&selectedProduct.id==="4cf13bd6-975c-4123-b944-474944a95af2"?99:Infinity))}>+</button>
+              </div> : <div className="modal-buy">
                 <div className="modal-stepper" aria-label="Quantity">
                   <button type="button" disabled={unavailable.includes(selectedProduct.id) || modalQuantity <= 1} onClick={() => setModalQuantity((quantity) => Math.max(1, quantity - 1))} aria-label="Decrease quantity">−</button>
                   <b>{modalQuantity}</b>
@@ -1347,10 +1377,11 @@ export default function QRMenu() {
                 <button className="modal-add-button" disabled={unavailable.includes(selectedProduct.id)} onClick={addSelectedProductToCart}>
                   <span>{unavailable.includes(selectedProduct.id) ? t.unavailable : `${t.addToCart}: ${money(selectedProduct.price * modalQuantity)}`}</span>
                 </button>
-              </div>
+              </div>}
             </div>
           </article>
         </div>}
+      {approvedMenuDesign && designPhoto && selectedProduct && <ApprovedPhotoViewer photo={designPhoto} language={language} onDismiss={()=>setDesignPhoto(null)} />}
 
       {contextualSpecialOffer && dayOfferPhase !== "hidden" && <button
         type="button"
