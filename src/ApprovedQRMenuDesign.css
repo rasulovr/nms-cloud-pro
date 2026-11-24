@@ -212,3 +212,10 @@ html body .app-shell[data-approved-qr-design] .review-weather-forecast{display:b
 html body .app-shell[data-approved-qr-design][data-bc1-browse]{padding-bottom:max(112px, calc(88px + env(safe-area-inset-bottom)))!important}
 /* Drafted BC4 guest navigation has exactly the four actions from its approved preview. */
 html body .app-shell[data-approved-qr-design][data-bc1-browse] .main-nav.bc1-browse-nav.bc4-preview-nav {grid-template-columns:repeat(4,minmax(0,1fr))!important}
+
+/* Keep the BC4 zoom glyph independent of Safari's anonymous button content box. */
+html body .app-shell[data-approved-qr-design]:has(.bc4-preview-nav) .bc1-product-detail .modal-photo .review-photo-open:not(:disabled)::after {
+  position:absolute;display:block;left:50%;top:56%;right:auto;bottom:auto;transform:translate(-50%,-50%);
+  width:24px;height:24px;box-sizing:border-box;margin:0;padding:0;border:0;
+  background-size:21px 21px;pointer-events:none;
+}
