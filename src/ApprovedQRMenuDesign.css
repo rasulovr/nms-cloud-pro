@@ -210,3 +210,5 @@ html body .app-shell[data-approved-qr-design] .bc1-browse-nav > button {overflow
 html body .app-shell[data-approved-qr-design] .review-weather-forecast{display:block;font:inherit;font-size:.82em;margin-top:.18em;line-height:1.2}
 
 html body .app-shell[data-approved-qr-design][data-bc1-browse]{padding-bottom:max(112px, calc(88px + env(safe-area-inset-bottom)))!important}
+/* Drafted BC4 guest navigation has exactly the four actions from its approved preview. */
+html body .app-shell[data-approved-qr-design][data-bc1-browse] .main-nav.bc1-browse-nav.bc4-preview-nav {grid-template-columns:repeat(4,minmax(0,1fr))!important}
