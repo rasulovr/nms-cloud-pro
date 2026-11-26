@@ -1,9 +1,9 @@
 import {tagCodes} from './qrMenuTags.mjs';
 export const qrBuilderBranches=['BC1','BC2','BC4','BC5'];
 export const qrBuilderLanguages=['ru','az','en'];
-export const emptyQrBuilder=()=>({categories:{},items:{},order:{},offer:null});
+export const emptyQrBuilder=()=>({categories:{},items:{},order:{},product_facts:{},offer:null});
 const object=x=>x!==null&&typeof x==='object'&&!Array.isArray(x)?x:{};
-export const cleanQrBuilder=d=>({categories:object(d?.categories),items:object(d?.items),order:object(d?.order),offer:d?.offer&&typeof d.offer==='object'?d.offer:null});
+export const cleanQrBuilder=d=>({categories:object(d?.categories),items:object(d?.items),order:object(d?.order),product_facts:object(d?.product_facts),offer:d?.offer&&typeof d.offer==='object'?d.offer:null});
 export const qrBuilderText=(o,lang)=>String(o?.[lang]||o?.ru||o?.az||o?.en||'');
 export const qrBuilderImage=url=>typeof url==='string'&&(/^(https:\/\/[^\s]+|\/menu\/[\w.-]+)$/i.test(url))?url:'';
 // Apply explicit ordering only within its category, preserving positions of other categories.

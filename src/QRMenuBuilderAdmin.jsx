@@ -7,9 +7,10 @@ import QRPaperTag from './QRPaperTag';
 import {tagLabels,tagCodes,tagsForProduct} from './qrMenuTags.mjs';
 import {emptyQrBuilder,cleanQrBuilder,qrBuilderBranches,qrBuilderLanguages,qrBuilderText,qrBuilderImage,qrBuilderApplyOrder,qrBuilderMoveRow,qrBuilderTransferOrder} from './qrMenuBuilder.mjs';
 import './QRMenuBuilderAdmin.css';
+import {productFactsKey,productFactsForm,parseProductFacts,qrProductFacts} from './qrProductFacts.mjs';
 
 const locales=qrBuilderLanguages;
-const blank=()=>({kind:'new',category:'',image:'',price:'',tags:[],names:{},descriptions:{}});
+const blank=()=>({kind:'new',category:'',image:'',price:'',tags:[],names:{},descriptions:{},facts:productFactsForm()});
 const emptyOffer=()=>({enabled:false,product_id:'',image:'',seconds:5,titles:{},descriptions:{}});
 const texts=o=>Object.fromEntries(locales.filter(l=>String(o?.[l]||'').trim()).map(l=>[l,o[l].trim()]));
 const cents=x=>/^\d{1,5}(?:[.,]\d{1,2})?$/.test(String(x).trim())?Math.round(Number(String(x).replace(',','.'))*100):null;
@@ -36,7 +37,7 @@ async function listQrChoices(branch){
 }
 function Localized({label,value,onChange,large=false,limit=160}){
   const Tag=large?'textarea':'input';
-  return <div className="qb-languages"><b>{label}</b>{locales.map(lang=><label key={lang}>{lang.toUpperCase()}<Tag maxLength={limit} value={value?.[lang]||''} onChange={e=>onChange({...value,[lang]:e.target.value})}/></label>)}</div>;
+  return <div className="qb-languages"><b>{label}</b>{locales.map(lang=><label key={lang}>{lang.toUpperCase()}<Tag aria-label={label+' '+lang.toUpperCase()} maxLength={limit} value={value?.[lang]||''} onChange={e=>onChange({...value,[lang]:e.target.value})}/></label>)}</div>;
 }
 export default function QRMenuBuilderAdmin({initialBranch='BC5'}){
   const [branch,setBranch]=useState(qrBuilderBranches.includes(initialBranch)?initialBranch:'BC5');
@@ -94,7 +95,7 @@ function BranchBuilder({branch}){
     const copy={names:{...original.names,...x?.copy?.names},descriptions:{...original.descriptions,...x?.copy?.descriptions}};
     setEditId(p?.id||'new');setEdit({...blank(),kind:x?.kind||(a?'existing':'new'),category:p?.category||filter||'',image:p?.image||'',
       price:x?.price_cents==null?(a?.price??''):String(x.price_cents/100),names:copy.names||{},descriptions:copy.descriptions||{},tags:x?.tags??oldTags[p?.id]??[],
-      hidden:p?.hidden===true});
+      hidden:p?.hidden===true,facts:productFactsForm(qrProductFacts(doc,branch,p?.id))});
   }
   async function write(next,publish=false){
     if(busy||!loaded)return false;
@@ -118,6 +119,11 @@ function BranchBuilder({branch}){
     if(edit.image&&!qrBuilderImage(edit.image)){setStatus('Фото: укажи адрес HTTPS.');return;}
     const id=editId==='new'?crypto.randomUUID():editId;
     const first=byId.get(id), original=first?originalCopy(first):{};
+    const tried=parseProductFacts(edit.facts);
+    if(tried.error){setStatus(tried.error);return;}
+    const before=parseProductFacts(productFactsForm(qrProductFacts(doc,branch,id))).value;
+    const nextFacts=JSON.stringify(before)===JSON.stringify(tried.value)?doc.product_facts:
+      {...doc.product_facts,[productFactsKey(branch,id)]:tried.value};
     const changed=(values,base={})=>Object.fromEntries(Object.entries(values).filter(([l,value])=>edit.kind==='new'||value!==String(base[l]||'').trim()));
     const descriptions=Object.fromEntries(locales.filter(l=>Object.hasOwn(edit.descriptions,l)).map(l=>[l,String(edit.descriptions[l]).trim()]));
     const entry={kind:edit.kind,
@@ -126,7 +132,7 @@ function BranchBuilder({branch}){
       copy:{names:changed(names,original.names),descriptions:changed(descriptions,original.descriptions)},tags:tagCodes(edit.tags),
       ...(edit.kind==='new'?{price_cents:price,hidden:edit.hidden===true}:{})};
     const oldCategory=doc.items[id]?.category||first?.category||'';
-    if(await write({...doc,items:{...doc.items,[id]:entry},order:qrBuilderTransferOrder(doc.order,id,oldCategory,edit.category)})){setEditId('');if(filter)setFilter(edit.category);}
+    if(await write({...doc,items:{...doc.items,[id]:entry},product_facts:nextFacts,order:qrBuilderTransferOrder(doc.order,id,oldCategory,edit.category)})){setEditId('');if(filter)setFilter(edit.category);}
   }
   const [offerEdit,setOfferEdit]=useState(null);
   const o=offerEdit||doc.offer||emptyOffer();
@@ -169,6 +175,14 @@ function BranchBuilder({branch}){
       {editId&&<form className="qb-form" onSubmit={saveItem}><h4>{editId==='new'?'Новая позиция':qrBuilderText(edit.names,'ru')}</h4>
         <Localized label="Название" value={edit.names} onChange={names=>setEdit({...edit,names})}/>
         <Localized label="Описание" value={edit.descriptions} onChange={descriptions=>setEdit({...edit,descriptions})} large limit={2000}/>
+        <fieldset><legend>Параметры блюда</legend>
+          <div className="qb-row">
+            <label>Калорийность, ккал<input type="number" min="0" max="9999" step="1" value={edit.facts.calories} onChange={e=>setEdit(s=>({...s,facts:{...s.facts,calories:e.target.value}}))}/></label>
+            <label>Время приготовления, мин<input placeholder="10 или 10–15" maxLength="12" value={edit.facts.preparationMinutes} onChange={e=>setEdit(s=>({...s,facts:{...s.facts,preparationMinutes:e.target.value}}))}/></label>
+          </div>
+          <label><input type="checkbox" checked={edit.facts.approximate} onChange={e=>setEdit(s=>({...s,facts:{...s.facts,approximate:e.target.checked}}))}/> Приблизительная калорийность</label>
+          <Localized label="Аллергены" value={edit.facts.allergens} onChange={allergens=>setEdit(s=>({...s,facts:{...s.facts,allergens}}))} large limit={240}/>
+        </fieldset>
         <div className="qb-row"><label>Категория<select value={edit.category} onChange={e=>setEdit({...edit,category:e.target.value})}><option value="">Выбрать</option>{[...cats].map(([k,v])=><option key={k} value={k}>{v}</option>)}</select></label>
           <label>Цена, AZN<input value={edit.price} inputMode="decimal" disabled={edit.kind!=='new'} onChange={e=>setEdit({...edit,price:e.target.value})}/></label>
           <label>Адрес фото<input value={edit.image} placeholder="https://…" onChange={e=>setEdit({...edit,image:e.target.value})}/></label></div>

@@ -9,6 +9,7 @@ import "./QRMenuPhotoOpen.css";
 import "./QRMenuSchedule.css";
 import "./QRMenuProductDetail.css";
 import BC1ProductFacts from "./BC1ProductFacts";
+import {qrProductFacts,productFactsForLocale,isBC5Truffle} from "./qrProductFacts.mjs";
 import { ApprovedPhotoViewer, ApprovedMenuSettings, menuDesignText, useApprovedMenuPrefs } from "./ApprovedQRMenuDesign";
 import "./ApprovedQRMenuDesign.css";
 import {projectBC5,adjustBowl,bowlLine,bowlOptions} from "./bc5MenuProjection.mjs";
@@ -27,24 +28,6 @@ const bc4CopyOnly = {
   az:{choose:"Variant seçin",pending:"Qiymət təsdiqlənməyib",addon:"Pulsuz əlavə",addonNeedsItem:"Əvvəlcə yemək və ya içki əlavə edin",cart:"Səbət yalnız məbləği hesablamaq üçündür. Sifariş göndərilmir. Xidmət haqqı (10%) daxil deyil."},
   en:{choose:"Choose an option",pending:"Price not confirmed",addon:"Free add-on",addonNeedsItem:"Add a dish or drink first",cart:"Use the cart to calculate your total. Orders are not sent. Service charge (10%) is not included."},
 };
-// BC5 exposes the same approved Truffle Burger under New and Burgers.
-const bc5TruffleBurgerIds = new Set(["new:4:truffle-burger", "27:24:truffle-burger"]);
-const bc5TruffleBurgerFactsLabels = {
-  az: ["Kalori", "≈ 740 kkal", "Hazırlanma vaxtı", "10–15 dəq.", "Allergenlər",
-    "Qlüten, süd, yumurta, xardal, küncüt"],
-  ru: ["Калорийность", "≈ 740 ккал", "Время приготовления", "10–15 мин", "Аллергены",
-    "Глютен, молоко, яйца, горчица, кунжут"],
-  en: ["Calories", "≈ 740 kcal", "Preparation time", "10–15 min", "Allergens",
-    "Gluten, milk, eggs, mustard, sesame"],
-};
-function BC5TruffleBurgerFacts({ language }) {
-  const [calories, energy, time, minutes, allergens, list] = bc5TruffleBurgerFactsLabels[language] || bc5TruffleBurgerFactsLabels.en;
-  return <dl className="bc1-detail-facts">
-    <div><dt>{calories}</dt><dd>{energy}</dd></div>
-    <div><dt>{time}</dt><dd>{minutes}</dd></div>
-    <div className="bc1-detail-allergens"><dt>{allergens}</dt><dd style={{ fontWeight: 400 }}>{list}</dd></div>
-  </dl>;
-}
 const bc1NavIcons = { menu: Utensils, cart: ShoppingBag, bill: ReceiptText, loyalty: BadgePercent, info: Info, settings: Settings };
 const categoryOrder = {
   breakfast: ["ЗАВТРАК", "КОФЕ", "САЛАТЫ", "ЧАЙ", "ХОЛОДНЫЙ КОФЕ", "ДЕСЕРТЫ", "ЗАКУСКИ", "ГОРЯЧИЕ БЛЮДА", "СУПЫ", "ПИЦЦА", "ЛИМОНАДЫ", "ХОЛОДНЫЕ НАПИТКИ", "Новинки", "EKSTRA KITCHEN", "EKSTRA BAR"],
@@ -1329,7 +1312,7 @@ export default function QRMenu() {
               <h2>{qrMenuTitle(selectedProduct.name, language)}</h2>
               <strong className="modal-price">{bc4ModalLine && selectedProduct.variants.length ? money(bc4ModalLine.price) : shownPrice(selectedProduct)}</strong>
               {selectedProduct.description && <p>{selectedProduct.description}</p>}
-              {(approvedMenuDesign || branch === "BC1") && (branch === "BC5" && bc5TruffleBurgerIds.has(selectedProduct.id) ? <BC5TruffleBurgerFacts language={language} /> : <BC1ProductFacts language={language} />)}
+              {(approvedMenuDesign || branch === "BC1") && <BC1ProductFacts language={language} compact={isBC5Truffle(branch,selectedProduct.id)} facts={productFactsForLocale(qrProductFacts(builderLive,branch,selectedProduct.id),language)} />}
               {selectedProduct.bc4Projected && selectedProduct.variants.length>0 && <div className="modal-options"><select aria-label={bc4Labels.choose} value={bc4Variant} onChange={event=>setBc4Variant(event.target.value)}>
                 <option value="">{bc4Labels.choose}</option>{selectedProduct.variants.map(option=><option key={option.id} value={option.id} disabled={option.cents===null}>{option.label}{option.cents===null?"":` · ${money(option.cents/100)}`}</option>)}
               </select></div>}
