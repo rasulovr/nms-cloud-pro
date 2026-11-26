@@ -16,7 +16,7 @@ import { isNewProduct, tagLabels, tagsForProduct } from "./qrMenuTags.mjs";
 import { qrMenuTitle } from "./qrMenuTitle.mjs";
 import BC1SpecialOffer from "./BC1SpecialOffer";
 import { startBakuWeather, currentWeatherPresentation } from "./bc1Weather";
-import { Utensils, ShoppingBag, ReceiptText, BadgePercent, Info, Settings, ChevronDown } from "lucide-react";
+import { Utensils, ShoppingBag, ReceiptText, BadgePercent, Info, Settings, List, X } from "lucide-react";
 import "./BC1MenuPreview.css";
 import { projectBC4, localizeBC4, selectedBC4, changeBC4Cart } from "./bc4MenuProjection.mjs";
 const bc4CopyOnly = {
@@ -443,10 +443,10 @@ export default function QRMenu() {
   const [table, setTable] = useState("");
   const [screen, setScreen] = useState("menu");
   const [category, setCategory] = useState("\u0412\u0441\u0435");
+  const categoryDialog = useRef(null);
   // The approved default is large cards; guest selections are device-local.
-  const [legacyMenuView, setLegacyMenuView] = useState(() => (new URLSearchParams(window.location.search).get("branch") || "BC1") === "BC1" ? "grid" : "list");
+  const [legacyMenuView] = useState(() => (new URLSearchParams(window.location.search).get("branch") || "BC1") === "BC1" ? "grid" : "list");
   const menuView = approvedMenuDesign ? approvedPrefs.view : legacyMenuView;
-  const setMenuView = approvedMenuDesign ? approvedPrefs.setView : setLegacyMenuView;
   const [cart, setCart] = useState([]);
   const [notice, setNotice] = useState("");
   const [lastAddedId, setLastAddedId] = useState(null);
@@ -781,7 +781,12 @@ export default function QRMenu() {
   const cartTotal = cartOnly ? cart.reduce((sum, item) => sum + item.unitCents * item.qty, 0) / 100 : cart.reduce((sum, item) => sum + item.price * item.qty, 0);
   const bc4ModalLine = selectedProduct?.bc5Bowl ? bowlLine(selectedProduct,bowlCounts,language,true) : selectedBC4(selectedProduct, bc4Variant);
   const hasPaidBC4Item = cart.some(item => item.bc4Projected && !item.addon);
-  const categoryText = (name) => (cartOnly ? products.find(p=>p.category===name)?.categoryNames?.[language] : undefined) || localizeCategory(name, language) || categoryTranslations[language][name] || categoryLabel(name);
+  const categoriesLabel = language === "ru" ? "Категории" : language === "az" ? "Kateqoriyalar" : "Categories";
+  const categoryText = (name) => {
+    const label = (cartOnly ? products.find(p=>p.category===name)?.categoryNames?.[language] : undefined) || localizeCategory(name, language) || categoryTranslations[language][name] || categoryLabel(name);
+    const lower=label.toLocaleLowerCase(language);
+    return lower.replace(/^([^\p{L}]*)(\p{L})/u, (_,prefix,letter)=>prefix+letter.toLocaleUpperCase(language));
+  };
   const shownPrice = (p) => p.bc4Projected ? (p.addon ? bc4Labels.addon : p.price !== null ? money(p.price) : p.variants.length ? bc4Labels.choose : bc4Labels.pending) : money(p.price);
   const modalPurchasePrice = selectedProduct && (cartOnly ? bc4ModalLine ? money(bc4ModalLine.unitCents * modalQuantity / 100) : shownPrice(selectedProduct) : money(selectedProduct.price * modalQuantity));
   const ordered = useMemo(() => (order?.items || []).map((item) => ({ ...normalizeProduct(item, branch), qty: Number(item.quantity || item.qty || 1) })), [order, branch]);
@@ -1245,38 +1250,22 @@ export default function QRMenu() {
 
       {screen === "menu" && <section className={`content${approvedMenuDesign || branch === "BC1" ? " bc1-catalog" : ""}`}>
           <div className="menu-toolbar">
-            <div className="menu-view-toggle">
-              <button
-                type="button"
-                className="active"
-                onClick={(event) => {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  setMenuView((current) => current === "grid" ? "list" : current === "list" ? "showcase" : "grid");
-                }}
-                aria-label={menuView === "grid"
-                  ? (language === "ru" ? "Показать по одной позиции в ряду" : language === "az" ? "Hər sırada bir mövqe göstər" : "Show one item per row")
-                  : menuView === "list"
-                  ? (language === "ru" ? "Показать крупное фото с описанием" : language === "az" ? "Böyük foto və təsviri göstər" : "Show large photo with description")
-                  : (language === "ru" ? "Показать по две позиции в ряду" : language === "az" ? "Hər sırada iki mövqe göstər" : "Show two items per row")}
-              >
-                {menuView === "grid"
-                  ? <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="7" rx="1.5" /><rect x="3" y="14" width="18" height="7" rx="1.5" /></svg>
-                  : menuView === "list"
-                  ? <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="11" rx="1.5" /><rect x="3" y="16" width="18" height="5" rx="1.5" /></svg>
-                  : <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" /><rect x="3" y="14" width="7" height="7" rx="1.5" /><rect x="14" y="14" width="7" height="7" rx="1.5" /></svg>}
-              </button>
-            </div>
-            <div className="qr-category-picker">
-              <span aria-hidden="true">{language === "ru" ? "Категории" : language === "az" ? "Kateqoriyalar" : "Categories"} <ChevronDown size={14} /></span>
-              <select
-                aria-label={language === "ru" ? "Выбрать категорию" : language === "az" ? "Kateqoriya seçin" : "Choose category"}
-                value={category}
-                onChange={(event) => setCategory(event.target.value)}
-              >
-                {categories.map((name) => <option value={name} key={name}>{categoryText(name)}</option>)}
-              </select>
-            </div>
+            <button type="button" className="qr-category-open" aria-label={categoriesLabel} title={categoriesLabel}
+              aria-haspopup="dialog" aria-controls="qr-category-sheet" onClick={() => categoryDialog.current?.showModal()}>
+              <List size={22} aria-hidden="true" />
+            </button>
+            <dialog id="qr-category-sheet" ref={categoryDialog} className="qr-category-sheet" aria-labelledby="qr-category-sheet-title"
+              onClick={event=>{if(event.target===event.currentTarget) event.currentTarget.close();}}>
+              <div className="qr-category-sheet-inner">
+                <header><h2 id="qr-category-sheet-title">{categoriesLabel}</h2>
+                  <button type="button" aria-label={t.close} onClick={()=>categoryDialog.current.close()}><X size={20} aria-hidden="true" /></button>
+                </header>
+                <div className="qr-category-choices">
+                  {categories.map(name=><button type="button" key={name} aria-pressed={category===name}
+                    onClick={()=>{setCategory(name);categoryDialog.current.close();}}>{categoryText(name)}</button>)}
+                </div>
+              </div>
+            </dialog>
             <div className="categories">
               {categories.slice(1).map((name) => <button type="button" className={category === name ? "active" : ""} key={name} aria-pressed={category === name} onClick={() => setCategory(name)}>{categoryText(name)}</button>)}
             </div>
@@ -1285,17 +1274,18 @@ export default function QRMenu() {
             {availableProducts.map((product) => {
     const isStopped = unavailable.includes(product.id);
     const qty = product.bc4Projected && product.variants.length ? 0 : cart.find((line) => line.id === product.id)?.qty || 0;
+    const tags = tagsForProduct(product, productTags[product.id]);
     return <article className={`product-card ${isStopped ? "stopped" : ""}`} key={product.id}>
-                  <button className="food-photo" style={photoStyle(product)} type="button" onClick={() => openProduct(product)} aria-label={`${t.openPhoto}: ${product.name}`}>
+                  <button className="food-photo" style={photoStyle(product)} type="button" onClick={() => openProduct(product)} aria-describedby={tags.length ? `qr-tags-${product.id}` : undefined} aria-label={`${t.openPhoto}: ${product.name}`}>
                     {product.image ? <img className={photoClass(product)} src={product.image} alt={product.name} loading="lazy" onError={useRecoveredImageFallback} /> : <span className="photo-placeholder">B&C</span>}
                     {product.image && <span className="zoom-hint">{t.zoom}</span>}
+                    {tags.length > 0 && <span className="qr-product-tags" id={`qr-tags-${product.id}`}>
+                      {tags.map(tag => <span key={tag} data-tag={tag}>{tagLabels[tag]}</span>)}
+                    </span>}
                     {isStopped && <b>{t.unavailable}</b>}
                   </button>
                   <div className="product-body">
                     <div className="product-title"><h3>{qrMenuTitle(product.name, language)}</h3></div>
-                    {tagsForProduct(product, productTags[product.id]).length > 0 && <div className="qr-product-tags">
-                      {tagsForProduct(product, productTags[product.id]).map(tag => <span key={tag} data-tag={tag}>{tagLabels[tag]}</span>)}
-                    </div>}
                     {product.description && <p className="qr-card-description">{product.description}</p>}
                     {product.options.length > 0 && <div className="product-options">{product.options.map((option) => <small key={option}>{option}</small>)}</div>}
                     <div className="product-footer">
