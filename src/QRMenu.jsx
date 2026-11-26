@@ -1272,10 +1272,12 @@ export default function QRMenu() {
             </div>
           </div>
           <div className="product-grid">
-            {availableProducts.map((product) => {
+            {availableProducts.map((product, cardIndex) => {
     const isStopped = unavailable.includes(product.id);
     const qty = product.bc4Projected && product.variants.length ? 0 : cart.find((line) => line.id === product.id)?.qty || 0;
-    const tags = tagsForProduct(product, productTags[product.id]);
+    // Review-only sample branch: do not promote this commit to production.
+    const badgesDemo = bc5Only && category === "Все" && new URLSearchParams(window.location.search).get("badge-demo") === "1";
+    const tags = badgesDemo && cardIndex < 3 ? [["new"], ["chef"], ["bestseller"]][cardIndex] : tagsForProduct(product, productTags[product.id]);
     return <article className={`product-card ${isStopped ? "stopped" : ""}`} key={product.id}>
                   <button className="food-photo" style={photoStyle(product)} type="button" onClick={() => openProduct(product)} aria-describedby={tags.length ? `qr-tags-${product.id}` : undefined} aria-label={`${t.openPhoto}: ${product.name}`}>
                     {product.image ? <img className={photoClass(product)} src={product.image} alt={product.name} loading="lazy" onError={useRecoveredImageFallback} /> : <span className="photo-placeholder">B&C</span>}
