@@ -13,7 +13,7 @@ import "./ApprovedQRMenuDesign.css";
 import {projectBC5,adjustBowl,bowlLine,bowlOptions} from "./bc5MenuProjection.mjs";
 import "./bc5Bowl.css";
 import { isNewProduct, tagLabels, tagsForProduct } from "./qrMenuTags.mjs";
-import { qrMenuTitle } from "./qrMenuTitle.mjs";
+import { qrMenuDisplayLocale, qrMenuTitle } from "./qrMenuTitle.mjs";
 import BC1SpecialOffer from "./BC1SpecialOffer";
 import { startBakuWeather, currentWeatherPresentation } from "./bc1Weather";
 import { Utensils, ShoppingBag, ReceiptText, BadgePercent, Info, Settings, List, X } from "lucide-react";
@@ -784,8 +784,9 @@ export default function QRMenu() {
   const categoriesLabel = language === "ru" ? "Категории" : language === "az" ? "Kateqoriyalar" : "Categories";
   const categoryText = (name) => {
     const label = (cartOnly ? products.find(p=>p.category===name)?.categoryNames?.[language] : undefined) || localizeCategory(name, language) || categoryTranslations[language][name] || categoryLabel(name);
-    const lower=label.toLocaleLowerCase(language);
-    return lower.replace(/^([^\p{L}]*)(\p{L})/u, (_,prefix,letter)=>prefix+letter.toLocaleUpperCase(language));
+    const locale=qrMenuDisplayLocale(label,language);
+    const lower=label.toLocaleLowerCase(locale);
+    return lower.replace(/^([^\p{L}]*)(\p{L})/u, (_,prefix,letter)=>prefix+letter.toLocaleUpperCase(locale));
   };
   const shownPrice = (p) => p.bc4Projected ? (p.addon ? bc4Labels.addon : p.price !== null ? money(p.price) : p.variants.length ? bc4Labels.choose : bc4Labels.pending) : money(p.price);
   const modalPurchasePrice = selectedProduct && (cartOnly ? bc4ModalLine ? money(bc4ModalLine.unitCents * modalQuantity / 100) : shownPrice(selectedProduct) : money(selectedProduct.price * modalQuantity));
