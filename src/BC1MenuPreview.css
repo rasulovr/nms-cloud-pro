@@ -329,7 +329,20 @@ body .app-shell[data-bc1-browse="menu"].menu-view-showcase .product-grid { grid-
 body .app-shell[data-bc1-browse="menu"] .product-card .product-title h3 { font-size: 17px !important; }
 body .app-shell[data-bc1-browse="menu"] .product-card .stepper b { min-width: 20px !important; color: #302c29 !important; font: 600 13px/1.2 Arial, sans-serif !important; }
 body .app-shell[data-bc1-browse="menu"] .categories { background: transparent !important; border: 0 !important; box-shadow: none !important; border-radius: 0 !important; }
-body .app-shell[data-bc1-browse="menu"] .floating-cart { bottom: 88px !important; color: #fff !important; background: #302c29 !important; border: 0 !important; border-radius: 16px !important; }
+body .app-shell[data-bc1-browse="menu"] .floating-cart {
+  inset-inline: 0 !important;
+  margin-inline: auto !important;
+  bottom: calc(82px + env(safe-area-inset-bottom, 0px)) !important;
+  box-sizing: border-box;
+  color: #fff !important;
+  background: #302c29 !important;
+  border: 0 !important;
+  border-radius: 16px !important;
+}
+body .app-shell[data-bc1-browse="menu"] .floating-cart > :is(span, b) {
+  color: #fff !important;
+  -webkit-text-fill-color: currentColor;
+}
 
 
 body .app-shell[data-bc1-browse] .bc1-special-offer {
