@@ -29,7 +29,7 @@ export function projectBC4(catalog) {
  });
 }
 export function localizeBC4(item,lang){
- const text=item.snapshotCopy[lang];
+ const text=item.snapshotCopy?.[lang];
  return {...item,name:text?.name||item.sourceName,description:text?.description||''};
 }
 export function selectedBC4(item,variantId=''){

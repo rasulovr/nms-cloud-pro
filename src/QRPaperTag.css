@@ -1,0 +1,41 @@
+.qr-paper-tag {
+  --qr-tag-paper:#f3b647;
+  --qr-tag-ink:#372511;
+  position:relative;
+  display:inline-flex;
+  align-items:center;
+  isolation:isolate;
+  padding:7px 24px 7px 11px;
+  color:var(--qr-tag-ink);
+  font-size:12px;
+  font-weight:800;
+  line-height:1.05;
+  letter-spacing:.045em;
+  text-transform:uppercase;
+  white-space:nowrap;
+  transform:rotate(4deg);
+  filter:drop-shadow(1px 2px 2px #1c100e70);
+}
+.qr-paper-tag::before {
+  content:"";
+  position:absolute;
+  inset:0;
+  z-index:-1;
+  border-radius:3px 0 0 3px;
+  clip-path:polygon(0 0,calc(100% - 13px) 0,100% 50%,calc(100% - 13px) 100%,0 100%);
+  background:
+    radial-gradient(circle at calc(100% - 11px) 50%,#352316 0 2px,#ffedc3ad 2.2px 3.1px,transparent 3.4px),
+    repeating-linear-gradient(31deg,#fff1 0 1px,transparent 1px 3px),
+    linear-gradient(155deg,#ffffff35,transparent 42%,#492d231c),
+    var(--qr-tag-paper);
+}
+.qr-paper-tag::after {
+  content:"";
+  position:absolute;
+  width:17px;height:15px;
+  right:-6px;top:calc(50% - 10px);
+  background:center/contain no-repeat url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 17 15' fill='none'%3E%3Cpath d='M1.5 10.5C6 13 14 10 15 4.5c1.2-6-8.3-1.8-10.7 2.5-1 1.9.4 3.7 2.6 2.3' stroke='%2356392b' stroke-width='1.35' stroke-linecap='round'/%3E%3Cpath d='M3 10.9c4.2.4 10.3-2.6 11.1-6.4' stroke='%23f2dab0' stroke-width='.55' stroke-linecap='round'/%3E%3C/svg%3E");
+}
+.qr-paper-tag[data-tag="chef"] {--qr-tag-paper:#a14b39;--qr-tag-ink:#fff6e6;}
+.qr-paper-tag[data-tag="bestseller"] {--qr-tag-paper:#bfd27d;--qr-tag-ink:#283115;}
+.qr-paper-tag[data-tag="sale"] {--qr-tag-paper:#eb877b;--qr-tag-ink:#471d1d;}

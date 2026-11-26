@@ -1,8 +1,9 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "./supabase";
 import { localizeCategory, localizeProduct } from "./qrMenuTranslations";
-import { formatMenuDescription, normalizeReferenceText, resolveReferenceMenuProduct } from "./referenceMenuCatalog";
-import { resolveRecoveredMenuImage, useRecoveredImageFallback } from "./recoveredMenuImages";
+import { normalizeReferenceText, resolveReferenceMenuProduct } from "./referenceMenuCatalog";
+import { branchMenuConfigTable, normalizeCategoryKey, normalizeProduct, prepareNativeQrRows } from "./qrMenuNative";
+import { useRecoveredImageFallback } from "./recoveredMenuImages";
 import "./QRMenu.css";
 import "./QRMenuPhotoOpen.css";
 import "./QRMenuSchedule.css";
@@ -12,9 +13,10 @@ import { ApprovedPhotoViewer, ApprovedMenuSettings, menuDesignText, useApprovedM
 import "./ApprovedQRMenuDesign.css";
 import {projectBC5,adjustBowl,bowlLine,bowlOptions} from "./bc5MenuProjection.mjs";
 import "./bc5Bowl.css";
-import { isNewProduct, tagLabels, tagsForProduct } from "./qrMenuTags.mjs";
+import { isNewProduct, tagsForProduct } from "./qrMenuTags.mjs";
 import { qrMenuDisplayLocale, qrMenuTitle } from "./qrMenuTitle.mjs";
-import { qrBuilderOverlay, qrBuilderLocalize, qrBuilderOffer, qrBuilderText } from "./qrMenuBuilder.mjs";
+import { qrBuilderOverlay, qrBuilderLocalize, qrBuilderOffer, qrBuilderText, qrBuilderApplyOrder } from "./qrMenuBuilder.mjs";
+import QRPaperTag from "./QRPaperTag";
 import BC1SpecialOffer from "./BC1SpecialOffer";
 import { startBakuWeather, currentWeatherPresentation } from "./bc1Weather";
 import { Utensils, ShoppingBag, ReceiptText, BadgePercent, Info, Settings, List, X } from "lucide-react";
@@ -132,27 +134,6 @@ const isWineOrProsecco = (product) => /вино|wine|şərab|prosecco|просе
 const isExtraCategory = (product) => /^(ekstra|extra|əlavə|экстра|дополн)/i.test(String(product?.category || "").trim());
 const isLowPriorityDrink = (product) => /^(КОФЕ|ХОЛОДНЫЙ КОФЕ|ЧАЙ|ЛИМОНАДЫ|ХОЛОДНЫЕ НАПИТКИ)$/i.test(String(product?.category || ""));
 const isBottledOrPackagedDrink = (product) => /вода|water|сок|juice|cola|кола|фанта|fanta|спрайт|sprite|тоник|tonic|red\s*bull|энергет/i.test(productSearchText(product));
-const normalizeCategoryKey = (value) => {
-  const key = String(value || "").trim().toLocaleUpperCase("ru-RU").replace(/Ё/g, "Е");
-  const aliases = {
-    "ЗАВТРАК": "ЗАВТРАК", "ЗАВТРАКИ": "ЗАВТРАК", "BREAKFAST": "ЗАВТРАК", "SƏHƏR YEMƏYİ": "ЗАВТРАК", "SƏHƏR YEMƏKLƏRİ": "ЗАВТРАК",
-    "КОФЕ": "КОФЕ", "COFFEE": "КОФЕ", "QƏHVƏ": "КОФЕ",
-    "САЛАТ": "САЛАТЫ", "САЛАТЫ": "САЛАТЫ", "SALAD": "САЛАТЫ", "SALADS": "САЛАТЫ", "SALATLAR": "САЛАТЫ",
-    "ЗАКУСКИ": "ЗАКУСКИ", "ЗАКУСКА": "ЗАКУСКИ", "STARTERS": "ЗАКУСКИ", "STARTER": "ЗАКУСКИ", "QƏLYANALTILAR": "ЗАКУСКИ",
-    "ГОРЯЧИЕ БЛЮДА": "ГОРЯЧИЕ БЛЮДА", "ОСНОВНЫЕ БЛЮДА": "ГОРЯЧИЕ БЛЮДА", "MAIN DISHES": "ГОРЯЧИЕ БЛЮДА", "İSTİ YEMƏKLƏR": "ГОРЯЧИЕ БЛЮДА",
-    "БУРГЕРЫ": "БУРГЕРЫ", "БУРГЕР": "БУРГЕРЫ", "BURGERS": "БУРГЕРЫ", "BURGER": "БУРГЕРЫ",
-    "СЭНДВИЧИ": "СЭНДВИЧИ", "СЕНДВИЧИ": "СЭНДВИЧИ", "SANDWICHES": "СЭНДВИЧИ", "SANDWICH": "СЭНДВИЧИ", "SENDVİÇLƏR": "СЭНДВИЧИ",
-    "ПИЦЦА": "ПИЦЦА", "PIZZA": "ПИЦЦА",
-    "СУПЫ": "СУПЫ", "SOUPS": "СУПЫ", "ŞORBALAR": "СУПЫ",
-    "ЛИМОНАДЫ": "ЛИМОНАДЫ", "LEMONADES": "ЛИМОНАДЫ", "LİMONADLAR": "ЛИМОНАДЫ",
-    "ХОЛОДНЫЕ НАПИТКИ": "ХОЛОДНЫЕ НАПИТКИ", "COLD DRINKS": "ХОЛОДНЫЕ НАПИТКИ", "SOYUQ İÇKİLƏR": "ХОЛОДНЫЕ НАПИТКИ",
-    "ХОЛОДНЫЙ КОФЕ": "ХОЛОДНЫЙ КОФЕ", "ICED COFFEE": "ХОЛОДНЫЙ КОФЕ", "COLD COFFEE": "ХОЛОДНЫЙ КОФЕ", "SOYUQ QƏHVƏ": "ХОЛОДНЫЙ КОФЕ", "BUZLU QƏHVƏ": "ХОЛОДНЫЙ КОФЕ",
-    "ЧАЙ": "ЧАЙ", "TEA": "ЧАЙ", "ÇAY": "ЧАЙ",
-    "ДЕСЕРТЫ": "ДЕСЕРТЫ", "DESSERTS": "ДЕСЕРТЫ", "DESERTLƏR": "ДЕСЕРТЫ", "ŞİRNİYYATLAR": "ДЕСЕРТЫ",
-    "ВИНО": "ВИНО", "WINES": "ВИНО", "WINE": "ВИНО", "ŞƏRAB": "ВИНО"
-  };
-  return aliases[key] || key;
-};
 const contextualRank = (value, order) => {
   const key = normalizeCategoryKey(value);
   const index = order.findIndex((name) => normalizeCategoryKey(name) === key);
@@ -175,50 +156,6 @@ const pairingCategories = {
   "\u041D\u043E\u0432\u0438\u043D\u043A\u0438": ["\u041A\u041E\u0424\u0415", "\u041B\u0418\u041C\u041E\u041D\u0410\u0414\u042B", "\u0421\u0410\u041B\u0410\u0422\u042B"]
 };
 const money = (value) => `${Number(value || 0).toFixed(2)} \u20BC`;
-const productionProductOverrides = {
-  "Сырники": { image: "/menu/bc-003-syrniki-full.webp" },
-  "Копчёная Утка и Крем-Чиз": { image: "/menu/bc-004-duck-full.webp" },
-  "Пицца «Чикен Фунги»": { image: "/menu/chicken-funghi-full.webp" },
-  "Грибы": { image: "/menu/extra-mushrooms.webp" },
-  "Сыр": { image: "/menu/extra-cheese.webp" },
-  "Бекон": { image: "/menu/extra-bacon.webp" },
-  "Соусы": { image: "/menu/extra-sauces.webp" },
-  "Фрукты": { image: "/menu/extra-fruits.webp" },
-  "Эспрессо-Тоник": { image: "/menu/bc-068-espresso-tonic-full.webp" },
-  "Bumble Bee": { image: "/menu/bc-069-bumble-bee-full.webp" },
-  "Аффогато": { image: "/menu/bc-070-affogato-full.webp" },
-  "Caramelita": { image: "/menu/bc-071-caramelita-full.webp" },
-  "Холодный Раф": { image: "/menu/bc-072-cold-raf-full.webp" },
-  "Холодный Американо": { image: "/menu/bc-073-cold-americano-full.webp" },
-  "Холодный Латте": { image: "/menu/bc-074-cold-latte-full.webp" },
-  "Персик Фиалка": { image: "/menu/bc-075-peach-violet.webp" },
-  "Ананас Розмарин": { image: "/menu/bc-076-pineapple-rosemary.webp" },
-  "Маракуйя Сумах": { image: "/menu/bc-077-passionfruit-sumac.webp" },
-  "Алоэ Пряный Гранат": { image: "/menu/bc-078-aloe-pomegranate.webp" },
-  "Киви Бум": { image: "/menu/bc-079-kiwi-boom.webp" },
-  "Куркума Имбирь": { image: "/menu/bc-080-turmeric-ginger.webp" },
-  "Клубничный Рай": { image: "/menu/bc-081-strawberry-paradise.webp" },
-  "Юдзу-Лимонад": { image: "/menu/bc-082-yuzu.webp" },
-  "Summer Vibes": { image: "/menu/bc-083-summer-vibes.webp" },
-  "Tropical Vibes": { image: "/menu/bc-084-tropical-vibes.webp" },
-  "Yoda's Love": { image: "/menu/bc-085-yodas-love.webp" },
-  "Special Tea": { image: "/menu/bc-086-tea-tubes.webp" },
-  "Вода": { name: "Вода Sirab", image: "/menu/bc-087-water-full.webp" },
-  "Вода Sirab": { image: "/menu/bc-087-water-full.webp" },
-  "Газированная Вода": { image: "/menu/cold-sparkling-full.webp" },
-  "Соки": { image: "/menu/bc-089-juices-full.webp" },
-  "Кола": { image: "/menu/cold-cola-full.webp" },
-  "Кола Зеро": { image: "/menu/cold-cola-zero-full.webp" },
-  "Фанта": { image: "/menu/cold-fanta-full.webp" },
-  "Спрайт": { image: "/menu/cold-sprite-full.webp" },
-  "Тоник": { image: "/menu/cold-tonic-full.webp" },
-  "Энергетические Напитки": {
-    name: "Red Bull",
-    image: "/menu/bc-095-redbull-full.webp",
-    options: ["Red Bull - 6.00 ₼", "Red Bull Sugar Free - 6.00 ₼", "Red Bull Tropical - 6.00 ₼", "Red Bull Watermelon - 6.00 ₼", "Red Bull Cherry and Forest Fruits - 6.00 ₼"]
-  },
-  "Red Bull": { image: "/menu/bc-095-redbull-full.webp" }
-};
 const categoryLabel = (value) => {
   if (value.toLocaleLowerCase("ru-RU") === "новинки") return "Новинки";
   const normalized = value.toLocaleLowerCase("ru-RU");
@@ -321,8 +258,6 @@ const nightWeatherTitles = {
   en: { rainy: "Rainy night", windy: "Windy night", sunny: "Clear night", cool: "Cool night", cloudy: "Cloudy night", clear: "Clear night" }
 };
 const displayBranchName = (branch) => branch === "BC1" ? "Barista&Chef R.Behbudov" : `Barista&Chef · ${branch}`;
-const branchFilteredMenus = new Set(["BC1", "BC2", "BC4", "BC5"]);
-const branchMenuConfigTable = "__QR_BRANCH_MENU_V1__";
 const baristaChefQrSettingsEndpoint = "https://zzsdcxowhhaxnuliaryb.supabase.co/rest/v1/rpc/qr_get_public_menu_v2";
 const baristaChefQrPublishableKey = "sb_publishable_KadKobelt_Zxq5HF770GFA_zSdTAfec";
 const photoClass = (product) => {
@@ -334,41 +269,6 @@ const photoClass = (product) => {
 const photoStyle = (product) => product.image
   ? { "--photo": `url(${JSON.stringify(product.image)})` }
   : undefined;
-const normalizeProduct = (item, branch) => {
-  const menuOverride = item.__qr_override && typeof item.__qr_override === "object" ? item.__qr_override : null;
-  const customTranslations = menuOverride?.translations && typeof menuOverride.translations === "object" ? menuOverride.translations : item.translations;
-  const customRu = customTranslations?.ru || {};
-  const sourceName = customRu.name || menuOverride?.name || item.name || "";
-  // A branch-level QR override is intentional guest-facing copy. In that case
-  // do not replace it with the shared migration/reference catalogue.
-  const preserveReferenceCopy = branch === "BC1" || Boolean(menuOverride);
-  const reference = preserveReferenceCopy ? null : resolveReferenceMenuProduct(item);
-  const referenceName = reference?.translations?.ru?.name || sourceName;
-  const override = productionProductOverrides[referenceName] || productionProductOverrides[sourceName] || {};
-  const sourceDescription = formatMenuDescription(
-    customRu.description || menuOverride?.description || reference?.translations?.ru?.description || item.description || ""
-  );
-  const sourceOptions = menuOverride?.options || override.options || (Array.isArray(item.options) ? item.options : []);
-  return {
-    ...item,
-    ...(menuOverride || {}),
-    id: item.id || item.menu_item_id,
-    translationKey: referenceName,
-    sourceName: customRu.name || override.name || referenceName,
-    sourceDescription,
-    preserveReferenceCopy,
-    sourceOptions,
-    translations: customTranslations,
-    name: customRu.name || override.name || referenceName,
-    description: sourceDescription,
-    category: normalizeCategoryKey(menuOverride?.category || reference?.translations?.ru?.category || item.category_name || item.category || "Без категории"),
-    price: Number(menuOverride?.price ?? item.price ?? item.unit_price ?? (item.line_total && item.quantity ? Number(item.line_total) / Number(item.quantity) : 0)),
-    image: menuOverride?.image_url || menuOverride?.image || override.image || resolveRecoveredMenuImage(reference?.image || item.image_url || item.image),
-    options: sourceOptions,
-    rating: Number(item.rating || 0),
-    branches: [branch]
-  };
-};
 const dailyQuotes = [
   "\u041B\u044E\u0431\u0438\u043C\u044B\u0435 \u0432\u043A\u0443\u0441\u044B \u0434\u0435\u043B\u0430\u044E\u0442 \u0434\u0435\u043D\u044C \u043B\u0443\u0447\u0448\u0435.",
   "\u0412\u043A\u0443\u0441 \u043D\u0430\u0447\u0438\u043D\u0430\u0435\u0442\u0441\u044F \u0441 \u043D\u0430\u0441\u0442\u0440\u043E\u0435\u043D\u0438\u044F.",
@@ -565,7 +465,7 @@ export default function QRMenu() {
       if (error && !bc4Source) flash(`\u041C\u0435\u043D\u044E \u0432\u0440\u0435\u043C\u0435\u043D\u043D\u043E \u043D\u0435\u0434\u043E\u0441\u0442\u0443\u043F\u043D\u043E: ${error.message}`);
       const live = !builderResult.error ? builderResult.data?.document : null;
       setBuilderLive(live || null);
-      let menuRows = Array.isArray(data) ? data : [];
+      const menuRows = Array.isArray(data) ? data : [];
       let branchMenuConfig = {};
       try {
         const parsed = JSON.parse(String(branchMenuResult.data?.qr_code_url || ""));
@@ -581,22 +481,7 @@ export default function QRMenu() {
           ? branchMenuConfig.background_theme
           : "travertine"
       );
-      const branchMenuIds = Array.isArray(branchMenuConfig?.ids) ? branchMenuConfig.ids.map(String) : null;
-      const menuIds = new Set(menuRows.map((item) => String(item.id || item.menu_item_id)));
-      const matchingConfiguredIds = branchMenuIds ? branchMenuIds.filter((id) => menuIds.has(id)) : [];
-      // Legacy BC5 configuration was saved with BC1 item IDs. Never let an
-      // incompatible configuration hide a working branch menu: apply a filter
-      // only when it has at least one ID from the actual branch menu.
-      if (branchFilteredMenus.has(branch) && !branchMenuResult.error && matchingConfiguredIds.length > 0) {
-        const enabledIds = new Set(matchingConfiguredIds);
-        menuRows = menuRows.filter((item) => enabledIds.has(String(item.id || item.menu_item_id)) || live?.items?.[item.id || item.menu_item_id]?.kind==="new");
-      }
-      const menuOverrides = branchMenuConfig?.overrides && typeof branchMenuConfig.overrides === "object" ? branchMenuConfig.overrides : {};
-      menuRows = menuRows.map((item) => ({
-        ...item,
-        __qr_override: menuOverrides[String(item.id || item.menu_item_id)] || null
-      }));
-      setProducts(qrBuilderOverlay(bc4Source ?? (cartOnly ? [] : menuRows.map((item) => normalizeProduct(item, branch))), live, branch));
+      setProducts(qrBuilderOverlay(bc4Source ?? (cartOnly ? [] : prepareNativeQrRows(menuRows, branchMenuResult.error ? {} : branchMenuConfig, live).map((item) => normalizeProduct(item, branch))), live, branch));
       if (bc4Source && !bc4Source.length) flash(t.unavailable);
       const recommendationRows = Array.isArray(recommendationsResult.data) ? recommendationsResult.data : [];
       // BC1 is the approved pairing reference. All other QR branches inherit
@@ -755,7 +640,7 @@ export default function QRMenu() {
     product.id === "4cf13bd6-975c-4123-b944-474944a95af2" && product.branches.includes(branch)
     && !unavailable.includes(product.id) && Number.isFinite(product.price) && product.price >= 0),
     [localizedProducts, branch, unavailable]);
-  const availableProducts = useMemo(() => localizedProducts.filter((product) => {
+  const availableProducts = useMemo(() => qrBuilderApplyOrder(localizedProducts.filter((product) => {
     const branchMatch = product.branches.includes(branch);
     const categoryMatch = category === "\u0412\u0441\u0435" || product.category === category;
     return branchMatch && categoryMatch;
@@ -776,7 +661,7 @@ export default function QRMenu() {
       if (aPenalty !== bPenalty) return aPenalty - bPenalty;
     }
     return aProductRank - bProductRank;
-  }), [localizedProducts, branch, category, mealMoment, contextualCategoryOrder]);
+  }), builderLive), [localizedProducts, branch, category, mealMoment, contextualCategoryOrder,builderLive]);
   const categories = useMemo(() => {
     const present = new Set(products.filter((p) => p.branches.includes(branch)).map((p) => p.category));
     if (cartOnly) return ["Все", ...present];
@@ -1290,7 +1175,7 @@ export default function QRMenu() {
                     {product.image ? <img className={photoClass(product)} src={product.image} alt={product.name} loading="lazy" onError={useRecoveredImageFallback} /> : <span className="photo-placeholder">B&C</span>}
                     {product.image && <span className="zoom-hint">{t.zoom}</span>}
                     {tags.length > 0 && <span className="qr-product-tags" id={`qr-tags-${product.id}`}>
-                      {tags.map(tag => <span key={tag} data-tag={tag}>{tagLabels[tag]}</span>)}
+                      {tags.map(tag => <QRPaperTag key={tag} code={tag}/>)}
                     </span>}
                     {isStopped && <b>{t.unavailable}</b>}
                   </button>

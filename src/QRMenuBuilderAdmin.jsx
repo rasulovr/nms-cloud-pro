@@ -1,7 +1,11 @@
 import React,{useEffect,useMemo,useState} from 'react';
 import {supabase} from './supabase';
+import {ArrowDown,ArrowUp,GripVertical} from 'lucide-react';
+import {localizeCategory,localizeProduct} from './qrMenuTranslations';
+import {branchMenuConfigTable,normalizeProduct,prepareNativeQrRows} from './qrMenuNative';
+import QRPaperTag from './QRPaperTag';
 import {tagLabels,tagCodes,tagsForProduct} from './qrMenuTags.mjs';
-import {emptyQrBuilder,cleanQrBuilder,qrBuilderBranches,qrBuilderLanguages,qrBuilderText,qrBuilderImage} from './qrMenuBuilder.mjs';
+import {emptyQrBuilder,cleanQrBuilder,qrBuilderBranches,qrBuilderLanguages,qrBuilderText,qrBuilderImage,qrBuilderApplyOrder,qrBuilderMoveRow,qrBuilderTransferOrder} from './qrMenuBuilder.mjs';
 import './QRMenuBuilderAdmin.css';
 
 const locales=qrBuilderLanguages;
@@ -17,9 +21,18 @@ function originalCopy(p){
 async function listQrChoices(branch){
   if(branch==='BC4')return Promise.all([import('./bc4MenuProjection.mjs'),import('./bc4InPlaceCatalogue.json')]).then(([p,j])=>p.projectBC4(j.default));
   if(branch==='BC5')return Promise.all([import('./bc5MenuProjection.mjs'),import('./bc5InPlaceCatalogue.json')]).then(([p,j])=>p.projectBC5(j.default));
-  const {data,error}=await supabase.rpc('qr_get_public_menu',{p_branch_code:branch});
-  if(error)throw error;
-  return (data||[]).map(x=>({...x,category:x.category_name,image:x.image_url}));
+  const [menu,config]=await Promise.all([
+    supabase.rpc('qr_get_public_menu',{p_branch_code:branch}),
+    supabase.from('rms_qr_tables').select('qr_code_url').eq('branch_id',branch).eq('table_number',branchMenuConfigTable).maybeSingle()
+  ]);
+  if(menu.error||config.error)throw menu.error||config.error;
+  let cfg={};
+  try{cfg=JSON.parse(config.data?.qr_code_url||'{}')||{};}catch{/* Older rows may have a QR URL instead of JSON. */}
+  return doc=>prepareNativeQrRows(menu.data||[],cfg,doc).map(raw=>{
+    const item=normalizeProduct(raw,branch);
+    const snapshotCopy=Object.fromEntries(locales.map(l=>[l,localizeProduct(item,l)]));
+    return {...item,name:snapshotCopy.ru.name,description:snapshotCopy.ru.description,snapshotCopy};
+  });
 }
 function Localized({label,value,onChange,large=false,limit=160}){
   const Tag=large?'textarea':'input';
@@ -36,6 +49,8 @@ function BranchBuilder({branch}){
   const [tab,setTab]=useState('items'),[search,setSearch]=useState(''),[limit,setLimit]=useState(35);
   const [categoryId,setCategoryId]=useState(''),[catNames,setCatNames]=useState({});
   const [editId,setEditId]=useState(''),[edit,setEdit]=useState(blank);
+  const [categoryView,setCategoryView]=useState(''),[reorder,setReorder]=useState(null);
+  const [dragging,setDragging]=useState(''),[over,setOver]=useState('');
   useEffect(()=>{
     let active=true;
     Promise.all([listQrChoices(branch),
@@ -44,13 +59,14 @@ function BranchBuilder({branch}){
       supabase.from('rms_qr_product_tags').select('product_key,tag_codes').eq('branch_code',branch)]).then(([rows,d,l,t])=>{
       if(!active)return;
       if(d.error||l.error||t.error)throw d.error||l.error||t.error;
-      setBase(rows);setDoc(cleanQrBuilder(d.data?.document));setRev(d.data?.revision||0);setLiveRev(l.data?.revision||0);
+      const draft=cleanQrBuilder(d.data?.document);
+      setBase(typeof rows==='function'?rows(draft):rows);setDoc(draft);setRev(d.data?.revision||0);setLiveRev(l.data?.revision||0);
       setOldTags(Object.fromEntries((t.data||[]).map(r=>[r.product_key,r.tag_codes])));
       setLoaded(true);setStatus('');
     }).catch(e=>{if(active)setStatus(errText(e));});
     return()=>{active=false;};
   },[branch]);
-  const cats=useMemo(()=>new Map([...base.map(p=>[p.category,qrBuilderText(p.categoryNames,'ru')||p.category]),...Object.entries(doc.categories).map(([k,x])=>[k,qrBuilderText(x.names,'ru')])]),[base,doc.categories]);
+  const cats=useMemo(()=>new Map([...base.map(p=>[p.category,qrBuilderText(p.categoryNames,'ru')||localizeCategory(p.category,'ru')||p.category]),...Object.entries(doc.categories).map(([k,x])=>[k,qrBuilderText(x.names,'ru')])]),[base,doc.categories]);
   const byId=useMemo(()=>new Map(base.map(p=>[String(p.id),p])),[base]);
   const products=useMemo(()=>{
     const ids=[...new Set([...byId.keys(),...Object.keys(doc.items)])];
@@ -58,11 +74,25 @@ function BranchBuilder({branch}){
       name:qrBuilderText(draft?.copy?.names,'ru')||actual?.name||id,
       category:draft?.category||actual?.category||'',image:draft?.image||actual?.image||'',hidden:draft?.hidden===true};});
   },[byId,doc.items]);
-  const matching=products.filter(p=>!search||[p.name,cats.get(p.category)].some(x=>String(x||'').toLocaleLowerCase('ru').includes(search.trim().toLocaleLowerCase('ru'))));
+  const [filter,setFilter]=useState('');
+  const matching=qrBuilderApplyOrder(products,doc).filter(p=>(!filter||p.category===filter)&&(!search||[p.name,cats.get(p.category)].some(x=>String(x||'').toLocaleLowerCase('ru').includes(search.trim().toLocaleLowerCase('ru')))));
+  const activeCategory=cats.has(categoryView)?categoryView:(cats.keys().next().value||'');
+  const visibleCategoryProducts=qrBuilderApplyOrder(products.filter(p=>p.category===activeCategory),reorder?{order:{[activeCategory]:reorder}}:doc);
+  function chooseCategory(id){setCategoryView(id);setReorder(null);setDragging('');setOver('');}
+  function showCategoryItem(p){openItem(p);setFilter(activeCategory);setSearch('');setTab('items');}
+  function moveRow(from,to){
+    const ids=visibleCategoryProducts.map(p=>p.id);
+    const next=qrBuilderMoveRow(ids,from,to);
+    if(next!==ids)setReorder(next);
+    setDragging('');setOver('');
+  }
+  async function saveOrder(){
+    if(reorder&&await write({...doc,order:{...doc.order,[activeCategory]:reorder}}))setReorder(null);
+  }
   function openItem(p){
     const x=p?.draft, a=p?.actual, original=a?originalCopy(a):{};
     const copy={names:{...original.names,...x?.copy?.names},descriptions:{...original.descriptions,...x?.copy?.descriptions}};
-    setEditId(p?.id||'new');setEdit({...blank(),kind:x?.kind||(a?'existing':'new'),category:p?.category||'',image:p?.image||'',
+    setEditId(p?.id||'new');setEdit({...blank(),kind:x?.kind||(a?'existing':'new'),category:p?.category||filter||'',image:p?.image||'',
       price:x?.price_cents==null?(a?.price??''):String(x.price_cents/100),names:copy.names||{},descriptions:copy.descriptions||{},tags:x?.tags??oldTags[p?.id]??[],
       hidden:p?.hidden===true});
   }
@@ -79,7 +109,7 @@ function BranchBuilder({branch}){
   async function saveCategory(e){
     e.preventDefault();const names=texts(catNames);if(!Object.keys(names).length){setStatus('Укажи название категории.');return;}
     const id=categoryId||'cat:'+crypto.randomUUID();
-    if(await write({...doc,categories:{...doc.categories,[id]:{names}}})){setCategoryId('');setCatNames({});}
+    if(await write({...doc,categories:{...doc.categories,[id]:{names}}})){chooseCategory(id);setCategoryId('');setCatNames({});}
   }
   async function saveItem(e){
     e.preventDefault();const names=texts(edit.names),price=cents(edit.price);
@@ -95,7 +125,8 @@ function BranchBuilder({branch}){
       ...(edit.kind==='new'||edit.image!==String(first?.image||'')?{image:edit.image.trim()}:{}),
       copy:{names:changed(names,original.names),descriptions:changed(descriptions,original.descriptions)},tags:tagCodes(edit.tags),
       ...(edit.kind==='new'?{price_cents:price,hidden:edit.hidden===true}:{})};
-    if(await write({...doc,items:{...doc.items,[id]:entry}}))setEditId('');
+    const oldCategory=doc.items[id]?.category||first?.category||'';
+    if(await write({...doc,items:{...doc.items,[id]:entry},order:qrBuilderTransferOrder(doc.order,id,oldCategory,edit.category)})){setEditId('');if(filter)setFilter(edit.category);}
   }
   const [offerEdit,setOfferEdit]=useState(null);
   const o=offerEdit||doc.offer||emptyOffer();
@@ -109,21 +140,39 @@ function BranchBuilder({branch}){
     if(await write({...doc,offer:next}))setOfferEdit(null);
   }
   return <>
-    <div className="qb-toolbar qb-tabs"><nav aria-label="Конструктор">{[['items','Позиции'],['categories','Категории'],['offer','Спецпредложение']].map(([k,v])=><button key={k} type="button" className={tab===k?'small primary':'small'} onClick={()=>setTab(k)}>{v}</button>)}</nav>
-      <button type="button" className="small primary" disabled={!loaded||busy||rev===liveRev} onClick={()=>write(doc,true)}>Опубликовать {branch}</button></div>
+    <div className="qb-toolbar qb-tabs"><nav aria-label="Конструктор">{[['items','Позиции'],['categories','Категории'],['offer','Спецпредложение']].map(([k,v])=><button key={k} type="button" className={tab===k?'small primary':'small'} disabled={busy||Boolean(reorder)&&k!=='categories'} onClick={()=>setTab(k)}>{v}</button>)}</nav>
+      <button type="button" className="small primary" disabled={!loaded||busy||Boolean(reorder)||rev===liveRev} onClick={()=>write(doc,true)}>Опубликовать {branch}</button></div>
     <div role="status" className="qb-status">{status||(!rev?'Действующее меню без изменений':rev===liveRev?'Опубликовано':'Есть неопубликованный черновик')}</div>
     {loaded&&tab==='categories'&&<><form className="qb-form" onSubmit={saveCategory}><h4>{categoryId?'Редактировать свою категорию':'Новая категория'}</h4>
       <Localized label="Название" value={catNames} onChange={setCatNames} limit={100}/>
-      <div><button type="submit" className="small primary" disabled={busy}>Сохранить в черновик</button>{categoryId&&<button type="button" className="small" onClick={()=>{setCategoryId('');setCatNames({});}}>Отмена</button>}</div></form>
-      <ul className="qb-list">{[...cats].map(([id,n])=><li key={id}><span>{n}</span>{doc.categories[id]&&<button type="button" className="small" onClick={()=>{setCategoryId(id);setCatNames(doc.categories[id].names);}}>Редактировать</button>}</li>)}</ul></>}
-    {loaded&&tab==='items'&&<><div className="qb-toolbar"><label>Поиск позиции<input type="search" value={search} onChange={e=>{setSearch(e.target.value);setLimit(35);}}/></label><button className="small primary" type="button" onClick={()=>openItem()}>+ Новая позиция</button></div>
+      <div><button type="submit" className="small primary" disabled={busy||Boolean(reorder)}>Сохранить в черновик</button>{categoryId&&<button type="button" className="small" onClick={()=>{setCategoryId('');setCatNames({});}}>Отмена</button>}</div></form>
+      <section className="qb-form qb-category-items" aria-label="Позиции в категории">
+        <div className="qb-toolbar"><label>Категория<select value={activeCategory} disabled={busy||Boolean(reorder)} onChange={e=>chooseCategory(e.target.value)}>{[...cats].map(([id,n])=><option key={id} value={id}>{n}</option>)}</select></label>
+          {doc.categories[activeCategory]&&<button type="button" className="small" disabled={busy||Boolean(reorder)} onClick={()=>{setCategoryId(activeCategory);setCatNames(doc.categories[activeCategory].names);}}>Редактировать название</button>}
+          <button type="button" className="small" disabled={busy||Boolean(reorder)||!activeCategory} onClick={()=>{setFilter(activeCategory);setSearch('');openItem({id:'new',category:activeCategory});setTab('items');}}>+ Позиция в категории</button></div>
+        <h4>{cats.get(activeCategory)} · {visibleCategoryProducts.length}</h4>
+        {visibleCategoryProducts.length>1&&<p className="qb-order-help">Потяни за ручку слева или воспользуйся стрелками. Сохрани порядок в черновик, затем опубликуй меню.</p>}
+        {!visibleCategoryProducts.length&&<p>В этой категории пока нет блюд. Добавь позицию или перенеси сюда существующую через поле «Категория».</p>}
+        <ol className="qb-list qb-order-list">{visibleCategoryProducts.map((p,index)=><li key={p.id} data-dragging={dragging===p.id} data-over={over===p.id&&dragging!==p.id}
+          onDragOver={e=>{if(dragging){e.preventDefault();e.dataTransfer.dropEffect='move';setOver(p.id);}}}
+          onDrop={e=>{if(dragging){e.preventDefault();moveRow(dragging,p.id);}}}>
+          <span className="qb-order-grip" draggable={!busy&&visibleCategoryProducts.length>1} title="Тяни вверх или вниз"
+            onDragStart={e=>{e.dataTransfer.setData('text/plain',p.id);e.dataTransfer.effectAllowed='move';setDragging(p.id);}}
+            onDragEnd={()=>{setDragging('');setOver('');}}><GripVertical size={18} aria-hidden="true"/></span>
+          <span className="qb-order-index">{index+1}</span><span className="qb-order-name"><b>{p.name}</b>{p.hidden&&<small>Скрыто</small>}</span>
+          <div className="qb-order-buttons"><button type="button" className="small" aria-label={p.name+': выше'} disabled={busy||index===0} onClick={()=>moveRow(p.id,visibleCategoryProducts[index-1].id)}><ArrowUp size={15}/></button>
+          <button type="button" className="small" aria-label={p.name+': ниже'} disabled={busy||index===visibleCategoryProducts.length-1} onClick={()=>moveRow(p.id,visibleCategoryProducts[index+1].id)}><ArrowDown size={15}/></button></div>
+          <button type="button" className="small" disabled={busy||Boolean(reorder)} onClick={()=>showCategoryItem(p)}>Редактировать</button></li>)}</ol>
+        {reorder&&<div className="qb-toolbar"><button type="button" className="small primary" disabled={busy} onClick={saveOrder}>Сохранить порядок в черновик</button><button type="button" className="small" disabled={busy} onClick={()=>setReorder(null)}>Отменить перестановку</button></div>}
+      </section></>}
+    {loaded&&tab==='items'&&<><div className="qb-toolbar"><label>Поиск позиции<input type="search" value={search} onChange={e=>{setSearch(e.target.value);setLimit(35);}}/></label><label>Категория<select value={filter} onChange={e=>{setFilter(e.target.value);setLimit(35);}}><option value="">Все категории</option>{[...cats].map(([id,n])=><option key={id} value={id}>{n}</option>)}</select></label><button className="small primary" type="button" onClick={()=>openItem()}>+ Новая позиция</button></div>
       {editId&&<form className="qb-form" onSubmit={saveItem}><h4>{editId==='new'?'Новая позиция':qrBuilderText(edit.names,'ru')}</h4>
         <Localized label="Название" value={edit.names} onChange={names=>setEdit({...edit,names})}/>
         <Localized label="Описание" value={edit.descriptions} onChange={descriptions=>setEdit({...edit,descriptions})} large limit={2000}/>
         <div className="qb-row"><label>Категория<select value={edit.category} onChange={e=>setEdit({...edit,category:e.target.value})}><option value="">Выбрать</option>{[...cats].map(([k,v])=><option key={k} value={k}>{v}</option>)}</select></label>
           <label>Цена, AZN<input value={edit.price} inputMode="decimal" disabled={edit.kind!=='new'} onChange={e=>setEdit({...edit,price:e.target.value})}/></label>
           <label>Адрес фото<input value={edit.image} placeholder="https://…" onChange={e=>setEdit({...edit,image:e.target.value})}/></label></div>
-        <fieldset className="qb-tags"><legend>Бирки</legend>{Object.entries(tagLabels).map(([k,v])=><label key={k}><input type="checkbox" checked={edit.tags.includes(k)} onChange={e=>setEdit({...edit,tags:e.target.checked?[...edit.tags,k]:edit.tags.filter(x=>x!==k)})}/>{v}</label>)}</fieldset>
+        <fieldset className="qb-tags"><legend>Бирки</legend>{Object.entries(tagLabels).map(([k,v])=><label className="qb-tag-option" key={k}><QRPaperTag code={k}/><input aria-label={v} type="checkbox" checked={edit.tags.includes(k)} onChange={e=>setEdit({...edit,tags:e.target.checked?[...edit.tags,k]:edit.tags.filter(x=>x!==k)})}/></label>)}</fieldset>
         {edit.kind==='new'&&<label><input type="checkbox" checked={edit.hidden} onChange={e=>setEdit({...edit,hidden:e.target.checked})}/> Скрыть позицию</label>}
         <div><button type="submit" className="small primary" disabled={busy}>Сохранить в черновик</button> <button type="button" className="small" onClick={()=>setEditId('')}>Закрыть</button></div></form>}
       <ul className="qb-list">{matching.slice(0,limit).map(p=><li key={p.id}><span><b>{p.name}</b><small>{cats.get(p.category)}{p.hidden?' · Скрыто':''}{tagsForProduct({categoryNames:{ru:cats.get(p.category)}},p.draft?.tags??oldTags[p.id]).map(k=>' · '+tagLabels[k])}</small></span><button type="button" className="small" onClick={()=>openItem(p)}>Редактировать</button></li>)}</ul>

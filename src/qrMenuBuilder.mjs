@@ -1,20 +1,53 @@
 import {tagCodes} from './qrMenuTags.mjs';
 export const qrBuilderBranches=['BC1','BC2','BC4','BC5'];
 export const qrBuilderLanguages=['ru','az','en'];
-export const emptyQrBuilder=()=>({categories:{},items:{},offer:null});
+export const emptyQrBuilder=()=>({categories:{},items:{},order:{},offer:null});
 const object=x=>x!==null&&typeof x==='object'&&!Array.isArray(x)?x:{};
-export const cleanQrBuilder=d=>({categories:object(d?.categories),items:object(d?.items),offer:d?.offer&&typeof d.offer==='object'?d.offer:null});
+export const cleanQrBuilder=d=>({categories:object(d?.categories),items:object(d?.items),order:object(d?.order),offer:d?.offer&&typeof d.offer==='object'?d.offer:null});
 export const qrBuilderText=(o,lang)=>String(o?.[lang]||o?.ru||o?.az||o?.en||'');
 export const qrBuilderImage=url=>typeof url==='string'&&(/^(https:\/\/[^\s]+|\/menu\/[\w.-]+)$/i.test(url))?url:'';
+// Apply explicit ordering only within its category, preserving positions of other categories.
+export function qrBuilderApplyOrder(products,doc){
+  const order=object(doc?.order);
+  const groups=new Map();
+  products.forEach((p,i)=>{
+    if(!Array.isArray(order[p.category])||!order[p.category].length)return;
+    if(!groups.has(p.category))groups.set(p.category,[]);
+    groups.get(p.category).push(i);
+  });
+  if(!groups.size)return products;
+  const out=products.slice();
+  for(const [category,indices] of groups){
+    const ranked=new Map();
+    for(const id of order[category])if(typeof id==='string'&&!ranked.has(id))ranked.set(id,ranked.size);
+    const sorted=indices.map(i=>products[i]).sort((a,b)=>(ranked.get(String(a.id))??Infinity)-(ranked.get(String(b.id))??Infinity));
+    indices.forEach((index,i)=>{out[index]=sorted[i];});
+  }
+  return out;
+}
+export function qrBuilderMoveRow(ids,from,to){
+  if(from===to||!ids.includes(from)||!ids.includes(to))return ids;
+  const next=ids.filter(id=>id!==from);
+  next.splice(ids.indexOf(to),0,from);
+  return next;
+}
+export function qrBuilderTransferOrder(order,id,from,to){
+  if(from===to)return order;
+  const next={...object(order)};
+  if(Array.isArray(next[from]))next[from]=next[from].filter(x=>x!==id);
+  if(Array.isArray(next[to]))next[to]=[...next[to].filter(x=>x!==id),id];
+  return next;
+}
 export function qrBuilderOverlay(base,doc,branch){
   const {items,categories}=cleanQrBuilder(doc);
   const out=[];
+  const baseNames=new Map(base.filter(p=>p.categoryNames).map(p=>[p.category,p.categoryNames]));
   for(const original of base){
     const entry=items[original.id];
     if(!entry){out.push(original);continue}
     if(entry.hidden===true)continue;
     const category=entry.category||original.category;
-    const categoryNames=categories[category]?.names||original.categoryNames;
+    const categoryNames=categories[category]?.names||baseNames.get(category);
     out.push({...original,category,categoryNames,
       ...(entry.image?{image:qrBuilderImage(entry.image)||original.image}:{}),
       menuBuilderCopy:entry.copy,menuBuilderNew:entry.kind==='new',
@@ -26,7 +59,7 @@ export function qrBuilderOverlay(base,doc,branch){
       if(known.has(id)||p.kind!=='new'||p.hidden===true||!Number.isSafeInteger(p.price_cents)||p.price_cents<0)continue;
       const name=qrBuilderText(p.copy?.names,'ru');
       if(!name||!p.category)continue;
-      out.push({id,translationKey:id,sourceName:name,sourceDescription:'',name,description:'',category:p.category,categoryNames:categories[p.category]?.names,
+      out.push({id,translationKey:id,sourceName:name,sourceDescription:'',name,description:'',category:p.category,categoryNames:categories[p.category]?.names||baseNames.get(p.category),
         options:[],variants:[],price:p.price_cents/100,baseCents:p.price_cents,image:qrBuilderImage(p.image),branches:[branch],bc4Projected:true,menuBuilderCopy:p.copy,menuBuilderNew:true,
         ...(Array.isArray(p.tags)?{menuBuilderTags:tagCodes(p.tags)}:{})});
     }

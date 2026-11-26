@@ -4,7 +4,7 @@ import {PGlite} from '@electric-sql/pglite';
 import {emptyQrBuilder,qrBuilderOverlay,qrBuilderOffer,qrBuilderLocalize} from '../src/qrMenuBuilder.mjs';
 const cat='cat:55555555-5555-4555-8555-555555555555';
 const id='66666666-6666-4666-8666-666666666666';
-const doc={...emptyQrBuilder(),categories:{[cat]:{names:{ru:'Проба',en:'Sample'}}},items:{[id]:{kind:'new',category:cat,price_cents:1450,hidden:false,image:'https://menu.example.test/food.jpg',tags:['chef'],copy:{names:{ru:'Блюдо',en:'Dish'},descriptions:{en:'Preview only'}}}},offer:{enabled:true,product_id:id,seconds:5}};
+const doc={...emptyQrBuilder(),order:{[cat]:[id]},categories:{[cat]:{names:{ru:'Проба',en:'Sample'}}},items:{[id]:{kind:'new',category:cat,price_cents:1450,hidden:false,image:'https://menu.example.test/food.jpg',tags:['chef'],copy:{names:{ru:'Блюдо',en:'Dish'},descriptions:{en:'Preview only'}}}},offer:{enabled:true,product_id:id,seconds:5}};
 const orig={id:'existing',name:'Old tea',description:'Original description',category:'Чай',price:9.9,variants:[{id:'tea',cents:990}]};
 const overlays=qrBuilderOverlay([orig],{...doc,items:{...doc.items,existing:{kind:'existing',category:cat,copy:{names:{ru:'Чай'},descriptions:{ru:'Крепкий чай'}}}}},'BC5');
 assert.equal(overlays.length,2);
@@ -47,5 +47,6 @@ assert.deepEqual((await pg.query('select price,is_available from public.qr_branc
 assert.equal((await pg.query('select count(*) n from public.qr_menu_catalog')).rows[0].n,1);
 await pg.exec('set role anon');
 assert.equal((await pg.query("select document->'items'->\$1->>'price_cents' p from public.rms_qr_builder_live where branch_code='BC5'",[id])).rows[0].p,'1450');
+assert.deepEqual((await pg.query("select document->'order'->\$1 as ordering from public.rms_qr_builder_live where branch_code='BC5'",[cat])).rows[0].ordering,[id]);
 console.log('PASS guest and draft isolation, native order IDs, integer price, reversible visibility, branch collision, teaser and timer contract');
 }finally{await pg.close();}
