@@ -93,7 +93,7 @@ export function qrBuilderOffer(products, doc, unavailable, lang){
 const featuredText=(value,max)=>typeof value==='string'?value.trim().replace(/\s+/g,' ').slice(0,max):'';
 export function cleanWinterFeatured(o){
   if(!o||typeof o!=='object'||Array.isArray(o))return null;
-  return {enabled:o.enabled===true,product_id:featuredText(o.product_id,160),ru_instrumental:featuredText(o.ru_instrumental,72),
+  return {enabled:o.enabled===true,...(o.restore_classic===true&&o.enabled!==true?{restore_classic:true}:{}),product_id:featuredText(o.product_id,160),ru_instrumental:featuredText(o.ru_instrumental,72),
     slogans:Object.fromEntries(qrBuilderLanguages.map(l=>[l,featuredText(o.slogans?.[l],62)]))};
 }
 const instrumentalByName=new Map([['трюфельный бургер','трюфельным бургером'],['пицца чикен фунги','пиццей Чикен Фунги']]);

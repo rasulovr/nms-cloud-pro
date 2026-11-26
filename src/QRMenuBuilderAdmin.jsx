@@ -165,21 +165,36 @@ function BranchBuilder({branch}){
   }
   const [winterEdit,setWinterEdit]=useState(null);
   const w=winterEdit||doc.winter_featured||cleanWinterFeatured({});
-  const winterProducts=useMemo(()=>branch==='BC5'?qrBuilderOverlay(base,doc,branch).filter(p=>p.is_available!==false&&!p.is_stopped&&qrBuilderImage(p.image)&&locales.every(l=>String(p.menuBuilderCopy?.names?.[l]||p.snapshotCopy?.[l]?.name||'').trim())):[],[base,doc,branch]);
-  const winterProduct=winterProducts.find(p=>p.id===w.product_id);
+  const [winterCategory,setWinterCategory]=useState('');
+  const [winterQuery,setWinterQuery]=useState('');
+  const winterOverlay=useMemo(()=>branch==='BC5'?qrBuilderOverlay(base,doc,branch):[],[base,doc,branch]);
+  const winterById=useMemo(()=>new Map(winterOverlay.map(p=>[p.id,p])),[winterOverlay]);
+  const winterChoices=branch==='BC5'?products.map(p=>{
+    const item=winterById.get(p.id);
+    const names=locales.map(l=>item?.menuBuilderCopy?.names?.[l]||item?.snapshotCopy?.[l]?.name||'');
+    const issues=[];
+    if(p.hidden)issues.push('скрыто');
+    else if(!item||item.is_available===false||item.is_stopped)issues.push('недоступно');
+    if(!p.hidden&&item&&!qrBuilderImage(item.image))issues.push('нет фото');
+    if(!p.hidden&&item&&names.some(n=>!String(n).trim()))issues.push('не все названия AZ/RU/EN');
+    return {...p,item,names,issues};
+  }):[];
+  const query=winterQuery.trim().toLocaleLowerCase('ru');
+  const winterResults=winterChoices.filter(p=>(!winterCategory||p.category===winterCategory)&&(!query||[p.name,...p.names,cats.get(p.category)].some(n=>String(n||'').toLocaleLowerCase('ru').includes(query))));
+  const winterProduct=winterById.get(w.product_id);
   const suggestion=suggestedWinterInstrumental(winterProduct?.menuBuilderCopy?.names?.ru||winterProduct?.snapshotCopy?.ru?.name);
   function updateWinter(patch){setWinterEdit({...w,...patch});}
   async function saveWinter(e){
     e.preventDefault();
-    const next=cleanWinterFeatured(w);
-    if(next.enabled&&!qrWinterFeatured(winterProducts,next,'ru')){
+    const next=cleanWinterFeatured(w.enabled?{...w,restore_classic:false}:w);
+    if(next.enabled&&!qrWinterFeatured(winterOverlay,next,'ru')){
       setStatus('Выбери видимое блюдо с фото и названиями AZ/RU/EN. Укажи русскую форму после «с», без самого предлога.');
       return;
     }
     if(await write({...doc,winter_featured:next}))setWinterEdit(null);
   }
   return <>
-    <div className="qb-toolbar qb-tabs"><nav aria-label="Конструктор">{[['items','Позиции'],['categories','Категории'],['offer','Спецпредложение'],...(branch==='BC5'?[['winter','Зимняя шапка']]:[])].map(([k,v])=><button key={k} type="button" className={tab===k?'small primary':'small'} disabled={busy||Boolean(reorder)&&k!=='categories'} onClick={()=>{setDeleteIntent(null);setTab(k);}}>{v}</button>)}</nav>
+    <div className="qb-toolbar qb-tabs"><nav aria-label="Конструктор">{[['items','Позиции'],['categories','Категории'],['offer','Спецпредложение'],...(branch==='BC5'?[['winter','Шапки']]:[])].map(([k,v])=><button key={k} type="button" className={tab===k?'small primary':'small'} disabled={busy||Boolean(reorder)&&k!=='categories'} onClick={()=>{setDeleteIntent(null);setTab(k);}}>{v}</button>)}</nav>
       <button type="button" className="small primary" disabled={!loaded||busy||Boolean(reorder)||Boolean(pendingDelete)||rev===liveRev} onClick={()=>write(doc,true)}>Опубликовать {branch}</button></div>
     <div role="status" className="qb-status">{status||(!rev?'Действующее меню без изменений':rev===liveRev?'Опубликовано':'Есть неопубликованный черновик')}</div>
     {loaded&&tab==='categories'&&<><form className="qb-form" onSubmit={saveCategory}><h4>{categoryId?'Редактировать свою категорию':'Новая категория'}</h4>
@@ -237,15 +252,23 @@ function BranchBuilder({branch}){
       <ul className="qb-list">{matching.slice(0,limit).map(p=><li key={p.id}><span><b>{p.name}</b><small>{cats.get(p.category)}{p.hidden?' · Скрыто':''}{tagsForProduct({categoryNames:{ru:cats.get(p.category)}},p.draft?.tags??oldTags[p.id]).map(k=>' · '+tagLabels[k])}</small></span><button type="button" className="small" onClick={()=>openItem(p)}>Редактировать</button></li>)}</ul>
       {!matching.length&&<p>Позиций не найдено</p>}{matching.length>limit&&<button type="button" className="small" onClick={()=>setLimit(n=>n+35)}>Показать ещё</button>}</>}
     {loaded&&branch==='BC5'&&tab==='winter'&&<form className="qb-form" onSubmit={saveWinter}>
-      <h4>Блюдо в зимней шапке BC5</h4>
-      <p>Фото берётся из карточки блюда. Если настройка выключена или блюдо скрыто, в шапке остаётся глинтвейн.</p>
-      <label><input type="checkbox" checked={w.enabled} disabled={busy} onChange={e=>updateWinter({enabled:e.target.checked})}/> Показывать выбранное блюдо</label>
+      <h4>Шапка QR-меню BC5</h4>
+      <p>Фото и название берутся из карточки. Без новой настройки остаётся текущая шапка с глинтвейном. Чтобы вернуть классическую шапку, отключи или очисти выбор, сохрани черновик и опубликуй BC5.</p>
+      <label><input type="checkbox" checked={w.enabled} disabled={busy} onChange={e=>updateWinter({enabled:e.target.checked,restore_classic:!e.target.checked})}/> Показывать выбранное блюдо</label>
       <div className="qb-row">
-        <label>Блюдо<select value={w.product_id} disabled={busy||!w.enabled} onChange={e=>updateWinter({product_id:e.target.value,ru_instrumental:''})}>
-          <option value="">Выбрать блюдо</option>{w.product_id&&!winterProduct&&<option value={w.product_id} disabled>Блюдо недоступно</option>}{winterProducts.map(p=><option key={p.id} value={p.id}>{p.menuBuilderCopy?.names?.ru||p.snapshotCopy.ru.name} · {cats.get(p.category)||p.category}</option>)}
+        <label>Категория блюд<select value={winterCategory} onChange={e=>setWinterCategory(e.target.value)}>
+          <option value="">Все категории</option>{[...cats].map(([id,name])=><option key={id} value={id}>{name}</option>)}
+        </select></label>
+        <label>Поиск блюда<input type="search" value={winterQuery} onChange={e=>setWinterQuery(e.target.value)}/></label>
+        <label>Блюдо<select value={w.product_id} disabled={busy} onChange={e=>updateWinter(e.target.value?{enabled:true,product_id:e.target.value,ru_instrumental:'',restore_classic:false}:{enabled:false,product_id:'',ru_instrumental:'',restore_classic:true})}>
+          <option value="">Без блюда</option>
+          {w.product_id&&!winterResults.some(p=>p.id===w.product_id)&&<option value={w.product_id} disabled>{winterChoices.find(p=>p.id===w.product_id)?.name||'Блюдо больше не в меню'}</option>}
+          {winterResults.map(p=><option key={p.id} value={p.id} disabled={Boolean(p.issues.length)}>{p.name} · {cats.get(p.category)||p.category}{p.issues.length?' ('+p.issues.join(', ')+')':''}</option>)}
         </select></label>
         <label>Форма после «с» (RU)<input value={w.ru_instrumental} maxLength={72} disabled={busy||!w.enabled} placeholder={suggestion||'например, трюфельным бургером'} onChange={e=>updateWinter({ru_instrumental:e.target.value})}/></label>
       </div>
+      <p>Найдено позиций: {winterResults.length} из {winterChoices.length}. Недоступные позиции видны в списке с причиной.</p>
+      <div><button type="button" className="small" disabled={busy} onClick={()=>updateWinter({enabled:false,product_id:'',ru_instrumental:'',slogans:{},restore_classic:true})}>Вернуть исходную шапку</button>{w.restore_classic&&<p>Исходная шапка выбрана. Сохрани черновик и опубликуй BC5.</p>}</div>
       {w.enabled&&winterProduct&&<img width="160" src={winterProduct.image} alt="Фото выбранного блюда из меню"/>}
       {w.enabled&&<Localized label="Лозунг, необязательно" value={w.slogans} onChange={slogans=>updateWinter({slogans})} limit={62}/>}
       <div><button type="submit" className="small primary" disabled={busy}>Сохранить в черновик</button></div>

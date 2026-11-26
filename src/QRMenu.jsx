@@ -342,7 +342,8 @@ export default function QRMenu() {
   const bc4Only = String(branchQuery[0] || "").trim().toUpperCase() === "BC4";
   const cartOnly = bc4Only || bc5Only;
   // Keep the classic header available without touching branch data or guest preferences.
-  const winterHeader = branch === "BC5" && new URLSearchParams(window.location.search).get("header") !== "classic";
+  const [builderLive, setBuilderLive] = useState(null);
+  const winterHeader = branch === "BC5" && new URLSearchParams(window.location.search).get("header") !== "classic" && !(builderLive?.winter_featured?.restore_classic === true && builderLive.winter_featured.enabled !== true);
   const [bc4Variant, setBc4Variant] = useState("");
   const [bowlCounts,setBowlCounts]=useState({});
   const [table, setTable] = useState("");
@@ -356,7 +357,6 @@ export default function QRMenu() {
   const [notice, setNotice] = useState("");
   const [lastAddedId, setLastAddedId] = useState(null);
   const [products, setProducts] = useState([]);
-  const [builderLive, setBuilderLive] = useState(null);
   const [productTags, setProductTags] = useState({});
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
