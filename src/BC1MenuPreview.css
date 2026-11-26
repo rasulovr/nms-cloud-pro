@@ -234,15 +234,24 @@ body .app-shell[data-bc1-browse="menu"] .product-card .add {
   backdrop-filter:none !important;
 }
 
-body .app-shell[data-bc1-browse="menu"] .product-card .add span {
+/* Catalog add control: dark face and twin outlines from the dish back button. */
+body .app-shell[data-bc1-browse="menu"] .product-card .product-footer > .add > span {
   display:grid !important;
   place-items:center !important;
-  width:30px !important;
-  height:30px !important;
-  border-radius:9px !important;
-  font:300 23px/1 Arial, sans-serif !important;
-  color:#80604d !important;
-  background:#f1e9e3 !important;
+  box-sizing:border-box;
+  width:34px !important;
+  height:34px !important;
+  border:1px solid #ffffff55 !important;
+  border-radius:11px !important;
+  outline:2px solid #38836d;
+  outline-offset:2px;
+  font:400 23px/1 Arial, sans-serif !important;
+  color:#fff !important;
+  background:#302c2b !important;
+}
+
+body .app-shell[data-bc1-browse="menu"] .product-card .product-footer > .add:disabled > span {
+  opacity:.48;
 }
 
 body .app-shell[data-bc1-browse="menu"] .product-card .stepper {
