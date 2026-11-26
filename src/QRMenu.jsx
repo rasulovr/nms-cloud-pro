@@ -1111,7 +1111,7 @@ export default function QRMenu() {
     onClick={() => approvedMenuDesign || branch === "BC1" ? navigateBc1(id) : setScreen(id)}
   >{fixedGuestNavigation && React.createElement(bc1NavIcons[id], { size: 20, "aria-hidden": true })}{label}</button>)}
       </nav>;
-  return <main data-approved-qr-design={approvedMenuDesign ? "true" : undefined} data-bc1-browse={fixedGuestNavigation ? screen : undefined} data-motion-phase={branch === "BC1" ? dayPhase : undefined} className={`app-shell theme-${visualThemePhase} weather-theme-${atmosphere} menu-view-${menuView} menu-background-${backgroundTheme}`}>
+  return <main data-bc5-menu={branch === "BC5" ? "true" : undefined} data-approved-qr-design={approvedMenuDesign ? "true" : undefined} data-bc1-browse={fixedGuestNavigation ? screen : undefined} data-motion-phase={branch === "BC1" ? dayPhase : undefined} className={`app-shell theme-${visualThemePhase} weather-theme-${atmosphere} menu-view-${menuView} menu-background-${backgroundTheme}`}>
       <header className={`hero qr-premium-hero${approvedMenuDesign || branch === "BC1" ? " qr-header-graphite-glass" : ""}${winterHeader ? " qr-bc5-winter" : ""}`}>
         {winterHeader ? <div className="qr-winter-art" aria-hidden="true" /> : <div className="hero-sky" aria-hidden="true">
           {weatherOffer && <WeatherVisual kind={weatherOffer.kind} phase={dayPhase} />}

@@ -1,7 +1,7 @@
 /* Seasonal art is limited to the BC5 guest masthead. Classic artwork remains available. */
 main.app-shell[class] header.qr-premium-hero.qr-bc5-winter {
   position: relative !important;
-  min-height: clamp(320px, 97vw, 440px) !important;
+  min-height: clamp(284px, 87vw, 390px) !important;
   width: 100% !important;
   margin: 0 !important;
   border-radius: 0 0 24px 24px !important;
@@ -17,7 +17,7 @@ main.app-shell header.qr-premium-hero.qr-bc5-winter::after { display: none !impo
   z-index: -1;
   pointer-events: none;
   background: url("/menu/bc5-winter-frost.svg") center top / 100% 100% no-repeat,
-    linear-gradient(180deg, #15212a53 0%, #25182328 36%, #24192349 57%, #19151de8 100%),
+    linear-gradient(180deg, #14212b6b 0%, #20162243 36%, #2117255c 57%, #19151dee 100%),
     url("/menu/bc5-winter-mulled.webp") center / cover no-repeat;
 }
 main.app-shell[class] .qr-premium-hero.qr-bc5-winter .language-switch {
@@ -79,5 +79,23 @@ main.app-shell[class] .qr-premium-hero.qr-bc5-winter .hero-reference-weather > *
   color: #f8faff !important;
 }
 @media (min-width: 890px) {
-  .qr-bc5-winter .qr-winter-art { background-position: center top, center, center top; }
+  .qr-bc5-winter .qr-winter-art {
+    background: radial-gradient(ellipse at center, #63564b, #2e2b2a 50%, #18252b 100%);
+  }
+  .qr-bc5-winter .qr-winter-art::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: url("/menu/bc5-winter-mulled.webp") center / auto 100% no-repeat;
+    opacity: .91;
+    -webkit-mask-image: linear-gradient(90deg, transparent calc(50% - 390px), #000 calc(50% - 286px), #000 calc(50% + 286px), transparent calc(50% + 390px));
+    mask-image: linear-gradient(90deg, transparent calc(50% - 390px), #000 calc(50% - 286px), #000 calc(50% + 286px), transparent calc(50% + 390px));
+  }
+  .qr-bc5-winter .qr-winter-art::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: url("/menu/bc5-winter-frost.svg") center top / 100% 100% no-repeat,
+      linear-gradient(180deg, #14212b62, #20162230 42%, #19151deb);
+  }
 }
