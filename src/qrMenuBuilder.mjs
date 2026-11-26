@@ -18,9 +18,13 @@ export function qrBuilderApplyOrder(products,doc){
   if(!groups.size)return products;
   const out=products.slice();
   for(const [category,indices] of groups){
+    const sequence=order[category], unranked=sequence.indexOf(null);
     const ranked=new Map();
-    for(const id of order[category])if(typeof id==='string'&&!ranked.has(id))ranked.set(id,ranked.size);
-    const sorted=indices.map(i=>products[i]).sort((a,b)=>(ranked.get(String(a.id))??Infinity)-(ranked.get(String(b.id))??Infinity));
+    sequence.forEach((id,index)=>{if(typeof id==='string'&&!ranked.has(id))ranked.set(id,index);});
+    // A null marker leaves the ordinary menu order in place before an appended
+    // block. In native menus that default can change with the time of day.
+    const defaultRank=unranked===-1?Infinity:unranked;
+    const sorted=indices.map(i=>products[i]).sort((a,b)=>(ranked.get(String(a.id))??defaultRank)-(ranked.get(String(b.id))??defaultRank));
     indices.forEach((index,i)=>{out[index]=sorted[i];});
   }
   return out;

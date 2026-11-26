@@ -7,6 +7,7 @@ import QRPaperTag from './QRPaperTag';
 import {tagLabels,tagCodes,tagsForProduct} from './qrMenuTags.mjs';
 import {emptyQrBuilder,cleanQrBuilder,qrBuilderBranches,qrBuilderLanguages,qrBuilderText,qrBuilderImage,qrBuilderApplyOrder,qrBuilderMoveRow,qrBuilderTransferOrder,qrBuilderOverlay,cleanWinterFeatured,qrWinterFeatured,suggestedWinterInstrumental} from './qrMenuBuilder.mjs';
 import './QRMenuBuilderAdmin.css';
+import {qrBuilderCanRemoveCategory,qrBuilderCategorySources,qrBuilderDeleteCategory} from './qrMenuCategoryDeletion.mjs';
 import {productFactsKey,productFactsForm,parseProductFacts,qrProductFacts} from './qrProductFacts.mjs';
 
 const locales=qrBuilderLanguages;
@@ -51,6 +52,7 @@ function BranchBuilder({branch}){
   const [categoryId,setCategoryId]=useState(''),[catNames,setCatNames]=useState({});
   const [editId,setEditId]=useState(''),[edit,setEdit]=useState(blank);
   const [categoryView,setCategoryView]=useState(''),[reorder,setReorder]=useState(null);
+  const [deleteIntent,setDeleteIntent]=useState(null);
   const [dragging,setDragging]=useState(''),[over,setOver]=useState('');
   useEffect(()=>{
     let active=true;
@@ -67,7 +69,7 @@ function BranchBuilder({branch}){
     }).catch(e=>{if(active)setStatus(errText(e));});
     return()=>{active=false;};
   },[branch]);
-  const cats=useMemo(()=>new Map([...base.map(p=>[p.category,qrBuilderText(p.categoryNames,'ru')||localizeCategory(p.category,'ru')||p.category]),...Object.entries(doc.categories).map(([k,x])=>[k,qrBuilderText(x.names,'ru')])]),[base,doc.categories]);
+  const cats=useMemo(()=>new Map([...qrBuilderCategorySources(base,doc.items).map(p=>[p.category,qrBuilderText(p.categoryNames,'ru')||localizeCategory(p.category,'ru')||p.category]),...Object.entries(doc.categories).map(([k,x])=>[k,qrBuilderText(x.names,'ru')])]),[base,doc.categories,doc.items]);
   const byId=useMemo(()=>new Map(base.map(p=>[String(p.id),p])),[base]);
   const products=useMemo(()=>{
     const ids=[...new Set([...byId.keys(),...Object.keys(doc.items)])];
@@ -79,12 +81,15 @@ function BranchBuilder({branch}){
   const matching=qrBuilderApplyOrder(products,doc).filter(p=>(!filter||p.category===filter)&&(!search||[p.name,cats.get(p.category)].some(x=>String(x||'').toLocaleLowerCase('ru').includes(search.trim().toLocaleLowerCase('ru')))));
   const activeCategory=cats.has(categoryView)?categoryView:(cats.keys().next().value||'');
   const visibleCategoryProducts=qrBuilderApplyOrder(products.filter(p=>p.category===activeCategory),reorder?{order:{[activeCategory]:reorder}}:doc);
-  function chooseCategory(id){setCategoryView(id);setReorder(null);setDragging('');setOver('');}
+  const canRemoveCategory=qrBuilderCanRemoveCategory(doc,base,activeCategory);
+  const pendingDelete=deleteIntent?.source===activeCategory?deleteIntent:null;
+  const deleteDestinations=pendingDelete?[...cats].filter(([id])=>id!==activeCategory):[];
+  function chooseCategory(id){setCategoryView(id);setReorder(null);setDragging('');setOver('');setDeleteIntent(null);}
   function showCategoryItem(p){openItem(p);setFilter(activeCategory);setSearch('');setTab('items');}
   function moveRow(from,to){
     const ids=visibleCategoryProducts.map(p=>p.id);
     const next=qrBuilderMoveRow(ids,from,to);
-    if(next!==ids)setReorder(next);
+    if(next!==ids&&!pendingDelete)setReorder(next);
     setDragging('');setOver('');
   }
   async function saveOrder(){
@@ -111,6 +116,19 @@ function BranchBuilder({branch}){
     e.preventDefault();const names=texts(catNames);if(!Object.keys(names).length){setStatus('Укажи название категории.');return;}
     const id=categoryId||'cat:'+crypto.randomUUID();
     if(await write({...doc,categories:{...doc.categories,[id]:{names}}})){chooseCategory(id);setCategoryId('');setCatNames({});}
+  }
+  async function removeCategory(e){
+    e.preventDefault();
+    if(!pendingDelete||busy||reorder)return;
+    const {source,destination}=pendingDelete;
+    const planned=qrBuilderDeleteCategory({doc,base,source,destination});
+    if(planned.error){setStatus(planned.error);return;}
+    if(await write(planned.document)){
+      chooseCategory(destination);
+      if(filter===source)setFilter(destination);
+      if(edit.category===source)setEdit(current=>({...current,category:destination}));
+      if(categoryId===source){setCategoryId('');setCatNames({});}
+    }
   }
   async function saveItem(e){
     e.preventDefault();const names=texts(edit.names),price=cents(edit.price);
@@ -161,29 +179,41 @@ function BranchBuilder({branch}){
     if(await write({...doc,winter_featured:next}))setWinterEdit(null);
   }
   return <>
-    <div className="qb-toolbar qb-tabs"><nav aria-label="Конструктор">{[['items','Позиции'],['categories','Категории'],['offer','Спецпредложение'],...(branch==='BC5'?[['winter','Зимняя шапка']]:[])].map(([k,v])=><button key={k} type="button" className={tab===k?'small primary':'small'} disabled={busy||Boolean(reorder)&&k!=='categories'} onClick={()=>setTab(k)}>{v}</button>)}</nav>
-      <button type="button" className="small primary" disabled={!loaded||busy||Boolean(reorder)||rev===liveRev} onClick={()=>write(doc,true)}>Опубликовать {branch}</button></div>
+    <div className="qb-toolbar qb-tabs"><nav aria-label="Конструктор">{[['items','Позиции'],['categories','Категории'],['offer','Спецпредложение'],...(branch==='BC5'?[['winter','Зимняя шапка']]:[])].map(([k,v])=><button key={k} type="button" className={tab===k?'small primary':'small'} disabled={busy||Boolean(reorder)&&k!=='categories'} onClick={()=>{setDeleteIntent(null);setTab(k);}}>{v}</button>)}</nav>
+      <button type="button" className="small primary" disabled={!loaded||busy||Boolean(reorder)||Boolean(pendingDelete)||rev===liveRev} onClick={()=>write(doc,true)}>Опубликовать {branch}</button></div>
     <div role="status" className="qb-status">{status||(!rev?'Действующее меню без изменений':rev===liveRev?'Опубликовано':'Есть неопубликованный черновик')}</div>
     {loaded&&tab==='categories'&&<><form className="qb-form" onSubmit={saveCategory}><h4>{categoryId?'Редактировать свою категорию':'Новая категория'}</h4>
       <Localized label="Название" value={catNames} onChange={setCatNames} limit={100}/>
-      <div><button type="submit" className="small primary" disabled={busy||Boolean(reorder)}>Сохранить в черновик</button>{categoryId&&<button type="button" className="small" onClick={()=>{setCategoryId('');setCatNames({});}}>Отмена</button>}</div></form>
+      <div><button type="submit" className="small primary" disabled={busy||Boolean(reorder)||Boolean(pendingDelete)}>Сохранить в черновик</button>{categoryId&&<button type="button" className="small" onClick={()=>{setCategoryId('');setCatNames({});}}>Отмена</button>}</div></form>
       <section className="qb-form qb-category-items" aria-label="Позиции в категории">
         <div className="qb-toolbar"><label>Категория<select value={activeCategory} disabled={busy||Boolean(reorder)} onChange={e=>chooseCategory(e.target.value)}>{[...cats].map(([id,n])=><option key={id} value={id}>{n}</option>)}</select></label>
-          {doc.categories[activeCategory]&&<button type="button" className="small" disabled={busy||Boolean(reorder)} onClick={()=>{setCategoryId(activeCategory);setCatNames(doc.categories[activeCategory].names);}}>Редактировать название</button>}
-          <button type="button" className="small" disabled={busy||Boolean(reorder)||!activeCategory} onClick={()=>{setFilter(activeCategory);setSearch('');openItem({id:'new',category:activeCategory});setTab('items');}}>+ Позиция в категории</button></div>
+          {doc.categories[activeCategory]&&<button type="button" className="small" disabled={busy||Boolean(reorder)||Boolean(pendingDelete)} onClick={()=>{setCategoryId(activeCategory);setCatNames(doc.categories[activeCategory].names);}}>Редактировать название</button>}
+          <button type="button" className="small" disabled={busy||Boolean(reorder)||Boolean(pendingDelete)||!activeCategory} onClick={()=>{setFilter(activeCategory);setSearch('');openItem({id:'new',category:activeCategory});setTab('items');}}>+ Позиция в категории</button>
+          {activeCategory&&<button type="button" className="small qb-delete-action" disabled={busy||Boolean(reorder)||!canRemoveCategory||Boolean(pendingDelete)} aria-describedby={!canRemoveCategory?'qb-category-protected':undefined} onClick={()=>setDeleteIntent({source:activeCategory,destination:''})}>Удалить категорию</button>}</div>
+        {activeCategory&&!canRemoveCategory&&<p className="qb-order-help" id="qb-category-protected">Системную категорию нельзя удалить в конструкторе. Из неё можно перенести позиции.</p>}
+        {pendingDelete&&<form className="qb-form qb-category-delete" aria-label="Подтверждение удаления категории" onSubmit={removeCategory}>
+          <h4>Удалить категорию «{cats.get(activeCategory)}»?</h4>
+          {visibleCategoryProducts.length>0?<>
+            <p>Все позиции ({visibleCategoryProducts.length}), включая скрытые, будут перенесены в конец выбранной категории в текущем порядке. Ни одно блюдо не удалится.</p>
+            {deleteDestinations.length>0?<label>Куда перенести позиции<select required autoFocus value={pendingDelete.destination} disabled={busy} onChange={e=>setDeleteIntent({...pendingDelete,destination:e.target.value})}><option value="">Выбрать категорию</option>{deleteDestinations.map(([id,name])=><option key={id} value={id}>{name}</option>)}</select></label>:<p>Сначала создай другую категорию для переноса.</p>}
+          </>:<p>Категория пуста. Ни одно блюдо не удалится.</p>}
+          <p className="qb-order-help">Правка сохранится в черновик. Гости увидят её только после публикации меню {branch}.</p>
+          <div className="qb-row"><button type="button" className="small" autoFocus={!visibleCategoryProducts.length||!deleteDestinations.length} disabled={busy} onClick={()=>setDeleteIntent(null)}>Отмена</button>
+            <button type="submit" className="small qb-delete-action" disabled={busy||(visibleCategoryProducts.length>0&&!pendingDelete.destination)}>{visibleCategoryProducts.length>0?'Перенести и удалить в черновике':'Удалить в черновике'}</button></div>
+        </form>}
         <h4>{cats.get(activeCategory)} · {visibleCategoryProducts.length}</h4>
         {visibleCategoryProducts.length>1&&<p className="qb-order-help">Потяни за ручку слева или воспользуйся стрелками. Сохрани порядок в черновик, затем опубликуй меню.</p>}
         {!visibleCategoryProducts.length&&<p>В этой категории пока нет блюд. Добавь позицию или перенеси сюда существующую через поле «Категория».</p>}
         <ol className="qb-list qb-order-list">{visibleCategoryProducts.map((p,index)=><li key={p.id} data-dragging={dragging===p.id} data-over={over===p.id&&dragging!==p.id}
           onDragOver={e=>{if(dragging){e.preventDefault();e.dataTransfer.dropEffect='move';setOver(p.id);}}}
           onDrop={e=>{if(dragging){e.preventDefault();moveRow(dragging,p.id);}}}>
-          <span className="qb-order-grip" draggable={!busy&&visibleCategoryProducts.length>1} title="Тяни вверх или вниз"
+          <span className="qb-order-grip" draggable={!busy&&!pendingDelete&&visibleCategoryProducts.length>1} title="Тяни вверх или вниз"
             onDragStart={e=>{e.dataTransfer.setData('text/plain',p.id);e.dataTransfer.effectAllowed='move';setDragging(p.id);}}
             onDragEnd={()=>{setDragging('');setOver('');}}><GripVertical size={18} aria-hidden="true"/></span>
           <span className="qb-order-index">{index+1}</span><span className="qb-order-name"><b>{p.name}</b>{p.hidden&&<small>Скрыто</small>}</span>
-          <div className="qb-order-buttons"><button type="button" className="small" aria-label={p.name+': выше'} disabled={busy||index===0} onClick={()=>moveRow(p.id,visibleCategoryProducts[index-1].id)}><ArrowUp size={15}/></button>
-          <button type="button" className="small" aria-label={p.name+': ниже'} disabled={busy||index===visibleCategoryProducts.length-1} onClick={()=>moveRow(p.id,visibleCategoryProducts[index+1].id)}><ArrowDown size={15}/></button></div>
-          <button type="button" className="small" disabled={busy||Boolean(reorder)} onClick={()=>showCategoryItem(p)}>Редактировать</button></li>)}</ol>
+          <div className="qb-order-buttons"><button type="button" className="small" aria-label={p.name+': выше'} disabled={busy||Boolean(pendingDelete)||index===0} onClick={()=>moveRow(p.id,visibleCategoryProducts[index-1].id)}><ArrowUp size={15}/></button>
+          <button type="button" className="small" aria-label={p.name+': ниже'} disabled={busy||Boolean(pendingDelete)||index===visibleCategoryProducts.length-1} onClick={()=>moveRow(p.id,visibleCategoryProducts[index+1].id)}><ArrowDown size={15}/></button></div>
+          <button type="button" className="small" disabled={busy||Boolean(reorder)||Boolean(pendingDelete)} onClick={()=>showCategoryItem(p)}>Редактировать</button></li>)}</ol>
         {reorder&&<div className="qb-toolbar"><button type="button" className="small primary" disabled={busy} onClick={saveOrder}>Сохранить порядок в черновик</button><button type="button" className="small" disabled={busy} onClick={()=>setReorder(null)}>Отменить перестановку</button></div>}
       </section></>}
     {loaded&&tab==='items'&&<><div className="qb-toolbar"><label>Поиск позиции<input type="search" value={search} onChange={e=>{setSearch(e.target.value);setLimit(35);}}/></label><label>Категория<select value={filter} onChange={e=>{setFilter(e.target.value);setLimit(35);}}><option value="">Все категории</option>{[...cats].map(([id,n])=><option key={id} value={id}>{n}</option>)}</select></label><button className="small primary" type="button" onClick={()=>openItem()}>+ Новая позиция</button></div>

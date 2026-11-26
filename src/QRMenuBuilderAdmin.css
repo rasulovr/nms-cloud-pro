@@ -36,3 +36,5 @@
   .qb-order-list li {gap:4px;}
   .qb-order-index {display:none;}
 }
+.qr-builder .qb-category-delete{border-color:#b16655;}
+.qr-builder .qb-delete-action:not(:disabled){color:var(--danger,#9b3528);border-color:#b16655;}
