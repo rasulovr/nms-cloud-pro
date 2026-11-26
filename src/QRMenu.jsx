@@ -31,18 +31,18 @@ const bc4CopyOnly = {
 const bc5TruffleBurgerIds = new Set(["new:4:truffle-burger", "27:24:truffle-burger"]);
 const bc5TruffleBurgerFactsLabels = {
   az: ["Kalori", "≈ 740 kkal", "Hazırlanma vaxtı", "10–15 dəq.", "Allergenlər",
-    "Tərkibində qlüten, süd və süd məhsulları, yumurta, xardal və küncüt var. Trüfel (göbələk) fərdi allergik reaksiya yarada bilər."],
+    "Qlüten, süd, yumurta, xardal, küncüt"],
   ru: ["Калорийность", "≈ 740 ккал", "Время приготовления", "10–15 мин", "Аллергены",
-    "Содержит глютен, молоко и молочные продукты, яйца, горчицу и кунжут. Трюфель (грибы) может вызвать индивидуальную реакцию."],
+    "Глютен, молоко, яйца, горчица, кунжут"],
   en: ["Calories", "≈ 740 kcal", "Preparation time", "10–15 min", "Allergens",
-    "Contains gluten, milk and dairy products, eggs, mustard and sesame. Truffle (a fungus) may cause an individual allergic reaction."],
+    "Gluten, milk, eggs, mustard, sesame"],
 };
 function BC5TruffleBurgerFacts({ language }) {
   const [calories, energy, time, minutes, allergens, list] = bc5TruffleBurgerFactsLabels[language] || bc5TruffleBurgerFactsLabels.en;
   return <dl className="bc1-detail-facts">
     <div><dt>{calories}</dt><dd>{energy}</dd></div>
     <div><dt>{time}</dt><dd>{minutes}</dd></div>
-    <div className="bc1-detail-allergens"><dt>{allergens}</dt><dd>{list}</dd></div>
+    <div className="bc1-detail-allergens"><dt>{allergens}</dt><dd style={{ fontWeight: 400 }}>{list}</dd></div>
   </dl>;
 }
 const bc1NavIcons = { menu: Utensils, cart: ShoppingBag, bill: ReceiptText, loyalty: BadgePercent, info: Info, settings: Settings };
