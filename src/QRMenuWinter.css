@@ -139,8 +139,8 @@ html body main.app-shell[data-bc1-browse="menu"]:has(> .qr-bc5-winter) > .bc1-ca
   background: transparent !important;
 }
 html body main.app-shell[data-bc1-browse="menu"]:has(> .qr-bc5-winter) > .bc1-catalog .product-card > .product-body {
-  background: rgba(255, 255, 255, .78) !important;
+  background: rgba(255, 255, 255, .20) !important;
 }
 html body main.app-shell[data-bc1-browse="menu"]:has(> .qr-bc5-winter) > .bc1-catalog .product-card > .product-body > .qr-card-description {
-  color: #606a72 !important;
+  color: #4d5962 !important;
 }
