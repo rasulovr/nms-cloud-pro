@@ -1,5 +1,5 @@
 export const tagLabels = {
-  new: 'New', chef: 'Chef’s Special', bestseller: 'Bestseller', sale: 'Sale'
+  new: 'New', chef: 'Chef’s Choice', bestseller: 'Bestseller', sale: 'Sale'
 };
 const codes = Object.keys(tagLabels);
 export const tagCodes = (value) => codes.filter(code => Array.isArray(value) && value.includes(code));

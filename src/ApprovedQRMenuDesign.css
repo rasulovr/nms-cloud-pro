@@ -280,57 +280,62 @@ dialog.qr-category-sheet::backdrop {background:#1c151273;}
 
 .app-shell .product-card .food-photo .qr-product-tags {
   position:absolute;
-  top:10px;
-  left:12px;
+  top:12px;
+  right:12px;
   z-index:3;
   display:flex;
-  flex-wrap:wrap;
-  gap:6px 9px;
+  flex-direction:column;
+  align-items:flex-end;
+  gap:8px;
   max-width:calc(100% - 24px);
-  padding:2px 0 2px 4px;
   pointer-events:none;
 }
 .qr-product-tags > span {
-  --qr-tag-paper:#e9a456;
-  --qr-tag-ink:#352418;
+  --qr-tag-paper:#f3b647;
+  --qr-tag-ink:#372511;
   position:relative;
   display:inline-flex;
   align-items:center;
-  padding:6px 10px 6px 14px;
-  border-radius:4px 9px 9px 4px;
-  border:1px solid #fff4;
-  background:var(--qr-tag-paper);
+  isolation:isolate;
+  padding:7px 24px 7px 11px;
   color:var(--qr-tag-ink);
-  box-shadow:0 2px 8px #21160f42;
   font-size:12px;
-  font-weight:780;
-  line-height:1.08;
+  font-weight:800;
+  line-height:1.05;
   letter-spacing:.045em;
   text-transform:uppercase;
   white-space:nowrap;
+  transform:rotate(4deg);
+  filter:drop-shadow(1px 2px 2px #1c100e70);
 }
 .qr-product-tags > span::before {
   content:"";
   position:absolute;
-  top:50%;
-  left:-6px;
-  width:13px;
-  height:6px;
-  border:1px solid currentColor;
-  border-radius:50%;
-  transform:translateY(-50%) rotate(-25deg);
+  inset:0;
+  z-index:-1;
+  border-radius:3px 0 0 3px;
+  clip-path:polygon(0 0,calc(100% - 13px) 0,100% 50%,calc(100% - 13px) 100%,0 100%);
+  background:
+    radial-gradient(circle at calc(100% - 11px) 50%,#352316 0 2px,#ffedc3ad 2.2px 3.1px,transparent 3.4px),
+    repeating-linear-gradient(31deg,#fff1 0 1px,transparent 1px 3px),
+    linear-gradient(155deg,#ffffff35,transparent 42%,#492d231c),
+    var(--qr-tag-paper);
 }
-.qr-product-tags > span[data-tag="chef"] {--qr-tag-paper:#864d39;--qr-tag-ink:#fff1e1;}
-.qr-product-tags > span[data-tag="bestseller"] {--qr-tag-paper:#d5dda9;--qr-tag-ink:#34401f;}
-.qr-product-tags > span[data-tag="sale"] {--qr-tag-paper:#eea58e;--qr-tag-ink:#55281d;}
+.qr-product-tags > span::after {
+  content:"";
+  position:absolute;
+  width:17px;height:15px;
+  right:-6px;top:calc(50% - 10px);
+  background:center/contain no-repeat url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 17 15' fill='none'%3E%3Cpath d='M1.5 10.5C6 13 14 10 15 4.5c1.2-6-8.3-1.8-10.7 2.5-1 1.9.4 3.7 2.6 2.3' stroke='%2356392b' stroke-width='1.35' stroke-linecap='round'/%3E%3Cpath d='M3 10.9c4.2.4 10.3-2.6 11.1-6.4' stroke='%23f2dab0' stroke-width='.55' stroke-linecap='round'/%3E%3C/svg%3E");
+}
+.qr-product-tags > span[data-tag="chef"] {--qr-tag-paper:#a14b39;--qr-tag-ink:#fff6e6;}
+.qr-product-tags > span[data-tag="bestseller"] {--qr-tag-paper:#bfd27d;--qr-tag-ink:#283115;}
+.qr-product-tags > span[data-tag="sale"] {--qr-tag-paper:#eb877b;--qr-tag-ink:#471d1d;}
 
 html body main.app-shell[data-approved-qr-design][data-bc1-browse="menu"].menu-view-showcase .product-card .product-title {margin-bottom:3px !important;}
 html body main.app-shell[data-approved-qr-design][data-bc1-browse="menu"].menu-view-showcase .product-card .product-title h3 {
-  font-size:clamp(23px,3.5vw,31px) !important;
+  font-size:14px !important;
   font-weight:700 !important;
-}
-@media (max-width:680px) {
-  html body main.app-shell[data-approved-qr-design][data-bc1-browse="menu"].menu-view-showcase .product-card .product-title h3 {font-size:clamp(22px,6.4vw,28px) !important;}
 }
 
 /* Preview copy never grows beyond two lines; full text stays in the dish detail. */
