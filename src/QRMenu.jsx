@@ -17,7 +17,7 @@ import {projectBC5,adjustBowl,bowlLine,bowlOptions} from "./bc5MenuProjection.mj
 import "./bc5Bowl.css";
 import { isNewProduct, tagsForProduct } from "./qrMenuTags.mjs";
 import { qrMenuDisplayLocale, qrMenuTitle } from "./qrMenuTitle.mjs";
-import { qrBuilderOverlay, qrBuilderLocalize, qrBuilderOffer, qrBuilderText, qrBuilderApplyOrder } from "./qrMenuBuilder.mjs";
+import { qrBuilderOverlay, qrBuilderLocalize, qrBuilderOffer,qrWinterFeatured, qrBuilderText, qrBuilderApplyOrder } from "./qrMenuBuilder.mjs";
 import QRPaperTag from "./QRPaperTag";
 import BC1SpecialOffer from "./BC1SpecialOffer";
 import { startBakuWeather, currentWeatherPresentation } from "./bc1Weather";
@@ -401,6 +401,20 @@ export default function QRMenu() {
   const unavailable = useMemo(() => products.filter((item) => item.is_available === false || item.is_stopped).map((item) => item.id), [products]);
   const localizeCurrentProduct = (product) => qrBuilderLocalize(product, product.bc4Projected ? localizeBC4(product, language) : localizeProduct(product, language), language);
   const localizedProducts = useMemo(() => products.map(localizeCurrentProduct), [products, language]);
+  const winterFeature=winterHeader?qrWinterFeatured(products,builderLive?.winter_featured,language,unavailable):null;
+  const featuredImage=winterFeature?.image;
+  const [loadedFeaturedImage,setLoadedFeaturedImage]=useState(null);
+  useEffect(()=>{
+    if(!featuredImage)return;
+    let active=true;
+    const probe=new Image();
+    probe.onload=()=>{if(active)setLoadedFeaturedImage(featuredImage);};
+    probe.onerror=()=>{if(active)setLoadedFeaturedImage(null);};
+    probe.src=featuredImage;
+    return()=>{active=false;};
+  },[featuredImage]);
+  const featuredWinter=featuredImage&&loadedFeaturedImage===featuredImage?winterFeature:null;
+
   const baseCartLabels = bc4CopyOnly[language] || bc4CopyOnly.ru;
   const bc4Labels = bc5Only ? {...baseCartLabels,cart:({
     ru:"Корзина для расчёта суммы. Заказ не отправляется.",
@@ -1112,8 +1126,8 @@ export default function QRMenu() {
   >{fixedGuestNavigation && React.createElement(bc1NavIcons[id], { size: 20, "aria-hidden": true })}{label}</button>)}
       </nav>;
   return <main data-bc5-menu={branch === "BC5" ? "true" : undefined} data-approved-qr-design={approvedMenuDesign ? "true" : undefined} data-bc1-browse={fixedGuestNavigation ? screen : undefined} data-motion-phase={branch === "BC1" ? dayPhase : undefined} className={`app-shell theme-${visualThemePhase} weather-theme-${atmosphere} menu-view-${menuView} menu-background-${backgroundTheme}`}>
-      <header className={`hero qr-premium-hero${approvedMenuDesign || branch === "BC1" ? " qr-header-graphite-glass" : ""}${winterHeader ? " qr-bc5-winter" : ""}`}>
-        {winterHeader ? <div className="qr-winter-art" aria-hidden="true" /> : <div className="hero-sky" aria-hidden="true">
+      <header className={`hero qr-premium-hero${approvedMenuDesign || branch === "BC1" ? " qr-header-graphite-glass" : ""}${winterHeader ? " qr-bc5-winter" : ""}${featuredWinter ? " qr-bc5-winter-featured" : ""}`}>
+        {winterHeader ? <div className="qr-winter-art" aria-hidden="true">{featuredWinter&&<img className="qr-winter-featured-image" src={featuredWinter.image} alt="" />}</div> : <div className="hero-sky" aria-hidden="true">
           {weatherOffer && <WeatherVisual kind={weatherOffer.kind} phase={dayPhase} />}
         </div>}
         <div className="hero-topline">
@@ -1127,7 +1141,7 @@ export default function QRMenu() {
         <div className="hero-reference-copy">
           {!approvedMenuDesign && <div className="hero-reference-kicker">{t.quote}</div>}
           {winterHeader && <div className="qr-winter-brand">BARISTA &amp; CHEF</div>}
-          <div className="hero-reference-title">{winterHeader ? <>
+          <div className="hero-reference-title">{winterHeader ? featuredWinter ? <>{featuredWinter.first}<br />{featuredWinter.second}</> : <>
             {language === "ru" ? <>Согреваем зиму<br />с глинтвейном</> : language === "en" ? <>Warm up this winter<br />with mulled wine</> : <>Glintveynlə<br />qışı isidək</>}
           </> : (t.quoteLines?.[new Date().getDate() % t.quoteLines.length] || "У дня должен быть вкус.")}</div>
           </div>

@@ -99,3 +99,26 @@ main.app-shell[class] .qr-premium-hero.qr-bc5-winter .hero-reference-weather > *
       linear-gradient(180deg, #14212b62, #20162230 42%, #19151deb);
   }
 }
+
+/* Only active for a published, available featured dish with a loaded photo. */
+.qr-bc5-winter-featured .qr-winter-art { background: #201c20; }
+.qr-bc5-winter-featured .qr-winter-art::before { display: none; }
+.qr-bc5-winter-featured .qr-winter-art::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: url("/menu/bc5-winter-frost.svg") center top / 100% 100% no-repeat,
+    linear-gradient(180deg, #14212b62, #20162249 32%, #19151de8);
+}
+.qr-winter-featured-image { display: block; width: 100%; height: 100%; object-fit: cover; }
+main.app-shell[class] .qr-premium-hero.qr-bc5-winter-featured .hero-reference-copy {
+  right: clamp(20px, 5vw, 44px) !important;
+}
+main.app-shell[class] .qr-premium-hero.qr-bc5-winter-featured .hero-reference-title {
+  max-width: min(100%, 47rem) !important;
+  font-size: clamp(20px, 5.5vw, 38px) !important;
+  overflow-wrap: anywhere;
+}
+@media (min-width: 890px) {
+  .qr-winter-featured-image { object-fit: contain; }
+}

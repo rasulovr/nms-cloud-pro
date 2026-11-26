@@ -5,7 +5,7 @@ import {localizeCategory,localizeProduct} from './qrMenuTranslations';
 import {branchMenuConfigTable,normalizeProduct,prepareNativeQrRows} from './qrMenuNative';
 import QRPaperTag from './QRPaperTag';
 import {tagLabels,tagCodes,tagsForProduct} from './qrMenuTags.mjs';
-import {emptyQrBuilder,cleanQrBuilder,qrBuilderBranches,qrBuilderLanguages,qrBuilderText,qrBuilderImage,qrBuilderApplyOrder,qrBuilderMoveRow,qrBuilderTransferOrder} from './qrMenuBuilder.mjs';
+import {emptyQrBuilder,cleanQrBuilder,qrBuilderBranches,qrBuilderLanguages,qrBuilderText,qrBuilderImage,qrBuilderApplyOrder,qrBuilderMoveRow,qrBuilderTransferOrder,qrBuilderOverlay,cleanWinterFeatured,qrWinterFeatured,suggestedWinterInstrumental} from './qrMenuBuilder.mjs';
 import './QRMenuBuilderAdmin.css';
 import {productFactsKey,productFactsForm,parseProductFacts,qrProductFacts} from './qrProductFacts.mjs';
 
@@ -145,8 +145,23 @@ function BranchBuilder({branch}){
     const next={...o,seconds:Number(o.seconds),image:o.image.trim(),titles:texts(o.titles),descriptions:texts(o.descriptions)};
     if(await write({...doc,offer:next}))setOfferEdit(null);
   }
+  const [winterEdit,setWinterEdit]=useState(null);
+  const w=winterEdit||doc.winter_featured||cleanWinterFeatured({});
+  const winterProducts=useMemo(()=>branch==='BC5'?qrBuilderOverlay(base,doc,branch).filter(p=>p.is_available!==false&&!p.is_stopped&&qrBuilderImage(p.image)&&locales.every(l=>String(p.menuBuilderCopy?.names?.[l]||p.snapshotCopy?.[l]?.name||'').trim())):[],[base,doc,branch]);
+  const winterProduct=winterProducts.find(p=>p.id===w.product_id);
+  const suggestion=suggestedWinterInstrumental(winterProduct?.menuBuilderCopy?.names?.ru||winterProduct?.snapshotCopy?.ru?.name);
+  function updateWinter(patch){setWinterEdit({...w,...patch});}
+  async function saveWinter(e){
+    e.preventDefault();
+    const next=cleanWinterFeatured(w);
+    if(next.enabled&&!qrWinterFeatured(winterProducts,next,'ru')){
+      setStatus('Выбери видимое блюдо с фото и названиями AZ/RU/EN. Укажи русскую форму после «с», без самого предлога.');
+      return;
+    }
+    if(await write({...doc,winter_featured:next}))setWinterEdit(null);
+  }
   return <>
-    <div className="qb-toolbar qb-tabs"><nav aria-label="Конструктор">{[['items','Позиции'],['categories','Категории'],['offer','Спецпредложение']].map(([k,v])=><button key={k} type="button" className={tab===k?'small primary':'small'} disabled={busy||Boolean(reorder)&&k!=='categories'} onClick={()=>setTab(k)}>{v}</button>)}</nav>
+    <div className="qb-toolbar qb-tabs"><nav aria-label="Конструктор">{[['items','Позиции'],['categories','Категории'],['offer','Спецпредложение'],...(branch==='BC5'?[['winter','Зимняя шапка']]:[])].map(([k,v])=><button key={k} type="button" className={tab===k?'small primary':'small'} disabled={busy||Boolean(reorder)&&k!=='categories'} onClick={()=>setTab(k)}>{v}</button>)}</nav>
       <button type="button" className="small primary" disabled={!loaded||busy||Boolean(reorder)||rev===liveRev} onClick={()=>write(doc,true)}>Опубликовать {branch}</button></div>
     <div role="status" className="qb-status">{status||(!rev?'Действующее меню без изменений':rev===liveRev?'Опубликовано':'Есть неопубликованный черновик')}</div>
     {loaded&&tab==='categories'&&<><form className="qb-form" onSubmit={saveCategory}><h4>{categoryId?'Редактировать свою категорию':'Новая категория'}</h4>
@@ -191,6 +206,20 @@ function BranchBuilder({branch}){
         <div><button type="submit" className="small primary" disabled={busy}>Сохранить в черновик</button> <button type="button" className="small" onClick={()=>setEditId('')}>Закрыть</button></div></form>}
       <ul className="qb-list">{matching.slice(0,limit).map(p=><li key={p.id}><span><b>{p.name}</b><small>{cats.get(p.category)}{p.hidden?' · Скрыто':''}{tagsForProduct({categoryNames:{ru:cats.get(p.category)}},p.draft?.tags??oldTags[p.id]).map(k=>' · '+tagLabels[k])}</small></span><button type="button" className="small" onClick={()=>openItem(p)}>Редактировать</button></li>)}</ul>
       {!matching.length&&<p>Позиций не найдено</p>}{matching.length>limit&&<button type="button" className="small" onClick={()=>setLimit(n=>n+35)}>Показать ещё</button>}</>}
+    {loaded&&branch==='BC5'&&tab==='winter'&&<form className="qb-form" onSubmit={saveWinter}>
+      <h4>Блюдо в зимней шапке BC5</h4>
+      <p>Фото берётся из карточки блюда. Если настройка выключена или блюдо скрыто, в шапке остаётся глинтвейн.</p>
+      <label><input type="checkbox" checked={w.enabled} disabled={busy} onChange={e=>updateWinter({enabled:e.target.checked})}/> Показывать выбранное блюдо</label>
+      <div className="qb-row">
+        <label>Блюдо<select value={w.product_id} disabled={busy||!w.enabled} onChange={e=>updateWinter({product_id:e.target.value,ru_instrumental:''})}>
+          <option value="">Выбрать блюдо</option>{w.product_id&&!winterProduct&&<option value={w.product_id} disabled>Блюдо недоступно</option>}{winterProducts.map(p=><option key={p.id} value={p.id}>{p.menuBuilderCopy?.names?.ru||p.snapshotCopy.ru.name} · {cats.get(p.category)||p.category}</option>)}
+        </select></label>
+        <label>Форма после «с» (RU)<input value={w.ru_instrumental} maxLength={72} disabled={busy||!w.enabled} placeholder={suggestion||'например, трюфельным бургером'} onChange={e=>updateWinter({ru_instrumental:e.target.value})}/></label>
+      </div>
+      {w.enabled&&winterProduct&&<img width="160" src={winterProduct.image} alt="Фото выбранного блюда из меню"/>}
+      {w.enabled&&<Localized label="Лозунг, необязательно" value={w.slogans} onChange={slogans=>updateWinter({slogans})} limit={62}/>}
+      <div><button type="submit" className="small primary" disabled={busy}>Сохранить в черновик</button></div>
+    </form>}
     {loaded&&tab==='offer'&&<form className="qb-form" onSubmit={saveOffer}><h4>Заставка при открытии QR</h4><p>Фотография заполняет экран. Заставка исчезает сама либо по нажатию.</p>
       <label><input type="checkbox" checked={o.enabled} onChange={e=>updateOffer({enabled:e.target.checked})}/> Показывать гостям</label>
       <div className="qb-row"><label>Блюдо<select value={o.product_id} onChange={e=>updateOffer({product_id:e.target.value})}><option value="">Выбрать</option>{products.filter(p=>!p.hidden).map(p=><option key={p.id} value={p.id}>{p.name} · {cats.get(p.category)}</option>)}</select></label><label>Секунд<input type="number" min="3" max="12" required value={o.seconds} onChange={e=>updateOffer({seconds:e.target.value})}/></label>
