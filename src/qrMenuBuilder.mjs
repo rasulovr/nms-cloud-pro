@@ -91,9 +91,13 @@ export function qrBuilderOffer(products, doc, unavailable, lang){
 
 // Separate from the temporary opening offer. Stored in the existing branch draft/live document.
 const featuredText=(value,max)=>typeof value==='string'?value.trim().replace(/\s+/g,' ').slice(0,max):'';
+export const winterSloganLimit=110;
+const fullWinterSlogans=o=>Object.fromEntries(qrBuilderLanguages.map(l=>[l,typeof o?.[l]==='string'?o[l]:'']));
 export function cleanWinterFeatured(o){
   if(!o||typeof o!=='object'||Array.isArray(o))return null;
-  return {enabled:o.enabled===true,...(o.restore_classic===true&&o.enabled!==true?{restore_classic:true}:{}),product_id:featuredText(o.product_id,160),ru_instrumental:featuredText(o.ru_instrumental,72),
+  const base={enabled:o.enabled===true,...(o.restore_classic===true&&o.enabled!==true?{restore_classic:true}:{}),product_id:featuredText(o.product_id,160)};
+  if(o.slogan_mode==='full')return {...base,slogan_mode:'full',slogans:fullWinterSlogans(o.slogans)};
+  return {...base,ru_instrumental:featuredText(o.ru_instrumental,72),
     slogans:Object.fromEntries(qrBuilderLanguages.map(l=>[l,featuredText(o.slogans?.[l],62)]))};
 }
 const instrumentalByName=new Map([['трюфельный бургер','трюфельным бургером'],['пицца чикен фунги','пиццей Чикен Фунги']]);
@@ -106,8 +110,21 @@ export function qrWinterFeatured(products,settings,lang,unavailable=[]){
   if(!image)return null;
   const names=Object.fromEntries(qrBuilderLanguages.map(l=>[l,featuredText(p.menuBuilderCopy?.names?.[l]||p.snapshotCopy?.[l]?.name,72)]));
   if(!qrBuilderLanguages.every(l=>names[l]))return null;
+  if(o.slogan_mode==='full'){
+    if(!qrBuilderLanguages.every(l=>o.slogans[l].trim()&&o.slogans[l].length<=winterSloganLimit))return null;
+    return {image,full:o.slogans[lang]};
+  }
   const ru=o.ru_instrumental||suggestedWinterInstrumental(names.ru);
   if(!ru||/^с\s/i.test(ru))return null;
   const withDish={ru:'с '+ru,az:names.az+' ilə',en:'with '+names.en}[lang];
   return {image,first:o.slogans[lang]||{ru:'Согреваем зиму',az:'Qışı isidək',en:'Warm up this winter'}[lang],second:withDish};
+}
+
+export function winterSloganForm(products,settings){
+  const o=cleanWinterFeatured(settings);
+  if(o?.slogan_mode==='full')return o;
+  return {...o,slogan_mode:'full',slogans:Object.fromEntries(qrBuilderLanguages.map(l=>{
+    const headline=qrWinterFeatured(products,o?{...o,enabled:true}:null,l);
+    return [l,headline?[headline.first,headline.second].join(' '):''];
+  }))};
 }

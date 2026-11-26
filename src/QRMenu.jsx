@@ -1141,7 +1141,7 @@ export default function QRMenu() {
         <div className="hero-reference-copy">
           {!approvedMenuDesign && <div className="hero-reference-kicker">{t.quote}</div>}
           {winterHeader && <div className="qr-winter-brand">BARISTA &amp; CHEF</div>}
-          <div className="hero-reference-title">{winterHeader ? featuredWinter ? <>{featuredWinter.first}<br />{featuredWinter.second}</> : <>
+          <div className="hero-reference-title">{winterHeader ? featuredWinter ? featuredWinter.full !== undefined ? <span style={{whiteSpace:'pre-wrap'}}>{featuredWinter.full}</span> : <>{featuredWinter.first}<br />{featuredWinter.second}</> : <>
             {language === "ru" ? <>Согреваем зиму<br />с глинтвейном</> : language === "en" ? <>Warm up this winter<br />with mulled wine</> : <>Glintveynlə<br />qışı isidək</>}
           </> : (t.quoteLines?.[new Date().getDate() % t.quoteLines.length] || "У дня должен быть вкус.")}</div>
           </div>

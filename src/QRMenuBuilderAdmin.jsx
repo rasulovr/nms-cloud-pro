@@ -5,7 +5,7 @@ import {localizeCategory,localizeProduct} from './qrMenuTranslations';
 import {branchMenuConfigTable,normalizeProduct,prepareNativeQrRows} from './qrMenuNative';
 import QRPaperTag from './QRPaperTag';
 import {tagLabels,tagCodes,tagsForProduct} from './qrMenuTags.mjs';
-import {emptyQrBuilder,cleanQrBuilder,qrBuilderBranches,qrBuilderLanguages,qrBuilderText,qrBuilderImage,qrBuilderApplyOrder,qrBuilderMoveRow,qrBuilderTransferOrder,qrBuilderOverlay,cleanWinterFeatured,qrWinterFeatured,suggestedWinterInstrumental} from './qrMenuBuilder.mjs';
+import {emptyQrBuilder,cleanQrBuilder,qrBuilderBranches,qrBuilderLanguages,qrBuilderText,qrBuilderImage,qrBuilderApplyOrder,qrBuilderMoveRow,qrBuilderTransferOrder,qrBuilderOverlay,cleanWinterFeatured,qrWinterFeatured,winterSloganForm,winterSloganLimit} from './qrMenuBuilder.mjs';
 import './QRMenuBuilderAdmin.css';
 import {qrBuilderCanRemoveCategory,qrBuilderCategorySources,qrBuilderDeleteCategory} from './qrMenuCategoryDeletion.mjs';
 import {productFactsKey,productFactsForm,parseProductFacts,qrProductFacts} from './qrProductFacts.mjs';
@@ -164,10 +164,10 @@ function BranchBuilder({branch}){
     if(await write({...doc,offer:next}))setOfferEdit(null);
   }
   const [winterEdit,setWinterEdit]=useState(null);
-  const w=winterEdit||doc.winter_featured||cleanWinterFeatured({});
   const [winterCategory,setWinterCategory]=useState('');
   const [winterQuery,setWinterQuery]=useState('');
   const winterOverlay=useMemo(()=>branch==='BC5'?qrBuilderOverlay(base,doc,branch):[],[base,doc,branch]);
+  const w=winterEdit||winterSloganForm(winterOverlay,doc.winter_featured||cleanWinterFeatured({}));
   const winterById=useMemo(()=>new Map(winterOverlay.map(p=>[p.id,p])),[winterOverlay]);
   const winterChoices=branch==='BC5'?products.map(p=>{
     const item=winterById.get(p.id);
@@ -182,13 +182,12 @@ function BranchBuilder({branch}){
   const query=winterQuery.trim().toLocaleLowerCase('ru');
   const winterResults=winterChoices.filter(p=>(!winterCategory||p.category===winterCategory)&&(!query||[p.name,...p.names,cats.get(p.category)].some(n=>String(n||'').toLocaleLowerCase('ru').includes(query))));
   const winterProduct=winterById.get(w.product_id);
-  const suggestion=suggestedWinterInstrumental(winterProduct?.menuBuilderCopy?.names?.ru||winterProduct?.snapshotCopy?.ru?.name);
   function updateWinter(patch){setWinterEdit({...w,...patch});}
   async function saveWinter(e){
     e.preventDefault();
     const next=cleanWinterFeatured(w.enabled?{...w,restore_classic:false}:w);
     if(next.enabled&&!qrWinterFeatured(winterOverlay,next,'ru')){
-      setStatus('Выбери видимое блюдо с фото и названиями AZ/RU/EN. Укажи русскую форму после «с», без самого предлога.');
+      setStatus('Выбери видимое блюдо с фото и названиями AZ/RU/EN. Заполни три полных лозунга: RU, EN и AZ.');
       return;
     }
     if(await write({...doc,winter_featured:next}))setWinterEdit(null);
@@ -260,17 +259,16 @@ function BranchBuilder({branch}){
           <option value="">Все категории</option>{[...cats].map(([id,name])=><option key={id} value={id}>{name}</option>)}
         </select></label>
         <label>Поиск блюда<input type="search" value={winterQuery} onChange={e=>setWinterQuery(e.target.value)}/></label>
-        <label>Блюдо<select value={w.product_id} disabled={busy} onChange={e=>updateWinter(e.target.value?{enabled:true,product_id:e.target.value,ru_instrumental:'',restore_classic:false}:{enabled:false,product_id:'',ru_instrumental:'',restore_classic:true})}>
+        <label>Блюдо<select value={w.product_id} disabled={busy} onChange={e=>updateWinter(e.target.value?{enabled:true,product_id:e.target.value,slogans:{},restore_classic:false}:{enabled:false,product_id:'',slogans:{},restore_classic:true})}>
           <option value="">Без блюда</option>
           {w.product_id&&!winterResults.some(p=>p.id===w.product_id)&&<option value={w.product_id} disabled>{winterChoices.find(p=>p.id===w.product_id)?.name||'Блюдо больше не в меню'}</option>}
           {winterResults.map(p=><option key={p.id} value={p.id} disabled={Boolean(p.issues.length)}>{p.name} · {cats.get(p.category)||p.category}{p.issues.length?' ('+p.issues.join(', ')+')':''}</option>)}
         </select></label>
-        <label>Форма после «с» (RU)<input value={w.ru_instrumental} maxLength={72} disabled={busy||!w.enabled} placeholder={suggestion||'например, трюфельным бургером'} onChange={e=>updateWinter({ru_instrumental:e.target.value})}/></label>
       </div>
       <p>Найдено позиций: {winterResults.length} из {winterChoices.length}. Недоступные позиции видны в списке с причиной.</p>
-      <div><button type="button" className="small" disabled={busy} onClick={()=>updateWinter({enabled:false,product_id:'',ru_instrumental:'',slogans:{},restore_classic:true})}>Вернуть исходную шапку</button>{w.restore_classic&&<p>Исходная шапка выбрана. Сохрани черновик и опубликуй BC5.</p>}</div>
+      <div><button type="button" className="small" disabled={busy} onClick={()=>updateWinter({enabled:false,product_id:'',slogans:{},restore_classic:true})}>Вернуть исходную шапку</button>{w.restore_classic&&<p>Исходная шапка выбрана. Сохрани черновик и опубликуй BC5.</p>}</div>
       {w.enabled&&winterProduct&&<img width="160" src={winterProduct.image} alt="Фото выбранного блюда из меню"/>}
-      {w.enabled&&<Localized label="Лозунг, необязательно" value={w.slogans} onChange={slogans=>updateWinter({slogans})} limit={62}/>}
+      {w.enabled&&winterProduct&&<div className="qb-languages"><b>Полный лозунг</b>{['ru','en','az'].map(l=><label key={l}>{l.toUpperCase()}<input required aria-label={'Полный лозунг '+l.toUpperCase()} maxLength={winterSloganLimit} value={w.slogans?.[l]||''} onChange={e=>updateWinter({slogans:{...w.slogans,[l]:e.target.value}})}/></label>)}</div>}
       <div><button type="submit" className="small primary" disabled={busy}>Сохранить в черновик</button></div>
     </form>}
     {loaded&&tab==='offer'&&<form className="qb-form" onSubmit={saveOffer}><h4>Заставка при открытии QR</h4><p>Фотография заполняет экран. Заставка исчезает сама либо по нажатию.</p>
