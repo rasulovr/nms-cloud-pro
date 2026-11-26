@@ -14,6 +14,7 @@ import {projectBC5,adjustBowl,bowlLine,bowlOptions} from "./bc5MenuProjection.mj
 import "./bc5Bowl.css";
 import { isNewProduct, tagLabels, tagsForProduct } from "./qrMenuTags.mjs";
 import { qrMenuDisplayLocale, qrMenuTitle } from "./qrMenuTitle.mjs";
+import { qrBuilderOverlay, qrBuilderLocalize, qrBuilderOffer, qrBuilderText } from "./qrMenuBuilder.mjs";
 import BC1SpecialOffer from "./BC1SpecialOffer";
 import { startBakuWeather, currentWeatherPresentation } from "./bc1Weather";
 import { Utensils, ShoppingBag, ReceiptText, BadgePercent, Info, Settings, List, X } from "lucide-react";
@@ -451,6 +452,7 @@ export default function QRMenu() {
   const [notice, setNotice] = useState("");
   const [lastAddedId, setLastAddedId] = useState(null);
   const [products, setProducts] = useState([]);
+  const [builderLive, setBuilderLive] = useState(null);
   const [productTags, setProductTags] = useState({});
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -493,7 +495,7 @@ export default function QRMenu() {
   const dailyQuote = t.quoteLines[(new Date().getDate() - 1) % t.quoteLines.length];
   const branchName = configuredBranchName || displayBranchName(branch);
   const unavailable = useMemo(() => products.filter((item) => item.is_available === false || item.is_stopped).map((item) => item.id), [products]);
-  const localizeCurrentProduct = (product) => product.bc4Projected ? localizeBC4(product, language) : localizeProduct(product, language);
+  const localizeCurrentProduct = (product) => qrBuilderLocalize(product, product.bc4Projected ? localizeBC4(product, language) : localizeProduct(product, language), language);
   const localizedProducts = useMemo(() => products.map(localizeCurrentProduct), [products, language]);
   const baseCartLabels = bc4CopyOnly[language] || bc4CopyOnly.ru;
   const bc4Labels = bc5Only ? {...baseCartLabels,cart:({
@@ -554,10 +556,15 @@ export default function QRMenu() {
       : bc4Only && branch === "BC4"
       ? import("./bc4InPlaceCatalogue.json").then(({ default: catalog }) => projectBC4(catalog)).catch(() => [])
       : Promise.resolve(null);
-    Promise.all([menuRequest, branchMenuRequest, recommendationsRequest, baristaChefThemeRequest, bc4SourceRequest]).then(([menuResult, branchMenuResult, recommendationsResult, baristaChefMenu, bc4Source]) => {
+    setBuilderLive(null);
+    const builderRequest = Promise.resolve(supabase.from("rms_qr_builder_live").select("document").eq("branch_code",branch).maybeSingle())
+      .catch(()=>({data:null}));
+    Promise.all([menuRequest, branchMenuRequest, recommendationsRequest, baristaChefThemeRequest, bc4SourceRequest, builderRequest]).then(([menuResult, branchMenuResult, recommendationsResult, baristaChefMenu, bc4Source, builderResult]) => {
       if (!active) return;
       const { data, error } = menuResult;
       if (error && !bc4Source) flash(`\u041C\u0435\u043D\u044E \u0432\u0440\u0435\u043C\u0435\u043D\u043D\u043E \u043D\u0435\u0434\u043E\u0441\u0442\u0443\u043F\u043D\u043E: ${error.message}`);
+      const live = !builderResult.error ? builderResult.data?.document : null;
+      setBuilderLive(live || null);
       let menuRows = Array.isArray(data) ? data : [];
       let branchMenuConfig = {};
       try {
@@ -582,14 +589,14 @@ export default function QRMenu() {
       // only when it has at least one ID from the actual branch menu.
       if (branchFilteredMenus.has(branch) && !branchMenuResult.error && matchingConfiguredIds.length > 0) {
         const enabledIds = new Set(matchingConfiguredIds);
-        menuRows = menuRows.filter((item) => enabledIds.has(String(item.id || item.menu_item_id)));
+        menuRows = menuRows.filter((item) => enabledIds.has(String(item.id || item.menu_item_id)) || live?.items?.[item.id || item.menu_item_id]?.kind==="new");
       }
       const menuOverrides = branchMenuConfig?.overrides && typeof branchMenuConfig.overrides === "object" ? branchMenuConfig.overrides : {};
       menuRows = menuRows.map((item) => ({
         ...item,
         __qr_override: menuOverrides[String(item.id || item.menu_item_id)] || null
       }));
-      setProducts(bc4Source ?? (cartOnly ? [] : menuRows.map((item) => normalizeProduct(item, branch))));
+      setProducts(qrBuilderOverlay(bc4Source ?? (cartOnly ? [] : menuRows.map((item) => normalizeProduct(item, branch))), live, branch));
       if (bc4Source && !bc4Source.length) flash(t.unavailable);
       const recommendationRows = Array.isArray(recommendationsResult.data) ? recommendationsResult.data : [];
       // BC1 is the approved pairing reference. All other QR branches inherit
@@ -783,7 +790,7 @@ export default function QRMenu() {
   const hasPaidBC4Item = cart.some(item => item.bc4Projected && !item.addon);
   const categoriesLabel = language === "ru" ? "Категории" : language === "az" ? "Kateqoriyalar" : "Categories";
   const categoryText = (name) => {
-    const label = (cartOnly ? products.find(p=>p.category===name)?.categoryNames?.[language] : undefined) || localizeCategory(name, language) || categoryTranslations[language][name] || categoryLabel(name);
+    const label = qrBuilderText(builderLive?.categories?.[name]?.names,language) || (cartOnly ? products.find(p=>p.category===name)?.categoryNames?.[language] : undefined) || localizeCategory(name, language) || categoryTranslations[language][name] || categoryLabel(name);
     const locale=qrMenuDisplayLocale(label,language);
     const lower=label.toLocaleLowerCase(locale);
     return lower.replace(/^([^\p{L}]*)(\p{L})/u, (_,prefix,letter)=>prefix+letter.toLocaleUpperCase(locale));
@@ -920,16 +927,18 @@ export default function QRMenu() {
     const [eyebrow, description] = getContextualOfferCopy(language, mealMoment, weatherOffer?.kind || "clear", product);
     return { product, eyebrow, description };
   }, [smartRecommendations, mealRecommendation, language, mealMoment, weatherOffer]);
+  const configuredDayOffer=useMemo(()=>qrBuilderOffer(localizedProducts,builderLive,unavailable,language),[localizedProducts,builderLive,unavailable,language]);
+  const shownDayOffer=builderLive?.offer ? configuredDayOffer : (cartOnly ? null : contextualSpecialOffer);
   useEffect(() => {
-    if (screen !== "menu" || !contextualSpecialOffer || dayOfferShownRef.current) return;
+    if (screen !== "menu" || !shownDayOffer || dayOfferShownRef.current) return;
     dayOfferShownRef.current = true;
     setDayOfferPhase("visible");
-  }, [screen, contextualSpecialOffer]);
+  }, [screen, shownDayOffer]);
   useEffect(() => {
     if (dayOfferPhase !== "visible") return undefined;
-    const timer = window.setTimeout(() => setDayOfferPhase("closing"), 5000);
+    const timer = window.setTimeout(() => setDayOfferPhase("closing"), shownDayOffer?.duration || 5000);
     return () => window.clearTimeout(timer);
-  }, [dayOfferPhase]);
+  }, [dayOfferPhase, shownDayOffer?.duration]);
   useEffect(() => {
     if (dayOfferPhase !== "closing") return undefined;
     const timer = window.setTimeout(() => setDayOfferPhase("hidden"), 520);
@@ -1275,7 +1284,7 @@ export default function QRMenu() {
             {availableProducts.map((product) => {
     const isStopped = unavailable.includes(product.id);
     const qty = product.bc4Projected && product.variants.length ? 0 : cart.find((line) => line.id === product.id)?.qty || 0;
-    const tags = tagsForProduct(product, productTags[product.id]);
+    const tags = tagsForProduct(product, product.menuBuilderTags ?? productTags[product.id]);
     return <article className={`product-card ${isStopped ? "stopped" : ""}`} key={product.id}>
                   <button className="food-photo" style={photoStyle(product)} type="button" onClick={() => openProduct(product)} aria-describedby={tags.length ? `qr-tags-${product.id}` : undefined} aria-label={`${t.openPhoto}: ${product.name}`}>
                     {product.image ? <img className={photoClass(product)} src={product.image} alt={product.name} loading="lazy" onError={useRecoveredImageFallback} /> : <span className="photo-placeholder">B&C</span>}
@@ -1463,18 +1472,18 @@ export default function QRMenu() {
         </div>}
       {approvedMenuDesign && designPhoto && selectedProduct && <ApprovedPhotoViewer photo={designPhoto} language={language} onDismiss={()=>setDesignPhoto(null)} />}
 
-      {!cartOnly && contextualSpecialOffer && dayOfferPhase !== "hidden" && <button
+      {shownDayOffer && dayOfferPhase !== "hidden" && <button
         type="button"
         className={`qr-day-offer-overlay ${dayOfferPhase === "closing" ? "is-closing" : ""}`}
         onClick={() => setDayOfferPhase("closing")}
         aria-label={language === "ru" ? "Закрыть предложение дня" : language === "az" ? "Günün təklifini bağla" : "Close today's offer"}
       >
-        {contextualSpecialOffer.product.image && <img src={contextualSpecialOffer.product.image} alt="" onError={useRecoveredImageFallback} />}
+        {shownDayOffer.product.image && <img src={shownDayOffer.product.image} alt="" onError={useRecoveredImageFallback} />}
         <span className="qr-day-offer-shade" aria-hidden="true" />
         <span className="qr-day-offer-content">
-          <small>{contextualSpecialOffer.eyebrow}</small>
-          <strong>{contextualSpecialOffer.product.name}</strong>
-          <em>{contextualSpecialOffer.description}</em>
+          <small>{shownDayOffer.eyebrow}</small>
+          <strong>{shownDayOffer.product.name}</strong>
+          <em>{shownDayOffer.description}</em>
           <span>{language === "ru" ? "Нажмите, чтобы закрыть" : language === "az" ? "Bağlamaq üçün toxunun" : "Tap to close"}</span>
         </span>
       </button>}

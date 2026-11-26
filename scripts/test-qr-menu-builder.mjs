@@ -1,0 +1,51 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs/promises';
+import {PGlite} from '@electric-sql/pglite';
+import {emptyQrBuilder,qrBuilderOverlay,qrBuilderOffer,qrBuilderLocalize} from '../src/qrMenuBuilder.mjs';
+const cat='cat:55555555-5555-4555-8555-555555555555';
+const id='66666666-6666-4666-8666-666666666666';
+const doc={...emptyQrBuilder(),categories:{[cat]:{names:{ru:'Проба',en:'Sample'}}},items:{[id]:{kind:'new',category:cat,price_cents:1450,hidden:false,image:'https://menu.example.test/food.jpg',tags:['chef'],copy:{names:{ru:'Блюдо',en:'Dish'},descriptions:{en:'Preview only'}}}},offer:{enabled:true,product_id:id,seconds:5}};
+const orig={id:'existing',name:'Old tea',description:'Original description',category:'Чай',price:9.9,variants:[{id:'tea',cents:990}]};
+const overlays=qrBuilderOverlay([orig],{...doc,items:{...doc.items,existing:{kind:'existing',category:cat,copy:{names:{ru:'Чай'},descriptions:{ru:'Крепкий чай'}}}}},'BC5');
+assert.equal(overlays.length,2);
+assert.equal(overlays[0].variants[0].cents,990);assert.equal(overlays[0].price,9.9);
+assert.equal(qrBuilderLocalize(overlays[0],orig,'en').name,orig.name);
+const added=qrBuilderLocalize(overlays[1],overlays[1],'en');assert.equal(added.name,'Dish');
+assert.equal(added.baseCents,1450);assert.equal(added.description,'Preview only');assert.deepEqual(added.menuBuilderTags,['chef']);
+assert.equal(qrBuilderOffer([added],doc,[],'en').duration,5000);
+assert.equal(qrBuilderOffer([added],doc,[id],'en'),null);
+assert.deepEqual(qrBuilderOverlay([orig],doc,'BC1'),[orig]); // never display a non-orderable synthetic ID for a native branch
+const pg=new PGlite();
+try{
+await pg.exec(`
+create role anon;create role authenticated;
+create function public.rms_security_is_protected_admin() returns boolean language sql stable as $$select coalesce(current_setting('request.test_admin',true)='true',false)$$;
+create table public.qr_branches(id uuid primary key,code text,is_active boolean);
+create table public.qr_menu_catalog(id uuid primary key,menu_item_id uuid,external_key text unique,name text,category_name text,description text,price numeric,image_url text,options jsonb,sort_order integer,is_active boolean,updated_at timestamptz);
+create table public.qr_branch_menu(branch_id uuid,catalog_id uuid,price numeric,is_available boolean,is_stop boolean,updated_at timestamptz,primary key(branch_id,catalog_id));
+insert into public.qr_branches values ('11111111-1111-4111-8111-111111111111','BC1',true), ('22222222-2222-4222-8222-222222222222','BC2',true);
+`);
+await pg.exec(await fs.readFile(new URL('../supabase/migrations/20261126082000_qr_menu_builder.sql',import.meta.url),'utf8'));
+const save=(branch,revision,raw,publish=false)=>pg.query('select public.rms_qr_builder_save($1,$2,$3,$4) version',[branch,revision,JSON.stringify(raw),publish]);
+await pg.exec('set role anon');
+await assert.rejects(()=>save('BC5',0,doc),/permission denied/);
+await assert.rejects(()=>pg.query('select * from public.rms_qr_builder_draft'),/permission denied/);
+assert.equal((await pg.query('select * from public.rms_qr_builder_live')).rows.length,0);
+await pg.exec("reset role;set role authenticated;set request.test_admin='false'");
+await assert.rejects(()=>save('BC5',0,doc),/ADMIN_ONLY/);
+await pg.exec("set request.test_admin='true'");
+assert.equal((await save('BC5',0,doc)).rows[0].version,1);
+assert.equal((await pg.query('select * from public.rms_qr_builder_live')).rows.length,0);
+await assert.rejects(()=>save('BC5',0,doc,true),/STALE/);
+assert.equal((await save('BC5',1,doc,true)).rows[0].version,2);
+assert.equal((await save('BC1',0,doc,true)).rows[0].version,1);
+await assert.rejects(()=>save('BC2',0,doc,true),/NATIVE_ID_COLLISION/);
+await assert.rejects(()=>save('BC5',2,{...doc,items:{[id]:{...doc.items[id],tags:['invalid']}}},true),/INVALID_TAG/);
+assert.equal((await save('BC1',1,{...doc,items:{},offer:{enabled:false,product_id:'',seconds:5}},true)).rows[0].version,2);
+await pg.exec('reset role');
+assert.deepEqual((await pg.query('select price,is_available from public.qr_branch_menu')).rows,[{price:'14.5000000000000000',is_available:false}]);
+assert.equal((await pg.query('select count(*) n from public.qr_menu_catalog')).rows[0].n,1);
+await pg.exec('set role anon');
+assert.equal((await pg.query("select document->'items'->\$1->>'price_cents' p from public.rms_qr_builder_live where branch_code='BC5'",[id])).rows[0].p,'1450');
+console.log('PASS guest and draft isolation, native order IDs, integer price, reversible visibility, branch collision, teaser and timer contract');
+}finally{await pg.close();}

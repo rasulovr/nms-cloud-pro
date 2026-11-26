@@ -16,7 +16,7 @@ import {
 import { supabase } from './supabase'
 import { localizeProduct } from './qrMenuTranslations'
 import './RMSQRMenuAdmin.css'
-import QRProductTagAdmin from './QRProductTagAdmin'
+import QRMenuBuilderAdmin from './QRMenuBuilderAdmin'
 
 const fmt = (n) => Number(n || 0).toFixed(2)
 const QR_MENU_PUBLIC_ORIGIN = 'https://app.rms.rest'
@@ -1004,7 +1004,8 @@ export default function RMSQRMenuAdmin({ lang = localStorage.getItem('rms_lang')
               </div>
             </div>
 
-{canManageTags && <QRProductTagAdmin key={selectedMenuBranch} branch={selectedMenuBranch} language={adminLanguage} />}
+{canManageTags && <QRMenuBuilderAdmin key={selectedMenuBranch} initialBranch={selectedMenuBranch} />}
+
 
 {editingProduct && productDraft && (
               <div className="qr-product-modal-backdrop" role="presentation" onMouseDown={() => { setEditingProduct(null); setProductDraft(null) }}>
