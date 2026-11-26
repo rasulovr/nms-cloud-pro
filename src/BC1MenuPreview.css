@@ -521,3 +521,54 @@ body .app-shell[data-bc1-browse] .bc1-offer-slide .bc1-special-labels { height: 
 body .app-shell[data-bc1-browse] .bc1-offer-slide .bc1-single-offer::before {
   background: linear-gradient(90deg, #15120fbb 0%, #15120f66 45%, #15120f00 80%);
 }
+
+/* Cart uses the same light surfaces and graphite type as the catalog, even at night. */
+html body main.app-shell[data-bc1-browse="cart"] > .narrow.content {
+  font-family: "Noto Sans", system-ui, sans-serif;
+  color: #252b30;
+}
+html body main.app-shell[data-bc1-browse="cart"] > .narrow.content > h2,
+html body main.app-shell[data-bc1-browse="cart"] :is(.order-line, .empty-state) {
+  color: #252b30 !important;
+}
+html body main.app-shell[data-bc1-browse="cart"] > .narrow.content > .eyebrow,
+html body main.app-shell[data-bc1-browse="cart"] .order-line > div:nth-child(2) > span,
+html body main.app-shell[data-bc1-browse="cart"] .empty-state p {
+  color: #56616a !important;
+}
+html body main.app-shell[data-bc1-browse="cart"] :is(.order-line, .empty-state) {
+  background: #fff !important;
+  border-color: #d8dfe2 !important;
+}
+html body main.app-shell[data-bc1-browse="cart"] .order-line > div:nth-child(2) > b {
+  color: #252b30 !important;
+  font-weight: 700;
+}
+html body main.app-shell[data-bc1-browse="cart"] .order-line .stepper {
+  color: #252b30 !important;
+  font-family: inherit;
+}
+html body main.app-shell[data-bc1-browse="cart"] .order-line .stepper button {
+  color: #302c29 !important;
+  background: #f1ede9 !important;
+  border-color: #dfd7d0 !important;
+}
+html body main.app-shell[data-bc1-browse="cart"] .total-card {
+  background: #302c29 !important;
+  color: #fff !important;
+}
+html body main.app-shell[data-bc1-browse="cart"] .total-card > :is(b, span) {
+  color: #fff !important;
+  font-family: inherit;
+}
+html body main.app-shell[data-bc1-browse="cart"] .total-card > b {
+  font-weight: 700;
+}
+html body main.app-shell[data-bc1-browse="cart"] .empty-state .outline-button {
+  color: #302c29 !important;
+  background: #f1ede9 !important;
+  border-color: #dfd7d0 !important;
+}
+html body main.app-shell[data-bc1-browse="cart"] > footer {
+  color: #56616a !important;
+}
