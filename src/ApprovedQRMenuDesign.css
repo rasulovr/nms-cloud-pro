@@ -324,6 +324,15 @@ dialog.qr-category-sheet::backdrop {background:#1c151273;}
 .qr-product-tags > span[data-tag="bestseller"] {--qr-tag-paper:#d5dda9;--qr-tag-ink:#34401f;}
 .qr-product-tags > span[data-tag="sale"] {--qr-tag-paper:#eea58e;--qr-tag-ink:#55281d;}
 
+html body main.app-shell[data-approved-qr-design][data-bc1-browse="menu"].menu-view-showcase .product-card .product-title {margin-bottom:3px !important;}
+html body main.app-shell[data-approved-qr-design][data-bc1-browse="menu"].menu-view-showcase .product-card .product-title h3 {
+  font-size:clamp(23px,3.5vw,31px) !important;
+  font-weight:700 !important;
+}
+@media (max-width:680px) {
+  html body main.app-shell[data-approved-qr-design][data-bc1-browse="menu"].menu-view-showcase .product-card .product-title h3 {font-size:clamp(22px,6.4vw,28px) !important;}
+}
+
 /* Preview copy never grows beyond two lines; full text stays in the dish detail. */
 html body main.app-shell[data-approved-qr-design][data-bc1-browse="menu"].menu-view-showcase .product-card .product-body > .qr-card-description {
   display:-webkit-box !important;
@@ -333,7 +342,7 @@ html body main.app-shell[data-approved-qr-design][data-bc1-browse="menu"].menu-v
   max-height:2.6em !important;
   line-height:1.3 !important;
   padding:0 !important;
-  margin:3px 0 7px !important;
+  margin:0 0 7px !important;
   font-size:13px !important;
 }
 
