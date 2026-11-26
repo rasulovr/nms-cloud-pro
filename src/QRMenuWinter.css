@@ -133,3 +133,14 @@ main.app-shell[data-bc1-browse="menu"]:has(> .qr-bc5-winter) > .bc1-catalog {
   background-position: left 0, right 58px, center 0, center !important;
   background-repeat: repeat-y, repeat-y, repeat, no-repeat !important;
 }
+
+/* Frosted copy panel only: the card shell must not paint an opaque layer behind it. */
+html body main.app-shell[data-bc1-browse="menu"]:has(> .qr-bc5-winter) > .bc1-catalog .product-card {
+  background: transparent !important;
+}
+html body main.app-shell[data-bc1-browse="menu"]:has(> .qr-bc5-winter) > .bc1-catalog .product-card > .product-body {
+  background: rgba(255, 255, 255, .78) !important;
+}
+html body main.app-shell[data-bc1-browse="menu"]:has(> .qr-bc5-winter) > .bc1-catalog .product-card > .product-body > .qr-card-description {
+  color: #606a72 !important;
+}
