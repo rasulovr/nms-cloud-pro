@@ -1,5 +1,6 @@
 /* BC1 photo detail only; menu cards and other branches are unchanged. */
 html body .app-shell[class*="theme-"] .product-modal.bc1-product-detail[role="dialog"] {
+  --qr-photo-overlap:38px;
   position: fixed !important; inset: 0 !important; z-index: 2000 !important;
   display: block !important; width: 100% !important; height: 100vh !important; height: 100dvh !important;
   padding: 0 !important; margin: 0 !important; overflow-y: auto !important;
@@ -37,7 +38,7 @@ html body .app-shell .bc1-product-detail .modal-close::after { content: none !im
 html body .app-shell .bc1-product-detail .modal-content {
   position: relative !important; z-index: 2 !important; display: flex !important; flex-direction: column;
   gap: 0 !important; width: 100% !important; max-width: none !important; min-height: 0 !important;
-  margin: -38px 0 0 !important; padding: 28px 24px max(30px, env(safe-area-inset-bottom)) !important;
+  margin: calc(-1 * var(--qr-photo-overlap, 38px)) 0 0 !important; padding: 28px 24px max(30px, env(safe-area-inset-bottom)) !important;
   border-radius: 36px 36px 0 0 !important; box-sizing: border-box; background: #fff !important;
   color: #252b30 !important; text-align: center !important;
 }
