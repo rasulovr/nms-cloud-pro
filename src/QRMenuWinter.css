@@ -59,9 +59,9 @@ main.app-shell[class] .qr-premium-hero.qr-bc5-winter .hero-reference-copy {
   text-shadow: 0 1px 5px #121921;
 }
 main.app-shell[class] .qr-premium-hero.qr-bc5-winter .hero-reference-title {
-  max-width: min(11ch, 80vw) !important;
+  max-width: min(100%, max(276px, 42vw)) !important;
   color: #fff !important;
-  font-size: clamp(29px, 8vw, 48px) !important;
+  font-size: clamp(26px, 7vw, 44px) !important;
   font-weight: 780 !important;
   line-height: 1.04 !important;
   letter-spacing: -.025em !important;

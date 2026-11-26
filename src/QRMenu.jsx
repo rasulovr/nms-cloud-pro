@@ -1127,7 +1127,9 @@ export default function QRMenu() {
         <div className="hero-reference-copy">
           {!approvedMenuDesign && <div className="hero-reference-kicker">{t.quote}</div>}
           {winterHeader && <div className="qr-winter-brand">BARISTA &amp; CHEF</div>}
-          <div className="hero-reference-title">{winterHeader ? ({az:"Qışı isidək",ru:"Согреваем зиму",en:"Warm up this winter"}[language] || "Qışı isidək") : (t.quoteLines?.[new Date().getDate() % t.quoteLines.length] || "У дня должен быть вкус.")}</div>
+          <div className="hero-reference-title">{winterHeader ? <>
+            {language === "ru" ? <>Согреваем зиму<br />с глинтвейном</> : language === "en" ? <>Warm up this winter<br />with mulled wine</> : <>Glintveynlə<br />qışı isidək</>}
+          </> : (t.quoteLines?.[new Date().getDate() % t.quoteLines.length] || "У дня должен быть вкус.")}</div>
           </div>
 
 <div className="hero-reference-weather" aria-label={weatherTitle}>
