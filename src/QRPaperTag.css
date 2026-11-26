@@ -39,3 +39,8 @@
 .qr-paper-tag[data-tag="chef"] {--qr-tag-paper:#a14b39;--qr-tag-ink:#fff6e6;}
 .qr-paper-tag[data-tag="bestseller"] {--qr-tag-paper:#bfd27d;--qr-tag-ink:#283115;}
 .qr-paper-tag[data-tag="sale"] {--qr-tag-paper:#eb877b;--qr-tag-ink:#471d1d;}
+
+/* The compact mobile tag must not inherit the large food-photo placeholder type. */
+.app-shell .product-card .food-photo .qr-product-tags > .qr-paper-tag {
+  font-size:12px;
+}
