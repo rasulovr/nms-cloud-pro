@@ -5,6 +5,7 @@ import { normalizeReferenceText, resolveReferenceMenuProduct } from "./reference
 import { branchMenuConfigTable, normalizeCategoryKey, normalizeProduct, prepareNativeQrRows } from "./qrMenuNative";
 import { useRecoveredImageFallback } from "./recoveredMenuImages";
 import "./QRMenu.css";
+import "./QRMenuWinter.css";
 import "./QRMenuPhotoOpen.css";
 import "./QRMenuSchedule.css";
 import "./QRMenuProductDetail.css";
@@ -340,6 +341,8 @@ export default function QRMenu() {
   const bc5Only = branchQuery.length === 1 && branchQuery[0].trim().toUpperCase() === "BC5";
   const bc4Only = String(branchQuery[0] || "").trim().toUpperCase() === "BC4";
   const cartOnly = bc4Only || bc5Only;
+  // Keep the classic header available without touching branch data or guest preferences.
+  const winterHeader = branch === "BC5" && new URLSearchParams(window.location.search).get("header") !== "classic";
   const [bc4Variant, setBc4Variant] = useState("");
   const [bowlCounts,setBowlCounts]=useState({});
   const [table, setTable] = useState("");
@@ -1109,10 +1112,10 @@ export default function QRMenu() {
   >{fixedGuestNavigation && React.createElement(bc1NavIcons[id], { size: 20, "aria-hidden": true })}{label}</button>)}
       </nav>;
   return <main data-approved-qr-design={approvedMenuDesign ? "true" : undefined} data-bc1-browse={fixedGuestNavigation ? screen : undefined} data-motion-phase={branch === "BC1" ? dayPhase : undefined} className={`app-shell theme-${visualThemePhase} weather-theme-${atmosphere} menu-view-${menuView} menu-background-${backgroundTheme}`}>
-      <header className={`hero qr-premium-hero${approvedMenuDesign || branch === "BC1" ? " qr-header-graphite-glass" : ""}`}>
-        <div className="hero-sky" aria-hidden="true">
+      <header className={`hero qr-premium-hero${approvedMenuDesign || branch === "BC1" ? " qr-header-graphite-glass" : ""}${winterHeader ? " qr-bc5-winter" : ""}`}>
+        {winterHeader ? <div className="qr-winter-art" aria-hidden="true" /> : <div className="hero-sky" aria-hidden="true">
           {weatherOffer && <WeatherVisual kind={weatherOffer.kind} phase={dayPhase} />}
-        </div>
+        </div>}
         <div className="hero-topline">
           <div className="brand-mark">BARISTA<span>&amp;</span>CHEF</div>
           <div className="language-switch" role="group" aria-label="Language selection">
@@ -1123,7 +1126,8 @@ export default function QRMenu() {
         </div>
         <div className="hero-reference-copy">
           {!approvedMenuDesign && <div className="hero-reference-kicker">{t.quote}</div>}
-          <div className="hero-reference-title">{t.quoteLines?.[new Date().getDate() % t.quoteLines.length] || "У дня должен быть вкус."}</div>
+          {winterHeader && <div className="qr-winter-brand">BARISTA &amp; CHEF</div>}
+          <div className="hero-reference-title">{winterHeader ? ({az:"Qışı isidək",ru:"Согреваем зиму",en:"Warm up this winter"}[language] || "Qışı isidək") : (t.quoteLines?.[new Date().getDate() % t.quoteLines.length] || "У дня должен быть вкус.")}</div>
           </div>
 
 <div className="hero-reference-weather" aria-label={weatherTitle}>

@@ -1,0 +1,83 @@
+/* Seasonal art is limited to the BC5 guest masthead. Classic artwork remains available. */
+main.app-shell[class] header.qr-premium-hero.qr-bc5-winter {
+  position: relative !important;
+  min-height: clamp(320px, 97vw, 440px) !important;
+  width: 100% !important;
+  margin: 0 !important;
+  border-radius: 0 0 24px 24px !important;
+  overflow: hidden !important;
+  isolation: isolate;
+  background: #292327 !important;
+}
+main.app-shell header.qr-premium-hero.qr-bc5-winter::before,
+main.app-shell header.qr-premium-hero.qr-bc5-winter::after { display: none !important; }
+.qr-bc5-winter .qr-winter-art {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: url("/menu/bc5-winter-frost.svg") center top / 100% 100% no-repeat,
+    linear-gradient(180deg, #15212a53 0%, #25182328 36%, #24192349 57%, #19151de8 100%),
+    url("/menu/bc5-winter-mulled.webp") center / cover no-repeat;
+}
+main.app-shell[class] .qr-premium-hero.qr-bc5-winter .language-switch {
+  top: max(12px, env(safe-area-inset-top)) !important;
+  transform: translateX(-50%) !important;
+  background: rgba(23, 32, 39, .34) !important;
+  border: 1px solid rgba(244, 250, 255, .45) !important;
+  border-radius: 13px !important;
+  backdrop-filter: blur(2px) !important;
+  -webkit-backdrop-filter: blur(2px) !important;
+  box-shadow: none !important;
+  padding: 3px !important;
+}
+main.app-shell[class] .qr-premium-hero.qr-bc5-winter .language-switch button {
+  min-width: 40px !important;
+  min-height: 34px !important;
+  color: #fff !important;
+  font-size: 11px !important;
+  text-shadow: 0 1px 4px #101820, 0 0 6px #101820 !important;
+}
+main.app-shell[class] .qr-premium-hero.qr-bc5-winter .language-switch button.active {
+  background: rgba(245, 249, 255, .66) !important;
+  color: #152029 !important;
+  text-shadow: none !important;
+}
+main.app-shell[class] .qr-premium-hero.qr-bc5-winter .hero-reference-copy {
+  top: auto !important;
+  bottom: 67px !important;
+  left: clamp(20px, 5vw, 44px) !important;
+  right: auto !important;
+  gap: 7px !important;
+  pointer-events: none;
+}
+.qr-bc5-winter .qr-winter-brand {
+  font-size: .76rem;
+  color: #e8eef2;
+  letter-spacing: .14em;
+  font-weight: 750;
+  text-shadow: 0 1px 5px #121921;
+}
+main.app-shell[class] .qr-premium-hero.qr-bc5-winter .hero-reference-title {
+  max-width: min(11ch, 80vw) !important;
+  color: #fff !important;
+  font-size: clamp(29px, 8vw, 48px) !important;
+  font-weight: 780 !important;
+  line-height: 1.04 !important;
+  letter-spacing: -.025em !important;
+  text-shadow: 0 2px 10px #201820 !important;
+}
+main.app-shell[class] .qr-premium-hero.qr-bc5-winter .hero-reference-weather {
+  bottom: 14px !important;
+  height: 39px !important;
+  left: clamp(20px, 5vw, 44px) !important;
+  right: clamp(20px, 5vw, 44px) !important;
+  border-color: rgba(241,248,255,.32) !important;
+  color: #f8faff !important;
+}
+main.app-shell[class] .qr-premium-hero.qr-bc5-winter .hero-reference-weather > * {
+  color: #f8faff !important;
+}
+@media (min-width: 890px) {
+  .qr-bc5-winter .qr-winter-art { background-position: center top, center, center top; }
+}
