@@ -219,3 +219,91 @@ html body .app-shell[data-approved-qr-design]:has(.bc4-preview-nav) .bc1-product
   width:24px;height:24px;box-sizing:border-box;margin:0;padding:0;border:0;
   background-size:21px 21px;pointer-events:none;
 }
+
+/* Keep the two menu controls visible while the category tabs scroll. */
+.qr-category-picker {
+  position:relative;
+  display:inline-flex;
+  align-items:center;
+  flex:0 0 auto;
+  min-height:44px;
+  padding:0 9px;
+  color:#765139;
+  border-bottom:1px solid #a986692b;
+}
+.qr-category-picker > span {
+  display:flex;
+  align-items:center;
+  gap:4px;
+  font-size:12px;
+  font-weight:600;
+  white-space:nowrap;
+  pointer-events:none;
+}
+.qr-category-picker > select {
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  opacity:0;
+  cursor:pointer;
+  font-size:16px;
+}
+.qr-category-picker:focus-within {
+  outline:2px solid #a77a55;
+  outline-offset:2px;
+  border-radius:4px;
+}
+
+.qr-product-tags {
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px 10px;
+  margin:4px 0 3px;
+  padding-left:5px;
+}
+.qr-product-tags > span {
+  --qr-tag-paper:#f0dfc9;
+  --qr-tag-ink:#68452f;
+  position:relative;
+  display:inline-flex;
+  align-items:center;
+  padding:4px 8px 4px 13px;
+  border-radius:3px 5px 5px 3px;
+  background:var(--qr-tag-paper);
+  color:var(--qr-tag-ink);
+  font-size:10px;
+  font-weight:750;
+  line-height:1.12;
+  letter-spacing:.036em;
+  text-transform:uppercase;
+  white-space:nowrap;
+}
+.qr-product-tags > span::before {
+  content:"";
+  position:absolute;
+  top:50%;
+  left:-5px;
+  width:12px;
+  height:5px;
+  border:1px solid currentColor;
+  border-radius:50%;
+  transform:translateY(-50%) rotate(-24deg);
+  pointer-events:none;
+}
+.qr-product-tags > span[data-tag="chef"] {--qr-tag-paper:#4d413a;--qr-tag-ink:#f5e9d7;}
+.qr-product-tags > span[data-tag="bestseller"] {--qr-tag-paper:#e6e6d5;--qr-tag-ink:#4e5038;}
+.qr-product-tags > span[data-tag="sale"] {--qr-tag-paper:#f2d9d0;--qr-tag-ink:#793d32;}
+
+/* Preview copy never grows beyond two lines; full text stays in the dish detail. */
+html body main.app-shell[data-approved-qr-design][data-bc1-browse="menu"].menu-view-showcase .product-card .product-body > .qr-card-description {
+  display:-webkit-box !important;
+  -webkit-box-orient:vertical;
+  -webkit-line-clamp:2 !important;
+  overflow:hidden !important;
+  max-height:2.6em !important;
+  line-height:1.3 !important;
+  padding:0 !important;
+  margin:3px 0 7px !important;
+  font-size:13px !important;
+}

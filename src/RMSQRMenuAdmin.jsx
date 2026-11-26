@@ -16,6 +16,7 @@ import {
 import { supabase } from './supabase'
 import { localizeProduct } from './qrMenuTranslations'
 import './RMSQRMenuAdmin.css'
+import QRProductTagAdmin from './QRProductTagAdmin'
 
 const fmt = (n) => Number(n || 0).toFixed(2)
 const QR_MENU_PUBLIC_ORIGIN = 'https://app.rms.rest'
@@ -142,6 +143,17 @@ export default function RMSQRMenuAdmin({ lang = localStorage.getItem('rms_lang')
   const adminLanguage = normalizeAdminLanguage(lang)
   const ui = QR_ADMIN_TEXT[adminLanguage]
   const [tab, setTab] = useState('menu')
+  const [canManageTags, setCanManageTags] = useState(false)
+  useEffect(() => {
+    let active = true
+    const refresh = () => supabase.rpc('rms_security_is_protected_admin').then(({ data, error }) => {
+      if (active) setCanManageTags(!error && data === true)
+    })
+    refresh()
+    const { data } = supabase.auth.onAuthStateChange(() => { window.setTimeout(() => { if (active) refresh() }, 0) })
+    return () => { active = false; data.subscription.unsubscribe() }
+  }, [])
+
   const [showWifiPassword, setShowWifiPassword] = useState(false)
 
   const [tables, setTables] = useState([])
@@ -991,6 +1003,8 @@ export default function RMSQRMenuAdmin({ lang = localStorage.getItem('rms_lang')
                 ))}
               </div>
             </div>
+
+{canManageTags && <QRProductTagAdmin key={selectedMenuBranch} branch={selectedMenuBranch} language={adminLanguage} />}
 
 {editingProduct && productDraft && (
               <div className="qr-product-modal-backdrop" role="presentation" onMouseDown={() => { setEditingProduct(null); setProductDraft(null) }}>

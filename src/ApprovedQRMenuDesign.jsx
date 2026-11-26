@@ -105,12 +105,12 @@ function preference(key,allowed,fallback) {
   try {const saved=window.localStorage.getItem("rms-qr-guest-design-"+key);return allowed.includes(saved)?saved:fallback;}catch{return fallback;}
 }
 export function useApprovedMenuPrefs(enabled) {
-  const [view,changeView]=useState(()=>enabled?preference("view",views,"grid"):"grid");
+  const [view,changeView]=useState(()=>enabled?preference("view-v2",views,preference("view",["list","showcase"],"showcase")):"showcase");
   const [color,changeColor]=useState(()=>enabled?preference("color",colors,"original"):"original");
   useLayoutEffect(()=>{
     if(!enabled)return;
     try {
-      window.localStorage.setItem("rms-qr-guest-design-view",view);
+      window.localStorage.setItem("rms-qr-guest-design-view-v2",view);
       window.localStorage.setItem("rms-qr-guest-design-color",color);
     }catch{}
   },[enabled,view,color]);
@@ -121,7 +121,7 @@ export function ApprovedMenuSettings({prefs,text,onBack}) {
     <h2 id="review-settings-title">{text.title}</h2>
     <fieldset><legend>{text.view}</legend>{views.map((id,i)=><label key={id}><input type="radio" name="review-view" checked={prefs.view===id} onChange={()=>prefs.setView(id)} />{text.views[i]}</label>)}</fieldset>
     <fieldset><legend>{text.color}</legend>{colors.map((id,i)=><label key={id}><input type="radio" name="review-color" checked={prefs.color===id} onChange={()=>prefs.setColor(id)} /><i data-color={id} aria-hidden="true" />{text.colors[i]}</label>)}</fieldset>
-    <button type="button" onClick={()=>{prefs.setView("grid");prefs.setColor("original");}}>{text.reset}</button>
+    <button type="button" onClick={()=>{prefs.setView("showcase");prefs.setColor("original");}}>{text.reset}</button>
     <button type="button" onClick={onBack}>{text.back}</button>
   </section>;
 }

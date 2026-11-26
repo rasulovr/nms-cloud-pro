@@ -1052,3 +1052,7 @@
     grid-template-columns: 1fr;
   }
 }
+.qr-tag-admin > label {display:grid;gap:.45rem;max-width:34rem;}
+.qr-tag-admin > label > select {width:100%;min-height:42px;}
+.qr-tag-admin-options {display:flex;flex-wrap:wrap;gap:10px 18px;margin:12px 0;}
+.qr-tag-admin-options label {display:inline-flex;align-items:center;gap:5px;}

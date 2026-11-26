@@ -38,7 +38,7 @@ export function projectBC5(catalog){
   return {
     id:r.key,translationKey:r.key,sourceName:r.name.ru,sourceDescription:r.description?.ru||'',name:r.name.ru,description:r.description?.ru||'',
     bc5Bowl:r.categoryId==='6'&&r.slug==='bowl',category:r.categoryId,presetFirst:r.slug==='alternative-milk'||(r.slug==='red-bull'&&variants.length>0),price:r.priceMinor===null?null:r.priceMinor/100,baseCents:r.priceMinor,
-    image:r.image,options:[],variants,addon:false,
+    image:r.key==="16:149:special-tea" ? "/menu/bc5-special-tea-qr.jpg" : r.image,options:[],variants,addon:false,
     snapshotCopy:Object.fromEntries(['ru','az','en'].map(l=>[l,{name:r.name[l],description:r.description?.[l]||''}])),
     categoryNames:cats.get(r.categoryId),branches:['BC5'],bc4Projected:true
   };

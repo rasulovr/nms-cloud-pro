@@ -12,9 +12,11 @@ import { ApprovedPhotoViewer, ApprovedMenuSettings, menuDesignText, useApprovedM
 import "./ApprovedQRMenuDesign.css";
 import {projectBC5,adjustBowl,bowlLine,bowlOptions} from "./bc5MenuProjection.mjs";
 import "./bc5Bowl.css";
+import { isNewProduct, tagLabels, tagsForProduct } from "./qrMenuTags.mjs";
+import { qrMenuTitle } from "./qrMenuTitle.mjs";
 import BC1SpecialOffer from "./BC1SpecialOffer";
 import { startBakuWeather, currentWeatherPresentation } from "./bc1Weather";
-import { Utensils, ShoppingBag, ReceiptText, BadgePercent, Info, Settings } from "lucide-react";
+import { Utensils, ShoppingBag, ReceiptText, BadgePercent, Info, Settings, ChevronDown } from "lucide-react";
 import "./BC1MenuPreview.css";
 import { projectBC4, localizeBC4, selectedBC4, changeBC4Cart } from "./bc4MenuProjection.mjs";
 const bc4CopyOnly = {
@@ -441,7 +443,7 @@ export default function QRMenu() {
   const [table, setTable] = useState("");
   const [screen, setScreen] = useState("menu");
   const [category, setCategory] = useState("\u0412\u0441\u0435");
-  // The approved default is two columns; guest selections are device-local.
+  // The approved default is large cards; guest selections are device-local.
   const [legacyMenuView, setLegacyMenuView] = useState(() => (new URLSearchParams(window.location.search).get("branch") || "BC1") === "BC1" ? "grid" : "list");
   const menuView = approvedMenuDesign ? approvedPrefs.view : legacyMenuView;
   const setMenuView = approvedMenuDesign ? approvedPrefs.setView : setLegacyMenuView;
@@ -449,6 +451,7 @@ export default function QRMenu() {
   const [notice, setNotice] = useState("");
   const [lastAddedId, setLastAddedId] = useState(null);
   const [products, setProducts] = useState([]);
+  const [productTags, setProductTags] = useState({});
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [order, setOrder] = useState(null);
@@ -608,6 +611,15 @@ export default function QRMenu() {
   }, [branch]);
   useEffect(() => {
     let active = true;
+    setProductTags({});
+    supabase.from("rms_qr_product_tags").select("product_key,tag_codes").eq("branch_code", branch)
+      .then(({data, error}) => {
+        if (active && !error && Array.isArray(data)) setProductTags(Object.fromEntries(data.map(row => [row.product_key, row.tag_codes])));
+      });
+    return () => { active = false; };
+  }, [branch]);
+  useEffect(() => {
+    let active = true;
     supabase.from("rms_qr_info").select("branch_id,wifi_name,wifi_password,working_hours,instagram").eq("branch_id", branch).maybeSingle().then(({ data }) => {
       if (active) setBranchInfo(data || null);
     });
@@ -741,6 +753,7 @@ export default function QRMenu() {
     const categoryMatch = category === "\u0412\u0441\u0435" || product.category === category;
     return branchMatch && categoryMatch;
   }).sort((a, b) => {
+    if (category === "Все" && isNewProduct(a) !== isNewProduct(b)) return isNewProduct(a) ? -1 : 1;
     if (a.bc4Projected && b.bc4Projected) return 0; // source placement order is authoritative
     const aProductRank = productMomentRank(a, mealMoment);
     const bProductRank = productMomentRank(b, mealMoment);
@@ -1231,10 +1244,7 @@ export default function QRMenu() {
       ]} />}
 
       {screen === "menu" && <section className={`content${approvedMenuDesign || branch === "BC1" ? " bc1-catalog" : ""}`}>
-                    <div className="menu-toolbar">
-            <div className="categories">
-              {categories.map((name) => <button className={category === name ? "active" : ""} key={name} onClick={() => setCategory(name)}>{categoryText(name)}</button>)}
-            </div>
+          <div className="menu-toolbar">
             <div className="menu-view-toggle">
               <button
                 type="button"
@@ -1257,6 +1267,19 @@ export default function QRMenu() {
                   : <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5" /><rect x="14" y="3" width="7" height="7" rx="1.5" /><rect x="3" y="14" width="7" height="7" rx="1.5" /><rect x="14" y="14" width="7" height="7" rx="1.5" /></svg>}
               </button>
             </div>
+            <div className="qr-category-picker">
+              <span aria-hidden="true">{language === "ru" ? "Категории" : language === "az" ? "Kateqoriyalar" : "Categories"} <ChevronDown size={14} /></span>
+              <select
+                aria-label={language === "ru" ? "Выбрать категорию" : language === "az" ? "Kateqoriya seçin" : "Choose category"}
+                value={category}
+                onChange={(event) => setCategory(event.target.value)}
+              >
+                {categories.map((name) => <option value={name} key={name}>{categoryText(name)}</option>)}
+              </select>
+            </div>
+            <div className="categories">
+              {categories.slice(1).map((name) => <button type="button" className={category === name ? "active" : ""} key={name} aria-pressed={category === name} onClick={() => setCategory(name)}>{categoryText(name)}</button>)}
+            </div>
           </div>
           <div className="product-grid">
             {availableProducts.map((product) => {
@@ -1269,8 +1292,11 @@ export default function QRMenu() {
                     {isStopped && <b>{t.unavailable}</b>}
                   </button>
                   <div className="product-body">
-                    <div className="product-title"><h3>{product.name}</h3></div>
-                    {product.description && <p>{product.description}</p>}
+                    <div className="product-title"><h3>{qrMenuTitle(product.name, language)}</h3></div>
+                    {tagsForProduct(product, productTags[product.id]).length > 0 && <div className="qr-product-tags">
+                      {tagsForProduct(product, productTags[product.id]).map(tag => <span key={tag} data-tag={tag}>{tagLabels[tag]}</span>)}
+                    </div>}
+                    {product.description && <p className="qr-card-description">{product.description}</p>}
                     {product.options.length > 0 && <div className="product-options">{product.options.map((option) => <small key={option}>{option}</small>)}</div>}
                     <div className="product-footer">
                       <strong>{shownPrice(product)}</strong>
@@ -1397,7 +1423,7 @@ export default function QRMenu() {
             </div>
             <div className="modal-content">
               <span className="modal-category">{categoryText(selectedProduct.category)}</span>
-              <h2>{selectedProduct.name}</h2>
+              <h2>{qrMenuTitle(selectedProduct.name, language)}</h2>
               <strong className="modal-price">{bc4ModalLine && selectedProduct.variants.length ? money(bc4ModalLine.price) : shownPrice(selectedProduct)}</strong>
               {selectedProduct.description && <p>{selectedProduct.description}</p>}
               {(approvedMenuDesign || branch === "BC1") && <BC1ProductFacts language={language} />}
