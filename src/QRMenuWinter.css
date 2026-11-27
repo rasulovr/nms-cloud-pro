@@ -151,3 +151,45 @@ html body main.app-shell[data-bc1-browse="menu"]:has(> .qr-bc5-winter) > footer 
 html body main.app-shell[data-bc1-browse="menu"]:has(> .qr-bc5-winter) > footer > b {
   color: #493b30 !important;
 }
+
+/* BC5 holiday logo: the artwork contains its own decoration and wordmark. */
+main.app-shell[class] .qr-premium-hero.qr-bc5-winter :is(.hero-reference-copy, .brand-mark, .qr-winter-featured-image) {
+  display: none !important;
+}
+header.qr-bc5-winter .qr-winter-art {
+  background:
+    linear-gradient(180deg, transparent 65%, #17181b48 82%, #17181ba8 100%),
+    url("/menu/bc5-winter-logo.webp") center / cover no-repeat;
+}
+header.qr-bc5-winter .qr-winter-art::before,
+header.qr-bc5-winter .qr-winter-art::after {
+  display: none;
+}
+main.app-shell[class] .qr-premium-hero.qr-bc5-winter .language-switch {
+  background: rgba(23, 32, 39, .25) !important;
+  backdrop-filter: blur(1px) !important;
+  -webkit-backdrop-filter: blur(1px) !important;
+}
+main.app-shell[class] .qr-premium-hero.qr-bc5-winter .language-switch button.active {
+  background: rgba(245, 249, 255, .52) !important;
+}
+main.app-shell[class] .qr-premium-hero.qr-bc5-winter .hero-reference-weather {
+  bottom: 22px !important;
+  background: rgba(25, 27, 31, .41) !important;
+}
+@media (min-width: 560px) {
+  header.qr-bc5-winter .qr-winter-art {
+    background:
+      linear-gradient(180deg, transparent 70%, #17181bac),
+      radial-gradient(ellipse at center, #3b403a 20%, #282b29 56%, #252525 100%);
+  }
+  header.qr-bc5-winter .qr-winter-art::before {
+    display: block;
+    content: "";
+    position: absolute;
+    inset: 0;
+    opacity: 1;
+    background: url("/menu/bc5-winter-logo.webp") center / auto 100% no-repeat;
+    mask-image: linear-gradient(90deg, transparent calc(50% - 195px), #000 calc(50% - 150px), #000 calc(50% + 150px), transparent calc(50% + 195px));
+  }
+}
