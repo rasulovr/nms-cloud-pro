@@ -294,39 +294,20 @@ dialog.qr-category-sheet::backdrop {background:#1c151273;}
   max-width:calc(100% - 24px);
   pointer-events:none;
 }
-html body main.app-shell[data-approved-qr-design][data-bc1-browse="menu"].menu-view-showcase .product-card .product-title {margin-bottom:3px !important;}
-html body main.app-shell[data-approved-qr-design][data-bc1-browse="menu"].menu-view-showcase .product-card .product-title h3 {
-  font-size:14px !important;
-  font-weight:700 !important;
-}
-
-/* Preview copy never grows beyond two lines; full text stays in the dish detail. */
-html body main.app-shell[data-approved-qr-design][data-bc1-browse="menu"].menu-view-showcase .product-card .product-body > .qr-card-description {
-  display:-webkit-box !important;
-  -webkit-box-orient:vertical;
-  -webkit-line-clamp:2 !important;
-  overflow:hidden !important;
-  max-height:2.6em !important;
-  line-height:1.3 !important;
-  padding:0 !important;
-  margin:0 0 7px !important;
-  font-size:13px !important;
-}
-
 html body .app-shell[data-approved-qr-design] .modal-category {text-transform:none!important;}
 
-/* BC5: keep existing dish copy visible in every card layout, without expanding it. */
-html body main.app-shell[data-bc5-menu="true"][data-approved-qr-design][data-bc1-browse="menu"] .product-card .product-body {
+/* Keep branch-specific dish copy visible in every card layout, without expanding it. */
+html body main.app-shell[data-approved-qr-design][data-bc1-browse="menu"] .product-card .product-body {
   gap: 4px !important;
 }
-html body main.app-shell[data-bc5-menu="true"][data-approved-qr-design][data-bc1-browse="menu"] .product-card .product-title {
+html body main.app-shell[data-approved-qr-design][data-bc1-browse="menu"] .product-card .product-title {
   margin: 0 !important;
 }
-html body main.app-shell[data-bc5-menu="true"][data-approved-qr-design][data-bc1-browse="menu"] .product-card .product-title h3 {
+html body main.app-shell[data-approved-qr-design][data-bc1-browse="menu"] .product-card .product-title h3 {
   font-size: 14px !important;
   font-weight: 700 !important;
 }
-html body main.app-shell[data-bc5-menu="true"][data-approved-qr-design][data-bc1-browse="menu"] .product-card .product-body > .qr-card-description {
+html body main.app-shell[data-approved-qr-design][data-bc1-browse="menu"] .product-card .product-body > .qr-card-description {
   display: -webkit-box !important;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2 !important;
@@ -340,22 +321,50 @@ html body main.app-shell[data-bc5-menu="true"][data-approved-qr-design][data-bc1
   overflow-wrap: anywhere;
 }
 
-/* BC5 guest menu: leave room for the home indicator and keep 44px touch targets. */
-html body .app-shell[data-bc5-menu][data-approved-qr-design][data-bc1-browse] {
+/* Guest menu: leave room for the home indicator and keep 44px touch targets. */
+html body .app-shell[data-approved-qr-design][data-bc1-browse] {
   padding-bottom: calc(59px + env(safe-area-inset-bottom, 0px)) !important;
 }
-html body .app-shell[data-bc5-menu][data-approved-qr-design][data-bc1-browse] .main-nav.bc1-browse-nav {
+html body .app-shell[data-approved-qr-design][data-bc1-browse] .main-nav.bc1-browse-nav {
   padding-block: 1px calc(1px + env(safe-area-inset-bottom, 0px)) !important;
 }
-html body .app-shell[data-bc5-menu][data-approved-qr-design][data-bc1-browse] .main-nav.bc1-browse-nav > button {
+html body .app-shell[data-approved-qr-design][data-bc1-browse] .main-nav.bc1-browse-nav > button {
   min-height: 44px !important;
   gap: 2px !important;
   color: #4d555d !important;
 }
-html body .app-shell[data-bc5-menu][data-approved-qr-design][data-bc1-browse] .main-nav.bc1-browse-nav > button.active {
+html body .app-shell[data-approved-qr-design][data-bc1-browse] .main-nav.bc1-browse-nav > button.active {
   color: #22252a !important;
   font-weight: 650 !important;
 }
-html body .app-shell[data-bc5-menu][data-approved-qr-design][data-bc1-browse="menu"] .floating-cart {
+html body .app-shell[data-approved-qr-design][data-bc1-browse="menu"] .floating-cart {
   bottom: calc(56px + env(safe-area-inset-bottom, 0px)) !important;
+}
+
+/* Variant 03 is the standard catalog palette; explicit guest color choices still win. */
+html body main.app-shell.menu-background-travertine[data-approved-qr-design][data-bc1-browse="menu"] {
+  background: #fff !important;
+}
+html body main.app-shell.menu-background-travertine[data-approved-qr-design][data-bc1-browse="menu"] > .bc1-catalog {
+  background: #fff !important;
+}
+html body main.app-shell.menu-background-travertine[data-approved-qr-design][data-bc1-browse="menu"] > .bc1-catalog .product-card {
+  background: transparent !important;
+  box-shadow: 0 6px 18px rgba(34, 37, 42, 0.10), 0 2px 5px rgba(34, 37, 42, 0.04) !important;
+}
+html body main.app-shell.menu-background-travertine[data-approved-qr-design][data-bc1-browse="menu"] > .bc1-catalog .product-card > .product-body {
+  background: #fff !important;
+  box-shadow: none !important;
+}
+html body main.app-shell.menu-background-travertine[data-approved-qr-design][data-bc1-browse="menu"] > .bc1-catalog .product-card :is(.product-title h3, .product-footer > strong) {
+  color: #22252a !important;
+}
+html body main.app-shell.menu-background-travertine[data-approved-qr-design][data-bc1-browse="menu"] > .bc1-catalog .product-card > .product-body > .qr-card-description {
+  color: #4d555d !important;
+}
+html body main.app-shell.menu-background-travertine[data-approved-qr-design][data-bc1-browse="menu"] > footer {
+  color: #493b30 !important;
+}
+html body main.app-shell.menu-background-travertine[data-approved-qr-design][data-bc1-browse="menu"] > footer > b {
+  color: #493b30 !important;
 }
