@@ -10,7 +10,7 @@ import "./QRMenuPhotoOpen.css";
 import "./QRMenuSchedule.css";
 import "./QRMenuProductDetail.css";
 import BC1ProductFacts from "./BC1ProductFacts";
-import {qrProductFacts,productFactsForLocale,isBC5Truffle} from "./qrProductFacts.mjs";
+import {qrProductFacts,productFactsForLocale,isBC5Truffle,isLemonButterChicken} from "./qrProductFacts.mjs";
 import { ApprovedPhotoViewer, ApprovedMenuSettings, menuDesignText, useApprovedMenuPrefs } from "./ApprovedQRMenuDesign";
 import "./ApprovedQRMenuDesign.css";
 import {projectBC5,adjustBowl,bowlLine,bowlOptions} from "./bc5MenuProjection.mjs";
@@ -1332,7 +1332,7 @@ export default function QRMenu() {
               <h2>{qrMenuTitle(selectedProduct.name, language)}</h2>
               <strong className="modal-price">{bc4ModalLine && selectedProduct.variants.length ? money(bc4ModalLine.price) : shownPrice(selectedProduct)}</strong>
               {selectedProduct.description && <p>{selectedProduct.description}</p>}
-              {(approvedMenuDesign || branch === "BC1") && <BC1ProductFacts language={language} compact={isBC5Truffle(branch,selectedProduct.id)} facts={productFactsForLocale(qrProductFacts(builderLive,branch,selectedProduct.id),language)} />}
+              {(approvedMenuDesign || branch === "BC1") && <BC1ProductFacts language={language} compact={isBC5Truffle(branch,selectedProduct.id) || isLemonButterChicken(branch,selectedProduct.id)} facts={productFactsForLocale(qrProductFacts(builderLive,branch,selectedProduct.id),language)} />}
               {selectedProduct.bc4Projected && selectedProduct.variants.length>0 && <div className="modal-options"><select aria-label={bc4Labels.choose} value={bc4Variant} onChange={event=>setBc4Variant(event.target.value)}>
                 <option value="">{bc4Labels.choose}</option>{selectedProduct.variants.map(option=><option key={option.id} value={option.id} disabled={option.cents===null}>{option.label}{option.cents===null?"":` · ${money(option.cents/100)}`}</option>)}
               </select></div>}

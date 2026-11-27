@@ -2,6 +2,16 @@ const languages=['ru','az','en'];
 const truffle=new Set(['new:4:truffle-burger','27:24:truffle-burger']);
 const defaults={calories:740,approximate:true,preparationMinutes:[10,15],allergens:{
  az:'Qlüten, süd, yumurta, xardal, küncüt',ru:'Глютен, молоко, яйца, горчица, кунжут',en:'Gluten, milk, eggs, mustard, sesame'}};
+const lemonButterChickenIds={
+ BC4:new Set(['clopos-bc4-new-lemon-butter-chicken','clopos-bc4-29-lemon-butter-chicken']),
+ BC5:new Set(['new:2:lemon-butter-chicken','27:25:lemon-butter-chicken'])
+};
+const lemonButterChickenDefaults={calories:970,approximate:true,preparationMinutes:[10,15],allergens:{
+ az:'Süd və süd məhsulları, xardal, qlüten',
+ ru:'Молоко и молочные продукты, горчица, глютен',
+ en:'Milk and milk products, mustard, gluten'
+}};
+export const isLemonButterChicken=(branch,id)=>Object.hasOwn(lemonButterChickenIds,branch)&&lemonButterChickenIds[branch].has(String(id));
 export const isBC5Truffle=(branch,id)=>branch==='BC5'&&truffle.has(String(id));
 export const productFactsKey=(branch,id)=>isBC5Truffle(branch,id)?'new:4:truffle-burger':String(id||'');
 export function qrProductFacts(doc,branch,id){
@@ -9,7 +19,8 @@ export function qrProductFacts(doc,branch,id){
  if(map&&Object.hasOwn(map,key)){
   const f=map[key];if(f&&typeof f==='object')return f;
  }
- return isBC5Truffle(branch,id)?defaults:{};
+ if(isBC5Truffle(branch,id))return defaults;
+ return isLemonButterChicken(branch,id)?lemonButterChickenDefaults:{};
 }
 export function productFactsForm(facts={}){
  return {calories:Number.isInteger(facts.calories)?String(facts.calories):'',approximate:facts.approximate===true,
