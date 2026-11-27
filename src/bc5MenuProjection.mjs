@@ -1,3 +1,5 @@
+import { bc5DescriptionEdits } from "./bc5DescriptionEdits.mjs";
+
 export const bowlBase = 1390;
 export const bowlMax = 4;
 export const bowlOptions = [
@@ -35,11 +37,12 @@ export function projectBC5(catalog){
   if((r.priceMinor===null)!==Boolean(r.variants?.length))throw Error("Invalid BC5 price choice");
   const variants=r.variants||[]; choices+=variants.length;
   if(variants.some(v=>!v.id||!v.label||!Number.isSafeInteger(v.cents)||v.cents<=0)||new Set(variants.map(v=>v.id)).size!==variants.length)throw Error("Invalid variant");
+  const descriptions = {...r.description, ...bc5DescriptionEdits[r.key]};
   return {
-    id:r.key,translationKey:r.key,sourceName:r.name.ru,sourceDescription:r.description?.ru||'',name:r.name.ru,description:r.description?.ru||'',
+    id:r.key,translationKey:r.key,sourceName:r.name.ru,sourceDescription:descriptions.ru||'',name:r.name.ru,description:descriptions.ru||'',
     bc5Bowl:r.categoryId==='6'&&r.slug==='bowl',category:r.categoryId,presetFirst:r.slug==='alternative-milk'||(r.slug==='red-bull'&&variants.length>0),price:r.priceMinor===null?null:r.priceMinor/100,baseCents:r.priceMinor,
     image:r.key==="16:149:special-tea" ? "/menu/bc5-special-tea-qr.jpg" : r.image,options:[],variants,addon:false,
-    snapshotCopy:Object.fromEntries(['ru','az','en'].map(l=>[l,{name:r.name[l],description:r.description?.[l]||''}])),
+    snapshotCopy:Object.fromEntries(['ru','az','en'].map(l=>[l,{name:r.name[l],description:descriptions[l]||''}])),
     categoryNames:cats.get(r.categoryId),branches:['BC5'],bc4Projected:true
   };
  });
