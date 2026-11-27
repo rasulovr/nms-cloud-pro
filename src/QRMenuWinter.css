@@ -18,7 +18,7 @@ main.app-shell header.qr-premium-hero.qr-bc5-winter::after { display: none !impo
   pointer-events: none;
   background: url("/menu/bc5-winter-frost.svg") center top / 100% 100% no-repeat,
     linear-gradient(180deg, #14212b6b 0%, #20162243 36%, #2117255c 57%, #19151dee 100%),
-    url("/menu/bc5-winter-mulled.webp") center / cover no-repeat;
+    #292327;
 }
 main.app-shell[class] .qr-premium-hero.qr-bc5-winter .language-switch {
   top: max(12px, env(safe-area-inset-top)) !important;
@@ -78,26 +78,18 @@ main.app-shell[class] .qr-premium-hero.qr-bc5-winter .hero-reference-weather {
 main.app-shell[class] .qr-premium-hero.qr-bc5-winter .hero-reference-weather > * {
   color: #f8faff !important;
 }
-@media (min-width: 890px) {
-  .qr-bc5-winter .qr-winter-art {
-    background: radial-gradient(ellipse at center, #63564b, #2e2b2a 50%, #18252b 100%);
-  }
-  .qr-bc5-winter .qr-winter-art::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background: url("/menu/bc5-winter-mulled.webp") center / auto 100% no-repeat;
-    opacity: .91;
-    -webkit-mask-image: linear-gradient(90deg, transparent calc(50% - 390px), #000 calc(50% - 286px), #000 calc(50% + 286px), transparent calc(50% + 390px));
-    mask-image: linear-gradient(90deg, transparent calc(50% - 390px), #000 calc(50% - 286px), #000 calc(50% + 286px), transparent calc(50% + 390px));
-  }
-  .qr-bc5-winter .qr-winter-art::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background: url("/menu/bc5-winter-frost.svg") center top / 100% 100% no-repeat,
-      linear-gradient(180deg, #14212b62, #20162230 42%, #19151deb);
-  }
+/* Never display another dish while the featured selection or its image is loading. */
+main.app-shell[class] .qr-premium-hero.qr-bc5-winter:not(.qr-bc5-winter-featured) .hero-reference-title,
+html[data-bc5-qr-entry] main.app-shell:not([data-bc5-menu]) > .qr-premium-hero :is(.hero-sky, .hero-reference-title) {
+  visibility: hidden !important;
+}
+html[data-bc5-qr-entry] main.app-shell[class]:not([data-bc5-menu]) > .qr-premium-hero {
+  background: #292327 !important;
+  min-height: clamp(284px, 87vw, 390px) !important;
+}
+html[data-bc5-qr-entry] main.app-shell:not([data-bc5-menu]) > .qr-premium-hero::before,
+html[data-bc5-qr-entry] main.app-shell:not([data-bc5-menu]) > .qr-premium-hero::after {
+  display: none !important;
 }
 
 /* Only active for a published, available featured dish with a loaded photo. */

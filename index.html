@@ -7,7 +7,19 @@
   </head>
   <body>
     <div id="root"></div>
-    <script>var branches = [];</script>
+    <script>
+      var branches = [];
+      // Scope the neutral first frame to the BC5 QR entry before React resolves the branch.
+      (() => {
+        const params = new URLSearchParams(location.search);
+        const branches = params.getAll("branch");
+        if ((location.pathname.startsWith("/qr-menu") || location.hash.startsWith("#/qr-menu") || params.get("qr") === "menu")
+            && branches.length === 1 && branches[0].trim().toUpperCase() === "BC5"
+            && params.get("header") !== "classic") {
+          document.documentElement.dataset.bc5QrEntry = "true";
+        }
+      })();
+    </script>
     <script type="module" src="/src/main.generated.jsx"></script>
   </body>
 </html>
