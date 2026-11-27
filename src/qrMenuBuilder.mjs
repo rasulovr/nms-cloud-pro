@@ -1,11 +1,12 @@
 import {tagCodes} from './qrMenuTags.mjs';
+import {resolveQrArchiveImage} from './qrArchivedImages.mjs';
 export const qrBuilderBranches=['BC1','BC2','BC4','BC5'];
 export const qrBuilderLanguages=['ru','az','en'];
 export const emptyQrBuilder=()=>({categories:{},items:{},order:{},product_facts:{},winter_featured:null,offer:null});
 const object=x=>x!==null&&typeof x==='object'&&!Array.isArray(x)?x:{};
 export const cleanQrBuilder=d=>({categories:object(d?.categories),items:object(d?.items),order:object(d?.order),product_facts:object(d?.product_facts),winter_featured:cleanWinterFeatured(d?.winter_featured),offer:d?.offer&&typeof d.offer==='object'?d.offer:null});
 export const qrBuilderText=(o,lang)=>String(o?.[lang]||o?.ru||o?.az||o?.en||'');
-export const qrBuilderImage=url=>typeof url==='string'&&(/^(https:\/\/[^\s]+|\/menu\/[\w.-]+)$/i.test(url))?url:'';
+export const qrBuilderImage=url=>typeof url==='string'&&(/^(https:\/\/[^\s]+|\/menu\/[\w.-]+)$/i.test(url))?resolveQrArchiveImage(url):'';
 // Apply explicit ordering only within its category, preserving positions of other categories.
 export function qrBuilderApplyOrder(products,doc){
   const order=object(doc?.order);
@@ -68,9 +69,14 @@ export function qrBuilderOverlay(base,doc,branch){
         ...(Array.isArray(p.tags)?{menuBuilderTags:tagCodes(p.tags)}:{})});
     }
   }
-  return out;
+  return out.map(withArchivedImage);
+}
+function withArchivedImage(product){
+  const image=resolveQrArchiveImage(product.image);
+  return image===product.image?product:{...product,image};
 }
 export function qrBuilderLocalize(item,localized,lang){
+  localized=withArchivedImage(localized);
   const copy=item.menuBuilderCopy;
   if(!copy)return localized;
   return {...localized,name:(item.menuBuilderNew?qrBuilderText(copy.names,lang):copy.names?.[lang])||localized.name,
@@ -81,7 +87,7 @@ export function qrBuilderOffer(products, doc, unavailable, lang){
   if(!o?.enabled)return null;
   const p=products.find(x=>x.id===o.product_id&&!unavailable.includes(x.id));
   if(!p)return null;
-  const image=qrBuilderImage(o.image)||p.image;
+  const image=qrBuilderImage(o.image)||resolveQrArchiveImage(p.image);
   if(!image)return null;
   return {product:{...p,image,name:qrBuilderText(o.titles,lang)||p.name},
     eyebrow:{ru:"Спецпредложение",az:"Xüsusi təklif",en:"Special offer"}[lang],
