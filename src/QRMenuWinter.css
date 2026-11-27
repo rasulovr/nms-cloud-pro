@@ -123,7 +123,7 @@ main.app-shell[class] .qr-premium-hero.qr-bc5-winter-featured .hero-reference-ti
   .qr-winter-featured-image { object-fit: contain; }
 }
 
-/* BC5 winter catalog: white canvas behind the warm sand cards. */
+/* BC5 winter catalog: variant 01, pure white with a fine neutral card outline. */
 html body main.app-shell[data-bc1-browse="menu"]:has(> .qr-bc5-winter) {
   background: #fff !important;
 }
@@ -134,14 +134,14 @@ html body main.app-shell[data-bc1-browse="menu"]:has(> .qr-bc5-winter) > .bc1-ca
   background: transparent !important;
 }
 html body main.app-shell[data-bc1-browse="menu"]:has(> .qr-bc5-winter) > .bc1-catalog .product-card > .product-body {
-  background: #f7eee0 !important;
-  box-shadow: inset 0 1px 0 #bc9163 !important;
+  background: #fff !important;
+  box-shadow: inset 1px 0 0 #d3d8de, inset -1px 0 0 #d3d8de, inset 0 -1px 0 #d3d8de !important;
 }
 html body main.app-shell[data-bc1-browse="menu"]:has(> .qr-bc5-winter) > .bc1-catalog .product-card :is(.product-title h3, .product-footer > strong) {
-  color: #332c26 !important;
+  color: #22252a !important;
 }
 html body main.app-shell[data-bc1-browse="menu"]:has(> .qr-bc5-winter) > .bc1-catalog .product-card > .product-body > .qr-card-description {
-  color: #65544a !important;
+  color: #4d555d !important;
 }
 html body main.app-shell[data-bc1-browse="menu"]:has(> .qr-bc5-winter) > footer {
   color: #493b30 !important;
